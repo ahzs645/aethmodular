@@ -1,0 +1,1 @@
+"""FTIR analysis package"""
