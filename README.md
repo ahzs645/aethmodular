@@ -60,15 +60,100 @@ cd examples
 python basic_usage.py
 ```
 
-### 3. See Before/After Comparison
+### 3. Run Comprehensive Enhanced Demo
 ```bash
 cd examples
-python before_after_comparison.py
+python comprehensive_enhanced_demo.py
 ```
 
 ## 📖 Usage Examples
 
-### Basic FTIR Analysis
+### Aethalometer Data Smoothening
+
+```python
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+
+from analysis.aethalometer.smoothening import ONASmoothing, CMASmoothing, DEMASmoothing
+
+# Load aethalometer data
+# data should have columns like 'IR BCc', 'IR ATN1', etc.
+
+# Apply different smoothening methods
+ona = ONASmoothing(delta_atn_threshold=0.05)
+cma = CMASmoothing(window_size=15)
+dema = DEMASmoothing(alpha=0.2)
+
+# Analyze with each method
+ona_results = ona.analyze(data, wavelength='IR')
+cma_results = cma.analyze(data, wavelength='IR') 
+dema_results = dema.analyze(data, wavelength='IR')
+
+print(f"ONA noise reduction: {ona_results['improvement_metrics']['noise_reduction_percent']:.1f}%")
+print(f"CMA noise reduction: {cma_results['improvement_metrics']['noise_reduction_percent']:.1f}%")
+print(f"DEMA noise reduction: {dema_results['improvement_metrics']['noise_reduction_percent']:.1f}%")
+```
+
+### 9AM-to-9AM Period Processing
+
+```python
+from analysis.aethalometer.period_processor import NineAMPeriodProcessor
+
+# Process aethalometer data into 9AM-to-9AM periods
+processor = NineAMPeriodProcessor()
+period_results = processor.analyze(data, date_column='timestamp')
+
+# Check period quality
+for period in period_results['period_classifications']:
+    print(f"Period {period['date_label']}: {period['quality']} "
+          f"({period['data_completeness']['completeness_percentage']:.1f}% complete)")
+
+# Get high-quality periods only
+good_periods = processor.get_quality_filtered_periods(period_results, min_quality='good')
+```
+
+### Enhanced MAC Analysis
+
+```python
+from analysis.ftir.enhanced_mac_analyzer import EnhancedMACAnalyzer
+
+# Comprehensive MAC analysis with all 4 methods
+mac_analyzer = EnhancedMACAnalyzer()
+mac_results = mac_analyzer.analyze(ftir_data)
+
+# Compare all methods
+for method, results in mac_results['mac_results'].items():
+    if 'error' not in results:
+        print(f"{method}: MAC = {results['mac_value']:.2f} m²/g")
+
+# Get best method recommendation
+best_method = mac_results['method_comparison']['recommendations']['best_overall']
+print(f"Recommended method: {best_method}")
+```
+
+### Ethiopian Seasonal Analysis
+
+```python
+from analysis.seasonal.ethiopian_seasons import EthiopianSeasonAnalyzer
+
+# Analyze seasonal patterns specific to Ethiopian climate
+seasonal_analyzer = EthiopianSeasonAnalyzer()
+seasonal_results = seasonal_analyzer.analyze(data, date_column='timestamp')
+
+# Compare seasons
+for season, stats in seasonal_results['seasonal_statistics'].items():
+    if 'error' not in stats:
+        fabs_mean = stats['statistics'].get('fabs', {}).get('mean', 0)
+        print(f"{stats['name']}: Mean Fabs = {fabs_mean:.1f} Mm⁻¹")
+
+# Get climate insights
+insights = seasonal_results['climate_analytics']['climate_insights']
+for insight in insights:
+    print(f"• {insight}")
+```
+
+### Basic FTIR Analysis (Original)
 
 ```python
 import sys
@@ -185,9 +270,24 @@ ec_threshold = QUALITY_THRESHOLDS['ec_ftir']
 
 ## 📊 Available Analyzers
 
-### Current Analyzers
+### FTIR Analyzers
 - **`FabsECAnalyzer`**: Analyzes Fabs-EC relationship and calculates MAC
 - **`OCECAnalyzer`**: Analyzes OC-EC relationship and ratios
+- **`EnhancedMACAnalyzer`**: Advanced MAC calculation with 4 different methods and physical constraint validation
+
+### Aethalometer Analyzers
+- **`ONASmoothing`**: Optimized Noise-reduction Algorithm with adaptive time-averaging
+- **`CMASmoothing`**: Centered Moving Average for noise reduction
+- **`DEMASmoothing`**: Double Exponentially Weighted Moving Average with minimal lag
+- **`NineAMPeriodProcessor`**: 9AM-to-9AM period alignment and quality classification
+
+### Seasonal Analysis
+- **`EthiopianSeasonAnalyzer`**: Climate-specific seasonal analysis for Ethiopian conditions
+
+### Visualization Tools
+- **`TimeSeriesPlotter`**: Comprehensive time series visualization
+- **`StatisticalPlotter`**: Statistical analysis plots
+- **`ComparisonPlotter`**: Method comparison visualizations
 
 ### Creating New Analyzers
 ```python
