@@ -7,6 +7,10 @@ from .memory_optimization import (
     optimize_memory, reduce_memory, process_in_batches
 )
 from .logging.logger import ETADLogger
+from .plotting import AethalometerPlotter
+from .statistics import StatisticalAnalyzer
+
+__all__ = ['AethalometerPlotter', 'StatisticalAnalyzer']
 
 __all__ = [
     # File I/O

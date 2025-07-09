@@ -3,6 +3,15 @@ Setup script for the FTIR and Aethalometer Analysis Package
 """
 
 from setuptools import setup, find_packages
+from pathlib import Path
+
+# Read requirements from requirements.txt
+def read_requirements():
+    requirements_path = Path(__file__).parent / "requirements.txt"
+    if requirements_path.exists():
+        with open(requirements_path, 'r') as f:
+            return [line.strip() for line in f if line.strip() and not line.startswith('#')]
+    return []
 
 setup(
     name="ftir-aeth-analysis",
@@ -12,13 +21,7 @@ setup(
     author_email="your.email@example.com",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
-    install_requires=[
-        "pandas>=1.3.0",
-        "numpy>=1.21.0",
-        "scipy>=1.7.0",
-        "matplotlib>=3.4.0",
-        "scikit-learn>=1.0.0",
-    ],
+    install_requires=read_requirements(),
     python_requires=">=3.7",
     classifiers=[
         "Development Status :: 3 - Alpha",

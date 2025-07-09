@@ -5,8 +5,37 @@ Black Carbon analyzer for JPL format aethalometer data
 import pandas as pd
 import numpy as np
 from typing import Dict, Any, Optional, Tuple
-from ...core.base import BaseAnalyzer
-from ...core.exceptions import DataValidationError
+import sys
+import os
+
+# Add the src directory to the path for imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+src_dir = os.path.join(current_dir, '..', '..')
+if src_dir not in sys.path:
+    sys.path.insert(0, src_dir)
+
+try:
+    from core.base import BaseAnalyzer
+    from core.exceptions import DataValidationError
+except ImportError:
+    # Fallback for when core modules aren't available
+    from abc import ABC, abstractmethod
+    
+    class BaseAnalyzer(ABC):
+        """Base class for all analyzers"""
+        
+        def __init__(self, name: str = "Analyzer"):
+            self.name = name
+            self.results: Dict[str, Any] = {}
+        
+        @abstractmethod
+        def analyze(self, data: pd.DataFrame) -> Dict[str, Any]:
+            """Perform analysis on data"""
+            pass
+    
+    class DataValidationError(Exception):
+        """Custom exception for data validation errors"""
+        pass
 
 class BlackCarbonAnalyzer(BaseAnalyzer):
     """
@@ -16,6 +45,11 @@ class BlackCarbonAnalyzer(BaseAnalyzer):
     
     def __init__(self):
         """Initialize the analyzer"""
+        try:
+            super().__init__("BlackCarbonAnalyzer")
+        except TypeError:
+            # Fallback if BaseAnalyzer doesn't require name parameter
+            super().__init__()
         self.required_columns = ['IR.BCc']
         self.optional_columns = ['Biomass.BCc', 'Fossil.fuel.BCc', 'datetime_local']
         

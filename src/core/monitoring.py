@@ -13,7 +13,16 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-from ..utils.logging.logger import ETADLogger
+try:
+    from ..utils.logging.logger import ETADLogger
+except ImportError:
+    try:
+        from utils.logging.logger import ETADLogger
+    except ImportError:
+        # Create a simple fallback logger
+        import logging
+        logging.basicConfig()
+        ETADLogger = logging.getLogger(__name__)
 
 @dataclass
 class PerformanceMetrics:
