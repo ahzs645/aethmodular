@@ -7,6 +7,7 @@ This package provides modular tools for data quality assessment:
 - quality_classifier: Classification of data quality periods
 - seasonal_patterns: Seasonal and temporal pattern analysis  
 - filter_mapping: Mapping filter samples to quality periods
+- pkl_cleaning: Specialized cleaning for PKL format aethalometer data
 - visualization: Plotting and visualization tools
 - reports: Comprehensive quality reports
 
@@ -24,6 +25,7 @@ from .missing_data import MissingDataAnalyzer
 from .quality_classifier import QualityClassifier
 from .seasonal_patterns import SeasonalPatternAnalyzer
 from .filter_mapping import FilterSampleMapper
+from .pkl_cleaning import PKLDataCleaner, load_and_clean_pkl_data, table_removed_datapoints_by_month
 from .visualization import QualityVisualizer
 from .reports import QualityReportGenerator
 
@@ -58,6 +60,9 @@ __all__ = [
     'QualityClassifier', 
     'SeasonalPatternAnalyzer',
     'FilterSampleMapper',
+    'PKLDataCleaner',
+    'load_and_clean_pkl_data',
+    'table_removed_datapoints_by_month',
     'QualityVisualizer',
     'QualityReportGenerator',
     'quick_quality_check'
