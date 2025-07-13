@@ -93,7 +93,8 @@ class AethalometerPKLLoader(BaseLoader):
             raise DataValidationError("format_type must be 'standard', 'jpl', or 'auto'")
     
     def load(self, site_filter: Optional[str] = None, 
-             convert_to_jpl: bool = False) -> pd.DataFrame:
+             convert_to_jpl: bool = False,
+             set_datetime_index: bool = True) -> pd.DataFrame:
         """
         Load aethalometer data from pkl file
         
@@ -103,6 +104,8 @@ class AethalometerPKLLoader(BaseLoader):
             Filter data by site code/name (if 'site' column exists)
         convert_to_jpl : bool
             If True, convert column names to JPL format
+        set_datetime_index : bool, default True
+            Whether to set datetime column as DataFrame index for time series operations
             
         Returns:
         --------
@@ -128,8 +131,19 @@ class AethalometerPKLLoader(BaseLoader):
             if site_filter:
                 df = self._filter_by_site(df, site_filter)
             
-            # Convert datetime column if it exists
-            df = self._process_datetime(df)
+            # Convert datetime column if it exists and set as index if requested
+            if set_datetime_index:
+                df = self._process_datetime(df)
+            else:
+                # Just convert datetime columns without setting as index
+                datetime_cols = ['datetime_local', 'datetime_utc', 'Date', 'date']
+                for col in datetime_cols:
+                    if col in df.columns:
+                        if not pd.api.types.is_datetime64_any_dtype(df[col]):
+                            try:
+                                df[col] = pd.to_datetime(df[col])
+                            except Exception as e:
+                                print(f"Warning: Could not convert {col} to datetime: {e}")
             
             # Convert column names if requested
             if convert_to_jpl and detected_format == 'standard':
@@ -186,17 +200,35 @@ class AethalometerPKLLoader(BaseLoader):
             return df
     
     def _process_datetime(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Process datetime columns"""
+        """Process datetime columns and set as index for time series operations"""
         datetime_cols = ['datetime_local', 'datetime_utc', 'Date', 'date']
         
+        datetime_col_found = None
         for col in datetime_cols:
             if col in df.columns:
                 if not pd.api.types.is_datetime64_any_dtype(df[col]):
                     try:
                         df[col] = pd.to_datetime(df[col])
-                    except:
-                        pass
+                        if datetime_col_found is None:  # Use first valid datetime column as index
+                            datetime_col_found = col
+                    except Exception as e:
+                        print(f"Warning: Could not convert {col} to datetime: {e}")
+                else:
+                    # Column is already datetime
+                    if datetime_col_found is None:
+                        datetime_col_found = col
         
+        # Set datetime column as index if found
+        if datetime_col_found is not None:
+            try:
+                # Sort by datetime before setting as index to ensure proper time series
+                df = df.sort_values(by=datetime_col_found)
+                df = df.set_index(datetime_col_found)
+                print(f"Set '{datetime_col_found}' as DatetimeIndex for time series operations")
+            except Exception as e:
+                print(f"Warning: Could not set datetime index: {e}")
+                # Keep the datetime column but don't set as index
+
         return df
     
     def _convert_to_jpl_format(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -335,25 +367,74 @@ class AethalometerCSVLoader(BaseLoader):
         if not self.csv_path.exists():
             raise DataValidationError(f"CSV file not found: {csv_path}")
     
-    def load(self, **kwargs) -> pd.DataFrame:
-        """Load data from CSV file"""
+    def load(self, set_datetime_index: bool = True, **kwargs) -> pd.DataFrame:
+        """
+        Load data from CSV file
+        
+        Parameters:
+        -----------
+        set_datetime_index : bool, default True
+            Whether to set datetime column as DataFrame index for time series operations
+        **kwargs : additional arguments
+        
+        Returns:
+        --------
+        pd.DataFrame
+            Loaded data with optional datetime index
+        """
         try:
             df = pd.read_csv(self.csv_path)
             
-            # Convert datetime if exists
-            if 'datetime_local' in df.columns:
-                df['datetime_local'] = pd.to_datetime(df['datetime_local'])
+            if set_datetime_index:
+                df = self._process_datetime(df)
+            else:
+                # Just convert datetime columns without setting as index
+                datetime_cols = ['datetime_local', 'datetime_utc', 'Date', 'date']
+                for col in datetime_cols:
+                    if col in df.columns:
+                        try:
+                            df[col] = pd.to_datetime(df[col])
+                        except Exception as e:
+                            print(f"Warning: Could not convert {col} to datetime: {e}")
             
             return df
             
         except Exception as e:
             raise DataValidationError(f"Error loading CSV file: {e}")
+    
+    def _process_datetime(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Process datetime columns and set as index for time series operations"""
+        datetime_cols = ['datetime_local', 'datetime_utc', 'Date', 'date']
+        
+        datetime_col_found = None
+        for col in datetime_cols:
+            if col in df.columns:
+                try:
+                    df[col] = pd.to_datetime(df[col])
+                    if datetime_col_found is None:  # Use first valid datetime column as index
+                        datetime_col_found = col
+                except Exception as e:
+                    print(f"Warning: Could not convert {col} to datetime: {e}")
+        
+        # Set datetime column as index if found
+        if datetime_col_found is not None:
+            try:
+                # Sort by datetime before setting as index to ensure proper time series
+                df = df.sort_values(by=datetime_col_found)
+                df = df.set_index(datetime_col_found)
+                print(f"Set '{datetime_col_found}' as DatetimeIndex for time series operations")
+            except Exception as e:
+                print(f"Warning: Could not set datetime index: {e}")
+                # Keep the datetime column but don't set as index
+
+        return df
 
 
 # Example usage function
 def load_aethalometer_data(file_path: str, 
                           site_filter: Optional[str] = None,
-                          output_format: str = 'jpl') -> pd.DataFrame:
+                          output_format: str = 'jpl',
+                          set_datetime_index: bool = True) -> pd.DataFrame:
     """
     Convenience function to load aethalometer data
     
@@ -365,6 +446,8 @@ def load_aethalometer_data(file_path: str,
         Filter by site name
     output_format : str
         Output format: 'jpl' or 'standard'
+    set_datetime_index : bool, default True
+        Whether to set datetime column as DataFrame index for time series operations
         
     Returns:
     --------
@@ -376,9 +459,10 @@ def load_aethalometer_data(file_path: str,
     if file_path.suffix == '.pkl':
         loader = AethalometerPKLLoader(file_path)
         return loader.load(site_filter=site_filter, 
-                          convert_to_jpl=(output_format == 'jpl'))
+                          convert_to_jpl=(output_format == 'jpl'),
+                          set_datetime_index=set_datetime_index)
     elif file_path.suffix == '.csv':
         loader = AethalometerCSVLoader(file_path)
-        return loader.load()
+        return loader.load(set_datetime_index=set_datetime_index)
     else:
         raise DataValidationError(f"Unsupported file format: {file_path.suffix}")
