@@ -11,7 +11,7 @@ from pathlib import Path
 class AethalometerPlotter:
     """Plotting utilities for aethalometer data visualization"""
     
-    def __init__(self, style: str = 'seaborn-v0_8', figsize: Tuple[int, int] = (12, 8)):
+    def __init__(self, style: str = 'default', figsize: Tuple[int, int] = (12, 8)):
         """
         Initialize plotter with style settings
         
@@ -19,7 +19,13 @@ class AethalometerPlotter:
             style: Matplotlib style to use
             figsize: Default figure size
         """
-        plt.style.use(style)
+        try:
+            # Try to use the requested style, fallback to 'default' if it fails
+            plt.style.use(style)
+        except (OSError, ValueError) as e:
+            print(f"⚠️ Warning: Could not use style '{style}', falling back to 'default'. Error: {e}")
+            plt.style.use('default')
+        
         self.figsize = figsize
         self.colors = plt.cm.Set1(np.linspace(0, 1, 10))
         
@@ -44,17 +50,33 @@ class AethalometerPlotter:
             # Auto-detect BC columns
             columns = [col for col in data.columns if 'BC' in col and 'c' in col]
         
+        # Validate that we have columns to plot
+        if not columns:
+            raise ValueError("No columns specified or found for plotting")
+        
+        # Filter columns to only those that exist in the data
+        valid_columns = [col for col in columns if col in data.columns]
+        if not valid_columns:
+            raise ValueError(f"None of the specified columns {columns} exist in the data")
+        
         fig, ax = plt.subplots(figsize=self.figsize)
         
-        for i, col in enumerate(columns):
-            if col in data.columns:
-                ax.plot(data.index, data[col], 
-                       label=col, color=self.colors[i % len(self.colors)], 
+        for i, col in enumerate(valid_columns):
+            try:
+                # Ensure the column data is numeric and handle any NaN values
+                plot_data = pd.to_numeric(data[col], errors='coerce')
+                
+                # Plot the data
+                ax.plot(data.index, plot_data, 
+                       label=str(col), color=self.colors[i % len(self.colors)], 
                        linewidth=1.5, alpha=0.8)
+            except Exception as e:
+                print(f"⚠️ Warning: Could not plot column '{col}': {e}")
+                continue
         
         ax.set_xlabel('Date/Time')
         ax.set_ylabel('Black Carbon Concentration (μg/m³)')
-        ax.set_title(title)
+        ax.set_title(str(title))
         ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
         ax.grid(True, alpha=0.3)
         
