@@ -68,6 +68,14 @@ python tests/test_advanced_analytics.py
 - **Clustering Analysis**: K-means, hierarchical clustering with optimal cluster detection
 - **Predictive Analytics**: Model training, validation, and performance assessment
 
+### 📊 Visualization Templates
+- **Template System**: Flexible, template-based visualization with consistent styling
+- **Time Series Plots**: Basic time series, smoothening comparisons, diurnal patterns
+- **Pattern Analysis**: Weekly/seasonal heatmaps, missing data visualization
+- **Scientific Plots**: MAC analysis, correlation matrices, scatter plots with regression
+- **Customizable Styles**: Publication, presentation, notebook, and custom configurations
+- **Factory Pattern**: Easy template creation, discovery, and extensibility
+
 ### 📉 Time Series Analysis
 - **Trend Detection**: Linear and non-linear trend identification
 - **Seasonality Analysis**: Decomposition and seasonal strength assessment
@@ -139,6 +147,36 @@ results = pipeline.run_complete_analysis(data)
 quality_results = results['quality_assessment']
 ml_results = results['machine_learning']
 summary = results['executive_summary']
+```
+
+### Visualization Templates
+```python
+from src.visualization.templates import VisualizationTemplateFactory
+
+# Create time series plot
+template = VisualizationTemplateFactory.create_template('time_series')
+fig = template.create_plot(
+    data=aethalometer_data,
+    columns=['IR BCc', 'Blue BCc'],
+    title='BC Concentrations Over Time'
+)
+
+# Create pattern analysis
+heatmap_template = VisualizationTemplateFactory.create_template('weekly_heatmap')
+fig = heatmap_template.create_plot(
+    data=data,
+    date_column='timestamp',
+    value_column='IR BCc',
+    title='Weekly BC Patterns'
+)
+
+# Scientific analysis
+mac_template = VisualizationTemplateFactory.create_template('mac_analysis')
+fig = mac_template.create_plot(
+    fabs_data=absorption_data,
+    ec_data=ec_data,
+    title='MAC Analysis'
+)
 ```
 
 ## 🧪 Testing and Validation

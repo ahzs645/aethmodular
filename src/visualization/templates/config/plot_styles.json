@@ -1,0 +1,34 @@
+{
+  "default": {
+    "figsize": [12, 8],
+    "style": "whitegrid",
+    "color_palette": "Set1",
+    "font_size": 12,
+    "save_format": "png",
+    "dpi": 300
+  },
+  "publication": {
+    "figsize": [10, 6],
+    "style": "white",
+    "color_palette": "deep",
+    "font_size": 14,
+    "save_format": "pdf",
+    "dpi": 600
+  },
+  "presentation": {
+    "figsize": [16, 10],
+    "style": "whitegrid",
+    "color_palette": "bright",
+    "font_size": 16,
+    "save_format": "png",
+    "dpi": 300
+  },
+  "notebook": {
+    "figsize": [12, 6],
+    "style": "whitegrid",
+    "color_palette": "Set1",
+    "font_size": 11,
+    "save_format": "png",
+    "dpi": 150
+  }
+}

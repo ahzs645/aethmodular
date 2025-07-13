@@ -1,0 +1,61 @@
+{
+  "time_series": {
+    "title": "Time Series Plot",
+    "xlabel": "Date/Time",
+    "ylabel": "Concentration (μg/m³)",
+    "columns": null,
+    "auto_detect_bc": true
+  },
+  "smoothening_comparison": {
+    "title": "Smoothening Methods Comparison",
+    "xlabel": "Date/Time",
+    "ylabel": "BC (ng/m³)",
+    "show_original": true,
+    "alpha_original": 0.3
+  },
+  "diurnal_patterns": {
+    "title": "Diurnal Patterns (24-hour cycle)",
+    "xlabel": "Hour of Day",
+    "ylabel": "Mean Concentration",
+    "missing_data_analysis": true,
+    "error_bars": true
+  },
+  "weekly_heatmap": {
+    "title_missing": "Weekly Missing Data Pattern",
+    "title_values": "Weekly Pattern (Mean Values)",
+    "xlabel": "Hour of Day",
+    "ylabel": "Day of Week",
+    "day_order": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+    "hour_ticks": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22]
+  },
+  "seasonal_heatmap": {
+    "title_missing": "Seasonal Missing Data",
+    "title_values": "Seasonal Pattern",
+    "xlabel": "Year",
+    "ylabel": "Month",
+    "month_names": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    "cmap_missing": "Reds",
+    "cmap_values": "viridis"
+  },
+  "mac_analysis": {
+    "title": "MAC Analysis - Multiple Methods",
+    "xlabel": "EC (μg/m³)",
+    "ylabel": "Fabs (Mm⁻¹)",
+    "methods": ["Individual MAC Mean", "Ratio of Means", "Linear Regression (Intercept)", "Linear Regression (Origin)"],
+    "colors": ["blue", "red", "green", "orange"]
+  },
+  "correlation_analysis": {
+    "title": "Correlation Matrix",
+    "method": "pearson",
+    "cmap": "coolwarm",
+    "center": 0,
+    "annot": true,
+    "mask_upper": false
+  },
+  "scatter_plot": {
+    "title": null,
+    "add_regression": false,
+    "alpha": 0.6,
+    "marker_size": 50
+  }
+}

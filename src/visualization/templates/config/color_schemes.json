@@ -1,0 +1,35 @@
+{
+  "bc_analysis": {
+    "primary": "#2E8B57",
+    "secondary": "#4682B4", 
+    "accent": "#DC143C",
+    "background": "#F5F5F5",
+    "grid": "#CCCCCC"
+  },
+  "seasonal": {
+    "Dry Season": "#FF6B6B",
+    "Belg Rainy Season": "#4ECDC4",
+    "Kiremt Rainy Season": "#45B7D1",
+    "transition": "#FFA07A"
+  },
+  "quality": {
+    "excellent": "#2ECC71",
+    "good": "#F39C12", 
+    "moderate": "#E67E22",
+    "poor": "#E74C3C"
+  },
+  "spectral": {
+    "370nm": "#8E44AD",
+    "470nm": "#3498DB",
+    "520nm": "#2ECC71",
+    "590nm": "#F1C40F",
+    "660nm": "#E67E22",
+    "880nm": "#C0392B",
+    "950nm": "#7F8C8D"
+  },
+  "source_apportionment": {
+    "biomass": "#27AE60",
+    "fossil_fuel": "#E74C3C",
+    "mixed": "#F39C12"
+  }
+}
