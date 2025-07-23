@@ -143,3 +143,6 @@ dmypy.json
 # Project specific
 logs/
 *.log
+
+pkl_data_cleaned_working.pkl
+pkl_data_cleaned_working.csv
