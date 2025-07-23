@@ -4,8 +4,8 @@ import pandas as pd
 import sqlite3
 from typing import Optional, Dict, Any
 from pathlib import Path
-from ...core.base import BaseLoader
-from ...core.exceptions import DataValidationError
+from core.base import BaseLoader
+from core.exceptions import DataValidationError
 
 class FTIRHIPSLoader(BaseLoader):
     """
