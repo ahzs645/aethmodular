@@ -60,7 +60,7 @@ class FTIRHIPSLoader(BaseLoader):
                 m.ec_ftir, m.ec_ftir_mdl, m.oc_ftir, m.oc_ftir_mdl,
                 m.fabs, m.fabs_mdl, m.fabs_uncertainty, m.ftir_batch_id
             FROM filters f
-            JOIN ftir_measurements m ON f.filter_id = m.filter_id
+            JOIN ftir_sample_measurements m ON f.filter_id = m.filter_id
             WHERE f.site_code = ?
             ORDER BY f.sample_date
             """
@@ -122,7 +122,7 @@ class FTIRHIPSLoader(BaseLoader):
                     COUNT(CASE WHEN oc_ftir IS NOT NULL THEN 1 END) as oc_samples,
                     COUNT(CASE WHEN fabs IS NOT NULL THEN 1 END) as fabs_samples
                 FROM filters f
-                JOIN ftir_measurements m ON f.filter_id = m.filter_id
+                JOIN ftir_sample_measurements m ON f.filter_id = m.filter_id
                 WHERE f.site_code = ?
                 """
                 summary = pd.read_sql_query(query, conn, params=(site_code,))
@@ -137,7 +137,7 @@ class FTIRHIPSLoader(BaseLoader):
                     COUNT(CASE WHEN oc_ftir IS NOT NULL THEN 1 END) as oc_samples,
                     COUNT(CASE WHEN fabs IS NOT NULL THEN 1 END) as fabs_samples
                 FROM filters f
-                JOIN ftir_measurements m ON f.filter_id = m.filter_id
+                JOIN ftir_sample_measurements m ON f.filter_id = m.filter_id
                 GROUP BY f.site_code
                 """
                 summary = pd.read_sql_query(query, conn)

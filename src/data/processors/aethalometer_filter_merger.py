@@ -195,7 +195,7 @@ def load_ftir_hips_fallback(db_path: str, site_code: str) -> pd.DataFrame:
             f.filter_id, f.sample_date, f.site_code,
             m.ec_ftir, m.oc_ftir, m.fabs
         FROM filters f
-        JOIN ftir_measurements m ON f.filter_id = m.filter_id
+        JOIN ftir_sample_measurements m ON f.filter_id = m.filter_id
         WHERE f.site_code = ?
         ORDER BY f.sample_date
         """
