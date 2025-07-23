@@ -1,5 +1,5 @@
 # ========================================================================
-# PKL Data Cleaning Pipeline
+# PKL Data Cleaning Pipeline - Enhanced Version
 # ========================================================================
 """
 PKL data cleaning pipeline for aethalometer data processing.
@@ -15,6 +15,7 @@ import importlib.util
 import pandas as pd
 from itertools import groupby
 from operator import itemgetter
+from typing import Dict, List, Union, Optional, Tuple
 
 # Optional statsmodels import - will be imported when needed
 try:
@@ -55,18 +56,80 @@ class PKLDataCleaner:
     aethalometer data in PKL format.
     """
     
-    def __init__(self, data_directory=None, wavelengths_to_filter=None):
+    def __init__(self, wavelengths_to_filter=None, verbose=True):
         """
         Initialize the PKL data cleaner.
         
         Args:
-            data_directory (str): Path to the directory containing PKL data files.
-                                Defaults to "../JPL_aeth/" if not specified.
             wavelengths_to_filter (list): List of wavelengths to process.
                                         Defaults to ['IR', 'Blue'].
+            verbose (bool): Whether to print cleaning progress.
         """
-        self.data_directory = data_directory or "../JPL_aeth/"
         self.wls_to_filter = wavelengths_to_filter or DEFAULT_WAVELENGTHS
+        self.verbose = verbose
+    
+    def diagnose_data_structure(self, df):
+        """
+        Diagnose the data structure before cleaning.
+        
+        Args:
+            df (pd.DataFrame): DataFrame to diagnose
+        """
+        if not self.verbose:
+            return
+            
+        print("🔍 Data Structure Diagnosis:")
+        print("-" * 30)
+        print(f"DataFrame shape: {df.shape}")
+        print(f"Date range: {df['datetime_local'].min()} to {df['datetime_local'].max()}")
+        
+        # Check for BC columns
+        bc_columns = []
+        bc_smoothed_columns = []
+        atn_columns = []
+        flow_columns = []
+        
+        for col in df.columns:
+            if ' BC' in col and 'smoothed' not in col:
+                bc_columns.append(col)
+            elif ' BC' in col and 'smoothed' in col:
+                bc_smoothed_columns.append(col)
+            elif ' ATN' in col:
+                atn_columns.append(col)
+            elif 'Flow' in col:
+                flow_columns.append(col)
+        
+        print(f"BC columns: {len(bc_columns)} (e.g., {bc_columns[:3] if bc_columns else 'None'})")
+        print(f"BC smoothed columns: {len(bc_smoothed_columns)} (e.g., {bc_smoothed_columns[:3] if bc_smoothed_columns else 'None'})")
+        print(f"ATN columns: {len(atn_columns)} (e.g., {atn_columns[:3] if atn_columns else 'None'})")
+        print(f"Flow columns: {len(flow_columns)} (e.g., {flow_columns[:3] if flow_columns else 'None'})")
+        
+        # Check specifically for wavelengths we want to filter
+        print(f"\nTargeted wavelengths: {self.wls_to_filter}")
+        for wl in self.wls_to_filter:
+            bc_col = f'{wl} BCc'
+            bc_smoothed_col = f'{wl} BCc smoothed'
+            atn_col = f'{wl} ATN1'
+            
+            status = []
+            if bc_col in df.columns:
+                status.append("✅ BC")
+            else:
+                status.append("❌ BC")
+                
+            if bc_smoothed_col in df.columns:
+                status.append("✅ BC smoothed")
+            else:
+                status.append("❌ BC smoothed")
+                
+            if atn_col in df.columns:
+                status.append("✅ ATN")
+            else:
+                status.append("❌ ATN")
+            
+            print(f"  {wl}: {' | '.join(status)}")
+        
+        print("-" * 30)
     
     def report_removal(self, df_before, df_after, label):
         """
@@ -76,259 +139,157 @@ class PKLDataCleaner:
             df_before (pd.DataFrame): DataFrame before cleaning
             df_after (pd.DataFrame): DataFrame after cleaning
             label (str): Description of the cleaning step
-        
+            
         Returns:
             pd.DataFrame: The cleaned DataFrame
         """
         n_removed = len(df_before) - len(df_after)
-        print(f"{label}: Removed {n_removed} rows ({n_removed / len(df_before) * 100:.2f}%)")
+        if self.verbose:
+            print(f"{label}: Removed {n_removed} rows ({n_removed / len(df_before) * 100:.2f}%)")
         return df_after
-
+    
     def clean_by_status(self, df):
-        """
-        Clean data based on instrument status using external calibration module.
-        
-        Args:
-            df (pd.DataFrame): Input DataFrame
-        
-        Returns:
-            pd.DataFrame: Cleaned DataFrame
-        """
+        """Clean data based on status using external calibration module."""
         df_cleaned = calibration.clean_data(df)
         return self.report_removal(df, df_cleaned, "Status cleaning")
-
+    
     def clean_optical_saturation(self, df):
-        """
-        Remove data points with optical saturation.
-        
-        Args:
-            df (pd.DataFrame): Input DataFrame
-        
-        Returns:
-            pd.DataFrame: Cleaned DataFrame
-        """
+        """Remove optically saturated measurements."""
         df_cleaned = df.loc[((df['IR ATN1'] < 2**10) | (df['IR ATN2'] < 2**10))]
         return self.report_removal(df, df_cleaned, "Optical saturation cleaning")
-
+    
     def clean_extreme_bcc(self, df):
-        """
-        Remove extreme black carbon corrected (BCc) values.
-        
-        Args:
-            df (pd.DataFrame): Input DataFrame
-        
-        Returns:
-            pd.DataFrame: Cleaned DataFrame
-        """
+        """Remove extreme BCc values."""
         df_cleaned = df.copy()
+        removed_count = 0
+        
         for wl in self.wls_to_filter:
-            df_cleaned = df_cleaned[~((df_cleaned[f'{wl} BCc smoothed'] <= -15000) & 
-                                    (df_cleaned[f'{wl} ATN1'] >= 3))]
+            smoothed_col = f'{wl} BCc smoothed'
+            atn_col = f'{wl} ATN1'
+            
+            if smoothed_col in df_cleaned.columns and atn_col in df_cleaned.columns:
+                before_count = len(df_cleaned)
+                df_cleaned = df_cleaned[~((df_cleaned[smoothed_col] <= -15000) & 
+                                        (df_cleaned[atn_col] >= 3))]
+                removed_count += before_count - len(df_cleaned)
+            elif self.verbose:
+                print(f"⚠️ Missing columns for {wl} extreme BCc cleaning: {smoothed_col} or {atn_col}")
+        
         return self.report_removal(df, df_cleaned, "Extreme BCc cleaning")
-
+    
     def clean_flow_range(self, df, flow_threshold=0.1, setpoint=100):
-        """
-        Clean data based on flow rate range.
-        
-        Args:
-            df (pd.DataFrame): Input DataFrame
-            flow_threshold (float): Relative threshold for flow validation
-            setpoint (float): Target flow rate setpoint
-        
-        Returns:
-            pd.DataFrame: Cleaned DataFrame
-        """
+        """Clean data based on flow range violations."""
         df_cleaned = df.loc[
             (df['Flow total (mL/min)'] <= setpoint * (1 + flow_threshold)) &
             (df['Flow total (mL/min)'] >= setpoint * (1 - flow_threshold))
         ]
         return self.report_removal(df, df_cleaned, "Flow range cleaning")
-
+    
     def clean_flow_ratio(self, df, lower=1.05, upper=5):
-        """
-        Clean data based on flow ratio between channels.
-        
-        Args:
-            df (pd.DataFrame): Input DataFrame
-            lower (float): Lower bound for flow ratio
-            upper (float): Upper bound for flow ratio
-        
-        Returns:
-            pd.DataFrame: Cleaned DataFrame
-        """
+        """Remove abnormal flow ratios."""
         df_cleaned = df[(df['ratio_flow'] >= lower) & (df['ratio_flow'] <= upper)]
         return self.report_removal(df, df_cleaned, "Abnormal flow ratio")
-
+    
     def clean_leak_ratio(self, df, lower_bound=0.1, upper_bound=5):
-        """
-        Clean data based on leak detection through ATN/flow ratios.
-        
-        Args:
-            df (pd.DataFrame): Input DataFrame
-            lower_bound (float): Lower bound for leak ratio
-            upper_bound (float): Upper bound for leak ratio
-        
-        Returns:
-            pd.DataFrame: Cleaned DataFrame
-        """
+        """Clean based on leak ratio indicators."""
         df_cleaned = df.copy()
+        
         for wl in self.wls_to_filter:
-            df_cleaned['ratio_dATN_flow'] = (
-                (df_cleaned[f'delta {wl} ATN1 rolling mean'] / df_cleaned['Flow1 (mL/min)']) /
-                (df_cleaned[f'delta {wl} ATN2 rolling mean'] / df_cleaned['Flow2 (mL/min)'])
-            )
-            df_cleaned = df_cleaned.loc[
-                (df_cleaned['ratio_dATN_flow'] > lower_bound) & 
-                (df_cleaned['ratio_dATN_flow'] < upper_bound)
-            ]
+            delta_atn1_col = f'delta {wl} ATN1 rolling mean'
+            delta_atn2_col = f'delta {wl} ATN2 rolling mean'
+            flow1_col = 'Flow1 (mL/min)'
+            flow2_col = 'Flow2 (mL/min)'
+            
+            required_cols = [delta_atn1_col, delta_atn2_col, flow1_col, flow2_col]
+            
+            if all(col in df_cleaned.columns for col in required_cols):
+                df_cleaned['ratio_dATN_flow'] = (
+                    (df_cleaned[delta_atn1_col] / df_cleaned[flow1_col]) /
+                    (df_cleaned[delta_atn2_col] / df_cleaned[flow2_col])
+                )
+                df_cleaned = df_cleaned.loc[
+                    (df_cleaned['ratio_dATN_flow'] > lower_bound) & 
+                    (df_cleaned['ratio_dATN_flow'] < upper_bound)
+                ]
+            elif self.verbose:
+                missing_cols = [col for col in required_cols if col not in df_cleaned.columns]
+                print(f"⚠️ Missing columns for {wl} leak ratio cleaning: {missing_cols}")
+        
         return self.report_removal(df, df_cleaned, "Leak ratio cleaning")
-
+    
     def clean_bcc_denominator(self, df, threshold=0.075, threshold_IR=0.1):
-        """
-        Clean data based on BCc denominator values.
-        
-        Args:
-            df (pd.DataFrame): Input DataFrame
-            threshold (float): General threshold for BCc denominator
-            threshold_IR (float): Specific threshold for IR wavelength
-        
-        Returns:
-            pd.DataFrame: Cleaned DataFrame
-        """
+        """Clean based on BCc denominator values."""
         df_cleaned = df.copy()
         for wl in self.wls_to_filter:
             current_threshold = threshold_IR if wl == "IR" else threshold
             df_cleaned[f'{wl} BCc denominator'] = 1 - df_cleaned[f'{wl} K'] * df_cleaned[f'{wl} ATN1']
             df_cleaned = df_cleaned[abs(df_cleaned[f'{wl} BCc denominator']) > current_threshold]
         return self.report_removal(df, df_cleaned, "BCc denominator cleaning")
-
+    
     def clean_bcc_ratio(self, df, lower_bound=0.2, upper_bound=5):
-        """
-        Clean data based on BCc ratio validation.
-        
-        Args:
-            df (pd.DataFrame): Input DataFrame
-            lower_bound (float): Lower bound for BCc ratios
-            upper_bound (float): Upper bound for BCc ratios
-        
-        Returns:
-            pd.DataFrame: Cleaned DataFrame
-        """
+        """Clean based on BCc ratio values."""
         df_cleaned = df.copy()
         for wl in self.wls_to_filter:
-            df_cleaned[f'{wl} BCc/BC1 smoothed'] = (df_cleaned[f'{wl} BCc smoothed'] / 
-                                                   df_cleaned[f'{wl} BC1 smoothed'])
-            df_cleaned[f'{wl} BCc/BC2 smoothed'] = (df_cleaned[f'{wl} BCc smoothed'] / 
-                                                   df_cleaned[f'{wl} BC2 smoothed'])
-            df_cleaned[f'{wl} BC1/BC2 smoothed'] = (df_cleaned[f'{wl} BC1 smoothed'] / 
-                                                   df_cleaned[f'{wl} BC2 smoothed'])
+            df_cleaned[f'{wl} BCc/BC1 smoothed'] = (
+                df_cleaned[f'{wl} BCc smoothed'] / df_cleaned[f'{wl} BC1 smoothed']
+            )
+            df_cleaned[f'{wl} BCc/BC2 smoothed'] = (
+                df_cleaned[f'{wl} BCc smoothed'] / df_cleaned[f'{wl} BC2 smoothed']
+            )
+            df_cleaned[f'{wl} BC1/BC2 smoothed'] = (
+                df_cleaned[f'{wl} BC1 smoothed'] / df_cleaned[f'{wl} BC2 smoothed']
+            )
             df_cleaned = df_cleaned.loc[
                 df_cleaned[f'{wl} BCc/BC1 smoothed'].between(lower_bound, upper_bound) |
                 df_cleaned[f'{wl} BCc/BC2 smoothed'].between(lower_bound, upper_bound)
             ]
         return self.report_removal(df, df_cleaned, "BCc ratio cleaning")
-
+    
     def clean_temperature_change(self, df):
-        """
-        Clean data based on temperature change patterns.
-        
-        Args:
-            df (pd.DataFrame): Input DataFrame
-        
-        Returns:
-            pd.DataFrame: Cleaned DataFrame
-        """
+        """Clean based on temperature change criteria."""
         df_cleaned = df[abs(df['delta Sample temp (C)']) <= 0.5].copy()
-        print("Sharp change", df.shape[0] - df_cleaned.shape[0])
+        if self.verbose:
+            print("Sharp change", df.shape[0] - df_cleaned.shape[0])
         
         df_cleaned['delta_temp_std'] = df_cleaned['delta Sample temp (C)'].rolling(window=7).std()
         df_cleaned_std = df_cleaned[df_cleaned['delta_temp_std'] < 0.1]
-        print("noise", df_cleaned.shape[0] - df_cleaned_std.shape[0])
+        if self.verbose:
+            print("noise", df_cleaned.shape[0] - df_cleaned_std.shape[0])
         
         return self.report_removal(df, df_cleaned_std, "Temperature change cleaning")
-
+    
     def add_roughness_columns(self, df):
-        """
-        Add roughness calculation columns for ATN measurements.
-        
-        Args:
-            df (pd.DataFrame): Input DataFrame
-        
-        Returns:
-            pd.DataFrame: DataFrame with added roughness columns
-        """
+        """Add roughness calculation columns."""
         wavelengths = self.wls_to_filter
         spots = [1, 2]
         df_cleaned = df.copy()
-
+        
         for wl in wavelengths:
             for spot in spots:
                 delta_col = f'delta {wl} ATN{spot}'
                 mean_col = f'{delta_col} rolling mean'
                 roughness_col = f'{wl} ATN{spot}_roughness'
-
-                df_cleaned[roughness_col] = (
-                    (df_cleaned[delta_col] - df_cleaned[mean_col]).abs()
-                    .rolling(60, center=True, min_periods=30)
-                    .mean()
-                )
+                
+                if delta_col in df_cleaned.columns and mean_col in df_cleaned.columns:
+                    df_cleaned[roughness_col] = (
+                        (df_cleaned[delta_col] - df_cleaned[mean_col]).abs()
+                        .rolling(60, center=True, min_periods=30)
+                        .mean()
+                    )
         return df_cleaned
-
-    def clean_roughness(self, df, stds, z_threshold=3):
-        """
-        Clean data based on roughness threshold using provided standard deviations.
-        
-        Args:
-            df (pd.DataFrame): Input DataFrame
-            stds (list): List of standard deviations for each roughness column
-            z_threshold (float): Z-score threshold for roughness filtering
-        
-        Returns:
-            pd.DataFrame: Cleaned DataFrame
-        """
-        wavelengths = self.wls_to_filter
-        spots = [1, 2]
-        high_rough_mask = pd.Series(False, index=df.index)
-        i = 0
-        
-        for wl in wavelengths:
-            for spot in spots:
-                rough_col = f'{wl} ATN{spot}_roughness'
-                if rough_col not in df.columns:
-                    print(f"Column {rough_col} not found in DataFrame, skipping.")
-                    continue
-
-                rough_values = df[rough_col].dropna()
-                mean = rough_values.mean()
-                std = stds[i]
-                i += 1
-
-                is_high = df[rough_col] > (mean + z_threshold * std)
-                high_rough_mask = high_rough_mask | is_high
-
-                print(f"{rough_col}: mean={mean:.4f}, std={std:.4f}, "
-                      f"high rough threshold={mean + z_threshold * std:.4f}, count={is_high.sum()}")
-
-        df_high_rough = df[high_rough_mask].reset_index(drop=True)
-        print(f"Total rows with HIGH roughness points: {len(df_high_rough)}")
-        return df[~high_rough_mask].reset_index(drop=True)
-
+    
     def flag_high_roughness_periods(self, df, z_threshold=2, min_len=10, min_frac_high=2/3):
         """
-        Flag periods where roughness is unusually high in at least one roughness column.
+        Flag periods where roughness is unusually high.
         
-        A period is defined as a sequence of consecutive rows where:
-        - len(period) >= min_len
-        - more than min_frac_high of rows have roughness > threshold
-
         Args:
-            df (pd.DataFrame): Input DataFrame
-            z_threshold (float): Z-score threshold for roughness
-            min_len (int): Minimum length of high roughness period
+            df (pd.DataFrame): DataFrame with roughness columns
+            z_threshold (float): Z-score threshold for high roughness
+            min_len (int): Minimum length of period to flag
             min_frac_high (float): Minimum fraction of high roughness points in period
-        
+            
         Returns:
-            tuple: (cleaned DataFrame, list of standard deviations)
+            tuple: (cleaned_df, std_values)
         """
         wavelengths = self.wls_to_filter
         spots = [1, 2]
@@ -340,166 +301,210 @@ class PKLDataCleaner:
             for spot in spots:
                 col = f'{wl} ATN{spot}_roughness'
                 if col not in df.columns:
-                    print(f"Column {col} not found in DataFrame, skipping.")
+                    if self.verbose:
+                        print(f"Column {col} not found in DataFrame, skipping.")
                     continue
-
+                
                 rough_values = df[col].dropna()
                 mean = rough_values.mean()
                 std = rough_values.std()
                 stds.append(std)
                 is_high = df[col] > (mean + z_threshold * std)
-
+                
                 # Identify consecutive groups of data
                 group_id = (is_high != is_high.shift()).cumsum()
                 groups = df.groupby(group_id)
-
+                
                 for _, group in groups:
                     idx = group.index
                     if len(group) >= min_len:
                         frac_high = is_high.loc[idx].mean()
                         if frac_high > min_frac_high:
                             df.loc[idx, 'high_rough_period'] = True
-                            
-                print(f"{col}: threshold={mean + z_threshold * std:.4f}, "
-                      f"high periods flagged: {df['high_rough_period'].sum()} rows so far")
+                
+                if self.verbose:
+                    print(f"{col}: threshold={mean + z_threshold * std:.4f}, "
+                          f"high periods flagged: {df['high_rough_period'].sum()} rows so far")
         
-        df = df.loc[df['high_rough_period'] == False].reset_index(drop=True)
-        return df, stds
-
+        df_cleaned = df.loc[df['high_rough_period'] == False].reset_index(drop=True)
+        return df_cleaned, stds
+    
     def dema_bc_and_atn(self, dataframe, DEMA_span_min=15, wl='IR'):
         """
-        Apply Double Exponential Moving Average (DEMA) smoothing to BC and ATN data.
+        Apply Double Exponential Moving Average (DEMA) smoothing.
         
         Args:
             dataframe (pd.DataFrame): Input DataFrame
             DEMA_span_min (int): Span for DEMA calculation in minutes
             wl (str): Wavelength to process
-        
+            
         Returns:
             pd.DataFrame: DataFrame with DEMA smoothed columns
         """
-        df_tp_list = calibration.create_df_list_atlevel_tapeposition(dataframe)
-
-        df_interim_list = []
-        for dfi in df_tp_list:
-            if len(dfi) > 0:            
-                for vari in ['BC1', 'BC2', 'BCc']:
-                    varname = wl + ' ' + vari
-                    print(varname)
-                    ema = dfi[varname].ewm(span=DEMA_span_min, adjust=False).mean()
-                    ema_of_ema = ema.ewm(span=DEMA_span_min, adjust=False).mean()
-                    dfi[varname + ' smoothed'] = 2 * ema - ema_of_ema
-
-                df_interim_list.append(dfi)
-
-        df_out = pd.concat(df_interim_list).reset_index(drop=True)
-        return df_out
-
-    def clean_pipeline(self, df):
+        # Check if required columns exist
+        required_vars = ['BC1', 'BC2', 'BCc']
+        available_vars = []
+        
+        for vari in required_vars:
+            varname = wl + ' ' + vari
+            if varname in dataframe.columns:
+                available_vars.append(vari)
+            elif self.verbose:
+                print(f"⚠️ Column {varname} not found, skipping")
+        
+        if not available_vars:
+            if self.verbose:
+                print(f"⚠️ No BC columns found for {wl}, skipping DEMA smoothing")
+            return dataframe
+        
+        try:
+            df_tp_list = calibration.create_df_list_atlevel_tapeposition(dataframe)
+            df_interim_list = []
+            
+            for dfi in df_tp_list:
+                if len(dfi) > 0:
+                    for vari in available_vars:
+                        varname = wl + ' ' + vari
+                        if varname in dfi.columns:
+                            if self.verbose and wl in self.wls_to_filter:  # Only print for filtered wavelengths
+                                print(f"  Processing {varname}")
+                            ema = dfi[varname].ewm(span=DEMA_span_min, adjust=False).mean()
+                            ema_of_ema = ema.ewm(span=DEMA_span_min, adjust=False).mean()
+                            dfi[varname + ' smoothed'] = 2 * ema - ema_of_ema
+                    
+                    df_interim_list.append(dfi)
+            
+            if df_interim_list:
+                df_out = pd.concat(df_interim_list).reset_index(drop=True)
+                return df_out
+            else:
+                if self.verbose:
+                    print(f"⚠️ No data processed for {wl}")
+                return dataframe
+                
+        except Exception as e:
+            if self.verbose:
+                print(f"⚠️ Error in DEMA smoothing for {wl}: {e}")
+            return dataframe
+    
+    def preprocess_data(self, df):
         """
-        Execute the complete PKL data cleaning pipeline.
+        Apply preprocessing steps before cleaning (DEMA smoothing, etc.).
         
         Args:
-            df (pd.DataFrame): Input DataFrame
-        
+            df (pd.DataFrame): Raw data
+            
         Returns:
-            pd.DataFrame: Fully cleaned DataFrame
+            pd.DataFrame: Preprocessed data ready for cleaning
         """
-        print("Starting PKL data cleaning pipeline...")
+        df_processed = df.copy()
         
-        # Status cleaning
-        df_cleaned = self.clean_by_status(df)
+        # Ensure datetime_local is a column
+        if 'datetime_local' not in df_processed.columns:
+            if df_processed.index.name == 'datetime_local' or hasattr(df_processed.index, 'tz'):
+                df_processed = df_processed.reset_index()
+                if self.verbose:
+                    print("✅ Converted datetime_local from index to column")
         
-        # Extreme BCc cleaning
+        # Apply DEMA smoothing for all wavelengths
+        if self.verbose:
+            print("🔄 Applying DEMA smoothing...")
+        
+        for wl in ['Blue', 'Green', 'Red', 'UV', 'IR']:
+            try:
+                df_processed = self.dema_bc_and_atn(df_processed, DEMA_span_min=10, wl=wl)
+                if self.verbose and wl in self.wls_to_filter:
+                    print(f"✅ DEMA smoothing applied for {wl}")
+            except Exception as e:
+                if self.verbose:
+                    print(f"⚠️ DEMA smoothing failed for {wl}: {e}")
+        
+        return df_processed
+    
+    def clean_pipeline(self, df, skip_preprocessing=False):
+        """
+        Run the complete cleaning pipeline.
+        
+        Args:
+            df (pd.DataFrame): Raw aethalometer data
+            skip_preprocessing (bool): If True, assumes data is already preprocessed
+            
+        Returns:
+            pd.DataFrame: Cleaned data
+        """
+        if self.verbose:
+            print("Starting PKL data cleaning pipeline...")
+            print("=" * 50)
+        
+        # Apply preprocessing unless skipped
+        if not skip_preprocessing:
+            df_cleaned = self.preprocess_data(df)
+            # Diagnose data structure after preprocessing
+            self.diagnose_data_structure(df_cleaned)
+        else:
+            df_cleaned = df.copy()
+            # Ensure datetime_local is a column
+            if 'datetime_local' not in df_cleaned.columns:
+                if df_cleaned.index.name == 'datetime_local' or hasattr(df_cleaned.index, 'tz'):
+                    df_cleaned = df_cleaned.reset_index()
+                    if self.verbose:
+                        print("✅ Converted datetime_local from index to column")
+            # Diagnose data structure
+            self.diagnose_data_structure(df_cleaned)
+        
+        if self.verbose:
+            print("\n🧹 Starting cleaning steps...")
+        
+        # Step 1: Status cleaning
+        df_cleaned = self.clean_by_status(df_cleaned)
+        
+        # Step 2: Extreme BCc cleaning
         df_cleaned = self.clean_extreme_bcc(df_cleaned)
         
-        # Flow range cleaning
+        # Step 3: Flow range cleaning
         df_cleaned = self.clean_flow_range(df_cleaned)
         
-        # Flow ratio cleaning
+        # Step 4: Flow ratio cleaning
         df_cleaned = self.clean_flow_ratio(df_cleaned)
         
-        # Leak ratio cleaning
+        # Step 5: Leak ratio cleaning
         df_cleaned = self.clean_leak_ratio(df_cleaned)
         
-        # BCc denominator cleaning
+        # Step 6: BCc denominator cleaning
         df_cleaned = self.clean_bcc_denominator(df_cleaned)
         
-        # Temperature change cleaning
+        # Step 7: Temperature change cleaning
         df_cleaned = self.clean_temperature_change(df_cleaned)
         
-        # Roughness-based cleaning
+        # Step 8: Roughness-based cleaning
         df_cleaned = self.add_roughness_columns(df_cleaned)
-        df_cleaned, stds = self.flag_high_roughness_periods(
-            df_cleaned, z_threshold=2, min_len=10, min_frac_high=2/3
-        )
+        df_cleaned, stds = self.flag_high_roughness_periods(df_cleaned)
         
-        print("PKL data cleaning pipeline completed.")
+        if self.verbose:
+            print("=" * 50)
+            print(f"Cleaning complete! Final data shape: {df_cleaned.shape}")
+        
         return df_cleaned
-    
-    def load_and_clean_data(self, **kwargs):
-        """
-        Load and clean PKL data using the instance's configured data directory.
-        
-        Args:
-            **kwargs: Additional arguments for calibration.readall_BCdata_from_dir
-        
-        Returns:
-            pd.DataFrame: Cleaned DataFrame ready for analysis
-        """
-        return load_and_clean_pkl_data(directory_path=self.data_directory, **kwargs)
 
 
-def table_removed_datapoints_by_month(df, df_cleaned_status):
+def load_and_clean_pkl_data(directory_path="../JPL_aeth/", 
+                           wavelengths_to_filter=None,
+                           verbose=True, 
+                           summary=True, 
+                           **kwargs):
     """
-    Calculate the number of removed datapoints by month from the original 
-    DataFrame and the cleaned DataFrame.
+    Load PKL data from directory and apply comprehensive cleaning pipeline.
     
     Args:
-        df (pd.DataFrame): The original DataFrame with datetime_local column
-        df_cleaned_status (pd.DataFrame): The cleaned DataFrame with datetime_local column
-    
+        directory_path (str): Path to data directory
+        wavelengths_to_filter (list): Wavelengths to process
+        verbose (bool): Whether to print progress
+        summary (bool): Whether to print summary
+        **kwargs: Additional parameters for calibration.readall_BCdata_from_dir
+        
     Returns:
-        pd.DataFrame: A DataFrame with two columns: 'month' and 'removed_datapoints'
+        pd.DataFrame: Cleaned aethalometer data
     """
-    # Ensure datetime_local is datetime type
-    df['datetime_local'] = pd.to_datetime(df['datetime_local'])
-    df_cleaned_status['datetime_local'] = pd.to_datetime(df_cleaned_status['datetime_local'])
-
-    # Add a 'month' column to both DataFrames
-    df['month'] = df['datetime_local'].dt.to_period('M')
-    df_cleaned_status['month'] = df_cleaned_status['datetime_local'].dt.to_period('M')
-
-    # Count entries per month
-    original_counts = df['month'].value_counts().sort_index()
-    cleaned_counts = df_cleaned_status['month'].value_counts().sort_index()
-
-    # Calculate the difference
-    removed_counts = original_counts - cleaned_counts
-
-    # Convert to DataFrame for readability
-    removed_df = removed_counts.reset_index()
-    removed_df.columns = ['month', 'removed_datapoints']
-    return removed_df
-
-
-def load_and_clean_pkl_data(directory_path=None, **kwargs):
-    """
-    Complete workflow to load and clean PKL data.
-    
-    Args:
-        directory_path (str): Path to the data directory. 
-                            Defaults to "../JPL_aeth/" if not specified.
-        **kwargs: Additional arguments for calibration.readall_BCdata_from_dir
-    
-    Returns:
-        pd.DataFrame: Cleaned DataFrame ready for analysis
-    """
-    if directory_path is None:
-        directory_path = "../JPL_aeth/"
-    
-    print(f"Loading PKL data from: {directory_path}")
-    
     # Default parameters for data loading
     default_params = {
         'sep': ',',
@@ -528,13 +533,18 @@ def load_and_clean_pkl_data(directory_path=None, **kwargs):
     # Update with user-provided parameters
     default_params.update(kwargs)
     
+    if verbose:
+        print("Loading PKL data from directory...")
+    
     # Load data using external calibration module
     df = calibration.readall_BCdata_from_dir(
         directory_path=directory_path,
         **default_params
     )
     
-    print('Dropping duplicates...')
+    if verbose:
+        print('Dropping duplicates...')
+    
     # Drop MA duplicates based on Serial number and Datum ID
     df_ma = df.loc[df['Serial number'].str.contains("MA")].drop_duplicates(
         subset=['Serial number', 'Datum ID'], keep='first'
@@ -551,10 +561,19 @@ def load_and_clean_pkl_data(directory_path=None, **kwargs):
     # Sort by serial number and datetime
     df = df.sort_values(by=['Serial number', 'datetime_local']).reset_index(drop=True)
     
-    # Convert to datetime object with timezone
-    df['datetime_local'] = pd.to_datetime(
-        df['datetime_local'], utc=True
-    ).dt.tz_convert('Africa/Addis_Ababa')
+    # Convert to datetime object with timezone (if not already done by modular loader)
+    if 'datetime_local' in df.columns:
+        if not pd.api.types.is_datetime64_any_dtype(df['datetime_local']):
+            df['datetime_local'] = pd.to_datetime(
+                df['datetime_local'], utc=True
+            ).dt.tz_convert('Africa/Addis_Ababa')
+    elif df.index.name == 'datetime_local':
+        # If datetime_local is in index, reset it to column
+        df = df.reset_index()
+        if not pd.api.types.is_datetime64_any_dtype(df['datetime_local']):
+            df['datetime_local'] = pd.to_datetime(
+                df['datetime_local'], utc=True
+            ).dt.tz_convert('Africa/Addis_Ababa')
     
     # Convert data types and add deltas
     df = calibration.convert_to_float(df)
@@ -564,17 +583,88 @@ def load_and_clean_pkl_data(directory_path=None, **kwargs):
     position_change = df['Tape position'] != df['Tape position'].shift()
     df['Session ID'] = position_change.cumsum()
     
-    # Apply DEMA smoothing for all wavelengths
-    cleaner = PKLDataCleaner()
-    for wl in ['Blue', 'Green', 'Red', 'UV', 'IR']:
-        df = cleaner.dema_bc_and_atn(df, DEMA_span_min=10, wl=wl)
+    # Apply preprocessing and cleaning with cleaner
+    cleaner = PKLDataCleaner(wavelengths_to_filter=wavelengths_to_filter, verbose=verbose)
+    
+    # Apply preprocessing (DEMA smoothing, etc.)
+    df = cleaner.preprocess_data(df)
     
     # Set serial number and filter by year
     df['Serial number'] = "MA350-0238"
     df = df.loc[df['datetime_local'].dt.year >= 2022]
     
-    # Apply cleaning pipeline
-    df_cleaned = cleaner.clean_pipeline(df)
+    # Apply cleaning pipeline (skip preprocessing since we already did it)
+    df_cleaned = cleaner.clean_pipeline(df, skip_preprocessing=True)
     
-    print("PKL data loading and cleaning completed.")
+    if summary:
+        # Get datetime column for summary
+        if 'datetime_local' in df_cleaned.columns:
+            datetime_col = df_cleaned['datetime_local']
+        elif df_cleaned.index.name == 'datetime_local':
+            datetime_col = df_cleaned.index
+        else:
+            datetime_col = None
+            
+        print("\nPKL Data Loading and Cleaning Summary:")
+        print("=" * 50)
+        print(f"Final cleaned data shape: {df_cleaned.shape}")
+        
+        if datetime_col is not None:
+            print(f"Date range: {datetime_col.min()} to {datetime_col.max()}")
+        
+        if 'Serial number' in df_cleaned.columns:
+            print(f"Serial numbers: {df_cleaned['Serial number'].unique()}")
+        else:
+            print("Serial number information not available")
+    
     return df_cleaned
+
+
+def table_removed_datapoints_by_month(df, df_cleaned):
+    """
+    Calculate the number of removed datapoints by month.
+    
+    Args:
+        df (pd.DataFrame): Original DataFrame
+        df_cleaned (pd.DataFrame): Cleaned DataFrame
+        
+    Returns:
+        pd.DataFrame: Monthly removal statistics
+    """
+    # Helper function to get datetime column
+    def get_datetime_column(dataframe):
+        if 'datetime_local' in dataframe.columns:
+            return dataframe['datetime_local']
+        elif dataframe.index.name == 'datetime_local':
+            return dataframe.index
+        elif hasattr(dataframe.index, 'tz'):  # DatetimeIndex
+            return dataframe.index
+        else:
+            raise ValueError("Cannot find datetime column in DataFrame")
+    
+    # Get datetime columns
+    df_datetime = get_datetime_column(df)
+    df_cleaned_datetime = get_datetime_column(df_cleaned)
+    
+    # Ensure datetime type
+    df_datetime = pd.to_datetime(df_datetime)
+    df_cleaned_datetime = pd.to_datetime(df_cleaned_datetime)
+    
+    # Create temporary DataFrames with month columns
+    df_temp = df.copy()
+    df_cleaned_temp = df_cleaned.copy()
+    
+    df_temp['month'] = df_datetime.dt.to_period('M')
+    df_cleaned_temp['month'] = df_cleaned_datetime.dt.to_period('M')
+    
+    # Count entries per month
+    original_counts = df_temp['month'].value_counts().sort_index()
+    cleaned_counts = df_cleaned_temp['month'].value_counts().sort_index()
+    
+    # Calculate the difference
+    removed_counts = original_counts - cleaned_counts
+    
+    # Convert to DataFrame for readability
+    removed_df = removed_counts.reset_index()
+    removed_df.columns = ['month', 'removed_datapoints']
+    return removed_df
