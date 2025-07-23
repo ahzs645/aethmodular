@@ -1,11 +1,17 @@
 """Data quality analysis modules"""
 
-from .completeness_analyzer import CompletenessAnalyzer
-from .period_classifier import PeriodClassifier  
-from .missing_data_analyzer import MissingDataAnalyzer
+from .data_quality_assessment import (
+    DataQualityAssessor,
+    MultiDatasetQualityAssessor,
+    QualityAssessmentResult,
+    assess_single_dataset,
+    assess_multiple_datasets
+)
 
 __all__ = [
-    'CompletenessAnalyzer',
-    'PeriodClassifier',
-    'MissingDataAnalyzer'
+    'DataQualityAssessor',
+    'MultiDatasetQualityAssessor',
+    'QualityAssessmentResult',
+    'assess_single_dataset',
+    'assess_multiple_datasets'
 ]

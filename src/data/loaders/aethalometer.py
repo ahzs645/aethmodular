@@ -404,15 +404,23 @@ class AethalometerCSVLoader(BaseLoader):
     
     def _process_datetime(self, df: pd.DataFrame) -> pd.DataFrame:
         """Process datetime columns and set as index for time series operations"""
-        datetime_cols = ['datetime_local', 'datetime_utc', 'Date', 'date']
+        datetime_cols = ['datetime_local', 'datetime_utc', 'Date', 'date', 'Time (UTC)']
         
         datetime_col_found = None
         for col in datetime_cols:
             if col in df.columns:
                 try:
-                    df[col] = pd.to_datetime(df[col])
-                    if datetime_col_found is None:  # Use first valid datetime column as index
-                        datetime_col_found = col
+                    # Special handling for 'Time (UTC)' column
+                    if col == 'Time (UTC)':
+                        df[col] = pd.to_datetime(df[col], utc=True)
+                        # Create local time column for ETAD site
+                        df['Time (Local)'] = df[col].dt.tz_convert('Africa/Addis_Ababa')
+                        # Use local time as index
+                        datetime_col_found = 'Time (Local)'
+                    else:
+                        df[col] = pd.to_datetime(df[col])
+                        if datetime_col_found is None:  # Use first valid datetime column as index
+                            datetime_col_found = col
                 except Exception as e:
                     print(f"Warning: Could not convert {col} to datetime: {e}")
         
@@ -420,8 +428,13 @@ class AethalometerCSVLoader(BaseLoader):
         if datetime_col_found is not None:
             try:
                 # Sort by datetime before setting as index to ensure proper time series
-                df = df.sort_values(by=datetime_col_found)
-                df = df.set_index(datetime_col_found)
+                if datetime_col_found == 'Time (Local)' and datetime_col_found in df.columns:
+                    # Time (Local) was created, use it directly
+                    df = df.sort_values(by=datetime_col_found)
+                    df = df.set_index(datetime_col_found)
+                elif datetime_col_found in df.columns:
+                    df = df.sort_values(by=datetime_col_found)
+                    df = df.set_index(datetime_col_found)
                 print(f"Set '{datetime_col_found}' as DatetimeIndex for time series operations")
             except Exception as e:
                 print(f"Warning: Could not set datetime index: {e}")
@@ -463,6 +476,30 @@ def load_aethalometer_data(file_path: str,
                           set_datetime_index=set_datetime_index)
     elif file_path.suffix == '.csv':
         loader = AethalometerCSVLoader(file_path)
-        return loader.load(set_datetime_index=set_datetime_index)
+        df = loader.load(set_datetime_index=set_datetime_index)
+        
+        # Apply format conversion if needed
+        if output_format == 'jpl' and df is not None:
+            # Check if we need to convert column names
+            column_mapping = {
+                'IR BCc': 'IR.BCc',
+                'Blue BCc': 'Blue.BCc', 
+                'Green BCc': 'Green.BCc',
+                'Red BCc': 'Red.BCc',
+                'UV BCc': 'UV.BCc',
+                'Biomass BCc': 'Biomass.BCc',
+                'Fossil fuel BCc': 'Fossil.fuel.BCc',
+            }
+            
+            rename_dict = {}
+            for std_col, jpl_col in column_mapping.items():
+                if std_col in df.columns:
+                    rename_dict[std_col] = jpl_col
+            
+            if rename_dict:
+                df = df.rename(columns=rename_dict)
+                print(f"Converted {len(rename_dict)} columns to JPL format")
+        
+        return df
     else:
         raise DataValidationError(f"Unsupported file format: {file_path.suffix}")
