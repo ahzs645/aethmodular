@@ -146,3 +146,5 @@ logs/
 
 pkl_data_cleaned_ethiopia.pkl
 pkl_data_cleaned_ethiopia.csv
+aethalometer_ftir_merged_etad_9am.csv
+aethalometer_ftir_merged_etad_9am.pkl
