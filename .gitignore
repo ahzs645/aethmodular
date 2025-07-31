@@ -144,9 +144,5 @@ dmypy.json
 logs/
 *.log
 
-pkl_data_cleaned_working.pkl
-pkl_data_cleaned_working.csv
-pkl_data_cleaned_enhanced.csv
-pkl_data_cleaned_enhanced.pkl
-notebooks/pkl_data_cleaned_enhanced.csv
-notebooks/pkl_data_cleaned_enhanced.pkl
+pkl_data_cleaned_ethiopia.pkl
+pkl_data_cleaned_ethiopia.csv

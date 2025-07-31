@@ -22,17 +22,21 @@ class EnhancedPKLProcessor:
     DEMA smoothing, and quality control cleaning into a modular pipeline.
     """
     
-    def __init__(self, wavelengths_to_filter=None, verbose=True, **kwargs):
+    def __init__(self, wavelengths_to_filter=None, verbose=True, apply_ethiopia_fix=False, site_code=None, **kwargs):
         """
         Initialize the enhanced PKL processor.
         
         Args:
             wavelengths_to_filter (List[str]): Wavelengths to focus on (e.g., ['IR', 'Blue'])
             verbose (bool): Enable verbose output
+            apply_ethiopia_fix (bool): Whether to apply Ethiopia pneumatic pump loading compensation fix
+            site_code (str): Site code for site-specific corrections (e.g., 'ETAD' for Ethiopia)
             **kwargs: Additional arguments passed to PKLDataCleaner
         """
         self.wavelengths_to_filter = wavelengths_to_filter or ['IR', 'Blue']
         self.verbose = verbose
+        self.apply_ethiopia_fix = apply_ethiopia_fix
+        self.site_code = site_code or ('ETAD' if apply_ethiopia_fix else None)
         self.cleaner = PKLDataCleaner(
             wavelengths_to_filter=wavelengths_to_filter, 
             verbose=verbose, 
@@ -278,6 +282,67 @@ class EnhancedPKLProcessor:
         
         return df_smoothed
     
+    def apply_site_corrections(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Apply site-specific corrections if enabled.
+        
+        Args:
+            df (pd.DataFrame): Data to correct
+            
+        Returns:
+            pd.DataFrame: Data with site corrections applied
+        """
+        if not self.apply_ethiopia_fix:
+            return df
+        
+        try:
+            # Try multiple import paths for site corrections
+            corrector = None
+            
+            try:
+                from ..processors.site_corrections import SiteCorrections
+                corrector = SiteCorrections(site_code=self.site_code, verbose=self.verbose)
+            except ImportError:
+                try:
+                    from data.processors.site_corrections import SiteCorrections
+                    corrector = SiteCorrections(site_code=self.site_code, verbose=self.verbose)
+                except ImportError:
+                    import sys
+                    sys.path.append('src')
+                    from data.processors.site_corrections import SiteCorrections
+                    corrector = SiteCorrections(site_code=self.site_code, verbose=self.verbose)
+            
+            if corrector is None:
+                raise ImportError("Could not import SiteCorrections")
+            
+            if self.verbose:
+                print("\n🔧 Applying Site-Specific Corrections...")
+                print("=" * 50)
+            
+            df_corrected = corrector.apply_corrections(df)
+            
+            if self.verbose:
+                corrections_applied = getattr(corrector, 'corrections_applied', [])
+                if corrections_applied:
+                    print(f"✅ Applied corrections: {', '.join(corrections_applied)}")
+                else:
+                    print("⚠️ No corrections were applied - check site code or data")
+                print("✅ Site corrections step completed!")
+            
+            return df_corrected
+            
+        except ImportError as e:
+            if self.verbose:
+                print(f"\n⚠️ Site corrections module not found: {e}")
+                print("⚠️ Make sure site_corrections.py exists in src/data/processors/")
+                print("Continuing without site corrections...")
+            return df
+        except Exception as e:
+            if self.verbose:
+                print(f"\n⚠️ Error applying site corrections: {e}")
+                print("Continuing without site corrections...")
+            return df
+    
     def process_pkl_data(self, df: pd.DataFrame, export_path: Optional[str] = None) -> pd.DataFrame:
         """
         Complete PKL data processing pipeline: preprocessing → smoothing → cleaning.
@@ -301,12 +366,15 @@ class EnhancedPKLProcessor:
         # Step 2: DEMA smoothing
         df_smoothed = self.apply_dema_smoothing(df_preprocessed)
         
-        # Step 3: Quality control cleaning
+        # Step 3: Site-specific corrections (e.g., Ethiopia fix)
+        df_corrected = self.apply_site_corrections(df_smoothed)
+        
+        # Step 4: Quality control cleaning
         if self.verbose:
             print("\n🧹 Final Cleaning Pipeline")
             print("=" * 60)
         
-        df_cleaned = self.cleaner.clean_pipeline(df_smoothed, skip_preprocessing=True)
+        df_cleaned = self.cleaner.clean_pipeline(df_corrected, skip_preprocessing=True)
         
         # Summary
         if self.verbose:
@@ -315,6 +383,7 @@ class EnhancedPKLProcessor:
             print(f"Original data points: {original_size:,}")
             print(f"After preprocessing: {len(df_preprocessed):,}")
             print(f"After smoothing: {len(df_smoothed):,}")
+            print(f"After site corrections: {len(df_corrected):,}")
             print(f"Final cleaned: {len(df_cleaned):,}")
             
             total_removed = original_size - len(df_cleaned)
@@ -347,28 +416,24 @@ class EnhancedPKLProcessor:
     
     def export_cleaned_data(self, df: pd.DataFrame, base_path: str) -> Dict[str, str]:
         """
-        Export cleaned data to CSV and pickle formats.
+        Export cleaned data to pickle format only.
         
         Args:
             df (pd.DataFrame): Cleaned data
             base_path (str): Base path for export (without extension)
             
         Returns:
-            Dict[str, str]: Paths of exported files
+            Dict[str, str]: Path of exported file
         """
-        output_csv = f'{base_path}.csv'
         output_pkl = f'{base_path}.pkl'
         
-        df.to_csv(output_csv, index=False)
         df.to_pickle(output_pkl)
         
         if self.verbose:
             print(f"\n💾 Cleaned data exported:")
-            print(f"  📄 CSV: {output_csv}")
             print(f"  📦 Pickle: {output_pkl}")
         
         return {
-            'csv': output_csv,
             'pickle': output_pkl
         }
 
@@ -377,6 +442,8 @@ def process_pkl_data_enhanced(df: pd.DataFrame,
                              wavelengths_to_filter: Optional[List[str]] = None,
                              export_path: Optional[str] = None,
                              verbose: bool = True,
+                             apply_ethiopia_fix: bool = False,
+                             site_code: Optional[str] = None,
                              **kwargs) -> pd.DataFrame:
     """
     Convenience function for enhanced PKL data processing.
@@ -386,6 +453,8 @@ def process_pkl_data_enhanced(df: pd.DataFrame,
         wavelengths_to_filter (List[str]): Wavelengths to focus on
         export_path (str, optional): Path to export cleaned data
         verbose (bool): Enable verbose output
+        apply_ethiopia_fix (bool): Whether to apply Ethiopia pneumatic pump loading compensation fix
+        site_code (str): Site code for site-specific corrections (e.g., 'ETAD' for Ethiopia)
         **kwargs: Additional arguments for PKLDataCleaner
         
     Returns:
@@ -394,6 +463,8 @@ def process_pkl_data_enhanced(df: pd.DataFrame,
     processor = EnhancedPKLProcessor(
         wavelengths_to_filter=wavelengths_to_filter or ['IR', 'Blue'],
         verbose=verbose,
+        apply_ethiopia_fix=apply_ethiopia_fix,
+        site_code=site_code,
         **kwargs
     )
     
