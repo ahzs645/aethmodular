@@ -5,6 +5,7 @@ This package includes:
 - calibration: Aethalometer calibration utilities
 - ftir_merger: FTIR data merger for aethalometer analysis
 - aethalometer_filter_merger: Complete pipeline for merging aethalometer with FTIR/HIPS data
+- dual_dataset_pipeline: Dual dataset processor for high-resolution and FTIR-matched data
 """
 
 # Import existing processors
@@ -44,6 +45,15 @@ except ImportError:
     extract_aethalometer_stats = None
     map_ethiopian_seasons = None
 
+# Import dual dataset pipeline
+try:
+    from .dual_dataset_pipeline import DualDatasetProcessor, run_dual_dataset_processing
+    DUAL_DATASET_AVAILABLE = True
+except ImportError:
+    DUAL_DATASET_AVAILABLE = False
+    DualDatasetProcessor = None
+    run_dual_dataset_processing = None
+
 # Define what's available for import
 __all__ = []
 
@@ -65,6 +75,12 @@ if MERGER_PIPELINE_AVAILABLE:
         'map_ethiopian_seasons'
     ])
 
+if DUAL_DATASET_AVAILABLE:
+    __all__.extend([
+        'DualDatasetProcessor',
+        'run_dual_dataset_processing'
+    ])
+
 # Print availability status when imported (optional - remove if you don't want this)
 if __name__ != '__main__':
     available_processors = []
@@ -74,6 +90,8 @@ if __name__ != '__main__':
         available_processors.append('FTIRMerger')
     if MERGER_PIPELINE_AVAILABLE:
         available_processors.append('MergerPipeline')
+    if DUAL_DATASET_AVAILABLE:
+        available_processors.append('DualDatasetProcessor')
     
     # Uncomment the line below if you want to see what's loaded
     # print(f"📦 Data processors loaded: {', '.join(available_processors)}")
