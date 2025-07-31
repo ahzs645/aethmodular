@@ -9,7 +9,6 @@ Created: 2025-01-12
 """
 
 import pandas as pd
-import numpy as np
 from pathlib import Path
 
 # Import the QC modules
@@ -35,18 +34,11 @@ def example_basic_quality_analysis():
     # Load your aethalometer data (replace with actual path)
     # df = pd.read_csv('your_aethalometer_data.csv', index_col='datetime', parse_dates=True)
     
-    # For demo, create sample data
-    date_range = pd.date_range('2023-01-01', '2023-12-31', freq='min')
-    # Simulate some missing data
-    missing_indices = np.random.choice(len(date_range), size=int(len(date_range) * 0.05), replace=False)
-    available_indices = np.setdiff1d(np.arange(len(date_range)), missing_indices)
-    
-    df = pd.DataFrame({
-        'BC1': np.random.normal(1000, 200, len(available_indices)),
-        'BC2': np.random.normal(800, 150, len(available_indices))
-    }, index=date_range[available_indices])
-    
-    print(f"Sample dataset: {len(df)} points from {df.index.min()} to {df.index.max()}")
+    # PLACEHOLDER: Replace this section with your actual data loading
+    print("❌ This example requires actual aethalometer data.")
+    print("   Please load your data using:")
+    print("   df = pd.read_csv('your_aethalometer_data.csv', index_col='datetime', parse_dates=True)")
+    return None
     
     # 1. Analyze missing data patterns
     print("\n📊 Step 1: Analyzing missing data patterns...")
@@ -106,21 +98,10 @@ def example_filter_mapping():
     # This example assumes you have a database with filter samples
     # db_path = '/path/to/your/filter_database.db'
     
-    # For demo, create sample filter data
-    filter_dates = pd.date_range('2023-01-15', '2023-12-15', freq='14D')  # Bi-weekly samples
-    etad_data = pd.DataFrame({
-        'filter_id': range(len(filter_dates)),
-        'SampleDate': filter_dates,
-        'Fabs': np.random.normal(50, 10, len(filter_dates)),
-        'Site': 'ETAD'
-    })
-    
-    ftir_data = etad_data.copy()
-    ftir_data.rename(columns={'SampleDate': 'date'}, inplace=True)
-    ftir_data['EC_FTIR'] = np.random.normal(5, 1, len(filter_dates))
-    ftir_data['OC_FTIR'] = np.random.normal(15, 3, len(filter_dates))
-    
-    print(f"Sample filter data: {len(etad_data)} samples")
+    # PLACEHOLDER: Replace this section with your actual filter data loading
+    print("❌ This example requires actual filter sample data.")
+    print("   Please load your filter data from database or CSV files.")
+    return None
     
     # First run basic analysis to get quality series
     print("Running basic quality analysis first...")
@@ -162,17 +143,10 @@ def example_comprehensive_report():
     print("\n📋 Example: Comprehensive Quality Report")
     print("=" * 50)
     
-    # Create sample data (same as in basic example)
-    date_range = pd.date_range('2023-01-01', '2023-12-31', freq='min')
-    missing_indices = np.random.choice(len(date_range), size=int(len(date_range) * 0.05), replace=False)
-    available_indices = np.setdiff1d(np.arange(len(date_range)), missing_indices)
-    
-    df = pd.DataFrame({
-        'BC1': np.random.normal(1000, 200, len(available_indices)),
-        'BC2': np.random.normal(800, 150, len(available_indices))
-    }, index=date_range[available_indices])
-    
-    print(f"Generating comprehensive report for {len(df)} data points...")
+    # PLACEHOLDER: Replace this section with your actual data loading
+    print("❌ This example requires actual aethalometer data.")
+    print("   Please load your data and pass it to create_comprehensive_report().")
+    return None
     
     # Generate comprehensive report (without database for demo)
     report_results = create_comprehensive_report(
@@ -210,14 +184,10 @@ def example_quick_assessment():
     print("\n⚡ Example: Quick Quality Assessment")
     print("=" * 50)
     
-    # Create sample data
-    date_range = pd.date_range('2023-01-01', '2023-03-31', freq='min')
-    missing_indices = np.random.choice(len(date_range), size=int(len(date_range) * 0.03), replace=False)
-    available_indices = np.setdiff1d(np.arange(len(date_range)), missing_indices)
-    
-    df = pd.DataFrame({
-        'BC1': np.random.normal(1000, 200, len(available_indices))
-    }, index=date_range[available_indices])
+    # PLACEHOLDER: Replace this section with your actual data loading
+    print("❌ This example requires actual aethalometer data.")
+    print("   Please load your data and pass it to quick_quality_check().")
+    return None
     
     # Quick assessment using convenience function
     print("Running quick quality check...")

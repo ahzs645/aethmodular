@@ -512,33 +512,37 @@ def convert_to_float(df_cleaned_status):
 					print(f"Could not convert {col_name} to float due to non-numeric values.")	
 	return df_cleaned_status
 
-def resample_df(df_for_regression_MA, timebase='5min'):
-	import pandas as pd
+def resample_df(df_for_regression_MA, timebase='5min', mean = True):
+    import pandas as pd
 
-	# Set the datetime column as index for resampling
-	df_for_regression_MA = df_for_regression_MA.set_index('datetime_local')
+    # Set the datetime column as index for resampling
+    df_for_regression_MA = df_for_regression_MA.set_index('datetime_local')
 
-	# Split the DataFrame into numeric and non-numeric columns
-	numeric_cols = df_for_regression_MA.select_dtypes(include='number')
-	non_numeric_cols = df_for_regression_MA.select_dtypes(exclude='number')
+    # Split the DataFrame into numeric and non-numeric columns
+    numeric_cols = df_for_regression_MA.select_dtypes(include='number')
+    non_numeric_cols = df_for_regression_MA.select_dtypes(exclude='number')
 
-	# Group by 'Serial number' and resample the numeric columns
-	# Here we don't forward-fill or interpolate; we just resample and keep NaNs where no data exists
-	resampled_numeric = numeric_cols.groupby(df_for_regression_MA['Serial number']).resample(timebase).mean().reset_index(level=0, drop=True)
-	try:
-		resampled_numeric = resampled_numeric[~resampled_numeric['IR BCc'].isna()]
-	except Exception as e:
-		print("Error while checking for NaN in 'IR BCc':", e)
-	# We no longer forward fill the non-numeric columns, just resample them and leave missing values as NaN
-	non_numeric_resampled = non_numeric_cols.groupby(df_for_regression_MA['Serial number']).resample(timebase).first().reset_index(level=0, drop=True)
-	non_numeric_resampled = non_numeric_resampled[~non_numeric_resampled['Serial number'].isna()]   
-	# Combine the resampled numeric and non-numeric columns (no filling)
-	df_resampled = pd.concat([resampled_numeric, non_numeric_resampled], axis=1)
+    # Group by 'Serial number' and resample the numeric columns
+    # Here we don't forward-fill or interpolate; we just resample and keep NaNs where no data exists
+    if mean:
+        resampled_numeric = numeric_cols.groupby(df_for_regression_MA['Serial number']).resample(timebase).mean().reset_index(level=0, drop=True)
+    else: 
+        resampled_numeric = numeric_cols.groupby(df_for_regression_MA['Serial number']).resample(timebase).median().reset_index(level=0, drop=True)
 
-	# Reset index for the final DataFrame, if needed
-	df_resampled.reset_index(inplace=True)
+    try:
+        resampled_numeric = resampled_numeric[~resampled_numeric['IR BCc'].isna()]
+    except Exception as e:
+        print("Error while checking for NaN in 'IR BCc':", e)
+    # We no longer forward fill the non-numeric columns, just resample them and leave missing values as NaN
+    non_numeric_resampled = non_numeric_cols.groupby(df_for_regression_MA['Serial number']).resample(timebase).first().reset_index(level=0, drop=True)
+    non_numeric_resampled = non_numeric_resampled[~non_numeric_resampled['Serial number'].isna()]   
+    # Combine the resampled numeric and non-numeric columns (no filling)
+    df_resampled = pd.concat([resampled_numeric, non_numeric_resampled], axis=1)
 
-	return df_resampled
+    # Reset index for the final DataFrame, if needed
+    df_resampled.reset_index(inplace=True)
+
+    return df_resampled
 
 
 

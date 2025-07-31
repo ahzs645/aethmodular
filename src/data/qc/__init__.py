@@ -25,7 +25,9 @@ from .missing_data import MissingDataAnalyzer
 from .quality_classifier import QualityClassifier
 from .seasonal_patterns import SeasonalPatternAnalyzer
 from .filter_mapping import FilterSampleMapper
-from .pkl_cleaning import PKLDataCleaner, load_and_clean_pkl_data, table_removed_datapoints_by_month
+from .pkl_cleaning import (PKLDataCleaner, load_and_clean_pkl_data, table_removed_datapoints_by_month,
+                           load_and_clean_pkl_data_enhanced, create_enhanced_pkl_cleaner, compare_cleaning_methods)
+from .enhanced_pkl_processing import EnhancedPKLProcessor, process_pkl_data_enhanced
 from .visualization import QualityVisualizer
 from .reports import QualityReportGenerator
 
@@ -63,6 +65,11 @@ __all__ = [
     'PKLDataCleaner',
     'load_and_clean_pkl_data',
     'table_removed_datapoints_by_month',
+    'load_and_clean_pkl_data_enhanced',
+    'create_enhanced_pkl_cleaner',
+    'compare_cleaning_methods',
+    'EnhancedPKLProcessor',
+    'process_pkl_data_enhanced',
     'QualityVisualizer',
     'QualityReportGenerator',
     'quick_quality_check'

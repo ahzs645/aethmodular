@@ -6,53 +6,36 @@ visualization template system with different types of data.
 """
 
 import pandas as pd
-import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, Any
 from .factory import VisualizationTemplateFactory, create_plot
 
 def create_sample_data(n_days: int = 30) -> pd.DataFrame:
-    """Create sample aethalometer data for examples"""
-    # Create datetime index
-    start_date = datetime(2023, 1, 1)
-    dates = pd.date_range(start=start_date, periods=n_days * 24, freq='H')
+    """
+    PLACEHOLDER: This function was removed to avoid sample data generation.
+    Replace with your actual data loading function.
     
-    # Generate realistic BC data with diurnal patterns
-    hours = np.array([d.hour for d in dates])
-    
-    # Base concentrations with diurnal variation
-    base_ir = 2.0 + 1.5 * np.sin((hours - 6) * np.pi / 12) ** 2
-    base_blue = 1.8 + 1.2 * np.sin((hours - 6) * np.pi / 12) ** 2
-    
-    # Add random noise and weekly patterns
-    days_of_week = np.array([d.dayofweek for d in dates])
-    weekend_factor = 1 + 0.3 * np.isin(days_of_week, [5, 6])  # Higher on weekends
-    
-    ir_bc = base_ir * weekend_factor + np.random.normal(0, 0.3, len(dates))
-    blue_bc = base_blue * weekend_factor + np.random.normal(0, 0.25, len(dates))
-    
-    # Create DataFrame
-    df = pd.DataFrame({
-        'timestamp': dates,
-        'IR BCc': np.maximum(0, ir_bc),  # Ensure non-negative
-        'Blue BCc': np.maximum(0, blue_bc),
-        'fabs_370': np.maximum(0, ir_bc * 8.5 + np.random.normal(0, 1, len(dates))),
-        'ec_ftir': np.maximum(0, ir_bc * 0.8 + np.random.normal(0, 0.2, len(dates)))
-    })
-    
-    # Add some missing data
-    missing_indices = np.random.choice(len(df), size=int(0.05 * len(df)), replace=False)
-    df.loc[missing_indices, 'IR BCc'] = np.nan
-    
-    return df
+    Expected DataFrame structure:
+    - timestamp: DateTime column
+    - IR BCc: IR wavelength BC concentrations
+    - Blue BCc: Blue wavelength BC concentrations  
+    - fabs_370: Absorption coefficients (optional)
+    - ec_ftir: FTIR EC measurements (optional)
+    """
+    raise NotImplementedError(
+        "This function requires actual data. Please load your aethalometer data "
+        "with columns: ['timestamp', 'IR BCc', 'Blue BCc', ...]"
+    )
 
 def example_time_series():
     """Example: Basic time series plot"""
     print("Example 1: Basic Time Series Plot")
     print("-" * 40)
     
-    # Create sample data
-    data = create_sample_data(7)  # 7 days of data
+    # PLACEHOLDER: Replace with your actual data
+    print("❌ This example requires actual aethalometer data.")
+    print("   Please load your data and pass it to the visualization functions.")
+    return None
     data.set_index('timestamp', inplace=True)
     
     # Create time series plot
@@ -72,10 +55,10 @@ def example_smoothening_comparison():
     print("\nExample 2: Smoothening Comparison")
     print("-" * 40)
     
-    # Create sample data
-    data = create_sample_data(3)  # 3 days
-    original = data['IR BCc'].values
-    timestamps = data['timestamp']
+    # PLACEHOLDER: Replace with your actual data
+    print("❌ This example requires actual aethalometer data.")
+    print("   Please load your data and pass it to the visualization functions.")
+    return None
     
     # Create example smoothed data (simulated)
     def moving_average(arr, window):
@@ -104,8 +87,10 @@ def example_diurnal_patterns():
     print("\nExample 3: Diurnal Pattern Analysis")
     print("-" * 40)
     
-    # Create sample data with more pronounced diurnal patterns
-    data = create_sample_data(30)  # 30 days for better statistics
+    # PLACEHOLDER: Replace with your actual data
+    print("❌ This example requires actual aethalometer data.")
+    print("   Please load your data and pass it to the visualization functions.")
+    return None
     
     # Create diurnal pattern plot
     template = VisualizationTemplateFactory.create_template('diurnal_patterns')
@@ -124,8 +109,10 @@ def example_weekly_heatmap():
     print("\nExample 4: Weekly Pattern Heatmap")
     print("-" * 40)
     
-    # Create sample data
-    data = create_sample_data(21)  # 3 weeks
+    # PLACEHOLDER: Replace with your actual data
+    print("❌ This example requires actual aethalometer data.")
+    print("   Please load your data and pass it to the visualization functions.")
+    return None
     
     # Create weekly heatmap
     template = VisualizationTemplateFactory.create_template('weekly_heatmap')
@@ -145,8 +132,10 @@ def example_seasonal_heatmap():
     print("\nExample 5: Seasonal Pattern Heatmap")
     print("-" * 40)
     
-    # Create longer-term sample data
-    data = create_sample_data(365)  # 1 year
+    # PLACEHOLDER: Replace with your actual data
+    print("❌ This example requires actual aethalometer data.")
+    print("   Please load your data and pass it to the visualization functions.")
+    return None
     
     # Create seasonal heatmap
     template = VisualizationTemplateFactory.create_template('seasonal_heatmap')
@@ -166,8 +155,10 @@ def example_mac_analysis():
     print("\nExample 6: MAC Analysis")
     print("-" * 40)
     
-    # Create sample data
-    data = create_sample_data(30)
+    # PLACEHOLDER: Replace with your actual data
+    print("❌ This example requires actual aethalometer data.")
+    print("   Please load your data and pass it to the visualization functions.")
+    return None
     
     # Remove NaN values for MAC analysis
     clean_data = data.dropna()
@@ -188,8 +179,10 @@ def example_correlation_analysis():
     print("\nExample 7: Correlation Analysis")
     print("-" * 40)
     
-    # Create sample data
-    data = create_sample_data(30)
+    # PLACEHOLDER: Replace with your actual data
+    print("❌ This example requires actual aethalometer data.")
+    print("   Please load your data and pass it to the visualization functions.")
+    return None
     
     # Select numeric columns for correlation
     numeric_columns = ['IR BCc', 'Blue BCc', 'fabs_370', 'ec_ftir']
@@ -210,8 +203,10 @@ def example_custom_config():
     print("\nExample 8: Custom Configuration")
     print("-" * 40)
     
-    # Create sample data
-    data = create_sample_data(7)
+    # PLACEHOLDER: Replace with your actual data
+    print("❌ This example requires actual aethalometer data.")
+    print("   Please load your data and pass it to the visualization functions.")
+    return None
     data.set_index('timestamp', inplace=True)
     
     # Custom configuration for publication-ready plots
@@ -240,8 +235,10 @@ def example_convenience_function():
     print("\nExample 9: Convenience Function")
     print("-" * 40)
     
-    # Create sample data
-    data = create_sample_data(5)
+    # PLACEHOLDER: Replace with your actual data
+    print("❌ This example requires actual aethalometer data.")
+    print("   Please load your data and pass it to the visualization functions.")
+    return None
     
     # Use convenience function for quick plotting
     fig = create_plot(
