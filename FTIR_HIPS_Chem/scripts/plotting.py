@@ -208,10 +208,10 @@ def plot_before_after_comparison(matched_df, site_name, site_color,
         site_color, max_val, outlier_mask=None, title='Before: All Data'
     )
 
-    # Highlight outliers on left plot
+    # Highlight outliers on left plot as red X
     if outlier_mask is not None and outlier_mask.any():
         ax1.scatter(x_data[outlier_mask], y_data[outlier_mask],
-                    facecolors='none', edgecolors='red', s=200, linewidths=3)
+                    color='red', alpha=0.9, s=200, marker='X', linewidths=3)
 
     # Right: Outliers removed
     ax2 = axes[1]
