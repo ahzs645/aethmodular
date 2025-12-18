@@ -159,6 +159,114 @@ def plot_crossplot(ax, x_data, y_data, x_label, y_label,
     return stats
 
 
+def plot_crossplot_iron_gradient(ax, x_data, y_data, iron_data,
+                                  x_label, y_label, equal_axes=True,
+                                  outlier_mask=None, cmap='plasma'):
+    """
+    Create a scatter cross-plot with iron concentration as color gradient.
+
+    Parameters:
+    -----------
+    ax : matplotlib axis
+    x_data, y_data : arrays of measurement data
+    iron_data : array of iron concentrations for color gradient
+    x_label, y_label : str
+    equal_axes : bool - lock axes to 1:1
+    outlier_mask : boolean array (True = outlier, shown as red X)
+    cmap : str - colormap name (default 'plasma')
+
+    Returns:
+    --------
+    tuple: (stats dict, scatter object)
+    """
+    x_data = np.asarray(x_data)
+    y_data = np.asarray(y_data)
+    iron_data = np.asarray(iron_data)
+
+    # Valid data mask (requires all three: x, y, and iron)
+    valid_mask = (~np.isnan(x_data)) & (~np.isnan(y_data)) & (~np.isnan(iron_data))
+
+    if outlier_mask is not None:
+        outlier_mask = np.asarray(outlier_mask)
+        clean_mask = valid_mask & ~outlier_mask
+        outlier_plot_mask = valid_mask & outlier_mask
+    else:
+        clean_mask = valid_mask
+        outlier_plot_mask = np.zeros(len(x_data), dtype=bool)
+
+    x_clean = x_data[clean_mask]
+    y_clean = y_data[clean_mask]
+    iron_clean = iron_data[clean_mask]
+
+    if len(x_clean) < 3:
+        ax.text(0.5, 0.5, 'Insufficient data', transform=ax.transAxes,
+                ha='center', va='center')
+        ax.set_xlabel(x_label, fontsize=11)
+        ax.set_ylabel(y_label, fontsize=11)
+        return None, None
+
+    # Plot clean data with iron color gradient
+    scatter = ax.scatter(x_clean, y_clean, c=iron_clean, cmap=cmap,
+                         alpha=0.7, s=100, edgecolors='black', linewidth=0.5,
+                         label=f'Data (n={len(x_clean)})')
+
+    # Add colorbar
+    cbar = plt.colorbar(scatter, ax=ax, shrink=0.8)
+    cbar.set_label('Iron (ng/m3)', fontsize=10)
+
+    # Plot outliers as red X
+    if outlier_plot_mask.any():
+        ax.scatter(x_data[outlier_plot_mask], y_data[outlier_plot_mask],
+                   color='red', alpha=0.9, s=200, marker='X', linewidths=3,
+                   label=f'Excluded (n={outlier_plot_mask.sum()})')
+
+    # Calculate regression on clean data
+    stats = calculate_regression_stats(x_clean, y_clean)
+
+    if stats:
+        # Set axis limits
+        if equal_axes:
+            all_vals = np.concatenate([x_clean, y_clean])
+            if outlier_plot_mask.any():
+                all_vals = np.concatenate([all_vals,
+                                           x_data[outlier_plot_mask],
+                                           y_data[outlier_plot_mask]])
+            max_val = all_vals.max() * 1.1
+            ax.set_xlim(0, max_val)
+            ax.set_ylim(0, max_val)
+            ax.set_aspect('equal', adjustable='box')
+            x_line = np.array([0, max_val])
+        else:
+            ax.set_xlim(left=0)
+            ax.set_ylim(bottom=0)
+            x_line = np.array([0, x_clean.max() * 1.1])
+            max_val = x_line[1]
+
+        # Plot regression line
+        y_line = stats['slope'] * x_line + stats['intercept']
+        ax.plot(x_line, y_line, 'g-', linewidth=2, alpha=0.8, label='Best fit')
+
+        # Plot 1:1 line
+        if equal_axes:
+            ax.plot([0, max_val], [0, max_val], 'k--', alpha=0.5,
+                    linewidth=1.5, label='1:1 line')
+
+        # Stats text box
+        sign = '+' if stats['intercept'] >= 0 else '-'
+        eq = f"y = {stats['slope']:.3f}x {sign} {abs(stats['intercept']):.2f}"
+        text = f"n = {stats['n']}\nR^2 = {stats['r_squared']:.3f}\n{eq}"
+        ax.text(0.05, 0.95, text, transform=ax.transAxes, fontsize=10,
+                verticalalignment='top',
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.9))
+
+    ax.set_xlabel(x_label, fontsize=11)
+    ax.set_ylabel(y_label, fontsize=11)
+    ax.legend(loc='lower right', fontsize=8)
+    ax.grid(True, alpha=0.3)
+
+    return stats, scatter
+
+
 def plot_before_after_comparison(matched_df, site_name, site_color,
                                   x_col='aeth_bc', y_col='filter_ec',
                                   outlier_col='is_excluded',

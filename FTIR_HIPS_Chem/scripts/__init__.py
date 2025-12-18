@@ -96,6 +96,7 @@ from data_matching import (
 from plotting import (
     calculate_regression_stats,
     plot_crossplot, plot_before_after_comparison,
+    plot_crossplot_iron_gradient,
     create_tiled_threshold_plots, plot_smooth_raw_distribution,
     plot_bc_timeseries, plot_multiwavelength_bc,
     print_comparison_table
@@ -120,6 +121,7 @@ __all__ = [
     # Plotting
     'calculate_regression_stats',
     'plot_crossplot', 'plot_before_after_comparison',
+    'plot_crossplot_iron_gradient',
     'create_tiled_threshold_plots', 'plot_smooth_raw_distribution',
     'plot_bc_timeseries', 'plot_multiwavelength_bc',
     'print_comparison_table',
