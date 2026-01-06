@@ -1,5 +1,9 @@
 """
-Functions for loading and matching aethalometer and filter data by date.
+Functions for loading and matching aethalometer and filter data.
+
+Supports matching by:
+- Date (±1 day tolerance)
+- FilterId (ensures same physical filter across measurements)
 
 Usage:
     from data_matching import load_aethalometer_data, load_filter_data, match_aeth_filter_data
@@ -8,9 +12,13 @@ Usage:
     aethalometer_data = load_aethalometer_data()
     filter_data = load_filter_data()
 
-    # Match for a single site
+    # Match for a single site (by date)
     matched = match_aeth_filter_data('Beijing', aethalometer_data['Beijing'],
                                       filter_data, 'CHTS')
+
+    # Match by FilterId (ensures same physical filter)
+    matched = match_by_filter_id(filter_data, site_code='CHTS',
+                                  params=['EC_ftir', 'HIPS_Fabs'])
 """
 
 import pandas as pd
@@ -97,7 +105,162 @@ def load_filter_data(filter_path=None):
 
 
 # =============================================================================
-# BASIC DATA MATCHING
+# FILTER ID PROCESSING
+# =============================================================================
+
+def add_base_filter_id(filter_data):
+    """
+    Add 'base_filter_id' column by stripping the -N suffix from FilterId.
+
+    FTIR/HIPS data uses format like 'ETAD-0017-1'
+    ChemSpec data uses format like 'ETAD-0017'
+
+    Stripping the suffix allows matching across data sources.
+
+    Parameters:
+    -----------
+    filter_data : DataFrame with FilterId column
+
+    Returns:
+    --------
+    DataFrame with 'base_filter_id' column added
+    """
+    df = filter_data.copy()
+    df['base_filter_id'] = df['FilterId'].str.replace(r'-\d+$', '', regex=True)
+    return df
+
+
+def match_by_filter_id(filter_data, site_code, params, min_concentration=None):
+    """
+    Match filter measurements by FilterId (same physical filter).
+
+    This ensures that when comparing FTIR EC vs HIPS, you're comparing
+    measurements from the exact same physical filter.
+
+    Parameters:
+    -----------
+    filter_data : DataFrame
+        Unified filter dataset (will add base_filter_id if missing)
+    site_code : str
+        Site code (e.g., 'CHTS', 'ETAD')
+    params : list of str
+        Parameter names to include (e.g., ['EC_ftir', 'HIPS_Fabs'])
+    min_concentration : float (optional)
+        Minimum concentration to include
+
+    Returns:
+    --------
+    DataFrame with one row per filter, columns for each parameter
+    """
+    # Add base_filter_id if not present
+    if 'base_filter_id' not in filter_data.columns:
+        filter_data = add_base_filter_id(filter_data)
+
+    # Filter to site
+    site_data = filter_data[filter_data['Site'] == site_code].copy()
+
+    if len(site_data) == 0:
+        print(f"No data for site {site_code}")
+        return None
+
+    # Get unique base filter IDs
+    base_ids = site_data['base_filter_id'].unique()
+
+    matched_records = []
+
+    for base_id in base_ids:
+        filter_subset = site_data[site_data['base_filter_id'] == base_id]
+
+        record = {
+            'base_filter_id': base_id,
+            'date': filter_subset['SampleDate'].iloc[0] if 'SampleDate' in filter_subset.columns else None
+        }
+
+        # Get each parameter
+        for param in params:
+            param_data = filter_subset[filter_subset['Parameter'] == param]
+
+            if len(param_data) > 0:
+                conc = param_data['Concentration'].iloc[0]
+
+                # Apply minimum threshold
+                if min_concentration is not None and conc < min_concentration:
+                    continue
+
+                # Standardize column names
+                col_name = _param_to_column_name(param)
+                record[col_name] = conc
+
+        # Only keep if we have at least 2 parameters
+        param_count = sum(1 for k in record.keys() if k not in ['base_filter_id', 'date'])
+        if param_count >= 2:
+            matched_records.append(record)
+
+    if len(matched_records) == 0:
+        return None
+
+    return pd.DataFrame(matched_records)
+
+
+def _param_to_column_name(param):
+    """Convert parameter name to standardized column name."""
+    mapping = {
+        'EC_ftir': 'ftir_ec',
+        'OC_ftir': 'ftir_oc',
+        'HIPS_Fabs': 'hips_fabs',
+        'ChemSpec_EC_PM2.5': 'chemspec_ec',
+        'ChemSpec_OC_PM2.5': 'chemspec_oc',
+        'ChemSpec_Iron_PM2.5': 'iron',
+        'ChemSpec_BC_PM2.5': 'chemspec_bc',
+    }
+    return mapping.get(param, param.lower().replace(' ', '_'))
+
+
+def pivot_filter_by_id(filter_data, site_code, params=None):
+    """
+    Pivot filter data so each row is one filter with all its measurements.
+
+    Parameters:
+    -----------
+    filter_data : DataFrame
+    site_code : str
+    params : list (optional)
+        Parameters to include. If None, includes all.
+
+    Returns:
+    --------
+    DataFrame with columns: base_filter_id, date, param1, param2, ...
+    """
+    if 'base_filter_id' not in filter_data.columns:
+        filter_data = add_base_filter_id(filter_data)
+
+    site_data = filter_data[filter_data['Site'] == site_code].copy()
+
+    if params is not None:
+        site_data = site_data[site_data['Parameter'].isin(params)]
+
+    # Pivot
+    pivoted = site_data.pivot_table(
+        index=['base_filter_id', 'SampleDate'],
+        columns='Parameter',
+        values='Concentration',
+        aggfunc='first'
+    ).reset_index()
+
+    # Rename columns
+    pivoted.columns.name = None
+    pivoted = pivoted.rename(columns={'SampleDate': 'date'})
+
+    # Rename parameter columns
+    rename_map = {col: _param_to_column_name(col) for col in pivoted.columns
+                  if col not in ['base_filter_id', 'date']}
+    pivoted = pivoted.rename(columns=rename_map)
+
+    return pivoted
+
+
+# =============================================================================
+# BASIC DATA MATCHING (BY DATE)
 # =============================================================================
 
 def match_aeth_filter_data(site_name, df_aeth, filter_data, site_code,
@@ -315,6 +478,93 @@ def match_with_smooth_raw_info(site_name, df_aeth, filter_data, site_code,
                 })
 
     return pd.DataFrame(matched_records) if matched_records else None
+
+
+def match_hips_with_smooth_raw(site_name, df_aeth, filter_data, site_code,
+                                wavelength='IR'):
+    """
+    Match HIPS data with aethalometer, including smooth/raw BC info.
+
+    This was previously duplicated in HIPS_Aeth_SmoothRaw_Analysis.ipynb
+    and Multi_Site_Analysis_Modular.ipynb.
+
+    Parameters:
+    -----------
+    site_name : str
+    df_aeth : DataFrame with aethalometer data
+    filter_data : DataFrame with filter data
+    site_code : str
+    wavelength : str
+
+    Returns:
+    --------
+    DataFrame with columns:
+    - date
+    - hips_fabs (ug/m³, already divided by MAC)
+    - ir_bcc (ug/m³)
+    - ir_bcc_smooth (ug/m³)
+    - smooth_raw_pct
+    - smooth_raw_abs_pct
+    - filter_id
+    """
+    raw_col = f'{wavelength} BCc'
+    smooth_col = f'{wavelength} BCc smoothed'
+
+    if raw_col not in df_aeth.columns:
+        print(f"  {site_name}: {raw_col} not found")
+        return None
+
+    has_smooth = smooth_col in df_aeth.columns
+
+    # Get HIPS data
+    site_hips = filter_data[
+        (filter_data['Site'] == site_code) &
+        (filter_data['Parameter'] == 'HIPS_Fabs')
+    ].copy()
+
+    if len(site_hips) == 0:
+        print(f"  {site_name}: No HIPS data")
+        return None
+
+    matched_records = []
+
+    for _, hips_row in site_hips.iterrows():
+        hips_date = hips_row['SampleDate']
+
+        # Match aethalometer by date
+        date_match = df_aeth[
+            (df_aeth['day_9am'] >= hips_date - pd.Timedelta(days=1)) &
+            (df_aeth['day_9am'] <= hips_date + pd.Timedelta(days=1))
+        ]
+
+        if len(date_match) > 0 and date_match[raw_col].notna().any():
+            bc_raw = date_match[raw_col].mean() / 1000  # ng to ug
+            bc_smooth = date_match[smooth_col].mean() / 1000 if has_smooth else np.nan
+
+            # HIPS Fabs / MAC gives BC equivalent in ug/m³
+            hips_fabs = hips_row['Concentration'] / MAC_VALUE
+
+            # Calculate smooth/raw % difference
+            if bc_raw != 0 and pd.notna(bc_smooth):
+                pct_diff = ((bc_smooth - bc_raw) / bc_raw) * 100
+            else:
+                pct_diff = np.nan
+
+            matched_records.append({
+                'date': hips_date,
+                'hips_fabs': hips_fabs,
+                'ir_bcc': bc_raw,
+                'ir_bcc_smooth': bc_smooth,
+                'smooth_raw_pct': pct_diff,
+                'smooth_raw_abs_pct': abs(pct_diff) if pd.notna(pct_diff) else np.nan,
+                'filter_id': hips_row.get('FilterId', 'unknown')
+            })
+
+    if len(matched_records) == 0:
+        print(f"  {site_name}: No matched HIPS data")
+        return None
+
+    return pd.DataFrame(matched_records)
 
 
 # =============================================================================
