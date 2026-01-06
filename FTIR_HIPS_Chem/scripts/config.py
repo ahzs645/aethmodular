@@ -53,30 +53,36 @@ SITES = {
 MAC_VALUE = 10
 
 # Flow fix periods (when aethalometer flow was corrected)
+# Updated based on FlowFix_BeforeAfter_Analysis.ipynb findings
+# NOTE: Use flow_periods.py for the comprehensive version with has_before_data flags
 FLOW_FIX_PERIODS = {
     'Beijing': {
-        'description': 'Gap in data where instrument was likely serviced',
-        'before_end': '2022-06-01',
-        'after_start': '2022-09-01',
-        'notes': 'May 2022 data has very low flow ratios pulling down the mean'
-    },
-    'JPL': {
-        'description': 'Similar gap where flow ratio improved',
-        'before_end': '2022-06-01',
-        'after_start': '2022-09-01',
-        'notes': 'Early days have flow ratio near 1.2, later improved to ~2.5'
+        'description': 'NO BEFORE DATA - Filter sampling started Sep 2023 (degraded period only)',
+        'before_end': '2022-07-31',
+        'after_start': '2023-09-01',
+        'has_before_data': False,
+        'notes': 'Flow ratio ~1.8-2.2 in available data period'
     },
     'Delhi': {
-        'description': 'Started after flow issues were resolved',
-        'before_end': None,
-        'after_start': None,
-        'notes': 'Best flow ratios (~2.4 mean), no problematic early period'
+        'description': 'NO BEFORE DATA - Filter sampling started Feb 2024 (degraded period only)',
+        'before_end': '2023-12-31',
+        'after_start': '2024-02-01',
+        'has_before_data': False,
+        'notes': 'Flow ratio ~2.5-3.2 in available data period'
+    },
+    'JPL': {
+        'description': 'Has data in both periods - suitable for before/after analysis',
+        'before_end': '2022-09-30',
+        'after_start': '2023-05-01',
+        'has_before_data': True,
+        'notes': 'Good flow ratio throughout'
     },
     'Addis_Ababa': {
-        'description': 'Consistently low flow ratio throughout',
+        'description': 'No flow fix periods defined',
         'before_end': None,
         'after_start': None,
-        'notes': 'Flow ratio ~1.2 throughout - never fixed'
+        'has_before_data': False,
+        'notes': 'Consistently low flow ratio (~1.2 throughout)'
     }
 }
 
