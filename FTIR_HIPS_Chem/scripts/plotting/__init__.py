@@ -197,6 +197,9 @@ from . import timeseries
 from . import distributions
 from . import comparisons
 
+# Import commonly used utility functions for convenience
+from .utils import calculate_regression_stats
+
 __all__ = [
     'PlotConfig',
     'resolve_sites',
@@ -206,4 +209,5 @@ __all__ = [
     'timeseries',
     'distributions',
     'comparisons',
+    'calculate_regression_stats',
 ]
