@@ -76,7 +76,8 @@ from config import (
     SITES, PROCESSED_SITES_DIR, FILTER_DATA_PATH,
     MAC_VALUE, FLOW_FIX_PERIODS, MIN_EC_THRESHOLD,
     SMOOTH_RAW_THRESHOLDS, DEFAULT_BC_WAVELENGTH,
-    FILTER_CATEGORIES, CROSS_COMPARISONS
+    FILTER_CATEGORIES, CROSS_COMPARISONS,
+    ETAD_FACTOR_CONTRIBUTIONS_PATH
 )
 
 from outliers import (
@@ -90,7 +91,8 @@ from data_matching import (
     load_aethalometer_data, load_filter_data,
     match_aeth_filter_data, match_all_parameters,
     match_with_smooth_raw_info, add_flow_period_column,
-    get_site_code, get_site_color, print_data_summary
+    get_site_code, get_site_color, print_data_summary,
+    load_etad_factor_contributions, match_etad_factors
 )
 
 from plotting import (
@@ -108,6 +110,7 @@ __all__ = [
     'MAC_VALUE', 'FLOW_FIX_PERIODS', 'MIN_EC_THRESHOLD',
     'SMOOTH_RAW_THRESHOLDS', 'DEFAULT_BC_WAVELENGTH',
     'FILTER_CATEGORIES', 'CROSS_COMPARISONS',
+    'ETAD_FACTOR_CONTRIBUTIONS_PATH',
     # Outliers
     'EXCLUDED_SAMPLES', 'MANUAL_OUTLIERS',
     'apply_exclusion_flags', 'apply_threshold_flags',
@@ -118,6 +121,7 @@ __all__ = [
     'match_aeth_filter_data', 'match_all_parameters',
     'match_with_smooth_raw_info', 'add_flow_period_column',
     'get_site_code', 'get_site_color', 'print_data_summary',
+    'load_etad_factor_contributions', 'match_etad_factors',
     # Plotting
     'calculate_regression_stats',
     'plot_crossplot', 'plot_before_after_comparison',

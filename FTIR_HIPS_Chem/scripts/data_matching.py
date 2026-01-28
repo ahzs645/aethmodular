@@ -28,7 +28,8 @@ from pathlib import Path
 
 from config import (
     SITES, PROCESSED_SITES_DIR, FILTER_DATA_PATH,
-    MIN_EC_THRESHOLD, MAC_VALUE, FLOW_FIX_PERIODS
+    MIN_EC_THRESHOLD, MAC_VALUE, FLOW_FIX_PERIODS,
+    ETAD_FACTOR_CONTRIBUTIONS_PATH
 )
 
 
@@ -607,6 +608,102 @@ def add_flow_period_column(df, site_name):
         df['flow_period'] = df['day_9am'].apply(classify_period)
 
     return df
+
+
+# =============================================================================
+# ETAD FACTOR CONTRIBUTIONS MATCHING
+# =============================================================================
+
+def load_etad_factor_contributions(csv_path=None):
+    """
+    Load ETAD (Ethiopia/Addis Ababa) PMF factor contributions CSV.
+
+    Parameters:
+    -----------
+    csv_path : Path (optional, defaults to ETAD_FACTOR_CONTRIBUTIONS_PATH)
+
+    Returns:
+    --------
+    DataFrame with parsed dates and factor contribution columns
+    """
+    if csv_path is None:
+        csv_path = ETAD_FACTOR_CONTRIBUTIONS_PATH
+
+    df = pd.read_csv(csv_path)
+    df['date'] = pd.to_datetime(df['oldDate'], format='%m/%d/%Y')
+    df = df.drop(columns=['oldDate'])
+
+    print(f"ETAD factor contributions loaded: {len(df)} records")
+    print(f"Date range: {df['date'].min().date()} to {df['date'].max().date()}")
+
+    return df
+
+
+def match_etad_factors(target_df, target_date_col='date',
+                       factor_csv_path=None, date_tolerance_days=1,
+                       factor_cols=None):
+    """
+    Match a target DataFrame to ETAD factor contributions by date.
+
+    Parameters:
+    -----------
+    target_df : DataFrame
+        DataFrame to match against (must have a date column)
+    target_date_col : str
+        Name of the date column in target_df (default: 'date')
+    factor_csv_path : Path (optional)
+        Path to factor contributions CSV. Defaults to config path.
+    date_tolerance_days : int
+        Matching tolerance in days (default: 1)
+    factor_cols : list of str (optional)
+        Specific factor columns to include. If None, includes all
+        GF and K_F columns.
+
+    Returns:
+    --------
+    DataFrame with target data merged with matched factor contributions
+    """
+    factors_df = load_etad_factor_contributions(factor_csv_path)
+
+    if factor_cols is not None:
+        keep_cols = ['date'] + [c for c in factor_cols if c in factors_df.columns]
+        factors_df = factors_df[keep_cols]
+
+    target = target_df.copy()
+    target[target_date_col] = pd.to_datetime(target[target_date_col])
+
+    tolerance = pd.Timedelta(days=date_tolerance_days)
+
+    matched_records = []
+
+    for _, row in target.iterrows():
+        t_date = row[target_date_col]
+
+        date_match = factors_df[
+            (factors_df['date'] >= t_date - tolerance) &
+            (factors_df['date'] <= t_date + tolerance)
+        ]
+
+        if len(date_match) > 0:
+            # Use closest date if multiple matches
+            closest_idx = (date_match['date'] - t_date).abs().idxmin()
+            factor_row = date_match.loc[closest_idx]
+
+            record = row.to_dict()
+            for col in factors_df.columns:
+                if col != 'date':
+                    record[col] = factor_row[col]
+            record['factor_date'] = factor_row['date']
+            matched_records.append(record)
+
+    if len(matched_records) == 0:
+        print("No date matches found between target data and ETAD factors")
+        return None
+
+    result = pd.DataFrame(matched_records)
+    print(f"Matched {len(result)}/{len(target)} records to ETAD factor contributions")
+
+    return result
 
 
 # =============================================================================
