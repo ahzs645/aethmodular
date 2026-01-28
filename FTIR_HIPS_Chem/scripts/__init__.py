@@ -92,7 +92,8 @@ from data_matching import (
     match_aeth_filter_data, match_all_parameters,
     match_with_smooth_raw_info, add_flow_period_column,
     get_site_code, get_site_color, print_data_summary,
-    load_etad_factor_contributions, match_etad_factors
+    load_etad_factor_contributions, match_etad_factors,
+    ETAD_PMF_SOURCE_NAMES, ETAD_FACTOR_RENAME
 )
 
 from plotting import (
@@ -122,6 +123,7 @@ __all__ = [
     'match_with_smooth_raw_info', 'add_flow_period_column',
     'get_site_code', 'get_site_color', 'print_data_summary',
     'load_etad_factor_contributions', 'match_etad_factors',
+    'ETAD_PMF_SOURCE_NAMES', 'ETAD_FACTOR_RENAME',
     # Plotting
     'calculate_regression_stats',
     'plot_crossplot', 'plot_before_after_comparison',

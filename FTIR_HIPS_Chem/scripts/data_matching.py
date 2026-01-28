@@ -614,9 +614,36 @@ def add_flow_period_column(df, site_name):
 # ETAD FACTOR CONTRIBUTIONS MATCHING
 # =============================================================================
 
+ETAD_PMF_SOURCE_NAMES = {
+    '1': 'Sea Salt Mixed',
+    '2': 'Wood Burning',
+    '3': 'Charcoal',
+    '4': 'Polluted Marine',
+    '5': 'Fossil Fuel Combustion',
+}
+
+# Column rename maps derived from source names
+_GF_RENAME = {f'GF{i}': f'GF{i} ({name})'
+              for i, name in ETAD_PMF_SOURCE_NAMES.items()}
+_KF_RENAME = {f'K_F{i}(ug/m3)': f'K_F{i} {name} (ug/m3)'
+              for i, name in ETAD_PMF_SOURCE_NAMES.items()}
+ETAD_FACTOR_RENAME = {**_GF_RENAME, **_KF_RENAME}
+
+
 def load_etad_factor_contributions(csv_path=None):
     """
     Load ETAD (Ethiopia/Addis Ababa) PMF factor contributions CSV.
+
+    Columns are renamed to include the source fraction:
+      GF1 -> GF1 (Sea Salt Mixed)          (daily contribution fraction)
+      K_F1(ug/m3) -> K_F1 Sea Salt Mixed (ug/m3)  (daily concentration)
+
+    Source fractions (from Naveed's PMF analysis):
+      F1: Sea Salt Mixed
+      F2: Wood Burning
+      F3: Charcoal
+      F4: Polluted Marine
+      F5: Fossil Fuel Combustion
 
     Parameters:
     -----------
@@ -624,7 +651,7 @@ def load_etad_factor_contributions(csv_path=None):
 
     Returns:
     --------
-    DataFrame with parsed dates and factor contribution columns
+    DataFrame with parsed dates and renamed factor contribution columns
     """
     if csv_path is None:
         csv_path = ETAD_FACTOR_CONTRIBUTIONS_PATH
@@ -632,6 +659,9 @@ def load_etad_factor_contributions(csv_path=None):
     df = pd.read_csv(csv_path)
     df['date'] = pd.to_datetime(df['oldDate'], format='%m/%d/%Y')
     df = df.drop(columns=['oldDate'])
+
+    # Rename to descriptive source names
+    df = df.rename(columns=ETAD_FACTOR_RENAME)
 
     print(f"ETAD factor contributions loaded: {len(df)} records")
     print(f"Date range: {df['date'].min().date()} to {df['date'].max().date()}")
