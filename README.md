@@ -19,9 +19,17 @@ pip install -r requirements.txt
 
 ### 2. Quality Gates
 ```bash
-pytest -q
-ruff check src tests
+uv run pytest -q
+uv run ruff check src tests
+uv run python scripts/diagnostics/run_notebook_smoke.py
 ```
+
+`run_notebook_smoke.py` executes the current portable notebook set:
+- `notebooks/AAARpos.ipynb`
+- `notebooks/ETAD_Aug13.ipynb`
+- `notebooks/ETAD_comprehensive_absorption_analysis.ipynb`
+- `notebooks/filter_data_availability_strip_chart.ipynb`
+- `notebooks/warren_ratio_diagnostics.ipynb`
 
 ## Data Root Configuration
 
