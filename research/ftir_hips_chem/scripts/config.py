@@ -3,15 +3,19 @@ Central configuration for multi-site aethalometer analysis.
 Contains site definitions, paths, and analysis parameters.
 """
 
+import os
 from pathlib import Path
 
 # =============================================================================
 # PATHS
 # =============================================================================
-PROCESSED_SITES_DIR = Path('/Users/ahmadjalil/Github/aethmodular/FTIR_HIPS_Chem/processed_sites')
-FILTER_DATA_PATH = Path('/Users/ahmadjalil/Github/aethmodular/FTIR_HIPS_Chem/Filter Data/unified_filter_dataset.pkl')
-ETAD_FACTOR_CONTRIBUTIONS_PATH = Path('/Users/ahmadjalil/Github/aethmodular/FTIR_HIPS_Chem/Filter Data/ETAD Factor Contributions .csv')
-ETAD_FILTER_ID_PATH = Path('/Users/ahmadjalil/Github/aethmodular/FTIR_HIPS_Chem/Filter Data/ETAD Filter ID.csv')
+_DEFAULT_DATA_ROOT = Path(__file__).resolve().parents[1]
+DATA_ROOT = Path(os.environ.get("AETHMODULAR_DATA_ROOT", _DEFAULT_DATA_ROOT)).expanduser().resolve()
+
+PROCESSED_SITES_DIR = DATA_ROOT / "processed_sites"
+FILTER_DATA_PATH = DATA_ROOT / "Filter Data" / "unified_filter_dataset.pkl"
+ETAD_FACTOR_CONTRIBUTIONS_PATH = DATA_ROOT / "Filter Data" / "ETAD Factor Contributions .csv"
+ETAD_FILTER_ID_PATH = DATA_ROOT / "Filter Data" / "ETAD Filter ID.csv"
 
 # =============================================================================
 # SITE CONFIGURATIONS
