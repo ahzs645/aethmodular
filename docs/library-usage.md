@@ -51,18 +51,18 @@ Run selected notebooks through smoke execution:
 
 ```bash
 uv run python scripts/diagnostics/run_notebook_smoke.py \
-  notebooks/friday_summary_consolidated.ipynb \
-  notebooks/Seasonalclass.ipynb \
-  notebooks/flow_qc_analysis.ipynb \
-  notebooks/map.ipynb \
-  notebooks/meteorology_source_interaction.ipynb
+  notebooks/analysis/meteorology/friday_summary_consolidated.ipynb \
+  notebooks/analysis/meteorology/Seasonalclass.ipynb \
+  notebooks/qc/flow_qc_analysis.ipynb \
+  notebooks/analysis/meteorology/map.ipynb \
+  notebooks/analysis/meteorology/meteorology_source_interaction.ipynb
 ```
 
 Meteorology notebook input files now tracked in:
 - `research/ftir_hips_chem/Weather Data/Meteostat/Addis Ababa daily Average met Data.csv`
 - `research/ftir_hips_chem/Weather Data/Meteostat/master_meteostat_AddisAbaba_63450_2022-12-01_2024-10-01.csv`
 
-`notebooks/meteorology_source_interaction.ipynb` resolves these files from:
+`notebooks/analysis/meteorology/meteorology_source_interaction.ipynb` resolves these files from:
 1. `<AETHMODULAR_DATA_ROOT>/Weather Data/Meteostat/`
 2. `notebooks/` (fallback)
 

@@ -27,11 +27,11 @@ uv run python scripts/diagnostics/run_notebook_smoke.py
 ```
 
 `run_notebook_smoke.py` executes the current portable notebook set:
-- `notebooks/AAARpos.ipynb`
-- `notebooks/ETAD_Aug13.ipynb`
-- `notebooks/ETAD_comprehensive_absorption_analysis.ipynb`
-- `notebooks/filter_data_availability_strip_chart.ipynb`
-- `notebooks/warren_ratio_diagnostics.ipynb`
+- `notebooks/analysis/absorption/AAARpos.ipynb`
+- `notebooks/analysis/absorption/ETAD_Aug13.ipynb`
+- `notebooks/analysis/absorption/ETAD_comprehensive_absorption_analysis.ipynb`
+- `notebooks/analysis/data_availability/filter_data_availability_strip_chart.ipynb`
+- `notebooks/analysis/absorption/warren_ratio_diagnostics.ipynb`
 
 ## Data Root Configuration
 
@@ -69,8 +69,8 @@ Notebook execution (including the new meteorology notebook):
 
 ```bash
 uv run python scripts/diagnostics/run_notebook_smoke.py \
-  notebooks/friday_summary_consolidated.ipynb \
-  notebooks/meteorology_source_interaction.ipynb
+  notebooks/analysis/meteorology/friday_summary_consolidated.ipynb \
+  notebooks/analysis/meteorology/meteorology_source_interaction.ipynb
 ```
 
 ## Repository Layout

@@ -22,11 +22,11 @@ from nbclient.exceptions import CellExecutionError
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_NOTEBOOKS = [
-    "notebooks/AAARpos.ipynb",
-    "notebooks/ETAD_Aug13.ipynb",
-    "notebooks/ETAD_comprehensive_absorption_analysis.ipynb",
-    "notebooks/filter_data_availability_strip_chart.ipynb",
-    "notebooks/warren_ratio_diagnostics.ipynb",
+    "notebooks/analysis/absorption/AAARpos.ipynb",
+    "notebooks/analysis/absorption/ETAD_Aug13.ipynb",
+    "notebooks/analysis/absorption/ETAD_comprehensive_absorption_analysis.ipynb",
+    "notebooks/analysis/data_availability/filter_data_availability_strip_chart.ipynb",
+    "notebooks/analysis/absorption/warren_ratio_diagnostics.ipynb",
 ]
 
 LEGACY_PATTERNS = [
@@ -71,7 +71,12 @@ def resolve_notebooks(all_root: bool, notebooks: List[str]) -> List[Path]:
     if notebooks:
         return [REPO_ROOT / n for n in notebooks]
     if all_root:
-        return sorted((REPO_ROOT / "notebooks").glob("*.ipynb"))
+        notebooks_root = REPO_ROOT / "notebooks"
+        return sorted(
+            p
+            for p in notebooks_root.rglob("*.ipynb")
+            if "archive" not in p.parts
+        )
     return [REPO_ROOT / n for n in DEFAULT_NOTEBOOKS]
 
 
@@ -85,7 +90,7 @@ def main() -> int:
     parser.add_argument(
         "--all-root",
         action="store_true",
-        help="Run all notebooks/*.ipynb (non-archive).",
+        help="Run all notebooks/**/*.ipynb (excluding archive).",
     )
     parser.add_argument(
         "--timeout",

@@ -38,8 +38,8 @@ ruff check src tests
 
 ```bash
 uv run python scripts/diagnostics/run_notebook_smoke.py \
-  notebooks/friday_summary_consolidated.ipynb \
-  notebooks/meteorology_source_interaction.ipynb
+  notebooks/analysis/meteorology/friday_summary_consolidated.ipynb \
+  notebooks/analysis/meteorology/meteorology_source_interaction.ipynb
 ```
 
 Meteorology notebook data files:
