@@ -29,7 +29,7 @@ from pathlib import Path
 from config import (
     SITES, PROCESSED_SITES_DIR, FILTER_DATA_PATH,
     MIN_EC_THRESHOLD, MAC_VALUE, FLOW_FIX_PERIODS,
-    ETAD_FACTOR_CONTRIBUTIONS_PATH
+    ETAD_FACTOR_CONTRIBUTIONS_PATH, ETAD_FILTER_ID_PATH
 )
 
 
@@ -667,6 +667,57 @@ def load_etad_factor_contributions(csv_path=None):
     print(f"Date range: {df['date'].min().date()} to {df['date'].max().date()}")
 
     return df
+
+
+def load_etad_filter_ids(csv_path=None):
+    """
+    Load the ETAD Filter ID mapping CSV.
+
+    Returns DataFrame with columns:
+        Site, Latitude, Longitude, Barcode, FilterId, date, FilterType, LotId, base_filter_id
+    """
+    if csv_path is None:
+        csv_path = ETAD_FILTER_ID_PATH
+
+    df = pd.read_csv(csv_path)
+    df['date'] = pd.to_datetime(df['oldDate'])
+    df = df.drop(columns=['oldDate'])
+
+    # Add base_filter_id (strip -N suffix) for matching to unified dataset
+    df['base_filter_id'] = df['FilterId'].str.replace(r'-\d+$', '', regex=True)
+
+    print(f"ETAD Filter IDs loaded: {len(df)} filters")
+    print(f"Date range: {df['date'].min().date()} to {df['date'].max().date()}")
+
+    return df
+
+
+def load_etad_factors_with_filter_ids(factor_csv_path=None, filter_id_csv_path=None):
+    """
+    Load ETAD factor contributions merged with Filter IDs via oldDate.
+
+    This bridges the factor contributions (which only have dates) to the
+    unified filter dataset (which uses FilterId) through the ETAD Filter ID
+    mapping CSV.
+
+    Join chain:
+        Factor Contributions.oldDate -> Filter ID.oldDate -> FilterId -> base_filter_id
+
+    Returns DataFrame with columns:
+        date, GF1..GF5 (renamed), K_F1..K_F5 (renamed),
+        FilterId, base_filter_id, Barcode, LotId
+    """
+    factors_df = load_etad_factor_contributions(factor_csv_path)
+    filter_ids_df = load_etad_filter_ids(filter_id_csv_path)
+
+    # Merge on date (exact match)
+    merged = pd.merge(factors_df, filter_ids_df[['date', 'FilterId', 'base_filter_id', 'Barcode', 'LotId']],
+                       on='date', how='inner')
+
+    unmatched = len(factors_df) - len(merged)
+    print(f"Merged: {len(merged)} records ({unmatched} factor rows had no matching FilterId)")
+
+    return merged
 
 
 def match_etad_factors(target_df, target_date_col='date',

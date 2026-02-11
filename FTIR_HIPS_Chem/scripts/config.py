@@ -10,7 +10,8 @@ from pathlib import Path
 # =============================================================================
 PROCESSED_SITES_DIR = Path('/Users/ahmadjalil/Github/aethmodular/FTIR_HIPS_Chem/processed_sites')
 FILTER_DATA_PATH = Path('/Users/ahmadjalil/Github/aethmodular/FTIR_HIPS_Chem/Filter Data/unified_filter_dataset.pkl')
-ETAD_FACTOR_CONTRIBUTIONS_PATH = Path('/Users/ahmadjalil/Github/aethmodular/FTIR_HIPS_Chem/ETAD Factor Contributions .csv')
+ETAD_FACTOR_CONTRIBUTIONS_PATH = Path('/Users/ahmadjalil/Github/aethmodular/FTIR_HIPS_Chem/Filter Data/ETAD Factor Contributions .csv')
+ETAD_FILTER_ID_PATH = Path('/Users/ahmadjalil/Github/aethmodular/FTIR_HIPS_Chem/Filter Data/ETAD Filter ID.csv')
 
 # =============================================================================
 # SITE CONFIGURATIONS
