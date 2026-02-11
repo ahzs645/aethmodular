@@ -33,3 +33,15 @@ Optional external site inputs for the pipeline:
 pytest -q
 ruff check src tests
 ```
+
+## 5. Notebook Smoke Checks
+
+```bash
+uv run python scripts/diagnostics/run_notebook_smoke.py \
+  notebooks/friday_summary_consolidated.ipynb \
+  notebooks/meteorology_source_interaction.ipynb
+```
+
+Meteorology notebook data files:
+- `research/ftir_hips_chem/Weather Data/Meteostat/Addis Ababa daily Average met Data.csv`
+- `research/ftir_hips_chem/Weather Data/Meteostat/master_meteostat_AddisAbaba_63450_2022-12-01_2024-10-01.csv`

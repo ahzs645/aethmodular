@@ -4,6 +4,8 @@ Research-first toolkit for ETAD aethalometer and FTIR workflows.
 
 This repository now uses a `pyproject.toml`-based setup (uv-ready), canonical `src.*` imports, and a clearer separation between package code, research assets, and operational scripts.
 
+Detailed usage guide: `docs/library-usage.md`.
+
 ## Quick Start
 
 ### 1. Environment (uv)
@@ -40,6 +42,35 @@ Data-heavy scripts resolve paths from:
 Example:
 ```bash
 export AETHMODULAR_DATA_ROOT=/path/to/your/data/root
+```
+
+Meteorology resources now tracked in:
+- `research/ftir_hips_chem/Weather Data/Meteostat/Addis Ababa daily Average met Data.csv`
+- `research/ftir_hips_chem/Weather Data/Meteostat/master_meteostat_AddisAbaba_63450_2022-12-01_2024-10-01.csv`
+
+## Library Usage
+
+Canonical Python imports use `src.*`:
+
+```bash
+uv run python - <<'PY'
+import src
+import src.core.monitoring
+import src.analysis.aethalometer.smoothening
+from src.config.project_paths import get_project_root, get_data_root, data_path
+
+print("project_root =", get_project_root())
+print("data_root =", get_data_root())
+print("processed_sites =", data_path("processed_sites"))
+PY
+```
+
+Notebook execution (including the new meteorology notebook):
+
+```bash
+uv run python scripts/diagnostics/run_notebook_smoke.py \
+  notebooks/friday_summary_consolidated.ipynb \
+  notebooks/meteorology_source_interaction.ipynb
 ```
 
 ## Repository Layout
