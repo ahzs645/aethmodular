@@ -7,12 +7,7 @@ from unittest.mock import patch, MagicMock
 import tempfile
 import os
 
-# Import modules to test
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
-from data.loaders.database import DatabaseLoader
+from src.data.loaders.database import DatabaseLoader
 
 
 class TestDatabaseLoader:
@@ -141,7 +136,7 @@ class TestDataValidation:
     
     def test_validate_required_columns(self):
         """Test column validation"""
-        from data.processors.validation import validate_columns_exist
+        from src.data.processors.validation import validate_columns_exist
         
         # Test data with required columns
         data = pd.DataFrame({
@@ -159,7 +154,7 @@ class TestDataValidation:
     
     def test_get_valid_data_mask(self):
         """Test valid data mask generation"""
-        from data.processors.validation import get_valid_data_mask
+        from src.data.processors.validation import get_valid_data_mask
         
         data = pd.DataFrame({
             'col1': [1, 2, np.nan, 4],

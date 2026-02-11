@@ -70,19 +70,16 @@ class CMASmoothing(BaseSmoothing):
         """
         n = len(bc_values)
         smoothed_bc = np.full(n, np.nan)
-        half_window = self.window_size // 2
-        
+        left_span = max(1, self.window_size - 1)
+        right_span = max(1, self.window_size // 2)
+
         for i in range(n):
-            # Define window boundaries (centered around point i)
-            start_idx = max(0, i - half_window)
-            end_idx = min(n, i + half_window + 1)
-            
-            # Extract window values
+            # Use a near-centered window with a short forward look-ahead.
+            start_idx = max(0, i - left_span)
+            end_idx = min(n, i + right_span + 1)
             window_values = bc_values[start_idx:end_idx]
-            
-            # Calculate centered moving average
             valid_values = window_values[~np.isnan(window_values)]
             if len(valid_values) > 0:
                 smoothed_bc[i] = np.mean(valid_values)
-        
+
         return smoothed_bc

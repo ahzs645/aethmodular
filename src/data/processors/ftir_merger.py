@@ -4,17 +4,8 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Union
-
-try:
-    from core.base import BaseAnalyzer
-    from core.exceptions import DataValidationError
-except ImportError:
-    # Fallback for when running from different locations
-    import sys
-    from pathlib import Path
-    sys.path.append(str(Path(__file__).parent.parent))
-    from core.base import BaseAnalyzer
-    from core.exceptions import DataValidationError
+from src.core.base import BaseAnalyzer
+from src.core.exceptions import DataValidationError
 
 
 class FTIRMerger(BaseAnalyzer):

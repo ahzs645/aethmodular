@@ -4,8 +4,44 @@ import pandas as pd
 import sqlite3
 from typing import Optional, Dict, Any
 from pathlib import Path
-from core.base import BaseLoader
-from core.exceptions import DataValidationError
+from src.core.base import BaseLoader
+from src.core.exceptions import DataValidationError
+
+
+class DatabaseLoader:
+    """Compatibility loader retained for older tests and scripts."""
+
+    def __init__(self, db_path: str):
+        self.db_path = db_path
+        self.connection = None
+
+    def connect(self):
+        self.connection = sqlite3.connect(self.db_path)
+        return self.connection
+
+    def close(self):
+        if self.connection is not None:
+            self.connection.close()
+            self.connection = None
+
+    def _ensure_connection(self):
+        if self.connection is None:
+            raise ValueError("Database connection not established")
+
+    def load_etad_data(self) -> pd.DataFrame:
+        self._ensure_connection()
+        query = "SELECT * FROM etad_data"
+        return pd.read_sql_query(query, self.connection)
+
+    def load_ftir_data(self) -> pd.DataFrame:
+        self._ensure_connection()
+        query = "SELECT * FROM ftir_data"
+        return pd.read_sql_query(query, self.connection)
+
+    def load_aethalometer_data(self) -> pd.DataFrame:
+        self._ensure_connection()
+        query = "SELECT * FROM aethalometer_data"
+        return pd.read_sql_query(query, self.connection)
 
 class FTIRHIPSLoader(BaseLoader):
     """

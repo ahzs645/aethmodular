@@ -5,7 +5,6 @@ Incorporates all the complex loading logic with fallbacks
 """
 
 import os
-import sys
 import pickle
 import sqlite3
 import pandas as pd
@@ -13,7 +12,7 @@ from pathlib import Path
 from typing import Dict, List, Union, Optional, Any, Tuple
 import warnings
 
-from config.notebook_config import NotebookConfig
+from src.config.notebook_config import NotebookConfig
 
 class EnhancedNotebookLoader:
     """
@@ -37,29 +36,9 @@ class EnhancedNotebookLoader:
         self._setup_modular_system()
     
     def _setup_modular_system(self):
-        """Setup modular system with intelligent path detection"""
+        """Setup modular system."""
         
         print("📦 Setting up modular system...")
-        
-        # Find and add src directory to path
-        current_dir = Path.cwd()
-        
-        # Look for src directory in current, parent, or grandparent directories
-        src_candidates = [
-            current_dir / 'src',
-            current_dir.parent / 'src',
-            current_dir.parent.parent / 'src'
-        ]
-        
-        src_path = None
-        for candidate in src_candidates:
-            if candidate.exists():
-                src_path = str(candidate.resolve())
-                break
-        
-        if src_path and src_path not in sys.path:
-            sys.path.insert(0, src_path)
-            print(f"✅ Added {src_path} to Python path")
         
         # Dictionary to store successfully imported components
         imported_components = {
@@ -70,7 +49,7 @@ class EnhancedNotebookLoader:
         
         # Try importing components with graceful fallbacks
         try:
-            from data.loaders.aethalometer import (
+            from src.data.loaders.aethalometer import (
                 AethalometerPKLLoader, 
                 AethalometerCSVLoader,
                 load_aethalometer_data
@@ -85,21 +64,21 @@ class EnhancedNotebookLoader:
             print(f"⚠️ Aethalometer loaders not available: {e}")
         
         try:
-            from data.loaders.database import FTIRHIPSLoader
+            from src.data.loaders.database import FTIRHIPSLoader
             imported_components['loaders']['FTIRHIPSLoader'] = FTIRHIPSLoader
             print("✅ Database loader imported")
         except ImportError as e:
             print(f"⚠️ Database loader not available: {e}")
         
         try:
-            from utils.plotting import AethalometerPlotter
+            from src.utils.plotting import AethalometerPlotter
             imported_components['utils']['AethalometerPlotter'] = AethalometerPlotter
             print("✅ Plotting utilities imported")
         except ImportError as e:
             print(f"⚠️ Plotting utilities not available: {e}")
         
         try:
-            from config.plotting import setup_plotting_style
+            from src.config.plotting import setup_plotting_style
             setup_plotting_style()
             print("✅ Plotting style configured")
         except ImportError as e:

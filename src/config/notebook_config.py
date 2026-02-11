@@ -9,6 +9,9 @@ from pathlib import Path
 from typing import Dict, Optional, Any
 from dataclasses import dataclass, field
 
+from src.config.project_paths import get_data_root
+
+
 @dataclass
 class NotebookConfig:
     """Configuration container for notebook analysis"""
@@ -54,30 +57,19 @@ class ConfigurationManager:
         """
         
         if base_data_path is None:
-            # Default ETAD data paths
-            base_data_path = "/Users/ahzs645/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University/Research/Grad/UC Davis Ann/NASA MAIA/Data"
+            # Use environment-driven data root; defaults to repo-relative research data.
+            base_data_path = str(get_data_root())
         
         config = NotebookConfig()
         
         # Set ETAD-specific file paths
+        root = Path(base_data_path)
         config.aethalometer_files = {
-            'pkl_data': os.path.join(
-                base_data_path,
-                "Aethelometry Data/Kyan Data/Mergedcleaned and uncleaned MA350 data20250707030704",
-                "df_uncleaned_Jacros_API_and_OG.pkl"
-            ),
-            'csv_data': os.path.join(
-                base_data_path,
-                "Aethelometry Data/Raw",
-                "Jacros_MA350_1-min_2022-2024_Cleaned.csv"
-            )
+            'pkl_data': str(root / "processed_sites" / "df_Addis_Ababa_9am_resampled.pkl"),
+            'csv_data': str(root / "Filter Data" / "unified_filter_dataset.csv"),
         }
-        
-        config.ftir_db_path = os.path.join(
-            base_data_path,
-            "EC-HIPS-Aeth Comparison/Data/Original Data/Combined Database",
-            "spartan_ftir_hips.db"
-        )
+
+        config.ftir_db_path = str(root / "spartan_ftir_hips.db")
         
         return config
     

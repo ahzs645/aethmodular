@@ -9,8 +9,8 @@ from typing import Dict, Optional, Any, List
 import pandas as pd
 import os
 
-from data.qc.pkl_cleaning import PKLDataCleaner, load_and_clean_pkl_data
-from data.loaders.ftir_csv_loader import (
+from src.data.qc.pkl_cleaning import PKLDataCleaner, load_and_clean_pkl_data
+from src.data.loaders.ftir_csv_loader import (
     FTIRCSVLoader, 
     FTIRCSVMerger,
     auto_merge_with_csv,
@@ -346,7 +346,7 @@ class FTIRCSVMixin:
 
 
 # Enhanced NotebookSetup class that includes PKL cleaning and FTIR CSV
-from notebook_utils.setup import NotebookSetup as OriginalNotebookSetup
+from src.notebook_utils.setup import NotebookSetup as OriginalNotebookSetup
 
 class EnhancedNotebookSetup(FTIRCSVMixin, PKLCleaningMixin, OriginalNotebookSetup):
     """

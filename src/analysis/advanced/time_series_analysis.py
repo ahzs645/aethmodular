@@ -41,6 +41,60 @@ class TimeSeriesAnalyzer(BaseAnalyzer):
     
     def __init__(self):
         super().__init__("TimeSeriesAnalyzer")
+
+    def analyze(self, data: pd.DataFrame) -> Dict[str, Any]:
+        """Compatibility analyze entry point."""
+        numeric_columns = [col for col in data.columns if pd.api.types.is_numeric_dtype(data[col])]
+        timestamp_column = "timestamp" if "timestamp" in data.columns else "datetime_local"
+        return self.analyze_complete_timeseries(
+            data=data,
+            value_columns=numeric_columns[:3],
+            timestamp_column=timestamp_column if timestamp_column in data.columns else "",
+            include_decomposition=True,
+            include_forecasting=False,
+        )
+
+    def analyze_time_series(self, series: pd.Series) -> Dict[str, Any]:
+        """Compatibility wrapper expected by legacy tests/notebooks."""
+        clean = series.dropna()
+        if len(clean) < 10:
+            return {"error": "Insufficient data for time series analysis"}
+
+        trend_detector = TrendDetector()
+        seasonal_analyzer = SeasonalAnalyzer()
+
+        trend_result = trend_detector.detect_trend(clean.values, timestamps=clean.index.values)
+        seasonal_result = seasonal_analyzer.analyze_seasonality(clean)
+
+        stationarity = {}
+        try:
+            from statsmodels.tsa.stattools import adfuller
+
+            adf_stat, adf_p, _, _, _, _ = adfuller(clean.values)
+            stationarity["adf"] = {
+                "statistic": float(adf_stat),
+                "p_value": float(adf_p),
+                "is_stationary": adf_p < 0.05,
+            }
+        except Exception:
+            stationarity["adf"] = {"error": "Stationarity test failed"}
+
+        return {
+            "basic_statistics": {
+                "count": int(len(clean)),
+                "mean": float(clean.mean()),
+                "std": float(clean.std()),
+                "min": float(clean.min()),
+                "max": float(clean.max()),
+            },
+            "trend_analysis": {
+                "trend_direction": trend_result.trend_direction,
+                "trend_strength": float(trend_result.trend_strength),
+                "p_value": float(trend_result.p_value),
+            },
+            "seasonality_analysis": seasonal_result,
+            "stationarity_tests": stationarity,
+        }
         
     @monitor_performance()
     @optimize_memory()
@@ -300,6 +354,26 @@ class TrendDetector(BaseAnalyzer):
     
     def __init__(self):
         super().__init__("TrendDetector")
+
+    def analyze(self, data: pd.DataFrame) -> Dict[str, Any]:
+        values = data.select_dtypes(include=[np.number]).iloc[:, 0].values
+        result = self.detect_trend(values)
+        return {
+            "trend_direction": result.trend_direction,
+            "trend_strength": float(result.trend_strength),
+            "p_value": float(result.p_value),
+        }
+
+    def detect_trends(self, series: pd.Series) -> Dict[str, Any]:
+        """Compatibility wrapper expected by legacy tests/notebooks."""
+        result = self.detect_trend(series.dropna().values, timestamps=series.dropna().index.values)
+        return {
+            "trend_detected": result.trend_direction in {"increasing", "decreasing"},
+            "trend_direction": result.trend_direction,
+            "trend_strength": float(result.trend_strength),
+            "slope": float(result.slope),
+            "p_value": float(result.p_value),
+        }
     
     @monitor_performance()
     def detect_trend(self, 
@@ -480,12 +554,16 @@ class SeasonalAnalyzer(BaseAnalyzer):
     
     def __init__(self):
         super().__init__("SeasonalAnalyzer")
+
+    def analyze(self, data: pd.DataFrame) -> Dict[str, Any]:
+        values = data.select_dtypes(include=[np.number]).iloc[:, 0].values
+        return self.analyze_seasonality(values)
     
     @monitor_performance()
     def analyze_seasonality(self, 
                           values: np.ndarray, 
                           timestamps: Optional[np.ndarray] = None,
-                          detect_frequency: bool = True) -> SeasonalResult:
+                          detect_frequency: bool = True) -> Dict[str, Any]:
         """
         Analyze seasonal patterns
         
@@ -503,27 +581,32 @@ class SeasonalAnalyzer(BaseAnalyzer):
         SeasonalResult
             Seasonal analysis results
         """
+        if isinstance(values, pd.Series):
+            if timestamps is None:
+                timestamps = values.index.values
+            values = values.values
+
         if len(values) < 12:  # Need minimum data for seasonal analysis
-            return SeasonalResult(
-                seasonal_pattern='none',
-                seasonal_strength=0.0,
-                peak_periods=[],
-                dominant_frequencies=[],
-                seasonal_decomposition={}
-            )
+            return {
+                "seasonal_pattern": "none",
+                "seasonal_strength": 0.0,
+                "peak_periods": [],
+                "dominant_frequencies": [],
+                "seasonal_components": {},
+            }
         
         # Remove NaN values
         valid_mask = ~np.isnan(values)
         clean_values = values[valid_mask]
         
         if len(clean_values) < 12:
-            return SeasonalResult(
-                seasonal_pattern='none',
-                seasonal_strength=0.0,
-                peak_periods=[],
-                dominant_frequencies=[],
-                seasonal_decomposition={}
-            )
+            return {
+                "seasonal_pattern": "none",
+                "seasonal_strength": 0.0,
+                "peak_periods": [],
+                "dominant_frequencies": [],
+                "seasonal_components": {},
+            }
         
         # Frequency analysis using FFT
         fft_result = self._frequency_analysis(clean_values)
@@ -540,13 +623,13 @@ class SeasonalAnalyzer(BaseAnalyzer):
         # Seasonal decomposition
         decomposition = self._simple_seasonal_decomposition(clean_values)
         
-        return SeasonalResult(
-            seasonal_pattern=seasonal_pattern,
-            seasonal_strength=seasonal_strength,
-            peak_periods=peak_periods.tolist(),
-            dominant_frequencies=fft_result['dominant_frequencies'],
-            seasonal_decomposition=decomposition
-        )
+        return {
+            "seasonal_pattern": seasonal_pattern,
+            "seasonal_strength": float(seasonal_strength),
+            "peak_periods": peak_periods.tolist(),
+            "dominant_frequencies": fft_result["dominant_frequencies"],
+            "seasonal_components": decomposition,
+        }
     
     def _frequency_analysis(self, values: np.ndarray) -> Dict[str, Any]:
         """Analyze frequency components using FFT"""

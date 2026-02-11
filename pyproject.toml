@@ -1,0 +1,60 @@
+[project]
+name = "aethmodular"
+version = "1.0.0"
+description = "Research-first ETAD analysis toolkit for aethalometer and FTIR workflows."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "matplotlib>=3.4.0",
+  "numpy>=1.21.0",
+  "openpyxl>=3.0.0",
+  "pandas>=1.3.0",
+  "pathlib2>=2.3.0",
+  "psutil>=5.8.0",
+  "scikit-learn>=1.0.0",
+  "scipy>=1.7.0",
+  "seaborn>=0.11.0",
+  "statsmodels>=0.12.0",
+  "xlrd>=2.0.0",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.0.0",
+  "ruff>=0.12.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+exclude = [
+  "research",
+  "artifacts",
+  "logs",
+  "src/external/calibration.py",
+  "src/data/qc/example_usage.py",
+  "src/visualization/templates/examples.py",
+]
+
+[tool.ruff.lint]
+select = ["E", "F"]
+ignore = ["E402", "E501", "E722", "F401", "F541", "F841"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/external/calibration.py" = ["E401", "E701", "E711", "E712", "F811"]
+"src/data/qc/pkl_cleaning.py" = ["E712", "F821"]
+"src/data/qc/example_usage.py" = ["F821"]
+"src/visualization/templates/examples.py" = ["F821"]
+"tests/test_quality_analysis.py" = ["F841"]

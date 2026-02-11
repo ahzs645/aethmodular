@@ -1,6 +1,7 @@
 """Memory optimization and batch processing utilities for ETAD analysis"""
 
 import gc
+import logging
 import sys
 import warnings
 from typing import Iterator, List, Dict, Any, Optional, Callable, Union, Tuple
@@ -17,15 +18,27 @@ from dataclasses import dataclass
 from datetime import datetime
 
 try:
-    from ..utils.logging.logger import ETADLogger
-except ImportError:
-    try:
-        from utils.logging.logger import ETADLogger
-    except ImportError:
-        # Create a simple fallback logger
-        import logging
-        logging.basicConfig()
-        ETADLogger = logging.getLogger(__name__)
+    from src.utils.logging.logger import ETADLogger
+except ImportError:  # pragma: no cover - compatibility fallback
+    ETADLogger = None
+
+
+def _resolve_logger(
+    logger: Optional[Union[logging.Logger, "ETADLogger"]],
+    default_name: str,
+) -> logging.Logger:
+    if isinstance(logger, logging.Logger):
+        return logger
+    if logger is None and ETADLogger is not None:
+        return ETADLogger(default_name).get_logger()
+    if ETADLogger is not None and isinstance(logger, ETADLogger):
+        return logger.get_logger()
+    if logger is not None and hasattr(logger, "get_logger"):
+        candidate = logger.get_logger()
+        if isinstance(candidate, logging.Logger):
+            return candidate
+    logging.basicConfig()
+    return logging.getLogger(default_name)
 
 @dataclass
 class MemoryProfile:
@@ -50,8 +63,8 @@ class MemoryProfile:
 class MemoryOptimizer:
     """Optimize memory usage for large dataset analysis"""
     
-    def __init__(self, logger: Optional[ETADLogger] = None):
-        self.logger = logger or ETADLogger("MemoryOptimizer")
+    def __init__(self, logger: Optional[Union[logging.Logger, "ETADLogger"]] = None):
+        self.logger = _resolve_logger(logger, "MemoryOptimizer")
         self._gc_threshold = (700, 10, 10)  # More aggressive GC
         self._original_threshold = gc.get_threshold()
         
@@ -248,10 +261,10 @@ class BatchProcessor:
     
     def __init__(self, 
                  batch_size: int = 10000, 
-                 logger: Optional[ETADLogger] = None,
+                 logger: Optional[Union[logging.Logger, "ETADLogger"]] = None,
                  memory_optimizer: Optional[MemoryOptimizer] = None):
         self.batch_size = batch_size
-        self.logger = logger or ETADLogger("BatchProcessor")
+        self.logger = _resolve_logger(logger, "BatchProcessor")
         self.memory_optimizer = memory_optimizer or MemoryOptimizer(logger)
         
     def process_dataframe_batches(
@@ -426,11 +439,11 @@ class CacheManager:
     def __init__(self, 
                  cache_dir: Optional[Union[str, Path]] = None,
                  max_cache_size: int = 1000,  # MB
-                 logger: Optional[ETADLogger] = None):
+                 logger: Optional[Union[logging.Logger, "ETADLogger"]] = None):
         self.cache_dir = Path(cache_dir) if cache_dir else Path(tempfile.gettempdir()) / "etad_cache"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.max_cache_size = max_cache_size
-        self.logger = logger or ETADLogger("CacheManager")
+        self.logger = _resolve_logger(logger, "CacheManager")
         self._cache_registry: Dict[str, Dict[str, Any]] = {}
         
     def cache_dataframe(self, 

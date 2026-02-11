@@ -5,12 +5,7 @@ import pandas as pd
 import numpy as np
 from unittest.mock import patch
 
-# Import modules to test
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
-from analysis.aethalometer.smoothening import (
+from src.analysis.aethalometer.smoothening import (
     ONASmoothing, CMASmoothing, DEMASmoothing,
     SmoothingFactory, SmoothingComparison, AdaptiveSmoothing
 )

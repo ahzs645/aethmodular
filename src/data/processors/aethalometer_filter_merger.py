@@ -24,8 +24,8 @@ import warnings
 
 # Import your existing loaders (adjust imports based on your project structure)
 try:
-    from data.loaders.aethalometer import load_aethalometer_data
-    from data.loaders.database import FTIRHIPSLoader
+    from src.data.loaders.aethalometer import load_aethalometer_data
+    from src.data.loaders.database import FTIRHIPSLoader
 except ImportError:
     print("Warning: Could not import loaders. Ensure correct path to src modules.")
 

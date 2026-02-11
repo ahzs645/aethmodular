@@ -6,21 +6,8 @@ import pandas as pd
 import pickle
 from typing import Optional, Dict, Any, List
 from pathlib import Path
-
-try:
-    from ...core.base import BaseLoader
-    from ...core.exceptions import DataValidationError
-except ImportError:
-    try:
-        from core.base import BaseLoader
-        from core.exceptions import DataValidationError
-    except ImportError:
-        # Fallback for when running from different locations
-        import sys
-        from pathlib import Path
-        sys.path.append(str(Path(__file__).parent.parent))
-        from core.base import BaseLoader
-        from core.exceptions import DataValidationError
+from src.core.base import BaseLoader
+from src.core.exceptions import DataValidationError
 
 class AethalometerPKLLoader(BaseLoader):
     """

@@ -1,28 +1,45 @@
 """Performance monitoring and error handling utilities for ETAD analysis"""
 
-import time
-import psutil
 import functools
-import traceback
 import logging
+import time
+import traceback
 from contextlib import contextmanager
-from typing import Dict, Any, Optional, Callable, List, Tuple
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-import pandas as pd
+from datetime import datetime
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
 import numpy as np
-from pathlib import Path
+import pandas as pd
+import psutil
 
 try:
     from ..utils.logging.logger import ETADLogger
-except ImportError:
-    try:
-        from utils.logging.logger import ETADLogger
-    except ImportError:
-        # Create a simple fallback logger
-        import logging
-        logging.basicConfig()
-        ETADLogger = logging.getLogger(__name__)
+except ImportError:  # pragma: no cover - compatibility fallback
+    ETADLogger = None
+
+
+def _resolve_logger(
+    logger: Optional[Union[logging.Logger, "ETADLogger"]],
+    default_name: str,
+) -> logging.Logger:
+    """Normalize logger inputs to a standard logging.Logger instance."""
+    if isinstance(logger, logging.Logger):
+        return logger
+
+    if logger is None and ETADLogger is not None:
+        return ETADLogger(default_name).get_logger()
+
+    if ETADLogger is not None and isinstance(logger, ETADLogger):
+        return logger.get_logger()
+
+    if logger is not None and hasattr(logger, "get_logger"):
+        candidate = logger.get_logger()
+        if isinstance(candidate, logging.Logger):
+            return candidate
+
+    logging.basicConfig()
+    return logging.getLogger(default_name)
 
 @dataclass
 class PerformanceMetrics:
@@ -54,10 +71,16 @@ class PerformanceMetrics:
 class PerformanceMonitor:
     """Monitor performance metrics for ETAD analysis functions"""
     
-    def __init__(self, logger: Optional[ETADLogger] = None):
-        self.logger = logger or ETADLogger("PerformanceMonitor")
+    def __init__(self, logger: Optional[Union[logging.Logger, "ETADLogger"]] = None):
+        self.logger = _resolve_logger(logger, "PerformanceMonitor")
         self.metrics_history: List[PerformanceMetrics] = []
         self.active_monitors: Dict[str, Dict[str, Any]] = {}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return False
         
     def monitor(self, include_memory: bool = True, include_cpu: bool = True):
         """
@@ -96,7 +119,7 @@ class PerformanceMonitor:
         if include_memory:
             initial_memory = process.memory_info().rss / 1024 / 1024  # MB
         if include_cpu:
-            initial_cpu = process.cpu_percent()
+            process.cpu_percent()
         
         peak_memory = initial_memory if include_memory else 0.0
         data_size = 0
@@ -109,6 +132,11 @@ class PerformanceMonitor:
                 data_size += arg.size
             elif isinstance(arg, (list, tuple)):
                 data_size += len(arg)
+            elif isinstance(arg, int) and data_size == 0:
+                data_size = arg
+
+        if data_size == 0 and isinstance(kwargs.get("data_size"), int):
+            data_size = kwargs["data_size"]
         
         try:
             # Execute function
@@ -250,8 +278,8 @@ class PerformanceMonitor:
 class ErrorHandler:
     """Centralized error handling for ETAD analysis"""
     
-    def __init__(self, logger: Optional[ETADLogger] = None):
-        self.logger = logger or ETADLogger("ErrorHandler")
+    def __init__(self, logger: Optional[Union[logging.Logger, "ETADLogger"]] = None):
+        self.logger = _resolve_logger(logger, "ErrorHandler")
         self.error_counts: Dict[str, int] = {}
         self.error_history: List[Dict[str, Any]] = []
         
@@ -406,8 +434,8 @@ class ErrorHandler:
 class SystemMonitor:
     """Monitor system resources during analysis"""
     
-    def __init__(self, logger: Optional[ETADLogger] = None):
-        self.logger = logger or ETADLogger("SystemMonitor")
+    def __init__(self, logger: Optional[Union[logging.Logger, "ETADLogger"]] = None):
+        self.logger = _resolve_logger(logger, "SystemMonitor")
         self.monitoring = False
         
     @contextmanager
@@ -502,6 +530,62 @@ error_handler = ErrorHandler()
 system_monitor = SystemMonitor()
 
 # Convenience decorators
-monitor_performance = performance_monitor.monitor
+def monitor_performance(func: Optional[Callable] = None, **kwargs):
+    """
+    Monitor decorator that supports both forms:
+    - @monitor_performance
+    - @monitor_performance(include_memory=False)
+    """
+    if func is not None and callable(func):
+        return performance_monitor.monitor(**kwargs)(func)
+    return performance_monitor.monitor(**kwargs)
+
+
+def handle_errors(
+    func: Optional[Callable] = None,
+    *,
+    reraise: bool = True,
+    default_value: Any = None,
+):
+    """
+    Error-handling decorator that supports both forms:
+    - @handle_errors
+    - @handle_errors(reraise=False, default_value={})
+    """
+    def decorator(target: Callable) -> Callable:
+        @functools.wraps(target)
+        def wrapper(*args, **kwargs):
+            try:
+                return target(*args, **kwargs)
+            except Exception as exc:
+                error_handler.error_counts[type(exc).__name__] = (
+                    error_handler.error_counts.get(type(exc).__name__, 0) + 1
+                )
+                error_handler.error_history.append(
+                    {
+                        "timestamp": datetime.now().isoformat(),
+                        "function_name": target.__name__,
+                        "module_name": target.__module__,
+                        "error_type": type(exc).__name__,
+                        "error_message": str(exc),
+                        "traceback": traceback.format_exc(),
+                    }
+                )
+                error_handler.logger.exception(
+                    "Unhandled error in %s.%s",
+                    target.__module__,
+                    target.__name__,
+                )
+                if reraise:
+                    raise
+                return default_value
+
+        return wrapper
+
+    if func is not None and callable(func):
+        return decorator(func)
+    return decorator
+
+
 handle_with_retry = error_handler.handle_with_retry
 graceful_degradation = error_handler.graceful_degradation

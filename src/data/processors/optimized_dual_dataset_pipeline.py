@@ -280,7 +280,7 @@ class OptimizedDualDatasetProcessor:
         
         # Import the enhanced processing function
         try:
-            from data.qc.enhanced_pkl_processing import process_pkl_data_enhanced
+            from src.data.qc.enhanced_pkl_processing import process_pkl_data_enhanced
         except ImportError:
             print("   ⚠️ Enhanced PKL processing not available, using basic cleaning...")
             return self._basic_cleaning(raw_data)

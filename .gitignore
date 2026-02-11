@@ -50,6 +50,7 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+.ruff_cache/
 
 # Translations
 *.mo
@@ -132,6 +133,7 @@ dmypy.json
 .DS_Store
 .AppleDouble
 .LSOverride
+**/.DS_Store
 
 # IDE
 .vscode/
@@ -143,6 +145,9 @@ dmypy.json
 # Project specific
 logs/
 *.log
+artifacts/
+research/**/output/
+output.png
 
 pkl_data_cleaned_ethiopia.pkl
 pkl_data_cleaned_ethiopia.csv

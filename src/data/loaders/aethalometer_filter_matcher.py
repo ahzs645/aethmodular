@@ -19,7 +19,7 @@ Usage:
 import pandas as pd
 import numpy as np
 import os
-import sys
+import importlib.util
 from typing import Dict, List, Optional, Tuple, Union
 from datetime import datetime
 import warnings
@@ -52,14 +52,19 @@ class AethalometerFilterMatcher:
     def _setup_filter_loader(self):
         """Setup the filter data loader."""
         try:
-            # Try to import the data loader module
-            # Add the FTIR_HIPS_Chem directory to path if needed
             filter_dir = os.path.dirname(self.filter_db_path)
             parent_dir = os.path.dirname(filter_dir)
-            if parent_dir not in sys.path:
-                sys.path.append(parent_dir)
-            
-            from data_loader_module import load_filter_database
+            loader_module_path = os.path.join(parent_dir, "data_loader_module.py")
+            if not os.path.exists(loader_module_path):
+                raise FileNotFoundError(f"data_loader_module.py not found at {loader_module_path}")
+
+            spec = importlib.util.spec_from_file_location("data_loader_module", loader_module_path)
+            if spec is None or spec.loader is None:
+                raise ImportError(f"Could not load module spec for {loader_module_path}")
+
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            load_filter_database = module.load_filter_database
             
             if os.path.exists(self.filter_db_path):
                 self.filter_loader = load_filter_database(self.filter_db_path)

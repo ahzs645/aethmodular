@@ -5,37 +5,8 @@ Source Apportionment Analyzer for Aethalometer Data
 import pandas as pd
 import numpy as np
 from typing import Dict, Any, Optional, Tuple, List
-import sys
-import os
-
-# Add the src directory to the path for relative imports
-current_dir = os.path.dirname(os.path.abspath(__file__))
-src_dir = os.path.join(current_dir, '..', '..')
-if src_dir not in sys.path:
-    sys.path.insert(0, src_dir)
-
-try:
-    from core.base import BaseAnalyzer
-    from core.exceptions import DataValidationError
-except ImportError:
-    # Fallback for when core modules aren't available
-    from abc import ABC, abstractmethod
-    
-    class BaseAnalyzer(ABC):
-        """Base class for all analyzers"""
-        
-        def __init__(self, name: str = "Analyzer"):
-            self.name = name
-            self.results: Dict[str, Any] = {}
-        
-        @abstractmethod
-        def analyze(self, data: pd.DataFrame) -> Dict[str, Any]:
-            """Perform analysis on data"""
-            pass
-    
-    class DataValidationError(Exception):
-        """Custom exception for data validation errors"""
-        pass
+from src.core.base import BaseAnalyzer
+from src.core.exceptions import DataValidationError
 
 class SourceApportionmentAnalyzer(BaseAnalyzer):
     """

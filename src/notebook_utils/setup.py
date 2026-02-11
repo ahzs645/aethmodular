@@ -4,7 +4,6 @@ Simplified notebook setup utility
 Replaces all the complex setup code in notebooks
 """
 
-import sys
 import os
 import warnings
 from pathlib import Path
@@ -18,12 +17,14 @@ import seaborn as sns
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore')
 
-# Import our enhanced modules - use absolute imports since we're adding src to sys.path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from config.notebook_config import NotebookConfig, ConfigurationManager, get_default_etad_config, get_validated_config
-from data.loaders.enhanced_notebook_loader import EnhancedNotebookLoader
-from analysis.quality.data_quality_assessment import MultiDatasetQualityAssessor
+from src.config.notebook_config import (
+    NotebookConfig,
+    ConfigurationManager,
+    get_default_etad_config,
+    get_validated_config,
+)
+from src.data.loaders.enhanced_notebook_loader import EnhancedNotebookLoader
+from src.analysis.quality.data_quality_assessment import MultiDatasetQualityAssessor
 
 class NotebookSetup:
     """
@@ -65,7 +66,7 @@ class NotebookSetup:
         
         try:
             # Try to import and use modular plotting setup
-            from config.plotting import setup_plotting_style
+            from src.config.plotting import setup_plotting_style
             setup_plotting_style()
             print("✅ Advanced plotting style configured")
         except ImportError:

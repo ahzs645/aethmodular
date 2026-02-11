@@ -3,8 +3,8 @@
 import pandas as pd
 import numpy as np
 from typing import List, Dict, Optional, Tuple
-from core.exceptions import DataValidationError, InsufficientDataError
-from config.settings import MIN_SAMPLES_FOR_ANALYSIS
+from src.core.exceptions import DataValidationError, InsufficientDataError
+from src.config.settings import MIN_SAMPLES_FOR_ANALYSIS
 
 def validate_columns_exist(df: pd.DataFrame, required_columns: List[str]) -> None:
     """

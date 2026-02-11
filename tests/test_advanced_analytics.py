@@ -4,11 +4,6 @@ import pytest
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-import sys
-import os
-
-# Add src to path for testing
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 try:
     from src.analysis.advanced.statistical_analysis import (

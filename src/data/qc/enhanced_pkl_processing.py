@@ -303,14 +303,8 @@ class EnhancedPKLProcessor:
                 from ..processors.site_corrections import SiteCorrections
                 corrector = SiteCorrections(site_code=self.site_code, verbose=self.verbose)
             except ImportError:
-                try:
-                    from data.processors.site_corrections import SiteCorrections
-                    corrector = SiteCorrections(site_code=self.site_code, verbose=self.verbose)
-                except ImportError:
-                    import sys
-                    sys.path.append('src')
-                    from data.processors.site_corrections import SiteCorrections
-                    corrector = SiteCorrections(site_code=self.site_code, verbose=self.verbose)
+                from src.data.processors.site_corrections import SiteCorrections
+                corrector = SiteCorrections(site_code=self.site_code, verbose=self.verbose)
             
             if corrector is None:
                 raise ImportError("Could not import SiteCorrections")

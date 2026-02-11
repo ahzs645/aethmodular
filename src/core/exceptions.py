@@ -1,6 +1,6 @@
 """Custom exceptions"""
 
-class AnalysisError(Exception):
+class AnalysisError(ValueError):
     """Base exception for analysis errors"""
     pass
 

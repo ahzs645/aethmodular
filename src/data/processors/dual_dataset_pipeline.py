@@ -105,7 +105,7 @@ class DualDatasetProcessor:
         
         # Import the enhanced processing function
         try:
-            from data.qc.enhanced_pkl_processing import process_pkl_data_enhanced
+            from src.data.qc.enhanced_pkl_processing import process_pkl_data_enhanced
         except ImportError:
             print("⚠️ Enhanced PKL processing not available, using basic cleaning...")
             return self._basic_cleaning(raw_data)
@@ -318,7 +318,7 @@ class DualDatasetProcessor:
         
         # Try to use modular DEMA implementation
         try:
-            from data.qc.enhanced_pkl_processing import EnhancedPKLProcessor
+            from src.data.qc.enhanced_pkl_processing import EnhancedPKLProcessor
             
             processor = EnhancedPKLProcessor(verbose=False)
             smoothed_data = processor.apply_dema_smoothing(data)

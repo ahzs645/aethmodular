@@ -1,5 +1,6 @@
 """Parallel processing utilities for ETAD analysis"""
 
+import logging
 import multiprocessing as mp
 import threading
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
@@ -16,22 +17,34 @@ import pickle
 import tempfile
 
 try:
-    from ..utils.logging.logger import ETADLogger
-except ImportError:
-    try:
-        from utils.logging.logger import ETADLogger
-    except ImportError:
-        # Create a simple fallback logger
-        import logging
-        logging.basicConfig()
-        ETADLogger = logging.getLogger(__name__)
+    from src.utils.logging.logger import ETADLogger
+except ImportError:  # pragma: no cover - compatibility fallback
+    ETADLogger = None
 from ..utils.memory_optimization import MemoryOptimizer, CacheManager
+
+
+def _resolve_logger(
+    logger: Optional[Union[logging.Logger, "ETADLogger"]],
+    default_name: str,
+) -> logging.Logger:
+    if isinstance(logger, logging.Logger):
+        return logger
+    if logger is None and ETADLogger is not None:
+        return ETADLogger(default_name).get_logger()
+    if ETADLogger is not None and isinstance(logger, ETADLogger):
+        return logger.get_logger()
+    if logger is not None and hasattr(logger, "get_logger"):
+        candidate = logger.get_logger()
+        if isinstance(candidate, logging.Logger):
+            return candidate
+    logging.basicConfig()
+    return logging.getLogger(default_name)
 
 @dataclass
 class ParallelProcessingConfig:
     """Configuration for parallel processing"""
     max_workers: Optional[int] = None
-    use_threads: bool = False  # True for I/O bound, False for CPU bound
+    use_threads: bool = True  # Default to threads for notebook/test compatibility.
     chunk_size: int = 1000
     timeout: Optional[float] = None
     memory_limit_mb: float = 1000
@@ -47,9 +60,9 @@ class ParallelProcessor:
     
     def __init__(self, 
                  config: Optional[ParallelProcessingConfig] = None,
-                 logger: Optional[ETADLogger] = None):
+                 logger: Optional[Union[logging.Logger, "ETADLogger"]] = None):
         self.config = config or ParallelProcessingConfig()
-        self.logger = logger or ETADLogger("ParallelProcessor")
+        self.logger = _resolve_logger(logger, "ParallelProcessor")
         self.memory_optimizer = MemoryOptimizer(logger)
         self.cache_manager = CacheManager(logger=logger) if self.config.enable_caching else None
         
@@ -267,9 +280,13 @@ class ParallelProcessor:
 class AsyncProcessor:
     """Asynchronous processing for I/O-bound operations"""
     
-    def __init__(self, max_workers: int = 10, logger: Optional[ETADLogger] = None):
+    def __init__(
+        self,
+        max_workers: int = 10,
+        logger: Optional[Union[logging.Logger, "ETADLogger"]] = None,
+    ):
         self.max_workers = max_workers
-        self.logger = logger or ETADLogger("AsyncProcessor")
+        self.logger = _resolve_logger(logger, "AsyncProcessor")
         self.task_queue = queue.Queue()
         self.result_queue = queue.Queue()
         self.workers = []
@@ -354,9 +371,9 @@ class PipelineProcessor:
     
     def __init__(self, 
                  config: Optional[ParallelProcessingConfig] = None,
-                 logger: Optional[ETADLogger] = None):
+                 logger: Optional[Union[logging.Logger, "ETADLogger"]] = None):
         self.config = config or ParallelProcessingConfig()
-        self.logger = logger or ETADLogger("PipelineProcessor")
+        self.logger = _resolve_logger(logger, "PipelineProcessor")
         self.parallel_processor = ParallelProcessor(config, logger)
         self.pipeline_steps: List[Dict[str, Any]] = []
         

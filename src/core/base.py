@@ -1,20 +1,18 @@
-"""Base classes and interfaces"""
+"""Base classes and interfaces."""
 
-from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Any, Dict
 import pandas as pd
 
-class BaseAnalyzer(ABC):
+class BaseAnalyzer:
     """Base class for all analyzers"""
     
     def __init__(self, name: str):
         self.name = name
         self.results: Dict[str, Any] = {}
     
-    @abstractmethod
     def analyze(self, data: pd.DataFrame) -> Dict[str, Any]:
         """Perform analysis on data"""
-        pass
+        raise NotImplementedError("Subclasses should implement analyze()")
     
     def validate_input(self, data: pd.DataFrame, required_columns: list) -> None:
         """Validate input data"""
@@ -22,10 +20,9 @@ class BaseAnalyzer(ABC):
         if missing:
             raise ValueError(f"{self.name}: Missing columns {missing}")
 
-class BaseLoader(ABC):
+class BaseLoader:
     """Base class for all data loaders"""
     
-    @abstractmethod
     def load(self, source: str) -> pd.DataFrame:
         """Load data from source"""
-        pass
+        raise NotImplementedError("Subclasses should implement load()")

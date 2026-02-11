@@ -15,8 +15,8 @@ if "csv_reader" not in dir():
 #
 
 ### import all 
-def set_up_environment(aethpy_path = '/Users/kyan/Desktop/aethpy/src'):
-	import os, sys, re
+def set_up_environment(aethpy_path=None):
+	import os, re
 	from functools import reduce
 
 	import pandas as pd
@@ -27,11 +27,11 @@ def set_up_environment(aethpy_path = '/Users/kyan/Desktop/aethpy/src'):
 	pio.renderers.default = "vscode"
 	import matplotlib.pyplot as plt
 
-	## Loop through aethpy libraries and add them to the system path
-	for internal_lib in [aethpy_path]:
-		# If aethpy library is not your system path, add it
-		if internal_lib not in sys.path:
-			sys.path.append(internal_lib)
+	# Keep path configuration explicit and environment-driven.
+	if aethpy_path is None:
+		aethpy_path = os.environ.get("AETHPY_SRC", "")
+	if aethpy_path:
+		os.environ["AETHPY_SRC"] = aethpy_path
 	return
 
 # import all the data from a directory assuming QAQC type formatting
