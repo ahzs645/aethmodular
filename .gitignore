@@ -154,3 +154,6 @@ pkl_data_cleaned_ethiopia.csv
 aethalometer_ftir_merged_etad_9am.csv
 aethalometer_ftir_merged_etad_9am.pkl
 notebooks/processed_data_csv_optimized
+
+# Large data files (downloaded from Google Drive)
+data/
