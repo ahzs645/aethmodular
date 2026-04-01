@@ -47,6 +47,12 @@ EXCLUDED_SAMPLES = {
             'aeth_bc_approx': 9500,
             'reason': 'High aethalometer (~9500) with low FTIR EC (~2500) - measurement issue'
         },
+        {
+            'date': '2024-06-21',
+            'filter_id': 'INDH-0172-4',
+            'filter_ec_approx': 60640,  # ng/m3 — 5x higher than any other Delhi point
+            'reason': 'Extreme FTIR EC outlier (~60.6 ug/m3) - likely contamination or mislabeled sample'
+        },
     ],
     'JPL': [
         {
@@ -81,9 +87,10 @@ MANUAL_OUTLIERS = {
         ]
     },
     'Delhi': {
-        'description': 'Remove 2 points with high aethalometer but low FTIR EC',
+        'description': 'Remove high aeth/low EC mismatches and extreme EC outliers',
         'remove_criteria': [
-            {'type': 'high_aeth_low_ec', 'aeth_bc_min': 8000, 'filter_ec_max': 3000}
+            {'type': 'high_aeth_low_ec', 'aeth_bc_min': 8000, 'filter_ec_max': 3000},
+            {'type': 'high_ec', 'filter_ec_min': 20000}  # 20 ug/m3 in ng/m3 — catches INDH-0172-4
         ]
     },
     'JPL': {
@@ -212,6 +219,17 @@ def apply_threshold_flags(matched_df, site_name):
             mask = (matched_df['aeth_bc'] > aeth_min) & (matched_df['filter_ec'] > ec_min)
             matched_df.loc[mask, 'is_outlier'] = True
             matched_df.loc[mask, 'outlier_reason'] += f'high_both; '
+
+        elif ctype == 'high_ec':
+            threshold = criteria.get('filter_ec_min', np.inf)
+            mask = matched_df['filter_ec'] > threshold
+            matched_df.loc[mask, 'is_outlier'] = True
+            matched_df.loc[mask, 'outlier_reason'] += f'high_ec(>{threshold}); '
+
+        elif ctype == 'negative_ec':
+            mask = matched_df['filter_ec'] < 0
+            matched_df.loc[mask, 'is_outlier'] = True
+            matched_df.loc[mask, 'outlier_reason'] += 'negative_ec; '
 
         elif ctype == 'high_either':
             aeth_min = criteria.get('aeth_bc_min', np.inf)
