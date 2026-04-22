@@ -24,10 +24,48 @@ Usage:
 import sys
 from pathlib import Path
 
+import matplotlib.pyplot as _plt
+
 # Add parent directory to path for config import
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import SITES
+
+
+def apply_default_style():
+    """
+    Apply the library's default plot style: white background, subtle grid.
+
+    This matches the clean look used in Analysis_Tasks_Jan2025.ipynb — pure
+    matplotlib defaults for axes/figure facecolor so plots print and publish
+    cleanly. We explicitly reset rather than relying on the user not having
+    called ``plt.style.use('seaborn-v0_8-darkgrid')`` first.
+
+    Users can override after import:
+
+        import matplotlib.pyplot as plt
+        plt.style.use('ggplot')   # or whatever you want
+
+    Or re-apply at any point:
+
+        from plotting import apply_default_style
+        apply_default_style()
+    """
+    _plt.rcParams.update({
+        'axes.facecolor':   'white',
+        'figure.facecolor': 'white',
+        'savefig.facecolor':'white',
+        'axes.edgecolor':   '#333333',
+        'axes.grid':         True,
+        'grid.color':       '#CCCCCC',
+        'grid.alpha':        0.5,
+        'grid.linestyle':   '-',
+        'grid.linewidth':    0.5,
+    })
+
+
+# Apply on import so any downstream plotting inherits white backgrounds
+apply_default_style()
 
 
 class PlotConfig:
@@ -202,6 +240,7 @@ from .utils import calculate_regression_stats
 
 __all__ = [
     'PlotConfig',
+    'apply_default_style',
     'resolve_sites',
     'resolve_layout',
     'utils',

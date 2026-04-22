@@ -63,8 +63,9 @@ Example Notebook Cell:
         plot_smooth_raw_distribution
     )
 
-    # Configure matplotlib
-    plt.style.use('seaborn-v0_8-darkgrid')
+    # Configure matplotlib — use default (white background) like
+    # Analysis_Tasks_Jan2025.ipynb. Do NOT call plt.style.use('seaborn-v0_8-darkgrid');
+    # that gives a grey axes background which doesn't print/publish well.
     plt.rcParams['figure.figsize'] = (12, 6)
     plt.rcParams['font.size'] = 10
 

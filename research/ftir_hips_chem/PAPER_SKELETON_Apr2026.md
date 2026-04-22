@@ -8,11 +8,11 @@
 
 ## One-Sentence Paper Claim
 
-Across Beijing, Delhi, JPL/Pasadena, and Addis Ababa, the MicroAeth signal is broadly interpretable across sites, but Addis Ababa shows a persistent site-specific anomaly that is not removed by iron splitting or seasonal splitting and therefore requires explicit interpretation limits.
+Across Beijing, Delhi, JPL/Pasadena, and Addis Ababa, the MicroAeth and FTIR EC signals are broadly interpretable across sites, but Addis Ababa shows a persistent HIPS-specific anomaly that is not removed by iron, dust, seasonality, blanks, or simple volume correction; the remaining explanation is an extreme HIPS/filter-loading regime that requires explicit interpretation limits.
 
 ## Short Abstract Skeleton
 
-We compared HIPS, FTIR EC, and MicroAeth black carbon measurements across four SPARTAN sites spanning low- and high-concentration regimes. The clearest cross-site pattern is that Addis Ababa shows a compressed optical relationship and a persistent intercept that is not reproduced by Delhi, Beijing, or JPL/Pasadena. Iron-based and seasonal stratifications do not remove this anomaly, while AERONET and minute-resolution MicroAeth data help define the atmospheric and instrument-context limits of interpretation. These results support a practical framing: MicroAeth data remain useful across sites, but Addis Ababa requires site-specific caution rather than a generic calibration assumption.
+We compared HIPS, FTIR EC, and MicroAeth black carbon measurements across four SPARTAN sites spanning low- and high-concentration regimes. The clearest cross-site pattern is that Addis Ababa shows a compressed HIPS relationship and a persistent intercept that is not reproduced by Delhi, Beijing, or JPL/Pasadena. Iron-based, seasonal, dust, blank, and volume-related tests do not remove this anomaly. Addis instead occupies an extreme HIPS absorption and filter-loading regime. A supporting IMPROVE high-`fAbs` comparison shows that ETAD-like absorption values exist in IMPROVE but are rare, making this regime a boundary case rather than routine network behavior. These results support a practical framing: optical and thermal EC comparisons remain useful across sites, but Addis Ababa requires site-specific caution rather than a generic calibration assumption.
 
 ## Results-First Figure Order
 
@@ -47,6 +47,12 @@ Core message:
 AERONET adds column context and surface-column coupling information, but it is supporting evidence rather than the primary proof of the anomaly.
 
 ### Figure 6
+IMPROVE high-`fAbs` comparison.
+
+Core message:
+ETAD/Addis-like HIPS absorption values are uncommon but not nonexistent in IMPROVE. The current full FED pull gives 207 ETAD-range samples and only 5 strict `fAbs >= 70` samples, so this figure supports the claim that Addis sits in a rare HIPS regime while showing that strict high-tail IMPROVE data are too sparse to close the mechanism fork alone.
+
+### Figure 7
 Minute-resolution aethalometer diagnostics.
 
 Core message:
@@ -78,6 +84,9 @@ Describe minute-resolution data handling, negative-value removal, smoothing choi
 
 ### 2.4 Stratified Tests
 Briefly describe the iron split, seasonal split, and AERONET support analyses.
+
+### 2.5 IMPROVE High-Fabs Comparison
+Describe the FED pull, parser, positive EC + fAbs filtering, ETAD-like `fAbs` range, strict high-tail threshold, OLS/through-origin MAC/bootstrap summaries, site/date counts, and loading sensitivity using IMPROVE collection-area assumptions.
 
 ## 3. Results
 
@@ -116,9 +125,16 @@ Use Figure 5.
 Paragraph goal:
 Frame AERONET as a surface-column context section that helps interpret coupling and dust-related hypotheses without replacing the core method-comparison results.
 
-## 3.6 High-Resolution Diagnostic Limits
+## 3.6 IMPROVE High-Fabs Boundary Test
 
 Use Figure 6.
+
+Paragraph goal:
+Show that IMPROVE has a small number of ETAD-like HIPS absorption samples, including a very small strict high-tail group. Emphasize that selecting rows by high `fAbs` creates a response-truncation artifact, so the figure is strongest as a regime-boundary test rather than a definitive regression comparison. Loading-matched IMPROVE samples behave more normally than the fAbs-selected tail, suggesting that high EC loading alone does not fully reproduce the Addis pattern.
+
+## 3.7 High-Resolution Diagnostic Limits
+
+Use Figure 7.
 
 Paragraph goal:
 Show that Addis has stronger wavelength stacking and unusual smoothness relative to Beijing and Delhi, which raises data-quality and processing questions that matter for interpretation.
@@ -135,7 +151,10 @@ Explain why Delhi matters. It prevents a simplistic high-concentration explanati
 Discuss what has been ruled out. Iron and seasonality are useful negative tests because they reduce the number of plausible explanations without resolving the anomaly.
 
 ### Paragraph 4
-Discuss what remains unresolved. The Addis anomaly may reflect a combination of site-specific atmospheric context and instrument or processing behavior, especially given the wavelength stacking and smoothing questions.
+Discuss the IMPROVE fork. The full FED pull shows ETAD-like HIPS absorption values are a rare tail in IMPROVE, but the strict high-tail sample count is too small for a final slope/intercept conclusion. This strengthens the argument that Addis occupies an extreme HIPS regime while leaving open whether the failure mode is generic high-loading HIPS/MAC behavior or SPARTAN/Addis-specific filter/instrument behavior.
+
+### Paragraph 5
+Discuss what remains unresolved. The Addis anomaly may reflect a combination of site-specific atmospheric context and instrument or processing behavior, especially given the wavelength stacking, extreme HIPS loading, and unresolved SPARTAN support-screen/pixelation parameters.
 
 ## 5. Conclusion
 
@@ -146,13 +165,15 @@ MicroAeth measurements can be compared productively across sites, but Addis Abab
 
 ## Items Still Outside the Repo
 
-- Direct clarification from Sina on the Addis correction pipeline and wavelength stacking.
-- Direct clarification from Warren on HIPS-specific interpretation of the persistent Addis intercept.
+- Direct clarification from Sina/Cena on the Addis correction pipeline, wavelength stacking, and what calibration failure modes could produce intercept plus compression.
+- Direct clarification from Warren on HIPS-specific interpretation of the persistent Addis intercept and the exact meaning of pixelation alpha.
+- Direct clarification from SPARTAN / Christopher Ockfort on support-screen hole fraction H, mesh geometry, and any observed HIPS nonlinearity on heavily loaded SPARTAN PTFE filters.
 - Final decision on whether the paper framing should emphasize MicroAeth performance first or HIPS/FTIR disagreement first.
 
 ## Immediate Writing Order
 
 1. Write the Results section first using Figures 1–4.
 2. Add the AERONET support section after the cross-site story is stable.
-3. Add the diagnostics section only after the main argument is concise.
-4. Write the Introduction last, once the paper framing is fixed.
+3. Add the IMPROVE high-`fAbs` boundary-test section before final diagnostics.
+4. Add the diagnostics section only after the main argument is concise.
+5. Write the Introduction last, once the paper framing is fixed.

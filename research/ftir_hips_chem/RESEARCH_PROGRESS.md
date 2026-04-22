@@ -1,7 +1,7 @@
 # Research Progress — Multi-Site Black Carbon Analysis
 
-**Last Updated:** April 1, 2026
-**Meetings Covered:** Jan 7 – Mar 18, 2026 (10 meetings)
+**Last Updated:** April 22, 2026
+**Meetings Covered:** Jan 7 – Apr 14, 2026 (11 meetings)
 **Branch:** `claude/review-research-progress-4qorl`
 
 ---
@@ -15,8 +15,32 @@ This document tracks all research progress, findings, and action items across 10
 **"Three sites work well; Addis is anomalous; here's what we tried to explain it."**
 
 - Beijing + JPL (low concentration): HIPS and FTIR EC agree nearly perfectly (slope ≈ 1.0, MAC = 10)
-- Delhi (high concentration): Also works well, confirming the anomaly is site-specific, not concentration-dependent
-- Addis Ababa: Two co-occurring problems — large intercept (~2 µg/m³) and compressed HIPS range — with no identified physical mechanism
+- Delhi (high concentration): Also works better than Addis, confirming the anomaly is not explained by concentration alone
+- Addis Ababa: Two co-occurring problems — large intercept and compressed HIPS range — now framed as an extreme HIPS/filter-loading regime rather than an iron, dust, season, blank, or simple volume artifact
+
+### April 14 Meeting Update: IMPROVE High-Fabs Fork
+
+Ann's key clarification was that the next real test is not another Addis-only exclusion test. The deciding comparison is whether IMPROVE samples occupying ETAD/Addis-like HIPS absorption values also show a distorted `fAbs` vs EC relationship.
+
+Current local result from `improve_high_fabs_comparison.ipynb` using the full FED Excel pull:
+
+| Metric | Result |
+|--------|--------|
+| Valid positive IMPROVE EC + fAbs rows | 379,697 |
+| Date range | 2003-01-03 to 2025-07-30 |
+| ETAD local HIPS_Fabs range | 28.09–85.85 Mm^-1 |
+| IMPROVE rows in ETAD-like range | 207 rows across 40 sites |
+| IMPROVE rows with fAbs >= 70 | 5 rows across 4 sites |
+| IMPROVE rows above ETAD max | 3 rows |
+| Rows with valid IMPROVE flow + duration for loading | 152,029 overall; 77 ETAD-like |
+
+Interpretation: the broader FED pull proves ETAD occupies a real but very rare IMPROVE HIPS tail. The strict `fAbs >= 70` group is too small for a decisive slope/intercept test, while the ETAD-like group shows weak/compressed `fAbs` vs EC behavior but is partly affected by response-variable selection. Loading-matched IMPROVE groups behave more normally than the fAbs-selected group, so high EC loading alone does not reproduce the full Addis pattern.
+
+April 14 fork as of Apr 22:
+
+- If strict high-fAbs IMPROVE samples eventually show a robust high intercept/compressed relationship, that supports a high-loading HIPS/MAC regime explanation.
+- If high-fAbs IMPROVE behaves normally with better targeted samples or raw HIPS diagnostics, the issue points back toward Addis/SPARTAN-specific behavior.
+- Current evidence supports the narrower claim: Addis/ETAD sits in a rare extreme HIPS regime, but the high-tail IMPROVE sample count is too small to close the fork.
 
 ---
 
@@ -135,18 +159,23 @@ PMF analysis (Naveed's data, Addis only):
 | Dust interference tested | Mar 4 | r ≈ −0.33 → rules out dust |
 | Check Beijing data inputs | Jan 14 | Verified |
 | Replot iron with absolute concentration | Jan 14 | Done in iron_correction_test.ipynb |
+| Warren White / IMPROVE HIPS loading paper summarized | Apr 14 | Dense White 2025 pixelation/loading paper distilled into presentation notes; correction not applied because SPARTAN-specific H and alpha are unknown |
+| IMPROVE high-fAbs comparison notebook | Apr 14 | `research/ftir_hips_chem/improve_high_fabs_comparison.ipynb`; full FED pull loaded and executed Apr 22 |
 
 ### ⏳ PENDING (Action Required)
 
 | Item | Meeting | Priority | Notes |
 |------|---------|----------|-------|
 | Contact Amina for Delhi seasons | Mar 18 | **High** | Advisor will send her email. Using literature defaults for now. |
-| Paper skeleton | Mar 4 | **High** | "Define story first, write results-first." No draft exists. |
+| Paper skeleton | Mar 4 | **High** | `PAPER_SKELETON_Apr2026.md` exists; updated Apr 22 to include IMPROVE high-fAbs boundary-test figure before final diagnostics. |
 | Remind advisor → connect with Cena | Mar 18 | **High** | After next meeting. Show progress + confusing findings. |
 | Queens College comparison image | Mar 18 | **Medium** | Need the actual image file |
 | Data exclusion registry | Jan 14 | **Medium** | QC infrastructure exists but no formal log of what was excluded and why |
 | Literature search (absorption measurements) | Mar 4 | **Medium** | Keywords: filter-based absorption, PSAP, MAAP, photoacoustic |
 | Warren White HIPS/IMPROVE papers | Mar 4 | **Medium** | Mass loading on filter vs concentration at high-BC sites |
+| Contact SPARTAN / Christopher Ockfort | Apr 14 | **High** | Ask for SPARTAN support-screen hole fraction H, mesh geometry/spec sheet, pixelation photos, and whether they have seen HIPS nonlinearity on heavily loaded SPARTAN PTFE filters |
+| Ask Ann to contact Warren White after IMPROVE check | Apr 14 | **High** | Bring ETAD fAbs range plus IMPROVE high-tail results; clarify alpha and high-loading interpretation |
+| Cena meeting preparation | Apr 14 | **High** | End-of-April target. Show three methods across four sites, Addis anomaly, negative tests, extreme HIPS regime, and IMPROVE fork |
 | AERONET at other SPARTAN sites | Mar 4 | **Low** | Only Addis has data currently |
 | Calculate AAE from raw b_abs (ATN data) | This session | **Low** | Would give literature-range AAE values |
 | Wind rose analysis | Feb 11 | **Low** | Discussed but no implementation found in codebase |
