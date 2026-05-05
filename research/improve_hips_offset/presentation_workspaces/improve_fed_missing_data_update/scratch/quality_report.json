@@ -1,0 +1,38 @@
+{
+  "workspace": "/Users/ahmadjalil/github/aethmodular/research/improve_hips_offset/presentation_workspaces/improve_fed_missing_data_update",
+  "pptx": "/Users/ahmadjalil/github/aethmodular/research/improve_hips_offset/presentation_workspaces/improve_fed_missing_data_update/output/improve_fed_missing_data_update_apr29_2026.pptx",
+  "checks": {
+    "pptx_package": {
+      "slide_count": 12,
+      "media_count": 6,
+      "chart_count": 0,
+      "zero_byte_media": [
+        "ppt/media/image.png",
+        "ppt/media/image2.png",
+        "ppt/media/image3.png",
+        "ppt/media/image4.png",
+        "ppt/media/image5.png",
+        "ppt/media/image6.png"
+      ],
+      "invalid_png_media": [],
+      "placeholder_text": [],
+      "debug_line_colors": [],
+      "slide_numbers": [],
+      "warnings": [],
+      "failures": [
+        "PPTX contains zero-byte media parts: ppt/media/image.png, ppt/media/image2.png, ppt/media/image3.png, ppt/media/image4.png, ppt/media/image5.png, ppt/media/image6.png"
+      ]
+    },
+    "output_hygiene": {
+      "output_dir": "/Users/ahmadjalil/github/aethmodular/research/improve_hips_offset/presentation_workspaces/improve_fed_missing_data_update/output",
+      "unexpected_files": [
+        "output.pptx"
+      ]
+    }
+  },
+  "failures": [
+    "PPTX contains zero-byte media parts: ppt/media/image.png, ppt/media/image2.png, ppt/media/image3.png, ppt/media/image4.png, ppt/media/image5.png, ppt/media/image6.png",
+    "output/ contains non-deliverable files: output.pptx"
+  ],
+  "warnings": []
+}

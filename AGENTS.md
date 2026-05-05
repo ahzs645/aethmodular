@@ -205,6 +205,13 @@ Helpers: `PlotConfig.get_site_color(site)`, `PlotConfig.get_sites_list()`,
 as red X's on the "before" panel in `comparisons.before_after_outliers`. For
 standalone scatters the default is to plot clean data only.
 
+### Reporting correlation / regression strength
+
+Prefer **R²** over raw `r` when ranking or describing relationship strength in
+figures, summary tables, and mechanism screens. Keep signed `r` (Pearson or
+Spearman) only when the direction matters, and label it clearly as `r` alongside
+the corresponding `R²` if both are shown.
+
 ## Known gaps (where you still need inline matplotlib)
 
 The module covers the common cases but not everything. When you hit these,
