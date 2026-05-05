@@ -13,7 +13,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from PIL import Image
 from pptx import Presentation
+from pptx.dml.color import RGBColor
 from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN
 
@@ -51,16 +53,21 @@ def add_title(slide, text: str, *, size: int = TITLE_PT) -> None:
             run.font.bold = True
 
 
-def add_image(slide, png_path: Path, *, left=0.4, top=1.1, width=12.5, height=6.1) -> None:
-    if Path(png_path).exists():
-        slide.shapes.add_picture(
-            str(png_path),
-            Inches(left),
-            Inches(top),
-            width=Inches(width),
-            height=Inches(height),
-        )
-    else:
+def add_image(
+    slide,
+    png_path: Path,
+    *,
+    left: float = 0.4,
+    top: float = 1.1,
+    width: float = 12.5,
+    height: float = 6.1,
+) -> None:
+    """Place a PNG inside the (left, top, width, height) box without stretching.
+
+    Preserves the image's native aspect ratio and centres it within the box.
+    """
+    p = Path(png_path)
+    if not p.exists():
         box = slide.shapes.add_textbox(
             Inches(left), Inches(top), Inches(width), Inches(height)
         )
@@ -70,6 +77,29 @@ def add_image(slide, png_path: Path, *, left=0.4, top=1.1, width=12.5, height=6.
         for run in tf.paragraphs[0].runs:
             run.font.size = Pt(BULLET_PT)
             run.font.italic = True
+        return
+
+    with Image.open(p) as im:
+        src_w, src_h = im.size
+    src_ratio = src_w / src_h
+    box_ratio = width / height
+    if src_ratio >= box_ratio:
+        # Width-bound: fit to box width, scale height accordingly.
+        draw_w = width
+        draw_h = width / src_ratio
+    else:
+        # Height-bound: fit to box height, scale width accordingly.
+        draw_h = height
+        draw_w = height * src_ratio
+    draw_left = left + (width - draw_w) / 2
+    draw_top = top + (height - draw_h) / 2
+    slide.shapes.add_picture(
+        str(p),
+        Inches(draw_left),
+        Inches(draw_top),
+        width=Inches(draw_w),
+        height=Inches(draw_h),
+    )
 
 
 def add_bullets(
@@ -126,41 +156,75 @@ def add_footnote_box(
         run.font.bold = True
 
 
+def _add_title_slide(prs, blank) -> None:
+    """Cover slide with talk title, subtitle, presenter, affiliation, and date."""
+    s = prs.slides.add_slide(blank)
+
+    # Vertical accent bar on the left
+    from pptx.shapes.autoshape import Shape  # local import keeps top tidy
+    from pptx.enum.shapes import MSO_SHAPE
+    bar = s.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(0.35), Inches(SLIDE_H_IN)
+    )
+    bar.line.fill.background()
+    bar.fill.solid()
+    bar.fill.fore_color.rgb = RGBColor(0xF3, 0x9C, 0x12)  # SPARTAN-Addis amber
+
+    # Title
+    title_box = s.shapes.add_textbox(
+        Inches(0.9), Inches(2.1), Inches(SLIDE_W_IN - 1.5), Inches(1.6)
+    )
+    tf = title_box.text_frame
+    tf.word_wrap = True
+    tf.text = "Why is HIPS Fabs at Addis Ababa so high?"
+    for run in tf.paragraphs[0].runs:
+        run.font.size = Pt(44)
+        run.font.bold = True
+        run.font.color.rgb = RGBColor(0x1A, 0x1A, 0x1A)
+
+    # Subtitle
+    sub_box = s.shapes.add_textbox(
+        Inches(0.9), Inches(3.7), Inches(SLIDE_W_IN - 1.5), Inches(0.8)
+    )
+    tf = sub_box.text_frame
+    tf.word_wrap = True
+    tf.text = "Cross-network comparison with IMPROVE — meeting with Warren White"
+    for run in tf.paragraphs[0].runs:
+        run.font.size = Pt(22)
+        run.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
+
+    # Presenter line
+    pres_box = s.shapes.add_textbox(
+        Inches(0.9), Inches(5.4), Inches(SLIDE_W_IN - 1.5), Inches(1.4)
+    )
+    tf = pres_box.text_frame
+    tf.word_wrap = True
+    tf.text = "Ahmad Jalil"
+    for run in tf.paragraphs[0].runs:
+        run.font.size = Pt(20)
+        run.font.bold = True
+    p = tf.add_paragraph()
+    p.text = "University of Northern British Columbia · NASA MAIA / SPARTAN"
+    for run in p.runs:
+        run.font.size = Pt(16)
+        run.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
+    p = tf.add_paragraph()
+    p.text = "May 2026"
+    for run in p.runs:
+        run.font.size = Pt(16)
+        run.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
+
+
 def build() -> Path:
     prs = Presentation()
     prs.slide_width = Inches(SLIDE_W_IN)
     prs.slide_height = Inches(SLIDE_H_IN)
     blank = prs.slide_layouts[6]
 
-    # ── Slide 1 — intro ────────────────────────────────────────────────────
-    s = prs.slides.add_slide(blank)
-    add_title(s, "HIPS Fabs offset at Addis Ababa — meeting with Warren White")
-    add_bullets(
-        s,
-        [
-            "Goal: figure out why HIPS Fabs at Addis is anomalously high vs FTIR EC and the aethalometer",
-            "Four SPARTAN sites: Addis Ababa, Delhi, JPL/Pasadena, Beijing",
-            "Reference comparison: post-2003 IMPROVE network (Warren White et al. 2024)",
-            "Question: is the offset an extreme version of pixelation, or something else?",
-        ],
-    )
+    # ── Slide 0 — title / cover ────────────────────────────────────────────
+    _add_title_slide(prs, blank)
 
-    # ── Slide 2 — data and tools ───────────────────────────────────────────
-    s = prs.slides.add_slide(blank)
-    add_title(s, "Data and tools")
-    add_bullets(
-        s,
-        [
-            "SPARTAN filters: HIPS (Fabs, R, T, τ, t, r), FTIR EC, ChemSpec metals & ions",
-            "Aethalometer (AE33): IR BCc, smoothed and raw",
-            "IMPROVE (FED Wizard, post-2003): EC, Fabs, Fe, Volume",
-            "\tRT and field blanks not in FED export; filter IDs / lot numbers not exposed",
-            "Matching: filter date ± 1 day → aethalometer day-9am window",
-            "All HIPS values shown as raw 1/Mm (no MAC scaling); EC shown both as µg/m³ and as µg on filter",
-        ],
-    )
-
-    # ── Slide 3 — SPARTAN filter photos (Ann's email) ──────────────────────
+    # ── Slide 1 — SPARTAN filter photos (Ann's email) ──────────────────────
     # Three SPARTAN PTFE filter photos arranged across the slide so the
     # support-mesh grid pattern is clearly visible. McDade IMPROVE comparison
     # is appended as a separate slide if the scan is checked in.
@@ -175,14 +239,9 @@ def build() -> Path:
         photo_h = 5.4
         photo_top = 1.15
         for i, photo in enumerate(photos_present):
-            left = 0.4 + i * (photo_w + gap)
-            s.shapes.add_picture(
-                str(photo),
-                Inches(left),
-                Inches(photo_top),
-                width=Inches(photo_w),
-                height=Inches(photo_h),
-            )
+            box_left = 0.4 + i * (photo_w + gap)
+            add_image(s, photo, left=box_left, top=photo_top,
+                      width=photo_w, height=photo_h)
     add_caption(
         s,
         "SPARTAN filters as collected — the support-mesh grid is the pattern Warren's "
@@ -233,33 +292,14 @@ def build() -> Path:
     half_w = 6.15
     panel_top = 1.15
     panel_h = 5.4
-    if (FIG_DIR / "slide06a_fe_vs_fabs.png").exists():
-        s.shapes.add_picture(
-            str(FIG_DIR / "slide06a_fe_vs_fabs.png"),
-            Inches(0.35),
-            Inches(panel_top),
-            width=Inches(half_w),
-            height=Inches(panel_h),
-        )
-    else:
-        add_image(s, FIG_DIR / "slide06a_fe_vs_fabs.png", left=0.35, top=panel_top, width=half_w, height=panel_h)
-    if (FIG_DIR / "slide06b_fe_ec_ratio.png").exists():
-        s.shapes.add_picture(
-            str(FIG_DIR / "slide06b_fe_ec_ratio.png"),
-            Inches(0.35 + half_w + 0.3),
-            Inches(panel_top),
-            width=Inches(half_w),
-            height=Inches(panel_h),
-        )
-    else:
-        add_image(
-            s,
-            FIG_DIR / "slide06b_fe_ec_ratio.png",
-            left=0.35 + half_w + 0.3,
-            top=panel_top,
-            width=half_w,
-            height=panel_h,
-        )
+    add_image(
+        s, FIG_DIR / "slide06a_fe_vs_fabs.png",
+        left=0.35, top=panel_top, width=half_w, height=panel_h,
+    )
+    add_image(
+        s, FIG_DIR / "slide06b_fe_ec_ratio.png",
+        left=0.35 + half_w + 0.3, top=panel_top, width=half_w, height=panel_h,
+    )
     add_footnote_box(
         s,
         "Pixelation is colorless; Fe should INCREASE Fabs. Fe-range and Fe/EC-range shown so we can compare to IMPROVE Fe roughly.",
@@ -308,24 +348,22 @@ def build() -> Path:
         size=15,
     )
 
-    # ── Slide 11 — R/T per site (+ Warren's IMPROVE R/T comparison) ────────
-    s = prs.slides.add_slide(blank)
-    add_title(s, "SPARTAN R / T calibration space — split by site")
-    rt_png = FIG_DIR / "slide10_RT_per_site.png"
-    if not rt_png.exists():
-        rt_png = FIG_DIR / "slide10a_white_calibration_space.png"
-    add_image(s, rt_png, height=5.6)
-    add_footnote_box(
-        s,
-        "Squares = field blanks, circles = samples. Addis transmittance is offset from the other SPARTAN sites.",
-    )
-
+    # ── R/T calibration space (3 figures from the notebook; 10a omitted) ───
     s = prs.slides.add_slide(blank)
     add_title(s, "Scaled HIPS coordinates (t + r = 1 zero-absorption locus)")
     add_image(s, FIG_DIR / "slide10b_scaled_hips.png", height=5.6)
     add_footnote_box(
         s,
         "Blanks sit on the t + r = 1 line; loaded filters drop below it. Scale of drop ~ aerosol absorption.",
+    )
+
+    s = prs.slides.add_slide(blank)
+    add_title(s, "Per site — each filter vs its own row/lot calibration line")
+    add_image(s, FIG_DIR / "slide10c_site_panels.png", height=5.6)
+    add_footnote_box(
+        s,
+        "Crimson star = site median. Arrow length = R-suppression vs blank-model R. "
+        "Addis: median R-suppression ≈ 62 %, τ ≈ 0.96; way past Delhi/Beijing.",
     )
 
     s = prs.slides.add_slide(blank)
