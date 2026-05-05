@@ -157,3 +157,5 @@ notebooks/processed_data_csv_optimized
 
 # Large data files (downloaded from Google Drive)
 data/
+research/ftir_hips_chem/output/warren_meeting/
+research/ftir_hips_chem/warren_meeting_slides_executed.ipynb
