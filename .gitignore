@@ -141,6 +141,8 @@ dmypy.json
 *.swp
 *.swo
 *~
+*.bak
+~$*
 
 # Project specific
 logs/
@@ -159,3 +161,4 @@ notebooks/processed_data_csv_optimized
 data/
 research/ftir_hips_chem/output/warren_meeting/
 research/ftir_hips_chem/warren_meeting_slides_executed.ipynb
+research/ftir_hips_chem/AERONET/

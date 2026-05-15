@@ -317,9 +317,10 @@ def filter_vs_aeth(aeth_data, filter_data, sites=None, layout=None,
     filter_param : str
         Filter parameter name
     """
-    import sys
-    sys.path.insert(0, str(PlotConfig.__module__).rsplit('.', 2)[0])
-    from config import SITES
+    try:
+        from config import SITES
+    except ImportError:
+        from ..config import SITES
 
     sites_list = resolve_sites(sites)
     layout = resolve_layout(layout)

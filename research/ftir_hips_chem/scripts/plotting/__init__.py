@@ -21,15 +21,12 @@ Usage:
     crossplots.bc_vs_ec(data, sites=['Beijing'], layout='grid')
 """
 
-import sys
-from pathlib import Path
-
 import matplotlib.pyplot as _plt
 
-# Add parent directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from config import SITES
+try:
+    from config import SITES
+except ImportError:  # Support importing as research.ftir_hips_chem.scripts.plotting
+    from ..config import SITES
 
 
 def apply_default_style():

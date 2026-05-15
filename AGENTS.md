@@ -30,7 +30,8 @@ aethmodular/
 │   │   ├── __init__.py                  # re-exports everything; one-stop import
 │   │   ├── config.py                    # SITES, paths, MAC_VALUE, flow periods
 │   │   ├── outliers.py                  # EXCLUDED_SAMPLES + exclusion API
-│   │   ├── data_matching.py             # load + match aeth/filter/ETAD data
+│   │   ├── data_matching.py             # load + match aeth/filter data
+│   │   ├── etad_factors.py              # ETAD PMF factor loaders + match helpers
 │   │   ├── flow_periods.py              # before/after flow-fix period helpers
 │   │   ├── plotting/                    # standardized plot package
 │   │   │   ├── __init__.py              # PlotConfig (global state)
@@ -41,7 +42,10 @@ aethmodular/
 │   │   │   └── utils.py                 # regression stats, axis helpers
 │   │   └── plotting_legacy.py           # DEPRECATED — do not use
 │   ├── addis_01..05_*.ipynb             # Addis analyses (use scripts/)
+│   ├── notebooks/archive/               # old executed/scratch notebooks
+│   ├── workflows/                       # one-off/report asset builders
 │   ├── Filter Data/                     # raw + unified filter datasets
+│   ├── AERONET/                         # local-only AERONET exports (git-ignored)
 │   ├── processed_sites/                 # resampled aethalometer pickles
 │   └── output/                          # generated figures (git-ignored usually)
 ```
@@ -49,6 +53,17 @@ aethmodular/
 All paths in this doc are **relative to repo root** unless they appear inside
 a notebook setup cell (where they're relative to the notebook that contains
 them).
+
+## Organization conventions
+
+- Keep active analysis notebooks at `research/ftir_hips_chem/`.
+- Move executed notebook copies to `research/ftir_hips_chem/notebooks/archive/executed/`.
+- Move scratch, copy, or superseded notebooks to `research/ftir_hips_chem/notebooks/archive/scratch/`.
+- Put generated tables under `research/ftir_hips_chem/output/tables/`.
+- Put generated figures under `research/ftir_hips_chem/output/plots/`.
+- Put resampled aethalometer pickles under `research/ftir_hips_chem/processed_sites/`.
+- Put local AERONET exports under `research/ftir_hips_chem/AERONET/` (git-ignored).
+- Keep `scripts/` for importable reusable logic. Put one-off deck/report builders in `research/ftir_hips_chem/workflows/`.
 
 ## Standard notebook setup cell
 
@@ -67,7 +82,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Config + data
-from config import SITES, PROCESSED_SITES_DIR, FILTER_DATA_PATH, MAC_VALUE
+from config import (
+    SITES, PROCESSED_SITES_DIR, FILTER_DATA_PATH,
+    AERONET_DATA_DIR, WEATHER_DATA_DIR, MAC_VALUE,
+)
 
 # Exclusions (use these — do not hand-filter)
 from outliers import (
@@ -80,8 +98,8 @@ from outliers import (
 from data_matching import (
     load_aethalometer_data, load_filter_data,
     match_aeth_filter_data, match_all_parameters,
-    load_etad_factor_contributions, match_etad_factors,
 )
+from etad_factors import load_etad_factor_contributions, match_etad_factors
 
 # Plotting — importing the package auto-applies the white-background default
 # style (apply_default_style()). Do NOT call plt.style.use('seaborn-v0_8-darkgrid')

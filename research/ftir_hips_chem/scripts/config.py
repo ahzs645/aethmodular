@@ -16,6 +16,8 @@ PROCESSED_SITES_DIR = DATA_ROOT / "processed_sites"
 FILTER_DATA_PATH = DATA_ROOT / "Filter Data" / "unified_filter_dataset.pkl"
 ETAD_FACTOR_CONTRIBUTIONS_PATH = DATA_ROOT / "Filter Data" / "ETAD Factor Contributions .csv"
 ETAD_FILTER_ID_PATH = DATA_ROOT / "Filter Data" / "ETAD Filter ID.csv"
+AERONET_DATA_DIR = DATA_ROOT / "AERONET"
+WEATHER_DATA_DIR = DATA_ROOT / "Weather Data"
 
 # =============================================================================
 # SITE CONFIGURATIONS

@@ -22,43 +22,24 @@ Usage:
 import pandas as pd
 import numpy as np
 
+try:
+    from config import FLOW_FIX_PERIODS
+except ImportError:  # Support importing as research.ftir_hips_chem.scripts.*
+    from .config import FLOW_FIX_PERIODS
+
 
 # =============================================================================
 # FLOW FIX DATE CONFIGURATIONS
 # =============================================================================
 
-# These dates define the before/after periods for each site
-# Updated from FlowFix_BeforeAfter_Analysis.ipynb
-
+# FLOW_FIX_PERIODS in config.py is the canonical definition. Keep the old
+# FLOW_FIX_DATES name for notebooks that already import it.
 FLOW_FIX_DATES = {
-    'Beijing': {
-        'before_end': '2022-07-31',
-        'after_start': '2023-09-01',
-        'description': 'NO BEFORE DATA - Filter sampling started Sep 2023 (degraded period only)',
-        'has_before_data': False,
-        'flow_ratio_note': 'Ratio ~1.8-2.2 in available data period'
-    },
-    'Delhi': {
-        'before_end': '2023-12-31',
-        'after_start': '2024-02-01',
-        'description': 'NO BEFORE DATA - Filter sampling started Feb 2024 (degraded period only)',
-        'has_before_data': False,
-        'flow_ratio_note': 'Ratio ~2.5-3.2 in available data period'
-    },
-    'JPL': {
-        'before_end': '2022-09-30',
-        'after_start': '2023-05-01',
-        'description': 'Has data in both periods - suitable for before/after analysis',
-        'has_before_data': True,
-        'flow_ratio_note': 'Good flow ratio throughout'
-    },
-    'Addis_Ababa': {
-        'before_end': None,
-        'after_start': None,
-        'description': 'No flow fix periods defined',
-        'has_before_data': False,
-        'flow_ratio_note': 'Consistently low flow ratio'
+    site: {
+        **config,
+        'flow_ratio_note': config.get('notes', ''),
     }
+    for site, config in FLOW_FIX_PERIODS.items()
 }
 
 

@@ -23,7 +23,7 @@ import seaborn as sns
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-SCRIPTS_DIR = Path(__file__).resolve().parent
+SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
@@ -33,7 +33,7 @@ if str(REPO_ROOT) not in sys.path:
 from config import SITES  # noqa: E402
 from data_matching import load_aethalometer_data, load_filter_data, match_all_parameters  # noqa: E402
 from outliers import apply_exclusion_flags, apply_threshold_flags  # noqa: E402
-from plotting_legacy import calculate_regression_stats  # noqa: E402
+from plotting.utils import calculate_regression_stats  # noqa: E402
 from src.config.multi_site_seasons import SITE_SEASONS  # noqa: E402
 
 

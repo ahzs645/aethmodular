@@ -136,16 +136,16 @@ PMF analysis (Naveed's data, Addis only):
 
 | Item | Meeting | Evidence |
 |------|---------|----------|
-| Multi-site wavelength analysis (all 4 sites) | Mar 18 | `multisite_diurnal_wavelength_analysis_executed.ipynb` |
+| Multi-site wavelength analysis (all 4 sites) | Mar 18 | `notebooks/archive/executed/multisite_diurnal_wavelength_analysis_executed.ipynb` |
 | AAE by season (UV/IR and Blue/IR) | Mar 18 | Same notebook, all sites |
 | Smoothing methodology justified | Mar 18 | `smoothing_comparison.ipynb` |
 | Beijing seasonality from literature | Mar 18 | `src/config/multi_site_seasons.py` (Sun et al. 2022) |
 | Get hourly data for all sites | Mar 18 | Downloaded 1-min resolution for all 4 sites |
-| Cross-plots all sites (HIPS vs FTIR EC vs Aeth) | Feb 18 | `cross_plots_and_distributions_executed.ipynb` |
+| Cross-plots all sites (HIPS vs FTIR EC vs Aeth) | Feb 18 | `notebooks/archive/executed/cross_plots_and_distributions_executed.ipynb` |
 | Distribution plots (histograms + violins) | Feb 18 | Same notebook |
 | Aeth vs HIPS for all sites | Feb 18 | Same notebook |
 | AERONET sequential exclusion on cross-plots | Mar 18 | Same notebook |
-| Results-only presentation slides | Mar 18 | `results_summary_executed.ipynb` |
+| Results-only presentation slides | Mar 18 | `notebooks/archive/executed/results_summary_executed.ipynb` |
 | 3+1 site grouping (Addis separate) | Mar 4 | All notebooks use this framing |
 | Iron/EC ratio analysis & thresholds | Jan 7 | `notebooks/analysis/iron_correction_test.ipynb` |
 | Source apportionment (PMF, Addis) | Jan 28 | Multiple notebooks: `addis_01_source_apportionment.ipynb`, `dominant_source_comparison.ipynb`, etc. |

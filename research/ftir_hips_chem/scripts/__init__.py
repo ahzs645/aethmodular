@@ -57,11 +57,8 @@ Example Notebook Cell:
         match_aeth_filter_data, match_all_parameters,
         match_with_smooth_raw_info
     )
-    from plotting import (
-        plot_crossplot, plot_before_after_comparison,
-        calculate_regression_stats, create_tiled_threshold_plots,
-        plot_smooth_raw_distribution
-    )
+    from plotting import PlotConfig, crossplots, timeseries, distributions, comparisons
+    from plotting.utils import calculate_regression_stats
 
     # Configure matplotlib — use default (white background) like
     # Analysis_Tasks_Jan2025.ipynb. Do NOT call plt.style.use('seaborn-v0_8-darkgrid');
@@ -73,46 +70,77 @@ Example Notebook Cell:
 """
 
 # For convenient imports when using: from scripts import *
-from config import (
-    SITES, PROCESSED_SITES_DIR, FILTER_DATA_PATH,
-    MAC_VALUE, FLOW_FIX_PERIODS, MIN_EC_THRESHOLD,
-    SMOOTH_RAW_THRESHOLDS, DEFAULT_BC_WAVELENGTH,
-    FILTER_CATEGORIES, CROSS_COMPARISONS,
-    ETAD_FACTOR_CONTRIBUTIONS_PATH
-)
-
-from outliers import (
-    EXCLUDED_SAMPLES, MANUAL_OUTLIERS,
-    apply_exclusion_flags, apply_threshold_flags,
-    get_clean_data, get_excluded_data, get_outlier_data,
-    print_exclusion_summary, identify_outlier_dates
-)
-
-from data_matching import (
-    load_aethalometer_data, load_filter_data,
-    match_aeth_filter_data, match_all_parameters,
-    match_with_smooth_raw_info, add_flow_period_column,
-    get_site_code, get_site_color, print_data_summary,
-    load_etad_factor_contributions, match_etad_factors,
-    ETAD_PMF_SOURCE_NAMES, ETAD_FACTOR_RENAME
-)
-
-from plotting import (
-    calculate_regression_stats,
-    plot_crossplot, plot_before_after_comparison,
-    plot_crossplot_iron_gradient,
-    create_tiled_threshold_plots, plot_smooth_raw_distribution,
-    plot_bc_timeseries, plot_multiwavelength_bc,
-    print_comparison_table
-)
+try:
+    from config import (
+        SITES, PROCESSED_SITES_DIR, FILTER_DATA_PATH,
+        AERONET_DATA_DIR, WEATHER_DATA_DIR,
+        MAC_VALUE, FLOW_FIX_PERIODS, MIN_EC_THRESHOLD,
+        SMOOTH_RAW_THRESHOLDS, DEFAULT_BC_WAVELENGTH,
+        FILTER_CATEGORIES, CROSS_COMPARISONS,
+        ETAD_FACTOR_CONTRIBUTIONS_PATH, ETAD_FILTER_ID_PATH,
+    )
+    from outliers import (
+        EXCLUDED_SAMPLES, MANUAL_OUTLIERS,
+        apply_exclusion_flags, apply_threshold_flags,
+        get_clean_data, get_excluded_data, get_outlier_data,
+        print_exclusion_summary, identify_outlier_dates,
+    )
+    from data_matching import (
+        load_aethalometer_data, load_filter_data,
+        match_aeth_filter_data, match_all_parameters,
+        match_with_smooth_raw_info, match_hips_with_smooth_raw,
+        add_flow_period_column, add_base_filter_id, match_by_filter_id,
+        pivot_filter_by_id, get_site_code, get_site_color, print_data_summary,
+    )
+    from etad_factors import (
+        load_etad_factor_contributions, load_etad_filter_ids,
+        load_etad_factors_with_filter_ids, match_etad_factors,
+        ETAD_PMF_SOURCE_NAMES, ETAD_FACTOR_RENAME,
+    )
+    from plotting import (
+        PlotConfig, apply_default_style, crossplots, timeseries,
+        distributions, comparisons, calculate_regression_stats,
+    )
+except ImportError:
+    from .config import (
+        SITES, PROCESSED_SITES_DIR, FILTER_DATA_PATH,
+        AERONET_DATA_DIR, WEATHER_DATA_DIR,
+        MAC_VALUE, FLOW_FIX_PERIODS, MIN_EC_THRESHOLD,
+        SMOOTH_RAW_THRESHOLDS, DEFAULT_BC_WAVELENGTH,
+        FILTER_CATEGORIES, CROSS_COMPARISONS,
+        ETAD_FACTOR_CONTRIBUTIONS_PATH, ETAD_FILTER_ID_PATH,
+    )
+    from .outliers import (
+        EXCLUDED_SAMPLES, MANUAL_OUTLIERS,
+        apply_exclusion_flags, apply_threshold_flags,
+        get_clean_data, get_excluded_data, get_outlier_data,
+        print_exclusion_summary, identify_outlier_dates,
+    )
+    from .data_matching import (
+        load_aethalometer_data, load_filter_data,
+        match_aeth_filter_data, match_all_parameters,
+        match_with_smooth_raw_info, match_hips_with_smooth_raw,
+        add_flow_period_column, add_base_filter_id, match_by_filter_id,
+        pivot_filter_by_id, get_site_code, get_site_color, print_data_summary,
+    )
+    from .etad_factors import (
+        load_etad_factor_contributions, load_etad_filter_ids,
+        load_etad_factors_with_filter_ids, match_etad_factors,
+        ETAD_PMF_SOURCE_NAMES, ETAD_FACTOR_RENAME,
+    )
+    from .plotting import (
+        PlotConfig, apply_default_style, crossplots, timeseries,
+        distributions, comparisons, calculate_regression_stats,
+    )
 
 __all__ = [
     # Config
     'SITES', 'PROCESSED_SITES_DIR', 'FILTER_DATA_PATH',
+    'AERONET_DATA_DIR', 'WEATHER_DATA_DIR',
     'MAC_VALUE', 'FLOW_FIX_PERIODS', 'MIN_EC_THRESHOLD',
     'SMOOTH_RAW_THRESHOLDS', 'DEFAULT_BC_WAVELENGTH',
     'FILTER_CATEGORIES', 'CROSS_COMPARISONS',
-    'ETAD_FACTOR_CONTRIBUTIONS_PATH',
+    'ETAD_FACTOR_CONTRIBUTIONS_PATH', 'ETAD_FILTER_ID_PATH',
     # Outliers
     'EXCLUDED_SAMPLES', 'MANUAL_OUTLIERS',
     'apply_exclusion_flags', 'apply_threshold_flags',
@@ -121,15 +149,13 @@ __all__ = [
     # Data matching
     'load_aethalometer_data', 'load_filter_data',
     'match_aeth_filter_data', 'match_all_parameters',
-    'match_with_smooth_raw_info', 'add_flow_period_column',
-    'get_site_code', 'get_site_color', 'print_data_summary',
-    'load_etad_factor_contributions', 'match_etad_factors',
+    'match_with_smooth_raw_info', 'match_hips_with_smooth_raw',
+    'add_flow_period_column', 'add_base_filter_id', 'match_by_filter_id',
+    'pivot_filter_by_id', 'get_site_code', 'get_site_color', 'print_data_summary',
+    'load_etad_factor_contributions', 'load_etad_filter_ids',
+    'load_etad_factors_with_filter_ids', 'match_etad_factors',
     'ETAD_PMF_SOURCE_NAMES', 'ETAD_FACTOR_RENAME',
     # Plotting
-    'calculate_regression_stats',
-    'plot_crossplot', 'plot_before_after_comparison',
-    'plot_crossplot_iron_gradient',
-    'create_tiled_threshold_plots', 'plot_smooth_raw_distribution',
-    'plot_bc_timeseries', 'plot_multiwavelength_bc',
-    'print_comparison_table',
+    'PlotConfig', 'apply_default_style', 'crossplots', 'timeseries',
+    'distributions', 'comparisons', 'calculate_regression_stats',
 ]

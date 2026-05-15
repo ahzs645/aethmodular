@@ -129,8 +129,8 @@ Downloaded AERONET Level 1.5 daily AOD data for Addis (AAU Jackros station). Mat
 Cross-referenced all action items from 10 advisor meetings (Jan 7 – Mar 18, 2026). Tracked 23 completed, 10 pending, 5 deprioritized.
 
 #### 7. Presentations
-- **`weekly_progress_presentation.pptx`** (18 slides): Everything done this week including WIP
-- **`state_of_knowledge_presentation.pptx`** (15 slides): Confident results only, with presenter notes
+- **`output/presentations/weekly_progress_presentation.pptx`** (18 slides): Everything done this week including WIP
+- **`output/presentations/state_of_knowledge_presentation.pptx`** (15 slides): Confident results only, with presenter notes
 
 ---
 
@@ -213,8 +213,8 @@ An interesting pattern was found: HIPS performs better at low RH (<50%), aethalo
 |------|---------|
 | `RESEARCH_PROGRESS.md` | Action item tracker across all 10 meetings |
 | `COMPLETE_RESEARCH_SUMMARY.md` | This document — full narrative of everything done and next steps |
-| `output/weekly_progress_presentation.pptx` | 18-slide weekly progress deck (includes WIP) |
-| `output/state_of_knowledge_presentation.pptx` | 15-slide confident results deck with presenter notes |
+| `output/presentations/weekly_progress_presentation.pptx` | 18-slide weekly progress deck (includes WIP) |
+| `output/presentations/state_of_knowledge_presentation.pptx` | 15-slide confident results deck with presenter notes |
 
 ### Updated Files
 
