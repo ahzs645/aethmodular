@@ -66,10 +66,14 @@ Two slopes don't fit cleanly:
 
 ## New sites found in the Drive lookup
 
-- **ETBI** (Bishoftu, Ethiopia — 8.76 °N, 39.00 °E): in HIPS as **lab blanks
-  only** (6). Sister site to ETAD.
-- **USSL** (St Louis, MO — 38.65 °N, -90.31 °W): in HIPS as **blanks only** (6).
-- Not in the public FTP yet — both are commissioning/setup sites.
+Three sites appear in the Drive lookup but are not in the public FTP yet:
+
+- **ETBI** (Bishoftu, Ethiopia — 8.76 °N, 39.00 °E): **26 real sample filters
+  from 2025-10 onward** + 4 field blanks. Sister site to ETAD, just commissioned.
+- **USSL** (St Louis, MO — 38.65 °N, -90.31 °W): **42 real sample filters
+  from 2025-08 onward** + 6 field blanks.
+- **USBA** (Baltimore, MD — 39.26 °N, -76.71 °W): in the lookup only; no data
+  in either HIPS or public FTP yet.
 
 The Drive lookup is missing **ARCB, USBO, USMC** — these are present in the
 public FTP but are likely legacy or decommissioned by the time the lookup
