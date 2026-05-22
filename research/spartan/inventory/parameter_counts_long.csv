@@ -1,0 +1,3048 @@
+product,subproduct,parameter,site,rows
+FilterBased,ChemSpecPM10,PM10 mass,AEAZ,17
+FilterBased,ChemSpecPM10,Sodium PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Aluminum PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Silicon PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Sulfur PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Chlorine PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Potassium PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Calcium PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Titanium PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Vanadium PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Iron PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Zinc PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Cerium PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Lead PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Arsenic PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Cobalt PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Chromium PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Copper PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Magnesium PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Manganese PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Nickel PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Antimony PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Rubidium PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Strontium PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Cadmium PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Selenium PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Tin PM10,AEAZ,17
+FilterBased,ChemSpecPM10,BC PM10,AEAZ,17
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,AEAZ,16
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,AEAZ,16
+FilterBased,ChemSpecPM10,Sodium Ion PM10,AEAZ,16
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,AEAZ,16
+FilterBased,ChemSpecPM10,Potassium Ion PM10,AEAZ,16
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,AEAZ,16
+FilterBased,ChemSpecPM10,Calcium Ion PM10,AEAZ,16
+FilterBased,ChemSpecPM10,Equivalent BC PM10,AEAZ,14
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,AEAZ,9
+FilterBased,ChemSpecPM10,Phosphate Ion PM10,AEAZ,4
+FilterBased,ChemSpecPM10,Bromide Ion PM10,AEAZ,3
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,AUMN,15
+FilterBased,ChemSpecPM10,PM10 mass,AUMN,13
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,AUMN,13
+FilterBased,ChemSpecPM10,Sodium Ion PM10,AUMN,13
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,AUMN,13
+FilterBased,ChemSpecPM10,Potassium Ion PM10,AUMN,13
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,AUMN,13
+FilterBased,ChemSpecPM10,Calcium Ion PM10,AUMN,13
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,AUMN,12
+FilterBased,ChemSpecPM10,Sodium PM10,AUMN,12
+FilterBased,ChemSpecPM10,Aluminum PM10,AUMN,12
+FilterBased,ChemSpecPM10,Silicon PM10,AUMN,12
+FilterBased,ChemSpecPM10,Sulfur PM10,AUMN,12
+FilterBased,ChemSpecPM10,Chlorine PM10,AUMN,12
+FilterBased,ChemSpecPM10,Potassium PM10,AUMN,12
+FilterBased,ChemSpecPM10,Calcium PM10,AUMN,12
+FilterBased,ChemSpecPM10,Titanium PM10,AUMN,12
+FilterBased,ChemSpecPM10,Vanadium PM10,AUMN,12
+FilterBased,ChemSpecPM10,Iron PM10,AUMN,12
+FilterBased,ChemSpecPM10,Zinc PM10,AUMN,12
+FilterBased,ChemSpecPM10,Cerium PM10,AUMN,12
+FilterBased,ChemSpecPM10,Lead PM10,AUMN,12
+FilterBased,ChemSpecPM10,Arsenic PM10,AUMN,12
+FilterBased,ChemSpecPM10,Cobalt PM10,AUMN,12
+FilterBased,ChemSpecPM10,Chromium PM10,AUMN,12
+FilterBased,ChemSpecPM10,Copper PM10,AUMN,12
+FilterBased,ChemSpecPM10,Magnesium PM10,AUMN,12
+FilterBased,ChemSpecPM10,Manganese PM10,AUMN,12
+FilterBased,ChemSpecPM10,Nickel PM10,AUMN,12
+FilterBased,ChemSpecPM10,Antimony PM10,AUMN,12
+FilterBased,ChemSpecPM10,Rubidium PM10,AUMN,12
+FilterBased,ChemSpecPM10,Strontium PM10,AUMN,12
+FilterBased,ChemSpecPM10,Cadmium PM10,AUMN,12
+FilterBased,ChemSpecPM10,Selenium PM10,AUMN,12
+FilterBased,ChemSpecPM10,Tin PM10,AUMN,12
+FilterBased,ChemSpecPM10,BC PM10,AUMN,12
+FilterBased,ChemSpecPM10,Bromide Ion PM10,AUMN,2
+FilterBased,ChemSpecPM10,Phosphate Ion PM10,AUMN,1
+FilterBased,ChemSpecPM10,EC PM10,AUMN,1
+FilterBased,ChemSpecPM10,OC PM10,AUMN,1
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,BDDU,11
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,BDDU,11
+FilterBased,ChemSpecPM10,Sodium Ion PM10,BDDU,11
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,BDDU,11
+FilterBased,ChemSpecPM10,Potassium Ion PM10,BDDU,11
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,BDDU,11
+FilterBased,ChemSpecPM10,Calcium Ion PM10,BDDU,11
+FilterBased,ChemSpecPM10,PM10 mass,BDDU,10
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,BDDU,10
+FilterBased,ChemSpecPM10,Sodium PM10,BDDU,9
+FilterBased,ChemSpecPM10,Aluminum PM10,BDDU,9
+FilterBased,ChemSpecPM10,Silicon PM10,BDDU,9
+FilterBased,ChemSpecPM10,Sulfur PM10,BDDU,9
+FilterBased,ChemSpecPM10,Chlorine PM10,BDDU,9
+FilterBased,ChemSpecPM10,Potassium PM10,BDDU,9
+FilterBased,ChemSpecPM10,Calcium PM10,BDDU,9
+FilterBased,ChemSpecPM10,Titanium PM10,BDDU,9
+FilterBased,ChemSpecPM10,Vanadium PM10,BDDU,9
+FilterBased,ChemSpecPM10,Iron PM10,BDDU,9
+FilterBased,ChemSpecPM10,Zinc PM10,BDDU,9
+FilterBased,ChemSpecPM10,Cerium PM10,BDDU,9
+FilterBased,ChemSpecPM10,Lead PM10,BDDU,9
+FilterBased,ChemSpecPM10,Arsenic PM10,BDDU,9
+FilterBased,ChemSpecPM10,Cobalt PM10,BDDU,9
+FilterBased,ChemSpecPM10,Chromium PM10,BDDU,9
+FilterBased,ChemSpecPM10,Copper PM10,BDDU,9
+FilterBased,ChemSpecPM10,Magnesium PM10,BDDU,9
+FilterBased,ChemSpecPM10,Manganese PM10,BDDU,9
+FilterBased,ChemSpecPM10,Nickel PM10,BDDU,9
+FilterBased,ChemSpecPM10,Antimony PM10,BDDU,9
+FilterBased,ChemSpecPM10,Rubidium PM10,BDDU,9
+FilterBased,ChemSpecPM10,Strontium PM10,BDDU,9
+FilterBased,ChemSpecPM10,Cadmium PM10,BDDU,9
+FilterBased,ChemSpecPM10,Selenium PM10,BDDU,9
+FilterBased,ChemSpecPM10,Tin PM10,BDDU,9
+FilterBased,ChemSpecPM10,BC PM10,BDDU,9
+FilterBased,ChemSpecPM10,Equivalent BC PM10,BDDU,2
+FilterBased,ChemSpecPM10,PM10 mass,BIBU,5
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,BIBU,5
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,BIBU,5
+FilterBased,ChemSpecPM10,Sodium Ion PM10,BIBU,5
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,BIBU,5
+FilterBased,ChemSpecPM10,Potassium Ion PM10,BIBU,5
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,BIBU,5
+FilterBased,ChemSpecPM10,Calcium Ion PM10,BIBU,5
+FilterBased,ChemSpecPM10,Sodium PM10,BIBU,5
+FilterBased,ChemSpecPM10,Aluminum PM10,BIBU,5
+FilterBased,ChemSpecPM10,Silicon PM10,BIBU,5
+FilterBased,ChemSpecPM10,Sulfur PM10,BIBU,5
+FilterBased,ChemSpecPM10,Chlorine PM10,BIBU,5
+FilterBased,ChemSpecPM10,Potassium PM10,BIBU,5
+FilterBased,ChemSpecPM10,Calcium PM10,BIBU,5
+FilterBased,ChemSpecPM10,Titanium PM10,BIBU,5
+FilterBased,ChemSpecPM10,Vanadium PM10,BIBU,5
+FilterBased,ChemSpecPM10,Iron PM10,BIBU,5
+FilterBased,ChemSpecPM10,Zinc PM10,BIBU,5
+FilterBased,ChemSpecPM10,Cerium PM10,BIBU,5
+FilterBased,ChemSpecPM10,Lead PM10,BIBU,5
+FilterBased,ChemSpecPM10,Arsenic PM10,BIBU,5
+FilterBased,ChemSpecPM10,Cobalt PM10,BIBU,5
+FilterBased,ChemSpecPM10,Chromium PM10,BIBU,5
+FilterBased,ChemSpecPM10,Copper PM10,BIBU,5
+FilterBased,ChemSpecPM10,Magnesium PM10,BIBU,5
+FilterBased,ChemSpecPM10,Manganese PM10,BIBU,5
+FilterBased,ChemSpecPM10,Nickel PM10,BIBU,5
+FilterBased,ChemSpecPM10,Antimony PM10,BIBU,5
+FilterBased,ChemSpecPM10,Rubidium PM10,BIBU,5
+FilterBased,ChemSpecPM10,Strontium PM10,BIBU,5
+FilterBased,ChemSpecPM10,Cadmium PM10,BIBU,5
+FilterBased,ChemSpecPM10,Selenium PM10,BIBU,5
+FilterBased,ChemSpecPM10,Tin PM10,BIBU,5
+FilterBased,ChemSpecPM10,BC PM10,BIBU,5
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,BIBU,4
+FilterBased,ChemSpecPM10,Phosphate Ion PM10,BIBU,1
+FilterBased,ChemSpecPM10,PM10 mass,CADO,22
+FilterBased,ChemSpecPM10,Selenium PM10,CADO,22
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,CADO,12
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,CADO,12
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,CADO,12
+FilterBased,ChemSpecPM10,Potassium Ion PM10,CADO,12
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,CADO,12
+FilterBased,ChemSpecPM10,Calcium Ion PM10,CADO,12
+FilterBased,ChemSpecPM10,Magnesium PM10,CADO,12
+FilterBased,ChemSpecPM10,Aluminum PM10,CADO,12
+FilterBased,ChemSpecPM10,Titanium PM10,CADO,12
+FilterBased,ChemSpecPM10,Vanadium PM10,CADO,12
+FilterBased,ChemSpecPM10,Chromium PM10,CADO,12
+FilterBased,ChemSpecPM10,Manganese PM10,CADO,12
+FilterBased,ChemSpecPM10,Iron PM10,CADO,12
+FilterBased,ChemSpecPM10,Cobalt PM10,CADO,12
+FilterBased,ChemSpecPM10,Nickel PM10,CADO,12
+FilterBased,ChemSpecPM10,Copper PM10,CADO,12
+FilterBased,ChemSpecPM10,Zinc PM10,CADO,12
+FilterBased,ChemSpecPM10,Arsenic PM10,CADO,12
+FilterBased,ChemSpecPM10,Cadmium PM10,CADO,12
+FilterBased,ChemSpecPM10,Antimony PM10,CADO,12
+FilterBased,ChemSpecPM10,Cerium PM10,CADO,12
+FilterBased,ChemSpecPM10,Lead PM10,CADO,12
+FilterBased,ChemSpecPM10,Equivalent BC PM10,CADO,12
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,CADO,11
+FilterBased,ChemSpecPM10,Phosphate Ion PM10,CADO,11
+FilterBased,ChemSpecPM10,Bromide Ion PM10,CADO,10
+FilterBased,ChemSpecPM10,Lithium PM10,CADO,10
+FilterBased,ChemSpecPM10,Phosphorus PM10,CADO,10
+FilterBased,ChemSpecPM10,Barium PM10,CADO,10
+FilterBased,ChemSpecPM10,Sodium Ion PM10,CADO,9
+FilterBased,ChemSpecPM10,BC PM10,CADO,8
+FilterBased,ChemSpecPM10,Sodium PM10,CADO,2
+FilterBased,ChemSpecPM10,Silicon PM10,CADO,2
+FilterBased,ChemSpecPM10,Sulfur PM10,CADO,2
+FilterBased,ChemSpecPM10,Chlorine PM10,CADO,2
+FilterBased,ChemSpecPM10,Potassium PM10,CADO,2
+FilterBased,ChemSpecPM10,Calcium PM10,CADO,2
+FilterBased,ChemSpecPM10,Rubidium PM10,CADO,2
+FilterBased,ChemSpecPM10,Strontium PM10,CADO,2
+FilterBased,ChemSpecPM10,Tin PM10,CADO,2
+FilterBased,ChemSpecPM10,PM10 mass,CAHA,49
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,CAHA,35
+FilterBased,ChemSpecPM10,Potassium Ion PM10,CAHA,35
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,CAHA,35
+FilterBased,ChemSpecPM10,Selenium PM10,CAHA,35
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,CAHA,34
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,CAHA,34
+FilterBased,ChemSpecPM10,Calcium Ion PM10,CAHA,34
+FilterBased,ChemSpecPM10,Sodium Ion PM10,CAHA,32
+FilterBased,ChemSpecPM10,Magnesium PM10,CAHA,29
+FilterBased,ChemSpecPM10,Aluminum PM10,CAHA,29
+FilterBased,ChemSpecPM10,Titanium PM10,CAHA,29
+FilterBased,ChemSpecPM10,Vanadium PM10,CAHA,29
+FilterBased,ChemSpecPM10,Chromium PM10,CAHA,29
+FilterBased,ChemSpecPM10,Manganese PM10,CAHA,29
+FilterBased,ChemSpecPM10,Iron PM10,CAHA,29
+FilterBased,ChemSpecPM10,Cobalt PM10,CAHA,29
+FilterBased,ChemSpecPM10,Nickel PM10,CAHA,29
+FilterBased,ChemSpecPM10,Copper PM10,CAHA,29
+FilterBased,ChemSpecPM10,Zinc PM10,CAHA,29
+FilterBased,ChemSpecPM10,Arsenic PM10,CAHA,29
+FilterBased,ChemSpecPM10,Cadmium PM10,CAHA,29
+FilterBased,ChemSpecPM10,Antimony PM10,CAHA,29
+FilterBased,ChemSpecPM10,Cerium PM10,CAHA,29
+FilterBased,ChemSpecPM10,Lead PM10,CAHA,29
+FilterBased,ChemSpecPM10,Equivalent BC PM10,CAHA,25
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,CAHA,24
+FilterBased,ChemSpecPM10,BC PM10,CAHA,24
+FilterBased,ChemSpecPM10,Sodium PM10,CAHA,23
+FilterBased,ChemSpecPM10,Silicon PM10,CAHA,23
+FilterBased,ChemSpecPM10,Sulfur PM10,CAHA,23
+FilterBased,ChemSpecPM10,Chlorine PM10,CAHA,23
+FilterBased,ChemSpecPM10,Potassium PM10,CAHA,23
+FilterBased,ChemSpecPM10,Calcium PM10,CAHA,23
+FilterBased,ChemSpecPM10,Rubidium PM10,CAHA,23
+FilterBased,ChemSpecPM10,Strontium PM10,CAHA,23
+FilterBased,ChemSpecPM10,Tin PM10,CAHA,23
+FilterBased,ChemSpecPM10,Bromide Ion PM10,CAHA,14
+FilterBased,ChemSpecPM10,Phosphate Ion PM10,CAHA,14
+FilterBased,ChemSpecPM10,Lithium PM10,CAHA,6
+FilterBased,ChemSpecPM10,Phosphorus PM10,CAHA,6
+FilterBased,ChemSpecPM10,Barium PM10,CAHA,6
+FilterBased,ChemSpecPM10,PM10 mass,CAKE,8
+FilterBased,ChemSpecPM10,Selenium PM10,CAKE,8
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,CAKE,4
+FilterBased,ChemSpecPM10,Bromide Ion PM10,CAKE,4
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,CAKE,4
+FilterBased,ChemSpecPM10,Phosphate Ion PM10,CAKE,4
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,CAKE,4
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,CAKE,4
+FilterBased,ChemSpecPM10,Potassium Ion PM10,CAKE,4
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,CAKE,4
+FilterBased,ChemSpecPM10,Calcium Ion PM10,CAKE,4
+FilterBased,ChemSpecPM10,Lithium PM10,CAKE,4
+FilterBased,ChemSpecPM10,Magnesium PM10,CAKE,4
+FilterBased,ChemSpecPM10,Aluminum PM10,CAKE,4
+FilterBased,ChemSpecPM10,Phosphorus PM10,CAKE,4
+FilterBased,ChemSpecPM10,Titanium PM10,CAKE,4
+FilterBased,ChemSpecPM10,Vanadium PM10,CAKE,4
+FilterBased,ChemSpecPM10,Chromium PM10,CAKE,4
+FilterBased,ChemSpecPM10,Manganese PM10,CAKE,4
+FilterBased,ChemSpecPM10,Iron PM10,CAKE,4
+FilterBased,ChemSpecPM10,Cobalt PM10,CAKE,4
+FilterBased,ChemSpecPM10,Nickel PM10,CAKE,4
+FilterBased,ChemSpecPM10,Copper PM10,CAKE,4
+FilterBased,ChemSpecPM10,Zinc PM10,CAKE,4
+FilterBased,ChemSpecPM10,Arsenic PM10,CAKE,4
+FilterBased,ChemSpecPM10,Cadmium PM10,CAKE,4
+FilterBased,ChemSpecPM10,Antimony PM10,CAKE,4
+FilterBased,ChemSpecPM10,Barium PM10,CAKE,4
+FilterBased,ChemSpecPM10,Cerium PM10,CAKE,4
+FilterBased,ChemSpecPM10,Lead PM10,CAKE,4
+FilterBased,ChemSpecPM10,Equivalent BC PM10,CAKE,4
+FilterBased,ChemSpecPM10,Sodium Ion PM10,CAKE,3
+FilterBased,ChemSpecPM10,BC PM10,CAKE,1
+FilterBased,ChemSpecPM10,PM10 mass,CALE,7
+FilterBased,ChemSpecPM10,Equivalent BC PM10,CALE,7
+FilterBased,ChemSpecPM10,Selenium PM10,CALE,6
+FilterBased,ChemSpecPM10,Magnesium PM10,CALE,4
+FilterBased,ChemSpecPM10,Aluminum PM10,CALE,4
+FilterBased,ChemSpecPM10,Titanium PM10,CALE,4
+FilterBased,ChemSpecPM10,Vanadium PM10,CALE,4
+FilterBased,ChemSpecPM10,Chromium PM10,CALE,4
+FilterBased,ChemSpecPM10,Manganese PM10,CALE,4
+FilterBased,ChemSpecPM10,Iron PM10,CALE,4
+FilterBased,ChemSpecPM10,Cobalt PM10,CALE,4
+FilterBased,ChemSpecPM10,Nickel PM10,CALE,4
+FilterBased,ChemSpecPM10,Copper PM10,CALE,4
+FilterBased,ChemSpecPM10,Zinc PM10,CALE,4
+FilterBased,ChemSpecPM10,Arsenic PM10,CALE,4
+FilterBased,ChemSpecPM10,Cadmium PM10,CALE,4
+FilterBased,ChemSpecPM10,Antimony PM10,CALE,4
+FilterBased,ChemSpecPM10,Cerium PM10,CALE,4
+FilterBased,ChemSpecPM10,Lead PM10,CALE,4
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,CALE,3
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,CALE,3
+FilterBased,ChemSpecPM10,Sodium Ion PM10,CALE,3
+FilterBased,ChemSpecPM10,Potassium Ion PM10,CALE,3
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,CALE,3
+FilterBased,ChemSpecPM10,Calcium Ion PM10,CALE,3
+FilterBased,ChemSpecPM10,BC PM10,CALE,3
+FilterBased,ChemSpecPM10,Lithium PM10,CALE,2
+FilterBased,ChemSpecPM10,Phosphorus PM10,CALE,2
+FilterBased,ChemSpecPM10,Barium PM10,CALE,2
+FilterBased,ChemSpecPM10,Sodium PM10,CALE,2
+FilterBased,ChemSpecPM10,Silicon PM10,CALE,2
+FilterBased,ChemSpecPM10,Sulfur PM10,CALE,2
+FilterBased,ChemSpecPM10,Chlorine PM10,CALE,2
+FilterBased,ChemSpecPM10,Potassium PM10,CALE,2
+FilterBased,ChemSpecPM10,Calcium PM10,CALE,2
+FilterBased,ChemSpecPM10,Rubidium PM10,CALE,2
+FilterBased,ChemSpecPM10,Strontium PM10,CALE,2
+FilterBased,ChemSpecPM10,Tin PM10,CALE,2
+FilterBased,ChemSpecPM10,Phosphate Ion PM10,CALE,1
+FilterBased,ChemSpecPM10,PM10 mass,CASH,25
+FilterBased,ChemSpecPM10,Selenium PM10,CASH,18
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,CASH,17
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,CASH,17
+FilterBased,ChemSpecPM10,Sodium Ion PM10,CASH,17
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,CASH,17
+FilterBased,ChemSpecPM10,Potassium Ion PM10,CASH,17
+FilterBased,ChemSpecPM10,Calcium Ion PM10,CASH,17
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,CASH,16
+FilterBased,ChemSpecPM10,Magnesium PM10,CASH,15
+FilterBased,ChemSpecPM10,Aluminum PM10,CASH,15
+FilterBased,ChemSpecPM10,Titanium PM10,CASH,15
+FilterBased,ChemSpecPM10,Vanadium PM10,CASH,15
+FilterBased,ChemSpecPM10,Chromium PM10,CASH,15
+FilterBased,ChemSpecPM10,Manganese PM10,CASH,15
+FilterBased,ChemSpecPM10,Iron PM10,CASH,15
+FilterBased,ChemSpecPM10,Cobalt PM10,CASH,15
+FilterBased,ChemSpecPM10,Nickel PM10,CASH,15
+FilterBased,ChemSpecPM10,Copper PM10,CASH,15
+FilterBased,ChemSpecPM10,Zinc PM10,CASH,15
+FilterBased,ChemSpecPM10,Arsenic PM10,CASH,15
+FilterBased,ChemSpecPM10,Cadmium PM10,CASH,15
+FilterBased,ChemSpecPM10,Antimony PM10,CASH,15
+FilterBased,ChemSpecPM10,Cerium PM10,CASH,15
+FilterBased,ChemSpecPM10,Lead PM10,CASH,15
+FilterBased,ChemSpecPM10,BC PM10,CASH,14
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,CASH,13
+FilterBased,ChemSpecPM10,Equivalent BC PM10,CASH,13
+FilterBased,ChemSpecPM10,Sodium PM10,CASH,12
+FilterBased,ChemSpecPM10,Silicon PM10,CASH,12
+FilterBased,ChemSpecPM10,Sulfur PM10,CASH,12
+FilterBased,ChemSpecPM10,Chlorine PM10,CASH,12
+FilterBased,ChemSpecPM10,Potassium PM10,CASH,12
+FilterBased,ChemSpecPM10,Calcium PM10,CASH,12
+FilterBased,ChemSpecPM10,Rubidium PM10,CASH,12
+FilterBased,ChemSpecPM10,Strontium PM10,CASH,12
+FilterBased,ChemSpecPM10,Tin PM10,CASH,12
+FilterBased,ChemSpecPM10,Phosphate Ion PM10,CASH,6
+FilterBased,ChemSpecPM10,Bromide Ion PM10,CASH,5
+FilterBased,ChemSpecPM10,Lithium PM10,CASH,3
+FilterBased,ChemSpecPM10,Phosphorus PM10,CASH,3
+FilterBased,ChemSpecPM10,Barium PM10,CASH,3
+FilterBased,ChemSpecPM10,PM10 mass,CHTS,23
+FilterBased,ChemSpecPM10,Potassium Ion PM10,CHTS,21
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,CHTS,21
+FilterBased,ChemSpecPM10,Calcium Ion PM10,CHTS,21
+FilterBased,ChemSpecPM10,Selenium PM10,CHTS,21
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,CHTS,20
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,CHTS,20
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,CHTS,19
+FilterBased,ChemSpecPM10,Magnesium PM10,CHTS,18
+FilterBased,ChemSpecPM10,Aluminum PM10,CHTS,18
+FilterBased,ChemSpecPM10,Titanium PM10,CHTS,18
+FilterBased,ChemSpecPM10,Vanadium PM10,CHTS,18
+FilterBased,ChemSpecPM10,Chromium PM10,CHTS,18
+FilterBased,ChemSpecPM10,Manganese PM10,CHTS,18
+FilterBased,ChemSpecPM10,Iron PM10,CHTS,18
+FilterBased,ChemSpecPM10,Cobalt PM10,CHTS,18
+FilterBased,ChemSpecPM10,Nickel PM10,CHTS,18
+FilterBased,ChemSpecPM10,Copper PM10,CHTS,18
+FilterBased,ChemSpecPM10,Zinc PM10,CHTS,18
+FilterBased,ChemSpecPM10,Arsenic PM10,CHTS,18
+FilterBased,ChemSpecPM10,Cadmium PM10,CHTS,18
+FilterBased,ChemSpecPM10,Antimony PM10,CHTS,18
+FilterBased,ChemSpecPM10,Cerium PM10,CHTS,18
+FilterBased,ChemSpecPM10,Lead PM10,CHTS,18
+FilterBased,ChemSpecPM10,Sodium Ion PM10,CHTS,17
+FilterBased,ChemSpecPM10,BC PM10,CHTS,16
+FilterBased,ChemSpecPM10,Sodium PM10,CHTS,15
+FilterBased,ChemSpecPM10,Silicon PM10,CHTS,15
+FilterBased,ChemSpecPM10,Sulfur PM10,CHTS,15
+FilterBased,ChemSpecPM10,Chlorine PM10,CHTS,15
+FilterBased,ChemSpecPM10,Potassium PM10,CHTS,15
+FilterBased,ChemSpecPM10,Calcium PM10,CHTS,15
+FilterBased,ChemSpecPM10,Rubidium PM10,CHTS,15
+FilterBased,ChemSpecPM10,Strontium PM10,CHTS,15
+FilterBased,ChemSpecPM10,Tin PM10,CHTS,15
+FilterBased,ChemSpecPM10,Equivalent BC PM10,CHTS,14
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,CHTS,9
+FilterBased,ChemSpecPM10,Phosphate Ion PM10,CHTS,6
+FilterBased,ChemSpecPM10,Bromide Ion PM10,CHTS,5
+FilterBased,ChemSpecPM10,Lithium PM10,CHTS,3
+FilterBased,ChemSpecPM10,Phosphorus PM10,CHTS,3
+FilterBased,ChemSpecPM10,Barium PM10,CHTS,3
+FilterBased,ChemSpecPM10,EC PM10,CHTS,2
+FilterBased,ChemSpecPM10,OC PM10,CHTS,2
+FilterBased,ChemSpecPM10,OM PM10,CHTS,2
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,ETAD,11
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,ETAD,11
+FilterBased,ChemSpecPM10,Potassium Ion PM10,ETAD,11
+FilterBased,ChemSpecPM10,Calcium Ion PM10,ETAD,11
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,ETAD,10
+FilterBased,ChemSpecPM10,Sodium Ion PM10,ETAD,10
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,ETAD,10
+FilterBased,ChemSpecPM10,PM10 mass,ETAD,6
+FilterBased,ChemSpecPM10,Sodium PM10,ETAD,6
+FilterBased,ChemSpecPM10,Aluminum PM10,ETAD,6
+FilterBased,ChemSpecPM10,Silicon PM10,ETAD,6
+FilterBased,ChemSpecPM10,Sulfur PM10,ETAD,6
+FilterBased,ChemSpecPM10,Chlorine PM10,ETAD,6
+FilterBased,ChemSpecPM10,Potassium PM10,ETAD,6
+FilterBased,ChemSpecPM10,Calcium PM10,ETAD,6
+FilterBased,ChemSpecPM10,Titanium PM10,ETAD,6
+FilterBased,ChemSpecPM10,Vanadium PM10,ETAD,6
+FilterBased,ChemSpecPM10,Iron PM10,ETAD,6
+FilterBased,ChemSpecPM10,Zinc PM10,ETAD,6
+FilterBased,ChemSpecPM10,Cerium PM10,ETAD,6
+FilterBased,ChemSpecPM10,Lead PM10,ETAD,6
+FilterBased,ChemSpecPM10,Arsenic PM10,ETAD,6
+FilterBased,ChemSpecPM10,Cobalt PM10,ETAD,6
+FilterBased,ChemSpecPM10,Chromium PM10,ETAD,6
+FilterBased,ChemSpecPM10,Copper PM10,ETAD,6
+FilterBased,ChemSpecPM10,Magnesium PM10,ETAD,6
+FilterBased,ChemSpecPM10,Manganese PM10,ETAD,6
+FilterBased,ChemSpecPM10,Nickel PM10,ETAD,6
+FilterBased,ChemSpecPM10,Antimony PM10,ETAD,6
+FilterBased,ChemSpecPM10,Rubidium PM10,ETAD,6
+FilterBased,ChemSpecPM10,Strontium PM10,ETAD,6
+FilterBased,ChemSpecPM10,Cadmium PM10,ETAD,6
+FilterBased,ChemSpecPM10,Selenium PM10,ETAD,6
+FilterBased,ChemSpecPM10,Tin PM10,ETAD,6
+FilterBased,ChemSpecPM10,BC PM10,ETAD,6
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,ETAD,6
+FilterBased,ChemSpecPM10,EC PM10,ETAD,1
+FilterBased,ChemSpecPM10,OC PM10,ETAD,1
+FilterBased,ChemSpecPM10,PM10 mass,IDBD,7
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,IDBD,6
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,IDBD,6
+FilterBased,ChemSpecPM10,Sodium Ion PM10,IDBD,6
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,IDBD,6
+FilterBased,ChemSpecPM10,Potassium Ion PM10,IDBD,6
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,IDBD,6
+FilterBased,ChemSpecPM10,Calcium Ion PM10,IDBD,6
+FilterBased,ChemSpecPM10,Sodium PM10,IDBD,6
+FilterBased,ChemSpecPM10,Aluminum PM10,IDBD,6
+FilterBased,ChemSpecPM10,Silicon PM10,IDBD,6
+FilterBased,ChemSpecPM10,Sulfur PM10,IDBD,6
+FilterBased,ChemSpecPM10,Chlorine PM10,IDBD,6
+FilterBased,ChemSpecPM10,Potassium PM10,IDBD,6
+FilterBased,ChemSpecPM10,Calcium PM10,IDBD,6
+FilterBased,ChemSpecPM10,Titanium PM10,IDBD,6
+FilterBased,ChemSpecPM10,Vanadium PM10,IDBD,6
+FilterBased,ChemSpecPM10,Iron PM10,IDBD,6
+FilterBased,ChemSpecPM10,Zinc PM10,IDBD,6
+FilterBased,ChemSpecPM10,Cerium PM10,IDBD,6
+FilterBased,ChemSpecPM10,Lead PM10,IDBD,6
+FilterBased,ChemSpecPM10,Arsenic PM10,IDBD,6
+FilterBased,ChemSpecPM10,Cobalt PM10,IDBD,6
+FilterBased,ChemSpecPM10,Chromium PM10,IDBD,6
+FilterBased,ChemSpecPM10,Copper PM10,IDBD,6
+FilterBased,ChemSpecPM10,Magnesium PM10,IDBD,6
+FilterBased,ChemSpecPM10,Manganese PM10,IDBD,6
+FilterBased,ChemSpecPM10,Nickel PM10,IDBD,6
+FilterBased,ChemSpecPM10,Antimony PM10,IDBD,6
+FilterBased,ChemSpecPM10,Rubidium PM10,IDBD,6
+FilterBased,ChemSpecPM10,Strontium PM10,IDBD,6
+FilterBased,ChemSpecPM10,Cadmium PM10,IDBD,6
+FilterBased,ChemSpecPM10,Selenium PM10,IDBD,6
+FilterBased,ChemSpecPM10,Tin PM10,IDBD,6
+FilterBased,ChemSpecPM10,BC PM10,IDBD,6
+FilterBased,ChemSpecPM10,Equivalent BC PM10,IDBD,4
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,IDBD,2
+FilterBased,ChemSpecPM10,EC PM10,IDBD,1
+FilterBased,ChemSpecPM10,OC PM10,IDBD,1
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,ILHA,8
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,ILHA,8
+FilterBased,ChemSpecPM10,Sodium Ion PM10,ILHA,7
+FilterBased,ChemSpecPM10,Potassium Ion PM10,ILHA,7
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,ILHA,7
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,ILHA,6
+FilterBased,ChemSpecPM10,Calcium Ion PM10,ILHA,6
+FilterBased,ChemSpecPM10,PM10 mass,ILHA,4
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,ILHA,4
+FilterBased,ChemSpecPM10,Sodium PM10,ILHA,4
+FilterBased,ChemSpecPM10,Aluminum PM10,ILHA,4
+FilterBased,ChemSpecPM10,Silicon PM10,ILHA,4
+FilterBased,ChemSpecPM10,Sulfur PM10,ILHA,4
+FilterBased,ChemSpecPM10,Chlorine PM10,ILHA,4
+FilterBased,ChemSpecPM10,Potassium PM10,ILHA,4
+FilterBased,ChemSpecPM10,Calcium PM10,ILHA,4
+FilterBased,ChemSpecPM10,Titanium PM10,ILHA,4
+FilterBased,ChemSpecPM10,Vanadium PM10,ILHA,4
+FilterBased,ChemSpecPM10,Iron PM10,ILHA,4
+FilterBased,ChemSpecPM10,Zinc PM10,ILHA,4
+FilterBased,ChemSpecPM10,Cerium PM10,ILHA,4
+FilterBased,ChemSpecPM10,Lead PM10,ILHA,4
+FilterBased,ChemSpecPM10,Arsenic PM10,ILHA,4
+FilterBased,ChemSpecPM10,Cobalt PM10,ILHA,4
+FilterBased,ChemSpecPM10,Chromium PM10,ILHA,4
+FilterBased,ChemSpecPM10,Copper PM10,ILHA,4
+FilterBased,ChemSpecPM10,Magnesium PM10,ILHA,4
+FilterBased,ChemSpecPM10,Manganese PM10,ILHA,4
+FilterBased,ChemSpecPM10,Nickel PM10,ILHA,4
+FilterBased,ChemSpecPM10,Antimony PM10,ILHA,4
+FilterBased,ChemSpecPM10,Rubidium PM10,ILHA,4
+FilterBased,ChemSpecPM10,Strontium PM10,ILHA,4
+FilterBased,ChemSpecPM10,Cadmium PM10,ILHA,4
+FilterBased,ChemSpecPM10,Selenium PM10,ILHA,4
+FilterBased,ChemSpecPM10,Tin PM10,ILHA,4
+FilterBased,ChemSpecPM10,BC PM10,ILHA,4
+FilterBased,ChemSpecPM10,EC PM10,ILHA,3
+FilterBased,ChemSpecPM10,OC PM10,ILHA,3
+FilterBased,ChemSpecPM10,Phosphate Ion PM10,ILHA,1
+FilterBased,ChemSpecPM10,OM PM10,ILHA,1
+FilterBased,ChemSpecPM10,Bromide Ion PM10,ILHA,1
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,ILNZ,22
+FilterBased,ChemSpecPM10,Potassium Ion PM10,ILNZ,22
+FilterBased,ChemSpecPM10,Calcium Ion PM10,ILNZ,22
+FilterBased,ChemSpecPM10,PM10 mass,ILNZ,21
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,ILNZ,21
+FilterBased,ChemSpecPM10,Sodium Ion PM10,ILNZ,21
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,ILNZ,21
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,ILNZ,20
+FilterBased,ChemSpecPM10,Selenium PM10,ILNZ,16
+FilterBased,ChemSpecPM10,Magnesium PM10,ILNZ,15
+FilterBased,ChemSpecPM10,Aluminum PM10,ILNZ,15
+FilterBased,ChemSpecPM10,Titanium PM10,ILNZ,15
+FilterBased,ChemSpecPM10,Vanadium PM10,ILNZ,15
+FilterBased,ChemSpecPM10,Chromium PM10,ILNZ,15
+FilterBased,ChemSpecPM10,Manganese PM10,ILNZ,15
+FilterBased,ChemSpecPM10,Iron PM10,ILNZ,15
+FilterBased,ChemSpecPM10,Cobalt PM10,ILNZ,15
+FilterBased,ChemSpecPM10,Nickel PM10,ILNZ,15
+FilterBased,ChemSpecPM10,Copper PM10,ILNZ,15
+FilterBased,ChemSpecPM10,Zinc PM10,ILNZ,15
+FilterBased,ChemSpecPM10,Arsenic PM10,ILNZ,15
+FilterBased,ChemSpecPM10,Cadmium PM10,ILNZ,15
+FilterBased,ChemSpecPM10,Antimony PM10,ILNZ,15
+FilterBased,ChemSpecPM10,Cerium PM10,ILNZ,15
+FilterBased,ChemSpecPM10,Lead PM10,ILNZ,15
+FilterBased,ChemSpecPM10,BC PM10,ILNZ,15
+FilterBased,ChemSpecPM10,Sodium PM10,ILNZ,14
+FilterBased,ChemSpecPM10,Silicon PM10,ILNZ,14
+FilterBased,ChemSpecPM10,Sulfur PM10,ILNZ,14
+FilterBased,ChemSpecPM10,Chlorine PM10,ILNZ,14
+FilterBased,ChemSpecPM10,Potassium PM10,ILNZ,14
+FilterBased,ChemSpecPM10,Calcium PM10,ILNZ,14
+FilterBased,ChemSpecPM10,Rubidium PM10,ILNZ,14
+FilterBased,ChemSpecPM10,Strontium PM10,ILNZ,14
+FilterBased,ChemSpecPM10,Tin PM10,ILNZ,14
+FilterBased,ChemSpecPM10,Equivalent BC PM10,ILNZ,10
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,ILNZ,7
+FilterBased,ChemSpecPM10,EC PM10,ILNZ,6
+FilterBased,ChemSpecPM10,OC PM10,ILNZ,6
+FilterBased,ChemSpecPM10,Phosphate Ion PM10,ILNZ,4
+FilterBased,ChemSpecPM10,Bromide Ion PM10,ILNZ,3
+FilterBased,ChemSpecPM10,OM PM10,ILNZ,2
+FilterBased,ChemSpecPM10,Lithium PM10,ILNZ,1
+FilterBased,ChemSpecPM10,Phosphorus PM10,ILNZ,1
+FilterBased,ChemSpecPM10,Barium PM10,ILNZ,1
+FilterBased,ChemSpecPM10,PM10 mass,INKA,3
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,INKA,3
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,INKA,3
+FilterBased,ChemSpecPM10,Sodium Ion PM10,INKA,3
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,INKA,3
+FilterBased,ChemSpecPM10,Potassium Ion PM10,INKA,3
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,INKA,3
+FilterBased,ChemSpecPM10,Calcium Ion PM10,INKA,3
+FilterBased,ChemSpecPM10,Sodium PM10,INKA,3
+FilterBased,ChemSpecPM10,Aluminum PM10,INKA,3
+FilterBased,ChemSpecPM10,Silicon PM10,INKA,3
+FilterBased,ChemSpecPM10,Sulfur PM10,INKA,3
+FilterBased,ChemSpecPM10,Chlorine PM10,INKA,3
+FilterBased,ChemSpecPM10,Potassium PM10,INKA,3
+FilterBased,ChemSpecPM10,Calcium PM10,INKA,3
+FilterBased,ChemSpecPM10,Titanium PM10,INKA,3
+FilterBased,ChemSpecPM10,Vanadium PM10,INKA,3
+FilterBased,ChemSpecPM10,Iron PM10,INKA,3
+FilterBased,ChemSpecPM10,Zinc PM10,INKA,3
+FilterBased,ChemSpecPM10,Cerium PM10,INKA,3
+FilterBased,ChemSpecPM10,Lead PM10,INKA,3
+FilterBased,ChemSpecPM10,Arsenic PM10,INKA,3
+FilterBased,ChemSpecPM10,Cobalt PM10,INKA,3
+FilterBased,ChemSpecPM10,Chromium PM10,INKA,3
+FilterBased,ChemSpecPM10,Copper PM10,INKA,3
+FilterBased,ChemSpecPM10,Magnesium PM10,INKA,3
+FilterBased,ChemSpecPM10,Manganese PM10,INKA,3
+FilterBased,ChemSpecPM10,Nickel PM10,INKA,3
+FilterBased,ChemSpecPM10,Antimony PM10,INKA,3
+FilterBased,ChemSpecPM10,Rubidium PM10,INKA,3
+FilterBased,ChemSpecPM10,Strontium PM10,INKA,3
+FilterBased,ChemSpecPM10,Cadmium PM10,INKA,3
+FilterBased,ChemSpecPM10,Selenium PM10,INKA,3
+FilterBased,ChemSpecPM10,Tin PM10,INKA,3
+FilterBased,ChemSpecPM10,Equivalent BC PM10,INKA,3
+FilterBased,ChemSpecPM10,BC PM10,INKA,3
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,INKA,2
+FilterBased,ChemSpecPM10,PM10 mass,KRSE,11
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,KRSE,10
+FilterBased,ChemSpecPM10,Potassium Ion PM10,KRSE,10
+FilterBased,ChemSpecPM10,Calcium Ion PM10,KRSE,10
+FilterBased,ChemSpecPM10,BC PM10,KRSE,10
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,KRSE,9
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,KRSE,9
+FilterBased,ChemSpecPM10,Sodium Ion PM10,KRSE,9
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,KRSE,9
+FilterBased,ChemSpecPM10,Sodium PM10,KRSE,9
+FilterBased,ChemSpecPM10,Aluminum PM10,KRSE,9
+FilterBased,ChemSpecPM10,Silicon PM10,KRSE,9
+FilterBased,ChemSpecPM10,Sulfur PM10,KRSE,9
+FilterBased,ChemSpecPM10,Chlorine PM10,KRSE,9
+FilterBased,ChemSpecPM10,Potassium PM10,KRSE,9
+FilterBased,ChemSpecPM10,Calcium PM10,KRSE,9
+FilterBased,ChemSpecPM10,Titanium PM10,KRSE,9
+FilterBased,ChemSpecPM10,Vanadium PM10,KRSE,9
+FilterBased,ChemSpecPM10,Iron PM10,KRSE,9
+FilterBased,ChemSpecPM10,Zinc PM10,KRSE,9
+FilterBased,ChemSpecPM10,Cerium PM10,KRSE,9
+FilterBased,ChemSpecPM10,Lead PM10,KRSE,9
+FilterBased,ChemSpecPM10,Arsenic PM10,KRSE,9
+FilterBased,ChemSpecPM10,Cobalt PM10,KRSE,9
+FilterBased,ChemSpecPM10,Chromium PM10,KRSE,9
+FilterBased,ChemSpecPM10,Copper PM10,KRSE,9
+FilterBased,ChemSpecPM10,Magnesium PM10,KRSE,9
+FilterBased,ChemSpecPM10,Manganese PM10,KRSE,9
+FilterBased,ChemSpecPM10,Nickel PM10,KRSE,9
+FilterBased,ChemSpecPM10,Antimony PM10,KRSE,9
+FilterBased,ChemSpecPM10,Rubidium PM10,KRSE,9
+FilterBased,ChemSpecPM10,Strontium PM10,KRSE,9
+FilterBased,ChemSpecPM10,Cadmium PM10,KRSE,9
+FilterBased,ChemSpecPM10,Selenium PM10,KRSE,9
+FilterBased,ChemSpecPM10,Tin PM10,KRSE,9
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,KRSE,8
+FilterBased,ChemSpecPM10,Equivalent BC PM10,KRSE,7
+FilterBased,ChemSpecPM10,Phosphate Ion PM10,KRSE,1
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,KRUL,25
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,KRUL,25
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,KRUL,24
+FilterBased,ChemSpecPM10,Potassium Ion PM10,KRUL,24
+FilterBased,ChemSpecPM10,Sodium Ion PM10,KRUL,23
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,KRUL,22
+FilterBased,ChemSpecPM10,Calcium Ion PM10,KRUL,22
+FilterBased,ChemSpecPM10,PM10 mass,KRUL,20
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,KRUL,20
+FilterBased,ChemSpecPM10,Sodium PM10,KRUL,20
+FilterBased,ChemSpecPM10,Aluminum PM10,KRUL,20
+FilterBased,ChemSpecPM10,Silicon PM10,KRUL,20
+FilterBased,ChemSpecPM10,Sulfur PM10,KRUL,20
+FilterBased,ChemSpecPM10,Chlorine PM10,KRUL,20
+FilterBased,ChemSpecPM10,Potassium PM10,KRUL,20
+FilterBased,ChemSpecPM10,Calcium PM10,KRUL,20
+FilterBased,ChemSpecPM10,Titanium PM10,KRUL,20
+FilterBased,ChemSpecPM10,Vanadium PM10,KRUL,20
+FilterBased,ChemSpecPM10,Iron PM10,KRUL,20
+FilterBased,ChemSpecPM10,Zinc PM10,KRUL,20
+FilterBased,ChemSpecPM10,Cerium PM10,KRUL,20
+FilterBased,ChemSpecPM10,Lead PM10,KRUL,20
+FilterBased,ChemSpecPM10,Arsenic PM10,KRUL,20
+FilterBased,ChemSpecPM10,Cobalt PM10,KRUL,20
+FilterBased,ChemSpecPM10,Chromium PM10,KRUL,20
+FilterBased,ChemSpecPM10,Copper PM10,KRUL,20
+FilterBased,ChemSpecPM10,Magnesium PM10,KRUL,20
+FilterBased,ChemSpecPM10,Manganese PM10,KRUL,20
+FilterBased,ChemSpecPM10,Nickel PM10,KRUL,20
+FilterBased,ChemSpecPM10,Antimony PM10,KRUL,20
+FilterBased,ChemSpecPM10,Rubidium PM10,KRUL,20
+FilterBased,ChemSpecPM10,Strontium PM10,KRUL,20
+FilterBased,ChemSpecPM10,Cadmium PM10,KRUL,20
+FilterBased,ChemSpecPM10,Selenium PM10,KRUL,20
+FilterBased,ChemSpecPM10,Tin PM10,KRUL,20
+FilterBased,ChemSpecPM10,BC PM10,KRUL,20
+FilterBased,ChemSpecPM10,Equivalent BC PM10,KRUL,5
+FilterBased,ChemSpecPM10,Phosphate Ion PM10,KRUL,1
+FilterBased,ChemSpecPM10,EC PM10,KRUL,1
+FilterBased,ChemSpecPM10,OC PM10,KRUL,1
+FilterBased,ChemSpecPM10,PM10 mass,MXMC,11
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,MXMC,11
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,MXMC,11
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,MXMC,11
+FilterBased,ChemSpecPM10,Potassium Ion PM10,MXMC,11
+FilterBased,ChemSpecPM10,Sodium Ion PM10,MXMC,10
+FilterBased,ChemSpecPM10,Calcium Ion PM10,MXMC,10
+FilterBased,ChemSpecPM10,Sodium PM10,MXMC,10
+FilterBased,ChemSpecPM10,Aluminum PM10,MXMC,10
+FilterBased,ChemSpecPM10,Silicon PM10,MXMC,10
+FilterBased,ChemSpecPM10,Sulfur PM10,MXMC,10
+FilterBased,ChemSpecPM10,Chlorine PM10,MXMC,10
+FilterBased,ChemSpecPM10,Potassium PM10,MXMC,10
+FilterBased,ChemSpecPM10,Calcium PM10,MXMC,10
+FilterBased,ChemSpecPM10,Titanium PM10,MXMC,10
+FilterBased,ChemSpecPM10,Vanadium PM10,MXMC,10
+FilterBased,ChemSpecPM10,Iron PM10,MXMC,10
+FilterBased,ChemSpecPM10,Zinc PM10,MXMC,10
+FilterBased,ChemSpecPM10,Cerium PM10,MXMC,10
+FilterBased,ChemSpecPM10,Lead PM10,MXMC,10
+FilterBased,ChemSpecPM10,Arsenic PM10,MXMC,10
+FilterBased,ChemSpecPM10,Cobalt PM10,MXMC,10
+FilterBased,ChemSpecPM10,Chromium PM10,MXMC,10
+FilterBased,ChemSpecPM10,Copper PM10,MXMC,10
+FilterBased,ChemSpecPM10,Magnesium PM10,MXMC,10
+FilterBased,ChemSpecPM10,Manganese PM10,MXMC,10
+FilterBased,ChemSpecPM10,Nickel PM10,MXMC,10
+FilterBased,ChemSpecPM10,Antimony PM10,MXMC,10
+FilterBased,ChemSpecPM10,Rubidium PM10,MXMC,10
+FilterBased,ChemSpecPM10,Strontium PM10,MXMC,10
+FilterBased,ChemSpecPM10,Cadmium PM10,MXMC,10
+FilterBased,ChemSpecPM10,Selenium PM10,MXMC,10
+FilterBased,ChemSpecPM10,Tin PM10,MXMC,10
+FilterBased,ChemSpecPM10,BC PM10,MXMC,10
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,MXMC,7
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,MXMC,7
+FilterBased,ChemSpecPM10,Equivalent BC PM10,MXMC,4
+FilterBased,ChemSpecPM10,Phosphate Ion PM10,MXMC,1
+FilterBased,ChemSpecPM10,PM10 mass,NGIL,16
+FilterBased,ChemSpecPM10,Selenium PM10,NGIL,14
+FilterBased,ChemSpecPM10,Magnesium PM10,NGIL,12
+FilterBased,ChemSpecPM10,Aluminum PM10,NGIL,12
+FilterBased,ChemSpecPM10,Titanium PM10,NGIL,12
+FilterBased,ChemSpecPM10,Vanadium PM10,NGIL,12
+FilterBased,ChemSpecPM10,Chromium PM10,NGIL,12
+FilterBased,ChemSpecPM10,Manganese PM10,NGIL,12
+FilterBased,ChemSpecPM10,Iron PM10,NGIL,12
+FilterBased,ChemSpecPM10,Cobalt PM10,NGIL,12
+FilterBased,ChemSpecPM10,Nickel PM10,NGIL,12
+FilterBased,ChemSpecPM10,Copper PM10,NGIL,12
+FilterBased,ChemSpecPM10,Zinc PM10,NGIL,12
+FilterBased,ChemSpecPM10,Arsenic PM10,NGIL,12
+FilterBased,ChemSpecPM10,Cadmium PM10,NGIL,12
+FilterBased,ChemSpecPM10,Antimony PM10,NGIL,12
+FilterBased,ChemSpecPM10,Cerium PM10,NGIL,12
+FilterBased,ChemSpecPM10,Lead PM10,NGIL,12
+FilterBased,ChemSpecPM10,Sodium Ion PM10,NGIL,11
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,NGIL,11
+FilterBased,ChemSpecPM10,Potassium Ion PM10,NGIL,11
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,NGIL,11
+FilterBased,ChemSpecPM10,Calcium Ion PM10,NGIL,11
+FilterBased,ChemSpecPM10,Equivalent BC PM10,NGIL,11
+FilterBased,ChemSpecPM10,BC PM10,NGIL,11
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,NGIL,10
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,NGIL,10
+FilterBased,ChemSpecPM10,Sodium PM10,NGIL,10
+FilterBased,ChemSpecPM10,Silicon PM10,NGIL,10
+FilterBased,ChemSpecPM10,Sulfur PM10,NGIL,10
+FilterBased,ChemSpecPM10,Chlorine PM10,NGIL,10
+FilterBased,ChemSpecPM10,Potassium PM10,NGIL,10
+FilterBased,ChemSpecPM10,Calcium PM10,NGIL,10
+FilterBased,ChemSpecPM10,Rubidium PM10,NGIL,10
+FilterBased,ChemSpecPM10,Strontium PM10,NGIL,10
+FilterBased,ChemSpecPM10,Tin PM10,NGIL,10
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,NGIL,8
+FilterBased,ChemSpecPM10,Bromide Ion PM10,NGIL,2
+FilterBased,ChemSpecPM10,Phosphate Ion PM10,NGIL,2
+FilterBased,ChemSpecPM10,Lithium PM10,NGIL,2
+FilterBased,ChemSpecPM10,Phosphorus PM10,NGIL,2
+FilterBased,ChemSpecPM10,Barium PM10,NGIL,2
+FilterBased,ChemSpecPM10,PM10 mass,PRFJ,7
+FilterBased,ChemSpecPM10,Sodium PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Aluminum PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Silicon PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Sulfur PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Chlorine PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Potassium PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Calcium PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Titanium PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Vanadium PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Iron PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Zinc PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Cerium PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Lead PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Arsenic PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Cobalt PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Chromium PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Copper PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Magnesium PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Manganese PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Nickel PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Antimony PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Rubidium PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Strontium PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Cadmium PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Selenium PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Tin PM10,PRFJ,6
+FilterBased,ChemSpecPM10,BC PM10,PRFJ,6
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,PRFJ,5
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,PRFJ,5
+FilterBased,ChemSpecPM10,Sodium Ion PM10,PRFJ,5
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,PRFJ,5
+FilterBased,ChemSpecPM10,Potassium Ion PM10,PRFJ,5
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,PRFJ,5
+FilterBased,ChemSpecPM10,Calcium Ion PM10,PRFJ,5
+FilterBased,ChemSpecPM10,Equivalent BC PM10,PRFJ,4
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,PRFJ,2
+FilterBased,ChemSpecPM10,PM10 mass,SGSU,2
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,SGSU,2
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,SGSU,2
+FilterBased,ChemSpecPM10,Phosphate Ion PM10,SGSU,2
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,SGSU,2
+FilterBased,ChemSpecPM10,Sodium Ion PM10,SGSU,2
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,SGSU,2
+FilterBased,ChemSpecPM10,Potassium Ion PM10,SGSU,2
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,SGSU,2
+FilterBased,ChemSpecPM10,Calcium Ion PM10,SGSU,2
+FilterBased,ChemSpecPM10,Sodium PM10,SGSU,2
+FilterBased,ChemSpecPM10,Aluminum PM10,SGSU,2
+FilterBased,ChemSpecPM10,Silicon PM10,SGSU,2
+FilterBased,ChemSpecPM10,Sulfur PM10,SGSU,2
+FilterBased,ChemSpecPM10,Chlorine PM10,SGSU,2
+FilterBased,ChemSpecPM10,Potassium PM10,SGSU,2
+FilterBased,ChemSpecPM10,Calcium PM10,SGSU,2
+FilterBased,ChemSpecPM10,Titanium PM10,SGSU,2
+FilterBased,ChemSpecPM10,Vanadium PM10,SGSU,2
+FilterBased,ChemSpecPM10,Iron PM10,SGSU,2
+FilterBased,ChemSpecPM10,Zinc PM10,SGSU,2
+FilterBased,ChemSpecPM10,Cerium PM10,SGSU,2
+FilterBased,ChemSpecPM10,Lead PM10,SGSU,2
+FilterBased,ChemSpecPM10,Arsenic PM10,SGSU,2
+FilterBased,ChemSpecPM10,Cobalt PM10,SGSU,2
+FilterBased,ChemSpecPM10,Chromium PM10,SGSU,2
+FilterBased,ChemSpecPM10,Copper PM10,SGSU,2
+FilterBased,ChemSpecPM10,Magnesium PM10,SGSU,2
+FilterBased,ChemSpecPM10,Manganese PM10,SGSU,2
+FilterBased,ChemSpecPM10,Nickel PM10,SGSU,2
+FilterBased,ChemSpecPM10,Antimony PM10,SGSU,2
+FilterBased,ChemSpecPM10,Rubidium PM10,SGSU,2
+FilterBased,ChemSpecPM10,Strontium PM10,SGSU,2
+FilterBased,ChemSpecPM10,Cadmium PM10,SGSU,2
+FilterBased,ChemSpecPM10,Selenium PM10,SGSU,2
+FilterBased,ChemSpecPM10,Tin PM10,SGSU,2
+FilterBased,ChemSpecPM10,Equivalent BC PM10,SGSU,2
+FilterBased,ChemSpecPM10,BC PM10,SGSU,2
+FilterBased,ChemSpecPM10,Bromide Ion PM10,SGSU,1
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,TWKA,5
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,TWKA,4
+FilterBased,ChemSpecPM10,Potassium Ion PM10,TWKA,4
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,TWKA,4
+FilterBased,ChemSpecPM10,Calcium Ion PM10,TWKA,4
+FilterBased,ChemSpecPM10,PM10 mass,TWKA,3
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,TWKA,3
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,TWKA,3
+FilterBased,ChemSpecPM10,Sodium PM10,TWKA,3
+FilterBased,ChemSpecPM10,Aluminum PM10,TWKA,3
+FilterBased,ChemSpecPM10,Silicon PM10,TWKA,3
+FilterBased,ChemSpecPM10,Sulfur PM10,TWKA,3
+FilterBased,ChemSpecPM10,Chlorine PM10,TWKA,3
+FilterBased,ChemSpecPM10,Potassium PM10,TWKA,3
+FilterBased,ChemSpecPM10,Calcium PM10,TWKA,3
+FilterBased,ChemSpecPM10,Titanium PM10,TWKA,3
+FilterBased,ChemSpecPM10,Vanadium PM10,TWKA,3
+FilterBased,ChemSpecPM10,Iron PM10,TWKA,3
+FilterBased,ChemSpecPM10,Zinc PM10,TWKA,3
+FilterBased,ChemSpecPM10,Cerium PM10,TWKA,3
+FilterBased,ChemSpecPM10,Lead PM10,TWKA,3
+FilterBased,ChemSpecPM10,Arsenic PM10,TWKA,3
+FilterBased,ChemSpecPM10,Cobalt PM10,TWKA,3
+FilterBased,ChemSpecPM10,Chromium PM10,TWKA,3
+FilterBased,ChemSpecPM10,Copper PM10,TWKA,3
+FilterBased,ChemSpecPM10,Magnesium PM10,TWKA,3
+FilterBased,ChemSpecPM10,Manganese PM10,TWKA,3
+FilterBased,ChemSpecPM10,Nickel PM10,TWKA,3
+FilterBased,ChemSpecPM10,Antimony PM10,TWKA,3
+FilterBased,ChemSpecPM10,Rubidium PM10,TWKA,3
+FilterBased,ChemSpecPM10,Strontium PM10,TWKA,3
+FilterBased,ChemSpecPM10,Cadmium PM10,TWKA,3
+FilterBased,ChemSpecPM10,Selenium PM10,TWKA,3
+FilterBased,ChemSpecPM10,Tin PM10,TWKA,3
+FilterBased,ChemSpecPM10,BC PM10,TWKA,3
+FilterBased,ChemSpecPM10,Sodium Ion PM10,TWKA,2
+FilterBased,ChemSpecPM10,EC PM10,TWKA,1
+FilterBased,ChemSpecPM10,OC PM10,TWKA,1
+FilterBased,ChemSpecPM10,OM PM10,TWKA,1
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,TWTA,5
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,TWTA,5
+FilterBased,ChemSpecPM10,PM10 mass,TWTA,4
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,TWTA,4
+FilterBased,ChemSpecPM10,Potassium Ion PM10,TWTA,4
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,TWTA,4
+FilterBased,ChemSpecPM10,Calcium Ion PM10,TWTA,4
+FilterBased,ChemSpecPM10,Sodium PM10,TWTA,3
+FilterBased,ChemSpecPM10,Aluminum PM10,TWTA,3
+FilterBased,ChemSpecPM10,Silicon PM10,TWTA,3
+FilterBased,ChemSpecPM10,Sulfur PM10,TWTA,3
+FilterBased,ChemSpecPM10,Chlorine PM10,TWTA,3
+FilterBased,ChemSpecPM10,Potassium PM10,TWTA,3
+FilterBased,ChemSpecPM10,Calcium PM10,TWTA,3
+FilterBased,ChemSpecPM10,Titanium PM10,TWTA,3
+FilterBased,ChemSpecPM10,Vanadium PM10,TWTA,3
+FilterBased,ChemSpecPM10,Iron PM10,TWTA,3
+FilterBased,ChemSpecPM10,Zinc PM10,TWTA,3
+FilterBased,ChemSpecPM10,Cerium PM10,TWTA,3
+FilterBased,ChemSpecPM10,Lead PM10,TWTA,3
+FilterBased,ChemSpecPM10,Arsenic PM10,TWTA,3
+FilterBased,ChemSpecPM10,Cobalt PM10,TWTA,3
+FilterBased,ChemSpecPM10,Chromium PM10,TWTA,3
+FilterBased,ChemSpecPM10,Copper PM10,TWTA,3
+FilterBased,ChemSpecPM10,Magnesium PM10,TWTA,3
+FilterBased,ChemSpecPM10,Manganese PM10,TWTA,3
+FilterBased,ChemSpecPM10,Nickel PM10,TWTA,3
+FilterBased,ChemSpecPM10,Antimony PM10,TWTA,3
+FilterBased,ChemSpecPM10,Rubidium PM10,TWTA,3
+FilterBased,ChemSpecPM10,Strontium PM10,TWTA,3
+FilterBased,ChemSpecPM10,Cadmium PM10,TWTA,3
+FilterBased,ChemSpecPM10,Selenium PM10,TWTA,3
+FilterBased,ChemSpecPM10,Tin PM10,TWTA,3
+FilterBased,ChemSpecPM10,BC PM10,TWTA,3
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,TWTA,2
+FilterBased,ChemSpecPM10,Sodium Ion PM10,TWTA,2
+FilterBased,ChemSpecPM10,EC PM10,TWTA,1
+FilterBased,ChemSpecPM10,OC PM10,TWTA,1
+FilterBased,ChemSpecPM10,OM PM10,TWTA,1
+FilterBased,ChemSpecPM10,PM10 mass,USNO,2
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,USNO,1
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,USNO,1
+FilterBased,ChemSpecPM10,Sodium Ion PM10,USNO,1
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,USNO,1
+FilterBased,ChemSpecPM10,Potassium Ion PM10,USNO,1
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,USNO,1
+FilterBased,ChemSpecPM10,Calcium Ion PM10,USNO,1
+FilterBased,ChemSpecPM10,Sodium PM10,USNO,1
+FilterBased,ChemSpecPM10,Aluminum PM10,USNO,1
+FilterBased,ChemSpecPM10,Silicon PM10,USNO,1
+FilterBased,ChemSpecPM10,Sulfur PM10,USNO,1
+FilterBased,ChemSpecPM10,Chlorine PM10,USNO,1
+FilterBased,ChemSpecPM10,Potassium PM10,USNO,1
+FilterBased,ChemSpecPM10,Calcium PM10,USNO,1
+FilterBased,ChemSpecPM10,Titanium PM10,USNO,1
+FilterBased,ChemSpecPM10,Vanadium PM10,USNO,1
+FilterBased,ChemSpecPM10,Iron PM10,USNO,1
+FilterBased,ChemSpecPM10,Zinc PM10,USNO,1
+FilterBased,ChemSpecPM10,Cerium PM10,USNO,1
+FilterBased,ChemSpecPM10,Lead PM10,USNO,1
+FilterBased,ChemSpecPM10,Arsenic PM10,USNO,1
+FilterBased,ChemSpecPM10,Cobalt PM10,USNO,1
+FilterBased,ChemSpecPM10,Chromium PM10,USNO,1
+FilterBased,ChemSpecPM10,Copper PM10,USNO,1
+FilterBased,ChemSpecPM10,Magnesium PM10,USNO,1
+FilterBased,ChemSpecPM10,Manganese PM10,USNO,1
+FilterBased,ChemSpecPM10,Nickel PM10,USNO,1
+FilterBased,ChemSpecPM10,Antimony PM10,USNO,1
+FilterBased,ChemSpecPM10,Rubidium PM10,USNO,1
+FilterBased,ChemSpecPM10,Strontium PM10,USNO,1
+FilterBased,ChemSpecPM10,Cadmium PM10,USNO,1
+FilterBased,ChemSpecPM10,Selenium PM10,USNO,1
+FilterBased,ChemSpecPM10,Tin PM10,USNO,1
+FilterBased,ChemSpecPM10,BC PM10,USNO,1
+FilterBased,ChemSpecPM10,PM10 mass,VNHN,8
+FilterBased,ChemSpecPM10,Selenium PM10,VNHN,8
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,VNHN,6
+FilterBased,ChemSpecPM10,Potassium Ion PM10,VNHN,6
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,VNHN,6
+FilterBased,ChemSpecPM10,Calcium Ion PM10,VNHN,6
+FilterBased,ChemSpecPM10,Magnesium PM10,VNHN,6
+FilterBased,ChemSpecPM10,Aluminum PM10,VNHN,6
+FilterBased,ChemSpecPM10,Titanium PM10,VNHN,6
+FilterBased,ChemSpecPM10,Vanadium PM10,VNHN,6
+FilterBased,ChemSpecPM10,Chromium PM10,VNHN,6
+FilterBased,ChemSpecPM10,Manganese PM10,VNHN,6
+FilterBased,ChemSpecPM10,Iron PM10,VNHN,6
+FilterBased,ChemSpecPM10,Cobalt PM10,VNHN,6
+FilterBased,ChemSpecPM10,Nickel PM10,VNHN,6
+FilterBased,ChemSpecPM10,Copper PM10,VNHN,6
+FilterBased,ChemSpecPM10,Zinc PM10,VNHN,6
+FilterBased,ChemSpecPM10,Arsenic PM10,VNHN,6
+FilterBased,ChemSpecPM10,Cadmium PM10,VNHN,6
+FilterBased,ChemSpecPM10,Antimony PM10,VNHN,6
+FilterBased,ChemSpecPM10,Cerium PM10,VNHN,6
+FilterBased,ChemSpecPM10,Lead PM10,VNHN,6
+FilterBased,ChemSpecPM10,Equivalent BC PM10,VNHN,6
+FilterBased,ChemSpecPM10,BC PM10,VNHN,6
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,VNHN,5
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,VNHN,5
+FilterBased,ChemSpecPM10,Sodium Ion PM10,VNHN,5
+FilterBased,ChemSpecPM10,Sodium PM10,VNHN,4
+FilterBased,ChemSpecPM10,Silicon PM10,VNHN,4
+FilterBased,ChemSpecPM10,Sulfur PM10,VNHN,4
+FilterBased,ChemSpecPM10,Chlorine PM10,VNHN,4
+FilterBased,ChemSpecPM10,Potassium PM10,VNHN,4
+FilterBased,ChemSpecPM10,Calcium PM10,VNHN,4
+FilterBased,ChemSpecPM10,Rubidium PM10,VNHN,4
+FilterBased,ChemSpecPM10,Strontium PM10,VNHN,4
+FilterBased,ChemSpecPM10,Tin PM10,VNHN,4
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,VNHN,3
+FilterBased,ChemSpecPM10,Phosphate Ion PM10,VNHN,3
+FilterBased,ChemSpecPM10,Lithium PM10,VNHN,2
+FilterBased,ChemSpecPM10,Phosphorus PM10,VNHN,2
+FilterBased,ChemSpecPM10,Barium PM10,VNHN,2
+FilterBased,ChemSpecPM10,Bromide Ion PM10,VNHN,1
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,ZAJB,9
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,ZAJB,8
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,ZAJB,8
+FilterBased,ChemSpecPM10,Potassium Ion PM10,ZAJB,8
+FilterBased,ChemSpecPM10,Sodium Ion PM10,ZAJB,7
+FilterBased,ChemSpecPM10,PM10 mass,ZAJB,6
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Sodium PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Aluminum PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Silicon PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Sulfur PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Chlorine PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Potassium PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Calcium PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Titanium PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Vanadium PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Iron PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Zinc PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Cerium PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Lead PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Arsenic PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Cobalt PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Chromium PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Copper PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Magnesium PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Manganese PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Nickel PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Antimony PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Rubidium PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Strontium PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Cadmium PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Selenium PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Tin PM10,ZAJB,6
+FilterBased,ChemSpecPM10,BC PM10,ZAJB,6
+FilterBased,ChemSpecPM10,Calcium Ion PM10,ZAJB,5
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,ZAJB,4
+FilterBased,ChemSpecPM10,EC PM10,ZAJB,2
+FilterBased,ChemSpecPM10,OC PM10,ZAJB,2
+FilterBased,ChemSpecPM10,OM PM10,ZAJB,2
+FilterBased,ChemSpecPM10,Sulfate Ion PM10,ZAPR,7
+FilterBased,ChemSpecPM10,Ammonium Ion PM10,ZAPR,7
+FilterBased,ChemSpecPM10,Potassium Ion PM10,ZAPR,7
+FilterBased,ChemSpecPM10,PM10 mass,ZAPR,6
+FilterBased,ChemSpecPM10,Nitrate Ion PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Calcium Ion PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Sodium PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Aluminum PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Silicon PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Sulfur PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Chlorine PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Potassium PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Calcium PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Titanium PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Vanadium PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Iron PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Zinc PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Cerium PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Lead PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Arsenic PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Cobalt PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Chromium PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Copper PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Magnesium PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Manganese PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Nickel PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Antimony PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Rubidium PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Strontium PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Cadmium PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Selenium PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Tin PM10,ZAPR,6
+FilterBased,ChemSpecPM10,BC PM10,ZAPR,6
+FilterBased,ChemSpecPM10,Sodium Ion PM10,ZAPR,5
+FilterBased,ChemSpecPM10,Magnesium Ion PM10,ZAPR,5
+FilterBased,ChemSpecPM10,Nitrite Ion PM10,ZAPR,2
+FilterBased,ChemSpecPM10,Equivalent BC PM10,ZAPR,1
+FilterBased,ChemSpecPM10,EC PM10,ZAPR,1
+FilterBased,ChemSpecPM10,OC PM10,ZAPR,1
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,AEAZ,169
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,AEAZ,163
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,AEAZ,160
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,AEAZ,158
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,AEAZ,158
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,AEAZ,157
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,AEAZ,152
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,AEAZ,151
+FilterBased,ChemSpecPM25,BC PM2.5,AEAZ,150
+FilterBased,ChemSpecPM25,EC PM2.5,AEAZ,150
+FilterBased,ChemSpecPM25,OC PM2.5,AEAZ,150
+FilterBased,ChemSpecPM25,OM PM2.5,AEAZ,144
+FilterBased,ChemSpecPM25,Sodium PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Aluminum PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Silicon PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Sulfur PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Chlorine PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Potassium PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Calcium PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Titanium PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Vanadium PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Iron PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Zinc PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Cerium PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Lead PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Arsenic PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Cobalt PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Chromium PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Copper PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Magnesium PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Manganese PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Nickel PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Antimony PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Rubidium PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Strontium PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Cadmium PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Selenium PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Tin PM2.5,AEAZ,141
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,AEAZ,79
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,AEAZ,77
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,AEAZ,20
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,AEAZ,7
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,ARCB,86
+FilterBased,ChemSpecPM25,Selenium PM2.5,ARCB,86
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Lithium PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Magnesium PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Aluminum PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Phosphorus PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Titanium PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Vanadium PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Chromium PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Manganese PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Iron PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Nickel PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Copper PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Zinc PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Arsenic PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Cadmium PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Antimony PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Barium PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Cerium PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Lead PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,ARCB,43
+FilterBased,ChemSpecPM25,Cobalt PM2.5,ARCB,38
+FilterBased,ChemSpecPM25,BC PM2.5,ARCB,35
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,AUMN,67
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,AUMN,63
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,AUMN,55
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,AUMN,55
+FilterBased,ChemSpecPM25,Sodium PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Aluminum PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Silicon PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Sulfur PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Chlorine PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Potassium PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Calcium PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Titanium PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Vanadium PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Iron PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Zinc PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Cerium PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Lead PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Arsenic PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Cobalt PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Chromium PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Copper PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Magnesium PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Manganese PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Nickel PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Antimony PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Rubidium PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Strontium PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Cadmium PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Selenium PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Tin PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,BC PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,EC PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,OC PM2.5,AUMN,51
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,AUMN,49
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,AUMN,49
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,AUMN,49
+FilterBased,ChemSpecPM25,OM PM2.5,AUMN,41
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,AUMN,40
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,AUMN,37
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,AUMN,2
+FilterBased,ChemSpecPM25,Selenium PM2.5,BDDU,156
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,BDDU,152
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,BDDU,115
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,BDDU,115
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,BDDU,115
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,BDDU,114
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,BDDU,112
+FilterBased,ChemSpecPM25,BC PM2.5,BDDU,106
+FilterBased,ChemSpecPM25,Magnesium PM2.5,BDDU,105
+FilterBased,ChemSpecPM25,Aluminum PM2.5,BDDU,105
+FilterBased,ChemSpecPM25,Titanium PM2.5,BDDU,105
+FilterBased,ChemSpecPM25,Vanadium PM2.5,BDDU,105
+FilterBased,ChemSpecPM25,Chromium PM2.5,BDDU,105
+FilterBased,ChemSpecPM25,Manganese PM2.5,BDDU,105
+FilterBased,ChemSpecPM25,Iron PM2.5,BDDU,105
+FilterBased,ChemSpecPM25,Cobalt PM2.5,BDDU,105
+FilterBased,ChemSpecPM25,Nickel PM2.5,BDDU,105
+FilterBased,ChemSpecPM25,Copper PM2.5,BDDU,105
+FilterBased,ChemSpecPM25,Zinc PM2.5,BDDU,105
+FilterBased,ChemSpecPM25,Arsenic PM2.5,BDDU,105
+FilterBased,ChemSpecPM25,Cadmium PM2.5,BDDU,105
+FilterBased,ChemSpecPM25,Antimony PM2.5,BDDU,105
+FilterBased,ChemSpecPM25,Cerium PM2.5,BDDU,105
+FilterBased,ChemSpecPM25,Lead PM2.5,BDDU,105
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,BDDU,105
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,BDDU,105
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,BDDU,89
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,BDDU,65
+FilterBased,ChemSpecPM25,EC PM2.5,BDDU,60
+FilterBased,ChemSpecPM25,OC PM2.5,BDDU,60
+FilterBased,ChemSpecPM25,OM PM2.5,BDDU,60
+FilterBased,ChemSpecPM25,Sodium PM2.5,BDDU,54
+FilterBased,ChemSpecPM25,Silicon PM2.5,BDDU,54
+FilterBased,ChemSpecPM25,Sulfur PM2.5,BDDU,54
+FilterBased,ChemSpecPM25,Chlorine PM2.5,BDDU,54
+FilterBased,ChemSpecPM25,Potassium PM2.5,BDDU,54
+FilterBased,ChemSpecPM25,Calcium PM2.5,BDDU,54
+FilterBased,ChemSpecPM25,Rubidium PM2.5,BDDU,54
+FilterBased,ChemSpecPM25,Strontium PM2.5,BDDU,54
+FilterBased,ChemSpecPM25,Tin PM2.5,BDDU,54
+FilterBased,ChemSpecPM25,Lithium PM2.5,BDDU,51
+FilterBased,ChemSpecPM25,Phosphorus PM2.5,BDDU,51
+FilterBased,ChemSpecPM25,Barium PM2.5,BDDU,51
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,BDDU,43
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,BDDU,41
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,BIBU,37
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Sodium PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Aluminum PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Silicon PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Sulfur PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Chlorine PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Potassium PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Calcium PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Titanium PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Vanadium PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Iron PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Zinc PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Cerium PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Lead PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Arsenic PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Cobalt PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Chromium PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Copper PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Magnesium PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Manganese PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Nickel PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Antimony PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Rubidium PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Strontium PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Cadmium PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Selenium PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Tin PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,BC PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,EC PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,OC PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,OM PM2.5,BIBU,37
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,BIBU,14
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,CADO,128
+FilterBased,ChemSpecPM25,Selenium PM2.5,CADO,128
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Magnesium PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Aluminum PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Titanium PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Vanadium PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Chromium PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Manganese PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Iron PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Cobalt PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Nickel PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Copper PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Zinc PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Arsenic PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Cadmium PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Antimony PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Cerium PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Lead PM2.5,CADO,70
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,CADO,69
+FilterBased,ChemSpecPM25,BC PM2.5,CADO,65
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,CADO,64
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,CADO,64
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,CADO,59
+FilterBased,ChemSpecPM25,Lithium PM2.5,CADO,58
+FilterBased,ChemSpecPM25,Phosphorus PM2.5,CADO,58
+FilterBased,ChemSpecPM25,Barium PM2.5,CADO,58
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,CADO,54
+FilterBased,ChemSpecPM25,EC PM2.5,CADO,28
+FilterBased,ChemSpecPM25,OC PM2.5,CADO,28
+FilterBased,ChemSpecPM25,OM PM2.5,CADO,28
+FilterBased,ChemSpecPM25,Sodium PM2.5,CADO,12
+FilterBased,ChemSpecPM25,Silicon PM2.5,CADO,12
+FilterBased,ChemSpecPM25,Sulfur PM2.5,CADO,12
+FilterBased,ChemSpecPM25,Chlorine PM2.5,CADO,12
+FilterBased,ChemSpecPM25,Potassium PM2.5,CADO,12
+FilterBased,ChemSpecPM25,Calcium PM2.5,CADO,12
+FilterBased,ChemSpecPM25,Rubidium PM2.5,CADO,12
+FilterBased,ChemSpecPM25,Strontium PM2.5,CADO,12
+FilterBased,ChemSpecPM25,Tin PM2.5,CADO,12
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,CAHA,248
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,CAHA,173
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,CAHA,173
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,CAHA,173
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,CAHA,173
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,CAHA,171
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,CAHA,166
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,CAHA,159
+FilterBased,ChemSpecPM25,Selenium PM2.5,CAHA,150
+FilterBased,ChemSpecPM25,BC PM2.5,CAHA,146
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,CAHA,136
+FilterBased,ChemSpecPM25,Magnesium PM2.5,CAHA,129
+FilterBased,ChemSpecPM25,Aluminum PM2.5,CAHA,129
+FilterBased,ChemSpecPM25,Titanium PM2.5,CAHA,129
+FilterBased,ChemSpecPM25,Vanadium PM2.5,CAHA,129
+FilterBased,ChemSpecPM25,Chromium PM2.5,CAHA,129
+FilterBased,ChemSpecPM25,Manganese PM2.5,CAHA,129
+FilterBased,ChemSpecPM25,Iron PM2.5,CAHA,129
+FilterBased,ChemSpecPM25,Cobalt PM2.5,CAHA,129
+FilterBased,ChemSpecPM25,Nickel PM2.5,CAHA,129
+FilterBased,ChemSpecPM25,Copper PM2.5,CAHA,129
+FilterBased,ChemSpecPM25,Zinc PM2.5,CAHA,129
+FilterBased,ChemSpecPM25,Arsenic PM2.5,CAHA,129
+FilterBased,ChemSpecPM25,Cadmium PM2.5,CAHA,129
+FilterBased,ChemSpecPM25,Antimony PM2.5,CAHA,129
+FilterBased,ChemSpecPM25,Cerium PM2.5,CAHA,129
+FilterBased,ChemSpecPM25,Lead PM2.5,CAHA,129
+FilterBased,ChemSpecPM25,EC PM2.5,CAHA,128
+FilterBased,ChemSpecPM25,OC PM2.5,CAHA,128
+FilterBased,ChemSpecPM25,OM PM2.5,CAHA,128
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,CAHA,120
+FilterBased,ChemSpecPM25,Sodium PM2.5,CAHA,108
+FilterBased,ChemSpecPM25,Silicon PM2.5,CAHA,108
+FilterBased,ChemSpecPM25,Sulfur PM2.5,CAHA,108
+FilterBased,ChemSpecPM25,Chlorine PM2.5,CAHA,108
+FilterBased,ChemSpecPM25,Potassium PM2.5,CAHA,108
+FilterBased,ChemSpecPM25,Calcium PM2.5,CAHA,108
+FilterBased,ChemSpecPM25,Rubidium PM2.5,CAHA,108
+FilterBased,ChemSpecPM25,Strontium PM2.5,CAHA,108
+FilterBased,ChemSpecPM25,Tin PM2.5,CAHA,108
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,CAHA,84
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,CAHA,75
+FilterBased,ChemSpecPM25,Lithium PM2.5,CAHA,21
+FilterBased,ChemSpecPM25,Phosphorus PM2.5,CAHA,21
+FilterBased,ChemSpecPM25,Barium PM2.5,CAHA,21
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,CAKE,36
+FilterBased,ChemSpecPM25,Selenium PM2.5,CAKE,36
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Lithium PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Magnesium PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Aluminum PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Phosphorus PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Titanium PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Vanadium PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Chromium PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Manganese PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Iron PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Cobalt PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Nickel PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Copper PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Zinc PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Arsenic PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Cadmium PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Antimony PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Barium PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Cerium PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Lead PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,CAKE,18
+FilterBased,ChemSpecPM25,BC PM2.5,CAKE,12
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,CAKE,12
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,CALE,31
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,CALE,31
+FilterBased,ChemSpecPM25,Selenium PM2.5,CALE,29
+FilterBased,ChemSpecPM25,Magnesium PM2.5,CALE,21
+FilterBased,ChemSpecPM25,Aluminum PM2.5,CALE,21
+FilterBased,ChemSpecPM25,Titanium PM2.5,CALE,21
+FilterBased,ChemSpecPM25,Vanadium PM2.5,CALE,21
+FilterBased,ChemSpecPM25,Chromium PM2.5,CALE,21
+FilterBased,ChemSpecPM25,Manganese PM2.5,CALE,21
+FilterBased,ChemSpecPM25,Iron PM2.5,CALE,21
+FilterBased,ChemSpecPM25,Cobalt PM2.5,CALE,21
+FilterBased,ChemSpecPM25,Nickel PM2.5,CALE,21
+FilterBased,ChemSpecPM25,Copper PM2.5,CALE,21
+FilterBased,ChemSpecPM25,Zinc PM2.5,CALE,21
+FilterBased,ChemSpecPM25,Arsenic PM2.5,CALE,21
+FilterBased,ChemSpecPM25,Cadmium PM2.5,CALE,21
+FilterBased,ChemSpecPM25,Antimony PM2.5,CALE,21
+FilterBased,ChemSpecPM25,Cerium PM2.5,CALE,21
+FilterBased,ChemSpecPM25,Lead PM2.5,CALE,21
+FilterBased,ChemSpecPM25,BC PM2.5,CALE,21
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,CALE,13
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,CALE,13
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,CALE,13
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,CALE,13
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,CALE,13
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,CALE,13
+FilterBased,ChemSpecPM25,Sodium PM2.5,CALE,13
+FilterBased,ChemSpecPM25,Silicon PM2.5,CALE,13
+FilterBased,ChemSpecPM25,Sulfur PM2.5,CALE,13
+FilterBased,ChemSpecPM25,Chlorine PM2.5,CALE,13
+FilterBased,ChemSpecPM25,Potassium PM2.5,CALE,13
+FilterBased,ChemSpecPM25,Calcium PM2.5,CALE,13
+FilterBased,ChemSpecPM25,Rubidium PM2.5,CALE,13
+FilterBased,ChemSpecPM25,Strontium PM2.5,CALE,13
+FilterBased,ChemSpecPM25,Tin PM2.5,CALE,13
+FilterBased,ChemSpecPM25,EC PM2.5,CALE,13
+FilterBased,ChemSpecPM25,OC PM2.5,CALE,13
+FilterBased,ChemSpecPM25,OM PM2.5,CALE,13
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,CALE,10
+FilterBased,ChemSpecPM25,Lithium PM2.5,CALE,8
+FilterBased,ChemSpecPM25,Phosphorus PM2.5,CALE,8
+FilterBased,ChemSpecPM25,Barium PM2.5,CALE,8
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,CALE,4
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,CASH,146
+FilterBased,ChemSpecPM25,Selenium PM2.5,CASH,116
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,CASH,105
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,CASH,105
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,CASH,104
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,CASH,104
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,CASH,102
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,CASH,102
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,CASH,99
+FilterBased,ChemSpecPM25,BC PM2.5,CASH,94
+FilterBased,ChemSpecPM25,Magnesium PM2.5,CASH,93
+FilterBased,ChemSpecPM25,Aluminum PM2.5,CASH,93
+FilterBased,ChemSpecPM25,Titanium PM2.5,CASH,93
+FilterBased,ChemSpecPM25,Vanadium PM2.5,CASH,93
+FilterBased,ChemSpecPM25,Chromium PM2.5,CASH,93
+FilterBased,ChemSpecPM25,Manganese PM2.5,CASH,93
+FilterBased,ChemSpecPM25,Iron PM2.5,CASH,93
+FilterBased,ChemSpecPM25,Cobalt PM2.5,CASH,93
+FilterBased,ChemSpecPM25,Nickel PM2.5,CASH,93
+FilterBased,ChemSpecPM25,Copper PM2.5,CASH,93
+FilterBased,ChemSpecPM25,Zinc PM2.5,CASH,93
+FilterBased,ChemSpecPM25,Arsenic PM2.5,CASH,93
+FilterBased,ChemSpecPM25,Cadmium PM2.5,CASH,93
+FilterBased,ChemSpecPM25,Antimony PM2.5,CASH,93
+FilterBased,ChemSpecPM25,Cerium PM2.5,CASH,93
+FilterBased,ChemSpecPM25,Lead PM2.5,CASH,93
+FilterBased,ChemSpecPM25,EC PM2.5,CASH,83
+FilterBased,ChemSpecPM25,OC PM2.5,CASH,83
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,CASH,81
+FilterBased,ChemSpecPM25,OM PM2.5,CASH,78
+FilterBased,ChemSpecPM25,Sodium PM2.5,CASH,70
+FilterBased,ChemSpecPM25,Silicon PM2.5,CASH,70
+FilterBased,ChemSpecPM25,Sulfur PM2.5,CASH,70
+FilterBased,ChemSpecPM25,Chlorine PM2.5,CASH,70
+FilterBased,ChemSpecPM25,Potassium PM2.5,CASH,70
+FilterBased,ChemSpecPM25,Calcium PM2.5,CASH,70
+FilterBased,ChemSpecPM25,Rubidium PM2.5,CASH,70
+FilterBased,ChemSpecPM25,Strontium PM2.5,CASH,70
+FilterBased,ChemSpecPM25,Tin PM2.5,CASH,70
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,CASH,67
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,CASH,43
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,CASH,35
+FilterBased,ChemSpecPM25,Lithium PM2.5,CASH,23
+FilterBased,ChemSpecPM25,Phosphorus PM2.5,CASH,23
+FilterBased,ChemSpecPM25,Barium PM2.5,CASH,23
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,CHTS,537
+FilterBased,ChemSpecPM25,Selenium PM2.5,CHTS,488
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,CHTS,417
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,CHTS,410
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,CHTS,406
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,CHTS,402
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,CHTS,399
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,CHTS,389
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,CHTS,352
+FilterBased,ChemSpecPM25,Magnesium PM2.5,CHTS,351
+FilterBased,ChemSpecPM25,Aluminum PM2.5,CHTS,351
+FilterBased,ChemSpecPM25,Titanium PM2.5,CHTS,351
+FilterBased,ChemSpecPM25,Vanadium PM2.5,CHTS,351
+FilterBased,ChemSpecPM25,Chromium PM2.5,CHTS,351
+FilterBased,ChemSpecPM25,Manganese PM2.5,CHTS,351
+FilterBased,ChemSpecPM25,Iron PM2.5,CHTS,351
+FilterBased,ChemSpecPM25,Nickel PM2.5,CHTS,351
+FilterBased,ChemSpecPM25,Copper PM2.5,CHTS,351
+FilterBased,ChemSpecPM25,Zinc PM2.5,CHTS,351
+FilterBased,ChemSpecPM25,Arsenic PM2.5,CHTS,351
+FilterBased,ChemSpecPM25,Cadmium PM2.5,CHTS,351
+FilterBased,ChemSpecPM25,Antimony PM2.5,CHTS,351
+FilterBased,ChemSpecPM25,Cerium PM2.5,CHTS,351
+FilterBased,ChemSpecPM25,Lead PM2.5,CHTS,351
+FilterBased,ChemSpecPM25,Cobalt PM2.5,CHTS,345
+FilterBased,ChemSpecPM25,BC PM2.5,CHTS,311
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,CHTS,297
+FilterBased,ChemSpecPM25,Sodium PM2.5,CHTS,214
+FilterBased,ChemSpecPM25,Silicon PM2.5,CHTS,214
+FilterBased,ChemSpecPM25,Sulfur PM2.5,CHTS,214
+FilterBased,ChemSpecPM25,Chlorine PM2.5,CHTS,214
+FilterBased,ChemSpecPM25,Potassium PM2.5,CHTS,214
+FilterBased,ChemSpecPM25,Calcium PM2.5,CHTS,214
+FilterBased,ChemSpecPM25,Rubidium PM2.5,CHTS,214
+FilterBased,ChemSpecPM25,Strontium PM2.5,CHTS,214
+FilterBased,ChemSpecPM25,Tin PM2.5,CHTS,214
+FilterBased,ChemSpecPM25,EC PM2.5,CHTS,206
+FilterBased,ChemSpecPM25,OC PM2.5,CHTS,206
+FilterBased,ChemSpecPM25,OM PM2.5,CHTS,194
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,CHTS,193
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,CHTS,187
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,CHTS,178
+FilterBased,ChemSpecPM25,Lithium PM2.5,CHTS,137
+FilterBased,ChemSpecPM25,Phosphorus PM2.5,CHTS,137
+FilterBased,ChemSpecPM25,Barium PM2.5,CHTS,137
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,CLST,255
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,CLST,206
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,CLST,205
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,CLST,200
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,CLST,198
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,CLST,193
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,CLST,179
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,CLST,163
+FilterBased,ChemSpecPM25,BC PM2.5,CLST,163
+FilterBased,ChemSpecPM25,EC PM2.5,CLST,163
+FilterBased,ChemSpecPM25,OC PM2.5,CLST,163
+FilterBased,ChemSpecPM25,OM PM2.5,CLST,159
+FilterBased,ChemSpecPM25,Sodium PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Aluminum PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Silicon PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Sulfur PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Chlorine PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Potassium PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Calcium PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Titanium PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Vanadium PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Iron PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Zinc PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Cerium PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Lead PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Arsenic PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Cobalt PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Chromium PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Copper PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Magnesium PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Manganese PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Nickel PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Antimony PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Rubidium PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Strontium PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Cadmium PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Selenium PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Tin PM2.5,CLST,142
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,CLST,80
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,CLST,6
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,CLST,6
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,CLTA,89
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,CLTA,82
+FilterBased,ChemSpecPM25,BC PM2.5,CLTA,82
+FilterBased,ChemSpecPM25,EC PM2.5,CLTA,82
+FilterBased,ChemSpecPM25,OC PM2.5,CLTA,82
+FilterBased,ChemSpecPM25,OM PM2.5,CLTA,82
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,CLTA,80
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,CLTA,68
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,CLTA,66
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,CLTA,63
+FilterBased,ChemSpecPM25,Sodium PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Aluminum PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Silicon PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Sulfur PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Chlorine PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Potassium PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Calcium PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Titanium PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Vanadium PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Iron PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Zinc PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Cerium PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Lead PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Arsenic PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Cobalt PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Chromium PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Copper PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Magnesium PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Manganese PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Nickel PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Antimony PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Rubidium PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Strontium PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Cadmium PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Selenium PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Tin PM2.5,CLTA,61
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,CLTA,60
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,CLTA,57
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,CLTA,41
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,CLTA,2
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,CLTA,1
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,ETAD,254
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,ETAD,252
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,ETAD,248
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,ETAD,246
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,ETAD,244
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,ETAD,240
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,ETAD,240
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,ETAD,235
+FilterBased,ChemSpecPM25,Sodium PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Aluminum PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Silicon PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Sulfur PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Chlorine PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Potassium PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Calcium PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Titanium PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Vanadium PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Iron PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Zinc PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Cerium PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Lead PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Arsenic PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Cobalt PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Chromium PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Copper PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Magnesium PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Manganese PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Nickel PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Antimony PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Rubidium PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Strontium PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Cadmium PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Selenium PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,Tin PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,BC PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,EC PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,OC PM2.5,ETAD,232
+FilterBased,ChemSpecPM25,OM PM2.5,ETAD,206
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,ETAD,196
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,ETAD,24
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,ETAD,2
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,IDBD,189
+FilterBased,ChemSpecPM25,Selenium PM2.5,IDBD,168
+FilterBased,ChemSpecPM25,BC PM2.5,IDBD,116
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,IDBD,110
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,IDBD,110
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,IDBD,108
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,IDBD,108
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,IDBD,108
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,IDBD,108
+FilterBased,ChemSpecPM25,Magnesium PM2.5,IDBD,106
+FilterBased,ChemSpecPM25,Aluminum PM2.5,IDBD,106
+FilterBased,ChemSpecPM25,Titanium PM2.5,IDBD,106
+FilterBased,ChemSpecPM25,Vanadium PM2.5,IDBD,106
+FilterBased,ChemSpecPM25,Chromium PM2.5,IDBD,106
+FilterBased,ChemSpecPM25,Manganese PM2.5,IDBD,106
+FilterBased,ChemSpecPM25,Iron PM2.5,IDBD,106
+FilterBased,ChemSpecPM25,Cobalt PM2.5,IDBD,106
+FilterBased,ChemSpecPM25,Nickel PM2.5,IDBD,106
+FilterBased,ChemSpecPM25,Copper PM2.5,IDBD,106
+FilterBased,ChemSpecPM25,Zinc PM2.5,IDBD,106
+FilterBased,ChemSpecPM25,Arsenic PM2.5,IDBD,106
+FilterBased,ChemSpecPM25,Cadmium PM2.5,IDBD,106
+FilterBased,ChemSpecPM25,Antimony PM2.5,IDBD,106
+FilterBased,ChemSpecPM25,Cerium PM2.5,IDBD,106
+FilterBased,ChemSpecPM25,Lead PM2.5,IDBD,106
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,IDBD,104
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,IDBD,101
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,IDBD,79
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,IDBD,72
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,IDBD,72
+FilterBased,ChemSpecPM25,Lithium PM2.5,IDBD,62
+FilterBased,ChemSpecPM25,Phosphorus PM2.5,IDBD,62
+FilterBased,ChemSpecPM25,Barium PM2.5,IDBD,62
+FilterBased,ChemSpecPM25,Sodium PM2.5,IDBD,44
+FilterBased,ChemSpecPM25,Silicon PM2.5,IDBD,44
+FilterBased,ChemSpecPM25,Sulfur PM2.5,IDBD,44
+FilterBased,ChemSpecPM25,Chlorine PM2.5,IDBD,44
+FilterBased,ChemSpecPM25,Potassium PM2.5,IDBD,44
+FilterBased,ChemSpecPM25,Calcium PM2.5,IDBD,44
+FilterBased,ChemSpecPM25,Rubidium PM2.5,IDBD,44
+FilterBased,ChemSpecPM25,Strontium PM2.5,IDBD,44
+FilterBased,ChemSpecPM25,Tin PM2.5,IDBD,44
+FilterBased,ChemSpecPM25,EC PM2.5,IDBD,43
+FilterBased,ChemSpecPM25,OC PM2.5,IDBD,43
+FilterBased,ChemSpecPM25,OM PM2.5,IDBD,42
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,ILHA,204
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,ILHA,199
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,ILHA,199
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,ILHA,197
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,ILHA,196
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,ILHA,196
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,ILHA,196
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,ILHA,178
+FilterBased,ChemSpecPM25,Sodium PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Aluminum PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Silicon PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Sulfur PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Chlorine PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Potassium PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Calcium PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Titanium PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Vanadium PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Iron PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Zinc PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Cerium PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Lead PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Arsenic PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Cobalt PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Chromium PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Copper PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Magnesium PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Manganese PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Nickel PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Antimony PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Rubidium PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Strontium PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Cadmium PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Selenium PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,Tin PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,BC PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,EC PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,OC PM2.5,ILHA,178
+FilterBased,ChemSpecPM25,OM PM2.5,ILHA,148
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,ILHA,141
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,ILHA,41
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,ILHA,20
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,ILHA,4
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,ILNZ,343
+FilterBased,ChemSpecPM25,Selenium PM2.5,ILNZ,327
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,ILNZ,309
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,ILNZ,308
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,ILNZ,305
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,ILNZ,303
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,ILNZ,298
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,ILNZ,293
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,ILNZ,288
+FilterBased,ChemSpecPM25,BC PM2.5,ILNZ,279
+FilterBased,ChemSpecPM25,Magnesium PM2.5,ILNZ,276
+FilterBased,ChemSpecPM25,Aluminum PM2.5,ILNZ,276
+FilterBased,ChemSpecPM25,Titanium PM2.5,ILNZ,276
+FilterBased,ChemSpecPM25,Vanadium PM2.5,ILNZ,276
+FilterBased,ChemSpecPM25,Chromium PM2.5,ILNZ,276
+FilterBased,ChemSpecPM25,Manganese PM2.5,ILNZ,276
+FilterBased,ChemSpecPM25,Iron PM2.5,ILNZ,276
+FilterBased,ChemSpecPM25,Cobalt PM2.5,ILNZ,276
+FilterBased,ChemSpecPM25,Nickel PM2.5,ILNZ,276
+FilterBased,ChemSpecPM25,Copper PM2.5,ILNZ,276
+FilterBased,ChemSpecPM25,Zinc PM2.5,ILNZ,276
+FilterBased,ChemSpecPM25,Arsenic PM2.5,ILNZ,276
+FilterBased,ChemSpecPM25,Cadmium PM2.5,ILNZ,276
+FilterBased,ChemSpecPM25,Antimony PM2.5,ILNZ,276
+FilterBased,ChemSpecPM25,Cerium PM2.5,ILNZ,276
+FilterBased,ChemSpecPM25,Lead PM2.5,ILNZ,276
+FilterBased,ChemSpecPM25,EC PM2.5,ILNZ,227
+FilterBased,ChemSpecPM25,OC PM2.5,ILNZ,227
+FilterBased,ChemSpecPM25,Sodium PM2.5,ILNZ,225
+FilterBased,ChemSpecPM25,Silicon PM2.5,ILNZ,225
+FilterBased,ChemSpecPM25,Sulfur PM2.5,ILNZ,225
+FilterBased,ChemSpecPM25,Chlorine PM2.5,ILNZ,225
+FilterBased,ChemSpecPM25,Potassium PM2.5,ILNZ,225
+FilterBased,ChemSpecPM25,Calcium PM2.5,ILNZ,225
+FilterBased,ChemSpecPM25,Rubidium PM2.5,ILNZ,225
+FilterBased,ChemSpecPM25,Strontium PM2.5,ILNZ,225
+FilterBased,ChemSpecPM25,Tin PM2.5,ILNZ,225
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,ILNZ,211
+FilterBased,ChemSpecPM25,OM PM2.5,ILNZ,189
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,ILNZ,145
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,ILNZ,107
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,ILNZ,59
+FilterBased,ChemSpecPM25,Lithium PM2.5,ILNZ,51
+FilterBased,ChemSpecPM25,Phosphorus PM2.5,ILNZ,51
+FilterBased,ChemSpecPM25,Barium PM2.5,ILNZ,51
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,INDH,161
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,INDH,129
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,INDH,110
+FilterBased,ChemSpecPM25,EC PM2.5,INDH,110
+FilterBased,ChemSpecPM25,OC PM2.5,INDH,110
+FilterBased,ChemSpecPM25,BC PM2.5,INDH,109
+FilterBased,ChemSpecPM25,OM PM2.5,INDH,103
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,INDH,101
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,INDH,95
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,INDH,94
+FilterBased,ChemSpecPM25,Sodium PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Aluminum PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Silicon PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Sulfur PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Chlorine PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Potassium PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Calcium PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Titanium PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Vanadium PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Iron PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Zinc PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Cerium PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Lead PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Arsenic PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Cobalt PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Chromium PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Copper PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Magnesium PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Manganese PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Nickel PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Antimony PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Rubidium PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Strontium PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Cadmium PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Selenium PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Tin PM2.5,INDH,91
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,INDH,85
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,INDH,78
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,INDH,65
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,INDH,8
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,INDH,1
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,INJA,61
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,INJA,60
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,INJA,54
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,INJA,53
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,INJA,52
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,INJA,51
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,INJA,47
+FilterBased,ChemSpecPM25,BC PM2.5,INJA,47
+FilterBased,ChemSpecPM25,EC PM2.5,INJA,47
+FilterBased,ChemSpecPM25,OC PM2.5,INJA,47
+FilterBased,ChemSpecPM25,OM PM2.5,INJA,47
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,INJA,46
+FilterBased,ChemSpecPM25,Sodium PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Aluminum PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Silicon PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Sulfur PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Chlorine PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Potassium PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Calcium PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Titanium PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Vanadium PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Iron PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Zinc PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Cerium PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Lead PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Arsenic PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Cobalt PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Chromium PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Copper PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Magnesium PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Manganese PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Nickel PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Antimony PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Rubidium PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Strontium PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Cadmium PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Selenium PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Tin PM2.5,INJA,41
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,INJA,20
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,INJA,1
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,INKA,65
+FilterBased,ChemSpecPM25,Selenium PM2.5,INKA,64
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,INKA,40
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,INKA,40
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,INKA,40
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,INKA,40
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,INKA,40
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,INKA,39
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,INKA,39
+FilterBased,ChemSpecPM25,Magnesium PM2.5,INKA,39
+FilterBased,ChemSpecPM25,Aluminum PM2.5,INKA,39
+FilterBased,ChemSpecPM25,Titanium PM2.5,INKA,39
+FilterBased,ChemSpecPM25,Vanadium PM2.5,INKA,39
+FilterBased,ChemSpecPM25,Chromium PM2.5,INKA,39
+FilterBased,ChemSpecPM25,Manganese PM2.5,INKA,39
+FilterBased,ChemSpecPM25,Iron PM2.5,INKA,39
+FilterBased,ChemSpecPM25,Cobalt PM2.5,INKA,39
+FilterBased,ChemSpecPM25,Nickel PM2.5,INKA,39
+FilterBased,ChemSpecPM25,Copper PM2.5,INKA,39
+FilterBased,ChemSpecPM25,Zinc PM2.5,INKA,39
+FilterBased,ChemSpecPM25,Arsenic PM2.5,INKA,39
+FilterBased,ChemSpecPM25,Cadmium PM2.5,INKA,39
+FilterBased,ChemSpecPM25,Antimony PM2.5,INKA,39
+FilterBased,ChemSpecPM25,Cerium PM2.5,INKA,39
+FilterBased,ChemSpecPM25,Lead PM2.5,INKA,39
+FilterBased,ChemSpecPM25,BC PM2.5,INKA,38
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,INKA,37
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,INKA,32
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,INKA,25
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,INKA,25
+FilterBased,ChemSpecPM25,Lithium PM2.5,INKA,25
+FilterBased,ChemSpecPM25,Phosphorus PM2.5,INKA,25
+FilterBased,ChemSpecPM25,Barium PM2.5,INKA,25
+FilterBased,ChemSpecPM25,EC PM2.5,INKA,15
+FilterBased,ChemSpecPM25,OC PM2.5,INKA,15
+FilterBased,ChemSpecPM25,OM PM2.5,INKA,15
+FilterBased,ChemSpecPM25,Sodium PM2.5,INKA,14
+FilterBased,ChemSpecPM25,Silicon PM2.5,INKA,14
+FilterBased,ChemSpecPM25,Sulfur PM2.5,INKA,14
+FilterBased,ChemSpecPM25,Chlorine PM2.5,INKA,14
+FilterBased,ChemSpecPM25,Potassium PM2.5,INKA,14
+FilterBased,ChemSpecPM25,Calcium PM2.5,INKA,14
+FilterBased,ChemSpecPM25,Rubidium PM2.5,INKA,14
+FilterBased,ChemSpecPM25,Strontium PM2.5,INKA,14
+FilterBased,ChemSpecPM25,Tin PM2.5,INKA,14
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,KRSE,90
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Sodium PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Aluminum PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Silicon PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Sulfur PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Chlorine PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Potassium PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Calcium PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Titanium PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Vanadium PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Iron PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Zinc PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Cerium PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Lead PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Arsenic PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Cobalt PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Chromium PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Copper PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Magnesium PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Manganese PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Nickel PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Antimony PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Rubidium PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Strontium PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Cadmium PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Selenium PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Tin PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,BC PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,EC PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,OC PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,OM PM2.5,KRSE,83
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,KRSE,79
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,KRSE,78
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,KRSE,76
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,KRSE,71
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,KRSE,70
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,KRSE,58
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,KRSE,46
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,KRSE,10
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,KRUL,146
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,KRUL,144
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,KRUL,144
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,KRUL,143
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,KRUL,141
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,KRUL,132
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,KRUL,127
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,KRUL,126
+FilterBased,ChemSpecPM25,BC PM2.5,KRUL,119
+FilterBased,ChemSpecPM25,EC PM2.5,KRUL,119
+FilterBased,ChemSpecPM25,OC PM2.5,KRUL,119
+FilterBased,ChemSpecPM25,Sodium PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Aluminum PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Silicon PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Sulfur PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Chlorine PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Potassium PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Calcium PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Titanium PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Vanadium PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Iron PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Zinc PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Cerium PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Lead PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Arsenic PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Cobalt PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Chromium PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Copper PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Magnesium PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Manganese PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Nickel PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Antimony PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Rubidium PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Strontium PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Cadmium PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Selenium PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,Tin PM2.5,KRUL,118
+FilterBased,ChemSpecPM25,OM PM2.5,KRUL,107
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,KRUL,95
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,KRUL,22
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,KRUL,15
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,KRUL,3
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,MXMC,59
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,MXMC,56
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,MXMC,56
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,MXMC,56
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,MXMC,56
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,MXMC,55
+FilterBased,ChemSpecPM25,Sodium PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Aluminum PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Silicon PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Sulfur PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Chlorine PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Potassium PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Calcium PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Titanium PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Vanadium PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Iron PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Zinc PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Cerium PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Lead PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Arsenic PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Cobalt PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Chromium PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Copper PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Magnesium PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Manganese PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Nickel PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Antimony PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Rubidium PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Strontium PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Cadmium PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Selenium PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Tin PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,BC PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,EC PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,OC PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,OM PM2.5,MXMC,53
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,MXMC,50
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,MXMC,46
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,MXMC,41
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,MXMC,23
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,MXMC,13
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,MXMC,3
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,NGIL,88
+FilterBased,ChemSpecPM25,Selenium PM2.5,NGIL,71
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,NGIL,60
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,NGIL,60
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,NGIL,60
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,NGIL,60
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,NGIL,60
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,NGIL,56
+FilterBased,ChemSpecPM25,Magnesium PM2.5,NGIL,56
+FilterBased,ChemSpecPM25,Aluminum PM2.5,NGIL,56
+FilterBased,ChemSpecPM25,Titanium PM2.5,NGIL,56
+FilterBased,ChemSpecPM25,Vanadium PM2.5,NGIL,56
+FilterBased,ChemSpecPM25,Chromium PM2.5,NGIL,56
+FilterBased,ChemSpecPM25,Manganese PM2.5,NGIL,56
+FilterBased,ChemSpecPM25,Iron PM2.5,NGIL,56
+FilterBased,ChemSpecPM25,Cobalt PM2.5,NGIL,56
+FilterBased,ChemSpecPM25,Nickel PM2.5,NGIL,56
+FilterBased,ChemSpecPM25,Copper PM2.5,NGIL,56
+FilterBased,ChemSpecPM25,Zinc PM2.5,NGIL,56
+FilterBased,ChemSpecPM25,Arsenic PM2.5,NGIL,56
+FilterBased,ChemSpecPM25,Cadmium PM2.5,NGIL,56
+FilterBased,ChemSpecPM25,Antimony PM2.5,NGIL,56
+FilterBased,ChemSpecPM25,Cerium PM2.5,NGIL,56
+FilterBased,ChemSpecPM25,Lead PM2.5,NGIL,56
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,NGIL,55
+FilterBased,ChemSpecPM25,BC PM2.5,NGIL,55
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,NGIL,52
+FilterBased,ChemSpecPM25,EC PM2.5,NGIL,45
+FilterBased,ChemSpecPM25,OC PM2.5,NGIL,45
+FilterBased,ChemSpecPM25,OM PM2.5,NGIL,45
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,NGIL,41
+FilterBased,ChemSpecPM25,Sodium PM2.5,NGIL,41
+FilterBased,ChemSpecPM25,Silicon PM2.5,NGIL,41
+FilterBased,ChemSpecPM25,Sulfur PM2.5,NGIL,41
+FilterBased,ChemSpecPM25,Chlorine PM2.5,NGIL,41
+FilterBased,ChemSpecPM25,Potassium PM2.5,NGIL,41
+FilterBased,ChemSpecPM25,Calcium PM2.5,NGIL,41
+FilterBased,ChemSpecPM25,Rubidium PM2.5,NGIL,41
+FilterBased,ChemSpecPM25,Strontium PM2.5,NGIL,41
+FilterBased,ChemSpecPM25,Tin PM2.5,NGIL,41
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,NGIL,15
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,NGIL,15
+FilterBased,ChemSpecPM25,Lithium PM2.5,NGIL,15
+FilterBased,ChemSpecPM25,Phosphorus PM2.5,NGIL,15
+FilterBased,ChemSpecPM25,Barium PM2.5,NGIL,15
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,PHMO,24
+FilterBased,ChemSpecPM25,Selenium PM2.5,PHMO,24
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Lithium PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Magnesium PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Aluminum PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Phosphorus PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Titanium PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Vanadium PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Chromium PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Manganese PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Iron PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Cobalt PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Nickel PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Copper PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Zinc PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Arsenic PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Cadmium PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Antimony PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Barium PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Cerium PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Lead PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,BC PM2.5,PHMO,12
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,PRFJ,55
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Sodium PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Aluminum PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Silicon PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Sulfur PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Chlorine PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Potassium PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Calcium PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Titanium PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Vanadium PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Iron PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Zinc PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Cerium PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Lead PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Arsenic PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Cobalt PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Chromium PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Copper PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Magnesium PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Manganese PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Nickel PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Antimony PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Rubidium PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Strontium PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Cadmium PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Selenium PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Tin PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,BC PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,EC PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,OC PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,OM PM2.5,PRFJ,55
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,PRFJ,54
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,PRFJ,50
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,PRFJ,50
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,PRFJ,31
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,PRFJ,14
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,PRFJ,1
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,SGSU,87
+FilterBased,ChemSpecPM25,Selenium PM2.5,SGSU,75
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,SGSU,50
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,SGSU,50
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,SGSU,50
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,SGSU,50
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,SGSU,50
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,SGSU,50
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,SGSU,50
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,SGSU,50
+FilterBased,ChemSpecPM25,BC PM2.5,SGSU,50
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,SGSU,44
+FilterBased,ChemSpecPM25,Magnesium PM2.5,SGSU,44
+FilterBased,ChemSpecPM25,Aluminum PM2.5,SGSU,44
+FilterBased,ChemSpecPM25,Titanium PM2.5,SGSU,44
+FilterBased,ChemSpecPM25,Vanadium PM2.5,SGSU,44
+FilterBased,ChemSpecPM25,Chromium PM2.5,SGSU,44
+FilterBased,ChemSpecPM25,Manganese PM2.5,SGSU,44
+FilterBased,ChemSpecPM25,Iron PM2.5,SGSU,44
+FilterBased,ChemSpecPM25,Cobalt PM2.5,SGSU,44
+FilterBased,ChemSpecPM25,Nickel PM2.5,SGSU,44
+FilterBased,ChemSpecPM25,Copper PM2.5,SGSU,44
+FilterBased,ChemSpecPM25,Zinc PM2.5,SGSU,44
+FilterBased,ChemSpecPM25,Arsenic PM2.5,SGSU,44
+FilterBased,ChemSpecPM25,Cadmium PM2.5,SGSU,44
+FilterBased,ChemSpecPM25,Antimony PM2.5,SGSU,44
+FilterBased,ChemSpecPM25,Cerium PM2.5,SGSU,44
+FilterBased,ChemSpecPM25,Lead PM2.5,SGSU,44
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,SGSU,42
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,SGSU,42
+FilterBased,ChemSpecPM25,Lithium PM2.5,SGSU,31
+FilterBased,ChemSpecPM25,Phosphorus PM2.5,SGSU,31
+FilterBased,ChemSpecPM25,Barium PM2.5,SGSU,31
+FilterBased,ChemSpecPM25,Sodium PM2.5,SGSU,13
+FilterBased,ChemSpecPM25,Silicon PM2.5,SGSU,13
+FilterBased,ChemSpecPM25,Sulfur PM2.5,SGSU,13
+FilterBased,ChemSpecPM25,Chlorine PM2.5,SGSU,13
+FilterBased,ChemSpecPM25,Potassium PM2.5,SGSU,13
+FilterBased,ChemSpecPM25,Calcium PM2.5,SGSU,13
+FilterBased,ChemSpecPM25,Rubidium PM2.5,SGSU,13
+FilterBased,ChemSpecPM25,Strontium PM2.5,SGSU,13
+FilterBased,ChemSpecPM25,Tin PM2.5,SGSU,13
+FilterBased,ChemSpecPM25,EC PM2.5,SGSU,13
+FilterBased,ChemSpecPM25,OC PM2.5,SGSU,13
+FilterBased,ChemSpecPM25,OM PM2.5,SGSU,13
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,TWKA,166
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,TWKA,162
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,TWKA,160
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,TWKA,160
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,TWKA,160
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,TWKA,157
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,TWKA,154
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,TWKA,154
+FilterBased,ChemSpecPM25,Sodium PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Aluminum PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Silicon PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Sulfur PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Chlorine PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Potassium PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Calcium PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Titanium PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Vanadium PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Iron PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Zinc PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Cerium PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Lead PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Arsenic PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Cobalt PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Chromium PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Copper PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Magnesium PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Manganese PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Nickel PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Antimony PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Rubidium PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Strontium PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Cadmium PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Selenium PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Tin PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,BC PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,EC PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,OC PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,OM PM2.5,TWKA,153
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,TWKA,106
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,TWKA,16
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,TWKA,6
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,TWKA,1
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,TWTA,266
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,TWTA,265
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,TWTA,260
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,TWTA,260
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,TWTA,254
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,TWTA,253
+FilterBased,ChemSpecPM25,BC PM2.5,TWTA,247
+FilterBased,ChemSpecPM25,EC PM2.5,TWTA,247
+FilterBased,ChemSpecPM25,OC PM2.5,TWTA,247
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,TWTA,246
+FilterBased,ChemSpecPM25,Sodium PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Aluminum PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Silicon PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Sulfur PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Chlorine PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Potassium PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Calcium PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Titanium PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Vanadium PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Iron PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Zinc PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Cerium PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Lead PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Arsenic PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Cobalt PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Chromium PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Copper PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Magnesium PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Manganese PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Nickel PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Antimony PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Rubidium PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Strontium PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Cadmium PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Selenium PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Tin PM2.5,TWTA,245
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,TWTA,236
+FilterBased,ChemSpecPM25,OM PM2.5,TWTA,224
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,TWTA,185
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,TWTA,54
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,TWTA,6
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,TWTA,2
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,USBO,22
+FilterBased,ChemSpecPM25,Selenium PM2.5,USBO,22
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Lithium PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Magnesium PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Aluminum PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Phosphorus PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Titanium PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Vanadium PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Chromium PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Manganese PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Iron PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Cobalt PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Copper PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Zinc PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Arsenic PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Barium PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Cerium PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Lead PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,USBO,11
+FilterBased,ChemSpecPM25,Nickel PM2.5,USBO,10
+FilterBased,ChemSpecPM25,Cadmium PM2.5,USBO,7
+FilterBased,ChemSpecPM25,BC PM2.5,USBO,2
+FilterBased,ChemSpecPM25,Antimony PM2.5,USBO,2
+FilterBased,ChemSpecPM25,Selenium PM2.5,USMC,34
+FilterBased,ChemSpecPM25,Zinc PM2.5,USMC,21
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,USMC,19
+FilterBased,ChemSpecPM25,Lithium PM2.5,USMC,19
+FilterBased,ChemSpecPM25,Magnesium PM2.5,USMC,19
+FilterBased,ChemSpecPM25,Aluminum PM2.5,USMC,19
+FilterBased,ChemSpecPM25,Phosphorus PM2.5,USMC,19
+FilterBased,ChemSpecPM25,Titanium PM2.5,USMC,19
+FilterBased,ChemSpecPM25,Vanadium PM2.5,USMC,19
+FilterBased,ChemSpecPM25,Chromium PM2.5,USMC,19
+FilterBased,ChemSpecPM25,Manganese PM2.5,USMC,19
+FilterBased,ChemSpecPM25,Iron PM2.5,USMC,19
+FilterBased,ChemSpecPM25,Cobalt PM2.5,USMC,19
+FilterBased,ChemSpecPM25,Nickel PM2.5,USMC,19
+FilterBased,ChemSpecPM25,Copper PM2.5,USMC,19
+FilterBased,ChemSpecPM25,Cadmium PM2.5,USMC,19
+FilterBased,ChemSpecPM25,Barium PM2.5,USMC,19
+FilterBased,ChemSpecPM25,Lead PM2.5,USMC,19
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,USMC,19
+FilterBased,ChemSpecPM25,Cerium PM2.5,USMC,18
+FilterBased,ChemSpecPM25,Arsenic PM2.5,USMC,16
+FilterBased,ChemSpecPM25,BC PM2.5,USMC,11
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,USNO,34
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,USNO,34
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,USNO,34
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,USNO,33
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,USNO,31
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,USNO,31
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,USNO,30
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,USNO,30
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,USNO,25
+FilterBased,ChemSpecPM25,Sodium PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Aluminum PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Silicon PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Sulfur PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Chlorine PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Potassium PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Calcium PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Titanium PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Vanadium PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Iron PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Zinc PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Cerium PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Lead PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Arsenic PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Cobalt PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Chromium PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Copper PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Magnesium PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Manganese PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Nickel PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Antimony PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Rubidium PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Strontium PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Cadmium PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Selenium PM2.5,USNO,23
+FilterBased,ChemSpecPM25,Tin PM2.5,USNO,23
+FilterBased,ChemSpecPM25,BC PM2.5,USNO,23
+FilterBased,ChemSpecPM25,EC PM2.5,USNO,23
+FilterBased,ChemSpecPM25,OC PM2.5,USNO,23
+FilterBased,ChemSpecPM25,OM PM2.5,USNO,12
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,USNO,1
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,USPA,306
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,USPA,304
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,USPA,303
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,USPA,295
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,USPA,293
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,USPA,283
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,USPA,280
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,USPA,264
+FilterBased,ChemSpecPM25,Sodium PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Aluminum PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Silicon PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Sulfur PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Chlorine PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Potassium PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Calcium PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Titanium PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Vanadium PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Iron PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Zinc PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Cerium PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Lead PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Arsenic PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Cobalt PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Chromium PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Copper PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Magnesium PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Manganese PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Nickel PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Antimony PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Rubidium PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Strontium PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Cadmium PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Selenium PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Tin PM2.5,USPA,249
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,USPA,244
+FilterBased,ChemSpecPM25,BC PM2.5,USPA,220
+FilterBased,ChemSpecPM25,EC PM2.5,USPA,217
+FilterBased,ChemSpecPM25,OC PM2.5,USPA,217
+FilterBased,ChemSpecPM25,OM PM2.5,USPA,217
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,USPA,64
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,USPA,22
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,USPA,15
+FilterBased,ChemSpecPM25,Selenium PM2.5,VNHN,32
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,VNHN,25
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Magnesium PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Aluminum PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Titanium PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Vanadium PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Chromium PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Manganese PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Iron PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Cobalt PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Nickel PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Copper PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Zinc PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Arsenic PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Cadmium PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Antimony PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Cerium PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Lead PM2.5,VNHN,22
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,VNHN,21
+FilterBased,ChemSpecPM25,BC PM2.5,VNHN,20
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,VNHN,18
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,VNHN,15
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,VNHN,14
+FilterBased,ChemSpecPM25,Sodium PM2.5,VNHN,12
+FilterBased,ChemSpecPM25,Silicon PM2.5,VNHN,12
+FilterBased,ChemSpecPM25,Sulfur PM2.5,VNHN,12
+FilterBased,ChemSpecPM25,Chlorine PM2.5,VNHN,12
+FilterBased,ChemSpecPM25,Potassium PM2.5,VNHN,12
+FilterBased,ChemSpecPM25,Calcium PM2.5,VNHN,12
+FilterBased,ChemSpecPM25,Rubidium PM2.5,VNHN,12
+FilterBased,ChemSpecPM25,Strontium PM2.5,VNHN,12
+FilterBased,ChemSpecPM25,Tin PM2.5,VNHN,12
+FilterBased,ChemSpecPM25,EC PM2.5,VNHN,12
+FilterBased,ChemSpecPM25,OC PM2.5,VNHN,12
+FilterBased,ChemSpecPM25,OM PM2.5,VNHN,12
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,VNHN,11
+FilterBased,ChemSpecPM25,Lithium PM2.5,VNHN,10
+FilterBased,ChemSpecPM25,Phosphorus PM2.5,VNHN,10
+FilterBased,ChemSpecPM25,Barium PM2.5,VNHN,10
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,VNHN,9
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,VNHN,6
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,ZAJB,224
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,ZAJB,224
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,ZAJB,223
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,ZAJB,219
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,ZAJB,215
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,ZAJB,212
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,ZAJB,209
+FilterBased,ChemSpecPM25,BC PM2.5,ZAJB,208
+FilterBased,ChemSpecPM25,EC PM2.5,ZAJB,208
+FilterBased,ChemSpecPM25,OC PM2.5,ZAJB,208
+FilterBased,ChemSpecPM25,Sodium PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Aluminum PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Silicon PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Sulfur PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Chlorine PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Potassium PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Calcium PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Titanium PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Vanadium PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Iron PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Zinc PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Cerium PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Lead PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Arsenic PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Cobalt PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Chromium PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Copper PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Magnesium PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Manganese PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Nickel PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Antimony PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Rubidium PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Strontium PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Cadmium PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Selenium PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,Tin PM2.5,ZAJB,206
+FilterBased,ChemSpecPM25,OM PM2.5,ZAJB,203
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,ZAJB,196
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,ZAJB,147
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,ZAJB,57
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,ZAJB,6
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,ZAJB,5
+FilterBased,ChemSpecPM25,Potassium Ion PM2.5,ZAPR,295
+FilterBased,ChemSpecPM25,Sulfate Ion PM2.5,ZAPR,294
+FilterBased,ChemSpecPM25,Ammonium Ion PM2.5,ZAPR,289
+FilterBased,ChemSpecPM25,Sodium Ion PM2.5,ZAPR,286
+FilterBased,ChemSpecPM25,Nitrate Ion PM2.5,ZAPR,282
+FilterBased,ChemSpecPM25,Filter PM2.5 mass,ZAPR,274
+FilterBased,ChemSpecPM25,Selenium PM2.5,ZAPR,274
+FilterBased,ChemSpecPM25,Magnesium Ion PM2.5,ZAPR,271
+FilterBased,ChemSpecPM25,Magnesium PM2.5,ZAPR,269
+FilterBased,ChemSpecPM25,Aluminum PM2.5,ZAPR,269
+FilterBased,ChemSpecPM25,Titanium PM2.5,ZAPR,269
+FilterBased,ChemSpecPM25,Vanadium PM2.5,ZAPR,269
+FilterBased,ChemSpecPM25,Chromium PM2.5,ZAPR,269
+FilterBased,ChemSpecPM25,Manganese PM2.5,ZAPR,269
+FilterBased,ChemSpecPM25,Iron PM2.5,ZAPR,269
+FilterBased,ChemSpecPM25,Cobalt PM2.5,ZAPR,269
+FilterBased,ChemSpecPM25,Nickel PM2.5,ZAPR,269
+FilterBased,ChemSpecPM25,Copper PM2.5,ZAPR,269
+FilterBased,ChemSpecPM25,Zinc PM2.5,ZAPR,269
+FilterBased,ChemSpecPM25,Arsenic PM2.5,ZAPR,269
+FilterBased,ChemSpecPM25,Cadmium PM2.5,ZAPR,269
+FilterBased,ChemSpecPM25,Antimony PM2.5,ZAPR,269
+FilterBased,ChemSpecPM25,Cerium PM2.5,ZAPR,269
+FilterBased,ChemSpecPM25,Lead PM2.5,ZAPR,269
+FilterBased,ChemSpecPM25,Sodium PM2.5,ZAPR,264
+FilterBased,ChemSpecPM25,Silicon PM2.5,ZAPR,264
+FilterBased,ChemSpecPM25,Sulfur PM2.5,ZAPR,264
+FilterBased,ChemSpecPM25,Chlorine PM2.5,ZAPR,264
+FilterBased,ChemSpecPM25,Potassium PM2.5,ZAPR,264
+FilterBased,ChemSpecPM25,Calcium PM2.5,ZAPR,264
+FilterBased,ChemSpecPM25,Rubidium PM2.5,ZAPR,264
+FilterBased,ChemSpecPM25,Strontium PM2.5,ZAPR,264
+FilterBased,ChemSpecPM25,Tin PM2.5,ZAPR,264
+FilterBased,ChemSpecPM25,BC PM2.5,ZAPR,264
+FilterBased,ChemSpecPM25,EC PM2.5,ZAPR,264
+FilterBased,ChemSpecPM25,OC PM2.5,ZAPR,264
+FilterBased,ChemSpecPM25,OM PM2.5,ZAPR,258
+FilterBased,ChemSpecPM25,Calcium Ion PM2.5,ZAPR,243
+FilterBased,ChemSpecPM25,Nitrite Ion PM2.5,ZAPR,198
+FilterBased,ChemSpecPM25,Equivalent BC PM2.5,ZAPR,75
+FilterBased,ChemSpecPM25,Phosphate Ion PM2.5,ZAPR,64
+FilterBased,ChemSpecPM25,Bromide Ion PM2.5,ZAPR,21
+FilterBased,ChemSpecPM25,Lithium PM2.5,ZAPR,5
+FilterBased,ChemSpecPM25,Phosphorus PM2.5,ZAPR,5
+FilterBased,ChemSpecPM25,Barium PM2.5,ZAPR,5
+FilterBased,ReconstrPM25,Filter PM2.5 mass,AEAZ,150
+FilterBased,ReconstrPM25,Sea Salt,AEAZ,150
+FilterBased,ReconstrPM25,BC PM2.5,AEAZ,150
+FilterBased,ReconstrPM25,OC PM2.5,AEAZ,150
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,AEAZ,147
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,AEAZ,146
+FilterBased,ReconstrPM25,OM PM2.5,AEAZ,144
+FilterBased,ReconstrPM25,Fine Soil,AEAZ,141
+FilterBased,ReconstrPM25,Trace Element Oxides,AEAZ,141
+FilterBased,ReconstrPM25,Residual Matter Only,AEAZ,128
+FilterBased,ReconstrPM25,Residual Matter with OC,AEAZ,128
+FilterBased,ReconstrPM25,Residual Matter with OM,AEAZ,128
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,AEAZ,125
+FilterBased,ReconstrPM25,Ammonium,AEAZ,13
+FilterBased,ReconstrPM25,Filter PM2.5 mass,ARCB,43
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,ARCB,43
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,ARCB,43
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,ARCB,43
+FilterBased,ReconstrPM25,Sea Salt,ARCB,43
+FilterBased,ReconstrPM25,Fine Soil,ARCB,43
+FilterBased,ReconstrPM25,Trace Element Oxides,ARCB,43
+FilterBased,ReconstrPM25,Residual Matter Only,ARCB,43
+FilterBased,ReconstrPM25,Residual Matter with OC,ARCB,43
+FilterBased,ReconstrPM25,Residual Matter with OM,ARCB,43
+FilterBased,ReconstrPM25,BC PM2.5,ARCB,35
+FilterBased,ReconstrPM25,Filter PM2.5 mass,AUMN,63
+FilterBased,ReconstrPM25,Sea Salt,AUMN,63
+FilterBased,ReconstrPM25,Fine Soil,AUMN,51
+FilterBased,ReconstrPM25,BC PM2.5,AUMN,51
+FilterBased,ReconstrPM25,Trace Element Oxides,AUMN,51
+FilterBased,ReconstrPM25,OC PM2.5,AUMN,51
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,AUMN,45
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,AUMN,45
+FilterBased,ReconstrPM25,Residual Matter Only,AUMN,45
+FilterBased,ReconstrPM25,Residual Matter with OC,AUMN,45
+FilterBased,ReconstrPM25,Residual Matter with OM,AUMN,45
+FilterBased,ReconstrPM25,OM PM2.5,AUMN,41
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,AUMN,35
+FilterBased,ReconstrPM25,Ammonium,AUMN,10
+FilterBased,ReconstrPM25,Filter PM2.5 mass,BDDU,111
+FilterBased,ReconstrPM25,Sea Salt,BDDU,111
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,BDDU,107
+FilterBased,ReconstrPM25,BC PM2.5,BDDU,106
+FilterBased,ReconstrPM25,Fine Soil,BDDU,105
+FilterBased,ReconstrPM25,Trace Element Oxides,BDDU,105
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,BDDU,101
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,BDDU,101
+FilterBased,ReconstrPM25,Residual Matter Only,BDDU,95
+FilterBased,ReconstrPM25,Residual Matter with OC,BDDU,95
+FilterBased,ReconstrPM25,Residual Matter with OM,BDDU,95
+FilterBased,ReconstrPM25,OC PM2.5,BDDU,60
+FilterBased,ReconstrPM25,OM PM2.5,BDDU,60
+FilterBased,ReconstrPM25,Ammonium,BDDU,4
+FilterBased,ReconstrPM25,Sea Salt,BIBU,43
+FilterBased,ReconstrPM25,Filter PM2.5 mass,BIBU,37
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,BIBU,37
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,BIBU,37
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,BIBU,37
+FilterBased,ReconstrPM25,Fine Soil,BIBU,37
+FilterBased,ReconstrPM25,BC PM2.5,BIBU,37
+FilterBased,ReconstrPM25,Trace Element Oxides,BIBU,37
+FilterBased,ReconstrPM25,OC PM2.5,BIBU,37
+FilterBased,ReconstrPM25,OM PM2.5,BIBU,37
+FilterBased,ReconstrPM25,Residual Matter Only,BIBU,37
+FilterBased,ReconstrPM25,Residual Matter with OC,BIBU,37
+FilterBased,ReconstrPM25,Residual Matter with OM,BIBU,37
+FilterBased,ReconstrPM25,Filter PM2.5 mass,CADO,70
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,CADO,70
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,CADO,70
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,CADO,70
+FilterBased,ReconstrPM25,Sea Salt,CADO,70
+FilterBased,ReconstrPM25,Fine Soil,CADO,70
+FilterBased,ReconstrPM25,Trace Element Oxides,CADO,70
+FilterBased,ReconstrPM25,Residual Matter Only,CADO,70
+FilterBased,ReconstrPM25,Residual Matter with OC,CADO,70
+FilterBased,ReconstrPM25,Residual Matter with OM,CADO,70
+FilterBased,ReconstrPM25,BC PM2.5,CADO,65
+FilterBased,ReconstrPM25,OC PM2.5,CADO,28
+FilterBased,ReconstrPM25,OM PM2.5,CADO,28
+FilterBased,ReconstrPM25,Filter PM2.5 mass,CAHA,173
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,CAHA,173
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,CAHA,173
+FilterBased,ReconstrPM25,Sea Salt,CAHA,173
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,CAHA,171
+FilterBased,ReconstrPM25,BC PM2.5,CAHA,146
+FilterBased,ReconstrPM25,Fine Soil,CAHA,129
+FilterBased,ReconstrPM25,Trace Element Oxides,CAHA,129
+FilterBased,ReconstrPM25,OC PM2.5,CAHA,128
+FilterBased,ReconstrPM25,OM PM2.5,CAHA,128
+FilterBased,ReconstrPM25,Residual Matter Only,CAHA,127
+FilterBased,ReconstrPM25,Residual Matter with OC,CAHA,127
+FilterBased,ReconstrPM25,Residual Matter with OM,CAHA,127
+FilterBased,ReconstrPM25,Filter PM2.5 mass,CAKE,18
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,CAKE,18
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,CAKE,18
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,CAKE,18
+FilterBased,ReconstrPM25,Sea Salt,CAKE,18
+FilterBased,ReconstrPM25,Fine Soil,CAKE,18
+FilterBased,ReconstrPM25,Trace Element Oxides,CAKE,18
+FilterBased,ReconstrPM25,Residual Matter Only,CAKE,18
+FilterBased,ReconstrPM25,Residual Matter with OC,CAKE,18
+FilterBased,ReconstrPM25,Residual Matter with OM,CAKE,18
+FilterBased,ReconstrPM25,BC PM2.5,CAKE,12
+FilterBased,ReconstrPM25,Filter PM2.5 mass,CALE,31
+FilterBased,ReconstrPM25,Sea Salt,CALE,31
+FilterBased,ReconstrPM25,Fine Soil,CALE,21
+FilterBased,ReconstrPM25,BC PM2.5,CALE,21
+FilterBased,ReconstrPM25,Trace Element Oxides,CALE,21
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,CALE,13
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,CALE,13
+FilterBased,ReconstrPM25,OC PM2.5,CALE,13
+FilterBased,ReconstrPM25,OM PM2.5,CALE,13
+FilterBased,ReconstrPM25,Filter PM2.5 mass,CASH,106
+FilterBased,ReconstrPM25,Sea Salt,CASH,106
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,CASH,105
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,CASH,105
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,CASH,102
+FilterBased,ReconstrPM25,BC PM2.5,CASH,94
+FilterBased,ReconstrPM25,Fine Soil,CASH,93
+FilterBased,ReconstrPM25,Trace Element Oxides,CASH,93
+FilterBased,ReconstrPM25,Residual Matter Only,CASH,90
+FilterBased,ReconstrPM25,Residual Matter with OC,CASH,90
+FilterBased,ReconstrPM25,Residual Matter with OM,CASH,90
+FilterBased,ReconstrPM25,OC PM2.5,CASH,83
+FilterBased,ReconstrPM25,OM PM2.5,CASH,78
+FilterBased,ReconstrPM25,Filter PM2.5 mass,CHTS,370
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,CHTS,370
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,CHTS,370
+FilterBased,ReconstrPM25,Sea Salt,CHTS,370
+FilterBased,ReconstrPM25,Fine Soil,CHTS,351
+FilterBased,ReconstrPM25,Trace Element Oxides,CHTS,351
+FilterBased,ReconstrPM25,Residual Matter Only,CHTS,340
+FilterBased,ReconstrPM25,Residual Matter with OC,CHTS,340
+FilterBased,ReconstrPM25,Residual Matter with OM,CHTS,340
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,CHTS,312
+FilterBased,ReconstrPM25,BC PM2.5,CHTS,311
+FilterBased,ReconstrPM25,OC PM2.5,CHTS,206
+FilterBased,ReconstrPM25,OM PM2.5,CHTS,194
+FilterBased,ReconstrPM25,Ammonium,CHTS,47
+FilterBased,ReconstrPM25,Sea Salt,CLST,184
+FilterBased,ReconstrPM25,Filter PM2.5 mass,CLST,163
+FilterBased,ReconstrPM25,BC PM2.5,CLST,163
+FilterBased,ReconstrPM25,OC PM2.5,CLST,163
+FilterBased,ReconstrPM25,OM PM2.5,CLST,159
+FilterBased,ReconstrPM25,Fine Soil,CLST,142
+FilterBased,ReconstrPM25,Trace Element Oxides,CLST,142
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,CLST,113
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,CLST,113
+FilterBased,ReconstrPM25,Ammonium,CLST,91
+FilterBased,ReconstrPM25,Residual Matter Only,CLST,91
+FilterBased,ReconstrPM25,Residual Matter with OC,CLST,91
+FilterBased,ReconstrPM25,Residual Matter with OM,CLST,91
+FilterBased,ReconstrPM25,Sea Salt,CLTA,96
+FilterBased,ReconstrPM25,Filter PM2.5 mass,CLTA,82
+FilterBased,ReconstrPM25,BC PM2.5,CLTA,82
+FilterBased,ReconstrPM25,OC PM2.5,CLTA,82
+FilterBased,ReconstrPM25,OM PM2.5,CLTA,82
+FilterBased,ReconstrPM25,Fine Soil,CLTA,61
+FilterBased,ReconstrPM25,Trace Element Oxides,CLTA,61
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,CLTA,41
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,CLTA,40
+FilterBased,ReconstrPM25,Ammonium,CLTA,27
+FilterBased,ReconstrPM25,Residual Matter Only,CLTA,27
+FilterBased,ReconstrPM25,Residual Matter with OC,CLTA,27
+FilterBased,ReconstrPM25,Residual Matter with OM,CLTA,27
+FilterBased,ReconstrPM25,Filter PM2.5 mass,ETAD,246
+FilterBased,ReconstrPM25,Sea Salt,ETAD,246
+FilterBased,ReconstrPM25,Fine Soil,ETAD,232
+FilterBased,ReconstrPM25,BC PM2.5,ETAD,232
+FilterBased,ReconstrPM25,Trace Element Oxides,ETAD,232
+FilterBased,ReconstrPM25,OC PM2.5,ETAD,232
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,ETAD,216
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,ETAD,216
+FilterBased,ReconstrPM25,OM PM2.5,ETAD,206
+FilterBased,ReconstrPM25,Residual Matter Only,ETAD,202
+FilterBased,ReconstrPM25,Residual Matter with OC,ETAD,202
+FilterBased,ReconstrPM25,Residual Matter with OM,ETAD,202
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,ETAD,168
+FilterBased,ReconstrPM25,Ammonium,ETAD,36
+FilterBased,ReconstrPM25,Filter PM2.5 mass,IDBD,122
+FilterBased,ReconstrPM25,Sea Salt,IDBD,122
+FilterBased,ReconstrPM25,BC PM2.5,IDBD,116
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,IDBD,110
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,IDBD,110
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,IDBD,108
+FilterBased,ReconstrPM25,Fine Soil,IDBD,106
+FilterBased,ReconstrPM25,Trace Element Oxides,IDBD,106
+FilterBased,ReconstrPM25,Residual Matter Only,IDBD,99
+FilterBased,ReconstrPM25,Residual Matter with OC,IDBD,99
+FilterBased,ReconstrPM25,Residual Matter with OM,IDBD,99
+FilterBased,ReconstrPM25,OC PM2.5,IDBD,43
+FilterBased,ReconstrPM25,OM PM2.5,IDBD,42
+FilterBased,ReconstrPM25,Sea Salt,ILHA,194
+FilterBased,ReconstrPM25,Filter PM2.5 mass,ILHA,178
+FilterBased,ReconstrPM25,Fine Soil,ILHA,178
+FilterBased,ReconstrPM25,BC PM2.5,ILHA,178
+FilterBased,ReconstrPM25,Trace Element Oxides,ILHA,178
+FilterBased,ReconstrPM25,OC PM2.5,ILHA,178
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,ILHA,172
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,ILHA,172
+FilterBased,ReconstrPM25,Residual Matter Only,ILHA,168
+FilterBased,ReconstrPM25,Residual Matter with OC,ILHA,168
+FilterBased,ReconstrPM25,Residual Matter with OM,ILHA,168
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,ILHA,151
+FilterBased,ReconstrPM25,OM PM2.5,ILHA,148
+FilterBased,ReconstrPM25,Ammonium,ILHA,26
+FilterBased,ReconstrPM25,Sea Salt,ILNZ,294
+FilterBased,ReconstrPM25,Filter PM2.5 mass,ILNZ,288
+FilterBased,ReconstrPM25,BC PM2.5,ILNZ,279
+FilterBased,ReconstrPM25,Fine Soil,ILNZ,276
+FilterBased,ReconstrPM25,Trace Element Oxides,ILNZ,276
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,ILNZ,275
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,ILNZ,261
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,ILNZ,250
+FilterBased,ReconstrPM25,Residual Matter Only,ILNZ,247
+FilterBased,ReconstrPM25,Residual Matter with OC,ILNZ,247
+FilterBased,ReconstrPM25,Residual Matter with OM,ILNZ,247
+FilterBased,ReconstrPM25,OC PM2.5,ILNZ,227
+FilterBased,ReconstrPM25,OM PM2.5,ILNZ,189
+FilterBased,ReconstrPM25,Ammonium,ILNZ,26
+FilterBased,ReconstrPM25,Sea Salt,INDH,136
+FilterBased,ReconstrPM25,Filter PM2.5 mass,INDH,110
+FilterBased,ReconstrPM25,OC PM2.5,INDH,110
+FilterBased,ReconstrPM25,BC PM2.5,INDH,109
+FilterBased,ReconstrPM25,OM PM2.5,INDH,103
+FilterBased,ReconstrPM25,Fine Soil,INDH,91
+FilterBased,ReconstrPM25,Trace Element Oxides,INDH,91
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,INDH,68
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,INDH,68
+FilterBased,ReconstrPM25,Ammonium,INDH,33
+FilterBased,ReconstrPM25,Residual Matter Only,INDH,33
+FilterBased,ReconstrPM25,Residual Matter with OC,INDH,33
+FilterBased,ReconstrPM25,Residual Matter with OM,INDH,33
+FilterBased,ReconstrPM25,Sea Salt,INJA,61
+FilterBased,ReconstrPM25,Filter PM2.5 mass,INJA,47
+FilterBased,ReconstrPM25,BC PM2.5,INJA,47
+FilterBased,ReconstrPM25,OC PM2.5,INJA,47
+FilterBased,ReconstrPM25,OM PM2.5,INJA,47
+FilterBased,ReconstrPM25,Fine Soil,INJA,41
+FilterBased,ReconstrPM25,Trace Element Oxides,INJA,41
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,INJA,27
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,INJA,27
+FilterBased,ReconstrPM25,Residual Matter Only,INJA,27
+FilterBased,ReconstrPM25,Residual Matter with OC,INJA,27
+FilterBased,ReconstrPM25,Residual Matter with OM,INJA,27
+FilterBased,ReconstrPM25,Ammonium,INJA,20
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,INJA,7
+FilterBased,ReconstrPM25,Sea Salt,INKA,46
+FilterBased,ReconstrPM25,Filter PM2.5 mass,INKA,40
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,INKA,40
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,INKA,40
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,INKA,40
+FilterBased,ReconstrPM25,Fine Soil,INKA,39
+FilterBased,ReconstrPM25,Trace Element Oxides,INKA,39
+FilterBased,ReconstrPM25,Residual Matter Only,INKA,39
+FilterBased,ReconstrPM25,Residual Matter with OC,INKA,39
+FilterBased,ReconstrPM25,Residual Matter with OM,INKA,39
+FilterBased,ReconstrPM25,BC PM2.5,INKA,38
+FilterBased,ReconstrPM25,OC PM2.5,INKA,15
+FilterBased,ReconstrPM25,OM PM2.5,INKA,15
+FilterBased,ReconstrPM25,Filter PM2.5 mass,KRSE,89
+FilterBased,ReconstrPM25,Sea Salt,KRSE,89
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,KRSE,83
+FilterBased,ReconstrPM25,Fine Soil,KRSE,83
+FilterBased,ReconstrPM25,BC PM2.5,KRSE,83
+FilterBased,ReconstrPM25,Trace Element Oxides,KRSE,83
+FilterBased,ReconstrPM25,OC PM2.5,KRSE,83
+FilterBased,ReconstrPM25,OM PM2.5,KRSE,83
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,KRSE,76
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,KRSE,71
+FilterBased,ReconstrPM25,Residual Matter Only,KRSE,71
+FilterBased,ReconstrPM25,Residual Matter with OC,KRSE,71
+FilterBased,ReconstrPM25,Residual Matter with OM,KRSE,71
+FilterBased,ReconstrPM25,Filter PM2.5 mass,KRUL,132
+FilterBased,ReconstrPM25,Sea Salt,KRUL,132
+FilterBased,ReconstrPM25,BC PM2.5,KRUL,119
+FilterBased,ReconstrPM25,OC PM2.5,KRUL,119
+FilterBased,ReconstrPM25,Fine Soil,KRUL,118
+FilterBased,ReconstrPM25,Trace Element Oxides,KRUL,118
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,KRUL,109
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,KRUL,107
+FilterBased,ReconstrPM25,OM PM2.5,KRUL,107
+FilterBased,ReconstrPM25,Residual Matter Only,KRUL,100
+FilterBased,ReconstrPM25,Residual Matter with OC,KRUL,100
+FilterBased,ReconstrPM25,Residual Matter with OM,KRUL,100
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,KRUL,82
+FilterBased,ReconstrPM25,Ammonium,KRUL,28
+FilterBased,ReconstrPM25,Filter PM2.5 mass,MXMC,59
+FilterBased,ReconstrPM25,Sea Salt,MXMC,59
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,MXMC,53
+FilterBased,ReconstrPM25,Fine Soil,MXMC,53
+FilterBased,ReconstrPM25,BC PM2.5,MXMC,53
+FilterBased,ReconstrPM25,Trace Element Oxides,MXMC,53
+FilterBased,ReconstrPM25,OC PM2.5,MXMC,53
+FilterBased,ReconstrPM25,OM PM2.5,MXMC,53
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,MXMC,52
+FilterBased,ReconstrPM25,Residual Matter Only,MXMC,52
+FilterBased,ReconstrPM25,Residual Matter with OC,MXMC,52
+FilterBased,ReconstrPM25,Residual Matter with OM,MXMC,52
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,MXMC,50
+FilterBased,ReconstrPM25,Ammonium,MXMC,3
+FilterBased,ReconstrPM25,Sea Salt,NGIL,75
+FilterBased,ReconstrPM25,Filter PM2.5 mass,NGIL,67
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,NGIL,60
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,NGIL,56
+FilterBased,ReconstrPM25,Fine Soil,NGIL,56
+FilterBased,ReconstrPM25,Trace Element Oxides,NGIL,56
+FilterBased,ReconstrPM25,BC PM2.5,NGIL,55
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,NGIL,52
+FilterBased,ReconstrPM25,Residual Matter Only,NGIL,50
+FilterBased,ReconstrPM25,Residual Matter with OC,NGIL,50
+FilterBased,ReconstrPM25,Residual Matter with OM,NGIL,50
+FilterBased,ReconstrPM25,OC PM2.5,NGIL,45
+FilterBased,ReconstrPM25,OM PM2.5,NGIL,45
+FilterBased,ReconstrPM25,Filter PM2.5 mass,PHMO,12
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,PHMO,12
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,PHMO,12
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,PHMO,12
+FilterBased,ReconstrPM25,Sea Salt,PHMO,12
+FilterBased,ReconstrPM25,Fine Soil,PHMO,12
+FilterBased,ReconstrPM25,BC PM2.5,PHMO,12
+FilterBased,ReconstrPM25,Trace Element Oxides,PHMO,12
+FilterBased,ReconstrPM25,Residual Matter Only,PHMO,12
+FilterBased,ReconstrPM25,Residual Matter with OC,PHMO,12
+FilterBased,ReconstrPM25,Residual Matter with OM,PHMO,12
+FilterBased,ReconstrPM25,Filter PM2.5 mass,PRFJ,55
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,PRFJ,55
+FilterBased,ReconstrPM25,Sea Salt,PRFJ,55
+FilterBased,ReconstrPM25,Fine Soil,PRFJ,55
+FilterBased,ReconstrPM25,BC PM2.5,PRFJ,55
+FilterBased,ReconstrPM25,Trace Element Oxides,PRFJ,55
+FilterBased,ReconstrPM25,OC PM2.5,PRFJ,55
+FilterBased,ReconstrPM25,OM PM2.5,PRFJ,55
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,PRFJ,50
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,PRFJ,50
+FilterBased,ReconstrPM25,Residual Matter Only,PRFJ,50
+FilterBased,ReconstrPM25,Residual Matter with OC,PRFJ,50
+FilterBased,ReconstrPM25,Residual Matter with OM,PRFJ,50
+FilterBased,ReconstrPM25,Filter PM2.5 mass,SGSU,50
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,SGSU,50
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,SGSU,50
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,SGSU,50
+FilterBased,ReconstrPM25,Sea Salt,SGSU,50
+FilterBased,ReconstrPM25,BC PM2.5,SGSU,50
+FilterBased,ReconstrPM25,Fine Soil,SGSU,44
+FilterBased,ReconstrPM25,Trace Element Oxides,SGSU,44
+FilterBased,ReconstrPM25,Residual Matter Only,SGSU,44
+FilterBased,ReconstrPM25,Residual Matter with OC,SGSU,44
+FilterBased,ReconstrPM25,Residual Matter with OM,SGSU,44
+FilterBased,ReconstrPM25,OC PM2.5,SGSU,13
+FilterBased,ReconstrPM25,OM PM2.5,SGSU,13
+FilterBased,ReconstrPM25,Sea Salt,TWKA,181
+FilterBased,ReconstrPM25,Filter PM2.5 mass,TWKA,160
+FilterBased,ReconstrPM25,Fine Soil,TWKA,153
+FilterBased,ReconstrPM25,BC PM2.5,TWKA,153
+FilterBased,ReconstrPM25,Trace Element Oxides,TWKA,153
+FilterBased,ReconstrPM25,OC PM2.5,TWKA,153
+FilterBased,ReconstrPM25,OM PM2.5,TWKA,153
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,TWKA,146
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,TWKA,145
+FilterBased,ReconstrPM25,Residual Matter Only,TWKA,145
+FilterBased,ReconstrPM25,Residual Matter with OC,TWKA,145
+FilterBased,ReconstrPM25,Residual Matter with OM,TWKA,145
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,TWKA,131
+FilterBased,ReconstrPM25,Ammonium,TWKA,15
+FilterBased,ReconstrPM25,Sea Salt,TWTA,281
+FilterBased,ReconstrPM25,Filter PM2.5 mass,TWTA,260
+FilterBased,ReconstrPM25,BC PM2.5,TWTA,247
+FilterBased,ReconstrPM25,OC PM2.5,TWTA,247
+FilterBased,ReconstrPM25,Fine Soil,TWTA,245
+FilterBased,ReconstrPM25,Trace Element Oxides,TWTA,245
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,TWTA,241
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,TWTA,240
+FilterBased,ReconstrPM25,Residual Matter Only,TWTA,238
+FilterBased,ReconstrPM25,Residual Matter with OC,TWTA,238
+FilterBased,ReconstrPM25,Residual Matter with OM,TWTA,238
+FilterBased,ReconstrPM25,OM PM2.5,TWTA,224
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,TWTA,222
+FilterBased,ReconstrPM25,Ammonium,TWTA,19
+FilterBased,ReconstrPM25,Filter PM2.5 mass,USBO,11
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,USBO,11
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,USBO,11
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,USBO,11
+FilterBased,ReconstrPM25,Sea Salt,USBO,11
+FilterBased,ReconstrPM25,Fine Soil,USBO,11
+FilterBased,ReconstrPM25,Trace Element Oxides,USBO,11
+FilterBased,ReconstrPM25,Residual Matter Only,USBO,11
+FilterBased,ReconstrPM25,Residual Matter with OC,USBO,11
+FilterBased,ReconstrPM25,Residual Matter with OM,USBO,11
+FilterBased,ReconstrPM25,BC PM2.5,USBO,2
+FilterBased,ReconstrPM25,Filter PM2.5 mass,USMC,19
+FilterBased,ReconstrPM25,Sea Salt,USMC,19
+FilterBased,ReconstrPM25,Fine Soil,USMC,19
+FilterBased,ReconstrPM25,Trace Element Oxides,USMC,19
+FilterBased,ReconstrPM25,BC PM2.5,USMC,11
+FilterBased,ReconstrPM25,Filter PM2.5 mass,USNO,33
+FilterBased,ReconstrPM25,Sea Salt,USNO,33
+FilterBased,ReconstrPM25,Fine Soil,USNO,23
+FilterBased,ReconstrPM25,BC PM2.5,USNO,23
+FilterBased,ReconstrPM25,Trace Element Oxides,USNO,23
+FilterBased,ReconstrPM25,OC PM2.5,USNO,23
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,USNO,20
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,USNO,19
+FilterBased,ReconstrPM25,Residual Matter Only,USNO,19
+FilterBased,ReconstrPM25,Residual Matter with OC,USNO,19
+FilterBased,ReconstrPM25,Residual Matter with OM,USNO,19
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,USNO,12
+FilterBased,ReconstrPM25,OM PM2.5,USNO,12
+FilterBased,ReconstrPM25,Ammonium,USNO,11
+FilterBased,ReconstrPM25,Filter PM2.5 mass,USPA,264
+FilterBased,ReconstrPM25,Sea Salt,USPA,264
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,USPA,262
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,USPA,260
+FilterBased,ReconstrPM25,Fine Soil,USPA,249
+FilterBased,ReconstrPM25,Trace Element Oxides,USPA,249
+FilterBased,ReconstrPM25,Residual Matter Only,USPA,241
+FilterBased,ReconstrPM25,Residual Matter with OC,USPA,241
+FilterBased,ReconstrPM25,Residual Matter with OM,USPA,241
+FilterBased,ReconstrPM25,BC PM2.5,USPA,220
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,USPA,218
+FilterBased,ReconstrPM25,OC PM2.5,USPA,217
+FilterBased,ReconstrPM25,OM PM2.5,USPA,217
+FilterBased,ReconstrPM25,Ammonium,USPA,42
+FilterBased,ReconstrPM25,Filter PM2.5 mass,VNHN,22
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,VNHN,22
+FilterBased,ReconstrPM25,Sea Salt,VNHN,22
+FilterBased,ReconstrPM25,Fine Soil,VNHN,22
+FilterBased,ReconstrPM25,Trace Element Oxides,VNHN,22
+FilterBased,ReconstrPM25,BC PM2.5,VNHN,20
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,VNHN,15
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,VNHN,14
+FilterBased,ReconstrPM25,Residual Matter Only,VNHN,14
+FilterBased,ReconstrPM25,Residual Matter with OC,VNHN,14
+FilterBased,ReconstrPM25,Residual Matter with OM,VNHN,14
+FilterBased,ReconstrPM25,OC PM2.5,VNHN,12
+FilterBased,ReconstrPM25,OM PM2.5,VNHN,12
+FilterBased,ReconstrPM25,Filter PM2.5 mass,ZAJB,212
+FilterBased,ReconstrPM25,Sea Salt,ZAJB,212
+FilterBased,ReconstrPM25,BC PM2.5,ZAJB,208
+FilterBased,ReconstrPM25,OC PM2.5,ZAJB,208
+FilterBased,ReconstrPM25,Fine Soil,ZAJB,206
+FilterBased,ReconstrPM25,Trace Element Oxides,ZAJB,206
+FilterBased,ReconstrPM25,OM PM2.5,ZAJB,203
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,ZAJB,199
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,ZAJB,189
+FilterBased,ReconstrPM25,Residual Matter Only,ZAJB,187
+FilterBased,ReconstrPM25,Residual Matter with OC,ZAJB,187
+FilterBased,ReconstrPM25,Residual Matter with OM,ZAJB,187
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,ZAJB,177
+FilterBased,ReconstrPM25,Ammonium,ZAJB,23
+FilterBased,ReconstrPM25,Sea Salt,ZAPR,276
+FilterBased,ReconstrPM25,Filter PM2.5 mass,ZAPR,269
+FilterBased,ReconstrPM25,Fine Soil,ZAPR,269
+FilterBased,ReconstrPM25,Trace Element Oxides,ZAPR,269
+FilterBased,ReconstrPM25,BC PM2.5,ZAPR,264
+FilterBased,ReconstrPM25,OC PM2.5,ZAPR,264
+FilterBased,ReconstrPM25,Sulfate Ion PM2.5,ZAPR,263
+FilterBased,ReconstrPM25,OM PM2.5,ZAPR,258
+FilterBased,ReconstrPM25,Nitrate Ion PM2.5,ZAPR,251
+FilterBased,ReconstrPM25,Residual Matter Only,ZAPR,245
+FilterBased,ReconstrPM25,Residual Matter with OC,ZAPR,245
+FilterBased,ReconstrPM25,Residual Matter with OM,ZAPR,245
+FilterBased,ReconstrPM25,Ammonium Ion PM2.5,ZAPR,232
+FilterBased,ReconstrPM25,Ammonium,ZAPR,26
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,AEAZ,610
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,ARCB,784
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,AUMN,674
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,BDDU,232
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,CADO,728
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,CAHA,759
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,CAKE,106
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,CALE,385
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,CASH,2238
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,CHTS,1787
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,IDBD,425
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,ILNZ,998
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,INKA,263
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,KRSE,123
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,KRUL,267
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,MXMC,579
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,NGIL,189
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,SGSU,738
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,USNO,174
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,VNHN,119
+TimeResPM25,DailyEstPM25,Estimated PM2.5 mass,ZAPR,458
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,AEAZ,12684
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,ARCB,11417
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,AUMN,15052
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,BDDU,2753
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,CADO,14755
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,CAHA,12671
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,CAKE,2103
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,CALE,7055
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,CASH,39941
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,CHTS,35518
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,IDBD,5133
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,ILNZ,19320
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,INKA,4051
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,KRSE,2665
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,KRUL,5430
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,MXMC,8727
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,NGIL,2562
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,SGSU,13801
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,USNO,3824
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,VNHN,1481
+TimeResPM25,HourlyEstPM25,Estimated PM2.5 mass,ZAPR,8103

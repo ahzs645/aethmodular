@@ -1,0 +1,41 @@
+site,lookup_name,lookup_lat,lookup_lon,FilterBased/ChemSpecPM10,FilterBased/ChemSpecPM25,FilterBased/ReconstrPM25,NephelProcd/DailyScaPM10,NephelProcd/DailyScaPM25,NephelProcd/HourlyScaPM10,NephelProcd/HourlyScaPM25,TimeResPM25/DailyEstPM25,TimeResPM25/HourlyEstPM25,hips_sample_filters,hips_blank_filters,n_public_subproducts,in_public,in_hips_data,in_hips_blanks,in_lookup
+AEAZ,"AbuDhabi, UAE",24.4416,54.6166,17,150,150,688,628,15729,14138,610,12684,100,20,9,True,True,True,True
+AUMN,"Melbourne, Australia",-37.7968,144.96791,13,63,63,696,696,15621,15729,674,15052,106,22,9,True,True,True,True
+CAHA,"Halifax, Canada",44.638,-63.594,36,173,173,816,877,13644,18037,759,12671,68,12,9,True,True,True,True
+KRSE,"Seoul, Korea",37.56443,126.93479,11,89,89,171,142,1260,3142,123,2665,50,22,9,True,True,True,True
+ILNZ,"Rehovot, Israel",31.90724,34.81053,16,288,294,553,533,12327,11833,998,19320,154,22,9,True,True,True,True
+KRUL,"Ulsan, Korea",35.582,129.19,20,132,132,324,323,7278,7377,267,5430,122,22,9,True,True,True,True
+CHTS,"Beijing, China",40.004,116.326,18,370,370,754,769,12224,15096,1787,35518,202,30,9,True,True,True,True
+CASH,"Sherbrooke, Canada",45.37975,-71.93133,18,106,106,2441,2458,46143,51911,2238,39941,58,30,9,True,True,True,True
+USNO,"Norman, UnitedStates",35.182,-97.44,2,33,33,677,677,15295,15244,174,3824,57,15,9,True,True,True,True
+ZAPR,"Pretoria, South Africa",-25.75661,28.27972,6,269,276,450,385,9565,7794,458,8103,214,42,9,True,True,True,True
+MXMC,"MexicoCity, Mexico",19.334,-99.182,11,59,59,823,671,12351,11022,579,8727,57,15,9,True,True,True,True
+IDBD,"Bandung, Indonesia",-6.88842,107.61,7,122,122,0,0,0,0,425,5133,62,34,5,True,True,True,True
+BDDU,"Dhaka, Bangladesh",23.72839,90.39819,10,111,111,0,0,0,0,232,2753,54,26,5,True,True,True,True
+PRFJ,"Fajardo, PuertoRico",18.3845,-65.6199,7,55,55,0,0,0,0,0,0,98,22,3,True,True,True,True
+ZAJB,"Johannesburg, South Africa",-26.18466,27.999458,6,212,212,0,0,0,0,0,0,210,54,3,True,True,True,True
+BIBU,"Bujumbura, Burundi",-3.38,29.384,5,37,43,0,0,0,0,0,0,67,13,3,True,True,True,True
+ETAD,"AddisAbaba, Ethiopia",9.0106,38.8207,6,246,246,0,0,0,0,0,0,239,41,3,True,True,True,True
+TWKA,"Kaohsiung, Taiwan",22.647196,120.309791,3,160,181,0,0,0,0,0,0,159,25,3,True,True,True,True
+ILHA,"Haifa, Israel",32.77587,35.0249,4,178,194,0,0,0,0,0,0,154,38,3,True,True,True,True
+TWTA,"Taipei, Taiwan",25.0416354,121.503398,4,260,281,0,0,0,0,0,0,205,51,3,True,True,True,True
+CLTA,"Talca, Chile",-35.4139,-71.6214,0,82,96,0,0,0,0,0,0,84,12,2,True,True,True,True
+INJA,"Jaipur, India",26.90582,75.80622,0,47,61,0,0,0,0,0,0,73,15,2,True,True,True,True
+INDH,"Delhi, India",28.629,77.22233,0,110,136,0,0,0,0,0,0,188,36,2,True,True,True,True
+CLST,"Santiago, Chile",-33.45722,-70.66167,0,163,184,0,0,0,0,0,0,171,29,2,True,True,True,True
+USPA,"Pasadena, UnitedStates",34.199433,-118.17317,0,264,264,0,0,0,0,0,0,158,26,2,True,True,True,True
+NGIL,"Ilorin, Nigeria",8.4841,4.6745,12,67,75,405,77,8499,1267,189,2562,0,0,9,True,False,False,True
+CADO,"Downsview, Canada",43.79,-79.47,12,70,70,727,736,14400,16712,728,14755,0,0,9,True,False,False,True
+CAKE,"Kelowna, Canada",49.94129,-119.40011,4,18,18,164,135,2327,2374,106,2103,0,0,9,True,False,False,True
+VNHN,"Hanoi, Vietnam",21.04778,105.79964,6,22,22,51,14,422,192,119,1481,0,0,9,True,False,False,True
+SGSU,"Singapore, Singapore",1.29767,103.78038,2,50,50,1031,180,22990,3907,738,13801,0,0,9,True,False,False,True
+INKA,"Kanpur, India",26.51278,80.23164,3,40,46,246,36,5335,837,263,4051,0,0,9,True,False,False,True
+CALE,"Lethbridge, Canada",49.68167,-112.8687,7,31,31,500,386,5449,7276,385,7055,0,0,9,True,False,False,True
+PHMO,"Manila, Philippines",14.63525,121.07784,0,12,12,877,877,18650,18598,0,0,0,0,6,True,False,False,True
+ARCB,,,,0,43,43,0,0,0,0,784,11417,0,0,4,True,False,False,False
+CODC,"Palmira, Colombia",4.6369,-74.0808,0,0,0,141,142,1086,3238,0,0,0,0,4,True,False,False,True
+USBO,,,,0,11,11,0,0,0,0,0,0,0,0,2,True,False,False,False
+USMC,,,,0,19,19,0,0,0,0,0,0,0,0,2,True,False,False,False
+ETBI,"Bishoftu, Ethiopia",8.7603,39.0,0,0,0,0,0,0,0,0,0,26,6,0,False,True,True,True
+USSL,"StLouis, UnitedStates",38.648997,-90.305961,0,0,0,0,0,0,0,0,0,42,6,0,False,True,True,True
+USBA,"Baltimore, UnitedStates",39.255,-76.709,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,True

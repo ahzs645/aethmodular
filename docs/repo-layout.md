@@ -34,3 +34,12 @@ Generated outputs under `research/**/output/` are ignored.
 - `notebooks/analysis/data_availability/`: filter availability diagnostics
 - `notebooks/qc/`: QC-focused notebooks (e.g., flow quality control)
 - `notebooks/archive/`: legacy or superseded notebooks
+
+## Reference Docs
+
+- [`filter-optics-reference.md`](filter-optics-reference.md): SPARTAN PTFE
+  filter spec (PT25DMCAN-PF03A, 3 μm pore, FEP ring), SPARTAN SSR + HIPS
+  optical chain (MAC = 10 m² g⁻¹, public BC = Fabs / 10), IMPROVE filter +
+  HIPS calibration history, every Warren White paper parameter we have a
+  value for, and the parameters that are still open (SPARTAN `H`, `α`,
+  HIPS wavelength).
