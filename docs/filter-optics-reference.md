@@ -12,6 +12,72 @@ yet (`H`, `α`).
 
 ---
 
+## 0. Quick side-by-side: SPARTAN vs IMPROVE
+
+This is the at-a-glance comparison. Every value links to the detailed
+section below where the citation is recorded.
+
+### Filter hardware
+
+| Property | SPARTAN | IMPROVE |
+|---|---|---|
+| Filter material | PTFE membrane | Expanded PTFE membrane, ring-mounted |
+| Diameter | **25 mm** | **25 mm** |
+| Active deposit area `A` | **3.1 cm²** (SOP equation) | not transcribed (similar order; deposit pattern dots) |
+| Pore size | **3 μm** | not transcribed in this repo |
+| Vendor part number | **PT25DMCAN-PF03A** (Measurement Technology Labs / Mesa Labs) | not transcribed in this repo |
+| Support ring | **FEP polymer** (not metal) | metal screen with perforations (see hole fraction) |
+| Sampler | AirPhoton SS5i + BGI cyclone PM2.5 inlet | IMPROVE Module A |
+
+### Support screen geometry (the heart of the Warren-2025 correction)
+
+| Property | SPARTAN | IMPROVE |
+|---|---|---|
+| Support-screen **hole fraction `h`** | **OPEN** — not published; logged as an ask to Christopher Ockfort | **0.638** (63.8% open / 36.2% blocked) — McDade, Dillner & Indresand 2009; adopted in White 2025 |
+| Deposit-dot size | not applicable (FEP ring, not perforated screen) | ≈ **0.013 inch** ≈ **0.33 mm** per dot — McDade et al. 2009 |
+| Pixelation **relative amplitude** (continuous, 0 = uniform → 1 = fully pixelated) | **OPEN** — no published value | continuous family in White 2025; per-sample fits in the paper, **not transcribed** here |
+
+### Optical-photometer readout
+
+| Property | SPARTAN | IMPROVE |
+|---|---|---|
+| Wavelength | **OPEN** — not stated in any SPARTAN document we have. Most likely also red ~633 nm, but unconfirmed | **633 nm** — White 2025 abstract verbatim ("absorptance of red (633-nm) light") |
+| Wavelength label in public exports | n/a — public CSV reports `Fabs` in Mm⁻¹ without a wavelength field | **635 nm** is the FED export label — treat as a reporting convention for the 633 nm channel |
+| Output reported | `Fabs` (Mm⁻¹) in HIPS file; **BC PM2.5 (μg/m³) = Fabs / 10** in the public CSV | `fAbs` plus R/T ratio fields in FED |
+| Median MDL | ≈ **1.6 Mm⁻¹** (HIPS Drive file) | not transcribed |
+| Raw quantities exposed | T₁, R₁, t, r, tau, lot-specific intercept/slope (HIPS Drive file) | FED gives R/T ratios only; raw R, T detectors + blank rows + lot coefficients are off-database |
+
+### Mass absorption cross-section (MAC) conventions
+
+| Convention | SPARTAN | IMPROVE |
+|---|---|---|
+| MAC used by network's published BC | **10 m² g⁻¹** (equivalently σ_SSR = **0.1 cm² μg⁻¹**, with a ×1.5 thickness factor in the SSR EBC equation) | none — IMPROVE reports `fAbs`, not BC. The user picks a MAC at analysis time. |
+| Empirical check on `BC_public = Fabs / 10` | **Confirmed network-wide**: slope = 10.0 m² g⁻¹, intercept ≈ 0, R² ≈ 1.000 at 25/27 sites with both files (see `research/spartan/inventory/hips_vs_bc_linear_fits.csv`) | n/a |
+
+### Sampling protocol
+
+| Property | SPARTAN | IMPROVE |
+|---|---|---|
+| Sampling cadence | nominal **1 filter every 9 days** (recent sites sample more frequently — see `research/spartan/inventory/coverage.csv`) | **every third day** at ~150 rural sites — White 2025 abstract |
+| Sample integration | 24 h | 24 h |
+| Field-blank convention | replicate `-7` in `FilterId` (e.g. `ETAD-0001-7`); also `*-LB*` for lab blanks | not transcribed (raw blanks not in FED) |
+
+### Stable-calibration epoch
+
+| Network | Epoch | Source |
+|---|---|---|
+| SPARTAN | EBC SOP **Revision 2.0** dated 23 Oct 2019; HIPS Drive file covers 2022-2026 | EBC SOP cover page; HIPS Drive coverage from this repo |
+| IMPROVE | **2003-present** (use `year >= 2003` for comparisons) | IMPROVE Steering Committee 2015; White et al. 2016; reaffirmed in White et al. 2025 reanalysis of 2003-2016 lots |
+
+> **Bottom line.** For *filter hardware* (25 mm PTFE, 24 h sampling) the
+> two networks look comparable. For *support-screen geometry and pixelation*
+> they almost certainly are not — IMPROVE uses a perforated metal screen with
+> `h = 0.638`; SPARTAN uses a 25 mm PTFE with an FEP ring and the screen
+> behind it has not been characterised. Don't transfer Warren's IMPROVE
+> correction onto SPARTAN without that number.
+
+---
+
 ## 1. SPARTAN sampling filter
 
 | Property | Value | Source |
