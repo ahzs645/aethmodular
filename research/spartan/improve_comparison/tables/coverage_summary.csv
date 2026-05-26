@@ -1,0 +1,11 @@
+network,quantity,column,units,n,n_sites,date_min,date_max,median
+IMPROVE,Elemental Carbon,EC_ugm3,µg/m³,379697,214,2003-01-03,2025-07-30,0.1213
+IMPROVE,Organic Carbon,OC_ugm3,µg/m³,379697,214,2003-01-03,2025-07-30,0.6778
+IMPROVE,Absorption fAbs,Fabs_Mm,Mm⁻¹,379697,214,2003-01-03,2025-07-30,1.5102
+IMPROVE,Iron,Fe_ugm3,µg/m³,379658,214,2003-01-03,2025-07-30,0.0223
+IMPROVE,Fine PM₂.₅ mass,PM25_ugm3,µg/m³,379367,213,2003-01-03,2025-07-30,3.4786
+SPARTAN,Elemental Carbon,EC_ugm3,µg/m³,543,4,2019-05-08,2024-10-06,1.53
+SPARTAN,Organic Carbon,OC_ugm3,µg/m³,543,4,2019-05-08,2024-10-06,3.68
+SPARTAN,Absorption fAbs,Fabs_Mm,Mm⁻¹,546,4,2022-07-05,2024-12-08,18.6188
+SPARTAN,Iron,Fe_ugm3,µg/m³,819,4,2013-09-10,2024-10-06,0.2369
+SPARTAN,Fine PM₂.₅ mass,PM25_ugm3,µg/m³,853,4,2013-06-28,2024-10-06,17.33

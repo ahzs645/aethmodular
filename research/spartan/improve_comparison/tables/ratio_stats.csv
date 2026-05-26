@@ -1,0 +1,7 @@
+network,ratio,unit,n,median,p25,p75
+IMPROVE,OC / EC,ratio,374525,5.348,3.774,7.825
+SPARTAN,OC / EC,ratio,534,2.267,1.406,3.472
+IMPROVE,fAbs / EC,m²/g (≈ MAC),375900,11.906,9.018,15.446
+SPARTAN,fAbs / EC,m²/g (≈ MAC),535,9.79,7.732,12.108
+IMPROVE,Fe / PM₂.₅,% of mass,374875,0.641,0.322,1.253
+SPARTAN,Fe / PM₂.₅,% of mass,804,1.306,0.927,1.77

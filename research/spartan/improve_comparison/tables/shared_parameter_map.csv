@@ -1,0 +1,7 @@
+harmonized_col,quantity,spartan_param,improve_col,units,note
+EC_ugm3,Elemental Carbon,ChemSpec_EC_PM2.5,ECf_Val,µg/m³,direct
+OC_ugm3,Organic Carbon,ChemSpec_OC_PM2.5,OCf_Val,µg/m³,direct
+Fabs_Mm,Absorption fAbs,HIPS_Fabs,fAbs_Val,Mm⁻¹,direct
+Fe_ugm3,Iron,ChemSpec_Iron_PM2.5,FEf_Val,µg/m³,SPARTAN ng/m³ ÷ 1000
+PM25_ugm3,Fine PM2.5 mass,ChemSpec_Filter_PM2.5_mass,MF_Val,µg/m³,direct
+EC_ftir_ugm3,EC paired with fAbs,EC_ftir,ECf_Val,µg/m³,SPARTAN FTIR EC (only EC co-measured with HIPS_Fabs); used for fAbs~EC & MAC
