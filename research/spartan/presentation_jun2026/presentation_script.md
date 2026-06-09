@@ -198,3 +198,13 @@ text is written to be spoken, the NOTES are private — caveats and likely quest
 **Say:** Three tracks. One: KBR pellets — charcoal from Hossein in hand, grinding and press coordinated, open questions are the KBR-to-sample ratio, a blank pellet spectrum, and shipping containers. Two: the Shiny app once the VPN lands — reproduce the baseline, run Mona's wildfire calibration on Addis spectra, then EC1, OP and the char-soot split as targets, plus out-of-domain diagnostics on the Addis spectra; full task list and decision table are written up in the repo. Three: data arrivals — ETBI ChemSpec and the five collocated TOR-FTIR filters from the second Ethiopian city slot straight into existing figures.
 
 > **Notes (private):** The decision table is in shiny_app_ftir_plan.md §5 — each test has a defined outcome A/B meaning. Remember Ann's advice: ask AQRC IT early, follow up if quiet; have Mona at the next Tuesday meeting if the VPN is live.
+
+---
+
+## Slide 21 — Backup — same ratios computed strictly from masses (volume cancels)
+
+*Figure:* `research/spartan/site_ratios_mass/figures/R1_site_ratios_mass_space.png`
+
+**Say:** Backup slide in case the volume question comes up: here are the same per-site ratios computed only from masses on the filter and tau — no concentrations anywhere. The orderings are identical to machine precision, because the sampled volume sits in both numerator and denominator and cancels. fAbs alone does carry volume — that's why the distribution and cross-plot figures use tau — but every ratio plot was already volume-free.
+
+> **Notes (private):** Verification: max per-sample difference between mass-built and concentration-built OC/EC is ~1e-16. Notebook: site_ratios_mass_space.ipynb.
