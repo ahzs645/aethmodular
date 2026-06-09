@@ -162,3 +162,6 @@ data/
 research/ftir_hips_chem/output/warren_meeting/
 research/ftir_hips_chem/warren_meeting_slides_executed.ipynb
 research/ftir_hips_chem/AERONET/
+
+# Raw IMPROVE network data pulled from Google Drive (too large for git)
+research/improve_hips_offset/data_improve/
