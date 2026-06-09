@@ -1,0 +1,11 @@
+network,quantity,unit,n,p05,p25,p50,p75,p95
+IMPROVE,EC mass on filter,µg,513922,0.475,1.885,3.982,8.029,21.46
+SPARTAN,EC mass on filter,µg,2470,1.559,4.105,7.72,16.56,38.122
+IMPROVE,OC mass on filter,µg,518761,3.249,10.852,21.195,39.236,93.23
+SPARTAN,OC mass on filter,µg,2466,6.284,12.353,19.778,34.163,69.262
+IMPROVE,filter optical depth tau,–,398786,0.015,0.059,0.129,0.253,0.554
+SPARTAN,filter optical depth tau,–,2475,0.056,0.14,0.289,0.551,0.991
+IMPROVE,Fe mass on filter,µg,531396,0.054,0.271,0.652,1.394,4.361
+SPARTAN,Fe mass on filter,µg,2472,0.207,0.524,0.962,1.809,3.946
+IMPROVE,PM₂.₅ mass on filter,µg,529390,18.057,56.216,106.493,187.687,418.141
+SPARTAN,PM₂.₅ mass on filter,µg,2481,29.088,61.213,96.385,155.514,287.712
