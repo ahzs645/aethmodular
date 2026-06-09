@@ -1,0 +1,4 @@
+season,n,slope,intercept,r2,missing_EC
+belg (Mar–May),51,4.538,25.833,0.726,5.693
+dry (Oct–Feb),73,4.409,27.645,0.457,6.271
+kiremt (Jun–Sep),66,4.259,25.925,0.732,6.087
