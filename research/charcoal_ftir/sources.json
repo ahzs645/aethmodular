@@ -1,0 +1,159 @@
+{
+  "sources": [
+    {
+      "id": "minatre_dryad_charcoal_temperature",
+      "kind": "dryad",
+      "doi": "10.5061/dryad.cnp5hqcbj",
+      "title": "Data from: Charcoal analysis for temperature reconstruction with infrared spectroscopy",
+      "repository_url": "https://datadryad.org/dataset/doi:10.5061/dryad.cnp5hqcbj",
+      "notes": "Charcoal transmission FTIR spectra, 950-3500 cm^-1; reference chars at 200-800 deg C plus combustion-facility chars."
+    },
+    {
+      "id": "gosling_figshare_charcoal_temperature",
+      "kind": "figshare",
+      "article_id": 5979544,
+      "title": "Data from: Reconstructing past fire temperatures from ancient charcoal material",
+      "repository_url": "https://figshare.com/articles/dataset/Data_from_Reconstructing_past_fire_temperatures_from_ancient_charcoal_material/5979544",
+      "notes": "Modern reference charcoal and ancient charcoal FTIR spectra."
+    },
+    {
+      "id": "maezumi_zenodo_charcoal_analog",
+      "kind": "zenodo",
+      "record_id": 5156747,
+      "doi": "10.5281/zenodo.5156747",
+      "title": "A modern analogue matching approach to characterize fire temperatures and plant species from charcoal",
+      "repository_url": "https://zenodo.org/records/5156747",
+      "notes": "R code and FTIR chemical spectra of reference charcoal data used in Maezumi et al. 2021."
+    },
+    {
+      "id": "mccall_acs_figshare_biochar_stability",
+      "kind": "figshare",
+      "article_id": 28891269,
+      "title": "Biochar Stability Revealed by FTIR and Machine Learning",
+      "repository_url": "https://acs.figshare.com/articles/dataset/Biochar_Stability_Revealed_by_FTIR_and_Machine_Learning/28891269",
+      "notes": "ATR-FTIR biochar spectra and stability-ratio data for multiple feedstocks and HTTs."
+    },
+    {
+      "id": "barbosa_figshare_sewage_sludge_biochar",
+      "kind": "figshare",
+      "article_id": 24167544,
+      "include_names": [
+        "FTIR.xlsx"
+      ],
+      "title": "Biochar from sewage sludge: effect of pyrolysis on functional properties and pollutants fate",
+      "repository_url": "https://figshare.com/articles/dataset/Biochar_from_sewage_sludge_effect_of_pyrolysis_on_functional_properties_and_pollutants_fate_-_Environmental_Quality_Management_txt/24167544",
+      "notes": "Raw paper data; this downloader pulls the FTIR.xlsx spreadsheet only."
+    },
+    {
+      "id": "tigalana_mendeley_rice_straw_biochar_pb",
+      "kind": "mendeley",
+      "dataset_id": "zcshgj7kyy",
+      "include_names": [
+        "FTIR-RSB.csv",
+        "FTIR-KRSB.csv",
+        "FTIR-KRSB - Pb.csv"
+      ],
+      "title": "Pb(II) adsorption by KOH-modified rice straw biochar from battery wastewater",
+      "repository_url": "https://data.mendeley.com/datasets/zcshgj7kyy/3",
+      "notes": "FTIR CSV spectra for pristine rice-straw biochar, KOH-modified biochar, and Pb-loaded modified biochar."
+    },
+    {
+      "id": "zeba_dataone_pine_pyom_ageing",
+      "kind": "dataone",
+      "package_id": "ess-dive-6205497946b0d9d-20230407T153732819220",
+      "files": [
+        {
+          "name": "co2cmg_norm.csv",
+          "object_id": "ess-dive-4d0ca9ea398630b-20211109T043117150"
+        },
+        {
+          "name": "elemental_molar.csv",
+          "object_id": "ess-dive-6d167734b4eb6a4-20211109T044239208"
+        },
+        {
+          "name": "ftir_peaks_rel.csv",
+          "object_id": "ess-dive-395c5c4229b1053-20220314T203155917"
+        }
+      ],
+      "title": "Aged and unaged pine wood pyrogenic organic matter",
+      "repository_url": "https://knb.ecoinformatics.org/view/ess-dive-6205497946b0d9d-20230407T153732819220",
+      "notes": "PyOM mineralization, elemental analysis, and FTIR relative peak-height data; not full raw spectra."
+    },
+    {
+      "id": "epa_direct_soil_ftir",
+      "kind": "direct",
+      "files": [
+        {
+          "name": "FTIR.xlsx",
+          "url": "https://pasteur.epa.gov/uploads/10.23719/1531787/FTIR.xlsx",
+          "size": 13070352
+        }
+      ],
+      "title": "Fourier Transformed Infrared (FTIR) Spectroscopy Data for Soil Carbon",
+      "repository_url": "https://catalog.data.gov/dataset/fourier-transformed-infrared-ftir-spectroscopy-data-for-soil-carbon-extractable-carbon-cha",
+      "notes": "Soil FTIR workbook from EPA/Data.gov; useful background fingerprints, not charcoal-only."
+    },
+    {
+      "id": "mnhn_zenodo_atr_ftir_database",
+      "kind": "zenodo",
+      "record_id": 10658337,
+      "doi": "10.5281/zenodo.10658337",
+      "title": "ATR-FTIR spectral database of geological, experimental, and archaeological materials",
+      "repository_url": "https://zenodo.org/records/10658337",
+      "notes": "Open ATR-FTIR reference library with sample-info spreadsheet plus Bruker OPUS and JCAMP-DX spectra."
+    },
+    {
+      "id": "pereira_ufscar_binchotan_thesis",
+      "kind": "direct",
+      "files": [
+        {
+          "name": "Thesis_Binchotan_Lucas.pdf",
+          "url": "https://repositorio.ufscar.br/server/api/core/bitstreams/f32b80c4-c6b5-427c-93e7-1848e8a96eca/content",
+          "size": 5664483
+        },
+        {
+          "name": "Thesis_Binchotan_Lucas.pdf.txt",
+          "url": "https://repositorio.ufscar.br/server/api/core/bitstreams/77f50569-9c8d-419d-89ed-070229a1c20b/content",
+          "size": 100523
+        },
+        {
+          "name": "license_rdf.xml",
+          "url": "https://repositorio.ufscar.br/server/api/core/bitstreams/95d00a33-823c-42fa-94f4-e3f8d712e0bd/content",
+          "size": 810
+        }
+      ],
+      "title": "Binchotan charcoal as a renewable source for partial replacement of calcined petroleum coke in the aluminum industry",
+      "repository_url": "https://repositorio.ufscar.br/items/281ccc99-9f38-4388-9d31-a5146c9448b9",
+      "notes": "Binchotan thesis with extractable text and embedded material-characterization tables: proximate analysis, FTIR, SEM-EDS, TGA, density, HHV, resistivity, and XRD."
+    },
+    {
+      "id": "kwon_woodj_white_charcoal_quality",
+      "kind": "direct",
+      "files": [
+        {
+          "name": "wood-46-5-527_T1_proximate_analysis.xls",
+          "url": "https://www.woodj.org/download/download_excel?pid=wood-46-5-527&tid=T1",
+          "size": 883
+        },
+        {
+          "name": "wood-46-5-527_T2_density_ph_hygroscopicity.xls",
+          "url": "https://www.woodj.org/download/download_excel?pid=wood-46-5-527&tid=T2",
+          "size": 819
+        },
+        {
+          "name": "wood-46-5-527_T3_calorific_hardness_refinement.xls",
+          "url": "https://www.woodj.org/download/download_excel?pid=wood-46-5-527&tid=T3",
+          "size": 788
+        },
+        {
+          "name": "wood-46-5-527.pdf",
+          "url": "https://www.woodj.org/download/download_pdf?pid=wood-46-5-527",
+          "size": 4122797
+        }
+      ],
+      "title": "Characteristics of White Charcoal Produced from the Charcoal Kiln for Thermotherapy",
+      "repository_url": "https://www.woodj.org/archive/view_article?pid=wood-46-5-527",
+      "notes": "White-charcoal quality article with downloadable Excel tables for proximate analysis, density/pH/hygroscopicity, calorific value, hardness, and refinement degree."
+    }
+  ]
+}

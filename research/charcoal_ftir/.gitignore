@@ -1,0 +1,10 @@
+# Local downloaded / generated research artifacts.
+data/raw/*
+data/interim/*
+data/processed/*
+output/*
+
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+!output/.gitkeep

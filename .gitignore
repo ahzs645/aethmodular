@@ -162,3 +162,10 @@ data/
 research/ftir_hips_chem/output/warren_meeting/
 research/ftir_hips_chem/warren_meeting_slides_executed.ipynb
 research/ftir_hips_chem/AERONET/
+
+# --- repo cleanup (generated / regenerable / not-source) ---
+outputs/
+svg.html
+dataset.zip
+**/.DS_Store
+**/plotly.min.js

@@ -1,0 +1,5 @@
+static/plotly.min.js
+datasets/*.csv
+targets/*.csv
+!datasets/.gitkeep
+!targets/.gitkeep

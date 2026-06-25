@@ -1,2 +1,5 @@
-# Generated slide deck — rebuild locally with `python3 _build_slides.py`
-*.pptx
+# regenerable from _build_06_tool_style_plots.py (5.9M of inlined interactive plotly)
+06_tool_style_plots.ipynb
+# superseded by the Flask app (recreation_app/); regenerable from _build_recreation_app.py
+recreation_app.html
+__pycache__/
