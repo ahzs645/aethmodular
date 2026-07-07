@@ -68,6 +68,14 @@ from data_matching import (
 from plotting import PlotConfig          # importing applies the white-background default style
 from plotting.utils import calculate_regression_stats
 
+# Repo root on path so the consolidated helpers in src/common are importable.
+from pathlib import Path
+_repo = Path.cwd().resolve()
+while _repo != _repo.parent and not (_repo / 'pyproject.toml').exists():
+    _repo = _repo.parent
+sys.path.insert(0, str(_repo))
+from src.common import deming, deming_lambda   # consolidated (was defined inline below)
+
 SITE_NAME, SITE_CODE = 'Addis_Ababa', 'ETAD'
 print('MAC_VALUE =', MAC_VALUE)""")
 
@@ -114,22 +122,10 @@ Closed-form Deming with error-variance ratio λ = Var(Y-error)/Var(X-error), cro
 - σ_EC = 0.2 µg/m³  (Anne's suggested value)
 - σ_fAbs = 1.0 Mm⁻¹  (HIPS absorption measurement noise)""")
 
-code(r"""def deming(x, y, lam):
-    # Deming regression. lam = Var(y-error)/Var(x-error).
-    # lam = 1 -> orthogonal / total least squares. Returns (slope, intercept).
-    x = np.asarray(x, float); y = np.asarray(y, float)
-    xbar, ybar = x.mean(), y.mean()
-    sxx = np.sum((x - xbar) ** 2)
-    syy = np.sum((y - ybar) ** 2)
-    sxy = np.sum((x - xbar) * (y - ybar))
-    slope = (syy - lam * sxx + np.sqrt((syy - lam * sxx) ** 2 + 4 * lam * sxy ** 2)) / (2 * sxy)
-    intercept = ybar - slope * xbar
-    return slope, intercept
-
-
+code(r"""# deming() / deming_lambda() are imported from src.common (see setup cell).
 SIGMA_EC   = 0.2    # µg/m³  — assumed EC measurement uncertainty
 SIGMA_FABS = 1.0    # Mm⁻¹   — assumed fAbs measurement uncertainty
-lam = (SIGMA_FABS / SIGMA_EC) ** 2
+lam = deming_lambda(SIGMA_EC, SIGMA_FABS)
 
 dem_slope, dem_int = deming(x, y, lam)
 

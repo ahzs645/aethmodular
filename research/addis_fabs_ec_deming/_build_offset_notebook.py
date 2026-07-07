@@ -51,6 +51,14 @@ from data_matching import (
 )
 from plotting import PlotConfig          # applies the white-background default style
 
+# Repo root on path so the consolidated helpers in src/common are importable.
+from pathlib import Path
+_repo = Path.cwd().resolve()
+while _repo != _repo.parent and not (_repo / 'pyproject.toml').exists():
+    _repo = _repo.parent
+sys.path.insert(0, str(_repo))
+from src.common import deming, deming_lambda   # consolidated (was defined inline below)
+
 SITE_NAME, SITE_CODE = 'Addis_Ababa', 'ETAD'
 
 aeth = load_aethalometer_data()
@@ -152,13 +160,7 @@ md(r"""## What we need to fix the data — the values
 `offset` is the OLS intercept we want to remove. The two candidate corrections and what each does to
 the re-fit line:""")
 
-code(r"""def deming(x, y, lam):
-    x = np.asarray(x, float); y = np.asarray(y, float)
-    xb, yb = x.mean(), y.mean()
-    sxx = np.sum((x-xb)**2); syy = np.sum((y-yb)**2); sxy = np.sum((x-xb)*(y-yb))
-    s = (syy - lam*sxx + np.sqrt((syy - lam*sxx)**2 + 4*lam*sxy**2)) / (2*sxy)
-    return s, yb - s*xb
-
+code(r"""# deming() / deming_lambda() are imported from src.common (see setup cell).
 slope, offset = np.polyfit(x, y, 1)
 xbar, ybar = x.mean(), y.mean()
 
@@ -168,7 +170,7 @@ k = ybar / (slope * xbar)         # multiplier that lands the mean on the throug
 # Re-fit each corrected dataset with OLS
 add_slope, add_int = np.polyfit(x + Delta, y, 1)
 mul_slope, mul_int = np.polyfit(x * k, y, 1)
-dem_slope, dem_int = deming(x, y, (1.0/0.2)**2)   # σ_fAbs=1.0, σ_EC=0.2 -> λ=25
+dem_slope, dem_int = deming(x, y, deming_lambda(0.2, 1.0))   # σ_EC=0.2, σ_fAbs=1.0 -> λ=25
 
 fix = pd.DataFrame([
     {'quantity': 'offset to remove (OLS intercept)', 'value': f'{offset:.2f} Mm⁻¹'},
