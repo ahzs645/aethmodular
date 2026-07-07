@@ -169,3 +169,10 @@ svg.html
 dataset.zip
 **/.DS_Store
 **/plotly.min.js
+
+# Generated / regenerable artifacts (keep source, drop committed outputs)
+tmp/
+tmp_warren_pages/
+notebooks/analysis/output/
+*_executed.ipynb
+**/node_modules/
