@@ -19,7 +19,9 @@ _SCRIPTS = os.path.abspath(
 )
 sys.path.insert(0, _SCRIPTS)
 
-from plotting.utils import deming, deming_lambda            # noqa: E402
+from plotting.utils import (                                 # noqa: E402
+    deming, deming_lambda, calculate_regression_stats,
+)
 from config import ETHIOPIA_SEASONS, season_for_month        # noqa: E402
 from data_matching import base_filter_id, normalize_filter_id  # noqa: E402
 from prep import to_ugm3, find_repo_root                     # noqa: E402
@@ -45,6 +47,72 @@ class TestDeming:
 
     def test_lambda_from_sigmas(self):
         assert deming_lambda(0.2, 1.0) == pytest.approx(25.0)
+
+
+def _improve_regression_stats(df, x_col, y_col):
+    """Verbatim copy of the improve_hips_offset inline variant, for equivalence
+    testing against the consolidated calculate_regression_stats."""
+    d = df[[x_col, y_col]].replace([np.inf, -np.inf], np.nan).dropna()
+    d = d[(d[x_col] > 0) & (d[y_col] > 0)]
+    if len(d) < 3:
+        return {'n': len(d), 'slope': np.nan, 'intercept': np.nan,
+                'r2': np.nan, 'origin_slope': np.nan}
+    x = d[x_col].to_numpy(float)
+    y = d[y_col].to_numpy(float)
+    slope, intercept = np.polyfit(x, y, 1)
+    pred = slope * x + intercept
+    ss_res = np.sum((y - pred) ** 2)
+    ss_tot = np.sum((y - y.mean()) ** 2)
+    origin_slope = np.sum(x * y) / np.sum(x ** 2)
+    return {'n': int(len(d)), 'slope': slope, 'intercept': intercept,
+            'r2': 1 - ss_res / ss_tot if ss_tot > 0 else np.nan,
+            'origin_slope': origin_slope}
+
+
+class TestCalculateRegressionStats:
+    def test_array_form_backward_compatible(self):
+        x = np.arange(1.0, 20.0)
+        y = 3.0 * x + 1.0
+        s = calculate_regression_stats(x, y)
+        assert s['n'] == 19
+        assert s['slope'] == pytest.approx(3.0, abs=1e-9)
+        assert s['intercept'] == pytest.approx(1.0, abs=1e-9)
+        assert s['r_squared'] == pytest.approx(1.0, abs=1e-12)
+        assert s['r2'] == s['r_squared']          # alias
+        assert 'correlation' in s and 'origin_slope' in s
+
+    def test_dataframe_form(self):
+        df = pd.DataFrame({'a': np.arange(1.0, 20.0), 'b': 2.0 * np.arange(1.0, 20.0)})
+        s = calculate_regression_stats(df, 'a', 'b')
+        assert s['slope'] == pytest.approx(2.0, abs=1e-9)
+
+    def test_inf_dropped(self):
+        x = np.array([1.0, 2.0, 3.0, 4.0, np.inf])
+        y = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+        assert calculate_regression_stats(x, y)['n'] == 4
+
+    def test_positive_only(self):
+        x = np.array([-1.0, 1.0, 2.0, 3.0, 4.0])
+        y = np.array([-5.0, 1.0, 2.0, 3.0, 4.0])
+        assert calculate_regression_stats(x, y, positive_only=True)['n'] == 4
+        assert calculate_regression_stats(x, y)['n'] == 5
+
+    def test_too_few_returns_none(self):
+        assert calculate_regression_stats([1.0, 2.0], [1.0, 2.0]) is None
+
+    @pytest.mark.parametrize("seed_shift", [0.0, 3.7, -2.1])
+    def test_matches_improve_variant(self, seed_shift):
+        # representative data with negatives, a zero, and an inf that both impls drop
+        x = np.array([-1.0, 0.0, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0, np.inf]) + 0.0
+        y = np.array([-2.0, 1.0, 1.4, 8.0 + seed_shift, 18.0, 26.0, 33.0, 41.0, 7.0])
+        df = pd.DataFrame({'EC': x, 'FABS': y})
+        got = calculate_regression_stats(df, 'EC', 'FABS', positive_only=True)
+        exp = _improve_regression_stats(df, 'EC', 'FABS')
+        assert got['n'] == exp['n']
+        assert got['slope'] == pytest.approx(exp['slope'], rel=1e-9)
+        assert got['intercept'] == pytest.approx(exp['intercept'], rel=1e-9)
+        assert got['r2'] == pytest.approx(exp['r2'], rel=1e-9)
+        assert got['origin_slope'] == pytest.approx(exp['origin_slope'], rel=1e-9)
 
 
 class TestSeasons:

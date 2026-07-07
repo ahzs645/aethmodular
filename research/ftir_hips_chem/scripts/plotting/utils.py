@@ -3,6 +3,7 @@ Utility functions for plotting: regression stats, axis helpers, grid layouts.
 """
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from math import ceil
 
@@ -42,36 +43,56 @@ def deming(x, y, lam=1.0):
     return slope, intercept
 
 
-def calculate_regression_stats(x, y):
+def calculate_regression_stats(x, y=None, y_col=None, positive_only=False):
     """
-    Calculate linear regression statistics.
+    Calculate linear regression statistics. Two call forms:
 
-    Parameters:
-    -----------
-    x, y : array-like data
+        calculate_regression_stats(x_array, y_array)
+        calculate_regression_stats(df, 'x_col', 'y_col')   # DataFrame form
 
-    Returns:
-    --------
-    dict with n, slope, intercept, r_squared, correlation (or None if insufficient data)
+    NaN and +/-inf pairs are always dropped. With positive_only=True, only
+    strictly-positive x and y are kept (appropriate for fAbs/EC, where
+    non-positive values are unphysical); off by default so general callers are
+    unaffected.
+
+    Returns None if fewer than 3 valid points. Otherwise a dict with:
+      n, slope, intercept, r_squared, correlation,
+      r2 (alias of r_squared), origin_slope (through-origin slope,
+      sum(xy)/sum(x^2)).
+
+    This consolidates the divergent inline `regression_stats(df, x_col, y_col)`
+    copies from improve_hips_offset/spartan; the extra keys and positive_only
+    flag exist so those consumers can adopt it without changing behaviour.
     """
-    x = np.asarray(x)
-    y = np.asarray(y)
-    mask = (~np.isnan(x)) & (~np.isnan(y))
-    x, y = x[mask], y[mask]
+    if isinstance(x, pd.DataFrame):
+        df = x
+        xa = np.asarray(df[y], dtype=float)
+        ya = np.asarray(df[y_col], dtype=float)
+    else:
+        xa = np.asarray(x, dtype=float)
+        ya = np.asarray(y, dtype=float)
 
-    if len(x) < 3:
+    mask = np.isfinite(xa) & np.isfinite(ya)
+    if positive_only:
+        mask &= (xa > 0) & (ya > 0)
+    xa, ya = xa[mask], ya[mask]
+
+    if len(xa) < 3:
         return None
 
-    coefficients = np.polyfit(x, y, 1)
-    slope, intercept = coefficients
-    correlation = np.corrcoef(x, y)[0, 1]
+    slope, intercept = np.polyfit(xa, ya, 1)
+    correlation = np.corrcoef(xa, ya)[0, 1]
+    r_squared = correlation ** 2
+    origin_slope = float(np.sum(xa * ya) / np.sum(xa ** 2))
 
     return {
-        'n': len(x),
+        'n': len(xa),
         'slope': slope,
         'intercept': intercept,
-        'r_squared': correlation ** 2,
-        'correlation': correlation
+        'r_squared': r_squared,
+        'correlation': correlation,
+        'r2': r_squared,
+        'origin_slope': origin_slope,
     }
 
 
