@@ -46,13 +46,17 @@ deming, season_for_month, ...`).
 
 ### Conflicts resolved
 
-- **Regression stats**: `scripts/plotting/utils.py` already had
-  `calculate_regression_stats` (keys `n, slope, intercept, r_squared,
-  correlation`) — that stays the canonical OLS helper. The `improve_hips_offset`
-  notebooks add their own robust `regression_stats` (drops +/-inf, strictly
-  positive, `origin_slope`); when that family is migrated, fold those extras into
-  `calculate_regression_stats` as opt-in flags rather than adding a second
-  function.
+- **Regression stats**: `calculate_regression_stats` was extended to a
+  backward-compatible superset (DataFrame form, +/-inf drop, opt-in
+  `positive_only`, `r2`/`origin_slope` keys) so the divergent inline
+  `regression_stats(df, x_col, y_col)` copies can delegate to it. **Migrated +
+  independently verified byte-identical**: `anne_spartan`, `etad_vs`,
+  `warren_cena` (improve_hips_offset). **Left inline (bespoke, not duplicates):**
+  `improve_smoke_event_qc` (also computes Theil-Sen), `improve_addis_analog_audit`
+  & `improve_hips_offset_narrative` (`nunique<2` guard + `origin_mac`/capitalized
+  keys), `ftir_hips_chem/hips_offset_narrative` (no positive/inf filtering). These
+  genuinely differ from the common case; shimming them adds complexity for ~zero
+  dedup, so they keep their own defs.
 - **Season calendar**: several inline copies disagreed; one
   (`plotting_gaps_scenarios.ipynb`) had scrambled month assignments. Canonical is
   now `config.ETHIOPIA_SEASONS` (Dry Oct-Feb, Belg Mar-May, Kiremt Jun-Sep) —
