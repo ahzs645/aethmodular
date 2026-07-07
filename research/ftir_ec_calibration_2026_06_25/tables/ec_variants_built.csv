@@ -1,0 +1,3 @@
+calib_id,n_train,k,RMSECV_at_k,insample_RMSE
+EC_all_nofilt_lot251_k21,906,21,16.63,10.35
+EC_all_ecthr10_lot251_k15,491,15,21.6,14.54

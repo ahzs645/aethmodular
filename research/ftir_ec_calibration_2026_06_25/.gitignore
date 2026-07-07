@@ -1,0 +1,7 @@
+# raw transcript audio-derived JSON (large, personal audio metadata) — keep local
+notes/transcript_2026_06_25.json
+# executed-notebook outputs can get large; keep the _build_*.py as source of truth
+__pycache__/
+.ipynb_checkpoints/
+# large data stays at its source (Google Drive / predecessor folder); don't duplicate here
+data/*.csv

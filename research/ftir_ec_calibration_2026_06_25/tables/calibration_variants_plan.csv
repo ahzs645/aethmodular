@@ -1,0 +1,8 @@
+calib_id,trainset,filter,purpose
+EC_all_absres_lot251_k17,all,absres (old),the 'beautiful but too perfect' baseline being replaced
+EC_all_nofilt_lot251_kmin,all,nofilt,KEEP EVERYTHING — the primary new baseline
+EC_biomass_nofilt_lot251_kmin,biomass,nofilt,smoke-classifier=yes only — the 'FTIR misses char' test
+EC_below11_nofilt_lot251_kmin,below11,nofilt,train only on samples BELOW the 1:1 Tor line ('weird = the point')
+EC_removed_nofilt_lot251_kmin,removed,nofilt,train only on the previously-removed samples
+EC_all_ecthr70_lot251_kmin,all,ecthr70,drop EC < 70 µg low-signal filters
+EC_all_ecthrX_lot251_kmin,all,ecthrX,drop below Ethiopia EC range ÷ 10

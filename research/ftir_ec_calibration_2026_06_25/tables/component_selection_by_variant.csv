@@ -1,0 +1,7 @@
+name,n,k_firstmin,k_wold,global_min
+CAL-0 all-nofilter,906,21,1,21
+CAL-1 cleaned,860,1,1,1
+CAL-2 removed-only,46,1,1,1
+CAL-3 below-1:1,469,4,1,4
+CAL-4 EC-high>=70,22,6,1,6
+CAL-5 Eth-range,480,15,5,15

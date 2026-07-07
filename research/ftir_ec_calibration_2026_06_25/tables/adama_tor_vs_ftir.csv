@@ -1,0 +1,6 @@
+quartz_FilterId,date,Tor_EC_ug_m3,ptfe_FilterId,FTIR_EC_general_ug_m3,FTIR_EC_biomass_ug_m3,general/Tor,side_of_1:1(general)
+J1693,2024-07-09,3.3787,J1269,5.2766,,1.5617,above (FTIR>Tor)
+J1701,2024-07-20,2.3979,J1266,1.5321,,0.6389,below (FTIR<Tor)
+J1675,2024-07-23,2.4496,J1285,1.9916,,0.813,below (FTIR<Tor)
+J1703,2024-07-26,1.862,J1233,1.293,,0.6945,below (FTIR<Tor)
+J1679,2024-07-30,3.0408,J1270,1.7666,,0.581,below (FTIR<Tor)

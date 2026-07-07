@@ -1,0 +1,7 @@
+,median_vs_CAL0
+CAL-0 all-nofilter,1.0
+CAL-1 cleaned,0.606
+CAL-2 removed-only,-2.779
+CAL-3 below-1:1,1.286
+CAL-4 EC-high>=70,-1.561
+CAL-5 Eth-range,0.82

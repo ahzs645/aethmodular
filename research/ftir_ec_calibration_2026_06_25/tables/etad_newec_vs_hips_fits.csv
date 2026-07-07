@@ -1,0 +1,5 @@
+variant,n,slope,intercept,r2
+CAL-0 all-nofilter,259,2.265,-5.253,0.657
+CAL-1 cleaned,259,1.25,-2.611,0.634
+CAL-3 below-1:1,259,2.706,-5.695,0.711
+CAL-5 Eth-range,259,1.773,-4.071,0.611
