@@ -18,7 +18,6 @@
 - `src.core.*`
 - `src.config.*`
 - `src.utils.*`
-- `src.visualization.*`
 
 ## Research
 

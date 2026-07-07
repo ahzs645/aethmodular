@@ -215,8 +215,3 @@ class SourceApportionmentAnalyzer(BaseAnalyzer):
             summary_parts.append(f"Analysis based on {n_cols} wavelength channels")
         
         return "; ".join(summary_parts) if summary_parts else "Source apportionment analysis completed"
-
-# For backwards compatibility
-class SourceApportionmentAnalyser(SourceApportionmentAnalyzer):
-    """British spelling alias"""
-    pass
