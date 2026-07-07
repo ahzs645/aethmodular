@@ -78,6 +78,7 @@ try:
         SMOOTH_RAW_THRESHOLDS, DEFAULT_BC_WAVELENGTH,
         FILTER_CATEGORIES, CROSS_COMPARISONS,
         ETAD_FACTOR_CONTRIBUTIONS_PATH, ETAD_FILTER_ID_PATH,
+        ETHIOPIA_SEASONS, season_for_month,
     )
     from outliers import (
         EXCLUDED_SAMPLES, MANUAL_OUTLIERS,
@@ -91,6 +92,7 @@ try:
         match_with_smooth_raw_info, match_hips_with_smooth_raw,
         add_flow_period_column, add_base_filter_id, match_by_filter_id,
         pivot_filter_by_id, get_site_code, get_site_color, print_data_summary,
+        base_filter_id, normalize_filter_id,
     )
     from etad_factors import (
         load_etad_factor_contributions, load_etad_filter_ids,
@@ -100,7 +102,9 @@ try:
     from plotting import (
         PlotConfig, apply_default_style, crossplots, timeseries,
         distributions, comparisons, calculate_regression_stats,
+        deming, deming_lambda,
     )
+    from prep import to_ugm3, find_repo_root
 except ImportError:
     from .config import (
         SITES, PROCESSED_SITES_DIR, FILTER_DATA_PATH,
@@ -109,6 +113,7 @@ except ImportError:
         SMOOTH_RAW_THRESHOLDS, DEFAULT_BC_WAVELENGTH,
         FILTER_CATEGORIES, CROSS_COMPARISONS,
         ETAD_FACTOR_CONTRIBUTIONS_PATH, ETAD_FILTER_ID_PATH,
+        ETHIOPIA_SEASONS, season_for_month,
     )
     from .outliers import (
         EXCLUDED_SAMPLES, MANUAL_OUTLIERS,
@@ -122,6 +127,7 @@ except ImportError:
         match_with_smooth_raw_info, match_hips_with_smooth_raw,
         add_flow_period_column, add_base_filter_id, match_by_filter_id,
         pivot_filter_by_id, get_site_code, get_site_color, print_data_summary,
+        base_filter_id, normalize_filter_id,
     )
     from .etad_factors import (
         load_etad_factor_contributions, load_etad_filter_ids,
@@ -131,7 +137,9 @@ except ImportError:
     from .plotting import (
         PlotConfig, apply_default_style, crossplots, timeseries,
         distributions, comparisons, calculate_regression_stats,
+        deming, deming_lambda,
     )
+    from .prep import to_ugm3, find_repo_root
 
 __all__ = [
     # Config
@@ -141,6 +149,7 @@ __all__ = [
     'SMOOTH_RAW_THRESHOLDS', 'DEFAULT_BC_WAVELENGTH',
     'FILTER_CATEGORIES', 'CROSS_COMPARISONS',
     'ETAD_FACTOR_CONTRIBUTIONS_PATH', 'ETAD_FILTER_ID_PATH',
+    'ETHIOPIA_SEASONS', 'season_for_month',
     # Outliers
     'EXCLUDED_SAMPLES', 'MANUAL_OUTLIERS',
     'apply_exclusion_flags', 'apply_threshold_flags',
@@ -152,10 +161,14 @@ __all__ = [
     'match_with_smooth_raw_info', 'match_hips_with_smooth_raw',
     'add_flow_period_column', 'add_base_filter_id', 'match_by_filter_id',
     'pivot_filter_by_id', 'get_site_code', 'get_site_color', 'print_data_summary',
+    'base_filter_id', 'normalize_filter_id',
     'load_etad_factor_contributions', 'load_etad_filter_ids',
     'load_etad_factors_with_filter_ids', 'match_etad_factors',
     'ETAD_PMF_SOURCE_NAMES', 'ETAD_FACTOR_RENAME',
     # Plotting
     'PlotConfig', 'apply_default_style', 'crossplots', 'timeseries',
     'distributions', 'comparisons', 'calculate_regression_stats',
+    'deming', 'deming_lambda',
+    # Prep
+    'to_ugm3', 'find_repo_root',
 ]

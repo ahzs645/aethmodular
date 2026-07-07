@@ -50,14 +50,7 @@ from data_matching import (
     add_base_filter_id, match_all_parameters,
 )
 from plotting import PlotConfig          # applies the white-background default style
-
-# Repo root on path so the consolidated helpers in src/common are importable.
-from pathlib import Path
-_repo = Path.cwd().resolve()
-while _repo != _repo.parent and not (_repo / 'pyproject.toml').exists():
-    _repo = _repo.parent
-sys.path.insert(0, str(_repo))
-from src.common import deming, deming_lambda   # consolidated (was defined inline below)
+from plotting.utils import deming, deming_lambda   # consolidated into scripts/
 
 SITE_NAME, SITE_CODE = 'Addis_Ababa', 'ETAD'
 
@@ -160,7 +153,7 @@ md(r"""## What we need to fix the data — the values
 `offset` is the OLS intercept we want to remove. The two candidate corrections and what each does to
 the re-fit line:""")
 
-code(r"""# deming() / deming_lambda() are imported from src.common (see setup cell).
+code(r"""# deming() / deming_lambda() are imported from plotting.utils (see setup cell).
 slope, offset = np.polyfit(x, y, 1)
 xbar, ybar = x.mean(), y.mean()
 

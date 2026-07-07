@@ -7,6 +7,41 @@ import matplotlib.pyplot as plt
 from math import ceil
 
 
+def deming_lambda(sigma_x, sigma_y):
+    """Error-variance ratio lambda = Var(y-error)/Var(x-error) for deming().
+
+    lambda = 1 is orthogonal / total least squares; lambda -> inf approaches
+    OLS of y-on-x; lambda -> 0 approaches inverse OLS (x-on-y).
+    """
+    return (sigma_y / sigma_x) ** 2
+
+
+def deming(x, y, lam=1.0):
+    """Closed-form Deming (errors-in-variables) regression. Returns (slope, intercept).
+
+    lam is the ratio Var(y-error)/Var(x-error); lam=1 is orthogonal regression.
+    Non-finite pairs are dropped; returns (nan, nan) if fewer than 3 valid points
+    or the covariance is zero. Consolidated from research/addis_fabs_ec_deming.
+    """
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    mask = np.isfinite(x) & np.isfinite(y)
+    x, y = x[mask], y[mask]
+    if x.size < 3:
+        return np.nan, np.nan
+    xbar, ybar = x.mean(), y.mean()
+    sxx = np.sum((x - xbar) ** 2)
+    syy = np.sum((y - ybar) ** 2)
+    sxy = np.sum((x - xbar) * (y - ybar))
+    if sxy == 0:
+        return np.nan, np.nan
+    slope = (
+        syy - lam * sxx + np.sqrt((syy - lam * sxx) ** 2 + 4 * lam * sxy ** 2)
+    ) / (2 * sxy)
+    intercept = ybar - slope * xbar
+    return slope, intercept
+
+
 def calculate_regression_stats(x, y):
     """
     Calculate linear regression statistics.

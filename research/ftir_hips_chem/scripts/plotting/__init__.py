@@ -233,7 +233,7 @@ from . import distributions
 from . import comparisons
 
 # Import commonly used utility functions for convenience
-from .utils import calculate_regression_stats
+from .utils import calculate_regression_stats, deming, deming_lambda
 
 __all__ = [
     'PlotConfig',
@@ -246,4 +246,6 @@ __all__ = [
     'distributions',
     'comparisons',
     'calculate_regression_stats',
+    'deming',
+    'deming_lambda',
 ]

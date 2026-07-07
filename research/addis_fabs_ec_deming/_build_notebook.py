@@ -66,15 +66,7 @@ from data_matching import (
     add_base_filter_id, match_all_parameters,
 )
 from plotting import PlotConfig          # importing applies the white-background default style
-from plotting.utils import calculate_regression_stats
-
-# Repo root on path so the consolidated helpers in src/common are importable.
-from pathlib import Path
-_repo = Path.cwd().resolve()
-while _repo != _repo.parent and not (_repo / 'pyproject.toml').exists():
-    _repo = _repo.parent
-sys.path.insert(0, str(_repo))
-from src.common import deming, deming_lambda   # consolidated (was defined inline below)
+from plotting.utils import calculate_regression_stats, deming, deming_lambda  # deming consolidated into scripts/
 
 SITE_NAME, SITE_CODE = 'Addis_Ababa', 'ETAD'
 print('MAC_VALUE =', MAC_VALUE)""")
@@ -122,7 +114,7 @@ Closed-form Deming with error-variance ratio λ = Var(Y-error)/Var(X-error), cro
 - σ_EC = 0.2 µg/m³  (Anne's suggested value)
 - σ_fAbs = 1.0 Mm⁻¹  (HIPS absorption measurement noise)""")
 
-code(r"""# deming() / deming_lambda() are imported from src.common (see setup cell).
+code(r"""# deming() / deming_lambda() are imported from plotting.utils (see setup cell).
 SIGMA_EC   = 0.2    # µg/m³  — assumed EC measurement uncertainty
 SIGMA_FABS = 1.0    # Mm⁻¹   — assumed fAbs measurement uncertainty
 lam = deming_lambda(SIGMA_EC, SIGMA_FABS)

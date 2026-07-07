@@ -183,3 +183,27 @@ CROSS_COMPARISONS = [
         'equal_axes': True
     }
 ]
+
+# =============================================================================
+# ETHIOPIA SEASONS (Addis Ababa)
+# =============================================================================
+# Canonical 3-season calendar. Replaces the per-notebook map_ethiopian_seasons /
+# get_season_3 helpers and their divergent inline copies. Colors match
+# SITES['Addis_Ababa'] usage and src season definitions.
+ETHIOPIA_SEASONS = {
+    'Dry (Oct-Feb)':    {'months': [10, 11, 12, 1, 2], 'color': '#E67E22'},
+    'Belg (Mar-May)':   {'months': [3, 4, 5],          'color': '#27AE60'},
+    'Kiremt (Jun-Sep)': {'months': [6, 7, 8, 9],       'color': '#3498DB'},
+}
+
+
+def season_for_month(month):
+    """Return the Ethiopian season name for a calendar month (1-12).
+
+    Replaces inline map_ethiopian_seasons / get_season_3. Returns None if the
+    month is out of range.
+    """
+    for name, info in ETHIOPIA_SEASONS.items():
+        if month in info['months']:
+            return name
+    return None

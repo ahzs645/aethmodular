@@ -12,48 +12,59 @@ Everything below was found by auditing `src/`, `research/`, and `notebooks/`.
 2. **Pruned orphaned `src/`** — deleted `src/visualization/` (2,246 LOC template
    framework, zero imports anywhere) and the unused British-spelling
    `SourceApportionmentAnalyser` alias.
-3. **Added `src/common/`** — one home for helpers that were copy-pasted across
-   dozens of notebooks/scripts, with `tests/test_common.py` (30 tests).
+3. **Consolidated helpers into the sanctioned `scripts/` home** — per AGENTS.md,
+   the reusable-logic home for the active research area is
+   `research/ftir_hips_chem/scripts/` (which every active satellite dir already
+   imports), **not** `src/`. Added the missing helpers there and retired an
+   earlier `src/common/` attempt (which violated the "do not mix `src/` and
+   research" rule). Covered by `tests/test_scripts_helpers.py` (26 tests).
 4. **Pruned archived-only `src/` duplicates** — deleted `src/notebook_utils/`
    (779 LOC) and both dual-dataset pipelines (`dual_dataset_pipeline.py` +
    `optimized_dual_dataset_pipeline.py`, 990 LOC); cleaned the guarded import
    block in `src/data/processors/__init__.py`. Only archived notebooks referenced
    these.
 5. **Migrated the first consumer** — `research/addis_fabs_ec_deming` build scripts
-   now import `deming`/`deming_lambda` from `src.common` (was inline); both
+   now import `deming`/`deming_lambda` from `plotting.utils` (was inline); both
    notebooks regenerated, logic verified identical.
 
-## `src/common` — what to import instead of redefining
+## `scripts/` — what to import instead of redefining
+
+All importable from `research/ftir_hips_chem/scripts/` (already on path in these
+notebooks via `sys.path.insert(0, './scripts')` or `'../ftir_hips_chem/scripts'`).
 
 | Was inlined as | Now import | Copies replaced |
 |---|---|---|
-| `deming(x, y, lam)` | `from src.common import deming, deming_lambda` | 4 (addis_fabs_ec_deming) |
-| `regression_stats` / `calculate_regression_stats` | `from src.common import regression_stats` | 8+ (ftir_hips_chem, improve_hips_offset, spartan) |
-| `fit_fabs_ec` / `robust_fabs_ec` | `from src.common import fit_fabs_ec` | ftir_hips_chem, improve_hips_offset |
-| `base_filter_id` / `normalize_filter_id` | `from src.common import base_filter_id, normalize_filter_id` | many (ftir_hips_chem) |
-| `_to_ugm3` | `from src.common import to_ugm3` | 7 (catch_up) |
-| `map_ethiopian_seasons` / `get_season_3` / `assign_season` | `from src.common import season_for_month, assign_season` | 6+5+4 (notebooks + research) |
-| `find_repo_root` / `find_root` | `from src.common import find_repo_root` | 5 subdirs / 14 repo-wide |
+| `deming(x, y, lam)` | `from plotting.utils import deming, deming_lambda` | 4 (addis_fabs_ec_deming) |
+| `regression_stats` / `calculate_regression_stats` | `from plotting.utils import calculate_regression_stats` (already existed) | 8+ (ftir_hips_chem, improve_hips_offset, spartan) |
+| `base_filter_id` (scalar) / `normalize_filter_id` | `from data_matching import base_filter_id, normalize_filter_id` | many (ftir_hips_chem) |
+| `_to_ugm3` | `from prep import to_ugm3` | 7 (catch_up) |
+| `map_ethiopian_seasons` / `get_season_3` | `from config import season_for_month, ETHIOPIA_SEASONS` | 6+5 (notebooks + research) |
+| `find_repo_root` / `find_root` | `from prep import find_repo_root` | 5 subdirs / 14 repo-wide |
 
-### Conflicts resolved (most-robust variant kept)
+Everything above is also re-exported from the package root (`from scripts import
+deming, season_for_month, ...`).
 
-- **`regression_stats`**: the `improve_hips_offset` variant (drops +/-inf, requires
-  n>=3) was chosen over the plain `dropna` variant. Its strictly-positive x/y
-  filter is domain-specific to fAbs/EC, so it is now the opt-in
-  `positive_only=True` flag (default off) to keep the helper safe for general
-  regressions. `fit_fabs_ec` passes `positive_only=True`.
+### Conflicts resolved
+
+- **Regression stats**: `scripts/plotting/utils.py` already had
+  `calculate_regression_stats` (keys `n, slope, intercept, r_squared,
+  correlation`) — that stays the canonical OLS helper. The `improve_hips_offset`
+  notebooks add their own robust `regression_stats` (drops +/-inf, strictly
+  positive, `origin_slope`); when that family is migrated, fold those extras into
+  `calculate_regression_stats` as opt-in flags rather than adding a second
+  function.
 - **Season calendar**: several inline copies disagreed; one
-  (`plotting_gaps_scenarios.ipynb`) had scrambled month assignments. All are
-  superseded by `src/config/multi_site_seasons.SITE_SEASONS`
-  (Dry Oct-Feb, Belg Mar-May, Kiremt Jun-Sep), which `season_for_month` wraps.
+  (`plotting_gaps_scenarios.ipynb`) had scrambled month assignments. Canonical is
+  now `config.ETHIOPIA_SEASONS` (Dry Oct-Feb, Belg Mar-May, Kiremt Jun-Sep) —
+  matching AGENTS.md's planned `config.ETHIOPIA_SEASONS`.
 
 ### Notebook migration recipe
 
-Replace the inline `def deming(...)` (and the others above) with an import cell
-at the top of the notebook. `sys.path` already points at repo root in these
-notebooks, so `from src.common import deming, regression_stats, ...` works.
-Migrate a notebook family at a time and re-run to confirm outputs are unchanged
-before deleting the inline defs.
+These notebooks already put `scripts/` on `sys.path`, so migration is: replace
+the inline `def deming(...)` / season / filter-id / unit helper with an import
+from the module above, then re-run. Where a family is generated by a `_build_*.py`
+script, edit the generator and regenerate (verifiable without data). Do one
+family at a time and confirm outputs are unchanged before deleting inline defs.
 
 ## Remaining decisions (not auto-applied — need a call)
 
@@ -65,7 +76,7 @@ deleting them is ambiguous:
 | `src/notebook_utils/`, dual-dataset pipelines | **Deleted** (see Done #4). |
 | `src/data/qc/enhanced_pkl_processing.py` vs `pkl_cleaning.py` | **Kept both — audit was wrong.** `pkl_cleaning.py` imports `EnhancedPKLProcessor` in 7 places, so this is a real dependency, not a droppable duplicate. |
 | `src/analysis/ftir/*` (`enhanced_mac_analyzer`, `oc_ec_analyzer`, `fabs_ec_analyzer`) | **Kept.** `EnhancedMACAnalyzer` is coherent 4-method MAC logic that exists nowhere else; unused today but the right home for future MAC work rather than a plain delete. |
-| `src/analysis/seasonal/ethiopian_seasons.py` | **Open.** Superseded by `config/multi_site_seasons` (which `src/common/seasons` wraps), but still imported by a few notebooks. Migrate those notebooks first, then delete. |
+| `src/analysis/seasonal/ethiopian_seasons.py` | **Open.** A `src/`-side season module, superseded for research use by `scripts/config.ETHIOPIA_SEASONS`; still imported by a few notebooks. Migrate those first, then delete. |
 | `src/core/monitoring.py`, `parallel_processing.py`, `src/analysis/advanced/*` | **Open.** Imported only by the test suite; keep or drop the tests with them. |
 
 ### Notebook migration — remaining families

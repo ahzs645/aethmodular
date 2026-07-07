@@ -148,6 +148,38 @@ def add_base_filter_id(filter_data):
     return df
 
 
+def base_filter_id(filter_id):
+    """Scalar form of add_base_filter_id: 'ETAD-0035-3' -> 'ETAD-0035'.
+
+    Strips a trailing '-N' replicate suffix from a single FilterId. IDs already
+    in base form are returned unchanged; None/NaN yield None. Use this when you
+    have a scalar id (e.g. inside a .apply); use add_base_filter_id for a column.
+    """
+    import re
+    if filter_id is None:
+        return None
+    text = str(filter_id).strip()
+    if not text or text.lower() == 'nan':
+        return None
+    m = re.match(r'^([A-Za-z]+-\d{4})-\d+$', text)
+    return m.group(1) if m else text
+
+
+def normalize_filter_id(filter_id):
+    """Collapse any hyphen-suffixed id to its first two dash-parts.
+
+    Looser than base_filter_id ('ETAD-0035-3-extra' -> 'ETAD-0035'); use when
+    suffixes are irregular. None/NaN/empty yield None.
+    """
+    if filter_id is None:
+        return None
+    text = str(filter_id).strip()
+    if not text or text.lower() == 'nan':
+        return None
+    parts = text.split('-')
+    return f"{parts[0]}-{parts[1]}" if len(parts) >= 2 else text
+
+
 def match_by_filter_id(filter_data, site_code, params, min_concentration=None):
     """
     Match filter measurements by FilterId (same physical filter).
