@@ -14,6 +14,14 @@ Everything below was found by auditing `src/`, `research/`, and `notebooks/`.
    `SourceApportionmentAnalyser` alias.
 3. **Added `src/common/`** — one home for helpers that were copy-pasted across
    dozens of notebooks/scripts, with `tests/test_common.py` (30 tests).
+4. **Pruned archived-only `src/` duplicates** — deleted `src/notebook_utils/`
+   (779 LOC) and both dual-dataset pipelines (`dual_dataset_pipeline.py` +
+   `optimized_dual_dataset_pipeline.py`, 990 LOC); cleaned the guarded import
+   block in `src/data/processors/__init__.py`. Only archived notebooks referenced
+   these.
+5. **Migrated the first consumer** — `research/addis_fabs_ec_deming` build scripts
+   now import `deming`/`deming_lambda` from `src.common` (was inline); both
+   notebooks regenerated, logic verified identical.
 
 ## `src/common` — what to import instead of redefining
 
@@ -52,14 +60,21 @@ before deleting the inline defs.
 These `src/` modules are unused by active code but were left in place because
 deleting them is ambiguous:
 
-| Module | Why not auto-deleted |
+| Module | Decision |
 |---|---|
-| `src/notebook_utils/` | Referenced only by 3 archived notebooks; delete breaks those. |
-| `src/data/processors/optimized_dual_dataset_pipeline.py` (+ `dual_dataset_pipeline.py`) | "optimized_" duplicate of the base pipeline; used only by an archived notebook. Pick one. |
-| `src/data/qc/enhanced_pkl_processing.py` vs `pkl_cleaning.py` | Overlapping PKL cleaners ("enhanced" fork). Consolidate to one. |
-| `src/analysis/ftir/*` (`enhanced_mac_analyzer`, `oc_ec_analyzer`, `fabs_ec_analyzer`) | Unused class wrappers that overlap `src/common` regression/MAC logic — candidate consolidation target, not a plain delete. |
-| `src/analysis/seasonal/ethiopian_seasons.py` | Superseded by `config/multi_site_seasons`, but still imported by a few notebooks. |
-| `src/core/monitoring.py`, `parallel_processing.py`, `src/analysis/advanced/*` | Imported only by the test suite; keep or drop the tests with them. |
+| `src/notebook_utils/`, dual-dataset pipelines | **Deleted** (see Done #4). |
+| `src/data/qc/enhanced_pkl_processing.py` vs `pkl_cleaning.py` | **Kept both — audit was wrong.** `pkl_cleaning.py` imports `EnhancedPKLProcessor` in 7 places, so this is a real dependency, not a droppable duplicate. |
+| `src/analysis/ftir/*` (`enhanced_mac_analyzer`, `oc_ec_analyzer`, `fabs_ec_analyzer`) | **Kept.** `EnhancedMACAnalyzer` is coherent 4-method MAC logic that exists nowhere else; unused today but the right home for future MAC work rather than a plain delete. |
+| `src/analysis/seasonal/ethiopian_seasons.py` | **Open.** Superseded by `config/multi_site_seasons` (which `src/common/seasons` wraps), but still imported by a few notebooks. Migrate those notebooks first, then delete. |
+| `src/core/monitoring.py`, `parallel_processing.py`, `src/analysis/advanced/*` | **Open.** Imported only by the test suite; keep or drop the tests with them. |
+
+### Notebook migration — remaining families
+
+`addis_fabs_ec_deming` is migrated. Still inline (safest via their build scripts
+where present, else hand-edit + re-run): `regression_stats`/`calculate_regression_stats`
+across ftir_hips_chem/improve_hips_offset/spartan, the `catch_up` loader stack
+(`_build_catch_up_notebooks.py`), season helpers in the absorption/meteorology
+notebooks, and `find_repo_root` everywhere.
 
 ### Large regenerable data (already gitignored, on disk only)
 
