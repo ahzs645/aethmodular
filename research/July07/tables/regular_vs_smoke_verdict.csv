@@ -1,0 +1,4 @@
+calibration,n,slope,intercept,R2,implied_MAC,median_EC,median_HIPS_minus_EC,dist_from_1to1(|slope-1|)
+Regular (all-data CAL-0),259,2.27,-5.25,0.657,4.4,4.95,-0.26,1.27
+Smoke-only (biomass),259,2.41,-5.82,0.619,4.1,5.18,-0.55,1.41
+Deployed general (reported),209,1.92,-4.27,0.777,5.2,4.72,-0.03,0.92

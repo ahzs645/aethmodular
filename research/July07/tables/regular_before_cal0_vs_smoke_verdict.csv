@@ -1,0 +1,4 @@
+calibration,n,slope,intercept,R2,|slope-1|,|intercept|
+Regular reported EC (pre-CAL-0),189,0.4,2.84,0.784,0.6,2.84
+Smoke-only (biomass),189,0.26,3.32,0.704,0.74,3.32
+CAL-0 refit (reference),189,0.29,3.18,0.736,0.71,3.18
