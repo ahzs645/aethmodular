@@ -1,0 +1,7 @@
+name,n,mean_EC,k*_corrected,RMSECV_min_ug,pctRMSECV_min,k_firstmin_nb06
+CAL-0 all-nofilter,906,16.9,19,16.49,97.7,21
+CAL-1 cleaned,860,13.7,1,19.67,143.3,1
+CAL-2 removed-only,46,75.8,1,66.64,87.9,1
+CAL-3 below-1:1,469,18.3,4,37.83,206.2,4
+CAL-4 EC-high>=70,22,144.3,1,84.58,58.6,6
+CAL-5 Eth-range,480,21.3,13,7.19,33.8,15

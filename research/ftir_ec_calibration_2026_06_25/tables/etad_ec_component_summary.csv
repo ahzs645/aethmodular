@@ -1,0 +1,7 @@
+,median_EC_ugm3,mean_EC_ugm3,pct_negative,ratio_vs_kmin
+EC_all_nofilt_k3,1.121,1.151,1.254,0.212
+EC_all_nofilt_k10,4.027,4.334,0.313,0.761
+EC_all_nofilt_k18,4.79,5.72,0.0,0.906
+EC_all_nofilt_k21_kmin,5.288,6.49,0.0,1.0
+EC_all_nofilt_k25,5.923,6.842,0.0,1.12
+EC_all_nofilt_k40,4.784,5.532,0.0,0.905

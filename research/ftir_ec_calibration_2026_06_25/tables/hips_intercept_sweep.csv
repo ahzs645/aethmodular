@@ -1,0 +1,15 @@
+calibration,setting,n_train,slope,intercept,r2,flag
+CAL-0 all,k=2,906,0.188,0.198,0.189,flat/degenerate
+train EC<=30,k=5,818,0.363,-0.368,0.741,flat/degenerate
+CAL-0 all,k=3,906,0.33,-0.46,0.331,flat/degenerate
+train EC<=50,k=5,876,0.598,-0.932,0.767,
+train EC<=30,k=10,818,0.71,-0.999,0.68,
+train EC<=50,k=10,876,0.91,-1.329,0.672,near-1:1
+CAL-0 all,k=7,906,1.063,-1.389,0.436,near-1:1
+train EC<=100,k=10,895,1.009,-1.515,0.651,near-1:1
+CAL-0 all,k=5,906,1.054,-1.754,0.633,near-1:1
+CAL-0 all,k=10,906,1.286,-1.907,0.471,near-1:1
+train EC<=50,k=15,876,1.121,-1.942,0.685,near-1:1
+CAL-7 no-extremes,k=20,903,1.793,-4.254,0.587,
+CAL-0 all,k=15,906,1.923,-4.498,0.586,
+CAL-0 all,k=20 (current),906,2.265,-5.253,0.657,

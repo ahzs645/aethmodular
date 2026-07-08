@@ -1,0 +1,5 @@
+selection,n,slope,intercept,r2
+full set,13012,1.208,-2.295,0.674
+random 2000,2000,1.519,-2.903,0.639
+EC-stratified,316,2.14,-4.213,0.649
+Kennard-Stone 2000,2000,1.308,-2.677,0.66
