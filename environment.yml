@@ -4,12 +4,15 @@ channels:
   - defaults
 dependencies:
   # Core Python
-  - python=3.9
+  # Matches the recommended development interpreter in AGENTS.md.
+  - python=3.13
 
   # Data manipulation and analysis
   - pandas>=1.3.0
   - numpy>=1.21.0
   - scipy>=1.7.0
+  - pyarrow>=16.0.0
+  - pytz>=2024.1
 
   # Machine learning
   - scikit-learn>=1.0.0
@@ -33,11 +36,15 @@ dependencies:
   - jupyter
   - jupyterlab
   - ipykernel
+  - nbclient
+  - nbformat
   - ipywidgets
   - notebook
+  - geopandas>=1.0.0
 
   # Development tools (optional but recommended)
   - pytest
+  - ruff
   - black
   - flake8
   - isort

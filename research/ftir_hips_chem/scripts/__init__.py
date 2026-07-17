@@ -105,6 +105,17 @@ try:
         deming, deming_lambda,
     )
     from prep import to_ugm3, find_repo_root
+    from pls_transfer import (
+        FTIRTransferPaths, CurrentPLSModel, load_current_pls_model,
+        vip_scores, select_components_cv, nested_cv_predictions,
+        predict_pls_components, component_cv_curve,
+        select_first_major_minimum, local_continuum_peak_height,
+        ftir_source_band_features,
+        regression_metrics, score_metric, project_scores,
+        mahalanobis_distance_squared, pairwise_score_distance_squared,
+        spectral_q_residual, offset_correct, vip_overlap_summary,
+        summarize_vip_bands, spaced_peak_table,
+    )
 except ImportError:
     from .config import (
         SITES, PROCESSED_SITES_DIR, FILTER_DATA_PATH,
@@ -140,6 +151,17 @@ except ImportError:
         deming, deming_lambda,
     )
     from .prep import to_ugm3, find_repo_root
+    from .pls_transfer import (
+        FTIRTransferPaths, CurrentPLSModel, load_current_pls_model,
+        vip_scores, select_components_cv, nested_cv_predictions,
+        predict_pls_components, component_cv_curve,
+        select_first_major_minimum, local_continuum_peak_height,
+        ftir_source_band_features,
+        regression_metrics, score_metric, project_scores,
+        mahalanobis_distance_squared, pairwise_score_distance_squared,
+        spectral_q_residual, offset_correct, vip_overlap_summary,
+        summarize_vip_bands, spaced_peak_table,
+    )
 
 __all__ = [
     # Config
@@ -171,4 +193,14 @@ __all__ = [
     'deming', 'deming_lambda',
     # Prep
     'to_ugm3', 'find_repo_root',
+    # FTIR PLS transfer
+    'FTIRTransferPaths', 'CurrentPLSModel', 'load_current_pls_model',
+    'vip_scores', 'select_components_cv', 'nested_cv_predictions',
+    'predict_pls_components', 'component_cv_curve',
+    'select_first_major_minimum', 'local_continuum_peak_height',
+    'ftir_source_band_features',
+    'regression_metrics', 'score_metric', 'project_scores',
+    'mahalanobis_distance_squared', 'pairwise_score_distance_squared',
+    'spectral_q_residual', 'offset_correct', 'vip_overlap_summary',
+    'summarize_vip_bands', 'spaced_peak_table',
 ]

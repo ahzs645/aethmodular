@@ -20,6 +20,9 @@ dependencies = [
   "xlrd>=2.0.0",
 ]
 
+[project.scripts]
+aeth = "aethmodular_cli.cli:main"
+
 [dependency-groups]
 dev = [
   "pytest>=8.0.0",
@@ -37,7 +40,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src"]
+packages = ["src", "aethmodular_cli"]
 
 [tool.uv]
 default-groups = ["dev", "notebooks"]

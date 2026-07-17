@@ -3,6 +3,7 @@
 ## Top-level Zones
 
 - `src/`: package code and reusable library logic
+- `aethmodular_cli/`: dependency-light `aeth` command orchestration
 - `tests/`: automated validation
 - `research/`: notebook/data-heavy research assets
 - `notebooks/`: active and archived analysis notebooks
@@ -24,7 +25,8 @@
 - `research/ftir_hips_chem/`: ETAD/FTIR/HIPS working assets and datasets
 - `research/filter_combine/`: filter-combine logic and inputs
 
-Generated outputs under `research/**/output/` are ignored.
+Generated outputs under `research/**/output/` are ignored by default. Two
+historical presentation decks remain tracked pending retention review.
 
 ## Notebook Organization
 
@@ -35,6 +37,9 @@ Generated outputs under `research/**/output/` are ignored.
 - `notebooks/archive/`: legacy or superseded notebooks
 
 ## Reference Docs
+
+- [`commands.md`](commands.md): stable diagnostics, notebook, pipeline,
+  SPARTAN, and research-builder commands.
 
 - [`filter-optics-reference.md`](filter-optics-reference.md): SPARTAN PTFE
   filter spec (PT25DMCAN-PF03A, 3 μm pore, FEP ring), SPARTAN SSR + HIPS

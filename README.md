@@ -4,27 +4,46 @@ Research-first toolkit for ETAD aethalometer and FTIR workflows.
 
 This repository now uses a `pyproject.toml`-based setup (uv-ready), canonical `src.*` imports, and a clearer separation between package code, research assets, and operational scripts.
 
-Detailed usage guide: `docs/library-usage.md`.
+Detailed usage guides: `docs/library-usage.md` and `docs/commands.md`.
 
 ## Quick Start
 
-### 1. Environment (uv)
+### 1. Environment
 ```bash
-# create and sync environment (if uv is installed)
-uv sync
+# Python 3.13 is recommended
+uv sync --python 3.13
+uv run aeth doctor
 ```
 
-If you do not have `uv`, install dependencies with pip:
+`pyproject.toml` and `uv.lock` are authoritative. `environment.yml` and
+`requirements.txt` are compatibility fallbacks for Conda and pip users.
+
+If `uv` is unavailable, use a Python 3.9+ environment and install with pip:
 ```bash
-pip install -r requirements.txt
+python -m pip install -e .
 ```
 
-### 2. Quality Gates
+### 2. Repository Commands
+
+The `aeth` command is the supported front door for routine work:
+
 ```bash
-uv run pytest -q
-uv run ruff check src tests
-uv run python scripts/diagnostics/run_notebook_smoke.py
+uv run aeth --help
+uv run aeth doctor
+uv run aeth notebook list
+uv run aeth build list
 ```
+
+### 3. Quality Gates
+```bash
+uv run aeth check
+uv run aeth check --notebooks
+uv run aeth notebook run
+```
+
+`aeth check --notebooks` checks notebooks changed in the worktree. Use
+`aeth notebook check` for the full portability audit; that audit currently
+tracks a documented migration backlog.
 
 `run_notebook_smoke.py` executes the current portable notebook set:
 - `notebooks/analysis/absorption/AAARpos.ipynb`
@@ -68,7 +87,7 @@ PY
 Notebook execution (including the new meteorology notebook):
 
 ```bash
-uv run python scripts/diagnostics/run_notebook_smoke.py \
+uv run aeth notebook run \
   notebooks/analysis/meteorology/friday_summary_consolidated.ipynb \
   notebooks/analysis/meteorology/meteorology_source_interaction.ipynb
 ```
@@ -84,21 +103,20 @@ uv run python scripts/diagnostics/run_notebook_smoke.py \
 - `docs/`: repository and workflow docs
 - `artifacts/`: generated outputs (ignored)
 
-## Script Entrypoints
+## Common Commands
 
-Preferred entrypoints:
-- `scripts/diagnostics/check_etad_data.py`
-- `scripts/diagnostics/check_matching_statistics.py`
-- `scripts/diagnostics/compare_pkl_files.py`
-- `scripts/diagnostics/get_etad_stats.py`
-- `scripts/diagnostics/inspect_flow_columns.py`
-- `scripts/diagnostics/test_system.py`
-- `scripts/pipelines/create_9am_resampled_datasets.py`
+- `aeth diagnose etad|matching|compare-pkl|etad-stats|flow|system`
+- `aeth data resample [--site SITE]`
+- `aeth spartan pull|coverage|coverage-plots|bridge|connections|extras`
+- `aeth notebook list|check|run`
+- `aeth build list` and `aeth build run GROUP TARGET`
 
-Legacy root-level script names are kept as temporary wrappers and print deprecation messages.
+The underlying files remain in `scripts/` for direct debugging, but documentation
+and routine usage should use `aeth` so paths and workflow names remain stable.
 
 ## Notes
 
-- Generated output under `research/**/output/` is now ignored and no longer tracked.
+- New generated output under `research/**/output/` is ignored. A small set of
+  historical presentation/summary artifacts remains tracked pending content review.
 - Core import paths have been normalized to `src.*` for reproducibility.
 - See `docs/migration-paths.md` for old-to-new paths.

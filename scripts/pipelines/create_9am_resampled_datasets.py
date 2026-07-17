@@ -5,11 +5,13 @@ This script processes high-resolution aethalometer data from Beijing, Delhi, JPL
 resampling to daily 9am-9am averages that align with filter sampling periods.
 """
 
-import pandas as pd
-import pickle
-from pathlib import Path
-from datetime import timedelta
+import argparse
 import os
+import pickle
+from datetime import timedelta
+from pathlib import Path
+
+import pandas as pd
 
 # Configuration
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -308,7 +310,32 @@ def process_site(site_code, config, filter_path, output_dir):
 
     return df_final
 
-def main():
+
+def resolve_site_codes(values):
+    """Resolve site codes or names supplied on the command line."""
+    if not values:
+        return list(SITES)
+
+    aliases = {}
+    for code, config in SITES.items():
+        aliases[code.casefold()] = code
+        aliases[config['name'].casefold()] = code
+        aliases[config['name'].replace('_', ' ').casefold()] = code
+
+    resolved = []
+    for value in values:
+        code = aliases.get(value.casefold())
+        if code is None:
+            available = ", ".join(
+                f"{site_code} ({config['name']})" for site_code, config in SITES.items()
+            )
+            raise ValueError(f"Unknown site {value!r}. Available sites: {available}")
+        if code not in resolved:
+            resolved.append(code)
+    return resolved
+
+
+def main(site_values=None):
     """Main processing function"""
     print("\n" + "="*80)
     print("AETHALOMETER DATA RESAMPLING FOR FILTER MATCHING")
@@ -319,13 +346,22 @@ def main():
     print("3. Keep only dates where filters are available")
     print("4. Save processed data for each site")
 
-    results = {}
+    try:
+        site_codes = resolve_site_codes(site_values)
+    except ValueError as exc:
+        print(f"ERROR: {exc}")
+        return 2
 
-    for site_code, config in SITES.items():
+    results = {}
+    failures = []
+
+    for site_code in site_codes:
+        config = SITES[site_code]
         try:
             df = process_site(site_code, config, FILTER_DATA_PATH, OUTPUT_DIR)
             results[site_code] = df
         except Exception as e:
+            failures.append(site_code)
             print(f"\n  ERROR processing {site_code}: {e}")
             import traceback
             traceback.print_exc()
@@ -344,5 +380,27 @@ def main():
 
     print(f"\nOutput directory: {OUTPUT_DIR}")
 
+    if failures:
+        print(f"Failed sites: {', '.join(failures)}")
+        return 1
+    return 0
+
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--site",
+        action="append",
+        dest="sites",
+        help="Site code or name to process; repeat for multiple sites (default: all).",
+    )
+    parser.add_argument(
+        "--list-sites",
+        action="store_true",
+        help="List configured site codes and exit.",
+    )
+    cli_args = parser.parse_args()
+    if cli_args.list_sites:
+        for site_code, site_config in SITES.items():
+            print(f"{site_code}\t{site_config['name']}")
+        raise SystemExit(0)
+    raise SystemExit(main(cli_args.sites))

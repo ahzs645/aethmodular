@@ -1,7 +1,42 @@
 # Repo cleanup & consolidation
 
-Status of the `cleanup/repo-consolidation` branch and the remaining decisions.
-Everything below was found by auditing `src/`, `research/`, and `notebooks/`.
+Living status of repository consolidation on `main`. Everything below was
+found by auditing `src/`, `research/`, and `notebooks/`.
+
+## Unified commands
+
+Routine workflows are now exposed through the dependency-light `aeth` command.
+Use `aeth doctor`, `aeth check`, `aeth notebook check`, and `aeth build list`
+instead of memorizing script paths. Scientific logic remains in its sanctioned
+package or research-script location; the CLI is an orchestration layer only.
+
+The seven temporary root-level Python wrappers have been removed. The 9am
+resampling workflow now accepts repeatable `--site` arguments while preserving
+its previous all-sites default.
+
+## Current automated cleanup inventory
+
+`aeth notebook check` currently identifies 37 active notebooks with source-level
+machine or legacy paths:
+
+| Area | Notebooks |
+|---|---:|
+| `research/ftir_hips_chem` | 14 |
+| `research/improve_hips_offset` | 8 |
+| `research/catch_up` | 6 |
+| top-level `notebooks` | 8 |
+| `research/spartan` | 1 |
+
+Migrate generated families by editing their `_build*.py` source first, then
+regenerating and checking the notebook. Hand-authored notebooks should use the
+standard setup cell or `prep.find_repo_root`; do not perform a blind JSON text
+replacement across executed notebooks.
+
+The ignore rule for downloaded `data/` was anchored to `/data/`. Previously it
+also hid source files under `src/data/` and notebook inputs under
+`notebooks/analysis/data/`. Generated PNG/CSV analysis artifacts and a
+machine-specific `node_modules` symlink were removed from tracking. Two output
+presentation decks remain tracked pending a content/retention decision.
 
 ## Done on this branch
 

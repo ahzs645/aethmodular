@@ -7,7 +7,8 @@ This document describes the current, supported way to use `aethmodular` after th
 Install/sync with `uv`:
 
 ```bash
-uv sync
+uv sync --python 3.13
+uv run aeth doctor
 ```
 
 ## 2. Core Import Pattern
@@ -41,8 +42,8 @@ Default (when env var is unset):
 ## 4. Quality Gates
 
 ```bash
-uv run pytest -q
-uv run ruff check src tests
+uv run aeth check
+uv run aeth check --notebooks
 ```
 
 ## 5. Notebook Workflow
@@ -50,7 +51,7 @@ uv run ruff check src tests
 Run selected notebooks through smoke execution:
 
 ```bash
-uv run python scripts/diagnostics/run_notebook_smoke.py \
+uv run aeth notebook run \
   notebooks/analysis/meteorology/friday_summary_consolidated.ipynb \
   notebooks/analysis/meteorology/Seasonalclass.ipynb \
   notebooks/qc/flow_qc_analysis.ipynb \
@@ -66,10 +67,16 @@ Meteorology notebook input files now tracked in:
 1. `<AETHMODULAR_DATA_ROOT>/Weather Data/Meteostat/`
 2. `notebooks/` (fallback)
 
-## 6. Script Entrypoints
+## 6. Commands
 
-Use:
-- `scripts/diagnostics/*`
-- `scripts/pipelines/*`
+Use `uv run aeth --help` to discover the supported workflow names. Common
+entry points include:
 
-Root wrappers are transitional and print deprecation messages.
+- `aeth diagnose etad`
+- `aeth diagnose matching`
+- `aeth data resample --site ETAD`
+- `aeth spartan coverage`
+- `aeth build list`
+
+Files under `scripts/diagnostics/` and `scripts/pipelines/` remain the
+implementation layer. The old root-level wrappers have been removed.

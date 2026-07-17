@@ -14,7 +14,11 @@ different patterns — do not mix them.
 
 ## Python environment
 
-Use `/opt/anaconda3/bin/python3.13`. The system `python3` lacks pandas.
+Python 3.13 is the recommended interpreter. The environment is defined by
+`pyproject.toml` and `uv.lock`; create it with `uv sync --python 3.13` and run
+repo commands with `uv run`. Do not use the macOS system `python3`, which lacks
+the scientific dependencies. Run `uv run aeth doctor` to verify the active
+environment and data paths before executing notebooks or pipelines.
 
 ## Where things live (paths from repo root)
 

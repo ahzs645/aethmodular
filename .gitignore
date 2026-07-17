@@ -157,8 +157,10 @@ aethalometer_ftir_merged_etad_9am.csv
 aethalometer_ftir_merged_etad_9am.pkl
 notebooks/processed_data_csv_optimized
 
-# Large data files (downloaded from Google Drive)
-data/
+# Large top-level data files (downloaded from Google Drive). Keep this rooted;
+# an unanchored data/ rule also hides package code under src/data/ and tracked
+# notebook inputs under notebooks/analysis/data/.
+/data/
 research/ftir_hips_chem/output/warren_meeting/
 research/ftir_hips_chem/warren_meeting_slides_executed.ipynb
 research/ftir_hips_chem/AERONET/

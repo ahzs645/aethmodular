@@ -28,7 +28,18 @@
 - `test_system.py` -> `scripts/diagnostics/test_system.py`
 - `create_9am_resampled_datasets.py` -> `scripts/pipelines/create_9am_resampled_datasets.py`
 
-Root-level files with the same names remain as temporary deprecation wrappers.
+The temporary root-level wrappers have been removed. Use the stable command
+names below; the implementation files remain under `scripts/` for debugging.
+
+| Previous script | Command |
+|---|---|
+| `check_etad_data.py` | `aeth diagnose etad` |
+| `check_matching_statistics.py` | `aeth diagnose matching` |
+| `compare_pkl_files.py` | `aeth diagnose compare-pkl` |
+| `get_etad_stats.py` | `aeth diagnose etad-stats` |
+| `inspect_flow_columns.py` | `aeth diagnose flow` |
+| `test_system.py` | `aeth diagnose system` |
+| `create_9am_resampled_datasets.py` | `aeth data resample` |
 
 ## Import Migration
 
