@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<style xmlns="http://purl.org/net/xbiblio/csl" version="1.0" class="in-text">
+  <info>
+    <title>AETH test superscript numeric style</title>
+    <id>https://example.invalid/aeth-test-superscript</id>
+    <updated>2026-07-18T00:00:00+00:00</updated>
+  </info>
+  <citation collapse="citation-number">
+    <sort>
+      <key variable="citation-number"/>
+    </sort>
+    <layout delimiter="," vertical-align="sup">
+      <text variable="citation-number"/>
+    </layout>
+  </citation>
+  <bibliography et-al-min="4" et-al-use-first="1">
+    <layout suffix=".">
+      <names variable="author" suffix=". ">
+        <name and="text" initialize-with=". "/>
+      </names>
+      <text variable="title" suffix=". "/>
+      <text variable="DOI" prefix="https://doi.org/"/>
+    </layout>
+  </bibliography>
+</style>
