@@ -12,7 +12,9 @@ subsequent email thread. Phase 2 lives in `research/ftir_hips_chem/`
 | `ftir_12_band_1600_identity.ipynb` | Is the elevated ~1600 cm⁻¹ band in Addis spectra carboxylate, amine, or nitro? Peak-position and band co-variation diagnostics. | Amine rejected; carboxylate / aromatic C=C remain; definitive partner bands sit below 1425 cm⁻¹ |
 | `scripts/airspec_baseline.py` | Python port of the APRLssb/AIRSpec segmented smoothing-spline baseline (Kuzmiakova, Dillner, Takahama 2016), validated against the R ground-truth output for the ETAD spectra (DF1=6, DF2=4). | Validated to ≤6×10⁻⁷ absorbance vs the R run; applied to all 13,634 pool + ETAD spectra at DF1 = 6 and 8 |
 | `ftir_13_airspec_corrected_calibrations.ipynb` | Satoshi's EDF 6–8 instruction: rebuild the key calibrations on AIRSpec-baselined spectra (both IMPROVE pool and Addis) and test whether the intercept story changes. | HIPS transfer gap survives baselining; low-OC/EC intercept halves to −1.62; smoke model collapses (slope 0.37) |
-| `ftir_14_delhi_beijing_feasibility.md` | Satoshi's score-space comparison of Delhi/Beijing vs Addis — data availability assessment. | Blocked: no SPARTAN spectra in the local pull; needs an INDH/CHTS export like the ETAD one |
+| `ftir_14_delhi_beijing_feasibility.md` | Satoshi's score-space comparison of Delhi/Beijing vs Addis — data availability assessment. | Blocked: no SPARTAN spectra in the local pull; needs an INDH/CHTS export like the ETAD one (add ETBI = Bishoftu) |
+| `ftir_15_uncertainty_and_hybrid.ipynb` | Is the −1.6 intercept statistically solid? Where does the corrected model's scatter come from? Does a hybrid OC/EC + spectral cohort beat OCEC-800? | Bootstrap CI [−1.78, −1.06] (disjoint from raw); corrected residuals = season-stable constant offset; hybrid cohort fails → cohort engineering closed |
+| `scripts/run_context_addenda.py` | Post-meeting context: Adama TOR OC/EC and the ETBI site vs ETAD. | Adama OC/EC 4.6–7.2 (≈ pool median) challenges the OC/EC-extreme premise; ETBI = untouched in-country test set |
 
 `PHASE3_SUMMARY.md` condenses everything; `draft_email_ann_satoshi.md` is the update email draft.
 

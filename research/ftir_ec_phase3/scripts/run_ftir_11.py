@@ -275,7 +275,8 @@ for size, color in zip(COHORT_SIZES, ('#27AE60', '#2980B9', '#8E44AD')):
     cut = float(cohorts[f'lowest-OCEC {size}']['OC_EC_ratio'].max())
     axes[0].axvline(cut, color=color, lw=1.6, label=f'N={size} cut: OC/EC ≤ {cut:.2f}')
 axes[0].set(xlabel='TOR OC/EC ratio (clipped at 25)', ylabel='Eligible pool filters',
-            title='Lowest-OCEC cohort cuts inside the IMPROVE pool')
+            title='Lowest-OCEC cohort cuts inside the IMPROVE pool',
+            xlim=(0, 25.5), ylim=(0, None))
 axes[0].legend(fontsize=8)
 
 for size, color in zip(COHORT_SIZES, ('#27AE60', '#2980B9', '#8E44AD')):
@@ -285,7 +286,7 @@ for size, color in zip(COHORT_SIZES, ('#27AE60', '#2980B9', '#8E44AD')):
     chosen = curve[curve['selected_first_major_minimum']].iloc[0]
     axes[1].scatter([chosen['n_components']], [chosen['rmse_mean']], color=color, s=55, zorder=4)
 axes[1].set(xlabel='PLS components', ylabel='Site-held-out CV RMSE (µg/filter)',
-            title='Component selection per cohort size')
+            title='Component selection per cohort size', xlim=(0, None), ylim=(0, None))
 axes[1].legend(fontsize=8)
 fig.tight_layout()
 fig.savefig(PLOT_DIR / 'cohort_cut_and_cv_curves.png', dpi=180, bbox_inches='tight')
@@ -299,12 +300,14 @@ plot_models = [('Deployed SPARTAN', deployed)] + [
 ]
 x = hips[fixed_mask] / 10.0
 fig, axes = plt.subplots(1, 4, figsize=(17, 4.6), sharex=True, sharey=True)
+y_min, y_max = 0.0, 0.0
 for ax, (label, values) in zip(axes.flat, plot_models):
     y = np.asarray(values, float)[fixed_mask]
+    y_min, y_max = min(y_min, np.nanmin(y)), max(y_max, np.nanmax(y))
     stats = regression_metrics(x, y)
     ax.scatter(x, y, s=22, alpha=.55, color='#34495E')
-    lo, hi = min(0, np.nanmin(x), np.nanmin(y)), max(np.nanmax(x), np.nanmax(y))
-    ax.plot([lo, hi], [lo, hi], '--', color='0.55', lw=1)
+    hi = max(np.nanmax(x), np.nanmax(y))
+    ax.plot([0, hi], [0, hi], '--', color='0.55', lw=1)
     fit_x = np.array([np.nanmin(x), np.nanmax(x)])
     ax.plot(fit_x, stats['slope'] * fit_x + stats['intercept'], color='#C0392B', lw=1.6)
     ax.set_title(label, fontsize=10)
@@ -313,6 +316,14 @@ for ax, (label, values) in zip(axes.flat, plot_models):
             transform=ax.transAxes, va='top', fontsize=8,
             bbox=dict(facecolor='white', edgecolor='0.8', alpha=.9))
     ax.set_xlabel('HIPS EC-equivalent, MAC=10 (µg/m³)')
+# Anchor at the origin: x (HIPS) is non-negative by construction; y drops below zero
+# only when a calibration genuinely predicts negative EC, in which case a zero line
+# marks the origin instead of hiding the negative predictions.
+axes[0].set_xlim(0, 1.04 * np.nanmax(x))
+axes[0].set_ylim(min(0, 1.05 * y_min), 1.04 * y_max)
+if y_min < 0:
+    for ax in axes.flat:
+        ax.axhline(0, color='0.85', lw=.8, zorder=0)
 axes[0].set_ylabel('FTIR EC (µg/m³)')
 fig.suptitle('OC/EC-ratio cohorts on the fixed phase-2 Addis cohort', y=1.02)
 fig.tight_layout()

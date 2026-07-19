@@ -315,11 +315,13 @@ panels = [
      prediction_export['Smoke 906, AIRSpec df1=6'].to_numpy(float)[fixed_mask]),
 ]
 fig, axes = plt.subplots(1, 4, figsize=(17, 4.6), sharex=True, sharey=True)
+y_min, y_max = 0.0, 0.0
 for ax, (label, y) in zip(axes.flat, panels):
+    y_min, y_max = min(y_min, np.nanmin(y)), max(y_max, np.nanmax(y))
     stats = regression_metrics(x, y)
     ax.scatter(x, y, s=22, alpha=.55, color='#34495E')
-    lo, hi = min(0, np.nanmin(x), np.nanmin(y)), max(np.nanmax(x), np.nanmax(y))
-    ax.plot([lo, hi], [lo, hi], '--', color='0.55', lw=1)
+    hi = max(np.nanmax(x), np.nanmax(y))
+    ax.plot([0, hi], [0, hi], '--', color='0.55', lw=1)
     fit_x = np.array([np.nanmin(x), np.nanmax(x)])
     ax.plot(fit_x, stats['slope'] * fit_x + stats['intercept'], color='#C0392B', lw=1.6)
     ax.set_title(label, fontsize=10)
@@ -328,6 +330,14 @@ for ax, (label, y) in zip(axes.flat, panels):
             transform=ax.transAxes, va='top', fontsize=8,
             bbox=dict(facecolor='white', edgecolor='0.8', alpha=.9))
     ax.set_xlabel('HIPS EC-equivalent, MAC=10 (µg/m³)')
+# Anchor at the origin: x (HIPS) is non-negative by construction; y drops below zero
+# only when a calibration genuinely predicts negative EC, in which case a zero line
+# marks the origin instead of hiding the negative predictions.
+axes[0].set_xlim(0, 1.04 * np.nanmax(x))
+axes[0].set_ylim(min(0, 1.05 * y_min), 1.04 * y_max)
+if y_min < 0:
+    for ax in axes.flat:
+        ax.axhline(0, color='0.85', lw=.8, zorder=0)
 axes[0].set_ylabel('FTIR EC (µg/m³)')
 fig.suptitle('AIRSpec-corrected calibrations on the fixed Addis cohort', y=1.02)
 fig.tight_layout()

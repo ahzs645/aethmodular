@@ -93,6 +93,36 @@ TAKEAWAYS = {
   covariates — exactly the proportionality that charcoal burning could break.""",
 }
 
+TLDR["15"] = """\
+Three questions, three clean answers. **(1) The corrected-model intercept is real and so is
+its remaining gap**: a site-cluster bootstrap (B = 200) puts the AIRSpec OCEC-800 Addis
+intercept at 95% CI **[−1.78, −1.06]** — excluding zero *and* entirely disjoint from the raw
+model's **[−4.88, −2.81]**. The AIRSpec improvement is not split luck. **(2) The two models
+miss differently**: the raw model's Addis residuals track extrapolation distance (D² r =
+**0.71**) and swing with season (+0.49 Kiremt to −1.25 Dry), while the corrected model's
+residuals are decoupled from D² (r ≈ 0.2 / Spearman −0.05) and sit at a near-constant
+**−2.0 to −2.6 µg/m³ across all three seasons** — a stable offset, with |residual| growing
+with loading. That is the signature of a missing constant component or a reference/MAC
+mismatch, not composition-driven scatter. **(3) The hybrid cohort fails**: selecting the 800
+spectrally-nearest-to-Addis filters inside the lowest-2,000-OC/EC pool collapses the held-out
+TOR test (R² **0.19**, slope **0.20**) — cohort engineering has hit its ceiling, and
+OCEC-800 + AIRSpec stands as the best candidate."""
+
+TAKEAWAYS["15"] = """\
+- **Stop tuning cohorts.** The hybrid negative result plus the bootstrap CIs close out the
+  cohort-engineering direction: no selection strategy tested in phases 2–3 moves the intercept
+  further without breaking the TOR test.
+- **Prefer the corrected model for interpretation even where its RMSE is worse.** The raw
+  model's Addis residuals are extrapolation-driven (D² r = 0.71) and season-dependent; the
+  corrected model's are a clean, season-stable offset. A constant, explainable miss beats a
+  smaller but structured one.
+- **The season-independent −2 to −2.6 µg/m³ offset is the sharpest clue yet**: it behaves like
+  a missing constant absorption component (Satoshi's EC sloping-absorption discussion) or a
+  HIPS MAC/protocol mismatch — both resolvable only with an external anchor, not more IMPROVE
+  data.
+- **Decisive next data remain**: an independent Addis EC reference (TOR on archived filters or
+  Teflon/quartz pairs at Adama/Bishoftu) and the INDH/CHTS/ETBI spectra pull."""
+
 TAKEAWAYS["13"] = """\
 - **The baseline caveat is discharged.** Phase-2's ">1500 cm⁻¹ offset correction is not
   AIRSpec" disclaimer no longer shields any hypothesis: with validated EDF-6/8 baselines, the
@@ -115,6 +145,7 @@ SCRIPTS = {
     "11": ("run_ftir_11.py", "ftir_11_ocec_ratio_cohort.ipynb"),
     "12": ("run_ftir_12.py", "ftir_12_band_1600_identity.ipynb"),
     "13": ("run_ftir_13.py", "ftir_13_airspec_corrected_calibrations.ipynb"),
+    "15": ("run_ftir_15.py", "ftir_15_uncertainty_and_hybrid.ipynb"),
 }
 
 
