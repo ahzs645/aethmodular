@@ -1,0 +1,814 @@
+[
+  {
+    "id": "Backman2017",
+    "type": "article-journal",
+    "title": "On Aethalometer measurement uncertainties and an instrument correction factor for the Arctic",
+    "author": [
+      {
+        "family": "Backman",
+        "given": "John"
+      },
+      {
+        "family": "Schmeisser",
+        "given": "Lauren"
+      },
+      {
+        "family": "Virkkula",
+        "given": "Aki"
+      },
+      {
+        "family": "Ogren",
+        "given": "John A."
+      },
+      {
+        "family": "Asmi",
+        "given": "Eija"
+      },
+      {
+        "family": "Starkweather",
+        "given": "Sandra"
+      },
+      {
+        "family": "Sharma",
+        "given": "Sangeeta"
+      },
+      {
+        "family": "Eleftheriadis",
+        "given": "Konstantinos"
+      },
+      {
+        "family": "Uttal",
+        "given": "Taneil"
+      },
+      {
+        "family": "Jefferson",
+        "given": "Anne"
+      },
+      {
+        "family": "Bergin",
+        "given": "Michael"
+      },
+      {
+        "family": "Makshtas",
+        "given": "Alexander"
+      },
+      {
+        "family": "Tunved",
+        "given": "Peter"
+      },
+      {
+        "family": "Fiebig",
+        "given": "Markus"
+      }
+    ],
+    "container-title": "Atmospheric Measurement Techniques",
+    "volume": "10",
+    "issue": "12",
+    "page": "5039-5062",
+    "DOI": "10.5194/amt-10-5039-2017",
+    "URL": "https://doi.org/10.5194/amt-10-5039-2017",
+    "issued": {
+      "date-parts": [
+        [
+          2017
+        ]
+      ]
+    }
+  },
+  {
+    "id": "Bond2013",
+    "type": "article-journal",
+    "title": "Bounding the role of black carbon in the climate system: A scientific assessment",
+    "author": [
+      {
+        "family": "Bond",
+        "given": "T. C."
+      },
+      {
+        "family": "Doherty",
+        "given": "S. J."
+      },
+      {
+        "family": "Fahey",
+        "given": "D. W."
+      },
+      {
+        "family": "Forster",
+        "given": "P. M."
+      },
+      {
+        "family": "Berntsen",
+        "given": "T."
+      },
+      {
+        "family": "DeAngelo",
+        "given": "B. J."
+      },
+      {
+        "family": "Flanner",
+        "given": "M. G."
+      },
+      {
+        "family": "Ghan",
+        "given": "S."
+      },
+      {
+        "family": "Kärcher",
+        "given": "B."
+      },
+      {
+        "family": "Koch",
+        "given": "D."
+      },
+      {
+        "family": "Kinne",
+        "given": "S."
+      },
+      {
+        "family": "Kondo",
+        "given": "Y."
+      },
+      {
+        "family": "Quinn",
+        "given": "P. K."
+      },
+      {
+        "family": "Sarofim",
+        "given": "M. C."
+      },
+      {
+        "family": "Schultz",
+        "given": "M. G."
+      },
+      {
+        "family": "Schulz",
+        "given": "M."
+      },
+      {
+        "family": "Venkataraman",
+        "given": "C."
+      },
+      {
+        "family": "Zhang",
+        "given": "H."
+      },
+      {
+        "family": "Zhang",
+        "given": "S."
+      },
+      {
+        "family": "Bellouin",
+        "given": "N."
+      },
+      {
+        "family": "Guttikunda",
+        "given": "S. K."
+      },
+      {
+        "family": "Hopke",
+        "given": "P. K."
+      },
+      {
+        "family": "Jacobson",
+        "given": "M. Z."
+      },
+      {
+        "family": "Kaiser",
+        "given": "J. W."
+      },
+      {
+        "family": "Klimont",
+        "given": "Z."
+      },
+      {
+        "family": "Lohmann",
+        "given": "U."
+      },
+      {
+        "family": "Schwarz",
+        "given": "J. P."
+      },
+      {
+        "family": "Shindell",
+        "given": "D."
+      },
+      {
+        "family": "Storelvmo",
+        "given": "T."
+      },
+      {
+        "family": "Warren",
+        "given": "S. G."
+      },
+      {
+        "family": "Zender",
+        "given": "C. S."
+      }
+    ],
+    "container-title": "Journal of Geophysical Research: Atmospheres",
+    "volume": "118",
+    "issue": "11",
+    "page": "5380-5552",
+    "DOI": "10.1002/jgrd.50171",
+    "URL": "https://doi.org/10.1002/jgrd.50171",
+    "issued": {
+      "date-parts": [
+        [
+          2013
+        ]
+      ]
+    }
+  },
+  {
+    "id": "CuestaMosquera2021",
+    "type": "article-journal",
+    "title": "Intercomparison and characterization of 23 Aethalometers under laboratory and ambient air conditions: procedures and unit-to-unit variabilities",
+    "author": [
+      {
+        "family": "Cuesta-Mosquera",
+        "given": "Andrea"
+      },
+      {
+        "family": "Močnik",
+        "given": "Griša"
+      },
+      {
+        "family": "Drinovec",
+        "given": "Luka"
+      },
+      {
+        "family": "Müller",
+        "given": "Thomas"
+      },
+      {
+        "family": "Pfeifer",
+        "given": "Sascha"
+      },
+      {
+        "family": "Minguillón",
+        "given": "María Cruz"
+      },
+      {
+        "family": "Briel",
+        "given": "Björn"
+      },
+      {
+        "family": "Buckley",
+        "given": "Paul"
+      },
+      {
+        "family": "Dudoitis",
+        "given": "Vadimas"
+      },
+      {
+        "family": "Fernández-García",
+        "given": "Javier"
+      },
+      {
+        "family": "Fernández-Amado",
+        "given": "María"
+      },
+      {
+        "family": "Ferreira De Brito",
+        "given": "Joel"
+      },
+      {
+        "family": "Riffault",
+        "given": "Veronique"
+      },
+      {
+        "family": "Flentje",
+        "given": "Harald"
+      },
+      {
+        "family": "Heffernan",
+        "given": "Eimear"
+      },
+      {
+        "family": "Kalivitis",
+        "given": "Nikolaos"
+      },
+      {
+        "family": "Kalogridis",
+        "given": "Athina-Cerise"
+      },
+      {
+        "family": "Keernik",
+        "given": "Hannes"
+      },
+      {
+        "family": "Marmureanu",
+        "given": "Luminita"
+      },
+      {
+        "family": "Luoma",
+        "given": "Krista"
+      },
+      {
+        "family": "Marinoni",
+        "given": "Angela"
+      },
+      {
+        "family": "Pikridas",
+        "given": "Michael"
+      },
+      {
+        "family": "Schauer",
+        "given": "Gerhard"
+      },
+      {
+        "family": "Serfozo",
+        "given": "Norbert"
+      },
+      {
+        "family": "Servomaa",
+        "given": "Henri"
+      },
+      {
+        "family": "Titos",
+        "given": "Gloria"
+      },
+      {
+        "family": "Yus-Díez",
+        "given": "Jesús"
+      },
+      {
+        "family": "Zioła",
+        "given": "Natalia"
+      },
+      {
+        "family": "Wiedensohler",
+        "given": "Alfred"
+      }
+    ],
+    "container-title": "Atmospheric Measurement Techniques",
+    "volume": "14",
+    "issue": "4",
+    "page": "3195-3216",
+    "DOI": "10.5194/amt-14-3195-2021",
+    "URL": "https://doi.org/10.5194/amt-14-3195-2021",
+    "issued": {
+      "date-parts": [
+        [
+          2021
+        ]
+      ]
+    }
+  },
+  {
+    "id": "Drinovec2015",
+    "type": "article-journal",
+    "title": "The \"dual-spot\" Aethalometer: an improved measurement of aerosol black carbon with real-time loading compensation",
+    "author": [
+      {
+        "family": "Drinovec",
+        "given": "L."
+      },
+      {
+        "family": "Močnik",
+        "given": "G."
+      },
+      {
+        "family": "Zotter",
+        "given": "P."
+      },
+      {
+        "family": "Prévôt",
+        "given": "A. S. H."
+      },
+      {
+        "family": "Ruckstuhl",
+        "given": "C."
+      },
+      {
+        "family": "Coz",
+        "given": "E."
+      },
+      {
+        "family": "Rupakheti",
+        "given": "M."
+      },
+      {
+        "family": "Sciare",
+        "given": "J."
+      },
+      {
+        "family": "Müller",
+        "given": "T."
+      },
+      {
+        "family": "Wiedensohler",
+        "given": "A."
+      },
+      {
+        "family": "Hansen",
+        "given": "A. D. A."
+      }
+    ],
+    "container-title": "Atmospheric Measurement Techniques",
+    "volume": "8",
+    "issue": "5",
+    "page": "1965-1979",
+    "DOI": "10.5194/amt-8-1965-2015",
+    "URL": "https://doi.org/10.5194/amt-8-1965-2015",
+    "issued": {
+      "date-parts": [
+        [
+          2015
+        ]
+      ]
+    }
+  },
+  {
+    "id": "Dusing2019",
+    "type": "article-journal",
+    "title": "The effect of rapid relative humidity changes on fast filter-based aerosol-particle light-absorption measurements: uncertainties and correction schemes",
+    "author": [
+      {
+        "family": "Düsing",
+        "given": "Sebastian"
+      },
+      {
+        "family": "Wehner",
+        "given": "Birgit"
+      },
+      {
+        "family": "Müller",
+        "given": "Thomas"
+      },
+      {
+        "family": "Stöcker",
+        "given": "Almond"
+      },
+      {
+        "family": "Wiedensohler",
+        "given": "Alfred"
+      }
+    ],
+    "container-title": "Atmospheric Measurement Techniques",
+    "volume": "12",
+    "issue": "11",
+    "page": "5879-5895",
+    "DOI": "10.5194/amt-12-5879-2019",
+    "URL": "https://doi.org/10.5194/amt-12-5879-2019",
+    "issued": {
+      "date-parts": [
+        [
+          2019
+        ]
+      ]
+    }
+  },
+  {
+    "id": "Petzold2013",
+    "type": "article-journal",
+    "title": "Recommendations for reporting \"black carbon\" measurements",
+    "author": [
+      {
+        "family": "Petzold",
+        "given": "A."
+      },
+      {
+        "family": "Ogren",
+        "given": "J. A."
+      },
+      {
+        "family": "Fiebig",
+        "given": "M."
+      },
+      {
+        "family": "Laj",
+        "given": "P."
+      },
+      {
+        "family": "Li",
+        "given": "S.-M."
+      },
+      {
+        "family": "Baltensperger",
+        "given": "U."
+      },
+      {
+        "family": "Holzer-Popp",
+        "given": "T."
+      },
+      {
+        "family": "Kinne",
+        "given": "S."
+      },
+      {
+        "family": "Pappalardo",
+        "given": "G."
+      },
+      {
+        "family": "Sugimoto",
+        "given": "N."
+      },
+      {
+        "family": "Wehrli",
+        "given": "C."
+      },
+      {
+        "family": "Wiedensohler",
+        "given": "A."
+      },
+      {
+        "family": "Zhang",
+        "given": "X.-Y."
+      }
+    ],
+    "container-title": "Atmospheric Chemistry and Physics",
+    "volume": "13",
+    "issue": "16",
+    "page": "8365-8379",
+    "DOI": "10.5194/acp-13-8365-2013",
+    "URL": "https://doi.org/10.5194/acp-13-8365-2013",
+    "issued": {
+      "date-parts": [
+        [
+          2013
+        ]
+      ]
+    }
+  },
+  {
+    "id": "Reggente2019",
+    "type": "article-journal",
+    "title": "An open platform for Aerosol InfraRed Spectroscopy analysis - AIRSpec",
+    "author": [
+      {
+        "family": "Reggente",
+        "given": "Matteo"
+      },
+      {
+        "family": "Höhn",
+        "given": "Rudolf"
+      },
+      {
+        "family": "Takahama",
+        "given": "Satoshi"
+      }
+    ],
+    "container-title": "Atmospheric Measurement Techniques",
+    "volume": "12",
+    "issue": "4",
+    "page": "2313-2329",
+    "DOI": "10.5194/amt-12-2313-2019",
+    "URL": "https://doi.org/10.5194/amt-12-2313-2019",
+    "issued": {
+      "date-parts": [
+        [
+          2019
+        ]
+      ]
+    }
+  },
+  {
+    "id": "Sandradewi2008",
+    "type": "article-journal",
+    "title": "Using Aerosol Light Absorption Measurements for the Quantitative Determination of Wood Burning and Traffic Emission Contributions to Particulate Matter",
+    "author": [
+      {
+        "family": "Sandradewi",
+        "given": "Jisca"
+      },
+      {
+        "family": "Prévôt",
+        "given": "Andre S. H."
+      },
+      {
+        "family": "Szidat",
+        "given": "Sönke"
+      },
+      {
+        "family": "Perron",
+        "given": "Nolwenn"
+      },
+      {
+        "family": "Alfarra",
+        "given": "M. Rami"
+      },
+      {
+        "family": "Lanz",
+        "given": "Valentin A."
+      },
+      {
+        "family": "Weingartner",
+        "given": "Ernest"
+      },
+      {
+        "family": "Baltensperger",
+        "given": "Urs"
+      }
+    ],
+    "container-title": "Environmental Science & Technology",
+    "volume": "42",
+    "issue": "9",
+    "page": "3316-3323",
+    "DOI": "10.1021/es702253m",
+    "URL": "https://doi.org/10.1021/es702253m",
+    "issued": {
+      "date-parts": [
+        [
+          2008
+        ]
+      ]
+    }
+  },
+  {
+    "id": "Tinorua2024",
+    "type": "article-journal",
+    "title": "A 2-year intercomparison of three methods for measuring black carbon concentration at a high-altitude research station in Europe",
+    "author": [
+      {
+        "family": "Tinorua",
+        "given": "Sarah"
+      },
+      {
+        "family": "Denjean",
+        "given": "Cyrielle"
+      },
+      {
+        "family": "Nabat",
+        "given": "Pierre"
+      },
+      {
+        "family": "Pont",
+        "given": "Véronique"
+      },
+      {
+        "family": "Arnaud",
+        "given": "Mathilde"
+      },
+      {
+        "family": "Bourrianne",
+        "given": "Thierry"
+      },
+      {
+        "family": "Dias Alves",
+        "given": "Maria"
+      },
+      {
+        "family": "Gardrat",
+        "given": "Eric"
+      }
+    ],
+    "container-title": "Atmospheric Measurement Techniques",
+    "volume": "17",
+    "issue": "13",
+    "page": "3897-3915",
+    "DOI": "10.5194/amt-17-3897-2024",
+    "URL": "https://doi.org/10.5194/amt-17-3897-2024",
+    "issued": {
+      "date-parts": [
+        [
+          2024
+        ]
+      ]
+    }
+  },
+  {
+    "id": "Weingartner2003",
+    "type": "article-journal",
+    "title": "Absorption of light by soot particles: determination of the absorption coefficient by means of Aethalometers",
+    "author": [
+      {
+        "family": "Weingartner",
+        "given": "E."
+      },
+      {
+        "family": "Saathoff",
+        "given": "H."
+      },
+      {
+        "family": "Schnaiter",
+        "given": "M."
+      },
+      {
+        "family": "Streit",
+        "given": "N."
+      },
+      {
+        "family": "Bitnar",
+        "given": "B."
+      },
+      {
+        "family": "Baltensperger",
+        "given": "U."
+      }
+    ],
+    "container-title": "Journal of Aerosol Science",
+    "volume": "34",
+    "issue": "10",
+    "page": "1445-1463",
+    "DOI": "10.1016/S0021-8502(03)00359-8",
+    "URL": "https://doi.org/10.1016/S0021-8502(03)00359-8",
+    "issued": {
+      "date-parts": [
+        [
+          2003
+        ]
+      ]
+    }
+  },
+  {
+    "id": "Zhang2021",
+    "type": "article-journal",
+    "title": "Intercomparison of thermal-optical carbon measurements by Sunset and Desert Research Institute (DRI) analyzers using the IMPROVE_A protocol",
+    "author": [
+      {
+        "family": "Zhang",
+        "given": "Xiaolu"
+      },
+      {
+        "family": "Trzepla",
+        "given": "Krystyna"
+      },
+      {
+        "family": "White",
+        "given": "Warren"
+      },
+      {
+        "family": "Raffuse",
+        "given": "Sean"
+      },
+      {
+        "family": "Hyslop",
+        "given": "Nicole Pauly"
+      }
+    ],
+    "container-title": "Atmospheric Measurement Techniques",
+    "volume": "14",
+    "issue": "5",
+    "page": "3217-3231",
+    "DOI": "10.5194/amt-14-3217-2021",
+    "URL": "https://doi.org/10.5194/amt-14-3217-2021",
+    "issued": {
+      "date-parts": [
+        [
+          2021
+        ]
+      ]
+    }
+  },
+  {
+    "id": "Zotter2017",
+    "type": "article-journal",
+    "title": "Evaluation of the absorption Ångström exponents for traffic and wood burning in the Aethalometer-based source apportionment using radiocarbon measurements of ambient aerosol",
+    "author": [
+      {
+        "family": "Zotter",
+        "given": "Peter"
+      },
+      {
+        "family": "Herich",
+        "given": "Hanna"
+      },
+      {
+        "family": "Gysel",
+        "given": "Martin"
+      },
+      {
+        "family": "El-Haddad",
+        "given": "Imad"
+      },
+      {
+        "family": "Zhang",
+        "given": "Yanlin"
+      },
+      {
+        "family": "Močnik",
+        "given": "Griša"
+      },
+      {
+        "family": "Hüglin",
+        "given": "Christoph"
+      },
+      {
+        "family": "Baltensperger",
+        "given": "Urs"
+      },
+      {
+        "family": "Szidat",
+        "given": "Sönke"
+      },
+      {
+        "family": "Prévôt",
+        "given": "André S. H."
+      }
+    ],
+    "container-title": "Atmospheric Chemistry and Physics",
+    "volume": "17",
+    "issue": "6",
+    "page": "4229-4249",
+    "DOI": "10.5194/acp-17-4229-2017",
+    "URL": "https://doi.org/10.5194/acp-17-4229-2017",
+    "issued": {
+      "date-parts": [
+        [
+          2017
+        ]
+      ]
+    }
+  }
+]
