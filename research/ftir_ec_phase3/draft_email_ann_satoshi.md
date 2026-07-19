@@ -77,7 +77,7 @@ performer so far. Details:
    reference" ask as in point 6, and I think it's now the single most decisive next
    measurement.
 
-Notebooks and tables are in the repo under `research/ftir_ec_phase3/` (ftir_11–ftir_13) if you
+Notebooks and tables are in the repo under `research/ftir_ec_phase3/` (ftir_11–ftir_15) if you
 want the details.
 
 Thanks,
