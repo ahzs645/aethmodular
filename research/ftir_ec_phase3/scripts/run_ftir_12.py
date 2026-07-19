@@ -176,7 +176,8 @@ for position, label in [(1585, 'COO⁻ asym'), (1635, 'H₂O bend'), (1650, 'ami
     ax.text(position, ax.get_ylim()[1] * .97, label, rotation=90, va='top',
             ha='right', fontsize=8, color='0.4')
 ax.set(xlabel='1600-band peak center (cm⁻¹)', ylabel='Density',
-       title='Addis 1600-band peaks sit lower than any IMPROVE cohort')
+       title='Addis 1600-band peaks sit lower than any IMPROVE cohort',
+       ylim=(0, None))
 ax.legend(fontsize=8)
 fig.tight_layout()
 fig.savefig(PLOT_DIR / 'peak_center_1600_by_group.png', dpi=180, bbox_inches='tight')

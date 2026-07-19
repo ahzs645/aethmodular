@@ -76,6 +76,40 @@ Results on the fixed 190-filter Addis cohort (MAC = 10):
   TOR/EC reference or a HIPS MAC/protocol bridge resolves it; further cohort engineering
   will not.
 
+## ftir_15 — uncertainty, residual structure, and the end of cohort engineering
+
+- **Bootstrap (B = 200, site-cluster, fixed Addis cohort, MAC = 10):** corrected OCEC-800
+  intercept 95% CI **[−1.78, −1.06]** — excludes zero and is fully disjoint from the raw
+  model's **[−4.88, −2.81]**. The AIRSpec improvement is statistically solid; so is the
+  remaining offset.
+- **Residual structure:** the raw model's Addis residuals track score-space extrapolation
+  (D² r = 0.71) and flip sign by season (+0.49 Kiremt → −1.25 Dry); the corrected model's are
+  D²-independent and sit at a **season-stable −2.0 to −2.6 µg/m³** with |residual| growing
+  with loading. A constant offset of that shape points at a missing constant absorption
+  component or a HIPS MAC/protocol mismatch — an external anchor question, not a cohort one.
+- **Hybrid cohort (low-OC/EC ∩ spectral similarity, corrected spectra): negative.** Held-out
+  TOR collapses (R² 0.19, slope 0.20). Combined with the bootstrap, this closes out cohort
+  engineering: OCEC-800 + AIRSpec is the terminal candidate from IMPROVE-only data.
+
+## Post-meeting context: Adama TOR and the ETBI (Bishoftu) site
+
+Two additions from newly synced data (`output/tables/context/`, plot
+`output/plots/context/adama_etbi_context.png`):
+
+- **Adama TOR (Batch 54, 5 quartz filters, July 2024)**: OC/EC = **4.6–7.2** (TR basis,
+  median ≈ 6.1) — squarely at the IMPROVE pool median (5.5), *not* in the low-OC/EC tail the
+  Addis offset implies for the region. This sharpens an uncomfortable question: Addis's
+  "extreme low OC/EC" ranking is computed from the SPARTAN FTIR/HIPS measurements under
+  suspicion, while the one same-corridor TOR measurement we have looks ordinary. Either the
+  Addis urban mix genuinely differs from the corridor 40 km away, or part of the OC/EC-extreme
+  signal is the measurement artifact itself. (Quartz filters — no FTIR/HIPS on the same
+  filters, so context only.)
+- **ETBI = Bishoftu, Ethiopia** (8.76°N, 39.00°E — between Addis and Adama): a second
+  Ethiopian SPARTAN site nobody has looked at in this project. 32 filters (Oct–Dec 2025),
+  26 with HIPS Fabs, median **26.9 Mm⁻¹** (EC-equivalent ≈ 2.7 µg/m³ at MAC = 10) — lower
+  than Addis (47.1) but far above IMPROVE. If ETBI FTIR spectra are pulled alongside
+  INDH/CHTS, it is an in-country, dry-season test set for every Addis conclusion.
+
 ## ftir_14 — Delhi/Beijing score-space comparison: blocked on data
 
 The local DB pull covers IMPROVE only (169,566 analyses, no SPARTAN sites); ETAD spectra came
