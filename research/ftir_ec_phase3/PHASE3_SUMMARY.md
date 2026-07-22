@@ -212,11 +212,14 @@ per-filter for all six matrix setups on the fixed 190-filter cohort
   value is −1.6151 → **−1.62** (ftir_13's tl;dr had it right). `build_deck_figures.py`,
   `calibration_setup_matrix.png`, and `intercept_ladder.png` corrected and regenerated.
 
-## Deck: `airspec_explainer.png` — what the "+ AIRSpec" half of the setup name does
+## Deck: the three AIRSpec slides — what the "+ AIRSpec" half of the setup name does
 
-Companion to `filtering_by_ocec.png` (which explains the "Lowest-OC/EC" half). Built by
-`scripts/build_deck_figures.py::fig_airspec_explainer`, baselines cached under
-`output/corrected/deck_airspec_explainer.npz`:
+Companion to `filtering_by_ocec.png` (which explains the "Lowest-OC/EC" half), as three
+standalone slides — `airspec_1_baseline.png`, `airspec_2_corrected.png`,
+`airspec_3_background_gap.png` — built by `scripts/build_deck_figures.py`
+(`fig_airspec_1_baseline` / `_2_corrected` / `_3_background_gap`), baselines cached under
+`output/corrected/deck_airspec_explainer.npz`. Spoken talk track with caveats:
+`deck_notes_airspec.md`.
 
 - **The mechanism**: ~**91%** of a typical raw Addis spectrum's absorbance at the CH band is
   smooth background, not band signal. A PLS model on raw spectra is therefore free to
@@ -227,3 +230,135 @@ Companion to `filtering_by_ocec.png` (which explains the "Lowest-OC/EC" half). B
   qualitative reason baselining moves the intercept.
 - **The payoff, already in ftir_13/ftir_19**: intercept −3.22 → **−1.62**, slope 1.59 →
   **0.86** at MAC = 10.
+
+## ftir_20 — component selection: the AQRC app's protocol vs phase 3's, on all six setups
+
+Raised by reading the AQRC **FTIR Calibration** Shiny app (`R/calibrateServer.R`) next to
+the phase-3 code. The app fits `pls::plsr(ncomp = 80, validation = "CV", segments = 10,
+segment.type = "interleaved")` and the operator reads k off the RMSEP curve; phase 3 uses
+site-grouped 5-fold CV with the first-major-minimum rule. Both differences (CV scheme and
+stopping rule) crossed with raw vs 2nd-derivative spectra, on all six matrix cohorts
+(`output/plots/deck/component_selection_all_setups.png`, `k_by_rule_ladder.png`):
+
+- **k disagrees by up to ~3×, in both directions.** Raw spectra, app protocol vs phase-3
+  protocol: whole IMPROVE network 27→10, smoke-906 19→7, Ethiopia-shaped 17→**21** (up),
+  analogs 9→9 (tie), lowest-OC/EC 17→9, lowest-OC/EC + AIRSpec 19→6. "Their k is always bigger" is
+  wrong; report the CV scheme with every k.
+- **The load-bearing result is the error floor, not k.** Holding whole sites out raises the
+  %RMSECV floor by **×1.59 (smoke-906)** and **×1.41 (Ethiopia-shaped smoke)** but only
+  ×1.07 / ×1.02 / ×1.01 for the full pool, lowest-OC/EC and lowest-OC/EC + AIRSpec.
+  Interleaved folds flatter exactly the smoke-selected cohorts the deployed family is built
+  from (repeat sampling concentrated at few sites), while the composition-selected cohort
+  is indifferent to fold structure — a protocol-level reason to distrust smoke-906 at an
+  unseen site, independent of ftir_13's collapse-on-corrected-spectra result.
+- **2nd-derivative preprocessing is not a free win.** Under site-grouped CV it cuts the
+  floor for the baseline-dominated cohorts (smoke-906 155%→100%, full pool 110%→96%,
+  Ethiopia-shaped 53%→43%) but degrades the targeted ones (lowest-OC/EC 62%→77%) — the
+  derivative and the AIRSpec baseline fix the same problem, so they are alternatives, not
+  additives.
+- **The leaked quantity is baseline, not chemistry.** On 2nd-derivative spectra every
+  optimism ratio collapses to 0.89–1.06 (smoke-906 ×1.59 → ×1.00): removing the smooth
+  baseline removes the advantage of having seen a site before. What an interleaved fold
+  leaks is the site's characteristic background — the same structure ftir_13/ftir_19
+  identify as the reason raw-spectra models fail to transfer to Addis.
+
+## ftir_21 — every setup run twice: Calibration app vs site-held-out protocol
+
+Follow-on to ftir_20. `scripts/calibration_modes.py` defines the two protocols as
+switchable modes so any notebook can re-run a cohort either way:
+
+| | `app` — Calibration app | `site_heldout` — site-held-out |
+|---|---|---|
+| CV folds | 10-fold interleaved, no site grouping | 5-fold site-grouped |
+| component rule | first k within 5% of the minimum | first major minimum |
+| final fit | all cohort filters | training side of a site-disjoint 80/20 split |
+| held-out TOR test | none, by construction | yes |
+
+**Provenance check passes**: `site_heldout` mode reproduces the committed ftir_11/ftir_13
+calibrations exactly (k = 6 / 5, Addis slope and intercept to < 1e-6), asserted in the
+notebook — so this is a like-for-like re-run, not a re-derivation.
+
+- **The protocol moves the Addis answer more than the MAC fork does.** Same 800
+  lowest-OC/EC filters: **2.15x − 4.59 (RMSE 2.03)** under the Calibration app protocol vs
+  **1.59x − 3.22 (RMSE 1.16)** site-held-out — a 1.4 µg/m³ intercept swing from the component choice alone, where
+  ftir_19 showed MAC cannot move an intercept at all. Biomass-smoke swings hardest
+  (2.43x − 6.35 vs 0.50x − 0.99 at k = 4); the whole IMPROVE network 1.95x − 4.05 vs
+  1.65x − 3.44.
+- **Lowest-OC/EC + AIRSpec is protocol-robust**: −1.65 vs −1.62, slope 0.96 vs 0.86. Its
+  Addis answer does not depend on who processed it — with ftir_20's optimism ×1.01, the
+  strongest robustness claim in the deck.
+- **Ethiopia-shaped smoke fails the held-out TOR test** (R² **0.00**, slope **−2.20**).
+  It is still carried in the matrix at intercept −3.69 but has no site-disjoint skill; it
+  should be asterisked alongside the spectral analogs. Passing cleanly: lowest-OC/EC +
+  AIRSpec (R² 0.90, slope 1.01) and lowest-OC/EC (0.91 / 0.87).
+- **Confounds inherent to an end-to-end comparison** (stated, not corrected): the app mode
+  fits on the whole cohort (800) vs the site-held-out training part (606), so training size travels
+  with the protocol; and the app mode yields no site-disjoint test by construction.
+  Figures: `both_modes_crossplots.png` (per-panel square axes — predictions reach
+  ~17 µg/m³ against a HIPS axis topping at 8.7, so one shared range would clip),
+  `intercept_slope_by_mode.png`.
+
+### Which earlier figures depend on the component choice?
+
+`K_SENSITIVITY_AUDIT.md` classifies every committed figure. Summary: the band-identity
+(ftir_12), implied-MAC (ftir_16) and spectra-comparison (ftir_17) figures involve no
+calibration and are **k-free**; ftir_19's MAC figures are **structurally invariant** (the
+pivot-on-the-intercept result is algebra, true for any k); the ftir_11/13 crossplots and the
+intercept ladder are **superseded** by ftir_21's both-protocol versions; and
+`calibration_setup_matrix.png` now carries **both** intercept columns. Still conditional on
+the site-held-out component choice and **not re-run**: ftir_15's bootstrap CI and residual
+structure, and ftir_17's no-cleaning full-pool crossplots. Second-order caveat: for the
+spectral-analog and hybrid cohorts, k changes cohort *membership* (selection runs through a
+fitted PLS score space + VIP weights), so those rows vary only the fit.
+
+### Standalone per-protocol figure set
+
+`scripts/build_protocol_variants.py` → `output/plots/deck/by_protocol/{calibration_app,
+site_held_out}/`: each k-dependent figure written twice, one folder per protocol with
+matching file names, for one-protocol-per-slide use (the ftir_21/22 versions overlay both).
+Eight figures in each folder: `calibration_setup_matrix` (that protocol's intercept column
+only), `crossplots_all_setups`, `intercept_slope_ladder`, `mac_effect_all_setups`,
+`mac_slope_pivot`, `bootstrap_intercept_ci`, `residual_vs_d2`, `cohort_size_sweep`. Colour encodes the
+calibration setup (matching the combined matrix/ladder), not the protocol — the folder and
+subtitle carry that. Read from committed tables, so regeneration is instant and cannot
+drift from the notebooks.
+
+### ftir_22 — the k-dependent figures re-derived under both protocols
+
+- **ftir_15 survives**: the raw-vs-corrected residual distinction holds under both
+  protocols (D² r = 0.87 app / 0.71 site-held-out for raw; 0.33 / 0.21 corrected), and the
+  corrected bootstrap CIs overlap ([−2.07, −1.03] app vs [−1.78, −1.17] site-held-out, both
+  excluding zero). The site-held-out numbers reproduce ftir_15's committed 0.71 / −0.05.
+- **ftir_11's "N = 800 is the sweet spot" is protocol-dependent.** Site-held-out picks 800
+  (intercept −3.22, RMSE 1.16, held-out TOR R² 0.911, vs 0.793 at 1600); under the
+  Calibration app protocol intercept and RMSE improve monotonically to N = 1600
+  (−5.56 → −4.59 → −4.17). What selects 800 is the held-out TOR test, which only one
+  protocol produces — state the protocol whenever the cohort size is defended.
+- **Interleaved CV is order-dependent, so the app protocol is not reproducible.** The same
+  800 filters give k = 18 ranked by OC/EC, 19 in the committed CSV order, 15 shuffled;
+  site-grouped CV gives k = 5 in all three. This also explains the k = 18 vs 19 difference
+  between ftir_21 and ftir_22 on identical data.
+
+## ftir_23 — how each protocol picks its components, protocol by protocol
+
+Shows the decision, not just its result: each cohort's CV curve under one protocol with
+that rule's own machinery drawn on it (`output/plots/ftir23/selection_curves_app.png`,
+`selection_curves_site_heldout.png`), then the Addis crossplot the chosen model produces
+(`selection_and_consequence_*.png`). Rule internals are re-derived and asserted equal to
+the production selectors, so the drawings cannot drift from what runs.
+
+- **Both rules stop well short of the curve minimum.** Selected k vs where the curve
+  bottoms — Calibration app: 27/30, 19/21, 17/19, **9/26**, 17/20, 19/25; site-held-out:
+  15/17, 4/4, **10/26**, **4/29**, 6/9, 5/5. The spectral-analog curve falls monotonically
+  to k ≈ 26–29 and both rules refuse to follow it — the cohort with no held-out TOR skill,
+  so chasing the CV minimum would have selected the worst calibration in the set.
+- **The two curves are different objects.** The app's pooled RMSECV (√(PRESS/n) over
+  position-based folds) carries no fold-to-fold spread and so cannot support an error band;
+  the site-grouped curve averages per-fold RMSEs and keeps one. On the IMPROVE-network and
+  smoke cohorts that ±1 SE ribbon spans several µg/filter — "the minimum is at k = 17" is
+  not supported by those data. The app curve looks decisive because it discards the
+  information that would say otherwise.
+- **Where the curve genuinely bottoms early, the protocols agree**: biomass-smoke (4/4) and
+  lowest-OC/EC + AIRSpec (5/5) take their true global minimum under the site-held-out rule.
+  The disagreement is specifically about long flat tails, where the 5% band admits far more
+  components than the evidence separates.

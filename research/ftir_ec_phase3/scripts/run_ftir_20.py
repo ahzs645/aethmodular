@@ -33,11 +33,14 @@
 # — the June settings), giving the four curves per panel.
 #
 # The six cohorts are rebuilt from committed membership tables so they are the same
-# training sets behind the matrix, with two labelling notes: the deployed SPARTAN model's
-# own training set is not archived here, so the **no-cleaning full pool** (13,010 filters,
-# every eligible lot-248/251 filter, no selection) stands in for it exactly as in
-# ftir_17/ftir_18; and the locked spectral-analog cohort is the top **500** candidates —
-# the matrix's "400" is the superseded ftir_09 exploratory selection.
+# training sets behind the matrix, with two labelling notes. First, the matrix's
+# "Deployed SPARTAN" row appears here as what it actually is on the training side: the
+# **entire IMPROVE network** — every eligible lot-248/251 filter, no selection of any kind
+# (13,010 filters, 158 sites). The deployed model is a network calibration trained on
+# IMPROVE; the only SPARTAN spectra in this project are ETAD's, and those are the
+# *evaluation* set, never training data, so labelling a training cohort "SPARTAN" would be
+# a category error. Second, the locked spectral-analog cohort is the top **500** candidates
+# — the matrix's "400" is the superseded ftir_09 exploratory selection.
 #
 # RMSECV is reported as **%RMSECV** (100 × RMSECV / mean cohort EC loading) so cohorts with
 # very different loadings are comparable; absolute µg minima are in the summary table.
@@ -113,7 +116,7 @@ analog = pd.read_csv(PHASE2_TABLES / 'pls_calibration_phase2/locked_analog_train
 ocec = pd.read_csv('output/tables/ftir11/lowest_ocec_800_cohort.csv')
 
 MEMBERSHIP = {
-    'Deployed SPARTAN\n(full-pool proxy)': pool.index.to_numpy(),
+    'Entire IMPROVE network\n(13,010, no selection)': pool.index.to_numpy(),
     'Biomass-smoke (906)': smoke['AnalysisId'].to_numpy(int),
     'Ethiopia-shaped smoke (300)':
         smoke.loc[smoke['selected_Ethiopia_shaped_smoke'], 'AnalysisId'].to_numpy(int),
@@ -279,7 +282,7 @@ display(optimism[optimism['preprocessing'] == 'raw'].round(2))
 
 # %%
 LOCKED = pd.DataFrame([
-    {'cohort': 'Deployed SPARTAN (full-pool proxy)', 'locked_k': 6,
+    {'cohort': 'Entire IMPROVE network (13,010, no selection)', 'locked_k': 6,
      'source': 'ftir_11 k for raw pool models (ftir_17/18 full-pool runs)'},
     {'cohort': 'Biomass-smoke (906)', 'locked_k': 31, 'source': 'phase-2 deployed-family "Smoke IMPROVE (906, k=31)"'},
     {'cohort': 'Ethiopia-shaped smoke (300)', 'locked_k': 21, 'source': 'phase-2 "Ethiopia-shaped smoke (300, k=21)"'},
@@ -336,21 +339,25 @@ for ax, name in zip(axes.flat, PANEL_ORDER):
     interleaved = curves[(name, 'raw', 'interleaved 10-fold')]
     grouped = curves[(name, 'raw', 'site-grouped 5-fold')]
     ax.set_title(name, fontsize=10.5, color=INK)
+    ratio = grouped['pct_rmsecv'].min() / interleaved['pct_rmsecv'].min()
     ax.text(.97, .95,
-            f'raw k: {select_within_tolerance(interleaved)} interleaved/within-5%\n'
-            f'      → {select_first_major_minimum(grouped.rename(columns={"rmsecv": "rmse_mean"}))[0]}'
-            f' grouped/first-major\nn = {len(cohort_ids[name])}',
+            f'raw k: {select_within_tolerance(interleaved)} app'
+            f' → {select_first_major_minimum(grouped.rename(columns={"rmsecv": "rmse_mean"}))[0]}'
+            f' phase 3\n'
+            f'error floor ×{ratio:.2f} when sites\nare held out\nn = {len(cohort_ids[name])}',
             transform=ax.transAxes, va='top', ha='right', fontsize=8.6, color=MUTED,
             bbox=dict(facecolor='white', edgecolor='0.85', alpha=.92))
-    ax.set_ylim(bottom=0)
-    ax.grid(axis='y', color='0.92', lw=.7)
+    # Log y: the raw interleaved curves spike to several hundred percent on the smoke
+    # cohorts, which would flatten the floor region that the selection rules act on.
+    ax.set_yscale('log')
+    ax.grid(axis='y', color='0.92', lw=.7, which='both')
     ax.set_axisbelow(True)
     for spine in ('top', 'right'):
         ax.spines[spine].set_visible(False)
 for ax in axes[1]:
     ax.set_xlabel('n PLS components')
 for ax in axes[:, 0]:
-    ax.set_ylabel('%RMSECV  (100 × RMSECV / mean EC)')
+    ax.set_ylabel('%RMSECV  (100 × RMSECV / mean EC, log scale)')
 fig.legend(handles=[
     Line2D([], [], color=RAW_COLOUR, lw=1.6, label='raw spectra'),
     Line2D([], [], color=D2_COLOUR, lw=1.6, label='2nd-derivative (SG 11/2)'),
@@ -394,19 +401,21 @@ for yi, name in enumerate(rows):
     ax.text(max(values) + .9, yi, f'locked k = {int(LOCKED.set_index("cohort").loc[name.replace(chr(10), " "), "locked_k"])}',
             va='center', fontsize=9, color=MUTED, fontfamily='monospace')
 ax.set_yticks([])
-ax.set_ylim(-.7, len(rows) - .3)
+ax.set_ylim(-.7, len(rows) - .3 + .75)   # headroom so the legend clears the top row
 ax.set_xlim(0, MAX_COMPONENTS + 4)
 ax.set_xlabel('PLS components chosen')
-ax.set_title('Site-grouped CV + first-major-minimum (open squares) lands far below\n'
-             'interleaved CV + within-5% (filled circles) on every cohort',
-             fontsize=12.5, fontweight='bold', color=INK, loc='left')
+ax.set_title('The two protocols disagree on k by up to 3× — and not always in the same '
+             'direction\n'
+             'filled = interleaved CV + within-5% (app) · open = site-grouped CV + '
+             'first-major-minimum (phase 3)',
+             fontsize=12, fontweight='bold', color=INK, loc='left')
 ax.legend(handles=[
     Line2D([], [], color=RAW_COLOUR, lw=6, alpha=.5, label='raw'),
     Line2D([], [], color=D2_COLOUR, lw=6, alpha=.5, label='2nd-derivative'),
     Line2D([], [], color=INK, marker='o', ls='', markersize=8, label='app rule'),
     Line2D([], [], color=INK, marker='s', ls='', markersize=8, markerfacecolor='white',
            label='phase-3 rule'),
-], loc='lower right', frameon=False, fontsize=9.5, ncol=2)
+], loc='upper left', frameon=False, fontsize=9.5, ncol=2)
 for spine in ('top', 'right', 'left'):
     ax.spines[spine].set_visible(False)
 ax.grid(axis='x', color='0.93', lw=.7)
