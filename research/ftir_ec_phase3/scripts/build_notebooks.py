@@ -146,7 +146,191 @@ SCRIPTS = {
     "12": ("run_ftir_12.py", "ftir_12_band_1600_identity.ipynb"),
     "13": ("run_ftir_13.py", "ftir_13_airspec_corrected_calibrations.ipynb"),
     "15": ("run_ftir_15.py", "ftir_15_uncertainty_and_hybrid.ipynb"),
+    "16": ("run_ftir_16.py", "ftir_16_mac_decision_prep.ipynb"),
+    "17": ("run_ftir_17.py", "ftir_17_deck_figures_and_seasonal_spectra.ipynb"),
+    "18": ("run_ftir_18.py", "ftir_18_transfer_roundup.ipynb"),
+    "19": ("run_ftir_19.py", "ftir_19_mac_effect_on_calibrations.ipynb"),
+    "20": ("run_ftir_20.py", "ftir_20_component_selection_across_setups.ipynb"),
 }
+
+TLDR["16"] = """\
+Three preparation results for the MAC = 6-vs-10 decision. **(1) SPARTAN's public
+`ChemSpec_EC` for ETAD is confirmed to be HIPS Fabs / 10** (median ratio 0.101, r = 0.89,
+implied MAC 9.89, n = 175) — it is a unit convention, not an independent EC reference, and
+must not be used to break the tie. **(2) The Adama-composition bridge sharpens the fork into a
+trichotomy**: if Addis aerosol had Adama's TOR OC/EC (4.6–7.2, median 6.1), the MAC that
+reconciles Addis HIPS Fabs with FTIR OC would be **≈47 m²/g (IQR 36–56)** — far outside any
+physical EC MAC (~4–13). Therefore at least one of these is true: Addis OC/EC is really ~5–8×
+lower than Adama's (massive EC); a large fraction of Addis Fabs is **non-EC absorption**
+(BrC, dust/iron, or filter artifact — consistent with the season-stable −2 to −2.6 µg/m³
+corrected-model offset in `ftir_15`); or FTIR OC is badly low at Addis. **(3) A modest
+co-located quartz TOR campaign decides it**: each sampling day separates the MAC = 6 and
+MAC = 10 hypotheses by ~3σ, so **11–13 days per season (≈36 total)** reaches 5σ per season
+even if half the signal is lost to protocol systematics. TOR requires quartz, so archived
+Addis Teflon filters cannot substitute; the Adama Batch-54 chain proves the logistics exist.
+**(4) The IMPROVE implied-MAC bridge (151,843 matched filters, run after the relocated
+`FTIR/local_db` was found) favors MAC = 10 at Addis-like composition**: implied MAC =
+Fabs/TOR-EC has overall median 11.96 (IQR 9.0–15.7), and in the Addis-like OC/EC ≤ 2.27
+subset (n = 6,503) median **10.05** (IQR 6.9–13.1) — MAC = 10 sits at the center, MAC = 6 in
+the lower tail. Together with ftir_13/ftir_15 this tilts the fork toward MAC ≈ 10 + the
+corrected model + a genuine non-EC absorption component at Addis, pending the quartz
+campaign's direct answer."""
+
+TAKEAWAYS["16"] = """\
+- **Do not cite ChemSpec EC as independent support for MAC = 10** — it *is* MAC = 10 by
+  construction (Fabs/10, r = 0.89 against HIPS on the same base filters).
+- **The Adama bridge turns the MAC fork into a three-way test.** Implied MAC ≈ 47 m²/g under
+  Adama-like composition is unphysical for EC, so the data force one of: (a) genuinely
+  extreme Addis EC (OC/EC ≈ 1, the low-OC/EC-cohort world), (b) dominant non-EC absorption in
+  Addis HIPS Fabs (BrC/dust/artifact — the original HIPS-offset hypothesis, and the natural
+  reading of ftir_15's season-stable offset), or (c) a large FTIR OC underestimate. A quartz
+  TOR campaign measures (a) directly and, combined with HIPS on paired Teflon, apportions (b).
+- **Campaign spec: ~12 days × 3 seasons of co-located quartz at ETAD** (or Bishoftu/ETBI,
+  which now has HIPS data), analyzed IMPROVE_A TOR like Adama Batch-54. Statistics are not
+  the constraint (~3σ/day); seasonal and protocol systematics are — spread days across
+  seasons rather than concentrating them.
+- **Adama itself argues against the 'simple charcoal EC' story**: its wet-season OC/EC
+  (median 6.1) sits at the IMPROVE median, echoing the meeting's observation that Adama does
+  not look charcoal-heavy in OC/EC space. If Addis winter differs, that is precisely what the
+  campaign's Dry-season leg tests.
+- **The IMPROVE bridge undercuts the raw-at-MAC6 reading.** On 151,843 IMPROVE filters,
+  HIPS-vs-TOR implied MAC at Addis-like OC/EC is centered on 10 (median 10.05), not 6; the
+  mild downward trend toward low OC/EC (12 mid-range → 10.4 lowest decile) and the inflated
+  high-OC/EC tail (median 19.8) both fit Fabs carrying non-EC absorption that scales with
+  organics. Caveat: IMPROVE and SPARTAN HIPS protocol comparability remains an assumption
+  (as in ftir_08)."""
+
+
+TLDR["17"] = """\
+The three missing meeting figures now exist, and two of them sharpen existing conclusions.
+**(1) The all-data cross plot, new orientation** (deployed predictions exist only for the
+fixed 190-filter cohort, so "all data" *is* that cohort): deployed SPARTAN FTIR EC vs HIPS
+reads **y = 1.90x − 4.17** (R² 0.764, RMSE 1.49) at MAC = 10 and **y = 1.14x − 4.17**
+(RMSE 3.25) at MAC = 6 — both panels are in `output/plots/deck/`. **(2) A protocol-matched
+no-cleaning calibration is a slope trap at full scale**: training on all **13,010** eligible
+lot-248/251 filters (158 sites, no selection of any kind) yields seductive intercepts
+(−1.33 raw, −0.61 corrected) but collapsed Addis slopes (**0.66 / 0.40**) and the worst
+held-out TOR tests of phase 3 (R² **0.53 / 0.63**, slope ≈ 0.70) — ftir_11's "intercept
+alone is not an acceptance criterion" warning, demonstrated on the whole pool. **(3) The
+side-by-side full-range spectra** relocate Addis's strangeness: in CH-normalized corrected
+space Addis sits *below* every IMPROVE cohort — roughly **half the broad O–H/N–H
+(3000–3600 cm⁻¹) and carbonyl absorption per unit CH** (≈2.0 vs 4.6–5.2 at the 3200 peak;
+≈0.9 vs 1.9–3.4 at carbonyl) and below the full pool's IQR — i.e. Addis is missing
+oxygenated-organic absorption relative to IMPROVE, the spectra-level face of the low-OC/EC
+ranking. **(4) Naveed's seasons split**: seasonal differences are **loading, not shape** —
+CH (0.005→0.013), carbonyl, 1600-band height, deployed EC (3.3→7.2 µg/m³) and Fabs (43→56)
+all peak in Kiremt, while the 1600-band center stays at **1617–1619 cm⁻¹ in all three
+seasons** and 1600/CH moves only 0.62–0.75. The one shape effect is the broad O–H region,
+relatively strongest in the Dry season (0.020 vs 0.016 Kiremt in absolute corrected median
+despite half the CH)."""
+
+TAKEAWAYS["17"] = """\
+- **Deck gap closed.** `deployed_alldata_crossplot.png` and
+  `no_cleaning_fullpool_crossplots.png` are in `output/plots/deck/` alongside the intercept
+  ladder; the original calibration's real slope/intercept (1.90/−4.17 at MAC = 10,
+  1.14/−4.17 at MAC = 6) can be read straight off the plot.
+- **"No cleaning" is now a measured baseline, not a hypothetical.** Its near-zero intercepts
+  come with collapsed slopes and degraded TOR tests — the full-pool version of the
+  random-cohort trap — so the OCEC-800 selection is defended from both directions
+  (better than smoke-906 *and* better than no selection at all).
+- **Addis's spectral signature is a deficit, not an exotic peak.** Per unit CH it carries
+  about half the oxygenated (O–H, carbonyl) absorption of any IMPROVE cohort and falls
+  below the 13.6k pool's IQR — supporting the view that IMPROVE simply lacks
+  charcoal-like, oxygenation-poor samples rather than Addis having features IMPROVE spectra
+  can't express.
+- **The 1600-band identity is not a seasonal artifact**: its center is 1617–1619 cm⁻¹ in
+  Dry, Belg, and Kiremt alike, and composition ratios barely move across seasons — consistent
+  with ftir_15's season-stable corrected offset. Season mainly modulates loading (all bands,
+  EC, and Fabs peak in Kiremt), with a relative Dry-season enhancement of the broad O–H band
+  as the one shape change.
+- **Caveat**: the full-pool models use the locked k from ftir_11/13 (6 raw, 5 corrected) as
+  fixed-k sensitivity, not a fresh CV selection; and 43 of 296 Addis spectra lack sampling
+  dates and are excluded from the seasonal split."""
+
+
+TLDR["18"] = """\
+Answers the deck-review question — the ftir_08 transfer trains on the **916** HIPS-matched
+IMPROVE filters; did we also test a model trained on **all** sites, since TOR exists for the
+whole pool? — by putting every calibration family on one set of axes (same 239 Addis filters,
+HIPS EC-equivalent orientation, MAC = 10; MAC = 6 in the tables). Three results. **(1) A
+lineage audit**: ftir_09's "Current IMPROVE TOR EC" is **byte-identical to the smoke-906
+calibration** (max |Δ| = 0 across all 239 predictions; the deployed SPARTAN EC is a different
+model, corr 0.963) — so phase 2 never actually drew a full-pool TOR transfer on these axes,
+and any citation of the ftir_09 numbers (slope 2.30, R² 0.607) should say smoke-906.
+**(2) Yes — and it transfers no better**: the no-cleaning full-pool model (13,010 filters,
+158 sites, k = 6 raw; retrained per-filter here, reproducing ftir_17's held-out metrics to
+1e-9) reads Addis slope **0.60**, intercept **−1.09**, R² **0.691**, RMSE **3.11**,
+bias **−3.0 µg/m³** on the 239 available pairs. Thirteen thousand TOR filters buy tracking
+(R² 0.69 vs 0.26 for the HIPS-916 transfer) but not calibration: the slope collapses and a
+−3 µg/m³ offset remains. **(3) The roundup figure** (`output/plots/deck/transfer_roundup.png`)
+shows the three as-is transfers failing in three distinct ways — flat and uninformative
+(HIPS-916: 0.22x, R² 0.26), steep with a deep offset (smoke-906: 2.30x − 5.38, the deck's
+−6.91 being the fixed-cohort row), compressed low (full pool: 0.60x − 1.09) — while the
+bottom row walks toward the local ceiling: deployed 1.90x − 4.17 (R² 0.764), OCEC-800 +
+AIRSpec 0.78x − 1.28 (RMSE 2.46), Addis-only nested CV **0.91x + 0.43** (R² 0.883,
+RMSE 0.38). No IMPROVE-trained model — 906, 916, or 13,010 samples, TOR or HIPS target —
+gets slope and intercept simultaneously right at Addis."""
+
+TAKEAWAYS["18"] = """\
+- **The answer to the meeting question is "yes, and it doesn't help."** A TOR-target model
+  on the full pool improves R² over the HIPS-916 transfer (0.69 vs 0.26) simply because 13k
+  training filters beat 916, but slope (0.60) and bias (−3.0 µg/m³) stay wrong. More sites is
+  not a substitute for local calibration or an explicit transfer step.
+- **Correct the record on ftir_09**: its "Current IMPROVE TOR EC" panel *is* the smoke-906
+  model (audited: EC_current ≡ EC_smoke_906). The full-pool TOR transfer had never been drawn
+  per-filter until now.
+- **The failure modes argue for slope-and-bias correction, not naive transfer.** Every TOR
+  transfer is roughly linear at Addis (R² 0.55–0.76) with the wrong gain and offset —
+  correctable with a small local anchor — whereas the HIPS-916 transfer has no usable gain
+  (slope 0.22 available pairs, 0.15 fixed cohort). If a domain-adaptation step is pursued,
+  TOR-target models are the ones worth adapting.
+- **One deck figure now carries the whole training-set story** (`transfer_roundup.png`):
+  naive transfers on top, deployment → targeted cohort → local calibration on the bottom,
+  every panel on identical axes with n, slope, intercept, R², RMSE readable per panel.
+- **Caveats**: the full-pool panel uses the locked k (6 raw / 5 corrected) rather than a
+  fresh CV sweep; the deployed panel exists only for the fixed 190-filter cohort; the
+  HIPS-native panels are MAC-invariant by construction, so their MAC = 6 table rows are pure
+  rescalings; and IMPROVE-vs-SPARTAN HIPS protocol comparability remains an assumption, as
+  in ftir_08/ftir_16."""
+
+
+TLDR["19"] = """\
+The deck question — apply the HIPS "MAC fix" (Fabs/6 instead of Fabs/10) to every
+calibration setup — has a structural answer, shown here per-filter for all six setups in
+`calibration_setup_matrix` on the fixed 190-filter cohort. Because HIPS enters every
+crossplot as x = Fabs/MAC, switching MAC rescales x by a constant, so **every setup keeps
+its intercept and R² exactly and its slope scales by exactly 0.6** (audited: the
+recomputed fixed-cohort fits match the committed phase-2/ftir_13 metrics to 1e-9, and
+intercept@MAC6 ≡ intercept@MAC10 for all six). The matrix's intercept column is therefore
+MAC-proof — no MAC choice moves −4.17 / −6.91 / −3.69 / −3.22 / −1.62 — and the MAC fork
+is fought entirely on **slopes**: MAC = 6 makes the raw models self-consistent
+(lowest-OCEC 800 **0.95**, Ethiopia-shaped smoke **1.05**, deployed 1.14) while MAC = 10
+is where the AIRSpec model lands closest (**0.86**) — the raw-at-MAC6 vs
+corrected-at-MAC10 fork of ftir_13/ftir_16, now visible setup by setup as a pivot around
+each fixed intercept (`output/plots/deck/mac_effect_all_calibrations.png`, slope summary
+in `mac_slope_pivot.png`). One deck erratum found and fixed: the matrix quoted the
+AIRSpec intercept as −1.61, but the committed value is −1.6151 → **−1.62** (ftir_13's
+tl;dr had it right; `build_deck_figures.py` and the deck PNGs are corrected)."""
+
+TAKEAWAYS["19"] = """\
+- **The MAC fix cannot repair any intercept.** Changing the assumed HIPS MAC rescales the
+  x-axis only, so each calibration pivots around its intercept — the offsets in the setup
+  matrix survive any MAC choice, and arguments about the intercept and arguments about
+  MAC are fully separable.
+- **The MAC fork is a slope contest, and the sides are unchanged**: raw-spectra models
+  look self-consistent at MAC = 6 (OCEC-800 0.95, Ethiopia-shaped 1.05, deployed 1.14),
+  the AIRSpec OCEC-800 model at MAC = 10 (0.86). External evidence (ftir_16's IMPROVE
+  implied-MAC bridge, median 10.05 at Addis-like OC/EC; ftir_15's season-stable corrected
+  residuals) still tilts the fork toward MAC ≈ 10 + the corrected model.
+- **R² is MAC-invariant too, so "fit quality" cannot arbitrate MAC** — RMSE and bias do
+  swing with MAC, but only as re-expressions of the slope change, not as independent
+  evidence.
+- **Deck correction**: AIRSpec intercept is −1.62 (−1.6151), not −1.61;
+  `calibration_setup_matrix.png` and `intercept_ladder.png` regenerated.
+- **Caveats**: headline panels are the fixed 190-filter cohort (available-pairs rows in
+  the metrics CSV); the spectral-analogs setup is shown only for completeness (fails the
+  held-out TOR test); and IMPROVE-vs-SPARTAN HIPS protocol comparability remains an
+  assumption, as in ftir_08/ftir_16/ftir_18."""
 
 
 def script_to_cells(text: str) -> list:
@@ -196,7 +380,12 @@ def build(number: str) -> None:
             "# " + line if line else "#" for line in replacement.splitlines()
         ).removeprefix("# ") + text[placeholder_at + len(PLACEHOLDER):]
 
-    notebook = nbformat.v4.new_notebook(cells=script_to_cells(text))
+    cells = script_to_cells(text)
+    # nbclient runs headless (Agg): switch the first code cell to the inline
+    # backend so plt.show() embeds figures instead of warning.
+    first_code = next(c for c in cells if c.cell_type == "code")
+    first_code.source = "%matplotlib inline\n" + first_code.source
+    notebook = nbformat.v4.new_notebook(cells=cells)
     client = NotebookClient(notebook, timeout=1800,
                             resources={"metadata": {"path": "."}})
     client.execute()

@@ -39,8 +39,16 @@ class FTIRTransferPaths:
             / "Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive"
         )
         data = drive / "University/Research/Grad/UC Davis Ann/NASA MAIA/Data"
+        # The FTIR folder moved on Drive in July 2026; accept either location.
+        ftir_candidates = (
+            drive / "University/Research/Grad/Data/FTIR",
+            drive / "FTIR",
+        )
+        ftir_dir = next(
+            (path for path in ftir_candidates if path.exists()), ftir_candidates[0]
+        )
         return cls(
-            ftir_dir=drive / "FTIR",
+            ftir_dir=ftir_dir,
             etad_dir=data / "DAVIS/ETAD FTIR",
             spartan_hips_primary=data / "Spartan/SPARTAN_HIPS_Batch1-51.v2.csv",
             spartan_hips_backup=drive / "Downloads Backup/HIPS_all_SPARTAN_batches.csv",

@@ -19,11 +19,17 @@ spectra other than ETAD exist locally**:
 
 ## What to request / run
 
-A repeat of the ETAD pull with the site filter widened to INDH, CHTS (and USPA as a
-low-concentration control):
+A repeat of the ETAD pull with the site filter widened to INDH, CHTS, **ETBI (Bishoftu —
+now has 26 HIPS filters, see `output/tables/context/etad_etbi_hips_summary.csv`)**, and
+USPA as a low-concentration control:
 
-1. Adapt `etad_lots_query.sql` → site codes INDH/CHTS/USPA, same columns
-   (`SampleAnalysisId`, `MediaId`, spectra, metadata incl. `SampleVolume_m3`).
+1. Adapt `etad_lots_query.sql` → site codes INDH/CHTS/ETBI/USPA, same columns.
+   Exact target shapes, so the local pipeline runs unmodified:
+   - `<SITE>_FTIR_spectra.csv`: `SampleAnalysisId, MediaId, <2722 wavenumber columns>`
+     (3998.42 → ~500 cm⁻¹ descending, identical grid to `ETAD_FTIR_spectra.csv`);
+   - `<SITE>_metadata.csv`: `SiteCode, Description, Latitude, Longitude, MediaId,
+     ExternalFilterId, ExternalFilterType, SamplingStartDate, SamplingEndDate,
+     MassCollectedOnFilter_ug, SampleVolume_m3`.
 2. Export as `<SITE>_FTIR_spectra.csv` + `<SITE>_metadata.csv` next to the ETAD files.
 3. Then the analysis is ~30 lines with existing helpers: project all sites into the
    deployed EC model's score space (and the ftir_11 lowest-OCEC model's), report
