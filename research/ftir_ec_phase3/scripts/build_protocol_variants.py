@@ -71,6 +71,7 @@ plt.rcParams.update({'font.family': 'DejaVu Sans', 'font.size': 11,
 
 T21 = ROOT / 'output/tables/ftir21'
 T22 = ROOT / 'output/tables/ftir22'
+T23 = ROOT / 'output/tables/ftir23'
 
 COHORT_ORDER = [
     'Entire IMPROVE network (13,010, no selection)',
@@ -354,6 +355,72 @@ def fig_mac_slope_pivot(mode, metrics):
     return _save(fig, 'mac_slope_pivot', mode)
 
 
+def fig_component_selection(mode, curves, decisions):
+    """The CV curve and the rule that chose k, one protocol only (cf. ftir_23).
+
+    Draws each rule's own machinery: the Calibration app's within-5% acceptance band, or
+    the site-held-out protocol's ±1 SE ribbon with every local minimum marked.
+    """
+    part_curves = curves[curves['mode'] == mode]
+    part_decisions = decisions[decisions['mode'] == mode].set_index('cohort')
+
+    fig, axes = plt.subplots(2, 3, figsize=(14.4, 8.4))
+    for ax, cohort in zip(axes.flat, COHORT_ORDER):
+        curve = part_curves[part_curves['cohort'] == cohort].sort_values('n_components')
+        row = part_decisions.loc[cohort]
+        colour = SETUP_COLOUR[cohort]
+        components = curve['n_components'].to_numpy(int)
+        values = curve['rmsecv'].to_numpy(float)
+
+        if mode == 'site_heldout':
+            se = curve['rmse_se'].to_numpy(float)
+            ax.fill_between(components, values - se, values + se, color=colour,
+                            alpha=.13, lw=0)
+        ax.plot(components, values, '-', color=colour, lw=1.7, zorder=3)
+        ax.axhline(float(row['threshold_rmsecv']), color=MUTED, lw=1, ls=':', zorder=2)
+        if mode == 'app':
+            ax.axhspan(values.min(), float(row['threshold_rmsecv']), color=MUTED,
+                       alpha=.09, lw=0)
+        else:
+            for minimum in (int(m) for m in str(row['local_minima']).split()
+                            if m and m != 'nan'):
+                index = list(components).index(minimum)
+                ax.scatter([minimum], [values[index]], s=26, facecolors='white',
+                           edgecolors=colour, lw=1.1, zorder=4)
+
+        chosen = int(row['k'])
+        chosen_index = list(components).index(chosen)
+        ax.scatter([chosen], [values[chosen_index]], s=150, color=colour, zorder=6,
+                   edgecolors='white', lw=1.6)
+        ax.annotate(f'k = {chosen}', (chosen, values[chosen_index]),
+                    textcoords='offset points', xytext=(0, 17), ha='center',
+                    fontsize=10.5, fontweight='bold', color=colour, zorder=7,
+                    bbox=dict(facecolor='white', edgecolor='none', pad=1.5))
+        if int(row['global_min_k']) != chosen:
+            ax.text(.98, .04, f"curve bottoms at k = {int(row['global_min_k'])}",
+                    transform=ax.transAxes, ha='right', va='bottom', fontsize=8.2,
+                    color=MUTED)
+
+        title = cohort + ('  ⚠' if cohort in FAILS_TOR else '')
+        ax.set_title(title.replace(' (', '\n('), fontsize=10, color=INK)
+        ax.set_xlim(0, 31)
+        ax.margins(y=.14)
+        ax.grid(axis='y', color='0.94', lw=.7)
+        ax.set_axisbelow(True)
+        for spine in ('top', 'right'):
+            ax.spines[spine].set_visible(False)
+    for ax in axes[1]:
+        ax.set_xlabel('n PLS components')
+    for ax in axes[:, 0]:
+        ax.set_ylabel('RMSECV (µg/filter)')
+    rule = ('shaded: within 5% of the minimum'
+            if mode == 'app' else 'ribbon: ±1 SE · open dots: local minima')
+    _stamp(fig, f"How this protocol chooses k — dotted line: acceptance threshold · {rule}",
+           mode)
+    fig.tight_layout()
+    return _save(fig, 'component_selection', mode)
+
+
 def fig_bootstrap(mode, draws):
     """Site-cluster bootstrap of the Addis intercept/slope, one protocol only (cf. ftir_15)."""
     part = draws[draws['mode'] == mode]
@@ -446,6 +513,8 @@ def main():
     draws = pd.read_csv(T22 / 'bootstrap_draws_by_mode.csv')
     residuals = pd.read_csv(T22 / 'addis_residuals_by_mode.csv')
     sweep = pd.read_csv(T22 / 'cohort_size_sweep_by_mode.csv')
+    selection_curves = pd.read_csv(T23 / 'selection_curves.csv')
+    selection_decisions = pd.read_csv(T23 / 'selection_decisions.csv')
 
     # Remove the previous flat layout (<figure>__<mode>.png) so the folder has one scheme.
     for stale in list(OUT.glob('*__*.png')) + list(OUT.glob('index.csv')):
@@ -454,6 +523,8 @@ def main():
     written = []
     for mode in MODES:
         written.append(fig_setup_matrix(mode, metrics))
+        written.append(fig_component_selection(mode, selection_curves,
+                                               selection_decisions))
         written.append(fig_crossplots(mode, predictions, metrics))
         written.append(fig_intercept_ladder(mode, metrics))
         written.append(fig_mac_effect(mode, predictions, metrics))

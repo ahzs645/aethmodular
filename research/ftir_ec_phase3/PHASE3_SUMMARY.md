@@ -316,8 +316,9 @@ fitted PLS score space + VIP weights), so those rows vary only the fit.
 `scripts/build_protocol_variants.py` → `output/plots/deck/by_protocol/{calibration_app,
 site_held_out}/`: each k-dependent figure written twice, one folder per protocol with
 matching file names, for one-protocol-per-slide use (the ftir_21/22 versions overlay both).
-Eight figures in each folder: `calibration_setup_matrix` (that protocol's intercept column
-only), `crossplots_all_setups`, `intercept_slope_ladder`, `mac_effect_all_setups`,
+Nine figures in each folder: `calibration_setup_matrix` (that protocol's intercept column
+only), `component_selection` (the CV curve and the rule that chose k),
+`crossplots_all_setups`, `intercept_slope_ladder`, `mac_effect_all_setups`,
 `mac_slope_pivot`, `bootstrap_intercept_ci`, `residual_vs_d2`, `cohort_size_sweep`. Colour encodes the
 calibration setup (matching the combined matrix/ladder), not the protocol — the folder and
 subtitle carry that. Read from committed tables, so regeneration is instant and cannot

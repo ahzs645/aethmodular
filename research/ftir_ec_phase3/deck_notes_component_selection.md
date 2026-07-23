@@ -93,6 +93,33 @@ values are in `component_selection_summary.csv`.
 
 ---
 
+## Slide 3 (optional deep-dive) — `by_protocol/<protocol>/component_selection.png`
+
+Use when someone asks "so how did you actually pick 5?" — one slide per protocol, the
+curve with the rule drawn on it.
+
+> This is the same cross-validation curve, with the rule that reads it drawn on top. Ours
+> holds out whole sites, so we get an error band — that shaded ribbon is one standard
+> error across folds. We take the first real minimum that falls inside one standard error
+> of the best point. The app pools its folds into a single number, so it has no band at
+> all; its rule is "anything within five percent of the best is as good as the best," and
+> it takes the first component count that gets there.
+>
+> Two things I'd point out. First, both rules stop well short of where the curve actually
+> bottoms — look at the spectral analogs, the curve keeps falling to twenty-six or
+> twenty-nine components and both rules refuse to follow it. That's the rule doing its job:
+> that's the cohort with no held-out skill at all, so chasing the minimum would have picked
+> the worst calibration we have. Second, look at how wide the error band is on the network
+> and smoke panels. Saying "the minimum is at seventeen" isn't something those data
+> support. The app's curve looks more decisive only because pooling threw that information
+> away.
+
+**If asked whether the protocols ever agree:** yes — biomass-smoke and lowest-OC/EC +
+AIRSpec bottom early and the site-held-out rule takes their true global minimum (k = 4 and
+k = 5). The disagreement is specifically about long flat tails.
+
+---
+
 ## If asked "what about all the other figures?"
 
 `K_SENSITIVITY_AUDIT.md` goes figure by figure. The short version:

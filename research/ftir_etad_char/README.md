@@ -1,6 +1,6 @@
 # ftir_etad_char — Addis Ababa filter spectra vs the charcoal / biochar FTIR archive
 
-Ten notebooks comparing the **ETAD (Addis Ababa) ambient filter FTIR spectra** against
+Twelve notebooks comparing the **ETAD (Addis Ababa) ambient filter FTIR spectra** against
 the six published charcoal and biochar reference collections archived in
 `research/ftir_hips_chem/charcoal_ftir_sources/` (see that folder's `README.md` for DOIs
 and licenses).
@@ -23,6 +23,7 @@ this work depends on.
 | `char_09_char08_dry_vs_nondry.ipynb` | Is char_08's ranking just an average over two regimes? | No. Class ranking is **identical** dry vs non-dry (Kendall τ = 1.00) — the dry season shifts every class down together. The furnace−fire gap holds at **0.196** (non-dry) / 0.192 (anomaly rule) vs 0.211 overall, and on non-dry filters **no** filter favours fire char. Excluding the dry season raises furnace charcoal 0.776 → **0.810** |
 | `char_10_seasonal_spectra.ipynb` | What do the spectra look like season by season — raw and processed? | Purely descriptive, no charcoal; shown in the **AIRSpec-baselined + area-normalized** representation rather than SNV. The structure is **one-vs-two**: dry correlates 0.94–0.955 with the rainy seasons, while Belg and Kiremt correlate **0.980** with each other — pooling them as "non-dry" was justified at shape level, though Kiremt has more aliphatic C–H and less O–H at band level. Includes the Weakley-style **raw spectra** figure showing season differences before AIRSpec are mostly baseline |
 | `char_11_normalization_alternatives.ipynb` | Is there a better way to overlap them than SNV — including AIRSpec on both sides? | Mostly a non-question: under Pearson correlation SNV, vector, area, band-norm and *no normalization* are **identical to ~1e-15**. **AIRSpec cannot be applied to the charcoal side at all** — only 1 of 6 collections reaches its 3710 cm⁻¹ anchor — and forcing a truncated version halves cross-lab recovery (77 % → 34 %) and sends the temperature silhouette negative. **Keep the current asymmetric chain** |
+| `char_12_weakley_transferability.ipynb` | Is the deployed US-network OC/EC calibration being extrapolated to Addis? (Weakley et al. 2018 diagnostics) | Yes, as a **population property**: in second-derivative space the median ETAD filter escapes the IMPROVE 5–95 % envelope at **27 %** of pertinent wavenumbers vs a 4 % null (p = 8e-84) — every season, not just the anomaly; the lot effect is season in disguise (p = 0.95 within dry). Bonus derivative check: *charcoal-adjacent* and the dry-season deficit **survive** with no baseline at all, but char_08's furnace-over-fire ordering **flips** (97 % favour fire, p = 2e-40) — that ranking is representation-dependent |
 
 ## The baseline correction is load-bearing — read this before reusing anything
 
@@ -182,7 +183,12 @@ char says more about the furnace library being a designed 10-species × 7-temper
 that covers composition space densely than about how the Addis material was produced.
 `char_09` confirms that ordering is not a dry-season artifact — it holds, with the gap
 intact, under both exclusion rules — so the caution stands on its own rather than being
-explained away by the anomaly.
+explained away by the anomaly. `char_12` then sharpens the caution decisively: under
+Weakley-style second-derivative processing (no baseline at all) the ordering **flips** —
+97 % of filters favour the fire-produced char — while *charcoal-adjacent* and the
+dry-season deficit survive. The furnace-over-fire ranking is robust within the SNV
+chain but **representation-dependent across chains**, and should not carry any
+produced-by inference.
 
 **Quote similarities by subset.** `char_09` shows the headline r ≈ 0.78 is an average:
 it is ~**0.81** on ordinary days and ~**0.70** on dry-season days. Any future citation of

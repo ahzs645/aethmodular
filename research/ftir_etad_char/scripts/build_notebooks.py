@@ -26,6 +26,7 @@ SCRIPTS = {
     "09": ("run_char_09.py", "char_09_char08_dry_vs_nondry.ipynb"),
     "10": ("run_char_10.py", "char_10_seasonal_spectra.ipynb"),
     "11": ("run_char_11.py", "char_11_normalization_alternatives.ipynb"),
+    "12": ("run_char_12.py", "char_12_weakley_transferability.ipynb"),
 }
 
 

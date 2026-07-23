@@ -135,11 +135,12 @@ output/plots/deck/by_protocol/
   site_held_out/     <- site-grouped CV, first-major-minimum, site-disjoint fit
 ```
 
-Both folders contain the same eight file names:
+Both folders contain the same nine file names:
 
 | File | Replaces |
 |---|---|
 | `calibration_setup_matrix.png` | the deck setup matrix, this protocol's intercept column only |
+| `component_selection.png` | ftir_23 — the CV curve and the rule that chose k |
 | `crossplots_all_setups.png` | ftir_11 / ftir_13 Addis crossplots |
 | `intercept_slope_ladder.png` | the deck intercept ladder |
 | `mac_effect_all_setups.png` | ftir_19 MAC-effect crossplots |
