@@ -18,12 +18,9 @@ class PeriodClassifier(BaseAnalyzer):
         super().__init__("PeriodClassifier")
         
         # Default quality thresholds (missing minutes)
-        self.thresholds = custom_thresholds or {
-            'Excellent': 10,      # ≤ 10 missing minutes
-            'Good': 60,           # ≤ 60 missing minutes  
-            'Moderate': 240,      # ≤ 240 missing minutes
-            'Poor': float('inf') # > 240 missing minutes
-        }
+        # Single source: src/config/quality_thresholds.py
+        from src.config.quality_thresholds import completeness_tiers
+        self.thresholds = custom_thresholds or completeness_tiers()
         
         # Additional quality factors
         self.quality_factors = {
@@ -190,8 +187,15 @@ class PeriodClassifier(BaseAnalyzer):
         return pd.DataFrame(classifications)
     
     def _get_base_quality(self, missing_minutes: int) -> str:
-        """Get base quality classification from missing minutes"""
-        for quality, threshold in self.thresholds.items():
+        """Get base quality classification from missing minutes.
+
+        Thresholds are compared in ascending order rather than dict order. The
+        first matching tier wins, so iterating a caller-supplied
+        ``custom_thresholds`` in insertion order returned whichever tier merely
+        happened to be listed first -- e.g. ``{'Good': 60, 'Excellent': 10}``
+        classified 5 missing minutes as 'Good'.
+        """
+        for quality, threshold in sorted(self.thresholds.items(), key=lambda kv: kv[1]):
             if missing_minutes <= threshold:
                 return quality
         return 'Poor'

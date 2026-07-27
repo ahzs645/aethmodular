@@ -21,37 +21,27 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-RAW_DIR = REPO_ROOT / "data" / "spartan" / "raw"
-OUT_DIR = REPO_ROOT / "research" / "spartan" / "inventory"
-FIG_DIR = OUT_DIR / "figures"
+# scripts/ is not an installed package and the CLI runs this file by path, so
+# put scripts/ on sys.path to make `common` importable. See scripts/common/.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from common.spartan_io import (  # noqa: E402
+    FIG_DIR, NEPHEL_SUBS, OUT_DIR, RAW_DIR,
+    read_spartan_csv as _read, site_from_path,
+)
 
-NEPHEL_SUBS = {"DailyScaPM10", "DailyScaPM25", "HourlyScaPM10",
-               "HourlyScaPM25", "DailyEstPM25", "HourlyEstPM25"}
+# Full expected subproduct count across the SPARTAN product tree (the 9 keys of
+# EXPECTED_STEP_H in spartan_coverage_analysis.py). The composite score divides
+# a site's breadth by this fixed total so scores are comparable across groups
+# and against research/spartan/inventory/top_sites.csv, which uses the same 9.
+# Previously this was df["subproduct"].nunique() computed on each *subset*, so
+# the nephel-equipped and filter-only tables were scored on different scales
+# while the map colorbar still claimed "breadth / 9".
+MAX_BREADTH = 9
 
 
 # ---------------------------------------------------------------------------
 # Shared loader
 # ---------------------------------------------------------------------------
-
-def _find_header(path: Path, max_scan: int = 5) -> int:
-    with open(path, "r", errors="replace") as f:
-        for i in range(max_scan):
-            line = f.readline()
-            if not line:
-                return 0
-            stripped = line.strip()
-            if not stripped:
-                continue
-            if "," in stripped and not stripped.lstrip().startswith("#"):
-                if any(tok in stripped.lower() for tok in ("site_code", "year", "year_local")):
-                    return i
-    return 0
-
-
-def _read(path: Path) -> pd.DataFrame:
-    return pd.read_csv(path, skiprows=_find_header(path), low_memory=False)
-
 
 # ---------------------------------------------------------------------------
 # (1) split rankings
@@ -81,10 +71,9 @@ def split_rankings() -> tuple[pd.DataFrame, pd.DataFrame]:
               )
               .reset_index()
         )
-        max_breadth = df["subproduct"].nunique()
         g["mean_completeness"] = g["mean_completeness"].round(1)
         g["median_completeness"] = g["median_completeness"].round(1)
-        g["score"] = (g["mean_completeness"].fillna(0) * (g["n_subproducts"] / max_breadth)).round(1)
+        g["score"] = (g["mean_completeness"].fillna(0) * (g["n_subproducts"] / MAX_BREADTH)).round(1)
         g["group"] = group_label
         return g.sort_values(["score", "total_samples"], ascending=False).reset_index(drop=True)
 
@@ -227,20 +216,28 @@ def site_locations() -> pd.DataFrame:
         if lat.empty or lon.empty:
             continue
         rows.append({"site": site, "lat": float(lat.iloc[0]), "lon": float(lon.iloc[0])})
-    # Fill in any sites that only show up under NephelProcd (CODC)
-    seen = {r["site"] for r in rows}
-    for path in sorted((RAW_DIR / "NephelProcd" / "HourlyScaPM25").glob("*.csv")):
-        site = path.stem.rsplit("_", 1)[-1]
-        if site in seen:
-            continue
-        df = _read(path)
-        # Nephel files don't carry lat/lon - skip; CODC missing lat/lon is acceptable.
+    # Sites appearing only under NephelProcd (e.g. CODC) are intentionally not
+    # backfilled here: Nephel files carry no Latitude/Longitude columns, so
+    # there is nothing to read. (This previously ran a full _read() over every
+    # Nephel CSV and discarded the result.)
     return pd.DataFrame(rows)
 
 
-def plot_world_map(locations: pd.DataFrame, ranked: pd.DataFrame) -> None:
-    import cartopy.crs as ccrs
-    import cartopy.feature as cfeature
+def plot_world_map(locations: pd.DataFrame, ranked: pd.DataFrame) -> bool:
+    """Draw the global site map. Returns False (with a note) if cartopy is absent.
+
+    cartopy needs system GEOS/PROJ libraries, so it is an optional extra rather
+    than a core dependency: `uv sync --extra geo`. Every earlier step of this
+    pipeline has already written its output by the time we get here, so a
+    missing cartopy must not fail the whole command.
+    """
+    try:
+        import cartopy.crs as ccrs
+        import cartopy.feature as cfeature
+    except ImportError:
+        print("  SKIPPED: cartopy is not installed, so the world map was not drawn.")
+        print("           Install it with:  uv sync --extra geo")
+        return False
 
     merged = locations.merge(
         ranked[["site", "score", "mean_completeness", "n_subproducts", "total_samples"]],

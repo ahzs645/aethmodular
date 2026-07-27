@@ -12,7 +12,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 
-from ...core.base import BaseAnalyzer
+from src.core.base import BaseAnalyzer
 from ...core.monitoring import monitor_performance
 from ...utils.memory_optimization import optimize_memory
 

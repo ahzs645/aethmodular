@@ -27,7 +27,10 @@ DIAGNOSTICS = {
     "compare-pkl": "scripts/diagnostics/compare_pkl_files.py",
     "etad-stats": "scripts/diagnostics/get_etad_stats.py",
     "flow": "scripts/diagnostics/inspect_flow_columns.py",
-    "system": "scripts/diagnostics/test_system.py",
+    # "system" retired 2026-07-26. test_system.py asserted a 2025-era filesystem
+    # layout and exited 1 permanently; its only unique coverage (that src/ and
+    # attic/ import, and the analyzers construct) now lives in
+    # tests/test_import_smoke.py, where `aeth check` actually gates it.
 }
 
 SPARTAN_COMMANDS = {
@@ -44,10 +47,18 @@ BUILD_GROUPS = {
     "spartan-ec": "research/spartan_ec_2026_06_16",
     "july07": "research/July07",
     "addis-deming": "research/addis_fabs_ec_deming",
-    "catch-up": "research/catch_up",
+    # "catch-up" retired 2026-07-26 -> research/archive/catch_up
 }
 
+# Absolute home-directory paths. Note these are literal-prefix checks, so a
+# path built as Path.home() / "Library/CloudStorage/..." contains no "/Users/"
+# and is caught by the CLOUD markers below instead.
 MACHINE_PATH_MARKERS = ("/Users/", "C:\\Users\\", "/home/")
+
+# Machine-specific cloud-storage mounts. These tie a notebook to one machine and
+# one signed-in account even when constructed from Path.home().
+CLOUD_PATH_MARKERS = ("Library/CloudStorage", "GoogleDrive-", "/My Drive/")
+
 LEGACY_PATH_MARKERS = ("FTIR_HIPS_Chem", "aethmodular-clean")
 
 
@@ -163,6 +174,9 @@ def _notebook_issues(path: Path) -> list[str]:
     for marker in MACHINE_PATH_MARKERS:
         if marker in source:
             issues.append(f"machine-specific path ({marker})")
+    for marker in CLOUD_PATH_MARKERS:
+        if marker in source:
+            issues.append(f"machine-specific cloud path ({marker})")
     for marker in LEGACY_PATH_MARKERS:
         if marker in source:
             issues.append(f"legacy path ({marker})")
@@ -330,7 +344,11 @@ def command_check(args: argparse.Namespace) -> int:
     if not args.no_tests:
         commands.append(("tests", [sys.executable, "-m", "pytest", "-q"]))
     if not args.no_lint:
-        commands.append(("lint", [sys.executable, "-m", "ruff", "check", "src", "tests", "aethmodular_cli"]))
+        commands.append((
+            "lint",
+            [sys.executable, "-m", "ruff", "check",
+             "src", "tests", "aethmodular_cli", "attic", "scripts", "manuscript"],
+        ))
 
     failures = []
     for label, command in commands:

@@ -241,7 +241,7 @@ def data_completeness(data, sites=None, layout=None):
         {site_name: DataFrame} with 'day_9am' and optionally 'data_completeness_pct'
     """
     sites_list = resolve_sites(sites)
-    layout = resolve_layout(layout)
+    layout = resolve_layout(layout, supported=('individual', 'grid',))
 
     if layout == 'individual':
         for site_name in sites_list:
@@ -323,7 +323,7 @@ def filter_vs_aeth(aeth_data, filter_data, sites=None, layout=None,
         from ..config import SITES
 
     sites_list = resolve_sites(sites)
-    layout = resolve_layout(layout)
+    layout = resolve_layout(layout, supported=('individual',))
 
     if layout == 'individual':
         for site_name in sites_list:
@@ -376,7 +376,7 @@ def flow_ratio(data, sites=None, layout=None):
         {site_name: DataFrame} with 'day_9am' and 'ratio_flow' columns
     """
     sites_list = resolve_sites(sites)
-    layout = resolve_layout(layout)
+    layout = resolve_layout(layout, supported=('individual', 'grid',))
 
     if layout == 'individual':
         for site_name in sites_list:

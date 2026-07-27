@@ -11,6 +11,7 @@ exports.  It does not modify any source file in the Google Drive data tree.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -21,6 +22,43 @@ from scipy.stats import spearmanr
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import GroupKFold, KFold
+
+
+_LEGACY_DRIVE_ACCOUNT = "GoogleDrive-ahzs645@gmail.com"
+
+
+def drive_root() -> Path:
+    """Locate the Google Drive "My Drive" mount holding the FTIR source tree.
+
+    Resolution order:
+
+    1. ``AETHMODULAR_DRIVE_ROOT`` if set — point this at your own "My Drive"
+       (or at any directory laid out the same way) to run on another machine.
+    2. Auto-discovery of ``~/Library/CloudStorage/GoogleDrive-*/My Drive``.
+       Whichever account is signed in on this Mac is found without configuration.
+    3. The original hardcoded account, so behaviour is unchanged where it exists.
+
+    This used to be a single hardcoded path naming one person's Google account,
+    which made the module unusable for anyone else even though it sits in the
+    sanctioned reusable-logic package. Nothing here touches the network or
+    creates directories; ``FTIRTransferPaths.validate()`` reports what resolved.
+    """
+    env = os.environ.get("AETHMODULAR_DRIVE_ROOT")
+    if env:
+        return Path(env).expanduser()
+
+    cloud = Path.home() / "Library" / "CloudStorage"
+    if cloud.is_dir():
+        mounts = sorted(cloud.glob("GoogleDrive-*/My Drive"))
+        if mounts:
+            # Prefer the historical account when it is one of several signed in,
+            # so a multi-account machine keeps resolving the way it always has.
+            for mount in mounts:
+                if mount.parent.name == _LEGACY_DRIVE_ACCOUNT:
+                    return mount
+            return mounts[0]
+
+    return cloud / _LEGACY_DRIVE_ACCOUNT / "My Drive"
 
 
 @dataclass(frozen=True)
@@ -34,10 +72,7 @@ class FTIRTransferPaths:
 
     @classmethod
     def defaults(cls) -> "FTIRTransferPaths":
-        drive = (
-            Path.home()
-            / "Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive"
-        )
+        drive = drive_root()
         data = drive / "University/Research/Grad/UC Davis Ann/NASA MAIA/Data"
         # The FTIR folder moved on Drive in July 2026; accept either location.
         ftir_candidates = (

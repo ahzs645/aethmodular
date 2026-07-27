@@ -22,27 +22,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-RAW_DIR = REPO_ROOT / "data" / "spartan" / "raw"
-HIPS_PATH = REPO_ROOT / "data" / "drive_bridge" / "Spartan" / "SPARTAN_HIPS_Batch1-51.v2.csv"
-LOOKUP_PATH = REPO_ROOT / "data" / "drive_bridge" / "Spartan" / "SPARTAN_Site_quick_lookup.xlsx"
-OUT_DIR = REPO_ROOT / "research" / "spartan" / "inventory"
-FIG_DIR = OUT_DIR / "figures"
-
-
-def _find_header(path: Path, max_scan: int = 5) -> int:
-    with open(path, "r", errors="replace") as f:
-        for i in range(max_scan):
-            line = f.readline()
-            if not line:
-                return 0
-            s = line.strip()
-            if not s:
-                continue
-            if "," in s and not s.lstrip().startswith("#"):
-                if any(t in s.lower() for t in ("site_code", "year", "year_local")):
-                    return i
-    return 0
+# scripts/ is not an installed package and the CLI runs this file by path, so
+# put scripts/ on sys.path to make `common` importable. See scripts/common/.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from common.spartan_io import (  # noqa: E402
+    FIG_DIR, HIPS_PATH, LOOKUP_PATH, OUT_DIR, RAW_DIR,
+    find_header_line as _find_header, site_from_path,
+)
 
 
 # ---------------------------------------------------------------------------

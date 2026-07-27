@@ -23,12 +23,15 @@ def save_results_to_json(results: Dict[str, Any],
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
-    # Convert numpy types to Python types for JSON serialization
+    # Convert numpy types to Python types for JSON serialization.
+    # Check tolist() BEFORE item(): ndarray and Series expose both, but item()
+    # raises ValueError on anything with more than one element. tolist() handles
+    # the 0-d/scalar case correctly too (np.int64(5).tolist() -> 5).
     def convert_numpy_types(obj):
-        if hasattr(obj, 'item'):
-            return obj.item()
-        elif hasattr(obj, 'tolist'):
+        if hasattr(obj, 'tolist'):
             return obj.tolist()
+        elif hasattr(obj, 'item'):
+            return obj.item()
         return obj
     
     # Recursively convert numpy types

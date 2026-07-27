@@ -18,12 +18,9 @@ class CompletenessAnalyzer(BaseAnalyzer):
         super().__init__("CompletenessAnalyzer")
         
         # Quality classification thresholds (missing minutes per day/period)
-        self.quality_thresholds = {
-            'Excellent': 10,      # ≤ 10 missing minutes
-            'Good': 60,           # ≤ 60 missing minutes (1 hour)
-            'Moderate': 240,      # ≤ 240 missing minutes (4 hours)
-            'Poor': float('inf') # > 240 missing minutes
-        }
+        # Single source: src/config/quality_thresholds.py
+        from src.config.quality_thresholds import completeness_tiers
+        self.quality_thresholds = completeness_tiers()
     
     def analyze_completeness(self, data: pd.DataFrame, 
                            period_type: str = 'daily') -> Dict[str, Any]:
@@ -70,10 +67,12 @@ class CompletenessAnalyzer(BaseAnalyzer):
         
         # Analyze by periods
         if period_type == 'daily':
-            missing_per_period = self._analyze_daily_missing(missing_timestamps)
+            missing_per_period = self._analyze_daily_missing(
+                missing_timestamps, start_time, end_time)
             period_quality = self._classify_daily_quality(missing_per_period)
         elif period_type == '9am_to_9am':
-            missing_per_period = self._analyze_9am_missing(missing_timestamps)
+            missing_per_period = self._analyze_9am_missing(
+                missing_timestamps, start_time, end_time)
             period_quality = self._classify_9am_quality(missing_per_period)
         else:
             raise ValueError("period_type must be 'daily' or '9am_to_9am'")
@@ -107,32 +106,56 @@ class CompletenessAnalyzer(BaseAnalyzer):
         
         return results
     
-    def _analyze_daily_missing(self, missing_timestamps: pd.DatetimeIndex) -> pd.Series:
-        """Analyze missing data by calendar day (midnight to midnight)"""
+    def _analyze_daily_missing(self, missing_timestamps: pd.DatetimeIndex,
+                               start_time: pd.Timestamp = None,
+                               end_time: pd.Timestamp = None) -> pd.Series:
+        """Analyze missing data by calendar day (midnight to midnight).
+
+        Reindexed over EVERY day in range, so days with complete coverage appear
+        with 0 rather than being absent. Grouping the missing timestamps alone
+        meant the denominator was "days that had at least one gap", and a
+        dataset that was 75% perfect reported 100% Excellent.
+        """
+        if start_time is None or end_time is None:
+            # Legacy call shape: cannot know the full range, so report only
+            # the days that had gaps.
+            if len(missing_timestamps) == 0:
+                return pd.Series(dtype=int)
+            return pd.Series(1, index=missing_timestamps).groupby(
+                missing_timestamps.date).count()
+
+        all_days = pd.date_range(start_time.normalize(), end_time.normalize(), freq='D').date
         if len(missing_timestamps) == 0:
-            return pd.Series(dtype=int)
-        
-        # Group by date
-        missing_per_day = pd.Series(1, index=missing_timestamps).groupby(
-            missing_timestamps.date
-        ).count()
-        
-        return missing_per_day
+            return pd.Series(0, index=all_days, dtype=int)
+
+        gaps = pd.Series(1, index=missing_timestamps).groupby(missing_timestamps.date).count()
+        return gaps.reindex(all_days, fill_value=0)
     
-    def _analyze_9am_missing(self, missing_timestamps: pd.DatetimeIndex) -> pd.Series:
-        """Analyze missing data by 9AM-to-9AM periods"""
+    def _analyze_9am_missing(self, missing_timestamps: pd.DatetimeIndex,
+                             start_time: pd.Timestamp = None,
+                             end_time: pd.Timestamp = None) -> pd.Series:
+        """Analyze missing data by 9AM-to-9AM periods.
+
+        Reindexed over every period in range -- see _analyze_daily_missing for
+        why grouping the missing timestamps alone gives a wrong denominator.
+        """
+        def to_period_start(ts):
+            base = ts.normalize() + pd.Timedelta(hours=9)
+            return base if ts.hour >= 9 else base - pd.Timedelta(days=1)
+
+        if start_time is None or end_time is None:
+            if len(missing_timestamps) == 0:
+                return pd.Series(dtype=int)
+            return pd.Series(1, index=missing_timestamps.map(to_period_start)).groupby(
+                level=0).count()
+
+        all_periods = pd.date_range(
+            to_period_start(start_time), to_period_start(end_time), freq='D')
         if len(missing_timestamps) == 0:
-            return pd.Series(dtype=int)
-        
-        # Map each timestamp to its 9AM period start
-        period_starts = missing_timestamps.map(lambda ts: 
-            ts.normalize() + pd.Timedelta(hours=9) if ts.hour >= 9 
-            else ts.normalize() - pd.Timedelta(days=1) + pd.Timedelta(hours=9)
-        )
-        
-        missing_per_period = pd.Series(1, index=period_starts).groupby(level=0).count()
-        
-        return missing_per_period
+            return pd.Series(0, index=all_periods, dtype=int)
+
+        gaps = pd.Series(1, index=missing_timestamps.map(to_period_start)).groupby(level=0).count()
+        return gaps.reindex(all_periods, fill_value=0)
     
     def _classify_daily_quality(self, missing_per_day: pd.Series) -> pd.Series:
         """Classify quality for daily periods"""
@@ -143,8 +166,13 @@ class CompletenessAnalyzer(BaseAnalyzer):
         return missing_per_period.apply(self._classify_period_quality)
     
     def _classify_period_quality(self, missing_minutes: int) -> str:
-        """Classify a single period's quality based on missing minutes"""
-        for quality, threshold in self.quality_thresholds.items():
+        """Classify a single period's quality based on missing minutes.
+
+        Compared in ascending threshold order, not dict order -- otherwise a
+        caller-supplied threshold mapping returns whichever tier is listed
+        first rather than the tightest one that matches.
+        """
+        for quality, threshold in sorted(self.quality_thresholds.items(), key=lambda kv: kv[1]):
             if missing_minutes <= threshold:
                 return quality
         return 'Poor'  # Fallback

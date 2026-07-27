@@ -12,8 +12,14 @@ import pickle
 from pathlib import Path
 import os
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-DATA_ROOT = Path(os.environ.get("AETHMODULAR_DATA_ROOT", REPO_ROOT / "research" / "ftir_hips_chem"))
+import sys
+# scripts/ is not an installed package and the CLI runs this file by path, so
+# put scripts/ on sys.path to make `common` importable. See scripts/common/.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from common.paths import REPO_ROOT, data_root  # noqa: E402
+
+DATA_ROOT = data_root()
+
 
 # Load filter data
 filter_path = DATA_ROOT / "Filter Data" / "unified_filter_dataset.pkl"
@@ -112,17 +118,22 @@ for site_code, config in sites.items():
     # Calculate percentages
     filter_match_pct = (total_matches / unique_ec_dates * 100) if unique_ec_dates > 0 else 0
     aeth_match_pct = (total_matches / total_aeth_with_bc * 100) if total_aeth_with_bc > 0 else 0
+    # Guard the display percentages too: a site with no EC filters or no
+    # aethalometer dates otherwise crashes this diagnostic with ZeroDivisionError.
+    blanks_removed = total_ec_filters - valid_ec_filters
+    blanks_pct = (blanks_removed / total_ec_filters * 100) if total_ec_filters > 0 else 0
+    aeth_bc_pct = (total_aeth_with_bc / total_aeth_dates * 100) if total_aeth_dates > 0 else 0
 
     print(f"\nFILTER DATA:")
     print(f"  Total filter dates (all parameters):        {total_filter_dates:4d}")
     print(f"  Total EC filter measurements:                {total_ec_filters:4d}")
     print(f"  Valid EC filters (≥ 0.5 µg/m³):              {valid_ec_filters:4d}")
     print(f"  Unique EC filter dates (valid):              {unique_ec_dates:4d}")
-    print(f"  Blanks/MDL removed:                          {total_ec_filters - valid_ec_filters:4d} ({(total_ec_filters - valid_ec_filters)/total_ec_filters*100:.1f}%)")
+    print(f"  Blanks/MDL removed:                          {blanks_removed:4d} ({blanks_pct:.1f}%)")
 
     print(f"\nAETHALOMETER DATA:")
     print(f"  Total aethalometer dates (filter-matched):  {total_aeth_dates:4d}")
-    print(f"  Dates with valid BC data:                   {total_aeth_with_bc:4d} ({total_aeth_with_bc/total_aeth_dates*100:.1f}%)")
+    print(f"  Dates with valid BC data:                   {total_aeth_with_bc:4d} ({aeth_bc_pct:.1f}%)")
 
     print(f"\nMATCHING RESULTS:")
     print(f"  Successfully matched pairs:                  {total_matches:4d}")

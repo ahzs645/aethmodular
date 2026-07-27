@@ -113,10 +113,18 @@ class QualityClassifier:
             )
             return pd.Series('Excellent', index=nine_am_starts)
         
-        # Map each missing timestamp to its 9am-to-9am period start
-        nine_am_periods = missing_idx.map(lambda ts: 
-            ts.normalize() + pd.Timedelta(hours=9) if ts.hour < 9 
-            else ts.normalize() + pd.Timedelta(hours=9) + pd.Timedelta(days=1)
+        # Map each missing timestamp to its 9am-to-9am period START.
+        #
+        # This previously emitted the period END for any ts.hour >= 9 (and the
+        # end for ts.hour < 9 too), i.e. every label was one day late. That
+        # matters because FilterSampleMapper joins this series against
+        # filter_mapping._convert_filter_dates_to_periods, which keys filters on
+        # date.normalize() + 9h -- a period START. The two were a day apart, so
+        # every filter/quality overlap was computed against the wrong period.
+        # Same form as src/analysis/quality/completeness_analyzer._analyze_9am_missing.
+        nine_am_periods = missing_idx.map(lambda ts:
+            ts.normalize() + pd.Timedelta(hours=9) if ts.hour >= 9
+            else ts.normalize() - pd.Timedelta(days=1) + pd.Timedelta(hours=9)
         )
         
         # Count missing minutes per 9am-to-9am period

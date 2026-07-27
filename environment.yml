@@ -30,7 +30,8 @@ dependencies:
 
   # System utilities
   - psutil>=5.8.0
-  - pathlib2>=2.3.0
+  - requests>=2.31.0
+  - tqdm>=4.66.0
 
   # Jupyter ecosystem
   - jupyter
@@ -43,11 +44,9 @@ dependencies:
   - geopandas>=1.0.0
 
   # Development tools (optional but recommended)
+  # ruff is the repo's only configured linter/formatter (see pyproject.toml).
   - pytest
   - ruff
-  - black
-  - flake8
-  - isort
 
   # Additional useful tools
   - pip

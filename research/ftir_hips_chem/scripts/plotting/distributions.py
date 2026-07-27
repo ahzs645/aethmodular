@@ -20,6 +20,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from . import PlotConfig, resolve_sites, resolve_layout
+
+try:
+    from config import SMOOTH_RAW_THRESHOLDS
+except ImportError:  # Support importing as research.ftir_hips_chem.scripts.*
+    from ..config import SMOOTH_RAW_THRESHOLDS
 from .utils import create_grid_layout, create_individual_figure, style_axes
 
 
@@ -157,10 +162,12 @@ def smooth_raw_histogram(data, sites=None, layout=None,
         Threshold values to mark (default [1, 2.5, 4, 5])
     """
     sites_list = resolve_sites(sites)
-    layout = resolve_layout(layout)
+    layout = resolve_layout(layout, supported=('individual', 'grid',))
 
     if thresholds is None:
-        thresholds = [1, 2.5, 4, 5]
+        # Canonical list lives in config.SMOOTH_RAW_THRESHOLDS; copy() so a
+        # caller mutating the returned default cannot edit the shared list.
+        thresholds = list(SMOOTH_RAW_THRESHOLDS)
 
     threshold_colors = ['green', 'blue', 'orange', 'red']
 
@@ -257,7 +264,7 @@ def uv_ir_ratio_histogram(data, sites=None, layout=None):
         {site_name: DataFrame} with UV BCc and IR BCc columns
     """
     sites_list = resolve_sites(sites)
-    layout = resolve_layout(layout)
+    layout = resolve_layout(layout, supported=('individual',))
 
     if layout == 'individual':
         for site_name in sites_list:
@@ -311,7 +318,7 @@ def correlation_matrix(data, columns, sites=None, layout=None):
     import seaborn as sns
 
     sites_list = resolve_sites(sites)
-    layout = resolve_layout(layout)
+    layout = resolve_layout(layout, supported=('individual', 'grid',))
 
     if layout == 'individual':
         for site_name in sites_list:

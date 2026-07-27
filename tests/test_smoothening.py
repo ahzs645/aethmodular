@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from unittest.mock import patch
 
-from src.analysis.aethalometer.smoothening import (
+from attic.analysis.aethalometer.smoothening import (
     ONASmoothing, CMASmoothing, DEMASmoothing,
     SmoothingFactory, SmoothingComparison, AdaptiveSmoothing
 )

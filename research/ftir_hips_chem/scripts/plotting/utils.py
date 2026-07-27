@@ -358,3 +358,46 @@ def print_stats_table(results_dict, title="Comparison"):
                           f"{stats['r_squared']:>10.3f} {stats['slope']:>10.3f}")
                 else:
                     print(f"{str(key):<15s} {'--':>8s} {'--':>10s} {'--':>10s}")
+
+# Ported verbatim from the retired plotting_legacy.py on 2026-07-26 so the
+# notebooks that call it keep identical console output. print_stats_table()
+# above is the newer equivalent with different formatting; prefer it for new
+# code.
+def print_comparison_table(results_dict, metric_name='R^2'):
+    """
+    Print a comparison table of statistics across sites/thresholds.
+
+    Parameters:
+    -----------
+    results_dict : dict of dicts with stats
+    metric_name : str for table header
+    """
+    print("\n" + "=" * 80)
+    print(f"COMPARISON TABLE: {metric_name}")
+    print("=" * 80)
+
+    # Get all sites and thresholds
+    sites = list(results_dict.keys())
+
+    for site_name, site_results in results_dict.items():
+        if site_results is None:
+            print(f"\n{site_name}: No data")
+            continue
+
+        if isinstance(site_results, dict) and 'n' in site_results:
+            # Single result
+            print(f"\n{site_name}:")
+            print(f"  n = {site_results['n']}")
+            print(f"  R^2 = {site_results['r_squared']:.3f}")
+            print(f"  Slope = {site_results['slope']:.3f}")
+        else:
+            # Multiple thresholds
+            print(f"\n{site_name}:")
+            print(f"{'Threshold':<15s} {'n':>8s} {'R^2':>10s} {'Slope':>10s}")
+            print("-" * 45)
+            for threshold, stats in site_results.items():
+                if stats:
+                    print(f"{threshold:<15} {stats['n']:>8d} "
+                          f"{stats['r_squared']:>10.3f} {stats['slope']:>10.3f}")
+                else:
+                    print(f"{threshold:<15} {'--':>8s} {'--':>10s} {'--':>10s}")

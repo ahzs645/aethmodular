@@ -1,7 +1,14 @@
 # Charcoal and biochar FTIR source archive
 
-Downloaded 2026-07-22. The large files live under `downloads/`, which is
-already excluded by the repository's top-level `downloads/` ignore rule.
+Downloaded 2026-07-22. The large files live under `downloads/` (~225 MB), which
+is excluded by an explicit rule naming this directory in the repo `.gitignore`.
+
+> Until 2026-07-26 this relied on the stock packaging rule `downloads/` being
+> unanchored. That rule is now `/downloads/`, so it no longer reaches into
+> `research/`; the exclusion here is deliberate and named. Verify the payload
+> against `CHECKSUMS.sha256`; re-download from the source DOIs listed below.
+> `scripts/pull_reference_spectra.py` is a separate fetcher writing to
+> `data/raw/` — it does not reproduce this `downloads/` tree.
 
 ## Machine-readable spectra
 

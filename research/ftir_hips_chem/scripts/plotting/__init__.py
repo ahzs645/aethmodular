@@ -201,7 +201,7 @@ def resolve_sites(sites=None):
     return PlotConfig.get_sites_list(sites)
 
 
-def resolve_layout(layout=None):
+def resolve_layout(layout=None, supported=None):
     """
     Resolve layout parameter.
     Helper function for plotting functions.
@@ -210,6 +210,15 @@ def resolve_layout(layout=None):
     -----------
     layout : str or None
         If None, uses PlotConfig default
+    supported : iterable of str, optional
+        Layouts this particular plot implements. When the resolved layout is
+        not among them, warn and fall back to 'individual' rather than letting
+        the caller's if/elif chain fall through.
+
+        Several plots only implement a subset (e.g. no 'combined'), and their
+        branch chains had no else -- so setting `PlotConfig.set(layout='combined')`
+        globally made them silently draw nothing and return None. A visible
+        warning plus a working figure beats a blank cell.
 
     Returns:
     --------
@@ -222,6 +231,15 @@ def resolve_layout(layout=None):
     if layout not in valid_layouts:
         raise ValueError(f"Invalid layout: {layout}. Must be one of {valid_layouts}")
 
+    if supported is not None and layout not in supported:
+        import warnings
+        warnings.warn(
+            f"layout={layout!r} is not implemented by this plot "
+            f"(supports {sorted(supported)}); falling back to 'individual'.",
+            stacklevel=2,
+        )
+        return 'individual'
+
     return layout
 
 
@@ -231,6 +249,7 @@ from . import crossplots
 from . import timeseries
 from . import distributions
 from . import comparisons
+from . import overlays
 
 # Import commonly used utility functions for convenience
 from .utils import calculate_regression_stats, deming, deming_lambda
@@ -245,6 +264,7 @@ __all__ = [
     'timeseries',
     'distributions',
     'comparisons',
+    'overlays',
     'calculate_regression_stats',
     'deming',
     'deming_lambda',

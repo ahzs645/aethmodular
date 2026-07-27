@@ -13,9 +13,15 @@ from pathlib import Path
 
 import pandas as pd
 
+import sys
+# scripts/ is not an installed package and the CLI runs this file by path, so
+# put scripts/ on sys.path to make `common` importable. See scripts/common/.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from common.paths import REPO_ROOT, data_root  # noqa: E402
+
+DATA_ROOT = data_root()
+
 # Configuration
-REPO_ROOT = Path(__file__).resolve().parents[2]
-DATA_ROOT = Path(os.environ.get("AETHMODULAR_DATA_ROOT", REPO_ROOT / "research" / "ftir_hips_chem"))
 
 FILTER_DATA_PATH = DATA_ROOT / "Filter Data" / "unified_filter_dataset.pkl"
 OUTPUT_DIR = DATA_ROOT / "processed_sites"
@@ -45,7 +51,7 @@ SITES = {
     },
     'ETAD': {
         'name': 'Addis_Ababa',
-        'aethalometer_path': str(DATA_ROOT / "df_Jacros_9am_resampled.pkl"),
+        'aethalometer_path': str(DATA_ROOT / "processed_sites" / "df_Jacros_9am_resampled.pkl"),
         'device_id': 'MA350-0238',
         'timezone': 'Africa/Addis_Ababa',
         'resample_hour': 9

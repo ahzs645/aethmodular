@@ -16,9 +16,8 @@ organization issues only; they do not judge the scientific status of a notebook.
 | `HIPS_Aeth_SmoothRaw_Analysis.ipynb` | HIPS vs Aethalometer: Smooth/Raw Threshold Analysis | 25 | Darkgrid style |
 | `HIPS_vs_Aethalometer_Optical_Comparison.ipynb` | HIPS vs Aethalometer Optical Comparison | 25 | OK |
 | `Multi_Site_Analysis.ipynb` | Multi-Site Aethalometer and Filter Data Analysis | 29 | Darkgrid style |
-| `Multi_Site_Analysis_Fixed.ipynb` | Multi-Site Aethalometer Analysis (Modular Version) | 53 | Uses `plotting_legacy`; darkgrid style |
-| `Multi_Site_Analysis_FollowUp.ipynb` | Multi-Site Aethalometer Analysis: Follow-Up Analyses | 34 | Uses `plotting_legacy`; darkgrid style |
-| `Multi_Site_Analysis_Modular.ipynb` | Notes on Follow-Up Analyses | 53 | Uses `plotting_legacy`; darkgrid style |
+| `Multi_Site_Analysis_Fixed.ipynb` | Multi-Site Aethalometer Analysis (Modular Version) | 53 | darkgrid style |
+| `Multi_Site_Analysis_FollowUp.ipynb` | Multi-Site Aethalometer Analysis: Follow-Up Analyses | 34 | darkgrid style |
 | `Raw_ATN_Correlation_Analysis.ipynb` | Raw Attenuation vs BCc Correlation Analysis | 25 | OK |
 | `Task_Analysis_Notebook.ipynb` | Task Analysis Notebook - January 2026 | 51 | Darkgrid style |
 | `addis_01_source_apportionment.ipynb` | Addis Ababa: Source Apportionment Analysis | 21 | Darkgrid style; external Google Drive minute-data path |
@@ -38,7 +37,7 @@ organization issues only; they do not judge the scientific status of a notebook.
 | `dominant_source_threshold_analysis.ipynb` | Dominant Source Threshold Analysis | 31 | Darkgrid style |
 | `figure7_source_contributions.ipynb` | Figure 7: Daily Contribution of Sources to OM in Addis Ababa in 2023 | 10 | OK |
 | `flow_fix_explorer.ipynb` | Flow Fix Period Explorer | 27 | OK |
-| `follow_up_analysis.ipynb` | Follow-Up Analysis Notebook | 41 | Uses `plotting_legacy`; darkgrid style |
+| `follow_up_analysis.ipynb` | Follow-Up Analysis Notebook | 41 | darkgrid style |
 | `hips_offset_narrative.ipynb` | Addis HIPS anomaly audit | 40 | OK |
 | `improve_high_fabs_comparison.ipynb` | IMPROVE High-Fabs Comparison | 25 | OK |
 | `multisite_diurnal_wavelength_analysis.ipynb` | Multi-Site Diurnal Wavelength Analysis | 26 | Uses `processed_sites/` via config |
@@ -51,7 +50,9 @@ organization issues only; they do not judge the scientific status of a notebook.
 
 ## Priority Cleanup Queue
 
-1. Migrate `plotting_legacy` users to the modular plotting package or archive
+1. ~~Migrate `plotting_legacy` users to the modular plotting package~~ — done
+   2026-07-26: the three notebooks now use `plotting.overlays` (axes-level,
+   identical styling) and `plotting_legacy.py` was deleted.
    them if superseded.
 2. Remove `plt.style.use('seaborn-v0_8-darkgrid')` from active notebooks unless
    the different style is intentional and documented in that notebook.

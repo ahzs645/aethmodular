@@ -190,6 +190,23 @@ CROSS_COMPARISONS = [
 # Canonical 3-season calendar. Replaces the per-notebook map_ethiopian_seasons /
 # get_season_3 helpers and their divergent inline copies. Colors match
 # SITES['Addis_Ababa'] usage and src season definitions.
+#
+# ON THE FEBRUARY BOUNDARY -- this is genuinely ambiguous, not a bug.
+# Two conventions appear in the Ethiopian climate literature:
+#
+#   (a) Bega/Dry Oct-Feb, Belg Mar-May, Kiremt Jun-Sep   <- used here
+#   (b) Bega/Dry Oct-Jan, Belg Feb-May,  Kiremt Jun-Sep
+#
+# They differ only in which season owns February, and both are defensible --
+# Belg onset varies year to year and by altitude. (a) is canonical for this
+# project so that seasonal means are comparable across notebooks.
+#
+# research/ftir_hips_chem/ETAD_Factor_Analysis.ipynb deliberately uses (b) and
+# labels its own ranges in the season names ("Bega (Oct-Jan, dry)"). Its
+# seasonal means are therefore NOT directly comparable with the rest of the
+# project -- February is a high-BC month, so the difference is not negligible.
+# If you compare that notebook's numbers against others, say which convention
+# each used.
 ETHIOPIA_SEASONS = {
     'Dry (Oct-Feb)':    {'months': [10, 11, 12, 1, 2], 'color': '#E67E22'},
     'Belg (Mar-May)':   {'months': [3, 4, 5],          'color': '#27AE60'},
@@ -207,3 +224,71 @@ def season_for_month(month):
         if month in info['months']:
             return name
     return None
+
+
+# =============================================================================
+# FILTER ID FORMAT
+# =============================================================================
+
+# Canonical pattern for stripping a replicate suffix from a FilterId:
+#   'ETAD-0035-3'  -> 'ETAD-0035'
+#   'ZAJB-0041-12' -> 'ZAJB-0041'   (two-digit replicates included)
+#   'ETAD-0035'    -> 'ETAD-0035'   (already base: left alone)
+#
+# Anchoring on the full SITE-NNNN prefix matters in both directions. A bare
+# r'-\d+$' also strips the 4-digit sample number from ids already in base form,
+# collapsing every sample at a site onto one join key; a bare r'-(\d)$' misses
+# two-digit replicates so those rows never join at all. Both bugs existed here.
+#
+# Lives in config.py because it is needed by data_matching and etad_factors, and
+# data_matching already imports etad_factors -- so etad_factors cannot import it
+# back without a cycle. config.py imports nothing local.
+BASE_FILTER_ID_PATTERN = r'^([A-Za-z]+-\d{4})-\d+$'
+BASE_FILTER_ID_REPL = r'\1'
+
+
+# =============================================================================
+# INSTRUMENT CHANNEL WAVELENGTHS
+# =============================================================================
+
+# MA350 / MA200 microAeth channel centres (nm). These are the wavelengths that
+# go with the ``'<Name> BCc'`` / ``'<Name>.BCc'`` columns in every processed
+# pickle in this project, and they match the firmware constants vendored in
+# src/external/calibration.py.
+#
+# Do not substitute the AE33 set below. Several src/ modules keyed AE33 values
+# onto MA350 column names, which inflates AAE(Red,IR) by ~16 % because
+# ln(660/880) = -0.288 while ln(625/880) = -0.342 -- and any biomass fraction
+# derived from that AAE inherits the error.
+WAVELENGTHS_NM = {
+    'UV':    375,
+    'Blue':  470,
+    'Green': 528,
+    'Red':   625,
+    'IR':    880,
+}
+
+# Magee AE33 seven-channel set, for reference when reading AE33 exports whose
+# columns are named BC1..BC7. Not interchangeable with WAVELENGTHS_NM.
+AE33_WAVELENGTHS_NM = {
+    'BC1': 370, 'BC2': 470, 'BC3': 520, 'BC4': 590,
+    'BC5': 660, 'BC6': 880, 'BC7': 950,
+}
+
+
+# =============================================================================
+# AAE SOURCE-REGION BOUNDARIES
+# =============================================================================
+
+# Absorption Angstrom Exponent cut points used to shade fossil / mixed / biomass
+# regions on AAE plots. 1.5 is the value the existing addis_01 figures were
+# produced with; plotting_gaps_scenarios.ipynb once proposed 1.4 for a helper
+# that was never written, and notebooks/archive used 1.0/1.2.
+#
+# NOT the same thing as the endmember AAEs in
+# src/analysis/bc/source_apportionment.py (aae_fossil=1.0, aae_biomass=2.0),
+# which parameterize a linear mixing model rather than classify samples.
+AAE_REGIONS = {
+    'fossil_max':  0.9,
+    'biomass_min': 1.5,
+}

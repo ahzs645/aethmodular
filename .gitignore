@@ -11,7 +11,7 @@ __pycache__/
 build/
 develop-eggs/
 dist/
-downloads/
+/downloads/
 eggs/
 .eggs/
 lib/
@@ -161,6 +161,16 @@ notebooks/processed_data_csv_optimized
 # an unanchored data/ rule also hides package code under src/data/ and tracked
 # notebook inputs under notebooks/analysis/data/.
 /data/
+
+# Downloaded reference-spectra payload (225 MB, fetched 2026-07-22). Excluded
+# deliberately as data, not as a side effect of the packaging `downloads/` rule
+# above -- that rule is now anchored to /downloads/ so it can no longer shadow
+# research directories. The tracked CHECKSUMS.sha256 verifies these files and
+# charcoal_ftir_sources/README.md lists every source DOI to re-download from.
+# (Note: scripts/pull_reference_spectra.py is a *different* fetcher -- it writes
+# to data/raw/, not downloads/, and does not reproduce this payload.)
+research/ftir_hips_chem/charcoal_ftir_sources/downloads/
+
 research/ftir_hips_chem/output/warren_meeting/
 research/ftir_hips_chem/warren_meeting_slides_executed.ipynb
 research/ftir_hips_chem/AERONET/

@@ -2,7 +2,7 @@
 
 Graph-per-slide + short bullets + the confirmation points. Consumes the PNGs already
 rendered by the 02/03/04 notebooks into figures/. Style mirrors
-research/ftir_hips_chem/scripts/build_warren_meeting_deck.py (python-pptx, 16:9).
+research/ftir_hips_chem/workflows/build_warren_meeting_deck.py (python-pptx, 16:9).
 Run after the notebooks have produced their figures.
 """
 from pathlib import Path

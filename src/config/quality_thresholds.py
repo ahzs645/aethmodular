@@ -33,6 +33,25 @@ class CompletenessThresholds:
             return QualityLevel.POOR
 
 
+def completeness_tiers(lowercase: bool = False) -> Dict[str, float]:
+    """Return the completeness tiers as an ordered ``{label: max_missing}`` dict.
+
+    Single source for the four classifiers that previously each hardcoded
+    10/60/240 -- and where ``period_processor`` was missing the 240 tier
+    entirely, so a 100-minute gap was 'poor' there and 'moderate' everywhere
+    else. Insertion order is ascending, but callers should still not depend on
+    dict order when classifying.
+    """
+    t = CompletenessThresholds()
+    tiers = {
+        QualityLevel.EXCELLENT.value: float(t.excellent_max_missing),
+        QualityLevel.GOOD.value: float(t.good_max_missing),
+        QualityLevel.MODERATE.value: float(t.moderate_max_missing),
+        QualityLevel.POOR.value: float("inf"),
+    }
+    return {k.lower(): v for k, v in tiers.items()} if lowercase else tiers
+
+
 @dataclass
 class QualityFactorThresholds:
     """Thresholds for advanced quality factors"""

@@ -32,6 +32,7 @@ try:
     from config import (
         SITES, PROCESSED_SITES_DIR, FILTER_DATA_PATH,
         MIN_EC_THRESHOLD, MAC_VALUE, FLOW_FIX_PERIODS,
+        BASE_FILTER_ID_PATTERN, BASE_FILTER_ID_REPL,
     )
     from etad_factors import (
         ETAD_PMF_SOURCE_NAMES, ETAD_FACTOR_RENAME,
@@ -42,6 +43,7 @@ except ImportError:  # Support importing as research.ftir_hips_chem.scripts.*
     from .config import (
         SITES, PROCESSED_SITES_DIR, FILTER_DATA_PATH,
         MIN_EC_THRESHOLD, MAC_VALUE, FLOW_FIX_PERIODS,
+        BASE_FILTER_ID_PATTERN, BASE_FILTER_ID_REPL,
     )
     from .etad_factors import (
         ETAD_PMF_SOURCE_NAMES, ETAD_FACTOR_RENAME,
@@ -144,7 +146,13 @@ def add_base_filter_id(filter_data):
     DataFrame with 'base_filter_id' column added
     """
     df = filter_data.copy()
-    df['base_filter_id'] = df['FilterId'].str.replace(r'-\d+$', '', regex=True)
+    # Anchor on the full SITE-NNNN prefix, matching the scalar base_filter_id().
+    # A bare r'-\d+$' also strips the 4-digit sample number from ids that are
+    # ALREADY in base form ('ETAD-0035' -> 'ETAD'), silently collapsing every
+    # sample at a site onto one key.
+    df['base_filter_id'] = df['FilterId'].str.replace(
+        BASE_FILTER_ID_PATTERN, BASE_FILTER_ID_REPL, regex=True
+    )
     return df
 
 
@@ -161,7 +169,7 @@ def base_filter_id(filter_id):
     text = str(filter_id).strip()
     if not text or text.lower() == 'nan':
         return None
-    m = re.match(r'^([A-Za-z]+-\d{4})-\d+$', text)
+    m = re.match(BASE_FILTER_ID_PATTERN, text)
     return m.group(1) if m else text
 
 
@@ -536,7 +544,7 @@ def match_hips_with_smooth_raw(site_name, df_aeth, filter_data, site_code,
     Match HIPS data with aethalometer, including smooth/raw BC info.
 
     This was previously duplicated in HIPS_Aeth_SmoothRaw_Analysis.ipynb
-    and Multi_Site_Analysis_Modular.ipynb.
+    and Multi_Site_Analysis_Fixed.ipynb.
 
     Parameters:
     -----------

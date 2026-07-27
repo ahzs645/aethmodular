@@ -10,7 +10,7 @@ Usage:
     merged_results = merge_aethalometer_filter_pipeline(
         aethalometer_files=['data.pkl', 'data.csv'],
         ftir_db_path='database.db',
-        wavelength='Red',
+        wavelength='IR',
         site_code='ETAD'
     )
 """
@@ -33,7 +33,10 @@ except ImportError:
 def merge_aethalometer_filter_pipeline(
     aethalometer_files: Union[str, List[str]], 
     ftir_db_path: str,
-    wavelength: str = "Red",
+    # Canonical default is IR (config.DEFAULT_BC_WAVELENGTH). This was "Red",
+    # so a run at defaults produced a different BC-vs-EC regression than
+    # every other entry point in the project.
+    wavelength: str = "IR",
     quality_threshold: int = 10,
     site_code: str = 'ETAD',
     output_format: str = 'jpl'
@@ -47,8 +50,8 @@ def merge_aethalometer_filter_pipeline(
         Path(s) to aethalometer data files (.pkl or .csv)
     ftir_db_path : str
         Path to SQLite database with FTIR/HIPS data
-    wavelength : str, default 'Red'
-        Wavelength to analyze ('Red', 'Blue', 'Green', 'UV', 'IR')
+    wavelength : str, default 'IR'
+        Wavelength to analyze ('UV', 'Blue', 'Green', 'Red', 'IR')
     quality_threshold : int, default 10
         Maximum missing minutes per 24h period for "excellent" quality
     site_code : str, default 'ETAD'
@@ -183,17 +186,24 @@ def load_ftir_hips_data(db_path: str, site_code: str = 'ETAD') -> pd.DataFrame:
 
 
 def load_ftir_hips_fallback(db_path: str, site_code: str) -> pd.DataFrame:
-    """
-    Fallback function to load FTIR/HIPS data directly from SQLite.
+    """Fallback loader used when FTIRHIPSLoader cannot be imported.
+
+    Returns the SAME columns as FTIRHIPSLoader.load so the schema does not
+    depend on whether the optional import succeeded.
     """
     
     try:
         conn = sqlite3.connect(db_path)
         
+        # Same projection as FTIRHIPSLoader.load (src/data/loaders/database.py).
+        # This used to select only 6 columns, silently dropping volume_m3, all
+        # three MDLs, fabs_uncertainty and ftir_batch_id -- so whether a caller
+        # got those columns depended on an ImportError it never saw.
         query = """
-        SELECT 
-            f.filter_id, f.sample_date, f.site_code,
-            m.ec_ftir, m.oc_ftir, m.fabs
+        SELECT
+            f.filter_id, f.sample_date, f.site_code, m.volume_m3,
+            m.ec_ftir, m.ec_ftir_mdl, m.oc_ftir, m.oc_ftir_mdl,
+            m.fabs, m.fabs_mdl, m.fabs_uncertainty, m.ftir_batch_id
         FROM filters f
         JOIN ftir_sample_measurements m ON f.filter_id = m.filter_id
         WHERE f.site_code = ?
@@ -348,7 +358,7 @@ def process_csv_timezone(df: pd.DataFrame) -> pd.DataFrame:
 def merge_aethalometer_filter_data(
     aethalometer_df: pd.DataFrame, 
     filter_df: pd.DataFrame,
-    wavelength: str = "Red", 
+    wavelength: str = "IR",
     quality_threshold: int = 10, 
     dataset_name: str = "aethalometer"
 ) -> tuple:
@@ -362,7 +372,7 @@ def merge_aethalometer_filter_data(
     filter_df : pd.DataFrame
         Filter sample data from database
     wavelength : str
-        Wavelength to process ('Red', 'Blue', 'Green', 'UV', 'IR')
+        Wavelength to process ('UV', 'Blue', 'Green', 'Red', 'IR')
     quality_threshold : int
         Maximum missing minutes allowed per 24h period for "excellent" quality
     dataset_name : str
@@ -427,9 +437,22 @@ def identify_excellent_periods(aethalometer_df: pd.DataFrame, quality_threshold:
         else ts.normalize() + pd.Timedelta(hours=9) - pd.Timedelta(days=1)
     )
     
-    # Count missing minutes per 9am-to-9am period
-    missing_per_period = pd.Series(1, index=nine_am_periods).groupby(level=0).count()
-    
+    # Count missing minutes per 9am-to-9am period.
+    #
+    # Reindex over EVERY period the data spans, not just the periods that
+    # happened to contain a gap. Grouping the missing timestamps alone means a
+    # period with perfect coverage never enters the index -- so it could never
+    # be selected below, and this function returned only periods that had gaps.
+    # That is the exact inverse of its purpose.
+    gap_counts = pd.Series(1, index=nine_am_periods).groupby(level=0).count()
+
+    first_period = start_time.normalize() + pd.Timedelta(hours=9)
+    if first_period > start_time:
+        first_period -= pd.Timedelta(days=1)
+    all_periods = pd.date_range(first_period, end_time, freq='D')
+
+    missing_per_period = gap_counts.reindex(all_periods, fill_value=0)
+
     # Identify excellent periods (≤ quality_threshold missing minutes)
     excellent_periods_idx = missing_per_period[missing_per_period <= quality_threshold].index
     
@@ -759,7 +782,7 @@ def example_usage():
     results = merge_aethalometer_filter_pipeline(
         aethalometer_files=aethalometer_files,
         ftir_db_path=ftir_db_path,
-        wavelength="Red",
+        wavelength="IR",
         quality_threshold=10,
         site_code='ETAD'
     )

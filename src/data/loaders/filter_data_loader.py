@@ -1,7 +1,15 @@
-#!/usr/bin/env python3
-"""
-Generic Data Loader Module - Load and query filter data from pickle database
-Clean, reusable interface for any parameter or site analysis
+"""Filter-database loader for the unified filter dataset.
+
+Promoted from research/ftir_hips_chem/notebooks/archive/scratch/
+data_loader_module.py on 2026-07-27. AethalometerFilterMatcher used to
+side-load it by absolute path -- computed as
+``dirname(dirname(filter_db_path))/data_loader_module.py`` -- which
+resolved to research/ftir_hips_chem/data_loader_module.py, a file that
+does not exist. The resulting FileNotFoundError escaped the surrounding
+``except ImportError``, so the matcher could not be constructed at all
+and the four notebooks under notebooks/analysis/absorption/ were broken.
+
+It is a normal module now; import it.
 """
 
 import pandas as pd

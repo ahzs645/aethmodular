@@ -54,6 +54,38 @@ def test_notebook_check_flags_machine_and_legacy_paths(tmp_path):
     assert "legacy path (aethmodular-clean)" in issues
 
 
+def test_notebook_check_flags_cloud_paths_built_from_home(tmp_path):
+    """A Drive mount built via Path.home() has no '/Users/' literal to match."""
+    notebook = {
+        "cells": [
+            {
+                "cell_type": "code",
+                "source": (
+                    'DATA = Path.home() / "Library/CloudStorage"'
+                    ' / "GoogleDrive-someone@example.com" / "My Drive" / "data"'
+                ),
+            }
+        ]
+    }
+    path = tmp_path / "cloud.ipynb"
+    path.write_text(json.dumps(notebook), encoding="utf-8")
+    issues = cli._notebook_issues(path)
+
+    # The pre-existing markers must not fire -- that is exactly the blind spot.
+    assert not any("machine-specific path" in issue for issue in issues)
+    assert "machine-specific cloud path (Library/CloudStorage)" in issues
+    assert "machine-specific cloud path (GoogleDrive-)" in issues
+
+
+def test_notebook_check_allows_repo_relative_paths(tmp_path):
+    notebook = {
+        "cells": [{"cell_type": "code", "source": 'DATA = ROOT / "research" / "data"'}]
+    }
+    path = tmp_path / "portable_cloudless.ipynb"
+    path.write_text(json.dumps(notebook), encoding="utf-8")
+    assert cli._notebook_issues(path) == []
+
+
 def test_notebook_changed_flag_routes_to_incremental_check():
     args = cli.build_parser().parse_args(["notebook", "check", "--changed"])
     assert args.changed is True

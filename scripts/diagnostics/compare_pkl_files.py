@@ -8,16 +8,22 @@ import numpy as np
 from pathlib import Path
 import os
 
+import sys
+# scripts/ is not an installed package and the CLI runs this file by path, so
+# put scripts/ on sys.path to make `common` importable. See scripts/common/.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from common.paths import REPO_ROOT, data_root  # noqa: E402
+
+DATA_ROOT = data_root()
+
 # Load both files
 print("="*80)
 print("LOADING PICKLE FILES")
 print("="*80)
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-DATA_ROOT = Path(os.environ.get("AETHMODULAR_DATA_ROOT", REPO_ROOT / "research" / "ftir_hips_chem"))
 
 file1 = DATA_ROOT / "processed_sites" / "df_Addis_Ababa_9am_resampled.pkl"
-file2 = DATA_ROOT / "df_Jacros_9am_resampled.pkl"
+file2 = DATA_ROOT / "processed_sites" / "df_Jacros_9am_resampled.pkl"
 
 print(f"\nFile 1: {file1}")
 print(f"File 2: {file2}")

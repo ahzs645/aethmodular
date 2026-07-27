@@ -186,7 +186,7 @@ def run_full_diagnostic():
     """
     Run the complete diagnostic analysis.
     """
-    aethalometer_path = "../research/ftir_hips_chem/df_Jacros_9am_resampled.pkl"
+    aethalometer_path = "../research/ftir_hips_chem/processed_sites/df_Jacros_9am_resampled.pkl"
     filter_db_path = "../research/ftir_hips_chem/Filter Data/unified_filter_dataset.pkl"
     
     try:

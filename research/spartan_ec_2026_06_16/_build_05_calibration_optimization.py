@@ -47,7 +47,8 @@ def find_repo_root(start=None):
     for cand in [p, *p.parents]:
         if (cand / "research").exists() and (cand / "AGENTS.md").exists():
             return cand
-    return Path.cwd()
+    raise RuntimeError("repo root not found above " + str(p)
+                       + " (looked for AGENTS.md + research/)")
 
 ROOT = find_repo_root()
 HERE = ROOT / "research/spartan_ec_2026_06_16"

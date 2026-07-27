@@ -64,16 +64,3 @@ if MERGER_PIPELINE_AVAILABLE:
         'extract_aethalometer_stats',
         'map_ethiopian_seasons'
     ])
-
-# Print availability status when imported (optional - remove if you don't want this)
-if __name__ != '__main__':
-    available_processors = []
-    if CALIBRATION_AVAILABLE:
-        available_processors.append('AethalometerCalibrator')
-    if FTIR_MERGER_AVAILABLE:
-        available_processors.append('FTIRMerger')
-    if MERGER_PIPELINE_AVAILABLE:
-        available_processors.append('MergerPipeline')
-
-    # Uncomment the line below if you want to see what's loaded
-    # print(f"📦 Data processors loaded: {', '.join(available_processors)}")

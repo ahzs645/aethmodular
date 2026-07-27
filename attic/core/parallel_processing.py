@@ -17,7 +17,7 @@ import pickle
 import tempfile
 
 try:
-    from src.utils.logging.logger import ETADLogger
+    from ..utils.logging.logger import ETADLogger
 except ImportError:  # pragma: no cover - compatibility fallback
     ETADLogger = None
 from ..utils.memory_optimization import MemoryOptimizer, CacheManager

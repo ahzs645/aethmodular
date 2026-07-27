@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from typing import Dict, Any
 from .base_smoothening import BaseSmoothing
-from ....data.processors.validation import get_valid_data_mask
+from src.data.processors.validation import get_valid_data_mask
 
 
 class ONASmoothing(BaseSmoothing):

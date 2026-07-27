@@ -96,11 +96,17 @@ class SourceApportionmentAnalyzer(BaseAnalyzer):
     def _calculate_aae(self, data: pd.DataFrame, bc1_col: str, bc2_col: str) -> pd.Series:
         """Calculate Angstrom Absorption Exponent"""
         
-        # Assume standard wavelengths if not specified in column names
+        # '<Name> BCc' columns come from a MA350/MA200 microAeth, so they take
+        # the microAeth channel centres (375/470/528/625/880) -- NOT the AE33
+        # set. These previously carried AE33 values (370/520/660), which
+        # inflates AAE(Red,IR) by ~16 % and roughly doubles the biomass
+        # fraction derived from it below. Canonical:
+        # research/ftir_hips_chem/scripts/config.py::WAVELENGTHS_NM
+        # BC1..BC7 are genuine AE33 columns and keep the AE33 values.
         wavelength_map = {
-            'UV BCc': 370, 'Blue BCc': 470, 'Green BCc': 520, 
-            'Red BCc': 660, 'IR BCc': 880,
-            'BC1': 370, 'BC2': 470, 'BC3': 520, 'BC4': 590, 
+            'UV BCc': 375, 'Blue BCc': 470, 'Green BCc': 528,
+            'Red BCc': 625, 'IR BCc': 880,
+            'BC1': 370, 'BC2': 470, 'BC3': 520, 'BC4': 590,
             'BC5': 660, 'BC6': 880, 'BC7': 950
         }
         

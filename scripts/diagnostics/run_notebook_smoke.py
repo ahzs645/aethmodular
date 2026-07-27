@@ -3,14 +3,15 @@
 
 Checks:
 1. No legacy pre-reorg notebook path references in sources.
-2. No machine-specific absolute `/Users/...` paths in sources.
+2. No machine-specific absolute or cloud-mount paths in sources. The markers are
+   imported from ``aethmodular_cli.cli`` so this stays in step with
+   ``aeth notebook check``.
 3. Execute selected notebooks end-to-end with `nbclient`.
 """
 
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from pathlib import Path
 from typing import Iterable, List
@@ -20,7 +21,23 @@ from nbclient import NotebookClient
 from nbclient.exceptions import CellExecutionError
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+# scripts/ is not an installed package and the CLI runs this file by path, so
+# put scripts/ on sys.path to make `common` importable. See scripts/common/.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from common.paths import REPO_ROOT  # noqa: E402
+
+# Share the portability markers with `aeth notebook check` instead of keeping a
+# second copy. The local copy had drifted: it lacked CLOUD_PATH_MARKERS, so this
+# smoke runner passed notebooks that `aeth notebook check` failed.
+# aethmodular_cli is stdlib-only, so this adds no dependency.
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+from aethmodular_cli.cli import (  # noqa: E402
+    CLOUD_PATH_MARKERS,
+    LEGACY_PATH_MARKERS,
+    MACHINE_PATH_MARKERS,
+)
+
 DEFAULT_NOTEBOOKS = [
     "notebooks/analysis/absorption/AAARpos.ipynb",
     "notebooks/analysis/absorption/ETAD_Aug13.ipynb",
@@ -29,12 +46,6 @@ DEFAULT_NOTEBOOKS = [
     "notebooks/analysis/absorption/warren_ratio_diagnostics.ipynb",
 ]
 
-LEGACY_PATTERNS = [
-    re.compile(r"\.\./FTIR_HIPS_Chem"),
-    re.compile(r"/FTIR_HIPS_Chem(?:/|$)"),
-    re.compile(r"aethmodular-clean/FTIR_HIPS_Chem"),
-]
-MACHINE_PATH_PATTERN = re.compile(r"/Users/")
 
 
 def iter_cell_sources(nb: nbformat.NotebookNode) -> Iterable[str]:
@@ -49,14 +60,17 @@ def run_notebook(path: Path, timeout: int) -> None:
 
     combined_source = "\n".join(iter_cell_sources(nb))
 
-    for pattern in LEGACY_PATTERNS:
-        if pattern.search(combined_source):
-            raise RuntimeError(
-                f"legacy path reference found in source ({pattern.pattern})"
-            )
+    for marker in LEGACY_PATH_MARKERS:
+        if marker in combined_source:
+            raise RuntimeError(f"legacy path reference found in source ({marker})")
 
-    if MACHINE_PATH_PATTERN.search(combined_source):
-        raise RuntimeError("machine-specific absolute path found in source (/Users/...)")
+    for marker in MACHINE_PATH_MARKERS:
+        if marker in combined_source:
+            raise RuntimeError(f"machine-specific absolute path found in source ({marker})")
+
+    for marker in CLOUD_PATH_MARKERS:
+        if marker in combined_source:
+            raise RuntimeError(f"machine-specific cloud path found in source ({marker})")
 
     client = NotebookClient(
         nb,

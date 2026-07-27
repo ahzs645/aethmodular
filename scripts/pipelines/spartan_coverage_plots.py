@@ -27,54 +27,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-RAW_DIR = REPO_ROOT / "data" / "spartan" / "raw"
-OUT_DIR = REPO_ROOT / "research" / "spartan" / "inventory"
-FIG_DIR = OUT_DIR / "figures"
-
-
-def _find_header_line(path: Path, max_scan: int = 5) -> int:
-    with open(path, "r", errors="replace") as f:
-        for i in range(max_scan):
-            line = f.readline()
-            if not line:
-                return 0
-            stripped = line.strip()
-            if not stripped:
-                continue
-            if "," in stripped and not stripped.lstrip().startswith("#"):
-                low = stripped.lower()
-                if any(tok in low for tok in ("site_code", "year", "year_local")):
-                    return i
-    return 0
+# scripts/ is not an installed package and the CLI runs this file by path, so
+# put scripts/ on sys.path to make `common` importable. See scripts/common/.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from common.spartan_io import (  # noqa: E402
+    FIG_DIR, OUT_DIR, RAW_DIR, build_datetime, read_spartan_csv, site_from_path,
+)
 
 
 def _load_dt(path: Path) -> tuple[pd.DataFrame, pd.Series]:
-    df = pd.read_csv(path, skiprows=_find_header_line(path), low_memory=False)
-    cols = {c.lower(): c for c in df.columns}
-
-    def col(*names: str) -> str | None:
-        for n in names:
-            if n in cols:
-                return cols[n]
-        return None
-
-    y = col("year_local", "start_year_local", "year")
-    m = col("month_local", "start_month_local", "month")
-    d = col("day_local", "start_day_local", "day")
-    h = col("hour_local", "start_hour_local", "hour")
-    if not (y and m and d):
-        return df, pd.Series([], dtype="datetime64[ns]")
-    parts = {
-        "year": pd.to_numeric(df[y], errors="coerce"),
-        "month": pd.to_numeric(df[m], errors="coerce"),
-        "day": pd.to_numeric(df[d], errors="coerce"),
-    }
-    if h:
-        parts["hour"] = pd.to_numeric(df[h], errors="coerce").fillna(0).astype(int)
-    frame = pd.DataFrame(parts).dropna(subset=["year", "month", "day"])
-    frame = frame[(frame["year"] >= 2010) & (frame["year"] <= 2030)]
-    return df, pd.to_datetime(frame, errors="coerce").dropna()
+    """Read a SPARTAN CSV and its datetime series (shared helpers)."""
+    df = read_spartan_csv(path)
+    return df, build_datetime(df)
 
 
 def gather_samples_per_month() -> pd.DataFrame:

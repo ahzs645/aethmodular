@@ -1,7 +1,7 @@
 """Small data-prep / bootstrap helpers shared across notebooks.
 
 Consolidated from copies previously redefined inline in research subdirs:
-- to_ugm3      (from research/catch_up)
+- to_ugm3      (from research/archive/catch_up)
 - find_repo_root (the copy-pasted path bootstrap)
 """
 

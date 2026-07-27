@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from typing import Dict, Any, List, Tuple, Optional, Union
 import warnings
-from ...core.base import BaseAnalyzer
+from src.core.base import BaseAnalyzer
 from ...core.monitoring import monitor_performance, handle_errors
 from ...utils.logging.logger import get_logger
 

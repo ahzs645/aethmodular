@@ -29,52 +29,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-HIPS_PATH = REPO_ROOT / "data" / "drive_bridge" / "Spartan" / "SPARTAN_HIPS_Batch1-51.v2.csv"
-LOOKUP_PATH = REPO_ROOT / "data" / "drive_bridge" / "Spartan" / "SPARTAN_Site_quick_lookup.xlsx"
-PUBLIC_PM25 = REPO_ROOT / "data" / "spartan" / "raw" / "FilterBased" / "ChemSpecPM25"
-OUT_DIR = REPO_ROOT / "research" / "spartan" / "inventory"
-FIG_DIR = OUT_DIR / "figures"
-
-
-def _find_header(path: Path, max_scan: int = 5) -> int:
-    with open(path, "r", errors="replace") as f:
-        for i in range(max_scan):
-            line = f.readline()
-            if not line:
-                return 0
-            s = line.strip()
-            if not s:
-                continue
-            if "," in s and not s.lstrip().startswith("#"):
-                if any(t in s.lower() for t in ("site_code", "year", "year_local")):
-                    return i
-    return 0
-
-
-def _normalize_fid(s: pd.Series) -> pd.Series:
-    """Some HIPS rows carry the per-replicate suffix ('-1', '-2', '-3') while
-    the public files key only to the base filter ('SITE-NNNN'). Strip the
-    trailing replicate so we can join both forms.
-    """
-    return (
-        s.astype(str)
-         .str.strip()
-         .str.replace(r"-(\d)$", "", regex=True)
-    )
-
-
-def load_hips() -> pd.DataFrame:
-    df = pd.read_csv(HIPS_PATH)
-    df["SampleDate"] = pd.to_datetime(df["SampleDate"], errors="coerce")
-    df["FilterId_base"] = _normalize_fid(df["FilterId"])
-    # Replicate "-7" is the SPARTAN field blank; "*-LB*" / numeric L-codes are lab blanks.
-    df["is_blank"] = (
-        df["FilterId"].astype(str).str.endswith("-7")
-        | df["FilterId"].astype(str).str.contains("-LB", regex=False)
-        | df["SampleDate"].isna()
-    )
-    return df
+# scripts/ is not an installed package and the CLI runs this file by path, so
+# put scripts/ on sys.path to make `common` importable. See scripts/common/.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from common.spartan_io import (  # noqa: E402
+    FIG_DIR, HIPS_PATH, LOOKUP_PATH, OUT_DIR, RAW_DIR,
+    find_header_line as _find_header, load_hips, normalize_fid as _normalize_fid,
+)
+PUBLIC_PM25 = RAW_DIR / "FilterBased" / "ChemSpecPM25"
 
 
 def load_lookup() -> pd.DataFrame:

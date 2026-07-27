@@ -20,6 +20,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from . import PlotConfig, resolve_sites, resolve_layout
+
+try:
+    from config import SMOOTH_RAW_THRESHOLDS
+except ImportError:  # Support importing as research.ftir_hips_chem.scripts.*
+    from ..config import SMOOTH_RAW_THRESHOLDS
 from .utils import (
     calculate_regression_stats, get_clean_data, calculate_axis_limits,
     create_grid_layout, create_individual_figure,
@@ -174,7 +179,9 @@ def threshold_analysis(data, x_col='aeth_bc', y_col='filter_ec',
     sites_list = resolve_sites(sites)
 
     if thresholds is None:
-        thresholds = [1, 2.5, 4, 5]
+        # Canonical list lives in config.SMOOTH_RAW_THRESHOLDS; copy() so a
+        # caller mutating the returned default cannot edit the shared list.
+        thresholds = list(SMOOTH_RAW_THRESHOLDS)
 
     if xlabel is None:
         xlabel = x_col
@@ -324,12 +331,19 @@ def flow_periods(data, x_col='aeth_bc', y_col='filter_ec',
             print(f"{site_name}: {period_col} not found")
             continue
 
-        # Check if we have before AND after data
+        # Check if we have before AND after data.
+        #
+        # Two label vocabularies exist in the repo and both reach this function:
+        #   flow_periods.add_flow_period        -> 'before' / 'after' / 'gap'
+        #   data_matching.add_flow_period_column -> 'before_fix' / 'after_fix' / 'gap_period'
+        # Matching only the bare form made this silently print "skipping" and
+        # draw nothing for every caller using the data_matching column, so
+        # accept either spelling rather than forcing one on existing notebooks.
         periods_present = df[period_col].unique()
-        has_before = 'before' in periods_present
-        has_after = 'after' in periods_present
+        before_label = next((p for p in ('before', 'before_fix') if p in periods_present), None)
+        after_label = next((p for p in ('after', 'after_fix') if p in periods_present), None)
 
-        if not (has_before and has_after):
+        if before_label is None or after_label is None:
             print(f"{site_name}: Only has {list(periods_present)} - skipping")
             continue
 
@@ -341,15 +355,16 @@ def flow_periods(data, x_col='aeth_bc', y_col='filter_ec',
         fig, axes = plt.subplots(1, 2, figsize=(16, 8))
         site_results = {}
 
-        for idx, period in enumerate(['before', 'after']):
+        for idx, (period, key) in enumerate(
+                [(before_label, 'before'), (after_label, 'after')]):
             ax = axes[idx]
             period_data = df[df[period_col] == period]
 
             if len(period_data) < 3:
                 ax.text(0.5, 0.5, f'Insufficient data\n(n={len(period_data)})',
                         ha='center', va='center', transform=ax.transAxes)
-                style_axes(ax, xlabel, ylabel, f'{period.upper()}')
-                site_results[period] = None
+                style_axes(ax, xlabel, ylabel, key.upper())
+                site_results[key] = None
                 continue
 
             x_period = period_data[x_col].values
@@ -357,26 +372,26 @@ def flow_periods(data, x_col='aeth_bc', y_col='filter_ec',
             x_clean, y_clean, _, _ = get_clean_data(x_period, y_period)
 
             # Plot data
-            ax.scatter(x_clean, y_clean, color=period_colors[period],
+            ax.scatter(x_clean, y_clean, color=period_colors[key],
                        alpha=0.6, s=PlotConfig.get('marker_size'),
                        edgecolors='black', linewidth=0.5,
                        label=f'Data (n={len(x_clean)})')
 
             # Calculate regression
             stats = calculate_regression_stats(x_clean, y_clean)
-            site_results[period] = stats
+            site_results[key] = stats
 
             if stats:
                 add_regression_line(ax, stats, [0, max_val])
 
                 # Stats box with period label
-                text = f"{period.upper()}\n"
+                text = f"{key.upper()}\n"
                 text += f"n = {stats['n']}\nR² = {stats['r_squared']:.3f}\n"
                 text += f"Slope = {stats['slope']:.3f}"
                 ax.text(0.05, 0.95, text, transform=ax.transAxes,
                         fontsize=10, verticalalignment='top',
                         bbox=dict(boxstyle='round',
-                                  facecolor=period_colors[period], alpha=0.3))
+                                  facecolor=period_colors[key], alpha=0.3))
 
             setup_equal_axes(ax, max_val)
             add_one_to_one_line(ax, max_val)

@@ -49,7 +49,6 @@ aeth diagnose matching
 aeth diagnose compare-pkl
 aeth diagnose etad-stats
 aeth diagnose flow
-aeth diagnose system
 
 aeth data resample
 aeth data resample --list-sites
@@ -93,4 +92,5 @@ Registered groups:
 - `spartan-ec`
 - `july07`
 - `addis-deming`
-- `catch-up`
+
+(`catch-up` retired 2026-07-26; see `research/archive/catch_up`.)

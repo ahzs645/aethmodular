@@ -24,7 +24,7 @@ Quick Start:
     from config import SITES, PROCESSED_SITES_DIR, FILTER_DATA_PATH
     from outliers import EXCLUDED_SAMPLES, apply_exclusion_flags, get_clean_data
     from data_matching import load_aethalometer_data, load_filter_data, match_aeth_filter_data
-    from plotting import plot_crossplot, plot_before_after_comparison
+    from plotting import crossplots, comparisons
 
     # Load data
     aethalometer_data = load_aethalometer_data()
@@ -79,6 +79,8 @@ try:
         FILTER_CATEGORIES, CROSS_COMPARISONS,
         ETAD_FACTOR_CONTRIBUTIONS_PATH, ETAD_FILTER_ID_PATH,
         ETHIOPIA_SEASONS, season_for_month,
+        WAVELENGTHS_NM, AE33_WAVELENGTHS_NM,
+        BASE_FILTER_ID_PATTERN, BASE_FILTER_ID_REPL, AAE_REGIONS,
     )
     from outliers import (
         EXCLUDED_SAMPLES, MANUAL_OUTLIERS,
@@ -94,10 +96,15 @@ try:
         pivot_filter_by_id, get_site_code, get_site_color, print_data_summary,
         base_filter_id, normalize_filter_id,
     )
+    from flow_periods import (
+        add_flow_period, has_before_after_data, print_flow_period_summary,
+        FLOW_FIX_DATES,
+    )
     from etad_factors import (
         load_etad_factor_contributions, load_etad_filter_ids,
         load_etad_factors_with_filter_ids, match_etad_factors,
         ETAD_PMF_SOURCE_NAMES, ETAD_FACTOR_RENAME,
+        normalize_gf_fractions, add_dominant_source, GF_FRACTION_COLUMNS,
     )
     from plotting import (
         PlotConfig, apply_default_style, crossplots, timeseries,
@@ -125,6 +132,8 @@ except ImportError:
         FILTER_CATEGORIES, CROSS_COMPARISONS,
         ETAD_FACTOR_CONTRIBUTIONS_PATH, ETAD_FILTER_ID_PATH,
         ETHIOPIA_SEASONS, season_for_month,
+        WAVELENGTHS_NM, AE33_WAVELENGTHS_NM,
+        BASE_FILTER_ID_PATTERN, BASE_FILTER_ID_REPL, AAE_REGIONS,
     )
     from .outliers import (
         EXCLUDED_SAMPLES, MANUAL_OUTLIERS,
@@ -140,10 +149,15 @@ except ImportError:
         pivot_filter_by_id, get_site_code, get_site_color, print_data_summary,
         base_filter_id, normalize_filter_id,
     )
+    from .flow_periods import (
+        add_flow_period, has_before_after_data, print_flow_period_summary,
+        FLOW_FIX_DATES,
+    )
     from .etad_factors import (
         load_etad_factor_contributions, load_etad_filter_ids,
         load_etad_factors_with_filter_ids, match_etad_factors,
         ETAD_PMF_SOURCE_NAMES, ETAD_FACTOR_RENAME,
+        normalize_gf_fractions, add_dominant_source, GF_FRACTION_COLUMNS,
     )
     from .plotting import (
         PlotConfig, apply_default_style, crossplots, timeseries,
@@ -172,6 +186,8 @@ __all__ = [
     'FILTER_CATEGORIES', 'CROSS_COMPARISONS',
     'ETAD_FACTOR_CONTRIBUTIONS_PATH', 'ETAD_FILTER_ID_PATH',
     'ETHIOPIA_SEASONS', 'season_for_month',
+    'WAVELENGTHS_NM', 'AE33_WAVELENGTHS_NM',
+    'BASE_FILTER_ID_PATTERN', 'BASE_FILTER_ID_REPL', 'AAE_REGIONS',
     # Outliers
     'EXCLUDED_SAMPLES', 'MANUAL_OUTLIERS',
     'apply_exclusion_flags', 'apply_threshold_flags',
@@ -184,9 +200,14 @@ __all__ = [
     'add_flow_period_column', 'add_base_filter_id', 'match_by_filter_id',
     'pivot_filter_by_id', 'get_site_code', 'get_site_color', 'print_data_summary',
     'base_filter_id', 'normalize_filter_id',
+    # Flow periods (note: flow_periods.add_flow_period emits 'before'/'after';
+    # data_matching.add_flow_period_column emits 'before_fix'/'after_fix')
+    'add_flow_period', 'has_before_after_data', 'print_flow_period_summary',
+    'FLOW_FIX_DATES',
     'load_etad_factor_contributions', 'load_etad_filter_ids',
     'load_etad_factors_with_filter_ids', 'match_etad_factors',
     'ETAD_PMF_SOURCE_NAMES', 'ETAD_FACTOR_RENAME',
+    'normalize_gf_fractions', 'add_dominant_source', 'GF_FRACTION_COLUMNS',
     # Plotting
     'PlotConfig', 'apply_default_style', 'crossplots', 'timeseries',
     'distributions', 'comparisons', 'calculate_regression_stats',

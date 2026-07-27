@@ -37,7 +37,8 @@ def find_root(s=None):
     p=Path(s or Path.cwd()).resolve()
     for c in [p,*p.parents]:
         if (c/"research").exists() and (c/"AGENTS.md").exists(): return c
-    return Path.cwd()
+    raise RuntimeError("repo root not found above " + str(p)
+                       + " (looked for AGENTS.md + research/)")
 HERE=find_root()/"research/spartan_ec_2026_06_16"; DATA=HERE/"data"; FIG=HERE/"figures"; FIG.mkdir(exist_ok=True); (HERE/"tables").mkdir(exist_ok=True)
 
 X=pd.read_csv(DATA/"rds_EC_X.csv").drop(columns=["id"]).to_numpy(float)

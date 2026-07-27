@@ -18,7 +18,8 @@ class NotebookConfig:
     
     # Site and analysis parameters
     site_code: str = 'ETAD'
-    wavelength: str = 'Red'  # Options: 'Red', 'Blue', 'Green', 'UV', 'IR'
+    # Matches config.DEFAULT_BC_WAVELENGTH; was 'Red'.
+    wavelength: str = 'IR'  # Options: 'UV', 'Blue', 'Green', 'Red', 'IR'
     quality_threshold: int = 10  # Maximum missing minutes for "excellent" quality
     output_format: str = "jpl"  # 'jpl' or 'standard' format
     

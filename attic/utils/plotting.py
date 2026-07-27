@@ -109,7 +109,10 @@ class AethalometerPlotter:
         
         # Extract wavelength data
         wavelength_data = {}
-        wl_values = {'UV': 370, 'Blue': 470, 'Green': 520, 'Red': 660, 'IR': 880}
+        # MA350/MA200 channel centres, matching the '<Name> BCc' columns read
+        # just below. Previously the AE33 set (370/520/660). Canonical:
+        # research/ftir_hips_chem/scripts/config.py::WAVELENGTHS_NM
+        wl_values = {'UV': 375, 'Blue': 470, 'Green': 528, 'Red': 625, 'IR': 880}
         
         for wl in wavelengths:
             col_name = f'{wl} BCc'

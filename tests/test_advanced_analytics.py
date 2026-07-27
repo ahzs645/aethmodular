@@ -6,13 +6,13 @@ import numpy as np
 from datetime import datetime, timedelta
 
 try:
-    from src.analysis.advanced.statistical_analysis import (
+    from attic.analysis.advanced.statistical_analysis import (
         StatisticalComparator, DistributionAnalyzer, OutlierDetector
     )
-    from src.analysis.advanced.ml_analysis import (
+    from attic.analysis.advanced.ml_analysis import (
         MLModelTrainer, PredictiveAnalyzer, ClusterAnalyzer
     )
-    from src.analysis.advanced.time_series_analysis import (
+    from attic.analysis.advanced.time_series_analysis import (
         TimeSeriesAnalyzer, TrendDetector, SeasonalAnalyzer
     )
     ADVANCED_MODULES_AVAILABLE = True

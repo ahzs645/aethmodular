@@ -9,7 +9,7 @@ Usage:
     from src.data.loaders.aethalometer_filter_matcher import AethalometerFilterMatcher
     
     matcher = AethalometerFilterMatcher(
-        aethalometer_path="path/to/df_Jacros_9am_resampled.pkl",
+        aethalometer_path="path/to/processed_sites/df_Jacros_9am_resampled.pkl",
         filter_db_path="path/to/unified_filter_dataset.pkl"
     )
     
@@ -19,7 +19,6 @@ Usage:
 import pandas as pd
 import numpy as np
 import os
-import importlib.util
 from typing import Dict, List, Optional, Tuple, Union
 from datetime import datetime
 import warnings
@@ -50,30 +49,22 @@ class AethalometerFilterMatcher:
         self._setup_filter_loader()
         
     def _setup_filter_loader(self):
-        """Setup the filter data loader."""
-        try:
-            filter_dir = os.path.dirname(self.filter_db_path)
-            parent_dir = os.path.dirname(filter_dir)
-            loader_module_path = os.path.join(parent_dir, "data_loader_module.py")
-            if not os.path.exists(loader_module_path):
-                raise FileNotFoundError(f"data_loader_module.py not found at {loader_module_path}")
+        """Setup the filter data loader.
 
-            spec = importlib.util.spec_from_file_location("data_loader_module", loader_module_path)
-            if spec is None or spec.loader is None:
-                raise ImportError(f"Could not load module spec for {loader_module_path}")
+        This used to side-load ``data_loader_module.py`` from a path derived
+        from ``filter_db_path`` (``dirname(dirname(...))``). That resolved to
+        a file that did not exist, and the FileNotFoundError escaped the
+        ``except ImportError`` below -- so this class could not be constructed
+        at all. The loader now lives in ``src/data/loaders/filter_data_loader``
+        and is a normal import.
+        """
+        from .filter_data_loader import load_filter_database
 
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            load_filter_database = module.load_filter_database
-            
-            if os.path.exists(self.filter_db_path):
-                self.filter_loader = load_filter_database(self.filter_db_path)
-                print(f"✅ Filter database loaded from: {self.filter_db_path}")
-            else:
-                raise FileNotFoundError(f"Filter database not found: {self.filter_db_path}")
-                
-        except ImportError as e:
-            raise ImportError(f"Could not import data_loader_module: {e}")
+        if not os.path.exists(self.filter_db_path):
+            raise FileNotFoundError(f"Filter database not found: {self.filter_db_path}")
+
+        self.filter_loader = load_filter_database(self.filter_db_path)
+        print(f"✅ Filter database loaded from: {self.filter_db_path}")
     
     def load_aethalometer_data(self) -> pd.DataFrame:
         """

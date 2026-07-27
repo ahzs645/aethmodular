@@ -70,12 +70,11 @@ class EnhancedNotebookLoader:
         except ImportError as e:
             print(f"⚠️ Database loader not available: {e}")
         
-        try:
-            from src.utils.plotting import AethalometerPlotter
-            imported_components['utils']['AethalometerPlotter'] = AethalometerPlotter
-            print("✅ Plotting utilities imported")
-        except ImportError as e:
-            print(f"⚠️ Plotting utilities not available: {e}")
+        # src/utils/ moved to attic/utils/ on 2026-07-26 (no live consumer), and
+        # AethalometerPlotter is superseded by the research plotting package --
+        # its constructor calls plt.style.use(), which reverts the canonical
+        # white background. Not re-pointed at attic on purpose: src/ must not
+        # depend on attic/. See attic/README.md.
         
         try:
             from src.config.plotting import setup_plotting_style

@@ -1,9 +1,15 @@
 """
 Flow period classification and analysis functions.
 
-Consolidates flow period logic that was duplicated across:
-- FlowFix_BeforeAfter_Analysis.ipynb
-- Multi_Site_Analysis_Modular.ipynb
+Imported by: Analysis_Tasks_Jan2025.ipynb, Example_Modular_Analysis.ipynb,
+Task_Analysis_Notebook.ipynb, primary_tasks_notebook.ipynb.
+
+Note the two flow-period label vocabularies in this repo:
+- ``add_flow_period`` (here)                      -> 'before' / 'after' / 'gap'
+- ``data_matching.add_flow_period_column``        -> 'before_fix' / 'after_fix' / 'gap_period'
+``plotting.comparisons.flow_periods`` accepts either. FlowFix_BeforeAfter_Analysis.ipynb
+and Multi_Site_Analysis_Fixed.ipynb still carry their own inline copies and have
+not been migrated to this module.
 
 Usage:
     from flow_periods import classify_flow_period, add_flow_period, FLOW_FIX_DATES
@@ -215,7 +221,10 @@ def calculate_period_stats(df, site_name, x_col, y_col, date_col='date'):
     --------
     dict: {'before': stats, 'after': stats}
     """
-    from plotting.utils import calculate_regression_stats
+    try:
+        from plotting.utils import calculate_regression_stats
+    except ImportError:  # Support importing as research.ftir_hips_chem.scripts.*
+        from .plotting.utils import calculate_regression_stats
 
     if 'flow_period' not in df.columns:
         df = add_flow_period(df, site_name, date_col)

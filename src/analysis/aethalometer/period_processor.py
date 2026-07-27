@@ -19,11 +19,10 @@ class NineAMPeriodProcessor(BaseAnalyzer):
     
     def __init__(self):
         super().__init__("NineAMPeriodProcessor")
-        self.quality_thresholds = {
-            'excellent': 10,  # ≤10 minutes missing
-            'good': 60,       # ≤60 minutes missing
-            'poor': float('inf')  # >60 minutes missing
-        }
+        # Single source: src/config/quality_thresholds.py
+        from src.config.quality_thresholds import completeness_tiers
+        # lowercase keys: this module's callers expect them.
+        self.quality_thresholds = completeness_tiers(lowercase=True)
     
     def analyze(self, data: pd.DataFrame, date_column: str = 'timestamp') -> Dict[str, Any]:
         """
@@ -130,13 +129,15 @@ class NineAMPeriodProcessor(BaseAnalyzer):
             missing_minutes = expected_minutes - actual_minutes
             missing_percentage = (missing_minutes / expected_minutes) * 100
             
-            # Classify quality
-            if missing_minutes <= self.quality_thresholds['excellent']:
-                quality = 'excellent'
-            elif missing_minutes <= self.quality_thresholds['good']:
-                quality = 'good'
-            else:
-                quality = 'poor'
+            # Classify quality. Ascending threshold order, and the 'moderate'
+            # tier is applied -- this used to fall straight from 'good' to
+            # 'poor', so 100 missing minutes was 'poor' here and 'moderate' in
+            # every other classifier in the repo.
+            quality = 'poor'
+            for label, limit in sorted(self.quality_thresholds.items(), key=lambda kv: kv[1]):
+                if missing_minutes <= limit:
+                    quality = label
+                    break
             
             # Calculate hourly missing patterns
             hourly_missing = self._calculate_hourly_missing_pattern(

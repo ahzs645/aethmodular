@@ -7,7 +7,7 @@ from scipy import stats
 from scipy.stats import pearsonr, spearmanr, ks_2samp, mannwhitneyu
 from sklearn.preprocessing import StandardScaler
 import warnings
-from ...core.base import BaseAnalyzer
+from src.core.base import BaseAnalyzer
 from ...core.monitoring import monitor_performance, handle_errors
 from ...utils.logging.logger import get_logger
 

@@ -18,6 +18,11 @@ uv run aeth doctor
 `pyproject.toml` and `uv.lock` are authoritative. `environment.yml` and
 `requirements.txt` are compatibility fallbacks for Conda and pip users.
 
+**Python version:** `requires-python` is `>=3.9` (the floor — `cli.py` uses
+`str.removeprefix`), but **3.13 is the recommended interpreter** and is what
+`environment.yml` pins and `uv sync --python 3.13` installs. Use 3.13 unless you
+have a reason not to.
+
 If `uv` is unavailable, use a Python 3.9+ environment and install with pip:
 ```bash
 python -m pip install -e .
@@ -74,8 +79,8 @@ Canonical Python imports use `src.*`:
 ```bash
 uv run python - <<'PY'
 import src
-import src.core.monitoring
-import src.analysis.aethalometer.smoothening
+import src.core.base
+import src.data.loaders
 from src.config.project_paths import get_project_root, get_data_root, data_path
 
 print("project_root =", get_project_root())
@@ -95,13 +100,15 @@ uv run aeth notebook run \
 ## Repository Layout
 
 - `src/`: importable package code (`src.*`)
+- `aethmodular_cli/`: the dependency-light `aeth` command
 - `tests/`: pytest suite
 - `research/ftir_hips_chem/`: FTIR/HIPS research assets and source datasets
-- `research/filter_combine/`: filter-combine research assets
+- `research/filter_combine/`: filter-combine source datasets
+- `notebooks/`: active (`analysis/`, `qc/`) and legacy (`archive/`) notebooks
 - `scripts/diagnostics/`: diagnostics and inspection scripts
 - `scripts/pipelines/`: data processing pipelines
+- `manuscript/`: citation tooling and bibliography sources (needs `pandoc`)
 - `docs/`: repository and workflow docs
-- `artifacts/`: generated outputs (ignored)
 
 ## Common Commands
 

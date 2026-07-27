@@ -17,11 +17,15 @@ Use canonical `src.*` imports:
 
 ```python
 import src
-import src.core.monitoring
-import src.analysis.aethalometer.smoothening
+import src.core.base
+import src.data.loaders
 
 from src.config.project_paths import get_project_root, get_data_root, data_path
 ```
+
+Modules with no current consumer live under `attic/` rather than `src/` — see
+[`attic/README.md`](../attic/README.md). Don't add `attic.*` imports to `src/`,
+`scripts/`, `research/`, or notebooks; promote the module back to `src/` instead.
 
 Path helpers:
 - `get_project_root()`: repo root

@@ -8,10 +8,10 @@ from unittest.mock import Mock, patch
 import tempfile
 from pathlib import Path
 
-from src.core.monitoring import PerformanceMonitor, ErrorHandler, SystemMonitor
-from src.core.parallel_processing import ParallelProcessor, PipelineProcessor, ParallelProcessingConfig
-from src.utils.memory_optimization import MemoryOptimizer, BatchProcessor, CacheManager
-from src.utils.logging.logger import ETADLogger
+from attic.core.monitoring import PerformanceMonitor, ErrorHandler, SystemMonitor
+from attic.core.parallel_processing import ParallelProcessor, PipelineProcessor, ParallelProcessingConfig
+from attic.utils.memory_optimization import MemoryOptimizer, BatchProcessor, CacheManager
+from attic.utils.logging.logger import ETADLogger
 
 class TestPerformanceMonitoring:
     """Test performance monitoring functionality"""
@@ -78,7 +78,7 @@ class TestPerformanceMonitoring:
         
         with self.monitor.__class__(self.logger).__class__(self.logger) as monitor:
             # Mock the system monitor for testing
-            with patch('src.core.monitoring.SystemMonitor') as mock_monitor:
+            with patch('attic.core.monitoring.SystemMonitor') as mock_monitor:
                 mock_monitor.return_value.monitor_resources.return_value.__enter__.return_value = resource_data
                 mock_monitor.return_value.monitor_resources.return_value.__exit__.return_value = None
                 

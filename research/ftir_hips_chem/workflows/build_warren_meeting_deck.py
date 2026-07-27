@@ -10,6 +10,7 @@ note about adding SPARTAN/IMPROVE filter-pattern photos.
 """
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -25,13 +26,29 @@ OUTPUT_DIR = RESEARCH_DIR / "output" / "warren_meeting"
 FIG_DIR = OUTPUT_DIR / "figures"
 DECK_PATH = OUTPUT_DIR / "warren_meeting_slides.pptx"
 
+# External assets this deck embeds. None of them live in the repo, and all were
+# absent as of 2026-07-26, so a run today produces a deck of placeholders. The
+# locations are overridable rather than hardcoded to one machine's home dir:
+#   WARREN_FILTER_PHOTO_DIR  - SPARTAN filter photographs
+#   WARREN_PAGES_DIR         - scanned page crops (was the deleted tmp_warren_pages/)
+_PHOTO_DIR = Path(
+    os.environ.get("WARREN_FILTER_PHOTO_DIR", Path.home() / "Downloads" / "filter")
+).expanduser()
+_PAGES_DIR = Path(
+    os.environ.get("WARREN_PAGES_DIR", REPO_ROOT / "tmp_warren_pages")
+).expanduser()
+
 SPARTAN_FILTER_PHOTOS = [
-    Path.home() / "Downloads" / "filter" / "image004.jpg",
-    Path.home() / "Downloads" / "filter" / "image005.jpg",
-    Path.home() / "Downloads" / "filter" / "image006.jpg",
+    _PHOTO_DIR / "image004.jpg",
+    _PHOTO_DIR / "image005.jpg",
+    _PHOTO_DIR / "image006.jpg",
 ]
-WARREN_RT_PNG = REPO_ROOT / "tmp_warren_pages" / "warren_RT.png"
-MCDADE_IMPROVE_FILTER_PNG = REPO_ROOT / "tmp_warren_pages" / "mcdade_improve_filter.png"
+WARREN_RT_PNG = _PAGES_DIR / "warren_RT.png"
+MCDADE_IMPROVE_FILTER_PNG = _PAGES_DIR / "mcdade_improve_filter.png"
+
+# Populated by add_image() so main() can report an honest exit code instead of
+# silently succeeding with a deck full of "[FIGURE MISSING]" boxes.
+MISSING_ASSETS: list[str] = []
 
 # Slide dimensions (16:9 widescreen)
 SLIDE_W_IN = 13.333
@@ -68,6 +85,7 @@ def add_image(
     """
     p = Path(png_path)
     if not p.exists():
+        MISSING_ASSETS.append(str(png_path))
         box = slide.shapes.add_textbox(
             Inches(left), Inches(top), Inches(width), Inches(height)
         )
@@ -405,6 +423,23 @@ def build() -> Path:
 def main() -> int:
     path = build()
     print(f"Saved deck: {path}")
+
+    if MISSING_ASSETS:
+        print(
+            f"\nWARNING: {len(MISSING_ASSETS)} figure(s) were missing and appear in "
+            "the deck as placeholder text boxes:",
+            file=sys.stderr,
+        )
+        for item in MISSING_ASSETS:
+            print(f"  - {item}", file=sys.stderr)
+        print(
+            "\nSet WARREN_FILTER_PHOTO_DIR / WARREN_PAGES_DIR to point at the source "
+            "images, or regenerate the figures, then re-run.",
+            file=sys.stderr,
+        )
+        # Exit non-zero: a deck of placeholders is not a successful build.
+        return 1
+
     return 0
 
 

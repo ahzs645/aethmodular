@@ -314,12 +314,15 @@ class MultiWavelengthBCAnalyzer(BaseAnalyzer):
             Analysis results including AAE calculations
         """
         
-        # Define wavelengths (nm) for each channel
+        # MA350/MA200 microAeth channel centres. These were AE33 values
+        # (370/520/660) keyed onto microAeth column names, which inflates
+        # AAE(Red,IR) by ~16 %. Canonical:
+        # research/ftir_hips_chem/scripts/config.py::WAVELENGTHS_NM
         wavelengths = {
-            'UV.BCc': 370,
+            'UV.BCc': 375,
             'Blue.BCc': 470,
-            'Green.BCc': 520,
-            'Red.BCc': 660,
+            'Green.BCc': 528,
+            'Red.BCc': 625,
             'IR.BCc': 880
         }
         

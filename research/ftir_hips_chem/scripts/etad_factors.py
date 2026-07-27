@@ -6,12 +6,19 @@ workflow is site-specific, while data_matching.py handles generic aeth/filter
 matching across all sites.
 """
 
+import numpy as np
 import pandas as pd
 
 try:
-    from config import ETAD_FACTOR_CONTRIBUTIONS_PATH, ETAD_FILTER_ID_PATH
+    from config import (
+        BASE_FILTER_ID_PATTERN, BASE_FILTER_ID_REPL,
+        ETAD_FACTOR_CONTRIBUTIONS_PATH, ETAD_FILTER_ID_PATH,
+    )
 except ImportError:  # Support importing as research.ftir_hips_chem.scripts.*
-    from .config import ETAD_FACTOR_CONTRIBUTIONS_PATH, ETAD_FILTER_ID_PATH
+    from .config import (
+        BASE_FILTER_ID_PATTERN, BASE_FILTER_ID_REPL,
+        ETAD_FACTOR_CONTRIBUTIONS_PATH, ETAD_FILTER_ID_PATH,
+    )
 
 
 ETAD_PMF_SOURCE_NAMES = {
@@ -64,7 +71,9 @@ def load_etad_filter_ids(csv_path=None):
     df = pd.read_csv(csv_path)
     df['date'] = pd.to_datetime(df['oldDate'])
     df = df.drop(columns=['oldDate'])
-    df['base_filter_id'] = df['FilterId'].str.replace(r'-\d+$', '', regex=True)
+    df['base_filter_id'] = df['FilterId'].str.replace(
+        BASE_FILTER_ID_PATTERN, BASE_FILTER_ID_REPL, regex=True
+    )
 
     print(f"ETAD Filter IDs loaded: {len(df)} filters")
     print(f"Date range: {df['date'].min().date()} to {df['date'].max().date()}")
@@ -153,3 +162,114 @@ def match_etad_factors(target_df, target_date_col='date',
 
     return result
 
+
+
+# =============================================================================
+# GF FRACTION NORMALIZATION
+# =============================================================================
+
+# Maps the renamed GF columns to the short fraction names the notebooks use.
+FACTOR_TO_FRAC = {
+    'GF1 (Sea Salt Mixed)':          'sea_salt_frac',
+    'GF2 (Wood Burning)':            'wood_frac',
+    'GF3 (Charcoal)':                'charcoal_frac',
+    'GF4 (Polluted Marine)':         'polluted_marine_frac',
+    'GF5 (Fossil Fuel Combustion)':  'fossil_fuel_frac',
+}
+
+GF_FRACTION_COLUMNS = list(FACTOR_TO_FRAC.values())
+
+
+def normalize_gf_fractions(factors_df, frac_cols=None, rename=True):
+    """Convert raw GF columns into relative source contributions.
+
+    **This step is mandatory and easy to forget.** The raw ``GF1``-``GF5`` values
+    in ``ETAD Factor Contributions .csv`` are PM2.5 *mass* fractions that sum to
+    roughly 0.03-0.46 per row -- they are not relative source contributions.
+    Used unnormalized, ``dominant_fraction`` tops out near 0.24 and no sample
+    ever crosses a 30 % threshold; after normalization the mean is about 46 %.
+    See the "Data join quirks" section of AGENTS.md.
+
+    Each fraction column is divided by that row's sum across all fraction
+    columns, so the columns sum to 1.0 per row.
+
+    Parameters
+    ----------
+    factors_df : DataFrame
+        Output of ``load_etad_factor_contributions`` or
+        ``load_etad_factors_with_filter_ids``.
+    frac_cols : list of str, optional
+        Fraction columns to normalize. Defaults to the five GF fractions.
+    rename : bool
+        Rename ``GFn (Source)`` columns to short ``*_frac`` names first
+        (the form the notebooks use). Set False if already renamed.
+
+    Returns
+    -------
+    DataFrame
+        A copy with the fraction columns normalized. Rows whose fractions sum to
+        0 yield NaN rather than inf.
+    """
+    df = factors_df.copy()
+
+    if rename:
+        df = df.rename(columns=FACTOR_TO_FRAC)
+
+    if frac_cols is None:
+        frac_cols = [c for c in GF_FRACTION_COLUMNS if c in df.columns]
+
+    missing = [c for c in frac_cols if c not in df.columns]
+    if missing:
+        raise KeyError(
+            f"fraction columns not found: {missing}. "
+            f"Available: {sorted(df.columns)}"
+        )
+    if not frac_cols:
+        # Fail loudly rather than returning the frame untouched: a silent no-op
+        # here looks exactly like a successful normalization to the caller, and
+        # every downstream threshold comparison would then be wrong.
+        raise KeyError(
+            "no GF fraction columns found to normalize. Expected some of "
+            f"{GF_FRACTION_COLUMNS} (or pass frac_cols explicitly). "
+            f"Available: {sorted(df.columns)}"
+        )
+
+    frac_sum = df[frac_cols].sum(axis=1)
+    # Guard the degenerate all-zero row: division would give inf/-inf, which
+    # then silently wins an idxmax() for dominant source. np.nan (not pd.NA)
+    # keeps the columns float64 -- pd.NA would upcast them to object.
+    frac_sum = frac_sum.replace(0, np.nan)
+
+    for col in frac_cols:
+        df[col] = df[col] / frac_sum
+
+    return df
+
+
+def add_dominant_source(df, frac_cols=None, suffix='_frac'):
+    """Add ``dominant_source`` / ``dominant_fraction`` from normalized fractions.
+
+    Call ``normalize_gf_fractions`` first -- on raw GF values the fraction is a
+    share of PM2.5 mass, not of the source mix, and every threshold comparison
+    is wrong.
+    """
+    out = df.copy()
+    if frac_cols is None:
+        frac_cols = [c for c in GF_FRACTION_COLUMNS if c in out.columns]
+    if not frac_cols:
+        raise KeyError("no fraction columns found; pass frac_cols explicitly")
+
+    fractions = out[frac_cols]
+    # idxmax on an all-NA row emits a FutureWarning today and raises ValueError
+    # in a later pandas. Compute only on rows that have at least one value.
+    usable = fractions.notna().any(axis=1)
+
+    out['dominant_source'] = pd.Series(None, index=out.index, dtype='object')
+    out['dominant_fraction'] = pd.Series(float('nan'), index=out.index, dtype='float64')
+
+    if usable.any():
+        winners = fractions.loc[usable].idxmax(axis=1)
+        out.loc[usable, 'dominant_source'] = winners.str.replace(suffix, '', regex=False)
+        out.loc[usable, 'dominant_fraction'] = fractions.loc[usable].max(axis=1)
+
+    return out

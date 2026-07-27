@@ -23,7 +23,9 @@ from plotting.utils import (                                 # noqa: E402
     deming, deming_lambda, calculate_regression_stats,
 )
 from config import ETHIOPIA_SEASONS, season_for_month        # noqa: E402
-from data_matching import base_filter_id, normalize_filter_id  # noqa: E402
+from data_matching import (                                   # noqa: E402
+    add_base_filter_id, base_filter_id, normalize_filter_id,
+)
 from prep import to_ugm3, find_repo_root                     # noqa: E402
 
 
@@ -165,3 +167,228 @@ class TestPaths:
     def test_finds_repo_root(self):
         root = find_repo_root(__file__)
         assert (root / "pyproject.toml").exists()
+
+
+class TestFlowPeriodLabelVocabularies:
+    """comparisons.flow_periods must accept both flow-period label spellings.
+
+    Two producers exist and both reach this plot function:
+        flow_periods.add_flow_period         -> 'before' / 'after' / 'gap'
+        data_matching.add_flow_period_column -> 'before_fix' / 'after_fix' / 'gap_period'
+
+    Matching only the bare form made the plot silently print "skipping" and draw
+    nothing for every caller using the data_matching column.
+    """
+
+    @staticmethod
+    def _frame(before_label, after_label, n=40):
+        rng = np.random.default_rng(0)
+        half = n // 2
+        return pd.DataFrame({
+            "aeth_bc": rng.uniform(1, 10, n),
+            "filter_ec": rng.uniform(1, 10, n),
+            "flow_period": [before_label] * half + [after_label] * half,
+        })
+
+    @pytest.mark.parametrize(
+        "before_label,after_label",
+        [("before", "after"), ("before_fix", "after_fix")],
+    )
+    def test_both_vocabularies_produce_results(self, before_label, after_label):
+        import matplotlib
+        matplotlib.use("Agg")
+        from plotting import comparisons, PlotConfig
+
+        PlotConfig.set(sites=["Beijing"])
+        results = comparisons.flow_periods(
+            {"Beijing": self._frame(before_label, after_label)}
+        )
+
+        assert "Beijing" in results, f"{before_label}/{after_label} was skipped"
+        # Result keys are canonical regardless of the input spelling.
+        assert sorted(results["Beijing"]) == ["after", "before"]
+
+    def test_missing_after_period_still_skips(self):
+        """A genuinely incomplete pair must still be skipped, not force-plotted."""
+        import matplotlib
+        matplotlib.use("Agg")
+        from plotting import comparisons, PlotConfig
+
+        PlotConfig.set(sites=["Beijing"])
+        results = comparisons.flow_periods({"Beijing": self._frame("before", "gap")})
+        assert not results.get("Beijing")
+
+
+class TestPlottingOverlays:
+    """Axes-level primitives that replaced plotting_legacy.
+
+    plotting_legacy was deleted on 2026-07-26. These lock in the contract three
+    notebooks depend on: draw onto a caller-supplied axes, return regression
+    stats, and keep the legacy styling so migrated figures did not change.
+    """
+
+    @staticmethod
+    def _axes():
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        return plt.subplots()
+
+    def test_scatter_returns_stats_and_draws_on_given_axes(self):
+        from plotting import overlays
+
+        rng = np.random.default_rng(7)
+        x = rng.uniform(1, 20, 60)
+        y = 1.8 * x + rng.normal(0, 2, 60)
+
+        fig, ax = self._axes()
+        stats = overlays.scatter_on_axes(ax, x, y, "X", "Y")
+
+        assert stats["n"] == 60
+        assert stats["slope"] == pytest.approx(1.8, abs=0.1)
+        assert ax.collections, "nothing was drawn on the supplied axes"
+
+    def test_scatter_drops_non_finite_instead_of_raising(self):
+        """Legacy masked with ~isnan, so +/-inf reached polyfit and axis limits."""
+        from plotting import overlays
+
+        rng = np.random.default_rng(7)
+        x = np.append(rng.uniform(1, 20, 40), [np.inf, np.nan])
+        y = np.append(rng.uniform(1, 20, 40), [5.0, 5.0])
+
+        fig, ax = self._axes()
+        stats = overlays.scatter_on_axes(ax, x, y, "X", "Y")
+
+        assert stats["n"] == 40
+        assert all(np.isfinite(lim) for lim in ax.get_xlim() + ax.get_ylim())
+
+    def test_scatter_returns_none_below_three_points(self):
+        from plotting import overlays
+
+        fig, ax = self._axes()
+        assert overlays.scatter_on_axes(ax, [1.0, 2.0], [1.0, 2.0], "X", "Y") is None
+
+    def test_outliers_excluded_from_fit_but_still_drawn(self):
+        from plotting import overlays
+
+        rng = np.random.default_rng(3)
+        x = rng.uniform(1, 20, 30)
+        y = 2.0 * x
+        mask = np.zeros(30, bool)
+        mask[:5] = True
+
+        fig, ax = self._axes()
+        stats = overlays.scatter_on_axes(ax, x, y, "X", "Y", outlier_mask=mask)
+
+        assert stats["n"] == 25
+        assert len(ax.collections) == 2, "expected retained + excluded point sets"
+
+    def test_iron_gradient_requires_iron_present(self):
+        """Rows with missing iron are excluded from the fit, unlike
+        crossplots.with_iron_gradient. Preserved so migrated numbers match."""
+        from plotting import overlays
+
+        rng = np.random.default_rng(11)
+        x = rng.uniform(1, 20, 30)
+        y = 2.0 * x
+        iron = rng.uniform(1, 5, 30)
+        iron[:6] = np.nan
+
+        fig, ax = self._axes()
+        stats, scatter = overlays.iron_gradient_on_axes(ax, x, y, iron, "X", "Y")
+
+        assert stats["n"] == 24
+        assert scatter is not None
+
+    def test_bc_timeseries_labels_series_with_site_name(self):
+        """timeseries.bc draws without a legend; this keeps the site label so a
+        caller can overlay several sites on one shared axes."""
+        from plotting import overlays
+
+        df = pd.DataFrame({
+            "day_9am": pd.date_range("2024-01-01", periods=10),
+            "IR BCc": np.arange(10.0),
+        })
+
+        fig, ax = self._axes()
+        overlays.bc_timeseries_on_axes(ax, "Beijing", df, {"color": "#E74C3C"})
+
+        assert [line.get_label() for line in ax.get_lines()] == ["Beijing"]
+
+
+class TestBaseFilterIdColumnForm:
+    """add_base_filter_id must agree with the scalar base_filter_id.
+
+    It used a bare r'-\\d+$', which strips the 4-digit sample number from ids
+    already in base form -- 'ETAD-0035' collapsed to 'ETAD', silently mapping
+    every sample at a site onto one join key.
+    """
+
+    IDS = ["ZAJB-0041-12", "ETAD-0035-3", "ETAD-0035", "ZAJB-0007-1", "ETAD-0035-10"]
+
+    def test_column_form_matches_scalar_form(self):
+        out = add_base_filter_id(pd.DataFrame({"FilterId": self.IDS}))
+        assert list(out["base_filter_id"]) == [base_filter_id(i) for i in self.IDS]
+
+    def test_already_base_ids_are_unchanged(self):
+        out = add_base_filter_id(pd.DataFrame({"FilterId": ["ETAD-0035", "ZAJB-0007"]}))
+        assert list(out["base_filter_id"]) == ["ETAD-0035", "ZAJB-0007"]
+
+    def test_multi_digit_replicates_are_stripped(self):
+        out = add_base_filter_id(pd.DataFrame({"FilterId": ["ZAJB-0041-12"]}))
+        assert out["base_filter_id"][0] == "ZAJB-0041"
+
+
+class TestLayoutFallback:
+    """Plots that don't implement every layout must say so, not draw nothing.
+
+    `resolve_layout` accepts 'combined' as valid, but six plots had if/elif
+    chains with no else, so `PlotConfig.set(layout='combined')` globally made
+    them silently return None having drawn nothing.
+    """
+
+    def test_resolve_layout_passes_through_supported(self):
+        from plotting import resolve_layout
+
+        assert resolve_layout("grid", supported=("individual", "grid")) == "grid"
+
+    def test_resolve_layout_falls_back_and_warns(self):
+        from plotting import resolve_layout
+
+        with pytest.warns(UserWarning, match="not implemented"):
+            got = resolve_layout("combined", supported=("individual", "grid"))
+        assert got == "individual"
+
+    def test_resolve_layout_still_rejects_nonsense(self):
+        from plotting import resolve_layout
+
+        with pytest.raises(ValueError, match="Invalid layout"):
+            resolve_layout("sideways")
+
+    def test_no_supported_arg_keeps_old_behaviour(self):
+        from plotting import resolve_layout
+
+        assert resolve_layout("combined") == "combined"
+
+    @pytest.mark.parametrize(
+        "module,func",
+        [
+            ("distributions", "smooth_raw_histogram"),
+            ("distributions", "uv_ir_ratio_histogram"),
+            ("distributions", "correlation_matrix"),
+            ("timeseries", "data_completeness"),
+            ("timeseries", "filter_vs_aeth"),
+            ("timeseries", "flow_ratio"),
+        ],
+    )
+    def test_partial_layout_plots_declare_what_they_support(self, module, func):
+        """Guards the wiring: these six must keep passing `supported=`."""
+        import importlib
+        import inspect
+
+        mod = importlib.import_module(f"plotting.{module}")
+        src = inspect.getsource(getattr(mod, func))
+        assert "resolve_layout(layout, supported=" in src, (
+            f"{module}.{func} no longer declares its supported layouts, so an "
+            "unsupported layout would silently draw nothing again"
+        )

@@ -8,9 +8,15 @@ import pickle
 from pathlib import Path
 import os
 
+import sys
+# scripts/ is not an installed package and the CLI runs this file by path, so
+# put scripts/ on sys.path to make `common` importable. See scripts/common/.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from common.paths import REPO_ROOT, data_root  # noqa: E402
+
+DATA_ROOT = data_root()
+
 # Load one of the datasets
-REPO_ROOT = Path(__file__).resolve().parents[2]
-DATA_ROOT = Path(os.environ.get("AETHMODULAR_DATA_ROOT", REPO_ROOT / "research" / "ftir_hips_chem"))
 file_path = DATA_ROOT / "processed_sites" / "df_Addis_Ababa_9am_resampled.pkl"
 
 with open(file_path, 'rb') as f:

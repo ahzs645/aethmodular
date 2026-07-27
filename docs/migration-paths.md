@@ -25,7 +25,6 @@
 - `compare_pkl_files.py` -> `scripts/diagnostics/compare_pkl_files.py`
 - `get_etad_stats.py` -> `scripts/diagnostics/get_etad_stats.py`
 - `inspect_flow_columns.py` -> `scripts/diagnostics/inspect_flow_columns.py`
-- `test_system.py` -> `scripts/diagnostics/test_system.py`
 - `create_9am_resampled_datasets.py` -> `scripts/pipelines/create_9am_resampled_datasets.py`
 
 The temporary root-level wrappers have been removed. Use the stable command
@@ -38,7 +37,7 @@ names below; the implementation files remain under `scripts/` for debugging.
 | `compare_pkl_files.py` | `aeth diagnose compare-pkl` |
 | `get_etad_stats.py` | `aeth diagnose etad-stats` |
 | `inspect_flow_columns.py` | `aeth diagnose flow` |
-| `test_system.py` | `aeth diagnose system` |
+| `test_system.py` | *retired 2026-07-26* — see `tests/test_import_smoke.py` |
 | `create_9am_resampled_datasets.py` | `aeth data resample` |
 
 ## Import Migration

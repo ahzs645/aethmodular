@@ -29,10 +29,19 @@ from urllib.parse import urljoin
 import pandas as pd
 import requests
 
+# scripts/ is not an installed package and the CLI runs this file by path, so
+# put scripts/ on sys.path to make `common` importable. See scripts/common/.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from common.spartan_io import (  # noqa: E402
+    OUT_DIR as SUMMARY_DIR,
+    RAW_DIR,
+    build_datetime,
+    find_col,
+    find_header_line,
+    site_from_path,
+)
+
 BASE = "http://data.spartan-network.org/GroupedByProduct/"
-REPO_ROOT = Path(__file__).resolve().parents[2]
-RAW_DIR = REPO_ROOT / "data" / "spartan" / "raw"
-SUMMARY_DIR = REPO_ROOT / "research" / "spartan" / "inventory"
 
 HREF_RE = re.compile(r'href="([^"?/][^"]*)"')
 
@@ -77,6 +86,34 @@ def crawl() -> list[FileSpec]:
                         filename=fname,
                         url=urljoin(sub_url, fname),
                         local_path=RAW_DIR / product / sub / fname,
+                    )
+                )
+    return specs
+
+
+def scan_local() -> list[FileSpec]:
+    """Build FileSpecs from already-downloaded files, without touching the network.
+
+    Mirrors crawl()'s directory grammar:
+        RAW_DIR/<Product>/<SubProduct>/<Product>_<SubProduct>_<SITE>.csv
+
+    Used for --skip-download so the offline path stays offline. `url` is filled
+    in for provenance but is never fetched on this path.
+    """
+    specs: list[FileSpec] = []
+    if not RAW_DIR.is_dir():
+        return specs
+    for product_dir in sorted(p for p in RAW_DIR.iterdir() if p.is_dir()):
+        for sub_dir in sorted(p for p in product_dir.iterdir() if p.is_dir()):
+            for path in sorted(sub_dir.glob("*.csv")):
+                specs.append(
+                    FileSpec(
+                        product=product_dir.name,
+                        subproduct=sub_dir.name,
+                        site=site_from_path(path),
+                        filename=path.name,
+                        url=urljoin(BASE, f"{product_dir.name}/{sub_dir.name}/{path.name}"),
+                        local_path=path,
                     )
                 )
     return specs
@@ -135,53 +172,6 @@ class FileSummary:
     notes: str = ""
 
 
-def _find_header_line(path: Path, max_scan: int = 5) -> int:
-    """Some SPARTAN CSVs start with 1-2 comment lines before the header row."""
-    with open(path, "r", errors="replace") as f:
-        for i in range(max_scan):
-            line = f.readline()
-            if not line:
-                return 0
-            stripped = line.strip()
-            if not stripped:
-                continue
-            # header rows include a comma and start with a typical column token
-            if "," in stripped and not stripped.lstrip().startswith("#"):
-                # Heuristic: real CSV header rather than a free-text first line
-                low = stripped.lower()
-                if any(tok in low for tok in ("site_code", "year", "year_local")):
-                    return i
-    return 0
-
-
-def _build_date(df: pd.DataFrame, product: str, subproduct: str) -> pd.Series:
-    """Construct a datetime column from whatever year/month/day fields exist."""
-    cols = {c.lower(): c for c in df.columns}
-
-    def col(*names: str) -> str | None:
-        for n in names:
-            if n in cols:
-                return cols[n]
-        return None
-
-    y = col("year_local", "start_year_local", "year")
-    m = col("month_local", "start_month_local", "month")
-    d = col("day_local", "start_day_local", "day")
-    h = col("hour_local", "start_hour_local", "hour")
-    if not (y and m and d):
-        return pd.Series([], dtype="datetime64[ns]")
-
-    parts = {
-        "year": pd.to_numeric(df[y], errors="coerce"),
-        "month": pd.to_numeric(df[m], errors="coerce"),
-        "day": pd.to_numeric(df[d], errors="coerce"),
-    }
-    if h:
-        parts["hour"] = pd.to_numeric(df[h], errors="coerce").fillna(0).astype(int)
-    frame = pd.DataFrame(parts).dropna(subset=["year", "month", "day"])
-    return pd.to_datetime(frame, errors="coerce").dropna()
-
-
 def summarize_file(spec: FileSpec) -> FileSummary:
     path = spec.local_path
     s = FileSummary(spec=spec, bytes=path.stat().st_size if path.exists() else 0)
@@ -189,7 +179,7 @@ def summarize_file(spec: FileSpec) -> FileSummary:
         s.notes = "missing"
         return s
 
-    header = _find_header_line(path)
+    header = find_header_line(path)
     try:
         df = pd.read_csv(path, skiprows=header, low_memory=False)
     except Exception as e:  # noqa: BLE001
@@ -200,13 +190,13 @@ def summarize_file(spec: FileSpec) -> FileSummary:
     s.n_cols = df.shape[1]
     s.columns = [str(c) for c in df.columns]
 
-    dt = _build_date(df, spec.product, spec.subproduct)
+    dt = build_datetime(df)
     if len(dt):
         s.date_min = dt.min().strftime("%Y-%m-%d")
         s.date_max = dt.max().strftime("%Y-%m-%d")
 
     # Long-format products carry a Parameter_Name column we want to inventory
-    pname_col = next((c for c in df.columns if c.lower() == "parameter_name"), None)
+    pname_col = find_col(df, "parameter_name")
     if pname_col is not None:
         s.parameter_counts = (
             df[pname_col].astype(str).value_counts().to_dict()
@@ -384,8 +374,21 @@ def main() -> int:
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     SUMMARY_DIR.mkdir(parents=True, exist_ok=True)
 
-    print("Crawling SPARTAN index...")
-    specs = crawl()
+    # crawl() hits the network, so it must stay behind the --skip-download
+    # guard: previously it ran unconditionally and the documented offline mode
+    # still required connectivity.
+    if args.skip_download:
+        print(f"Scanning local files under {RAW_DIR}...")
+        specs = scan_local()
+        if not specs:
+            print(f"ERROR: --skip-download given but no CSVs found under {RAW_DIR}.",
+                  file=sys.stderr)
+            print("       Run without --skip-download at least once first.", file=sys.stderr)
+            return 1
+    else:
+        print("Crawling SPARTAN index...")
+        specs = crawl()
+
     print(f"  found {len(specs)} CSV files across "
           f"{len({s.product for s in specs})} products, "
           f"{len({s.subproduct for s in specs})} subproducts, "

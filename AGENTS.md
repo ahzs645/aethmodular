@@ -37,14 +37,16 @@ aethmodular/
 │   │   ├── data_matching.py             # load + match aeth/filter data
 │   │   ├── etad_factors.py              # ETAD PMF factor loaders + match helpers
 │   │   ├── flow_periods.py              # before/after flow-fix period helpers
-│   │   ├── plotting/                    # standardized plot package
-│   │   │   ├── __init__.py              # PlotConfig (global state)
-│   │   │   ├── crossplots.py            # scatter + regression
-│   │   │   ├── timeseries.py            # time-series BC/wavelength
-│   │   │   ├── distributions.py         # histograms, boxplots, CDFs
-│   │   │   ├── comparisons.py           # before/after, threshold tiles
-│   │   │   └── utils.py                 # regression stats, axis helpers
-│   │   └── plotting_legacy.py           # DEPRECATED — do not use
+│   │   ├── prep.py                      # to_ugm3, find_repo_root
+│   │   ├── pls_transfer.py              # FTIR PLS calibration transfer
+│   │   └── plotting/                    # standardized plot package
+│   │       ├── __init__.py              # PlotConfig (global state)
+│   │       ├── crossplots.py            # scatter + regression
+│   │       ├── timeseries.py            # time-series BC/wavelength
+│   │       ├── distributions.py         # histograms, boxplots, CDFs
+│   │       ├── comparisons.py           # before/after, threshold tiles
+│   │       ├── overlays.py              # axes-level primitives (take ax=)
+│   │       └── utils.py                 # regression stats, axis helpers
 │   ├── addis_01..05_*.ipynb             # Addis analyses (use scripts/)
 │   ├── notebooks/archive/               # old executed/scratch notebooks
 │   ├── workflows/                       # one-off/report asset builders
@@ -244,18 +246,22 @@ a candidate for promotion into `plotting/overlays.py`.
 
 Current inline patterns used across notebooks:
 
-1. **Seasonal/period shading** — Ethiopia seasons (`Dry`, `Belg Rainy`, `Kiremt
-   Rainy`) shaded via `ax.axvspan`. Colors currently redefined per notebook as:
+1. **Seasonal/period shading** — Ethiopia seasons shaded via `ax.axvspan`.
+   **Do not redefine the season dict inline.** The canonical calendar shipped in
+   `config.ETHIOPIA_SEASONS` (`scripts/config.py`) and carries its own colors:
    ```python
-   SEASON_COLORS = {
-       'Dry Season':         '#E67E22',  # orange
-       'Belg Rainy Season':  '#27AE60',  # green
-       'Kiremt Rainy Season':'#3498DB',  # blue
-   }
+   from config import ETHIOPIA_SEASONS, season_for_month
+
+   for name, spec in ETHIOPIA_SEASONS.items():
+       # spec['months'] -> list[int], spec['color'] -> hex
+       ...
    ```
-   If you add a notebook that needs these, **copy this dict exactly** so output
-   stays consistent. Planned: `plotting.overlays.add_seasonal_shading(ax)` +
-   `config.ETHIOPIA_SEASONS`.
+   Keys are `'Dry (Oct-Feb)'`, `'Belg (Mar-May)'`, `'Kiremt (Jun-Sep)'`; colors
+   are unchanged from the older inline dict (`#E67E22` / `#27AE60` / `#3498DB`),
+   so migrating a notebook does not change its output. Older notebooks still
+   carry an inline `SEASON_COLORS` with `'Dry Season'`-style keys — those are the
+   migration backlog, not the pattern to copy. Still planned:
+   `plotting.overlays.add_seasonal_shading(ax)`.
 
 2. **Reference / threshold lines** — `ax.axhline`, `ax.axvline` for flow ratio
    ideals (1.0, 2.0), smooth/raw thresholds (1, 2.5, 4, 5 %), AAE source-region
@@ -299,9 +305,15 @@ When creating a new notebook, follow the `Example_Modular_Analysis.ipynb` or
 
 - **PMF GF fractions need normalization.** Raw `GF1`–`GF5` values in
   `ETAD Factor Contributions .csv` are PM2.5 mass fractions (sum ≈ 0.03–0.46
-  per row), not relative source contributions. Divide each GF by its row sum
-  before using as fractions. Without this, `dominant_fraction` max is ~0.24
-  and no samples cross a 30 % threshold. With normalization, mean ≈ 46 %.
+  per row), not relative source contributions. Without normalization,
+  `dominant_fraction` max is ~0.24 and no samples cross a 30 % threshold; with
+  it, mean ≈ 46 %. **Don't hand-roll this** — use the helpers:
+  ```python
+  from etad_factors import normalize_gf_fractions, add_dominant_source
+  factors = add_dominant_source(normalize_gf_fractions(load_etad_factors_with_filter_ids()))
+  ```
+  They also guard the all-zero row (NaN rather than inf) and the all-NA
+  `idxmax` that raises in newer pandas.
 - **ETAD join chain:** `ETAD Factor Contributions .csv` (oldDate `M/D/YYYY`) →
   `ETAD Filter ID.csv` (oldDate `YYYY-MM-DD`) → merged on parsed `date`. Use
   `load_etad_factors_with_filter_ids()`. `base_filter_id` strips the `-N`
@@ -333,11 +345,21 @@ Don't:
 - Don't `import matplotlib` and build a plot from scratch when a module
   function covers it. If a function is close-but-not-quite, post-process the
   returned axes rather than bypassing.
-- Don't use `plotting_legacy.py`. It's deprecated.
+- Don't rebuild an axes-level plot by hand. `plotting_legacy.py` was deleted
+  2026-07-26; use `plotting.overlays` when you need to draw onto an axes you
+  already hold (`scatter_on_axes`, `iron_gradient_on_axes`,
+  `bc_timeseries_on_axes`). Everything else should use the figure-owning
+  `crossplots` / `timeseries` / `distributions` / `comparisons` modules.
 - Don't redefine site colors — read from `SITES[site]['color']` or
   `PlotConfig.get_site_color(site)`.
 - Don't commit generated PNGs unless asked.
 - Don't hardcode flow-fix dates — read from `config.FLOW_FIX_PERIODS`.
+- Don't hardcode channel wavelengths. Use `config.WAVELENGTHS_NM` (MA350:
+  375/470/528/625/880). The AE33 set (370/520/660) is a *different instrument* —
+  `config.AE33_WAVELENGTHS_NM`, for `BC1..BC7` exports only. Mixing them inflates
+  AAE(Red,IR) by ~16 % and roughly doubles any biomass fraction derived from it.
+- Don't hand-write the FilterId replicate strip. Use `base_filter_id` /
+  `add_base_filter_id`, or `config.BASE_FILTER_ID_PATTERN` directly.
 
 ## Quick reference
 

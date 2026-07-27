@@ -44,7 +44,8 @@ def find_root(s=None):
     p=Path(s or Path.cwd()).resolve()
     for c in [p,*p.parents]:
         if (c/"research").exists() and (c/"AGENTS.md").exists(): return c
-    return Path.cwd()
+    raise RuntimeError("repo root not found above " + str(p)
+                       + " (looked for AGENTS.md + research/)")
 HERE = find_root()/"research/spartan_ec_2026_06_16"; DATA=HERE/"data"; FIG=HERE/"figures"; FIG.mkdir(exist_ok=True)
 
 # tool's exact EC training set

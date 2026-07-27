@@ -21,78 +21,24 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-RAW_DIR = REPO_ROOT / "data" / "spartan" / "raw"
-OUT_DIR = REPO_ROOT / "research" / "spartan" / "inventory"
-
-# Expected sample step in hours for each subproduct (None = filter-based, irregular).
-EXPECTED_STEP_H: dict[str, float | None] = {
-    "ChemSpecPM10": None,
-    "ChemSpecPM25": None,
-    "ReconstrPM25": None,
-    "DailyScaPM10": 24.0,
-    "DailyScaPM25": 24.0,
-    "HourlyScaPM10": 1.0,
-    "HourlyScaPM25": 1.0,
-    "DailyEstPM25": 24.0,
-    "HourlyEstPM25": 1.0,
-}
-
-
-def _find_header_line(path: Path, max_scan: int = 5) -> int:
-    with open(path, "r", errors="replace") as f:
-        for i in range(max_scan):
-            line = f.readline()
-            if not line:
-                return 0
-            stripped = line.strip()
-            if not stripped:
-                continue
-            if "," in stripped and not stripped.lstrip().startswith("#"):
-                low = stripped.lower()
-                if any(tok in low for tok in ("site_code", "year", "year_local")):
-                    return i
-    return 0
-
-
-def _load(path: Path) -> pd.DataFrame:
-    header = _find_header_line(path)
-    return pd.read_csv(path, skiprows=header, low_memory=False)
-
-
-def _build_dt(df: pd.DataFrame) -> pd.Series:
-    cols = {c.lower(): c for c in df.columns}
-
-    def col(*names: str) -> str | None:
-        for n in names:
-            if n in cols:
-                return cols[n]
-        return None
-
-    y = col("year_local", "start_year_local", "year")
-    m = col("month_local", "start_month_local", "month")
-    d = col("day_local", "start_day_local", "day")
-    h = col("hour_local", "start_hour_local", "hour")
-    if not (y and m and d):
-        return pd.Series([], dtype="datetime64[ns]")
-
-    parts = {
-        "year": pd.to_numeric(df[y], errors="coerce"),
-        "month": pd.to_numeric(df[m], errors="coerce"),
-        "day": pd.to_numeric(df[d], errors="coerce"),
-    }
-    if h:
-        parts["hour"] = pd.to_numeric(df[h], errors="coerce").fillna(0).astype(int)
-    frame = pd.DataFrame(parts).dropna(subset=["year", "month", "day"])
-    # Drop the bad-year ILNZ rows (year 21xx) so they don't distort stats
-    frame = frame[(frame["year"] >= 2010) & (frame["year"] <= 2030)]
-    return pd.to_datetime(frame, errors="coerce").dropna()
+# scripts/ is not an installed package and the CLI runs this file by path, so
+# put scripts/ on sys.path to make `common` importable. See scripts/common/.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from common.spartan_io import (  # noqa: E402
+    EXPECTED_STEP_H,
+    OUT_DIR,
+    RAW_DIR,
+    build_datetime,
+    find_col,
+    read_spartan_csv,
+    site_from_path,
+)
 
 
 def analyze_file(product: str, subproduct: str, site: str, path: Path) -> dict:
     """Compute coverage and interval stats for a single CSV."""
-    df = _load(path)
-    dt = _build_dt(df)
+    df = read_spartan_csv(path)
+    dt = build_datetime(df)
     if dt.empty:
         return {
             "product": product, "subproduct": subproduct, "site": site,
@@ -102,10 +48,10 @@ def analyze_file(product: str, subproduct: str, site: str, path: Path) -> dict:
     # For filter-based, "samples" are unique filter IDs (each filter has many parameter rows).
     # For Nephel/Estimate products, "samples" are unique timestamps.
     if product == "FilterBased":
-        fid_col = next((c for c in df.columns if c.lower() == "filter_id"), None)
+        fid_col = find_col(df, "filter_id")
         if fid_col is not None:
             samples = df.dropna(subset=[fid_col]).drop_duplicates(subset=[fid_col])
-            sample_times = _build_dt(samples).sort_values().reset_index(drop=True)
+            sample_times = build_datetime(samples).sort_values().reset_index(drop=True)
         else:
             sample_times = dt.drop_duplicates().sort_values().reset_index(drop=True)
         n_samples = len(sample_times)
@@ -167,11 +113,11 @@ def collect_param_matrix() -> pd.DataFrame:
     rows = []
     for sub in ("ChemSpecPM25", "ChemSpecPM10"):
         for path in sorted((RAW_DIR / "FilterBased" / sub).glob("FilterBased_*.csv")):
-            site = path.stem.rsplit("_", 1)[-1]
-            df = _load(path)
-            pname = next((c for c in df.columns if c.lower() == "parameter_name"), None)
-            fid = next((c for c in df.columns if c.lower() == "filter_id"), None)
-            val = next((c for c in df.columns if c.lower() == "value"), None)
+            site = site_from_path(path)
+            df = read_spartan_csv(path)
+            pname = find_col(df, "parameter_name")
+            fid = find_col(df, "filter_id")
+            val = find_col(df, "value")
             if not (pname and fid):
                 continue
             valid = df.dropna(subset=[fid, pname])
@@ -205,7 +151,7 @@ def main() -> int:
     for i, path in enumerate(files, 1):
         product = path.parents[1].name
         subproduct = path.parent.name
-        site = path.stem.rsplit("_", 1)[-1]
+        site = site_from_path(path)
         try:
             stats = analyze_file(product, subproduct, site, path)
         except Exception as e:  # noqa: BLE001

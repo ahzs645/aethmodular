@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 try:
-    from src.utils.logging.logger import ETADLogger
+    from .logging.logger import ETADLogger
 except ImportError:  # pragma: no cover - compatibility fallback
     ETADLogger = None
 
