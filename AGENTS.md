@@ -38,6 +38,7 @@ aethmodular/
 │   │   ├── etad_factors.py              # ETAD PMF factor loaders + match helpers
 │   │   ├── flow_periods.py              # before/after flow-fix period helpers
 │   │   ├── prep.py                      # to_ugm3, find_repo_root
+│   │   ├── optics.py                    # AAE + source classification
 │   │   ├── pls_transfer.py              # FTIR PLS calibration transfer
 │   │   └── plotting/                    # standardized plot package
 │   │       ├── __init__.py              # PlotConfig (global state)
@@ -106,6 +107,12 @@ from data_matching import (
     match_aeth_filter_data, match_all_parameters,
 )
 from etad_factors import load_etad_factor_contributions, match_etad_factors
+
+# External datasets — these resolve their own location, so do NOT hardcode a
+# Drive path. Each checks an env var, then a config constant, then discovers the
+# Drive mount: AETHMODULAR_AERONET_DIR / AETHMODULAR_IMPROVE_DIR.
+from aeronet import load_aeronet, aeronet_dir, COLS as AERONET_COLS
+from improve_io import load_improve_clean
 
 # Plotting — importing the package auto-applies the white-background default
 # style (apply_default_style()). Do NOT call plt.style.use('seaborn-v0_8-darkgrid')
@@ -263,6 +270,22 @@ Current inline patterns used across notebooks:
    migration backlog, not the pattern to copy. Still planned:
    `plotting.overlays.add_seasonal_shading(ax)`.
 
+   **If you need the other February convention, select it by name — never
+   redeclare a calendar inline.** Dry-owns-February and Belg-owns-February are
+   both published Ethiopian calendars, so `config` registers both:
+   ```python
+   from config import resolve_seasons, season_for_month, season_convention_name
+
+   seasons = resolve_seasons('belg_feb')   # or 'dry_feb' (the default)
+   season_for_month(2, seasons)            # -> 'Belg (Feb-May, short rains)'
+   season_convention_name(seasons)         # -> 'belg_feb', for labelling output
+   ```
+   February is a high-BC month, so the two calendars do NOT give interchangeable
+   seasonal means. Say which convention you used whenever you report seasonal
+   statistics; `season_convention_name()` returns `'custom'` for an unregistered
+   mapping so a report can never imply a non-standard calendar was canonical.
+   `ETAD_Factor_Analysis.ipynb` is the one notebook on `'belg_feb'`.
+
 2. **Reference / threshold lines** — `ax.axhline`, `ax.axvline` for flow ratio
    ideals (1.0, 2.0), smooth/raw thresholds (1, 2.5, 4, 5 %), AAE source-region
    boundaries (fossil fuel / mixed / biomass). Some are hardcoded inside
@@ -279,6 +302,48 @@ Current inline patterns used across notebooks:
 
 5. **PMF region highlights** — `ax.axvspan(pmf_min, pmf_max, alpha=0.08)`
    for date-range emphasis (ETAD factor analysis).
+
+## Regression on a comparison plot — read this before fitting
+
+**If a panel draws a 1:1 line, do not report an OLS slope alone.** The 1:1 line
+asserts both axes measure the same quantity, so *x* carries measurement error
+too, and ordinary least squares of y-on-x is biased toward a shallower slope
+(regression dilution). Report an errors-in-variables slope beside it:
+
+```python
+from plotting.utils import calculate_regression_stats
+
+stats = calculate_regression_stats(x, y, errors_in_variables=True)
+stats['slope']                  # OLS, unchanged
+stats['deming_slope']           # errors-in-variables
+stats['slope_attenuation_pct']  # how much OLS understates it
+```
+
+`plotting.overlays.crossplot_on_axes` does this **automatically** whenever
+`one_to_one` and `equal_axes` are on, and prints both in the stats box — prefer
+it over hand-drawing the panel.
+
+Why it matters here, measured on `unified_filter_dataset.pkl`: for Fabs/MAC vs
+EC the Deming slope is **22–37 % steeper** than OLS (ETAD 1.898 → 2.379). Where
+two variables already track each other closely the two agree to 0.0 %, so the
+gap is dilution, not estimator noise. Across the estate 114 of 115 one-to-one
+panels currently report OLS only.
+
+`deming_lambda` defaults to 1.0 (orthogonal, equal error variance) because the
+`Uncertainty` column in the filter dataset is unpopulated. Pass
+`sigma_x=`/`sigma_y=` when you do know the measurement uncertainties: the
+*direction* of the correction is robust, its *magnitude* depends on lambda.
+
+OLS remains correct when x is genuinely a controlled or known-exact predictor
+(calibration standards, nominal loadings) — those panels have no 1:1 line, and
+`crossplot_on_axes` leaves them alone.
+
+## Figure resolution
+
+Do not hardcode a `savefig` dpi. `config.SAVEFIG_DPI` (200) and
+`config.FIGURE_DPI` (110) are applied by `apply_default_style()`, which runs on
+`import plotting`. An explicit `savefig(dpi=...)` still wins where a figure
+family genuinely needs a different value.
 
 ## Notebook coverage (current state)
 
@@ -354,6 +419,14 @@ Don't:
   `PlotConfig.get_site_color(site)`.
 - Don't commit generated PNGs unless asked.
 - Don't hardcode flow-fix dates — read from `config.FLOW_FIX_PERIODS`.
+- Don't compute AAE inline. Use `optics.aae` / `optics.aae_from_columns`. Four
+  notebooks used `ln(IR/UV)/ln(880/375)`, the exact negative of the standard
+  `AAE = -ln(b_short/b_long)/ln(wl_short/wl_long)`; that is always <= 0 for real
+  aerosol, so every sample classified as fossil fuel. The helper raises if the
+  wavelengths are passed short/long the wrong way round.
+- Don't assume what `hips_fabs` is in. `pivot_filter_by_id` returns Mm^-1;
+  `match_all_parameters` returns the same name already divided by `MAC_VALUE`.
+  Pass `hips_units='both'` and reference `hips_bc_ugm3` when you mean ug/m3.
 - Don't hardcode channel wavelengths. Use `config.WAVELENGTHS_NM` (MA350:
   375/470/528/625/880). The AE33 set (370/520/660) is a *different instrument* —
   `config.AE33_WAVELENGTHS_NM`, for `BC1..BC7` exports only. Mixing them inflates
