@@ -329,7 +329,8 @@ plt.show()
 
 # %%
 mean_mat = np.vstack([season_mean[s] for s in SEASON_ORDER] + [pooled_mean])
-z = (mean_mat - mean_mat.mean(1, keepdims=True)) / mean_mat.std(1, keepdims=True)
+_sd = mean_mat.std(1, keepdims=True)  # sigma==0 guard: flat rows would yield NaN and poison downstream correlations
+z = (mean_mat - mean_mat.mean(1, keepdims=True)) / np.where(_sd == 0, 1.0, _sd)
 labels = [SHORT[s] for s in SEASON_ORDER] + ["all seasons"]
 corr = pd.DataFrame(z @ z.T / mean_mat.shape[1], index=labels, columns=labels)
 display(corr.round(3))

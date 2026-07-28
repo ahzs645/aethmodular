@@ -33,10 +33,14 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from sklearn.cross_decomposition import PLSRegression
 
+sys.path.insert(0, str(Path("../ftir_hips_chem/scripts").resolve()))
+from data_paths import maia_data_root
+
 plt.rcParams.update({"axes.facecolor": "white", "figure.facecolor": "white",
                      "axes.grid": True, "grid.color": "0.9"})
-PRED = Path("../spartan_ec_2026_06_16")
-sys.path.insert(0, str(PRED))
+sys.path.insert(0, str(next(
+    p for p in [Path.cwd().resolve(), *Path.cwd().resolve().parents]
+    if (p / "pyproject.toml").exists()) / "research" / "ftir_hips_chem" / "scripts"))
 Path("figures").mkdir(exist_ok=True); Path("tables").mkdir(exist_ok=True)
 
 # --- AGENTS.md-style regression (same math as scripts/plotting/utils.calculate_regression_stats) ---
@@ -154,10 +158,8 @@ Join each ETAD filter's New EC (from `07`) to the SPARTAN HIPS `Fabs`
 cross-plot. This is the comparison the paper cares about — does a given calibration bring FTIR-EC
 onto the HIPS line?""")
 
-code(r"""ETAD = Path.home() / ("Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University"
-                      "/Research/Grad/UC Davis Ann/NASA MAIA/Data/DAVIS/ETAD FTIR")
-SPARTAN = Path.home() / ("Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University"
-                        "/Research/Grad/UC Davis Ann/NASA MAIA/Data/Spartan/SPARTAN_HIPS_Batch1-51.v2.csv")
+code(r"""ETAD = maia_data_root() / "DAVIS" / "ETAD FTIR"
+SPARTAN = maia_data_root() / "Spartan" / "SPARTAN_HIPS_Batch1-51.v2.csv"
 MAC = 10.0
 
 conc = pd.read_csv("tables/etad_ec_by_variant_conc.csv")            # New EC per variant (from nb07)
@@ -206,6 +208,9 @@ md(r"""### The result (this run)
 nb["cells"] = cells
 nb["metadata"] = {"kernelspec": {"name": "python3", "display_name": "Python 3"},
                   "language_info": {"name": "python"}}
-with open("08_adama_hips_crossplots.ipynb", "w") as f:
+# Resolve the output path against this file, not the cwd: these builders were
+# invoked as open("<name>.ipynb", "w"), so running one from the repo root
+# silently wrote the notebook into the repo root instead of beside its source.
+with open(Path(__file__).resolve().parent / "08_adama_hips_crossplots.ipynb", "w") as f:
     nbf.write(nb, f)
 print("wrote 08_adama_hips_crossplots.ipynb")

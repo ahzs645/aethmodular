@@ -49,9 +49,10 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from sklearn.cross_decomposition import PLSRegression
 
-PRED = Path("../spartan_ec_2026_06_16")
-sys.path.insert(0, str(PRED))
-from ftir_pls_calibration import _rmsep_by_ncomp
+sys.path.insert(0, str(next(
+    p for p in [Path.cwd().resolve(), *Path.cwd().resolve().parents]
+    if (p / "pyproject.toml").exists()) / "research" / "ftir_hips_chem" / "scripts"))
+from pls_calibration import _rmsep_by_ncomp
 Path("figures").mkdir(exist_ok=True); Path("tables").mkdir(exist_ok=True)
 
 Xdf = pd.read_csv(PRED / "data/rds_EC_X.csv")
@@ -340,6 +341,9 @@ md(r"""### Reading it next week
 nb["cells"] = cells
 nb["metadata"] = {"kernelspec": {"name": "python3", "display_name": "Python 3"},
                   "language_info": {"name": "python"}}
-with open("06_calibration_variants_components.ipynb", "w") as f:
+# Resolve the output path against this file, not the cwd: these builders were
+# invoked as open("<name>.ipynb", "w"), so running one from the repo root
+# silently wrote the notebook into the repo root instead of beside its source.
+with open(Path(__file__).resolve().parent / "06_calibration_variants_components.ipynb", "w") as f:
     nbf.write(nb, f)
 print("wrote 06_calibration_variants_components.ipynb")

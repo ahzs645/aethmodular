@@ -164,6 +164,9 @@ md(r"""### Notes / caveats
 nb["cells"] = cells
 nb["metadata"] = {"kernelspec": {"name": "python3", "display_name": "Python 3"},
                   "language_info": {"name": "python"}}
-with open("01_adama_spectra.ipynb", "w") as f:
+# Resolve the output path against this file, not the cwd: these builders were
+# invoked as open("<name>.ipynb", "w"), so running one from the repo root
+# silently wrote the notebook into the repo root instead of beside its source.
+with open(Path(__file__).resolve().parent / "01_adama_spectra.ipynb", "w") as f:
     nbf.write(nb, f)
 print("wrote 01_adama_spectra.ipynb")

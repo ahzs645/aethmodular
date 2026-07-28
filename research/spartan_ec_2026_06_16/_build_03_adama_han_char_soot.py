@@ -50,14 +50,24 @@ the file. We take **mass loading (µg C)** (ratios are unit-free) and map **OP =
 carbon by **reflectance**, the TOR convention). The load is verified against the file's own `ECTR`
 (`EC1+EC2+EC3 − OPTR == ECTR`).""")
 
-code(r"""import os
+code(r"""import os, sys
 from pathlib import Path
 import pandas as pd, numpy as np
 
+# Locate scripts/ from the repo root rather than a relative hop, so this works
+# whatever directory the notebook is started from.
+sys.path.insert(0, str(next(
+    p for p in [Path.cwd().resolve(), *Path.cwd().resolve().parents]
+    if (p / "pyproject.toml").exists()) / "research" / "ftir_hips_chem" / "scripts"))
+from data_paths import maia_data_root
+
 # Canonical source (Google Drive). Falls back to a repo-local copy if present.
+# The dataset moved on Drive: it was at "<MAIA data>/Adama TOR" when this
+# notebook was last run (see the stored output), and now lives under DAVIS/.
+# Both are listed so old and new layouts resolve.
 CANDIDATES = [
-    Path.home() / "Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive"
-        "/University/Research/Grad/UC Davis Ann/NASA MAIA/Data/Adama TOR",
+    maia_data_root() / "DAVIS" / "Adama TOR",
+    maia_data_root() / "Adama TOR",
     Path("data/adama_tor"),
     Path("../../data/adama_tor"),
 ]
@@ -187,6 +197,9 @@ print("wrote tables/adama_char_soot_classification.csv")""")
 nb["cells"] = cells
 nb["metadata"] = {"kernelspec": {"name": "python3", "display_name": "Python 3"},
                   "language_info": {"name": "python"}}
-with open("03_adama_han_char_soot.ipynb", "w") as f:
+# Resolve the output path against this file, not the cwd: these builders were
+# invoked as open("<name>.ipynb", "w"), so running one from the repo root
+# silently wrote the notebook into the repo root instead of beside its source.
+with open(Path(__file__).resolve().parent / "03_adama_han_char_soot.ipynb", "w") as f:
     nbf.write(nb, f)
 print("wrote 03_adama_han_char_soot.ipynb")

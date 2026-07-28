@@ -496,7 +496,11 @@ D_addis_char = second_derivative(resample(X_etad_raw, wn_etad, GRID_CHAR))
 
 
 def zrows(X):
-    return (X - X.mean(1, keepdims=True)) / X.std(1, keepdims=True)
+    # Guard sigma == 0: a flat row (masked region, or all-NaN after
+    # resampling) otherwise yields NaN, which then propagates through every
+    # downstream correlation. Same rule as charcoal_spectra.snv.
+    sd = X.std(1, keepdims=True)
+    return (X - X.mean(1, keepdims=True)) / np.where(sd == 0, 1.0, sd)
 
 
 Za = zrows(D_addis_char)
@@ -511,7 +515,8 @@ co2_free = ~((GRID_CHAR >= 2280) & (GRID_CHAR <= 2400))
 
 def zrows_m(X):
     Xm = X[:, co2_free]
-    return (Xm - Xm.mean(1, keepdims=True)) / Xm.std(1, keepdims=True)
+    _sd = Xm.std(1, keepdims=True)  # sigma==0 guard: flat rows would yield NaN and poison downstream correlations
+    return (Xm - Xm.mean(1, keepdims=True)) / np.where(_sd == 0, 1.0, _sd)
 
 
 best_fur_m = (zrows_m(D_addis_char) @ zrows_m(D_fur).T / co2_free.sum()).max(axis=1)

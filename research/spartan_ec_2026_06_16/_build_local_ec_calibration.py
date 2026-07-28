@@ -15,7 +15,12 @@ from pathlib import Path
 
 import pandas as pd
 
-import ftir_pls_calibration as f
+import sys
+# pls_calibration now lives in the sanctioned scripts/ home, not beside this file.
+sys.path.insert(0, str(next(
+    p for p in [Path.cwd().resolve(), *Path.cwd().resolve().parents]
+    if (p / "pyproject.toml").exists()) / "research" / "ftir_hips_chem" / "scripts"))
+import pls_calibration as f
 
 HERE = Path(__file__).resolve().parent
 SPECTRA = HERE / "data/spectra_lot251_biomass_2021-2025.csv"

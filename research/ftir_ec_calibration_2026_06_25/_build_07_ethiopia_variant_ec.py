@@ -36,8 +36,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from sklearn.cross_decomposition import PLSRegression
 
-PRED = Path("../spartan_ec_2026_06_16")
-sys.path.insert(0, str(PRED))
+sys.path.insert(0, str(Path("../ftir_hips_chem/scripts").resolve()))
+from data_paths import maia_data_root
+
+sys.path.insert(0, str(next(
+    p for p in [Path.cwd().resolve(), *Path.cwd().resolve().parents]
+    if (p / "pyproject.toml").exists()) / "research" / "ftir_hips_chem" / "scripts"))
 Path("figures").mkdir(exist_ok=True); Path("tables").mkdir(exist_ok=True)
 
 # --- training data (906 x 2722) + real wavenumber grid ---
@@ -51,8 +55,7 @@ print("training:", Xtr.shape, "| wavenumber", WN[0], "->", WN[-1])""")
 
 md(r"""## Load the ETAD spectra and align to the training grid""")
 
-code(r"""ETAD = Path.home() / ("Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University"
-                      "/Research/Grad/UC Davis Ann/NASA MAIA/Data/DAVIS/ETAD FTIR")
+code(r"""ETAD = maia_data_root() / "DAVIS" / "ETAD FTIR"
 spec = pd.read_csv(ETAD / "ETAD_FTIR_spectra.csv")
 meta = pd.read_csv(ETAD / "ETAD_metadata.csv")
 
@@ -205,6 +208,9 @@ md(r"""### The result (this run, real ETAD spectra)
 nb["cells"] = cells
 nb["metadata"] = {"kernelspec": {"name": "python3", "display_name": "Python 3"},
                   "language_info": {"name": "python"}}
-with open("07_ethiopia_variant_ec.ipynb", "w") as f:
+# Resolve the output path against this file, not the cwd: these builders were
+# invoked as open("<name>.ipynb", "w"), so running one from the repo root
+# silently wrote the notebook into the repo root instead of beside its source.
+with open(Path(__file__).resolve().parent / "07_ethiopia_variant_ec.ipynb", "w") as f:
     nbf.write(nb, f)
 print("wrote 07_ethiopia_variant_ec.ipynb")

@@ -50,14 +50,18 @@ import matplotlib.pyplot as plt
 from sklearn.cross_decomposition import PLSRegression
 
 # ftir_hips_chem scripts (Lineage A: the April group-talk pipeline) + calibration data folder
-sys.path.insert(0, "../ftir_hips_chem/scripts")
+# Locate scripts/ from the repo root rather than a relative hop, so this works
+# whatever directory the notebook is started from.
+sys.path.insert(0, str(next(
+    p for p in [Path.cwd().resolve(), *Path.cwd().resolve().parents]
+    if (p / "pyproject.toml").exists()) / "research" / "ftir_hips_chem" / "scripts"))
 from config import SITES, MAC_VALUE
+from data_paths import maia_data_root
 from data_matching import load_aethalometer_data, load_filter_data, match_all_parameters
 from outliers import apply_exclusion_flags, apply_threshold_flags
 
 PRED = Path("../spartan_ec_2026_06_16")            # training data + biomass coeffs
-ETAD = Path.home() / ("Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University"
-                      "/Research/Grad/UC Davis Ann/NASA MAIA/Data/DAVIS/ETAD FTIR")
+ETAD = maia_data_root() / "DAVIS" / "ETAD FTIR"
 Path("figures").mkdir(exist_ok=True); Path("tables").mkdir(exist_ok=True)
 
 HIPS_ON_X = False           # reference/group-talk style = FTIR EC on x. True => HIPS ground truth on x.
@@ -217,6 +221,9 @@ md(r"""### How to read it
 nb["cells"] = cells
 nb["metadata"] = {"kernelspec": {"name": "python3", "display_name": "Python 3"},
                   "language_info": {"name": "python"}}
-with open("regular_before_cal0_vs_smoke_hips.ipynb", "w") as f:
+# Resolve the output path against this file, not the cwd: these builders were
+# invoked as open("<name>.ipynb", "w"), so running one from the repo root
+# silently wrote the notebook into the repo root instead of beside its source.
+with open(Path(__file__).resolve().parent / "regular_before_cal0_vs_smoke_hips.ipynb", "w") as f:
     nbf.write(nb, f)
 print("wrote regular_before_cal0_vs_smoke_hips.ipynb")

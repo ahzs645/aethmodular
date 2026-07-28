@@ -6,6 +6,7 @@ and that there is NO thermal-optical (TOR/TOT) EC anywhere in the data. This is
 the "thermal vs non-thermal EC" question Ann asked Ahmad to confirm.
 """
 import nbformat as nbf
+from pathlib import Path
 
 nb = nbf.v4.new_notebook()
 cells = []
@@ -149,6 +150,9 @@ md(r"""## Summary to send Ann
 nb["cells"] = cells
 nb["metadata"] = {"kernelspec": {"name": "python3", "display_name": "Python 3"},
                   "language_info": {"name": "python"}}
-with open("01_carbon_methods_audit.ipynb", "w") as f:
+# Resolve the output path against this file, not the cwd: these builders were
+# invoked as open("<name>.ipynb", "w"), so running one from the repo root
+# silently wrote the notebook into the repo root instead of beside its source.
+with open(Path(__file__).resolve().parent / "01_carbon_methods_audit.ipynb", "w") as f:
     nbf.write(nb, f)
 print("wrote 01_carbon_methods_audit.ipynb")

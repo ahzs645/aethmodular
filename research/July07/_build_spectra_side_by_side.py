@@ -56,6 +56,7 @@ samples got removed. This feeds directly into whether a **smoke-only calibration
 > only the body of `baseline_correct()` — everything downstream is unchanged.""")
 
 code(r"""from pathlib import Path
+import sys
 import numpy as np, pandas as pd
 import matplotlib
 matplotlib.use("Agg")
@@ -63,12 +64,18 @@ import matplotlib.pyplot as plt
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 
+# Locate scripts/ from the repo root rather than a relative hop, so this works
+# whatever directory the notebook is started from.
+sys.path.insert(0, str(next(
+    p for p in [Path.cwd().resolve(), *Path.cwd().resolve().parents]
+    if (p / "pyproject.toml").exists()) / "research" / "ftir_hips_chem" / "scripts"))
+from data_paths import maia_data_root
+
 plt.rcParams.update({"axes.facecolor": "white", "figure.facecolor": "white",
                      "axes.grid": True, "grid.color": "0.92", "figure.dpi": 110})
 
 PRED = Path("../spartan_ec_2026_06_16")           # IMPROVE 906-sample training set lives here
-ETAD = Path.home() / ("Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University"
-                      "/Research/Grad/UC Davis Ann/NASA MAIA/Data/DAVIS/ETAD FTIR")
+ETAD = maia_data_root() / "DAVIS" / "ETAD FTIR"
 Path("figures").mkdir(exist_ok=True); Path("tables").mkdir(exist_ok=True)
 print("IMPROVE training dir:", PRED.exists(), "| ETAD dir:", ETAD.exists())
 
@@ -223,6 +230,9 @@ md(r"""### How to read this / next steps
 nb["cells"] = cells
 nb["metadata"] = {"kernelspec": {"name": "python3", "display_name": "Python 3"},
                   "language_info": {"name": "python"}}
-with open("spectra_side_by_side_improve_vs_ethiopia.ipynb", "w") as f:
+# Resolve the output path against this file, not the cwd: these builders were
+# invoked as open("<name>.ipynb", "w"), so running one from the repo root
+# silently wrote the notebook into the repo root instead of beside its source.
+with open(Path(__file__).resolve().parent / "spectra_side_by_side_improve_vs_ethiopia.ipynb", "w") as f:
     nbf.write(nb, f)
 print("wrote spectra_side_by_side_improve_vs_ethiopia.ipynb")

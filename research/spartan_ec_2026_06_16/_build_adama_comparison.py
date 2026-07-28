@@ -12,7 +12,12 @@ import re
 from pathlib import Path
 import numpy as np
 import pandas as pd
-import ftir_pls_calibration as f
+import sys
+# pls_calibration now lives in the sanctioned scripts/ home, not beside this file.
+sys.path.insert(0, str(next(
+    p for p in [Path.cwd().resolve(), *Path.cwd().resolve().parents]
+    if (p / "pyproject.toml").exists()) / "research" / "ftir_hips_chem" / "scripts"))
+import pls_calibration as f
 
 HERE = Path(__file__).resolve().parent
 WN = re.compile(r"^[+-]?\d+(\.\d+)?$")

@@ -185,7 +185,8 @@ plt.show()
 
 # How much of their mutual distinctiveness survives the crop to the Addis window?
 def pairwise_r(X):
-    Z = (X - X.mean(1, keepdims=True)) / X.std(1, keepdims=True)
+    _sd = X.std(1, keepdims=True)  # sigma==0 guard: flat rows would yield NaN and poison downstream correlations
+    Z = (X - X.mean(1, keepdims=True)) / np.where(_sd == 0, 1.0, _sd)
     R = (Z @ Z.T) / X.shape[1]
     iu = np.triu_indices(len(X), 1)
     return R[iu]
@@ -271,7 +272,11 @@ plt.show()
 
 # %%
 def zrows(X):
-    return (X - X.mean(1, keepdims=True)) / X.std(1, keepdims=True)
+    # Guard sigma == 0: a flat row (masked region, or all-NaN after
+    # resampling) otherwise yields NaN, which then propagates through every
+    # downstream correlation. Same rule as charcoal_spectra.snv.
+    sd = X.std(1, keepdims=True)
+    return (X - X.mean(1, keepdims=True)) / np.where(sd == 0, 1.0, sd)
 
 
 Za, Zm = zrows(X_addis), zrows(X_mc)

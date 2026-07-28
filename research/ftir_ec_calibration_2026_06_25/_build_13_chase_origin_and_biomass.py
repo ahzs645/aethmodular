@@ -13,7 +13,7 @@ Two follow-ups on the local lot-248+251 mirror:
           so biomass sub-selection is a NULL result (the data is the lever). The band profile itself
           is the interesting science for "what is FTIR seeing in Addis."
 
-Data: ~/My Drive/FTIR/local_db (local_calib.assemble) + ETAD spectra/HIPS on Google Drive.
+Data: the `ftir_local_db()` location (local_calib.assemble) + ETAD spectra/HIPS on Google Drive.
 No Ethiopia TOR truth — judged by HIPS agreement + physical sensibility only.
 """
 import nbformat as nbf
@@ -43,11 +43,13 @@ import matplotlib.pyplot as plt
 from sklearn.cross_decomposition import PLSRegression
 from scipy.signal import savgol_filter
 
+sys.path.insert(0, str(Path("../ftir_hips_chem/scripts").resolve()))
+from data_paths import ftir_local_db, maia_data_root
+
 plt.rcParams.update({"axes.facecolor": "white", "figure.facecolor": "white",
                      "axes.grid": True, "grid.color": "0.9"})
-LOCAL = Path.home() / "Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/FTIR/local_db"
-GD = Path.home() / ("Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University"
-                    "/Research/Grad/UC Davis Ann/NASA MAIA/Data")
+LOCAL = ftir_local_db()
+GD = maia_data_root()
 Path("figures").mkdir(exist_ok=True); Path("tables").mkdir(exist_ok=True)
 
 sys.path.insert(0, str(LOCAL)); import local_calib
@@ -199,6 +201,9 @@ md(r"""### What we learned
 nb["cells"] = cells
 nb["metadata"] = {"kernelspec": {"name": "python3", "display_name": "Python 3"},
                   "language_info": {"name": "python"}}
-with open("13_chase_origin_and_biomass.ipynb", "w") as f:
+# Resolve the output path against this file, not the cwd: these builders were
+# invoked as open("<name>.ipynb", "w"), so running one from the repo root
+# silently wrote the notebook into the repo root instead of beside its source.
+with open(Path(__file__).resolve().parent / "13_chase_origin_and_biomass.ipynb", "w") as f:
     nbf.write(nb, f)
 print("wrote 13_chase_origin_and_biomass.ipynb")

@@ -1,7 +1,7 @@
 """Builds 12_dedicated_ethiopia_calibration.ipynb. Run once, then nbconvert --execute.
 
 Works through the three "make Ethiopia work better" ideas on the NEW local IMPROVE mirror
-(~/My Drive/FTIR/local_db) — 13k+ spectra across lots 248+251 (the ETAD lots, spanning BOTH),
+(resolved by `ftir_local_db()`) — 13k+ spectra across lots 248+251 (the ETAD lots, spanning BOTH),
 matched to TOR EC by Site+SampleDate, validated to the app export. This replaces the narrow
 906-sample rds_EC set used in notebooks 06-11.
 
@@ -23,7 +23,7 @@ code = lambda s: cells.append(nbf.v4.new_code_cell(s))
 md(r"""# A dedicated Ethiopia (ETAD) calibration — from the local lot-248+251 mirror
 
 Notebooks 06-11 trained on the narrow 906-sample `rds_EC` set and got a steep, offset ETAD-vs-HIPS
-fit (`y = 2.27x − 5.25`). Here we use the **new local IMPROVE mirror** (`~/My Drive/FTIR/local_db`):
+fit (`y = 2.27x − 5.25`). Here we use the **new local IMPROVE mirror** (resolved by `ftir_local_db()`):
 **13k+ spectra across lots 248 + 251** — the two lots ETAD actually spans — matched to TOR EC and
 validated to the app export. Then we work the three ideas:
 
@@ -45,11 +45,13 @@ from sklearn.decomposition import PCA
 from sklearn.cross_decomposition import PLSRegression
 from scipy.signal import savgol_filter
 
+sys.path.insert(0, str(Path("../ftir_hips_chem/scripts").resolve()))
+from data_paths import ftir_local_db, maia_data_root
+
 plt.rcParams.update({"axes.facecolor": "white", "figure.facecolor": "white",
                      "axes.grid": True, "grid.color": "0.9"})
-LOCAL = Path.home() / "Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/FTIR/local_db"
-GD = Path.home() / ("Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University"
-                    "/Research/Grad/UC Davis Ann/NASA MAIA/Data")
+LOCAL = ftir_local_db()
+GD = maia_data_root()
 PRED = Path("../spartan_ec_2026_06_16")
 Path("figures").mkdir(exist_ok=True); Path("tables").mkdir(exist_ok=True)
 
@@ -191,6 +193,9 @@ md(r"""### What the data actually says
 nb["cells"] = cells
 nb["metadata"] = {"kernelspec": {"name": "python3", "display_name": "Python 3"},
                   "language_info": {"name": "python"}}
-with open("12_dedicated_ethiopia_calibration.ipynb", "w") as f:
+# Resolve the output path against this file, not the cwd: these builders were
+# invoked as open("<name>.ipynb", "w"), so running one from the repo root
+# silently wrote the notebook into the repo root instead of beside its source.
+with open(Path(__file__).resolve().parent / "12_dedicated_ethiopia_calibration.ipynb", "w") as f:
     nbf.write(nb, f)
 print("wrote 12_dedicated_ethiopia_calibration.ipynb")

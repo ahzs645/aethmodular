@@ -127,7 +127,11 @@ X_addis_shape = prepare_shape(X_etad_base, wn_etad_b, GRID)
 
 
 def zrows(X):
-    return (X - X.mean(1, keepdims=True)) / X.std(1, keepdims=True)
+    # Guard sigma == 0: a flat row (masked region, or all-NaN after
+    # resampling) otherwise yields NaN, which then propagates through every
+    # downstream correlation. Same rule as charcoal_spectra.snv.
+    sd = X.std(1, keepdims=True)
+    return (X - X.mean(1, keepdims=True)) / np.where(sd == 0, 1.0, sd)
 
 
 R = (zrows(X_addis) @ zrows(X_mc).T) / GRID.size

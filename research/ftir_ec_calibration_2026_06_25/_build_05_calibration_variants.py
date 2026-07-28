@@ -6,7 +6,7 @@ from the Shiny app, (b) Sean's smoke/non-smoke classifier, and (c) agreeing the 
 set. So this notebook is a runnable **scaffold**: it fixes the variant list + naming scheme, provides
 a deterministic **"first major RMSECV minimum"** component-picker (the meeting's consistency ask),
 and lays out the real training harness behind a `RUN_HEAVY` flag pointing at the predecessor's
-`ftir_pls_calibration.build_calibration` and the `rds_EC_*` training data.
+`pls_calibration.build_calibration` and the `rds_EC_*` training data.
 """
 import nbformat as nbf
 
@@ -72,9 +72,10 @@ We run it on the **real EC training set** — the 906 samples in the predecessor
 `_rmsep_by_ncomp`.""")
 
 code(r"""import sys
-PRED = Path("../spartan_ec_2026_06_16")
-sys.path.insert(0, str(PRED))
-from ftir_pls_calibration import _rmsep_by_ncomp
+sys.path.insert(0, str(next(
+    p for p in [Path.cwd().resolve(), *Path.cwd().resolve().parents]
+    if (p / "pyproject.toml").exists()) / "research" / "ftir_hips_chem" / "scripts"))
+from pls_calibration import _rmsep_by_ncomp
 
 def first_major_min(rmse, rel_tol=0.02):
     '''Return n_components (1-indexed) at the first *major* RMSECV minimum.
@@ -195,6 +196,9 @@ Keep the `calib_id` as the column name / legend label throughout so every figure
 nb["cells"] = cells
 nb["metadata"] = {"kernelspec": {"name": "python3", "display_name": "Python 3"},
                   "language_info": {"name": "python"}}
-with open("05_calibration_variants.ipynb", "w") as f:
+# Resolve the output path against this file, not the cwd: these builders were
+# invoked as open("<name>.ipynb", "w"), so running one from the repo root
+# silently wrote the notebook into the repo root instead of beside its source.
+with open(Path(__file__).resolve().parent / "05_calibration_variants.ipynb", "w") as f:
     nbf.write(nb, f)
 print("wrote 05_calibration_variants.ipynb")

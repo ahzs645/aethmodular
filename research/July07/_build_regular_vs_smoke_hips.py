@@ -61,6 +61,14 @@ from sklearn.cross_decomposition import PLSRegression
 plt.rcParams.update({"axes.facecolor": "white", "figure.facecolor": "white",
                      "axes.grid": True, "grid.color": "0.9"})
 
+# Locate scripts/ from the repo root rather than a relative hop, so this works
+# whatever directory the notebook is started from.
+sys.path.insert(0, str(next(
+    p for p in [Path.cwd().resolve(), *Path.cwd().resolve().parents]
+    if (p / "pyproject.toml").exists()) / "research" / "ftir_hips_chem" / "scripts"))
+from config import FILTER_DATA_PATH
+from data_paths import maia_data_root
+
 PRED = Path("../spartan_ec_2026_06_16")            # training data + biomass coeffs live here
 sys.path.insert(0, str(PRED))
 Path("figures").mkdir(exist_ok=True); Path("tables").mkdir(exist_ok=True)
@@ -68,10 +76,8 @@ Path("figures").mkdir(exist_ok=True); Path("tables").mkdir(exist_ok=True)
 MAC = 10.0            # m²/g — HIPS Fabs -> EC-equivalent
 AXIS_MAX = 20.0       # µg/m³, equal on both axes (fit to ETAD; 0-400 is the tool pred-vs-meas standard)
 
-ETAD = Path.home() / ("Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University"
-                      "/Research/Grad/UC Davis Ann/NASA MAIA/Data/DAVIS/ETAD FTIR")
-SPARTAN = Path.home() / ("Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University"
-                        "/Research/Grad/UC Davis Ann/NASA MAIA/Data/Spartan/SPARTAN_HIPS_Batch1-51.v2.csv")
+ETAD = maia_data_root() / "DAVIS" / "ETAD FTIR"
+SPARTAN = maia_data_root() / "Spartan" / "SPARTAN_HIPS_Batch1-51.v2.csv"
 
 
 # --- AGENTS.md-style regression (same math as scripts/plotting/utils.calculate_regression_stats) ---
@@ -182,12 +188,7 @@ print(f"ETAD filters joined to HIPS: n = {len(master)}")
 
 # --- guarded cross-check: the EC the deployed general calibration actually REPORTED ---
 try:
-    def _root(p=Path.cwd()):
-        for c in [p, *p.parents]:
-            if (c / "AGENTS.md").exists() and (c / "research").exists():
-                return c
-        raise RuntimeError("repo root not found")
-    sp = pd.read_pickle(_root() / "research/ftir_hips_chem/Filter Data/unified_filter_dataset.pkl")
+    sp = pd.read_pickle(FILTER_DATA_PATH)
     rep = (sp[(sp["Site"] == "ETAD") & (sp["Parameter"] == "EC_ftir")]
            .groupby("FilterId")["Concentration"].first())
     master["EC_reported"] = master["ExternalFilterId"].map(rep)
@@ -275,6 +276,9 @@ md(r"""### How to read this
 nb["cells"] = cells
 nb["metadata"] = {"kernelspec": {"name": "python3", "display_name": "Python 3"},
                   "language_info": {"name": "python"}}
-with open("regular_vs_smoke_ec_vs_hips.ipynb", "w") as f:
+# Resolve the output path against this file, not the cwd: these builders were
+# invoked as open("<name>.ipynb", "w"), so running one from the repo root
+# silently wrote the notebook into the repo root instead of beside its source.
+with open(Path(__file__).resolve().parent / "regular_vs_smoke_ec_vs_hips.ipynb", "w") as f:
     nbf.write(nb, f)
 print("wrote regular_vs_smoke_ec_vs_hips.ipynb")

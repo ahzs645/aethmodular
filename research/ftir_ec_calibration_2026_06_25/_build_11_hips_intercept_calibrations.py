@@ -43,17 +43,19 @@ slope. Applied to ETAD's low range, that steepness is what produces the large ne
    crosses zero. Only the calibration's low-loading behaviour moves the intercept.""")
 
 code(r"""from pathlib import Path
-import numpy as np, pandas as pd
+import sys, numpy as np, pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from sklearn.cross_decomposition import PLSRegression
 
+sys.path.insert(0, str(Path("../ftir_hips_chem/scripts").resolve()))
+from data_paths import maia_data_root
+
 plt.rcParams.update({"axes.facecolor": "white", "figure.facecolor": "white",
                      "axes.grid": True, "grid.color": "0.9"})
 PRED = Path("../spartan_ec_2026_06_16")
-GD = Path.home() / ("Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University"
-                    "/Research/Grad/UC Davis Ann/NASA MAIA/Data")
+GD = maia_data_root()
 ETAD = GD / "DAVIS/ETAD FTIR"
 Path("figures").mkdir(exist_ok=True); Path("tables").mkdir(exist_ok=True)
 
@@ -212,6 +214,9 @@ md(r"""### Reading it
 nb["cells"] = cells
 nb["metadata"] = {"kernelspec": {"name": "python3", "display_name": "Python 3"},
                   "language_info": {"name": "python"}}
-with open("11_hips_intercept_calibrations.ipynb", "w") as f:
+# Resolve the output path against this file, not the cwd: these builders were
+# invoked as open("<name>.ipynb", "w"), so running one from the repo root
+# silently wrote the notebook into the repo root instead of beside its source.
+with open(Path(__file__).resolve().parent / "11_hips_intercept_calibrations.ipynb", "w") as f:
     nbf.write(nb, f)
 print("wrote 11_hips_intercept_calibrations.ipynb")

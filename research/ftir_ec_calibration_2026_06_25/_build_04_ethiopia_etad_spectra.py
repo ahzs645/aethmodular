@@ -22,15 +22,18 @@ segregation) and show the two spectra clouds side by side. Later these feed the 
 comparison (MAC = 10 for now).""")
 
 code(r"""from pathlib import Path
+import sys
 import numpy as np, pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+sys.path.insert(0, str(Path("../ftir_hips_chem/scripts").resolve()))
+from data_paths import maia_data_root
+
 # ETAD FTIR export on Google Drive (with fallbacks)
 CANDS = [
-    Path.home() / "Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University"
-        "/Research/Grad/UC Davis Ann/NASA MAIA/Data/DAVIS/ETAD FTIR",
+    maia_data_root() / "DAVIS" / "ETAD FTIR",
     Path("data/etad_ftir"),
 ]
 ETAD = next((p for p in CANDS if (p / "ETAD_FTIR_spectra.csv").exists()), None)
@@ -124,6 +127,9 @@ md(r"""### Next steps
 nb["cells"] = cells
 nb["metadata"] = {"kernelspec": {"name": "python3", "display_name": "Python 3"},
                   "language_info": {"name": "python"}}
-with open("04_ethiopia_etad_spectra.ipynb", "w") as f:
+# Resolve the output path against this file, not the cwd: these builders were
+# invoked as open("<name>.ipynb", "w"), so running one from the repo root
+# silently wrote the notebook into the repo root instead of beside its source.
+with open(Path(__file__).resolve().parent / "04_ethiopia_etad_spectra.ipynb", "w") as f:
     nbf.write(nb, f)
 print("wrote 04_ethiopia_etad_spectra.ipynb")
