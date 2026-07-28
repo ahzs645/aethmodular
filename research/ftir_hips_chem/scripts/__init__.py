@@ -78,9 +78,14 @@ try:
         SMOOTH_RAW_THRESHOLDS, DEFAULT_BC_WAVELENGTH,
         FILTER_CATEGORIES, CROSS_COMPARISONS,
         ETAD_FACTOR_CONTRIBUTIONS_PATH, ETAD_FILTER_ID_PATH,
-        ETHIOPIA_SEASONS, season_for_month,
+        ETHIOPIA_SEASONS, ETHIOPIA_SEASONS_BELG_FEB, SEASON_CONVENTIONS,
+        DEFAULT_SEASON_CONVENTION, season_for_month, resolve_seasons,
+        season_convention_name,
         WAVELENGTHS_NM, AE33_WAVELENGTHS_NM,
         BASE_FILTER_ID_PATTERN, BASE_FILTER_ID_REPL, AAE_REGIONS,
+        SPARTAN_DEPOSIT_AREA_CM2, IMPROVE_DEPOSIT_AREA_CM2,
+        IMPROVE_AREA_SENSITIVITY_CM2,
+        IMPROVE_HIGH_FABS_AREAS_CM2,
     )
     from outliers import (
         EXCLUDED_SAMPLES, MANUAL_OUTLIERS,
@@ -105,13 +110,21 @@ try:
         load_etad_factors_with_filter_ids, match_etad_factors,
         ETAD_PMF_SOURCE_NAMES, ETAD_FACTOR_RENAME,
         normalize_gf_fractions, add_dominant_source, GF_FRACTION_COLUMNS,
+        attach_factors_by_date,
     )
     from plotting import (
         PlotConfig, apply_default_style, crossplots, timeseries,
         distributions, comparisons, calculate_regression_stats,
         deming, deming_lambda,
     )
-    from prep import to_ugm3, find_repo_root
+    from prep import to_ugm3, find_repo_root, output_dirs, add_calendar_columns
+    from nbsetup import bootstrap
+    from optics import aae, aae_from_columns, classify_aae, aae_source_summary
+    import spectra
+    import aeronet
+    import pls_calibration
+    import data_paths
+    import improve_io
     from pls_transfer import (
         FTIRTransferPaths, CurrentPLSModel, load_current_pls_model,
         vip_scores, select_components_cv, nested_cv_predictions,
@@ -131,9 +144,14 @@ except ImportError:
         SMOOTH_RAW_THRESHOLDS, DEFAULT_BC_WAVELENGTH,
         FILTER_CATEGORIES, CROSS_COMPARISONS,
         ETAD_FACTOR_CONTRIBUTIONS_PATH, ETAD_FILTER_ID_PATH,
-        ETHIOPIA_SEASONS, season_for_month,
+        ETHIOPIA_SEASONS, ETHIOPIA_SEASONS_BELG_FEB, SEASON_CONVENTIONS,
+        DEFAULT_SEASON_CONVENTION, season_for_month, resolve_seasons,
+        season_convention_name,
         WAVELENGTHS_NM, AE33_WAVELENGTHS_NM,
         BASE_FILTER_ID_PATTERN, BASE_FILTER_ID_REPL, AAE_REGIONS,
+        SPARTAN_DEPOSIT_AREA_CM2, IMPROVE_DEPOSIT_AREA_CM2,
+        IMPROVE_AREA_SENSITIVITY_CM2,
+        IMPROVE_HIGH_FABS_AREAS_CM2,
     )
     from .outliers import (
         EXCLUDED_SAMPLES, MANUAL_OUTLIERS,
@@ -158,13 +176,21 @@ except ImportError:
         load_etad_factors_with_filter_ids, match_etad_factors,
         ETAD_PMF_SOURCE_NAMES, ETAD_FACTOR_RENAME,
         normalize_gf_fractions, add_dominant_source, GF_FRACTION_COLUMNS,
+        attach_factors_by_date,
     )
     from .plotting import (
         PlotConfig, apply_default_style, crossplots, timeseries,
         distributions, comparisons, calculate_regression_stats,
         deming, deming_lambda,
     )
-    from .prep import to_ugm3, find_repo_root
+    from .prep import to_ugm3, find_repo_root, output_dirs, add_calendar_columns
+    from .nbsetup import bootstrap
+    from .optics import aae, aae_from_columns, classify_aae, aae_source_summary
+    from . import spectra
+    from . import aeronet
+    from . import pls_calibration
+    from . import data_paths
+    from . import improve_io
     from .pls_transfer import (
         FTIRTransferPaths, CurrentPLSModel, load_current_pls_model,
         vip_scores, select_components_cv, nested_cv_predictions,
@@ -185,9 +211,13 @@ __all__ = [
     'SMOOTH_RAW_THRESHOLDS', 'DEFAULT_BC_WAVELENGTH',
     'FILTER_CATEGORIES', 'CROSS_COMPARISONS',
     'ETAD_FACTOR_CONTRIBUTIONS_PATH', 'ETAD_FILTER_ID_PATH',
-    'ETHIOPIA_SEASONS', 'season_for_month',
+    'ETHIOPIA_SEASONS', 'ETHIOPIA_SEASONS_BELG_FEB', 'SEASON_CONVENTIONS',
+    'DEFAULT_SEASON_CONVENTION', 'season_for_month', 'resolve_seasons',
+    'season_convention_name',
     'WAVELENGTHS_NM', 'AE33_WAVELENGTHS_NM',
     'BASE_FILTER_ID_PATTERN', 'BASE_FILTER_ID_REPL', 'AAE_REGIONS',
+    'SPARTAN_DEPOSIT_AREA_CM2', 'IMPROVE_DEPOSIT_AREA_CM2',
+    'IMPROVE_AREA_SENSITIVITY_CM2', 'IMPROVE_HIGH_FABS_AREAS_CM2',
     # Outliers
     'EXCLUDED_SAMPLES', 'MANUAL_OUTLIERS',
     'apply_exclusion_flags', 'apply_threshold_flags',
@@ -208,12 +238,24 @@ __all__ = [
     'load_etad_factors_with_filter_ids', 'match_etad_factors',
     'ETAD_PMF_SOURCE_NAMES', 'ETAD_FACTOR_RENAME',
     'normalize_gf_fractions', 'add_dominant_source', 'GF_FRACTION_COLUMNS',
+    'attach_factors_by_date',
     # Plotting
     'PlotConfig', 'apply_default_style', 'crossplots', 'timeseries',
     'distributions', 'comparisons', 'calculate_regression_stats',
     'deming', 'deming_lambda',
     # Prep
-    'to_ugm3', 'find_repo_root',
+    'to_ugm3', 'find_repo_root', 'output_dirs', 'add_calendar_columns',
+    # Notebook bootstrap
+    'bootstrap',
+    # Optics
+    'aae', 'aae_from_columns', 'classify_aae', 'aae_source_summary',
+    # Spectra subpackage
+    'spectra',
+    # AERONET loader
+    'aeronet',
+    'pls_calibration',
+    'data_paths',
+    'improve_io',
     # FTIR PLS transfer
     'FTIRTransferPaths', 'CurrentPLSModel', 'load_current_pls_model',
     'vip_scores', 'select_components_cv', 'nested_cv_predictions',

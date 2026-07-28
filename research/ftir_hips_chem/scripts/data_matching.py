@@ -274,9 +274,22 @@ def _param_to_column_name(param):
     return mapping.get(param, param.lower().replace(' ', '_'))
 
 
-def pivot_filter_by_id(filter_data, site_code, params=None):
+def pivot_filter_by_id(filter_data, site_code, params=None, hips_units='raw'):
     """
     Pivot filter data so each row is one filter with all its measurements.
+
+    .. warning::
+       **`hips_fabs` means different things here and in match_all_parameters.**
+
+       This function returns HIPS_Fabs **as stored**, in Mm^-1 (median ~47 for
+       ETAD). ``match_all_parameters`` and ``match_hips_with_smooth_raw`` return
+       a column of the *same name* already divided by ``MAC_VALUE``, i.e. a
+       ug/m3 BC equivalent (~4.7). The two differ by a factor of MAC_VALUE and
+       nothing in the name says so.
+
+       Pass ``hips_units='ugm3'`` to get the divided form, or ``'both'`` to get
+       ``hips_fabs`` (raw) plus an explicit ``hips_bc_ugm3``. New code should
+       prefer ``'both'`` and reference the unambiguous name.
 
     Parameters:
     -----------
@@ -284,11 +297,19 @@ def pivot_filter_by_id(filter_data, site_code, params=None):
     site_code : str
     params : list (optional)
         Parameters to include. If None, includes all.
+    hips_units : {'raw', 'ugm3', 'both'}
+        'raw'  (default, unchanged behaviour) -- hips_fabs in Mm^-1
+        'ugm3' -- hips_fabs divided by MAC_VALUE, matching match_all_parameters
+        'both' -- raw hips_fabs plus hips_bc_ugm3
 
     Returns:
     --------
     DataFrame with columns: base_filter_id, date, param1, param2, ...
     """
+    valid_units = ('raw', 'ugm3', 'both')
+    if hips_units not in valid_units:
+        raise ValueError(f"hips_units must be one of {valid_units}, got {hips_units!r}")
+
     if 'base_filter_id' not in filter_data.columns:
         filter_data = add_base_filter_id(filter_data)
 
@@ -313,6 +334,13 @@ def pivot_filter_by_id(filter_data, site_code, params=None):
     rename_map = {col: _param_to_column_name(col) for col in pivoted.columns
                   if col not in ['base_filter_id', 'date']}
     pivoted = pivoted.rename(columns=rename_map)
+
+    # Make the HIPS unit explicit -- see the warning in this function's docstring.
+    if 'hips_fabs' in pivoted.columns:
+        if hips_units == 'ugm3':
+            pivoted['hips_fabs'] = pivoted['hips_fabs'] / MAC_VALUE
+        elif hips_units == 'both':
+            pivoted['hips_bc_ugm3'] = pivoted['hips_fabs'] / MAC_VALUE
 
     return pivoted
 

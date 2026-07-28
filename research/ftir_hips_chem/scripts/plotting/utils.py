@@ -43,7 +43,9 @@ def deming(x, y, lam=1.0):
     return slope, intercept
 
 
-def calculate_regression_stats(x, y=None, y_col=None, positive_only=False):
+def calculate_regression_stats(x, y=None, y_col=None, positive_only=False,
+                               errors_in_variables=False, sigma_x=None,
+                               sigma_y=None):
     """
     Calculate linear regression statistics. Two call forms:
 
@@ -57,12 +59,44 @@ def calculate_regression_stats(x, y=None, y_col=None, positive_only=False):
 
     Returns None if fewer than 3 valid points. Otherwise a dict with:
       n, slope, intercept, r_squared, correlation,
-      r2 (alias of r_squared), origin_slope (through-origin slope,
-      sum(xy)/sum(x^2)).
+      r2 / R2 (aliases of r_squared), origin_slope (through-origin slope,
+      sum(xy)/sum(x^2)), and the agreement metrics RMSE, MAE, bias,
+      median_bias (all y-vs-x, i.e. y treated as predicted, x as observed).
+
+    The RMSE/MAE/bias/R2 keys make this a superset of
+    ``pls_transfer.regression_metrics``. Those two returned the same OLS R2
+    under different key names (`r_squared` vs `R2`), which is why ~30 phase-3
+    and absorption call sites could not use the plotting helpers
+    (`add_stats_textbox`, `add_regression_line`) and hand-rolled a stats box
+    instead. Verified numerically identical before aliasing.
 
     This consolidates the divergent inline `regression_stats(df, x_col, y_col)`
     copies from improve_hips_offset/spartan; the extra keys and positive_only
     flag exist so those consumers can adopt it without changing behaviour.
+
+    ERRORS IN VARIABLES
+    -------------------
+    ``slope`` above is ordinary least squares of y on x, which assumes x is
+    known exactly. When both axes are *measurements* -- the case whenever a
+    panel draws a 1:1 line -- x carries error too, and OLS is biased toward a
+    shallower slope (regression dilution). Pass ``errors_in_variables=True`` to
+    additionally get:
+
+      deming_slope, deming_intercept, deming_lambda, slope_attenuation_pct
+
+    where ``slope_attenuation_pct`` is 100*(deming_slope - slope)/slope, i.e.
+    how much OLS understates the relationship. On this project's filter data the
+    shift is 22-37 % for Fabs/MAC-vs-EC comparisons and ~0 % where the two
+    variables already track each other closely.
+
+    ``deming_lambda`` is Var(y-error)/Var(x-error). It defaults to 1.0
+    (orthogonal regression, equal error variance) because
+    ``unified_filter_dataset.pkl`` carries no populated ``Uncertainty`` column
+    to derive it from. Supply ``sigma_x``/``sigma_y`` when you do know the
+    measurement uncertainties -- the direction of the correction is robust, but
+    its magnitude depends on lambda.
+
+    Off by default: existing callers' stats boxes must not change.
     """
     if isinstance(x, pd.DataFrame):
         df = x
@@ -85,15 +119,40 @@ def calculate_regression_stats(x, y=None, y_col=None, positive_only=False):
     r_squared = correlation ** 2
     origin_slope = float(np.sum(xa * ya) / np.sum(xa ** 2))
 
-    return {
+    residual = ya - xa
+    result = {
         'n': len(xa),
         'slope': slope,
         'intercept': intercept,
         'r_squared': r_squared,
         'correlation': correlation,
         'r2': r_squared,
+        'R2': r_squared,
         'origin_slope': origin_slope,
+        'RMSE': float(np.sqrt(np.mean(residual ** 2))),
+        'MAE': float(np.mean(np.abs(residual))),
+        'bias': float(np.mean(residual)),
+        'median_bias': float(np.median(residual)),
     }
+
+    if errors_in_variables:
+        if sigma_x is not None and sigma_y is not None:
+            lam = float(deming_lambda(sigma_x, sigma_y))
+            if not np.isfinite(lam) or lam <= 0:
+                lam = 1.0
+        else:
+            lam = 1.0
+        d_slope, d_intercept = deming(xa, ya, lam)
+        result['deming_slope'] = d_slope
+        result['deming_intercept'] = d_intercept
+        result['deming_lambda'] = lam
+        result['slope_attenuation_pct'] = (
+            float(100.0 * (d_slope - slope) / slope)
+            if np.isfinite(d_slope) and slope != 0
+            else float('nan')
+        )
+
+    return result
 
 
 def format_equation(slope, intercept):

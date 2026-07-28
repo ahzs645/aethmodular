@@ -40,12 +40,13 @@ class QualityClassifier:
             {'excellent': 10, 'good': 60, 'moderate': 240}
             Values represent maximum missing minutes for each category.
         """
-        self.quality_thresholds = quality_thresholds or {
-            'excellent': 10,    # ≤10 minutes missing
-            'good': 60,         # 11-60 minutes missing  
-            'moderate': 240,    # 61-240 minutes missing
-            # >240 minutes = poor
-        }
+        # Single source: src/config/quality_thresholds.py. This used to hardcode
+        # 10/60/240, which is the same rival-copy problem that left
+        # period_processor without the 240 tier entirely -- a 100-minute gap was
+        # 'poor' there and 'moderate' everywhere else. The lowercase form matches
+        # the keys this class looks up; the extra 'poor': inf tier is inert here.
+        from src.config.quality_thresholds import completeness_tiers
+        self.quality_thresholds = quality_thresholds or completeness_tiers(lowercase=True)
         
         self.quality_labels = ['Excellent', 'Good', 'Moderate', 'Poor']
         

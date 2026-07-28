@@ -27,7 +27,12 @@ y : the *measured* reference OC or EC. NOT in the Shiny download — get it eith
     keyed by FilterId) or from a reference table, then join on FilterId.
 
 This file is standalone (numpy / pandas / scikit-learn only). Run it directly to
-execute a synthetic self-test:  python ftir_pls_calibration.py
+execute a synthetic self-test:  python pls_calibration.py
+Moved here from research/spartan_ec_2026_06_16/ in 2026-07-28. It is reusable
+calibration logic imported by 11 files across two research directories, so it
+belongs in the sanctioned scripts/ home per AGENTS.md rather than in one
+workspace that a sibling reaches into with sys.path.insert('../<dir>') -- that
+hop only resolved when the notebook happened to run from the right directory.
 """
 from __future__ import annotations
 
@@ -323,7 +328,8 @@ def _self_test() -> None:
     print(f"  bias %            : {res.stats['bias_pct']:+.2f}")
 
     # round-trip: export coefficients, re-apply to clean spectra, compare to fit
-    import tempfile, os
+    import os
+    import tempfile
     with tempfile.TemporaryDirectory() as d:
         path = os.path.join(d, "coeffs.csv")
         res.to_csv(path)

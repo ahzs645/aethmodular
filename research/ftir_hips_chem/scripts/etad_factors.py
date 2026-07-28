@@ -273,3 +273,118 @@ def add_dominant_source(df, frac_cols=None, suffix='_frac'):
         out.loc[usable, 'dominant_fraction'] = fractions.loc[usable].max(axis=1)
 
     return out
+
+
+def attach_factors_by_date(df, factors=None, cols=None, normalize=True,
+                           dominant=True, tolerance_days=0) -> pd.DataFrame:
+    """Attach ETAD PMF factors to a frame using its calendar dates.
+
+    A datetime index is used when present; otherwise ``df`` must contain a
+    ``date`` column. Datetimes are normalized to midnight before matching and
+    timezone information is removed only when it is present. With a positive
+    ``tolerance_days``, the nearest factor date within that tolerance is used.
+
+    Parameters
+    ----------
+    df : DataFrame
+        Target data with a DatetimeIndex or a ``date`` column.
+    factors : DataFrame, optional
+        Factor data containing a ``date`` column. When omitted, factors are
+        loaded with ``load_etad_factors_with_filter_ids``.
+    cols : sequence of str, optional
+        Factor columns to attach. Defaults to the normalized GF fraction
+        columns. Dominance columns are always included when ``dominant=True``.
+    normalize : bool
+        Normalize raw GF mass fractions to relative source contributions.
+    dominant : bool
+        Add and attach ``dominant_source`` and ``dominant_fraction``.
+    tolerance_days : int or float
+        Maximum distance in days for nearest-date matching. Zero requires an
+        exact calendar-date match.
+
+    Returns
+    -------
+    DataFrame
+        A copy of ``df`` with the requested factor columns attached.
+    """
+    if tolerance_days < 0:
+        raise ValueError("tolerance_days must be non-negative")
+
+    out = df.copy()
+    if isinstance(out.index, pd.DatetimeIndex):
+        target_dates = out.index.normalize()
+        if target_dates.tz is not None:
+            target_dates = target_dates.tz_localize(None)
+    elif 'date' in out.columns:
+        target_dates = pd.DatetimeIndex(pd.to_datetime(out['date'])).normalize()
+        if target_dates.tz is not None:
+            target_dates = target_dates.tz_localize(None)
+    else:
+        raise TypeError("df must have a DatetimeIndex or a 'date' column")
+
+    factor_data = (
+        load_etad_factors_with_filter_ids() if factors is None else factors.copy()
+    )
+    if 'date' not in factor_data.columns:
+        raise KeyError("factors must contain a 'date' column")
+
+    if normalize:
+        factor_data = normalize_gf_fractions(factor_data)
+    else:
+        # Keep the public output names consistent when callers explicitly opt
+        # out of normalization but pass the loader's raw GF column names.
+        factor_data = factor_data.rename(columns=FACTOR_TO_FRAC)
+
+    if dominant:
+        factor_data = add_dominant_source(factor_data)
+
+    attach_cols = list(GF_FRACTION_COLUMNS if cols is None else cols)
+    if dominant:
+        for col in ('dominant_source', 'dominant_fraction'):
+            if col not in attach_cols:
+                attach_cols.append(col)
+
+    missing = [col for col in attach_cols if col not in factor_data.columns]
+    if missing:
+        raise KeyError(
+            f"factor columns not found: {missing}. "
+            f"Available: {sorted(factor_data.columns)}"
+        )
+
+    factor_dates = pd.DatetimeIndex(pd.to_datetime(factor_data['date'])).normalize()
+    if factor_dates.tz is not None:
+        factor_dates = factor_dates.tz_localize(None)
+
+    lookup = factor_data[attach_cols].copy()
+    lookup.insert(0, '_factor_date', factor_dates)
+    lookup = (
+        lookup.dropna(subset=['_factor_date'])
+        .drop_duplicates(subset='_factor_date')
+        .sort_values('_factor_date')
+    )
+
+    row_positions = pd.RangeIndex(len(out))
+    matched_values = lookup[attach_cols].iloc[0:0].reindex(row_positions)
+    valid_targets = pd.DataFrame({
+        '_target_date': target_dates,
+        '_row_position': np.arange(len(out)),
+    }).dropna(subset=['_target_date'])
+
+    if not valid_targets.empty and not lookup.empty:
+        matches = pd.merge_asof(
+            valid_targets.sort_values('_target_date'),
+            lookup,
+            left_on='_target_date',
+            right_on='_factor_date',
+            direction='nearest',
+            tolerance=pd.Timedelta(days=tolerance_days),
+        )
+        matched_values = (
+            matches.set_index('_row_position')[attach_cols]
+            .reindex(row_positions)
+        )
+
+    for col in attach_cols:
+        out[col] = matched_values[col].to_numpy()
+
+    return out

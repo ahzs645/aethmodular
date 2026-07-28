@@ -51,6 +51,10 @@ notebooks = [
   "ipython>=8.0.0",
   "nbclient>=0.10.0",
   "nbformat>=5.10.0",
+  # Required by spartan_ec_2026_06_16/06_tool_style_plots.ipynb, which recreates
+  # the UC Davis FTIR Calibration tool's interactive plots. Same undeclared-import
+  # class as the tqdm/requests gaps fixed on 2026-07-26.
+  "plotly>=5.0.0",
 ]
 
 [build-system]

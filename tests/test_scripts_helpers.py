@@ -392,3 +392,246 @@ class TestLayoutFallback:
             f"{module}.{func} no longer declares its supported layouts, so an "
             "unsupported layout would silently draw nothing again"
         )
+
+
+class TestAAE:
+    """AAE sign convention.
+
+    addis_01 / addis_04 computed ln(IR/UV)/ln(880/375), the exact negative of
+    the standard AAE = -ln(b_short/b_long)/ln(wl_short/wl_long). Because UV
+    absorption >= IR for real aerosol that is always <= 0, so every sample fell
+    below AAE_REGIONS['fossil_max'] and classified as fossil fuel -- including
+    genuine biomass. addis_05 / multisite used the correct form.
+    """
+
+    from config import WAVELENGTHS_NM as _WL
+
+    def test_biomass_like_sample_is_positive(self):
+        from optics import aae
+
+        # UV absorbing 5.5x more than IR -> AAE ~ 2, the biomass signature
+        got = aae(5.5, 1.0, self._WL["UV"], self._WL["IR"])
+        assert got == pytest.approx(2.0, abs=0.01)
+        assert got > 0
+
+    def test_matches_the_addis_05_convention(self):
+        from optics import aae
+
+        uv, ir = 3.0, 2.0
+        expected = -np.log(uv / ir) / np.log(self._WL["UV"] / self._WL["IR"])
+        assert aae(uv, ir, self._WL["UV"], self._WL["IR"]) == pytest.approx(expected)
+
+    def test_is_the_negative_of_the_old_inverted_form(self):
+        uv, ir = 5.5, 1.0
+        from optics import aae
+
+        old = np.log(ir / uv) / np.log(self._WL["IR"] / self._WL["UV"])
+        assert aae(uv, ir, self._WL["UV"], self._WL["IR"]) == pytest.approx(-old)
+
+    def test_swapped_wavelengths_raise_rather_than_flip_sign(self):
+        from optics import aae
+
+        with pytest.raises(ValueError, match="must be shorter"):
+            aae(3.0, 2.0, self._WL["IR"], self._WL["UV"])
+
+    @pytest.mark.parametrize(
+        "ratio,expected",
+        [(1.2, "fossil"), (3.0, "mixed"), (5.5, "biomass"), (8.0, "biomass")],
+    )
+    def test_classification_spans_all_three_classes(self, ratio, expected):
+        """Under the inverted form every one of these returned 'fossil'."""
+        from optics import aae, classify_aae
+
+        v = aae(pd.Series([ratio]), pd.Series([1.0]), self._WL["UV"], self._WL["IR"])
+        assert classify_aae(v)[0] == expected
+
+    def test_non_positive_and_missing_yield_nan(self):
+        from optics import aae_from_columns
+
+        df = pd.DataFrame({"UV BCc": [3.0, 0.0, np.nan, -1.0],
+                           "IR BCc": [2.0, 1.0, 1.0, 1.0]})
+        got = aae_from_columns(df)
+        assert np.isfinite(got[0])
+        assert got[1:].isna().all()
+
+    def test_uses_ma350_wavelengths_not_ae33(self):
+        from config import AE33_WAVELENGTHS_NM
+        from optics import aae_from_columns
+
+        df = pd.DataFrame({"UV BCc": [5.5], "IR BCc": [1.0]})
+        got = aae_from_columns(df)[0]
+        ae33 = -np.log(5.5) / np.log(AE33_WAVELENGTHS_NM["BC1"] / AE33_WAVELENGTHS_NM["BC6"])
+        assert got != pytest.approx(ae33), "must not use the AE33 370 nm value"
+
+    def test_summary_percentages_sum_to_100(self):
+        from optics import aae, aae_source_summary
+
+        vals = aae(pd.Series([1.2, 3.0, 5.5, 8.0]), pd.Series([1.0] * 4),
+                   self._WL["UV"], self._WL["IR"])
+        s = aae_source_summary(vals)
+        assert s["n"] == 4
+        assert s["fossil_pct"] + s["mixed_pct"] + s["biomass_pct"] == pytest.approx(100.0)
+
+
+class TestHipsFabsUnits:
+    """`hips_fabs` carried two different units under one name.
+
+    pivot_filter_by_id returns HIPS_Fabs as stored (Mm^-1, median ~47 for ETAD);
+    match_all_parameters returns a column of the SAME name already divided by
+    MAC_VALUE (a ug/m3 BC equivalent, ~4.7). A factor of MAC_VALUE, with nothing
+    in the name to say which you have.
+    """
+
+    @staticmethod
+    def _frame():
+        return pd.DataFrame({
+            "Site": ["ETAD"] * 4,
+            "FilterId": ["ETAD-0001-1", "ETAD-0001-1", "ETAD-0002-1", "ETAD-0002-1"],
+            "SampleDate": pd.to_datetime(["2024-01-01"] * 2 + ["2024-01-02"] * 2),
+            "Parameter": ["HIPS_Fabs", "EC_ftir"] * 2,
+            "Concentration": [50.0, 5.0, 30.0, 3.0],
+        })
+
+    def test_default_is_raw_and_unchanged(self):
+        from data_matching import pivot_filter_by_id
+
+        out = pivot_filter_by_id(self._frame(), "ETAD")
+        assert sorted(out["hips_fabs"].dropna()) == [30.0, 50.0]
+
+    def test_ugm3_divides_by_mac(self):
+        from config import MAC_VALUE
+        from data_matching import pivot_filter_by_id
+
+        out = pivot_filter_by_id(self._frame(), "ETAD", hips_units="ugm3")
+        assert sorted(out["hips_fabs"].dropna()) == [30.0 / MAC_VALUE, 50.0 / MAC_VALUE]
+
+    def test_both_keeps_raw_and_adds_an_unambiguous_column(self):
+        from config import MAC_VALUE
+        from data_matching import pivot_filter_by_id
+
+        out = pivot_filter_by_id(self._frame(), "ETAD", hips_units="both")
+        assert sorted(out["hips_fabs"].dropna()) == [30.0, 50.0]
+        assert sorted(out["hips_bc_ugm3"].dropna()) == [30.0 / MAC_VALUE, 50.0 / MAC_VALUE]
+
+    def test_ugm3_matches_what_match_all_parameters_produces(self):
+        """Pins the relationship between the two producers of `hips_fabs`."""
+        from config import MAC_VALUE
+        from data_matching import pivot_filter_by_id
+
+        raw = pivot_filter_by_id(self._frame(), "ETAD")
+        ug = pivot_filter_by_id(self._frame(), "ETAD", hips_units="ugm3")
+        assert (raw["hips_fabs"] / MAC_VALUE).equals(ug["hips_fabs"])
+
+    def test_bad_unit_raises(self):
+        from data_matching import pivot_filter_by_id
+
+        with pytest.raises(ValueError, match="hips_units must be one of"):
+            pivot_filter_by_id(self._frame(), "ETAD", hips_units="Mm-1")
+
+
+class TestRegressionStatsSuperset:
+    """calculate_regression_stats is a superset of pls_transfer.regression_metrics.
+
+    The two returned the SAME OLS R2 under different key names (`r_squared` vs
+    `R2`), and only the pls one computed RMSE/MAE/bias. That fork is why ~30
+    phase-3 and absorption call sites hand-rolled a stats box instead of using
+    add_stats_textbox / add_regression_line.
+    """
+
+    @staticmethod
+    def _xy(n=60, seed=3):
+        rng = np.random.default_rng(seed)
+        x = rng.uniform(1, 20, n)
+        return x, 1.7 * x + rng.normal(0, 2, n)
+
+    def test_every_shared_key_agrees_with_pls_transfer(self):
+        from pls_transfer import regression_metrics
+        from plotting.utils import calculate_regression_stats
+
+        x, y = self._xy()
+        a, b = calculate_regression_stats(x, y), regression_metrics(x, y)
+        shared = set(a) & set(b)
+        assert {"n", "slope", "intercept", "R2", "RMSE", "MAE", "bias"} <= shared
+        for k in shared:
+            assert a[k] == pytest.approx(b[k]), k
+
+    def test_r2_aliases_are_consistent(self):
+        from plotting.utils import calculate_regression_stats
+
+        s = calculate_regression_stats(*self._xy())
+        assert s["r_squared"] == s["r2"] == s["R2"]
+
+    def test_legacy_keys_are_unchanged(self):
+        """Existing callers must keep working."""
+        from plotting.utils import calculate_regression_stats
+
+        s = calculate_regression_stats(*self._xy())
+        assert {"n", "slope", "intercept", "r_squared", "correlation",
+                "r2", "origin_slope"} <= set(s)
+
+    def test_bias_sign_convention_is_y_minus_x(self):
+        from plotting.utils import calculate_regression_stats
+
+        x = np.array([1.0, 2.0, 3.0, 4.0])
+        s = calculate_regression_stats(x, x + 2.0)
+        assert s["bias"] == pytest.approx(2.0)
+        assert s["MAE"] == pytest.approx(2.0)
+        assert s["RMSE"] == pytest.approx(2.0)
+
+    def test_still_returns_none_below_three_points(self):
+        from plotting.utils import calculate_regression_stats
+
+        assert calculate_regression_stats([1.0, 2.0], [1.0, 2.0]) is None
+
+
+class TestFigureDpiDefaults:
+    """One knob for saved-figure resolution.
+
+    462 savefig calls across the estate pin a dpi explicitly (13 distinct values,
+    120-1000); 224 never did and were silently getting matplotlib's 100. These
+    pin that applying the default style sets a project value, and that an
+    explicit savefig(dpi=...) still wins.
+    """
+
+    def test_config_exposes_both_dpi_knobs(self):
+        from research.ftir_hips_chem.scripts import config
+
+        assert isinstance(config.SAVEFIG_DPI, int)
+        assert isinstance(config.FIGURE_DPI, int)
+        # saved output should not be coarser than the on-screen preview
+        assert config.SAVEFIG_DPI >= config.FIGURE_DPI
+
+    def test_apply_default_style_sets_the_configured_dpi(self):
+        import matplotlib.pyplot as plt
+
+        from research.ftir_hips_chem.scripts import config
+        from research.ftir_hips_chem.scripts.plotting import apply_default_style
+
+        plt.rcParams["savefig.dpi"] = 72
+        plt.rcParams["figure.dpi"] = 72
+        apply_default_style()
+        assert plt.rcParams["savefig.dpi"] == config.SAVEFIG_DPI
+        assert plt.rcParams["figure.dpi"] == config.FIGURE_DPI
+
+    def test_explicit_savefig_dpi_still_wins(self, tmp_path):
+        import matplotlib
+
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        from PIL import Image
+
+        from research.ftir_hips_chem.scripts.plotting import apply_default_style
+
+        apply_default_style()
+        fig, ax = plt.subplots(figsize=(2, 2))
+        ax.plot([0, 1], [0, 1])
+
+        default_path = tmp_path / "default.png"
+        pinned_path = tmp_path / "pinned.png"
+        fig.savefig(default_path)
+        fig.savefig(pinned_path, dpi=50)
+        plt.close(fig)
+
+        # 2 inches * 50 dpi == 100 px, regardless of the configured default
+        assert Image.open(pinned_path).size[0] == 100
+        assert Image.open(default_path).size[0] > 100

@@ -24,9 +24,9 @@ Usage:
 import matplotlib.pyplot as _plt
 
 try:
-    from config import SITES
+    from config import SITES, FIGURE_DPI, SAVEFIG_DPI
 except ImportError:  # Support importing as research.ftir_hips_chem.scripts.plotting
-    from ..config import SITES
+    from ..config import SITES, FIGURE_DPI, SAVEFIG_DPI
 
 
 def apply_default_style():
@@ -47,8 +47,14 @@ def apply_default_style():
 
         from plotting import apply_default_style
         apply_default_style()
+
+    Also sets figure/savefig DPI from ``config.SAVEFIG_DPI`` and
+    ``config.FIGURE_DPI``, so saved-figure resolution has one knob instead of a
+    per-notebook literal. An explicit ``savefig(dpi=...)`` still wins.
     """
     _plt.rcParams.update({
+        'figure.dpi':       FIGURE_DPI,
+        'savefig.dpi':      SAVEFIG_DPI,
         'axes.facecolor':   'white',
         'figure.facecolor': 'white',
         'savefig.facecolor':'white',

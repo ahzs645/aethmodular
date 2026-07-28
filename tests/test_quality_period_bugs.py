@@ -5,6 +5,9 @@ an active consumer today, so these tests exist to stop the bugs coming back if
 the pipeline is ever revived rather than to guard a live path.
 """
 
+import pathlib
+import re
+
 import pandas as pd
 import pytest
 
@@ -306,3 +309,51 @@ class TestAethalometerFilterMatcherConstruction:
 
         with pytest.raises(FileNotFoundError, match="Filter database not found"):
             AethalometerFilterMatcher("nope.pkl", "also-nope.pkl")
+
+
+def test_qc_classifier_reads_the_canonical_thresholds_not_a_hardcoded_copy():
+    """src/data/qc/quality_classifier.py used to hardcode 10/60/240 while
+    src/analysis/quality/period_classifier.py read them from config. Two rival
+    copies of the same tiers can silently diverge -- which already happened once,
+    leaving period_processor without the 240 tier so a 100-minute gap classified
+    as 'poor' there and 'moderate' everywhere else."""
+    from src.config.quality_thresholds import completeness_tiers
+    from src.data.qc.quality_classifier import QualityClassifier
+
+    assert QualityClassifier().quality_thresholds == completeness_tiers(lowercase=True)
+
+    # Assert on the *assignment*, not on any occurrence: the docstring
+    # legitimately shows {'excellent': 10, ...} as the parameter format.
+    source = (
+        pathlib.Path(__file__).resolve().parents[1]
+        / "src" / "data" / "qc" / "quality_classifier.py"
+    ).read_text()
+    assigned = re.search(
+        r"self\.quality_thresholds\s*=\s*(.+?)(?:\n\s*\n|\n\s{4}\w)",
+        source, re.S,
+    ).group(1)
+    assert "completeness_tiers" in assigned
+    assert "10" not in assigned and "240" not in assigned
+
+
+def test_qc_classifier_tier_boundaries_are_unchanged():
+    """Behaviour-preservation guard for the swap above."""
+    from src.data.qc.quality_classifier import QualityClassifier
+
+    classifier = QualityClassifier()
+    for missing, expected in [
+        (0, "Excellent"), (10, "Excellent"),
+        (11, "Good"), (60, "Good"),
+        (61, "Moderate"), (240, "Moderate"),
+        (241, "Poor"), (10_000, "Poor"),
+    ]:
+        assert classifier._classify_quality_by_missing(missing) == expected, missing
+
+
+def test_qc_classifier_still_honours_an_explicit_override():
+    from src.data.qc.quality_classifier import QualityClassifier
+
+    custom = {"excellent": 1, "good": 2, "moderate": 3}
+    classifier = QualityClassifier(custom)
+    assert classifier.quality_thresholds == custom
+    assert classifier._classify_quality_by_missing(2) == "Good"
