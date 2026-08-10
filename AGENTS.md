@@ -25,9 +25,9 @@ environment and data paths before executing notebooks or pipelines.
 ```
 aethmodular/
 ├── AGENTS.md                            # <-- this file
-├── plotting_gaps_scenarios.ipynb        # gallery of inline patterns to fix
+├── CLAUDE.md                            # pointer to this file
 ├── README.md
-├── docs/                                # repo-layout.md, research-workflow.md, etc.
+├── docs/                                # repo-layout.md, open-items.md, etc.
 ├── src/                                 # production visualization system (separate)
 ├── research/ftir_hips_chem/             # <-- the main active workspace
 │   ├── scripts/                         # all reusable logic lives here
@@ -81,8 +81,8 @@ not invent your own plot style or redefine season colors inline.
 import sys
 # For notebooks inside research/ftir_hips_chem/:
 sys.path.insert(0, './scripts')
-# For notebooks at repo root (rare — e.g. plotting_gaps_scenarios.ipynb):
-# sys.path.insert(0, './research/ftir_hips_chem/scripts')
+# For notebooks under notebooks/ (e.g. plotting_gaps_scenarios.ipynb):
+# sys.path.insert(0, '../research/ftir_hips_chem/scripts')
 
 import pandas as pd
 import numpy as np

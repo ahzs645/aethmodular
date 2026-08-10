@@ -48,6 +48,22 @@ historical presentation decks remain tracked pending retention review.
 
 ## Reference Docs
 
+- [`open-items.md`](open-items.md): short, current list of human decisions and
+  unfinished cleanup work; also records the quality-stack merge as explicitly
+  declined.
+
+- [`cleanup-history.md`](cleanup-history.md): detailed chronological cleanup
+  record, including fixed defects, measurements, and rejected audit claims.
+
+- [`plot-taxonomy.md`](plot-taxonomy.md): standing census of plot families,
+  regression methods, comparison estimators, and figure-style variants.
+
+- [`library-usage.md`](library-usage.md): supported imports, data-root and
+  notebook workflow, plus replacements for inline research helpers.
+
+- [`migration-paths.md`](migration-paths.md): directory, notebook, script, and
+  import migration map.
+
 - [`commands.md`](commands.md): stable diagnostics, notebook, pipeline,
   SPARTAN, and research-builder commands.
 
