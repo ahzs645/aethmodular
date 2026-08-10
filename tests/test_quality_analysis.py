@@ -2,6 +2,7 @@
 
 import pandas as pd
 import numpy as np
+import pytest
 from datetime import datetime, timedelta
 
 try:
@@ -56,21 +57,13 @@ def generate_test_data_with_gaps(n_days=30, gap_probability=0.05):
 def test_quality_modules_basic():
     """Basic test to ensure quality modules can be imported and initialized"""
     if not QUALITY_MODULES_AVAILABLE:
-        print(f"❌ Quality modules not available: {IMPORT_ERROR}")
-        return False
-    
-    try:
-        # Test initialization
-        completeness = CompletenessAnalyzer()
-        missing_data = MissingDataAnalyzer()
-        classifier = PeriodClassifier()
-        
-        print("✅ All quality analysis modules initialized successfully")
-        return True
-        
-    except Exception as e:
-        print(f"❌ Error initializing quality modules: {e}")
-        return False
+        pytest.skip(f"Quality modules not available: {IMPORT_ERROR}")
+
+    # Construction must succeed; letting the exception propagate is the failure
+    # signal. This previously returned True/False, so the test could not fail.
+    assert CompletenessAnalyzer() is not None
+    assert MissingDataAnalyzer() is not None
+    assert PeriodClassifier() is not None
 
 
 def test_completeness_analyzer():
