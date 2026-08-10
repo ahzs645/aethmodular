@@ -131,6 +131,55 @@ In [`figures/`](figures/):
 
 ---
 
+## Mass-space notebooks and the June 2026 Ann update
+
+Four notebooks compare SPARTAN against IMPROVE in **mass-on-filter space**
+rather than concentration space, which removes sample volume from both sides
+of the comparison:
+
+- [`follow_up_mass_and_ratio_plots.ipynb`](follow_up_mass_and_ratio_plots.ipynb)
+  — the producer. Per-site fAbs/EC, OC/EC and OC/fAbs ratios, the Addis-analog
+  site map, the iron check across 25 sites (comes back negative), and ETBI as a
+  second Ethiopian site. Run this one **first**: it builds both caches the other
+  three read.
+- [`spartan_vs_improve_mass_comparison.ipynb`](spartan_vs_improve_mass_comparison.ipynb)
+  and [`site_ratios_mass_space.ipynb`](site_ratios_mass_space.ipynb) — the
+  mass-space counterparts to
+  [`spartan_vs_improve_comparison.ipynb`](spartan_vs_improve_comparison.ipynb).
+- [`presentation_offset_story.ipynb`](presentation_offset_story.ipynb) — the
+  FTIR-EC offset narrative (seasonal test, history reconciliation, IMPROVE fit
+  plane).
+
+[`presentation_jun2026/`](presentation_jun2026/) holds the deck these fed, the
+slide-by-slide script, and `shiny_app_ftir_plan.md` — the T1–T6 task list for
+the Shiny calibration app, with a decision table for what each outcome means.
+
+**Their standalone `figures/` and `tables/` are not committed.** Everything was
+computed on 2026-06-09, before the EIV regression and the outlier-exclusion and
+quality-period fixes landed, so those results should not be cited as current —
+and a `figures/` directory sitting in the tree reads as though they are. The
+notebooks do keep their June cell outputs, following the usual convention here:
+that is the record of what the run produced, dated by the run itself, and it is
+what you diff against after re-executing. The one standalone table kept is
+[`follow_up_plots/tables/addis_analog_candidates.csv`](follow_up_plots/tables/addis_analog_candidates.csv),
+because it is a decision input — which IMPROVE sites to pull spectra for — that
+may already have been acted on. Treat its numbers as of 2026-06-09.
+
+### Inputs
+
+| What | Where it resolves from |
+|---|---|
+| SPARTAN filter chemistry | `research/ftir_hips_chem/Filter Data/unified_filter_dataset.pkl` (tracked) |
+| IMPROVE FED export, HIPS batch file, site lookup | the Drive mount, via `data_paths.maia_data_root()` and `improve_io.improve_dir()` |
+| Public SPARTAN ChemSpec + iron | downloaded from the FTP on first run, cached |
+
+Nothing is spelled out as an absolute path; set `AETHMODULAR_MAIA_DATA_ROOT` or
+`AETHMODULAR_IMPROVE_DIR` to run against a different layout. Both derived caches
+are written to `research/spartan/.cache/` and are git-ignored, so a first run
+costs one IMPROVE parse (~626k rows) plus one FTP pull across every HIPS site.
+
+---
+
 ## How to reproduce the analysis
 
 All scripts assume the current working directory is the repo root.

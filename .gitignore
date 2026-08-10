@@ -188,3 +188,6 @@ tmp_warren_pages/
 notebooks/analysis/output/
 *_executed.ipynb
 **/node_modules/
+
+# Derived caches for the salvaged SPARTAN mass-space notebooks (rebuilt on run)
+research/spartan/.cache/
