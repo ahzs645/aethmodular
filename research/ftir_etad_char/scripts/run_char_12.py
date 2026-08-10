@@ -49,6 +49,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path("scripts").resolve()))
+sys.path.insert(0, str((Path("..") / "ftir_hips_chem" / "scripts").resolve()))
 
 import numpy as np
 import pandas as pd
@@ -58,6 +59,7 @@ from scipy import stats
 from scipy.signal import savgol_filter
 
 from charcoal_spectra import load_all, resample, band_area, BANDS
+from data_paths import etad_dir, ftir_spectra_dir
 from etad_spectra import load_etad
 
 PLOT_DIR = Path("output/plots/char12")
@@ -124,9 +126,7 @@ def second_derivative(X):
 # decides whether a prediction interpolates or extrapolates.
 
 # %%
-IMPROVE_CSV = (Path.home() / "Library/CloudStorage/GoogleDrive-ahzs645@gmail.com"
-               / "My Drive/University/Research/Grad/Data/FTIR"
-               / "ftir-spectra-2026-06-24.csv")
+IMPROVE_CSV = ftir_spectra_dir() / "ftir-spectra-2026-06-24.csv"
 
 imp = pd.read_csv(IMPROVE_CSV)
 wn_cols = [c for c in imp.columns if c not in ("AnalysisId", "FilterId",
@@ -150,10 +150,7 @@ X_imp, imp_meta = X_imp[keep_imp], imp_meta.loc[keep_imp].reset_index(drop=True)
 assert np.isfinite(X_etad).all()
 
 # Lot and char_06 anomaly labels for the ETAD side.
-lots = pd.read_csv(
-    Path.home() / "Library/CloudStorage/GoogleDrive-ahzs645@gmail.com"
-    / "My Drive/University/Research/Grad/UC Davis Ann/NASA MAIA/Data/DAVIS/ETAD FTIR"
-    / "etad_spectra_lotmap.csv")
+lots = pd.read_csv(etad_dir() / "etad_spectra_lotmap.csv")
 etad_meta = etad_meta.merge(lots[["MediaId", "LotId"]].drop_duplicates("MediaId"),
                             on="MediaId", how="left")
 char06 = pd.read_csv("output/tables/char06/per_filter_classification.csv")

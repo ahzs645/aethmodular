@@ -12,17 +12,14 @@ import numpy as np
 import pandas as pd
 
 from airspec_baseline import SEG1, SEG2, airspec_baseline_matrix, make_mask
+from phase3_common import PATHS
 
-
-DEFAULT_ETAD = Path(
-    "/Users/ahmadjalil/Library/CloudStorage/GoogleDrive-"
-    "ahzs645@gmail.com/My Drive/University/Research/Grad/UC Davis Ann/"
-    "NASA MAIA/Data/DAVIS/ETAD FTIR/ETAD_FTIR_spectra.csv"
-)
-DEFAULT_IMPROVE = Path(
-    "/Users/ahmadjalil/Library/CloudStorage/GoogleDrive-"
-    "ahzs645@gmail.com/My Drive/FTIR/local_db/spectra_248_251.csv"
-)
+# Resolved from the Drive mount rather than spelled out: these used to be full
+# paths naming one machine and one Google account, which broke for anyone else
+# and broke here too each time the Drive tree was reorganised. Override with
+# --etad/--improve, or move the whole tree with AETHMODULAR_DRIVE_ROOT.
+DEFAULT_ETAD = PATHS.etad_dir / "ETAD_FTIR_spectra.csv"
+DEFAULT_IMPROVE = PATHS.ftir_dir / "local_db" / "spectra_248_251.csv"
 DEFAULT_OUTPUT = Path(__file__).resolve().parents[1] / "output/corrected"
 
 

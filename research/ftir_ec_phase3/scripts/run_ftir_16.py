@@ -10,16 +10,15 @@ from IPython.display import display
 
 from config import season_for_month
 from data_matching import load_filter_data
+from data_paths import ftir_local_db, maia_data_root
 from plotting import PlotConfig
 
 PlotConfig.set(sites='all', layout='individual', show_stats=True, show_1to1=True)
-DRIVE = Path.home() / 'Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive'
-ADAMA_DIR = DRIVE / ('University/Research/Grad/UC Davis Ann/NASA MAIA/Data/DAVIS/Adama TOR')
-# The FTIR folder moved on Drive in July 2026; accept either location.
-_FTIR_CANDIDATES = (DRIVE / 'University/Research/Grad/Data/FTIR',
-                    DRIVE / 'FTIR')
-FTIR_DB = next((c for c in _FTIR_CANDIDATES if c.exists()),
-               _FTIR_CANDIDATES[0]) / 'local_db/tables'
+# Resolved through data_paths so this follows the Drive tree when it is
+# reorganised, instead of restating a layout that goes stale.
+DATA_DIR = maia_data_root()
+ADAMA_DIR = DATA_DIR / 'DAVIS/Adama TOR'
+FTIR_DB = ftir_local_db() / 'tables'
 TABLE_DIR = Path('output/tables/ftir16')
 PLOT_DIR = Path('output/plots/ftir16')
 for directory in (TABLE_DIR, PLOT_DIR):
@@ -113,8 +112,8 @@ chemspec_ec = base_series('ChemSpec_EC_PM2.5')
 ftir_ec = base_series('EC_ftir')
 ftir_oc = base_series('OC_ftir')
 
-hips = pd.read_csv(DRIVE / ('University/Research/Grad/UC Davis Ann/NASA MAIA/Data/'
-                            'Spartan/SPARTAN_HIPS_Batch1-51.v2.csv'), encoding='cp1252')
+hips = pd.read_csv(DATA_DIR / 'Spartan/SPARTAN_HIPS_Batch1-51.v2.csv',
+                   encoding='cp1252')
 hips_etad = hips[hips['Site'].eq('ETAD')].copy()
 hips_etad['BaseFilterId'] = hips_etad['FilterId'].str.extract(r'^(ETAD-\d+)')
 fabs = hips_etad.groupby('BaseFilterId')['Fabs'].first()

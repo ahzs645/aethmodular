@@ -24,15 +24,26 @@ from pathlib import Path
 
 try:
     from config import DATA_ROOT, WEATHER_DATA_DIR
-    from pls_transfer import drive_root
+    from pls_transfer import (
+        FTIR_DIR_CANDIDATES,
+        MAIA_DATA_CANDIDATES,
+        drive_root,
+        first_existing,
+    )
 except ImportError:  # Support importing as research.ftir_hips_chem.scripts.*
     from .config import DATA_ROOT, WEATHER_DATA_DIR
-    from .pls_transfer import drive_root
+    from .pls_transfer import (
+        FTIR_DIR_CANDIDATES,
+        MAIA_DATA_CANDIDATES,
+        drive_root,
+        first_existing,
+    )
 
 
-# The shared prefix under "My Drive" holding every raw dataset this project
-# reads. Declared once here rather than repeated per dataset module.
-MAIA_DATA_RELATIVE = Path("University/Research/Grad/UC Davis Ann/NASA MAIA/Data")
+# ``MAIA_DATA_CANDIDATES`` and ``FTIR_DIR_CANDIDATES`` are the "My Drive"-relative
+# layouts, defined once in ``pls_transfer`` and imported here so both modules
+# resolve the same directories. Each is a newest-first tuple probed at call time,
+# because the tree has been reorganised more than once.
 
 # Subdirectories of the MAIA data root, by the names they actually have on the
 # mount. "Aethelometry" is spelled that way on Drive; do not silently correct it.
@@ -41,33 +52,9 @@ WEATHER_SUBDIR = "Weather Data"
 METEOSTAT_SUBDIR = "Meteostat"
 AERONET_SUBDIR = "AERONET"
 IMPROVE_SUBDIR = "Improve"
+ETAD_SUBDIR = "DAVIS/ETAD FTIR"
 
-# FTIR spectra and calibration tables. Two layouts exist under "My Drive" and
-# notebooks disagree about which to use, so both are searched in order.
-#
-# This ordering matters and was wrong in the notebooks: several hardcoded
-# ``My Drive/FTIR/local_db``, which does not exist on this machine, and printed
-# a "BLOCKED: local_db not found" message and carried on degraded -- while the
-# tables were in fact present under ``University/Research/Grad/Data/FTIR``.
-FTIR_DIR_CANDIDATES = (
-    Path("University/Research/Grad/Data/FTIR"),
-    Path("FTIR"),
-)
 LOCAL_DB_SUBDIR = "local_db"
-
-
-def _first_existing(candidates, default_index=0):
-    """Return the first candidate that exists, else ``candidates[default_index]``.
-
-    Returning a non-existent default rather than raising is deliberate: callers
-    guard with ``.is_dir()`` and degrade, and a concrete path makes the failure
-    message useful.
-    """
-    candidates = list(candidates)
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate
-    return candidates[default_index]
 
 
 def ftir_spectra_dir() -> Path:
@@ -76,15 +63,20 @@ def ftir_spectra_dir() -> Path:
     if env:
         return Path(env).expanduser()
     root = drive_root()
-    return _first_existing([root / rel for rel in FTIR_DIR_CANDIDATES])
+    return first_existing([root / rel for rel in FTIR_DIR_CANDIDATES])
 
 
 def maia_data_root() -> Path:
-    """Return the NASA MAIA ``Data`` directory holding the raw datasets."""
+    """Return the directory on Drive holding the raw datasets.
+
+    Named for the NASA MAIA tree it originally lived in; it has since moved, so
+    every known layout is probed rather than one being assumed.
+    """
     env = os.environ.get("AETHMODULAR_MAIA_DATA_ROOT")
     if env:
         return Path(env).expanduser()
-    return drive_root() / MAIA_DATA_RELATIVE
+    root = drive_root()
+    return first_existing([root / rel for rel in MAIA_DATA_CANDIDATES])
 
 
 def aethalometry_dir() -> Path:
@@ -93,6 +85,19 @@ def aethalometry_dir() -> Path:
     if env:
         return Path(env).expanduser()
     return maia_data_root() / AETHALOMETRY_SUBDIR
+
+
+def etad_dir() -> Path:
+    """Return the directory holding the Addis (ETAD) FTIR spectra and metadata.
+
+    The same directory ``pls_transfer.FTIRTransferPaths.etad_dir`` resolves;
+    exposed here so a caller that only wants a path need not build the whole
+    dataclass.
+    """
+    env = os.environ.get("AETHMODULAR_ETAD_DIR")
+    if env:
+        return Path(env).expanduser()
+    return maia_data_root() / ETAD_SUBDIR
 
 
 def weather_dir() -> Path:
@@ -169,7 +174,7 @@ def ftir_local_db() -> Path:
     if env:
         return Path(env).expanduser()
     root = drive_root()
-    return _first_existing(
+    return first_existing(
         [root / rel / LOCAL_DB_SUBDIR for rel in FTIR_DIR_CANDIDATES]
     )
 
@@ -185,6 +190,7 @@ def describe() -> dict[str, tuple[Path, bool]]:
         "drive_root": drive_root(),
         "maia_data_root": maia_data_root(),
         "aethalometry_dir": aethalometry_dir(),
+        "etad_dir": etad_dir(),
         "weather_dir": weather_dir(),
         "ftir_spectra_dir": ftir_spectra_dir(),
         "ftir_local_db": ftir_local_db(),

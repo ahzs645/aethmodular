@@ -27,6 +27,39 @@ from sklearn.model_selection import GroupKFold, KFold
 _LEGACY_DRIVE_ACCOUNT = "GoogleDrive-ahzs645@gmail.com"
 
 
+# Locations under "My Drive", relative to :func:`drive_root`. These are the one
+# source of truth for the external tree's layout: ``data_paths`` imports them
+# rather than restating them, so a move is fixed in a single place.
+#
+# The tree has been reorganised more than once, so every known layout stays in
+# the tuple, newest first, and is probed at call time. A candidate that no
+# longer exists costs one stat() and keeps older checkouts and other machines
+# working; dropping it silently breaks them.
+
+# The directory holding every raw dataset this project reads -- FTIR, DAVIS/ETAD
+# FTIR, Spartan, Aethelometry Data, Weather Data, AERONET, Improve.
+#   1. "Grad/Data/Davis Data"             -- where these sit as of 2026-08-10
+#   2. "Grad/UC Davis Ann/NASA MAIA/Data" -- the previous home
+MAIA_DATA_CANDIDATES = (
+    Path("University/Research/Grad/Data/Davis Data"),
+    Path("University/Research/Grad/UC Davis Ann/NASA MAIA/Data"),
+)
+
+# FTIR spectra exports and calibration tables. This one has moved twice: it is
+# now a child of the data root above, was briefly a sibling of it, and before
+# that sat at the top level of "My Drive".
+#
+# The ordering matters and was wrong in the notebooks: several hardcoded
+# ``My Drive/FTIR/local_db``, which no longer exists, and printed a
+# "BLOCKED: local_db not found" message and carried on degraded while the
+# tables were in fact present further down the list.
+FTIR_DIR_CANDIDATES = (
+    Path("University/Research/Grad/Data/Davis Data/FTIR"),
+    Path("University/Research/Grad/Data/FTIR"),
+    Path("FTIR"),
+)
+
+
 def drive_root() -> Path:
     """Locate the Google Drive "My Drive" mount holding the FTIR source tree.
 
@@ -61,6 +94,31 @@ def drive_root() -> Path:
     return cloud / _LEGACY_DRIVE_ACCOUNT / "My Drive"
 
 
+def first_existing(candidates, default_index: int = 0) -> Path:
+    """Return the first candidate that exists, else ``candidates[default_index]``.
+
+    Returning a non-existent default rather than raising is deliberate: callers
+    guard with ``.is_dir()`` and degrade, and a concrete path makes the failure
+    message useful. The default names the *current* layout, so the message
+    points at where the data is supposed to be rather than at a dead location.
+    """
+    candidates = list(candidates)
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[default_index]
+
+
+def maia_data_root_under(drive: Path) -> Path:
+    """Return the raw-data root beneath ``drive``, probing every known layout."""
+    return first_existing([drive / rel for rel in MAIA_DATA_CANDIDATES])
+
+
+def ftir_dir_under(drive: Path) -> Path:
+    """Return the FTIR export directory beneath ``drive``, probing every layout."""
+    return first_existing([drive / rel for rel in FTIR_DIR_CANDIDATES])
+
+
 @dataclass(frozen=True)
 class FTIRTransferPaths:
     """Resolved external source paths used by the transfer notebooks."""
@@ -73,17 +131,9 @@ class FTIRTransferPaths:
     @classmethod
     def defaults(cls) -> "FTIRTransferPaths":
         drive = drive_root()
-        data = drive / "University/Research/Grad/UC Davis Ann/NASA MAIA/Data"
-        # The FTIR folder moved on Drive in July 2026; accept either location.
-        ftir_candidates = (
-            drive / "University/Research/Grad/Data/FTIR",
-            drive / "FTIR",
-        )
-        ftir_dir = next(
-            (path for path in ftir_candidates if path.exists()), ftir_candidates[0]
-        )
+        data = maia_data_root_under(drive)
         return cls(
-            ftir_dir=ftir_dir,
+            ftir_dir=ftir_dir_under(drive),
             etad_dir=data / "DAVIS/ETAD FTIR",
             spartan_hips_primary=data / "Spartan/SPARTAN_HIPS_Batch1-51.v2.csv",
             spartan_hips_backup=drive / "Downloads Backup/HIPS_all_SPARTAN_batches.csv",

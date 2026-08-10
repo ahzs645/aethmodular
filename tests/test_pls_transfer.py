@@ -9,7 +9,9 @@ from sklearn.cross_decomposition import PLSRegression
 SCRIPTS = Path(__file__).resolve().parents[1] / "research/ftir_hips_chem/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
+import pls_transfer  # noqa: E402
 from pls_transfer import (  # noqa: E402
+    FTIRTransferPaths,
     component_cv_curve,
     ftir_source_band_features,
     mahalanobis_distance_squared,
@@ -22,6 +24,40 @@ from pls_transfer import (  # noqa: E402
     vip_overlap_summary,
     vip_scores,
 )
+
+
+def test_defaults_follow_the_current_drive_layout(tmp_path, monkeypatch):
+    """``defaults()`` and ``data_paths`` used to spell out the Drive layout
+    separately, so a move fixed in one left the other pointing at nothing.
+    Both now read the same candidate tuples; this pins that they agree."""
+    import data_paths
+
+    drive = tmp_path / "My Drive"
+    data = drive / "University/Research/Grad/Data/Davis Data"
+    (data / "FTIR").mkdir(parents=True)
+    (data / "DAVIS/ETAD FTIR").mkdir(parents=True)
+    monkeypatch.setattr(pls_transfer, "drive_root", lambda: drive)
+    monkeypatch.setattr(data_paths, "drive_root", lambda: drive)
+    for var in ("AETHMODULAR_MAIA_DATA_ROOT", "AETHMODULAR_FTIR_SPECTRA_DIR",
+                "AETHMODULAR_ETAD_DIR"):
+        monkeypatch.delenv(var, raising=False)
+
+    paths = FTIRTransferPaths.defaults()
+    assert paths.ftir_dir == data / "FTIR" == data_paths.ftir_spectra_dir()
+    assert paths.etad_dir == data / "DAVIS/ETAD FTIR" == data_paths.etad_dir()
+    assert paths.spartan_hips_primary == data / "Spartan/SPARTAN_HIPS_Batch1-51.v2.csv"
+
+
+def test_defaults_still_resolve_the_previous_drive_layout(tmp_path, monkeypatch):
+    drive = tmp_path / "My Drive"
+    data = drive / "University/Research/Grad/UC Davis Ann/NASA MAIA/Data"
+    data.mkdir(parents=True)
+    (drive / "FTIR").mkdir(parents=True)
+    monkeypatch.setattr(pls_transfer, "drive_root", lambda: drive)
+
+    paths = FTIRTransferPaths.defaults()
+    assert paths.ftir_dir == drive / "FTIR"
+    assert paths.etad_dir == data / "DAVIS/ETAD FTIR"
 
 
 def _synthetic_model(seed=7):

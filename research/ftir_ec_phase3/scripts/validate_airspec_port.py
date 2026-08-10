@@ -12,13 +12,11 @@ import numpy as np
 import pandas as pd
 
 from airspec_baseline import SEG1, SEG2, airspec_baseline_matrix, make_mask
+from phase3_common import PATHS
 
-
-DEFAULT_ETAD_DIR = Path(
-    "/Users/ahmadjalil/Library/CloudStorage/GoogleDrive-"
-    "ahzs645@gmail.com/My Drive/University/Research/Grad/UC Davis Ann/"
-    "NASA MAIA/Data/DAVIS/ETAD FTIR"
-)
+# Resolved from the Drive mount rather than spelled out; see the note in
+# apply_airspec_baseline.py. Override with --raw/--baselined.
+DEFAULT_ETAD_DIR = PATHS.etad_dir
 DEFAULT_OUTPUT = (
     Path(__file__).resolve().parents[1]
     / "output/tables/airspec_port_validation.csv"

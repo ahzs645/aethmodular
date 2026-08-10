@@ -117,6 +117,48 @@ def test_ftir_local_db_is_reported_not_raised_when_absent(tmp_path, monkeypatch)
     assert data_paths.ftir_local_db().is_dir() is False
 
 
+def test_ftir_candidates_prefer_the_current_davis_data_layout(tmp_path, monkeypatch):
+    """The FTIR tree moved under 'Grad/Data/Davis Data' (seen 2026-08-10). When
+    more than one layout is present the current one must win, or a stale copy
+    left behind by an earlier move silently becomes the source of truth."""
+    drive = tmp_path / "My Drive"
+    current = drive / "University/Research/Grad/Data/Davis Data/FTIR/local_db"
+    previous = drive / "University/Research/Grad/Data/FTIR/local_db"
+    current.mkdir(parents=True)
+    previous.mkdir(parents=True)
+    monkeypatch.delenv("AETHMODULAR_FTIR_LOCAL_DB", raising=False)
+    monkeypatch.setattr(data_paths, "drive_root", lambda: drive)
+    assert data_paths.ftir_local_db() == current
+
+
+def test_maia_root_prefers_the_current_davis_data_layout(tmp_path, monkeypatch):
+    """Same move, for the raw-data root the other datasets hang off."""
+    drive = tmp_path / "My Drive"
+    current = drive / "University/Research/Grad/Data/Davis Data"
+    previous = drive / "University/Research/Grad/UC Davis Ann/NASA MAIA/Data"
+    current.mkdir(parents=True)
+    previous.mkdir(parents=True)
+    monkeypatch.delenv("AETHMODULAR_MAIA_DATA_ROOT", raising=False)
+    monkeypatch.setattr(data_paths, "drive_root", lambda: drive)
+    assert data_paths.maia_data_root() == current
+
+
+def test_maia_root_still_finds_the_previous_layout(tmp_path, monkeypatch):
+    """A machine that has not been reorganised must keep working."""
+    drive = tmp_path / "My Drive"
+    previous = drive / "University/Research/Grad/UC Davis Ann/NASA MAIA/Data"
+    previous.mkdir(parents=True)
+    monkeypatch.delenv("AETHMODULAR_MAIA_DATA_ROOT", raising=False)
+    monkeypatch.setattr(data_paths, "drive_root", lambda: drive)
+    assert data_paths.maia_data_root() == previous
+
+
+def test_etad_dir_hangs_off_the_maia_root(tmp_path, monkeypatch):
+    monkeypatch.setenv("AETHMODULAR_MAIA_DATA_ROOT", str(tmp_path))
+    monkeypatch.delenv("AETHMODULAR_ETAD_DIR", raising=False)
+    assert data_paths.etad_dir() == tmp_path / "DAVIS/ETAD FTIR"
+
+
 def test_ftir_candidates_prefer_the_layout_that_exists(tmp_path, monkeypatch):
     """Notebooks hardcoded 'My Drive/FTIR/local_db', which does not exist here,
     and degraded to a 'BLOCKED' message while the tables sat under
@@ -140,13 +182,14 @@ def test_ftir_candidates_fall_back_to_the_short_layout(tmp_path, monkeypatch):
 
 def test_ftir_returns_a_concrete_path_when_nothing_exists(tmp_path, monkeypatch):
     """Callers guard with is_dir() and degrade; a concrete path makes the
-    failure message useful, so this must not raise."""
+    failure message useful, so this must not raise. The path it names is the
+    *current* layout, so the message points at where the data should be."""
     drive = tmp_path / "My Drive"
     monkeypatch.delenv("AETHMODULAR_FTIR_LOCAL_DB", raising=False)
     monkeypatch.setattr(data_paths, "drive_root", lambda: drive)
     resolved = data_paths.ftir_local_db()
     assert resolved.is_dir() is False
-    assert resolved == drive / "University/Research/Grad/Data/FTIR/local_db"
+    assert resolved == drive / "University/Research/Grad/Data/Davis Data/FTIR/local_db"
 
 
 def test_ftir_spectra_dir_uses_the_same_candidate_order(tmp_path, monkeypatch):
