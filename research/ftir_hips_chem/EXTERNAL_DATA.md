@@ -1,7 +1,6 @@
 # External Data Dependencies
 
-Most active analyses now load from repo-local paths defined in
-`scripts/config.py`:
+Most active analyses load from repo-local paths defined in `scripts/config.py`:
 
 - `PROCESSED_SITES_DIR`
 - `FILTER_DATA_PATH`
@@ -10,37 +9,38 @@ Most active analyses now load from repo-local paths defined in
 - `WEATHER_DATA_DIR`
 - `AERONET_DATA_DIR`
 
-The repo does not currently include the raw minute-resolution Addis MA350 files
-or AERONET exports referenced by some older notebooks. Keep those large/source
-files outside git, or place local working copies in ignored folders under
-`research/ftir_hips_chem/`.
+Raw minute-resolution Addis MA350 files, AERONET exports and the FTIR spectra
+are too large for git and stay out of it. Nothing needs a local copy any more:
+they are read from the Drive mount through the resolvers below.
 
-## Local External Data Layout
+## Resolving external data
 
-Use this layout for local-only files:
+Do **not** spell out a path to the Drive tree. It has been reorganised more than
+once, and every hardcoded copy broke when it moved. Use
+[`scripts/data_paths.py`](scripts/data_paths.py) instead:
 
-```text
-research/ftir_hips_chem/
-├── AERONET/
-│   └── daily/
-│       ├── 20220101_20251231_AAU_Jackros_ET.lev15
-│       └── 20220101_20251231_AAU_Jackros_ET.ONEILL_lev15
-└── Weather Data/
-    └── Meteostat/
-```
+| Helper | What it returns |
+|---|---|
+| `maia_data_root()` | the directory holding every raw dataset |
+| `aethalometry_dir()` | raw aethalometer exports |
+| `etad_dir()` | Addis (ETAD) FTIR spectra and metadata |
+| `ftir_spectra_dir()`, `ftir_local_db()` | IMPROVE spectra exports and calibration tables |
+| `weather_dir()`, `weather_file(...)` | weather data, preferring the in-repo copy |
+| `aeronet.aeronet_dir()`, `improve_io.improve_dir()` | AERONET and IMPROVE, off the same root |
 
-`AERONET/` is ignored by git. `Weather Data/` currently contains tracked
-Meteostat CSV inputs.
+Each honours an `AETHMODULAR_*` environment override, so a different machine or
+layout needs no code change; `pls_transfer.drive_root()` finds whichever Google
+Drive account is signed in. Candidate layouts are declared once, in
+`pls_transfer.MAIA_DATA_CANDIDATES` and `FTIR_DIR_CANDIDATES` — that is the only
+place to edit when the tree moves again.
 
-## Notebooks Still Using External Absolute Paths
+Print `data_paths.describe()` at notebook setup to see what actually resolved.
+A load error is then obviously a missing-mount problem rather than a logic bug.
 
-These notebooks still refer to files in the user's Google Drive. Do not replace
-them with 9am-resampled files unless the analysis is intentionally being changed
-from minute-resolution to daily/resampled data.
+## Local-only working copies
 
-- `addis_01_source_apportionment.ipynb`
-- `addis_02_temporal_patterns.ipynb`
-- `addis_03_meteorology.ipynb`
-- `addis_04_aeronet.ipynb`
-- `addis_05_diurnal_wavelength_analysis.ipynb`
-
+If you do keep a local copy, put it in an ignored folder under
+`research/ftir_hips_chem/` and point the matching `AETHMODULAR_*` variable at
+it. `Weather Data/` is the one dataset with a small tracked in-repo copy, which
+`weather_dir()` prefers over the Drive original; note the two hold *different*
+files, so use `weather_file()` when you want a specific one.
