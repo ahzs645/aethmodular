@@ -1,3 +1,4 @@
+# pyproject.toml is authoritative; parity is enforced by tests/test_dependency_specs.py.
 name: aethmodular
 channels:
   - conda-forge
@@ -23,6 +24,7 @@ dependencies:
   # Visualization
   - matplotlib>=3.4.0
   - seaborn>=0.11.0
+  - plotly>=5.0.0
 
   # File I/O
   - openpyxl>=3.0.0
@@ -31,12 +33,14 @@ dependencies:
   # System utilities
   - psutil>=5.8.0
   - requests>=2.31.0
+  - tabulate>=0.9.0
   - tqdm>=4.66.0
 
   # Jupyter ecosystem
   - jupyter
   - jupyterlab
   - ipykernel
+  - ipython>=8.0.0
   - nbclient
   - nbformat
   - ipywidgets

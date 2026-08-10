@@ -1,9 +1,11 @@
-# Compatibility fallback only. pyproject.toml + uv.lock are authoritative.
+# Compatibility fallback only. pyproject.toml is authoritative; parity is enforced by
+# tests/test_dependency_specs.py.
 pandas>=1.3.0
 numpy>=1.21.0
 scipy>=1.7.0
 matplotlib>=3.4.0
 seaborn>=0.11.0
+plotly>=5.0.0
 scikit-learn>=1.0.0
 psutil>=5.8.0
 openpyxl>=3.0.0
@@ -12,4 +14,5 @@ statsmodels>=0.12.0
 pyarrow>=16.0.0
 pytz>=2024.1
 requests>=2.31.0
+tabulate>=0.9.0
 tqdm>=4.66.0
