@@ -27,29 +27,27 @@ from pptx.util import Inches, Pt
 from pptx.enum.shapes import MSO_SHAPE
 
 import os
-# Resolve paths so this script works whether run from the host or the sandbox.
-_HOST = Path("/Users/ahmadjalil/github/aethmodular")
-_SANDBOX = Path("/sessions/gallant-zealous-franklin/mnt/research").parent / "research"
-# Prefer whichever exists (sandbox sees research/ at /sessions/.../mnt/research)
-if _HOST.exists():
-    REPO_ROOT = _HOST
-elif Path("/sessions/gallant-zealous-franklin/mnt/research").exists():
-    # /sessions/.../mnt/research IS the research/ dir on host
-    REPO_ROOT = Path("/sessions/gallant-zealous-franklin/mnt")
-else:
-    REPO_ROOT = _HOST  # fallback for error message
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
 RESEARCH = REPO_ROOT / "research" / "ftir_hips_chem"
 FIG_DIR = RESEARCH / "output" / "warren_meeting" / "figures"
 DECK_PATH = RESEARCH / "output" / "warren_meeting" / "warren_meeting_for_warren.pptx"
 # Cache of caption-stripped McDade screenshots (re-generated on first build).
 OUTPUT_DIR_CROPPED = RESEARCH / "output" / "warren_meeting" / "figures" / "_mcdade_cropped"
 
+# External image assets. Neither directory lives in the repo and both were
+# absent as of 2026-08-10, so a run today produces those slides as placeholders.
+# The locations are overridable rather than pinned to one machine's home dir:
+#   WARREN_FILTER_PHOTO_DIR   - SPARTAN filter photographs (shared with
+#                               build_warren_meeting_deck.py, same variable name
+#                               and same default, so one export configures both)
+#   WARREN_IMPROVE_FILTER_DIR - the McDade IMPROVE filter-pattern figures
+#
 # Filter-pattern source images (Ann's "add a slide showing SPARTAN filters" email).
-# SPARTAN photos sent by Lindsay Kline (UC Davis AQRC) on 4/30. Mounted into the
-# sandbox at /sessions/.../mnt/filter when working from bash.
-_FILTER_HOST = Path("/Users/ahmadjalil/Downloads/filter")
-_FILTER_SANDBOX = Path("/sessions/gallant-zealous-franklin/mnt/filter")
-FILTER_DIR = _FILTER_SANDBOX if _FILTER_SANDBOX.exists() else _FILTER_HOST
+# SPARTAN photos sent by Lindsay Kline (UC Davis AQRC) on 4/30.
+FILTER_DIR = Path(
+    os.environ.get("WARREN_FILTER_PHOTO_DIR", Path.home() / "Downloads" / "filter")
+).expanduser()
 SPARTAN_FILTER_PHOTOS = [
     FILTER_DIR / "image004.jpg",
     FILTER_DIR / "image005.jpg",
@@ -62,9 +60,11 @@ SPARTAN_FILTER_PHOTOS = [
 #   Fig 1 — filter holder support screen (25mm)
 #   Fig 4 — sampled IMPROVE Teflon filter (full diameter)
 #   Fig 2 — close-up of dot deposition pattern (~0.013" per dot)
-_MCDADE_HOST = Path("/Users/ahmadjalil/Downloads/Improve Filters")
-_MCDADE_SANDBOX = Path("/sessions/gallant-zealous-franklin/mnt/Improve Filters")
-MCDADE_DIR = _MCDADE_SANDBOX if _MCDADE_SANDBOX.exists() else _MCDADE_HOST
+MCDADE_DIR = Path(
+    os.environ.get(
+        "WARREN_IMPROVE_FILTER_DIR", Path.home() / "Downloads" / "Improve Filters"
+    )
+).expanduser()
 
 
 def _resolve_mcdade_figs():
