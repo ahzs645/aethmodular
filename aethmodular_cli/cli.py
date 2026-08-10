@@ -107,9 +107,6 @@ def _active_notebooks(include_archive: bool = False) -> list[Path]:
             if not include_archive and "archive" in path.parts:
                 continue
             notebooks.add(path)
-    root_gallery = _repo_path("plotting_gaps_scenarios.ipynb")
-    if root_gallery.exists():
-        notebooks.add(root_gallery)
     return sorted(notebooks)
 
 
