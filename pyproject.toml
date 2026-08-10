@@ -78,6 +78,7 @@ line-length = 100
 exclude = [
   "research",
   "logs",
+  # Vendored third-party code is preserved for upstream diffability, not linted.
   "src/external/calibration.py",
 ]
 
@@ -86,6 +87,7 @@ select = ["E", "F"]
 ignore = ["E402", "E501", "E722", "F401", "F541", "F841"]
 
 [tool.ruff.lint.per-file-ignores]
+# Vendored third-party code retains its upstream formatting and lint violations.
 "src/external/calibration.py" = ["E401", "E701", "E711", "E712", "F811"]
 "src/data/qc/pkl_cleaning.py" = ["E712", "F821"]
 "tests/test_quality_analysis.py" = ["F841"]
