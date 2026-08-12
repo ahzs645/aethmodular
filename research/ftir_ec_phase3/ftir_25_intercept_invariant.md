@@ -130,18 +130,39 @@ where the offset lives. That needs an EC reference on the same Addis filters tha
 derived from Fabs. Two candidates in the committed dataset, and the attack plan names the
 wrong one as the hazard:
 
-| column | n | R² vs Fabs/10 | implied MAC | verdict |
+| column | n | R² vs Fabs/10 | vs `EC_ftir` | verdict |
 |---|---:|---:|---:|---|
-| `ChemSpec_BC_PM2.5` | 188 | **0.9982** | median **10.0003**, IQR 9.99–10.01 | **Banned.** It is Fabs/10 rounded to 2 dp — 86.7% of filters sit within 0.005 of it. Circular as a reference. |
-| `ChemSpec_EC_PM2.5` | 175 | 0.7904 | median 9.893, IQR **8.05–12.28** | **Not a Fabs transform.** Its R² against Fabs is the same order as FTIR-EC's own 0.76, and its implied-MAC IQR is wide where BC's is degenerate. |
+| `ChemSpec_BC_PM2.5` | 188 | **0.9982** | — | **x-circular.** Fabs/10 rounded to 2 dp: implied MAC median 10.0003 (IQR 9.99–10.01), 86.7% of filters within 0.005. |
+| `ChemSpec_EC_PM2.5` | 175 | 0.7904 | **r² = 0.999693** | **y-circular.** Ratio to `EC_ftir` median 1.0000 (IQR 0.999–1.001), median absolute difference 0.0030 — the 2-dp rounding half-width. It *is* the FTIR-EC product, routed through the speciation table. |
 
-`ChemSpec_EC` is therefore the independent, non-Fabs EC reference this question needs, and
-it is already in `Filter Data/unified_filter_dataset.pkl` — no Drive access required. Two
-cautions before leaning on it: its median implied MAC of 9.893 is close enough to 10 to
-warrant confirming with SPARTAN documentation that it is a thermal-optical product rather
-than a MAC-tuned optical one; and each filter carries two rows, the measurement and a
-~0.07 µg/m³ floor row, so averaging them silently halves the values and doubles the implied
-MAC.
+**Neither column can arbitrate, and the second one nearly fooled this note.** An earlier
+revision proposed `ChemSpec_EC` as the independent reference on the strength of its *not*
+being a Fabs transform. That inference was wrong: not-x-circular does not imply
+independent, and this column is circular on the other axis. The tell was visible and
+misread — its R² of 0.7904 against Fabs matches `EC_ftir`'s own 0.76 because it *is*
+`EC_ftir`. `docs/open-items.md` has carried the warning (r² = 0.99992 in the four-sites
+data); it reproduces at ETAD.
+
+Two join traps worth keeping regardless, since both fail silently: each ChemSpec filter
+carries a second ~0.07 µg/m³ floor row, so averaging halves the values and doubles any
+implied MAC; and `config.BASE_FILTER_ID_PATTERN` matches only the suffixed form
+(`ETAD-0001-1`), returning NaN for the unsuffixed ChemSpec ids and emptying the join
+entirely.
+
+### The consequence: nothing in hand can settle this
+
+There is **no EC reference in the committed dataset that is independent of both axes**.
+Every candidate is circular with Fabs or with FTIR. Taken with the other results now on the
+table — IMPROVE HIPS runs through the origin, so the offset is not a generic instrument
+zero; the FTIR axis is exonerated against MA350 BC(880); and the MA350 cannot measure a BrC
+share at all — the three surviving explanations for the ~21 Mm⁻¹ are a **loading-dependent
+HIPS artifact**, **curve geometry** (a straight line through a concave Fabs-vs-EC
+relationship manufactures a negative intercept with no offset present), and **real non-EC
+absorption**. Nothing in hand discriminates them.
+
+That is what makes the quartz-TOR campaign (`ftir_16`: 11–13 days per season, ~36 filters
+in total, quartz only) the decisive measurement rather than one option among several. It is
+the only route to an EC reference that is circular with neither axis.
 
 Joining on `FilterId` also needs care: HIPS rows carry the replicate suffix
 (`ETAD-0001-1`) while ChemSpec rows do not (`ETAD-0001`), and
