@@ -109,7 +109,8 @@ Distribution comparison confirms: Addis HIPS BC is squeezed into ~2–4 µg/m³ 
 From `aeronet_addis_deep_dive.ipynb`:
 - HIPS/FTIR ratio vs coarse AOD: r ≈ **−0.33** (negative)
 - Higher dust → HIPS reads **LOWER** relative to FTIR
-- If dust were causing the anomaly (absorbing at HIPS 405nm wavelength → inflating Fabs), the correlation would be **positive**
+- If dust were causing the anomaly (absorbing at the HIPS wavelength → inflating Fabs), the correlation would be **positive**
+- *(Correction 2026-08-12: this finding originally reasoned from "HIPS 405 nm". HIPS is a He–Ne system at 632.8 ≈ 633 nm — SPARTAN Instruments page + 2025 SPARTAN methods paper. Dust absorbs less at 633 than at 405, so this null is, if anything, stronger than originally argued.)*
 - The negative correlation **rules out** dust as the explanation
 - This is a "null result" — the anomaly has a different root cause
 

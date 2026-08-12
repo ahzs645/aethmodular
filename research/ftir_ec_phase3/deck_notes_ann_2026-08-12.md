@@ -6,13 +6,14 @@ slide either reports something that moved since 31 July or puts a decision in fr
 her. Same format as `deck_notes_airspec.md`: the indented block is what to say out loud,
 the notes under it are what to have ready if she pushes.
 
-**Before you start**, know what is not yet committed. Badged `preliminary`: slide 04's
-IMPROVE intercept fits, slide 05's MA350 comparison, slide 06's AAE numbers, and slide 08's
-feasibility figures (the 55% x-range, the February count, the pull timings). If she asks "is
-this in the repo", the answer is "the reproduction gate passed against committed ftir_16
-values, but it is not yet a committed script — that is tonight's job." Everything else on a
-slide traces to a committed table, notebook or md, including the ChemSpec circularity
-result, which went in this morning as 00ab987.
+**Before you start**: everything numeric on slides 01–07 now traces to committed,
+executed notebooks — ftir_26 (IMPROVE origin, curvature, loading-dependence), ftir_27
+(ChemSpec circularity), ftir_28 (MA350 falsification and the revised MA350-BC(880) fit) —
+pushed through e3d1f4f. Only slide 08's feasibility figures (the 55% x-range, the February
+count, the pull timings) stay preliminary until ftir_24 itself is built. If she asks "is
+this in the repo": yes — executed end to end, assertions on every headline number — except
+slide 08's feasibility figures. The HIPS wavelength (slide 07) resolved this morning:
+632.8 ≈ 633 nm, from SPARTAN's own sources.
 
 ---
 
@@ -188,9 +189,9 @@ rather than a point estimate, which is why the "≤ 1%" claim is safe.
 > Item six of the attack plan, and the rule was pre-registered before the fit. Fit FTIR-EC
 > against the MA350's 880-nanometre channel, where brown carbon barely absorbs. If the
 > intercept there is near zero while against HIPS it sits at minus two, the additive offset
-> localises to the HIPS optics and the FTIR side is clean. (The plan's wording says "the
-> 633-nanometre optics" — don't repeat that here, since slide 07 is precisely about the
-> wavelength being unsettled.)
+> localises to the HIPS optics and the FTIR side is clean. (Say "the HIPS
+> axis". The wavelength itself is settled now — 632.8 ≈ 633 nm, slide 07 — but "the HIPS
+> axis" remains the right level of claim: the localisation argument never depended on it.)
 >
 > That is roughly what happened, with one honest qualification. Intercept plus
 > nought-point-three-two, confidence interval plus nought-point-nought-one to plus
@@ -247,41 +248,42 @@ module was written to prevent, different cause.
 
 ---
 
-## Slide 07 — the wavelength question
+## Slide 07 — the wavelength, resolved
 
-This is the one thing in the whole meeting that only she can supply. Do not rush it.
+This was the question only she could answer — and it answered itself before the meeting.
 
-> I need to ask you something the repo cannot answer. What wavelength is HIPS?
+> One open item closed this morning. HIPS is the helium–neon line: 632.8 nanometres, which
+> rounds to 633. SPARTAN's own Instruments page says the filters are illuminated with a
+> HeNe laser — and notes the analysis is done by your group — and the 2025 SPARTAN methods
+> paper says He–Ne at 633 with a MAC of ten at 633. The 632-versus-633 spread across the
+> documents is rounding of the same laser line.
 >
-> The optics reference marks it OPEN — not stated in the SOP, not in the public CSV header,
-> not in the Drive file, most likely 633 to match IMPROVE but unconfirmed, and it explicitly
-> says do not quote without checking with SPARTAN. Meanwhile RESEARCH_PROGRESS reasons from
-> 405. All of phase 3's prose has assumed 633. One of those is wrong.
+> Three consequences. First, the 405 in RESEARCH_PROGRESS was wrong and is corrected — and
+> that means the old AERONET dust null was aimed at the right wavelength after all; dust
+> absorbs less at 633 than at 405, so that null gets stronger, and it narrows "real non-EC
+> absorption" toward brown carbon specifically. Second, the MA350's red channel at 625
+> sits essentially at the HIPS wavelength, so yesterday's no-red-excess result bears
+> directly on the band HIPS measures — with the caveat that the channel cannot resolve
+> small excesses. Third, classic brown carbon absorbs weakly at 633, so of the three
+> surviving explanations, "real non-EC absorption" loses weight unless the absorber is
+> char- or tar-like — the loading-dependent artifact and curve geometry gain
+> correspondingly. None of this changes the ask: quartz TOR separates the survivors at
+> any wavelength.
 >
-> It decides more than a label. At 405, brown carbon and dust absorb several-fold more than
-> at 633 — a forty-six percent non-EC share of Fabs goes from surprising to fairly ordinary.
-> And every piece of red-channel reasoning we have, including yesterday's MA350 route and the
-> old dust null from the AERONET work, is aimed at the wrong wavelength.
->
-> The second question got narrower this morning. I checked the fields directly: HIPS
-> uncertainty and MDL are there — they are their own parameter rows, not a column on the Fabs
-> rows, which is why we thought they were empty. Uncertainty is populated one-ninety out of
-> one-ninety, median 2.9 inverse megametres, about six percent of median Fabs. That gives a
-> Deming lambda of about three rather than one, and lambda equals one overstates the
-> errors-in-variables intercept correction by about fifty-five percent. So the open-items
-> entry saying HIPS has no uncertainties is now simply wrong.
->
-> What I need from you is the semantics. What does SPARTAN mean by that field — counting
-> statistics, a repeatability estimate, or a propagated calibration uncertainty? Only the
-> last two make lambda-star defensible as a measurement error.
+> What I still need is the semantics question. HIPS uncertainty and MDL exist as their own
+> parameter rows — one-ninety out of one-ninety, median 2.9 inverse megametres, about six
+> percent of median Fabs — giving a Deming lambda of about three rather than one. What
+> does SPARTAN mean by that field: counting statistics, a repeatability estimate, or a
+> propagated calibration uncertainty? Only the last two make lambda-star defensible as a
+> measurement error.
 
-**If she cannot answer either today:** that is a fine outcome, but get the ask assigned —
-who emails SPARTAN, and does it go before or after tomorrow's meeting. The wavelength
-question is worth raising with Satoshi in the room if she has no answer.
+**If she asks who confirmed the wavelength:** Ahmad, this morning, from SPARTAN's public
+Instruments page and the 2025 SPARTAN methods paper — SPARTAN-side sources, which is
+exactly what the optics reference said was missing. The reference and the 405 citation
+are corrected in the same commit as this deck.
 
-**If she asks whether we should hold the deck for it:** no. The deck does not state a
-wavelength anywhere. Slide 03's framing would change if it turns out to be 405, but nothing
-currently on a slide becomes false.
+**If she cannot answer the semantics question today:** fine — assign the ask: who emails
+SPARTAN, and does it go before or after tomorrow's meeting.
 
 ---
 
@@ -341,18 +343,44 @@ nothing else in the project can unblock it.
 
 ## Caveats to have ready across the whole deck
 
-- **Three slides are preliminary.** 04, 05 and 06 are agent-reproduced with commits pending.
-  The reproduction gate for 04 passed against ftir_16's committed join — n = 151,843, implied
-  MAC median 11.96, Addis-like subset 6,503 giving 10.05 — so it is well founded, but it is
-  not yet a committed script and the badge says so.
+- **Slides 01–07 are fully committed.** ftir_26/27/28 executed end to end and pushed
+  (through e3d1f4f); only slide 08's feasibility figures await ftir_24 itself. The
+  reproduction gate for 04 passed against ftir_16's committed join — n = 151,843, implied
+  MAC median 11.96, Addis-like subset 6,503 giving 10.05.
 - **Do not quote MAC 10.05 without saying "Addis-like, OC/EC ≤ 2.27, 6,503 filters".** On its
   own it reads as an IMPROVE-wide number and it is not; the pool median is 11.96.
 - **Do not say "~36 filters per season".** It is ~36 filters *total*, across 11–13 days per
   season. Getting this wrong triples the ask.
 - **Do not say the MA350 result means there is no brown carbon at Addis.** The instrument
   cannot see it either way. This is the single easiest thing to get wrong in the room.
-- **Do not state a HIPS wavelength as fact in either direction**, including in passing on
-  slide 03. The whole point of slide 07 is that we do not know.
+- **The HIPS wavelength is now fact: 632.8 ≈ 633 nm, MAC 10 at 633.** Quote it with its
+  sources (SPARTAN Instruments page; 2025 SPARTAN methods paper). What remains open is the
+  *meaning* of `HIPS_Uncertainty` — keep that as the SPARTAN ask.
 - **ftir_25 briefly named ChemSpec_EC as the independent reference and that was wrong.**
   It is corrected and pushed (00ab987), but if she read the md yesterday that is the version
   she has — get ahead of it rather than letting her raise it.
+
+---
+
+## Appendix R1–R3 — resurfaced from July 17
+
+Only if time allows, or as leave-behinds. These are the July-17 threads the meeting
+skipped, and together they are the evidence chain under the dry/non-dry split she asked
+for a better justification of.
+
+> R1 — the uncertainty slide we skipped in July. The raw and corrected bootstrap
+> distributions are fully disjoint, and the corrected one still excludes zero: the AIRSpec
+> improvement is real, and so is what remains. The residual panel beside it shows Dry
+> separating downward in both models — the season structure was visible before we ever
+> quantified it.
+>
+> R2 — the burning signature. Charring destroys O–H and aliphatic C–H and grows aromatic
+> C=C at exactly the 1600 band, more strongly at higher temperature. That is a
+> process-based argument for the aromatic reading of the Addis band — with the honest note
+> that char peaks near 1590–1600 while Addis sits at 1617–1619.
+>
+> R3 — the justification you asked for. A mixture component fitted with no season labels
+> isolates the low-char-similarity filters, and they are almost entirely dry-season:
+> share anomalous by month runs 0.82 in November, 0.61 December, ~0.5 October–February,
+> and essentially zero May–September. Not the analog R-values — a season-blind structure
+> that recovers the seasons on its own. ftir_24 is what puts statistics under this.

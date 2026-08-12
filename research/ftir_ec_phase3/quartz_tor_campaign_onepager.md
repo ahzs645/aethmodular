@@ -56,7 +56,7 @@ absorption" branch, dust is the sub-case an earlier analysis argues against: the
 ratio correlates with coarse AOD at **r ≈ −0.33**, i.e. more dust goes with HIPS reading
 *lower* relative to FTIR, where dust inflating Fabs would give a positive correlation
 (`ftir_hips_chem/RESEARCH_PROGRESS.md:108-114`). Two reasons not to lean on it hard yet: it
-reasons from the 405 nm assumption that the section below flags as open, and it rests on
+originally reasoned from a 405 nm assumption that is now resolved to 632.8 ≈ 633 nm (see below) — at 633 dust absorbs less than at 405, so the null is if anything stronger — and it rests on
 AERONET data that is not present in this checkout, so it could not be re-derived here. If it
 holds, it narrows the absorption branch toward brown carbon; either way TOR still arbitrates.
 
@@ -134,15 +134,15 @@ ETAD — sampling, handling, or local composition — rather than a regional abs
 
 ## One open question that changes the prior (not the plan)
 
-**Do not quote a HIPS wavelength as settled.** The repo carries both **405 nm**
-(`ftir_hips_chem/RESEARCH_PROGRESS.md:112`, `ftir_hips_chem/COMPLETE_RESEARCH_SUMMARY.md:19`)
-and **~633 nm**
-(White 2025, assumed throughout phase-3 prose); `docs/filter-optics-reference.md` marks it
-**OPEN** — "do not quote without checking with SPARTAN". It matters for plausibility: BrC and
-dust absorb several-fold more at 405 nm than at 633 nm, so at 405 a ~46% non-EC share of Fabs
-is considerably more plausible, and at 633 correspondingly less. It does not change the
-campaign — TOR arbitrates at either wavelength — but it changes how surprised we should be by
-each outcome. Ann, this is a one-email question to SPARTAN.
+**The HIPS wavelength is settled: 632.8 ≈ 633 nm (He–Ne), MAC 10 m²/g at 633 nm.**
+Resolved 2026-08-12 from SPARTAN's Instruments page (HeNe laser, 632 nm; HIPS run by
+the Dillner group at UC Davis) and the 2025 SPARTAN methods paper (He–Ne, 633 nm;
+MAC 10 at 633). The repo's 405 nm citation (RESEARCH_PROGRESS.md, Finding 5) was
+wrong and is corrected in the same commit as this change. Consequences: brown carbon
+and dust absorb several-fold less at 633 than at 405, so a ~46% non-EC share of Fabs
+stays surprising rather than ordinary — which shifts weight among the three surviving
+explanations toward the loading-dependent artifact and curve geometry, and leaves this
+campaign's rationale untouched: quartz TOR separates the survivors at any wavelength.
 
 ## Decision requested
 

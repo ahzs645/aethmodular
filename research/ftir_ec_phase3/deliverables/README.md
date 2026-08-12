@@ -54,3 +54,5 @@ Writes `figures/fig01_*.png` … `fig14_*.png`, named from each image's `alt` te
 The PNGs themselves are deliberately not tracked — AGENTS.md asks that generated
 PNGs stay out of git, and they are re-derivable from the deck at any time by
 running the line above.
+
+- 2026-08-12 (later): `ann_briefing_2026-08-12.html` finalized — HIPS wavelength resolved on slide 07 (632.8 ≈ 633 nm), preliminary badges upgraded to committed notebook references, speaker notes embedded per slide (collapsible, from `deck_notes_ann_2026-08-12.md`), and appendix slides R1–R3 added resurfacing the skipped July-17 figures (ftir_15 PNGs + July-17 PDF pages 23/27/30).

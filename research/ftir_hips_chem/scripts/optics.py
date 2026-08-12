@@ -94,7 +94,7 @@ def aae_from_columns(df, short='UV', long='IR', kind='BCc', wavelengths=None):
     Red/IR**. Measured on the Addis MA350 that is AAE(UV,IR) 0.432 from BCc
     against 1.448 from absorption, and AAE(Red,IR) -0.024 against 0.943 --
     i.e. BCc puts physically ordinary aerosol below zero. Fed to
-    :func:`classify_aae` it turns 47% biomass into 12%, the same symptom as the
+    :func:`classify_aae` it turns 52.4% biomass into 19.7% (ftir_28's committed re-derivation; an early exploratory pass reported 47% into 12%), the same symptom as the
     inverted-AAE bug this module was written to prevent, from a different cause.
 
     So pass ``kind='Babs'`` (or whatever the absorption columns are called) when
