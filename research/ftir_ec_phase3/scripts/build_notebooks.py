@@ -155,6 +155,7 @@ SCRIPTS = {
     "22": ("run_ftir_22.py", "ftir_22_figures_under_both_protocols.ipynb"),
     "23": ("run_ftir_23.py", "ftir_23_component_selection_by_protocol.ipynb"),
     "29": ("run_ftir_29.py", "ftir_29_provisional_addis_ec_series.ipynb"),
+    "30": ("run_ftir_30.py", "ftir_30_composition_case_and_its_limits.ipynb"),
 }
 
 TLDR["21"] = """\
@@ -660,6 +661,47 @@ TAKEAWAYS["29"] = """\
 - **Pre-registered corollary**: at ETBI (median Fabs 26.9 Mm⁻¹), this model should predict
   EC well below Fabs/10 − c would suggest; the day the ETBI spectra arrive, that is the
   out-of-sample test of the whole construction."""
+
+
+TLDR["30"] = """\
+**The provisional series' calibration was built for exactly the composition the cross-site
+slides diagnose — and the evidence it worked is specific, but it stops at the Atlantic.**
+The diagnosis: Addis lives at FTIR OC/EC **1.34** (median, 190 HIPS-paired filters)
+against an IMPROVE pool median of **5.52** — the bottom tail. The response: the OCEC-800
+cohort *is* that tail (OC/EC ≤ 2.27, 6.1% of the 13,010-filter pool), bracketing Addis by
+construction. The cure, shown twice from committed evidence: **(1)** the raw model's Addis
+errors track score-space extrapolation (r = 0.71, ftir_22's committed per-filter table,
+correlations re-derived and asserted) while the corrected model's do not (r = 0.21, a flat
+offset) — and the share of Addis filters beyond the training p95 D² collapses from
+**23.0% (raw) to 0.8% (corrected)**: the corrected model no longer treats Addis as exotic.
+**(2)** On 194 held-out filters from sites the model never saw, at Addis-like composition
+(test median OC/EC 1.66), it reproduces thermal-optical TOR EC at slope **1.01**,
+R² **0.90**. Where the proof stops, stated as bluntly as the figures: **zero filters at
+Addis have TOR** — every ground-truth filter is continental-US IMPROVE (the 5 Adama quartz
+filters carry no FTIR/HIPS) — so the validation is "right composition, wrong continent";
+and in-domain in the model's own k-component score space is a necessary condition, not a
+validation (chemistry the model does not span is invisible to D² — the Q-statistic's
+domain). That residual leap is precisely what the quartz-TOR campaign closes."""
+
+TAKEAWAYS["30"] = """\
+- **The provisional series does not come from the calibration the slides indict.** The
+  deployed model extrapolates (23% of Addis beyond its training envelope; errors growing
+  with distance). The OCEC-800 + AIRSpec model was built from the bottom 6.1% of IMPROVE
+  specifically to cover Addis's composition — and its Addis errors are distance-independent.
+- **"Reproduces TOR ~1:1 at Addis-like composition" is the strongest available claim — say
+  it with its geography.** The held-out test is site-disjoint and composition-matched
+  (median OC/EC 1.66 vs Addis 1.34), but it is US aerosol. Low-OC/EC IMPROVE filters are
+  not charcoal smoke; matching the ratio does not prove matching chemistry.
+- **In-domain is necessary, not sufficient.** The 0.8% figure says the corrected model
+  *considers* Addis ordinary in its own 5-component view; it cannot certify chemistry
+  outside that view (Q-residuals), and no Addis filter has ground truth to check against.
+- **The Addis OC/EC marker is FTIR-derived, by necessity.** There is no thermal OC/EC at
+  any SPARTAN site in this project's data (ftir_27) — any slide showing "thermal" values
+  at SPARTAN sites is mislabelled. FTIR OC/EC is calibrated against thermal, so the
+  cross-network comparison is meaningful, but it should be labelled as FTIR.
+- **One sentence for the meetings**: the calibration behind the provisional series is
+  validated at Addis's composition, in-domain at Addis's spectra, and unvalidated on
+  Addis's continent — which is the quartz campaign's job description."""
 
 
 if __name__ == "__main__":
