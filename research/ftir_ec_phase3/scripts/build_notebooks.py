@@ -154,6 +154,7 @@ SCRIPTS = {
     "21": ("run_ftir_21.py", "ftir_21_both_protocols_end_to_end.ipynb"),
     "22": ("run_ftir_22.py", "ftir_22_figures_under_both_protocols.ipynb"),
     "23": ("run_ftir_23.py", "ftir_23_component_selection_by_protocol.ipynb"),
+    "27": ("run_ftir_27.py", "ftir_27_chemspec_circularity.ipynb"),
 }
 
 TLDR["21"] = """\
@@ -617,6 +618,78 @@ TAKEAWAYS["23"] = """\
 - **Caveat**: the app-protocol curves inherit the row-order dependence documented in
   ftir_22 — these were computed in the cohort orders used by ftir_21/23, and a different
   sort would move the app k by a few components (not the site-held-out k)."""
+
+
+TLDR["27"] = """\
+**Both** of SPARTAN's public carbon columns at ETAD are the Addis crossplot's own axes, so
+neither can arbitrate the intercept. **(1) `ChemSpec_BC_PM2.5` is the x-axis.** Against
+Fabs/10: n = **188**, R² = **0.9982**, implied MAC (Fabs/BC) median **10.0003**
+(IQR 9.99–10.01), median |Δ| = **0.0030 µg/m³** and **86.7%** of filters within 0.005 — and
+that 0.0030 is not agreement but the 2-dp rounding half-width: `round(Fabs/10, 2)` reproduces
+the published column **bit for bit on 163 of 188 filters**, whose residuals are uniform on
+±0.005 (KS p = 0.30). The slope-10 / R² ≈ 1 signature holds at 23 of 25 committed SPARTAN
+sites (ETAD **9.9889** / **0.99857**), so it is a network convention, not an ETAD artifact.
+**(2) `ChemSpec_EC_PM2.5` is the y-axis** — the new result. Against `EC_ftir` (converted
+`MassLoading_ug / Volume_m3`): n = **175**, r² = **0.999693**, ratio median **1.0000**
+(IQR 0.999–1.001), median |Δ| = **0.0030 µg/m³** — the same rounding half-width — and
+**93.7%** exact at `round(EC_ftir, 2)`. It **is** the FTIR EC product routed through
+SPARTAN's speciation table and back. It was missed because `ChemSpec_EC`'s R² against Fabs/10
+is **0.7904**, indistinguishable from `EC_ftir`'s own **0.7908** on the same filters (0.7638
+on all 190 HIPS pairs — the deck's "0.76"); that *similarity is the signature of being the
+same product* and was misread as evidence of independence. The `docs/open-items.md` warning
+(r² = 0.99992 in the four-sites data) reproduces: **0.999693** at ETAD, ≥93% exact at 2 dp at
+all four sites. A third, independent proof: on the **9** filters that miss the lattice in both
+columns, the ChemSpec/local ratio is common to BC, EC **and** OC to **≤0.0010** — one revised
+sample volume propagating through all three, which an independent thermal-optical EC could not
+share. **(3) Consequence: neither column can arbitrate the intercept question**, and "not a
+Fabs transform" does not imply independent. The intended Addis curvature test (fit Fabs against
+an independent EC, straight line vs power law) is **dead** — it needs an EC reference circular
+with *neither* axis and none exists in the committed data — which promotes quartz TOR from one
+option to **the** decisive measurement. Two silent join traps are demonstrated rather than
+described: `config.BASE_FILTER_ID_PATTERN` matches **0%** of ChemSpec ids (empty join, no
+error), and averaging each ChemSpec filter's two rows — measurement plus a ~0.07 µg/m³ MDL
+floor row — halves the column and **doubles** the implied MAC (**9.89 → 19.57**). What the
+speciation table is still good for: the XRF elements Al/Si/Ca/Fe/Ti/Mg on all **188** ETAD
+filters; there is no RCFM or dust column anywhere in the dataset, so the IMPROVE-soil dust
+proxy (median **4.98 µg/m³**, 24.5% of ChemSpec PM2.5 mass) has to be constructed."""
+
+TAKEAWAYS["27"] = """\
+- **Neither ChemSpec carbon column is admissible evidence about the intercept.** `ChemSpec_BC`
+  is circular with the x-axis (it is `round(Fabs/10, 2)`), `ChemSpec_EC` is circular with the
+  y-axis (it is `round(EC_ftir, 2)`). A crossplot of predicted EC against Fabs/MAC has no free
+  variable left in SPARTAN's public speciation table.
+- **Correct the ftir_16 record.** Its conclusion "`ChemSpec_EC` is HIPS Fabs/10" reached the
+  right action for the wrong reason: the column is not a Fabs transform, it is the FTIR
+  product. The distinction matters because the wrong reason implies a ChemSpec column that
+  *isn't* Fabs would be usable — the opposite of the truth here. Its implied MAC of 9.89 is
+  simply FTIR EC's own implied MAC, and carries no information about the MAC fork.
+- **The R² match was the tell, and it was read backwards.** Two quantities that are the same
+  product must have the same relationship to any third quantity, so `ChemSpec_EC` scoring
+  0.7904 against Fabs/10 where `EC_ftir` scores 0.7908 is proof of identity, not of
+  independence. Any future "independent reference" claim should be tested against **both**
+  axes and against the 2-dp lattice, not just against the x-axis.
+- **The Addis curvature test is dead as designed.** Distinguishing "the intercept is real
+  non-EC absorption" from "the Fabs–EC relation is curved" requires an EC reference circular
+  with neither axis. The committed data contains none. This is what promotes the ftir_16
+  quartz-TOR campaign (~12 days × 3 seasons, IMPROVE_A) from one option among several onto the
+  critical path.
+- **Join hygiene is part of the result, not preamble.** Both traps fail silently and both
+  produce plausible numbers: the committed base-id regex empties every ChemSpec join, and
+  averaging the duplicated ChemSpec rows manufactures an implied MAC of 19.57 m²/g — a number
+  physical enough to build a story on. Use the measurement row, and strip the replicate suffix
+  with a fall-back to the id as it stands.
+- **What survives**: the elemental columns are XRF and share no input with FTIR or HIPS. They
+  cover all 188 ETAD filters, and since the dataset has no RCFM or dust parameter, a dust term
+  must be constructed — IMPROVE soil is the standard route (Mg is available on the same
+  filters but sits outside that formula and carries the noisiest below-MDL tail, 20 of 188
+  negative).
+- **Caveats**: 25 of 188 BC filters and 11 of 175 EC filters sit off the 2-dp lattice; the 9
+  that miss in both are explained by a shared post-snapshot volume revision, the remainder are
+  BC-only filters with no ChemSpec EC partner and are not diagnosed here. The four-site pooled
+  r² computed on this pickle is 0.999544 against the 0.99992 quoted in `docs/open-items.md`
+  (different join/subset, same phenomenon). The SPARTAN cross-site corroboration is read from
+  a committed table (n = 232 at ETAD, a wider public-BC pull than the 188 filters audited
+  here), not re-derived."""
 
 
 if __name__ == "__main__":
