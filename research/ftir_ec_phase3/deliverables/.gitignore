@@ -1,0 +1,3 @@
+# Figures are re-derivable from the tracked deck via extract_deck_figures.py,
+# and AGENTS.md asks that generated PNGs stay out of git.
+figures/
