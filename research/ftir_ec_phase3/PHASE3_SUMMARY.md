@@ -17,12 +17,21 @@ disjoint-site TOR test before fitting, first-major-minimum k = 6.
 | Ethiopia-shaped smoke (300, ftir_10) | 1.75 | −3.69 | 0.742 | 1.36 |
 | **Lowest-OC/EC (800, k=6)** | **1.59** | **−3.22** | **0.774** | **1.16** |
 
-- Held-out TOR (disjoint sites): RMSE **3.41 µg/filter** vs **4.39–7.31** for ten size-matched
-  random cohorts at the same k — the advantage is compositional, not statistical.
-- **VIP convergence (key finding):** the low-OC/EC model's VIP profile correlates
-  **ρ = 0.74** with the Addis-only HIPS model from `ftir_08`, while the current 906-smoke EC
-  model correlates only **ρ = 0.12** with it. Two independent routes (Addis optical training
-  vs IMPROVE composition selection) point to the same spectral features.
+- Held-out TOR (disjoint sites): R² **0.911** vs **0.594–0.775** for the **five** size-matched
+  random cohorts at the same k (`N_RANDOM_CONTROLS = 5`, `run_ftir_11.py:55`).
+  **Do not quote held-out RMSE as the discriminator**: it is 3.41 vs 3.10–5.00, and
+  `random 800 #3` reaches **3.097**, beating the selected cohort. Each cohort is also scored on
+  its own disjoint-site split (n_test 114–194), so RMSE is not like-for-like across rows.
+  The like-for-like comparison is the Addis crossplot, where all six models are scored on the
+  same 190 filters: RMSE **1.16** vs **1.48–2.24**. That, plus the held-out R², is what makes
+  the advantage compositional rather than statistical.
+- **VIP convergence:** the low-OC/EC model's VIP profile is reported to correlate
+  **ρ = 0.74** with the Addis-only HIPS model from `ftir_08`, against **ρ = 0.12** for the
+  906-smoke EC model — two independent routes (Addis optical training vs IMPROVE composition
+  selection) pointing at the same spectral features. **Provenance caveat:** this number is not
+  produced by any executed notebook here. `ftir_11` computes no VIP correlation; per
+  `README.md`, VIP-overlap diagnostics came from the independent replication, which "left no
+  scripts" and whose tables are not committed. Treat as uncorroborated until re-derived.
 - Caveats: intercept still ≈ −3 µg m⁻³; slope MAC-dependent; most random nulls reach
   less-negative intercepts — but only with degraded slopes and worse held-out TOR — so
   intercept alone is not an acceptance criterion.
@@ -60,11 +69,11 @@ Results on the fixed 190-filter Addis cohort (MAC = 10):
 | Model | slope | intercept | R² | RMSE |
 |---|---:|---:|---:|---:|
 | Lowest-OC/EC raw (ftir_11) | 1.59 | −3.22 | 0.774 | 1.16 |
-| **Lowest-OC/EC corrected EDF6** | **0.86** | **−1.61** | 0.657 | 2.41 |
+| **Lowest-OC/EC corrected EDF6** | **0.86** | **−1.62** | 0.657 | 2.41 |
 | Smoke 906 raw (ftir_10) | 2.65 | −6.91 | 0.685 | 2.85 |
 | Smoke 906 corrected EDF6 | 0.37 | −0.67 | 0.458 | 3.83 |
 
-- **Correction halves the low-OC/EC intercept** (−3.22 → −1.61) and yields a held-out TOR
+- **Correction halves the low-OC/EC intercept** (−3.22 → −1.62) and yields a held-out TOR
   slope of 1.01 (R² 0.90) — the best locked intercept-with-defensible-slope so far, at the
   cost of Addis precision (RMSE 1.16 → 2.41).
 - **The smoke calibration collapses on corrected spectra** (slope 0.37): its raw-spectrum
@@ -108,8 +117,13 @@ Two additions from newly synced data (`output/tables/context/`, plot
 - **ETBI = Bishoftu, Ethiopia** (8.76°N, 39.00°E — between Addis and Adama): a second
   Ethiopian SPARTAN site nobody has looked at in this project. 32 filters (Oct–Dec 2025),
   26 with HIPS Fabs, median **26.9 Mm⁻¹** (EC-equivalent ≈ 2.7 µg/m³ at MAC = 10) — lower
-  than Addis (47.1) but far above IMPROVE. If ETBI FTIR spectra are pulled alongside
-  INDH/CHTS, it is an in-country, dry-season test set for every Addis conclusion.
+  than Addis but far above IMPROVE. **Quote the seasonal contrast, not the annual one**:
+  ETBI's window is Oct–Dec, i.e. Dry only, and Addis's Dry-season median Fabs is **43.2**
+  (`ftir_17`), not the 47.1 all-season figure. The like-for-like statement is 26.9 vs 43.2.
+  If ETBI FTIR spectra are pulled alongside INDH/CHTS, it is an in-country, dry-season test
+  set for every Addis conclusion.
+  Caveat: these counts come from `run_context_addenda.py`, whose output table is not
+  committed and whose source lives on Drive, so they cannot be re-derived from the repo alone.
 
 ## ftir_14 — Delhi/Beijing score-space comparison: blocked on data
 
@@ -221,9 +235,15 @@ standalone slides — `airspec_1_baseline.png`, `airspec_2_corrected.png`,
 `output/corrected/deck_airspec_explainer.npz`. Spoken talk track with caveats:
 `deck_notes_airspec.md`.
 
-- **The mechanism**: ~**91%** of a typical raw Addis spectrum's absorbance at the CH band is
-  smooth background, not band signal. A PLS model on raw spectra is therefore free to
-  regress partly on that background.
+- **The mechanism**: ~**91%** of a raw Addis spectrum's absorbance at the CH band is smooth
+  background, not band signal. A PLS model on raw spectra is therefore free to regress partly
+  on that background. **Read this as an illustration, not a population statistic**: the figure
+  is `baseline/raw` at 2920 cm⁻¹ for the single representative filter chosen by
+  `_airspec_representative`, computed at render time in `build_deck_figures.py`
+  (`fig_airspec_1_baseline`) and annotated onto the PNG. There is no committed cohort median
+  or distribution behind it, so "91% of what, across how many filters?" has one honest answer:
+  of one filter. The cohort-level version of the argument is the baseline-height comparison
+  below, which is the one to lean on if pressed.
 - **Addis rides a higher background than its calibration cohort**: median AIRSpec baseline
   at 2920 cm⁻¹ is **0.170** at Addis vs **0.101** in the lowest-OC/EC 800 (overlapping but
   clearly offset distributions) — so background structure does not transfer, which is the
