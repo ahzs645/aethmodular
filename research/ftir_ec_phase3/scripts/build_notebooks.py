@@ -620,6 +620,66 @@ TAKEAWAYS["23"] = """\
   sort would move the app k by a few components (not the site-held-out k)."""
 
 
+SCRIPTS["26"] = ("run_ftir_26.py", "ftir_26_improve_hips_origin.ipynb")
+
+TLDR["26"] = """\
+**IMPROVE HIPS does not have a 21.5 Mm⁻¹ zero — but killing that explanation does not close
+the Addis intercept, and the notebook says so.** On 160,023 IMPROVE filters carrying both HIPS
+Fabs and quartz TOR EC (the ftir_16 join, reproduced to the digit: implied MAC median **11.96**,
+Addis-like subset **10.05**), the Fabs-at-EC-0 intercept is **+1.345 Mm⁻¹** [+1.19, +1.48]
+pooled, **+0.200** trimmed at EC ≤ p95, **+2.163 → +0.097** on the Addis-like OC/EC ≤ 2.27
+cohort, and **+0.251** as a per-site median — every one of them **≤ 1 %** of the Addis
+C = 21.5 Mm⁻¹. A λ sweep shows the pooled intercept is **monotone increasing in λ**
+(+0.538 → +1.345), so the OLS column is the **maximum over all errors-in-variables weightings**
+and a hard upper bound. The assumption-free version needs no fit at all: on the **4,247** filters
+with TOR EC ≤ 0, median Fabs is **+0.12 Mm⁻¹** and **23.8 %** read *negative* Fabs — a zero that
+scatters through zero. And the offset is arithmetically impossible at that size anyway: only
+**186 of 160,023** IMPROVE filters (**0.12 %**) carry 21.5 Mm⁻¹ of *total* absorption.
+**The unplanned finding is geometric.** Fabs = k·EC^p fits pooled at **k = 7.50, p = 0.796,
+R² = 0.713** and passes through zero with no offset term; feeding that curve — true offset
+exactly 0, no noise — to a straight-line fit manufactures **+0.87 Mm⁻¹** of intercept, 64 % of
+the observed pooled value. Per-site intercepts run at a median **35 %** of site mean Fabs
+(IQR 27–50 %); the Addis figure is 21.5/47.11 = **46 %**, and **29 %** of IMPROVE sites
+(29–34 % across inclusion variants) equal or exceed it in data whose true offset at zero is ~0.
+**The one thing that survives**: per-site intercepts scale with loading (r = **0.689**, slope
+**0.338** per Mm⁻¹ of site median Fabs), and extrapolating to Addis's 47.11 gives **16.2 Mm⁻¹
+≈ 75 % of C** — but IMPROVE's dirtiest site median is **8.1 Mm⁻¹**, so that is **5.8× beyond
+support** and cannot be treated as a result. The loading-*independent* part of that regression
+is only **+0.221 Mm⁻¹** [+0.08, +0.37], which is what actually rules out an additive HIPS zero."""
+
+TAKEAWAYS["26"] = """\
+- **A generic additive HIPS zero is dead.** Every fit range, both estimators, and the
+  no-fit EC ≤ 0 check put IMPROVE HIPS within ~0.2 Mm⁻¹ of zero at zero EC — under 1 % of the
+  21.5 Mm⁻¹ the Addis intercept would need. The λ-monotonicity result makes that a bound
+  rather than an estimate: no errors-in-variables weighting produces a larger intercept than
+  OLS, so the OLS column cannot be argued upward.
+- **It is dead by arithmetic as well as by fit.** 21.5 Mm⁻¹ is more absorption than 99.88 % of
+  IMPROVE filters carry in *total*. An offset that size could not hide in this network.
+- **But the intercept in a Fabs–EC plot is not evidence of an offset.** The relation is
+  concave, and a straight line through a concave relation manufactures a positive Fabs-intercept
+  (equivalently a negative x-intercept) with **no offset present at all** — demonstrated here on
+  a noiseless surrogate, which reproduces 64 % of the pooled intercept and a median per-site
+  intercept fraction of 30 % against the observed 35 %. Roughly one IMPROVE site in three has an
+  intercept fraction at or above Addis's 46 %. Curve geometry is now a third explanation for the
+  Addis intercept, alongside calibration transfer and an instrument artifact.
+- **The loading-dependent artifact is NOT ruled out, and this notebook cannot rule it out.**
+  Site intercepts grow with site loading (r = 0.689). The extrapolation to Addis loading lands
+  at 75 % of C, which would explain nearly everything — and it is 5.8× beyond IMPROVE's support,
+  so it is a hypothesis, not a measurement. What the same regression *does* settle is the
+  loading-independent part: +0.221 Mm⁻¹ [+0.08, +0.37], i.e. no additive offset.
+- **The follow-up that would settle it is blocked in the committed data.** Testing curvature
+  directly on Addis needs an EC reference independent of both axes, and neither candidate is:
+  `ChemSpec_BC` is Fabs/10 (r = 0.999 with HIPS — circular with x) and `ChemSpec_EC` is the
+  deployed FTIR prediction itself (r = 0.9998 with `EC_ftir` — circular with y). This is exactly
+  why co-located **quartz TOR** at Addis is decisive: it is a function of neither axis.
+- **Caveats.** (1) The p = 0.796 exponent is attenuated by TOR error — binning on Fabs instead
+  of EC gives p ≈ 1.08–1.10 — so treat 0.796 as an **upper bound on concavity** and therefore on
+  how much of C geometry alone can explain. (2) CIs here are site-cluster bootstraps; the
+  i.i.d.-row CI on the Addis-like trimmed fit ([+0.068, +0.125]) is four times narrower than the
+  honest clustered one ([−0.034, +0.218]), and the clustered version is the one quoted.
+  (3) The share of sites above the Addis intercept fraction moves between 29 % and 34 % with the
+  per-site inclusion rule, so it is reported as a range."""
+
 TLDR["27"] = """\
 **Both** of SPARTAN's public carbon columns at ETAD are the Addis crossplot's own axes, so
 neither can arbitrate the intercept. **(1) `ChemSpec_BC_PM2.5` is the x-axis.** Against
