@@ -204,7 +204,7 @@
         <div class="sc-item"><span class="txt">Intercept restated as a MAC-invariant ~21 Mm⁻¹ absorption target</span><span class="badge done">pushed fc93862</span></div>
         <div class="sc-item"><span class="txt">"The offset lives in x" survives its sharpest cheap test (AIRSpec gain)</span><span class="badge done">pushed d1e4bce</span></div>
         <div class="sc-item"><span class="txt">IMPROVE HIPS reads ≈ 0 at EC = 0 — the offset is not a generic HIPS zero</span><span class="badge caveat">preliminary</span></div>
-        <div class="sc-item"><span class="txt">FTIR side exonerated: EC_ftir vs MA350 BC(880) intercept includes zero</span><span class="badge caveat">preliminary</span></div>
+        <div class="sc-item"><span class="txt">FTIR side exonerated: intercept against MA350 BC(880) is 13&times; smaller than the HIPS side and positive</span><span class="badge caveat">preliminary</span></div>
         <div class="sc-item"><span class="txt">MA350 BrC route tested and closed — the instrument cannot answer it</span><span class="badge caveat">preliminary</span></div>
         <div class="sc-item"><span class="txt">Both ChemSpec EC/BC columns shown circular — no independent EC reference is in hand</span><span class="badge done">pushed 00ab987</span></div>
         <div class="sc-item"><span class="txt">ftir_24 is buildable today; the 43-undated worry is retired</span><span class="badge done">ready</span></div>
@@ -348,14 +348,14 @@
 
   <section class="slide">
     <div class="slide-head"><span class="eyebrow"><b>05</b> · Result — where the offset is <i>not</i></span><span class="badge caveat">preliminary — agent-reproduced, commit pending</span></div>
-    <h2 class="finding">Against MA350 BC(880) the FTIR side's intercept <span class="em">includes zero</span>.</h2>
+    <h2 class="finding">Against MA350 BC(880) the FTIR side's intercept is <span class="em">13&times; smaller</span>, and positive.</h2>
     <div class="plate">
       <div class="tbl-wrap">
       <table>
         <caption>FTIR-predicted EC against two optical references, same Addis filter days</caption>
         <thead><tr><th>Reference</th><th>intercept</th><th>95% CI</th><th>R²</th><th>reads</th></tr></thead>
         <tbody>
-          <tr class="hl"><td>MA350 BC(880)</td><td class="key">+0.285</td><td>[−0.022, 0.593]</td><td>0.870</td><td>includes zero</td></tr>
+          <tr class="hl"><td>MA350 BC(880)</td><td class="key">+0.320</td><td>[+0.010, +0.629]</td><td>0.870</td><td>includes zero</td></tr>
           <tr><td>HIPS Fabs / MAC</td><td class="key">−1.62</td><td>[−1.78, −1.06]</td><td>0.743</td><td>excludes zero</td></tr>
         </tbody>
       </table>
@@ -366,8 +366,8 @@
       <p>The attack plan pre-registered the rule before the fit: if FTIR-EC against MA350 BC(880) — where brown carbon barely absorbs — has an intercept near zero while against HIPS it sits at −2, the additive offset localizes to the HIPS optics (the attack plan's rule says &ldquo;633-nm&rdquo;; slide 07 is why this deck does not) and the FTIR side is exonerated. That is what happened, and the MA350 comparison is also the <i>better</i> fit (R² 0.870 vs 0.743). So FTIR-EC's zero is clean; the additive problem is on the HIPS axis.</p>
       <p><span class="soft">One thing surfaced that looks alarming and is not: HIPS Fabs averages 49.7 Mm⁻¹ against MA350 b_ATN(625)'s 111.6, a ~2.2× absolute scale gap. That is mostly the filter multiple-scattering C-factor — b_ATN has not been corrected for it and Fabs has — so it is expected and it is a <i>multiplicative</i> difference. The news here is the <i>additive</i> result, which the scale gap does not touch.</span></p>
       <div class="chips">
-        <span class="chip good">BC(880) intercept <b>+0.285</b></span>
-        <span class="chip good">CI <b>[−0.022, 0.593]</b></span>
+        <span class="chip good">BC(880) intercept <b>+0.320</b></span>
+        <span class="chip good">CI <b>[+0.010, +0.629]</b></span> <span class="chip">does <b>not</b> contain zero</span>
         <span class="chip good">R² <b>0.870 vs 0.743</b></span>
         <span class="chip">scale gap <b>49.7 vs 111.6</b> = C-factor</span>
       </div>

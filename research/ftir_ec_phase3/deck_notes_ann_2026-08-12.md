@@ -188,13 +188,24 @@ rather than a point estimate, which is why the "≤ 1%" claim is safe.
 > Item six of the attack plan, and the rule was pre-registered before the fit. Fit FTIR-EC
 > against the MA350's 880-nanometre channel, where brown carbon barely absorbs. If the
 > intercept there is near zero while against HIPS it sits at minus two, the additive offset
-> localises to the 633 optics and the FTIR side is clean.
+> localises to the HIPS optics and the FTIR side is clean. (The plan's wording says "the
+> 633-nanometre optics" — don't repeat that here, since slide 07 is precisely about the
+> wavelength being unsettled.)
 >
-> That is what happened. Intercept plus nought-point-two-nine, confidence interval minus
-> nought-point-nought-two to plus nought-point-five-nine — it includes zero. R-squared
-> nought-point-eight-seven, which is a *better* fit than the HIPS comparison at
-> nought-point-seven-four. So FTIR-EC's zero is fine, and the additive problem is on the
-> HIPS axis.
+> That is roughly what happened, with one honest qualification. Intercept plus
+> nought-point-three-two, confidence interval plus nought-point-nought-one to plus
+> nought-point-six-three. That interval does *not* quite contain zero — the lower bound
+> sits just above it — so I am not going to claim a formal null. What it does say is that
+> the FTIR-side intercept is about thirteen times smaller than the minus-four-point-one-seven
+> we see against HIPS, and it points the other way. R-squared nought-point-eight-seven, a
+> better fit than the HIPS comparison. So FTIR-EC's zero is not the problem, and the additive
+> offset is on the HIPS axis.
+>
+> **If she asks why the number moved:** an earlier exploratory run had plus
+> nought-point-two-nine with an interval that did contain zero. The committed notebook swept
+> plus-or-minus one and two day matching, nearest-day, smoothed data, the other instrument
+> record, cohort restriction, quality filtering and Deming — none of them reproduced it. So
+> we quote the committed one.
 
 **If she pushes on the scale gap:** she will, because it looks alarming. HIPS Fabs averages
 49.7 against MA350 b_ATN at 625 averaging 111.6, a factor of 2.2. That is mostly the filter

@@ -26,8 +26,10 @@ Today's four results each removed a candidate owner and none of them chose a win
   trimmed, **+0.097**). At EC ≤ 0 the median Fabs is **+0.12** with 23.8% of filters reading
   negative, and only **186 of 160,023** IMPROVE filters reach 21.5 Mm⁻¹ of *total* absorption.
   (Preliminary — ftir_26, in preparation.)
-- **Not on the FTIR axis.** FTIR-EC vs MA350 BC(880) has an intercept whose CI includes zero:
-  **+0.285 [−0.022, 0.593]**, R² 0.870. (Preliminary — in preparation.)
+- **Not on the FTIR axis.** FTIR-EC vs MA350 BC(880) gives an intercept of
+  **+0.320 [+0.010, +0.629]**, R² 0.868 — **~13× smaller than the HIPS-side −4.17 and of the
+  opposite sign**. (The CI's lower bound sits just above zero rather than containing it, so
+  this is a statement about magnitude and sign, not a formal null. `ftir_28`, committed.)
 - **Not measurable by the MA350.** AAE(625,880) = **0.944 ± 0.060**; implied BrC absorption
   **−2.06 Mm⁻¹**, negative on 84.5% of days against the **+21.7** required. The instrument
   cannot see a red excess in either direction — this is *not* evidence that Addis has no brown

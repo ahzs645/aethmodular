@@ -166,9 +166,15 @@ free number if it ever runs.*
 Fit FTIR-EC against MA350 BC(880) — where BrC contamination is minimal — on the fixed cohort
 days, and compare to the HIPS comparison. *This is also the AAAR three-way-comparison bridge.*
 
-**Intercept +0.285 [−0.022, 0.593], R² 0.870** (against 0.743 for the HIPS comparison). The
-CI includes zero, so by this item's own pre-registered rule **the FTIR axis is exonerated**
-and the additive offset localizes to the HIPS side. Tier-3 item 8 was run anyway and agrees
+**Intercept +0.320 [+0.010, +0.629], R² 0.868, n = 173** on the committed exact-date join
+(`ftir_28`). The pre-registered rule asked for a CI containing zero, and **this one does not
+— its lower bound sits just above it**, so do not claim it does. The exploratory value of
++0.285 [−0.022, 0.593] did not survive re-derivation; ftir_28 swept ±1/±2-day and nearest-day
+matching, smoothed BCc, the Jacros record, HIPS-cohort restriction, MDL/QC filtering and
+Deming/bootstrap, and none of them recovered it. What the committed number does support is
+weaker but still decisive in direction: the FTIR-side intercept is **~13× smaller than the
+HIPS-side −4.17 and of opposite sign**, so the additive offset is not plausibly an FTIR zero
+error and localizes to the HIPS side. Tier-3 item 8 was run anyway and agrees
 (below). Note the ~2.2× absolute scale gap that surfaced en route (HIPS Fabs mean 49.7 vs
 MA350 b_ATN(625) mean 111.6) is mostly the multiple-scattering C-factor, i.e. expected; the
 *additive* result is the news.
