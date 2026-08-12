@@ -15,6 +15,7 @@ subsequent email thread. Phase 2 lives in `research/ftir_hips_chem/`
 | `ftir_14_delhi_beijing_feasibility.md` | Satoshi's score-space comparison of Delhi/Beijing vs Addis — data availability assessment. | Blocked: no SPARTAN spectra in the local pull; needs an INDH/CHTS export like the ETAD one (add ETBI = Bishoftu) |
 | `ftir_15_uncertainty_and_hybrid.ipynb` | Is the −1.6 intercept statistically solid? Where does the corrected model's scatter come from? Does a hybrid OC/EC + spectral cohort beat OCEC-800? | Bootstrap CI [−1.78, −1.06] (disjoint from raw); corrected residuals = season-stable constant offset; hybrid cohort fails → cohort engineering closed |
 | `scripts/run_context_addenda.py` | Post-meeting context: Adama TOR OC/EC and the ETBI site vs ETAD. | Adama OC/EC 4.6–7.2 (≈ pool median) challenges the OC/EC-extreme premise; ETBI = untouched in-country test set |
+| `ftir_29_provisional_addis_ec_series.ipynb` | What does the locked corrected calibration say Addis EC *is*? The provisional series, its seasonal structure, the deployed comparison, and the offset `c` with a bootstrap CI from ftir_15's committed draws. | Median 2.32 µg/m³ (Dry 1.67 / Belg 2.39 / Kiremt 3.62), zero negatives; provisional = 0.45 × deployed (R² 0.85); c = 1.82 [1.60, 1.97] µg/m³ corrected, 2.06 [1.93, 2.24] raw |
 
 `PHASE3_SUMMARY.md` condenses everything; `draft_email_ann_satoshi.md` is the update email draft.
 

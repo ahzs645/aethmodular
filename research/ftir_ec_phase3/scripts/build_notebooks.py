@@ -154,6 +154,7 @@ SCRIPTS = {
     "21": ("run_ftir_21.py", "ftir_21_both_protocols_end_to_end.ipynb"),
     "22": ("run_ftir_22.py", "ftir_22_figures_under_both_protocols.ipynb"),
     "23": ("run_ftir_23.py", "ftir_23_component_selection_by_protocol.ipynb"),
+    "29": ("run_ftir_29.py", "ftir_29_provisional_addis_ec_series.ipynb"),
 }
 
 TLDR["21"] = """\
@@ -617,6 +618,48 @@ TAKEAWAYS["23"] = """\
 - **Caveat**: the app-protocol curves inherit the row-order dependence documented in
   ftir_22 — these were computed in the cohort orders used by ftir_21/23, and a different
   sort would move the app k by a few components (not the site-held-out k)."""
+
+
+TLDR["29"] = """\
+**The corrected calibration already yields a usable provisional Addis EC series — and it
+is clean.** Rebuilding both locked OCEC-800 models under the site-held-out protocol
+(reproduction gate: raw **1.585x − 3.222**, corrected **0.857x − 1.615** on the fixed 190
+at MAC 10, matched to the committed ftir_13/ftir_21 record to <1e-4), the corrected
+model's predictions over all **239 dated** evaluation filters give median **2.32 µg/m³**
+(IQR 1.62–3.12), max **6.43**, with **zero negative predictions and zero days above
+8 µg/m³** — a physically sensible series that involves **no MAC anywhere** (predicted
+µg/filter ÷ sampled volume). Seasonality survives at lower levels: Dry **1.67** / Belg
+**2.39** / Kiremt **3.62** median — the Kiremt ≈ 2.2× Dry ordering of ftir_17's loading
+result. Against the deployed SPARTAN numbers on the same filters the change is a **scale,
+not a reshuffle**: provisional = **0.45 × deployed + 0.29** (R² 0.85), halving the median
+(4.62 → 2.32); the raw-model (MAC-6-branch) series is the upper envelope at median 3.96,
+and corrected-vs-raw is likewise pure scale (slope 0.55, R² 0.86). The series' one honest
+caveat travels with it: the HIPS-axis offset, put at **c = 1.82 [1.60, 1.97] µg/m³**
+(corrected) and **2.06 [1.93, 2.24]** (raw) — ≈16–22 Mm⁻¹, known to ~10% and excluding
+zero — computed here from ftir_15's committed site-cluster draws with no refitting, the
+first CI stated directly on `c`."""
+
+TAKEAWAYS["29"] = """\
+- **"Did the calibration help?" now has a constructive answer.** Beyond closing 61% of the
+  intercept, its product is a defensible provisional EC series: shape supported by the
+  held-out TOR test (slope 1.01, R² 0.90) and by tracking deployed EC at R² 0.85; zero
+  negatives; the expected seasonal ordering. The disagreement it carries is with the HIPS
+  axis, which ftir_25–28 localized away from the FTIR side.
+- **The absolute scale is the conditional part.** Corrected-branch and raw-branch series
+  differ by ≈×1.7 in the median (2.32 vs 3.96 µg/m³) — the unresolved MAC-fork factor —
+  and quartz TOR is what collapses it. Quote the series as "provisional, corrected-branch
+  headline, raw-branch envelope".
+- **If the corrected branch is right, Addis EC is lower than every prior number in this
+  project's orbit**: half the deployed SPARTAN values and far below the historical
+  15–20 µg/m³ literature range. That is a presentation-sensitive claim — say
+  "provisional" every time, and note the deployed comparison is a scale change (0.45×,
+  R² 0.85), not a contradiction of the temporal pattern.
+- **The offset is now a number with an interval, not a residual**: c excludes zero in both
+  models and the two CIs barely overlap ([1.93, 1.97] µg/m³) — ftir_25's −7.3% cross-model
+  drift in c sits at the edge of sampling uncertainty.
+- **Pre-registered corollary**: at ETBI (median Fabs 26.9 Mm⁻¹), this model should predict
+  EC well below Fabs/10 − c would suggest; the day the ETBI spectra arrive, that is the
+  out-of-sample test of the whole construction."""
 
 
 if __name__ == "__main__":
