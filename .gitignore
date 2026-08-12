@@ -198,3 +198,6 @@ research/spartan/.cache/
 # unchanged. This is raw external data (EXTERNAL_DATA.md) and is never tracked --
 # results_tor.csv alone is 221 MB.
 .drive_cache/
+
+# Ephemeral git worktrees created for isolated subagent runs
+.claude/worktrees/
