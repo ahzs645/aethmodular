@@ -19,25 +19,56 @@ must be regenerated. This unblocks consistent mass-per-area comparisons. See
 3.5 cm² FED Module A sweep documented in
 [the resolved IMPROVE loader work](cleanup-history.md#resolved-2026-07-27).
 
-### Establish the provenance of `EC_ftir`
+### Establish the provenance of `EC_ftir` — substantially resolved
 
-`EC_ftir` and `ChemSpec_EC_PM2.5` have r² = 0.99992, which is implausibly high
-for independent FTIR and thermal-optical measurements. The checkout establishes
-that the columns are neither copies nor simple arithmetic restatements, but
-`EC_ftir` arrives already computed in `Four_Sites_FTIR_data.v2.csv`. Ask whoever
-produced that CSV whether these filters were in the calibration training set.
-The answer determines whether 18 crossplotting files show calibration fit or
-independent validation; until then, label those panels as calibration
-diagnostics. See [the full provenance investigation](plot-taxonomy.md#findings).
+**Resolved (2026-08-12): `ChemSpec_EC_PM2.5` is not an independent measurement —
+it is `EC_ftir`.** The r² = 0.99992 recorded here for the four-sites data
+reproduces at ETAD, where the two columns match at r² = 0.999693 over 175
+base-joined filters, with ratio median 1.0000 (IQR 0.999–1.001) and median
+absolute difference 0.0030 µg/m³ — exactly the half-width of 2-decimal rounding.
+They are the same product, routed through SPARTAN's speciation table, and the
+"neither copies nor simple arithmetic restatements" finding above is explained
+by that rounding rather than by measurement independence. See
+`research/ftir_ec_phase3/ftir_25_intercept_invariant.md`.
 
-### Obtain HIPS Fabs uncertainties
+**Consequence, which is what this item was really asking for:** the 18
+crossplotting files are **calibration diagnostics, not independent validation** —
+adopt that conservative reading permanently, not "until then". A second
+consequence for phase 3: neither ChemSpec column can serve as an EC reference —
+`ChemSpec_BC_PM2.5` is Fabs / 10 rounded (x-circular) and `ChemSpec_EC_PM2.5` is
+FTIR-derived (y-circular).
 
-`HIPS_Fabs` has neither populated uncertainty nor MDL values, so Fabs-vs-EC
-Deming regressions currently assume lambda = 1. The correction is directionally
-sound but its magnitude—22–37% slope attenuation in the measured comparisons—is
-not pinned. Obtain defensible HIPS Fabs uncertainty estimates and pass them as
-`sigma_x`/`sigma_y` to `calculate_regression_stats`; this unblocks a data-driven
-Deming lambda. See [the estimator census and MDL analysis](plot-taxonomy.md#findings).
+**Still open, and now a smaller question:** whether these filters were in the
+calibration training set. The high r² is no longer evidence either way — it is
+column identity, not agreement between two analyses — so it neither implicates
+nor exonerates the training set. Answering it still requires asking whoever
+produced `Four_Sites_FTIR_data.v2.csv`, but the labelling decision no longer
+waits on the answer. See
+[the full provenance investigation](plot-taxonomy.md#findings).
+
+### Confirm the semantics of the HIPS uncertainties (they exist)
+
+**Corrected (2026-08-12): the premise that HIPS has no uncertainties was wrong.**
+`HIPS_Uncertainty` and `HIPS_MDL` are their own **parameter rows**, not columns —
+both are populated **190/190 at ETAD** (median **2.9075 Mm⁻¹** and 1.5534). What
+made them look absent is that the `Uncertainty` and `MDL` *columns* on
+`HIPS_Fabs` rows are empty; the values sit in sibling rows and are missed by any
+probe that reads the columns.
+
+So the data-driven Deming lambda is available now: sigma_x = 0.308 µg/m³,
+sigma_y ≈ 0.531, giving **lambda\* ≈ 2.96, not 1.0**. Assuming lambda = 1
+overstates the AIRSpec errors-in-variables intercept correction by ~55%
+(−2.66 against −2.09), so existing lambda = 1 results are not just imprecise but
+biased in a known direction.
+
+What remains is a question for SPARTAN, not a data pull: confirm what
+`HIPS_Uncertainty` and `HIPS_MDL` represent (repeat-measurement precision,
+propagated calibration error, or a reporting floor) before passing them as
+`sigma_x`/`sigma_y` to `calculate_regression_stats`, and then re-run the Deming
+sweep at lambda\* — including the slope-crosses-1 case that lambda = 1 produces
+for the AIRSpec branch at MAC 10. See
+[the estimator census and MDL analysis](plot-taxonomy.md#findings) and
+`research/ftir_ec_phase3/INTERCEPT_ATTACK_PLAN.md` item 3.
 
 ## Unfinished migrations
 

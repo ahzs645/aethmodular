@@ -82,9 +82,10 @@ Results on the fixed 190-filter Addis cohort (MAC = 10):
 - **EDF 6 vs 8 is indistinguishable** (Δslope < 0.01): the EDF choice inside Satoshi's range
   is not a sensitive parameter.
 - **The MAC = 6 vs 10 fork is now the deciding unknown**: raw low-OC/EC is self-consistent at
-  MAC = 6 (slope 0.95), corrected low-OC/EC at MAC = 10 (slope 0.86). An independent Addis
-  TOR/EC reference or a HIPS MAC/protocol bridge resolves it; further cohort engineering
-  will not.
+  MAC = 6 (slope 0.95), while corrected low-OC/EC **lands closest** at MAC = 10 (slope 0.86).
+  Say "lands closest", not "self-consistent", for that second one — `ftir_19`'s dumbbell
+  figure bolds only |slope − 1| ≤ 0.1, a bar 0.86 does not clear. An independent Addis TOR/EC
+  reference or a HIPS MAC/protocol bridge resolves it; further cohort engineering will not.
 
 ## ftir_15 — uncertainty, residual structure, and the end of cohort engineering
 
@@ -135,10 +136,16 @@ calibration inputs.
 
 ## ftir_16 — MAC decision prep: ChemSpec debunk, Adama bridge, campaign spec
 
-- **`ChemSpec_EC` for ETAD closely tracks, but is not identical to, HIPS Fabs / 10**
-  (median ChemSpec/Fabs ratio 0.101, r = 0.89, n = 175 base-joined filters). This
-  cross-check does not establish an independent EC reference, so it cannot arbitrate the
-  MAC = 6 vs 10 fork.
+- **Neither ChemSpec column is an independent EC reference — they are circular in opposite
+  directions.** `ChemSpec_EC` for ETAD closely tracks, but is not identical to, HIPS Fabs / 10
+  (median ChemSpec/Fabs ratio 0.101, r = 0.89, n = 175 base-joined filters) — which is *not*
+  why it fails. It fails because it reproduces `EC_ftir` at **r² = 0.999693** (ratio median
+  1.0000, median |Δ| 0.0030 µg/m³ — the 2-dp rounding half-width): it **is** the FTIR-EC
+  product routed through SPARTAN's speciation table, i.e. **y-circular** (`ftir_25`). Its
+  companion `ChemSpec_BC` is Fabs / 10 rounded (R² 0.9982 against Fabs / 10, implied MAC
+  median 10.0003, 86.7% of filters within 0.005) — **x-circular**. So ftir_16's conclusion
+  holds for a stronger reason than it gave: neither column can arbitrate the MAC = 6 vs 10
+  fork, and not-x-circular does not imply independent.
 - **Adama-composition bridge**: if Addis aerosol had Adama's TOR OC/EC (median 6.1), the MAC
   reconciling Addis HIPS Fabs with FTIR OC would be **≈47 m²/g (IQR 36–56)** — unphysical for
   EC (~4–13). So at least one of: (a) Addis OC/EC really is ~5–8× below Adama's (extreme EC),
