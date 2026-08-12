@@ -191,3 +191,10 @@ notebooks/analysis/output/
 
 # Derived caches for the salvaged SPARTAN mass-space notebooks (rebuilt on run)
 research/spartan/.cache/
+
+# Local mirror of the Drive tree, for machines with no Drive mount. Laid out as
+# the "My Drive"-relative candidates in pls_transfer.py expect, so pointing
+# AETHMODULAR_DRIVE_ROOT at it makes every resolver in data_paths.py work
+# unchanged. This is raw external data (EXTERNAL_DATA.md) and is never tracked --
+# results_tor.csv alone is 221 MB.
+.drive_cache/
