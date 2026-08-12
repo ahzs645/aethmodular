@@ -154,6 +154,7 @@ SCRIPTS = {
     "21": ("run_ftir_21.py", "ftir_21_both_protocols_end_to_end.ipynb"),
     "22": ("run_ftir_22.py", "ftir_22_figures_under_both_protocols.ipynb"),
     "23": ("run_ftir_23.py", "ftir_23_component_selection_by_protocol.ipynb"),
+    "28": ("run_ftir_28.py", "ftir_28_ma350_brc_falsification.ipynb"),
 }
 
 TLDR["21"] = """\
@@ -617,6 +618,70 @@ TAKEAWAYS["23"] = """\
 - **Caveat**: the app-protocol curves inherit the row-order dependence documented in
   ftir_22 — these were computed in the cohort orders used by ftir_21/23, and a different
   sort would move the app k by a few components (not the site-held-out k)."""
+
+
+TLDR["28"] = """\
+**The MA350 cannot measure a brown-carbon share at Addis.** That is a statement about the
+instrument, not about the atmosphere — nothing here says Addis has little brown carbon.
+`INTERCEPT_ATTACK_PLAN.md` item 4 proposed using the MA350's wavelength spread to estimate
+BrC absorption at the HIPS wavelength, subtract it from Fabs, and see whether the intercept
+closes. Tested on MA350-0238 over 515 ETAD filter-days, it fails twice over. **(1) There is
+no red excess to attribute.** AAE(625, 880) from b_ATN is **0.944 ± 0.060** — *below* the
+AAE_BC ≈ 1 anchor, not above it, on 84.5% of days — so the implied Babs_BrC is **−2.06 Mm⁻¹**
+on average, negative on **84.5%** of days, and above the target on none, against the
+**+21.7 Mm⁻¹** the intercept needs (C = |b|·MAC/a across the six ftir_19 setups, 18.8–26.1,
+mean 21.7). Closing it this way would require **AAE_BC ≈ 0.31**, i.e. black carbon absorbing
+more at 880 nm than at 625 nm. **(2) The instrument cannot be asked again, in either
+direction.** Only IR is trustworthy: the Green channel implies an unphysical **negative** AAE
+(median −0.168, 45% below the power law through its own neighbours), UV is out of range on
+**35.0%** of days (BCc ≤ 0, or less absorption at 375 than at 880 nm; r with IR = 0.08), and
+Red reproduces IR to within an **IQR of ±1.3%**. A channel-to-channel absolute error of 45%
+is demonstrated on this instrument; the red excess being sought is a 24% shift. Two live repo
+traps surfaced and are re-derived here (both fixed in `3aedfdc`): the AE33-vs-MA350 wavelength
+confusion in `processed_sites/README.md` (×1.189 on AAE(Red, IR), enough to manufacture a
+12.5% biomass share from a record with none), and the exact BCc-AAE offset identity
+(**−1.0157** UV/IR, **−0.9674** Red/IR, re-derived from the firmware σ_ATN table), which cuts
+the UV/IR biomass class from 52% to 20%. One positive result rides along: FTIR EC against
+MA350 BC(880) — where BrC barely absorbs — gives intercept **+0.32 µg/m³** (95% CI +0.01 to
++0.63, R² **0.868**, n = 173), ~13× smaller than the −4.17 on the HIPS side and of the
+opposite sign, which exonerates the FTIR axis and localizes the additive offset to the
+HIPS-side 633 nm optics."""
+
+TAKEAWAYS["28"] = """\
+- **Say "the MA350 cannot answer this question", never "there is no brown carbon at Addis".**
+  The negative implied Babs_BrC is the arithmetic of a channel that sits *below* its own black
+  carbon anchor; on an instrument whose other short channels return impossible values it is
+  evidence about the sensor, not about the aerosol. Any briefing line, figure caption or slide
+  that lets the two be confused is wrong, and the distinction is the whole reason this
+  notebook exists.
+- **Item 4 of the attack plan is closed, and item 5 with it.** The subtract-and-re-crossplot
+  step has nothing to subtract: the implied correction is negative on 84.5% of days and never
+  once reaches the target. It should not be attempted on this instrument at this site.
+- **The falsification does not depend on the absorption scale.** AAE is invariant to the
+  multiple-scattering constant, and b_ATN runs ~2.07× the HIPS Fabs scale at Addis; the mean
+  implied Babs_BrC is −2.06 Mm⁻¹ on the b_ATN scale and −0.99 on the Fabs scale. No positive
+  rescaling turns either into +21.7.
+- **Only IR should be used from this instrument at Addis, and that should be written down.**
+  Green, UV and Red each fail a check no real aerosol can fail or carry no information beyond
+  IR. Any past or future analysis leaning on MA350 Green or UV at ETAD needs re-examining —
+  `addis_01`/`addis_04`-style source apportionment most of all.
+- **The offset identity is arithmetic, so it will recur.** `optics.aae_from_columns` defaults
+  to `kind='BCc'`, and the resulting AAE is the absorption AAE minus ~1.0 exactly. It looks
+  precisely like the inverted-AAE bug that module was written to prevent, which is why it
+  survived review. Compute AAE from b_ATN = BCc × σ_ATN unless you specifically want the
+  instrument-space quantity.
+- **What is still open**: the ~20 Mm⁻¹ target itself. Ruling out the MA350 as a way to
+  measure it removes a candidate method, not the candidate owner — brown carbon, dust, a
+  HIPS-generic offset and an FTIR zero error are all still live, and the BC(880) result here
+  only moves the search off the FTIR axis. Tier-1 items 1–3 and the quartz-TOR campaign
+  remain the way in.
+- **Caveats and non-reproductions**: three pre-registered figures did not come out exactly.
+  The closing AAE_BC is 0.308 against the mean target and 0.315 against the median (brief:
+  0.316); the BCc-offset biomass damage is 52% → 20% here rather than 47% → 12%; and the
+  BC(880) intercept CI is [+0.010, +0.629] rather than [−0.022, +0.593], so the notebook does
+  **not** assert that interval contains zero. Each is flagged inline next to the derived
+  value. The headline numbers — 0.944 ± 0.060, −2.06 Mm⁻¹, 84.5%, +21.7 Mm⁻¹, 35.0%, ±1.3%,
+  −1.0157 and −0.9674 — reproduce exactly."""
 
 
 if __name__ == "__main__":

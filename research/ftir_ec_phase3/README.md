@@ -15,6 +15,7 @@ subsequent email thread. Phase 2 lives in `research/ftir_hips_chem/`
 | `ftir_14_delhi_beijing_feasibility.md` | Satoshi's score-space comparison of Delhi/Beijing vs Addis — data availability assessment. | Blocked: no SPARTAN spectra in the local pull; needs an INDH/CHTS export like the ETAD one (add ETBI = Bishoftu) |
 | `ftir_15_uncertainty_and_hybrid.ipynb` | Is the −1.6 intercept statistically solid? Where does the corrected model's scatter come from? Does a hybrid OC/EC + spectral cohort beat OCEC-800? | Bootstrap CI [−1.78, −1.06] (disjoint from raw); corrected residuals = season-stable constant offset; hybrid cohort fails → cohort engineering closed |
 | `scripts/run_context_addenda.py` | Post-meeting context: Adama TOR OC/EC and the ETBI site vs ETAD. | Adama OC/EC 4.6–7.2 (≈ pool median) challenges the OC/EC-extreme premise; ETBI = untouched in-country test set |
+| `ftir_28_ma350_brc_falsification.ipynb` | Can the MA350's wavelength spread supply the ~20 Mm⁻¹ of non-EC absorption the intercept implies (attack-plan items 4–5)? | **No — and the instrument cannot be asked in either direction.** AAE(625,880) = 0.944 ± 0.060 (below the AAE_BC ≈ 1 anchor), implied Babs_BrC −2.06 Mm⁻¹ vs +21.7 needed; only the IR channel is trustworthy. Closed. |
 
 `PHASE3_SUMMARY.md` condenses everything; `draft_email_ann_satoshi.md` is the update email draft.
 
