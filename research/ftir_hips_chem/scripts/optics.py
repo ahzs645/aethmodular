@@ -78,6 +78,33 @@ def aae_from_columns(df, short='UV', long='IR', kind='BCc', wavelengths=None):
     Column names are built as ``f'{short} {kind}'`` (e.g. ``'UV BCc'``), and the
     wavelengths come from ``config.WAVELENGTHS_NM`` so the AE33/MA350 mix-up
     cannot recur.
+
+    ``kind='BCc'`` does not give an atmospheric AAE
+    -----------------------------------------------
+    The default is kept for the callers that already pass it, but a BCc-derived
+    AAE is offset from the absorption AAE by a fixed amount, because the
+    instrument has already divided absorption by a wavelength-dependent ATN
+    cross-section: ``BCc = b_ATN / sigma``. That makes
+
+        AAE_BCc = AAE_babs + ln(sigma_short / sigma_long) / ln(wl_short / wl_long)
+
+    an exact identity, and with the MA350 firmware constants
+    (``src/external/calibration.py``: UV 24.069, Blue 19.070, Green 17.028,
+    Red 14.091, IR 10.120) the offset is **-1.016 for UV/IR** and **-0.967 for
+    Red/IR**. Measured on the Addis MA350 that is AAE(UV,IR) 0.432 from BCc
+    against 1.448 from absorption, and AAE(Red,IR) -0.024 against 0.943 --
+    i.e. BCc puts physically ordinary aerosol below zero. Fed to
+    :func:`classify_aae` it turns 47% biomass into 12%, the same symptom as the
+    inverted-AAE bug this module was written to prevent, from a different cause.
+
+    So pass ``kind='Babs'`` (or whatever the absorption columns are called) when
+    the question is about aerosol. Reconstruct them as ``b_ATN = BCc * sigma`` if
+    the export only carries BCc, and note that ``b_ATN`` still includes the filter
+    multiple-scattering enhancement that a filter-based Fabs has been corrected
+    for -- the two are not on the same scale and should not be differenced.
+
+    Use ``kind='BCc'`` only for a *relative* comparison across sites or seasons on
+    the same instrument, where the constant offset cancels.
     """
     wl = wavelengths or WAVELENGTHS_NM
     for name in (short, long):
