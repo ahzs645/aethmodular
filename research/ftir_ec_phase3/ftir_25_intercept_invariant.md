@@ -85,9 +85,68 @@ is a real and useful statement. It is not corroboration by independent measureme
 should not be presented as such.
 
 The corollary for item 2 of the attack plan: refitting as `y = a·(x − c)` is a
-reparameterization, not a new fit — `c = |b|/a` identically. It is still worth doing for
-one reason, which is to put a bootstrap confidence interval directly on `c` rather than
-propagating one from `a` and `b`.
+reparameterization, not a new fit — `c = |b|/a` identically, confirmed numerically to
+1×10⁻¹⁰ against a nonlinear least-squares fit, and even the standard error agrees
+(asymptotic SE(c) = 0.1173 from the NLS Jacobian, 0.1173 by the delta method from the
+existing fit). It is still worth doing for one reason, which is to put a bootstrap
+confidence interval directly on `c` — and `ftir_15`'s committed `addis_bootstrap_draws.csv`
+already carries per-draw `slope` and `intercept`, so `c_b = −b_b/a_b` per draw gives that CI
+with no refitting at all.
+
+## The sharpest available test of "the offset is in x" — and it passes
+
+AIRSpec baselining changes only the **y-side**: it transforms the spectra the PLS model is
+built from and evaluated on, and never touches Fabs. It moves the intercept from −3.2215 to
+−1.6151, a halving. That looks at first like a refutation — an artifact living in the
+x-data should not be halvable by a y-side transform.
+
+It is not a refutation, because the same transform also halves the slope, and under the
+x-side model `y = a·(x − c)` the intercept **is** `−a·c`. A y-side gain change therefore
+*must* move the intercept in proportion to the slope, leaving `c` fixed. The numbers behave
+exactly that way:
+
+| | raw | +AIRSpec | ratio |
+|---|---:|---:|---:|
+| slope `a` | 1.585381 | 0.857004 | 0.5406 |
+| intercept `b` | −3.221502 | −1.615099 | 0.5013 |
+| **`c = −b/a`** | **2.0320** | **1.8846** | **0.9274** |
+
+The intercept ratio (0.5013) and the slope ratio (0.5406) agree to within 8%; a pure gain
+change predicts −1.7414 against the observed −1.6151, so the slope move accounts for
+essentially all of the halving. `c` shifts by −7.3% where `a` and `b` each move ~50%.
+
+So the x-side premise survives the one test in this repo that could have killed it cheaply.
+What remains is that residual −7.3%: `c` is not *perfectly* invariant, and its drift is
+systematic rather than noisy — across the six setups `c` runs 1.885–2.608 (CV 11.2%), and
+the best-performing setup has the lowest `c`. A single shared `c` fitted jointly across all
+six (7 parameters against 12) costs only **1.6%** in total RSS, ĉ = 2.2634 µg/m³
+(≈ 22.6 Mm⁻¹) — nearly free, but confounded by the same gain-invariance, so it corroborates
+rather than proves.
+
+## What would actually discriminate
+
+Since `c` is blind to gain, no amount of refitting on Fabs-derived quantities can settle
+where the offset lives. That needs an EC reference on the same Addis filters that is not
+derived from Fabs. Two candidates in the committed dataset, and the attack plan names the
+wrong one as the hazard:
+
+| column | n | R² vs Fabs/10 | implied MAC | verdict |
+|---|---:|---:|---:|---|
+| `ChemSpec_BC_PM2.5` | 188 | **0.9982** | median **10.0003**, IQR 9.99–10.01 | **Banned.** It is Fabs/10 rounded to 2 dp — 86.7% of filters sit within 0.005 of it. Circular as a reference. |
+| `ChemSpec_EC_PM2.5` | 175 | 0.7904 | median 9.893, IQR **8.05–12.28** | **Not a Fabs transform.** Its R² against Fabs is the same order as FTIR-EC's own 0.76, and its implied-MAC IQR is wide where BC's is degenerate. |
+
+`ChemSpec_EC` is therefore the independent, non-Fabs EC reference this question needs, and
+it is already in `Filter Data/unified_filter_dataset.pkl` — no Drive access required. Two
+cautions before leaning on it: its median implied MAC of 9.893 is close enough to 10 to
+warrant confirming with SPARTAN documentation that it is a thermal-optical product rather
+than a MAC-tuned optical one; and each filter carries two rows, the measurement and a
+~0.07 µg/m³ floor row, so averaging them silently halves the values and doubles the implied
+MAC.
+
+Joining on `FilterId` also needs care: HIPS rows carry the replicate suffix
+(`ETAD-0001-1`) while ChemSpec rows do not (`ETAD-0001`), and
+`config.BASE_FILTER_ID_PATTERN` only matches the suffixed form — it returns NaN for an
+already-base id, so a naive `str.extract` drops every ChemSpec row and yields an empty join.
 
 ## What this does and does not license
 

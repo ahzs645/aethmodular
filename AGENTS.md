@@ -329,10 +329,25 @@ two variables already track each other closely the two agree to 0.0 %, so the
 gap is dilution, not estimator noise. Across the estate 114 of 115 one-to-one
 panels currently report OLS only.
 
-`deming_lambda` defaults to 1.0 (orthogonal, equal error variance) because the
-`Uncertainty` column in the filter dataset is unpopulated. Pass
-`sigma_x=`/`sigma_y=` when you do know the measurement uncertainties: the
+`deming_lambda` defaults to 1.0 (orthogonal, equal error variance). Pass
+`sigma_x=`/`sigma_y=` when you know the measurement uncertainties: the
 *direction* of the correction is robust, its *magnitude* depends on lambda.
+
+**For HIPS you do know sigma_x — don't accept the default.** The `Uncertainty`
+*column* is indeed empty on `HIPS_Fabs` rows, but the value is not missing: it is
+carried as its own `HIPS_Uncertainty` parameter, populated 190/190 for ETAD with
+median 2.9075 Mm⁻¹ (6.17% of median Fabs). `HIPS_MDL` is stored the same way.
+Read it as a parameter row, not as a column on the Fabs row:
+
+```python
+unc = etad[etad.Parameter == 'HIPS_Uncertainty']['Uncertainty']
+```
+
+With sigma_x = 0.308 µg/m³ (that uncertainty ÷ MAC) against sigma_y ≈ 0.531 from
+the AIRSpec held-out TOR RMSE, lambda* = (sigma_y/sigma_x)² ≈ **2.96**, not 1.0.
+That matters: on the AIRSpec setup, lambda = 1 puts the errors-in-variables
+intercept at −2.66 while lambda* puts it at −2.09, so defaulting to 1.0
+overstates the correction by ~55%.
 
 OLS remains correct when x is genuinely a controlled or known-exact predictor
 (calibration standards, nominal loadings) — those panels have no 1:1 line, and
