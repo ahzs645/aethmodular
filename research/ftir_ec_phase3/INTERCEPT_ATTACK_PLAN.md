@@ -66,7 +66,10 @@ runs through zero, the offset is Addis-specific. *Extends ftir_16's implied-MAC 
 
 **Answer: IMPROVE HIPS runs through the origin.** Pooled OLS intercept **+1.345 Mm⁻¹**
 [1.195, 1.485]; trimmed to EC ≤ p95 it falls to **+0.200**; in the Addis-like subset,
-trimmed, **+0.097** [0.069, 0.124]. At EC ≤ 0 (n = 4,247) the median Fabs is **+0.12** with
+trimmed, **+0.097** [−0.034, +0.218] — quote that site-cluster interval, not the i.i.d.-row
+[0.069, 0.124], which is ~4× too tight because the Addis-like cohort concentrates in few
+sites (`ftir_26`). It includes zero, which is the point. At EC ≤ 0 (n = 4,247) the median
+Fabs is **+0.12** with
 **23.8% negative** — zero at zero with symmetric noise. No individual site reaches 5 Mm⁻¹
 (largest 4.64). And the arithmetic that settles the magnitude: only **186 of 160,023**
 IMPROVE filters carry 21.5 Mm⁻¹ of *total* absorption, so a generic offset of that size
@@ -242,7 +245,7 @@ close it in either direction. This is the single largest unquantified share of C
 **(b) Curve geometry.** Fabs is **concave** in EC: `Fabs = 7.50·EC^0.796` (R² 0.713, through
 zero). A straight line fitted through a concave relation manufactures a negative intercept
 with no offset present at all. The scale is right, too: IMPROVE per-site intercepts sit at a
-median **35% of site mean Fabs** (IQR 28–53%) against Addis's **46%**, with **32% of sites at
+median **35% of site mean Fabs** (IQR 27–50%) against Addis's **46%**, with **29% of sites at
 or above the Addis fraction** — in data where the true offset at zero is zero. (The 0.796
 exponent is itself EIV-attenuated, so treat it as an upper bound on the curvature and hence
 on how much of the intercept curvature could explain.) **Testing (b) on Addis directly is

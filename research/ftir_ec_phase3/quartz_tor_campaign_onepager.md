@@ -40,7 +40,7 @@ Today's four results each removed a candidate owner and none of them chose a win
 That leaves exactly three live explanations, and nothing already collected separates them:
 a **loading-dependent HIPS artifact**; **curve geometry** (a straight line fitted to a concave
 Fabs-vs-EC relationship manufactures a negative intercept with no offset present — IMPROVE
-per-site intercepts run at a median 35% of site mean Fabs, IQR 28–53%, and Addis's 46% sits
+per-site intercepts run at a median 35% of site mean Fabs, IQR 27–50%, and Addis's 46% sits
 inside that band); and **real non-EC absorption**. Quartz TOR is the only route to an EC
 reference that is circular with neither axis.
 
