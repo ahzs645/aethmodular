@@ -59,43 +59,159 @@ def show(path, title):
     display(Image(filename=str(path)))
 
 # %% [markdown]
-# ### 1. The by_protocol figure set — committed tables only
+# ### 1. The by_protocol figure set — one cell per figure, committed tables only
 #
-# `build_protocol_variants.main()` rewrites both protocol folders (nine figures each)
-# from ftir_21/22/23 committed tables. The five figures the Satoshi deck uses are shown
-# inline; the calibration-app folder is rebuilt in the same call.
+# Shared inputs for the nine per-protocol builders (`build_protocol_variants`), read
+# once. Each figure below is generated **independently** in its own cell — both protocol
+# folders are written each time; the site-held-out version (the one the decks use) is
+# displayed first, then its calibration-app twin — both component-protocol variants
+# of every calibration figure, independently.
 
 # %%
-import build_protocol_variants
-build_protocol_variants.main()
+import build_protocol_variants as bpv
 
-SHP = DECK / "by_protocol" / "site_held_out"
-for name, title in [
-    ("calibration_setup_matrix.png", "setup matrix (site-held-out)"),
-    ("crossplots_all_setups.png", "six-setup crossplots"),
-    ("residual_vs_d2.png", "residual vs D²"),
-    ("mac_slope_pivot.png", "MAC slope pivot"),
-    ("component_selection.png", "selection curves (site-held-out)"),
-]:
-    show(SHP / name, title)
+T21, T22, T23 = bpv.T21, bpv.T22, bpv.T23
+predictions = pd.read_csv(T21 / "addis_predictions_by_mode.csv")
+metrics = pd.read_csv(T21 / "addis_metrics_by_mode.csv")
+draws = pd.read_csv(T22 / "bootstrap_draws_by_mode.csv")
+residuals = pd.read_csv(T22 / "addis_residuals_by_mode.csv")
+sweep = pd.read_csv(T22 / "cohort_size_sweep_by_mode.csv")
+sel_curves = pd.read_csv(T23 / "selection_curves.csv")
+sel_decisions = pd.read_csv(T23 / "selection_decisions.csv")
+BP = DECK / "by_protocol"
+
+def both_modes(fn, *tables):
+    """Run one builder for both component protocols; return {mode: path}."""
+    out = {}
+    for mode in bpv.MODES:
+        rel = fn(mode, *tables)
+        out[mode] = BP / bpv.MODE_DIR[mode] / pathlib.PurePath(rel).name
+    return out
+
+import pathlib
 
 # %% [markdown]
-# ### 2. The deck-root figures — filtering strip, matrix, AIRSpec explainers, ladder
+# #### 1.1 Calibration setup matrix
+
+# %%
+_p = both_modes(bpv.fig_setup_matrix, metrics)
+show(_p["site_heldout"], "setup matrix — site-held-out")
+show(_p["app"], "setup matrix — calibration-app variant")
+
+# %% [markdown]
+# #### 1.2 Six-setup Addis crossplots
+
+# %%
+_p = both_modes(bpv.fig_crossplots, predictions, metrics)
+show(_p["site_heldout"], "six-setup crossplots — site-held-out")
+show(_p["app"], "six-setup crossplots — calibration-app variant")
+
+# %% [markdown]
+# #### 1.3 Residual vs Mahalanobis D²
+
+# %%
+_p = both_modes(bpv.fig_residual_vs_d2, residuals)
+show(_p["site_heldout"], "residual vs D² — site-held-out")
+show(_p["app"], "residual vs D² — calibration-app variant")
+
+# %% [markdown]
+# #### 1.4 MAC slope pivot
+
+# %%
+_p = both_modes(bpv.fig_mac_slope_pivot, metrics)
+show(_p["site_heldout"], "MAC slope pivot — site-held-out")
+show(_p["app"], "MAC slope pivot — calibration-app variant")
+
+# %% [markdown]
+# #### 1.5 Component-selection curves
+
+# %%
+_p = both_modes(bpv.fig_component_selection, sel_curves, sel_decisions)
+show(_p["site_heldout"], "selection curves — site-held-out")
+show(_p["app"], "selection curves — calibration-app variant")
+
+# %% [markdown]
+# #### 1.6 Intercept–slope ladder
+
+# %%
+_p = both_modes(bpv.fig_intercept_ladder, metrics)
+show(_p["site_heldout"], "intercept-slope ladder — site-held-out")
+show(_p["app"], "intercept-slope ladder — calibration-app variant")
+
+# %% [markdown]
+# #### 1.7 Bootstrap intercept CIs
+
+# %%
+_p = both_modes(bpv.fig_bootstrap, draws)
+show(_p["site_heldout"], "bootstrap intercept CIs — site-held-out")
+show(_p["app"], "bootstrap intercept CIs — calibration-app variant")
+
+# %% [markdown]
+# #### 1.8 Cohort-size sweep
+
+# %%
+_p = both_modes(bpv.fig_cohort_sweep, sweep)
+show(_p["site_heldout"], "cohort-size sweep — site-held-out")
+show(_p["app"], "cohort-size sweep — calibration-app variant")
+
+# %% [markdown]
+# #### 1.9 MAC effect, all setups
+
+# %%
+_p = both_modes(bpv.fig_mac_effect, predictions, metrics)
+show(_p["site_heldout"], "MAC effect (all setups) — site-held-out")
+show(_p["app"], "MAC effect (all setups) — calibration-app variant")
+
+# %% [markdown]
+# ### 2. The deck-root figures — one cell per figure
+#
+# These re-run the `build_deck_figures.py` builders (Drive `local_db` for the pool
+# OC/EC; the cached explainer baselines for the AIRSpec slides).
 
 # %%
 import build_deck_figures as bdf
 
-for fn, name, title in [
-    (bdf.fig_filtering_strip, "filtering_by_ocec.png", "OC/EC filtering strip"),
-    (bdf.fig_setup_matrix, "calibration_setup_matrix.png", "combined setup matrix"),
-    (bdf.fig_airspec_1_baseline, "airspec_1_baseline.png", "AIRSpec 1 — baseline"),
-    (bdf.fig_airspec_2_corrected, "airspec_2_corrected.png", "AIRSpec 2 — corrected"),
-    (bdf.fig_airspec_3_background_gap, "airspec_3_background_gap.png",
-     "AIRSpec 3 — background gap"),
-    (bdf.fig_intercept_ladder, "intercept_ladder.png", "intercept ladder"),
-]:
-    fn()
-    show(DECK / name, title)
+# %% [markdown]
+# #### 2.1 OC/EC filtering strip
+
+# %%
+bdf.fig_filtering_strip()
+show(DECK / "filtering_by_ocec.png", "OC/EC filtering strip")
+
+# %% [markdown]
+# #### 2.2 Combined setup matrix (both intercept columns)
+
+# %%
+bdf.fig_setup_matrix()
+show(DECK / "calibration_setup_matrix.png", "combined setup matrix")
+
+# %% [markdown]
+# #### 2.3 AIRSpec explainer 1 — one real filter and its baseline
+
+# %%
+bdf.fig_airspec_1_baseline()
+show(DECK / "airspec_1_baseline.png", "AIRSpec 1 — baseline")
+
+# %% [markdown]
+# #### 2.4 AIRSpec explainer 2 — after subtraction
+
+# %%
+bdf.fig_airspec_2_corrected()
+show(DECK / "airspec_2_corrected.png", "AIRSpec 2 — corrected")
+
+# %% [markdown]
+# #### 2.5 AIRSpec explainer 3 — the background gap
+
+# %%
+bdf.fig_airspec_3_background_gap()
+show(DECK / "airspec_3_background_gap.png", "AIRSpec 3 — background gap")
+
+# %% [markdown]
+# #### 2.6 Intercept ladder
+
+# %%
+bdf.fig_intercept_ladder()
+show(DECK / "intercept_ladder.png", "intercept ladder")
 
 # %% [markdown]
 # ### 3. The implied-MAC bridge, from the committed 151,843-filter table
@@ -117,19 +233,31 @@ dec = pd.qcut(bridge.OC_EC, 10)
 g = bridge.groupby(dec, observed=True)
 mid = g.OC_EC.median()
 q1, q2, q3 = (g.implied_MAC.quantile(q) for q in (0.25, 0.5, 0.75))
+sub_x, sub_mac = sub.OC_EC.median(), sub.implied_MAC.median()
+
+from matplotlib.ticker import FixedLocator, NullFormatter
 
 fig, ax = plt.subplots(figsize=(9.5, 5.2))
-ax.fill_between(mid, q1, q3, alpha=0.25, color=BLUE, label="IQR")
-ax.plot(mid, q2, "o-", color=BLUE, label="Median implied MAC")
+ax.fill_between(mid, q1, q3, alpha=0.25, color=BLUE, label="IQR (per OC/EC decile)")
+ax.plot(mid, q2, "o-", color=BLUE, label="Median implied MAC (decile)")
+ax.plot(sub_x, sub_mac, "*", color=PURPLE, ms=17, zorder=4,
+        label=f"Addis-like subset (OC/EC ≤ 2.27, n = {len(sub):,}): {sub_mac:.2f}")
 ax.axhline(10, color=ACCENT, ls=":", lw=1.5)
 ax.axhline(6, color=ACCENT, ls="--", lw=1.5)
-ax.text(mid.iloc[-1], 10.15, "MAC = 10", color=ACCENT, ha="right", fontsize=9)
-ax.text(mid.iloc[-1], 6.15, "MAC = 6", color=ACCENT, ha="right", fontsize=9)
-ax.axvspan(mid.min() * 0.5, 2.27, color=PURPLE, alpha=0.08)
-ax.text(2.2, ax.get_ylim()[1] * 0.95, "Addis-like\nOC/EC ≤ 2.27", color=PURPLE,
-        ha="right", va="top", fontsize=9)
+xmin = min(mid.min(), sub_x) * 0.55
+xmax = mid.max() * 1.2
 ax.set_xscale("log")
-ax.set_xlabel("TOR OC/EC ratio (decile midpoints, log scale)")
+ax.set_xlim(xmin, xmax)
+ax.set_ylim(4, 38)
+ax.axvspan(xmin, 2.27, color=PURPLE, alpha=0.08, zorder=0)
+ax.text(np.sqrt(xmin * 2.27), 4.6, "Addis-like\nOC/EC ≤ 2.27", color=PURPLE,
+        ha="center", va="bottom", fontsize=9)
+ax.text(xmax * 0.97, 10.3, "MAC = 10", color=ACCENT, ha="right", fontsize=9)
+ax.text(xmax * 0.97, 6.3, "MAC = 6", color=ACCENT, ha="right", fontsize=9)
+ax.xaxis.set_major_locator(FixedLocator([1, 2, 3, 5, 10, 20]))
+ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g}"))
+ax.xaxis.set_minor_formatter(NullFormatter())
+ax.set_xlabel("TOR OC/EC ratio (log scale)")
 ax.set_ylabel("Implied MAC = Fabs / TOR EC (m²/g)")
 ax.set_title(f"IMPROVE bridge: MAC = 10 is centered at Addis-like composition "
              f"(n = {len(bridge):,})")
@@ -224,20 +352,24 @@ pk = pd.read_csv("output/tables/ftir12/peak_center_1600_stats.csv")
 addis = pk[pk.group.str.contains("Addis", case=False)].iloc[0]
 assert 1617 <= addis.center_median <= 1619.5, addis.center_median
 
-pk = pk.sort_values("center_median")
-fig, ax = plt.subplots(figsize=(9.5, 4.2))
-ypos = np.arange(len(pk))
-for y, (_, row) in zip(ypos, pk.iterrows()):
+pk = pk.sort_values("center_median").reset_index(drop=True)
+fig, ax = plt.subplots(figsize=(9.5, 3.9))
+for y, row in pk.iterrows():
     is_addis = "addis" in row.group.lower()
     c = ACCENT if is_addis else GREY
-    ax.plot([row.center_p25, row.center_p75], [y, y], color=c, lw=5, alpha=0.55)
-    ax.plot(row.center_median, y, "o", color=c, ms=9)
-    ax.text(row.center_p75 + 1.2, y, f"{row.group}  (median {row.center_median:.1f})",
-            va="center", fontsize=9.5, color="#1A1D21")
-ax.axvline(1633, color=BLUE, ls=":", lw=1.2)
-ax.text(1633.4, len(pk) - 0.6, "IMPROVE cohorts ≥ 1633", color=BLUE, fontsize=9)
-ax.set_yticks([])
-ax.set_xlabel("1600-band peak center (cm⁻¹), median and IQR")
+    ax.plot([row.center_p25, row.center_p75], [y, y], color=c, lw=6, alpha=0.55,
+            solid_capstyle="round", zorder=2)
+    ax.plot(row.center_median, y, "o", color=c, ms=9, zorder=3)
+    ax.annotate(f"{row.center_median:.1f}", (row.center_median, y), xytext=(0, 10),
+                textcoords="offset points", ha="center", fontsize=9, color=c)
+ax.axvline(1633, color=BLUE, ls=":", lw=1.2, zorder=1)
+ax.set_yticks(range(len(pk)),
+              [f"{g}  (n = {int(n)})" for g, n in zip(pk.group, pk.n_used)])
+ax.text(1633.5, -0.55, "every IMPROVE cohort ≥ 1633", color=BLUE, fontsize=9,
+        va="center", ha="left")
+ax.set_xlim(pk.center_p25.min() - 3, pk.center_p75.max() + 3)
+ax.set_ylim(-0.8, len(pk) - 0.4)
+ax.set_xlabel("1600-band peak center (cm⁻¹) — median dot, IQR bar")
 ax.set_title("Addis peaks at 1617–1619 cm⁻¹; every IMPROVE cohort sits higher")
 fig.tight_layout()
 fig.savefig(OUT / "peak_center_1600_stats_panel.png", dpi=180)
@@ -293,7 +425,7 @@ show(OUT / "adama_etbi_context.png", "Adama/ETBI context")
 
 # %%
 manifest = pd.DataFrame([
-    ("calibration_setup_matrix", "by_protocol (both)", "this notebook §1 → build_protocol_variants"),
+    ("calibration_setup_matrix", "by_protocol (both)", "this notebook §1.1–1.9 (one cell each)"),
     ("crossplots_all_setups", "by_protocol (both)", "this notebook §1"),
     ("residual_vs_d2", "by_protocol (both)", "this notebook §1"),
     ("mac_slope_pivot", "by_protocol (both)", "this notebook §1"),
