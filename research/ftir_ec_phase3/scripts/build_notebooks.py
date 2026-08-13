@@ -156,6 +156,7 @@ SCRIPTS = {
     "23": ("run_ftir_23.py", "ftir_23_component_selection_by_protocol.ipynb"),
     "27": ("run_ftir_27.py", "ftir_27_chemspec_circularity.ipynb"),
     "28": ("run_ftir_28.py", "ftir_28_ma350_brc_falsification.ipynb"),
+    "31": ("run_ftir_31.py", "ftir_31_deck_figure_regeneration.ipynb"),
 }
 
 TLDR["21"] = """\
@@ -814,6 +815,24 @@ TAKEAWAYS["28"] = """\
   value. The headline numbers — 0.944 ± 0.060, −2.06 Mm⁻¹, 84.5%, +21.7 Mm⁻¹, 35.0%, ±1.3%,
   −1.0157 and −0.9674 — reproduce exactly."""
 
+
+TLDR["31"] = """\
+Every figure in the 12–13 Aug briefing decks is regenerated in this one executed
+notebook: the by_protocol set from committed ftir_21/22/23 tables, the deck-root set
+(filtering strip, matrix, AIRSpec explainers) from build_deck_figures, and the
+implied-MAC bridge, deployed crossplot, seasonal corrected spectra, peak-center panel
+and Adama/ETBI context rebuilt directly from committed tables with the deck's headline
+numbers asserted (median implied MAC 11.96 / Addis-like 10.05 at n = 6,503; deployed
+1.90x − 4.17 with the intercept identical at MAC 6; ETAD median Fabs 47.1 vs ETBI 26.9).
+The only deck images with no repo generator are the July-17 charcoal PDF extracts."""
+
+TAKEAWAYS["31"] = """\
+- One executed provenance record for every deck image; `output/plots/ftir31/figure_manifest.csv`
+  maps each figure to its generator.
+- The peak-center panel here is the stats-faithful dot/IQR form; the per-filter
+  histogram remains ftir_12's figure.
+- The seasonal panel is the corrected-spectra half (npz cache joined to committed
+  season labels); the raw half lives in ftir_17."""
 
 if __name__ == "__main__":
     for number in (sys.argv[1:] or list(SCRIPTS)):
