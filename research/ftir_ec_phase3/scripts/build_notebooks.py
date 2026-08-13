@@ -157,6 +157,7 @@ SCRIPTS = {
     "27": ("run_ftir_27.py", "ftir_27_chemspec_circularity.ipynb"),
     "28": ("run_ftir_28.py", "ftir_28_ma350_brc_falsification.ipynb"),
     "31": ("run_ftir_31.py", "ftir_31_deck_figure_regeneration.ipynb"),
+    "32": ("run_ftir_32.py", "ftir_32_cv_scheme_ablation.ipynb"),
 }
 
 TLDR["21"] = """\
@@ -833,6 +834,30 @@ TAKEAWAYS["31"] = """\
   histogram remains ftir_12's figure.
 - The seasonal panel is the corrected-spectra half (npz cache joined to committed
   season labels); the raw half lives in ftir_17."""
+
+TLDR["32"] = """\
+The fold-count objection is dead on the side that carries the leak claim:
+**interleaved-5 ≈ interleaved-10** (floor ratios 1.00–1.04 on all three cohorts), so the
+app protocol's optimism is a property of *interleaving*, not of its 10 folds — and the
+committed smoke inflation reproduces exactly at the committed configuration
+(grouped-5 155.4% vs interleaved-10 97.6% = ×1.59). One genuine nuance surfaced: the
+site-grouped floor is itself fold-count sensitive on site-concentrated cohorts
+(smoke grouped-10 = 86% vs grouped-5 = 155%) — more grouped splits keep more of the
+loading range in training each fold — so **5-fold grouping is the strictest, most
+deployment-like scheme of the four**. The composition cohorts barely move under any
+scheme (lowest-OC/EC 54–62%, +AIRSpec 62–73%): scheme-robustness is itself part of the
+cohort story."""
+
+TAKEAWAYS["32"] = """\
+- Interleaved count effect 1.00–1.04 → the leak is structural; changing the app to
+  5 folds would change nothing.
+- Grouped floors are count-sensitive where sites are concentrated (smoke ×0.55 going
+  5→10 splits; ~×0.87 for the composition cohorts): fewer sites leave per fold, so less
+  of the loading range is extrapolated. 5-fold grouping asks the hardest — most
+  Addis-like — question, which justifies the locked protocol.
+- k drifts with the grouped split count too (AIRSpec within-5% k: 5 → 18 going 5 → 10
+  splits): quote every k with its full scheme, folds included.
+- Interleaved curves are pooled PRESS (no SE band); grouped curves average per-fold RMSE."""
 
 if __name__ == "__main__":
     for number in (sys.argv[1:] or list(SCRIPTS)):
