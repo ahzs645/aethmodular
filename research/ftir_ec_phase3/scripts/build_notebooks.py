@@ -156,6 +156,9 @@ SCRIPTS = {
     "23": ("run_ftir_23.py", "ftir_23_component_selection_by_protocol.ipynb"),
     "29": ("run_ftir_29.py", "ftir_29_provisional_addis_ec_series.ipynb"),
     "30": ("run_ftir_30.py", "ftir_30_composition_case_and_its_limits.ipynb"),
+    "31": ("run_ftir_31.py", "ftir_31_deck_figure_regeneration.ipynb"),
+    "32": ("run_ftir_32.py", "ftir_32_cv_scheme_ablation.ipynb"),
+    "33": ("run_ftir_33.py", "ftir_33_shape_cohort_explainers.ipynb"),
 }
 
 TLDR["21"] = """\
@@ -703,6 +706,69 @@ TAKEAWAYS["30"] = """\
   validated at Addis's composition, in-domain at Addis's spectra, and unvalidated on
   Addis's continent — which is the quartz campaign's job description."""
 
+
+TLDR["31"] = """\
+Every figure in the 12–13 Aug briefing decks is regenerated in this one executed
+notebook: the by_protocol set from committed ftir_21/22/23 tables, the deck-root set
+(filtering strip, matrix, AIRSpec explainers) from build_deck_figures, and the
+implied-MAC bridge, deployed crossplot, seasonal corrected spectra, peak-center panel
+and Adama/ETBI context rebuilt directly from committed tables with the deck's headline
+numbers asserted (median implied MAC 11.96 / Addis-like 10.05 at n = 6,503; deployed
+1.90x − 4.17 with the intercept identical at MAC 6; ETAD median Fabs 47.1 vs ETBI 26.9).
+The only deck images with no repo generator are the July-17 charcoal PDF extracts."""
+
+TAKEAWAYS["31"] = """\
+- One executed provenance record for every deck image; `output/plots/ftir31/figure_manifest.csv`
+  maps each figure to its generator.
+- The peak-center panel here is the stats-faithful dot/IQR form; the per-filter
+  histogram remains ftir_12's figure.
+- The seasonal panel is the corrected-spectra half (npz cache joined to committed
+  season labels); the raw half lives in ftir_17."""
+
+TLDR["32"] = """\
+The fold-count objection is dead on the side that carries the leak claim:
+**interleaved-5 ≈ interleaved-10** (floor ratios 1.00–1.04 on all three cohorts), so the
+app protocol's optimism is a property of *interleaving*, not of its 10 folds — and the
+committed smoke inflation reproduces exactly at the committed configuration
+(grouped-5 155.4% vs interleaved-10 97.6% = ×1.59). One genuine nuance surfaced: the
+site-grouped floor is itself fold-count sensitive on site-concentrated cohorts
+(smoke grouped-10 = 86% vs grouped-5 = 155%) — more grouped splits keep more of the
+loading range in training each fold — so **5-fold grouping is the strictest, most
+deployment-like scheme of the four**. The composition cohorts barely move under any
+scheme (lowest-OC/EC 54–62%, +AIRSpec 62–73%): scheme-robustness is itself part of the
+cohort story."""
+
+TAKEAWAYS["32"] = """\
+- Interleaved count effect 1.00–1.04 → the leak is structural; changing the app to
+  5 folds would change nothing.
+- Grouped floors are count-sensitive where sites are concentrated (smoke ×0.55 going
+  5→10 splits; ~×0.87 for the composition cohorts): fewer sites leave per fold, so less
+  of the loading range is extrapolated. 5-fold grouping asks the hardest — most
+  Addis-like — question, which justifies the locked protocol.
+- k drifts with the grouped split count too (AIRSpec within-5% k: 5 → 18 going 5 → 10
+  splits): quote every k with its full scheme, folds included.
+- Interleaved curves are pooled PRESS (no SE band); grouped curves average per-fold RMSE."""
+
+TLDR["33"] = """\
+The two shape-based cohorts get the same explainer treatment as filtering_by_ocec, from
+committed selection tables only. Ethiopia-shaped smoke = the 300 smoke-pool filters
+nearest the Addis medians in (CH, carbonyl/CH, 1600/CH) band-feature space (287 inside
+the Addis 5–95% box, rounded to 300). Spectral analogs = the top 500 of the 13,010-filter
+TOR-eligible pool ranked by mean percentile of nearest-Addis score-space D² and
+VIP-weighted spectral RMSE (the locked 500 contains ftir_09's superseded 400). On the
+compositional ruler both selections sit at the pool's OC/EC median — overlap with the
+lowest-OC/EC 800 is 1/300 and 17/500 — and both fail the locked site-held-out TOR test
+(Ethiopia-shaped R² 0.00, slope −2.20; analogs flagged no-skill), reproduced here with
+the fixed-cohort crossplots asserting the matrix numbers (1.59x − 3.67, 2.48x − 6.35)."""
+
+TAKEAWAYS["33"] = """\
+- Shape-similarity (band features or score space) does not select for composition:
+  the axis that transfers to Addis is OC/EC, and neither shape cohort finds it.
+- The analog cohort's membership runs through a fitted PLS model (k-dependent) —
+  unlike the OC/EC cut, the selection itself is not protocol-free.
+- Selection tables: smoke_cohort_spectral_selection.csv (906 rows, flags),
+  selected_improve_addis_analogs.csv (400 + metrics), locked_analog_train_test_split.csv
+  (the locked 500 with the site-disjoint split)."""
 
 if __name__ == "__main__":
     for number in (sys.argv[1:] or list(SCRIPTS)):
