@@ -225,7 +225,9 @@ show(OUT / "three_cohorts_one_ruler.png", "three cohorts on the OC/EC ruler")
 # site-held-out protocol, Ethiopia-shaped smoke has **no held-out TOR skill**
 # (R² 0.00, slope −2.20) and the analogs carry the ⚠ for the same reason — while the
 # compositional cohort passes (R² 0.911). The crossplots below are the fixed-cohort
-# fits, reproducing the matrix numbers exactly.
+# fits in **both component-protocol variants** (the app protocol has no TOR test by
+# construction — its k values are 17 and 9 against the site-held-out 10 and 4), each
+# asserted against the committed ftir_21 metrics table.
 
 # %%
 summary = pd.read_csv("output/tables/ftir21/calibration_summary_by_mode.csv")
@@ -244,29 +246,44 @@ fixed = predictions[predictions.MediaId.isin(
     set(phase2.dropna(axis=0, how="any").MediaId))].reset_index(drop=True)
 assert len(fixed) == 190
 
-fig, axes = plt.subplots(1, 2, figsize=(11.5, 5.0), sharex=True, sharey=True)
+metrics = pd.read_csv("output/tables/ftir21/addis_metrics_by_mode.csv")
+mfix = metrics[(metrics.MAC_m2_g == 10)
+               & (metrics.evaluation_set == "fixed phase-2 cohort")].set_index(["cohort", "mode"])
 x = fixed.Fabs.to_numpy(float) / 10.0
-expect = {"Ethiopia-shaped smoke (300)": (1.59, -3.67, BLUE),
-          "Spectral analogs (locked 500)": (2.48, -6.35, PURPLE)}
-for ax, (name, (es, eb, color)) in zip(axes, expect.items()):
-    y = fixed[f"{name} [site_heldout]"].to_numpy(float)
-    s, b = np.polyfit(x, y, 1)
-    assert (round(s, 2), round(b, 2)) == (es, eb), (name, s, b)
-    hi = x.max() * 1.05
-    ax.scatter(x, y, s=14, color=color, alpha=0.55, lw=0)
-    ax.plot([0, hi], [b, b + s * hi], color=INK, lw=2)
-    ax.plot([0, hi], [0, hi], "--", color=GREY, lw=1)
-    ax.axhline(0, color="#CCCCCC", lw=0.7)
-    ax.set_title(f"{name}  ⚠ fails TOR\ny = {s:.2f}x {b:+.2f}", fontsize=11)
-    ax.set_xlabel("HIPS EC-equivalent, Fabs/10 (µg/m³)")
-    ax.set_xlim(0, hi)
-axes[0].set_ylabel("Predicted FTIR EC (µg/m³)")
-fig.suptitle("Both shape-based cohorts at Addis — fixed 190-filter cohort, site-held-out, MAC = 10",
-             fontsize=12.5)
-fig.tight_layout()
-fig.savefig(OUT / "shape_cohorts_crossplots.png", dpi=170)
-plt.close(fig)
-show(OUT / "shape_cohorts_crossplots.png", "shape-cohort crossplots (fixed cohort)")
+COHORTS = {"Ethiopia-shaped smoke (300)": BLUE,
+           "Spectral analogs (locked 500)": PURPLE}
+
+def fig_shape_crossplots(mode):
+    tag = ("⚠ fails TOR" if mode == "site_heldout"
+           else "no TOR test exists (app protocol)")
+    label = "site-held-out" if mode == "site_heldout" else "calibration-app"
+    fig, axes = plt.subplots(1, 2, figsize=(11.5, 5.0), sharex=True, sharey=True)
+    for ax, (name, color) in zip(axes, COHORTS.items()):
+        y = fixed[f"{name} [{mode}]"].to_numpy(float)
+        s, b = np.polyfit(x, y, 1)
+        row = mfix.loc[(name, mode)]
+        # the refit must reproduce the committed metrics table for this mode
+        assert (round(s, 2), round(b, 2)) == (round(row.slope, 2), round(row.intercept, 2)), \
+            (name, mode, s, b, row.slope, row.intercept)
+        hi = x.max() * 1.05
+        ax.scatter(x, y, s=14, color=color, alpha=0.55, lw=0)
+        ax.plot([0, hi], [b, b + s * hi], color=INK, lw=2)
+        ax.plot([0, hi], [0, hi], "--", color=GREY, lw=1)
+        ax.axhline(0, color="#CCCCCC", lw=0.7)
+        ax.set_title(f"{name}  {tag}\ny = {s:.2f}x {b:+.2f} · k = {int(row.k)}", fontsize=11)
+        ax.set_xlabel("HIPS EC-equivalent, Fabs/10 (µg/m³)")
+        ax.set_xlim(0, hi)
+    axes[0].set_ylabel("Predicted FTIR EC (µg/m³)")
+    fig.suptitle(f"Both shape-based cohorts at Addis — fixed 190-filter cohort, "
+                 f"{label} protocol, MAC = 10", fontsize=12.5)
+    fig.tight_layout()
+    path = OUT / f"shape_cohorts_crossplots_{mode}.png"
+    fig.savefig(path, dpi=170)
+    plt.close(fig)
+    return path
+
+show(fig_shape_crossplots("site_heldout"), "shape-cohort crossplots — site-held-out")
+show(fig_shape_crossplots("app"), "shape-cohort crossplots — calibration-app variant")
 
 # %% [markdown]
 # ## Takeaways
