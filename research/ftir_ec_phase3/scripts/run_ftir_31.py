@@ -280,6 +280,70 @@ show(fig_estimators("site_heldout"), "regression estimators — site-held-out")
 show(fig_estimators("app"), "regression estimators — calibration-app variant")
 
 # %% [markdown]
+# #### 1.11 The MAC-effect pivot, redone with Deming regression
+#
+# Same layout as 1.9 (filled/solid = MAC 10, open/dashed = MAC 6, diamond = the shared
+# intercept), but every fit is **Deming** instead of OLS. One methodological point makes
+# this figure work: rescaling x from Fabs/10 to Fabs/6 also rescales σ_x, so the Deming
+# error-variance ratio must scale with MAC² — λ(MAC 6) = λ* × (6/10)² ≈ 1.07 against
+# λ* = 2.96 at MAC 10. Done that way, the fit is the same problem in different x-units,
+# and the committed algebra survives Deming exactly: **the intercept cannot move, the
+# slope scales by exactly 0.6** — asserted per setup below. (Keeping λ fixed at 2.96 for
+# both MACs would be an apples-to-oranges error model and would falsely "break" the
+# pivot.) Fits on the fixed 190-filter cohort, like everything else in this notebook.
+
+# %%
+LAMBDA10 = DELTA               # 2.96 at MAC 10
+LAMBDA6 = DELTA * (6 / 10) ** 2
+
+def fig_mac_effect_deming(mode):
+    fabs = est_data.Fabs.to_numpy(float)
+    x10, x6 = fabs / 10, fabs / 6
+    fig, axes = plt.subplots(2, 3, figsize=(14.0, 9.0))
+    for ax, cohort in zip(axes.flat, bpv.COHORT_ORDER):
+        colour = bpv.SETUP_COLOUR[cohort]
+        y = est_data[f"{cohort} [{mode}]"].to_numpy(float)
+        s10, b10 = _deming(x10, y, LAMBDA10)
+        s6, b6 = _deming(x6, y, LAMBDA6)
+        # the pivot survives Deming when lambda scales with MAC^2:
+        assert abs(b10 - b6) < 1e-9, (cohort, b10, b6)
+        assert abs(s6 - s10 * 0.6) < 1e-9, (cohort, s10, s6)
+        so10, bo10 = np.polyfit(x10, y, 1)
+        hi = float(max(x6.max(), y.max())) * 1.05
+        lo = min(0.0, b10) - 0.8
+        ax.plot([0, hi], [0, hi], "--", color="0.6", lw=1, zorder=1)
+        ax.axhline(0, color="0.85", lw=0.9, zorder=0)
+        ax.scatter(x10, y, s=15, alpha=0.42, color=colour, lw=0)
+        ax.scatter(x6, y, s=15, alpha=0.5, facecolors="none", edgecolors=colour, lw=0.6)
+        ax.plot([0, hi], [b10, s10 * hi + b10], color=colour, lw=2.0, zorder=4)
+        ax.plot([0, hi], [b6, s6 * hi + b6], "--", color=colour, lw=1.6, zorder=4)
+        ax.scatter([0], [b10], marker="D", s=44, color=bpv.INK, zorder=5)
+        ax.set_title((cohort + ("  ⚠" if cohort in bpv.FAILS_TOR else "")).replace(" (", "\n("),
+                     fontsize=10, color=bpv.INK)
+        ax.text(0.04, 0.96,
+                f"Deming intercept {b10:+.2f} (both MACs)\n"
+                f"Deming slope {s10:.2f} → {s6:.2f} @ MAC 6\n"
+                f"OLS intercept {bo10:+.2f} (ref.)",
+                transform=ax.transAxes, va="top", fontsize=8.4,
+                bbox=dict(facecolor="white", edgecolor="0.85", alpha=0.93))
+        ax.set_xlim(0, hi)
+        ax.set_ylim(lo, hi)
+    for ax in axes[1]:
+        ax.set_xlabel("HIPS EC-equivalent, Fabs/MAC (µg/m³)")
+    for ax in axes[:, 0]:
+        ax.set_ylabel("Predicted FTIR EC (µg/m³)")
+    bpv._stamp(fig, "The MAC fix under Deming (λ scaled with MAC²) — "
+                    "filled/solid MAC 10, open/dashed MAC 6", mode)
+    fig.tight_layout()
+    path = OUT / f"mac_effect_deming_{mode}.png"
+    fig.savefig(path, dpi=170)
+    plt.close(fig)
+    return path
+
+show(fig_mac_effect_deming("site_heldout"), "MAC effect, Deming — site-held-out")
+show(fig_mac_effect_deming("app"), "MAC effect, Deming — calibration-app variant")
+
+# %% [markdown]
 # ### 2. The deck-root figures — one cell per figure
 #
 # These re-run the `build_deck_figures.py` builders (Drive `local_db` for the pool
@@ -556,6 +620,7 @@ manifest = pd.DataFrame([
     ("peak_center_1600 (stats panel)", "ftir31", "this notebook §6; histogram = ftir_12"),
     ("adama_etbi_context", "ftir31", "this notebook §7"),
     ("regression estimators (OLS / Deming / weighted / robust)", "ftir31", "this notebook §1.10 — both protocols"),
+    ("MAC effect under Deming (λ ∝ MAC²)", "ftir31", "this notebook §1.11 — both protocols"),
     ("July-17 charcoal panels (Ann appendix)", "external PDF", "not a repo figure — no notebook can remake it"),
 ], columns=["figure", "written to", "provenance"])
 manifest.to_csv(OUT / "figure_manifest.csv", index=False)
