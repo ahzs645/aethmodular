@@ -241,16 +241,19 @@ def fig_estimators(mode):
         x, yv = x_all[ok], y[ok]
         ax.scatter(x, yv, s=10, color="#5a7d9a", alpha=0.5, edgecolor="none", zorder=1)
         hi = x.max() * 1.05
-        lines = []
-        for name, colr, ls, fn in ESTIMATORS:
-            s, b = fn(x, yv)
-            ax.plot([0, hi], [b, b + s * hi], color=colr, ls=ls, lw=1.8, zorder=3)
-            lines.append(f"{name.split(' (')[0]:<16s} {s:5.2f}x {b:+5.2f}")
         ax.axhline(0, color="#CCCCCC", lw=0.7, zorder=0)
         ax.set_title(col.replace(f" [{mode}]", ""), fontsize=10)
-        ax.text(0.02, 0.97, "\n".join(lines), transform=ax.transAxes, va="top",
-                fontsize=7.5, family="monospace",
-                bbox=dict(fc="white", ec="#DDE0DC", lw=0.5, alpha=0.9))
+        box_h = 0.062 * len(ESTIMATORS) + 0.03
+        ax.add_patch(plt.Rectangle((0.015, 0.985 - box_h), 0.47, box_h,
+                     transform=ax.transAxes, fc="white", ec="#DDE0DC", lw=0.5,
+                     alpha=0.92, zorder=3))
+        for k, (name, colr, ls, fn) in enumerate(ESTIMATORS):
+            s, b = fn(x, yv)
+            ax.plot([0, hi], [b, b + s * hi], color=colr, ls=ls, lw=1.8, zorder=2.5)
+            ax.text(0.03, 0.972 - 0.062 * k,
+                    f"{name.split(' (')[0]:<16s}{s:5.2f}x {b:+5.2f}",
+                    transform=ax.transAxes, va="top", fontsize=7.5,
+                    family="monospace", color=colr, fontweight="bold", zorder=4)
         ax.set_xlim(0, hi)
     for ax in axes[1]:
         ax.set_xlabel("HIPS EC-equivalent, Fabs/10 (µg/m³)")
