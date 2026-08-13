@@ -163,6 +163,120 @@ show(_p["site_heldout"], "MAC effect (all setups) — site-held-out")
 show(_p["app"], "MAC effect (all setups) — calibration-app variant")
 
 # %% [markdown]
+# #### 1.10 Six-setup crossplots under four regression estimators
+#
+# Ann's estimator request (12 Aug), made visual: every crossplot in this notebook uses
+# **OLS** as its headline fit, but OLS assumes all the error lives in y. Since the
+# intercept is the quantity under investigation, the same six setups are refit here with:
+#
+# - **OLS** — ordinary least squares (all error in y);
+# - **Deming** — errors in both axes, with the measured error-variance ratio
+#   λ* = (σ_y/σ_x)² ≈ 2.96 (σ_x = 0.308 µg/m³ from the `HIPS_Uncertainty` parameter row
+#   ÷ MAC 10; σ_y ≈ 0.531 µg/m³ from the corrected model's held-out TOR RMSE — the
+#   committed convention from AGENTS.md), applied uniformly across setups for
+#   comparability;
+# - **Weighted Deming** — Deming when the error variance grows with concentration
+#   (constant-CV, Linnet-style iterative reweighting on the estimated true level);
+# - **Robust Deming** — Deming with Huber down-weighting of extreme/outlier filters.
+#
+# Fits use the fixed 190-filter cohort, so the OLS rows reproduce the setup-matrix
+# numbers exactly (asserted below for the corrected setup).
+#
+# Expected reading: every errors-in-variables correction steepens the slope and pushes
+# the intercept **more negative** — so the OLS numbers quoted everywhere else are the
+# conservative bound on the offset, not an overstatement.
+
+# %%
+DELTA = 2.96  # λ* = (σ_y/σ_x)², measured — see AGENTS.md "For HIPS you do know sigma_x"
+
+# Fit on the fixed 190-filter cohort — the same cohort behind every intercept quoted in
+# the decks — so the OLS row here reproduces the matrix numbers exactly.
+_phase2 = pd.read_csv(Path("..") / "ftir_hips_chem" / "output" / "tables"
+                      / "pls_calibration_phase2" / "addis_calibration_predictions.csv")
+FIXED_IDS = set(_phase2.dropna(axis=0, how="any").MediaId)
+est_data = predictions[predictions.MediaId.isin(FIXED_IDS)].reset_index(drop=True)
+assert len(est_data) == 190, len(est_data)
+
+def _deming(x, y, delta=DELTA, w=None):
+    w = np.ones_like(x) if w is None else w
+    xb, yb = np.average(x, weights=w), np.average(y, weights=w)
+    sxx = np.average((x - xb) ** 2, weights=w)
+    syy = np.average((y - yb) ** 2, weights=w)
+    sxy = np.average((x - xb) * (y - yb), weights=w)
+    slope = ((syy - delta * sxx)
+             + np.sqrt((syy - delta * sxx) ** 2 + 4 * delta * sxy ** 2)) / (2 * sxy)
+    return slope, yb - slope * xb
+
+def _weighted_deming(x, y, delta=DELTA, iters=40):
+    slope, inter = _deming(x, y, delta)
+    for _ in range(iters):
+        latent = (delta * x + slope * (y - inter)) / (delta + slope ** 2)
+        w = 1.0 / np.maximum(latent, 0.25) ** 2   # constant-CV weights on the level
+        slope, inter = _deming(x, y, delta, w)
+    return slope, inter
+
+def _robust_deming(x, y, delta=DELTA, iters=40, c=1.345):
+    slope, inter = _deming(x, y, delta)
+    for _ in range(iters):
+        r = y - (inter + slope * x)
+        scale = 1.4826 * np.median(np.abs(r - np.median(r))) or 1.0
+        w = np.minimum(1.0, c * scale / np.maximum(np.abs(r), 1e-9))
+        slope, inter = _deming(x, y, delta, w)
+    return slope, inter
+
+ESTIMATORS = [
+    ("OLS", GREY, "-", lambda x, y: tuple(np.polyfit(x, y, 1))),
+    ("Deming (λ* = 2.96)", BLUE, "-", _deming),
+    ("Weighted Deming", PURPLE, "--", _weighted_deming),
+    ("Robust Deming", GOLD_ := "#B0792B", "-.", _robust_deming),
+]
+
+def fig_estimators(mode):
+    cols = [c for c in est_data.columns if c.endswith(f"[{mode}]")]
+    x_all = est_data.Fabs.to_numpy(float) / 10.0
+    fig, axes = plt.subplots(2, 3, figsize=(13.5, 8.2), sharex=True)
+    for ax, col in zip(axes.ravel(), cols):
+        y = est_data[col].to_numpy(float)
+        ok = np.isfinite(y) & np.isfinite(x_all)
+        x, yv = x_all[ok], y[ok]
+        ax.scatter(x, yv, s=10, color="#5a7d9a", alpha=0.5, edgecolor="none", zorder=1)
+        hi = x.max() * 1.05
+        lines = []
+        for name, colr, ls, fn in ESTIMATORS:
+            s, b = fn(x, yv)
+            ax.plot([0, hi], [b, b + s * hi], color=colr, ls=ls, lw=1.8, zorder=3)
+            lines.append(f"{name.split(' (')[0]:<16s} {s:5.2f}x {b:+5.2f}")
+        ax.axhline(0, color="#CCCCCC", lw=0.7, zorder=0)
+        ax.set_title(col.replace(f" [{mode}]", ""), fontsize=10)
+        ax.text(0.02, 0.97, "\n".join(lines), transform=ax.transAxes, va="top",
+                fontsize=7.5, family="monospace",
+                bbox=dict(fc="white", ec="#DDE0DC", lw=0.5, alpha=0.9))
+        ax.set_xlim(0, hi)
+    for ax in axes[1]:
+        ax.set_xlabel("HIPS EC-equivalent, Fabs/10 (µg/m³)")
+    for ax in axes[:, 0]:
+        ax.set_ylabel("Predicted FTIR EC (µg/m³)")
+    handles = [plt.Line2D([], [], color=c, ls=ls, lw=2, label=n)
+               for n, c, ls, _ in ESTIMATORS]
+    fig.legend(handles=handles, loc="lower center", ncol=4, frameon=False, fontsize=10)
+    fig.suptitle(f"Four regression estimators per setup — {mode.replace('_', '-')} "
+                 f"protocol, MAC = 10, fixed cohort (n = {ok.sum()} per panel)", fontsize=13)
+    fig.tight_layout(rect=(0, 0.045, 1, 1))
+    path = OUT / f"regression_estimators_{mode}.png"
+    fig.savefig(path, dpi=170)
+    plt.close(fig)
+    return path
+
+# consistency lock: the OLS fit here must reproduce the committed matrix numbers
+_x = est_data.Fabs.to_numpy(float) / 10.0
+_y = est_data["Lowest-OC/EC + AIRSpec (800) [site_heldout]"].to_numpy(float)
+_s, _b = np.polyfit(_x, _y, 1)
+assert (round(_s, 2), round(_b, 2)) == (0.86, -1.62), (_s, _b)
+
+show(fig_estimators("site_heldout"), "regression estimators — site-held-out")
+show(fig_estimators("app"), "regression estimators — calibration-app variant")
+
+# %% [markdown]
 # ### 2. The deck-root figures — one cell per figure
 #
 # These re-run the `build_deck_figures.py` builders (Drive `local_db` for the pool
@@ -438,6 +552,7 @@ manifest = pd.DataFrame([
     ("addis_spectra_by_season (corrected)", "ftir31", "this notebook §5 (npz + committed seasons)"),
     ("peak_center_1600 (stats panel)", "ftir31", "this notebook §6; histogram = ftir_12"),
     ("adama_etbi_context", "ftir31", "this notebook §7"),
+    ("regression estimators (OLS / Deming / weighted / robust)", "ftir31", "this notebook §1.10 — both protocols"),
     ("July-17 charcoal panels (Ann appendix)", "external PDF", "not a repo figure — no notebook can remake it"),
 ], columns=["figure", "written to", "provenance"])
 manifest.to_csv(OUT / "figure_manifest.csv", index=False)
