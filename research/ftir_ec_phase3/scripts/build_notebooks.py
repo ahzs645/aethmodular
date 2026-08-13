@@ -158,6 +158,7 @@ SCRIPTS = {
     "28": ("run_ftir_28.py", "ftir_28_ma350_brc_falsification.ipynb"),
     "31": ("run_ftir_31.py", "ftir_31_deck_figure_regeneration.ipynb"),
     "32": ("run_ftir_32.py", "ftir_32_cv_scheme_ablation.ipynb"),
+    "33": ("run_ftir_33.py", "ftir_33_shape_cohort_explainers.ipynb"),
 }
 
 TLDR["21"] = """\
@@ -858,6 +859,27 @@ TAKEAWAYS["32"] = """\
 - k drifts with the grouped split count too (AIRSpec within-5% k: 5 → 18 going 5 → 10
   splits): quote every k with its full scheme, folds included.
 - Interleaved curves are pooled PRESS (no SE band); grouped curves average per-fold RMSE."""
+
+TLDR["33"] = """\
+The two shape-based cohorts get the same explainer treatment as filtering_by_ocec, from
+committed selection tables only. Ethiopia-shaped smoke = the 300 smoke-pool filters
+nearest the Addis medians in (CH, carbonyl/CH, 1600/CH) band-feature space (287 inside
+the Addis 5–95% box, rounded to 300). Spectral analogs = the top 500 of the 13,010-filter
+TOR-eligible pool ranked by mean percentile of nearest-Addis score-space D² and
+VIP-weighted spectral RMSE (the locked 500 contains ftir_09's superseded 400). On the
+compositional ruler both selections sit at the pool's OC/EC median — overlap with the
+lowest-OC/EC 800 is 1/300 and 17/500 — and both fail the locked site-held-out TOR test
+(Ethiopia-shaped R² 0.00, slope −2.20; analogs flagged no-skill), reproduced here with
+the fixed-cohort crossplots asserting the matrix numbers (1.59x − 3.67, 2.48x − 6.35)."""
+
+TAKEAWAYS["33"] = """\
+- Shape-similarity (band features or score space) does not select for composition:
+  the axis that transfers to Addis is OC/EC, and neither shape cohort finds it.
+- The analog cohort's membership runs through a fitted PLS model (k-dependent) —
+  unlike the OC/EC cut, the selection itself is not protocol-free.
+- Selection tables: smoke_cohort_spectral_selection.csv (906 rows, flags),
+  selected_improve_addis_analogs.csv (400 + metrics), locked_analog_train_test_split.csv
+  (the locked 500 with the site-disjoint split)."""
 
 if __name__ == "__main__":
     for number in (sys.argv[1:] or list(SCRIPTS)):
