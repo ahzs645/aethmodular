@@ -125,3 +125,5 @@ tr:hover{background:#f3f8fd}
   .plot.tall{height:340px}
   .topbar .sub{display:block;margin-top:2px}
 }
+
+.pill button:disabled{opacity:.35;cursor:default}

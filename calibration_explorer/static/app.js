@@ -48,11 +48,27 @@ function cfg(){
     spectra: $('spectra').value,
     mode: $('mode').value,
     lot: $('lot').value,
+    target: $('target').value || 'addis',
   };
 }
-function metricRow(m){
-  if(!m) return null;
-  return m.find(r => r.evaluation_set === toggles.evalset && String(r.MAC) == (toggles.mac === '10' ? '10' : '6'));
+const GROUP_PALETTE = ['#2C6E9E', '#B23327', '#7A4FA3', '#8F8C84', '#C49442', '#548C66'];
+function groupColour(g, order){
+  const k = Object.keys(SEASON_COLOUR).find(k => String(g).startsWith(k));
+  return k ? SEASON_COLOUR[k] : GROUP_PALETTE[order % GROUP_PALETTE.length];
+}
+function metricRow(m, refKind){
+  if(!m || !m.length) return null;
+  const kind = refKind ?? (last && last.target ? last.target.ref_kind : 'fabs');
+  const hasFixed = m.some(r => r.evaluation_set === 'fixed');
+  const es = (toggles.evalset === 'fixed' && hasFixed) ? 'fixed' : 'all';
+  const sub = m.filter(r => r.evaluation_set === es);
+  if(kind === 'ec') return sub.find(r => r.MAC == null) || sub[0];
+  return sub.find(r => r.MAC === parseFloat(toggles.mac)) || sub[0];
+}
+function updateToggles(){
+  const t = last && last.target;
+  $('mac').querySelectorAll('button').forEach(b => b.disabled = !!(t && t.ref_kind === 'ec'));
+  $('evalset').querySelectorAll('button').forEach(b => b.disabled = !!(t && !t.has_fixed));
 }
 function plot(id, data, layout){
   const el = $(id);
@@ -103,6 +119,8 @@ function applyPreset(p){
   if(!$('selection_space').disabled) $('selection_space').value = p.selection_space || 'raw';
   $('spectra').value = p.spectra || 'raw';
   $('lot').value = p.lot || 'all';
+  if([...$('target').options].some(o => o.value === (p.target || 'addis')))
+    $('target').value = p.target || 'addis';
   $('mode').value = p.mode || 'site_heldout';
   $('kmode').value = p.kmode || 'auto'; $('kmode').onchange();
   if(p.kmode === 'manual' && p.k) $('kval').value = p.k;
@@ -192,6 +210,10 @@ async function poll(){
   $('cohort').innerHTML = Object.entries(s.cohorts).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
   $('lot').innerHTML = '<option value="all">all</option>' +
     (s.lots || []).map(l => `<option value="${l}">${l}</option>`).join('');
+  const curT = $('target').value;
+  $('target').innerHTML = Object.entries(s.targets || {addis:'Addis (ETAD) — built-in'})
+    .map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+  if([...$('target').options].some(o => o.value === curT)) $('target').value = curT;
   ready = true;
   $('cohort').value = 'ocec'; $('cohort').onchange();
   $('checks').innerHTML = 'cohort checks: ' + s.checks.map(c =>
@@ -202,6 +224,10 @@ async function poll(){
 }
 poll();
 placeholder('p_resid', 'Residuals appear here after a run.');
+placeholder('p_series', 'The dated EC series appears here after a run.');
+placeholder('p_vsdeployed', 'The deployed-EC comparison appears here after a run.');
+placeholder('p_composition', 'The composition ruler appears once data is loaded.');
+$('target').onchange = () => { drawCohortInfo(); };
 
 /* ---- run ------------------------------------------------------------------- */
 async function run(){
@@ -235,7 +261,8 @@ $('sweep').onclick = async () => {
 /* ---- drawing --------------------------------------------------------------- */
 function redraw(){
   if(!last) return;
-  drawStats(); drawCurve(); drawCross(); drawMetrics(); drawPins();
+  updateToggles();
+  drawStats(); drawCurve(); drawCross(); drawMetrics(); drawSeries(); drawPins();
 }
 
 function drawStats(){
@@ -247,7 +274,8 @@ function drawStats(){
     <b>${j.cohort_label}</b><br>
     select on: <b>${c.selection_space === 'airspec' ? 'AIRSpec-corrected' : 'raw'}</b>
     · calibrate on: <b>${SPECTRA_LABEL[c.spectra] || c.spectra}</b><br>
-    protocol: <b>${c.mode === 'app' ? 'Calibration app' : 'Site-held-out'}</b><br>
+    protocol: <b>${c.mode === 'app' ? 'Calibration app' : 'Site-held-out'}</b>
+    · target: <b>${j.target ? j.target.label : 'Addis'}</b><br>
     n = <b>${j.n_cohort}</b> filters, ${j.n_train_sites} sites · n fitted = ${j.n_train}<br>
     k = <b>${j.k}</b> ${j.k === j.auto_k ? '(rule choice)' : '(manual; rule picks ' + j.auto_k + ')'}<br>
     RMSECV floor: ${j.rmsecv_floor} µg (${j.pct_rmsecv_floor}% of mean loading)<br>
@@ -281,17 +309,30 @@ function drawCurve(){
   });
 }
 
+function evalContext(){
+  const t = last.target, e = last.eval;
+  const isFabs = t.ref_kind === 'fabs';
+  const mac = isFabs ? parseFloat(toggles.mac) : 1;
+  const useFixed = toggles.evalset === 'fixed' && t.has_fixed;
+  const idx = e.ref.map((_, i) => i).filter(i => !useFixed || e.fixed[i]);
+  const xDesc = isFabs ? `HIPS EC-equivalent, Fabs/${mac} (µg/m³)` : 'Reference EC (µg/m³)';
+  const setDesc = useFixed ? 'fixed cohort' : 'all pairs';
+  return {t, e, isFabs, mac, useFixed, idx, xDesc, setDesc};
+}
+function groupTraces(idx, e, xOf, yOf){
+  const byGroup = {};
+  idx.forEach(i => { (byGroup[e.group[i]] = byGroup[e.group[i]] || []).push(i); });
+  return Object.entries(byGroup).map(([g, ii], gi) => ({
+    x: ii.map(xOf), y: ii.map(yOf), mode:'markers', name:g,
+    marker:{size:6, color:groupColour(g, gi), opacity:.65}, type:'scatter'}));
+}
+
 function drawCross(){
-  const a = last.addis, mac = parseFloat(toggles.mac);
-  const useFixed = toggles.evalset === 'fixed';
-  $('cap_cross').textContent = `Addis crossplot — MAC ${mac} · ${useFixed ? 'fixed 190' : 'all pairs'}`;
-  const idx = a.fabs.map((_, i) => i).filter(i => !useFixed || a.fixed[i]);
-  const bySeason = {};
-  idx.forEach(i => { (bySeason[a.season[i]] = bySeason[a.season[i]] || []).push(i); });
-  const data = Object.entries(bySeason).map(([s, ii]) => ({
-    x: ii.map(i => a.fabs[i] / mac), y: ii.map(i => a.pred[i]), mode:'markers', name:s,
-    marker:{size:6, color:seasonColour(s), opacity:.65}, type:'scatter'}));
-  const xs = idx.map(i => a.fabs[i] / mac), ys = idx.map(i => a.pred[i]);
+  const {t, e, isFabs, mac, idx, xDesc, setDesc} = evalContext();
+  $('cap_cross').textContent =
+    `${t.label} crossplot — ${isFabs ? 'MAC ' + mac : 'EC reference'} · ${setDesc}`;
+  const data = groupTraces(idx, e, i => e.ref[i] / mac, i => e.pred[i]);
+  const xs = idx.map(i => e.ref[i] / mac), ys = idx.map(i => e.pred[i]);
   const hi = Math.max(...xs, ...ys) * 1.06, lo = Math.min(0, ...ys) * 1.05;
   data.push({x:[0, hi], y:[0, hi], mode:'lines', line:{dash:'dash', color:'#999', width:1}, name:'1:1', type:'scatter'});
   const m = metricRow(last.metrics);
@@ -302,34 +343,89 @@ function drawCross(){
       name:`${toggles.est === 'deming' ? 'Deming' : 'OLS'}: y=${sl.toFixed(2)}x${ic >= 0 ? '+' : ''}${ic.toFixed(2)}`, type:'scatter'});
   }
   plot('p_cross', data, {
-    xaxis:{title:`HIPS EC-equivalent, Fabs/${mac} (µg/m³)`, range:[0, hi]},
+    xaxis:{title:xDesc, range:[0, hi]},
     yaxis:{title:'Predicted FTIR EC (µg/m³)', range:[lo, hi]},
     margin:{t:52, r:10, b:45, l:55}, legend:LEGEND_TOP});
-  drawResiduals(idx, mac);
+  drawResiduals();
 }
 
-function drawResiduals(idx, mac){
+function drawResiduals(){
   // the meeting's residual check: does the correction remove the curve?
-  const a = last.addis;
-  $('cap_resid').textContent =
-    `Residuals (predicted − Fabs/${mac}) vs HIPS — ${toggles.evalset === 'fixed' ? 'fixed 190' : 'all pairs'}`;
-  const bySeason = {};
-  idx.forEach(i => { (bySeason[a.season[i]] = bySeason[a.season[i]] || []).push(i); });
-  const data = Object.entries(bySeason).map(([s, ii]) => ({
-    x: ii.map(i => a.fabs[i] / mac), y: ii.map(i => a.pred[i] - a.fabs[i] / mac),
-    mode:'markers', name:s, marker:{size:6, color:seasonColour(s), opacity:.65}, type:'scatter'}));
+  const {e, mac, idx, xDesc, setDesc} = evalContext();
+  $('cap_resid').textContent = `Residuals (predicted − reference) vs reference — ${setDesc}`;
+  const data = groupTraces(idx, e, i => e.ref[i] / mac, i => e.pred[i] - e.ref[i] / mac);
   plot('p_resid', data, {
-    xaxis:{title:`HIPS EC-equivalent, Fabs/${mac} (µg/m³)`},
+    xaxis:{title:xDesc},
     yaxis:{title:'residual (µg/m³)', zeroline:true, zerolinecolor:'#22252A', zerolinewidth:1.5},
     margin:{t:30, r:10, b:42, l:55}, legend:LEGEND_TOP});
 }
 
+function drawSeries(){
+  const {e, t} = {e: last.eval, t: last.target};
+  const dated = e.date ? e.date.map((d, i) => d ? {d: new Date(d), i} : null).filter(Boolean) : [];
+  if(!dated.length){
+    $('p_series').innerHTML = '<div class="ph">No dates for this target — add a Date column to reference.csv.</div>';
+    $('seriesinfo').querySelector('tbody').innerHTML = '';
+    $('p_vsdeployed').innerHTML = '<div class="ph">—</div>';
+    return;
+  }
+  dated.sort((a, b) => a.d - b.d);
+  $('cap_series').textContent = `${t.label} — predicted EC by date (this run)`;
+  const data = groupTraces(dated.map(x => x.i), e, i => e.date[i], i => e.pred[i]);
+  // 45-day rolling median (ftir_29's series view)
+  const roll = dated.map(({d, i}) => {
+    const win = dated.filter(o => Math.abs(o.d - d) <= 45 * 864e5).map(o => e.pred[o.i]).sort((x, y) => x - y);
+    return {x: e.date[i], y: win[Math.floor(win.length / 2)]};
+  });
+  data.push({x: roll.map(r => r.x), y: roll.map(r => r.y), mode:'lines',
+    line:{color:'#22252A', width:2}, name:'45-day rolling median', type:'scatter'});
+  plot('p_series', data, {
+    xaxis:{title:'sampling date'}, yaxis:{title:'predicted EC (µg/m³)',
+    zeroline:true, zerolinecolor:'#B23327'},
+    margin:{t:30, r:10, b:45, l:55}, legend:LEGEND_TOP});
+
+  // plausibility card (ftir_29's checks, generalized)
+  const preds = dated.map(x => e.pred[x.i]).sort((a, b) => a - b);
+  const q = p => preds[Math.floor(p * (preds.length - 1))];
+  const neg = preds.filter(v => v < 0).length, high = preds.filter(v => v > 8).length;
+  const groups = {};
+  dated.forEach(({i}) => { (groups[e.group[i]] = groups[e.group[i]] || []).push(e.pred[i]); });
+  const gmed = Object.entries(groups).map(([g, v]) => {
+    v.sort((a, b) => a - b); return `${g}: ${v[Math.floor(v.length / 2)].toFixed(2)}`; }).join(' · ');
+  $('seriesinfo').querySelector('tbody').innerHTML = `
+    <tr><td>n dated</td><td>${preds.length}</td></tr>
+    <tr><td>median [IQR] (µg/m³)</td><td>${q(.5).toFixed(2)} [${q(.25).toFixed(2)}–${q(.75).toFixed(2)}]</td></tr>
+    <tr><td>range</td><td>${preds[0].toFixed(2)} → ${preds[preds.length - 1].toFixed(2)}</td></tr>
+    <tr><td>negative days</td><td class="${neg ? 'warn' : 'ok'}">${neg} (${(100 * neg / preds.length).toFixed(1)}%)</td></tr>
+    <tr><td>days &gt; 8 µg/m³</td><td class="${high ? 'warn' : 'ok'}">${high}</td></tr>
+    <tr><td>group medians</td><td>${gmed}</td></tr>`;
+
+  // vs deployed (built-in Addis only — same filters)
+  const dep = e.deployed;
+  if(dep && dep.some(v => v != null)){
+    const ii = e.pred.map((_, i) => i).filter(i => dep[i] != null);
+    const hi2 = Math.max(...ii.map(i => Math.max(e.pred[i], dep[i]))) * 1.06;
+    plot('p_vsdeployed', [
+      ...groupTraces(ii, e, i => dep[i], i => e.pred[i]),
+      {x:[0, hi2], y:[0, hi2], mode:'lines', line:{dash:'dash', color:'#999', width:1}, name:'1:1', type:'scatter'}],
+      {xaxis:{title:'deployed SPARTAN EC (µg/m³)', range:[0, hi2]},
+       yaxis:{title:'this run (µg/m³)', range:[0, hi2]},
+       margin:{t:30, r:10, b:45, l:55}, legend:LEGEND_TOP});
+    $('cap_vsdep').textContent = `vs deployed SPARTAN EC — same ${ii.length} filters`;
+  }else{
+    $('p_vsdeployed').innerHTML = '<div class="ph">No deployed-EC series for this target.</div>';
+  }
+}
+
 function drawMetrics(){
   $('metrics').querySelector('tbody').innerHTML = last.metrics.map(r => `<tr>
-    <td>${r.evaluation_set === 'fixed' ? 'fixed 190' : 'all pairs'}</td><td>${r.MAC}</td><td>${r.n}</td>
+    <td>${r.evaluation_set === 'fixed' ? 'fixed cohort' : 'all pairs'}</td>
+    <td>${r.MAC ?? '—'}</td><td>${r.n}</td>
     <td>${r.ols_slope.toFixed(2)}</td><td>${r.ols_intercept.toFixed(2)}</td>
     <td>${r.deming_slope.toFixed(2)}</td><td>${r.deming_intercept.toFixed(2)}</td>
-    <td>${r.R2.toFixed(2)}</td><td>${r.RMSE.toFixed(2)}</td></tr>`).join('');
+    <td>${r.R2.toFixed(2)}</td><td>${r.RMSE.toFixed(2)}</td>
+    <td>${(-r.ols_intercept / r.ols_slope).toFixed(2)}</td>
+    <td>${(-r.deming_intercept / r.deming_slope).toFixed(2)}</td></tr>`).join('');
 }
 
 let rankView = 'rank';
@@ -434,6 +530,22 @@ async function drawCohortInfo(){
     <tr><td>TOR EC (ng/m³)</td><td>${s(j.ec_ugm3)} <span class="muted">(local_db Value is ng/m³)</span></td></tr>
     <tr><td>OC/EC ratio</td><td>${s(j.ocec_ratio)}</td></tr>
     <tr><td>dates</td><td>${j.date_range ? j.date_range.join(' → ') : '—'}</td></tr>`;
+  if(j.composition){
+    const c = j.composition;
+    const poolMax = Math.max(...c.pool), cohortMax = Math.max(...c.cohort) || 1;
+    plot('p_composition', [
+      {x:c.centers, y:c.pool.map(v => v / poolMax), type:'bar', name:'IMPROVE pool',
+       marker:{color:'#d9d9d9'}},
+      {x:c.centers, y:c.cohort.map(v => v / cohortMax), type:'bar', name:'this cohort',
+       marker:{color:'rgba(44,110,158,.75)'}},
+      {x:[c.addis_marker, c.addis_marker], y:[0, 1], mode:'lines', name:'Addis (FTIR-derived) 1.34',
+       line:{color:'#B23327', dash:'dash', width:2}, type:'scatter'},
+      {x:[c.pool_median, c.pool_median], y:[0, 1], mode:'lines', name:`pool median ${c.pool_median}`,
+       line:{color:'#666', dash:'dot', width:1.5}, type:'scatter'}],
+      {barmode:'overlay', bargap:0,
+       xaxis:{title:'TOR OC/EC ratio (clipped at 25)'}, yaxis:{title:'relative freq.', showticklabels:false},
+       margin:{t:26, r:8, b:40, l:40}, legend:LEGEND_TOP});
+  }
 }
 
 const spectraBand = (wn, b, rgb, name, withBand=true) => {
@@ -457,16 +569,19 @@ async function drawSpectra(){
   if(j.series){
     // multi-series: Ann's all-cohorts ask, or Satoshi's k-means sub-types
     $('cap_spectra').textContent = spectraMode === 'clusters'
-      ? `Spectral sub-types within ${j.cohort_label || 'cohort'} (${spaceLabel}) — k-means medians, Addis + IQR`
-      : `Selection cohorts vs Addis (${spaceLabel}) — medians, Addis + IQR`;
+      ? `Spectral sub-types within ${j.cohort_label || 'cohort'} (${spaceLabel}) — k-means medians, reference + IQR`
+      : `Selection cohorts vs ${(j.reference_label || 'reference').split(' — ')[0]} (${spaceLabel}) — medians`;
     const COLOURS = ['122,79,163', '44,110,158', '143,140,132', '196,148,66', '84,140,102', '150,90,90'];
     data = j.series.flatMap((s, i) => spectraBand(j.wn, s, COLOURS[i % COLOURS.length], s.label, false))
-      .concat(spectraBand(j.wn, j.addis, '178,51,39', 'Addis median'));
+      .concat(spectraBand(j.wn, j.reference, '178,51,39',
+        (j.reference_label || 'reference').split(' — ')[0] + ' median'));
   }else{
-    $('cap_spectra').textContent = `Spectra: cohort vs Addis (${spaceLabel}) — median + IQR`;
+    $('cap_spectra').textContent =
+      `Spectra: cohort vs ${(j.reference_label || 'reference').split(' — ')[0]} (${spaceLabel}) — median + IQR`;
     data = [
       ...spectraBand(j.wn, j.cohort, '44,110,158', `cohort median (n=${j.n})`),
-      ...spectraBand(j.wn, j.addis, '178,51,39', 'Addis median')];
+      ...spectraBand(j.wn, j.reference, '178,51,39',
+        (j.reference_label || 'reference').split(' — ')[0] + ' median')];
   }
   plot('p_spectra', data,
     {xaxis:{title:'wavenumber (cm⁻¹)', autorange:'reversed'},
@@ -510,6 +625,7 @@ function drawSweep(rows){
 $('pin').onclick = () => {
   if(!last) return;
   pins.push({label:last.cohort_label, n:last.n_cohort, lot:last.config.lot,
+    target:last.target ? last.target.label : 'Addis', ref_kind:last.target ? last.target.ref_kind : 'fabs',
     selection_space:last.config.selection_space,
     spectra:last.config.spectra, mode:last.config.mode, k:last.k, auto_k:last.auto_k,
     heldout:last.heldout, metrics:last.metrics, when:new Date().toISOString().slice(0, 16)});
@@ -519,7 +635,7 @@ $('pin').onclick = () => {
 $('clearpins').onclick = () => { pins = []; localStorage.setItem('calib_explorer_pins', '[]'); drawPins(); };
 
 function pinRow(p){
-  const m = metricRow(p.metrics) || {};
+  const m = metricRow(p.metrics, p.ref_kind) || {};
   const sl = toggles.est === 'deming' ? m.deming_slope : m.ols_slope;
   const ic = toggles.est === 'deming' ? m.deming_intercept : m.ols_intercept;
   return {sl, ic, r2: m.R2};

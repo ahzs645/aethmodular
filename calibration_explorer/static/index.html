@@ -44,13 +44,17 @@
         <option value="airspec">AIRSpec-corrected</option>
       </select>
     </div>
-    <div class="field" title="Which spectra the calibration itself is fitted on (and Addis predicted from). SG 2nd derivative uses ftir_20's parameters (window 11, polyorder 2).">
+    <div class="field" title="Which spectra the calibration itself is fitted on (and the target predicted from). SG 2nd derivative uses ftir_20's parameters (window 11, polyorder 2).">
       <label for="spectra">Calibrate on</label>
       <select id="spectra">
         <option value="raw">raw spectra</option>
         <option value="airspec">AIRSpec-corrected</option>
         <option value="deriv2">SG 2nd derivative (raw)</option>
       </select>
+    </div>
+    <div class="field" title="The evaluation target the calibration is read out against. Addis (ETAD) is built in; add your own site by dropping spectra.csv + reference.csv into calibration_explorer/targets/<name>/ — see README.">
+      <label for="target">Evaluate on</label>
+      <select id="target"><option value="addis">Addis (ETAD) — built-in</option></select>
     </div>
   </div>
   <div class="cfggroup">
@@ -81,6 +85,7 @@
     <button data-tab="calibrate" class="on">Calibrate</button>
     <button data-tab="addis">Addis readout</button>
     <button data-tab="selection">Selection</button>
+    <button data-tab="series">Series</button>
     <button data-tab="compare">Compare <span id="pincount" class="count"></span></button>
   </nav>
   <span class="viewtoggles">
@@ -117,8 +122,10 @@
       <div class="plotcap">Fit metrics — every MAC × estimator × Addis set for this run</div>
       <div class="tablewrap">
         <table id="metrics"><thead><tr>
-          <th>Addis set</th><th>MAC</th><th>n</th><th>OLS slope</th><th>OLS intercept</th>
+          <th>set</th><th>MAC</th><th>n</th><th>OLS slope</th><th>OLS intercept</th>
           <th>Deming slope</th><th>Deming intercept</th><th>R²</th><th>RMSE</th>
+          <th title="x-intercept c = −intercept/slope: the reference level at which the model predicts zero (µg/m³)">c OLS</th>
+          <th title="x-intercept under Deming">c Deming</th>
         </tr></thead><tbody></tbody></table>
       </div>
       <div class="muted" style="margin:6px 0 12px">Intercept and R² are MAC-invariant; the slope scales by MAC (ftir_19). Deming uses λ*=2.96 at MAC 10, scaled by MAC².</div>
@@ -144,6 +151,8 @@
       </div>
       <div class="plotcap" style="margin-top:12px">Reference-data characteristics — what this cohort trains on</div>
       <div class="tablewrap"><table id="cohortinfo"><tbody></tbody></table></div>
+      <div class="plotcap" style="margin-top:12px">Composition ruler — cohort vs pool OC/EC, with the Addis marker (ftir_30)</div>
+      <div id="p_composition" class="plot short" style="height:230px"></div>
       <div class="plotcap" style="margin-top:12px">Selection overlap — are the methods picking the same filters?</div>
       <div class="tablewrap">
         <table id="overlap"><thead><tr>
@@ -161,6 +170,21 @@
           <button data-v="clusters">sub-types (k-means 3)</button></span>
       </div>
       <div id="p_spectra" class="plot tall"></div>
+    </div>
+  </div>
+</div>
+
+<div class="pane" id="pane-series">
+  <div class="cols two">
+    <div>
+      <div class="plotcap" id="cap_series">EC time series — this run's predictions by date</div>
+      <div id="p_series" class="plot tall"></div>
+    </div>
+    <div>
+      <div class="plotcap">Series plausibility — is this a physically sensible EC record?</div>
+      <div class="tablewrap"><table id="seriesinfo"><tbody></tbody></table></div>
+      <div class="plotcap" style="margin:12px 0 5px" id="cap_vsdep">vs deployed SPARTAN EC — same filters</div>
+      <div id="p_vsdeployed" class="plot"></div>
     </div>
   </div>
 </div>

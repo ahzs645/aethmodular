@@ -4,7 +4,32 @@ A standalone local Flask app (repo root) for iterating the phase-3 FTIR-EC calib
 space interactively. Independent of `research/spartan_ec_2026_06_16/recreation_app`
 (which recreates the AQRC Shiny tool); this app drives the **phase-3** machinery — the
 locked cohorts, both component-selection protocols, and the AIRSpec caches — and reads
-everything out as the Addis crossplot.
+everything out against a configurable **evaluation target** (Addis/ETAD built in).
+
+## Evaluation targets (generic readout)
+
+The readout is no longer Addis-specific. "Evaluate on" picks a target; Addis (ETAD)
+ships built-in with its Fabs reference, seasons, fixed-190 cohort, dates, and deployed
+EC. To evaluate against **your own site**, drop a folder into
+`calibration_explorer/targets/<name>/` (gitignored) containing:
+
+- `spectra.csv` — first column an id, then the IMPROVE wavenumber columns (the same
+  2722-column grid as the `local_db` spectra export; the app checks and tells you
+  what's missing).
+- `reference.csv` — first column the same id, plus:
+  - `Fabs` (Mm⁻¹, HIPS-style: x-axis becomes Fabs/MAC and the MAC 10/6 toggle
+    applies, Deming uses λ\*) **or** `EC_ugm3` (direct EC reference: single-row
+    metrics, MAC toggle disabled, Deming at λ=1);
+  - `Volume_m3` (required — predictions are µg/filter ÷ volume);
+  - optional `Date` (enables the Series tab) and `Group` (colours the crossplot,
+    e.g. seasons).
+
+The target appears in the dropdown on the next status poll; presets store the target,
+so an "ETBI crossplot" becomes a preset the moment that export exists. Note the
+*selection* reference (Ethiopia-shaped/analog matching) intentionally stays Addis —
+targets change what you evaluate against, not the research design. A
+`targets/demo_addis_subset/` example (60 ETAD filters with deployed EC as the
+reference) shows the format.
 
 ## Run
 ```
@@ -38,9 +63,25 @@ Import merges a JSON file back in (so presets can be shared between machines or
 committed alongside results).
 
 **Tabs**: Calibrate (run summary + CV curve + k sweep), Addis readout (crossplot +
-full metrics table), Selection (cutoff diagnostic + cohort-vs-Addis spectra), Compare
-(pinned runs + intercept ladder). Plot captions live in HTML above each figure so
-Plotly legends never collide with titles.
+metrics incl. the x-intercept **c = −b/m** per estimator + residuals), Selection
+(cutoff diagnostic with slider + pool-distribution view, reference-data
+characteristics, **composition ruler** (ftir_30: cohort vs pool OC/EC with the
+FTIR-derived Addis marker 1.34), overlap, spectra), **Series** (ftir_29 generalized:
+the run's dated EC record with 45-day rolling median, a plausibility card — median/
+IQR, negative days, days >8 µg/m³, group medians — and the vs-deployed-SPARTAN
+crossplot), Compare (pinned runs + intercept ladder). Plot captions live in HTML
+above each figure so Plotly legends never collide with titles.
+
+## Roadmap (mined from ftir_29–33; not yet implemented)
+
+From the notebook survey, in priority order: **weighted + robust Deming** estimators
+(ftir_31 §1.10 — ~30 lines to lift from `run_ftir_31.py` into `pls_transfer`; would
+show OLS is the conservative bound on every crossplot), **fold-count toggle** (ftir_32
+— the curve functions already take `folds`/`n_splits`; closes the last hardcoded
+protocol dimension), **%RMSECV axis toggle** + interleaved fold-spread ribbon,
+**residual-vs-D² extrapolation gauge** (% of target beyond training p95 D²),
+**held-out TOR scatter** per run, and **site-cluster bootstrap CI** on the intercept
+ladder (ftir_22 machinery, ~200 refits per run, on-demand button).
 
 ## What it sweeps (mapped to the July-17 meeting items)
 

@@ -57,6 +57,11 @@ from config import season_for_month  # noqa: E402  (phase-2 scripts)
 
 CACHE_DIR = HERE / "cache"
 CACHE_DIR.mkdir(exist_ok=True)
+# Evaluation targets beyond the built-in Addis set: drop a folder here containing
+# spectra.csv (id column + the IMPROVE wavenumber columns) and reference.csv
+# (id column + Fabs or EC_ugm3, Volume_m3, optional Group) — see README.
+TARGETS_DIR = HERE / "targets"
+TARGETS_DIR.mkdir(exist_ok=True)
 
 COHORTS = {
     "pool": "Entire IMPROVE network (no selection)",
@@ -173,6 +178,23 @@ def _load_all():
         D["X_addis_corr"] = (etad_corr.groupby("MediaId").mean()
                              .loc[etad_eval["MediaId"].astype(int)].to_numpy(float))
 
+        # The built-in evaluation target. Custom targets load on demand from
+        # TARGETS_DIR and join this registry; everything downstream reads it.
+        dates = pd.to_datetime(etad_eval["SamplingStartDate"], errors="coerce")
+        deployed = etad_eval["EC_deployed_ugm3"]
+        D["targets"] = {"addis": {
+            "label": "Addis (ETAD) — built-in",
+            "ref_kind": "fabs",          # x = ref/MAC; "ec" targets use x = ref
+            "ref": D["fabs"],
+            "volume": D["volume"],
+            "X_raw": D["X_addis_raw"],
+            "X_corr": D["X_addis_corr"],
+            "groups": D["season"],
+            "fixed_mask": D["fixed_mask"],
+            "dates": [d.date().isoformat() if pd.notna(d) else None for d in dates],
+            "deployed": [round(float(v), 4) if pd.notna(v) else None for v in deployed],
+        }}
+
         # Startup provenance checks against the locked cohorts (reported, not fatal).
         checks = []
         eth300 = set(int(i) for i in D["eth_ranked"][:300])
@@ -200,6 +222,79 @@ def _load_all():
 
 
 threading.Thread(target=_load_all, daemon=True).start()
+
+
+# ----------------------------------------------------------------------------- #
+# evaluation targets
+# ----------------------------------------------------------------------------- #
+def list_targets():
+    out = {"addis": "Addis (ETAD) — built-in"}
+    for p in sorted(TARGETS_DIR.iterdir()) if TARGETS_DIR.exists() else []:
+        if p.is_dir() and (p / "spectra.csv").exists():
+            out[p.name] = (D["targets"][p.name]["label"]
+                           if p.name in D.get("targets", {}) else f"{p.name} (custom)")
+    return out
+
+
+def get_target(name):
+    name = name or "addis"
+    if name in D["targets"]:
+        return D["targets"][name]
+    d = TARGETS_DIR / name
+    if not (d / "spectra.csv").exists() or not (d / "reference.csv").exists():
+        raise ValueError(f"target {name!r}: needs spectra.csv and reference.csv in "
+                         f"calibration_explorer/targets/{name}/")
+    sp = pd.read_csv(d / "spectra.csv")
+    missing = [c for c in D["wcols"] if c not in sp.columns]
+    if missing:
+        raise ValueError(
+            f"target {name!r}: spectra.csv must carry the IMPROVE wavenumber grid "
+            f"({len(D['wcols'])} columns, like the local_db export); "
+            f"{len(missing)} columns missing (e.g. {missing[:3]})")
+    idc = sp.columns[0]
+    ref = pd.read_csv(d / "reference.csv")
+    ref = ref.rename(columns={ref.columns[0]: idc})
+    m = sp.merge(ref, on=idc, how="inner", validate="one_to_one")
+    m = m[m[D["wcols"]].notna().all(axis=1)]
+    if "Fabs" in m.columns:
+        ref_kind, ref_values = "fabs", m["Fabs"].to_numpy(float)
+    elif "EC_ugm3" in m.columns:
+        ref_kind, ref_values = "ec", m["EC_ugm3"].to_numpy(float)
+    else:
+        raise ValueError(f"target {name!r}: reference.csv needs a Fabs (Mm⁻¹) or "
+                         "EC_ugm3 column")
+    if "Volume_m3" not in m.columns or not (m["Volume_m3"] > 0).all():
+        raise ValueError(f"target {name!r}: reference.csv needs a positive Volume_m3 "
+                         "column (predictions are µg/filter ÷ volume)")
+    keep = np.isfinite(ref_values)
+    m = m[keep]
+    if "Date" in m.columns:
+        parsed = pd.to_datetime(m["Date"], errors="coerce")
+        dates = [d.date().isoformat() if pd.notna(d) else None for d in parsed]
+    else:
+        dates = [None] * len(m)
+    t = {"label": f"{name} (custom, n={len(m)})", "ref_kind": ref_kind,
+         "ref": ref_values[keep], "volume": m["Volume_m3"].to_numpy(float),
+         "X_raw": m[D["wcols"]].to_numpy(float), "X_corr": None,
+         "groups": (m["Group"].astype(str).tolist() if "Group" in m.columns
+                    else ["all"] * len(m)),
+         "fixed_mask": None, "dates": dates, "deployed": None}
+    D["targets"][name] = t
+    return t
+
+
+def _target_X(t, spectra):
+    if spectra == "airspec":
+        if t["X_corr"] is None:
+            raise ValueError("this target has no AIRSpec-corrected spectra — "
+                             "calibrate on raw or SG 2nd derivative instead")
+        return t["X_corr"]
+    if spectra == "deriv2":
+        if "X_deriv2" not in t:
+            t["X_deriv2"] = savgol_filter(np.asarray(t["X_raw"], float),
+                                          axis=1, **SAVGOL)
+        return t["X_deriv2"]
+    return t["X_raw"]
 
 
 # ----------------------------------------------------------------------------- #
@@ -332,24 +427,29 @@ def resolve_cohort(cohort, cutoff, selection_space, spectra, lot="all"):
 # ----------------------------------------------------------------------------- #
 # crossplot readout (estimators are the shared pls_transfer / calibration_modes ones)
 # ----------------------------------------------------------------------------- #
-def crossplot_metrics(pred_ugm3):
-    """OLS + Deming rows for both MACs and both evaluation sets."""
+def crossplot_metrics(t, pred_ugm3):
+    """OLS + Deming rows for each MAC (Fabs targets) and evaluation set the
+    target supports. EC-reference targets get a single MAC=None row per set,
+    with Deming at λ=1 (no HIPS-uncertainty λ* applies)."""
     rows = []
-    for eval_set, mask in (("fixed", D["fixed_mask"]),
-                           ("all", np.ones(len(D["fabs"]), bool))):
-        for mac in (10.0, 6.0):
-            x = D["fabs"][mask] / mac
+    masks = []
+    if t.get("fixed_mask") is not None:
+        masks.append(("fixed", t["fixed_mask"]))
+    masks.append(("all", np.ones(len(pred_ugm3), bool)))
+    macs = (10.0, 6.0) if t["ref_kind"] == "fabs" else (None,)
+    for eval_set, mask in masks:
+        for mac in macs:
+            x = t["ref"][mask] / mac if mac else t["ref"][mask]
             y = pred_ugm3[mask]
             ols = regression_metrics(x, y)
-            dm = deming_regression(x, y, deming_lambda(mac))
-            dm_slope, dm_intercept = dm["slope"], dm["intercept"]
+            dm = deming_regression(x, y, deming_lambda(mac) if mac else 1.0)
             rows.append({
                 "evaluation_set": eval_set, "MAC": mac, "n": int(np.isfinite(x * y).sum()),
                 "ols_slope": round(float(ols["slope"]), 4),
                 "ols_intercept": round(float(ols["intercept"]), 4),
                 "R2": round(float(ols["R2"]), 4), "RMSE": round(float(ols["RMSE"]), 4),
-                "deming_slope": round(dm_slope, 4),
-                "deming_intercept": round(dm_intercept, 4),
+                "deming_slope": round(float(dm["slope"]), 4),
+                "deming_intercept": round(float(dm["intercept"]), 4),
             })
     return rows
 
@@ -365,7 +465,8 @@ def _cache_key(*parts) -> str:
     return h.hexdigest()[:16]
 
 
-def _cohort_arrays(cohort, cutoff, selection_space, spectra, lot="all"):
+def _cohort_arrays(cohort, cutoff, selection_space, spectra, lot="all",
+                   target="addis"):
     ids, label = resolve_cohort(cohort, cutoff, selection_space, spectra, lot)
     if len(ids) < 30:
         raise ValueError(f"cohort resolves to only {len(ids)} filters")
@@ -373,27 +474,24 @@ def _cohort_arrays(cohort, cutoff, selection_space, spectra, lot="all"):
     sites = D["pool"].loc[ids, "Site"].to_numpy()
     if spectra == "airspec":
         X = D["corr_pool"][[D["corr_row"][int(i)] for i in ids]].astype(float)
-        X_addis = D["X_addis_corr"]
     elif spectra == "deriv2":
         X = savgol_filter(D["pool_raw"].loc[ids, D["wcols"]].to_numpy(float),
                           axis=1, **SAVGOL)
-        if "X_addis_deriv2" not in D:
-            D["X_addis_deriv2"] = savgol_filter(D["X_addis_raw"], axis=1, **SAVGOL)
-        X_addis = D["X_addis_deriv2"]
     else:
         X = D["pool_raw"].loc[ids, D["wcols"]].to_numpy(float)
-        X_addis = D["X_addis_raw"]
-    return ids, label, X, y, sites, X_addis
+    X_eval = _target_X(get_target(target), spectra)
+    return ids, label, X, y, sites, X_eval
 
 
 def run_config(cohort, cutoff, selection_space, spectra, mode, k_override,
-               max_components, lot="all"):
-    ids, cohort_label, X, y, sites, X_addis = _cohort_arrays(
-        cohort, cutoff, selection_space, spectra, lot)
+               max_components, lot="all", target="addis"):
+    t = get_target(target)
+    ids, cohort_label, X, y, sites, X_eval = _cohort_arrays(
+        cohort, cutoff, selection_space, spectra, lot, target)
 
     ids_hash = hashlib.sha1(np.sort(ids).tobytes()).hexdigest()[:12]
     curve_key = _cache_key("curve", cohort, selection_space, spectra, mode,
-                           max_components, lot, ids_hash)
+                           max_components, lot, ids_hash)   # target-independent
     curve_path = CACHE_DIR / f"{curve_key}.json"
 
     train = protocol_train_mask(mode, X, y, sites)
@@ -416,13 +514,13 @@ def run_config(cohort, cutoff, selection_space, spectra, mode, k_override,
     k = int(k_override) if k_override else int(auto_k)
     k = max(1, min(k, int(curve["n_components"].max())))
 
-    fit_key = _cache_key("fit", curve_key, k)
+    fit_key = _cache_key("fit", curve_key, k, target)
     fit_path = CACHE_DIR / f"{fit_key}.json"
     if fit_path.exists():
         fit = json.loads(fit_path.read_text())
     else:
         model = PLSRegression(n_components=k, scale=False).fit(X[train], y[train])
-        pred = model.predict(np.asarray(X_addis, float)).ravel() / D["volume"]
+        pred = model.predict(np.asarray(X_eval, float)).ravel() / t["volume"]
         heldout = None
         if mode == "site_heldout":
             hm = regression_metrics(y[~train], model.predict(X[~train]).ravel())
@@ -448,11 +546,17 @@ def run_config(cohort, cutoff, selection_space, spectra, mode, k_override,
         "heldout": fit["heldout"],
         "eth_corr_coverage": D.get("eth_corr_coverage"),
         "analog_corr_coverage": D.get("analog_corr_coverage"),
-        "addis": {"fabs": [round(float(v), 4) for v in D["fabs"]],
-                  "pred": fit["addis_ugm3"],
-                  "season": D["season"],
-                  "fixed": [bool(b) for b in D["fixed_mask"]]},
-        "metrics": crossplot_metrics(pred),
+        "target": {"name": target, "label": t["label"], "ref_kind": t["ref_kind"],
+                   "has_fixed": t.get("fixed_mask") is not None},
+        "eval": {"ref": [round(float(v), 4) for v in t["ref"]],
+                 "pred": fit["addis_ugm3"],
+                 "group": t["groups"],
+                 "date": t.get("dates"),
+                 "deployed": t.get("deployed"),
+                 "fixed": ([bool(b) for b in t["fixed_mask"]]
+                           if t.get("fixed_mask") is not None
+                           else [False] * len(t["ref"]))},
+        "metrics": crossplot_metrics(t, pred),
     }
 
 
@@ -468,6 +572,7 @@ def _config_from(b):
         mode=b.get("mode", "site_heldout"),
         max_components=int(b.get("max_components", MAX_COMPONENTS)),
         lot=b.get("lot", "all"),
+        target=b.get("target", "addis"),
     )
 
 
@@ -483,7 +588,8 @@ def api_status():
                     "cohorts": COHORTS, "default_cutoff": DEFAULT_CUTOFF,
                     "deming_lambda_mac10": DEMING_LAMBDA_MAC10,
                     "max_components_default": MAX_COMPONENTS,
-                    "lots": D.get("lots_available", [])})
+                    "lots": D.get("lots_available", []),
+                    "targets": list_targets() if STATE["ready"] else {}})
 
 
 @app.route("/api/run", methods=["POST"])
@@ -518,8 +624,10 @@ def api_sweep():
             cfg = _config_from(b)
             for k in ks:
                 out = run_config(k_override=k, **cfg)
-                fixed10 = next(m for m in out["metrics"]
-                               if m["evaluation_set"] == "fixed" and m["MAC"] == 10)
+                fixed10 = next(
+                    (m for m in out["metrics"]
+                     if m["evaluation_set"] == "fixed" and m["MAC"] == 10),
+                    out["metrics"][0])
                 rows.append({"k": k, "auto_k": out["auto_k"],
                              "rmsecv": out["rmsecv_floor"],
                              "ols_intercept": fixed10["ols_intercept"],
@@ -592,18 +700,19 @@ def api_spectra():
             if b.get("compare"):
                 series = []
                 for cohort in ("eth_shaped", "analogs", "ocec"):
-                    ids, label, X, _, _, X_addis = _cohort_arrays(
+                    ids, label, X, _, _, X_eval = _cohort_arrays(
                         cohort, None,
                         cfg["selection_space"] if cohort in ("eth_shaped", "analogs") else "raw",
-                        cfg["spectra"], cfg["lot"])
+                        cfg["spectra"], cfg["lot"], cfg["target"])
                     series.append({"label": f"{label} (n={len(ids)})",
                                    **_spectra_bands(X, sl)})
                 return jsonify({"wn": np.round(np.asarray(wn, float)[sl], 2).tolist(),
-                                "series": series, "addis": _spectra_bands(X_addis, sl),
+                                "series": series, "reference": _spectra_bands(X_eval, sl),
+                                "reference_label": get_target(cfg["target"])["label"],
                                 "spectra": cfg["spectra"], "compare": True})
-            ids, label, X, _, _, X_addis = _cohort_arrays(
+            ids, label, X, _, _, X_eval = _cohort_arrays(
                 cfg["cohort"], cfg["cutoff"], cfg["selection_space"], cfg["spectra"],
-                cfg["lot"])
+                cfg["lot"], cfg["target"])
         except Exception as exc:
             return jsonify({"error": f"{type(exc).__name__}: {exc}"}), 400
         if b.get("clusters"):
@@ -625,11 +734,14 @@ def api_spectra():
                                **_spectra_bands(members, sl)})
             series.sort(key=lambda s: -int(s["label"].split("n=")[1].rstrip(")")))
             return jsonify({"wn": np.round(np.asarray(wn, float)[sl], 2).tolist(),
-                            "series": series, "addis": _spectra_bands(X_addis, sl),
+                            "series": series, "reference": _spectra_bands(X_eval, sl),
+                            "reference_label": get_target(cfg["target"])["label"],
                             "cohort_label": label, "n": int(len(ids)),
                             "spectra": cfg["spectra"], "compare": True})
         return jsonify({"wn": np.round(np.asarray(wn, float)[sl], 2).tolist(),
-                        "cohort": _spectra_bands(X, sl), "addis": _spectra_bands(X_addis, sl),
+                        "cohort": _spectra_bands(X, sl),
+                        "reference": _spectra_bands(X_eval, sl),
+                        "reference_label": get_target(cfg["target"])["label"],
                         "cohort_label": label, "n": int(len(ids)),
                         "spectra": cfg["spectra"]})
 
@@ -659,7 +771,23 @@ def api_cohort_info():
         return {"min": round(float(s.min()), 2), "median": round(float(s.median()), 2),
                 "max": round(float(s.max()), 2)}
 
+    # Composition ruler: the whole pool's OC/EC distribution vs this cohort's,
+    # with the Addis FTIR-derived OC/EC marker (ftir_30: 1.34; not thermal —
+    # no Addis filter has TOR).
+    pool_ratio = pd.to_numeric(D["pool"]["OC_EC_ratio"], errors="coerce").dropna()
+    cohort_ratio = pd.to_numeric(sub["OC_EC_ratio"], errors="coerce").dropna()
+    edges = np.linspace(0, 25, 61)
+    pool_counts, _ = np.histogram(pool_ratio.clip(upper=25), bins=edges)
+    cohort_counts, _ = np.histogram(cohort_ratio.clip(upper=25), bins=edges)
+    centers = ((edges[:-1] + edges[1:]) / 2).round(3)
+    composition = {"centers": centers.tolist(),
+                   "pool": pool_counts.tolist(),
+                   "cohort": cohort_counts.tolist(),
+                   "pool_median": round(float(pool_ratio.median()), 2),
+                   "addis_marker": 1.34}
+
     return jsonify({
+        "composition": composition,
         "label": label, "n": int(len(ids)), "n_sites": int(sites.size),
         "top_sites": [f"{s} ({n})" for s, n in sites.head(5).items()],
         "lots": {str(k): int(v) for k, v in lots.items()},
