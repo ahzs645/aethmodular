@@ -1,0 +1,127 @@
+/* Calibration Iteration Explorer — layout & theme
+   Header: topbar → preset/actions bar → grouped configuration card → tabs + view toggles.
+   Breakpoints: ≥1100px desktop · 700–1100px two-column · <700px single-column */
+
+*{box-sizing:border-box}
+body{margin:0;font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;color:#22252A;font-size:13px;background:#fff}
+
+/* ---- header ---------------------------------------------------------------- */
+.topbar{background:#2b2b2b;color:#cfcfcf;padding:10px 16px;font-size:15px}
+.topbar .brand{color:#fff;margin-right:14px}
+.topbar .sub{color:#9a9a9a;font-size:12px}
+
+/* ---- preset + actions bar -------------------------------------------------- */
+.controlbar{display:flex;justify-content:space-between;align-items:center;gap:10px;
+  flex-wrap:wrap;padding:8px 16px;background:#f7f7f7;border-bottom:1px solid #e8e8e8}
+.presetgroup{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.presetgroup select{min-width:230px}
+.actions{display:flex;gap:8px;align-items:center}
+
+/* ---- configuration card ---------------------------------------------------- */
+.configcard{margin:12px 16px 0;display:grid;gap:0;
+  grid-template-columns:1.25fr 1fr 1.25fr .9fr;
+  border:1px solid #e6e6e6;border-radius:8px;background:#fcfcfc;overflow:hidden}
+.cfggroup{padding:10px 14px 12px;min-width:0}
+.cfggroup + .cfggroup{border-left:1px solid #efefef}
+.cfggroup h4{margin:0 0 8px;font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.6px;color:#8a8a8a;font-weight:700}
+.cfggroup.slim{font-size:12px;line-height:1.5}
+.field{display:flex;flex-direction:column;gap:3px;min-width:0}
+.field + .field,.fieldrow + .field,.field + .fieldrow{margin-top:8px}
+.field label{font-size:11px;color:#777;font-weight:600}
+.field select,.field input{width:100%}
+.fieldrow{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:0}
+.fieldrow .field{margin-top:0}
+
+/* ---- inputs & buttons ------------------------------------------------------- */
+select,input[type=number]{font-size:13px;padding:5px 7px;border:1px solid #ccc;
+  border-radius:5px;background:#fff;max-width:100%}
+select:focus,input:focus{outline:2px solid #BFD7E8;border-color:#2C6E9E}
+button{font-size:13px;padding:6px 14px;border:1px solid #2C6E9E;background:#fff;
+  color:#2C6E9E;border-radius:5px;cursor:pointer}
+button.primary{background:#2C6E9E;color:#fff;font-weight:600}
+button.mini,button.gray{font-size:12px;padding:4px 10px;border-color:#bbb;color:#555;background:#fff}
+button:disabled{opacity:.45;cursor:default}
+
+/* ---- tabs + view toggles ---------------------------------------------------- */
+.tabsbar{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;
+  flex-wrap:wrap;padding:12px 16px 0;border-bottom:1px solid #ddd;margin-top:4px}
+.tabs{display:flex;gap:2px;overflow-x:auto;overflow-y:hidden}
+.tabs button{border:1px solid #ddd;border-bottom:0;border-radius:7px 7px 0 0;
+  background:#f4f4f4;color:#555;padding:8px 16px;white-space:nowrap}
+.tabs button.on{background:#fff;color:#111;font-weight:600;
+  box-shadow:inset 0 2px 0 #2C6E9E}
+.tabs .count{color:#2C6E9E;font-weight:600}
+.viewtoggles{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding-bottom:7px}
+.viewtoggles label{font-size:11px;color:#777;font-weight:600}
+.group{display:flex;gap:6px;align-items:center;min-width:0}
+.pill{display:inline-flex;border:1px solid #ccc;border-radius:5px;overflow:hidden}
+.pill button{border:0;border-radius:0;background:#fff;color:#555;padding:4px 10px;font-size:12px}
+.pill button.on{background:#2C6E9E;color:#fff}
+
+.pane{display:none;padding:14px 16px 0}
+.pane.on{display:block}
+
+/* ---- panels ---------------------------------------------------------------- */
+.cols{display:grid;gap:12px}
+.cols>*{min-width:0}
+.cols.summary{grid-template-columns:270px 1fr 1fr}
+.cols.two{grid-template-columns:1.15fr 1fr}
+.cols.pins{grid-template-columns:1fr 430px}
+.plotcap{font-weight:600;font-size:12.6px;color:#444;margin:0 0 5px}
+
+.statbox{font-size:12.6px;line-height:1.65;border:1px solid #eee;border-radius:6px;padding:10px 12px;background:#fcfcfc}
+.statbox b{color:#111}
+.statbox .muted,.muted{color:#888}
+.warn{color:#B23327}
+.ok{color:#2e7d32}
+
+.plot{height:340px}
+.plot.tall{height:420px}
+.sliderrow{display:flex;gap:10px;align-items:center;margin-top:4px}
+.sliderrow input[type=range]{flex:1;accent-color:#2C6E9E}
+.sliderrow .muted{white-space:nowrap;font-size:12px}
+#cohortinfo td:first-child{color:#777;font-weight:600;width:150px}
+#cohortinfo td{text-align:left;white-space:normal}
+.ph{color:#999;padding:26px 18px;font-size:12.6px;border:1px dashed #e2e2e2;border-radius:6px;height:100%;display:flex;align-items:center;justify-content:center;text-align:center}
+
+/* ---- tables ---------------------------------------------------------------- */
+.tablewrap{overflow-x:auto;border:1px solid #f0f0f0;border-radius:6px}
+table{border-collapse:collapse;width:100%;font-size:12.4px}
+th,td{padding:5px 9px;border-bottom:1px solid #f0f0f0;text-align:right;white-space:nowrap}
+th{background:#fafafa}th:first-child,td:first-child{text-align:left}
+tr:hover{background:#f3f8fd}
+.tablehead{display:flex;justify-content:space-between;align-items:center;margin:0 0 6px;gap:8px;flex-wrap:wrap}
+
+/* ---- busy / errors --------------------------------------------------------- */
+#busy{position:fixed;top:8px;right:12px;background:#B23327;color:#fff;padding:5px 12px;border-radius:4px;font-size:12.5px;display:none;z-index:50}
+#err{display:none;margin:8px 16px 0;padding:8px 12px;border:1px solid #B23327;border-radius:5px;color:#B23327;background:#fdf3f2;font-size:12.6px}
+
+/* ---- tablet ---------------------------------------------------------------- */
+@media (max-width:1100px){
+  .configcard{grid-template-columns:1fr 1fr}
+  .cfggroup + .cfggroup{border-left:0}
+  .cfggroup:nth-child(even){border-left:1px solid #efefef}
+  .cfggroup:nth-child(n+3){border-top:1px solid #efefef}
+  .cols.summary{grid-template-columns:1fr 1fr}
+  .cols.summary .statbox{grid-column:1 / -1}
+  .cols.pins{grid-template-columns:1fr}
+}
+
+/* ---- mobile ---------------------------------------------------------------- */
+@media (max-width:700px){
+  .controlbar{flex-direction:column;align-items:stretch}
+  .presetgroup{flex-wrap:wrap}
+  .presetgroup select{flex:1 1 100%;min-width:0}
+  .presetgroup .mini{flex:1}
+  .actions button{flex:1}
+  .configcard{grid-template-columns:1fr}
+  .cfggroup:nth-child(even){border-left:0}
+  .cfggroup + .cfggroup{border-top:1px solid #efefef}
+  .tabsbar{align-items:stretch;flex-direction:column;gap:6px}
+  .viewtoggles{padding-bottom:8px}
+  .cols.summary,.cols.two{grid-template-columns:1fr}
+  .plot{height:300px}
+  .plot.tall{height:340px}
+  .topbar .sub{display:block;margin-top:2px}
+}
