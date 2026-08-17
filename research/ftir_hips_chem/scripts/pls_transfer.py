@@ -598,6 +598,61 @@ def regression_metrics(observed, predicted) -> dict[str, float]:
     }
 
 
+def deming_regression(observed, predicted, error_variance_ratio=1.0) -> dict[str, float]:
+    """Deming (errors-in-variables) fit with observed values on the x-axis.
+
+    ``error_variance_ratio`` is λ = σ²(predicted-side errors) / σ²(observed-side
+    errors). λ = 1 is orthogonal regression; λ → ∞ recovers the OLS of predicted on
+    observed. The λ convention matters when the x variable is rescaled: for
+    x = Fabs/MAC, σx ∝ 1/MAC so λ ∝ MAC² — the scaling under which the ftir_19 MAC
+    pivot survives Deming exactly (ftir_31).
+    """
+
+    observed = np.asarray(observed, dtype=float).reshape(-1)
+    predicted = np.asarray(predicted, dtype=float).reshape(-1)
+    keep = np.isfinite(observed) & np.isfinite(predicted)
+    observed = observed[keep]
+    predicted = predicted[keep]
+    if observed.size < 3:
+        raise ValueError("at least three paired finite observations are required")
+    ratio = float(error_variance_ratio)
+    sxx = float(np.var(observed, ddof=1))
+    syy = float(np.var(predicted, ddof=1))
+    sxy = float(np.cov(observed, predicted, ddof=1)[0, 1])
+    slope = (syy - ratio * sxx
+             + np.sqrt((syy - ratio * sxx) ** 2 + 4 * ratio * sxy ** 2)) / (2 * sxy)
+    return {
+        "n": int(observed.size),
+        "slope": float(slope),
+        "intercept": float(predicted.mean() - slope * observed.mean()),
+        "error_variance_ratio": ratio,
+    }
+
+
+def band_feature_distance(
+    X: np.ndarray,
+    wavenumbers: np.ndarray,
+    X_reference: np.ndarray,
+    feature_columns: Sequence[str] = ("CH_peak", "carbonyl_peak", "shoulder_1600_peak"),
+) -> np.ndarray:
+    """IQR-scaled distance from each spectrum's band features to a reference cohort.
+
+    The Ethiopia-shaped smoke selection metric: ``ftir_source_band_features`` on both
+    sets, then the Euclidean distance of each ``X`` row's features to the reference
+    median, per-feature scaled by the reference IQR (clipped at 1e-6). Reproduces the
+    committed ``Addis_band_feature_distance`` construction from the phase-2
+    calibration notebook exactly; pass corrected spectra on both sides to run the
+    same selection in AIRSpec-corrected space.
+    """
+
+    columns = list(feature_columns)
+    features = ftir_source_band_features(np.asarray(X, dtype=float), wavenumbers)
+    reference = ftir_source_band_features(np.asarray(X_reference, dtype=float), wavenumbers)
+    median = reference[columns].median()
+    iqr = (reference[columns].quantile(.75) - reference[columns].quantile(.25)).clip(lower=1e-6)
+    return np.sqrt((((features[columns] - median) / iqr) ** 2).sum(axis=1)).to_numpy()
+
+
 def score_metric(model: PLSRegression) -> tuple[np.ndarray, np.ndarray]:
     """Return calibration scores and inverse score SS for Eq. (15)."""
 

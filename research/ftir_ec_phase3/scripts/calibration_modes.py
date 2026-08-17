@@ -48,6 +48,17 @@ MAX_COMPONENTS = 30
 APP_FOLDS, SITE_HELDOUT_FOLDS = 10, 5
 APP_TOLERANCE = 0.05
 
+# λ = σy²/σx² for Deming regression on the Addis crossplot at MAC = 10, from the
+# HIPS_Uncertainty parameter rows (median 2.9075 Mm⁻¹ at ETAD, d1e4bce). x = Fabs/MAC,
+# so σx² ∝ 1/MAC² and λ ∝ MAC² — see deming_lambda(); that scaling is the one under
+# which the ftir_19 MAC pivot survives Deming exactly (ftir_31).
+DEMING_LAMBDA_MAC10 = 2.96
+
+
+def deming_lambda(mac: float) -> float:
+    """The Deming error-variance ratio λ for an Fabs/MAC x-axis at this MAC."""
+    return DEMING_LAMBDA_MAC10 * (mac / 10.0) ** 2
+
 MODES = ('app', 'site_heldout')
 
 # Both protocols are named for what they do, not for who uses them.
@@ -58,14 +69,52 @@ MODE_LABELS = {
 MODE_SHORT = {'app': 'Calibration app', 'site_heldout': 'Site-held-out'}
 
 
+def _interleaved_curve_ikpls(X, y, fold, usable):
+    """Fast path for the pooled interleaved curve via `ikpls.fast_cross_validation`.
+
+    Same math as the pure-numpy loop below — validated against it to ~3e-12 in
+    `research/package_trials/chemometrics/validate_ikpls.py`, ~12x faster. ikpls
+    defaults scale_X/scale_Y to True, so both must be disabled to match
+    ``PLSRegression(scale=False)``.
+    """
+    from ikpls.fast_cross_validation.numpy import PLS as _FastPLS
+
+    def _press(Y_val, Y_pred):
+        residual = Y_pred[:, :, 0] - np.asarray(Y_val).reshape(1, -1)
+        return np.sum(residual ** 2, axis=1), residual.shape[1]
+
+    import contextlib, io
+    ik = _FastPLS(algorithm=1, center_X=True, center_Y=True,
+                  scale_X=False, scale_Y=False)
+    with contextlib.redirect_stdout(io.StringIO()):   # it prints even at verbose=0
+        out = ik.cross_validate(X, y, A=usable, folds=fold,
+                                metric_function=_press, n_jobs=-1, verbose=0)
+    press = np.sum([out[f][0] for f in sorted(out)], axis=0)
+    n = sum(out[f][1] for f in sorted(out))
+    return np.sqrt(press / n)
+
+
 def interleaved_cv_curve(X, y, folds=APP_FOLDS, max_components=MAX_COMPONENTS):
-    """Pooled RMSECV over interleaved folds — the app's `pls` CV scheme."""
+    """Pooled RMSECV over interleaved folds — the app's `pls` CV scheme.
+
+    Uses the ikpls fast-CV engine when installed (agreement ~3e-12, far below any
+    reported precision); otherwise falls back to the original pure-numpy loop.
+    """
     X = np.asarray(X, float)
     y = np.asarray(y, float).reshape(-1)
     fold = np.arange(len(y)) % folds
     usable = int(min(max_components,
                      min((fold != i).sum() for i in range(folds)) - 1, X.shape[1]))
     candidates = list(range(1, usable + 1))
+    if X.size >= 1_000_000:   # below this the pure loop wins (parallel overhead)
+        try:
+            rmsecv = _interleaved_curve_ikpls(X, y, fold, usable)
+            return pd.DataFrame({'n_components': candidates, 'rmsecv': rmsecv})
+        except ImportError:
+            pass
+        except Exception as exc:   # never let the accelerator break a calibration
+            import warnings
+            warnings.warn(f'ikpls fast CV failed ({exc!r}); using the pure-numpy loop')
     press = np.zeros(usable)
     for i in range(folds):
         train, test = fold != i, fold == i
@@ -99,36 +148,74 @@ class CalibrationFit:
     model: PLSRegression | None = field(default=None, repr=False)
 
 
-def fit_calibration(mode, cohort, X, y, sites, X_addis, addis_volume_m3):
-    """Fit `cohort` end-to-end under `mode` and predict Addis EC in µg/m³.
+def protocol_train_mask(mode, X, y, sites):
+    """The protocol's training mask over the cohort rows.
 
-    `X`/`y`/`sites` are the cohort's spectra, TOR EC loadings (µg/filter) and IMPROVE site
-    labels; `X_addis` are the Addis spectra in the same representation (raw with raw,
-    AIRSpec-corrected with AIRSpec-corrected).
+    ``app`` fits the shipped model on everything it was given (no hold-out, by
+    construction); ``site_heldout`` is the locked ftir_10 site-disjoint 80/20 split.
+    """
+    if mode not in MODES:
+        raise ValueError(f'unknown mode {mode!r}; expected one of {MODES}')
+    y = np.asarray(y, float).reshape(-1)
+    if mode == 'app':
+        return np.ones(len(y), bool)
+    sites = np.asarray(sites)
+    train_pos, test_pos = next(GroupShuffleSplit(
+        n_splits=1, test_size=.20, random_state=SPLIT_SEED).split(X, groups=sites))
+    assert set(sites[train_pos]).isdisjoint(sites[test_pos])
+    train = np.zeros(len(y), bool)
+    train[train_pos] = True
+    return train
+
+
+def protocol_cv_curve(mode, X, y, sites, train, max_components=MAX_COMPONENTS):
+    """The protocol's RMSECV-vs-k curve on the training rows.
+
+    Columns: ``n_components``, ``rmsecv`` (and ``rmse_se`` for ``site_heldout``,
+    which the first-major-minimum rule needs).
     """
     if mode not in MODES:
         raise ValueError(f'unknown mode {mode!r}; expected one of {MODES}')
     X = np.asarray(X, float)
     y = np.asarray(y, float).reshape(-1)
+    if mode == 'app':
+        return interleaved_cv_curve(X[train], y[train], max_components=max_components)
+    return component_cv_curve(X[train], y[train], range(1, max_components + 1),
+                              groups=np.asarray(sites)[train],
+                              n_splits=SITE_HELDOUT_FOLDS,
+                              random_state=42).rename(columns={'rmse_mean': 'rmsecv'})
+
+
+def protocol_select_k(mode, curve):
+    """The protocol's component-count rule applied to its own curve."""
+    if mode not in MODES:
+        raise ValueError(f'unknown mode {mode!r}; expected one of {MODES}')
+    if mode == 'app':
+        return select_within_tolerance(curve)
+    k, _ = select_first_major_minimum(curve.rename(columns={'rmsecv': 'rmse_mean'}))
+    return int(k)
+
+
+def fit_calibration(mode, cohort, X, y, sites, X_addis, addis_volume_m3,
+                    k_override=None):
+    """Fit `cohort` end-to-end under `mode` and predict Addis EC in µg/m³.
+
+    `X`/`y`/`sites` are the cohort's spectra, TOR EC loadings (µg/filter) and IMPROVE site
+    labels; `X_addis` are the Addis spectra in the same representation (raw with raw,
+    AIRSpec-corrected with AIRSpec-corrected). `k_override` forces the component count
+    instead of the protocol's rule (for k sweeps — the meeting's scan-k item and the
+    calibration_explorer app); None keeps the locked rule-choice behaviour.
+    """
+    X = np.asarray(X, float)
+    y = np.asarray(y, float).reshape(-1)
     sites = np.asarray(sites)
 
-    if mode == 'app':
-        # No hold-out: the app fits the shipped model on everything it was given.
-        train = np.ones(len(y), bool)
-        curve = interleaved_cv_curve(X[train], y[train])
-        k = select_within_tolerance(curve)
-        heldout = None
-    else:
-        train_pos, test_pos = next(GroupShuffleSplit(
-            n_splits=1, test_size=.20, random_state=SPLIT_SEED).split(X, groups=sites))
-        assert set(sites[train_pos]).isdisjoint(sites[test_pos])
-        train = np.zeros(len(y), bool)
-        train[train_pos] = True
-        curve = component_cv_curve(X[train], y[train], range(1, MAX_COMPONENTS + 1),
-                                   groups=sites[train], n_splits=SITE_HELDOUT_FOLDS,
-                                   random_state=42).rename(columns={'rmse_mean': 'rmsecv'})
-        k, _ = select_first_major_minimum(curve.rename(columns={'rmsecv': 'rmse_mean'}))
-        heldout = None
+    train = protocol_train_mask(mode, X, y, sites)
+    curve = protocol_cv_curve(mode, X, y, sites, train)
+    k = protocol_select_k(mode, curve)
+    if k_override is not None:
+        k = max(1, min(int(k_override), int(curve['n_components'].max())))
+    heldout = None
 
     model = PLSRegression(n_components=k, scale=False).fit(X[train], y[train])
     if mode == 'site_heldout':
