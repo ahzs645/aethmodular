@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "calibration-explorer",
+      "runtimeExecutable": "/Users/ahmadjalil/anaconda3/bin/python",
+      "runtimeArgs": ["calibration_explorer/app.py"],
+      "port": 5058
+    }
+  ]
+}

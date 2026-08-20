@@ -111,21 +111,23 @@ selection (Satoshi's instruction):
 
 | Analogs 500 (s-h-o, calibrate raw) | k | OLS | Deming | held-out TOR R² |
 |---|---|---|---|---|
-| select raw (committed) | 4 | 2.57x−6.56 | 3.22x−9.74 | 0.62 |
-| **select corrected** | 17 | **1.56x−2.85** | 1.85x−4.27 | **0.71** |
+| select raw (eligibility-first top 500) | 4 | 2.48x−6.35 | 3.09x−9.32 | 0.37 |
+| **select corrected (eligibility-first top 500)** | **15** | **1.63x−3.17** | 1.94x−4.68 | **0.70** |
 
 - **Does the pool change?** Completely: raw and corrected analog selections share
-  **4/477 filters**. (Ethiopia-shaped shared 285/300.) The raw analog similarity was
+  **4/500 filters**. (Ethiopia-shaped shared 285/300.) The raw analog similarity was
   dominated by Teflon background — Satoshi's "the similarity is more to do with the
   Teflon" point, demonstrated. The corrected selection also lands closer to the other
-  cohorts' behaviour (17 shared with lowest-OC/EC-800 vs raw's 14, and intercept −2.85
-  is in lowest-OC/EC territory).
-- Corrected-selection + corrected-calibration: 0.59x−1.10, held-out 0.70.
-- Corrected-selection at 350: −3.86 (worse than 500 in corrected space — the cutoff
-  response inverts vs raw space).
+  cohorts' behaviour (17 shared with lowest-OC/EC-800, now tied with raw, and intercept
+  −3.17 is in lowest-OC/EC territory).
+- The corrected-selection + corrected-calibration and cutoff-350 values from the
+  original pass used cutoff-before-eligibility semantics and must be regenerated.
+  See `ANALOG_CUTOFF_AUDIT_2026-08-18.md` for the corrected top-500 comparison.
 
 **Number of components / CV schemes / cutoffs / spectra plots / baselined-vs-not** —
-all done in the first pass (tables above).
+all were run in the first pass, but the analog-specific dual-CV curves and cutoff sweep
+need a durable eligibility-first refresh before circulation. The spectra and non-analog
+results are unaffected by this counting correction.
 
 **Clustering "possible later step"** — implemented: the Selection tab's spectra panel
 has a **sub-types (k-means 3)** mode showing cluster medians within the current cohort

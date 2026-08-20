@@ -13,19 +13,30 @@
   <span class="presetgroup">
     <select id="preset" title="Apply a saved configuration"></select>
     <button class="mini" id="preset_save" title="Save the current configuration as a named preset">Save as…</button>
-    <button class="mini" id="preset_delete" title="Delete the selected custom preset" disabled>Delete</button>
-    <button class="mini" id="preset_export" title="Download your custom presets as a JSON file">Export</button>
-    <button class="mini" id="preset_import" title="Import presets from a JSON file">Import</button>
+    <span class="menuwrap">
+      <button class="mini" id="preset_menu_btn" title="More preset actions: delete, export, import">⋯</button>
+      <div class="menu" id="preset_menu">
+        <button id="preset_delete" title="Delete the selected custom preset" disabled>Delete preset</button>
+        <button id="preset_export" title="Download your custom presets as a JSON file">Export JSON…</button>
+        <button id="preset_import" title="Import presets from a JSON file">Import JSON…</button>
+      </div>
+    </span>
     <input type="file" id="preset_file" accept=".json,application/json" style="display:none">
   </span>
   <span class="actions">
-    <button class="primary" id="run">Run</button>
+    <span class="runsplit">
+      <button class="primary" id="run">Run</button>
+      <button id="autorun" aria-pressed="false" title="Auto-run: re-run ~0.6s after any configuration change (cached configurations are instant; uncached ones still compute)">auto</button>
+    </span>
     <button id="sweep" disabled title="The meeting's k scan: ~8 points from the rule choice up to ~double (max 20)">Sweep k</button>
     <button id="pin" disabled title="Add this run to the Compare tab">Pin run</button>
   </span>
 </div>
 
-<div class="configcard">
+<div class="configcard" id="configcard">
+  <button class="cfgtoggle" id="cfgtoggle" title="Collapse or expand the configuration">
+    <span class="chev">▾</span> Configuration <span class="muted" id="cfgsummary"></span>
+  </button>
   <div class="cfggroup">
     <h4>Cohort</h4>
     <div class="field"><label for="cohort">Selection</label><select id="cohort"></select></div>
@@ -56,13 +67,18 @@
       <label for="target">Evaluate on</label>
       <select id="target"><option value="addis">Addis (ETAD) — built-in</option></select>
     </div>
+    <div class="field" title="Report the crossplot on evaluation filters of one lot only — judge a lot-251 calibration on lot-251 filters (Ann, Aug 19). Predictions still cover every filter; only the readout is restricted. Built-in Addis target only.">
+      <label for="eval_lot">Eval lot</label>
+      <select id="eval_lot"><option value="all">all lots</option></select>
+    </div>
   </div>
   <div class="cfggroup">
     <h4>Model</h4>
     <div class="field"><label for="mode">Protocol</label>
       <select id="mode">
-        <option value="site_heldout">Site-held-out — grouped 5-fold CV, first-major-min</option>
-        <option value="app">Calibration app — interleaved 10-fold CV, within-5%</option>
+        <option value="site_heldout">Option A — site-grouped 5-fold CV, first major minimum</option>
+        <option value="app">Option B — interleaved 10-fold CV, within 5% of minimum</option>
+        <option value="app_fmm">Option B2 — interleaved 10-fold CV, first major minimum</option>
       </select>
     </div>
     <div class="fieldrow">
@@ -87,14 +103,15 @@
     <button data-tab="selection">Selection</button>
     <button data-tab="series">Series</button>
     <button data-tab="compare">Compare <span id="pincount" class="count"></span></button>
+    <button data-tab="optimize">Optimize <span id="optcount" class="count"></span></button>
   </nav>
   <span class="viewtoggles">
-    <span class="group"><label>MAC</label><span class="pill" id="mac">
-      <button data-v="10" class="on">10</button><button data-v="6">6</button></span></span>
-    <span class="group"><label>Fit</label><span class="pill" id="est">
-      <button data-v="deming" class="on">Deming</button><button data-v="ols">OLS</button></span></span>
-    <span class="group"><label>Addis set</label><span class="pill" id="evalset">
-      <button data-v="fixed" class="on">fixed 190</button><button data-v="all">all pairs</button></span></span>
+    <span class="pill" id="mac"><span class="plabel">MAC</span>
+      <button data-v="10" class="on">10</button><button data-v="6">6</button></span>
+    <span class="pill" id="est"><span class="plabel">Fit</span>
+      <button data-v="deming" class="on">Deming</button><button data-v="ols">OLS</button></span>
+    <span class="pill" id="evalset"><span class="plabel">Addis set</span>
+      <button data-v="fixed" class="on">fixed 190</button><button data-v="all">all pairs</button></span>
   </span>
 </div>
 
@@ -116,17 +133,21 @@
   <div class="cols two">
     <div>
       <div class="plotcap" id="cap_cross">Addis crossplot</div>
-      <div id="p_cross" class="plot tall"></div>
+      <div id="p_cross" class="plot square"></div>
     </div>
     <div>
       <div class="plotcap">Fit metrics — every MAC × estimator × Addis set for this run</div>
       <div class="tablewrap">
-        <table id="metrics"><thead><tr>
-          <th>set</th><th>MAC</th><th>n</th><th>OLS slope</th><th>OLS intercept</th>
-          <th>Deming slope</th><th>Deming intercept</th><th>R²</th><th>RMSE</th>
-          <th title="x-intercept c = −intercept/slope: the reference level at which the model predicts zero (µg/m³)">c OLS</th>
-          <th title="x-intercept under Deming">c Deming</th>
-        </tr></thead><tbody></tbody></table>
+        <table id="metrics"><thead>
+          <tr><th rowspan="2">set</th><th rowspan="2">MAC</th><th rowspan="2">n</th>
+            <th colspan="2" class="grp">OLS</th><th colspan="2" class="grp">Deming</th>
+            <th rowspan="2" class="gs">R²</th><th rowspan="2">RMSE</th>
+            <th colspan="2" class="grp"
+                title="x-intercept c = −intercept/slope: the reference level at which the model predicts zero (µg/m³)">x-int. c</th></tr>
+          <tr class="sub"><th class="gs">slope</th><th>int.</th>
+            <th class="gs">slope</th><th>int.</th>
+            <th class="gs">OLS</th><th>Deming</th></tr>
+        </thead><tbody></tbody></table>
       </div>
       <div class="muted" style="margin:6px 0 12px">Intercept and R² are MAC-invariant; the slope scales by MAC (ftir_19). Deming uses λ*=2.96 at MAC 10, scaled by MAC².</div>
       <div class="plotcap" id="cap_resid">Residuals vs HIPS</div>
@@ -142,7 +163,8 @@
         <span class="plotcap" id="cap_ranking" style="margin:0">Selection — click the plot or drag the slider to move the cutoff</span>
         <span class="pill" id="rankview">
           <button data-v="rank" class="on">metric vs rank</button>
-          <button data-v="dist">pool distribution</button></span>
+          <button data-v="dist">pool distribution</button>
+          <button data-v="both" title="Overlay the raw-space and AIRSpec-corrected-space selection metrics — does baselining change who gets picked?">raw vs corrected</button></span>
       </div>
       <div id="p_ranking" class="plot"></div>
       <div class="sliderrow">
@@ -153,13 +175,6 @@
       <div class="tablewrap"><table id="cohortinfo"><tbody></tbody></table></div>
       <div class="plotcap" style="margin-top:12px">Composition ruler — cohort vs pool OC/EC, with the Addis marker (ftir_30)</div>
       <div id="p_composition" class="plot short" style="height:230px"></div>
-      <div class="plotcap" style="margin-top:12px">Selection overlap — are the methods picking the same filters?</div>
-      <div class="tablewrap">
-        <table id="overlap"><thead><tr>
-          <th>cohort A</th><th>cohort B</th><th>nA</th><th>nB</th><th>shared</th><th>% of smaller</th>
-        </tr></thead><tbody></tbody></table>
-      </div>
-      <div class="muted" style="margin-top:4px">includes raw- vs corrected-space selections for both spectra-based cohorts; uses the current cutoffs</div>
     </div>
     <div>
       <div class="tablehead" style="margin-bottom:5px">
@@ -170,6 +185,25 @@
           <button data-v="clusters">sub-types (k-means 3)</button></span>
       </div>
       <div id="p_spectra" class="plot tall"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sectionhead">Selection overlap — are the methods picking the same filters?</div>
+    <div class="cols overlapcols">
+      <div>
+        <div class="plotcap">Shared membership — % of the smaller cohort (count below)</div>
+        <div id="p_overlap" class="plot"></div>
+      </div>
+      <div>
+        <div class="plotcap">All pairs</div>
+        <div class="tablewrap">
+          <table id="overlap"><thead><tr>
+            <th>cohort A</th><th>cohort B</th><th>nA</th><th>nB</th><th>shared</th><th>% of smaller</th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+        <div class="muted" style="margin-top:4px">includes raw- vs corrected-space selections for both spectra-based cohorts; uses the current cutoffs</div>
+      </div>
     </div>
   </div>
 </div>
@@ -184,7 +218,7 @@
       <div class="plotcap">Series plausibility — is this a physically sensible EC record?</div>
       <div class="tablewrap"><table id="seriesinfo"><tbody></tbody></table></div>
       <div class="plotcap" style="margin:12px 0 5px" id="cap_vsdep">vs deployed SPARTAN EC — same filters</div>
-      <div id="p_vsdeployed" class="plot"></div>
+      <div id="p_vsdeployed" class="plot square"></div>
     </div>
   </div>
 </div>
@@ -207,6 +241,68 @@
     <div>
       <div class="plotcap">Pinned intercepts (µg/m³) — zero is the target</div>
       <div id="p_ladder" class="plot"></div>
+    </div>
+  </div>
+</div>
+
+<div class="pane" id="pane-optimize">
+  <div class="optcard">
+    <div class="optgroup"><h4>Cohorts</h4>
+      <label class="ck"><input type="checkbox" data-opt-cohort="eth_shaped" checked>Ethiopia-shaped</label>
+      <label class="ck"><input type="checkbox" data-opt-cohort="analogs" checked>Spectral analogs</label>
+      <label class="ck"><input type="checkbox" data-opt-cohort="ocec" checked>Lowest-OC/EC</label>
+      <label class="ck"><input type="checkbox" data-opt-cohort="smoke" checked>Biomass-smoke</label>
+      <label class="ck" title="The 13k-filter pool: a cold CV curve takes several minutes"><input type="checkbox" data-opt-cohort="pool">Entire network (slow)</label>
+      <label class="ck" style="margin-top:6px" title="Also try Ethiopia-shaped / analog selection in AIRSpec-corrected space (corrected analog ranking is expensive on a cold cache)"><input type="checkbox" id="opt_corrsel">+ corrected-space selection</label>
+    </div>
+    <div class="optgroup"><h4>Calibrate on</h4>
+      <label class="ck"><input type="checkbox" data-opt-spectra="raw" checked>raw spectra</label>
+      <label class="ck"><input type="checkbox" data-opt-spectra="airspec" checked>AIRSpec-corrected</label>
+      <label class="ck"><input type="checkbox" data-opt-spectra="deriv2" checked>SG 2nd derivative</label>
+    </div>
+    <div class="optgroup"><h4>Protocol</h4>
+      <label class="ck"><input type="checkbox" data-opt-mode="site_heldout" checked>A — site-grouped 5-fold</label>
+      <label class="ck"><input type="checkbox" data-opt-mode="app">B — interleaved, 5% rule</label>
+      <label class="ck"><input type="checkbox" data-opt-mode="app_fmm">B2 — interleaved, FMM</label>
+    </div>
+    <div class="optgroup"><h4>Objective</h4>
+      <div class="field" title="score = |intercept| + w·|slope − 1|, read at the MAC · Fit toggles above, fixed evaluation set">
+        <label for="opt_w">weight w on |slope − 1| (µg/m³ per unit)</label>
+        <input id="opt_w" type="number" value="5" min="0" step="0.5"></div>
+      <div class="field" style="margin-top:8px" title="Runs whose held-out TOR R² falls below this are ranked last and excluded from refinement (protocols B/B2 have no held-out set and always pass)">
+        <label for="opt_minr2">min held-out TOR R²</label>
+        <input id="opt_minr2" type="number" value="0.85" min="0" max="1" step="0.05"></div>
+      <label class="ck" style="margin-top:8px" title="Protocols B/B2 fit on all filters and have no held-out TOR test, so they pass the floor vacuously — at batch scale they flood the leaderboard with unfalsifiable rows. Check this to rank only runs with a real held-out set (protocol A)."><input type="checkbox" id="opt_reqho" checked>require a held-out set</label>
+    </div>
+    <div class="optgroup"><h4>Search (this page)</h4>
+      <button class="primary" id="opt_start">Start search</button>
+      <button id="opt_stop" disabled>Stop</button>
+      <button class="mini" id="opt_export" disabled style="margin-top:6px">Export CSV</button>
+      <div class="muted" id="opt_status" style="margin-top:8px">Staged search: screen every combination at its default cutoff and rule k → refine the cutoff around the leaders → sweep k on the finalists. Sequential; stop anytime, results are kept.</div>
+    </div>
+    <div class="optgroup"><h4>Exhaustive batch (server)</h4>
+      <button class="primary" id="batch_start" title="Run the checked grid on the server itself — keeps going if you close this page. Every (configuration, k) row is scored and appended to cache/batch_results.jsonl.">Run batch</button>
+      <button id="batch_stop" disabled>Stop</button>
+      <label class="ck" style="margin-top:6px" title="Try several cutoffs per ranked cohort (Eth 200–400, analogs 400–600, OC/EC 600–1000) instead of only the defaults"><input type="checkbox" id="batch_ladder" checked>cutoff ladder</label>
+      <label class="ck" title="Also evaluate ~8 k values per configuration, from the rule choice to ~double"><input type="checkbox" id="batch_sweepk" checked>k sweep per config</label>
+      <button class="mini" id="batch_load" style="margin-top:6px" title="Merge saved batch rows (including ones computed in Colab and copied back) into the leaderboard and Pareto view">Load saved results</button>
+      <div class="muted" id="batch_status" style="margin-top:8px">Uses the checked cohorts / spectra / protocols. Survives closing the page; results persist in the cache and reload with “Load saved results”.</div>
+    </div>
+  </div>
+  <div class="cols two">
+    <div>
+      <div class="plotcap" id="cap_optboard">Leaderboard — score = |intercept| + w·|slope − 1|</div>
+      <div class="tablewrap">
+        <table id="optboard"><thead><tr>
+          <th>#</th><th>cohort</th><th>sel</th><th>cal</th><th>protocol</th><th>k</th>
+          <th>slope</th><th>intercept</th><th>held-out R²</th><th>score</th><th></th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+      <div class="muted" style="margin:6px 0 12px">Screening many configurations against the same fixed Addis pairs will overfit the readout — treat leaders as candidates: check the held-out TOR R², and confirm on the locked site-held-out protocol before adopting one. Results live in this page session; Export CSV to keep them.</div>
+    </div>
+    <div>
+      <div class="plotcap" id="cap_pareto">Intercept vs slope — every evaluated run; the frontier is the tradeoff</div>
+      <div id="p_pareto" class="plot tall"></div>
     </div>
   </div>
 </div>

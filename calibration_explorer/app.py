@@ -20,7 +20,9 @@ Run:  python calibration_explorer/app.py   →  http://127.0.0.1:5058
 from __future__ import annotations
 
 import hashlib
+import itertools
 import json
+import os
 import sys
 import threading
 import time
@@ -88,6 +90,39 @@ COMPUTE_LOCK = threading.Lock()
 # ----------------------------------------------------------------------------- #
 # data loading (once, in a background thread)
 # ----------------------------------------------------------------------------- #
+def _read_pool_spectra(path, wcols, engine=None):
+    """The 725 MB pool-spectra read, via polars' multithreaded reader when
+    installed (~6x faster than the pandas read in the same-shape trial —
+    research/package_trials/io/). polars parses correctly rounded, bit-identical
+    to pandas float_precision='round_trip'; against the historical default
+    pandas read it differed on 1 cell in 35.4M, by 1 float32 ulp on an ~1e-5
+    value — far below every reported precision. Set CALIB_EXPLORER_CSV=pandas
+    to force the fallback (the historical read, byte-for-byte).
+
+    Returns ``(frame, engine)`` so the loader can report which path ran.
+    ``engine`` forces one path explicitly (the /api/benchmark_pool_read
+    diagnostic); None resolves it from the environment.
+    """
+    if engine is None:
+        engine = os.environ.get("CALIB_EXPLORER_CSV", "polars")
+    if engine == "polars":
+        try:
+            import polars as pl
+            raw = pl.read_csv(path, columns=["AnalysisId"] + wcols,
+                              schema_overrides={c: pl.Float64 for c in wcols})
+            frame = pd.DataFrame(
+                raw.select(wcols).to_numpy().astype(np.float32), columns=wcols)
+            frame.insert(0, "AnalysisId", raw["AnalysisId"].to_numpy())
+            return frame, "polars"
+        except ImportError:
+            pass
+        except Exception as exc:   # never let the accelerator break the load
+            import warnings
+            warnings.warn(f"polars pool read failed ({exc!r}); using pandas")
+    return pd.read_csv(path, usecols=["AnalysisId"] + wcols,
+                       dtype={c: np.float32 for c in wcols}), "pandas"
+
+
 def _load_all():
     try:
         STATE["message"] = "loading Addis evaluation set…"
@@ -102,10 +137,9 @@ def _load_all():
         D["fixed_mask"] = etad_eval["EC_deployed_ugm3"].notna().to_numpy()
         D["season"] = etad_eval["season"].fillna("unknown").astype(str).tolist()
 
-        STATE["message"] = "loading the 13k-pool spectra (biggest file — a minute or two)…"
-        pool_raw = pd.read_csv(PATHS.ftir_dir / "local_db/spectra_248_251.csv",
-                               usecols=["AnalysisId"] + wcols,
-                               dtype={c: np.float32 for c in wcols})
+        STATE["message"] = "loading the 13k-pool spectra (biggest file)…"
+        pool_raw, csv_engine = _read_pool_spectra(
+            PATHS.ftir_dir / "local_db/spectra_248_251.csv", wcols)
         pool_raw = pool_raw[~pool_raw["AnalysisId"].duplicated()].set_index("AnalysisId")
         pool_raw.index = pool_raw.index.astype(int)
         D["pool_raw"] = pool_raw
@@ -178,6 +212,21 @@ def _load_all():
         D["X_addis_corr"] = (etad_corr.groupby("MediaId").mean()
                              .loc[etad_eval["MediaId"].astype(int)].to_numpy(float))
 
+        # Per-filter lot of the evaluation set, from the HIPS LotId (Ann,
+        # 2026-08-19: judge a lot-251 calibration on lot-251 filters — most
+        # ETAD filters are 251, ~15% are 248, a few 253).
+        STATE["message"] = "matching evaluation filters to HIPS lots…"
+        hips_lots = (pd.read_csv(PATHS.spartan_hips_primary, encoding="cp1252",
+                                 usecols=["Site", "FilterId", "LotId"])
+                     .query("Site == 'ETAD'").drop_duplicates("FilterId")
+                     .dropna(subset=["LotId"]))
+        lot_by_filter = (hips_lots.set_index("FilterId")["LotId"]
+                         .astype(int).astype(str).to_dict())
+        eval_lots = [lot_by_filter.get(f, "?")
+                     for f in etad_eval["ExternalFilterId"]]
+        D["eval_lots"] = {str(k): int(v)
+                          for k, v in pd.Series(eval_lots).value_counts().items()}
+
         # The built-in evaluation target. Custom targets load on demand from
         # TARGETS_DIR and join this registry; everything downstream reads it.
         dates = pd.to_datetime(etad_eval["SamplingStartDate"], errors="coerce")
@@ -193,22 +242,31 @@ def _load_all():
             "fixed_mask": D["fixed_mask"],
             "dates": [d.date().isoformat() if pd.notna(d) else None for d in dates],
             "deployed": [round(float(v), 4) if pd.notna(v) else None for v in deployed],
+            "lots": eval_lots,
         }}
 
         # Startup provenance checks against the locked cohorts (reported, not fatal).
-        checks = []
-        eth300 = set(int(i) for i in D["eth_ranked"][:300])
+        # Top-N is counted over TOR-eligible filters — the same rule the app's
+        # cohort resolution uses (see _ranking).
+        def top_eligible(ranked, n):
+            r = np.asarray(ranked, dtype=int)
+            return set(int(i) for i in r[np.isin(r, pool.index.to_numpy())][:n])
+
+        checks = [{"name": f"pool spectra loaded via {csv_engine}", "ok": True,
+                   "detail": "polars is the fast path when installed; "
+                             "CALIB_EXPLORER_CSV=pandas forces the pandas read"}]
+        eth300 = top_eligible(D["eth_ranked"], 300)
         checks.append({"name": "Ethiopia-shaped top-300 == locked selection",
                        "ok": eth300 == eth_locked,
                        "detail": f"{len(eth300 & eth_locked)}/300 overlap"})
-        top_lock = set(int(i) for i in D["analog_ranked"][:n_lock])
+        top_lock = top_eligible(D["analog_ranked"], n_lock)
         checks.append({"name": f"analog top-{n_lock} == locked analog cohort",
                        "ok": top_lock == analog_locked,
                        "detail": f"{len(top_lock & analog_locked)}/{n_lock} overlap"})
         committed_800 = set(pd.read_csv(
             PHASE3_DIR / "output/tables/ftir11/lowest_ocec_800_cohort.csv")
             ["AnalysisId"].astype(int))
-        got_800 = set(int(i) for i in D["ocec_ranked"][:800])
+        got_800 = top_eligible(D["ocec_ranked"], 800)
         checks.append({"name": "lowest-OC/EC top-800 == committed ftir_11 cohort",
                        "ok": got_800 == committed_800,
                        "detail": f"{len(got_800 & committed_800)}/800 overlap"})
@@ -392,16 +450,27 @@ def analog_corrected_ranking():
 # cohort resolution
 # ----------------------------------------------------------------------------- #
 def _ranking(cohort, selection_space):
+    """Ranked candidates for a cohort, restricted to the TOR-eligible pool.
+
+    Rankings can list ids with no usable TOR row; the cutoff must count eligible
+    filters, or "top 500" analogs resolves to 477 fitted filters (and the locked
+    phase-2 analog cohort — which IS the top 500 eligible — never reproduces).
+    """
     if cohort == "eth_shaped" and selection_space == "airspec":
         ranked, metric = eth_corrected_ranking()
-        return ranked, metric, "band-feature distance to Addis (AIRSpec-corrected spectra)"
-    if cohort == "analogs" and selection_space == "airspec":
+        label = "band-feature distance to Addis (AIRSpec-corrected spectra)"
+    elif cohort == "analogs" and selection_space == "airspec":
         ranked, metric = analog_corrected_ranking()
-        return ranked, metric, "analog rank score (AIRSpec-corrected spectra)"
-    return ({"eth_shaped": (D["eth_ranked"], D["eth_metric"],
-                            "band-feature distance to Addis (raw spectra)"),
-             "analogs": (D["analog_ranked"], D["analog_metric"], "analog rank score"),
-             "ocec": (D["ocec_ranked"], D["ocec_metric"], "TOR OC/EC ratio")}[cohort])
+        label = "analog rank score (AIRSpec-corrected spectra)"
+    else:
+        ranked, metric, label = {
+            "eth_shaped": (D["eth_ranked"], D["eth_metric"],
+                           "band-feature distance to Addis (raw spectra)"),
+            "analogs": (D["analog_ranked"], D["analog_metric"], "analog rank score"),
+            "ocec": (D["ocec_ranked"], D["ocec_metric"], "TOR OC/EC ratio")}[cohort]
+    ranked = np.asarray(ranked, dtype=int)
+    keep = np.isin(ranked, D["pool"].index.to_numpy())
+    return ranked[keep], np.asarray(metric, dtype=float)[keep], label
 
 
 def resolve_cohort(cohort, cutoff, selection_space, spectra, lot="all"):
@@ -484,7 +553,7 @@ def _cohort_arrays(cohort, cutoff, selection_space, spectra, lot="all",
 
 
 def run_config(cohort, cutoff, selection_space, spectra, mode, k_override,
-               max_components, lot="all", target="addis"):
+               max_components, lot="all", target="addis", eval_lot="all"):
     t = get_target(target)
     ids, cohort_label, X, y, sites, X_eval = _cohort_arrays(
         cohort, cutoff, selection_space, spectra, lot, target)
@@ -533,6 +602,33 @@ def run_config(cohort, cutoff, selection_space, spectra, mode, k_override,
         fit_path.write_text(json.dumps(fit))
 
     pred = np.asarray(fit["addis_ugm3"], float)
+
+    # Evaluation-lot mask (Ann, 2026-08-19): report the readout on filters of
+    # one lot only. Applied after the cached fit — predictions always cover
+    # every filter; only the crossplot/metrics view is restricted — so the
+    # curve/fit caches stay lot-agnostic.
+    t_view, pred_view = t, pred
+    if eval_lot not in (None, "all"):
+        lots = t.get("lots")
+        if lots is None:
+            raise ValueError(f"target '{target}' has no filter-lot information "
+                             "(eval lot applies to the built-in Addis target)")
+        m = np.array([str(l) == str(eval_lot) for l in lots])
+        if m.sum() < 3:
+            raise ValueError(f"only {int(m.sum())} evaluation filters on lot {eval_lot}")
+        fixed = t["fixed_mask"][m] if t.get("fixed_mask") is not None else None
+        if fixed is not None and fixed.sum() < 3:
+            fixed = None                      # fixed subset too small on this lot
+        t_view = {**t,
+                  "ref": t["ref"][m],
+                  "groups": [g for g, b in zip(t["groups"], m) if b],
+                  "fixed_mask": fixed,
+                  "dates": ([d for d, b in zip(t["dates"], m) if b]
+                            if t.get("dates") else None),
+                  "deployed": ([v for v, b in zip(t["deployed"], m) if b]
+                               if t.get("deployed") else None)}
+        pred_view = pred[m]
+
     floor_rows = curve.loc[curve["n_components"] == k, "rmsecv"]
     floor = float(floor_rows.iloc[0]) if len(floor_rows) else float("nan")
     return {
@@ -547,17 +643,193 @@ def run_config(cohort, cutoff, selection_space, spectra, mode, k_override,
         "eth_corr_coverage": D.get("eth_corr_coverage"),
         "analog_corr_coverage": D.get("analog_corr_coverage"),
         "target": {"name": target, "label": t["label"], "ref_kind": t["ref_kind"],
-                   "has_fixed": t.get("fixed_mask") is not None},
-        "eval": {"ref": [round(float(v), 4) for v in t["ref"]],
-                 "pred": fit["addis_ugm3"],
-                 "group": t["groups"],
-                 "date": t.get("dates"),
-                 "deployed": t.get("deployed"),
-                 "fixed": ([bool(b) for b in t["fixed_mask"]]
-                           if t.get("fixed_mask") is not None
-                           else [False] * len(t["ref"]))},
-        "metrics": crossplot_metrics(t, pred),
+                   "has_fixed": t_view.get("fixed_mask") is not None,
+                   "eval_lot": eval_lot or "all",
+                   "n_eval": int(len(pred_view))},
+        "eval": {"ref": [round(float(v), 4) for v in t_view["ref"]],
+                 "pred": [round(float(v), 5) for v in pred_view],
+                 "group": t_view["groups"],
+                 "date": t_view.get("dates"),
+                 "deployed": t_view.get("deployed"),
+                 "fixed": ([bool(b) for b in t_view["fixed_mask"]]
+                           if t_view.get("fixed_mask") is not None
+                           else [False] * len(t_view["ref"]))},
+        "metrics": crossplot_metrics(t_view, pred_view),
     }
+
+
+# ----------------------------------------------------------------------------- #
+# exhaustive batch optimizer — server-side, so it survives the browser tab and
+# runs unattended (locally overnight, or in Colab with the cache copied back).
+# Every (configuration, k) row is scored the same way the frontend leaderboard
+# scores interactive runs and appended to cache/batch_results.jsonl.
+# ----------------------------------------------------------------------------- #
+BATCH_RESULTS_PATH = CACHE_DIR / "batch_results.jsonl"
+BATCH = {"running": False, "stop": False, "done": 0, "total": 0, "current": "",
+         "skipped": 0, "new_rows": 0, "started": None, "finished": None,
+         "errors": []}
+BATCH_LADDERS = {"eth_shaped": [200, 250, 300, 350, 400],
+                 "analogs": [400, 450, 500, 550, 600],
+                 "ocec": [600, 700, 800, 900, 1000]}
+
+
+def _batch_row_key(r):
+    return "|".join(str(r.get(f)) for f in
+                    ("cohort", "cutoff", "selection_space", "spectra", "mode",
+                     "lot", "target", "eval_lot")) + f"|k{r.get('k')}"
+
+
+def _batch_sweep_ks(auto_k, curve_max):
+    # mirror the frontend Sweep-k ladder: rule choice to ~double, capped at 20
+    hi = min(max(2 * auto_k, auto_k + 6), 20, curve_max)
+    return sorted({round(auto_k + i * (hi - auto_k) / 7) for i in range(8)})
+
+
+def _batch_row(cfg, out):
+    # same shape as the frontend's optRowFromRun, so saved rows merge straight
+    # into the leaderboard / Pareto view
+    def pick(mac):
+        rows = ([m for m in out["metrics"]
+                 if m["evaluation_set"] == "fixed" and m["MAC"] == mac]
+                or [m for m in out["metrics"] if m["MAC"] == mac]
+                or out["metrics"])
+        return rows[0]
+    f10, f6 = pick(10.0), pick(6.0)
+    return {**cfg, "cohort_label": out["cohort_label"], "k": out["k"],
+            "auto_k": out["auto_k"],
+            "ols_slope": f10["ols_slope"], "ols_intercept": f10["ols_intercept"],
+            "deming_slope": f10["deming_slope"],
+            "deming_intercept": f10["deming_intercept"],
+            "ols_intercept_mac6": f6["ols_intercept"],
+            "deming_intercept_mac6": f6["deming_intercept"],
+            "R2": f10["R2"],
+            "heldout_R2": out["heldout"]["R2"] if out["heldout"] else None}
+
+
+def _batch_configs(b):
+    cohorts = b.get("cohorts") or ["eth_shaped", "analogs", "ocec", "smoke"]
+    spectra = b.get("spectra") or ["raw", "airspec", "deriv2"]
+    modes = b.get("modes") or ["site_heldout", "app", "app_fmm"]
+    lots = b.get("lots") or ["all"]
+    target = b.get("target", "addis")
+    eval_lot = b.get("eval_lot", "all")
+    corrsel = bool(b.get("corrsel"))
+    ladder = b.get("cutoff_ladder", True)
+    order = {"eth_shaped": 0, "analogs": 1, "ocec": 2, "smoke": 3, "pool": 4}
+    cfgs = []
+    for co in sorted(cohorts, key=lambda c: order.get(c, 9)):   # cheapest first
+        if co in BATCH_LADDERS:
+            cutoffs = BATCH_LADDERS[co] if ladder else [DEFAULT_CUTOFF.get(co)]
+        else:
+            cutoffs = [None]
+        sels = (["raw", "airspec"] if corrsel and co in ("eth_shaped", "analogs")
+                else ["raw"])
+        for cut, sel, sp, mode, lot in itertools.product(
+                cutoffs, sels, spectra, modes, lots):
+            cfgs.append(dict(cohort=co, cutoff=cut, selection_space=sel,
+                             spectra=sp, mode=mode, lot=lot, target=target,
+                             eval_lot=eval_lot))
+    return cfgs
+
+
+def _batch_worker(cfgs, sweep):
+    seen = set()
+    if BATCH_RESULTS_PATH.exists():
+        for line in BATCH_RESULTS_PATH.read_text().splitlines():
+            try:
+                seen.add(_batch_row_key(json.loads(line)))
+            except Exception:
+                pass
+    try:
+        with BATCH_RESULTS_PATH.open("a") as f:
+            for i, cfg in enumerate(cfgs, 1):
+                if BATCH["stop"]:
+                    break
+                BATCH["done"] = i - 1
+                BATCH["current"] = (
+                    f"{cfg['cohort']}/{cfg['cutoff'] or '-'} "
+                    f"sel={cfg['selection_space']} cal={cfg['spectra']} "
+                    f"{cfg['mode']} lot={cfg['lot']}")
+                try:
+                    # the lock is taken per fit, not per config, so interactive
+                    # runs from the page interleave instead of queueing behind
+                    # the whole batch
+                    with COMPUTE_LOCK:
+                        out = run_config(k_override=None,
+                                         max_components=MAX_COMPONENTS, **cfg)
+                    ks = [out["k"]]
+                    if sweep:
+                        ks = sorted(set(ks) | set(_batch_sweep_ks(
+                            out["auto_k"], int(out["curve"][-1]["n_components"]))))
+                    for k in ks:
+                        if BATCH["stop"]:
+                            break
+                        if k == out["k"]:
+                            o = out
+                        else:
+                            with COMPUTE_LOCK:
+                                o = run_config(k_override=k,
+                                               max_components=MAX_COMPONENTS,
+                                               **cfg)
+                        row = _batch_row(cfg, o)
+                        key = _batch_row_key(row)
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        f.write(json.dumps(row) + "\n")
+                        f.flush()
+                        BATCH["new_rows"] += 1
+                except Exception as exc:                       # noqa: BLE001
+                    BATCH["skipped"] += 1
+                    BATCH["errors"] = (BATCH["errors"]
+                                       + [f"{BATCH['current']}: "
+                                          f"{type(exc).__name__}: {exc}"])[-8:]
+            else:
+                BATCH["done"] = len(cfgs)
+    finally:
+        BATCH["running"] = False
+        BATCH["current"] = ""
+        BATCH["finished"] = time.time()
+
+
+@app.route("/api/batch_start", methods=["POST"])
+def api_batch_start():
+    if not STATE["ready"]:
+        return jsonify({"error": "data still loading"}), 503
+    if BATCH["running"]:
+        return jsonify({"error": "a batch is already running"}), 409
+    b = request.get_json(force=True) or {}
+    cfgs = _batch_configs(b)
+    BATCH.update(running=True, stop=False, done=0, total=len(cfgs), current="",
+                 skipped=0, new_rows=0, started=time.time(), finished=None,
+                 errors=[])
+    threading.Thread(target=_batch_worker,
+                     args=(cfgs, bool(b.get("sweep_k", True))),
+                     daemon=True).start()
+    return jsonify({"started": True, "total": len(cfgs)})
+
+
+@app.route("/api/batch_stop", methods=["POST"])
+def api_batch_stop():
+    BATCH["stop"] = True
+    return jsonify({"stopping": True})
+
+
+@app.route("/api/batch_status")
+def api_batch_status():
+    return jsonify(BATCH)
+
+
+@app.route("/api/batch_results")
+def api_batch_results():
+    rows = []
+    if BATCH_RESULTS_PATH.exists():
+        for line in BATCH_RESULTS_PATH.read_text().splitlines():
+            try:
+                rows.append(json.loads(line))
+            except Exception:
+                pass
+    return jsonify({"rows": rows})
 
 
 # ----------------------------------------------------------------------------- #
@@ -573,6 +845,7 @@ def _config_from(b):
         max_components=int(b.get("max_components", MAX_COMPONENTS)),
         lot=b.get("lot", "all"),
         target=b.get("target", "addis"),
+        eval_lot=b.get("eval_lot", "all"),
     )
 
 
@@ -589,6 +862,7 @@ def api_status():
                     "deming_lambda_mac10": DEMING_LAMBDA_MAC10,
                     "max_components_default": MAX_COMPONENTS,
                     "lots": D.get("lots_available", []),
+                    "eval_lots": D.get("eval_lots", {}),
                     "targets": list_targets() if STATE["ready"] else {}})
 
 
@@ -624,21 +898,71 @@ def api_sweep():
             cfg = _config_from(b)
             for k in ks:
                 out = run_config(k_override=k, **cfg)
-                fixed10 = next(
-                    (m for m in out["metrics"]
-                     if m["evaluation_set"] == "fixed" and m["MAC"] == 10),
-                    out["metrics"][0])
+
+                def pick(mac):
+                    return next(
+                        (m for m in out["metrics"]
+                         if m["evaluation_set"] == "fixed" and m["MAC"] == mac),
+                        next((m for m in out["metrics"] if m["MAC"] == mac),
+                             out["metrics"][0]))
+                fixed10, fixed6 = pick(10), pick(6)
                 rows.append({"k": k, "auto_k": out["auto_k"],
                              "rmsecv": out["rmsecv_floor"],
                              "ols_intercept": fixed10["ols_intercept"],
                              "ols_slope": fixed10["ols_slope"],
                              "deming_intercept": fixed10["deming_intercept"],
                              "deming_slope": fixed10["deming_slope"],
+                             "ols_intercept_mac6": fixed6["ols_intercept"],
+                             "deming_intercept_mac6": fixed6["deming_intercept"],
                              "R2": fixed10["R2"],
                              "heldout_R2": (out["heldout"] or {}).get("R2")})
         except Exception as exc:
             return jsonify({"error": f"{type(exc).__name__}: {exc}"}), 400
-    return jsonify({"rows": rows, "note": "intercept/slope at fixed 190, MAC 10"})
+    return jsonify({"rows": rows, "note": "intercept/slope at fixed 190, MAC 10 "
+                                          "(*_mac6 fields carry the MAC 6 intercepts)"})
+
+
+@app.route("/api/benchmark_pool_read", methods=["POST"])
+def api_benchmark_pool_read():
+    """Diagnostic for the polars fast path: re-read the pool CSV with both
+    engines inside the app process (which holds the Drive access) and compare
+    timings + values. Two full reads of the 725 MB export, so it takes a
+    minute or two; runs under the compute lock so it can't race a calibration.
+    """
+    if not STATE["ready"]:
+        return jsonify({"error": "data still loading"}), 503
+    try:
+        import polars  # noqa: F401
+    except ImportError:
+        return jsonify({"error": "polars is not installed in this interpreter"}), 400
+    path = PATHS.ftir_dir / "local_db/spectra_248_251.csv"
+    out = {"csv_mb": round(path.stat().st_size / 1e6, 1)}
+    frames = {}
+    with COMPUTE_LOCK:
+        for engine in ("polars", "pandas"):
+            t0 = time.time()
+            frame, used = _read_pool_spectra(path, D["wcols"], engine=engine)
+            out[f"{engine}_s"] = round(time.time() - t0, 2)
+            assert used == engine
+            frames[engine] = (frame[~frame["AnalysisId"].duplicated()]
+                              .set_index("AnalysisId"))
+    a = frames["polars"].to_numpy()
+    b = frames["pandas"].to_numpy()
+    differ = (a != b) & ~(np.isnan(a) & np.isnan(b))
+    n = int(differ.sum())
+    max_ulp = 0.0
+    if n:
+        max_ulp = float(np.max(
+            np.abs(a[differ].astype(np.float64) - b[differ].astype(np.float64))
+            / np.spacing(np.abs(b[differ]).astype(np.float32))))
+    out.update({
+        "rows": int(a.shape[0]), "cols": int(a.shape[1]),
+        "speedup": round(out["pandas_s"] / out["polars_s"], 1),
+        "index_equal": bool(frames["polars"].index.equals(frames["pandas"].index)),
+        "cells_differing": n, "cells_total": int(a.size),
+        "max_ulp_float32": round(max_ulp, 2),
+    })
+    return jsonify(out)
 
 
 @app.route("/api/ranking", methods=["POST"])

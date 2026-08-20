@@ -60,13 +60,18 @@ def deming_lambda(mac: float) -> float:
     return DEMING_LAMBDA_MAC10 * (mac / 10.0) ** 2
 
 MODES = ('app', 'site_heldout')
+# 'app_fmm' ("option B2") is accepted by the protocol helpers but deliberately NOT in
+# MODES, so notebooks that loop over MODES keep their committed two-mode behaviour.
+ALL_MODES = MODES + ('app_fmm',)
 
 # Both protocols are named for what they do, not for who uses them.
 MODE_LABELS = {
     'app': 'Calibration app — interleaved CV, within-5%, fitted on all filters',
     'site_heldout': 'Site-held-out — site-grouped CV, first-major-minimum, disjoint fit',
+    'app_fmm': 'Interleaved CV, first-major-minimum, fitted on all filters',
 }
-MODE_SHORT = {'app': 'Calibration app', 'site_heldout': 'Site-held-out'}
+MODE_SHORT = {'app': 'Calibration app', 'site_heldout': 'Site-held-out',
+              'app_fmm': 'Interleaved + first-major-min'}
 
 
 def _interleaved_curve_ikpls(X, y, fold, usable):
@@ -92,6 +97,56 @@ def _interleaved_curve_ikpls(X, y, fold, usable):
     press = np.sum([out[f][0] for f in sorted(out)], axis=0)
     n = sum(out[f][1] for f in sorted(out))
     return np.sqrt(press / n)
+
+
+def interleaved_cv_curve_folds(X, y, folds=APP_FOLDS, max_components=MAX_COMPONENTS):
+    """Per-fold RMSE curve on the same interleaved folds (mean ± SE across folds).
+
+    The pooled-PRESS curve (`interleaved_cv_curve`) carries no fold spread, so the
+    first-major-minimum rule degenerates to the global minimum on it (its 1-SE
+    threshold collapses). This variant keeps the identical fold assignment but
+    aggregates per-fold RMSEs, giving that rule a real SE band — the 'app_fmm'
+    protocol ("option B2": interleaved 10-fold CV, first major minimum).
+    """
+    X = np.asarray(X, float)
+    y = np.asarray(y, float).reshape(-1)
+    fold = np.arange(len(y)) % folds
+    usable = int(min(max_components,
+                     min((fold != i).sum() for i in range(folds)) - 1, X.shape[1]))
+    candidates = list(range(1, usable + 1))
+    per_fold = None
+    if X.size >= 1_000_000:
+        try:
+            from ikpls.fast_cross_validation.numpy import PLS as _FastPLS
+            import contextlib, io
+
+            def _rmse(Y_val, Y_pred):
+                residual = Y_pred[:, :, 0] - np.asarray(Y_val).reshape(1, -1)
+                return np.sqrt(np.mean(residual ** 2, axis=1))
+
+            ik = _FastPLS(algorithm=1, center_X=True, center_Y=True,
+                          scale_X=False, scale_Y=False)
+            with contextlib.redirect_stdout(io.StringIO()):
+                out = ik.cross_validate(X, y, A=usable, folds=fold,
+                                        metric_function=_rmse, n_jobs=-1, verbose=0)
+            per_fold = np.array([out[f] for f in sorted(out)])
+        except ImportError:
+            per_fold = None
+        except Exception as exc:
+            import warnings
+            warnings.warn(f'ikpls per-fold CV failed ({exc!r}); using the pure loop')
+            per_fold = None
+    if per_fold is None:
+        per_fold = np.zeros((folds, usable))
+        for i in range(folds):
+            train, test = fold != i, fold == i
+            model = PLSRegression(n_components=usable, scale=False).fit(X[train], y[train])
+            residual = (predict_pls_components(model, X[test], candidates)
+                        - y[test][:, None])
+            per_fold[i] = np.sqrt(np.mean(residual ** 2, axis=0))
+    return pd.DataFrame({'n_components': candidates,
+                         'rmsecv': per_fold.mean(axis=0),
+                         'rmse_se': per_fold.std(axis=0, ddof=1) / np.sqrt(folds)})
 
 
 def interleaved_cv_curve(X, y, folds=APP_FOLDS, max_components=MAX_COMPONENTS):
@@ -154,10 +209,10 @@ def protocol_train_mask(mode, X, y, sites):
     ``app`` fits the shipped model on everything it was given (no hold-out, by
     construction); ``site_heldout`` is the locked ftir_10 site-disjoint 80/20 split.
     """
-    if mode not in MODES:
-        raise ValueError(f'unknown mode {mode!r}; expected one of {MODES}')
+    if mode not in ALL_MODES:
+        raise ValueError(f'unknown mode {mode!r}; expected one of {ALL_MODES}')
     y = np.asarray(y, float).reshape(-1)
-    if mode == 'app':
+    if mode in ('app', 'app_fmm'):
         return np.ones(len(y), bool)
     sites = np.asarray(sites)
     train_pos, test_pos = next(GroupShuffleSplit(
@@ -174,12 +229,15 @@ def protocol_cv_curve(mode, X, y, sites, train, max_components=MAX_COMPONENTS):
     Columns: ``n_components``, ``rmsecv`` (and ``rmse_se`` for ``site_heldout``,
     which the first-major-minimum rule needs).
     """
-    if mode not in MODES:
-        raise ValueError(f'unknown mode {mode!r}; expected one of {MODES}')
+    if mode not in ALL_MODES:
+        raise ValueError(f'unknown mode {mode!r}; expected one of {ALL_MODES}')
     X = np.asarray(X, float)
     y = np.asarray(y, float).reshape(-1)
     if mode == 'app':
         return interleaved_cv_curve(X[train], y[train], max_components=max_components)
+    if mode == 'app_fmm':
+        return interleaved_cv_curve_folds(X[train], y[train],
+                                          max_components=max_components)
     return component_cv_curve(X[train], y[train], range(1, max_components + 1),
                               groups=np.asarray(sites)[train],
                               n_splits=SITE_HELDOUT_FOLDS,
@@ -188,8 +246,8 @@ def protocol_cv_curve(mode, X, y, sites, train, max_components=MAX_COMPONENTS):
 
 def protocol_select_k(mode, curve):
     """The protocol's component-count rule applied to its own curve."""
-    if mode not in MODES:
-        raise ValueError(f'unknown mode {mode!r}; expected one of {MODES}')
+    if mode not in ALL_MODES:
+        raise ValueError(f'unknown mode {mode!r}; expected one of {ALL_MODES}')
     if mode == 'app':
         return select_within_tolerance(curve)
     k, _ = select_first_major_minimum(curve.rename(columns={'rmsecv': 'rmse_mean'}))

@@ -393,6 +393,14 @@ def component_cv_curve(
         splits = list(splitter.split(X, y, groups))
         scheme = "group-held-out K-fold"
 
+    # Candidates must also fit the smallest fold's training set (the interleaved
+    # curve functions apply the same per-fold clamp); tiny grouped cohorts crash
+    # sklearn otherwise.
+    smallest_fold = min(len(train) for train, _ in splits)
+    candidates = [value for value in candidates if value < smallest_fold]
+    if not candidates:
+        raise ValueError("no valid PLS component candidates")
+
     fold_rmse = []
     max_components = max(candidates)
     for train, test in splits:

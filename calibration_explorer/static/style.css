@@ -1,6 +1,7 @@
 /* Calibration Iteration Explorer — layout & theme
    Header: topbar → preset/actions bar → grouped configuration card → tabs + view toggles.
-   Breakpoints: ≥1100px desktop · 700–1100px two-column · <700px single-column */
+   Breakpoints: ≥1100px desktop (side-by-side panels) · 700–1100px stacked panels,
+   two-column config card · <700px single-column everything */
 
 *{box-sizing:border-box}
 body{margin:0;font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;color:#22252A;font-size:13px;background:#fff}
@@ -13,14 +14,40 @@ body{margin:0;font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;color:#2
 /* ---- preset + actions bar -------------------------------------------------- */
 .controlbar{display:flex;justify-content:space-between;align-items:center;gap:10px;
   flex-wrap:wrap;padding:8px 16px;background:#f7f7f7;border-bottom:1px solid #e8e8e8}
-.presetgroup{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.presetgroup{display:flex;gap:6px;align-items:center;flex-wrap:wrap;min-width:0}
 .presetgroup select{min-width:230px}
-.actions{display:flex;gap:8px;align-items:center}
+/* margin-left:auto keeps the actions right-aligned even after the bar wraps */
+.actions{display:flex;gap:8px;align-items:center;margin-left:auto}
+/* Run and its auto-run mode as one segmented control */
+.runsplit{display:inline-flex}
+.runsplit .primary{border-radius:5px 0 0 5px}
+.runsplit #autorun{border-radius:0 5px 5px 0;border-left:0;font-size:12px;padding:6px 10px}
+.runsplit #autorun.on{background:#BFD7E8;font-weight:600}
+.runsplit #autorun.on::before{content:'✓ '}
+/* overflow menu for the rarer preset actions */
+.menuwrap{position:relative}
+.menu{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:40;
+  background:#fff;border:1px solid #ccc;border-radius:6px;min-width:150px;
+  padding:4px;box-shadow:0 4px 14px rgba(0,0,0,.14)}
+.menu.open{display:block}
+.menu button{display:block;width:100%;text-align:left;border:0;background:none;
+  color:#333;padding:7px 10px;border-radius:4px;font-size:12.5px}
+.menu button:hover{background:#f3f8fd}
+.menu button:disabled{color:#aaa;background:none}
 
 /* ---- configuration card ---------------------------------------------------- */
 .configcard{margin:12px 16px 0;display:grid;gap:0;
   grid-template-columns:1.25fr 1fr 1.25fr .9fr;
   border:1px solid #e6e6e6;border-radius:8px;background:#fcfcfc;overflow:hidden}
+/* the collapse header is a phone-only affordance (see the mobile block);
+   on wider screens it is hidden and the card is always fully expanded */
+.cfgtoggle{display:none;border:0;border-radius:0;background:#f4f4f4;color:#444;
+  text-align:left;font-weight:600;padding:9px 14px;grid-column:1 / -1;
+  /* min-width:0 so the nowrap summary can't widen the grid column */
+  min-width:0;overflow:hidden}
+.cfgtoggle .chev{color:#2C6E9E;margin-right:2px}
+.cfgtoggle .muted{font-weight:400;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;flex:1;min-width:0}
 .cfggroup{padding:10px 14px 12px;min-width:0}
 .cfggroup + .cfggroup{border-left:1px solid #efefef}
 .cfggroup h4{margin:0 0 8px;font-size:10.5px;text-transform:uppercase;
@@ -52,10 +79,16 @@ button:disabled{opacity:.45;cursor:default}
 .tabs button.on{background:#fff;color:#111;font-weight:600;
   box-shadow:inset 0 2px 0 #2C6E9E}
 .tabs .count{color:#2C6E9E;font-weight:600}
-.viewtoggles{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding-bottom:7px}
-.viewtoggles label{font-size:11px;color:#777;font-weight:600}
-.group{display:flex;gap:6px;align-items:center;min-width:0}
+/* min-width:0 lets the toggle row shrink below its one-line width so the
+   groups actually wrap (a flex item's default min-width is its unwrapped size) */
+.viewtoggles{display:flex;gap:8px 10px;align-items:center;flex-wrap:wrap;
+  padding-bottom:7px;min-width:0}
 .pill{display:inline-flex;border:1px solid #ccc;border-radius:5px;overflow:hidden}
+/* the group's label rides inside the pill as a non-clickable first segment,
+   so label + options read as one control and align consistently */
+.plabel{display:flex;align-items:center;padding:4px 8px;background:#fafafa;
+  color:#777;font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.5px;border-right:1px solid #ddd;white-space:nowrap}
 .pill button{border:0;border-radius:0;background:#fff;color:#555;padding:4px 10px;font-size:12px}
 .pill button.on{background:#2C6E9E;color:#fff}
 
@@ -78,20 +111,56 @@ button:disabled{opacity:.45;cursor:default}
 
 .plot{height:340px}
 .plot.tall{height:420px}
+/* crossplots: equal axis scale (set in the layout) + a container narrow enough
+   that the square plot area doesn't swim in whitespace */
+.plot.square{height:440px;max-width:480px}
+
+/* ---- full-width sub-sections inside a pane ---------------------------------- */
+.section{margin-top:20px;border-top:1px solid #e6e6e6;padding-top:12px}
+.sectionhead{font-weight:600;font-size:13.5px;color:#333;margin:0 0 8px}
+.cols.overlapcols{grid-template-columns:minmax(360px,540px) 1fr;align-items:start}
 .sliderrow{display:flex;gap:10px;align-items:center;margin-top:4px}
 .sliderrow input[type=range]{flex:1;accent-color:#2C6E9E}
 .sliderrow .muted{white-space:nowrap;font-size:12px}
-#cohortinfo td:first-child{color:#777;font-weight:600;width:150px}
-#cohortinfo td{text-align:left;white-space:normal}
+#cohortinfo td:first-child,#seriesinfo td:first-child{color:#777;font-weight:600;width:150px}
+#cohortinfo td,#seriesinfo td{text-align:left;white-space:normal}
 .ph{color:#999;padding:26px 18px;font-size:12.6px;border:1px dashed #e2e2e2;border-radius:6px;height:100%;display:flex;align-items:center;justify-content:center;text-align:center}
 
 /* ---- tables ---------------------------------------------------------------- */
-.tablewrap{overflow-x:auto;border:1px solid #f0f0f0;border-radius:6px}
+/* scroll shadows: the edge fades only appear while columns are hidden off-screen,
+   so a clipped table is visibly scrollable (cell backgrounds would hide them,
+   which is why tbody rows stay transparent) */
+.tablewrap{overflow-x:auto;border:1px solid #f0f0f0;border-radius:6px;
+  background:
+    linear-gradient(90deg,#fff 40%,rgba(255,255,255,0)) left/28px 100%,
+    linear-gradient(270deg,#fff 40%,rgba(255,255,255,0)) right/28px 100%,
+    radial-gradient(farthest-side at 0 50%,rgba(34,37,42,.25),transparent) left/12px 100%,
+    radial-gradient(farthest-side at 100% 50%,rgba(34,37,42,.25),transparent) right/12px 100%;
+  background-repeat:no-repeat;
+  background-attachment:local,local,scroll,scroll}
 table{border-collapse:collapse;width:100%;font-size:12.4px}
-th,td{padding:5px 9px;border-bottom:1px solid #f0f0f0;text-align:right;white-space:nowrap}
+th,td{padding:5px 8px;border-bottom:1px solid #f0f0f0;text-align:right;white-space:nowrap}
 th{background:#fafafa}th:first-child,td:first-child{text-align:left}
+/* grouped two-row headers (fit-metrics table) */
+thead th.grp{text-align:center;border-left:1px solid #e8e8e8}
+thead tr.sub th{color:#777;font-size:11.5px}
+thead tr.sub th.gs,td.gs{border-left:1px solid #e8e8e8}
 tr:hover{background:#f3f8fd}
+tr.sel{background:#e6f0f9;box-shadow:inset 3px 0 0 #2C6E9E}
+tr.sel:hover{background:#ddebf7}
 .tablehead{display:flex;justify-content:space-between;align-items:center;margin:0 0 6px;gap:8px;flex-wrap:wrap}
+
+/* ---- optimizer -------------------------------------------------------------- */
+.optcard{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.optgroup{flex:1 1 175px;min-width:0;border:1px solid #e6e6e6;border-radius:8px;
+  background:#fcfcfc;padding:10px 12px}
+.optgroup h4{margin:0 0 8px;font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.6px;color:#8a8a8a;font-weight:700}
+.ck{display:flex;gap:6px;align-items:center;font-size:12.5px;color:#333;
+  padding:2px 0;cursor:pointer}
+.ck input{accent-color:#2C6E9E;margin:0;flex:0 0 auto}
+#optboard tr.fail td{color:#b0b0b0}
+#optboard td .gray{padding:2px 8px}
 
 /* ---- busy / errors --------------------------------------------------------- */
 #busy{position:fixed;top:8px;right:12px;background:#B23327;color:#fff;padding:5px 12px;border-radius:4px;font-size:12.5px;display:none;z-index:50}
@@ -101,11 +170,16 @@ tr:hover{background:#f3f8fd}
 @media (max-width:1100px){
   .configcard{grid-template-columns:1fr 1fr}
   .cfggroup + .cfggroup{border-left:0}
-  .cfggroup:nth-child(even){border-left:1px solid #efefef}
-  .cfggroup:nth-child(n+3){border-top:1px solid #efefef}
+  /* nth-of-type, not nth-child: the (hidden) .cfgtoggle button is child 1 */
+  .cfggroup:nth-of-type(even){border-left:1px solid #efefef}
+  .cfggroup:nth-of-type(n+3){border-top:1px solid #efefef}
   .cols.summary{grid-template-columns:1fr 1fr}
   .cols.summary .statbox{grid-column:1 / -1}
+  /* below ~1100px two side-by-side panels leave <450px each — the crossplot,
+     the metrics table and the series plot all need more, so stack instead */
+  .cols.two{grid-template-columns:1fr}
   .cols.pins{grid-template-columns:1fr}
+  .cols.overlapcols{grid-template-columns:1fr}
 }
 
 /* ---- mobile ---------------------------------------------------------------- */
@@ -114,15 +188,32 @@ tr:hover{background:#f3f8fd}
   .presetgroup{flex-wrap:wrap}
   .presetgroup select{flex:1 1 100%;min-width:0}
   .presetgroup .mini{flex:1}
+  .presetgroup .menuwrap{flex:0 0 auto}
+  .actions{margin-left:0}
   .actions button{flex:1}
+  .actions .runsplit{flex:1.6;display:flex}
+  .runsplit .primary{flex:1}
+  .runsplit #autorun{flex:0 0 auto}
   .configcard{grid-template-columns:1fr}
-  .cfggroup:nth-child(even){border-left:0}
+  .cfggroup:nth-of-type(even){border-left:0}
   .cfggroup + .cfggroup{border-top:1px solid #efefef}
+  /* phones: the config card is tall, so it can collapse behind a summary row;
+     scoped to this breakpoint so a collapsed card re-expands on wide screens */
+  .cfgtoggle{display:flex;gap:6px;align-items:baseline;font-size:13px}
+  .configcard.collapsed .cfggroup{display:none}
+  .cfggroup:first-of-type{border-top:1px solid #efefef}
   .tabsbar{align-items:stretch;flex-direction:column;gap:6px}
+  /* equal-width tab grid instead of hiding the last tabs behind a scroll;
+     rows need a full border, so tabs become chips rather than folder tabs */
+  .tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));
+    overflow:visible;gap:4px}
+  .tabs button{border:1px solid #ddd;border-radius:6px;padding:8px 6px;text-align:center}
+  .tabs button.on{box-shadow:none;border-color:#2C6E9E}
   .viewtoggles{padding-bottom:8px}
-  .cols.summary,.cols.two{grid-template-columns:1fr}
+  .cols.summary{grid-template-columns:1fr}
   .plot{height:300px}
   .plot.tall{height:340px}
+  .plot.square{height:340px}
   .topbar .sub{display:block;margin-top:2px}
 }
 
