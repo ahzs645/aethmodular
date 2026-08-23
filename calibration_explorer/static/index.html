@@ -410,6 +410,15 @@
         <label for="opt_minr2">min held-out TOR R²</label>
         <input id="opt_minr2" type="number" value="0.85" min="0" max="1" step="0.05"></div>
       <label class="ck" style="margin-top:8px" title="Protocols B/B2 fit on all filters and have no held-out TOR test, so they pass the floor vacuously — at batch scale they flood the leaderboard with unfalsifiable rows. Check this to rank only runs with a real held-out set (protocol A)."><input type="checkbox" id="opt_reqho" checked>require a held-out set</label>
+      <label style="margin-top:8px" title="Rank rows evaluated on one site, or on any site (a site column appears). Multi-site rows come from server batches with a site scope other than 'current target'.">Rank on site
+        <select id="opt_site">
+          <option value="addis" selected>addis</option>
+          <option value="indh">indh (Delhi)</option>
+          <option value="chts">chts (Beijing)</option>
+          <option value="uspa">uspa (Pasadena)</option>
+          <option value="etbi">etbi (Bishoftu)</option>
+          <option value="any">any site</option>
+        </select></label>
     </div>
     <div class="optgroup"><h4>Search (this page)</h4>
       <button class="primary" id="opt_start">Start search</button>
@@ -422,6 +431,15 @@
       <button id="batch_stop" disabled>Stop</button>
       <label class="ck" style="margin-top:6px" title="Try several cutoffs per ranked cohort (Eth 200–400, analogs 400–600, OC/EC 600–1000) instead of only the defaults"><input type="checkbox" id="batch_ladder" checked>cutoff ladder</label>
       <label class="ck" title="Also evaluate ~8 k values per configuration, from the rule choice to ~double"><input type="checkbox" id="batch_sweepk" checked>k sweep per config</label>
+      <label style="margin-top:6px" title="Score each configuration on more than one site. The fitted calibration is reused across sites, so extra sites cost a prediction, not a refit. Addis + Delhi runs those two first; all sites adds Beijing, Pasadena and Bishoftu.">Sites
+        <select id="batch_sites">
+          <option value="current" selected>current target</option>
+          <option value="focus">Addis + Delhi</option>
+          <option value="all">all five sites</option>
+        </select></label>
+      <label style="margin-top:6px" title="Dense cutoff mode: step through the cohort-size range in this interval instead of the 5-point ladder. Leave blank for the ladder.">dense step
+        <input type="number" id="batch_step" min="5" step="5" style="width:70px" placeholder="—"></label>
+      <label class="ck" title="With a dense step: sweep the WIDE cohort ranges (Eth 100–900, analogs 100–1500, OC/EC 100–2000) instead of the defaults (100–600 / 250–750 / 300–1500)"><input type="checkbox" id="batch_wide">wide cutoff range</label>
       <button class="mini" id="refine_start" style="margin-top:6px" title="Hill-climb each ranked cohort's cutoff in +-10 steps from its default, following score = |intercept| + w·|slope − 1| downhill until it stops improving (held-out floor applies). Refined rows persist like batch rows.">Refine cutoffs ±10</button>
       <button class="mini" id="batch_load" style="margin-top:6px" title="Merge saved batch rows (including ones computed in Colab and copied back) into the leaderboard and Pareto view">Load saved results</button>
       <div class="muted" id="batch_status" style="margin-top:8px">Uses the checked cohorts / spectra / protocols. Survives closing the page; results persist in the cache and reload with “Load saved results”.</div>
@@ -432,7 +450,8 @@
       <div class="plotcap" id="cap_optboard">Leaderboard — score = |intercept| + w·|slope − 1|</div>
       <div class="tablewrap">
         <table id="optboard"><thead><tr>
-          <th>#</th><th>cohort</th><th>sel</th><th>cal</th><th>protocol</th><th>k</th>
+          <th>#</th><th title="evaluation target this row was scored on">site</th>
+          <th>cohort</th><th>sel</th><th>cal</th><th>protocol</th><th>k</th>
           <th>slope</th><th>intercept</th><th>held-out R²</th><th>score</th><th></th>
         </tr></thead><tbody></tbody></table>
       </div>

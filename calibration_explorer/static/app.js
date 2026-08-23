@@ -1100,12 +1100,21 @@ $('batch_start').onclick = async () => {
   if(!cohorts.length || !spectra.length || !modes.length){
     $('batch_status').textContent = 'pick at least one cohort, spectra space and protocol'; return;
   }
+  const scope = $('batch_sites').value;      // current | focus | all
+  const targets = scope === 'focus' ? ['addis', 'indh']
+    : scope === 'all' ? ['addis', 'indh', 'chts', 'uspa', 'etbi']
+    : [$('target').value || 'addis'];
+  const step = parseInt($('batch_step').value) || 0;
   const r = await post('/api/batch_start', {
     cohorts, spectra, modes,
     corrsel: $('opt_corrsel').checked,
     cutoff_ladder: $('batch_ladder').checked,
     sweep_k: $('batch_sweepk').checked,
-    target: $('target').value || 'addis',
+    targets,
+    cutoff_step: step,
+    cutoff_ranges: (step && $('batch_wide').checked)
+      ? {eth_shaped: [100, 900], analogs: [100, 1500], ocec: [100, 2000]}
+      : null,
     eval_lot: $('eval_lot').disabled ? 'all' : ($('eval_lot').value || 'all'),
   });
   if(r.error){ $('batch_status').textContent = r.error; return; }
@@ -1135,12 +1144,14 @@ function renderOpt(){
   $('cap_optboard').textContent =
     `Leaderboard — score = |intercept| + ${w}·|slope − 1| at MAC ${toggles.mac}, ${estL}, ${setL}` +
     (toggles.evalset === 'all' ? ' (rows without an all-pairs readout fall back to fixed until backfilled)' : '');
+  const siteSel = $('opt_site') ? $('opt_site').value : 'addis';
   const view = optRows.map((r, i) => ({r, i, s: optScore(r), pass: optPasses(r), ...optParts(r)}))
+    .filter(v => siteSel === 'any' || (v.r.target || 'addis') === siteSel)
     .sort((a, b) => (b.pass - a.pass) || (a.s - b.s));
   const shown = view.slice(0, 20);
   $('optboard').querySelector('tbody').innerHTML = shown.map((v, rank) => `
     <tr${v.pass ? '' : ' class="fail" title="below the held-out R² floor"'}>
-      <td>${rank + 1}</td><td>${v.r.cohort_label || v.r.cohort}</td>
+      <td>${rank + 1}</td><td>${v.r.target || 'addis'}</td><td>${v.r.cohort_label || v.r.cohort}</td>
       <td>${v.r.selection_space === 'airspec' ? 'AIRSpec' : 'raw'}</td>
       <td>${SPECTRA_SHORT[v.r.spectra] || v.r.spectra}</td>
       <td title="${MODE_LABEL[v.r.mode] || v.r.mode}">${{site_heldout:'A', app:'B', app_fmm:'B2'}[v.r.mode] || v.r.mode}</td>
@@ -1150,7 +1161,7 @@ function renderOpt(){
       <td>${v.r.heldout_R2 != null ? v.r.heldout_R2.toFixed(2) : '—'}</td>
       <td><b>${isFinite(v.s) ? v.s.toFixed(2) : '–'}</b></td>
       <td><button class="gray" onclick="optApply(${v.i})">Load</button></td></tr>`).join('') +
-    (view.length > 20 ? `<tr><td colspan="11" class="muted">… ${view.length - 20} more (Export CSV for all)</td></tr>` : '');
+    (view.length > 20 ? `<tr><td colspan="12" class="muted">… ${view.length - 20} more (Export CSV for all)</td></tr>` : '');
   drawPareto(view);
 }
 
@@ -1212,7 +1223,7 @@ $('opt_export').onclick = () => {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = 'explorer_optimizer_runs.csv'; a.click();
 };
-['opt_w', 'opt_minr2', 'opt_reqho'].forEach(id => $(id).onchange = renderOpt);
+['opt_w', 'opt_minr2', 'opt_reqho', 'opt_site'].forEach(id => $(id).onchange = renderOpt);
 placeholder('p_pareto', 'Start a search to populate the tradeoff view.');
 
 /* ---- analog lab -------------------------------------------------------------

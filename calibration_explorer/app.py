@@ -770,7 +770,12 @@ def _batch_configs(b):
     spectra = b.get("spectra") or ["raw", "airspec", "deriv2"]
     modes = b.get("modes") or ["site_heldout", "app", "app_fmm"]
     lots = b.get("lots") or ["all"]
-    target = b.get("target", "addis")
+    # multi-target: one row per (config x target). Targets are the INNERMOST
+    # loop so the fitted calibration (fit/curve caches are target-independent)
+    # is reused across all sites back-to-back — evaluating a fitted config on
+    # another site costs a prediction, not a refit. eval_lot only means
+    # anything at addis (ETAD lots); other sites are forced to "all".
+    targets = b.get("targets") or [b.get("target", "addis")]
     eval_lot = b.get("eval_lot", "all")
     corrsel = bool(b.get("corrsel"))
     ladder = b.get("cutoff_ladder", True)
@@ -796,9 +801,11 @@ def _batch_configs(b):
                 else ["raw"])
         for cut, sel, sp, mode, lot in itertools.product(
                 cutoffs, sels, spectra, modes, lots):
-            cfgs.append(dict(cohort=co, cutoff=cut, selection_space=sel,
-                             spectra=sp, mode=mode, lot=lot, target=target,
-                             eval_lot=eval_lot))
+            for tgt in targets:
+                cfgs.append(dict(cohort=co, cutoff=cut, selection_space=sel,
+                                 spectra=sp, mode=mode, lot=lot, target=tgt,
+                                 eval_lot=(eval_lot if tgt == "addis"
+                                           else "all")))
     return cfgs
 
 
