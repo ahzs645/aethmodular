@@ -154,6 +154,8 @@ SCRIPTS = {
     "21": ("run_ftir_21.py", "ftir_21_both_protocols_end_to_end.ipynb"),
     "22": ("run_ftir_22.py", "ftir_22_figures_under_both_protocols.ipynb"),
     "23": ("run_ftir_23.py", "ftir_23_component_selection_by_protocol.ipynb"),
+    "27": ("run_ftir_27.py", "ftir_27_chemspec_circularity.ipynb"),
+    "28": ("run_ftir_28.py", "ftir_28_ma350_brc_falsification.ipynb"),
     "29": ("run_ftir_29.py", "ftir_29_provisional_addis_ec_series.ipynb"),
     "30": ("run_ftir_30.py", "ftir_30_composition_case_and_its_limits.ipynb"),
     "31": ("run_ftir_31.py", "ftir_31_deck_figure_regeneration.ipynb"),
@@ -624,6 +626,198 @@ TAKEAWAYS["23"] = """\
   sort would move the app k by a few components (not the site-held-out k)."""
 
 
+SCRIPTS["26"] = ("run_ftir_26.py", "ftir_26_improve_hips_origin.ipynb")
+
+TLDR["26"] = """\
+**IMPROVE HIPS does not have a 21.5 Mm⁻¹ zero — but killing that explanation does not close
+the Addis intercept, and the notebook says so.** On 160,023 IMPROVE filters carrying both HIPS
+Fabs and quartz TOR EC (the ftir_16 join, reproduced to the digit: implied MAC median **11.96**,
+Addis-like subset **10.05**), the Fabs-at-EC-0 intercept is **+1.345 Mm⁻¹** [+1.19, +1.48]
+pooled, **+0.200** trimmed at EC ≤ p95, **+2.163 → +0.097** on the Addis-like OC/EC ≤ 2.27
+cohort, and **+0.251** as a per-site median — every one of them **≤ 1 %** of the Addis
+C = 21.5 Mm⁻¹. A λ sweep shows the pooled intercept is **monotone increasing in λ**
+(+0.538 → +1.345), so the OLS column is the **maximum over all errors-in-variables weightings**
+and a hard upper bound. The assumption-free version needs no fit at all: on the **4,247** filters
+with TOR EC ≤ 0, median Fabs is **+0.12 Mm⁻¹** and **23.8 %** read *negative* Fabs — a zero that
+scatters through zero. And the offset is arithmetically impossible at that size anyway: only
+**186 of 160,023** IMPROVE filters (**0.12 %**) carry 21.5 Mm⁻¹ of *total* absorption.
+**The unplanned finding is geometric.** Fabs = k·EC^p fits pooled at **k = 7.50, p = 0.796,
+R² = 0.713** and passes through zero with no offset term; feeding that curve — true offset
+exactly 0, no noise — to a straight-line fit manufactures **+0.87 Mm⁻¹** of intercept, 64 % of
+the observed pooled value. Per-site intercepts run at a median **35 %** of site mean Fabs
+(IQR 27–50 %); the Addis figure is 21.5/47.11 = **46 %**, and **29 %** of IMPROVE sites
+(29–34 % across inclusion variants) equal or exceed it in data whose true offset at zero is ~0.
+**The one thing that survives**: per-site intercepts scale with loading (r = **0.689**, slope
+**0.338** per Mm⁻¹ of site median Fabs), and extrapolating to Addis's 47.11 gives **16.2 Mm⁻¹
+≈ 75 % of C** — but IMPROVE's dirtiest site median is **8.1 Mm⁻¹**, so that is **5.8× beyond
+support** and cannot be treated as a result. The loading-*independent* part of that regression
+is only **+0.221 Mm⁻¹** [+0.08, +0.37], which is what actually rules out an additive HIPS zero."""
+
+TAKEAWAYS["26"] = """\
+- **A generic additive HIPS zero is dead.** Every fit range, both estimators, and the
+  no-fit EC ≤ 0 check put IMPROVE HIPS within ~0.2 Mm⁻¹ of zero at zero EC — under 1 % of the
+  21.5 Mm⁻¹ the Addis intercept would need. The λ-monotonicity result makes that a bound
+  rather than an estimate: no errors-in-variables weighting produces a larger intercept than
+  OLS, so the OLS column cannot be argued upward.
+- **It is dead by arithmetic as well as by fit.** 21.5 Mm⁻¹ is more absorption than 99.88 % of
+  IMPROVE filters carry in *total*. An offset that size could not hide in this network.
+- **But the intercept in a Fabs–EC plot is not evidence of an offset.** The relation is
+  concave, and a straight line through a concave relation manufactures a positive Fabs-intercept
+  (equivalently a negative x-intercept) with **no offset present at all** — demonstrated here on
+  a noiseless surrogate, which reproduces 64 % of the pooled intercept and a median per-site
+  intercept fraction of 30 % against the observed 35 %. Roughly one IMPROVE site in three has an
+  intercept fraction at or above Addis's 46 %. Curve geometry is now a third explanation for the
+  Addis intercept, alongside calibration transfer and an instrument artifact.
+- **The loading-dependent artifact is NOT ruled out, and this notebook cannot rule it out.**
+  Site intercepts grow with site loading (r = 0.689). The extrapolation to Addis loading lands
+  at 75 % of C, which would explain nearly everything — and it is 5.8× beyond IMPROVE's support,
+  so it is a hypothesis, not a measurement. What the same regression *does* settle is the
+  loading-independent part: +0.221 Mm⁻¹ [+0.08, +0.37], i.e. no additive offset.
+- **The follow-up that would settle it is blocked in the committed data.** Testing curvature
+  directly on Addis needs an EC reference independent of both axes, and neither candidate is:
+  `ChemSpec_BC` is Fabs/10 (r = 0.999 with HIPS — circular with x) and `ChemSpec_EC` is the
+  deployed FTIR prediction itself (r = 0.9998 with `EC_ftir` — circular with y). This is exactly
+  why co-located **quartz TOR** at Addis is decisive: it is a function of neither axis.
+- **Caveats.** (1) The p = 0.796 exponent is attenuated by TOR error — binning on Fabs instead
+  of EC gives p ≈ 1.08–1.10 — so treat 0.796 as an **upper bound on concavity** and therefore on
+  how much of C geometry alone can explain. (2) CIs here are site-cluster bootstraps; the
+  i.i.d.-row CI on the Addis-like trimmed fit ([+0.068, +0.125]) is four times narrower than the
+  honest clustered one ([−0.034, +0.218]), and the clustered version is the one quoted.
+  (3) The share of sites above the Addis intercept fraction moves between 29 % and 34 % with the
+  per-site inclusion rule, so it is reported as a range."""
+
+TLDR["27"] = """\
+**Both** of SPARTAN's public carbon columns at ETAD are the Addis crossplot's own axes, so
+neither can arbitrate the intercept. **(1) `ChemSpec_BC_PM2.5` is the x-axis.** Against
+Fabs/10: n = **188**, R² = **0.9982**, implied MAC (Fabs/BC) median **10.0003**
+(IQR 9.99–10.01), median |Δ| = **0.0030 µg/m³** and **86.7%** of filters within 0.005 — and
+that 0.0030 is not agreement but the 2-dp rounding half-width: `round(Fabs/10, 2)` reproduces
+the published column **bit for bit on 163 of 188 filters**, whose residuals are uniform on
+±0.005 (KS p = 0.30). The slope-10 / R² ≈ 1 signature holds at 23 of 25 committed SPARTAN
+sites (ETAD **9.9889** / **0.99857**), so it is a network convention, not an ETAD artifact.
+**(2) `ChemSpec_EC_PM2.5` is the y-axis** — the new result. Against `EC_ftir` (converted
+`MassLoading_ug / Volume_m3`): n = **175**, r² = **0.999693**, ratio median **1.0000**
+(IQR 0.999–1.001), median |Δ| = **0.0030 µg/m³** — the same rounding half-width — and
+**93.7%** exact at `round(EC_ftir, 2)`. It **is** the FTIR EC product routed through
+SPARTAN's speciation table and back. It was missed because `ChemSpec_EC`'s R² against Fabs/10
+is **0.7904**, indistinguishable from `EC_ftir`'s own **0.7908** on the same filters (0.7638
+on all 190 HIPS pairs — the deck's "0.76"); that *similarity is the signature of being the
+same product* and was misread as evidence of independence. The `docs/open-items.md` warning
+(r² = 0.99992 in the four-sites data) reproduces: **0.999693** at ETAD, ≥93% exact at 2 dp at
+all four sites. A third, independent proof: on the **9** filters that miss the lattice in both
+columns, the ChemSpec/local ratio is common to BC, EC **and** OC to **≤0.0010** — one revised
+sample volume propagating through all three, which an independent thermal-optical EC could not
+share. **(3) Consequence: neither column can arbitrate the intercept question**, and "not a
+Fabs transform" does not imply independent. The intended Addis curvature test (fit Fabs against
+an independent EC, straight line vs power law) is **dead** — it needs an EC reference circular
+with *neither* axis and none exists in the committed data — which promotes quartz TOR from one
+option to **the** decisive measurement. Two silent join traps are demonstrated rather than
+described: `config.BASE_FILTER_ID_PATTERN` matches **0%** of ChemSpec ids (empty join, no
+error), and averaging each ChemSpec filter's two rows — measurement plus a ~0.07 µg/m³ MDL
+floor row — halves the column and **doubles** the implied MAC (**9.89 → 19.57**). What the
+speciation table is still good for: the XRF elements Al/Si/Ca/Fe/Ti/Mg on all **188** ETAD
+filters; there is no RCFM or dust column anywhere in the dataset, so the IMPROVE-soil dust
+proxy (median **4.98 µg/m³**, 24.5% of ChemSpec PM2.5 mass) has to be constructed."""
+
+TAKEAWAYS["27"] = """\
+- **Neither ChemSpec carbon column is admissible evidence about the intercept.** `ChemSpec_BC`
+  is circular with the x-axis (it is `round(Fabs/10, 2)`), `ChemSpec_EC` is circular with the
+  y-axis (it is `round(EC_ftir, 2)`). A crossplot of predicted EC against Fabs/MAC has no free
+  variable left in SPARTAN's public speciation table.
+- **Correct the ftir_16 record.** Its conclusion "`ChemSpec_EC` is HIPS Fabs/10" reached the
+  right action for the wrong reason: the column is not a Fabs transform, it is the FTIR
+  product. The distinction matters because the wrong reason implies a ChemSpec column that
+  *isn't* Fabs would be usable — the opposite of the truth here. Its implied MAC of 9.89 is
+  simply FTIR EC's own implied MAC, and carries no information about the MAC fork.
+- **The R² match was the tell, and it was read backwards.** Two quantities that are the same
+  product must have the same relationship to any third quantity, so `ChemSpec_EC` scoring
+  0.7904 against Fabs/10 where `EC_ftir` scores 0.7908 is proof of identity, not of
+  independence. Any future "independent reference" claim should be tested against **both**
+  axes and against the 2-dp lattice, not just against the x-axis.
+- **The Addis curvature test is dead as designed.** Distinguishing "the intercept is real
+  non-EC absorption" from "the Fabs–EC relation is curved" requires an EC reference circular
+  with neither axis. The committed data contains none. This is what promotes the ftir_16
+  quartz-TOR campaign (~12 days × 3 seasons, IMPROVE_A) from one option among several onto the
+  critical path.
+- **Join hygiene is part of the result, not preamble.** Both traps fail silently and both
+  produce plausible numbers: the committed base-id regex empties every ChemSpec join, and
+  averaging the duplicated ChemSpec rows manufactures an implied MAC of 19.57 m²/g — a number
+  physical enough to build a story on. Use the measurement row, and strip the replicate suffix
+  with a fall-back to the id as it stands.
+- **What survives**: the elemental columns are XRF and share no input with FTIR or HIPS. They
+  cover all 188 ETAD filters, and since the dataset has no RCFM or dust parameter, a dust term
+  must be constructed — IMPROVE soil is the standard route (Mg is available on the same
+  filters but sits outside that formula and carries the noisiest below-MDL tail, 20 of 188
+  negative).
+- **Caveats**: 25 of 188 BC filters and 11 of 175 EC filters sit off the 2-dp lattice; the 9
+  that miss in both are explained by a shared post-snapshot volume revision, the remainder are
+  BC-only filters with no ChemSpec EC partner and are not diagnosed here. The four-site pooled
+  r² computed on this pickle is 0.999544 against the 0.99992 quoted in `docs/open-items.md`
+  (different join/subset, same phenomenon). The SPARTAN cross-site corroboration is read from
+  a committed table (n = 232 at ETAD, a wider public-BC pull than the 188 filters audited
+  here), not re-derived."""
+TLDR["28"] = """\
+**The MA350 cannot measure a brown-carbon share at Addis.** That is a statement about the
+instrument, not about the atmosphere — nothing here says Addis has little brown carbon.
+`INTERCEPT_ATTACK_PLAN.md` item 4 proposed using the MA350's wavelength spread to estimate
+BrC absorption at the HIPS wavelength, subtract it from Fabs, and see whether the intercept
+closes. Tested on MA350-0238 over 515 ETAD filter-days, it fails twice over. **(1) There is
+no red excess to attribute.** AAE(625, 880) from b_ATN is **0.944 ± 0.060** — *below* the
+AAE_BC ≈ 1 anchor, not above it, on 84.5% of days — so the implied Babs_BrC is **−2.06 Mm⁻¹**
+on average, negative on **84.5%** of days, and above the target on none, against the
+**+21.7 Mm⁻¹** the intercept needs (C = |b|·MAC/a across the six ftir_19 setups, 18.8–26.1,
+mean 21.7). Closing it this way would require **AAE_BC ≈ 0.31**, i.e. black carbon absorbing
+more at 880 nm than at 625 nm. **(2) The instrument cannot be asked again, in either
+direction.** Only IR is trustworthy: the Green channel implies an unphysical **negative** AAE
+(median −0.168, 45% below the power law through its own neighbours), UV is out of range on
+**35.0%** of days (BCc ≤ 0, or less absorption at 375 than at 880 nm; r with IR = 0.08), and
+Red reproduces IR to within an **IQR of ±1.3%**. A channel-to-channel absolute error of 45%
+is demonstrated on this instrument; the red excess being sought is a 24% shift. Two live repo
+traps surfaced and are re-derived here (both fixed in `3aedfdc`): the AE33-vs-MA350 wavelength
+confusion in `processed_sites/README.md` (×1.189 on AAE(Red, IR), enough to manufacture a
+12.5% biomass share from a record with none), and the exact BCc-AAE offset identity
+(**−1.0157** UV/IR, **−0.9674** Red/IR, re-derived from the firmware σ_ATN table), which cuts
+the UV/IR biomass class from 52% to 20%. One positive result rides along: FTIR EC against
+MA350 BC(880) — where BrC barely absorbs — gives intercept **+0.32 µg/m³** (95% CI +0.01 to
++0.63, R² **0.868**, n = 173), ~13× smaller than the −4.17 on the HIPS side and of the
+opposite sign, which exonerates the FTIR axis and localizes the additive offset to the
+HIPS-side 633 nm optics."""
+
+TAKEAWAYS["28"] = """\
+- **Say "the MA350 cannot answer this question", never "there is no brown carbon at Addis".**
+  The negative implied Babs_BrC is the arithmetic of a channel that sits *below* its own black
+  carbon anchor; on an instrument whose other short channels return impossible values it is
+  evidence about the sensor, not about the aerosol. Any briefing line, figure caption or slide
+  that lets the two be confused is wrong, and the distinction is the whole reason this
+  notebook exists.
+- **Item 4 of the attack plan is closed, and item 5 with it.** The subtract-and-re-crossplot
+  step has nothing to subtract: the implied correction is negative on 84.5% of days and never
+  once reaches the target. It should not be attempted on this instrument at this site.
+- **The falsification does not depend on the absorption scale.** AAE is invariant to the
+  multiple-scattering constant, and b_ATN runs ~2.07× the HIPS Fabs scale at Addis; the mean
+  implied Babs_BrC is −2.06 Mm⁻¹ on the b_ATN scale and −0.99 on the Fabs scale. No positive
+  rescaling turns either into +21.7.
+- **Only IR should be used from this instrument at Addis, and that should be written down.**
+  Green, UV and Red each fail a check no real aerosol can fail or carry no information beyond
+  IR. Any past or future analysis leaning on MA350 Green or UV at ETAD needs re-examining —
+  `addis_01`/`addis_04`-style source apportionment most of all.
+- **The offset identity is arithmetic, so it will recur.** `optics.aae_from_columns` defaults
+  to `kind='BCc'`, and the resulting AAE is the absorption AAE minus ~1.0 exactly. It looks
+  precisely like the inverted-AAE bug that module was written to prevent, which is why it
+  survived review. Compute AAE from b_ATN = BCc × σ_ATN unless you specifically want the
+  instrument-space quantity.
+- **What is still open**: the ~20 Mm⁻¹ target itself. Ruling out the MA350 as a way to
+  measure it removes a candidate method, not the candidate owner — brown carbon, dust, a
+  HIPS-generic offset and an FTIR zero error are all still live, and the BC(880) result here
+  only moves the search off the FTIR axis. Tier-1 items 1–3 and the quartz-TOR campaign
+  remain the way in.
+- **Caveats and non-reproductions**: three pre-registered figures did not come out exactly.
+  The closing AAE_BC is 0.308 against the mean target and 0.315 against the median (brief:
+  0.316); the BCc-offset biomass damage is 52% → 20% here rather than 47% → 12%; and the
+  BC(880) intercept CI is [+0.010, +0.629] rather than [−0.022, +0.593], so the notebook does
+  **not** assert that interval contains zero. Each is flagged inline next to the derived
+  value. The headline numbers — 0.944 ± 0.060, −2.06 Mm⁻¹, 84.5%, +21.7 Mm⁻¹, 35.0%, ±1.3%,
+  −1.0157 and −0.9674 — reproduce exactly."""
 TLDR["29"] = """\
 **The corrected calibration already yields a usable provisional Addis EC series — and it
 is clean.** Rebuilding both locked OCEC-800 models under the site-held-out protocol

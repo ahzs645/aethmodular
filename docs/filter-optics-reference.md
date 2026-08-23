@@ -41,7 +41,7 @@ section below where the citation is recorded.
 
 | Property | SPARTAN | IMPROVE |
 |---|---|---|
-| Wavelength | **OPEN** — not stated in any SPARTAN document we have. Most likely also red ~633 nm, but unconfirmed | **633 nm** — White 2025 abstract verbatim ("absorptance of red (633-nm) light") |
+| Wavelength | **632.8 ≈ 633 nm** (He–Ne). Resolved 2026-08-12: SPARTAN's Instruments page says the filters are illuminated with a HeNe laser (632 nm; HIPS analysis by the Dillner group at UC Davis), and the 2025 SPARTAN methods paper states He–Ne at **633 nm** with **MAC = 10 m²/g at 633 nm**; the 632 vs 633 spread is rounding of the 632.8 nm He–Ne line | **633 nm** — White 2025 abstract verbatim ("absorptance of red (633-nm) light") |
 | Wavelength label in public exports | n/a — public CSV reports `Fabs` in Mm⁻¹ without a wavelength field | **635 nm** is the FED export label — treat as a reporting convention for the 633 nm channel |
 | Output reported | `Fabs` (Mm⁻¹) in HIPS file; **BC PM2.5 (μg/m³) = Fabs / 10** in the public CSV | `fAbs` plus R/T ratio fields in FED |
 | Median MDL | ≈ **1.6 Mm⁻¹** (HIPS Drive file) | not transcribed |
@@ -136,7 +136,7 @@ Two devices read the same filter:
 | Raw quantities exposed | T₁, R₁, t, r, tau, intercept, slope (lot-specific blank line) | `[HIPS Drive CSV columns]` |
 | MAC used to convert Fabs → public "BC PM2.5" | **10 m² g⁻¹** (i.e. `BC_public = Fabs / 10`) | `[Empirical, derived in research/spartan/inventory/hips_vs_bc_linear_fits.csv — slope = 10.0 ± 0.05 m² g⁻¹ at every site, R² ≈ 1.000]` |
 | Method code in public CSV | 221 ("HIPS") | `[Public SPARTAN ChemSpecPM25 — Method_Code]` |
-| Wavelength | **OPEN** — not stated in the EBC SOP, the public CSV header, or the HIPS Drive file. Most likely **633 nm** to match the IMPROVE photometer (White 2025 abstract), but **unconfirmed** in any SPARTAN-side document we have seen. Do not quote without checking with SPARTAN. | `[Open question — RESEARCH_PROGRESS.md notes that raw HIPS records were never released]` |
+| Wavelength | **632.8 ≈ 633 nm** (He–Ne). Resolved 2026-08-12: SPARTAN's Instruments page says the filters are illuminated with a HeNe laser (632 nm; HIPS analysis by the Dillner group at UC Davis), and the 2025 SPARTAN methods paper states He–Ne at **633 nm** with **MAC = 10 m²/g at 633 nm**; the 632 vs 633 spread is rounding of the 632.8 nm He–Ne line. The EBC SOP / CSV-header silence noted here previously is now moot | `[Open question — RESEARCH_PROGRESS.md notes that raw HIPS records were never released]` |
 
 > **Critical:** the public-dataset `BC PM2.5` is **not an independent
 > measurement**. It is computed from the same HIPS `Fabs` divided by a

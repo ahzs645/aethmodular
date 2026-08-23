@@ -33,11 +33,23 @@ Each dataset contains ~150-165 columns organized into:
 ### Black Carbon Measurements
 
 #### Raw BCc (All Sites)
-- `Blue BCc`: Blue wavelength (~470 nm) black carbon concentration
-- `Green BCc`: Green wavelength (~520 nm)
-- `Red BCc`: Red wavelength (~660 nm)
-- `IR BCc`: Infrared wavelength (~880 nm)
-- `UV BCc`: Ultraviolet wavelength (~370 nm)
+
+Every pickle here is a five-channel MA350 export (an AE33 would carry `BC1`–`BC7`
+instead), so the MA350 channel set applies throughout — read it from
+`config.WAVELENGTHS_NM` rather than from this list:
+
+- `UV BCc`: Ultraviolet (**375 nm**) black carbon concentration
+- `Blue BCc`: Blue (**470 nm**)
+- `Green BCc`: Green (**528 nm**)
+- `Red BCc`: Red (**625 nm**)
+- `IR BCc`: Infrared (**880 nm**)
+
+These are **not** the AE33 wavelengths. Earlier revisions of this file listed Green
+at 520 nm, Red at 660 nm and UV at 370 nm, which are AE33 values
+(`config.AE33_WAVELENGTHS_NM`) and do not describe any file in this directory.
+Mixing the two sets inflates AAE(Red, IR) by ~16% and roughly doubles any biomass
+fraction derived from it, so the distinction is load-bearing rather than pedantic
+— see AGENTS.md, "Don't hardcode channel wavelengths".
 
 #### Smoothed BCc (Site-Dependent Availability)
 - `Blue BCc smoothed (ng/m^3)`: Smoothed blue BC

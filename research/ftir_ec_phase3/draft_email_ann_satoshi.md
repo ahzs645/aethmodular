@@ -23,11 +23,9 @@ performer so far. Details:
 4. **Ann's low-OC/EC cohort — best locked result so far.** Training on the 800 lowest-OC/EC
    IMPROVE filters (OC/EC ≤ 2.3 vs pool median 5.5) gives, on a fixed 190-filter Addis cohort
    at MAC = 10: slope 1.59, intercept −3.22, R² 0.77, RMSE 1.16 µg/m³ (deployed: 1.90 / −4.17 /
-   0.76 / 1.49). It also beats ten size-matched random cohorts decisively on the held-out TOR
-   test (RMSE 3.4 vs 4.4–7.3 µg/filter). Most interesting: its VIP profile correlates r = 0.74
-   with the Addis-only HIPS model, while the current smoke calibration correlates r = 0.12 —
-   two independent routes converging on the same spectral features. The intercept is still
-   about −3, so it's progress on the hypothesis, not a fix.
+   0.76 / 1.49). It also beats five size-matched random cohorts on the same 190 Addis filters
+   (RMSE 1.16 vs 1.48–2.24) and on a locked disjoint-site TOR test (R² 0.91 vs 0.59–0.78). The
+   intercept is still about −3, so it's progress on the hypothesis, not a fix.
 
 5. **The ~1600 cm⁻¹ band is not amine.** Its Addis peak center is 1617–1619 cm⁻¹ (tight IQR,
    and unchanged after AIRSpec baselining; every IMPROVE cohort peaks at ≥1633), and it
