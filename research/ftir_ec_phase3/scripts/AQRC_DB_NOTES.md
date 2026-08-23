@@ -37,6 +37,17 @@ point, so a direct `ftir.Scan` decode would upgrade the pool spectra if ever
 needed. Note ODBC was a dead end on that machine (no SQL drivers installed);
 .NET SqlClient (`Integrated Security=SSPI`) is the working route.
 
+Follow-up probes (same night): denied DBs fail with db-level "Login failed for
+user 'AD3\ajalil'" — server login fine, no db grant. Sites in `Improve_2.1`
+live in **`sampler.Samplers`** (`Name` = site code e.g. ACAD1, `SiteName`,
+`SiteTypeCode` = 'IMPROVE', `UCCode`, module-slot count), reached from
+`module.Modules` by SamplerId; `module.Modules` itself has no SiteCode column.
+A full-text sweep of `sampler.Samplers` for ET%/Addis/Bishoftu/SPARTAN returns
+only "Addison Pinnacle" (ADPI1) — **SPARTAN/ETBI is definitively NOT in
+`Improve_2.1`**. Critical path: Sean grants `db_datareader` on the SPARTAN
+database (likely `Spada` or `Networks_1_0`) to `AD3\ajalil`; the export
+one-liner is ready in `get_etbi_spectra.ps1` the moment access lands.
+
 ## The spectra are NOT in SQL — superseded (see discovery above); the HTTP
 ## service is a convenience decoder over ftir.Scan
 
