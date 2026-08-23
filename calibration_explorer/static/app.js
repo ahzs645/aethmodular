@@ -207,6 +207,7 @@ function pillWire(id){
     $(id).querySelectorAll('button').forEach(x => x.classList.remove('on'));
     b.classList.add('on'); toggles[id] = b.dataset.v; redraw();
     if(optRows.length) renderOpt();   // optimizer scores follow the MAC · Fit toggles
+    if(sitesRows.length) sitesRender();  // cross-site table follows them too
   });
 }
 ['mac', 'est', 'evalset'].forEach(pillWire);
@@ -389,7 +390,9 @@ function drawStats(){
     protocol: <b>${MODE_LABEL[c.mode] || c.mode}</b>
     · target: <b>${j.target ? j.target.label : 'Addis'}</b>${
       j.target && j.target.eval_lot && j.target.eval_lot !== 'all'
-        ? ` · eval lot <b>${j.target.eval_lot}</b> (n=${j.target.n_eval})` : ''}<br>
+        ? ` · eval lot <b>${j.target.eval_lot}</b> (n=${j.target.n_eval})` : ''}${
+      j.target && j.target.extrap_pct != null
+        ? ` · extrapolation: <span class="${j.target.extrap_pct > 30 ? 'warn' : 'ok'}">${j.target.extrap_pct}%</span> of target beyond train p95` : ''}<br>
     n = <b>${j.n_cohort}</b> filters, ${j.n_train_sites} sites · n fitted = ${j.n_train}<br>
     k = <b>${j.k}</b> ${j.k === j.auto_k ? '(rule choice)' : '(manual; rule picks ' + j.auto_k + ')'}<br>
     RMSECV floor: ${j.rmsecv_floor} µg (${j.pct_rmsecv_floor}% of mean loading)<br>
@@ -929,14 +932,18 @@ const optDescribe = c => `${c.cohort}${c.cutoff ? ' ' + c.cutoff : ''}` +
   ` · sel:${c.selection_space === 'airspec' ? 'AIR' : 'raw'} · cal:${SPECTRA_SHORT[c.spectra]}` +
   ` · ${MODE_SHORT[c.mode] || c.mode}`;
 
-function optParts(r){             // slope/intercept at the current Fit · MAC toggles
+function optParts(r){   // slope/intercept at the current MAC · Fit · Addis-set toggles
   const mac6 = toggles.mac === '6';
-  let slope = toggles.est === 'deming' ? r.deming_slope : r.ols_slope;
+  // all-pairs readout when the pill says so AND the row carries it (rows saved
+  // before the full-readout upgrade only have the fixed set until backfilled)
+  const useAll = toggles.evalset === 'all' && r.all_deming_slope != null;
+  const P = useAll ? 'all_' : '';
+  let slope = toggles.est === 'deming' ? r[P + 'deming_slope'] : r[P + 'ols_slope'];
   const ic = toggles.est === 'deming'
-    ? (mac6 ? r.deming_intercept_mac6 : r.deming_intercept)
-    : (mac6 ? r.ols_intercept_mac6 : r.ols_intercept);
+    ? (mac6 ? r[P + 'deming_intercept_mac6'] : r[P + 'deming_intercept'])
+    : (mac6 ? r[P + 'ols_intercept_mac6'] : r[P + 'ols_intercept']);
   if(mac6 && slope != null) slope *= 0.6;   // slope scales by MAC (ftir_19)
-  return {slope, ic};
+  return {slope, ic, set: useAll ? 'all pairs' : 'fixed set'};
 }
 function optScore(r){
   const {slope, ic} = optParts(r);
@@ -956,14 +963,20 @@ function optAddRow(row){
   optRows.push(row);
 }
 function optRowFromRun(c, j){
-  const pick = mac => j.metrics.find(m => m.evaluation_set === 'fixed' && m.MAC === mac)
+  const pick = (es, mac) => j.metrics.find(m => m.evaluation_set === es && m.MAC === mac)
             || j.metrics.find(m => m.MAC === mac) || j.metrics[0];
-  const f10 = pick(10), f6 = pick(6);
+  const f10 = pick('fixed', 10), f6 = pick('fixed', 6);
+  const a10 = pick('all', 10), a6 = pick('all', 6);
   return {...c, cohort_label: j.cohort_label, k: j.k, auto_k: j.auto_k,
     ols_slope: f10.ols_slope, ols_intercept: f10.ols_intercept,
     deming_slope: f10.deming_slope, deming_intercept: f10.deming_intercept,
     ols_intercept_mac6: f6.ols_intercept, deming_intercept_mac6: f6.deming_intercept,
-    R2: f10.R2, heldout_R2: j.heldout ? j.heldout.R2 : null};
+    R2: f10.R2, RMSE: f10.RMSE,
+    all_ols_slope: a10.ols_slope, all_ols_intercept: a10.ols_intercept,
+    all_deming_slope: a10.deming_slope, all_deming_intercept: a10.deming_intercept,
+    all_ols_intercept_mac6: a6.ols_intercept, all_deming_intercept_mac6: a6.deming_intercept,
+    all_R2: a10.R2, all_RMSE: a10.RMSE,
+    heldout_R2: j.heldout ? j.heldout.R2 : null};
 }
 function optTopConfigs(n, rankedOnly){
   const best = {};
@@ -1118,8 +1131,10 @@ function renderOpt(){
   $('optcount').textContent = optRows.length ? `(${optRows.length})` : '';
   const w = parseFloat($('opt_w').value) || 0;
   const estL = toggles.est === 'deming' ? 'Deming' : 'OLS';
+  const setL = toggles.evalset === 'all' ? 'all pairs' : 'fixed set';
   $('cap_optboard').textContent =
-    `Leaderboard — score = |intercept| + ${w}·|slope − 1| at MAC ${toggles.mac}, ${estL}, fixed set`;
+    `Leaderboard — score = |intercept| + ${w}·|slope − 1| at MAC ${toggles.mac}, ${estL}, ${setL}` +
+    (toggles.evalset === 'all' ? ' (rows without an all-pairs readout fall back to fixed until backfilled)' : '');
   const view = optRows.map((r, i) => ({r, i, s: optScore(r), pass: optPasses(r), ...optParts(r)}))
     .sort((a, b) => (b.pass - a.pass) || (a.s - b.s));
   const shown = view.slice(0, 20);
@@ -1142,7 +1157,8 @@ function renderOpt(){
 function drawPareto(view){
   if(!view.length){ placeholder('p_pareto', 'Start a search to populate the tradeoff view.'); return; }
   $('cap_pareto').textContent =
-    `Intercept vs slope at MAC ${toggles.mac}, ${toggles.est === 'deming' ? 'Deming' : 'OLS'} — the frontier is the tradeoff`;
+    `Intercept vs slope at MAC ${toggles.mac}, ${toggles.est === 'deming' ? 'Deming' : 'OLS'}, ` +
+    `${toggles.evalset === 'all' ? 'all pairs' : 'fixed set'} — the frontier is the tradeoff`;
   const pts = view.filter(v => v.slope != null && v.ic != null);
   const pass = pts.filter(v => v.pass), fail = pts.filter(v => !v.pass);
   // Pareto front over the passing runs: sort by |slope−1|, keep strict |intercept| improvements
@@ -1198,3 +1214,241 @@ $('opt_export').onclick = () => {
 };
 ['opt_w', 'opt_minr2', 'opt_reqho'].forEach(id => $(id).onchange = renderOpt);
 placeholder('p_pareto', 'Start a search to populate the tradeoff view.');
+
+/* ---- analog lab -------------------------------------------------------------
+   Compares the committed spectral-analog selection with literature similarity
+   metrics (SAM/cosine, LOCAL's Pearson, normalized Euclidean, NN-cosine, and
+   Reggente-2016's Mahalanobis-in-score-space as a selector), in raw, AIRSpec
+   or 2nd-derivative space. The server sends full per-filter rank arrays once
+   per space, so moving the cutoff recomputes everything client-side. */
+let alData = {};
+let alSpace = 'raw';
+const AL_SHORT = {committed:'committed', cosine_median:'cos/SAM', corr_median:'Pearson',
+  eucl_norm_median:'Eucl-n', nearest_cosine:'NN-cos', mahalanobis_pca:'Mahal-PCA'};
+const AL_SPACE_LABEL = {raw:'raw spectra', airspec:'AIRSpec-corrected', deriv2:'SG 2nd derivative'};
+
+async function alLoad(){
+  if(alData[alSpace]){ alRender(); return; }
+  $('cap_al').textContent = `Analog lab — computing similarity metrics on ${AL_SPACE_LABEL[alSpace]} (first time per space takes ~10-30s)…`;
+  placeholder('p_al_overlap', 'computing…'); placeholder('p_al_rank', 'computing…'); placeholder('p_al_pca', 'computing…');
+  const j = await post('/api/analog_lab', {space: alSpace});
+  if(j.error){ $('cap_al').textContent = 'Analog lab — ' + j.error; return; }
+  alData[alSpace] = j;
+  $('al_cut').max = j.n;
+  if(!$('al_metric').options.length)
+    $('al_metric').innerHTML = j.metrics.filter(m => m !== 'committed')
+      .map(m => `<option value="${m}"${m === 'corr_median' ? ' selected' : ''}>${j.labels[m]}</option>`).join('');
+  alRender();
+  alSpectra();
+}
+
+function alRender(){
+  const j = alData[alSpace];
+  if(!j) return;
+  const cutoff = Math.min(parseInt($('al_cut').value) || 500, j.n);
+  $('al_cutlabel').textContent = `cutoff ${cutoff} of ${j.n} eligible filters`;
+  $('cap_al').textContent = `Analog lab — committed selection vs literature metrics (${AL_SPACE_LABEL[alSpace]})`;
+  const ms = j.metrics;
+  const mem = {};
+  ms.forEach(m => {
+    const r = j.ranks[m], s = new Uint8Array(j.n);
+    for(let i = 0; i < j.n; i++) s[i] = r[i] < cutoff ? 1 : 0;
+    mem[m] = s;
+  });
+  const z = [], ann = [];
+  ms.forEach(a => {
+    const row = [];
+    ms.forEach(b => {
+      let inter = 0;
+      for(let i = 0; i < j.n; i++) if(mem[a][i] && mem[b][i]) inter++;
+      const pct = Math.round(100 * inter / cutoff);
+      row.push(pct);
+      if(a !== b) ann.push({x: AL_SHORT[b], y: AL_SHORT[a], text: `${pct}%`, showarrow: false,
+        font: {size: 10, color: pct > 55 ? '#fff' : '#22252A'}});
+    });
+    z.push(row);
+  });
+  plot('p_al_overlap', [{type:'heatmap', x: ms.map(m => AL_SHORT[m]), y: ms.map(m => AL_SHORT[m]),
+    z, zmin: 0, zmax: 100, colorscale: [[0, '#f2f6fa'], [1, '#2C6E9E']], xgap: 2, ygap: 2, showscale: false}],
+    {xaxis:{tickangle:-25, tickfont:{size:10}, automargin:true},
+     yaxis:{autorange:'reversed', tickfont:{size:10}, automargin:true},
+     margin:{t:6, r:6, b:10, l:10}, annotations: ann});
+  $('al_agree').querySelector('tbody').innerHTML = Object.entries(j.agreement)
+    .sort((a, b) => b[1] - a[1])
+    .map(([m, rho]) => `<tr><td>${j.labels[m]}</td><td>ρ = ${rho.toFixed(3)}</td></tr>`).join('');
+
+  const alt = $('al_metric').value || 'corr_median';
+  const step = Math.max(1, Math.floor(j.n / 3000));
+  const xs = [], ys = [], cols = [];
+  for(let i = 0; i < j.n; i += step){
+    xs.push(j.ranks.committed[i]); ys.push(j.ranks[alt][i]);
+    const inC = j.ranks.committed[i] < cutoff, inA = j.ranks[alt][i] < cutoff;
+    cols.push(inC && inA ? '#2C6E9E' : inC ? '#B23327' : inA ? '#548C66' : '#dcdcdc');
+  }
+  $('cap_al_rank').textContent =
+    `Committed rank vs ${j.labels[alt]} — blue: both select · red: committed only · green: alternative only`;
+  plot('p_al_rank', [
+    {x: xs, y: ys, mode:'markers', marker:{size:3, color:cols}, type:'scattergl', hoverinfo:'skip'},
+    {x:[cutoff, cutoff], y:[0, j.n], mode:'lines', line:{color:'#B23327', dash:'dot', width:1}, hoverinfo:'skip'},
+    {x:[0, j.n], y:[cutoff, cutoff], mode:'lines', line:{color:'#548C66', dash:'dot', width:1}, hoverinfo:'skip'}],
+    {xaxis:{title:'committed rank'}, yaxis:{title:'alternative rank'},
+     showlegend:false, margin:{t:10, r:10, b:42, l:55}});
+
+  const px = [], py = [], pc = [];
+  j.sample_idx.forEach((idx, k) => {
+    px.push(j.pool_xy[k][0]); py.push(j.pool_xy[k][1]);
+    const inC = j.ranks.committed[idx] < cutoff, inA = j.ranks[alt][idx] < cutoff;
+    pc.push(inC && inA ? '#2C6E9E' : inC ? '#B23327' : inA ? '#548C66' : '#e3e3e3');
+  });
+  const ax = j.addis_xy.map(p => p[0]), ay = j.addis_xy.map(p => p[1]);
+  let layoutRanges = {}, excludedTrace = null;
+  if($('al_focus').checked){
+    // robust view: axes trimmed to the central 1-99% cloud; points outside are
+    // CLAMPED to the edge as orange x (hover shows their true coordinates)
+    const qb = arr => {
+      const s = [...arr].sort((a, b) => a - b);
+      const q = p => s[Math.floor(p * (s.length - 1))];
+      const lo = q(0.01), hi = q(0.99), pad = (hi - lo) * 0.15 || 1e-6;
+      return [lo - pad, hi + pad];
+    };
+    const bx = qb(px.concat(ax)), by = qb(py.concat(ay));
+    const clamp = (v, b) => Math.min(Math.max(v, b[0]), b[1]);
+    const ex = [], ey = [], etext = [];
+    const sweep = (xs, ys, label) => {
+      for(let i = 0; i < xs.length; i++){
+        if(xs[i] < bx[0] || xs[i] > bx[1] || ys[i] < by[0] || ys[i] > by[1]){
+          ex.push(clamp(xs[i], bx)); ey.push(clamp(ys[i], by));
+          etext.push(`${label} — true PC1 ${xs[i].toFixed(3)}, PC2 ${ys[i].toFixed(3)}`);
+        }
+      }
+    };
+    sweep(px, py, 'pool'); sweep(ax, ay, 'Addis');
+    layoutRanges = {xr: bx, yr: by};
+    if(ex.length) excludedTrace = {x: ex, y: ey, mode:'markers',
+      marker:{size:7, symbol:'x', color:'#C4652F'},
+      name:`excluded from view (${ex.length}) — clamped to edge`,
+      text: etext, hoverinfo:'text', type:'scatter'};
+  }
+  const data = [
+    {x: px, y: py, mode:'markers', marker:{size:4, color:pc, opacity:.8},
+     name:'pool (same colours as left)', type:'scattergl', hoverinfo:'skip'},
+    {x: ax, y: ay, mode:'markers',
+     marker:{size:6, symbol:'star', color:'#22252A'}, name:'Addis (ETAD)', type:'scatter'}];
+  if(excludedTrace) data.push(excludedTrace);
+  plot('p_al_pca', data,
+    {xaxis:{title:`PC1 (${Math.round(j.explained[0]*100)}%)`,
+            ...(layoutRanges.xr ? {range: layoutRanges.xr} : {})},
+     yaxis:{title:`PC2 (${Math.round(j.explained[1]*100)}%)`,
+            ...(layoutRanges.yr ? {range: layoutRanges.yr} : {})},
+     legend: LEGEND_TOP, margin:{t:30, r:10, b:42, l:50}});
+}
+
+/* comparative spectra: the alt-metric cohort vs the committed cohort vs Addis,
+   drawn in the lab's spectra space; fetched on slider release / metric change */
+let alSpecKey = null;
+async function alSpectra(){
+  const j = alData[alSpace];
+  if(!j) return;
+  const cutoff = Math.min(parseInt($('al_cut').value) || 500, j.n);
+  const alt = $('al_metric').value || 'corr_median';
+  const key = `${alSpace}|${alt}|${cutoff}`;
+  if(key === alSpecKey) return;
+  alSpecKey = key;
+  $('cap_al_spec').textContent = 'loading spectra…';
+  const r = await post('/api/analog_lab_spectra', {space: alSpace, metric: alt, cutoff});
+  if(r.error){ $('cap_al_spec').textContent = r.error; return; }
+  if(alSpecKey !== key) return;                    // stale response
+  $('cap_al_spec').textContent =
+    `top ${r.n} under ${r.metric_label} (green) vs committed top ${r.n} (grey, median only) vs Addis (red) — ${AL_SPACE_LABEL[alSpace]}`;
+  const yTitle = alSpace === 'deriv2' ? '2nd-derivative absorbance' : 'absorbance';
+  plot('p_al_spectra', [
+    ...spectraBand(r.wn, r.alt, '84,140,102', `selected by ${AL_SHORT[alt]} (n=${r.n})`),
+    ...spectraBand(r.wn, r.committed, '143,140,132', 'committed cohort median', false),
+    ...spectraBand(r.wn, r.addis, '178,51,39', 'Addis (ETAD) median')],
+    {xaxis:{title:'wavenumber (cm⁻¹)', autorange:'reversed'},
+     yaxis:{title:yTitle}, margin:{t:46, r:10, b:40, l:55}, legend:LEGEND_TOP});
+}
+
+$('al_space').querySelectorAll('button').forEach(b => b.onclick = () => {
+  $('al_space').querySelectorAll('button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); alSpace = b.dataset.v; alLoad();
+});
+$('al_metric').onchange = () => { alRender(); alSpectra(); };
+$('al_cut').oninput = alRender;
+$('al_cut').onchange = alSpectra;      // fetch spectra on slider release only
+$('al_focus').onchange = alRender;
+document.querySelector('[data-tab="analoglab"]').addEventListener('click', () => {
+  if(ready && !alData[alSpace]) alLoad();
+});
+
+/* ---- cutoff refinement (server-side hill-climb, +-10 steps) ----------------- */
+$('refine_start').onclick = async () => {
+  const cohorts = [...document.querySelectorAll('[data-opt-cohort]:checked')].map(x => x.dataset.optCohort);
+  const spectra = [...document.querySelectorAll('[data-opt-spectra]:checked')].map(x => x.dataset.optSpectra);
+  const modes = [...document.querySelectorAll('[data-opt-mode]:checked')].map(x => x.dataset.optMode);
+  if(!cohorts.length || !spectra.length || !modes.length){
+    $('batch_status').textContent = 'pick at least one cohort, spectra space and protocol'; return;
+  }
+  const r = await post('/api/refine_start', {cohorts, spectra, modes,
+    corrsel: $('opt_corrsel').checked,
+    w: parseFloat($('opt_w').value) || 5,
+    min_r2: parseFloat($('opt_minr2').value),
+    target: $('target').value || 'addis',
+    eval_lot: $('eval_lot').disabled ? 'all' : ($('eval_lot').value || 'all')});
+  if(r.error){ $('batch_status').textContent = r.error; return; }
+  $('batch_status').textContent = `refining cutoffs for ${r.bases} base configurations in ±10 steps…`;
+  batchPollTimer = setTimeout(() => batchTick(true), 1500);
+};
+
+/* ---- cross-site tab ---------------------------------------------------------
+   One click: the current configuration evaluated against every target, with
+   the Reggente-2016 extrapolation diagnostic flagging out-of-domain rows. */
+let sitesRows = [];
+function sitesPick(metrics){       // metrics row per the MAC/est/evalset toggles
+  const hasFixed = metrics.some(r => r.evaluation_set === 'fixed');
+  const es = (toggles.evalset === 'fixed' && hasFixed) ? 'fixed' : 'all';
+  const sub = metrics.filter(r => r.evaluation_set === es);
+  return sub.find(r => r.MAC === parseFloat(toggles.mac)) || sub[0] || metrics[0];
+}
+function sitesRender(){
+  if(!sitesRows.length) return;
+  const estL = toggles.est === 'deming' ? 'Deming' : 'OLS';
+  $('cap_sites').textContent =
+    `Cross-site — MAC ${toggles.mac}, ${estL}, ${toggles.evalset === 'all' ? 'all pairs' : 'fixed set'}`;
+  const view = sitesRows.map(r => {
+    if(r.error) return {site: r.site, error: r.error};
+    const m = sitesPick(r.metrics);
+    return {site: r.site, label: r.label, n: r.n, k: r.k,
+      slope: toggles.est === 'deming' ? m.deming_slope : m.ols_slope,
+      ic: toggles.est === 'deming' ? m.deming_intercept : m.ols_intercept,
+      R2: m.R2, extrap: r.extrap_pct};
+  });
+  $('sitestbl').querySelector('tbody').innerHTML = view.map(v => v.error
+    ? `<tr><td>${v.site}</td><td colspan="6" class="warn">${v.error}</td></tr>`
+    : `<tr>
+        <td title="${v.label}">${v.site}</td><td>${v.n}</td><td>${v.k}</td>
+        <td>${v.slope.toFixed(2)}</td><td>${v.ic.toFixed(2)}</td><td>${v.R2.toFixed(2)}</td>
+        <td class="${v.extrap != null && v.extrap > 30 ? 'warn' : ''}">${v.extrap != null ? v.extrap.toFixed(0) + '%' : '—'}</td>
+      </tr>`).join('');
+  const ok = view.filter(v => !v.error);
+  plot('p_sites', [
+    {x: ok.map(v => v.ic), y: ok.map(v => v.site), mode: 'markers+text',
+     text: ok.map(v => `${v.slope.toFixed(2)}x` + (v.extrap != null && v.extrap > 30 ? ' ⚠' : '')),
+     textposition: 'middle right', textfont: {size: 11},
+     marker: {size: 12, color: ok.map(v => v.extrap != null && v.extrap > 30 ? '#C4652F' : '#2C6E9E')},
+     type: 'scatter', hoverinfo: 'skip'}],
+    {xaxis: {title: 'intercept (µg/m³)', zeroline: true, zerolinecolor: '#22252A', zerolinewidth: 2},
+     yaxis: {automargin: true}, showlegend: false, margin: {t: 12, r: 60, b: 40, l: 10}});
+}
+$('sites_run').onclick = async () => {
+  if(!ready) return;
+  busy(true); $('sites_run').disabled = true;
+  $('cap_sites').textContent = 'Cross-site — evaluating on every target (uncached sites fit fresh)…';
+  try{
+    const j = await post('/api/cross_site',
+      {...cfg(), k: $('kmode').value === 'manual' ? parseInt($('kval').value) : null});
+    if(j.error){ $('cap_sites').textContent = 'Cross-site — ' + j.error; return; }
+    sitesRows = j.rows;
+    sitesRender();
+  } finally { busy(false); $('sites_run').disabled = false; }
+};

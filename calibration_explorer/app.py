@@ -38,6 +38,7 @@ import pandas as pd
 from flask import Flask, jsonify, request, send_from_directory
 from scipy.signal import savgol_filter
 from sklearn.cross_decomposition import PLSRegression
+from sklearn.decomposition import PCA
 
 # All calibration math is the SAME code the notebooks run — nothing is re-derived here:
 # the two CV protocols and the Deming λ convention come from
@@ -337,6 +338,23 @@ def get_target(name):
          "groups": (m["Group"].astype(str).tolist() if "Group" in m.columns
                     else ["all"] * len(m)),
          "fixed_mask": None, "dates": dates, "deployed": None}
+    # optional AIRSpec-corrected spectra (id column + the CORRECTED wavenumber
+    # grid, i.e. corr_wn — not the raw grid) — enables "Calibrate on AIRSpec"
+    # readouts against this target
+    corr_path = d / "spectra_corrected.csv"
+    if corr_path.exists():
+        cp = pd.read_csv(corr_path)
+        cid = cp.columns[0]
+        num = list(cp.columns[1:])
+        try:
+            cw = np.array([float(c) for c in num])
+            if (len(cw) == len(D["corr_wn"])
+                    and np.allclose(cw, D["corr_wn"], atol=1e-3)
+                    and set(m[idc]) <= set(cp[cid])):
+                cp = cp.set_index(cid)
+                t["X_corr"] = cp.loc[m[idc], num].to_numpy(float)
+        except ValueError:
+            pass
     D["targets"][name] = t
     return t
 
@@ -585,20 +603,35 @@ def run_config(cohort, cutoff, selection_space, spectra, mode, k_override,
 
     fit_key = _cache_key("fit", curve_key, k, target)
     fit_path = CACHE_DIR / f"{fit_key}.json"
+    fit = None
     if fit_path.exists():
         fit = json.loads(fit_path.read_text())
-    else:
+        if "extrap" not in fit:
+            fit = None            # pre-diagnostic cache entry: recompute in place
+    if fit is None:
         model = PLSRegression(n_components=k, scale=False).fit(X[train], y[train])
-        pred = model.predict(np.asarray(X_eval, float)).ravel() / t["volume"]
+        Xe = np.asarray(X_eval, float)
+        pred = model.predict(Xe).ravel() / t["volume"]
         heldout = None
         if mode == "site_heldout":
             hm = regression_metrics(y[~train], model.predict(X[~train]).ravel())
             heldout = {m: round(float(hm[m]), 4)
                        for m in ("slope", "intercept", "R2", "RMSE")}
+        # Reggente et al. (2016)-style extrapolation diagnostic: whitened
+        # distance in the fitted model's score space, target vs training cloud.
+        # A target filter far beyond the training p95 is an extrapolation —
+        # its contribution to slope/intercept should not be trusted.
+        Ttr = model.transform(X[train])
+        Tev = model.transform(Xe)
+        mu, sd = Ttr.mean(axis=0), Ttr.std(axis=0) + 1e-12
+        d_tr = np.sqrt((((Ttr - mu) / sd) ** 2).sum(axis=1))
+        d_ev = np.sqrt((((Tev - mu) / sd) ** 2).sum(axis=1))
         fit = {"addis_ugm3": [round(float(v), 5) for v in pred],
                "heldout": heldout,
                "n_train": int(train.sum()),
-               "n_train_sites": int(pd.Series(sites[train]).nunique())}
+               "n_train_sites": int(pd.Series(sites[train]).nunique()),
+               "extrap": {"train_p95": round(float(np.percentile(d_tr, 95)), 4),
+                          "d": [round(float(v), 3) for v in d_ev]}}
         fit_path.write_text(json.dumps(fit))
 
     pred = np.asarray(fit["addis_ugm3"], float)
@@ -607,7 +640,7 @@ def run_config(cohort, cutoff, selection_space, spectra, mode, k_override,
     # one lot only. Applied after the cached fit — predictions always cover
     # every filter; only the crossplot/metrics view is restricted — so the
     # curve/fit caches stay lot-agnostic.
-    t_view, pred_view = t, pred
+    t_view, pred_view, mask_view = t, pred, None
     if eval_lot not in (None, "all"):
         lots = t.get("lots")
         if lots is None:
@@ -628,6 +661,15 @@ def run_config(cohort, cutoff, selection_space, spectra, mode, k_override,
                   "deployed": ([v for v, b in zip(t["deployed"], m) if b]
                                if t.get("deployed") else None)}
         pred_view = pred[m]
+        mask_view = m
+
+    ex = fit.get("extrap")
+    extrap_pct = None
+    if ex:
+        dv = np.asarray(ex["d"], float)
+        if mask_view is not None:
+            dv = dv[mask_view]
+        extrap_pct = round(100.0 * float((dv > ex["train_p95"]).mean()), 1)
 
     floor_rows = curve.loc[curve["n_components"] == k, "rmsecv"]
     floor = float(floor_rows.iloc[0]) if len(floor_rows) else float("nan")
@@ -645,7 +687,9 @@ def run_config(cohort, cutoff, selection_space, spectra, mode, k_override,
         "target": {"name": target, "label": t["label"], "ref_kind": t["ref_kind"],
                    "has_fixed": t_view.get("fixed_mask") is not None,
                    "eval_lot": eval_lot or "all",
-                   "n_eval": int(len(pred_view))},
+                   "n_eval": int(len(pred_view)),
+                   "extrap_pct": extrap_pct,
+                   "extrap_p95": ex["train_p95"] if ex else None},
         "eval": {"ref": [round(float(v), 4) for v in t_view["ref"]],
                  "pred": [round(float(v), 5) for v in pred_view],
                  "group": t_view["groups"],
@@ -687,14 +731,18 @@ def _batch_sweep_ks(auto_k, curve_max):
 
 def _batch_row(cfg, out):
     # same shape as the frontend's optRowFromRun, so saved rows merge straight
-    # into the leaderboard / Pareto view
-    def pick(mac):
+    # into the leaderboard / Pareto view. Carries the FULL readout — both
+    # evaluation sets x both MACs x both estimators — so the leaderboard's
+    # MAC / Fit / Addis-set toggles all apply to saved rows. (MAC-6 slopes are
+    # not stored: slope scales by exactly 0.6 going 10->6, ftir_19.)
+    def pick(es, mac):
         rows = ([m for m in out["metrics"]
-                 if m["evaluation_set"] == "fixed" and m["MAC"] == mac]
+                 if m["evaluation_set"] == es and m["MAC"] == mac]
                 or [m for m in out["metrics"] if m["MAC"] == mac]
                 or out["metrics"])
         return rows[0]
-    f10, f6 = pick(10.0), pick(6.0)
+    f10, f6 = pick("fixed", 10.0), pick("fixed", 6.0)
+    a10, a6 = pick("all", 10.0), pick("all", 6.0)
     return {**cfg, "cohort_label": out["cohort_label"], "k": out["k"],
             "auto_k": out["auto_k"],
             "ols_slope": f10["ols_slope"], "ols_intercept": f10["ols_intercept"],
@@ -702,7 +750,15 @@ def _batch_row(cfg, out):
             "deming_intercept": f10["deming_intercept"],
             "ols_intercept_mac6": f6["ols_intercept"],
             "deming_intercept_mac6": f6["deming_intercept"],
-            "R2": f10["R2"],
+            "R2": f10["R2"], "RMSE": f10["RMSE"],
+            "all_ols_slope": a10["ols_slope"],
+            "all_ols_intercept": a10["ols_intercept"],
+            "all_deming_slope": a10["deming_slope"],
+            "all_deming_intercept": a10["deming_intercept"],
+            "all_ols_intercept_mac6": a6["ols_intercept"],
+            "all_deming_intercept_mac6": a6["deming_intercept"],
+            "all_R2": a10["R2"], "all_RMSE": a10["RMSE"],
+            "extrap_pct": out["target"].get("extrap_pct"),
             "heldout_R2": out["heldout"]["R2"] if out["heldout"] else None}
 
 
@@ -715,11 +771,22 @@ def _batch_configs(b):
     eval_lot = b.get("eval_lot", "all")
     corrsel = bool(b.get("corrsel"))
     ladder = b.get("cutoff_ladder", True)
+    # dense cutoff mode: step through the whole plausible range per ranked
+    # cohort in `cutoff_step` intervals instead of the 5-point ladder
+    step = int(b.get("cutoff_step") or 0)
+    DENSE_RANGES = {"eth_shaped": (100, 600), "analogs": (250, 750),
+                    "ocec": (300, 1500)}
     order = {"eth_shaped": 0, "analogs": 1, "ocec": 2, "smoke": 3, "pool": 4}
     cfgs = []
     for co in sorted(cohorts, key=lambda c: order.get(c, 9)):   # cheapest first
         if co in BATCH_LADDERS:
-            cutoffs = BATCH_LADDERS[co] if ladder else [DEFAULT_CUTOFF.get(co)]
+            if step:
+                lo, hi = (b.get("cutoff_ranges") or {}).get(co, DENSE_RANGES[co])
+                cutoffs = list(range(int(lo), int(hi) + 1, step))
+            elif ladder:
+                cutoffs = BATCH_LADDERS[co]
+            else:
+                cutoffs = [DEFAULT_CUTOFF.get(co)]
         else:
             cutoffs = [None]
         sels = (["raw", "airspec"] if corrsel and co in ("eth_shaped", "analogs")
@@ -802,11 +869,41 @@ def api_batch_start():
     cfgs = _batch_configs(b)
     BATCH.update(running=True, stop=False, done=0, total=len(cfgs), current="",
                  skipped=0, new_rows=0, started=time.time(), finished=None,
-                 errors=[])
+                 errors=[], mode="grid")
     threading.Thread(target=_batch_worker,
                      args=(cfgs, bool(b.get("sweep_k", True))),
                      daemon=True).start()
     return jsonify({"started": True, "total": len(cfgs)})
+
+
+@app.route("/api/cross_site", methods=["POST"])
+def api_cross_site():
+    """Evaluate one configuration against every available target — the
+    cross-site table (Addis / Bishoftu / Beijing / Delhi / Pasadena / custom)
+    as a single call. Slopes come back with the extrapolation diagnostic so
+    unreliable (out-of-domain) rows are visibly flagged."""
+    if not STATE["ready"]:
+        return jsonify({"error": "data still loading"}), 503
+    b = request.get_json(force=True) or {}
+    cfg = _config_from(b)
+    base_eval_lot = cfg.pop("eval_lot", "all")
+    cfg.pop("target", None)
+    rows = []
+    for name in list_targets():
+        try:
+            with COMPUTE_LOCK:
+                out = run_config(k_override=b.get("k"), **cfg, target=name,
+                                 eval_lot=(base_eval_lot if name == "addis"
+                                           else "all"))
+            rows.append({"site": name, "label": out["target"]["label"],
+                         "k": out["k"], "n": out["target"]["n_eval"],
+                         "metrics": out["metrics"],
+                         "extrap_pct": out["target"].get("extrap_pct"),
+                         "heldout_R2": (out["heldout"]["R2"]
+                                        if out["heldout"] else None)})
+        except Exception as exc:                     # noqa: BLE001
+            rows.append({"site": name, "error": f"{type(exc).__name__}: {exc}"})
+    return jsonify({"rows": rows})
 
 
 @app.route("/api/batch_stop", methods=["POST"])
@@ -818,6 +915,356 @@ def api_batch_stop():
 @app.route("/api/batch_status")
 def api_batch_status():
     return jsonify(BATCH)
+
+
+# ----------------------------------------------------------------------------- #
+# analog lab — compare the committed spectral-analog selection against
+# literature-style similarity metrics (SAM/cosine, correlation, normalized
+# Euclidean, nearest-neighbour cosine), in raw or AIRSpec-corrected space.
+# One payload per space: full per-filter rank arrays, so the frontend can move
+# the cutoff and recompute overlaps/memberships instantly client-side.
+# ----------------------------------------------------------------------------- #
+_ANALOG_LAB_CACHE = {}
+_ANALOG_LAB_UNIVERSE = {}
+
+
+def _analog_space_rows(space, ids):
+    """Spectra matrix for the given AnalysisIds in the lab's spectra space."""
+    if space == "airspec":
+        return D["corr_pool"][[D["corr_row"][i] for i in ids]].astype(float)
+    X = D["pool_raw"].loc[ids, D["wcols"]].to_numpy(float)
+    if space == "deriv2":
+        X = savgol_filter(X, axis=1, **SAVGOL)
+    return X
+
+
+def _analog_addis_rows(space):
+    if space == "airspec":
+        return np.asarray(D["X_addis_corr"], float)
+    A = np.asarray(D["X_addis_raw"], float)
+    if space == "deriv2":
+        A = savgol_filter(A, axis=1, **SAVGOL)
+    return A
+
+
+def _band(M):
+    q25, med, q75 = np.percentile(M, [25, 50, 75], axis=0)
+    r = lambda v: [round(float(x), 6) for x in v]          # noqa: E731
+    return {"q25": r(q25), "median": r(med), "q75": r(q75)}
+
+ANALOG_LAB_METRICS = ["committed", "cosine_median", "corr_median",
+                      "eucl_norm_median", "nearest_cosine", "mahalanobis_pca"]
+ANALOG_LAB_LABELS = {
+    "committed": "committed analog score (ftir_09)",
+    "cosine_median": "cosine / SAM vs Addis median",
+    "corr_median": "Pearson r vs Addis median (LOCAL's metric)",
+    "eucl_norm_median": "Euclidean (L2-normalized) vs Addis median",
+    "nearest_cosine": "nearest-neighbour cosine to any Addis filter",
+    "mahalanobis_pca": "Mahalanobis to Addis centroid, PCA-10 scores (Reggente'16)",
+}
+
+
+def _analog_lab_payload(space):
+    if space in _ANALOG_LAB_CACHE:
+        return _ANALOG_LAB_CACHE[space]
+    # universe: the committed analog ranking, restricted to TOR-eligible pool
+    # filters (and, in corrected space, to filters with an AIRSpec cache row).
+    # Its order IS the committed rank.
+    pool_ids = set(int(i) for i in D["pool"].index)
+    universe = [int(i) for i in D["analog_ranked"] if int(i) in pool_ids]
+    if space == "airspec":
+        universe = [i for i in universe if i in D["corr_row"]]
+        X = D["corr_pool"][[D["corr_row"][i] for i in universe]].astype(float)
+        A = np.asarray(D["X_addis_corr"], float)
+    elif space == "deriv2":
+        # LOCAL's classic representation: correlation on derivative spectra
+        # kills the PTFE baseline before similarity is measured
+        X = savgol_filter(D["pool_raw"].loc[universe, D["wcols"]]
+                          .to_numpy(float), axis=1, **SAVGOL)
+        A = savgol_filter(np.asarray(D["X_addis_raw"], float), axis=1, **SAVGOL)
+    else:
+        X = D["pool_raw"].loc[universe, D["wcols"]].to_numpy(float)
+        A = np.asarray(D["X_addis_raw"], float)
+    med = np.median(A, axis=0)
+
+    Xn = X / (np.linalg.norm(X, axis=1, keepdims=True) + 1e-12)
+    mn = med / (np.linalg.norm(med) + 1e-12)
+    An = A / (np.linalg.norm(A, axis=1, keepdims=True) + 1e-12)
+    Xc = X - X.mean(axis=1, keepdims=True)
+    mc = med - med.mean()
+
+    # every metric oriented so LOWER = more Addis-like
+    p10 = PCA(n_components=10).fit(Xn)
+    S, SA = p10.transform(Xn), p10.transform(An)
+    sd = S.std(axis=0) + 1e-12
+    vals = {
+        "cosine_median": -(Xn @ mn),
+        "corr_median": -(Xc @ mc) / (np.linalg.norm(Xc, axis=1)
+                                     * np.linalg.norm(mc) + 1e-12),
+        "eucl_norm_median": np.linalg.norm(Xn - mn, axis=1),
+        "nearest_cosine": -(Xn @ An.T).max(axis=1),
+        # the Reggente-2016 extrapolation diagnostic turned into a selector:
+        # whitened score-space distance to the Addis centroid
+        "mahalanobis_pca": np.linalg.norm((S - SA.mean(axis=0)) / sd, axis=1),
+    }
+    n = len(universe)
+    ranks = {"committed": np.arange(n)}
+    for name, v in vals.items():
+        ranks[name] = np.argsort(np.argsort(v))
+
+    # Spearman agreement with the committed ranking (rank arrays are already
+    # ranks, so plain correlation of ranks = Spearman rho)
+    agreement = {name: round(float(np.corrcoef(ranks["committed"], r)[0, 1]), 3)
+                 for name, r in ranks.items() if name != "committed"}
+
+    # 2-D PCA of normalized spectra: pool subsample + every Addis filter,
+    # fitted on the combined cloud so both live in the same plane
+    sample_idx = np.unique(np.linspace(0, n - 1, min(2500, n)).astype(int))
+    pca = PCA(n_components=2).fit(np.vstack([Xn[sample_idx], An]))
+    pool_xy = pca.transform(Xn[sample_idx])
+    addis_xy = pca.transform(An)
+
+    _ANALOG_LAB_UNIVERSE[space] = universe
+    payload = {
+        "space": space,
+        "n": n,
+        "metrics": ANALOG_LAB_METRICS,
+        "labels": ANALOG_LAB_LABELS,
+        "agreement": agreement,
+        "ranks": {name: r.astype(int).tolist() for name, r in ranks.items()},
+        "sample_idx": sample_idx.astype(int).tolist(),
+        "pool_xy": [[round(float(a), 4), round(float(b), 4)] for a, b in pool_xy],
+        "addis_xy": [[round(float(a), 4), round(float(b), 4)] for a, b in addis_xy],
+        "explained": [round(float(v), 4) for v in pca.explained_variance_ratio_],
+    }
+    _ANALOG_LAB_CACHE[space] = payload
+    return payload
+
+
+@app.route("/api/analog_lab", methods=["POST"])
+def api_analog_lab():
+    if not STATE["ready"]:
+        return jsonify({"error": "data still loading"}), 503
+    b = request.get_json(force=True) or {}
+    space = b.get("space", "raw")
+    if space not in ("raw", "airspec", "deriv2"):
+        return jsonify({"error": f"unknown space '{space}'"}), 400
+    with COMPUTE_LOCK:
+        try:
+            return jsonify(_analog_lab_payload(space))
+        except Exception as exc:                     # noqa: BLE001
+            return jsonify({"error": f"{type(exc).__name__}: {exc}"}), 500
+
+
+@app.route("/api/analog_lab_spectra", methods=["POST"])
+def api_analog_lab_spectra():
+    """Median+IQR spectra of the top-`cutoff` cohort under a lab metric,
+    alongside the committed cohort and Addis — in the lab's spectra space."""
+    if not STATE["ready"]:
+        return jsonify({"error": "data still loading"}), 503
+    b = request.get_json(force=True) or {}
+    space = b.get("space", "raw")
+    metric = b.get("metric", "corr_median")
+    cutoff = int(b.get("cutoff") or 500)
+    if space not in ("raw", "airspec", "deriv2"):
+        return jsonify({"error": f"unknown space '{space}'"}), 400
+    with COMPUTE_LOCK:
+        try:
+            pay = _analog_lab_payload(space)
+            if metric not in pay["ranks"]:
+                return jsonify({"error": f"unknown metric '{metric}'"}), 400
+            universe = np.asarray(_ANALOG_LAB_UNIVERSE[space])
+            cutoff = min(cutoff, len(universe))
+            alt_ids = universe[np.asarray(pay["ranks"][metric]) < cutoff]
+            com_ids = universe[:cutoff]        # universe order = committed rank
+            wn = D["corr_wn"] if space == "airspec" else np.asarray(D["wn_raw"], float)
+            return jsonify({
+                "wn": [round(float(v), 2) for v in wn],
+                "n": int(cutoff),
+                "alt": _band(_analog_space_rows(space, alt_ids.tolist())),
+                "committed": _band(_analog_space_rows(space, com_ids.tolist())),
+                "addis": _band(_analog_addis_rows(space)),
+                "metric_label": ANALOG_LAB_LABELS.get(metric, metric),
+            })
+        except Exception as exc:                 # noqa: BLE001
+            return jsonify({"error": f"{type(exc).__name__}: {exc}"}), 500
+
+
+# ----------------------------------------------------------------------------- #
+# cutoff refinement — hill-climb the cohort size in +-`step` intervals around
+# each base configuration, following the score downhill until it stops
+# improving. Shares the BATCH state/results plumbing, so refined rows land in
+# the same leaderboard.
+# ----------------------------------------------------------------------------- #
+def _refine_bases(b):
+    cohorts = [c for c in (b.get("cohorts") or ["eth_shaped", "analogs", "ocec"])
+               if c in BATCH_LADDERS]
+    spectra = b.get("spectra") or ["airspec"]
+    modes = b.get("modes") or ["site_heldout"]
+    corrsel = bool(b.get("corrsel"))
+    bases = []
+    for co in cohorts:
+        sels = (["raw", "airspec"] if corrsel and co in ("eth_shaped", "analogs")
+                else ["raw"])
+        for sel, sp, mode in itertools.product(sels, spectra, modes):
+            bases.append(dict(cohort=co, cutoff=DEFAULT_CUTOFF.get(co),
+                              selection_space=sel, spectra=sp, mode=mode,
+                              lot=b.get("lot", "all"),
+                              target=b.get("target", "addis"),
+                              eval_lot=b.get("eval_lot", "all")))
+    return bases
+
+
+def _refine_worker(bases, w, min_r2, step, max_steps):
+    seen = set()
+    if BATCH_RESULTS_PATH.exists():
+        for line in BATCH_RESULTS_PATH.read_text().splitlines():
+            try:
+                seen.add(_batch_row_key(json.loads(line)))
+            except Exception:
+                pass
+    try:
+        with BATCH_RESULTS_PATH.open("a") as f:
+            def evaluate(cfg):
+                with COMPUTE_LOCK:
+                    out = run_config(k_override=None,
+                                     max_components=MAX_COMPONENTS, **cfg)
+                row = _batch_row(cfg, out)
+                key = _batch_row_key(row)
+                if key not in seen:
+                    seen.add(key)
+                    f.write(json.dumps(row) + "\n")
+                    f.flush()
+                    BATCH["new_rows"] += 1
+                score = abs(row["deming_intercept"]) + w * abs(row["deming_slope"] - 1)
+                if row["heldout_R2"] is not None and row["heldout_R2"] < min_r2:
+                    score += 1000.0          # fails the floor: strongly penalized
+                return score
+
+            for bi, base in enumerate(bases, 1):
+                if BATCH["stop"]:
+                    break
+                BATCH["done"] = bi - 1
+                tag = (f"{base['cohort']} sel={base['selection_space']} "
+                       f"cal={base['spectra']} {base['mode']}")
+                scores = {}
+
+                def sc_at(c, base=base, scores=scores, tag=tag):
+                    if c is None or c < 50 or c in scores:
+                        return scores.get(c)
+                    BATCH["current"] = f"refine {tag}: cutoff {c}"
+                    try:
+                        scores[c] = evaluate({**base, "cutoff": c})
+                    except Exception as exc:          # noqa: BLE001
+                        scores[c] = None
+                        BATCH["errors"] = (BATCH["errors"]
+                                           + [f"{tag} @{c}: {exc}"])[-8:]
+                    return scores[c]
+
+                cut = base["cutoff"]
+                s0 = sc_at(cut)
+                if s0 is None:
+                    BATCH["skipped"] += 1
+                    continue
+                up, dn = sc_at(cut + step), sc_at(cut - step)
+                dirn, best = None, s0
+                if up is not None and up < best:
+                    dirn, best = step, up
+                if dn is not None and dn < best:
+                    dirn, best = -step, dn
+                steps = 0
+                while dirn and steps < max_steps and not BATCH["stop"]:
+                    cut += dirn
+                    steps += 1
+                    nxt = sc_at(cut + dirn)
+                    if nxt is None or nxt >= best:
+                        break
+                    best = nxt
+            else:
+                BATCH["done"] = len(bases)
+    finally:
+        BATCH["running"] = False
+        BATCH["current"] = ""
+        BATCH["finished"] = time.time()
+
+
+@app.route("/api/refine_start", methods=["POST"])
+def api_refine_start():
+    if not STATE["ready"]:
+        return jsonify({"error": "data still loading"}), 503
+    if BATCH["running"]:
+        return jsonify({"error": "a batch/refine job is already running"}), 409
+    b = request.get_json(force=True) or {}
+    bases = _refine_bases(b)
+    if not bases:
+        return jsonify({"error": "no ranked cohorts selected (refine applies to "
+                                 "Ethiopia-shaped, analogs and lowest-OC/EC)"}), 400
+    BATCH.update(running=True, stop=False, done=0, total=len(bases), current="",
+                 skipped=0, new_rows=0, started=time.time(), finished=None,
+                 errors=[], mode="refine")
+    threading.Thread(target=_refine_worker,
+                     args=(bases, float(b.get("w", 5)),
+                           float(b.get("min_r2", 0.85)),
+                           int(b.get("step", 10)), int(b.get("max_steps", 40))),
+                     daemon=True).start()
+    return jsonify({"started": True, "bases": len(bases)})
+
+
+def _backfill_worker():
+    """Upgrade every saved batch row to the full-readout shape by re-running
+    its (config, k) — cache hits, so this is re-deriving metrics, not
+    recomputing calibrations. Rows that already carry the full readout pass
+    through untouched; rows that error keep their original form."""
+    try:
+        lines = (BATCH_RESULTS_PATH.read_text().splitlines()
+                 if BATCH_RESULTS_PATH.exists() else [])
+        rows = [json.loads(l) for l in lines if l.strip()]
+        BATCH["total"] = len(rows)
+        out_rows = []
+        for i, r in enumerate(rows, 1):
+            BATCH["done"] = i - 1
+            if BATCH["stop"] or "all_deming_slope" in r:
+                out_rows.append(r)
+                continue
+            cfg = {k: (r.get(k) or d) for k, d in
+                   (("cohort", None), ("cutoff", None),
+                    ("selection_space", "raw"), ("spectra", "raw"),
+                    ("mode", "site_heldout"), ("lot", "all"),
+                    ("target", "addis"), ("eval_lot", "all"))}
+            BATCH["current"] = (f"backfill {i}/{len(rows)}: {cfg['cohort']}/"
+                                f"{cfg['cutoff'] or '-'} k={r.get('k')}")
+            try:
+                with COMPUTE_LOCK:
+                    o = run_config(k_override=r.get("k"),
+                                   max_components=MAX_COMPONENTS, **cfg)
+                out_rows.append(_batch_row(cfg, o))
+                BATCH["new_rows"] += 1
+            except Exception as exc:                     # noqa: BLE001
+                BATCH["skipped"] += 1
+                BATCH["errors"] = (BATCH["errors"]
+                                   + [f"{BATCH['current']}: {exc}"])[-8:]
+                out_rows.append(r)
+        BATCH["done"] = len(rows)
+        tmp = BATCH_RESULTS_PATH.with_suffix(".jsonl.tmp")
+        tmp.write_text("".join(json.dumps(r) + "\n" for r in out_rows))
+        tmp.replace(BATCH_RESULTS_PATH)
+    finally:
+        BATCH["running"] = False
+        BATCH["current"] = ""
+        BATCH["finished"] = time.time()
+
+
+@app.route("/api/batch_backfill", methods=["POST"])
+def api_batch_backfill():
+    if not STATE["ready"]:
+        return jsonify({"error": "data still loading"}), 503
+    if BATCH["running"]:
+        return jsonify({"error": "a batch/refine job is already running"}), 409
+    BATCH.update(running=True, stop=False, done=0, total=0, current="",
+                 skipped=0, new_rows=0, started=time.time(), finished=None,
+                 errors=[], mode="backfill")
+    threading.Thread(target=_backfill_worker, daemon=True).start()
+    return jsonify({"started": True})
 
 
 @app.route("/api/batch_results")

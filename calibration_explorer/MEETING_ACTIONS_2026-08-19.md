@@ -61,11 +61,23 @@ built into the explorer the same day.
 - **ETBI (Bishoftu) spectra**: not in any email because Alex can't provide
   spectra — Mona can, and they're on the same Davis server in the *SPARTAN*
   database (separate from IMPROVE). Query it directly (32 filters, Oct–Dec 2025).
-  **2026-08-20**: `research/ftir_ec_phase3/scripts/get_etbi_spectra.ps1` is ready
-  to run on the VPN'd Windows machine — discovery pass first (finds the SPARTAN
-  db/tables; Sean: schema knowledge is the hard part), then `-Export` dumps ETBI
-  spectra + metadata CSVs. Connection per Sean's 2026-07-02 email: AQRC-SQL:1433,
-  ODBC Driver 17/18, Windows AD trusted auth.
+  **2026-08-20 — investigated to its end, now blocked on one email.** Discovery
+  ran on the VPN'd Windows machine (`get_etbi_spectra.ps1`, .NET SqlClient after
+  ODBC proved absent): `AD3\ajalil` reads only `Improve_2.1`; SPARTAN/ETBI is
+  definitively NOT in it (site sweep of `sampler.Samplers` finds no ET*/SPARTAN
+  rows); the SPARTAN db is one of the access-denied ones (`Spada` /
+  `Networks_1_0` likeliest). ACTION: send Sean the drafted email asking which
+  db + a `db_datareader` grant. Full schema map in
+  `research/ftir_ec_phase3/scripts/AQRC_DB_NOTES.md` — including that IMPROVE
+  spectra live full-resolution in `ftir.Scan` as scaled binary blobs.
+  **2026-08-21 (ticket INC2653758): ACCESS GRANTED** — Greg Philip confirmed
+  SPARTAN lives in the **Networks database** (`Networks_1_0`), read access on
+  the whole DB approved by Sean; supported route is SSMS on the VM
+  `aqrc-vd-jalil` (server `aqrc-sql`, Windows auth), but the AD-account grant
+  should also work via the direct PowerShell route from the VPN'd Windows
+  machine. Next: run the Networks_1_0 discovery block → Export-Etbi → pivot
+  CSVs into `calibration_explorer/targets/etbi/`. Reply to Greg's ticket after
+  confirming access.
 - **Lot 249 (checked 2026-08-20, Shiny app)**: exists but is a phantom — 2
   filters total in the whole network (both FRES1, sampled late Aug 2024).
   Nothing usable.

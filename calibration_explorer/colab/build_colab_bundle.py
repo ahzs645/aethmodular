@@ -223,13 +223,22 @@ progress prints below. Trim the GRID dict for a smaller pass.
             """import time
 import requests
 
+# FLEET PATTERN: run several Colab sessions in parallel, each with a
+# different slice of the grid (e.g. one protocol per session) -- the caches
+# are content-keyed, so every session's cache zip merges cleanly back into
+# calibration_explorer/cache/ on your own machine.
 GRID = {
     "cohorts": ["eth_shaped", "analogs", "ocec", "smoke", "pool"],
     "spectra": ["raw", "airspec", "deriv2"],
-    "modes": ["site_heldout", "app", "app_fmm"],
+    "modes": ["app"],         # THIS SESSION'S SLICE -- e.g. ["app"] here,
+                              # ["app_fmm"] in a second session, etc.
     "corrsel": True,          # also select in AIRSpec-corrected space
-    "cutoff_ladder": True,    # several cutoffs per ranked cohort
+    "cutoff_step": 10,        # dense mode: every 10th cutoff across the full
+                              # range (eth 100-600, analogs 250-750,
+                              # ocec 300-1500); set 0 for the 5-point ladder
+    "cutoff_ladder": True,    # used only when cutoff_step is 0
     "sweep_k": True,          # ~8 k values per configuration
+    "lots": ["all"],
     "target": "addis",
     "eval_lot": "all",
 }

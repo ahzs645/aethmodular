@@ -125,6 +125,12 @@ button:disabled{opacity:.45;cursor:default}
 #cohortinfo td:first-child,#seriesinfo td:first-child{color:#777;font-weight:600;width:150px}
 #cohortinfo td,#seriesinfo td{text-align:left;white-space:normal}
 .ph{color:#999;padding:26px 18px;font-size:12.6px;border:1px dashed #e2e2e2;border-radius:6px;height:100%;display:flex;align-items:center;justify-content:center;text-align:center}
+.litcard{font-size:12.4px;line-height:1.55;border:1px solid #eee;border-radius:6px;
+  padding:4px 12px;background:#fcfcfc}
+.litcard p{margin:8px 0}
+.litdetails{margin-top:12px}
+.litdetails summary{cursor:pointer;font-size:12.6px;font-weight:600;color:#2C6E9E}
+.litdetails[open] summary{margin-bottom:6px}
 
 /* ---- tables ---------------------------------------------------------------- */
 /* scroll shadows: the edge fades only appear while columns are hidden off-screen,

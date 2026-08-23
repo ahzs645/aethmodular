@@ -101,7 +101,9 @@
     <button data-tab="calibrate" class="on">Calibrate</button>
     <button data-tab="addis">Addis readout</button>
     <button data-tab="selection">Selection</button>
+    <button data-tab="analoglab" title="Compare the committed spectral-analog selection against literature similarity metrics (SAM, correlation, Mahalanobis…)">Analogs</button>
     <button data-tab="series">Series</button>
+    <button data-tab="sites" title="Evaluate the current configuration against every site target at once — the cross-site table with the extrapolation diagnostic">Sites</button>
     <button data-tab="compare">Compare <span id="pincount" class="count"></span></button>
     <button data-tab="optimize">Optimize <span id="optcount" class="count"></span></button>
   </nav>
@@ -208,6 +210,59 @@
   </div>
 </div>
 
+<div class="pane" id="pane-analoglab">
+  <div class="tablehead" style="margin-bottom:6px">
+    <span class="plotcap" style="margin:0" id="cap_al">Analog lab — the committed analog selection vs literature similarity metrics</span>
+    <span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span class="pill" id="al_space"><span class="plabel">Spectra</span>
+        <button data-v="raw" class="on">raw</button>
+        <button data-v="airspec">AIRSpec</button>
+        <button data-v="deriv2" title="LOCAL's classic representation — derivative kills the PTFE baseline before similarity is measured">2nd deriv</button></span>
+      <select id="al_metric" title="Which alternative metric to compare against the committed analog score"></select>
+    </span>
+  </div>
+  <div class="sliderrow" style="margin:0 0 12px">
+    <input type="range" id="al_cut" min="50" max="5000" step="10" value="500">
+    <span class="muted" id="al_cutlabel">cutoff 500</span>
+  </div>
+  <div class="cols two">
+    <div>
+      <div class="plotcap">Membership overlap at this cutoff — % of the cutoff shared between metrics</div>
+      <div id="p_al_overlap" class="plot"></div>
+      <div class="plotcap" style="margin-top:10px">Rank agreement with the committed score (Spearman ρ, whole pool)</div>
+      <div class="tablewrap"><table id="al_agree"><tbody></tbody></table></div>
+    </div>
+    <div>
+      <div class="plotcap" id="cap_al_rank">Committed rank vs alternative rank</div>
+      <div id="p_al_rank" class="plot tall"></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="sectionhead">Spectra — selected IMPROVE cohort vs Addis (median + IQR, this spectra space)</div>
+    <div class="plotcap muted" id="cap_al_spec">Pick a metric and release the cutoff slider to draw.</div>
+    <div id="p_al_spectra" class="plot tall"></div>
+  </div>
+
+  <div class="section">
+    <div class="tablehead">
+      <span class="sectionhead" style="margin:0">Score-space map — where each selection lives relative to Addis</span>
+      <label class="ck" title="Trim the axes to the central 1–99% cloud. Points outside are not dropped — they are clamped to the plot edge as orange ×, hover for their true coordinates."><input type="checkbox" id="al_focus" checked>exclude outliers (clamped at edge)</label>
+    </div>
+    <div id="p_al_pca" class="plot tall"></div>
+    <details class="litdetails">
+      <summary>How the field does this — literature quick reference (full survey: research/ftir_ec_phase3/SPECTRAL_SIMILARITY_LITERATURE.md)</summary>
+      <div class="litcard">
+        <p><b>LOCAL (Shenk &amp; Westerhaus 1997)</b> — the NIR standard: rank the library by <b>Pearson correlation on derivative spectra</b> against each target, calibrate on the top-k. Our <i>Pearson / 2nd-deriv</i> combination reproduces its selection step.</p>
+        <p><b>LWR (Næs 1990)</b> — nearest neighbours by <b>distance in PC score space</b>, distance-weighted fit. <b>Reggente, Dillner &amp; Takahama (AMT 2016)</b> used <b>Mahalanobis distance in score space</b> as the extrapolation diagnostic for these exact IMPROVE calibrations — our <i>Mahalanobis-PCA</i> metric turns that diagnostic into a selector.</p>
+        <p><b>SAM / cosine</b> (remote sensing; Kruse 1993) — angle between spectra; equals Pearson after mean-centering.</p>
+        <p><b>RS-LOCAL (Lobsey 2017, soils)</b> — resample library subsets, keep samples that recur in subsets that predict the target well. The only method optimizing the real objective; a candidate batch-mode extension here.</p>
+        <p><b>Weakley (2016/18)</b> — CSN sites with atypical composition (Elizabeth NJ) needed their own calibration: the aerosol-FTIR precedent that subsetting fixes what pooled models break.</p>
+        <p class="muted">Kennard–Stone / DUPLEX / SPXY are <i>spanning</i> designs (coverage, not target-matching) — useful only for cal/val splits of a selected subset. Nobody in aerosol FTIR has published per-target-site library selection; doing it here is novel but in-tradition.</p>
+      </div>
+    </details>
+  </div>
+</div>
+
 <div class="pane" id="pane-series">
   <div class="cols two">
     <div>
@@ -219,6 +274,28 @@
       <div class="tablewrap"><table id="seriesinfo"><tbody></tbody></table></div>
       <div class="plotcap" style="margin:12px 0 5px" id="cap_vsdep">vs deployed SPARTAN EC — same filters</div>
       <div id="p_vsdeployed" class="plot square"></div>
+    </div>
+  </div>
+</div>
+
+<div class="pane" id="pane-sites">
+  <div class="tablehead" style="margin-bottom:8px">
+    <span class="plotcap" style="margin:0" id="cap_sites">Cross-site — the current configuration evaluated against every target</span>
+    <button class="primary" id="sites_run" title="Runs the configuration above against every site in the Evaluate-on list (cached calibrations make repeat runs instant)">Evaluate on all sites</button>
+  </div>
+  <div class="cols two">
+    <div>
+      <div class="tablewrap">
+        <table id="sitestbl"><thead><tr>
+          <th>site</th><th>n</th><th>k</th><th>slope</th><th>intercept</th><th>R²</th>
+          <th title="Share of the target's filters beyond the training set's p95 score-space distance (Reggente et al. 2016). High values mean the slope/intercept are extrapolations — treat them as unreliable.">extrap %</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+      <div class="muted" style="margin-top:6px">slope / intercept follow the MAC · Fit · Addis-set toggles. <b>extrap %</b> = share of target filters beyond the training p95 score-space distance — rows flagged red are out-of-domain for this calibration and their slopes should not be quoted.</div>
+    </div>
+    <div>
+      <div class="plotcap" id="cap_sites_ladder">Intercepts by site (µg/m³) — zero is the target</div>
+      <div id="p_sites" class="plot tall"></div>
     </div>
   </div>
 </div>
@@ -285,6 +362,7 @@
       <button id="batch_stop" disabled>Stop</button>
       <label class="ck" style="margin-top:6px" title="Try several cutoffs per ranked cohort (Eth 200–400, analogs 400–600, OC/EC 600–1000) instead of only the defaults"><input type="checkbox" id="batch_ladder" checked>cutoff ladder</label>
       <label class="ck" title="Also evaluate ~8 k values per configuration, from the rule choice to ~double"><input type="checkbox" id="batch_sweepk" checked>k sweep per config</label>
+      <button class="mini" id="refine_start" style="margin-top:6px" title="Hill-climb each ranked cohort's cutoff in +-10 steps from its default, following score = |intercept| + w·|slope − 1| downhill until it stops improving (held-out floor applies). Refined rows persist like batch rows.">Refine cutoffs ±10</button>
       <button class="mini" id="batch_load" style="margin-top:6px" title="Merge saved batch rows (including ones computed in Colab and copied back) into the leaderboard and Pareto view">Load saved results</button>
       <div class="muted" id="batch_status" style="margin-top:8px">Uses the checked cohorts / spectra / protocols. Survives closing the page; results persist in the cache and reload with “Load saved results”.</div>
     </div>

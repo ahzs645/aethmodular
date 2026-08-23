@@ -90,6 +90,36 @@ zips the cache back to Drive; unzip it into `cache/` locally (content-keyed, so
 merging is safe) and every batch row loads and every configuration is a cache
 hit.
 
+**Refine cutoffs ±10 (Optimize tab)**: hill-climbs each ranked cohort's cutoff
+in ±10-filter steps from its default, following score = |intercept| +
+w·|slope − 1| (Deming MAC 10, fixed set; held-out floor as a penalty) downhill
+until it stops improving. Server-side like the batch; refined rows append to
+`cache/batch_results.jsonl` and appear via "Load saved results".
+
+**Analogs tab (the analog lab)**: compares the committed spectral-analog
+selection against literature similarity metrics — cosine/SAM, Pearson-to-median
+(LOCAL's metric), normalized Euclidean, nearest-neighbour cosine, and
+Mahalanobis-to-Addis-centroid in PCA-10 score space (Reggente et al. 2016's
+extrapolation diagnostic turned selector) — in raw, AIRSpec-corrected, or SG
+2nd-derivative space (the LOCAL-classic representation). One payload per space
+carries full per-filter rank arrays, so the cutoff slider recomputes overlap
+matrices, rank-agreement scatter, and the PCA score-space map instantly
+client-side. Literature grounding:
+`research/ftir_ec_phase3/SPECTRAL_SIMILARITY_LITERATURE.md`.
+
+**Sites tab (cross-site evaluation)**: one click evaluates the current
+configuration against every target in the Evaluate-on list — the five-site
+table (Addis / Bishoftu / Beijing / Delhi / Pasadena / custom) with an
+intercept-by-site ladder, following the MAC · Fit · Addis-set toggles. Every
+fit now also computes the **Reggente et al. (2016) extrapolation diagnostic**
+(whitened score-space distance of each target filter vs the training cloud);
+the stats card, Sites table, and saved batch rows carry **extrap %** = share
+of target filters beyond the training p95 — rows above ~30% are out-of-domain
+and their slopes should not be quoted. Old cached fits upgrade in place on
+first access. Target spectra for new SPARTAN sites are built with
+`research/ftir_ec_phase3/scripts/build_spartan_target.py` from Networks_1_0
+exports.
+
 **Auto-run**: the "auto" toggle next to Run re-runs the calibration ~0.6s after any
 configuration change (debounced, one run in flight at a time; a change landing
 mid-run queues exactly one follow-up). Cached configurations make this feel live;
