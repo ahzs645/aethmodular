@@ -1452,3 +1452,139 @@ $('sites_run').onclick = async () => {
     sitesRender();
   } finally { busy(false); $('sites_run').disabled = false; }
 };
+
+/* ---- cross-site target spectra (Sites tab) -----------------------------------
+   Same targets the Sites table evaluates, drawn as median+IQR in a chosen
+   baseline space. The baseline pill is the point: APRLssb anchors segment 2 at
+   the minimum over 1520–1600 cm⁻¹, so a ~1617 band is suppressed under
+   "AIRSpec" and visible under "neutral". */
+let ssSpace = 'raw', ssRange = 'full', ssCache = {};
+const SS_COLOURS = ['#B23327','#C4652F','#2C6E9E','#7A4FA3','#8F8C84','#548C66'];
+// 1500-1800 not 1400-1800: below ~1450 the neutral baseline rides the PTFE-mask
+// edge, and that rise dominates the y-scale and hides the 1617 feature.
+const SS_RANGES = {full:[400,4000], '1400_1800':[1500,1800], '2700_3600':[2700,3600]};
+
+async function drawSiteSpectra(){
+  if(!ready) return;
+  if(!ssCache[ssSpace]){
+    $('cap_sitespec').textContent = `Target spectra by site — computing ${ssSpace} baseline…`;
+    placeholder('p_sitespec', 'computing…');
+    const j = await post('/api/site_spectra', {space: ssSpace});
+    if(j.error){ $('cap_sitespec').textContent = 'Target spectra — ' + j.error; return; }
+    ssCache[ssSpace] = j;
+  }
+  const j = ssCache[ssSpace];
+  const [lo, hi] = SS_RANGES[ssRange];
+  const showIqr = $('ss_iqr').checked;
+  const data = [];
+  j.series.forEach((s, i) => {
+    const col = SS_COLOURS[i % SS_COLOURS.length];
+    const idx = s.wn.map((v, k) => k).filter(k => s.wn[k] >= lo && s.wn[k] <= hi);
+    const wn = idx.map(k => s.wn[k]);
+    if(showIqr){
+      data.push({x: wn.concat([...wn].reverse()),
+        y: idx.map(k => s.q75[k]).concat(idx.map(k => s.q25[k]).reverse()),
+        fill:'toself', fillcolor: col.replace('#','rgba(').length ? col + '25' : col,
+        line:{width:0}, hoverinfo:'skip', showlegend:false, type:'scatter'});
+    }
+    data.push({x: wn, y: idx.map(k => s.median[k]), mode:'lines',
+      line:{color: col, width:1.7}, name:`${s.label} (n=${s.n})`, type:'scatter'});
+  });
+  const note = ssSpace === 'airspec'
+    ? ' — NOTE: this baseline anchors at 1520–1600 cm⁻¹ and suppresses ~1617 features'
+    : (ssSpace === 'neutral' ? ' — independent pspline_arpls, no anchor window' : '');
+  $('cap_sitespec').textContent = `Target spectra by site — median${showIqr ? ' + IQR' : ''}, ${ssSpace} baseline${note}`;
+  plot('p_sitespec', data, {
+    xaxis:{title:'wavenumber (cm⁻¹)', autorange:'reversed'},
+    yaxis:{title: ssSpace === 'raw' ? 'absorbance' : 'baseline-corrected absorbance'},
+    margin:{t:34, r:10, b:44, l:60}, legend: LEGEND_TOP,
+    shapes: ssRange === '1400_1800' ? [{type:'line', x0:1617, x1:1617, yref:'paper', y0:0, y1:1,
+      line:{color:'#22252A', dash:'dot', width:1}}] : []});
+}
+$('ss_space').querySelectorAll('button').forEach(b => b.onclick = () => {
+  $('ss_space').querySelectorAll('button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); ssSpace = b.dataset.v; drawSiteSpectra();
+});
+$('ss_range').querySelectorAll('button').forEach(b => b.onclick = () => {
+  $('ss_range').querySelectorAll('button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); ssRange = b.dataset.v; drawSiteSpectra();
+});
+$('ss_iqr').onchange = drawSiteSpectra;
+document.querySelector('[data-tab="sites"]').addEventListener('click', () => {
+  if(ready && !document.querySelector('#p_sitespec .js-plotly-plot')) drawSiteSpectra();
+});
+
+/* ---- HIPS lab tab -----------------------------------------------------------
+   Per-filter weighted York/EIV fits (replacing pooled-lambda Deming) under
+   three blank-line variants, plus the blank ledger. The point of the table:
+   an intercept that moves between blank lines is calibration-sensitive; one
+   that holds still belongs to the aerosol. */
+let hipsRows = null, hipsBlanksLoaded = false;
+const HIPS_KINDS = [['deployed', '#2C6E9E'], ['lot_lin', '#7A4FA3'], ['lot_quad', '#B23327']];
+
+function hipsFitCell(f){
+  if(!f || f.error) return `<td class="warn">${f ? f.error : '—'}</td>`;
+  return `<td title="MSWD-inflated SEs; median recomputed Fabs ${f.median_fabs} Mm⁻¹">` +
+         `${f.slope.toFixed(2)}x ${f.intercept >= 0 ? '+' : '−'}${Math.abs(f.intercept).toFixed(2)}` +
+         `<span class="muted"> ±${f.intercept_se.toFixed(2)}</span></td>`;
+}
+
+function hipsRender(){
+  if(!hipsRows) return;
+  $('hipstbl').querySelector('tbody').innerHTML = hipsRows.map(r => r.error
+    ? `<tr><td>${r.site}</td><td colspan="6" class="warn">${r.error}</td></tr>`
+    : `<tr><td title="${r.label}">${r.site}</td>` +
+      `<td title="${r.n_matched}/${r.n} filters matched in the batch export">${r.n_matched}</td>` +
+      `<td class="${r.fits.deployed && r.fits.deployed.kappa < 0.8 ? 'warn' : ''}">` +
+        `${r.fits.deployed ? r.fits.deployed.kappa.toFixed(2) : '—'}</td>` +
+      hipsFitCell(r.fits.deployed) + hipsFitCell(r.fits.lot_lin) + hipsFitCell(r.fits.lot_quad) +
+      `<td class="${r.frac_below_blank_r1 > 0.2 ? 'warn' : ''}">` +
+        `${(r.frac_below_blank_r1 * 100).toFixed(0)}%</td></tr>`).join('');
+
+  const ok = hipsRows.filter(r => !r.error);
+  const traces = HIPS_KINDS.map(([kind, color]) => ({
+    x: ok.map(r => r.fits[kind] && !r.fits[kind].error ? r.fits[kind].intercept : null),
+    y: ok.map(r => r.site),
+    error_x: {type: 'data',
+      array: ok.map(r => r.fits[kind] && !r.fits[kind].error ? r.fits[kind].intercept_se : null),
+      color, thickness: 1},
+    name: {deployed: 'deployed line', lot_lin: 'lot-common linear', lot_quad: 'lot quadratic'}[kind],
+    mode: 'markers', type: 'scatter', marker: {size: 10, color}}));
+  plot('p_hips', traces,
+    {xaxis: {title: 'intercept (µg/m³)', zeroline: true, zerolinecolor: '#22252A', zerolinewidth: 2},
+     yaxis: {automargin: true},
+     legend: {orientation: 'h', y: -0.25}, margin: {t: 12, r: 20, b: 40, l: 10}});
+}
+
+async function hipsBlanks(){
+  if(hipsBlanksLoaded) return;
+  const j = await fetch('/api/hips_blanks').then(r => r.json());
+  if(j.error) return;
+  hipsBlanksLoaded = true;
+  const lots = Object.keys(j.lots).sort();
+  $('hipsblanks').querySelector('tbody').innerHTML = lots.map(lot => {
+    const L = j.lots[lot];
+    const curved = L.rms_lin > 1.2 * L.rms_quad;
+    return `<tr><td>${lot}</td><td>${L.n}</td>` +
+      `<td class="${curved ? 'warn' : ''}">${L.rms_lin.toFixed(1)}</td>` +
+      `<td>${L.rms_quad.toFixed(1)}</td>` +
+      `<td>${L.r1_min.toFixed(0)}–${L.r1_max.toFixed(0)}</td>` +
+      `<td>${L.tau0_mean != null ? (L.tau0_mean >= 0 ? '+' : '−') + Math.abs(L.tau0_mean).toFixed(4) + ' ±' + L.tau0_sd.toFixed(4) : '—'}</td></tr>`;
+  }).join('');
+}
+
+$('hips_run').onclick = async () => {
+  if(!ready) return;
+  busy(true); $('hips_run').disabled = true;
+  $('cap_hips').textContent = 'HIPS lab — fitting every SPARTAN target (uncached calibrations fit fresh)…';
+  try{
+    const j = await post('/api/hips_york',
+      {...cfg(), k: $('kmode').value === 'manual' ? parseInt($('kval').value) : null});
+    if(j.error){ $('cap_hips').textContent = 'HIPS lab — ' + j.error; return; }
+    hipsRows = j.rows;
+    $('cap_hips').textContent =
+      'HIPS lab — York/EIV fits with per-filter Fabs uncertainties, under three blank-line variants';
+    hipsRender();
+  } finally { busy(false); $('hips_run').disabled = false; }
+};
+document.querySelector('[data-tab="hips"]').addEventListener('click', () => { if(ready) hipsBlanks(); });

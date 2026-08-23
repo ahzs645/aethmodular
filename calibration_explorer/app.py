@@ -244,6 +244,7 @@ def _load_all():
             "dates": [d.date().isoformat() if pd.notna(d) else None for d in dates],
             "deployed": [round(float(v), 4) if pd.notna(v) else None for v in deployed],
             "lots": eval_lots,
+            "filter_ids": etad_eval["ExternalFilterId"].astype(str).tolist(),
         }}
 
         # Startup provenance checks against the locked cohorts (reported, not fatal).
@@ -337,7 +338,9 @@ def get_target(name):
          "X_raw": m[D["wcols"]].to_numpy(float), "X_corr": None,
          "groups": (m["Group"].astype(str).tolist() if "Group" in m.columns
                     else ["all"] * len(m)),
-         "fixed_mask": None, "dates": dates, "deployed": None}
+         "fixed_mask": None, "dates": dates, "deployed": None,
+         "filter_ids": (m["ExternalFilterId"].astype(str).tolist()
+                        if "ExternalFilterId" in m.columns else None)}
     # optional AIRSpec-corrected spectra (id column + the CORRECTED wavenumber
     # grid, i.e. corr_wn — not the raw grid) — enables "Calibrate on AIRSpec"
     # readouts against this target
@@ -1056,6 +1059,71 @@ def api_analog_lab():
             return jsonify({"error": f"{type(exc).__name__}: {exc}"}), 500
 
 
+# ----------------------------------------------------------------------------- #
+# cross-site target spectra — median + IQR per evaluation target, in a chosen
+# baseline space. The baseline choice MATTERS: APRLssb/AIRSpec anchors segment 2
+# at the minimum over [1520,1600] cm-1 (see scripts/airspec_baseline.py
+# find_min_pos), which sits under a ~1617 band and suppresses it. "neutral" runs
+# pybaselines pspline_arpls with no anchor window for an independent opinion.
+# ----------------------------------------------------------------------------- #
+_SITE_SPEC_CACHE = {}
+
+
+def _neutral_baseline(wn_asc, Y_asc):
+    """Independent penalized-spline baseline; PTFE-saturated regions masked."""
+    from pybaselines import Baseline
+    bad = ((wn_asc > 1100) & (wn_asc < 1300)) | (wn_asc < 700)
+    ww = wn_asc[~bad]
+    fitter = Baseline(x_data=ww)
+    out = np.empty((Y_asc.shape[0], ww.size))
+    for i in range(Y_asc.shape[0]):
+        bl, _ = fitter.pspline_arpls(Y_asc[i, ~bad], lam=1e6)
+        out[i] = Y_asc[i, ~bad] - bl
+    return ww, out
+
+
+@app.route("/api/site_spectra", methods=["POST"])
+def api_site_spectra():
+    """Median+IQR spectra for every evaluation target, one baseline space."""
+    if not STATE["ready"]:
+        return jsonify({"error": "data still loading"}), 503
+    b = request.get_json(force=True) or {}
+    space = b.get("space", "raw")           # raw | airspec | neutral
+    if space not in ("raw", "airspec", "neutral"):
+        return jsonify({"error": f"unknown space '{space}'"}), 400
+    key = space
+    if key in _SITE_SPEC_CACHE:
+        return jsonify(_SITE_SPEC_CACHE[key])
+    with COMPUTE_LOCK:
+        try:
+            series = []
+            for name in list_targets():
+                t = get_target(name)
+                if space == "airspec":
+                    X = t.get("X_corr")
+                    wn = np.asarray(D["corr_wn"], float)
+                    if X is None:
+                        continue
+                    X = np.asarray(X, float)
+                else:
+                    X = np.asarray(t["X_raw"], float)
+                    wn = np.asarray(D["wn_raw"], float)
+                o = np.argsort(wn)
+                w, Xs = wn[o], X[:, o]
+                if space == "neutral":
+                    w, Xs = _neutral_baseline(w, Xs)
+                q25, med, q75 = np.percentile(Xs, [25, 50, 75], axis=0)
+                r = lambda v: [round(float(x), 6) for x in v]   # noqa: E731
+                series.append({"name": name, "label": t["label"], "n": int(Xs.shape[0]),
+                               "wn": [round(float(v), 2) for v in w],
+                               "median": r(med), "q25": r(q25), "q75": r(q75)})
+            payload = {"space": space, "series": series}
+            _SITE_SPEC_CACHE[key] = payload
+            return jsonify(payload)
+        except Exception as exc:                     # noqa: BLE001
+            return jsonify({"error": f"{type(exc).__name__}: {exc}"}), 500
+
+
 @app.route("/api/analog_lab_spectra", methods=["POST"])
 def api_analog_lab_spectra():
     """Median+IQR spectra of the top-`cutoff` cohort under a lab metric,
@@ -1611,6 +1679,16 @@ def api_overlap():
     return jsonify({"rows": rows})
 
 
+import hips_lab                                        # noqa: E402
+hips_lab.register(app, {
+    "STATE": STATE, "COMPUTE_LOCK": COMPUTE_LOCK, "run_config": run_config,
+    "list_targets": list_targets, "get_target": get_target,
+    "_config_from": _config_from,
+    "spartan_hips_path": PATHS.spartan_hips_primary,
+})
+
+
 if __name__ == "__main__":
-    print("Calibration Iteration Explorer → http://127.0.0.1:5058")
-    app.run(host="127.0.0.1", port=5058, debug=False, threaded=True)
+    _port = int(os.environ.get("PORT", 5058))
+    print(f"Calibration Iteration Explorer → http://127.0.0.1:{_port}")
+    app.run(host="127.0.0.1", port=_port, debug=False, threaded=True)

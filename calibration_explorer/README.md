@@ -120,6 +120,20 @@ first access. Target spectra for new SPARTAN sites are built with
 `research/ftir_ec_phase3/scripts/build_spartan_target.py` from Networks_1_0
 exports.
 
+**Cross-site spectra (Sites tab)**: median (+ optional IQR) spectra for every
+evaluation target, with a **Baseline** switch — `raw` / `AIRSpec` / `neutral`.
+The switch is the point: APRLssb/AIRSpec anchors segment 2 at the minimum over
+**1520–1600 cm⁻¹** (`scripts/airspec_baseline.py::find_min_pos`, and that window
+is zero-weighted in the spline fit), which sits directly under a ~1617 cm⁻¹ band
+and suppresses it. `neutral` runs `pybaselines.spline.pspline_arpls` with no
+anchor window and PTFE-saturated regions masked, as an independent opinion.
+Under `neutral` the 1617 peak is present at **Addis and Bishoftu only**
+(Delhi/Beijing peak at ~1679, the carbonyl edge; Pasadena at 1634) — see
+`research/ftir_ec_phase3/BAND1617_LEAD_2026-08-23.md`. Any band claim in
+1500–1650 cm⁻¹ should be shown under at least two baselines.
+`POST /api/site_spectra {"space": "raw"|"airspec"|"neutral"}`. Note the neutral
+path imports **pybaselines** lazily, so it is a soft runtime dependency.
+
 **Auto-run**: the "auto" toggle next to Run re-runs the calibration ~0.6s after any
 configuration change (debounced, one run in flight at a time; a change landing
 mid-run queues exactly one follow-up). Cached configurations make this feel live;

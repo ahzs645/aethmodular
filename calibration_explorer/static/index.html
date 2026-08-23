@@ -104,6 +104,7 @@
     <button data-tab="analoglab" title="Compare the committed spectral-analog selection against literature similarity metrics (SAM, correlation, Mahalanobis…)">Analogs</button>
     <button data-tab="series">Series</button>
     <button data-tab="sites" title="Evaluate the current configuration against every site target at once — the cross-site table with the extrapolation diagnostic">Sites</button>
+    <button data-tab="hips" title="HIPS instrument diagnostics: per-filter weighted York/EIV fits and the blank-line sensitivity of every site's intercept">HIPS</button>
     <button data-tab="compare">Compare <span id="pincount" class="count"></span></button>
     <button data-tab="optimize">Optimize <span id="optcount" class="count"></span></button>
   </nav>
@@ -297,6 +298,65 @@
       <div class="plotcap" id="cap_sites_ladder">Intercepts by site (µg/m³) — zero is the target</div>
       <div id="p_sites" class="plot tall"></div>
     </div>
+  </div>
+
+  <div class="section">
+    <div class="tablehead" style="margin-bottom:6px">
+      <span class="sectionhead" style="margin:0" id="cap_sitespec">Target spectra by site — median + IQR</span>
+      <span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <span class="pill" id="ss_space"><span class="plabel">Baseline</span>
+          <button data-v="raw" class="on">raw</button>
+          <button data-v="airspec" title="APRLssb/AIRSpec. NOTE: anchors segment 2 at the minimum over 1520–1600 cm⁻¹, which sits under a ~1617 band and suppresses it.">AIRSpec</button>
+          <button data-v="neutral" title="Independent pybaselines pspline_arpls, no anchor window, PTFE-saturated regions masked — the second opinion.">neutral</button></span>
+        <span class="pill" id="ss_range"><span class="plabel">Range</span>
+          <button data-v="full" class="on">full</button>
+          <button data-v="1400_1800">1500–1800</button>
+          <button data-v="2700_3600">O–H / C–H</button></span>
+        <label class="ck" title="Show the interquartile band around each site median"><input type="checkbox" id="ss_iqr">IQR</label>
+      </span>
+    </div>
+    <div id="p_sitespec" class="plot tall"></div>
+    <div class="muted" style="margin-top:6px">Switching the baseline changes which bands are visible — the AIRSpec anchor at 1520–1600 cm⁻¹ suppresses features near 1617. Any band claim in 1500–1650 should be shown under at least two baselines.</div>
+  </div>
+</div>
+
+<div class="pane" id="pane-hips">
+  <div class="tablehead" style="margin-bottom:8px">
+    <span class="plotcap" style="margin:0" id="cap_hips">HIPS lab — York/EIV fits with per-filter Fabs uncertainties, under three blank-line variants</span>
+    <button class="primary" id="hips_run" title="Runs the current configuration against every SPARTAN target, refits with per-filter weighted York regression, and recomputes each filter's Fabs under alternative blank lines (lot-common linear and quadratic). Cached calibrations make repeat runs fast.">Run York + blank-line check</button>
+  </div>
+  <div class="cols two">
+    <div>
+      <div class="tablewrap">
+        <table id="hipstbl"><thead><tr>
+          <th>site</th><th title="filters matched to the SPARTAN HIPS batch export by FilterId">n</th>
+          <th title="range-to-noise reliability: kappa well below ~0.8 means the site's x-range cannot support a free EIV slope">κ</th>
+          <th title="York fit using the shipped (deployed) blank line — the per-filter weighted replacement for pooled-lambda Deming">deployed</th>
+          <th title="same fit with Fabs recomputed from a single pooled blank line per lot">lot-linear</th>
+          <th title="same fit with a quadratic blank line per lot — tests the linearity assumption of the scattering correction">quadratic</th>
+          <th title="share of this site's filters whose R1 falls below the R1 range of the blanks that define its calibration line — those Fabs values rest on an extrapolated blank line">R1 &lt; blanks</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+      <div class="muted" style="margin-top:6px">Each cell is <b>slope × x + intercept ± SE</b> (x = Fabs/10, per-filter σ<sub>x</sub> from the HIPS uncertainty rows, σ<sub>y</sub> inflated to MSWD = 1). An intercept that moves between blank-line variants is calibration-sensitive; one that doesn't is a property of the aerosol. York et al. 2004; details in research/ftir_ec_phase3/OFFSET_ADJUDICATION_2026-08-23.md §5b.</div>
+    </div>
+    <div>
+      <div class="plotcap" id="cap_hips_ladder">Intercept under each blank line (µg/m³) — movement = calibration sensitivity</div>
+      <div id="p_hips" class="plot tall"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sectionhead" style="margin-bottom:6px">Blank ledger — the lines Fabs stands on</div>
+    <div class="tablewrap">
+      <table id="hipsblanks"><thead><tr>
+        <th>lot</th><th>blanks</th>
+        <th title="rms of the blanks about the pooled linear line (T1 counts)">rms linear</th>
+        <th title="rms about a quadratic — a large improvement means the blank line is curved and the linear correction extrapolates badly">rms quadratic</th>
+        <th>R1 range</th>
+        <th title="mean ± sd of blank tau — the PTFE zero; multiply by ~49 for the equivalent Mm⁻¹ at Addis geometry">blank τ (zero)</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+    <div class="muted" style="margin-top:6px">The scattering correction is a regression through these blanks (τ = ln((a₀ + a₁·R1)/T1)). Filters darker than every blank (previous table, last column) sit on an extrapolation of this line.</div>
   </div>
 </div>
 

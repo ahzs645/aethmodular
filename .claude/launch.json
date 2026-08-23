@@ -5,7 +5,8 @@
       "name": "calibration-explorer",
       "runtimeExecutable": "/Users/ahmadjalil/anaconda3/bin/python",
       "runtimeArgs": ["calibration_explorer/app.py"],
-      "port": 5058
+      "port": 5058,
+      "autoPort": true
     }
   ]
 }
