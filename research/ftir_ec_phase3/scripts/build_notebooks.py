@@ -161,6 +161,7 @@ SCRIPTS = {
     "31": ("run_ftir_31.py", "ftir_31_deck_figure_regeneration.ipynb"),
     "32": ("run_ftir_32.py", "ftir_32_cv_scheme_ablation.ipynb"),
     "33": ("run_ftir_33.py", "ftir_33_shape_cohort_explainers.ipynb"),
+    "34": ("run_ftir_34.py", "ftir_34_offset_adjudication_checks.ipynb"),
 }
 
 TLDR["21"] = """\
@@ -963,6 +964,39 @@ TAKEAWAYS["33"] = """\
 - Selection tables: smoke_cohort_spectral_selection.csv (906 rows, flags),
   selected_improve_addis_analogs.csv (400 + metrics), locked_analog_train_test_split.csv
   (the locked 500 with the site-disjoint split)."""
+
+TLDR["34"] = """\
+Every analysis behind `OFFSET_ADJUDICATION_2026-08-23.md` that ran as an
+interactive one-off, reproduced as committed code. **The metric autopsy
+(§1)**: the linear-baseline "prominence" reads Delhi's carbonyl flank as a
+1617 band (0.0025 == Addis's 0.0025 — the retracted "two-city band" claim);
+the interior-local-maximum test shows only Addis peaks inside 1560–1680 on
+AIRSpec-corrected spectra (Delhi/Beijing/Bishoftu peak at the window edge).
+**Residual chemistry (§2)**: carbonyl-per-m³ correlates with the raw 1:1
+residual at r ≈ 0.9 at Delhi and Pasadena and collapses to ~0 once each
+site's own Deming line is removed — carbonyl tracks the *slope* (which sites
+over-read), not the scatter. **AERONET (§3)**: the AAE apportionment bound
+gives Addis the only positive non-BC share (~4%, ~2 Mm⁻¹ surface-equivalent
+— blind to AAE ≈ 1–2 char by construction); the feature-attribution table
+shows the broad 1500–1700 envelope predicts column AAOD₆₇₅ beyond loading,
+Fabs and month (r ≈ +0.28, perm p ≈ 0.002) while the discrete 1620 peak
+dies under month control. **York × blank lines (§4)**: the Addis intercept
+survives every blank-line form (−1.51 → −1.27 ± 0.17); Pasadena's 3.15x
+slope dissolves to 0.91x under the lot-quadratic line; Delhi's 1.8x is
+robust."""
+
+TAKEAWAYS["34"] = """\
+- Requires the explorer on :5058 (fits come from /api/run, all cached) —
+  this notebook is the reproduction record, not a standalone pipeline.
+- Metric choice was the whole band story: prominence-vs-local-max flipped
+  the conclusion twice, and AIRSpec's 1520–1600 anchor suppresses the band
+  by construction (any 1500–1650 claim needs two baselines).
+- The carbonyl/slope association and the envelope/AAOD association are the
+  two composition results that survived every correction; the 1617 band is
+  an Ethiopian regional marker, decoupled from the offset.
+- The blank-line delta is EC-free (raw optics only) and so escapes the
+  offset-vs-curvature degeneracy; the surviving −1.27 does not. Quartz TOR
+  remains the terminator (with the MAC fork and the ETBI contrast)."""
 
 if __name__ == "__main__":
     for number in (sys.argv[1:] or list(SCRIPTS)):
