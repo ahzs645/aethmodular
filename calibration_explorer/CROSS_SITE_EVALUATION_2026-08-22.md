@@ -83,6 +83,16 @@ cloud — the analog-lab machinery can produce this per site) before it's quoted
 
 ## Mechanism first look (2026-08-23): the 1617 band follows the offset
 
+> **CORRECTED (same day, peak-shape analysis in
+> `research/ftir_ec_phase3/BAND1617_LEAD_2026-08-23.md`):** the "Delhi matches
+> Addis exactly" claim below is an artifact of the linear-baseline prominence
+> metric — at Delhi, A@1617 sits on the flank of its large 1700–1720 carbonyl
+> band, with **no discrete interior peak**. Only Addis has a genuine local
+> maximum (~1620 cm⁻¹, +0.0035). So the discrete band is **Addis-specific** —
+> which no longer tracks the *unweighted* intercept ordering, but does match
+> the York re-fit where Addis is the only certain intercept. The carbonyl-vs-
+> slope decomposition further down is unaffected.
+
 Corrected-space median spectra, five sites: **Delhi's 1617 cm⁻¹ band matches
 Addis's exactly in absolute prominence (0.0025 vs 0.0025)** while the
 zero-offset sites are 2–4× weaker (Beijing 0.0015, Bishoftu 0.0010, Pasadena

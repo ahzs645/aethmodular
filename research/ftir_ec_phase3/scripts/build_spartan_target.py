@@ -149,6 +149,9 @@ def main() -> None:
     scheme = SEASON if args.seasons == "ethiopian" else QUARTER
     out = pd.DataFrame({
         "MediaId": ref["MediaId"].astype(int),
+        # ExternalFilterId lets downstream joins reach the SPARTAN HIPS rows
+        # (blank-line coefficients, tau, uncertainties) that key on FilterId
+        "ExternalFilterId": ref["ExternalFilterId"],
         "Fabs": ref["Fabs"],
         "Volume_m3": ref["SampleVolume_m3"],
         "Date": ref["SamplingStartDate"].dt.date.astype(str)
