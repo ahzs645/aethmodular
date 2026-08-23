@@ -32,12 +32,13 @@ diagnostics. See [the full provenance investigation](plot-taxonomy.md#findings).
 
 ### Obtain HIPS Fabs uncertainties
 
-`HIPS_Fabs` has neither populated uncertainty nor MDL values, so Fabs-vs-EC
-Deming regressions currently assume lambda = 1. The correction is directionally
-sound but its magnitude—22–37% slope attenuation in the measured comparisons—is
-not pinned. Obtain defensible HIPS Fabs uncertainty estimates and pass them as
-`sigma_x`/`sigma_y` to `calculate_regression_stats`; this unblocks a data-driven
-Deming lambda. See [the estimator census and MDL analysis](plot-taxonomy.md#findings).
+RESOLVED 2026-08-23: `HIPS_Uncertainty` and `HIPS_MDL` are populated in
+`unified_filter_dataset.pkl` at ETAD (190), CHTS (163), INDH (63) and USPA
+(130), and per-filter weighted York/EIV fits using them now exist —
+`research/ftir_ec_phase3/scripts/york_cross_site.py`, results in
+`research/ftir_ec_phase3/OFFSET_ADJUDICATION_2026-08-23.md`. Remaining:
+port the York estimator into `calculate_regression_stats` / the explorer
+readout so the app's Deming rows stop assuming a pooled lambda.
 
 ## Unfinished migrations
 
