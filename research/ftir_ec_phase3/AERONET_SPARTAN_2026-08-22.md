@@ -56,30 +56,118 @@ carries a real BrC/dust-like component. That is a modest point for reading (b),
 and the first evidence Addis differs **compositionally** in its absorption, not
 only in magnitude.
 
-## The confound that must be closed before this is presented
+## The 24-h / daytime confound — **CLOSED 2026-08-23**
 
-Filters integrate **24 h**, including the nocturnal inversion; AERONET retrieves
-only in **clear daytime**, when the boundary layer is deep and pollution is
-diluted. Any city whose day–night absorption contrast is unusually large will
-show a depressed H for entirely physical reasons — and Addis (high-altitude
-basin, charcoal cooking peaks at dawn/dusk, strong nighttime inversions) is
-exactly that profile.
+Filters integrate 24 h; AERONET retrieves only when solar zenith angle ≥ 50°.
+The worry was that a city with a large day–night absorption contrast would show
+a depressed H for entirely physical reasons — and Addis (high-altitude basin,
+charcoal cooking peaks, strong nocturnal inversion) fits that profile exactly.
 
-Working against the confound: Addis's *daytime* boundary layer should be
-unusually **deep** (tropical, high-altitude, strongly convective), which would
-push H up, not down.
+Measured it directly from the **raw 1-min MA350** at Jackros (co-located with the
+AERONET site) and at Pasadena, using **Red BCc — the 625 nm channel, effectively
+the HIPS wavelength**. Script: `scripts/ma350_diurnal_coverage.py`.
 
-Altitude accounts for little of the gap: Addis at 2,355 m has ~75% of the
-sea-level column, a ~25% effect, not a factor of 3–4.
+Addis does have a very strong diurnal cycle: hourly mean Red BCc runs from
+3,987 ng/m³ at 00:00 to **19,096 at 04:00** (a 4.8× swing), with a second peak at
+17–18. But the AERONET hours (07–10, 14–17) *straddle* it — they miss the pre-dawn
+maximum and catch the afternoon ramp, and the two biases very nearly cancel.
 
-**Decisive follow-up (data in hand):** the MA350 at Jackros is *co-located with
-the AERONET site*. Compute the ratio of 24-h-mean to AERONET-hours-mean surface
-absorption from the **raw minute-resolution MA350 files** (Drive; the
-`processed_sites/*_9am_resampled.pkl` copies are daily aggregates and cannot
-answer this), then rescale H. If the corrected Addis H still sits far below
-544–894 m, reading (a) stands on its own.
+Both ratio columns are the **median of per-day ratios**; they differ only in
+whether each day is summarised by its mean or its median minute (the mean is
+sensitive to Addis's sharp pre-dawn spike, so the pair brackets the answer).
 
-## Method correction found after the first run (2026-08-22, literature check)
+| site | AERONET hours | days | ratio, daily means | daily medians | H | **H corrected** |
+|---|---|---|---|---|---|---|
+| **Addis** | 07–10, 14–17 (observed) | 751 | **1.05** | 0.92 | 190 | **175–200 m** |
+| **Pasadena** | 06–18 (SZA 50–80°) | 327 | **1.09** | 1.07 | 544 | **580–594 m** |
+
+![diurnal coverage](output/plots/aeronet_diurnal_coverage.png)
+
+The figure shows the mechanism: at Addis the two retrieval windows *straddle*
+the cycle — the morning one sits below the 24-h mean, the afternoon one above —
+while Pasadena's single wide window sits entirely inside its midday minimum.
+
+**Addis's ratio straddles 1 (0.92–1.05); Pasadena's sits consistently above it
+(1.07–1.09), so applying the correction widens the gap rather than closing it**
+— the Addis/Pasadena separation goes from 2.9× to 3.0–3.3×. Pasadena's photometer window is centred
+on midday — exactly when its BC sits at the daily minimum (396 ng/m³ at 12:00 vs
+762 at 05:00) — so its column-hours under-sample its own 24-h load. Addis's
+bimodal window does not have that problem.
+
+**The Addis H outlier survives the confound that was flagged as disqualifying.**
+Reading (a) — the Addis HIPS Fabs is biased high — now stands on independent
+optical evidence with its main alternative explanation measured and excluded.
+
+Two caveats retained: this assumes the column tracks the surface in *relative*
+diurnal shape (it need not, if aloft layers decouple from the surface), and
+Delhi/Beijing have no co-located MA350, so their H values stay uncorrected.
+
+Altitude accounts for little of the gap either: Addis at 2,355 m has ~75% of the
+sea-level column — a ~25% effect, not a factor of 3–4.
+
+## REBUILD 2026-08-23 — the temporal pairing was right; the correction below was wrong
+
+The "method correction" in the next section claimed same-day matching was invalid
+because a SPARTAN filter is *eight staggered 3-h windows over ~9 days*
+(Snider et al. 2015 App. A3, via literature survey). **Checked against the actual
+filter metadata — that is not what these sites do.**
+
+`ETAD_metadata.csv` carries true `SamplingStartDate`/`SamplingEndDate`:
+**every clean ETAD filter is exactly 24.0 h, local midnight to midnight**, with
+196 of 253 consecutive gaps exactly 3 days (the rest 9 d = cartridge changes).
+ETBI is the same shape, every 2 days. So a filter *is* a single calendar day.
+
+Rebuilt the match on the true windows anyway — AERONET per-retrieval timestamps
+(n = 2,294, not the daily product), converted to Addis local time (UTC+3), and
+kept only retrievals falling inside each filter's actual `[start, end)`:
+
+| | n | H median | notes |
+|---|---|---|---|
+| **true-window match** | 95 | **190 m** (IQR 109–338) | 1–10 retrievals per filter, median 3 |
+| naive same-UTC-day match | 95 | **190 m** | identical filter set |
+
+**Median \|H_true − H_naive\| = 0 m (0.0%).** The two agree exactly, because every
+AERONET retrieval is daytime (07–17 local = 04–14 UTC) and therefore always
+lands on the same UTC calendar day as the local filter day — the timezone edge
+never bites at any of these longitudes. The original table's pairing was sound.
+
+(H is 190 m here vs 232 m in the table below only because this subset is
+restricted to filters with a verified clean 24-h window and averages retrievals
+*within* the window rather than using AERONET's daily product. Same conclusion.)
+
+### What the rebuild does establish — the real limitation, now quantified
+
+AERONET retrievals at Jackros fall in **8 of 24 local hours: 07–10 and 14–17**.
+Never midday (almucantar needs SZA ≥ 50°), never overnight. So each 24-hour
+filter is optically observed during roughly 8 daytime hours and the other ~16 —
+including the entire nocturnal inversion and both cooking peaks — are
+**unobserved**.
+
+This is a *coverage* problem, not a pairing problem — the one real limitation
+the rebuild exposed. It would bias H downward at any city whose 24-h-mean
+surface absorption exceeds its daytime-mean. Now measured at two sites and
+found small at Addis (see the CLOSED section above), but it is the right thing
+to have worried about.
+
+The daytime window is **not** the same width at every site. Solar geometry
+(SZA 50–80°, computed per latitude) gives Addis at 9°N only ~5–8 eligible hours,
+in a tight morning/late-afternoon pair, versus 11 at Delhi and 13 at both
+Pasadena and Beijing — near-equatorial sites lose the most midday. An earlier
+note in this file called the distributions "broadly comparable" from medians and
+IQRs alone; the hour *counts* differ substantially and that phrasing was too
+generous.
+
+Whether the asymmetry actually matters is now **measured rather than assumed**
+— see "The 24-h / daytime confound — CLOSED" above. It does matter, but in the
+direction that strengthens the Addis result.
+
+**Closed the same day.** The MA350 at Jackros is co-located with the AERONET
+site, so `Fabs_24h / Fabs_(07–10, 14–17)` came straight off the **raw
+minute-resolution** file on Drive. (The `processed_sites/*_9am_resampled.pkl`
+copies are daily aggregates and cannot answer it — the raw 1-min files are
+required, and their `Time local` column is 12-hour with AM/PM.)
+
+## Method correction found after the first run (2026-08-22, literature check) — SUPERSEDED, see above
 
 **Same-day matching is wrong, and the AERONET sampling times are not what a
 naive reading assumes.** Two corrections, both material:
@@ -118,6 +206,7 @@ to the table above.
 Level 1.5 (not quality-assured 2.0) — AERONET's inversion SSA/AAOD are formally
 reliable only above AOD440 ≈ 0.4, which many days here will not meet; the
 comparison is therefore indicative and should be repeated with a
-AOD-thresholded, Level 2.0 subset. Same-day matching only (no sub-daily
-alignment). Nearest-AERONET-site distances differ by city (Gurgaon is ~30 km
+AOD-thresholded, Level 2.0 subset. Same-day matching in the table above; verified
+equivalent to true-window matching (see REBUILD) and diurnally corrected via
+MA350 at Addis and Pasadena. Nearest-AERONET-site distances differ by city (Gurgaon is ~30 km
 from the Delhi SPARTAN site). n = 66–125 per city.

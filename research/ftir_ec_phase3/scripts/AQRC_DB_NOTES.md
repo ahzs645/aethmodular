@@ -80,3 +80,108 @@ pivots wide. So the 13k-pool CSV's shape is exactly this pipeline's output.
 `FREQ_MINIMUM_IMP = 500`; biomass selection comes from
 `data/BiomassDetected_2019..2025.csv` shipped with the app — consistent with
 the phase-3 read of the deployed-calibration lineage (ftir_19 notes).
+
+## SPARTAN side: the `hips` schema (confirmed 2026-08-23)
+
+Earlier notes guessed HIPS results would sit in `analysis.Results` + `analysis.Sets`.
+**That is the IMPROVE-side layout and those objects do not exist in `Networks_1_0`**
+(`Invalid object name 'analysis.Sets'`). A live `INFORMATION_SCHEMA.TABLES` sweep
+of `Networks_1_0` returned:
+
+| schema.table | note |
+|---|---|
+| `hips.Results` | the HIPS result rows |
+| `hips.ResultTypes` | which quantities are stored (tau / Fabs / R1 / T1 …) |
+| `hips.CalibrationSets` | **likely the per-lot blank lines** (Intercept/Slope) |
+| `hips.CalibrationSetFilters` | the blank filters behind each calibration set |
+| `ftir.CalibrationSets`, `xrf.CalibrationSets` | same pattern per method |
+| `import.ImportNoteSets` | import bookkeeping |
+
+So the schema-per-method convention holds on the SPARTAN side too, just under
+`hips.*` rather than `analysis.*`. `hips.CalibrationSets` is the table to read
+for the lot-253 blank-line question in
+`../SPARTAN_LOT_INVENTORY_2026-08-23.md` — the shipped CSV only exposes the
+Intercept/Slope already applied, not the blanks or the fit behind them.
+
+### Gotcha: `param()` is not paste-safe
+
+`param(...)` is only legal as the **first statement of a script file**. Pasted
+into an interactive console it fails to parse, and PowerShell then continues with
+every declared variable **empty** — so `WHERE SiteCode = ''` matches nothing and
+the output looks like an empty database rather than an error. `check_aqrc_gaps.ps1`
+now uses `if (-not $X) { $X = ... }` defaults instead, and asserts the site
+lookup returns a row before reporting anything else.
+
+### hips schema, confirmed contents (2026-08-23 live run)
+
+**`hips.Results`** — one row per HIPS measurement, keyed on **`SampleAnalysisId`
+(not MediaId)**:
+
+| column | note |
+|---|---|
+| `Transmittance`, `Reflectance` | the T1/R1 scale (e.g. 989.000, 150.000) |
+| `TransmittanceRaw`, `ReflectanceRaw` | normalised (0.688, 0.306) |
+| `Wavelength` | **633** — confirms the He-Ne wavelength from the instrument itself |
+| `LaserPower`, `LaserDiodeTemperature` | **instrument drift diagnostics** |
+| `TransmittanceSensorTemperature`, `ReflectanceSensorTemperature` | per-sensor temps |
+| `ResultTypeId` | `hips.ResultTypes`: 0 = Sample, 1 = Reference |
+
+None of the drift diagnostics reach `SPARTAN_HIPS_Batch1-51.v2.csv`, which
+exposes only final tau/Fabs plus R1/T1. Pull them with
+[get_hips_internals.ps1](get_hips_internals.ps1).
+
+**`hips.CalibrationSets`** (Id, LotNumber, Label, Comments) — the per-lot blank
+calibrations, and **a lot can have several over time**, each tied to a named
+instrument event:
+
+| lot | sets | events |
+|---|---|---|
+| 248 | 3, 8, 14 | reconfigured (fibre optics, optics cleaned/realigned) · collimator replaced · 10 lab blanks |
+| 250 | 6, 7, 9, 12 | shift · shift 2 · collimator · lab move |
+| 251 | 4, 5, 10, 13 | reconfigured · **shift** · collimator · lab move (room 132C -> 138) |
+| 253 | 16 | "253 initial", **33 lab blanks** (SPARTAN BatchId 45) |
+| 241a | 15 | 16 lab blanks |
+| 245 | 2, 11 | move · collimator |
+| unk-01 | 1 | initial SPARTAN calibration, lot number not provided |
+
+Two of these were triggered by an **unexplained instrument shift** ("performed
+due to an apparent shift in the last calibration of this lot", lots 250 and 251).
+That is a measurement-side mechanism that would produce a time-correlated offset,
+and it has not been checked against the Addis intercept.
+
+`hips.CalibrationSetFilters` is just (MediaId, CalibrationSetId) — the blanks
+behind each set. The Intercept/Slope coefficients are **not** on
+`hips.CalibrationSets`; where they live is still unknown (query [B] of
+`get_hips_internals.ps1` searches the whole DB for them).
+
+### Currency: the database is not ahead of our exports (ETAD, 2026-08-23)
+
+| | database | our local files |
+|---|---|---|
+| ETAD filters | **296**, through **2026-03-01** | `ETAD_metadata.csv` 296 rows, same max date |
+| ETAD FTIR analyses | **319** (296 filters, all with both scans) | `ETAD_FTIR_spectra.csv` 319 rows |
+
+`newer_than_local = 0`. Filters do **not** reach the database at the 3-day
+sampling cadence — Addis sampling stops at 2026-03-01 in the DB itself, though
+the newest FTIR analysis ran 2026-04-28. Do not extrapolate "filters we must be
+missing" from cadence; check the DB.
+
+### hips.Results: the drift diagnostics are NULL (2026-08-23, all-sites pull)
+
+`LaserPower`, `LaserDiodeTemperature`, `TransmittanceSensorTemperature` and
+`ReflectanceSensorTemperature` are **100% NULL across all 6,876 SPARTAN rows**.
+The columns exist; SPARTAN never populated them.
+
+**However** `TransmittanceRaw`/`ReflectanceRaw` (also absent from the shipped CSV,
+and not derivable from T1/R1) do recover the instrument epochs: `T1/TransmittanceRaw`
+is flat within a configuration and steps hard at **2023-05-03** and **2023-09-22**,
+matching the events in `hips.CalibrationSets`. T1 itself is stable across those
+boundaries, so treat it as an epoch marker rather than evidence of drift in tau.
+
+What the pull *is* good for: raw `Transmittance`/`Reflectance` are bit-identical
+to the shipped `T1`/`R1`, `tau = ln((Intercept + Slope*R1)/T1)` reproduces shipped
+tau exactly, and 256 filters appear here that the shipped CSV omits — enough to
+reconstruct Fabs for them. See `../HIPS_RAW_PULL_2026-08-23.md`.
+
+`ResultTypeId = 1` ("Reference") is **not** a per-filter reference beam — it
+cannot substitute for the lot blank line.
