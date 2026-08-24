@@ -39,6 +39,60 @@ PATHS = FTIRTransferPaths.defaults()
 OUT = REPO / "research/ftir_ec_phase3/output/tables/hips"
 
 
+def _lot(value) -> str:
+    try:
+        return str(int(float(value)))
+    except (TypeError, ValueError):
+        return str(value).strip()
+
+
+def _calibration_schedule(shipped: pd.DataFrame,
+                          raw_samples: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    """Infer when each deployed lot calibration line became active.
+
+    A manufacturing lot can have multiple HIPS calibration sets.  The shipped
+    table carries the line used for each filter, while the raw results carry
+    its analysis timestamp.  Their join therefore recovers the deployment
+    schedule without treating a lot-wide median as timeless.
+    """
+    measured = raw_samples[["ExternalFilterId", "Timestamp"]].copy()
+    measured["AnalysisTimestamp"] = pd.to_datetime(
+        measured["Timestamp"], format="mixed", errors="coerce"
+    )
+    joined = shipped[["FilterId", "LotId", "Intercept", "Slope"]].merge(
+        measured, left_on="FilterId", right_on="ExternalFilterId", how="left",
+        validate="one_to_one",
+    )
+    joined["Lot"] = joined["LotId"].map(_lot)
+    joined = joined.dropna(subset=["Intercept", "Slope", "AnalysisTimestamp"])
+    schedule = {}
+    for lot, group in joined.groupby("Lot"):
+        lines = (group.groupby(["Intercept", "Slope"], as_index=False)
+                 .agg(active_from=("AnalysisTimestamp", "min"),
+                      active_to=("AnalysisTimestamp", "max"),
+                      n_shipped=("FilterId", "size"))
+                 .sort_values("active_from").reset_index(drop=True))
+        schedule[lot] = lines
+    return schedule
+
+
+def _active_line(schedule: dict[str, pd.DataFrame], lot: str, timestamp,
+                 shipped: pd.DataFrame) -> tuple[float, float, str]:
+    lines = schedule.get(lot)
+    when = pd.to_datetime(timestamp, format="mixed", errors="coerce")
+    if lines is not None and len(lines) and pd.notna(when):
+        prior = lines[lines["active_from"].le(when)]
+        chosen = prior.iloc[-1] if len(prior) else lines.iloc[0]
+        return float(chosen["Intercept"]), float(chosen["Slope"]), "dated_schedule"
+    candidates = shipped[shipped["LotId"].map(_lot).eq(lot)].dropna(
+        subset=["Intercept", "Slope"]
+    )
+    if candidates.empty:
+        raise KeyError(lot)
+    mode = candidates.groupby(["Intercept", "Slope"]).size().idxmax()
+    return float(mode[0]), float(mode[1]), "modal_fallback"
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -54,9 +108,9 @@ def main() -> None:
          .drop_duplicates("FilterId"))
     shipped = set(h["FilterId"])
 
-    # per-lot blank lines, as actually applied in the shipped file
-    lines = {str(k): (g["Intercept"].median(), g["Slope"].median())
-             for k, g in h.groupby(h["LotId"].astype(str)) if g["Intercept"].notna().any()}
+    # A lot can have several calibration sets over time.  Recover the deployed
+    # schedule from shipped-line × raw-analysis-time pairs.
+    schedule = _calibration_schedule(h, sample)
     # DepositArea is constant per site in practice; fall back to the network median
     da_site = h.groupby("Site")["DepositArea"].median().to_dict()
     da_all = h["DepositArea"].median()
@@ -95,14 +149,14 @@ def main() -> None:
 
     rows = []
     for _, x in new.iterrows():
+        lot = _lot(x["ExternalLotId"])
         try:
-            lot = str(int(float(x["ExternalLotId"])))
-        except (TypeError, ValueError):
-            lot = str(x["ExternalLotId"])
-        if lot not in lines:
+            intercept, slope, line_source = _active_line(
+                schedule, lot, x["Timestamp"], h
+            )
+        except KeyError:
             continue
-        I, S = lines[lot]
-        top = I + S * x["Reflectance"]
+        top = intercept + slope * x["Reflectance"]
         if top <= 0 or x["Transmittance"] <= 0:
             continue
         tau = float(np.log(top / x["Transmittance"]))
@@ -112,6 +166,8 @@ def main() -> None:
         rows.append({"Site": x["SiteCode"], "FilterId": x["ExternalFilterId"], "Lot": lot,
                      "AnalysisTimestamp": x["Timestamp"], "T1": x["Transmittance"],
                      "R1": x["Reflectance"], "tau": round(tau, 5),
+                     "CalibrationIntercept": intercept, "CalibrationSlope": slope,
+                     "CalibrationLineSource": line_source,
                      "DepositArea": da, "Volume_m3": V,
                      "Fabs_reconstructed": round(fabs, 2) if fabs == fabs else np.nan,
                      # tau ~ 0 with no volume is the signature of a field/lab blank

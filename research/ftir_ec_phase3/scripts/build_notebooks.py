@@ -998,6 +998,47 @@ TAKEAWAYS["34"] = """\
   offset-vs-curvature degeneracy; the surviving −1.27 does not. Quartz TOR
   remains the terminator (with the MAC fork and the ETBI contrast)."""
 
+SCRIPTS["35"] = ("run_ftir_35.py", "ftir_35_variation_closure.ipynb")
+
+TLDR["35"] = """\
+The audit changes the calibration headline but strengthens the mechanism result. The exact
+five-site launch contains **12,327 unique configuration×k rows per target**, not ~1,900 final
+readouts. Only **one** row enters the 0.85–1.18 slope box at both Addis and Delhi under a
+consistent estimator (analogs-440 AIRSpec-selected × deriv2, k=20), and it still reads
+Deming **0.99x−2.22** at Addis and **1.13x−0.69** at Delhi (target R² 0.65/0.64); none reaches
+target R² ≥0.70 at both. The screened Delhi winner's **0.87x−0.04** was Deming target fit,
+while its quoted 0.86 was IMPROVE held-out TOR R²; 96.1% of Delhi was extrapolated. On the
+26 newly reconstructed Delhi filters that locked winner falls to OLS **0.63x+1.11** (R²
+0.62), and the common candidate loses Addis on 14 new filters (**0.55x−0.75**). HIPS
+blank-line form and the raw-gain instrument epoch are closed: Addis York intercept is
+−1.336 deployed, −1.328 linear, −1.326 quadratic, with no gain-residual association
+(p=0.37). Two independent axes localize an additive HIPS-side component: Addis FTIR-EC vs
+MA350 IR has intercept **+0.32**, but HIPS/MAC10 vs the same instrument is **+2.84**; Delhi
+shows the same direction. AERONET Level-1.5 gives Addis a distinctive flat red AAE
+(675–870 median **0.30** at AOD440≥0.4), but strict Level-2/U27 confirmation is unavailable.
+Finally, loading/month-controlled potassium ion strongly tracks the Addis residual
+(partial r **0.66**, permutation/FDR q<0.001), while the Al–Si–Ti–Fe dust index does not.
+The most coherent reading is a HIPS-side additive bias plus real biomass/organic-linked
+within-site structure, not one universal calibration correction."""
+
+TAKEAWAYS["35"] = """\
+- **Retract the Delhi near-perfect calibration as a confirmed result.** It was a screened,
+  96%-extrapolated target fit and fails the new selection-independent Delhi holdout.
+- **Keep the no-universal-calibration conclusion.** Exactly one unique grid row enters the
+  slope box at both cities, retains material offsets/moderate R², and fails the new Addis
+  holdout. Calibration choice alone does not reconcile the cities.
+- **Close blank-line curvature and a simple instrument epoch step.** Correct calibration-set
+  refits move the Addis York intercept by only 0.01 µg/m³; E2/E3 and gain tests are stable.
+- **Revise the season claim.** Mean corrected bias is similar by season, but pooled
+  season×HIPS interactions show a significantly flatter Dry slope under both raw and
+  AIRSpec models and both February conventions.
+- **The independent evidence points to HIPS optics plus composition.** MA350 localizes a
+  large additive difference to HIPS, while potassium/OC axes—but not the dust index—explain
+  residual structure at Addis. AERONET's red-flat signal is supportive but Level-1.5 only.
+- **Still external/new-data blockers:** official HIPS release/QC for the 54 reconstructions,
+  Level-2 AERONET with U27, the remaining 202 SPARTAN filter volumes, newer IMPROVE lots,
+  per-filter deposit images/reverse-orientation interpretation, and collocated quartz TOR."""
+
 if __name__ == "__main__":
     for number in (sys.argv[1:] or list(SCRIPTS)):
         build(number)

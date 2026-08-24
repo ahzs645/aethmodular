@@ -69,7 +69,7 @@ Fabs can be reconstructed from raw T1/R1 with the lot's blank line
 | site | recovered | lot | median Fabs | shipped site median | have spectra |
 |---|---|---|---|---|---|
 | **ETAD** | **14** | **253** | 44.85 (31.2–63.1) | 46.2 | yes (all 296 in ETAD_FTIR_spectra) |
-| **ETBI** | **14** | 251 | 18.32 (11.3–30.9) | 19.0–42.1 range | yes (staged pull) |
+| **ETBI** | **14** | 251 | 18.20 (11.2–30.6) | 19.0–42.1 range | yes (staged pull) |
 | **INDH** | **26** | **253** | 74.42 (29.4–143.3) | 75.0 | yes (staged pull) |
 
 Every recovered median lands on its site's shipped median — INDH 74.4 vs 75.0,
@@ -89,6 +89,41 @@ Effect on the targets, all 54 confirmed to have an FTIR analysis:
 The ETBI gain matters most — n = 26 was the binding constraint on the
 Bishoftu-vs-Addis offset comparison, the strongest evidence that the intercept is
 Addis-specific.
+
+### Calibration-set correction and locked confirmation (2026-08-24)
+
+A lot is not a timeless calibration line. Lot 251 used three deployed HIPS
+lines: 2423.6−6.033R through 2023-03-17, 1416.2−2.783R from 2023-05 through
+2024-04, and 1397.0−2.687R from 2024-08 onward. The first reconstruction used
+the lot-wide median and therefore assigned the May-2026 ETBI rows the middle
+line. `reconstruct_hips_fabs.py` now recovers the dated deployment schedule by
+joining shipped lines to raw analysis timestamps and uses the line active on
+each analysis date. This changes ETBI's median only from 18.32 to 18.20 Mm⁻¹;
+ETAD/INDH lot-253 values are unchanged.
+
+The recovered rows were then used once as never-screened holdouts, with no
+cohort or k re-selection (`run_locked_reconstruction_confirmation.py`):
+
+| locked configuration | new target | n | OLS target readout | R² |
+|---|---|---:|---:|---:|
+| Addis winner: ocec-440 × AIRSpec, k=8 | Addis | 14 | 0.56x−0.16 | 0.73 |
+| Addis winner | Delhi (INDH) | 26 | 1.02x+1.85 | 0.51 |
+| Delhi screened winner: analogs-530 AIRSpec-selected × deriv2, k=20 | Delhi | 26 | 0.63x+1.11 | 0.62 |
+| common candidate: analogs-440 AIRSpec-selected × deriv2, k=20 | Addis | 14 | 0.55x−0.75 | 0.82 |
+| common candidate | Delhi | 26 | 0.87x−0.45 | 0.65 |
+
+The screened Delhi winner does **not** confirm, and the only grid-wide common
+candidate does not retain its Addis slope. These are provisional-reference
+holdouts rather than official HIPS releases, but they are selection-independent
+and all 54 target spectra are in-domain for the Addis winner (0% beyond its
+training score-distance p95).
+
+Calibration-set-specific linear and quadratic blank refits do not rescue the
+offset: on 253 augmented Addis filters the York intercept is −1.336 deployed,
+−1.328 linear, and −1.326 quadratic. Addis also reads similarly in E2 and E3,
+and its residual has no association with the raw-gain epoch marker (p=0.37).
+The blank-line and simple instrument-step explanations are therefore closed;
+loading and composition remain structured residual axes.
 
 The remaining 202 filters (TWTA 40, TWKA 24, USSL 24, AUMN/INJA/KRUL/USNO 16
 each, …) have tau but no sample volume locally. Volume lives in each site's
