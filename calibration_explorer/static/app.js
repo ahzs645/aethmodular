@@ -1,4 +1,4 @@
-/* Calibration Iteration Explorer — frontend logic.
+/* Calibration Iteration Explorer: frontend logic.
    Talks to the Flask API in ../app.py; all plots via Plotly (responsive).
    Layout: global toolbar (presets + configuration + toggles) over four tabs. */
 
@@ -8,21 +8,25 @@ const seasonColour = s => SEASON_COLOUR[Object.keys(SEASON_COLOUR).find(k => Str
 const PCFG = {displayModeBar:false, responsive:true};
 const RANKED = ['eth_shaped', 'analogs', 'ocec'];
 const LEGEND_TOP = {orientation:'h', y:1, yanchor:'bottom', x:0, xanchor:'left', font:{size:11}};
-const SPECTRA_LABEL = {raw:'raw', airspec:'AIRSpec-corrected', deriv2:'SG 2nd derivative'};
-const SPECTRA_SHORT = {raw:'raw', airspec:'AIRSpec', deriv2:'D2'};
-const MODE_LABEL = {site_heldout:'Option A — site-grouped 5-fold, first major minimum',
-                    app:'Option B — interleaved 10-fold, within 5% of minimum',
-                    app_fmm:'Option B2 — interleaved 10-fold, first major minimum'};
+const SPECTRA_LABEL = {raw:'raw', airspec:'AIRSpec-corrected',
+  neutral:'neutral pspline-arPLS', deriv2:'SG 2nd derivative'};
+const SPECTRA_SHORT = {raw:'raw', airspec:'AIRSpec', neutral:'neutral', deriv2:'D2'};
+const MODE_LABEL = {site_heldout:'Option A: site-grouped 5-fold, first major minimum',
+                    app:'Option B: interleaved 10-fold, within 5% of minimum',
+                    app_fmm:'Option B2: interleaved 10-fold, first major minimum'};
 const MODE_SHORT = {site_heldout:'A (site-grouped)', app:'B (interleaved 5%)', app_fmm:'B2 (interleaved FMM)'};
 let spectraMode = 'single';
 
 let last = null;
+let lastRunKey = null;
 let lastSweep = null;   // rows of the most recent k sweep (belongs to that run's config)
 let lastSweepCfg = null;
 let pins = JSON.parse(localStorage.getItem('calib_explorer_pins') || '[]');
 let customPresets = JSON.parse(localStorage.getItem('calib_explorer_presets') || '{}');
 let toggles = {mac:'10', est:'deming', evalset:'fixed'};
 let defaults = {};
+let targetsMeta = {};
+let appProvenance = {};
 let ready = false;
 
 /* The six setup-matrix rows as built-in presets (site-held-out protocol, rule k). */
@@ -40,11 +44,17 @@ function busy(on){ $('busy').style.display = on ? 'block' : 'none'; }
 function showError(msg){
   const e = $('err');
   if(!msg){ e.style.display='none'; return; }
+  msg = String(msg).replace(/^ValueError:\s*/, 'Configuration problem: ')
+    .replace(/cohort resolves to only (\d+) filters/, 'the selected cohort has only $1 usable filters; raise the cutoff or remove the lot restriction');
   e.textContent = msg; e.style.display='block';
 }
 async function post(url, body){
-  const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
-  return await r.json();
+  try{
+    const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    const j = await r.json();
+    if(!r.ok && !j.error) j.error = `${r.status} ${r.statusText}`;
+    return j;
+  }catch(e){ return {error:`Request failed: ${e.message || e}`}; }
 }
 function cfg(){
   return {
@@ -64,6 +74,26 @@ function syncEvalLot(){
   $('eval_lot').disabled = !addis;
   if(!addis) $('eval_lot').value = 'all';
 }
+function requestedRun(){
+  return {...cfg(), k: $('kmode').value === 'manual' ? parseInt($('kval').value) : null};
+}
+function currentRunKey(){ return JSON.stringify(requestedRun()); }
+function setResultStale(on){
+  const stale = !!(on && last);
+  $('stale').hidden = !stale;
+  $('pin').disabled = stale || !last;
+  $('sweep').disabled = stale || !last;
+}
+function updateTargetRole(){
+  const name = $('target').value || 'addis';
+  const meta = targetsMeta[name] || {};
+  const blocked = meta.optimization_allowed === false;
+  $('opt_start').title = blocked ? `Optimization disabled: ${meta.role || 'non-screening target'}` : '';
+  if(!optRunning) $('opt_start').disabled = blocked;
+  if(!$('batch_stop').disabled) return;
+  $('batch_start').disabled = blocked;
+  $('refine_start').disabled = blocked;
+}
 const GROUP_PALETTE = ['#2C6E9E', '#B23327', '#7A4FA3', '#8F8C84', '#C49442', '#548C66'];
 function groupColour(g, order){
   const k = Object.keys(SEASON_COLOUR).find(k => String(g).startsWith(k));
@@ -76,7 +106,17 @@ function metricRow(m, refKind){
   const es = (toggles.evalset === 'fixed' && hasFixed) ? 'fixed' : 'all';
   const sub = m.filter(r => r.evaluation_set === es);
   if(kind === 'ec') return sub.find(r => r.MAC == null) || sub[0];
-  return sub.find(r => r.MAC === parseFloat(toggles.mac)) || sub[0];
+  const requested = parseFloat(toggles.mac);
+  const exact = sub.find(r => r.MAC === requested);
+  if(exact) return exact;
+  // Backward compatibility for pins made before MAC-17 was added. Under the
+  // documented λ∝MAC² convention, slope scales with MAC while intercept/R² do
+  // not; derive the sensitivity row from MAC 10 instead of silently showing 10.
+  const base = sub.find(r => r.MAC === 10) || sub[0];
+  if(!base || base.MAC == null) return base;
+  const factor = requested / base.MAC;
+  return {...base, MAC:requested, ols_slope:base.ols_slope * factor,
+          deming_slope:base.deming_slope * factor};
 }
 function updateToggles(){
   const t = last && last.target;
@@ -100,7 +140,7 @@ $('tabs').querySelectorAll('button').forEach(b => b.onclick = () => {
   document.querySelectorAll('.pane').forEach(p => p.classList.remove('on'));
   const pane = $('pane-' + b.dataset.tab);
   pane.classList.add('on');
-  // plots drawn while a pane was hidden have a stale width — fix them on reveal.
+  // plots drawn while a pane was hidden have a stale width: fix them on reveal.
   // Resize synchronously (rAF can be throttled in unfocused tabs) and again on
   // the next frame in case layout was still settling.
   const fix = () => pane.querySelectorAll('.js-plotly-plot').forEach(p => Plotly.Plots.resize(p));
@@ -111,7 +151,7 @@ function switchTab(name){ $('tabs').querySelector(`button[data-tab="${name}"]`).
 
 /* ---- presets --------------------------------------------------------------- */
 function presetList(){
-  const opts = ['<option value="">— configuration —</option>'];
+  const opts = ['<option value="">Choose configuration</option>'];
   opts.push('<optgroup label="Built-in (setup matrix)">');
   BUILTIN_PRESETS.forEach((p, i) => opts.push(`<option value="b:${i}">${p.name}</option>`));
   opts.push('</optgroup>');
@@ -125,7 +165,8 @@ function presetList(){
 }
 function currentPresetCfg(){
   return {...cfg(), kmode: $('kmode').value,
-          k: $('kmode').value === 'manual' ? parseInt($('kval').value) : null};
+          k: $('kmode').value === 'manual' ? parseInt($('kval').value) : null,
+          toggles: {...toggles}};
 }
 function applyPreset(p){
   if(!ready || !p) return;
@@ -143,9 +184,17 @@ function applyPreset(p){
   $('mode').value = p.mode || 'site_heldout';
   $('kmode').value = p.kmode || 'auto'; $('kmode').onchange();
   if(p.kmode === 'manual' && p.k) $('kval').value = p.k;
+  if(p.toggles){
+    Object.entries(p.toggles).forEach(([id, value]) => {
+      if(!$(id)) return;
+      const button = $(id).querySelector(`button[data-v="${value}"]`);
+      if(button) button.click();
+    });
+  }
   drawRanking();
   // .value assignments don't fire change events, so update/auto-run explicitly
-  updateCfgSummary(); scheduleAutoRun();
+  setResultStale(lastRunKey !== currentRunKey());
+  updateTargetRole(); updateCfgSummary(); scheduleAutoRun();
 }
 $('preset').onchange = () => {
   const v = $('preset').value;
@@ -235,15 +284,19 @@ placeholder('p_spectra', 'Cohort-vs-Addis spectra appear here after a run.');
 presetList();
 
 async function poll(){
-  const s = await (await fetch('/api/status')).json();
+  let s;
+  try { s = await (await fetch('/api/status')).json(); }
+  catch(e){ $('stats').innerHTML = '<span class="warn">Server unavailable: ' + e + '</span>'; setTimeout(poll, 3000); return; }
   if(s.error){ $('stats').innerHTML = '<span class="warn">Load failed: ' + s.error + '</span>'; return; }
   if(!s.ready){ $('stats').textContent = 'Loading data… ' + s.message; setTimeout(poll, 1500); return; }
   defaults = s.default_cutoff;
+  targetsMeta = s.target_meta || {};
+  appProvenance = s.provenance || {};
   $('cohort').innerHTML = Object.entries(s.cohorts).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
   $('lot').innerHTML = '<option value="all">all</option>' +
     (s.lots || []).map(l => `<option value="${l}">${l}</option>`).join('');
   const curT = $('target').value;
-  $('target').innerHTML = Object.entries(s.targets || {addis:'Addis (ETAD) — built-in'})
+  $('target').innerHTML = Object.entries(s.targets || {addis:'Addis (ETAD): built-in'})
     .map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
   if([...$('target').options].some(o => o.value === curT)) $('target').value = curT;
   $('eval_lot').innerHTML = '<option value="all">all lots</option>' +
@@ -251,6 +304,7 @@ async function poll(){
       .sort((a, b) => b[1] - a[1])
       .map(([l, n]) => `<option value="${l}">${l} (n=${n})</option>`).join('');
   syncEvalLot();
+  updateTargetRole();
   ready = true;
   $('cohort').value = 'ocec'; $('cohort').onchange();
   $('checks').innerHTML = 'cohort checks: ' + s.checks.map(c =>
@@ -258,7 +312,7 @@ async function poll(){
     ' <button class="mini" id="benchcsv" title="Re-read the 725 MB pool CSV with polars and pandas in the server process and compare timings + values">time CSV engines</button> <span id="benchout"></span>';
   $('benchcsv').onclick = async () => {
     $('benchcsv').disabled = true;
-    $('benchout').textContent = 'benchmarking — two full reads of the pool CSV, a minute or two…';
+    $('benchout').textContent = 'benchmarking: two full reads of the pool CSV, a minute or two…';
     try{
       const r = await (await fetch('/api/benchmark_pool_read', {method: 'POST'})).json();
       if(r.error){ $('benchout').innerHTML = '<span class="warn">' + r.error + '</span>'; }
@@ -284,19 +338,19 @@ placeholder('p_overlap', 'The overlap matrix appears once data is loaded.');
 placeholder('p_series', 'The dated EC series appears here after a run.');
 placeholder('p_vsdeployed', 'The deployed-EC comparison appears here after a run.');
 placeholder('p_composition', 'The composition ruler appears once data is loaded.');
-$('target').onchange = () => { syncEvalLot(); drawCohortInfo(); };
+$('target').onchange = () => { syncEvalLot(); updateTargetRole(); drawCohortInfo(); };
 
 /* ---- run ------------------------------------------------------------------- */
 let runInFlight = false, rerunQueued = false;
 async function run(){
   if(runInFlight){ rerunQueued = true; return; }
   runInFlight = true;
-  busy(true); showError(null); $('run').disabled = true;
-  const body = {...cfg(), k: $('kmode').value === 'manual' ? parseInt($('kval').value) : null};
+  busy(true); showError(null); $('run').disabled = true; setResultStale(true);
+  const body = requestedRun();
   try{
     const j = await post('/api/run', body);
     if(j.error){ showError(j.error); return; }
-    last = j; $('pin').disabled = false; $('sweep').disabled = false;
+    last = j; lastRunKey = JSON.stringify(body); setResultStale(false);
     $('kval').value = j.k;
     if(lastSweep && lastSweepCfg !== JSON.stringify(cfg())){
       lastSweep = null;
@@ -307,7 +361,7 @@ async function run(){
   } finally {
     busy(false); $('run').disabled = false; runInFlight = false;
     updateCfgSummary();
-    // a config change landed while this run was in flight — run again on it
+    // a config change landed while this run was in flight: run again on it
     if(rerunQueued){ rerunQueued = false; run(); }
   }
 }
@@ -333,7 +387,10 @@ function scheduleAutoRun(){
   autoTimer = setTimeout(run, 600);   // debounced: rapid changes fold into one run
 }
 // native change events from every config control bubble up to the card
-$('configcard').addEventListener('change', () => { updateCfgSummary(); scheduleAutoRun(); });
+$('configcard').addEventListener('change', () => {
+  setResultStale(lastRunKey !== currentRunKey());
+  updateCfgSummary(); scheduleAutoRun();
+});
 
 /* ---- config summary + phone-only collapse ---------------------------------- */
 function updateCfgSummary(){
@@ -341,7 +398,7 @@ function updateCfgSummary(){
   const c = cfg();
   const name = $('cohort').selectedOptions[0] ? $('cohort').selectedOptions[0].textContent : c.cohort;
   $('cfgsummary').textContent =
-    `— ${name}${c.cutoff ? ' (' + c.cutoff + ')' : ''} · cal:${SPECTRA_SHORT[c.spectra] || c.spectra}` +
+    `- ${name}${c.cutoff ? ' (' + c.cutoff + ')' : ''} · cal:${SPECTRA_SHORT[c.spectra] || c.spectra}` +
     ` · ${MODE_SHORT[c.mode] || c.mode} · k:${$('kmode').value === 'manual' ? $('kval').value : 'auto'}` +
     (c.eval_lot !== 'all' ? ` · eval lot ${c.eval_lot}` : '');
 }
@@ -360,8 +417,8 @@ $('sweep').onclick = async () => {
   busy(true); showError(null); $('sweep').disabled = true;
   try{
     const a = last.auto_k;
-    const hi = Math.min(Math.max(2 * a, a + 6), 20, parseInt(last.curve[last.curve.length - 1].n_components));
-    const ks = [...new Set(Array.from({length: 8}, (_, i) => Math.round(a + i * (hi - a) / 7)))];
+    const hi = Math.min(30, parseInt(last.curve[last.curve.length - 1].n_components));
+    const ks = Array.from({length:Math.max(1, hi - a + 1)}, (_, i) => a + i);
     const j = await post('/api/sweep', {...cfg(), ks});
     if(j.error){ showError(j.error); return; }
     lastSweep = j.rows; lastSweepCfg = JSON.stringify(cfg());
@@ -392,7 +449,9 @@ function drawStats(){
       j.target && j.target.eval_lot && j.target.eval_lot !== 'all'
         ? ` · eval lot <b>${j.target.eval_lot}</b> (n=${j.target.n_eval})` : ''}${
       j.target && j.target.extrap_pct != null
-        ? ` · extrapolation: <span class="${j.target.extrap_pct > 30 ? 'warn' : 'ok'}">${j.target.extrap_pct}%</span> of target beyond train p95` : ''}<br>
+        ? ` · score OOD: <span class="${j.target.extrap_pct > 30 ? 'warn' : 'ok'}">${j.target.extrap_pct}%</span>` : ''}${
+      j.target && j.target.q_residual_pct != null
+        ? ` · Q OOD: <span class="${j.target.q_residual_pct > 30 ? 'warn' : 'ok'}">${j.target.q_residual_pct}%</span>` : ''}<br>
     n = <b>${j.n_cohort}</b> filters, ${j.n_train_sites} sites · n fitted = ${j.n_train}<br>
     k = <b>${j.k}</b> ${j.k === j.auto_k ? '(rule choice)' : '(manual; rule picks ' + j.auto_k + ')'}<br>
     RMSECV floor: ${j.rmsecv_floor} µg (${j.pct_rmsecv_floor}% of mean loading)<br>
@@ -448,7 +507,7 @@ function groupTraces(idx, e, xOf, yOf){
 function drawCross(){
   const {t, e, isFabs, mac, idx, xDesc, setDesc} = evalContext();
   $('cap_cross').textContent =
-    `${t.label} crossplot — ${isFabs ? 'MAC ' + mac : 'EC reference'} · ${setDesc}`;
+    `${t.label} crossplot: ${isFabs ? 'MAC ' + mac : 'EC reference'} · ${setDesc}`;
   const data = groupTraces(idx, e, i => e.ref[i] / mac, i => e.pred[i]);
   const xs = idx.map(i => e.ref[i] / mac), ys = idx.map(i => e.pred[i]);
   const hi = Math.max(...xs, ...ys) * 1.06, lo = Math.min(0, ...ys) * 1.05;
@@ -472,7 +531,7 @@ function drawCross(){
 function drawResiduals(){
   // the meeting's residual check: does the correction remove the curve?
   const {e, mac, idx, xDesc, setDesc} = evalContext();
-  $('cap_resid').textContent = `Residuals (predicted − reference) vs reference — ${setDesc}`;
+  $('cap_resid').textContent = `Residuals (predicted − reference) vs reference: ${setDesc}`;
   const data = groupTraces(idx, e, i => e.ref[i] / mac, i => e.pred[i] - e.ref[i] / mac);
   plot('p_resid', data, {
     xaxis:{title:xDesc},
@@ -484,13 +543,13 @@ function drawSeries(){
   const {e, t} = {e: last.eval, t: last.target};
   const dated = e.date ? e.date.map((d, i) => d ? {d: new Date(d), i} : null).filter(Boolean) : [];
   if(!dated.length){
-    $('p_series').innerHTML = '<div class="ph">No dates for this target — add a Date column to reference.csv.</div>';
+    $('p_series').innerHTML = '<div class="ph">No dates for this target: add a Date column to reference.csv.</div>';
     $('seriesinfo').querySelector('tbody').innerHTML = '';
-    $('p_vsdeployed').innerHTML = '<div class="ph">—</div>';
+    $('p_vsdeployed').innerHTML = '<div class="ph">N/A</div>';
     return;
   }
   dated.sort((a, b) => a.d - b.d);
-  $('cap_series').textContent = `${t.label} — predicted EC by date (this run)`;
+  $('cap_series').textContent = `${t.label}: predicted EC by date (this run)`;
   const data = groupTraces(dated.map(x => x.i), e, i => e.date[i], i => e.pred[i]);
   // 45-day rolling median (ftir_29's series view)
   const roll = dated.map(({d, i}) => {
@@ -520,7 +579,7 @@ function drawSeries(){
     <tr><td>days &gt; 8 µg/m³</td><td class="${high ? 'warn' : 'ok'}">${high}</td></tr>
     <tr><td>group medians</td><td>${gmed}</td></tr>`;
 
-  // vs deployed (built-in Addis only — same filters)
+  // vs deployed (built-in Addis only: same filters)
   const dep = e.deployed;
   if(dep && dep.some(v => v != null)){
     const ii = e.pred.map((_, i) => i).filter(i => dep[i] != null);
@@ -532,7 +591,7 @@ function drawSeries(){
        yaxis:{title:'this run (µg/m³)', range:[0, hi2],
               scaleanchor:'x', scaleratio:1, constrain:'domain'},
        margin:{t:30, r:10, b:45, l:55}, legend:LEGEND_TOP});
-    $('cap_vsdep').textContent = `vs deployed SPARTAN EC — same ${ii.length} filters`;
+    $('cap_vsdep').textContent = `vs deployed SPARTAN EC: same ${ii.length} filters`;
   }else{
     $('p_vsdeployed').innerHTML = '<div class="ph">No deployed-EC series for this target.</div>';
   }
@@ -542,7 +601,7 @@ function drawMetrics(){
   const active = metricRow(last.metrics);   // the row the MAC / Addis-set pills select
   $('metrics').querySelector('tbody').innerHTML = last.metrics.map(r => `<tr${r === active ? ' class="sel"' : ''}>
     <td>${r.evaluation_set === 'fixed' ? 'fixed cohort' : 'all pairs'}</td>
-    <td>${r.MAC ?? '—'}</td><td>${r.n}</td>
+    <td>${r.MAC ?? 'N/A'}</td><td>${r.n}</td>
     <td class="gs">${r.ols_slope.toFixed(2)}</td><td>${r.ols_intercept.toFixed(2)}</td>
     <td class="gs">${r.deming_slope.toFixed(2)}</td><td>${r.deming_intercept.toFixed(2)}</td>
     <td class="gs">${r.R2.toFixed(2)}</td><td>${r.RMSE.toFixed(2)}</td>
@@ -567,10 +626,11 @@ function cutoffChanged(fromSlider){
   if(!fromSlider) $('cutslider').value = parseInt($('cutoff').value) || 0;
   $('cutlabel').textContent = autoRun
     ? `cutoff ${$('cutoff').value}`
-    : `cutoff ${$('cutoff').value} — press Run to recalibrate`;
+    : `cutoff ${$('cutoff').value}: press Run to recalibrate`;
   renderRanking();
   clearTimeout(sliderTimer);
   sliderTimer = setTimeout(() => { drawOverlap(); drawCohortInfo(); }, 500);
+  setResultStale(lastRunKey !== currentRunKey());
   updateCfgSummary(); scheduleAutoRun();   // slider lives outside the config card
 }
 
@@ -581,7 +641,7 @@ async function drawRanking(){
   if(!RANKED.includes(c)){
     lastRanking = null; lastRankingBoth = null;
     Plotly.purge('p_ranking');
-    $('p_ranking').innerHTML = '<div class="ph">No cutoff for this cohort — membership is fixed.</div>';
+    $('p_ranking').innerHTML = '<div class="ph">No cutoff for this cohort: membership is fixed.</div>';
     $('cutlabel').textContent = 'cohort membership is fixed';
     return;
   }
@@ -597,7 +657,7 @@ async function drawRanking(){
   renderRanking();
 }
 
-/* raw vs corrected selection — Ann (Aug 19): does baselining change who gets
+/* raw vs corrected selection: Ann (Aug 19): does baselining change who gets
    picked, and do the metric curves change shape? Same committed metric, run in
    both spectra spaces, overlaid; the caption reports shared membership at the
    current cutoff from the overlap machinery. */
@@ -611,7 +671,7 @@ async function drawRankingBoth(){
     return;
   }
   const cutoff = parseInt($('cutoff').value) || null;
-  $('cap_ranking').textContent = 'Selection, raw vs corrected — loading both spaces…';
+  $('cap_ranking').textContent = 'Selection, raw vs corrected: loading both spaces…';
   const [raw, corr] = await Promise.all([
     post('/api/ranking', {cohort: c, selection_space: 'raw', cutoff}),
     post('/api/ranking', {cohort: c, selection_space: 'airspec', cutoff})]);
@@ -633,7 +693,7 @@ async function drawRankingBoth(){
     const row = ov.rows.find(r => r.a.startsWith(fam) && r.b.startsWith(fam) &&
       /raw/.test(r.a + r.b) && /corrected/.test(r.a + r.b));
     if(row) $('cap_ranking').textContent =
-      `Selection, raw vs corrected — ${row.overlap} of ${Math.min(row.n_a, row.n_b)} filters shared at this cutoff (${Math.round(100 * row.overlap / Math.min(row.n_a, row.n_b))}%)`;
+      `Selection, raw vs corrected: ${row.overlap} of ${Math.min(row.n_a, row.n_b)} filters shared at this cutoff (${Math.round(100 * row.overlap / Math.min(row.n_a, row.n_b))}%)`;
   }
 }
 function renderRankingBoth(){
@@ -700,7 +760,7 @@ $('rankview').querySelectorAll('button').forEach(b => b.onclick = () => {
   if(rankView === 'both') drawRankingBoth();
   else {
     // restore the single-space caption the both-view may have replaced
-    $('cap_ranking').textContent = 'Selection — click the plot or drag the slider to move the cutoff';
+    $('cap_ranking').textContent = 'Selection: click the plot or drag the slider to move the cutoff';
     renderRanking();
   }
 });
@@ -712,16 +772,16 @@ $('cutslider').oninput = () => {
 async function drawCohortInfo(){
   const j = await post('/api/cohort_info', cfg());
   const tb = $('cohortinfo').querySelector('tbody');
-  if(j.error){ tb.innerHTML = `<tr><td>—</td><td class="warn">${j.error}</td></tr>`; return; }
-  const s = v => v ? `${v.min} / ${v.median} / ${v.max}` : '—';
+  if(j.error){ tb.innerHTML = `<tr><td>N/A</td><td class="warn">${j.error}</td></tr>`; return; }
+  const s = v => v ? `${v.min} / ${v.median} / ${v.max}` : 'N/A';
   tb.innerHTML = `
-    <tr><td>cohort</td><td>${j.label} — n=${j.n}, ${j.n_sites} sites</td></tr>
+    <tr><td>cohort</td><td>${j.label}: n=${j.n}, ${j.n_sites} sites</td></tr>
     <tr><td>top sites</td><td>${j.top_sites.join(', ')}</td></tr>
     <tr><td>filter lots</td><td>${Object.entries(j.lots).map(([l, n]) => `${l}: ${n}`).join(' · ')}</td></tr>
     <tr><td>TOR EC (µg/filter)</td><td>${s(j.ec_loading_ug)} <span class="muted">(min / median / max)</span></td></tr>
     <tr><td>TOR EC (ng/m³)</td><td>${s(j.ec_ugm3)} <span class="muted">(local_db Value is ng/m³)</span></td></tr>
     <tr><td>OC/EC ratio</td><td>${s(j.ocec_ratio)}</td></tr>
-    <tr><td>dates</td><td>${j.date_range ? j.date_range.join(' → ') : '—'}</td></tr>`;
+    <tr><td>dates</td><td>${j.date_range ? j.date_range.join(' → ') : 'N/A'}</td></tr>`;
   if(j.composition){
     const c = j.composition;
     const poolMax = Math.max(...c.pool), cohortMax = Math.max(...c.cohort) || 1;
@@ -761,19 +821,19 @@ async function drawSpectra(){
   if(j.series){
     // multi-series: Ann's all-cohorts ask, or Satoshi's k-means sub-types
     $('cap_spectra').textContent = spectraMode === 'clusters'
-      ? `Spectral sub-types within ${j.cohort_label || 'cohort'} (${spaceLabel}) — k-means medians, reference + IQR`
-      : `Selection cohorts vs ${(j.reference_label || 'reference').split(' — ')[0]} (${spaceLabel}) — medians`;
+      ? `Spectral sub-types within ${j.cohort_label || 'cohort'} (${spaceLabel}): k-means medians, reference + IQR`
+      : `Selection cohorts vs ${(j.reference_label || 'reference').split(': ')[0]} (${spaceLabel}): medians`;
     const COLOURS = ['122,79,163', '44,110,158', '143,140,132', '196,148,66', '84,140,102', '150,90,90'];
     data = j.series.flatMap((s, i) => spectraBand(j.wn, s, COLOURS[i % COLOURS.length], s.label, false))
       .concat(spectraBand(j.wn, j.reference, '178,51,39',
-        (j.reference_label || 'reference').split(' — ')[0] + ' median'));
+        (j.reference_label || 'reference').split(': ')[0] + ' median'));
   }else{
     $('cap_spectra').textContent =
-      `Spectra: cohort vs ${(j.reference_label || 'reference').split(' — ')[0]} (${spaceLabel}) — median + IQR`;
+      `Spectra: cohort vs ${(j.reference_label || 'reference').split(': ')[0]} (${spaceLabel}): median + IQR`;
     data = [
       ...spectraBand(j.wn, j.cohort, '44,110,158', `cohort median (n=${j.n})`),
       ...spectraBand(j.wn, j.reference, '178,51,39',
-        (j.reference_label || 'reference').split(' — ')[0] + ' median')];
+        (j.reference_label || 'reference').split(': ')[0] + ' median')];
   }
   plot('p_spectra', data,
     {xaxis:{title:'wavenumber (cm⁻¹)', autorange:'reversed'},
@@ -797,7 +857,7 @@ async function drawOverlap(){
     <td>${r.a}</td><td>${r.b}</td><td>${r.n_a}</td><td>${r.n_b}</td>
     <td>${r.overlap}</td><td>${(100 * r.overlap / Math.min(r.n_a, r.n_b)).toFixed(0)}%</td></tr>`).join('');
 
-  // pairwise matrix (lower triangle) — one sequential hue, every cell labelled
+  // pairwise matrix (lower triangle): one sequential hue, every cell labelled
   const names = [];
   j.rows.forEach(r => { if(!names.includes(r.a)) names.push(r.a); if(!names.includes(r.b)) names.push(r.b); });
   const short = n => n.replace(/\s*\(\d+\)$/, '').replace('Ethiopia-shaped', 'Eth-shaped')
@@ -813,7 +873,7 @@ async function drawOverlap(){
       if(!r){ zr.push(null); hr.push(''); return; }
       const pct = Math.round(100 * r.overlap / Math.min(r.n_a, r.n_b));
       zr.push(pct);
-      hr.push(`${r.a} (n=${r.n_a})<br>${r.b} (n=${r.n_b})<br>shared: ${r.overlap} — ${pct}% of the smaller`);
+      hr.push(`${r.a} (n=${r.n_a})<br>${r.b} (n=${r.n_b})<br>shared: ${r.overlap}: ${pct}% of the smaller`);
       ann.push({x: short(xn), y: short(yn), xref:'x', yref:'y', showarrow:false,
         text:`<b>${pct}%</b><br><span style="font-size:10px">${r.overlap}</span>`,
         font:{size:11, color: pct > 55 ? '#fff' : '#22252A'}});
@@ -831,15 +891,17 @@ async function drawOverlap(){
 
 function drawSweep(rows){
   const est = toggles.est;
-  // older cached responses lack the MAC-6 fields — fall back to MAC 10 then
-  const mac6 = toggles.mac === '6' && rows.some(r => r.ols_intercept_mac6 != null);
+  // older cached responses lack the MAC-6 fields: fall back to MAC 10 then
+  const isEc = last && last.target && last.target.ref_kind === 'ec';
+  const requestedMac = parseFloat(toggles.mac);
+  const mac6 = !isEc && requestedMac === 6 && rows.some(r => r.ols_intercept_mac6 != null);
   const icOf = r => mac6 ? (est === 'deming' ? r.deming_intercept_mac6 : r.ols_intercept_mac6)
                          : (est === 'deming' ? r.deming_intercept : r.ols_intercept);
   $('cap_sweep').textContent =
-    `k sweep — intercept (fixed 190, MAC ${mac6 ? 6 : 10}, ${est === 'deming' ? 'Deming' : 'OLS'}) & held-out R²`;
+    `k sweep: intercept (${isEc ? 'EC reference' : `MAC ${requestedMac}`}, ${est === 'deming' ? 'Deming' : 'OLS'}) & held-out R²`;
   plot('p_sweep', [
     {x: rows.map(r => r.k), y: rows.map(icOf),
-     mode:'lines+markers', name:'Addis intercept', line:{color:'#2C6E9E'}, type:'scatter'},
+     mode:'lines+markers', name:'target intercept', line:{color:'#2C6E9E'}, type:'scatter'},
     {x: rows.map(r => r.k), y: rows.map(r => r.heldout_R2), mode:'lines+markers',
      name:'held-out TOR R²', line:{color:'#B23327', dash:'dot'}, yaxis:'y2', type:'scatter'}],
     {xaxis:{title:'PLS components'},
@@ -851,11 +913,18 @@ function drawSweep(rows){
 /* ---- pinned runs ----------------------------------------------------------- */
 $('pin').onclick = () => {
   if(!last) return;
-  pins.push({label:last.cohort_label, n:last.n_cohort, lot:last.config.lot,
-    target:last.target ? last.target.label : 'Addis', ref_kind:last.target ? last.target.ref_kind : 'fabs',
+  pins.push({label:last.cohort_label, cohort:last.config.cohort,
+    cutoff:last.config.cutoff, n:last.n_cohort, lot:last.config.lot,
+    target:last.target ? last.target.label : 'Addis',
+    target_name:last.target ? last.target.name : 'addis',
+    eval_lot:last.target ? last.target.eval_lot : 'all',
+    extrap_pct:last.target ? last.target.extrap_pct : null,
+    q_residual_pct:last.target ? last.target.q_residual_pct : null,
+    ref_kind:last.target ? last.target.ref_kind : 'fabs',
     selection_space:last.config.selection_space,
     spectra:last.config.spectra, mode:last.config.mode, k:last.k, auto_k:last.auto_k,
-    heldout:last.heldout, metrics:last.metrics, when:new Date().toISOString().slice(0, 16)});
+    heldout:last.heldout, metrics:last.metrics, provenance:last.provenance || appProvenance,
+    config:{...last.config, k:last.k}, toggles:{...toggles}, when:new Date().toISOString()});
   localStorage.setItem('calib_explorer_pins', JSON.stringify(pins));
   drawPins();
 };
@@ -873,7 +942,8 @@ function drawPins(){
   const tb = $('pins').querySelector('tbody');
   tb.innerHTML = pins.map((p, i) => {
     const v = pinRow(p);
-    return `<tr><td>${p.label}</td><td>${p.n}</td>
+    return `<tr><td title="eval lot ${p.eval_lot || 'all'}">${p.target || p.target_name || 'addis'}</td>` +
+      `<td>${p.label}</td><td>${p.n}</td>
       <td>${p.selection_space === 'airspec' ? 'AIRSpec' : 'raw'}</td>
       <td>${SPECTRA_SHORT[p.spectra] || p.spectra}</td>
       <td>${MODE_SHORT[p.mode] || p.mode}</td>
@@ -881,7 +951,8 @@ function drawPins(){
       <td>${v.sl != null ? v.sl.toFixed(2) : '–'}</td><td>${v.ic != null ? v.ic.toFixed(2) : '–'}</td>
       <td>${v.r2 != null ? v.r2.toFixed(2) : '–'}</td>
       <td>${p.heldout ? p.heldout.R2.toFixed(2) : '–'}</td>
-      <td><button class="gray" onclick="removePin(${i})">✕</button></td></tr>`;
+      <td>${p.config ? `<button class="gray" onclick="loadPin(${i})">Load</button>` : ''}` +
+      ` <button class="gray" onclick="removePin(${i})">✕</button></td></tr>`;
   }).join('');
   // two-line tick labels: the config detail on its own line keeps the label
   // column narrow enough that the ladder still has room on small screens
@@ -895,19 +966,40 @@ function drawPins(){
     margin:{t:12, r:14, b:30, l:10}, showlegend:false});
 }
 window.removePin = i => { pins.splice(i, 1); localStorage.setItem('calib_explorer_pins', JSON.stringify(pins)); drawPins(); };
+window.loadPin = i => {
+  const p = pins[i];
+  if(!p || !p.config) return;
+  applyPreset({...p.config, kmode:'manual', k:p.config.k, toggles:p.toggles});
+  switchTab('calibrate');
+  run();
+};
 
 $('exportcsv').onclick = () => {
-  const head = 'cohort,n,selection_space,calibration_spectra,protocol,k,auto_k,mac,evaluation_set,estimator,slope,intercept,R2,RMSE,heldout_TOR_R2\n';
+  const head = 'run_id,target,target_label,target_role,cohort,cutoff,n,calibration_lot,evaluation_lot,selection_space,calibration_spectra,protocol,k,auto_k,mac,evaluation_set,estimator,slope,intercept,R2,RMSE,heldout_TOR_R2,score_space_ood_pct,q_residual_ood_pct,cache_schema,git_commit,git_dirty,source_fingerprint,target_fingerprint,cohort_hash,timestamp\n';
   const lines = [];
   pins.forEach(p => p.metrics.forEach(m => {
     [['ols', m.ols_slope, m.ols_intercept], ['deming', m.deming_slope, m.deming_intercept]].forEach(([e, sl, ic]) => {
-      lines.push([`"${p.label}"`, p.n, p.selection_space, p.spectra, p.mode, p.k, p.auto_k, m.MAC, m.evaluation_set, e, sl, ic, m.R2, m.RMSE,
-        p.heldout ? p.heldout.R2 : ''].join(','));
+      const v = p.provenance || {};
+      lines.push([v.run_id || '', p.target_name || 'addis', `"${p.target || ''}"`,
+        (targetsMeta[p.target_name || 'addis'] || {}).role || '', `"${p.label}"`, p.cutoff ?? '', p.n,
+        p.lot || 'all', p.eval_lot || 'all', p.selection_space, p.spectra, p.mode, p.k, p.auto_k,
+        m.MAC ?? '', m.evaluation_set, e, sl, ic, m.R2, m.RMSE,
+        p.heldout ? p.heldout.R2 : '', p.extrap_pct ?? '', p.q_residual_pct ?? '',
+        v.cache_schema || '', v.git_commit || '', v.git_dirty ?? '',
+        v.source_fingerprint || '', v.target_fingerprint || '', v.resolved_cohort_hash || '',
+        p.when || ''].join(','));
     });
   }));
   const blob = new Blob([head + lines.join('\n')], {type:'text/csv'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = 'explorer_pinned_runs.csv'; a.click();
+};
+$('exportmanifest').onclick = () => {
+  const payload = {app:'calibration_explorer', version:2,
+    exported_at:new Date().toISOString(), runs:pins};
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'explorer_run_manifests.json'; a.click();
 };
 
 /* ---- optimizer --------------------------------------------------------------
@@ -921,6 +1013,7 @@ $('exportcsv').onclick = () => {
    Scoring reads the MAC · Fit toggles; the held-out TOR R² floor keeps the
    search from walking into configurations that no longer generalize. */
 let optRows = [];                 // one row per evaluated (configuration, k)
+const optRowKeys = new Set();
 let optRunning = false, optStop = false, optSkipped = 0;
 
 const optCfgKey = r => [r.cohort, r.cutoff, r.selection_space, r.spectra, r.mode,
@@ -930,10 +1023,32 @@ const optCfgOf = r => ({cohort: r.cohort, cutoff: r.cutoff, selection_space: r.s
                         eval_lot: r.eval_lot || 'all'});
 const optDescribe = c => `${c.cohort}${c.cutoff ? ' ' + c.cutoff : ''}` +
   ` · sel:${c.selection_space === 'airspec' ? 'AIR' : 'raw'} · cal:${SPECTRA_SHORT[c.spectra]}` +
-  ` · ${MODE_SHORT[c.mode] || c.mode}`;
+  ` · ${MODE_SHORT[c.mode] || c.mode}` +
+  (c.lot && c.lot !== 'all' ? ` · train lot ${c.lot}` : '') +
+  (c.eval_lot && c.eval_lot !== 'all' ? ` · eval lot ${c.eval_lot}` : '');
+
+function selectedOptLots(){
+  return [...document.querySelectorAll('[data-opt-lot]:checked')].map(x => x.dataset.optLot);
+}
+function optEvaluationLot(lot, target){
+  if(target === 'addis' && $('opt_matchlot').checked && lot !== 'all') return lot;
+  return $('eval_lot').disabled ? 'all' : ($('eval_lot').value || 'all');
+}
+function optKValues(autoK, curveMax){
+  const lo = Math.max(1, Math.min(parseInt($('opt_kmin').value) || 1, curveMax));
+  const hi = Math.max(lo, Math.min(parseInt($('opt_kmax').value) || 30, curveMax, 30));
+  if($('opt_densek').checked) return Array.from({length:hi - lo + 1}, (_, i) => lo + i);
+  const start = Math.max(lo, Math.min(autoK, hi));
+  const ks = new Set([start, hi]);
+  if(lo <= 21 && hi >= 21) ks.add(21);
+  if(hi > start) Array.from({length:8}, (_, i) => ks.add(Math.round(start + i * (hi - start) / 7)));
+  return [...ks].sort((a, b) => a - b);
+}
 
 function optParts(r){   // slope/intercept at the current MAC · Fit · Addis-set toggles
-  const mac6 = toggles.mac === '6';
+  const isFabs = r.ref_kind !== 'ec';
+  const mac = isFabs ? parseFloat(toggles.mac) : 10;
+  const mac6 = isFabs && mac === 6;
   // all-pairs readout when the pill says so AND the row carries it (rows saved
   // before the full-readout upgrade only have the fixed set until backfilled)
   const useAll = toggles.evalset === 'all' && r.all_deming_slope != null;
@@ -942,7 +1057,7 @@ function optParts(r){   // slope/intercept at the current MAC · Fit · Addis-se
   const ic = toggles.est === 'deming'
     ? (mac6 ? r[P + 'deming_intercept_mac6'] : r[P + 'deming_intercept'])
     : (mac6 ? r[P + 'ols_intercept_mac6'] : r[P + 'ols_intercept']);
-  if(mac6 && slope != null) slope *= 0.6;   // slope scales by MAC (ftir_19)
+  if(isFabs && slope != null) slope *= mac / 10;   // slope scales by MAC (ftir_19/31)
   return {slope, ic, set: useAll ? 'all pairs' : 'fixed set'};
 }
 function optScore(r){
@@ -951,15 +1066,28 @@ function optScore(r){
   return Math.abs(ic) + (parseFloat($('opt_w').value) || 0) * Math.abs(slope - 1);
 }
 function optPasses(r){
+  const {slope} = optParts(r);
   const min = parseFloat($('opt_minr2').value);
-  if(r.heldout_R2 == null)
-    return !$('opt_reqho').checked;   // B/B2: no held-out set — unfalsifiable
-  return !isFinite(min) || r.heldout_R2 >= min;
+  if(r.heldout_R2 == null && $('opt_reqho').checked) return false;
+  if(r.heldout_R2 != null && isFinite(min) && r.heldout_R2 < min) return false;
+  const slopeMin = parseFloat($('opt_slopemin').value), slopeMax = parseFloat($('opt_slopemax').value);
+  if(slope == null || (isFinite(slopeMin) && slope < slopeMin) ||
+     (isFinite(slopeMax) && slope > slopeMax)) return false;
+  const maxExtrap = parseFloat($('opt_maxextrap').value);
+  if(r.extrap_pct != null && isFinite(maxExtrap) && r.extrap_pct > maxExtrap) return false;
+  const maxQ = parseFloat($('opt_maxq').value);
+  if(r.q_residual_pct == null) return false;  // old saved row: domain status unknown
+  if(isFinite(maxQ) && r.q_residual_pct > maxQ) return false;
+  const maxNeg = parseFloat($('opt_maxneg').value);
+  if(r.negative_pct != null && isFinite(maxNeg) && r.negative_pct > maxNeg) return false;
+  return true;
 }
 function optStatus(t){ $('opt_status').textContent = t; }
 
 function optAddRow(row){
-  if(optRows.some(r => optCfgKey(r) === optCfgKey(row) && r.k === row.k)) return;
+  const key = `${optCfgKey(row)}|${row.k}`;
+  if(optRowKeys.has(key)) return;
+  optRowKeys.add(key);
   optRows.push(row);
 }
 function optRowFromRun(c, j){
@@ -968,6 +1096,7 @@ function optRowFromRun(c, j){
   const f10 = pick('fixed', 10), f6 = pick('fixed', 6);
   const a10 = pick('all', 10), a6 = pick('all', 6);
   return {...c, cohort_label: j.cohort_label, k: j.k, auto_k: j.auto_k,
+    ref_kind: j.target ? j.target.ref_kind : 'fabs', provenance: j.provenance,
     ols_slope: f10.ols_slope, ols_intercept: f10.ols_intercept,
     deming_slope: f10.deming_slope, deming_intercept: f10.deming_intercept,
     ols_intercept_mac6: f6.ols_intercept, deming_intercept_mac6: f6.deming_intercept,
@@ -976,6 +1105,13 @@ function optRowFromRun(c, j){
     all_deming_slope: a10.deming_slope, all_deming_intercept: a10.deming_intercept,
     all_ols_intercept_mac6: a6.ols_intercept, all_deming_intercept_mac6: a6.deming_intercept,
     all_R2: a10.R2, all_RMSE: a10.RMSE,
+    extrap_pct: j.target ? j.target.extrap_pct : null,
+    q_residual_pct: j.target ? j.target.q_residual_pct : null,
+    negative_pct: j.plausibility ? j.plausibility.negative_pct : null,
+    above_8_pct: j.plausibility ? j.plausibility.above_8_pct : null,
+    prediction_median: j.plausibility ? j.plausibility.median : null,
+    group_medians: j.plausibility ? j.plausibility.group_medians : {},
+    group_median_span: j.plausibility ? j.plausibility.group_median_span : null,
     heldout_R2: j.heldout ? j.heldout.R2 : null};
 }
 function optTopConfigs(n, rankedOnly){
@@ -996,7 +1132,7 @@ async function optPhase(name, combos){
     if(optStop) return;
     i++;
     if(optRows.some(r => optCfgKey(r) === optCfgKey(c))) continue;   // already evaluated
-    optStatus(`${name} ${i}/${combos.length} — ${optDescribe(c)}…`);
+    optStatus(`${name} ${i}/${combos.length}: ${optDescribe(c)}…`);
     const j = await post('/api/run', {...c, k: null});
     if(j.error){ optSkipped++; continue; }
     optAddRow(optRowFromRun(c, j));
@@ -1006,53 +1142,62 @@ async function optPhase(name, combos){
 
 async function optimize(){
   if(optRunning || !ready) return;
+  const chosenTarget = $('target').value || 'addis';
+  if(targetsMeta[chosenTarget] && targetsMeta[chosenTarget].optimization_allowed === false){
+    optStatus(`Optimization is disabled for ${targetsMeta[chosenTarget].role || 'this target'}; use it only for confirmation/readout.`);
+    return;
+  }
   const cohorts = [...document.querySelectorAll('[data-opt-cohort]:checked')].map(x => x.dataset.optCohort);
   const spectraOpts = [...document.querySelectorAll('[data-opt-spectra]:checked')].map(x => x.dataset.optSpectra);
   const modes = [...document.querySelectorAll('[data-opt-mode]:checked')].map(x => x.dataset.optMode);
-  if(!cohorts.length || !spectraOpts.length || !modes.length){
-    optStatus('pick at least one cohort, one spectra space and one protocol'); return;
+  const lots = selectedOptLots();
+  if(!cohorts.length || !spectraOpts.length || !modes.length || !lots.length){
+    optStatus('pick at least one cohort, spectra space, protocol and training lot'); return;
   }
   optRunning = true; optStop = false; optSkipped = 0;
   $('opt_start').disabled = true; $('opt_stop').disabled = false;
   try{
     const target = $('target').value || 'addis';
-    const evalLot = $('eval_lot').disabled ? 'all' : ($('eval_lot').value || 'all');
-    // phase 1 — screen at default cutoffs, rule k
+    // phase 1: screen at default cutoffs, rule k
     const combos = [];
     cohorts.forEach(co => {
       const spaces = ($('opt_corrsel').checked && (co === 'eth_shaped' || co === 'analogs'))
         ? ['raw', 'airspec'] : ['raw'];
-      spaces.forEach(ss => spectraOpts.forEach(sp => modes.forEach(m =>
+      spaces.forEach(ss => spectraOpts.forEach(sp => modes.forEach(m => lots.forEach(lot =>
         combos.push({cohort: co, cutoff: RANKED.includes(co) ? defaults[co] : null,
-                     selection_space: ss, spectra: sp, mode: m, lot: 'all', target,
-                     eval_lot: evalLot}))));
+                     selection_space: ss, spectra: sp, mode: m, lot, target,
+                     eval_lot: optEvaluationLot(lot, target)})))));
     });
     await optPhase('screening', combos);
     if(optStop) return;
-    // phase 2 — cutoff ladder around the leading ranked-cohort configurations
+    // phase 2: cutoff ladder around the leading ranked-cohort configurations
     const ladder = [];
     optTopConfigs(3, true).forEach(({c}) =>
       [0.5, 1.5, 2].forEach(f =>
         ladder.push({...c, cutoff: Math.max(50, Math.round(defaults[c.cohort] * f / 50) * 50)})));
     await optPhase('cutoff refine', ladder);
     if(optStop) return;
-    // phase 3 — k sweep on the overall leaders
+    // phase 3: k sweep on the overall leaders
     const finalists = optTopConfigs(4, false);
     for(let f = 0; f < finalists.length; f++){
       if(optStop) return;
       const {c, label} = finalists[f];
-      optStatus(`k sweep ${f + 1}/${finalists.length} — ${optDescribe(c)}…`);
+      optStatus(`k sweep ${f + 1}/${finalists.length}: ${optDescribe(c)}…`);
       const base = optRows.find(r => optCfgKey(r) === optCfgKey({...c, target: c.target}));
       const a = base ? base.auto_k : 6;
-      const hi = Math.min(Math.max(2 * a, a + 6), 20);
-      const ks = [...new Set(Array.from({length: 8}, (_, i) => Math.round(a + i * (hi - a) / 7)))];
+      const curveMax = 30;
+      const ks = optKValues(a, curveMax);
       const j = await post('/api/sweep', {...c, ks});
       if(j.error){ optSkipped++; continue; }
       j.rows.forEach(r => optAddRow({...c, cohort_label: label || (base && base.cohort_label) || c.cohort,
         k: r.k, auto_k: r.auto_k, ols_slope: r.ols_slope, ols_intercept: r.ols_intercept,
         deming_slope: r.deming_slope, deming_intercept: r.deming_intercept,
         ols_intercept_mac6: r.ols_intercept_mac6, deming_intercept_mac6: r.deming_intercept_mac6,
-        R2: r.R2, heldout_R2: r.heldout_R2}));
+        R2: r.R2, extrap_pct:r.extrap_pct, q_residual_pct:r.q_residual_pct,
+        negative_pct:r.negative_pct,
+        above_8_pct:r.above_8_pct, prediction_median:r.prediction_median,
+        group_medians:r.group_medians || {}, group_median_span:r.group_median_span,
+        heldout_R2: r.heldout_R2}));
       renderOpt();
     }
   } finally {
@@ -1060,7 +1205,7 @@ async function optimize(){
     $('opt_start').disabled = false; $('opt_stop').disabled = true;
     $('opt_export').disabled = !optRows.length;
     renderOpt();
-    optStatus((optStop ? 'stopped — results kept. ' : 'done. ') +
+    optStatus((optStop ? 'stopped: results kept. ' : 'done. ') +
       `${optRows.length} runs evaluated${optSkipped ? `, ${optSkipped} skipped (error)` : ''}. ` +
       'Click a leaderboard row’s Load (or a point) to open that run in the explorer.');
   }
@@ -1071,8 +1216,8 @@ $('opt_stop').onclick = () => { optStop = true; optStatus('stopping after the cu
 /* ---- exhaustive server-side batch -------------------------------------------
    Same grid checkboxes, but the loop runs inside the Flask process: it survives
    closing this page, appends every scored (configuration, k) row to
-   cache/batch_results.jsonl, and "Load saved results" merges those rows —
-   whether computed here, overnight, or in Colab — into the same leaderboard. */
+   cache/batch_results.jsonl, and "Load saved results" merges those rows -
+   whether computed here, overnight, or in Colab: into the same leaderboard. */
 let batchPollTimer = null;
 async function batchTick(auto){
   let s;
@@ -1080,9 +1225,10 @@ async function batchTick(auto){
   catch(e){ return; }
   $('batch_stop').disabled = !s.running;
   $('batch_start').disabled = !!s.running;
+  if(!s.running) updateTargetRole();
   if(s.total){
     $('batch_status').textContent = (s.running
-      ? `running ${s.done}/${s.total} — ${s.current}`
+      ? `running ${s.done}/${s.total}: ${s.current}`
       : `finished ${s.done}/${s.total} · ${s.new_rows} new rows saved`)
       + (s.skipped ? ` · ${s.skipped} configs failed` : '');
   }
@@ -1090,15 +1236,16 @@ async function batchTick(auto){
     batchPollTimer = setTimeout(() => batchTick(true), 3000);
   } else if(auto && batchPollTimer){
     batchPollTimer = null;
-    batchLoad();                       // batch just finished — pull its rows in
+    batchLoad();                       // batch just finished: pull its rows in
   }
 }
 $('batch_start').onclick = async () => {
   const cohorts = [...document.querySelectorAll('[data-opt-cohort]:checked')].map(x => x.dataset.optCohort);
   const spectra = [...document.querySelectorAll('[data-opt-spectra]:checked')].map(x => x.dataset.optSpectra);
   const modes = [...document.querySelectorAll('[data-opt-mode]:checked')].map(x => x.dataset.optMode);
-  if(!cohorts.length || !spectra.length || !modes.length){
-    $('batch_status').textContent = 'pick at least one cohort, spectra space and protocol'; return;
+  const lots = selectedOptLots();
+  if(!cohorts.length || !spectra.length || !modes.length || !lots.length){
+    $('batch_status').textContent = 'pick at least one cohort, spectra space, protocol and training lot'; return;
   }
   const scope = $('batch_sites').value;      // current | focus | all
   const targets = scope === 'focus' ? ['addis', 'indh']
@@ -1107,9 +1254,14 @@ $('batch_start').onclick = async () => {
   const step = parseInt($('batch_step').value) || 0;
   const r = await post('/api/batch_start', {
     cohorts, spectra, modes,
+    lots,
+    match_eval_lot: $('opt_matchlot').checked,
     corrsel: $('opt_corrsel').checked,
     cutoff_ladder: $('batch_ladder').checked,
     sweep_k: $('batch_sweepk').checked,
+    dense_k: $('batch_densek').checked,
+    k_min: parseInt($('opt_kmin').value) || 1,
+    k_max: parseInt($('opt_kmax').value) || 30,
     targets,
     cutoff_step: step,
     cutoff_ranges: (step && $('batch_wide').checked)
@@ -1118,7 +1270,7 @@ $('batch_start').onclick = async () => {
     eval_lot: $('eval_lot').disabled ? 'all' : ($('eval_lot').value || 'all'),
   });
   if(r.error){ $('batch_status').textContent = r.error; return; }
-  $('batch_status').textContent = `started — ${r.total} configurations queued`;
+  $('batch_status').textContent = `started: ${r.total} configurations queued`;
   batchPollTimer = setTimeout(() => batchTick(true), 1500);
 };
 $('batch_stop').onclick = async () => {
@@ -1126,15 +1278,49 @@ $('batch_stop').onclick = async () => {
   $('batch_status').textContent = 'stopping after the current configuration…';
 };
 async function batchLoad(){
-  const r = await (await fetch('/api/batch_results')).json();
+  const params = new URLSearchParams({limit:'10000'});
+  const site = $('opt_site').value;
+  if(site !== 'any' && site !== 'robust') params.set('target', site);
+  if($('opt_reqho').checked) params.set('require_heldout', '1');
+  let payloads;
+  try {
+    if(site === 'robust'){
+      // Pull each site separately so the historical Addis-heavy prefix of the
+      // JSONL cannot leave a nominal "robust" view with only one site. Apply
+      // the checked grid controls server-side to keep this bounded.
+      params.set('limit', '50000');
+      params.set('cohort', [...document.querySelectorAll('[data-opt-cohort]:checked')].map(x => x.dataset.optCohort).join(','));
+      params.set('spectra', [...document.querySelectorAll('[data-opt-spectra]:checked')].map(x => x.dataset.optSpectra).join(','));
+      params.set('mode', [...document.querySelectorAll('[data-opt-mode]:checked')].map(x => x.dataset.optMode).join(','));
+      params.set('lot', selectedOptLots().join(','));
+      payloads = await Promise.all(['addis','indh','chts','uspa','etbi'].map(async target => {
+        const p = new URLSearchParams(params); p.set('target', target);
+        return (await fetch('/api/batch_results?' + p)).json();
+      }));
+    }else{
+      payloads = [await (await fetch('/api/batch_results?' + params)).json()];
+    }
+  }
+  catch(e){ optStatus('Could not load saved results: ' + e); return; }
   const before = optRows.length;
-  (r.rows || []).forEach(optAddRow);
+  payloads.flatMap(r => r.rows || []).forEach(optAddRow);
   $('opt_export').disabled = !optRows.length;
   renderOpt();
-  optStatus(`${optRows.length - before} saved batch rows merged (${optRows.length} total). ` +
-            'The leaderboard and tradeoff view now cover them; click Load on a row to open it.');
+  const matched = payloads.reduce((n, r) => n + (r.matched ?? (r.rows || []).length), 0);
+  const loaded = payloads.reduce((n, r) => n + (r.rows || []).length, 0);
+  const truncated = payloads.some(r => r.truncated);
+  optStatus(`${optRows.length - before} saved rows merged (${optRows.length} in this page; ` +
+            `${loaded} loaded of ${matched} matching saved rows)` +
+            `${truncated ? ': at least one site was truncated; narrow the checked grid' : ''}. ` +
+            'Click Load on a row to open it.');
 }
 $('batch_load').onclick = batchLoad;
+$('batch_backfill').onclick = async () => {
+  const result = await post('/api/batch_backfill', {});
+  if(result.error){ $('batch_status').textContent = result.error; return; }
+  $('batch_status').textContent = 'Backfilling saved rows with Q residual and current diagnostics…';
+  batchPollTimer = setTimeout(() => batchTick(true), 1500);
+};
 
 function renderOpt(){
   $('optcount').textContent = optRows.length ? `(${optRows.length})` : '';
@@ -1142,26 +1328,45 @@ function renderOpt(){
   const estL = toggles.est === 'deming' ? 'Deming' : 'OLS';
   const setL = toggles.evalset === 'all' ? 'all pairs' : 'fixed set';
   $('cap_optboard').textContent =
-    `Leaderboard — score = |intercept| + ${w}·|slope − 1| at MAC ${toggles.mac}, ${estL}, ${setL}` +
+    `Leaderboard: score = |intercept| + ${w}·|slope − 1| at MAC ${toggles.mac}, ${estL}, ${setL}` +
     (toggles.evalset === 'all' ? ' (rows without an all-pairs readout fall back to fixed until backfilled)' : '');
   const siteSel = $('opt_site') ? $('opt_site').value : 'addis';
-  const view = optRows.map((r, i) => ({r, i, s: optScore(r), pass: optPasses(r), ...optParts(r)}))
-    .filter(v => siteSel === 'any' || (v.r.target || 'addis') === siteSel)
-    .sort((a, b) => (b.pass - a.pass) || (a.s - b.s));
+  let view = optRows.map((r, i) => ({r, i, s: optScore(r), pass: optPasses(r), ...optParts(r)}));
+  if(siteSel === 'robust'){
+    const groups = {};
+    view.forEach(v => {
+      const r = v.r;
+      const key = [r.cohort, r.cutoff, r.selection_space, r.spectra, r.mode,
+                   r.lot || 'all', r.k].join('|');
+      (groups[key] = groups[key] || []).push(v);
+    });
+    view = Object.values(groups).filter(g => new Set(g.map(v => v.r.target || 'addis')).size >= 2)
+      .map(g => {
+        const worst = [...g].sort((a, b) => b.s - a.s)[0];
+        return {...worst, pass:g.every(v => v.pass), robustN:new Set(g.map(v => v.r.target || 'addis')).size};
+      });
+  }else{
+    view = view.filter(v => siteSel === 'any' || (v.r.target || 'addis') === siteSel);
+  }
+  view.sort((a, b) => (b.pass - a.pass) || (a.s - b.s));
   const shown = view.slice(0, 20);
+  $('opt_validate').disabled = view.filter(v => v.pass).length < 2;
   $('optboard').querySelector('tbody').innerHTML = shown.map((v, rank) => `
-    <tr${v.pass ? '' : ' class="fail" title="below the held-out R² floor"'}>
-      <td>${rank + 1}</td><td>${v.r.target || 'addis'}</td><td>${v.r.cohort_label || v.r.cohort}</td>
+    <tr${v.pass ? '' : ' class="fail" title="fails one or more held-out, slope, score-distance, Q-residual, or negative-prediction guardrails"'}>
+      <td>${rank + 1}</td><td>${v.robustN ? `${v.r.target || 'addis'} worst (${v.robustN})` : (v.r.target || 'addis')}</td><td>${v.r.cohort_label || v.r.cohort}</td>
       <td>${v.r.selection_space === 'airspec' ? 'AIRSpec' : 'raw'}</td>
       <td>${SPECTRA_SHORT[v.r.spectra] || v.r.spectra}</td>
       <td title="${MODE_LABEL[v.r.mode] || v.r.mode}">${{site_heldout:'A', app:'B', app_fmm:'B2'}[v.r.mode] || v.r.mode}</td>
       <td>${v.r.k}${v.r.k !== v.r.auto_k ? '*' : ''}</td>
       <td>${v.slope != null ? v.slope.toFixed(2) : '–'}</td>
       <td>${v.ic != null ? v.ic.toFixed(2) : '–'}</td>
-      <td>${v.r.heldout_R2 != null ? v.r.heldout_R2.toFixed(2) : '—'}</td>
+      <td>${v.r.heldout_R2 != null ? v.r.heldout_R2.toFixed(2) : 'N/A'}</td>
+      <td>${v.r.extrap_pct != null ? v.r.extrap_pct.toFixed(0) + '%' : 'N/A'}</td>
+      <td>${v.r.q_residual_pct != null ? v.r.q_residual_pct.toFixed(0) + '%' : 'N/A'}</td>
+      <td>${v.r.negative_pct != null ? v.r.negative_pct.toFixed(0) + '%' : 'N/A'}</td>
       <td><b>${isFinite(v.s) ? v.s.toFixed(2) : '–'}</b></td>
       <td><button class="gray" onclick="optApply(${v.i})">Load</button></td></tr>`).join('') +
-    (view.length > 20 ? `<tr><td colspan="12" class="muted">… ${view.length - 20} more (Export CSV for all)</td></tr>` : '');
+    (view.length > 20 ? `<tr><td colspan="15" class="muted">… ${view.length - 20} more (Export CSV for all)</td></tr>` : '');
   drawPareto(view);
 }
 
@@ -1169,7 +1374,7 @@ function drawPareto(view){
   if(!view.length){ placeholder('p_pareto', 'Start a search to populate the tradeoff view.'); return; }
   $('cap_pareto').textContent =
     `Intercept vs slope at MAC ${toggles.mac}, ${toggles.est === 'deming' ? 'Deming' : 'OLS'}, ` +
-    `${toggles.evalset === 'all' ? 'all pairs' : 'fixed set'} — the frontier is the tradeoff`;
+    `${toggles.evalset === 'all' ? 'all pairs' : 'fixed set'}: the frontier is the tradeoff`;
   const pts = view.filter(v => v.slope != null && v.ic != null);
   const pass = pts.filter(v => v.pass), fail = pts.filter(v => !v.pass);
   // Pareto front over the passing runs: sort by |slope−1|, keep strict |intercept| improvements
@@ -1178,11 +1383,11 @@ function drawPareto(view){
   sorted.forEach(v => { if(Math.abs(v.ic) < bestIc - 1e-12){ front.push(v); bestIc = Math.abs(v.ic); } });
   const trace = (arr, name, marker) => ({
     x: arr.map(v => Math.abs(v.slope - 1)), y: arr.map(v => Math.abs(v.ic)),
-    customdata: arr.map(v => v.i), mode: 'markers', name, marker, type: 'scatter',
+    customdata: arr.map(v => v.i), mode: 'markers', name, marker,
     text: arr.map(v => `${v.r.cohort_label || v.r.cohort} · cal:${SPECTRA_SHORT[v.r.spectra]}` +
       ` · ${MODE_SHORT[v.r.mode]} · k${v.r.k}<br>slope ${v.slope.toFixed(2)}, intercept ${v.ic.toFixed(2)}` +
       `${v.r.heldout_R2 != null ? ', held-out R² ' + v.r.heldout_R2.toFixed(2) : ''}<br>click to load`),
-    hoverinfo: 'text'});
+    hoverinfo: 'text', type:'scattergl'});
   const data = [];
   if(fail.length) data.push(trace(fail, 'below R² floor', {size: 6, color: '#c9c9c9', opacity: .6}));
   data.push(trace(pass, 'candidates', {size: 7, color: '#2C6E9E', opacity: .65}));
@@ -1213,17 +1418,71 @@ window.optApply = i => {
 };
 
 $('opt_export').onclick = () => {
-  const head = 'cohort,cutoff,selection_space,calibration_spectra,protocol,k,auto_k,' +
+  const head = 'target,evaluation_lot,cohort,cutoff,selection_space,calibration_spectra,protocol,k,auto_k,' +
     'ols_slope_mac10,ols_intercept_mac10,deming_slope_mac10,deming_intercept_mac10,' +
-    'ols_intercept_mac6,deming_intercept_mac6,R2,heldout_TOR_R2\n';
-  const lines = optRows.map(r => [`"${r.cohort_label || r.cohort}"`, r.cutoff ?? '', r.selection_space,
+    'ols_intercept_mac6,deming_intercept_mac6,R2,heldout_TOR_R2,score_space_ood_pct,q_residual_ood_pct,negative_pct,above_8_pct,prediction_median,group_median_span\n';
+  const lines = optRows.map(r => [r.target || 'addis', r.eval_lot || 'all', `"${r.cohort_label || r.cohort}"`, r.cutoff ?? '', r.selection_space,
     r.spectra, r.mode, r.k, r.auto_k, r.ols_slope, r.ols_intercept, r.deming_slope,
-    r.deming_intercept, r.ols_intercept_mac6, r.deming_intercept_mac6, r.R2, r.heldout_R2 ?? ''].join(','));
+    r.deming_intercept, r.ols_intercept_mac6, r.deming_intercept_mac6, r.R2, r.heldout_R2 ?? '',
+    r.extrap_pct ?? '', r.q_residual_pct ?? '', r.negative_pct ?? '', r.above_8_pct ?? '', r.prediction_median ?? '',
+    r.group_median_span ?? ''].join(','));
   const blob = new Blob([head + lines.join('\n')], {type: 'text/csv'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = 'explorer_optimizer_runs.csv'; a.click();
 };
-['opt_w', 'opt_minr2', 'opt_reqho', 'opt_site'].forEach(id => $(id).onchange = renderOpt);
+
+function stabilityInterval(value){
+  if(!value || value.median == null) return 'N/A';
+  return `${value.median.toFixed(2)} [${value.lo.toFixed(2)}, ${value.hi.toFixed(2)}]`;
+}
+
+$('opt_validate').onclick = async () => {
+  const target = $('target').value || 'addis';
+  const seen = new Set();
+  const finalists = optRows
+    .filter(r => (r.target || 'addis') === target && optPasses(r))
+    .sort((a, b) => optScore(a) - optScore(b))
+    .filter(r => {
+      const key = `${optCfgKey(r)}|${r.k}`;
+      if(seen.has(key)) return false;
+      seen.add(key); return true;
+    }).slice(0, 5);
+  if(finalists.length < 2){
+    $('stabilitynote').textContent = 'Need at least two passing finalists on the selected target.';
+    return;
+  }
+  $('opt_validate').disabled = true;
+  $('stabilitynote').textContent = `Refitting ${finalists.length} frozen finalists across source-site bootstrap draws…`;
+  try{
+    const payload = {
+      candidates: finalists.map(r => ({cohort:r.cohort, cutoff:r.cutoff,
+        selection_space:r.selection_space, spectra:r.spectra, mode:r.mode,
+        lot:r.lot || 'all', k:r.k})),
+      target,
+      eval_lot: $('eval_lot').disabled ? 'all' : ($('eval_lot').value || 'all'),
+      n_boot: parseInt($('opt_boot').value) || 100,
+      seed: 20260717,
+      weight: parseFloat($('opt_w').value) || 5,
+      estimator: toggles.est,
+      mac: parseFloat(toggles.mac),
+      evaluation_set: toggles.evalset,
+    };
+    const result = await post('/api/stability', payload);
+    if(result.error){ $('stabilitynote').textContent = result.error; return; }
+    $('stabilitytbl').querySelector('tbody').innerHTML = result.rows.map(row => `<tr>
+      <td>${row.candidate}. ${row.label}</td><td>${row.config.k}</td>
+      <td><b>${row.target_filter_selection_pct.toFixed(1)}%</b></td>
+      <td><b>${row.source_site_selection_pct.toFixed(1)}%</b></td>
+      <td>${stabilityInterval(row.source_site_slope)}</td>
+      <td>${stabilityInterval(row.source_site_intercept)}</td>
+    </tr>`).join('');
+    $('stabilitynote').textContent = `${result.n_boot} draws, seed ${result.seed}. ${result.interpretation}`;
+  } finally {
+    $('opt_validate').disabled = false;
+  }
+};
+['opt_w', 'opt_minr2', 'opt_reqho', 'opt_site', 'opt_slopemin', 'opt_slopemax',
+ 'opt_maxextrap', 'opt_maxq', 'opt_maxneg'].forEach(id => $(id).onchange = renderOpt);
 placeholder('p_pareto', 'Start a search to populate the tradeoff view.');
 
 /* ---- analog lab -------------------------------------------------------------
@@ -1240,10 +1499,10 @@ const AL_SPACE_LABEL = {raw:'raw spectra', airspec:'AIRSpec-corrected', deriv2:'
 
 async function alLoad(){
   if(alData[alSpace]){ alRender(); return; }
-  $('cap_al').textContent = `Analog lab — computing similarity metrics on ${AL_SPACE_LABEL[alSpace]} (first time per space takes ~10-30s)…`;
+  $('cap_al').textContent = `Analog lab: computing similarity metrics on ${AL_SPACE_LABEL[alSpace]} (first time per space takes ~10-30s)…`;
   placeholder('p_al_overlap', 'computing…'); placeholder('p_al_rank', 'computing…'); placeholder('p_al_pca', 'computing…');
   const j = await post('/api/analog_lab', {space: alSpace});
-  if(j.error){ $('cap_al').textContent = 'Analog lab — ' + j.error; return; }
+  if(j.error){ $('cap_al').textContent = 'Analog lab: ' + j.error; return; }
   alData[alSpace] = j;
   $('al_cut').max = j.n;
   if(!$('al_metric').options.length)
@@ -1258,7 +1517,7 @@ function alRender(){
   if(!j) return;
   const cutoff = Math.min(parseInt($('al_cut').value) || 500, j.n);
   $('al_cutlabel').textContent = `cutoff ${cutoff} of ${j.n} eligible filters`;
-  $('cap_al').textContent = `Analog lab — committed selection vs literature metrics (${AL_SPACE_LABEL[alSpace]})`;
+  $('cap_al').textContent = `Analog lab: committed selection vs alternative metrics (${AL_SPACE_LABEL[alSpace]})`;
   const ms = j.metrics;
   const mem = {};
   ms.forEach(m => {
@@ -1297,7 +1556,7 @@ function alRender(){
     cols.push(inC && inA ? '#2C6E9E' : inC ? '#B23327' : inA ? '#548C66' : '#dcdcdc');
   }
   $('cap_al_rank').textContent =
-    `Committed rank vs ${j.labels[alt]} — blue: both select · red: committed only · green: alternative only`;
+    `Committed rank vs ${j.labels[alt]}: blue: both select · red: committed only · green: alternative only`;
   plot('p_al_rank', [
     {x: xs, y: ys, mode:'markers', marker:{size:3, color:cols}, type:'scattergl', hoverinfo:'skip'},
     {x:[cutoff, cutoff], y:[0, j.n], mode:'lines', line:{color:'#B23327', dash:'dot', width:1}, hoverinfo:'skip'},
@@ -1329,7 +1588,7 @@ function alRender(){
       for(let i = 0; i < xs.length; i++){
         if(xs[i] < bx[0] || xs[i] > bx[1] || ys[i] < by[0] || ys[i] > by[1]){
           ex.push(clamp(xs[i], bx)); ey.push(clamp(ys[i], by));
-          etext.push(`${label} — true PC1 ${xs[i].toFixed(3)}, PC2 ${ys[i].toFixed(3)}`);
+          etext.push(`${label}: true PC1 ${xs[i].toFixed(3)}, PC2 ${ys[i].toFixed(3)}`);
         }
       }
     };
@@ -1337,7 +1596,7 @@ function alRender(){
     layoutRanges = {xr: bx, yr: by};
     if(ex.length) excludedTrace = {x: ex, y: ey, mode:'markers',
       marker:{size:7, symbol:'x', color:'#C4652F'},
-      name:`excluded from view (${ex.length}) — clamped to edge`,
+      name:`excluded from view (${ex.length}): clamped to edge`,
       text: etext, hoverinfo:'text', type:'scatter'};
   }
   const data = [
@@ -1370,7 +1629,7 @@ async function alSpectra(){
   if(r.error){ $('cap_al_spec').textContent = r.error; return; }
   if(alSpecKey !== key) return;                    // stale response
   $('cap_al_spec').textContent =
-    `top ${r.n} under ${r.metric_label} (green) vs committed top ${r.n} (grey, median only) vs Addis (red) — ${AL_SPACE_LABEL[alSpace]}`;
+    `top ${r.n} under ${r.metric_label} (green) vs committed top ${r.n} (grey, median only) vs Addis (red): ${AL_SPACE_LABEL[alSpace]}`;
   const yTitle = alSpace === 'deriv2' ? '2nd-derivative absorbance' : 'absorbance';
   plot('p_al_spectra', [
     ...spectraBand(r.wn, r.alt, '84,140,102', `selected by ${AL_SHORT[alt]} (n=${r.n})`),
@@ -1397,13 +1656,20 @@ $('refine_start').onclick = async () => {
   const cohorts = [...document.querySelectorAll('[data-opt-cohort]:checked')].map(x => x.dataset.optCohort);
   const spectra = [...document.querySelectorAll('[data-opt-spectra]:checked')].map(x => x.dataset.optSpectra);
   const modes = [...document.querySelectorAll('[data-opt-mode]:checked')].map(x => x.dataset.optMode);
-  if(!cohorts.length || !spectra.length || !modes.length){
-    $('batch_status').textContent = 'pick at least one cohort, spectra space and protocol'; return;
+  const lots = selectedOptLots();
+  if(!cohorts.length || !spectra.length || !modes.length || !lots.length){
+    $('batch_status').textContent = 'pick at least one cohort, spectra space, protocol and training lot'; return;
   }
-  const r = await post('/api/refine_start', {cohorts, spectra, modes,
+  const r = await post('/api/refine_start', {cohorts, spectra, modes, lots,
     corrsel: $('opt_corrsel').checked,
+    match_eval_lot: $('opt_matchlot').checked,
     w: parseFloat($('opt_w').value) || 5,
     min_r2: parseFloat($('opt_minr2').value),
+    slope_min: parseFloat($('opt_slopemin').value),
+    slope_max: parseFloat($('opt_slopemax').value),
+    max_extrap: parseFloat($('opt_maxextrap').value),
+    max_q_residual: parseFloat($('opt_maxq').value),
+    max_negative: parseFloat($('opt_maxneg').value),
     target: $('target').value || 'addis',
     eval_lot: $('eval_lot').disabled ? 'all' : ($('eval_lot').value || 'all')});
   if(r.error){ $('batch_status').textContent = r.error; return; }
@@ -1425,28 +1691,32 @@ function sitesRender(){
   if(!sitesRows.length) return;
   const estL = toggles.est === 'deming' ? 'Deming' : 'OLS';
   $('cap_sites').textContent =
-    `Cross-site — MAC ${toggles.mac}, ${estL}, ${toggles.evalset === 'all' ? 'all pairs' : 'fixed set'}`;
+    `Cross-site: MAC ${toggles.mac}, ${estL}, ${toggles.evalset === 'all' ? 'all pairs' : 'fixed set'}`;
   const view = sitesRows.map(r => {
     if(r.error) return {site: r.site, error: r.error};
     const m = sitesPick(r.metrics);
     return {site: r.site, label: r.label, n: r.n, k: r.k,
       slope: toggles.est === 'deming' ? m.deming_slope : m.ols_slope,
       ic: toggles.est === 'deming' ? m.deming_intercept : m.ols_intercept,
-      R2: m.R2, extrap: r.extrap_pct};
+      R2: m.R2, extrap: r.extrap_pct, q: r.q_residual_pct};
   });
   $('sitestbl').querySelector('tbody').innerHTML = view.map(v => v.error
-    ? `<tr><td>${v.site}</td><td colspan="6" class="warn">${v.error}</td></tr>`
+    ? `<tr><td>${v.site}</td><td colspan="7" class="warn">${v.error}</td></tr>`
     : `<tr>
         <td title="${v.label}">${v.site}</td><td>${v.n}</td><td>${v.k}</td>
         <td>${v.slope.toFixed(2)}</td><td>${v.ic.toFixed(2)}</td><td>${v.R2.toFixed(2)}</td>
-        <td class="${v.extrap != null && v.extrap > 30 ? 'warn' : ''}">${v.extrap != null ? v.extrap.toFixed(0) + '%' : '—'}</td>
+        <td class="${v.extrap != null && v.extrap > 30 ? 'warn' : ''}">${v.extrap != null ? v.extrap.toFixed(0) + '%' : 'N/A'}</td>
+        <td class="${v.q != null && v.q > 30 ? 'warn' : ''}">${v.q != null ? v.q.toFixed(0) + '%' : 'N/A'}</td>
       </tr>`).join('');
   const ok = view.filter(v => !v.error);
   plot('p_sites', [
     {x: ok.map(v => v.ic), y: ok.map(v => v.site), mode: 'markers+text',
-     text: ok.map(v => `${v.slope.toFixed(2)}x` + (v.extrap != null && v.extrap > 30 ? ' ⚠' : '')),
+     text: ok.map(v => `${v.slope.toFixed(2)}x` +
+       ((v.extrap != null && v.extrap > 30) || (v.q != null && v.q > 30) ? ' ⚠' : '')),
      textposition: 'middle right', textfont: {size: 11},
-     marker: {size: 12, color: ok.map(v => v.extrap != null && v.extrap > 30 ? '#C4652F' : '#2C6E9E')},
+     marker: {size: 12, color: ok.map(v =>
+       ((v.extrap != null && v.extrap > 30) || (v.q != null && v.q > 30))
+         ? '#C4652F' : '#2C6E9E')},
      type: 'scatter', hoverinfo: 'skip'}],
     {xaxis: {title: 'intercept (µg/m³)', zeroline: true, zerolinecolor: '#22252A', zerolinewidth: 2},
      yaxis: {automargin: true}, showlegend: false, margin: {t: 12, r: 60, b: 40, l: 10}});
@@ -1454,11 +1724,11 @@ function sitesRender(){
 $('sites_run').onclick = async () => {
   if(!ready) return;
   busy(true); $('sites_run').disabled = true;
-  $('cap_sites').textContent = 'Cross-site — evaluating on every target (uncached sites fit fresh)…';
+  $('cap_sites').textContent = 'Cross-site: evaluating on every target (uncached sites fit fresh)…';
   try{
     const j = await post('/api/cross_site',
       {...cfg(), k: $('kmode').value === 'manual' ? parseInt($('kval').value) : null});
-    if(j.error){ $('cap_sites').textContent = 'Cross-site — ' + j.error; return; }
+    if(j.error){ $('cap_sites').textContent = 'Cross-site: ' + j.error; return; }
     sitesRows = j.rows;
     sitesRender();
   } finally { busy(false); $('sites_run').disabled = false; }
@@ -1478,10 +1748,10 @@ const SS_RANGES = {full:[400,4000], '1400_1800':[1500,1800], '2700_3600':[2700,3
 async function drawSiteSpectra(){
   if(!ready) return;
   if(!ssCache[ssSpace]){
-    $('cap_sitespec').textContent = `Target spectra by site — computing ${ssSpace} baseline…`;
+    $('cap_sitespec').textContent = `Target spectra by site: computing ${ssSpace} baseline…`;
     placeholder('p_sitespec', 'computing…');
     const j = await post('/api/site_spectra', {space: ssSpace});
-    if(j.error){ $('cap_sitespec').textContent = 'Target spectra — ' + j.error; return; }
+    if(j.error){ $('cap_sitespec').textContent = 'Target spectra: ' + j.error; return; }
     ssCache[ssSpace] = j;
   }
   const j = ssCache[ssSpace];
@@ -1502,9 +1772,9 @@ async function drawSiteSpectra(){
       line:{color: col, width:1.7}, name:`${s.label} (n=${s.n})`, type:'scatter'});
   });
   const note = ssSpace === 'airspec'
-    ? ' — NOTE: this baseline anchors at 1520–1600 cm⁻¹ and suppresses ~1617 features'
-    : (ssSpace === 'neutral' ? ' — independent pspline_arpls, no anchor window' : '');
-  $('cap_sitespec').textContent = `Target spectra by site — median${showIqr ? ' + IQR' : ''}, ${ssSpace} baseline${note}`;
+    ? ': NOTE: this baseline anchors at 1520–1600 cm⁻¹ and suppresses ~1617 features'
+    : (ssSpace === 'neutral' ? ': independent pspline_arpls, no anchor window' : '');
+  $('cap_sitespec').textContent = `Target spectra by site: median${showIqr ? ' + IQR' : ''}, ${ssSpace} baseline${note}`;
   plot('p_sitespec', data, {
     xaxis:{title:'wavenumber (cm⁻¹)', autorange:'reversed'},
     yaxis:{title: ssSpace === 'raw' ? 'absorbance' : 'baseline-corrected absorbance'},
@@ -1527,14 +1797,13 @@ document.querySelector('[data-tab="sites"]').addEventListener('click', () => {
 
 /* ---- HIPS lab tab -----------------------------------------------------------
    Per-filter weighted York/EIV fits (replacing pooled-lambda Deming) under
-   three blank-line variants, plus the blank ledger. The point of the table:
-   an intercept that moves between blank lines is calibration-sensitive; one
-   that holds still belongs to the aerosol. */
+   three blank-line variants, plus the blank ledger. Movement demonstrates
+   calibration sensitivity; stability only rules out these tested forms. */
 let hipsRows = null, hipsBlanksLoaded = false;
 const HIPS_KINDS = [['deployed', '#2C6E9E'], ['lot_lin', '#7A4FA3'], ['lot_quad', '#B23327']];
 
 function hipsFitCell(f){
-  if(!f || f.error) return `<td class="warn">${f ? f.error : '—'}</td>`;
+  if(!f || f.error) return `<td class="warn">${f ? f.error : 'N/A'}</td>`;
   return `<td title="MSWD-inflated SEs; median recomputed Fabs ${f.median_fabs} Mm⁻¹">` +
          `${f.slope.toFixed(2)}x ${f.intercept >= 0 ? '+' : '−'}${Math.abs(f.intercept).toFixed(2)}` +
          `<span class="muted"> ±${f.intercept_se.toFixed(2)}</span></td>`;
@@ -1547,7 +1816,7 @@ function hipsRender(){
     : `<tr><td title="${r.label}">${r.site}</td>` +
       `<td title="${r.n_matched}/${r.n} filters matched in the batch export">${r.n_matched}</td>` +
       `<td class="${r.fits.deployed && r.fits.deployed.kappa < 0.8 ? 'warn' : ''}">` +
-        `${r.fits.deployed ? r.fits.deployed.kappa.toFixed(2) : '—'}</td>` +
+        `${r.fits.deployed ? r.fits.deployed.kappa.toFixed(2) : 'N/A'}</td>` +
       hipsFitCell(r.fits.deployed) + hipsFitCell(r.fits.lot_lin) + hipsFitCell(r.fits.lot_quad) +
       `<td class="${r.frac_below_blank_r1 > 0.2 ? 'warn' : ''}">` +
         `${(r.frac_below_blank_r1 * 100).toFixed(0)}%</td></tr>`).join('');
@@ -1559,7 +1828,7 @@ function hipsRender(){
     error_x: {type: 'data',
       array: ok.map(r => r.fits[kind] && !r.fits[kind].error ? r.fits[kind].intercept_se : null),
       color, thickness: 1},
-    name: {deployed: 'deployed line', lot_lin: 'lot-common linear', lot_quad: 'lot quadratic'}[kind],
+    name: {deployed: 'deployed line', lot_lin: 'line-specific linear', lot_quad: 'line-specific quadratic'}[kind],
     mode: 'markers', type: 'scatter', marker: {size: 10, color}}));
   plot('p_hips', traces,
     {xaxis: {title: 'intercept (µg/m³)', zeroline: true, zerolinecolor: '#22252A', zerolinewidth: 2},
@@ -1572,30 +1841,53 @@ async function hipsBlanks(){
   const j = await fetch('/api/hips_blanks').then(r => r.json());
   if(j.error) return;
   hipsBlanksLoaded = true;
-  const lots = Object.keys(j.lots).sort();
-  $('hipsblanks').querySelector('tbody').innerHTML = lots.map(lot => {
-    const L = j.lots[lot];
+  const lines = Object.keys(j.lots).sort();
+  $('hipsblanks').querySelector('tbody').innerHTML = lines.map(lineId => {
+    const L = j.lots[lineId];
     const curved = L.rms_lin > 1.2 * L.rms_quad;
-    return `<tr><td>${lot}</td><td>${L.n}</td>` +
+    return `<tr><td title="${lineId}">${L.lot || lineId}<br><span class="muted">I=${L.deployed_intercept ?? 'N/A'}, S=${L.deployed_slope ?? 'N/A'}</span></td><td>${L.n}</td>` +
       `<td class="${curved ? 'warn' : ''}">${L.rms_lin.toFixed(1)}</td>` +
       `<td>${L.rms_quad.toFixed(1)}</td>` +
       `<td>${L.r1_min.toFixed(0)}–${L.r1_max.toFixed(0)}</td>` +
-      `<td>${L.tau0_mean != null ? (L.tau0_mean >= 0 ? '+' : '−') + Math.abs(L.tau0_mean).toFixed(4) + ' ±' + L.tau0_sd.toFixed(4) : '—'}</td></tr>`;
+      `<td>${L.tau0_mean != null ? (L.tau0_mean >= 0 ? '+' : '−') + Math.abs(L.tau0_mean).toFixed(4) + ' ±' + L.tau0_sd.toFixed(4) : 'N/A'}</td></tr>`;
   }).join('');
 }
 
 $('hips_run').onclick = async () => {
   if(!ready) return;
   busy(true); $('hips_run').disabled = true;
-  $('cap_hips').textContent = 'HIPS lab — fitting every SPARTAN target (uncached calibrations fit fresh)…';
+  $('cap_hips').textContent = 'HIPS lab: fitting every SPARTAN target (uncached calibrations fit fresh)…';
   try{
     const j = await post('/api/hips_york',
       {...cfg(), k: $('kmode').value === 'manual' ? parseInt($('kval').value) : null});
-    if(j.error){ $('cap_hips').textContent = 'HIPS lab — ' + j.error; return; }
+    if(j.error){ $('cap_hips').textContent = 'HIPS lab: ' + j.error; return; }
     hipsRows = j.rows;
     $('cap_hips').textContent =
-      'HIPS lab — York/EIV fits with per-filter Fabs uncertainties, under three blank-line variants';
+      'HIPS lab: York/EIV fits with per-filter Fabs uncertainties, under three blank-line variants';
     hipsRender();
   } finally { busy(false); $('hips_run').disabled = false; }
 };
 document.querySelector('[data-tab="hips"]').addEventListener('click', () => { if(ready) hipsBlanks(); });
+
+/* ---- sidebar toggle (desktop) -----------------------------------------------
+   Collapses the config rail to give plots the full width; persisted. Plots
+   drawn at the old width need a resize after the grid change. */
+(() => {
+  const btn = $('sidetoggle');
+  if(!btn) return;
+  const apply = on => {
+    document.body.classList.toggle('sidecollapsed', on);
+    btn.textContent = on ? '⟩ config' : '⟨ config';
+    btn.setAttribute('aria-pressed', String(on));
+    const fix = () => document.querySelectorAll('.pane.on .js-plotly-plot')
+      .forEach(p => Plotly.Plots.resize(p));
+    fix(); requestAnimationFrame(fix);
+  };
+  let on = localStorage.getItem('calib_explorer_sidebar') === 'collapsed';
+  apply(on);
+  btn.onclick = () => {
+    on = !on;
+    localStorage.setItem('calib_explorer_sidebar', on ? 'collapsed' : 'open');
+    apply(on);
+  };
+})();

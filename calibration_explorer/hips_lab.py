@@ -1,7 +1,7 @@
-"""HIPS lab — blank-line diagnostics and per-filter weighted York/EIV fits.
+"""HIPS lab: blank-line diagnostics and per-filter weighted York/EIV fits.
 
 The HIPS scattering correction is a *lot field-blank regression line*
-(tau = ln((Intercept + Slope*R1)/T1), Fabs = 100*tau*DepositArea/Volume —
+(tau = ln((Intercept + Slope*R1)/T1), Fabs = 100*tau*DepositArea/Volume -
 decoded and verified against the SPARTAN batch export, see
 research/ftir_ec_phase3/OFFSET_ADJUDICATION_2026-08-23.md sec 5b). Heavily
 loaded filters sit below the R1 range of the blanks that define that line, so
@@ -11,13 +11,14 @@ problems for the explorer:
 - per-target York (heteroscedastic errors-in-variables) fits of prediction vs
   Fabs/MAC using the per-site HIPS uncertainty models, replacing pooled-lambda
   Deming (York et al. 2004, Am. J. Phys. 72:367);
-- the same fit under alternative blank lines (lot-common linear, lot
+- the same fit under alternative blank lines (calibration-line linear and
   quadratic), so the sensitivity of each site's intercept to the blank-line
   extrapolation is a number, not an argument;
-- the blank ledger per lot (n, refit rms linear vs quadratic, R1 range, and
-  the blank-tau zero bound).
+- the blank ledger per deployed calibration line (n, refit rms linear vs
+  quadratic, R1 range, and the blank-tau zero bound). A lot can contain more
+  than one deployed line, so grouping by lot alone is not valid.
 
-Registered from app.py via hips_lab.register(app, ctx) — ctx carries the app
+Registered from app.py via hips_lab.register(app, ctx): ctx carries the app
 internals so this file never imports app (which may run as __main__).
 Standalone science run against a live server: python hips_lab.py
 """
@@ -59,22 +60,36 @@ def batch() -> pd.DataFrame:
     return b
 
 
+def _line_key(lot, intercept, slope) -> tuple[str, float, float]:
+    """Stable deployed-line identity used by the SPARTAN batch exporter."""
+    return (str(lot).strip(), round(float(intercept), 3), round(float(slope), 4))
+
+
+def _line_id(key: tuple[str, float, float]) -> str:
+    lot, intercept, slope = key
+    return f"{lot}|I={intercept:.3f}|S={slope:.4f}"
+
+
 @lru_cache(maxsize=1)
 def blank_lines() -> dict:
-    """Per lot: pooled field+lab blank refits (linear and quadratic), the
-    blanks' R1 range, and the blank-tau zero bound."""
+    """Per deployed line: field+lab blank refits and their valid R1 range."""
     b = batch()
     blanks = b[b["FilterType"].isin(["FB", "LB"])].dropna(
-        subset=["R1", "T1"]).query("T1 > 0")
+        subset=["R1", "T1", "Intercept", "Slope"]).query("T1 > 0")
     out = {}
-    for lot, g in blanks.groupby("LotId"):
+    for (lot, intercept, slope), g in blanks.groupby(
+            ["LotId", "Intercept", "Slope"], dropna=False):
         if len(g) < 5:
             continue
+        line_key = _line_key(lot, intercept, slope)
         R, T = g["R1"].to_numpy(float), g["T1"].to_numpy(float)
         lin = np.polyfit(R, T, 1)                     # [a1, a0]
         quad = np.polyfit(R, T, 2)                    # [a2, a1, a0]
         tau0 = g["tau"].dropna()
-        out[lot] = {
+        out[_line_id(line_key)] = {
+            "lot": line_key[0],
+            "deployed_intercept": line_key[1],
+            "deployed_slope": line_key[2],
             "n": int(len(g)),
             "lin": [float(v) for v in lin],
             "quad": [float(v) for v in quad],
@@ -85,6 +100,12 @@ def blank_lines() -> dict:
             "tau0_sd": float(tau0.std()) if len(tau0) else None,
         }
     return out
+
+
+def _line_for_row(row, lines: dict) -> dict | None:
+    if pd.isna(row["Intercept"]) or pd.isna(row["Slope"]):
+        return None
+    return lines.get(_line_id(_line_key(row["LotId"], row["Intercept"], row["Slope"])))
 
 
 @lru_cache(maxsize=1)
@@ -142,7 +163,7 @@ def york(x, y, sx, sy, tol=1e-12, itmax=200):
 
 def york_site(pred, fabs, site_code):
     """Free York fit of prediction vs fabs/MAC with the site's per-filter
-    sigma_x; sigma_y inflated until MSWD = 1 (absorbs lack-of-fit — the
+    sigma_x; sigma_y inflated until MSWD = 1 (absorbs lack-of-fit: the
     conservative choice). Returns the fit dict + kappa."""
     x = np.asarray(fabs, float) / MAC
     y = np.asarray(pred, float)
@@ -161,15 +182,18 @@ def york_site(pred, fabs, site_code):
 
 def tau_variant(rows: pd.DataFrame, kind: str) -> np.ndarray:
     """tau under a blank-line variant: 'deployed' uses the shipped line,
-    'lot_lin'/'lot_quad' re-derive it from the pooled lot blanks."""
+    'lot_lin'/'lot_quad' re-derive it from blanks assigned to the same deployed
+    calibration line. Historical API names are retained for compatibility."""
     lines = blank_lines()
     R, T = rows["R1"].to_numpy(float), rows["T1"].to_numpy(float)
     if kind == "deployed":
         top = rows["Intercept"].to_numpy(float) + rows["Slope"].to_numpy(float) * R
     else:
         key = "lin" if kind == "lot_lin" else "quad"
-        top = np.array([np.polyval(lines[lot][key], r) if lot in lines else np.nan
-                        for lot, r in zip(rows["LotId"], R)])
+        top = np.array([
+            np.polyval(line[key], r) if (line := _line_for_row(row, lines)) else np.nan
+            for (_, row), r in zip(rows.iterrows(), R)
+        ])
     with np.errstate(divide="ignore", invalid="ignore"):
         return np.log(np.where((top > 0) & (T > 0), top / T, np.nan))
 
@@ -188,8 +212,10 @@ def site_rows(pred, ref_fabs, filter_ids, site_code):
     dv = 100.0 * rows["DepositArea"].to_numpy(float) / rows["Volume"].to_numpy(float)
 
     lines = blank_lines()
-    r1min = np.array([lines[lot]["r1_min"] if lot in lines else np.nan
-                      for lot in rows["LotId"]])
+    r1min = np.array([
+        line["r1_min"] if (line := _line_for_row(row, lines)) else np.nan
+        for _, row in rows.iterrows()
+    ])
     frac_below = float(np.nanmean(rows["R1"].to_numpy(float) < r1min))
 
     out = {"n": int(len(ids)), "n_matched": int(have.sum()),
@@ -239,8 +265,9 @@ def register(app, ctx: dict) -> None:
         cfg.pop("eval_lot", None)
         cfg.pop("target", None)
         rows = []
-        for name in ctx["list_targets"]():
-            code = SITE_CODE.get(name)
+        for name in ctx["list_targets"](cross_site_only=True):
+            base_name = name.removesuffix("_reconstructed_holdout").removesuffix("_augmented")
+            code = SITE_CODE.get(base_name)
             try:
                 tgt = ctx["get_target"](name)
                 fids = tgt.get("filter_ids")
@@ -270,8 +297,8 @@ def main():
     targets = {"addis": "ETAD", "etbi": "ETBI", "chts": "CHTS",
                "indh": "INDH", "uspa": "USPA"}
     print("blank ledger:")
-    for lot, L in sorted(blank_lines().items()):
-        print(f"  lot {lot:5s} n={L['n']:3d} rms lin/quad {L['rms_lin']:5.1f}/"
+    for line_id, L in sorted(blank_lines().items()):
+        print(f"  line {line_id:24s} n={L['n']:3d} rms lin/quad {L['rms_lin']:5.1f}/"
               f"{L['rms_quad']:5.1f}  R1 {L['r1_min']:.0f}-{L['r1_max']:.0f}  "
               f"tau0 {L['tau0_mean']:+.4f}±{L['tau0_sd']:.4f}")
     print(f"\n{'site':6s} {'match':>5s} {'<blank':>6s} | "

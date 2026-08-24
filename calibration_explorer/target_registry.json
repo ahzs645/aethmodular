@@ -1,0 +1,110 @@
+{
+  "addis": {
+    "display_name": "Addis (ETAD): screened baseline",
+    "physical_site": "Addis Ababa",
+    "site_code": "ETAD",
+    "role": "screening",
+    "provisional": false,
+    "optimization_allowed": true,
+    "cross_site_default": true
+  },
+  "etbi": {
+    "display_name": "Bishoftu (ETBI): screened",
+    "physical_site": "Bishoftu",
+    "site_code": "ETBI",
+    "role": "screening",
+    "provisional": false,
+    "optimization_allowed": true,
+    "cross_site_default": true
+  },
+  "chts": {
+    "display_name": "Beijing (CHTS): screened",
+    "physical_site": "Beijing",
+    "site_code": "CHTS",
+    "role": "screening",
+    "provisional": false,
+    "optimization_allowed": true,
+    "cross_site_default": true
+  },
+  "indh": {
+    "display_name": "Delhi (INDH): screened",
+    "physical_site": "Delhi",
+    "site_code": "INDH",
+    "role": "screening",
+    "provisional": false,
+    "optimization_allowed": true,
+    "cross_site_default": true
+  },
+  "uspa": {
+    "display_name": "Pasadena (USPA): screened",
+    "physical_site": "Pasadena",
+    "site_code": "USPA",
+    "role": "screening",
+    "provisional": false,
+    "optimization_allowed": true,
+    "cross_site_default": true
+  },
+  "addis_reconstructed_holdout": {
+    "display_name": "Addis: locked reconstructed holdout (n=14)",
+    "physical_site": "Addis Ababa",
+    "site_code": "ETAD",
+    "role": "locked_confirmation",
+    "provisional": true,
+    "optimization_allowed": false,
+    "cross_site_default": false
+  },
+  "etbi_reconstructed_holdout": {
+    "display_name": "Bishoftu: locked reconstructed holdout (n=14)",
+    "physical_site": "Bishoftu",
+    "site_code": "ETBI",
+    "role": "locked_confirmation",
+    "provisional": true,
+    "optimization_allowed": false,
+    "cross_site_default": false
+  },
+  "indh_reconstructed_holdout": {
+    "display_name": "Delhi: locked reconstructed holdout (n=26)",
+    "physical_site": "Delhi",
+    "site_code": "INDH",
+    "role": "locked_confirmation",
+    "provisional": true,
+    "optimization_allowed": false,
+    "cross_site_default": false
+  },
+  "addis_augmented": {
+    "display_name": "Addis: augmented provisional reference (n=253)",
+    "physical_site": "Addis Ababa",
+    "site_code": "ETAD",
+    "role": "exploratory_augmented",
+    "provisional": true,
+    "optimization_allowed": false,
+    "cross_site_default": false
+  },
+  "etbi_augmented": {
+    "display_name": "Bishoftu: augmented provisional reference (n=40)",
+    "physical_site": "Bishoftu",
+    "site_code": "ETBI",
+    "role": "exploratory_augmented",
+    "provisional": true,
+    "optimization_allowed": false,
+    "cross_site_default": false
+  },
+  "indh_augmented": {
+    "display_name": "Delhi: augmented provisional reference (n=178)",
+    "physical_site": "Delhi",
+    "site_code": "INDH",
+    "role": "exploratory_augmented",
+    "provisional": true,
+    "optimization_allowed": false,
+    "cross_site_default": false
+  },
+  "demo_addis_subset": {
+    "display_name": "Demo Addis subset",
+    "physical_site": "Addis Ababa",
+    "site_code": "ETAD",
+    "role": "demo",
+    "provisional": true,
+    "optimization_allowed": false,
+    "cross_site_default": false
+  }
+}

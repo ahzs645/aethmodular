@@ -1039,6 +1039,41 @@ TAKEAWAYS["35"] = """\
   Level-2 AERONET with U27, the remaining 202 SPARTAN filter volumes, newer IMPROVE lots,
   per-filter deposit images/reverse-orientation interpretation, and collocated quartz TOR."""
 
+SCRIPTS["36"] = ("run_ftir_36.py", "ftir_36_domain_invariant_pls.ipynb")
+
+TLDR["36"] = """\
+The leakage-safe di-PLS trial does **not** rescue a universal IMPROVE→SPARTAN calibration.
+The published/default target-centering convention is structurally wrong for these data:
+it forces the target mean predicted *filter loading* toward the IMPROVE mean even though
+sites have different loading and sampling-volume distributions. On the locked Delhi
+holdout it inflates RMSE from **2.61 to 59.71 µg/m³** for the Addis winner, **2.15 to
+28.28** for the common candidate, and **1.93 to 20.09** for the screened Delhi winner.
+Target centering with λ=0 already produces nearly the entire failure, so this is not a
+regularization-tuning artifact. A source-centered sensitivity retains the frozen di-PLS
+weights without that mean shift. It is neutral on Addis and mixed on Delhi: the common
+candidate improves Delhi RMSE **9.4%** (2.15→1.95) and R² **0.772→0.836**, with
+**0.875x−0.75**; its paired-bootstrap RMSE-change interval only just excludes zero
+(**−17.8% to −0.05%**) and does not include model-selection or HIPS-reference uncertainty.
+The same candidate remains unusably flat at Addis (**0.424x−0.52**). The Delhi-specific
+candidate worsens Delhi RMSE by **19.9%**. On untouched IMPROVE sites source-centered
+di-PLS changes RMSE by only about 0 to −2.4%. The covariate-shift premise is violated:
+the site difference includes real response/loading-distribution change, not merely a
+nuisance spectral-domain shift that latent alignment can remove."""
+
+TAKEAWAYS["36"] = """\
+- **Do not use default target-centered di-PLS for filter-loading calibration.** It erases
+  a physically meaningful target loading mean, and division by site-specific sample volume
+  amplifies the resulting error.
+- **The failure is not label leakage or a bad target-selected λ.** Components and the
+  penalty multiplier were selected entirely within IMPROVE; the frozen protocol was written
+  before the 14 Addis and 26 Delhi HIPS values were opened.
+- **Covariance alignment alone offers no general solution.** Source-centered weights give
+  one modest Delhi improvement, but it is configuration-specific and the same model retains
+  a ~0.42 Addis slope.
+- **Keep ordinary PLS as the calibration baseline.** Further adaptation would need an
+  explicitly conditional/response-aware method and genuinely labeled target anchors; at
+  that point it is local calibration, not unsupervised domain adaptation."""
+
 if __name__ == "__main__":
     for number in (sys.argv[1:] or list(SCRIPTS)):
         build(number)

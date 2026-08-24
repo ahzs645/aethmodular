@@ -1,4 +1,4 @@
-/* Calibration Iteration Explorer — layout & theme
+/* Calibration Iteration Explorer: layout & theme
    Header: topbar → preset/actions bar → grouped configuration card → tabs + view toggles.
    Breakpoints: ≥1100px desktop (side-by-side panels) · 700–1100px stacked panels,
    two-column config card · <700px single-column everything */
@@ -171,6 +171,8 @@ tr.sel:hover{background:#ddebf7}
 /* ---- busy / errors --------------------------------------------------------- */
 #busy{position:fixed;top:8px;right:12px;background:#B23327;color:#fff;padding:5px 12px;border-radius:4px;font-size:12.5px;display:none;z-index:50}
 #err{display:none;margin:8px 16px 0;padding:8px 12px;border:1px solid #B23327;border-radius:5px;color:#B23327;background:#fdf3f2;font-size:12.6px}
+#stale{margin:8px 16px 0;padding:8px 12px;border:1px solid #C49442;border-radius:5px;color:#6c5017;background:#fff8e8;font-size:12.6px}
+#stale[hidden]{display:none}
 
 /* ---- tablet ---------------------------------------------------------------- */
 @media (max-width:1100px){
@@ -181,7 +183,7 @@ tr.sel:hover{background:#ddebf7}
   .cfggroup:nth-of-type(n+3){border-top:1px solid #efefef}
   .cols.summary{grid-template-columns:1fr 1fr}
   .cols.summary .statbox{grid-column:1 / -1}
-  /* below ~1100px two side-by-side panels leave <450px each — the crossplot,
+  /* below ~1100px two side-by-side panels leave <450px each: the crossplot,
      the metrics table and the series plot all need more, so stack instead */
   .cols.two{grid-template-columns:1fr}
   .cols.pins{grid-template-columns:1fr}
@@ -224,3 +226,31 @@ tr.sel:hover{background:#ddebf7}
 }
 
 .pill button:disabled{opacity:.35;cursor:default}
+
+/* ---- sidebar layout (desktop >=1101px) --------------------------------------
+   The configuration (presets + run actions + config groups) becomes a sticky
+   left rail; tabs and panes take the rest. Below 1101px the .layout wrapper is
+   inert (display:block) and the pre-sidebar stacked/mobile behavior applies
+   unchanged, including the phone-only .cfgtoggle collapse. */
+#sidetoggle{margin-left:auto;background:#2f3237;color:#cfd3d9;border:1px solid #4a4f57;
+  border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer;flex:0 0 auto}
+#sidetoggle:hover{color:#fff;border-color:#6a7078}
+@media (max-width:1100px){ #sidetoggle{display:none} }
+@media (min-width:1101px){
+  .layout{display:grid;grid-template-columns:322px minmax(0,1fr);align-items:start}
+  body.sidecollapsed .layout{display:block}
+  body.sidecollapsed .sidebar{display:none}
+  .sidebar{position:sticky;top:0;max-height:100vh;overflow-y:auto;min-width:0;
+    border-right:1px solid #e6e6e6;background:#fcfcfc;padding-bottom:14px}
+  .sidebar .controlbar{flex-direction:column;align-items:stretch;gap:8px;
+    margin:10px 12px 0;padding:0;border:0;background:none}
+  .sidebar .controlbar .presetgroup{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+  .sidebar .controlbar .presetgroup select{flex:1 1 120px;min-width:0}
+  .sidebar .controlbar .actions{display:flex;flex-wrap:wrap;gap:6px}
+  .sidebar .controlbar .actions .runsplit{flex:1 1 auto}
+  .sidebar .controlbar .actions #run{width:100%}
+  .sidebar .configcard{margin:10px 12px 0;grid-template-columns:1fr}
+  .sidebar .cfggroup + .cfggroup{border-left:0;border-top:1px solid #efefef}
+  .sidebar .cfggroup .fieldrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .main{min-width:0}
+}

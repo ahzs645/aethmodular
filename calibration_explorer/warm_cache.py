@@ -2,17 +2,17 @@
 
 Walks every cohort x cutoff-ladder x selection-space x spectra x protocol x lot
 combination (target=addis), computing each configuration's CV curve,
-(Cohort x lot combos that resolve to <30 filters — e.g. smoke under the minority
-lot — fail by design and are just logged.)
-the rule-choice fit, and the fits the frontend's "Sweep k" button would request
-— so that afterwards every click in the app resolves from cache in <1 s.
+(Cohort x lot combos that resolve to <30 filters: e.g. smoke under the minority
+lot: fail by design and are just logged.)
+the rule-choice fit, and the sparse unattended-search k ladder (including 21 and 30)
+- so that afterwards every click in the app resolves from cache in <1 s.
 
 The cutoff axis is genuinely continuous in the UI (the rank-plot click), so we
 warm a ladder around each locked cutoff rather than every integer; an off-ladder
 cutoff still computes live on first click, then is cached.
 
 Run:  uv run python calibration_explorer/warm_cache.py
-(same data mounts as the app; safe to run while the app is up — same cache dir,
+(same data mounts as the app; safe to run while the app is up: same cache dir,
 same file contents).
 """
 from __future__ import annotations
@@ -21,7 +21,7 @@ import itertools
 import time
 import traceback
 
-import app  # noqa: F401 — importing app.py starts its background data loader
+import app  # noqa: F401: importing app.py starts its background data loader
 
 GRID_CUTOFFS = {
     "pool": [None],
@@ -39,9 +39,8 @@ def selection_spaces(cohort):
 
 
 def sweep_ks(auto_k, curve_max):
-    # mirror static/app.js: 8 points from the rule choice to ~double, capped at 20
-    hi = min(max(2 * auto_k, auto_k + 6), 20, curve_max)
-    return sorted({round(auto_k + i * (hi - auto_k) / 7) for i in range(8)})
+    # Share the server batch ladder so prewarming cannot silently miss k=21.
+    return app._batch_sweep_ks(auto_k, curve_max, k_min=1, k_max=30, dense=False)
 
 
 def main():
@@ -90,7 +89,7 @@ def main():
           f"{len(configs) - len(failures)}/{len(configs)} configurations warmed",
           flush=True)
     for tag, err in failures:
-        print(f"  failed: {tag} — {err}", flush=True)
+        print(f"  failed: {tag}: {err}", flush=True)
 
 
 if __name__ == "__main__":

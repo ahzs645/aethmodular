@@ -4,11 +4,14 @@
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 <link rel="stylesheet" href="/static/style.css">
 </head><body>
-<div id="busy">working…</div>
+<div id="busy" role="status" aria-live="polite">working…</div>
 
 <div class="topbar"><span class="brand">Calibration Iteration Explorer</span>
- <span class="sub">cohort × cutoff × baseline (selection & calibration) × CV scheme × k → Addis intercept</span></div>
+ <span class="sub">cohort × cutoff × baseline (selection &amp; calibration) × CV scheme × k → target agreement</span>
+ <button id="sidetoggle" title="Show or hide the configuration sidebar" aria-pressed="false">⟨ config</button></div>
 
+<div class="layout" id="layout">
+<aside class="sidebar" id="sidebar" aria-label="Configuration">
 <div class="controlbar">
   <span class="presetgroup">
     <select id="preset" title="Apply a saved configuration"></select>
@@ -28,7 +31,7 @@
       <button class="primary" id="run">Run</button>
       <button id="autorun" aria-pressed="false" title="Auto-run: re-run ~0.6s after any configuration change (cached configurations are instant; uncached ones still compute)">auto</button>
     </span>
-    <button id="sweep" disabled title="The meeting's k scan: ~8 points from the rule choice up to ~double (max 20)">Sweep k</button>
+    <button id="sweep" disabled title="The meeting's component scan: every integer from the rule choice through k=30, including the explicitly requested k=21">Sweep k</button>
     <button id="pin" disabled title="Add this run to the Compare tab">Pin run</button>
   </span>
 </div>
@@ -42,13 +45,13 @@
     <div class="field"><label for="cohort">Selection</label><select id="cohort"></select></div>
     <div class="fieldrow">
       <div class="field"><label for="cutoff">Cutoff N</label><input id="cutoff" type="number" min="50" step="50"></div>
-      <div class="field" title="Restrict the cohort to one filter lot — the erratic-RMSE lot question. Selection ranks first, then the lot filter applies.">
+      <div class="field" title="Restrict the cohort to one filter lot: the erratic-RMSE lot question. Selection ranks first, then the lot filter applies.">
         <label for="lot">Lot</label><select id="lot"><option value="all">all</option></select></div>
     </div>
   </div>
   <div class="cfggroup">
     <h4>Spectra</h4>
-    <div class="field" title="Which spectra the *selection* (Ethiopia-shaped / analog matching) runs on — Satoshi's item 1. Calibration spectra are set separately.">
+    <div class="field" title="Which spectra the *selection* (Ethiopia-shaped / analog matching) runs on: Satoshi's item 1. Calibration spectra are set separately.">
       <label for="selection_space">Select on</label>
       <select id="selection_space">
         <option value="raw">raw spectra</option>
@@ -60,14 +63,15 @@
       <select id="spectra">
         <option value="raw">raw spectra</option>
         <option value="airspec">AIRSpec-corrected</option>
+        <option value="neutral">neutral pspline-arPLS</option>
         <option value="deriv2">SG 2nd derivative (raw)</option>
       </select>
     </div>
-    <div class="field" title="The evaluation target the calibration is read out against. Addis (ETAD) is built in; add your own site by dropping spectra.csv + reference.csv into calibration_explorer/targets/<name>/ — see README.">
+    <div class="field" title="The evaluation target the calibration is read out against. Addis (ETAD) is built in; add your own site by dropping spectra.csv + reference.csv into calibration_explorer/targets/<name>/: see README.">
       <label for="target">Evaluate on</label>
-      <select id="target"><option value="addis">Addis (ETAD) — built-in</option></select>
+      <select id="target"><option value="addis">Addis (ETAD): built-in</option></select>
     </div>
-    <div class="field" title="Report the crossplot on evaluation filters of one lot only — judge a lot-251 calibration on lot-251 filters (Ann, Aug 19). Predictions still cover every filter; only the readout is restricted. Built-in Addis target only.">
+    <div class="field" title="Report the crossplot on evaluation filters of one lot only: judge a lot-251 calibration on lot-251 filters (Ann, Aug 19). Predictions still cover every filter; only the readout is restricted. Built-in Addis target only.">
       <label for="eval_lot">Eval lot</label>
       <select id="eval_lot"><option value="all">all lots</option></select>
     </div>
@@ -76,9 +80,9 @@
     <h4>Model</h4>
     <div class="field"><label for="mode">Protocol</label>
       <select id="mode">
-        <option value="site_heldout">Option A — site-grouped 5-fold CV, first major minimum</option>
-        <option value="app">Option B — interleaved 10-fold CV, within 5% of minimum</option>
-        <option value="app_fmm">Option B2 — interleaved 10-fold CV, first major minimum</option>
+        <option value="site_heldout">Option A: site-grouped 5-fold CV, first major minimum</option>
+        <option value="app">Option B: interleaved 10-fold CV, within 5% of minimum</option>
+        <option value="app_fmm">Option B2: interleaved 10-fold CV, first major minimum</option>
       </select>
     </div>
     <div class="fieldrow">
@@ -93,27 +97,30 @@
     <div class="muted" id="checks">…</div>
   </div>
 </div>
+</aside>
 
-<div id="err"></div>
+<main class="main">
+<div id="err" role="alert" aria-live="assertive"></div>
+<div id="stale" role="status" hidden>Configuration changed: Run again before sweeping or pinning. The visible result belongs to the previous configuration.</div>
 
 <div class="tabsbar">
   <nav class="tabs" id="tabs">
     <button data-tab="calibrate" class="on">Calibrate</button>
-    <button data-tab="addis">Addis readout</button>
+    <button data-tab="addis">Target readout</button>
     <button data-tab="selection">Selection</button>
-    <button data-tab="analoglab" title="Compare the committed spectral-analog selection against literature similarity metrics (SAM, correlation, Mahalanobis…)">Analogs</button>
+    <button data-tab="analoglab" title="Compare the committed spectral-analog selection with alternative similarity metrics">Analogs</button>
     <button data-tab="series">Series</button>
-    <button data-tab="sites" title="Evaluate the current configuration against every site target at once — the cross-site table with the extrapolation diagnostic">Sites</button>
+    <button data-tab="sites" title="Evaluate the current configuration against every site target at once: the cross-site table with the extrapolation diagnostic">Sites</button>
     <button data-tab="hips" title="HIPS instrument diagnostics: per-filter weighted York/EIV fits and the blank-line sensitivity of every site's intercept">HIPS</button>
     <button data-tab="compare">Compare <span id="pincount" class="count"></span></button>
     <button data-tab="optimize">Optimize <span id="optcount" class="count"></span></button>
   </nav>
   <span class="viewtoggles">
     <span class="pill" id="mac"><span class="plabel">MAC</span>
-      <button data-v="10" class="on">10</button><button data-v="6">6</button></span>
+      <button data-v="10" class="on">10</button><button data-v="6">6</button><button data-v="17" title="Sensitivity readout only: do not choose MAC after seeing which value makes the slope look best">17</button></span>
     <span class="pill" id="est"><span class="plabel">Fit</span>
       <button data-v="deming" class="on">Deming</button><button data-v="ols">OLS</button></span>
-    <span class="pill" id="evalset"><span class="plabel">Addis set</span>
+    <span class="pill" id="evalset"><span class="plabel">Target set</span>
       <button data-v="fixed" class="on">fixed 190</button><button data-v="all">all pairs</button></span>
   </span>
 </div>
@@ -122,11 +129,11 @@
   <div class="cols summary">
     <div class="statbox" id="stats">Waiting for data to load…</div>
     <div>
-      <div class="plotcap">CV curve — click a point to set k</div>
+      <div class="plotcap">CV curve: click a point to set k</div>
       <div id="p_curve" class="plot"></div>
     </div>
     <div>
-      <div class="plotcap" id="cap_sweep">k sweep — Addis intercept &amp; held-out R² vs components</div>
+      <div class="plotcap" id="cap_sweep">k sweep: target intercept &amp; held-out R² vs components</div>
       <div id="p_sweep" class="plot"></div>
     </div>
   </div>
@@ -135,11 +142,11 @@
 <div class="pane" id="pane-addis">
   <div class="cols two">
     <div>
-      <div class="plotcap" id="cap_cross">Addis crossplot</div>
+      <div class="plotcap" id="cap_cross">Target crossplot</div>
       <div id="p_cross" class="plot square"></div>
     </div>
     <div>
-      <div class="plotcap">Fit metrics — every MAC × estimator × Addis set for this run</div>
+      <div class="plotcap">Fit metrics: every MAC × estimator × target set for this run</div>
       <div class="tablewrap">
         <table id="metrics"><thead>
           <tr><th rowspan="2">set</th><th rowspan="2">MAC</th><th rowspan="2">n</th>
@@ -163,25 +170,25 @@
   <div class="cols two">
     <div>
       <div class="tablehead" style="margin-bottom:5px">
-        <span class="plotcap" id="cap_ranking" style="margin:0">Selection — click the plot or drag the slider to move the cutoff</span>
+        <span class="plotcap" id="cap_ranking" style="margin:0">Selection: click the plot or drag the slider to move the cutoff</span>
         <span class="pill" id="rankview">
           <button data-v="rank" class="on">metric vs rank</button>
           <button data-v="dist">pool distribution</button>
-          <button data-v="both" title="Overlay the raw-space and AIRSpec-corrected-space selection metrics — does baselining change who gets picked?">raw vs corrected</button></span>
+          <button data-v="both" title="Overlay the raw-space and AIRSpec-corrected-space selection metrics: does baselining change who gets picked?">raw vs corrected</button></span>
       </div>
       <div id="p_ranking" class="plot"></div>
       <div class="sliderrow">
         <input type="range" id="cutslider" min="50" max="1000" step="10" value="800">
-        <span class="muted" id="cutlabel">cutoff —</span>
+        <span class="muted" id="cutlabel">cutoff N/A</span>
       </div>
-      <div class="plotcap" style="margin-top:12px">Reference-data characteristics — what this cohort trains on</div>
+      <div class="plotcap" style="margin-top:12px">Reference-data characteristics: what this cohort trains on</div>
       <div class="tablewrap"><table id="cohortinfo"><tbody></tbody></table></div>
-      <div class="plotcap" style="margin-top:12px">Composition ruler — cohort vs pool OC/EC, with the Addis marker (ftir_30)</div>
+      <div class="plotcap" style="margin-top:12px">Composition ruler: cohort vs pool OC/EC, with the Addis marker (ftir_30)</div>
       <div id="p_composition" class="plot short" style="height:230px"></div>
     </div>
     <div>
       <div class="tablehead" style="margin-bottom:5px">
-        <span class="plotcap" id="cap_spectra" style="margin:0">Spectra vs Addis — median + IQR</span>
+        <span class="plotcap" id="cap_spectra" style="margin:0">Spectra vs Addis: median + IQR</span>
         <span class="pill" id="spectramode">
           <button data-v="single" class="on">current cohort</button>
           <button data-v="compare">all selection cohorts</button>
@@ -192,10 +199,10 @@
   </div>
 
   <div class="section">
-    <div class="sectionhead">Selection overlap — are the methods picking the same filters?</div>
+    <div class="sectionhead">Selection overlap: are the methods picking the same filters?</div>
     <div class="cols overlapcols">
       <div>
-        <div class="plotcap">Shared membership — % of the smaller cohort (count below)</div>
+        <div class="plotcap">Shared membership: % of the smaller cohort (count below)</div>
         <div id="p_overlap" class="plot"></div>
       </div>
       <div>
@@ -213,12 +220,12 @@
 
 <div class="pane" id="pane-analoglab">
   <div class="tablehead" style="margin-bottom:6px">
-    <span class="plotcap" style="margin:0" id="cap_al">Analog lab — the committed analog selection vs literature similarity metrics</span>
+    <span class="plotcap" style="margin:0" id="cap_al">Analog lab: committed selection vs alternative similarity metrics</span>
     <span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <span class="pill" id="al_space"><span class="plabel">Spectra</span>
         <button data-v="raw" class="on">raw</button>
         <button data-v="airspec">AIRSpec</button>
-        <button data-v="deriv2" title="LOCAL's classic representation — derivative kills the PTFE baseline before similarity is measured">2nd deriv</button></span>
+        <button data-v="deriv2" title="LOCAL's classic representation: derivative kills the PTFE baseline before similarity is measured">2nd deriv</button></span>
       <select id="al_metric" title="Which alternative metric to compare against the committed analog score"></select>
     </span>
   </div>
@@ -228,7 +235,7 @@
   </div>
   <div class="cols two">
     <div>
-      <div class="plotcap">Membership overlap at this cutoff — % of the cutoff shared between metrics</div>
+      <div class="plotcap">Membership overlap at this cutoff: % of the cutoff shared between metrics</div>
       <div id="p_al_overlap" class="plot"></div>
       <div class="plotcap" style="margin-top:10px">Rank agreement with the committed score (Spearman ρ, whole pool)</div>
       <div class="tablewrap"><table id="al_agree"><tbody></tbody></table></div>
@@ -239,41 +246,30 @@
     </div>
   </div>
   <div class="section">
-    <div class="sectionhead">Spectra — selected IMPROVE cohort vs Addis (median + IQR, this spectra space)</div>
+    <div class="sectionhead">Spectra: selected IMPROVE cohort vs Addis (median + IQR, this spectra space)</div>
     <div class="plotcap muted" id="cap_al_spec">Pick a metric and release the cutoff slider to draw.</div>
     <div id="p_al_spectra" class="plot tall"></div>
   </div>
 
   <div class="section">
     <div class="tablehead">
-      <span class="sectionhead" style="margin:0">Score-space map — where each selection lives relative to Addis</span>
-      <label class="ck" title="Trim the axes to the central 1–99% cloud. Points outside are not dropped — they are clamped to the plot edge as orange ×, hover for their true coordinates."><input type="checkbox" id="al_focus" checked>exclude outliers (clamped at edge)</label>
+      <span class="sectionhead" style="margin:0">Score-space map: where each selection lives relative to Addis</span>
+      <label class="ck" title="Trim the axes to the central 1–99% cloud. Points outside are not dropped: they are clamped to the plot edge as orange ×, hover for their true coordinates."><input type="checkbox" id="al_focus" checked>exclude outliers (clamped at edge)</label>
     </div>
     <div id="p_al_pca" class="plot tall"></div>
-    <details class="litdetails">
-      <summary>How the field does this — literature quick reference (full survey: research/ftir_ec_phase3/SPECTRAL_SIMILARITY_LITERATURE.md)</summary>
-      <div class="litcard">
-        <p><b>LOCAL (Shenk &amp; Westerhaus 1997)</b> — the NIR standard: rank the library by <b>Pearson correlation on derivative spectra</b> against each target, calibrate on the top-k. Our <i>Pearson / 2nd-deriv</i> combination reproduces its selection step.</p>
-        <p><b>LWR (Næs 1990)</b> — nearest neighbours by <b>distance in PC score space</b>, distance-weighted fit. <b>Reggente, Dillner &amp; Takahama (AMT 2016)</b> used <b>Mahalanobis distance in score space</b> as the extrapolation diagnostic for these exact IMPROVE calibrations — our <i>Mahalanobis-PCA</i> metric turns that diagnostic into a selector.</p>
-        <p><b>SAM / cosine</b> (remote sensing; Kruse 1993) — angle between spectra; equals Pearson after mean-centering.</p>
-        <p><b>RS-LOCAL (Lobsey 2017, soils)</b> — resample library subsets, keep samples that recur in subsets that predict the target well. The only method optimizing the real objective; a candidate batch-mode extension here.</p>
-        <p><b>Weakley (2016/18)</b> — CSN sites with atypical composition (Elizabeth NJ) needed their own calibration: the aerosol-FTIR precedent that subsetting fixes what pooled models break.</p>
-        <p class="muted">Kennard–Stone / DUPLEX / SPXY are <i>spanning</i> designs (coverage, not target-matching) — useful only for cal/val splits of a selected subset. Nobody in aerosol FTIR has published per-target-site library selection; doing it here is novel but in-tradition.</p>
-      </div>
-    </details>
   </div>
 </div>
 
 <div class="pane" id="pane-series">
   <div class="cols two">
     <div>
-      <div class="plotcap" id="cap_series">EC time series — this run's predictions by date</div>
+      <div class="plotcap" id="cap_series">EC time series: this run's predictions by date</div>
       <div id="p_series" class="plot tall"></div>
     </div>
     <div>
-      <div class="plotcap">Series plausibility — is this a physically sensible EC record?</div>
+      <div class="plotcap">Series plausibility: is this a physically sensible EC record?</div>
       <div class="tablewrap"><table id="seriesinfo"><tbody></tbody></table></div>
-      <div class="plotcap" style="margin:12px 0 5px" id="cap_vsdep">vs deployed SPARTAN EC — same filters</div>
+      <div class="plotcap" style="margin:12px 0 5px" id="cap_vsdep">vs deployed SPARTAN EC: same filters</div>
       <div id="p_vsdeployed" class="plot square"></div>
     </div>
   </div>
@@ -281,7 +277,7 @@
 
 <div class="pane" id="pane-sites">
   <div class="tablehead" style="margin-bottom:8px">
-    <span class="plotcap" style="margin:0" id="cap_sites">Cross-site — the current configuration evaluated against every target</span>
+    <span class="plotcap" style="margin:0" id="cap_sites">Cross-site: the current configuration evaluated against every target</span>
     <button class="primary" id="sites_run" title="Runs the configuration above against every site in the Evaluate-on list (cached calibrations make repeat runs instant)">Evaluate on all sites</button>
   </div>
   <div class="cols two">
@@ -289,25 +285,26 @@
       <div class="tablewrap">
         <table id="sitestbl"><thead><tr>
           <th>site</th><th>n</th><th>k</th><th>slope</th><th>intercept</th><th>R²</th>
-          <th title="Share of the target's filters beyond the training set's p95 score-space distance (Reggente et al. 2016). High values mean the slope/intercept are extrapolations — treat them as unreliable.">extrap %</th>
+          <th title="Share of the target's filters beyond the training set's p95 score-space distance (Reggente et al. 2016). High values mean the slope/intercept are extrapolations: treat them as unreliable.">score %</th>
+          <th title="Share of target spectra above the training p95 PLS Q residual. High Q means the retained latent space cannot reconstruct the spectrum, even if its score-space location looks ordinary.">Q %</th>
         </tr></thead><tbody></tbody></table>
       </div>
-      <div class="muted" style="margin-top:6px">slope / intercept follow the MAC · Fit · Addis-set toggles. <b>extrap %</b> = share of target filters beyond the training p95 score-space distance — rows flagged red are out-of-domain for this calibration and their slopes should not be quoted.</div>
+      <div class="muted" style="margin-top:6px">slope / intercept follow the MAC · Fit · target-set toggles. <b>score %</b> is the share beyond the training p95 score-space distance; <b>Q %</b> is the share above the training p95 orthogonal spectral residual. Either can reveal an out-of-domain transfer.</div>
     </div>
     <div>
-      <div class="plotcap" id="cap_sites_ladder">Intercepts by site (µg/m³) — zero is the target</div>
+      <div class="plotcap" id="cap_sites_ladder">Intercepts by site (µg/m³): zero is the target</div>
       <div id="p_sites" class="plot tall"></div>
     </div>
   </div>
 
   <div class="section">
     <div class="tablehead" style="margin-bottom:6px">
-      <span class="sectionhead" style="margin:0" id="cap_sitespec">Target spectra by site — median + IQR</span>
+      <span class="sectionhead" style="margin:0" id="cap_sitespec">Target spectra by site: median + IQR</span>
       <span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <span class="pill" id="ss_space"><span class="plabel">Baseline</span>
           <button data-v="raw" class="on">raw</button>
           <button data-v="airspec" title="APRLssb/AIRSpec. NOTE: anchors segment 2 at the minimum over 1520–1600 cm⁻¹, which sits under a ~1617 band and suppresses it.">AIRSpec</button>
-          <button data-v="neutral" title="Independent pybaselines pspline_arpls, no anchor window, PTFE-saturated regions masked — the second opinion.">neutral</button></span>
+          <button data-v="neutral" title="Independent pybaselines pspline_arpls, no anchor window, PTFE-saturated regions masked: the second opinion.">neutral</button></span>
         <span class="pill" id="ss_range"><span class="plabel">Range</span>
           <button data-v="full" class="on">full</button>
           <button data-v="1400_1800">1500–1800</button>
@@ -316,14 +313,14 @@
       </span>
     </div>
     <div id="p_sitespec" class="plot tall"></div>
-    <div class="muted" style="margin-top:6px">Switching the baseline changes which bands are visible — the AIRSpec anchor at 1520–1600 cm⁻¹ suppresses features near 1617. Any band claim in 1500–1650 should be shown under at least two baselines.</div>
+    <div class="muted" style="margin-top:6px">Switching the baseline changes which bands are visible: the AIRSpec anchor at 1520–1600 cm⁻¹ suppresses features near 1617. Any band claim in 1500–1650 should be shown under at least two baselines.</div>
   </div>
 </div>
 
 <div class="pane" id="pane-hips">
   <div class="tablehead" style="margin-bottom:8px">
-    <span class="plotcap" style="margin:0" id="cap_hips">HIPS lab — York/EIV fits with per-filter Fabs uncertainties, under three blank-line variants</span>
-    <button class="primary" id="hips_run" title="Runs the current configuration against every SPARTAN target, refits with per-filter weighted York regression, and recomputes each filter's Fabs under alternative blank lines (lot-common linear and quadratic). Cached calibrations make repeat runs fast.">Run York + blank-line check</button>
+    <span class="plotcap" style="margin:0" id="cap_hips">HIPS lab: York/EIV fits with per-filter Fabs uncertainties, under three blank-line variants</span>
+    <button class="primary" id="hips_run" title="Runs the current configuration against every SPARTAN target, refits with per-filter weighted York regression, and recomputes each filter's Fabs under alternative lines fit to the blanks assigned to that same deployed calibration line. Cached calibrations make repeat runs fast.">Run York + blank-line check</button>
   </div>
   <div class="cols two">
     <div>
@@ -331,29 +328,29 @@
         <table id="hipstbl"><thead><tr>
           <th>site</th><th title="filters matched to the SPARTAN HIPS batch export by FilterId">n</th>
           <th title="range-to-noise reliability: kappa well below ~0.8 means the site's x-range cannot support a free EIV slope">κ</th>
-          <th title="York fit using the shipped (deployed) blank line — the per-filter weighted replacement for pooled-lambda Deming">deployed</th>
-          <th title="same fit with Fabs recomputed from a single pooled blank line per lot">lot-linear</th>
-          <th title="same fit with a quadratic blank line per lot — tests the linearity assumption of the scattering correction">quadratic</th>
-          <th title="share of this site's filters whose R1 falls below the R1 range of the blanks that define its calibration line — those Fabs values rest on an extrapolated blank line">R1 &lt; blanks</th>
+          <th title="York fit using the shipped (deployed) blank line: the per-filter weighted replacement for pooled-lambda Deming">deployed</th>
+          <th title="same fit with Fabs recomputed from blanks assigned to the same deployed calibration line">line-linear</th>
+          <th title="same fit with a quadratic through blanks assigned to the same deployed calibration line: tests the correction's linearity assumption">line-quadratic</th>
+          <th title="share of this site's filters whose R1 falls below the R1 range of the blanks that define its calibration line: those Fabs values rest on an extrapolated blank line">R1 &lt; blanks</th>
         </tr></thead><tbody></tbody></table>
       </div>
-      <div class="muted" style="margin-top:6px">Each cell is <b>slope × x + intercept ± SE</b> (x = Fabs/10, per-filter σ<sub>x</sub> from the HIPS uncertainty rows, σ<sub>y</sub> inflated to MSWD = 1). An intercept that moves between blank-line variants is calibration-sensitive; one that doesn't is a property of the aerosol. York et al. 2004; details in research/ftir_ec_phase3/OFFSET_ADJUDICATION_2026-08-23.md §5b.</div>
+      <div class="muted" style="margin-top:6px">Each cell is <b>slope × x + intercept ± SE</b> (x = Fabs/10, per-filter σ<sub>x</sub> from the HIPS uncertainty rows, σ<sub>y</sub> inflated to MSWD = 1). Movement between variants demonstrates calibration sensitivity. Stability only rules out these tested blank-line forms; it is not, by itself, proof of an aerosol cause. York et al. (2004).</div>
     </div>
     <div>
-      <div class="plotcap" id="cap_hips_ladder">Intercept under each blank line (µg/m³) — movement = calibration sensitivity</div>
+      <div class="plotcap" id="cap_hips_ladder">Intercept under each blank line (µg/m³): movement = calibration sensitivity</div>
       <div id="p_hips" class="plot tall"></div>
     </div>
   </div>
 
   <div class="section">
-    <div class="sectionhead" style="margin-bottom:6px">Blank ledger — the lines Fabs stands on</div>
+    <div class="sectionhead" style="margin-bottom:6px">Blank ledger: the lines Fabs stands on</div>
     <div class="tablewrap">
       <table id="hipsblanks"><thead><tr>
-        <th>lot</th><th>blanks</th>
-        <th title="rms of the blanks about the pooled linear line (T1 counts)">rms linear</th>
-        <th title="rms about a quadratic — a large improvement means the blank line is curved and the linear correction extrapolates badly">rms quadratic</th>
+        <th>deployed calibration line</th><th>blanks</th>
+        <th title="rms of the assigned blanks about the refit linear line (T1 counts)">rms linear</th>
+        <th title="rms about a quadratic: a large improvement means the blank line is curved and the linear correction extrapolates badly">rms quadratic</th>
         <th>R1 range</th>
-        <th title="mean ± sd of blank tau — the PTFE zero; multiply by ~49 for the equivalent Mm⁻¹ at Addis geometry">blank τ (zero)</th>
+        <th title="mean ± sd of blank tau: the PTFE zero; multiply by ~49 for the equivalent Mm⁻¹ at Addis geometry">blank τ (zero)</th>
       </tr></thead><tbody></tbody></table>
     </div>
     <div class="muted" style="margin-top:6px">The scattering correction is a regression through these blanks (τ = ln((a₀ + a₁·R1)/T1)). Filters darker than every blank (previous table, last column) sit on an extrapolation of this line.</div>
@@ -364,19 +361,20 @@
   <div class="cols pins">
     <div>
       <div class="tablehead">
-        <span class="muted">slope/intercept columns follow the MAC · fit · Addis-set toggles above</span>
+        <span class="muted">slope/intercept columns follow the MAC · fit · target-set toggles above</span>
         <span><button class="mini" id="exportcsv">Export CSV</button>
+              <button class="mini" id="exportmanifest" title="Export replayable run manifests with exact configuration, readout toggles and data/code fingerprints">Export manifests</button>
               <button class="mini" id="clearpins">Clear</button></span>
       </div>
       <div class="tablewrap">
         <table id="pins"><thead><tr>
-          <th>cohort</th><th>N</th><th>select on</th><th>calibrate on</th><th>protocol</th><th>k</th>
+          <th>target</th><th>cohort</th><th>N</th><th>select on</th><th>calibrate on</th><th>protocol</th><th>k</th>
           <th>slope</th><th>intercept</th><th>R²</th><th>held-out TOR R²</th><th></th>
         </tr></thead><tbody></tbody></table>
       </div>
     </div>
     <div>
-      <div class="plotcap">Pinned intercepts (µg/m³) — zero is the target</div>
+      <div class="plotcap">Pinned intercepts (µg/m³): zero is the target</div>
       <div id="p_ladder" class="plot"></div>
     </div>
   </div>
@@ -390,17 +388,24 @@
       <label class="ck"><input type="checkbox" data-opt-cohort="ocec" checked>Lowest-OC/EC</label>
       <label class="ck"><input type="checkbox" data-opt-cohort="smoke" checked>Biomass-smoke</label>
       <label class="ck" title="The 13k-filter pool: a cold CV curve takes several minutes"><input type="checkbox" data-opt-cohort="pool">Entire network (slow)</label>
-      <label class="ck" style="margin-top:6px" title="Also try Ethiopia-shaped / analog selection in AIRSpec-corrected space (corrected analog ranking is expensive on a cold cache)"><input type="checkbox" id="opt_corrsel">+ corrected-space selection</label>
+      <label class="ck" style="margin-top:6px" title="Try Ethiopia-shaped / analog selection in both raw and AIRSpec-corrected space, independently of the calibration spectra. This executes the full raw/corrected selection × raw/corrected calibration matrix requested in the discussion."><input type="checkbox" id="opt_corrsel" checked>compare raw + corrected selection</label>
     </div>
     <div class="optgroup"><h4>Calibrate on</h4>
       <label class="ck"><input type="checkbox" data-opt-spectra="raw" checked>raw spectra</label>
       <label class="ck"><input type="checkbox" data-opt-spectra="airspec" checked>AIRSpec-corrected</label>
+      <label class="ck"><input type="checkbox" data-opt-spectra="neutral">neutral pspline-arPLS</label>
       <label class="ck"><input type="checkbox" data-opt-spectra="deriv2" checked>SG 2nd derivative</label>
     </div>
     <div class="optgroup"><h4>Protocol</h4>
-      <label class="ck"><input type="checkbox" data-opt-mode="site_heldout" checked>A — site-grouped 5-fold</label>
-      <label class="ck"><input type="checkbox" data-opt-mode="app">B — interleaved, 5% rule</label>
-      <label class="ck"><input type="checkbox" data-opt-mode="app_fmm">B2 — interleaved, FMM</label>
+      <label class="ck"><input type="checkbox" data-opt-mode="site_heldout" checked>A: site-grouped 5-fold</label>
+      <label class="ck"><input type="checkbox" data-opt-mode="app">B: interleaved, 5% rule</label>
+      <label class="ck"><input type="checkbox" data-opt-mode="app_fmm">B2: interleaved, FMM</label>
+    </div>
+    <div class="optgroup"><h4>Training/evaluation lots</h4>
+      <label class="ck"><input type="checkbox" data-opt-lot="all" checked>all training lots</label>
+      <label class="ck"><input type="checkbox" data-opt-lot="251" checked>training lot 251</label>
+      <label class="ck"><input type="checkbox" data-opt-lot="248">training lot 248</label>
+      <label class="ck" style="margin-top:6px" title="For Addis, evaluate a lot-specific training model on the same target lot. The all-lot row keeps the Eval lot selector above."><input type="checkbox" id="opt_matchlot" checked>match Addis evaluation lot</label>
     </div>
     <div class="optgroup"><h4>Objective</h4>
       <div class="field" title="score = |intercept| + w·|slope − 1|, read at the MAC · Fit toggles above, fixed evaluation set">
@@ -409,7 +414,18 @@
       <div class="field" style="margin-top:8px" title="Runs whose held-out TOR R² falls below this are ranked last and excluded from refinement (protocols B/B2 have no held-out set and always pass)">
         <label for="opt_minr2">min held-out TOR R²</label>
         <input id="opt_minr2" type="number" value="0.85" min="0" max="1" step="0.05"></div>
-      <label class="ck" style="margin-top:8px" title="Protocols B/B2 fit on all filters and have no held-out TOR test, so they pass the floor vacuously — at batch scale they flood the leaderboard with unfalsifiable rows. Check this to rank only runs with a real held-out set (protocol A)."><input type="checkbox" id="opt_reqho" checked>require a held-out set</label>
+      <div class="fieldrow" style="margin-top:8px" title="Hard plausibility box. A flat slope can otherwise game the intercept-weighted score.">
+        <div class="field"><label for="opt_slopemin">slope min</label><input id="opt_slopemin" type="number" value="0.7" step="0.05"></div>
+        <div class="field"><label for="opt_slopemax">slope max</label><input id="opt_slopemax" type="number" value="1.3" step="0.05"></div>
+      </div>
+      <div class="fieldrow" style="margin-top:8px">
+        <div class="field" title="Maximum share of target filters beyond the training p95 score-space distance"><label for="opt_maxextrap">max extrap %</label><input id="opt_maxextrap" type="number" value="30" min="0" max="100" step="5"></div>
+        <div class="field" title="Maximum share of target spectra above the training p95 PLS Q residual"><label for="opt_maxq">max Q %</label><input id="opt_maxq" type="number" value="30" min="0" max="100" step="5"></div>
+      </div>
+      <div class="fieldrow" style="margin-top:8px">
+        <div class="field" title="Negative predictions are physically implausible; reject candidates above this share"><label for="opt_maxneg">max negative %</label><input id="opt_maxneg" type="number" value="10" min="0" max="100" step="1"></div>
+      </div>
+      <label class="ck" style="margin-top:8px" title="Protocols B/B2 fit on all filters and have no held-out TOR test, so they pass the floor vacuously: at batch scale they flood the leaderboard with unfalsifiable rows. Check this to rank only runs with a real held-out set (protocol A)."><input type="checkbox" id="opt_reqho" checked>require a held-out set</label>
       <label style="margin-top:8px" title="Rank rows evaluated on one site, or on any site (a site column appears). Multi-site rows come from server batches with a site scope other than 'current target'.">Rank on site
         <select id="opt_site">
           <option value="addis" selected>addis</option>
@@ -417,6 +433,7 @@
           <option value="chts">chts (Beijing)</option>
           <option value="uspa">uspa (Pasadena)</option>
           <option value="etbi">etbi (Bishoftu)</option>
+          <option value="robust">robust: worst across loaded sites</option>
           <option value="any">any site</option>
         </select></label>
     </div>
@@ -424,13 +441,22 @@
       <button class="primary" id="opt_start">Start search</button>
       <button id="opt_stop" disabled>Stop</button>
       <button class="mini" id="opt_export" disabled style="margin-top:6px">Export CSV</button>
-      <div class="muted" id="opt_status" style="margin-top:8px">Staged search: screen every combination at its default cutoff and rule k → refine the cutoff around the leaders → sweep k on the finalists. Sequential; stop anytime, results are kept.</div>
+      <button class="mini" id="opt_validate" disabled style="margin-top:6px" title="Freeze the five leading passing rows, then estimate winner frequency under stratified target-filter resampling and source-site cluster refits">Validate top 5</button>
+      <label style="margin-top:6px" title="Bootstrap draws for each validation layer; 200 matches ftir_22, while 30–50 is a quick diagnostic">bootstrap draws
+        <input type="number" id="opt_boot" min="10" max="500" value="100" step="10" style="width:70px"></label>
+      <div class="fieldrow" style="margin-top:8px">
+        <div class="field"><label for="opt_kmin">k min</label><input id="opt_kmin" type="number" value="1" min="1" max="30"></div>
+        <div class="field"><label for="opt_kmax">k max</label><input id="opt_kmax" type="number" value="30" min="1" max="30"></div>
+      </div>
+      <label class="ck" style="margin-top:6px" title="On the finalists, evaluate every integer k in the range (including 21), rather than an eight-point ladder"><input type="checkbox" id="opt_densek" checked>dense finalist k scan</label>
+      <div class="muted" id="opt_status" style="margin-top:8px">Staged search: screen every combination at its default cutoff and rule k → refine the cutoff around the leaders → scan k on the finalists. Sequential; stop anytime, results are kept.</div>
     </div>
     <div class="optgroup"><h4>Exhaustive batch (server)</h4>
-      <button class="primary" id="batch_start" title="Run the checked grid on the server itself — keeps going if you close this page. Every (configuration, k) row is scored and appended to cache/batch_results.jsonl.">Run batch</button>
+      <button class="primary" id="batch_start" title="Run the checked grid on the server itself: keeps going if you close this page. Every (configuration, k) row is scored and appended to cache/batch_results.jsonl.">Run batch</button>
       <button id="batch_stop" disabled>Stop</button>
       <label class="ck" style="margin-top:6px" title="Try several cutoffs per ranked cohort (Eth 200–400, analogs 400–600, OC/EC 600–1000) instead of only the defaults"><input type="checkbox" id="batch_ladder" checked>cutoff ladder</label>
-      <label class="ck" title="Also evaluate ~8 k values per configuration, from the rule choice to ~double"><input type="checkbox" id="batch_sweepk" checked>k sweep per config</label>
+      <label class="ck" title="Also evaluate a sparse k ladder per configuration; it always includes k=21 and k max when available"><input type="checkbox" id="batch_sweepk" checked>k sweep per config</label>
+      <label class="ck" title="Evaluate every integer from k min to k max for every configuration. This can multiply a large batch substantially."><input type="checkbox" id="batch_densek">dense k for every config</label>
       <label style="margin-top:6px" title="Score each configuration on more than one site. The fitted calibration is reused across sites, so extra sites cost a prediction, not a refit. Addis + Delhi runs those two first; all sites adds Beijing, Pasadena and Bishoftu.">Sites
         <select id="batch_sites">
           <option value="current" selected>current target</option>
@@ -438,32 +464,45 @@
           <option value="all">all five sites</option>
         </select></label>
       <label style="margin-top:6px" title="Dense cutoff mode: step through the cohort-size range in this interval instead of the 5-point ladder. Leave blank for the ladder.">dense step
-        <input type="number" id="batch_step" min="5" step="5" style="width:70px" placeholder="—"></label>
+        <input type="number" id="batch_step" min="5" step="5" style="width:70px" placeholder="N/A"></label>
       <label class="ck" title="With a dense step: sweep the WIDE cohort ranges (Eth 100–900, analogs 100–1500, OC/EC 100–2000) instead of the defaults (100–600 / 250–750 / 300–1500)"><input type="checkbox" id="batch_wide">wide cutoff range</label>
       <button class="mini" id="refine_start" style="margin-top:6px" title="Hill-climb each ranked cohort's cutoff in +-10 steps from its default, following score = |intercept| + w·|slope − 1| downhill until it stops improving (held-out floor applies). Refined rows persist like batch rows.">Refine cutoffs ±10</button>
       <button class="mini" id="batch_load" style="margin-top:6px" title="Merge saved batch rows (including ones computed in Colab and copied back) into the leaderboard and Pareto view">Load saved results</button>
+      <button class="mini" id="batch_backfill" style="margin-top:6px" title="Re-run saved configuration×k rows from cache to add current Q-residual and plausibility diagnostics. This can take a while for a large legacy file.">Backfill diagnostics</button>
       <div class="muted" id="batch_status" style="margin-top:8px">Uses the checked cohorts / spectra / protocols. Survives closing the page; results persist in the cache and reload with “Load saved results”.</div>
     </div>
   </div>
   <div class="cols two">
     <div>
-      <div class="plotcap" id="cap_optboard">Leaderboard — score = |intercept| + w·|slope − 1|</div>
+      <div class="plotcap" id="cap_optboard">Leaderboard: score = |intercept| + w·|slope − 1|</div>
       <div class="tablewrap">
         <table id="optboard"><thead><tr>
           <th>#</th><th title="evaluation target this row was scored on">site</th>
           <th>cohort</th><th>sel</th><th>cal</th><th>protocol</th><th>k</th>
-          <th>slope</th><th>intercept</th><th>held-out R²</th><th>score</th><th></th>
+          <th>slope</th><th>intercept</th><th>held-out R²</th><th>score-space %</th><th>Q %</th><th>negative %</th><th>score</th><th></th>
         </tr></thead><tbody></tbody></table>
       </div>
-      <div class="muted" style="margin:6px 0 12px">Screening many configurations against the same fixed Addis pairs will overfit the readout — treat leaders as candidates: check the held-out TOR R², and confirm on the locked site-held-out protocol before adopting one. Results live in this page session; Export CSV to keep them.</div>
+      <div class="muted" style="margin:6px 0 12px">Screening many configurations against the same fixed target pairs will overfit the readout. Passing rows must satisfy the held-out, slope, score-distance, Q-residual, and negative-prediction guardrails; legacy rows without Q are not allowed to pass until backfilled. Use the robust multi-site rank and locked confirmation targets before adopting a candidate. MAC 17 is a sensitivity readout, not an optimization dimension.</div>
     </div>
     <div>
-      <div class="plotcap" id="cap_pareto">Intercept vs slope — every evaluated run; the frontier is the tradeoff</div>
+      <div class="plotcap" id="cap_pareto">Intercept vs slope: every evaluated run; the frontier is the tradeoff</div>
       <div id="p_pareto" class="plot tall"></div>
     </div>
+  </div>
+  <div class="section">
+    <div class="sectionhead">Frozen-finalist stability</div>
+    <div class="tablewrap">
+      <table id="stabilitytbl"><thead><tr>
+        <th>candidate</th><th>k</th><th>target-filter wins</th><th>source-site wins</th>
+        <th>source-site slope, median [95%]</th><th>source-site intercept, median [95%]</th>
+      </tr></thead><tbody><tr><td colspan="6" class="muted">Run or load an optimization, then validate the top five passing finalists.</td></tr></tbody></table>
+    </div>
+    <div class="muted" id="stabilitynote" style="margin-top:6px">This is conditional stability after freezing the finalist set and k values. Target-filter resampling is descriptive because the screening target has already guided the search; source-site resampling measures sensitivity to IMPROVE training-site composition. An untouched lot or locked target remains the external test.</div>
   </div>
 </div>
 
 <div style="height:24px"></div>
+</main>
+</div>
 <script src="/static/app.js"></script>
 </body></html>

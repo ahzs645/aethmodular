@@ -31,6 +31,15 @@ def git_commit() -> str:
         return "unknown"
 
 
+def git_dirty() -> bool | None:
+    try:
+        return bool(subprocess.check_output(
+            ["git", "status", "--porcelain"], cwd=REPO, text=True
+        ).strip())
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
 def add_tree(archive: zipfile.ZipFile, path: Path) -> None:
     for source in sorted(path.rglob("*")):
         if not source.is_file():
@@ -43,16 +52,22 @@ def add_tree(archive: zipfile.ZipFile, path: Path) -> None:
 def build_bundle() -> None:
     files = [
         REPO / "calibration_explorer/app.py",
+        REPO / "calibration_explorer/hips_lab.py",
+        REPO / "calibration_explorer/target_registry.json",
         REPO / "calibration_explorer/README.md",
         REPO / "calibration_explorer/ANALOG_CUTOFF_AUDIT_2026-08-18.md",
         REPO / "calibration_explorer/cache/analog_corrected_ranking.npz",
         REPO / "research/ftir_ec_phase3/output/corrected/improve_pool_corrected_df6.npz",
         REPO / "research/ftir_ec_phase3/output/corrected/etad_corrected_df6.npz",
+        REPO / "research/ftir_ec_phase3/output/corrected/improve_pool_neutral_pspline_arpls_lam1e6.npz",
+        REPO / "research/ftir_ec_phase3/output/corrected/etad_neutral_pspline_arpls_lam1e6.npz",
+        REPO / "research/ftir_ec_phase3/output/corrected/neutral_pspline_arpls_lam1e6_manifest.json",
         REPO / "research/ftir_ec_phase3/output/tables/ftir11/lowest_ocec_800_cohort.csv",
         REPO / "research/ftir_hips_chem/Filter Data/unified_filter_dataset.pkl",
     ]
     trees = [
         REPO / "calibration_explorer/static",
+        REPO / "calibration_explorer/targets",
         REPO / "research/ftir_ec_phase3/scripts",
         REPO / "research/ftir_hips_chem/scripts",
         REPO / "research/ftir_hips_chem/output/tables/pls_calibration_phase2",
@@ -65,6 +80,7 @@ def build_bundle() -> None:
     manifest = {
         "built_at_utc": datetime.now(UTC).isoformat(),
         "git_commit": git_commit(),
+        "git_dirty": git_dirty(),
         "drive_root_expected": "/content/drive/MyDrive",
         "analog_cutoff_semantics": (
             "Eligibility-first patch present: cutoff N counts TOR-eligible filters. "
@@ -88,15 +104,15 @@ def build_notebook() -> None:
     }
     notebook["cells"] = [
         nbf.v4.new_markdown_cell(
-            """# Aethmodular Calibration Explorer — Colab launcher
+            """# Aethmodular Calibration Explorer: Colab launcher
 
 ## Goal
 
 Mount Google Drive, unpack the prewarmed calibration-explorer bundle, validate the
 required Drive data, start Flask, and open it through Colab's authenticated port proxy.
 
-The prewarm bundle contains the AIRSpec caches, cohort tables, shared scripts, filter
-dataset, and corrected-analog ranking cache. Disposable per-run CV-fit caches are omitted
+The prewarm bundle contains the AIRSpec and neutral-baseline caches, cohort tables,
+shared scripts, filter dataset, and corrected-analog ranking cache. Disposable per-run CV-fit caches are omitted
 to keep the download compact. The 4.6 GB FTIR source tree is **not duplicated**;
 it is read from your mounted Drive.
 
@@ -153,7 +169,8 @@ import sys
 subprocess.check_call([
     sys.executable, "-m", "pip", "install", "-q",
     "Flask>=3,<4", "numpy>=2,<3", "pandas>=2,<3", "scipy>=1.13",
-    "scikit-learn>=1.5", "matplotlib>=3.8",
+    "scikit-learn>=1.5", "matplotlib>=3.8", "pybaselines>=1.2",
+    "polars>=1", "ikpls>=6.1",
 ])
 print("Runtime installed")"""
         ),
@@ -203,7 +220,7 @@ explorer_thread.start()
 print("Explorer ready on port", PORT)
 print("Startup checks:")
 for check in explorer.STATE["checks"]:
-    print("✓" if check["ok"] else "⚠", check["name"], "—", check["detail"])"""
+    print("✓" if check["ok"] else "⚠", check["name"], "-", check["detail"])"""
         ),
         nbf.v4.new_code_cell(
             """from google.colab import output
@@ -237,8 +254,12 @@ GRID = {
                               # range (eth 100-600, analogs 250-750,
                               # ocec 300-1500); set 0 for the 5-point ladder
     "cutoff_ladder": True,    # used only when cutoff_step is 0
-    "sweep_k": True,          # ~8 k values per configuration
-    "lots": ["all"],
+    "sweep_k": True,          # sparse ladder always includes k=21 and k_max
+    "k_min": 1,
+    "k_max": 30,
+    "dense_k": False,        # True = every integer 1..30 for every config (large)
+    "lots": ["all", "251"],
+    "match_eval_lot": True,  # train lot 251 -> Addis eval lot 251
     "target": "addis",
     "eval_lot": "all",
 }
@@ -258,8 +279,8 @@ if s.get("errors"):
         nbf.v4.new_markdown_cell(
             """### Copy the cache (and batch results) back to Drive
 
-Everything the batch computed — CV-curve caches, per-k fits, and
-`batch_results.jsonl` — zips back to your Drive folder. On your own machine,
+Everything the batch computed: CV-curve caches, per-k fits, and
+`batch_results.jsonl`: zips back to your Drive folder. On your own machine,
 unzip it into `calibration_explorer/cache/` (merging is safe: files are
 content-keyed) and click **Load saved results** in the app's Optimize tab.
 """
