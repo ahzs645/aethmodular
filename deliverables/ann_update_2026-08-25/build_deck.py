@@ -68,7 +68,7 @@ add_slide(
          "Addis intercept survives it, what an exhaustive search says about Addis vs "
          "Delhi, the season-baseline interaction, and finish with the two lab "
          "measurements that would settle the rest. If Satoshi joins late: the "
-         "cross-site results start at slide 5."),
+         "cross-site results start at slide 7."),
     notes=("Deck convention: Deming primary (lambda*=2.96 at MAC 10, scaled by MAC^2), "
            "OLS alongside; Option A = site-grouped 5-fold CV, first major minimum, "
            "site-disjoint 80/20 (the only option with a held-out TOR test); Option B = "
@@ -92,16 +92,50 @@ add_slide(
 # 3 — provenance
 add_slide(
     "Before anything new: the locked numbers reproduce exactly",
-    fig=REPO / "research/ftir_ec_phase3/output/plots/deck/by_protocol/site_held_out/intercept_slope_ladder.png",
-    say=("Same anchor check as always. Lowest-OC/EC under Option A: k=6, OLS 1.585x "
-         "minus 3.221, held-out TOR R-squared 0.911. Plus AIRSpec: k=5, 0.86x minus "
-         "1.615, Deming 0.95x minus 2.09. Both reproduce to the third decimal, so "
-         "everything after this slide is on the same footing as the committed work."),
+    fig=FIG / "f1_ladder.png",
+    say=("Same anchor check as always: the six setups' Addis intercepts under all "
+         "three protocols, Deming lambda-star, fixed 190. Option B reproduces the "
+         "historical slide numbers, and the locked anchors reproduce to the third "
+         "decimal — lowest-OC/EC Option A k=6, OLS 1.585x minus 3.221, held-out "
+         "0.911; plus AIRSpec k=5, 0.86x minus 1.615, Deming 0.95x minus 2.09. "
+         "Two readings to carry forward: protocol choice moves things far less than "
+         "the setup does — the comforting result from last time — and the "
+         "AIRSpec row sits nearest zero under every protocol."),
     notes=("Validated live against the explorer before this deck was built. Standing "
            "caveats carried: analog 'top 500' resolves to 477 after TOR eligibility; "
            "entire-network Option A picks k=15 vs the committed pool run's k=10 "
            "(unexplained — don't quote that cell); Eth-shaped+AIRSpec under B2 (k=21) "
            "is an unstable cell."))
+
+# 3b — grid block, raw, Option A
+add_slide(
+    "Raw spectra fail the same way across every cohort — no selection fixes it",
+    fig=FIG / "f11_grid_raw_A.png",
+    say=("The six-panel view, raw spectra, Option A. Filled points and solid line "
+         "are MAC 10, open and dashed are MAC 6, the black diamond is the shared "
+         "Deming intercept — which is MAC-invariant, so the diamond is the number "
+         "to watch. Every cohort lands a materially negative intercept on raw "
+         "spectra; lowest-OC/EC raw sits at minus 4.34 despite the best held-out "
+         "TOR R-squared. Selection alone does not rescue raw spectra."),
+    notes=("Grid grammar: dotted grey 1:1; stat box = Deming intercept (both MACs), "
+           "Deming slopes @10/@6, OLS intercept, k, held-out TOR R2 (Option A only). "
+           "Per-panel square-ish limits — never shared clipped axes. Fixed 190 "
+           "readout."))
+
+add_slide(
+    "Baseline-corrected, every cohort tightens — and lowest-OC/EC + AIRSpec leads",
+    fig=FIG / "f12_grid_airspec_A.png",
+    say=("Same six panels, baseline-corrected. Every diamond moves toward zero, and "
+         "lowest-OC/EC plus AIRSpec is the standout: Deming minus 2.09, slope 0.95 "
+         "at MAC 10, held-out TOR R-squared 0.90. That pairing — composition "
+         "selection plus baseline correction — is the story the rest of the deck "
+           "keeps confirming: baselining is the lever, and it needs the right cohort "
+         "under it."),
+    notes=("The shape cohorts (Ethiopia-shaped, analogs) improve cosmetically but "
+           "keep weak held-out R2 (0.24 / 0.59) — shape selection does not find "
+           "composition (ftir_33). 'both MACs' on the intercept: the Deming "
+           "intercept is exactly MAC-invariant under lambda scaled with MAC^2 "
+           "(ftir_31)."))
 
 # 4 — mechanism
 add_slide(
@@ -320,6 +354,27 @@ add_slide(
 
 # 17 — backup divider
 add_slide("Backup", say="Backup material from here.", notes="", title_size=40)
+
+# 17b — backup grids, Option B
+add_slide(
+    "Backup — the same grids under Option B reproduce the historical slide numbers",
+    fig=FIG / "f9_grid_raw.png",
+    say=("For reference against the network's own protocol: raw spectra under "
+         "Option B — interleaved ten-fold, fitted on all filters. These reproduce "
+         "the historical deck intercepts."),
+    notes=("Option B has no held-out TOR test (fits on all filters) — its "
+           "leaderboard passes are vacuous; shown for continuity with the "
+           "network's numbers, never for ranking."))
+
+add_slide(
+    "Backup — Option B, baseline-corrected: the AIRSpec conclusion is protocol-robust",
+    fig=FIG / "f10_grid_airspec.png",
+    say=("And baseline-corrected under Option B: lowest-OC/EC plus AIRSpec lands "
+         "within a tenth of the Option A answer — the protocol-robustness result "
+         "Ann called the good news."),
+    notes=("A-vs-B spread on the AIRSpec row is ~0.1 ug/m3 (-1.65 vs -1.62 OLS, "
+           "ftir_21) — the strongest robustness claim in the matrix; contrast "
+           "smoke-906, which swings 2.43x-6.35 to 0.50x-0.99 across protocols."))
 
 # 18 — aeronet diurnal
 add_slide(
