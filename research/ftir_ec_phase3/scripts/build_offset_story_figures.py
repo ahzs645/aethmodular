@@ -30,6 +30,7 @@ sys.path.insert(0, str(REPO / "calibration_explorer"))
 import hips_lab  # noqa: E402
 
 OUT = HERE.parent / "output/plots/offset_story"
+TITLES = True   # deck reuse: set False (and repoint OUT) for title-free copies
 OUT.mkdir(parents=True, exist_ok=True)
 CACHE = OUT / "york_variants_cache.json"
 
@@ -97,7 +98,8 @@ def fig_intercept_ladder(rows):
     ax.set_yticklabels([r["label"] for r in order])
     ax.set_xlabel("York intercept (µg/m³), x = Fabs/10 — zero is the target")
     ax.legend(frameon=False, loc="lower left", fontsize=9)
-    ax.set_title("The Addis offset survives the instrument-calibration check\n"
+    if TITLES:
+        ax.set_title("The Addis offset survives the instrument-calibration check\n"
                  "(per-filter weighted York fits under three HIPS blank lines)",
                  loc="left", fontsize=12)
     fig.tight_layout()
@@ -123,7 +125,8 @@ def fig_slope_ladder(rows):
     ax.set_yticklabels([r["label"] for r in rows])
     ax.set_xlabel("York slope — one is the target")
     ax.legend(frameon=False, loc="upper right", fontsize=9)
-    ax.set_title("Pasadena's slope anomaly dissolves under a quadratic blank line;\n"
+    if TITLES:
+        ax.set_title("Pasadena's slope anomaly dissolves under a quadratic blank line;\n"
                  "Delhi's 1.8x is blank-line-robust", loc="left", fontsize=12)
     fig.tight_layout()
     fig.savefig(OUT / "f2_slope_blankline_ladder.png", dpi=200)
@@ -152,7 +155,8 @@ def fig_blank_geometry():
             fontsize=9, color="#9A6206", va="bottom")
     ax.set_ylabel("T1 (counts)")
     ax.legend(frameon=False, fontsize=9, loc="upper left")
-    ax.set_title("The HIPS scattering correction is a regression through blanks —\n"
+    if TITLES:
+        ax.set_title("The HIPS scattering correction is a regression through blanks —\n"
                  "heavily loaded filters sit beyond its support", loc="left",
                  fontsize=12)
     pm = b[(b.FilterType == "PM2.5")]
@@ -199,7 +203,8 @@ def fig_screening_cloud():
     ax.set_xlim(left=0)
     ax.set_ylim(bottom=0)
     ax.legend(frameon=False, fontsize=9)
-    ax.set_title(f"{len(df):,} scored variants; the honest (site-held-out) screen\n"
+    if TITLES:
+        ax.set_title(f"{len(df):,} scored variants; the honest (site-held-out) screen\n"
                  "selects the dense-sweep basin, confirmed out-of-country",
                  loc="left", fontsize=12)
     fig.tight_layout()
@@ -223,7 +228,8 @@ def fig_aeronet():
     for y, v in zip(ys, sc["H_m"]):
         ax.text(v + 15, y, f"{v:.0f} m", va="center", fontsize=9)
     ax.set_xlabel("column AAOD₆₇₅ / surface Fabs (m)")
-    ax.set_title("Addis reports more surface absorption\nthan its column supports (provisional)",
+    if TITLES:
+        ax.set_title("Addis reports more surface absorption\nthan its column supports (provisional)",
                  loc="left", fontsize=11)
     # partial-residual: 1500-1700 envelope vs AAOD, Addis, | CH + Fabs + month
     sys.path.insert(0, str(HERE))
@@ -260,7 +266,8 @@ def fig_aeronet():
     r = np.corrcoef(rx, ry)[0, 1]
     ax2.set_xlabel("corrected 1500–1700 cm⁻¹ envelope (residualized)")
     ax2.set_ylabel("AAOD₆₇₅ (residualized)")
-    ax2.set_title(f"…and its organic envelope predicts the column beyond\n"
+    if TITLES:
+        ax2.set_title(f"…and its organic envelope predicts the column beyond\n"
                   f"loading, Fabs and season (r = {r:+.2f}, n = {len(j2)})",
                   loc="left", fontsize=10.5)
     fig.tight_layout()

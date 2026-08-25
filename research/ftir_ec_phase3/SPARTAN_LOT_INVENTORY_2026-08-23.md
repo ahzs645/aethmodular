@@ -73,39 +73,39 @@ time-correlated, site-correlated offset. It does not affect the Beijing result
 below (both lots were compared inside one 178-day window), but it is a live lead
 for the Addis intercept and is untested. See `scripts/AQRC_DB_NOTES.md`.
 
-## Tested: is there a lot effect beyond the blank line? (2026-08-23)
+## Tested: is there a lot effect, and does baselining remove it?
 
-Yes — **~4–5 Mm⁻¹ at Beijing**, an order of magnitude larger than the blank-line
-component alone. Method: fit the phase-3 calibration (ocec-450 × AIRSpec,
-site-held-out, k=8), predict the site's filters, then compare lots **within one
-site and within the window when both lots were in use**, so period and season
-are held fixed.
+**Corrected 2026-08-25.** The first version of this section reported a lot effect of
+~4-5 Mm-1 and attributed it to "the phase-3 calibration (ocec-450 x AIRSpec)". The
+selection space was AIRSpec but the **calibration ran on raw spectra** — the API token
+for baseline-corrected spectra is `spectra="airspec"`, and the value passed
+(`"corrected"`, the filename convention) falls through the dispatch to raw silently.
+That is exactly the select-on-corrected / calibrate-on-raw mistake Ann flagged in the
+2026-08-12 1:1. Re-run in both spaces:
 
-**CHTS (Beijing), lot 248 vs 251** — both in use 2022-10-13 → 2023-04-09 (178 d),
-n = 14 vs 34, median predicted EC 1.80 vs 1.42 µg/m³:
+Method: fit the calibration, predict the site's filters, then compare lots **within one
+site and within the window when both lots were in use** (CHTS 2022-10-13 -> 2023-04-09,
+178 days, n = 14 vs 34), bootstrapping the mean residual against a common line.
 
-| statistic | lot 248 − lot 251 | 95% CI |
-|---|---|---|
-| intercept difference | **−5.41 Mm⁻¹** | [−10.73, −0.39] |
-| mean residual vs a common line | **−4.39 Mm⁻¹** | [−7.58, −1.29] |
+| cohort | calibration spectra | lot 248 - lot 251 | 95% CI | |
+|---|---|---|---|---|
+| ocec-450 | raw | **-4.35 Mm-1** | [-7.63, -1.20] | significant |
+| ocec-450 | **AIRSpec** | -1.43 Mm-1 | [-4.01, +0.94] | **n.s.** |
+| ocec-800 | raw | **-4.49 Mm-1** | [-7.01, -1.96] | significant |
+| ocec-800 | **AIRSpec** | -0.86 Mm-1 | [-3.66, +2.02] | **n.s.** |
 
-Both exclude zero. The mean-residual statistic is the more trustworthy of the
-two (it does not depend on estimating a slope per lot from small n). Lot 248
-filters carry *slightly higher* loading than the 251 filters they are compared
-against, which would push their Fabs **up** — so the negative offset is if
-anything conservative.
+**Baseline correction removes the lot difference.** On raw spectra the two lots differ by
+~4.4 Mm-1, significant at both cohort sizes; on AIRSpec-corrected spectra the difference
+falls to -0.9 to -1.4 Mm-1 and spans zero in both.
 
-Caveats: n = 14 vs 34 is small; both lots span the same 178 days but their
-within-window date distributions were not matched further.
+This confirms the mechanism Ann proposed on 2026-08-12: *"I think when you baseline
+correct, that may be what is helping - you're baseline correcting and then that minimizes
+the difference between [lot 248] and [lot 251]."* Baselining is not only removing Teflon
+background in general; it is specifically absorbing **between-lot substrate differences**.
 
-**Implication for lot 253:** a lot effect of several Mm⁻¹ is real and much larger
-than the ~0.6 Mm⁻¹ the blank line explains, so the difference is coming from the
-substrate/spectra, not the blank characterisation. Lot 253 being absent from the
-calibration basis is therefore a genuine risk, not a formality.
-
-**Implication for the Addis offset:** it is *not* a lot artifact. ETBI is 100%
-lot 251 and ETAD is 80% lot 251, so the Addis-vs-Bishoftu contrast is a
-**within-lot-251** comparison.
+**It still does not explain the Addis offset.** ETBI is 100% lot 251 and ETAD is 80% lot
+251, so the Addis-vs-Bishoftu contrast is a **within-lot-251** comparison, and the
+residual lot term after baselining is ~1 Mm-1 against an offset of ~21.5 Mm-1.
 
 ## Not testable with current data: lot 253 at Delhi
 
