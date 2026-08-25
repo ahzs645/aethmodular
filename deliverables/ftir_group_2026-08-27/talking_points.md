@@ -21,9 +21,12 @@ lab measurements that settle the rest: quartz TOR and the extraction test.
 - **20-22 Five sites**: cross-site spectra + 1617 lesson, the exhaustive grid, seasons
 - **23-25 Independent**: Mie/MAC fork, AERONET diurnal, AERONET column
 - **26-31 App section**: Adama, then the Flask app (explorer + Sites screenshots) and its OUTPUTS:
-  per-city leaderboard (every site wants a different cohort size), analog-lab
-  agreement collapse (rho 0.68 raw / 0.07 AIRSpec / -0.25 deriv2, overlap 5-8%),
-  validate-top-5 stability (62.5% / ~1/3 / 0%)
+  per-city leaderboard (every site wants a different cohort size), the
+  cross-application matrix (each city's best applied to the other four:
+  diagonal dark, off-diagonal fails, Addis-best transfers to Bishoftu at
+  0.99x; Delhi's best collapses abroad), analog-lab agreement collapse
+  (rho 0.68 raw / 0.07 AIRSpec / -0.25 deriv2, overlap 5-8%), validate-top-5
+  stability (62.5% / ~1/3 / 0%)
 - **32-33 Close**: the two asks, logistics
 - **34-42 Backup**: B/B2 grids, residual-vs-D2, bootstrap CIs, lot-253 takeover, HIPS-tab screenshot, LOCAL v1
 
@@ -70,6 +73,13 @@ Option-B historical intercepts on the ladder: −5.76 / −10.16 / −6.74 / −
 - AAAR: poster Thu 1–3 pm, session 9; booked. [FILL IN: forward acceptance to Ann]
 - Committee: Sep 2, 3 pm. [FILL IN: confirm invites arrived]
 - Adama two-pager: this week. Satoshi 1:1: ~2 weeks, app-ready.
+
+## Two files
+
+`ftir_group_2026-08-27.pptx` carries full SAY/NOTES speaker notes;
+`ftir_group_2026-08-27_no_notes.pptx` is the stripped twin for projection or
+sharing. Both come from one build_deck.py run. The screening cloud caps its
+axes (58 extreme variants counted on-figure, stated in NOTES).
 
 ## Rebuild
 

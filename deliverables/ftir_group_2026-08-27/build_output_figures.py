@@ -160,3 +160,87 @@ if __name__ == "__main__":
         if im.mode != "RGB":
             im.convert("RGB").save(FIG / f"{n}.png")
     print("flattened RGB")
+
+
+def fig_cross_application(port=None):
+    """Each city's best configuration applied to every other city: does
+    per-site optimization transfer, or make things worse? 5x5 matrix of
+    all-pairs Deming readouts at MAC 10, colored by distance from ideal."""
+    import os
+    port = port or os.environ.get("EXPLORER_PORT", "5058")
+    rows = [json.loads(l) for l in
+            (REPO / "calibration_explorer/cache/batch_results.jsonl").open()]
+    best = {}
+    for r in rows:
+        if (r.get("mode") != "site_heldout" or (r.get("heldout_R2") or 0) < 0.85
+                or not r.get("cutoff")):
+            continue
+        sl = r.get("all_deming_slope") or r.get("deming_slope")
+        ic = r.get("all_deming_intercept") or r.get("deming_intercept")
+        if sl is None or ic is None or not (0.85 <= sl <= 1.18):
+            continue
+        t = r.get("target") or "addis"
+        score = abs(ic) + 0.5 * abs(sl - 1)
+        if t not in best or score < best[t][0]:
+            best[t] = (score, r)
+    order = ["addis", "indh", "chts", "etbi", "uspa"]
+
+    def run(cfg, target):
+        body = {"cohort": cfg["cohort"], "cutoff": cfg["cutoff"],
+                "selection_space": cfg.get("selection_space", "raw"),
+                "spectra": cfg["spectra"], "mode": cfg["mode"],
+                "target": target, "k": int(cfg["k"])}
+        req = urllib.request.Request(f"http://127.0.0.1:{port}/api/run",
+                                     json.dumps(body).encode(),
+                                     {"Content-Type": "application/json"})
+        d = json.load(urllib.request.urlopen(req, timeout=900))
+        m = ([x for x in d["metrics"]
+              if x["MAC"] == 10 and x["evaluation_set"] == "all"]
+             or [x for x in d["metrics"] if x["MAC"] == 10])[0]
+        return (m["deming_slope"], m["deming_intercept"],
+                d["target"].get("extrap_pct"))
+
+    S = np.full((5, 5), np.nan)
+    txt = [["" for _ in order] for _ in order]
+    warn = np.zeros((5, 5), bool)
+    for i, home in enumerate(order):
+        cfg = best[home][1]
+        for j, tgt in enumerate(order):
+            sl, ic, ex = run(cfg, tgt)
+            S[i, j] = abs(ic) + 0.5 * abs(sl - 1)
+            txt[i][j] = f"{sl:.2f}x{ic:+.2f}"
+            warn[i, j] = (ex or 0) > 30
+    fig, ax = plt.subplots(figsize=(9.8, 4.9))
+    im = ax.imshow(np.clip(S, 0, 4), cmap="Blues_r", vmin=0, vmax=4,
+                   aspect="auto")
+    for i in range(5):
+        for j in range(5):
+            dark = np.clip(S[i, j], 0, 4) < 1.4
+            label = txt[i][j] + (" !" if warn[i, j] else "")
+            ax.text(j, i, label, ha="center", va="center", fontsize=10,
+                    color="white" if dark else INK,
+                    fontweight="bold" if i == j else "normal")
+    ax.set_xticks(range(5))
+    ax.set_xticklabels([f"evaluated at\n{SITE_LABEL[t]}" for t in order],
+                       fontsize=9.5)
+    ax.set_yticks(range(5))
+    cfg_lab = []
+    for t in order:
+        c = best[t][1]
+        fam = {"ocec": "OC/EC", "analogs": "analogs"}.get(c["cohort"], c["cohort"])
+        cfg_lab.append(f"best of {SITE_LABEL[t]}\n({fam}-{c['cutoff']:.0f}, k={c['k']:.0f})")
+    ax.set_yticklabels(cfg_lab, fontsize=9.5)
+    ax.grid(False)
+    cb = fig.colorbar(im, ax=ax, shrink=0.85)
+    cb.set_label("|intercept| + 0.5\u00b7|slope \u2212 1|  (dark = good)", fontsize=9)
+    fig.tight_layout()
+    fig.savefig(FIG / "f_out_cross_application.png")
+    plt.close(fig)
+    from PIL import Image
+    p = FIG / "f_out_cross_application.png"
+    im2 = Image.open(p)
+    if im2.mode != "RGB":
+        im2.convert("RGB").save(p)
+    print("cross-application matrix done")
+    for i, t in enumerate(order):
+        print(" ", SITE_LABEL[t], "->", " | ".join(txt[i]))

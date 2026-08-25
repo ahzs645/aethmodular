@@ -365,7 +365,10 @@ slide(
          "configuration lands near one-to-one at both Addis and Delhi, it still "
          "carries material offsets, and it fails freshly reconstructed holdout "
          "filters. The Addis-Delhi difference is not a calibration choice."),
-    notes=("71,263 scored rows, dedup-keyed, resumable. Grid-scale scoring "
+    notes=("Axes are capped at |slope-1| <= 3.2 and |intercept| <= 14; the 58 "
+           "extreme variants beyond them (all far from 1:1) are counted on the "
+           "figure, never silently dropped. 71,263 scored rows, dedup-keyed, "
+           "resumable. Grid-scale scoring "
            "lesson: |intercept|+w|slope-1| is gamed by flat slopes (0.44x with "
            "~0 intercept 'wins'); rankings are slope-boxed 0.85-1.18. Delhi's "
            "screening 'winner' (analogs-530 x deriv2) was 96% extrapolated and "
@@ -505,6 +508,27 @@ slide(
            "are candidates, not conclusions (winner's-curse discipline as "
            "on the stability slide). Winner readouts per city in "
            "FIVE_SITE_GRID_2026-08-23.md with the corrected-audit table."))
+
+slide(
+    "Cross-applied, every 'best' fails abroad; only the Ethiopian pair transfers",
+    fig=F("f_out_cross_application.png"),
+    say=("The natural follow-up: take each city's best and apply it to the "
+         "other four. Rows are calibrations, columns are cities, dark is "
+         "good, bold is the home fit, and an exclamation mark means over 30 "
+         "percent of that city's filters are extrapolations for that model. "
+         "Three readings. The diagonal is dark: each best works at home. The "
+         "off-diagonal mostly is not: Delhi's best collapses everywhere else, "
+         "and Pasadena's tiny 120-filter cohort is unusable abroad. And the "
+         "one genuine transfer: Addis's best lands 0.99x at Bishoftu; the "
+         "two Ethiopian sites cohere, which is exactly what you would want "
+         "a regional calibration to do."),
+    notes=("Numbers pulled live from /api/run per (config, city): all-pairs "
+           "Deming at MAC 10, score = |intercept| + 0.5|slope-1| clipped at "
+           "4 for color. Delhi's row inherits its 96%-extrapolated screening "
+           "artifact (every cell flagged); Beijing's 1850-filter best is the "
+           "most tolerable row abroad but still misses Delhi (1.56x-2.20). "
+           "Reinforces both the no-universal-calibration grid result and "
+           "the Addis-Bishoftu regional coherence from ETBI_FIRST_LOOK."))
 
 slide(
     "The analog lab's verdict: the committed analog ranking is baseline-dominated",
@@ -660,3 +684,10 @@ slide(
 
 prs.save(HERE / "ftir_group_2026-08-27.pptx")
 print(f"saved ftir_group_2026-08-27.pptx with {len(prs.slides._sldIdLst)} slides")
+
+# notes-free twin for sharing/projection
+for s_ in prs.slides:
+    if s_.has_notes_slide:
+        s_.notes_slide.notes_text_frame.text = ""
+prs.save(HERE / "ftir_group_2026-08-27_no_notes.pptx")
+print("saved ftir_group_2026-08-27_no_notes.pptx (notes stripped)")

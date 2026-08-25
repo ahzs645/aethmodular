@@ -187,10 +187,23 @@ def fig_screening_cloud():
     ic = df["all_deming_intercept"].fillna(df["deming_intercept"]).astype(float)
     passing = df["heldout_R2"] >= 0.85
     fig, ax = plt.subplots(figsize=(7.2, 5.2))
-    ax.scatter(abs(sl[~passing] - 1), abs(ic[~passing]), s=7, color="#D8D5CF",
+    # cap the axes at the bulk of the cloud; count what falls outside so the
+    # trim is stated, never silent
+    XMAX, YMAX = 3.2, 14.0
+    ds, di = abs(sl - 1), abs(ic)
+    shown = (ds <= XMAX) & (di <= YMAX)
+    n_out = int((~shown).sum())
+    m0 = (~passing) & shown
+    m1 = passing & shown
+    ax.scatter(ds[m0], di[m0], s=7, color="#D8D5CF",
                label=f"below the held-out floor (n={int((~passing).sum())})")
-    ax.scatter(abs(sl[passing] - 1), abs(ic[passing]), s=9, color="#2C6E9E",
+    ax.scatter(ds[m1], di[m1], s=9, color="#2C6E9E",
                alpha=0.45, label=f"held-out R² ≥ 0.85 (n={int(passing.sum())})")
+    ax.set_xlim(0, XMAX)
+    ax.set_ylim(0, YMAX)
+    ax.text(0.99, 0.02, f"{n_out} extreme variants beyond the axes (all far from 1:1)",
+            transform=ax.transAxes, ha="right", va="bottom", fontsize=8.5,
+            color="#6E7178")
     w = df[(df.cohort == "ocec") & (df.cutoff == 450) &
            (df.spectra == "airspec") & (df.k == 9)]
     if len(w):
@@ -200,8 +213,6 @@ def fig_screening_cloud():
                    label="winner: lowest-OC/EC 450 × AIRSpec, k=9")
     ax.set_xlabel("|Deming slope − 1|  (Addis, MAC 10, all pairs)")
     ax.set_ylabel("|Deming intercept| (µg/m³)")
-    ax.set_xlim(left=0)
-    ax.set_ylim(bottom=0)
     ax.legend(frameon=False, fontsize=9)
     if TITLES:
         ax.set_title(f"{len(df):,} scored variants; the honest (site-held-out) screen\n"
