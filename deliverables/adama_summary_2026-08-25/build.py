@@ -238,17 +238,30 @@ slide(
     "What Adama can contribute: quartz filters, not more Teflon",
     lines=["More Adama Teflon will characterize a different aerosol, not arbitrate the Addis question:",
            "   normal OC/EC, soot-dominated EC, no visible FTIR-vs-TOR gap, no regional HIPS offset",
-           "The binding constraint on the Addis question is an independent EC measurement",
-           "   at Addis itself: the quartz TOR campaign (about 36 filters across 3 seasons)",
-           "If Adama sampling continues anyway: co-located quartz alongside the Teflon would make",
-           "   every future pair a TOR anchor, which is the one thing this region can add"],
+           "The binding constraint is an independent EC measurement at Addis itself:",
+           "   the quartz TOR campaign (about 36 filters across 3 seasons)",
+           "If Adama sampling continues: co-located quartz would make every future pair a TOR anchor",
+           "Bishoftu is the region's other live stream and it keeps collecting: 63 filters through",
+           "   May 2026; 26 evaluated so far (one dry season, no offset). Two cheap asks: run HIPS",
+           "   on the 22 already-scanned filters (14 are a second dry season, Jan to Feb 2026),",
+           "   and scan the Belg-season batch; each lands in the evaluation with one command"],
     say=("The message for Christian and Sina in one line: the five filters we "
          "have already show Adama is a different problem from Addis, so more "
          "Adama Teflon will not help the Addis question. What would help, from "
          "anywhere in the region, is quartz: TOR EC is the measurement all "
-         "three of our open forks terminate at. If sampling continues at Adama, "
-         "pairing every Teflon with a quartz punch turns it into exactly that."),
-    notes=("Caveats to volunteer: n=5, one month (July 2024, wet season), so a "
+         "three of our open forks terminate at. And Bishoftu, which is still "
+         "collecting, is the ongoing regional control: its no-offset result "
+         "rests on one dry season, and two cheap lab steps, HIPS on the "
+         "twenty-two filters already scanned and scans for the Belg batch, "
+         "would turn it into a two-dry-season, multi-season series."),
+    notes=("Bishoftu census from the 2026-08-22 DB export plus the HIPS batch "
+           "file: 63 PM2.5 filters dated 2025-10-20 to 2026-05-19, 48 scanned, "
+           "26 with Fabs (all lot 251, dry season). Of the 22 scanned-awaiting-"
+           "HIPS, the 14 dated ones are 2026-01-17 to 2026-02-19 (second dry "
+           "season); 8 lack dates in the export. The Belg filters are collected "
+           "but not yet FTIR-scanned; correct the earlier note that Belg "
+           "filters were among the scanned backlog. "
+           "Caveats to volunteer: n=5, one month (July 2024, wet season), so a "
            "dry-season Adama surprise is not excluded; the FTIR-vs-TOR "
            "agreement is production-calibration specific. The quartz-TOR "
            "campaign one-pager (ftir_ec_phase3/quartz_tor_campaign_onepager.md) "
