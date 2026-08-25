@@ -127,6 +127,122 @@ fig.tight_layout()
 fig.savefig(FIG / "f_adama_addis_crossplots.png")
 plt.close(fig)
 
+# ---------------------------------------------------------------- figure 4
+# where the Ethiopian sites fall within the IMPROVE network: per-site medians
+# of OC/EC, OC/fAbs, and fAbs/PM2.5 (the June presentation's fig08 pair,
+# extended with the one axis Bishoftu can join today)
+from pls_transfer import FTIRTransferPaths
+LDB = Path(FTIRTransferPaths.defaults().ftir_dir) / "local_db/tables"
+
+
+def improve_daily(fname, params):
+    d = pd.read_csv(LDB / fname, usecols=["Site", "SampleDate", "Parameter", "Value"])
+    d = d[d.Parameter.isin(params)]
+    return (d.groupby(["Site", "SampleDate", "Parameter"]).Value.median()
+            .unstack("Parameter"))
+
+
+tor = improve_daily("results_tor.csv", ["OC", "EC"])          # ng/m3
+hip = improve_daily("results_hips.csv", ["fAbs"])             # Mm-1
+grv = improve_daily("results_grav.csv", ["PM2.5"])            # ng/m3
+imp = tor.join(hip, how="outer").join(grv, how="outer")
+imp["oc_ec"] = imp.OC / imp.EC
+imp["oc_fabs"] = (imp.OC / 1000.0) / imp.fAbs                  # ug/m3 per Mm-1
+imp["fabs_pm"] = imp.fAbs / (imp["PM2.5"] / 1000.0)            # Mm-1 per ug/m3
+site_meds = {}
+for col in ("oc_ec", "oc_fabs", "fabs_pm"):
+    g = imp[col].replace([np.inf, -np.inf], np.nan).dropna()
+    g = g[(g > 0)]
+    counts = g.groupby(level=0).size()
+    keep = counts[counts >= 100].index
+    site_meds[col] = g.groupby(level=0).median().loc[keep]
+
+import pickle
+with open(REPO / "research/ftir_hips_chem/Filter Data/unified_filter_dataset.pkl", "rb") as f:
+    pkl = pickle.load(f)
+
+
+def pkl_param(code, param):
+    d = pkl[(pkl.Site == code) & (pkl.Parameter == param)].copy()
+    d = d.dropna(subset=["Concentration"])
+    # ChemSpec rows carry BASE FilterIds (ETAD-0001) while HIPS/FTIR carry
+    # suffixed ones (ETAD-0001-1) -- normalize to base so cross-source joins work
+    d["fid"] = d["FilterId"].astype(str).str.replace(r"-(\d)$", "", regex=True)
+    d = d.drop_duplicates("fid")
+    ser = d.set_index("fid")["Concentration"].astype(float)
+    return ser[ser > 0]
+
+
+SP = {"ETAD": "Addis", "INDH": "Delhi", "CHTS": "Beijing", "USPA": "Pasadena"}
+sp_rows = {}
+for code, lab in SP.items():
+    oc, ec = pkl_param(code, "OC_ftir"), pkl_param(code, "EC_ftir")
+    fab, pm = pkl_param(code, "HIPS_Fabs"), pkl_param(code, "ChemSpec_Filter_PM2.5_mass")
+    if len(pm) and pm.median() > 1000:                        # ng/m3 trap
+        pm = pm / 1000.0
+    j1 = pd.concat([oc, ec], axis=1, keys=["oc", "ec"]).dropna()
+    j2 = pd.concat([oc, fab], axis=1, keys=["oc", "fab"]).dropna()
+    j3 = pd.concat([fab, pm], axis=1, keys=["fab", "pm"]).dropna()
+    sp_rows[lab] = {
+        "oc_ec": float((j1.oc / j1.ec).median()) if len(j1) else None,
+        "oc_fabs": float((j2.oc / j2.fab).median()) if len(j2) else None,
+        "fabs_pm": float((j3.fab / j3.pm).median()) if len(j3) else None,
+        "n": (len(j1), len(j2), len(j3))}
+
+# Bishoftu: Fabs (batch) + mass concentration from the DB export
+eb = pd.read_csv(
+    Path(FTIRTransferPaths.defaults().spartan_hips_primary), encoding="cp1252",
+    usecols=["Site", "FilterId", "FilterType", "Fabs"])
+eb = eb[(eb.Site == "ETBI") & (eb.FilterType == "PM2.5")].dropna(subset=["Fabs"])
+ef = pd.read_csv(Path.home() / "Downloads/etbi_site/etbi_filters.csv",
+                 encoding="utf-8-sig")
+ef.columns = [c.strip('\ufeff"') for c in ef.columns]
+ef["mass_conc"] = (ef.MassCollectedOnFilter.astype(float)
+                   / ef.SampleVolume_m3.astype(float))
+if ef["mass_conc"].median() > 1000:                            # ug vs ng guard
+    ef["mass_conc"] = ef["mass_conc"] / 1000.0
+ej = eb.merge(ef[["ExternalFilterId", "mass_conc"]],
+              left_on="FilterId", right_on="ExternalFilterId").dropna()
+ej = ej[ej.mass_conc > 0]
+etbi_fabs_pm = float((ej.Fabs / ej.mass_conc).median())
+sp_rows["Bishoftu"] = {"oc_ec": None, "oc_fabs": None,
+                       "fabs_pm": etbi_fabs_pm, "n": (0, 0, len(ej))}
+
+SITE_COL = {"Addis": "#F39C12", "Delhi": "#3498DB", "Beijing": "#E74C3C",
+            "Bishoftu": "#7A4FA3", "Pasadena": "#2ECC71"}
+PANELS = [("oc_ec", "TOR OC / EC (IMPROVE), FTIR OC / EC (SPARTAN)", False),
+          ("oc_fabs", "OC / fAbs (ug/m3 per 1/Mm)", False),
+          ("fabs_pm", "fAbs / PM2.5 mass (1/Mm per ug/m3)", False)]
+fig, axes = plt.subplots(1, 3, figsize=(12.4, 4.6))
+for ax, (col, xlab, logx) in zip(axes, PANELS):
+    vals = site_meds[col].sort_values()
+    ranks = np.linspace(0, 100, len(vals))
+    ax.scatter(vals, ranks, s=10, color="#C9C6BF",
+               label=f"IMPROVE sites (n={len(vals)})")
+    for lab, r in sp_rows.items():
+        v = r[col]
+        if v is None:
+            continue
+        pct = float((vals < v).mean() * 100)
+        dy = {"Addis": 8, "Delhi": -12, "Beijing": 6, "Pasadena": -3,
+              "Bishoftu": -3}[lab]
+        ax.scatter([v], [pct], s=90, color=SITE_COL[lab], zorder=5,
+                   edgecolor="white", linewidth=1.2)
+        ax.annotate(lab, (v, pct), textcoords="offset points", xytext=(8, dy),
+                    fontsize=9, color=SITE_COL[lab], fontweight="bold")
+    hi = [r[col] for r in sp_rows.values() if r[col] is not None]
+    ax.set_xlim(left=0, right=max(list(vals) + hi) * 1.32)
+    ax.set_xlabel(xlab, fontsize=9.5)
+    ax.set_ylabel("percentile among IMPROVE sites" if col == "oc_ec" else "")
+    ax.set_ylim(-4, 104)
+axes[0].legend(frameon=False, fontsize=8, loc="upper left")
+axes[1].text(0.97, 0.06, "Bishoftu: no OC yet\n(deployed OC awaits a DB pull)",
+             transform=axes[1].transAxes, fontsize=8, color="#6E7178",
+             ha="right")
+fig.tight_layout()
+fig.savefig(FIG / "f_sites_context_ratios.png")
+plt.close(fig)
+
 # context figure reused from the group deck staging
 import shutil
 shutil.copy(REPO / "deliverables/ftir_group_2026-08-27/figures/f_adama_context.png",
@@ -191,6 +307,34 @@ slide(
            "inverse megameters; transfer readout 0.93x minus 0.56 with the "
            "winner calibration. No HIPS exists for Adama PTFE itself; Bishoftu "
            "is the regional HIPS anchor."))
+
+slide(
+    "Both Ethiopian sites are absorption-rich beyond all of IMPROVE, yet only Addis has the offset",
+    fig=FIG / "f_sites_context_ratios.png",
+    say=("Where the Ethiopian sites fall inside the IMPROVE network, per-site "
+         "medians shown as percentiles. Left, OC to EC: Addis sits at the very "
+         "bottom of the distribution, the suspect low-OC/EC signature, with "
+         "Delhi for company. Middle, OC per unit absorption: Addis is again "
+         "the extreme low end, absorption-rich relative to its organics. "
+         "Right, the panel Bishoftu can join today, absorption per PM mass: "
+         "Beijing and Pasadena sit at the IMPROVE ninetieth percentile, Delhi "
+         "at the edge, and BOTH Ethiopian sites are beyond every IMPROVE site, "
+         "Bishoftu at 1.6 and Addis at 2.2. The kicker: Bishoftu is nearly as "
+         "absorption-rich per mass as Addis and shows no offset. Dark aerosol "
+         "alone does not produce the discrepancy; whatever does is specific to "
+         "Addis."),
+    notes=("IMPROVE medians from local_db per site-day (TOR OC/EC in ng/m3 "
+           "converted, fAbs Mm-1, grav PM2.5), sites with 100+ days only. "
+           "SPARTAN points use the deployed FTIR OC/EC products and HIPS Fabs "
+           "from the unified dataset; method mix (TOR vs FTIR OC) is labeled "
+           "on the axis and is the standing caveat for panel one. Bishoftu "
+           "appears only in the mass panel: it has Fabs and gravimetric mass "
+           "but no OC yet; deployed OC/EC for ETBI awaits an analysis.Results "
+           "pull on the VPN machine. Addis OC/EC and OC/fAbs being lowest is "
+           "the June fig08 pair result, now reproduced with Bishoftu placed. "
+           "Circularity note: SPARTAN OC/EC here are FTIR products, so the "
+           "Addis OC/EC position partly reflects the calibration question "
+           "itself; the mass panel is calibration-free."))
 
 slide(
     "Side by side: the Addis crossplot is a systematic line; the Adama one scatters around 1:1",
