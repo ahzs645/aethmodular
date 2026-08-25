@@ -488,6 +488,60 @@ slide(
            "#tab=hips&run=1 reproduce these views headlessly."))
 
 slide(
+    "The leaderboard by city: every site optimizes to a different cohort size",
+    fig=F("f_out_leaderboard_by_site.png"),
+    say=("First app output worth a slide on its own. Ask the 71,000-row grid "
+         "for each city's best configuration, slope-constrained and held-out "
+         "gated, and no two cities agree: Pasadena wants 120 filters, Addis "
+         "440, Bishoftu a thousand, Beijing eighteen hundred and fifty. "
+         "Cohort choice is doing per-site work that one global calibration "
+         "cannot do; and Delhi's apparent optimum is the cautionary tale, "
+         "96 percent extrapolated and dead on holdout. This is the "
+         "quantitative version of 'one calibration will not serve the "
+         "network'."),
+    notes=("Slope box 0.85-1.18 (the flat-slope scoring trap otherwise "
+           "'wins' at 0.44x), Option A, held-out TOR R2 >= 0.85, score = "
+           "|intercept| + 0.5|slope-1|. Screening numbers; per-site winners "
+           "are candidates, not conclusions (winner's-curse discipline as "
+           "on the stability slide). Winner readouts per city in "
+           "FIVE_SITE_GRID_2026-08-23.md with the corrected-audit table."))
+
+slide(
+    "The analog lab's verdict: the committed analog ranking is baseline-dominated",
+    fig=F("f_out_analog_agreement.png"),
+    say=("Second output: the Analogs tab compares our committed analog score "
+         "against plain textbook similarity metrics, in three spectral "
+         "spaces, live. On raw spectra they agree, rho about 0.7. Correct "
+         "the baseline and the agreement collapses to zero; on second "
+         "derivatives it goes negative. And the top-500 overlap is five to "
+         "eight percent everywhere. Translation: what the committed score "
+         "was ranking is mostly the baseline, not the chemistry; that is "
+         "the same lesson as the four-of-477 slide, now measured across "
+         "every metric the literature uses."),
+    notes=("Numbers pulled live from /api/analog_lab: rho(committed, cosine) "
+           "= 0.68 raw / 0.07 AIRSpec / -0.25 deriv2; top-500 overlap "
+           "4.8-8.2%. Metrics: cosine/SAM, Pearson-to-median (LOCAL's "
+           "metric), Mahalanobis PCA-10 (Reggente 2016). Motivated the "
+           "corrected-selection fix and, later, the per-filter LOCAL work."))
+
+slide(
+    "Validate-top-5: the winner takes 62.5% of re-selection draws, not all of them",
+    fig=F("f_out_winner_stability.png"),
+    say=("Third output, and the honesty slide: the validation layer re-runs "
+         "the whole selection under bootstrap resampling of the target "
+         "filters and under re-draws of the IMPROVE source sites. The "
+         "frozen winner takes about 63 percent of draws both ways; the "
+         "corrected-selection analog family takes a third. So OCEC-440 is "
+         "the leading frozen candidate, not a definitive universal "
+         "calibration, and we say so with a number."),
+    notes=("From VALIDATION_LAYER_2026-08-24.md: target-filter wins "
+           "62.5/37.5/0%; source-site wins 63.0/31.5/5.5%. Source-site "
+           "slope interval for the winner stays wide: 1.03 [0.65, 1.50]. "
+           "Frozen protocol for the lot-253 independent validation: "
+           "OCEC-440 x AIRSpec, Option A, k=5; lot 255 sealed for "
+           "replication."))
+
+slide(
     "Three lines of evidence end at the same two measurements",
     lines=["Quartz TOR EC on collocated Addis filters: the only measurement that is a",
            "   function of neither axis; breaks the offset-vs-curvature degeneracy",

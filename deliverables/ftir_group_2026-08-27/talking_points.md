@@ -20,8 +20,12 @@ lab measurements that settle the rest: quartz TOR and the extraction test.
 - **15-19 The instrument**: blank-line mechanism, intercept survives, slopes resolve, lot census, lot effect (Ann's hypothesis confirmed)
 - **20-22 Five sites**: cross-site spectra + 1617 lesson, the exhaustive grid, seasons
 - **23-25 Independent**: Mie/MAC fork, AERONET diurnal, AERONET column
-- **26-30 Close**: Adama, the Flask app (2 screenshot slides: explorer + Sites tab), the two asks, logistics
-- **31-39 Backup**: B/B2 grids, residual-vs-D2, bootstrap CIs, lot-253 takeover, HIPS-tab screenshot, LOCAL v1
+- **26-31 App section**: Adama, then the Flask app (explorer + Sites screenshots) and its OUTPUTS:
+  per-city leaderboard (every site wants a different cohort size), analog-lab
+  agreement collapse (rho 0.68 raw / 0.07 AIRSpec / -0.25 deriv2, overlap 5-8%),
+  validate-top-5 stability (62.5% / ~1/3 / 0%)
+- **32-33 Close**: the two asks, logistics
+- **34-42 Backup**: B/B2 grids, residual-vs-D2, bootstrap CIs, lot-253 takeover, HIPS-tab screenshot, LOCAL v1
 
 App demo notes: the screenshots show the raw-800 demo default, not the winner
 (say so if asked); deep-links #tab=sites&run=1 / #tab=hips&run=1 reproduce
