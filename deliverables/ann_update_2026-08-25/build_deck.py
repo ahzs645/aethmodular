@@ -255,7 +255,46 @@ add_slide(
            "runner-up family. Source-site slope interval remains wide: 1.03 "
            "[0.65, 1.50]."))
 
-# 11 — seasons
+# 10b — framing stability + York (added 2026-08-25)
+add_slide(
+    "The intercept is MAC-invariant \u2014 every Deming framing lands on the independent York fit",
+    fig=FIG / "f_framing_stability_deming.png",
+    say=("The stability check behind that basin. Four Deming framings \u2014 fixed 190 "
+         "or all pairs, evaluated on all lots or lot 251 only \u2014 and all four select "
+         "the same configuration, ocec-440 by AIRSpec at k=8, held-out TOR "
+         "R-squared 0.92, intercepts minus 1.19 to minus 1.55. The purple band is "
+         "the York errors-in-variables re-fit \u2014 a different estimator, per-filter "
+         "HIPS uncertainties, on essentially the same configuration, ocec-450 by "
+         "AIRSpec at k=9 \u2014 and it lands in the same place, minus 1.27 to minus 1.51. "
+         "Now the important part about MAC. The intercept is exactly MAC-invariant: "
+         "we verified it across all 21,955 rows, identical to machine zero. So MAC "
+         "does not move the intercept at all. What MAC changes is which "
+         "configurations survive the slope filter \u2014 at MAC 6 the raw and "
+         "second-derivative models rescale into the slope window and take over, and "
+         "those configurations happen to carry intercepts around minus 2.6. The MAC "
+         "fork is real, but it is a selection effect, not an arithmetic one."),
+    notes=("Deming only, at the user's request \u2014 the OLS rows tell a different story "
+           "and are deliberately excluded. MAC-INVARIANCE: verified empirically \u2014 "
+           "ols/deming intercept vs their _mac6 twins are identical for 100% of "
+           "21,955 Addis rows, max |diff| 0.00e+00. This is ftir_25's algebra "
+           "(C = |intercept|*MAC/slope is MAC-invariant) showing up in the grid. "
+           "Consequence: the York band, fit at x = Fabs/10, applies to BOTH branches; "
+           "refit at MAC 6 the same configuration would give the identical intercept "
+           "and a slope of about 0.55. Two claims that hold ONLY for Deming: "
+           "(a) 'rank 1 under every MAC-10 framing' \u2014 under OLS the winner moves to "
+           "ocec-210 or ocec-840 x deriv2 with SMALLER intercepts, -0.26 to -1.08, "
+           "which is why the previous slide's honest number is 62.5% of bootstraps; "
+           "(b) 'MAC 6 is twice as bad' \u2014 MAC-6 OLS all-pairs gives -0.95, better "
+           "than MAC-10 Deming's -1.19. CRITICAL METHOD NOTE: the ranking is "
+           "meaningless without a held-out gate \u2014 on |intercept| + 0.5|slope-1| with "
+           "only the slope box, the top config is ocec-300 x deriv2 at intercept "
+           "+0.20 with held-out TOR R2 = 0.14. This figure gates at >= 0.90. York "
+           "band = span of the three blank-line variants (deployed -1.51+-0.19, "
+           "lot-linear -1.29+-0.19, lot-quadratic -1.27+-0.17); sigma_y inflated per "
+           "site until MSWD = 1. The adjudication doc's headline -1.38+-0.18 sits "
+           "mid-band."))
+
+# 11 \u2014 seasons
 add_slide(
     "Baselining relocates seasonality: the dry season becomes the anomaly",
     fig=FIG / "f_season_panels.png",
@@ -275,7 +314,7 @@ add_slide(
 # 12 — band lesson
 add_slide(
     "Three baselines gave three answers about the 1617 band — a methods rule, not a mechanism",
-    fig=REPO / "research/ftir_ec_phase3/output/plots/cross_site_spectra_2026-08-23.png",
+    fig=FIG / "f_1617_three_baselines.png",
     say=("A cautionary result we're glad we caught ourselves. The 1617 band looked "
          "like it tracked the offset across five sites; on corrected spectra the "
          "match was Delhi's carbonyl flank; under a neutral baseline the band shows "
@@ -283,7 +322,17 @@ add_slide(
          "offset, because Bishoftu has the band and no offset. The mechanism: "
          "APRLssb anchors its spline at 1520 to 1600 — directly under the band. "
          "House rule going forward: any claim in 1500-1650 needs two baselines."),
-    notes=("Full arc with both retractions preserved in BAND1617_LEAD_2026-08-23.md. "
+    notes=("Figure shows the three baselines side by side; markers are the strongest "
+           "local maximum in 1560-1680 cm-1, outlined for the Ethiopian sites. The "
+           "discriminator is peak POSITION, not height \u2014 an amplitude metric puts "
+           "Pasadena highest (0.59) and Bishoftu LOWEST (0.09), the exact opposite "
+           "of the finding. Neutral-baseline positions: Addis 1617 (prominence "
+           "0.106), Bishoftu 1621 (0.033), Delhi 1625 (0.018), Beijing 1635 (0.014), "
+           "Pasadena 1635 (0.270, the water assignment). Two details in earlier "
+           "prose do NOT reproduce: Bishoftu is not stronger than Addis (Addis is 3x "
+           "more prominent), and Delhi/Beijing do not peak at 1679. Neither changes "
+           "the conclusion, which rests on Bishoftu having the band and no offset. "
+           "Full arc with both retractions preserved in BAND1617_LEAD_2026-08-23.md. "
            "This is presentable credibility: tested, corrected in-place, rule "
            "extracted. The composition evidence for the offset now rests on the "
            "envelope-AERONET link and BC/PM2.5=23% (3x any other site), not the band."))
