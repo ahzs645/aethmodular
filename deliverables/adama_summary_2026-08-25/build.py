@@ -208,39 +208,66 @@ etbi_fabs_pm = float((ej.Fabs / ej.mass_conc).median())
 sp_rows["Bishoftu"] = {"oc_ec": None, "oc_fabs": None,
                        "fabs_pm": etbi_fabs_pm, "n": (0, 0, len(ej))}
 
+# Adama joins the OC/EC axis on the same TOR basis as IMPROVE
+sp_rows["Adama"] = {"oc_ec": float(cmp_["OC_EC"].median()),
+                    "oc_fabs": None, "fabs_pm": None, "n": (5, 0, 0)}
 SITE_COL = {"Addis": "#F39C12", "Delhi": "#3498DB", "Beijing": "#E74C3C",
-            "Bishoftu": "#7A4FA3", "Pasadena": "#2ECC71"}
-PANELS = [("oc_ec", "TOR OC / EC (IMPROVE), FTIR OC / EC (SPARTAN)", False),
-          ("oc_fabs", "OC / fAbs (ug/m3 per 1/Mm)", False),
-          ("fabs_pm", "fAbs / PM2.5 mass (1/Mm per ug/m3)", False)]
-fig, axes = plt.subplots(1, 3, figsize=(12.4, 4.6))
-for ax, (col, xlab, logx) in zip(axes, PANELS):
-    vals = site_meds[col].sort_values()
-    ranks = np.linspace(0, 100, len(vals))
-    ax.scatter(vals, ranks, s=10, color="#C9C6BF",
-               label=f"IMPROVE sites (n={len(vals)})")
-    for lab, r in sp_rows.items():
-        v = r[col]
-        if v is None:
-            continue
-        pct = float((vals < v).mean() * 100)
-        dy = {"Addis": 8, "Delhi": -12, "Beijing": 6, "Pasadena": -3,
-              "Bishoftu": -3}[lab]
-        ax.scatter([v], [pct], s=90, color=SITE_COL[lab], zorder=5,
-                   edgecolor="white", linewidth=1.2)
-        ax.annotate(lab, (v, pct), textcoords="offset points", xytext=(8, dy),
-                    fontsize=9, color=SITE_COL[lab], fontweight="bold")
+            "Bishoftu": "#7A4FA3", "Pasadena": "#2ECC71", "Adama": "#C49442"}
+RATIO_PANELS = [
+    ("oc_ec", "f_ratio_oc_ec.png", "OC / EC",
+     "TOR basis for IMPROVE and Adama; FTIR products for the SPARTAN cities",
+     "no OC yet: Bishoftu"),
+    ("oc_fabs", "f_ratio_oc_fabs.png", "OC / fAbs  (ug/m3 per 1/Mm)",
+     "lower = more absorption per unit organic carbon",
+     "not measurable yet: Bishoftu (no OC), Adama (no HIPS)"),
+    ("fabs_pm", "f_ratio_fabs_pm.png", "fAbs / PM2.5 mass  (1/Mm per ug/m3)",
+     "higher = darker aerosol per unit mass; calibration-free",
+     "not measurable: Adama (no HIPS on quartz)"),
+]
+rng = np.random.default_rng(7)
+for col, fname, name, sub, missing in RATIO_PANELS:
+    vals = site_meds[col]
+    fig, ax = plt.subplots(figsize=(11.8, 3.4))
+    jitter = rng.uniform(0.70, 1.02, len(vals))
+    ax.scatter(vals, jitter, s=13, color="#C9C6BF", alpha=0.8)
+    ax.text(float(np.median(vals)), 1.13,
+            "199 IMPROVE sites (each dot = one site median)",
+            fontsize=9, color="#8F8C84", ha="center")
+    def ordinal(n):
+        n = int(round(n))
+        sfx = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+        return f"{n}{sfx}"
+
+    entries = sorted(((r[col], lab) for lab, r in sp_rows.items()
+                      if r[col] is not None))
+    span = vals.max() - vals.min()
+    last_v, last_y = None, -0.24
+    for v, lab in entries:
+        ax.scatter([v], [0.38], s=150, color=SITE_COL[lab], zorder=5,
+                   edgecolor="white", linewidth=1.3)
+        ax.plot([v, v], [0.47, 0.64], color=SITE_COL[lab], lw=1.1, alpha=0.55)
+        below = float((vals < v).mean() * 100)
+        tag = ("lowest of all" if below == 0 else
+               "above all IMPROVE" if below == 100 else
+               f"{ordinal(below)} percentile")
+        # alternate label rows whenever neighbors would collide
+        ytxt = 0.08 if (last_v is None or v - last_v > 0.09 * span
+                        or last_y == -0.26) else -0.26
+        ax.text(v, ytxt, f"{lab}\n{tag}", fontsize=9.5, ha="center",
+                color=SITE_COL[lab], fontweight="bold")
+        last_v, last_y = v, ytxt
+    ax.text(0.99, 0.92, missing, transform=ax.transAxes, fontsize=9,
+            color="#8F8C84", ha="right")
     hi = [r[col] for r in sp_rows.values() if r[col] is not None]
-    ax.set_xlim(left=0, right=max(list(vals) + hi) * 1.32)
-    ax.set_xlabel(xlab, fontsize=9.5)
-    ax.set_ylabel("percentile among IMPROVE sites" if col == "oc_ec" else "")
-    ax.set_ylim(-4, 104)
-axes[0].legend(frameon=False, fontsize=8, loc="upper left")
-axes[1].text(0.97, 0.06, "Bishoftu: no OC yet\n(deployed OC awaits a DB pull)",
-             transform=axes[1].transAxes, fontsize=8, color="#6E7178",
-             ha="right")
-fig.tight_layout()
-fig.savefig(FIG / "f_sites_context_ratios.png")
+    ax.set_xlim(0, max(list(vals) + hi) * 1.10)
+    ax.set_ylim(-0.44, 1.28)
+    ax.set_yticks([])
+    ax.grid(axis="y", visible=False)
+    ax.spines["left"].set_visible(False)
+    ax.set_xlabel(f"{name}   ({sub})", fontsize=10.5)
+    fig.tight_layout()
+    fig.savefig(FIG / fname)
+    plt.close(fig)
 plt.close(fig)
 
 # context figure reused from the group deck staging
@@ -309,32 +336,53 @@ slide(
            "is the regional HIPS anchor."))
 
 slide(
-    "Both Ethiopian sites are absorption-rich beyond all of IMPROVE, yet only Addis has the offset",
-    fig=FIG / "f_sites_context_ratios.png",
-    say=("Where the Ethiopian sites fall inside the IMPROVE network, per-site "
-         "medians shown as percentiles. Left, OC to EC: Addis sits at the very "
-         "bottom of the distribution, the suspect low-OC/EC signature, with "
-         "Delhi for company. Middle, OC per unit absorption: Addis is again "
-         "the extreme low end, absorption-rich relative to its organics. "
-         "Right, the panel Bishoftu can join today, absorption per PM mass: "
-         "Beijing and Pasadena sit at the IMPROVE ninetieth percentile, Delhi "
-         "at the edge, and BOTH Ethiopian sites are beyond every IMPROVE site, "
-         "Bishoftu at 1.6 and Addis at 2.2. The kicker: Bishoftu is nearly as "
-         "absorption-rich per mass as Addis and shows no offset. Dark aerosol "
-         "alone does not produce the discrepancy; whatever does is specific to "
-         "Addis."),
-    notes=("IMPROVE medians from local_db per site-day (TOR OC/EC in ng/m3 "
-           "converted, fAbs Mm-1, grav PM2.5), sites with 100+ days only. "
-           "SPARTAN points use the deployed FTIR OC/EC products and HIPS Fabs "
-           "from the unified dataset; method mix (TOR vs FTIR OC) is labeled "
-           "on the axis and is the standing caveat for panel one. Bishoftu "
-           "appears only in the mass panel: it has Fabs and gravimetric mass "
-           "but no OC yet; deployed OC/EC for ETBI awaits an analysis.Results "
-           "pull on the VPN machine. Addis OC/EC and OC/fAbs being lowest is "
-           "the June fig08 pair result, now reproduced with Bishoftu placed. "
-           "Circularity note: SPARTAN OC/EC here are FTIR products, so the "
-           "Addis OC/EC position partly reflects the calibration question "
-           "itself; the mass panel is calibration-free."))
+    "OC / EC across 199 IMPROVE sites: Addis is the lowest anywhere; Adama sits at the median",
+    fig=FIG / "f_ratio_oc_ec.png",
+    say=("The grey cloud is every IMPROVE site, one dot per site median; the "
+         "labeled dots are our sites on the same axis. Addis is the lowest "
+         "value in either network, the suspect low-OC/EC signature, with "
+         "Delhi and Beijing just above it. Adama, on the identical TOR basis "
+         "as IMPROVE, sits at the middle of the pack: compositionally an "
+         "ordinary site. Bishoftu cannot appear here yet because no OC of any "
+         "kind has been measured for it."),
+    notes=("IMPROVE: per-site median of site-day TOR OC/EC, sites with 100+ "
+           "days (n=199). SPARTAN cities use deployed FTIR OC/EC products, so "
+           "their placement partly reflects the calibration question itself; "
+           "Adama uses quartz TOR (n=5, July 2024), the same method as the "
+           "IMPROVE axis. Bishoftu OC: no TOR on site, and deployed FTIR OC "
+           "awaits an analysis.Results pull on the VPN machine."))
+
+slide(
+    "OC / fAbs: Addis has the least organic carbon per unit absorption of any site in either network",
+    fig=FIG / "f_ratio_oc_fabs.png",
+    say=("The same layout from the optical side: organic carbon per unit "
+         "absorption. Addis again sits below every IMPROVE site, with Delhi "
+         "and Beijing hugging the bottom edge and only Pasadena inside the "
+         "pack. Together with the previous slide: the problem sites are "
+         "absorption-rich relative to their organics. Neither Bishoftu nor "
+         "Adama can join this axis yet; it needs OC and HIPS together."),
+    notes=("This is the June presentation's fig08 claim, rebuilt: Ann asked "
+           "for exactly this pair, OC/EC then OC/fAbs, and predicted Addis "
+           "would move from mid-pack to dead last; on these medians Addis is "
+           "lowest on both. IMPROVE OC converted ng to ug; fAbs in 1/Mm. "
+           "Bishoftu lacks OC; Adama lacks HIPS (quartz filters)."))
+
+slide(
+    "Absorption per unit mass: both Ethiopian sites exceed every IMPROVE site, yet only Addis has the offset",
+    fig=FIG / "f_ratio_fabs_pm.png",
+    say=("The calibration-free axis, and the one Bishoftu can join today: "
+         "absorption per unit PM mass. Beijing and Pasadena sit near the top "
+         "of the IMPROVE pack, Delhi at its edge, and both Ethiopian sites "
+         "are beyond every IMPROVE site: Bishoftu at 1.6, Addis at 2.2. The "
+         "kicker: Bishoftu is nearly as dark per unit mass as Addis and shows "
+         "no offset. Dark aerosol alone does not produce the discrepancy; "
+         "whatever does is specific to Addis."),
+    notes=("Bishoftu: batch Fabs over gravimetric mass concentration from the "
+           "DB export (26 filters). SPARTAN cities: HIPS_Fabs over "
+           "ChemSpec_Filter_PM2.5_mass (base-FilterId join). IMPROVE: fAbs "
+           "over grav PM2.5 per site-day. No FTIR anywhere in this panel, so "
+           "it is immune to the calibration circularity caveat. Adama has no "
+           "PTFE optics, so no point exists for it here."))
 
 slide(
     "Side by side: the Addis crossplot is a systematic line; the Adama one scatters around 1:1",
