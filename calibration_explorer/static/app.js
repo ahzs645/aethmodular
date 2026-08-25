@@ -1891,3 +1891,20 @@ document.querySelector('[data-tab="hips"]').addEventListener('click', () => { if
     apply(on);
   };
 })();
+
+/* ---- tab deep-links: #tab=<name>[&run=1] opens that tab once the data is
+   ready, and optionally presses the pane's run button — lets a talk (or a
+   headless screenshot) link straight into e.g. #tab=hips&run=1 */
+(() => {
+  const m = location.hash.match(/tab=([a-z]+)/);
+  if(!m) return;
+  const doRun = /(?:&|#)run=1/.test(location.hash);
+  const RUN_BTN = {sites: 'sites_run', hips: 'hips_run'};
+  const t = setInterval(() => {
+    if(!ready) return;
+    clearInterval(t);
+    const btn = document.querySelector(`[data-tab="${m[1]}"]`);
+    if(btn) btn.click();
+    if(doRun && RUN_BTN[m[1]] && $(RUN_BTN[m[1]])) $(RUN_BTN[m[1]]).click();
+  }, 400);
+})();

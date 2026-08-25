@@ -11,17 +11,21 @@ and Delhi; baselining relocates seasonality onto the dry season), and the
 independent witnesses (Mie physics, AERONET hardening) — ending at the two
 lab measurements that settle the rest: quartz TOR and the extraction test.
 
-## Deck map (30 main + 7 backup)
+## Deck map (30 main + 9 backup)
 
-- **1–3 Framing**: roadmap · status scorecard · the deployed 1.90x−4.17 problem
-- **4–5 Spectra basics**: Teflon background · AIRSpec on one real filter
-- **6–9 Protocols & matrix**: A/B/B2 ladder · raw grid (A) · corrected grid (A) · OC/EC selection mechanics
-- **10–15 Selection science**: analog mechanics · the −9.7→−4.3 fix · 4/477 Teflon proof · Eth-shaped rescue · k-scan (Satoshi's 21) · dense basin + 62.5%
-- **16–20 The instrument**: blank-line mechanism · intercept survives · slopes resolve · lot census · lot effect (Ann's hypothesis confirmed)
-- **21–23 Five sites**: cross-site spectra + 1617 lesson · the exhaustive grid · seasons
-- **24–26 Independent**: Mie/MAC fork · AERONET diurnal · AERONET column
-- **27–30 Close**: Adama · live app · the two asks · logistics
-- **31–38 Backup**: B/B2 grids · residual-vs-D² · bootstrap CIs · lot-253 takeover · LOCAL v1
+- **1-2 Framing**: roadmap, then the deployed 1.90x-4.17 problem
+- **3-4 Spectra basics**: Teflon background, AIRSpec on one real filter
+- **5-8 Protocols & matrix**: A/B/B2 ladder, raw grid (A), corrected grid (A), OC/EC selection mechanics
+- **9-14 Selection science**: analog mechanics, the -9.7 to -4.3 fix, 4/477 Teflon proof, Eth-shaped rescue, k-scan (Satoshi's 21), dense basin + 62.5%
+- **15-19 The instrument**: blank-line mechanism, intercept survives, slopes resolve, lot census, lot effect (Ann's hypothesis confirmed)
+- **20-22 Five sites**: cross-site spectra + 1617 lesson, the exhaustive grid, seasons
+- **23-25 Independent**: Mie/MAC fork, AERONET diurnal, AERONET column
+- **26-30 Close**: Adama, the Flask app (2 screenshot slides: explorer + Sites tab), the two asks, logistics
+- **31-39 Backup**: B/B2 grids, residual-vs-D2, bootstrap CIs, lot-253 takeover, HIPS-tab screenshot, LOCAL v1
+
+App demo notes: the screenshots show the raw-800 demo default, not the winner
+(say so if asked); deep-links #tab=sites&run=1 / #tab=hips&run=1 reproduce
+the views live or headlessly.
 
 ## Anchor validation (run live before building)
 
