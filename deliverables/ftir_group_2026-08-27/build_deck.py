@@ -199,6 +199,23 @@ slide(
            "discussion question 2. Suptitle on the figure says "
            "'baseline-corrected (AIRSpec)' which matches the language rule."))
 
+slide(
+    "One illustrative outcome: selecting analogs on baseline-corrected spectra fixes them, -9.7 to -4.3 µg/m³",
+    fig=F("f2_analog_fix.png"),
+    say=("One concrete example of how much these choices move the answer. "
+         "Same spectral-analog recipe, same calibration on raw spectra; the "
+         "only change is that the similarity matching runs on "
+         "baseline-corrected spectra instead of raw. The intercept goes from "
+         "minus 9.7 to minus 4.3, the slope from 3.2 toward 1.9, and the "
+         "held-out quality from 0.62 to 0.71. The selection space alone is "
+         "worth five micrograms per cubic meter; that is the scale of choice "
+         "we are dealing with."),
+    notes=("Satoshi's suggestion (select corrected, calibrate raw). Kept per "
+           "the run-through as an illustrative outcome; the Ethiopia-shaped "
+           "rescue and the k-scan moved to backup. Under corrected selection "
+           "only 4/477 raw-selected filters survive (previous slide's "
+           "point)."))
+
 # ---------------------------------------------------- 10 model selection
 slide(
     "Three ways of selecting the model; the red circles are how all deployed SPARTAN calibrations are made",
@@ -602,6 +619,27 @@ slide(
     notes=("Rebuilt with black in-plot text per the run-through (old "
            "version had a clipped red annotation). Addis today: 34 x 248, "
            "191 x 251, 14 x 253; Delhi leans newer."))
+
+slide(
+    "Backup: the Ethiopia-shaped rescue: nearly the same filters, held-out TOR 0.00 to 0.63",
+    fig=F("f4_eth_rescue.png"),
+    say=("The mirror-image of the analog fix: Ethiopia-shaped keeps 285 of "
+         "300 filters under corrected selection, but the model goes from "
+         "zero held-out skill to 0.63; fifteen filters were enough to "
+         "poison the calibration."),
+    notes=("The raw-selection failure was a selection-space artifact, not a "
+           "failure of shape-matching itself. Shape cohorts still fail the "
+           "held-out floor at essentially every cutoff in the wide grid."))
+
+slide(
+    "Backup: Satoshi's k question: 21 components instead of 9 does not fix the analogs",
+    fig=F("f5_k_sweep.png"),
+    say=("Scanning components 4 to 24 under both selection recipes: the "
+         "intercept never beats about minus 9 and held-out skill peaks at "
+         "k equals 9. It was never the component count; it was the "
+         "selection space."),
+    notes=("Also covers the one-consistent-k-rule request; conclusion is "
+           "not rule-sensitive for this cohort."))
 
 slide(
     "Backup: the two lab measurements that settle the remainder",

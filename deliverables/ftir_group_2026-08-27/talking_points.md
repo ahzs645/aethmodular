@@ -6,15 +6,16 @@ array of outcomes; a few illustrative ones, then the enormous search; so the
 group discussion is: what constraints and validation make a choice
 defensible?
 
-## Deck map (26 main incl. 4 discussion + 9 backup = 36)
+## Deck map (23 main + 4 discussion + 12 backup = 39)
 
 - **1-2**: title/arc; the deployed 1.90x-4.2 problem
 - **3-5**: raw spectrum is ~90% background (split, full-res); Addis rides a
   higher background; baseline correction (using AIRSpec) explained
 - **6-7**: how cohorts are picked, BEFORE any results: lowest-OC/EC cut;
   spectral-shape ranking (ranked histograms only; scatter panels removed)
-- **8-9**: ONE before/after (network raw -4.3 -> corrected -0.6 but slope
-  0.43) then the six baselined crossplots only
+- **8-10**: ONE before/after (network raw -4.3 -> corrected -0.6 but slope
+  0.43); the six baselined crossplots; the analog-fix illustrative outcome
+  (-9.7 -> -4.3, kept from the presented deck)
 - **10**: three ways of selecting the model, no CV jargon; red circles =
   how the Shiny app / all deployed SPARTAN calibrations do it
 - **11**: cohort-size sweep; intercept stable, held-out R2 bounces, 800
@@ -32,7 +33,8 @@ defensible?
 - **23-26**: the four discussion questions (good enough? / validation
   split-half proposal / one-vs-per-site / spectral-vs-OC/EC similarity +
   common-thread + AERONET one-liner)
-- **27-36 backup**: raw grid, blank-line geometry, York x2 (with the
+- **backup**: raw grid, Eth-shaped rescue, Satoshi k-scan, blank-line
+  geometry, York x2 (with the
   plain-language "errors-in-both-variables with per-point uncertainties"
   line), carbonyl-vs-intercept (ug/m3), Mie, AERONET diurnal, lot-253 v2
   (black in-plot text), the two lab asks
