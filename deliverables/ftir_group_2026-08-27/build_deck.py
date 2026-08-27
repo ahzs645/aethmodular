@@ -63,10 +63,9 @@ F = lambda n: FIG / n  # noqa: E731
 # ---------------------------------------------------------------- 1 title
 slide(
     "FTIR EC at Addis Ababa: one intercept problem, a huge space of choices",
-    lines=["Ahmad Jalil; UNBC / UC Davis AQRC; FTIR group, 28 Aug 2026",
-           "The arc: Addis is different; depending on which samples we calibrate on,",
-           "how we baseline, and how we pick the model, we get a huge array of outcomes;",
-           "then: what constraints and validation make a choice defensible?"],
+    lines=["Ahmad Jalil",
+           "UNBC / UC Davis AQRC",
+           "FTIR group, 27 Aug 2026"],
     say=("Four parts today. One: Addis is different, and you can see it in the "
          "spectra themselves. Two: depending on which samples we use as the "
          "calibration set, whether we baseline-correct, and how we pick the "
