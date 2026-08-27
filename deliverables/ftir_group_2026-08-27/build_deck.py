@@ -350,20 +350,24 @@ slide(
 
 # ------------------------------------- 17-21 the search and its outputs
 slide(
-    "So we tried everything: 12,000+ configurations per city, scored on the same two numbers",
+    "So we tried everything at Addis: 12,000+ configurations, scored on the same two numbers",
     fig=F("f4_screening_cloud.png"),
     say=("Instead of graph after graph, we let the computer run the whole "
          "space: every calibration-set family, cutoffs from 100 to 2000 in "
          "steps of ten, raw and two baseline treatments, swept components; "
-         "each dot is one configuration predicting Addis. Horizontal axis: "
+         "each dot is one configuration predicting the Addis samples. "
+         "Horizontal axis: "
          "how far the slope is from one. Vertical: the intercept size in "
          "micrograms per cubic meter. You want the bottom-left corner. "
          "Grey fails a held-out quality floor; blue passes; the star is "
          "the best passing configuration. Notice the V: you can buy a zero "
-         "intercept with a terrible slope, so we always constrain both."),
+         "intercept with a terrible slope, so we always constrain both. And "
+         "hold this thought: in two slides we run the identical search for "
+         "Delhi and the other cities, and that is where it gets interesting."),
     notes=("58 extreme variants beyond the capped axes, counted on-figure. "
-           "71k scored rows total across five cities, all reproducible "
-           "from the app. The scoring lesson: |intercept| alone is gamed "
+           "This slide is Addis only (13,069 scored rows shown); the same "
+           "grid ran at all five cities (71k rows total), which feeds the "
+           "per-city and Delhi slides. The scoring lesson: |intercept| alone is gamed "
            "by flat slopes; rankings are slope-boxed 0.85-1.18."))
 
 slide(
