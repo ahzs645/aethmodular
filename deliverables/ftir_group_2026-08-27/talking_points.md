@@ -1,89 +1,78 @@
-# FTIR group talk — 2026-08-27 — talking points (comprehensive deck)
+# FTIR group talk (Thu 28 Aug) — talking points, post-run-through rebuild
 
-**One breath:** The deployed calibration reads Addis at 1.90x−4.17; this talk
-dissects that line completely — spectra processing (90% of a raw spectrum is
-Teflon background; baselining is the lever), cohort selection (composition
-wins, shape-matching was matching Teflon until selected in corrected space),
-the instrument (the HIPS correction is a blank-line regression; the Addis
-intercept survives it at −1.27 ± 0.17 while Pasadena's slope anomaly
-dissolves), the cross-site verdict (no calibration choice reconciles Addis
-and Delhi; baselining relocates seasonality onto the dry season), and the
-independent witnesses (Mie physics, AERONET hardening) — ending at the two
-lab measurements that settle the rest: quartz TOR and the extraction test.
+**The arc (Ann's framing):** Addis is different; depending on which samples
+we calibrate on, how we baseline, and how we pick the model, we get a huge
+array of outcomes; a few illustrative ones, then the enormous search; so the
+group discussion is: what constraints and validation make a choice
+defensible?
 
-## Deck map (30 main + 9 backup)
+## Deck map (26 main incl. 4 discussion + 9 backup = 36)
 
-- **1-2 Framing**: roadmap, then the deployed 1.90x-4.17 problem
-- **3-4 Spectra basics**: Teflon background, AIRSpec on one real filter
-- **5-8 Protocols & matrix**: A/B/B2 ladder, raw grid (A), corrected grid (A), OC/EC selection mechanics
-- **9-14 Selection science**: analog mechanics, the -9.7 to -4.3 fix, 4/477 Teflon proof, Eth-shaped rescue, k-scan (Satoshi's 21), dense basin + 62.5%
-- **15-19 The instrument**: blank-line mechanism, intercept survives, slopes resolve, lot census, lot effect (Ann's hypothesis confirmed)
-- **20-22 Five sites**: cross-site spectra + 1617 lesson, the exhaustive grid, seasons
-- **23-25 Independent**: Mie/MAC fork, AERONET diurnal, AERONET column
-- **26-31 App section**: Adama, then the Flask app (explorer + Sites screenshots) and its OUTPUTS:
-  per-city leaderboard (every site wants a different cohort size), the
-  cross-application matrix (each city's best applied to the other four:
-  diagonal dark, off-diagonal fails, Addis-best transfers to Bishoftu at
-  0.99x; Delhi's best collapses abroad), analog-lab agreement collapse
-  (rho 0.68 raw / 0.07 AIRSpec / -0.25 deriv2, overlap 5-8%), validate-top-5
-  stability (62.5% / ~1/3 / 0%)
-- **32-33 Close**: the two asks, logistics
-- **34-42 Backup**: B/B2 grids, residual-vs-D2, bootstrap CIs, lot-253 takeover, HIPS-tab screenshot, LOCAL v1
+- **1-2**: title/arc; the deployed 1.90x-4.2 problem
+- **3-5**: raw spectrum is ~90% background (split, full-res); Addis rides a
+  higher background; baseline correction (using AIRSpec) explained
+- **6-7**: how cohorts are picked, BEFORE any results: lowest-OC/EC cut;
+  spectral-shape ranking (ranked histograms only; scatter panels removed)
+- **8-9**: ONE before/after (network raw -4.3 -> corrected -0.6 but slope
+  0.43) then the six baselined crossplots only
+- **10**: three ways of selecting the model, no CV jargon; red circles =
+  how the Shiny app / all deployed SPARTAN calibrations do it
+- **11**: cohort-size sweep; intercept stable, held-out R2 bounces, 800
+  somewhat arbitrary (Option-A sweep, noted)
+- **12-14**: filters differ by site (R1/T1 defined in words, no fit lines,
+  mislabeled blank count dropped); lot-248 timeline (kept, liked); lot
+  effect removed by baselining
+- **15**: five-city baseline-corrected median spectra, full-slide; CH and
+  ~1700 labeled; Addis-least-organics = consistent with lowest OC/EC
+  (Ann's point); 1617 panel cut (rationale lives in the working deck)
+- **16**: seasonality shifted, not solved
+- **17-22**: the search (capped axes, 58 outliers counted); the app (live);
+  the WINNER AS A CROSSPLOT; per-city bests; cross-application matrix
+  (metric stated in words); winner stability 62.5%
+- **23-26**: the four discussion questions (good enough? / validation
+  split-half proposal / one-vs-per-site / spectral-vs-OC/EC similarity +
+  common-thread + AERONET one-liner)
+- **27-36 backup**: raw grid, blank-line geometry, York x2 (with the
+  plain-language "errors-in-both-variables with per-point uncertainties"
+  line), carbonyl-vs-intercept (ug/m3), Mie, AERONET diurnal, lot-253 v2
+  (black in-plot text), the two lab asks
 
-App demo notes: the screenshots show the raw-800 demo default, not the winner
-(say so if asked); deep-links #tab=sites&run=1 / #tab=hips&run=1 reproduce
-the views live or headlessly.
+## Language rules enforced (audit done)
 
-## Anchor validation (run live before building)
+- "baseline-corrected (using AIRSpec)" first mention (slide 5), then
+  "baseline-corrected"; no "AIRSpec-ed"/"AIRSpec-corrected" anywhere.
+- Calibration set vs prediction target phrasing on every result slide.
+- Intercepts in ug/m3 everywhere (band scatter converted; Mm-1 gone).
+- No CV jargon in the main arc (full recipes in slide-10 NOTES if pressed).
+- No em dashes; verified programmatically, figures included.
 
-ocec-800 raw A: k=6, OLS 1.585x−3.221, held-out 0.911 ✓
-+AIRSpec: k=5, OLS 0.86x−1.615, Deming 0.95x−2.09 ✓
-Option-B historical intercepts on the ladder: −5.76 / −10.16 / −6.74 / −2.17 ✓
+## Numbers to have ready
+
+- Deployed: 1.90x-4.2 (MAC 6: 1.14x, same intercept; Deming intercept is
+  MAC-invariant).
+- Before/after network: raw 1.80x-4.28 (k=15) -> corrected 0.43x-0.57 (k=7).
+- Winner: lowest-OC/EC 450, baseline-corrected, k=9: 0.93x-1.4, target R2
+  0.72, held-out 0.90; re-selected in 62.5% of draws (analog family ~1/3).
+- Cross-application: Addis-best at Bishoftu 0.99x-0.70; Delhi-best at
+  Beijing 5.36x (96% extrapolated, fails holdout).
+- Lot effect at Beijing: raw -4.5 -> corrected -0.9 Mm-1 (n.s.; n=14 vs 34).
+- Addis lots: 34 x 248 / 191 x 251 / 14 x 253. SPARTAN lot 248 = 332
+  filters network-wide.
 
 ## Don't get caught
 
-- "corrected" is not a valid API spectra token (silently falls back to raw) —
-  everything here uses `airspec`.
-- ~15% is the **blank-line share**, not the full instrument share; high-loading
-  nonlinearity is invisible to blanks and needs quartz TOR.
-- Screening vs quoting: 71k grid rows are descriptive; the winner takes 62.5%
-  of bootstrap draws (corrected analog-440 ~⅓); Delhi's screening "winner"
-  was 96% extrapolated and died on holdout — cite as validation working.
-- 1617 band = Ethiopian regional marker, decoupled from the offset (Bishoftu
-  has it, no offset); AIRSpec anchors at 1520–1600 → two-baseline rule.
-- Season fits are per-season Deming on restricted ranges — indicative;
-  ftir_24 owes the interaction fit. Season schemes differ across sites.
-- Lot-effect n = 14 vs 34, loadings not fully matched (1.18 vs 1.66 µg/m³).
-- Adama figure is the seed — TOR-vs-FTIR panel still to add for the 2-pager.
-- Standing: analog top-500 → 477 resolved; entire-network A k=15 cell
-  unexplained; Eth-shaped+AIRSpec B2 (k=21) unstable.
-- H (AERONET) is comparative-only; Level 1.5; envelope partial r=+0.28
-  (p≈0.002) is the honest carrier, not the discrete 1620 peak.
-
-## The asks
-
-1. **Quartz TOR** (~36 filters, 3 seasons; one-pager committed) — the only
-   measurement that is a function of neither axis.
-2. **Extraction + HIPS re-measure** (archived Addis/Delhi, Beijing/Pasadena
-   controls; Kirchstetter 2004 design).
-3. Lot-253 spectra pull (script staged; Windows/VPN session; lot 255 sealed).
-
-## Personal / calendar
-
-- AAAR: poster Thu 1–3 pm, session 9; booked. [FILL IN: forward acceptance to Ann]
-- Committee: Sep 2, 3 pm. [FILL IN: confirm invites arrived]
-- Adama two-pager: this week. Satoshi 1:1: ~2 weeks, app-ready.
-
-## Two files
-
-`ftir_group_2026-08-27.pptx` carries full SAY/NOTES speaker notes;
-`ftir_group_2026-08-27_no_notes.pptx` is the stripped twin for projection or
-sharing. Both come from one build_deck.py run. The screening cloud caps its
-axes (58 extreme variants counted on-figure, stated in NOTES).
+- Held-out R2 = IMPROVE-side TOR test; the TARGET-side validation gap is
+  exactly discussion question 2 (split-half proposal from Tuesday).
+- Slide-11 sweep is the site-grouped recipe; the Shiny-style version would
+  differ.
+- Blank-count caveat on the backup geometry slide: a lot can carry more
+  than one deployed calibration line.
+- The "!" cells in the matrix = >30% of that city's filters beyond the
+  model's training domain.
+- Q4 top-performers common-thread question: answerable live in the app
+  (leaderboard + export) if the group wants it now.
 
 ## Rebuild
 
-`build_deck.py` (figures are pre-staged in `figures/`, drawn from the
-2026-08-18 and 2026-08-25 deliverables + committed deck plots; the two
-generated-this-week figures rebuild via
-`deliverables/ann_update_2026-08-25/build_figures.py`).
+build_v2_figures.py (needs the explorer; EXPLORER_PORT env) then
+build_deck.py (writes both the notes deck and the no-notes twin).
