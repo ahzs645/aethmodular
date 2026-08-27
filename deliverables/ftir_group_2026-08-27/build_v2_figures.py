@@ -336,3 +336,34 @@ def fig_analog_ranked_side_by_side():
     plt.close(fig)
     rgb("f13c_analog_ranked_sbs.png")
     print("side-by-side ranked histograms done")
+
+
+def fig_lot_effect_v2():
+    """Clean rebuild of the Beijing lot-effect forest plot: no rotated
+    label collision, annotation inside the frame, context moved to the
+    slide notes. Numbers from the verified both-spaces re-run."""
+    rows = [("lowest-OC/EC 800, raw spectra (k=6)", -4.49, -7.01, -1.96, GREY),
+            ("lowest-OC/EC 800, baseline-corrected (k=5)", -0.86, -3.66, 2.02, BLUE),
+            ("lowest-OC/EC 450, raw spectra (k=8)", -4.35, -7.63, -1.20, GREY),
+            ("lowest-OC/EC 450, baseline-corrected (k=5)", -1.43, -4.01, 0.94, BLUE)]
+    fig, ax = plt.subplots(figsize=(10.2, 4.2))
+    ys = [3.15, 2.45, 1.15, 0.45]
+    for (lab, m, lo, hi, c), y in zip(rows, ys):
+        ax.plot([lo, hi], [y, y], color=c, lw=3, solid_capstyle="round")
+        ax.plot([m], [y], "o", ms=9, color=c)
+        ax.text(hi + 0.25, y, f"{m:+.2f}  [{lo:+.2f}, {hi:+.2f}]",
+                va="center", fontsize=10.5, color=INK,
+                fontweight="bold" if c == BLUE else "normal")
+    ax.axvline(0, color=INK, lw=1.2, ls="--")
+    ax.text(0.12, 3.62, "zero = no difference between lots", fontsize=9.5,
+            color="#6E7178")
+    ax.set_yticks(ys)
+    ax.set_yticklabels([r[0] for r in rows], fontsize=10.5)
+    ax.set_ylim(0, 3.9)
+    ax.set_xlim(-8.6, 6.4)
+    ax.set_xlabel("lot 248 minus lot 251: mean residual against a common line (Mm⁻¹)")
+    fig.tight_layout()
+    fig.savefig(FIG / "f_lot_effect_v2.png")
+    plt.close(fig)
+    rgb("f_lot_effect_v2.png")
+    print("lot effect v2 done")

@@ -27,23 +27,26 @@ prs.slide_width, prs.slide_height = Inches(13.333), Inches(7.5)
 blank = prs.slide_layouts[6]
 
 
-def slide(title, fig=None, lines=None, say="", notes="", title_size=20):
+def slide(title, fig=None, lines=None, say="", notes="", title_size=20,
+          notitle=False):
     s = prs.slides.add_slide(blank)
-    tb = s.shapes.add_textbox(Inches(0.45), Inches(0.22), Inches(12.5), Inches(0.95))
-    tf = tb.text_frame
-    tf.word_wrap = True
-    p = tf.paragraphs[0]
-    p.text = title
-    p.font.size = Pt(title_size)
-    p.font.bold = True
-    p.font.color.rgb = INK
+    if not notitle:
+        tb = s.shapes.add_textbox(Inches(0.45), Inches(0.22), Inches(12.5), Inches(0.95))
+        tf = tb.text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        p.text = title
+        p.font.size = Pt(title_size)
+        p.font.bold = True
+        p.font.color.rgb = INK
     if fig is not None:
         from PIL import Image
         iw, ih = Image.open(fig).size
-        scale = min(12.2 / (iw / 165), 5.95 / (ih / 165), 1.35)
+        maxh, top = (7.0, 0.25) if notitle else (5.95, 1.2)
+        scale = min(12.9 / (iw / 165), maxh / (ih / 165), 1.6 if notitle else 1.35)
         w, h = iw / 165 * scale, ih / 165 * scale
         s.shapes.add_picture(str(fig), Inches((13.333 - w) / 2),
-                             Inches(1.2 + (6.0 - h) / 2), Inches(w))
+                             Inches(top + (maxh + 0.05 - h) / 2), Inches(w))
     if lines:
         body = s.shapes.add_textbox(Inches(0.75), Inches(1.55), Inches(11.8), Inches(5.4))
         btf = body.text_frame
@@ -184,8 +187,9 @@ slide(
            "one before/after, then the six baselined crossplots only."))
 
 slide(
-    "All six calibration sets, baseline-corrected: only lowest-OC/EC keeps slope AND held-out skill",
+    "All six calibration sets, baseline-corrected",  # notitle: figure suptitle carries it
     fig=F("f12_grid_airspec_A.png"),
+    notitle=True,
     say=("The six candidate calibration sets, all baseline-corrected, all "
          "predicting Addis. Filled points are MAC 10, open are MAC 6, and "
          "the black diamond is the shared Deming intercept, which MAC cannot "
@@ -293,8 +297,8 @@ slide(
            "independent-lot validation later."))
 
 slide(
-    "Baseline correction removes the lot-to-lot difference; the mechanism Ann predicted",
-    fig=F("f_lot_baseline_removes_lot_effect.png"),
+    "Baseline correction removes the lot-to-lot difference between filter lots",
+    fig=F("f_lot_effect_v2.png"),
     say=("Do the lots behave differently? Beijing used lots 248 and 251 "
          "side by side for 178 days, so we can test it. On raw spectra the "
          "two lots disagree by about four and a half inverse megameters "
@@ -465,7 +469,7 @@ slide(
     "Question 2: how should we validate the choice? (the current gap)",
     lines=["Today, ALL Addis samples are used both to pick the winning",
            "   configuration and to judge it; the win is partly self-graded.",
-           "Proposal from Tuesday: split the Addis set into equal halves",
+           "Proposed validation: split the Addis set into equal halves",
            "   (first year vs second year), pick the calibration on one half,",
            "   predict the blind other half; equal test sizes keep R² comparable.",
            "Also available: a never-screened IMPROVE lot (253, ~5,000 TOR",
@@ -638,7 +642,7 @@ slide(
            "held-out floor at essentially every cutoff in the wide grid."))
 
 slide(
-    "Backup: Satoshi's k question: 21 components instead of 9 does not fix the analogs",
+    "Backup: using 21 components instead of 9 does not fix the analogs",
     fig=F("f5_k_sweep.png"),
     say=("Scanning components 4 to 24 under both selection recipes: the "
          "intercept never beats about minus 9 and held-out skill peaks at "
