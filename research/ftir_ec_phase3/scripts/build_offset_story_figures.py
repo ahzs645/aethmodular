@@ -96,7 +96,7 @@ def fig_intercept_ladder(rows):
     ax.axvline(0, color="#22252A", lw=1.4)
     ax.set_yticks(ys)
     ax.set_yticklabels([r["label"] for r in order])
-    ax.set_xlabel("York intercept (µg/m³), x = Fabs/10 — zero is the target")
+    ax.set_xlabel("York intercept (µg/m³), x = Fabs/10; zero is the target")
     ax.legend(frameon=False, loc="lower left", fontsize=9)
     if TITLES:
         ax.set_title("The Addis offset survives the instrument-calibration check\n"
@@ -123,7 +123,7 @@ def fig_slope_ladder(rows):
     ax.axvline(1, color="#22252A", lw=1.4)
     ax.set_yticks(ys)
     ax.set_yticklabels([r["label"] for r in rows])
-    ax.set_xlabel("York slope — one is the target")
+    ax.set_xlabel("York slope; one is the target")
     ax.legend(frameon=False, loc="upper right", fontsize=9)
     if TITLES:
         ax.set_title("Pasadena's slope anomaly dissolves under a quadratic blank line;\n"
@@ -136,21 +136,35 @@ def fig_slope_ladder(rows):
 def fig_blank_geometry():
     """F3 — why: loaded filters sit below the blanks that define the line."""
     b = hips_lab.batch()
-    lines = hips_lab.blank_lines()
     lot = "251"
     blanks = b[(b.LotId == lot) & b.FilterType.isin(["FB", "LB"])].dropna(
-        subset=["R1", "T1"])
+        subset=["R1", "T1"]).query("T1 > 0")
+    # lot 251 carries more than one deployed calibration set; label the
+    # blank clusters by their set instead of pooling them under one name
+    grp = blanks.groupby([blanks.Intercept.round(1), blanks.Slope.round(3)])
+    sets_ = sorted(grp, key=lambda kv: -len(kv[1]))
+    R, T = blanks["R1"].to_numpy(float), blanks["T1"].to_numpy(float)
+    lin = np.polyfit(R, T, 1)
+    quad = np.polyfit(R, T, 2)
+    r1_min = float(R.min())
     fig, (ax, ax2) = plt.subplots(
         2, 1, figsize=(7.6, 5.6), sharex=True,
         gridspec_kw={"height_ratios": [2.4, 1.1], "hspace": 0.08})
-    ax.scatter(blanks.R1, blanks.T1, s=14, color="#8F8C84", alpha=0.55,
-               label=f"lot-{lot} blanks (n={len(blanks)})")
+    for i, ((gi, gs), g) in enumerate(sets_[:2]):
+        ax.scatter(g.R1, g.T1, s=14, alpha=0.6,
+                   color=["#8F8C84", "#C49442"][i],
+                   label=f"lot-251 blanks, calibration set {i + 1} (n={len(g)})")
+    rest = blanks[~blanks.index.isin(
+        sets_[0][1].index.union(sets_[1][1].index))]
+    if len(rest):
+        ax.scatter(rest.R1, rest.T1, s=10, alpha=0.4, color="#D8D5CF",
+                   label=f"other sets (n={len(rest)})")
     xs = np.linspace(60, 280, 200)
-    ax.plot(xs, np.polyval(lines[lot]["lin"], xs), color="#2C6E9E", lw=2,
-            label="linear blank line (the deployed form)")
-    ax.plot(xs, np.polyval(lines[lot]["quad"], xs), color="#B23327", lw=2,
-            ls="--", label="quadratic refit")
-    ax.axvspan(60, lines[lot]["r1_min"], color="#F39C12", alpha=0.12)
+    ax.plot(xs, np.polyval(lin, xs), color="#2C6E9E", lw=2,
+            label="pooled linear blank line")
+    ax.plot(xs, np.polyval(quad, xs), color="#B23327", lw=2,
+            ls="--", label="pooled quadratic refit")
+    ax.axvspan(60, r1_min, color="#F39C12", alpha=0.12)
     ax.text(62, ax.get_ylim()[0] + 40, "extrapolation zone\n(darker than every blank)",
             fontsize=9, color="#9A6206", va="bottom")
     ax.set_ylabel("T1 (counts)")
@@ -164,8 +178,8 @@ def fig_blank_geometry():
         r1 = pm[pm.Site == code]["R1"].dropna()
         ax2.hist(r1, bins=np.arange(60, 285, 6), histtype="step", lw=1.8,
                  color=COLOR[label], density=True, label=label)
-    ax2.axvline(lines[lot]["r1_min"], color="#22252A", lw=1.2, ls=":")
-    ax2.set_xlabel("R1 (counts) — lower = darker filter")
+    ax2.axvline(r1_min, color="#22252A", lw=1.2, ls=":")
+    ax2.set_xlabel("R1 (counts); lower = darker filter")
     ax2.set_ylabel("density")
     ax2.legend(frameon=False, fontsize=8, ncol=5, loc="upper right")
     ax2.set_xlim(60, 280)

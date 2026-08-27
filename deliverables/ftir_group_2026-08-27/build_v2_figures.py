@@ -234,7 +234,7 @@ def fig_band_vs_intercept():
     site's Deming intercept in ug/m3 (consistent units with every other
     slide)."""
     med = _median_corrected()
-    fig, ax = plt.subplots(figsize=(6.6, 4.6))
+    fig, ax = plt.subplots(figsize=(7.4, 4.6))
     for name, code, label, c in SITE:
         wn, v = med[name]
         at = lambda t: float(v[np.argmin(abs(wn - t))])  # noqa: E731
@@ -249,8 +249,8 @@ def fig_band_vs_intercept():
         ax.annotate(label, (ratio, m["deming_intercept"]),
                     textcoords="offset points", xytext=(8, 6), fontsize=10)
     ax.axhline(0, color=INK, lw=1)
-    ax.set_xlabel("carbonyl (~1700 cm⁻¹) band height per CH (~2920 cm⁻¹), "
-                  "baseline-corrected median")
+    ax.set_xlabel("carbonyl (~1700) / CH (~2920) band ratio, "
+                  "baseline-corrected median", fontsize=10)
     ax.set_ylabel("Deming intercept (µg/m³), winner calibration")
     fig.tight_layout()
     fig.savefig(FIG / "f_band_vs_intercept_v2.png")

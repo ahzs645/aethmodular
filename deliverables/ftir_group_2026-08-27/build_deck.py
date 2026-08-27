@@ -515,8 +515,9 @@ slide(
            "   means selecting the pool's thin extreme tail.",
            "Selecting on baseline-corrected spectral shape selects on what the",
            "   model actually sees; and it is the re-selection runner-up (~1/3).",
-           "Do the top performers share a common thread (all low-OC/EC?",
-           "   all 400-500 samples?), or are they unrelated configurations?",
+           "The common thread, pre-computed: the top 20 configurations at Addis",
+           "   are ALL lowest-OC/EC (17 baseline-corrected, 3 second-derivative;",
+           "   cutoffs 440-800, k mostly 6-9); not unrelated calibrations.",
            "External constraints not yet used: the co-located sun photometer",
            "   (AERONET) as an independent absorption check."],
     say=("Last one, conceptual, from Ann. Lowest-OC/EC wins our "
@@ -524,9 +525,11 @@ slide(
          "all, so selecting on it means living in the pool's thin tail. "
          "Selecting on baseline-corrected spectral shape selects on what "
          "the calibration actually sees, and it is the consistent "
-         "runner-up. Is it more defensible in principle? Related: do our "
-         "top performers share a common thread, or are they unrelated "
-         "configurations that happen to score well? And there are "
+         "runner-up. Is it more defensible in principle? And the common-thread "
+         "question has an answer: the top twenty configurations at Addis are "
+         "all lowest-OC/EC, mostly baseline-corrected, cutoffs 440 to 800. So "
+         "composition dominates the top of the board, and the debate is "
+         "principle versus performance, not confusion. And there are "
          "external constraints we have not used, like the co-located sun "
          "photometer, if we want an independent check."),
     notes=("Ann's common-thread question, ANSWERED from the grid: the top "
@@ -558,10 +561,12 @@ slide(
          "scattering correction is a line fitted through blanks, and 36 "
          "percent of Addis filters are darker than every blank that "
          "defines it."),
-    notes=("Blank-count caveat: a lot can carry more than one deployed "
-           "calibration line; the pooled n on this figure conflates two "
-           "sets within lot 251 (flagged in the run-through). The "
-           "per-line audit exists in the app's HIPS tab."))
+    notes=("Blank clusters now labeled by calibration set (162 + 148 in "
+           "the two largest lot-251 sets, 63 in other sets; the right-hand "
+           "cluster belongs to the other sets), resolving the run-through "
+           "flag about one pooled n. Fit lines shown are the POOLED "
+           "linear/quadratic used in the sensitivity test; the per-line "
+           "audit exists in the app's HIPS tab."))
 
 slide(
     "Backup: an errors-in-both-variables refit with per-filter uncertainties (York) confirms the intercepts",
