@@ -525,8 +525,14 @@ slide(
          "configurations that happen to score well? And there are "
          "external constraints we have not used, like the co-located sun "
          "photometer, if we want an independent check."),
-    notes=("Top-of-leaderboard composition can be answered live in the "
-           "app (leaderboard site filter + export). AERONET detail in "
+    notes=("Ann's common-thread question, ANSWERED from the grid: the top "
+           "20 slope-boxed, held-out-passing configurations at Addis are "
+           "ALL lowest-OC/EC cohorts (17 baseline-corrected + 3 "
+           "second-derivative), cutoffs 440-800, k mostly 6-9; not eight "
+           "unrelated calibrations. So composition selection dominates the "
+           "top of the board, while the spectral-analog family is the "
+           "runner-up under RE-SELECTION stability (~1/3 of draws), which "
+           "is the precise sense in which Q4 stays open. AERONET detail in "
            "backup: the diurnal-corrected column check hardens the Addis "
            "anomaly."))
 
