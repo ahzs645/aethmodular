@@ -314,3 +314,25 @@ if __name__ == "__main__":
     fig_winner_crossplot()
     fig_band_vs_intercept()
     print("all v2 figures done")
+
+
+def fig_analog_ranked_side_by_side():
+    """The two ranked histograms side by side (instead of stacked), with the
+    raw / baseline-corrected identity restored as panel titles."""
+    im = Image.open(FIG / "f13_analog_explainer.png")
+    right = im.crop((1020, 0, im.width, im.height))
+    h = right.height // 2
+    top = np.asarray(right.crop((0, 0, right.width, h)))
+    bot = np.asarray(right.crop((0, h, right.width, right.height)))
+    fig, axes = plt.subplots(1, 2, figsize=(11.6, 4.4))
+    for ax, arr, title in zip(axes, (top, bot),
+                              ("ranked on raw spectra",
+                               "ranked on baseline-corrected spectra")):
+        ax.imshow(arr)
+        ax.set_title(title, fontsize=12, color=INK)
+        ax.axis("off")
+    fig.tight_layout()
+    fig.savefig(FIG / "f13c_analog_ranked_sbs.png", dpi=200)
+    plt.close(fig)
+    rgb("f13c_analog_ranked_sbs.png")
+    print("side-by-side ranked histograms done")

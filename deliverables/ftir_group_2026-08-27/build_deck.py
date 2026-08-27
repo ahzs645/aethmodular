@@ -152,13 +152,14 @@ slide(
 
 slide(
     "Choosing by spectral shape, and baselining changes which samples get picked",
-    fig=F("f13b_analog_ranked.png"),
+    fig=F("f13c_analog_ranked_sbs.png"),
     say=("Second way: rank the whole pool by how close each spectrum is to "
          "the Addis spectra, and keep the closest 500 as the calibration "
          "set. Top: ranking computed on raw spectra. Bottom: the identical "
          "recipe on baseline-corrected spectra. The shape of the ranking "
-         "changes completely, and a clear near-Addis population emerges "
-         "only after baselining; the two rankings share almost no filters. "
+         "changes completely; left, ranked on raw spectra; right, the identical "
+         "recipe on baseline-corrected spectra, where a clear near-Addis "
+         "population emerges; the two rankings share almost no filters. "
          "So even the choice of similarity space is a choice that matters."),
     notes=("Left diagnostic scatter panels removed per the run-through (not "
            "intuitive). Under corrected selection only 4 of 477 raw-selected "
