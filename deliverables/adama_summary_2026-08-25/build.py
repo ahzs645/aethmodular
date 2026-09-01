@@ -194,7 +194,9 @@ eb = pd.read_csv(
     Path(FTIRTransferPaths.defaults().spartan_hips_primary), encoding="cp1252",
     usecols=["Site", "FilterId", "FilterType", "Fabs"])
 eb = eb[(eb.Site == "ETBI") & (eb.FilterType == "PM2.5")].dropna(subset=["Fabs"])
-ef = pd.read_csv(Path.home() / "Downloads/etbi_site/etbi_filters.csv",
+# Canonical staged copy (stage_spartan_pull.py layout); the ~/Downloads pull is gone.
+ef = pd.read_csv(Path(FTIRTransferPaths.defaults().spartan_hips_primary).parents[1]
+                 / "DAVIS/SPARTAN FTIR pulls/ETBI/ETBI_filters.csv",
                  encoding="utf-8-sig")
 ef.columns = [c.strip('\ufeff"') for c in ef.columns]
 ef["mass_conc"] = (ef.MassCollectedOnFilter.astype(float)
@@ -219,10 +221,10 @@ RATIO_PANELS = [
      "no OC yet: Bishoftu"),
     ("oc_fabs", "f_ratio_oc_fabs.png", "OC / fAbs  (ug/m3 per 1/Mm)",
      "lower = more absorption per unit organic carbon",
-     "not measurable yet: Bishoftu (no OC), Adama (no HIPS)"),
+     "not measurable yet: Bishoftu (no OC); Adama HIPS exists (ftir_41) but is not drawn here"),
     ("fabs_pm", "f_ratio_fabs_pm.png", "fAbs / PM2.5 mass  (1/Mm per ug/m3)",
      "higher = darker aerosol per unit mass; calibration-free",
-     "not measurable: Adama (no HIPS on quartz)"),
+     "not measurable: Adama (no PM2.5 mass on the PTFE twins yet)"),
 ]
 rng = np.random.default_rng(7)
 for col, fname, name, sub, missing in RATIO_PANELS:
@@ -320,7 +322,7 @@ def slide(title, fig=None, lines=None, say="", notes=""):
 
 
 slide(
-    "Adama is not Addis: OC/EC sits at the IMPROVE median, and regional absorption is half of Addis",
+    "Adama is not Addis: OC/EC sits at the IMPROVE median, and its HIPS excess is a third of Addis's",
     fig=FIG / "f_adama_context.png",
     say=("Two panels that frame the whole question. Right: the five Adama quartz "
          "filters land at OC-to-EC around six, which is the middle of the IMPROVE "
@@ -332,8 +334,11 @@ slide(
     notes=("OC/EC TR basis 4.63 to 7.23, IMPROVE pool median 5.54; lowest-OC/EC "
            "cut is 2.27. Bishoftu: 26 filters, median Fabs 26.9 vs Addis 47.1 "
            "inverse megameters; transfer readout 0.93x minus 0.56 with the "
-           "winner calibration. No HIPS exists for Adama PTFE itself; Bishoftu "
-           "is the regional HIPS anchor."))
+           "winner calibration. Correction (2026-09-01): HIPS on the Adama PTFE "
+           "twins does exist (CSU AMOD Batch 54): median Fabs 40.5 inverse "
+           "megameters in July 2024, implied MAC 16.5 against quartz EC TOR "
+           "versus about 47 implied at Addis (ftir_41). Bishoftu remains the "
+           "regional SPARTAN anchor."))
 
 slide(
     "OC / EC across 199 IMPROVE sites: Addis is the lowest anywhere; Adama sits at the median",
@@ -398,8 +403,9 @@ slide(
          "unstructured scatter on the right."),
     notes=("Axes differ by construction: Addis is ug/m3 against HIPS Fabs/10 "
            "(MAC 10); Adama is ug per filter against TOR ECTR, pairs matched "
-           "by sample date (no HIPS exists for Adama PTFE, and no quartz "
-           "exists at Addis; that asymmetry is the point of the quartz-TOR "
+           "by sample date (HIPS on the Adama PTFE twins exists, see the "
+           "three-method slide; no quartz exists at Addis, and that asymmetry "
+           "is the point of the quartz-TOR "
            "ask). The drawn Addis line is OLS, reproducing the committed "
            "ftir_17 number 1.90x-4.17; Deming at lambda-star reads steeper "
            "(2.24x-5.86) and both are in the stat box. Adama OLS on n=5 is "
@@ -408,7 +414,7 @@ slide(
            "are context."))
 
 slide(
-    "At Adama, FTIR EC agrees with quartz TOR; the Addis-style gap is absent",
+    "At Adama, deployed FTIR EC sits within 15 to 30 percent of quartz TOR; the factor-of-two Addis gap is absent",
     fig=FIG / "f_adama_ftir_vs_tor.png",
     say=("The comparison Ann asked about, from the five co-located PTFE and "
          "quartz pairs. Left: FTIR EC over TOR EC per filter. The production "
@@ -424,12 +430,52 @@ slide(
            "loading-vs-concentration units question drops out. char/soot = "
            "(EC1-OP)/(EC2+EC3), Han convention; all values 0.02 to 0.58, "
            "char-dominated would be above 1. Committed table: "
-           "spartan_ec_2026_06_16/tables/adama_ec_calibration_comparison.csv."))
+           "spartan_ec_2026_06_16/tables/adama_ec_calibration_comparison.csv. "
+           "The AMOD export's own EC_ftir (calibration set 26) gives 0.69 vs "
+           "EC TOR and 0.86 vs EC TOT (ftir_41); name the convention whenever "
+           "this ratio is quoted."))
+
+slide(
+    "Adama has HIPS after all: every carbon EC sits below the HIPS band, implied MAC 16 to 21 versus about 47 at Addis",
+    fig=FIG / "f_ftir41_three_method.png",
+    say=("A correction to the earlier version of this deck: the CSU AMOD Batch 54 "
+         "export includes HIPS on the five Adama PTFE filters. Left: TOR EC, TOT EC "
+         "and deployed FTIR EC per date, with the HIPS band between MAC 6 and MAC 10. "
+         "Every carbon EC sits below the band. Right: the MAC that would reconcile "
+         "HIPS with each EC definition, 16 to 21 against the thermal references, "
+         "versus 4 to 13 for pure EC and about 47 implied at Addis. So Adama does "
+         "show absorption in excess of its EC, but at a third of the Addis "
+         "magnitude. Grey circles mark the two flagged dates."),
+    notes=("ftir_41. Implied MAC, unflagged medians: 16.5 vs EC TOR, 20.8 vs EC TOT, "
+           "23.5 vs FTIR EC. TOR to TOT moves EC by minus 15 to minus 21 percent "
+           "(median minus 19) while OC plus EC is conserved to numerical precision. "
+           "Flags: July 9 quartz start 39.7 min after PTFE; July 30 PTFE volume "
+           "0.46 times quartz. Neither excluded nor corrected; sampler-log review "
+           "requested."))
+
+slide(
+    "The Addis-tuned calibrations over-read Adama thermal EC by 1.4 to 2 times: they are Addis instruments, not general calibrations",
+    fig=FIG / "f_ftir44_models_vs_thermal.png",
+    say=("The same five filters through our phase-3 models. The locked lowest-OC/EC "
+         "plus baseline-corrected calibration reads 1.4 times quartz TOR EC, the "
+         "sweep winner 2 times, and both land inside the HIPS band. The deployed "
+         "calibration reads 0.7. Adama's OC to EC of about six is far outside the "
+         "cohort those models were trained on, below 2.3, so this is extrapolation, "
+         "and it says the models carry the Addis offset with them. More Adama "
+         "Teflon cannot arbitrate that; only quartz at Addis can."),
+    notes=("ftir_44. Unflagged medians: locked 800 plus AIRSpec 1.40 vs TOR, 1.76 vs "
+           "TOT; winner 440 k=8 2.00 and 2.51; EC TOT-target model 1.01 and 1.27; "
+           "deployed 0.69 and 0.86. OC and TC models refit on the same cohort leave "
+           "the carbon sum at 0.47 of thermal TC, same as deployed 0.44: the carbon "
+           "deficit is upstream of any calibration. Spectra id map inferred from "
+           "FilterId order (CH band vs OC loading rank rho = 1.00); Davis "
+           "confirmation requested."))
 
 slide(
     "What Adama can contribute: quartz filters, not more Teflon",
     lines=["More Adama Teflon will characterize a different aerosol, not arbitrate the Addis question:",
-           "   normal OC/EC, soot-dominated EC, no visible FTIR-vs-TOR gap, no regional HIPS offset",
+           "   normal OC/EC, soot-dominated EC, deployed FTIR EC within 15 to 30 percent of TOR,",
+           "   HIPS excess a third of Addis's, and our Addis-tuned calibrations over-read it 1.4 to 2 times",
            "The binding constraint is an independent EC measurement at Addis itself:",
            "   the quartz TOR campaign (about 36 filters across 3 seasons)",
            "If Adama sampling continues: co-located quartz would make every future pair a TOR anchor",
@@ -460,5 +506,5 @@ slide(
            "carries the sizing: about 3 sigma per day separation of MAC 6 vs "
            "10 needs 11 to 13 days per season, three seasons."))
 
-prs.save(HERE / "adama_summary_2026-08-25.pptx")
+prs.save(HERE / "adama_summary_2026-09-01.pptx")
 print(f"saved with {len(prs.slides._sldIdLst)} slides")

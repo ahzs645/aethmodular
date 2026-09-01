@@ -390,3 +390,69 @@ the production selectors, so the drawings cannot drift from what runs.
   lowest-OC/EC + AIRSpec (5/5) take their true global minimum under the site-held-out rule.
   The disagreement is specifically about long flat tails, where the 5% band admits far more
   components than the evidence separates.
+
+## ftir_41–43 — the carbon-definition thread (Sept 2026): what is FTIR failing to predict?
+
+Reframing follow-ups from the 2026-09-01 external research review: split the FTIR-vs-HIPS
+disagreement into (a) the definition of the carbon being measured, (b) carbon recovery, and
+(c) what a residual model actually demonstrates.
+
+- **ftir_41 — Adama three-method reconciliation.** The Adama PTFE twins *do* exist (CSU AMOD
+  Batch 54: 5 PTFE filters with FTIR OC/EC + HIPS, date-paired with the 5 quartz TOR/TOT
+  filters; older notes said "no FTIR/HIPS"). TOR→TOT moves EC by −15.4 to −20.6% (median
+  −19.0%) while OC+EC is conserved to ≤1e-13 — the convention is a split question, never a
+  recovery question. The FTIR sum is 0.40–0.74 of thermal TC (median 0.51) and the deficit is
+  **OC-dominated**: FTIR EC vs EC_TOT has median ratio 0.86 (unflagged 0.79–1.02), while
+  OC_ftir/OC_TOR ≈ 0.46 (quartz adsorption artifact uncorrected — bound it before reading
+  this as FTIR under-recovery). Same-corridor implied MAC: 16.5 (vs EC_TOR), 20.8 (vs
+  EC_TOT), 23.5 (vs FTIR EC) m²/g — above the physical 4–13 band but nowhere near the ≈47
+  the Addis composition bridge implies. Two pairs carry comparability flags (Jul 9: 39.7-min
+  quartz start offset, and the one anomalous EC pair; Jul 30: PTFE volume 0.46× quartz) —
+  flagged in every figure, not excluded, not corrected.
+- **ftir_42 — target-definition experiment.** Same corrected spectra, same locked protocol
+  and folds on the IMPROVE mirror; only the target changes. TC is FTIR's **easiest** target
+  (held-out-site R² 0.897 / %RMSE 39.7 vs 0.870 / 43.8 for EC_TOR on the lowest-OC/EC
+  cohort); EC_TOT is the hard one (0.764 / 69.4; full-pool collapse to k = 2, R² 0.18) —
+  and pool-wide EC_TOT/EC_TOR median is **0.540** (IQR 0.41–0.68), a far larger
+  redistribution than Adama's 0.81. The OC/EC partition itself has ~zero out-of-site skill
+  (predicted-vs-observed EC/TC R² 0.007 cohort / 0.001 pool); direct-TC and OC+EC-sum agree
+  to 3% RMSE. The convention changes the Addis transfer beyond a rescale: EC_TOT-target
+  model reads 0.63x−1.24 vs 0.81x−1.53 (intersection n = 728; the full-800 pipeline
+  reproduces the locked 0.857/−1.615, asserted). Consequence: any "FTIR EC vs thermal EC"
+  claim is underspecified without the convention named.
+- **ftir_43 — residual-learner null control.** With f(X) = the committed corrected
+  prediction and b = Fabs/10: b = 0.802·f + 2.851, so r = f − b mechanically contains
+  0.198·f. Time-blocked controls: f(X)-only residual learner R² 0.064 —
+  indistinguishable from a proportional-disagreement null (median 0.077, p = 0.67);
+  spectra learner 0.244 vs null q95 0.113 (0/200 null runs) — **genuine incremental
+  spectral signal**; but season+volume alone reach 0.184. RMSE ladder: no correction 2.46
+  → constant bias 0.72 → spectra residual learner 0.62 → direct spectra→HIPS 0.80. The
+  constant offset does 71% of the deployable work. Trap documented: HIPS τ as "metadata"
+  manufactures residual R² ≈ 0.94 by arithmetic circularity (Fabs ∝ τ·A/V) — ftir_27's
+  lesson in a new costume.
+
+Gated (not built, data missing): full chemical mass closure (local mirror ions = sulfate
+only, XRF = Fe/S/Si, grav = PM2.5 — no nitrate/ammonium/full elements); PurpleAir
+composition-dependent error (sensor 93783's colocation with the "Jacros BAM" file is
+unverified — the BAM names its site Addis Ababa Central).
+
+### ftir_44 / ftir_45 — the in-house follow-ups (2026-09-01)
+
+- **ftir_44 — Adama PTFE spectra through the phase-3 calibrations (Ann's ask #3).** The
+  five CSU AMOD spectra, AIRSpec-baselined on the pool grid (id → filter map inferred from
+  FilterId order; CH-band vs OC-loading rank ρ = 1.00, vs 0.10 for analysis-time order),
+  predicted with the locked and sweep-winner models. **They over-read thermal EC and land
+  inside the HIPS band**: locked 800 + AIRSpec **1.40× EC_TOR** (1.76× EC_TOT), winner 440
+  k=8 **2.00×** (2.51×), EC_TOT-target model 1.01× (1.27×); deployed SPARTAN 0.69× (0.86×).
+  Adama's OC/EC ≈ 6 sits far outside the cohort's ≤ 2.27 domain — the Addis-tuned
+  calibrations carry the Addis offset with them and are not general calibrations. OC and
+  TC refits leave the Adama carbon sum at 0.47 of thermal TC (deployed 0.44): ftir_41's
+  carbon deficit is upstream of any calibration.
+- **ftir_45 — where ftir_43's spectral increment lives.** Stepwise on identical folds:
+  season+volume 0.184; +f(X)² 0.195; +char_06 flag 0.176; +neutral band heights −0.006;
+  all 0.089; spectra learner 0.244. The dry-season anomaly class has the same
+  season-adjusted residual as normal filters (0.004 vs 0.024 µg/m³) — **not the missing
+  absorber**. The learner's coefficient spectrum is derivative-shaped across
+  1560–1750 cm⁻¹: band position/shape, not height, is the lead.
+
+External dependencies are consolidated in `EXTERNAL_ASKS_2026-09-01.md`.
