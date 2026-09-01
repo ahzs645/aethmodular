@@ -835,6 +835,84 @@ print('\nIf the sets STILL barely overlap inside one loading band, the seasons r
       'draw different analogs; if they now overlap heavily, the headline 0% was loading.')
 
 # %% [markdown]
+# ### The analogs themselves, named
+#
+# Per season: the actual nearest IMPROVE spectra, with site, sample date, similarity, TOR
+# EC loading and OC/EC. Full top-200 lists (unrestricted and loading-matched) are written
+# to `output/tables/ftir52/` so they can be used directly as candidate cohorts.
+
+# %%
+def analog_table(name, idx, frame, source):
+    g = frame.iloc[idx].copy()
+    out = pd.DataFrame({
+        'rank': np.arange(1, len(idx) + 1),
+        'AnalysisId': g.AnalysisId.to_numpy(),
+        'Site': g.Site.to_numpy(),
+        'date': pd.to_datetime(g.date).dt.strftime('%Y-%m-%d').to_numpy(),
+        'TOR_EC_ug': g.TOR_EC_loading_ug.round(2).to_numpy(),
+        'OC_EC': g.OC_EC_ratio.round(2).to_numpy(),
+        'smoke_lineage': g.smoke_lineage.to_numpy(),
+        'ward_class': g.cluster.to_numpy(),
+    })
+    out.insert(0, 'season', name)
+    out.insert(1, 'search', source)
+    return out
+
+tables = []
+for name in SEASONS:
+    r_full = ss.correlation_matrix(season_median[name][None, :], LIB).ravel()
+    t = analog_table(name, an_idx[name], lib, 'all filters')
+    t['r'] = r_full[an_idx[name]].round(5)
+    tables.append(t)
+    r_band = ss.correlation_matrix(season_median[name][None, :], LIB_B).ravel()
+    tb = analog_table(name, an_b[name], lib_b, 'EC 3-12 ug band')
+    tb['r'] = r_band[an_b[name]].round(5)
+    tables.append(tb)
+analogs_all = pd.concat(tables, ignore_index=True)
+analogs_all.to_csv(OUT / 'season_analog_lists.csv', index=False)
+
+cols = ['rank', 'Site', 'date', 'r', 'TOR_EC_ug', 'OC_EC', 'smoke_lineage', 'ward_class']
+for name in SEASONS:
+    sub = analogs_all[(analogs_all.season == name) & (analogs_all.search == 'all filters')]
+    print(f'\n=== {name}: nearest IMPROVE spectra (unrestricted search) ===')
+    display(sub.head(15)[cols].to_string(index=False))
+
+print('\nSame, restricted to the EC 3-12 ug band so the seasons are loading-matched:')
+for name in SEASONS:
+    sub = analogs_all[(analogs_all.season == name) & (analogs_all.search == 'EC 3-12 ug band')]
+    print(f'\n=== {name} (loading-matched) ===')
+    display(sub.head(10)[cols].to_string(index=False))
+
+print(f'\nwrote {len(analogs_all):,} rows to season_analog_lists.csv '
+      f'({len(SEASONS)} seasons x 2 searches x {K_S})')
+
+# how concentrated is each season's analog list by site?
+print('\nSite composition of each unrestricted top-200 list:')
+for name in SEASONS:
+    sub = analogs_all[(analogs_all.season == name) & (analogs_all.search == 'all filters')]
+    vc = sub.Site.value_counts()
+    print(f'  {name:<18} {sub.Site.nunique():>3} distinct sites; '
+          f'top: ' + ', '.join(f'{s} ({n})' for s, n in vc.head(5).items()))
+
+# %%
+fig, axes = plt.subplots(1, 3, figsize=(15.6, 4.4), sharey=True)
+for ax, name in zip(axes, SEASONS):
+    sub = analogs_all[(analogs_all.season == name) & (analogs_all.search == 'all filters')]
+    for _, row in sub.head(5).iterrows():
+        li = int(np.where(lib.AnalysisId.to_numpy() == row.AnalysisId)[0][0])
+        ax.plot(WN, LIB[li], lw=1.1, color='#8F8C84', alpha=0.85,
+                label=f"{row.Site} {row.date[:7]}  r={row.r:.4f}")
+    ax.plot(WN, season_median[name], lw=2.3, color=S_COLOUR[name], zorder=5,
+            label=f'Addis {name} median')
+    ax.set(xlim=(WN.max(), WN.min()), xlabel='Wavenumber (cm$^{-1}$)', title=name)
+    ax.legend(frameon=False, fontsize=7.2, loc='upper left')
+axes[0].set_ylabel('Absorbance (AIRSpec-corrected)')
+fig.suptitle('Each Ethiopian season\u2019s five nearest IMPROVE spectra',
+             x=0.02, ha='left')
+fig.tight_layout(rect=[0, 0, 1, 0.93])
+fig.savefig(PLOTS / 'season_top_analogs.png', dpi=150); plt.show()
+
+# %% [markdown]
 # The same question for Bishoftu is not answerable here: its 26 filters are all
 # dry-season, which is why it cannot arbitrate a seasonal claim on its own.
 

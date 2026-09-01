@@ -691,3 +691,31 @@ The difference spectra show where: Kiremt minus Dry is strongly positive at alip
 and at 1560-1800, negative across the broad O-H; Belg minus Dry is negative almost
 everywhere except a small 1650-1750 rise. Bishoftu cannot arbitrate any of this - its 26
 filters are all dry-season.
+
+#### The named analogs per season
+
+Full top-200 lists per season, unrestricted and loading-matched, are in
+`output/tables/ftir52/season_analog_lists.csv` (1,200 rows) and can be used directly as
+candidate cohorts. Leading matches, unrestricted:
+
+- **Dry (Oct-Feb)** - EVER1 2023-02 (r 0.9964), TALL1 2023-04, NOGA1 2022-07, UPBU1
+  2022-11, VILA1 2020-12. **80 distinct sites in its top 200** (BIBE1 9, CEBL1 7, SACR1 6),
+  none in the smoke lineage, analog EC 3-8 ug.
+- **Belg (Mar-May)** - PHOE1 2023-01 (r 0.9918), PUSO1 2022-12, PHOE1 2023-02, BIRM1
+  2022-10, PUSO1 2022-12. **47 sites**, dominated by LTCC1 (28), PUSO1 (25), PHOE5 (19).
+- **Kiremt (Jun-Sep)** - PHOE5 2020-12 (r 0.9950), PUSO1 2021-01, PHOE1 2023-01, PHOE1
+  2020-12, PHOE1 2021-01. **45 sites**, PUSO1 (28), LTCC1 (19), BIRM1 (17).
+
+Two things to note. First, the **dry season draws from twice as many IMPROVE sites** (80
+vs 45-47) as either wet season: its analog population is broad and unremarkable, while the
+wet seasons concentrate on a handful of high-loading western/urban sites (Phoenix,
+Puget Sound, Las Vegas-area LTCC1, Birmingham). Second, **the analogs' own sampling dates
+do not track the Ethiopian season**: Kiremt (Ethiopian rainy, Jun-Sep) matches IMPROVE
+filters sampled in December and January, and Dry (Oct-Feb) matches July and August
+filters. The match is on spectral shape, not calendar, which is the expected behaviour but
+worth stating before anyone reads seasonal alignment into the lists.
+
+Loading-matched, the leading matches change substantially for the wet seasons (Kiremt ->
+GRSM1, BRCA1, EGBE1; Belg -> PUSO1, FRES1, GUMO1) while the dry season's top five are
+unchanged - further evidence that the wet-season analogs were partly loading-driven and
+the dry-season match is not.
