@@ -14,10 +14,13 @@
 # learner's coefficient spectrum (k = 8) puts its weight in the 1500–1750 cm⁻¹ region
 # with a derivative-like shape straddling the 1617 band and the carbonyl edge, plus C–H
 # fine structure — band **position/shape** information that scalar band heights cannot
-# carry. Net: the ≈0.06 R² beyond season is real but diffuse, is not the char anomaly,
-# and is not any single band's height. It is not a mechanism; it is a lead for a
-# derivative-spectrum or peak-position feature, and its deployment value is ≈0.03 µg/m³
-# of RMSE.
+# carry. Net: the ≈0.06 R² beyond season is diffuse, is not the char anomaly, and is
+# not any single band's height — and ftir_46's paired test shows it is **not
+# significant against f(X) + season + volume + lot** (ΔRMSE −0.06, CI [−0.13, +0.02]),
+# while gravimetric mass predicts the residual as well as the spectra do. So this is
+# not a mechanism and probably not chemistry: the surviving lead is loading (ftir_37,
+# ftir_46), with peak-position/derivative features as a secondary check. Deployment
+# value of the spectral route: ≈0.03 µg/m³ of RMSE.
 #
 # ## Context & Methods
 #
@@ -273,9 +276,11 @@ plt.show()
 #   is where the 1617/carbonyl envelope sits and how sharp it is — ftir_12's peak-center
 #   diagnostic is the right instrument, applied to the residual rather than to site
 #   identity.
-# - **Loading curvature is worth 0.01.** ftir_37's HIPS-curvature mechanism shows up here
-#   as a tiny f(X)² gain, consistent with a loading-dependent component that the
-#   corrected model's linear-in-f(X) residual misses.
+# - **Loading is the lead, not the spectra.** f(X)² buys 0.01 here, and ftir_46 finds
+#   gravimetric mass predicts the residual as well as the full spectrum (mass + spectra
+#   R² 0.53, CI excluding zero) — consistent with ftir_37's loading-dependent HIPS
+#   mechanism. The spectral increment is not significant once metadata (incl. lot) is in
+#   the baseline.
 # - **Deployment reading unchanged from ftir_43**: the constant offset is the product; the
 #   residual learner is a diagnostic worth ≈0.03 µg/m³.
 # - Limits: linear stepwise models with 4–8 covariates on 239 filters; time-blocked

@@ -12,8 +12,13 @@
 # — statistically indistinguishable from a proportional-disagreement null with no
 # spectral information at all (null median 0.077, p = 0.67). The **spectra learner
 # reaches 0.244**, above the null's 95th percentile of **0.113** (0/200 null runs match
-# it): genuine incremental signal. But season + volume alone reach **0.184**, so the
-# spectral increment beyond seasonal structure is ≈0.06 of R². In HIPS-prediction RMSE —
+# it) — so the spectra beat the *no-chemistry* null. But season + volume alone reach
+# **0.184**, the spectral increment beyond seasonal structure is ≈0.06 of R², and
+# **against the metadata baseline it is not significant**: ftir_46's paired test on the
+# same time blocks (f(X) + season + volume + lot) gives ΔRMSE −0.06 with CI
+# [−0.13, +0.02], and gravimetric mass predicts the residual as well as the spectra do
+# (mass + spectra R² 0.53, CI excluding zero) — a loading mechanism, not a chemical
+# one, is the lead. In HIPS-prediction RMSE —
 # the number that matters — the ladder is: no correction **2.46** → constant bias
 # **0.72** → f(X)-linear 0.69 → season metadata 0.65 → **spectra 0.62** → direct
 # spectra→HIPS 0.80. The constant offset does 71% of the work; the residual learner adds
@@ -308,12 +313,12 @@ plt.show()
 # - **Residual-R² is not evidence of a missing absorber by itself.** A no-chemistry null
 #   reaches R² up to ~0.11 on these folds, and the f(X)-only learner is fully consistent
 #   with that null. Any residual-model claim must be quoted net of these controls.
-# - **There is real incremental spectral signal** (0.244 vs null q95 0.113, p < 0.005) —
-#   the corrected calibration does leave structure in the spectra. But over half of the
-#   learnable residual is seasonal/volume structure (0.184 without any spectra), so
-#   "the spectra know something chemistry-shaped" and "the residual varies by season"
-#   are not yet separated. The dry-season anomaly work (char_06, ftir_33) is the natural
-#   place that separation happens.
+# - **The spectra beat the no-chemistry null (0.244 vs q95 0.113) but not the metadata
+#   baseline.** Over half of the learnable residual is seasonal/volume structure (0.184
+#   without any spectra), and the paired test in ftir_46 (ΔRMSE −0.06, CI [−0.13, +0.02]
+#   vs f(X)+season+volume+lot) cannot distinguish the remainder from zero. Quote this as
+#   "spectra add nothing significant beyond metadata"; ftir_45 shows no named feature
+#   carries the increment, and ftir_46's mass result points the lead at loading.
 # - **For deployment, the offset is the story**: a constant-bias correction removes 71%
 #   of the RMSE; everything else combined buys another ~0.10 µg/m³. Chasing residual
 #   models for accuracy is low-yield; their value is diagnostic.
