@@ -634,3 +634,32 @@ background ranking.** This is the site-level form of the phase-3 background-leak
 raw-space similarity as a selection criterion. Caveat: only Addis has a raw target export
 in this notebook, so the raw-space nearest-IMPROVE-site comparison for Bishoftu, Delhi,
 Beijing and Pasadena needs the SPARTAN raw pulls and is left open.
+
+### ftir_52 §8 — Addis's raw analogs are not its baselined analogs
+
+The per-filter version of the raw/baselined result, and the one to look at directly.
+For each of the 239 Addis filters, its top-50 nearest IMPROVE **spectra** in raw space and
+in AIRSpec space:
+
+- **Median overlap between the two analog sets is 12%** (5% of filters share none), and
+  only **8 of 239 filters keep the same top-1 analog**.
+- Raw matches look far better than they are: median top-1 r **0.9999** in raw space vs
+  0.9939 baselined. Take one filter's 50 raw-chosen analogs and re-score them after
+  baselining and their median r drops to 0.9731, against 0.9901 for its true baselined
+  top-50. A raw match is not a baselined match.
+- The analog **sites** change too: raw top-1 analogs are dominated by PHOE1/PUSO1/LTCC1,
+  baselined by BIRM1 (48 filters), PHOE1, PUSO1, PHOE5, PITT1.
+
+The figure `addis_raw_vs_baselined_analogs.png` shows why: in raw space the Addis filter
+and its "r = 0.9999" analogs are five nearly parallel background ramps whose only large
+shared feature is the PTFE doublet at 1150-1300 cm-1 — the aerosol bands are a small
+ripple on top. Correlation at that scale is measuring the substrate and the baseline
+slope. After baselining the same comparison is between actual band shapes.
+
+**Data correction applied here and back-propagated to ftir_50:** the Addis corrected cache
+holds SCAN rows, and 19 of the 239 evaluation filters were scanned twice (259 rows).
+Both notebooks previously used all 259, double-weighting those 19. Replicates are now
+averaged per physical filter, matching load_addis_evaluation. Effect is small and changes
+no conclusion: ftir_50's Addis T2/Q shifts 22.0 -> 21.3% either and 7.3 -> 7.1% both, and
+its neighbourhood redundancy 0.191 -> 0.202 unique ratio with 35.9 -> 33.1% of filters
+having no mutual analog.

@@ -99,10 +99,15 @@ from phase3_common import load_addis_evaluation                       # noqa: E4
 etad_eval, _, _ = load_addis_evaluation()
 etad_npz = np.load('output/corrected/etad_corrected_df6.npz', allow_pickle=True)
 assert np.allclose(etad_npz['wn'].astype(float), WN), 'ETAD corrected grid differs'
-keep = np.isin(etad_npz['media_id'].astype(int),
-               etad_eval['MediaId'].to_numpy(int))
-X['addis'] = etad_npz['corrected'][keep].astype(float)
-meta['addis'] = etad_npz['media_id'][keep].astype(int)
+# The cache holds SCAN rows: 19 of the 239 evaluation filters were scanned more than once
+# (259 scan rows). load_addis_evaluation averages replicate scans per physical filter, so
+# do the same here -- otherwise those 19 filters are silently weighted twice.
+_mid = etad_npz['media_id'].astype(int)
+_corr = etad_npz['corrected'].astype(float)
+_order = etad_eval['MediaId'].to_numpy(int)
+_addis = np.vstack([_corr[_mid == m].mean(axis=0) for m in _order])
+X['addis'] = _addis
+meta['addis'] = _order
 
 for key in ('etbi', 'indh', 'chts', 'uspa'):
     frame = pd.read_csv(TARGET_DIR / key / 'spectra_corrected.csv')

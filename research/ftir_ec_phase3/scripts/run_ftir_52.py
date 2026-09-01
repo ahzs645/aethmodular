@@ -101,8 +101,14 @@ lib['ocec800'] = lib['AnalysisId'].isin(ocec800['AnalysisId'].astype(int))
 
 etad_eval, _, _ = load_addis_evaluation()
 etad_npz = np.load('output/corrected/etad_corrected_df6.npz', allow_pickle=True)
-keep = np.isin(etad_npz['media_id'].astype(int), etad_eval['MediaId'].to_numpy(int))
-X = {'addis': etad_npz['corrected'][keep].astype(float)}
+# The cache holds SCAN rows: 19 of the 239 evaluation filters were scanned more than once
+# (259 scan rows). load_addis_evaluation averages replicate scans per physical filter, so
+# do the same here -- otherwise those 19 filters are silently weighted twice.
+_mid = etad_npz['media_id'].astype(int)
+_corr = etad_npz['corrected'].astype(float)
+_order = etad_eval['MediaId'].to_numpy(int)
+_addis = np.vstack([_corr[_mid == m].mean(axis=0) for m in _order])
+X = {'addis': _addis}
 for key in ('etbi', 'indh', 'chts', 'uspa'):
     frame = pd.read_csv(TARGET_DIR / key / 'spectra_corrected.csv')
     cols = [c for c in frame.columns if c not in ('MediaId', 'ExternalFilterId')]
@@ -487,13 +493,19 @@ for k, lab in TARGETS.items():
 
 # %%
 from phase3_common import load_pool_spectra                              # noqa: E402
-raw_wcols = [c for c in etad_eval.attrs['wcols'] if 1425 <= float(c) <= 3999]
-raw_pool = load_pool_spectra(lib.AnalysisId.to_numpy(), raw_wcols)
+full_wcols = list(etad_eval.attrs['wcols'])
+raw_pool = load_pool_spectra(lib.AnalysisId.to_numpy(), full_wcols)
 raw_pool = raw_pool.set_index('AnalysisId').reindex(lib.AnalysisId.to_numpy())
-RAW = raw_pool[raw_wcols].to_numpy(float)
+RAW_FULL = raw_pool[full_wcols].to_numpy(float)
+WN_FULL = np.array([float(c) for c in full_wcols])
+# the comparison window matches the corrected grid so the two spaces are comparable
+win = (WN_FULL >= 1425) & (WN_FULL <= 3999)
+raw_wcols = [c for c, m in zip(full_wcols, win) if m]
+RAW = RAW_FULL[:, win]
 raw_ok = np.isfinite(RAW).all(axis=1)
-print(f'raw spectra fetched for {raw_ok.sum():,}/{len(lib):,} pool rows '
-      f'on {len(raw_wcols)} channels ({float(raw_wcols[-1]):.0f}-{float(raw_wcols[0]):.0f} cm-1)')
+print(f'raw spectra fetched for {raw_ok.sum():,}/{len(lib):,} pool rows; '
+      f'full range {WN_FULL.min():.0f}-{WN_FULL.max():.0f} cm-1 ({len(full_wcols)} channels), '
+      f'comparison window {len(raw_wcols)} channels')
 
 raw_site_median = {}
 for site in improve_names:
@@ -573,6 +585,111 @@ display(pd.DataFrame(rows))
 print('Only Addis has a raw target export in this notebook; the other four targets are '
       'distributed as corrected spectra only, so their raw comparison needs the SPARTAN '
       'raw pulls and is left for a follow-up.')
+
+# %% [markdown]
+# ## 8. Addis in raw space: which IMPROVE spectra does it actually match?
+#
+# The site-level result says raw-space similarity is background similarity. This is the
+# per-filter version, and the one to look at directly: take every Addis filter, find its
+# nearest IMPROVE **spectra** in raw space and in baselined space, and ask whether they are
+# the same spectra. Then plot them — including the 1150-1300 cm-1 PTFE doublet that the
+# corrected grid cuts away, because that is what raw matching is mostly looking at.
+
+# %%
+A_raw = etad_eval[raw_wcols].to_numpy(float)          # matched window
+A_raw_full = etad_eval[full_wcols].to_numpy(float)
+A_cor = X['addis']
+ok = raw_ok
+
+K_AN = 50
+idx_raw, sc_raw = ss.nearest_analogs(A_raw, RAW[ok], k=K_AN)
+idx_cor, sc_cor = ss.nearest_analogs(A_cor, LIB, k=K_AN)
+pool_ids_raw = lib.AnalysisId.to_numpy()[ok]
+pool_site_raw = lib.Site.to_numpy()[ok]
+pool_ids_cor = lib.AnalysisId.to_numpy()
+pool_site_cor = lib.Site.to_numpy()
+
+overlap = [len(set(pool_ids_raw[a]) & set(pool_ids_cor[b])) / K_AN
+           for a, b in zip(idx_raw, idx_cor)]
+print(f'Per-Addis-filter overlap between its top-{K_AN} RAW analogs and its top-{K_AN} '
+      f'BASELINED analogs: median {100 * np.median(overlap):.0f}%, '
+      f'mean {100 * np.mean(overlap):.0f}%, '
+      f'{100 * np.mean(np.array(overlap) == 0):.0f}% of filters share NONE')
+print(f'raw-space match quality:       median top-1 r {np.median(sc_raw[:, 0]):.4f}')
+print(f'baselined-space match quality: median top-1 r {np.median(sc_cor[:, 0]):.4f}')
+
+top_raw = pd.Series(pool_site_raw[idx_raw.ravel()]).value_counts().head(8)
+top_cor = pd.Series(pool_site_cor[idx_cor.ravel()]).value_counts().head(8)
+sites_cmp = pd.DataFrame({'raw analog sites': top_raw, 'baselined analog sites': top_cor})
+display(sites_cmp.fillna(0).astype(int))
+pd.DataFrame({'AnalysisId_raw_top1': pool_ids_raw[idx_raw[:, 0]],
+              'site_raw_top1': pool_site_raw[idx_raw[:, 0]],
+              'r_raw_top1': sc_raw[:, 0].round(5),
+              'AnalysisId_cor_top1': pool_ids_cor[idx_cor[:, 0]],
+              'site_cor_top1': pool_site_cor[idx_cor[:, 0]],
+              'r_cor_top1': sc_cor[:, 0].round(5),
+              'top50_overlap': np.round(overlap, 3)}).to_csv(
+    OUT / 'addis_raw_vs_baselined_analogs.csv', index=False)
+
+# %%
+# The representative Addis filter: its raw analogs (drawn raw) and its baselined analogs
+# (drawn baselined), full raw range on the left so the PTFE doublet is visible.
+i = int(np.argmax(ss.correlation_matrix(A_cor, np.median(A_cor, axis=0)[None, :]).ravel()))
+fig, axes = plt.subplots(1, 2, figsize=(13.4, 4.8))
+
+pool_full = RAW_FULL[ok]
+for j, li in enumerate(idx_raw[i][:5]):
+    axes[0].plot(WN_FULL, pool_full[li], lw=1.1, color='#8F8C84', alpha=0.85,
+                 label=f'{pool_site_raw[li]}  r={sc_raw[i, j]:.4f}')
+axes[0].plot(WN_FULL, A_raw_full[i], lw=2.2, color='#2C6E9E', zorder=5,
+             label='Addis filter (raw)')
+axes[0].axvspan(1150, 1300, color='#f3e9e9', zorder=0)
+axes[0].text(1225, axes[0].get_ylim()[1], 'PTFE', ha='center', va='top',
+             fontsize=8.5, color='#B23327')
+axes[0].set(xlim=(WN_FULL.max(), WN_FULL.min()), xlabel='Wavenumber (cm$^{-1}$)',
+            ylabel='Absorbance (raw)', title='Nearest analogs chosen in RAW space')
+axes[0].legend(frameon=False, fontsize=7.6, loc='upper left')
+
+for j, li in enumerate(idx_cor[i][:5]):
+    axes[1].plot(WN, LIB[li], lw=1.1, color='#8F8C84', alpha=0.85,
+                 label=f'{pool_site_cor[li]}  r={sc_cor[i, j]:.4f}')
+axes[1].plot(WN, A_cor[i], lw=2.2, color='#eb6834', zorder=5,
+             label='Addis filter (baselined)')
+axes[1].set(xlim=(WN.max(), WN.min()), xlabel='Wavenumber (cm$^{-1}$)',
+            ylabel='Absorbance (AIRSpec-corrected)',
+            title='Nearest analogs chosen in BASELINED space')
+axes[1].legend(frameon=False, fontsize=7.6, loc='upper left')
+fig.tight_layout(); fig.savefig(PLOTS / 'addis_raw_vs_baselined_analogs.png', dpi=150)
+plt.show()
+
+# %%
+# The same raw-chosen analogs, redrawn AFTER baselining: does a raw match survive?
+fig, axes = plt.subplots(1, 2, figsize=(13.4, 4.6), sharey=True)
+cor_row = {int(a): r for r, a in enumerate(lib.AnalysisId.to_numpy())}
+for j, li in enumerate(idx_raw[i][:5]):
+    row = cor_row[int(pool_ids_raw[li])]
+    axes[0].plot(WN, LIB[row], lw=1.1, color='#8F8C84', alpha=0.85,
+                 label=f'{pool_site_raw[li]} (raw-chosen)')
+axes[0].plot(WN, A_cor[i], lw=2.2, color='#2C6E9E', zorder=5, label='Addis (baselined)')
+axes[0].set(xlim=(WN.max(), WN.min()), xlabel='Wavenumber (cm$^{-1}$)',
+            ylabel='Absorbance (AIRSpec-corrected)',
+            title='RAW-chosen analogs, redrawn after baselining')
+axes[0].legend(frameon=False, fontsize=7.6, loc='upper left')
+for j, li in enumerate(idx_cor[i][:5]):
+    axes[1].plot(WN, LIB[li], lw=1.1, color='#8F8C84', alpha=0.85,
+                 label=f'{pool_site_cor[li]} (baselined-chosen)')
+axes[1].plot(WN, A_cor[i], lw=2.2, color='#eb6834', zorder=5, label='Addis (baselined)')
+axes[1].set(xlim=(WN.max(), WN.min()), xlabel='Wavenumber (cm$^{-1}$)',
+            title='BASELINED-chosen analogs, same axes')
+axes[1].legend(frameon=False, fontsize=7.6, loc='upper left')
+fig.tight_layout(); fig.savefig(PLOTS / 'addis_raw_analogs_after_baselining.png', dpi=150)
+plt.show()
+
+raw_chosen_rows = [cor_row[int(pool_ids_raw[li])] for li in idx_raw[i][:K_AN]]
+r_after = ss.correlation_matrix(A_cor[i][None, :], LIB[raw_chosen_rows]).ravel()
+print(f'The top-{K_AN} RAW-chosen analogs of this filter, scored in baselined space: '
+      f'median r {np.median(r_after):.4f} (its true baselined top-{K_AN} median is '
+      f'{np.median(sc_cor[i]):.4f}) -- a raw match is not a baselined match.')
 
 # %% [markdown]
 # ## Takeaways
