@@ -23,7 +23,12 @@
 # within 25% only 64% of the time, against a 31% base rate, and no cutoff reaches 75%.
 # Spectral near-identity is not calibration equivalence — which is the quantitative version
 # of ftir_50's redundancy warning and the microplastics community's "high hit-quality index
-# does not mean a correct match".
+# does not mean a correct match". **(5) Baselining is what makes the network comparable at
+# all**: on raw spectra every pair of IMPROVE sites sits at median r 0.9990 — the network is
+# effectively one spectrum plus background — while after AIRSpec the median pair falls to
+# 0.9681 and spreads down to 0.56, and **92% of sites change which site they are closest
+# to**. Raw-space similarity rankings are background rankings; the site-level version of
+# the phase-3 background-leakage story.
 #
 # ## Context & Methods
 #
@@ -413,6 +418,163 @@ ax.legend(frameon=False); fig.tight_layout()
 fig.savefig(PLOTS / 'threshold_curve.png', dpi=150); plt.show()
 
 # %% [markdown]
+# ## 6. The IMPROVE network compared with itself
+#
+# Sections 4-5 asked "which IMPROVE sites are near the SPARTAN targets". This asks the
+# network question directly: **which IMPROVE sites resemble each other**, which are
+# isolated, and whether the structure is regional. Same per-site median corrected spectra,
+# now read as a 162x162 matrix with the SPARTAN columns removed.
+
+# %%
+improve_names = [n for n in names if not n.startswith('*')]
+ii = [names.index(n) for n in improve_names]
+R_imp = R[np.ix_(ii, ii)]
+np.fill_diagonal(R_imp, np.nan)
+imp_df = pd.DataFrame(R_imp, index=improve_names, columns=improve_names)
+imp_df.to_csv(OUT / 'improve_site_correlation.csv')
+
+pairs = [(improve_names[a], improve_names[b], float(R_imp[a, b]))
+         for a in range(len(improve_names)) for b in range(a + 1, len(improve_names))]
+pairs.sort(key=lambda t: -t[2])
+top_pairs = pd.DataFrame(pairs[:15], columns=['site_A', 'site_B', 'r']).round(5)
+print('Most similar IMPROVE site pairs (median corrected spectra):')
+display(top_pairs)
+print('Least similar pairs:')
+display(pd.DataFrame(pairs[-10:], columns=['site_A', 'site_B', 'r']).round(4))
+
+isolation = pd.DataFrame({
+    'site': improve_names,
+    'best_r_to_any_site': np.nanmax(R_imp, axis=1).round(5),
+    'median_r_to_network': np.nanmedian(R_imp, axis=1).round(5),
+    'nearest_site': [improve_names[int(np.nanargmax(R_imp[a]))] for a in range(len(improve_names))],
+    'n_spectra': [int(counts[n]) for n in improve_names],
+}).sort_values('best_r_to_any_site')
+isolation.to_csv(OUT / 'improve_site_isolation.csv', index=False)
+print('Most ISOLATED IMPROVE sites (no close spectral partner anywhere in the network):')
+display(isolation.head(12))
+print('Most TYPICAL sites (highest median similarity to the whole network):')
+display(isolation.sort_values('median_r_to_network', ascending=False).head(8))
+
+# %%
+fig, ax = plt.subplots(figsize=(9.2, 4.6))
+ax.hist([p[2] for p in pairs], bins=80, color='#8F8C84', edgecolor='white', linewidth=0.4)
+for k, lab in TARGETS.items():
+    i = names.index(f'*{lab.split(" ")[0]}')
+    best = max(R[i, j] for j in ii)
+    ax.axvline(best, color=SITE_COLOUR[k], lw=1.8)
+    ax.text(best, ax.get_ylim()[1] * (0.95 - 0.09 * list(TARGETS).index(k)),
+            f' {lab.split(" ")[0]} {best:.3f}', color=SITE_COLOUR[k], fontsize=8.5, va='top')
+ax.set(xlabel='Pearson r between two site median spectra',
+       ylabel='IMPROVE site pairs',
+       title='How similar IMPROVE sites are to each other, with each SPARTAN site\u2019s best match marked')
+fig.tight_layout(); fig.savefig(PLOTS / 'improve_pair_distribution.png', dpi=150); plt.show()
+
+pair_r = np.array([p[2] for p in pairs])
+for k, lab in TARGETS.items():
+    i = names.index(f'*{lab.split(" ")[0]}')
+    best = max(R[i, j] for j in ii)
+    print(f'{lab:<18} best IMPROVE match r={best:.4f} sits at the '
+          f'{100 * (pair_r < best).mean():.0f}th percentile of IMPROVE-IMPROVE pair similarity')
+
+# %% [markdown]
+# ## 7. Does baselining change who is similar to whom?
+#
+# Everything so far is AIRSpec-corrected. Raw spectra are baseline-dominated (that is the
+# phase-3 background-leakage story), so the honest check is whether the network's
+# similarity structure is the *same* before and after baselining. Raw pool spectra are
+# restricted to the corrected window (1425-3998 cm-1) so the two spaces are comparable,
+# and the whole section is recomputed on raw medians.
+
+# %%
+from phase3_common import load_pool_spectra                              # noqa: E402
+raw_wcols = [c for c in etad_eval.attrs['wcols'] if 1425 <= float(c) <= 3999]
+raw_pool = load_pool_spectra(lib.AnalysisId.to_numpy(), raw_wcols)
+raw_pool = raw_pool.set_index('AnalysisId').reindex(lib.AnalysisId.to_numpy())
+RAW = raw_pool[raw_wcols].to_numpy(float)
+raw_ok = np.isfinite(RAW).all(axis=1)
+print(f'raw spectra fetched for {raw_ok.sum():,}/{len(lib):,} pool rows '
+      f'on {len(raw_wcols)} channels ({float(raw_wcols[-1]):.0f}-{float(raw_wcols[0]):.0f} cm-1)')
+
+raw_site_median = {}
+for site in improve_names:
+    m = (lib.Site == site).to_numpy() & raw_ok
+    if m.sum() >= 20:
+        raw_site_median[site] = np.median(RAW[m], axis=0)
+shared = [s for s in improve_names if s in raw_site_median]
+R_raw = ss.correlation_matrix(np.vstack([raw_site_median[s] for s in shared]),
+                              np.vstack([raw_site_median[s] for s in shared]))
+np.fill_diagonal(R_raw, np.nan)
+sub_idx = [improve_names.index(s) for s in shared]
+R_cor = R_imp[np.ix_(sub_idx, sub_idx)]
+
+iu = np.triu_indices(len(shared), 1)
+rho = float(pd.Series(R_raw[iu]).corr(pd.Series(R_cor[iu]), method='spearman'))
+print(f'\n{len(shared)} sites in both spaces. Spearman between the raw and baselined '
+      f'site-similarity matrices: rho = {rho:.3f}')
+print(f'raw pair similarity: median {np.nanmedian(R_raw[iu]):.4f}, '
+      f'baselined: {np.nanmedian(R_cor[iu]):.4f} '
+      '(baselining SEPARATES sites: removing the shared PTFE/background makes the '
+      'remaining differences a larger share of what is left)')
+
+moved = []
+for a, site in enumerate(shared):
+    nn_raw = shared[int(np.nanargmax(R_raw[a]))]
+    nn_cor = shared[int(np.nanargmax(R_cor[a]))]
+    moved.append({'site': site, 'nearest_raw': nn_raw, 'nearest_baselined': nn_cor,
+                  'changed': nn_raw != nn_cor,
+                  'rank_of_raw_nn_after': int((R_cor[a] > R_cor[a, shared.index(nn_raw)]).sum()) + 1})
+moved = pd.DataFrame(moved)
+moved.to_csv(OUT / 'nearest_neighbour_raw_vs_baselined.csv', index=False)
+print(f"\nnearest-neighbour site changes after baselining: "
+      f"{moved.changed.sum()}/{len(moved)} sites ({moved.changed.mean():.0%})")
+display(moved[moved.changed].head(12))
+
+# %%
+# Plot DISSIMILARITY 1-r on log axes: in raw space every pair sits at r ~ 0.999, so a
+# linear r axis collapses the whole raw network onto one tick and hides the result.
+d_raw, d_cor = 1 - R_raw[iu], 1 - R_cor[iu]
+fig, axes = plt.subplots(1, 2, figsize=(12.4, 4.6))
+axes[0].scatter(d_raw, d_cor, s=5, color='#2C6E9E', alpha=0.25, rasterized=True)
+lims = [min(d_raw.min(), d_cor.min()) * 0.8, max(d_raw.max(), d_cor.max()) * 1.2]
+axes[0].plot(lims, lims, ls='--', lw=1.2, color='#c3c2b7')
+axes[0].set(xscale='log', yscale='log', xlim=lims, ylim=lims,
+            xlabel='site-pair dissimilarity 1$-$r, RAW',
+            ylabel='site-pair dissimilarity 1$-$r, AIRSpec-baselined',
+            title=f'Every IMPROVE site pair, both spaces (Spearman {rho:.2f})')
+axes[0].text(0.04, 0.95, 'above the line =\nbaselining separates the pair',
+             transform=axes[0].transAxes, va='top', fontsize=8.5, color='#52514e')
+bins = np.logspace(np.log10(lims[0]), np.log10(lims[1]), 60)
+axes[1].hist(d_raw, bins=bins, alpha=0.6, color='#8F8C84', label='raw', edgecolor='none')
+axes[1].hist(d_cor, bins=bins, alpha=0.6, color='#2C6E9E', label='baselined', edgecolor='none')
+axes[1].set(xscale='log', xlabel='site-pair dissimilarity 1$-$r', ylabel='pairs',
+            title='Raw: every site looks the same. Baselined: structure appears')
+axes[1].legend(frameon=False, fontsize=9)
+fig.tight_layout(); fig.savefig(PLOTS / 'raw_vs_baselined_sites.png', dpi=150); plt.show()
+
+# %%
+# Do the SPARTAN targets' nearest IMPROVE sites survive baselining?
+rows = []
+for k, lab in TARGETS.items():
+    tgt_raw = None
+    if k == 'addis':
+        raw_t = etad_eval[raw_wcols].to_numpy(float)
+        tgt_raw = np.median(raw_t, axis=0)
+    if tgt_raw is None:
+        rows.append({'target': lab, 'nearest_raw': 'n/a (no raw target export)',
+                     'nearest_baselined': site_near.set_index('target')
+                     .loc[lab, 'nearest_IMPROVE_sites'].split(',')[0]})
+        continue
+    rr = ss.correlation_matrix(tgt_raw[None, :],
+                               np.vstack([raw_site_median[s] for s in shared])).ravel()
+    rows.append({'target': lab, 'nearest_raw': f'{shared[int(np.argmax(rr))]} ({rr.max():.4f})',
+                 'nearest_baselined': site_near.set_index('target')
+                 .loc[lab, 'nearest_IMPROVE_sites'].split(',')[0]})
+display(pd.DataFrame(rows))
+print('Only Addis has a raw target export in this notebook; the other four targets are '
+      'distributed as corrected spectra only, so their raw comparison needs the SPARTAN '
+      'raw pulls and is left for a follow-up.')
+
+# %% [markdown]
 # ## Takeaways
 #
 # 1. **The network has a small number of spectral classes and the SPARTAN sites do not
@@ -430,7 +592,12 @@ fig.savefig(PLOTS / 'threshold_curve.png', dpi=150); plt.show()
 # 4. **Site similarity is answerable two ways and they should agree.** Median-spectrum r
 #    and class-mix distance are both reported; where they disagree, the site is
 #    heterogeneous and a single median misrepresents it.
-# 5. **A match threshold, not a top-N — but validated on a task that can fail.**
+# 6. **The network's own similarity structure survives baselining in rank but not in
+#    scale** (section 7): the raw and baselined site-similarity matrices agree in ordering
+#    while baselining spreads the whole network apart, because removing the shared
+#    PTFE/background leaves the real differences as a larger share of what remains. Where a
+#    site's nearest neighbour *changes*, its raw match was a background match.
+# 7. **A match threshold, not a top-N — but validated on a task that can fail.**
 #    Same-class agreement is ~99% at any r here (k=4, one dominant class), so it cannot
 #    calibrate anything; "does the neighbour carry the same EC loading within 25%" can,
 #    and is what a calibration-usable match actually means. Quote that operating point.

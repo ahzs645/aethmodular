@@ -606,3 +606,31 @@ same-site — the library does generalize geographically.
 Target coverage above the strictest cutoffs (median best-match r): Bishoftu 0.9988,
 Beijing 0.9986, Pasadena 0.9966, Delhi 0.9964, Addis 0.9938 — Addis has the weakest best
 matches of the five, consistent with its neighbourhood redundancy in ftir_50.
+
+### ftir_52 §6-7 — the network compared with itself, raw vs baselined
+
+**IMPROVE against IMPROVE.** 162 sites with >=20 spectra, median corrected spectra,
+all 13k site pairs. Most isolated sites (no close partner anywhere): TOOL1 (best r 0.983,
+median 0.827 to the network), HAVO1, SIME1, VIIS1, KALM1 — Arctic, Hawaiian volcanic and
+Caribbean island sites. Most typical: KAIS1, BLIS2, MOMO1/ACAD1, SYCA2, GLAC1 (median r
+~0.982). Against that distribution the SPARTAN targets' best IMPROVE matches sit at the
+99th (Beijing 0.9974), 97th (Bishoftu 0.9962), 95th (Delhi 0.9952), 90th (Pasadena
+0.9921) and **85th percentile (Addis 0.9900)** of IMPROVE-IMPROVE pair similarity — Addis
+has the weakest best-match of the five, but it is still a better match than 85% of pairs
+of real IMPROVE sites are to each other.
+
+**Raw vs baselined is the headline.** On raw spectra restricted to the same 1425-3998
+window, the median IMPROVE site pair sits at **r = 0.9990**: the network is effectively
+one spectrum plus background, and every site "resembles" every other. After AIRSpec the
+median pair falls to **0.9681** and the range spreads to 0.56-1.0. The two distributions
+barely overlap (see raw_vs_baselined_sites.png, plotted as 1-r on log axes because a
+linear r axis collapses the raw network onto a single tick), every pair sits on the
+separating side of the identity line, and **139/151 sites (92%) change which site they are
+closest to**. Spearman between the raw and baselined pair matrices is only 0.587.
+
+Consequence: **any site-similarity or analog ranking computed on raw spectra is a
+background ranking.** This is the site-level form of the phase-3 background-leakage result
+(raw-spectra calibrations regress on a background that does not transfer) and it retires
+raw-space similarity as a selection criterion. Caveat: only Addis has a raw target export
+in this notebook, so the raw-space nearest-IMPROVE-site comparison for Bishoftu, Delhi,
+Beijing and Pasadena needs the SPARTAN raw pulls and is left open.
