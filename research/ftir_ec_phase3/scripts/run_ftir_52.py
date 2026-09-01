@@ -99,7 +99,8 @@ lib['smoke_lineage'] = lib['AnalysisId'].isin(smoke['AnalysisId'].astype(int))
 ocec800 = pd.read_csv('output/tables/ftir11/lowest_ocec_800_cohort.csv')
 lib['ocec800'] = lib['AnalysisId'].isin(ocec800['AnalysisId'].astype(int))
 
-etad_eval, _, _ = load_addis_evaluation()
+from config import season_for_month                                    # noqa: E402
+etad_eval, _, _ = load_addis_evaluation(season_for_month)
 etad_npz = np.load('output/corrected/etad_corrected_df6.npz', allow_pickle=True)
 # The cache holds SCAN rows: 19 of the 239 evaluation filters were scanned more than once
 # (259 scan rows). load_addis_evaluation averages replicate scans per physical filter, so
@@ -690,6 +691,152 @@ r_after = ss.correlation_matrix(A_cor[i][None, :], LIB[raw_chosen_rows]).ravel()
 print(f'The top-{K_AN} RAW-chosen analogs of this filter, scored in baselined space: '
       f'median r {np.median(r_after):.4f} (its true baselined top-{K_AN} median is '
       f'{np.median(sc_cor[i]):.4f}) -- a raw match is not a baselined match.')
+
+# %% [markdown]
+# ## 9. Do the Ethiopian seasons have different analogs?
+#
+# Addis spans three seasons — Dry (Oct–Feb, n=105), Belg (Mar–May, n=61) and Kiremt
+# (Jun–Sep, n=73) — and the phase-3 thread treats them as chemically different (the
+# char-similarity anomaly is almost entirely dry-season). This section takes the **median
+# baselined spectrum of each season** and asks the network the same question separately:
+# which IMPROVE spectra are its analogs, from which sites, and from which time of year?
+# If the seasons draw different analogs, one pooled Addis cohort is the wrong object.
+
+# %%
+SEASONS = ['Dry (Oct-Feb)', 'Belg (Mar-May)', 'Kiremt (Jun-Sep)']
+S_COLOUR = {'Dry (Oct-Feb)': '#B23327', 'Belg (Mar-May)': '#eda100',
+            'Kiremt (Jun-Sep)': '#2C6E9E'}
+season_lab = etad_eval['season'].fillna('unknown').to_numpy()
+season_median = {}
+for name in SEASONS:
+    m = season_lab == name
+    season_median[name] = np.median(X['addis'][m], axis=0)
+    print(f'{name:<18} n={m.sum():>3}')
+
+M_seas = np.vstack([season_median[n] for n in SEASONS])
+print('\nSeason medians against each other (Pearson r):')
+display(pd.DataFrame(ss.correlation_matrix(M_seas, M_seas).round(4),
+                     index=SEASONS, columns=SEASONS))
+
+K_S = 200
+rows, an_idx = [], {}
+lib_month = lib.month.to_numpy()
+for name in SEASONS:
+    idx, sc = ss.nearest_analogs(season_median[name][None, :], LIB, k=K_S)
+    an_idx[name] = idx[0]
+    g = lib.iloc[idx[0]]
+    rows.append({
+        'Addis season': name,
+        'top1_r': round(float(sc[0, 0]), 5),
+        f'median_r_top{K_S}': round(float(np.median(sc[0])), 5),
+        'top sites': ', '.join(f'{s}' for s in g.Site.value_counts().head(4).index),
+        'analog median OC/EC': round(float(g.OC_EC_ratio.median()), 2),
+        'analog median EC (ug)': round(float(g.TOR_EC_loading_ug.median()), 2),
+        'pct analogs Jul-Oct': round(100 * float(np.isin(lib_month[idx[0]], [7, 8, 9, 10]).mean()), 0),
+        'pct analogs in smoke class': round(100 * float((g.cluster == smoke_class).mean()), 0),
+        'pct analogs in smoke lineage': round(100 * float(g.smoke_lineage.mean()), 1),
+    })
+season_analogs = pd.DataFrame(rows)
+season_analogs.to_csv(OUT / 'season_analogs.csv', index=False)
+display(season_analogs)
+
+print(f'Overlap between the top-{K_S} analog sets:')
+for a in range(len(SEASONS)):
+    for b in range(a + 1, len(SEASONS)):
+        ov = len(set(an_idx[SEASONS[a]]) & set(an_idx[SEASONS[b]])) / K_S
+        print(f'  {SEASONS[a]:<18} vs {SEASONS[b]:<18} {100 * ov:>5.0f}%')
+
+# %%
+fig, axes = plt.subplots(1, 2, figsize=(13.2, 4.6))
+for name in SEASONS:
+    axes[0].plot(WN, season_median[name], lw=2, color=S_COLOUR[name], label=f'{name}')
+axes[0].plot(WN, np.median(LIB, axis=0), lw=1.2, color='#898781', ls='--',
+             label='IMPROVE library median')
+axes[0].set(xlim=(WN.max(), WN.min()), xlabel='Wavenumber (cm$^{-1}$)',
+            ylabel='Absorbance (AIRSpec-corrected)',
+            title='Addis median spectrum by Ethiopian season')
+axes[0].legend(frameon=False, fontsize=8.5)
+
+dry = season_median['Dry (Oct-Feb)']
+for name in SEASONS:
+    if name == 'Dry (Oct-Feb)':
+        continue
+    axes[1].plot(WN, season_median[name] - dry, lw=2, color=S_COLOUR[name],
+                 label=f'{name} minus Dry')
+axes[1].axhline(0, color='#c3c2b7', lw=1)
+for lo, hi, nm in [(2800, 3000, 'C-H'), (1650, 1800, 'C=O'), (1560, 1680, '~1617')]:
+    axes[1].axvspan(lo, hi, color='#e1e0d9', alpha=0.6, zorder=0)
+axes[1].set(xlim=(WN.max(), WN.min()), xlabel='Wavenumber (cm$^{-1}$)',
+            ylabel='Difference in absorbance',
+            title='Season difference spectra (shaded: C-H, C=O, ~1617)')
+axes[1].legend(frameon=False, fontsize=8.5)
+fig.tight_layout(); fig.savefig(PLOTS / 'season_medians.png', dpi=150); plt.show()
+
+# %%
+fig, ax = plt.subplots(figsize=(8.6, 4.4))
+width = 0.26
+metrics = ['pct analogs Jul-Oct', 'pct analogs in smoke class', 'analog median OC/EC']
+xpos = np.arange(len(metrics))
+for i, name in enumerate(SEASONS):
+    row = season_analogs.set_index('Addis season').loc[name]
+    vals = [row[m] if m != 'analog median OC/EC' else row[m] * 10 for m in metrics]
+    ax.bar(xpos + (i - 1) * width, vals, width, color=S_COLOUR[name], label=name,
+           edgecolor='white', linewidth=0.8)
+ax.set_xticks(xpos, ['% analogs sampled\nJul-Oct', '% analogs in the\nsmoke class',
+                     'analog median\nOC/EC (x10)'], fontsize=9)
+ax.tick_params(axis='x', colors='#52514e')
+ax.set(ylabel='value', title='What each Addis season draws from the network')
+ax.legend(frameon=False, fontsize=8.5)
+fig.tight_layout(); fig.savefig(PLOTS / 'season_analog_character.png', dpi=150); plt.show()
+
+# %% [markdown]
+# ### Is the seasonal difference composition, or just loading again?
+#
+# The three seasons' analogs differ 4.6x in median EC loading, and Addis's own seasons
+# differ in deposit. Same discipline as the smoke class: check whether Addis's per-season
+# loading tracks its analogs' loading, then repeat the search inside a **fixed loading
+# band** so every season is matched against the same slice of the library.
+
+# %%
+etad_eval = etad_eval.assign(peak_abs=X['addis'].max(axis=1))
+season_load = etad_eval.groupby('season').agg(
+    n=('Fabs', 'size'), median_Fabs=('Fabs', 'median'),
+    median_peak_abs=('peak_abs', 'median')).round(4).reindex(SEASONS)
+season_load['analog_median_EC_ug'] = season_analogs.set_index('Addis season')['analog median EC (ug)']
+display(season_load)
+print('If the analog EC ordering follows the Addis Fabs ordering, the seasonal analog '
+      'difference is at least partly a loading match, not a composition match.')
+
+band = lib.TOR_EC_loading_ug.between(3, 12) & lib.OC_EC_ratio.notna()
+LIB_B = LIB[band.to_numpy()]
+lib_b = lib[band].reset_index(drop=True)
+print(f'\nloading-matched library slice: {band.sum():,} filters with EC 3-12 ug '
+      f'(median {lib_b.TOR_EC_loading_ug.median():.1f})')
+rows, an_b = [], {}
+for name in SEASONS:
+    idx, sc = ss.nearest_analogs(season_median[name][None, :], LIB_B, k=K_S)
+    an_b[name] = idx[0]
+    g = lib_b.iloc[idx[0]]
+    rows.append({'Addis season': name, 'top1_r': round(float(sc[0, 0]), 5),
+                 'top sites': ', '.join(g.Site.value_counts().head(4).index),
+                 'analog median EC (ug)': round(float(g.TOR_EC_loading_ug.median()), 2),
+                 'analog median OC/EC': round(float(g.OC_EC_ratio.median()), 2),
+                 'pct Jul-Oct': round(100 * float(np.isin(g.month, [7, 8, 9, 10]).mean()), 0),
+                 'pct smoke lineage': round(100 * float(g.smoke_lineage.mean()), 1)})
+matched = pd.DataFrame(rows)
+matched.to_csv(OUT / 'season_analogs_loading_matched.csv', index=False)
+display(matched)
+print(f'Overlap between the loading-matched top-{K_S} sets:')
+for a in range(len(SEASONS)):
+    for b in range(a + 1, len(SEASONS)):
+        ov = len(set(an_b[SEASONS[a]]) & set(an_b[SEASONS[b]])) / K_S
+        print(f'  {SEASONS[a]:<18} vs {SEASONS[b]:<18} {100 * ov:>5.0f}%')
+print('\nIf the sets STILL barely overlap inside one loading band, the seasons really do '
+      'draw different analogs; if they now overlap heavily, the headline 0% was loading.')
+
+# %% [markdown]
+# The same question for Bishoftu is not answerable here: its 26 filters are all
+# dry-season, which is why it cannot arbitrate a seasonal claim on its own.
 
 # %% [markdown]
 # ## Takeaways

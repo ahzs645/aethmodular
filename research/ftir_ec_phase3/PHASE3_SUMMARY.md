@@ -663,3 +663,31 @@ averaged per physical filter, matching load_addis_evaluation. Effect is small an
 no conclusion: ftir_50's Addis T2/Q shifts 22.0 -> 21.3% either and 7.3 -> 7.1% both, and
 its neighbourhood redundancy 0.191 -> 0.202 unique ratio with 35.9 -> 33.1% of filters
 having no mutual analog.
+
+### ftir_52 §9 — the Ethiopian seasons draw different analogs
+
+Taking the median baselined Addis spectrum of each season (Dry Oct-Feb n=105, Belg
+Mar-May n=61, Kiremt Jun-Sep n=73) and running each against the library separately:
+
+**The dry season shares no analogs with either wet season.** Top-200 analog overlap is
+**0% Dry vs Belg, 0% Dry vs Kiremt**, and 28% Belg vs Kiremt. The three seasons are not
+drawing from one Addis-like region of the library; Dry sits somewhere the wet seasons do
+not go at all.
+
+Because the seasons' analogs differed 4.6x in median EC loading (4.1 / 12.0 / 18.9 ug),
+the search was repeated inside a fixed EC 3-12 ug band (6,382 library filters) so every
+season is matched against the same slice. **The separation survives**: 1% Dry-Belg, 0%
+Dry-Kiremt, 21% Belg-Kiremt. The seasonal analog difference is composition, not loading.
+
+Character of the analogs, loading-matched: Dry draws BIBE1/CAVE1/GUMO1/SAWE1 with
+**0% smoke-lineage** membership; Belg FRES1/PUSO1/LTCC1 at 6%; Kiremt YOSE1/PUSO1/JARI1
+at 12% and the highest analog OC/EC (5.69 vs Dry 4.10). Note the direction: it is the
+**wet** seasons whose analogs come from the biomass-smoke lineage, and the **dry** season
+that has none — the opposite of what a "dry season is the char-influenced one" reading
+would predict, and worth reconciling against the char-similarity anomaly being
+dry-season-concentrated (July-17 deck slides 27/30-31).
+
+The difference spectra show where: Kiremt minus Dry is strongly positive at aliphatic C-H
+and at 1560-1800, negative across the broad O-H; Belg minus Dry is negative almost
+everywhere except a small 1650-1750 rise. Bishoftu cannot arbitrate any of this - its 26
+filters are all dry-season.
