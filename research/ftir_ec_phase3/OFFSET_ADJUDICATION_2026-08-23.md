@@ -1,5 +1,18 @@
 # The offset question, adjudicated — 2026-08-23
 
+> **Correction, 2026-09-01 (ftir_47).** Two headline numbers in §5 and §5b were
+> produced by pooling every blank in a lot into one quadratic. Lot 251's blanks
+> belong to **three deployed calibration lines** with disjoint R1 ranges, so the
+> pooled curve is not a blank response; keyed per (lot, Intercept, Slope) the
+> shipped Fabs reproduce exactly and: **Pasadena does not dissolve** (3.15x →
+> 3.04 ± 0.19x per-line quadratic; the 0.91x is the pooling artifact inflating
+> 56/158 filters by ~80%), and **Addis's −1.27 ± 0.17 was the same artifact**
+> (per-line quadratic −1.48 ± 0.18 vs deployed −1.51; the blank-line shape moves
+> Addis by ≤ 0.03 µg/m³, not 0.24, so the "~15% blank-line share" is ≤ 2%). 44%
+> of Addis filters (not 36%) sit below their own line's blank R1 range. Both
+> slope anomalies (Delhi, Pasadena) are real. The refuted text is left in place
+> below, marked. See `ftir_47_blank_lines_per_deployed_line.ipynb`.
+
 Three documents written within 24 hours of each other reach different
 conclusions about the FTIR–HIPS intercept:
 
@@ -145,6 +158,8 @@ constrains only *steep-spectrum* BrC, which was never the candidate.
 
 ## 5. Current belief and what decides it
 
+> ⚠ **Superseded 2026-09-01 (ftir_47):** the "~15% instrument-calibration component", the −1.27 ± 0.17, and "Pasadena's was the instrument (3.15x → 0.91x)" below all came from the lot-pooled quadratic and are wrong; per deployed line Addis is −1.48 ± 0.18 (deployed −1.51) and Pasadena 3.04 ± 0.19x. Belief as of 2026-09-01: the Addis intercept is real aerosol with a blank-line share ≤ 2%; **both** slope anomalies are real.
+
 **Belief (final for today, after the blank-line test ran):** the Addis
 intercept is **real aerosol, with a small (~15%) instrument-calibration
 component**: it survives per-filter EIV weighting, extrapolation
@@ -192,6 +207,8 @@ is its validity outside the blanks' range. Ranked tests:
    | Beijing | 184 | 0% | 0.97x+0.63 | 0.91x+0.63 | 0.88x+0.72 |
    | Delhi | 152 | 14% | 1.83x−1.32 | 1.80x−1.13 | **1.78x−1.05** |
    | Pasadena | 158 | 0% | 3.15x−0.20 | 1.47x+0.35 | **0.91x+0.67** |
+
+   > ⚠ **Superseded 2026-09-01 (ftir_47):** the "quadratic" column above is the lot-pooled fit. Per deployed line: Addis 0.95x−1.48±0.18, Bishoftu 0.86x−0.36, Beijing 0.96x+0.66, Delhi 1.82x−1.25, **Pasadena 3.04x−0.15**. Outcome (a) survives more strongly (shift ≤ 0.03, not 0.24); outcome (b) is **refuted** — Pasadena's slope is real; the "~40 counts rms on the big lots" was the pooling residual (per line: 5–10 counts, lot 253 is not special).
 
    Three headline outcomes: **(a) the Addis intercept survives** — the
    blank-line correction shaves only ~0.2 µg/m³ (−1.51 → −1.27, z ≈ −7

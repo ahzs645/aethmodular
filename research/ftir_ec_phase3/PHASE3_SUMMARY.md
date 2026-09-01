@@ -431,6 +431,15 @@ disagreement into (a) the definition of the carbon being measured, (b) carbon re
   manufactures residual R² ≈ 0.94 by arithmetic circularity (Fabs ∝ τ·A/V) — ftir_27's
   lesson in a new costume.
 
+**Caveat added 2026-09-01 (ftir_46) to the ftir_43/45 entries above:** "genuine incremental
+spectral signal" holds only against the proportional-disagreement null. Paired against the
+metadata baseline (f(X) + season + volume + lot) on the same eight time blocks the spectra
+increment is ΔRMSE −0.06 µg/m³ with block-bootstrap CI [−0.13, +0.02] (5/8 blocks; forward-
+chained the inner CV picks k = 0), and mean-of-folds R² is ≈ 0 for every non-mass model.
+The worklog's 0.32–0.40 was a best-of-grid k read off the test curve on raw spectra
+(pathway figure 08): ≈0.10 optimism + ≈0.05 raw-vs-corrected + ≈0.02 f(X) choice.
+Gravimetric mass supersedes spectra as the lead (below).
+
 Gated (not built, data missing): full chemical mass closure (local mirror ions = sulfate
 only, XRF = Fe/S/Si, grav = PM2.5 — no nitrate/ammonium/full elements); PurpleAir
 composition-dependent error (sensor 93783's colocation with the "Jacros BAM" file is
@@ -456,3 +465,97 @@ unverified — the BAM names its site Addis Ababa Central).
   1560–1750 cm⁻¹: band position/shape, not height, is the lead.
 
 External dependencies are consolidated in `EXTERNAL_ASKS_2026-09-01.md`.
+
+## ftir_46–49 — the pathways from the 2026-09-01 audit: mass, blank lines, the split, the MA350 chain
+
+- **ftir_46 — paired increment and the mass lead.** Same 239 filters and eight contiguous
+  blocks as ftir_43. Spectra vs metadata base: ΔRMSE −0.060 [−0.134, +0.020] — not a
+  paired result. Mass (`MassCollectedOnFilter`) as a covariate: −0.036 [−0.099, +0.022].
+  Mass in the base, then spectra: **−0.126 [−0.199, −0.032]**, 7/8 blocks, residual R²
+  0.24 → **0.52**, HIPS-prediction RMSE 0.658 → **0.497**; forward-chained −0.137
+  [−0.229, −0.044]. At fixed f(X) and season the residual falls **−0.068 µg/m³ per µg/m³**
+  of mass [−0.097, −0.045] (raw slope ≈ 0 because mass and f(X) correlate at 0.84).
+  Cross-site, Fabs ~ f(X) + mass with the locked 800 + AIRSpec model, per deposit (µg
+  EC-eq per µg mass): Addis **0.064** [0.037, 0.091], Bishoftu **0.071** [0.022, 0.116],
+  Beijing 0.019 [0.013, 0.027], Delhi 0.010 (0.032 inside the Addis loading range),
+  Pasadena 0.006 [−0.006, 0.021]; pooled non-Ethiopian in the Addis range **0.033**
+  [0.024, 0.044]. Reading: a generic loading term exists off-Ethiopia (instrument side,
+  ≈ half the Addis coefficient) and an Ethiopian excess of ≈ 0.03–0.04 µg EC-eq per µg,
+  the same at two sites 45 km apart and absent at Pasadena on the same lot 251, is the
+  aerosol-side lead. Falsifiers: a HIPS loading experiment on non-absorbing deposits
+  returning ≥ 0.06 (all instrument), or the Addis coefficient failing to track
+  composition within Addis (not aerosol). Note the "loading is not the mechanism" line
+  in the worklog tested filter darkness, not mass — different quantities.
+- **ftir_47 — blank lines belong to deployed calibration lines, not lots.** Lot 251's 373
+  blanks sit on three deployed lines (2423.6−6.033R, R1 224–265; 1416.2−2.783R, 134–206;
+  1397.0−2.687R, 138–232) with no common R1 interval; per-line rms 5–10 counts, pooled
+  quadratic 32. Keyed per line the shipped Fabs reproduce to 0.0000 Mm⁻¹ (3,047 samples).
+  **Pasadena's 3.15x does not dissolve** (per-line quadratic 3.04 ± 0.19; the 0.91x is
+  the pooled artifact, +80% on 56/158 filters); **Addis's −1.27 ± 0.17 was the same
+  artifact** (per-line −1.48 ± 0.18 vs deployed −1.51 — blank-line share ≤ 2%, not 15%);
+  44% of Addis filters (not 36%) below their line's blank R1 range. Network (27 sites):
+  14.9% of samples outside their own line's blank range; extrapolation ranking BDDU 49%,
+  **ETAD 44%**, CAHA 39% (above), IDBD 30%, INDH 18%; the pooled quadratic shifts Fabs a
+  median 0.67 Mm⁻¹ (p90 4.2) vs 0.29 (p90 0.83) per line. Unauditable: the ETBI
+  reconstructed holdout (line inferred from dates) and Adama's lot-245 line (zero blanks
+  in any local file). OFFSET_ADJUDICATION §5/§5b corrected in place.
+- **ftir_48 — the pyrolysis split as a target.** Same rows/folds/protocol as ftir_42.
+  Δ = OPTT − OPTR is 46% of EC_TOR at the median and, on the 800 cohort, predictable
+  (held-out R² **0.770**, k = 4; OPTT carries it, OPTR 0.46, Δ/EC_TOR 0.00); on the full
+  pool unlearnable (0.004). EC_TOT routes on identical held-out sites: direct 0.764 /
+  %RMSE 69; composed EC_TOR_hat − Δ_hat 0.774 / 67; **oracle EC_TOR_hat − Δ_true 0.697 /
+  78** — worse, so EC_TOT is hard because of the EC_TOR error against a target 57% the
+  size, not because of the correction; the Δ and EC_TOR errors co-vary (r 0.55) so
+  composing cancels shared error. Full pool: composing rescues EC_TOT from the k=2
+  collapse (0.18 → 0.68). Adama: measured Δ is only 0.15–0.21 of EC_TOR and the cohort Δ
+  model reads it 0.40×. Addis: composed route 0.68x − 1.38 vs direct 0.63x − 1.24 — the
+  negative offset is route-independent.
+- **ftir_49 — MA350 raw chain (fallback run).** The raw 1-min CSV (556 MB) would not
+  hydrate from Drive (~2 MB/min); the notebook ran on `df_Jacros_9am_resampled.pkl` and
+  every minute-only cell prints SKIPPED; **rebuild after `cat FILE > /dev/null`
+  completes** and rewrite its tl;dr. From daily means: the DualSpot term K·ATN1 is 37% /
+  43% / 48% of IR / Red / Blue BCc (K 0.011 / 0.010 / 0.009); a 10% K error moves IR BCc
+  5.9%, Red 7.4%; spot-2-compensated BC2 is **0.925 × BCc at IR, 0.944 at Red** and the
+  closure K* is 16% above the reported K — a 6–8% spot-disagreement term at the two
+  channels the calibration uses. The ±1-day tolerant mean of `match_aeth_filter_data`
+  differs from the 9am–9am filter-day mean by median +3.7% (IR), **53% of 193 ETAD filter
+  days move > 10%, 21% > 25%, 32 days > 2,000 ng/m³**. Quirk: the processed pickle's
+  Green channel has ATN1 ≈ 0 / K ≈ 0 / BC1 = BCc on all 1,047 days (broken columns).
+
+## ftir_50 — spectral comparison beyond one similarity number (2026-09-01)
+
+`scripts/spectral_similarity.py` adds the comparisons the explorer's Analogs tab cannot
+make, and ftir_50 runs them over the whole 13,634-spectrum lot-248/251 library against all
+five SPARTAN targets (AIRSpec-corrected, shared 1425–3998 cm⁻¹ grid). Everything is
+matmul/PCA, so the same sweep runs on Colab against the entire database (launcher cell
+added; module bundled).
+
+| Method | Adds |
+|---|---|
+| Hotelling T² + Q residual | splits "distance to the library" into in-plane vs off-plane; Q sees chemistry the library never held |
+| Band-resolved / moving-window r | localizes disagreement; the module refuses bands the grid covers <60% |
+| Spectral information divergence | shape metric weighting relative band differences |
+| Neighbourhood redundancy + selectivity-matched mutual k-NN | are N analogs N independent spectra? |
+| Borda rank fusion | one ordering when metrics disagree; the disagreement is the uncertainty |
+
+Results. (1) The in-domain claim was one number doing two jobs: 22% of Addis filters
+exceed the library 95th percentile on T² or Q, 7.3% on both; the two axes flag different
+filters. (2) Addis's analog neighbourhoods are the most redundant of the five sites
+(distinct neighbours per neighbour slot 0.19 vs 0.34 Delhi, 0.40 Beijing, 0.46 Pasadena,
+0.48 Bishoftu) and 36% of Addis filters have no mutual analog at all (Delhi 18%, others
+4–7%) — a top-N analog cohort at Addis is not N independent analogs, which is a concrete
+mechanism for analog cohorts winning screening and failing the held-out floor (cf. the
+ftir_46–49 audit note that analog/Ethiopia-shaped cohorts reach −0.6 to −1.3 within
+AIRSpec rows but fail the floor). (3) Similarity is band-dependent: Addis holds r 0.98 in
+the O–H window, 0.67 at aliphatic C–H, 0.78 at 1560–1680 where the marker band sits;
+whole-spectrum 0.948 hides both. Moving-window r shows every site collapsing in its own
+window (Addis alone dips inside the 1617 band).
+
+Negative result kept in the notebook: the standard equal-k mutual-NN test passes nearly
+everything at this target size (a library row picking 50 of ~250 targets is a 20% cut
+against 0.4% on the target side) and must be selectivity-matched before it means
+anything. Scope: spectral geometry only — no calibration is fit and a library neighbour
+is a spectral analog, not a composition match. Obvious next methods, both an afternoon on
+the same module: Ward clustering of pool + targets (the field-standard source-class
+comparison, Russell 2009 / Takahama 2011) and a validated r threshold instead of a top-N
+rank (Open Specy's discipline).
