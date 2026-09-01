@@ -107,6 +107,28 @@ SPECTRA_LABEL = {
 DEFAULT_CUTOFF = {"eth_shaped": 300, "analogs": 500, "ocec": 800}
 RANKED_COHORTS = set(DEFAULT_CUTOFF)
 
+# Evaluation-view levers (all post-fit: they narrow the readout, never the fit).
+# `early`/`late` are the date-ordered halves Ann asked for on 2026-08-27 - pick a
+# configuration on one half, read it out on the half that never guided the
+# choice. `odd`/`even` interleave in date order instead, so both halves share the
+# same seasonal and temporal coverage: the control that separates a real time
+# trend from ordinary sampling scatter. Every split carries the SAME n, so the
+# two halves' R2 values are directly comparable.
+EVAL_SPLITS = ("all", "early", "late", "odd", "even")
+EVAL_SPLIT_COMPLEMENT = {"early": "late", "late": "early",
+                         "odd": "even", "even": "odd"}
+
+# The group lever can run on more than one grouping of the same filters. A
+# target's `groups` list stays the DEFAULT scheme (season everywhere: Ethiopian
+# calendar at Addis/Bishoftu, quarters at the SPARTAN sites) so everything that
+# reads `t["groups"]` - crossplot colouring, the plausibility group medians, the
+# stability bootstrap's strata - keeps its old meaning. Additional schemes live
+# in `t["group_schemes"]`, one per-filter label list each, same length and order
+# as `ref`. Addis gains Navid's PMF source apportionment there (group meeting
+# 2026-08-27: read the calibration out on marine days against combustion days).
+DEFAULT_GROUP_SCHEME = "season"
+GROUP_SCHEME_LABELS = {DEFAULT_GROUP_SCHEME: "Season"}
+
 app = Flask(__name__, static_folder=str(HERE / "static"))
 
 STATE = {"ready": False, "error": None, "message": "starting…", "checks": []}
@@ -311,6 +333,29 @@ def _load_all():
         # TARGETS_DIR and join this registry; everything downstream reads it.
         dates = pd.to_datetime(etad_eval["SamplingStartDate"], errors="coerce")
         deployed = etad_eval["EC_deployed_ugm3"]
+        iso_dates = [d.date().isoformat() if pd.notna(d) else None for d in dates]
+
+        # Second grouping axis: Navid's ETAD PMF source apportionment, joined on
+        # the exact sampling date (102 PMF days of calendar 2023 against 239
+        # evaluation filters, so most filters come back `unmatched`). Imported
+        # here rather than at module scope on purpose - research/ftir_hips_chem
+        # and its Filter Data CSV are not guaranteed to be present, and a missing
+        # source table must cost the app its PMF axis, not its startup.
+        STATE["message"] = "attaching PMF source groups…"
+        group_schemes = {DEFAULT_GROUP_SCHEME: D["season"]}
+        try:
+            from pmf_source_groups import SCHEME_LABELS as PMF_SCHEME_LABELS
+            from pmf_source_groups import pmf_group_schemes
+            group_schemes.update(pmf_group_schemes(iso_dates))
+            GROUP_SCHEME_LABELS.update(PMF_SCHEME_LABELS)
+            matched = sum(1 for v in group_schemes["pmf_source"] if v != "unmatched")
+            pmf_check = {"name": "PMF source groups attached to Addis", "ok": True,
+                         "detail": f"{matched}/{len(iso_dates)} evaluation filters "
+                                   "have a PMF day (exact date match)"}
+        except Exception as exc:                              # noqa: BLE001
+            pmf_check = {"name": "PMF source groups attached to Addis", "ok": False,
+                         "detail": f"{type(exc).__name__}: {exc} "
+                                   "(the season scheme is unaffected)"}
         D["targets"] = {"addis": {
             "label": target_meta("addis")["display_name"],
             "ref_kind": "fabs",          # x = ref/MAC; "ec" targets use x = ref
@@ -320,8 +365,9 @@ def _load_all():
             "X_corr": D["X_addis_corr"],
             "X_neutral": D["X_addis_neutral"],
             "groups": D["season"],
+            "group_schemes": group_schemes,
             "fixed_mask": D["fixed_mask"],
-            "dates": [d.date().isoformat() if pd.notna(d) else None for d in dates],
+            "dates": iso_dates,
             "deployed": [round(float(v), 4) if pd.notna(v) else None for v in deployed],
             "lots": eval_lots,
             "filter_ids": etad_eval["ExternalFilterId"].astype(str).tolist(),
@@ -359,7 +405,8 @@ def _load_all():
 
         checks = [{"name": f"pool spectra loaded via {csv_engine}", "ok": True,
                    "detail": "polars is the fast path when installed; "
-                             "CALIB_EXPLORER_CSV=pandas forces the pandas read"}]
+                             "CALIB_EXPLORER_CSV=pandas forces the pandas read"},
+                  pmf_check]
         eth300 = top_eligible(D["eth_ranked"], 300)
         checks.append({"name": "Ethiopia-shaped top-300 == locked selection",
                        "ok": eth300 == eth_locked,
@@ -390,6 +437,19 @@ threading.Thread(target=_load_all, daemon=True).start()
 # ----------------------------------------------------------------------------- #
 # evaluation targets
 # ----------------------------------------------------------------------------- #
+def _lot_label(value) -> str:
+    """'251' from 251, 251.0 or '251.0'; '?' when the lot is missing."""
+    try:
+        if value is None or pd.isna(value):
+            return "?"
+    except (TypeError, ValueError):
+        pass
+    try:
+        return str(int(float(value)))
+    except (TypeError, ValueError):
+        return str(value)
+
+
 def list_targets(*, cross_site_only: bool = False):
     out = {"addis": target_meta("addis")["display_name"]}
     for p in sorted(TARGETS_DIR.iterdir()) if TARGETS_DIR.exists() else []:
@@ -441,12 +501,17 @@ def get_target(name):
         dates = [d.date().isoformat() if pd.notna(d) else None for d in parsed]
     else:
         dates = [None] * len(m)
+    # Per-filter lot, when the reference table carries one. build_spartan_target.py
+    # joins it from the HIPS LotId; targets without it simply have no evaluation-lot
+    # lever (the built-in Addis target gets its lots in _load_all instead).
+    lot_col = next((c for c in ("LotId", "Lot", "LotNumber") if c in m.columns), None)
     t = {"label": target_meta(name)["display_name"], "ref_kind": ref_kind,
          "ref": ref_values[keep], "volume": m["Volume_m3"].to_numpy(float),
          "X_raw": m[D["wcols"]].to_numpy(float), "X_corr": None,
          "X_neutral": None,
          "groups": (m["Group"].astype(str).tolist() if "Group" in m.columns
                     else ["all"] * len(m)),
+         "lots": ([_lot_label(v) for v in m[lot_col]] if lot_col else None),
          "fixed_mask": None, "dates": dates, "deployed": None,
          "filter_ids": (m["ExternalFilterId"].astype(str).tolist()
                         if "ExternalFilterId" in m.columns else None)}
@@ -680,6 +745,227 @@ def crossplot_metrics(t, pred_ugm3):
 
 
 # ----------------------------------------------------------------------------- #
+# evaluation view: which target filters the readout is reported on.
+# Lot x season/group x equal-n split, all applied AFTER the cached fit, so the
+# curve and fit caches stay view-agnostic and every view of one configuration is
+# a cache hit. Predictions always cover every filter; only the crossplot narrows.
+# ----------------------------------------------------------------------------- #
+def _eval_order(t, indices):
+    """Date order of a subset of target filters (falls back to file order)."""
+    dates = t.get("dates")
+    if not dates or not any(dates[i] for i in indices):
+        return np.asarray(indices)
+    key = np.array([dates[i] or "9999-12-31" for i in indices])
+    return np.asarray(indices)[np.argsort(key, kind="stable")]
+
+
+def _split_indices(t, indices, split):
+    """Equal-n half of `indices` under one split rule.
+
+    Both halves carry the same n, so their R2 and RMSE are comparable - the point
+    Ann made about test sets of unequal size.
+
+    The split is STRATIFIED by the fixed/all evaluation subset. Without that, a
+    date-ordered halving lands most of the fixed-set filters in one half (at
+    Addis: 119 fixed filters early against 70 late), so the readout the
+    leaderboard actually scores would be compared across unequal n - exactly the
+    thing the split exists to avoid. Splitting each stratum separately keeps both
+    the fixed-set and all-pairs readouts equal-n between halves. A stratum too
+    small to halve is dropped from both halves rather than unbalancing them.
+    """
+    if split in (None, "all"):
+        return np.asarray(indices)
+    if split not in EVAL_SPLITS:
+        raise ValueError(f"unknown evaluation split {split!r} "
+                         f"(expected one of {', '.join(EVAL_SPLITS)})")
+    indices = np.asarray(indices)
+    fixed = t.get("fixed_mask")
+    if fixed is not None:
+        fixed = np.asarray(fixed, bool)
+        strata = [indices[fixed[indices]], indices[~fixed[indices]]]
+    else:
+        strata = [indices]
+    picked = []
+    for stratum in strata:
+        order = _eval_order(t, stratum)
+        half = len(order) // 2
+        if half < 1:
+            continue
+        if split == "early":
+            picked.append(order[:half])
+        elif split == "late":
+            picked.append(order[-half:])
+        elif split == "odd":
+            picked.append(order[1::2][:half])
+        else:
+            picked.append(order[0::2][:half])       # "even"
+    out = np.concatenate(picked) if picked else np.asarray([], int)
+    if len(out) < 3:
+        raise ValueError(f"evaluation view has only {len(indices)} filters: "
+                         "an equal-n split needs at least 6 in an evaluation subset")
+    return np.sort(out)
+
+
+def group_scheme_names(t):
+    """The grouping schemes this target carries, default scheme first."""
+    schemes = t.get("group_schemes") or {}
+    return list(schemes) or [DEFAULT_GROUP_SCHEME]
+
+
+def _group_values(t, group_scheme=DEFAULT_GROUP_SCHEME):
+    """Per-filter labels under one named scheme, aligned with the target's rows.
+
+    The default scheme falls back to `t["groups"]` so a target that predates
+    named schemes (any custom target with a `Group` column) still answers to it.
+    An unknown scheme RAISES rather than silently reverting to season: a readout
+    labelled "combustion" that quietly reported a season would be worse than an
+    error. Cross-site and batch callers pre-resolve through resolve_eval_view,
+    which falls back to the default scheme for targets that lack the requested
+    one, so this only bites a direct request.
+    """
+    scheme = group_scheme or DEFAULT_GROUP_SCHEME
+    schemes = t.get("group_schemes") or {}
+    if scheme in schemes:
+        return list(schemes[scheme])
+    if scheme == DEFAULT_GROUP_SCHEME:
+        return list(t.get("groups") or [])
+    raise ValueError(f"this target has no {scheme!r} grouping scheme "
+                     f"(available: {', '.join(group_scheme_names(t))})")
+
+
+def _eval_indices(t, eval_lot="all", eval_group="all", eval_split="all",
+                  group_scheme=DEFAULT_GROUP_SCHEME):
+    """Target-filter indices surviving lot -> group -> split, in that order.
+
+    The split runs on the survivors, so `lot 251 + early` really is the first
+    half of the lot-251 filters rather than the lot-251 members of the first
+    half of everything.
+
+    `group_scheme` picks which grouping the group lever selects within (season,
+    or one of the PMF schemes at Addis). It is validated even when the group is
+    "all" and the labels therefore go unused: an unsupported scheme silently
+    accepted here is a request that did not do what it said.
+    """
+    idx = np.arange(len(t["ref"]))
+    groups = _group_values(t, group_scheme)
+    if eval_lot not in (None, "all"):
+        lots = t.get("lots")
+        if lots is None:
+            raise ValueError("this target has no filter-lot information "
+                             "(rebuild it with a LotId column to use the eval-lot lever)")
+        idx = idx[np.asarray([str(lots[i]) == str(eval_lot) for i in idx])]
+        if len(idx) < 3:
+            raise ValueError(f"only {len(idx)} evaluation filters on lot {eval_lot}")
+    if eval_group not in (None, "all"):
+        known = {str(g) for g in groups}
+        if str(eval_group) not in known:
+            raise ValueError(
+                f"no evaluation filter carries {group_scheme} group "
+                f"{str(eval_group)!r} (available: {', '.join(sorted(known))})")
+        idx = idx[np.asarray([str(groups[i]) == str(eval_group) for i in idx])]
+        if len(idx) < 3:
+            raise ValueError(f"only {len(idx)} evaluation filters in group {eval_group}")
+    return _split_indices(t, idx, eval_split)
+
+
+def _slice_target(t, idx):
+    """A target dict restricted to `idx`, keeping every per-filter field aligned."""
+    idx = np.asarray(idx)
+    fixed = t["fixed_mask"][idx] if t.get("fixed_mask") is not None else None
+    if fixed is not None and fixed.sum() < 3:
+        fixed = None                        # fixed subset too small in this view
+    def take(field):
+        values = t.get(field)
+        return [values[i] for i in idx] if values else None
+    schemes = t.get("group_schemes")
+    return {**t, "ref": t["ref"][idx], "groups": take("groups"),
+            "group_schemes": ({name: [values[i] for i in idx]
+                               for name, values in schemes.items()}
+                              if schemes else None),
+            "fixed_mask": fixed, "dates": take("dates"),
+            "deployed": take("deployed"), "lots": take("lots"),
+            "filter_ids": take("filter_ids")}
+
+
+def _eval_view(t, pred, eval_lot="all", eval_group="all", eval_split="all",
+               group_scheme=DEFAULT_GROUP_SCHEME):
+    """(sliced target, sliced predictions, index array) for one readout view."""
+    idx = _eval_indices(t, eval_lot, eval_group, eval_split, group_scheme)
+    if len(idx) == len(t["ref"]) and (idx == np.arange(len(idx))).all():
+        return t, pred, idx
+    return _slice_target(t, idx), np.asarray(pred)[idx], idx
+
+
+def resolve_eval_view(target_name, eval_lot="all", eval_group="all",
+                      eval_split="all", group_scheme=DEFAULT_GROUP_SCHEME):
+    """The view levers this target can actually honour, as (lot, group, split, scheme).
+
+    Lots, grouping schemes and group names are site-specific: a lot-251, Belg or
+    PMF-marine readout is meaningful at Addis and simply does not exist at
+    Pasadena. Rather than error a whole cross-site row, fall back to "all" on the
+    axes the target cannot support. A scheme the target lacks drops back to the
+    default one together with its group, since a group name only means anything
+    inside the scheme it came from. The equal-n split is site-independent and
+    always applies.
+    """
+    try:
+        t = get_target(target_name)
+    except Exception:                                     # noqa: BLE001
+        return "all", "all", eval_split, DEFAULT_GROUP_SCHEME
+    options = eval_view_options(t)
+    lot = (eval_lot if eval_lot in (None, "all")
+           or str(eval_lot) in options["lots"] else "all")
+    scheme = group_scheme or DEFAULT_GROUP_SCHEME
+    if scheme not in options["group_schemes"]:
+        scheme, eval_group = DEFAULT_GROUP_SCHEME, "all"
+    group = (eval_group if eval_group in (None, "all")
+             or str(eval_group) in options["group_schemes"][scheme] else "all")
+    group = group or "all"
+    # With no group selected the scheme is a no-op; report the default so two
+    # requests that ask for the same readout carry the same view identity
+    # (the batch's row key and the run cache key both include the scheme).
+    return (lot or "all"), group, (eval_split or "all"), (
+        scheme if group != "all" else DEFAULT_GROUP_SCHEME)
+
+
+def eval_view_options(t):
+    """Lot / group choices this target actually supports, with their counts.
+
+    `groups` stays the DEFAULT (season) scheme's counts, unchanged, so a caller
+    that predates named schemes keeps working. `group_schemes` carries every
+    scheme including that one.
+    """
+    lots = t.get("lots")
+    n = len(t["ref"])
+    def counts(values):
+        if not values:
+            return {}
+        out = {}
+        for v in values:
+            out[str(v)] = out.get(str(v), 0) + 1
+        return dict(sorted(out.items(), key=lambda kv: (-kv[1], kv[0])))
+    try:
+        split_n = int(len(_split_indices(t, np.arange(n), "early")))
+    except ValueError:
+        split_n = 0
+    schemes = {name: counts(_group_values(t, name))
+               for name in group_scheme_names(t)}
+    return {"n": int(n),
+            "lots": {k: v for k, v in counts(lots).items() if k != "?"},
+            "groups": schemes.get(DEFAULT_GROUP_SCHEME, {}),
+            "group_schemes": schemes,
+            "group_scheme_labels": {name: GROUP_SCHEME_LABELS.get(name, name)
+                                    for name in schemes},
+            # Flask sorts JSON object keys, so `group_schemes` reaches the page
+            # alphabetically (pmf_class first) whatever order it was built in.
+            # Render the picker from this list to keep the default scheme first.
+            "group_scheme_order": list(schemes),
+            "default_group_scheme": DEFAULT_GROUP_SCHEME,
+            "splits": [s for s in EVAL_SPLITS if s == "all" or split_n >= 3],
+            "split_n": split_n}
+
+
+# ----------------------------------------------------------------------------- #
 # the calibration run (curve cached separately from the k-specific fit)
 # ----------------------------------------------------------------------------- #
 def _cache_key(*parts) -> str:
@@ -717,7 +1003,9 @@ def _cohort_arrays(cohort, cutoff, selection_space, spectra, lot="all",
 
 
 def run_config(cohort, cutoff, selection_space, spectra, mode, k_override,
-               max_components, lot="all", target="addis", eval_lot="all"):
+               max_components, lot="all", target="addis", eval_lot="all",
+               eval_group="all", eval_split="all",
+               group_scheme=DEFAULT_GROUP_SCHEME):
     t = get_target(target)
     ids, cohort_label, X, y, sites, X_eval = _cohort_arrays(
         cohort, cutoff, selection_space, spectra, lot, target)
@@ -792,53 +1080,48 @@ def run_config(cohort, cutoff, selection_space, spectra, mode, k_override,
 
     pred = np.asarray(fit["addis_ugm3"], float)
 
-    # Evaluation-lot mask (Ann, 2026-08-19): report the readout on filters of
-    # one lot only. Applied after the cached fit: predictions always cover
-    # every filter; only the crossplot/metrics view is restricted: so the
-    # curve/fit caches stay lot-agnostic.
-    t_view, pred_view, mask_view = t, pred, None
-    if eval_lot not in (None, "all"):
-        lots = t.get("lots")
-        if lots is None:
-            raise ValueError(f"target '{target}' has no filter-lot information "
-                             "(eval lot applies to the built-in Addis target)")
-        m = np.array([str(lot_value) == str(eval_lot) for lot_value in lots])
-        if m.sum() < 3:
-            raise ValueError(f"only {int(m.sum())} evaluation filters on lot {eval_lot}")
-        fixed = t["fixed_mask"][m] if t.get("fixed_mask") is not None else None
-        if fixed is not None and fixed.sum() < 3:
-            fixed = None                      # fixed subset too small on this lot
-        t_view = {**t,
-                  "ref": t["ref"][m],
-                  "groups": [g for g, b in zip(t["groups"], m) if b],
-                  "fixed_mask": fixed,
-                  "dates": ([d for d, b in zip(t["dates"], m) if b]
-                            if t.get("dates") else None),
-                  "deployed": ([v for v, b in zip(t["deployed"], m) if b]
-                               if t.get("deployed") else None)}
-        pred_view = pred[m]
-        mask_view = m
+    # Evaluation view (Ann, 2026-08-19 and 2026-08-27): report the readout on a
+    # subset of the target's filters - one lot, one group (a season, or a PMF
+    # source class under group_scheme), and/or one equal-n half. Applied after
+    # the cached fit: predictions always cover every filter, only the
+    # crossplot/metrics view is restricted, so the curve/fit caches stay
+    # view-agnostic and every view of a fitted configuration is a cache hit.
+    t_view, pred_view, idx_view = _eval_view(t, pred, eval_lot, eval_group,
+                                             eval_split, group_scheme)
 
     ex = fit.get("extrap")
     extrap_pct = None
     if ex:
-        dv = np.asarray(ex["d"], float)
-        if mask_view is not None:
-            dv = dv[mask_view]
+        dv = np.asarray(ex["d"], float)[idx_view]
         extrap_pct = round(100.0 * float((dv > ex["train_p95"]).mean()), 1)
 
     q_diag = fit.get("q_residual")
     q_residual_pct = None
     if q_diag:
-        qv = np.asarray(q_diag["q"], float)
-        if mask_view is not None:
-            qv = qv[mask_view]
+        qv = np.asarray(q_diag["q"], float)[idx_view]
         q_residual_pct = round(
             100.0 * float((qv > q_diag["train_p95"]).mean()), 1)
+
+    # Every equal-n half of the CURRENT lot/season view, scored off the same
+    # cached predictions. Costs a regression on <=250 points, so the "pick on one
+    # half, read out on the half that never guided the choice" comparison is
+    # always available without a second fit.
+    split_check = []
+    for split_name in EVAL_SPLITS:
+        try:
+            t_s, pred_s, _ = _eval_view(t, pred, eval_lot, eval_group,
+                                        split_name, group_scheme)
+        except ValueError:
+            continue
+        split_check.append({"split": split_name, "n": int(len(pred_s)),
+                            "metrics": crossplot_metrics(t_s, pred_s)})
 
     finite_pred = pred_view[np.isfinite(pred_view)]
     if len(finite_pred):
         group_medians = {}
+        # Deliberately the DEFAULT (season) scheme, not `group_scheme`: these
+        # medians and their span are a plausibility check the leaderboard scores
+        # rows on, so their meaning has to stay fixed as the group lever moves.
         groups_view = np.asarray(t_view["groups"], object)
         for group in dict.fromkeys(groups_view.tolist()):
             vals = pred_view[(groups_view == group) & np.isfinite(pred_view)]
@@ -861,7 +1144,8 @@ def run_config(cohort, cutoff, selection_space, spectra, mode, k_override,
     floor_rows = curve.loc[curve["n_components"] == k, "rmsecv"]
     floor = float(floor_rows.iloc[0]) if len(floor_rows) else float("nan")
     run_id = _cache_key("run", cohort, cutoff, selection_space, spectra, mode,
-                        lot, target, eval_lot, k, t["fingerprint"], ids_hash)
+                        lot, target, eval_lot, eval_group, eval_split,
+                        group_scheme, k, t["fingerprint"], ids_hash)
     return {
         "cohort_label": cohort_label, "n_cohort": int(len(ids)),
         "n_train": fit["n_train"], "n_train_sites": fit["n_train_sites"],
@@ -885,7 +1169,11 @@ def run_config(cohort, cutoff, selection_space, spectra, mode, k_override,
         "target": {"name": target, "label": t["label"], "ref_kind": t["ref_kind"],
                    "has_fixed": t_view.get("fixed_mask") is not None,
                    "eval_lot": eval_lot or "all",
+                   "eval_group": eval_group or "all",
+                   "group_scheme": group_scheme or DEFAULT_GROUP_SCHEME,
+                   "eval_split": eval_split or "all",
                    "n_eval": int(len(pred_view)),
+                   "n_target": int(len(t["ref"])),
                    "extrap_pct": extrap_pct,
                    "extrap_p95": ex["train_p95"] if ex else None,
                    "q_residual_pct": q_residual_pct,
@@ -893,7 +1181,11 @@ def run_config(cohort, cutoff, selection_space, spectra, mode, k_override,
                                       if q_diag else None)},
         "eval": {"ref": [round(float(v), 4) for v in t_view["ref"]],
                  "pred": [round(float(v), 5) for v in pred_view],
+                 # `group` stays the season labels the crossplot has always
+                 # coloured by; `scheme_group` is the same filters under the
+                 # requested scheme (identical when that scheme IS season).
                  "group": t_view["groups"],
+                 "scheme_group": _group_values(t_view, group_scheme),
                  "date": t_view.get("dates"),
                  "deployed": t_view.get("deployed"),
                  "fixed": ([bool(b) for b in t_view["fixed_mask"]]
@@ -901,6 +1193,7 @@ def run_config(cohort, cutoff, selection_space, spectra, mode, k_override,
                            else [False] * len(t_view["ref"]))},
         "plausibility": plausibility,
         "metrics": crossplot_metrics(t_view, pred_view),
+        "split_check": split_check,
     }
 
 
@@ -920,9 +1213,19 @@ BATCH_LADDERS = {"eth_shaped": [200, 250, 300, 350, 400],
 
 
 def _batch_row_key(r):
-    return "|".join(str(r.get(f)) for f in
+    base = "|".join(str(r.get(f)) for f in
                     ("cohort", "cutoff", "selection_space", "spectra", "mode",
-                     "lot", "target", "eval_lot")) + f"|k{r.get('k')}"
+                     "lot", "target", "eval_lot"))
+    # rows written before the evaluation-view levers existed carry neither field;
+    # defaulting both to "all" keeps their keys stable against new rows
+    view = "|".join(str(r.get(f) or "all") for f in ("eval_group", "eval_split"))
+    # The scheme only names a readout when a group is actually selected, so rows
+    # with eval_group "all" collapse onto the default: otherwise the same row
+    # would be recomputed once per scheme. Rows written before schemes existed
+    # carry no field and land on the same default.
+    scheme = (str(r.get("group_scheme") or DEFAULT_GROUP_SCHEME)
+              if r.get("eval_group") not in (None, "all") else DEFAULT_GROUP_SCHEME)
+    return f"{base}|{view}|{scheme}|k{r.get('k')}"
 
 
 def _batch_sweep_ks(auto_k, curve_max, k_min=1, k_max=30, dense=False):
@@ -999,10 +1302,20 @@ def _batch_configs(b):
     # multi-target: one row per (config x target). Targets are the INNERMOST
     # loop so the fitted calibration (fit/curve caches are target-independent)
     # is reused across all sites back-to-back: evaluating a fitted config on
-    # another site costs a prediction, not a refit. eval_lot only means
-    # anything at addis (ETAD lots); other sites are forced to "all".
+    # another site costs a prediction, not a refit. The evaluation-view levers
+    # resolve per target - a lot or season a given site does not have falls back
+    # to "all" rather than erroring the row out.
     targets = b.get("targets") or [b.get("target", "addis")]
     eval_lot = b.get("eval_lot", "all")
+    # sweeping the split (e.g. ["early", "late"]) scores every configuration on
+    # both blind halves in one pass, which is what makes "how far does the winner
+    # move between halves" answerable without a second batch
+    eval_groups = b.get("eval_groups") or [b.get("eval_group", "all")]
+    eval_splits = b.get("eval_splits") or [b.get("eval_split", "all")]
+    # one scheme per batch: the group names are only meaningful inside it, so
+    # sweeping ["Marine", "Kiremt (Jun-Sep)"] in one pass would be a category
+    # error. Targets without the scheme fall back to season + "all" per row.
+    group_scheme = b.get("group_scheme", DEFAULT_GROUP_SCHEME)
     match_eval_lot = bool(b.get("match_eval_lot"))
     corrsel = bool(b.get("corrsel"))
     ladder = b.get("cutoff_ladder", True)
@@ -1028,12 +1341,17 @@ def _batch_configs(b):
                 else ["raw"])
         for cut, sel, sp, mode, lot in itertools.product(
                 cutoffs, sels, spectra, modes, lots):
-            for tgt in targets:
-                cfgs.append(dict(cohort=co, cutoff=cut, selection_space=sel,
-                                 spectra=sp, mode=mode, lot=lot, target=tgt,
-                                 eval_lot=((lot if match_eval_lot and lot != "all"
-                                            else eval_lot) if tgt == "addis"
-                                           else "all")))
+            for tgt, grp, split in itertools.product(targets, eval_groups,
+                                                     eval_splits):
+                want_lot = (lot if match_eval_lot and lot != "all" else eval_lot)
+                use_lot, use_grp, use_split, use_scheme = resolve_eval_view(
+                    tgt, want_lot, grp, split, group_scheme)
+                cfg = dict(cohort=co, cutoff=cut, selection_space=sel,
+                           spectra=sp, mode=mode, lot=lot, target=tgt,
+                           eval_lot=use_lot, eval_group=use_grp,
+                           eval_split=use_split, group_scheme=use_scheme)
+                if cfg not in cfgs:      # two views can collapse to the same row
+                    cfgs.append(cfg)
     return cfgs
 
 
@@ -1133,18 +1451,23 @@ def api_cross_site():
         return jsonify({"error": "data still loading"}), 503
     b = request.get_json(force=True) or {}
     cfg = _config_from(b)
-    base_eval_lot = cfg.pop("eval_lot", "all")
+    base_view = (cfg.pop("eval_lot", "all"), cfg.pop("eval_group", "all"),
+                 cfg.pop("eval_split", "all"),
+                 cfg.pop("group_scheme", DEFAULT_GROUP_SCHEME))
     cfg.pop("target", None)
     rows = []
     include_variants = bool(b.get("include_variants", False))
     for name in list_targets(cross_site_only=not include_variants):
         try:
+            lot, group, split, scheme = resolve_eval_view(name, *base_view)
             with COMPUTE_LOCK:
                 out = run_config(k_override=b.get("k"), **cfg, target=name,
-                                 eval_lot=(base_eval_lot if name == "addis"
-                                           else "all"))
+                                 eval_lot=lot, eval_group=group,
+                                 eval_split=split, group_scheme=scheme)
             rows.append({"site": name, "label": out["target"]["label"],
                          "k": out["k"], "n": out["target"]["n_eval"],
+                         "eval_lot": lot, "eval_group": group,
+                         "group_scheme": scheme, "eval_split": split,
                          "metrics": out["metrics"],
                          "extrap_pct": out["target"].get("extrap_pct"),
                          "q_residual_pct": out["target"].get("q_residual_pct"),
@@ -1168,15 +1491,15 @@ def _stability_fit(x, y, estimator, mac):
     return float(result["slope"]), float(result["intercept"])
 
 
-def _stability_view(target, eval_lot, evaluation_set):
-    """Indices/reference for one frozen target readout."""
-    target_indices = np.arange(len(target["ref"]))
-    if eval_lot not in (None, "all"):
-        if target.get("lots") is None:
-            raise ValueError("evaluation-lot stability is only available when lot labels exist")
-        target_indices = target_indices[
-            np.asarray([str(value) == str(eval_lot) for value in target["lots"]])
-        ]
+def _stability_view(target, eval_lot, evaluation_set, eval_group="all",
+                    eval_split="all", group_scheme=DEFAULT_GROUP_SCHEME):
+    """Indices/reference for one frozen target readout.
+
+    Shares _eval_indices with run_config so the resampled view is exactly the
+    view the leaderboard scored.
+    """
+    target_indices = _eval_indices(target, eval_lot, eval_group, eval_split,
+                                   group_scheme)
     if len(target_indices) < 3:
         raise ValueError("evaluation view has fewer than three target filters")
     if evaluation_set == "fixed" and target.get("fixed_mask") is not None:
@@ -1214,11 +1537,21 @@ def api_stability():
     mac = float(body.get("mac", 10))
     evaluation_set = body.get("evaluation_set", "fixed")
     eval_lot = body.get("eval_lot", "all")
+    eval_group = body.get("eval_group", "all")
+    eval_split = body.get("eval_split", "all")
+    group_scheme = body.get("group_scheme", DEFAULT_GROUP_SCHEME)
 
     target = get_target(target_name)
-    view_indices = _stability_view(target, eval_lot, evaluation_set)
+    try:
+        view_indices = _stability_view(target, eval_lot, evaluation_set,
+                                       eval_group, eval_split, group_scheme)
+    except ValueError as exc:
+        return jsonify({"error": f"ValueError: {exc}"}), 400
     reference = target["ref"][view_indices]
     x_reference = reference / mac if target["ref_kind"] == "fabs" else reference
+    # Bootstrap strata stay the DEFAULT (season) scheme whatever the group lever
+    # selects: they exist to keep each resample seasonally representative, which
+    # is not something a PMF grouping should quietly redefine.
     target_groups = np.asarray(target["groups"], object)[view_indices]
     filter_draws = stratified_bootstrap_indices(target_groups, n_boot, seed)
 
@@ -1235,6 +1568,9 @@ def api_stability():
                     "lot": raw.get("lot", "all"),
                     "target": target_name,
                     "eval_lot": eval_lot,
+                    "eval_group": eval_group,
+                    "eval_split": eval_split,
+                    "group_scheme": group_scheme,
                     "max_components": MAX_COMPONENTS,
                 }
                 k = int(raw.get("k"))
@@ -1624,12 +1960,16 @@ def _refine_bases(b):
         sels = (["raw", "airspec"] if corrsel and co in ("eth_shaped", "analogs")
                 else ["raw"])
         for sel, sp, mode, lot in itertools.product(sels, spectra, modes, lots):
+            tgt = b.get("target", "addis")
+            use_lot, use_grp, use_split, use_scheme = resolve_eval_view(
+                tgt, (lot if match_eval_lot and lot != "all" else base_eval_lot),
+                b.get("eval_group", "all"), b.get("eval_split", "all"),
+                b.get("group_scheme", DEFAULT_GROUP_SCHEME))
             bases.append(dict(cohort=co, cutoff=DEFAULT_CUTOFF.get(co),
                               selection_space=sel, spectra=sp, mode=mode,
-                              lot=lot,
-                              target=b.get("target", "addis"),
-                              eval_lot=(lot if match_eval_lot and lot != "all"
-                                        else base_eval_lot)))
+                              lot=lot, target=tgt, eval_lot=use_lot,
+                              eval_group=use_grp, eval_split=use_split,
+                              group_scheme=use_scheme))
     return bases
 
 
@@ -1771,7 +2111,9 @@ def _backfill_worker():
                    (("cohort", None), ("cutoff", None),
                     ("selection_space", "raw"), ("spectra", "raw"),
                     ("mode", "site_heldout"), ("lot", "all"),
-                    ("target", "addis"), ("eval_lot", "all"))}
+                    ("target", "addis"), ("eval_lot", "all"),
+                    ("eval_group", "all"), ("eval_split", "all"),
+                    ("group_scheme", DEFAULT_GROUP_SCHEME))}
             BATCH["current"] = (f"backfill {i}/{len(rows)}: {cfg['cohort']}/"
                                 f"{cfg['cutoff'] or '-'} k={r.get('k')}")
             try:
@@ -1855,6 +2197,9 @@ def _config_from(b):
         lot=b.get("lot", "all"),
         target=b.get("target", "addis"),
         eval_lot=b.get("eval_lot", "all"),
+        eval_group=b.get("eval_group", "all"),
+        eval_split=b.get("eval_split", "all"),
+        group_scheme=b.get("group_scheme", DEFAULT_GROUP_SCHEME),
     )
 
 
@@ -1879,6 +2224,23 @@ def api_status():
                                    "git_commit": GIT_COMMIT,
                                    "git_dirty": GIT_DIRTY,
                                    "source_fingerprint": D.get("source_fingerprint")}})
+
+
+@app.route("/api/eval_view_options", methods=["POST"])
+def api_eval_view_options():
+    """Which evaluation-view levers this target supports, with their counts.
+
+    Lots and season/group names are per site, so the page asks per target
+    instead of carrying one global list (which was Addis-only).
+    """
+    if not STATE["ready"]:
+        return jsonify({"error": "data still loading"}), 503
+    name = (request.get_json(force=True) or {}).get("target", "addis")
+    try:
+        options = eval_view_options(get_target(name))
+    except Exception as exc:                              # noqa: BLE001
+        return jsonify({"error": f"{type(exc).__name__}: {exc}"}), 400
+    return jsonify({"target": name, **options})
 
 
 @app.route("/api/run", methods=["POST"])
@@ -2186,7 +2548,13 @@ def api_overlap():
     return jsonify({"rows": rows})
 
 
-import hips_lab                                        # noqa: E402
+# bare imports resolve when app.py runs as a script from its own directory;
+# the package fallback covers importlib.import_module("calibration_explorer.app")
+# (the Colab launcher) where calibration_explorer/ itself is not on sys.path
+try:
+    import hips_lab                                    # noqa: E402
+except ModuleNotFoundError:
+    from calibration_explorer import hips_lab          # noqa: E402
 hips_lab.register(app, {
     "STATE": STATE, "COMPUTE_LOCK": COMPUTE_LOCK, "run_config": run_config,
     "list_targets": list_targets, "get_target": get_target,
@@ -2194,7 +2562,10 @@ hips_lab.register(app, {
     "spartan_hips_path": PATHS.spartan_hips_primary,
 })
 
-import local_lab                                       # noqa: E402
+try:
+    import local_lab                                   # noqa: E402
+except ModuleNotFoundError:
+    from calibration_explorer import local_lab         # noqa: E402
 local_lab.register(app, {
     "STATE": STATE, "COMPUTE_LOCK": COMPUTE_LOCK, "D": D,
     "get_target": get_target, "_target_X": _target_X,

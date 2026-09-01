@@ -21,15 +21,55 @@ EC. To evaluate against **your own site**, drop a folder into
     applies, Deming uses λ\*) **or** `EC_ugm3` (direct EC reference: single-row
     metrics, MAC toggle disabled, Deming at λ=1);
   - `Volume_m3` (required — predictions are µg/filter ÷ volume);
-  - optional `Date` (enables the Series tab) and `Group` (colours the crossplot,
-    e.g. seasons).
+  - optional `Date` (enables the Series tab), `Group` (colours the crossplot,
+    e.g. seasons — and drives the Eval season lever) and `LotId` (drives the
+    Eval lot lever).
 
-**Eval lot** (built-in Addis target only): report the crossplot on evaluation
-filters of one lot only — judge a lot-251 calibration on lot-251 filters (Ann,
-2026-08-19). ETAD lots come from the SPARTAN HIPS `LotId` (191× lot 251, 34× 248,
-14× 253 among the 239 evaluation filters). Predictions still cover every filter and
-the curve/fit caches are lot-agnostic; only the readout is masked. Flows through
-Run, Sweep k, presets, and the Optimize tab. The Selection tab's ranking view also
+## Evaluation view: lot × season × equal-n half
+
+Three composable levers narrow **what the readout is reported on**, applied in
+that order and always *after* the cached fit. Predictions cover every filter and
+the curve/fit caches stay view-agnostic, so every view of a fitted configuration
+is a cache hit. All three flow through Run, Sweep k, presets, the CSV exports,
+the Optimize tab, the server batch, cutoff refinement, and Validate top 5.
+
+**Eval lot** — judge a lot-251 calibration on lot-251 filters (Ann, 2026-08-19).
+Available for **any** target whose `reference.csv` carries a `LotId`, not just
+Addis: `build_spartan_target.py` now writes the column, and
+`scripts/add_target_lots.py` backfills it into targets exported before that by
+joining the SPARTAN HIPS table on `ExternalFilterId`. Current coverage — Addis
+191/34/14 (lots 251/248/253), Beijing 164/28 (251/248), Delhi 76/61/15
+(251/253/248), Pasadena 144/14 (251/248), Bishoftu 26 (251). Beijing is the clean
+lot-effect experiment: two lots on one site, same period.
+
+**Eval season** — report on one `Group` only (Ethiopian sites: Bega dry, Belg,
+Kiremt; SPARTAN quarter scheme elsewhere). Selection and fit are untouched, so a
+calibration can be read out on the season that did not shape it — the wet/dry
+split Navid's source work motivates.
+
+**Eval half** — split the evaluation set into two **equal-n** halves and report on
+one (Ann, 2026-08-27). `early`/`late` are the date-ordered halves: pick a
+configuration on one, read it out on the half that never guided the choice.
+`odd`/`even` interleave in date order, so both halves share the same temporal and
+seasonal coverage — the control that separates a real time trend from ordinary
+sampling scatter. The split is **stratified by the fixed/all evaluation subset**:
+an unstratified date halving puts 119 of Addis's fixed-set filters in the early
+half against 70 in the late one, and comparing R² across unequal n is exactly what
+the split exists to prevent. Stratified, every half reports n=119 (95 on the fixed
+set).
+
+Every run returns `split_check`: the same fitted model scored on *all* the halves
+of the current lot/season view, which costs one regression each and drives the
+**Blind-half check** panel in the Target readout tab (intercept vs slope per half,
+with the between-half deltas spelled out underneath). In the server batch, **score
+both blind halves** sweeps `early` and `late` in one pass, so "how far does the
+winner move between halves" needs no second batch.
+
+`POST /api/eval_view_options {"target": "chts"}` returns the lots, seasons and
+half size a given target supports; the page asks per target rather than carrying
+one global (Addis-only) list.
+
+The Selection tab's ranking view also
 gained a **raw vs corrected** mode overlaying the selection metric in both spectra
 spaces, with shared membership at the current cutoff in the caption.
 
@@ -48,22 +88,41 @@ silently become tuning data.
 
 ## Run
 
+Quickest — the launcher script (from the repo root):
+
+```bash
+./calibration_explorer/run.sh          # background start → http://127.0.0.1:5058
 ```
+```bash
+./calibration_explorer/run.sh status   # is it up, and has the data finished loading?
+```
+```bash
+./calibration_explorer/run.sh stop     # stop it
+```
+(`run.sh fg` runs in the foreground; log for background runs: `/tmp/calibration_explorer.log`.)
+
+Manual, canonical environment:
+
+```bash
 uv sync --extra explorer --python 3.13
-uv run --extra explorer python calibration_explorer/app.py
-# → http://127.0.0.1:5058
 ```
-The `explorer` extra is required on a clean checkout. It includes Flask, the
-Polars/IKPLS accelerators used by large searches, and pybaselines for the
-independent neutral-baseline view.
-Data loads in the background on startup (~1–2 min; the 13k-pool spectra CSV dominates).
-The page polls until ready. When polars is installed the pool CSV is read through
-its multithreaded parser (~6x faster parse, equivalent to within 1 float32 ulp on
-1 cell in 35M — `research/package_trials/io/`); `CALIB_EXPLORER_CSV=pandas` forces
-the historical pandas read. The startup checks report which engine loaded, and the
-"time CSV engines" button next to them (also `POST /api/benchmark_pool_read`)
-re-reads the pool CSV with both engines in the server process and reports
-timings and value equivalence.
+```bash
+uv run --extra explorer python calibration_explorer/app.py
+```
+
+The `explorer` extra is required on a clean checkout — the repo's *base* uv venv
+deliberately excludes Flask, so plain `uv run python calibration_explorer/app.py`
+fails with `No module named 'flask'`. Any other interpreter that carries
+flask + pandas + scikit-learn also works (historically `~/anaconda3/bin/python`);
+point `EXPLORER_PYTHON` at one to make `run.sh` use it.
+
+After starting: data loads in a background thread (~1–2 min; the 13k-pool spectra
+CSV from Google Drive dominates) and the page polls until ready. Optionally pre-warm
+every configuration so all clicks resolve from cache in <1 s:
+
+```bash
+uv run --extra explorer python calibration_explorer/warm_cache.py
+```
 
 ## Layout
 
@@ -98,9 +157,13 @@ Normal loads are capped at 10,000 rows; robust mode requests a bounded, filtered
 slice per site (up to 50,000 each) so an Addis-heavy file prefix cannot masquerade
 as a multi-site ranking. The page reports matched, loaded, and truncated counts.
 `POST /api/batch_start` / `batch_stop`, `GET /api/batch_status` /
-`batch_results` are the API. The Colab notebook
+`batch_results` are the API. `batch_start` also takes `eval_group` and
+`eval_splits` (a list, e.g. `["early", "late"]` — the "score both blind halves"
+checkbox), and resolves the evaluation view **per target**: a lot or season a
+given site does not have falls back to `all` instead of erroring that row out. The Colab notebook
 (`colab/Calibration_Explorer_Colab.ipynb`, regenerated by
-`colab/build_colab_bundle.py` — edit the template there, not the .ipynb) has an
+`colab/build_colab_bundle.py` — edit the template there, not the .ipynb; build, ship, and
+verification notes incl. the 2026-09-01 end-to-end run live in `colab/README.md`) has an
 optional cell that runs the full grid in Colab against Drive-mounted data and
 zips the cache back to Drive; unzip it into `cache/` locally (content-keyed, so
 merging is safe) and every batch row loads and every configuration is a cache
@@ -171,7 +234,8 @@ actions — Delete, and Export/Import as JSON (so presets can be shared between
 machines or committed alongside results).
 
 **Tabs**: Calibrate (run summary + CV curve + k sweep), Target readout (crossplot +
-metrics incl. the x-intercept **c = −b/m** per estimator + residuals), Selection
+metrics incl. the x-intercept **c = −b/m** per estimator + residuals + the
+**Blind-half check**), Selection
 (cutoff diagnostic with slider + pool-distribution view, reference-data
 characteristics, **composition ruler** (ftir_30: cohort vs pool OC/EC with the
 FTIR-derived Addis marker 1.34), overlap, spectra), **Series** (ftir_29 generalized:

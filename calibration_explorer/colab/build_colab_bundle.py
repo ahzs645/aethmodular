@@ -53,6 +53,7 @@ def build_bundle() -> None:
     files = [
         REPO / "calibration_explorer/app.py",
         REPO / "calibration_explorer/hips_lab.py",
+        REPO / "calibration_explorer/local_lab.py",
         REPO / "calibration_explorer/target_registry.json",
         REPO / "calibration_explorer/README.md",
         REPO / "calibration_explorer/ANALOG_CUTOFF_AUDIT_2026-08-18.md",
@@ -64,6 +65,7 @@ def build_bundle() -> None:
         REPO / "research/ftir_ec_phase3/output/corrected/neutral_pspline_arpls_lam1e6_manifest.json",
         REPO / "research/ftir_ec_phase3/output/tables/ftir11/lowest_ocec_800_cohort.csv",
         REPO / "research/ftir_hips_chem/Filter Data/unified_filter_dataset.pkl",
+        REPO / "research/ftir_hips_chem/Filter Data/ETAD Factor Contributions .csv",
     ]
     trees = [
         REPO / "calibration_explorer/static",
@@ -181,6 +183,9 @@ import sys
 
 os.environ["AETHMODULAR_DRIVE_ROOT"] = "/content/drive/MyDrive"
 sys.path.insert(0, str(WORK_ROOT))
+# app.py uses bare `import hips_lab` / `import local_lab`, which resolve only
+# when calibration_explorer/ itself is importable (locally it is the cwd)
+sys.path.insert(0, str(WORK_ROOT / "calibration_explorer"))
 sys.path.insert(0, str(WORK_ROOT / "research/ftir_hips_chem/scripts"))
 
 from pls_transfer import FTIRTransferPaths
@@ -225,7 +230,7 @@ for check in explorer.STATE["checks"]:
         nbf.v4.new_code_cell(
             """from google.colab import output
 
-output.serve_kernel_port_as_window(PORT)"""
+output.serve_kernel_port_as_iframe(PORT, height=900)"""
         ),
         nbf.v4.new_markdown_cell(
             """## Optional: exhaustive batch pre-compute
@@ -262,6 +267,11 @@ GRID = {
     "match_eval_lot": True,  # train lot 251 -> Addis eval lot 251
     "target": "addis",
     "eval_lot": "all",
+    "eval_group": "all",     # or one season, e.g. "Kiremt (Jun-Sep)"
+    # ["early", "late"] scores every configuration on BOTH equal-n blind halves
+    # in one pass (the fit is shared, so the second half costs a regression);
+    # ["all"] keeps the whole evaluation set as before.
+    "eval_splits": ["all"],
 }
 r = requests.post(f"http://127.0.0.1:{PORT}/api/batch_start", json=GRID, timeout=30).json()
 print(r)

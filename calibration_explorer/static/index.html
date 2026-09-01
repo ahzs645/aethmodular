@@ -67,14 +67,38 @@
         <option value="deriv2">SG 2nd derivative (raw)</option>
       </select>
     </div>
+  </div>
+  <div class="cfggroup">
+    <h4>Evaluation view</h4>
     <div class="field" title="The evaluation target the calibration is read out against. Addis (ETAD) is built in; add your own site by dropping spectra.csv + reference.csv into calibration_explorer/targets/<name>/: see README.">
       <label for="target">Evaluate on</label>
       <select id="target"><option value="addis">Addis (ETAD): built-in</option></select>
     </div>
-    <div class="field" title="Report the crossplot on evaluation filters of one lot only: judge a lot-251 calibration on lot-251 filters (Ann, Aug 19). Predictions still cover every filter; only the readout is restricted. Built-in Addis target only.">
-      <label for="eval_lot">Eval lot</label>
-      <select id="eval_lot"><option value="all">all lots</option></select>
+    <div class="fieldrow">
+      <div class="field" title="Report the crossplot on evaluation filters of one lot only: judge a lot-251 calibration on lot-251 filters (Ann, Aug 19). Available for any target whose reference table carries a LotId - Beijing ran lots 248 and 251 side by side. Predictions still cover every filter; only the readout is restricted.">
+        <label for="eval_lot">Eval lot</label>
+        <select id="eval_lot"><option value="all">all lots</option></select>
+      </div>
+      <div class="field" title="Which labelling the Eval group selector draws on. Season is the sampling calendar; the PMF schemes come from Navid's ETAD source apportionment (2023 only, 102 of 239 filters carry a PMF day - the rest are 'unmatched' and are never silently mixed in).">
+        <label for="group_scheme">Group by</label>
+        <select id="group_scheme"><option value="season">Season</option></select>
+      </div>
+      <div class="field" title="Report the crossplot on one group of the chosen scheme only. Selection and fit are untouched - this narrows the readout, so a calibration can be read out on the season or source class that did not shape it.">
+        <label for="eval_group">Eval group</label>
+        <select id="eval_group"><option value="all">all</option></select>
+      </div>
     </div>
+    <div class="field" title="Split the evaluation set into two equal-n halves and report on one of them (Ann, Aug 27). early/late are the date-ordered halves - pick a configuration on one, read it out on the half that never guided the choice. odd/even interleave in date order instead, so both halves share the same seasonal coverage: the control for a real time trend. Both halves always carry the same n, so their R2 is comparable.">
+      <label for="eval_split">Eval half</label>
+      <select id="eval_split">
+        <option value="all">all filters</option>
+        <option value="early">early (first half by date)</option>
+        <option value="late">late (second half by date)</option>
+        <option value="odd">odd (interleaved)</option>
+        <option value="even">even (interleaved)</option>
+      </select>
+    </div>
+    <div class="muted" id="evalviewnote" style="margin-top:2px"></div>
   </div>
   <div class="cfggroup">
     <h4>Model</h4>
@@ -160,6 +184,9 @@
         </thead><tbody></tbody></table>
       </div>
       <div class="muted" style="margin:6px 0 12px">Intercept and R² are MAC-invariant; the slope scales by MAC (ftir_19). Deming uses λ*=2.96 at MAC 10, scaled by MAC².</div>
+      <div class="plotcap" id="cap_split" title="Every equal-n half of the current evaluation view, scored off the same fitted model. If a configuration was chosen on one half, the other half is the readout that did not guide the choice.">Blind-half check: the same fit read out on each equal-n half</div>
+      <div id="p_split" class="plot short" style="height:240px"></div>
+      <div class="muted" id="splitnote" style="margin:2px 0 12px"></div>
       <div class="plotcap" id="cap_resid">Residuals vs HIPS</div>
       <div id="p_resid" class="plot"></div>
     </div>
@@ -444,6 +471,9 @@
       <button class="mini" id="opt_validate" disabled style="margin-top:6px" title="Freeze the five leading passing rows, then estimate winner frequency under stratified target-filter resampling and source-site cluster refits">Validate top 5</button>
       <label style="margin-top:6px" title="Bootstrap draws for each validation layer; 200 matches ftir_22, while 30–50 is a quick diagnostic">bootstrap draws
         <input type="number" id="opt_boot" min="10" max="500" value="100" step="10" style="width:70px"></label>
+      <button class="mini" id="opt_halves_check" style="margin-top:6px" title="Re-score the leading visible rows on the early and late halves of the evaluation set and fill in the stability column. A configuration already fitted in this session is a cache hit and costs about a regression per half; one that is not costs a real fit, which is why this is a button rather than part of every render. Stop applies to it, and measured rows are kept.">Check blind halves</button>
+      <label style="margin-top:6px" title="How many of the leading visible rows to re-score. 25 covers the whole visible top; raise it to map the stable family further down the table. Rows that share a fit with one already measured (an early row and its late sibling from a both-halves batch) come free.">rows to re-score
+        <input type="number" id="opt_halves_n" min="1" max="200" value="25" step="5" style="width:70px"></label>
       <div class="fieldrow" style="margin-top:8px">
         <div class="field"><label for="opt_kmin">k min</label><input id="opt_kmin" type="number" value="1" min="1" max="30"></div>
         <div class="field"><label for="opt_kmax">k max</label><input id="opt_kmax" type="number" value="30" min="1" max="30"></div>
@@ -457,6 +487,7 @@
       <label class="ck" style="margin-top:6px" title="Try several cutoffs per ranked cohort (Eth 200–400, analogs 400–600, OC/EC 600–1000) instead of only the defaults"><input type="checkbox" id="batch_ladder" checked>cutoff ladder</label>
       <label class="ck" title="Also evaluate a sparse k ladder per configuration; it always includes k=21 and k max when available"><input type="checkbox" id="batch_sweepk" checked>k sweep per config</label>
       <label class="ck" title="Evaluate every integer from k min to k max for every configuration. This can multiply a large batch substantially."><input type="checkbox" id="batch_densek">dense k for every config</label>
+      <label class="ck" title="Score every configuration on BOTH date-ordered halves of the evaluation set (equal n). Doubles the rows and costs only a regression each - the fitted model is shared - and it is what makes 'how far does the winner move between halves' answerable without a second batch."><input type="checkbox" id="batch_halves">score both blind halves</label>
       <label style="margin-top:6px" title="Score each configuration on more than one site. The fitted calibration is reused across sites, so extra sites cost a prediction, not a refit. Addis + Delhi runs those two first; all sites adds Beijing, Pasadena and Bishoftu.">Sites
         <select id="batch_sites">
           <option value="current" selected>current target</option>
@@ -474,14 +505,22 @@
   </div>
   <div class="cols two">
     <div>
-      <div class="plotcap" id="cap_optboard">Leaderboard: score = |intercept| + w·|slope − 1|</div>
+      <div class="tablehead" style="margin-bottom:5px">
+        <span class="plotcap" id="cap_optboard" style="margin:0">Leaderboard: score = |intercept| + w·|slope − 1|</span>
+        <span class="pill" id="opt_rankby">
+          <button data-v="score" class="on" title="Order by the objective: the ranking the guardrails are stated in">by score</button>
+          <button data-v="stability" title="Order the measured rows by how little they move between the blind halves, unmeasured rows last. The family that holds still is rarely the same set as the top of the score ranking, and it is the one worth adopting.">by stability</button>
+        </span>
+      </div>
       <div class="tablewrap">
         <table id="optboard"><thead><tr>
           <th>#</th><th title="evaluation target this row was scored on">site</th>
           <th>cohort</th><th>sel</th><th>cal</th><th>protocol</th><th>k</th>
-          <th>slope</th><th>intercept</th><th>held-out R²</th><th>score-space %</th><th>Q %</th><th>negative %</th><th>score</th><th></th>
+          <th>slope</th><th>intercept</th><th>held-out R²</th><th>score-space %</th><th>Q %</th><th>negative %</th><th>score</th>
+          <th title="Blind-half stability: how far this row's score moves between the early and late halves of the evaluation set. Flagged when it moves further than the whole span from rank 1 to rank 10, because then its rank is not distinguishable from its neighbours'. Empty until measured with “Check blind halves”.">stability</th><th></th>
         </tr></thead><tbody></tbody></table>
       </div>
+      <div class="muted" id="optstabnote" style="margin:6px 0 0"></div>
       <div class="muted" style="margin:6px 0 12px">Screening many configurations against the same fixed target pairs will overfit the readout. Passing rows must satisfy the held-out, slope, score-distance, Q-residual, and negative-prediction guardrails; legacy rows without Q are not allowed to pass until backfilled. Use the robust multi-site rank and locked confirmation targets before adopting a candidate. MAC 17 is a sensitivity readout, not an optimization dimension.</div>
     </div>
     <div>

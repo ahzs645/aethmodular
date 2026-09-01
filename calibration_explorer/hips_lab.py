@@ -262,8 +262,12 @@ def register(app, ctx: dict) -> None:
             return jsonify({"error": "data still loading"}), 503
         b = request.get_json(force=True) or {}
         cfg = ctx["_config_from"](b)
-        cfg.pop("eval_lot", None)
-        cfg.pop("target", None)
+        # This view pairs predictions with the target's FULL filter-id list, so it
+        # must run on the whole target: every evaluation-view lever is dropped, not
+        # just the lot (a season or half would silently misalign pred against fids).
+        for lever in ("eval_lot", "eval_group", "eval_split", "group_scheme",
+                      "target"):
+            cfg.pop(lever, None)
         rows = []
         for name in ctx["list_targets"](cross_site_only=True):
             base_name = name.removesuffix("_reconstructed_holdout").removesuffix("_augmented")
@@ -277,7 +281,8 @@ def register(app, ctx: dict) -> None:
                     continue
                 with ctx["COMPUTE_LOCK"]:
                     out = ctx["run_config"](k_override=b.get("k"), **cfg,
-                                            target=name, eval_lot="all")
+                                            target=name, eval_lot="all",
+                                            eval_group="all", eval_split="all")
                 row = site_rows(out["eval"]["pred"], out["eval"]["ref"],
                                 fids, code)
                 row.update({"site": name, "code": code, "k": out["k"],

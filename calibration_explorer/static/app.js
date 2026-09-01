@@ -56,6 +56,7 @@ async function post(url, body){
     return j;
   }catch(e){ return {error:`Request failed: ${e.message || e}`}; }
 }
+function selValue(id){ return $(id).disabled ? 'all' : ($(id).value || 'all'); }
 function cfg(){
   return {
     cohort: $('cohort').value,
@@ -65,14 +66,76 @@ function cfg(){
     mode: $('mode').value,
     lot: $('lot').value,
     target: $('target').value || 'addis',
-    eval_lot: $('eval_lot').disabled ? 'all' : ($('eval_lot').value || 'all'),
+    eval_lot: selValue('eval_lot'),
+    group_scheme: selValue('group_scheme'),
+    eval_group: selValue('eval_group'),
+    eval_split: selValue('eval_split'),
   };
 }
-function syncEvalLot(){
-  // filter-lot info exists only for the built-in Addis target
-  const addis = $('target').value === 'addis';
-  $('eval_lot').disabled = !addis;
-  if(!addis) $('eval_lot').value = 'all';
+/* ---- evaluation view ------------------------------------------------------- */
+/* The three readout levers are per target: Beijing carries lots 248 and 251,
+   Pasadena carries none, and the season names differ between the Ethiopian and
+   quarter schemes. Ask the server what this target actually supports rather than
+   carrying one global (Addis-only) list. */
+let evalViewOptions = {};
+function fillViewSelect(id, allLabel, counts, want){
+  const entries = Object.entries(counts || {});
+  $(id).innerHTML = `<option value="all">${allLabel}</option>` +
+    entries.map(([v, n]) => `<option value="${v}">${v} (n=${n})</option>`).join('');
+  $(id).disabled = !entries.length;
+  $(id).value = entries.some(([v]) => v === want) ? want : 'all';
+}
+/* Group schemes are per target: every site has a season/quarter calendar, and the
+   built-in Addis target additionally carries Navid's PMF source apportionment
+   (2023 only, so 137 of its 239 filters land in "unmatched"). The scheme picker
+   chooses the labelling; the Eval group selector then chooses a value within it,
+   repopulated client-side from the payload we already hold. */
+function fillSchemeSelect(want){
+  const order = evalViewOptions.group_scheme_order
+    || Object.keys(evalViewOptions.group_schemes || {season: 1});
+  const labels = evalViewOptions.group_scheme_labels || {};
+  $('group_scheme').innerHTML = order
+    .map(s => `<option value="${s}">${labels[s] || s}</option>`).join('');
+  $('group_scheme').disabled = order.length < 2;
+  $('group_scheme').value = order.includes(want) ? want
+    : (evalViewOptions.default_group_scheme || order[0] || 'season');
+}
+function fillGroupsForScheme(want){
+  const scheme = selValue('group_scheme');
+  const schemes = evalViewOptions.group_schemes || {};
+  // fall back to the flat `groups` key for a server that predates schemes
+  const counts = schemes[scheme] || (scheme === 'season' ? evalViewOptions.groups : {});
+  fillViewSelect('eval_group', 'all groups', counts, want);
+}
+$('group_scheme').onchange = () => {
+  fillGroupsForScheme('all');
+  if(ready){ setResultStale(lastRunKey !== currentRunKey());
+             updateCfgSummary(); scheduleAutoRun(); }
+};
+
+async function syncEvalView(keep){
+  const want = keep || {eval_lot: selValue('eval_lot'),
+                        group_scheme: selValue('group_scheme'),
+                        eval_group: selValue('eval_group'),
+                        eval_split: selValue('eval_split')};
+  const j = await post('/api/eval_view_options', {target: $('target').value || 'addis'});
+  evalViewOptions = j.error ? {} : j;
+  fillViewSelect('eval_lot', 'all lots', evalViewOptions.lots, want.eval_lot);
+  fillSchemeSelect(want.group_scheme || 'season');
+  fillGroupsForScheme(want.eval_group);
+  const splits = evalViewOptions.splits || ['all'];
+  $('eval_split').disabled = splits.length < 2;
+  $('eval_split').value = splits.includes(want.eval_split) ? want.eval_split : 'all';
+  const n = evalViewOptions.n;
+  $('evalviewnote').textContent = j.error ? j.error
+    : (n ? `${n} evaluation filters` +
+           (splits.length > 1 ? ` · each half n=${evalViewOptions.split_n}` : '') +
+           (Object.keys(evalViewOptions.lots || {}).length ? '' : ' · no lot labels')
+         : '');
+  if(ready){
+    setResultStale(lastRunKey !== currentRunKey());
+    updateCfgSummary(); scheduleAutoRun();
+  }
 }
 function requestedRun(){
   return {...cfg(), k: $('kmode').value === 'manual' ? parseInt($('kval').value) : null};
@@ -168,7 +231,7 @@ function currentPresetCfg(){
           k: $('kmode').value === 'manual' ? parseInt($('kval').value) : null,
           toggles: {...toggles}};
 }
-function applyPreset(p){
+async function applyPreset(p){
   if(!ready || !p) return;
   $('cohort').value = p.cohort; $('cohort').onchange();
   if(p.cutoff && !$('cutoff').disabled) $('cutoff').value = p.cutoff;
@@ -177,10 +240,10 @@ function applyPreset(p){
   $('lot').value = p.lot || 'all';
   if([...$('target').options].some(o => o.value === (p.target || 'addis')))
     $('target').value = p.target || 'addis';
-  syncEvalLot();
-  if(!$('eval_lot').disabled &&
-     [...$('eval_lot').options].some(o => o.value === (p.eval_lot || 'all')))
-    $('eval_lot').value = p.eval_lot || 'all';
+  await syncEvalView({eval_lot: p.eval_lot || 'all',
+                      group_scheme: p.group_scheme || 'season',
+                      eval_group: p.eval_group || 'all',
+                      eval_split: p.eval_split || 'all'});
   $('mode').value = p.mode || 'site_heldout';
   $('kmode').value = p.kmode || 'auto'; $('kmode').onchange();
   if(p.kmode === 'manual' && p.k) $('kval').value = p.k;
@@ -299,11 +362,7 @@ async function poll(){
   $('target').innerHTML = Object.entries(s.targets || {addis:'Addis (ETAD): built-in'})
     .map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
   if([...$('target').options].some(o => o.value === curT)) $('target').value = curT;
-  $('eval_lot').innerHTML = '<option value="all">all lots</option>' +
-    Object.entries(s.eval_lots || {}).filter(([l]) => l !== '?')
-      .sort((a, b) => b[1] - a[1])
-      .map(([l, n]) => `<option value="${l}">${l} (n=${n})</option>`).join('');
-  syncEvalLot();
+  syncEvalView();
   updateTargetRole();
   ready = true;
   $('cohort').value = 'ocec'; $('cohort').onchange();
@@ -334,11 +393,12 @@ async function poll(){
 }
 poll();
 placeholder('p_resid', 'Residuals appear here after a run.');
+placeholder('p_split', 'The blind-half comparison appears here after a run.');
 placeholder('p_overlap', 'The overlap matrix appears once data is loaded.');
 placeholder('p_series', 'The dated EC series appears here after a run.');
 placeholder('p_vsdeployed', 'The deployed-EC comparison appears here after a run.');
 placeholder('p_composition', 'The composition ruler appears once data is loaded.');
-$('target').onchange = () => { syncEvalLot(); updateTargetRole(); drawCohortInfo(); };
+$('target').onchange = () => { syncEvalView(); updateTargetRole(); drawCohortInfo(); };
 
 /* ---- run ------------------------------------------------------------------- */
 let runInFlight = false, rerunQueued = false;
@@ -400,7 +460,18 @@ function updateCfgSummary(){
   $('cfgsummary').textContent =
     `- ${name}${c.cutoff ? ' (' + c.cutoff + ')' : ''} · cal:${SPECTRA_SHORT[c.spectra] || c.spectra}` +
     ` · ${MODE_SHORT[c.mode] || c.mode} · k:${$('kmode').value === 'manual' ? $('kval').value : 'auto'}` +
-    (c.eval_lot !== 'all' ? ` · eval lot ${c.eval_lot}` : '');
+    evalViewLabel(c);
+}
+function evalViewText(c){ return evalViewLabel(c).replace(/^ · /, ''); }
+/* one short " · lot 251 · Belg · early half" suffix, empty when nothing narrows */
+function evalViewLabel(c){
+  // a bare "Marine" or "Charcoal" would read as a season next to "Belg", so the
+  // non-default schemes carry their provenance into every label the page prints
+  const scheme = c.group_scheme && c.group_scheme !== 'season'
+    ? (c.group_scheme.startsWith('pmf') ? 'PMF ' : c.group_scheme + ' ') : '';
+  return (c.eval_lot && c.eval_lot !== 'all' ? ` · lot ${c.eval_lot}` : '') +
+    (c.eval_group && c.eval_group !== 'all' ? ` · ${scheme}${c.eval_group}` : '') +
+    (c.eval_split && c.eval_split !== 'all' ? ` · ${c.eval_split} half` : '');
 }
 let cfgCollapsed = localStorage.getItem('calib_explorer_cfgcollapsed') === '1';
 function setCfgCollapsed(v){
@@ -431,7 +502,8 @@ $('sweep').onclick = async () => {
 function redraw(){
   if(!last) return;
   updateToggles();
-  drawStats(); drawCurve(); drawCross(); drawMetrics(); drawSeries(); drawPins();
+  drawStats(); drawCurve(); drawCross(); drawMetrics(); drawSplitCheck();
+  drawSeries(); drawPins();
   if(lastSweep) drawSweep(lastSweep);
 }
 
@@ -446,8 +518,9 @@ function drawStats(){
     · calibrate on: <b>${SPECTRA_LABEL[c.spectra] || c.spectra}</b><br>
     protocol: <b>${MODE_LABEL[c.mode] || c.mode}</b>
     · target: <b>${j.target ? j.target.label : 'Addis'}</b>${
-      j.target && j.target.eval_lot && j.target.eval_lot !== 'all'
-        ? ` · eval lot <b>${j.target.eval_lot}</b> (n=${j.target.n_eval})` : ''}${
+      j.target && evalViewLabel(j.target)
+        ? ` · readout: <b>${evalViewText(j.target)}</b> (n=${j.target.n_eval}${
+            j.target.n_target ? ' of ' + j.target.n_target : ''})` : ''}${
       j.target && j.target.extrap_pct != null
         ? ` · score OOD: <span class="${j.target.extrap_pct > 30 ? 'warn' : 'ok'}">${j.target.extrap_pct}%</span>` : ''}${
       j.target && j.target.q_residual_pct != null
@@ -492,8 +565,7 @@ function evalContext(){
   const useFixed = toggles.evalset === 'fixed' && t.has_fixed;
   const idx = e.ref.map((_, i) => i).filter(i => !useFixed || e.fixed[i]);
   const xDesc = isFabs ? `HIPS EC-equivalent, Fabs/${mac} (µg/m³)` : 'Reference EC (µg/m³)';
-  const setDesc = (useFixed ? 'fixed cohort' : 'all pairs') +
-    (t.eval_lot && t.eval_lot !== 'all' ? ` · lot ${t.eval_lot}` : '');
+  const setDesc = (useFixed ? 'fixed cohort' : 'all pairs') + evalViewLabel(t);
   return {t, e, isFabs, mac, useFixed, idx, xDesc, setDesc};
 }
 function groupTraces(idx, e, xOf, yOf){
@@ -607,6 +679,80 @@ function drawMetrics(){
     <td class="gs">${r.R2.toFixed(2)}</td><td>${r.RMSE.toFixed(2)}</td>
     <td class="gs">${(-r.ols_intercept / r.ols_slope).toFixed(2)}</td>
     <td>${(-r.deming_intercept / r.deming_slope).toFixed(2)}</td></tr>`).join('');
+}
+
+/* ---- blind-half check -------------------------------------------------------
+   The same fitted model, read out on each equal-n half of the current lot/season
+   view. If a configuration was picked on one half, the complementary half is the
+   readout that never guided the choice, and how far the point moves between the
+   two is the honest size of the "we tuned this" effect (Ann, 2026-08-27).
+   early/late split by date; odd/even interleave, so they share the whole period.
+   A gap early/late shows but odd/even does not is a time trend; a gap both show
+   is ordinary sampling scatter. Costs nothing: same cached fit, one regression
+   per half. */
+const SPLIT_COLOUR = {all:'#22252A', early:'#2C6E9E', late:'#B23327',
+                      odd:'#7A4FA3', even:'#C49442'};
+const SPLIT_LABEL = {all:'all filters', early:'early (by date)',
+                     late:'late (by date)', odd:'odd (interleaved)',
+                     even:'even (interleaved)'};
+function drawSplitCheck(){
+  const t = last.target;
+  const rows = (last.split_check || [])
+    .map(r => ({...r, m: metricRow(r.metrics)})).filter(r => r.m);
+  if(rows.length < 2){
+    $('p_split').innerHTML = '<div class="ph">Too few evaluation filters in this view to '
+      + 'split into equal halves (each half needs at least 3).</div>';
+    $('splitnote').textContent = ''; return;
+  }
+  const dem = toggles.est === 'deming';
+  const slopeOf = r => dem ? r.m.deming_slope : r.m.ols_slope;
+  const icOf = r => dem ? r.m.deming_intercept : r.m.ols_intercept;
+  const data = rows.map((r, i) => ({
+    x:[slopeOf(r)], y:[icOf(r)], mode:'markers+text', type:'scatter',
+    name: SPLIT_LABEL[r.split] || r.split,
+    text:[r.split], textposition: i % 2 ? 'bottom center' : 'top center',
+    textfont:{size:10},
+    marker:{size: r.split === 'all' ? 14 : 11,
+            symbol: r.split === 'all' ? 'diamond' : 'circle',
+            color: SPLIT_COLOUR[r.split] || '#8F8C84',
+            line:{width: r.split === (t.eval_split || 'all') ? 2.5 : 0, color:'#22252A'}},
+    hovertemplate:`${SPLIT_LABEL[r.split] || r.split} (n=${r.n})<br>`
+      + `slope %{x:.3f} · intercept %{y:.3f} µg/m³<br>R² ${r.m.R2.toFixed(3)}<extra></extra>`}));
+  // The panel's question is how far the readout MOVES between halves, so the axes
+  // follow the halves. The 1:1/zero-intercept target lines are drawn as shapes,
+  // which never widen the range: at a slope of 0.95 and an intercept of -2 the
+  // target point would otherwise flatten the whole comparison into one dot.
+  const span = (vals, floor) => {
+    const lo = Math.min(...vals), hi = Math.max(...vals);
+    const pad = Math.max((hi - lo) * 0.35, floor);
+    return [lo - pad, hi + pad];
+  };
+  const xr = span(rows.map(slopeOf), 0.02), yr = span(rows.map(icOf), 0.08);
+  const line = (o) => ({type:'line', line:{color:'#22252A', dash:'dot', width:1}, ...o});
+  plot('p_split', data, {
+    xaxis:{title:`${dem ? 'Deming' : 'OLS'} slope`, range:xr, zeroline:false},
+    yaxis:{title:'intercept (µg/m³)', range:yr, zeroline:false},
+    shapes:[line({x0:1, x1:1, y0:yr[0], y1:yr[1]}),
+            line({x0:xr[0], x1:xr[1], y0:0, y1:0})],
+    annotations:[
+      xr[0] <= 1 && 1 <= xr[1] ? {x:1, y:yr[1], text:'slope 1', showarrow:false,
+        font:{size:9, color:'#8F8C84'}, xanchor:'left', yanchor:'top'} : null,
+      yr[0] <= 0 && 0 <= yr[1] ? {x:xr[1], y:0, text:'intercept 0', showarrow:false,
+        font:{size:9, color:'#8F8C84'}, xanchor:'right', yanchor:'bottom'} : null,
+    ].filter(Boolean),
+    margin:{t:26, r:14, b:42, l:58}, showlegend:false});
+  const by = Object.fromEntries(rows.map(r => [r.split, r]));
+  const gap = (a, b) => (by[a] && by[b])
+    ? `${a} → ${b}: intercept ${icOf(by[a]).toFixed(2)} → ${icOf(by[b]).toFixed(2)}`
+      + ` (Δ ${Math.abs(icOf(by[a]) - icOf(by[b])).toFixed(2)}), slope `
+      + `${slopeOf(by[a]).toFixed(2)} → ${slopeOf(by[b]).toFixed(2)}`
+    : null;
+  const parts = [gap('early', 'late'), gap('odd', 'even')].filter(Boolean);
+  $('splitnote').innerHTML = parts.length
+    ? `n=${by.early ? by.early.n : '?'} per half · ` + parts.join('<br>')
+      + '<br><span class="muted">A gap early/late shows but odd/even does not is a '
+      + 'time trend; one both show is sampling scatter.</span>'
+    : '';
 }
 
 let rankView = 'rank';
@@ -918,6 +1064,9 @@ $('pin').onclick = () => {
     target:last.target ? last.target.label : 'Addis',
     target_name:last.target ? last.target.name : 'addis',
     eval_lot:last.target ? last.target.eval_lot : 'all',
+    group_scheme:last.target ? last.target.group_scheme : 'season',
+    eval_group:last.target ? last.target.eval_group : 'all',
+    eval_split:last.target ? last.target.eval_split : 'all',
     extrap_pct:last.target ? last.target.extrap_pct : null,
     q_residual_pct:last.target ? last.target.q_residual_pct : null,
     ref_kind:last.target ? last.target.ref_kind : 'fabs',
@@ -942,7 +1091,9 @@ function drawPins(){
   const tb = $('pins').querySelector('tbody');
   tb.innerHTML = pins.map((p, i) => {
     const v = pinRow(p);
-    return `<tr><td title="eval lot ${p.eval_lot || 'all'}">${p.target || p.target_name || 'addis'}</td>` +
+    const view = evalViewText(p);
+    return `<tr><td title="readout: ${view || 'all filters'}">${p.target || p.target_name || 'addis'}` +
+      (view ? `<br><span class="muted">${view}</span>` : '') + '</td>' +
       `<td>${p.label}</td><td>${p.n}</td>
       <td>${p.selection_space === 'airspec' ? 'AIRSpec' : 'raw'}</td>
       <td>${SPECTRA_SHORT[p.spectra] || p.spectra}</td>
@@ -975,14 +1126,16 @@ window.loadPin = i => {
 };
 
 $('exportcsv').onclick = () => {
-  const head = 'run_id,target,target_label,target_role,cohort,cutoff,n,calibration_lot,evaluation_lot,selection_space,calibration_spectra,protocol,k,auto_k,mac,evaluation_set,estimator,slope,intercept,R2,RMSE,heldout_TOR_R2,score_space_ood_pct,q_residual_ood_pct,cache_schema,git_commit,git_dirty,source_fingerprint,target_fingerprint,cohort_hash,timestamp\n';
+  const head = 'run_id,target,target_label,target_role,cohort,cutoff,n,calibration_lot,evaluation_lot,group_scheme,evaluation_group,evaluation_split,selection_space,calibration_spectra,protocol,k,auto_k,mac,evaluation_set,estimator,slope,intercept,R2,RMSE,heldout_TOR_R2,score_space_ood_pct,q_residual_ood_pct,cache_schema,git_commit,git_dirty,source_fingerprint,target_fingerprint,cohort_hash,timestamp\n';
   const lines = [];
   pins.forEach(p => p.metrics.forEach(m => {
     [['ols', m.ols_slope, m.ols_intercept], ['deming', m.deming_slope, m.deming_intercept]].forEach(([e, sl, ic]) => {
       const v = p.provenance || {};
       lines.push([v.run_id || '', p.target_name || 'addis', `"${p.target || ''}"`,
         (targetsMeta[p.target_name || 'addis'] || {}).role || '', `"${p.label}"`, p.cutoff ?? '', p.n,
-        p.lot || 'all', p.eval_lot || 'all', p.selection_space, p.spectra, p.mode, p.k, p.auto_k,
+        p.lot || 'all', p.eval_lot || 'all', p.group_scheme || 'season',
+        p.eval_group || 'all', p.eval_split || 'all',
+        p.selection_space, p.spectra, p.mode, p.k, p.auto_k,
         m.MAC ?? '', m.evaluation_set, e, sl, ic, m.R2, m.RMSE,
         p.heldout ? p.heldout.R2 : '', p.extrap_pct ?? '', p.q_residual_pct ?? '',
         v.cache_schema || '', v.git_commit || '', v.git_dirty ?? '',
@@ -1017,22 +1170,29 @@ const optRowKeys = new Set();
 let optRunning = false, optStop = false, optSkipped = 0;
 
 const optCfgKey = r => [r.cohort, r.cutoff, r.selection_space, r.spectra, r.mode,
-                        r.lot || 'all', r.target, r.eval_lot || 'all'].join('|');
+                        r.lot || 'all', r.target, r.eval_lot || 'all',
+                        r.group_scheme || 'season',
+                        r.eval_group || 'all', r.eval_split || 'all'].join('|');
 const optCfgOf = r => ({cohort: r.cohort, cutoff: r.cutoff, selection_space: r.selection_space,
                         spectra: r.spectra, mode: r.mode, lot: r.lot || 'all', target: r.target,
-                        eval_lot: r.eval_lot || 'all'});
+                        eval_lot: r.eval_lot || 'all',
+                        group_scheme: r.group_scheme || 'season',
+                        eval_group: r.eval_group || 'all',
+                        eval_split: r.eval_split || 'all'});
 const optDescribe = c => `${c.cohort}${c.cutoff ? ' ' + c.cutoff : ''}` +
   ` · sel:${c.selection_space === 'airspec' ? 'AIR' : 'raw'} · cal:${SPECTRA_SHORT[c.spectra]}` +
   ` · ${MODE_SHORT[c.mode] || c.mode}` +
   (c.lot && c.lot !== 'all' ? ` · train lot ${c.lot}` : '') +
-  (c.eval_lot && c.eval_lot !== 'all' ? ` · eval lot ${c.eval_lot}` : '');
+  evalViewLabel(c);
 
 function selectedOptLots(){
   return [...document.querySelectorAll('[data-opt-lot]:checked')].map(x => x.dataset.optLot);
 }
 function optEvaluationLot(lot, target){
+  // "match Addis evaluation lot" pairs a lot-251 training set with lot-251
+  // evaluation filters; otherwise the sidebar's evaluation view applies as-is
   if(target === 'addis' && $('opt_matchlot').checked && lot !== 'all') return lot;
-  return $('eval_lot').disabled ? 'all' : ($('eval_lot').value || 'all');
+  return selValue('eval_lot');
 }
 function optKValues(autoK, curveMax){
   const lo = Math.max(1, Math.min(parseInt($('opt_kmin').value) || 1, curveMax));
@@ -1090,13 +1250,16 @@ function optAddRow(row){
   optRowKeys.add(key);
   optRows.push(row);
 }
-function optRowFromRun(c, j){
-  const pick = (es, mac) => j.metrics.find(m => m.evaluation_set === es && m.MAC === mac)
-            || j.metrics.find(m => m.MAC === mac) || j.metrics[0];
+/* The score-bearing fields of one metrics array: the fixed and all-pairs readouts
+   at MAC 10 and MAC 6, which is exactly the set optParts reads. Shared by the
+   leaderboard row itself and by each blind half below, so a half is scored
+   through the same code path as the whole. */
+function optMetricFields(metrics){
+  const pick = (es, mac) => metrics.find(m => m.evaluation_set === es && m.MAC === mac)
+            || metrics.find(m => m.MAC === mac) || metrics[0];
   const f10 = pick('fixed', 10), f6 = pick('fixed', 6);
   const a10 = pick('all', 10), a6 = pick('all', 6);
-  return {...c, cohort_label: j.cohort_label, k: j.k, auto_k: j.auto_k,
-    ref_kind: j.target ? j.target.ref_kind : 'fabs', provenance: j.provenance,
+  return {
     ols_slope: f10.ols_slope, ols_intercept: f10.ols_intercept,
     deming_slope: f10.deming_slope, deming_intercept: f10.deming_intercept,
     ols_intercept_mac6: f6.ols_intercept, deming_intercept_mac6: f6.deming_intercept,
@@ -1104,7 +1267,16 @@ function optRowFromRun(c, j){
     all_ols_slope: a10.ols_slope, all_ols_intercept: a10.ols_intercept,
     all_deming_slope: a10.deming_slope, all_deming_intercept: a10.deming_intercept,
     all_ols_intercept_mac6: a6.ols_intercept, all_deming_intercept_mac6: a6.deming_intercept,
-    all_R2: a10.R2, all_RMSE: a10.RMSE,
+    all_R2: a10.R2, all_RMSE: a10.RMSE};
+}
+function optRowFromRun(c, j){
+  return {...c, cohort_label: j.cohort_label, k: j.k, auto_k: j.auto_k,
+    ref_kind: j.target ? j.target.ref_kind : 'fabs', provenance: j.provenance,
+    ...optMetricFields(j.metrics),
+    // the halves ride along free: split_check is read off this same cached fit,
+    // so a row born from a search already knows how far it moves. Rows merged
+    // from a server batch or a k sweep do not, and need the button.
+    blind_halves: optHalvesFrom(j.split_check),
     extrap_pct: j.target ? j.target.extrap_pct : null,
     q_residual_pct: j.target ? j.target.q_residual_pct : null,
     negative_pct: j.plausibility ? j.plausibility.negative_pct : null,
@@ -1114,6 +1286,114 @@ function optRowFromRun(c, j){
     group_median_span: j.plausibility ? j.plausibility.group_median_span : null,
     heldout_R2: j.heldout ? j.heldout.R2 : null};
 }
+
+/* ---- blind-half stability of a leaderboard row -------------------------------
+   Measured across all 700 guardrail-passing Addis configurations (2026-08-27):
+   the early-half winner ranks 603rd of 700 on the late half, the late-half winner
+   ranks 699th of 700 on the early half, and rank 1 to rank 10 spans 0.07 score
+   units against a median between-half movement of 0.10. The visible order at the
+   top of this table is therefore mostly noise. A leaderboard that shows only the
+   score invites the reader to believe row 1 beats row 3, so each row also carries
+   how far its own score moves between the two halves that never saw each other.
+   What is stored per half is that half's METRIC FIELDS, never a finished score:
+   score follows the MAC · Fit · target-set toggles and must be recomputed when
+   they move, the same reason a pill click reruns renderOpt.
+   Trap: split_check does NOT depend on the row's own eval_split, because the
+   server always reports every half of the row's lot/season view. So an "early"
+   row and its "late" sibling out of a both-halves batch report one identical
+   movement. That is correct: the movement belongs to the configuration, not to
+   the half, and it is why one /api/run below fills in both siblings. */
+const HALF_SPLITS = ['early', 'late'];   // the date-ordered pair drawSplitCheck draws in blue and red
+/* Same configuration and k, ignoring eval_split: one fit, hence one split_check,
+   hence one call for every loaded row that shares it. */
+const optFitKey = r => [r.cohort, r.cutoff, r.selection_space, r.spectra, r.mode,
+                        r.lot || 'all', r.target, r.eval_lot || 'all',
+                        r.eval_group || 'all', r.k].join('|');
+function optHalvesFrom(splitCheck){
+  const out = {};
+  HALF_SPLITS.forEach(name => {
+    const s = (splitCheck || []).find(r => r.split === name);
+    if(s && s.metrics && s.metrics.length) out[name] = {...optMetricFields(s.metrics), n: s.n};
+  });
+  // both halves or nothing: half a comparison is not a comparison
+  return HALF_SPLITS.every(name => out[name]) ? out : null;
+}
+function optHalfScore(r, half){
+  const h = r.blind_halves && r.blind_halves[half];
+  if(!h) return null;
+  const s = optScore({...h, ref_kind: r.ref_kind});   // ref_kind drives the MAC handling in optParts
+  return isFinite(s) ? s : null;
+}
+function optMovement(r){
+  const a = optHalfScore(r, 'early'), b = optHalfScore(r, 'late');
+  return (a == null || b == null) ? null : Math.abs(a - b);
+}
+/* The ranking's own resolution: how much score separates rank 1 from rank 10
+   among the passing rows on screen. A row that moves further than this between
+   the halves cannot be told apart from the rows around it, whatever its rank. */
+function optRankGap(view){
+  const s = view.filter(v => v.pass && isFinite(v.s)).map(v => v.s).sort((a, b) => a - b);
+  if(s.length < 2) return null;
+  const depth = Math.min(10, s.length);
+  return {gap: s[depth - 1] - s[0], depth, short: depth < 10};
+}
+
+async function optCheckHalves(){
+  if(optRunning || !ready) return;
+  const want = Math.max(1, parseInt($('opt_halves_n').value) || 25);
+  const view = optView().slice(0, want);
+  if(!view.length){ optStatus('nothing to re-score: run or load a search first'); return; }
+  // One /api/run per distinct fit. A configuration already fitted in this session
+  // is a cache hit and costs about a regression per half; one that is not costs a
+  // real fit, which is why this is a button rather than part of every render.
+  const jobs = new Map();
+  view.forEach(v => {
+    if(v.r.blind_halves) return;                       // born from a search: already measured
+    if(!jobs.has(optFitKey(v.r))) jobs.set(optFitKey(v.r), v.r);
+  });
+  if(!jobs.size){
+    renderOpt();
+    optStatus(`all ${view.length} leading rows already carry a blind-half score.`);
+    return;
+  }
+  optRunning = true; optStop = false;
+  $('opt_start').disabled = true; $('opt_stop').disabled = false;
+  $('opt_halves_check').disabled = true;
+  let done = 0, failed = 0;
+  try{
+    for(const [key, r] of jobs){
+      if(optStop) break;
+      done++;
+      optStatus(`blind halves ${done}/${jobs.size}: ${optDescribe(r)} · k${r.k}…`);
+      // eval_split 'all' whatever the row's own half is: only split_check is read
+      // here, it is the same either way, and asking for the whole view cannot
+      // fail on a half that has too few filters to split
+      const j = await post('/api/run', {...optCfgOf(r), eval_split: 'all', k: r.k});
+      const halves = j.error ? null : optHalvesFrom(j.split_check);
+      if(!halves){ failed++; continue; }
+      optRows.forEach(other => { if(optFitKey(other) === key) other.blind_halves = halves; });
+      // a full renderOpt redraws the Pareto scatter, which costs more than the
+      // cached re-score itself: refresh every few rows, then once at the end
+      if(done % 5 === 0) renderOpt();
+    }
+  } finally {
+    optRunning = false;
+    $('opt_stop').disabled = true; $('opt_halves_check').disabled = false;
+    // Start search comes back through updateTargetRole rather than a bare enable:
+    // this readout is allowed on targets where optimization is not, and must not
+    // hand the search button to one of them on its way out.
+    updateTargetRole();
+    renderOpt();
+    const measured = optRows.filter(r => r.blind_halves).length;
+    optStatus((optStop ? 'stopped: the halves measured so far are kept. '
+                       : 'blind-half check done. ')
+      + `${done - failed} of ${jobs.size} fits re-scored on the early and late halves`
+      + `${failed ? `, ${failed} skipped (error)` : ''}. `
+      + `${measured} of ${optRows.length} loaded rows now carry a movement; `
+      + 'read the stability column against the caption under the leaderboard.');
+  }
+}
+
 function optTopConfigs(n, rankedOnly){
   const best = {};
   const consider = r => {
@@ -1156,6 +1436,7 @@ async function optimize(){
   }
   optRunning = true; optStop = false; optSkipped = 0;
   $('opt_start').disabled = true; $('opt_stop').disabled = false;
+  $('opt_halves_check').disabled = true;   // one sequential job at a time, same Stop
   try{
     const target = $('target').value || 'addis';
     // phase 1: screen at default cutoffs, rule k
@@ -1166,7 +1447,10 @@ async function optimize(){
       spaces.forEach(ss => spectraOpts.forEach(sp => modes.forEach(m => lots.forEach(lot =>
         combos.push({cohort: co, cutoff: RANKED.includes(co) ? defaults[co] : null,
                      selection_space: ss, spectra: sp, mode: m, lot, target,
-                     eval_lot: optEvaluationLot(lot, target)})))));
+                     eval_lot: optEvaluationLot(lot, target),
+                     group_scheme: selValue('group_scheme'),
+                     eval_group: selValue('eval_group'),
+                     eval_split: selValue('eval_split')})))));
     });
     await optPhase('screening', combos);
     if(optStop) return;
@@ -1203,6 +1487,7 @@ async function optimize(){
   } finally {
     optRunning = false;
     $('opt_start').disabled = false; $('opt_stop').disabled = true;
+    $('opt_halves_check').disabled = false;
     $('opt_export').disabled = !optRows.length;
     renderOpt();
     optStatus((optStop ? 'stopped: results kept. ' : 'done. ') +
@@ -1267,7 +1552,12 @@ $('batch_start').onclick = async () => {
     cutoff_ranges: (step && $('batch_wide').checked)
       ? {eth_shaped: [100, 900], analogs: [100, 1500], ocec: [100, 2000]}
       : null,
-    eval_lot: $('eval_lot').disabled ? 'all' : ($('eval_lot').value || 'all'),
+    eval_lot: selValue('eval_lot'),
+    group_scheme: selValue('group_scheme'),
+    eval_group: selValue('eval_group'),
+    // sweeping both halves scores every configuration on each blind half in one
+    // pass, so "how far does the winner move between halves" needs no second run
+    eval_splits: $('batch_halves').checked ? ['early', 'late'] : [selValue('eval_split')],
   });
   if(r.error){ $('batch_status').textContent = r.error; return; }
   $('batch_status').textContent = `started: ${r.total} configurations queued`;
@@ -1322,16 +1612,25 @@ $('batch_backfill').onclick = async () => {
   batchPollTimer = setTimeout(() => batchTick(true), 1500);
 };
 
-function renderOpt(){
-  $('optcount').textContent = optRows.length ? `(${optRows.length})` : '';
-  const w = parseFloat($('opt_w').value) || 0;
-  const estL = toggles.est === 'deming' ? 'Deming' : 'OLS';
-  const setL = toggles.evalset === 'all' ? 'all pairs' : 'fixed set';
-  $('cap_optboard').textContent =
-    `Leaderboard: score = |intercept| + ${w}·|slope − 1| at MAC ${toggles.mac}, ${estL}, ${setL}` +
-    (toggles.evalset === 'all' ? ' (rows without an all-pairs readout fall back to fixed until backfilled)' : '');
+/* The rows the leaderboard is currently showing, in the order it shows them.
+   Shared with the blind-half check so "the top N visible rows" means the same
+   thing to the button as it does to the reader. */
+let optRankBy = 'score';
+function optRankOrder(a, b){
+  if(optRankBy !== 'stability') return a.s - b.s;
+  // an unmeasured row has no stability rank to claim: it sorts after every
+  // measured row rather than at Δ0, and keeps score order among its own kind
+  if(a.d == null && b.d == null) return a.s - b.s;
+  if(a.d == null) return 1;
+  if(b.d == null) return -1;
+  return (a.d - b.d) || (a.s - b.s);
+}
+function optView(){
   const siteSel = $('opt_site') ? $('opt_site').value : 'addis';
-  let view = optRows.map((r, i) => ({r, i, s: optScore(r), pass: optPasses(r), ...optParts(r)}));
+  // d is computed once per row, not inside the comparator: it costs two scorings
+  // and a comparator sees each row O(log n) times
+  let view = optRows.map((r, i) => ({r, i, s: optScore(r), pass: optPasses(r),
+                                     d: optMovement(r), ...optParts(r)}));
   if(siteSel === 'robust'){
     const groups = {};
     view.forEach(v => {
@@ -1348,12 +1647,81 @@ function renderOpt(){
   }else{
     view = view.filter(v => siteSel === 'any' || (v.r.target || 'addis') === siteSel);
   }
-  view.sort((a, b) => (b.pass - a.pass) || (a.s - b.s));
+  view.sort((a, b) => (b.pass - a.pass) || optRankOrder(a, b));
+  return view;
+}
+
+/* One row's stability cell. `gap` is the resolution of the ranking it sits in,
+   so the flag says "this row moves further than the whole top of the table",
+   not "this row moves a lot" against some absolute the data never fixed. */
+function optStabilityCell(v, gap){
+  const d = v.d;
+  if(d == null) return '<span class="muted" title="Not measured. Press “Check blind '
+    + 'halves” to score this configuration on the early and late halves.">not checked</span>';
+  const e = optHalfScore(v.r, 'early'), l = optHalfScore(v.r, 'late');
+  const h = v.r.blind_halves;
+  // flagged only on passing rows: the gap is the resolution of the PASSING
+  // ranking, so "indistinguishable from its neighbours" is only a claim about
+  // the rows actually competing for the top
+  const loud = v.pass && gap && d > gap.gap;
+  const tip = `early ${e.toFixed(3)} (n=${h.early.n}) · late ${l.toFixed(3)} (n=${h.late.n})`
+    + (gap ? ` · rank 1 to ${gap.depth} spans ${gap.gap.toFixed(3)}` : '')
+    + (loud ? ' · moves further than the whole top of this table, so its rank is '
+            + 'not distinguishable from its neighbours' : '');
+  return `<span class="${loud ? 'warn' : ''}" title="${tip}">Δ${d.toFixed(2)}${loud ? ' ⚠' : ''}</span>`;
+}
+function optStabilityNote(view, gap){
+  const el = $('optstabnote');
+  const measured = view.filter(v => v.d != null);
+  const intro = 'Stability is how far a row’s score moves between the early and late '
+    + 'halves of the evaluation set: the half that could have picked it against the '
+    + 'half that never saw it. ';
+  if(!measured.length){
+    el.innerHTML = intro + 'Nothing here has been measured yet, so the column is '
+      + 'blank rather than zero. Press “Check blind halves” to fill it in for the '
+      + 'leading rows.';
+    return;
+  }
+  if(!gap){
+    el.innerHTML = intro + `${measured.length} of ${view.length} rows measured. `
+      + 'Fewer than two rows pass the guardrails, so there is no ranking here whose '
+      + 'resolution the movement could be compared against.';
+    return;
+  }
+  const moves = measured.map(v => v.d).sort((a, b) => a - b);
+  const median = moves[Math.floor(moves.length / 2)];
+  const loud = measured.filter(v => v.pass && v.d > gap.gap).length;
+  el.innerHTML = intro
+    + `Rank 1 to rank ${gap.depth} of the passing rows spans <b>${gap.gap.toFixed(2)}</b> score units`
+    + `${gap.short ? ` (only ${gap.depth} rows pass here)` : ''}, `
+    + `while the median measured row moves <b>${median.toFixed(2)}</b> between the halves. `
+    + (loud
+      ? `${loud} of the ${measured.length} measured rows move further than that whole span, `
+        + 'and are flagged: their position in this table is not distinguishable from their '
+        + 'neighbours’. Read them as one family, not as an ordering.'
+      : `None of the ${measured.length} measured rows moves further than that span, so the `
+        + 'order at the top is doing real work. Measure more rows before relying on it.');
+}
+
+function renderOpt(){
+  $('optcount').textContent = optRows.length ? `(${optRows.length})` : '';
+  const w = parseFloat($('opt_w').value) || 0;
+  const estL = toggles.est === 'deming' ? 'Deming' : 'OLS';
+  const setL = toggles.evalset === 'all' ? 'all pairs' : 'fixed set';
+  $('cap_optboard').textContent =
+    `Leaderboard: score = |intercept| + ${w}·|slope − 1| at MAC ${toggles.mac}, ${estL}, ${setL}` +
+    (toggles.evalset === 'all' ? ' (rows without an all-pairs readout fall back to fixed until backfilled)' : '');
+  const view = optView();
+  // the resolution of the ranking, not of the visible page: it is the passing
+  // rows that compete, and it must not change with how far the table is cut off
+  const gap = optRankGap(view);
   const shown = view.slice(0, 20);
   $('opt_validate').disabled = view.filter(v => v.pass).length < 2;
   $('optboard').querySelector('tbody').innerHTML = shown.map((v, rank) => `
     <tr${v.pass ? '' : ' class="fail" title="fails one or more held-out, slope, score-distance, Q-residual, or negative-prediction guardrails"'}>
-      <td>${rank + 1}</td><td>${v.robustN ? `${v.r.target || 'addis'} worst (${v.robustN})` : (v.r.target || 'addis')}</td><td>${v.r.cohort_label || v.r.cohort}</td>
+      <td>${rank + 1}</td><td title="readout: ${evalViewText(v.r) || 'all filters'}">${
+        v.robustN ? `${v.r.target || 'addis'} worst (${v.robustN})` : (v.r.target || 'addis')}${
+        evalViewText(v.r) ? `<br><span class="muted">${evalViewText(v.r)}</span>` : ''}</td><td>${v.r.cohort_label || v.r.cohort}</td>
       <td>${v.r.selection_space === 'airspec' ? 'AIRSpec' : 'raw'}</td>
       <td>${SPECTRA_SHORT[v.r.spectra] || v.r.spectra}</td>
       <td title="${MODE_LABEL[v.r.mode] || v.r.mode}">${{site_heldout:'A', app:'B', app_fmm:'B2'}[v.r.mode] || v.r.mode}</td>
@@ -1365,8 +1733,10 @@ function renderOpt(){
       <td>${v.r.q_residual_pct != null ? v.r.q_residual_pct.toFixed(0) + '%' : 'N/A'}</td>
       <td>${v.r.negative_pct != null ? v.r.negative_pct.toFixed(0) + '%' : 'N/A'}</td>
       <td><b>${isFinite(v.s) ? v.s.toFixed(2) : '–'}</b></td>
+      <td>${optStabilityCell(v, gap)}</td>
       <td><button class="gray" onclick="optApply(${v.i})">Load</button></td></tr>`).join('') +
-    (view.length > 20 ? `<tr><td colspan="15" class="muted">… ${view.length - 20} more (Export CSV for all)</td></tr>` : '');
+    (view.length > 20 ? `<tr><td colspan="16" class="muted">… ${view.length - 20} more (Export CSV for all)</td></tr>` : '');
+  optStabilityNote(view, gap);
   drawPareto(view);
 }
 
@@ -1412,20 +1782,31 @@ window.optApply = i => {
   if(!r) return;
   applyPreset({cohort: r.cohort, cutoff: r.cutoff, selection_space: r.selection_space,
                spectra: r.spectra, mode: r.mode, target: r.target, lot: r.lot || 'all',
-               eval_lot: r.eval_lot || 'all', kmode: 'manual', k: r.k});
+               eval_lot: r.eval_lot || 'all', group_scheme: r.group_scheme || 'season',
+               eval_group: r.eval_group || 'all',
+               eval_split: r.eval_split || 'all', kmode: 'manual', k: r.k});
   switchTab('calibrate');
   run();
 };
 
 $('opt_export').onclick = () => {
-  const head = 'target,evaluation_lot,cohort,cutoff,selection_space,calibration_spectra,protocol,k,auto_k,' +
+  // The three half columns are appended, never inserted: downstream readers of
+  // this file index by position. Unlike every raw metric column beside them they
+  // are scores, so they carry the MAC · Fit · target-set toggles that were set
+  // when the file was written; there is no toggle-free version of a score to
+  // export. Blank means "not measured", which is not the same as 0.
+  const head = 'target,evaluation_lot,group_scheme,evaluation_group,evaluation_split,cohort,cutoff,selection_space,calibration_spectra,protocol,k,auto_k,' +
     'ols_slope_mac10,ols_intercept_mac10,deming_slope_mac10,deming_intercept_mac10,' +
-    'ols_intercept_mac6,deming_intercept_mac6,R2,heldout_TOR_R2,score_space_ood_pct,q_residual_ood_pct,negative_pct,above_8_pct,prediction_median,group_median_span\n';
-  const lines = optRows.map(r => [r.target || 'addis', r.eval_lot || 'all', `"${r.cohort_label || r.cohort}"`, r.cutoff ?? '', r.selection_space,
+    'ols_intercept_mac6,deming_intercept_mac6,R2,heldout_TOR_R2,score_space_ood_pct,q_residual_ood_pct,negative_pct,above_8_pct,prediction_median,group_median_span,' +
+    'early_half_score,late_half_score,half_movement\n';
+  const num = v => v == null ? '' : v.toFixed(4);
+  const lines = optRows.map(r => [r.target || 'addis', r.eval_lot || 'all',
+    r.group_scheme || 'season', r.eval_group || 'all', r.eval_split || 'all', `"${r.cohort_label || r.cohort}"`, r.cutoff ?? '', r.selection_space,
     r.spectra, r.mode, r.k, r.auto_k, r.ols_slope, r.ols_intercept, r.deming_slope,
     r.deming_intercept, r.ols_intercept_mac6, r.deming_intercept_mac6, r.R2, r.heldout_R2 ?? '',
     r.extrap_pct ?? '', r.q_residual_pct ?? '', r.negative_pct ?? '', r.above_8_pct ?? '', r.prediction_median ?? '',
-    r.group_median_span ?? ''].join(','));
+    r.group_median_span ?? '',
+    num(optHalfScore(r, 'early')), num(optHalfScore(r, 'late')), num(optMovement(r))].join(','));
   const blob = new Blob([head + lines.join('\n')], {type: 'text/csv'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = 'explorer_optimizer_runs.csv'; a.click();
@@ -1459,7 +1840,10 @@ $('opt_validate').onclick = async () => {
         selection_space:r.selection_space, spectra:r.spectra, mode:r.mode,
         lot:r.lot || 'all', k:r.k})),
       target,
-      eval_lot: $('eval_lot').disabled ? 'all' : ($('eval_lot').value || 'all'),
+      eval_lot: selValue('eval_lot'),
+      group_scheme: selValue('group_scheme'),
+      eval_group: selValue('eval_group'),
+      eval_split: selValue('eval_split'),
       n_boot: parseInt($('opt_boot').value) || 100,
       seed: 20260717,
       weight: parseFloat($('opt_w').value) || 5,
@@ -1483,6 +1867,15 @@ $('opt_validate').onclick = async () => {
 };
 ['opt_w', 'opt_minr2', 'opt_reqho', 'opt_site', 'opt_slopemin', 'opt_slopemax',
  'opt_maxextrap', 'opt_maxq', 'opt_maxneg'].forEach(id => $(id).onchange = renderOpt);
+
+$('opt_halves_check').onclick = optCheckHalves;
+/* Ranking by stability finds the family that holds still, which is a different
+   question from which row wins, and usually a different set of rows. The score
+   ordering stays the default because the guardrails are stated in score terms. */
+$('opt_rankby').querySelectorAll('button').forEach(b => b.onclick = () => {
+  $('opt_rankby').querySelectorAll('button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); optRankBy = b.dataset.v; renderOpt();
+});
 placeholder('p_pareto', 'Start a search to populate the tradeoff view.');
 
 /* ---- analog lab -------------------------------------------------------------
@@ -1671,7 +2064,10 @@ $('refine_start').onclick = async () => {
     max_q_residual: parseFloat($('opt_maxq').value),
     max_negative: parseFloat($('opt_maxneg').value),
     target: $('target').value || 'addis',
-    eval_lot: $('eval_lot').disabled ? 'all' : ($('eval_lot').value || 'all')});
+    eval_lot: selValue('eval_lot'),
+    group_scheme: selValue('group_scheme'),
+    eval_group: selValue('eval_group'),
+    eval_split: selValue('eval_split')});
   if(r.error){ $('batch_status').textContent = r.error; return; }
   $('batch_status').textContent = `refining cutoffs for ${r.bases} base configurations in ±10 steps…`;
   batchPollTimer = setTimeout(() => batchTick(true), 1500);
@@ -1696,6 +2092,9 @@ function sitesRender(){
     if(r.error) return {site: r.site, error: r.error};
     const m = sitesPick(r.metrics);
     return {site: r.site, label: r.label, n: r.n, k: r.k,
+      // the view resolves per site: a lot or season a site does not have falls
+      // back to "all" rather than erroring the row out
+      view: evalViewText(r),
       slope: toggles.est === 'deming' ? m.deming_slope : m.ols_slope,
       ic: toggles.est === 'deming' ? m.deming_intercept : m.ols_intercept,
       R2: m.R2, extrap: r.extrap_pct, q: r.q_residual_pct};
@@ -1703,7 +2102,8 @@ function sitesRender(){
   $('sitestbl').querySelector('tbody').innerHTML = view.map(v => v.error
     ? `<tr><td>${v.site}</td><td colspan="7" class="warn">${v.error}</td></tr>`
     : `<tr>
-        <td title="${v.label}">${v.site}</td><td>${v.n}</td><td>${v.k}</td>
+        <td title="${v.label}${v.view ? ' · readout: ' + v.view : ''}">${v.site}${
+          v.view ? `<br><span class="muted">${v.view}</span>` : ''}</td><td>${v.n}</td><td>${v.k}</td>
         <td>${v.slope.toFixed(2)}</td><td>${v.ic.toFixed(2)}</td><td>${v.R2.toFixed(2)}</td>
         <td class="${v.extrap != null && v.extrap > 30 ? 'warn' : ''}">${v.extrap != null ? v.extrap.toFixed(0) + '%' : 'N/A'}</td>
         <td class="${v.q != null && v.q > 30 ? 'warn' : ''}">${v.q != null ? v.q.toFixed(0) + '%' : 'N/A'}</td>
