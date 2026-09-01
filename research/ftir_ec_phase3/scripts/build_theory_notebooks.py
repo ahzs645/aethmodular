@@ -24,6 +24,8 @@ SCRIPTS = {
     "48": ("run_ftir_48.py", "ftir_48_pyrolysis_split_target.ipynb"),
     "49": ("run_ftir_49.py", "ftir_49_ma350_raw_chain_diagnostics.ipynb"),
     "50": ("run_ftir_50.py", "ftir_50_spectral_comparison_methods.ipynb"),
+    "51": ("run_ftir_51.py", "ftir_51_priority_figure_export.ipynb"),
+    "52": ("run_ftir_52.py", "ftir_52_network_spectral_map.ipynb"),
 }
 
 

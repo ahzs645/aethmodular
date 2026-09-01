@@ -559,3 +559,50 @@ is a spectral analog, not a composition match. Obvious next methods, both an aft
 the same module: Ward clustering of pool + targets (the field-standard source-class
 comparison, Russell 2009 / Takahama 2011) and a validated r threshold instead of a top-N
 rank (Open Specy's discipline).
+
+## ftir_52 — the IMPROVE network as a spectral map (2026-09-01)
+
+Ward clustering of the full lot-248/251 library plus all five SPARTAN targets on
+AIRSpec-corrected spectra — the field-standard comparison (Russell 2009, Takahama 2011)
+that the analog thread had never run — with a site-similarity map and a validated match
+threshold. PCA-30 (99.9% of standardized variance) fitted on the library alone, Ward on
+library+target scores together, k=4 by silhouette (0.268; the scan is flat, 0.15–0.27).
+
+**The top-level split is deposit and SNR, not composition.** Median peak absorbance by
+class: 0.020 (class 1, n=8066), 0.044 (class 2, n=3603), 0.003 (class 3, n=434), 0.004
+(class 4, n=1531). Row standardization removes amplitude but not signal-to-noise, so
+low-deposit spectra cluster by their noise shape. Class 3 in particular (peak absorbance
+0.0025 at a median EC loading of 3.8 µg) looks like a baseline/correction-quality class
+and deserves a QC look.
+
+**A real smoke-associated class survives loading-conditioning.** Class 2 is Jul–Oct
+weighted (57%), heavily loaded (EC 8.1 µg), OC/EC 5.6, top sites ATLA1/BOND1/LASU2, and
+holds 3.3× its share of the deployed model's smoke lineage. Because smoke filters are
+heavily loaded, the enrichment was tested *within* EC-loading quantile bins: it holds at
+11.5×, 6.2×, 3.3×, 1.8×, 1.3× from the lightest bin up (median 3.3×), so the class carries
+smoke information beyond loading. Target membership: Delhi 68%, Beijing 56%, Pasadena 28%,
+Bishoftu 15%, Addis 5% — Addis is emphatically not in the network's smoke class, which
+sharpens the charcoal framing rather than supporting it. Caveat: there is no fire label in
+the local database (the 36 fire-related filter comments do not intersect the spectral
+pool), so "smoke" here means the deployed EC model's biomass lineage, nothing stronger.
+
+**Site similarity.** Nearest IMPROVE sites by median corrected spectrum: Addis → NOGA1
+(0.990), CHAS1, LTCC1, PUSO1; Bishoftu → BIBE1 (0.996), MELA1, LYEB1; Delhi → PITT1
+(0.995), BIRM1, MACA1; Beijing → VILA1 (0.997), QUCI1, GRRI1; Pasadena → PACK1 (0.992),
+MOMO1, ACAD1. All five are least like TOOL1 (Arctic Alaska), Addis most extremely
+(r 0.793). A class-mix (Jensen–Shannon) distance is reported alongside as a check that
+the median is not hiding heterogeneity.
+
+**The threshold test fails, and that is the point.** Same-Ward-class agreement is ~99% at
+any cutoff (k=4, one class holds 59%), so it cannot calibrate anything. On the
+decision-relevant task — does the nearest neighbour carry EC within 25%? — precision never
+reaches 75%: the best is 64% at r ≥ 0.9999, keeping 0.5% of the library, against a 31%
+base rate. **Spectral near-identity is not calibration equivalence.** This is the
+quantitative form of ftir_50's redundancy result and of the microplastics community's
+finding that a high hit-quality index does not imply a correct match. The encouraging
+half: same-site precision rises only 12% → 68%, so spectral twins are mostly *not*
+same-site — the library does generalize geographically.
+
+Target coverage above the strictest cutoffs (median best-match r): Bishoftu 0.9988,
+Beijing 0.9986, Pasadena 0.9966, Delhi 0.9964, Addis 0.9938 — Addis has the weakest best
+matches of the five, consistent with its neighbourhood redundancy in ftir_50.
