@@ -19,6 +19,11 @@ SCRIPTS = {
     "43": ("run_ftir_43.py", "ftir_43_residual_learner_null_control.ipynb"),
     "44": ("run_ftir_44.py", "ftir_44_adama_through_locked_calibrations.ipynb"),
     "45": ("run_ftir_45.py", "ftir_45_residual_increment_attribution.ipynb"),
+    "46": ("run_ftir_46.py", "ftir_46_paired_increment_and_mass.ipynb"),
+    "47": ("run_ftir_47.py", "ftir_47_blank_lines_per_deployed_line.ipynb"),
+    "48": ("run_ftir_48.py", "ftir_48_pyrolysis_split_target.ipynb"),
+    "49": ("run_ftir_49.py", "ftir_49_ma350_raw_chain_diagnostics.ipynb"),
+    "50": ("run_ftir_50.py", "ftir_50_spectral_comparison_methods.ipynb"),
 }
 
 

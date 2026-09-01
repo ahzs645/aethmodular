@@ -233,6 +233,66 @@ for check in explorer.STATE["checks"]:
 output.serve_kernel_port_as_iframe(PORT, height=900)"""
         ),
         nbf.v4.new_markdown_cell(
+            """## Optional: spectral-comparison sweep over the whole library
+
+Runs `research/ftir_ec_phase3/scripts/spectral_similarity.py` (the ftir_50 methods:
+Hotelling T2 / Q residual, band-resolved correlation, spectral information divergence,
+neighbourhood redundancy, selectivity-matched mutual k-NN) over the **entire**
+13.6k-spectrum IMPROVE library against every SPARTAN target in the bundle. Pure
+matmul/PCA: a couple of minutes on a Colab CPU, no GPU needed. Results land in
+`research/ftir_ec_phase3/output/tables/ftir50_colab/`."""
+        ),
+        nbf.v4.new_code_cell(
+            """import sys
+
+import numpy as np
+import pandas as pd
+
+sys.path.insert(0, str(WORK_ROOT / "research/ftir_ec_phase3/scripts"))
+import spectral_similarity as ss
+
+PHASE3 = WORK_ROOT / "research/ftir_ec_phase3"
+OUT = PHASE3 / "output/tables/ftir50_colab"
+OUT.mkdir(parents=True, exist_ok=True)
+
+pool = np.load(PHASE3 / "output/corrected/improve_pool_corrected_df6.npz",
+               allow_pickle=True)
+LIB, WN = pool["corrected"].astype(float), pool["wn"].astype(float)
+print(f"library: {LIB.shape[0]:,} spectra x {LIB.shape[1]} channels")
+
+K = 50
+rows = []
+for target_dir in sorted((WORK_ROOT / "calibration_explorer/targets").iterdir()):
+    corrected = target_dir / "spectra_corrected.csv"
+    if not corrected.is_file():
+        continue
+    frame = pd.read_csv(corrected)
+    cols = [c for c in frame.columns if c not in ("MediaId", "ExternalFilterId")]
+    if not np.allclose(np.array([float(c) for c in cols]), WN):
+        print(f"  skip {target_dir.name}: different wavenumber grid")
+        continue
+    Xt = frame[cols].to_numpy(float)
+    dom = ss.pca_domain_diagnostics(LIB, Xt, n_components=10)
+    red = ss.redundancy(Xt, LIB, k=K)
+    mutual = ss.mutual_nearest(Xt, LIB, k=K)
+    bands = ss.band_profile(Xt, np.median(LIB, axis=0)[None, :], WN)
+    rows.append({
+        "target": target_dir.name, "n": len(Xt),
+        "T2_ratio_median": float(np.median(dom["T2_ratio"])),
+        "Q_ratio_median": float(np.median(dom["Q_ratio"])),
+        "pct_T2_over": 100 * float(np.mean(dom["T2_ratio"] > 1)),
+        "pct_Q_over": 100 * float(np.mean(dom["Q_ratio"] > 1)),
+        "unique_ratio": red["unique_ratio"],
+        "pct_no_mutual": 100 * float(np.mean([len(m) == 0 for m in mutual])),
+        **{f"r_{b}": float(np.median(v)) for b, v in bands.items()},
+    })
+    print(f"  {target_dir.name}: n={len(Xt)} done")
+
+summary = pd.DataFrame(rows)
+summary.to_csv(OUT / "spectral_comparison_all_targets.csv", index=False)
+display(summary.round(3))"""
+        ),
+        nbf.v4.new_markdown_cell(
             """## Optional: exhaustive batch pre-compute
 
 Runs the full cohort x cutoff-ladder x selection-space x spectra x protocol grid
