@@ -12,12 +12,16 @@ there, never the `.ipynb` directly):
 
 ## Build and ship
 
+The generated ZIP is excluded from Git and stored in Google Drive under
+`My Drive/University/Research/Grad/`. The launcher can find it there through
+its recursive Drive search.
+
 ```bash
-python calibration_explorer/colab/build_colab_bundle.py
+uv run python calibration_explorer/colab/build_colab_bundle.py
 cp calibration_explorer/colab/aethmodular_calibration_explorer_prewarm.zip \
-   "$HOME/Library/CloudStorage/GoogleDrive-<account>/My Drive/Aethmodular Colab/"
+   "$HOME/Library/CloudStorage/GoogleDrive-<account>/My Drive/University/Research/Grad/"
 cp calibration_explorer/colab/Calibration_Explorer_Colab.ipynb \
-   "$HOME/Library/CloudStorage/GoogleDrive-<account>/My Drive/Aethmodular Colab/"
+   "$HOME/Library/CloudStorage/GoogleDrive-<account>/My Drive/University/Research/Grad/"
 ```
 
 The notebook looks for the zip at `/content/drive/MyDrive/Aethmodular Colab/` and

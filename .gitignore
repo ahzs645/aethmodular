@@ -201,3 +201,6 @@ research/spartan/.cache/
 
 # Ephemeral git worktrees created for isolated subagent runs
 .claude/worktrees/
+
+# Generated Colab bundle is stored on Google Drive (too large for regular Git).
+/calibration_explorer/colab/aethmodular_calibration_explorer_prewarm.zip
