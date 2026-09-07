@@ -94,3 +94,35 @@ Registered groups:
 - `addis-deming`
 
 (`catch-up` retired 2026-07-26; see `research/archive/catch_up`.)
+
+## Calibration Iteration Explorer (Flask app)
+
+The interactive phase-3 calibration app at `calibration_explorer/` is not part of
+`aeth`; it has its own launcher (see `calibration_explorer/README.md` for details):
+
+```bash
+./calibration_explorer/run.sh           # start in the background → http://127.0.0.1:5058
+./calibration_explorer/run.sh status    # up? data loaded?
+./calibration_explorer/run.sh stop
+```
+
+Manual start with the canonical environment (the `explorer` extra is required —
+the base venv has no Flask):
+
+```bash
+uv run --extra explorer python calibration_explorer/app.py
+```
+
+Optional pre-warm so every configuration is a cache hit:
+
+```bash
+uv run --extra explorer python calibration_explorer/warm_cache.py
+```
+
+Backfill the per-filter `LotId` column into explorer targets exported before
+`build_spartan_target.py` started writing it (needed for the Eval lot lever on
+sites other than Addis; idempotent, skips targets that already have it):
+
+```bash
+uv run python research/ftir_ec_phase3/scripts/add_target_lots.py
+```

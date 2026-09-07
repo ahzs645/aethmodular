@@ -719,3 +719,43 @@ Loading-matched, the leading matches change substantially for the wet seasons (K
 GRSM1, BRCA1, EGBE1; Belg -> PUSO1, FRES1, GUMO1) while the dry season's top five are
 unchanged - further evidence that the wet-season analogs were partly loading-driven and
 the dry-season match is not.
+
+## ftir_54 — model-form robustness: does the Addis result depend on PLS? (2026-09-01)
+
+The question from the 2026-09-01 review: would a nonlinear learner trained on the same
+IMPROVE spectra fit better, land elsewhere on Addis, or be less diagnosable? Five model
+forms — PLS (protocol k), histogram gradient boosting (scikit-learn's LightGBM analogue,
+tuned once by site-grouped CV on the 800 cohort), random forest, a one-hidden-layer MLP,
+and PLS-scores → boosting — on the locked lowest-OC/EC 800 cohort and the full 13,010-filter
+pool, same `site_heldout` split, same 190-filter Addis evaluation against Fabs/10. No
+target label touched; the locked PLS reproduces exactly (k=5, 0.857x −1.615).
+
+**In-domain, PLS is the ceiling.** Held-out IMPROVE R² on the 800 cohort, corrected
+spectra: PLS 0.904, HGB 0.77, RF 0.73, MLP 0.53, hybrid 0.77. On second derivatives RF
+reaches 0.909 vs PLS 0.916 (the only near-tie). On the full pool everything is worse and
+PLS still leads (0.66 vs 0.53–0.65).
+
+**The Addis sign is model-form independent.** Fifteen fits, fifteen negative intercepts:
+locked PLS −1.62; HGB −4.08 (1.63x); RF −3.40 (1.39x); MLP −1.63 (0.62x); hybrid −1.21
+(0.81x); derivative runs −1.4 to −2.9; full-pool runs −0.6 to −1.6 with slopes 0.35–0.66.
+Tree ensembles on corrected spectra land where the *raw* PLS model used to (≈1.5x, −3 to
+−4) — no architecture finds a zero intercept.
+
+**Labelled extrapolation inside IMPROVE favours PLS.** Three holdouts trained on the rest
+of the pool: (A) the 800 lowest-OC/EC filters — every form under-predicts by 3–4 µg with
+slope ≈0.3 (an in-network echo of the Addis offset), PLS lowest RMSE 12.2 vs 12.5–13.7;
+(B) the top-5% PCA-D² slice — PLS slope 0.81 / RMSE 18.2, trees 0.2–0.3 / 24–25;
+(C) the top-5% EC loadings — trees saturate (slope 0.01–0.02, R² ≈ 0), PLS keeps 0.36.
+
+**Diagnosability.** Addis is inside the 800-cohort envelope by both distances (4% beyond
+PCA-10 p95, 0.5% beyond PLS score-space p95 — ftir_39's finding again). The corrected PLS
+residual is independent of D² (ρ 0.02; the ftir_15 constant-offset result reproduces);
+tree residuals do track D² (ρ 0.30–0.38) but the trees carry no internal flag — random-
+forest spread correlates with PCA D² at only ρ 0.36 (0.46 with PLS D²). PCA D² is
+model-agnostic, so the legibility argument is about saturation, not about distance being
+unavailable.
+
+Not done, deliberately: no CNN (torch not in the env; 800 spectra would starve it), no
+Gaussian process, no full-pool hyperparameter search. Verdict: keep PLS, quote "the
+negative Addis intercept is model-form independent", close the architecture question.
+Tables in `output/tables/ftir54/`, figures in `output/plots/ftir54/`.

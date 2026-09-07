@@ -46,8 +46,13 @@ except ImportError:  # Support importing as research.ftir_hips_chem.scripts.*
 # because the tree has been reorganised more than once.
 
 # Subdirectories of the MAIA data root, by the names they actually have on the
-# mount. "Aethelometry" is spelled that way on Drive; do not silently correct it.
-AETHALOMETRY_SUBDIR = "Aethelometry Data"
+# mount. The aethalometry directory has been spelled BOTH ways on Drive: it was
+# "Aethelometry Data" until a 2026-08-30 cleanup corrected it to "Aethalometry
+# Data". Probe both, newest first, the same way the layout candidates above are
+# probed. Pinning either spelling silently resolves to a directory that is not
+# there, and such a pin is invisible to a test that only checks the constant.
+AETHALOMETRY_SUBDIR_CANDIDATES = ("Aethalometry Data", "Aethelometry Data")
+AETHALOMETRY_SUBDIR = AETHALOMETRY_SUBDIR_CANDIDATES[0]
 WEATHER_SUBDIR = "Weather Data"
 METEOSTAT_SUBDIR = "Meteostat"
 AERONET_SUBDIR = "AERONET"
@@ -80,11 +85,15 @@ def maia_data_root() -> Path:
 
 
 def aethalometry_dir() -> Path:
-    """Return the directory holding raw aethalometer exports."""
+    """Return the directory holding raw aethalometer exports.
+
+    Both historical spellings are probed; see AETHALOMETRY_SUBDIR_CANDIDATES.
+    """
     env = os.environ.get("AETHMODULAR_AETHALOMETRY_DIR")
     if env:
         return Path(env).expanduser()
-    return maia_data_root() / AETHALOMETRY_SUBDIR
+    root = maia_data_root()
+    return first_existing([root / name for name in AETHALOMETRY_SUBDIR_CANDIDATES])
 
 
 def etad_dir() -> Path:

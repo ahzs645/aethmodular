@@ -26,6 +26,9 @@ SCRIPTS = {
     "50": ("run_ftir_50.py", "ftir_50_spectral_comparison_methods.ipynb"),
     "51": ("run_ftir_51.py", "ftir_51_priority_figure_export.ipynb"),
     "52": ("run_ftir_52.py", "ftir_52_network_spectral_map.ipynb"),
+    "53": ("run_ftir_53.py", "ftir_53_committee_backup_figures.ipynb"),
+    "54": ("run_ftir_54.py", "ftir_54_model_form_robustness.ipynb"),
+    "55": ("run_ftir_55.py", "ftir_55_every_combination_tried.ipynb"),
 }
 
 

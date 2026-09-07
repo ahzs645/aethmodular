@@ -45,6 +45,8 @@ def test_environment_variable_expands_user(env_var, func_name, monkeypatch):
 def test_dataset_dirs_hang_off_the_maia_root(tmp_path, monkeypatch):
     monkeypatch.setenv("AETHMODULAR_MAIA_DATA_ROOT", str(tmp_path))
     monkeypatch.delenv("AETHMODULAR_AETHALOMETRY_DIR", raising=False)
+    # whichever spelling is present on the mount, it hangs off the MAIA root
+    (tmp_path / "Aethelometry Data").mkdir()
     assert data_paths.aethalometry_dir() == tmp_path / "Aethelometry Data"
 
 
@@ -89,10 +91,23 @@ def test_source_contains_no_account_name_or_home_directory():
     assert "/Users/" not in source
 
 
-def test_drive_subdirectory_spelling_is_preserved():
-    """The directory on Drive is spelled 'Aethelometry', not 'Aethalometry'.
-    Correcting the spelling here would silently resolve to nothing."""
-    assert data_paths.AETHALOMETRY_SUBDIR == "Aethelometry Data"
+def test_both_aethalometry_spellings_are_probed():
+    """Drive has used BOTH spellings: 'Aethelometry Data' historically, and
+    'Aethalometry Data' after the 2026-08-30 cleanup. Pinning either one
+    silently resolves to a directory that is not there, so both are probed."""
+    assert set(data_paths.AETHALOMETRY_SUBDIR_CANDIDATES) == {
+        "Aethalometry Data", "Aethelometry Data"}
+
+
+def test_aethalometry_dir_resolves_to_a_directory_that_exists(tmp_path, monkeypatch):
+    """The spelling guard must check the TARGET, not just the constant: the
+    previous version of this test asserted a string and stayed green while
+    aethalometry_dir() pointed at a directory that had been renamed away."""
+    monkeypatch.setattr(data_paths, "maia_data_root", lambda: tmp_path)
+    for spelling in data_paths.AETHALOMETRY_SUBDIR_CANDIDATES:
+        (tmp_path / spelling).mkdir()
+        assert data_paths.aethalometry_dir().is_dir()
+        (tmp_path / spelling).rmdir()
 
 
 def test_describe_reports_every_entry_point_with_existence():

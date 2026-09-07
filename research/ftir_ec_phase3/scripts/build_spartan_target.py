@@ -159,6 +159,10 @@ def main() -> None:
         "Group": ref["SamplingStartDate"].dt.month
                     .map(lambda m: scheme.get(int(m), "unknown")
                          if pd.notna(m) else "unknown"),
+        # per-filter lot: the explorer's evaluation-lot lever reads this column,
+        # so a site with two lots (Beijing ran 248 and 251 side by side) can be
+        # read out one lot at a time
+        "LotId": ref["LotId"],
     })
     usable = out[out["Fabs"].notna() & (out["Volume_m3"] > 0)].copy()
     print(f"  usable (Fabs + volume): {len(usable)}"
