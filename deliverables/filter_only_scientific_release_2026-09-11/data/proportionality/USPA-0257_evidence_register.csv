@@ -1,0 +1,8 @@
+requirement,status,evidence,remaining
+Physical filter and reported collection envelope,source_linked_reported_bounds,USPA-0257; 23 June 2023 16:00 to 24 June 2023 16:00 UTC; 24 reported hours; SS5i sampler,Confirm continuous operation or obtain filter-linked active segments and clock basis
+Contemporaneous instrument identities,matched_records,"1,440 timestamp/datum matches and exact IR BCc values; MA350-0229 session 46, format 3, firmware 1.12, app 1.6",Record agreement alone does not certify observed-data provenance
+Observation/correction history,unresolved_for_session,DualSpot on is reported; cleaned CSV and SQLite agree,"Producer trace from original download to cleaned CSV and database; transformations, removed/inserted records, time corrections and applicable dates/sessions"
+Applicable quality decision,candidate_screen_not_approved,Status 131648 on all rows; zero triggers in existing local startup/tape/optical/timing/flow-status screen,Confirm session-specific applicability; check original flow/optics and exclusions; absence of status flags does not prove overall validity
+Timestamp alignment,manual_time_source_reported,"Status decomposes to 64+512+131072, matching saved labels","Clock setting, drift/offset corrections and alignment with sampler timestamps"
+Exported IR BCc units,nominal_manufacturer_definition_identified,Indexed official May 2023 manual defines format-3 IR BCc as DualSpot-compensated mass concentration in ng/m3,"Confirm that the specific cleaned export retained native scale; full manual fetch returned 404, so the PDF was not archived"
+Absorption conversion and wavelength treatment,not_verified,No reviewed conversion applied,Document optical conversion and wavelength treatment after the eBC evidence chain is supported

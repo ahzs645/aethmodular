@@ -1,0 +1,338 @@
+{
+  "analysis": "descriptive unweighted filter-only; no independent EC validation",
+  "code": [
+    {
+      "bytes": 20129,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/workflows/analyze_filter_diagnostics.py",
+      "sha256": "6d4ccd45fa3610b5aad3a1015cd12b104d1c4a154733ddc3aa709a2a1799ff6b"
+    },
+    {
+      "bytes": 12899,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/scripts/filter_diagnostics.py",
+      "sha256": "ce37fc7fef7585c88898db1f6cd44074d4448f99248f510c7f1eccdbb5afd210"
+    },
+    {
+      "bytes": 9504,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/scripts/plotting/filter_diagnostics.py",
+      "sha256": "ebe02645d19eb8088d076326fd9ed4ca629d02650049292a460454a88df0a160"
+    },
+    {
+      "bytes": 18182,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/scripts/plotting/overlays.py",
+      "sha256": "78d0c2e36f25a68164c926f804bf69ed5e239e46311b3c97f6512d64c1ebf052"
+    },
+    {
+      "bytes": 17849,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/scripts/plotting/utils.py",
+      "sha256": "736606a659e3a78e81539d591b08d1e38ef5ae1826dc488a286aa21cda566497"
+    },
+    {
+      "bytes": 16939,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/scripts/config.py",
+      "sha256": "f9ce5f50904e5f8f9599f4e33502ab983ee7fced04b2a7886b96ad9b8ec37d5b"
+    },
+    {
+      "bytes": 13641,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/scripts/outliers.py",
+      "sha256": "52918500550434be072c73bfd0bd50a09e1176d2c7ee0a164bd0159ad42dc47f"
+    },
+    {
+      "bytes": 24439,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/scripts/data_matching.py",
+      "sha256": "083c0830f77ee3fd0799722d3e464deba8376d775c3c7df7cc6f10c894984e44"
+    },
+    {
+      "bytes": 9415,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/scripts/interval_evidence.py",
+      "sha256": "33f7e14dce01a333ea73c9bdcd0cd290d7b0ac9947747146474621d3d47b5754"
+    },
+    {
+      "bytes": 8560,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/scripts/plotting/__init__.py",
+      "sha256": "cd5b9e631dbd945f768c8370541015f52911d1b02ffe696b4b4a03b9114b90a5"
+    },
+    {
+      "bytes": 33024,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/workflows/audit_matched_samples.py",
+      "sha256": "112041b8ae0795a2a195264eb8212a33fc2b887b58429139fe411ce27948e15a"
+    },
+    {
+      "bytes": 23681,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/scripts/active_interval_matching.py",
+      "sha256": "cc00157f0324a6b6417d57c7a6bcc224e85aaa43bdbab3a7c91cdc706d841f88"
+    },
+    {
+      "bytes": 12171,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/scripts/instrument_provenance.py",
+      "sha256": "441f4b1a3e969070d72ce86bbab936c19e969a01eda0e02f79c4b20a0ab0694f"
+    },
+    {
+      "bytes": 22295,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/workflows/build_active_interval_matches.py",
+      "sha256": "b4efc64f13c08330cdae5427528ce472eedc1451f3c9c3aeddc7fa635e67ba77"
+    },
+    {
+      "bytes": 959941,
+      "path": "/Users/ahmadjalil/github/aethmodular/uv.lock",
+      "sha256": "7d26354e4aa4992a4a4dce00b3de232dcd59bf5dae56ae6620f8b7f048e49d05"
+    },
+    {
+      "bytes": 2837,
+      "path": "/Users/ahmadjalil/github/aethmodular/pyproject.toml",
+      "sha256": "ba43dbe1222cee3143e338eda166cc529b121464623e577d24e5c4ce54e9f9c7"
+    }
+  ],
+  "diagnostic_n": 545,
+  "historical_importer_commit": "c91542c705254dd7e7e7271bc36789388d225dc3",
+  "inputs": [
+    {
+      "bytes": 9076,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/active_interval_matches/manifest.json",
+      "sha256": "5afa37074661a054c9938dec16e4f9555d68f9dc691423d61ab474ef9cd3d1b7"
+    },
+    {
+      "bytes": 1268702,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/active_interval_matches/matched_active_intervals.parquet",
+      "sha256": "04b11401ff27db86fc912458af157e2c9810c8340c65b7edc9c072d2de406e70"
+    },
+    {
+      "bytes": 4047,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/active_interval_matches/source_inventory.json",
+      "sha256": "a5d53d9225935ae153a3f76d69801959489a7e38b2cf6e3a1230479d6e40bc55"
+    },
+    {
+      "bytes": 15664,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/matched_sample_audit/manifest.json",
+      "sha256": "7e252caff25b5d0e9d23ecdcf07ab19e4c5b2c9f287b8c12ec72f28405b4989b"
+    },
+    {
+      "bytes": 631286,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/matched_sample_audit/filter_measurements.parquet",
+      "sha256": "dca50fbd752ad37c9989eceb58c98ae1acedbf92308601833e1a9389bec1d38c"
+    },
+    {
+      "bytes": 4091978,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/filter_combine/FilterBased_ChemSpecPM25_CHTS.csv",
+      "sha256": "ec9a6c24308cb050a58472350a75689bc865751b1ac784a2f02e7bd56cedae61"
+    },
+    {
+      "bytes": 365824,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/filter_combine/FilterBased_ChemSpecPM25_INDH.csv",
+      "sha256": "5ef1f5578504876d366f4685541a070016e046e0f1af50f88f1ff091b102dfd6"
+    },
+    {
+      "bytes": 3163671,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/filter_combine/FilterBased_ChemSpecPM25_USPA.csv",
+      "sha256": "8d1e40d2a272970c02d9d5acef313f6579d1e36161fcf30316a4ae5653600418"
+    },
+    {
+      "bytes": 2257976,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/filter_combine/FilterBased_ChemSpecPM25_ETAD.csv",
+      "sha256": "a9f87a16ca07030aaeaf3b0d67c1c5fe3f0d209c34a3a51b365e6a8724f33020"
+    }
+  ],
+  "outputs": [
+    {
+      "bytes": 711805,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/analysis_points.parquet",
+      "sha256": "b2303fbd424b1a39822d87dc6c51d8f93bd426f5a753dfa1afbb6a40d9313396"
+    },
+    {
+      "bytes": 342904,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/chemspec_group_adjudication.csv",
+      "sha256": "fa24e85d79969568abc3bd4ef9c21b922291b6446eafc64918f62ab2c611a51e"
+    },
+    {
+      "bytes": 40055,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/chemspec_group_adjudication.parquet",
+      "sha256": "7f133602516937c91a4c8de24971c45157e68b71d92d3baf3717061c5c37d738"
+    },
+    {
+      "bytes": 947965,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/chemspec_source_to_unified.csv",
+      "sha256": "b62c019334dedca9705a4febb928a1adf3b98e64a373f1659f3770b4fee7e277"
+    },
+    {
+      "bytes": 88458,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/chemspec_source_to_unified.parquet",
+      "sha256": "283b1285920fd4377583a411cf8994eb47a4f8c76bfa20ef51e798488008865c"
+    },
+    {
+      "bytes": 2768,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/denominator_sensitivity.csv",
+      "sha256": "ccf6553289da335e32ce2d5a411b126ea3e02ec5eb112c4dd4a982f73afd5d02"
+    },
+    {
+      "bytes": 6185,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/denominator_sensitivity.parquet",
+      "sha256": "b1fd5d96e3eaeb0c77116cc34b07c64181428465623206d90879e2b4ecaeffe9"
+    },
+    {
+      "bytes": 572,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/denominator_strata.csv",
+      "sha256": "193ac7c41392c5eb9d7d5199754eef1e0f9a7615aa8b75c06da85adf0d6ecfd6"
+    },
+    {
+      "bytes": 3656,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/denominator_strata.parquet",
+      "sha256": "92e77d403b93b5fc35b51e8072ed51ea9e5309865b5f0f1da4f31067b67dd399"
+    },
+    {
+      "bytes": 4527,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/distribution_summary.csv",
+      "sha256": "24f20a0fa0b76ea79e3ffbe091b7a281f11c3f0f37fd8d9971693416e85c7fd9"
+    },
+    {
+      "bytes": 8007,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/distribution_summary.parquet",
+      "sha256": "93b0bda5d5aa51d9b238d00ce21d06f22d37bf70a5ef8598edd6533ab3bc3bff"
+    },
+    {
+      "bytes": 48646,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/earlier_chemspec_ec_rows.parquet",
+      "sha256": "fd64731c26d4cc093a33bb5c1070a1c99e4eb8bee01eb33f333cea6df0eb1bbf"
+    },
+    {
+      "bytes": 5338415,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/earlier_collection_bounds.csv",
+      "sha256": "62d85622ec304fc1941d84f2e386ad78acc4f7a1cf9c6d393ea9f84a1bbc2768"
+    },
+    {
+      "bytes": 411457,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/earlier_collection_bounds.parquet",
+      "sha256": "b8db34969c17e0e5ff8730c28dbaca94a4d06ae30291e659d10a3f0002435b86"
+    },
+    {
+      "bytes": 7033559,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/evidence_recovery_queue.csv",
+      "sha256": "d3b10c6542d3ae7415896dbbccbadbbe21c22c4789530c9632d1708357fa2e84"
+    },
+    {
+      "bytes": 497960,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/evidence_recovery_queue.parquet",
+      "sha256": "9c863f09c134fb04d913382848704fbc9fd8b9cb2bc7d928d1be78665c823c9e"
+    },
+    {
+      "bytes": 19597,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/historical_filter_integrator.txt",
+      "sha256": "a6fda4ea34e7c6d5f3c058ccd56e23d36c2afe07fee3dd8ee9072a80eeae197f"
+    },
+    {
+      "bytes": 632590,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/original_measurements.parquet",
+      "sha256": "82adb7ce3f0e881d0ed1d04755d46d5d87f73239c2861b8b0ada3871bd73768a"
+    },
+    {
+      "bytes": 1815,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/ratio_exclusion_reasons.csv",
+      "sha256": "9bcdd86bd512066c742432cebc61a02d3e7873e1a7e91cc3e90f9e1310686717"
+    },
+    {
+      "bytes": 5754,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/ratio_exclusion_reasons.parquet",
+      "sha256": "695fb89497f35efa9bbe754f996248fba8151fb20a0c1089911cc0c79ab0cc18"
+    },
+    {
+      "bytes": 14957,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/results_report.md",
+      "sha256": "6850dd9e3ef1b6c9ddefe4e2b544258f2d39f26a970686e4e551bad62ea78840"
+    },
+    {
+      "bytes": 59328,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/sensitivity_point_links.csv",
+      "sha256": "b440ec3b60434d5ad74e27ae6cd5453d092314199575f7e1f1f403abdc12e502"
+    },
+    {
+      "bytes": 7029,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/sensitivity_point_links.parquet",
+      "sha256": "e8134188aeb491c533080acbd9fbaecea5e564a25ec42d6b195cbec59f60c90d"
+    },
+    {
+      "bytes": 963,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/site_results.csv",
+      "sha256": "5e520b5bae9362969ca3c1fb79cb368c0fe98a340f9ab808943f3d4d0de13227"
+    },
+    {
+      "bytes": 9434,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/site_results.parquet",
+      "sha256": "cd97a7d3a5ec1302e760193b9a56ff826bdda327cdae7cd7c7e16882f2757752"
+    },
+    {
+      "bytes": 428208,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/filter_diagnostics/01_site_relationships.png",
+      "sha256": "d2cdc109bfb5fe9934c508897d83da86d5b351548f248c48f2f8edda99b8e447"
+    },
+    {
+      "bytes": 241760,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/filter_diagnostics/01_site_relationships.svg",
+      "sha256": "3d93c032474a0443459d4d5bf747845b4428167d8a52c5b2787052c7754f014a"
+    },
+    {
+      "bytes": 170192,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/filter_diagnostics/02_ratio_distributions.png",
+      "sha256": "47320d709bd3e81defa133e8a73b9096d28f0c9b9b1c2e71edc61de717035a83"
+    },
+    {
+      "bytes": 137546,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/filter_diagnostics/02_ratio_distributions.svg",
+      "sha256": "c43b057010611d62c7aa7a8e250a219c5f3ae4acb8cab2e9f1883a7f7aa19338"
+    },
+    {
+      "bytes": 359031,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/filter_diagnostics/03_ratio_denominators.png",
+      "sha256": "f11d315e1909f7fe88409480cfeeb4097cfc785c56e64164f58be21e86a11410"
+    },
+    {
+      "bytes": 219205,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/filter_diagnostics/03_ratio_denominators.svg",
+      "sha256": "89541eea7c62c152b393301afbb3a80e1753463b0795a05ec28cc8156d458f05"
+    },
+    {
+      "bytes": 249973,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/filter_diagnostics/04_ratio_dates.png",
+      "sha256": "9e83fcaf806965ef2bd348419da999dccf3b0e5b3b09fe57390ba9f5fda8b71f"
+    },
+    {
+      "bytes": 176957,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/filter_diagnostics/04_ratio_dates.svg",
+      "sha256": "405a43a4325184bd10b6db7c2d8d8a220d4303feff8b35405f9f02c2f899e05a"
+    },
+    {
+      "bytes": 149911,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/filter_diagnostics/05_denominator_sensitivity.png",
+      "sha256": "190d1d062249248e0d7df292dfa9981bf67835ed20dc35cb3294fd79afc15ce0"
+    },
+    {
+      "bytes": 71190,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/filter_diagnostics/05_denominator_sensitivity.svg",
+      "sha256": "a29d2f37e26af6f42f989fc3ceabca6105d6c86ce75a07d69fbd501b98bc2252"
+    },
+    {
+      "bytes": 130674,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/filter_diagnostics/06_registry_context.png",
+      "sha256": "daac801dbfabe56f46c88a0a8660f19b4c8cf6943496b7884de44e0bb0bc96b2"
+    },
+    {
+      "bytes": 59019,
+      "path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/filter_diagnostics/06_registry_context.svg",
+      "sha256": "5c9a2596702a1390e7edf387809bd5d9371a49eb1d458128c70fcd394060ae29"
+    }
+  ],
+  "packages": {
+    "matplotlib": "3.10.8",
+    "nbclient": "0.10.4",
+    "nbformat": "5.10.4",
+    "numpy": "2.4.2",
+    "pandas": "2.3.3",
+    "pyarrow": "23.0.0",
+    "scipy": "1.17.0"
+  },
+  "ratio_n": 480,
+  "sensitivity_grid": [
+    1,
+    1.5,
+    2,
+    3,
+    5
+  ]
+}

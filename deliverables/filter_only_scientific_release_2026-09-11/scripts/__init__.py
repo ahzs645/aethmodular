@@ -1,0 +1,269 @@
+"""
+Multi-site aethalometer analysis scripts.
+
+This package provides reusable modules for analyzing aethalometer and filter data
+from multiple global sites (Beijing, Delhi, JPL, Addis Ababa).
+
+Modules:
+--------
+config : Central configuration (paths, site definitions, parameters)
+outliers : Outlier registry and exclusion functions
+data_matching : Data loading and matching functions
+plotting : Reusable plotting functions
+
+Quick Start:
+------------
+    # In a notebook, add scripts folder to path
+    import sys
+    sys.path.insert(0, '../scripts')
+
+    # Or if running from FTIR_HIPS_Chem directory:
+    sys.path.insert(0, './scripts')
+
+    # Import what you need
+    from config import SITES, PROCESSED_SITES_DIR, FILTER_DATA_PATH
+    from outliers import EXCLUDED_SAMPLES, apply_exclusion_flags, get_clean_data
+    from data_matching import load_aethalometer_data, load_filter_data, match_aeth_filter_data
+    from plotting import crossplots, comparisons
+
+    # Load data
+    aethalometer_data = load_aethalometer_data()
+    filter_data = load_filter_data()
+
+    # Match and apply exclusions for a site
+    matched = match_aeth_filter_data('Beijing', aethalometer_data['Beijing'],
+                                      filter_data, SITES['Beijing']['code'])
+    matched = apply_exclusion_flags(matched, 'Beijing')
+    clean = get_clean_data(matched)
+
+Example Notebook Cell:
+----------------------
+    # Setup cell for notebooks
+    import sys
+    sys.path.insert(0, '../scripts')
+
+    import pandas as pd
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    from config import SITES, PROCESSED_SITES_DIR, FILTER_DATA_PATH, MAC_VALUE
+    from outliers import (
+        EXCLUDED_SAMPLES, MANUAL_OUTLIERS,
+        apply_exclusion_flags, apply_threshold_flags,
+        get_clean_data, print_exclusion_summary
+    )
+    from data_matching import (
+        load_aethalometer_data, load_filter_data,
+        match_aeth_filter_data, match_all_parameters,
+        match_with_smooth_raw_info
+    )
+    from plotting import PlotConfig, crossplots, timeseries, distributions, comparisons
+    from plotting.utils import calculate_regression_stats
+
+    # Configure matplotlib — use default (white background) like
+    # Analysis_Tasks_Jan2025.ipynb. Do NOT call plt.style.use('seaborn-v0_8-darkgrid');
+    # that gives a grey axes background which doesn't print/publish well.
+    plt.rcParams['figure.figsize'] = (12, 6)
+    plt.rcParams['font.size'] = 10
+
+    print("Modules loaded successfully!")
+"""
+
+# For convenient imports when using: from scripts import *
+try:
+    from config import (
+        SITES, PROCESSED_SITES_DIR, FILTER_DATA_PATH,
+        AERONET_DATA_DIR, WEATHER_DATA_DIR,
+        MAC_VALUE, FLOW_FIX_PERIODS, MIN_EC_THRESHOLD,
+        SMOOTH_RAW_THRESHOLDS, DEFAULT_BC_WAVELENGTH,
+        FILTER_CATEGORIES, CROSS_COMPARISONS,
+        ETAD_FACTOR_CONTRIBUTIONS_PATH, ETAD_FILTER_ID_PATH,
+        ETHIOPIA_SEASONS, ETHIOPIA_SEASONS_BELG_FEB, SEASON_CONVENTIONS,
+        DEFAULT_SEASON_CONVENTION, season_for_month, resolve_seasons,
+        season_convention_name,
+        WAVELENGTHS_NM, AE33_WAVELENGTHS_NM,
+        BASE_FILTER_ID_PATTERN, BASE_FILTER_ID_REPL, AAE_REGIONS,
+        SPARTAN_DEPOSIT_AREA_CM2, IMPROVE_DEPOSIT_AREA_CM2,
+        IMPROVE_AREA_SENSITIVITY_CM2,
+        IMPROVE_HIGH_FABS_AREAS_CM2,
+    )
+    from outliers import (
+        EXCLUDED_SAMPLES, MANUAL_OUTLIERS,
+        apply_exclusion_flags, apply_threshold_flags,
+        get_clean_data, get_excluded_data, get_outlier_data,
+        print_exclusion_summary, identify_outlier_dates,
+    )
+    from data_matching import (
+        load_aethalometer_data, load_filter_data,
+        match_aeth_filter_data, match_all_parameters,
+        match_with_smooth_raw_info, match_hips_with_smooth_raw,
+        add_flow_period_column, add_base_filter_id, match_by_filter_id,
+        pivot_filter_by_id, get_site_code, get_site_color, print_data_summary,
+        base_filter_id, normalize_filter_id,
+    )
+    from flow_periods import (
+        add_flow_period, has_before_after_data, print_flow_period_summary,
+        FLOW_FIX_DATES,
+    )
+    from etad_factors import (
+        load_etad_factor_contributions, load_etad_filter_ids,
+        load_etad_factors_with_filter_ids, match_etad_factors,
+        ETAD_PMF_SOURCE_NAMES, ETAD_FACTOR_RENAME,
+        normalize_gf_fractions, add_dominant_source, GF_FRACTION_COLUMNS,
+        attach_factors_by_date,
+    )
+    from plotting import (
+        PlotConfig, apply_default_style, crossplots, timeseries,
+        distributions, comparisons, calculate_regression_stats,
+        deming, deming_lambda,
+    )
+    from prep import to_ugm3, find_repo_root, output_dirs, add_calendar_columns
+    from nbsetup import bootstrap
+    from optics import aae, aae_from_columns, classify_aae, aae_source_summary
+    import spectra
+    import aeronet
+    import pls_calibration
+    import data_paths
+    import improve_io
+    from pls_transfer import (
+        FTIRTransferPaths, CurrentPLSModel, load_current_pls_model,
+        vip_scores, select_components_cv, nested_cv_predictions,
+        predict_pls_components, component_cv_curve,
+        select_first_major_minimum, local_continuum_peak_height,
+        ftir_source_band_features,
+        regression_metrics, score_metric, project_scores,
+        mahalanobis_distance_squared, pairwise_score_distance_squared,
+        spectral_q_residual, offset_correct, vip_overlap_summary,
+        summarize_vip_bands, spaced_peak_table,
+    )
+except ImportError:
+    from .config import (
+        SITES, PROCESSED_SITES_DIR, FILTER_DATA_PATH,
+        AERONET_DATA_DIR, WEATHER_DATA_DIR,
+        MAC_VALUE, FLOW_FIX_PERIODS, MIN_EC_THRESHOLD,
+        SMOOTH_RAW_THRESHOLDS, DEFAULT_BC_WAVELENGTH,
+        FILTER_CATEGORIES, CROSS_COMPARISONS,
+        ETAD_FACTOR_CONTRIBUTIONS_PATH, ETAD_FILTER_ID_PATH,
+        ETHIOPIA_SEASONS, ETHIOPIA_SEASONS_BELG_FEB, SEASON_CONVENTIONS,
+        DEFAULT_SEASON_CONVENTION, season_for_month, resolve_seasons,
+        season_convention_name,
+        WAVELENGTHS_NM, AE33_WAVELENGTHS_NM,
+        BASE_FILTER_ID_PATTERN, BASE_FILTER_ID_REPL, AAE_REGIONS,
+        SPARTAN_DEPOSIT_AREA_CM2, IMPROVE_DEPOSIT_AREA_CM2,
+        IMPROVE_AREA_SENSITIVITY_CM2,
+        IMPROVE_HIGH_FABS_AREAS_CM2,
+    )
+    from .outliers import (
+        EXCLUDED_SAMPLES, MANUAL_OUTLIERS,
+        apply_exclusion_flags, apply_threshold_flags,
+        get_clean_data, get_excluded_data, get_outlier_data,
+        print_exclusion_summary, identify_outlier_dates,
+    )
+    from .data_matching import (
+        load_aethalometer_data, load_filter_data,
+        match_aeth_filter_data, match_all_parameters,
+        match_with_smooth_raw_info, match_hips_with_smooth_raw,
+        add_flow_period_column, add_base_filter_id, match_by_filter_id,
+        pivot_filter_by_id, get_site_code, get_site_color, print_data_summary,
+        base_filter_id, normalize_filter_id,
+    )
+    from .flow_periods import (
+        add_flow_period, has_before_after_data, print_flow_period_summary,
+        FLOW_FIX_DATES,
+    )
+    from .etad_factors import (
+        load_etad_factor_contributions, load_etad_filter_ids,
+        load_etad_factors_with_filter_ids, match_etad_factors,
+        ETAD_PMF_SOURCE_NAMES, ETAD_FACTOR_RENAME,
+        normalize_gf_fractions, add_dominant_source, GF_FRACTION_COLUMNS,
+        attach_factors_by_date,
+    )
+    from .plotting import (
+        PlotConfig, apply_default_style, crossplots, timeseries,
+        distributions, comparisons, calculate_regression_stats,
+        deming, deming_lambda,
+    )
+    from .prep import to_ugm3, find_repo_root, output_dirs, add_calendar_columns
+    from .nbsetup import bootstrap
+    from .optics import aae, aae_from_columns, classify_aae, aae_source_summary
+    from . import spectra
+    from . import aeronet
+    from . import pls_calibration
+    from . import data_paths
+    from . import improve_io
+    from .pls_transfer import (
+        FTIRTransferPaths, CurrentPLSModel, load_current_pls_model,
+        vip_scores, select_components_cv, nested_cv_predictions,
+        predict_pls_components, component_cv_curve,
+        select_first_major_minimum, local_continuum_peak_height,
+        ftir_source_band_features,
+        regression_metrics, score_metric, project_scores,
+        mahalanobis_distance_squared, pairwise_score_distance_squared,
+        spectral_q_residual, offset_correct, vip_overlap_summary,
+        summarize_vip_bands, spaced_peak_table,
+    )
+
+__all__ = [
+    # Config
+    'SITES', 'PROCESSED_SITES_DIR', 'FILTER_DATA_PATH',
+    'AERONET_DATA_DIR', 'WEATHER_DATA_DIR',
+    'MAC_VALUE', 'FLOW_FIX_PERIODS', 'MIN_EC_THRESHOLD',
+    'SMOOTH_RAW_THRESHOLDS', 'DEFAULT_BC_WAVELENGTH',
+    'FILTER_CATEGORIES', 'CROSS_COMPARISONS',
+    'ETAD_FACTOR_CONTRIBUTIONS_PATH', 'ETAD_FILTER_ID_PATH',
+    'ETHIOPIA_SEASONS', 'ETHIOPIA_SEASONS_BELG_FEB', 'SEASON_CONVENTIONS',
+    'DEFAULT_SEASON_CONVENTION', 'season_for_month', 'resolve_seasons',
+    'season_convention_name',
+    'WAVELENGTHS_NM', 'AE33_WAVELENGTHS_NM',
+    'BASE_FILTER_ID_PATTERN', 'BASE_FILTER_ID_REPL', 'AAE_REGIONS',
+    'SPARTAN_DEPOSIT_AREA_CM2', 'IMPROVE_DEPOSIT_AREA_CM2',
+    'IMPROVE_AREA_SENSITIVITY_CM2', 'IMPROVE_HIGH_FABS_AREAS_CM2',
+    # Outliers
+    'EXCLUDED_SAMPLES', 'MANUAL_OUTLIERS',
+    'apply_exclusion_flags', 'apply_threshold_flags',
+    'get_clean_data', 'get_excluded_data', 'get_outlier_data',
+    'print_exclusion_summary', 'identify_outlier_dates',
+    # Data matching
+    'load_aethalometer_data', 'load_filter_data',
+    'match_aeth_filter_data', 'match_all_parameters',
+    'match_with_smooth_raw_info', 'match_hips_with_smooth_raw',
+    'add_flow_period_column', 'add_base_filter_id', 'match_by_filter_id',
+    'pivot_filter_by_id', 'get_site_code', 'get_site_color', 'print_data_summary',
+    'base_filter_id', 'normalize_filter_id',
+    # Flow periods (note: flow_periods.add_flow_period emits 'before'/'after';
+    # data_matching.add_flow_period_column emits 'before_fix'/'after_fix')
+    'add_flow_period', 'has_before_after_data', 'print_flow_period_summary',
+    'FLOW_FIX_DATES',
+    'load_etad_factor_contributions', 'load_etad_filter_ids',
+    'load_etad_factors_with_filter_ids', 'match_etad_factors',
+    'ETAD_PMF_SOURCE_NAMES', 'ETAD_FACTOR_RENAME',
+    'normalize_gf_fractions', 'add_dominant_source', 'GF_FRACTION_COLUMNS',
+    'attach_factors_by_date',
+    # Plotting
+    'PlotConfig', 'apply_default_style', 'crossplots', 'timeseries',
+    'distributions', 'comparisons', 'calculate_regression_stats',
+    'deming', 'deming_lambda',
+    # Prep
+    'to_ugm3', 'find_repo_root', 'output_dirs', 'add_calendar_columns',
+    # Notebook bootstrap
+    'bootstrap',
+    # Optics
+    'aae', 'aae_from_columns', 'classify_aae', 'aae_source_summary',
+    # Spectra subpackage
+    'spectra',
+    # AERONET loader
+    'aeronet',
+    'pls_calibration',
+    'data_paths',
+    'improve_io',
+    # FTIR PLS transfer
+    'FTIRTransferPaths', 'CurrentPLSModel', 'load_current_pls_model',
+    'vip_scores', 'select_components_cv', 'nested_cv_predictions',
+    'predict_pls_components', 'component_cv_curve',
+    'select_first_major_minimum', 'local_continuum_peak_height',
+    'ftir_source_band_features',
+    'regression_metrics', 'score_metric', 'project_scores',
+    'mahalanobis_distance_squared', 'pairwise_score_distance_squared',
+    'spectral_q_residual', 'offset_correct', 'vip_overlap_summary',
+    'summarize_vip_bands', 'spaced_peak_table',
+]

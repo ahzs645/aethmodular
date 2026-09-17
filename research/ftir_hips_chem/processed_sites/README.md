@@ -1,6 +1,16 @@
 # Processed Aethalometer Datasets - 9 AM Resampled
 
-This directory contains daily-averaged aethalometer data from four global sites, resampled to 9 AM-to-9 AM local time periods to match filter sampling schedules.
+**Audit correction (2026-09-10): the saved files are legacy aggregates, not
+verified 9 AM collection-interval matches.** Beijing and Delhi timestamps are
+15:00; JPL is mostly 15:00 with DST exceptions. Those three files also contain
+duplicate `datetime_local` columns. Addis timestamps are 09:00 but its file has
+no observed-coverage field. The builder's boundary calculation is now fixed
+and tested, but the existing pickles have **not** been regenerated. Actual
+filter collection and active sampling intervals still need verification.
+See [the measured audit](../../../docs/matched-sample-audit-2026-09-10.md).
+
+The descriptions below record the original intended processing and historical
+file contents; they do not establish matching validity.
 
 ## Overview
 
@@ -169,19 +179,20 @@ These datasets are designed to be matched with the filter chemical speciation da
 ```
 
 Matching procedure:
-1. Each row represents 9 AM-to-9 AM averaged aethalometer data
-2. Match `day_9am` to filter `SampleDate` (±1 day tolerance)
-3. For multi-day filters (e.g., 3-day), sum consecutive daily averages
-4. Compare aethalometer BC with filter-based EC/OC measurements
+1. Treat `day_9am` to `SampleDate` matching (±1 day) as candidate discovery only.
+2. Retrieve the filter collection intervals, including intermittent active periods.
+3. Rebuild matched concentration means and observed coverage from timestamped data.
+   Do not sum daily concentrations for multi-day filters; interval/flow weights
+   must reflect the actual sampling design.
+4. Verify units, wavelength, inlet size and concentration reference conditions
+   before quantitative agreement or calibration claims.
 
 ## Why 9 AM to 9 AM?
 
-Filter samples are typically collected and changed at 9 AM local time, integrating all particles over the previous 24 hours (or multi-day period). By averaging aethalometer data from 9 AM to 9 AM, we ensure:
-
-1. **Temporal alignment** with filter integration periods
-2. **Direct comparison** between optical BC and filter-based EC
-3. **Consistency** across all measurement methods
-4. **Calibration compatibility** for source apportionment models
+09:00 was the historical default chosen by the builder. The unified dataset
+contains `SampleDate`, not collection start/end or an intermittent schedule,
+so it cannot establish that this boundary represents these filters. A daily
+aggregation boundary alone does not ensure temporal alignment.
 
 ## Site Information
 
@@ -213,15 +224,21 @@ Filter samples are typically collected and changed at 9 AM local time, integrati
 
 **Script**: `create_9am_resampled_datasets.py`
 
-**Processing steps**:
+**Corrected builder (version 2, 2026-09-10; not yet applied to these files)**:
 1. Load high-resolution aethalometer data (1-minute resolution)
-2. Shift timestamps by 15 hours to align 9 AM with midnight
-3. Resample to daily means using pandas `resample('D')`
-4. Shift back to represent 9 AM as the end of averaging period
+2. Convert timestamps to the configured site timezone and reject duplicate timestamps
+3. Aggregate distinct available minutes into local `[09:00, next 09:00)` intervals
+4. Label by interval end; retain start/end, actual duration and channel-specific
+   minute availability. DST intervals may contain 1,380 or 1,500 minutes.
 5. Filter to dates within ±1 day of filter samples
 6. Select key measurement columns
 7. Add site metadata
 8. Save as compressed pickle files
+
+Minute availability does not establish observed coverage if the input already
+contains interpolated values. The resampling function accepts an optional
+boolean `observed_col` to exclude non-observed rows; without it, provenance
+explicitly remains unverified.
 
 **Timezone handling**:
 - Beijing: Asia/Shanghai (UTC+8)

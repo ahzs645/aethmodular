@@ -1,0 +1,21 @@
+site,minimum_ec_mdl_multiple,n,retained_fraction,ratio_median,ratio_q25,ratio_q75,selection_role
+Beijing,1.0,150,1.0,10.14923470886064,7.840251740785109,11.992634297371643,descriptive sensitivity; baseline eligibility unchanged
+Beijing,1.5,128,0.8533333333333334,9.856712658332306,7.692295050524195,11.437410061497763,descriptive sensitivity; baseline eligibility unchanged
+Beijing,2.0,113,0.7533333333333333,9.444341456666374,7.618184898766979,11.111403317057592,descriptive sensitivity; baseline eligibility unchanged
+Beijing,3.0,72,0.48,8.336217172561629,7.25573284054612,10.430548043719845,descriptive sensitivity; baseline eligibility unchanged
+Beijing,5.0,30,0.2,7.599115729510913,6.774984019628755,9.256286080334856,descriptive sensitivity; baseline eligibility unchanged
+Delhi,1.0,56,1.0,8.609698509119372,7.604299450643344,11.655746497539972,descriptive sensitivity; baseline eligibility unchanged
+Delhi,1.5,53,0.9464285714285714,8.619638614326359,7.612119888000854,11.630468304722784,descriptive sensitivity; baseline eligibility unchanged
+Delhi,2.0,52,0.9285714285714286,8.609698509119372,7.604299450643344,11.655746497539972,descriptive sensitivity; baseline eligibility unchanged
+Delhi,3.0,44,0.7857142857142857,8.563769614093163,7.604299450643344,10.992971595591865,descriptive sensitivity; baseline eligibility unchanged
+Delhi,5.0,32,0.5714285714285714,8.226320574389579,7.506698413770576,9.444097511804996,descriptive sensitivity; baseline eligibility unchanged
+JPL,1.0,84,1.0,9.506621065208886,7.702646812884799,11.56845616463161,descriptive sensitivity; baseline eligibility unchanged
+JPL,1.5,28,0.3333333333333333,8.668052822424826,6.9852024626025155,10.457072920648905,descriptive sensitivity; baseline eligibility unchanged
+JPL,2.0,7,0.08333333333333333,8.54663627819027,7.669995499300768,9.18548471375954,descriptive sensitivity; baseline eligibility unchanged
+JPL,3.0,0,0.0,,,,descriptive sensitivity; baseline eligibility unchanged
+JPL,5.0,0,0.0,,,,descriptive sensitivity; baseline eligibility unchanged
+Addis_Ababa,1.0,190,1.0,10.157795913379982,8.144275810387638,12.687495706751927,descriptive sensitivity; baseline eligibility unchanged
+Addis_Ababa,1.5,189,0.9947368421052631,10.146876484854362,8.126511751496627,12.679926904861711,descriptive sensitivity; baseline eligibility unchanged
+Addis_Ababa,2.0,189,0.9947368421052631,10.146876484854362,8.126511751496627,12.679926904861711,descriptive sensitivity; baseline eligibility unchanged
+Addis_Ababa,3.0,189,0.9947368421052631,10.146876484854362,8.126511751496627,12.679926904861711,descriptive sensitivity; baseline eligibility unchanged
+Addis_Ababa,5.0,183,0.9631578947368421,10.039623974265176,8.022490176613704,12.58183584905104,descriptive sensitivity; baseline eligibility unchanged

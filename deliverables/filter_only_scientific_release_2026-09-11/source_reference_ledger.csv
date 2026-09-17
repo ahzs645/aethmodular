@@ -1,0 +1,6 @@
+reference,title,paths
+P1,Frozen cohorts and descriptive results,data/diagnostic/analysis_points.parquet; data/diagnostic/site_results.parquet; data/diagnostic/distribution_summary.parquet; data/diagnostic/sensitivity_point_links.parquet
+P2,Reported date stability specification and outputs,specifications/filter-relationship-stability-spec-2026-09-10.md; data/stability/block_performance_and_influence.parquet; data/stability/heldout_filter_predictions.parquet
+P3,Proportionality specification and outputs,specifications/filter-proportionality-spec-v2-2026-09-10.md; data/proportionality/proportionality_summary.parquet; data/proportionality/proportionality_blocks.parquet; data/proportionality/proportionality_predictions.parquet
+P4,Common ID 11 comparisons and source metadata,data/proportionality/id11_training_summary.parquet; data/proportionality/id11_paired_changes.parquet; data/proportionality/id11_training_blocks.parquet; data/proportionality/FTIR_calibration_identifier_filter_links.csv
+P5,Candidate instrument evidence,phase_reports/proportionality_USPA-0257_evidence_package.md; data/proportionality/USPA-0257_evidence_register.csv

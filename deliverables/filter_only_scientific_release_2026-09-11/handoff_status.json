@@ -1,0 +1,11 @@
+{
+  "filter_only_modeling": "complete",
+  "scientific_draft": "complete; 9-page Word draft visually reviewed",
+  "upstream_packet": "reviewed_existing_packet; awaiting recipient and delivery channel; not sent; no response received",
+  "USPA_0257": "not qualified on current evidence; awaiting collection/clock, session processing, scaling and quality records",
+  "independent_EC_validation": false,
+  "instrument_calibration": false,
+  "portable_release": "complete; fresh CLI and notebook reproduction passed",
+  "upstream_FTIR_spectral_baselining": "not reconstructed or independently verified",
+  "prior_slide_decks": "historical; not updated by this consolidated draft"
+}

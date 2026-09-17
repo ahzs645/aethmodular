@@ -1,0 +1,19 @@
+{
+  "local_quality_source": "/Users/ahmadjalil/github/aethmodular/src/external/calibration.py",
+  "local_quality_source_sha256": "d18ed9c836f965a19221b2da3bce30538adcd08fbf7638e1df476e88b02854e0",
+  "manual_url": "https://aethlabs.com/sites/all/content/microaeth/maX/MA200%20MA300%20MA350%20Operating%20Manual%20Rev%2005%20May%202023.pdf",
+  "manual_revision": "May 2023 rev05",
+  "manual_access": "Official search-index excerpts retrieved; direct full-PDF fetch returned 404",
+  "screen_flag_bits": {
+    "2": "startup",
+    "4": "tape_advance",
+    "16": "optical_saturation",
+    "32": "sample_timing_error",
+    "128": "flow_unstable"
+  },
+  "scope": "USPA-0257 reported envelope / MA350-0229 session 46 only",
+  "reviewed_interval_ebc_eligible": false,
+  "absorption_eligible": false,
+  "active_sampling_intervals_verified": 0,
+  "candidate_records_source_sha256": "c569c02203209e138ba8b5738641ad79da582594ff4740ba57dc272734dc7c74"
+}

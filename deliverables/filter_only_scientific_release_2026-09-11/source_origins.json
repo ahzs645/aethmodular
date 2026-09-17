@@ -1,0 +1,392 @@
+[
+  {
+    "release_path": "data/diagnostic/denominator_strata.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/denominator_strata.parquet",
+    "sha256": "92e77d403b93b5fc35b51e8072ed51ea9e5309865b5f0f1da4f31067b67dd399"
+  },
+  {
+    "release_path": "data/diagnostic/sensitivity_point_links.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/sensitivity_point_links.csv",
+    "sha256": "b440ec3b60434d5ad74e27ae6cd5453d092314199575f7e1f1f403abdc12e502"
+  },
+  {
+    "release_path": "data/diagnostic/original_measurements.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/original_measurements.parquet",
+    "sha256": "82adb7ce3f0e881d0ed1d04755d46d5d87f73239c2861b8b0ada3871bd73768a"
+  },
+  {
+    "release_path": "data/diagnostic/evidence_recovery_queue.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/evidence_recovery_queue.csv",
+    "sha256": "d3b10c6542d3ae7415896dbbccbadbbe21c22c4789530c9632d1708357fa2e84"
+  },
+  {
+    "release_path": "data/diagnostic/denominator_sensitivity.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/denominator_sensitivity.csv",
+    "sha256": "ccf6553289da335e32ce2d5a411b126ea3e02ec5eb112c4dd4a982f73afd5d02"
+  },
+  {
+    "release_path": "data/diagnostic/chemspec_source_to_unified.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/chemspec_source_to_unified.parquet",
+    "sha256": "283b1285920fd4377583a411cf8994eb47a4f8c76bfa20ef51e798488008865c"
+  },
+  {
+    "release_path": "data/diagnostic/earlier_chemspec_ec_rows.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/earlier_chemspec_ec_rows.parquet",
+    "sha256": "fd64731c26d4cc093a33bb5c1070a1c99e4eb8bee01eb33f333cea6df0eb1bbf"
+  },
+  {
+    "release_path": "data/diagnostic/denominator_strata.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/denominator_strata.csv",
+    "sha256": "193ac7c41392c5eb9d7d5199754eef1e0f9a7615aa8b75c06da85adf0d6ecfd6"
+  },
+  {
+    "release_path": "data/diagnostic/site_results.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/site_results.parquet",
+    "sha256": "cd97a7d3a5ec1302e760193b9a56ff826bdda327cdae7cd7c7e16882f2757752"
+  },
+  {
+    "release_path": "data/diagnostic/denominator_sensitivity.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/denominator_sensitivity.parquet",
+    "sha256": "b1fd5d96e3eaeb0c77116cc34b07c64181428465623206d90879e2b4ecaeffe9"
+  },
+  {
+    "release_path": "data/diagnostic/earlier_collection_bounds.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/earlier_collection_bounds.csv",
+    "sha256": "62d85622ec304fc1941d84f2e386ad78acc4f7a1cf9c6d393ea9f84a1bbc2768"
+  },
+  {
+    "release_path": "data/diagnostic/chemspec_group_adjudication.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/chemspec_group_adjudication.csv",
+    "sha256": "fa24e85d79969568abc3bd4ef9c21b922291b6446eafc64918f62ab2c611a51e"
+  },
+  {
+    "release_path": "data/diagnostic/chemspec_group_adjudication.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/chemspec_group_adjudication.parquet",
+    "sha256": "7f133602516937c91a4c8de24971c45157e68b71d92d3baf3717061c5c37d738"
+  },
+  {
+    "release_path": "data/diagnostic/sensitivity_point_links.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/sensitivity_point_links.parquet",
+    "sha256": "e8134188aeb491c533080acbd9fbaecea5e564a25ec42d6b195cbec59f60c90d"
+  },
+  {
+    "release_path": "data/diagnostic/analysis_points.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/analysis_points.parquet",
+    "sha256": "b2303fbd424b1a39822d87dc6c51d8f93bd426f5a753dfa1afbb6a40d9313396"
+  },
+  {
+    "release_path": "data/diagnostic/manifest.json",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/manifest.json",
+    "sha256": "07ddf2f32c27dbeb0f63a86a4badfbfaefffc26b782406c9e4ed73b731375332"
+  },
+  {
+    "release_path": "data/diagnostic/distribution_summary.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/distribution_summary.parquet",
+    "sha256": "93b0bda5d5aa51d9b238d00ce21d06f22d37bf70a5ef8598edd6533ab3bc3bff"
+  },
+  {
+    "release_path": "data/diagnostic/ratio_exclusion_reasons.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/ratio_exclusion_reasons.parquet",
+    "sha256": "695fb89497f35efa9bbe754f996248fba8151fb20a0c1089911cc0c79ab0cc18"
+  },
+  {
+    "release_path": "data/diagnostic/distribution_summary.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/distribution_summary.csv",
+    "sha256": "24f20a0fa0b76ea79e3ffbe091b7a281f11c3f0f37fd8d9971693416e85c7fd9"
+  },
+  {
+    "release_path": "data/diagnostic/results_report.md",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/results_report.md",
+    "sha256": "6850dd9e3ef1b6c9ddefe4e2b544258f2d39f26a970686e4e551bad62ea78840"
+  },
+  {
+    "release_path": "data/diagnostic/ratio_exclusion_reasons.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/ratio_exclusion_reasons.csv",
+    "sha256": "9bcdd86bd512066c742432cebc61a02d3e7873e1a7e91cc3e90f9e1310686717"
+  },
+  {
+    "release_path": "data/diagnostic/chemspec_source_to_unified.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/chemspec_source_to_unified.csv",
+    "sha256": "b62c019334dedca9705a4febb928a1adf3b98e64a373f1659f3770b4fee7e277"
+  },
+  {
+    "release_path": "data/diagnostic/earlier_collection_bounds.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/earlier_collection_bounds.parquet",
+    "sha256": "b8db34969c17e0e5ff8730c28dbaca94a4d06ae30291e659d10a3f0002435b86"
+  },
+  {
+    "release_path": "data/diagnostic/evidence_recovery_queue.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/evidence_recovery_queue.parquet",
+    "sha256": "9c863f09c134fb04d913382848704fbc9fd8b9cb2bc7d928d1be78665c823c9e"
+  },
+  {
+    "release_path": "data/diagnostic/historical_filter_integrator.txt",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/historical_filter_integrator.txt",
+    "sha256": "a6fda4ea34e7c6d5f3c058ccd56e23d36c2afe07fee3dd8ee9072a80eeae197f"
+  },
+  {
+    "release_path": "data/diagnostic/site_results.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_diagnostics/site_results.csv",
+    "sha256": "5e520b5bae9362969ca3c1fb79cb368c0fe98a340f9ab808943f3d4d0de13227"
+  },
+  {
+    "release_path": "data/stability/processing_metadata_summary.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/processing_metadata_summary.parquet",
+    "sha256": "5c1796aea04a43a0f1fec3b98d256caf0e0a69f17caa4d44375e4896e96ca2fa"
+  },
+  {
+    "release_path": "data/stability/CHTS-0658_original_source_rows.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/CHTS-0658_original_source_rows.csv",
+    "sha256": "6d2d6e66677c4c017c8748536292bf3a9f5227464ebd619a48216c3fb1dc669c"
+  },
+  {
+    "release_path": "data/stability/CHTS-0658_unified_row_links.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/CHTS-0658_unified_row_links.csv",
+    "sha256": "efcc5b0b1e2baf74c3d33d9d40c392f9706fa6f44f204b3534f6ea0374011820"
+  },
+  {
+    "release_path": "data/stability/upstream_ChemSpec_question_packet.md",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/upstream_ChemSpec_question_packet.md",
+    "sha256": "42a877289afc1e57d1a3f8bc0050bda6e85ed738058436530b74d74acbb0c4f3"
+  },
+  {
+    "release_path": "data/stability/processing_metadata_summary.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/processing_metadata_summary.csv",
+    "sha256": "dac164c93061b5f74e2d130e22d4fc7106b4573704bd5688d6b35e655d8e502d"
+  },
+  {
+    "release_path": "data/stability/filter_relationship_stability_report.md",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/filter_relationship_stability_report.md",
+    "sha256": "c7f6a4ee9f37cae6d5f7783b9d0cf0b5d0a37198d88c4b73a0b6b63a3f7f5148"
+  },
+  {
+    "release_path": "data/stability/block_performance_and_influence.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/block_performance_and_influence.csv",
+    "sha256": "7c490a003bae164dab4dabad5e7df74929e4b854b3fc0aab734ea648299027b5"
+  },
+  {
+    "release_path": "data/stability/ETAD_0037_paired_influence.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/ETAD_0037_paired_influence.parquet",
+    "sha256": "defba3f25b1da8e1d09c22037f50e919d5ef3c5841373b56eff7a4ed9ecebfd9"
+  },
+  {
+    "release_path": "data/stability/USPA-0257_sqlite_candidate_rows.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/USPA-0257_sqlite_candidate_rows.parquet",
+    "sha256": "a7f27f5906503c7b138d94e5c9f33754ff0b3a77e4750b103b4ba517e9564f07"
+  },
+  {
+    "release_path": "data/stability/population_membership_summary.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/population_membership_summary.csv",
+    "sha256": "71f5acf1215dd63227a877bb8d4fc05a6f554ba73bb1b8eca386c69b8c64970f"
+  },
+  {
+    "release_path": "data/stability/heldout_filter_predictions.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/heldout_filter_predictions.parquet",
+    "sha256": "509cf0830abb563feabe994696cd7f2d9bb09fedb02af2d8af9d4ddbb7130d0c"
+  },
+  {
+    "release_path": "data/stability/USPA-0257_staged_candidate_rows.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/USPA-0257_staged_candidate_rows.parquet",
+    "sha256": "a5eff2132067b98775cbaf2c377e660d047e0a168f4861e564b950c44c4dd677"
+  },
+  {
+    "release_path": "data/stability/CHTS-0658_source_metadata.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/CHTS-0658_source_metadata.csv",
+    "sha256": "7d928559a168ac5e26f0921d6068736af59a5d586f9e7c46e1990879f5910093"
+  },
+  {
+    "release_path": "data/stability/USPA-0257_candidate_retrieval.json",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/USPA-0257_candidate_retrieval.json",
+    "sha256": "f020368c033871fdbff15b84ecb20db2f764c182357383866546ee6655edf63f"
+  },
+  {
+    "release_path": "data/stability/prefit_freeze.json",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/prefit_freeze.json",
+    "sha256": "ed371310489ad560e11cb94e9c4891df136fb1863f9c25ef6e65f490a6e2ed09"
+  },
+  {
+    "release_path": "data/stability/performance_summary.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/performance_summary.csv",
+    "sha256": "378f7d41f0e7c4b04942bf8adf55a294c4ee8f092483cf63343e7a6e12c2739a"
+  },
+  {
+    "release_path": "data/stability/ETAD_0037_paired_influence.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/ETAD_0037_paired_influence.csv",
+    "sha256": "d82c324c0852d342f31c49129cd925a6000ccddf6fc748dd30c6f2c1ca17a9f8"
+  },
+  {
+    "release_path": "data/stability/population_membership_summary.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/population_membership_summary.parquet",
+    "sha256": "ecb717cb866688240c2ebb4ede5e8af242815d378a1142cb62a91dbd68b048dc"
+  },
+  {
+    "release_path": "data/stability/processing_metadata_residuals.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/processing_metadata_residuals.parquet",
+    "sha256": "a2d83c33d51f328e625d686c672a1fee88239e26576c9e1b44b28333e211eed7"
+  },
+  {
+    "release_path": "data/stability/performance_summary.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/performance_summary.parquet",
+    "sha256": "fbd3a6869d3ab04555a154faf5fc9dbcdb579ae85180ae948fb7d193f609ed23"
+  },
+  {
+    "release_path": "data/stability/USPA-0257_record_crosswalk.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/USPA-0257_record_crosswalk.parquet",
+    "sha256": "c569c02203209e138ba8b5738641ad79da582594ff4740ba57dc272734dc7c74"
+  },
+  {
+    "release_path": "data/stability/population_point_links.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/population_point_links.parquet",
+    "sha256": "a9a80856c2b34e60197ccb60a526dd7db5bc8436b1bc08c5d9ce7cb7f7ff6140"
+  },
+  {
+    "release_path": "data/stability/manifest.json",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/manifest.json",
+    "sha256": "ab396f7d4176dcdae6ed8715dfe04d425c36725edc3ac44305fe83b168d36cfe"
+  },
+  {
+    "release_path": "data/stability/block_performance_and_influence.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/block_performance_and_influence.parquet",
+    "sha256": "4cf6b2654d5fd02dabff2ab4e76b41b88cba2ba94f7550d053e7aff5deb3e5ac"
+  },
+  {
+    "release_path": "data/stability/processing_metadata_residuals.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/processing_metadata_residuals.csv",
+    "sha256": "4c26a87e315b82f831fbd36cd5f04d75d48906edc715fec778dccf285bcf5703"
+  },
+  {
+    "release_path": "data/stability/ETAD_0037_common_predictions.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/ETAD_0037_common_predictions.parquet",
+    "sha256": "deba3d70930fb4e25a7f00f3e7eb8ce1bba8f6d2052b6ebe2e251938cf7c79b3"
+  },
+  {
+    "release_path": "data/stability/full_cohort_coefficients.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/full_cohort_coefficients.parquet",
+    "sha256": "282c0b9c2a913a06cd8eca37af8a693333b25da0b19afd95523bf5ee0ef13e06"
+  },
+  {
+    "release_path": "data/stability/full_cohort_coefficients.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_relationship_stability/full_cohort_coefficients.csv",
+    "sha256": "74a8854d953473895e6470baa79c8493831878b415a67bc5da9be570d58b03c7"
+  },
+  {
+    "release_path": "data/proportionality/id11_training_blocks.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/id11_training_blocks.parquet",
+    "sha256": "fbdd59817d973d3f346d8143f8981c9d0d01432a35ee60f7ea8d46d86f7bef00"
+  },
+  {
+    "release_path": "data/proportionality/proportionality_temporal_transfer_report.md",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/proportionality_temporal_transfer_report.md",
+    "sha256": "4e1bae5b99fcaf609915de05952b920acbacfb35ffa6491eaf7b4d02289d8dae"
+  },
+  {
+    "release_path": "data/proportionality/proportionality_summary.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/proportionality_summary.parquet",
+    "sha256": "191447529d8d595291aa2a011fa06e707d2f33d571765970c7a6b2ad6d4577a0"
+  },
+  {
+    "release_path": "data/proportionality/upstream_questions_v2_draft.md",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/upstream_questions_v2_draft.md",
+    "sha256": "93bc40a264b37aa42ddbba05cf6328e42c9f870b510d8bd7d752fd21f40df33a"
+  },
+  {
+    "release_path": "data/proportionality/id11_training_summary.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/id11_training_summary.csv",
+    "sha256": "4c8493462257c46d27c8f0444e658a2b75bf1fbefbb5f423c9b00c6df4f0d0f7"
+  },
+  {
+    "release_path": "data/proportionality/proportionality_summary.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/proportionality_summary.csv",
+    "sha256": "a1144c8253c85c397152cc5a3e1d2e1ebb6bb88a8be14463d6c69fce5846559a"
+  },
+  {
+    "release_path": "data/proportionality/id11_paired_changes.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/id11_paired_changes.csv",
+    "sha256": "bc64820f101e76d460d9914bf6011f23eb22daeda910f91376fc2bf7acedef16"
+  },
+  {
+    "release_path": "data/proportionality/id11_training_blocks.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/id11_training_blocks.csv",
+    "sha256": "5f1bc82cd0d3f06a0dd4ad2035f5d35f8b5c7bc3f45b73e5f7d1b673368cdad0"
+  },
+  {
+    "release_path": "data/proportionality/USPA-0257_evidence_register.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/USPA-0257_evidence_register.csv",
+    "sha256": "9f360cd40470c582bd76555e2178457a6de24fe136495eac01edfd01544acd8c"
+  },
+  {
+    "release_path": "data/proportionality/prefit_freeze.json",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/prefit_freeze.json",
+    "sha256": "31aa8f95952f4642f61b93c99df3b41c135041f4fdf49ed9f520c449829b6796"
+  },
+  {
+    "release_path": "data/proportionality/USPA-0257_filter_evidence.json",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/USPA-0257_filter_evidence.json",
+    "sha256": "1b4006dff8f13ca36583c75f7beae9691349143b0ed5987af834cb4096194ebc"
+  },
+  {
+    "release_path": "data/proportionality/USPA-0257_candidate_status_screen.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/USPA-0257_candidate_status_screen.parquet",
+    "sha256": "d91956edd4e1f7c479aa89994498b1efc5def9ac75e91131fb214e293b434761"
+  },
+  {
+    "release_path": "data/proportionality/USPA-0257_evidence_package.md",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/USPA-0257_evidence_package.md",
+    "sha256": "2d593f8f3109e622d10c04e55a5e65736f4d531fc6420535b25df88d78384b75"
+  },
+  {
+    "release_path": "data/proportionality/proportionality_predictions.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/proportionality_predictions.parquet",
+    "sha256": "b0734668c0a8e89524ab198024de6727823af3b4b6130b3d722bd1a2b4e10b88"
+  },
+  {
+    "release_path": "data/proportionality/proportionality_blocks.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/proportionality_blocks.parquet",
+    "sha256": "14cf40c6211e58c8059dc148326b6190282fbef5968ee030a9bb687170ccd0ac"
+  },
+  {
+    "release_path": "data/proportionality/id11_paired_predictions.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/id11_paired_predictions.parquet",
+    "sha256": "c191a952dd9dc120d8f5564ceee72636ae3e068466255be76d85735f5e24b996"
+  },
+  {
+    "release_path": "data/proportionality/id11_training_summary.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/id11_training_summary.parquet",
+    "sha256": "109447ce57e97ff7e1d7bd1125ece22747b5c466b1795fc8a257ee9074331adb"
+  },
+  {
+    "release_path": "data/proportionality/manifest.json",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/manifest.json",
+    "sha256": "3691018d9f0d683c62cf840b369eff3b210c6efd9bb76e3460f19f32f625a6b6"
+  },
+  {
+    "release_path": "data/proportionality/USPA-0257_status_summary.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/USPA-0257_status_summary.csv",
+    "sha256": "87b2b56813e5dd1ad2e47cba9be3229d9b186d51027cd2e122ff6305837495d6"
+  },
+  {
+    "release_path": "data/proportionality/id11_paired_changes.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/id11_paired_changes.parquet",
+    "sha256": "71aeffd38101281447ff2d0188064e835653394d8d90ccddaa690c72457ca62d"
+  },
+  {
+    "release_path": "data/proportionality/id11_training_predictions.parquet",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/id11_training_predictions.parquet",
+    "sha256": "07a780dd6753b96c5d624453bbc9881a7fe6b94471ea130067253b2d93203898"
+  },
+  {
+    "release_path": "data/proportionality/FTIR_calibration_identifier_filter_links.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/FTIR_calibration_identifier_filter_links.csv",
+    "sha256": "6283e62879d4eafb47e609bbf26c9e92ce1057f27b64b95a65ef60f727cde9d5"
+  },
+  {
+    "release_path": "data/proportionality/proportionality_blocks.csv",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/proportionality_blocks.csv",
+    "sha256": "22ab29c5fb5d77a30feff0ae3f6155a52032d08596eebe59bcd51ed2e30fc3ef"
+  },
+  {
+    "release_path": "data/proportionality/USPA-0257_evidence_sources.json",
+    "original_path": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/filter_proportionality/USPA-0257_evidence_sources.json",
+    "sha256": "50a235304ff594c669b5e28a0819865ecd6001726d3988ed8bedb2f6a9227c4a"
+  }
+]

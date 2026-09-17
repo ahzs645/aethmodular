@@ -1,0 +1,6 @@
+# File Updated: 2025-07-29
+# Data version 3.0
+# Site: Beijing, China
+Site_Code,Latitude,Longitude,Elevation_meters,Filter_ID,Start_Year_local,Start_Month_local,Start_Day_local,Start_hour_local,End_Year_local,End_Month_local,End_Day_local,End_hour_local,Hours_sampled,Parameter_Code,Parameter_Name,Value,Units,Analytical_MDL,MDL,UNC,Method_Code,Collection_Description,Analysis_Description,Conditions,Flag
+CHTS,40.004,116.326,92.0,CHTS-0658,2022,7,5,9.0,2022,7,13,9.0,24.0,28203,EC PM2.5,0.93,Micrograms per cubic meter (ug/m3),,0.06375,,217,AirPhoton SS5i Sampler with BGI cyclone inlet and 25mm stretched Teflon filter,FTIR,Ambient local,
+CHTS,40.004,116.326,92.0,CHTS-0658,2022,7,5,9.0,2022,7,13,9.0,24.0,28203,EC PM2.5,0.06,Micrograms per cubic meter (ug/m3),,0.06375,,217,AirPhoton SS5i Sampler with BGI cyclone inlet and 25mm stretched Teflon filter,FTIR,Ambient local,

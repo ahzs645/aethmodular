@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "environment": "/var/folders/mm/_3mrh2jn44v0tbpmmpqc1jq80000gn/T/aeth-filter-release-bpibna52/.venv",
+  "notebook_cwd": "/var/folders/mm/_3mrh2jn44v0tbpmmpqc1jq80000gn/T/aeth-filter-release-bpibna52/release/notebooks",
+  "code_cells": 7,
+  "saved_errors": 0,
+  "saved_images": 5,
+  "root_discovery": "release marker found from notebook directory outside original checkout",
+  "fresh_kernel": true
+}

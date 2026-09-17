@@ -80,15 +80,16 @@ def load_addis_evaluation(season_for_month=None) -> tuple[pd.DataFrame, np.ndarr
     return etad_eval, X_etad, wn
 
 
-def load_tor_loadings() -> pd.DataFrame:
+def load_tor_loadings(csv_path=None) -> pd.DataFrame:
     """One row per (Site, date) with TOR EC and OC filter loadings (µg/filter).
 
     Loadings use the phase-2 construction:
     ``Value (µg/m³) × AverageFlowRate/1000 (m³/min) × ElapsedTime (min) / 1000``.
     The OC/EC ratio is concentration ratio == loading ratio (same volume).
+    ``csv_path`` may point to a locally staged copy when Drive hydration stalls.
     """
     tor = pd.read_csv(
-        PATHS.ftir_dir / "local_db/tables/results_tor.csv",
+        csv_path if csv_path is not None else PATHS.ftir_dir / "local_db/tables/results_tor.csv",
         usecols=["Site", "SampleDate", "Parameter", "Value", "AverageFlowRate", "ElapsedTime"],
     )
     frames = {}

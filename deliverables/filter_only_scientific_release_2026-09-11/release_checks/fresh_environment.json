@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "scope": "frozen filter-only diagnostic, stability, proportionality and ID-11 analyses",
+  "diagnostic_filters": 545,
+  "ratio_filters": 480,
+  "stability_prediction_rows": 6924,
+  "proportionality_prediction_rows": 4668,
+  "supported_proportional_fits": 257,
+  "previous_predictions_and_split_ids": "unchanged within 1e-10 numeric tolerance; ID strings exact",
+  "common_ID11_test_membership": "exact match",
+  "external_data_access": "not required",
+  "python": "3.13.9",
+  "release_root": "/private/var/folders/mm/_3mrh2jn44v0tbpmmpqc1jq80000gn/T/aeth-filter-release-bpibna52/release"
+}

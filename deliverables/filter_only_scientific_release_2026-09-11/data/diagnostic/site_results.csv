@@ -1,0 +1,5 @@
+site,diagnostic_n,ratio_n,diagnostic_not_ratio_n,diagnostic_date_min,diagnostic_date_max,ratio_date_min,ratio_date_max,descriptive_ols_slope,descriptive_ols_intercept,descriptive_r_squared,near_mdl_n,fit_interpretation
+Beijing,163,150,13,2022-07-05,2024-12-08,2022-07-05,2024-12-08,5.590090655227051,6.212397519146988,0.5430524019036859,37,within-site descriptive unweighted OLS; not independent validation
+Delhi,62,56,6,2022-07-17,2024-06-30,2022-07-17,2024-06-30,6.33704695681478,13.55918754833017,0.6880861422385064,4,within-site descriptive unweighted OLS; not independent validation
+JPL,130,84,46,2022-07-22,2023-11-14,2022-07-22,2023-11-14,8.135474105106946,0.6917191353517159,0.5218220201046273,77,within-site descriptive unweighted OLS; not independent validation
+Addis_Ababa,190,190,0,2022-12-07,2024-09-21,2022-12-07,2024-09-21,4.023458617162682,28.323944007340298,0.7637653130759191,1,within-site descriptive unweighted OLS; not independent validation

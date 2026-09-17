@@ -1,0 +1,50 @@
+{
+  "candidate": "JPL:USPA-0257",
+  "retrieved_utc": "2026-09-11T04:46:45.049841+00:00",
+  "database": "/Users/ahmadjalil/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University/Research/Grad/Data/Davis Data/Aethalometry Data/aethalometer_combined.db",
+  "query": "SELECT id,serial_number,time_utc,datum_id,session_id,timebase_s,status,readable_status,ir_bcc,firmware_version,app_version,data_format_version FROM aethalometer_data WHERE serial_number=? AND time_utc>=? AND time_utc<? AND session_id=? ORDER BY time_utc LIMIT 2000",
+  "parameters": [
+    "MA350-0229",
+    "2023-06-23 16:00:00",
+    "2023-06-24 16:00:00",
+    46
+  ],
+  "query_limit": 2000,
+  "staged_n": 1440,
+  "staged_sessions": [
+    "46"
+  ],
+  "staged_sha256": "553f46e9331bff7d24f60d9b3782c41eb43698f07f85c8566d58d1ac39316756",
+  "source_csv_sha256": "024dffbe5d9deb09e8bd58bb76add78aaac1a3a9fede454b1abc6b3c10b2832e",
+  "is_observed_known_n": 0,
+  "verified_active_intervals": 0,
+  "interval_ebc_comparison_eligible": false,
+  "absorption_comparison_eligible": false,
+  "status": "query_completed",
+  "query_plan": [
+    {
+      "id": 5,
+      "parent": 0,
+      "notused": 49,
+      "detail": "SEARCH aethalometer_data USING INDEX idx_serial_time (serial_number=? AND time_utc>? AND time_utc<?)"
+    }
+  ],
+  "sqlite_n": 1440,
+  "query_limit_reached": false,
+  "sqlite_timestamp_min": "2023-06-23 16:00:59+00:00",
+  "sqlite_timestamp_max": "2023-06-24 15:59:59+00:00",
+  "matched_timestamp_datum_n": 1440,
+  "only_staged_n": 0,
+  "only_sqlite_n": 0,
+  "paired_finite_ir_n": 1440,
+  "exact_equal_ir_n": 1440,
+  "maximum_absolute_ir_difference_native": 0.0,
+  "reported_status_codes": {
+    "131648": 1440
+  },
+  "remaining_evidence": [
+    "Filter-linked sampler on/off or verified continuous-operation evidence",
+    "Session 46 observation/correction history and quality decisions",
+    "Source-backed IR BCc eBC unit definition; absorption additionally needs optical conversion and wavelength treatment"
+  ]
+}

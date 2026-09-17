@@ -19,6 +19,10 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from common.paths import REPO_ROOT, data_root  # noqa: E402
 
+# Share the slot arithmetic with the research active-interval matcher.
+sys.path.insert(0, str(REPO_ROOT / 'research/ftir_hips_chem/scripts'))
+from observation_coverage import distinct_slot_means  # noqa: E402
+
 DATA_ROOT = data_root()
 
 # Configuration
@@ -80,77 +84,91 @@ def load_filter_dates(filter_path, site_code):
 
     return filter_dates
 
-def resample_to_9am_daily(df, timezone, resample_hour=9):
+def resample_to_9am_daily(df, timezone, resample_hour=9, observed_col=None):
     """
     Resample high-resolution data to daily 9am-9am averages
 
-    Also tracks data completeness for each day to ensure quality control.
+    Use local calendar intervals [start, end), labelled by their end. Coverage
+    counts distinct valid minutes per channel, with the actual interval length
+    as denominator (including 23/25-hour days). It measures input availability;
+    upstream interpolation cannot be identified unless observed_col is supplied.
 
     Args:
         df: DataFrame with datetime_local as index or column
         timezone: Timezone string (e.g., 'Asia/Shanghai')
         resample_hour: Hour to use as daily boundary (default: 9 for 9 AM)
+        observed_col: Optional boolean column identifying observed input rows.
+            False/missing rows contribute to neither averages nor coverage.
 
     Returns:
         DataFrame with daily 9am-9am averages plus data completeness metrics
     """
     print(f"  Resampling to daily {resample_hour}am-{resample_hour}am averages...")
 
-    # Ensure datetime_local is the index
+    if not isinstance(resample_hour, int) or not 0 <= resample_hour <= 23:
+        raise ValueError("resample_hour must be an integer from 0 to 23")
+    if not df.columns.is_unique:
+        raise ValueError("Duplicate input columns must be resolved before resampling")
+    df = df.copy()
     if 'datetime_local' in df.columns:
         df = df.set_index('datetime_local')
-
-    # Ensure index is datetime with timezone
     if not isinstance(df.index, pd.DatetimeIndex):
         df.index = pd.to_datetime(df.index)
-
+    if df.empty or df.index.hasnans:
+        raise ValueError("Resampling requires nonempty data with valid timestamps")
     if df.index.tz is None:
         df.index = df.index.tz_localize(timezone)
-
-    # Shift by (24 - resample_hour) hours so that resampling starts at resample_hour
-    # For 9 AM: shift by 15 hours, so 9am today becomes midnight, and midnight tomorrow becomes 9am tomorrow
-    shift_hours = 24 - resample_hour
-    df_shifted = df.copy()
-    df_shifted.index = df_shifted.index - timedelta(hours=shift_hours)
-
-    # Now resample to daily (midnight to midnight in shifted time = 9am to 9am in real time)
-    # Use 'D' for calendar day
-    numeric_cols = df_shifted.select_dtypes(include=['number']).columns
-
-    # Calculate mean
-    df_resampled = df_shifted[numeric_cols].resample('D').mean()
-
-    # Also calculate data completeness for key BC columns
-    bc_cols = [col for col in numeric_cols if 'BCc' in col and 'smoothed' not in col.lower() and 'ng/m^3' not in col]
-
-    if len(bc_cols) > 0:
-        # Count non-null values per day for BC
-        bc_counts = df_shifted[bc_cols].resample('D').count()
-        # Expected records per day (1440 minutes)
-        total_counts = df_shifted[bc_cols].resample('D').size()
-
-        # Calculate completeness percentage for first BC column as representative
-        if len(bc_cols) > 0:
-            df_resampled['data_completeness_pct'] = (bc_counts.iloc[:, 0] / 1440 * 100).fillna(0)
-            df_resampled['minutes_with_data'] = bc_counts.iloc[:, 0].fillna(0)
     else:
-        df_resampled['data_completeness_pct'] = 0
-        df_resampled['minutes_with_data'] = 0
+        df.index = df.index.tz_convert(timezone)
+    if df.index.has_duplicates:
+        raise ValueError("Duplicate timestamps must be resolved before resampling")
+    df = df.sort_index()
+    if observed_col is not None:
+        observed = df[observed_col]
+        if not pd.api.types.is_bool_dtype(observed.dtype):
+            raise ValueError("observed_col must contain boolean flags")
+    numeric = df.select_dtypes(include=['number']).replace([float('inf'), -float('inf')], float('nan'))
+    if observed_col is not None:
+        numeric = numeric.where(observed.fillna(False), axis=0)
 
-    # Shift index back to represent the END of the 9am-9am period
-    df_resampled.index = df_resampled.index + timedelta(hours=shift_hours)
-
-    # Create a date column for the 9am day
-    df_resampled['day_9am'] = df_resampled.index.date
-
-    # Reset index to make datetime_local a column
-    df_resampled = df_resampled.reset_index()
-    df_resampled = df_resampled.rename(columns={'index': 'datetime_local'})
-
-    # Report completeness stats
+    # Equal weight per available minute; multiple sub-minute records must not
+    # inflate coverage or overweight the busier minutes. UTC flooring avoids
+    # ambiguity in the repeated local hour at the autumn DST transition.
+    minute_data = distinct_slot_means(numeric)
+    minute_data.index = minute_data.index.tz_convert(timezone)
+    local_days = (minute_data.index.tz_localize(None) - pd.Timedelta(hours=resample_hour)).normalize()
+    calendar_days = pd.date_range(local_days.min(), local_days.max(), freq='D')
+    starts = (calendar_days + pd.Timedelta(hours=resample_hour)).tz_localize(timezone)
+    ends = (calendar_days + pd.Timedelta(days=1, hours=resample_hour)).tz_localize(timezone)
+    expected_minutes = (ends - starts).total_seconds() / 60
+    df_resampled = minute_data.groupby(local_days).mean().reindex(calendar_days)
+    bc_cols = [col for col in numeric if col.endswith(' BCc') or ' BCc smoothed' in col]
+    counts = minute_data[bc_cols].groupby(local_days).count().reindex(calendar_days, fill_value=0)
+    for col in bc_cols:
+        df_resampled[f'{col} valid_minutes'] = counts[col]
+        df_resampled[f'{col} coverage_pct'] = counts[col] / expected_minutes * 100
+    # Keep compatibility columns, but explicitly tie them to IR, not whichever
+    # channel happens to be first in the source file.
+    df_resampled['minutes_with_data'] = counts['IR BCc'] if 'IR BCc' in counts else float('nan')
+    df_resampled['data_completeness_pct'] = df_resampled['minutes_with_data'] / expected_minutes * 100
+    df_resampled['expected_minutes'] = expected_minutes
+    df_resampled['interval_start'] = starts
+    df_resampled['interval_end'] = ends
+    df_resampled['datetime_local'] = ends
+    df_resampled['day_9am'] = ends.date
+    df_resampled = df_resampled.reset_index(drop=True)
+    df_resampled.attrs.update({
+        'resampling_version': 2,
+        'interval_closed': 'left',
+        'timestamp_label': 'interval_end',
+        'coverage_channel': 'IR BCc',
+        'coverage_basis': 'observed_flag' if observed_col else 'non_null_input_minutes',
+        'observed_col': observed_col,
+        'upstream_interpolation_verified': observed_col is not None,
+    })
     avg_completeness = df_resampled['data_completeness_pct'].mean()
     print(f"    Resampled to {len(df_resampled)} daily records")
-    print(f"    Average data completeness: {avg_completeness:.1f}% of 1440 min/day")
+    print(f"    Average IR minute availability: {avg_completeness:.1f}%")
 
     return df_resampled
 
@@ -195,7 +213,8 @@ def select_key_columns(df, site_code):
     """Select key columns for the final dataset"""
 
     # Essential columns to keep
-    essential = ['datetime_local', 'day_9am', 'data_completeness_pct', 'minutes_with_data']
+    essential = ['datetime_local', 'day_9am', 'interval_start', 'interval_end',
+                 'expected_minutes', 'data_completeness_pct', 'minutes_with_data']
 
     # Device info
     device_cols = ['Serial number', 'device_type', 'Firmware version']

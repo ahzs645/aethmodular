@@ -204,3 +204,8 @@ research/spartan/.cache/
 
 # Generated Colab bundle is stored on Google Drive (too large for regular Git).
 /calibration_explorer/colab/aethmodular_calibration_explorer_prewarm.zip
+
+# Deck-build scratch (candidate pptx, rendered slide PNGs, validation JSON,
+# symlinked node_modules). The finished pptx lives beside/under output/.
+deliverables/**/.build*/
+deliverables/**/.chart-data-*/

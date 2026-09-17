@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "artifact": "scientific_draft.docx",
+  "artifact_sha256": "0280118dcaf63a6f2166ecb06c4c2e3ea4e3aec09ec0ceabd56503277b47f82b",
+  "rendered_pages": 9,
+  "pages_visually_reviewed": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "review": "All rendered pages inspected for text and table fit, figure labels, page flow and source references."
+}
