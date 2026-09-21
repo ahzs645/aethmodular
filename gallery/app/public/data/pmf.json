@@ -1,0 +1,2586 @@
+{
+"generated": "2026-09-17T17:34:43+00:00",
+"site": "ETAD",
+"site_name": "Addis Ababa",
+"note": "GF1-GF5 normalised to relative source contributions via normalize_gf_fractions; raw values are PM2.5 mass fractions.",
+"sources": [
+{
+"key": "sea_salt",
+"label": "Sea Salt Mixed",
+"color": "#1f77b4"
+},
+{
+"key": "wood",
+"label": "Wood Burning",
+"color": "#ff7f0e"
+},
+{
+"key": "charcoal",
+"label": "Charcoal",
+"color": "#2ca02c"
+},
+{
+"key": "polluted_marine",
+"label": "Polluted Marine",
+"color": "#9467bd"
+},
+{
+"key": "fossil_fuel",
+"label": "Fossil Fuel Combustion",
+"color": "#d62728"
+}
+],
+"n": 102,
+"rows": [
+{
+"id": "ETAD-0035",
+"filter_id": "ETAD-0035-3",
+"date": "2023-01-03",
+"year": 2023,
+"month": 1,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.194601,
+"Wood Burning": 0.072191,
+"Charcoal": 0.542552,
+"Polluted Marine": 0.157833,
+"Fossil Fuel Combustion": 0.032822
+},
+"ugm3": {
+"Sea Salt Mixed": 0.364,
+"Wood Burning": 0.397,
+"Charcoal": 3.62,
+"Polluted Marine": 0.395,
+"Fossil Fuel Combustion": 0.0793
+},
+"total_ugm3": 4.8553,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.542552
+},
+{
+"id": "ETAD-0036",
+"filter_id": "ETAD-0036-4",
+"date": "2023-01-06",
+"year": 2023,
+"month": 1,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.122313,
+"Wood Burning": 0.253876,
+"Charcoal": 0.273405,
+"Polluted Marine": 0.349466,
+"Fossil Fuel Combustion": 0.000939
+},
+"ugm3": {
+"Sea Salt Mixed": 0.2,
+"Wood Burning": 1.22,
+"Charcoal": 1.59,
+"Polluted Marine": 0.763,
+"Fossil Fuel Combustion": 0.00198
+},
+"total_ugm3": 3.77498,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.349466
+},
+{
+"id": "ETAD-0037",
+"filter_id": "ETAD-0037-5",
+"date": "2023-01-09",
+"year": 2023,
+"month": 1,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.225188,
+"Wood Burning": 0.211287,
+"Charcoal": 0.053841,
+"Polluted Marine": 0.412381,
+"Fossil Fuel Combustion": 0.097303
+},
+"ugm3": {
+"Sea Salt Mixed": 0.408,
+"Wood Burning": 1.12,
+"Charcoal": 0.348,
+"Polluted Marine": 0.999,
+"Fossil Fuel Combustion": 0.228
+},
+"total_ugm3": 3.103,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.412381
+},
+{
+"id": "ETAD-0038",
+"filter_id": "ETAD-0038-6",
+"date": "2023-01-12",
+"year": 2023,
+"month": 1,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.077012,
+"Wood Burning": 0.253821,
+"Charcoal": 2e-06,
+"Polluted Marine": 0.669164,
+"Fossil Fuel Combustion": 1e-06
+},
+"ugm3": {
+"Sea Salt Mixed": 0.0895,
+"Wood Burning": 0.868,
+"Charcoal": 6e-06,
+"Polluted Marine": 1.04,
+"Fossil Fuel Combustion": 2e-06
+},
+"total_ugm3": 1.997508,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.669164
+},
+{
+"id": "ETAD-0040",
+"filter_id": "ETAD-0040-8",
+"date": "2023-01-15",
+"year": 2023,
+"month": 1,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.109339,
+"Wood Burning": 0.127446,
+"Charcoal": 0.04102,
+"Polluted Marine": 0.354482,
+"Fossil Fuel Combustion": 0.367714
+},
+"ugm3": {
+"Sea Salt Mixed": 0.27,
+"Wood Burning": 0.924,
+"Charcoal": 0.361,
+"Polluted Marine": 1.17,
+"Fossil Fuel Combustion": 1.17
+},
+"total_ugm3": 3.895,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.367714
+},
+{
+"id": "ETAD-0001",
+"filter_id": "ETAD-0001-1",
+"date": "2023-01-21",
+"year": 2023,
+"month": 1,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.63335,
+"Wood Burning": 0.06553,
+"Charcoal": 0.014339,
+"Polluted Marine": 0.238162,
+"Fossil Fuel Combustion": 0.048619
+},
+"ugm3": {
+"Sea Salt Mixed": 3.05,
+"Wood Burning": 0.929,
+"Charcoal": 0.247,
+"Polluted Marine": 1.54,
+"Fossil Fuel Combustion": 0.303
+},
+"total_ugm3": 6.069,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.63335
+},
+{
+"id": "ETAD-0002",
+"filter_id": "ETAD-0002-2",
+"date": "2023-01-24",
+"year": 2023,
+"month": 1,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.429749,
+"Wood Burning": 0.104106,
+"Charcoal": 0.012826,
+"Polluted Marine": 0.401432,
+"Fossil Fuel Combustion": 0.051886
+},
+"ugm3": {
+"Sea Salt Mixed": 0.876,
+"Wood Burning": 0.624,
+"Charcoal": 0.0934,
+"Polluted Marine": 1.1,
+"Fossil Fuel Combustion": 0.137
+},
+"total_ugm3": 2.8304,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.429749
+},
+{
+"id": "ETAD-0003",
+"filter_id": "ETAD-0003-3",
+"date": "2023-01-27",
+"year": 2023,
+"month": 1,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.255829,
+"Wood Burning": 0.217542,
+"Charcoal": 4e-06,
+"Polluted Marine": 0.489904,
+"Fossil Fuel Combustion": 0.036721
+},
+"ugm3": {
+"Sea Salt Mixed": 0.499,
+"Wood Burning": 1.25,
+"Charcoal": 2.6e-05,
+"Polluted Marine": 1.28,
+"Fossil Fuel Combustion": 0.0926
+},
+"total_ugm3": 3.121626,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.489904
+},
+{
+"id": "ETAD-0004",
+"filter_id": "ETAD-0004-4",
+"date": "2023-01-30",
+"year": 2023,
+"month": 1,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.309554,
+"Wood Burning": 0.178322,
+"Charcoal": 8e-06,
+"Polluted Marine": 0.445419,
+"Fossil Fuel Combustion": 0.066697
+},
+"ugm3": {
+"Sea Salt Mixed": 0.672,
+"Wood Burning": 1.14,
+"Charcoal": 6.5e-05,
+"Polluted Marine": 1.3,
+"Fossil Fuel Combustion": 0.187
+},
+"total_ugm3": 3.299065,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.445419
+},
+{
+"id": "ETAD-0005",
+"filter_id": "ETAD-0005-5",
+"date": "2023-02-02",
+"year": 2023,
+"month": 2,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.372962,
+"Wood Burning": 0.147117,
+"Charcoal": 0.031412,
+"Polluted Marine": 0.356262,
+"Fossil Fuel Combustion": 0.092247
+},
+"ugm3": {
+"Sea Salt Mixed": 0.786,
+"Wood Burning": 0.912,
+"Charcoal": 0.237,
+"Polluted Marine": 1.01,
+"Fossil Fuel Combustion": 0.251
+},
+"total_ugm3": 3.196,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.372962
+},
+{
+"id": "ETAD-0006",
+"filter_id": "ETAD-0006-6",
+"date": "2023-02-05",
+"year": 2023,
+"month": 2,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.532057,
+"Wood Burning": 0.122458,
+"Charcoal": 0.021747,
+"Polluted Marine": 0.243508,
+"Fossil Fuel Combustion": 0.080231
+},
+"ugm3": {
+"Sea Salt Mixed": 1.27,
+"Wood Burning": 0.858,
+"Charcoal": 0.185,
+"Polluted Marine": 0.777,
+"Fossil Fuel Combustion": 0.247
+},
+"total_ugm3": 3.337,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.532057
+},
+{
+"id": "ETAD-0008",
+"filter_id": "ETAD-0008-8",
+"date": "2023-02-08",
+"year": 2023,
+"month": 2,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.119774,
+"Wood Burning": 0.044785,
+"Charcoal": 1e-06,
+"Polluted Marine": 0.584734,
+"Fossil Fuel Combustion": 0.250706
+},
+"ugm3": {
+"Sea Salt Mixed": 0.28,
+"Wood Burning": 0.308,
+"Charcoal": 1.2e-05,
+"Polluted Marine": 1.83,
+"Fossil Fuel Combustion": 0.757
+},
+"total_ugm3": 3.175012,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.584734
+},
+{
+"id": "ETAD-0041",
+"filter_id": "ETAD-0041-1",
+"date": "2023-02-10",
+"year": 2023,
+"month": 2,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.411348,
+"Wood Burning": 0.044639,
+"Charcoal": 0.081352,
+"Polluted Marine": 0.357947,
+"Fossil Fuel Combustion": 0.104714
+},
+"ugm3": {
+"Sea Salt Mixed": 1.58,
+"Wood Burning": 0.504,
+"Charcoal": 1.12,
+"Polluted Marine": 1.84,
+"Fossil Fuel Combustion": 0.519
+},
+"total_ugm3": 5.563,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.411348
+},
+{
+"id": "ETAD-0042",
+"filter_id": "ETAD-0042-2",
+"date": "2023-02-13",
+"year": 2023,
+"month": 2,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.339067,
+"Wood Burning": 0.073618,
+"Charcoal": 0.059248,
+"Polluted Marine": 0.479932,
+"Fossil Fuel Combustion": 0.048135
+},
+"ugm3": {
+"Sea Salt Mixed": 0.767,
+"Wood Burning": 0.49,
+"Charcoal": 0.479,
+"Polluted Marine": 1.45,
+"Fossil Fuel Combustion": 0.141
+},
+"total_ugm3": 3.327,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.479932
+},
+{
+"id": "ETAD-0043",
+"filter_id": "ETAD-0043-3",
+"date": "2023-02-16",
+"year": 2023,
+"month": 2,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.47974,
+"Wood Burning": 0.094282,
+"Charcoal": 0.004561,
+"Polluted Marine": 0.372742,
+"Fossil Fuel Combustion": 0.048676
+},
+"ugm3": {
+"Sea Salt Mixed": 1.77,
+"Wood Burning": 1.02,
+"Charcoal": 0.0602,
+"Polluted Marine": 1.84,
+"Fossil Fuel Combustion": 0.232
+},
+"total_ugm3": 4.9222,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.47974
+},
+{
+"id": "ETAD-0044",
+"filter_id": "ETAD-0044-4",
+"date": "2023-02-19",
+"year": 2023,
+"month": 2,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.362675,
+"Wood Burning": 0.171955,
+"Charcoal": 0.106107,
+"Polluted Marine": 0.31491,
+"Fossil Fuel Combustion": 0.044353
+},
+"ugm3": {
+"Sea Salt Mixed": 1.7,
+"Wood Burning": 2.37,
+"Charcoal": 1.78,
+"Polluted Marine": 1.98,
+"Fossil Fuel Combustion": 0.269
+},
+"total_ugm3": 8.099,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.362675
+},
+{
+"id": "ETAD-0045",
+"filter_id": "ETAD-0045-5",
+"date": "2023-02-22",
+"year": 2023,
+"month": 2,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.185938,
+"Wood Burning": 0.107496,
+"Charcoal": 0.080186,
+"Polluted Marine": 0.476467,
+"Fossil Fuel Combustion": 0.149913
+},
+"ugm3": {
+"Sea Salt Mixed": 0.512,
+"Wood Burning": 0.871,
+"Charcoal": 0.789,
+"Polluted Marine": 1.76,
+"Fossil Fuel Combustion": 0.534
+},
+"total_ugm3": 4.466,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.476467
+},
+{
+"id": "ETAD-0046",
+"filter_id": "ETAD-0046-6",
+"date": "2023-02-25",
+"year": 2023,
+"month": 2,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 1e-06,
+"Wood Burning": 0.297548,
+"Charcoal": 1e-06,
+"Polluted Marine": 0.260784,
+"Fossil Fuel Combustion": 0.441666
+},
+"ugm3": {
+"Sea Salt Mixed": 4e-06,
+"Wood Burning": 2.86,
+"Charcoal": 7e-06,
+"Polluted Marine": 1.14,
+"Fossil Fuel Combustion": 1.86
+},
+"total_ugm3": 5.860011,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.441666
+},
+{
+"id": "ETAD-0049",
+"filter_id": "ETAD-0049-1",
+"date": "2023-03-04",
+"year": 2023,
+"month": 3,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.071289,
+"Wood Burning": 0.174333,
+"Charcoal": 1.3e-05,
+"Polluted Marine": 0.259232,
+"Fossil Fuel Combustion": 0.495133
+},
+"ugm3": {
+"Sea Salt Mixed": 0.178,
+"Wood Burning": 1.28,
+"Charcoal": 0.00012,
+"Polluted Marine": 0.868,
+"Fossil Fuel Combustion": 1.6
+},
+"total_ugm3": 3.92612,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.495133
+},
+{
+"id": "ETAD-0050",
+"filter_id": "ETAD-0050-2",
+"date": "2023-03-07",
+"year": 2023,
+"month": 3,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.142428,
+"Wood Burning": 0.122438,
+"Charcoal": 5e-06,
+"Polluted Marine": 0.320838,
+"Fossil Fuel Combustion": 0.414291
+},
+"ugm3": {
+"Sea Salt Mixed": 0.462,
+"Wood Burning": 1.17,
+"Charcoal": 6.3e-05,
+"Polluted Marine": 1.39,
+"Fossil Fuel Combustion": 1.74
+},
+"total_ugm3": 4.762063,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.414291
+},
+{
+"id": "ETAD-0051",
+"filter_id": "ETAD-0051-3",
+"date": "2023-03-10",
+"year": 2023,
+"month": 3,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 2e-06,
+"Wood Burning": 0.392996,
+"Charcoal": 0.074404,
+"Polluted Marine": 0.001755,
+"Fossil Fuel Combustion": 0.530844
+},
+"ugm3": {
+"Sea Salt Mixed": 3e-06,
+"Wood Burning": 2.19,
+"Charcoal": 0.503,
+"Polluted Marine": 0.00445,
+"Fossil Fuel Combustion": 1.3
+},
+"total_ugm3": 3.997453,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.530844
+},
+{
+"id": "ETAD-0052",
+"filter_id": "ETAD-0052-4",
+"date": "2023-03-13",
+"year": 2023,
+"month": 3,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 7e-06,
+"Wood Burning": 0.388255,
+"Charcoal": 0.357952,
+"Polluted Marine": 0.231059,
+"Fossil Fuel Combustion": 0.022727
+},
+"ugm3": {
+"Sea Salt Mixed": 1.3e-05,
+"Wood Burning": 1.95,
+"Charcoal": 2.19,
+"Polluted Marine": 0.529,
+"Fossil Fuel Combustion": 0.0503
+},
+"total_ugm3": 4.719313,
+"dominant_source": "wood",
+"dominant_fraction": 0.388255
+},
+{
+"id": "ETAD-0053",
+"filter_id": "ETAD-0053-5",
+"date": "2023-03-16",
+"year": 2023,
+"month": 3,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.22467,
+"Wood Burning": 0.178337,
+"Charcoal": 0.363668,
+"Polluted Marine": 0.189702,
+"Fossil Fuel Combustion": 0.043623
+},
+"ugm3": {
+"Sea Salt Mixed": 0.412,
+"Wood Burning": 0.961,
+"Charcoal": 2.38,
+"Polluted Marine": 0.465,
+"Fossil Fuel Combustion": 0.103
+},
+"total_ugm3": 4.321,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.363668
+},
+{
+"id": "ETAD-0054",
+"filter_id": "ETAD-0054-6",
+"date": "2023-03-19",
+"year": 2023,
+"month": 3,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 1e-06,
+"Wood Burning": 0.588936,
+"Charcoal": 0.135575,
+"Polluted Marine": 0.275488,
+"Fossil Fuel Combustion": 1e-06
+},
+"ugm3": {
+"Sea Salt Mixed": 2e-06,
+"Wood Burning": 2.56,
+"Charcoal": 0.715,
+"Polluted Marine": 0.545,
+"Fossil Fuel Combustion": 1e-06
+},
+"total_ugm3": 3.820003,
+"dominant_source": "wood",
+"dominant_fraction": 0.588936
+},
+{
+"id": "ETAD-0056",
+"filter_id": "ETAD-0056-8",
+"date": "2023-03-22",
+"year": 2023,
+"month": 3,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.210627,
+"Wood Burning": 0.265291,
+"Charcoal": 0.149083,
+"Polluted Marine": 0.196865,
+"Fossil Fuel Combustion": 0.178135
+},
+"ugm3": {
+"Sea Salt Mixed": 0.893,
+"Wood Burning": 3.31,
+"Charcoal": 2.26,
+"Polluted Marine": 1.12,
+"Fossil Fuel Combustion": 0.976
+},
+"total_ugm3": 8.559,
+"dominant_source": "wood",
+"dominant_fraction": 0.265291
+},
+{
+"id": "ETAD-0057",
+"filter_id": "ETAD-0057-1",
+"date": "2023-03-29",
+"year": 2023,
+"month": 3,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.238677,
+"Wood Burning": 0.103522,
+"Charcoal": 0.585908,
+"Polluted Marine": 0.071891,
+"Fossil Fuel Combustion": 2e-06
+},
+"ugm3": {
+"Sea Salt Mixed": 0.538,
+"Wood Burning": 0.686,
+"Charcoal": 4.72,
+"Polluted Marine": 0.217,
+"Fossil Fuel Combustion": 5e-06
+},
+"total_ugm3": 6.161005,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.585908
+},
+{
+"id": "ETAD-0058",
+"filter_id": "ETAD-0058-2",
+"date": "2023-04-01",
+"year": 2023,
+"month": 4,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.123704,
+"Wood Burning": 0.235876,
+"Charcoal": 0.377402,
+"Polluted Marine": 0.25265,
+"Fossil Fuel Combustion": 0.010368
+},
+"ugm3": {
+"Sea Salt Mixed": 0.191,
+"Wood Burning": 1.07,
+"Charcoal": 2.08,
+"Polluted Marine": 0.523,
+"Fossil Fuel Combustion": 0.0207
+},
+"total_ugm3": 3.8847,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.377402
+},
+{
+"id": "ETAD-0059",
+"filter_id": "ETAD-0059-3",
+"date": "2023-04-04",
+"year": 2023,
+"month": 4,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.384043,
+"Wood Burning": 0.257447,
+"Charcoal": 0.12234,
+"Polluted Marine": 0.217021,
+"Fossil Fuel Combustion": 0.019149
+},
+"ugm3": {
+"Sea Salt Mixed": 0.585,
+"Wood Burning": 1.15,
+"Charcoal": 0.666,
+"Polluted Marine": 0.443,
+"Fossil Fuel Combustion": 0.0377
+},
+"total_ugm3": 2.8817,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.384043
+},
+{
+"id": "ETAD-0060",
+"filter_id": "ETAD-0060-4",
+"date": "2023-04-07",
+"year": 2023,
+"month": 4,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.519636,
+"Wood Burning": 0.219577,
+"Charcoal": 0.025457,
+"Polluted Marine": 0.235324,
+"Fossil Fuel Combustion": 6e-06
+},
+"ugm3": {
+"Sea Salt Mixed": 0.963,
+"Wood Burning": 1.2,
+"Charcoal": 0.168,
+"Polluted Marine": 0.584,
+"Fossil Fuel Combustion": 1.5e-05
+},
+"total_ugm3": 2.915015,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.519636
+},
+{
+"id": "ETAD-0061",
+"filter_id": "ETAD-0061-5",
+"date": "2023-04-10",
+"year": 2023,
+"month": 4,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.383906,
+"Wood Burning": 0.233332,
+"Charcoal": 4e-06,
+"Polluted Marine": 0.382756,
+"Fossil Fuel Combustion": 1e-06
+},
+"ugm3": {
+"Sea Salt Mixed": 0.541,
+"Wood Burning": 0.967,
+"Charcoal": 2.1e-05,
+"Polluted Marine": 0.722,
+"Fossil Fuel Combustion": 3e-06
+},
+"total_ugm3": 2.230024,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.383906
+},
+{
+"id": "ETAD-0062",
+"filter_id": "ETAD-0062-6",
+"date": "2023-04-13",
+"year": 2023,
+"month": 4,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.193182,
+"Wood Burning": 0.120581,
+"Charcoal": 0.112374,
+"Polluted Marine": 0.256944,
+"Fossil Fuel Combustion": 0.316919
+},
+"ugm3": {
+"Sea Salt Mixed": 0.496,
+"Wood Burning": 0.91,
+"Charcoal": 1.03,
+"Polluted Marine": 0.883,
+"Fossil Fuel Combustion": 1.05
+},
+"total_ugm3": 4.369,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.316919
+},
+{
+"id": "ETAD-0064",
+"filter_id": "ETAD-0064-8",
+"date": "2023-04-16",
+"year": 2023,
+"month": 4,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.207155,
+"Wood Burning": 0.325798,
+"Charcoal": 6e-06,
+"Polluted Marine": 0.46704,
+"Fossil Fuel Combustion": 1e-06
+},
+"ugm3": {
+"Sea Salt Mixed": 0.178,
+"Wood Burning": 0.824,
+"Charcoal": 1.8e-05,
+"Polluted Marine": 0.538,
+"Fossil Fuel Combustion": 1e-06
+},
+"total_ugm3": 1.540019,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.46704
+},
+{
+"id": "ETAD-0065",
+"filter_id": "ETAD-0065-1",
+"date": "2023-04-21",
+"year": 2023,
+"month": 4,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.107626,
+"Wood Burning": 0.315498,
+"Charcoal": 0.154367,
+"Polluted Marine": 0.118696,
+"Fossil Fuel Combustion": 0.303813
+},
+"ugm3": {
+"Sea Salt Mixed": 0.284,
+"Wood Burning": 2.44,
+"Charcoal": 1.45,
+"Polluted Marine": 0.419,
+"Fossil Fuel Combustion": 1.03
+},
+"total_ugm3": 5.623,
+"dominant_source": "wood",
+"dominant_fraction": 0.315498
+},
+{
+"id": "ETAD-0066",
+"filter_id": "ETAD-0066-2",
+"date": "2023-04-24",
+"year": 2023,
+"month": 4,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.300569,
+"Wood Burning": 0.204712,
+"Charcoal": 0.181154,
+"Polluted Marine": 0.203899,
+"Fossil Fuel Combustion": 0.109667
+},
+"ugm3": {
+"Sea Salt Mixed": 0.6,
+"Wood Burning": 1.2,
+"Charcoal": 1.29,
+"Polluted Marine": 0.545,
+"Fossil Fuel Combustion": 0.283
+},
+"total_ugm3": 3.918,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.300569
+},
+{
+"id": "ETAD-0067",
+"filter_id": "ETAD-0067-3",
+"date": "2023-04-27",
+"year": 2023,
+"month": 4,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 1e-06,
+"Wood Burning": 0.285444,
+"Charcoal": 0.477,
+"Polluted Marine": 1e-06,
+"Fossil Fuel Combustion": 0.237555
+},
+"ugm3": {
+"Sea Salt Mixed": 2e-06,
+"Wood Burning": 2.16,
+"Charcoal": 4.38,
+"Polluted Marine": 4e-06,
+"Fossil Fuel Combustion": 0.789
+},
+"total_ugm3": 7.329006,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.477
+},
+{
+"id": "ETAD-0068",
+"filter_id": "ETAD-0068-4",
+"date": "2023-04-30",
+"year": 2023,
+"month": 4,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 2e-06,
+"Wood Burning": 0.363228,
+"Charcoal": 0.361592,
+"Polluted Marine": 0.001121,
+"Fossil Fuel Combustion": 0.274057
+},
+"ugm3": {
+"Sea Salt Mixed": 3e-06,
+"Wood Burning": 2.12,
+"Charcoal": 2.56,
+"Polluted Marine": 0.00297,
+"Fossil Fuel Combustion": 0.702
+},
+"total_ugm3": 5.384973,
+"dominant_source": "wood",
+"dominant_fraction": 0.363228
+},
+{
+"id": "ETAD-0069",
+"filter_id": "ETAD-0069-5",
+"date": "2023-05-03",
+"year": 2023,
+"month": 5,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.457688,
+"Wood Burning": 0.074493,
+"Charcoal": 0.336114,
+"Polluted Marine": 0.060787,
+"Fossil Fuel Combustion": 0.070918
+},
+"ugm3": {
+"Sea Salt Mixed": 1.24,
+"Wood Burning": 0.596,
+"Charcoal": 3.26,
+"Polluted Marine": 0.221,
+"Fossil Fuel Combustion": 0.249
+},
+"total_ugm3": 5.566,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.457688
+},
+{
+"id": "ETAD-0070",
+"filter_id": "ETAD-0070-6",
+"date": "2023-05-06",
+"year": 2023,
+"month": 5,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.175153,
+"Wood Burning": 0.067333,
+"Charcoal": 0.666505,
+"Polluted Marine": 0.039519,
+"Fossil Fuel Combustion": 0.05149
+},
+"ugm3": {
+"Sea Salt Mixed": 0.645,
+"Wood Burning": 0.729,
+"Charcoal": 8.77,
+"Polluted Marine": 0.195,
+"Fossil Fuel Combustion": 0.245
+},
+"total_ugm3": 10.584,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.666505
+},
+{
+"id": "ETAD-0072",
+"filter_id": "ETAD-0072-8",
+"date": "2023-05-09",
+"year": 2023,
+"month": 5,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.177297,
+"Wood Burning": 2e-06,
+"Charcoal": 0.681156,
+"Polluted Marine": 0.000364,
+"Fossil Fuel Combustion": 0.141181
+},
+"ugm3": {
+"Sea Salt Mixed": 0.716,
+"Wood Burning": 1.9e-05,
+"Charcoal": 9.83,
+"Polluted Marine": 0.00197,
+"Fossil Fuel Combustion": 0.737
+},
+"total_ugm3": 11.284989,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.681156
+},
+{
+"id": "ETAD-0073",
+"filter_id": "ETAD-0073-1",
+"date": "2023-05-17",
+"year": 2023,
+"month": 5,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.133242,
+"Wood Burning": 0.082257,
+"Charcoal": 0.64106,
+"Polluted Marine": 2e-06,
+"Fossil Fuel Combustion": 0.14344
+},
+"ugm3": {
+"Sea Salt Mixed": 0.318,
+"Wood Burning": 0.577,
+"Charcoal": 5.46,
+"Polluted Marine": 5e-06,
+"Fossil Fuel Combustion": 0.442
+},
+"total_ugm3": 6.797005,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.64106
+},
+{
+"id": "ETAD-0074",
+"filter_id": "ETAD-0074-2",
+"date": "2023-05-20",
+"year": 2023,
+"month": 5,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 2e-06,
+"Wood Burning": 0.363514,
+"Charcoal": 0.352196,
+"Polluted Marine": 0.130492,
+"Fossil Fuel Combustion": 0.153795
+},
+"ugm3": {
+"Sea Salt Mixed": 5e-06,
+"Wood Burning": 2.6,
+"Charcoal": 3.06,
+"Polluted Marine": 0.425,
+"Fossil Fuel Combustion": 0.484
+},
+"total_ugm3": 6.569005,
+"dominant_source": "wood",
+"dominant_fraction": 0.363514
+},
+{
+"id": "ETAD-0075",
+"filter_id": "ETAD-0075-3",
+"date": "2023-05-23",
+"year": 2023,
+"month": 5,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.507929,
+"Wood Burning": 0.121716,
+"Charcoal": 0.267423,
+"Polluted Marine": 0.05366,
+"Fossil Fuel Combustion": 0.049271
+},
+"ugm3": {
+"Sea Salt Mixed": 1.41,
+"Wood Burning": 0.991,
+"Charcoal": 2.65,
+"Polluted Marine": 0.199,
+"Fossil Fuel Combustion": 0.176
+},
+"total_ugm3": 5.426,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.507929
+},
+{
+"id": "ETAD-0076",
+"filter_id": "ETAD-0076-4",
+"date": "2023-05-26",
+"year": 2023,
+"month": 5,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.503089,
+"Wood Burning": 0.153722,
+"Charcoal": 0.207414,
+"Polluted Marine": 0.121359,
+"Fossil Fuel Combustion": 0.014416
+},
+"ugm3": {
+"Sea Salt Mixed": 1.11,
+"Wood Burning": 0.996,
+"Charcoal": 1.63,
+"Polluted Marine": 0.358,
+"Fossil Fuel Combustion": 0.041
+},
+"total_ugm3": 4.135,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.503089
+},
+{
+"id": "ETAD-0077",
+"filter_id": "ETAD-0077-5",
+"date": "2023-05-29",
+"year": 2023,
+"month": 5,
+"season": "Belg (Mar-May)",
+"fraction": {
+"Sea Salt Mixed": 0.154725,
+"Wood Burning": 0.297255,
+"Charcoal": 0.333078,
+"Polluted Marine": 0.214938,
+"Fossil Fuel Combustion": 5e-06
+},
+"ugm3": {
+"Sea Salt Mixed": 0.329,
+"Wood Burning": 1.86,
+"Charcoal": 2.53,
+"Polluted Marine": 0.612,
+"Fossil Fuel Combustion": 1.4e-05
+},
+"total_ugm3": 5.331014,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.333078
+},
+{
+"id": "ETAD-0078",
+"filter_id": "ETAD-0078-6",
+"date": "2023-06-01",
+"year": 2023,
+"month": 6,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.257407,
+"Wood Burning": 0.184849,
+"Charcoal": 0.367971,
+"Polluted Marine": 0.120929,
+"Fossil Fuel Combustion": 0.068843
+},
+"ugm3": {
+"Sea Salt Mixed": 0.483,
+"Wood Burning": 1.02,
+"Charcoal": 2.47,
+"Polluted Marine": 0.304,
+"Fossil Fuel Combustion": 0.167
+},
+"total_ugm3": 4.444,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.367971
+},
+{
+"id": "ETAD-0080",
+"filter_id": "ETAD-0080-8",
+"date": "2023-06-04",
+"year": 2023,
+"month": 6,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.423054,
+"Wood Burning": 0.046884,
+"Charcoal": 0.143838,
+"Polluted Marine": 0.203564,
+"Fossil Fuel Combustion": 0.18266
+},
+"ugm3": {
+"Sea Salt Mixed": 1.41,
+"Wood Burning": 0.459,
+"Charcoal": 1.71,
+"Polluted Marine": 0.908,
+"Fossil Fuel Combustion": 0.786
+},
+"total_ugm3": 5.273,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.423054
+},
+{
+"id": "ETAD-0081",
+"filter_id": "ETAD-0081-1",
+"date": "2023-06-07",
+"year": 2023,
+"month": 6,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.110424,
+"Wood Burning": 0.262085,
+"Charcoal": 0.360137,
+"Polluted Marine": 0.00756,
+"Fossil Fuel Combustion": 0.259794
+},
+"ugm3": {
+"Sea Salt Mixed": 0.394,
+"Wood Burning": 2.75,
+"Charcoal": 4.6,
+"Polluted Marine": 0.0362,
+"Fossil Fuel Combustion": 1.2
+},
+"total_ugm3": 8.9802,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.360137
+},
+{
+"id": "ETAD-0082",
+"filter_id": "ETAD-0082-2",
+"date": "2023-06-10",
+"year": 2023,
+"month": 6,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.18592,
+"Wood Burning": 0.243619,
+"Charcoal": 0.200745,
+"Polluted Marine": 0.02312,
+"Fossil Fuel Combustion": 0.346596
+},
+"ugm3": {
+"Sea Salt Mixed": 0.759,
+"Wood Burning": 2.93,
+"Charcoal": 2.93,
+"Polluted Marine": 0.126,
+"Fossil Fuel Combustion": 1.83
+},
+"total_ugm3": 8.575,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.346596
+},
+{
+"id": "ETAD-0083",
+"filter_id": "ETAD-0083-3",
+"date": "2023-06-13",
+"year": 2023,
+"month": 6,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.514098,
+"Wood Burning": 0.100877,
+"Charcoal": 0.156328,
+"Polluted Marine": 0.064536,
+"Fossil Fuel Combustion": 0.16416
+},
+"ugm3": {
+"Sea Salt Mixed": 2.69,
+"Wood Burning": 1.55,
+"Charcoal": 2.92,
+"Polluted Marine": 0.451,
+"Fossil Fuel Combustion": 1.11
+},
+"total_ugm3": 8.721,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.514098
+},
+{
+"id": "ETAD-0084",
+"filter_id": "ETAD-0084-4",
+"date": "2023-06-16",
+"year": 2023,
+"month": 6,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.432509,
+"Wood Burning": 0.149784,
+"Charcoal": 0.11392,
+"Polluted Marine": 0.039731,
+"Fossil Fuel Combustion": 0.264055
+},
+"ugm3": {
+"Sea Salt Mixed": 2.01,
+"Wood Burning": 2.05,
+"Charcoal": 1.89,
+"Polluted Marine": 0.248,
+"Fossil Fuel Combustion": 1.59
+},
+"total_ugm3": 7.788,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.432509
+},
+{
+"id": "ETAD-0085",
+"filter_id": "ETAD-0085-5",
+"date": "2023-06-19",
+"year": 2023,
+"month": 6,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.49211,
+"Wood Burning": 0.10289,
+"Charcoal": 0.28968,
+"Polluted Marine": 1e-06,
+"Fossil Fuel Combustion": 0.115319
+},
+"ugm3": {
+"Sea Salt Mixed": 2.33,
+"Wood Burning": 1.43,
+"Charcoal": 4.91,
+"Polluted Marine": 5e-06,
+"Fossil Fuel Combustion": 0.706
+},
+"total_ugm3": 9.376005,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.49211
+},
+{
+"id": "ETAD-0086",
+"filter_id": "ETAD-0086-6",
+"date": "2023-06-22",
+"year": 2023,
+"month": 6,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.421849,
+"Wood Burning": 0.168276,
+"Charcoal": 0.19808,
+"Polluted Marine": 0.047476,
+"Fossil Fuel Combustion": 0.164319
+},
+"ugm3": {
+"Sea Salt Mixed": 2.62,
+"Wood Burning": 3.07,
+"Charcoal": 4.39,
+"Polluted Marine": 0.394,
+"Fossil Fuel Combustion": 1.32
+},
+"total_ugm3": 11.794,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.421849
+},
+{
+"id": "ETAD-0088",
+"filter_id": "ETAD-0088-8",
+"date": "2023-06-25",
+"year": 2023,
+"month": 6,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.264174,
+"Wood Burning": 0.160436,
+"Charcoal": 0.242679,
+"Polluted Marine": 0.071963,
+"Fossil Fuel Combustion": 0.260748
+},
+"ugm3": {
+"Sea Salt Mixed": 1.39,
+"Wood Burning": 2.48,
+"Charcoal": 4.55,
+"Polluted Marine": 0.506,
+"Fossil Fuel Combustion": 1.77
+},
+"total_ugm3": 10.696,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.264174
+},
+{
+"id": "ETAD-0089",
+"filter_id": "ETAD-0089-1",
+"date": "2023-06-28",
+"year": 2023,
+"month": 6,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.159681,
+"Wood Burning": 0.239521,
+"Charcoal": 0.100299,
+"Polluted Marine": 0.073353,
+"Fossil Fuel Combustion": 0.427146
+},
+"ugm3": {
+"Sea Salt Mixed": 0.519,
+"Wood Burning": 2.29,
+"Charcoal": 1.16,
+"Polluted Marine": 0.319,
+"Fossil Fuel Combustion": 1.79
+},
+"total_ugm3": 6.078,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.427146
+},
+{
+"id": "ETAD-0090",
+"filter_id": "ETAD-0090-2",
+"date": "2023-07-01",
+"year": 2023,
+"month": 7,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.04361,
+"Wood Burning": 0.208981,
+"Charcoal": 0.406304,
+"Polluted Marine": 0.062176,
+"Fossil Fuel Combustion": 0.278929
+},
+"ugm3": {
+"Sea Salt Mixed": 0.165,
+"Wood Burning": 2.33,
+"Charcoal": 5.51,
+"Polluted Marine": 0.316,
+"Fossil Fuel Combustion": 1.37
+},
+"total_ugm3": 9.691,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.406304
+},
+{
+"id": "ETAD-0092",
+"filter_id": "ETAD-0092-4",
+"date": "2023-07-07",
+"year": 2023,
+"month": 7,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 1e-06,
+"Wood Burning": 0.371374,
+"Charcoal": 0.286885,
+"Polluted Marine": 0.039723,
+"Fossil Fuel Combustion": 0.302017
+},
+"ugm3": {
+"Sea Salt Mixed": 3e-06,
+"Wood Burning": 2.81,
+"Charcoal": 2.63,
+"Polluted Marine": 0.137,
+"Fossil Fuel Combustion": 1.0
+},
+"total_ugm3": 6.577003,
+"dominant_source": "wood",
+"dominant_fraction": 0.371374
+},
+{
+"id": "ETAD-0093",
+"filter_id": "ETAD-0093-5",
+"date": "2023-07-10",
+"year": 2023,
+"month": 7,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.146234,
+"Wood Burning": 0.134689,
+"Charcoal": 0.403518,
+"Polluted Marine": 0.090159,
+"Fossil Fuel Combustion": 0.225399
+},
+"ugm3": {
+"Sea Salt Mixed": 0.431,
+"Wood Burning": 1.17,
+"Charcoal": 4.25,
+"Polluted Marine": 0.356,
+"Fossil Fuel Combustion": 0.859
+},
+"total_ugm3": 7.066,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.403518
+},
+{
+"id": "ETAD-0094",
+"filter_id": "ETAD-0094-6",
+"date": "2023-07-13",
+"year": 2023,
+"month": 7,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 6e-06,
+"Wood Burning": 0.342287,
+"Charcoal": 0.349297,
+"Polluted Marine": 1e-06,
+"Fossil Fuel Combustion": 0.308409
+},
+"ugm3": {
+"Sea Salt Mixed": 1.8e-05,
+"Wood Burning": 2.79,
+"Charcoal": 3.46,
+"Polluted Marine": 2e-06,
+"Fossil Fuel Combustion": 1.11
+},
+"total_ugm3": 7.36002,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.349297
+},
+{
+"id": "ETAD-0096",
+"filter_id": "ETAD-0096-8",
+"date": "2023-07-16",
+"year": 2023,
+"month": 7,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.168029,
+"Wood Burning": 0.173479,
+"Charcoal": 0.27248,
+"Polluted Marine": 0.076748,
+"Fossil Fuel Combustion": 0.309264
+},
+"ugm3": {
+"Sea Salt Mixed": 0.614,
+"Wood Burning": 1.86,
+"Charcoal": 3.55,
+"Polluted Marine": 0.375,
+"Fossil Fuel Combustion": 1.46
+},
+"total_ugm3": 7.859,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.309264
+},
+{
+"id": "ETAD-0097",
+"filter_id": "ETAD-0097-1",
+"date": "2023-07-21",
+"year": 2023,
+"month": 7,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.133603,
+"Wood Burning": 0.311066,
+"Charcoal": 0.165317,
+"Polluted Marine": 0.082321,
+"Fossil Fuel Combustion": 0.307692
+},
+"ugm3": {
+"Sea Salt Mixed": 0.331,
+"Wood Burning": 2.26,
+"Charcoal": 1.46,
+"Polluted Marine": 0.273,
+"Fossil Fuel Combustion": 0.984
+},
+"total_ugm3": 5.308,
+"dominant_source": "wood",
+"dominant_fraction": 0.311066
+},
+{
+"id": "ETAD-0098",
+"filter_id": "ETAD-0098-2",
+"date": "2023-07-24",
+"year": 2023,
+"month": 7,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.110634,
+"Wood Burning": 0.180258,
+"Charcoal": 0.428231,
+"Polluted Marine": 0.067716,
+"Fossil Fuel Combustion": 0.213162
+},
+"ugm3": {
+"Sea Salt Mixed": 0.387,
+"Wood Burning": 1.86,
+"Charcoal": 5.36,
+"Polluted Marine": 0.318,
+"Fossil Fuel Combustion": 0.965
+},
+"total_ugm3": 8.89,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.428231
+},
+{
+"id": "ETAD-0099",
+"filter_id": "ETAD-0099-3",
+"date": "2023-07-27",
+"year": 2023,
+"month": 7,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.136957,
+"Wood Burning": 0.382642,
+"Charcoal": 0.108206,
+"Polluted Marine": 7e-06,
+"Fossil Fuel Combustion": 0.372188
+},
+"ugm3": {
+"Sea Salt Mixed": 0.438,
+"Wood Burning": 3.6,
+"Charcoal": 1.23,
+"Polluted Marine": 3.1e-05,
+"Fossil Fuel Combustion": 1.54
+},
+"total_ugm3": 6.808031,
+"dominant_source": "wood",
+"dominant_fraction": 0.382642
+},
+{
+"id": "ETAD-0101",
+"filter_id": "ETAD-0101-5",
+"date": "2023-08-02",
+"year": 2023,
+"month": 8,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.204724,
+"Wood Burning": 0.268841,
+"Charcoal": 0.2964,
+"Polluted Marine": 3e-06,
+"Fossil Fuel Combustion": 0.230033
+},
+"ugm3": {
+"Sea Salt Mixed": 0.608,
+"Wood Burning": 2.35,
+"Charcoal": 3.14,
+"Polluted Marine": 1e-05,
+"Fossil Fuel Combustion": 0.883
+},
+"total_ugm3": 6.98101,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.2964
+},
+{
+"id": "ETAD-0102",
+"filter_id": "ETAD-0102-6",
+"date": "2023-08-05",
+"year": 2023,
+"month": 8,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.209613,
+"Wood Burning": 0.340932,
+"Charcoal": 0.08226,
+"Polluted Marine": 0.083251,
+"Fossil Fuel Combustion": 0.283944
+},
+"ugm3": {
+"Sea Salt Mixed": 0.706,
+"Wood Burning": 3.38,
+"Charcoal": 0.99,
+"Polluted Marine": 0.376,
+"Fossil Fuel Combustion": 1.24
+},
+"total_ugm3": 6.692,
+"dominant_source": "wood",
+"dominant_fraction": 0.340932
+},
+{
+"id": "ETAD-0104",
+"filter_id": "ETAD-0104-8",
+"date": "2023-08-08",
+"year": 2023,
+"month": 8,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.104657,
+"Wood Burning": 0.330996,
+"Charcoal": 0.226339,
+"Polluted Marine": 1e-06,
+"Fossil Fuel Combustion": 0.338007
+},
+"ugm3": {
+"Sea Salt Mixed": 0.356,
+"Wood Burning": 3.31,
+"Charcoal": 2.75,
+"Polluted Marine": 2e-06,
+"Fossil Fuel Combustion": 1.49
+},
+"total_ugm3": 7.906002,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.338007
+},
+{
+"id": "ETAD-0105",
+"filter_id": "ETAD-0105-1",
+"date": "2023-08-16",
+"year": 2023,
+"month": 8,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 1.1e-05,
+"Wood Burning": 0.27295,
+"Charcoal": 0.527289,
+"Polluted Marine": 0.101115,
+"Fossil Fuel Combustion": 0.098634
+},
+"ugm3": {
+"Sea Salt Mixed": 3e-05,
+"Wood Burning": 2.12,
+"Charcoal": 4.97,
+"Polluted Marine": 0.358,
+"Fossil Fuel Combustion": 0.337
+},
+"total_ugm3": 7.78503,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.527289
+},
+{
+"id": "ETAD-0106",
+"filter_id": "ETAD-0106-2",
+"date": "2023-08-19",
+"year": 2023,
+"month": 8,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.001524,
+"Wood Burning": 0.195107,
+"Charcoal": 0.562553,
+"Polluted Marine": 0.117657,
+"Fossil Fuel Combustion": 0.123159
+},
+"ugm3": {
+"Sea Salt Mixed": 0.0059,
+"Wood Burning": 2.22,
+"Charcoal": 7.78,
+"Polluted Marine": 0.61,
+"Fossil Fuel Combustion": 0.616
+},
+"total_ugm3": 11.2319,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.562553
+},
+{
+"id": "ETAD-0107",
+"filter_id": "ETAD-0107-3",
+"date": "2023-08-22",
+"year": 2023,
+"month": 8,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 2e-06,
+"Wood Burning": 0.245065,
+"Charcoal": 0.5508,
+"Polluted Marine": 0.119683,
+"Fossil Fuel Combustion": 0.084451
+},
+"ugm3": {
+"Sea Salt Mixed": 5e-06,
+"Wood Burning": 2.3,
+"Charcoal": 6.28,
+"Polluted Marine": 0.512,
+"Fossil Fuel Combustion": 0.349
+},
+"total_ugm3": 9.441005,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.5508
+},
+{
+"id": "ETAD-0108",
+"filter_id": "ETAD-0108-4",
+"date": "2023-08-25",
+"year": 2023,
+"month": 8,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.081527,
+"Wood Burning": 0.119573,
+"Charcoal": 0.517698,
+"Polluted Marine": 0.067192,
+"Fossil Fuel Combustion": 0.214009
+},
+"ugm3": {
+"Sea Salt Mixed": 0.197,
+"Wood Burning": 0.848,
+"Charcoal": 4.46,
+"Polluted Marine": 0.217,
+"Fossil Fuel Combustion": 0.667
+},
+"total_ugm3": 6.389,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.517698
+},
+{
+"id": "ETAD-0109",
+"filter_id": "ETAD-0109-5",
+"date": "2023-08-28",
+"year": 2023,
+"month": 8,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 1e-06,
+"Wood Burning": 0.319803,
+"Charcoal": 0.128536,
+"Polluted Marine": 0.0,
+"Fossil Fuel Combustion": 0.55166
+},
+"ugm3": {
+"Sea Salt Mixed": 2e-06,
+"Wood Burning": 2.51,
+"Charcoal": 1.22,
+"Polluted Marine": 2e-06,
+"Fossil Fuel Combustion": 1.9
+},
+"total_ugm3": 5.630004,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.55166
+},
+{
+"id": "ETAD-0110",
+"filter_id": "ETAD-0110-6",
+"date": "2023-08-31",
+"year": 2023,
+"month": 8,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.087103,
+"Wood Burning": 0.253128,
+"Charcoal": 0.204524,
+"Polluted Marine": 0.0,
+"Fossil Fuel Combustion": 0.455245
+},
+"ugm3": {
+"Sea Salt Mixed": 0.297,
+"Wood Burning": 2.53,
+"Charcoal": 2.49,
+"Polluted Marine": 1e-06,
+"Fossil Fuel Combustion": 2.0
+},
+"total_ugm3": 7.317001,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.455245
+},
+{
+"id": "ETAD-0112",
+"filter_id": "ETAD-0112-8",
+"date": "2023-09-03",
+"year": 2023,
+"month": 9,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.518672,
+"Wood Burning": 0.08021,
+"Charcoal": 1e-06,
+"Polluted Marine": 0.10366,
+"Fossil Fuel Combustion": 0.297458
+},
+"ugm3": {
+"Sea Salt Mixed": 3.92,
+"Wood Burning": 1.78,
+"Charcoal": 2e-05,
+"Polluted Marine": 1.05,
+"Fossil Fuel Combustion": 2.9
+},
+"total_ugm3": 9.65002,
+"dominant_source": "sea_salt",
+"dominant_fraction": 0.518672
+},
+{
+"id": "ETAD-0113",
+"filter_id": "ETAD-0113-1",
+"date": "2023-09-06",
+"year": 2023,
+"month": 9,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 1e-06,
+"Wood Burning": 0.392315,
+"Charcoal": 1.4e-05,
+"Polluted Marine": 0.0,
+"Fossil Fuel Combustion": 0.607669
+},
+"ugm3": {
+"Sea Salt Mixed": 2e-06,
+"Wood Burning": 3.34,
+"Charcoal": 0.000147,
+"Polluted Marine": 2e-06,
+"Fossil Fuel Combustion": 2.27
+},
+"total_ugm3": 5.610151,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.607669
+},
+{
+"id": "ETAD-0114",
+"filter_id": "ETAD-0114-2",
+"date": "2023-09-09",
+"year": 2023,
+"month": 9,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 1e-06,
+"Wood Burning": 0.123443,
+"Charcoal": 0.564957,
+"Polluted Marine": 0.008604,
+"Fossil Fuel Combustion": 0.302996
+},
+"ugm3": {
+"Sea Salt Mixed": 4e-06,
+"Wood Burning": 1.59,
+"Charcoal": 8.84,
+"Polluted Marine": 0.0505,
+"Fossil Fuel Combustion": 1.71
+},
+"total_ugm3": 12.190504,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.564957
+},
+{
+"id": "ETAD-0115",
+"filter_id": "ETAD-0115-3",
+"date": "2023-09-12",
+"year": 2023,
+"month": 9,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 1e-06,
+"Wood Burning": 0.533105,
+"Charcoal": 0.059931,
+"Polluted Marine": 0.19121,
+"Fossil Fuel Combustion": 0.215753
+},
+"ugm3": {
+"Sea Salt Mixed": 2e-06,
+"Wood Burning": 4.4,
+"Charcoal": 0.601,
+"Polluted Marine": 0.718,
+"Fossil Fuel Combustion": 0.782
+},
+"total_ugm3": 6.501002,
+"dominant_source": "wood",
+"dominant_fraction": 0.533105
+},
+{
+"id": "ETAD-0116",
+"filter_id": "ETAD-0116-4",
+"date": "2023-09-15",
+"year": 2023,
+"month": 9,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.079927,
+"Wood Burning": 0.246443,
+"Charcoal": 0.204662,
+"Polluted Marine": 0.00878,
+"Fossil Fuel Combustion": 0.460188
+},
+"ugm3": {
+"Sea Salt Mixed": 0.211,
+"Wood Burning": 1.92,
+"Charcoal": 1.93,
+"Polluted Marine": 0.0311,
+"Fossil Fuel Combustion": 1.57
+},
+"total_ugm3": 5.6621,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.460188
+},
+{
+"id": "ETAD-0117",
+"filter_id": "ETAD-0117-5",
+"date": "2023-09-18",
+"year": 2023,
+"month": 9,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.086256,
+"Wood Burning": 0.158137,
+"Charcoal": 0.188039,
+"Polluted Marine": 1e-06,
+"Fossil Fuel Combustion": 0.567567
+},
+"ugm3": {
+"Sea Salt Mixed": 0.24,
+"Wood Burning": 1.3,
+"Charcoal": 1.87,
+"Polluted Marine": 3e-06,
+"Fossil Fuel Combustion": 2.04
+},
+"total_ugm3": 5.450003,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.567567
+},
+{
+"id": "ETAD-0118",
+"filter_id": "ETAD-0118-6",
+"date": "2023-09-21",
+"year": 2023,
+"month": 9,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.141037,
+"Wood Burning": 0.093758,
+"Charcoal": 0.252825,
+"Polluted Marine": 0.081737,
+"Fossil Fuel Combustion": 0.430643
+},
+"ugm3": {
+"Sea Salt Mixed": 0.57,
+"Wood Burning": 1.12,
+"Charcoal": 3.65,
+"Polluted Marine": 0.443,
+"Fossil Fuel Combustion": 2.25
+},
+"total_ugm3": 8.033,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.430643
+},
+{
+"id": "ETAD-0120",
+"filter_id": "ETAD-0120-8",
+"date": "2023-09-24",
+"year": 2023,
+"month": 9,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.000222,
+"Wood Burning": 0.135105,
+"Charcoal": 0.172935,
+"Polluted Marine": 0.120093,
+"Fossil Fuel Combustion": 0.571645
+},
+"ugm3": {
+"Sea Salt Mixed": 0.0006,
+"Wood Burning": 1.07,
+"Charcoal": 1.67,
+"Polluted Marine": 0.434,
+"Fossil Fuel Combustion": 1.99
+},
+"total_ugm3": 5.1646,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.571645
+},
+{
+"id": "ETAD-0121",
+"filter_id": "ETAD-0121-1",
+"date": "2023-09-27",
+"year": 2023,
+"month": 9,
+"season": "Kiremt (Jun-Sep)",
+"fraction": {
+"Sea Salt Mixed": 0.0,
+"Wood Burning": 0.080656,
+"Charcoal": 0.544795,
+"Polluted Marine": 0.01366,
+"Fossil Fuel Combustion": 0.360888
+},
+"ugm3": {
+"Sea Salt Mixed": 3e-06,
+"Wood Burning": 1.43,
+"Charcoal": 11.7,
+"Polluted Marine": 0.11,
+"Fossil Fuel Combustion": 2.81
+},
+"total_ugm3": 16.050003,
+"dominant_source": "charcoal",
+"dominant_fraction": 0.544795
+},
+{
+"id": "ETAD-0128",
+"filter_id": "ETAD-0128-8",
+"date": "2023-10-15",
+"year": 2023,
+"month": 10,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.282132,
+"Wood Burning": 0.087014,
+"Charcoal": 0.035148,
+"Polluted Marine": 0.505367,
+"Fossil Fuel Combustion": 0.090339
+},
+"ugm3": {
+"Sea Salt Mixed": 0.493,
+"Wood Burning": 0.447,
+"Charcoal": 0.219,
+"Polluted Marine": 1.18,
+"Fossil Fuel Combustion": 0.204
+},
+"total_ugm3": 2.543,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.505367
+},
+{
+"id": "ETAD-0129",
+"filter_id": "ETAD-0129-1",
+"date": "2023-10-18",
+"year": 2023,
+"month": 10,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.254921,
+"Wood Burning": 0.0,
+"Charcoal": 0.078733,
+"Polluted Marine": 0.348536,
+"Fossil Fuel Combustion": 0.317811
+},
+"ugm3": {
+"Sea Salt Mixed": 0.86,
+"Wood Burning": 4e-06,
+"Charcoal": 0.949,
+"Polluted Marine": 1.58,
+"Fossil Fuel Combustion": 1.39
+},
+"total_ugm3": 4.779004,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.348536
+},
+{
+"id": "ETAD-0130",
+"filter_id": "ETAD-0130-2",
+"date": "2023-10-21",
+"year": 2023,
+"month": 10,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.252683,
+"Wood Burning": 3e-06,
+"Charcoal": 0.216177,
+"Polluted Marine": 0.326413,
+"Fossil Fuel Combustion": 0.204724
+},
+"ugm3": {
+"Sea Salt Mixed": 0.572,
+"Wood Burning": 2.2e-05,
+"Charcoal": 1.75,
+"Polluted Marine": 0.989,
+"Fossil Fuel Combustion": 0.599
+},
+"total_ugm3": 3.910022,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.326413
+},
+{
+"id": "ETAD-0131",
+"filter_id": "ETAD-0131-3",
+"date": "2023-10-24",
+"year": 2023,
+"month": 10,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 1e-06,
+"Wood Burning": 0.09038,
+"Charcoal": 1e-06,
+"Polluted Marine": 0.16759,
+"Fossil Fuel Combustion": 0.742028
+},
+"ugm3": {
+"Sea Salt Mixed": 3e-06,
+"Wood Burning": 0.948,
+"Charcoal": 1e-05,
+"Polluted Marine": 0.801,
+"Fossil Fuel Combustion": 3.42
+},
+"total_ugm3": 5.169013,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.742028
+},
+{
+"id": "ETAD-0132",
+"filter_id": "ETAD-0132-4",
+"date": "2023-10-27",
+"year": 2023,
+"month": 10,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.027117,
+"Wood Burning": 0.353971,
+"Charcoal": 0.095446,
+"Polluted Marine": 0.518315,
+"Fossil Fuel Combustion": 0.005152
+},
+"ugm3": {
+"Sea Salt Mixed": 0.0139,
+"Wood Burning": 0.534,
+"Charcoal": 0.175,
+"Polluted Marine": 0.356,
+"Fossil Fuel Combustion": 0.00341
+},
+"total_ugm3": 1.08231,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.518315
+},
+{
+"id": "ETAD-0133",
+"filter_id": "ETAD-0133-5",
+"date": "2023-10-30",
+"year": 2023,
+"month": 10,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 2e-06,
+"Wood Burning": 0.144046,
+"Charcoal": 0.094921,
+"Polluted Marine": 0.147377,
+"Fossil Fuel Combustion": 0.613654
+},
+"ugm3": {
+"Sea Salt Mixed": 3e-06,
+"Wood Burning": 0.815,
+"Charcoal": 0.652,
+"Polluted Marine": 0.38,
+"Fossil Fuel Combustion": 1.53
+},
+"total_ugm3": 3.377003,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.613654
+},
+{
+"id": "ETAD-0134",
+"filter_id": "ETAD-0134-6",
+"date": "2023-11-02",
+"year": 2023,
+"month": 11,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 6e-06,
+"Wood Burning": 1e-06,
+"Charcoal": 0.069529,
+"Polluted Marine": 0.486193,
+"Fossil Fuel Combustion": 0.444271
+},
+"ugm3": {
+"Sea Salt Mixed": 2e-05,
+"Wood Burning": 1e-05,
+"Charcoal": 0.787,
+"Polluted Marine": 2.06,
+"Fossil Fuel Combustion": 1.82
+},
+"total_ugm3": 4.66703,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.486193
+},
+{
+"id": "ETAD-0136",
+"filter_id": "ETAD-0136-8",
+"date": "2023-11-05",
+"year": 2023,
+"month": 11,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 1e-06,
+"Wood Burning": 0.089707,
+"Charcoal": 1e-06,
+"Polluted Marine": 0.270507,
+"Fossil Fuel Combustion": 0.639785
+},
+"ugm3": {
+"Sea Salt Mixed": 2e-06,
+"Wood Burning": 0.925,
+"Charcoal": 7e-06,
+"Polluted Marine": 1.27,
+"Fossil Fuel Combustion": 2.9
+},
+"total_ugm3": 5.095009,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.639785
+},
+{
+"id": "ETAD-0137",
+"filter_id": "ETAD-0137-1",
+"date": "2023-11-08",
+"year": 2023,
+"month": 11,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.162629,
+"Wood Burning": 0.00527,
+"Charcoal": 0.079481,
+"Polluted Marine": 0.473826,
+"Fossil Fuel Combustion": 0.278793
+},
+"ugm3": {
+"Sea Salt Mixed": 0.431,
+"Wood Burning": 0.0411,
+"Charcoal": 0.753,
+"Polluted Marine": 1.68,
+"Fossil Fuel Combustion": 0.955
+},
+"total_ugm3": 3.8601,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.473826
+},
+{
+"id": "ETAD-0138",
+"filter_id": "ETAD-0138-2",
+"date": "2023-11-11",
+"year": 2023,
+"month": 11,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.214068,
+"Wood Burning": 0.00568,
+"Charcoal": 0.108858,
+"Polluted Marine": 0.447596,
+"Fossil Fuel Combustion": 0.223798
+},
+"ugm3": {
+"Sea Salt Mixed": 0.57,
+"Wood Burning": 0.0445,
+"Charcoal": 1.04,
+"Polluted Marine": 1.6,
+"Fossil Fuel Combustion": 0.771
+},
+"total_ugm3": 4.0255,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.447596
+},
+{
+"id": "ETAD-0139",
+"filter_id": "ETAD-0139-3",
+"date": "2023-11-14",
+"year": 2023,
+"month": 11,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.184158,
+"Wood Burning": 0.117327,
+"Charcoal": 0.097525,
+"Polluted Marine": 0.406436,
+"Fossil Fuel Combustion": 0.194554
+},
+"ugm3": {
+"Sea Salt Mixed": 0.603,
+"Wood Burning": 1.13,
+"Charcoal": 1.14,
+"Polluted Marine": 1.78,
+"Fossil Fuel Combustion": 0.823
+},
+"total_ugm3": 5.476,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.406436
+},
+{
+"id": "ETAD-0140",
+"filter_id": "ETAD-0140-4",
+"date": "2023-11-17",
+"year": 2023,
+"month": 11,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.071023,
+"Wood Burning": 0.052557,
+"Charcoal": 0.096117,
+"Polluted Marine": 0.419034,
+"Fossil Fuel Combustion": 0.361269
+},
+"ugm3": {
+"Sea Salt Mixed": 0.243,
+"Wood Burning": 0.529,
+"Charcoal": 1.18,
+"Polluted Marine": 1.92,
+"Fossil Fuel Combustion": 1.6
+},
+"total_ugm3": 5.472,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.419034
+},
+{
+"id": "ETAD-0141",
+"filter_id": "ETAD-0141-5",
+"date": "2023-11-20",
+"year": 2023,
+"month": 11,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.13954,
+"Wood Burning": 0.214457,
+"Charcoal": 0.040375,
+"Polluted Marine": 0.335125,
+"Fossil Fuel Combustion": 0.270502
+},
+"ugm3": {
+"Sea Salt Mixed": 0.395,
+"Wood Burning": 1.79,
+"Charcoal": 0.409,
+"Polluted Marine": 1.27,
+"Fossil Fuel Combustion": 0.99
+},
+"total_ugm3": 4.854,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.335125
+},
+{
+"id": "ETAD-0142",
+"filter_id": "ETAD-0142-6",
+"date": "2023-11-23",
+"year": 2023,
+"month": 11,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.109372,
+"Wood Burning": 0.111992,
+"Charcoal": 0.018927,
+"Polluted Marine": 0.322876,
+"Fossil Fuel Combustion": 0.436833
+},
+"ugm3": {
+"Sea Salt Mixed": 0.271,
+"Wood Burning": 0.815,
+"Charcoal": 0.167,
+"Polluted Marine": 1.07,
+"Fossil Fuel Combustion": 1.4
+},
+"total_ugm3": 3.723,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.436833
+},
+{
+"id": "ETAD-0144",
+"filter_id": "ETAD-0144-8",
+"date": "2023-11-26",
+"year": 2023,
+"month": 11,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.160098,
+"Wood Burning": 0.019251,
+"Charcoal": 0.070759,
+"Polluted Marine": 0.330474,
+"Fossil Fuel Combustion": 0.419417
+},
+"ugm3": {
+"Sea Salt Mixed": 0.656,
+"Wood Burning": 0.232,
+"Charcoal": 1.04,
+"Polluted Marine": 1.81,
+"Fossil Fuel Combustion": 2.22
+},
+"total_ugm3": 5.958,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.419417
+},
+{
+"id": "ETAD-0145",
+"filter_id": "ETAD-0145-1",
+"date": "2023-11-29",
+"year": 2023,
+"month": 11,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.013939,
+"Wood Burning": 0.031199,
+"Charcoal": 2e-06,
+"Polluted Marine": 0.21324,
+"Fossil Fuel Combustion": 0.741619
+},
+"ugm3": {
+"Sea Salt Mixed": 0.0517,
+"Wood Burning": 0.34,
+"Charcoal": 3.1e-05,
+"Polluted Marine": 1.06,
+"Fossil Fuel Combustion": 3.55
+},
+"total_ugm3": 5.001731,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.741619
+},
+{
+"id": "ETAD-0146",
+"filter_id": "ETAD-0146-2",
+"date": "2023-12-02",
+"year": 2023,
+"month": 12,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.140574,
+"Wood Burning": 0.0,
+"Charcoal": 0.000579,
+"Polluted Marine": 0.50762,
+"Fossil Fuel Combustion": 0.351226
+},
+"ugm3": {
+"Sea Salt Mixed": 0.549,
+"Wood Burning": 3e-06,
+"Charcoal": 0.00808,
+"Polluted Marine": 2.65,
+"Fossil Fuel Combustion": 1.77
+},
+"total_ugm3": 4.977083,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.50762
+},
+{
+"id": "ETAD-0147",
+"filter_id": "ETAD-0147-3",
+"date": "2023-12-05",
+"year": 2023,
+"month": 12,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.041114,
+"Wood Burning": 0.036226,
+"Charcoal": 0.04975,
+"Polluted Marine": 0.275364,
+"Fossil Fuel Combustion": 0.597545
+},
+"ugm3": {
+"Sea Salt Mixed": 0.123,
+"Wood Burning": 0.318,
+"Charcoal": 0.53,
+"Polluted Marine": 1.1,
+"Fossil Fuel Combustion": 2.3
+},
+"total_ugm3": 4.371,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.597545
+},
+{
+"id": "ETAD-0148",
+"filter_id": "ETAD-0148-4",
+"date": "2023-12-08",
+"year": 2023,
+"month": 12,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 3e-06,
+"Wood Burning": 0.135026,
+"Charcoal": 0.27509,
+"Polluted Marine": 0.032648,
+"Fossil Fuel Combustion": 0.557233
+},
+"ugm3": {
+"Sea Salt Mixed": 5e-06,
+"Wood Burning": 0.639,
+"Charcoal": 1.58,
+"Polluted Marine": 0.0703,
+"Fossil Fuel Combustion": 1.16
+},
+"total_ugm3": 3.449305,
+"dominant_source": "fossil_fuel",
+"dominant_fraction": 0.557233
+},
+{
+"id": "ETAD-0149",
+"filter_id": "ETAD-0149-5",
+"date": "2023-12-11",
+"year": 2023,
+"month": 12,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.105616,
+"Wood Burning": 0.138664,
+"Charcoal": 0.031199,
+"Polluted Marine": 0.537324,
+"Fossil Fuel Combustion": 0.187197
+},
+"ugm3": {
+"Sea Salt Mixed": 0.15,
+"Wood Burning": 0.578,
+"Charcoal": 0.158,
+"Polluted Marine": 1.02,
+"Fossil Fuel Combustion": 0.343
+},
+"total_ugm3": 2.249,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.537324
+},
+{
+"id": "ETAD-0150",
+"filter_id": "ETAD-0150-6",
+"date": "2023-12-14",
+"year": 2023,
+"month": 12,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.045352,
+"Wood Burning": 0.126354,
+"Charcoal": 0.03407,
+"Polluted Marine": 0.519705,
+"Fossil Fuel Combustion": 0.274519
+},
+"ugm3": {
+"Sea Salt Mixed": 0.0988,
+"Wood Burning": 0.809,
+"Charcoal": 0.265,
+"Polluted Marine": 1.52,
+"Fossil Fuel Combustion": 0.773
+},
+"total_ugm3": 3.4658,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.519705
+},
+{
+"id": "ETAD-0152",
+"filter_id": "ETAD-0152-8",
+"date": "2023-12-17",
+"year": 2023,
+"month": 12,
+"season": "Dry (Oct-Feb)",
+"fraction": {
+"Sea Salt Mixed": 0.042794,
+"Wood Burning": 0.193893,
+"Charcoal": 0.007819,
+"Polluted Marine": 0.454353,
+"Fossil Fuel Combustion": 0.301141
+},
+"ugm3": {
+"Sea Salt Mixed": 0.131,
+"Wood Burning": 1.75,
+"Charcoal": 0.0857,
+"Polluted Marine": 1.87,
+"Fossil Fuel Combustion": 1.19
+},
+"total_ugm3": 5.0267,
+"dominant_source": "polluted_marine",
+"dominant_fraction": 0.454353
+}
+]
+}

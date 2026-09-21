@@ -4,9 +4,23 @@
     {
       "name": "calibration-explorer",
       "runtimeExecutable": "/Users/ahmadjalil/anaconda3/bin/python",
-      "runtimeArgs": ["calibration_explorer/app.py"],
+      "runtimeArgs": [
+        "calibration_explorer/app.py"
+      ],
       "port": 5058,
       "autoPort": true
+    },
+    {
+      "name": "gallery",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--no-open"
+      ],
+      "cwd": "gallery/app",
+      "port": 5178
     }
   ]
 }

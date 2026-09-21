@@ -1,0 +1,30 @@
+{
+  "name": "aeth-graph-gallery",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "React + D3 gallery over the aethmodular notebook figure estate",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "d3": "^7.9.0",
+    "d3-hexbin": "^0.2.2",
+    "d3-sankey": "^0.12.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/d3": "^7.4.3",
+    "@types/d3-hexbin": "^0.2.5",
+    "@types/d3-sankey": "^0.12.5",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}

@@ -1,0 +1,1125 @@
+{
+"generated": "2026-09-17T17:34:43+00:00",
+"n_notebooks": 184,
+"n_figures": 827,
+"by_category": [
+[
+"correlation",
+478
+],
+[
+"evolution",
+179
+],
+[
+"distribution",
+89
+],
+[
+"ranking",
+81
+]
+],
+"by_chart": [
+[
+"Scatterplot",
+281
+],
+[
+"Bubble",
+123
+],
+[
+"Timeseries",
+73
+],
+[
+"Barplot",
+70
+],
+[
+"Area chart",
+59
+],
+[
+"Boxplot",
+50
+],
+[
+"Line chart",
+46
+],
+[
+"Histogram",
+36
+],
+[
+"Connected Scatter",
+31
+],
+[
+"2D Density",
+16
+],
+[
+"Correlogram",
+14
+],
+[
+"Heatmap",
+13
+],
+[
+"Lollipop",
+11
+],
+[
+"Violin",
+3
+],
+[
+"Stacked Area",
+1
+]
+],
+"top_notebooks": [
+[
+"notebooks/analysis/absorption/ETAD_Aug13.ipynb",
+17
+],
+[
+"research/spartan/follow_up_mass_and_ratio_plots.ipynb",
+15
+],
+[
+"research/ftir_hips_chem/warren_meeting_slides.ipynb",
+14
+],
+[
+"notebooks/analysis/absorption/ETAD_comprehensive_absorption_analysis.ipynb",
+13
+],
+[
+"notebooks/analysis/surface_columnar_linkage.ipynb",
+13
+],
+[
+"research/ftir_hips_chem/notebooks/archive/scratch/Multi_Site_Analysis_copy.ipynb",
+13
+],
+[
+"research/ftir_hips_chem/ETAD_Factor_Analysis.ipynb",
+12
+],
+[
+"research/ftir_hips_chem/notebooks/archive/scratch/Test_1.ipynb",
+12
+],
+[
+"research/improve_hips_offset/improve_spartan_may_full_analysis.ipynb",
+12
+],
+[
+"notebooks/analysis/meteorology/meteorology_source_interaction.ipynb",
+11
+],
+[
+"notebooks/analysis/surface_columnar_figures.ipynb",
+11
+],
+[
+"research/ftir_hips_chem/Task_Analysis_Notebook.ipynb",
+11
+],
+[
+"research/ftir_ec_phase3/ftir_52_network_spectral_map.ipynb",
+10
+],
+[
+"research/ftir_hips_chem/Multi_Site_Analysis_Fixed.ipynb",
+10
+],
+[
+"notebooks/analysis/meteorology/friday_summary_consolidated.ipynb",
+9
+],
+[
+"notebooks/analysis/meteorology/meteorology_revisions.ipynb",
+9
+],
+[
+"research/ftir_hips_chem/Multi_Site_Analysis_FollowUp.ipynb",
+9
+],
+[
+"research/ftir_hips_chem/follow_up_analysis.ipynb",
+9
+],
+[
+"notebooks/analysis/diurnal_pub_figures.ipynb",
+8
+],
+[
+"notebooks/analysis/meteorology/aeronet_addis_deep_dive.ipynb",
+8
+],
+[
+"notebooks/analysis/meteorology/aeronet_addis_diagnostics.ipynb",
+8
+],
+[
+"notebooks/analysis/meteorology/aeronet_method_agreement.ipynb",
+8
+],
+[
+"notebooks/analysis/meteorology/hips_intercept_investigation.ipynb",
+8
+],
+[
+"notebooks/plotting_gaps_scenarios.ipynb",
+8
+],
+[
+"research/ftir_hips_chem/Multi_Site_Analysis.ipynb",
+8
+]
+],
+"examples": {
+"Scatterplot": [
+{
+"notebook": "notebooks/analysis/absorption/AAARpos.ipynb",
+"title": "Physical Constraint Check: BC = 0 when Fabs = 0\\n",
+"x": "HIPS Fabs (Mm\u207b\u00b9)",
+"y": "FTIR EC (\u03bcg/m\u00b3)"
+},
+{
+"notebook": "notebooks/analysis/absorption/AAARpos.ipynb",
+"title": "MAC Time Series by Season - {site_code}\\n(Outliers Removed)",
+"x": "Date",
+"y": "MAC (m\u00b2/g)"
+},
+{
+"notebook": "notebooks/analysis/absorption/ETAD_Aug13.ipynb",
+"title": "MAC Time Series by Season{title_suffix}",
+"x": "Date",
+"y": "MAC (m\u00b2/g)"
+},
+{
+"notebook": "notebooks/analysis/absorption/ETAD_Aug13.ipynb",
+"title": "MAC Time Series by Season{title_suffix}",
+"x": "Date",
+"y": "MAC (m\u00b2/g)"
+},
+{
+"notebook": "notebooks/analysis/absorption/ETAD_Aug13.ipynb",
+"title": "Method Agreement: Aethalometer vs HIPS vs FTIR-EC\\nTime Series Comparison",
+"x": "Date",
+"y": "Concentration (\u03bcg/m\u00b3)"
+},
+{
+"notebook": "notebooks/analysis/absorption/ETAD_Aug13.ipynb",
+"title": "Red Wavelength Comparison\\n625nm vs 633nm (\u0394\u03bb = 8nm)",
+"x": "Aethalometer Red BCc (625nm) [\u03bcg/m\u00b3]",
+"y": "HIPS Fabs (633nm) [Mm\u207b\u00b9]"
+},
+{
+"notebook": "notebooks/analysis/absorption/ETAD_Aug13.ipynb",
+"title": "{wavelength} ({info[",
+"x": "{wavelength} Aethalometer Babs (Mm\u207b\u00b9)",
+"y": "HIPS Fabs (Mm\u207b\u00b9)"
+},
+{
+"notebook": "notebooks/analysis/absorption/ETAD_Aug13.ipynb",
+"title": "Method Agreement: Aethalometer vs HIPS vs FTIR-EC\\nTime Series Comparison",
+"x": "Date",
+"y": "Concentration (\u03bcg/m\u00b3)"
+},
+{
+"notebook": "notebooks/analysis/absorption/ETAD_Aug13.ipynb",
+"title": "IR BCc vs Iron (Y-axis to 10)",
+"x": "IR BCc (\u03bcg/m\u00b3)",
+"y": "Iron (\u03bcg/m\u00b3)"
+},
+{
+"notebook": "notebooks/analysis/absorption/ETAD_Aug13.ipynb",
+"title": "Red Wavelength Comparison",
+"x": "Aethalometer Red Babs (625nm) [Mm\u207b\u00b9]",
+"y": "HIPS Fabs (633nm) [Mm\u207b\u00b9]"
+},
+{
+"notebook": "notebooks/analysis/absorption/ETAD_comprehensive_absorption_analysis.ipynb",
+"title": "MAC by Ethiopian Season",
+"x": "Season",
+"y": "MAC (m\u00b2/g)"
+},
+{
+"notebook": "notebooks/analysis/absorption/ETAD_comprehensive_absorption_analysis.ipynb",
+"title": "{season} - MAC Time Series",
+"x": "Date",
+"y": "MAC (m\u00b2/g)"
+}
+],
+"Timeseries": [
+{
+"notebook": "notebooks/analysis/absorption/AAARpos.ipynb",
+"title": "Method Agreement: Aethalometer vs HIPS vs FTIR-EC - {site_code}",
+"x": "Date",
+"y": "Concentration (\u03bcg/m\u00b3)"
+},
+{
+"notebook": "notebooks/analysis/absorption/ETAD_Aug13.ipynb",
+"title": "Iron and FTIR EC Time Series",
+"x": "Date",
+"y": "Concentration (\u03bcg/m\u00b3)"
+},
+{
+"notebook": "notebooks/analysis/absorption/ETAD_Aug13.ipynb",
+"title": "Normalized FTIR EC vs BCc Time Series",
+"x": "Date",
+"y": "Normalized Concentration"
+},
+{
+"notebook": "notebooks/analysis/absorption/ETAD_comprehensive_absorption_analysis.ipynb",
+"title": "Normalized FTIR EC vs BCc Time Series",
+"x": "Date",
+"y": "Normalized Concentration"
+},
+{
+"notebook": "notebooks/analysis/diurnal_pub_figures.ipynb",
+"title": "{season}\\n(absolute BC)",
+"x": "Hour",
+"y": "BC (ug/m3)"
+},
+{
+"notebook": "notebooks/analysis/diurnal_pub_figures.ipynb",
+"title": "{day} -- {desc} (CV={daily_cv[day]:.2f}, {season})",
+"x": "Time of Day (local)",
+"y": "BC (ug/m3)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/friday_summary_consolidated.ipynb",
+"title": "Dominant Source by Season (Separate)",
+"x": "",
+"y": "% of Samples"
+},
+{
+"notebook": "notebooks/analysis/meteorology/meteorology_revisions.ipynb",
+"title": "Slope Divergence vs RH Threshold \u2014 Identifying Optimal Split Point",
+"x": "RH Threshold (%)",
+"y": "|Slope$_{low}$ - Slope$_{high}$|"
+},
+{
+"notebook": "notebooks/analysis/meteorology/meteorology_revisions.ipynb",
+"title": "Season-Stratified RH Threshold Sweep\\n",
+"x": "RH Threshold (%)",
+"y": "Slope"
+},
+{
+"notebook": "notebooks/analysis/meteorology/rh_sweep_seasonal.ipynb",
+"title": "Cross-Season Comparison: Low-RH Slope vs RH Threshold\\n",
+"x": "RH Threshold (%)",
+"y": "Slope (low-RH subset)"
+},
+{
+"notebook": "notebooks/analysis/surface_columnar_linkage.ipynb",
+"title": "Sequential Exclusion: Correlation Improvement\\n(Eom et al. 2025 method)",
+"x": "Bottom % of BC/AOD Excluded",
+"y": "Pearson r (BC vs columnar property)"
+},
+{
+"notebook": "notebooks/archive/aethalometer_data_analysis.ipynb",
+"title": "{col}",
+"x": "",
+"y": "Concentration (\u03bcg/m\u00b3)"
+}
+],
+"Bubble": [
+{
+"notebook": "notebooks/analysis/absorption/ETAD_Aug13.ipynb",
+"title": "Red BCc Smoothed MAC by Ethiopian Season",
+"x": "Season",
+"y": "MAC Red Smoothed (m\u00b2/g)"
+},
+{
+"notebook": "notebooks/analysis/absorption/ETAD_Aug13.ipynb",
+"title": "IR BCc vs FTIR EC: Fe/BC Ratio Analysis\\nInvestigating Slope Change Above 10 \u03bcg/m\u00b3",
+"x": "IR BCc Smoothed (\u03bcg/m\u00b3)",
+"y": "FTIR EC (\u03bcg/m\u00b3)"
+},
+{
+"notebook": "notebooks/analysis/absorption/ETAD_Aug13.ipynb",
+"title": "IR BCc vs FTIR EC: Fe/BC Ratio Analysis\\nInvestigating Slope Change Above 10 \u03bcg/m\u00b3",
+"x": "IR BCc Smoothed (\u03bcg/m\u00b3)",
+"y": "FTIR EC (\u03bcg/m\u00b3)"
+},
+{
+"notebook": "notebooks/analysis/absorption/ETAD_Aug13.ipynb",
+"title": "IR BCc vs FTIR EC (Iron Color-Coded)",
+"x": "IR BCc (\u03bcg/m\u00b3)",
+"y": "FTIR EC (\u03bcg/m\u00b3)"
+},
+{
+"notebook": "notebooks/analysis/absorption/ETAD_Aug13.ipynb",
+"title": "IR BCc vs FTIR EC (Iron Color-Coded)",
+"x": "IR BCc (\u03bcg/m\u00b3)",
+"y": "FTIR EC (\u03bcg/m\u00b3)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/addis_hips_two_problem_decomposition.ipynb",
+"title": "HIPS BC vs FTIR EC",
+"x": "FTIR EC (ug/m\\u00b3)",
+"y": "HIPS BC (ug/m\\u00b3)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/addis_hips_two_problem_decomposition.ipynb",
+"title": "Negative Points on Original Scatter",
+"x": "FTIR EC (ug/m\\u00b3)",
+"y": "HIPS BC (ug/m\\u00b3)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/addis_hips_two_problem_decomposition.ipynb",
+"title": "Strategy Comparison",
+"x": "FTIR EC (ug/m\\u00b3)",
+"y": "Corrected HIPS BC"
+},
+{
+"notebook": "notebooks/analysis/meteorology/addis_hips_two_problem_decomposition.ipynb",
+"title": "Slope vs EC Level (window={window_size})",
+"x": "FTIR EC Window Center (ug/m\\u00b3)",
+"y": "Local Regression Slope"
+},
+{
+"notebook": "notebooks/analysis/meteorology/addis_hips_two_problem_decomposition.ipynb",
+"title": "Original (both problems present)",
+"x": "FTIR EC (ug/m\\u00b3)",
+"y": "HIPS BC (ug/m\\u00b3)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/addis_hips_two_problem_decomposition.ipynb",
+"title": "Original HIPS vs Aethalometer",
+"x": "Aeth IR BCc (ug/m\\u00b3)",
+"y": "HIPS BC (ug/m\\u00b3)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/hips_ftir_intercept_rh_recursive_diagnostics.ipynb",
+"title": "Overall HIPS vs FTIR",
+"x": "FTIR EC (\\u00b5g/m\\u00b3)",
+"y": "HIPS Fabs/MAC (\\u00b5g/m\\u00b3)"
+}
+],
+"Boxplot": [
+{
+"notebook": "notebooks/analysis/absorption/ETAD_comprehensive_absorption_analysis.ipynb",
+"title": "MAC by Ethiopian Season (Outliers Removed)",
+"x": "Season",
+"y": "MAC (m\u00b2/g)"
+},
+{
+"notebook": "notebooks/analysis/absorption/ETAD_comprehensive_absorption_analysis.ipynb",
+"title": "MAC by Ethiopian Season (Outliers Removed)",
+"x": "Season",
+"y": "MAC (m\u00b2/g)"
+},
+{
+"notebook": "notebooks/analysis/diurnal_pub_figures.ipynb",
+"title": "True AAE Diurnal Pattern\\n(MA350 apparent AAE + 1.0 correction)",
+"x": "Hour of Day (local)",
+"y": "Absorption Angstrom Exponent (true)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/aeronet_addis_diagnostics.ipynb",
+"title": "BC-to-AOD Ratio Diurnal Cycle\\n(higher = more surface-confined)",
+"x": "Hour (local)",
+"y": "BC / AOD_500nm ratio"
+},
+{
+"notebook": "notebooks/analysis/meteorology/meteorology_source_interaction.ipynb",
+"title": "Total Source Concentration\\nvs Precipitation",
+"x": "",
+"y": "Total KF Concentration (\u00b5g/m\u00b3)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/temperature_gradient_analysis.ipynb",
+"title": "{src_name} by T_min Quartile\\n(Q1 = coldest mornings)",
+"x": "",
+"y": "{src_name} Conc (\u00b5g/m\u00b3)"
+},
+{
+"notebook": "notebooks/archive/aethalometer_data_visualization.ipynb",
+"title": "Black Carbon Time Series - {dataset_name} ({summary[",
+"x": "Time",
+"y": "BC Concentration (\u00b5g/m\u00b3)"
+},
+{
+"notebook": "notebooks/archive/aethalometer_data_visualization.ipynb",
+"title": "BC Concentration Distribution Comparison",
+"x": "",
+"y": "BC Concentration (\u00b5g/m\u00b3)"
+},
+{
+"notebook": "notebooks/archive/aethalometer_data_visualization2.ipynb",
+"title": "Black Carbon Time Series - {dataset_name} ({summary[",
+"x": "Time",
+"y": "BC Concentration (\u00b5g/m\u00b3)"
+},
+{
+"notebook": "notebooks/qc/flow_qc_analysis.ipynb",
+"title": "{location}: Distribution of Ratio R",
+"x": "R (Flow1/Flow2)",
+"y": "Density"
+},
+{
+"notebook": "research/ftir_ec_calibration_2026_06_25/07_ethiopia_variant_ec.ipynb",
+"title": "ETAD (Addis/Ethiopia) EC by calibration variant  (n=319 filters)",
+"x": "",
+"y": "predicted EC (\u00b5g/m\u00b3)"
+},
+{
+"notebook": "research/ftir_ec_calibration_2026_06_25/09_ethiopia_component_ec.ipynb",
+"title": "RMSECV \u2014 recommended k={kmin} (red)",
+"x": "n components",
+"y": "RMSECV (\u00b5g, 5-fold)"
+}
+],
+"Area chart": [
+{
+"notebook": "notebooks/analysis/diurnal_pub_figures.ipynb",
+"title": "Median Diurnal BC by Wavelength ({label})\\n(shading = IQR)",
+"x": "Hour of Day (local)",
+"y": "BC concentration (ug/m3)"
+},
+{
+"notebook": "notebooks/analysis/diurnal_pub_figures.ipynb",
+"title": "Diurnal Spectral Shape\\n(>1 = enhanced short-wave absorption)",
+"x": "Hour of Day (local)",
+"y": "BC wavelength / IR BCc ratio"
+},
+{
+"notebook": "notebooks/analysis/diurnal_pub_figures.ipynb",
+"title": "Delta-C Diurnal Pattern\\n(positive = biomass burning signal)",
+"x": "Hour of Day (local)",
+"y": "Delta-C (UV - IR BCc, ug/m3)"
+},
+{
+"notebook": "notebooks/analysis/diurnal_pub_figures.ipynb",
+"title": "Wavelength Spread (CV) by Hour\\n(higher = wavelengths more different)",
+"x": "Hour of Day (local)",
+"y": "CV across 5 wavelengths"
+},
+{
+"notebook": "notebooks/analysis/meteorology/aeronet_addis_deep_dive.ipynb",
+"title": "{season} (insufficient data)",
+"x": "Hour (local time)",
+"y": "Surface BC (\u00b5g/m\u00b3)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/meteorology_revisions.ipynb",
+"title": "RH Threshold Sweep: Slopes, Distance from Ideal (1:1), and Sample Split",
+"x": "RH Threshold (%)",
+"y": "R$^2$ (dashed)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/rh_sweep_seasonal.ipynb",
+"title": "{season}\\n",
+"x": "RH Threshold (%)",
+"y": "R$^2$ (dashed)"
+},
+{
+"notebook": "notebooks/archive/data_analysis_figures_pkl.ipynb",
+"title": "Your Cleaned Data (PKL Processing)",
+"x": "Date",
+"y": "BC Concentration (\u03bcg/m\u00b3)"
+},
+{
+"notebook": "notebooks/qc/flow_qc_analysis.ipynb",
+"title": "{location}: Flow Ratio (R) Over Time - Hourly Aggregation",
+"x": "Time",
+"y": "R (Flow1/Flow2)"
+},
+{
+"notebook": "notebooks/qc/flow_qc_analysis.ipynb",
+"title": "{location}: Flow Fraction f1 Over Time",
+"x": "Time",
+"y": "f1 (Flow1/Flow_total)"
+},
+{
+"notebook": "research/ftir_ec_phase3/ftir_17_deck_figures_and_seasonal_spectra.ipynb",
+"title": "AIRSpec df1=6 corrected",
+"x": "Wavenumber (cm\u207b\u00b9)",
+"y": "Median absorbance"
+},
+{
+"notebook": "research/ftir_ec_phase3/ftir_17_deck_figures_and_seasonal_spectra.ipynb",
+"title": "Addis median spectra by Naveed",
+"x": "",
+"y": "Median absorbance (IQR shaded)"
+}
+],
+"Heatmap": [
+{
+"notebook": "notebooks/analysis/diurnal_pub_figures.ipynb",
+"title": "Diurnal Amplification by Wavelength\\n(1.0 = daily average)",
+"x": "Hour of Day",
+"y": "Ratio to daily median"
+},
+{
+"notebook": "notebooks/analysis/meteorology/map.ipynb",
+"title": "Central Africa \u2014 Ethiopia & Addis Ababa Highlighted",
+"x": "Longitude",
+"y": "Latitude"
+},
+{
+"notebook": "research/archive/charcoal_ftir/notebooks/charcoal_kbr_ftir_ec_discrepancy_workflow.ipynb",
+"title": "Functional-Group Region Intensities",
+"x": "",
+"y": ""
+},
+{
+"notebook": "research/ftir_hips_chem/addis_02_temporal_patterns.ipynb",
+"title": "{season}",
+"x": "Day of Week",
+"y": "Hour of Day"
+},
+{
+"notebook": "research/ftir_hips_chem/addis_05_diurnal_wavelength_analysis.ipynb",
+"title": "Diurnal Amplification by Wavelength\\n(1.0 = daily average)",
+"x": "Hour of Day",
+"y": "Ratio to daily median"
+},
+{
+"notebook": "research/ftir_hips_chem/dominant_source_comparison.ipynb",
+"title": "Method 1: GF (Fraction) Based",
+"x": "K_F (Concentration) Method",
+"y": "Sample Count"
+},
+{
+"notebook": "research/ftir_hips_chem/multisite_diurnal_wavelength_analysis.ipynb",
+"title": "{site}",
+"x": "Hour of Day",
+"y": ""
+},
+{
+"notebook": "research/improve_hips_offset/improve_addis_analog_audit.ipynb",
+"title": "Smoke-like candidates by context",
+"x": "Score >= 8 rows",
+"y": "Rows"
+},
+{
+"notebook": "research/improve_hips_offset/improve_smoke_event_qc.ipynb",
+"title": "Top smoke-like candidate sites",
+"x": "Score >= 8 candidate rows",
+"y": "Score >= 8 candidate rows"
+},
+{
+"notebook": "research/spartan/spartan_all_sites_hips_overview.ipynb",
+"title": "SPARTAN site x product coverage (black = present)",
+"x": "",
+"y": ""
+},
+{
+"notebook": "research/spartan/spartan_all_sites_hips_overview.ipynb",
+"title": "Monthly HIPS/FABS sample counts by SPARTAN site",
+"x": "Month",
+"y": "Site"
+}
+],
+"Line chart": [
+{
+"notebook": "notebooks/analysis/iron_correction_test.ipynb",
+"title": "(a) Slope vs Iron correction factor k",
+"x": "k (Mm-1 per ug/m3 Iron)",
+"y": "Recovered slope (m2/g)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/friday_summary_consolidated.ipynb",
+"title": "{info[",
+"x": "",
+"y": ""
+},
+{
+"notebook": "notebooks/analysis/meteorology/friday_summary_consolidated.ipynb",
+"title": "{info[",
+"x": "",
+"y": ""
+},
+{
+"notebook": "notebooks/analysis/meteorology/friday_summary_consolidated.ipynb",
+"title": "{info[",
+"x": "",
+"y": ""
+},
+{
+"notebook": "notebooks/analysis/meteorology/meteorology_source_interaction.ipynb",
+"title": "{y_label.split(",
+"x": "RH Threshold (%)",
+"y": "R\u00b2 (dashed)"
+},
+{
+"notebook": "research/July07/spectra_side_by_side_952_improve_vs_ethiopia.ipynb",
+"title": "Do the 952-sample calibration spectra look like the Ethiopia spectra?  ",
+"x": "wavenumber (cm$^{-1}$)",
+"y": "absorbance (a.u.)"
+},
+{
+"notebook": "research/July07/spectra_side_by_side_952_improve_vs_ethiopia.ipynb",
+"title": "Mean baselined shape \u2014 IMPROVE 952 vs. ETAD",
+"x": "wavenumber (cm$^{-1}$)",
+"y": "area-normalized absorbance"
+},
+{
+"notebook": "research/July07/spectra_side_by_side_improve_vs_ethiopia.ipynb",
+"title": "Do the calibration spectra look like the Ethiopia spectra?  ",
+"x": "wavenumber (cm$^{-1}$)",
+"y": "absorbance (a.u.)"
+},
+{
+"notebook": "research/July07/spectra_side_by_side_improve_vs_ethiopia.ipynb",
+"title": "Mean baselined shape \u2014 IMPROVE vs. ETAD",
+"x": "wavenumber (cm$^{-1}$)",
+"y": "area-normalized absorbance"
+},
+{
+"notebook": "research/addis_fabs_ec_deming/addis_fabs_ec_offset_correction.ipynb",
+"title": "To zero the intercept: \u0394 = k \u00b7 (offset/slope)",
+"x": "multiplier k",
+"y": "additive \u0394 needed (\u00b5g/m\u00b3)"
+},
+{
+"notebook": "research/archive/charcoal_ftir/notebooks/charcoal_kbr_ftir_ec_discrepancy_workflow.ipynb",
+"title": "Literature vs Lab Charcoal Spectra",
+"x": "Wavenumber (cm^-1)",
+"y": "Normalized response"
+},
+{
+"notebook": "research/archive/charcoal_ftir/notebooks/charcoal_kbr_ftir_reference_analysis.ipynb",
+"title": "Reference Charcoal FTIR Spectra by Charring Temperature",
+"x": "Wavenumber (cm-1)",
+"y": "Normalized relative intensity"
+}
+],
+"Barplot": [
+{
+"notebook": "notebooks/analysis/meteorology/Seasonalclass.ipynb",
+"title": "Daily Precipitation in 2023 with Paper\\",
+"x": "Date",
+"y": "Precipitation (mm)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/Seasonalclass.ipynb",
+"title": "Precipitation Patterns: Dec 2022 - Oct 2024\\nApplying 2023 Seasonal Boundaries",
+"x": "Date",
+"y": "Daily Precipitation (mm)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/Seasonalclass.ipynb",
+"title": "Paper\\",
+"x": "Date (2023)",
+"y": "Daily Precipitation (mm)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/Seasonalclass.ipynb",
+"title": "Paper\\",
+"x": "Date (2023)",
+"y": "Daily Precipitation (mm)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/Seasonalclass.ipynb",
+"title": "Paper\\",
+"x": "Season",
+"y": "Average Daily Precipitation (mm)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/Seasonalclass.ipynb",
+"title": "Precipitation During Filter Sampling Periods\\n(Green lines = Filter sampling dates)",
+"x": "Date",
+"y": "Daily Precipitation (mm)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/aeronet_addis_deep_dive.ipynb",
+"title": "Fine & Coarse Mode AOD Time Series\\n(blue shading = Kiremt rainy season)",
+"x": "Date",
+"y": "AOD 500nm"
+},
+{
+"notebook": "notebooks/analysis/meteorology/aeronet_method_agreement.ipynb",
+"title": "Variance Ratio by Season\\n(<1 = HIPS compressed)",
+"x": "",
+"y": "Var(HIPS EC) / Var(FTIR EC)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/friday_summary_consolidated.ipynb",
+"title": "Figure 7 Replication: Daily Source Fractions (KF-based)",
+"x": "",
+"y": "Source Fraction (KF-based)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/friday_summary_consolidated.ipynb",
+"title": "Source Contributions by Concentration (KF \u00b5g/m\u00b3)",
+"x": "",
+"y": "Source Concentration (\u00b5g/m\u00b3)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/friday_summary_consolidated.ipynb",
+"title": "Original 5 Sources (KF)",
+"x": "",
+"y": "Number of Samples"
+},
+{
+"notebook": "notebooks/analysis/meteorology/friday_summary_consolidated.ipynb",
+"title": "Separate Sources",
+"x": "",
+"y": "Mean Concentration (\u00b5g/m\u00b3)"
+}
+],
+"Connected Scatter": [
+{
+"notebook": "notebooks/analysis/meteorology/Seasonalclass.ipynb",
+"title": "Precipitation Patterns: Dec 2022 - Oct 2024\\nPaper\\",
+"x": "Date",
+"y": "Daily Precipitation (mm)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/aeronet_addis_deep_dive.ipynb",
+"title": "Regime Quadrants by Season",
+"x": "BC (\u00b5g/m\u00b3)",
+"y": "Fine Mode Fraction"
+},
+{
+"notebook": "notebooks/analysis/meteorology/aeronet_addis_diagnostics.ipynb",
+"title": "Surface vs Columnar Angstrom",
+"x": "Columnar AE (440-870nm)",
+"y": "Surface AAE (375-880nm)"
+},
+{
+"notebook": "notebooks/analysis/meteorology/aeronet_addis_diagnostics.ipynb",
+"title": "BC vs FMF by Season\\n(quadrants = regimes)",
+"x": "BC (\u00b5g/m\u00b3)",
+"y": "Fine Mode Fraction (500nm)"
+},
+{
+"notebook": "notebooks/analysis/surface_columnar_linkage.ipynb",
+"title": "(a) BC vs AOD: Daily + Binned Means",
+"x": "AOD 500nm",
+"y": "BC (\u00b5g/m\u00b3)"
+},
+{
+"notebook": "research/archive/charcoal_ftir/notebooks/charcoal_kbr_ftir_ec_discrepancy_workflow.ipynb",
+"title": "Adama TOR char vs soot",
+"x": "soot-EC = EC2 + EC3",
+"y": "char-EC = EC1 - OPTR"
+},
+{
+"notebook": "research/ftir_ec_calibration_2026_06_25/07_ethiopia_variant_ec.ipynb",
+"title": "{c}\\nmedian {c.split()[0]}/CAL-0 = {med_ratio:.2f}",
+"x": "CAL-0 EC (\u00b5g/m\u00b3)",
+"y": "variant EC (\u00b5g/m\u00b3)"
+},
+{
+"notebook": "research/ftir_ec_phase3/ftir_20_component_selection_across_setups.ipynb",
+"title": "Component selection on every calibration setup: same cohorts, two protocols\\n",
+"x": "n PLS components",
+"y": "%RMSECV  (100 \u00d7 RMSECV / mean EC, log scale)"
+},
+{
+"notebook": "research/ftir_ec_phase3/ftir_22_figures_under_both_protocols.ipynb",
+"title": "ftir_15 re-derived: the bootstrap CI depends on the protocol too\\n",
+"x": "Addis {metric} \u2014 site-cluster bootstrap 95% CI (B={B_BOOT})",
+"y": ""
+},
+{
+"notebook": "research/ftir_ec_phase3/ftir_23_component_selection_by_protocol.ipynb",
+"title": "How the {MODE_SHORT[mode]} protocol chooses k\\n",
+"x": "n PLS components",
+"y": "RMSECV (\u00b5g/filter)"
+},
+{
+"notebook": "research/ftir_ec_phase3/ftir_23_component_selection_by_protocol.ipynb",
+"title": "The decision",
+"x": "n PLS components",
+"y": "{MODE_SHORT[mode]}\\nRMSECV (\u00b5g/filter)"
+},
+{
+"notebook": "research/ftir_ec_phase3/ftir_29_provisional_addis_ec_series.ipynb",
+"title": "The provisional Addis EC series the corrected calibration gives \u2014 no MAC involved",
+"x": "",
+"y": "provisional FTIR EC (\u00b5g/m\u00b3)\\nlowest-OC/EC 800 + AIRSpec, site-held-out"
+}
+],
+"Histogram": [
+{
+"notebook": "notebooks/analysis/meteorology/aeronet_addis_deep_dive.ipynb",
+"title": "BC Ratio Distribution\\n(>1 means IR > UV \u2192 negative AAE)",
+"x": "IR BCc / UV BCc",
+"y": "Density"
+},
+{
+"notebook": "notebooks/archive/data_analysis_figures_pkl.ipynb",
+"title": "MAC Factor Back-Calculation (PKL Data)",
+"x": "MAC (m\u00b2/g)",
+"y": "Frequency"
+},
+{
+"notebook": "research/archive/catch_up/05_raw_atn_aae_green_channel_diagnostics.ipynb",
+"title": "Raw dATN AAE (UV/IR)",
+"x": "",
+"y": ""
+},
+{
+"notebook": "research/ftir_ec_calibration_2026_06_25/14_choosing_calibration_data.ipynb",
+"title": "ETAD sits INSIDE the lot-248+251 training domain \u2192 interpolation, not extrapolation",
+"x": "leverage (whitened PCA distance to training centre)",
+"y": "density"
+},
+{
+"notebook": "research/ftir_ec_phase3/ftir_28_ma350_brc_falsification.ipynb",
+"title": "The measured AAE sits below the black-carbon anchor,\\nnot above it",
+"x": "AAE(625, 880) from MA350 b$_{ATN}$, per filter-day",
+"y": "filter-days"
+},
+{
+"notebook": "research/ftir_ec_phase3/ftir_33_shape_cohort_explainers.ipynb",
+"title": "Shape-based selection does not find Addis-like composition \u2014 ",
+"x": "TOR OC/EC ratio (log scale)",
+"y": "Pool filters"
+},
+{
+"notebook": "research/ftir_etad_char/char_02_addis_vs_charcoal.ipynb",
+"title": "Addis sits on the far edge of the charcoal distribution",
+"x": "Mahalanobis distance from the charcoal centroid (6 PCs)",
+"y": "density"
+},
+{
+"notebook": "research/ftir_etad_char/char_12_weakley_transferability.ipynb",
+"title": "Envelope-escape score per filter \u2014 where each population sits relative ",
+"x": "fraction of pertinent wavenumbers outside the IMPROVE 5\u201395 % envelope",
+"y": "density"
+},
+{
+"notebook": "research/ftir_hips_chem/HIPS_Aeth_SmoothRaw_Analysis.ipynb",
+"title": "{site_name}",
+"x": "Absolute % Difference |Smooth - Raw| / Raw",
+"y": "Count"
+},
+{
+"notebook": "research/ftir_hips_chem/Multi_Site_Analysis_Fixed.ipynb",
+"title": "{site_name}: Distribution of Smooth/Raw Differences",
+"x": "Absolute % Difference (Smooth - Raw)",
+"y": "Count"
+},
+{
+"notebook": "research/ftir_hips_chem/addis_01_source_apportionment.ipynb",
+"title": "AAE Distribution with Source Regions{title_suffix}",
+"x": "Absorption \u00c5ngstr\u00f6m Exponent (AAE)",
+"y": "Normalized Frequency"
+},
+{
+"notebook": "research/ftir_hips_chem/addis_01_source_apportionment.ipynb",
+"title": "UV MAC={uv_mac}, IR MAC={ir_mac}",
+"x": "AAE",
+"y": "Normalized Frequency"
+}
+],
+"Lollipop": [
+{
+"notebook": "notebooks/analysis/meteorology/aeronet_addis_diagnostics.ipynb",
+"title": "{season} (n={len(sdata)}, insufficient data)",
+"x": "Hour (local)",
+"y": "BC (\u00b5g/m\u00b3)"
+},
+{
+"notebook": "research/spartan/follow_up_mass_and_ratio_plots.ipynb",
+"title": "fAbs/EC by site \u2014 SPARTAN stars placed at their rank within the IMPROVE ordering\\n",
+"x": "IMPROVE sites, ranked by median fAbs/EC",
+"y": "fAbs / EC (m\u00b2/g \u2248 effective MAC)"
+},
+{
+"notebook": "research/spartan/follow_up_mass_and_ratio_plots.ipynb",
+"title": "OC/fAbs by site \u2014 Addis is the lowest site anywhere; Delhi and Beijing hug the bottom edge\\n",
+"x": "IMPROVE sites, ranked by median OC/fAbs",
+"y": "OC / fAbs  (\u00b5g m\u207b\u00b3 per Mm\u207b\u00b9)"
+},
+{
+"notebook": "research/spartan/follow_up_mass_and_ratio_plots.ipynb",
+"title": "{ylabel.split(",
+"x": "IMPROVE sites, ranked by median (SPARTAN stars at their rank)",
+"y": ""
+}
+],
+"Correlogram": [
+{
+"notebook": "notebooks/analysis/meteorology/hips_intercept_investigation.ipynb",
+"title": "Correlation of Regression Residuals with Chemical Species\\n",
+"x": "Method Pairing",
+"y": "Chemical Species"
+},
+{
+"notebook": "notebooks/analysis/meteorology/meteorology_revisions.ipynb",
+"title": "{season}\\n(n={n_samples})",
+"x": "",
+"y": ""
+},
+{
+"notebook": "notebooks/analysis/meteorology/meteorology_source_interaction.ipynb",
+"title": "Meteorology \u00d7 Source Concentration Correlation Matrix",
+"x": "",
+"y": ""
+},
+{
+"notebook": "notebooks/archive/ETAD_aethalometer_filter_matching.ipynb",
+"title": "ETAD Site: Aethalometer-Filter Correlations",
+"x": "IR BC (\u03bcg/m\u00b3)",
+"y": "EC FTIR (\u03bcg/m\u00b3)"
+},
+{
+"notebook": "notebooks/archive/aethalometer_data_visualization.ipynb",
+"title": "BC Correlation Matrix\\n{dataset_name} ({summary[",
+"x": "",
+"y": "Quality Score (0-100)"
+},
+{
+"notebook": "notebooks/archive/aethalometer_data_visualization.ipynb",
+"title": "BC Correlation Matrix\\n{dataset_name} ({summary[",
+"x": "BC Concentration (\u00b5g/m\u00b3)",
+"y": "BC Concentration (\u00b5g/m\u00b3)"
+},
+{
+"notebook": "notebooks/archive/aethalometer_data_visualization2.ipynb",
+"title": "BC Correlation Matrix\\n{dataset_name} ({summary[",
+"x": "",
+"y": "Quality Score (0-100)"
+},
+{
+"notebook": "notebooks/archive/aethalometer_data_visualization2.ipynb",
+"title": "BC Correlation Matrix\\n{dataset_name} ({summary[",
+"x": "BC Concentration (\u00b5g/m\u00b3)",
+"y": "BC Concentration (\u00b5g/m\u00b3)"
+},
+{
+"notebook": "research/ftir_hips_chem/Analysis_Tasks_Jan2025.ipynb",
+"title": "{site_name}\\nBC Wavelength Correlation Matrix",
+"x": "",
+"y": ""
+},
+{
+"notebook": "research/ftir_hips_chem/ETAD_Factor_Analysis.ipynb",
+"title": "Correlation: PMF Sources vs Filter Parameters (ETAD)",
+"x": "",
+"y": ""
+},
+{
+"notebook": "research/ftir_hips_chem/FlowFix_BeforeAfter_Analysis.ipynb",
+"title": "{period_label}",
+"x": "BC (ng/m\u00b3)",
+"y": "Frequency"
+},
+{
+"notebook": "research/ftir_hips_chem/Multi_Site_Analysis_FollowUp.ipynb",
+"title": "{site_name}: BC Wavelength Correlation Matrix\\n(n={len(bc_df_complete)})",
+"x": "BC (ng/m3)",
+"y": "Frequency"
+}
+],
+"2D Density": [
+{
+"notebook": "notebooks/qc/flow_qc_analysis.ipynb",
+"title": "{location}: Flow1 vs Flow2 Scatter",
+"x": "Flow2 (mL/min)",
+"y": "Flow1 (mL/min)"
+},
+{
+"notebook": "research/ftir_hips_chem/addis_03_meteorology.ipynb",
+"title": "{season}",
+"x": "Temperature (\u00b0C)",
+"y": "BC Concentration (\u00b5g/m\u00b3)"
+},
+{
+"notebook": "research/ftir_hips_chem/improve_high_fabs_comparison.ipynb",
+"title": "IMPROVE samples comparable to ETAD by EC surface loading",
+"x": "IMPROVE ECf (ug/m3)",
+"y": "IMPROVE fAbs (Mm^-1)"
+},
+{
+"notebook": "research/improve_hips_offset/improve_addis_analog_audit.ipynb",
+"title": "IMPROVE analog-group sizes",
+"x": "Rows (log scale)",
+"y": "IMPROVE fAbs (Mm-1)"
+},
+{
+"notebook": "research/improve_hips_offset/improve_addis_analog_audit.ipynb",
+"title": "RT geometry proxy",
+"x": "RefM_635",
+"y": "TransM_635"
+},
+{
+"notebook": "research/improve_hips_offset/improve_hips_offset_narrative.ipynb",
+"title": "Characteristic screen: smoke-like IMPROVE candidates with lowered fAbs threshold (zoomed view)",
+"x": "IMPROVE ECf (ug/m3)",
+"y": "IMPROVE fAbs (Mm^-1)"
+},
+{
+"notebook": "research/improve_hips_offset/improve_hips_offset_narrative.ipynb",
+"title": "{screen_label}\\nfAbs >= {threshold:g}",
+"x": "IMPROVE ECf (ug/m3)",
+"y": "IMPROVE fAbs (Mm^-1)"
+},
+{
+"notebook": "research/improve_hips_offset/improve_hips_offset_narrative.ipynb",
+"title": "IMPROVE samples comparable to ETAD by EC surface loading",
+"x": "IMPROVE ECf (ug/m3)",
+"y": "IMPROVE fAbs (Mm^-1)"
+},
+{
+"notebook": "research/improve_hips_offset/improve_hips_offset_narrative.ipynb",
+"title": "RT geometry proxy for ETAD-loading-matched IMPROVE samples",
+"x": "IMPROVE RefM_635 (minimum reflectance ratio)",
+"y": "IMPROVE TransM_635 (minimum transmittance ratio)"
+},
+{
+"notebook": "research/improve_hips_offset/improve_hips_offset_narrative.ipynb",
+"title": "IMPROVE RT analog: loaded TransM falls below initial clean-filter line",
+"x": "IMPROVE Ref_635",
+"y": "IMPROVE Trans_635"
+},
+{
+"notebook": "research/improve_hips_offset/improve_smoke_event_qc.ipynb",
+"title": "IMPROVE fAbs vs EC with Addis/ETAD-comparable overlays",
+"x": "IMPROVE ECf (ug/m3)",
+"y": "IMPROVE fAbs (Mm^-1)"
+},
+{
+"notebook": "research/improve_hips_offset/improve_smoke_event_qc.ipynb",
+"title": "RT geometry: minimum reflectance vs transmittance",
+"x": "RefM_635",
+"y": "TransM_635"
+}
+],
+"Stacked Area": [
+{
+"notebook": "research/ftir_hips_chem/ETAD_Factor_Analysis.ipynb",
+"title": "ETAD: Stacked Source Contribution Fractions (Normalized)",
+"x": "Date",
+"y": "Normalized Source Contribution Fraction"
+}
+],
+"Violin": [
+{
+"notebook": "research/ftir_hips_chem/addis_03_meteorology.ipynb",
+"title": "BC Concentrations by Precipitation Intensity",
+"x": "Precipitation Category",
+"y": "BC Concentration (\u00b5g/m\u00b3)"
+},
+{
+"notebook": "research/ftir_hips_chem/addis_03_meteorology_daily.ipynb",
+"title": "Daily BC by Precipitation Intensity",
+"x": "Daily Precipitation Category",
+"y": "Daily BC Concentration (\u00b5g/m\u00b3)"
+},
+{
+"notebook": "research/ftir_hips_chem/cross_plots_and_distributions.ipynb",
+"title": "{site} \u2014 {label}\\n(n={len(vals)}, std={vals.std():.2f})",
+"x": "",
+"y": "BC (\u00b5g/m\u00b3)"
+}
+]
+}
+}

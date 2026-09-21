@@ -12,6 +12,8 @@
 - `notebooks/`: active and archived analysis notebooks
 - `scripts/`: operational scripts — `diagnostics/`, `pipelines/`, and `common/`
   (helpers shared between them; not research logic, and not shipped in the wheel)
+- `gallery/`: notebook figure census + a React/D3 gallery over the filter
+  dataset (see [`../gallery/README.md`](../gallery/README.md))
 - `manuscript/`: citation tooling and bibliography sources (needs `pandoc`)
 - `docs/`: maintenance and usage docs
 

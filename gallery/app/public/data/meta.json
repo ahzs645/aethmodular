@@ -1,0 +1,314 @@
+{
+ "generated": "2026-09-17T17:34:43+00:00",
+ "mac_value": 10,
+ "season_convention": "dry_feb",
+ "seasons": [
+  {
+   "name": "Dry (Oct-Feb)",
+   "months": [
+    10,
+    11,
+    12,
+    1,
+    2
+   ],
+   "color": "#E67E22"
+  },
+  {
+   "name": "Belg (Mar-May)",
+   "months": [
+    3,
+    4,
+    5
+   ],
+   "color": "#27AE60"
+  },
+  {
+   "name": "Kiremt (Jun-Sep)",
+   "months": [
+    6,
+    7,
+    8,
+    9
+   ],
+   "color": "#3498DB"
+  }
+ ],
+ "season_conventions": {
+  "dry_feb": [
+   {
+    "name": "Dry (Oct-Feb)",
+    "months": [
+     10,
+     11,
+     12,
+     1,
+     2
+    ],
+    "color": "#E67E22"
+   },
+   {
+    "name": "Belg (Mar-May)",
+    "months": [
+     3,
+     4,
+     5
+    ],
+    "color": "#27AE60"
+   },
+   {
+    "name": "Kiremt (Jun-Sep)",
+    "months": [
+     6,
+     7,
+     8,
+     9
+    ],
+    "color": "#3498DB"
+   }
+  ],
+  "belg_feb": [
+   {
+    "name": "Bega (Oct-Jan, dry)",
+    "months": [
+     10,
+     11,
+     12,
+     1
+    ],
+    "color": "#E67E22"
+   },
+   {
+    "name": "Belg (Feb-May, short rains)",
+    "months": [
+     2,
+     3,
+     4,
+     5
+    ],
+    "color": "#27AE60"
+   },
+   {
+    "name": "Kiremt (Jun-Sep, long rains)",
+    "months": [
+     6,
+     7,
+     8,
+     9
+    ],
+    "color": "#3498DB"
+   }
+  ]
+ },
+ "wavelengths_nm": {
+  "UV": 375,
+  "Blue": 470,
+  "Green": 528,
+  "Red": 625,
+  "IR": 880
+ },
+ "field_units": {
+  "PM2.5 mass": "ug/m3",
+  "OC (TOR)": "ug/m3",
+  "EC (TOR)": "ug/m3",
+  "Sulfate": "ug/m3",
+  "Nitrate": "ug/m3",
+  "Ammonium": "ug/m3",
+  "Potassium": "ug/m3",
+  "Sodium": "ug/m3",
+  "Calcium": "ug/m3",
+  "Magnesium": "ug/m3",
+  "Iron": "ug/m3",
+  "Aluminum": "ug/m3",
+  "Titanium": "ug/m3",
+  "Silicon": "ug/m3",
+  "Zinc": "ug/m3",
+  "Copper": "ug/m3",
+  "Lead": "ug/m3",
+  "EC (FTIR)": "ug/m3",
+  "OC (FTIR)": "ug/m3",
+  "OM (FTIR)": "ug/m3",
+  "Alkane CH": "ug/m3",
+  "Alcohol COH": "ug/m3",
+  "Carboxylic COOH": "ug/m3",
+  "Non-acid CO": "ug/m3",
+  "HIPS Fabs": "Mm-1",
+  "HIPS Fabs uncertainty": "Mm-1",
+  "HIPS MDL": "Mm-1",
+  "HIPS BC": "ug/m3"
+ },
+ "field_groups": [
+  {
+   "label": "Carbon",
+   "fields": [
+    "EC (FTIR)",
+    "EC (TOR)",
+    "OC (FTIR)",
+    "OC (TOR)",
+    "OM (FTIR)"
+   ]
+  },
+  {
+   "label": "Optical (HIPS)",
+   "fields": [
+    "HIPS Fabs",
+    "HIPS BC",
+    "HIPS Fabs uncertainty",
+    "HIPS MDL"
+   ]
+  },
+  {
+   "label": "FTIR functional groups",
+   "fields": [
+    "Alkane CH",
+    "Alcohol COH",
+    "Carboxylic COOH",
+    "Non-acid CO"
+   ]
+  },
+  {
+   "label": "Mass",
+   "fields": [
+    "PM2.5 mass"
+   ]
+  },
+  {
+   "label": "Ions",
+   "fields": [
+    "Sulfate",
+    "Nitrate",
+    "Ammonium",
+    "Potassium",
+    "Sodium",
+    "Calcium",
+    "Magnesium"
+   ]
+  },
+  {
+   "label": "Metals & crustal",
+   "fields": [
+    "Silicon",
+    "Aluminum",
+    "Iron",
+    "Titanium",
+    "Zinc",
+    "Copper",
+    "Lead"
+   ]
+  }
+ ],
+ "aae_regions": {
+  "fossil_max": 0.9,
+  "biomass_min": 1.5
+ },
+ "sites": [
+  {
+   "code": "CHTS",
+   "name": "Beijing",
+   "location": "Beijing, China",
+   "color": "#E74C3C",
+   "timezone": "Asia/Shanghai",
+   "lat": 40.004,
+   "lon": 116.326,
+   "n_filters": 375,
+   "date_min": "2013-06-28",
+   "date_max": "2024-12-08"
+  },
+  {
+   "code": "INDH",
+   "name": "Delhi",
+   "location": "Delhi, India",
+   "color": "#3498DB",
+   "timezone": "Asia/Kolkata",
+   "lat": 28.629,
+   "lon": 77.22233,
+   "n_filters": 97,
+   "date_min": "2022-06-28",
+   "date_max": "2024-06-30"
+  },
+  {
+   "code": "USPA",
+   "name": "JPL",
+   "location": "Pasadena, USA",
+   "color": "#2ECC71",
+   "timezone": "America/Los_Angeles",
+   "lat": 34.199433,
+   "lon": -118.17317,
+   "n_filters": 280,
+   "date_min": "2021-11-09",
+   "date_max": "2024-08-13"
+  },
+  {
+   "code": "ETAD",
+   "name": "Addis Ababa",
+   "location": "Addis Ababa, Ethiopia",
+   "color": "#F39C12",
+   "timezone": "Africa/Addis_Ababa",
+   "lat": 9.0106,
+   "lon": 38.8207,
+   "n_filters": 190,
+   "date_min": "2022-12-07",
+   "date_max": "2024-09-21"
+  }
+ ],
+ "fields": [
+  "Alcohol COH",
+  "Alkane CH",
+  "Aluminum",
+  "Ammonium",
+  "Calcium",
+  "Carboxylic COOH",
+  "Copper",
+  "EC (FTIR)",
+  "EC (TOR)",
+  "HIPS BC",
+  "HIPS Fabs",
+  "HIPS Fabs uncertainty",
+  "HIPS MDL",
+  "Iron",
+  "Lead",
+  "Magnesium",
+  "Nitrate",
+  "Non-acid CO",
+  "OC (FTIR)",
+  "OC (TOR)",
+  "OM (FTIR)",
+  "PM2.5 mass",
+  "Potassium",
+  "Silicon",
+  "Sodium",
+  "Sulfate",
+  "Titanium",
+  "Zinc"
+ ],
+ "coverage": {
+  "Alcohol COH": 597,
+  "Alkane CH": 597,
+  "Aluminum": 819,
+  "Ammonium": 808,
+  "Calcium": 806,
+  "Carboxylic COOH": 597,
+  "Copper": 819,
+  "EC (FTIR)": 597,
+  "EC (TOR)": 543,
+  "HIPS BC": 546,
+  "HIPS Fabs": 546,
+  "HIPS Fabs uncertainty": 546,
+  "HIPS MDL": 597,
+  "Iron": 819,
+  "Lead": 819,
+  "Magnesium": 796,
+  "Nitrate": 831,
+  "Non-acid CO": 597,
+  "OC (FTIR)": 597,
+  "OC (TOR)": 543,
+  "OM (FTIR)": 597,
+  "PM2.5 mass": 853,
+  "Potassium": 811,
+  "Silicon": 692,
+  "Sodium": 801,
+  "Sulfate": 829,
+  "Titanium": 819,
+  "Zinc": 819
+ }
+}
