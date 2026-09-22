@@ -44,6 +44,10 @@ explorer = [
   "polars>=1.0.0",
   "pybaselines>=1.2.0",
 ]
+# Blank-trained VIBES FTIR comparison; upstream MIT source is vendored in research.
+vibes = [
+  "cvxpy>=1.6 ; python_full_version >= '3.10'",
+]
 
 [project.scripts]
 aeth = "aethmodular_cli.cli:main"

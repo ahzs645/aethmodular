@@ -148,6 +148,9 @@ dmypy.json
 logs/
 *.log
 artifacts/
+# Local Git worktrees for reproducible OpenResearch runs and UI development.
+# Their source histories remain in their own Git repositories.
+/.local-checkouts/
 research/**/output/
 output.png
 

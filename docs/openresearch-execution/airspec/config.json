@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "question": "Can the locked AIRSpec ftir_13 calibration reproduce historical tables and the prior local execution from an OpenResearch source snapshot?",
+  "bundle_id": "5b651a3e20880cc1d7284823b0422b833d2d00e5101bfff9f74bd249bf3ba665",
+  "inputs_manifest_sha256": "5b651a3e20880cc1d7284823b0422b833d2d00e5101bfff9f74bd249bf3ba665",
+  "source_hashes": {
+    "research/ftir_ec_phase3/scripts/run_ftir_13.py": "bbe849dbb142121921c5a483e11b2ffbb28c6a23634d27310e5762cd1858a347",
+    "research/ftir_hips_chem/scripts/config.py": "f9ce5f50904e5f8f9599f4e33502ab983ee7fced04b2a7886b96ad9b8ec37d5b",
+    "research/ftir_ec_phase3/scripts/phase3_common.py": "89e1786dba8185588b8a69bc78e40b99780c45afd833a2098746e8d23c662a50",
+    "research/ftir_hips_chem/scripts/pls_transfer.py": "70cb55e1ab6aebb067fc448ef55e77a0818db25763cdaccec0127373ca4fb466",
+    "research/ftir_hips_chem/scripts/data_matching.py": "083c0830f77ee3fd0799722d3e464deba8376d775c3c7df7cc6f10c894984e44",
+    "research/ftir_hips_chem/scripts/etad_factors.py": "f571e013ed46049411801ba9baa9037a540759f3c1bdc6befb35460a2257dba7"
+  },
+  "expected_tables": {
+    "addis_metrics_corrected.csv": "edec9082881737c7cb18647f245442848b92ae74eb2d0b4728532252abe2a0b6",
+    "addis_predictions_corrected.csv": "13550ff4dd23d8187cc84db336fb268d94a398dc0fbc2155936ce5b1804217f1",
+    "band1600_on_corrected.csv": "0e5df853ecfcbdf965302353e185696319ebe9a6cb6ea7d1e85e17a65d7128fb",
+    "cohort_alignment_audit.csv": "4ac66e571deebf6b35ba28b8516f6cd2cafebdf101275b3ab3c118b8be7c5db4",
+    "hips_transfer_corrected.csv": "5b3e72ba08a9c7c419ece5ab5f39a67cd47e7fab80d8a5970b5e0706124d6ebb"
+  },
+  "previous_local_tables": {
+    "split_membership.csv": "0446b9eca13a3b74e902f910bb7063d9ddcfffbf4921d9d82b9bf7ad3b17b722",
+    "heldout_metrics.csv": "d95f0c5f8c96f9e6ce8dd19c9a037c58a62d598003a59e9f1be03927ae6c25a9",
+    "component_curves.csv": "5555548a46f415c835ad424d57e62e9dce5fde9ff3241c2505b9910c0fe39d4a",
+    "smoke_components.csv": "e06aeced491c8a7950ad448018215e2f2c770c2a583aa9d88271cef99b421b59",
+    "ocec_df6_predictions.csv": "870d35358e59ba2740f88b9f180c92e5961fb58a8b94369c17feccb81019bfc2",
+    "ocec_df8_predictions.csv": "ce7ee75bbe4881be74628dbf71daba5459ea4d90bee1078d8ee638bd1f630044"
+  },
+  "absolute_tolerance": 1e-06,
+  "expected_components": {
+    "6": 5,
+    "8": 5
+  },
+  "expected_split": {
+    "train": 606,
+    "test": 194
+  },
+  "scope": "Numerical reproduction from frozen corrected caches in the current locked environment. Not a rerun of full-pool baseline correction or independent Addis validation. The unchanged runner emits a legacy reproduction figure with its original OLS-only annotations."
+}

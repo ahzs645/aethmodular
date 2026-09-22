@@ -1,0 +1,87 @@
+[
+  {
+    "bytes": 16200588,
+    "path": ".drive_cache/University/Research/Grad/Data/Davis Data/DAVIS/ETAD FTIR/ETAD_FTIR_spectra.csv",
+    "sha256": "0f530df2cb48a1eca6c83717a7f051d02d74e848fb160178da9079687f253ed2"
+  },
+  {
+    "bytes": 30639,
+    "path": ".drive_cache/University/Research/Grad/Data/Davis Data/DAVIS/ETAD FTIR/ETAD_metadata.csv",
+    "sha256": "697696e98a4e10919374a34d72cb6fd41dc03b45632533e9ef9c46014f5025e8"
+  },
+  {
+    "bytes": 18017058,
+    "path": ".drive_cache/University/Research/Grad/Data/Davis Data/FTIR/apps/apps_data.npz",
+    "sha256": "8b2bd5b70d2f00bbbf82f410cce37bb4e1ba3be318ba175525d2e65fbfeadd53"
+  },
+  {
+    "bytes": 47235179,
+    "path": ".drive_cache/University/Research/Grad/Data/Davis Data/FTIR/local_db/tables/results_hips.csv",
+    "sha256": "908c0350b300f491078bddb545fa27a15c5e8a6224db30c0235f08db9562a988"
+  },
+  {
+    "bytes": 1943802,
+    "path": ".drive_cache/University/Research/Grad/Data/Davis Data/FTIR/notebook/extracted/EC_fitted_long.csv",
+    "sha256": "514f97ac1a2d9d9f01e366bd778246da51a7d221b972faff9f59f0656e16f761"
+  },
+  {
+    "bytes": 57703,
+    "path": ".drive_cache/University/Research/Grad/Data/Davis Data/FTIR/notebook/extracted/EC_samples.csv",
+    "sha256": "603bf1e383c3844ce8f242e3a28374a3d8a416ceef57f7666e14fc8c857e4be4"
+  },
+  {
+    "bytes": 286,
+    "path": ".drive_cache/University/Research/Grad/Data/Davis Data/FTIR/notebook/extracted/EC_stats_chosen.csv",
+    "sha256": "6d8fc58528b85444ef985a12fe4d0387874d16d04c661f613ad2d5c326701cbd"
+  },
+  {
+    "bytes": 961811,
+    "path": ".drive_cache/University/Research/Grad/Data/Davis Data/Spartan/SPARTAN_HIPS_Batch1-51.v2.csv",
+    "sha256": "4276eaa23b9be587a0c240d7faba53526858443c2b45110481f5c2e02eccf4fb"
+  },
+  {
+    "bytes": 2252922,
+    "path": "research/ftir_ec_phase3/output/corrected/etad_corrected_df6.npz",
+    "sha256": "b9677486c405323c27aaf37636eae03f7a647214ee3a26a0716c2eb3c23775f0"
+  },
+  {
+    "bytes": 2255065,
+    "path": "research/ftir_ec_phase3/output/corrected/etad_corrected_df8.npz",
+    "sha256": "b5d01f1e87a7284eb7dd969e9a4f1eb2097ae951dfc239fa77ebbb7bf1187ad3"
+  },
+  {
+    "bytes": 96846705,
+    "path": "research/ftir_ec_phase3/output/corrected/improve_pool_corrected_df6.npz",
+    "sha256": "ba377d8b40957c594f23c757420b9bc6fa2c7d532788066a334be711439597d1"
+  },
+  {
+    "bytes": 96799157,
+    "path": "research/ftir_ec_phase3/output/corrected/improve_pool_corrected_df8.npz",
+    "sha256": "40dd598993c26fed4ae9264b16c949631ddca1683ed59f057dcc7f967ebd16a5"
+  },
+  {
+    "bytes": 6422,
+    "path": "research/ftir_ec_phase3/output/tables/ftir11/addis_metrics.csv",
+    "sha256": "33797e5604f484ef51db2f09972f8457576a19607059bb465b248b6bbe95dc67"
+  },
+  {
+    "bytes": 32105,
+    "path": "research/ftir_ec_phase3/output/tables/ftir11/addis_predictions.csv",
+    "sha256": "c7618af8bf9d6b115b8cc2341757270affaa27c0b9693238d010dad563452333"
+  },
+  {
+    "bytes": 74361,
+    "path": "research/ftir_ec_phase3/output/tables/ftir11/lowest_ocec_800_cohort.csv",
+    "sha256": "1d72475825b1eb5d73340d5adddb7acade3617c2570b4239aed083602eb8b916"
+  },
+  {
+    "bytes": 8379437,
+    "path": "research/ftir_hips_chem/Filter Data/unified_filter_dataset.pkl",
+    "sha256": "1ece57fa842a97dc22115ff6fa304c0fd4979673340d860949ae944aa24a5c36"
+  },
+  {
+    "bytes": 44037,
+    "path": "research/ftir_hips_chem/output/tables/pls_calibration_phase2/addis_calibration_predictions.csv",
+    "sha256": "da612161a26a7f609a85d1ab326c01431eb1067676f57e76dc4e349d9372fb39"
+  }
+]
