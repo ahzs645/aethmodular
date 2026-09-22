@@ -6,6 +6,8 @@ This repository now uses a `pyproject.toml`-based setup (uv-ready), canonical `s
 
 Detailed usage guides: `docs/library-usage.md` and `docs/commands.md`.
 
+Current research priorities and completion criteria: [Project next steps](docs/project-next-steps.md).
+
 ## Quick Start
 
 ### 1. Environment
