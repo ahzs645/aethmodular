@@ -24,3 +24,11 @@ After uploading and rebuilding the Parquet in Zoer, pass its dataset ID to compa
 ```sh
 uv run python research/ftir_hips_chem/workflows/data_space_recipes/check_zoer_dataset.py --dataset-id DATASET_ID
 ```
+
+`hosted_lab_check.ipynb` is a small companion for the separately hosted Zoer
+JupyterLab. Upload that notebook and `unified_filter_dataset.parquet` to the
+same lab folder, then run its cells from top to bottom. It reads one Parquet
+column with pandas and runs an aggregate directly against the file with
+DuckDB, checking the version 1 baseline of 44,493 rows, 11,374 ETAD rows and
+four sites. The notebook includes the local verification outputs; rerun it in
+the hosted lab to confirm that lab's own environment and file transfer.
