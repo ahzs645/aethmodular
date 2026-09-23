@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "aeth.unified-filter-parquet",
+  "version": 1,
+  "description": "Materialize the unified SPARTAN filter measurements as columnar Parquet without dropping rows or changing exclusion flags.",
+  "script": "unified_filter_parquet.py",
+  "source": {
+    "pathFromDataRoot": "Filter Data/unified_filter_dataset.pkl",
+    "format": "trusted-local-pandas-pickle"
+  },
+  "output": {
+    "pathFromDataRoot": "output/tables/unified_filter_dataset.parquet",
+    "format": "parquet",
+    "compression": "zstd"
+  },
+  "indexPolicy": "preserve",
+  "validation": "read-back-frame-equality",
+  "partitioning": "none"
+}
