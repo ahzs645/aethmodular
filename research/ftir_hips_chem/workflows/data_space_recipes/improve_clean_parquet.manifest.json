@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "aeth.improve-clean-parquet",
+  "version": 1,
+  "description": "Columnar copy of the derived IMPROVE high-fAbs comparison table. Local provenance paths are reduced to file names; scientific values and row order are retained.",
+  "script": "improve_clean_parquet.py",
+  "sourceFromDataRoot": "output/improve_high_fabs_comparison/improve_valid_cleaned.csv",
+  "outputFromDataRoot": "output/tables/zoer_sources/improve_valid_cleaned.parquet",
+  "format": "parquet",
+  "compression": "zstd",
+  "pathColumns": ["source_file", "rt_source_file"],
+  "validation": "read-back-frame-equality-after-path-normalization"
+}

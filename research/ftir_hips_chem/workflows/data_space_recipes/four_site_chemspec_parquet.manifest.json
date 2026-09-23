@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "aeth.four-site-chemspec-parquet",
+  "version": 1,
+  "description": "Preserve the four SPARTAN public ChemSpec PM2.5 exports as queryable Parquet, omitting only their three file-comment lines.",
+  "script": "four_site_chemspec_parquet.py",
+  "sourceRootFromRepo": "research/filter_combine",
+  "sources": [
+    "FilterBased_ChemSpecPM25_CHTS.csv",
+    "FilterBased_ChemSpecPM25_INDH.csv",
+    "FilterBased_ChemSpecPM25_USPA.csv",
+    "FilterBased_ChemSpecPM25_ETAD.csv"
+  ],
+  "outputDirFromRepo": "research/ftir_hips_chem/output/tables/zoer_sources",
+  "format": "parquet",
+  "compression": "zstd",
+  "validation": "read-back-frame-equality"
+}
