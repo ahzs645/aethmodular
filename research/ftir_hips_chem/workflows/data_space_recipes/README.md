@@ -26,9 +26,9 @@ uv run python research/ftir_hips_chem/workflows/data_space_recipes/check_zoer_da
 ```
 
 `hosted_lab_check.ipynb` is a small companion for the separately hosted Zoer
-JupyterLab. Upload that notebook and `unified_filter_dataset.parquet` to the
-same lab folder, then run its cells from top to bottom. It reads one Parquet
-column with pandas and runs an aggregate directly against the file with
-DuckDB, checking the version 1 baseline of 44,493 rows, 11,374 ETAD rows and
-four sites. The notebook includes the local verification outputs; rerun it in
-the hosted lab to confirm that lab's own environment and file transfer.
+JupyterLab. Upload only the notebook to the lab: the Hub mounts Zoer's hosted
+Datasets collection read-only, and the notebook resolves the AETH Parquet from
+that mount. It can also run locally against the recipe output. It reads one
+Parquet column with pandas and runs an aggregate directly against the file
+with DuckDB, checking the version 1 baseline of 44,493 rows, 11,374 ETAD
+rows and four sites. Rerun it in the hosted lab to confirm that lab's mount.
