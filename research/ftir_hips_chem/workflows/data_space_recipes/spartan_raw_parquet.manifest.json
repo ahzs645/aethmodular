@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "aeth.spartan-raw-parquet",
+  "version": 1,
+  "description": "Lossless, per-site Parquet copies of the 2026-09-22 SPARTAN public raw CSV snapshot. Initial release-comment lines are recorded in provenance.",
+  "script": "spartan_raw_parquet.py",
+  "sourceRootFromRepo": "data/spartan/raw",
+  "outputDirFromRepo": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw",
+  "groups": {
+    "FilterBased/ChemSpecPM10": {"expectedFiles": 37, "skipRows": 3},
+    "FilterBased/ChemSpecPM25": {"expectedFiles": 37, "skipRows": 3},
+    "FilterBased/ReconstrPM25": {"expectedFiles": 37, "skipRows": 3},
+    "NephelProcd/DailyScaPM10": {"expectedFiles": 20, "skipRows": 1},
+    "NephelProcd/DailyScaPM25": {"expectedFiles": 20, "skipRows": 1},
+    "NephelProcd/HourlyScaPM10": {"expectedFiles": 20, "skipRows": 1},
+    "NephelProcd/HourlyScaPM25": {"expectedFiles": 20, "skipRows": 1},
+    "TimeResPM25/DailyEstPM25": {"expectedFiles": 21, "skipRows": 1},
+    "TimeResPM25/HourlyEstPM25": {"expectedFiles": 21, "skipRows": 1}
+  },
+  "format": "parquet",
+  "compression": "zstd",
+  "validation": "read-back-frame-equality"
+}
