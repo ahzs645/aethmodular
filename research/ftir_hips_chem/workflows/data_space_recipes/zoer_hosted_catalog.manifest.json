@@ -1,0 +1,2605 @@
+{
+  "schemaVersion": 1,
+  "sourceRepository": "ahzs645/aethmodular",
+  "zoerDatasetsUrl": "https://zoer.example.org/#/datasets",
+  "ownerProjectId": "a264ff30-5603-4617-a7ff-a2ca22835972",
+  "dataSpaceIds": [
+    "519a43d9-a84f-4f45-9884-e72b9b747e2f",
+    "79bad9e5-d1fc-4b3c-b246-b142f80d91c0"
+  ],
+  "datasets": [
+    {
+      "datasetId": "9b49715d-2a06-4dec-be1a-b6219ed03188",
+      "name": "AETH Addis Meteostat sources",
+      "status": "ready",
+      "tableCount": 2,
+      "rowCount": 16761,
+      "fileCount": 2,
+      "recipeManifestPath": null,
+      "recipeManifestSha256": null
+    },
+    {
+      "datasetId": "7b1be199-2077-4fae-b55f-fc6b12beea64",
+      "name": "AETH ETAD factor sources",
+      "status": "ready",
+      "tableCount": 2,
+      "rowCount": 291,
+      "fileCount": 2,
+      "recipeManifestPath": null,
+      "recipeManifestSha256": null
+    },
+    {
+      "datasetId": "caa04b1f-7f86-4c34-b059-a5a8d04c7501",
+      "name": "AETH FTIR unified filter",
+      "status": "ready",
+      "tableCount": 1,
+      "rowCount": 44493,
+      "fileCount": 1,
+      "recipeManifestPath": "research/ftir_hips_chem/workflows/data_space_recipes/unified_filter_parquet.manifest.json",
+      "recipeManifestSha256": "cb5c86f0dd5d04be1df5e37a354972e00702608c6f7742d795e36f2b227f5373"
+    },
+    {
+      "datasetId": "9c6f0a21-c0c6-4955-9bc1-b40077ca9622",
+      "name": "AETH IMPROVE cleaned optics",
+      "status": "ready",
+      "tableCount": 1,
+      "rowCount": 379697,
+      "fileCount": 1,
+      "recipeManifestPath": "research/ftir_hips_chem/workflows/data_space_recipes/improve_clean_parquet.manifest.json",
+      "recipeManifestSha256": "1c6fc9cba0d3b6cb2d5d4b02c6cb2ec802fa91b56bdc345bd7b7324c49f67ca3"
+    },
+    {
+      "datasetId": "f82f3a0f-8366-445a-9cfc-c4f60b1c77c6",
+      "name": "AETH four-site ChemSpec sources",
+      "status": "ready",
+      "tableCount": 4,
+      "rowCount": 32773,
+      "fileCount": 4,
+      "recipeManifestPath": "research/ftir_hips_chem/workflows/data_space_recipes/four_site_chemspec_parquet.manifest.json",
+      "recipeManifestSha256": "2511d4d4bb428943dc538762e0274bc739031363d8ad764c952cee9c3f1b19b3"
+    },
+    {
+      "datasetId": "9f73e74d-31f3-44da-bd3f-8ba8513405a0",
+      "name": "AETH four-site FTIR source",
+      "status": "ready",
+      "tableCount": 1,
+      "rowCount": 5250,
+      "fileCount": 1,
+      "recipeManifestPath": null,
+      "recipeManifestSha256": null
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "name": "SPARTAN raw FilterBased ChemSpecPM10",
+      "status": "ready",
+      "tableCount": 37,
+      "rowCount": 9254,
+      "fileCount": 37,
+      "recipeManifestPath": "research/ftir_hips_chem/workflows/data_space_recipes/spartan_raw_parquet.manifest.json",
+      "recipeManifestSha256": "012b5a29a71126108e2c7e498eedca120bd9e700abb95398ccc69b28bbddc9dc"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "name": "SPARTAN raw FilterBased ChemSpecPM25",
+      "status": "ready",
+      "tableCount": 37,
+      "rowCount": 158750,
+      "fileCount": 37,
+      "recipeManifestPath": "research/ftir_hips_chem/workflows/data_space_recipes/spartan_raw_parquet.manifest.json",
+      "recipeManifestSha256": "012b5a29a71126108e2c7e498eedca120bd9e700abb95398ccc69b28bbddc9dc"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "name": "SPARTAN raw FilterBased ReconstrPM25",
+      "status": "ready",
+      "tableCount": 37,
+      "rowCount": 52430,
+      "fileCount": 37,
+      "recipeManifestPath": "research/ftir_hips_chem/workflows/data_space_recipes/spartan_raw_parquet.manifest.json",
+      "recipeManifestSha256": "012b5a29a71126108e2c7e498eedca120bd9e700abb95398ccc69b28bbddc9dc"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "name": "SPARTAN raw NephelProcd DailyScaPM10",
+      "status": "ready",
+      "tableCount": 20,
+      "rowCount": 12535,
+      "fileCount": 20,
+      "recipeManifestPath": "research/ftir_hips_chem/workflows/data_space_recipes/spartan_raw_parquet.manifest.json",
+      "recipeManifestSha256": "012b5a29a71126108e2c7e498eedca120bd9e700abb95398ccc69b28bbddc9dc"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "name": "SPARTAN raw NephelProcd DailyScaPM25",
+      "status": "ready",
+      "tableCount": 20,
+      "rowCount": 10742,
+      "fileCount": 20,
+      "recipeManifestPath": "research/ftir_hips_chem/workflows/data_space_recipes/spartan_raw_parquet.manifest.json",
+      "recipeManifestSha256": "012b5a29a71126108e2c7e498eedca120bd9e700abb95398ccc69b28bbddc9dc"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "name": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "status": "ready",
+      "tableCount": 20,
+      "rowCount": 240595,
+      "fileCount": 20,
+      "recipeManifestPath": "research/ftir_hips_chem/workflows/data_space_recipes/spartan_raw_parquet.manifest.json",
+      "recipeManifestSha256": "012b5a29a71126108e2c7e498eedca120bd9e700abb95398ccc69b28bbddc9dc"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "name": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "status": "ready",
+      "tableCount": 20,
+      "rowCount": 225724,
+      "fileCount": 20,
+      "recipeManifestPath": "research/ftir_hips_chem/workflows/data_space_recipes/spartan_raw_parquet.manifest.json",
+      "recipeManifestSha256": "012b5a29a71126108e2c7e498eedca120bd9e700abb95398ccc69b28bbddc9dc"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "name": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "status": "ready",
+      "tableCount": 21,
+      "rowCount": 12636,
+      "fileCount": 21,
+      "recipeManifestPath": "research/ftir_hips_chem/workflows/data_space_recipes/spartan_raw_parquet.manifest.json",
+      "recipeManifestSha256": "012b5a29a71126108e2c7e498eedca120bd9e700abb95398ccc69b28bbddc9dc"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "name": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "status": "ready",
+      "tableCount": 21,
+      "rowCount": 229046,
+      "fileCount": 21,
+      "recipeManifestPath": "research/ftir_hips_chem/workflows/data_space_recipes/spartan_raw_parquet.manifest.json",
+      "recipeManifestSha256": "012b5a29a71126108e2c7e498eedca120bd9e700abb95398ccc69b28bbddc9dc"
+    }
+  ],
+  "files": [
+    {
+      "datasetId": "9b49715d-2a06-4dec-be1a-b6219ed03188",
+      "datasetName": "AETH Addis Meteostat sources",
+      "hostedName": "Addis Ababa daily Average met Data.csv",
+      "tableName": "addis_ababa_daily_average_met_data",
+      "rowCount": 657,
+      "repositoryPath": "research/ftir_hips_chem/Weather Data/Meteostat/Addis Ababa daily Average met Data.csv",
+      "sha256": "41330ef7ce1766a52ddc1ad655ae6749bfc018df2ed437ca54e342ebfaa75334",
+      "inputPath": "research/ftir_hips_chem/Weather Data/Meteostat/Addis Ababa daily Average met Data.csv"
+    },
+    {
+      "datasetId": "9b49715d-2a06-4dec-be1a-b6219ed03188",
+      "datasetName": "AETH Addis Meteostat sources",
+      "hostedName": "master_meteostat_AddisAbaba_63450_2022-12-01_2024-10-01.csv",
+      "tableName": "master_meteostat_addisababa_63450_2022_12_01_202",
+      "rowCount": 16104,
+      "repositoryPath": "research/ftir_hips_chem/Weather Data/Meteostat/master_meteostat_AddisAbaba_63450_2022-12-01_2024-10-01.csv",
+      "sha256": "a99c0cffc45f93abde439270d840faa6f147709bebc3155e8a9c75e9dd44223a",
+      "inputPath": "research/ftir_hips_chem/Weather Data/Meteostat/master_meteostat_AddisAbaba_63450_2022-12-01_2024-10-01.csv"
+    },
+    {
+      "datasetId": "7b1be199-2077-4fae-b55f-fc6b12beea64",
+      "datasetName": "AETH ETAD factor sources",
+      "hostedName": "ETAD Factor Contributions .csv",
+      "tableName": "etad_factor_contributions",
+      "rowCount": 102,
+      "repositoryPath": "research/ftir_hips_chem/Filter Data/ETAD Factor Contributions .csv",
+      "sha256": "ec20a9a1387636ce499aa66646b6b0f23d78064da129edcb10c37641b1a2b158",
+      "inputPath": "research/ftir_hips_chem/Filter Data/ETAD Factor Contributions .csv"
+    },
+    {
+      "datasetId": "7b1be199-2077-4fae-b55f-fc6b12beea64",
+      "datasetName": "AETH ETAD factor sources",
+      "hostedName": "ETAD Filter ID.csv",
+      "tableName": "etad_filter_id",
+      "rowCount": 189,
+      "repositoryPath": "research/ftir_hips_chem/Filter Data/ETAD Filter ID.csv",
+      "sha256": "cc79afcb0fcaa09346033c094921e773c1d57002b2fc857c313c5c0ce90a0c53",
+      "inputPath": "research/ftir_hips_chem/Filter Data/ETAD Filter ID.csv"
+    },
+    {
+      "datasetId": "caa04b1f-7f86-4c34-b059-a5a8d04c7501",
+      "datasetName": "AETH FTIR unified filter",
+      "hostedName": "unified_filter_dataset.parquet",
+      "tableName": "unified_filter_dataset",
+      "rowCount": 44493,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/unified_filter_dataset.parquet",
+      "sha256": "3018e6f54dbda2269026114978aa9e5670fc2b197d26b905d4ac623dd934e6bf",
+      "inputPath": "research/ftir_hips_chem/Filter Data/unified_filter_dataset.pkl"
+    },
+    {
+      "datasetId": "9c6f0a21-c0c6-4955-9bc1-b40077ca9622",
+      "datasetName": "AETH IMPROVE cleaned optics",
+      "hostedName": "improve_valid_cleaned.parquet",
+      "tableName": "improve_valid_cleaned",
+      "rowCount": 379697,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/improve_valid_cleaned.parquet",
+      "sha256": "af88db2f963e1e67384070445c97eae8df7e1bdad8d5255197d2eb9a88fb346a",
+      "inputPath": "research/ftir_hips_chem/output/improve_high_fabs_comparison/improve_valid_cleaned.csv"
+    },
+    {
+      "datasetId": "f82f3a0f-8366-445a-9cfc-c4f60b1c77c6",
+      "datasetName": "AETH four-site ChemSpec sources",
+      "hostedName": "FilterBased_ChemSpecPM25_CHTS.parquet",
+      "tableName": "filterbased_chemspecpm25_chts",
+      "rowCount": 13428,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/FilterBased_ChemSpecPM25_CHTS.parquet",
+      "sha256": "03581ee3936d93cba2c2416709e025c2ed1c9aefc38d678843652d2fc37e635b",
+      "inputPath": "research/filter_combine/FilterBased_ChemSpecPM25_CHTS.csv"
+    },
+    {
+      "datasetId": "f82f3a0f-8366-445a-9cfc-c4f60b1c77c6",
+      "datasetName": "AETH four-site ChemSpec sources",
+      "hostedName": "FilterBased_ChemSpecPM25_ETAD.parquet",
+      "tableName": "filterbased_chemspecpm25_etad",
+      "rowCount": 7668,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/FilterBased_ChemSpecPM25_ETAD.parquet",
+      "sha256": "8eaa62ddfcacdff334069ddeeeea61245d831d64fed03e64d7bf533198285320",
+      "inputPath": "research/filter_combine/FilterBased_ChemSpecPM25_ETAD.csv"
+    },
+    {
+      "datasetId": "f82f3a0f-8366-445a-9cfc-c4f60b1c77c6",
+      "datasetName": "AETH four-site ChemSpec sources",
+      "hostedName": "FilterBased_ChemSpecPM25_INDH.parquet",
+      "tableName": "filterbased_chemspecpm25_indh",
+      "rowCount": 1231,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/FilterBased_ChemSpecPM25_INDH.parquet",
+      "sha256": "82c56ea9aecbe0ae89ed560f030396ce485117b78648bb49a3416a44e58c55fc",
+      "inputPath": "research/filter_combine/FilterBased_ChemSpecPM25_INDH.csv"
+    },
+    {
+      "datasetId": "f82f3a0f-8366-445a-9cfc-c4f60b1c77c6",
+      "datasetName": "AETH four-site ChemSpec sources",
+      "hostedName": "FilterBased_ChemSpecPM25_USPA.parquet",
+      "tableName": "filterbased_chemspecpm25_uspa",
+      "rowCount": 10446,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/FilterBased_ChemSpecPM25_USPA.parquet",
+      "sha256": "61f8bea640368015bc89c8a7b22bbfc243d68bb6a7dc59d417488d896ef62dd9",
+      "inputPath": "research/filter_combine/FilterBased_ChemSpecPM25_USPA.csv"
+    },
+    {
+      "datasetId": "9f73e74d-31f3-44da-bd3f-8ba8513405a0",
+      "datasetName": "AETH four-site FTIR source",
+      "hostedName": "Four_Sites_FTIR_data.v2.csv",
+      "tableName": "four_sites_ftir_data_v2",
+      "rowCount": 5250,
+      "repositoryPath": "research/filter_combine/Four_Sites_FTIR_data.v2.csv",
+      "sha256": "7e28ed19b04153df033fcf2804f466f4cc19409192f51ecfe5f1cfb4a3400274",
+      "inputPath": "research/filter_combine/Four_Sites_FTIR_data.v2.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_AEAZ.parquet",
+      "tableName": "filterbased_chemspecpm10_aeaz",
+      "rowCount": 618,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_AEAZ.parquet",
+      "sha256": "c2d3b7730fa195bce83745cb9e74738be026377539bb6cf8fb8fc51f1b3bb00e",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_AEAZ.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_ARCB.parquet",
+      "tableName": "filterbased_chemspecpm10_arcb",
+      "rowCount": 0,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_ARCB.parquet",
+      "sha256": "f62c0119f502c46f75beb11b5f60da3a51c99e22cc2b488e4cdd3fdd4b616b8e",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_ARCB.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_AUMN.parquet",
+      "tableName": "filterbased_chemspecpm10_aumn",
+      "rowCount": 483,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_AUMN.parquet",
+      "sha256": "44a0da8bbd7c2ba9f32e610fd439a727f6951dc4a2d061d8df8c23bd095286ff",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_AUMN.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_BDDU.parquet",
+      "tableName": "filterbased_chemspecpm10_bddu",
+      "rowCount": 342,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_BDDU.parquet",
+      "sha256": "06348d6e8fddd8c1db1ee1003814a44cdc680d92ea1c811fcac93fc9cd32d951",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_BDDU.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_BIBU.parquet",
+      "tableName": "filterbased_chemspecpm10_bibu",
+      "rowCount": 180,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_BIBU.parquet",
+      "sha256": "a3da51ce71a46781ec466a8a288025eb148082fa87e318d963cdd3ce3a7a194c",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_BIBU.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_CADO.parquet",
+      "tableName": "filterbased_chemspecpm10_cado",
+      "rowCount": 417,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_CADO.parquet",
+      "sha256": "05dd95829f9f5d4c20942fdd27c7439ad40a8bdf4e78607c0c022ea754afa573",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_CADO.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_CAHA.parquet",
+      "tableName": "filterbased_chemspecpm10_caha",
+      "rowCount": 1113,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_CAHA.parquet",
+      "sha256": "1414f43075236ac09f04a1124fb837a43066df852267677440c526c98d98b590",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_CAHA.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_CAKE.parquet",
+      "tableName": "filterbased_chemspecpm10_cake",
+      "rowCount": 136,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_CAKE.parquet",
+      "sha256": "6f64e7fb21970caedbb6dd9fb4cbf46612bb997f64b949d4161d7861e1eabbb7",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_CAKE.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_CALE.parquet",
+      "tableName": "filterbased_chemspecpm10_cale",
+      "rowCount": 130,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_CALE.parquet",
+      "sha256": "fd5d4bf8746408338d5cf008282018e8e571c2202d81c0a8f951fa303c462481",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_CALE.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_CASH.parquet",
+      "tableName": "filterbased_chemspecpm10_cash",
+      "rowCount": 569,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_CASH.parquet",
+      "sha256": "5a3272c5e6c1058f168848dbe90505fb5e6afa8ef5da4b10b9cbee832426cca3",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_CASH.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_CHTS.parquet",
+      "tableName": "filterbased_chemspecpm10_chts",
+      "rowCount": 671,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_CHTS.parquet",
+      "sha256": "0801234cadcfeb9563df8dbd6601c1311b38ef12deeaa24ac7f274ca17161e7e",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_CHTS.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_CLST.parquet",
+      "tableName": "filterbased_chemspecpm10_clst",
+      "rowCount": 0,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_CLST.parquet",
+      "sha256": "f62c0119f502c46f75beb11b5f60da3a51c99e22cc2b488e4cdd3fdd4b616b8e",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_CLST.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_CLTA.parquet",
+      "tableName": "filterbased_chemspecpm10_clta",
+      "rowCount": 0,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_CLTA.parquet",
+      "sha256": "f62c0119f502c46f75beb11b5f60da3a51c99e22cc2b488e4cdd3fdd4b616b8e",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_CLTA.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_ETAD.parquet",
+      "tableName": "filterbased_chemspecpm10_etad",
+      "rowCount": 250,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_ETAD.parquet",
+      "sha256": "aff39dbbc70b7e0aaa6314b78b27cbd41392de8e1e6b42c92e4b909fcc3ddbc8",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_ETAD.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_ETBI.parquet",
+      "tableName": "filterbased_chemspecpm10_etbi",
+      "rowCount": 0,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_ETBI.parquet",
+      "sha256": "f62c0119f502c46f75beb11b5f60da3a51c99e22cc2b488e4cdd3fdd4b616b8e",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_ETBI.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_IDBD.parquet",
+      "tableName": "filterbased_chemspecpm10_idbd",
+      "rowCount": 219,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_IDBD.parquet",
+      "sha256": "1e81c99f890301fde717f0d3d8229eddbfb15220046ac4ea483fcf414518ab9a",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_IDBD.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_ILHA.parquet",
+      "tableName": "filterbased_chemspecpm10_ilha",
+      "rowCount": 174,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_ILHA.parquet",
+      "sha256": "8282d585b4776b0fee8ada8f2b7c11ea7ae62d263263ede4724141f137eca3da",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_ILHA.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_ILNZ.parquet",
+      "tableName": "filterbased_chemspecpm10_ilnz",
+      "rowCount": 608,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_ILNZ.parquet",
+      "sha256": "2eba4e18d4fb23d3fce71aab9a3f3a8f019adf5a74f44a05307c769b3b28fa18",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_ILNZ.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_INDH.parquet",
+      "tableName": "filterbased_chemspecpm10_indh",
+      "rowCount": 0,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_INDH.parquet",
+      "sha256": "f62c0119f502c46f75beb11b5f60da3a51c99e22cc2b488e4cdd3fdd4b616b8e",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_INDH.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_INJA.parquet",
+      "tableName": "filterbased_chemspecpm10_inja",
+      "rowCount": 0,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_INJA.parquet",
+      "sha256": "f62c0119f502c46f75beb11b5f60da3a51c99e22cc2b488e4cdd3fdd4b616b8e",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_INJA.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_INKA.parquet",
+      "tableName": "filterbased_chemspecpm10_inka",
+      "rowCount": 110,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_INKA.parquet",
+      "sha256": "6aaffecab0873116f02a3416498463ead4cb7d55be5eb607849f20ce4a47785d",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_INKA.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_KRSE.parquet",
+      "tableName": "filterbased_chemspecpm10_krse",
+      "rowCount": 337,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_KRSE.parquet",
+      "sha256": "cb1c117ef0234c6025fa8985c1f8060957bb699e667269d148e0865e918546e0",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_KRSE.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_KRUL.parquet",
+      "tableName": "filterbased_chemspecpm10_krul",
+      "rowCount": 753,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_KRUL.parquet",
+      "sha256": "2edcc037cea2a22ed5f7954fc0f42ece5e9eacbbc68fd4bb211bb1ed3b2fe0aa",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_KRUL.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_MXMC.parquet",
+      "tableName": "filterbased_chemspecpm10_mxmc",
+      "rowCount": 393,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_MXMC.parquet",
+      "sha256": "9145b3e13f41552d30b471c98606572593c9cbd52b878a1d5e6936fa80aa2289",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_MXMC.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_NGIL.parquet",
+      "tableName": "filterbased_chemspecpm10_ngil",
+      "rowCount": 427,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_NGIL.parquet",
+      "sha256": "bdbc637959e3b5c531597766205145ff50fe0790d0ff305fdb6e8a0ee33babd0",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_NGIL.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_PHMO.parquet",
+      "tableName": "filterbased_chemspecpm10_phmo",
+      "rowCount": 0,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_PHMO.parquet",
+      "sha256": "f62c0119f502c46f75beb11b5f60da3a51c99e22cc2b488e4cdd3fdd4b616b8e",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_PHMO.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_PRFJ.parquet",
+      "tableName": "filterbased_chemspecpm10_prfj",
+      "rowCount": 245,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_PRFJ.parquet",
+      "sha256": "d8bca390a9d22f074a33ccd5b6a23adc6c454e4063c69462cd3616b0102a0024",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_PRFJ.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_SGSU.parquet",
+      "tableName": "filterbased_chemspecpm10_sgsu",
+      "rowCount": 77,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_SGSU.parquet",
+      "sha256": "e58c105a330417d0c849ea5aae3ebcdc113cfb00d75d7a6d9b122d128f368b3c",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_SGSU.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_TWKA.parquet",
+      "tableName": "filterbased_chemspecpm10_twka",
+      "rowCount": 122,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_TWKA.parquet",
+      "sha256": "55dfb523d765835aea6de5797b73f8f00a11385d217a4851292e7cd87aaa05da",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_TWKA.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_TWTA.parquet",
+      "tableName": "filterbased_chemspecpm10_twta",
+      "rowCount": 166,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_TWTA.parquet",
+      "sha256": "48da0217ae079fc14d330514a47de711c2474ba38b5cf4058a3f83ea69d0d87f",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_TWTA.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_USBO.parquet",
+      "tableName": "filterbased_chemspecpm10_usbo",
+      "rowCount": 0,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_USBO.parquet",
+      "sha256": "f62c0119f502c46f75beb11b5f60da3a51c99e22cc2b488e4cdd3fdd4b616b8e",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_USBO.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_USMC.parquet",
+      "tableName": "filterbased_chemspecpm10_usmc",
+      "rowCount": 0,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_USMC.parquet",
+      "sha256": "f62c0119f502c46f75beb11b5f60da3a51c99e22cc2b488e4cdd3fdd4b616b8e",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_USMC.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_USNO.parquet",
+      "tableName": "filterbased_chemspecpm10_usno",
+      "rowCount": 36,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_USNO.parquet",
+      "sha256": "795d105bc4e93f72957e53fd2782249720af7e5e63572abf9aa2164d1aba8d10",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_USNO.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_USPA.parquet",
+      "tableName": "filterbased_chemspecpm10_uspa",
+      "rowCount": 0,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_USPA.parquet",
+      "sha256": "f62c0119f502c46f75beb11b5f60da3a51c99e22cc2b488e4cdd3fdd4b616b8e",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_USPA.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_VNHN.parquet",
+      "tableName": "filterbased_chemspecpm10_vnhn",
+      "rowCount": 212,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_VNHN.parquet",
+      "sha256": "317948b7d7491585137f6c7484eea8d18cca71a1e17609b69014e2bc58a6d160",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_VNHN.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_ZAJB.parquet",
+      "tableName": "filterbased_chemspecpm10_zajb",
+      "rowCount": 235,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_ZAJB.parquet",
+      "sha256": "fb8a49c56f6e4257e130d04dfc858bb3f8484b63d29d154994af21e5388426ba",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_ZAJB.csv"
+    },
+    {
+      "datasetId": "7d3bd9a1-6e43-45ca-8e89-56c177120045",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM10",
+      "hostedName": "FilterBased_ChemSpecPM10_ZAPR.parquet",
+      "tableName": "filterbased_chemspecpm10_zapr",
+      "rowCount": 231,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_ZAPR.parquet",
+      "sha256": "fa70e9660973ee1a6f0b13d10c426faccfcc8e53b695947f8a8ff3daffdebf99",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM10/FilterBased_ChemSpecPM10_ZAPR.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_AEAZ.parquet",
+      "tableName": "filterbased_chemspecpm25_aeaz",
+      "rowCount": 5717,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_AEAZ.parquet",
+      "sha256": "c0ce2a4334ed0c9ccab9850f45552396a680d697c9801a9ec8af8f26021f0c67",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_AEAZ.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_ARCB.parquet",
+      "tableName": "filterbased_chemspecpm25_arcb",
+      "rowCount": 1492,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_ARCB.parquet",
+      "sha256": "d0ca3a9ba9ad152dd106551bd0dd1dcb17119fce3f371e4b62199012aacb60d2",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_ARCB.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_AUMN.parquet",
+      "tableName": "filterbased_chemspecpm25_aumn",
+      "rowCount": 2409,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_AUMN.parquet",
+      "sha256": "80c184ba02ae04a59afaf8cfef43e70ea496395f203d84e43708c5e192f8c3fd",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_AUMN.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_BDDU.parquet",
+      "tableName": "filterbased_chemspecpm25_bddu",
+      "rowCount": 3932,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_BDDU.parquet",
+      "sha256": "b7c4bbc8501be194e27baae972de64fc4055513918af5a711c1dc8729508edfa",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_BDDU.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_BIBU.parquet",
+      "tableName": "filterbased_chemspecpm25_bibu",
+      "rowCount": 1420,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_BIBU.parquet",
+      "sha256": "a9b92fee42965de1d366151fd2b36ca4790f9a9801aba95edfca237310c8dad7",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_BIBU.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_CADO.parquet",
+      "tableName": "filterbased_chemspecpm25_cado",
+      "rowCount": 2537,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_CADO.parquet",
+      "sha256": "6b698693ac96042a0614b08fbd5a7a36f5da5b962c5575c4e955f28de5750e8c",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_CADO.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_CAHA.parquet",
+      "tableName": "filterbased_chemspecpm25_caha",
+      "rowCount": 5630,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_CAHA.parquet",
+      "sha256": "4da6f49dcf4222e554da913645ee2660655e35285a3df633990ec5d927bc5ce7",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_CAHA.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_CAKE.parquet",
+      "tableName": "filterbased_chemspecpm25_cake",
+      "rowCount": 618,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_CAKE.parquet",
+      "sha256": "af94aa81a0fb1770f5d884b462c64880bb2b93b2c499df9baff34a926724b367",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_CAKE.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_CALE.parquet",
+      "tableName": "filterbased_chemspecpm25_cale",
+      "rowCount": 720,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_CALE.parquet",
+      "sha256": "84c94bc77229e52ebd4a667a9f0efa162100e422a25bb5175959b61c6589a237",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_CALE.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_CASH.parquet",
+      "tableName": "filterbased_chemspecpm25_cash",
+      "rowCount": 3739,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_CASH.parquet",
+      "sha256": "ccb534fda220548d6eca435ae35d11cb4699ba9301e466007de1479400e0f62d",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_CASH.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_CHTS.parquet",
+      "tableName": "filterbased_chemspecpm25_chts",
+      "rowCount": 13525,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_CHTS.parquet",
+      "sha256": "6f01041cbb635d778aa5baa6984325b7f4fbca491f2e8e360307016364249f56",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_CHTS.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_CLST.parquet",
+      "tableName": "filterbased_chemspecpm25_clst",
+      "rowCount": 6954,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_CLST.parquet",
+      "sha256": "9f7b93e690f9dece1104099e73400b9aa94ae26f5306d7cb909d4c210e45c998",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_CLST.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_CLTA.parquet",
+      "tableName": "filterbased_chemspecpm25_clta",
+      "rowCount": 3326,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_CLTA.parquet",
+      "sha256": "7f963df1397a88fdab04fe4d98024a280206e4b763274a9b5efd28b1812e97db",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_CLTA.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_ETAD.parquet",
+      "tableName": "filterbased_chemspecpm25_etad",
+      "rowCount": 9771,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_ETAD.parquet",
+      "sha256": "ecfa8db9634b9f9c9ff4e5feb96b642b0dde37367c6bf52ec151bc2b63aa98cf",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_ETAD.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_ETBI.parquet",
+      "tableName": "filterbased_chemspecpm25_etbi",
+      "rowCount": 1341,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_ETBI.parquet",
+      "sha256": "93f2923e9d8d5f110ffaed46a871ca3604b89a7abe52f4ed22e0c7c2add80c27",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_ETBI.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_IDBD.parquet",
+      "tableName": "filterbased_chemspecpm25_idbd",
+      "rowCount": 3960,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_IDBD.parquet",
+      "sha256": "3d5a4759276ac58213acfd907e91ca41013d71b53759e42f76448e0bf235dfb3",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_IDBD.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_ILHA.parquet",
+      "tableName": "filterbased_chemspecpm25_ilha",
+      "rowCount": 7104,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_ILHA.parquet",
+      "sha256": "28850871d0a36d032a809d709426c213ca3947adb53afbd9a3875ddce5a33ed2",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_ILHA.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_ILNZ.parquet",
+      "tableName": "filterbased_chemspecpm25_ilnz",
+      "rowCount": 10850,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_ILNZ.parquet",
+      "sha256": "8d77f61ef5caa9c97273a2a447496a26809ed6980873a689cee5af838de4d25c",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_ILNZ.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_INDH.parquet",
+      "tableName": "filterbased_chemspecpm25_indh",
+      "rowCount": 4577,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_INDH.parquet",
+      "sha256": "21431643eadecdb6a88d0fafddb51035a08bda84af926750b75754a6c57f7d49",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_INDH.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_INJA.parquet",
+      "tableName": "filterbased_chemspecpm25_inja",
+      "rowCount": 2047,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_INJA.parquet",
+      "sha256": "7ffb44a6724eed9bbde5749a9c5805cccc0692b6e4b18eab2a0661f68cfcdc55",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_INJA.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_INKA.parquet",
+      "tableName": "filterbased_chemspecpm25_inka",
+      "rowCount": 1434,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_INKA.parquet",
+      "sha256": "604ff6634e879ed14aa7a8c1cd76eb63c81fb96e0f83f8cf29cabc1a5ca618b2",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_INKA.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_KRSE.parquet",
+      "tableName": "filterbased_chemspecpm25_krse",
+      "rowCount": 3234,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_KRSE.parquet",
+      "sha256": "72cd3292443150c7c0aa2bc690b260512395f8fcf5065c9653b36100f5914a99",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_KRSE.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_KRUL.parquet",
+      "tableName": "filterbased_chemspecpm25_krul",
+      "rowCount": 5203,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_KRUL.parquet",
+      "sha256": "0806dd028c69df4c6f158a7d44d3ea728b8e1adc38e610359d8ccc40b84a9464",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_KRUL.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_MXMC.parquet",
+      "tableName": "filterbased_chemspecpm25_mxmc",
+      "rowCount": 2296,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_MXMC.parquet",
+      "sha256": "832fbd62dec8143744b940d4263397eeb2cad8978f3a9be3d07c9cf84ea29885",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_MXMC.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_NGIL.parquet",
+      "tableName": "filterbased_chemspecpm25_ngil",
+      "rowCount": 2379,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_NGIL.parquet",
+      "sha256": "08131a375de309ffea08a8c8eb5fbd38302d963f3c0b85be506bae2c925e8f9d",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_NGIL.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_PHMO.parquet",
+      "tableName": "filterbased_chemspecpm25_phmo",
+      "rowCount": 420,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_PHMO.parquet",
+      "sha256": "e3bc9d82cd0f559d95fc1e81d462c45ebe56542125a521d862d619e05fdf897c",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_PHMO.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_PRFJ.parquet",
+      "tableName": "filterbased_chemspecpm25_prfj",
+      "rowCount": 2125,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_PRFJ.parquet",
+      "sha256": "d60ee496cc344cf735d56d1be840b31fe3aa827d40758062f309318a51067ce9",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_PRFJ.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_SGSU.parquet",
+      "tableName": "filterbased_chemspecpm25_sgsu",
+      "rowCount": 1693,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_SGSU.parquet",
+      "sha256": "ca1d27f8316746a16c8253b4ccab4680b23dc31d00632e5e76d6a1fcd5619206",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_SGSU.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_TWKA.parquet",
+      "tableName": "filterbased_chemspecpm25_twka",
+      "rowCount": 6339,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_TWKA.parquet",
+      "sha256": "28654d62a26e2e5015226ff22e5c146f9b4d04519f38bb22cd6934042a44edbb",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_TWKA.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_TWTA.parquet",
+      "tableName": "filterbased_chemspecpm25_twta",
+      "rowCount": 10158,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_TWTA.parquet",
+      "sha256": "020736c2f2046ac809b6181dc09356ff23e7aeb97cdb0d640f03fe48f9b4e0b1",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_TWTA.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_USBO.parquet",
+      "tableName": "filterbased_chemspecpm25_usbo",
+      "rowCount": 362,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_USBO.parquet",
+      "sha256": "9141b61d6d414a5bbbfe2d75756e63e27464a04684e523decda83acf4de1c923",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_USBO.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_USMC.parquet",
+      "tableName": "filterbased_chemspecpm25_usmc",
+      "rowCount": 423,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_USMC.parquet",
+      "sha256": "7940ab728f1f7e6cbb871749043c4e2a0396ae6adc6ccd6aaaa568ac23b42e80",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_USMC.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_USNO.parquet",
+      "tableName": "filterbased_chemspecpm25_usno",
+      "rowCount": 973,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_USNO.parquet",
+      "sha256": "303cdad216d6f75dd965c31619317048b79671c9f2621798077bfd3fe1a7f2b6",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_USNO.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_USPA.parquet",
+      "tableName": "filterbased_chemspecpm25_uspa",
+      "rowCount": 10291,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_USPA.parquet",
+      "sha256": "d8a2fd7c9b50883496420bffeb88252e93ea1e554473c758e0ae0e549caa0add",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_USPA.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_VNHN.parquet",
+      "tableName": "filterbased_chemspecpm25_vnhn",
+      "rowCount": 785,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_VNHN.parquet",
+      "sha256": "26e61406f38a7f24c6249394ce01064426207e2f24c369626e7d3818e1eebaea",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_VNHN.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_ZAJB.parquet",
+      "tableName": "filterbased_chemspecpm25_zajb",
+      "rowCount": 8309,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_ZAJB.parquet",
+      "sha256": "cc82d189d1dc21531dc39d9ce06a1499a231b378029e1df62d7763f99ec31f79",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_ZAJB.csv"
+    },
+    {
+      "datasetId": "7955ed6c-3b53-46e1-8443-caa80ae64cdf",
+      "datasetName": "SPARTAN raw FilterBased ChemSpecPM25",
+      "hostedName": "FilterBased_ChemSpecPM25_ZAPR.parquet",
+      "tableName": "filterbased_chemspecpm25_zapr",
+      "rowCount": 10657,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_ZAPR.parquet",
+      "sha256": "900a380e09915f25834ccf3cf9d41d1d803edc45f0f4f3f6f76a18d19a4a8554",
+      "inputPath": "data/spartan/raw/FilterBased/ChemSpecPM25/FilterBased_ChemSpecPM25_ZAPR.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_AEAZ.parquet",
+      "tableName": "filterbased_reconstrpm25_aeaz",
+      "rowCount": 1889,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_AEAZ.parquet",
+      "sha256": "d5e9a7e13d70641d78238c6e894fc63ebd5e41a73f438e6bf9fddbc8ba569658",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_AEAZ.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_ARCB.parquet",
+      "tableName": "filterbased_reconstrpm25_arcb",
+      "rowCount": 465,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_ARCB.parquet",
+      "sha256": "a4d72ef6c354030ceae1b5cd34ac2c11f8b42bd7bd7fc1e13f5dfa1eb5a81b6b",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_ARCB.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_AUMN.parquet",
+      "tableName": "filterbased_reconstrpm25_aumn",
+      "rowCount": 771,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_AUMN.parquet",
+      "sha256": "a8727df63650d11e0e7e3114070a70771c22ad281f64eb85b9bbab4a713c17c8",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_AUMN.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_BDDU.parquet",
+      "tableName": "filterbased_reconstrpm25_bddu",
+      "rowCount": 1266,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_BDDU.parquet",
+      "sha256": "33e86a05c2477a6b4243c7e6e08fff5fa9931c92d7cb32e7d2d667b712d35c03",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_BDDU.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_BIBU.parquet",
+      "tableName": "filterbased_reconstrpm25_bibu",
+      "rowCount": 499,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_BIBU.parquet",
+      "sha256": "cf5d9a6ead137c76f53596ba14d5ac2b74bc1241846b5923f1e00b3064034bb7",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_BIBU.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_CADO.parquet",
+      "tableName": "filterbased_reconstrpm25_cado",
+      "rowCount": 821,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_CADO.parquet",
+      "sha256": "2c45f2955ab364e88f104c1db59e395d0a8c5460db77cb0a4b9048a61184e962",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_CADO.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_CAHA.parquet",
+      "tableName": "filterbased_reconstrpm25_caha",
+      "rowCount": 1912,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_CAHA.parquet",
+      "sha256": "5a1f157f26535ef3b2d1c0eba49adb504e89efd209fd43f0d86fad8be6227264",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_CAHA.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_CAKE.parquet",
+      "tableName": "filterbased_reconstrpm25_cake",
+      "rowCount": 192,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_CAKE.parquet",
+      "sha256": "fa9e06be3559232df606bf97a9e206f15b6e24fc9ee0536ca235968a005db910",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_CAKE.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_CALE.parquet",
+      "tableName": "filterbased_reconstrpm25_cale",
+      "rowCount": 265,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_CALE.parquet",
+      "sha256": "aa9848b5553a84fd6a94b730e8e2c1a55648b582999b276eb37382ae3f673df0",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_CALE.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_CASH.parquet",
+      "tableName": "filterbased_reconstrpm25_cash",
+      "rowCount": 1254,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_CASH.parquet",
+      "sha256": "51c5fa28b81fd9c0789f218442881e0a3fcbac79d1c513f6393ba4d7baba23bd",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_CASH.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_CHTS.parquet",
+      "tableName": "filterbased_reconstrpm25_chts",
+      "rowCount": 4322,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_CHTS.parquet",
+      "sha256": "a29f89aad666717cbf16bce9a3563a7896f4c789aa1a90b892316e3970f4887b",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_CHTS.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_CLST.parquet",
+      "tableName": "filterbased_reconstrpm25_clst",
+      "rowCount": 2240,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_CLST.parquet",
+      "sha256": "6fc1b6b326289f9ee985094481bfe8b1feb5f1776b917a6e9f2c8f39efa5dd5c",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_CLST.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_CLTA.parquet",
+      "tableName": "filterbased_reconstrpm25_clta",
+      "rowCount": 1161,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_CLTA.parquet",
+      "sha256": "377332835a964cc4352eb7425aa320455541721f29f1ca67affd249440297d5b",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_CLTA.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_ETAD.parquet",
+      "tableName": "filterbased_reconstrpm25_etad",
+      "rowCount": 3228,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_ETAD.parquet",
+      "sha256": "6dc9545104b694d00811c52442c41bceb7f9106fff5be104636aca32833132fd",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_ETAD.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_ETBI.parquet",
+      "tableName": "filterbased_reconstrpm25_etbi",
+      "rowCount": 519,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_ETBI.parquet",
+      "sha256": "becb1031d594042bf449515c4821dbb7bd38ee68c1c2f131c9b202722c5c1b45",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_ETBI.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_IDBD.parquet",
+      "tableName": "filterbased_reconstrpm25_idbd",
+      "rowCount": 1315,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_IDBD.parquet",
+      "sha256": "27b7526229b7a81384d6450591e2f7972f3a3986184dd7943ff5ca32c9c198ce",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_IDBD.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_ILHA.parquet",
+      "tableName": "filterbased_reconstrpm25_ilha",
+      "rowCount": 2355,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_ILHA.parquet",
+      "sha256": "42823e2cb3226d04adcad70ea04cfd0e1800042468f565b72fcdc7f6a5d02a2d",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_ILHA.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_ILNZ.parquet",
+      "tableName": "filterbased_reconstrpm25_ilnz",
+      "rowCount": 3534,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_ILNZ.parquet",
+      "sha256": "3164cb6d7b1f174d211ac7c5a6a15af411e8c8185da034e72c2eb22f0c89322a",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_ILNZ.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_INDH.parquet",
+      "tableName": "filterbased_reconstrpm25_indh",
+      "rowCount": 1635,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_INDH.parquet",
+      "sha256": "8b550d283ad3943b77a9ad628abc61eddda6e79fd3596b4355f8cd7e730991a1",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_INDH.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_INJA.parquet",
+      "tableName": "filterbased_reconstrpm25_inja",
+      "rowCount": 751,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_INJA.parquet",
+      "sha256": "a4671edabb44603819a204ec2208dd4db07a8cb51f177b10786fb8f8904358ec",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_INJA.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_INKA.parquet",
+      "tableName": "filterbased_reconstrpm25_inka",
+      "rowCount": 481,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_INKA.parquet",
+      "sha256": "f4ea44cea76cde58bc819b305228cb9449703fb6805a76e005fddf759fe898b3",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_INKA.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_KRSE.parquet",
+      "tableName": "filterbased_reconstrpm25_krse",
+      "rowCount": 1075,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_KRSE.parquet",
+      "sha256": "c496974e8ef53b04b3fd8a78cc4c05c19afdbe4f3cbe95ff38f859afb380d708",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_KRSE.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_KRUL.parquet",
+      "tableName": "filterbased_reconstrpm25_krul",
+      "rowCount": 1634,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_KRUL.parquet",
+      "sha256": "cd98ed7807a5e22f1fba2145f48ec46b065e00da76c9d5d00284eae73770e050",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_KRUL.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_MXMC.parquet",
+      "tableName": "filterbased_reconstrpm25_mxmc",
+      "rowCount": 739,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_MXMC.parquet",
+      "sha256": "b64b23e12bd491be3f3d7c404d3a98fc665e35cfaaa54b5b49e15fec12dec855",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_MXMC.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_NGIL.parquet",
+      "tableName": "filterbased_reconstrpm25_ngil",
+      "rowCount": 821,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_NGIL.parquet",
+      "sha256": "175f4ac648652f7205a3ee0f701467d0d7938f390018991802c51f96ddc9c978",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_NGIL.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_PHMO.parquet",
+      "tableName": "filterbased_reconstrpm25_phmo",
+      "rowCount": 132,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_PHMO.parquet",
+      "sha256": "4e9ab8ec65448df00ea9478a341f6571114dc4c4080a259c5e5e0b8c936f248f",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_PHMO.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_PRFJ.parquet",
+      "tableName": "filterbased_reconstrpm25_prfj",
+      "rowCount": 695,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_PRFJ.parquet",
+      "sha256": "7d3c7f9a2a81fe1a2506d4eab6c94b5c3b32b61d861df6b4b1ec20a834bb5ab3",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_PRFJ.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_SGSU.parquet",
+      "tableName": "filterbased_reconstrpm25_sgsu",
+      "rowCount": 546,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_SGSU.parquet",
+      "sha256": "0bdb357a2ef636eaa87e81d1ba612d12cbd41e97632d18fed1d3d0af9a94269c",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_SGSU.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_TWKA.parquet",
+      "tableName": "filterbased_reconstrpm25_twka",
+      "rowCount": 2171,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_TWKA.parquet",
+      "sha256": "5f1c424f3f378469043dd7fdaa4b472709aff7f2b50285a1c0e512b4ef20a185",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_TWKA.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_TWTA.parquet",
+      "tableName": "filterbased_reconstrpm25_twta",
+      "rowCount": 3424,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_TWTA.parquet",
+      "sha256": "ebfe581bd036f951102cff2531ad61aebacf1acafcd0ac652aef42ca45a00fb5",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_TWTA.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_USBO.parquet",
+      "tableName": "filterbased_reconstrpm25_usbo",
+      "rowCount": 112,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_USBO.parquet",
+      "sha256": "85dea6096474e70927732f229b1c21dcaf92edcfac26563090d70bec822de755",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_USBO.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_USMC.parquet",
+      "tableName": "filterbased_reconstrpm25_usmc",
+      "rowCount": 125,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_USMC.parquet",
+      "sha256": "0dfd206eb5e871c21fef2fd5d16f8f91fd63930bbcfdbaeb788f2c678f1baebc",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_USMC.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_USNO.parquet",
+      "tableName": "filterbased_reconstrpm25_usno",
+      "rowCount": 327,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_USNO.parquet",
+      "sha256": "ffe7d2a8fb7a8a186c73849c6a38b9e7efc878b642cddb296ac8d4fd0c458624",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_USNO.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_USPA.parquet",
+      "tableName": "filterbased_reconstrpm25_uspa",
+      "rowCount": 3270,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_USPA.parquet",
+      "sha256": "aa8b43f2c0bee9615ad77dc46e6811d75fc6de7c29343defc2b9c694d7ada3c5",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_USPA.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_VNHN.parquet",
+      "tableName": "filterbased_reconstrpm25_vnhn",
+      "rowCount": 232,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_VNHN.parquet",
+      "sha256": "cc6b3c4115599690263d83fbe244469a8d017dcb637a7e95750e27fdedb8eebc",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_VNHN.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_ZAJB.parquet",
+      "tableName": "filterbased_reconstrpm25_zajb",
+      "rowCount": 2729,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_ZAJB.parquet",
+      "sha256": "8c6a9ad3a5acdd8b3bb17bd8c02e6c2f9a1e094e51d9fa34b3a75d356e090a93",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_ZAJB.csv"
+    },
+    {
+      "datasetId": "d755f930-8667-4516-9488-ffc7257cd2e1",
+      "datasetName": "SPARTAN raw FilterBased ReconstrPM25",
+      "hostedName": "FilterBased_ReconstrPM25_ZAPR.parquet",
+      "tableName": "filterbased_reconstrpm25_zapr",
+      "rowCount": 3523,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_ZAPR.parquet",
+      "sha256": "f4e8905ec1585634e8cd54b61ed01519d491082fb42c11edc4adf0acfb3593e5",
+      "inputPath": "data/spartan/raw/FilterBased/ReconstrPM25/FilterBased_ReconstrPM25_ZAPR.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_AEAZ.parquet",
+      "tableName": "nephelprocd_dailyscapm10_aeaz",
+      "rowCount": 688,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_AEAZ.parquet",
+      "sha256": "45583e043971ac0264ec44cd007eb58f479ed41387f8a05576c104dbfa5a6e31",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_AEAZ.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_AUMN.parquet",
+      "tableName": "nephelprocd_dailyscapm10_aumn",
+      "rowCount": 696,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_AUMN.parquet",
+      "sha256": "9948ed733f492de4c36e0830f079846c3d23da122037d2379f4f957f73572179",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_AUMN.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_CADO.parquet",
+      "tableName": "nephelprocd_dailyscapm10_cado",
+      "rowCount": 727,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_CADO.parquet",
+      "sha256": "664844d767320e0e6ebb1994037ab07279f84dc098265d86751bbc9268f74a11",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_CADO.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_CAHA.parquet",
+      "tableName": "nephelprocd_dailyscapm10_caha",
+      "rowCount": 816,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_CAHA.parquet",
+      "sha256": "13f41edc0602ea2d19bb80609c2656c1893cf1990e90d9e2f9ce08927e952db7",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_CAHA.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_CAKE.parquet",
+      "tableName": "nephelprocd_dailyscapm10_cake",
+      "rowCount": 164,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_CAKE.parquet",
+      "sha256": "2af881f805cabb34a9e3691e633e31eb41c54f22d3ad625e478d109d867b40ed",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_CAKE.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_CALE.parquet",
+      "tableName": "nephelprocd_dailyscapm10_cale",
+      "rowCount": 500,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_CALE.parquet",
+      "sha256": "11d36a2f62020ce0521c94a340272736b99615b8ce10be7f02d1ef887411ad84",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_CALE.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_CASH.parquet",
+      "tableName": "nephelprocd_dailyscapm10_cash",
+      "rowCount": 2441,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_CASH.parquet",
+      "sha256": "c4ea1a353741764ba181ea4a93e43963d50d7b5ef86f4eb7308f073bad763d43",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_CASH.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_CHTS.parquet",
+      "tableName": "nephelprocd_dailyscapm10_chts",
+      "rowCount": 754,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_CHTS.parquet",
+      "sha256": "3aba621e4dfaaf3b40b05a45aed83cbe03f537b6176a90a6e3ae3f59f78ffda7",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_CHTS.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_CODC.parquet",
+      "tableName": "nephelprocd_dailyscapm10_codc",
+      "rowCount": 141,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_CODC.parquet",
+      "sha256": "44bc0f2e5a6d1c444ee351497108f512654e7517a3361a0c0b2d68cb1a519056",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_CODC.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_ILNZ.parquet",
+      "tableName": "nephelprocd_dailyscapm10_ilnz",
+      "rowCount": 553,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_ILNZ.parquet",
+      "sha256": "84ec40f6d06d22887ac806854e8910c1cef15473b3a45dc59cdee375a1db3677",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_ILNZ.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_INKA.parquet",
+      "tableName": "nephelprocd_dailyscapm10_inka",
+      "rowCount": 246,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_INKA.parquet",
+      "sha256": "756820b2f98cfa5e5c8d4f3bbe9ce025a4667125647dd83d30e9eb479115029b",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_INKA.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_KRSE.parquet",
+      "tableName": "nephelprocd_dailyscapm10_krse",
+      "rowCount": 171,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_KRSE.parquet",
+      "sha256": "85668df649923899fea772bc0d3c9e168ede8ed0af6674223260f32ab8add43c",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_KRSE.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_KRUL.parquet",
+      "tableName": "nephelprocd_dailyscapm10_krul",
+      "rowCount": 324,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_KRUL.parquet",
+      "sha256": "bcabe6b1373f7210bea5a744fc399217c3d5e78e699145af0abc5c7197e4f7d4",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_KRUL.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_MXMC.parquet",
+      "tableName": "nephelprocd_dailyscapm10_mxmc",
+      "rowCount": 823,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_MXMC.parquet",
+      "sha256": "0fcb5ae4cbcbaf1474bae45343b54d7553e53cfbb9b022fa12e84b45b86e272e",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_MXMC.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_NGIL.parquet",
+      "tableName": "nephelprocd_dailyscapm10_ngil",
+      "rowCount": 405,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_NGIL.parquet",
+      "sha256": "2b4d3d268b27875c7077c48b776219f1b1813c96e06b10b1d69190469344eeaa",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_NGIL.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_PHMO.parquet",
+      "tableName": "nephelprocd_dailyscapm10_phmo",
+      "rowCount": 877,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_PHMO.parquet",
+      "sha256": "757dbd341219572564daed6defe44b9ea38766658f0e084af9ac6b2f53335078",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_PHMO.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_SGSU.parquet",
+      "tableName": "nephelprocd_dailyscapm10_sgsu",
+      "rowCount": 1031,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_SGSU.parquet",
+      "sha256": "eddae3744eeb6c4a706590281053adccb36129f9768a1d943023c60a5d634d65",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_SGSU.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_USNO.parquet",
+      "tableName": "nephelprocd_dailyscapm10_usno",
+      "rowCount": 677,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_USNO.parquet",
+      "sha256": "40b844a22b457f407831a9bd76a2377089cf4673a4f0b726456c97333cf0c6e4",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_USNO.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_VNHN.parquet",
+      "tableName": "nephelprocd_dailyscapm10_vnhn",
+      "rowCount": 51,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_VNHN.parquet",
+      "sha256": "beca056fded387d98142979b54bd7d88fecfd381820f1fd6605fe51df9d53539",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_VNHN.csv"
+    },
+    {
+      "datasetId": "79b8b2a9-f830-4624-ba3e-6389caf121d8",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM10",
+      "hostedName": "NephelProcd_DailyScaPM10_ZAPR.parquet",
+      "tableName": "nephelprocd_dailyscapm10_zapr",
+      "rowCount": 450,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_ZAPR.parquet",
+      "sha256": "9ddefa5da06815d04ea0dfc6d92d8a487d089f537bad6f58c07d1d58e80a883b",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM10/NephelProcd_DailyScaPM10_ZAPR.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_AEAZ.parquet",
+      "tableName": "nephelprocd_dailyscapm25_aeaz",
+      "rowCount": 628,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_AEAZ.parquet",
+      "sha256": "035a8e257e87986cdc4413bb3dd5771fc7d7ed727a69d90ebe6fe71e93e983ec",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_AEAZ.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_AUMN.parquet",
+      "tableName": "nephelprocd_dailyscapm25_aumn",
+      "rowCount": 696,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_AUMN.parquet",
+      "sha256": "b81473a1869fd708361a57dc799c9a523e670498a791634e4dcebf59542d0bb5",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_AUMN.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_CADO.parquet",
+      "tableName": "nephelprocd_dailyscapm25_cado",
+      "rowCount": 736,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_CADO.parquet",
+      "sha256": "448994ecb146a6d07966597dd7d88c73e5389330fd3e5d4044394ecb069f3a31",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_CADO.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_CAHA.parquet",
+      "tableName": "nephelprocd_dailyscapm25_caha",
+      "rowCount": 877,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_CAHA.parquet",
+      "sha256": "1c5497a350ede921e928e40f8a5b33d3ca8dffd147c09b7b2547b90d8d17bcf1",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_CAHA.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_CAKE.parquet",
+      "tableName": "nephelprocd_dailyscapm25_cake",
+      "rowCount": 135,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_CAKE.parquet",
+      "sha256": "1f9c2ae133aca77fc3f73078539457d0c325c19476bb7104842797eb70442e8f",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_CAKE.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_CALE.parquet",
+      "tableName": "nephelprocd_dailyscapm25_cale",
+      "rowCount": 386,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_CALE.parquet",
+      "sha256": "d056c112b8ff2fb62d448ece0929c54801ec9f73ad153e585f827cf8bac31c1a",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_CALE.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_CASH.parquet",
+      "tableName": "nephelprocd_dailyscapm25_cash",
+      "rowCount": 2458,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_CASH.parquet",
+      "sha256": "70544fd2c4606188cf2df4802f99b6e6c83e408572397dc63c22b3720a67c69c",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_CASH.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_CHTS.parquet",
+      "tableName": "nephelprocd_dailyscapm25_chts",
+      "rowCount": 769,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_CHTS.parquet",
+      "sha256": "26ea9886e10fda6ba9f2d0d462922ecbc01e7fc2c356aedac15a73088ef1e46e",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_CHTS.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_CODC.parquet",
+      "tableName": "nephelprocd_dailyscapm25_codc",
+      "rowCount": 142,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_CODC.parquet",
+      "sha256": "c0bc47cec4bd68456ca95d2124063345a9585afb645aaafe829dc4aeecdd990f",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_CODC.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_ILNZ.parquet",
+      "tableName": "nephelprocd_dailyscapm25_ilnz",
+      "rowCount": 533,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_ILNZ.parquet",
+      "sha256": "787769681f56c3aa2c3cded6f9b8c579419a59bae7a69659bd471d39d111fdc9",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_ILNZ.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_INKA.parquet",
+      "tableName": "nephelprocd_dailyscapm25_inka",
+      "rowCount": 36,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_INKA.parquet",
+      "sha256": "b22b6eb56b7964b3e84ef053aaf3945ffb61393c131cd4569f0b7c34c9694bbc",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_INKA.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_KRSE.parquet",
+      "tableName": "nephelprocd_dailyscapm25_krse",
+      "rowCount": 142,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_KRSE.parquet",
+      "sha256": "8b28f5bfbe1eaa895706fca2281c7ebbeaf497ba3a0b1351c0460886fa6adb57",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_KRSE.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_KRUL.parquet",
+      "tableName": "nephelprocd_dailyscapm25_krul",
+      "rowCount": 323,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_KRUL.parquet",
+      "sha256": "162f287a52723220cf1d1331468200940a94303a0b4a7dd7da70153a48babc27",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_KRUL.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_MXMC.parquet",
+      "tableName": "nephelprocd_dailyscapm25_mxmc",
+      "rowCount": 671,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_MXMC.parquet",
+      "sha256": "488c9c7d3174c1f94b66942ccde651884dcfb58c8d9c98087808f72daeeb5a0e",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_MXMC.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_NGIL.parquet",
+      "tableName": "nephelprocd_dailyscapm25_ngil",
+      "rowCount": 77,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_NGIL.parquet",
+      "sha256": "b52951a82399c059f3afef2a12fadd9a8a32dcbcc724a014724707d147669d38",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_NGIL.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_PHMO.parquet",
+      "tableName": "nephelprocd_dailyscapm25_phmo",
+      "rowCount": 877,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_PHMO.parquet",
+      "sha256": "a29669cda592f2643638bdd27c6c4954f25bfdf93392f23753cd742d5beba40b",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_PHMO.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_SGSU.parquet",
+      "tableName": "nephelprocd_dailyscapm25_sgsu",
+      "rowCount": 180,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_SGSU.parquet",
+      "sha256": "6d549537aee311d138c4a1f690122ab2322202d24c41e8d43e3360507ead9157",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_SGSU.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_USNO.parquet",
+      "tableName": "nephelprocd_dailyscapm25_usno",
+      "rowCount": 677,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_USNO.parquet",
+      "sha256": "4ca18346231e632638ec38dcc7fea4da26c58016f675bde74fba12f97ff3ef7b",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_USNO.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_VNHN.parquet",
+      "tableName": "nephelprocd_dailyscapm25_vnhn",
+      "rowCount": 14,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_VNHN.parquet",
+      "sha256": "c8feb3d47290e826ae21774c32b33b331e5cca797fbd8bd9548fd7bff16e8c75",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_VNHN.csv"
+    },
+    {
+      "datasetId": "941e8ea8-1f6b-4093-b54a-3f6e0e1d849a",
+      "datasetName": "SPARTAN raw NephelProcd DailyScaPM25",
+      "hostedName": "NephelProcd_DailyScaPM25_ZAPR.parquet",
+      "tableName": "nephelprocd_dailyscapm25_zapr",
+      "rowCount": 385,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_ZAPR.parquet",
+      "sha256": "45aeed7ae11b8ded05272770019630eb5d49f547dda04e76641799ad40a996be",
+      "inputPath": "data/spartan/raw/NephelProcd/DailyScaPM25/NephelProcd_DailyScaPM25_ZAPR.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_AEAZ.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_aeaz",
+      "rowCount": 15729,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_AEAZ.parquet",
+      "sha256": "7927d8a8fd6e701312552f6f08447b269373d5a6c5e51281463dcab5f9ca0026",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_AEAZ.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_AUMN.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_aumn",
+      "rowCount": 15621,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_AUMN.parquet",
+      "sha256": "f0f96ce50585f00e1fee9b66b401ee7fe5a1cdd6796023b1d55fc44049671871",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_AUMN.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_CADO.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_cado",
+      "rowCount": 14400,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_CADO.parquet",
+      "sha256": "9e4ffdeab1de890784219e872785f56804e9c458b21856595f81e6bfa4f9c31d",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_CADO.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_CAHA.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_caha",
+      "rowCount": 13644,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_CAHA.parquet",
+      "sha256": "5b23261e1074aa3e7ba9c44eaea30e394ea1d8604ab97462bb4de2f2839ae857",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_CAHA.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_CAKE.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_cake",
+      "rowCount": 2327,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_CAKE.parquet",
+      "sha256": "65f9921d56c5a30cffa39ac368d93d735d67a3ae5b4074f75a598ac882def3f1",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_CAKE.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_CALE.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_cale",
+      "rowCount": 5449,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_CALE.parquet",
+      "sha256": "b35d9e5e8024e0ba99a2ca0cab9bb7707d00c482aaa74525ce872aa47a04481c",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_CALE.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_CASH.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_cash",
+      "rowCount": 46143,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_CASH.parquet",
+      "sha256": "eba27eb873fab94ea34bd917e1d5b3b5e19f71616eb7b6edf18feec08ba85116",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_CASH.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_CHTS.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_chts",
+      "rowCount": 12224,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_CHTS.parquet",
+      "sha256": "787b1e483fd21e65e4bbff27dccdabf3d1990ce13a5b1a56cf2bc25a839009c5",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_CHTS.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_CODC.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_codc",
+      "rowCount": 1086,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_CODC.parquet",
+      "sha256": "919f895fda317f39f3f266276756a395a49e235e0fc900d54b42321199465727",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_CODC.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_ILNZ.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_ilnz",
+      "rowCount": 12327,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_ILNZ.parquet",
+      "sha256": "d08fffb851bafba319cd66865c8e876d0a07ebf44dcf5854093d3d93a7e1c8bf",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_ILNZ.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_INKA.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_inka",
+      "rowCount": 5335,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_INKA.parquet",
+      "sha256": "1b8b77b510b3148c2036c747510743db8e29e7fda0800d8b4f4671e6238fde1a",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_INKA.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_KRSE.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_krse",
+      "rowCount": 1260,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_KRSE.parquet",
+      "sha256": "feeb5f6fbb9181c956878087d31f175ccbe5e0ccb51b2d688017f634c3290679",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_KRSE.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_KRUL.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_krul",
+      "rowCount": 7278,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_KRUL.parquet",
+      "sha256": "7f782f393ba8e8f7bf28f96c07e656a5b8647b41be9f57a70d1ef7bfaca50d0c",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_KRUL.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_MXMC.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_mxmc",
+      "rowCount": 12351,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_MXMC.parquet",
+      "sha256": "5247df3b660a969d05fd40b6bf3301a05a1155bae4216553c3087c940899f157",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_MXMC.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_NGIL.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_ngil",
+      "rowCount": 8499,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_NGIL.parquet",
+      "sha256": "01bf5b80957ec67b5690d2a0970bdea6ac9629c36bf543c7a50b9c32b7b55402",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_NGIL.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_PHMO.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_phmo",
+      "rowCount": 18650,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_PHMO.parquet",
+      "sha256": "4e33df1f8941e1eb337bbf6783b03f1ef069ee444860e6904059b8feec20a57f",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_PHMO.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_SGSU.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_sgsu",
+      "rowCount": 22990,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_SGSU.parquet",
+      "sha256": "a50a271cd3812a0da08be86a8eff5911409f604d71af7b56085cdcf9786ec461",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_SGSU.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_USNO.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_usno",
+      "rowCount": 15295,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_USNO.parquet",
+      "sha256": "0d82985791da402938752b313c3d80d73ee9556454d4f04848f92e3409aee128",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_USNO.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_VNHN.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_vnhn",
+      "rowCount": 422,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_VNHN.parquet",
+      "sha256": "04831ba37e4461a8eea228c0189073cce217ec54f9ed2862a21930fa8d42be60",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_VNHN.csv"
+    },
+    {
+      "datasetId": "0dee2f80-b75c-4500-b3e7-dfc1318df389",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM10",
+      "hostedName": "NephelProcd_HourlyScaPM10_ZAPR.parquet",
+      "tableName": "nephelprocd_hourlyscapm10_zapr",
+      "rowCount": 9565,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_ZAPR.parquet",
+      "sha256": "ad93fe0e7904ff1ac6a3701c02e89f38665aba8d7b7ed51f4bba0181ee27163e",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM10/NephelProcd_HourlyScaPM10_ZAPR.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_AEAZ.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_aeaz",
+      "rowCount": 14138,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_AEAZ.parquet",
+      "sha256": "be993fccd1befecff625872505b0cd81a296b2ae959a7a679e90b77c89d5c090",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_AEAZ.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_AUMN.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_aumn",
+      "rowCount": 15729,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_AUMN.parquet",
+      "sha256": "7af4d73b4ecc409de82a8623475828e44789b05dbc362db538f686143112068a",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_AUMN.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_CADO.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_cado",
+      "rowCount": 16712,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_CADO.parquet",
+      "sha256": "df1ec73d6662928253803850b99e6e7db2194fc3556ada5520e4e08b6d63e787",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_CADO.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_CAHA.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_caha",
+      "rowCount": 18037,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_CAHA.parquet",
+      "sha256": "b989f49a04db450701f6f150198ad24a59148cc9b262a2a61c01ad7598115a74",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_CAHA.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_CAKE.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_cake",
+      "rowCount": 2374,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_CAKE.parquet",
+      "sha256": "eda775f6a0894c22cd2461a9df804f587b8470c9a400bb67683194a393a1f521",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_CAKE.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_CALE.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_cale",
+      "rowCount": 7276,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_CALE.parquet",
+      "sha256": "f7db4b8deb520f8ef926b881b09109686300f9bf60bebfab5f5e9337c8c0be3f",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_CALE.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_CASH.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_cash",
+      "rowCount": 51911,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_CASH.parquet",
+      "sha256": "2c38d7243f869b41c6debb408f6b98a0526eb2915d99005fbbfe4f6ec3365821",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_CASH.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_CHTS.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_chts",
+      "rowCount": 15096,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_CHTS.parquet",
+      "sha256": "0ed08dd2214a78603b72334b739f0b0331789a866c6ceaf181e558d0018f6919",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_CHTS.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_CODC.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_codc",
+      "rowCount": 3238,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_CODC.parquet",
+      "sha256": "1c306a50d26bac686cfacf4783661e55ec64790c2ec4d9b78835902be1f33066",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_CODC.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_ILNZ.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_ilnz",
+      "rowCount": 11833,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_ILNZ.parquet",
+      "sha256": "31f33cdd0ed303306d4d9bfdc18659623dc7e6f4845acc7a05f4c06b62279cde",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_ILNZ.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_INKA.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_inka",
+      "rowCount": 837,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_INKA.parquet",
+      "sha256": "bf68a03623d274c5ab76b36d49630207c9176921344e761ae3f91ea8b9a56450",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_INKA.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_KRSE.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_krse",
+      "rowCount": 3142,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_KRSE.parquet",
+      "sha256": "a07e8f260e7c9e4811512792a2246ddc1922ba8d310e52d6b2f428fbe9a7f41a",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_KRSE.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_KRUL.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_krul",
+      "rowCount": 7377,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_KRUL.parquet",
+      "sha256": "28cfcbe3269dda22a816d281f1858788fe31b7e90fa8ef594e48dfff466d55b3",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_KRUL.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_MXMC.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_mxmc",
+      "rowCount": 11022,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_MXMC.parquet",
+      "sha256": "50fe66daa19f06ad76eecd004c12c2b5aa9aedab648a8d310d4168335419436d",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_MXMC.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_NGIL.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_ngil",
+      "rowCount": 1267,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_NGIL.parquet",
+      "sha256": "5ff24579caba30f2de44bc73fc0455ca5a6e80b156597710a8642775ac9170fb",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_NGIL.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_PHMO.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_phmo",
+      "rowCount": 18598,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_PHMO.parquet",
+      "sha256": "737ee0198e3edbada58e41f06553fe0706b1f1b49ded08c577592f69c9f029af",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_PHMO.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_SGSU.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_sgsu",
+      "rowCount": 3907,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_SGSU.parquet",
+      "sha256": "54bc65a63d43b70aed7c6c5624265fe4305615e095de98fb00dcb30f45a8b099",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_SGSU.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_USNO.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_usno",
+      "rowCount": 15244,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_USNO.parquet",
+      "sha256": "591e5f9d09bff1205abe521c0eaf5f7f3c9dcbff2f6d459757ffb8d493e08688",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_USNO.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_VNHN.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_vnhn",
+      "rowCount": 192,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_VNHN.parquet",
+      "sha256": "bb629f8261c1762b1801ce753a770a52358ea142475a18825a899f8cbfc0be2b",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_VNHN.csv"
+    },
+    {
+      "datasetId": "3e3adffc-46d6-42dd-91bb-56f2a7849db7",
+      "datasetName": "SPARTAN raw NephelProcd HourlyScaPM25",
+      "hostedName": "NephelProcd_HourlyScaPM25_ZAPR.parquet",
+      "tableName": "nephelprocd_hourlyscapm25_zapr",
+      "rowCount": 7794,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_ZAPR.parquet",
+      "sha256": "c5296d312debbe8f4c6c7f389a8e83e2a310337075cd915b424e6dc0d0cf10b6",
+      "inputPath": "data/spartan/raw/NephelProcd/HourlyScaPM25/NephelProcd_HourlyScaPM25_ZAPR.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_AEAZ.parquet",
+      "tableName": "timerespm25_dailyestpm25_aeaz",
+      "rowCount": 610,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_AEAZ.parquet",
+      "sha256": "2100e0dbfe40a80c40835aabdfc761d7793268733835dce3efe5a2b518ac4a19",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_AEAZ.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_ARCB.parquet",
+      "tableName": "timerespm25_dailyestpm25_arcb",
+      "rowCount": 784,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_ARCB.parquet",
+      "sha256": "0d596fe64a6cd1616a8369a146b3366f1f64e268c0b711e27488e11870845a20",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_ARCB.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_AUMN.parquet",
+      "tableName": "timerespm25_dailyestpm25_aumn",
+      "rowCount": 674,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_AUMN.parquet",
+      "sha256": "e0ffbfb8aa2db8e791b0818832a78267a598a2e7db86ba2eae4f44114e47a391",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_AUMN.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_BDDU.parquet",
+      "tableName": "timerespm25_dailyestpm25_bddu",
+      "rowCount": 232,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_BDDU.parquet",
+      "sha256": "7228c09104ccedecb9c814e33e9f7e18dfdc3d66a3c104e2cb001f1dd17ee92f",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_BDDU.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_CADO.parquet",
+      "tableName": "timerespm25_dailyestpm25_cado",
+      "rowCount": 728,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_CADO.parquet",
+      "sha256": "21943456bde050b65e07da789f75c55c2b894bfeefd0bb7edc14f3bcfc249887",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_CADO.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_CAHA.parquet",
+      "tableName": "timerespm25_dailyestpm25_caha",
+      "rowCount": 759,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_CAHA.parquet",
+      "sha256": "fb11ec33fd7c3e36eddd38cd67f9e540e577a60def6bfd29791b76c1b5a4cf19",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_CAHA.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_CAKE.parquet",
+      "tableName": "timerespm25_dailyestpm25_cake",
+      "rowCount": 106,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_CAKE.parquet",
+      "sha256": "13fdc97c0d609e38bd0466a86544c28a10d6ed5b49a6ad031ca120eb1f309ba3",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_CAKE.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_CALE.parquet",
+      "tableName": "timerespm25_dailyestpm25_cale",
+      "rowCount": 385,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_CALE.parquet",
+      "sha256": "6072a9505845894e13f64b807a96e926360c57a1ccc07ce9e7d58ae65c0b1cb6",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_CALE.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_CASH.parquet",
+      "tableName": "timerespm25_dailyestpm25_cash",
+      "rowCount": 2238,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_CASH.parquet",
+      "sha256": "49cf9ac9ae0543a69333c51da3f0db065cfc524152345f1fbea589a952b2a386",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_CASH.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_CHTS.parquet",
+      "tableName": "timerespm25_dailyestpm25_chts",
+      "rowCount": 1787,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_CHTS.parquet",
+      "sha256": "7cf818fab80e5ad88971583144354db6117b2e6b2d59fb7b8d2d9057229ab81a",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_CHTS.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_IDBD.parquet",
+      "tableName": "timerespm25_dailyestpm25_idbd",
+      "rowCount": 425,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_IDBD.parquet",
+      "sha256": "d4b25c222bcaee1d9786b14aaa90c24b7b2f9eb5ed91e65e7b7ad229a87fdc1b",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_IDBD.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_ILNZ.parquet",
+      "tableName": "timerespm25_dailyestpm25_ilnz",
+      "rowCount": 998,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_ILNZ.parquet",
+      "sha256": "896d9888c9db9a01c10c479aaadb056100d9636c1a465fe65e8d59191411c216",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_ILNZ.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_INKA.parquet",
+      "tableName": "timerespm25_dailyestpm25_inka",
+      "rowCount": 263,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_INKA.parquet",
+      "sha256": "dd9978a1863ff5ab9091213e7f08e59b4a6d3491947afe70f201d0de65ca02cc",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_INKA.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_KRSE.parquet",
+      "tableName": "timerespm25_dailyestpm25_krse",
+      "rowCount": 123,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_KRSE.parquet",
+      "sha256": "8fae2dad90ce31d9ae8576b92514dce8daed681873e603edfc1bb2b5953635fc",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_KRSE.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_KRUL.parquet",
+      "tableName": "timerespm25_dailyestpm25_krul",
+      "rowCount": 267,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_KRUL.parquet",
+      "sha256": "76109caa1ec7cd3beeeaa87d9cbddcf5584b6739922d2e751bf16a636753d120",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_KRUL.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_MXMC.parquet",
+      "tableName": "timerespm25_dailyestpm25_mxmc",
+      "rowCount": 579,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_MXMC.parquet",
+      "sha256": "b919bbb62007cf3ca808641a7ea5bb6cb2d196bb9c38372ddc8043e0474f4184",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_MXMC.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_NGIL.parquet",
+      "tableName": "timerespm25_dailyestpm25_ngil",
+      "rowCount": 189,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_NGIL.parquet",
+      "sha256": "c0f531e7d1c4a87e0626211b2c52d7f657d4f31204ad1006f2940156a20f97a4",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_NGIL.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_SGSU.parquet",
+      "tableName": "timerespm25_dailyestpm25_sgsu",
+      "rowCount": 738,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_SGSU.parquet",
+      "sha256": "5b559df5fcb0211c41a42ec2925d5119cf43029eb73a383efcd9d18707e4559d",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_SGSU.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_USNO.parquet",
+      "tableName": "timerespm25_dailyestpm25_usno",
+      "rowCount": 174,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_USNO.parquet",
+      "sha256": "03cec95c414cb76719233486372ea36c1ea8616ca8ee91240acdedaf3b6f3600",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_USNO.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_VNHN.parquet",
+      "tableName": "timerespm25_dailyestpm25_vnhn",
+      "rowCount": 119,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_VNHN.parquet",
+      "sha256": "0c662f2c82d1e5c7f29537e62cbda04089029b7abf5e91a8f8b27a5ec7685352",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_VNHN.csv"
+    },
+    {
+      "datasetId": "9618567e-1ea6-4f60-97d5-3b802a974bd6",
+      "datasetName": "SPARTAN raw TimeResPM25 DailyEstPM25",
+      "hostedName": "TimeResPM25_DailyEstPM25_ZAPR.parquet",
+      "tableName": "timerespm25_dailyestpm25_zapr",
+      "rowCount": 458,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_ZAPR.parquet",
+      "sha256": "f0341428a7393469f962739d2f9371fa766aea1cec3355e785d0862a61cd63f5",
+      "inputPath": "data/spartan/raw/TimeResPM25/DailyEstPM25/TimeResPM25_DailyEstPM25_ZAPR.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_AEAZ.parquet",
+      "tableName": "timerespm25_hourlyestpm25_aeaz",
+      "rowCount": 12684,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_AEAZ.parquet",
+      "sha256": "c3335b505e09abd393b21d14f983252e7e5747d079f4866f5335b152619a1fdd",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_AEAZ.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_ARCB.parquet",
+      "tableName": "timerespm25_hourlyestpm25_arcb",
+      "rowCount": 11417,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_ARCB.parquet",
+      "sha256": "fb0c3784543cabc5c1d4c1eb80d8510905e0aed77df5dce0fe67e2969d48ba81",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_ARCB.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_AUMN.parquet",
+      "tableName": "timerespm25_hourlyestpm25_aumn",
+      "rowCount": 15052,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_AUMN.parquet",
+      "sha256": "3642840ac610094fc9657589afff4e80fe812177c010e0828134a9101baf32a4",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_AUMN.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_BDDU.parquet",
+      "tableName": "timerespm25_hourlyestpm25_bddu",
+      "rowCount": 2753,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_BDDU.parquet",
+      "sha256": "2cbc613c18a16c341864566e03f14a1898543967a89bf9b4caaf6c6773e5a92e",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_BDDU.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_CADO.parquet",
+      "tableName": "timerespm25_hourlyestpm25_cado",
+      "rowCount": 14755,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_CADO.parquet",
+      "sha256": "f9e1ebcef670e2fafee19b5cde0135639482f6f2fe562e171ece13b067c96cf2",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_CADO.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_CAHA.parquet",
+      "tableName": "timerespm25_hourlyestpm25_caha",
+      "rowCount": 12671,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_CAHA.parquet",
+      "sha256": "71e465e334da6ec2f4e263325f0392d42a12e53fd0e2f16bb0bdc0d9ccd24685",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_CAHA.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_CAKE.parquet",
+      "tableName": "timerespm25_hourlyestpm25_cake",
+      "rowCount": 2103,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_CAKE.parquet",
+      "sha256": "252bf9bba5d073affe6a9bcd7be0e4699c0b2ff667ad5c30edf9e01e79472c89",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_CAKE.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_CALE.parquet",
+      "tableName": "timerespm25_hourlyestpm25_cale",
+      "rowCount": 7055,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_CALE.parquet",
+      "sha256": "2117514eb8a830bd829a038a1ada73f0fa1dee9deeba21d7fc29d46ea29c937b",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_CALE.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_CASH.parquet",
+      "tableName": "timerespm25_hourlyestpm25_cash",
+      "rowCount": 39941,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_CASH.parquet",
+      "sha256": "c7a808958897f17f9365de2870f6b43fd37d7b20ff26973408d13e4a1473d7b2",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_CASH.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_CHTS.parquet",
+      "tableName": "timerespm25_hourlyestpm25_chts",
+      "rowCount": 35518,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_CHTS.parquet",
+      "sha256": "d3266b22d7039d9bde99ae6bef41454b2f3adf34088adb11892bd77e74b7bac6",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_CHTS.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_IDBD.parquet",
+      "tableName": "timerespm25_hourlyestpm25_idbd",
+      "rowCount": 5133,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_IDBD.parquet",
+      "sha256": "954e4fbfa1934dc47a33ff8ba0302479c1b30f29996b4d4bb046c90f4bf80adb",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_IDBD.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_ILNZ.parquet",
+      "tableName": "timerespm25_hourlyestpm25_ilnz",
+      "rowCount": 19320,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_ILNZ.parquet",
+      "sha256": "2c4f007aa59c7470ea7fcc98511d4a8807d01c31acfe67ed295c63c688ac0f0d",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_ILNZ.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_INKA.parquet",
+      "tableName": "timerespm25_hourlyestpm25_inka",
+      "rowCount": 4051,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_INKA.parquet",
+      "sha256": "75d3f8221818c677f1367a0bdf5de238fcf74665aa72c2b10c0ea0e21f456aeb",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_INKA.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_KRSE.parquet",
+      "tableName": "timerespm25_hourlyestpm25_krse",
+      "rowCount": 2665,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_KRSE.parquet",
+      "sha256": "7fd261d0a409d828ebdbdb8c61b64971fe636d861b2df1e9bcc2197a5f2892f3",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_KRSE.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_KRUL.parquet",
+      "tableName": "timerespm25_hourlyestpm25_krul",
+      "rowCount": 5430,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_KRUL.parquet",
+      "sha256": "7da8628ecae2f9c3aa314adfb7f3d8e842c6c2f754736496e1cb9f38e3297e3a",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_KRUL.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_MXMC.parquet",
+      "tableName": "timerespm25_hourlyestpm25_mxmc",
+      "rowCount": 8727,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_MXMC.parquet",
+      "sha256": "b8d88f4689e03cdd4ffb075adca6b1fc44c0fbc553be84589161a9bb949f5e15",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_MXMC.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_NGIL.parquet",
+      "tableName": "timerespm25_hourlyestpm25_ngil",
+      "rowCount": 2562,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_NGIL.parquet",
+      "sha256": "f51ef83f557a982921f97805732abb7432bdc6acab324e92c94a90e935cb6698",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_NGIL.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_SGSU.parquet",
+      "tableName": "timerespm25_hourlyestpm25_sgsu",
+      "rowCount": 13801,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_SGSU.parquet",
+      "sha256": "7d318e9dc119d87ffefa0c8dd671bae0cd92abf328848874c242bfefa8e02f75",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_SGSU.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_USNO.parquet",
+      "tableName": "timerespm25_hourlyestpm25_usno",
+      "rowCount": 3824,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_USNO.parquet",
+      "sha256": "f5388b2c81f9139ca237d6fb40afe40a97055f138096e3b0bca9575fb302c30e",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_USNO.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_VNHN.parquet",
+      "tableName": "timerespm25_hourlyestpm25_vnhn",
+      "rowCount": 1481,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_VNHN.parquet",
+      "sha256": "51c1884a552ede07d620ec9ba0b15113ccef8c3f2a0eefedc792dc9dc282cacb",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_VNHN.csv"
+    },
+    {
+      "datasetId": "c315f85e-c5ee-4bb3-83e0-4b923d14975a",
+      "datasetName": "SPARTAN raw TimeResPM25 HourlyEstPM25",
+      "hostedName": "TimeResPM25_HourlyEstPM25_ZAPR.parquet",
+      "tableName": "timerespm25_hourlyestpm25_zapr",
+      "rowCount": 8103,
+      "repositoryPath": "research/ftir_hips_chem/output/tables/zoer_sources/spartan_raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_ZAPR.parquet",
+      "sha256": "20085ec09aaee7592c5b3363c1f1bde4aa7fdb255a1e9df841985fdff9009115",
+      "inputPath": "data/spartan/raw/TimeResPM25/HourlyEstPM25/TimeResPM25_HourlyEstPM25_ZAPR.csv"
+    }
+  ],
+  "note": "Rows overlap across public source products and derived analysis tables; these are not unique samples."
+}
