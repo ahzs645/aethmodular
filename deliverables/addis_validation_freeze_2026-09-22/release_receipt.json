@@ -1,0 +1,12 @@
+{
+  "archive": "addis_prediction_freeze.zip",
+  "archive_sha256": "47b090968040cfb6df1e238a81bdc735499be8eb6c62653f53b2840fa5e17ca2",
+  "members_sha256": {
+    "addis-validation-freeze.md": "2aafcb23a84014db1a52dd526731a2101c68f6db1123f98a7a3993825c8583e1",
+    "freeze_manifest.json": "7f4a0646b5e4630cdc26dba7bed7625edaaf496869a8e4067badb34c28a4e30d",
+    "frozen_full_pool_predictions.csv": "6f34d06741794a8dc1e8d8dbfa1b796b4b28ef5cede6c6f9048392c26ffcb78b",
+    "independent_tor_pairing_template.csv": "6ed25be524aea8730f04688049c421c9883c701c8f1f32a3b927402ae408ed23"
+  },
+  "recovery_check": "All four archive members extracted and matched the source hashes",
+  "scope": "Frozen existing-ETAD predictions and protocol only; full Colab source arrays not bundled"
+}
