@@ -1,5 +1,7 @@
 # FTIR EC phase 3 — post-meeting follow-ups (July 2026)
 
+> **Current synthesis (2026-09-22):** [FTIR transfer to Addis](../../docs/current-research-summary.md). The entries below are historical findings with different populations, comparators and evidence levels. Use the synthesis for the current claim; optical agreement and residual prediction are not independent Addis thermal validation.
+
 Follow-up analyses from the July 2026 meeting with Ann and Satoshi and the
 subsequent email thread. Phase 2 lives in `research/ftir_hips_chem/`
 (notebooks `ftir_07`–`ftir_10`); this folder continues the numbering.

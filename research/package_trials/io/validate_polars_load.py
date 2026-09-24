@@ -13,7 +13,7 @@ is, and is bit-identical to pandas `float_precision='round_trip'`. So the
 expected result here is bitwise equality vs round_trip, and at most a
 handful of 1-ulp float32 differences vs the historical default read.
 
-Run:  /Users/ahmadjalil/anaconda3/bin/python validate_polars_load.py
+Run:  ~/anaconda3/bin/python validate_polars_load.py
 (the app's interpreter, from this directory — needs Google Drive access,
 which sandboxed agent shells on this machine do not have)
 """

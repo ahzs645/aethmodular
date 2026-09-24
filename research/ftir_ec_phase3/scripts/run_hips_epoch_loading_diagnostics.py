@@ -21,11 +21,12 @@ REPO = HERE.parents[2]
 OUT = HERE.parent / "output/tables/variation_closure"
 PREDICTIONS = OUT / "locked_reconstruction_predictions.csv"
 RECONSTRUCTED = HERE.parent / "output/tables/hips/reconstructed_fabs.csv"
-RAW = Path("/Users/ahmadjalil/Downloads/hips/spartan_hips_raw_all.csv")
-
 sys.path.insert(0, str(REPO / "research/ftir_hips_chem/scripts"))
 sys.path.insert(0, str(REPO / "calibration_explorer"))
 
+from data_paths import hips_raw_csv  # noqa: E402
+
+RAW = hips_raw_csv()
 from pls_transfer import FTIRTransferPaths  # noqa: E402
 from hips_lab import york_site  # noqa: E402
 

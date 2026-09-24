@@ -120,6 +120,7 @@ from sklearn.linear_model import LinearRegression
 from phase3_common import load_addis_evaluation, PATHS
 from pls_transfer import predict_pls_components
 from config import ETHIOPIA_SEASONS, season_for_month
+from data_paths import maia_data_root
 from plotting import apply_default_style
 
 warnings.filterwarnings('ignore')
@@ -134,8 +135,7 @@ N_BOOT, N_NULL = 5000, 200
 RNG = np.random.default_rng(20260901)
 EXPLORER = os.environ.get('FTIR46_EXPLORER_URL', 'http://127.0.0.1:5058')
 TARGETS_DIR = Path('../../calibration_explorer/targets')
-CATALOG_DIR = Path('/Users/ahmadjalil/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/'
-                   'University/Research/Grad/Data/Davis Data/DAVIS/SPARTAN FTIR pulls')
+CATALOG_DIR = maia_data_root() / 'DAVIS' / 'SPARTAN FTIR pulls'
 SEASON_COLORS = {name: spec['color'] for name, spec in ETHIOPIA_SEASONS.items()}
 
 # %% [markdown]

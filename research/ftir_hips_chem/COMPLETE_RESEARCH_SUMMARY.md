@@ -1,5 +1,7 @@
 # Complete Research Summary — Multi-Site Black Carbon Measurement Comparison
 
+> **Historical April 2026 summary.** For current Addis FTIR/HIPS claims, read [the September scientific synthesis](../../docs/current-research-summary.md). Later provenance and timing audits supersede independent-validation and co-sampling interpretations in this historical account.
+
 **Project:** PhD Research — Comparing BC measurement methods across SPARTAN network sites
 **Student:** Ahmed | **Advisor:** Anne (UC Davis) | **Co-supervisor:** Hossein (UNBC)
 **Last Updated:** April 1, 2026

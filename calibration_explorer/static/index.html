@@ -418,14 +418,14 @@
       <label class="ck" style="margin-top:6px" title="Try Ethiopia-shaped / analog selection in both raw and AIRSpec-corrected space, independently of the calibration spectra. This executes the full raw/corrected selection × raw/corrected calibration matrix requested in the discussion."><input type="checkbox" id="opt_corrsel" checked>compare raw + corrected selection</label>
     </div>
     <div class="optgroup"><h4>Calibrate on</h4>
-      <label class="ck"><input type="checkbox" data-opt-spectra="raw" checked>raw spectra</label>
+      <label class="ck"><input type="checkbox" data-opt-spectra="raw">raw spectra (dropped 2026-09-17)</label>
       <label class="ck"><input type="checkbox" data-opt-spectra="airspec" checked>AIRSpec-corrected</label>
       <label class="ck"><input type="checkbox" data-opt-spectra="neutral">neutral pspline-arPLS</label>
-      <label class="ck"><input type="checkbox" data-opt-spectra="deriv2" checked>SG 2nd derivative</label>
+      <label class="ck"><input type="checkbox" data-opt-spectra="deriv2">SG 2nd derivative (dropped 2026-09-17)</label>
     </div>
     <div class="optgroup"><h4>Protocol</h4>
       <label class="ck"><input type="checkbox" data-opt-mode="site_heldout" checked>A: site-grouped 5-fold</label>
-      <label class="ck"><input type="checkbox" data-opt-mode="app">B: interleaved, 5% rule</label>
+      <label class="ck"><input type="checkbox" data-opt-mode="app" checked>B: interleaved, 5% rule</label>
       <label class="ck"><input type="checkbox" data-opt-mode="app_fmm">B2: interleaved, FMM</label>
     </div>
     <div class="optgroup"><h4>Training/evaluation lots</h4>

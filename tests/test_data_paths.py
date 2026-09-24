@@ -273,3 +273,26 @@ def test_weather_file_raises_listing_every_location_tried(tmp_path, monkeypatch)
 def test_weather_file_requires_a_name():
     with pytest.raises(ValueError):
         data_paths.weather_file()
+
+
+def test_hips_raw_csv_env_var_wins(tmp_path, monkeypatch):
+    monkeypatch.setenv("AETHMODULAR_HIPS_RAW_CSV", str(tmp_path / "raw.csv"))
+    assert data_paths.hips_raw_csv() == tmp_path / "raw.csv"
+
+
+def test_hips_raw_csv_prefers_the_downloads_export(tmp_path, monkeypatch):
+    monkeypatch.delenv("AETHMODULAR_HIPS_RAW_CSV", raising=False)
+    monkeypatch.setattr(data_paths.Path, "home", classmethod(lambda cls: tmp_path))
+    exported = tmp_path / "Downloads" / "hips" / data_paths.HIPS_RAW_CSV_NAME
+    exported.parent.mkdir(parents=True)
+    exported.write_text("x")
+    assert data_paths.hips_raw_csv() == exported
+
+
+def test_hips_raw_csv_falls_back_to_the_drive_archive(tmp_path, monkeypatch):
+    monkeypatch.delenv("AETHMODULAR_HIPS_RAW_CSV", raising=False)
+    monkeypatch.setenv("AETHMODULAR_MAIA_DATA_ROOT", str(tmp_path / "maia"))
+    monkeypatch.setattr(data_paths.Path, "home", classmethod(lambda cls: tmp_path))
+    assert data_paths.hips_raw_csv() == (
+        tmp_path / "maia" / "DAVIS/SPARTAN HIPS pulls" / data_paths.HIPS_RAW_CSV_NAME
+    )

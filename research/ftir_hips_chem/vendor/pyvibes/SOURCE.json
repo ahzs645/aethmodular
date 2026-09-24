@@ -1,0 +1,20 @@
+{
+  "source": "~/Downloads/pyvibes-main",
+  "version": "1.0.0",
+  "files_sha256": {
+    "LICENSE": "d44ba02a11fc57e0363dba54ce44c0318c67de80c09c6c5d2d40f98ef0955218",
+    "CITATION.cff": "769579fc764262eca9056185c4346204fbe6f4679581a2de4bb9de4065e74bab",
+    "README.md": "c67d671c35e1420fbd66278986bb7089269fe67b7000720609bd55d623339f35",
+    "src/vibes/__init__.py": "91447944015cec709e8aa7655f7e9d64e1e4508e7023a57fe3746911c0fc6fed",
+    "src/vibes/utils/loss_functions.py": "5d2b7bdefd6cfe4a77d677cbd4a122737f1fe2d4ed12d162d6f413082fbbf5cc",
+    "src/vibes/utils/help_functions.py": "56fb25bc2b00b2cfdd32af6444476b61e5571173ae80b2fba76117bbe6b5c428",
+    "src/vibes/utils/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/vibes/inference/bootstrap.py": "47f448fe3c35634f6970acd2959641b06c6faf5e3ea308faad25858896b8f754",
+    "src/vibes/absorbance_estimators/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/vibes/absorbance_estimators/map.py": "16a995ebb05cd7483375d85be6e708d3736de0bde1a0834d9f5e83399290b281",
+    "src/vibes/absorbance_estimators/vibes.py": "7a6bfe14c1a298227f363a7a8a01d841cb7edadb8abad3298a2b1c5e317bb8b8",
+    "src/vibes/absorbance_estimators/cross_validation.py": "564320a02410f8ddea1923fe4519c945295e10ab94b132a0a409f4da239bbabe",
+    "src/vibes/interference_models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/vibes/interference_models/pca.py": "6c2656c1dda97dd3c6c5a6f3f4daba8a09ae236e2ea6e1734e0774e70c14979b"
+  }
+}

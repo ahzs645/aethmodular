@@ -22,22 +22,25 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+# pls_transfer loads the repo .env; import it before config, which reads
+# AETHMODULAR_DATA_ROOT at import time but cannot load .env itself (its hash
+# is pinned by the frozen source audits).
 try:
-    from config import DATA_ROOT, WEATHER_DATA_DIR
     from pls_transfer import (
         FTIR_DIR_CANDIDATES,
         MAIA_DATA_CANDIDATES,
         drive_root,
         first_existing,
     )
+    from config import DATA_ROOT, WEATHER_DATA_DIR
 except ImportError:  # Support importing as research.ftir_hips_chem.scripts.*
-    from .config import DATA_ROOT, WEATHER_DATA_DIR
     from .pls_transfer import (
         FTIR_DIR_CANDIDATES,
         MAIA_DATA_CANDIDATES,
         drive_root,
         first_existing,
     )
+    from .config import DATA_ROOT, WEATHER_DATA_DIR
 
 
 # ``MAIA_DATA_CANDIDATES`` and ``FTIR_DIR_CANDIDATES`` are the "My Drive"-relative
@@ -186,6 +189,27 @@ def ftir_local_db() -> Path:
     return first_existing(
         [root / rel / LOCAL_DB_SUBDIR for rel in FTIR_DIR_CANDIDATES]
     )
+
+
+HIPS_RAW_CSV_NAME = "spartan_hips_raw_all.csv"
+HIPS_PULLS_SUBDIR = "DAVIS/SPARTAN HIPS pulls"
+
+
+def hips_raw_csv() -> Path:
+    """Return the raw HIPS internals export (``spartan_hips_raw_all.csv``).
+
+    Written by ``research/ftir_ec_phase3/scripts/get_hips_internals.ps1``. The
+    phase-3 scripts first read it from ``~/Downloads/hips``, where that export
+    lands; the archived copy lives under ``Davis Data/DAVIS/SPARTAN HIPS pulls``.
+    The Downloads copy wins when present so existing runs read the same file.
+    """
+    env = os.environ.get("AETHMODULAR_HIPS_RAW_CSV")
+    if env:
+        return Path(env).expanduser()
+    downloads = Path.home() / "Downloads" / "hips" / HIPS_RAW_CSV_NAME
+    if downloads.is_file():
+        return downloads
+    return maia_data_root() / HIPS_PULLS_SUBDIR / HIPS_RAW_CSV_NAME
 
 
 def describe() -> dict[str, tuple[Path, bool]]:

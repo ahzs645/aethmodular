@@ -34,6 +34,7 @@ if str(HERE) not in sys.path:
 
 from calibration_modes import protocol_train_mask  # noqa: E402
 from data_matching import base_filter_id, load_filter_data  # noqa: E402
+from data_paths import maia_data_root  # noqa: E402
 from domain_invariant_pls import block_average  # noqa: E402
 from phase3_common import (  # noqa: E402
     PATHS,
@@ -43,15 +44,14 @@ from phase3_common import (  # noqa: E402
 )
 
 
-DEFAULT_DAVIS_ROOT = Path(
-    "/Users/ahmadjalil/Library/CloudStorage/"
-    "GoogleDrive-ahzs645@gmail.com/My Drive/University/Research/Grad/Data/Davis Data"
-)
-
-
 def davis_root() -> Path:
-    """Resolve the Davis source-data root without silently changing datasets."""
-    root = Path(os.environ.get("AETHMODULAR_DAVIS_DIR", DEFAULT_DAVIS_ROOT)).expanduser()
+    """Resolve the Davis source-data root without silently changing datasets.
+
+    ``AETHMODULAR_DAVIS_DIR`` if set, else ``data_paths.maia_data_root()`` (the
+    "Davis Data" folder on the Drive mount).
+    """
+    env = os.environ.get("AETHMODULAR_DAVIS_DIR")
+    root = Path(env).expanduser() if env else maia_data_root()
     if not root.exists():
         raise FileNotFoundError(
             f"Davis data root not found: {root}. Set AETHMODULAR_DAVIS_DIR."

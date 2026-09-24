@@ -8,7 +8,7 @@ prefix truncation), so the remaining startup cost is I/O — chiefly the
 
 ## Environment
 
-Anaconda python 3.13.9 (`/Users/ahmadjalil/anaconda3/bin/python`, the
+Anaconda python 3.13.9 (`~/anaconda3/bin/python`, the
 interpreter `calibration_explorer/app.py` runs under). Installed for this
 trial: polars 1.43.2.
 

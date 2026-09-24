@@ -1,10 +1,10 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import {importRuntimeModule} from '/Users/ahmadjalil/.codex/plugins/cache/openai-primary-runtime/presentations/26.909.12148/skills/presentations/container_tools/runtime_helpers.mjs';
+import {skill,pythonExecutable,runtimeHelpers,artifactToolUtils} from './codex_presentations_runtime.mjs';
+const {importRuntimeModule}=await runtimeHelpers();
 const {Presentation, PresentationFile, FileBlob}=await importRuntimeModule('@oai/artifact-tool');
-import {resolvePresentationFont, applyPresentationChartFont, finalizePresentation} from '/Users/ahmadjalil/.codex/plugins/cache/openai-primary-runtime/presentations/26.909.12148/skills/presentations/container_tools/artifact_tool_utils.mjs';
+const {resolvePresentationFont, applyPresentationChartFont, finalizePresentation}=await artifactToolUtils();
 const workspaceDir=path.join(process.env.AETHMODULAR_REPO_ROOT??process.cwd(),'deliverables/ann_weekly_2026-09-10');
-const skill='/Users/ahmadjalil/.codex/plugins/cache/openai-primary-runtime/presentations/26.909.12148/skills/presentations';
 const content=JSON.parse(await fs.readFile(path.join(workspaceDir,'.build/content.json'),'utf8'));
 const family=resolvePresentationFont({fontFamily:'Arial'});
 const p=Presentation.create({slideSize:{width:1280,height:720}});
@@ -66,7 +66,7 @@ const deckName=process.env.AETHMODULAR_WEEKLY_DECK_NAME??'ann_weekly_2026-09-10.
 if(path.basename(deckName)!==deckName || !deckName.endsWith('.pptx')) throw new Error('Deck name must be a .pptx filename');
 const out=path.join(workspaceDir,'output',deckName);
 const result=await finalizePresentation({workspaceDir,candidatePath:candidate,finalPath:out,
- pythonExecutable:'/Users/ahmadjalil/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3',
+ pythonExecutable,
  integrityValidatorPath:path.join(skill,'container_tools/inspect_presentation_package_integrity.py'),
  layoutValidatorPath:path.join(skill,'container_tools/inspect_presentation_layout_geometry.py'),
  layoutArgs:['--expected-slide-size-emu','12192000,6858000','--validate-bullet-geometry','--validate-heading-fit',

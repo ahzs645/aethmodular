@@ -2,14 +2,14 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {importRuntimeModule} from '/Users/ahmadjalil/.codex/plugins/cache/openai-primary-runtime/presentations/26.909.12148/skills/presentations/container_tools/runtime_helpers.mjs';
-import {resolvePresentationFont,finalizePresentation} from '/Users/ahmadjalil/.codex/plugins/cache/openai-primary-runtime/presentations/26.909.12148/skills/presentations/container_tools/artifact_tool_utils.mjs';
+import {skill,pythonExecutable,runtimeHelpers,artifactToolUtils} from './codex_presentations_runtime.mjs';
+const {importRuntimeModule}=await runtimeHelpers();
+const {resolvePresentationFont,finalizePresentation}=await artifactToolUtils();
 const {PresentationFile,FileBlob}=await importRuntimeModule('@oai/artifact-tool');
 const root=process.env.AETHMODULAR_REPO_ROOT??process.cwd();
 const workspaceDir=path.join(root,'deliverables/ann_weekly_2026-09-10');
 const build=path.join(workspaceDir,'.build/diagnostics');
 const source=path.join(workspaceDir,'output/ann_weekly_2026-09-10_notebook_plots.pptx');
-const skill='/Users/ahmadjalil/.codex/plugins/cache/openai-primary-runtime/presentations/26.909.12148/skills/presentations';
 const specs=JSON.parse(await fs.readFile(path.join(build,'content.json'),'utf8'));
 const p=await PresentationFile.importPptx(await FileBlob.load(source));
 const family=resolvePresentationFont({fontFamily:'Arial'});
@@ -33,7 +33,7 @@ const name=process.env.AETHMODULAR_WEEKLY_DECK_NAME??'ann_weekly_2026-09-10_expa
 if(path.basename(name)!==name||!name.endsWith('.pptx'))throw new Error('Expected PPTX filename');
 const finalPath=path.join(workspaceDir,'output',name);
 const receipt=await finalizePresentation({workspaceDir,candidatePath:candidate,finalPath,
- pythonExecutable:'/Users/ahmadjalil/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3',
+ pythonExecutable,
  integrityValidatorPath:path.join(skill,'container_tools/inspect_presentation_package_integrity.py'),
  layoutValidatorPath:path.join(skill,'container_tools/inspect_presentation_layout_geometry.py'),
  layoutArgs:['--expected-slide-size-emu','12192000,6858000','--validate-bullet-geometry','--validate-heading-fit'],

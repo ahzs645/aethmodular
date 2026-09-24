@@ -17,12 +17,16 @@ import json
 import pickle
 import sys
 import urllib.request
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-BASE = "/Users/ahmadjalil/github/aethmodular/"
-PKL = BASE + "research/ftir_hips_chem/Filter Data/unified_filter_dataset.pkl"
+REPO = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(REPO / "research/ftir_hips_chem/scripts"))
+from config import FILTER_DATA_PATH  # noqa: E402
+
+PKL = FILTER_DATA_PATH
 API = "http://127.0.0.1:5058/api/run"
 SITES = {"addis": "ETAD", "etbi": "ETBI", "chts": "CHTS", "indh": "INDH", "uspa": "USPA"}
 MAC = 10.0

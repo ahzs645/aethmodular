@@ -622,7 +622,7 @@ def build_notebook():
         ]
     cells.append(
         nbf.v4.new_markdown_cell(
-            f"## Evidence and limits\n\nThe [report]({OUT}/proportionality_temporal_transfer_report.md), [extended unsent questions]({OUT}/upstream_questions_v2_draft.md) and [USPA-0257 evidence package]({OUT}/USPA-0257_evidence_package.md) retain source links and unresolved requirements. Corrected instrument observations can be valid when their history is documented. No verified interval mean, physical offset or upstream FTIR independence is claimed."
+            f"## Evidence and limits\n\nThe [report]({OUT.relative_to(AREA).as_posix()}/proportionality_temporal_transfer_report.md), [extended unsent questions]({OUT.relative_to(AREA).as_posix()}/upstream_questions_v2_draft.md) and [USPA-0257 evidence package]({OUT.relative_to(AREA).as_posix()}/USPA-0257_evidence_package.md) retain source links and unresolved requirements. Corrected instrument observations can be valid when their history is documented. No verified interval mean, physical offset or upstream FTIR independence is claimed."
         )
     )
     nb.cells = cells

@@ -16,9 +16,9 @@ Belg (Mar-May), All-Addis: RMS 1.729 → 3.005; change +1.276 [+1.081, +1.454] �
 Kiremt (Jun-Sep), Season-specific: RMS 1.745 → 1.657; change -0.088 [-0.302, +0.132] µg/m³.
 Kiremt (Jun-Sep), All-Addis: RMS 1.745 → 3.001; change +1.256 [+1.072, +1.462] µg/m³.
 
-![Dry and Belg increase disagreement with HIPS](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/ann_weekly_20260910_diagnostics/slide_13.png)
+![Dry and Belg increase disagreement with HIPS](../../../research/ftir_hips_chem/output/plots/ann_weekly_20260910_diagnostics/slide_13.png)
 
-Sources: [paired_model_comparison.csv](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/paired_model_comparison.csv), [paired_addis_predictions.csv](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/paired_addis_predictions.csv).
+Sources: [paired_model_comparison.csv](../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/paired_model_comparison.csv), [paired_addis_predictions.csv](../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/paired_addis_predictions.csv).
 
 ## Seasonal matching does not guarantee agreement
 
@@ -26,9 +26,9 @@ Each column holds the Addis evaluation filters constant; each row changes the ca
 
 All five models were already fitted before this diagnostic. The seasonal selection masks exclude 1800–2500 cm⁻¹; PLS uses the full grid. R² means squared Pearson correlation. This heatmap provides no paired uncertainty for the cross-season Kiremt-versus-historical comparison on Dry, so the apparent ranking is descriptive. No model is selected or promoted based on this display. Fixed HIPS MAC, previously explored target data, differing source cohorts and their weak TOR validation limit inference.
 
-![Seasonal matching does not guarantee agreement](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/ann_weekly_20260910_diagnostics/slide_14.png)
+![Seasonal matching does not guarantee agreement](../../../research/ftir_hips_chem/output/plots/ann_weekly_20260910_diagnostics/slide_14.png)
 
-Sources: [cross_season_transfer.csv](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/cross_season_transfer.csv), [paired_addis_predictions.csv](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/paired_addis_predictions.csv).
+Sources: [cross_season_transfer.csv](../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/cross_season_transfer.csv), [paired_addis_predictions.csv](../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/paired_addis_predictions.csv).
 
 ## Monthly differences remain below zero
 
@@ -36,9 +36,9 @@ The monthly plot shows where the disagreement occurs in time. All three calibrat
 
 There are 36 observed calendar months, with 1–11 filters per month. Means are calculated over the available filters; months with one filter are retained and do not have a meaningful within-month correlation. Missing calendar months break the lines. Month counts and per-model RMS, MAE, bias and R² are retained in the table. This is not a uniformly sampled monthly climatology. No meteorological adjustment is applied.
 
-![Monthly differences remain below zero](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/ann_weekly_20260910_diagnostics/slide_15.png)
+![Monthly differences remain below zero](../../../research/ftir_hips_chem/output/plots/ann_weekly_20260910_diagnostics/slide_15.png)
 
-Sources: [monthly_discrepancy.csv](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/monthly_discrepancy.csv), [paired_addis_predictions.csv](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/paired_addis_predictions.csv).
+Sources: [monthly_discrepancy.csv](../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/monthly_discrepancy.csv), [paired_addis_predictions.csv](../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/paired_addis_predictions.csv).
 
 ## Changing sampled months changes the analog lists
 
@@ -50,9 +50,9 @@ Dry (Oct-Feb): median retention 86.0%; 5th–95th resample percentiles 72.4–95
 Belg (Mar-May): median retention 78.7%; 5th–95th resample percentiles 59.0–91.2%; 259/500 original filters selected in at least 80% of draws; union 1573.
 Kiremt (Jun-Sep): median retention 86.8%; 5th–95th resample percentiles 68.5–97.8%; 344/500 original filters selected in at least 80% of draws; union 1152.
 
-![Changing sampled months changes the analog lists](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/ann_weekly_20260910_diagnostics/slide_16.png)
+![Changing sampled months changes the analog lists](../../../research/ftir_hips_chem/output/plots/ann_weekly_20260910_diagnostics/slide_16.png)
 
-Sources: [analog_stability_summary.csv](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/analog_stability_summary.csv), [analog_bootstrap_draws.csv](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/analog_bootstrap_draws.csv), [analog_selection_frequencies.csv](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/analog_selection_frequencies.csv).
+Sources: [analog_stability_summary.csv](../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/analog_stability_summary.csv), [analog_bootstrap_draws.csv](../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/analog_bootstrap_draws.csv), [analog_selection_frequencies.csv](../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/analog_selection_frequencies.csv).
 
 ## Belg more often exceeds the source residual threshold
 
@@ -63,9 +63,9 @@ Dry (Oct-Feb): 5/105 (4.8%) above source 95th-percentile reconstruction residual
 Belg (Mar-May): 10/61 (16.4%) above source 95th-percentile reconstruction residual.
 Kiremt (Jun-Sep): 3/73 (4.1%) above source 95th-percentile reconstruction residual.
 
-![Belg more often exceeds the source residual threshold](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/ann_weekly_20260910_diagnostics/slide_17.png)
+![Belg more often exceeds the source residual threshold](../../../research/ftir_hips_chem/output/plots/ann_weekly_20260910_diagnostics/slide_17.png)
 
-Sources: [pca_target_scores.csv](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/pca_target_scores.csv), [pca_source_scores.csv](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/pca_source_scores.csv), [pca_season_summary.csv](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/pca_season_summary.csv), [methods.json](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/methods.json).
+Sources: [pca_target_scores.csv](../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/pca_target_scores.csv), [pca_source_scores.csv](../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/pca_source_scores.csv), [pca_season_summary.csv](../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/pca_season_summary.csv), [methods.json](../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/methods.json).
 
 ## Rainy-season cohorts are more concentrated by site
 
@@ -77,9 +77,9 @@ Dry (Oct-Feb): 121 distinct sites; 69.7 effective sites; top five supply 15.2% o
 Belg (Mar-May): 103 distinct sites; 32.3 effective sites; top five supply 32.0% of filters.
 Kiremt (Jun-Sep): 92 distinct sites; 28.7 effective sites; top five supply 32.0% of filters.
 
-![Rainy-season cohorts are more concentrated by site](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/ann_weekly_20260910_diagnostics/slide_18.png)
+![Rainy-season cohorts are more concentrated by site](../../../research/ftir_hips_chem/output/plots/ann_weekly_20260910_diagnostics/slide_18.png)
 
-Sources: [site_concentration.csv](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/site_concentration.csv), [site_concentration_curves.csv](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/site_concentration_curves.csv).
+Sources: [site_concentration.csv](../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/site_concentration.csv), [site_concentration_curves.csv](../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910_diagnostics/site_concentration_curves.csv).
 
 ## Reproduce and interpret
 

@@ -4,7 +4,7 @@ This folder is a clean workspace for the next IMPROVE/FED vs Addis/SPARTAN
 tests. It intentionally ignores the older exploratory notebooks in
 `research/improve_hips_offset/`.
 
-Follow the root guidance in `/Users/ahmadjalil/github/aethmodular/AGENTS.md`.
+Follow the root guidance in [`AGENTS.md`](../../../AGENTS.md) at the repo root.
 Use `/opt/anaconda3/bin/python3.13` when executing notebooks or scripts.
 
 ## Conventions

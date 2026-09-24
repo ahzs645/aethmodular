@@ -144,7 +144,8 @@ def fig_slope_trap():
 
 # -------------------------------------------------------- 4. instrument epochs
 def fig_epochs():
-    p = Path("/Users/ahmadjalil/Downloads/hips/spartan_hips_raw_all.csv")
+    from data_paths import hips_raw_csv
+    p = hips_raw_csv()
     if not p.exists():
         print("  -- spartan_hips_raw_all.csv missing, skipping epochs"); return
     r = pd.read_csv(p, encoding="utf-8-sig")

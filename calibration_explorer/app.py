@@ -1296,8 +1296,11 @@ def _batch_row(cfg, out):
 
 def _batch_configs(b):
     cohorts = b.get("cohorts") or ["eth_shaped", "analogs", "ocec", "smoke"]
-    spectra = b.get("spectra") or ["raw", "airspec", "deriv2"]
-    modes = b.get("modes") or ["site_heldout", "app", "app_fmm"]
+    # 2026-09-17 meeting (Ann/Satoshi): baseline-corrected only from here on, and
+    # only the 5-site grouped + 10-fold interleaved protocols. Raw, 2nd derivative
+    # and B2 stay available when asked for explicitly, never by default.
+    spectra = b.get("spectra") or ["airspec"]
+    modes = b.get("modes") or ["site_heldout", "app"]
     lots = b.get("lots") or ["all"]
     # multi-target: one row per (config x target). Targets are the INNERMOST
     # loop so the fitted calibration (fit/curve caches are target-independent)

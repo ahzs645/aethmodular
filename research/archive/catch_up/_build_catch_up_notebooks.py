@@ -6,10 +6,6 @@ import nbformat as nbf
 
 ROOT = Path(__file__).resolve().parents[2]
 CATCH_UP = ROOT / "research" / "catch_up"
-DATA_ROOT_TEXT = (
-    "/Users/ahmadjalil/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/"
-    "My Drive/University/Research/Grad/UC Davis Ann/NASA MAIA/Data"
-)
 
 
 def md(text: str):
@@ -20,7 +16,7 @@ def code(text: str):
     return nbf.v4.new_code_cell(text.strip() + "\n")
 
 
-COMMON = f"""
+COMMON = """
 from pathlib import Path
 import sys
 import warnings
@@ -31,10 +27,17 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import stats
 
-REPO_ROOT = Path("/Users/ahmadjalil/github/aethmodular")
+def find_repo_root():
+    cwd = Path.cwd().resolve()
+    for candidate in [cwd, *cwd.parents]:
+        if (candidate / "AGENTS.md").exists() and (candidate / "research").exists():
+            return candidate
+    raise FileNotFoundError("Could not find repo root. Run from inside aethmodular.")
+
+
+REPO_ROOT = find_repo_root()
 FTIR_DIR = REPO_ROOT / "research" / "ftir_hips_chem"
 CATCH_UP_DIR = REPO_ROOT / "research" / "catch_up"
-DATA_ROOT = Path({DATA_ROOT_TEXT!r})
 OUT_DIR = CATCH_UP_DIR / "output" / globals().get("NOTEBOOK_STEM", Path.cwd().name)
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -43,17 +46,20 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 from config import SITES
+from data_paths import maia_data_root
+
+DATA_ROOT = maia_data_root()
 from outliers import apply_exclusion_flags, apply_threshold_flags, get_clean_data
 from plotting import PlotConfig, apply_default_style
 
 apply_default_style()
 PlotConfig.set(sites="all", layout="individual", show_stats=True, show_1to1=True)
 
-SITE_CODES = {{site: cfg["code"] for site, cfg in SITES.items()}}
-CODE_TO_SITE = {{v: k for k, v in SITE_CODES.items()}}
-SITE_COLORS = {{site: PlotConfig.get_site_color(site) for site in SITE_CODES}}
+SITE_CODES = {site: cfg["code"] for site, cfg in SITES.items()}
+CODE_TO_SITE = {v: k for k, v in SITE_CODES.items()}
+SITE_COLORS = {site: PlotConfig.get_site_color(site) for site in SITE_CODES}
 
-PARAM_RENAME = {{
+PARAM_RENAME = {
     "EC_ftir": "ftir_ec",
     "OC_ftir": "ftir_oc",
     "HIPS_Fabs": "hips_fabs",
@@ -71,7 +77,7 @@ PARAM_RENAME = {{
     "ChemSpec_Calcium_PM2.5": "calcium",
     "ChemSpec_Titanium_PM2.5": "titanium",
     "ChemSpec_Filter_PM2.5_mass": "pm25_mass",
-}}
+}
 
 def _first_existing(paths):
     for p in paths:
@@ -88,7 +94,7 @@ def load_filter_long():
     df = pd.read_pickle(path)
     df["SampleDate"] = pd.to_datetime(df["SampleDate"])
     df["base_filter_id"] = df["FilterId"].astype(str).str.replace(r"-\\d+$", "", regex=True)
-    print(f"Loaded filter data: {{path}}  rows={{len(df):,}}")
+    print(f"Loaded filter data: {path}  rows={len(df):,}")
     return df
 
 def load_filter_wide(params):
@@ -116,19 +122,19 @@ def load_filter_wide(params):
         columns="Parameter",
         values="MassLoading_ug",
         aggfunc="first",
-    ).rename(columns={{p: PARAM_RENAME.get(p, p) + "_mass_ug" for p in params}})
+    ).rename(columns={p: PARAM_RENAME.get(p, p) + "_mass_ug" for p in params})
     wide = meta.merge(conc.reset_index(), on=["Site", "base_filter_id"], how="left")
     wide = wide.merge(mass.reset_index(), on=["Site", "base_filter_id"], how="left")
     wide["site"] = wide["Site"].map(CODE_TO_SITE)
     return wide
 
 def load_aeth_site(site):
-    file_map = {{
+    file_map = {
         "Beijing": "df_Beijing_9am_resampled.pkl",
         "Delhi": "df_Delhi_9am_resampled.pkl",
         "JPL": "df_JPL_9am_resampled.pkl",
         "Addis_Ababa": "df_Addis_Ababa_9am_resampled.pkl",
-    }}
+    }
     repo_path = FTIR_DIR / "processed_sites" / file_map[site]
     cloud_candidates = [
         DATA_ROOT / "Aethelometry Data" / "JacrosMA350 60s Data20250804082112" / "df_Jacros_9am_resampled.pkl",
@@ -157,8 +163,8 @@ def aeth_metrics(site):
     df = load_aeth_site(site)
     out = df[["site", "date"]].copy()
     for wl in ["UV", "Blue", "Green", "Red", "IR"]:
-        col = f"{{wl}} BCc"
-        out[f"{{wl.lower()}}_bc_ugm3"] = _to_ugm3(df[col]) if col in df.columns else np.nan
+        col = f"{wl} BCc"
+        out[f"{wl.lower()}_bc_ugm3"] = _to_ugm3(df[col]) if col in df.columns else np.nan
     out["aeth_ir_ugm3"] = out["ir_bc_ugm3"]
     out["uv_ir_bcc_ratio"] = out["uv_bc_ugm3"] / out["ir_bc_ugm3"]
     out["green_ir_bcc_ratio"] = out["green_bc_ugm3"] / out["ir_bc_ugm3"]
@@ -226,14 +232,14 @@ def add_project_exclusion_flags(df):
 def regression_row(df, x, y, label):
     d = df[[x, y]].replace([np.inf, -np.inf], np.nan).dropna()
     if len(d) < 3:
-        return {{"label": label, "x": x, "y": y, "n": len(d), "slope": np.nan, "intercept": np.nan, "r2": np.nan, "p": np.nan}}
+        return {"label": label, "x": x, "y": y, "n": len(d), "slope": np.nan, "intercept": np.nan, "r2": np.nan, "p": np.nan}
     lr = stats.linregress(d[x], d[y])
-    return {{"label": label, "x": x, "y": y, "n": len(d), "slope": lr.slope, "intercept": lr.intercept, "r2": lr.rvalue**2, "p": lr.pvalue}}
+    return {"label": label, "x": x, "y": y, "n": len(d), "slope": lr.slope, "intercept": lr.intercept, "r2": lr.rvalue**2, "p": lr.pvalue}
 
 def save_table(df, name):
     path = OUT_DIR / name
     df.to_csv(path, index=False)
-    print(f"Wrote {{path}}")
+    print(f"Wrote {path}")
     return path
 """
 

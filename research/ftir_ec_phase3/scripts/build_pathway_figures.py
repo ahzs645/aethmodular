@@ -91,49 +91,15 @@ def addis_run():
 # ------------------------------------------------ 01. the specification curve
 def fig_spec_curve():
     """Every Addis configuration ever scored, with the choices that produced it."""
-    # all-lots, unsplit readouts only, so the population matches every other
-    # number reported for this search; lot-specific readouts are a different view
-    # of the same configurations and would double-count them here.
-    rows = [r for r in load_rows() if r.get("target") == "addis"
-            and r.get("deming_intercept") is not None
-            and str(r.get("eval_lot")) in ("all", "None")
-            and r.get("eval_split") in (None, "all")]
-    def vetted(r):
-        return (r.get("q_residual_pct") is not None
-                and r.get("extrap_pct") is not None
-                and r.get("negative_pct") is not None
-                and r.get("heldout_R2") is not None and r["heldout_R2"] >= .85
-                and .7 <= r["deming_slope"] <= 1.3
-                and r["q_residual_pct"] <= 30 and r["extrap_pct"] <= 30
-                and r["negative_pct"] <= 10)
-    rows.sort(key=lambda r: r["deming_intercept"])
+    # row selection, guardrails and the choice list live in spec_curve.py,
+    # shared with the gallery export so the two views cannot disagree
+    from spec_curve import CHOICES, passes_guardrails, spec_rows, uses
+    rows = spec_rows(RESULTS)
     y = np.array([r["deming_intercept"] for r in rows])
     n = len(y)
-    ok = np.array([vetted(r) for r in rows])
-
-    # the specification panel: one row per analytic choice, marked where used
-    choices = [
-        ("baseline: AIRSpec", lambda r: r["spectra"] == "airspec"),
-        ("baseline: SG 2nd deriv", lambda r: r["spectra"] == "deriv2"),
-        ("baseline: raw", lambda r: r["spectra"] == "raw"),
-        ("cohort: lowest OC/EC", lambda r: r["cohort"] == "ocec"),
-        ("cohort: spectral analogs", lambda r: r["cohort"] == "analogs"),
-        ("cohort: Ethiopia-shaped", lambda r: r["cohort"] == "eth_shaped"),
-        ("selection in AIRSpec", lambda r: r.get("selection_space") == "airspec"),
-        ("protocol A (site-held-out)", lambda r: r["mode"] == "site_heldout"),
-        ("protocol B / B2", lambda r: r["mode"] in ("app", "app_fmm")),
-        ("k <= 9", lambda r: (r.get("k") or 0) <= 9),
-        ("k >= 15", lambda r: (r.get("k") or 0) >= 15),
-        ("cohort < 600 filters", lambda r: (r.get("cutoff") or 9999) < 600),
-        ("training lot 251 only", lambda r: str(r.get("lot")) == "251"),
-    ]
-    M = np.zeros((len(choices), n), bool)
-    for ci, (_, test) in enumerate(choices):
-        for i, r in enumerate(rows):
-            try:
-                M[ci, i] = bool(test(r))
-            except Exception:                                  # noqa: BLE001
-                M[ci, i] = False
+    ok = np.array([passes_guardrails(r) for r in rows])
+    choices = CHOICES
+    M = np.array([[uses(r, test) for r in rows] for _, test in choices], bool)
 
     fig, (ax, axs) = plt.subplots(
         2, 1, figsize=(11.4, 8.6), sharex=True,

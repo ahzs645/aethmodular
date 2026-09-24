@@ -2,13 +2,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {importRuntimeModule} from '/Users/ahmadjalil/.codex/plugins/cache/openai-primary-runtime/presentations/26.909.12148/skills/presentations/container_tools/runtime_helpers.mjs';
-import {resolvePresentationFont,applyPresentationChartFont,finalizePresentation} from '/Users/ahmadjalil/.codex/plugins/cache/openai-primary-runtime/presentations/26.909.12148/skills/presentations/container_tools/artifact_tool_utils.mjs';
+import {skill,pythonExecutable,runtimeHelpers,artifactToolUtils} from './codex_presentations_runtime.mjs';
+const {importRuntimeModule}=await runtimeHelpers();
+const {resolvePresentationFont,applyPresentationChartFont,finalizePresentation}=await artifactToolUtils();
 const {PresentationFile,FileBlob}=await importRuntimeModule('@oai/artifact-tool');
 const workspaceDir=path.join(process.env.AETHMODULAR_REPO_ROOT??process.cwd(),'deliverables/ann_weekly_2026-09-10');
 const build=path.join(workspaceDir,'.build/visual_revision');
 const source=path.join(workspaceDir,'output/ann_weekly_2026-09-10.pptx');
-const skill='/Users/ahmadjalil/.codex/plugins/cache/openai-primary-runtime/presentations/26.909.12148/skills/presentations';
 const content=JSON.parse(await fs.readFile(path.join(build,'content.json'),'utf8'));
 const p=await PresentationFile.importPptx(await FileBlob.load(source));
 const sourceHash=createHash('sha256').update(await fs.readFile(source)).digest('hex');
@@ -70,10 +70,10 @@ if(process.env.AETHMODULAR_VISUAL_DRAFT_ONLY!=='1'){
  if(path.basename(name)!==name||!name.endsWith('.pptx'))throw new Error('Expected a PPTX filename');
  const finalPath=path.join(workspaceDir,'output',name);
  const retained=path.join(build,'candidate-with-original-workbooks.pptx');
- execFileSync('/Users/ahmadjalil/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3',
+ execFileSync(pythonExecutable,
   [path.join(import.meta.dirname,'preserve_ann_visual_appendix.py'),source,candidate,retained],{stdio:'inherit'});
  const receipt=await finalizePresentation({workspaceDir,candidatePath:retained,finalPath,
-  pythonExecutable:'/Users/ahmadjalil/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3',
+  pythonExecutable,
   integrityValidatorPath:path.join(skill,'container_tools/inspect_presentation_package_integrity.py'),
   layoutValidatorPath:path.join(skill,'container_tools/inspect_presentation_layout_geometry.py'),
   layoutArgs:['--expected-slide-size-emu','12192000,6858000','--validate-bullet-geometry','--validate-heading-fit'],

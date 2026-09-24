@@ -11,6 +11,7 @@ import subprocess
 import sys
 
 import nbformat as nbf
+from aethmodular_cli.env import display_path
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
@@ -102,7 +103,7 @@ def build():
             originals.append(
                 {
                     "release_path": str(dest.relative_to(RELEASE)),
-                    "original_path": str(p.resolve()),
+                    "original_path": display_path(p),
                     "sha256": sha(p),
                 }
             )

@@ -1,5 +1,7 @@
 # Phase 3 results summary (July 2026)
 
+> **Historical narrative; current interpretation is in [FTIR transfer to Addis](../../docs/current-research-summary.md).** Later evidence qualifies cohort rankings, the residual-learner increment, pooled-lot blank corrections and the band/offset mechanism. The locked AIRSpec run has since reproduced, but independent Addis EC accuracy remains unestablished. Preserve the chronology below rather than treating its strongest early conclusions as current claims.
+
 Follow-ups from the July 2026 meeting with Ann and Satoshi. All Addis metrics below are on the
 same fixed 190-filter cohort as `ftir_10`, HIPS EC-equivalent (Fabs/MAC) on the x-axis,
 MAC = 10 headline. Nothing here uses Addis data for cohort selection or fitting unless

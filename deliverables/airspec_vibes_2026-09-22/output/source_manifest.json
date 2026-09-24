@@ -1,0 +1,30 @@
+{
+  "date": "2026-09-22",
+  "source_sha256": {
+    "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/calibration_scores.csv": "a6ac2d47fbc29c3388fd58b2cfda85c4fbbd29b69278866b7da00565b1757e7f",
+    "research/ftir_hips_chem/output/tables/vibes_subgroup_audit/subgroup_metrics.csv": "41d274d89a3349a7b7d6f6ab3a038b96ab6ac69d3e57db0880cb7e6a3fa081f8",
+    "research/ftir_hips_chem/output/tables/vibes_subgroup_audit/paired_residuals.csv": "d1f69331bded9bb7efbfd291cfb64af3c51cd091bae807f1ef255ead0fe5da99",
+    "research/ftir_hips_chem/output/tables/vibes_case_investigation/inspection_spectra.npz": "bf334dd18ec226794c7b05fd173e2453abd26b82013839ae795faa386a707c11",
+    "research/ftir_hips_chem/output/tables/vibes_case_investigation/case_evidence.csv": "6bec49a918dc605073c1d0053317c69cb81e20e46140b71ee1af5087e186904d",
+    "docs/openresearch-retrospective/claim_updates.json": "4b78906ff87ebdba7a0d3a34123abd3725c3ce66a4442a9e135f299c17c476de",
+    "docs/openresearch-retrospective/followthrough-2026-09-21.md": "2b3a5d9bb77d4e2b9dbd1dfbbd665428833a31074f8365eb1a93b2d9f245515b",
+    "research/ftir_hips_chem/output/tables/vibes_case_investigation/report.md": "2a24e0e894d5f2cab37da6b1cb058213b773b830e746c900ba2aecb9bc1b787b",
+    "research/ftir_hips_chem/output/tables/airspec_locked_reproduction/report.md": "ac92c1f3b79e7d66c094b429ad6572f6c5c68fcae2310bed31de299a90374456",
+    "research/ftir_hips_chem/output/tables/addis_validation_readiness/report.md": "9539a61e1deb6db70f3b7519919201229633bf11be4d94fad2b9cc27900b7c0f",
+    "research/ftir_hips_chem/output/tables/historical_gap_followthrough/report.md": "bc2162c6fe1911bac0d6c7c002655cc06f991b29416343edabe727208b98f946",
+    "research/ftir_ec_phase3/scripts/airspec_baseline.py": "394d72cfe2214b94f1293b11704d774b15bfc952c041d74b05bfa5bd7939008c",
+    "research/ftir_hips_chem/scripts/vibes_baseline.py": "9af33da26a776f0a9d529d8bc45b9517a1d44dab36dd211e79c83d28e9229f01",
+    "research/ftir_hips_chem/scripts/vibes_large_run.py": "0f63f62f02cee5bc3ae3f7142bc1e1084cf6affa1fd4183df7c239ace0ed112e",
+    "research/ftir_hips_chem/vendor/pyvibes/README.md": "c67d671c35e1420fbd66278986bb7089269fe67b7000720609bd55d623339f35",
+    "research/ftir_hips_chem/vendor/pyvibes/CITATION.cff": "769579fc764262eca9056185c4346204fbe6f4679581a2de4bb9de4065e74bab",
+    "research/ftir_hips_chem/output/tables/vibes_subgroup_audit/blank_summary.csv": "e2d6c3765004cb2f1851e9c62920c46207b885e019fbed4b5a4ec27b99671d00",
+    "research/ftir_hips_chem/output/tables/vibes_subgroup_audit/injection_summary.csv": "f26eb89c747b1fba03d8204b8be2382e2aaa21640e582aa2f17b231b2d9443f3",
+    "research/ftir_hips_chem/output/tables/vibes_subgroup_audit/addis_feature_summary.csv": "aaa8f4dacd3b950515145d19c18c819debdcffc3b4d0d050af3a7b13727aa76c",
+    "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/RUN_MANIFEST.json": "1824bf4ff4b5dd4194a8f13f6e2bbf004f981167a1c41a2afe553a1145e48f44"
+  },
+  "run_signature": "83dcf32e86bc0f092f49f7f59671ac8a89f8efcc28d990287f8b1f895d2b2ae5",
+  "scope": "Completed frozen comparison and documented historical interpretations. No new model fitting.",
+  "units": "EC prediction errors: micrograms/filter. Spectra: absorbance. No mass-to-concentration conversion.",
+  "external_method_reference": "https://amt.copernicus.org/articles/12/2313/2019/",
+  "pyvibes_reference": "Vendored pyvibes 1.0.0 README and CITATION.cff, Kamper, Krymova and Takahama."
+}

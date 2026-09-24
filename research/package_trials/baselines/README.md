@@ -14,7 +14,7 @@ python research/package_trials/baselines/compare_baselines.py   # from repo root
 
 | Package | Version |
 |---|---|
-| python | 3.13.9 (anaconda, `/Users/ahmadjalil/anaconda3/bin/python`) |
+| python | 3.13.9 (anaconda, `~/anaconda3/bin/python`) |
 | pybaselines | 1.2.1 |
 | rampy | 0.6.4 |
 | numpy / scipy / pandas | 2.3.5 / 1.16.3 / 2.3.3 |

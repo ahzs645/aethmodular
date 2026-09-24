@@ -132,11 +132,7 @@ RNG = np.random.default_rng(20260901)
 CACHE = OUT / 'minute_cache.parquet'
 
 RAW_NAME = 'Jacros_MA350_1-min_2022-2024_Cleaned.csv'
-try:
-    RAW = aethalometry_dir() / 'Raw' / RAW_NAME
-except Exception:  # pragma: no cover - env without the Drive mount resolver
-    RAW = Path('/Users/ahmadjalil/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/'
-               'University/Research/Grad/Data/Davis Data/Aethalometry Data/Raw') / RAW_NAME
+RAW = aethalometry_dir() / 'Raw' / RAW_NAME
 
 # sigma_ATN per channel, parsed from the vendored firmware module (never retyped)
 calibration_src = (REPO_ROOT / 'src' / 'external' / 'calibration.py').read_text()

@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   Presentation,
   PresentationFile,
@@ -10,7 +11,9 @@ import {
   fill,
 } from "@oai/artifact-tool";
 
-const ROOT = "/Users/ahmadjalil/github/aethmodular";
+// src -> workspace -> presentation_workspaces -> improve_hips_offset -> research -> repo
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../..");
+const rel = (p) => path.relative(ROOT, p);
 const OUT = path.join(
   ROOT,
   "research/improve_hips_offset/presentation_workspaces/improve_fed_missing_data_update",
@@ -368,7 +371,7 @@ for (let i = 0; i < slideCount; i += 1) {
 
 await fs.writeFile(
   path.join(SCRATCH, "build_summary.json"),
-  JSON.stringify({ pptxPath, slideCount, previewPaths }, null, 2),
+  JSON.stringify({ pptxPath: rel(pptxPath), slideCount, previewPaths: previewPaths.map(rel) }, null, 2),
 );
 
 console.log(JSON.stringify({ pptxPath, slideCount, previewPaths }, null, 2));

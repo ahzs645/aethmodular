@@ -30,8 +30,9 @@ GRID_CUTOFFS = {
     "analogs": [400, 450, 500, 550, 600],
     "ocec": [600, 700, 800, 900, 1000],
 }
-SPECTRA = ["raw", "airspec", "deriv2"]
-MODES = ["site_heldout", "app", "app_fmm"]   # options A, B, B2
+# 2026-09-17 meeting: baseline-corrected only; options A and B only.
+SPECTRA = ["airspec"]
+MODES = ["site_heldout", "app"]   # options A, B
 
 
 def selection_spaces(cohort):

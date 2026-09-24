@@ -1,11 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const pptxgen = require("pptxgenjs");
 const sharp = require("sharp");
 
-const ROOT = "/Users/ahmadjalil/github/aethmodular";
+// src -> workspace -> presentation_workspaces -> improve_hips_offset -> research -> repo
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../..");
+const rel = (p) => path.relative(ROOT, p);
 const WORK = path.join(ROOT, "research/improve_hips_offset/presentation_workspaces/improve_fed_missing_data_update");
 const OUTPUT = path.join(WORK, "output");
 const SCRATCH = path.join(WORK, "scratch");
@@ -437,5 +440,5 @@ ${Array.from({ length: 12 }, (_, i) => {
 </svg>`;
 const contact = path.join(SCRATCH, "contact_sheet_pptxgen.png");
 await sharp(Buffer.from(svg)).png().toFile(contact);
-await fs.writeFile(path.join(SCRATCH, "pptxgen_build_summary.json"), JSON.stringify({ outPptx, contact, slides: 12 }, null, 2));
+await fs.writeFile(path.join(SCRATCH, "pptxgen_build_summary.json"), JSON.stringify({ outPptx: rel(outPptx), contact: rel(contact), slides: 12 }, null, 2));
 console.log(JSON.stringify({ outPptx, contact, slides: 12 }, null, 2));

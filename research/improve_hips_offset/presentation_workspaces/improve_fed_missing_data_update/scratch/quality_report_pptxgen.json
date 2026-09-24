@@ -1,6 +1,6 @@
 {
-  "workspace": "/Users/ahmadjalil/github/aethmodular/research/improve_hips_offset/presentation_workspaces/improve_fed_missing_data_update",
-  "pptx": "/Users/ahmadjalil/github/aethmodular/research/improve_hips_offset/presentation_workspaces/improve_fed_missing_data_update/output/output.pptx",
+  "workspace": "research/improve_hips_offset/presentation_workspaces/improve_fed_missing_data_update",
+  "pptx": "research/improve_hips_offset/presentation_workspaces/improve_fed_missing_data_update/output/output.pptx",
   "checks": {
     "pptx_package": {
       "slide_count": 12,
@@ -15,7 +15,7 @@
       "failures": []
     },
     "output_hygiene": {
-      "output_dir": "/Users/ahmadjalil/github/aethmodular/research/improve_hips_offset/presentation_workspaces/improve_fed_missing_data_update/output",
+      "output_dir": "research/improve_hips_offset/presentation_workspaces/improve_fed_missing_data_update/output",
       "unexpected_files": []
     }
   },

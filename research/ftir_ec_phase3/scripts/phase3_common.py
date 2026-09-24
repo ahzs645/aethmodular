@@ -84,7 +84,11 @@ def load_tor_loadings(csv_path=None) -> pd.DataFrame:
     """One row per (Site, date) with TOR EC and OC filter loadings (µg/filter).
 
     Loadings use the phase-2 construction:
-    ``Value (µg/m³) × AverageFlowRate/1000 (m³/min) × ElapsedTime (min) / 1000``.
+    ``Value × AverageFlowRate/1000 (m³/min) × ElapsedTime (min) / 1000``.
+    ``Value`` in results_tor.csv is **ng/m³** (the /1000 turns ng into µg), so
+    the ``TOR_*_ugm3`` columns below are ng/m³ despite their names: fine for
+    >0 filters and OC/EC ratios, wrong for anything like Fabs / EC (divide by
+    1000 first; ``analog_bias.load_tor_fractions`` does).
     The OC/EC ratio is concentration ratio == loading ratio (same volume).
     ``csv_path`` may point to a locally staged copy when Drive hydration stalls.
     """

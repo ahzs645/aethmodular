@@ -8,7 +8,7 @@ lowest-OC/EC 800 cohort (X 800×2722 raw spectra, y = TOR EC loading µg/filter,
 
 ## Environment
 
-Anaconda python 3.13.9 (`/Users/ahmadjalil/anaconda3/bin/python`, the
+Anaconda python 3.13.9 (`~/anaconda3/bin/python`, the
 interpreter the phase-3 scripts run under), numpy 2.3.5, scipy 1.16.3,
 scikit-learn 1.7.2. Installed for this trial:
 

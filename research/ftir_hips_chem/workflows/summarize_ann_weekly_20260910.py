@@ -22,6 +22,7 @@ sys.path.insert(0, str(P3 / "scripts"))
 sys.path.insert(0, str(ACTIVE / "scripts"))
 
 import pandas as pd
+from aethmodular_cli.env import display_path
 from config import ETHIOPIA_SEASONS
 from phase3_common import PATHS
 from plotting.utils import deming
@@ -31,8 +32,16 @@ def read(name):
     return pd.read_csv(OUT / f"{name}.csv")
 
 
+def link_target(path):
+    """Link target from the report: relative inside the repo, ``~/`` outside it."""
+    resolved = Path(path).resolve()
+    if resolved.is_relative_to(ROOT):
+        return Path(os.path.relpath(resolved, DELIVERABLE)).as_posix()
+    return display_path(path)
+
+
 def link(path, label=None):
-    return f"[{label or path.name}](<{path}>)"
+    return f"[{label or path.name}](<{link_target(path)}>)"
 
 
 def table(headers, rows):
@@ -137,13 +146,13 @@ def main():
             )
     pd.DataFrame(sensitivity).to_csv(OUT / "lambda_sensitivity.csv", index=False)
     provenance = {
-        "figure_labels_source": str(
+        "figure_labels_source": display_path(
             ROOT / "deliverables/spectral_comparison_2026-09-01/figures/viz_nearest_analogs.png"
         ),
         "figure_label_method": "manually transcribed site/date labels; required a unique library match",
-        "lot_source": str(raw_path),
+        "lot_source": display_path(raw_path),
         "lot_source_sha256": hashlib.sha256(raw_path.read_bytes()).hexdigest(),
-        "shipped_lot_source": str(PATHS.spartan_hips_primary),
+        "shipped_lot_source": display_path(PATHS.spartan_hips_primary),
         "raw_lot_confirmed_n": int(lot.ExternalLotId.eq(251).sum()),
         "shipped_lot_confirmed_n": int(lot.LotId_shipped.eq(251).sum()),
     }
@@ -217,7 +226,7 @@ def main():
             ],
         ),
         "## Data and fixed choices",
-        f"The user-supplied {link(Path('/Users/ahmadjalil/Downloads/results_tor.csv'))} supplies TOR values. "
+        f"The user-supplied {link(Path.home() / 'Downloads/results_tor.csv')} supplies TOR values. "
         "The corrected cache contains 13,634 IMPROVE scans representing 13,632 physical filters; "
         "13,010 physical filters have finite spectra and positive TOR EC loading and can enter calibration. "
         "Availability and calibration eligibility are retained as flags. The 239 shipped Addis filters "
@@ -297,7 +306,7 @@ def main():
         "does not include 1. Kiremt’s slope interval includes 1 while its intercept interval stays negative. "
         "Neither result demonstrates simultaneous agreement. All three season-specific fits fail the prior "
         "TOR R² screening threshold, so an attractive Addis intercept cannot justify adopting them.",
-        f"![Seasonal regressions]({PLOTS / 'seasons_crossplots.png'})",
+        f"![Seasonal regressions]({link_target(PLOTS / 'seasons_crossplots.png')})",
         "For the pooled selection, the CO₂-only mask passes the prior TOR correlation screen, but adding "
         "the upper cuts does not improve that screening result. Addis R² remains lower than the historical "
         "reference in these exploratory readouts.",
@@ -351,7 +360,7 @@ def main():
         "All five PMF calibrations also fail the 0.85 TOR correlation screen. Sea Salt is a useful caution: "
         "its Addis R² is 0.831, but source-held-out TOR Q² is −0.893. Strong correlation on the target "
         "comparison can coexist with poor source prediction. Small PMF groups also limit interval precision.",
-        f"![PMF regressions]({PLOTS / 'pmf_crossplots.png'})",
+        f"![PMF regressions]({link_target(PLOTS / 'pmf_crossplots.png')})",
         "Pairwise analog overlap is recorded in " + link(OUT / "pmf_overlap.csv") + ".",
         "## Full calibration spectra versus all seasonal Addis spectra",
         "The following panels contain every spectrum in the actual fitted calibration subset, compared "
@@ -363,7 +372,7 @@ def main():
     for season in ETHIOPIA_SEASONS:
         slug = "".join(c if c.isalnum() else "_" for c in season).strip("_")
         pieces.append(
-            f"![{season}: complete calibration and Addis spectra]({PLOTS / f'full_calibration_vs_addis_{slug}.png'})"
+            f"![{season}: complete calibration and Addis spectra]({link_target(PLOTS / f'full_calibration_vs_addis_{slug}.png')})"
         )
     pieces += [
         "## Historical membership and CV",
@@ -467,8 +476,8 @@ def main():
         "## Reproduction and review files",
         "Run from the repository root with the configured `uv` environment:",
         "```sh\nuv run aeth doctor\n"
-        "AETHMODULAR_WEEKLY_TOR_CSV=/Users/ahmadjalil/Downloads/results_tor.csv uv run python research/ftir_hips_chem/workflows/run_ann_weekly_20260910.py\n"
-        "AETHMODULAR_WEEKLY_AGGREGATION=mean AETHMODULAR_WEEKLY_TOR_CSV=/Users/ahmadjalil/Downloads/results_tor.csv uv run python research/ftir_hips_chem/workflows/run_ann_weekly_20260910.py\n"
+        "AETHMODULAR_WEEKLY_TOR_CSV=~/Downloads/results_tor.csv uv run python research/ftir_hips_chem/workflows/run_ann_weekly_20260910.py\n"
+        "AETHMODULAR_WEEKLY_AGGREGATION=mean AETHMODULAR_WEEKLY_TOR_CSV=~/Downloads/results_tor.csv uv run python research/ftir_hips_chem/workflows/run_ann_weekly_20260910.py\n"
         "uv run python research/ftir_hips_chem/workflows/summarize_ann_weekly_20260910.py\n"
         "uv run python research/ftir_hips_chem/workflows/prepare_ann_weekly_slides_20260910.py\n"
         "uv run pytest -q tests/test_ann_weekly_analogs.py tests/test_overlays_crossplot.py tests/test_pls_transfer.py\n```",

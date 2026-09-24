@@ -2,8 +2,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {importRuntimeModule} from '/Users/ahmadjalil/.codex/plugins/cache/openai-primary-runtime/presentations/26.909.12148/skills/presentations/container_tools/runtime_helpers.mjs';
-import {finalizePresentation} from '/Users/ahmadjalil/.codex/plugins/cache/openai-primary-runtime/presentations/26.909.12148/skills/presentations/container_tools/artifact_tool_utils.mjs';
+import {skill,pythonExecutable,runtimeHelpers,artifactToolUtils} from './codex_presentations_runtime.mjs';
+const {importRuntimeModule}=await runtimeHelpers();
+const {finalizePresentation}=await artifactToolUtils();
 const {PresentationFile,FileBlob}=await importRuntimeModule('@oai/artifact-tool');
 const repo=process.env.AETHMODULAR_REPO_ROOT??process.cwd();
 const workspaceDir=path.join(repo,'deliverables/adama_summary_2026-08-25');
@@ -12,7 +13,6 @@ const output=path.join(workspaceDir,'output');
 const tables=path.join(repo,'research/ftir_hips_chem/output/tables/adama_summary_20260910');
 const figures=path.join(repo,'research/ftir_hips_chem/output/plots/adama_summary_20260910');
 const source=path.join(workspaceDir,'adama_summary_2026-09-01.pptx');
-const skill='/Users/ahmadjalil/.codex/plugins/cache/openai-primary-runtime/presentations/26.909.12148/skills/presentations';
 const summary=JSON.parse(await fs.readFile(path.join(tables,'summary.json'),'utf8'));
 const spectra=JSON.parse(await fs.readFile(path.join(tables,'spectral_overlay_manifest.json'),'utf8'));
 const pairs=JSON.parse(await fs.readFile(path.join(tables,'adama_pairs.json'),'utf8'));
@@ -161,7 +161,7 @@ if(process.env.AETHMODULAR_ADAMA_DRAFT_ONLY!=='1'){
  if(path.basename(name)!==name||!name.endsWith('.pptx'))throw new Error('Expected a PPTX filename');
  const finalPath=path.join(output,name);
  const result=await finalizePresentation({workspaceDir,candidatePath:candidate,finalPath,
-  pythonExecutable:'/Users/ahmadjalil/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3',
+  pythonExecutable,
   integrityValidatorPath:path.join(skill,'container_tools/inspect_presentation_package_integrity.py'),
   layoutValidatorPath:path.join(skill,'container_tools/inspect_presentation_layout_geometry.py'),
   layoutArgs:['--expected-slide-size-emu','12191695,6858000','--validate-bullet-geometry','--validate-heading-fit','--require-native-table-slide','14'],

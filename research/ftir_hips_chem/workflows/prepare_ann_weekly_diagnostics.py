@@ -1,8 +1,10 @@
 """Build data-linked speaker notes and a concise supplementary analysis report."""
 
 import json
+import os
 from pathlib import Path
 import pandas as pd
+from aethmodular_cli.env import display_path
 
 ROOT = Path(__file__).resolve().parents[3]
 ACTIVE = ROOT / "research/ftir_hips_chem"
@@ -12,6 +14,13 @@ NOTEBOOK = ACTIVE / "notebooks/archive/executed/ann_weekly_20260910_diagnostics.
 FIGURES = ACTIVE / "output/plots/ann_weekly_20260910_diagnostics"
 BUILD = DELIVERY / ".build/diagnostics"
 BUILD.mkdir(parents=True, exist_ok=True)
+
+
+def rel(path):
+    """Link target relative to output/diagnostics_report.md."""
+    return Path(os.path.relpath(Path(path).resolve(), DELIVERY / "output")).as_posix()
+
+
 pair = pd.read_csv(TABLES / "paired_model_comparison.csv")
 stability = pd.read_csv(TABLES / "analog_stability_summary.csv")
 shape = pd.read_csv(TABLES / "pca_season_summary.csv")
@@ -107,7 +116,9 @@ specs = [
 ]
 for s in specs:
     s["image"] = str(FIGURES / f"slide_{s['number']}.png")
-    sources = [str(TABLES / name) for name in s["files"]] + [str(NOTEBOOK), s["image"]] + s["urls"]
+    sources = [
+        display_path(p) for p in [*(TABLES / name for name in s["files"]), NOTEBOOK, s["image"]]
+    ] + s["urls"]
     s["notes"] = f"Talk track\n{s['talk']}\n\nIf asked\n{s['detail']}\n\nSources\n" + "\n".join(
         sources
     )
@@ -122,9 +133,9 @@ parts = [
 ]
 for s in specs:
     parts.append(
-        f"## {s['title']}\n\n{s['talk']}\n\n{s['detail']}\n\n![{s['title']}]({s['image']})\n\n"
+        f"## {s['title']}\n\n{s['talk']}\n\n{s['detail']}\n\n![{s['title']}]({rel(s['image'])})\n\n"
         + "Sources: "
-        + ", ".join(f"[{n}]({TABLES / n})" for n in s["files"])
+        + ", ".join(f"[{n}]({rel(TABLES / n)})" for n in s["files"])
         + ".\n"
     )
 parts.append(

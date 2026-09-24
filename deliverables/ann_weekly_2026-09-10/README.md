@@ -25,7 +25,7 @@ Run the analysis commands shown in the report from the repository root. To build
 
 ```sh
 uv run python research/ftir_hips_chem/workflows/prepare_ann_weekly_slides_20260910.py
-RUNTIME_NODE_MODULES=/Users/ahmadjalil/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules AETHMODULAR_WEEKLY_DECK_NAME=ann_weekly_2026-09-10_v2.pptx /Users/ahmadjalil/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node research/ftir_hips_chem/workflows/build_ann_weekly_slides_20260910.mjs
+RUNTIME_NODE_MODULES=~/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules AETHMODULAR_WEEKLY_DECK_NAME=ann_weekly_2026-09-10_v2.pptx ~/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node research/ftir_hips_chem/workflows/build_ann_weekly_slides_20260910.mjs
 ```
 
 Use a fresh output filename for revisions; finalization intentionally refuses to overwrite a finished presentation. `.build/` is private build material and is ignored by Git.

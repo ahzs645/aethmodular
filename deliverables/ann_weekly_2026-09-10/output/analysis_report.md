@@ -21,7 +21,7 @@ The proposed independent Addis split is supplied as an **unscored retrospective 
 
 ## Data and fixed choices
 
-The user-supplied [results_tor.csv](</Users/ahmadjalil/Downloads/results_tor.csv>) supplies TOR values. The corrected cache contains 13,634 IMPROVE scans representing 13,632 physical filters; 13,010 physical filters have finite spectra and positive TOR EC loading and can enter calibration. Availability and calibration eligibility are retained as flags. The 239 shipped Addis filters were checked against the previous evaluation IDs and Fabs values. Replicate Addis scans are averaged by MediaId, and the canonical exclusion registry is applied.
+The user-supplied [results_tor.csv](<~/Downloads/results_tor.csv>) supplies TOR values. The corrected cache contains 13,634 IMPROVE scans representing 13,632 physical filters; 13,010 physical filters have finite spectra and positive TOR EC loading and can enter calibration. Availability and calibration eligibility are retained as flags. The 239 shipped Addis filters were checked against the previous evaluation IDs and Fabs values. Replicate Addis scans are averaged by MediaId, and the canonical exclusion registry is applied.
 
 The primary analysis correlates each IMPROVE spectrum with the **median spectrum of the target group**, preserving the earlier seasonal analysis definition. Correlation is centred Pearson r and is ranked with its sign so an inverted spectrum cannot become a good match. The 500 highest-ranked unique TOR-eligible physical filters form each calibration cohort. Ties are resolved deterministically by AnalysisId. A separately retained mean-across-target-correlations sensitivity tests aggregation dependence.
 
@@ -65,7 +65,7 @@ Addis R² below is squared Pearson correlation between **x = HIPS Fabs / MAC** a
 
 Dry’s intercept is compatible with zero, but its slope is only 0.305 and its 95% interval does not include 1. Kiremt’s slope interval includes 1 while its intercept interval stays negative. Neither result demonstrates simultaneous agreement. All three season-specific fits fail the prior TOR R² screening threshold, so an attractive Addis intercept cannot justify adopting them.
 
-![Seasonal regressions](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/ann_weekly_20260910/seasons_crossplots.png)
+![Seasonal regressions](../../../research/ftir_hips_chem/output/plots/ann_weekly_20260910/seasons_crossplots.png)
 
 For the pooled selection, the CO₂-only mask passes the prior TOR correlation screen, but adding the upper cuts does not improve that screening result. Addis R² remains lower than the historical reference in these exploratory readouts.
 
@@ -77,7 +77,7 @@ For the pooled selection, the CO₂-only mask passes the prior TOR correlation s
 | no_co2_max3500 | 14 | 0.634 | 0.639 | -1.181 | 0.735 | 0.719 |
 | historical_ocec440 | 8 | 0.726 | 0.901 | -1.293 | 0.924 | 0.905 |
 
-The report also retains **every fitted seasonal model evaluated in every season**, plus common pooled/historical-model readouts by season and PMF group. These distinguish changes in target composition from changes caused by selecting a separate calibration: [regression_metrics.csv](</Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910/regression_metrics.csv>).
+The report also retains **every fitted seasonal model evaluated in every season**, plus common pooled/historical-model readouts by season and PMF group. These distinguish changes in target composition from changes caused by selecting a separate calibration: [regression_metrics.csv](<../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910/regression_metrics.csv>).
 
 ## PMF extension
 
@@ -93,19 +93,19 @@ The canonical helper normalizes GF1–GF5 before assigning dominant source, then
 
 All five PMF calibrations also fail the 0.85 TOR correlation screen. Sea Salt is a useful caution: its Addis R² is 0.831, but source-held-out TOR Q² is −0.893. Strong correlation on the target comparison can coexist with poor source prediction. Small PMF groups also limit interval precision.
 
-![PMF regressions](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/ann_weekly_20260910/pmf_crossplots.png)
+![PMF regressions](../../../research/ftir_hips_chem/output/plots/ann_weekly_20260910/pmf_crossplots.png)
 
-Pairwise analog overlap is recorded in [pmf_overlap.csv](</Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910/pmf_overlap.csv>).
+Pairwise analog overlap is recorded in [pmf_overlap.csv](<../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910/pmf_overlap.csv>).
 
 ## Full calibration spectra versus all seasonal Addis spectra
 
 The following panels contain every spectrum in the actual fitted calibration subset, compared with every Addis spectrum in that season, on shared axes. Held-out TOR filters are not counted as training filters. The shaded CO₂ band is excluded from correlation selection only. The deck’s editable appendix charts summarize these same complete sets using minima, maxima and medians; the complete individual-trace panels below remain available for inspection.
 
-![Dry (Oct-Feb): complete calibration and Addis spectra](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/ann_weekly_20260910/full_calibration_vs_addis_Dry__Oct_Feb.png)
+![Dry (Oct-Feb): complete calibration and Addis spectra](../../../research/ftir_hips_chem/output/plots/ann_weekly_20260910/full_calibration_vs_addis_Dry__Oct_Feb.png)
 
-![Belg (Mar-May): complete calibration and Addis spectra](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/ann_weekly_20260910/full_calibration_vs_addis_Belg__Mar_May.png)
+![Belg (Mar-May): complete calibration and Addis spectra](../../../research/ftir_hips_chem/output/plots/ann_weekly_20260910/full_calibration_vs_addis_Belg__Mar_May.png)
 
-![Kiremt (Jun-Sep): complete calibration and Addis spectra](/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/plots/ann_weekly_20260910/full_calibration_vs_addis_Kiremt__Jun_Sep.png)
+![Kiremt (Jun-Sep): complete calibration and Addis spectra](../../../research/ftir_hips_chem/output/plots/ann_weekly_20260910/full_calibration_vs_addis_Kiremt__Jun_Sep.png)
 
 ## Historical membership and CV
 
@@ -134,7 +134,7 @@ The existing Deming implementation returned slope and intercept point estimates 
 
 The median HIPS uncertainty is read from **HIPS_Uncertainty parameter rows**, not the empty uncertainty column on Fabs rows. After MAC conversion, σx = 0.290751 µg/m³. The historical TOR RMSE of 0.531 µg/m³ is used as an approximate shared σy proxy, giving λ = (σy/σx)² = **3.335383**. The older λ≈2.96 used a different conversion; it is not silently carried forward. This constant-ratio approximation is not a per-filter uncertainty model, and it is not recalibrated for each new PLS fit.
 
-The intervals condition on fixed predictions, calibration choice, MAC and λ. They do not include PLS fitting/selection uncertainty or uncertainty in the HIPS and FTIR error estimates. No multiplicity adjustment is applied across exploratory groups. Compatibility with slope 1 or intercept 0 is not an equivalence test or proof of practically acceptable error. Point-estimate sensitivity at λ=1, 2.96, the current estimate, and 10 is supplied in [lambda_sensitivity.csv](</Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910/lambda_sensitivity.csv>).
+The intervals condition on fixed predictions, calibration choice, MAC and λ. They do not include PLS fitting/selection uncertainty or uncertainty in the HIPS and FTIR error estimates. No multiplicity adjustment is applied across exploratory groups. Compatibility with slope 1 or intercept 0 is not an equivalence test or proof of practically acceptable error. Point-estimate sensitivity at λ=1, 2.96, the current estimate, and 10 is supplied in [lambda_sensitivity.csv](<../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910/lambda_sensitivity.csv>).
 
 ## Proposed Addis selection / validation design
 
@@ -156,11 +156,11 @@ The proposed validation rows have already participated in earlier exploratory an
 
 ## Bishoftu filter lot
 
-All **40 Bishoftu filters are lot 251**, independently matched by ExternalFilterId to the raw HIPS `ExternalLotId`. The shipped HIPS table independently confirms the same lot for its 26 released filters. The remaining 14 have provisional reconstructed Fabs, so lot confirmation does not make those optical values an official release. Per-filter evidence is in [bishoftu_primary_lot_check.csv](</Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910/bishoftu_primary_lot_check.csv>).
+All **40 Bishoftu filters are lot 251**, independently matched by ExternalFilterId to the raw HIPS `ExternalLotId`. The shipped HIPS table independently confirms the same lot for its 26 released filters. The remaining 14 have provisional reconstructed Fabs, so lot confirmation does not make those optical values an official release. Per-filter evidence is in [bishoftu_primary_lot_check.csv](<../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910/bishoftu_primary_lot_check.csv>).
 
 ## Sensitivity and limits
 
-The alternative mean-across-target-correlations run gives seasonal TOR R² of 0.446, 0.569 and 0.781 (Dry, Belg, Kiremt). Each still fails the prior 0.85 screening threshold. That supports the screening conclusion, while the changed memberships and predictions show that aggregation must be fixed before future validation. The mean run is retained in [mean sensitivity tables](</Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910_mean_sensitivity>).
+The alternative mean-across-target-correlations run gives seasonal TOR R² of 0.446, 0.569 and 0.781 (Dry, Belg, Kiremt). Each still fails the prior 0.85 screening threshold. That supports the screening conclusion, while the changed memberships and predictions show that aggregation must be fixed before future validation. The mean run is retained in [mean sensitivity tables](<../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910_mean_sensitivity>).
 
 Cohort size is held at 500; this follow-up does not establish that 500 is optimal. The 0.85 threshold is a prior screening convention, not a universal acceptance criterion. HIPS Fabs/MAC is a comparison proxy rather than direct chemical EC truth. The mask test diagnoses matching sensitivity, not the physical cause of the Addis offset. The source and target libraries were already used in prior exploration, so the historical TOR tests are not newly untouched confirmatory data either.
 
@@ -170,14 +170,14 @@ Run from the repository root with the configured `uv` environment:
 
 ```sh
 uv run aeth doctor
-AETHMODULAR_WEEKLY_TOR_CSV=/Users/ahmadjalil/Downloads/results_tor.csv uv run python research/ftir_hips_chem/workflows/run_ann_weekly_20260910.py
-AETHMODULAR_WEEKLY_AGGREGATION=mean AETHMODULAR_WEEKLY_TOR_CSV=/Users/ahmadjalil/Downloads/results_tor.csv uv run python research/ftir_hips_chem/workflows/run_ann_weekly_20260910.py
+AETHMODULAR_WEEKLY_TOR_CSV=~/Downloads/results_tor.csv uv run python research/ftir_hips_chem/workflows/run_ann_weekly_20260910.py
+AETHMODULAR_WEEKLY_AGGREGATION=mean AETHMODULAR_WEEKLY_TOR_CSV=~/Downloads/results_tor.csv uv run python research/ftir_hips_chem/workflows/run_ann_weekly_20260910.py
 uv run python research/ftir_hips_chem/workflows/summarize_ann_weekly_20260910.py
 uv run python research/ftir_hips_chem/workflows/prepare_ann_weekly_slides_20260910.py
 uv run pytest -q tests/test_ann_weekly_analogs.py tests/test_overlays_crossplot.py tests/test_pls_transfer.py
 ```
 
-The source arrays and TOR CSV are SHA-256 fingerprinted in [summary.json](</Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910/summary.json>); the supplementary source audit is in [supplementary_provenance.json](</Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/ann_weekly_20260910/supplementary_provenance.json>). Each fit has an exact cohort/role table, CV curve and prediction table. The checks cover mask boundaries, signed ranking, duplicate physical-filter handling, split isolation, Deming identities and bootstrap reproducibility, alongside existing regression/transfer checks.
+The source arrays and TOR CSV are SHA-256 fingerprinted in [summary.json](<../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910/summary.json>); the supplementary source audit is in [supplementary_provenance.json](<../../../research/ftir_hips_chem/output/tables/ann_weekly_20260910/supplementary_provenance.json>). Each fit has an exact cohort/role table, CV curve and prediction table. The checks cover mask boundaries, signed ranking, duplicate physical-filter handling, split isolation, Deming identities and bootstrap reproducibility, alongside existing regression/transfer checks.
 
 The presentation contains nine main slides and three spectral appendix slides, with speaker notes. Its native editable charts retain every channel; chart-workbook numbers are rounded to ten significant digits for Excel compatibility, while the analysis arrays retain full precision. No new calibration has been promoted into production and no email has been sent.
 

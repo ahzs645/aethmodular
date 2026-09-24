@@ -33,6 +33,53 @@ can silently stall on new files (2026-09-01: a 297 MB zip synced in minutes whil
 an 8 KB `.py` copied next to it never appeared in ~15 min). A local `ls` proves
 nothing; search for the file in the Drive web UI and check its modified time.
 
+## Colab CLI (headless batch, no notebook)
+
+`colab` (google-colab-cli) drives a Colab VM from the terminal. The three
+scripts in `cli/` replace the notebook's setup and batch cells; kernel state
+persists between `colab exec` calls, so the explorer server started by the
+first script keeps running for the others. Two steps need you at a terminal:
+the CLI's one-time Google sign-in and `colab drivemount` (both interactive).
+Use the Google account whose Drive holds `Davis Data/FTIR`.
+
+```bash
+colab sessions                                   # first run: sign in (browser + code)
+colab new -s aeth-b                              # CPU VM; one session per protocol
+colab upload -s aeth-b calibration_explorer/colab/aethmodular_calibration_explorer_prewarm.zip \
+    /content/aethmodular_calibration_explorer_prewarm.zip
+colab drivemount -s aeth-b                       # interactive: approve Drive access
+colab exec -s aeth-b -f calibration_explorer/colab/cli/remote_setup.py
+echo 'BATCH_MODES = ["app"]' | colab exec -s aeth-b
+colab exec -s aeth-b -f calibration_explorer/colab/cli/remote_batch.py
+echo 'batch_status()' | colab exec -s aeth-b     # poll until "stopped"
+echo 'pack_results("app")' | colab exec -s aeth-b
+colab download -s aeth-b /content/explorer_cache_app.zip explorer_cache_app.zip
+colab stop -s aeth-b                             # idle VMs burn compute units
+uv run python calibration_explorer/colab/cli/merge_results.py explorer_cache_app.zip
+uv run python gallery/data/export_calibration.py
+```
+
+Run a second session (`aeth-b2`, `BATCH_MODES = ["app_fmm"]`) in parallel for
+protocol B2. `remote_batch.py` holds the grid: dense cutoffs, raw and corrected
+selection, AIRSpec calibration only, all five screening sites. Held-out TOR R²
+stays empty for protocols B and B2: they fit on every IMPROVE site, so
+`app.py` has no held-out sites to score (it computes that metric only for
+`site_heldout`).
+
+**Gotchas seen on the first CLI run (2026-09-23, colab-cli 0.6.0):**
+
+- `colab upload` sends a file in one request and fails (HTTP 400/500) on the
+  297 MB bundle. Split it (`split -b 40m`), upload the parts, concatenate on
+  the VM and compare the SHA-256 with the local file.
+- The CLI saves the VM's runtime-proxy token at `colab new` and never renews
+  it; the token expires after an hour. Every later `colab exec` then gets a
+  404, and the CLI deletes its local session record even though the VM and
+  kernel keep running (`colab sessions` lists them as `[?]`). Recover by
+  re-registering the session with a fresh token from `list_assignments()` and
+  the original `kernel_id` (it is in `~/.config/colab-cli/colab.log`), using
+  the CLI's own `StateStore`; refresh the token before each poll on long runs.
+  Check whether a newer CLI renews it before relying on this workaround.
+
 ## Verification log
 
 ### 2026-09-01: first end-to-end run since the Aug 23/24 modules landed
