@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "aeth.improve-raw-parquet",
+  "version": 1,
+  "script": "improve_raw_parquet.py",
+  "description": "Lossless value-level conversion of both IMPROVE portal exports. Shared metadata sheets are included once after equality checks; parameter sheets remain separate. Blank numeric cells become null and a typed sample_date is added while retaining Date.",
+  "sources": {
+    "chem": {
+      "fileName": "IMPROVE_chem-mass-fabs_2026-04-22.xlsx",
+      "sha256": "f553a444ab0fb8ffaa10056cd878134835ecd5beb4f43b2fd1cece74aa6b5822",
+      "dataRows": 626518
+    },
+    "laser": {
+      "fileName": "IMPROVE_laser-optics-635nm_2026-04-22.xlsx",
+      "sha256": "af4663f52acd3ea3613b44a6014430709a8b0f3d4de27e3b67e9a94225e5293f",
+      "dataRows": 185618
+    }
+  },
+  "sharedSheets": ["Datasets", "Overview", "Sites", "Site History", "Dataset History", "Status Flags", "Provider Flags"],
+  "distinctSheets": ["Parameters"],
+  "outputFromRepo": "research/ftir_hips_chem/output/tables/zoer_sources/improve_raw"
+}

@@ -11,10 +11,11 @@ from urllib.request import Request, urlopen
 
 import pandas as pd
 
+from zoer_env import zoer_url
+
 
 DATA_ROOT = Path(os.environ.get("AETHMODULAR_DATA_ROOT", Path(__file__).resolve().parents[2]))
 DEFAULT_PARQUET = DATA_ROOT / "output/tables/unified_filter_dataset.parquet"
-DEFAULT_BASE_URL = "https://zoer.example.org"
 
 
 def api_json(base_url: str, path: str, body: dict | None = None) -> dict:
@@ -56,11 +57,12 @@ def hosted_table(dataset: dict, source_name: str) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
+    parser.add_argument("--base-url", default=None, help="Zoer server root; defaults to ZOER_URL from .env")
     parser.add_argument("--local-parquet", type=Path, default=DEFAULT_PARQUET)
     parser.add_argument("--dataset-id", help="Zoer dataset ID after the Parquet has been uploaded and rebuilt")
     parser.add_argument("--list", action="store_true", help="List hosted datasets without querying rows")
     args = parser.parse_args()
+    args.base_url = args.base_url or zoer_url()
 
     baseline = local_counts(args.local_parquet.expanduser().resolve())
     print(json.dumps({"local": baseline, "parquet": str(args.local_parquet)}))

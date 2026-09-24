@@ -1,0 +1,1820 @@
+{
+  "datasets": {
+    "DAVIS": {
+      "id": "aceb7980-151a-43b5-9c74-239511d2cef2",
+      "files": {
+        "DAVIS/ETAD FTIR/ETAD_FTIR_spectra.csv": {
+          "status": "hosted",
+          "upload_name": "ETAD_FTIR_spectra__cda47ea808.csv",
+          "file_id": "8baab61b-d4f4-46b3-91bc-05d8ac709f9a",
+          "sha256": "0f530df2cb48a1eca6c83717a7f051d02d74e848fb160178da9079687f253ed2",
+          "bytes": 16200588
+        },
+        "DAVIS/ETAD FTIR/ETAD_metadata.csv": {
+          "status": "hosted",
+          "upload_name": "ETAD_metadata__7aa7cf5adf.csv",
+          "file_id": "c6310355-643c-4c62-bb5e-cc705b214638",
+          "sha256": "697696e98a4e10919374a34d72cb6fd41dc03b45632533e9ef9c46014f5025e8",
+          "bytes": 30639
+        },
+        "DAVIS/ETAD FTIR/etad_spectra_lotmap.csv": {
+          "status": "hosted",
+          "upload_name": "etad_spectra_lotmap__f942d7ccdf.csv",
+          "file_id": "e4443e8c-06c4-4a07-aae0-abbc7ce39349",
+          "sha256": "eae2d170fca33c504ae2d477843a603047fafa8ca1b99ccc1963e5382c382e3d",
+          "bytes": 8030
+        },
+        "DAVIS/CSU_AMOD/csu_amod_HIPS_Batch_54.csv": {
+          "status": "hosted",
+          "upload_name": "csu_amod_HIPS_Batch_54__f108a57845.csv",
+          "file_id": "f5b8891f-4e87-48ed-8d2b-ebdf48086a78",
+          "sha256": "067ad22e6c72f212c22cb245ae0b480625450e9183b22ae76af284927d0cfd75",
+          "bytes": 1458
+        },
+        "DAVIS/CSU_AMOD/csu_amod_FTIR_Batch_54.csv": {
+          "status": "hosted",
+          "upload_name": "csu_amod_FTIR_Batch_54__ae16bd6944.csv",
+          "file_id": "a37cb243-6c49-4c10-8af0-568fed360010",
+          "sha256": "61c8e04d7544f8d89d924095ff1a5ce5b45376ad27cafd8dad3964f660293cbe",
+          "bytes": 2021
+        },
+        "DAVIS/CSU_AMOD/csu_amod_Batch_54_ShipDate_2026-05-29_spectra.csv": {
+          "status": "hosted",
+          "upload_name": "csu_amod_Batch_54_ShipDate_2026-05-29_spectra__659bee3d81.csv",
+          "file_id": "3dc1d3bd-61bd-4eaf-8e17-b2edb07802ba",
+          "sha256": "a9529ced221c50e015900c83ee6207bad72454d866efc72b525c3ba9f5f59796",
+          "bytes": 201722
+        },
+        "DAVIS/Adama TOR/lot 241a calibration-OC-2023-11-27.csv": {
+          "status": "hosted",
+          "upload_name": "lot 241a calibration-OC-2023-11-27__aea84137ed.csv",
+          "file_id": "f4e6d1b3-0182-4be3-a454-5a6ab88f1dad",
+          "sha256": "12a3668c285a8157abd6e5db3be044a8f3fef5ea35d6bf61127b0562ae25fd5a",
+          "bytes": 111441
+        },
+        "DAVIS/Adama TOR/Carbon_concs_Batch54.csv": {
+          "status": "hosted",
+          "upload_name": "Carbon_concs_Batch54__ba4f8ba565.csv",
+          "file_id": "757fb9ee-9020-409b-9647-17255c1af723",
+          "sha256": "5779e8432d2b14d479a3070ddb14536c0f9f37cbd63ced3632736cc4cc9c1a59",
+          "bytes": 10470
+        },
+        "DAVIS/Adama TOR/OC_EC_concs_Batch54.csv": {
+          "status": "hosted",
+          "upload_name": "OC_EC_concs_Batch54__5f7c1d0a55.csv",
+          "file_id": "87cd6133-fa69-43aa-8fde-16f0f64d4afe",
+          "sha256": "6fd4ce616ab72804fcdde7f96f00b552f0a5f86c011156ec55899fde8e0c96ee",
+          "bytes": 3161
+        },
+        "DAVIS/Adama TOR/lot 241a calibration-EC-2023-11-27.csv": {
+          "status": "hosted",
+          "upload_name": "lot 241a calibration-EC-2023-11-27__069e65b4e4.csv",
+          "file_id": "6d23ec06-0265-43f5-a7eb-88abf9c7316f",
+          "sha256": "0e02427d1fd3aa52b37087cb7a723ee6e1afe90de5b7069e252ab1f01672650b",
+          "bytes": 111324
+        },
+        "DAVIS/SPARTAN HIPS pulls/spartan_hips_raw_all.csv": {
+          "status": "hosted",
+          "upload_name": "spartan_hips_raw_all__65683e9ef1.csv",
+          "file_id": "7a2b4344-4e95-4e03-be01-685d36e24c03",
+          "sha256": "c2f711e4e6f8bec64cd87c88ee5c06baf1df2f5af06a5366141df7d5a1e5b985",
+          "bytes": 942257
+        },
+        "DAVIS/SPARTAN HIPS pulls/hips_instrument_daily.csv": {
+          "status": "hosted",
+          "upload_name": "hips_instrument_daily__786e3e163e.csv",
+          "file_id": "e066fd21-a2f1-4713-838e-ae2ff7252465",
+          "sha256": "b4b7e6dea1d58d6f325043658268b4a4b2b03c3fce1a7d252a0e4696b1b0b9e8",
+          "bytes": 2200
+        },
+        "DAVIS/SPARTAN FTIR pulls/USPA/USPA_filters.csv": {
+          "status": "hosted",
+          "upload_name": "USPA_filters__9b7fa2e7d3.csv",
+          "file_id": "fde1c885-ef52-4bd6-8735-d2e706292560",
+          "sha256": "6ea48eb5c5b6c70acc3ec775bb137e913e1b1eb731dca5843a08e91d9ee8e530",
+          "bytes": 27442
+        },
+        "DAVIS/SPARTAN FTIR pulls/USPA/USPA_ftir_analysis.csv": {
+          "status": "hosted",
+          "upload_name": "USPA_ftir_analysis__00b493f4eb.csv",
+          "file_id": "41ec5470-3c7f-4d3f-bce0-068110d5d729",
+          "sha256": "a070453dab289eab0a05ab44aa2737984749826cee0cc8f4412c3338f3879ea2",
+          "bytes": 646050
+        },
+        "DAVIS/SPARTAN FTIR pulls/USPA/USPA_scans_base64.csv": {
+          "status": "hosted",
+          "upload_name": "USPA_scans_base64__9caa418597.csv",
+          "file_id": "e34a3b25-5704-4cf8-bd71-fa36e99abb45",
+          "sha256": "197e6621a86a9894abbdd1fb7e598cb64fe72d0fc54cdbfa9c5e4b29e2b0f067",
+          "bytes": 2893232
+        },
+        "DAVIS/SPARTAN FTIR pulls/INDH/INDH_scans_base64.csv": {
+          "status": "hosted",
+          "upload_name": "INDH_scans_base64__2f87392a89.csv",
+          "file_id": "41b36925-233b-477c-afa8-dfbfbbd11565",
+          "sha256": "466a6183dca7516dc85648418861ac62f528acb61c29531044c68ed2714c0946",
+          "bytes": 4318072
+        },
+        "DAVIS/SPARTAN FTIR pulls/INDH/INDH_filters.csv": {
+          "status": "hosted",
+          "upload_name": "INDH_filters__a998fa6d87.csv",
+          "file_id": "658baa1c-47ab-4575-b687-952f7c8de6cf",
+          "sha256": "25e544f37d0987d40c5bf8ac1874f2d206115a664857e1f501520c3b37f00353",
+          "bytes": 36097
+        },
+        "DAVIS/SPARTAN FTIR pulls/INDH/INDH_ftir_analysis.csv": {
+          "status": "hosted",
+          "upload_name": "INDH_ftir_analysis__fd93d43058.csv",
+          "file_id": "98816f27-3cc4-47c1-8458-d5455ea529cf",
+          "sha256": "de0e03be4bc3350f3b4bfa83ddc64f2cbe623cfb4ad6acc86bb533e980cdd4f4",
+          "bytes": 941979
+        },
+        "DAVIS/SPARTAN FTIR pulls/CHTS/CHTS_ftir_analysis.csv": {
+          "status": "hosted",
+          "upload_name": "CHTS_ftir_analysis__477f66c530.csv",
+          "file_id": "7a77530e-f98b-4eb8-b23e-81b7605220fc",
+          "sha256": "e6fe041221289e98e7dd34d99741a72aa444a01cae1d813ce276445395864d42",
+          "bytes": 883814
+        },
+        "DAVIS/SPARTAN FTIR pulls/CHTS/CHTS_filters.csv": {
+          "status": "hosted",
+          "upload_name": "CHTS_filters__abc680ff97.csv",
+          "file_id": "50cde85b-c5c0-48bb-a46a-51e113725c15",
+          "sha256": "596c69b11ac96e16bb6d178d0fd49d393ee529f11c625744fd8a3f9e12ab684e",
+          "bytes": 33264
+        },
+        "DAVIS/SPARTAN FTIR pulls/CHTS/CHTS_scans_base64.csv": {
+          "status": "hosted",
+          "upload_name": "CHTS_scans_base64__f0c9e1df80.csv",
+          "file_id": "8ad1d096-a610-4ce6-bc27-d85542b4b968",
+          "sha256": "87e68f02a1dbad7d41fe1619f89415f2add354b890c558c30bd6b830392b3c07",
+          "bytes": 4088026
+        },
+        "DAVIS/SPARTAN FTIR pulls/ETBI/ETBI_site.csv": {
+          "status": "hosted",
+          "upload_name": "ETBI_site__dc1b73dd44.csv",
+          "file_id": "932b1743-bd86-4fe8-a731-57107b6ea039",
+          "sha256": "940e5a6b0cdb4170b8194bad345ee9afb800789ddfe2dfcb804d0c08e2d1acc5",
+          "bytes": 175
+        },
+        "DAVIS/SPARTAN FTIR pulls/ETBI/ETBI_ftir_analysis.csv": {
+          "status": "hosted",
+          "upload_name": "ETBI_ftir_analysis__73e43753c5.csv",
+          "file_id": "3bc2d5cf-7898-4f71-baf9-ab6766c0bbd9",
+          "sha256": "4d5109bbc25bd79f04032da20aa5371aa66999c477e9c735af599eefaa58505c",
+          "bytes": 178931
+        },
+        "DAVIS/SPARTAN FTIR pulls/ETBI/ETBI_scans_base64.csv": {
+          "status": "hosted",
+          "upload_name": "ETBI_scans_base64__7b8fc31272.csv",
+          "file_id": "b50f7747-b6fb-48ab-a0c8-413e71b7fe36",
+          "sha256": "29b2e6119794c4cde602e32379a5f96d3bb455b5152b3bd4a1e920cd57a423aa",
+          "bytes": 747795
+        },
+        "DAVIS/SPARTAN FTIR pulls/ETBI/ETBI_filters.csv": {
+          "status": "hosted",
+          "upload_name": "ETBI_filters__f8485e5e98.csv",
+          "file_id": "e9c29a37-a188-44b3-b972-3407da283d52",
+          "sha256": "a806320968087ab911db572b18960733c42d3e6546d28aed0d32355ab1ef44a9",
+          "bytes": 10480
+        },
+        "DAVIS/ETAD FTIR/baseline_plots_AIRSPEC/spectra_baselined_AIRSPEC.csv": {
+          "status": "hosted",
+          "upload_name": "spectra_baselined_AIRSPEC__0bf3b3c45e.csv",
+          "file_id": "5e0c9226-8d99-4cba-9f24-c55e230f38c9",
+          "sha256": "441efd52d72b1c769ae44049611ac08a26f0060b68101d313b2e755d41e129cc",
+          "bytes": 13443028
+        },
+        "DAVIS/ETAD FTIR/baseline_plots_ALS_firstpass/spectra_baselined_ALS.csv": {
+          "status": "hosted",
+          "upload_name": "spectra_baselined_ALS__2eeccc2984.csv",
+          "file_id": "175ef5ad-5869-4761-8975-ab8e71eb73b7",
+          "sha256": "1d08f2a27985f2ece730da00e11b2dd2d370f21db6582856bb94425a243a2dfe",
+          "bytes": 19054773
+        }
+      },
+      "table_count": 28,
+      "status": "ready"
+    },
+    "EC-HIPS-Aeth Comparison": {
+      "id": "908fccd5-da88-4a36-b3ad-c6376ac05ea6",
+      "files": {
+        "EC-HIPS-Aeth Comparison/Data/Lab deliverables/FTIR EC/SPARTAN_FTIR data batch 2 and 3 resubmitted with MDLs.xlsx": {
+          "status": "hosted",
+          "upload_name": "SPARTAN_FTIR data batch 2 and 3 resubmitted with MDLs__0451f27795.xlsx",
+          "file_id": "78a098d5-6585-492e-afad-c6bcd079d240",
+          "sha256": "324e27113d2a0594ca63c01354ade6e7d89eac72de8fd20fd3fc7d5b745de014",
+          "bytes": 188145,
+          "derived_files": []
+        },
+        "EC-HIPS-Aeth Comparison/Data/Lab deliverables/FTIR EC/SPARTAN_FTIR data_batch 4_ Nov2022 to March2024.csv": {
+          "status": "hosted",
+          "upload_name": "SPARTAN_FTIR data_batch 4_ Nov2022 to March2024__faa00aa604.csv",
+          "file_id": "d00a4f2b-b168-4fc4-8f46-4f0bea5461ef",
+          "sha256": "21281990ae7ce5b9ffec0f3a6bb4bee949b3b84388826bdfd95844a2890838aa",
+          "bytes": 182299,
+          "derived_files": []
+        },
+        "EC-HIPS-Aeth Comparison/Data/Lab deliverables/FTIR EC/SPARTAN_FTIR data_batch 4_ Nov2022 to March2024.xlsx": {
+          "status": "hosted",
+          "upload_name": "SPARTAN_FTIR data_batch 4_ Nov2022 to March2024__c0e59eee59.xlsx",
+          "file_id": "f3c01235-6491-4ead-9168-7445fccf9dca",
+          "sha256": "4a7e852b3d6c65a5e3050819dcc24092f294d19c9e5cbb4acb257dfdc14a3508",
+          "bytes": 145057,
+          "derived_files": []
+        },
+        "EC-HIPS-Aeth Comparison/Data/Lab deliverables/FTIR EC/SPARTAN_FTIR data batch 2 and 3 resubmitted with MDLs.csv": {
+          "status": "hosted",
+          "upload_name": "SPARTAN_FTIR data batch 2 and 3 resubmitted with MDLs__75c2fca445.csv",
+          "file_id": "0a2d8dfd-b317-422e-bdd5-d066d0c0729e",
+          "sha256": "8cae0e2064d8e684477a9a8ac515203fbd1bd881f7970317b84f76cfa083a5d4",
+          "bytes": 185811,
+          "derived_files": []
+        },
+        "EC-HIPS-Aeth Comparison/Data/Lab deliverables/Combined batches/SPARTAN_FTIR_&_HIPS_FTIR_Batches_3_4_5_SAMPLE copy.csv": {
+          "status": "hosted",
+          "upload_name": "SPARTAN_FTIR_&_HIPS_FTIR_Batches_3_4_5_SAMPLE copy__a47971c3e0.csv",
+          "file_id": "9df87c8a-2cf4-4bca-8f2a-dca40440ba35",
+          "sha256": "b08671d2085468ed6df1840e3adf9af09272ca18b405066c9f3aa88e5e8ac11a",
+          "bytes": 27164,
+          "derived_files": []
+        },
+        "EC-HIPS-Aeth Comparison/Data/Lab deliverables/Combined batches/VAriables.csv": {
+          "status": "hosted",
+          "upload_name": "VAriables__4065f5762e.csv",
+          "file_id": "0efa8bde-c8a1-4f85-bb05-812f10cd2619",
+          "sha256": "83830fbb9fd41a60687100e9d540772a4d279efd31642894e0dcaa5d49ca868d",
+          "bytes": 4038,
+          "derived_files": []
+        },
+        "EC-HIPS-Aeth Comparison/Data/Lab deliverables/Combined batches/SPARTAN_FTIR_&_HIPS_FTIR_Batches_3_4_5_SAMPLE.csv": {
+          "status": "hosted",
+          "upload_name": "SPARTAN_FTIR_&_HIPS_FTIR_Batches_3_4_5_SAMPLE__556cef657b.csv",
+          "file_id": "84a72710-22f3-4dcc-b6ed-56b02716e0b5",
+          "sha256": "ec46761fbb4f8787e79bbe65b3a40a001ed57070cfea5449718dc58612c07176",
+          "bytes": 496174,
+          "derived_files": []
+        },
+        "EC-HIPS-Aeth Comparison/Data/Lab deliverables/Combined batches/SPARTAN_FTIR_&_HIPS_FTIR_Batches_3_4_5_BLANK.csv": {
+          "status": "hosted",
+          "upload_name": "SPARTAN_FTIR_&_HIPS_FTIR_Batches_3_4_5_BLANK__caf95e9cbf.csv",
+          "file_id": "6233b7a9-5b13-4431-b233-589f2c19c60d",
+          "sha256": "60eaa3a180135e68e590b705d1223a285bf04732acbcccc356d7ebf5147fb0f6",
+          "bytes": 53524,
+          "derived_files": []
+        },
+        "EC-HIPS-Aeth Comparison/Data/Lab deliverables/Combined database/spartan_ftir_hips.db": {
+          "status": "hosted",
+          "upload_name": "spartan_ftir_hips__cb5eb346d8.db.zip",
+          "file_id": "be255630-6279-4246-b0db-233a0b54a845",
+          "sha256": "34ec05697d18966883d6b69a926560966f6c0fdbdac927eea13b2ed6482c4001",
+          "bytes": 430080,
+          "derived_files": [
+            "8a1588b5-7eda-487b-bf89-ac35c4480944",
+            "fe8272e7-92a7-4512-bbf3-3741178b3bc3",
+            "e1043289-829c-4be2-ad6d-7186155120e9",
+            "b0d0271b-9290-4b0b-a144-08d41fe6b9d7"
+          ]
+        },
+        "EC-HIPS-Aeth Comparison/Data/Lab deliverables/HIPS BC/ETAD_data_2023.csv": {
+          "status": "hosted",
+          "upload_name": "ETAD_data_2023__74dc8b2b8e.csv",
+          "file_id": "2af0416a-5fb1-4d63-9edd-7fe1387e05a7",
+          "sha256": "636753fef17eff63fb8910bb4e209ab0db48c0857df27b9155e5f999d1e560d5",
+          "bytes": 25777,
+          "derived_files": []
+        },
+        "EC-HIPS-Aeth Comparison/Data/SPARTAN portal downloads/USPA/FilterBased_ChemSpecPM25_USPA.csv": {
+          "status": "hosted",
+          "upload_name": "FilterBased_ChemSpecPM25_USPA__eea62e6930.csv",
+          "file_id": "d66aa565-4f72-48e9-b387-c539f92b072f",
+          "sha256": "d5da151618d4958b0a63266224ab20a65cae1dd469b16e54e345036b650e3bb9",
+          "bytes": 2624891,
+          "derived_files": []
+        },
+        "EC-HIPS-Aeth Comparison/Data/SPARTAN portal downloads/USPA/FilterBased_ReconstrPM25_USPA.csv": {
+          "status": "hosted",
+          "upload_name": "FilterBased_ReconstrPM25_USPA__c398b0e0ff.csv",
+          "file_id": "ca002720-ee74-43fa-8bb4-405f7e144eaf",
+          "sha256": "5f8c20ac50f31b415596442103bed68e469468fe3be104a121bd54a41cfe1bcd",
+          "bytes": 687752,
+          "derived_files": []
+        },
+        "EC-HIPS-Aeth Comparison/Data/SPARTAN portal downloads/ETAD/FilterBased_ChemSpecPM25_ETAD.csv": {
+          "status": "hosted",
+          "upload_name": "FilterBased_ChemSpecPM25_ETAD__a9ad6e5b07.csv",
+          "file_id": "589b808b-499a-4f3f-93af-8ecfd74c4d69",
+          "sha256": "a7a6ff3fcbb6484fab55d5342243b841e2c21381a80436568b14b1033b4b0260",
+          "bytes": 1702998,
+          "derived_files": []
+        },
+        "EC-HIPS-Aeth Comparison/Data/SPARTAN portal downloads/ETAD/Archive/FilterBased_ReconstrPM25_ETAD.csv": {
+          "status": "hosted",
+          "upload_name": "FilterBased_ReconstrPM25_ETAD__c6b6801f2b.csv",
+          "file_id": "cf9ebd0e-eb7e-4c5f-b734-05bc9c157c57",
+          "sha256": "b310e774ddd19873660f2c26351fe5cfd9954323b77adfdb7f412d2c11499721",
+          "bytes": 312135,
+          "derived_files": []
+        },
+        "EC-HIPS-Aeth Comparison/Data/SPARTAN portal downloads/ETAD/Archive/FilterBased_ChemSpecPM25_ETAD.csv": {
+          "status": "hosted",
+          "upload_name": "FilterBased_ChemSpecPM25_ETAD__638c866002.csv",
+          "file_id": "ebecb6a0-8531-4424-95b6-002b35f50193",
+          "sha256": "5e51516126aaa2d473dc15d2f9df59330d313495c6fb68fa9d28d5b426393071",
+          "bytes": 1172526,
+          "derived_files": []
+        },
+        "EC-HIPS-Aeth Comparison/Data/SPARTAN portal downloads/ETAD/Archive/FilterBased_ChemSpecPM25_ETADfixed.csv": {
+          "status": "hosted",
+          "upload_name": "FilterBased_ChemSpecPM25_ETADfixed__6ae64a08e4.csv",
+          "file_id": "02ff86fe-4663-4ab1-ae5b-9ea27327a23b",
+          "sha256": "73edfa1de971e37a408a403f12fa485760e4b26b04980242224bd1f4c376cef7",
+          "bytes": 1153891,
+          "derived_files": []
+        }
+      },
+      "table_count": 20,
+      "status": "ready"
+    },
+    "Han": {
+      "id": "8cd612fa-677e-4aed-abb8-8a89ffc6975c",
+      "files": {
+        "Han/Han_evaluation of TOR for discrimination between char- and soot-EC_2007_data table_V2.xlsx": {
+          "status": "hosted",
+          "upload_name": "Han_evaluation of TOR for discrimination between char- and soot-EC_2007_data table_V2__3b37c13514.xlsx",
+          "file_id": "23ac121b-ebca-4f68-b969-bc13ec2f08a5",
+          "sha256": "63ce9873b141e40c60decc836c356efeba9625bca7b82e76082d0addeb748ea4",
+          "bytes": 11740,
+          "derived_files": []
+        },
+        "Han/Han_evaluation of TOR for discrimination between char- and soot-EC_2007.pdf": {
+          "status": "hosted",
+          "upload_name": "Han_evaluation of TOR for discrimination between char- and soot-EC_2007__18accb5f40.pdf.zip",
+          "file_id": "44b01714-e4db-4f7c-93a2-16e4fbef4792",
+          "sha256": "108f10d0acb363684219b1012836e1d47c7b5588ec002c2a2a67448dd56c1a74",
+          "bytes": 192223,
+          "derived_files": []
+        },
+        "Han/Han_evaluation of TOR for discrimination between char- and soot-EC_2007_data table.xlsx": {
+          "status": "hosted",
+          "upload_name": "Han_evaluation of TOR for discrimination between char- and soot-EC_2007_data table__629d31b542.xlsx",
+          "file_id": "c127fa9d-bf76-436e-b415-f19fd6abcd5a",
+          "sha256": "6cfbd193b6cba38eafc58a878206b86fcb0f4c3e3e22fd08f67b890372e90699",
+          "bytes": 13629,
+          "derived_files": []
+        }
+      },
+      "table_count": 4,
+      "status": "ready"
+    },
+    "Purple Air Data": {
+      "id": "b1c057c4-bce0-45cd-85b2-ca84e76a51fe",
+      "files": {
+        "Purple Air Data/Purple Air Data Request.paw": {
+          "status": "hosted",
+          "upload_name": "Purple Air Data Request__4f1e7da07b.paw.zip",
+          "file_id": "7fdd5c10-deb6-42b5-8d5e-9161ed79520c",
+          "sha256": "268a1c26105bded61ea9d28b5f18244fb58d8e55172daf0766deff9f544032c6",
+          "bytes": 7811,
+          "derived_files": []
+        },
+        "Purple Air Data/Sina Sensors/93783 2020-01-01 2025-01-27 60-Minute Average.csv": {
+          "status": "hosted",
+          "upload_name": "93783 2020-01-01 2025-01-27 60-Minute Average__4d6e494564.csv",
+          "file_id": "059429d3-9c68-4a83-bf1c-1517cdfb7473",
+          "sha256": "e2f5314c46a42e876376b817456ffaf720ff1462daabf79333124666c3d980bd",
+          "bytes": 768962,
+          "derived_files": []
+        },
+        "Purple Air Data/Sina Sensors/93733 2020-01-01 2025-01-27 60-Minute Average.csv": {
+          "status": "hosted",
+          "upload_name": "93733 2020-01-01 2025-01-27 60-Minute Average__0326a500f2.csv",
+          "file_id": "09b26e04-d06a-41a1-88d4-325a2ecf2981",
+          "sha256": "b21d722929b37c5243b824ac8e6282af1b2619c0372f360c38c5938d8b3ed5f7",
+          "bytes": 166581,
+          "derived_files": []
+        },
+        "Purple Air Data/PurpleAir Download 2025-01-14/93783 2022-01-01 2024-11-01 60-Minute Average.csv": {
+          "status": "hosted",
+          "upload_name": "93783 2022-01-01 2024-11-01 60-Minute Average__09b205b034.csv",
+          "file_id": "c0c392e5-9e6e-4729-a1ac-89bf066a9c70",
+          "sha256": "fc54c84bd9a9fbb63524c2e722f40d38c0fe0dd0af3d8dcd34b83406137975b2",
+          "bytes": 915193,
+          "derived_files": []
+        }
+      },
+      "table_count": 4,
+      "status": "ready"
+    },
+    "Weather Data": {
+      "id": "039a3c15-9351-4455-9019-7894a6e6706c",
+      "files": {
+        "Weather Data/station_metadata.json": {
+          "status": "hosted",
+          "upload_name": "station_metadata__bb12f61564.json",
+          "file_id": "3647233a-b0b6-4362-a6c7-4b2733b17bee",
+          "sha256": "daef128c1f3445ab9d373931e0cd666727e052c4801ca98db568f4f64f6fddcb",
+          "bytes": 279,
+          "derived_files": []
+        },
+        "Weather Data/station_metadata_with_quality.json": {
+          "status": "hosted",
+          "upload_name": "station_metadata_with_quality__2d4b3efbb1.json",
+          "file_id": "61464e53-a551-4b2a-98e8-b2d5be7e7ceb",
+          "sha256": "bd797708beefea8f7e36cfcb178a8e0fed1f82a7f92ee8e8d0e8d66551a30533",
+          "bytes": 3382,
+          "derived_files": []
+        },
+        "Weather Data/Jacros BAM/AddisAbabaCentral_PM2.5_2022_YTD.csv": {
+          "status": "hosted",
+          "upload_name": "AddisAbabaCentral_PM2.5_2022_YTD__b5b954e689.csv",
+          "file_id": "4f7d83bb-780d-45fe-8d83-99f172bf0fad",
+          "sha256": "0d43e3f52f7f096814a39e84827c4d578dd1b0d90aeeef6fe0ece9882d652590",
+          "bytes": 368263,
+          "derived_files": []
+        },
+        "Weather Data/Jacros BAM/AddisAbabaCentral_PM2.5_2023_YTD.csv": {
+          "status": "hosted",
+          "upload_name": "AddisAbabaCentral_PM2.5_2023_YTD__1dbf8a3d7f.csv",
+          "file_id": "04f2d446-8a3f-441d-b687-6b14e7353bc4",
+          "sha256": "a8b05da452a9f423e38c6b30f61caeeccea340aac6075d5d0f7db4b619b778b0",
+          "bytes": 917676,
+          "derived_files": []
+        },
+        "Weather Data/Jacros BAM/AddisAbabaCentral_PM2.5_2017_YTD.csv": {
+          "status": "hosted",
+          "upload_name": "AddisAbabaCentral_PM2.5_2017_YTD__964f4b9919.csv",
+          "file_id": "5262ce17-869b-4022-9985-03d6b4f63443",
+          "sha256": "6020788a4bba46af4bd3c171760bec1294eadf1710940ac0597d6718753c7b83",
+          "bytes": 1008568,
+          "derived_files": []
+        },
+        "Weather Data/Jacros BAM/AddisAbabaCentral_PM2.5_2021_YTD.csv": {
+          "status": "hosted",
+          "upload_name": "AddisAbabaCentral_PM2.5_2021_YTD__c519ae3bde.csv",
+          "file_id": "89de7b46-7301-42ce-9952-390476f9fa5f",
+          "sha256": "28ec1b3890ec82aae6df1f1653bbde6f011d5b4980f902279617db2ea1cc081a",
+          "bytes": 925770,
+          "derived_files": []
+        },
+        "Weather Data/Jacros BAM/AddisAbabaCentral_PM2.5_2020_YTD.csv": {
+          "status": "hosted",
+          "upload_name": "AddisAbabaCentral_PM2.5_2020_YTD__fe17c5076f.csv",
+          "file_id": "6b78bd66-a75e-4dc4-b3d4-8796510ac173",
+          "sha256": "5b0a3a08c676a8008113504bafb1d4f3aea3ec981e817dd1386a349fdcd35510",
+          "bytes": 961370,
+          "derived_files": []
+        },
+        "Weather Data/Jacros BAM/AddisAbabaCentral_PM2.5_2016_YTD.csv": {
+          "status": "hosted",
+          "upload_name": "AddisAbabaCentral_PM2.5_2016_YTD__a0ec80490e.csv",
+          "file_id": "de4bd51d-13c9-42ba-bd8d-1842c5303bf3",
+          "sha256": "53d0874306c291c69ecb3be4d5847f081e990f2160630400d9fee595b248a9a4",
+          "bytes": 1010261,
+          "derived_files": []
+        },
+        "Weather Data/Jacros BAM/AddisAbabaCentral_PM2.5_2024_YTD.csv": {
+          "status": "hosted",
+          "upload_name": "AddisAbabaCentral_PM2.5_2024_YTD__edbf4c09fc.csv",
+          "file_id": "c53c7d0b-ca47-4c11-a064-0781d43fda7f",
+          "sha256": "e4158e02dada614913333b213aa4d90f6e7b986728bf8d66fdddde285f6417e4",
+          "bytes": 717189,
+          "derived_files": []
+        },
+        "Weather Data/Jacros BAM/AddisAbabaCentral_PM2.5_2019_YTD.csv": {
+          "status": "hosted",
+          "upload_name": "AddisAbabaCentral_PM2.5_2019_YTD__5dc345b8e9.csv",
+          "file_id": "3da795e4-0ca4-4b03-a08d-413c3deca4bd",
+          "sha256": "f9e1c5f3417a6a2f4276d31d4b48ce5cee82788a8692232196155972ccde6621",
+          "bytes": 780781,
+          "derived_files": []
+        },
+        "Weather Data/Jacros BAM/AddisAbabaCentral_PM2.5_2018_YTD.csv": {
+          "status": "hosted",
+          "upload_name": "AddisAbabaCentral_PM2.5_2018_YTD__47fac1c24e.csv",
+          "file_id": "94163df7-c013-4ab2-afb5-0c1bb3ec0ca5",
+          "sha256": "e4e27a760eb5d815ec123dd76cde83f70219bca12b5292370ac11b19f4a0ec5f",
+          "bytes": 933752,
+          "derived_files": []
+        },
+        "Weather Data/Meteostat/addis_ababa_weather_data.csv": {
+          "status": "hosted",
+          "upload_name": "addis_ababa_weather_data__a6f9cff893.csv",
+          "file_id": "4c21a154-0f13-4894-bd5b-29b2fb9da805",
+          "sha256": "c0102293614578020d84713b02b0e2670003e0c0af839e6b67ea5ee9b51383bf",
+          "bytes": 4461632,
+          "derived_files": []
+        },
+        "Weather Data/Meteostat/addis_ababa_weather_data_cleaned copy.csv": {
+          "status": "hosted",
+          "upload_name": "addis_ababa_weather_data_cleaned copy__511a445e26.csv",
+          "file_id": "d8d275c8-9c3a-41c3-8bbf-73b240d1b49a",
+          "sha256": "8749251e3e2e06718f66a199f01e54d0b32ee1698ad99c591cfe244f49cffa70",
+          "bytes": 453,
+          "derived_files": []
+        },
+        "Weather Data/Meteostat/addis_ababa_weather_data_cleaned.csv": {
+          "status": "hosted",
+          "upload_name": "addis_ababa_weather_data_cleaned__69151bbae8.csv",
+          "file_id": "3a939945-3c12-456e-a86e-420d52810a2d",
+          "sha256": "be86f6482ad992ec8f25434f00bdc3e6481cd18bcb468ce81e41620b5e4b2108",
+          "bytes": 4461594,
+          "derived_files": []
+        }
+      },
+      "table_count": 15,
+      "status": "ready"
+    },
+    "FTIR": {
+      "id": "b7069975-a26d-4928-9bcb-21718c81fd5f",
+      "files": {
+        "FTIR/baseline_plots_AIRSPEC/spectra_baselined_AIRSPEC.csv": {
+          "status": "hosted",
+          "upload_name": "spectra_baselined_AIRSPEC__355798fd74.csv",
+          "file_id": "160b3d3f-340a-41d8-b6ce-1fdb61be0dc6",
+          "sha256": "4dcb29d0f1307ab7dc763a5790ded83f7bbada777240d96dfe7cb89035c1628b",
+          "bytes": 37696294,
+          "derived_files": []
+        },
+        "FTIR/local_db/spectra_248_251.csv": {
+          "status": "hosted-parquet",
+          "sha256": "fd430d63a2ff46624b675c37dfdb3dbc269ee8a817bea111efb792c1a76e9793",
+          "bytes": 759880189,
+          "dataset_id": "58587780-ca7c-4f91-b1f0-aba5836223e0",
+          "source_manifest": "/api/datasets/58587780-ca7c-4f91-b1f0-aba5836223e0"
+        },
+        "FTIR/local_db/status_events.csv": {
+          "status": "hosted",
+          "upload_name": "status_events__7e5fbfb955.csv",
+          "file_id": "2ab0753e-c150-4811-9caf-323f40784aa5",
+          "sha256": "8c2def4a405fa321c1876ce1e30f5737ec63058d638b602d91b9f699fedb952c",
+          "bytes": 1981207,
+          "derived_files": []
+        },
+        "FTIR/local_db/improve_local.sqlite": {
+          "status": "hosted-archive",
+          "sha256": "ebf9536429403f264924a9a74258e45fcb1bd07dc4e7457e8a8625c073cd4731",
+          "bytes": 440647680,
+          "dataset_id": "750fcfe7-e479-437f-b50e-6fbe8f83b25c",
+          "source_manifest": "/api/datasets/750fcfe7-e479-437f-b50e-6fbe8f83b25c"
+        },
+        "FTIR/_archive/shiny.aqrc.ucdavis.edu.zip": {
+          "status": "hosted",
+          "upload_name": "shiny.aqrc.ucdavis.edu__2c3839796c.zip.zip",
+          "file_id": "2782bd1f-fdc2-4a71-a39b-170e2f4e32e7",
+          "sha256": "cfa32df71b48def99ec73edb8aa2f0c34dd97d2f531ac4b24dbf2d0721cb431e",
+          "bytes": 1398039,
+          "derived_files": []
+        },
+        "FTIR/apps/OC_data.csv": {
+          "status": "hosted",
+          "upload_name": "OC_data__a3ac393bdf.csv",
+          "file_id": "f5bf64e9-d3ca-4414-8ebe-f11ae7ff0131",
+          "sha256": "257d72c0f3e3587a46446b7fc4c231ec87e867636c71a33a2fcbbf56c28a10b4",
+          "bytes": 29121122,
+          "derived_files": []
+        },
+        "FTIR/apps/wavenumbers.csv": {
+          "status": "hosted",
+          "upload_name": "wavenumbers__0a6a11122d.csv",
+          "file_id": "1a1cf662-b3eb-4f93-81b6-ecdd65e46784",
+          "sha256": "fbd9e46241f6f26aa7f7e5791ce8625baf01d73dc28840e8a670c09339967219",
+          "bytes": 26379,
+          "derived_files": []
+        },
+        "FTIR/apps/full_fitted_OC.csv": {
+          "status": "hosted",
+          "upload_name": "full_fitted_OC__b68a5b9ad9.csv",
+          "file_id": "926f48c9-f9b1-4efb-807c-68e8d33f26c7",
+          "sha256": "7536bc1f6a5e2f3db4382e67bb8d2085a904489b467f52e2da06a2ad5fae8dbe",
+          "bytes": 5248743,
+          "derived_files": []
+        },
+        "FTIR/apps/app_status_events.csv": {
+          "status": "hosted",
+          "upload_name": "app_status_events__3f696ebfd8.csv",
+          "file_id": "f55b0203-869d-455b-8ea4-acd298ce767b",
+          "sha256": "dc02b7d1117deafb9313d8b9c803a7693807625439b4cc61896c5184ce160c1c",
+          "bytes": 34701,
+          "derived_files": []
+        },
+        "FTIR/apps/full_fitted_EC.csv": {
+          "status": "hosted",
+          "upload_name": "full_fitted_EC__5101df021b.csv",
+          "file_id": "3575be03-d8d0-4ddb-a1ce-adf775f13bf3",
+          "sha256": "f00a0827031d486765ba34cad5cb4b09fae0d76e906cde943fde128a34fba39c",
+          "bytes": 5253197,
+          "derived_files": []
+        },
+        "FTIR/apps/EC_data.csv": {
+          "status": "hosted",
+          "upload_name": "EC_data__c38284ef3d.csv",
+          "file_id": "64a42f0d-8761-49bb-a2a5-ff4100b69dce",
+          "sha256": "53212559e3eb16324cf08e05149cd8beb455dcd78c9108aa5fa3541f49b42810",
+          "bytes": 29121149,
+          "derived_files": []
+        },
+        "FTIR/apps/app_comments.csv": {
+          "status": "hosted",
+          "upload_name": "app_comments__5bd317ef4d.csv",
+          "file_id": "64747ee9-a6bc-4f30-8ebc-6a15a948ba13",
+          "sha256": "5573f57577442661dae354c66c44fb330ecfd1a5ae279a6ef525ff28a76d756e",
+          "bytes": 1041145,
+          "derived_files": []
+        },
+        "FTIR/apps/full_meta_OC.csv": {
+          "status": "hosted",
+          "upload_name": "full_meta_OC__4cdd9fc58e.csv",
+          "file_id": "139032f3-10d7-44f6-beb0-84ccc44069e4",
+          "sha256": "d087bf137480cffeac4bbf5c4165f02afed5371cb08ccfa4c1217910e9513111",
+          "bytes": 520974,
+          "derived_files": []
+        },
+        "FTIR/apps/full_rmsecv.csv": {
+          "status": "hosted",
+          "upload_name": "full_rmsecv__01ad3d688a.csv",
+          "file_id": "cd1532dc-c8cb-4a5a-8444-367032d015fb",
+          "sha256": "a186ca875281c5fcadd187ce6a3344709dee5db385c45646908f79117ca1adb5",
+          "bytes": 1578,
+          "derived_files": []
+        },
+        "FTIR/apps/full_meta_EC.csv": {
+          "status": "hosted",
+          "upload_name": "full_meta_EC__7678a86f9c.csv",
+          "file_id": "2fe30d47-f9bb-4a2b-bb3e-11d29c52dde2",
+          "sha256": "33d04b2bc69e1f8c9e97f1a1a9262d4a8ef1db6c81bf63b38d8c1530a3ea506a",
+          "bytes": 521438,
+          "derived_files": []
+        },
+        "FTIR/apps/rmsecv.csv": {
+          "status": "hosted",
+          "upload_name": "rmsecv__0a3f6e65b8.csv",
+          "file_id": "f8823132-4272-4d46-9883-bd66090c6f7e",
+          "sha256": "3b57190e8a67990af74c155b04875b8dc0bd6f4498b6385ecd5d435ab009c87f",
+          "bytes": 893,
+          "derived_files": []
+        },
+        "FTIR/runs/2026-07-07/ftir_metadata.csv": {
+          "status": "hosted",
+          "upload_name": "ftir_metadata__472f06c701.csv",
+          "file_id": "0eb83835-15e4-4296-9238-51033ccb1ed3",
+          "sha256": "2e87300a7a93e26b0d22ec4b60d1f507fdfc69dd49aed5f8cac1b92264426e5b",
+          "bytes": 36471754,
+          "derived_files": []
+        },
+        "FTIR/runs/2026-07-07/pls-OC-2026-07-07.RDS": {
+          "status": "hosted-archive",
+          "sha256": "08e614a03dce25e0d4ba744b463143a02cc28eae6fe8ad4dde5f3278e18183b0",
+          "bytes": 141615910,
+          "dataset_id": "750fcfe7-e479-437f-b50e-6fbe8f83b25c",
+          "source_manifest": "/api/datasets/750fcfe7-e479-437f-b50e-6fbe8f83b25c"
+        },
+        "FTIR/runs/2026-07-07/pls-OC-2026-07-07 (1).RDS": {
+          "status": "hosted-archive",
+          "sha256": "1f12b9ed6f05ba8cb5bec4b34c2171146ca8d5e719cfa701e28b7aa4aab15aaa",
+          "bytes": 209619269,
+          "dataset_id": "750fcfe7-e479-437f-b50e-6fbe8f83b25c",
+          "source_manifest": "/api/datasets/750fcfe7-e479-437f-b50e-6fbe8f83b25c"
+        },
+        "FTIR/runs/2026-07-07/calibration-OC-2026-07-07 (1).csv": {
+          "status": "hosted",
+          "upload_name": "calibration-OC-2026-07-07 (1)__8cba1e6dfc.csv",
+          "file_id": "423a7857-1da7-495b-b20c-55c4075725b3",
+          "sha256": "740648912a10475020aa3956c2275cc68ad8103addc523e090ec50ea8f9016bf",
+          "bytes": 111307,
+          "derived_files": []
+        },
+        "FTIR/runs/2026-07-07/pls-OC-2026-07-07 (2).RDS": {
+          "status": "hosted-archive",
+          "sha256": "bdb9c8a82aa0101b8c6907939009aeb6a55f2b8d5f617d2f265bcb8f9ba76633",
+          "bytes": 209741353,
+          "dataset_id": "750fcfe7-e479-437f-b50e-6fbe8f83b25c",
+          "source_manifest": "/api/datasets/750fcfe7-e479-437f-b50e-6fbe8f83b25c"
+        },
+        "FTIR/runs/2026-07-07/ftir-spectra-2026-07-07.csv": {
+          "status": "hosted-parquet",
+          "sha256": "7fa154b4b96dcd101f824342e110017e07d15ea917d6ab9f0b350aa66f1b13b3",
+          "bytes": 52343767,
+          "dataset_id": "4c15291d-0ee7-45e8-8762-55f816163fa1",
+          "source_manifest": "/api/datasets/4c15291d-0ee7-45e8-8762-55f816163fa1"
+        },
+        "FTIR/runs/2026-07-07/pls-EC-2026-07-07.RDS": {
+          "status": "hosted-archive",
+          "sha256": "0c22b430777a783d330cc86b54eec575abc21bbcb3b4b3c8c4b221c45b87a7e3",
+          "bytes": 209606919,
+          "dataset_id": "750fcfe7-e479-437f-b50e-6fbe8f83b25c",
+          "source_manifest": "/api/datasets/750fcfe7-e479-437f-b50e-6fbe8f83b25c"
+        },
+        "FTIR/runs/2026-07-07/validate_scans.csv": {
+          "status": "hosted",
+          "upload_name": "validate_scans__3f6ec98078.csv",
+          "file_id": "400a9c7a-3ab1-460f-80ec-9243acd07596",
+          "sha256": "b2ca36aa5f654750a58d9ff95e65875157da02b0545583bdac01be422ed49ac6",
+          "bytes": 134433,
+          "derived_files": []
+        },
+        "FTIR/runs/2026-06-24/shiny.aqrc.ucdavis.edu (1).zip": {
+          "status": "hosted",
+          "upload_name": "shiny.aqrc.ucdavis.edu (1)__d795ef349b.zip.zip",
+          "file_id": "47551e80-0016-421f-97e6-a9dba7e93cba",
+          "sha256": "2f3df7928775c4fa4ee7ba06bd1b6298569df10b3970d2ae69d063fd8261b3bd",
+          "bytes": 2614477,
+          "derived_files": []
+        },
+        "FTIR/runs/2026-06-24/pls-OC-2026-06-24 (1).RDS": {
+          "status": "hosted-archive",
+          "sha256": "fbf7b0b175f8059b4b26751ebbc2160a2427a1006c8a430d875da051459c3316",
+          "bytes": 208238144,
+          "dataset_id": "750fcfe7-e479-437f-b50e-6fbe8f83b25c",
+          "source_manifest": "/api/datasets/750fcfe7-e479-437f-b50e-6fbe8f83b25c"
+        },
+        "FTIR/runs/2026-06-24/calibration-EC-2026-06-24.csv": {
+          "status": "hosted",
+          "upload_name": "calibration-EC-2026-06-24__2dd2c91a68.csv",
+          "file_id": "eb2c45c0-6700-4558-839c-4fd6e0bd8c70",
+          "sha256": "2d22447514300d205ca0e9b1c65b14781fa18a6cfd23a2ac2b7db20e3b615258",
+          "bytes": 111294,
+          "derived_files": []
+        },
+        "FTIR/runs/2026-06-24/calibration-OC-2026-06-24 (1).csv": {
+          "status": "hosted",
+          "upload_name": "calibration-OC-2026-06-24 (1)__fe4bf5bff1.csv",
+          "file_id": "15494ee2-3289-4a07-a031-d3dacc7e1415",
+          "sha256": "142052d0dad235ce9c40a1329118d487424567b39d374819d10f0caa9f92d5a9",
+          "bytes": 111353,
+          "derived_files": []
+        },
+        "FTIR/runs/2026-06-24/calibration-EC-2026-06-24 (1).csv": {
+          "status": "hosted",
+          "upload_name": "calibration-EC-2026-06-24 (1)__e6a9368896.csv",
+          "file_id": "59910d62-c6f2-44d4-a681-de88e046b6f2",
+          "sha256": "9680f4035e5fd6de95a96276855c6c6e5aa9b8c5a6ba0fe8561934e465dbb105",
+          "bytes": 111361,
+          "derived_files": []
+        },
+        "FTIR/runs/2026-06-24/pls-EC-2026-06-24 (1).RDS": {
+          "status": "hosted-archive",
+          "sha256": "c44c36bcb66951208685d7abefff012c8f1360c80ebbbe384dcd56e09d7f48b6",
+          "bytes": 208235768,
+          "dataset_id": "750fcfe7-e479-437f-b50e-6fbe8f83b25c",
+          "source_manifest": "/api/datasets/750fcfe7-e479-437f-b50e-6fbe8f83b25c"
+        },
+        "FTIR/runs/2026-06-24/pls-OC-2026-06-24.RDS": {
+          "status": "hosted-archive",
+          "sha256": "d4af450db61ef3991e0feeccec2d6d45e9a916b13f30c61bb08981d0c8d04211",
+          "bytes": 142292926,
+          "dataset_id": "750fcfe7-e479-437f-b50e-6fbe8f83b25c",
+          "source_manifest": "/api/datasets/750fcfe7-e479-437f-b50e-6fbe8f83b25c"
+        },
+        "FTIR/runs/2026-06-24/pls-EC-2026-06-24.RDS": {
+          "status": "hosted-archive",
+          "sha256": "5983b80be23eb23f52c942e56d9a7d4d373c00fe59e2853c0cf96f6ce8245a20",
+          "bytes": 208239326,
+          "dataset_id": "750fcfe7-e479-437f-b50e-6fbe8f83b25c",
+          "source_manifest": "/api/datasets/750fcfe7-e479-437f-b50e-6fbe8f83b25c"
+        },
+        "FTIR/runs/2026-06-24/pls-EC-2026-06-24 (2).RDS": {
+          "status": "hosted-archive",
+          "sha256": "9e16db14854ab35a086ee7fd151c72c3cb055a85449755b730a7cb4ac63c987a",
+          "bytes": 208236007,
+          "dataset_id": "750fcfe7-e479-437f-b50e-6fbe8f83b25c",
+          "source_manifest": "/api/datasets/750fcfe7-e479-437f-b50e-6fbe8f83b25c"
+        },
+        "FTIR/runs/2026-06-24/pls-OC-2026-06-24 (4).RDS": {
+          "status": "hosted-archive",
+          "sha256": "d87794bead9cbaed0bfbb21b4b7e489a5c4eadda3974e45a373e4ee0ddbdc6f7",
+          "bytes": 208236045,
+          "dataset_id": "750fcfe7-e479-437f-b50e-6fbe8f83b25c",
+          "source_manifest": "/api/datasets/750fcfe7-e479-437f-b50e-6fbe8f83b25c"
+        },
+        "FTIR/runs/2026-06-24/calibration-OC-2026-06-24 (3).csv": {
+          "status": "hosted",
+          "upload_name": "calibration-OC-2026-06-24 (3)__f8756a4f72.csv",
+          "file_id": "b2b2a518-c39c-4957-9939-28bc119fb4e2",
+          "sha256": "3eec2bed93bc87625208d3ad819297d605f1fb1e15b2afd4ef812e4493c8d295",
+          "bytes": 111289,
+          "derived_files": []
+        },
+        "FTIR/runs/2026-06-24/pls-OC-2026-06-24 (3).RDS": {
+          "status": "hosted-archive",
+          "sha256": "84aee0f26db20f8ac65dd05ee4ce66d10b65b1302ac19124b469384e15e45704",
+          "bytes": 208234998,
+          "dataset_id": "750fcfe7-e479-437f-b50e-6fbe8f83b25c",
+          "source_manifest": "/api/datasets/750fcfe7-e479-437f-b50e-6fbe8f83b25c"
+        },
+        "FTIR/runs/2026-06-24/pls-OC-2026-06-24 (2).RDS": {
+          "status": "hosted-archive",
+          "sha256": "d3c9b279f73e9dce1129c95a99a053d23664d4cbe8b1038d6dabbe0aa962c9b5",
+          "bytes": 208235399,
+          "dataset_id": "750fcfe7-e479-437f-b50e-6fbe8f83b25c",
+          "source_manifest": "/api/datasets/750fcfe7-e479-437f-b50e-6fbe8f83b25c"
+        },
+        "FTIR/runs/2026-06-24/calibration-OC-2026-06-24 (2).csv": {
+          "status": "hosted",
+          "upload_name": "calibration-OC-2026-06-24 (2)__774a97cbc8.csv",
+          "file_id": "34174894-eeef-4c47-a90b-e0c9e9de7daa",
+          "sha256": "cfda279737543441a3f4e73395caca0fbef76e8e534abbc3c401c4c8e00c214e",
+          "bytes": 111368,
+          "derived_files": []
+        },
+        "FTIR/runs/2026-06-24/ftir-spectra-2026-06-24.csv": {
+          "status": "hosted",
+          "upload_name": "ftir-spectra-2026-06-24__03fe28050e.csv",
+          "file_id": "f5896213-bd2b-4005-b902-5be15380c5bc",
+          "sha256": "f87741a43c7646cb9a6ae2e8aca85796c99078986c225186125c739451aa08f2",
+          "bytes": 50398477,
+          "derived_files": []
+        },
+        "FTIR/runs/2026-06-24/calibration-OC-2026-06-24.csv": {
+          "status": "hosted",
+          "upload_name": "calibration-OC-2026-06-24__623433cc65.csv",
+          "file_id": "c68ca89e-4d2b-4a58-8a1a-a480f7028389",
+          "sha256": "41476f57340a8b6acda3ff766ac6502164eacbd30d15b393baacb0ce9c18022f",
+          "bytes": 111360,
+          "derived_files": []
+        },
+        "FTIR/runs/2026-06-25/calibration-OC-2026-06-25.csv": {
+          "status": "hosted",
+          "upload_name": "calibration-OC-2026-06-25__0c612c5884.csv",
+          "file_id": "37734ebd-6698-4c41-a815-2a7d95f2219e",
+          "sha256": "51b1c59bee7508ddd9337df7bd3d666baf2beae4a74f02c2f3b31b2e54888de8",
+          "bytes": 111278,
+          "derived_files": []
+        },
+        "FTIR/notebook/verify/r_stats.csv": {
+          "status": "hosted",
+          "upload_name": "r_stats__23badb26e2.csv",
+          "file_id": "a9a998f4-c93d-4472-a50d-bd755787aec0",
+          "sha256": "07b2ca3a4d1b0f4685ca7037f9f04fecaadbee4c15ad590f5d5fdc26247a4cd2",
+          "bytes": 156,
+          "derived_files": []
+        },
+        "FTIR/notebook/verify/r_predictions.csv": {
+          "status": "hosted",
+          "upload_name": "r_predictions__c2c372a6bf.csv",
+          "file_id": "36e1143a-89e7-4eab-9d3e-1cf903884725",
+          "sha256": "73802e9a9c966b102b402c1ca6373f88fa89faa9ca5471333124612fb2753b8f",
+          "bytes": 45647,
+          "derived_files": []
+        },
+        "FTIR/notebook/extracted/EC_fitted_long.csv": {
+          "status": "hosted",
+          "upload_name": "EC_fitted_long__6d39765a7d.csv",
+          "file_id": "d2530a1b-d26c-4323-8884-aa6a06169e78",
+          "sha256": "514f97ac1a2d9d9f01e366bd778246da51a7d221b972faff9f59f0656e16f761",
+          "bytes": 1943802,
+          "derived_files": []
+        },
+        "FTIR/notebook/extracted/OC_20260707_fitted_long.csv": {
+          "status": "hosted",
+          "upload_name": "OC_20260707_fitted_long__a15d5a9a9e.csv",
+          "file_id": "357b3d68-0663-44e9-90bf-e9a553641909",
+          "sha256": "cb023a3b662cb26ca33b7f3a3bd6dad06949a0bb7f9b5952f6d9999c007bd043",
+          "bytes": 2004570,
+          "derived_files": []
+        },
+        "FTIR/notebook/extracted/OC_20260707_stats_chosen.csv": {
+          "status": "hosted",
+          "upload_name": "OC_20260707_stats_chosen__2ae0aac870.csv",
+          "file_id": "83a94491-75e4-496d-b131-30c238bd4112",
+          "sha256": "0c6a5642df2ba133bcf7501900cfe7d9b303d038c129ab8ba458db4c225e334a",
+          "bytes": 282,
+          "derived_files": []
+        },
+        "FTIR/notebook/extracted/OC_20260707_samples.csv": {
+          "status": "hosted",
+          "upload_name": "OC_20260707_samples__fd2dc7554f.csv",
+          "file_id": "53958775-3616-421a-8c86-bb7dfa212b66",
+          "sha256": "b9567e9dec6be5013a9e95c43aa6280f5081b2ef4c2382203a55d9f2d5eff617",
+          "bytes": 59606,
+          "derived_files": []
+        },
+        "FTIR/notebook/extracted/OC_fitted_long.csv": {
+          "status": "hosted",
+          "upload_name": "OC_fitted_long__9fe79d7be5.csv",
+          "file_id": "8dcd1a64-41b1-409f-b2e8-e40e710e16bf",
+          "sha256": "6d4902154b2ae9c22590ec3e37fca1441803c863012c38f241d1ae9f068c3960",
+          "bytes": 1944439,
+          "derived_files": []
+        },
+        "FTIR/notebook/extracted/EC_stats_chosen.csv": {
+          "status": "hosted",
+          "upload_name": "EC_stats_chosen__b383f23ffc.csv",
+          "file_id": "2febb6f0-0423-4ea2-9b24-389b1daa6626",
+          "sha256": "6d8fc58528b85444ef985a12fe4d0387874d16d04c661f613ad2d5c326701cbd",
+          "bytes": 286,
+          "derived_files": []
+        },
+        "FTIR/notebook/extracted/OC_20260707_coef.csv": {
+          "status": "hosted",
+          "upload_name": "OC_20260707_coef__083f1d5d0b.csv",
+          "file_id": "c3428452-7526-41c3-9b27-88f17072cb21",
+          "sha256": "799150cc5e8e9af8e2f321dd26899b7aea401022424cd097f6f3aa1213ab1763",
+          "bytes": 93309,
+          "derived_files": []
+        },
+        "FTIR/notebook/extracted/OC_samples.csv": {
+          "status": "hosted",
+          "upload_name": "OC_samples__5117109f81.csv",
+          "file_id": "782a069f-e741-456b-947f-8ed9e7cb875e",
+          "sha256": "1a5582b26f15af0baca5f414827feb70076e5094048c900dcb2d1973bf437635",
+          "bytes": 57781,
+          "derived_files": []
+        },
+        "FTIR/notebook/extracted/EC_rmsep.csv": {
+          "status": "hosted",
+          "upload_name": "EC_rmsep__54f7a7e6a6.csv",
+          "file_id": "274b4e81-51a3-47f0-b15b-c93f0feb95d6",
+          "sha256": "e7b8025690f0eb889939b6ed941fa0b9bbd7837308b1d031affc5a00f4c99355",
+          "bytes": 2991,
+          "derived_files": []
+        },
+        "FTIR/notebook/extracted/OC_coef.csv": {
+          "status": "hosted",
+          "upload_name": "OC_coef__7bd2a42fb5.csv",
+          "file_id": "3d610e6c-0bd1-4dd6-85d1-8aeabff917bc",
+          "sha256": "eb19f3d2980733979dfe81b3be6896fa58899f5adffe4c11baf3d0c999672686",
+          "bytes": 93371,
+          "derived_files": []
+        },
+        "FTIR/notebook/extracted/OC_20260707_rmsep.csv": {
+          "status": "hosted",
+          "upload_name": "OC_20260707_rmsep__7421573515.csv",
+          "file_id": "b32ad384-4eb7-4c44-abc9-106dbfea0a40",
+          "sha256": "42d0aa0db4dbe89ffe7c2f47340181e564cf5dc9d3334d1e1a41fb8758392a3a",
+          "bytes": 2985,
+          "derived_files": []
+        },
+        "FTIR/notebook/extracted/EC_samples.csv": {
+          "status": "hosted",
+          "upload_name": "EC_samples__7705ea4472.csv",
+          "file_id": "365ebc91-ec15-4719-80da-c135eba92f87",
+          "sha256": "603bf1e383c3844ce8f242e3a28374a3d8a416ceef57f7666e14fc8c857e4be4",
+          "bytes": 57703,
+          "derived_files": []
+        },
+        "FTIR/notebook/extracted/EC_coef.csv": {
+          "status": "hosted",
+          "upload_name": "EC_coef__f3b148169a.csv",
+          "file_id": "58c7c74a-b6af-4409-a2bc-f6fcab38a936",
+          "sha256": "3e699a032525011754e49014718bf4ec04b6fdf1313bee3a065ebbeb0ef6b63b",
+          "bytes": 93317,
+          "derived_files": []
+        },
+        "FTIR/notebook/extracted/OC_rmsep.csv": {
+          "status": "hosted",
+          "upload_name": "OC_rmsep__61b0727594.csv",
+          "file_id": "745f0fb3-447d-4372-a6fc-bc30842fc398",
+          "sha256": "cc3511caa3c6c0166395ddd77afcf8d863e901e005756ad2e9a0a0a22515f04d",
+          "bytes": 2994,
+          "derived_files": []
+        },
+        "FTIR/notebook/extracted/OC_stats_chosen.csv": {
+          "status": "hosted",
+          "upload_name": "OC_stats_chosen__60cb44b2d6.csv",
+          "file_id": "86438563-e792-494d-a75b-6c2741c65180",
+          "sha256": "642079f379da438128c06be022f5f831cbad33695871234cf2ae1278f257369d",
+          "bytes": 282,
+          "derived_files": []
+        },
+        "FTIR/notebook/local_calibrations/OC_calibration_local_ncomp7.csv": {
+          "status": "hosted",
+          "upload_name": "OC_calibration_local_ncomp7__a6907d0311.csv",
+          "file_id": "58318383-9114-4517-b84e-94c630609057",
+          "sha256": "f52439494b6b9353a83d824b071dd34a36c35a3e770a52a40f8690b25455b0d9",
+          "bytes": 98526,
+          "derived_files": []
+        },
+        "FTIR/local_db/tables/results_ions.csv": {
+          "status": "hosted",
+          "upload_name": "results_ions__57601b914d.csv",
+          "file_id": "349e26f0-52c5-4dad-bc5f-7d2b6365c78a",
+          "sha256": "06ebaa350f377d71a1b6c2456639a32361bffdf6e56f2968555fa9042e0f4a44",
+          "bytes": 46286338,
+          "derived_files": []
+        },
+        "FTIR/local_db/tables/scans_248_251.csv": {
+          "status": "hosted-parquet",
+          "sha256": "b4b6b0f301c8832bdf2b3db991774e4b63917163ba0c3c014bae108e16134fe3",
+          "bytes": 394503677,
+          "dataset_id": "ca433720-5ce1-4562-817f-fe539cbe4800",
+          "source_manifest": "/api/datasets/ca433720-5ce1-4562-817f-fe539cbe4800"
+        },
+        "FTIR/local_db/tables/filter_comments.csv": {
+          "status": "hosted",
+          "upload_name": "filter_comments__20f0aa9730.csv",
+          "file_id": "88c120ba-0c98-4b72-9f64-0c1d0a17153d",
+          "sha256": "c5834683e53359ae30d203d4da103105165c7b386e43b89df54160e26ee29bfe",
+          "bytes": 16120489,
+          "derived_files": []
+        },
+        "FTIR/local_db/tables/results_xrf.csv": {
+          "status": "hosted-parquet",
+          "sha256": "4b54509e47ab66bb5176bc1a1f32196fcc32885e8be7c666bde696b402233123",
+          "bytes": 94174065,
+          "dataset_id": "4c15291d-0ee7-45e8-8762-55f816163fa1",
+          "source_manifest": "/api/datasets/4c15291d-0ee7-45e8-8762-55f816163fa1"
+        },
+        "FTIR/local_db/tables/results_hips.csv": {
+          "status": "hosted",
+          "upload_name": "results_hips__55ffbdc379.csv",
+          "file_id": "7b3be12f-11ce-4da7-a066-32605ee27542",
+          "sha256": "908c0350b300f491078bddb545fa27a15c5e8a6224db30c0235f08db9562a988",
+          "bytes": 47235179,
+          "derived_files": []
+        },
+        "FTIR/local_db/tables/results_tor.csv": {
+          "status": "hosted-parquet",
+          "sha256": "7f044e166e34959c9199694efb4f2b8f00e5e22e53bba2f6af1c88bc08a3e723",
+          "bytes": 221452218,
+          "dataset_id": "4c15291d-0ee7-45e8-8762-55f816163fa1",
+          "source_manifest": "/api/datasets/4c15291d-0ee7-45e8-8762-55f816163fa1"
+        },
+        "FTIR/local_db/tables/results_grav.csv": {
+          "status": "hosted",
+          "upload_name": "results_grav__1d8c441dc8.csv",
+          "file_id": "6b8bf00b-11ef-473c-aea6-10e3c6fd5faa",
+          "sha256": "f89ed402d7edc7fd9be78562fa74554bac7c579559e3520f3d8feeeba4e38808",
+          "bytes": 40496591,
+          "derived_files": []
+        },
+        "FTIR/local_db/tables/ftir_catalog.csv": {
+          "status": "hosted",
+          "upload_name": "ftir_catalog__5318a8efc3.csv",
+          "file_id": "40f7a489-5e94-4df9-aea8-1be06693bcc0",
+          "sha256": "c303120b5eda2ac81904131590b7aefab9dc7a4d23b9a51d7a627ef1b28b0683",
+          "bytes": 16307821,
+          "derived_files": []
+        }
+      },
+      "table_count": 48,
+      "status": "ready"
+    },
+    "FTIR large results": {
+      "id": "4c15291d-0ee7-45e8-8762-55f816163fa1",
+      "files": {
+        "FTIR/local_db/tables/results_xrf.csv": {
+          "path": "FTIR/local_db/tables/results_xrf.csv",
+          "sha256": "4b54509e47ab66bb5176bc1a1f32196fcc32885e8be7c666bde696b402233123",
+          "bytes": 94174065,
+          "transformation": "DuckDB read_csv_auto(sample_size=-1) -> ZSTD Parquet",
+          "rows": 794874,
+          "partition_rows": null,
+          "parts": [
+            {
+              "name": "results_xrf__df4f9561.parquet",
+              "sha256": "10fb80b7393645dd56b7d96fc9742b37271409c71bb11f9c40cf077a5743ef3f",
+              "bytes": 6650078,
+              "file_id": "3d3950d8-ced2-42a0-8520-df09cbcb8bb2"
+            }
+          ]
+        },
+        "FTIR/local_db/tables/results_tor.csv": {
+          "path": "FTIR/local_db/tables/results_tor.csv",
+          "sha256": "7f044e166e34959c9199694efb4f2b8f00e5e22e53bba2f6af1c88bc08a3e723",
+          "bytes": 221452218,
+          "transformation": "DuckDB read_csv_auto(sample_size=-1) -> ZSTD Parquet",
+          "rows": 1926865,
+          "partition_rows": null,
+          "parts": [
+            {
+              "name": "results_tor__c8c0f94c.parquet",
+              "sha256": "16feebbf0e62e52c668d342af64e8e9e9c0f797ed45259663d44f65673327fdd",
+              "bytes": 15195191,
+              "file_id": "c2519ac6-ca1e-410f-9138-c42e232298d5"
+            }
+          ]
+        },
+        "FTIR/runs/2026-07-07/ftir-spectra-2026-07-07.csv": {
+          "path": "FTIR/runs/2026-07-07/ftir-spectra-2026-07-07.csv",
+          "sha256": "7fa154b4b96dcd101f824342e110017e07d15ea917d6ab9f0b350aa66f1b13b3",
+          "bytes": 52343767,
+          "transformation": "DuckDB read_csv_auto(sample_size=-1) -> ZSTD Parquet",
+          "rows": 952,
+          "partition_rows": null,
+          "parts": [
+            {
+              "name": "ftir-spectra-2026-07-07__6b55c67e.parquet",
+              "sha256": "b3f085563df5238c54cded740f698074561ca590bbe0836c248984814587a795",
+              "bytes": 19974640,
+              "file_id": "b3dd673a-620f-450e-8d36-f07f8750362e"
+            }
+          ]
+        }
+      },
+      "status": "ready"
+    },
+    "FTIR local scans": {
+      "id": "ca433720-5ce1-4562-817f-fe539cbe4800",
+      "files": {
+        "FTIR/local_db/tables/scans_248_251.csv": {
+          "path": "FTIR/local_db/tables/scans_248_251.csv",
+          "sha256": "b4b6b0f301c8832bdf2b3db991774e4b63917163ba0c3c014bae108e16134fe3",
+          "bytes": 394503677,
+          "transformation": "DuckDB read_csv_auto(sample_size=-1) -> ZSTD Parquet",
+          "rows": 27268,
+          "partition_rows": 5000,
+          "parts": [
+            {
+              "name": "scans_248_251__32ffff0c__part001.parquet",
+              "sha256": "dff0a0ba2e16e79c1efd5bda8d41ffc8e315c3560f40783cd19dfefd4b257cec",
+              "bytes": 41759424,
+              "file_id": "d6c6e0c1-6149-4a39-9413-adf60dbfc907"
+            },
+            {
+              "name": "scans_248_251__32ffff0c__part002.parquet",
+              "sha256": "2478ff466c80019bff13e683b45ac776b5229897c70b4bafab621c2bb163aa95",
+              "bytes": 38335967,
+              "file_id": "e2771e23-1685-4a97-b4e7-170b9198646f"
+            },
+            {
+              "name": "scans_248_251__32ffff0c__part003.parquet",
+              "sha256": "959b7f6ce71eaf0850d14c9a6dea9116332e1b1d713a20174c35647230cbfc82",
+              "bytes": 25538886,
+              "file_id": "659fad5e-609e-4daa-9d7f-aa6fc1605373"
+            },
+            {
+              "name": "scans_248_251__32ffff0c__part004.parquet",
+              "sha256": "b16b685950f8fce542d971b4268f5a0ebaa6ecb942d2877504431c6b52f82496",
+              "bytes": 23874375,
+              "file_id": "19320acb-0992-41a8-9856-06ecb1842a89"
+            },
+            {
+              "name": "scans_248_251__32ffff0c__part005.parquet",
+              "sha256": "05cf3e2e24b72da1ea713115e761d5e59a289c21663d31d75ca226049f62bb15",
+              "bytes": 25816795,
+              "file_id": "684bdd70-4c37-4a68-8192-5e9f53d0fd14"
+            },
+            {
+              "name": "scans_248_251__32ffff0c__part006.parquet",
+              "sha256": "5f1e58af8486fdd146710d0dd666c1fb317621394b2d5d0b778732278165791a",
+              "bytes": 12131516,
+              "file_id": "1ccdebe1-4646-42f0-8478-a04ae0cc5402"
+            }
+          ]
+        }
+      },
+      "status": "ready"
+    },
+    "FTIR local spectra": {
+      "id": "58587780-ca7c-4f91-b1f0-aba5836223e0",
+      "files": {
+        "FTIR/local_db/spectra_248_251.csv": {
+          "path": "FTIR/local_db/spectra_248_251.csv",
+          "sha256": "fd430d63a2ff46624b675c37dfdb3dbc269ee8a817bea111efb792c1a76e9793",
+          "bytes": 759880189,
+          "transformation": "DuckDB read_csv_auto(sample_size=-1) -> ZSTD Parquet",
+          "rows": 13634,
+          "partition_rows": 1800,
+          "parts": [
+            {
+              "name": "spectra_248_251__c639662e__part001.parquet",
+              "sha256": "9fa760e940aef273dd729d4d7e160d6a46840289e72c05a3f50d04869b6da51f",
+              "bytes": 37187735,
+              "file_id": "36c22fca-8965-4a3c-80dc-6b6a29eec12a"
+            },
+            {
+              "name": "spectra_248_251__c639662e__part002.parquet",
+              "sha256": "91f0064a0ee2429a7f54a6e3fc435625dc2b1317e70c0f39fd7be5b4f8cd0d49",
+              "bytes": 37262125,
+              "file_id": "c824cfcc-93d6-4b9c-9e58-9462fb614225"
+            },
+            {
+              "name": "spectra_248_251__c639662e__part003.parquet",
+              "sha256": "b7d932416a025a991e4b0dfe7cef9c5b2eee8059561dcf4fda2de3aa01581af3",
+              "bytes": 37257728,
+              "file_id": "f76c1352-4e94-48ed-9a05-09314b7179f3"
+            },
+            {
+              "name": "spectra_248_251__c639662e__part004.parquet",
+              "sha256": "b053879bd0680f4c07fc53d713284c74a87548cecc6c0eaff71acca4ac9b4376",
+              "bytes": 37279424,
+              "file_id": "29f68bc7-7bd5-41eb-b6de-9833eda359fd"
+            },
+            {
+              "name": "spectra_248_251__c639662e__part005.parquet",
+              "sha256": "790eb98b62d17c0fab5713e915ec3c8d288bafc9a477dc8f2bb06087ef105b97",
+              "bytes": 37252187,
+              "file_id": "7386bb6f-3d2a-4c54-986d-fbfbec06bb27"
+            },
+            {
+              "name": "spectra_248_251__c639662e__part006.parquet",
+              "sha256": "cbdccc3b56b74a6ae3a489bc2f350580760d07fae450988f63e991fed95ef253",
+              "bytes": 37226968,
+              "file_id": "c4a79b55-e611-41cd-9f92-2fce036ffca7"
+            },
+            {
+              "name": "spectra_248_251__c639662e__part007.parquet",
+              "sha256": "b90532ea7dde720eb8fb3c4779e028a761a45371105f0263f2d04890e2178381",
+              "bytes": 37232328,
+              "file_id": "dc8c7fe2-6a72-4d46-b0bc-480af36136a4"
+            },
+            {
+              "name": "spectra_248_251__c639662e__part008.parquet",
+              "sha256": "d64a4c13024f6f9bbc120be731b6d2d81e1bec95568ef740f88354b971c1ffba",
+              "bytes": 21608020,
+              "file_id": "bb4f19b2-f6c0-4d79-926c-1af59fdbcd89"
+            }
+          ]
+        }
+      },
+      "status": "ready"
+    },
+    "FTIR binary archive": {
+      "id": "750fcfe7-e479-437f-b50e-6fbe8f83b25c",
+      "files": {
+        "FTIR/local_db/improve_local.sqlite": {
+          "path": "FTIR/local_db/improve_local.sqlite",
+          "sha256": "ebf9536429403f264924a9a74258e45fcb1bd07dc4e7457e8a8625c073cd4731",
+          "bytes": 440647680,
+          "storage": "ordered ZIP chunks; concatenate .bin members in ascending part order",
+          "parts": [
+            {
+              "name": "improve_local__19ea2483ed__part001.zip",
+              "file_id": "0a9b7cff-157f-4ff4-add7-7ac88963690e",
+              "sha256": "968cf80bb76bcfd6098b1914c061fd6d4a64309320f22a45fceb9fe4e9a821fd",
+              "bytes": 41943040
+            },
+            {
+              "name": "improve_local__19ea2483ed__part002.zip",
+              "file_id": "06eca9e8-ac3f-4e41-84fe-944a0d2e0a2f",
+              "sha256": "ab0eeb6e72c5fa8b8e11409b893c4aded2b2aec1acb161935d42b04d69a0e8e1",
+              "bytes": 41943040
+            },
+            {
+              "name": "improve_local__19ea2483ed__part003.zip",
+              "file_id": "9db8fb94-d068-442f-ba67-eeddc4c9f0ce",
+              "sha256": "51c0d00aa18a03df432e383f78f77da00e4079a5431ea9e4115e0ab51a4be49a",
+              "bytes": 41943040
+            },
+            {
+              "name": "improve_local__19ea2483ed__part004.zip",
+              "file_id": "7550793e-bae3-4e50-8310-e83c244f1151",
+              "sha256": "4ca00062138a3aa0f5eb761b815ef5a557063cfa97fb3df0d87c6cfa061d5a16",
+              "bytes": 41943040
+            },
+            {
+              "name": "improve_local__19ea2483ed__part005.zip",
+              "file_id": "e0427ec3-f1ba-4797-bf50-751aefbd463c",
+              "sha256": "088e3c509c43a540721060683e4875d5e6c899db497712039d56556c2e19c36d",
+              "bytes": 41943040
+            },
+            {
+              "name": "improve_local__19ea2483ed__part006.zip",
+              "file_id": "198330ac-9bed-46df-8d5e-715a8ec50c40",
+              "sha256": "4ee21db3e7c2202851d40b743907b43f9b60a1182a9faec69755092d05d7248a",
+              "bytes": 41943040
+            },
+            {
+              "name": "improve_local__19ea2483ed__part007.zip",
+              "file_id": "5d7bf018-ce33-459a-8b65-322e89ee318b",
+              "sha256": "3f7515847adcafba8eb18b99fb852d81771dbef1af7bcd2610fd41a59d3545dd",
+              "bytes": 41943040
+            },
+            {
+              "name": "improve_local__19ea2483ed__part008.zip",
+              "file_id": "378cf019-1c65-478f-8b36-aa04c9e3f24f",
+              "sha256": "727813ec4e8fe5b4a8ad69928e8311b81521d8fb7ff564b0249e06fd6ac64607",
+              "bytes": 41943040
+            },
+            {
+              "name": "improve_local__19ea2483ed__part009.zip",
+              "file_id": "9c6a599a-3db7-4644-8d81-5fddb29d82f2",
+              "sha256": "24624aef50b4d397ce95ab1ee1098d52049ccacfaf562701a1f1e834daed8957",
+              "bytes": 41943040
+            },
+            {
+              "name": "improve_local__19ea2483ed__part010.zip",
+              "file_id": "b12ff2d5-26b1-44ae-aba4-3099654dac15",
+              "sha256": "de9bbd7ec2273e2877b9a8fb483325677783123e45155984a1913c38b216535a",
+              "bytes": 41943040
+            },
+            {
+              "name": "improve_local__19ea2483ed__part011.zip",
+              "file_id": "e6883d82-5eb8-44e2-a2b4-adb388a1df79",
+              "sha256": "5447fdcabde2669f2e8add5608540dbac8fd570159ce6844324253dc942ddb5e",
+              "bytes": 21217280
+            }
+          ]
+        },
+        "FTIR/runs/2026-07-07/pls-OC-2026-07-07.RDS": {
+          "path": "FTIR/runs/2026-07-07/pls-OC-2026-07-07.RDS",
+          "sha256": "08e614a03dce25e0d4ba744b463143a02cc28eae6fe8ad4dde5f3278e18183b0",
+          "bytes": 141615910,
+          "storage": "ordered ZIP chunks; concatenate .bin members in ascending part order",
+          "parts": [
+            {
+              "name": "pls-OC-2026-07-07__5bac9833a8__part001.zip",
+              "file_id": "709c2e89-e2a8-48f0-bd53-bc8737312bad",
+              "sha256": "a9952c2cc2122fd0651b8d31633860eea46f56d53a902b0f27be33878793e02f",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-07-07__5bac9833a8__part002.zip",
+              "file_id": "c885e82f-4243-4f10-910a-7a32e0f3bf33",
+              "sha256": "6ed88cb96b92d7b9103e3c0deabd19266882acaae34049f1570a3c967cf05247",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-07-07__5bac9833a8__part003.zip",
+              "file_id": "4f0b1fc6-2938-45f0-b8b2-7e7f83069e3c",
+              "sha256": "72480a022c4aa27ead780f94d9527444f3b00776338490897968132d30458998",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-07-07__5bac9833a8__part004.zip",
+              "file_id": "f1d4e1d5-a205-441d-b7c0-3e4a17a258e2",
+              "sha256": "52f4e1d43a371e648560bd103cd1aa033865b77c463daa6fb27beba573b8446f",
+              "bytes": 15786790
+            }
+          ]
+        },
+        "FTIR/runs/2026-07-07/pls-OC-2026-07-07 (1).RDS": {
+          "path": "FTIR/runs/2026-07-07/pls-OC-2026-07-07 (1).RDS",
+          "sha256": "1f12b9ed6f05ba8cb5bec4b34c2171146ca8d5e719cfa701e28b7aa4aab15aaa",
+          "bytes": 209619269,
+          "storage": "ordered ZIP chunks; concatenate .bin members in ascending part order",
+          "parts": [
+            {
+              "name": "pls-OC-2026-07-07 (1)__6f69023b3b__part001.zip",
+              "file_id": "cdbac393-1568-45b2-9199-5880507b2c3f",
+              "sha256": "4104962195343f38503a3d97042e898a8ee41dff21f1a2ecf4139fa5e739a010",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-07-07 (1)__6f69023b3b__part002.zip",
+              "file_id": "f8194020-c5d5-4745-8ca1-1bd1d467b9aa",
+              "sha256": "c49069d00e237ab2f41ad7b0a2997e6c2bcfcc2ac32dfa208ef8087ce35f767d",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-07-07 (1)__6f69023b3b__part003.zip",
+              "file_id": "9b7a285b-dc2c-4b4e-bf34-f714d5145931",
+              "sha256": "731784c22fb84ef2e340c6f312fd2927725988d27c545bd355b1527ace3de86f",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-07-07 (1)__6f69023b3b__part004.zip",
+              "file_id": "118ad946-f783-40be-943a-ebf0241c02d7",
+              "sha256": "68e10954a36f3986869d5420550635bdc2a4d84726c878b1a40d3887d19aa5cb",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-07-07 (1)__6f69023b3b__part005.zip",
+              "file_id": "162a7c9a-f3fc-452a-bd53-99032c89a0f3",
+              "sha256": "625f7ecf37c49eb08ab327b48545f76b0a2d257b47a52b78e2a9f3662fbd53bd",
+              "bytes": 41847109
+            }
+          ]
+        },
+        "FTIR/runs/2026-07-07/pls-OC-2026-07-07 (2).RDS": {
+          "path": "FTIR/runs/2026-07-07/pls-OC-2026-07-07 (2).RDS",
+          "sha256": "bdb9c8a82aa0101b8c6907939009aeb6a55f2b8d5f617d2f265bcb8f9ba76633",
+          "bytes": 209741353,
+          "storage": "ordered ZIP chunks; concatenate .bin members in ascending part order",
+          "parts": [
+            {
+              "name": "pls-OC-2026-07-07 (2)__378a3bd1e5__part001.zip",
+              "file_id": "336a8bf5-d7ff-4d23-981a-afc5026abcf6",
+              "sha256": "d5d5490517c8a5770fe44696cf7254a0856682335e0cc3b2619b8e4a292953cb",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-07-07 (2)__378a3bd1e5__part002.zip",
+              "file_id": "9b328be6-151a-4c34-a5b0-242b1429d824",
+              "sha256": "a481e0d2506462173fd13bbfba69f73dff9f970960785400dad7cc86e19dd133",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-07-07 (2)__378a3bd1e5__part003.zip",
+              "file_id": "207ed4ee-214c-47f8-9aca-a83b4f21b0c3",
+              "sha256": "dc8595bd6f0740643efe33aac5bc263d1bf70d5b4d58a31bc9b0e6ec9f0eeb59",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-07-07 (2)__378a3bd1e5__part004.zip",
+              "file_id": "1811a6e3-b596-4727-bd07-b70fd687b2ef",
+              "sha256": "0bf219f95b7e6a45c8bac375a3d310657cd669f247701bc6af18bdcdafd428cf",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-07-07 (2)__378a3bd1e5__part005.zip",
+              "file_id": "d793250f-0daf-40ff-823c-f80b738e973b",
+              "sha256": "706548577cd1a7278429ae419c219eed07d829eb8b1c7a67a4ccbd3e6f8af6d9",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-07-07 (2)__378a3bd1e5__part006.zip",
+              "file_id": "09cce5c8-958d-4229-9828-500defd238e2",
+              "sha256": "b5fedbf2d8455a7456f3dcea86ed6dd977197066c8be14437e7bea4ffa6d01c0",
+              "bytes": 26153
+            }
+          ]
+        },
+        "FTIR/runs/2026-07-07/pls-EC-2026-07-07.RDS": {
+          "path": "FTIR/runs/2026-07-07/pls-EC-2026-07-07.RDS",
+          "sha256": "0c22b430777a783d330cc86b54eec575abc21bbcb3b4b3c8c4b221c45b87a7e3",
+          "bytes": 209606919,
+          "storage": "ordered ZIP chunks; concatenate .bin members in ascending part order",
+          "parts": [
+            {
+              "name": "pls-EC-2026-07-07__3d98191cdd__part001.zip",
+              "file_id": "3d939119-5596-4731-867f-4667295c32c4",
+              "sha256": "7bdd70cd81e5be8b2653ae7ba6005bcb75743b9b14e6d2931a89a03c79a2d3a5",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-EC-2026-07-07__3d98191cdd__part002.zip",
+              "file_id": "d5060b7f-e081-44d3-b23c-3dd256e91230",
+              "sha256": "542b3420add4fe6cf745e895d7ef10fcf66c6b4a17a785a8fe861aa221f4fab0",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-EC-2026-07-07__3d98191cdd__part003.zip",
+              "file_id": "756f3d91-2015-45f3-b58c-d5b21c303a07",
+              "sha256": "1b43224c518ca2864b570f0ec60fd5fd18c9500c0e1a91953a763d9325323a87",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-EC-2026-07-07__3d98191cdd__part004.zip",
+              "file_id": "6c03dac2-84a2-414b-9753-212612d3e68e",
+              "sha256": "039e44d0adfba8d54644b19e9822cb13531c92bff6bb1163214e9152f571c154",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-EC-2026-07-07__3d98191cdd__part005.zip",
+              "file_id": "eec9b05b-1469-4f7d-8ce5-cfbe3f9897e1",
+              "sha256": "d74840328a5207fa0f58e6923c5686839b2786f9567457bf6bbe08d126aa3f01",
+              "bytes": 41834759
+            }
+          ]
+        },
+        "FTIR/runs/2026-06-24/pls-OC-2026-06-24 (1).RDS": {
+          "path": "FTIR/runs/2026-06-24/pls-OC-2026-06-24 (1).RDS",
+          "sha256": "fbf7b0b175f8059b4b26751ebbc2160a2427a1006c8a430d875da051459c3316",
+          "bytes": 208238144,
+          "storage": "ordered ZIP chunks; concatenate .bin members in ascending part order",
+          "parts": [
+            {
+              "name": "pls-OC-2026-06-24 (1)__131fcb3733__part001.zip",
+              "file_id": "f236e3b5-b3ab-4e6b-8e8d-5356b38643a3",
+              "sha256": "4a111b5fa256a3f667e59509719f834ffacc757ad38612f1c49bd4c4c0fbce5a",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-06-24 (1)__131fcb3733__part002.zip",
+              "file_id": "56475ece-a93d-40d3-973d-d9e81a08121c",
+              "sha256": "c2a6ed000251121a691fb71b62a86a9e78b6f94d42895c57b0c8e55155185e8f",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-06-24 (1)__131fcb3733__part003.zip",
+              "file_id": "12144378-93c0-4e8c-8475-0edae7d7c0f7",
+              "sha256": "bf8bf8b2a956ae17c56a0f152348da100ddfe467ac20966244322327c1feb339",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-06-24 (1)__131fcb3733__part004.zip",
+              "file_id": "1fc778a0-bf5c-4186-ae49-9eb8cc280008",
+              "sha256": "4ac57edc743bc74720a7a8c06bae3f508fb9ae250893b3a022352fc58d72adf4",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-06-24 (1)__131fcb3733__part005.zip",
+              "file_id": "358965fe-e29d-49f2-89fa-33f0d6ae791e",
+              "sha256": "a94d1ef9110720c7e4720c78c6f98d600f309e937f2c26e8eae319cad76faeff",
+              "bytes": 40465984
+            }
+          ]
+        },
+        "FTIR/runs/2026-06-24/pls-EC-2026-06-24 (1).RDS": {
+          "path": "FTIR/runs/2026-06-24/pls-EC-2026-06-24 (1).RDS",
+          "sha256": "c44c36bcb66951208685d7abefff012c8f1360c80ebbbe384dcd56e09d7f48b6",
+          "bytes": 208235768,
+          "storage": "ordered ZIP chunks; concatenate .bin members in ascending part order",
+          "parts": [
+            {
+              "name": "pls-EC-2026-06-24 (1)__42471dd9c9__part001.zip",
+              "file_id": "dff596a4-39ba-4052-9c8c-77e1c0a6224b",
+              "sha256": "aaddc5fc008936981cceb225eb19caab6d1176a6a7580442e91868afadacd6ad",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-EC-2026-06-24 (1)__42471dd9c9__part002.zip",
+              "file_id": "7604e624-32ce-4450-b243-469d51beff4d",
+              "sha256": "5ddc3e03e18dd0ac1ed37da954c38f1af8ce86ff52089fd4a586c848277a1715",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-EC-2026-06-24 (1)__42471dd9c9__part003.zip",
+              "file_id": "cb3ce101-51a2-425d-9326-780a882ae2fd",
+              "sha256": "1b471eefbe1831927b9fda4b2dca160713b266c4cb62841213f971330e3c6304",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-EC-2026-06-24 (1)__42471dd9c9__part004.zip",
+              "file_id": "d9221814-f16f-4e29-ac39-7c3f696fcd5a",
+              "sha256": "e5c3f550cefd25cced9447f5534a1f3c299e1c3e9292eb20c1e09391a7f7c7a0",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-EC-2026-06-24 (1)__42471dd9c9__part005.zip",
+              "file_id": "cd2ef969-92d1-4027-85e7-0e9a3fbf968b",
+              "sha256": "a769953827299baa11316d3ac2ff30122f2500e8b6c535a4ef7b565e3ece71f5",
+              "bytes": 40463608
+            }
+          ]
+        },
+        "FTIR/runs/2026-06-24/pls-OC-2026-06-24.RDS": {
+          "path": "FTIR/runs/2026-06-24/pls-OC-2026-06-24.RDS",
+          "sha256": "d4af450db61ef3991e0feeccec2d6d45e9a916b13f30c61bb08981d0c8d04211",
+          "bytes": 142292926,
+          "storage": "ordered ZIP chunks; concatenate .bin members in ascending part order",
+          "parts": [
+            {
+              "name": "pls-OC-2026-06-24__f6b07e8213__part001.zip",
+              "file_id": "4a6a55a4-d231-4b5d-830c-cdb4ebf05bc1",
+              "sha256": "5a1f478789de56d9673174d2f71acd28759be9328d97dec15a24aee8c81d9806",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-06-24__f6b07e8213__part002.zip",
+              "file_id": "f9f75999-588f-4574-85e7-f977252fff0d",
+              "sha256": "0804be5de76ea66765957b3ea5068bc62bb4d4eab4913968c57ba375aa4b7c4c",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-06-24__f6b07e8213__part003.zip",
+              "file_id": "84cd5b77-c825-4056-b40c-eb49d0df6ed0",
+              "sha256": "acf740e6f84822b09f75e97ca6e7f22ea1901f4d072439efb8601e8e815ff1ab",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-06-24__f6b07e8213__part004.zip",
+              "file_id": "771bc731-30b8-4aa0-9ab7-e83adfa8a5fe",
+              "sha256": "09a6259a179dbd478083991b220c2ff319eac2ffa7b5863fc8309f0b2c4146d0",
+              "bytes": 16463806
+            }
+          ]
+        },
+        "FTIR/runs/2026-06-24/pls-EC-2026-06-24.RDS": {
+          "path": "FTIR/runs/2026-06-24/pls-EC-2026-06-24.RDS",
+          "sha256": "5983b80be23eb23f52c942e56d9a7d4d373c00fe59e2853c0cf96f6ce8245a20",
+          "bytes": 208239326,
+          "storage": "ordered ZIP chunks; concatenate .bin members in ascending part order",
+          "parts": [
+            {
+              "name": "pls-EC-2026-06-24__6eea4da0f3__part001.zip",
+              "file_id": "4545457f-bfc0-496b-9e86-4e5ab57eb93b",
+              "sha256": "51d6db7ac5e453f71a1566f46a3551018011c3fc4e03a49d03e544ca7c60adf0",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-EC-2026-06-24__6eea4da0f3__part002.zip",
+              "file_id": "6b6cdbda-acad-423a-b4c8-11f5a8e931a8",
+              "sha256": "909e8f749757eff3a56eb8f4a5c6836bedccd80f762732127d7d0f60db4b34fe",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-EC-2026-06-24__6eea4da0f3__part003.zip",
+              "file_id": "d54abc34-3047-441d-976b-37cdb1b364d5",
+              "sha256": "1ac834dd77567ebaebf3b0e362025d4949c0171613807e8cae1c954baf967f54",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-EC-2026-06-24__6eea4da0f3__part004.zip",
+              "file_id": "cb32362c-0eb3-46f6-86a5-06ae217de1c7",
+              "sha256": "357888cf06baa1165af20f11a0bcc42a3f34d0890c3ad773a11abee9378ad0dd",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-EC-2026-06-24__6eea4da0f3__part005.zip",
+              "file_id": "b386b7b9-46c5-4323-85ab-3c070434f8b9",
+              "sha256": "a77b8f10d6c324d991e6ada7c58672a738495794142182c3cb181af9d451a355",
+              "bytes": 40467166
+            }
+          ]
+        },
+        "FTIR/runs/2026-06-24/pls-EC-2026-06-24 (2).RDS": {
+          "path": "FTIR/runs/2026-06-24/pls-EC-2026-06-24 (2).RDS",
+          "sha256": "9e16db14854ab35a086ee7fd151c72c3cb055a85449755b730a7cb4ac63c987a",
+          "bytes": 208236007,
+          "storage": "ordered ZIP chunks; concatenate .bin members in ascending part order",
+          "parts": [
+            {
+              "name": "pls-EC-2026-06-24 (2)__710be7c5b6__part001.zip",
+              "file_id": "6638c667-fd0c-4d55-9fb6-6678c6fda174",
+              "sha256": "ea7d7dce96b01b4c00471900b51abf0a832b75580651ae55173b684a16a058b5",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-EC-2026-06-24 (2)__710be7c5b6__part002.zip",
+              "file_id": "635b85a8-49d6-4c64-ba1e-dbd12819180b",
+              "sha256": "ab217a00b5e69b09f22d407f6908f65b52da7ed2cae23e23820906cee1702f33",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-EC-2026-06-24 (2)__710be7c5b6__part003.zip",
+              "file_id": "814ae3e5-7534-480d-abbe-85863810104c",
+              "sha256": "44a02e4e6eb32d7bc751c17ac98f0ccd17ddc445f69e78a9712e757873d2f6bf",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-EC-2026-06-24 (2)__710be7c5b6__part004.zip",
+              "file_id": "9935bc52-7e3a-474e-b9ae-378db647a584",
+              "sha256": "4ec78f92a89ddabd3ad38c8bcdf680f00844a771ea25a703d474ab66da546055",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-EC-2026-06-24 (2)__710be7c5b6__part005.zip",
+              "file_id": "2c7b4866-6074-4607-944c-c45cb14c4555",
+              "sha256": "47c63e79a72ae6425ddb35b69d9973dfcf299f9e4e6e54a3428e5cb5fc3b8b95",
+              "bytes": 40463847
+            }
+          ]
+        },
+        "FTIR/runs/2026-06-24/pls-OC-2026-06-24 (4).RDS": {
+          "path": "FTIR/runs/2026-06-24/pls-OC-2026-06-24 (4).RDS",
+          "sha256": "d87794bead9cbaed0bfbb21b4b7e489a5c4eadda3974e45a373e4ee0ddbdc6f7",
+          "bytes": 208236045,
+          "storage": "ordered ZIP chunks; concatenate .bin members in ascending part order",
+          "parts": [
+            {
+              "name": "pls-OC-2026-06-24 (4)__13e2f3e679__part001.zip",
+              "file_id": "85cf7ad3-e4b8-43c3-bba9-ed6b22106756",
+              "sha256": "b40d294f093218b7b7b4130ebc83bbae217f9a0acbb6bb806fbeb5cd1222e937",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-06-24 (4)__13e2f3e679__part002.zip",
+              "file_id": "66fe490b-bde9-472d-8ca5-a98f203e192a",
+              "sha256": "ea97cd61b3f7538c9a5b06aa9e6ba6906ff1e43419e9bd45e85024ea74948e80",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-06-24 (4)__13e2f3e679__part003.zip",
+              "file_id": "c7218e82-ca32-4286-9c9e-d57d6f9a0a8d",
+              "sha256": "9d35d0fa3e4661c93c4a883f1020f66335a3223b87f6df88f52fa7a0b771d77d",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-06-24 (4)__13e2f3e679__part004.zip",
+              "file_id": "24911e05-373a-4688-8a99-10c3b5ec8023",
+              "sha256": "f43327146c84ef5caba2d3f2437f92c9f028bccb30da99d03350dc4146d6676d",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-06-24 (4)__13e2f3e679__part005.zip",
+              "file_id": "4124f039-bac1-43ac-bcba-cb6fbda53e83",
+              "sha256": "03ae917186a1732b57979b45c0d7f486002469c8240f801ce8f57cf21e099ffe",
+              "bytes": 40463885
+            }
+          ]
+        },
+        "FTIR/runs/2026-06-24/pls-OC-2026-06-24 (3).RDS": {
+          "path": "FTIR/runs/2026-06-24/pls-OC-2026-06-24 (3).RDS",
+          "sha256": "84aee0f26db20f8ac65dd05ee4ce66d10b65b1302ac19124b469384e15e45704",
+          "bytes": 208234998,
+          "storage": "ordered ZIP chunks; concatenate .bin members in ascending part order",
+          "parts": [
+            {
+              "name": "pls-OC-2026-06-24 (3)__bcc1b2aff8__part001.zip",
+              "file_id": "207d724a-a45e-42f6-b2eb-6159be4dfbfe",
+              "sha256": "466ed67ebeecc0575aed9c262ed7199e996c95cf8693957cf0b15738624be3d6",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-06-24 (3)__bcc1b2aff8__part002.zip",
+              "file_id": "6c6f8465-995d-4fd6-9c53-e66d79de8173",
+              "sha256": "0818622f7ac0495e01df53dc3ed22dc1e0532e8343356cc3e1600f4f85b163d2",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-06-24 (3)__bcc1b2aff8__part003.zip",
+              "file_id": "bbff17b0-a0a1-4430-ad86-786486992a80",
+              "sha256": "bc1117ddb105a71642a2bd83293a2e71bcb6b39b8f456079ea83cb44cd145b08",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-06-24 (3)__bcc1b2aff8__part004.zip",
+              "file_id": "8850fbac-d049-424a-9367-039fd40716d2",
+              "sha256": "2e51191fa3b225b24b4195e650097c15b1522a7f7902f104c152d820876c8521",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-06-24 (3)__bcc1b2aff8__part005.zip",
+              "file_id": "ac787439-7d38-4774-9ed3-7bd35386d0cb",
+              "sha256": "107f38a77e49f4c8ec55d2686a9a57b70c341ad63d3095d2bd20e92e244536e8",
+              "bytes": 40462838
+            }
+          ]
+        },
+        "FTIR/runs/2026-06-24/pls-OC-2026-06-24 (2).RDS": {
+          "path": "FTIR/runs/2026-06-24/pls-OC-2026-06-24 (2).RDS",
+          "sha256": "d3c9b279f73e9dce1129c95a99a053d23664d4cbe8b1038d6dabbe0aa962c9b5",
+          "bytes": 208235399,
+          "storage": "ordered ZIP chunks; concatenate .bin members in ascending part order",
+          "parts": [
+            {
+              "name": "pls-OC-2026-06-24 (2)__f760f83958__part001.zip",
+              "file_id": "5219c5db-c69f-4431-a773-5d687420bc79",
+              "sha256": "466ed67ebeecc0575aed9c262ed7199e996c95cf8693957cf0b15738624be3d6",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-06-24 (2)__f760f83958__part002.zip",
+              "file_id": "67ac05c5-a4c5-4177-abd7-30a19ab47c51",
+              "sha256": "a496eeb2e95ae08ff7d4cbc939729a2d6ba08c83ad0a08432e9cb00ac112f091",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-06-24 (2)__f760f83958__part003.zip",
+              "file_id": "478daf07-4ee8-4c1b-822c-5832e8b1f874",
+              "sha256": "5e3967e682ba9427202acf73ca2ea63845cf4e5a7e2a7a651ac7705c976f10a7",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-06-24 (2)__f760f83958__part004.zip",
+              "file_id": "ab4134da-be32-4cbb-adad-1f2c71bbdf4f",
+              "sha256": "319855b8d8ced3f4ed7705dc0011648d6755ec1f2f1b425c48a66159b2253f16",
+              "bytes": 41943040
+            },
+            {
+              "name": "pls-OC-2026-06-24 (2)__f760f83958__part005.zip",
+              "file_id": "0026c0af-a35a-4fe5-919d-352dcbc19661",
+              "sha256": "c3cb1220dad9f1a0e67f14d9f9b55d095c84172f7fa18c7e09f9845f4fe5d21f",
+              "bytes": 40463239
+            }
+          ]
+        }
+      },
+      "status": "ready"
+    },
+    "Davis source notes": {
+      "id": "9d1d636f-08a2-4fbd-bf26-1d33c893bad4",
+      "status": "ready",
+      "files": {
+        "README.md": {
+          "sha256": "0c0cacd2e8a84d04c3a1a1169541cd1cb245c39ba25f360e5857fdad0f84cad3",
+          "bytes": 3732,
+          "sourceType": "markdown"
+        },
+        "GOOGLE-DRIVE-NOTES.md": {
+          "sha256": "dd2a620f8ffb6c8decc44a42093a3abbf3cc6d36954cbe091fce87de47cbf964",
+          "bytes": 4408,
+          "sourceType": "markdown"
+        },
+        "CLEANUP-LOG.md": {
+          "sha256": "38c7cb002e8acd4f7de9b015636f67e5ceabde0a72742cd3ee71d7e79c815493",
+          "bytes": 11487,
+          "sourceType": "markdown"
+        },
+        "DAVIS/README.md": {
+          "sha256": "da0c24ecf8a790a3dca9f113d02ed1a91222f96fc17fe1ddcebd09082a2f32d6",
+          "bytes": 2153,
+          "sourceType": "markdown"
+        },
+        "DAVIS/SPARTAN FTIR pulls/MANIFEST.md": {
+          "sha256": "726d8a7119c1afe272c74d3b0b619f7839a7e471c07c0115b9b72a0f712b9531",
+          "bytes": 1425,
+          "sourceType": "markdown"
+        },
+        "DAVIS/SPARTAN HIPS pulls/MANIFEST.md": {
+          "sha256": "8fd6f15e951ee46e8f24d697316e120788c3ad920b3fab78b57450b644c1e735",
+          "bytes": 3515,
+          "sourceType": "markdown"
+        },
+        "FTIR/db_pull/README.md": {
+          "sha256": "2eef2a21a6ceaae8a35ef6ae77e6b6fb92a883699bfc26df6f1cc22fad18be21",
+          "bytes": 1632,
+          "sourceType": "markdown"
+        },
+        "FTIR/local_db/README.md": {
+          "sha256": "4a310ff27fedbb92dba887ee5af3ddcf36e6e1dce6af547c54457e119dec38d9",
+          "bytes": 3316,
+          "sourceType": "markdown"
+        },
+        "FTIR/notebook/README.md": {
+          "sha256": "71a732780e2fa37d9db36aaace7753479d5cafdc3a38c359c1f68351c3943148",
+          "bytes": 3288,
+          "sourceType": "markdown"
+        },
+        "FTIR/runs/README.md": {
+          "sha256": "6656101265d64a3eff4a78100b34ef0181180f9174b417fe6df6b7cc85a12ebd",
+          "bytes": 6383,
+          "sourceType": "markdown"
+        },
+        "Improve/MANIFEST.md": {
+          "sha256": "15479eff04e289f61e4d1ec1b9928669c4b88abb4787f0c4b77c0f299eec5ee1",
+          "bytes": 3558,
+          "sourceType": "markdown"
+        },
+        "Notes about Data.gdoc": {
+          "sha256": "1b339a4b41b956996d254bc0cec64e09e8de8a21acdc165303a1defbfe672006",
+          "bytes": 3436,
+          "sourceType": "google-doc-exported-text"
+        }
+      }
+    }
+  }
+}

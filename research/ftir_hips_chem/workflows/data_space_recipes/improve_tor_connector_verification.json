@@ -1,0 +1,52 @@
+{
+  "method": "Authenticated Google Drive connector raw fetch, user-scoped file download, SHA-256 comparison to ingested repository copy",
+  "files": [
+    {
+      "path": "archive_manifest.json",
+      "driveFileId": "1yELIH8zZ_QgXL13PNdqhprzgM10JeBzz",
+      "bytes": 5182,
+      "sourceBytes": 5182,
+      "driveSha256": "74c13a0bd6d8107370c3247b6818bc33d17aebbc7ea87c6f1184423168ee4bfb",
+      "sourceSha256": "74c13a0bd6d8107370c3247b6818bc33d17aebbc7ea87c6f1184423168ee4bfb",
+      "matched": true
+    },
+    {
+      "path": "improve_tor_fractions_2019_2026_all_sites.csv",
+      "driveFileId": "1xCbQwf8Y0zXzxRW0hXfwnRjJcjm_I0Zd",
+      "bytes": 28722048,
+      "sourceBytes": 28722048,
+      "driveSha256": "5afab4b4d2da913b9032997805602f8bbca4a12bff225056446fc5f991aed274",
+      "sourceSha256": "5afab4b4d2da913b9032997805602f8bbca4a12bff225056446fc5f991aed274",
+      "matched": true
+    },
+    {
+      "path": "README.md",
+      "driveFileId": "10xbQYp2vUqguLzztvi6JveEOeOW97nZV",
+      "bytes": 1687,
+      "sourceBytes": 1687,
+      "driveSha256": "c1b9c3fe27252f5467640aa03b013494ee3b9ca0a36340de431933bd28287036",
+      "sourceSha256": "c1b9c3fe27252f5467640aa03b013494ee3b9ca0a36340de431933bd28287036",
+      "matched": true
+    },
+    {
+      "path": "improve_tor_fractions_pool_site_dates.csv",
+      "driveFileId": "1v7ePLDO6xiHUcpioD3Cdfb05WPvMlIfh",
+      "bytes": 2943534,
+      "sourceBytes": 2943534,
+      "driveSha256": "94b4872ac6e5bc0fa28581aa4516e72c6517267b0a4668b8b97221a857e82cd6",
+      "sourceSha256": "94b4872ac6e5bc0fa28581aa4516e72c6517267b0a4668b8b97221a857e82cd6",
+      "matched": true
+    },
+    {
+      "path": "provenance.json",
+      "driveFileId": "18i4gSC3PL9c1VTAbtv-b4_eF_hsfa8Qa",
+      "bytes": 1945,
+      "sourceBytes": 1945,
+      "driveSha256": "f81572e02abc1f86df2ffd34afe45cb297c83e269e3dbaf51da313975bff4072",
+      "sourceSha256": "f81572e02abc1f86df2ffd34afe45cb297c83e269e3dbaf51da313975bff4072",
+      "matched": true
+    }
+  ],
+  "matched": 5,
+  "total": 5
+}

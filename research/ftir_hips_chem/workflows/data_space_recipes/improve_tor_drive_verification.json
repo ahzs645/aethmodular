@@ -1,0 +1,115 @@
+{
+  "source": "Davis Data/improve_tor_fractions",
+  "comparison": "Google Drive File Provider mounted bytes against ingested repository copy",
+  "files": [
+    {
+      "path": "README.md",
+      "expectedSha256": "c1b9c3fe27252f5467640aa03b013494ee3b9ca0a36340de431933bd28287036",
+      "expectedBytes": 1687,
+      "mountedBytes": 1687,
+      "status": "read_timeout"
+    },
+    {
+      "path": "archive_manifest.json",
+      "expectedSha256": "74c13a0bd6d8107370c3247b6818bc33d17aebbc7ea87c6f1184423168ee4bfb",
+      "expectedBytes": 5182,
+      "mountedBytes": 5182,
+      "status": "read_timeout"
+    },
+    {
+      "path": "improve_tor_fractions_2019_2026_all_sites.csv",
+      "expectedSha256": "5afab4b4d2da913b9032997805602f8bbca4a12bff225056446fc5f991aed274",
+      "expectedBytes": 28722048,
+      "mountedBytes": 28722048,
+      "status": "read_timeout"
+    },
+    {
+      "path": "improve_tor_fractions_pool_site_dates.csv",
+      "expectedSha256": "94b4872ac6e5bc0fa28581aa4516e72c6517267b0a4668b8b97221a857e82cd6",
+      "expectedBytes": 2943534,
+      "mountedBytes": 2943534,
+      "status": "read_timeout"
+    },
+    {
+      "path": "provenance.json",
+      "expectedSha256": "f81572e02abc1f86df2ffd34afe45cb297c83e269e3dbaf51da313975bff4072",
+      "expectedBytes": 1945,
+      "mountedBytes": 1945,
+      "status": "read_timeout"
+    },
+    {
+      "path": "raw/IMPAERPRE_2026_Feb-Apr_FED_query_20260923.txt",
+      "expectedSha256": "f280e309072446e2820cf1a5f062c6db060dd4f9aca7c2e38b4fef3293320024",
+      "expectedBytes": 111726314,
+      "mountedBytes": 111726314,
+      "mountedSha256": "f280e309072446e2820cf1a5f062c6db060dd4f9aca7c2e38b4fef3293320024",
+      "status": "matched"
+    },
+    {
+      "path": "raw/IMPAER_2019.txt.zip",
+      "expectedSha256": "6e16709771bd1f7fc799c30dd49b6e1a63e0aecd9858124a2ca558f03f7cb4f0",
+      "expectedBytes": 17125199,
+      "mountedBytes": 17125199,
+      "mountedSha256": "6e16709771bd1f7fc799c30dd49b6e1a63e0aecd9858124a2ca558f03f7cb4f0",
+      "status": "matched"
+    },
+    {
+      "path": "raw/IMPAER_2020.txt.zip",
+      "expectedSha256": "54abe7f7bc5342ee597f6a8258a79bd8333939f0131fa582aa2776b23607ad5b",
+      "expectedBytes": 17385308,
+      "mountedBytes": 17385308,
+      "mountedSha256": "54abe7f7bc5342ee597f6a8258a79bd8333939f0131fa582aa2776b23607ad5b",
+      "status": "matched"
+    },
+    {
+      "path": "raw/IMPAER_2021.txt.zip",
+      "expectedSha256": "1e7922c849fcd010e6c26ae89887faf8da72f0bbc8db977f5722530abb381ea3",
+      "expectedBytes": 17592727,
+      "mountedBytes": 17592727,
+      "mountedSha256": "1e7922c849fcd010e6c26ae89887faf8da72f0bbc8db977f5722530abb381ea3",
+      "status": "matched"
+    },
+    {
+      "path": "raw/IMPAER_2022.txt.zip",
+      "expectedSha256": "e795c04ee017fbe1dffd07e046a18c1a76f0810d5f358ce7c0736d2629217709",
+      "expectedBytes": 17109551,
+      "mountedBytes": 17109551,
+      "mountedSha256": "e795c04ee017fbe1dffd07e046a18c1a76f0810d5f358ce7c0736d2629217709",
+      "status": "matched"
+    },
+    {
+      "path": "raw/IMPAER_2023.txt.zip",
+      "expectedSha256": "fc309d3308d769e411288023ec2fb3f40be257534c0908ad798afeb0c70ec9ab",
+      "expectedBytes": 16681130,
+      "mountedBytes": 16681130,
+      "mountedSha256": "fc309d3308d769e411288023ec2fb3f40be257534c0908ad798afeb0c70ec9ab",
+      "status": "matched"
+    },
+    {
+      "path": "raw/IMPAER_2024.txt.zip",
+      "expectedSha256": "6d5de3361ba3a71c4106bf697b6d4381d013fc10e45948ce48aacf37cca69712",
+      "expectedBytes": 16641023,
+      "mountedBytes": 16641023,
+      "mountedSha256": "6d5de3361ba3a71c4106bf697b6d4381d013fc10e45948ce48aacf37cca69712",
+      "status": "matched"
+    },
+    {
+      "path": "raw/IMPAER_2025.txt.zip",
+      "expectedSha256": "11e08b4d241450af36ab865a7e01fef2d7c4677d3ca5ef68c07978d40f15fe2c",
+      "expectedBytes": 15966424,
+      "mountedBytes": 15966424,
+      "mountedSha256": "11e08b4d241450af36ab865a7e01fef2d7c4677d3ca5ef68c07978d40f15fe2c",
+      "status": "matched"
+    },
+    {
+      "path": "raw/IMPAER_2026_Jan_validated_FED_query_20260923.txt",
+      "expectedSha256": "1ee5b2cd71f62f6bd8fe3708f8e70ef4f33117b2848932a52000f16fbf585875",
+      "expectedBytes": 40943321,
+      "mountedBytes": 40943321,
+      "mountedSha256": "1ee5b2cd71f62f6bd8fe3708f8e70ef4f33117b2848932a52000f16fbf585875",
+      "status": "matched"
+    }
+  ],
+  "matched": 9,
+  "total": 14
+}

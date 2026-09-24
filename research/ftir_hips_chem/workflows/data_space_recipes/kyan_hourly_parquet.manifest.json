@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "aeth.kyan-hourly-parquet",
+  "version": 1,
+  "script": "kyan_hourly_parquet.py",
+  "status": "provisional-source-view",
+  "sources": {
+    "Beijing": "Beijing_cleaned_corrected_small_hourly.csv",
+    "Central": "Central_cleaned_corrected_small_hourly.csv",
+    "Delhi": "Delhi_cleaned_corrected_small_hourly.csv",
+    "JPL": "JPL_cleaned_corrected_small_hourly.csv"
+  },
+  "sourceSubdirectory": "MAIA data",
+  "outputFromRepo": "research/ftir_hips_chem/output/tables/kyan_aethalometry/kyan_corrected_hourly_v1.parquet",
+  "grain": "site, local hour, source; Central has ten hours with two source versions",
+  "validation": "All source rows preserved; unique site/local-hour/source; exact Parquet round-trip; source and artifact SHA-256 recorded",
+  "interpretation": "Queryable hourly source view, not an independent observation set or verified filter match"
+}

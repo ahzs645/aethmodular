@@ -1,0 +1,297 @@
+{
+  "datasetId": "bf0bc7b0-6a0b-4948-b6cc-9428f4572e87",
+  "datasetName": "IMPROVE Aerosol TOR fractions 2019\u20132026",
+  "sourceRoot": "Davis Data/improve_tor_fractions",
+  "sourceFiles": [
+    {
+      "path": "Davis Data/improve_tor_fractions/README.md",
+      "sha256": "c1b9c3fe27252f5467640aa03b013494ee3b9ca0a36340de431933bd28287036",
+      "bytes": 1687,
+      "sourceUrl": null,
+      "validation": null,
+      "downloads": [
+        {
+          "name": "README.md__b335630551.zip",
+          "fileId": "3f34b16b-5d55-4bbc-823a-43ce91619333",
+          "sha256": "3b9a5968864b0605ff8c676ac5c88e198897a8c48da6dc33ab172f1841c1013a",
+          "bytes": 996,
+          "member": "README.md.bin",
+          "memberSha256": "c1b9c3fe27252f5467640aa03b013494ee3b9ca0a36340de431933bd28287036"
+        }
+      ],
+      "storage": "single ZIP .bin member"
+    },
+    {
+      "path": "Davis Data/improve_tor_fractions/archive_manifest.json",
+      "sha256": "74c13a0bd6d8107370c3247b6818bc33d17aebbc7ea87c6f1184423168ee4bfb",
+      "bytes": 5182,
+      "sourceUrl": null,
+      "validation": null,
+      "downloads": [
+        {
+          "name": "archive_manifest.json__47b986b098.zip",
+          "fileId": "05c8591d-f8d0-4073-8a54-d1c2b3f4e9db",
+          "sha256": "addc644fde04427badc9e6a8f9db412d1db21e708bcadca1807bd2ff6c7451cb",
+          "bytes": 1798,
+          "member": "archive_manifest.json.bin",
+          "memberSha256": "74c13a0bd6d8107370c3247b6818bc33d17aebbc7ea87c6f1184423168ee4bfb"
+        }
+      ],
+      "storage": "single ZIP .bin member"
+    },
+    {
+      "path": "Davis Data/improve_tor_fractions/improve_tor_fractions_2019_2026_all_sites.csv",
+      "sha256": "5afab4b4d2da913b9032997805602f8bbca4a12bff225056446fc5f991aed274",
+      "bytes": 28722048,
+      "sourceUrl": null,
+      "validation": null,
+      "downloads": [
+        {
+          "name": "improve_tor_fractions_2019_2026_all_sites.csv__864fca7d44.zip",
+          "fileId": "253f85ab-65cf-41d9-8fe0-b367fd50fa5e",
+          "sha256": "2129f4ec81f65cab54897a499b39382a6036c25396a95664acfe7b61b464bab4",
+          "bytes": 7434997,
+          "member": "improve_tor_fractions_2019_2026_all_sites.csv.bin",
+          "memberSha256": "5afab4b4d2da913b9032997805602f8bbca4a12bff225056446fc5f991aed274"
+        }
+      ],
+      "storage": "single ZIP .bin member",
+      "queryableParquet": {
+        "rows": 143948,
+        "sha256": "b302359ca35512fab68fb3e6d65523872d2a8721da69afa705ecb4f10f761aca",
+        "bytes": 5681731,
+        "name": "improve_tor_fractions_all_sites.parquet",
+        "fileId": "d5529137-0d90-484b-ab3c-976471971965"
+      }
+    },
+    {
+      "path": "Davis Data/improve_tor_fractions/improve_tor_fractions_pool_site_dates.csv",
+      "sha256": "94b4872ac6e5bc0fa28581aa4516e72c6517267b0a4668b8b97221a857e82cd6",
+      "bytes": 2943534,
+      "sourceUrl": null,
+      "validation": null,
+      "downloads": [
+        {
+          "name": "improve_tor_fractions_pool_site_dates.csv__59528d15fc.zip",
+          "fileId": "3229a1e9-a714-45e0-9ab1-865f4aef568a",
+          "sha256": "f1d7943a99affb9fe9ef6193a221aac0ec3546a81aa3f698f1bc354a3aba0884",
+          "bytes": 682472,
+          "member": "improve_tor_fractions_pool_site_dates.csv.bin",
+          "memberSha256": "94b4872ac6e5bc0fa28581aa4516e72c6517267b0a4668b8b97221a857e82cd6"
+        }
+      ],
+      "storage": "single ZIP .bin member",
+      "queryableParquet": {
+        "rows": 13031,
+        "sha256": "54c784f22b0e0f18575e25310a824f3b9a586467483ea5591a9e3ad86b600f25",
+        "bytes": 662814,
+        "name": "improve_tor_fractions_pool_matches.parquet",
+        "fileId": "22267314-eb16-4e37-8d25-db57c0c880aa"
+      }
+    },
+    {
+      "path": "Davis Data/improve_tor_fractions/provenance.json",
+      "sha256": "f81572e02abc1f86df2ffd34afe45cb297c83e269e3dbaf51da313975bff4072",
+      "bytes": 1945,
+      "sourceUrl": null,
+      "validation": null,
+      "downloads": [
+        {
+          "name": "provenance.json__c7bc716846.zip",
+          "fileId": "ebe3c920-0d55-419a-98d1-8e283801bab2",
+          "sha256": "30e60145212bafcc1d5e61417b37a9aa070ab329b8ccab5459799bd70cf24fd6",
+          "bytes": 927,
+          "member": "provenance.json.bin",
+          "memberSha256": "f81572e02abc1f86df2ffd34afe45cb297c83e269e3dbaf51da313975bff4072"
+        }
+      ],
+      "storage": "single ZIP .bin member"
+    },
+    {
+      "path": "Davis Data/improve_tor_fractions/raw/IMPAERPRE_2026_Feb-Apr_FED_query_20260923.txt",
+      "sha256": "f280e309072446e2820cf1a5f062c6db060dd4f9aca7c2e38b4fef3293320024",
+      "bytes": 111726314,
+      "sourceUrl": "https://views.cira.colostate.edu/fed/Temp/DataFiles/ahzs645_20260923_120904_NtvL0.txt",
+      "validation": "preliminary",
+      "downloads": [
+        {
+          "name": "IMPAERPRE_2026_Feb-Apr_FED_query_20260923.txt__a0ac60d088__part001.zip",
+          "fileId": "827d2492-10fa-49a9-82f9-5b51c087c4f1",
+          "sha256": "45ce183f5957ebbc4d601c8e589b315c4bc7ae04e04b57b3d538c98af0610702",
+          "bytes": 41943160,
+          "member": "part001.bin",
+          "memberSha256": "dec9bc26a9791acb5bf1a147c3b998b5e963be0c4f6ce529ae8f12fb522f41d0"
+        },
+        {
+          "name": "IMPAERPRE_2026_Feb-Apr_FED_query_20260923.txt__a0ac60d088__part002.zip",
+          "fileId": "8c613144-1255-412b-b901-315ea0076647",
+          "sha256": "3373ad62869f241c5df619c56e3305131f57d5d56b5210c5dc3c0278465f3403",
+          "bytes": 41943160,
+          "member": "part002.bin",
+          "memberSha256": "c38772f68f56bcad432592d6efd07b126e81b52166ceeeb1546f5b535778f9d9"
+        },
+        {
+          "name": "IMPAERPRE_2026_Feb-Apr_FED_query_20260923.txt__a0ac60d088__part003.zip",
+          "fileId": "59afce27-39b4-4612-b198-c363dfdd3c30",
+          "sha256": "53d28c1f0e24c06969ca3614047e6c7c036e8f00098ec8974b046e0d7ff8cd40",
+          "bytes": 27840354,
+          "member": "part003.bin",
+          "memberSha256": "223b5930346bec99008d4a1625890ebbac9e2e6d0d78946c3c0393ad0579ec58"
+        }
+      ],
+      "storage": "concatenate numbered ZIP .bin members"
+    },
+    {
+      "path": "Davis Data/improve_tor_fractions/raw/IMPAER_2019.txt.zip",
+      "sha256": "6e16709771bd1f7fc799c30dd49b6e1a63e0aecd9858124a2ca558f03f7cb4f0",
+      "bytes": 17125199,
+      "sourceUrl": "https://vibe.cira.colostate.edu/data/export/IMPAER/IMPAER_2019.txt.zip",
+      "validation": "validated",
+      "downloads": [
+        {
+          "name": "IMPAER_2019.txt.zip__3bd49e56e7.zip",
+          "fileId": "3c2e38b4-4175-41bd-b253-da0484e06f0a",
+          "sha256": "8bd09be9bd82612dd4380b60502edd7a4bc8a77de15969f1b15ad758d405dffd",
+          "bytes": 16826663,
+          "member": "IMPAER_2019.txt.zip.bin",
+          "memberSha256": "6e16709771bd1f7fc799c30dd49b6e1a63e0aecd9858124a2ca558f03f7cb4f0"
+        }
+      ],
+      "storage": "single ZIP .bin member"
+    },
+    {
+      "path": "Davis Data/improve_tor_fractions/raw/IMPAER_2020.txt.zip",
+      "sha256": "54abe7f7bc5342ee597f6a8258a79bd8333939f0131fa582aa2776b23607ad5b",
+      "bytes": 17385308,
+      "sourceUrl": "https://vibe.cira.colostate.edu/data/export/IMPAER/IMPAER_2020.txt.zip",
+      "validation": "validated",
+      "downloads": [
+        {
+          "name": "IMPAER_2020.txt.zip__e2c80cae40.zip",
+          "fileId": "623f424a-7cba-4573-89a1-dbd5bad0cfe2",
+          "sha256": "0ac574ca8821a767ca18cd8b872f333a49e55405f8a2e03fa99374ba9401496c",
+          "bytes": 17059938,
+          "member": "IMPAER_2020.txt.zip.bin",
+          "memberSha256": "54abe7f7bc5342ee597f6a8258a79bd8333939f0131fa582aa2776b23607ad5b"
+        }
+      ],
+      "storage": "single ZIP .bin member"
+    },
+    {
+      "path": "Davis Data/improve_tor_fractions/raw/IMPAER_2021.txt.zip",
+      "sha256": "1e7922c849fcd010e6c26ae89887faf8da72f0bbc8db977f5722530abb381ea3",
+      "bytes": 17592727,
+      "sourceUrl": "https://vibe.cira.colostate.edu/data/export/IMPAER/IMPAER_2021.txt.zip",
+      "validation": "validated",
+      "downloads": [
+        {
+          "name": "IMPAER_2021.txt.zip__a65fea0b5a.zip",
+          "fileId": "2fb52f40-a426-4e04-857d-cce97a06a868",
+          "sha256": "4b51754edd5580b9f0cc4a545c27b5fe300f7666fc84c7e2ec9b0423f0cd8f7a",
+          "bytes": 17329733,
+          "member": "IMPAER_2021.txt.zip.bin",
+          "memberSha256": "1e7922c849fcd010e6c26ae89887faf8da72f0bbc8db977f5722530abb381ea3"
+        }
+      ],
+      "storage": "single ZIP .bin member"
+    },
+    {
+      "path": "Davis Data/improve_tor_fractions/raw/IMPAER_2022.txt.zip",
+      "sha256": "e795c04ee017fbe1dffd07e046a18c1a76f0810d5f358ce7c0736d2629217709",
+      "bytes": 17109551,
+      "sourceUrl": "https://vibe.cira.colostate.edu/data/export/IMPAER/IMPAER_2022.txt.zip",
+      "validation": "validated",
+      "downloads": [
+        {
+          "name": "IMPAER_2022.txt.zip__64bb01cb0c.zip",
+          "fileId": "00cb6c41-9a39-4701-bab2-2c2249fcad4c",
+          "sha256": "da1ec5451c63bbd56a5a2bec820a4b0bd919a7e1d6ead59ce174f134e71ac052",
+          "bytes": 16790303,
+          "member": "IMPAER_2022.txt.zip.bin",
+          "memberSha256": "e795c04ee017fbe1dffd07e046a18c1a76f0810d5f358ce7c0736d2629217709"
+        }
+      ],
+      "storage": "single ZIP .bin member"
+    },
+    {
+      "path": "Davis Data/improve_tor_fractions/raw/IMPAER_2023.txt.zip",
+      "sha256": "fc309d3308d769e411288023ec2fb3f40be257534c0908ad798afeb0c70ec9ab",
+      "bytes": 16681130,
+      "sourceUrl": "https://vibe.cira.colostate.edu/data/export/IMPAER/IMPAER_2023.txt.zip",
+      "validation": "validated",
+      "downloads": [
+        {
+          "name": "IMPAER_2023.txt.zip__b82812f73d.zip",
+          "fileId": "290c4337-046b-49d8-b18d-939a7ccf3776",
+          "sha256": "a159827ff5464726bd4c81961dc5a73d42c57aca84b86b5427452addbae0143c",
+          "bytes": 16339908,
+          "member": "IMPAER_2023.txt.zip.bin",
+          "memberSha256": "fc309d3308d769e411288023ec2fb3f40be257534c0908ad798afeb0c70ec9ab"
+        }
+      ],
+      "storage": "single ZIP .bin member"
+    },
+    {
+      "path": "Davis Data/improve_tor_fractions/raw/IMPAER_2024.txt.zip",
+      "sha256": "6d5de3361ba3a71c4106bf697b6d4381d013fc10e45948ce48aacf37cca69712",
+      "bytes": 16641023,
+      "sourceUrl": "https://vibe.cira.colostate.edu/data/export/IMPAER/IMPAER_2024.txt.zip",
+      "validation": "validated",
+      "downloads": [
+        {
+          "name": "IMPAER_2024.txt.zip__567f3c2da1.zip",
+          "fileId": "18c335d6-5670-4c70-811c-bc8b5a94ad9b",
+          "sha256": "0ae3c5adbda3a537c70a1ef8c5d32835518a9233cab775452686512e8ae08815",
+          "bytes": 16342377,
+          "member": "IMPAER_2024.txt.zip.bin",
+          "memberSha256": "6d5de3361ba3a71c4106bf697b6d4381d013fc10e45948ce48aacf37cca69712"
+        }
+      ],
+      "storage": "single ZIP .bin member"
+    },
+    {
+      "path": "Davis Data/improve_tor_fractions/raw/IMPAER_2025.txt.zip",
+      "sha256": "11e08b4d241450af36ab865a7e01fef2d7c4677d3ca5ef68c07978d40f15fe2c",
+      "bytes": 15966424,
+      "sourceUrl": "https://vibe.cira.colostate.edu/data/export/IMPAER/IMPAER_2025.txt.zip",
+      "validation": "validated",
+      "downloads": [
+        {
+          "name": "IMPAER_2025.txt.zip__2da25c47ae.zip",
+          "fileId": "76ad2e8f-f3a6-45e0-897e-a05f76b82fd7",
+          "sha256": "a43d179fdfeb9594d1ffefd4416fb36ef0186ea0fe822ec667ef064104be2433",
+          "bytes": 15660180,
+          "member": "IMPAER_2025.txt.zip.bin",
+          "memberSha256": "11e08b4d241450af36ab865a7e01fef2d7c4677d3ca5ef68c07978d40f15fe2c"
+        }
+      ],
+      "storage": "single ZIP .bin member"
+    },
+    {
+      "path": "Davis Data/improve_tor_fractions/raw/IMPAER_2026_Jan_validated_FED_query_20260923.txt",
+      "sha256": "1ee5b2cd71f62f6bd8fe3708f8e70ef4f33117b2848932a52000f16fbf585875",
+      "bytes": 40943321,
+      "sourceUrl": "https://views.cira.colostate.edu/fed/Temp/DataFiles/ahzs645_20260923_121028_PMswt.txt",
+      "validation": "validated",
+      "downloads": [
+        {
+          "name": "IMPAER_2026_Jan_validated_FED_query_20260923.txt__161103eafe.zip",
+          "fileId": "e17dff0b-14a0-408e-a0f4-a96bf3e975b3",
+          "sha256": "c32d4a0dfd55e8294a10b30b4e5735ad69964148a3047393c0e18d2ed6994ab3",
+          "bytes": 2562297,
+          "member": "IMPAER_2026_Jan_validated_FED_query_20260923.txt.bin",
+          "memberSha256": "1ee5b2cd71f62f6bd8fe3708f8e70ef4f33117b2848932a52000f16fbf585875"
+        }
+      ],
+      "storage": "single ZIP .bin member"
+    }
+  ],
+  "sourceManifestFileId": "193fc32b-ca4e-47b4-90c2-8897ac83f38b",
+  "tables": {
+    "improve_tor_fractions_all_sites": 143948,
+    "improve_tor_fractions_pool_matches": 13031,
+    "source_manifest": 14
+  },
+  "status": "ready",
+  "driveVerification": "all 14 path names and byte sizes matched; direct Drive byte reads stalled; repository copy hashes were checked against archive_manifest.json"
+}
