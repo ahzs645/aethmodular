@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "experiments": [
+    {
+      "id": "next_vibes_loading_trace",
+      "family": "vibes",
+      "title": "VIBES loading range \u2014 trace saved predictions",
+      "status": "local_diagnostic_completed",
+      "question": "Which corrected-spectrum, fitted-coefficient, intercept and numerical-precision changes account for the saved VIBES versus AIRSpec prediction differences in the full-pool Q3 loading range?",
+      "sources": [
+        "vibes_subgroup_audit",
+        "vibes_full_colab"
+      ],
+      "file": "vibes-loading-trace.md",
+      "readiness": "Saved-model trace and 12-case spectral/solver investigation completed. Both methods severely underpredict the two leading cases; VIBES intensifies the negative predictions. All 12 fixed-parameter repeats converged; maximum prediction shift 0.002 \u00b5g/filter. A chemical cause is not established and no test-driven tuning/exclusions were made.",
+      "data_sources": [
+        "vibes_full_colab"
+      ]
+    },
+    {
+      "id": "next_airspec_reproduction",
+      "family": "airspec",
+      "title": "AIRSpec \u2014 reproduce the locked calibration",
+      "status": "local_reproduction_verified",
+      "question": "Can the saved R baseline comparison and the ftir_13 locked calibration be reproduced from frozen inputs, without selecting on Addis HIPS agreement?",
+      "sources": [
+        "airspec_port",
+        "ftir_11",
+        "ftir_13",
+        "ftir_21"
+      ],
+      "file": "airspec-reproduction.md",
+      "readiness": "Full unchanged ftir_13 runner reproduced in an isolated worktree. All five historical result tables pass 43 column checks at 1e-6; k=5 recovered, 606 training / 194 held-out OCEC rows, disjoint sites. The separate 319-scan R-port check also passed. No independent Addis thermal validation is implied.",
+      "data_sources": [
+        "ftir_11",
+        "ftir_13"
+      ],
+      "dependency_reason": "The completed reproduction consumes the fixed ftir_11 calibration cohort and compares against the saved ftir_13 output tables, with source/input hashes and column-level differences retained.",
+      "native_execution": {
+        "project_id": "203b7e92-c6ad-4d8a-9936-411a08bce8c6",
+        "experiment_id": "d2b46613-884e-4eef-b9d8-d06d62459b63",
+        "run_id": "5e953103-e1b4-4218-8ddf-f9c67188bfd4",
+        "commit": "fb0abeaf5d272b76c64bf6616743e56f00800362",
+        "experiment_url": "http://127.0.0.1:4791/projects/203b7e92-c6ad-4d8a-9936-411a08bce8c6/tasks/new?pane=%7B%22kind%22%3A%22experiment%22%2C%22experimentId%22%3A%22d2b46613-884e-4eef-b9d8-d06d62459b63%22%2C%22view%22%3A%22overview%22%7D",
+        "report_url": "http://127.0.0.1:4791/projects/203b7e92-c6ad-4d8a-9936-411a08bce8c6/tasks/new?pane=%7B%22kind%22%3A%22file%22%2C%22path%22%3A%22airspec-baseline/report.md%22%2C%22source%22%3A%22artifacts%22%7D",
+        "result": "Five historical tables plus six prior-local tables matched; all 84 column checks passed at absolute tolerance 1e-6."
+      }
+    },
+    {
+      "id": "next_addis_independent_validation",
+      "family": "validation",
+      "title": "Addis \u2014 independent thermal EC validation",
+      "status": "blocked",
+      "question": "How accurately do frozen FTIR EC predictions transfer to independent, identity-confirmed Addis thermal EC measurements?",
+      "sources": [
+        "ftir_27",
+        "ftir_40",
+        "ftir_41",
+        "ftir_44"
+      ],
+      "file": "addis-independent-validation.md",
+      "readiness": "Blocked after checking 753 local Davis-data filenames and seven relevant exports: no independent ETAD thermal reference established. A five-row Adama identity/sampling confirmation queue and an unsent data request are prepared. Two sampling flags and the missing authoritative 4744\u20134748 crosswalk remain unresolved."
+    }
+  ]
+}

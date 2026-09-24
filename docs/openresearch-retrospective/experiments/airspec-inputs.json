@@ -1,0 +1,209 @@
+{
+  "scope": "Known direct inputs, helper inputs, expected output tables and current code/environment for ftir_13 and AIRSpec port validation. Not a reconstructed historical environment. Full transitive code closure requires isolated staging before execution.",
+  "inputs": [
+    {
+      "path": "$AETHMODULAR_DRIVE_ROOT/University/Research/Grad/Data/Davis Data/DAVIS/ETAD FTIR/ETAD_FTIR_spectra.csv",
+      "status": "present_hashed",
+      "sha256": "0f530df2cb48a1eca6c83717a7f051d02d74e848fb160178da9079687f253ed2",
+      "bytes": 16200588
+    },
+    {
+      "path": "$AETHMODULAR_DRIVE_ROOT/University/Research/Grad/Data/Davis Data/DAVIS/ETAD FTIR/ETAD_metadata.csv",
+      "status": "present_hashed",
+      "sha256": "697696e98a4e10919374a34d72cb6fd41dc03b45632533e9ef9c46014f5025e8",
+      "bytes": 30639
+    },
+    {
+      "path": "$AETHMODULAR_DRIVE_ROOT/University/Research/Grad/Data/Davis Data/DAVIS/ETAD FTIR/baseline_plots_AIRSPEC/spectra_baselined_AIRSPEC.csv",
+      "status": "present_hashed",
+      "sha256": "441efd52d72b1c769ae44049611ac08a26f0060b68101d313b2e755d41e129cc",
+      "bytes": 13443028
+    },
+    {
+      "path": "$AETHMODULAR_DRIVE_ROOT/University/Research/Grad/Data/Davis Data/Spartan/SPARTAN_HIPS_Batch1-51.v2.csv",
+      "status": "present_hashed",
+      "sha256": "4276eaa23b9be587a0c240d7faba53526858443c2b45110481f5c2e02eccf4fb",
+      "bytes": 961811
+    },
+    {
+      "path": "research/ftir_hips_chem/Filter Data/unified_filter_dataset.pkl",
+      "status": "present_hashed",
+      "sha256": "1ece57fa842a97dc22115ff6fa304c0fd4979673340d860949ae944aa24a5c36",
+      "bytes": 8379437
+    },
+    {
+      "path": "$AETHMODULAR_DRIVE_ROOT/University/Research/Grad/Data/Davis Data/FTIR/local_db/tables/results_tor.csv",
+      "status": "present_hashed",
+      "sha256": "7f044e166e34959c9199694efb4f2b8f00e5e22e53bba2f6af1c88bc08a3e723",
+      "bytes": 221452218
+    },
+    {
+      "path": "$AETHMODULAR_DRIVE_ROOT/University/Research/Grad/Data/Davis Data/FTIR/local_db/tables/results_hips.csv",
+      "status": "present_hashed",
+      "sha256": "908c0350b300f491078bddb545fa27a15c5e8a6224db30c0235f08db9562a988",
+      "bytes": 47235179
+    },
+    {
+      "path": "$AETHMODULAR_DRIVE_ROOT/University/Research/Grad/Data/Davis Data/FTIR/apps/apps_data.npz",
+      "status": "present_hashed",
+      "sha256": "8b2bd5b70d2f00bbbf82f410cce37bb4e1ba3be318ba175525d2e65fbfeadd53",
+      "bytes": 18017058
+    },
+    {
+      "path": "$AETHMODULAR_DRIVE_ROOT/University/Research/Grad/Data/Davis Data/FTIR/notebook/extracted/EC_samples.csv",
+      "status": "present_hashed",
+      "sha256": "603bf1e383c3844ce8f242e3a28374a3d8a416ceef57f7666e14fc8c857e4be4",
+      "bytes": 57703
+    },
+    {
+      "path": "$AETHMODULAR_DRIVE_ROOT/University/Research/Grad/Data/Davis Data/FTIR/notebook/extracted/EC_stats_chosen.csv",
+      "status": "present_hashed",
+      "sha256": "6d8fc58528b85444ef985a12fe4d0387874d16d04c661f613ad2d5c326701cbd",
+      "bytes": 286
+    },
+    {
+      "path": "$AETHMODULAR_DRIVE_ROOT/University/Research/Grad/Data/Davis Data/FTIR/notebook/extracted/EC_fitted_long.csv",
+      "status": "present_hashed",
+      "sha256": "514f97ac1a2d9d9f01e366bd778246da51a7d221b972faff9f59f0656e16f761",
+      "bytes": 1943802
+    },
+    {
+      "path": "research/ftir_ec_phase3/output/corrected/improve_pool_corrected_df6.npz",
+      "status": "present_hashed",
+      "sha256": "ba377d8b40957c594f23c757420b9bc6fa2c7d532788066a334be711439597d1",
+      "bytes": 96846705
+    },
+    {
+      "path": "research/ftir_ec_phase3/output/corrected/improve_pool_corrected_df8.npz",
+      "status": "present_hashed",
+      "sha256": "40dd598993c26fed4ae9264b16c949631ddca1683ed59f057dcc7f967ebd16a5",
+      "bytes": 96799157
+    },
+    {
+      "path": "research/ftir_ec_phase3/output/corrected/etad_corrected_df6.npz",
+      "status": "present_hashed",
+      "sha256": "b9677486c405323c27aaf37636eae03f7a647214ee3a26a0716c2eb3c23775f0",
+      "bytes": 2252922
+    },
+    {
+      "path": "research/ftir_ec_phase3/output/corrected/etad_corrected_df8.npz",
+      "status": "present_hashed",
+      "sha256": "b5d01f1e87a7284eb7dd969e9a4f1eb2097ae951dfc239fa77ebbb7bf1187ad3",
+      "bytes": 2255065
+    },
+    {
+      "path": "research/ftir_hips_chem/output/tables/pls_calibration_phase2/addis_calibration_predictions.csv",
+      "status": "present_hashed",
+      "sha256": "da612161a26a7f609a85d1ab326c01431eb1067676f57e76dc4e349d9372fb39",
+      "bytes": 44037
+    },
+    {
+      "path": "research/ftir_hips_chem/output/tables/pls_transfer/improve_full_pool_addis_similarity.csv",
+      "status": "present_hashed",
+      "sha256": "f7ee279c287c5ecd7501f886b67414835d0a05795c34d3e786ba9ec180232341",
+      "bytes": 2551640
+    },
+    {
+      "path": "research/ftir_ec_phase3/output/tables/ftir11/lowest_ocec_800_cohort.csv",
+      "status": "present_hashed",
+      "sha256": "1d72475825b1eb5d73340d5adddb7acade3617c2570b4239aed083602eb8b916",
+      "bytes": 74361
+    },
+    {
+      "path": "research/ftir_ec_phase3/output/tables/ftir11/addis_metrics.csv",
+      "status": "present_hashed",
+      "sha256": "33797e5604f484ef51db2f09972f8457576a19607059bb465b248b6bbe95dc67",
+      "bytes": 6422
+    },
+    {
+      "path": "research/ftir_ec_phase3/output/tables/ftir11/addis_predictions.csv",
+      "status": "present_hashed",
+      "sha256": "c7618af8bf9d6b115b8cc2341757270affaa27c0b9693238d010dad563452333",
+      "bytes": 32105
+    },
+    {
+      "path": "research/ftir_ec_phase3/output/tables/ftir13/addis_predictions_corrected.csv",
+      "status": "present_hashed",
+      "sha256": "13550ff4dd23d8187cc84db336fb268d94a398dc0fbc2155936ce5b1804217f1",
+      "bytes": 26108
+    },
+    {
+      "path": "research/ftir_ec_phase3/output/tables/ftir13/band1600_on_corrected.csv",
+      "status": "present_hashed",
+      "sha256": "0e5df853ecfcbdf965302353e185696319ebe9a6cb6ea7d1e85e17a65d7128fb",
+      "bytes": 353
+    },
+    {
+      "path": "research/ftir_ec_phase3/output/tables/ftir13/cohort_alignment_audit.csv",
+      "status": "present_hashed",
+      "sha256": "4ac66e571deebf6b35ba28b8516f6cd2cafebdf101275b3ab3c118b8be7c5db4",
+      "bytes": 61
+    },
+    {
+      "path": "research/ftir_ec_phase3/output/tables/ftir13/addis_metrics_corrected.csv",
+      "status": "present_hashed",
+      "sha256": "edec9082881737c7cb18647f245442848b92ae74eb2d0b4728532252abe2a0b6",
+      "bytes": 2001
+    },
+    {
+      "path": "research/ftir_ec_phase3/output/tables/ftir13/hips_transfer_corrected.csv",
+      "status": "present_hashed",
+      "sha256": "5b3e72ba08a9c7c419ece5ab5f39a67cd47e7fab80d8a5970b5e0706124d6ebb",
+      "bytes": 705
+    },
+    {
+      "path": "research/ftir_ec_phase3/output/airspec_port_report.md",
+      "status": "present_hashed",
+      "sha256": "e59efa19fce7fd1cf8d0d26bc5d9d7a9a886faceb64cf799d3063b0515743711",
+      "bytes": 3340
+    },
+    {
+      "path": "research/ftir_ec_phase3/output/tables/airspec_port_validation.csv",
+      "status": "present_hashed",
+      "sha256": "e8c81231840c62a312fc668053e290ea5f51538908b32eb9f1fad35c9d911ce2",
+      "bytes": 29823
+    },
+    {
+      "path": "uv.lock",
+      "status": "present_hashed",
+      "sha256": "78d94792062e781158f85d5008f132840ca864065f549cbd76b3ae1b81a9acf6",
+      "bytes": 1051393
+    },
+    {
+      "path": "pyproject.toml",
+      "status": "present_hashed",
+      "sha256": "4f54f0434c1c8ed17145680f74953aa3fcc38d12c689975d8b825d35c9363e97",
+      "bytes": 2981
+    },
+    {
+      "path": "research/ftir_ec_phase3/scripts/run_ftir_13.py",
+      "status": "present_hashed",
+      "sha256": "bbe849dbb142121921c5a483e11b2ffbb28c6a23634d27310e5762cd1858a347",
+      "bytes": 15525
+    },
+    {
+      "path": "research/ftir_ec_phase3/scripts/validate_airspec_port.py",
+      "status": "present_hashed",
+      "sha256": "a7c6568c9f05c987c0e19b493b3cd8fd03ce98dce049d42b042b85b033c6c7b6",
+      "bytes": 5844
+    },
+    {
+      "path": "research/ftir_ec_phase3/scripts/phase3_common.py",
+      "status": "present_hashed",
+      "sha256": "89e1786dba8185588b8a69bc78e40b99780c45afd833a2098746e8d23c662a50",
+      "bytes": 7206
+    },
+    {
+      "path": "research/ftir_ec_phase3/scripts/airspec_baseline.py",
+      "status": "present_hashed",
+      "sha256": "394d72cfe2214b94f1293b11704d774b15bfc952c041d74b05bfa5bd7939008c",
+      "bytes": 13602
+    },
+    {
+      "path": "research/ftir_hips_chem/scripts/pls_transfer.py",
+      "status": "present_hashed",
+      "sha256": "70cb55e1ab6aebb067fc448ef55e77a0818db25763cdaccec0127373ca4fb466",
+      "bytes": 31025
+    }
+  ]
+}

@@ -3,9 +3,10 @@
   "configurations": [
     {
       "name": "calibration-explorer",
-      "runtimeExecutable": "/Users/ahmadjalil/anaconda3/bin/python",
+      "runtimeExecutable": "sh",
       "runtimeArgs": [
-        "calibration_explorer/app.py"
+        "-c",
+        "exec \"$HOME/anaconda3/bin/python\" calibration_explorer/app.py"
       ],
       "port": 5058,
       "autoPort": true

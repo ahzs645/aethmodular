@@ -1,0 +1,71 @@
+{
+  "source_directory": "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09",
+  "source_signature": "83dcf32e86bc0f092f49f7f59671ac8a89f8efcc28d990287f8b1f895d2b2ae5",
+  "inputs": [
+    {
+      "path": "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/case_audit.csv",
+      "sha256": "822962991003662b675ae5d9e18d0fa53952a9992ea607423f8830dbfdece574",
+      "role": "frozen saved Colab input"
+    },
+    {
+      "path": "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/heldout_predictions.csv",
+      "sha256": "6582d07c17ffaa2679aabb8a8c510b9c66dbfabbb9fa58f2f7b72e918ca8a84d",
+      "role": "frozen saved Colab input"
+    },
+    {
+      "path": "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/wn.npy",
+      "sha256": "5d6427a5758870dc50c1352591ac3523b862ffb74739cc21b6210d8de5316621",
+      "role": "frozen saved Colab input"
+    },
+    {
+      "path": "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/corrected_AIRSpec.npy",
+      "sha256": "b527ac9e947badce67f4ef723e074609729b7422e9a11ab94af25e429dec10d0",
+      "role": "frozen saved Colab input"
+    },
+    {
+      "path": "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/corrected_VIBES.npy",
+      "sha256": "d8303bbbf6966edc34451b06b2f74ac556b5ca578d9971464d74b86486c64160",
+      "role": "frozen saved Colab input"
+    },
+    {
+      "path": "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/pls_full_pool_AIRSpec.npz",
+      "sha256": "775a997ff653e924c15a632123d1405381263e5e8138b79ba6a1f4ffaa7b6b46",
+      "role": "frozen saved Colab input"
+    },
+    {
+      "path": "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/pls_full_pool_VIBES.npz",
+      "sha256": "febd24b5627c03d7a786f8665b5b03c87b53239d48944842b3a15ebb7b9ac142",
+      "role": "frozen saved Colab input"
+    },
+    {
+      "path": "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/pls_locked800_AIRSpec.npz",
+      "sha256": "d3768f2676e7ae869a4c92f79be68b53c08379349fad9516f33294deff139a06",
+      "role": "frozen saved Colab input"
+    },
+    {
+      "path": "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/pls_locked800_VIBES.npz",
+      "sha256": "8686a60a56c24ec0fbb8d2a7ec431a34bb87e3418400cbd4070a43f04b9e0a05",
+      "role": "frozen saved Colab input"
+    },
+    {
+      "path": "research/ftir_hips_chem/workflows/trace_vibes_loading_predictions.py",
+      "sha256": "b3fcfee585fbebd0b08d97a5d6a6df69762c3fda5d3badd2a15bd56d98bc0d28",
+      "role": "current diagnostic code/environment; not historical environment"
+    },
+    {
+      "path": "research/ftir_hips_chem/scripts/vibes_error_audit.py",
+      "sha256": "c303c02d2244646a6ffa721fa843ea35d2b874de26b3ff402ef96ab4260d7f4f",
+      "role": "current diagnostic code/environment; not historical environment"
+    },
+    {
+      "path": "uv.lock",
+      "sha256": "78d94792062e781158f85d5008f132840ca864065f549cbd76b3ae1b81a9acf6",
+      "role": "current diagnostic code/environment; not historical environment"
+    },
+    {
+      "path": "pyproject.toml",
+      "sha256": "4f54f0434c1c8ed17145680f74953aa3fcc38d12c689975d8b825d35c9363e97",
+      "role": "current diagnostic code/environment; not historical environment"
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "checked_at_utc": "2026-09-22T00:49:05.824545+00:00",
+  "checks": [
+    {
+      "cohort": "full_pool",
+      "method": "AIRSpec",
+      "n": 2327,
+      "max_abs_prediction_error": 5.684341886080802e-14,
+      "training_quartiles": [
+        1.8775293653859917,
+        3.73908411142889,
+        6.993548115901122
+      ],
+      "input_dtype": "float32",
+      "max_abs_centering_roundoff": 2.902490237488564e-06
+    },
+    {
+      "cohort": "full_pool",
+      "method": "VIBES",
+      "n": 2327,
+      "max_abs_prediction_error": 3.907985046680551e-14,
+      "training_quartiles": [
+        1.8775293653859917,
+        3.73908411142889,
+        6.993548115901122
+      ],
+      "input_dtype": "float32",
+      "max_abs_centering_roundoff": 7.276022842006569e-07
+    },
+    {
+      "cohort": "locked800",
+      "method": "AIRSpec",
+      "n": 137,
+      "max_abs_prediction_error": 2.842170943040401e-14,
+      "training_quartiles": [
+        1.3809222386519615,
+        2.914888727151173,
+        7.880879808568091
+      ],
+      "input_dtype": "float32",
+      "max_abs_centering_roundoff": 8.368563397809226e-07
+    },
+    {
+      "cohort": "locked800",
+      "method": "VIBES",
+      "n": 137,
+      "max_abs_prediction_error": 1.1546319456101628e-14,
+      "training_quartiles": [
+        1.3809222386519615,
+        2.914888727151173,
+        7.880879808568091
+      ],
+      "input_dtype": "float32",
+      "max_abs_centering_roundoff": 1.8484845387689575e-07
+    }
+  ],
+  "no_refit": true,
+  "no_new_exclusions": true,
+  "freeze_sha256": "7904b27bcb8c7f7e6359bc304c3a85b6e5bbcac9bf15a77b045e76095f4b3fbe",
+  "workflow_sha256": "b3fcfee585fbebd0b08d97a5d6a6df69762c3fda5d3badd2a15bd56d98bc0d28",
+  "interpretation": "Algebraic explanation of saved predictions; post-hoc, conditional on fitted models. No independent validation or physical-causality claim."
+}

@@ -1,0 +1,122 @@
+{
+  "as_of": "2026-09-22",
+  "scope": "Saved-output arithmetic and catalog count checks; no model refits or new validation data",
+  "formulas": {
+    "RMSE": "sqrt(mean((prediction-y)^2))",
+    "MAE": "mean(abs(prediction-y))",
+    "bias": "mean(prediction-y)",
+    "predictive_R2": "1-sum((prediction-y)^2)/sum((y-mean(y))^2)",
+    "leading_Q3_share": "two named cases delta squared error / net delta squared error across all Q3 cases"
+  },
+  "paired_cohort_metrics": [
+    {
+      "cohort": "locked800",
+      "method": "AIRSpec",
+      "n": 137,
+      "RMSE": 2.547799453616988,
+      "MAE": 1.580930920638142,
+      "bias": 0.29355323345789697,
+      "predictive_R2": 0.8684975049673174
+    },
+    {
+      "cohort": "locked800",
+      "method": "VIBES",
+      "n": 137,
+      "RMSE": 2.4198532268729545,
+      "MAE": 1.8242365083808414,
+      "bias": -0.03968548444611029,
+      "predictive_R2": 0.881373542064572
+    },
+    {
+      "cohort": "full_pool",
+      "method": "AIRSpec",
+      "n": 2327,
+      "RMSE": 3.2243800858444325,
+      "MAE": 1.8913020314907643,
+      "bias": 0.2943919201988925,
+      "predictive_R2": 0.6785019590225098
+    },
+    {
+      "cohort": "full_pool",
+      "method": "VIBES",
+      "n": 2327,
+      "RMSE": 3.295807320220215,
+      "MAE": 1.951982693471378,
+      "bias": 0.2942114291783455,
+      "predictive_R2": 0.6641003908736469
+    }
+  ],
+  "matching_test_ids_truth_and_sites": true,
+  "q3": {
+    "n": 545,
+    "sites": 30,
+    "AIRSpec": {
+      "n": 545,
+      "RMSE": 2.299646567446618,
+      "MAE": 1.672095413573815,
+      "bias": 0.3086167586226521,
+      "predictive_R2": -4.694224722510101
+    },
+    "VIBES": {
+      "n": 545,
+      "RMSE": 2.752203384811032,
+      "MAE": 1.8810108187566064,
+      "bias": 0.30565622292849143,
+      "predictive_R2": -7.155929497561772
+    },
+    "leading_two_share": 0.5217470612831702
+  },
+  "repeat_cases": {
+    "n": 12,
+    "all_converged": true,
+    "max_abs_prediction_change": 0.0019939679906784136
+  },
+  "historical_airspec": {
+    "n_train": 606,
+    "n_test": 194,
+    "site_and_id_disjoint": true,
+    "test_metrics": {
+      "n": 194,
+      "RMSE": 3.8586544397509446,
+      "MAE": 2.523044232630451,
+      "bias": 1.0845263726494725,
+      "predictive_R2": 0.8823383527224645
+    },
+    "historical_checks": 43,
+    "native_checks": 84,
+    "correlation_squared": 0.9042378584096511
+  },
+  "catalog": {
+    "project_id": "c8f10563-d27a-4b5a-a8fd-ad79f3d07568",
+    "nodes": 110,
+    "kinds": {
+      "history": 101,
+      "family": 6,
+      "plan": 3
+    },
+    "records": 104,
+    "typed_links": 82,
+    "link_kinds": {
+      "data_dependency": 45,
+      "related_research": 29,
+      "qualifies_claim": 5,
+      "revises_interpretation": 3
+    },
+    "link_count_method": "Live descriptions parsed with .local-checkouts/openresearch-ui/ui/src/researchHistory.ts researchRelations; duplicates removed and endpoints checked."
+  },
+  "input_sha256": {
+    "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/heldout_predictions.csv": "6582d07c17ffaa2679aabb8a8c510b9c66dbfabbb9fa58f2f7b72e918ca8a84d",
+    "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/calibration_scores.csv": "a6ac2d47fbc29c3388fd58b2cfda85c4fbbd29b69278866b7da00565b1757e7f",
+    "research/ftir_hips_chem/output/tables/vibes_subgroup_audit/paired_residuals.csv": "d1f69331bded9bb7efbfd291cfb64af3c51cd091bae807f1ef255ead0fe5da99",
+    "research/ftir_hips_chem/output/tables/vibes_case_investigation/repeat_prediction_comparison.csv": "4ba3dfc0424073b480d8365e30be4359bae759feb4cc985c96fd1e004154bd04",
+    "research/ftir_hips_chem/output/tables/airspec_locked_reproduction/ocec_df6_predictions.csv": "870d35358e59ba2740f88b9f180c92e5961fb58a8b94369c17feccb81019bfc2",
+    "research/ftir_hips_chem/output/tables/airspec_locked_reproduction/heldout_metrics.csv": "d95f0c5f8c96f9e6ce8dd19c9a037c58a62d598003a59e9f1be03927ae6c25a9",
+    "research/ftir_hips_chem/output/tables/airspec_locked_reproduction/table_comparison.csv": "f42af0bfdcea07dfca4f65c9f1844e3e73dceca74bd602f319d4d4bbf9c53804",
+    "~/.local/share/openresearch/files/aethmodular-airspec-execution/airspec-baseline/runs/5e953103-e1b4-4218-8ddf-f9c67188bfd4/table_comparison.csv": "5d9997c097c28877218642234c2cf53ddb1ed18b5d0397c3e37e6a56fc8946b8"
+  },
+  "limits": [
+    "Existing confidence intervals not recomputed.",
+    "No new verification of raw data identities, chemistry, measurement uncertainty semantics or Addis truth.",
+    "Legacy R2 is not assumed to equal predictive R2."
+  ]
+}

@@ -4,71 +4,71 @@
   "hips_retrieval": "Google Drive file 1ykSPBIMvVWeP43eO--m5eRg4yO-KBp3j; downloaded directly because local placeholder stalled; byte hash matches prior evidence.",
   "files": [
     {
-      "source": "/Users/ahmadjalil/github/aethmodular/research/ftir_ec_phase3/output/corrected/improve_pool_corrected_df6.npz",
+      "source": "research/ftir_ec_phase3/output/corrected/improve_pool_corrected_df6.npz",
       "path": "research/ftir_ec_phase3/output/corrected/improve_pool_corrected_df6.npz"
     },
     {
-      "source": "/Users/ahmadjalil/github/aethmodular/research/ftir_ec_phase3/output/corrected/improve_pool_corrected_df8.npz",
+      "source": "research/ftir_ec_phase3/output/corrected/improve_pool_corrected_df8.npz",
       "path": "research/ftir_ec_phase3/output/corrected/improve_pool_corrected_df8.npz"
     },
     {
-      "source": "/Users/ahmadjalil/github/aethmodular/research/ftir_ec_phase3/output/corrected/etad_corrected_df6.npz",
+      "source": "research/ftir_ec_phase3/output/corrected/etad_corrected_df6.npz",
       "path": "research/ftir_ec_phase3/output/corrected/etad_corrected_df6.npz"
     },
     {
-      "source": "/Users/ahmadjalil/github/aethmodular/research/ftir_ec_phase3/output/corrected/etad_corrected_df8.npz",
+      "source": "research/ftir_ec_phase3/output/corrected/etad_corrected_df8.npz",
       "path": "research/ftir_ec_phase3/output/corrected/etad_corrected_df8.npz"
     },
     {
-      "source": "/Users/ahmadjalil/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University/Research/Grad/Data/Davis Data/DAVIS/ETAD FTIR/ETAD_FTIR_spectra.csv",
+      "source": "~/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University/Research/Grad/Data/Davis Data/DAVIS/ETAD FTIR/ETAD_FTIR_spectra.csv",
       "path": ".drive_cache/University/Research/Grad/Data/Davis Data/DAVIS/ETAD FTIR/ETAD_FTIR_spectra.csv"
     },
     {
-      "source": "/Users/ahmadjalil/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University/Research/Grad/Data/Davis Data/DAVIS/ETAD FTIR/ETAD_metadata.csv",
+      "source": "~/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University/Research/Grad/Data/Davis Data/DAVIS/ETAD FTIR/ETAD_metadata.csv",
       "path": ".drive_cache/University/Research/Grad/Data/Davis Data/DAVIS/ETAD FTIR/ETAD_metadata.csv"
     },
     {
-      "source": "/Users/ahmadjalil/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University/Research/Grad/Data/Davis Data/Spartan/SPARTAN_HIPS_Batch1-51.v2.csv",
+      "source": "~/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University/Research/Grad/Data/Davis Data/Spartan/SPARTAN_HIPS_Batch1-51.v2.csv",
       "path": ".drive_cache/University/Research/Grad/Data/Davis Data/Spartan/SPARTAN_HIPS_Batch1-51.v2.csv"
     },
     {
-      "source": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/Filter Data/unified_filter_dataset.pkl",
+      "source": "research/ftir_hips_chem/Filter Data/unified_filter_dataset.pkl",
       "path": "research/ftir_hips_chem/Filter Data/unified_filter_dataset.pkl"
     },
     {
-      "source": "/Users/ahmadjalil/github/aethmodular/research/ftir_hips_chem/output/tables/pls_calibration_phase2/addis_calibration_predictions.csv",
+      "source": "research/ftir_hips_chem/output/tables/pls_calibration_phase2/addis_calibration_predictions.csv",
       "path": "research/ftir_hips_chem/output/tables/pls_calibration_phase2/addis_calibration_predictions.csv"
     },
     {
-      "source": "/Users/ahmadjalil/github/aethmodular/research/ftir_ec_phase3/output/tables/ftir11/lowest_ocec_800_cohort.csv",
+      "source": "research/ftir_ec_phase3/output/tables/ftir11/lowest_ocec_800_cohort.csv",
       "path": "research/ftir_ec_phase3/output/tables/ftir11/lowest_ocec_800_cohort.csv"
     },
     {
-      "source": "/Users/ahmadjalil/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University/Research/Grad/Data/Davis Data/FTIR/apps/apps_data.npz",
+      "source": "~/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University/Research/Grad/Data/Davis Data/FTIR/apps/apps_data.npz",
       "path": ".drive_cache/University/Research/Grad/Data/Davis Data/FTIR/apps/apps_data.npz"
     },
     {
-      "source": "/Users/ahmadjalil/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University/Research/Grad/Data/Davis Data/FTIR/notebook/extracted/EC_samples.csv",
+      "source": "~/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University/Research/Grad/Data/Davis Data/FTIR/notebook/extracted/EC_samples.csv",
       "path": ".drive_cache/University/Research/Grad/Data/Davis Data/FTIR/notebook/extracted/EC_samples.csv"
     },
     {
-      "source": "/Users/ahmadjalil/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University/Research/Grad/Data/Davis Data/FTIR/notebook/extracted/EC_stats_chosen.csv",
+      "source": "~/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University/Research/Grad/Data/Davis Data/FTIR/notebook/extracted/EC_stats_chosen.csv",
       "path": ".drive_cache/University/Research/Grad/Data/Davis Data/FTIR/notebook/extracted/EC_stats_chosen.csv"
     },
     {
-      "source": "/Users/ahmadjalil/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University/Research/Grad/Data/Davis Data/FTIR/notebook/extracted/EC_fitted_long.csv",
+      "source": "~/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University/Research/Grad/Data/Davis Data/FTIR/notebook/extracted/EC_fitted_long.csv",
       "path": ".drive_cache/University/Research/Grad/Data/Davis Data/FTIR/notebook/extracted/EC_fitted_long.csv"
     },
     {
-      "source": "/Users/ahmadjalil/github/aethmodular/research/ftir_ec_phase3/output/tables/ftir11/addis_metrics.csv",
+      "source": "research/ftir_ec_phase3/output/tables/ftir11/addis_metrics.csv",
       "path": "research/ftir_ec_phase3/output/tables/ftir11/addis_metrics.csv"
     },
     {
-      "source": "/Users/ahmadjalil/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University/Research/Grad/Data/Davis Data/FTIR/local_db/tables/results_hips.csv",
+      "source": "~/Library/CloudStorage/GoogleDrive-ahzs645@gmail.com/My Drive/University/Research/Grad/Data/Davis Data/FTIR/local_db/tables/results_hips.csv",
       "path": ".drive_cache/University/Research/Grad/Data/Davis Data/FTIR/local_db/tables/results_hips.csv"
     },
     {
-      "source": "/Users/ahmadjalil/github/aethmodular/research/ftir_ec_phase3/output/tables/ftir11/addis_predictions.csv",
+      "source": "research/ftir_ec_phase3/output/tables/ftir11/addis_predictions.csv",
       "path": "research/ftir_ec_phase3/output/tables/ftir11/addis_predictions.csv"
     }
   ]

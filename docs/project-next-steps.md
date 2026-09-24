@@ -5,10 +5,10 @@ backlog remains in [open-items.md](open-items.md).
 
 ## Scientific direction
 
-The proposed central question is: **How reliably can the FTIR calibration
-transfer to Addis, and under what conditions?** The next research summary should
-state the intended scientific claim, the evidence that supports it, and the
-measurements needed to test it independently.
+The central question is: **How reliably can the FTIR calibration transfer to
+Addis, and under what conditions?** The [current research summary](current-research-summary.md)
+now separates reproducibility and source-domain performance from independent
+Addis accuracy, with claim-level evidence, corrections and missing measurements.
 
 OpenResearch now supports navigating the historical catalog and executing a
 frozen AIRSpec baseline. Prioritize scientific evidence and reproducibility;
@@ -54,15 +54,19 @@ reviewable release. The frozen AIRSpec source commit is
 Done when: maintained source and tests are committed, necessary local-only
 inputs/results are recoverable, and another checkout can locate its requirements.
 
-## 2. Write one current research summary
+## 2. Write one current research summary — completed 2026-09-22
 
-- [ ] Create a claim-to-evidence table with the question, result, population,
+See [the synthesis and its verification scope](current-research-summary.md).
+The selected reruns and missing evidence remain future work; only this summary
+and prioritization are complete.
+
+- [x] Create a claim-to-evidence table with the question, result, population,
   split, uncertainty, supporting files/run, limitations and next decision.
-- [ ] Distinguish established, exploratory, superseded and blocked claims;
+- [x] Distinguish established, exploratory, superseded and blocked claims;
   link corrections to the specific earlier statements they revise.
-- [ ] Reconcile older overview documents and pending-task lists with the
+- [x] Reconcile older overview documents and pending-task lists with the
   completed reproductions and current catalog counts.
-- [ ] Select the historical analyses needed for the intended final claims.
+- [x] Select the historical analyses needed for the intended final claims.
   Prioritize those for reproduction rather than rerunning every notebook.
 
 Done when: each proposed conclusion has traceable evidence and an explicit
@@ -72,6 +76,7 @@ scope; completed work is no longer presented as an outstanding task.
 
 This can proceed alongside consolidation and the research summary.
 
+- [x] Freeze the existing 253-filter Addis full-pool AIRSpec/VIBES predictions and publish a hash-checked pairing template and scorer. Six source records lack volume; see [freeze package](addis-validation-freeze.md). No real pairing eligibility is locked yet.
 - [ ] Review the existing data-request draft and identify its intended recipient.
   Obtain explicit authorization before sending it.
 - [ ] Obtain independent thermal EC measurements, units, uncertainties and
@@ -129,8 +134,8 @@ claims remain limited by missing measurements.
 
 ## Execution order
 
-Start with consolidation and the research summary. Review the missing-data
-request in parallel. Use the summary to finalize the VIBES contract and select
-the necessary historical reruns. Assemble the release after those results and
+Start with consolidation; the research summary and claim-bearing rerun priorities
+are now recorded. Review the missing-data request in parallel. Use the summary
+to finalize the VIBES contract and carry out the selected historical reruns. Assemble the release after those results and
 limitations have been adjudicated. Broader notebook cleanup follows scientific
 priority; it is not a prerequisite for every new result.

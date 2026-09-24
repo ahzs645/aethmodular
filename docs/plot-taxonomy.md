@@ -1,5 +1,15 @@
 # Plot taxonomy
 
+> **Historical census; carbon provenance and uncertainty interpretations below
+> are superseded.** The rows called “TOR EC” in this document are SPARTAN
+> `ChemSpec_EC_PM2.5`, a rounded FTIR EC product, not thermal-optical EC.
+> FTIR-vs-ChemSpec pairs are duplicate-product checks, not method validation.
+> `HIPS_Uncertainty` and `HIPS_MDL` exist as separate parameter rows, so the
+> claim below that HIPS uncertainty is unavailable is also obsolete. Use
+> [AGENTS.md](../AGENTS.md#carbon-measurement-provenance--do-not-infer-tor-from-chemspec),
+> [the corrected provenance record](open-items.md#establish-the-provenance-of-ec_ftir--substantially-resolved),
+> and [the current scientific summary](current-research-summary.md) for analysis.
+
 Earlier passes characterised exactly one family (crossplots) and counted inline
 helper redefinitions. This is the full census: **3,942 plotting calls across 180
 files**, forming **654 figure-producing cells**.

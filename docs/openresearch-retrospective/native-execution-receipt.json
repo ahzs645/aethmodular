@@ -1,0 +1,22 @@
+{
+  "project_id": "203b7e92-c6ad-4d8a-9936-411a08bce8c6",
+  "experiment_id": "d2b46613-884e-4eef-b9d8-d06d62459b63",
+  "run_id": "5e953103-e1b4-4218-8ddf-f9c67188bfd4",
+  "commit": "fb0abeaf5d272b76c64bf6616743e56f00800362",
+  "branch": "orx/airspec-locked-baseline-native-reproduction",
+  "command": "bash research/ftir_hips_chem/workflows/openresearch_airspec/run.sh",
+  "source_archive_sha256": "961d30056e40a3f949f3d8048cdeb9ccfe5c5ce6c503a4d6b7cf8916e9cf479c",
+  "source_archive_bytes": 448051200,
+  "bundle_id": "5b651a3e20880cc1d7284823b0422b833d2d00e5101bfff9f74bd249bf3ba665",
+  "status": "done",
+  "evidence_status": "passed",
+  "checks_passed": 84,
+  "historical_checks_passed": 43,
+  "max_abs_difference": 2.469136006766348e-13,
+  "experiment_url": "http://127.0.0.1:4791/projects/203b7e92-c6ad-4d8a-9936-411a08bce8c6/tasks/new?pane=%7B%22kind%22%3A%22experiment%22%2C%22experimentId%22%3A%22d2b46613-884e-4eef-b9d8-d06d62459b63%22%2C%22view%22%3A%22overview%22%7D",
+  "report_url": "http://127.0.0.1:4791/projects/203b7e92-c6ad-4d8a-9936-411a08bce8c6/tasks/new?pane=%7B%22kind%22%3A%22file%22%2C%22path%22%3A%22airspec-baseline/report.md%22%2C%22source%22%3A%22artifacts%22%7D",
+  "artifact_directory": "~/.local/share/openresearch/files/aethmodular-airspec-execution/airspec-baseline/runs/5e953103-e1b4-4218-8ddf-f9c67188bfd4",
+  "baseline_branch_frozen": true,
+  "source_worktree": "~/github/aethmodular-airspec-openresearch",
+  "input_bundle_requires_local_staging": true
+}

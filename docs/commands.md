@@ -62,6 +62,8 @@ default remains all configured sites.
 ## SPARTAN workflows
 
 ```bash
+aeth spartan pull --check-updates
+aeth spartan pull
 aeth spartan pull --skip-download
 aeth spartan coverage
 aeth spartan coverage-plots
@@ -71,7 +73,15 @@ aeth spartan extras
 ```
 
 Arguments after the workflow name are passed through to the implementation
-script.
+script. The crawler reads SPARTAN's current public S3 bucket. `--check-updates`
+streams files already in the local raw cache and compares SHA-256 content
+without changing files or reports. It reports filename and S3 ETag changes
+against the saved inventory. With no raw cache, unchanged ETags provide a
+metadata comparison; files without an earlier saved ETag remain unverified.
+Plain `pull` now refreshes changed CSVs
+atomically and regenerates the inventory only after every transfer succeeds.
+Both network modes require the public SPARTAN host to be reachable;
+`--skip-download` is offline and needs a populated raw cache.
 
 ## Research builders
 

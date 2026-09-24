@@ -1,0 +1,75 @@
+{
+  "semantics": "Specific claim corrections, not wholesale invalidation or new scientific validation. Earlier prose remains preserved.",
+  "updates": [
+    {
+      "from": "ftir_43",
+      "to": "ftir_46",
+      "type": "qualifies_claim",
+      "decision": "qualify",
+      "claim_scope": "Spectra add predictive information beyond the metadata base.",
+      "current_reading": "The paired spectra-versus-metadata RMSE interval includes zero. The mass-conditioned contrast is a different supported comparison; a null-test result alone does not establish the paired increment.",
+      "evidence": "research/ftir_ec_phase3/ftir_46_paired_increment_and_mass.ipynb",
+      "source_sha256": "f646e1329b55a08f7758a629af607979d9ff979bb9151fc8cdec4d7727e32192"
+    },
+    {
+      "from": "ftir_37",
+      "to": "ftir_47",
+      "type": "revises_interpretation",
+      "decision": "supersede_specific_interpretation",
+      "claim_scope": "Pooled lot-level blank quadratics explain the loading/offset pattern.",
+      "current_reading": "Use deployed calibration-line-specific blanks. Pooled-lot curvature mixes distinct lines; the Pasadena-dissolves conclusion does not survive the per-line reconstruction.",
+      "evidence": "research/ftir_ec_phase3/ftir_47_blank_lines_per_deployed_line.ipynb",
+      "source_sha256": "ba8e116a4a087235eab9de266d1bfb44bd5b9bd72b71c67d3057f156c2017fe9"
+    },
+    {
+      "from": "ftir_16",
+      "to": "ftir_27",
+      "type": "revises_interpretation",
+      "decision": "supersede_independence_assumption",
+      "claim_scope": "ChemSpec EC/BC provide an independent check of the Addis calibration axes.",
+      "current_reading": "ChemSpec EC mirrors the FTIR EC product, while ChemSpec BC mirrors HIPS/MAC. Neither is an independent thermal EC validation target.",
+      "evidence": "research/ftir_ec_phase3/ftir_27_chemspec_circularity.ipynb",
+      "source_sha256": "d27b8d08d38855ab59aad15c24f46a83410eee854a8f08e729392cb833945aa3"
+    },
+    {
+      "from": "ftir_30",
+      "to": "ftir_41",
+      "type": "revises_interpretation",
+      "decision": "supersede_data_availability_statement",
+      "claim_scope": "The five Adama quartz samples have no FTIR/HIPS comparison.",
+      "current_reading": "Later work assembled five date-paired Adama quartz/PTFE comparisons, with different physical filters and two comparability flags. This updates availability, not the absence of an independent Addis thermal reference.",
+      "evidence": "research/ftir_ec_phase3/ftir_41_adama_three_method_reconciliation.ipynb",
+      "source_sha256": "172b9b3ccfe37eb1293124830124dc5f7bc6b9d6c26ac1de1e07cf2e65e7913d"
+    },
+    {
+      "from": "ftir_30",
+      "to": "ftir_44",
+      "type": "qualifies_claim",
+      "decision": "qualify_transfer_scope",
+      "claim_scope": "Extending the composition-selected model’s IMPROVE validation to Ethiopian transfer.",
+      "current_reading": "The Adama diagnostic shows composition-selected models overpredict its quartz EC, with only five samples, different composition and an unconfirmed analysis-ID mapping. Neither this nor IMPROVE holdouts validates Addis EC accuracy.",
+      "evidence": "research/ftir_ec_phase3/ftir_44_adama_through_locked_calibrations.ipynb",
+      "source_sha256": "52152e3a787fb56bbf3b779faec7e906dc25294a1a0a3ccee796951876cce00d"
+    },
+    {
+      "from": "ftir_13",
+      "to": "ftir_38",
+      "type": "qualifies_claim",
+      "decision": "qualify_attribution_scope",
+      "claim_scope": "Interpreting the persistent 1617–1620 band and transfer gap in terms of charcoal-like composition.",
+      "current_reading": "The adjusted PMF analysis supports a regional spectral marker but not a charcoal/eucalyptus assignment. Peak position and companion-band evidence remain distinct from fuel-source identification.",
+      "evidence": "research/ftir_ec_phase3/ftir_38_1617_and_dust_attribution.ipynb",
+      "source_sha256": "11cb855315f9e684ea684940fa2f2146c03a6d0441340c2494cf8093920c6b07"
+    },
+    {
+      "from": "ftir_42",
+      "to": "ftir_48",
+      "type": "qualifies_claim",
+      "decision": "qualify_target_difficulty_mechanism",
+      "claim_scope": "Interpreting weaker direct EC_TOT scores as a pyrolysis-correction learning limitation.",
+      "current_reading": "On the selected cohort the oracle/composed analysis points to EC_TOR error and target scaling; the full-pool decomposition differs. Keep cohort-specific mechanisms separate from the original descriptive target scores.",
+      "evidence": "research/ftir_ec_phase3/ftir_48_pyrolysis_split_target.ipynb",
+      "source_sha256": "3d4ec56f801e1d2077217eb49fb5daac5bae4c08425b7dc862ff85bb879dfb8c"
+    }
+  ]
+}

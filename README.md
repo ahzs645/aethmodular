@@ -6,7 +6,8 @@ This repository now uses a `pyproject.toml`-based setup (uv-ready), canonical `s
 
 Detailed usage guides: `docs/library-usage.md` and `docs/commands.md`.
 
-Current research priorities and completion criteria: [Project next steps](docs/project-next-steps.md).
+Current scientific position: [FTIR transfer to Addis](docs/current-research-summary.md).
+Research priorities and completion criteria: [Project next steps](docs/project-next-steps.md).
 
 ## Quick Start
 

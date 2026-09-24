@@ -20,6 +20,14 @@ repo commands with `uv run`. Do not use the macOS system `python3`, which lacks
 the scientific dependencies. Run `uv run aeth doctor` to verify the active
 environment and data paths before executing notebooks or pipelines.
 
+Machine-specific locations (Drive root, dataset overrides, `ZOER_URL`,
+OpenResearch) go in the gitignored repo-root `.env`; `.env.example` lists every
+variable. `aethmodular_cli/env.py` loads it from the central resolvers
+(`pls_transfer.py` and so `data_paths.py`, `scripts/common/paths.py`, the CLI;
+deliberately not `config.py`, whose hash the frozen audits pin), so never
+write `/Users/<name>/...`, a Drive account, or a server URL into code, docs, or
+receipts. Read the variable, and record paths with `env.display_path()`.
+
 ## Where things live (paths from repo root)
 
 ```
@@ -403,7 +411,70 @@ When creating a new notebook, follow the `Example_Modular_Analysis.ipynb` or
   `pd.merge(df, factor_merge, on='date')`. All other notebooks map via
   datetime index: `df.index.normalize().tz_localize(None)`.
 
+## Reader-facing names for the calibration work
+
+Figures, decks, notebooks and the gallery use the names agreed with Ann on
+2026-09-23 in [docs/naming-conventions.md](docs/naming-conventions.md) (mirrored
+in `gallery/app/src/lib/labels.ts`): **calibration set** (IMPROVE filters a model
+is built on), **cross-validation** (IMPROVE sites held out of it), **test set**
+(the Addis filters); "spline baseline" for AIRSpec; "raw spectra"; Deming only,
+no OLS, on comparison plots. Internal codes (k, AIRSpec, held-out TOR) do not go
+on reader-facing figures without those names.
+
+## Carbon measurement provenance — do not infer TOR from ChemSpec
+
+The four focus sites in `unified_filter_dataset.pkl` (CHTS/Beijing,
+INDH/Delhi, USPA/JPL, ETAD/Addis Ababa) have **no thermal-optical EC or OC
+reference on their SPARTAN filters**. SPARTAN public ChemSpec `EC PM2.5` and
+`OC PM2.5` are FTIR-derived products (method codes 217/218), not TOR/TOT.
+`ChemSpec_EC_PM2.5` and `ChemSpec_OC_PM2.5` are public, two-decimal reports
+of the same FTIR-derived products as the in-house `EC_ftir` and `OC_ftir`.
+In the gallery export, 494 physical filters have both EC feeds; their median
+absolute difference is
+about 0.003 µg/m³. Their near-perfect correlation is a duplicate-product
+check, **not independent method agreement or validation**. Do not label a
+ChemSpec carbon column “TOR,” fit `EC_ftir` against `ChemSpec_EC_PM2.5` as a
+validation, or count the two feeds as separate observations.
+
+`HIPS_Fabs` is a separate optical readout on matched SPARTAN filters, reported
+in Mm⁻¹. `HIPS_Fabs / MAC_VALUE` is an optical BC conversion, not another
+independent carbon measurement; the matched public BC product generally uses
+MAC 10. A HIPS-vs-FTIR crossplot is a transfer/optical-agreement diagnostic;
+it cannot establish
+EC accuracy without an outside EC reference. Check public BC method codes
+before assuming every network BC row came directly from HIPS: some are
+HIPS–SSR curve estimates.
+
+**TOR belongs to a different population here.** IMPROVE supplies the
+thermal-optical EC used to train and test FTIR calibrations. A held-out
+IMPROVE TOR score measures source-domain performance, not accuracy at Addis
+or the other SPARTAN sites. The separate five-filter Adama AMOD quartz TOR
+campaign is not part of these four SPARTAN site cohorts or the gallery's
+filter counts. Site and season chips in the gallery count physical SPARTAN
+filters after exclusions, regardless of which measurement fields are present;
+check non-null field coverage and matching FilterIds before reporting pairs.
+The gallery bins seasons by each filter's own site calendar by default
+(Beijing four seasons, Delhi IMD monsoon bins, JPL wet/dry windows, Addis
+Bega/Belg/Kiremt; see docs/site-seasonality.md), with site-qualified labels
+such as "Beijing · Winter (Dec–Feb)". The Ethiopian `dry_feb`/`belg_feb` month
+bins remain as a shared option for like-month comparison across sites. Do not
+call those shared bins local Beijing, Delhi, or JPL seasons.
+Whether any of these SPARTAN filters were included in the upstream FTIR
+calibration training set remains unresolved; the duplicate ChemSpec column
+cannot answer that question.
+
+For method-code evidence see `research/spartan_ec_2026_06_16/README.md` and
+`_build_01_carbon_methods_audit.py`; for the duplicate-column audit see
+`docs/open-items.md` and `research/ftir_ec_phase3/ftir_25_intercept_invariant.md`.
+The current claim limits are in `docs/current-research-summary.md`.
+
 ## Agent rules
+
+For site-specific seasonal reporting, use [docs/site-seasonality.md](docs/site-seasonality.md).
+The gallery's season chips default to each site's local calendar; the
+Ethiopian `dry_feb`/`belg_feb` options are shared month bins across all four
+sites. PMF is Addis-only and uses the Addis local `belg_feb` mapping by default.
+Local month labels alone do not establish measured wet or dry conditions.
 
 Do:
 

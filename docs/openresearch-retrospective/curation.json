@@ -1,0 +1,384 @@
+{
+  "overrides": {
+    "vibes_comparison": {
+      "note": "Historical local preprocessing comparison; the full downstream Colab comparison is now a separate completed external record. Current source is untracked."
+    },
+    "filter_only_diagnostics": {
+      "extra_artifact_directory": "research/ftir_hips_chem/output/tables/filter_diagnostics"
+    },
+    "ftir_11": {
+      "note": "Cohorts have different held-out populations; do not rank their RMSE as a common-test comparison. VIP replication statistic needs provenance recovery."
+    },
+    "ftir_43": {
+      "note": "Qualified by ftir_46: the proportional-null comparison does not establish a significant paired increment over the metadata baseline."
+    },
+    "ftir_47": {
+      "note": "Revises pooled-lot blank interpretations using deployed calibration lines."
+    },
+    "ftir_49": {
+      "note": "Recorded daily-pickle fallback; minute-only diagnostics are not established by that fallback run."
+    }
+  },
+  "additional_records": [
+    {
+      "id": "september_release",
+      "kind": "portable_release",
+      "title": "September filter-only scientific release",
+      "source": "deliverables/filter_only_scientific_release_2026-09-11/README.md",
+      "evidence_status": "historical_release_inspected",
+      "artifact_files": [
+        "deliverables/filter_only_scientific_release_2026-09-11/claim_ledger.csv",
+        "deliverables/filter_only_scientific_release_2026-09-11/figure_ledger.csv",
+        "deliverables/filter_only_scientific_release_2026-09-11/reproduce.py",
+        "deliverables/filter_only_scientific_release_2026-09-11/requirements.lock",
+        "deliverables/filter_only_scientific_release_2026-09-11/release_checks/fresh_environment.json"
+      ]
+    },
+    {
+      "id": "audit_catalog",
+      "kind": "evidence_audit",
+      "title": "Physical-filter and date-candidate audit",
+      "source": "docs/matched-sample-audit-2026-09-10.md",
+      "evidence_status": "artifacts_inspected",
+      "artifact_files": [
+        "research/ftir_hips_chem/output/tables/matched_sample_audit/manifest.json",
+        "research/ftir_hips_chem/output/tables/matched_sample_audit/selection_report.md"
+      ]
+    },
+    {
+      "id": "active_interval",
+      "kind": "evidence_audit",
+      "title": "Active-interval and instrument-provenance evidence",
+      "source": "docs/active-interval-matching-2026-09-10.md",
+      "evidence_status": "documented_evidence_gaps",
+      "artifact_files": [
+        "research/ftir_hips_chem/output/tables/active_interval_matches/manifest.json"
+      ]
+    },
+    {
+      "id": "airspec_port",
+      "kind": "reference_validation",
+      "title": "AIRSpec Python port versus R reference",
+      "source": "research/ftir_ec_phase3/scripts/validate_airspec_port.py",
+      "evidence_status": "historical_validation_documented",
+      "artifact_files": [
+        "research/ftir_ec_phase3/scripts/airspec_baseline.py",
+        "research/ftir_ec_phase3/scripts/test_airspec_baseline.py"
+      ]
+    },
+    {
+      "id": "ftir_14",
+      "kind": "feasibility",
+      "title": "Delhi/Beijing spectra feasibility at the time",
+      "source": "research/ftir_ec_phase3/ftir_14_delhi_beijing_feasibility.md",
+      "evidence_status": "historical_document_only",
+      "note": "Time-specific access gap; later five-site work exists. Do not carry the old missing-data statement forward as current availability."
+    },
+    {
+      "id": "ftir_25",
+      "kind": "algebraic_analysis",
+      "title": "Absorption-unit intercept invariant",
+      "source": "research/ftir_ec_phase3/ftir_25_intercept_invariant.md",
+      "evidence_status": "historical_document_only",
+      "artifact_files": [
+        "research/ftir_ec_phase3/scripts/run_ftir_25_intercept_invariant.py"
+      ]
+    },
+    {
+      "id": "early_research_summary",
+      "kind": "historical_summary",
+      "title": "April multisite research summary",
+      "source": "research/ftir_hips_chem/COMPLETE_RESEARCH_SUMMARY.md",
+      "evidence_status": "historical_summary_requires_reconciliation",
+      "note": "Discovery index only. Includes obsolete or overstrong language; FTIR prediction is not thermal measurement. Later timing, validation and provenance findings take precedence for current interpretation."
+    },
+    {
+      "id": "vibes_full_colab",
+      "kind": "completed_external_run",
+      "title": "Full VIBES/AIRSpec Colab comparison",
+      "source": "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/RUN_MANIFEST.json",
+      "evidence_status": "external_completion_artifacts_verified",
+      "note": "Completed external Colab run: 12,808 cases, zero failed fits, 451 retried fits, eight saved figures; archived notebook has no saved errors. Completed 2026-09-21T09:45:48Z according to the saved completion receipt. The audit verifies bundle content hashes and all paired predictions. This is imported evidence, not a newly executed OpenResearch run; no historical Git commit is inferred.",
+      "artifact_files": [
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/COMPLETION.json",
+        "research/ftir_hips_chem/notebooks/archive/executed/VIBES_AIRSpec_Colab_full_executed.ipynb",
+        "research/ftir_hips_chem/scripts/vibes_large_run.py",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/RUN_MANIFEST.json",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/addis_predictions.csv",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/background_model.npz",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/background_rank_cv.csv",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/background_training_blanks.csv",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/blank_metrics.csv",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/calibration_scores.csv",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/case_audit.csv",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/cases.csv",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/comparison_report.zip",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/cv_curves.csv",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/fit_diagnostics.csv",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/heldout_predictions.csv",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/injection_metrics.csv",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/paired_site_bootstrap.csv",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/pls_full_pool_AIRSpec.npz",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/pls_full_pool_VIBES.npz",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/pls_locked800_AIRSpec.npz",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/pls_locked800_VIBES.npz",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/spectral_examples.npz",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/spectral_features.csv",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/plots/01_training_only_cv.png",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/plots/02_heldout_tor.png",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/plots/03_paired_model_comparison.png",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/plots/04_addis_transfer.png",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/plots/05_addis_band_features.png",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/plots/06_blanks_and_recovery.png",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/plots/07_runtime_and_coverage.png",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/plots/08_matched_spectral_overlays.png"
+      ]
+    },
+    {
+      "id": "vibes_subgroup_audit",
+      "kind": "posthoc_prediction_audit",
+      "title": "VIBES/AIRSpec paired site, lot and loading audit",
+      "source": "docs/vibes-subgroup-audit-2026-09-21.md",
+      "evidence_status": "local_saved_prediction_audit_verified",
+      "note": "No refit or new exclusions. Two frozen test cohorts: 2,327 and 137 paired filters. All saved headline scores reconciled; 10,000 paired site-cluster draws. Exploratory pointwise intervals after test inspection. Full-pool Q3 RMSE delta +0.453 [0.187, 0.743] µg/filter; no confirmed subgroup switching rule.",
+      "artifact_files": [
+        "research/ftir_hips_chem/output/tables/vibes_subgroup_audit/addis_feature_summary.csv",
+        "research/ftir_hips_chem/output/tables/vibes_subgroup_audit/audit_manifest.json",
+        "research/ftir_hips_chem/output/tables/vibes_subgroup_audit/blank_summary.csv",
+        "research/ftir_hips_chem/output/tables/vibes_subgroup_audit/injection_summary.csv",
+        "research/ftir_hips_chem/output/tables/vibes_subgroup_audit/loading_site_sensitivity.csv",
+        "research/ftir_hips_chem/output/tables/vibes_subgroup_audit/paired_residuals.csv",
+        "research/ftir_hips_chem/output/tables/vibes_subgroup_audit/report.md",
+        "research/ftir_hips_chem/output/tables/vibes_subgroup_audit/site_influence.csv",
+        "research/ftir_hips_chem/output/tables/vibes_subgroup_audit/subgroup_metrics.csv",
+        "research/ftir_hips_chem/output/tables/vibes_subgroup_audit/training_loading_bands.csv",
+        "research/ftir_hips_chem/scripts/vibes_error_audit.py",
+        "research/ftir_hips_chem/workflows/audit_vibes_saved_predictions.py",
+        "tests/test_vibes_error_audit.py"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "from": "early_research_summary",
+      "to": "cross_plots_and_distributions",
+      "reason": "Historical summary indexes the multisite comparison question."
+    },
+    {
+      "from": "cross_plots_and_distributions",
+      "to": "audit_catalog",
+      "reason": "Later physical-filter and timing audit qualifies historical matching assumptions."
+    },
+    {
+      "from": "audit_catalog",
+      "to": "active_interval",
+      "reason": "Candidate dates motivate evidence-gated active-period matching."
+    },
+    {
+      "from": "active_interval",
+      "to": "filter_only_diagnostics",
+      "reason": "Unresolved interval evidence constrains the completed analysis to filter-only scope."
+    },
+    {
+      "from": "filter_only_diagnostics",
+      "to": "filter_relationship_stability",
+      "reason": "Frozen diagnostic inputs feed the reported-date holdout analysis."
+    },
+    {
+      "from": "filter_relationship_stability",
+      "to": "filter_proportionality",
+      "reason": "Preserved baseline predictions support proportional and ID-11 training comparisons."
+    },
+    {
+      "from": "filter_proportionality",
+      "to": "september_release",
+      "reason": "Portable release packages diagnostic, stability and proportionality evidence."
+    },
+    {
+      "from": "ftir_07",
+      "to": "ftir_08",
+      "reason": "Deployed-model diagnosis precedes HIPS transfer and VIP investigation."
+    },
+    {
+      "from": "ftir_08",
+      "to": "ftir_09",
+      "reason": "Transfer question motivates spectral analog selection."
+    },
+    {
+      "from": "ftir_09",
+      "to": "ftir_10",
+      "reason": "Analog candidates are included in cohort comparisons."
+    },
+    {
+      "from": "ftir_10",
+      "to": "ftir_11",
+      "reason": "Lowest-OC/EC cohort extends the calibration-cohort investigation."
+    },
+    {
+      "from": "airspec_port",
+      "to": "ftir_13",
+      "reason": "R-reference validation supports use of the AIRSpec port."
+    },
+    {
+      "from": "ftir_11",
+      "to": "ftir_13",
+      "reason": "Rebuild low-OC/EC calibration with corrected spectra."
+    },
+    {
+      "from": "ftir_12",
+      "to": "ftir_13",
+      "reason": "Revisit spectral-band evidence after baseline correction."
+    },
+    {
+      "from": "ftir_13",
+      "to": "ftir_15",
+      "reason": "Bootstrap and hybrid-cohort work examine remaining uncertainty."
+    },
+    {
+      "from": "ftir_13",
+      "to": "ftir_32",
+      "reason": "Protocol ablation examines corrected and raw calibration comparisons."
+    },
+    {
+      "from": "ftir_09",
+      "to": "ftir_33",
+      "reason": "Later explainer examines how spectral cohorts were selected and failed."
+    },
+    {
+      "from": "ftir_41",
+      "to": "ftir_42",
+      "reason": "TOR/TOT reconciliation motivates target-definition tests."
+    },
+    {
+      "from": "ftir_13",
+      "to": "ftir_44",
+      "reason": "Locked corrected calibration is evaluated on external Adama samples."
+    },
+    {
+      "from": "ftir_42",
+      "to": "ftir_48",
+      "reason": "Pyrolysis split investigates target-definition difficulty."
+    },
+    {
+      "from": "ftir_43",
+      "to": "ftir_45",
+      "reason": "Spectral residual signal motivates feature-attribution tests."
+    },
+    {
+      "from": "ftir_43",
+      "to": "ftir_46",
+      "reason": "Paired comparison qualifies the earlier incremental-signal interpretation."
+    },
+    {
+      "from": "ftir_45",
+      "to": "ftir_46",
+      "reason": "Metadata and mass controls refine the attribution question."
+    },
+    {
+      "from": "ftir_37",
+      "to": "ftir_47",
+      "reason": "Per-line blank audit revises the interpretation of loading corrections."
+    },
+    {
+      "from": "ftir_33",
+      "to": "ftir_50",
+      "reason": "Analog-selection limitations motivate richer spectral comparisons."
+    },
+    {
+      "from": "ftir_50",
+      "to": "ftir_52",
+      "reason": "Network spectral map develops the cross-site comparison."
+    },
+    {
+      "from": "ftir_13",
+      "to": "ftir_54",
+      "reason": "Model-form robustness tests the locked corrected calibration setting."
+    },
+    {
+      "from": "ftir_13",
+      "to": "vibes_comparison",
+      "reason": "Alternative preprocessing addresses the baseline-correction question."
+    },
+    {
+      "from": "vibes_comparison",
+      "to": "vibes_full_colab",
+      "reason": "Preprocessing diagnostics lead to separate downstream calibration refits."
+    },
+    {
+      "from": "vibes_full_colab",
+      "to": "vibes_subgroup_audit",
+      "reason": "Completed frozen predictions support paired subgroup diagnosis without refitting or changing test membership."
+    }
+  ],
+  "reviewed_evidence": [
+    {
+      "title": "Filter-only analyses now reproduced in OpenResearch",
+      "finding": "The new run reproduces the frozen downstream analyses. This establishes numerical repeatability from supplied analysis inputs, not independent EC accuracy, raw-spectrum reconstruction, or validated instrument sampling intervals.",
+      "sources": [
+        "deliverables/filter_only_scientific_release_2026-09-11/reproduce.py",
+        "deliverables/filter_only_scientific_release_2026-09-11/README.md"
+      ]
+    },
+    {
+      "title": "Earlier cohort RMSE rankings need qualification",
+      "finding": "The saved ftir_11 table gives lowest-OCEC 800 held-out RMSE 3.4148 on 194 test filters, while random 800 #3 gives 3.0971 on 154. Different test populations prevent a common-test ranking. PHASE3_SUMMARY documents the caveat; older build_notebooks.py takeaway text still overstates the RMSE comparison. Preserve that discrepancy rather than silently rewriting historical outputs.",
+      "sources": [
+        "research/ftir_ec_phase3/output/tables/ftir11/site_held_out_tor_metrics.csv",
+        "research/ftir_ec_phase3/PHASE3_SUMMARY.md",
+        "research/ftir_ec_phase3/scripts/build_notebooks.py"
+      ]
+    },
+    {
+      "title": "Spectral residual claim was qualified by paired evidence",
+      "finding": "For ftir_46 blocked spectra-beyond-metadata, pooled delta RMSE is -0.05957 with block-bootstrap interval [-0.13366, 0.02015]. With mass in the metadata baseline it is -0.12580 [-0.19869, -0.03223]. These are distinct comparisons; the first interval includes zero. Existing tables were inspected, not refitted here.",
+      "sources": [
+        "research/ftir_ec_phase3/output/tables/ftir46/paired_differences.csv",
+        "research/ftir_ec_phase3/README.md"
+      ]
+    },
+    {
+      "title": "Model-form results are recorded within their tested scope",
+      "finding": "The saved corrected lowest-OC/EC 800 table gives held-out predictive R² 0.90424 for PLS, 0.77299 for HGB, 0.73046 for RF, 0.52495 for MLP and 0.77096 for PLS-to-HGB. This supports the recorded comparison within that cohort, representation and protocol; it is not a universal model ranking. The README's approximate MLP lower endpoint of 0.53 is less precise than the table.",
+      "sources": [
+        "research/ftir_ec_phase3/output/tables/ftir54/summary_for_readme.csv",
+        "research/ftir_ec_phase3/scripts/run_ftir_54.py"
+      ]
+    },
+    {
+      "title": "Historical optical/filter joins need evidence recovery",
+      "finding": "The later audit identifies historical 15:00 bins labelled as 9 AM, limits of saved completeness, and a ±1-day candidate matcher. Keep older crossplots as historical diagnostics until underlying time and processing evidence supports a valid rematch. Source-code fixes alone do not repair stored pickles.",
+      "sources": [
+        "docs/matched-sample-audit-2026-09-10.md",
+        "docs/active-interval-matching-2026-09-10.md"
+      ]
+    },
+    {
+      "title": "Calibration-line blank correction supersedes pooled-lot interpretation",
+      "finding": "The phase-3 record states that ftir_47 keys blank fits by lot, intercept and slope, revising the earlier pooled-lot interpretation. Both per-line and pooled-lot ledgers are retained for review; no new blank fit was performed.",
+      "sources": [
+        "research/ftir_ec_phase3/README.md",
+        "research/ftir_ec_phase3/output/tables/ftir47/blank_ledger_per_line.csv",
+        "research/ftir_ec_phase3/output/tables/ftir47/blank_ledger_per_lot_pooled.csv"
+      ]
+    },
+    {
+      "title": "Full VIBES/AIRSpec Colab comparison completed",
+      "finding": "12,808 cases completed with zero failed fits. Full-pool held-out RMSE is 3.22438 for AIRSpec and 3.29581 for VIBES (2,327 filters). Restricted-cohort values are 2.54780 and 2.41985 (137 filters). Both original paired intervals include zero. This does not establish equivalence or permit comparing training cohorts with different test populations. The completion receipt and matching input bundle contents are verified by the local audit.",
+      "sources": [
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/COMPLETION.json",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/RUN_MANIFEST.json",
+        "research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/calibration_scores.csv",
+        "research/ftir_hips_chem/output/tables/vibes_subgroup_audit/audit_manifest.json"
+      ]
+    },
+    {
+      "title": "Paired loading audit prioritizes a targeted spectral diagnosis",
+      "finding": "In the full-pool third training-defined loading quartile, (3.739, 6.994] µg/filter, VIBES increases RMSE by 0.45256 [0.18685, 0.74254] and MAE by 0.20892 across 545 filters at 30 sites. Higher VIBES MSE occurs at 23/30 sites; leaving each site out keeps delta RMSE positive. Both full-pool lot intervals include zero. These are exploratory pointwise results from 10,000 site-cluster draws, not a validated method-selection rule. Inspect BRIS1/CACR1 spectral discrepancies; keep independent Addis thermal validation and chemical-feature recovery as separate objectives.",
+      "sources": [
+        "docs/vibes-subgroup-audit-2026-09-21.md",
+        "research/ftir_hips_chem/output/tables/vibes_subgroup_audit/subgroup_metrics.csv",
+        "research/ftir_hips_chem/output/tables/vibes_subgroup_audit/loading_site_sensitivity.csv"
+      ]
+    }
+  ]
+}
