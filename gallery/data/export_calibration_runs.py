@@ -15,7 +15,7 @@ so every number here is exactly what the explorer would show. Nothing is
 recomputed.
 
 Run (the explorer's interpreter, which has flask/sklearn/pybaselines):
-    /Users/ahmadjalil/anaconda3/bin/python gallery/data/export_calibration_runs.py
+    ~/anaconda3/bin/python gallery/data/export_calibration_runs.py
 """
 from __future__ import annotations
 

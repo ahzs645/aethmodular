@@ -5,11 +5,14 @@ import { Legend, toggleIn } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { focusStyle, useHighlight } from '@/lib/highlight'
-import { fmt } from '@/lib/stats'
+import { baseFilterId, focusStyle, useHighlight } from '@/lib/highlight'
+import { fmt, splitAtGaps } from '@/lib/stats'
 import { INK, MARGIN } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile, MetaFile } from '@/lib/types'
-import { groupColorFn } from './common'
+import { groupColorFn, presetName } from './common'
+
+const ROLL_LABEL = '45-day rolling median'
+const DEPLOYED_LABEL = 'deployed SPARTAN EC (hollow)'
 
 /**
  * The explorer's Series tab: predicted EC by sampling date under one
@@ -28,6 +31,10 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
   const [showDeployed, setShowDeployed] = useState(true)
   const [showRoll, setShowRoll] = useState(true)
   const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [hover, setHover] = useState<string | null>(null)
+  const legendHidden = new Set([...hidden, ...(showRoll ? [] : [ROLL_LABEL]), ...(showDeployed ? [] : [DEPLOYED_LABEL])])
+  const hot = hover && !legendHidden.has(hover) ? hover : null
+  const dim = (l: string) => (!hot || hot === l ? 1 : 0.15)
   const color = useMemo(() => groupColorFn(meta, run.eval.group), [meta, run.eval.group])
   const target = runs.targets[run.target]
 
@@ -65,11 +72,11 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
     <ChartFrame
       id="run-series"
       title={`Dated series — predicted EC at ${target?.site ?? run.target} under this configuration`}
-      subtitle="Every dated evaluation filter as a point, with the 45-day rolling median. Negative days and days above 8 µg/m³ are the plausibility checks from ftir_29; the deployed SPARTAN EC (hollow) is the record this calibration would replace."
+      subtitle="Every dated test-set filter as a point, with the 45-day rolling median (broken where filters are more than 45 days apart). Negative days and days above 8 µg/m³ are the plausibility checks from ftir_29; the deployed SPARTAN EC (hollow) is the record this calibration would replace."
       provenance="calibration_explorer Series tab · /api/run eval.date / eval.deployed"
       controls={
         <>
-          <Toggle label="45-day rolling median" checked={showRoll} onChange={setShowRoll} />
+          <Toggle label={ROLL_LABEL} checked={showRoll} onChange={setShowRoll} />
           {hasDeployed && <Toggle label="deployed SPARTAN EC" checked={showDeployed} onChange={setShowDeployed} />}
           <span className="control">{shown.length} dated filters</span>
         </>
@@ -86,30 +93,48 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
               <line x1={0} x2={innerW} y1={y(0)} y2={y(0)} stroke={INK.negative} strokeWidth={1} strokeOpacity={0.7} />
               {y.domain()[1] >= 8 && <line x1={0} x2={innerW} y1={y(8)} y2={y(8)} stroke={INK.muted} strokeDasharray="3 3" strokeOpacity={0.7} />}
               {showDeployed && shown.filter((p) => p.dep !== null).map((p) => (
-                <circle key={`d${p.i}`} cx={x(p.d)} cy={y(p.dep as number)} r={3} fill="none" stroke={INK.axis} strokeWidth={1} />
+                <circle key={`d${p.i}`} cx={x(p.d)} cy={y(p.dep as number)} r={3} fill="none" stroke={INK.axis} strokeWidth={1} strokeOpacity={dim(DEPLOYED_LABEL)} />
               ))}
               {shown.map((p) => {
                 const st = focusStyle(p.id ?? `#${p.i}`, hl.focusId, { r: 3.2, opacity: showRoll ? 0.55 : 0.8 })
                 return (
-                  <circle key={p.i} cx={x(p.d)} cy={y(p.v)} r={st.r} fill={color(p.g)} fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth}
-                    style={{ cursor: p.id && knownIds.has(p.id) ? 'pointer' : 'default' }}
-                    onMouseEnter={(e) => { if (p.id) hl.setHover(p.id); tip.show(e, [p.id ?? `filter #${p.i + 1}`, `${run.eval.date?.[p.i]} · ${p.g}`, `predicted EC ${fmt(p.v, 3)} µg/m³`, ...(p.dep !== null ? [`deployed EC ${fmt(p.dep, 3)}`] : [])]) }}
+                  <circle key={p.i} cx={x(p.d)} cy={y(p.v)} r={st.r} fill={color(p.g)} fillOpacity={st.opacity * dim(p.g)} stroke={st.stroke} strokeWidth={st.strokeWidth}
+                    style={{ cursor: 'pointer' }}
+                    onMouseEnter={(e) => { if (p.id) hl.setHover(p.id); tip.show(e, [p.id ?? `filter #${p.i + 1}`, `${run.eval.date?.[p.i]} · ${p.g}`, `predicted EC ${fmt(p.v, 3)} µg/m³`, ...(p.dep !== null ? [`deployed EC ${fmt(p.dep, 3)}`] : []), p.id && knownIds.has(baseFilterId(p.id)) ? 'click for the full filter record' : 'click for this filter\'s values']) }}
                     onMouseLeave={() => { hl.setHover(null); tip.hide() }}
-                    onClick={() => p.id && knownIds.has(p.id) && hl.openSample(p.id)} />
+                    onClick={() => hl.openRecord({
+                      id: p.id ?? `${run.target} filter #${p.i + 1}`,
+                      source: 'the dated series',
+                      site: target?.site ?? run.target,
+                      date: run.eval.date?.[p.i] ?? undefined,
+                      fields: [
+                        ['configuration', (() => { const q = runs.presets.find((p) => p.key === run.preset); return q ? presetName(q) : run.preset })()],
+                        ['season / group', p.g],
+                        ['predicted FTIR EC (µg/m³)', p.v],
+                        ['deployed SPARTAN EC (µg/m³)', p.dep],
+                      ],
+                    })} />
                 )
               })}
-              {showRoll && <path d={line(roll) ?? ''} fill="none" stroke={INK.text} strokeWidth={2} pointerEvents="none" />}
+              {showRoll && <path d={splitAtGaps(roll, (p) => p.d).map((seg) => line(seg) ?? '').join('')} fill="none" stroke={INK.text} strokeWidth={2} strokeOpacity={dim(ROLL_LABEL)} pointerEvents="none" />}
             </g>
           </svg>
         )}
+        {/* every entry is a filter: seasons hide their points, the two overlays flip the same toggles as the controls above */}
         <Legend
           items={[
             ...[...new Set(run.eval.group)].map((g) => ({ label: g, color: color(g) })),
-            ...(showRoll ? [{ label: '45-day rolling median', color: INK.text, shape: 'line' as const }] : []),
-            ...(hasDeployed && showDeployed ? [{ label: 'deployed SPARTAN EC (hollow)', color: INK.axis }] : []),
+            { label: ROLL_LABEL, color: INK.text, shape: 'line' as const },
+            ...(hasDeployed ? [{ label: DEPLOYED_LABEL, color: INK.axis, shape: 'ring' as const }] : []),
           ]}
-          hidden={hidden}
-          onToggle={(l) => { if (run.eval.group.includes(l)) setHidden((h) => toggleIn(h, l)) }}
+          hidden={legendHidden}
+          onHover={setHover}
+          highlighted={hot}
+          onToggle={(l) => {
+            if (l === ROLL_LABEL) setShowRoll((v) => !v)
+            else if (l === DEPLOYED_LABEL) setShowDeployed((v) => !v)
+            else if (run.eval.group.includes(l)) setHidden((h) => toggleIn(h, l))
+          }}
           note="red line = 0 · dotted = 8 µg/m³"
         />
         {preds.length > 0 && (

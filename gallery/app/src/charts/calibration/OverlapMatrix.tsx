@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
+import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { INK, FONT, RAMP_SEQUENTIAL } from '@/lib/theme'
@@ -38,6 +39,7 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
   const tip = useTooltip(wrapRef)
   const [view, setView] = useState<(typeof VIEWS)[number]>('Matrix')
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+  const lg = useLegend()
 
   const { names, sizes, cell } = useMemo(() => {
     const names: string[] = []
@@ -60,11 +62,13 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
   const size = Math.max(48, Math.min(72, (width - labelW - 20) / Math.max(1, names.length)))
   const color = d3.scaleQuantize<string>().domain([0, 1]).range(RAMP_SEQUENTIAL)
   const short = (n: string) => n.replace(' (', ' ').replace(')', '')
+  const vnames = useMemo(() => names.filter((n) => !lg.hidden.has(short(n))), [names, lg.hidden])
 
   // ---- chord layout: a symmetric matrix of shared members; the diagonal is
   // what each cohort does NOT share with anyone, so the arc length is the
   // cohort's size and the ribbons partition it.
   const chord = useMemo(() => {
+    const names = vnames
     const n = names.length
     const m: number[][] = names.map(() => names.map(() => 0))
     for (let i = 0; i < n; i++) {
@@ -79,12 +83,14 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
     }
     const layout = d3.chord().padAngle(0.04).sortSubgroups(d3.descending)(m)
     return { m, layout }
-  }, [names, cell, sizes])
+  }, [vnames, cell, sizes])
 
   const R = Math.max(120, Math.min(260, (width - 40) / 2 - 80))
   const arc = d3.arc<d3.ChordGroup>().innerRadius(R).outerRadius(R + 14)
   const ribbon = d3.ribbon<d3.Chord, d3.ChordSubgroup>().radius(R - 1)
-  const ribbonTouches = (c: d3.Chord) => hoverIdx === null || c.source.index === hoverIdx || c.target.index === hoverIdx
+  const legendIdx = lg.hover ? vnames.findIndex((n) => short(n) === lg.hover) : -1
+  const hot = hoverIdx ?? (legendIdx >= 0 ? legendIdx : null)
+  const ribbonTouches = (c: d3.Chord) => hot === null || c.source.index === hot || c.target.index === hot
 
   return (
     <ChartFrame
@@ -94,7 +100,7 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
       provenance="calibration_explorer /api/overlap · meeting item · react-graph-gallery.com/chord-diagram"
       controls={<Segmented label="view" value={view} options={VIEWS} onChange={setView} />}
     >
-      <div ref={wrapRef} className="chart-wrap">
+      <div ref={wrapRef} className="chart-wrap centered">
         {names.length < 2 ? (
           <Empty>No overlap rows exported.</Empty>
         ) : view === 'Matrix' ? (
@@ -130,16 +136,16 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
                 <path
                   key={i}
                   d={ribbon(c as any) ?? ''}
-                  fill={colorForCohort(names[c.source.index])}
+                  fill={colorForCohort(vnames[c.source.index])}
                   fillOpacity={ribbonTouches(c) ? 0.55 : 0.08}
-                  stroke={colorForCohort(names[c.source.index])}
+                  stroke={colorForCohort(vnames[c.source.index])}
                   strokeOpacity={ribbonTouches(c) ? 0.8 : 0.1}
                   style={{ transition: 'fill-opacity 0.2s, stroke-opacity 0.2s' }}
                   onMouseEnter={(e) =>
                     tip.show(e, [
-                      `${short(names[c.source.index])} ∩ ${short(names[c.target.index])}`,
+                      `${short(vnames[c.source.index])} ∩ ${short(vnames[c.target.index])}`,
                       `${c.source.value} shared filters`,
-                      `${((c.source.value / Math.max(1, Math.min(sizes.get(names[c.source.index]) ?? 1, sizes.get(names[c.target.index]) ?? 1))) * 100).toFixed(0)} % of the smaller cohort`,
+                      `${((c.source.value / Math.max(1, Math.min(sizes.get(vnames[c.source.index]) ?? 1, sizes.get(vnames[c.target.index]) ?? 1))) * 100).toFixed(0)} % of the smaller cohort`,
                     ])
                   }
                   onMouseLeave={tip.hide}
@@ -148,16 +154,16 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
               {chord.layout.groups.map((g) => {
                 const mid = (g.startAngle + g.endAngle) / 2
                 const flip = mid > Math.PI
-                const name = names[g.index]
+                const name = vnames[g.index]
                 const own = chord.m[g.index][g.index]
                 return (
                   <g
                     key={g.index}
-                    onMouseEnter={(e) => { setHoverIdx(g.index); tip.show(e, [name, `${sizes.get(name) ?? 0} filters`, `${own} shared with no other cohort`]) }}
+                    onMouseEnter={(e) => { setHoverIdx(g.index); tip.show(e, [name, `${sizes.get(name) ?? 0} filters`, `${own} shared with no other ${lg.hidden.size ? 'shown ' : ''}cohort`]) }}
                     onMouseLeave={() => { setHoverIdx(null); tip.hide() }}
                     style={{ cursor: 'default' }}
                   >
-                    <path d={arc(g) ?? ''} fill={colorForCohort(name)} fillOpacity={hoverIdx === null || hoverIdx === g.index ? 0.9 : 0.35} stroke="#fff" style={{ transition: 'fill-opacity 0.2s' }} />
+                    <path d={arc(g) ?? ''} fill={colorForCohort(name)} fillOpacity={hot === null || hot === g.index ? 0.9 : 0.35} stroke="#fff" style={{ transition: 'fill-opacity 0.2s' }} />
                     <text
                       transform={`rotate(${(mid * 180) / Math.PI - 90}) translate(${R + 20},0) ${flip ? 'rotate(180)' : ''}`}
                       dy="0.35em"
@@ -173,18 +179,18 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
             </g>
           </svg>
         )}
-        <div className="legend">
-          {view === 'Matrix' ? (
+        {view === 'Matrix' ? (
+          <div className="legend">
             <ColorLegend scale={color} label="shared, as % of the smaller cohort" format={(v) => `${Math.round(v * 100)} %`} width={160} />
-          ) : (
-            <>
-              {names.map((n) => (
-                <span key={n} className="legend-item"><span className="swatch" style={{ background: colorForCohort(n) }} />{short(n)}</span>
-              ))}
-              <span className="legend-note">hover an arc to isolate its ribbons · ribbon width = shared filters</span>
-            </>
-          )}
-        </div>
+          </div>
+        ) : (
+          <Legend
+            items={names.map((n) => ({ label: short(n), color: colorForCohort(n) }))}
+            {...lg.props}
+            highlighted={hoverIdx !== null ? short(vnames[hoverIdx]) : lg.hover}
+            note="hover an arc or a cohort to isolate its ribbons · click a cohort to drop it · ribbon width = shared filters"
+          />
+        )}
         {tip.node}
       </div>
     </ChartFrame>

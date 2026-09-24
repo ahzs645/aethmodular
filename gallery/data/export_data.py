@@ -45,8 +45,10 @@ OUT.mkdir(parents=True, exist_ok=True)
 # guessing keeps EC/OC — the whole point of the estate — from silently dropping.
 COMPOSITION = [
     ("chemspec_filter_pm2.5_mass", "PM2.5 mass"),
-    ("chemspec_oc", "OC (TOR)"),
-    ("chemspec_ec", "EC (TOR)"),
+    # SPARTAN ChemSpec carbon is the public, rounded FTIR product (methods
+    # 217/218), not thermal-optical carbon. See docs/open-items.md.
+    ("chemspec_oc", "OC (ChemSpec FTIR)"),
+    ("chemspec_ec", "EC (ChemSpec FTIR)"),
     ("chemspec_sulfate_ion_pm2.5", "Sulfate"),
     ("chemspec_nitrate_ion_pm2.5", "Nitrate"),
     ("chemspec_ammonium_ion_pm2.5", "Ammonium"),
@@ -80,10 +82,10 @@ CORE = [
 
 # Measurement families. A flat 28-item dropdown hides the fact that these are
 # four different instruments answering different questions; grouping keeps
-# "EC (FTIR) vs EC (TOR)" (a method comparison) visibly distinct from
-# "EC vs Silicon" (a source question).
+# The two FTIR carbon feeds are the same analytical product at different
+# reporting precision; neither is an independent EC reference.
 FIELD_GROUPS = [
-    ("Carbon", ["EC (FTIR)", "EC (TOR)", "OC (FTIR)", "OC (TOR)", "OM (FTIR)"]),
+    ("Carbon", ["EC (FTIR)", "EC (ChemSpec FTIR)", "OC (FTIR)", "OC (ChemSpec FTIR)", "OM (FTIR)"]),
     ("Optical (HIPS)", ["HIPS Fabs", "HIPS BC", "HIPS Fabs uncertainty", "HIPS MDL"]),
     ("FTIR functional groups", ["Alkane CH", "Alcohol COH", "Carboxylic COOH", "Non-acid CO"]),
     ("Mass", ["PM2.5 mass"]),

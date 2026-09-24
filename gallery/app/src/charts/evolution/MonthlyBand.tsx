@@ -8,6 +8,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { INK, MARGIN, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -27,6 +28,7 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
   const height = 420
 
   const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [hover, setHover] = useState<string | null>(null)
   const [bands, setBands] = useState(true)
 
   const allSeries = useMemo(
@@ -53,6 +55,10 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
     [rows, field, meta.sites]
   )
   const series = allSeries.filter((s) => !hidden.has(s.name))
+  // a hovered site dims the other sites; a hovered season (a background key, not a series) deepens its own shading
+  const siteHover = hover && series.some((s) => s.name === hover) ? hover : null
+  const seasonHover = hover && meta.seasons.some((s) => s.name === hover) ? hover : null
+  const dim = (name: string) => (siteHover === null || siteHover === name ? 1 : 0.15)
 
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const innerH = height - MARGIN.top - MARGIN.bottom
@@ -62,13 +68,16 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
   const allLo = series.flatMap((s) => s.points.map((p) => (bands ? p.q1 : null) ?? p.median ?? 0))
   const y = d3.scaleLinear().domain([Math.min(0, d3.min(allLo) ?? 0), (d3.max(allHi) ?? 1) * 1.08]).range([innerH, 0]).nice()
 
-  const seasonOf = (m: number) => meta.seasons.find((s) => s.months.includes(m))
+  // per-site calendars cannot share one month axis's shading: shade only when one calendar is in force
+  const mixed = mixedCalendars(meta)
+  const seasonOf = (m: number, site?: string) => seasonsForSite(meta, site ?? meta.seasons[0]?.site).find((s) => s.months.includes(m))
+  const emphasizeFebruary = meta.season_convention !== 'local'
 
   return (
     <ChartFrame
       id="monthly"
       title="Area chart — monthly climatology with an IQR band"
-      subtitle="Median by calendar month with the interquartile range shaded. February is flagged: the two published Ethiopian calendars assign it to different seasons and it is a high-BC month, so seasonal means are not interchangeable between conventions."
+      subtitle={`Median by calendar month with the interquartile range shaded. ${mixed ? 'Each site keeps its own calendar, so the month axis is left unshaded; hover a point for its local season.' : `Season shading uses the ${calendarLabel(meta)}.`}${emphasizeFebruary ? ' February is flagged because the two Ethiopian conventions assign it to different seasons.' : ''}`}
       provenance="stands in for 59 fill_between+plot figures · react-graph-gallery.com/area-plot"
       controls={<Toggle label="IQR bands" checked={bands} onChange={setBands} />}
     >
@@ -78,13 +87,13 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
         ) : (
           <svg width={width} height={height} className="animated">
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-              {d3.range(1, 13).map((m) => {
+              {!mixed && d3.range(1, 13).map((m) => {
                 const s = seasonOf(m)
                 if (!s) return null
                 const step = innerW / 11
                 const x0 = Math.max(0, (x(m) ?? 0) - step / 2)
                 const x1 = Math.min(innerW, (x(m) ?? 0) + step / 2)
-                return <rect key={m} x={x0} y={0} width={Math.max(0, x1 - x0)} height={innerH} fill={s.color} fillOpacity={0.08} />
+                return <rect key={m} x={x0} y={0} width={Math.max(0, x1 - x0)} height={innerH} fill={s.color} fillOpacity={seasonHover === null ? 0.08 : seasonHover === s.name ? 0.22 : 0.03} />
               })}
               <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} />
               <XAxis scale={x as any} y={innerH} format={(m: number) => MONTHS[m - 1]} tickCount={12} />
@@ -95,14 +104,14 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
                 const withMedian = s.points.filter((p) => p.median !== null)
                 const line = d3.line<(typeof withMedian)[number]>().x((p) => x(p.month) ?? 0).y((p) => y(p.median!)).curve(d3.curveMonotoneX)
                 return (
-                  <g key={s.name}>
+                  <g key={s.name} opacity={dim(s.name)}>
                     {bands && <path d={area(withBand) ?? ''} fill={s.color} fillOpacity={0.18} pointerEvents="none" />}
                     <path d={line(withMedian) ?? ''} fill="none" stroke={s.color} strokeWidth={2.4} pointerEvents="none" />
                     {withMedian.map((p) => (
                       <circle
                         key={p.month}
-                        cx={x(p.month) ?? 0} cy={y(p.median!)} r={p.month === 2 ? 5.5 : 3.6}
-                        fill={p.month === 2 ? '#fff' : s.color}
+                        cx={x(p.month) ?? 0} cy={y(p.median!)} r={emphasizeFebruary && p.month === 2 ? 5.5 : 3.6}
+                        fill={emphasizeFebruary && p.month === 2 ? '#fff' : s.color}
                         stroke={p.month === 2 ? INK.text : s.color} strokeWidth={p.month === 2 ? 2 : 1}
                         onMouseEnter={(e) =>
                           tip.show(e, [
@@ -110,7 +119,7 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
                             `median = ${fmt(p.median)}`,
                             p.q1 !== null ? `IQR ${fmt(p.q1)} – ${fmt(p.q3)}` : 'IQR n/a (n<4)',
                             `n = ${p.n}`,
-                            p.month === 2 ? `February: ${seasonOf(2)?.name} under ${meta.season_convention}` : `season: ${seasonOf(p.month)?.name ?? '—'}`,
+                            `season: ${seasonOf(p.month, s.name)?.name ?? '—'} (${calendarLabel(meta)})`,
                           ])
                         }
                         onMouseLeave={tip.hide}
@@ -125,11 +134,13 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
         <Legend
           items={[
             ...allSeries.map((s) => ({ label: s.name, color: s.color, shape: 'line' as const })),
-            ...meta.seasons.map((s) => ({ label: s.name, color: s.color, shape: 'band' as const })),
+            ...(mixed ? [] : meta.seasons.map((s) => ({ label: s.name, color: s.color, shape: 'band' as const }))),
           ]}
           hidden={hidden}
           onToggle={(l) => { if (allSeries.some((s) => s.name === l)) setHidden((h) => toggleIn(h, l)) }}
-          note="hollow marker = February (convention-dependent)"
+          onHover={setHover}
+          highlighted={siteHover ?? seasonHover}
+          note={emphasizeFebruary ? 'hollow marker = February (convention-dependent)' : calendarLabel(meta)}
         />
         {tip.node}
       </div>

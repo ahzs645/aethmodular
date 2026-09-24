@@ -1,11 +1,12 @@
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
-import { Legend, toggleIn } from '@/components/Legend'
+import { Legend, toggleIn, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
+import { useHighlight } from '@/lib/highlight'
 import { INK, MARGIN } from '@/lib/theme'
 import type { MetaFile, PmfFile, PmfRow } from '@/lib/types'
 
@@ -29,11 +30,12 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
+  const hl = useHighlight()
   const height = 440
 
   const [mode, setMode] = useState<(typeof MODES)[number]>('Relative (%)')
   const [shape, setShape] = useState<(typeof SHAPES)[number]>('Stacked')
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const { hidden, setHidden, dim, hover, setHover } = useLegend()
 
   const labels = pmf.sources.map((s) => s.label).filter((l) => !hidden.has(l))
   const colorOf = useMemo(() => new Map(pmf.sources.map((s) => [s.label, s.color])), [pmf.sources])
@@ -63,6 +65,12 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
   }, [rows, labels, relative, shape])
 
   const x = d3.scaleTime().domain(d3.extent(rows, (r) => r.d) as [Date, Date]).range([0, innerW])
+  /** the filter nearest the pointer: every x position in the stack is one filter */
+  const nearestTo = (e: React.MouseEvent) => {
+    const b = wrapRef.current!.getBoundingClientRect()
+    const dt = x.invert(e.clientX - b.left - MARGIN.left)
+    return rows.reduce((best, r) => (Math.abs(+r.d - +dt) < Math.abs(+best.d - +dt) ? r : best), rows[0])
+  }
   const yLo = shape === 'Streamgraph' ? (d3.min(stacked, (l) => d3.min(l, (d) => d[0])) ?? 0) : 0
   const yHi = d3.max(stacked, (l) => d3.max(l, (d) => d[1])) ?? 1
   const y = d3.scaleLinear().domain([yLo, yHi * (shape === 'Streamgraph' ? 1 : 1.02)]).range([innerH, 0]).nice()
@@ -127,14 +135,26 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
                   key={String(layer.key)}
                   d={area(layer) ?? ''}
                   fill={colorOf.get(String(layer.key)) ?? INK.muted}
-                  fillOpacity={0.88}
+                  fillOpacity={0.88 * dim(String(layer.key))}
                   stroke="#fff"
                   strokeWidth={0.4}
-                  style={{ transition: 'd 0.35s' }}
+                  style={{ transition: 'd 0.35s', cursor: 'pointer' }}
+                  onClick={(e) => {
+                    const near = nearestTo(e)
+                    hl.openRecord({
+                      id: near.id,
+                      source: 'the PMF source stack',
+                      site: 'Addis Ababa',
+                      date: near.date,
+                      fields: [
+                        ['season', near.season],
+                        ...labels.map((l): [string, string] => [l, `${near.fraction[l] !== null ? (near.fraction[l]! * 100).toFixed(1) + ' %' : '—'}${near.ugm3[l] !== null ? ` · ${fmt(near.ugm3[l], 2)} µg/m³` : ''}`]),
+                        ['dominant source', near.dominant_source ? `${near.dominant_source} (${((near.dominant_fraction ?? 0) * 100).toFixed(0)} %)` : null],
+                      ],
+                    })
+                  }}
                   onMouseMove={(e) => {
-                    const b = wrapRef.current!.getBoundingClientRect()
-                    const dt = x.invert(e.clientX - b.left - MARGIN.left)
-                    const near = rows.reduce((best, r) => (Math.abs(+r.d - +dt) < Math.abs(+best.d - +dt) ? r : best), rows[0])
+                    const near = nearestTo(e)
                     tip.show(e, [
                       `${near.date} · ${near.season}`,
                       ...labels.map((l) => {
@@ -143,6 +163,7 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
                         return `${l}: ${f !== null ? (f * 100).toFixed(1) + ' %' : '—'}${a !== null ? ` (${fmt(a, 2)} µg/m³)` : ''}`
                       }),
                       `dominant: ${near.dominant_source ?? '—'} ${near.dominant_fraction !== null ? `(${(near.dominant_fraction * 100).toFixed(0)} %)` : ''}`,
+                      'click for the filter record',
                     ])
                   }}
                   onMouseLeave={tip.hide}
@@ -155,7 +176,9 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
           items={pmf.sources.map((s) => ({ label: s.label, color: s.color, shape: 'square' as const }))}
           hidden={hidden}
           onToggle={(l) => setHidden((h) => toggleIn(h, l))}
-          note="top strip = Ethiopian season"
+          onHover={setHover}
+          highlighted={hover}
+          note="top strip = selected season calendar"
         />
         {tip.node}
       </div>

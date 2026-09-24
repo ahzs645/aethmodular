@@ -7,6 +7,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { INK, FONT, RAMP_DIVERGING, RAMP_SEQUENTIAL } from '@/lib/theme'
 import type { CalibFile, CalibRow } from '@/lib/types'
 import { configKey, fmtFit, passes, sameConfig, score, shortConfig, type Config } from './common'
+import { METRIC } from '@/lib/labels'
 
 const CELLS = ['Deming intercept', 'Deming slope', 'R²'] as const
 type Cell = (typeof CELLS)[number]
@@ -17,7 +18,7 @@ type Cell = (typeof CELLS)[number]
  * whatever is selected above), columns are the five SPARTAN evaluation sites.
  * CROSS_SITE_EVALUATION_2026-08-22 turned "the offset is Addis-specific" into
  * an ordering: large negative intercepts at Addis and Delhi, near zero at
- * Beijing, Pasadena and Bishoftu — a compositional signature, not one city's
+ * Beijing, JPL and Bishoftu — a compositional signature, not one city's
  * quirk. Quote OFFSET_ADJUDICATION_2026-08-23 for the weighted numbers.
  */
 export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFile; selected: Config; onSelect: (c: Config) => void }) {
@@ -72,8 +73,8 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
     <ChartFrame
       id="cross-site"
       title="Cross-site heatmap — does the calibration travel?"
-      subtitle="The best Addis configurations (by the explorer's score, inside the slope box and above the held-out floor) read out at every SPARTAN site with FTIR spectra and HIPS Fabs. A row that is blue at Addis and Delhi but white at Beijing and Pasadena is the compositional-offset signature. The first row is whatever is selected above."
-      provenance="CROSS_SITE_EVALUATION_2026-08-22.md · FIVE_SITE_GRID_2026-08-23.md · protocol A · MAC 10 · fixed set"
+      subtitle="The best Addis configurations (by the explorer's score, inside the slope box and above the IMPROVE cross-validation R² floor) read out at every SPARTAN site with FTIR spectra and HIPS Fabs; each site is a test set the model never saw. A row that is blue at Addis and Delhi but white at Beijing and JPL is the compositional-offset signature. The first row is whatever is selected above."
+      provenance="CROSS_SITE_EVALUATION_2026-08-22.md · FIVE_SITE_GRID_2026-08-23.md · site-grouped CV · MAC 10 · fixed set"
       controls={
         <>
           <Segmented label="cell" value={cell} options={CELLS} onChange={setCell} />
@@ -81,7 +82,7 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
         </>
       }
     >
-      <div ref={wrapRef} className="chart-wrap">
+      <div ref={wrapRef} className="chart-wrap centered">
         {rows.length === 0 || targets.length === 0 ? (
           <Empty>No cross-site rows in the export.</Empty>
         ) : (
@@ -107,9 +108,9 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
                           <rect x={j * cellW} y={1} width={cellW - 2} height={rowH - 2} rx={2} fill={v === null ? INK.empty : color(v)} stroke={isSel ? INK.text : '#fff'} strokeWidth={isSel ? 1.2 : 1}
                             onMouseEnter={(e) => r && tip.show(e, [
                               `${shortConfig(cfg)} @ ${calib.targets[t]?.site ?? t}`,
-                              `k = ${r.k} · Deming ${fmtFit(r.dm, r.db)}`,
-                              `OLS ${fmtFit(r.om, r.ob)} · R² ${r.r2?.toFixed(3) ?? '—'}`,
-                              `held-out TOR R² ${r.ho?.toFixed(3) ?? '—'}`,
+                              `${METRIC.k}: ${r.k}`,
+                              `Test set Deming ${fmtFit(r.dm, r.db)} · R² ${r.r2?.toFixed(3) ?? '—'}`,
+                              `${METRIC.cvR2}: ${r.ho?.toFixed(3) ?? '—'}`,
                             ])}
                             onMouseLeave={tip.hide}
                           />
@@ -130,7 +131,7 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
         <div className="legend">
           <ColorLegend
             scale={color}
-            label={cell === 'Deming intercept' ? 'Deming intercept (µg/m³)' : cell}
+            label={cell === 'Deming intercept' ? 'Test set Deming intercept (µg/m³)' : `Test set ${cell}`}
             width={200}
             ticks={cell === 'R²' ? 5 : 6}
             format={(v) => (cell === 'Deming intercept' ? (v > 0 ? `+${v}` : String(v)) : String(v))}

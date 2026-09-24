@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
+import { seasonsForSite } from '@/siteSeasons'
 import { ChartFrame, Empty, Segmented, Toggle } from '@/components/ChartFrame'
-import { Legend, toggleIn } from '@/components/Legend'
+import { Legend, toggleIn, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -32,7 +33,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
 
   const [step, setStep] = useState<(typeof STEPS)[number]>('Month of year')
   const [labels, setLabels] = useState(true)
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const { hidden, setHidden, dim, hover, setHover } = useLegend()
   const minN = 4
   const opts: AxesOpts = { ...axes, log: false, mode: axes.mode === 'Show intercept' ? 'Data' : axes.mode }
 
@@ -66,8 +67,8 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
   const all = series.flatMap((s) => s.pts)
   const MAX_SQUARE = 560
   const availW = Math.max(240, width - MARGIN.left - MARGIN.right)
-  const innerW = opts.identity ? Math.min(availW, MAX_SQUARE) : availW
-  const innerH = opts.identity ? innerW : 460 - MARGIN.top - MARGIN.bottom
+  const innerW = Math.min(availW, MAX_SQUARE)
+  const innerH = innerW
   const height = innerH + MARGIN.top + MARGIN.bottom
 
   const domain = pairDomain(all.map((p) => p.x), all.map((p) => p.y), opts)
@@ -86,7 +87,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
     placed.push([px, py])
     return true
   }
-  const seasonOf = (m: number) => meta.seasons.find((s) => s.months.includes(m))?.name
+  const seasonOf = (m: number, site: string) => seasonsForSite(meta, site).find((s) => s.months.includes(m))?.name
 
   return (
     <ChartFrame
@@ -101,11 +102,11 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
         </>
       }
     >
-      <div ref={wrapRef} className="chart-wrap">
+      <div ref={wrapRef} className="chart-wrap centered">
         {all.length < 2 ? (
           <Empty>Not enough steps with ≥{minN} filters carrying both fields.</Empty>
         ) : (
-          <svg width={width} height={height}>
+          <svg width={innerW + MARGIN.left + MARGIN.right} height={height}>
             <defs>
               {series.map((s) => (
                 <marker key={s.name} id={`arrow-${s.name.replace(/\s/g, '')}`} viewBox="0 0 10 10" refX={8} refY={5} markerWidth={7} markerHeight={7} orient="auto-start-reverse">
@@ -120,7 +121,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
                 <line x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="5 4" />
               )}
               {series.map((s) => (
-                <g key={s.name}>
+                <g key={s.name} opacity={dim(s.name)}>
                   <path
                     d={line(s.pts) ?? ''}
                     fill="none"
@@ -145,7 +146,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
                             `${yField} median = ${fmt(p.y)}`,
                             `ratio y/x = ${fmt(p.x !== 0 ? p.y / p.x : null, 3)}`,
                             `n = ${p.n}`,
-                            ...(step === 'Month of year' ? [seasonOf(p.key) ?? ''] : []),
+                            ...(step === 'Month of year' ? [seasonOf(p.key, s.name) ?? ''] : []),
                           ])
                         }
                         onMouseLeave={tip.hide}
@@ -166,6 +167,8 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
           items={meta.sites.map((s) => ({ label: s.name, color: s.color, shape: 'line' as const }))}
           hidden={hidden}
           onToggle={(l) => setHidden((h) => toggleIn(h, l))}
+          onHover={setHover}
+          highlighted={hover}
           note={`hollow marker = first step · arrow = last · crowded labels thinned, hover for the rest${opts.identity ? ' · grey dashed = 1:1' : ''}`}
         />
         {tip.node}

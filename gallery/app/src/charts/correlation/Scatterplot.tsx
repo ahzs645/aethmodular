@@ -1,9 +1,9 @@
-import { useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Segmented, Toggle } from '@/components/ChartFrame'
 import { ColorLegend, SizeLegend } from '@/components/ColorLegend'
 import { FieldSelect } from '@/components/FieldSelect'
-import { Legend, toggleIn } from '@/components/Legend'
+import { Legend, toggleIn, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -38,14 +38,17 @@ function valueScale(values: number[]) {
  * Interactive counterpart of `plotting/crossplots.py`, including its
  * PlotConfig.layout: "Combined" overlays every site on one axes, "Per site"
  * is the 2×2 grid, with the axis domain shared across panels so the eye can
- * compare slopes. The stats box follows the rule in AGENTS.md: whenever the
- * 1:1 line is on, an errors-in-variables (Deming) slope is shown beside the
- * OLS one, because the identity line asserts both axes measure the same
- * quantity and OLS is then biased shallow.
+ * compare slopes. The fit is always errors-in-variables (Deming, λ=1): both
+ * axes are measurements with their own uncertainty, so y-on-x least squares
+ * would be biased shallow (agreed with Ann, 23 Sep 2026: Deming only).
  *
  * Hover uses closest-point detection (d3.Delaunay) over the whole panel
  * rather than per-circle mouse events, so a dense cloud still answers the
- * pointer and a 2 px mark is as easy to reach as a 12 px one.
+ * pointer and a 2 px mark is as easy to reach as a 12 px one. With `brush to
+ * select` on, dragging a rectangle puts the enclosed filters into the shared
+ * selection (lib/highlight) and every chart on the tab dims the rest — the
+ * "brush a cloud of points, see them on the timeseries" step the README
+ * listed as the next one after hover/pin.
  *
  * The 1:1 toggle and the axes mode live in the subset bar so the hexbin and
  * the connected scatter below draw the same frame.
@@ -61,7 +64,8 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
   const [sizeField, setSizeField] = useState(NO_SIZE)
   const [layout, setLayout] = useState<(typeof LAYOUTS)[number]>('Combined')
   const [showFit, setShowFit] = useState(true)
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [brushing, setBrushing] = useState(false)
+  const { hidden, setHidden, dim, hover, setHover } = useLegend()
   const { identity: showIdentity, log: logAxes } = axes
 
   const seasonColor = useMemo(() => new Map(meta.seasons.map((s) => [s.name, s.color])), [meta.seasons])
@@ -107,14 +111,14 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
     // 1.0 (orthogonal), exactly as calculate_regression_stats does.
     return raw.map((p) => ({
       ...p,
-      stats: regression(p.points.map((q) => q.x), p.points.map((q) => q.y), { errorsInVariables: showIdentity }),
+      stats: regression(p.points.map((q) => q.x), p.points.map((q) => q.y), { errorsInVariables: true }),
     }))
   }, [layout, points, meta.sites, showIdentity])
 
   // Shared domain across every panel — a per-site grid with different axes
   // per panel silently hides that one site's slope is twice another's.
   const domain = useMemo(() => {
-    const intercepts = panels.flatMap((p) => (p.stats ? [p.stats.intercept, ...(p.stats.demingIntercept !== null ? [p.stats.demingIntercept] : [])] : []))
+    const intercepts = panels.flatMap((p) => (p.stats && p.stats.demingIntercept !== null ? [p.stats.demingIntercept] : []))
     return pairDomain(points.map((p) => p.x), points.map((p) => p.y), axes, showFit ? intercepts : [])
   }, [points, panels, axes, showFit])
 
@@ -134,8 +138,9 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
   const cols = layout === 'Per site' && width > 700 ? 2 : 1
   const panelOuterW = Math.floor((width - (cols - 1) * 12) / cols)
   const availW = Math.max(200, panelOuterW - MARGIN.left - MARGIN.right)
-  const innerW = showIdentity || layout === 'Per site' ? Math.min(availW, layout === 'Per site' ? 420 : MAX_SQUARE) : availW
-  const innerH = showIdentity || layout === 'Per site' ? innerW : 470 - MARGIN.top - MARGIN.bottom
+  // every crossplot panel is square, with or without the 1:1 line
+  const innerW = Math.min(availW, layout === 'Per site' ? 420 : MAX_SQUARE)
+  const innerH = innerW
 
   if (xField === yField) return <ChartFrame title="Scatterplot"><Empty>x and y are the same field — pick two different measurements in the bar above.</Empty></ChartFrame>
 
@@ -145,7 +150,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
     <ChartFrame
       id="scatter"
       title="Scatterplot — the crossplot family"
-      subtitle="Any measured quantity against any other, coloured by site, by Ethiopian season, or by a third measurement (the 123 'colour-coded' crossplots in the estate); a fourth can size the marks. The stats box reports OLS and, whenever the 1:1 line is shown, the errors-in-variables (Deming) slope beside it. Hover anywhere near a point to find it in every other chart; click it for the full record."
+      subtitle="Any measured quantity against any other, coloured by site, by the selected season calendar, or by a third measurement (the 123 'colour-coded' crossplots in the estate); a fourth can size the marks. The stats box reports R² and the errors-in-variables (Deming) fit, since both axes carry measurement error. Hover anywhere near a point to find it in every other chart; click it for the full record."
       provenance="stands in for 281 scatter + 123 colour-by-third-variable figures across 116 notebooks · plotting/crossplots.py · react-graph-gallery.com/scatter-plot · /bubble-plot"
       controls={
         <>
@@ -154,11 +159,18 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
           {colorBy === 'Value' && <FieldSelect label="by" value={colorField} meta={meta} onChange={setColorField} />}
           <FieldSelect label="size" value={sizeField} meta={meta} onChange={setSizeField} extraOptions={[NO_SIZE]} title="Bubble plot: mark area proportional to a fourth measurement" />
           <Toggle label="fit lines" checked={showFit} onChange={setShowFit} />
+          <Toggle label="brush to select" checked={brushing} onChange={(v) => { setBrushing(v); if (!v) hl.setSelected(null) }} title="Drag a rectangle: the enclosed filters are highlighted on every chart of this tab" />
+          {hl.selected && (
+            <span className="control">
+              <strong>{hl.selected.size}</strong> selected
+              <button type="button" className="btn quiet" onClick={() => hl.setSelected(null)}>clear</button>
+            </span>
+          )}
           <span className="control">{points.length} points</span>
         </>
       }
     >
-      <div ref={wrapRef} className="chart-wrap">
+      <div ref={wrapRef} className="chart-wrap centered">
         {points.length < 3 ? (
           <Empty>Fewer than 3 filters carry both {xField} and {yField} in this subset.</Empty>
         ) : (
@@ -179,7 +191,12 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
                 yLabel={unitOf(yField)}
                 colorOf={colorOf}
                 radiusOf={radiusOf}
+                dimOf={(pt) => dim(groupOf(pt.row))}
+                fitDim={p.title && colorBy !== 'Season' ? dim(p.title) : 1}
                 focusId={hl.focusId}
+                selected={hl.selected}
+                brushing={brushing}
+                onBrush={(ids) => hl.setSelected(ids)}
                 onEnter={(e, pt) => {
                   const row = pt.row
                   hl.setHover(row.id)
@@ -204,13 +221,13 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
           {colorBy === 'Value' && cScale ? (
             <ColorLegend scale={cScale} label={unitOf(colorField)} note={nNoColor > 0 ? `${nNoColor} points without ${colorField} in grey` : undefined} />
           ) : (
-            <Legend items={legend} hidden={hidden} onToggle={(l) => setHidden((h) => toggleIn(h, l))} note={showFit ? 'solid = OLS · dashed magenta = Deming (λ=1)' : undefined} />
+            <Legend items={legend} hidden={hidden} onToggle={(l) => setHidden((h) => toggleIn(h, l))} onHover={setHover} highlighted={hover} note={showFit ? 'dashed magenta = Deming fit (λ=1)' : undefined} />
           )}
           {sScale && <SizeLegend scale={sScale} label={unitOf(sizeField)} />}
           {sScale && nNoSize > 0 && <span className="legend-note">{nNoSize} points without {sizeField} drawn smallest</span>}
         </div>
         {colorBy === 'Value' && (
-          <Legend items={legend} hidden={hidden} onToggle={(l) => setHidden((h) => toggleIn(h, l))} note="click a site to drop it; colour is the value above" />
+          <Legend items={legend} hidden={hidden} onToggle={(l) => setHidden((h) => toggleIn(h, l))} onHover={setHover} highlighted={hover} note="click a site to drop it; colour is the value above" />
         )}
         {domain.dropped > 0 && (
           <Note>{domain.dropped} point{domain.dropped === 1 ? '' : 's'} below zero are outside the axes and not drawn; they are still in the fit. Switch axes to “Data” in the bar to see them.</Note>
@@ -223,7 +240,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
 
 /** One axes: used once for the combined layout, once per site for the grid. */
 function ScatterPanel({
-  title, titleColor, points, stats, domain, innerW, innerH, axes, showFit, xLabel, yLabel, colorOf, radiusOf, focusId, onEnter, onLeave, onClick,
+  title, titleColor, points, stats, domain, innerW, innerH, axes, showFit, xLabel, yLabel, colorOf, radiusOf, dimOf, fitDim, focusId, selected, brushing, onBrush, onEnter, onLeave, onClick,
 }: {
   title: string | null
   titleColor: string
@@ -238,7 +255,12 @@ function ScatterPanel({
   yLabel: string
   colorOf: (p: Point) => string
   radiusOf: (p: Point) => number
+  dimOf: (p: Point) => number
+  fitDim: number
   focusId: string | null
+  selected: Set<string> | null
+  brushing: boolean
+  onBrush: (ids: Set<string> | null) => void
   onEnter: (e: React.MouseEvent, p: Point) => void
   onLeave: () => void
   onClick: (row: FilterRow) => void
@@ -262,6 +284,30 @@ function ScatterPanel({
   const delaunay = useMemo(() => d3.Delaunay.from(drawn, (p) => xScale(p.x), (p) => yScale(p.y)), [drawn, xScale, yScale])
   const hoverRef = useRef<Point | null>(null)
   const HIT = 18
+  // d3.brush owns its own DOM, so it is attached imperatively to an empty <g>
+  const brushRef = useRef<SVGGElement>(null)
+  useEffect(() => {
+    const g = brushRef.current
+    if (!g) return
+    const sel = d3.select(g)
+    if (!brushing) { sel.selectAll('*').remove(); sel.on('.brush', null); return }
+    const brush = d3.brush<unknown>()
+      .extent([[0, 0], [innerW, innerH]])
+      .on('end', (ev: d3.D3BrushEvent<unknown>) => {
+        if (!ev.selection) { onBrush(null); return }
+        const [[x0, y0], [x1, y1]] = ev.selection as [[number, number], [number, number]]
+        const ids = new Set<string>()
+        for (const p of drawn) {
+          const px = xScale(p.x)
+          const py = yScale(p.y)
+          if (px >= x0 && px <= x1 && py >= y0 && py <= y1) ids.add(p.row.id)
+        }
+        onBrush(ids.size ? ids : null)
+      })
+    sel.call(brush)
+    return () => { sel.on('.brush', null); sel.selectAll('*').remove() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brushing, drawn, innerW, innerH])
   const nearest = (e: React.MouseEvent<SVGRectElement>): Point | null => {
     if (drawn.length === 0) return null
     const [mx, my] = d3.pointer(e)
@@ -282,15 +328,7 @@ function ScatterPanel({
   }
   const markIntercepts = axes.mode === 'Show intercept' && showFit && !axes.log && stats
   const originAxes = axes.mode === 'Show intercept' && !axes.log && xScale.domain()[0] < 0 && yScale.domain()[0] < 0
-  // two intercept labels closer than a line height would overprint; push the lower one down
-  const labelDy = (() => {
-    if (!stats || stats.demingIntercept === null) return { ols: 0, dem: 0 }
-    const gap = Math.abs(yScale(stats.intercept) - yScale(stats.demingIntercept))
-    if (gap >= 13) return { ols: 0, dem: 0 }
-    const olsAbove = stats.intercept >= stats.demingIntercept
-    return olsAbove ? { ols: -(13 - gap) / 2, dem: (13 - gap) / 2 } : { ols: (13 - gap) / 2, dem: -(13 - gap) / 2 }
-  })()
-  const boxRows = 3 + (axes.mode === 'Show intercept' ? 1 : 0) + (axes.identity && stats?.demingSlope !== null ? (axes.mode === 'Show intercept' ? 3 : 2) : 0)
+  const boxRows = 3
 
   return (
     <div>
@@ -327,17 +365,17 @@ function ScatterPanel({
               <line x1={xScale(d0)} y1={yScale(d0)} x2={xScale(d1)} y2={yScale(d1)} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="5 4" />
             )}
             {stats && showFit && (
-              <>
-                <line {...seg(stats.slope, stats.intercept)} stroke={INK.fit} strokeWidth={2} pointerEvents="none" />
+              <g opacity={fitDim}>
                 {stats.demingSlope !== null && stats.demingIntercept !== null && (
                   <line {...seg(stats.demingSlope, stats.demingIntercept)} stroke={INK.deming} strokeWidth={2} strokeDasharray="7 3" pointerEvents="none" />
                 )}
-              </>
+              </g>
             )}
           </g>
 
           {drawn.map((p) => {
-            const st = focusStyle(p.row.id, focusId, { r: radiusOf(p), opacity: 0.72 })
+            const st = focusStyle(p.row.id, focusId, { r: radiusOf(p), opacity: 0.72 }, selected)
+            const k = dimOf(p)
             return (
               <circle
                 key={p.row.id}
@@ -345,32 +383,34 @@ function ScatterPanel({
                 cy={yScale(p.y)}
                 r={st.r}
                 fill={colorOf(p)}
-                fillOpacity={st.opacity}
+                fillOpacity={st.opacity * k}
                 stroke={st.stroke}
+                strokeOpacity={k}
                 strokeWidth={st.strokeWidth}
                 pointerEvents="none"
               />
             )
           })}
 
-          {/* the hit layer: closest point wins, within HIT px of the pointer */}
-          <rect
-            x={0} y={0} width={innerW} height={innerH} fill="transparent"
-            style={{ cursor: hoverRef.current ? 'pointer' : 'default' }}
-            onMouseMove={onMove}
-            onMouseLeave={() => { hoverRef.current = null; onLeave() }}
-            onClick={(e) => { const p = nearest(e); if (p) onClick(p.row) }}
-          />
+          {/* the hit layer: closest point wins, within HIT px of the pointer; the brush replaces it while selecting */}
+          {!brushing && (
+            <rect
+              x={0} y={0} width={innerW} height={innerH} fill="transparent"
+              style={{ cursor: hoverRef.current ? 'pointer' : 'default' }}
+              onMouseMove={onMove}
+              onMouseLeave={() => { hoverRef.current = null; onLeave() }}
+              onClick={(e) => { const p = nearest(e); if (p) onClick(p.row) }}
+            />
+          )}
+          <g ref={brushRef} className="brush-layer" />
 
           {markIntercepts && (
             <g pointerEvents="none" fontFamily={FONT.mono} fontSize={10.5}>
               {!originAxes && <line x1={xScale(0)} x2={xScale(0)} y1={0} y2={innerH} stroke={INK.axis} strokeDasharray="2 3" strokeOpacity={0.6} />}
-              <circle cx={xScale(0)} cy={yScale(stats.intercept)} r={4.5} fill="#fff" stroke={INK.fit} strokeWidth={2} />
-              <text x={xScale(0) + 8} y={yScale(stats.intercept) + labelDy.ols} dy="0.35em" fill={INK.fit} stroke="#fff" strokeWidth={3} paintOrder="stroke">b = {fmt(stats.intercept, 3)}</text>
               {stats.demingIntercept !== null && (
                 <>
                   <circle cx={xScale(0)} cy={yScale(stats.demingIntercept)} r={4.5} fill="#fff" stroke={INK.deming} strokeWidth={2} />
-                  <text x={xScale(0) + 8} y={yScale(stats.demingIntercept) + labelDy.dem} dy="0.35em" fill={INK.deming} stroke="#fff" strokeWidth={3} paintOrder="stroke">b = {fmt(stats.demingIntercept, 3)}</text>
+                  <text x={xScale(0) + 8} y={yScale(stats.demingIntercept)} dy="0.35em" fill={INK.deming} stroke="#fff" strokeWidth={3} paintOrder="stroke">b = {fmt(stats.demingIntercept, 3)}</text>
                 </>
               )}
             </g>
@@ -378,18 +418,15 @@ function ScatterPanel({
 
           {stats && (
             <g transform="translate(10,10)" fontFamily={FONT.mono} fontSize={11} pointerEvents="none">
-              <rect width={axes.identity ? 224 : 170} height={boxRows * 15 + 12} rx={5} fill="#fff" fillOpacity={0.93} stroke={INK.border} />
+              <rect width={224} height={boxRows * 15 + 12} rx={5} fill="#fff" fillOpacity={0.93} stroke={INK.border} />
               {(() => {
                 const lines: { t: string; c: string }[] = [
                   { t: `n = ${stats.n}`, c: INK.text },
                   { t: `R² = ${fmt(stats.r2, 4)}`, c: INK.text },
-                  { t: `OLS slope = ${fmt(stats.slope)}`, c: INK.fit },
                 ]
-                if (axes.mode === 'Show intercept') lines.push({ t: `OLS intercept = ${fmt(stats.intercept)}`, c: INK.fit })
-                if (axes.identity && stats.demingSlope !== null) {
-                  lines.push({ t: `Deming = ${fmt(stats.demingSlope)}`, c: INK.deming })
-                  if (axes.mode === 'Show intercept') lines.push({ t: `Deming intercept = ${fmt(stats.demingIntercept)}`, c: INK.deming })
-                  lines.push({ t: `Deming steeper by ${fmt(stats.slopeAttenuationPct, 1)} % (λ=1)`, c: INK.muted })
+                if (stats.demingSlope !== null && stats.demingIntercept !== null) {
+                  const b = stats.demingIntercept
+                  lines.push({ t: `Deming y = ${fmt(stats.demingSlope)}x ${b < 0 ? '−' : '+'} ${fmt(Math.abs(b))}`, c: INK.deming })
                 }
                 return lines.map((l, i) => (
                   <text key={i} x={9} y={18 + i * 15} fill={l.c}>{l.t}</text>

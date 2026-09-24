@@ -118,7 +118,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                   return (
                     <g key={g.name}>
                       {g.items.map((it, i) => {
-                        const st = focusStyle(it.row.id, hl.focusId, { r: 3, opacity: 0.6 })
+                        const st = focusStyle(it.row.id, hl.focusId, { r: 3, opacity: 0.6 }, hl.selected)
                         return (
                           <circle
                             key={it.row.id}
@@ -152,13 +152,21 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                       <line x1={cx - bw / 4} x2={cx + bw / 4} y1={y(b.min)} y2={y(b.min)} stroke={INK.text} strokeWidth={1.2} />
                       <rect x={cx - bw / 2} y={y(b.q3)} width={bw} height={Math.max(1, y(b.q1) - y(b.q3))} fill={g.color} fillOpacity={withPoints ? 0.22 : 0.55} stroke={g.color} strokeWidth={1.4} rx={2} />
                       <line x1={cx - bw / 2} x2={cx + bw / 2} y1={y(b.median)} y2={y(b.median)} stroke={INK.text} strokeWidth={2.2} />
-                      {!withPoints && b.outliers.map((o, i) => (
-                        <circle key={i} cx={cx} cy={y(o)} r={2.6} fill="none" stroke={g.color} strokeWidth={1.2} />
+                      {/* each outlier is one filter, so it opens that filter's record */}
+                      {!withPoints && g.items.filter((it) => b.outliers.includes(it.v)).map((it) => (
+                        <circle
+                          key={it.row.id} cx={cx} cy={y(it.v)} r={hl.focusId === it.row.id ? 4 : 2.6}
+                          fill={hl.focusId === it.row.id ? g.color : '#fff'} stroke={g.color} strokeWidth={1.2}
+                          style={{ cursor: 'pointer' }}
+                          onMouseEnter={(e) => { e.stopPropagation(); hl.setHover(it.row.id); tip.show(e, [it.row.id, `${it.row.date} · ${it.row.site}`, `${fmt(it.v)} (outside 1.5·IQR)`, 'click for the filter record']) }}
+                          onMouseLeave={() => { hl.setHover(null); tip.hide() }}
+                          onClick={() => hl.openSample(it.row.id)}
+                        />
                       ))}
                     </g>
                     {/* boxplot-with-jitter: every filter over its own summary, so the box can be read against the n it summarises */}
                     {withPoints && g.items.map((it, i) => {
-                      const st = focusStyle(it.row.id, hl.focusId, { r: 2.4, opacity: 0.55 })
+                      const st = focusStyle(it.row.id, hl.focusId, { r: 2.4, opacity: 0.55 }, hl.selected)
                       return (
                         <circle
                           key={it.row.id}

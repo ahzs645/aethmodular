@@ -6,16 +6,21 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { regression, fmt } from '@/lib/stats'
 import { INK, FONT } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import type { FilterRecord } from '@/lib/highlight'
+import { RecordSection } from '@/components/RecordDrawer'
+import { FilterSpectrum } from '@/components/FilterSpectrum'
 
 const SCOPES = ['Same site', 'All sites'] as const
 
+/** English ordinal suffix: 1st, 2nd, 3rd, 11th, 51st. */
+const ordinal = (n: number) => (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th')
+
 /** Ratios worth reading off a single filter. Each is a pair of field names. */
 const RATIOS: { label: string; num: string; den: string; why: string }[] = [
-  { label: 'EC (FTIR) / EC (TOR)', num: 'EC (FTIR)', den: 'EC (TOR)', why: 'calibration agreement; 1.0 is perfect' },
   { label: 'HIPS BC / EC (FTIR)', num: 'HIPS BC', den: 'EC (FTIR)', why: 'optical vs calibrated FTIR; the crossplot slope, per filter' },
-  { label: 'OC / EC (TOR)', num: 'OC (TOR)', den: 'EC (TOR)', why: 'high = secondary or biomass, low = fresh combustion' },
+  { label: 'OC / EC (ChemSpec FTIR)', num: 'OC (ChemSpec FTIR)', den: 'EC (ChemSpec FTIR)', why: 'high = secondary or biomass, low = fresh combustion' },
   { label: 'OM / OC (FTIR)', num: 'OM (FTIR)', den: 'OC (FTIR)', why: 'oxygenation of the organics; 1.4–2.2 is typical' },
-  { label: 'EC (TOR) / PM2.5', num: 'EC (TOR)', den: 'PM2.5 mass', why: 'EC share of mass' },
+  { label: 'EC (ChemSpec FTIR) / PM2.5', num: 'EC (ChemSpec FTIR)', den: 'PM2.5 mass', why: 'FTIR-derived EC share of mass' },
 ]
 
 /**
@@ -37,7 +42,10 @@ export function SampleDrawer({
   onPin,
   onOpen,
   onClose,
+  context,
 }: {
+  /** what the clicked chart knows about this filter (e.g. an AIRSpec prediction); shown first */
+  context?: FilterRecord | null
   row: FilterRow
   /** every exported filter, unfiltered — neighbours and percentiles need the whole site */
   allRows: FilterRow[]
@@ -128,10 +136,11 @@ export function SampleDrawer({
     return { pool, stats }
   }, [scope, siteRows, allRows, cx, cy])
   const W = 400
-  const H = 300
   const m = { top: 12, right: 14, bottom: 46, left: 62 }
   const iw = W - m.left - m.right
-  const ih = H - m.top - m.bottom
+  // square plot area, like every crossplot in the gallery
+  const ih = iw
+  const H = ih + m.top + m.bottom
   const xs = d3.scaleLinear().domain([Math.min(0, d3.min(cross.pool, (p) => p.x) ?? 0), (d3.max(cross.pool, (p) => p.x) ?? 1) * 1.05]).range([0, iw]).nice()
   const ys = d3.scaleLinear().domain([Math.min(0, d3.min(cross.pool, (p) => p.y) ?? 0), (d3.max(cross.pool, (p) => p.y) ?? 1) * 1.05]).range([ih, 0]).nice()
   const here = isNum(row[cx]) && isNum(row[cy]) ? { x: row[cx] as number, y: row[cy] as number } : null
@@ -175,6 +184,11 @@ export function SampleDrawer({
         <button type="button" className="btn" onClick={link}>{copied ? 'copied' : 'copy link'}</button>
       </div>
 
+      {context && <RecordSection rec={context} />}
+
+      {/* Addis filters resolve to their similarity trace via etad_ids.json; nothing renders without one */}
+      <FilterSpectrum id={row.id} />
+
       <section className="drawer-section">
         <h3>Where this filter sits at {row.site}</h3>
         <p className="chart-note">Each bar is the site's clean range for that measurement; the darker band is the interquartile range, the tick is the site median, the dot is this filter. Percentile is within the site.</p>
@@ -201,7 +215,7 @@ export function SampleDrawer({
                         <span className="med" style={{ left: `${s(p.med)}%` }} />
                         <span className="dot" style={{ left: `${s(p.v)}%`, background: site?.color ?? INK.text }} />
                       </td>
-                      <td className="pct">{p.pct.toFixed(0)}<span className="u">th</span></td>
+                      <td className="pct">{p.pct.toFixed(0)}<span className="u">{ordinal(Math.round(p.pct))}</span></td>
                     </tr>
                   )
                 })}

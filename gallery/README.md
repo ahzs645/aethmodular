@@ -20,25 +20,34 @@ gallery/
 │   ├── export_data.py      # the exporter (reads the pickle via scripts/)
 │   ├── export_calibration.py       # calibration_explorer batch results -> calibration.json
 │   ├── export_calibration_runs.py  # explorer per-filter readouts + diagnostics -> calibration_runs.json
+│   ├── export_similarity.py        # frozen AIRSpec/VIBES spectra -> similarity/ (Spectral similarity tab)
+│   ├── export_meeting_followup.py  # 17 Sep meeting follow-up tables -> meeting/ (Meeting 17 Sep follow-up tab)
 │   └── fetch_basemap.py    # one-off Natural Earth download for the map
 └── app/                    # the React + D3 gallery
     ├── public/data/        # generated JSON — committed, so the app just runs
     └── src/
         ├── charts/         # one subfolder per react-graph-gallery category
         │   ├── correlation/    Scatterplot (combined / per-site grid; colour or size by a
-        │   │                   third variable), DensityHexbin, ConnectedScatter,
-        │   │                   Correlogram, AvailabilityHeatmap
+        │   │                   third variable; brush to select), DensityHexbin,
+        │   │                   ConnectedScatter, Correlogram (r matrix / scatter matrix),
+        │   │                   SpeciesGraph (network / arc / dendrogram), AvailabilityHeatmap
         │   ├── distribution/   DistributionPanel (box / box+points / violin / beeswarm),
-        │   │                   Histogram (overlay / small multiples / mirror), Ridgeline
-        │   ├── evolution/      Timeseries (overlay / per-site, synchronized date cursor), MonthlyBand
-        │   ├── ranking/        CorrelationRanking (lollipop), Barplot, SiteRadar
-        │   ├── partOfWhole/    CompositionTreemap (treemap/donut)
+        │   │                   Histogram (overlay / density / small multiples / mirror
+        │   │                   with two-sample statistics), Ridgeline
+        │   ├── evolution/      Timeseries (overlay / per-site, synchronized date cursor),
+        │   │                   MonthlyBand, SeasonalClock (circular barplot), MonthlyHeatmap
+        │   ├── ranking/        CorrelationRanking (lollipop), Barplot, SiteRadar,
+        │   │                   ParallelCoordinates (brushable axes)
+        │   ├── partOfWhole/    CompositionTreemap (treemap / circle pack / donut / stacked
+        │   │                   bars, family → species hierarchy)
         │   ├── map/            SiteBubbleMap
         │   ├── flow/           MethodSankey (site → EC method → HIPS / season)
         │   ├── pmf/            SourceStack (stacked / streamgraph), SourceSeasonality
-        │   └── calibration/    the grid: CutoffSweep, KSweep, SlopeInterceptTrap,
+        │   └── calibration/    the grid: SpecCurve, CutoffSweep, KSweep, SlopeInterceptTrap,
         │                                 SpectraDumbbell, CrossSiteHeatmap
         │                       one run: CVCurve, RunCrossplot, RunSeries, SplitCheck
+        │                       cross-site: CrossSiteTransfer (every site under one calibration,
+        │                                   transfer table, site ordering across calibrations)
         │                       cohorts: CohortComposition, SelectionRanking, OverlapMatrix
         │                                (matrix / chord), SpectraOverlay, AnalogLab, HipsYork
         ├── components/     ChartFrame (+ SVG/PNG export), SubsetBar, DateBrush, Legend,
@@ -63,15 +72,37 @@ npm run dev          # http://localhost:5178
 (From the Claude desktop app the same server is registered as `gallery` in
 `.claude/launch.json`.)
 
-The JSON in `app/public/data/` is committed, so the app runs without touching
-the pickles. Regenerate after the data or the notebooks change:
+The core JSON in `app/public/data/` (census, filters, meta, pmf, calibration,
+calibration_runs, world) is committed, so the Census and Calibration pages run
+without touching the pickles. The larger study exports are **gitignored** and
+must be regenerated locally before their pages load: `baseline_*`,
+`spec_curve.json`, `meeting/` and `similarity/` (see the second block below).
+Regenerate after the data or the notebooks change:
 
 ```bash
 python gallery/census/build_census.py     # re-scan notebooks -> census
 python gallery/data/export_data.py        # re-export filter data -> app JSON
 python gallery/data/export_calibration.py # calibration explorer batch results -> calibration.json
-/Users/ahmadjalil/anaconda3/bin/python gallery/data/export_calibration_runs.py  # explorer per-filter readouts (needs the explorer's env)
+~/anaconda3/bin/python gallery/data/export_calibration_runs.py  # explorer per-filter readouts (needs the explorer's env)
+python gallery/data/export_spec_curve.py  # every scored Addis specification -> spec_curve.json
+# meeting follow-up: run the two workflows first (~3 min + ~45 min on 12 threads), then export
+uv run --no-sync python research/ftir_hips_chem/workflows/run_meeting_followup_20260917.py
+uv run --no-sync python research/ftir_hips_chem/workflows/run_meeting_grid_20260917.py
+uv run --no-sync python gallery/data/export_meeting_followup.py
 python gallery/data/fetch_basemap.py      # only if world.geojson goes missing
+```
+
+Gitignored study exports (each reads results the matching research workflow
+wrote under `research/*/output/`, so run that workflow first if they are absent):
+
+```bash
+uv run python gallery/data/export_baseline_comparison.py      # baseline_comparison.json + pool/addis/paired CSVs
+uv run python gallery/data/export_baseline_applicability.py   # baseline_applicability.json
+uv run python gallery/data/export_baseline_external_pilot.py  # baseline_external_pilot.json
+uv run python gallery/data/export_baseline_followup.py        # baseline_followup.json, *_followup_*.csv, notebooks
+uv run python gallery/data/export_similarity.py               # similarity/*.bin + similarity.json
+uv run python gallery/data/export_vibes_fullrange_traces.py   # similarity/traces_VIBES-full.*
+uv run python gallery/data/export_etad_ids.py                 # similarity/etad_ids.json
 ```
 
 ## What the census found
@@ -97,13 +128,20 @@ It reads `research/ftir_hips_chem/scripts/` rather than restating anything, so
 the gallery and the matplotlib figures cannot drift apart:
 
 - **Site and season colours** come from `config.SITES[...]['color']` and
-  `config.ETHIOPIA_SEASONS`.
+  `config.ETHIOPIA_SEASONS`; the per-site local calendars (the default season
+  filter) are in `app/src/siteSeasons.ts`, sourced in docs/site-seasonality.md.
 - **MAC** is `config.MAC_VALUE`. `HIPS Fabs` stays in Mm⁻¹; the µg/m³ form is
   exported under the unambiguous name `HIPS BC`, never as a same-named column
   that silently differs by a factor of 10.
 - **Exclusions** come from `outliers.EXCLUDED_SAMPLES` via
   `apply_exclusion_flags`. They are flagged, not dropped: the header toggle
   puts the 3 excluded samples back so you can see what was removed and why.
+- **SPARTAN carbon is FTIR-derived.** The public `ChemSpec_EC_PM2.5` and
+  `ChemSpec_OC_PM2.5` values are labelled `EC/OC (ChemSpec FTIR)` in the app.
+  They are two-decimal reports of the same in-house FTIR-derived products, not TOR measurements
+  or independent EC references. TOR in the calibration and AIRSpec/VIBES tabs
+  belongs to the separate IMPROVE calibration/test filters. The site and season
+  chips on the main gallery count SPARTAN filters, regardless of field coverage.
 - **Deming.** Every crossplot that draws a 1:1 line also reports an
   errors-in-variables slope, per AGENTS.md. The implementation reproduces the
   published numbers exactly — ETAD Fabs/MAC vs FTIR EC, n=190: OLS 1.8983,
@@ -136,20 +174,23 @@ that would do nothing is absent, not disabled:
   Beijing reaches back to 2013 and Delhi starts mid-2022, so "only the overlap"
   used to mean editing a notebook.
 
-- **Season calendar** — `dry_feb` (the repo default) or `belg_feb`. Both come
-  from `config.SEASON_CONVENTIONS`; the app derives each filter's season from
-  its month at render time, so switching relabels every chart with no
-  re-export. The bar always names which season February falls in under the
-  active calendar.
+- **Season calendar** — `dry_feb` (the repo default) or `belg_feb` apply
+  shared Ethiopian month bins across sites. Select one site to enable its
+  source-backed local calendar; PMF offers the Addis local calendar because its
+  factor solution is Addis-only. Switching calendars relabels and filters by
+  month without re-exporting. The sources and current per-site filter counts
+  are in [site-seasonality.md](../docs/site-seasonality.md).
 - **Seasons** and **sites** — click to include/exclude.
 - **Excluded samples** — off by default (`get_clean_data`), toggle to put the
   3 back.
 
 Each chip carries its own count, computed *before* that dimension's filter is
 applied, so a chip always shows what selecting it would give you. The counts
-cross-update: with Belg selected the site chips read 84/45/70/51 (= the 250 in
-the Belg chip), and with Addis selected the season chips read 73/51/66 (= the
-190 in the Addis chip). A chip whose count is zero is struck through and
+cross-update. Under the default per-site calendar the season chips are grouped
+by site (Beijing 73/84/100/118, Delhi 7/45/22/22, JPL 163/115, Addis 55/69/66);
+under the shared Ethiopian `dry_feb` bins, with Belg selected the site chips read
+84/45/70/51 (= the 250 in the Belg chip). The filters live in a floating side
+panel opened from the tab on the left edge. A chip whose count is zero is struck through and
 disabled rather than silently yielding an empty chart — though no combination
 in the current data reaches zero, so that path is unexercised.
 
@@ -209,7 +250,7 @@ on every tab, with a summary card in the subset bar). The drawer shows:
 - every measurement the filter carries, grouped by family, with **where it
   sits within its site**: a range strip with the site's IQR, median tick and
   this filter's dot, plus the site percentile;
-- the ratios worth reading off one filter (FTIR/TOR EC, HIPS BC/EC, OC/EC,
+- the ratios worth reading off one filter (HIPS BC/FTIR EC, OC/EC,
   OM/OC, EC/PM2.5) against the site median of the same ratio;
 - **a mini crossplot with its own axis pickers** — any pair, same site or all
   sites — with this filter ringed and its residual from the OLS fit stated;
@@ -251,6 +292,41 @@ had no gallery form:
 - **Transitions** — every chart's SVG carries the `animated` class, so a
   subset, field or encoding change moves marks rather than snapping (CSS
   transitions on presentation attributes; no animation library).
+
+Second pass, same day, the chart types the site has that the estate never
+drew, each over the live subset:
+
+- **Brush to select** (scatterplot toggle) and **brushable axes** (parallel
+  coordinates) write one shared set of filter ids (`selected` in
+  `lib/highlight`). Every point-based chart on any tab dims what is not in the
+  set; the subset bar shows "N brushed" with a clear button. It is a
+  highlight, not a filter: fits and counts still use the whole subset.
+- **Scatter matrix** — the gallery's actual correlogram, as an encoding of
+  the Correlogram panel: up to six species of a family (or the six best
+  covered), histograms on the diagonal, OLS line and r in each pair, points
+  linked to hover and the drawer.
+- **Species network · arc · dendrogram** — the same r matrix as a graph.
+  Network and arc draw only the pairs above an `|r|` threshold; the
+  dendrogram is average-linkage clustering on 1 − |r| with a cut line that
+  colours the clusters. The first *flow*-category and hierarchy charts over
+  chemistry rather than cohorts.
+- **Parallel coordinates** — every species of a family, every filter, one
+  polyline each, per-axis brushes intersected. What the radar shows as site
+  medians, per filter.
+- **Seasonal clock** — the circular barplot: monthly medians around the year
+  with the active calendar's seasons shaded, so Dec–Jan are neighbours and
+  February's move between calendars is visible.
+- **Monthly heatmap** — site × year-month coloured by the measurement (the
+  coverage heatmap on the correlation tab counts filters; this one shows the
+  value), with a season strip and a continuous legend.
+- **Composition hierarchy** — the treemap and donut gained a family → species
+  level, plus **circle pack** and **stacked bars** (the one encoding that
+  compares sites on one axis).
+- **Density layout** and **mirror statistics** on the histogram: the mirror
+  reports median difference, Welch t and p, Cohen's d and the Mann–Whitney
+  AUC, effect sizes first (`lib/stats.twoSample`, checked against hand
+  calculations).
+- **Direct labels** at the end of each line in the timeseries overlay.
 
 ## Export
 
@@ -372,20 +448,17 @@ port 5058. The gallery is the reading view; the explorer is the lab.
 - **FTIR spectra.** The phase-3 spectral notebooks are the other large family
   with no representation here; a spectrum overlay is a line chart the estate
   genuinely needs.
-- **Parallel coordinates** and **circular barplot** from the gallery's ranking
-  category are the obvious next two; neither is in the estate. Parallel
-  coordinates would show all 28 species per filter at once, which the radar
-  only does as site medians.
-- **A network view** of spectral similarity (the gallery's network chart,
-  ftir_52's spectral map) needs pairwise similarities exported from the
-  explorer; the analog-lab export carries ranks and PCA coordinates only.
-- **Dendrogram** of spectral clusters (the explorer's k-means-3 sub-types)
-  likewise waits on an export of the linkage.
+- **A network view of spectral similarity** (ftir_52's spectral map) and a
+  **dendrogram of spectral clusters** (the explorer's k-means-3 sub-types)
+  need pairwise similarities or a linkage exported from the explorer; the
+  analog-lab export carries ranks and PCA coordinates only. The species graph
+  is the same three chart types over chemistry, where the data is in hand.
+- **Edge bundling**, **choropleth / hexbin / connection maps**, **cartogram**,
+  **wordcloud** and **pie** are not planned: four sites and 28 species do
+  not carry them.
 - **Canvas rendering** for the largest scatters was deliberately not done:
   every chart is exported as SVG, and a canvas layer would vanish from the
   file.
-- **Brush-to-select on the scatterplot** (select a cloud of points and see
-  them highlighted on the timeseries) is the next step after hover/pin.
 
 ## Rendering invariants
 
@@ -410,3 +483,130 @@ reintroducing:
 Histogram and ridgeline clip to 1–99 % by default so a long right tail doesn't
 squeeze the bulk into a few pixels — and both state how many values fall
 outside rather than dropping them silently. The ridgeline's clip is a toggle.
+
+## AIRSpec / VIBES comparison
+
+Open `http://localhost:5178/#tab=baseline` for the completed paired baseline
+comparison. Regenerate its separate export with:
+
+```bash
+uv run --locked --no-sync python gallery/data/export_baseline_comparison.py
+```
+
+The page uses frozen Colab predictions and the subsequent audit. It provides
+full/restricted cohort selection, site/loading display subsets, RMSE/MAE/bias/
+predictive R², residual plots, paired loading-band intervals, 12 individual
+inspection spectra, blank/injection diagnostics and downloadable inclusion
+ledgers. Display subsets never refit the models or change the frozen scores.
+The complete-cohort interval and loading-band chart remain explicitly labelled
+when a display subset is selected. All negative predictions remain in the errors.
+
+**Spectral-cut distinction:** the September 10 experiment excluded
+1800–2500 cm⁻¹, optionally also >3600 or >3500, from **analog matching only**.
+All its PLS fits retained the complete 2002-channel AIRSpec grid. The paired
+Colab benchmark does not repeat masked analog selection: it compares the full
+pool and the earlier lowest-OC/EC membership. The gallery's amber regions are
+an explanatory overlay and do not claim that the displayed predictions use
+masked features. Historical membership changes appear separately.
+
+In the spectrum panel, **Excluded regions → Hide excluded regions** hides the
+selected channels from the curves, preserves gaps on the true wavenumber axis,
+and fits the y-axis to visible values. **Shade excluded regions** restores all
+channels. The **VIBES − AIRSpec** spectrum view shows the pointwise difference
+between corrected spectra, with zero as the agreement reference. Neither control
+recomputes corrections or EC predictions. SVG/PNG exports label the selected mask
+and its display-only status.
+
+The paired-error histogram, inspired by the
+[React Graph Gallery histogram](https://www.react-graph-gallery.com/histogram),
+shows `abs(VIBES − TOR) − abs(AIRSpec − TOR)` for every selected physical filter.
+Negative values favor VIBES. All tails remain included, bins share a boundary
+at zero, and the mean equals the methods' MAE difference. Bin counts, spectral
+display choices and existing filters persist in copied URLs. The counts and
+median describe the selected filters; they are not a significance test.
+
+The exporter checks the frozen bundle hashes, original prediction hashes,
+paired metric reconciliation and retained physical-filter IDs. It does not
+require Drive or repeat any correction/model fit. The 253 Addis target spectra
+have no independent thermal EC reference in this comparison. Global gallery
+sample controls are hidden on this page because they describe a different dataset.
+
+### Research diagnostics
+
+The baseline page also shows training spectral distance, paired region
+contributions, site × EC-loading error differences, and individual held-out
+blank residuals. The region contributions are the saved VIBES − AIRSpec
+decomposition and reconcile to the paired predictions. The site/loading matrix
+is a retrospective screen using measured IMPROVE test EC, not a fitted routing
+rule. Cells with fewer than five filters are left uncolored.
+
+Rebuild the spectral-distance export separately with:
+
+```bash
+uv run --locked --no-sync python gallery/data/export_baseline_applicability.py
+```
+
+It verifies the frozen input hashes and fits an exploratory, eight-component
+PCA to each method's 10,066 IMPROVE **training** spectra only. The displayed
+T² and reconstruction-error percentile ranks compare 2,327 held-out IMPROVE
+spectra and 253 Addis target spectra to those training distributions. These are
+not saved PLS scores or validated applicability cutoffs. Addis has no thermal
+EC truth here, so its transfer bars report spectral distance only; no Addis
+error or accuracy is inferred. The gallery does not display prospective-study
+cards. The follow-up analyses are instead in the CLI-executable
+`research/ftir_hips_chem/vibes_followup_experiments.ipynb`, with frozen inputs,
+saved result tables, and an independent-reference gate for Addis. The separate
+`gallery/data/export_baseline_followup.py` exporter validates and publishes its
+selection and routing scores under a clearly labelled **executed notebook
+follow-up** panel. The original Colab score table remains unchanged. Rebuild it
+after executing the notebook with:
+
+```bash
+uv run --locked --no-sync python gallery/data/export_baseline_followup.py
+```
+
+The gallery's follow-up chart compares all six selections for each correction
+method on the same 2,327 IMPROVE test filters. The restricted-membership table
+separates its 137 original test members from the 2,190 outside members. The
+routing chart shows grouped training-site folds and the previously inspected
+outer sites, with the severe VIBES fold error retained. Download links expose
+the executed notebook, per-filter predictions, membership and metrics. These
+analyses are exploratory because the original test outcomes had already been
+inspected. The Addis readiness gate found no independent thermal EC matches,
+so no Addis accuracy score appears.
+
+## Spectral similarity tab
+
+The **Spectral similarity** tab answers "what looks most like this?" for any
+target: one of the 158 sites in the frozen full-profile AIRSpec / VIBES run
+(157 IMPROVE sites plus Addis), or one season at a site. Every other site and
+site-season is ranked by the **mean signed Pearson r** over all filter pairs,
+excluding self-pairs. The 500 most similar individual filters from other sites
+are scored exactly as `seasonal_analogs.mean_correlation_scores` scores an
+analog library, and the exporter asserts parity to within 1e-9. The page shows
+the ranking, a season-by-season matrix for the target's site, the target's
+spectra over its closest matches, where those matches come from by site and
+season, and a downloadable filter list. Spectra method (AIRSpec / VIBES) and
+all four analog-selection masks are switchable. The masks change which
+channels are compared, never the spectra.
+
+Site names, states and coordinates come from the `Sites` sheet of the
+IMPROVE Query Wizard workbooks, located by `improve_io.improve_dir()` (set
+`AETHMODULAR_IMPROVE_DIR` if the Drive folder isn't mounted); Addis comes from
+the frozen ETAD metadata. They appear wherever a site code does: tooltips, the
+filter table, and both CSVs. In the spectra chart, hover a trace to identify
+it and click to pin it.
+
+Seasons are fixed month bins. Addis uses the canonical Dry Oct–Feb, Belg
+Mar–May and Kiremt Jun–Sep; IMPROVE sites use meteorological seasons. Six
+Addis filters have no date in the frozen ledger and count toward all-year Addis
+only. Rebuild with:
+
+```bash
+uv run --locked --no-sync python gallery/data/export_similarity.py
+```
+
+The export takes about ten seconds and writes about 27 MB to
+`app/public/data/similarity/`. Each method × mask pair has a group × group
+score triangle and a top-500 list, and each method has binned per-filter
+traces. The page loads only the files for the current method and mask.

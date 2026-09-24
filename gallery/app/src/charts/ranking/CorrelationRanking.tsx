@@ -1,17 +1,19 @@
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
-import { Legend } from '@/components/Legend'
+import { Legend, useLegend } from '@/components/Legend'
 import { XAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { byConstruction } from '@/lib/derived'
+import { RESTATES, isBookkeeping, sameProduct } from '@/fieldLineage'
 import { regression, fmt } from '@/lib/stats'
 import { INK, MARGIN, FONT } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 
 const POS = INK.positive
 const NEG = INK.negative
+const SAME = 'same product (unit conversion or public FTIR report)'
+const kindOf = (d: { r: number; trivial: boolean }) => (d.trivial ? SAME : d.r >= 0 ? 'positive r' : 'negative r')
 
 /**
  * Lollipop — what actually predicts a chosen measurement, ranked.
@@ -32,6 +34,7 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
 
   const [siteFilter, setSiteFilter] = useState('Addis Ababa')
   const [minN, setMinN] = useState('30')
+  const lg = useLegend()
 
   const siteOptions = useMemo(
     () => ['All sites (pooled)', ...meta.sites.filter((s) => rows.some((r) => r.site === s.name)).map((s) => s.name)],
@@ -41,9 +44,11 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
 
   const ranked = useMemo(() => {
     const src = site.startsWith('All') ? rows : rows.filter((r) => r.site === site)
-    const out: { field: string; r2: number; r: number; n: number; slope: number; trivial: boolean }[] = []
+    const out: { field: string; r2: number; r: number; n: number; slope: number | null; intercept: number | null; trivial: boolean }[] = []
     for (const f of meta.fields) {
-      if (f === target) continue
+      if (f === target || isBookkeeping(f)) continue
+      // a restatement of another candidate (HIPS BC = HIPS Fabs / MAC) only earns a row when it restates the target itself
+      if (f in RESTATES && !sameProduct(f, target)) continue
       const xs: number[] = []
       const ys: number[] = []
       for (const r of src) {
@@ -55,8 +60,9 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
         }
       }
       if (xs.length < Number(minN)) continue
-      const s = regression(xs, ys)
-      if (s) out.push({ field: f, r2: s.r2, r: s.r, n: s.n, slope: s.slope, trivial: byConstruction(f, target) })
+      // both axes are measurements: report the Deming (λ=1) fit, not y-on-x least squares
+      const s = regression(xs, ys, { errorsInVariables: true })
+      if (s) out.push({ field: f, r2: s.r2, r: s.r, n: s.n, slope: s.demingSlope, intercept: s.demingIntercept, trivial: sameProduct(f, target) })
     }
     return out.sort((a, b) => b.r2 - a.r2)
   }, [rows, target, site, minN, meta.fields])
@@ -66,7 +72,8 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
   // off the canvas for the top-ranked rows
   const LABEL_GUTTER = 96
   const innerW = Math.max(160, width - MARGIN.left - 60 - MARGIN.right - LABEL_GUTTER)
-  const innerH = ranked.length * rowH
+  const shown = ranked.filter((d) => lg.show(kindOf(d)))
+  const innerH = shown.length * rowH
   const height = innerH + MARGIN.top + MARGIN.bottom
   const x = d3.scaleLinear().domain([0, 1]).range([0, innerW])
 
@@ -93,18 +100,21 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
               {x.ticks(6).map((t) => (
                 <line key={t} x1={x(t)} x2={x(t)} y1={0} y2={innerH} stroke={INK.grid} />
               ))}
-              {ranked.map((d, i) => {
+              {shown.map((d, i) => {
                 const cy = i * rowH + rowH / 2
                 const col = d.trivial ? INK.identity : d.r >= 0 ? POS : NEG
                 return (
                   <g
                     key={d.field}
+                    opacity={lg.dim(kindOf(d), 0.2)}
                     onMouseEnter={(e) =>
                       tip.show(e, [
                         d.field,
                         `R² = ${fmt(d.r2, 4)}`,
                         `r = ${fmt(d.r, 3)}`,
-                        `OLS slope = ${fmt(d.slope, 4)}`,
+                        d.slope !== null && d.intercept !== null
+                          ? `Deming y = ${fmt(d.slope, 4)}x ${d.intercept < 0 ? '−' : '+'} ${fmt(Math.abs(d.intercept), 4)}`
+                          : 'Deming fit: —',
                         `n = ${d.n}`,
                         ...(d.trivial ? ['derived from the target by arithmetic — not a finding'] : []),
                       ])
@@ -130,8 +140,9 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
           items={[
             { label: 'positive r', color: POS },
             { label: 'negative r', color: NEG },
-            { label: 'by construction (unit conversion of the target)', color: INK.identity },
+            { label: SAME, color: INK.identity },
           ]}
+          {...lg.props}
         />
         {tip.node}
       </div>

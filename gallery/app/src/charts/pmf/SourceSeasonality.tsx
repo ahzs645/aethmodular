@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
-import { Legend } from '@/components/Legend'
+import { Legend, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -27,6 +27,7 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
 
   const [mode, setMode] = useState<(typeof MODES)[number]>('Relative (%)')
   const [threshold, setThreshold] = useState('30')
+  const lg = useLegend()
 
   const labels = pmf.sources.map((s) => s.label)
   const keyOfLabel = useMemo(() => new Map(pmf.sources.map((s) => [s.label, s.key])), [pmf.sources])
@@ -53,7 +54,8 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
   const innerH = height - MARGIN.top - MARGIN.bottom
 
   const x = d3.scaleBand<string>().domain(groups.map((g) => g.name)).range([0, innerW]).padding(0.34)
-  const yMax = d3.max(groups, (g) => d3.sum(labels, (l) => g.means[l])) ?? 1
+  const shown = labels.filter(lg.show)
+  const yMax = d3.max(groups, (g) => d3.sum(shown, (l) => g.means[l])) || 1
   const y = d3.scaleLinear().domain([0, yMax * 1.04]).range([innerH, 0]).nice()
 
   const thr = Number(threshold) / 100
@@ -63,7 +65,7 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
     <ChartFrame
       id="sourceseason"
       title="Source apportionment by season"
-      subtitle={`Mean source mix per Ethiopian season, stacked. ${crossing} of ${subsetRows.length} filters have a single source above ${threshold} % — on the un-normalised GF columns that count would be zero, which is the trap AGENTS.md warns about.`}
+      subtitle={`Mean source mix per selected season, stacked. ${crossing} of ${subsetRows.length} filters have a single source above ${threshold} % — on the un-normalised GF columns that count would be zero, which the analysis notes explain.`}
       provenance={`normalised via normalize_gf_fractions · calendar: ${meta.season_convention}`}
       controls={
         <>
@@ -84,7 +86,7 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
                 let acc = 0
                 return (
                   <g key={g.name}>
-                    {labels.map((l) => {
+                    {shown.map((l) => {
                       const v = g.means[l]
                       const y0 = y(acc)
                       acc += v
@@ -94,7 +96,7 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
                         <rect
                           key={l}
                           x={x(g.name) ?? 0} y={y1} width={x.bandwidth()} height={Math.max(0, y0 - y1)}
-                          fill={colorOf.get(l) ?? INK.muted} fillOpacity={0.88} stroke="#fff" strokeWidth={0.8}
+                          fill={colorOf.get(l) ?? INK.muted} fillOpacity={0.88 * lg.dim(l)} stroke="#fff" strokeWidth={0.8}
                           onMouseEnter={(e) => tip.show(e, [`${l} · ${g.name}`, relative ? `mean share ${(v * 100).toFixed(1)} %` : `mean ${fmt(v, 2)} µg/m³`, `dominant on ${dominant} of ${g.n} filters`])}
                           onMouseLeave={tip.hide}
                         />
@@ -109,7 +111,7 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
             </g>
           </svg>
         )}
-        <Legend items={pmf.sources.map((s) => ({ label: s.label, color: s.color, shape: 'square' as const }))} />
+        <Legend items={pmf.sources.map((s) => ({ label: s.label, color: s.color, shape: 'square' as const }))} {...lg.props} />
         {tip.node}
       </div>
     </ChartFrame>

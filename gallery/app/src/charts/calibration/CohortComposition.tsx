@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
-import { Legend } from '@/components/Legend'
+import { Legend, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -20,6 +20,8 @@ export function CohortComposition({ info, label }: { info: CohortInfo | undefine
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
+  const lg = useLegend()
+  const POOL = 'IMPROVE pool', COHORT = 'this cohort'
   const height = 280
 
   const c = info?.composition
@@ -53,9 +55,9 @@ export function CohortComposition({ info, label }: { info: CohortInfo | undefine
               <XAxis scale={x} y={innerH} label="TOR OC/EC ratio (clipped at 25)" />
               {c.centers.map((cx, i) => (
                 <g key={i}>
-                  <rect x={x(cx) - bw / 2} y={y(c.pool[i] / poolMax)} width={Math.max(0.5, bw - 0.5)} height={innerH - y(c.pool[i] / poolMax)} fill={INK.muted} fillOpacity={0.35}
+                  <rect x={x(cx) - bw / 2} y={y(c.pool[i] / poolMax)} width={Math.max(0.5, bw - 0.5)} height={innerH - y(c.pool[i] / poolMax)} fill={INK.muted} fillOpacity={lg.show(POOL) ? 0.35 * lg.dim(POOL) : 0}
                     onMouseEnter={(e) => tip.show(e, [`OC/EC ≈ ${fmt(cx, 2)}`, `pool: ${c.pool[i]} filters`, `cohort: ${c.cohort[i]} filters`])} onMouseLeave={tip.hide} />
-                  <rect x={x(cx) - bw / 2} y={y(c.cohort[i] / cohortMax)} width={Math.max(0.5, bw - 0.5)} height={innerH - y(c.cohort[i] / cohortMax)} fill={INK.accent} fillOpacity={0.55} pointerEvents="none" />
+                  {lg.show(COHORT) && <rect x={x(cx) - bw / 2} y={y(c.cohort[i] / cohortMax)} width={Math.max(0.5, bw - 0.5)} height={innerH - y(c.cohort[i] / cohortMax)} fill={INK.accent} fillOpacity={0.55 * lg.dim(COHORT, 0.2)} pointerEvents="none" />}
                 </g>
               ))}
               <line x1={x(c.addis_marker)} x2={x(c.addis_marker)} y1={0} y2={innerH} stroke={INK.negative} strokeWidth={1.5} strokeDasharray="5 3" />
@@ -65,7 +67,7 @@ export function CohortComposition({ info, label }: { info: CohortInfo | undefine
             </g>
           </svg>
         )}
-        <Legend items={[{ label: 'IMPROVE pool', color: INK.muted, shape: 'square' }, { label: 'this cohort', color: INK.accent, shape: 'square' }]} note="each scaled to its own peak" />
+        <Legend items={[{ label: POOL, color: INK.muted, shape: 'square' }, { label: COHORT, color: INK.accent, shape: 'square' }]} {...lg.props} note="each scaled to its own peak" />
         {tip.node}
       </div>
     </ChartFrame>

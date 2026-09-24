@@ -27,7 +27,10 @@ export function useGalleryData() {
     const get = async (name: string) => {
       const res = await fetch(`${BASE}/${name}.json`)
       if (!res.ok) throw new Error(`${name}.json -> HTTP ${res.status}`)
-      return res.json()
+      if (!name.startsWith('calibration')) return res.json()
+      // The calibration explorer names USPA "Pasadena"; the filter data (config.SITES)
+      // call it JPL. Relabel on load so one site has one name on every tab.
+      return JSON.parse((await res.text()).replace(/\bPasadena\b/g, 'JPL'))
     }
     // pmf.json is ETAD-only and optional — a checkout without the factor CSVs
     // should still render everything else.
@@ -57,6 +60,10 @@ export function useDimensions<T extends HTMLElement>(ref: React.RefObject<T>) {
   useEffect(() => {
     const el = ref.current
     if (!el) return
+    // measure once now: the observer's first callback can lag a frame (or never
+    // come in a background tab), and until then every chart drew at 720 px
+    const w0 = el.getBoundingClientRect().width
+    if (w0 > 0) setSize((s) => (s.width === w0 ? s : { ...s, width: w0 }))
     const ro = new ResizeObserver((entries) => {
       const r = entries[0].contentRect
       if (r.width > 0) setSize((s) => (s.width === r.width ? s : { ...s, width: r.width }))

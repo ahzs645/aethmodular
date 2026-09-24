@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
-import { Legend, toggleIn } from '@/components/Legend'
+import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
@@ -28,7 +28,7 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
   const groupNames = meta.field_groups.map((g) => g.label)
   const [group, setGroup] = useState(groupNames.includes('Ions') ? 'Ions' : groupNames[0] ?? '')
   const [norm, setNorm] = useState<(typeof NORMS)[number]>('÷ max site median')
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const { hidden, dim, props: legendProps } = useLegend()
 
   const species = useMemo(
     () => (meta.field_groups.find((g) => g.label === group)?.fields ?? []).filter((f) => !f.includes('uncertainty') && !f.includes('MDL')),
@@ -132,7 +132,7 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
               )
             })}
             {shown.map((s) => (
-              <path key={s.name} d={pathFor(s)} fill={s.color} fillOpacity={0.14} stroke={s.color} strokeWidth={2} strokeLinejoin="round" />
+              <path key={s.name} d={pathFor(s)} fill={s.color} fillOpacity={0.14 * dim(s.name)} stroke={s.color} strokeOpacity={dim(s.name)} strokeWidth={2} strokeLinejoin="round" />
             ))}
             {shown.map((s) =>
               species.map((f) => {
@@ -143,7 +143,7 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
                 return (
                   <circle
                     key={`${s.name}-${f}`}
-                    cx={px} cy={py} r={3.5} fill={s.color} stroke="#fff" strokeWidth={1}
+                    cx={px} cy={py} r={3.5} fill={s.color} stroke="#fff" strokeWidth={1} opacity={dim(s.name)}
                     onMouseEnter={(e) =>
                       tip.show(e, [
                         `${s.name} · ${f}`,
@@ -161,7 +161,7 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
         )}
         {tip.node}
       </div>
-      <Legend items={sites.map((s) => ({ label: s.name, color: s.color }))} hidden={hidden} onToggle={(l) => setHidden((h) => toggleIn(h, l))} />
+      <Legend items={sites.map((s) => ({ label: s.name, color: s.color }))} {...legendProps} />
     </ChartFrame>
   )
 }

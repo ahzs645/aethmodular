@@ -1,5 +1,6 @@
 import * as d3 from 'd3'
 import type { CalibFile, CalibRow, MetaFile, MetricRow, SweepRow } from '@/lib/types'
+import { METRIC, PREPROCESSING, SELECTION_SPACE, label } from '@/lib/labels'
 
 /** A configuration is what the explorer fits: cohort × cutoff × selection space × calibration spectra. */
 export interface Config {
@@ -15,11 +16,15 @@ export const sameConfig = (a: Config, b: Config) => configKey(a) === configKey(b
 export function configLabel(c: Config, calib: CalibFile): string {
   const cohort = calib.cohorts[c.co] ?? c.co
   const cut = c.cut !== null ? `-${c.cut}` : ''
-  const sel = c.sel && c.sel !== 'raw' ? ` (selected on ${c.sel})` : ''
-  return `${cohort}${cut}${sel} × ${c.sp}`
+  const sel = c.sel && c.sel !== 'raw' ? ` (${label(SELECTION_SPACE, c.sel)})` : ''
+  return `${cohort}${cut}${sel} × ${label(PREPROCESSING, c.sp)}`
 }
 
-export const shortConfig = (c: Config) => `${c.co}${c.cut !== null ? '-' + c.cut : ''}${c.sel && c.sel !== 'raw' ? '·' + c.sel : ''} × ${c.sp}`
+export const shortConfig = (c: Config) => `${c.co}${c.cut !== null ? '-' + c.cut : ''}${c.sel && c.sel !== 'raw' ? '·' + c.sel : ''} × ${label(PREPROCESSING, c.sp)}`
+
+/** A preset's exported label with the preprocessing in reader-facing words ("× AIRSpec" → "× Spline baseline"). */
+export const presetName = (p: { label: string; spectra: string }) =>
+  p.label.replace(/× (raw|AIRSpec|SG 2nd derivative|2nd derivative)(?=$|\s)/, `× ${label(PREPROCESSING, p.spectra)}`)
 
 /** Fixed cohort colours — not in config.py, so declared once here. */
 export const COHORT_COLOR: Record<string, string> = {
@@ -31,27 +36,35 @@ export const COHORT_COLOR: Record<string, string> = {
 }
 export const cohortColor = (co: string) => COHORT_COLOR[co] ?? '#5b6470'
 
-/** Line dash per calibration spectra space, so raw / AIRSpec / deriv2 read apart at a glance. */
-export const SPECTRA_DASH: Record<string, string | undefined> = { raw: undefined, airspec: '7 4', deriv2: '2 3', neutral: '10 3 2 3' }
+/** Colour per calibration spectra space, shared by every chart that puts the preprocessings side by side. */
+export const SPECTRA_COLOR: Record<string, string> = { raw: '#1f2933', airspec: '#2171b5', deriv2: '#c026d3', neutral: '#0f766e' }
+export const spectraColor = (sp: string) => SPECTRA_COLOR[sp] ?? '#5b6470'
+
 
 export const METRICS = [
   'Deming intercept',
   'Deming slope',
-  'OLS intercept',
-  'OLS slope',
   'R²',
   'held-out TOR R²',
   'Deming intercept @ MAC 6',
 ] as const
 export type Metric = (typeof METRICS)[number]
 
+/** Reader-facing name for each metric key (the keys stay the explorer's internal names). */
+export const METRIC_LABEL: Record<Metric, string> = {
+  'Deming intercept': METRIC.testIntercept,
+  'Deming slope': METRIC.testSlope,
+  'R²': METRIC.testR2,
+  'held-out TOR R²': METRIC.cvR2,
+  'Deming intercept @ MAC 6': 'Test set Deming intercept at MAC 6 (Addis, µg/m³)',
+}
+export const metricLabel = (m: string) => METRIC_LABEL[m as Metric] ?? m
+
 /** Read a metric off a grid row, on the fixed evaluation set or all pairs. */
 export function metricOf(r: CalibRow, m: Metric, allPairs: boolean): number | null {
   switch (m) {
     case 'Deming intercept': return allPairs ? r.adb : r.db
     case 'Deming slope': return allPairs ? r.adm : r.dm
-    case 'OLS intercept': return allPairs ? r.aob : r.ob
-    case 'OLS slope': return allPairs ? r.aom : r.om
     case 'R²': return allPairs ? r.ar2 : r.r2
     case 'held-out TOR R²': return r.ho
     case 'Deming intercept @ MAC 6': return r.db6
@@ -65,8 +78,6 @@ export function sweepMetric(r: SweepRow, m: Metric): number | null {
   switch (m) {
     case 'Deming intercept': return r.db
     case 'Deming slope': return r.dm
-    case 'OLS intercept': return r.ob
-    case 'OLS slope': return r.om
     case 'R²': return r.r2
     case 'held-out TOR R²': return r.ho
     default: return null
@@ -87,7 +98,11 @@ export const fmtFit = (m: number | null, b: number | null) =>
 export function groupColorFn(meta: MetaFile, groups: string[]): (g: string) => string {
   const bySeason = new Map<string, string>()
   for (const conv of Object.values(meta.season_conventions)) for (const s of conv) bySeason.set(s.name, s.color)
-  for (const s of meta.seasons) bySeason.set(s.name, s.color)
+  for (const s of meta.seasons) {
+    bySeason.set(s.name, s.color)
+    // per-site calendars qualify names ("Beijing · Winter (Dec–Feb)"); calibration runs use the bare season
+    if (s.site) bySeason.set(s.name.slice(s.site.length + 3), s.color)
+  }
   const others = [...new Set(groups.filter((g) => !bySeason.has(g)))].sort()
   const ord = d3.scaleOrdinal<string>().domain(others).range(d3.schemeTableau10)
   return (g) => bySeason.get(g) ?? ord(g)

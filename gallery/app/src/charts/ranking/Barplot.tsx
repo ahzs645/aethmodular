@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
-import { Legend } from '@/components/Legend'
+import { Legend, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -25,6 +25,7 @@ export function Barplot({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFi
 
   const [stat, setStat] = useState<(typeof STATS)[number]>('Median')
   const seasons = meta.seasons.map((s) => s.name)
+  const lg = useLegend()
 
   const data = useMemo(() => {
     const out: { site: string; season: string; value: number; q1: number; q3: number; n: number; color: string }[] = []
@@ -51,19 +52,23 @@ export function Barplot({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFi
   }, [rows, field, stat, meta, seasons])
 
   const sites = [...new Set(data.map((d) => d.site))]
+  const shown = data.filter((d) => lg.show(d.season))
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const innerH = height - MARGIN.top - MARGIN.bottom
 
   const x0 = d3.scaleBand<string>().domain(sites).range([0, innerW]).paddingInner(0.24)
-  const x1 = d3.scaleBand<string>().domain(seasons).range([0, x0.bandwidth()]).padding(0.1)
-  const yLo = Math.min(0, d3.min(data, (d) => Math.min(d.value, d.q1)) ?? 0)
-  const y = d3.scaleLinear().domain([yLo, (d3.max(data, (d) => Math.max(d.value, d.q3)) ?? 1) * 1.08]).range([innerH, 0]).nice()
+  // each site's group holds only the seasons it has (under per-site calendars they differ by site)
+  const x1For = (site: string) =>
+    d3.scaleBand<string>().domain(seasons.filter((se) => lg.show(se) && shown.some((d) => d.site === site && d.season === se))).range([0, x0.bandwidth()]).padding(0.1)
+  const x1BySite = new Map(sites.map((site) => [site, x1For(site)]))
+  const yLo = Math.min(0, d3.min(shown, (d) => Math.min(d.value, d.q1)) ?? 0)
+  const y = d3.scaleLinear().domain([yLo, (d3.max(shown, (d) => Math.max(d.value, d.q3)) ?? 1) * 1.08]).range([innerH, 0]).nice()
 
   return (
     <ChartFrame
       id="barplot"
       title="Barplot — site by season, with the spread shown"
-      subtitle="Median per site per Ethiopian season, whiskered to the interquartile range. A bar alone would imply a precision these n≈10–90 groups don't have, so the IQR travels with it."
+      subtitle="Median per site per selected season (each site on its own calendar unless shared Ethiopian bins are chosen), whiskered to the interquartile range. A bar alone would imply a precision these n≈10–90 groups don't have, so the IQR travels with it."
       provenance="stands in for 70 bar/barh figures · comparisons.summary_bars · react-graph-gallery.com/barplot"
       controls={
         <>
@@ -79,12 +84,14 @@ export function Barplot({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFi
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
               <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} />
               <XAxis scale={x0} y={innerH} />
-              {data.map((d, i) => {
+              {shown.map((d, i) => {
+                const x1 = x1BySite.get(d.site)!
                 const bx = (x0(d.site) ?? 0) + (x1(d.season) ?? 0)
                 const bw = x1.bandwidth()
                 return (
                   <g
                     key={i}
+                    opacity={lg.dim(d.season)}
                     onMouseEnter={(e) => tip.show(e, [`${d.site} · ${d.season}`, `${stat.toLowerCase()} = ${fmt(d.value)}`, `IQR ${fmt(d.q1)} – ${fmt(d.q3)}`, `n = ${d.n}`])}
                     onMouseLeave={tip.hide}
                   >
@@ -103,7 +110,7 @@ export function Barplot({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFi
             </g>
           </svg>
         )}
-        <Legend items={meta.seasons.map((s) => ({ label: s.name, color: s.color, shape: 'square' as const }))} note="small numbers under the site names are n per bar" />
+        <Legend items={meta.seasons.map((s) => ({ label: s.name, color: s.color, shape: 'square' as const }))} {...lg.props} note="small numbers under the site names are n per bar" />
         {tip.node}
       </div>
     </ChartFrame>

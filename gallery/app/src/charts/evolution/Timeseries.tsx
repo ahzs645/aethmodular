@@ -6,9 +6,10 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { focusStyle, useHighlight } from '@/lib/highlight'
-import { fmt } from '@/lib/stats'
+import { fmt, splitAtGaps } from '@/lib/stats'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
 
 const LAYOUTS = ['Overlay', 'Per site'] as const
 type Pt = { row: FilterRow; date: Date; value: number }
@@ -38,6 +39,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
   const [smooth, setSmooth] = useState(true)
   const [seasonShading, setSeasonShading] = useState(true)
   const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [hover, setHover] = useState<string | null>(null)
   const [cursor, setCursor] = useState<Date | null>(null)
 
   const series = useMemo(
@@ -54,6 +56,11 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
         .filter((s) => s.pts.length > 1),
     [rows, field, meta.sites, hidden]
   )
+
+  // a hovered site dims the other sites; a hovered season (a background key, not a series) deepens its own bands
+  const siteHover = hover && series.some((s) => s.name === hover) ? hover : null
+  const seasonHover = seasonShading && hover && meta.seasons.some((s) => s.name === hover) ? hover : null
+  const dim = (name: string) => (siteHover === null || siteHover === name ? 1 : 0.15)
 
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const panelH = layout === 'Overlay' ? 430 : 250
@@ -72,6 +79,9 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
       const win = pts.slice(lo, lo + w).map((q) => q.value).sort(d3.ascending)
       return { date: p.date, value: d3.quantile(win, 0.5) ?? p.value }
     })
+  /** Rolling median per sampling run: the line breaks at gaps over 45 days rather than bridging them. */
+  const rollingPath = (pts: Pt[], line: d3.Line<{ date: Date; value: number }>) =>
+    splitAtGaps(pts, (p) => p.date).map((seg) => line(rolling(seg)) ?? '').join('')
 
   const bisect = d3.bisector<Pt, Date>((p) => p.date).center
   /** The series point nearest the cursor date, or null when further than 45 days. */
@@ -81,12 +91,15 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
     return p && Math.abs(+p.date - +d) <= 45 * 86400e3 ? p : null
   }
 
-  const bandsFor = (x: d3.ScaleTime<number, number>) => {
-    if (!seasonShading) return []
+  // under per-site calendars each site panel shades its own seasons; an overlay of
+  // several sites has no single calendar to shade, so it shows none
+  const mixed = mixedCalendars(meta)
+  const bandsFor = (x: d3.ScaleTime<number, number>, site: string | null) => {
+    if (!seasonShading || (mixed && !site)) return []
     const [d0, d1] = x.domain() as [Date, Date]
-    const bands: { x: number; w: number; color: string }[] = []
-    const monthToSeason = new Map<number, string>()
-    for (const s of meta.seasons) for (const m of s.months) monthToSeason.set(m, s.color)
+    const bands: { x: number; w: number; color: string; name: string }[] = []
+    const monthToSeason = new Map<number, { name: string; color: string }>()
+    for (const s of seasonsForSite(meta, site)) for (const m of s.months) monthToSeason.set(m, s)
     let cur = new Date(d0.getFullYear(), d0.getMonth(), 1)
     while (cur < d1) {
       const next = new Date(cur.getFullYear(), cur.getMonth() + 1, 1)
@@ -94,7 +107,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
       if (c) {
         const x0 = Math.max(0, x(cur))
         const x1 = Math.min(innerW, x(next))
-        if (x1 > x0) bands.push({ x: x0, w: x1 - x0, color: c })
+        if (x1 > x0) bands.push({ x: x0, w: x1 - x0, color: c.color, name: c.name })
       }
       cur = next
     }
@@ -105,7 +118,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
     <ChartFrame
       id="timeseries"
       title="Timeseries — filter measurements over time"
-      subtitle={`Every filter as a point, with an optional 7-sample rolling median. Season bands are the Ethiopian calendar under the ${meta.season_convention} convention chosen above, the same colours the matplotlib overlays use. Move the pointer across any panel and a date cursor follows on every other panel. Drag on the timeline in the subset bar to zoom every tab to a date range.`}
+      subtitle={`Every filter as a point, with an optional 7-sample rolling median that breaks at sampling gaps over 45 days. Season bands use the ${calendarLabel(meta)} selected in the filters${mixedCalendars(meta) ? ', one per site panel (the overlay has no single calendar, so it is left unshaded)' : ''}. Move the pointer across any panel and a date cursor follows on every other panel. Drag on the timeline in the subset bar to zoom every tab to a date range.`}
       provenance="stands in for 73 timeseries + 59 area + 46 line figures · plotting/timeseries.py · react-graph-gallery.com/timeseries · /line-chart-synchronized-cursors"
       controls={
         <>
@@ -145,15 +158,15 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
                   >
                     {/* catches pointer moves in the empty parts of the panel */}
                     <rect x={0} y={0} width={innerW} height={innerH} fill="transparent" />
-                    {bandsFor(x).map((b, i) => (
-                      <rect key={i} x={b.x} y={0} width={b.w} height={innerH} fill={b.color} fillOpacity={0.1} pointerEvents="none" />
+                    {bandsFor(x, panel.title).map((b, i) => (
+                      <rect key={i} x={b.x} y={0} width={b.w} height={innerH} fill={b.color} fillOpacity={seasonHover === null ? 0.1 : seasonHover === b.name ? 0.24 : 0.03} pointerEvents="none" />
                     ))}
                     <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} tickCount={layout === 'Overlay' ? 6 : 4} />
                     <XAxis scale={x as any} y={innerH} format={(d: Date) => d3.timeFormat('%b %Y')(d)} tickCount={7} />
                     {panel.series.map((s) => (
-                      <g key={s.name}>
+                      <g key={s.name} opacity={dim(s.name)}>
                         {s.pts.map((p) => {
-                          const st = focusStyle(p.row.id, hl.focusId, { r: 2.6, opacity: smooth ? 0.32 : 0.75 })
+                          const st = focusStyle(p.row.id, hl.focusId, { r: 2.6, opacity: smooth ? 0.32 : 0.75 }, hl.selected)
                           return (
                             <circle
                               key={p.row.id} cx={x(p.date)} cy={y(p.value)} r={st.r}
@@ -162,7 +175,18 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
                             />
                           )
                         })}
-                        {smooth && <path d={line(rolling(s.pts)) ?? ''} fill="none" stroke={s.color} strokeWidth={2.2} pointerEvents="none" />}
+                        {smooth && <path d={rollingPath(s.pts, line)} fill="none" stroke={s.color} strokeWidth={2.2} pointerEvents="none" />}
+                        {/* direct label at the end of each line in the overlay (the gallery's line-chart "design improvement": no legend lookup) */}
+                        {layout === 'Overlay' && smooth && (() => {
+                          const roll = rolling(s.pts)
+                          const last = roll[roll.length - 1]
+                          if (!last) return null
+                          return (
+                            <text x={x(last.date) - 4} y={y(last.value) - 8} textAnchor="end" fontSize={11} fontWeight={600} fill={s.color} stroke="#fff" strokeWidth={3} paintOrder="stroke" fontFamily={FONT.family} pointerEvents="none">
+                              {s.name}
+                            </text>
+                          )
+                        })()}
                         {/* invisible hit targets on top: a 2.6 px dot is too small to hover or click */}
                         {s.pts.map((p) => (
                           <circle
@@ -185,7 +209,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
                           const py = y(p.value)
                           const right = px < innerW - 90
                           return (
-                            <g key={s.name}>
+                            <g key={s.name} opacity={dim(s.name)}>
                               <circle cx={px} cy={py} r={5} fill="#fff" stroke={s.color} strokeWidth={2} />
                               <text x={right ? px + 9 : px - 9} y={py} dy="0.35em" textAnchor={right ? 'start' : 'end'} fill={s.color} stroke="#fff" strokeWidth={3} paintOrder="stroke" fontWeight={600}>
                                 {fmt(p.value, 2)} · {d3.timeFormat('%d %b %y')(p.date)}
@@ -208,6 +232,8 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
           ]}
           hidden={hidden}
           onToggle={(l) => { if (meta.sites.some((s) => s.name === l)) setHidden((h) => toggleIn(h, l)) }}
+          onHover={setHover}
+          highlighted={siteHover ?? seasonHover}
           note="hover any panel: the dashed cursor is the same date on every panel"
         />
         {tip.node}

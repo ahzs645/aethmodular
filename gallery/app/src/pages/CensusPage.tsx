@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Select } from '@/components/ChartFrame'
-import { Legend } from '@/components/Legend'
+import { Legend, useLegend } from '@/components/Legend'
 import type { CensusFile } from '@/lib/types'
 
 const GALLERY_SLUG: Record<string, string> = {
@@ -18,11 +18,19 @@ const BUILT = new Set(['Scatterplot', 'Correlogram', 'Heatmap', 'Boxplot', 'Viol
   'Ridgeline', 'Timeseries', 'Lollipop', 'Treemap', 'Donut', 'Bubble', 'Histogram',
   'Density', 'Barplot', 'Area chart', '2D Density', 'Line chart', 'Stacked Area', 'Connected Scatter'])
 
+/** Each primary chart's react-graph-gallery category, as assigned by gallery_mapping() in build_census.py. */
+const CHART_CATEGORY: Record<string, string> = {
+  Scatterplot: 'correlation', Bubble: 'correlation', '2D Density': 'correlation', 'Connected Scatter': 'correlation',
+  Heatmap: 'correlation', Correlogram: 'correlation', Boxplot: 'distribution', Violin: 'distribution',
+  Histogram: 'distribution', Density: 'distribution', Barplot: 'ranking', Lollipop: 'ranking',
+  'Line chart': 'evolution', Timeseries: 'evolution', 'Area chart': 'evolution', 'Stacked Area': 'evolution', Donut: 'partOfWhole',
+}
+
 /** Gallery charts built here that the notebooks never drew at all. */
 const BEYOND_ESTATE = [
   { chart: 'Ridgeline', tab: 'Distribution', why: 'distribution shift by season/year' },
   { chart: 'Radar', tab: 'Ranking', why: 'per-site chemical fingerprint' },
-  { chart: 'Sankey', tab: 'Flow', why: 'filters → EC method → HIPS / season' },
+  { chart: 'Sankey', tab: 'Flow', why: 'filters → FTIR feed coverage → HIPS / season' },
   { chart: 'Streamgraph', tab: 'PMF sources', why: 'source mix as a shape' },
   { chart: 'Bubble map', tab: 'Map', why: 'network geography as a filter' },
 ]
@@ -39,6 +47,11 @@ export function CensusPage({ census }: { census: CensusFile }) {
     [census.by_category]
   )
   const examples = census.examples[chart] ?? []
+  const lg = useLegend()
+
+  const isArchived = (nb: string) => /\/(archive|scratch)\//.test(nb)
+  const liveTop = census.top_notebooks.filter(([nb]) => !isArchived(nb))
+  const nArchived = census.top_notebooks.length - liveTop.length
 
   return (
     <>
@@ -59,10 +72,10 @@ export function CensusPage({ census }: { census: CensusFile }) {
             </tr>
           </thead>
           <tbody>
-            {census.by_chart.map(([name, n]) => (
-              <tr key={name}>
+            {census.by_chart.filter(([name]) => lg.show(CHART_CATEGORY[name] ?? '')).map(([name, n]) => (
+              <tr key={name} style={{ opacity: lg.dim(CHART_CATEGORY[name] ?? '', 0.2) }}>
                 <td>{name}</td>
-                <td><div className="bar" style={{ width: `${(n / max) * 100}%` }} /></td>
+                <td><div className="bar" style={{ width: `${(n / max) * 100}%`, background: CHART_CATEGORY[name] ? catColor(CHART_CATEGORY[name]) : undefined }} /></td>
                 <td className="mono">{n}</td>
                 <td>{BUILT.has(name) ? <span className="built">✓ built</span> : <span className="mono">—</span>}</td>
                 <td>
@@ -74,7 +87,7 @@ export function CensusPage({ census }: { census: CensusFile }) {
             ))}
           </tbody>
         </table>
-        <Legend items={census.by_category.map(([c, n]) => ({ label: c, color: catColor(c), shape: 'square' as const, detail: String(n) }))} />
+        <Legend items={census.by_category.map(([c, n]) => ({ label: c, color: catColor(c), shape: 'square' as const, detail: String(n) }))} {...lg.props} />
       </ChartFrame>
 
       <ChartFrame
@@ -106,8 +119,8 @@ export function CensusPage({ census }: { census: CensusFile }) {
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.7 }}>
             {examples.map((e, i) => (
               <li key={i}>
-                {e.title}
-                {(e.x || e.y) && <span style={{ color: 'var(--ink-muted)' }}> — {e.y || '?'} vs {e.x || '?'}</span>}
+                <CensusTitle text={e.title} />
+                {(e.x || e.y) && <span style={{ color: 'var(--ink-muted)' }}> — <CensusTitle text={e.y || '?'} /> vs <CensusTitle text={e.x || '?'} /></span>}
                 <div style={{ fontSize: 11, color: 'var(--ink-muted)', fontFamily: 'var(--mono)' }}>{e.notebook}</div>
               </li>
             ))}
@@ -115,15 +128,42 @@ export function CensusPage({ census }: { census: CensusFile }) {
         )}
       </ChartFrame>
 
-      <ChartFrame title="Heaviest notebooks" subtitle="Where the figures are concentrated." exportable={false}>
+      <ChartFrame title="Heaviest notebooks" subtitle={`Where the figures are concentrated. Archived copies and scratch notebooks (${nArchived} in the top ${census.top_notebooks.length}) are left out; they repeat figures from the live notebooks.`} exportable={false}>
         <ol style={{ margin: 0, paddingLeft: 22, fontSize: 12.5, lineHeight: 1.65, fontFamily: 'var(--mono)' }}>
-          {census.top_notebooks.map(([nb, n]) => (
+          {liveTop.map(([nb, n]) => (
             <li key={nb}>
               {nb} <span style={{ color: 'var(--ink-muted)' }}>· {n} figures</span>
             </li>
           ))}
         </ol>
       </ChartFrame>
+    </>
+  )
+}
+
+/**
+ * Titles are lifted from notebook source, so they carry the literal "\\n" of
+ * a two-line matplotlib title and unresolved f-string fields. Show the line
+ * break as a separator and the fields as visibly templated.
+ */
+function CensusTitle({ text }: { text: string }) {
+  const clean = text
+    .replace(/\\n/g, ' · ')
+    .replace(/\s+·\s*$/, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    // an f-string field cut off mid-expression by the extractor, e.g. "({info["
+    .replace(/\(?\{[^}]*$/, '{…}')
+  const parts = clean.split(/(\{[^{}]*\})/g)
+  return (
+    <>
+      {parts.map((p, i) =>
+        p.startsWith('{') && p.endsWith('}') ? (
+          <em key={i} style={{ color: 'var(--ink-muted)' }} title="f-string field, filled in at run time">{`‹${p.slice(1, -1).replace(/\[.*$/, '')}›`}</em>
+        ) : (
+          p
+        )
+      )}
     </>
   )
 }

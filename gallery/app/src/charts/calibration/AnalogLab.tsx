@@ -1,12 +1,13 @@
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
-import { Legend } from '@/components/Legend'
+import { Legend, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { INK, MARGIN, FONT } from '@/lib/theme'
+import { PREPROCESSING, label } from '@/lib/labels'
 import type { AnalogLab as AnalogLabData } from '@/lib/types'
 import { cohortColor } from './common'
 
@@ -22,6 +23,9 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
+  const lg = useLegend()
+  const TOP = `committed top ${cutoff}`, REST = 'rest of pool', ADDIS = 'Addis filters (★)'
+  const cls = (rank: number) => (rank < cutoff ? TOP : REST)
 
   const spaces = Object.keys(bySpace)
   const [space, setSpace] = useState(spaces[0] ?? 'raw')
@@ -59,7 +63,7 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
     const [mx, my] = d3.pointer(e)
     const i = pca.delaunay.find(mx, my)
     const p = lab.pool_xy[i]
-    if (!p || Math.hypot(pca.cx(p) - mx, pca.cy(p) - my) > 14) { setHoverI(null); tip.hide(); return }
+    if (!p || !lg.show(cls(lab.sample_idx[i])) || Math.hypot(pca.cx(p) - mx, pca.cy(p) - my) > 14) { setHoverI(null); tip.hide(); return }
     setHoverI(i)
     const rank = lab.sample_idx[i]
     tip.show(e, [`pool filter, committed rank ${rank + 1}`, rank < cutoff ? `inside the top ${cutoff}` : 'rest of pool', `PC1 ${fmt(p[0], 2)} · PC2 ${fmt(p[1], 2)}`])
@@ -82,7 +86,7 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
       provenance="calibration_explorer /api/analog_lab · Analogs tab"
       controls={
         <>
-          {spaces.length > 1 && <Segmented label="spectra" value={space} options={spaces} onChange={setSpace} />}
+          {spaces.length > 1 && <Segmented label="preprocessing" value={label(PREPROCESSING, space)} options={spaces.map((s) => label(PREPROCESSING, s))} onChange={(v) => setSpace(spaces.find((s) => label(PREPROCESSING, s) === v) ?? space)} />}
           {metrics.length > 0 && <Select label="alternative metric" value={m} options={metrics} onChange={setMetric} />}
           {lab && m && <span className="control">ρ = {fmt(lab.agreement[m] ?? null, 3)} · {lab.labels[m] ?? m}</span>}
         </>
@@ -90,7 +94,7 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
     >
       <div ref={wrapRef} className="chart-wrap">
         {!lab || !pca ? (
-          <Empty>No analog-lab export for this space.</Empty>
+          <Empty>No analog-lab export for this preprocessing.</Empty>
         ) : (
           <div className="facet-grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
             <div>
@@ -102,12 +106,13 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
                   {lab.pool_xy.map((p, i) => {
                     const rank = lab.sample_idx[i]
                     const inCohort = rank < cutoff
+                    if (!lg.show(cls(rank))) return null
                     const hot = hoverI === i
                     const pinned = pca.outside(p)
-                    return <circle key={i} cx={pca.cx(p)} cy={pca.cy(p)} r={hot ? 5 : inCohort ? 3 : 2} fill={pinned ? '#fff' : inCohort ? cohortColor('analogs') : INK.muted} fillOpacity={hot ? 1 : inCohort ? 0.8 : 0.3} stroke={hot ? INK.text : pinned ? INK.muted : 'none'} strokeWidth={hot ? 1.5 : pinned ? 1 : 0} pointerEvents="none" />
+                    return <circle key={i} cx={pca.cx(p)} cy={pca.cy(p)} r={hot ? 5 : inCohort ? 3 : 2} fill={pinned ? '#fff' : inCohort ? cohortColor('analogs') : INK.muted} fillOpacity={hot ? 1 : (inCohort ? 0.8 : 0.3) * lg.dim(cls(rank))} strokeOpacity={hot ? 1 : lg.dim(cls(rank))} stroke={hot ? INK.text : pinned ? INK.muted : 'none'} strokeWidth={hot ? 1.5 : pinned ? 1 : 0} pointerEvents="none" />
                   })}
-                  {lab.addis_xy.map((p, i) => (
-                    <text key={`a${i}`} x={pca.cx(p)} y={pca.cy(p)} dy="0.35em" textAnchor="middle" fontSize={11} fill={INK.text} fontFamily={FONT.family} pointerEvents="none">★</text>
+                  {lg.show(ADDIS) && lab.addis_xy.map((p, i) => (
+                    <text key={`a${i}`} x={pca.cx(p)} y={pca.cy(p)} dy="0.35em" textAnchor="middle" fontSize={11} fill={INK.text} fillOpacity={lg.dim(ADDIS)} fontFamily={FONT.family} pointerEvents="none">★</text>
                   ))}
                   <rect x={0} y={0} width={S} height={S} fill="transparent" onMouseMove={onPcaMove} onMouseLeave={() => { setHoverI(null); tip.hide() }} />
                 </g>
@@ -121,15 +126,15 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
                   <XAxis scale={rx} y={S} label="committed rank" tickCount={5} />
                   <line x1={rx(0)} y1={ry(0)} x2={rx(lab.n)} y2={ry(lab.n)} stroke={INK.identity} strokeDasharray="5 4" />
                   <rect x={0} y={ry(cutoff)} width={rx(cutoff)} height={S - ry(cutoff)} fill={cohortColor('analogs')} fillOpacity={0.08} />
-                  {rankPts.map((p, i) => (
-                    <circle key={i} cx={rx(p.c)} cy={ry(p.a)} r={1.6} fill={p.c < cutoff ? cohortColor('analogs') : INK.muted} fillOpacity={p.c < cutoff ? 0.8 : 0.3} pointerEvents="none" />
+                  {rankPts.map((p, i) => lg.show(cls(p.c)) && (
+                    <circle key={i} cx={rx(p.c)} cy={ry(p.a)} r={1.6} fill={p.c < cutoff ? cohortColor('analogs') : INK.muted} fillOpacity={(p.c < cutoff ? 0.8 : 0.3) * lg.dim(cls(p.c))} pointerEvents="none" />
                   ))}
                 </g>
               </svg>
             </div>
           </div>
         )}
-        <Legend items={[{ label: `committed top ${cutoff}`, color: cohortColor('analogs') }, { label: 'rest of pool', color: INK.muted }, { label: 'Addis filters (★)', color: INK.text }]} note={lab ? `pool subsample ${lab.pool_xy.length} of ${lab.n.toLocaleString()} · ranks every ${lab.rank_stride}th` : undefined} />
+        <Legend items={[{ label: TOP, color: cohortColor('analogs') }, { label: REST, color: INK.muted }, { label: ADDIS, color: INK.text }]} {...lg.props} note={lab ? `pool subsample ${lab.pool_xy.length} of ${lab.n.toLocaleString()} · ranks every ${lab.rank_stride}th` : undefined} />
         {pca && pca.nOutside > 0 && <p className="chart-note">{pca.nOutside} extreme spectra fall outside the 0.5–99.5 % PCA range and are pinned hollow at the edge of the axes.</p>}
         {lab && (
           <table className="placement" style={{ maxWidth: 560 }}>

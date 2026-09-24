@@ -3,6 +3,7 @@ import * as d3 from 'd3'
 import type { FeatureCollection } from 'geojson'
 import { ChartFrame, Note, Segmented } from '@/components/ChartFrame'
 import { SizeLegend } from '@/components/ColorLegend'
+import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
@@ -24,6 +25,7 @@ export function SiteBubbleMap({ rows, meta, field }: { rows: FilterRow[]; meta: 
 
   const [stat, setStat] = useState<(typeof STATS)[number]>('Median')
   const [world, setWorld] = useState<FeatureCollection | null>(null)
+  const lg = useLegend()
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}data/world.geojson`)
@@ -56,7 +58,7 @@ export function SiteBubbleMap({ rows, meta, field }: { rows: FilterRow[]; meta: 
     <ChartFrame
       id="map"
       title="Bubble map — the four sampling sites"
-      subtitle={`Beijing, Delhi, Pasadena and Addis Ababa, sized by the ${stat.toLowerCase()} of ${field}. The estate has one map notebook; this makes the network geography a first-class filter rather than a static inset.`}
+      subtitle={`Beijing, Delhi, JPL (Pasadena) and Addis Ababa, sized by the ${stat.toLowerCase()} of ${field}. The estate has one map notebook; this makes the network geography a first-class filter rather than a static inset.`}
       provenance="stands in for notebooks/analysis/meteorology/map.ipynb · react-graph-gallery.com/bubble-map"
       controls={<Segmented label="size by" value={stat} options={STATS} onChange={setStat} />}
     >
@@ -66,11 +68,12 @@ export function SiteBubbleMap({ rows, meta, field }: { rows: FilterRow[]; meta: 
           {world && world.features.map((f, i) => <path key={i} d={path(f as any) ?? ''} fill="#e4e9ef" stroke="#fff" strokeWidth={0.5} />)}
           {sites.map((s) => {
             const p = projection([s.lon, s.lat])
-            if (!p) return null
+            if (!p || !lg.show(s.name)) return null
             const r = Math.max(4, rScale(s.value))
             return (
               <g
                 key={s.code}
+                opacity={lg.dim(s.name, 0.2)}
                 onMouseEnter={(e) =>
                   tip.show(e, [
                     `${s.name} (${s.code})`,
@@ -93,14 +96,8 @@ export function SiteBubbleMap({ rows, meta, field }: { rows: FilterRow[]; meta: 
         </svg>
         <div className="legend">
           <SizeLegend scale={rScale} label={`${stat.toLowerCase()} of ${stat === 'Sample count' ? 'filters' : withUnit(field, meta.field_units)}`} format={(v) => (stat === 'Sample count' ? String(Math.round(v)) : fmt(v, 1))} />
-          {sites.map((s) => (
-            <span key={s.code} className="legend-item">
-              <span className="swatch" style={{ background: s.color }} />
-              {s.name}
-              <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>{stat === 'Sample count' ? s.n : fmt(s.value, 2)}</span>
-            </span>
-          ))}
         </div>
+        <Legend items={sites.map((s) => ({ label: s.name, color: s.color, detail: stat === 'Sample count' ? String(s.n) : fmt(s.value, 2) }))} {...lg.props} />
         {!world && (
           <Note>
             Basemap missing — run <code>python gallery/data/fetch_basemap.py</code>. Bubbles are still positioned correctly.

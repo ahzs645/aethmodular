@@ -16,6 +16,8 @@ export function ChartFrame({
   children,
   exportable = true,
   id,
+  tip,
+  source,
 }: {
   /** "Short name — longer clause": only the short name shows unless explaining */
   title: string
@@ -28,6 +30,10 @@ export function ChartFrame({
   exportable?: boolean
   /** anchor id so a URL can jump straight to this chart */
   id?: string
+  /** caveats and reading notes, behind an ⓘ beside the title instead of under the chart */
+  tip?: ReactNode
+  /** where the chart is built, e.g. "gallery/app/src/pages/MeetingFollowupPage.tsx › ThreePlots"; copied by the ref button */
+  source?: string
 }) {
   const ref = useRef<HTMLElement>(null)
   const { explain } = usePrefs()
@@ -39,6 +45,14 @@ export function ChartFrame({
   const short = dash > 0 ? title.slice(0, dash) : title
   const rest = dash > 0 ? title.slice(dash + 3) : ''
   const hasInfo = !!(rest || subtitle || provenance)
+  const [refCopied, setRefCopied] = useState(false)
+  // a paste-able pointer for development: which chart, where its code lives, and the exact view
+  const copyRef = () => {
+    const text = [`Gallery chart: "${short}"${id ? ` (#${id})` : ''}`,
+      `Source: ${source ?? 'search the title in gallery/app/src'}`,
+      `View: ${window.location.href}`].join('\n')
+    navigator.clipboard?.writeText(text).then(() => { setRefCopied(true); setTimeout(() => setRefCopied(false), 1400) })
+  }
 
   return (
     <section className="panel" ref={ref} id={id}>
@@ -47,6 +61,7 @@ export function ChartFrame({
           <h2>
             {short}
             {info && rest && <span className="title-rest"> — {rest}</span>}
+            {tip && <InfoTip>{tip}</InfoTip>}
           </h2>
           {info && subtitle && <p className="subtitle">{subtitle}</p>}
           {info && provenance && <p className="provenance">{provenance}</p>}
@@ -57,6 +72,9 @@ export function ChartFrame({
               ?
             </button>
           )}
+          <button type="button" className="btn quiet" title="Copy a reference to this chart (title, source file, current view URL) for development" onClick={copyRef}>
+            {refCopied ? 'copied' : 'ref'}
+          </button>
           {exportable && (
             <>
               <button type="button" className="btn quiet" title="Download this chart as SVG (editable, for Illustrator / Inkscape)" onClick={() => { const s = firstSvg(); if (s) downloadSvg(s, short) }}>
@@ -81,12 +99,15 @@ export function Select({
   options,
   onChange,
   title,
+  optionLabel,
 }: {
   label: string
   value: string
   options: string[]
   onChange: (v: string) => void
   title?: string
+  /** display text per option when the value is a code (e.g. a site code shown by name) */
+  optionLabel?: (o: string) => string
 }) {
   return (
     <label className="control" title={title}>
@@ -94,7 +115,7 @@ export function Select({
       <select className="select" value={value} onChange={(e) => onChange(e.target.value)}>
         {options.map((o) => (
           <option key={o} value={o}>
-            {o}
+            {optionLabel ? optionLabel(o) : o}
           </option>
         ))}
       </select>
@@ -178,4 +199,23 @@ export function SwapButton({ onClick, title }: { onClick: () => void; title?: st
       ⇅ swap
     </button>
   )
+}
+
+/**
+ * An ⓘ that reveals a note on hover or keyboard focus. The body stays open
+ * while the pointer is over it, so links inside remain clickable.
+ */
+export function InfoTip({ children, label = 'Notes on this chart' }: { children: ReactNode; label?: string }) {
+  return (
+    <span className="info-tip" tabIndex={0} aria-label={label}>
+      <span className="info-tip-icon" aria-hidden="true">i</span>
+      <span className="info-tip-body" role="tooltip">{children}</span>
+    </span>
+  )
+}
+
+/** Background prose the reader can do without: rendered only when the header's "explain" toggle is on. */
+export function ExplainOnly({ children }: { children: ReactNode }) {
+  const { explain } = usePrefs()
+  return explain ? <>{children}</> : null
 }

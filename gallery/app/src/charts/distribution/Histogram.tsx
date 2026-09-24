@@ -1,15 +1,15 @@
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Segmented, Select, Toggle } from '@/components/ChartFrame'
-import { Legend, toggleIn } from '@/components/Legend'
+import { Legend, toggleIn, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { kde, fmt } from '@/lib/stats'
+import { kde, fmt, twoSample } from '@/lib/stats'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 
-const LAYOUTS = ['Overlay', 'Small multiples', 'Mirror'] as const
+const LAYOUTS = ['Overlay', 'Density', 'Small multiples', 'Mirror'] as const
 type Layout = (typeof LAYOUTS)[number]
 
 interface Series { name: string; color: string; values: number[] }
@@ -21,6 +21,9 @@ interface Series { name: string; color: string; values: number[] }
  *  Overlay          sites on one axis, which is the point: the Delhi and
  *                   Addis distributions overlap far less than separate axes
  *                   suggest.
+ *  Density          the same, curves only (the gallery's density plot with
+ *                   several groups) — when four sets of translucent bars
+ *                   hide each other, the smoothed shapes do not.
  *  Small multiples  one panel per site with shared x and y, for when four
  *                   translucent overlays become mud.
  *  Mirror           two groups back to back (any site or season against any
@@ -39,7 +42,8 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   const [layout, setLayout] = useState<Layout>('Overlay')
   const [overlayDensity, setOverlayDensity] = useState(true)
   const [normalise, setNormalise] = useState(true)
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const { hidden, setHidden, dim, hover, setHover } = useLegend()
+  const mirror = useLegend()
   const [mirrorA, setMirrorA] = useState<string>('')
   const [mirrorB, setMirrorB] = useState<string>('')
 
@@ -65,10 +69,9 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   const aName = groupNames.includes(mirrorA) ? mirrorA : groupNames[0] ?? ''
   const bName = groupNames.includes(mirrorB) && mirrorB !== aName ? mirrorB : groupNames.find((n) => n !== aName) ?? ''
 
-  const series: Series[] =
-    layout === 'Mirror'
-      ? mirrorGroups.filter((g) => g.name === aName || g.name === bName).sort((g) => (g.name === aName ? -1 : 1))
-      : allSeries.filter((s) => !hidden.has(s.name))
+  const mirrorPair = mirrorGroups.filter((g) => g.name === aName || g.name === bName).sort((g) => (g.name === aName ? -1 : 1))
+  const series: Series[] = layout === 'Mirror' ? mirrorPair.filter((g) => mirror.show(g.name)) : allSeries.filter((s) => !hidden.has(s.name))
+  const dimOf = layout === 'Mirror' ? mirror.dim : dim
 
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const panelH = layout === 'Small multiples' ? 190 : 420
@@ -85,6 +88,9 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   const [dLo, dHi] = x.domain() as [number, number]
   const nOutside = all.filter((v) => v < dLo || v > dHi).length
 
+  const densityOnly = layout === 'Density'
+  const showBars = !densityOnly
+  const showDensity = overlayDensity || densityOnly
   const binner = d3.bin<number, number>().domain([dLo, dHi]).thresholds(bins)
   const binned = series.map((s) => ({ ...s, bins: binner(s.values) }))
 
@@ -108,8 +114,8 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   // produces a curve taller than any bar, and it used to run off the top.
   const val = (s: { values: number[] }, b: d3.Bin<number, number>) => (normalise ? b.length / s.values.length : b.length)
   const barMax = d3.max(binned, (s) => d3.max(s.bins, (b) => val(s, b)) ?? 0) ?? 0
-  const densMax = overlayDensity ? (d3.max(scaledDensities.flat()) ?? 0) : 0
-  const yMax = (Math.max(barMax, densMax) || 1) * 1.08
+  const densMax = showDensity ? (d3.max(scaledDensities.flat()) ?? 0) : 0
+  const yMax = ((densityOnly ? densMax : Math.max(barMax, densMax)) || 1) * 1.08
   const y = layout === 'Mirror'
     ? d3.scaleLinear().domain([-yMax, yMax]).range([innerH, 0]).nice()
     : d3.scaleLinear().domain([0, yMax]).range([innerH, 0]).nice()
@@ -119,8 +125,8 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
     const dens = scaledDensities[si] ?? []
     const line = d3.line<number>().x((_, i) => x(grid[i])).y((_, i) => y(sign * (dens[i] ?? 0))).curve(d3.curveBasis)
     return (
-      <g key={s.name}>
-        {s.bins.map((b, i) => {
+      <g key={s.name} opacity={dimOf(s.name)}>
+        {showBars && s.bins.map((b, i) => {
           const v = val(s, b)
           if (!v) return null
           const x0 = x(b.x0 ?? 0)
@@ -138,11 +144,17 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
             />
           )
         })}
-        {overlayDensity && <path d={line(grid) ?? ''} fill="none" stroke={s.color} strokeWidth={2.2} pointerEvents="none" />}
+        {showDensity && (
+          <path d={line(grid) ?? ''} fill={densityOnly ? s.color : 'none'} fillOpacity={densityOnly ? 0.18 : 0} stroke={s.color} strokeWidth={2.2} pointerEvents={densityOnly ? 'visiblePainted' : 'none'}
+            onMouseEnter={densityOnly ? (e) => tip.show(e, [s.name, `n = ${s.values.length}`, `median ${fmt(d3.median(s.values), 2)}`]) : undefined} onMouseLeave={densityOnly ? tip.hide : undefined} />
+        )}
       </g>
     )
   }
 
+  // the gallery's "stop chasing the p-value" playground: the mirror is the
+  // picture, the statistics underneath are the caveat
+  const mirrorStats = layout === 'Mirror' && series.length === 2 ? twoSample(series[0].values, series[1].values) : null
   const yLabel = normalise ? 'fraction of samples' : 'filters'
   const xLabel = withUnit(field, meta.field_units)
   const panels: { key: string; title: string | null; color: string; items: (typeof binned)[number][]; }[] =
@@ -169,12 +181,12 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
             <span style={{ fontFamily: 'var(--mono)', width: 20 }}>{bins}</span>
           </label>
           <Toggle label="normalise to fraction" checked={normalise} onChange={setNormalise} />
-          <Toggle label="density curve" checked={overlayDensity} onChange={setOverlayDensity} />
+          {!densityOnly && <Toggle label="density curve" checked={overlayDensity} onChange={setOverlayDensity} />}
         </>
       }
     >
       <div ref={wrapRef} className="chart-wrap">
-        {series.length === 0 || (layout === 'Mirror' && series.length < 2) ? (
+        {(layout === 'Mirror' ? mirrorPair.length < 2 : series.length === 0) ? (
           <Empty>{layout === 'Mirror' ? `Fewer than two groups have 5 or more filters with ${field} in this subset.` : `No site has 5 or more filters with ${field} in this subset.`}</Empty>
         ) : (
           panels.map((panel) => (
@@ -193,8 +205,8 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
                   {panel.items.map((s) => drawSeries(s, binned.indexOf(s), layout === 'Mirror' && s.name === bName ? -1 : 1))}
                   {layout === 'Mirror' && (
                     <g fontFamily={FONT.family} fontSize={11.5} fontWeight={600} pointerEvents="none">
-                      <text x={innerW - 6} y={14} textAnchor="end" fill={series[0]?.color}>{aName} ▲</text>
-                      <text x={innerW - 6} y={innerH - 8} textAnchor="end" fill={series[1]?.color}>{bName} ▼</text>
+                      {mirror.show(aName) && <text x={innerW - 6} y={14} textAnchor="end" fill={mirrorPair.find((g) => g.name === aName)?.color} opacity={mirror.dim(aName)}>{aName} ▲</text>}
+                      {mirror.show(bName) && <text x={innerW - 6} y={innerH - 8} textAnchor="end" fill={mirrorPair.find((g) => g.name === bName)?.color} opacity={mirror.dim(bName)}>{bName} ▼</text>}
                     </g>
                   )}
                 </g>
@@ -203,12 +215,22 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
           ))
         )}
         {layout === 'Mirror' ? (
-          <Legend items={series.map((s) => ({ label: s.name, color: s.color, shape: 'square' as const, detail: `n=${s.values.length}` }))} />
+          <>
+            <Legend items={mirrorPair.map((s) => ({ label: s.name, color: s.color, shape: 'square' as const, detail: `n=${s.values.length}` }))} {...mirror.props} />
+            {mirrorStats && (
+              <p className="chart-note" style={{ fontFamily: 'var(--mono)' }}>
+                median {aName} {fmt(mirrorStats.medianA, 2)} vs {bName} {fmt(mirrorStats.medianB, 2)} (Δ {fmt(mirrorStats.medianDiff, 2)}) · Welch t = {fmt(mirrorStats.t, 2)}, p {mirrorStats.p < 0.001 ? '< 0.001' : `= ${fmt(mirrorStats.p, 3)}`} · Cohen's d = {fmt(mirrorStats.d, 2)} · Mann–Whitney AUC = {fmt(mirrorStats.auc, 2)}
+                <span style={{ fontFamily: 'var(--font)' }}> — the effect sizes are the finding; p only says the n was large enough to see it.</span>
+              </p>
+            )}
+          </>
         ) : (
           <Legend
             items={allSeries.map((s) => ({ label: s.name, color: s.color, shape: 'square' as const, detail: `n=${s.values.length}` }))}
             hidden={hidden}
             onToggle={(l) => setHidden((h) => toggleIn(h, l))}
+            onHover={setHover}
+            highlighted={hover}
           />
         )}
         {nOutside > 0 && <Note>{nOutside} of {all.length} values fall outside the displayed 1–99 % range and are not drawn.</Note>}

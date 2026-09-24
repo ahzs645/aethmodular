@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
-import { Legend } from '@/components/Legend'
+import { Legend, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -9,6 +9,7 @@ import { fmt } from '@/lib/stats'
 import { INK, MARGIN, FONT } from '@/lib/theme'
 import type { CalibFile, CalibRunsFile } from '@/lib/types'
 import { cohortColor } from './common'
+import { COHORT, SELECTION_SPACE, label } from '@/lib/labels'
 
 const VIEWS = ['metric vs rank', 'distribution'] as const
 
@@ -23,20 +24,30 @@ export function SelectionRanking({ runs, calib }: { runs: CalibRunsFile; calib: 
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
+  const lg = useLegend()
   const height = 340
 
   const cohorts = useMemo(() => [...new Set(runs.rankings.map((r) => r.cohort))], [runs.rankings])
   const [cohort, setCohort] = useState(cohorts.includes('ocec') ? 'ocec' : cohorts[0] ?? '')
   const [view, setView] = useState<(typeof VIEWS)[number]>('metric vs rank')
   const series = runs.rankings.filter((r) => r.cohort === cohort)
+  const labelOf = (sel: string) => label(SELECTION_SPACE, sel)
+  const shown = series.filter((s) => lg.show(labelOf(s.selection_space)))
   const primary = series.find((s) => s.selection_space === 'raw') ?? series[0]
   const cutoff = primary?.default_cutoff ?? calib?.default_cutoff[cohort] ?? 0
 
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const innerH = height - MARGIN.top - MARGIN.bottom
   const x = d3.scaleLinear().domain([0, primary?.n_total ?? 1]).range([0, innerW]).nice()
-  const allMetric = series.flatMap((s) => s.metric)
-  const y = d3.scaleLinear().domain(d3.extent(allMetric) as [number, number]).range([innerH, 0]).nice()
+  const allMetric = shown.flatMap((s) => s.metric)
+  // The tail of the pool (OC/EC in the hundreds) would flatten the whole curve
+  // near zero; clip the axis at p99, as the histogram view does, and pin the tail.
+  const sortedMetric = allMetric.filter(Number.isFinite).sort(d3.ascending)
+  const yHi = d3.quantile(sortedMetric, 0.99) ?? d3.max(sortedMetric) ?? 1
+  const yLo = sortedMetric[0] ?? 0
+  const nClipped = sortedMetric.filter((v) => v > yHi).length
+  const y = d3.scaleLinear().domain([yLo, yHi]).range([innerH, 0]).nice()
+  const yTop = y.domain()[1]
   const hx = d3.scaleLinear().domain(d3.extent(primary?.hist.centers ?? [0, 1]) as [number, number]).range([0, innerW]).nice()
   const hy = d3.scaleLinear().domain([0, d3.max(primary?.hist.counts ?? [1]) ?? 1]).range([innerH, 0]).nice()
   const colorOf = (sel: string) => (sel === 'raw' ? cohortColor(cohort) : INK.deming)
@@ -49,7 +60,7 @@ export function SelectionRanking({ runs, calib }: { runs: CalibRunsFile; calib: 
       provenance="calibration_explorer /api/ranking · Selection tab"
       controls={
         <>
-          <Select label="cohort" value={cohort} options={cohorts} onChange={setCohort} />
+          <Select label="cohort" value={cohort} options={cohorts} onChange={setCohort} optionLabel={(c) => label(COHORT, c)} />
           <Segmented value={view} options={VIEWS} onChange={setView} />
           <span className="control">{primary ? `${primary.n_total.toLocaleString()} candidates · cutoff ${cutoff}` : ''}</span>
         </>
@@ -66,15 +77,15 @@ export function SelectionRanking({ runs, calib }: { runs: CalibRunsFile; calib: 
               <rect x={0} y={0} width={x(cutoff)} height={innerH} fill={cohortColor(cohort)} fillOpacity={0.06} />
               <line x1={x(cutoff)} x2={x(cutoff)} y1={0} y2={innerH} stroke={INK.negative} strokeDasharray="5 3" />
               <text x={x(cutoff) + 4} y={12} fontSize={10} fill={INK.negative} fontFamily={FONT.mono}>cutoff {cutoff}</text>
-              {series.map((s) => {
-                const line = d3.line<number>().x((_, i) => x(s.rank[i])).y((v) => y(v))
-                return <path key={s.selection_space} d={line(s.metric) ?? ''} fill="none" stroke={colorOf(s.selection_space)} strokeWidth={s.selection_space === 'raw' ? 2 : 1.6} strokeDasharray={s.selection_space === 'raw' ? undefined : '6 3'} />
+              {shown.map((s) => {
+                const line = d3.line<number>().x((_, i) => x(s.rank[i])).y((v) => y(Math.min(v, yTop)))
+                return <path key={s.selection_space} d={line(s.metric) ?? ''} fill="none" stroke={colorOf(s.selection_space)} strokeWidth={s.selection_space === 'raw' ? 2 : 1.6} strokeDasharray={s.selection_space === 'raw' ? undefined : '6 3'} strokeOpacity={lg.dim(labelOf(s.selection_space))} />
               })}
               <rect x={0} y={0} width={innerW} height={innerH} fill="transparent"
                 onMouseMove={(e) => {
                   const b = wrapRef.current!.getBoundingClientRect()
                   const rk = x.invert(e.clientX - b.left - MARGIN.left)
-                  tip.show(e, [`rank ≈ ${Math.round(rk).toLocaleString()}`, ...series.map((s) => { const i = d3.bisector((r: number) => r).left(s.rank, rk); return `${s.selection_space}: ${fmt(s.metric[Math.min(i, s.metric.length - 1)], 4)}` })])
+                  tip.show(e, [`rank ≈ ${Math.round(rk).toLocaleString()}`, ...shown.map((s) => { const i = d3.bisector((r: number) => r).left(s.rank, rk); return `${s.selection_space}: ${fmt(s.metric[Math.min(i, s.metric.length - 1)], 4)}` })])
                 }}
                 onMouseLeave={tip.hide} />
             </g>
@@ -95,7 +106,13 @@ export function SelectionRanking({ runs, calib }: { runs: CalibRunsFile; calib: 
             </g>
           </svg>
         )}
-        <Legend items={series.map((s) => ({ label: s.selection_space === 'raw' ? 'selected on raw spectra' : 'selected on AIRSpec-corrected spectra', color: colorOf(s.selection_space), shape: s.selection_space === 'raw' ? ('line' as const) : ('dashed' as const) }))} />
+        <Legend
+          items={series.map((s) => ({ label: labelOf(s.selection_space), color: colorOf(s.selection_space), shape: s.selection_space === 'raw' ? ('line' as const) : ('dashed' as const) }))}
+          {...lg.props}
+        />
+        {view === 'metric vs rank' && nClipped > 0 && (
+          <p className="chart-note">Axis clipped at p99: {nClipped.toLocaleString()} tail values (up to {fmt(sortedMetric[sortedMetric.length - 1], 3)}) run along the top edge.</p>
+        )}
         {tip.node}
       </div>
     </ChartFrame>

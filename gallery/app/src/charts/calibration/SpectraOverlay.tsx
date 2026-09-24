@@ -1,12 +1,13 @@
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented, Toggle } from '@/components/ChartFrame'
-import { Legend, toggleIn } from '@/components/Legend'
+import { Legend, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { INK, MARGIN, FONT } from '@/lib/theme'
+import { PREPROCESSING, label } from '@/lib/labels'
 
 export interface SpectrumSeries {
   label: string
@@ -45,7 +46,7 @@ export function SpectraOverlay({
   const spaces = Object.keys(bySpace)
   const [space, setSpace] = useState(spaces.includes(defaultSpace) ? defaultSpace : spaces[0] ?? '')
   const [bands, setBands] = useState(true)
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const { hidden, dim, props: legendProps } = useLegend()
   const series = (bySpace[space] ?? []).filter((s) => !hidden.has(s.label))
 
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
@@ -64,7 +65,7 @@ export function SpectraOverlay({
       provenance={provenance}
       controls={
         <>
-          {spaces.length > 1 && <Segmented label="spectra" value={space} options={spaces} onChange={setSpace} />}
+          {spaces.length > 1 && <Segmented label="preprocessing" value={label(PREPROCESSING, space)} options={spaces.map((s) => label(PREPROCESSING, s))} onChange={(v) => setSpace(spaces.find((s) => label(PREPROCESSING, s) === v) ?? space)} />}
           <Toggle label="IQR bands" checked={bands} onChange={setBands} />
         </>
       }
@@ -87,7 +88,7 @@ export function SpectraOverlay({
                 const area = d3.area<number>().x((_, i) => x(s.wn[i])).y0((_, i) => y(s.q25[i])).y1((_, i) => y(s.q75[i]))
                 const line = d3.line<number>().x((_, i) => x(s.wn[i])).y((v) => y(v))
                 return (
-                  <g key={s.label}>
+                  <g key={s.label} opacity={dim(s.label)}>
                     {bands && <path d={area(s.median) ?? ''} fill={s.color} fillOpacity={0.12} pointerEvents="none" />}
                     <path d={line(s.median) ?? ''} fill="none" stroke={s.color} strokeWidth={1.8} strokeDasharray={s.dash} pointerEvents="none" />
                   </g>
@@ -103,7 +104,7 @@ export function SpectraOverlay({
             </g>
           </svg>
         )}
-        <Legend items={(bySpace[space] ?? []).map((s) => ({ label: s.label, color: s.color, shape: s.dash ? ('dashed' as const) : ('line' as const) }))} hidden={hidden} onToggle={(l) => setHidden((h) => toggleIn(h, l))} />
+        <Legend items={(bySpace[space] ?? []).map((s) => ({ label: s.label, color: s.color, shape: s.dash ? ('dashed' as const) : ('line' as const) }))} {...legendProps} />
         {tip.node}
       </div>
     </ChartFrame>

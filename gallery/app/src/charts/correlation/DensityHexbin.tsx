@@ -42,15 +42,15 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
 
   const availW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const innerW = Math.min(availW, MAX_SQUARE)
-  const innerH = opts.identity ? innerW : Math.round(innerW * 0.72)
+  const innerH = innerW
   const svgHeight = innerH + MARGIN.top + MARGIN.bottom
 
   const { x, y, stats, domain } = useMemo(() => {
     const xs = points.map((p) => p[0])
     const ys = points.map((p) => p[1])
-    // both axes are measurements; Deming is reported whenever the 1:1 line is on
-    const stats = regression(xs, ys, { errorsInVariables: opts.identity })
-    const intercepts = stats ? [stats.intercept, ...(stats.demingIntercept !== null ? [stats.demingIntercept] : [])] : []
+    // both axes are measurements with their own error: the fit shown is Deming only
+    const stats = regression(xs, ys, { errorsInVariables: true })
+    const intercepts = stats && stats.demingIntercept !== null ? [stats.demingIntercept] : []
     const domain = pairDomain(xs, ys, opts, intercepts)
     return {
       x: d3.scaleLinear().domain(domain.x).range([0, innerW]).nice(),
@@ -87,11 +87,11 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
         </>
       }
     >
-      <div ref={wrapRef} className="chart-wrap">
+      <div ref={wrapRef} className="chart-wrap centered">
         {points.length < 3 ? (
           <Empty>Fewer than 3 filters carry both fields in this subset.</Empty>
         ) : (
-          <svg width={width} height={svgHeight} className="animated">
+          <svg width={innerW + MARGIN.left + MARGIN.right} height={svgHeight} className="animated">
             <defs>
               <clipPath id={clipId}>
                 <rect x={0} y={0} width={innerW} height={innerH} />
@@ -129,7 +129,6 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
                 {opts.identity && <line x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="5 4" />}
                 {stats && (
                   <>
-                    <line x1={x(d0)} y1={y(stats.slope * d0 + stats.intercept)} x2={x(d1)} y2={y(stats.slope * d1 + stats.intercept)} stroke={INK.fit} strokeWidth={2} />
                     {stats.demingSlope !== null && (
                       <line
                         x1={x(d0)} y1={y(stats.demingSlope * d0 + stats.demingIntercept!)}
@@ -142,8 +141,6 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
               </g>
               {stats && opts.mode === 'Show intercept' && (
                 <g pointerEvents="none" fontFamily={FONT.mono} fontSize={10.5}>
-                  <circle cx={x(0)} cy={y(stats.intercept)} r={4.5} fill="#fff" stroke={INK.fit} strokeWidth={2} />
-                  <text x={x(0) + 8} y={y(stats.intercept)} dy="0.35em" fill={INK.fit}>b = {fmt(stats.intercept, 3)}</text>
                   {stats.demingIntercept !== null && (
                     <>
                       <circle cx={x(0)} cy={y(stats.demingIntercept)} r={4.5} fill="#fff" stroke={INK.deming} strokeWidth={2} />
@@ -155,11 +152,12 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
 
               {stats && (
                 <g transform="translate(10,10)" fontFamily={FONT.mono} fontSize={11} pointerEvents="none">
-                  <rect width={214} height={stats.demingSlope !== null ? 77 : 62} rx={5} fill="#fff" fillOpacity={0.93} stroke={INK.border} />
+                  <rect width={214} height={62} rx={5} fill="#fff" fillOpacity={0.93} stroke={INK.border} />
                   <text x={9} y={18} fill={INK.text}>n = {stats.n} in {bins.length} hexes</text>
                   <text x={9} y={33} fill={INK.text}>R² = {fmt(stats.r2, 4)}</text>
-                  <text x={9} y={48} fill={INK.fit}>OLS slope = {fmt(stats.slope)}</text>
-                  {stats.demingSlope !== null && <text x={9} y={63} fill={INK.deming}>Deming = {fmt(stats.demingSlope)}</text>}
+                  {stats.demingSlope !== null && stats.demingIntercept !== null && (
+                    <text x={9} y={48} fill={INK.deming}>Deming y = {fmt(stats.demingSlope)}x {stats.demingIntercept < 0 ? '−' : '+'} {fmt(Math.abs(stats.demingIntercept))}</text>
+                  )}
                 </g>
               )}
             </g>
