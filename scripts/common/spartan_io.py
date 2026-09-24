@@ -18,7 +18,7 @@ from common.paths import REPO_ROOT
 # Paths
 # ---------------------------------------------------------------------------
 
-# Cached mirror of http://data.spartan-network.org/GroupedByProduct/, laid out
+# Cached mirror of the public S3 GroupByProduct/ prefix, laid out
 # as RAW_DIR/<Product>/<SubProduct>/<Product>_<SubProduct>_<SITE>.csv
 RAW_DIR = REPO_ROOT / "data" / "spartan" / "raw"
 
