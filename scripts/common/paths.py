@@ -10,6 +10,12 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+try:  # Machine-specific paths from the gitignored repo-root .env (see .env.example).
+    from aethmodular_cli.env import load_repo_env
+    load_repo_env()
+except ImportError:  # Copied into a bundle (e.g. Colab) without the repo package.
+    pass
+
 # scripts/common/paths.py -> scripts/common -> scripts -> <repo root>
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

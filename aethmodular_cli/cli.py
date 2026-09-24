@@ -450,6 +450,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    from aethmodular_cli.env import load_repo_env
+
+    load_repo_env()
     parser = build_parser()
     args = parser.parse_args(argv)
     return int(args.func(args))

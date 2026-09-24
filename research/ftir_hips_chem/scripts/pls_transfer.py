@@ -23,6 +23,12 @@ from sklearn.cross_decomposition import PLSRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import GroupKFold, KFold
 
+try:  # Machine-specific paths from the gitignored repo-root .env (see .env.example).
+    from aethmodular_cli.env import load_repo_env
+    load_repo_env()
+except ImportError:  # Copied into a bundle (e.g. Colab) without the repo package.
+    pass
+
 
 _LEGACY_DRIVE_ACCOUNT = "GoogleDrive-ahzs645@gmail.com"
 
