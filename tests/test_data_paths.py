@@ -296,3 +296,25 @@ def test_hips_raw_csv_falls_back_to_the_drive_archive(tmp_path, monkeypatch):
     assert data_paths.hips_raw_csv() == (
         tmp_path / "maia" / "DAVIS/SPARTAN HIPS pulls" / data_paths.HIPS_RAW_CSV_NAME
     )
+
+
+def test_data_root_from_repo_env_reaches_config(tmp_path):
+    """config.py cannot load .env (the frozen audits pin its hash), so
+    data_paths must import pls_transfer, which does, before config."""
+    import os
+    import subprocess
+
+    env_file = tmp_path / ".env"
+    env_file.write_text(f"AETHMODULAR_DATA_ROOT={tmp_path / 'data'}\n")
+    code = (
+        "import pathlib, aethmodular_cli.env as e\n"
+        f"e.ENV_FILE = pathlib.Path({str(env_file)!r})\n"
+        "import data_paths, config\n"
+        "print(config.DATA_ROOT)\n"
+    )
+    env = {k: v for k, v in os.environ.items() if k != "AETHMODULAR_DATA_ROOT"}
+    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(SCRIPTS_DIR), env.get("PYTHONPATH")]))
+    out = subprocess.run(
+        [sys.executable, "-c", code], env=env, capture_output=True, text=True, check=True
+    )
+    assert Path(out.stdout.strip()) == (tmp_path / "data").resolve()
