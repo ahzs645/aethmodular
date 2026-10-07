@@ -1,3 +1,5 @@
+import { monthBlocks } from '@/lib/regressionCI'
+import { RegressionLines, RegressionReadout } from '@/components/RegressionOverlay'
 import { useEffect, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, ExplainOnly, Note } from '@/components/ChartFrame'
@@ -46,6 +48,7 @@ type SiteRow = {
   VIBES_band2920: number
 }
 type Pilot = {
+  background_rank?: number
   schema_version: number
   frozen_run_signature: string
   evidence_date: string
@@ -60,13 +63,13 @@ type Pilot = {
 const BASE = `${import.meta.env.BASE_URL}data/`
 const METHODS: Method[] = ['AIRSpec', 'VIBES']
 const COLORS: Record<Method, string> = { AIRSpec: '#2C6E9E', VIBES: '#7A4FA3' }
-const fmt = (x: number, n = 2) => x.toFixed(n)
+const fmt = (x: number | null | undefined, n = 2) => x == null || !Number.isFinite(x) ? '—' : x.toFixed(n)
 
 /**
  * `mac` is config.MAC_VALUE (via meta.json) and `demingLambda` the explorer's
  * lambda* at that MAC (via calibration.json): passed in, not restated here.
  */
-export function BaselineExternalPilot({ mac, demingLambda }: { mac: number; demingLambda: number }) {
+export function BaselineExternalPilot({ mac, demingLambda, completed = false }: { mac: number; demingLambda: number; completed?: boolean }) {
   const hl = useHighlight()
   const [data, setData] = useState<Pilot | null>(null)
   const [error, setError] = useState('')
@@ -78,15 +81,15 @@ export function BaselineExternalPilot({ mac, demingLambda }: { mac: number; demi
   const [spectralSite, setSpectralSite] = useState('Both sites')
   useEffect(() => {
     const controller = new AbortController()
-    fetch(BASE + 'baseline_external_pilot.json', { signal: controller.signal })
+    fetch(BASE + (completed ? 'rank70/baseline_external_pilot.json' : 'baseline_external_pilot.json'), { signal: controller.signal })
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
       .then((d: Pilot) => {
-        if (d.schema_version !== 1 || d.adama.length !== 5 || d.bishoftu.length !== 26 || d.addis.length !== 253 || d.matched.length !== 5) throw new Error('Unexpected pilot dataset')
+        if (d.schema_version !== 1 || (completed && d.background_rank !== 70) || d.adama.length !== 5 || d.bishoftu.length !== 26 || d.addis.length !== 253 || d.matched.length !== 5) throw new Error('Unexpected pilot dataset')
         setData(d)
       })
       .catch(e => { if (e.name !== 'AbortError') setError(String(e)) })
     return () => controller.abort()
-  }, [])
+  }, [completed])
   if (error) return <ChartFrame title="External Ethiopia pilot" exportable={false}><Empty>{error}. Run the frozen pilot and gallery export.</Empty></ChartFrame>
   if (!data) return <p>Loading the Adama and Bishoftu pilot…</p>
   const y = d3.scaleLinear().domain([0, 2]).range([190, 20])
@@ -103,10 +106,11 @@ export function BaselineExternalPilot({ mac, demingLambda }: { mac: number; demi
     ...data.bishoftu.map(r => ({ ...r, site: 'Bishoftu', id: r.ExternalFilterId, lot: r.LotId })),
   ]
   return <>
-    <ExplainOnly><ChartFrame title="External Ethiopia pilot: Adama and Bishoftu" exportable={false}>
-      <p style={{ fontSize: 14, lineHeight: 1.6 }}>The frozen full-pool AIRSpec and VIBES models were applied to five Adama and 26 Bishoftu spectra without refitting. All 31 external baseline corrections converged. The Adama panel uses measured quartz EC on date-candidate co-samples; the Bishoftu panel compares spectra at matched optical loading because Bishoftu has no thermal EC measurement.</p>
+    {completed && <ChartFrame title="Rank-70 external application" exportable={false}><p>All 31 external spectra were corrected over 4000–500 cm⁻¹ with the same frozen rank-70 background. Predictions use the shared-window EC model. Date pairing, the provisional Adama ID map, exclusions and optical matching remain unchanged.</p></ChartFrame>}
+    <ExplainOnly><ChartFrame title={completed ? "Completed rank-70 external pilot: Adama and Bishoftu" : "Archived external pilot: Adama and Bishoftu"} exportable={false}>
+      <p style={{ fontSize: 14, lineHeight: 1.6 }}>{completed ? 'The completed rank-70 VIBES shared-input and spline models were applied' : 'The earlier frozen full-pool AIRSpec and VIBES models were applied'} to five Adama and 26 Bishoftu spectra without refitting. All 31 external baseline corrections converged. The Adama panel uses measured quartz EC on date-candidate co-samples; the Bishoftu panel compares spectra at matched optical loading because Bishoftu has no thermal EC measurement.</p>
       <Note>Adama's spectrum-to-PTFE ID map and sampler equivalence await confirmation. Bishoftu's HIPS/MAC-10 is an optical equivalent, not a thermal EC reference. These panels are diagnostic observations, not site accuracy rankings.</Note>
-      <a href={BASE + 'baseline_external_pilot.json'} download>Download pilot rows and mapping ranges</a>
+      <a href={BASE + (completed ? 'rank70/baseline_external_pilot.json' : 'baseline_external_pilot.json')} download>Download pilot rows and mapping ranges</a>
       <p style={{ fontSize: 11, overflowWrap: 'anywhere' }}>Frozen run: <code>{data.frozen_run_signature}</code> · Evidence date {data.evidence_date}</p>
     </ChartFrame></ExplainOnly>
 
@@ -229,14 +233,8 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
   const x = d3.scaleLinear().domain(optical ? shared : [Math.min(0, xext[0] ?? 0), (xext[1] ?? 1) * 1.06]).nice().range([plot.l, plot.r])
   const y = d3.scaleLinear().domain(optical ? shared : [Math.min(0, yext[0] ?? 0), (yext[1] ?? 1) * 1.08]).nice().range([plot.b, plot.t])
   if (optical) y.domain(x.domain())
-  const st = optical ? regression(points.map(r => r.xv), points.map(r => r.yv), { errorsInVariables: true, lambda: demingLambda }) : null
+  const st = optical ? regression(points.map(r => r.xv), points.map(r => r.yv), { errorsInVariables: true, lambda: demingLambda, bootstrapGroups: monthBlocks(points) }) : null
   const [d0, d1] = x.domain()
-  const fitLine = (m: number, b: number) => {
-    // clip the fitted line to the square so it never leaves the plot
-    const xs = [d0, d1, (d0 - b) / m, (d1 - b) / m].filter(v => v >= d0 && v <= d1 && m * v + b >= d0 - 1e-9 && m * v + b <= d1 + 1e-9).sort((a, c) => a - c)
-    return xs.length >= 2 ? { x1: x(xs[0]), y1: y(m * xs[0] + b), x2: x(xs[xs.length - 1]), y2: y(m * xs[xs.length - 1] + b) } : null
-  }
-  const dem = st && st.demingSlope !== null && st.demingIntercept !== null ? fitLine(st.demingSlope, st.demingIntercept) : null
   const note = optical
     ? <><p>{points.length} physical filters shown: {counts.Addis} Addis and {counts.Bishoftu} Bishoftu. The full frozen Addis target set has 253 spectra; 20 have no paired HIPS Fabs and cannot appear on this optical plot. No thermal EC is measured at either site in this plot.</p>
         <p>x is HIPS Fabs ÷ MAC {mac}, an optical BC equivalent, so the 1:1 line shows optical–FTIR agreement, not EC accuracy. Deming uses λ = {fmt(demingLambda, 2)} (HIPS uncertainty ÷ MAC against the AIRSpec IMPROVE cross-validation error, AGENTS.md), because both axes carry measurement error.</p></>
@@ -254,19 +252,14 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
       {optical && <line x1={plot.l} x2={plot.l} y1={plot.t} y2={plot.b} stroke="#5B6470"/>}
       {optical && <line x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} stroke={INK.identity} strokeWidth={1.2} strokeDasharray="5 4"/>}
       {points.map(r => <circle key={r.site + r.id} cx={x(r.xv)} cy={y(r.yv)} r={r.site === 'Bishoftu' ? 5 : 3.4} fill={r.site === 'Bishoftu' ? '#C49442' : '#2C6E9E'} fillOpacity={r.site === 'Bishoftu' ? .9 : .45} stroke={r.site === 'Bishoftu' ? '#755A24' : 'none'} strokeWidth={.7} style={{ cursor: 'pointer' }} onClick={() => hl.openRecord(siteRecord(r, title, mac))}><title>{`${r.site} ${r.id} · ${r.date} · lot ${r.lot ?? 'unknown'} · ${optical ? `Fabs ${fmt(r.Fabs!, 2)} Mm⁻¹ (÷ MAC ${mac} = ${fmt(r.xv, 3)} µg/m³); ${method} FTIR EC ${fmt(r.yv, 3)} µg/m³` : `${method} local 2920 ${fmt(r.xv, 5)}, local 1617 ${fmt(r.yv, 5)} absorbance`}`}</title></circle>)}
-      {dem && <line {...dem} stroke={INK.deming} strokeWidth={1.6} strokeDasharray="7 4"/>}
+      <g transform={`translate(${plot.l},${plot.t})`}><RegressionLines stats={st} x={v => x(v) - plot.l} y={v => y(v) - plot.t} domain={x.domain()} width={plot.r - plot.l} height={plot.b - plot.t}/></g>
       <text x={(plot.l + plot.r) / 2} y={plot.b + 49} textAnchor="middle" fontSize={12} fill="#5B6470">{optical ? `HIPS Fabs ÷ MAC ${mac} (µg/m³)` : '2920 cm⁻¹ local height (corrected absorbance)'}</text>
       <text transform={`translate(19 ${(plot.t + plot.b) / 2}) rotate(-90)`} textAnchor="middle" fontSize={12} fill="#5B6470">{optical ? 'Frozen FTIR EC prediction (µg/m³)' : '1617 cm⁻¹ local height (corrected absorbance)'}</text>
       <g fontSize={11} fill={INK.text}>
         <circle cx={legendX} cy={legendY} r={4} fill="#2C6E9E"/><text x={legendX + 10} y={legendY + 4}>Addis</text>
         <circle cx={legendX} cy={legendY + 20} r={4} fill="#C49442"/><text x={legendX + 10} y={legendY + 24}>Bishoftu</text>
       </g>
-      {optical && st && <g fontSize={11} fill={INK.text} transform={`translate(${legendX - 4},${legendY + 52})`} fontFamily="var(--mono)">
-        <line x1={0} x2={22} y1={-4} y2={-4} stroke={INK.identity} strokeWidth={1.2} strokeDasharray="5 4"/><text x={30} y={0}>1:1</text>
-        <line x1={0} x2={22} y1={16} y2={16} stroke={INK.deming} strokeWidth={1.6} strokeDasharray="7 4"/><text x={30} y={20} fill={INK.deming}>{`Deming  y = ${fmt(st.demingSlope!, 3)}x ${st.demingIntercept! < 0 ? '−' : '+'} ${fmt(Math.abs(st.demingIntercept!), 3)}`}</text>
-        <text x={30} y={40} fill={INK.muted}>{`λ = ${fmt(demingLambda, 2)}`}</text>
-        <text x={30} y={58} fill={INK.muted}>{`n = ${st.n} · R² = ${fmt(st.r2, 3)}`}</text>
-      </g>}
+      {optical && <RegressionReadout stats={st} x={plot.l + 8} y={plot.t + 8} />}
     </svg></div>
   </ChartFrame>
 }

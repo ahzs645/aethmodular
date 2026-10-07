@@ -94,8 +94,8 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
       provenance="not in the estate · react-graph-gallery.com/radar-chart"
       controls={
         <>
-          <Select label="species family" value={group} options={groupNames} onChange={setGroup} />
-          <Segmented label="normalise" value={norm} options={NORMS} onChange={setNorm} />
+          <Select label="Species family" value={group} options={groupNames} onChange={setGroup} />
+          <Segmented label="Normalise" value={norm} options={NORMS} onChange={setNorm} />
         </>
       }
     >

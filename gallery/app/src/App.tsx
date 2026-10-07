@@ -1,3 +1,4 @@
+import { RegressionProvider, RegressionControls, parseEstimators, estimatorParam, type Estimator } from '@/lib/regressionPrefs'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useGalleryData } from '@/hooks/useGalleryData'
 import { HighlightProvider, baseFilterId, type FilterRecord } from '@/lib/highlight'
@@ -31,6 +32,7 @@ import { CalibrationPage } from '@/pages/CalibrationPage'
 import { BaselineComparisonPage } from '@/pages/BaselineComparisonPage'
 import { SimilarityPage } from '@/pages/SimilarityPage'
 import { MeetingFollowupPage } from '@/pages/MeetingFollowupPage'
+import { SatoshiFollowupPage } from '@/pages/SatoshiFollowupPage'
 import { SubsetBar, type SubsetActions, type SubsetCaps, type SubsetState } from '@/components/SubsetBar'
 import { SampleDrawer } from '@/components/SampleDrawer'
 import { RecordDrawer } from '@/components/RecordDrawer'
@@ -38,10 +40,15 @@ import type { DateRange } from '@/components/DateBrush'
 import type { FilterRow } from '@/lib/types'
 import { AXES_MODES, DEFAULT_AXES, type AxesMode, type AxesOpts } from '@/lib/axes'
 import { localSeasonsFor, qualifySeason } from '@/siteSeasons'
+import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 
-/** Tabs mirror the react-graph-gallery categories, plus the census. */
+/**
+ * Tabs mirror the react-graph-gallery categories, plus the census. `hidden` tabs
+ * stay out of the tab row but still open from a link (#tab=census); the row shows
+ * one while it is the open tab.
+ */
 const TABS = [
-  { key: 'census', label: 'Census' },
+  { key: 'census', label: 'Census', hidden: true },
   { key: 'correlation', label: 'Correlation' },
   { key: 'distribution', label: 'Distribution' },
   { key: 'evolution', label: 'Evolution' },
@@ -51,9 +58,10 @@ const TABS = [
   { key: 'flow', label: 'Flow' },
   { key: 'pmf', label: 'PMF sources' },
   { key: 'calibration', label: 'Calibration' },
-  { key: 'baseline', label: 'AIRSpec / VIBES' },
+  { key: 'baseline', label: 'Baselines', title: 'AIRSpec spline vs VIBES baseline correction' },
   { key: 'similarity', label: 'Spectral similarity' },
-  { key: 'meeting', label: 'Meeting 17 Sep follow-up' },
+  { key: 'meeting', label: 'Follow up meeting', title: 'Follow-up to the 17 Sep 2026 meeting' },
+  { key: 'satoshi', label: 'Satoshi 2 Oct', title: "Satoshi's questions after the 1 Oct 2026 meeting" },
 ] as const
 
 type TabKey = (typeof TABS)[number]['key']
@@ -65,7 +73,7 @@ const isTab = (v: string | null): v is TabKey => !!v && TABS.some((t) => t.key =
  * 942-filter count there would just be wrong.
  */
 const FILTERS: SubsetCaps = { seasons: true, sites: true, excluded: true, dates: true, fields: 'single', datasetLabel: 'SPARTAN filters' }
-const CAPS: Record<Exclude<TabKey, 'census' | 'baseline' | 'similarity' | 'meeting'>, SubsetCaps> = {
+const CAPS: Record<Exclude<TabKey, 'census' | 'baseline' | 'similarity' | 'meeting' | 'satoshi'>, SubsetCaps> = {
   correlation: { ...FILTERS, fields: 'pair' },
   distribution: FILTERS,
   evolution: FILTERS,
@@ -109,7 +117,7 @@ export default function App() {
 
   // ---- state, seeded from the URL hash so a pasted link reopens the same view
   const init = useMemo(() => readParams(), [])
-  const [tab, setTab] = useState<TabKey>(isTab(init.get('tab')) ? (init.get('tab') as TabKey) : 'census')
+  const [tab, setTab] = useState<TabKey>(isTab(init.get('tab')) ? (init.get('tab') as TabKey) : 'correlation')
   // Mirrors get_clean_data: excluded samples are hidden by default but never
   // deleted, so you can always put them back and see what was removed.
   const [includeExcluded, setIncludeExcluded] = useState(init.get('excl') === '1')
@@ -129,6 +137,8 @@ export default function App() {
   const [xField, setXField] = useState(init.get('x') ?? DEFAULT_X)
   const [yField, setYField] = useState(init.get('y') ?? DEFAULT_Y)
   const [field, setField] = useState(init.get('f') ?? DEFAULT_FIELD)
+  const [estimators, setEstimators] = useState<Estimator[]>(() => parseEstimators(init.get('fits')))
+  const [showCI, setShowCI] = useState(init.get('ci') === '1')
   const [pinnedId, setPinnedId] = useState<string | null>(init.get('pin'))
   // axes policy shared by every crossplot on the correlation tab
   const [axes, setAxes] = useState<AxesOpts>({
@@ -140,6 +150,11 @@ export default function App() {
   const [openId, setOpenId] = useState<string | null>(null)
   // what the clicked chart knows about the open filter; a filter outside filters.json opens from this alone
   const [openRec, setOpenRec] = useState<FilterRecord | null>(null)
+  const dismissSample = useCallback(() => {
+    setPinnedId(null)
+    setOpenId(null)
+    setOpenRec(null)
+  }, [])
   const openSample = useCallback((id: string) => {
     setPinnedId(id)
     setOpenId(id)
@@ -149,6 +164,8 @@ export default function App() {
   useEffect(() => {
     writeParams({
       tab,
+      fits: estimatorParam(estimators),
+      ci: showCI ? '1' : null,
       cal: convention,
       seasons: listToParam(activeSeasons),
       sites: listToParam(activeSites),
@@ -167,13 +184,15 @@ export default function App() {
       ax: axes.mode !== DEFAULT_AXES.mode ? axes.mode : null,
       log: axes.log ? '1' : null,
     })
-  }, [tab, convention, activeSeasons, activeSites, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, pinnedId, axes])
+  }, [tab, estimators, showCI, convention, activeSeasons, activeSites, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
   useEffect(() => {
     const onHash = () => {
       const p = readParams()
+      setEstimators(parseEstimators(p.get('fits')))
+      setShowCI(p.get('ci') === '1')
       if (isTab(p.get('tab'))) setTab(p.get('tab') as TabKey)
       setConvention(p.get('cal'))
       setActiveSeasons(listParam(p.get('seasons')))
@@ -282,6 +301,12 @@ export default function App() {
     [baseRows, inRange, seasonSel, activeSites]
   )
 
+  // The map has its own site scope; keep date, season and exclusion choices.
+  const mapRows = useMemo(
+    () => baseRows.filter(inRange).filter((r) => !seasonSel || seasonSel.has(r.season)),
+    [baseRows, inRange, seasonSel]
+  )
+
   // PMF rows get the same calendar + season treatment as the filter rows, so
   // one season selection means the same thing on every tab.
   // PMF groups under the chosen scheme; the calibration tab also offers "No PMF day",
@@ -333,6 +358,7 @@ export default function App() {
       setPinnedId(id)
       setOpenId(id)
     } else {
+      setPinnedId(id)
       setOpenId(null)
     }
     setOpenRec(rec)
@@ -366,8 +392,8 @@ export default function App() {
 
   const nav = (
     <nav className="nav">
-      {TABS.map((t) => (
-        <button key={t.key} className={`nav-btn ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
+      {TABS.filter((t) => !('hidden' in t && t.hidden) || t.key === tab).map((t) => (
+        <button key={t.key} className={`nav-btn ${tab === t.key ? 'active' : ''}`} title={'title' in t ? t.title : undefined} onClick={() => setTab(t.key)}>
           {t.label}
         </button>
       ))}
@@ -375,7 +401,7 @@ export default function App() {
   )
 
   const subset = (() => {
-    if (tab === 'census' || tab === 'baseline' || tab === 'similarity' || tab === 'meeting') return null
+    if (tab === 'census' || tab === 'baseline' || tab === 'similarity' || tab === 'meeting' || tab === 'satoshi') return null
     const caps = CAPS[tab]
     const pmfMode = tab === 'pmf'
     const calMode = tab === 'calibration'
@@ -466,7 +492,7 @@ export default function App() {
       onYField: setYField,
       onField: setField,
       onAxes: setAxes,
-      onUnpin: () => setPinnedId(null),
+      onUnpin: dismissSample,
       onOpenPinned: () => pinnedId && setOpenId(pinnedId),
       onReset: () => {
         setActiveSeasons(null)
@@ -483,8 +509,9 @@ export default function App() {
   })()
 
   return (
+    <RegressionProvider methods={estimators} setMethods={setEstimators} showCI={showCI} setShowCI={setShowCI}>
     <PrefsProvider>
-    <HighlightProvider pinnedId={pinnedId} setPinned={setPinnedId} openSample={openSample} openRecord={openRecord}>
+    <HighlightProvider pinnedId={pinnedId} setPinned={setPinnedId} openSample={openSample} openRecord={openRecord} onDismiss={dismissSample}>
       {openRow && (
         <SampleDrawer
           row={openRow}
@@ -494,18 +521,20 @@ export default function App() {
           yField={yField}
           focusField={field}
           pinned={pinnedId === openRow.id}
-          onPin={setPinnedId}
+          onPin={(id) => id === null ? dismissSample() : setPinnedId(id)}
           onOpen={openSample}
-          onClose={() => { setOpenId(null); setOpenRec(null) }}
+          onClose={dismissSample}
           context={openRec}
         />
       )}
-      {!openRow && openRec && <RecordDrawer rec={openRec} onClose={() => setOpenRec(null)} />}
-      <Shell nav={nav} wide={tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting'}>
-        {subset}
+      {!openRow && openRec && <RecordDrawer rec={openRec} onClose={dismissSample} />}
+      <Shell nav={nav} wide={tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'satoshi'}>
+        {/* tabs without the filter panel still get the fit controls where they draw fits */}
+        {subset ?? ((tab === 'baseline' || tab === 'meeting') && <RegressionSidebar />)}
         {tab === 'census' && <CensusPage census={census} />}
         {tab === 'similarity' && <SimilarityPage />}
-        {tab === 'meeting' && <MeetingFollowupPage />}
+        {tab === 'meeting' && <MeetingFollowupPage galleryRows={filters.rows} galleryMeta={data.meta} />}
+        {tab === 'satoshi' && <SatoshiFollowupPage />}
         {tab === 'baseline' && <BaselineComparisonPage mac={meta.mac_value} demingLambda={data.calibration?.deming_lambda_mac10 ?? 1} />}
         {tab === 'calibration' && <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />}
         {tab === 'correlation' && (
@@ -542,7 +571,7 @@ export default function App() {
           </>
         )}
         {tab === 'partOfWhole' && <CompositionTreemap rows={rows} meta={meta} />}
-        {tab === 'map' && <SiteBubbleMap rows={rows} meta={meta} field={field} />}
+        {tab === 'map' && <SiteBubbleMap rows={mapRows} meta={meta} field={field} focusSite={activeSites?.size === 1 ? [...activeSites][0] : undefined} />}
         {tab === 'flow' && <MethodSankey rows={rows} meta={meta} />}
         {tab === 'pmf' &&
           (pmf ? (
@@ -558,6 +587,7 @@ export default function App() {
       </Shell>
     </HighlightProvider>
     </PrefsProvider>
+    </RegressionProvider>
   )
 }
 
@@ -588,7 +618,7 @@ function HeaderTools() {
     <span className="header-tools">
       <label className="toggle" title="Show every chart's explanation and provenance, and the subset bar's captions">
         <input type="checkbox" checked={explain} onChange={(e) => setExplain(e.target.checked)} />
-        explain
+        Explain
       </label>
       <button
         type="button"
@@ -596,8 +626,21 @@ function HeaderTools() {
         title="The whole view (tab, subset, axes, pinned filter) is in the URL"
         onClick={() => navigator.clipboard?.writeText(window.location.href).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) })}
       >
-        {copied ? 'copied' : 'copy link'}
+        {copied ? 'Copied' : 'Copy link'}
       </button>
     </span>
   )
+}
+
+/** The filter panel's counterpart on tabs that have fits but no filters: same edge tab, same place, same open state. */
+function RegressionSidebar() {
+  const [open, setOpen] = useSidePanelOpen()
+  const top = useHeaderHeight()
+  return <>
+    <button className={`subset-tab ${open ? 'open' : ''}`} style={{ top: top + 24 }} type="button" aria-expanded={open} onClick={() => setOpen(!open)} title={open ? 'Hide the fits' : 'Show the fits'}><span className="subset-tab-label">Fits</span></button>
+    {open && <aside className="panel subset subset-panel" style={{ top, height: `calc(100vh - ${top}px)` }} aria-label="Fits">
+      <header className="subset-head"><strong>Fits</strong><span style={{ marginLeft: 'auto' }}><button type="button" className="btn quiet" onClick={() => setOpen(false)} aria-label="Close fits" title="Close">✕</button></span></header>
+      <RegressionControls />
+    </aside>}
+  </>
 }

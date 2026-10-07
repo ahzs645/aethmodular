@@ -79,8 +79,8 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
       provenance="stands in for 50 boxplot + 3 violin figures · plotting/distributions.py · react-graph-gallery.com/boxplot · /boxplot-jitter"
       controls={
         <>
-          <Segmented label="group by" value={groupBy} options={GROUPS} onChange={setGroupBy} />
-          <Segmented label="encoding" value={mode} options={MODES} onChange={setMode} />
+          <Segmented label="Group by" value={groupBy} options={GROUPS} onChange={setGroupBy} />
+          <Segmented label="Encoding" value={mode} options={MODES} onChange={setMode} />
         </>
       }
     >

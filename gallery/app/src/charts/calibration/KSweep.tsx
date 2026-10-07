@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react'
+import { FIT_STYLE, useEstimator, estimatorText } from '@/lib/regressionPrefs'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
@@ -10,7 +11,7 @@ import type { CalibFile } from '@/lib/types'
 import { configLabel, sameConfig, type Config } from './common'
 import { COHORT, CV_PROTOCOL, METRIC, PREPROCESSING, SELECTION_SPACE, label } from '@/lib/labels'
 
-// Deming only (agreed with Ann, 23 Sep 2026): both axes of the Addis crossplot carry error.
+// Saved coefficient fields are projected to the active estimator by CalibrationPage.
 const PANELS: { id: 'intercept' | 'slope' | 'r2'; title: string; keys: { key: 'db' | 'dm' | 'r2' | 'ho'; label: string; color: string; dash?: string }[]; ref?: number }[] = [
   { id: 'intercept', title: METRIC.testIntercept, keys: [{ key: 'db', label: 'Deming', color: INK.deming }], ref: 0 },
   { id: 'slope', title: METRIC.testSlope, keys: [{ key: 'dm', label: 'Deming', color: INK.deming }], ref: 1 },
@@ -29,6 +30,8 @@ export function KSweep({ calib, selected, onSelect }: { calib: CalibFile; select
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const lg = useLegend()
+  const method = useEstimator()
+  const panels = PANELS.map(panel => ({ ...panel, keys: panel.keys.map(key => key.key === 'dm' || key.key === 'db' ? { ...key, color: FIT_STYLE[method].color, dash: FIT_STYLE[method].dash } : key) }))
 
   const cohorts = useMemo(() => [...new Set(calib.sweeps.map((s) => s.co))], [calib.sweeps])
   const cutoffs = useMemo(
@@ -59,15 +62,15 @@ export function KSweep({ calib, selected, onSelect }: { calib: CalibFile; select
       provenance="calibration_explorer batch results · Addis test set · site-grouped CV · MAC 10 · fixed set"
       controls={
         <>
-          <Select label="cohort" value={selected.co} options={cohorts} optionLabel={(c) => label(COHORT, c)} onChange={(co) => {
+          <Select label="Cohort" value={selected.co} options={cohorts} optionLabel={(c) => label(COHORT, c)} onChange={(co) => {
             const first = calib.sweeps.find((s) => s.co === co)
             onSelect({ co, cut: first?.cut ?? null, sel: first?.sel ?? null, sp: first?.sp ?? 'raw' })
           }} />
           {cutoffs.length > 0 && (
-            <Select label="calibration cohort size" value={String(selected.cut ?? '')} options={cutoffs.map(String)} onChange={(v) => onSelect({ ...selected, cut: Number(v) })} />
+            <Select label="Calibration cohort size" value={String(selected.cut ?? '')} options={cutoffs.map(String)} onChange={(v) => onSelect({ ...selected, cut: Number(v) })} />
           )}
-          {sels.length > 1 && <Select label="selected on" value={selected.sel ?? 'raw'} options={sels} optionLabel={(s) => label(SELECTION_SPACE, s)} onChange={(v) => onSelect({ ...selected, sel: v })} />}
-          <Select label="preprocessing" value={selected.sp} options={sps.length ? sps : [selected.sp]} optionLabel={(s) => label(PREPROCESSING, s)} onChange={(v) => onSelect({ ...selected, sp: v })} />
+          {sels.length > 1 && <Select label="Selected on" value={selected.sel ?? 'raw'} options={sels} optionLabel={(s) => label(SELECTION_SPACE, s)} onChange={(v) => onSelect({ ...selected, sel: v })} />}
+          <Select label="Preprocessing" value={selected.sp} options={sps.length ? sps : [selected.sp]} optionLabel={(s) => label(PREPROCESSING, s)} onChange={(v) => onSelect({ ...selected, sp: v })} />
           <span className="control">{rows.length} PLS-factor counts{autoK !== null ? ` · rule: ${autoK} factors` : ''}</span>
         </>
       }
@@ -77,7 +80,7 @@ export function KSweep({ calib, selected, onSelect }: { calib: CalibFile; select
           <Empty>No PLS-factor sweep saved for {configLabel(selected, calib)} on Addis.</Empty>
         ) : (
           <div className="facet-grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
-            {PANELS.map((panel) => {
+            {panels.map((panel) => {
               const keys = panel.keys.filter((k) => lg.show(k.label))
               const hot = panel.keys.some((k) => k.label === lg.hover) ? lg.hover : null
               const vals = keys.flatMap((k) => rows.map((r) => r[k.key]).filter((v): v is number => v !== null))
@@ -87,7 +90,7 @@ export function KSweep({ calib, selected, onSelect }: { calib: CalibFile; select
               const y = d3.scaleLinear().domain([lo, hi]).range([ih, 0]).nice()
               return (
                 <div key={panel.id}>
-                  <p className="facet-title">{panel.title}</p>
+                  <p className="facet-title">{estimatorText(panel.title, method)}</p>
                   <svg width={panelW} height={ih + m.top + m.bottom} className="animated">
                     <g transform={`translate(${m.left},${m.top})`}>
                       <YAxis scale={y} x={0} gridWidth={iw} tickCount={5} />

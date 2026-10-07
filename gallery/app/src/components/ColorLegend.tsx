@@ -1,3 +1,4 @@
+import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import * as d3 from 'd3'
 import { INK, FONT } from '@/lib/theme'
 
@@ -27,6 +28,7 @@ export function ColorLegend({
   note?: string
   ticks?: number
 }) {
+  const method = useEstimator()
   const dom = scale.domain()
   const lo = dom[0]
   const hi = dom[dom.length - 1]
@@ -41,7 +43,7 @@ export function ColorLegend({
   const PAD = 18
   return (
     <span className="legend-item" style={{ gap: 8 }}>
-      {label && <span>{label}</span>}
+      {label && <span>{label ? estimatorText(label, method) : label}</span>}
       <svg width={width + 2 * PAD} height={svgH} fontFamily={FONT.family}>
         <g transform={`translate(${PAD},0)`}>
           {stops.map((c, i) => (
@@ -75,6 +77,7 @@ export function SizeLegend({
   label?: string
   format?: (v: number) => string
 }) {
+  const method = useEstimator()
   const [, hi] = scale.domain() as [number, number]
   if (!Number.isFinite(hi) || hi <= 0) return null
   const fmtV = format ?? ((v: number) => (Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(1) : v.toFixed(2)))
@@ -93,7 +96,7 @@ export function SizeLegend({
   const h = rMax * 2 + 18
   return (
     <span className="legend-item" style={{ gap: 8 }}>
-      {label && <span>{label}</span>}
+      {label && <span>{label ? estimatorText(label, method) : label}</span>}
       <svg width={w} height={h} style={{ overflow: 'visible' }} fontFamily={FONT.family}>
         {items.map((it) => (
           <g key={it.v}>

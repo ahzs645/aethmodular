@@ -1,7 +1,14 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { RegressionLines, RegressionReadout, RegressionBand } from '@/components/RegressionOverlay'
+import { monthBlocks } from '@/lib/regressionCI'
+import { regression, type RegressionStats } from '@/lib/stats'
+import { EstimatorViews, FIT_STYLE, useEstimator, useRegressions, fitsFor } from '@/lib/regressionPrefs'
+import { useId, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, ExplainOnly, Note, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty, ExplainOnly, Note, Select, Segmented } from '@/components/ChartFrame'
 import { PageToc } from '@/components/PageToc'
+import { FullRangeVibesStatus } from '@/components/FullRangeVibesStatus'
+import { MeetingCalibrationDetails } from '@/components/MeetingCalibrationDetails'
+import { SeasonalComposition } from '@/components/SeasonalComposition'
 import { SpecCurve } from '@/charts/calibration/SpecCurve'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -12,14 +19,16 @@ import { FONT, INK, RAMP_DIVERGING } from '@/lib/theme'
 import { ColorLegend } from '@/components/ColorLegend'
 import { CV_PROTOCOL_SHORT, PREPROCESSING } from '@/lib/labels'
 import { BASE as SIM_BASE, Traces, fetchBinary } from '@/lib/similarity'
+import type { FilterRow, MetaFile } from '@/lib/types'
 
 /**
  * Click-through for the 2026-09-17 Ann/Satoshi meeting follow-up. Every number
  * comes from research/ftir_hips_chem/output/tables/meeting_followup_20260917
- * via gallery/data/export_meeting_followup.py; nothing is refitted here.
+ * via gallery/data/export_meeting_followup.py. Crossplot overlays refit complete
+ * pairs with the saved error ratio; the underlying calibrations stay fixed.
  */
 
-const URL_BASE = `${import.meta.env.BASE_URL}data/meeting/followup_20260917.json`
+const URL_BASE = `${import.meta.env.BASE_URL}data/`
 type Row = Record<string, any>
 type Cols = Record<string, (number | string | null)[]>
 interface MeetingData {
@@ -58,27 +67,41 @@ function MethodSeg({ value, onChange, label = 'Baseline' }: { value: string; onC
 }
 const methodName = (m: string) => PREPROCESSING[m] ?? m
 const MODELS = ['all-IMPROVE lot 251', 'all-IMPROVE both lots (frozen Colab)'] as const
+const modelLabel = (value: string) => ({
+  'all-IMPROVE lot 251': 'Calibration pool · lot 251',
+  'all-IMPROVE both lots (frozen Colab)': 'Full calibration pool · both lots',
+  'seasonal calibration': 'Seasonal calibration',
+}[value] ?? value)
+function ModelSeg({label, value, options, onChange}: {label:string; value:string; options:readonly string[]; onChange:(v:string)=>void}) {
+  return <Segmented label={label} value={modelLabel(value)} options={options.map(modelLabel)} onChange={v=>onChange(options.find(o=>modelLabel(o)===v)??options[0])} />
+}
 const MAC_LABEL = 'HIPS Fabs / MAC 10 (µg/m³)'
 const f2 = (v: any) => (v == null || !Number.isFinite(+v) ? '—' : (+v).toFixed(2))
 const signed = (v: any) => (v == null || !Number.isFinite(+v) ? '—' : `${+v >= 0 ? '+' : '−'}${Math.abs(+v).toFixed(2)}`)
 const shortSeason = (g: string) => g.split(' ')[0]
 
 
-export function MeetingFollowupPage() {
+export function MeetingFollowupPage({ galleryRows = [], galleryMeta }: { galleryRows?: FilterRow[]; galleryMeta?: MetaFile } = {}) {
   const [data, setData] = useState<MeetingData | null>(null)
   const [error, setError] = useState('')
+  const [loadedVersion, setLoadedVersion] = useState<string | null>(null)
+  const [archiveMode, setArchiveMode] = useSearchParam<string>('marchive', 'hide', ['hide', 'show'])
+  const [version, setVersion] = useSearchParam<string>('mversion', 'current', ['current', 'earlier'])
+  const showArchived = version === 'earlier' && archiveMode === 'show'
   useEffect(() => {
     const c = new AbortController()
-    fetch(URL_BASE, { signal: c.signal })
+    setData(null); setError('')
+    fetch(URL_BASE + (version === 'current' ? 'meeting-r70/' : 'meeting/') + 'followup_20260917.json', { signal: c.signal })
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
-      .then((d: MeetingData) => { if (d.schema_version !== 1) throw new Error('unsupported data version'); setData(d) })
+      .then((d: MeetingData) => { if (d.schema_version !== 1 || (version === 'current' && d.summary.background_rank !== 70)) throw new Error('unsupported data version'); setData(d); setLoadedVersion(version) })
       .catch((e) => { if (e.name !== 'AbortError') setError(String(e)) })
     return () => c.abort()
-  }, [])
+  }, [version])
   if (error) return <ChartFrame title="Meeting follow-up" exportable={false}><Empty>Could not load the export: {error}. Run <code>uv run --no-sync python gallery/data/export_meeting_followup.py</code>.</Empty></ChartFrame>
-  if (!data) return <p>Loading the meeting follow-up…</p>
-  METHODS = data.summary.methods ?? METHODS
-  return <MeetingView data={data} />
+  if (!data || loadedVersion !== version) return <p>Loading the follow up meeting…</p>
+  METHODS = (data.summary.methods ?? ['AIRSpec', 'VIBES']).filter((m: string) => showArchived || m !== 'VIBES')
+  return <MeetingView key={version + String(showArchived)} data={data} galleryRows={galleryRows} galleryMeta={galleryMeta}
+    version={version} onVersion={setVersion} showArchived={showArchived} onShowArchived={v => setArchiveMode(v ? 'show' : 'hide')} />
 }
 
 // ------------------------------------------------------------------ data helpers
@@ -103,7 +126,9 @@ function statRow(stats: Row[], q: Row): Row | undefined {
 interface Pt { x: number; y: number; color: string; hollow?: boolean; tip: string[]; id?: string; rec?: FilterRecord }
 
 // ------------------------------------------------------------------ page
-function MeetingView({ data }: { data: MeetingData }) {
+function MeetingView({ data, galleryRows, galleryMeta, version, onVersion, showArchived, onShowArchived }: {
+  data: MeetingData; galleryRows: FilterRow[]; galleryMeta?: MetaFile; version: string; onVersion: (v: string) => void; showArchived: boolean; onShowArchived: (v: boolean) => void
+}) {
   const hl = useHighlight()
   // a clicked filter stays pinned on every chart until empty plot space is clicked or Esc
   useEffect(() => {
@@ -113,26 +138,39 @@ function MeetingView({ data }: { data: MeetingData }) {
   }, [hl])
   return (
     <PageToc>
+      <FullRangeVibesStatus />
+      <ChartFrame title="Analysis version" exportable={false} controls={<Select label="VIBES analysis" value={version} options={['current', 'earlier']} onChange={onVersion} optionLabel={v => v === 'current' ? 'Completed · rank 70' : 'Archived · preliminary rank 30'} />}>
+        <p>{version === 'current' ? 'All seasonal, combined-set, calibration and specification-grid VIBES models below use the completed rank-70 correction. Full and shared prediction windows are separate options.' : 'Earlier seasonal and specification results retain their original preliminary rank-30 corrections. These archived models have not been overwritten.'}</p>
+      </ChartFrame>
+      <ExplainOnly>
+      <ChartFrame title="Baseline versions" exportable={false}>
+        <p>The VIBES fit restricted to 4000–1425 cm⁻¹ is archived. Current VIBES variants fit the full available 4000–500 cm⁻¹ grid. The narrower prediction variant is a sensitivity comparison: it uses the corrected 4000–1425 channels to test the effect of adding lower-wavenumber information. Archived results and their mixed specification grid remain available below.</p>
+      </ChartFrame></ExplainOnly>
+      {version === 'earlier' && <label className="control"><input type="checkbox" checked={showArchived} onChange={e => onShowArchived(e.target.checked)} /> Show archived 4000–1425 fit</label>}
+      <CohortCoverage data={data} galleryRows={galleryRows} />
+      <SeasonalComposition rows={galleryRows} meta={galleryMeta} />
       <ExplainOnly><Answers data={data} /></ExplainOnly>
       <ExplainOnly><Levers data={data} /></ExplainOnly>
-      <StartingPoint data={data} />
-      <RepeatStrip data={data} />
-      <ThreePlots data={data} />
+      <EstimatorViews>{method => <StartingPoint data={projectMeeting(data, method)} />}</EstimatorViews>
+      <EstimatorViews available={['deming', 'york']}>{() => <RepeatStrip data={data} />}</EstimatorViews>
+      <EstimatorViews>{method => <ThreePlots data={projectMeeting(data, method)} />}</EstimatorViews>
       <BaselineCompare data={data} />
       <MacEnvelope data={data} />
       <ExplainOnly><OpStep data={data} /></ExplainOnly>
-      <Seasonality data={data} />
-      <Stitched data={data} />
-      <SlopeInterceptMap data={data} />
-      <Combined data={data} />
-      <SpecCurve
+      <EstimatorViews>{method => <Seasonality data={projectMeeting(data, method)} />}</EstimatorViews>
+      <EstimatorViews>{method => <Stitched data={projectMeeting(data, method)} />}</EstimatorViews>
+      <EstimatorViews available={['deming', 'york']}>{() => <SlopeInterceptMap data={data} />}</EstimatorViews>
+      <EstimatorViews>{method => <Combined data={projectMeeting(data, method)} />}</EstimatorViews>
+      <EstimatorViews available={['deming', 'york']}>{() => <SpecCurve
         id="meeting-spec-curve"
-        src="meeting/spec_curve_20260917.json"
-        title="Specification curve — every baselined Addis configuration from the meeting grid, sorted by the intercept it produces"
-        subtitle={(f) => `All ${f ? f.n.toLocaleString() + ' ' : ''}baselined Addis specifications after the 17 Sep levers (spline and VIBES baselines; CO₂ and >3600 cm⁻¹ excluded from selection; site-grouped or interleaved cross-validation; cohort sizes every 5 filters; number of PLS factors by each protocol's rule), sorted by Deming intercept at MAC 10, with the analytic choices underneath: a darker strip means more of the specifications at that position used the choice. Click a choice to keep only specifications that use it; click several to intersect. Red points pass every guardrail${f ? ': ' + f.guardrails : ''}.`}
-        provenance="research/ftir_hips_chem/output/tables/meeting_followup_20260917/category_grid.jsonl via gallery/data/export_meeting_followup.py · guardrails from research/ftir_ec_phase3/scripts/spec_curve.py"
-      />
-      <GridStep data={data} />
+        src={data.summary.spec_curve_export ?? 'meeting/spec_curve_20260917.json'}
+        title={`Specification curve — ${showArchived ? 'active and archived' : 'active'} baselines from the meeting grid`}
+        excludePreprocessing={showArchived ? [] : ['vibes']}
+        defaultComparison="all"
+        subtitle={(f) => `All ${f ? f.n.toLocaleString() + ' ' : ''}baselined Addis specifications after the 17 Sep levers (spline and VIBES baselines; CO₂ and >3600 cm⁻¹ excluded from selection; site-grouped or interleaved cross-validation; cohort sizes every 5 filters; number of PLS factors by each protocol's rule), sorted by Deming intercept at MAC 10, with the analytic choices underneath: a darker strip means more of the specifications at that position used the choice. Click a choice to keep only specifications that use it; click several to intersect. Red points use the selected highlight criteria; by default they pass every saved guardrail${f ? ': ' + f.guardrails : ''}.`}
+        provenance={version === 'current' ? 'Completed rank-70 migration · category_grid.jsonl · original specification guardrails' : 'Archived meeting_followup_20260917/category_grid.jsonl · original specification guardrails'}
+      />}</EstimatorViews>
+      <EstimatorViews available={['deming', 'york']}>{() => <GridStep data={data} />}</EstimatorViews>
       <ExplainOnly><NextSteps data={data} /></ExplainOnly>
     </PageToc>
   )
@@ -158,7 +196,7 @@ function Answers({ data }: { data: MeetingData }) {
         <li><strong>In Dry, part of the bias is already in the references.</strong> For Dry analogs, TOR EC vs Fabs/10 has slope {f2(h('AIRSpec', 'Dry (Oct-Feb)').analog_tor_fabs[0])} (TOR low for its absorption), and FTIR under-reads TOR on top of that ({f2(h('AIRSpec', 'Dry (Oct-Feb)').analog_ftir_tor[0])}). Training on TOR EC bakes the first part in. In Belg and Kiremt, TOR vs Fabs/10 is above 1 ({f2(h('AIRSpec', 'Belg (Mar-May)').analog_tor_fabs[0])}, {f2(h('AIRSpec', 'Kiremt (Jun-Sep)').analog_tor_fabs[0])}), so there the shortfall is FTIR under-reading TOR.</li>
         <li><strong>OP does not explain the TOR–HIPS spread.</strong> Across the IMPROVE pool the MAC ratio is flat in OP fraction (Spearman ρ = {f2(data.op_pool_rho)}); see the OP section.</li>
         <li><strong>The seasonal calibrations are fragile.</strong> Swapping ~12 of 500 analogs moves Kiremt from k = 18 to k = 5; the 10–90 % bands in the table are the honest spread.</li>
-        <li><strong>With VIBES the analogs stop mirroring Addis.</strong> VIBES Addis slopes ({data.seasons.map((g, j) => <span key={g}>{j ? ', ' : ''}{shortSeason(g)} {f2(h('VIBES', g).addis_slope[0])}</span>)}) no longer track its cross-validation analogs ({data.seasons.map((g, j) => <span key={g}>{j ? ', ' : ''}{f2(h('VIBES', g).analog_ftir_fabs[0])}</span>)}): the wet seasons overshoot 1 while Dry stays low.</li>
+        {METHODS.includes('VIBES') && <li><strong>In the archived truncated VIBES fit, the analogs stop mirroring Addis.</strong> Addis slopes ({data.seasons.map((g, j) => <span key={g}>{j ? ', ' : ''}{shortSeason(g)} {f2(h('VIBES', g).addis_slope[0])}</span>)}) no longer track its cross-validation analogs ({data.seasons.map((g, j) => <span key={g}>{j ? ', ' : ''}{f2(h('VIBES', g).analog_ftir_fabs[0])}</span>)}): the wet seasons overshoot 1 while Dry stays low.</li>}
       </ol>
       <Note>Deming error ratios come from measurement uncertainties: Addis λ* {f2(data.summary.lambda)} (HIPS_Uncertainty vs IMPROVE cross-validation RMSE); IMPROVE FTIR panels use each calibration's cross-validation RMSE against a {(100 * (data.summary.ref_rel_uncertainty ?? 0)).toFixed(1)} % reference uncertainty (ETAD HIPS, the only one on file), so λ is 50–100: almost all the error is assigned to FTIR. Analog concentrations are low (median TOR EC 0.1–0.4 µg/m³) against Addis Fabs/10 of 4–6 µg/m³. Fabs/10 is an optical proxy, not thermal EC.</Note>
     </ChartFrame>
@@ -194,11 +232,44 @@ function Levers({ data }: { data: MeetingData }) {
   )
 }
 
+function CohortCoverage({ data, galleryRows }: { data: MeetingData; galleryRows: FilterRow[] }) {
+  const gallery = galleryRows.filter(r => r.site === 'Addis Ababa' && !r.excluded)
+  const a = data.addis
+  const indices = a.fit_id.map((_, i) => i)
+  const ids = (ii: number[]) => new Set(ii.map(i => baseFilterId(String(a.ExternalFilterId[i]))))
+  const complete = (i: number) => typeof a.fabs10[i] === 'number' && Number.isFinite(a.fabs10[i]) &&
+    typeof a.ftir_ec_ugm3[i] === 'number' && Number.isFinite(a.ftir_ec_ugm3[i])
+  const evaluation = ids(indices)
+  const predicted = ids(indices.filter(i => !String(a.fit_id[i]).startsWith('deployed|') && complete(i)))
+  const deployed = ids(indices.filter(i => String(a.fit_id[i]).startsWith('deployed|') && complete(i)))
+  const shared = gallery.filter(r => evaluation.has(r.id))
+  const galleryOnly = gallery.filter(r => !evaluation.has(r.id))
+  const dateRange = (dates: (string | number | null)[]) => {
+    const sorted = dates.filter((d): d is string => typeof d === 'string').map(d => d.slice(0, 10)).sort()
+    return sorted.length ? `${sorted[0]} to ${sorted[sorted.length - 1]}` : 'No dated filters'
+  }
+  const galleryPairs = gallery.filter(r => typeof r['HIPS BC'] === 'number' && Number.isFinite(r['HIPS BC']) &&
+    typeof r['EC (FTIR)'] === 'number' && Number.isFinite(r['EC (FTIR)'])).length
+  return <ChartFrame title="Addis filter coverage" exportable={false}>
+    <table className="placement">
+      <thead><tr><th>Data source</th><th>Filters</th><th>FTIR–HIPS pairs</th><th>Sampling window</th></tr></thead>
+      <tbody>
+        <tr><td>Gallery · existing FTIR product, after exclusions</td><td>{gallery.length}</td><td>{galleryPairs}</td><td>{dateRange(gallery.map(r => r.date))}</td></tr>
+        <tr><td>Meeting test set · new FTIR predictions</td><td>{evaluation.size}</td><td>{predicted.size}</td><td>{dateRange(a.date)}</td></tr>
+        <tr><td>Existing SPARTAN product within evaluation</td><td>{evaluation.size}</td><td>{deployed.size}</td><td>{dateRange(indices.filter(i => String(a.fit_id[i]).startsWith('deployed|') && complete(i)).map(i => a.date[i]))}</td></tr>
+      </tbody>
+    </table>
+    <p className="chart-note">{data.summary.addis_source_n != null && <>The frozen meeting run contains {evaluation.size} of {data.summary.addis_source_n} source evaluation filters. </>}The gallery and evaluation share {shared.length} physical filters after matching base filter IDs. The evaluation includes {evaluation.size - shared.length} additional filters; {galleryOnly.length} gallery filter{galleryOnly.length === 1 ? '' : 's'} {galleryOnly.length === 1 ? 'is' : 'are'} absent from the frozen spectral run{galleryOnly.length ? ` (${galleryOnly.map(r => r.id).join(', ')})` : ''}.</p>
+    <p className="chart-note">The starting-point plot uses {deployed.size} complete pairs and omits {evaluation.size - deployed.size} evaluation filters missing the existing FTIR product. New-prediction plots use {predicted.size} pairs. Missing values are omitted from each comparison, never plotted as zero. Addis HIPS is an optical comparison, not an independent thermal EC reference.</p>
+  </ChartFrame>
+}
+
 // ------------------------------------------------------------------ scatter
 /** A 1:1 crossplot: square plot area, identical x and y ranges, so the dashed line is the true diagonal. */
-function Scatter({ points, stats, xLabel, yLabel, title, maxSide = 360, lineColor = INK.deming, extraLines = [] }: {
-  points: Pt[]; stats?: Row; xLabel: string; yLabel: string; title: string; maxSide?: number; lineColor?: string
-  extraLines?: { slope: number; intercept: number; color: string; label: string }[]
+function Scatter({ points, stats, xLabel, yLabel, title, maxSide = 360, extraLines = [], demingLambda }: {
+  points: Pt[]; stats?: Row; xLabel: string; yLabel: string; title: string; maxSide?: number
+  demingLambda?: number
+  extraLines?: { slope: number; intercept: number; color: string; label: string; dash?: string; method: import('@/lib/regressionMethods').Estimator; stats: RegressionStats | null }[]
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
@@ -207,7 +278,10 @@ function Scatter({ points, stats, xLabel, yLabel, title, maxSide = 360, lineColo
   const m = { top: 24, right: 14, bottom: 46, left: 56 }
   const side = Math.max(160, Math.min(width - m.left - m.right, maxSide))
   const iw = side, ih = side, w = side + m.left + m.right, height = side + m.top + m.bottom
-  const xs = points.map((p) => p.x), ys = points.map((p) => p.y)
+  const clipId = useId()
+  const validPoints = points.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y) && p.x != null && p.y != null)
+  const st = regression(validPoints.map(p => p.x), validPoints.map(p => p.y), { errorsInVariables: true, lambda: stats?.deming_lambda ?? demingLambda ?? 1, bootstrapGroups: monthBlocks(validPoints.map(p => p.rec ?? {})) })
+  const xs = validPoints.map((p) => p.x), ys = validPoints.map((p) => p.y)
   const hi = (d3.max([...xs, ...ys]) ?? 1) * 1.05
   const lo = Math.min(0, d3.min([...xs, ...ys]) ?? 0)
   const dom = d3.scaleLinear().domain([lo, hi]).nice().domain()
@@ -220,13 +294,13 @@ function Scatter({ points, stats, xLabel, yLabel, title, maxSide = 360, lineColo
       <svg width={w} height={height} fontFamily={FONT.family}>
         <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>
         <g transform={`translate(${m.left},${m.top})`}>
-          <defs><clipPath id={`c-${title.replace(/\W/g, '')}`}><rect width={iw} height={ih} /></clipPath></defs>
+          <defs><clipPath id={clipId}><rect width={iw} height={ih} /></clipPath></defs>
           <YAxis scale={y} x={0} label={yLabel} tickCount={5} gridWidth={iw} labelX={-42} format={(v) => String(+v.toFixed(2))} />
           <XAxis scale={x} y={ih} label={xLabel} tickCount={5} format={(v) => String(+v.toFixed(2))} labelDy={38} />
-          <g clipPath={`url(#c-${title.replace(/\W/g, '')})`}>
+          <g clipPath={`url(#${clipId})`}>
             <rect width={iw} height={ih} fill="transparent" onClick={() => hl.setPinned(null)} />
             <line {...line(1, 0)} stroke={INK.identity} strokeDasharray="4 3" pointerEvents="none" />
-            {points.map((p, i) => {
+            {validPoints.map((p, i) => {
               const key = p.id ? baseFilterId(p.id) : null
               const focus = !!key && (key === hl.pinnedId || key === hl.hoverId)
               const dim = !!(hl.pinnedId || hl.hoverId) && !focus
@@ -239,16 +313,10 @@ function Scatter({ points, stats, xLabel, yLabel, title, maxSide = 360, lineColo
                   onClick={() => { if (p.rec) hl.openRecord(p.rec); if (key) hl.setPinned(key) }} />
               )
             })}
-            {stats?.deming_slope != null && <line {...line(stats.deming_slope, stats.deming_intercept)} stroke={lineColor} strokeWidth={2} />}
-            {extraLines.map((l) => <line key={l.label} {...line(l.slope, l.intercept)} stroke={l.color} strokeWidth={1.8} />)}
+            <RegressionLines stats={st} x={x} y={y} domain={x.domain()} width={iw} height={ih} />
+            {extraLines.map((l) => <g key={l.label}><RegressionBand stats={l.stats} method={l.method} color={l.color} x={x} y={y} domain={x.domain()} /><line {...line(l.slope, l.intercept)} stroke={l.color} strokeWidth={1.8} strokeDasharray={l.dash} /></g>)}
           </g>
-          {stats?.n != null && (
-            <g transform="translate(8,6)" fontSize={11} fill={INK.text}>
-              <rect x={-4} y={-11} width={184} height={32} fill="white" fillOpacity={0.85} />
-              <text>Deming y = {f2(stats.deming_slope)}x {signed(stats.deming_intercept)}</text>
-              <text y={14} fill={INK.muted}>R² {f2(stats.R2)} · n {stats.n}{stats.slope_ci_low != null ? ` · slope ${f2(stats.slope_ci_low)}–${f2(stats.slope_ci_high)}` : ''}</text>
-            </g>
-          )}
+          <RegressionReadout stats={st} x={8} y={6} />
         </g>
       </svg>
       {tip.node}
@@ -275,7 +343,7 @@ function Key({ items, children }: { items: KeyItem[]; children?: ReactNode }) {
             {it.kind === 'bar' && <rect x={1} y={3} width={18} height={6} fill={it.color} />}
             {it.kind === 'faded' && <rect x={1} y={1} width={18} height={10} fill={it.color} opacity={0.3} />}
           </svg>
-          {it.label}
+          <SavedFitLabel text={it.label} />
         </span>
       ))}
       {children}
@@ -318,7 +386,7 @@ function useAddisPoints(data: MeetingData) {
   const idx = useIndex(data.addis, ['fit_id'])
   return (fitId: string, season: string | 'all', color?: (s: string) => string) => {
     const a = data.addis
-    return (idx.get(fitId) ?? []).filter((i) => season === 'all' || season === 'All Addis' || a.season[i] === season).map((i): Pt => ({
+    return (idx.get(fitId) ?? []).filter((i) => typeof a.fabs10[i] === 'number' && Number.isFinite(a.fabs10[i]) && typeof a.ftir_ec_ugm3[i] === 'number' && Number.isFinite(a.ftir_ec_ugm3[i]) && (season === 'all' || season === 'All Addis' || a.season[i] === season)).map((i): Pt => ({
       x: a.fabs10[i] as number, y: a.ftir_ec_ugm3[i] as number,
       color: color ? color(String(a.season[i])) : data.season_colors[String(a.season[i])] ?? INK.axis,
       tip: [`${a.ExternalFilterId?.[i] ?? 'Addis'} · ${String(a.date[i]).slice(0, 10)}`, String(a.season[i]), `Fabs/10 ${f2(a.fabs10[i])} · FTIR ${f2(a.ftir_ec_ugm3[i])}`],
@@ -354,7 +422,7 @@ function AcrossSeasons({ data, fitPrefix, seasonal }: { data: MeetingData; fitPr
   )
 }
 
-interface SimMeta { bin_wn: number[]; filters: { sample_id: string[] } }
+interface SimMeta { bin_wn: number[]; filters: { sample_id: string[] }; rank_cap?: number; background_rank?: number; presentation_status?: string }
 let simMetaPromise: Promise<SimMeta> | null = null
 
 /** Per-filter binned spectra from the Spectral similarity export (same frozen run, same ids). */
@@ -366,14 +434,15 @@ function useTraces(method: string) {
     simMetaPromise ??= fetch(SIM_BASE + 'similarity.json').then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
     // the full-range VIBES traces share the filter table but have their own (4000-500) bin grid
     const full = method.startsWith('VIBES-full')
-    const gridPromise: Promise<number[] | null> = full
-      ? fetch(SIM_BASE + 'traces_VIBES-full.json').then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() }).then((j) => j.bin_wn)
+    const source = method.endsWith('-r70') ? 'VIBES-full-r70' : full ? 'VIBES-full' : method
+    const gridPromise: Promise<Partial<SimMeta> | null> = full
+      ? fetch(SIM_BASE + `traces_${source}.json`).then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
       : Promise.resolve(null)
-    Promise.all([simMetaPromise, fetchBinary(`traces_${full ? 'VIBES-full' : method}.bin`), gridPromise])
+    Promise.all([simMetaPromise, fetchBinary(`traces_${source}.bin`), gridPromise])
       .then(([meta, buf, grid]) => {
         if (!live) return
         const ids = meta.filters.sample_id
-        const m2 = grid ? { ...meta, bin_wn: grid } : meta
+        const m2 = grid ? { ...meta, ...grid } : meta
         setState({ method, meta: m2, traces: new Traces(buf, ids.length, m2.bin_wn.length), index: new Map(ids.map((id, i) => [id, i])) })
       })
       .catch((e) => { if (live) setError(String(e)) })
@@ -384,12 +453,25 @@ function useTraces(method: string) {
 
 /**
  * Ann (23 Sep): compare the two baselines only where both exist (4000-1425 cm-1),
- * and show the full-range VIBES on its own. Uses the pinned filter, or the first
- * Addis filter until one is pinned.
+ * and show the full-range VIBES on its own. The comparison can also overlay
+ * each method on its available grid across the full range, without extrapolating.
+ * Uses the pinned filter, or the first Addis filter until one is pinned.
  */
 function BaselineCompare({ data }: { data: MeetingData }) {
   const hl = useHighlight()
-  const air = useTraces('AIRSpec'), vib = useTraces('VIBES'), full = useTraces('VIBES-full')
+  const [layout, setLayout] = useSearchParam<'Stacked' | 'Side by side'>('baselineLayout', 'Stacked', ['Stacked', 'Side by side'])
+  const [range, setRange] = useSearchParam<'Shared (4000–1425)' | 'Full (4000–500)'>('baselineRange', 'Shared (4000–1425)', ['Shared (4000–1425)', 'Full (4000–500)'])
+  const [hiddenValue, setHiddenValue] = useSearchParam<string>('baselineHidden', 'VIBES-full')
+  const hidden = new Set(hiddenValue.split('|').filter(Boolean))
+  const toggleSeries = (method: string) => {
+    const next = new Set(hidden)
+    if (next.has(method)) next.delete(method)
+    else next.add(method)
+    setHiddenValue([...next].sort().join('|') || 'none')
+  }
+  const lowerBound = range === 'Full (4000–500)' ? 500 : 1425
+  const stacked = layout === 'Stacked'
+  const air = useTraces('AIRSpec'), vib = useTraces('VIBES'), full = useTraces('VIBES-full'), completed = useTraces('VIBES-full-r70')
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const etadOf = useMemo(() => {
@@ -402,50 +484,66 @@ function BaselineCompare({ data }: { data: MeetingData }) {
   const sid = key ? (key.startsWith('improve:') ? key : etadOf.get(key) ?? firstAddis) : firstAddis
   const hasFull = METHODS.includes('VIBES-full')
   const series = [
-    { name: PREPROCESSING.AIRSpec, color: '#2171b5', t: air.value },
-    { name: PREPROCESSING.VIBES, color: '#9467bd', t: vib.value },
-    ...(hasFull ? [{ name: PREPROCESSING['VIBES-full'], color: '#d62728', t: full.value }] : []),
+    { method: 'AIRSpec', name: PREPROCESSING.AIRSpec, color: '#2C6E9E', t: air.value, error: air.error },
+    { method: 'VIBES-full-r70', name: 'VIBES baseline (4000–500, completed rank 70)', color: '#d95f0e', t: completed.value, error: completed.error },
+    ...(METHODS.includes('VIBES') ? [{ method: 'VIBES', name: PREPROCESSING.VIBES, color: '#9467bd', t: vib.value, error: vib.error }] : []),
+    ...(hasFull ? [{ method: 'VIBES-full', name: PREPROCESSING['VIBES-full'], color: '#7A4FA3', t: full.value, error: full.error }] : []),
   ]
+  const visibleSeries = series.filter((s2) => !hidden.has(s2.method))
   const get = (t: (typeof series)[number]['t']) => {
     if (!t) return null
     const k = t.index.get(sid)
     return k == null ? null : { wn: t.meta.bin_wn, v: t.traces.of(k) }
   }
-  const panel = (title: string, lines: { name: string; color: string; wn: number[]; v: Float32Array }[], lo: number, w: number) => {
-    const m = { top: 22, right: 12, bottom: 44, left: 58 }, h = 280, iw = w - m.left - m.right, ih = h - m.top - m.bottom
+  const panel = (title: string, lines: { name: string; color: string; wn: number[]; v: Float32Array }[], lo: number, w: number, caption?: string) => {
+    const m = { top: caption ? 40 : 22, right: 12, bottom: 44, left: 58 }, h = caption ? 298 : 280, iw = w - m.left - m.right, ih = h - m.top - m.bottom
     const vals = lines.flatMap((l) => Array.from(l.v).filter((_, i) => l.wn[i] >= lo))
     const x = d3.scaleLinear().domain([4000, lo]).range([0, iw])
     const y = d3.scaleLinear().domain([Math.min(0, d3.min(vals) ?? 0), d3.max(vals) ?? 0.01]).range([ih, 0]).nice()
     return (
-      <svg width={w} height={h} fontFamily={FONT.family}>
+      <svg width={w} height={h} fontFamily={FONT.family} role="img" aria-label={title}>
         <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>
+        {caption && <text x={m.left} y={30} fontSize={11} fill={INK.muted}>{caption}</text>}
         <g transform={`translate(${m.left},${m.top})`}>
           <YAxis scale={y} x={0} label="Absorbance" tickCount={4} labelX={-46} format={(v) => String(+v.toFixed(3))} />
           <XAxis scale={x} y={ih} label="Wavenumber (cm⁻¹)" tickCount={6} labelDy={36} />
           <line x1={0} x2={iw} y1={y(0)} y2={y(0)} stroke={INK.identity} strokeDasharray="3 3" />
           {lines.map((l) => (
-            <path key={l.name} d={d3.line<number>().defined((_, i) => l.wn[i] >= lo).x((_, i) => x(l.wn[i])).y((_, i) => y(l.v[i]))(Array.from(l.v)) ?? ''}
+            <path key={l.name} aria-label={l.name} d={d3.line<number>().defined((_, i) => l.wn[i] >= lo && Number.isFinite(l.v[i])).x((_, i) => x(l.wn[i])).y((_, i) => y(l.v[i]))(Array.from(l.v)) ?? ''}
               fill="none" stroke={l.color} strokeWidth={1.5} />
           ))}
         </g>
       </svg>
     )
   }
-  const lines = series.map((s2) => { const g = get(s2.t); return g ? { name: s2.name, color: s2.color, ...g } : null }).filter(Boolean) as { name: string; color: string; wn: number[]; v: Float32Array }[]
-  const fullLine = lines.find((l) => l.name === PREPROCESSING['VIBES-full'])
+  const lines = visibleSeries.map((s2) => { const g = get(s2.t); return g ? { name: s2.name, color: s2.color, ...g } : null }).filter(Boolean) as { name: string; color: string; wn: number[]; v: Float32Array }[]
+  const completeLine = lines.find(l => l.name === 'VIBES baseline (4000–500, completed rank 70)')
+  const fullLine = completeLine ?? lines.find((l) => l.name === PREPROCESSING['VIBES-full'])
+  const fullCaption = completeLine ? 'Completed · background rank 70' : full.value?.meta.rank_cap == null ? undefined : `Preliminary · background rank cap ${full.value.meta.rank_cap}`
   const w = Math.max(320, width || 700)
+  const sharedWidth = stacked || !fullLine ? w : Math.max(320, Math.min((w - 14) * 0.6, 760))
+  const fullWidth = stacked ? w : Math.max(300, Math.min((w - 14) * 0.4, 520))
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › BaselineCompare"
       title={`Baselines compared — one filter (${key ?? 'example: first Addis filter'}), spline vs VIBES where both exist, and the full-range VIBES`}
-      subtitle="Left: every baseline cut at 1425 cm⁻¹, because the spline method has no model below it. Right: the VIBES baseline fitted on the whole 4000–500 cm⁻¹ grid. Click any point or trace on this page to pin a filter here.">
+      controls={<>
+        <Segmented label="Comparison range" value={range} options={['Shared (4000–1425)', 'Full (4000–500)']} onChange={setRange} />
+        <Segmented label="Plot layout" value={layout} options={['Stacked', 'Side by side']} onChange={setLayout} />
+        {series.map((s2) => <label key={s2.method} className="control">
+          <input type="checkbox" checked={!hidden.has(s2.method)} onChange={() => toggleSeries(s2.method)} />
+          <span style={{ color: s2.color }}>{s2.name}</span>
+        </label>)}
+      </>}
+      subtitle={`The main panel overlays the selected baselines down to ${lowerBound} cm⁻¹. The archived truncated fit appears only when enabled. A separate full-range VIBES panel appears when that method is selected. Click any point or trace on this page to pin a filter here.`}>
       <div ref={ref}>
-        {!lines.length ? <Empty>{air.error || vib.error ? `Could not load spectra: ${air.error || vib.error}` : 'Loading spectra…'}</Empty> : (
-          <div className="plot-groups">
-            <div style={{ flex: '3 1 520px', minWidth: 0 }}>{panel('4000–1425 cm⁻¹: where both methods exist', lines, 1425, Math.max(320, Math.min(w * 0.6, 760)))}</div>
-            <div style={{ flex: '2 1 320px', minWidth: 0 }}>{fullLine ? panel('4000–500 cm⁻¹: VIBES baseline only', [fullLine], 500, Math.max(300, Math.min(w * 0.4, 520))) : <Empty>The full-range VIBES run is still being assembled.</Empty>}</div>
+        {!lines.length ? <Empty>{!visibleSeries.length ? 'Select a baseline above to display its spectrum.' : visibleSeries.some((s2) => s2.error) ? `Could not load spectra: ${visibleSeries.find((s2) => s2.error)?.error}` : visibleSeries.some((s2) => !s2.t) ? 'Loading spectra…' : 'The selected baselines have no spectrum for this filter.'}</Empty> : (
+          <div className="plot-groups" style={stacked ? { flexDirection: 'column' } : undefined}>
+            <div style={{ flex: '0 0 auto', width: sharedWidth, minWidth: 0 }}>{panel(lowerBound === 500 ? '4000–500 cm⁻¹: selected baselines overlaid' : '4000–1425 cm⁻¹: shared comparison range', lines, lowerBound, sharedWidth, fullLine ? fullCaption : undefined)}</div>
+            {fullLine && <div style={{ flex: '0 0 auto', width: fullWidth, minWidth: 0 }}>{panel('4000–500 cm⁻¹: VIBES baseline only', [fullLine], 500, fullWidth, fullCaption)}</div>}
           </div>
         )}
-        <Key items={series.map((s2) => ({ label: s2.name, color: s2.color, kind: 'line' as const }))} />
+        <Key items={visibleSeries.map((s2) => ({ label: s2.name, color: s2.color, kind: 'line' as const }))} />
+        {lowerBound === 500 && !hidden.has('AIRSpec') && <Note>The spline baseline ends near 1425 cm⁻¹; no spline values are extrapolated below its available range.</Note>}
       </div>
       <ExplainOnly><Note>Traces are 8-channel (~10 cm⁻¹) means from the gallery's spectral export, for display only. {sid}</Note></ExplainOnly>
     </ChartFrame>
@@ -502,7 +600,7 @@ function SpectraPanel({ data, method, group }: { data: MeetingData; method: stri
   if (!tr.value) return <div ref={ref}><Empty>Loading per-filter spectra…</Empty></div>
   const { meta, traces, index } = tr.value
   const wn = meta.bin_wn
-  const wnFloor = method === 'VIBES-full-cut' ? 1425 : 0
+  const wnFloor = method.includes('full-cut') ? 1425 : 0
   const shownImp = improveIds.slice(0, Number(topN))
   const get = (sid: string) => { const k = index.get(sid); return k == null ? null : traces.of(k) }
   const impT = shownImp.map((sid) => ({ sid, v: get(sid) })).filter((t) => t.v) as { sid: string; v: Float32Array }[]
@@ -645,6 +743,7 @@ function RepeatStrip({ data }: { data: MeetingData }) {
 // ------------------------------------------------------------------ 5. three crossplots
 const COLOR_BY = ['season colour', 'OP fraction', 'OC/EC'] as const
 function ThreePlots({ data }: { data: MeetingData }) {
+  const fit = FIT_STYLE[useEstimator()]
   const [method, setMethod] = useSearchParam<string>('m3method', 'AIRSpec', METHODS)
   const [season, setSeason] = useSearchParam<string>('mseason', 'Dry (Oct-Feb)', data.groups)
   const FAMS = ['seasonal calibration', ...MODELS] as const
@@ -659,19 +758,21 @@ function ThreePlots({ data }: { data: MeetingData }) {
   const color = (i: number) => colorBy === 'OP fraction' ? (a.op_tor_frac[i] == null ? INK.neutral : opScale(a.op_tor_frac[i] as number))
     : colorBy === 'OC/EC' ? (a.tor_oc_ec[i] == null ? INK.neutral : ocScale(Math.max(1.5, a.tor_oc_ec[i] as number))) : col
   const fitId = fam === 'seasonal calibration' ? `seasonal|${method}|locked|${season}` : `allimprove|${method}|${fam}`
+  const calibrationFit = data.fits.find(fit => fit.fit_id === fitId)
   const q = (panel: string) => statRow(data.stats, fam === 'seasonal calibration'
     ? { fit_id: fitId, population: 'analog_test', panel } : { fit_id: fitId, group: season, population: 'analog_test', panel })
   const sAd = statRow(data.stats, fam === 'seasonal calibration' ? { fit_id: fitId, population: 'addis', eval_group: season } : { fit_id: fitId, group: season, population: 'addis', eval_group: season })
   const only = 'test' as const
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › ThreePlots" title="Three crossplots per season — TOR EC vs HIPS, FTIR vs TOR and FTIR vs HIPS on the IMPROVE analogs in cross-validation, beside the Addis test set from the same calibration and the spectra"
-      subtitle="Only IMPROVE analogs from sites held out of the calibration set are drawn (cross-validation). 'Seasonal calibration' is one model per season from its 500 analogs; the all-IMPROVE models are Ann's reading of the current model (lot 251, or the frozen both-lots Colab model)."
+      subtitle="Only IMPROVE analogs from sites held out of the calibration set are drawn (cross-validation). 'Seasonal calibration' is one model per season from its 500 analogs; the all-IMPROVE models are Ann's reading of the current model (lot 251, or the frozen full-pool model for the selected analysis version)."
       controls={<>
         <MethodSeg value={method} onChange={setMethod} />
-        <Segmented label="Calibration" value={fam as any} options={FAMS} onChange={setFam as any} />
+        <ModelSeg label="Calibration" value={fam} options={FAMS} onChange={setFam} />
         <Segmented label="Season" value={season} options={data.groups} onChange={setSeason} />
         <Segmented label="Colour" value={colorBy as any} options={COLOR_BY} onChange={setColorBy as any} />
       </>}>
+      <MeetingCalibrationDetails fit={calibrationFit} />
       <div className="plot-groups">
         <section className="plot-group improve">
           <h3>
@@ -692,7 +793,7 @@ function ThreePlots({ data }: { data: MeetingData }) {
             <span>predicted by the same calibration · HIPS only (no TOR at Addis)</span>
           </h3>
           <div className="plot-group-grid">
-            <Scatter title={`Addis ${season === 'All Addis' ? 'all seasons' : shortSeason(season)}: FTIR vs HIPS`} points={addisPts(fitId, season)} stats={sAd} xLabel={MAC_LABEL} yLabel="FTIR EC (µg/m³)" />
+            <Scatter title={`Addis ${season === 'All Addis' ? 'all seasons' : shortSeason(season)}: FTIR vs HIPS`} points={addisPts(fitId, season)} stats={sAd} demingLambda={data.summary.lambda} xLabel={MAC_LABEL} yLabel="FTIR EC (µg/m³)" />
           </div>
         </section>
       </div>
@@ -701,7 +802,7 @@ function ThreePlots({ data }: { data: MeetingData }) {
         ...(season === 'All Addis'
           ? data.seasons.map((g) => ({ label: `Addis ${g}`, color: data.season_colors[g] }))
           : [{ label: `Addis ${shortSeason(season)} filters`, color: col }]),
-        { label: 'Deming fit (λ from measurement uncertainties)', color: INK.deming, kind: 'line' },
+        { label: fit === FIT_STYLE.deming ? 'Deming fit (λ from measurement uncertainties)' : `${fit.label} fit`, color: fit.color, kind: fit.dash ? 'dash' : 'line' },
         { label: '1:1', color: INK.identity, kind: 'dash' },
       ]}>
         {colorBy === 'OP fraction' && <ColorLegend scale={opScale} label="IMPROVE analogs: OP fraction = OPTR / (EC + OPTR)" width={200} />}
@@ -782,21 +883,24 @@ function OpStep({ data }: { data: MeetingData }) {
 // ------------------------------------------------------------------ 8. seasonality under all-IMPROVE
 /** One Addis test set crossplot coloured by season, with a Deming line per season and for all Addis. */
 function SeasonCrossplot({ data, fitId, title }: { data: MeetingData; fitId: string; title: string }) {
+  const { methods } = useRegressions()
   const addisPts = useAddisPoints(data)
-  const lines = data.seasons.map((g) => {
+  const lines = data.seasons.flatMap((g) => {
     const s = statRow(data.stats, { fit_id: fitId, population: 'addis', eval_group: g })
-    return s ? { slope: s.deming_slope, intercept: s.deming_intercept, color: data.season_colors[g], label: g } : null
-  }).filter(Boolean) as { slope: number; intercept: number; color: string; label: string }[]
+    const points = addisPts(fitId, g)
+    const st = regression(points.map(p => p.x), points.map(p => p.y), { errorsInVariables: true, lambda: s?.deming_lambda ?? data.summary.lambda, bootstrapGroups: monthBlocks(points.map(p => p.rec ?? {})) })
+    return fitsFor(st, methods).map(fit => ({ ...fit, stats: st, color: data.season_colors[g], label: `${g} · ${fit.label}` }))
+  })
   const all = statRow(data.stats, { fit_id: fitId, population: 'addis', eval_group: 'All Addis' })
   return (
     <div>
-      <Scatter title={title} points={addisPts(fitId, 'all')} stats={all} lineColor={INK.fit} extraLines={lines} xLabel={MAC_LABEL} yLabel="FTIR EC (µg/m³)" maxSide={480} />
+      <Scatter title={title} points={addisPts(fitId, 'all')} stats={all} demingLambda={data.summary.lambda} extraLines={lines} xLabel={MAC_LABEL} yLabel="FTIR EC (µg/m³)" maxSide={480} />
       <Key items={[
         ...data.seasons.map((g) => {
           const s = statRow(data.stats, { fit_id: fitId, population: 'addis', eval_group: g })
           return { label: `${g}: ${s ? `${f2(s.deming_slope)}x ${signed(s.deming_intercept)}` : '—'}`, color: data.season_colors[g] }
         }),
-        { label: 'Deming fit, all Addis', color: INK.fit, kind: 'line' },
+        { label: `${FIT_STYLE[methods[0] ?? 'deming'].label} fit, all Addis`, color: FIT_STYLE[methods[0] ?? 'deming'].color, kind: FIT_STYLE[methods[0] ?? 'deming'].dash ? 'dash' : 'line' },
         { label: '1:1', color: INK.identity, kind: 'dash' },
       ]} />
     </div>
@@ -804,7 +908,8 @@ function SeasonCrossplot({ data, fitId, title }: { data: MeetingData; fitId: str
 }
 
 function SeasonTable({ data, rows }: { data: MeetingData; rows: { label: string; fitId: string }[] }) {
-  const cell = (s?: Row) => s ? <>{f2(s.deming_slope)} / {signed(s.deming_intercept)}<br /><span style={{ color: INK.muted, fontSize: 11 }}>slope {f2(s.slope_ci_low)}–{f2(s.slope_ci_high)} · R² {f2(s.R2)} · n {s.n}</span></> : '—'
+  const { showCI } = useRegressions()
+  const cell = (s?: Row) => s ? <>{f2(s.deming_slope)} / {signed(s.deming_intercept)}<br /><span style={{ color: INK.muted, fontSize: 11 }}>{showCI && <>95% slope {f2(s.slope_ci_low)}–{f2(s.slope_ci_high)} · </>}R² {f2(s.R2)} · n {s.n}</span></> : '—'
   return (
     <table className="census-table">
       <thead><tr><th>Addis test set</th>{rows.map((r) => <th key={r.label}>{r.label}</th>)}</tr></thead>
@@ -817,6 +922,7 @@ function SeasonTable({ data, rows }: { data: MeetingData; rows: { label: string;
 }
 
 function StartingPoint({ data }: { data: MeetingData }) {
+  const { showCI } = useRegressions()
   const fitId = 'deployed|SPARTAN|current SPARTAN calibration'
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › StartingPoint"
@@ -826,12 +932,14 @@ function StartingPoint({ data }: { data: MeetingData }) {
         <SeasonCrossplot data={data} fitId={fitId} title="Addis, current SPARTAN calibration" />
         <ExplainOnly><SeasonTable data={data} rows={[{ label: 'Current SPARTAN calibration', fitId }]} /></ExplainOnly>
       </Grid>
-      <ExplainOnly><Note>Deming with λ* {f2(data.summary.lambda)}; ranges are 95 % month-block bootstrap. Only the Addis filters with a deployed SPARTAN value are drawn, so n is smaller than elsewhere on this page.</Note></ExplainOnly>
+      <ExplainOnly><Note>Deming with λ* {f2(data.summary.lambda)}. {showCI && 'Ranges are 95% month-block bootstrap intervals where available.'} Only the Addis filters with a deployed SPARTAN value are drawn, so n is smaller than elsewhere on this page.</Note></ExplainOnly>
     </ChartFrame>
   )
 }
 
 function Seasonality({ data }: { data: MeetingData }) {
+  const { showCI } = useRegressions()
+  const fitName = FIT_STYLE[useEstimator()].label
   const [method, setMethod] = useSearchParam<string>('msmethod', 'AIRSpec', METHODS)
   const [model, setModel] = useSearchParam<string>('msmodel', MODELS[0], MODELS)
   const fitId = `allimprove|${method}|${model}`
@@ -839,13 +947,13 @@ function Seasonality({ data }: { data: MeetingData }) {
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › Seasonality" title="Addis by season, all-IMPROVE model — the full baseline-corrected Addis test set coloured by season, with a Deming line per season"
       controls={<>
         <MethodSeg value={method} onChange={setMethod} />
-        <Segmented label="Model" value={model as any} options={MODELS} onChange={setModel as any} />
+        <ModelSeg label="Model" value={model} options={MODELS} onChange={setModel} />
       </>}>
       <Grid>
         <SeasonCrossplot data={data} fitId={fitId} title="Addis, all-IMPROVE model, coloured by season" />
         <ExplainOnly><SeasonTable data={data} rows={[{ label: 'All-IMPROVE model', fitId }, { label: 'Own-season calibration', fitId: `stitched|${method}|season calibrations` }]} /></ExplainOnly>
       </Grid>
-      <ExplainOnly><Note>Black line: all Addis; coloured lines: Deming fit within each season (λ* {f2(data.summary.lambda)}, 95 % month-block bootstrap ranges).</Note></ExplainOnly>
+      <ExplainOnly><Note>{fitName} line: all Addis; season-coloured lines: Deming fit within each season (λ* {f2(data.summary.lambda)}). {showCI && 'Bands are pointwise 95% month-block bootstrap intervals where available.'}</Note></ExplainOnly>
     </ChartFrame>
   )
 }
@@ -859,6 +967,7 @@ function stitchedSpread(data: MeetingData, method: string) {
 }
 
 function Stitched({ data }: { data: MeetingData }) {
+  const fitName = FIT_STYLE[useEstimator()].label
   const [method, setMethod] = useSearchParam<string>('mtmethod', 'AIRSpec', METHODS)
   const fitId = `stitched|${method}|season calibrations`
   const sp = stitchedSpread(data, method)
@@ -867,12 +976,12 @@ function Stitched({ data }: { data: MeetingData }) {
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › Stitched"
       title="Seasons stitched — each season's Addis filters predicted by its own season calibration, all on one test set crossplot"
-      subtitle="Ann's top priority: calibrate each season on its own analogs, then put the three seasons back together. Each season's line is its own calibration's readout; the black line is the combined Addis result."
+      subtitle={`Ann's top priority: calibrate each season on its own analogs, then put the three seasons back together. Each season's line is its own calibration's readout; the ${fitName} line is the combined Addis result.`}
       controls={<MethodSeg value={method} onChange={setMethod} />}>
       <Grid>
         <SeasonCrossplot data={data} fitId={fitId} title={`Addis, own-season calibrations (${methodName(method)})`} />
         <div style={{ fontSize: 13, lineHeight: 1.6, alignSelf: 'center' }}>
-          <p style={{ margin: '0 0 8px' }}><strong>Stitched, all Addis:</strong> Deming {f2(all?.deming_slope)}x {signed(all?.deming_intercept)} (R² {f2(all?.R2)})</p>
+          <p style={{ margin: '0 0 8px' }}><strong>Stitched, all Addis:</strong> {fitName} {f2(all?.deming_slope)}x {signed(all?.deming_intercept)} (R² {f2(all?.R2)})</p>
           <p style={{ margin: '0 0 8px' }}><strong>Over 100 cross-validation splits:</strong> slope {f2(sp.slope[0])} [{f2(sp.slope[1])}–{f2(sp.slope[2])}], intercept {signed(sp.intercept[0])} [{f2(sp.intercept[1])} to {f2(sp.intercept[2])}]</p>
           <p style={{ margin: 0, color: INK.muted }}>For comparison, one all-IMPROVE model (lot 251): {f2(ref?.deming_slope)}x {signed(ref?.deming_intercept)}. Each season's own slope is low, but the three season calibrations sit at different levels, so putting them back together steepens the combined line and pushes its intercept further from zero.</p>
         </div>
@@ -889,12 +998,13 @@ function Stitched({ data }: { data: MeetingData }) {
  * season (what each one achieves) and stitched (what they achieve together).
  */
 function SlopeInterceptMap({ data }: { data: MeetingData }) {
+  const { showCI } = useRegressions()
   const [method, setMethod] = useSearchParam<string>('mimethod', 'AIRSpec', METHODS)
   const [gridSet, setGridSet] = useSearchParam<string>('migrid', 'passing', ['passing', 'all', 'none'])
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
-  type P = { x: number; y: number; color: string; r: number; shape: 'dot' | 'tri' | 'star' | 'sq' | 'x'; op: number; tip: string[] }
+  type P = { x: number; y: number; color: string; r: number; shape: 'dot' | 'tri' | 'star' | 'sq' | 'x'; op: number; tip: string[]; ci?: [number, number, number, number] }
   const pts: P[] = []
   const g = data.grid
   const catColor = d3.scaleOrdinal<string>(d3.schemeTableau10)
@@ -926,7 +1036,9 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
   pts.push({ x: sp.slope[0], y: sp.intercept[0], color: '#6d28d9', r: 10, shape: 'star', op: 1, tip: ['Seasons stitched: median of 100 splits', 'all Addis', `${f2(sp.slope[0])}x ${signed(sp.intercept[0])}`] })
   const one = (fit: string, color: string, shape: P['shape'], name: string) => {
     const s = statRow(data.stats, { fit_id: fit, population: 'addis', eval_group: 'All Addis' })
-    if (s) pts.push({ x: s.deming_slope, y: s.deming_intercept, color, r: 8, shape, op: 1, tip: [name, 'all Addis', `${f2(s.deming_slope)}x ${signed(s.deming_intercept)}`] })
+    if (s) pts.push({ x: s.deming_slope, y: s.deming_intercept, color, r: 8, shape, op: 1,
+      ci: [s.slope_ci_low, s.slope_ci_high, s.intercept_ci_low, s.intercept_ci_high].every(v => typeof v === 'number' && Number.isFinite(v)) ? [s.slope_ci_low, s.slope_ci_high, s.intercept_ci_low, s.intercept_ci_high] : undefined,
+      tip: [name, 'all Addis', `${f2(s.deming_slope)}x ${signed(s.deming_intercept)}`] })
   }
   one(`allimprove|${method}|all-IMPROVE lot 251`, '#111827', 'sq', 'All-IMPROVE model (lot 251)')
   one('deployed|SPARTAN|current SPARTAN calibration', '#b91c1c', 'x', 'Current SPARTAN calibration')
@@ -965,6 +1077,10 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
             <XAxis scale={x} y={side} label="Test set Deming slope" tickCount={6} labelDy={38} />
             <line x1={x(1)} x2={x(1)} y1={0} y2={side} stroke={INK.identity} strokeDasharray="4 3" />
             <line x1={0} x2={side} y1={y(0)} y2={y(0)} stroke={INK.identity} strokeDasharray="4 3" />
+            {showCI && pts.filter(p => p.ci).map((p, i) => <g key={`ci-${i}`} data-fit-uncertainty="saved-coefficients" stroke={p.color} strokeOpacity={0.55} pointerEvents="none">
+              <line x1={cx(p.ci![0])} x2={cx(p.ci![1])} y1={cy(p.y)} y2={cy(p.y)} />
+              <line x1={cx(p.x)} x2={cx(p.x)} y1={cy(p.ci![2])} y2={cy(p.ci![3])} />
+            </g>)}
             {pts.filter((p) => p.shape === 'dot').map(mark)}
             {pts.filter((p) => p.shape !== 'dot').map((p, i) => mark(p, 100000 + i))}
             <text x={x(1) + 6} y={y(0) - 6} fontSize={11} fill={INK.good}>target</text>
@@ -976,6 +1092,7 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
           { label: 'seasons stitched, all Addis (★ median, dots = splits)', color: '#6d28d9' },
           { label: 'all-IMPROVE model (■)', color: '#111827', kind: 'bar' as const },
           { label: 'current SPARTAN (✕)', color: '#b91c1c', kind: 'bar' as const },
+          ...(showCI ? [{ label: 'saved 95% marginal intervals; endpoints clipped at axes', color: INK.muted, kind: 'bar' as const }] : []),
           { label: 'target box: slope 0.8–1.2, |intercept| < 1', color: INK.good, kind: 'faded' as const },
         ]} />
         {tip.node}
@@ -987,6 +1104,7 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
 
 // ------------------------------------------------------------------ 9. combined comparison (forest)
 function Combined({ data }: { data: MeetingData }) {
+  const { showCI } = useRegressions()
   const [method, setMethod] = useSearchParam<string>('mcmethod', 'AIRSpec', METHODS)
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
@@ -1008,8 +1126,8 @@ function Combined({ data }: { data: MeetingData }) {
   const rowH = 16, gap = 14, left = 260
   const w = Math.max(700, width), panelW = (w - left - 40) / 2
   const h = rows.length * rowH + data.groups.length * gap + 60
-  const xs = d3.scaleLinear().domain([0, Math.max(1.5, d3.max(rows, (r) => r.s.slope_ci_high ?? r.s.deming_slope) ?? 1.5)]).range([0, panelW - 20]).nice()
-  const xi = d3.scaleLinear().domain([Math.min(-2, d3.min(rows, (r) => r.s.intercept_ci_low ?? r.s.deming_intercept) ?? -2), Math.max(0.5, d3.max(rows, (r) => r.s.intercept_ci_high ?? r.s.deming_intercept) ?? 0.5)]).range([0, panelW - 20]).nice()
+  const xs = d3.scaleLinear().domain([0, Math.max(1.5, d3.max(rows, (r) => (showCI ? r.s.slope_ci_high : null) ?? r.s.deming_slope) ?? 1.5)]).range([0, panelW - 20]).nice()
+  const xi = d3.scaleLinear().domain([Math.min(-2, d3.min(rows, (r) => (showCI ? r.s.intercept_ci_low : null) ?? r.s.deming_intercept) ?? -2), Math.max(0.5, d3.max(rows, (r) => (showCI ? r.s.intercept_ci_high : null) ?? r.s.deming_intercept) ?? 0.5)]).range([0, panelW - 20]).nice()
   const calColor = d3.scaleOrdinal<string>().domain(cals.map((c) => c.label)).range(['#111827', '#6b7280', '#2171b5', '#c026d3', '#0f766e', '#d97706'])
   let cursor = 0
   return (
@@ -1031,12 +1149,12 @@ function Combined({ data }: { data: MeetingData }) {
                 <text x={-left + 4} y={10} fontSize={12} fontWeight={600} fill={data.season_colors[g]}>{g}</text>
                 {block.map((r, j) => {
                   const yy = j * rowH + 8, c = calColor(r.cal)
-                  return <g key={r.cal} onMouseEnter={(e) => tip.show(e, [`${g} · ${r.cal}`, `slope ${f2(r.s.deming_slope)} [${f2(r.s.slope_ci_low)}, ${f2(r.s.slope_ci_high)}]`, `intercept ${signed(r.s.deming_intercept)} [${f2(r.s.intercept_ci_low)}, ${f2(r.s.intercept_ci_high)}]`, `R² ${f2(r.s.R2)} · n ${r.s.n}`])} onMouseLeave={tip.hide}>
+                  return <g key={r.cal} onMouseEnter={(e) => tip.show(e, [`${g} · ${r.cal}`, `slope ${f2(r.s.deming_slope)}${showCI ? ` · 95% CI [${f2(r.s.slope_ci_low)}, ${f2(r.s.slope_ci_high)}]` : ''}`, `intercept ${signed(r.s.deming_intercept)}${showCI ? ` · 95% CI [${f2(r.s.intercept_ci_low)}, ${f2(r.s.intercept_ci_high)}]` : ''}`, `R² ${f2(r.s.R2)} · n ${r.s.n}`])} onMouseLeave={tip.hide}>
                     <text x={-8} y={yy + 4} fontSize={10.5} textAnchor="end" fill={INK.muted}>{r.cal}</text>
-                    {r.s.slope_ci_low != null && <line x1={xs(r.s.slope_ci_low)} x2={xs(r.s.slope_ci_high)} y1={yy} y2={yy} stroke={c} strokeWidth={2} strokeOpacity={0.5} />}
+                    {showCI && r.s.slope_ci_low != null && r.s.slope_ci_high != null && <line data-fit-uncertainty="saved-slope" x1={xs(r.s.slope_ci_low)} x2={xs(r.s.slope_ci_high)} y1={yy} y2={yy} stroke={c} strokeWidth={2} strokeOpacity={0.5} />}
                     <circle cx={xs(r.s.deming_slope)} cy={yy} r={4} fill={c} />
                     <g transform={`translate(${panelW + 20},0)`}>
-                      {r.s.intercept_ci_low != null && <line x1={xi(r.s.intercept_ci_low)} x2={xi(r.s.intercept_ci_high)} y1={yy} y2={yy} stroke={c} strokeWidth={2} strokeOpacity={0.5} />}
+                      {showCI && r.s.intercept_ci_low != null && r.s.intercept_ci_high != null && <line data-fit-uncertainty="saved-intercept" x1={xi(r.s.intercept_ci_low)} x2={xi(r.s.intercept_ci_high)} y1={yy} y2={yy} stroke={c} strokeWidth={2} strokeOpacity={0.5} />}
                       <circle cx={xi(r.s.deming_intercept)} cy={yy} r={4} fill={c} />
                     </g>
                   </g>
@@ -1049,12 +1167,12 @@ function Combined({ data }: { data: MeetingData }) {
         </svg>
         <Key items={[
           ...cals.map((c) => ({ label: c.label, color: calColor(c.label) })),
-          { label: '95 % month-block bootstrap', color: INK.muted, kind: 'bar' as const },
+          ...(showCI ? [{ label: '95 % month-block bootstrap (where saved)', color: INK.muted, kind: 'bar' as const }] : []),
           { label: 'agreement (slope 1, intercept 0)', color: INK.identity, kind: 'dash' as const },
         ]} />
         {tip.node}
       </div>
-      <ExplainOnly><Note>Bars: 95 % month-block bootstrap. VIP/Euclidean analogs exist only in spline-baselined space (the explorer's corrected-space ranking). Combined set: union of the three seasonal top-500 lists.</Note></ExplainOnly>
+      <ExplainOnly><Note>{showCI ? 'Bars: saved 95% month-block bootstrap intervals; missing intervals are not drawn.' : 'Fit uncertainty hidden; enable it in the sidebar to show saved intervals.'} VIP/Euclidean analogs exist only in spline-baselined space (the explorer's corrected-space ranking). Combined set: union of the three seasonal top-500 lists.</Note></ExplainOnly>
     </ChartFrame>
   )
 }
@@ -1104,7 +1222,7 @@ function GridStep({ data }: { data: MeetingData }) {
         <Segmented label="Cross-validation protocol" value={CV_PROTOCOL_SHORT[mode] as any} options={[CV_PROTOCOL_SHORT.site_heldout, CV_PROTOCOL_SHORT.app] as any} onChange={(v: string) => setMode(v === CV_PROTOCOL_SHORT.app ? 'app' : 'site_heldout')} />
         <Segmented label="Colour" value={metric as any} options={METRICS} onChange={setMetric as any} />
         {metric !== 'CV R²' && <Segmented label="Test set (Addis) readout" value={readout as any} options={READOUTS} onChange={setReadout as any} />}
-        {mode === 'site_heldout' && <label className="toggle"><input type="checkbox" checked={gate} onChange={(e) => setGate(e.target.checked)} /> fade cells failing IMPROVE cross-validation R² ≥ 0.85</label>}
+        {mode === 'site_heldout' && <label className="toggle"><input type="checkbox" checked={gate} onChange={(e) => setGate(e.target.checked)} /> Fade cells failing IMPROVE cross-validation R² ≥ 0.85</label>}
       </>}>
       <div ref={ref} style={{ overflowX: 'auto' }}>
         <svg width={w} height={h} fontFamily={FONT.family}>
@@ -1153,4 +1271,14 @@ function NextSteps({ data }: { data: MeetingData }) {
       <Note>Analysis tables: {data.generated_from}</Note>
     </ChartFrame>
   )
+}
+
+function projectMeeting(data: MeetingData, method: import('@/lib/regressionPrefs').Estimator): MeetingData {
+  if (method !== 'ols') return data
+  return { ...data, stats: data.stats.map(s => ({ ...s, deming_slope: s.ols_slope, deming_intercept: s.ols_intercept,
+    slope_ci_low: null, slope_ci_high: null, intercept_ci_low: null, intercept_ci_high: null })) }
+}
+
+function SavedFitLabel({ text }: { text: string }) {
+  return <>{text.replace(/Deming/g, FIT_STYLE[useEstimator()].label)}</>
 }

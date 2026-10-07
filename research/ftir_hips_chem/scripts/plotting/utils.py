@@ -99,7 +99,7 @@ def deming_bootstrap(x, y, lam, *, groups=None, n_boot=2000,
 
 def calculate_regression_stats(x, y=None, y_col=None, positive_only=False,
                                errors_in_variables=False, sigma_x=None,
-                               sigma_y=None):
+                               sigma_y=None, lambda_ratio=None):
     """
     Calculate linear regression statistics. Two call forms:
 
@@ -150,6 +150,8 @@ def calculate_regression_stats(x, y=None, y_col=None, positive_only=False,
     it with the same MAC used for the plotted x values. The correction's
     magnitude depends on lambda. Use ``deming_bootstrap`` separately for
     conditional standard errors and confidence intervals.
+    ``lambda_ratio`` supplies a saved variance ratio directly and takes
+    precedence over the sigmas. It must be finite and positive.
 
     Off by default: existing callers' stats boxes must not change.
     """
@@ -191,7 +193,11 @@ def calculate_regression_stats(x, y=None, y_col=None, positive_only=False,
     }
 
     if errors_in_variables:
-        if sigma_x is not None and sigma_y is not None:
+        if lambda_ratio is not None:
+            lam = float(lambda_ratio)
+            if not np.isfinite(lam) or lam <= 0:
+                raise ValueError('lambda_ratio must be finite and positive')
+        elif sigma_x is not None and sigma_y is not None:
             lam = float(deming_lambda(sigma_x, sigma_y))
             if not np.isfinite(lam) or lam <= 0:
                 lam = 1.0
@@ -233,15 +239,30 @@ def format_stats_text(stats, show_equation=True, extra_text=None):
     if stats is None:
         return "Insufficient data"
 
-    text = f"n = {stats['n']}\nR² = {stats['r_squared']:.3f}"
+    text = f"n = {stats['n']:g}\nR² = {stats['r_squared']:.3f}"
 
     if show_equation:
-        text += f"\n{format_equation(stats['slope'], stats['intercept'])}"
+        slope, intercept, method = displayed_regression(stats)
+        if np.isfinite(slope) and np.isfinite(intercept):
+            text += f"\n{method}: {format_equation(slope, intercept)}"
+        else:
+            text += f"\n{method} unavailable"
 
     if extra_text:
         text += f"\n{extra_text}"
 
     return text
+
+
+def displayed_regression(stats):
+    """Choose one displayed fit without changing the stored OLS metrics.
+
+    Presence of Deming keys denotes a comparison panel. A failed Deming fit
+    must not silently fall back to OLS.
+    """
+    if 'deming_slope' in stats:
+        return stats['deming_slope'], stats['deming_intercept'], 'Deming'
+    return stats['slope'], stats['intercept'], 'OLS'
 
 
 def get_clean_data(x_data, y_data, outlier_mask=None):
@@ -396,8 +417,13 @@ def add_regression_line(ax, stats, x_range, color='green', label='Best fit'):
     if stats is None:
         return
 
+    slope, intercept, method = displayed_regression(stats)
+    if not np.isfinite(slope) or not np.isfinite(intercept):
+        return
     x_line = np.array(x_range)
-    y_line = stats['slope'] * x_line + stats['intercept']
+    y_line = slope * x_line + intercept
+    if label == 'Best fit':
+        label = f'{method} fit'
     ax.plot(x_line, y_line, color=color, linestyle='-',
             linewidth=2, alpha=0.8, label=label)
 

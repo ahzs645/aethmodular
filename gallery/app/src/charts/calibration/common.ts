@@ -85,11 +85,15 @@ export function sweepMetric(r: SweepRow, m: Metric): number | null {
 }
 
 /** The explorer's optimisation score: |intercept| + w·|slope − 1|, Deming, fixed set. */
-export const score = (r: CalibRow, w = 5) =>
-  r.db !== null && r.dm !== null ? Math.abs(r.db) + w * Math.abs(r.dm - 1) : null
+export const score = (r: CalibRow, w = 5) => {
+  const m = r.guardDm !== undefined ? r.guardDm : r.dm, b = r.guardDb !== undefined ? r.guardDb : r.db
+  return b !== null && m !== null ? Math.abs(b) + w * Math.abs(m - 1) : null
+}
 
-export const passes = (r: CalibRow, calib: CalibFile) =>
-  r.dm !== null && r.dm >= calib.slope_box[0] && r.dm <= calib.slope_box[1] && (r.ho ?? 0) >= calib.heldout_floor
+export const passes = (r: CalibRow, calib: CalibFile) => {
+  const m = r.guardDm !== undefined ? r.guardDm : r.dm
+  return m !== null && m >= calib.slope_box[0] && m <= calib.slope_box[1] && (r.ho ?? 0) >= calib.heldout_floor
+}
 
 export const fmtFit = (m: number | null, b: number | null) =>
   m === null || b === null ? '—' : `${m.toFixed(2)}x ${b < 0 ? '−' : '+'} ${Math.abs(b).toFixed(2)}`

@@ -110,7 +110,7 @@ export function CensusPage({ census }: { census: CensusFile }) {
       <ChartFrame
         title="Where each chart type comes from"
         subtitle="Real titles and axis labels lifted from the notebooks, so you can trace any chart in this app back to the analysis it replaces."
-        controls={<Select label="chart type" value={chart} options={census.by_chart.map((c) => c[0])} onChange={setChart} />}
+        controls={<Select label="Chart type" value={chart} options={census.by_chart.map((c) => c[0])} onChange={setChart} />}
         exportable={false}
       >
         {examples.length === 0 ? (

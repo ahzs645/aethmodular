@@ -51,7 +51,9 @@ def main() -> None:
     payload = {
         "schema_version": 1,
         "frozen_run_signature": manifest["frozen_run_signature"],
-        "evidence_date": "2026-09-22",
+        "evidence_date": "2026-10-02" if manifest.get('background_rank') == 70 else "2026-09-22",
+        "background_rank": manifest.get('background_rank'),
+        "source_sha256": manifest.get('source_sha256', {}),
         "adama": records(adama[adama_cols]),
         "bishoftu": records(bish[bish_cols]),
         "addis": records(addis[addis_cols]),

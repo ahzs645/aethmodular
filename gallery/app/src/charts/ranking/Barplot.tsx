@@ -72,7 +72,7 @@ export function Barplot({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFi
       provenance="stands in for 70 bar/barh figures · comparisons.summary_bars · react-graph-gallery.com/barplot"
       controls={
         <>
-          <Segmented label="statistic" value={stat} options={STATS} onChange={setStat} />
+          <Segmented label="Statistic" value={stat} options={STATS} onChange={setStat} />
         </>
       }
     >

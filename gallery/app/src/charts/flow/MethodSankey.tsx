@@ -124,8 +124,8 @@ export function MethodSankey({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
       provenance="zero flow figures in the estate; described in gallery/app/src/charts/flow/README.md · react-graph-gallery.com/sankey-diagram"
       controls={
         <>
-          <Segmented label="third stage" value={stage3} options={STAGE3} onChange={setStage3} />
-          <Toggle label="only filters with both FTIR EC and HIPS" checked={bothOnly} onChange={setBothOnly} title="Drop filters missing an FTIR EC value (in both exports) or missing HIPS Fabs" />
+          <Segmented label="Third stage" value={stage3} options={STAGE3} onChange={setStage3} />
+          <Toggle label="Only filters with both FTIR EC and HIPS" checked={bothOnly} onChange={setBothOnly} title="Drop filters missing an FTIR EC value (in both exports) or missing HIPS Fabs" />
           <span className="control">{total} filters shown</span>
         </>
       }

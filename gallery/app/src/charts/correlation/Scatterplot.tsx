@@ -1,3 +1,6 @@
+import { fitUncertainty } from '@/lib/fitUncertainty'
+import { RegressionLines, RegressionReadout } from '@/components/RegressionOverlay'
+import { useRegressions, fitsFor } from '@/lib/regressionPrefs'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Segmented, Toggle } from '@/components/ChartFrame'
@@ -38,9 +41,8 @@ function valueScale(values: number[]) {
  * Interactive counterpart of `plotting/crossplots.py`, including its
  * PlotConfig.layout: "Combined" overlays every site on one axes, "Per site"
  * is the 2×2 grid, with the axis domain shared across panels so the eye can
- * compare slopes. The fit is always errors-in-variables (Deming, λ=1): both
- * axes are measurements with their own uncertainty, so y-on-x least squares
- * would be biased shallow (agreed with Ann, 23 Sep 2026: Deming only).
+ * compare slopes. The sidebar selects OLS, Deming and York; Deming is the
+ * default because both axes carry measurement uncertainty.
  *
  * Hover uses closest-point detection (d3.Delaunay) over the whole panel
  * rather than per-circle mouse events, so a dense cloud still answers the
@@ -58,6 +60,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const hl = useHighlight()
+  const { methods } = useRegressions()
 
   const [colorBy, setColorBy] = useState<(typeof COLOR_BY)[number]>('Site')
   const [colorField, setColorField] = useState(meta.fields.includes('Iron') ? 'Iron' : meta.fields[0])
@@ -66,7 +69,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
   const [showFit, setShowFit] = useState(true)
   const [brushing, setBrushing] = useState(false)
   const { hidden, setHidden, dim, hover, setHover } = useLegend()
-  const { identity: showIdentity, log: logAxes } = axes
+  const { log: logAxes } = axes
 
   const seasonColor = useMemo(() => new Map(meta.seasons.map((s) => [s.name, s.color])), [meta.seasons])
   const groupOf = (r: FilterRow) => (colorBy === 'Season' ? r.season : r.site)
@@ -111,16 +114,16 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
     // 1.0 (orthogonal), exactly as calculate_regression_stats does.
     return raw.map((p) => ({
       ...p,
-      stats: regression(p.points.map((q) => q.x), p.points.map((q) => q.y), { errorsInVariables: true }),
+      stats: regression(p.points.map((q) => q.x), p.points.map((q) => q.y), fitUncertainty(p.points.map(q => q.row), xField, yField, meta)),
     }))
-  }, [layout, points, meta.sites, showIdentity])
+  }, [layout, points, meta, xField, yField])
 
   // Shared domain across every panel — a per-site grid with different axes
   // per panel silently hides that one site's slope is twice another's.
   const domain = useMemo(() => {
-    const intercepts = panels.flatMap((p) => (p.stats && p.stats.demingIntercept !== null ? [p.stats.demingIntercept] : []))
+    const intercepts = panels.flatMap(p => fitsFor(p.stats, methods).map(fit => fit.intercept))
     return pairDomain(points.map((p) => p.x), points.map((p) => p.y), axes, showFit ? intercepts : [])
-  }, [points, panels, axes, showFit])
+  }, [points, panels, axes, showFit, methods])
 
   const legend = useMemo(
     () =>
@@ -150,20 +153,20 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
     <ChartFrame
       id="scatter"
       title="Scatterplot — the crossplot family"
-      subtitle="Any measured quantity against any other, coloured by site, by the selected season calendar, or by a third measurement (the 123 'colour-coded' crossplots in the estate); a fourth can size the marks. The stats box reports R² and the errors-in-variables (Deming) fit, since both axes carry measurement error. Hover anywhere near a point to find it in every other chart; click it for the full record."
+      subtitle="Any measured quantity against any other, coloured by site, by the selected season calendar, or by a third measurement (the 123 'colour-coded' crossplots in the estate); a fourth can size the marks. The stats box reports R² and the regression fits selected in the sidebar. Hover anywhere near a point to find it in every other chart; click it for the full record."
       provenance="stands in for 281 scatter + 123 colour-by-third-variable figures across 116 notebooks · plotting/crossplots.py · react-graph-gallery.com/scatter-plot · /bubble-plot"
       controls={
         <>
-          <Segmented label="layout" value={layout} options={LAYOUTS} onChange={setLayout} title="PlotConfig.layout: combined overlays sites; per site is the grid" />
-          <Segmented label="colour" value={colorBy} options={COLOR_BY} onChange={(v) => { setColorBy(v); setHidden(new Set()) }} title="Value: a third measurement on a sequential ramp (2–98 % of its range)" />
+          <Segmented label="Layout" value={layout} options={LAYOUTS} onChange={setLayout} title="PlotConfig.layout: combined overlays sites; per site is the grid" />
+          <Segmented label="Colour" value={colorBy} options={COLOR_BY} onChange={(v) => { setColorBy(v); setHidden(new Set()) }} title="Value: a third measurement on a sequential ramp (2–98 % of its range)" />
           {colorBy === 'Value' && <FieldSelect label="by" value={colorField} meta={meta} onChange={setColorField} />}
-          <FieldSelect label="size" value={sizeField} meta={meta} onChange={setSizeField} extraOptions={[NO_SIZE]} title="Bubble plot: mark area proportional to a fourth measurement" />
-          <Toggle label="fit lines" checked={showFit} onChange={setShowFit} />
-          <Toggle label="brush to select" checked={brushing} onChange={(v) => { setBrushing(v); if (!v) hl.setSelected(null) }} title="Drag a rectangle: the enclosed filters are highlighted on every chart of this tab" />
+          <FieldSelect label="Size" value={sizeField} meta={meta} onChange={setSizeField} extraOptions={[NO_SIZE]} title="Bubble plot: mark area proportional to a fourth measurement" />
+          <Toggle label="Fit lines" checked={showFit} onChange={setShowFit} />
+          <Toggle label="Brush to select" checked={brushing} onChange={(v) => { setBrushing(v); if (!v) hl.setSelected(null) }} title="Drag a rectangle: the enclosed filters are highlighted on every chart of this tab" />
           {hl.selected && (
             <span className="control">
               <strong>{hl.selected.size}</strong> selected
-              <button type="button" className="btn quiet" onClick={() => hl.setSelected(null)}>clear</button>
+              <button type="button" className="btn quiet" onClick={() => hl.setSelected(null)}>Clear</button>
             </span>
           )}
           <span className="control">{points.length} points</span>
@@ -221,7 +224,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
           {colorBy === 'Value' && cScale ? (
             <ColorLegend scale={cScale} label={unitOf(colorField)} note={nNoColor > 0 ? `${nNoColor} points without ${colorField} in grey` : undefined} />
           ) : (
-            <Legend items={legend} hidden={hidden} onToggle={(l) => setHidden((h) => toggleIn(h, l))} onHover={setHover} highlighted={hover} note={showFit ? 'dashed magenta = Deming fit (λ=1)' : undefined} />
+            <Legend items={legend} hidden={hidden} onToggle={(l) => setHidden((h) => toggleIn(h, l))} onHover={setHover} highlighted={hover} note={showFit ? 'fit selection and line styles: sidebar' : undefined} />
           )}
           {sScale && <SizeLegend scale={sScale} label={unitOf(sizeField)} />}
           {sScale && nNoSize > 0 && <span className="legend-note">{nNoSize} points without {sizeField} drawn smallest</span>}
@@ -266,10 +269,12 @@ function ScatterPanel({
   onClick: (row: FilterRow) => void
 }) {
   const clipId = useId()
-  const mk = (dom: [number, number], range: [number, number]): Scale =>
-    axes.log
-      ? d3.scaleLog().domain([Math.max(1e-4, dom[0]), dom[1]]).range(range).nice()
-      : d3.scaleLinear().domain(dom).range(range).nice()
+  const mk = (dom: [number, number], range: [number, number]): Scale => {
+    if (axes.log) return d3.scaleLog().domain([Math.max(1e-4, dom[0]), dom[1]]).range(range).nice()
+    const scale = d3.scaleLinear().domain(dom).range(range)
+    // Keep the compact intercept margins and equal spans from pairDomain.
+    return axes.mode === 'Show intercept' ? scale : scale.nice()
+  }
   const xScale = mk(domain.x, [0, innerW])
   const yScale = mk(domain.y, [innerH, 0])
   const [d0, d1] = xScale.domain() as [number, number]
@@ -278,7 +283,6 @@ function ScatterPanel({
   // segment's y to the bottom of the domain; the clipPath hides the rest.
   const yFloor = yScale.domain()[0] as number
   const yv = (v: number) => (axes.log ? Math.max(yFloor, v) : v)
-  const seg = (m: number, b: number) => ({ x1: xScale(d0), y1: yScale(yv(m * d0 + b)), x2: xScale(d1), y2: yScale(yv(m * d1 + b)) })
   const drawn = useMemo(() => points.filter((p) => inDomain(domain, p.x, p.y)), [points, domain])
   // closest-point detection: one Delaunay over the drawn points, one hit rect
   const delaunay = useMemo(() => d3.Delaunay.from(drawn, (p) => xScale(p.x), (p) => yScale(p.y)), [drawn, xScale, yScale])
@@ -328,7 +332,8 @@ function ScatterPanel({
   }
   const markIntercepts = axes.mode === 'Show intercept' && showFit && !axes.log && stats
   const originAxes = axes.mode === 'Show intercept' && !axes.log && xScale.domain()[0] < 0 && yScale.domain()[0] < 0
-  const boxRows = 3
+  const { methods } = useRegressions()
+  const selectedFits = fitsFor(stats, showFit ? methods : [])
 
   return (
     <div>
@@ -366,9 +371,7 @@ function ScatterPanel({
             )}
             {stats && showFit && (
               <g opacity={fitDim}>
-                {stats.demingSlope !== null && stats.demingIntercept !== null && (
-                  <line {...seg(stats.demingSlope, stats.demingIntercept)} stroke={INK.deming} strokeWidth={2} strokeDasharray="7 3" pointerEvents="none" />
-                )}
+                <RegressionLines stats={stats} x={xScale} y={v => yScale(yv(v))} domain={xScale.domain()} width={innerW} height={innerH} />
               </g>
             )}
           </g>
@@ -399,7 +402,11 @@ function ScatterPanel({
               style={{ cursor: hoverRef.current ? 'pointer' : 'default' }}
               onMouseMove={onMove}
               onMouseLeave={() => { hoverRef.current = null; onLeave() }}
-              onClick={(e) => { const p = nearest(e); if (p) onClick(p.row) }}
+              onClick={(e) => {
+                const p = nearest(e)
+                if (p) { e.stopPropagation(); onClick(p.row) }
+                else { hoverRef.current = null; onLeave() }
+              }}
             />
           )}
           <g ref={brushRef} className="brush-layer" />
@@ -407,33 +414,14 @@ function ScatterPanel({
           {markIntercepts && (
             <g pointerEvents="none" fontFamily={FONT.mono} fontSize={10.5}>
               {!originAxes && <line x1={xScale(0)} x2={xScale(0)} y1={0} y2={innerH} stroke={INK.axis} strokeDasharray="2 3" strokeOpacity={0.6} />}
-              {stats.demingIntercept !== null && (
-                <>
-                  <circle cx={xScale(0)} cy={yScale(stats.demingIntercept)} r={4.5} fill="#fff" stroke={INK.deming} strokeWidth={2} />
-                  <text x={xScale(0) + 8} y={yScale(stats.demingIntercept)} dy="0.35em" fill={INK.deming} stroke="#fff" strokeWidth={3} paintOrder="stroke">b = {fmt(stats.demingIntercept, 3)}</text>
-                </>
-              )}
+              {selectedFits.map(fit => <g key={fit.method}>
+                <circle cx={xScale(0)} cy={yScale(fit.intercept)} r={4.5} fill="#fff" stroke={fit.color} strokeWidth={2} />
+                <text x={xScale(0) + 8} y={yScale(fit.intercept)} dy="0.35em" fill={fit.color} stroke="#fff" strokeWidth={3} paintOrder="stroke">{fit.label} b = {fmt(fit.intercept, 3)}</text>
+              </g>)}
             </g>
           )}
 
-          {stats && (
-            <g transform="translate(10,10)" fontFamily={FONT.mono} fontSize={11} pointerEvents="none">
-              <rect width={224} height={boxRows * 15 + 12} rx={5} fill="#fff" fillOpacity={0.93} stroke={INK.border} />
-              {(() => {
-                const lines: { t: string; c: string }[] = [
-                  { t: `n = ${stats.n}`, c: INK.text },
-                  { t: `R² = ${fmt(stats.r2, 4)}`, c: INK.text },
-                ]
-                if (stats.demingSlope !== null && stats.demingIntercept !== null) {
-                  const b = stats.demingIntercept
-                  lines.push({ t: `Deming y = ${fmt(stats.demingSlope)}x ${b < 0 ? '−' : '+'} ${fmt(Math.abs(b))}`, c: INK.deming })
-                }
-                return lines.map((l, i) => (
-                  <text key={i} x={9} y={18 + i * 15} fill={l.c}>{l.t}</text>
-                ))
-              })()}
-            </g>
-          )}
+          <RegressionReadout stats={stats} />
         </g>
       </svg>
     </div>

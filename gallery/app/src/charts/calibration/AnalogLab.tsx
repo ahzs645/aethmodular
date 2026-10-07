@@ -86,8 +86,8 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
       provenance="calibration_explorer /api/analog_lab · Analogs tab"
       controls={
         <>
-          {spaces.length > 1 && <Segmented label="preprocessing" value={label(PREPROCESSING, space)} options={spaces.map((s) => label(PREPROCESSING, s))} onChange={(v) => setSpace(spaces.find((s) => label(PREPROCESSING, s) === v) ?? space)} />}
-          {metrics.length > 0 && <Select label="alternative metric" value={m} options={metrics} onChange={setMetric} />}
+          {spaces.length > 1 && <Segmented label="Preprocessing" value={label(PREPROCESSING, space)} options={spaces.map((s) => label(PREPROCESSING, s))} onChange={(v) => setSpace(spaces.find((s) => label(PREPROCESSING, s) === v) ?? space)} />}
+          {metrics.length > 0 && <Select label="Alternative metric" value={m} options={metrics} onChange={setMetric} />}
           {lab && m && <span className="control">ρ = {fmt(lab.agreement[m] ?? null, 3)} · {lab.labels[m] ?? m}</span>}
         </>
       }

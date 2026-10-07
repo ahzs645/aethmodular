@@ -1,3 +1,4 @@
+import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import { useState } from 'react'
 import { usePrefs } from '@/lib/prefs'
 
@@ -32,6 +33,7 @@ export function Legend({
   highlighted?: string | null
   note?: string
 }) {
+  const method = useEstimator()
   const { explain } = usePrefs()
   const live = !!(onToggle || onHover)
   return (
@@ -42,7 +44,7 @@ export function Legend({
         const cls = ['legend-item', onToggle ? 'clickable' : '', onHover ? 'hoverable' : '', off ? 'off' : '', dim ? 'dim' : ''].filter(Boolean).join(' ')
         return (
           <span
-            key={it.label}
+            key={estimatorText(it.label, method)}
             className={cls}
             onClick={onToggle ? () => onToggle(it.label) : undefined}
             onKeyDown={onToggle ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(it.label) } } : undefined}
@@ -59,12 +61,12 @@ export function Legend({
               className={`swatch ${it.shape ?? 'dot'}`}
               style={it.shape === 'dashed' || it.shape === 'ring' ? { color: it.color } : { background: it.color }}
             />
-            {it.label}
+            {estimatorText(it.label, method)}
             {it.detail && <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>{it.detail}</span>}
           </span>
         )
       })}
-      {note && explain && <span className="legend-note">{note}</span>}
+      {note && explain && <span className="legend-note">{estimatorText(note, method)}</span>}
     </div>
   )
 }

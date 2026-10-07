@@ -10,10 +10,10 @@ capability ``plotting_legacy`` still provided, which is why it survived long
 after AGENTS.md deprecated it.
 
 These functions close that gap. They take an ``ax`` as the first argument, draw
-onto it, and return the regression stats (or ``None``). **Styling matches the
-retired ``plotting_legacy`` functions exactly** -- marker sizes, the ``R^2``
-glyph, the 8-point legend -- so migrating a notebook off the legacy module does
-not change its figures.
+onto it, and return the regression stats (or ``None``). Comparison panels
+display one Deming line and equation; OLS coefficients remain in the returned
+metrics. Panels with exact predictors can retain OLS by disabling the
+comparison controls. Existing saved notebook figures need rerunning.
 
 Usage::
 
@@ -21,7 +21,8 @@ Usage::
     from plotting import overlays
 
     fig, ax = plt.subplots()
-    stats = overlays.scatter_on_axes(ax, x, y, 'HIPS Fabs', 'FTIR EC')
+    stats = overlays.scatter_on_axes(ax, x, y, 'HIPS BC', 'FTIR EC',
+                                     sigma_x=0.3, sigma_y=0.6)
 
 One deliberate improvement over the legacy code: points are masked with
 ``np.isfinite`` rather than ``~np.isnan``, so +/-inf is dropped instead of
@@ -62,7 +63,8 @@ __all__ = [
 def crossplot_on_axes(ax, x, y, x_label, y_label, *, color=None,
                       one_to_one=True, stats_box=True, equal_axes=True,
                       outlier_mask=None, stats=None, fit_line=True,
-                      errors_in_variables=None, deming_line=False) -> dict | None:
+                      errors_in_variables=None, deming_line=False,
+                      sigma_x=None, sigma_y=None, lambda_ratio=None) -> dict | None:
     """Draw a reusable cross-plot panel onto an existing axes.
 
     Unlike :func:`scatter_on_axes`, which preserves the retired
@@ -92,15 +94,20 @@ def crossplot_on_axes(ax, x, y, x_label, y_label, *, color=None,
         ``r_squared`` key and the ``R2`` key returned by
         ``pls_transfer.regression_metrics`` are accepted.
     errors_in_variables : bool or None
-        Also compute a Deming (errors-in-variables) slope and show it in the
-        statistics box. ``None`` (the default) means *auto*: enabled exactly
+        Display a Deming equation and fit instead of OLS. ``None`` means *auto*: enabled exactly
         when ``one_to_one and equal_axes``, because a 1:1 line asserts both axes
         measure the same quantity, so x carries error and plain OLS is biased
-        shallow. Ignored when ``stats`` is supplied, since the caller's numbers
-        are then authoritative. Set ``False`` to force OLS only.
+        shallow. Supplied Deming coefficients are preserved; OLS-only supplied
+        metrics are supplemented for display from the retained pairs.
+        Set ``False`` to display OLS only.
     deming_line : bool
-        Also draw the Deming fit as a dashed line. Off by default: the reported
-        number is the useful part, and a third line crowds the panel.
+        Backward-compatible request for a Deming line even if ``fit_line`` is
+        false. It never adds an OLS line beside Deming.
+    sigma_x, sigma_y : float or None
+        Measurement standard deviations in the plotted units. Supply both
+        for the Deming variance ratio; particularly important for HIPS.
+    lambda_ratio : float or None
+        Saved positive variance ratio, if available instead of sigmas.
 
     Returns
     -------
@@ -137,17 +144,30 @@ def crossplot_on_axes(ax, x, y, x_label, y_label, *, color=None,
 
     use_eiv = (one_to_one and equal_axes) if errors_in_variables is None \
         else bool(errors_in_variables)
+    if deming_line:
+        use_eiv = True
     if stats is not None:
         result = stats
     else:
         result = calculate_regression_stats(
-            x_clean, y_clean, errors_in_variables=use_eiv
+            x_clean, y_clean, errors_in_variables=use_eiv,
+            sigma_x=sigma_x, sigma_y=sigma_y, lambda_ratio=lambda_ratio,
         )
 
     # Precomputed phase-3 metrics use R2, while plotting helpers historically
     # consume r_squared. Keep the caller's dictionary untouched and returned
     # verbatim; this normalized copy exists only at the helper boundary.
     helper_stats = dict(result)
+    if use_eiv and 'deming_slope' not in helper_stats:
+        comparison = calculate_regression_stats(
+            x_clean, y_clean, errors_in_variables=True,
+            sigma_x=sigma_x, sigma_y=sigma_y,
+            lambda_ratio=helper_stats.get('deming_lambda', lambda_ratio),
+        )
+        helper_stats.update({k: v for k, v in comparison.items() if k.startswith('deming_')})
+    elif not use_eiv:
+        helper_stats.pop('deming_slope', None)
+        helper_stats.pop('deming_intercept', None)
     if 'r_squared' not in helper_stats:
         if 'R2' in helper_stats:
             helper_stats['r_squared'] = helper_stats['R2']
@@ -166,15 +186,8 @@ def crossplot_on_axes(ax, x, y, x_label, y_label, *, color=None,
         ax.set_xlim(left=0)
         ax.set_ylim(bottom=0)
 
-    if fit_line:
+    if fit_line or deming_line:
         add_regression_line(ax, helper_stats, [0, max_val])
-
-    if deming_line and np.isfinite(helper_stats.get('deming_slope', np.nan)):
-        d_s = helper_stats['deming_slope']
-        d_i = helper_stats['deming_intercept']
-        ax.plot([0, max_val], [d_i, d_s * max_val + d_i],
-                ls='--', lw=1.4, color='0.35',
-                label=f"Deming (slope={d_s:.2f})")
 
     # The helper honors PlotConfig for figure-owning callers. Here the explicit
     # axes-level arguments are authoritative, so temporarily enable the helper
@@ -193,7 +206,6 @@ def crossplot_on_axes(ax, x, y, x_label, y_label, *, color=None,
 
     if stats_box:
         configured = PlotConfig.get('show_stats')
-        text_count = len(ax.texts)
         try:
             if not configured:
                 PlotConfig.set(show_stats=True)
@@ -202,24 +214,7 @@ def crossplot_on_axes(ax, x, y, x_label, y_label, *, color=None,
             if not configured:
                 PlotConfig.set(show_stats=False)
 
-        # add_stats_textbox owns positioning and styling. Extend its helper-
-        # formatted text with RMSE when supplied by the superset metrics.
-        extras = []
-        if 'RMSE' in helper_stats:
-            extras.append(f"RMSE = {helper_stats['RMSE']:.2f}")
-        if np.isfinite(helper_stats.get('deming_slope', np.nan)):
-            # Report the errors-in-variables slope alongside OLS rather than
-            # replacing it, so a reader can see how much of the slope was
-            # regression dilution rather than signal.
-            extras.append(f"Deming = {helper_stats['deming_slope']:.2f}")
-        if len(ax.texts) > text_count and extras:
-            text = format_stats_text(helper_stats)
-            missing = [e for e in extras if e.split(' =')[0] not in text]
-            if missing:
-                text = format_stats_text(
-                    helper_stats, extra_text="\n".join(missing)
-                )
-            ax.texts[-1].set_text(text)
+        # Comparison boxes contain n, R² and the selected equation only.
 
     style_axes(ax, x_label, y_label)
     return result
@@ -227,7 +222,8 @@ def crossplot_on_axes(ax, x, y, x_label, y_label, *, color=None,
 
 def scatter_on_axes(ax, x_data, y_data, x_label, y_label,
                     color='blue', outlier_mask=None, equal_axes=True,
-                    show_stats=True, show_1to1=True, show_mac=False):
+                    show_stats=True, show_1to1=True, show_mac=False,
+                    sigma_x=None, sigma_y=None):
     """Draw a scatter cross-plot with regression onto an existing axes.
 
     Drop-in replacement for the retired ``plotting_legacy.plot_crossplot``.
@@ -250,6 +246,9 @@ def scatter_on_axes(ax, x_data, y_data, x_label, y_label,
         Draw the 1:1 reference line (only when ``equal_axes``).
     show_mac : bool
         Append the MAC value to the stats box.
+    sigma_x, sigma_y : float or None
+        Measurement standard deviations in the plotted units. Supply both
+        for a measurement-based Deming variance ratio.
 
     Returns
     -------
@@ -292,7 +291,10 @@ def scatter_on_axes(ax, x_data, y_data, x_label, y_label,
         ax.scatter(x_outliers, y_outliers, color='red', alpha=0.9, s=200,
                    marker='X', linewidths=3, label=f'Excluded (n={len(x_outliers)})')
 
-    stats = calculate_regression_stats(x_clean, y_clean)
+    stats = calculate_regression_stats(
+        x_clean, y_clean, errors_in_variables=show_1to1 and equal_axes,
+        sigma_x=sigma_x, sigma_y=sigma_y,
+    )
 
     if stats:
         if equal_axes:
@@ -309,17 +311,14 @@ def scatter_on_axes(ax, x_data, y_data, x_label, y_label,
             ax.set_ylim(bottom=0)
             x_line = np.array([0, x_clean.max() * 1.1])
 
-        y_line = stats['slope'] * x_line + stats['intercept']
-        ax.plot(x_line, y_line, 'g-', linewidth=2, alpha=0.8, label='Best fit')
+        add_regression_line(ax, stats, x_line)
 
         if show_1to1 and equal_axes:
             ax.plot([0, max_val], [0, max_val], 'k--', alpha=0.5,
                     linewidth=1.5, label='1:1 line')
 
         if show_stats:
-            sign = '+' if stats['intercept'] >= 0 else '-'
-            eq = f"y = {stats['slope']:.3f}x {sign} {abs(stats['intercept']):.2f}"
-            text = f"n = {stats['n']}\nR^2 = {stats['r_squared']:.3f}\n{eq}"
+            text = format_stats_text(stats)
             if show_mac:
                 text += f"\n(MAC = {MAC_VALUE} m^2/g)"
             ax.text(0.05, 0.95, text, transform=ax.transAxes, fontsize=10,
@@ -371,7 +370,8 @@ def bc_timeseries_on_axes(ax, site_name, df, config, wavelength='IR'):
 
 def iron_gradient_on_axes(ax, x_data, y_data, iron_data,
                           x_label, y_label, equal_axes=True,
-                          outlier_mask=None, cmap='plasma'):
+                          outlier_mask=None, cmap='plasma',
+                          sigma_x=None, sigma_y=None):
     """Scatter cross-plot coloured by iron concentration, drawn onto an axes.
 
     Drop-in replacement for the retired
@@ -383,6 +383,10 @@ def iron_gradient_on_axes(ax, x_data, y_data, iron_data,
     iron are excluded from the fit. On real data that changes n, slope and R^2.
     The stricter mask is kept here deliberately so migrated notebooks report the
     same numbers they always have.
+
+    Supply ``sigma_x`` and ``sigma_y`` in the plotted units when available.
+    Equal-axis comparison panels display Deming, with OLS kept in the returned
+    metrics; without supplied uncertainties the variance ratio is 1.
 
     Returns
     -------
@@ -427,7 +431,10 @@ def iron_gradient_on_axes(ax, x_data, y_data, iron_data,
                    color='red', alpha=0.9, s=200, marker='X', linewidths=3,
                    label=f'Excluded (n={outlier_plot_mask.sum()})')
 
-    stats = calculate_regression_stats(x_clean, y_clean)
+    stats = calculate_regression_stats(
+        x_clean, y_clean, errors_in_variables=equal_axes,
+        sigma_x=sigma_x, sigma_y=sigma_y,
+    )
 
     if stats:
         if equal_axes:
@@ -447,16 +454,13 @@ def iron_gradient_on_axes(ax, x_data, y_data, iron_data,
             x_line = np.array([0, x_clean.max() * 1.1])
             max_val = x_line[1]
 
-        y_line = stats['slope'] * x_line + stats['intercept']
-        ax.plot(x_line, y_line, 'g-', linewidth=2, alpha=0.8, label='Best fit')
+        add_regression_line(ax, stats, x_line)
 
         if equal_axes:
             ax.plot([0, max_val], [0, max_val], 'k--', alpha=0.5,
                     linewidth=1.5, label='1:1 line')
 
-        sign = '+' if stats['intercept'] >= 0 else '-'
-        eq = f"y = {stats['slope']:.3f}x {sign} {abs(stats['intercept']):.2f}"
-        text = f"n = {stats['n']}\nR^2 = {stats['r_squared']:.3f}\n{eq}"
+        text = format_stats_text(stats)
         ax.text(0.05, 0.95, text, transform=ax.transAxes, fontsize=10,
                 verticalalignment='top',
                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.9))

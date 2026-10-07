@@ -64,7 +64,7 @@ def short_fit(fit_id):
 
 
 METHOD_NAMES = {"AIRSpec": "Spline baseline", "VIBES": "VIBES baseline (4000–1425)",
-                "VIBES-full": "VIBES baseline (4000–500)", "VIBES-full-cut": "VIBES baseline (fit 4000–500, used 4000–1425)"}
+                "VIBES-full": "VIBES baseline (4000–500, rank cap 30)", "VIBES-full-cut": "VIBES baseline (fit 4000–500, used 4000–1425, rank cap 30)"}
 SPEC_COHORT_AND_SETTINGS = [
     ("Lowest OC/EC", lambda r: r["category"] == "ocec"),
     ("Spectral analogs (correlation), all Addis", lambda r: r["category"] == "corr_all"),
@@ -141,8 +141,15 @@ def export_spec_curve(grid_path, out_path):
 
 def main():
     summary = json.loads((SRC / "summary.json").read_text())
+    source_evaluation = SRC.parent / "ann_weekly_20260910/addis_evaluation.csv"
+    if source_evaluation.exists():
+        summary["addis_source_n"] = int(pd.read_csv(source_evaluation, usecols=["MediaId"]).MediaId.nunique())
     fits = pd.read_csv(SRC / "fits.csv")
     stats = pd.read_csv(SRC / "panel_stats.csv")
+    # Addis fits use the measured HIPS uncertainty and the same frozen FTIR
+    # error proxy. Older saved rows omit this field; preserve the actual ratio
+    # when the browser refits pairs for the selectable regression overlay.
+    stats.loc[stats.population.eq("addis"), "deming_lambda"] = float(summary["lambda"])
     ap = pd.read_csv(SRC / "analog_predictions.csv")
     adp = pd.read_csv(SRC / "addis_predictions.csv")
     rep = pd.read_csv(SRC / "repeated_splits.csv")

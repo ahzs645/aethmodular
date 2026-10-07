@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { EstimatorName } from '@/lib/regressionPrefs'
 import * as d3 from 'd3'
 import { hexbin as d3Hexbin } from 'd3-hexbin'
 import { ChartFrame, Empty, Segmented, Select, Toggle } from '@/components/ChartFrame'
@@ -8,6 +9,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { INK, MARGIN, FONT, RAMP_SEQUENTIAL } from '@/lib/theme'
 import type { CalibFile, CalibRow } from '@/lib/types'
+import { fmt } from '@/lib/stats'
 import { cohortColor, fmtFit, passes, sameConfig, score, shortConfig, type Config } from './common'
 import { COHORT, CV_PROTOCOL, METRIC, label } from '@/lib/labels'
 
@@ -91,11 +93,11 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
       provenance="FIVE_SITE_GRID_2026-08-23.md “scoring lesson first” · ftir_17"
       controls={
         <>
-          <Select label="test set" value={target} options={targets} onChange={setTarget} optionLabel={(t) => calib.targets[t]?.label ?? t} />
-          <Select label="cross-validation protocol" value={mode} options={modes} onChange={setMode} optionLabel={(m) => label(CV_PROTOCOL, m)} />
-          <Select label="intercept" value={intercept} options={Object.keys(INTERCEPTS)} onChange={(v) => setIntercept(v as InterceptKey)} title="Which fit's intercept goes on y, with its matching slope on x" />
+          <Select label="Test set" value={target} options={targets} onChange={setTarget} optionLabel={(t) => calib.targets[t]?.label ?? t} />
+          <Select label="Cross-validation protocol" value={mode} options={modes} onChange={setMode} optionLabel={(m) => label(CV_PROTOCOL, m)} />
+          <Select label="Intercept" value={intercept} options={Object.keys(INTERCEPTS)} onChange={(v) => setIntercept(v as InterceptKey)} title="Which fit's intercept goes on y, with its matching slope on x" />
           <Segmented value={view} options={VIEWS} onChange={setView} />
-          <Toggle label="only configurations that pass the guardrails" checked={onlyPassing} onChange={setOnlyPassing} />
+          <Toggle label="Only configurations that pass the guardrails" checked={onlyPassing} onChange={setOnlyPassing} />
           <span className="control">{rows.length} configurations</span>
         </>
       }
@@ -168,7 +170,7 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
         {off > 0 && <p className="chart-note">{off} extreme configurations are pinned to the edge of the canvas.</p>}
         {best.length > 0 && (
           <table className="placement">
-            <thead><tr><th>#</th><th>configuration</th><th title={METRIC.k}>PLS factors</th><th>Test set Deming</th><th>Test set R²</th><th title={METRIC.cvR2}>IMPROVE CV R²</th><th>score</th></tr></thead>
+            <thead><tr><th>#</th><th>configuration</th><th title={METRIC.k}>PLS factors</th><th>Test set <EstimatorName /></th><th>Test set R²</th><th title={METRIC.cvR2}>IMPROVE CV R²</th><th>score</th></tr></thead>
             <tbody>
               {best.map((r, i) => (
                 <tr key={i} className="link" onClick={() => onSelect({ co: r.co, cut: r.cut, sel: r.sel, sp: r.sp })}>
@@ -176,9 +178,9 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
                   <td className="f">{shortConfig({ co: r.co, cut: r.cut, sel: r.sel, sp: r.sp })}</td>
                   <td className="v">{r.k}</td>
                   <td className="v">{fmtFit(r.dm, r.db)}</td>
-                  <td className="v">{r.r2?.toFixed(3)}</td>
-                  <td className="v">{r.ho?.toFixed(3)}</td>
-                  <td className="v">{score(r)?.toFixed(2)}</td>
+                  <td className="v">{fmt(r.r2, 3)}</td>
+                  <td className="v">{fmt(r.ho, 3)}</td>
+                  <td className="v">{fmt(score(r), 2)}</td>
                 </tr>
               ))}
             </tbody>

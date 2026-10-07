@@ -77,8 +77,8 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
       provenance="CROSS_SITE_EVALUATION_2026-08-22.md · FIVE_SITE_GRID_2026-08-23.md · site-grouped CV · MAC 10 · fixed set"
       controls={
         <>
-          <Segmented label="cell" value={cell} options={CELLS} onChange={setCell} />
-          <Select label="top N at Addis" value={topN} options={['5', '10', '15', '25', '40']} onChange={setTopN} />
+          <Segmented label="Cell" value={cell} options={CELLS} onChange={setCell} />
+          <Select label="Top N at Addis" value={topN} options={['5', '10', '15', '25', '40']} onChange={setTopN} />
         </>
       }
     >

@@ -98,10 +98,10 @@ export function SpectraDumbbell({ calib, selected, onSelect }: { calib: CalibFil
       provenance="calibration_explorer batch results · react-graph-gallery.com/lollipop (dumbbell)"
       controls={
         <>
-          <Segmented label="rows" value={rowset} options={ROWSETS} onChange={setRowset} />
-          {rowset !== 'Locked cutoffs' && <Select label="cohort" value={cohort} options={cohorts} onChange={setCohort} optionLabel={(c) => nameOf(COHORT, c)} />}
-          <Select label="test set" value={target} options={targets} onChange={setTarget} optionLabel={(t) => calib.targets[t]?.label ?? t} />
-          <Select label="readout" value={metric} options={[...METRICS]} onChange={(v) => setMetric(v as Metric)} optionLabel={metricLabel} />
+          <Segmented label="Rows" value={rowset} options={ROWSETS} onChange={setRowset} />
+          {rowset !== 'Locked cutoffs' && <Select label="Cohort" value={cohort} options={cohorts} onChange={setCohort} optionLabel={(c) => nameOf(COHORT, c)} />}
+          <Select label="Test set" value={target} options={targets} onChange={setTarget} optionLabel={(t) => calib.targets[t]?.label ?? t} />
+          <Select label="Readout" value={metric} options={[...METRICS]} onChange={(v) => setMetric(v as Metric)} optionLabel={metricLabel} />
         </>
       }
     >

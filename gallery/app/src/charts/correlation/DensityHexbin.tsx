@@ -1,3 +1,6 @@
+import { fitUncertainty } from '@/lib/fitUncertainty'
+import { RegressionLines, RegressionReadout } from '@/components/RegressionOverlay'
+import { fitsFor, useRegressions } from '@/lib/regressionPrefs'
 import { useId, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { hexbin as d3Hexbin } from 'd3-hexbin'
@@ -24,6 +27,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const clipId = useId()
+  const { methods } = useRegressions()
   const MAX_SQUARE = 520
 
   const [radius, setRadius] = useState('14')
@@ -48,18 +52,22 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   const { x, y, stats, domain } = useMemo(() => {
     const xs = points.map((p) => p[0])
     const ys = points.map((p) => p[1])
-    // both axes are measurements with their own error: the fit shown is Deming only
-    const stats = regression(xs, ys, { errorsInVariables: true })
-    const intercepts = stats && stats.demingIntercept !== null ? [stats.demingIntercept] : []
+    // Fit the same paired observations as the scatterplot.
+    const stats = regression(xs, ys, fitUncertainty(rows.filter(r => typeof r[xField] === 'number' && typeof r[yField] === 'number' && Number.isFinite(r[xField]) && Number.isFinite(r[yField])), xField, yField, meta))
+    const intercepts = fitsFor(stats, methods).map(fit => fit.intercept)
     const domain = pairDomain(xs, ys, opts, intercepts)
+    const scale = (d: [number, number], range: [number, number]) => {
+      const s = d3.scaleLinear().domain(d).range(range)
+      return opts.mode === 'Show intercept' ? s : s.nice()
+    }
     return {
-      x: d3.scaleLinear().domain(domain.x).range([0, innerW]).nice(),
-      y: d3.scaleLinear().domain(domain.y).range([innerH, 0]).nice(),
+      x: scale(domain.x, [0, innerW]),
+      y: scale(domain.y, [innerH, 0]),
       stats,
       domain,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [points, innerW, innerH, opts.identity, opts.mode])
+  }, [points, rows, xField, yField, meta, methods, innerW, innerH, opts.identity, opts.mode])
 
   const bins = useMemo(() => {
     const hb = d3Hexbin<[number, number]>()
@@ -83,7 +91,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
       provenance="stands in for 16 hexbin+plot+scatter figures · react-graph-gallery.com/2d-density-plot"
       controls={
         <>
-          <Select label="hex radius" value={radius} options={['8', '11', '14', '18', '24']} onChange={setRadius} />
+          <Select label="Hex radius" value={radius} options={['8', '11', '14', '18', '24']} onChange={setRadius} />
         </>
       }
     >
@@ -129,37 +137,20 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
                 {opts.identity && <line x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="5 4" />}
                 {stats && (
                   <>
-                    {stats.demingSlope !== null && (
-                      <line
-                        x1={x(d0)} y1={y(stats.demingSlope * d0 + stats.demingIntercept!)}
-                        x2={x(d1)} y2={y(stats.demingSlope * d1 + stats.demingIntercept!)}
-                        stroke={INK.deming} strokeWidth={2} strokeDasharray="7 3"
-                      />
-                    )}
+                    <RegressionLines stats={stats} x={x} y={y} domain={x.domain()} width={innerW} height={innerH} />
                   </>
                 )}
               </g>
               {stats && opts.mode === 'Show intercept' && (
                 <g pointerEvents="none" fontFamily={FONT.mono} fontSize={10.5}>
-                  {stats.demingIntercept !== null && (
-                    <>
-                      <circle cx={x(0)} cy={y(stats.demingIntercept)} r={4.5} fill="#fff" stroke={INK.deming} strokeWidth={2} />
-                      <text x={x(0) + 8} y={y(stats.demingIntercept)} dy="0.35em" fill={INK.deming}>b = {fmt(stats.demingIntercept, 3)}</text>
-                    </>
-                  )}
+                  {fitsFor(stats, methods).map(fit => <g key={fit.method}>
+                    <circle cx={x(0)} cy={y(fit.intercept)} r={4.5} fill="#fff" stroke={fit.color} strokeWidth={2} />
+                    <title>{fit.label} b = {fmt(fit.intercept, 3)}</title>
+                  </g>)}
                 </g>
               )}
 
-              {stats && (
-                <g transform="translate(10,10)" fontFamily={FONT.mono} fontSize={11} pointerEvents="none">
-                  <rect width={214} height={62} rx={5} fill="#fff" fillOpacity={0.93} stroke={INK.border} />
-                  <text x={9} y={18} fill={INK.text}>n = {stats.n} in {bins.length} hexes</text>
-                  <text x={9} y={33} fill={INK.text}>R² = {fmt(stats.r2, 4)}</text>
-                  {stats.demingSlope !== null && stats.demingIntercept !== null && (
-                    <text x={9} y={48} fill={INK.deming}>Deming y = {fmt(stats.demingSlope)}x {stats.demingIntercept < 0 ? '−' : '+'} {fmt(Math.abs(stats.demingIntercept))}</text>
-                  )}
-                </g>
-              )}
+              <RegressionReadout stats={stats} />
             </g>
           </svg>
         )}

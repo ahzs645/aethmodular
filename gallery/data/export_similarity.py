@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import hashlib
+import argparse
 import json
 import sys
 
@@ -105,6 +106,9 @@ def calendar(site: str):
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('--completed', action='store_true', help='Include completed rank-70 full and shared-grid similarity')
+    args = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     manifest = json.loads((RUN / "RUN_MANIFEST.json").read_text())
     if manifest["n_failed"] or manifest["n_cases"] != 12808:
@@ -116,6 +120,19 @@ def main() -> None:
     arrays = {m: np.load(RUN / f"corrected_{m}.npy", mmap_mode="r") for m in METHODS}
     if any(a.shape != (len(cases), len(wn)) for a in arrays.values()):
         raise ValueError("Saved case/feature alignment changed")
+
+    grids = {m: wn for m in METHODS}
+    methods = list(METHODS)
+    current_sources = {}
+    if args.completed:
+        from vibes_current import load_completed
+        current = load_completed()
+        if cases.sample_id.tolist() != current['cases'].sample_id.tolist():
+            raise ValueError('Current similarity cases differ from the original index')
+        for m in ('VIBES-full-r70', 'VIBES-full-cut-r70'):
+            arrays[m], grids[m] = current['arrays'][m], current['grids'][m]
+            methods.append(m)
+        current_sources = current['sources']
 
     # Library = every IMPROVE calibration filter plus every Addis target filter.
     # Blanks and injections are not ambient samples and are left out.
@@ -168,7 +185,11 @@ def main() -> None:
     mask_meta, n_pairs = [], G * (G + 1) // 2
     iu = np.triu_indices(G)
 
-    for method in METHODS:
+    method_grids = {}
+    for method in methods:
+        wn_method = grids[method]
+        bins = [np.arange(i, min(i + BIN, len(wn_method))) for i in range(0, len(wn_method), BIN)]
+        method_masks = []
         X = np.asarray(arrays[method][rows], dtype=np.float64)
         if not np.isfinite(X).all():
             raise ValueError(f"{method}: non-finite corrected spectra")
@@ -182,7 +203,7 @@ def main() -> None:
             out.write(q.tobytes())
 
         for key, label, co2_low, upper in MASKS:
-            mask = spectral_region_mask(wn, co2_low, upper)
+            mask = spectral_region_mask(wn_method, co2_low, upper)
             U = centered_unit_spectra(X[:, mask])
             means = member_matrix @ U                     # G × channels
             total = (means @ means.T) * np.outer(sizes, sizes)
@@ -214,11 +235,12 @@ def main() -> None:
             with (OUT / f"top_{method}_{key}.bin").open("wb") as out:
                 out.write(top_idx.tobytes())
                 out.write(top_r.tobytes())
-            if method == METHODS[0]:
-                mask_meta.append(dict(key=key, label=label, co2_low=co2_low, upper=upper,
+            method_masks.append(dict(key=key, label=label, co2_low=co2_low, upper=upper,
                                       n_channels=int(mask.sum()),
                                       bins=[bool(mask[b].all()) for b in bins]))
-            print(f"{method} {key}: {mask.sum()} channels, {G} groups")
+            print(f"{method} {key}: {mask.sum()} channels, {G} groups", flush=True)
+        method_grids[method] = dict(bin_wn=[round(float(wn_method[b].mean()), 3) for b in bins], masks=method_masks)
+    mask_meta = method_grids['AIRSpec']['masks']
 
     out = dict(
         schema_version=1,
@@ -227,7 +249,10 @@ def main() -> None:
                        for n in ["RUN_MANIFEST.json", "case_audit.csv", "wn.npy",
                                  "corrected_AIRSpec.npy", "corrected_VIBES.npy"]},
         exporter_sha256=sha(Path(__file__)),
-        methods=list(METHODS),
+        methods=methods,
+        background_rank=70 if args.completed else None,
+        current_source_sha256=current_sources,
+        method_grids=method_grids,
         masks=mask_meta,
         default_mask="no_co2_max3500",
         scale=SCALE,

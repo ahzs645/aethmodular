@@ -1,3 +1,8 @@
+import { RegressionBand } from '@/components/RegressionOverlay'
+import { confidence, monthBlocks } from '@/lib/regressionCI'
+import { regression } from '@/lib/stats'
+import { demingLambda } from './seasonView'
+import { EstimatorName, FIT_STYLE, useEstimator, useRegressions, fitsFor, type Estimator } from '@/lib/regressionPrefs'
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
@@ -23,7 +28,7 @@ const TRANSFER_TIP = (
     <p>Every calibration here is trained on IMPROVE filters with thermal (TOR) EC, then applied unchanged to each SPARTAN site. No SPARTAN site has thermal EC, so the site readouts compare the prediction with HIPS Fabs ÷ MAC, an optical equivalent. They show how the calibration transfers, not EC accuracy at the site.</p>
     <p>A slope mixes the site's true MAC with calibration error, so read the intercept ordering before the slopes. Score OOD is the share of site filters beyond the training 95th percentile in the model's score space (Reggente 2016). Q OOD is the share with unmodelled spectral variation beyond that percentile. Above {EXTRAP_FLAG}% the site is partly outside the training domain.</p>
     <p>For citation, the per-filter weighted York fits in research/ftir_ec_phase3/OFFSET_ADJUDICATION_2026-08-23.md supersede these Deming numbers. The HIPS diagnostics chart on this tab shows them for ocec-450 × Spline baseline.</p>
-    <p>Fits are Deming (errors in both variables) throughout; the IMPROVE cross-validation row reports R² and RMSE only, because the explorer exports its slope and intercept from a y-on-x fit.</p>
+    <p>The sidebar selects the displayed estimator. Saved York views use constant errors with the saved Deming ratio. The IMPROVE cross-validation row reports R² and RMSE only.</p>
   </>
 )
 
@@ -50,7 +55,7 @@ export function CrossSiteTransfer({ runs }: { runs: CalibRunsFile }) {
   if (!presets.length) return null
   const controls = (
     <>
-      <Select label="calibration" value={presetKey} options={presets.map((p) => p.key)} optionLabel={(k) => { const p = presets.find((q) => q.key === k); return p ? presetName(p) : k }} onChange={setPresetKey} />
+      <Select label="Calibration" value={presetKey} options={presets.map((p) => p.key)} optionLabel={(k) => { const p = presets.find((q) => q.key === k); return p ? presetName(p) : k }} onChange={setPresetKey} />
       <Segmented label="MAC" value={String(mac)} options={macs.map(String)} onChange={(v) => setMac(Number(v))} />
     </>
   )
@@ -70,9 +75,28 @@ function lineOf(run: CalibRun, mac: number) {
   return { m, slope: m.deming_slope, intercept: m.deming_intercept }
 }
 
+/** Intervals must describe the same fit and pairs as the saved point estimate. */
+function statsFor(run: CalibRun, mac: number, method: Estimator) {
+  const pairs = run.eval.pred.flatMap((y, i) => {
+    const x = run.ref_kind === 'fabs' ? run.eval.ref[i] / mac : run.eval.ref[i]
+    return Number.isFinite(x) && Number.isFinite(y) ? [{ x, y, i }] : []
+  })
+  const st = regression(pairs.map(p => p.x), pairs.map(p => p.y), { errorsInVariables: true,
+    lambda: demingLambda(run.ref_kind === 'fabs' ? mac : null, 2.96),
+    bootstrapGroups: monthBlocks(pairs.map(p => ({ site: run.target, date: run.eval.date?.[p.i] }))),
+  })
+  const live = fitsFor(st, [method])[0], saved = lineOf(run, mac)
+  return live && saved && saved.slope != null && saved.intercept != null &&
+    Math.abs(live.slope - saved.slope) < 1e-4 && Math.abs(live.intercept - saved.intercept) < 1e-4 ? st : null
+}
+
 function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel }: {
   runs: CalibRunsFile; siteRuns: CalibRun[]; mac: number; controls: React.ReactNode; presetLabel: string
 }) {
+  const estimator = useEstimator()
+  const { showCI } = useRegressions()
+  const fitStyle = FIT_STYLE[estimator]
+  const fitName = fitStyle.label
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
@@ -108,7 +132,7 @@ function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel }: {
       subtitle="One panel per SPARTAN site: the calibration's predicted FTIR EC against HIPS Fabs ÷ MAC, with the 1:1 line (dashed) and the Deming fit from the explorer's metrics for every filter at that site (each site is a test set the model never saw)."
       provenance="calibration_explorer /api/run for each target · test set 'all'"
       tip={TRANSFER_TIP}
-      controls={<>{controls}<Segmented label="axes" value={axes} options={AXES} onChange={setAxes} /></>}
+      controls={<>{controls}<Segmented label="Axes" value={axes} options={AXES} onChange={setAxes} /></>}
     >
       <div ref={wrapRef} className="chart-wrap">
         {!siteRuns.length ? (
@@ -122,6 +146,8 @@ function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel }: {
               const y = d3.scaleLinear().domain(x.domain()).range([S, 0])
               const [d0, d1] = x.domain()
               const fit = lineOf(run, mac)
+              const st = showCI ? statsFor(run, mac, estimator) : null
+              const ci = showCI ? confidence(st, estimator) : null
               // clip the fitted line to the square
               const seg = fit && fit.slope !== null && fit.intercept !== null ? (() => {
                 const f = (v: number) => fit.slope! * v + fit.intercept!
@@ -155,10 +181,12 @@ function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel }: {
                         onMouseLeave={tip.hide}
                       />
                     ))}
-                    {seg && <line {...seg} stroke={INK.deming} strokeWidth={1.8} strokeDasharray="7 3" />}
+                    {seg && <svg width={S} height={S} overflow="hidden"><RegressionBand stats={st} method={estimator} color={fitStyle.color} x={x} y={y} domain={x.domain()} /></svg>}
+                    {seg && <line {...seg} stroke={fitStyle.color} strokeWidth={1.8} strokeDasharray={fitStyle.dash} />}
                     <text x={S / 2} y={S + 34} textAnchor="middle" fontSize={10.5} fill={INK.muted}>{`HIPS Fabs ÷ MAC ${mac} (µg/m³)`}</text>
-                    <text x={S / 2} y={S + 51} textAnchor="middle" fontSize={11} fontFamily={FONT.mono} fill={INK.deming}>
-                      {`Deming ${fmtFit(fit?.slope ?? null, fit?.intercept ?? null)} · R² ${fmt(fit?.m.R2 ?? null, 2)}`}
+                    <text x={S / 2} y={S + 51} textAnchor="middle" fontSize={11} fontFamily={FONT.mono} fill={fitStyle.color}>
+                      {`${fitName} ${fmtFit(fit?.slope ?? null, fit?.intercept ?? null)} · R² ${fmt(fit?.m.R2 ?? null, 2)}`}
+                      <title>{showCI ? ci ? `${ci.description}; slope [${fmt(ci.slope[0], 3)}, ${fmt(ci.slope[1], 3)}]; intercept [${fmt(ci.intercept[0], 3)}, ${fmt(ci.intercept[1], 3)}]` : '95% CI unavailable: insufficient data or saved fit differs from live pairs' : ''}</title>
                     </text>
                   </g>
                 </svg>
@@ -173,6 +201,8 @@ function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel }: {
 }
 
 function TransferTable({ runs, siteRuns, mac, presetLabel }: { runs: CalibRunsFile; siteRuns: CalibRun[]; mac: number; presetLabel: string }) {
+  const { showCI } = useRegressions()
+  const estimator = useEstimator()
   const held = siteRuns.find((r) => r.heldout)?.heldout ?? null
   const train = siteRuns[0]
   return (
@@ -186,7 +216,7 @@ function TransferTable({ runs, siteRuns, mac, presetLabel }: { runs: CalibRunsFi
       <div style={{ overflowX: 'auto' }}>
         <table className="census-table">
           <thead>
-            <tr><th>Applied to</th><th>Reference</th><th>n</th><th>Deming slope</th><th>Deming intercept</th><th>R²</th><th>RMSE</th><th>Score OOD</th><th>Q OOD</th><th>Median prediction</th><th>Negative</th></tr>
+            <tr><th>Applied to</th><th>Reference</th><th>n</th><th><EstimatorName /> slope</th><th><EstimatorName /> intercept</th><th>R²</th><th>RMSE</th><th>Score OOD</th><th>Q OOD</th><th>Median prediction</th><th>Negative</th></tr>
           </thead>
           <tbody>
             {held && train && (
@@ -205,14 +235,15 @@ function TransferTable({ runs, siteRuns, mac, presetLabel }: { runs: CalibRunsFi
             {siteRuns.map((run) => {
               const t = runs.targets[run.target]
               const fit = lineOf(run, mac)
+              const ci = showCI ? confidence(statsFor(run, mac, estimator), estimator) : null
               const flagged = (run.extrap_pct ?? 0) > EXTRAP_FLAG
               return (
                 <tr key={run.target}>
                   <td><span style={{ color: t?.color, fontWeight: 600 }}>{t?.site ?? run.target}</span> <span style={{ color: 'var(--ink-muted)' }}>{t?.code}</span></td>
                   <td>{run.ref_kind === 'fabs' ? `HIPS Fabs ÷ ${mac}` : 'EC'}</td>
                   <td>{fit?.m.n ?? run.eval.id.length}</td>
-                  <td>{fmt(fit?.slope ?? null, 3)}</td>
-                  <td style={{ fontWeight: (fit?.intercept ?? 0) < -1 ? 600 : 400 }}>{fmt(fit?.intercept ?? null, 3)}</td>
+                  <td>{fmt(fit?.slope ?? null, 3)}{showCI && <div className="chart-note">{ci ? `95% [${fmt(ci.slope[0], 3)}, ${fmt(ci.slope[1], 3)}]` : '95% CI unavailable'}</div>}</td>
+                  <td style={{ fontWeight: (fit?.intercept ?? 0) < -1 ? 600 : 400 }}>{fmt(fit?.intercept ?? null, 3)}{showCI && <div className="chart-note">{ci ? `95% [${fmt(ci.intercept[0], 3)}, ${fmt(ci.intercept[1], 3)}]` : '95% CI unavailable'}</div>}</td>
                   <td>{fmt(fit?.m.R2 ?? null, 3)}</td>
                   <td>{fmt(fit?.m.RMSE ?? null, 3)}</td>
                   <td style={{ color: flagged ? '#b45309' : undefined, fontWeight: flagged ? 600 : 400 }}>{`${fmt(run.extrap_pct, 1)} %`}</td>
@@ -236,19 +267,22 @@ function OrderingAcrossCalibrations({ runs, sites, presetKey, mac, onPick }: {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
+  const { showCI } = useRegressions()
+  const estimator = useEstimator()
   const [metric, setMetric] = useState<(typeof DOT_METRICS)[number]>('intercept')
 
   const rows = runs.presets.flatMap((p) => sites.map((s) => {
     const run = runs.runs.find((r) => r.preset === p.key && r.target === s)
     const fit = run ? lineOf(run, mac) : null
     const v = !fit ? null : metric === 'intercept' ? fit.intercept : metric === 'slope' ? fit.slope : fit.m.R2
-    return { preset: p, site: s, v }
+    const ci = showCI && run && metric !== 'R²' ? confidence(statsFor(run, mac, estimator), estimator) : null
+    return { preset: p, site: s, v, interval: ci && metric !== 'R²' ? ci[metric] : null }
   })).filter((r): r is typeof r & { v: number } => r.v !== null && Number.isFinite(r.v))
 
   const left = 110, right = 24, rowH = 44
   const iw = Math.max(200, width - left - right)
   const ih = sites.length * rowH
-  const ext = d3.extent(rows, (r) => r.v) as [number, number]
+  const ext = d3.extent(rows.flatMap(r => r.interval ? [r.v, ...r.interval] : [r.v])) as [number, number]
   const ref = metric === 'slope' ? 1 : metric === 'intercept' ? 0 : null
   const x = d3.scaleLinear().domain([Math.min(ext[0] ?? 0, ref ?? Infinity), Math.max(ext[1] ?? 1, ref ?? -Infinity)]).range([0, iw]).nice()
   const y = d3.scaleBand().domain(sites).range([0, ih]).padding(0.3)
@@ -261,7 +295,7 @@ function OrderingAcrossCalibrations({ runs, sites, presetKey, mac, onPick }: {
       title="Does the site ordering hold across calibrations?"
       subtitle="Each dot is one exported calibration read out at one site, coloured by cohort, shaped by preprocessing; the ringed dot is the calibration picked above. Click a dot to pick that calibration. A site whose dots stay together is robust to the calibration choice."
       tip={TRANSFER_TIP}
-      controls={<Segmented label="readout" value={metric} options={DOT_METRICS} onChange={setMetric} />}
+      controls={<Segmented label="Readout" value={metric} options={DOT_METRICS} onChange={setMetric} />}
     >
       <div ref={wrapRef} className="chart-wrap">
         <svg width={width} height={ih + 96} fontFamily={FONT.family}>
@@ -285,6 +319,8 @@ function OrderingAcrossCalibrations({ runs, sites, presetKey, mac, onPick }: {
               const cy = (y(r.site) ?? 0) + y.bandwidth() / 2 + jitter
               const path = d3.symbol().type(SPECTRA_SHAPE[r.preset.spectra] ?? d3.symbolTriangle).size(picked ? 110 : 55)() ?? ''
               return (
+                <g key={i}>
+                {r.interval && <line data-fit-uncertainty="site-coefficient" x1={x(r.interval[0])} x2={x(r.interval[1])} y1={cy} y2={cy} stroke={cohortColor(r.preset.cohort)} strokeOpacity={0.45}><title>95% {metric} CI [{fmt(r.interval[0], 3)}, {fmt(r.interval[1], 3)}]</title></line>}
                 <path
                   key={i} d={path} transform={`translate(${x(r.v)},${cy})`}
                   fill={cohortColor(r.preset.cohort)} fillOpacity={picked ? 1 : 0.7}
@@ -294,6 +330,7 @@ function OrderingAcrossCalibrations({ runs, sites, presetKey, mac, onPick }: {
                   onMouseEnter={(e) => tip.show(e, [presetName(r.preset), `${runs.targets[r.site]?.site ?? r.site}: ${metric} ${fmt(r.v, 3)}`, picked ? 'picked above' : 'click to pick this calibration'])}
                   onMouseLeave={tip.hide}
                 />
+                </g>
               )
             })}
           </g>

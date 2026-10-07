@@ -285,6 +285,17 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 .drawer-section:last-child { border-bottom: 0; }
 .drawer-section h3 { margin: 0 0 4px; font-size: 13px; }
 
+.spectrum-modal {
+  width: min(1100px, calc(100vw - 32px)); max-height: calc(100dvh - 32px);
+  padding: 20px; border: 1px solid var(--ink-border); border-radius: var(--radius);
+  background: var(--ink-panel); color: var(--ink-text); overflow: auto;
+  box-shadow: 0 16px 60px rgba(0, 0, 0, 0.25);
+}
+.spectrum-modal::backdrop { background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(2px); }
+.spectrum-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 14px; }
+.spectrum-modal-head h2 { margin: 0; font-size: 18px; }
+.spectrum-modal-head p { margin: 4px 0 0; font-family: var(--mono); font-size: 12px; color: var(--ink-muted); }
+
 .placement { width: 100%; border-collapse: collapse; margin: 4px 0 8px; }
 .placement th { text-align: left; font-size: 10.5px; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.4px; font-weight: 600; padding: 6px 4px 3px; }
 .placement td { padding: 3px 4px; vertical-align: middle; border-top: 1px solid var(--ink-grid); }
@@ -305,6 +316,10 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 .placement .iqr { height: 7px; margin-top: -3.5px; background: #c9d2dc; border-radius: 2px; }
 .placement .med { width: 1.5px; height: 11px; margin-top: -5.5px; background: var(--ink-axis); }
 .placement .dot { width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 5px; border: 1.5px solid #111827; box-sizing: border-box; }
+.placement .dot.outside { border-width: 2px; border-radius: 1px; }
+.reference-summary, .reference-unavailable { font-size: 11px; color: var(--ink-muted); line-height: 1.5; margin: 6px 0; }
+.reference-unavailable summary { cursor: pointer; }
+html:not([data-explain="1"]) .reference-guide { display: none; }
 
 /* ---------- info tip (ⓘ beside a chart title) ---------- */
 
@@ -333,9 +348,10 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 
 .toc-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
 .toc { display: none; }
-.toc-select { position: sticky; z-index: 20; margin: -6px 0 12px; padding: 6px 0; background: rgba(246, 247, 249, 0.92); backdrop-filter: blur(6px); }
+.toc-controls { position: sticky; z-index: 20; display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin: -6px 0 12px; padding: 6px 0; background: rgba(246, 247, 249, 0.92); backdrop-filter: blur(6px); }
+.toc-select { margin-right: auto; }
 @media (min-width: 1180px) {
-  .toc-layout { grid-template-columns: minmax(0, 1fr) 200px; }
+  .toc-layout.has-toc { grid-template-columns: minmax(0, 1fr) 200px; }
   .toc { display: block; position: sticky; align-self: start; max-height: calc(100vh - 140px); overflow-y: auto; }
   .toc-select { display: none; }
 }
@@ -359,3 +375,12 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 .plot-group-grid { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
 .plot-group-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 760px) { .plot-group-grid.three { grid-template-columns: minmax(0, 1fr); } }
+
+.regression-controls { border: 0; border-bottom: 1px solid var(--ink-border); padding: 14px 0; margin: 0 0 12px; min-width: 0; }
+.regression-controls legend { font-size: 13px; font-weight: 600; }
+.regression-options { display: flex; flex-wrap: wrap; gap: 16px; margin: 8px 0; }
+.regression-options label { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer; }
+.regression-controls p { font-size: 11.5px; color: var(--ink-muted); line-height: 1.5; margin: 8px 0; }
+.estimator-caption { font-weight: 600; font-size: 12px; margin: 12px 0 4px; }
+
+.regression-controls > label { display: flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer; margin-top: 12px; }

@@ -144,8 +144,8 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
       provenance="react-graph-gallery.com/heatmap · stands in for the site×month pivot tables in the notebooks"
       controls={
         <>
-          <Segmented label="cell" value={stat} options={STATS} onChange={setStat} title="Statistic across the month's filters at that site" />
-          <Toggle label="season strip" checked={seasonStrip} onChange={setSeasonStrip} title="A strip above the columns coloured by the selected season calendar" />
+          <Segmented label="Cell" value={stat} options={STATS} onChange={setStat} title="Statistic across the month's filters at that site" />
+          <Toggle label="Season strip" checked={seasonStrip} onChange={setSeasonStrip} title="A strip above the columns coloured by the selected season calendar" />
         </>
       }
     >

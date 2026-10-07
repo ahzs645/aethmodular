@@ -62,7 +62,7 @@ changed = [p for p in paths if known.get(str(p.relative_to(root))) != [p.stat().
 manifest = {str(p.relative_to(root)): [p.stat().st_size, p.stat().st_mtime_ns] for p in changed}
 parts = []
 if changed:
-    with tarfile.open('/content/aeth_vibes_snapshot.tar', 'w') as archive:
+    with tarfile.open('/content/aeth_vibes_snapshot.tar', 'w', dereference=True) as archive:
         for p in changed:
             archive.add(p, arcname=str(p.relative_to(root)), recursive=False)
     with open('/content/aeth_vibes_snapshot.tar', 'rb') as source:

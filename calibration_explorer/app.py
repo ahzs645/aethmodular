@@ -1149,6 +1149,7 @@ def run_config(cohort, cutoff, selection_space, spectra, mode, k_override,
     return {
         "cohort_label": cohort_label, "n_cohort": int(len(ids)),
         "n_train": fit["n_train"], "n_train_sites": fit["n_train_sites"],
+        "n_heldout": int((~train).sum()),
         "auto_k": int(auto_k), "k": k,
         "rmsecv_floor": round(floor, 4),
         "pct_rmsecv_floor": round(100 * floor / float(y[train].mean()), 2),
@@ -1270,6 +1271,10 @@ def _batch_row(cfg, out):
     a10, a6 = pick("all", primary_mac), pick("all", secondary_mac)
     return {**cfg, "cohort_label": out["cohort_label"], "k": out["k"],
             "auto_k": out["auto_k"], "ref_kind": ref_kind,
+            "n_cohort": out["n_cohort"], "n_train": out["n_train"],
+            "n_heldout": out["n_heldout"], "n_eval": f10["n"],
+            "rmsecv_floor": out["rmsecv_floor"],
+            "heldout_RMSE": (out["heldout"] or {}).get("RMSE"),
             "provenance": out.get("provenance"),
             "ols_slope": f10["ols_slope"], "ols_intercept": f10["ols_intercept"],
             "deming_slope": f10["deming_slope"],

@@ -8,6 +8,8 @@ This does not refit the EC calibration or use test/target EC to fit PCA.
 from pathlib import Path
 import hashlib
 import json
+import argparse
+import sys
 import numpy as np
 import pandas as pd
 from sklearn.decomposition import PCA
@@ -38,7 +40,18 @@ def coordinates(model, matrix, train_t2, train_q):
 
 
 def main():
-    audited = json.loads(AUDIT.read_text())['source_hashes']
+    global RUN, OUT
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('--completed', action='store_true')
+    args = ap.parse_args()
+    if args.completed:
+        sys.path.insert(0, str(ROOT / 'research/ftir_hips_chem/scripts'))
+        from vibes_current import prepare_shared_run
+        RUN = prepare_shared_run()
+        OUT = OUT.with_name('baseline_applicability_r70.json')
+        audited = {str(p.relative_to(ROOT)): sha(p) for p in RUN.iterdir() if p.is_file()}
+    else:
+        audited = json.loads(AUDIT.read_text())['source_hashes']
     used = ['case_audit.csv','heldout_predictions.csv','corrected_AIRSpec.npy','corrected_VIBES.npy','RUN_MANIFEST.json']
     sources = {}
     for name in used:
@@ -88,6 +101,7 @@ def main():
                   f'8-PC explained variance {sum(model.explained_variance_ratio_):.3f}')
     assert len(exported) == 2*(len(test)+len(target))
     OUT.write_text(json.dumps({'schema_version': 1, 'scope': 'full_pool', 'n_components': 8,
+                               'background_rank': 70 if args.completed else None,
                                'method': 'Separate 8-component randomized PCA fits to each method’s full-pool training spectra; '
                                          'T² is sum of score²/training variance; Q is spectral reconstruction RMS. '
                                          'Percentiles compare to training spectra. Exploratory, not the frozen PLS score space, '

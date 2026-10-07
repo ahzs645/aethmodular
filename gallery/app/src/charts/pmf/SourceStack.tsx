@@ -106,8 +106,8 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
       provenance="the estate has exactly 1 stacked-area figure in 827 · react-graph-gallery.com/stacked-area-plot · /streamchart"
       controls={
         <>
-          <Segmented label="scale" value={mode} options={MODES} onChange={setMode} />
-          <Segmented label="shape" value={shape} options={SHAPES} onChange={setShape} title="Streamgraph: wiggle offset, inside-out order — no baseline, better shape" />
+          <Segmented label="Scale" value={mode} options={MODES} onChange={setMode} />
+          <Segmented label="Shape" value={shape} options={SHAPES} onChange={setShape} title="Streamgraph: wiggle offset, inside-out order — no baseline, better shape" />
           <span className="control">{rows.length} filters · {pmf.site_name}</span>
         </>
       }

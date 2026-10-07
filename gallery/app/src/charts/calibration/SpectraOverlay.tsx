@@ -65,7 +65,7 @@ export function SpectraOverlay({
       provenance={provenance}
       controls={
         <>
-          {spaces.length > 1 && <Segmented label="preprocessing" value={label(PREPROCESSING, space)} options={spaces.map((s) => label(PREPROCESSING, s))} onChange={(v) => setSpace(spaces.find((s) => label(PREPROCESSING, s) === v) ?? space)} />}
+          {spaces.length > 1 && <Segmented label="Preprocessing" value={label(PREPROCESSING, space)} options={spaces.map((s) => label(PREPROCESSING, s))} onChange={(v) => setSpace(spaces.find((s) => label(PREPROCESSING, s) === v) ?? space)} />}
           <Toggle label="IQR bands" checked={bands} onChange={setBands} />
         </>
       }

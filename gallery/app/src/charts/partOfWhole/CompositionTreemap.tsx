@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented, Toggle } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
@@ -32,13 +32,16 @@ interface Node { name: string; family?: string; children?: Node[]; value?: numbe
  * Stacked bars are the one encoding that compares *across* sites at a
  * glance; the others compare within one.
  */
-export function CompositionTreemap({ rows, meta }: { rows: FilterRow[]; meta: MetaFile }) {
+export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', id = 'composition',
+  title = 'Stacked bars — what the PM2.5 is made of, per site and season', species: speciesOverride, notes, stackedOnly = false,
+}: { rows: FilterRow[]; meta: MetaFile; initialGrouping?: (typeof GROUPINGS)[number]; id?: string;
+  title?: string; species?: string[]; notes?: ReactNode; stackedOnly?: boolean }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const [mode, setMode] = useState<(typeof MODES)[number]>('Stacked bars')
   const [stat, setStat] = useState<(typeof STATS)[number]>('Mean')
-  const [grouping, setGrouping] = useState<(typeof GROUPINGS)[number]>('per site')
+  const [grouping, setGrouping] = useState<(typeof GROUPINGS)[number]>(initialGrouping)
   const [unitMode, setUnitMode] = useState<(typeof UNIT_MODES)[number]>('concentration (µg/m³)')
   const [twoLevel, setTwoLevel] = useState(true)
   const lg = useLegend()
@@ -48,13 +51,14 @@ export function CompositionTreemap({ rows, meta }: { rows: FilterRow[]; meta: Me
   const panelH = 260
   const UNITS = 'µg/m³'
 
-  // Species that make up mass, in the order the exporter groups them. PM2.5
-  // mass is the denominator, not a slice, so it is excluded from the parts.
+  // Species in the exporter's family order. PM2.5 mass is a separate
+  // comparison measurement; the visible species total is the percentage denominator.
   const speciesFields = useMemo(() => {
+    if (speciesOverride) return speciesOverride.filter((f) => meta.fields.includes(f))
     const wanted = new Set(['Ions', 'Metals & crustal'])
     const fromGroups = meta.field_groups.filter((g) => wanted.has(g.label)).flatMap((g) => g.fields)
     return ['OC (ChemSpec FTIR)', 'EC (ChemSpec FTIR)', ...fromGroups].filter((f) => meta.fields.includes(f))
-  }, [meta])
+  }, [meta, speciesOverride])
   const familyOf = (f: string) => (f.startsWith('OC') || f.startsWith('EC') ? 'Carbon' : meta.field_groups.find((g) => g.fields.includes(f))?.label ?? 'Other')
   const families = useMemo(() => [...new Set(speciesFields.map(familyOf))], [speciesFields]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -134,17 +138,17 @@ export function CompositionTreemap({ rows, meta }: { rows: FilterRow[]; meta: Me
 
   return (
     <ChartFrame
-      id="composition"
-      title="Stacked bars — what the PM2.5 is made of, per site and season"
-      subtitle="Speciated mass from the ChemSpec columns, grouped by measurement family (carbon, ions, metals & crustal). Concentration stacks the mean of each species in µg/m³, so absolute mass differences between sites or seasons show; composition (%) stacks each species' share of the speciated total, so a shift such as less carbon in one season shows. PM2.5 mass is not a slice; the gap between speciated and measured PM2.5 is unmeasured organic matter and water. Treemap, circle pack and donut remain for the within-site reading."
+      id={id}
+      title={title}
+      subtitle="Available species grouped by measurement family (carbon, ions, metals & crustal). Concentration stacks the selected mean or median in µg/m³. Composition (%) divides each positive, visible species statistic by the sum of those statistics; it is not a percentage of measured PM2.5 or an average of individual-filter percentages. Coverage can differ by species. Missing values are omitted, never filled with zero. Negative or zero aggregate species values have no positive slice. Hiding a species or family changes the percentage denominator. PM2.5 mass is a separate measurement: the difference is not a measured residual or full mass closure."
       provenance="1 stackplot + 2 pie calls in the estate · react-graph-gallery.com/barplot (stacked) · /treemap · /circular-packing · /donut"
       controls={
         <>
-          <Segmented label="encoding" value={mode} options={MODES} onChange={setMode} />
-          {mode === 'Stacked bars' && <Segmented label="bars" value={grouping} options={GROUPINGS} onChange={setGrouping} title="One bar per site, or one per season within each site" />}
-          {mode === 'Stacked bars' && <Segmented label="units" value={unitMode} options={UNIT_MODES} onChange={setUnitMode} />}
-          <Segmented label="statistic" value={stat} options={STATS} onChange={setStat} />
-          {mode !== 'Stacked bars' && <Toggle label="group by family" checked={twoLevel} onChange={setTwoLevel} title="Two levels of hierarchy: family → species" />}
+          {!stackedOnly && <Segmented label="Encoding" value={mode} options={MODES} onChange={setMode} />}
+          {mode === 'Stacked bars' && <Segmented label="Bars" value={grouping} options={GROUPINGS} onChange={setGrouping} title="One bar per site, or one per season within each site" />}
+          {mode === 'Stacked bars' && <Segmented label="Units" value={unitMode} options={UNIT_MODES} onChange={setUnitMode} />}
+          <Segmented label="Statistic" value={stat} options={STATS} onChange={setStat} />
+          {mode !== 'Stacked bars' && <Toggle label="Group by family" checked={twoLevel} onChange={setTwoLevel} title="Two levels of hierarchy: family → species" />}
         </>
       }
     >
@@ -154,10 +158,10 @@ export function CompositionTreemap({ rows, meta }: { rows: FilterRow[]; meta: Me
           <div style={{ width: '100%' }}>
             {bySeason && bars.length > 0 && (
               <p style={{ margin: '0 0 6px', fontSize: 11.5, color: INK.muted }}>
-                One bar per season within each site, seasons from {calendarLabel(meta)} (pick the calendar in the subset bar). Each bar is the {stat.toLowerCase()} over that season's filters, so n differs by bar; hover a bar for it.
+                One bar per season within each site, seasons from {calendarLabel(meta)}. Each bar is the {stat.toLowerCase()} over that season's filters, so n differs by bar; hover a bar for it.
               </p>
             )}
-            <StackedBars bars={bars} grouped={bySeason} pct={pct} families={families} val={val} dim={dimK} famDim={fam.dim} color={color} familyColor={familyColor} width={width} tip={tip} units={UNITS} />
+            <StackedBars bars={bars} grouped={bySeason} pct={pct} families={families} val={val} dim={dimK} famDim={fam.dim} color={color} familyColor={familyColor} width={width} tip={tip} units={UNITS} statistic={stat.toLowerCase()} />
           </div>
         ) : (
           shownSites.map((site) => {
@@ -255,6 +259,7 @@ export function CompositionTreemap({ rows, meta }: { rows: FilterRow[]; meta: Me
       </div>
       {famOn && <Legend items={families.map((f) => ({ label: f, color: familyColor(f), shape: 'band' as const }))} {...fam.props} />}
       <Legend items={speciesFields.map((f) => ({ label: f, color: color(f), shape: 'square' as const }))} {...lg.props} />
+      {notes}
     </ChartFrame>
   )
 }
@@ -265,7 +270,7 @@ export function CompositionTreemap({ rows, meta }: { rows: FilterRow[]; meta: Me
  * stack is the mean species concentration in µg/m³ on one shared axis.
  * `grouped` lays season bars out in per-site clusters with the site underneath.
  */
-function StackedBars({ bars, grouped, pct, families, val, dim, famDim, color, familyColor, width, tip, units }: {
+function StackedBars({ bars, grouped, pct, families, val, dim, famDim, color, familyColor, width, tip, units, statistic }: {
   bars: Bar[]
   grouped: boolean
   pct: boolean
@@ -278,6 +283,7 @@ function StackedBars({ bars, grouped, pct, families, val, dim, famDim, color, fa
   width: number
   tip: ReturnType<typeof useTooltip>
   units: string
+  statistic: string
 }) {
   const margin = { top: 16, right: 20, bottom: grouped ? 72 : 40, left: 60 }
   const innerW = Math.max(240, width - margin.left - margin.right)
@@ -295,7 +301,7 @@ function StackedBars({ bars, grouped, pct, families, val, dim, famDim, color, fa
   const kidsOf = (b: Bar) => families.flatMap((f) => b.children.filter((k) => k.family === f && val(k) > 0))
   const maxTotal = d3.max(bars, (b) => d3.sum(kidsOf(b), val)) ?? 1
   const y = d3.scaleLinear().domain([0, pct ? 1 : maxTotal || 1]).range([innerH, 0]).nice()
-  const yLabel = pct ? 'share of speciated mass (%)' : `mean concentration (${units})`
+  const yLabel = pct ? 'share of visible species total (%)' : `${statistic} concentration (${units})`
   const famText = (v: number, total: number) => (pct ? `${Math.round((v / total) * 100)}%` : fmt(v, 1))
   return (
     <svg width={width} height={innerH + margin.top + margin.bottom} className="animated">

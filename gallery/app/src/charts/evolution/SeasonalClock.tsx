@@ -14,6 +14,8 @@ const STATS = ['Median', 'Mean'] as const
 const LAYOUTS = ['Grouped', 'Rings'] as const
 /** A site-month with fewer filters than this is a stub, not a value: a median of two is a coin toss. */
 const MIN_N = 3
+/** an IQR needs four filters, the same rule as the monthly band chart */
+const IQR_MIN_N = 4
 const TAU = 2 * Math.PI
 
 type Cell = { month: number; n: number; median: number | null; mean: number | null; q1: number | null; q3: number | null }
@@ -92,9 +94,8 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
               n: vals.length,
               median: vals.length ? (d3.quantile(vals, 0.5) ?? null) : null,
               mean: vals.length ? (d3.mean(vals) ?? null) : null,
-              // an IQR of three points is still a stretch, but it is what the band chart quotes too
-              q1: vals.length >= MIN_N ? (d3.quantile(vals, 0.25) ?? null) : null,
-              q3: vals.length >= MIN_N ? (d3.quantile(vals, 0.75) ?? null) : null,
+              q1: vals.length >= IQR_MIN_N ? (d3.quantile(vals, 0.25) ?? null) : null,
+              q3: vals.length >= IQR_MIN_N ? (d3.quantile(vals, 0.75) ?? null) : null,
             }
           })
           return { name: s.name, color: s.color, cells }
@@ -174,8 +175,8 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
       provenance="react-graph-gallery.com/circular-barplot · not in the estate"
       controls={
         <>
-          <Segmented label="bar" value={stat} options={STATS} onChange={setStat} title="Statistic of the measurement across the month's filters" />
-          <Segmented label="layout" value={layout} options={LAYOUTS} onChange={setLayout} title="Grouped: sites side by side in each month. Rings: one ring per site, each with its own baseline, on a shared value scale" />
+          <Segmented label="Bar" value={stat} options={STATS} onChange={setStat} title="Statistic of the measurement across the month's filters" />
+          <Segmented label="Layout" value={layout} options={LAYOUTS} onChange={setLayout} title="Grouped: sites side by side in each month. Rings: one ring per site, each with its own baseline, on a shared value scale" />
         </>
       }
     >
@@ -267,7 +268,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
                             `${s.name} · ${MONTHS[c.month - 1]}`,
                             `${stat.toLowerCase()} ${unit} = ${fmt(v, 2)}`,
                             `n = ${c.n} filters`,
-                            c.q1 !== null ? `IQR ${fmt(c.q1, 2)} – ${fmt(c.q3, 2)}` : 'IQR n/a',
+                            c.q1 !== null ? `IQR ${fmt(c.q1, 2)} – ${fmt(c.q3, 2)}` : `IQR n/a (n<${IQR_MIN_N})`,
                             seasonLine,
                           ])
                         }

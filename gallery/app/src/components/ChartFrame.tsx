@@ -1,3 +1,4 @@
+import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { downloadPng, downloadSvg } from '@/lib/export'
 import { usePrefs } from '@/lib/prefs'
@@ -35,6 +36,9 @@ export function ChartFrame({
   /** where the chart is built, e.g. "gallery/app/src/pages/MeetingFollowupPage.tsx › ThreePlots"; copied by the ref button */
   source?: string
 }) {
+  const method = useEstimator()
+  title = estimatorText(title, method)
+  subtitle = subtitle ? estimatorText(subtitle, method) : subtitle
   const ref = useRef<HTMLElement>(null)
   const { explain } = usePrefs()
   const [info, setInfo] = useState(explain)
@@ -55,7 +59,7 @@ export function ChartFrame({
   }
 
   return (
-    <section className="panel" ref={ref} id={id}>
+    <section className="panel" ref={ref} id={id && method !== 'deming' ? `${id}-${method}` : id}>
       <header className="frame-head">
         <div>
           <h2>
@@ -73,7 +77,7 @@ export function ChartFrame({
             </button>
           )}
           <button type="button" className="btn quiet" title="Copy a reference to this chart (title, source file, current view URL) for development" onClick={copyRef}>
-            {refCopied ? 'copied' : 'ref'}
+            {refCopied ? 'Copied' : 'Ref'}
           </button>
           {exportable && (
             <>
@@ -109,19 +113,27 @@ export function Select({
   /** display text per option when the value is a code (e.g. a site code shown by name) */
   optionLabel?: (o: string) => string
 }) {
+  const method = useEstimator()
   return (
     <label className="control" title={title}>
       {label}
       <select className="select" value={value} onChange={(e) => onChange(e.target.value)}>
         {options.map((o) => (
           <option key={o} value={o}>
-            {optionLabel ? optionLabel(o) : o}
+            {estimatorText(optionLabel ? optionLabel(o) : o, method)}
           </option>
         ))}
       </select>
     </label>
   )
 }
+
+/**
+ * Sentence case for option text: capitalise the first word unless it is a single
+ * letter (x, y, n) or already starts with a capital, digit or symbol. Display
+ * only; the option values (often URL params) stay as written.
+ */
+export const sentence = (s: string) => /^[a-z]{2}/.test(s) ? s[0].toUpperCase() + s.slice(1) : s
 
 /** Segmented control — for 2–4 mutually exclusive options that deserve to be visible at once. */
 export function Segmented<T extends string>({
@@ -130,12 +142,15 @@ export function Segmented<T extends string>({
   options,
   onChange,
   title,
+  optionLabel,
 }: {
   label?: string
   value: T
   options: readonly T[]
   onChange: (v: T) => void
   title?: string
+  /** display text per option; defaults to the option in sentence case */
+  optionLabel?: (o: T) => string
 }) {
   return (
     <span className="control" title={title}>
@@ -143,7 +158,7 @@ export function Segmented<T extends string>({
       <span className="seg" role="radiogroup">
         {options.map((o) => (
           <button key={o} type="button" role="radio" aria-checked={o === value} className={o === value ? 'active' : ''} onClick={() => onChange(o)}>
-            {o}
+            {optionLabel ? optionLabel(o) : sentence(o)}
           </button>
         ))}
       </span>

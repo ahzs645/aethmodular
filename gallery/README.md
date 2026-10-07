@@ -21,7 +21,8 @@ gallery/
 │   ├── export_calibration.py       # calibration_explorer batch results -> calibration.json
 │   ├── export_calibration_runs.py  # explorer per-filter readouts + diagnostics -> calibration_runs.json
 │   ├── export_similarity.py        # frozen AIRSpec/VIBES spectra -> similarity/ (Spectral similarity tab)
-│   ├── export_meeting_followup.py  # 17 Sep meeting follow-up tables -> meeting/ (Meeting 17 Sep follow-up tab)
+│   ├── export_meeting_followup.py  # 17 Sep meeting follow-up tables -> meeting/ (Meeting follow-up tab)
+│   ├── export_satoshi_followup.py  # Satoshi's 2 Oct questions -> satoshi/ (Satoshi 2 Oct tab)
 │   └── fetch_basemap.py    # one-off Natural Earth download for the map
 └── app/                    # the React + D3 gallery
     ├── public/data/        # generated JSON — committed, so the app just runs
@@ -63,6 +64,27 @@ gallery/
 
 ## Running it
 
+The bubble map offers **Four focus sites** (Beijing, Delhi, JPL and Addis Ababa),
+**Single focus site** (with a picker limited to those four), **All SPARTAN sites**,
+and **All IMPROVE sites**. Focus-site maps retain the season, date and exclusion
+choices while selecting sites independently of the sidebar. IMPROVE uses its
+own measurement picker (TOR EC/OC, absorption, mass, iron and soil) and the
+locally available canonical cleaned IMPROVE population. Sample-count bubbles
+count all samples in that population, independently of measurement coverage.
+The compact, committed `improve_map.json` contains site summaries rather than
+individual records; regenerate it with
+`uv run python gallery/data/export_improve_map.py` after updating IMPROVE data.
+Map scope, focus, measurement and size choices survive in a copied URL.
+Every scope supports dragging to pan, wheel/pinch zoom and +/− buttons.
+IMPROVE opens on the US mainland; **All sites** fits the entire available
+network, including Alaska, Hawaii and overseas sites. Bubble radii stay fixed
+on screen so zooming does not change the size legend.
+The SPARTAN network view uses the local site inventory and public ChemSpecPM25
+files, with hollow markers where the selected measurement is unavailable.
+The four focus sites keep their canonical colours and names in that network
+view. Regenerate its compact summaries with
+`uv run python gallery/data/export_spartan_map.py`.
+
 ```bash
 cd gallery/app
 npm install
@@ -89,6 +111,9 @@ python gallery/data/export_spec_curve.py  # every scored Addis specification -> 
 uv run --no-sync python research/ftir_hips_chem/workflows/run_meeting_followup_20260917.py
 uv run --no-sync python research/ftir_hips_chem/workflows/run_meeting_grid_20260917.py
 uv run --no-sync python gallery/data/export_meeting_followup.py
+# Satoshi's 2 Oct questions (analog overlap, swap test, VIP, fit ladder, envelope): ~5 min, then export
+uv run --no-sync python research/ftir_hips_chem/workflows/run_satoshi_followup_20261002.py
+uv run --no-sync python gallery/data/export_satoshi_followup.py
 python gallery/data/fetch_basemap.py      # only if world.geojson goes missing
 ```
 
@@ -102,10 +127,32 @@ uv run python gallery/data/export_baseline_external_pilot.py  # baseline_externa
 uv run python gallery/data/export_baseline_followup.py        # baseline_followup.json, *_followup_*.csv, notebooks
 uv run python gallery/data/export_similarity.py               # similarity/*.bin + similarity.json
 uv run python gallery/data/export_vibes_fullrange_traces.py   # similarity/traces_VIBES-full.*
+uv run python gallery/data/export_vibes_fullrange_traces.py --rank 70  # similarity/traces_VIBES-full-r70.*
+uv run python gallery/data/export_vibes_fullrange_results.py  # vibes_fullrange_results.json
 uv run python gallery/data/export_etad_ids.py                 # similarity/etad_ids.json
 ```
 
 ## What the census found
+
+The Meeting follow-up tab displays an Addis coverage table independently of
+the regression selection. The current gallery has 190 paired filters; the
+frozen test-set evaluation has 233 filters, sharing 189 with the gallery and
+adding 44 later filters. Gallery filter ETAD-0248 is absent from the frozen
+spectral run. The existing SPARTAN product therefore has 189 complete pairs
+within that evaluation, while new predictions have 233. Missing pairs never
+become zeros. Re-exporting the meeting data preserves its Addis Deming error
+ratio (about 3.3354); it must not silently become the equal-error default.
+Regression options control the displayed lines and equations, with Deming
+selected by default; they do not change the fitted calibrations or guardrails.
+
+The Follow up meeting tab also includes Addis seasonal chemistry, with stacked
+bars in concentration units or percentages. It uses the existing gallery
+chemistry after exclusions, with FTIR EC and OC counted once. Its default is
+the Addis local `belg_feb` calendar; a control switches to the frozen meeting's
+`dry_feb` bins. Sample windows, counts and per-species coverage accompany the
+bars. Percentages are shares of the positive visible species means or medians,
+not shares of measured PM2.5. The selected-calibration crossplots show actual
+IMPROVE fitting and holdout counts plus held-out R² and RMSE in µg/filter.
 
 211 notebooks, 184 of which draw something: **827 figure-producing cells**.
 
@@ -162,11 +209,12 @@ that would do nothing is absent, not disabled:
   chart kept its own picker and the hexbin's "same pair as the scatterplot"
   claim was only true by coincidence.
 - **Crossplot axes** (correlation tab) — one policy for the scatterplot, hexbin
-  and connected scatter together: the 1:1 line (squares the panels, shares the
-  domain, turns on Deming), an axes mode — `Data` (0 always visible, negatives
-  kept), `From 0,0` (both axes start at zero; points below are not drawn but
-  stay in the fit, and the chart says how many), `Show intercept` (extend the
-  axes to the fitted lines' y-intercepts and mark them) — and log axes. Fit
+  and connected scatter together: the 1:1 line (squares the panels and keeps
+  equal units per pixel), an axes mode — `Data` (0 always visible, negatives
+  kept), `From 0,0` (the default; both axes start at zero; points below are not
+  drawn but stay in the fit, and the chart says how many), `Show intercept`
+  (keep all observations and mark the selected fits' intercepts, with compact
+  margins and independently positioned axes of equal span) — and log axes. Fit
   lines are clipped to the axes so a slope above 1 no longer leaves through
   the top margin.
 - **Date range** — a brushable timeline of filters per month, stacked by site.
@@ -247,14 +295,29 @@ read off per-site panels whose time axes differ.
 **Clicking opens the sample drawer** and pins the filter (it stays highlighted
 on every tab, with a summary card in the subset bar). The drawer shows:
 
-- every measurement the filter carries, grouped by family, with **where it
-  sits within its site**: a range strip with the site's IQR, median tick and
-  this filter's dot, plus the site percentile;
+- every measurement the filter carries, grouped by family, with a **Reference population** picker: its own site (default), any other gallery site, the four gallery sites pooled, or the available public SPARTAN network. The range, IQR, median, coverage and percentile follow that reference while the selected filter stays fixed. Values outside the range stay visible at the edge and are labelled;
 - the ratios worth reading off one filter (HIPS BC/FTIR EC, OC/EC,
-  OM/OC, EC/PM2.5) against the site median of the same ratio;
-- **a mini crossplot with its own axis pickers** — any pair, same site or all
-  sites — with this filter ringed and its residual from the OLS fit stated;
+  OM/OC, EC/PM2.5) against the selected reference median of the same ratio, using its paired coverage;
+- **a mini crossplot with its own axis pickers** — using the same reference population, with this filter ringed even when it falls outside the reference cloud. Its selected regression fits and confidence bands follow the global controls;
 - its neighbours in time at the site, click-through, plus ← / → keys to step.
+- the baseline-corrected spectrum where available: spline baseline uses its
+  4000–1425 cm⁻¹ grid; VIBES uses the full-range 4000–500 cm⁻¹ fit. Selecting
+  **both** shares axes while preserving each trace's native grid and endpoint.
+  The default VIBES export is the completed rank-70 correction, including
+  the two separately recovered held-out blanks. A labelled rank-30 selector
+  preserves the earlier correction. A failed full-range load never substitutes the archived truncated fit.
+  Use +/− or enable **Zoom / pan** for wheel/pinch zoom and horizontal dragging.
+  Absorbance rescales to the visible wavenumber window; **Reset zoom** restores
+  the full range and disables gesture capture. A new filter or a change in the
+  available spectral range restores the full view.
+  **Expand spectrum** opens a larger modal with the same baseline choices,
+  full-range traces and zoom controls. Close, Escape or a backdrop click returns
+  to the drawer while keeping the filter pinned; keyboard focus returns to the
+  Expand button.
+
+Clicking empty plot or page space, closing the drawer, pressing Escape, or
+unpinning clears the sample pin, closes its drawer and removes `pin` from the
+view URL. Drawer controls and brush selections keep their own interactions.
 
 This is the question a static figure can never answer: "which point in the
 crossplot is that spike in the timeseries, and what else is odd about it?"
@@ -375,15 +438,23 @@ read 906 µg/m³ against a 41 µg/m³ PM2.5 total.
 
 The phase-3 FTIR-EC calibration and optimisation work, read out of the
 calibration explorer's batch results (`calibration_explorer/cache/
-batch_results.jsonl`, 82,934 configuration × site × k rows). Nothing is
-recomputed: `export_calibration.py` keeps the rule-k row per configuration ×
-evaluation site (11,190 rows) and the full k sweep for Addis under protocol A
+batch_results.jsonl`, 109,924 configuration × site × k rows). No models are
+refitted: `export_calibration.py` keeps the rule-k row per configuration ×
+evaluation site (14,356 rows) and the full k sweep for Addis under protocol A
 (14,092 rows), plus the dated write-ups' first paragraphs. Four charts follow
 the argument in those write-ups:
 
 - **Cutoff sweep** — readout vs cohort size, one line per calibration spectra
   space, locked cutoff marked. The 2026-08-20 dense sweep's basin at
   ocec-440–490 × AIRSpec is visible here; the coarse ladder never looked below 600.
+  The calibration panel selects held-out IMPROVE R², held-out RMSE, or internal
+  RMSECV used during factor selection. Both RMSE measures use TOR loading in
+  µg/filter; evaluation-site RMSE is a separate concentration score. The
+  horizontal axis defaults to actual filters used in fitting when saved counts
+  are available, with requested cutoff retained as an option. A table reports
+  selected cohort, fitted and held-out counts at the clicked or locked cutoff.
+  Export enrichment reads matching saved fit/CV caches without refitting;
+  unavailable historical values remain missing.
 - **k sweep** — intercept, slope, R² and held-out TOR R² against component
   count for one configuration, rule k marked: the intercept keeps shrinking
   with k while the guardrails deteriorate.
@@ -398,9 +469,106 @@ the argument in those write-ups:
   sites: blue at Addis and Delhi, white at Beijing and Pasadena is the
   compositional-offset signature.
 
+To recover counts and calibration errors from existing caches:
+
+```bash
+uv run aeth doctor
+uv run python gallery/data/export_calibration.py --enrich-cache
+```
+
+If the external TOR file is still hydrating, use the locally prepared metadata:
+
+```bash
+uv run python gallery/data/export_calibration.py --enrich-cache \
+  --staged-metadata research/ftir_hips_chem/output/tables/vibes_colab_bundle/stage/data/pool_metadata.csv
+```
+
+The staged table supplies candidate filter identities and sites; an exact
+resolved-cohort cache hash, matching fitted count, rule factor count and
+held-out R² are still required. The adjacent `etad_metadata.csv` also permits
+the corrected-space Ethiopia ranking to be reproduced with the shared
+selection helper. No PLS model or CV curve is refitted. A gitignored sidecar
+in the explorer cache preserves these matches for later ordinary exports.
+On 1 October 2026, 14,212 of 14,356 grid rows have counts and internal RMSECV;
+10,596 have outer held-out RMSE. Interleaved protocols deliberately have no
+outer held-out score. The remaining 144 rows are historical lowest-OC/EC or
+raw-space spectral-analog configurations whose exact cache checks failed;
+they display unavailable values. For example, the 800-filter spline-baseline
+site-grouped configuration fits 606 filters and holds out 194, with outer
+RMSE 3.8587 µg/filter and inner RMSECV 6.5587 µg/filter.
+
 One configuration is selected across the page (click a point or a heatmap
 row); when it matches an exported preset, the per-filter section below
 follows.
+
+The **Specification curve** has dropdowns for cohort selection method,
+selection spectra, cohort cutoff, model spectra, cross-validation protocol,
+PLS factor count, and calibration lot where available. These filters intersect
+with clicked choice strips and the guardrail toggle; the shown/pass counts
+refer to the filtered configurations. Reset filters restores the full search.
+The search selector switches between the original spline/raw/derivative export
+and the 17 Sep spline/VIBES export. In the latter, selection and model baselines
+are paired in the saved runs, so mixed-baseline selections have no results.
+Only original-search curve points select configurations in the original
+k-sweep and per-filter readouts below.
+
+Graph view switches between one selection at a time (with a selection dropdown),
+side-by-side or vertically stacked selection cohorts on a shared vertical
+scale, a combined overlay ordered by percentile within each selection, and
+the pooled ordered curve with choice strips. The main Calibration tab opens
+the spline/VIBES search with those two selections stacked; all baseline
+variants are also available. Overlay percentiles compare distributions and do
+not pair configurations. Red dots can be hidden independently, or highlight
+saved guardrail passers, a configurable near-zero intercept band, slope plus
+cross-validation R², or all three custom criteria. Custom criteria omit the
+saved OOD/negative-prediction conditions and never alter saved guardrail flags.
+The optional matches-only filter follows the active highlight rule.
+Choice strips omit the spectral preprocessing block: selection panels and
+the baseline controls already identify it. Calibration cohort and settings
+rows retain their original saved-mask indices and remain clickable filters.
+
+The VIBES **fit restricted to 4000–1425 cm⁻¹** is archived. Calibration hides
+its configurations and dropdown entries unless **Show archived VIBES fit** is
+enabled; reset filters retains that archive choice. Counts use the available
+active population and separately report hidden archived configurations. The
+Follow up meeting tab follows the same default. The full-range fit cropped to
+4000–1425 for prediction stays available as a clearly labelled sensitivity
+comparison, rather than being conflated with the older truncated fit.
+
+The Baselines tab's **One physical filter, both corrections** also supports
+overlay, one method at a time, and stacked spectra with a shared vertical scale.
+Its range selector offers 4000–1425 or 4000–500 cm⁻¹. The full range adds the
+current full-range VIBES correction on its own 8-channel display grid, matched
+by physical filter ID; all 12 inspection cases are in that export. The archived
+raw spectra, corrections and their difference stop near 1425 cm⁻¹. No values
+are extrapolated, and the archived predictions and earlier selection masks
+retain their original meaning. Range, layout and method choices persist in
+the view URL.
+
+The Baselines tab now opens with the completed rank-70 benchmark, paired
+site-bootstrap RMSE intervals, population spectral overlays, held-out blank
+residuals, synthetic signal recovery, and current per-filter traces. The
+calibration-cohort selector switches the paired source-domain evaluation;
+preliminary rank-30 and archived variants can be included explicitly. Spectral
+population and range selectors control the median/IQR overlay, whose legend
+can hide each correction independently. These results do not establish EC
+accuracy in the Addis test set. The run includes all 12,808 finite corrections,
+including two held-out blanks recovered separately from the original export.
+Seasonal predictions, combined sets, repeat fits and the specification grid
+on Follow up meeting use completed rank-70 models by default. The VIBES
+analysis selector preserves the earlier rank-30 models as an archive.
+**Show archived
+benchmark** reveals the original scores, diagnostics and paired inspection
+curves without changing their saved data. The default current inspection
+uses completed rank-70 full-range VIBES traces by default, with a separate
+preliminary rank-30 selector, and omits archived predictions and archived
+better/worse labels, and starts on 4000–500 with no selection mask. A shared
+window crops only the display of the full-range fit. Spectral similarity also
+offers separately recomputed rank-70 full-range and shared-window matrices,
+rankings and traces. Its archived truncated VIBES option is hidden by default.
+Archive visibility is preserved in the view URL (`carchive`, `barchive`,
+`sarchive`; the meeting tab uses `marchive`). Current/earlier seasonal and
+specification versions persist as `mversion` and `cversion`.
 
 ### One configuration, every filter
 
@@ -459,6 +627,29 @@ port 5058. The gallery is the reading view; the explorer is the lab.
 - **Canvas rendering** for the largest scatters was deliberately not done:
   every chart is exported as SVG, and a canvas layer would vanish from the
   file.
+
+## Regression display controls
+
+The sidebar's **Regression fits** checkboxes select OLS, Deming and York
+independently. Deming alone is the default; deselect all to hide fits and
+equations. **Reset fits** restores the default. The choice persists across
+tabs and in copied URLs (`fits=ols|deming|york`, or `fits=none`). Live crossplots,
+scatter matrices, density plots, filter detail panels and calibration readouts
+share this selection. Saved coefficient comparisons display one view per
+selected estimator; historical exports without the requested coefficients
+show an explicit unavailable message.
+
+York uses the uncorrelated-error iteration already implemented in
+`calibration_explorer/hips_lab.py`. Live chemistry plots use relative per-filter
+HIPS uncertainty when all paired filters carry it, normalized to its median;
+the other axis uses a common error scale based on the chart's Deming ratio.
+Otherwise both errors are constant. Saved summary views also use constant
+errors with their saved Deming ratio, so their York coefficients coincide with
+Deming. Captions identify this assumption. These controls change displayed
+comparison fits, not PLS calibration models, saved scores or Deming guardrails.
+
+Run `npm test` from `gallery/app` for URL-selection and numerical checks,
+including parity with the existing Python York implementation.
 
 ## Rendering invariants
 
@@ -610,3 +801,74 @@ The export takes about ten seconds and writes about 27 MB to
 `app/public/data/similarity/`. Each method × mask pair has a group × group
 score triangle and a top-500 list, and each method has binned per-filter
 traces. The page loads only the files for the current method and mask.
+
+The **95% fit uncertainty** checkbox is off by default and persists across tabs
+and shared URLs (`ci=1`). It shows pointwise line confidence bands and marginal
+slope/intercept intervals for each selected estimator. Live plots use 500
+deterministic bootstrap resamples of the displayed finite pairs, preserving
+x/y/uncertainty alignment and joint slope/intercept covariance. Where all paired
+filters have site/date metadata, whole calendar months are resampled within each
+site; otherwise the readout identifies a paired bootstrap that assumes independent
+pairs. At least eight pairs, six months in each site for block resampling, and
+90% valid fits are required. Hover the stats box for the resampling assumptions.
+These are exploratory intervals conditional on the displayed PLS model, exclusions,
+Deming ratio and York error assumptions; they do not include calibration-training
+uncertainty, MAC uncertainty, or individual measurement/prediction errors.
+
+Saved seasonal coefficient intervals follow the toggle; saved weighted York
+standard errors become explicitly labelled approximate 95% normal intervals
+(±1.96 SE). Cross-site intervals are calculated only when the raw pairs reproduce
+the saved estimator coefficients. Saved specification/sweep summaries without
+intervals remain point estimates with an availability notice. Separate 10–90%
+variability ranges across cross-validation splits and spectral percentile envelopes
+retain their own meaning and are unaffected by the 95% fit control. Reset fits
+restores Deming alone with fit uncertainty off.
+
+Drawer reference choices persist in copied URLs (`sampleRef` query parameter).
+Site/four-site references use the complete gallery export after canonical
+exclusion flags, independently of the main graph's subset. The public-network
+reference is `data/spartan_reference.json`, generated with
+`uv run python gallery/data/export_spartan_reference.py`: 4,363 physical filters
+at 37 locally available ChemSpecPM25 sites over all available dates, with known
+study exclusions flagged and removed by the reference selector. It uses actual
+filter values, not averaged site medians. Carbon is the public, rounded FTIR
+product; the EC/OC labels do not represent independent measurements. Public BC
+is not substituted for HIPS BC. HIPS and FTIR functional groups have no network
+reference here, so their selected-filter values remain visible with an explicit
+unavailable comparison. The public reference retains upstream quality decisions
+at sites without a study exclusion registry. Ratios require paired fields;
+percentiles need at least four finite reference values. Network points lacking a
+full gallery record have hover details without opening a nonexistent record.
+
+### Completed rank-70 VIBES migration (2 October 2026)
+
+Current Baselines views include paired residuals, loading strata, exact spectral
+region decomposition, blank distributions, common-test calibration selection,
+spectrum-only routing, training-only PCA and the 31-spectrum external pilot.
+Seasonal/combined calibrations were refitted on both the full (2,722 channels)
+and shared (2,002 channels) corrected grids. The category grid is complete:
+9,010 fits, including 3,138 unchanged spline fits and 2,936 per VIBES window.
+Original calibration panels below the specification curve use spline/raw/derivative
+inputs; they have no VIBES results to migrate. Existing SPARTAN chemistry products
+remain measured/source products and are not replaced with these experimental models.
+
+Rebuild from the validated recovered correction with these commands, in order:
+
+```bash
+uv run aeth doctor
+uv run python research/ftir_hips_chem/workflows/migrate_vibes_gallery_rank70.py meeting
+uv run python research/ftir_hips_chem/workflows/migrate_vibes_gallery_rank70.py grid
+uv run python research/ftir_hips_chem/workflows/migrate_vibes_gallery_rank70.py export-meeting
+uv run python research/ftir_hips_chem/workflows/migrate_vibes_gallery_rank70.py followup
+uv run python research/ftir_hips_chem/workflows/migrate_vibes_gallery_rank70.py export-followup
+uv run python research/ftir_hips_chem/workflows/export_vibes_rank70_paired.py
+uv run python gallery/data/export_baseline_applicability.py --completed
+uv run python gallery/data/export_similarity.py --completed
+uv run python research/ftir_hips_chem/workflows/migrate_vibes_external_rank70.py
+```
+
+The grid and external corrections resume only against identical input hashes.
+The meeting export rejects incomplete or duplicated grids. Derived outputs live
+in `output/tables/vibes_fullrange/gallery_rank70_20261002`; generated gallery
+assets are git-ignored. See [migration audit](../docs/vibes-gallery-rank70-migration.md)
+for source provenance and coverage.

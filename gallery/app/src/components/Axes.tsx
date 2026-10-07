@@ -1,3 +1,4 @@
+import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import { useMemo } from 'react'
 import type { ScaleLinear, ScaleTime, ScaleBand } from 'd3'
 import { INK, FONT } from '@/lib/theme'
@@ -34,6 +35,7 @@ export function XAxis({
   /** y (relative to the axis) for the title; defaults below the ticks */
   labelDy?: number
 }) {
+  const method = useEstimator()
   const ticks = useMemo(() => ticksOf(scale, tickCount), [scale, tickCount])
   const range = scale.range() as [number, number]
   const x0 = Math.min(...range)
@@ -64,7 +66,7 @@ export function XAxis({
           fontWeight={600}
           fill={INK.text}
         >
-          {label}
+          {estimatorText(label, method)}
         </text>
       )}
     </g>
@@ -92,6 +94,7 @@ export function YAxis({
   /** where to put the rotated axis title; defaults to 50px left of the axis */
   labelX?: number
 }) {
+  const method = useEstimator()
   const ticks = useMemo(() => ticksOf(scale, tickCount), [scale, tickCount])
   const range = scale.range() as [number, number]
   const y0 = Math.min(...range)
@@ -118,7 +121,7 @@ export function YAxis({
           fontWeight={600}
           fill={INK.text}
         >
-          {label}
+          {estimatorText(label, method)}
         </text>
       )}
     </g>

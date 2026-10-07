@@ -9,6 +9,7 @@ import { INK, MARGIN, FONT } from '@/lib/theme'
 import type { CalibFile, CalibRow } from '@/lib/types'
 import { METRICS, fmtFit, spectraColor, isInterceptMetric, isSlopeMetric, metricLabel, metricOf, sameConfig, type Config, type Metric } from './common'
 import { COHORT, CV_PROTOCOL, CV_PROTOCOL_SHORT, METRIC, PREPROCESSING, SELECTION_SPACE, label } from '@/lib/labels'
+import { calibrationReadout, cutoffPosition, fittingCounts, cutoffConfig, type CalibrationReadout, type CutoffAxis } from '@/lib/cutoffSweep'
 
 /**
  * Cutoff sweep — the "try somewhat more and somewhat less" experiment from
@@ -23,25 +24,42 @@ import { COHORT, CV_PROTOCOL, CV_PROTOCOL_SHORT, METRIC, PREPROCESSING, SELECTIO
  * cross-validation) sits in its own panel, apart from the test-set (Addis)
  * readouts, so the two are never read as the same kind of number.
  */
-/** Test-set readouts only; the IMPROVE cross-validation R² gets its own panel below. */
+/** Test-set readouts only; IMPROVE cross-validation has its own panel below. */
 const TEST_METRICS = METRICS.filter((m) => m !== 'held-out TOR R²')
 const CV_METRIC: Metric = 'held-out TOR R²'
+type SweepMetric = Metric | CalibrationReadout
+const CV_LABELS: Record<CalibrationReadout, string> = {
+  ho: 'IMPROVE cross-validation R² (held-out sites)',
+  cv_rmse: 'IMPROVE cross-validation RMSE (held-out sites, µg/filter)',
+  rmsecv: 'IMPROVE internal cross-validation RMSE (µg/filter)',
+}
+const CV_AXIS_LABELS: Record<CalibrationReadout, string> = {
+  ho: 'IMPROVE cross-validation R²',
+  cv_rmse: 'IMPROVE RMSE (µg/filter)',
+  rmsecv: 'IMPROVE RMSECV (µg/filter)',
+}
+const X_LABELS: Record<CutoffAxis, string> = {
+  fitted: 'IMPROVE filters used in fitting',
+  cutoff: 'Requested IMPROVE cohort cutoff (filters)',
+}
+const isCvMetric = (m: SweepMetric): m is CalibrationReadout => m === 'ho' || m === 'cv_rmse' || m === 'rmsecv'
+const fmtCount = (v: number | null) => v === null ? 'unavailable' : v.toLocaleString()
 
 interface SweepPoint { r: CalibRow; x: number; y: number }
 interface SweepSeries { key: string; sel: string; sp: string; label: string; pts: SweepPoint[]; color: string; dash?: string }
 
-function sweepSeries(rows: CalibRow[], metric: Metric, allPairs: boolean): SweepSeries[] {
+function sweepSeries(rows: CalibRow[], metric: SweepMetric, allPairs: boolean, axis: CutoffAxis): SweepSeries[] {
   const groups = d3.group(rows, (r) => `${r.sel ?? 'raw'}|${r.sp}`)
   return [...groups.entries()]
     .map(([key, rs]) => {
       const [sel, sp] = key.split('|')
       const pts = rs
-        .map((r) => ({ r, x: r.cut as number, y: metricOf(r, metric, allPairs) }))
-        .filter((p): p is SweepPoint => p.y !== null && Number.isFinite(p.y))
-        .sort((a, b) => a.x - b.x)
+        .map((r) => ({ r, x: cutoffPosition(r, axis), y: isCvMetric(metric) ? calibrationReadout(r, metric) : metricOf(r, metric, allPairs) }))
+        .filter((p): p is SweepPoint => p.x !== null && p.y !== null && Number.isFinite(p.y))
+        .sort((a, b) => a.x - b.x || (a.r.cut ?? 0) - (b.r.cut ?? 0))
       return { key, sel, sp, label: `${label(PREPROCESSING, sp)}${sel !== 'raw' ? ` · ${label(SELECTION_SPACE, sel)}` : ''}`, pts, color: spectraColor(sp), dash: sel !== 'raw' ? '6 4' : undefined }
     })
-    .filter((s) => s.pts.length > 1)
+    .filter((s) => s.pts.length > 0)
     .sort((a, b) => a.label.localeCompare(b.label))
 }
 
@@ -56,6 +74,8 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
   const [target, setTarget] = useState('addis')
   const [metric, setMetric] = useState<Metric>('Deming intercept')
   const [allPairs, setAllPairs] = useState(false)
+  const [cvMetric, setCvMetric] = useState<CalibrationReadout>('cv_rmse')
+  const [axisPreference, setAxisPreference] = useState<CutoffAxis>('fitted')
   const { hidden, dim, props: legendProps } = useLegend()
 
   const targets = useMemo(() => [...new Set(calib.grid.map((r) => r.tg))].sort(), [calib.grid])
@@ -65,11 +85,11 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
     () => calib.grid.filter((r) => r.co === cohort && r.mo === mode && r.tg === target && r.lot === 'all' && r.el === 'all' && r.cut !== null),
     [calib.grid, cohort, mode, target]
   )
-  const series = useMemo(() => sweepSeries(rows, metric, allPairs), [rows, metric, allPairs])
-  // The calibration-set panel. calibration.json carries only the cross-validation R²
-  // (`ho`, heldout_R2) per grid row; the `rmse` field is the test-set (evaluation site)
-  // RMSE, and no RMSECV is exported, so this panel shows R² only.
-  const cvSeries = useMemo(() => sweepSeries(rows, CV_METRIC, false), [rows])
+  const hasFitCounts = rows.some((r) => cutoffPosition(r, 'fitted') !== null)
+  const axis = axisPreference === 'fitted' && hasFitCounts ? 'fitted' : 'cutoff'
+  const missingFitCounts = rows.filter((r) => cutoffPosition(r, 'fitted') === null).length
+  const series = useMemo(() => sweepSeries(rows, metric, allPairs, axis), [rows, metric, allPairs, axis])
+  const cvSeries = useMemo(() => sweepSeries(rows, cvMetric, false, axis), [rows, cvMetric, axis])
 
   const siteName = calib.targets[target]?.site ?? target
   const testLabel = (m: Metric) => (target === 'addis' ? metricLabel(m) : metricLabel(m).replace('Addis', siteName))
@@ -80,19 +100,22 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
   const [x0, x1] = d3.extent(xAll)
   const x = d3.scaleLinear().domain(x0 === undefined || x1 === undefined ? [0, 1] : [x0, x1]).range([0, innerW]).nice()
   const defaultCut = calib.default_cutoff[cohort]
-  const legendSeries = series.length ? series : cvSeries
+  const legendSeries = [...new Map([...series, ...cvSeries].map((s) => [s.key, s])).values()]
   const shortMode = label(CV_PROTOCOL_SHORT, mode)
 
-  const panel = (ss: SweepSeries[], m: Metric, height: number, yLabel: string) => (
+  const panel = (ss: SweepSeries[], m: SweepMetric, height: number, yLabel: string) => (
     <SweepPanel
       series={ss} metric={m} height={height} width={width} innerW={innerW} x={x} calib={calib} yLabel={yLabel}
-      defaultCut={defaultCut} selected={selected} dim={dim}
+      defaultCut={defaultCut} axis={axis} selected={selected} dim={dim}
       onEnter={(e, s, p) =>
         tip.show(e, [
-          `${cohort}-${p.x} × ${label(PREPROCESSING, s.sp)}${s.sel !== 'raw' ? ` (${label(SELECTION_SPACE, s.sel)})` : ''}`,
+          `${cohort}-${p.r.cut} × ${label(PREPROCESSING, s.sp)}${s.sel !== 'raw' ? ` (${label(SELECTION_SPACE, s.sel)})` : ''}`,
+          `Selected cohort: ${fmtCount(fittingCounts(p.r).cohort)} · fitted: ${fmtCount(fittingCounts(p.r).fitted)} · held-out: ${fmtCount(fittingCounts(p.r).heldout)} filters`,
           `${METRIC.k}: ${p.r.k ?? '—'} (rule)`,
           `Test set (${siteName}): Deming ${fmtFit(allPairs ? p.r.adm : p.r.dm, allPairs ? p.r.adb : p.r.db)} · R² ${(allPairs ? p.r.ar2 : p.r.r2)?.toFixed(3) ?? '—'}`,
           `Calibration set: IMPROVE cross-validation R² ${p.r.ho?.toFixed(3) ?? '—'}`,
+          `Calibration set: IMPROVE cross-validation RMSE ${calibrationReadout(p.r, 'cv_rmse')?.toFixed(3) ?? 'unavailable'} µg/filter`,
+          `Internal cross-validation RMSE: ${calibrationReadout(p.r, 'rmsecv')?.toFixed(3) ?? 'unavailable'} µg/filter`,
           'click to load into the PLS-factor sweep',
         ])
       }
@@ -101,26 +124,32 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
     />
   )
   const cvPanelTitle: React.CSSProperties = { margin: '14px 0 2px', fontSize: 12.5, fontWeight: 600, color: 'var(--ink-text)' }
+  const countCut = selected.co === cohort && selected.cut !== null && rows.some((r) => r.cut === selected.cut) ? selected.cut : defaultCut
+  const countRows = rows.filter((r) => r.cut === countCut).sort((a, b) => a.sp.localeCompare(b.sp) || (a.sel ?? '').localeCompare(b.sel ?? ''))
 
   return (
     <ChartFrame
       id="cutoff-sweep"
       title="Cutoff sweep — how big should the IMPROVE calibration cohort be?"
-      subtitle="Readouts at the explorer's rule number of PLS factors as the calibration cohort grows, one line per spectral preprocessing (colour); a dashed line is a cohort selected on baseline-corrected rather than raw spectra. The top panel is the test set (the evaluation site, never used in fitting); the bottom panel is the calibration set, scored by IMPROVE cross-validation. The vertical line is the locked cutoff. Click a point to load that configuration into the PLS-factor sweep below."
+      subtitle="Readouts at the explorer's rule number of PLS factors, one line per spectral preprocessing (colour); a dashed line is a cohort selected on baseline-corrected rather than raw spectra. The top panel scores the test set (the evaluation site, never used in fitting); the bottom panel scores IMPROVE cross-validation. IMPROVE RMSE measures TOR loading in µg/filter. Fitted counts exclude the whole-site holdout and can differ at the same requested cutoff. Vertical markers locate the locked cutoff. Click a point to load its original cutoff into the PLS-factor sweep below."
       provenance={`calibration_explorer batch results · ${calib.n_source_rows.toLocaleString()} rows · DENSE_SWEEP_RESULTS_2026-08-20.md`}
       controls={
         <>
-          <Select label="cohort" value={cohort} options={rankedCohorts} onChange={setCohort} optionLabel={(c) => label(COHORT, c)} />
-          <Select label="cross-validation protocol" value={mode} options={modes} onChange={setMode} optionLabel={(m) => label(CV_PROTOCOL, m)} />
-          <Select label="test set" value={target} options={targets} onChange={setTarget} optionLabel={(t) => calib.targets[t]?.label ?? t} />
-          <Select label="test-set readout" value={metric} options={[...TEST_METRICS]} onChange={(v) => setMetric(v as Metric)} optionLabel={metricLabel} />
-          <Toggle label="all pairs (not the fixed set)" checked={allPairs} onChange={setAllPairs} />
+          <Select label="Cohort" value={cohort} options={rankedCohorts} onChange={setCohort} optionLabel={(c) => label(COHORT, c)} />
+          <Select label="Cross-validation protocol" value={mode} options={modes} onChange={setMode} optionLabel={(m) => label(CV_PROTOCOL, m)} />
+          <Select label="Test set" value={target} options={targets} onChange={setTarget} optionLabel={(t) => calib.targets[t]?.label ?? t} />
+          <Select label="Test-set readout" value={metric} options={[...TEST_METRICS]} onChange={(v) => setMetric(v as Metric)} optionLabel={metricLabel} />
+          <Select label="Calibration cross-validation readout" value={cvMetric} options={['cv_rmse', 'ho', 'rmsecv']} onChange={(v) => setCvMetric(v as CalibrationReadout)} optionLabel={(m) => CV_LABELS[m as CalibrationReadout]} />
+          <Select label="Horizontal axis" value={axis} options={hasFitCounts ? ['fitted', 'cutoff'] : ['cutoff']} onChange={(v) => setAxisPreference(v as CutoffAxis)} optionLabel={(a) => X_LABELS[a as CutoffAxis]} />
+          <Toggle label="All pairs (not the fixed set)" checked={allPairs} onChange={setAllPairs} />
         </>
       }
     >
       <div ref={wrapRef} className="chart-wrap">
+        {!hasFitCounts && <p className="chart-note">Actual fitting counts are unavailable for these saved rows; the axis shows requested cutoffs. No test-set pair count or cutoff is substituted for a fit count.</p>}
+        {axis === 'fitted' && missingFitCounts > 0 && <p className="chart-note">{missingFitCounts} saved rows have no fitting counts and are omitted on this axis. Choose requested cutoff to inspect their available scores.</p>}
         <p style={{ ...cvPanelTitle, marginTop: 0 }}>Test set: {siteName}</p>
-        {shown.flatMap((s) => s.pts).length < 2 ? (
+        {shown.flatMap((s) => s.pts).length === 0 ? (
           <Empty>No rows for {label(COHORT, cohort)} · {shortMode} · {siteName}.{mode !== 'site_heldout' ? ' Interleaved CV covers AIRSpec spectra at every site (Colab batch, 2026-09-23); raw and 2nd-derivative spectra only at Addis and Bishoftu, on the 5-point cutoff ladder.' : ''}</Empty>
         ) : (
           panel(shown, metric, 340, testLabel(metric))
@@ -129,34 +158,47 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
           Calibration set: IMPROVE cross-validation
           <span style={{ fontWeight: 400, color: 'var(--ink-muted)' }}> · scored on IMPROVE filters only, not on {siteName}</span>
         </p>
-        {cvShown.flatMap((s) => s.pts).length < 2 ? (
+        <p className="chart-note">{cvMetric === 'rmsecv'
+          ? 'Internal cross-validation: fold predictions within the fitted IMPROVE set, at the selected number of PLS factors. RMSECV scores TOR loading in µg/filter.'
+          : 'Held-out-site cross-validation: predictions for IMPROVE sites excluded from the final fit. RMSE scores TOR loading in µg/filter; it is distinct from test-set concentration error.'}</p>
+        {cvShown.flatMap((s) => s.pts).length === 0 ? (
           <Empty>
-            {mode !== 'site_heldout'
+            {mode !== 'site_heldout' && cvMetric !== 'rmsecv'
               // calibration_explorer/app.py only scores held-out IMPROVE sites under site-grouped CV;
               // interleaved CV fits on every site, so there is nothing left out to score against
-              ? <>{METRIC.cvR2} is exported only for {label(CV_PROTOCOL, 'site_heldout')}. {label(CV_PROTOCOL, mode)} keeps every IMPROVE site in the fit, so no whole site is left out to score. Switch the cross-validation protocol to see this panel.</>
-              : <>No IMPROVE cross-validation readouts for {label(COHORT, cohort)} at these cutoffs.</>}
+              ? <>No {CV_LABELS[cvMetric]} is saved for these rows. Interleaved protocols keep every site in the final fit, so no whole-site holdout score exists. Select internal cross-validation RMSE to inspect any saved fold scores.</>
+              : <>No {CV_LABELS[cvMetric]} is saved for {label(COHORT, cohort)} at these cutoffs. Missing RMSE is not replaced by the test-set RMSE.</>}
           </Empty>
         ) : (
-          panel(cvShown, CV_METRIC, 220, 'IMPROVE cross-validation R²')
+          panel(cvShown, cvMetric, 250, CV_AXIS_LABELS[cvMetric])
         )}
         <Legend
           items={legendSeries.map((s) => ({ label: s.label, color: s.color, shape: s.dash ? ('dashed' as const) : ('line' as const) }))}
           {...legendProps}
           note={[
             isSlopeMetric(metric) ? `shaded = slope box ${calib.slope_box[0]}–${calib.slope_box[1]}` : null,
-            `bottom panel dashed = R² floor ${calib.heldout_floor}`,
+            cvMetric === 'ho' ? `bottom panel dashed = R² floor ${calib.heldout_floor}` : null,
           ].filter(Boolean).join(' · ')}
         />
+        {countRows.length > 0 && <div style={{ overflowX: 'auto', marginTop: 12 }}>
+          <p className="chart-note">Cutoff {countCut}: actual calibration counts and scores. Click a chart point to inspect another cutoff. Fitted and held-out counts describe the final fit split; internal CV repeatedly holds out folds within the fitted set.</p>
+          <table className="census-table" style={{ width: '100%', minWidth: 800, fontSize: 12 }}>
+            <thead><tr><th>Spectra / selection</th><th>Selected cohort</th><th>Fitted</th><th>Held-out</th><th>Site CV R²</th><th>Site CV RMSE (µg/filter)</th><th>Internal CV RMSE (µg/filter)</th></tr></thead>
+            <tbody>{countRows.map((r) => {
+              const counts = fittingCounts(r)
+              return <tr key={`${r.sp}|${r.sel}`}><td>{label(PREPROCESSING, r.sp)}{r.sel && r.sel !== 'raw' ? ` · ${label(SELECTION_SPACE, r.sel)}` : ''}</td><td>{fmtCount(counts.cohort)}</td><td>{fmtCount(counts.fitted)}</td><td>{fmtCount(counts.heldout)}</td><td>{r.ho?.toFixed(3) ?? 'unavailable'}</td><td>{calibrationReadout(r, 'cv_rmse')?.toFixed(3) ?? 'unavailable'}</td><td>{calibrationReadout(r, 'rmsecv')?.toFixed(3) ?? 'unavailable'}</td></tr>
+            })}</tbody>
+          </table>
+        </div>}
         {tip.node}
       </div>
     </ChartFrame>
   )
 }
 
-function SweepPanel({ series, metric, height, width, innerW, x, calib, yLabel, defaultCut, selected, dim, onEnter, onLeave, onSelect }: {
+function SweepPanel({ series, metric, height, width, innerW, x, calib, yLabel, defaultCut, axis, selected, dim, onEnter, onLeave, onSelect }: {
   series: SweepSeries[]
-  metric: Metric
+  metric: SweepMetric
   height: number
   width: number
   innerW: number
@@ -164,6 +206,7 @@ function SweepPanel({ series, metric, height, width, innerW, x, calib, yLabel, d
   calib: CalibFile
   yLabel: string
   defaultCut: number | undefined
+  axis: CutoffAxis
   selected: Config
   dim: (label: string) => number
   onEnter: (e: React.MouseEvent, s: SweepSeries, p: SweepPoint) => void
@@ -177,47 +220,52 @@ function SweepPanel({ series, metric, height, width, innerW, x, calib, yLabel, d
   // extremes are pinned to the edge, with a count below the chart.
   const sortedY = all.map((p) => p.y).sort(d3.ascending)
   const yExt: [number, number] = [d3.quantile(sortedY, 0.02) ?? 0, d3.quantile(sortedY, 0.98) ?? 1]
-  const yLo = isInterceptMetric(metric) ? Math.min(0, yExt[0]) : isSlopeMetric(metric) ? Math.min(0.5, yExt[0]) : Math.min(0, yExt[0])
-  const y = d3.scaleLinear().domain([yLo, Math.max(isSlopeMetric(metric) ? 1.2 : 0, yExt[1])]).range([innerH, 0]).nice()
+  const slope = !isCvMetric(metric) && isSlopeMetric(metric)
+  const intercept = !isCvMetric(metric) && isInterceptMetric(metric)
+  const yLo = intercept ? Math.min(0, yExt[0]) : slope ? Math.min(0.5, yExt[0]) : Math.min(0, yExt[0])
+  const y = d3.scaleLinear().domain([yLo, Math.max(slope ? 1.2 : 0, yExt[1])]).range([innerH, 0]).nice()
   const clampY = (v: number) => Math.max(y.domain()[0], Math.min(y.domain()[1], v))
   const isClamped = (v: number) => v < y.domain()[0] || v > y.domain()[1]
   const nClamped = all.filter((p) => isClamped(p.y)).length
   // extremes are not joined into the line: a spike to the edge of the axis is
   // a lie about the neighbouring cutoffs; they are drawn as hollow edge markers
   const line = d3.line<{ x: number; y: number }>().defined((p) => !isClamped(p.y)).x((p) => x(p.x)).y((p) => y(p.y))
+  const locked = axis === 'cutoff'
+    ? (defaultCut === undefined ? [] : [{ x: defaultCut, label: `locked ${defaultCut}`, color: INK.muted }])
+    : [...new Map(series.flatMap((s) => s.pts.filter((p) => p.r.cut === defaultCut).map((p) => [p.x, { x: p.x, label: `locked ${defaultCut}: ${p.x} fitted`, color: s.color }] as const))).values()]
   return (
     <>
       <svg width={width} height={height} className="animated">
         <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-          {isSlopeMetric(metric) && (
+          {slope && (
             <rect x={0} y={Math.max(0, y(calib.slope_box[1]))} width={innerW} height={Math.max(0, Math.min(innerH, y(calib.slope_box[0])) - Math.max(0, y(calib.slope_box[1])))} fill={INK.accent} fillOpacity={0.06} />
           )}
-          {metric === CV_METRIC && <line x1={0} x2={innerW} y1={y(calib.heldout_floor)} y2={y(calib.heldout_floor)} stroke={INK.axis} strokeDasharray="4 3" />}
+          {(metric === CV_METRIC || metric === 'ho') && <line x1={0} x2={innerW} y1={y(calib.heldout_floor)} y2={y(calib.heldout_floor)} stroke={INK.axis} strokeDasharray="4 3" />}
           <YAxis scale={y} x={0} label={yLabel} gridWidth={innerW} />
-          <XAxis scale={x} y={innerH} label={METRIC.cohortSize} />
-          {(isInterceptMetric(metric) || isSlopeMetric(metric)) && (
-            <line x1={0} x2={innerW} y1={y(isSlopeMetric(metric) ? 1 : 0)} y2={y(isSlopeMetric(metric) ? 1 : 0)} stroke={INK.axis} strokeWidth={1} strokeOpacity={0.7} />
+          <XAxis scale={x} y={innerH} label={X_LABELS[axis]} />
+          {(intercept || slope) && (
+            <line x1={0} x2={innerW} y1={y(slope ? 1 : 0)} y2={y(slope ? 1 : 0)} stroke={INK.axis} strokeWidth={1} strokeOpacity={0.7} />
           )}
-          {defaultCut !== undefined && x(defaultCut) >= 0 && x(defaultCut) <= innerW && (
-            <g>
-              <line x1={x(defaultCut)} x2={x(defaultCut)} y1={0} y2={innerH} stroke={INK.muted} strokeDasharray="3 3" />
-              <text x={x(defaultCut) + 4} y={12} fontSize={10} fill={INK.muted} fontFamily={FONT.mono}>locked {defaultCut}</text>
+          {locked.filter((l) => x(l.x) >= 0 && x(l.x) <= innerW).map((l, i) => (
+            <g key={l.x}>
+              <line x1={x(l.x)} x2={x(l.x)} y1={0} y2={innerH} stroke={l.color} strokeOpacity={0.6} strokeDasharray="3 3" />
+              <text x={Math.min(innerW - 5, x(l.x) + 4)} y={12 + i * 12} textAnchor={x(l.x) > innerW * 0.7 ? 'end' : 'start'} fontSize={10} fill={l.color} fontFamily={FONT.mono}>{l.label}</text>
             </g>
-          )}
+          ))}
           {series.map((s) => (
             <g key={s.key} opacity={dim(s.label)}>
               <path d={line(s.pts) ?? ''} fill="none" stroke={s.color} strokeWidth={1.8} strokeDasharray={s.dash} strokeOpacity={0.85} pointerEvents="none" />
               {s.pts.map((p) => {
-                const isSel = sameConfig({ co: p.r.co, cut: p.r.cut, sel: p.r.sel, sp: p.r.sp }, selected)
+                const isSel = sameConfig(cutoffConfig(p.r), selected)
                 return (
                   <circle
-                    key={p.x}
+                    key={p.r.cut}
                     cx={x(p.x)} cy={y(clampY(p.y))} r={isSel ? 6 : isClamped(p.y) ? 2.5 : 3}
                     fill={isSel || isClamped(p.y) ? '#fff' : s.color} stroke={isSel ? INK.text : s.color} strokeWidth={isSel ? 2 : 1}
                     style={{ cursor: 'pointer' }}
                     onMouseEnter={(e) => onEnter(e, s, p)}
                     onMouseLeave={onLeave}
-                    onClick={() => onSelect({ co: p.r.co, cut: p.r.cut, sel: p.r.sel, sp: p.r.sp })}
+                    onClick={() => onSelect(cutoffConfig(p.r))}
                   />
                 )
               })}

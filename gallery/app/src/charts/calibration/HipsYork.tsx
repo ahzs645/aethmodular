@@ -1,3 +1,4 @@
+import { useRegressions } from '@/lib/regressionPrefs'
 import { useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
@@ -21,6 +22,7 @@ const VARIANT_COLOR: Record<string, string> = { deployed: '#1f2933', lot_lin: '#
  * in the aerosol. OFFSET_ADJUDICATION_2026-08-23 is the write-up to cite.
  */
 export function HipsYork({ runs }: { runs: CalibRunsFile }) {
+  const { showCI } = useRegressions()
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
@@ -33,7 +35,7 @@ export function HipsYork({ runs }: { runs: CalibRunsFile }) {
   const innerW = Math.max(240, width - LEFT - MARGIN.right)
   const rowH = 44
   const innerH = rows.length * rowH
-  const vals = rows.flatMap((r) => shown.map((v) => r.fits![v]).filter((f): f is YorkFit => !!f && !('error' in f)).flatMap((f) => [f[what] - f[`${what}_se`], f[what] + f[`${what}_se`]]))
+  const vals = rows.flatMap((r) => shown.map((v) => r.fits![v]).filter((f): f is YorkFit => !!f && !('error' in f)).flatMap((f) => [f[what] - (showCI && Number.isFinite(f[`${what}_se`]) ? 1.96 * f[`${what}_se`] : 0), f[what] + (showCI && Number.isFinite(f[`${what}_se`]) ? 1.96 * f[`${what}_se`] : 0)]))
   const ext = d3.extent(vals) as [number, number]
   const x = d3.scaleLinear().domain([Math.min(what === 'slope' ? 0.8 : 0, ext[0] ?? 0), Math.max(what === 'slope' ? 1.2 : 0, ext[1] ?? 1)]).range([0, innerW]).nice()
   const y = d3.scaleBand<string>().domain(rows.map((r) => r.site)).range([0, innerH]).padding(0.3)
@@ -42,7 +44,7 @@ export function HipsYork({ runs }: { runs: CalibRunsFile }) {
     <ChartFrame
       id="hips-york"
       title="HIPS diagnostics — does the offset move with the blank line?"
-      subtitle={`Weighted York fits of predicted EC against HIPS Fabs at every SPARTAN site under three blank-line conventions, ± 1 SE. Calibration: ${runs.hips.config ? runs.hips.config.replace('AIRSpec', 'Spline baseline').replace(/k=(\d+)/, '$1 PLS factors') : 'see explorer'}. A site whose intercept is the same under all three carries the offset in the aerosol, not in the transmittance processing.`}
+      subtitle={`Weighted York fits of predicted EC against HIPS Fabs at every SPARTAN site under three blank-line conventions${showCI ? ", with approximate 95% normal intervals (±1.96 SE)" : ""}. Calibration: ${runs.hips.config ? runs.hips.config.replace('AIRSpec', 'Spline baseline').replace(/k=(\d+)/, '$1 PLS factors') : 'see explorer'}. A site whose intercept is the same under all three carries the offset in the aerosol, not in the transmittance processing.`}
       provenance="calibration_explorer /api/hips_york · HIPS tab · OFFSET_ADJUDICATION_2026-08-23.md"
       controls={<Segmented value={what} options={['intercept', 'slope'] as const} onChange={setWhat} />}
     >
@@ -67,8 +69,8 @@ export function HipsYork({ runs }: { runs: CalibRunsFile }) {
                   const val = f[what]
                   const se = f[`${what}_se`]
                   return (
-                    <g key={v} onMouseEnter={(e) => tip.show(e, [`${runs.targets[r.site]?.site ?? r.site} · ${VARIANT_LABEL[v]}`, `${what} ${fmt(val, 3)} ± ${fmt(se, 3)}`, `slope ${fmt(f.slope, 3)} · intercept ${fmt(f.intercept, 3)} · κ ${fmt(f.kappa, 2)}`, `${r.n_matched} of ${r.n} filters matched · ${((r.frac_below_blank_r1 ?? 0) * 100).toFixed(0)} % below the blank R1 range`])} onMouseLeave={tip.hide} opacity={lg.dim(VARIANT_LABEL[v])}>
-                      <line x1={x(val - se)} x2={x(val + se)} y1={cy} y2={cy} stroke={VARIANT_COLOR[v]} strokeWidth={1.5} />
+                    <g key={v} onMouseEnter={(e) => tip.show(e, [`${runs.targets[r.site]?.site ?? r.site} · ${VARIANT_LABEL[v]}`, `${what} ${fmt(val, 3)}${showCI ? ` · approx. 95% CI [${fmt(val - 1.96 * se, 3)}, ${fmt(val + 1.96 * se, 3)}]` : ''}`, `slope ${fmt(f.slope, 3)} · intercept ${fmt(f.intercept, 3)} · κ ${fmt(f.kappa, 2)}`, `${r.n_matched} of ${r.n} filters matched · ${((r.frac_below_blank_r1 ?? 0) * 100).toFixed(0)} % below the blank R1 range`])} onMouseLeave={tip.hide} opacity={lg.dim(VARIANT_LABEL[v])}>
+                      {showCI && Number.isFinite(se) && se >= 0 && <line data-fit-uncertainty="york-normal" x1={x(val - 1.96 * se)} x2={x(val + 1.96 * se)} y1={cy} y2={cy} stroke={VARIANT_COLOR[v]} strokeWidth={1.5} />}
                       <circle cx={x(val)} cy={cy} r={4} fill={VARIANT_COLOR[v]} />
                     </g>
                   )
@@ -77,7 +79,7 @@ export function HipsYork({ runs }: { runs: CalibRunsFile }) {
             </g>
           </svg>
         )}
-        <Legend items={VARIANTS.map((v) => ({ label: VARIANT_LABEL[v], color: VARIANT_COLOR[v] }))} {...lg.props} note="bars = ± 1 SE" />
+        <Legend items={VARIANTS.map((v) => ({ label: VARIANT_LABEL[v], color: VARIANT_COLOR[v] }))} {...lg.props} note={showCI ? "bars = approximate 95% normal CI (±1.96 SE); missing SE has no bar" : "fit uncertainty hidden"} />
         {runs.hips.blanks && (
           <table className="placement" style={{ maxWidth: 720 }}>
             <thead><tr><th>lot</th><th>deployed blank line (intercept, slope)</th><th>n blanks</th><th>rms lin / quad</th><th>R1 range</th><th>τ₀ mean ± sd</th></tr></thead>

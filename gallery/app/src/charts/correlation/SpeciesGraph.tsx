@@ -352,10 +352,10 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
       provenance="react-graph-gallery.com/network-chart · /arc-diagram · /dendrogram · not in the estate (0 flow figures)"
       controls={
         <>
-          <Select label="site" value={block.code} options={siteCodes} onChange={setSiteCode} optionLabel={(c) => (c === 'All' ? 'All sites' : meta.sites.find((s) => s.code === c)?.name ?? c)} />
-          <Segmented label="view" value={view} options={VIEWS} onChange={setView} />
+          <Select label="Site" value={block.code} options={siteCodes} onChange={setSiteCode} optionLabel={(c) => (c === 'All' ? 'All sites' : meta.sites.find((s) => s.code === c)?.name ?? c)} />
+          <Segmented label="View" value={view} options={VIEWS} onChange={setView} />
           {view !== 'Dendrogram' && <Select label="|r| ≥" value={thresholdS} options={THRESHOLDS} onChange={setThresholdS} />}
-          {view === 'Dendrogram' && <Select label="cut at" value={cutS} options={CUTS} onChange={setCutS} title="distance 1 − |r| at which the tree is cut into clusters" />}
+          {view === 'Dendrogram' && <Select label="Cut at" value={cutS} options={CUTS} onChange={setCutS} title="distance 1 − |r| at which the tree is cut into clusters" />}
           <span className="control">
             {nSpecies} species · {nEdges} edges
             {view === 'Dendrogram' && dendro ? ` · ${dendro.nClusters} clusters at ${cutS}` : ''}

@@ -1,7 +1,10 @@
+import { fitUncertainty } from '@/lib/fitUncertainty'
+import { RegressionLines, RegressionReadout } from '@/components/RegressionOverlay'
+import { useRegressions, fitsFor, equation } from '@/lib/regressionPrefs'
 import { useEffect, useMemo, useState } from 'react'
 import * as d3 from 'd3'
 import { FieldSelect, prettyUnit } from '@/components/FieldSelect'
-import { Segmented, SwapButton } from '@/components/ChartFrame'
+import { Select, SwapButton } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
 import { regression, fmt } from '@/lib/stats'
 import { INK, FONT } from '@/lib/theme'
@@ -9,8 +12,9 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import type { FilterRecord } from '@/lib/highlight'
 import { RecordSection } from '@/components/RecordDrawer'
 import { FilterSpectrum } from '@/components/FilterSpectrum'
+import { useSearchParam } from '@/lib/url'
+import { cleanReference, placements, stripPosition, ratioReference, isFiniteNumber, type ReferenceRow, type SpartanReference } from '@/lib/referencePopulation'
 
-const SCOPES = ['Same site', 'All sites'] as const
 
 /** English ordinal suffix: 1st, 2nd, 3rd, 11th, 51st. */
 const ordinal = (n: number) => (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th')
@@ -26,7 +30,7 @@ const RATIOS: { label: string; num: string; den: string; why: string }[] = [
 /**
  * The drawer that opens when a sample is clicked. Charts only ever show two
  * or three numbers per filter; this shows all of them, and *where each sits*
- * within its site — a value means nothing without its distribution.
+ * within a selectable site or network reference population.
  *
  * Non-modal on purpose: the charts stay live behind it so the pinned point
  * is still visible in context.
@@ -47,7 +51,7 @@ export function SampleDrawer({
   /** what the clicked chart knows about this filter (e.g. an AIRSpec prediction); shown first */
   context?: FilterRecord | null
   row: FilterRow
-  /** every exported filter, unfiltered — neighbours and percentiles need the whole site */
+  /** every exported filter, unfiltered — reference distributions use the full available population */
   allRows: FilterRow[]
   meta: MetaFile
   xField: string
@@ -58,14 +62,32 @@ export function SampleDrawer({
   onOpen: (id: string) => void
   onClose: () => void
 }) {
+  const { methods } = useRegressions()
   const [cx, setCx] = useState(xField)
   const [cy, setCy] = useState(yField)
-  const [scope, setScope] = useState<(typeof SCOPES)[number]>('Same site')
+  const referenceOptions = ['same', ...meta.sites.map(s => s.name), 'study', 'network']
+  const [reference, setReference] = useSearchParam<string>('sampleRef', 'same', referenceOptions)
+  const [network, setNetwork] = useState<SpartanReference | null>(null)
+  const [networkError, setNetworkError] = useState('')
   const [copied, setCopied] = useState(false)
 
   // follow the bar's pair when it changes, but let the drawer diverge
   useEffect(() => { setCx(xField) }, [xField])
   useEffect(() => { setCy(yField) }, [yField])
+
+  useEffect(() => {
+    if (reference !== 'network' || network) return
+    const controller = new AbortController()
+    setNetworkError('')
+    fetch(`${import.meta.env.BASE_URL}data/spartan_reference.json`, { signal: controller.signal })
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
+      .then((data: SpartanReference) => {
+        if (data.schema_version !== 1 || !Array.isArray(data.rows)) throw new Error('Unsupported reference export')
+        setNetwork(data)
+      })
+      .catch(e => { if (e.name !== 'AbortError') setNetworkError(String(e)) })
+    return () => controller.abort()
+  }, [reference, network])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -78,9 +100,14 @@ export function SampleDrawer({
   })
 
   const site = meta.sites.find((s) => s.name === row.site)
-  const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
+  const isNum = isFiniteNumber
+  const referenceSite = reference === 'same' ? row.site : reference === 'network' || reference === 'study' ? undefined : reference
+  const referenceLabel = reference === 'network' ? 'SPARTAN network' : reference === 'study' ? 'Four gallery sites' : referenceSite!
+  const referenceRows = useMemo(() => cleanReference(reference === 'network' ? network?.rows ?? [] : allRows, referenceSite), [reference, network, allRows, referenceSite])
+  const knownIds = useMemo(() => new Set(allRows.map(r => r.id)), [allRows])
+  const referenceDates = referenceRows.map(r => r.date).filter(Boolean).sort()
 
-  // the site's clean filters in date order — the frame everything is judged against
+  // Navigation remains within the selected filter's actual site.
   const siteRows = useMemo(
     () => allRows.filter((r) => r.site === row.site && !r.excluded).sort((a, b) => (a.date < b.date ? -1 : 1)),
     [allRows, row.site]
@@ -93,58 +120,35 @@ export function SampleDrawer({
     return siteRows.slice(Math.max(0, idx - 3), idx + 4)
   }, [siteRows, idx])
 
-  /** per field: the sample's value, its site percentile, and the site's quartiles */
-  const placement = useMemo(() => {
-    const out: Record<string, { v: number; pct: number; min: number; q1: number; med: number; q3: number; max: number; n: number }> = {}
-    for (const f of meta.fields) {
-      const v = row[f]
-      if (!isNum(v)) continue
-      const vals = siteRows.map((r) => r[f]).filter(isNum).sort(d3.ascending)
-      if (vals.length < 4) continue
-      const below = vals.filter((x) => x < v).length
-      out[f] = {
-        v,
-        pct: (below / vals.length) * 100,
-        min: vals[0],
-        q1: d3.quantile(vals, 0.25) ?? vals[0],
-        med: d3.quantile(vals, 0.5) ?? vals[0],
-        q3: d3.quantile(vals, 0.75) ?? vals[0],
-        max: vals[vals.length - 1],
-        n: vals.length,
-      }
-    }
-    return out
-  }, [row, siteRows, meta.fields])
+  const placement = useMemo(() => placements(row, meta.fields, referenceRows), [row, referenceRows, meta.fields])
+  const referenceCoverage = useMemo(() => Object.fromEntries(meta.fields.map(f => [f, referenceRows.filter(r => isNum(r[f])).length])), [meta.fields, referenceRows])
+  const unavailableFields = meta.fields.filter(f => isNum(row[f]) && !(f in placement))
 
   const ratios = RATIOS.map((r) => {
     const a = row[r.num]
     const b = row[r.den]
     const ok = isNum(a) && isNum(b) && b !== 0
-    // site median of the same ratio, so the number has a reference
-    const siteVals = siteRows
-      .map((s) => (isNum(s[r.num]) && isNum(s[r.den]) && (s[r.den] as number) !== 0 ? (s[r.num] as number) / (s[r.den] as number) : null))
-      .filter((v): v is number => v !== null)
-    return { ...r, value: ok ? (a as number) / (b as number) : null, siteMedian: siteVals.length ? d3.median(siteVals) ?? null : null }
+    return { ...r, value: ok ? (a as number) / (b as number) : null, reference: ratioReference(referenceRows, r.num, r.den) }
   }).filter((r) => r.value !== null)
 
   // ---- mini crossplot
   const cross = useMemo(() => {
-    const pool = (scope === 'Same site' ? siteRows : allRows.filter((r) => !r.excluded))
+    const pool = referenceRows
       .map((r) => ({ r, x: r[cx], y: r[cy] }))
-      .filter((p): p is { r: FilterRow; x: number; y: number } => isNum(p.x) && isNum(p.y))
-    const stats = regression(pool.map((p) => p.x), pool.map((p) => p.y))
+      .filter((p): p is { r: ReferenceRow; x: number; y: number } => isNum(p.x) && isNum(p.y))
+    const stats = regression(pool.map((p) => p.x), pool.map((p) => p.y), fitUncertainty(pool.map(p => p.r), cx, cy, meta))
     return { pool, stats }
-  }, [scope, siteRows, allRows, cx, cy])
+  }, [referenceRows, cx, cy, meta])
   const W = 400
   const m = { top: 12, right: 14, bottom: 46, left: 62 }
   const iw = W - m.left - m.right
   // square plot area, like every crossplot in the gallery
   const ih = iw
   const H = ih + m.top + m.bottom
-  const xs = d3.scaleLinear().domain([Math.min(0, d3.min(cross.pool, (p) => p.x) ?? 0), (d3.max(cross.pool, (p) => p.x) ?? 1) * 1.05]).range([0, iw]).nice()
-  const ys = d3.scaleLinear().domain([Math.min(0, d3.min(cross.pool, (p) => p.y) ?? 0), (d3.max(cross.pool, (p) => p.y) ?? 1) * 1.05]).range([ih, 0]).nice()
   const here = isNum(row[cx]) && isNum(row[cy]) ? { x: row[cx] as number, y: row[cy] as number } : null
-  const resid = here && cross.stats ? here.y - (cross.stats.slope * here.x + cross.stats.intercept) : null
+  const axisPoints = here ? [...cross.pool, here] : cross.pool
+  const xs = d3.scaleLinear().domain([Math.min(0, d3.min(axisPoints, p => p.x) ?? 0), Math.max(0, d3.max(axisPoints, p => p.x) ?? 1) * 1.05 || 1]).range([0, iw]).nice()
+  const ys = d3.scaleLinear().domain([Math.min(0, d3.min(axisPoints, p => p.y) ?? 0), Math.max(0, d3.max(axisPoints, p => p.y) ?? 1) * 1.05 || 1]).range([ih, 0]).nice()
 
   const link = () => {
     const url = new URL(window.location.href)
@@ -180,8 +184,8 @@ export function SampleDrawer({
         <button type="button" className="btn" disabled={!prev} onClick={() => prev && onOpen(prev.id)} title="Previous filter at this site (←)">← {prev?.date ?? '—'}</button>
         <button type="button" className="btn" disabled={!next} onClick={() => next && onOpen(next.id)} title="Next filter at this site (→)">{next?.date ?? '—'} →</button>
         <span style={{ flex: 1 }} />
-        <button type="button" className="btn" onClick={() => onPin(pinned ? null : row.id)}>{pinned ? 'unpin' : 'pin'}</button>
-        <button type="button" className="btn" onClick={link}>{copied ? 'copied' : 'copy link'}</button>
+        <button type="button" className="btn" onClick={() => onPin(pinned ? null : row.id)}>{pinned ? 'Unpin' : 'Pin'}</button>
+        <button type="button" className="btn" onClick={link}>{copied ? 'Copied' : 'Copy link'}</button>
       </div>
 
       {context && <RecordSection rec={context} />}
@@ -190,10 +194,18 @@ export function SampleDrawer({
       <FilterSpectrum id={row.id} />
 
       <section className="drawer-section">
-        <h3>Where this filter sits at {row.site}</h3>
-        <p className="chart-note">Each bar is the site's clean range for that measurement; the darker band is the interquartile range, the tick is the site median, the dot is this filter. Percentile is within the site.</p>
+        <h3>Where this filter sits {referenceLabel === row.site ? `at ${row.site}` : `against ${referenceLabel}`}</h3>
+        <div className="frame-controls" style={{ margin: '8px 0' }}>
+          <Select label="Reference population" value={reference} options={referenceOptions}
+            optionLabel={v => v === 'same' ? `Filter's site (${row.site})` : v === 'study' ? 'Four gallery sites' : v === 'network' ? 'SPARTAN network — public filters' : v}
+            onChange={setReference} />
+        </div>
+        <p className="reference-summary">{referenceLabel} · {reference === 'network' && !network ? '…' : referenceRows.length.toLocaleString()} filters after known exclusions{referenceDates.length > 0 && <> · {referenceDates[0]} to {referenceDates[referenceDates.length - 1]}</>}. Coverage varies by measurement; hover a bar for n. Uses all dates, independently of the main graph filters.</p>
+        {reference === 'network' && <p className="reference-summary">Public SPARTAN chemistry at {network?.n_sites ?? '…'} sites, weighted by physical filter count. Carbon uses the public FTIR-derived reports. HIPS and FTIR functional groups are unavailable; public BC is not substituted for HIPS BC.</p>}
+        {reference === 'network' && !network && <p className="frame-empty">{networkError ? `Could not load the SPARTAN reference: ${networkError}` : 'Loading public SPARTAN filter reference…'}</p>}
+        <p className="chart-note reference-guide">Bars show the reference range; the darker band is its interquartile range and the tick is its median. The dot retains this filter's value. Percentile is the percentage of measured reference values strictly below it. Values outside the range are marked at the nearest edge.</p>
         {meta.field_groups.map((g) => {
-          const fields = g.fields.filter((f) => f in placement)
+          const fields = g.fields.filter(f => isNum(row[f]))
           if (!fields.length) return null
           return (
             <table key={g.label} className="placement">
@@ -203,19 +215,25 @@ export function SampleDrawer({
               <tbody>
                 {fields.map((f) => {
                   const p = placement[f]
-                  const s = d3.scaleLinear().domain([p.min, p.max]).range([0, 100])
+                  if (!p) return <tr key={f}>
+                    <td className="f">{f}</td>
+                    <td className="v">{fmt(row[f] as number, 3)} <span className="u">{prettyUnit(meta.field_units[f])}</span></td>
+                    <td className="u" colSpan={2}>Reference unavailable · n={referenceCoverage[f]}</td>
+                  </tr>
+                  const s = (value: number) => stripPosition(value, p)
+                  const outside = p.v < p.min ? 'below' : p.v > p.max ? 'above' : null
                   const hot = f === xField || f === yField || f === focusField
                   return (
                     <tr key={f} className={hot ? 'hot' : ''}>
                       <td className="f">{f}</td>
                       <td className="v">{fmt(p.v, 3)} <span className="u">{prettyUnit(meta.field_units[f])}</span></td>
-                      <td className="strip" title={`min ${fmt(p.min, 2)} · q1 ${fmt(p.q1, 2)} · median ${fmt(p.med, 2)} · q3 ${fmt(p.q3, 2)} · max ${fmt(p.max, 2)} · n=${p.n}`}>
+                      <td className="strip" title={`${referenceLabel}: min ${fmt(p.min, 2)} · q1 ${fmt(p.q1, 2)} · median ${fmt(p.med, 2)} · q3 ${fmt(p.q3, 2)} · max ${fmt(p.max, 2)} · n=${p.n}${outside ? ` · filter is ${outside} the reference range; dot shown at the edge` : ''}`}>
                         <span className="track" />
                         <span className="iqr" style={{ left: `${s(p.q1)}%`, width: `${Math.max(1, s(p.q3) - s(p.q1))}%` }} />
                         <span className="med" style={{ left: `${s(p.med)}%` }} />
-                        <span className="dot" style={{ left: `${s(p.v)}%`, background: site?.color ?? INK.text }} />
+                        <span className={`dot${outside ? ' outside' : ''}`} data-outside-range={outside ?? undefined} style={{ left: `${s(p.v)}%`, background: site?.color ?? INK.text }} />
                       </td>
-                      <td className="pct">{p.pct.toFixed(0)}<span className="u">{ordinal(Math.round(p.pct))}</span></td>
+                      <td className="pct">{p.pct.toFixed(0)}<span className="u">{ordinal(Math.round(p.pct))}</span>{outside && <span className="u" style={{ display: 'block' }}>{outside} range</span>}</td>
                     </tr>
                   )
                 })}
@@ -223,6 +241,7 @@ export function SampleDrawer({
             </table>
           )
         })}
+        {unavailableFields.length > 0 && <details className="reference-unavailable"><summary>{unavailableFields.length} measurements without a reference percentile</summary><p>{unavailableFields.join(', ')}. A percentile needs at least four finite reference values for that measurement.</p></details>}
       </section>
 
       {ratios.length > 0 && (
@@ -234,7 +253,7 @@ export function SampleDrawer({
                 <tr key={r.label}>
                   <td className="f" title={r.why}>{r.label}</td>
                   <td className="v">{fmt(r.value, 3)}</td>
-                  <td className="u" colSpan={2}>site median {fmt(r.siteMedian, 3)} · {r.why}</td>
+                  <td className="u" colSpan={2}>{referenceLabel} median {fmt(r.reference.median, 3)} · n={r.reference.n}{r.reference.n === 0 && ' (unavailable)'} · {r.why}</td>
                 </tr>
               ))}
             </tbody>
@@ -244,31 +263,26 @@ export function SampleDrawer({
 
       <section className="drawer-section">
         <h3>This filter on any crossplot</h3>
+        <p className="reference-summary">Reference: {referenceLabel} · {cross.pool.length.toLocaleString()} paired filters. The highlighted filter remains {row.id} from {row.site}.</p>
         <div className="frame-controls" style={{ marginBottom: 6 }}>
           <FieldSelect label="x" value={cx} meta={meta} onChange={setCx} />
           <SwapButton onClick={() => { setCx(cy); setCy(cx) }} />
           <FieldSelect label="y" value={cy} meta={meta} onChange={setCy} />
-          <Segmented value={scope} options={SCOPES} onChange={setScope} />
         </div>
         {cross.pool.length < 3 ? (
-          <p className="frame-empty">Fewer than 3 filters carry both fields.</p>
+          <p className="frame-empty">Fewer than 3 filters in {referenceLabel} carry both {cx} and {cy}. Choose another pair or reference population.</p>
         ) : (
           <svg width={W} height={H} style={{ display: 'block', maxWidth: '100%' }}>
             <g transform={`translate(${m.left},${m.top})`}>
               <YAxis scale={ys} x={0} label={cy} gridWidth={iw} tickCount={5} labelX={-48} />
               <XAxis scale={xs} y={ih} label={cx} tickCount={5} />
               {cross.pool.map((p) => (
-                <circle key={p.r.id} cx={xs(p.x)} cy={ys(p.y)} r={2.4} fill={scope === 'All sites' ? (p.r.color as string) : site?.color ?? INK.muted} fillOpacity={0.35} style={{ cursor: 'pointer' }} onClick={() => onOpen(p.r.id)}>
-                  <title>{p.r.id} · {p.r.date}</title>
+                <circle key={p.r.id} cx={xs(p.x)} cy={ys(p.y)} r={2.4} fill={meta.sites.find(s => s.code === p.r.code)?.color ?? INK.muted} fillOpacity={0.35} style={{ cursor: knownIds.has(p.r.id) ? 'pointer' : 'default' }} onClick={() => { if (knownIds.has(p.r.id)) onOpen(p.r.id) }}>
+                  <title>{p.r.id} · {p.r.site} · {p.r.date} · {cx}: {fmt(p.x, 3)} · {cy}: {fmt(p.y, 3)}</title>
                 </circle>
               ))}
-              {cross.stats && (
-                <line
-                  x1={xs(xs.domain()[0])} y1={ys(cross.stats.slope * xs.domain()[0] + cross.stats.intercept)}
-                  x2={xs(xs.domain()[1])} y2={ys(cross.stats.slope * xs.domain()[1] + cross.stats.intercept)}
-                  stroke={INK.fit} strokeWidth={1.5} pointerEvents="none"
-                />
-              )}
+              <RegressionLines stats={cross.stats} x={xs} y={ys} domain={xs.domain()} width={iw} height={ih} />
+              <RegressionReadout stats={cross.stats} width={260} />
               {here && (
                 <>
                   <line x1={xs(here.x)} x2={xs(here.x)} y1={0} y2={ih} stroke={INK.text} strokeDasharray="3 3" strokeOpacity={0.4} />
@@ -281,8 +295,8 @@ export function SampleDrawer({
         )}
         {here ? (
           <p className="chart-note" style={{ fontFamily: FONT.mono }}>
-            {cross.stats && <>n = {cross.stats.n} · R² = {fmt(cross.stats.r2, 3)} · OLS slope = {fmt(cross.stats.slope, 3)}</>}
-            {resid !== null && <> · this filter is {fmt(Math.abs(resid), 2)} {resid >= 0 ? 'above' : 'below'} the fit</>}
+            {cross.stats && <>n = {cross.stats.n} · R² = {fmt(cross.stats.r2, 3)}{fitsFor(cross.stats, methods).map(fit => <span key={fit.method}> · {equation(fit)}</span>)}</>}
+
           </p>
         ) : (
           <p className="chart-note">This filter does not carry both {cx} and {cy}.</p>

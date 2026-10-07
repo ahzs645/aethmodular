@@ -76,6 +76,8 @@ def main():
         "ok": bits(ok),
         "intercept": [rnd(r["deming_intercept"]) for r in rows],
         "slope": [rnd(r.get("deming_slope")) for r in rows],
+        "olsIntercept": [rnd(r.get("ols_intercept")) for r in rows],
+        "olsSlope": [rnd(r.get("ols_slope")) for r in rows],
         "heldout": [rnd(r.get("heldout_R2"), 3) for r in rows],
         "cut": [r.get("cutoff") for r in rows],
         "k": [r.get("k") for r in rows],

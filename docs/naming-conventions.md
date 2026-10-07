@@ -19,7 +19,9 @@ appear on reader-facing figures without the name below.
 | Code | Reader-facing name |
 |---|---|
 | `airspec` / AIRSpec | **Spline baseline** (smoothing-spline baseline correction; AIRSpec, Kuzmiakova, Dillner and Takahama 2016). Confirm the exact term in the AIRSpec paper before the poster. |
-| `vibes` / VIBES | **VIBES baseline** (probabilistic background removal learned from field blanks; pyvibes) |
+| `vibes` / `VIBES` (frozen runs) | **Archived VIBES (fit 4000–1425)**: the samples and blanks were cropped before background fitting. Historical comparison, hidden by default in the meeting page. |
+| `VIBES-full` | **VIBES baseline (4000–500, rank cap 30)**: background fitted on the full available grid; preliminary capped calculation. |
+| `VIBES-full-cut` | **Sensitivity: VIBES fit 4000–500, predict 4000–1425 (rank cap 30)**: same full-range correction, narrower predictor range. This is separate from fitting a cropped spectrum. |
 | `raw` | **Raw spectra** (never "baseline raw") |
 | `deriv2` | **Second derivative** |
 | `ocec` | **Lowest OC/EC** cohort |
@@ -43,6 +45,21 @@ appear on reader-facing figures without the name below.
 
 Regression on comparison plots is **Deming only** (both axes uncertain). Show R²
 and the Deming equation; do not show ordinary least squares.
+
+The interactive gallery defaults to Deming and offers OLS/York for exploration.
+For publication exports select Deming only. Python axes-level comparison
+helpers now display one Deming line and equation, preserving OLS coefficients
+in returned metrics for calculations. Pass `sigma_x` and `sigma_y` in the
+plotted units when available, or supply saved Deming coefficients and their
+variance ratio. Previously saved notebook outputs need rerunning to change.
+
+The archived 4000–1425 VIBES fit is a different experiment, not evidence that
+pyvibes cannot fit a restricted grid. The local adapter requires matching
+sample/blank grids and imposes no AIRSpec-style lower-wavenumber cutoff.
+Current spectral comparison panels may display the full-range correction
+only down to 1425; that display crop does not refit the baseline. The narrower
+prediction variant is a secondary sensitivity analysis of the information
+below 1425, not a preferred calibration established by matching AIRSpec's range.
 
 ## Words to avoid
 

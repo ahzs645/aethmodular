@@ -1,3 +1,5 @@
+import { fitUncertainty } from '@/lib/fitUncertainty'
+import { RegressionLines } from '@/components/RegressionOverlay'
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
@@ -103,10 +105,10 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
       provenance="stands in for 14 correlogram + heatmap figures · react-graph-gallery.com/correlogram"
       controls={
         <>
-          <Select label="site" value={block.code} options={siteCodes} onChange={setSiteCode} optionLabel={(c) => (c === 'All' ? 'All sites' : meta.sites.find((s) => s.code === c)?.name ?? c)} />
-          <Segmented label="encoding" value={encoding} options={ENCODINGS} onChange={setEncoding} />
+          <Select label="Site" value={block.code} options={siteCodes} onChange={setSiteCode} optionLabel={(c) => (c === 'All' ? 'All sites' : meta.sites.find((s) => s.code === c)?.name ?? c)} />
+          <Segmented label="Encoding" value={encoding} options={ENCODINGS} onChange={setEncoding} />
           {encoding === 'Scatter matrix' ? (
-            <Select label="species" value={family} options={families} onChange={setFamily} title="At most six species per matrix" />
+            <Select label="Species" value={family} options={families} onChange={setFamily} title="At most six species per matrix" />
           ) : (
             <span className="control">{block.fields.length} species</span>
           )}
@@ -120,7 +122,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
           splomFields.length < 2 ? (
             <Empty>Fewer than two species of that family have ≥20 filters here.</Empty>
           ) : (
-            <ScatterMatrix rows={sub.filter((r) => lg.show(r.site))} fields={splomFields} width={Math.min(width, 760)} tip={tip} hl={hl} units={meta.field_units} dim={lg.dim} />
+            <ScatterMatrix meta={meta} rows={sub.filter((r) => lg.show(r.site))} fields={splomFields} width={Math.min(width, 760)} tip={tip} hl={hl} units={meta.field_units} dim={lg.dim} />
           )
         ) : (
           <svg width={size + labelPad + 30} height={size + labelPad + 20} className="animated">
@@ -170,7 +172,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
         )}
         <div className="legend">
           {encoding === 'Scatter matrix' ? (
-            <Legend items={meta.sites.filter((s) => sub.some((r) => r.site === s.name)).map((s) => ({ label: s.name, color: s.color }))} {...lg.props} note="diagonal: histogram of the species · off-diagonal: the pair, Deming line (λ=1), r" />
+            <Legend items={meta.sites.filter((s) => sub.some((r) => r.site === s.name)).map((s) => ({ label: s.name, color: s.color }))} {...lg.props} note="diagonal: histogram of the species · off-diagonal: the pair, selected regression fits, r" />
           ) : (
             <ColorLegend scale={color} label="Pearson r" width={180} ticks={5} format={(v) => (v > 0 ? `+${v}` : String(v))} note="Repeated fields omitted: HIPS BC is Fabs ÷ MAC; ChemSpec EC/OC repeat the FTIR products" />
           )}
@@ -182,7 +184,8 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
 }
 
 /** Pairwise scatter matrix for a few species, histograms on the diagonal. */
-function ScatterMatrix({ rows, fields, width, tip, hl, units, dim }: {
+function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, meta }: {
+  meta: MetaFile
   rows: FilterRow[]
   fields: string[]
   width: number
@@ -239,9 +242,7 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim }: {
               .map((r) => ({ row: r, x: r[fx], y: r[fy] }))
               .filter((p): p is { row: FilterRow; x: number; y: number } => typeof p.x === 'number' && typeof p.y === 'number' && Number.isFinite(p.x) && Number.isFinite(p.y))
             // Deming (λ=1) rather than y-on-x least squares: both species are measured with error
-            const st = regression(pts.map((p) => p.x), pts.map((p) => p.y), { errorsInVariables: true })
-            const [d0, d1] = sx.domain() as [number, number]
-            const yv = (v: number) => Math.max(sy.domain()[0] as number, Math.min(sy.domain()[1] as number, v))
+            const st = regression(pts.map((p) => p.x), pts.map((p) => p.y), fitUncertainty(pts.map(p => p.row), fx, fy, meta))
             return (
               <g key={`${i}-${j}`} transform={`translate(${ox},${oy})`}>
                 <rect width={cellS} height={cellS} fill="#fff" stroke={INK.grid} />
@@ -259,12 +260,8 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim }: {
                     />
                   )
                 })}
-                {st && st.demingSlope !== null && st.demingIntercept !== null && (
-                  <>
-                    <line x1={sx(d0)} y1={cellS - sy(yv(st.demingSlope * d0 + st.demingIntercept))} x2={sx(d1)} y2={cellS - sy(yv(st.demingSlope * d1 + st.demingIntercept))} stroke={INK.deming} strokeWidth={1.2} strokeDasharray="5 2" pointerEvents="none" />
-                    <text x={cellS - 4} y={11} textAnchor="end" fontSize={9.5} fill={Math.abs(st.r) > 0.6 ? INK.text : INK.muted} fontFamily={FONT.mono} pointerEvents="none">r={st.r.toFixed(2)}</text>
-                  </>
-                )}
+                <RegressionLines stats={st} x={sx} y={v => cellS - sy(v)} domain={sx.domain() as number[]} width={cellS} height={cellS} />
+                {st && <text x={cellS - 4} y={11} textAnchor="end" fontSize={9.5} fill={INK.text} fontFamily={FONT.mono} pointerEvents="none">r={st.r.toFixed(2)}</text>}
               </g>
             )
           })

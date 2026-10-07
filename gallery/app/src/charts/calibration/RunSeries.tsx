@@ -77,7 +77,7 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
       controls={
         <>
           <Toggle label={ROLL_LABEL} checked={showRoll} onChange={setShowRoll} />
-          {hasDeployed && <Toggle label="deployed SPARTAN EC" checked={showDeployed} onChange={setShowDeployed} />}
+          {hasDeployed && <Toggle label="Deployed SPARTAN EC" checked={showDeployed} onChange={setShowDeployed} />}
           <span className="control">{shown.length} dated filters</span>
         </>
       }

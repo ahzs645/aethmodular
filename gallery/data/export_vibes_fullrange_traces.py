@@ -15,6 +15,7 @@ Run after workflows/assemble_vibes_fullrange.py:
 from __future__ import annotations
 
 import json
+import argparse
 from pathlib import Path
 
 import numpy as np
@@ -27,12 +28,28 @@ BIN = 8
 
 
 def main():
-    info = json.loads((SRC / "ASSEMBLY.json").read_text())
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('--rank', type=int, choices=[30, 70], default=30)
+    rank = ap.parse_args().rank
+    src = SRC if rank == 30 else ROOT / 'research/ftir_hips_chem/output/tables/vibes_fullrange/interpretation_20261002'
+    if rank == 30:
+        info = json.loads((src / "ASSEMBLY.json").read_text())
+    else:
+        summary = json.loads((src / 'summary.json').read_text())
+        audit = json.loads((src.parent / 'failure_check_20261002/audit.json').read_text())
+        info = dict(signature=audit['original_signature'], rank_cap=85, background_rank=70,
+                    n_cases=summary['n_cases'], n_corrected=summary['n_cases'], n_failed=0,
+                    n_recovered=len(summary['recovered_rows']), channels=2722,
+                    wavenumber_range=[3998.42320552162, 500.124317346017])
     if info["n_corrected"] != info["n_cases"]:
         raise SystemExit("full-range run is not complete")
-    X = np.load(SRC / "corrected_VIBES_full.npy")
+    X = np.load(src / ("corrected_VIBES_full.npy" if rank == 30 else 'corrected_VIBES_full_recovered.npy'))
     wn = np.load(SRC / "wn.npy")
-    cases = pd.read_csv(SRC / "cases.csv")
+    cases = pd.read_csv(src / "cases.csv")
+    if X.shape != (info["n_cases"], info["channels"]) or not np.isfinite(X).all():
+        raise ValueError("full-range corrected spectra are incomplete or invalid")
+    if info["n_failed"] != 0 or len(cases) != info["n_cases"]:
+        raise ValueError("full-range run has failed fits or inconsistent case counts")
     rows = np.flatnonzero(cases.kind.isin(["calibration", "target"]).to_numpy())
     ids = cases.sample_id.iloc[rows].tolist()
     meta = json.loads((OUT / "similarity.json").read_text())
@@ -45,13 +62,21 @@ def main():
     scale = np.abs(binned).max(axis=1) / 32767
     scale[scale == 0] = 1
     q = np.round(binned / scale[:, None]).astype("<i2")
-    with (OUT / "traces_VIBES-full.bin").open("wb") as out:
+    stem = 'traces_VIBES-full' if rank == 30 else 'traces_VIBES-full-r70'
+    with (OUT / f"{stem}.bin").open("wb") as out:
         out.write(scale.astype("<f4").tobytes())
         out.write(q.tobytes())
-    (OUT / "traces_VIBES-full.json").write_text(json.dumps({
+    (OUT / f"{stem}.json").write_text(json.dumps({
         "bin_wn": [round(float(w), 3) for w in bin_wn], "n": len(ids),
-        "source": str(SRC.relative_to(ROOT)), "signature": info["signature"]}))
-    print(f"wrote traces_VIBES-full.bin ({len(ids)} filters x {len(bins)} bins, {bin_wn.max():.0f}-{bin_wn.min():.0f} cm-1)")
+        "source": str(src.relative_to(ROOT)), "signature": info["signature"],
+        "rank_cap": info["rank_cap"], "n_cases": info["n_cases"],
+        "n_corrected": info["n_corrected"], "n_failed": info["n_failed"],
+        "channels": info["channels"], "wavenumber_range": info["wavenumber_range"],
+        "case_counts": {str(k): int(v) for k, v in cases.kind.value_counts().items()},
+        "background_rank": info.get('background_rank', 30), "n_recovered": info.get('n_recovered', 0),
+        "presentation_status": "preliminary_capped" if rank == 30 else "completed_uncapped",
+    }))
+    print(f"wrote {stem}.bin ({len(ids)} filters x {len(bins)} bins, {bin_wn.max():.0f}-{bin_wn.min():.0f} cm-1)")
 
 
 if __name__ == "__main__":

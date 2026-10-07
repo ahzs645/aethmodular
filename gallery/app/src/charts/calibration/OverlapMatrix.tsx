@@ -98,7 +98,7 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
       title="Cohort overlap — are the selection methods picking the same filters?"
       subtitle="Shared members between every pair of cohorts at their locked cutoffs. Matrix: shaded as a fraction of the smaller cohort, the diagonal is each cohort's size. Chord: every cohort is an arc sized by its member count, ribbons are the filters two cohorts share, and the unribboned part of an arc is what that cohort alone selects."
       provenance="calibration_explorer /api/overlap · meeting item · react-graph-gallery.com/chord-diagram"
-      controls={<Segmented label="view" value={view} options={VIEWS} onChange={setView} />}
+      controls={<Segmented label="View" value={view} options={VIEWS} onChange={setView} />}
     >
       <div ref={wrapRef} className="chart-wrap centered">
         {names.length < 2 ? (

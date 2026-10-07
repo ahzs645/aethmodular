@@ -247,9 +247,9 @@ export function ParallelCoordinates({ rows, meta }: { rows: FilterRow[]; meta: M
       provenance="react-graph-gallery.com/parallel-plot · not in the estate (0 figures)"
       controls={
         <>
-          <Select label="species family" value={group} options={groupNames} onChange={(v) => { setGroup(v); setBrushes({}) }} />
-          <Segmented label="colour" value={colorBy} options={COLOR_BY} onChange={(v) => { setColorBy(v); setHidden(new Set()) }} />
-          <Toggle label="normalise" checked={normalise} onChange={(v) => { setNormalise(v); setBrushes({}) }} title="every axis 0–1: value ÷ that species' 98th percentile, so the axes share one scale" />
+          <Select label="Species family" value={group} options={groupNames} onChange={(v) => { setGroup(v); setBrushes({}) }} />
+          <Segmented label="Colour" value={colorBy} options={COLOR_BY} onChange={(v) => { setColorBy(v); setHidden(new Set()) }} />
+          <Toggle label="Normalise" checked={normalise} onChange={(v) => { setNormalise(v); setBrushes({}) }} title="every axis 0–1: value ÷ that species' 98th percentile, so the axes share one scale" />
           {anyBrush ? (
             <span className="control">
               <strong>{selected.size}</strong> of {lines.length} filters selected

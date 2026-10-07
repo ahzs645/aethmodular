@@ -1,4 +1,5 @@
 import type { MetaFile } from '@/lib/types'
+import { sentence } from '@/components/ChartFrame'
 
 /** "ug/m3" -> "µg/m³" for labels. */
 export const prettyUnit = (u: string | undefined) =>
@@ -34,7 +35,7 @@ export function FieldSelect({
           <optgroup label="—">
             {extraOptions.map((o) => (
               <option key={o} value={o}>
-                {o}
+                {sentence(o)}
               </option>
             ))}
           </optgroup>

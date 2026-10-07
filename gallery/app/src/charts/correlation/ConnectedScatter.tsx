@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { seasonsForSite } from '@/siteSeasons'
 import { ChartFrame, Empty, Segmented, Toggle } from '@/components/ChartFrame'
@@ -65,6 +65,8 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
   }, [rows, meta.sites, xField, yField, step, hidden])
 
   const all = series.flatMap((s) => s.pts)
+  // a median outside the axes (negative under "From 0,0") is clipped, not drawn into the margin
+  const clipId = useId()
   const MAX_SQUARE = 560
   const availW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const innerW = Math.min(availW, MAX_SQUARE)
@@ -97,8 +99,8 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
       provenance="31 figures classified as connected scatter, none built until now · react-graph-gallery.com/connected-scatter-plot"
       controls={
         <>
-          <Segmented label="step" value={step} options={STEPS} onChange={setStep} />
-          <Toggle label="labels" checked={labels} onChange={setLabels} />
+          <Segmented label="Step" value={step} options={STEPS} onChange={setStep} />
+          <Toggle label="Labels" checked={labels} onChange={setLabels} />
         </>
       }
     >
@@ -113,10 +115,14 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
                   <path d="M 0 0 L 10 5 L 0 10 z" fill={s.color} />
                 </marker>
               ))}
+              <clipPath id={clipId}>
+                <rect width={innerW} height={innerH} />
+              </clipPath>
             </defs>
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
               <YAxis scale={y} x={0} label={withUnit(yField, meta.field_units)} gridWidth={innerW} />
               <XAxis scale={x} y={innerH} label={withUnit(xField, meta.field_units)} />
+              <g clipPath={`url(#${clipId})`}>
               {opts.identity && (
                 <line x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="5 4" />
               )}
@@ -160,6 +166,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
                   ))}
                 </g>
               ))}
+              </g>
             </g>
           </svg>
         )}

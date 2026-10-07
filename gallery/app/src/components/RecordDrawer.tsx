@@ -54,7 +54,7 @@ export function RecordDrawer({ rec, onClose }: { rec: FilterRecord; onClose: () 
       <div className="drawer-actions">
         <span className="u">Not in the SPARTAN filter export, so only this chart's values are shown.</span>
         <span style={{ flex: 1 }} />
-        <button type="button" className="btn" onClick={copy}>{copied ? 'copied' : 'copy id'}</button>
+        <button type="button" className="btn" onClick={copy}>{copied ? 'Copied' : 'Copy ID'}</button>
       </div>
       <RecordSection rec={rec} />
       <FilterSpectrum id={rec.id} />

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useSearchParam } from '@/lib/url'
+import { useHeaderHeight } from '@/hooks/useSidePanel'
 
 interface Entry { id: string; label: string }
 
@@ -10,10 +12,13 @@ interface Entry { id: string; label: string }
  */
 export function PageToc({ children }: { children: ReactNode }) {
   const mainRef = useRef<HTMLDivElement>(null)
-  const jumpRef = useRef<HTMLLabelElement>(null)
+  const jumpRef = useRef<HTMLDivElement>(null)
+  const [navigation, setNavigation] = useSearchParam<'shown' | 'hidden'>('toc', 'shown', ['shown', 'hidden'])
+  const showNavigation = navigation === 'shown'
   const [entries, setEntries] = useState<Entry[]>([])
   const [active, setActive] = useState<string | null>(null)
-  const [top, setTop] = useState(96)
+  // sit just below the sticky app header, whatever height its tab row wraps to
+  const top = useHeaderHeight()
 
   // collect headings; charts load their data asynchronously, so re-scan on DOM changes
   useEffect(() => {
@@ -36,14 +41,6 @@ export function PageToc({ children }: { children: ReactNode }) {
     return () => mo.disconnect()
   }, [])
 
-  // sit just below the sticky app header, whatever height its tab row wraps to
-  useEffect(() => {
-    const measure = () => setTop((document.querySelector('.app-header') as HTMLElement | null)?.offsetHeight ?? 96)
-    measure()
-    window.addEventListener('resize', measure)
-    return () => window.removeEventListener('resize', measure)
-  }, [])
-
   // the active entry is the last section whose top has passed under the header
   useEffect(() => {
     const onScroll = () => {
@@ -57,7 +54,7 @@ export function PageToc({ children }: { children: ReactNode }) {
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
-  }, [entries, top])
+  }, [entries, top, showNavigation])
 
   // on narrow screens the sticky jump menu also covers the top of the page
   const jumpH = () => (jumpRef.current && jumpRef.current.offsetParent ? jumpRef.current.offsetHeight : 0)
@@ -67,19 +64,26 @@ export function PageToc({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="toc-layout">
+    <div className={`toc-layout${entries.length > 1 && showNavigation ? ' has-toc' : ''}`}>
       <div ref={mainRef} style={{ minWidth: 0 }}>
         {entries.length > 1 && (
-          <label ref={jumpRef} className="toc-select control" style={{ top }}>
-            Jump to
-            <select className="select" value={active ?? ''} onChange={(e) => go(e.target.value)}>
-              {entries.map((e) => <option key={e.id} value={e.id}>{e.label}</option>)}
-            </select>
-          </label>
+          <div ref={jumpRef} className="toc-controls" style={{ top }}>
+            {showNavigation && <label className="toc-select control">
+              Jump to
+              <select className="select" value={active ?? ''} onChange={(e) => go(e.target.value)}>
+                {entries.map((e) => <option key={e.id} value={e.id}>{e.label}</option>)}
+              </select>
+            </label>}
+            <button type="button" className="btn quiet" aria-expanded={showNavigation}
+              title={showNavigation ? 'Hide section navigation and give charts the full width' : 'Show section navigation'}
+              onClick={() => setNavigation(showNavigation ? 'hidden' : 'shown')}>
+              {showNavigation ? 'Hide sidebar' : 'Show sidebar'}
+            </button>
+          </div>
         )}
         {children}
       </div>
-      {entries.length > 1 && (
+      {entries.length > 1 && showNavigation && (
         <nav className="toc" style={{ top: top + 8 }} aria-label="Sections on this tab">
           <p className="toc-title">On this tab</p>
           <ol>

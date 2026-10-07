@@ -91,9 +91,9 @@ export function Ridgeline({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
       provenance="no matplotlib equivalent in the repo — a gallery chart the notebooks don't have · react-graph-gallery.com/ridgeline-plot"
       controls={
         <>
-          <Segmented label="rows" value={groupBy} options={ROWS} onChange={setGroupBy} />
-          <Segmented label="overlap" value={overlapMode} options={OVERLAPS} onChange={setOverlapMode} title="How far each density may rise into the row above" />
-          <Toggle label="clip to 1–99 %" checked={clip} onChange={setClip} />
+          <Segmented label="Rows" value={groupBy} options={ROWS} onChange={setGroupBy} />
+          <Segmented label="Overlap" value={overlapMode} options={OVERLAPS} onChange={setOverlapMode} title="How far each density may rise into the row above" />
+          <Toggle label="Clip to 1–99 %" checked={clip} onChange={setClip} />
         </>
       }
     >

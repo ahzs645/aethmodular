@@ -1,0 +1,142 @@
+import { useMemo, useState } from 'react'
+import * as d3 from 'd3'
+import { XAxis, YAxis } from '@/components/Axes'
+import { FONT, INK } from '@/lib/theme'
+import { PREPROCESSING, label } from '@/lib/labels'
+import { selectionPanels } from '@/lib/specification'
+import type { SpecCurveFile } from './SpecCurve'
+
+export type SpecLayout = 'combined' | 'separate' | 'overlay' | 'stacked' | 'single'
+const TOP_H = 250, ROW_H = 17, GROUP_H = 18, GAP = 24
+const HEAT = (t: number) => d3.interpolateReds(0.12 + 0.88 * t)
+const COLOURS = ['#2171b5', '#0f766e', '#8856a7', '#d95f0e', '#636363']
+const selectionName = (key: string) => `${label(PREPROCESSING, key)} selection`
+
+interface Props {
+  file: SpecCurveFile; shown: number[]; width: number; id: string; layout: SpecLayout; activeSelection?: string
+  highlighted: boolean[]; showDots: boolean; highlightLabel: string; band: number
+  required: Set<number>; toggleChoice: (c: number) => void
+  selectedIndices: Set<number>; describe: (i: number) => string[]
+  showTip: (e: React.MouseEvent, lines: string[]) => void; hideTip: () => void
+  select?: (i: number) => void
+}
+
+export function SpecCurvePlots(props: Props) {
+  const { file, shown, width, layout, id, highlighted, showDots, band, highlightLabel } = props
+  const panels = useMemo(() => selectionPanels(shown, file.sel, file.categories.sel), [shown, file])
+  const colorOf = (key: string) => COLOURS[file.categories.sel.indexOf(key) % COLOURS.length]
+  // The baseline is already identified by the panel and selection controls.
+  // Keep original choice indices so clicking the remaining rows still filters
+  // the matching saved masks, rather than the removed preprocessing masks.
+  const groups = (file.groups ?? []).filter(g => g.title !== 'Spectral preprocessing')
+  const choiceIndices = file.choices.map((_, c) => c).filter(c => !(file.groups ?? []).some(g => g.title === 'Spectral preprocessing' && c >= g.start && c < g.end))
+  const labelPad = Math.ceil(Math.max(0, ...choiceIndices.map(c => file.choices[c].length * 6.3))) + 22
+  const space = Math.max(240, width - labelPad - 20)
+  const columns = layout === 'separate' && space >= 470 ? Math.min(2, panels.length) : 1
+  const plotW = (space - (columns - 1) * 42) / columns
+  const rowY = (c: number) => choiceIndices.indexOf(c) * ROW_H + (groups.length ? (groups.findIndex(g => c >= g.start && c < g.end) + 1) * GROUP_H : 0)
+  const stripH = choiceIndices.length * ROW_H + groups.length * GROUP_H
+  const panelH = 48 + TOP_H + GAP + stripH + 60
+  const ys = shown.map(i => file.intercept[i])
+  const domain: [number, number] = [(d3.quantile(ys, 0.003) ?? -1) - 0.6, Math.max(2.6, (d3.quantile(ys, 0.997) ?? 0) + 1.9)]
+  const y = d3.scaleLinear().domain(domain).range([TOP_H, 0])
+  const panelList = layout === 'combined' ? [{ key: 'combined', indices: shown }] : layout === 'single' ? panels.filter(p => p.key === props.activeSelection) : panels
+  const height = layout === 'overlay' ? TOP_H + 150 : Math.ceil(panelList.length / columns) * panelH
+  return <svg width={Math.max(width, labelPad + space + 20)} height={height} fontFamily={FONT.family} data-layout={layout}>
+    {layout === 'overlay' ? <g transform="translate(74,46)">
+      <YAxis scale={y} x={0} label="Deming intercept, MAC 10 (µg/m³)" gridWidth={Math.max(240, width - 100)} tickCount={6} />
+      <rect x={0} y={y(band)} width={Math.max(240, width - 100)} height={y(-band) - y(band)} fill={INK.good} fillOpacity={0.08} />
+      <line x1={0} x2={Math.max(240, width - 100)} y1={y(0)} y2={y(0)} stroke={INK.text} />
+      {panels.map(p => {
+        const w = Math.max(240, width - 100), n = p.indices.length
+        const x = d3.scaleLinear().domain([0, 100]).range([0, w])
+        const rank = (j: number) => n === 1 ? 50 : j / (n - 1) * 100
+        const samples = p.indices.map((i, j) => ({ i, j })).filter((_, j) => j % Math.max(1, Math.floor(n / (w * 2))) === 0 || j === n - 1)
+        const line = d3.line<typeof samples[number]>().x(d => x(rank(d.j))).y(d => y(Math.max(domain[0], file.intercept[d.i])))
+        return <g key={p.key} data-selection={p.key}>
+          <path d={line(samples) ?? ''} fill="none" stroke={colorOf(p.key)} strokeWidth={1.8} />
+          {showDots && p.indices.map((i, j) => highlighted[i] && <circle key={i} data-highlight="true" cx={x(rank(j))} cy={y(Math.max(domain[0], file.intercept[i]))} r={2.3} fill={INK.negative} />)}
+        </g>
+      })}
+      <XAxis scale={d3.scaleLinear().domain([0, 100]).range([0, Math.max(240, width - 100)])} y={TOP_H} label="Percentile within each selection, ordered by intercept" tickCount={6} format={v => `${v}%`} />
+      <rect x={0} y={0} width={Math.max(240, width - 100)} height={TOP_H} fill="transparent"
+        onMouseMove={e => {
+          const r = e.currentTarget.getBoundingClientRect(), t = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))
+          props.showTip(e, [`${(100 * t).toFixed(1)}th percentile within each selection`, ...panels.flatMap(p => {
+            const i = p.indices[Math.round(t * (p.indices.length - 1))]
+            return [selectionName(p.key), ...props.describe(i)]
+          }), 'Percentiles compare distributions; configurations are not paired.'])
+        }} onMouseLeave={props.hideTip} />
+      {panels.map((p, k) => <g key={p.key} transform={`translate(${(k % 2) * Math.max(240, (width - 100) / 2)},${TOP_H + 70 + Math.floor(k / 2) * 18})`}>
+        <line x1={0} x2={14} stroke={colorOf(p.key)} strokeWidth={2} />
+        <text x={20} dy="0.32em" fontSize={10.5} fill={INK.text}>{selectionName(p.key).slice(0, Math.max(20, Math.floor((width - 100) / 11) - 20))}{selectionName(p.key).length > Math.max(20, Math.floor((width - 100) / 11) - 20) ? '…' : ''} · n={p.indices.length.toLocaleString()}<title>{selectionName(p.key)}</title></text>
+      </g>)}
+    </g> : panelList.map((p, k) => <SpecPanel key={p.key} {...props} indices={p.indices}
+      name={p.key === 'combined' ? 'All selected cohorts combined' : selectionName(p.key)}
+      color={p.key === 'combined' ? INK.accent : colorOf(p.key)} xOffset={labelPad + (k % columns) * (plotW + 42)}
+      yOffset={Math.floor(k / columns) * panelH + 42} plotW={plotW} y={y} labelPad={labelPad} labels={k % columns === 0}
+      rowY={rowY} stripH={stripH} choiceIndices={choiceIndices} groups={groups} clipId={`${id}-panel-${k}`} />)}
+    <text x={20} y={height - 6} fontSize={10.5} fill={INK.muted}>
+      {showDots ? `Red dots: ${highlightLabel}` : 'Red dots hidden'}{layout !== 'combined' && layout !== 'overlay' && ' · shared vertical scale; each selection sorted independently'}
+    </text>
+  </svg>
+}
+
+function SpecPanel(props: Props & {
+  indices: number[]; name: string; color: string; xOffset: number; yOffset: number; plotW: number
+  y: d3.ScaleLinear<number, number>; labelPad: number; labels: boolean; rowY: (c: number) => number; stripH: number; clipId: string
+  choiceIndices: number[]; groups: NonNullable<SpecCurveFile['groups']>
+}) {
+  const { file, indices, plotW, y, labelPad, labels, rowY, stripH, highlighted, showDots } = props
+  const [cursor, setCursor] = useState<number | null>(null)
+  const n = indices.length, x = d3.scaleLinear().domain([0, Math.max(1, n)]).range([0, plotW])
+  const yLo = y.domain()[0], clamp = (i: number) => y(Math.max(yLo, file.intercept[i]))
+  const samples = indices.map((i, j) => ({ i, j })).filter((_, j) => j % Math.max(1, Math.floor(n / (plotW * 2))) === 0 || j === n - 1)
+  const line = d3.line<typeof samples[number]>().x(p => x(p.j + 0.5)).y(p => clamp(p.i))
+  const area = d3.area<typeof samples[number]>().x(p => x(p.j + 0.5)).y0(y(0)).y1(p => clamp(p.i))
+  const strips = useMemo(() => {
+    const cols = Math.max(1, Math.min(indices.length, Math.round(plotW)))
+    return file.masks.map(mask => {
+      const canvas = document.createElement('canvas'); canvas.width = cols; canvas.height = 1
+      const ctx = canvas.getContext('2d'); if (!ctx) return ''
+      const img = ctx.createImageData(cols, 1)
+      for (let b = 0; b < cols; b++) {
+        const j0 = Math.floor(b * indices.length / cols), j1 = Math.max(j0 + 1, Math.floor((b + 1) * indices.length / cols))
+        let used = 0; for (let j = j0; j < j1; j++) if (mask[indices[j]] === '1') used++
+        const rgb = used === 0 ? d3.rgb(255,255,255) : d3.rgb(HEAT(used / (j1 - j0)))
+        img.data.set([rgb.r, rgb.g, rgb.b, 255], b * 4)
+      }
+      ctx.putImageData(img,0,0); return canvas.toDataURL()
+    })
+  }, [file, indices, plotW])
+  const locate = (e: React.MouseEvent<SVGRectElement>) => Math.min(n - 1, Math.max(0, Math.floor(x.invert(e.clientX - e.currentTarget.getBoundingClientRect().left))))
+  const count = indices.filter(i => highlighted[i]).length
+  return <g transform={`translate(${props.xOffset},${props.yOffset})`} data-selection={props.name}>
+    <text x={0} y={-22} fontSize={11.5} fontWeight={600} fill={props.color}>{props.name.length > plotW / 6.1 ? props.name.slice(0, Math.max(10, Math.floor(plotW / 6.1) - 1)) + '…' : props.name}<title>{props.name}</title></text>
+    <text x={0} y={-6} fontSize={10.5} fill={INK.muted}>{n.toLocaleString()} configurations · {count.toLocaleString()} match</text>
+    <defs><clipPath id={props.clipId}><rect width={plotW} height={TOP_H} /></clipPath></defs>
+    {labels ? <YAxis scale={y} x={0} label="Deming intercept, MAC 10 (µg/m³)" gridWidth={plotW} tickCount={6} /> : y.ticks(6).map(v => <line key={v} x1={0} x2={plotW} y1={y(v)} y2={y(v)} stroke={INK.grid} />)}
+    <rect x={0} y={y(props.band)} width={plotW} height={y(-props.band) - y(props.band)} fill={INK.good} fillOpacity={0.08} />
+    <g clipPath={`url(#${props.clipId})`}>
+      <path d={area(samples) ?? ''} fill={props.color} fillOpacity={0.12} />
+      <path d={line(samples) ?? ''} fill="none" stroke={props.color} strokeWidth={1.4} />
+      {indices.map((i, j) => props.selectedIndices.has(i) && <circle key={`s${i}`} cx={x(j + 0.5)} cy={clamp(i)} r={3.4} fill="none" stroke={INK.text} strokeOpacity={0.7} />)}
+      {showDots && indices.map((i, j) => highlighted[i] && <circle key={`h${i}`} data-highlight="true" cx={x(j + 0.5)} cy={clamp(i)} r={2.3} fill={INK.negative} />)}
+    </g>
+    <line x1={0} x2={plotW} y1={y(0)} y2={y(0)} stroke={INK.text} />
+    {cursor !== null && cursor < n && <line x1={x(cursor + 0.5)} x2={x(cursor + 0.5)} y1={0} y2={TOP_H + GAP + stripH} stroke={INK.text} strokeOpacity={0.5} pointerEvents="none" />}
+    <rect x={0} y={0} width={plotW} height={TOP_H} fill="transparent" style={{ cursor: props.select ? 'pointer' : 'default' }}
+      onMouseMove={e => { const j = locate(e); setCursor(j); props.showTip(e, [`#${(j + 1).toLocaleString()} of ${n.toLocaleString()} · ${props.name}`, ...props.describe(indices[j])]) }}
+      onMouseLeave={() => { setCursor(null); props.hideTip() }} onClick={e => props.select?.(indices[locate(e)])} />
+    <g transform={`translate(0,${TOP_H + GAP})`}>
+      {props.choiceIndices.map(c => <image key={c} href={strips[c]} x={0} y={rowY(c)} width={plotW} height={ROW_H - 1.5} preserveAspectRatio="none" style={{ imageRendering: 'pixelated' }} />)}
+      {labels && props.groups.map(g => <text key={g.title} x={-labelPad + 4} y={rowY(g.start) - 5} fontSize={11.5} fontWeight={700} fill={INK.text}>{g.title}</text>)}
+      {labels && props.choiceIndices.map(c => <g key={c} style={{cursor:'pointer'}} onClick={() => props.toggleChoice(c)}>
+        {props.required.has(c) && <rect x={-labelPad + 4} y={rowY(c) + 1} width={labelPad - 8} height={ROW_H - 2} rx={3} fill={INK.accent} fillOpacity={0.12} />}
+        <text x={-8} y={rowY(c) + ROW_H / 2} dy="0.32em" textAnchor="end" fontSize={11} fill={props.required.has(c) ? INK.accent : INK.text}>{file.choices[c]}</text>
+        <title>Click to toggle this analytic-choice filter across every selection.</title>
+      </g>)}
+      <XAxis scale={x} y={stripH} label="Configuration rank by intercept" tickCount={Math.max(2, Math.floor(plotW / 85))} format={v => d3.format(',')(v)} />
+    </g>
+  </g>
+}

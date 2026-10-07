@@ -1,3 +1,4 @@
+import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import { useCallback, useEffect, useState, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -17,14 +18,15 @@ export type TipBody = ReactNode | string[]
 export function useTooltip(wrapRef: RefObject<HTMLElement>) {
   // Viewport coordinates: the tooltip is portalled to <body> with position:fixed,
   // so a chart inside a scrolling box (overflow-x: auto) can no longer clip it.
+  const method = useEstimator()
   const [tip, setTip] = useState<{ x: number; y: number; body: TipBody } | null>(null)
 
   const show = useCallback(
     (e: React.MouseEvent, body: TipBody) => {
       if (!wrapRef.current) return
-      setTip({ x: e.clientX, y: e.clientY, body })
+      setTip({ x: e.clientX, y: e.clientY, body: Array.isArray(body) ? body.map(l => estimatorText(l, method)) : body })
     },
-    [wrapRef]
+    [wrapRef, method]
   )
   const hide = useCallback(() => setTip(null), [])
 

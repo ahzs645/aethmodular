@@ -1,5 +1,6 @@
+import { EstimatorViews, ESTIMATORS, projectGrid, projectRun, useRegressions } from '@/lib/regressionPrefs'
 import { useMemo, useState } from 'react'
-import { ChartFrame, Select } from '@/components/ChartFrame'
+import { ChartFrame, Select, Toggle } from '@/components/ChartFrame'
 import { PageToc } from '@/components/PageToc'
 import { SpecCurve } from '@/charts/calibration/SpecCurve'
 import { CutoffSweep } from '@/charts/calibration/CutoffSweep'
@@ -22,6 +23,7 @@ import { cohortColor, configLabel, presetName, type Config } from '@/charts/cali
 import { runCalendar, seasonalRun } from '@/charts/calibration/seasonView'
 import { INK } from '@/lib/theme'
 import { usePrefs } from '@/lib/prefs'
+import { useSearchParam } from '@/lib/url'
 import type { CalibFile, CalibRunsFile, MetaFile } from '@/lib/types'
 
 /**
@@ -48,9 +50,15 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
   pmfSel?: Set<string> | null
   pmfLabelOfDate?: (date: string | null | undefined) => string
 }) {
+  const { methods } = useRegressions()
+  const calibrationViews = useMemo(() => Object.fromEntries(ESTIMATORS.map(method => [method, calib ? { ...calib, grid: calib.grid.map(r => projectGrid(r, method)), sweeps: calib.sweeps.map(r => projectGrid(r, method)) } : null])) as Record<typeof ESTIMATORS[number], CalibFile | null>, [calib])
   const [selected, setSelected] = useState<Config>({ co: 'ocec', cut: 800, sel: 'raw', sp: 'airspec' })
   const [presetKey, setPresetKey] = useState<string>('ocec800_airspec')
   const [targetId, setTargetId] = useState<string>('addis')
+  const [specSearch, setSpecSearch] = useState('baselines')
+  const [archiveMode, setArchiveMode] = useSearchParam<string>('carchive', 'hide', ['hide', 'show'])
+  const [version, setVersion] = useSearchParam<string>('cversion', 'current', ['current', 'earlier'])
+  const showArchived = version === 'earlier' && archiveMode === 'show'
   const { explain } = usePrefs()
 
   const presets = runs?.presets ?? []
@@ -131,12 +139,27 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
             <span style={{ color: 'var(--ink-muted)' }}>selected: <strong style={{ color: 'var(--ink-text)' }}>{configLabel(selected, calib)}</strong></span>
             {explain && <span style={{ color: 'var(--ink-muted)' }}>MAC {calib.mac_value} · Deming λ* {calib.deming_lambda_mac10} · slope box {calib.slope_box.join('–')} · IMPROVE cross-validation R² floor {calib.heldout_floor}</span>}
           </SectionBar>
-          <SpecCurve selected={selected} onSelect={selectConfig} />
-          <CutoffSweep calib={calib} selected={selected} onSelect={selectConfig} />
-          <KSweep calib={calib} selected={selected} onSelect={selectConfig} />
-          <SlopeInterceptTrap calib={calib} selected={selected} onSelect={selectConfig} />
-          <SpectraDumbbell calib={calib} selected={selected} onSelect={selectConfig} />
-          <CrossSiteHeatmap calib={calib} selected={selected} onSelect={selectConfig} />
+          <EstimatorViews>{() => <SpecCurve
+            defaultLayout="stacked"
+            excludePreprocessing={showArchived ? [] : ['vibes']}
+            src={specSearch === 'original' ? 'spec_curve.json' : version === 'current' ? 'meeting-r70/spec_curve_20260917.json' : 'meeting/spec_curve_20260917.json'}
+            selected={specSearch === 'original' ? selected : undefined}
+            onSelect={specSearch === 'original' ? selectConfig : undefined}
+            controls={<>
+              <Select label="Specification search" value={specSearch} options={['original', 'baselines']} onChange={setSpecSearch}
+                optionLabel={value => value === 'original' ? 'Original search — spline, raw, derivative' : '17 Sep search — spline and VIBES'} />
+              {specSearch === 'baselines' && <span className="control">Saved configurations pair the same baseline for selection and model spectra.</span>}
+              {specSearch === 'baselines' && <Select label="VIBES analysis" value={version} options={['current', 'earlier']} onChange={setVersion} optionLabel={v => v === 'current' ? 'Completed · rank 70' : 'Archived · preliminary rank 30'} />}
+              {specSearch === 'baselines' && version === 'earlier' && <Toggle label="Show archived VIBES fit (4000–1425)" checked={showArchived} onChange={v => setArchiveMode(v ? 'show' : 'hide')} />}
+            </>}
+            subtitle={specSearch === 'original' ? undefined : f => `${f ? f.n.toLocaleString() + ' ' : ''}Addis configurations from the 17 Sep design, using spline and ${version === 'current' ? 'completed rank-70' : 'archived preliminary rank-30'} VIBES baselines. Filter the calibration cohort and settings below; this search uses the same baseline for cohort selection and model spectra, so different baselines in those two dropdowns have no saved configurations. The k-sweep and configuration readouts below use the original search.`}
+            provenance={specSearch === 'original' ? undefined : version === 'current' ? 'Completed rank-70 migration · category_grid.jsonl · shared specification guardrails' : 'Archived meeting_followup_20260917/category_grid.jsonl · shared specification guardrails'}
+          />}</EstimatorViews>
+          <EstimatorViews>{method => <CutoffSweep calib={calibrationViews[method]!} selected={selected} onSelect={selectConfig} />}</EstimatorViews>
+          <EstimatorViews>{method => <KSweep calib={calibrationViews[method]!} selected={selected} onSelect={selectConfig} />}</EstimatorViews>
+          <EstimatorViews>{method => <SlopeInterceptTrap calib={calibrationViews[method]!} selected={selected} onSelect={selectConfig} />}</EstimatorViews>
+          <EstimatorViews>{method => <SpectraDumbbell calib={calibrationViews[method]!} selected={selected} onSelect={selectConfig} />}</EstimatorViews>
+          <EstimatorViews>{method => <CrossSiteHeatmap calib={calibrationViews[method]!} selected={selected} onSelect={selectConfig} />}</EstimatorViews>
         </>
       )}
 
@@ -144,8 +167,8 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
         <>
           <SectionBar>
             <span className="pill">One configuration, every filter</span>
-            <Select label="configuration" value={preset?.key ?? ''} options={presets.map((p) => p.key)} onChange={setPresetKey} optionLabel={(k) => { const p = presets.find((q) => q.key === k); return p ? presetName(p) : k }} title={presets.map((p) => `${p.key}: ${presetName(p)}`).join('\n')} />
-            <Select label="test set" value={target ?? ''} options={targetIds} onChange={setTargetId} optionLabel={(t) => runs.targets[t]?.label ?? t} />
+            <Select label="Configuration" value={preset?.key ?? ''} options={presets.map((p) => p.key)} onChange={setPresetKey} optionLabel={(k) => { const p = presets.find((q) => q.key === k); return p ? presetName(p) : k }} title={presets.map((p) => `${p.key}: ${presetName(p)}`).join('\n')} />
+            <Select label="Test set" value={target ?? ''} options={targetIds} onChange={setTargetId} optionLabel={(t) => runs.targets[t]?.label ?? t} />
             <span style={{ color: 'var(--ink-muted)' }}>{preset ? presetName(preset) : null}</span>
             <span className="season-row" style={{ color: 'var(--ink-muted)' }}>
               {runKeep || runPmf
@@ -163,10 +186,10 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
           {run ? (
             <>
               <CVCurve run={run} runs={runs} />
-              <RunCrossplot run={runView ?? run} runs={runs} meta={meta} knownIds={knownIds} />
+              <RunCrossplot lambda10={calib?.deming_lambda_mac10 ?? 2.96} run={runView ?? run} runs={runs} meta={meta} knownIds={knownIds} />
               <RunSeries run={runView ?? run} runs={runs} meta={meta} knownIds={knownIds} />
               {/* the blind-half readouts are the explorer's own, on every season */}
-              <SplitCheck run={run} runs={runs} />
+              <EstimatorViews>{method => <SplitCheck run={projectRun(run, method)} runs={runs} />}</EstimatorViews>
             </>
           ) : (
             <ChartFrame title="No run" exportable={false}><p className="frame-empty">No exported run for this configuration at this site.</p></ChartFrame>
@@ -176,7 +199,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
             <span className="pill">Cross-site transfer</span>
             <span style={{ color: 'var(--ink-muted)' }}>one IMPROVE-trained calibration, applied unchanged to every SPARTAN site</span>
           </SectionBar>
-          <CrossSiteTransfer runs={runs} />
+          <EstimatorViews>{method => <CrossSiteTransfer runs={{ ...runs, runs: runs.runs.map(r => projectRun(r, method)) }} />}</EstimatorViews>
 
           <SectionBar>
             <span className="pill">Cohort diagnostics</span>
@@ -200,7 +223,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
             bySpace={siteSpectra}
           />
           {Object.keys(runs.analog).length > 0 && <AnalogLab bySpace={runs.analog} cutoff={calib?.default_cutoff.analogs ?? 500} />}
-          {runs.hips.york && <HipsYork runs={runs} />}
+          {runs.hips.york && methods.includes('york') && <HipsYork runs={runs} />}
         </>
       )}
     </PageToc>

@@ -122,9 +122,9 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
       provenance="stands in for 73 timeseries + 59 area + 46 line figures · plotting/timeseries.py · react-graph-gallery.com/timeseries · /line-chart-synchronized-cursors"
       controls={
         <>
-          <Segmented label="layout" value={layout} options={LAYOUTS} onChange={setLayout} />
-          <Toggle label="rolling median" checked={smooth} onChange={setSmooth} />
-          <Toggle label="season shading" checked={seasonShading} onChange={setSeasonShading} />
+          <Segmented label="Layout" value={layout} options={LAYOUTS} onChange={setLayout} />
+          <Toggle label="Rolling median" checked={smooth} onChange={setSmooth} />
+          <Toggle label="Season shading" checked={seasonShading} onChange={setSeasonShading} />
           {cursor && <span className="control" style={{ fontFamily: 'var(--mono)' }}>{d3.timeFormat('%Y-%m-%d')(cursor)}</span>}
         </>
       }

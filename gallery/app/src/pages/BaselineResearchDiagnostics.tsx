@@ -41,7 +41,25 @@ export function BaselineResearchDiagnostics({ data, rows, cohort, sample }: { da
   </>
 }
 
+export function CompletedVibesDiagnostics() {
+  const [data,setData] = useState<ApplicabilityData|null>(null)
+  const [error,setError] = useState('')
+  useEffect(()=>{
+    const abort = new AbortController()
+    fetch(`${import.meta.env.BASE_URL}data/baseline_applicability_r70.json`, {signal:abort.signal})
+      .then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json()})
+      .then(d=>{if(d.schema_version!==1||d.background_rank!==70||d.rows.length!==5160)throw new Error('Unexpected rank-70 distance export');setData(d)})
+      .catch(e=>{if(e.name!=='AbortError')setError(String(e))})
+    return ()=>abort.abort()
+  },[])
+  return data ? <>
+    <ChartFrame title="Completed rank-70 training spectral space" exportable={false}><p>Separate training-only PCA fits use spline spectra and rank-70 VIBES corrected over 4000–500 cm⁻¹, then restricted to the shared 4000–1425 channels. Distances and EC errors are recomputed from those spectra and their paired models.</p></ChartFrame>
+    <ApplicabilityViews data={data}/>
+  </> : <ChartFrame title="Completed spectral diagnostics" exportable={false}><Empty>{error||'Loading rank-70 distances…'}</Empty></ChartFrame>
+}
+
 function ApplicabilityViews({data}:{data:ApplicabilityData}) {
+  const COLOR = { AIRSpec:'#2C6E9E', VIBES:data.background_rank===70?'#d95f0e':'#7A4FA3' }
   const [metric,setMetric]=useState('PCA score distance')
   const key=metricKey(metric)
   const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref)
@@ -66,7 +84,7 @@ function ApplicabilityViews({data}:{data:ApplicabilityData}) {
       <Note>Full-pool held-out IMPROVE filters only; 2,327 physical test filters per method. {metric==='PCA score distance'?'Score distance (T²) from an eight-component PCA fit. This is not the saved PLS score space.':'Residual spectral RMS (Q) after eight PCA components.'} Values are percentiles of the corresponding training spectra.</Note>
       <div ref={ref} className="chart-wrap"><svg width={w} height={310} role="img" aria-label="Mean absolute held-out EC error by training spectral distance percentile"><g transform="translate(70,20)"><YAxis scale={y} x={0} gridWidth={iw} label="Mean |error| (µg/filter)"/><rect x={x(95)} width={x(100)-x(95)} height={ih} fill="#c49442" fillOpacity={.12}/>{METHODS.filter(lg.show).map(method=>{
         const m=bins.filter(b=>b.method===method)
-        return <g key={method} opacity={lg.dim(method)}><path d={d3.line<(typeof m)[number]>().x(b=>cx(b.low)).y(b=>y(b.mae))(m)??''} stroke={COLOR[method]} strokeWidth={2} fill="none"/>{m.map(b=><circle key={b.low} cx={cx(b.low)} cy={y(b.mae)} r={4.5} fill={COLOR[method]} onMouseEnter={e=>tip.show(e,[method,`Training percentile ${b.low}–${b.low+20}`,`${b.n} filters; mean |error| ${f(b.mae,3)} µg/filter`])} onMouseLeave={tip.hide}><title>{`${method}, ${b.low}–${b.low+20}: n=${b.n}, MAE ${f(b.mae,3)}`}</title></circle>)}</g>
+        return <g key={method} opacity={lg.dim(method)}><path d={d3.line<(typeof m)[number]>().x(b=>cx(b.low)).y(b=>y(b.mae))(m)??''} stroke={COLOR[method]} strokeWidth={2} fill="none"/>{m.map(b=><circle key={b.low} cx={cx(b.low)} cy={y(b.mae)} r={4.5} fill={COLOR[method]} onMouseEnter={e=>tip.show(e,[method,`Training percentile ${b.low}–${b.low+20}`,`${b.n} filters; mean |error| ${f(b.mae,3)} µg/filter`])} onMouseLeave={tip.hide}></circle>)}</g>
       })}<XAxis scale={x} y={ih} label="Training spectral percentile"/></g><Legend width={w} y={300} items={METHODS.map(m=>({label:m,color:COLOR[m]}))} lg={lg}/></svg>{tip.node}</div>
       <Note>This is an exploratory binning of already inspected test outcomes. Mean errors can rise with EC loading or site composition. No cutoff has been selected or validated.</Note>
     </ChartFrame>
@@ -80,7 +98,7 @@ function ApplicabilityViews({data}:{data:ApplicabilityData}) {
   </>
 }
 
-function RegionContribution({data,sample}:{data:BaselineData;sample:string}) {
+export function RegionContribution({data,sample}:{data:BaselineData;sample:string}) {
   const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref);const lg=useLegend()
   const row=data.contributions.find(r=>r.cohort==='full_pool'&&r.sample_id===sample) as BaselineContribution|undefined
   if(!row)return null
@@ -100,7 +118,7 @@ function RegionContribution({data,sample}:{data:BaselineData;sample:string}) {
   </ChartFrame>
 }
 
-function SiteBandPattern({rows,cohort}:{rows:BaselinePair[];cohort:BaselineCohort}) {
+export function SiteBandPattern({rows,cohort}:{rows:BaselinePair[];cohort:BaselineCohort}) {
   const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref)
   const tip=useTooltip(ref)
   const sites=Array.from(new Set(rows.map(r=>r.Site))).sort()
@@ -116,12 +134,12 @@ function SiteBandPattern({rows,cohort}:{rows:BaselinePair[];cohort:BaselineCohor
   const color=d3.scaleDiverging([-bound,0,bound],d3.interpolatePuOr).clamp(true)
   return <ChartFrame title="Site and loading pattern" subtitle="Mean VIBES minus AIRSpec absolute EC error in the selected frozen test population. This screens for heterogeneity; it is not a trained model-routing rule.">
     <ExplainOnly><Note>{cohort==='full_pool'?'Full pool':'Restricted lowest-OC/EC'}, current display subset ({rows.length} paired physical filters). Colors show ΔMAE in µg/filter: purple favors VIBES, orange favors AIRSpec. Cells with fewer than five filters are gray; blank cells have none.</Note></ExplainOnly>
-    <div ref={ref} className="chart-wrap"><svg width={w} height={ih+118} role="img" aria-label="Site by training loading quartile heatmap of paired absolute error difference"><g transform="translate(77,25)" fontFamily={FONT.family}>{cells.map(c=>c.n?<rect key={c.site+c.band} x={x(c.band)} y={y(c.site)} width={x.bandwidth()} height={y.bandwidth()} fill={c.n<5?INK.grid:color(c.delta!)} stroke="white" onMouseEnter={e=>tip.show(e,[`${c.site} / ${c.band}`,`${c.n} physical filters`,`ΔMAE ${f(c.delta,3)} µg/filter`,c.n<5?'Shown gray: fewer than five filters':''])} onMouseLeave={tip.hide}><title>{`${c.site} ${c.band}, n=${c.n}, ΔMAE=${f(c.delta,3)}`}</title></rect>:null)}{sites.map(s=><text key={s} x={-8} y={y(s)!+y.bandwidth()/2+4} textAnchor="end" fontSize={10} fill={INK.text}>{s}</text>)}<XAxis scale={x} y={ih} label="Training-defined EC loading quartile"/></g><ColorKey x={77} y={ih+92} bound={bound} color={color}/></svg>{tip.node}</div>
+    <div ref={ref} className="chart-wrap"><svg width={w} height={ih+118} role="img" aria-label="Site by training loading quartile heatmap of paired absolute error difference"><g transform="translate(77,25)" fontFamily={FONT.family}>{cells.map(c=>c.n?<rect key={c.site+c.band} x={x(c.band)} y={y(c.site)} width={x.bandwidth()} height={y.bandwidth()} fill={c.n<5?INK.grid:color(c.delta!)} stroke="white" onMouseEnter={e=>tip.show(e,[`${c.site} / ${c.band}`,`${c.n} physical filters`,`ΔMAE ${f(c.delta,3)} µg/filter`,c.n<5?'Shown gray: fewer than five filters':''])} onMouseLeave={tip.hide}></rect>:null)}{sites.map(s=><text key={s} x={-8} y={y(s)!+y.bandwidth()/2+4} textAnchor="end" fontSize={10} fill={INK.text}>{s}</text>)}<XAxis scale={x} y={ih} label="Training-defined EC loading quartile"/></g><ColorKey x={77} y={ih+92} bound={bound} color={color}/></svg>{tip.node}</div>
     <ExplainOnly><Note>Color saturates beyond ±{f(bound,2)} µg/filter, the 90th percentile of displayed cell magnitudes; hover gives exact values and counts. The quartiles use measured TOR EC, so they cannot route an Addis prediction without independent EC. The separate CLI notebook evaluates an exploratory spectrum-only router; this heatmap is not that model.</Note></ExplainOnly>
   </ChartFrame>
 }
 
-function BlankSpread({data}:{data:BaselineData}) {
+export function BlankSpread({data}:{data:BaselineData}) {
   const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref)
   const [source,setSource]=useState('ETAD')
   const points=data.blank_details.filter(r=>r.source===source.toLowerCase())

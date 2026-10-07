@@ -1,0 +1,132 @@
+# Gallery chart standards
+
+Audit of every chart in `gallery/app` (1 Oct 2026): 22 charts on the gallery
+tabs, 18 calibration charts, and about 30 charts drawn inline in the research
+pages (Meeting follow-up, Similarity, Baselines, Census). The question was
+which features each chart re-implements instead of sharing, so that each
+feature has **one** definition.
+
+The short version: the frame, controls, axes and tooltip are already shared
+and mostly used. What is redefined chart by chart is everything *inside* the
+plot: reference lines, domains, colours, number formats, legends, selected and
+pinned marks, and three whole chart types (crossplot, spectrum, dot-interval
+rows) that exist in 6–8 copies each.
+
+Paths below are relative to `gallery/app/src`.
+
+---
+
+## 1. Standards, one per feature
+
+Each row is the rule we standardise on, the primitive that carries it, and how
+many places currently deviate. **New** marks a primitive that does not exist yet.
+
+| Feature | Standard | Primitive | Deviations |
+|---|---|---|---|
+| Panel, title, explain, export | Every chart sits in `ChartFrame` | `components/ChartFrame` | 0, but export takes only the first `<svg>` (see §3) |
+| Controls | `Select` / `Segmented` / `Toggle`, never raw `<select>` or checkbox | `components/ChartFrame` | 10 raw controls (Baselines ×7, Meeting ×3) |
+| Sizing | `useDimensions`; square crossplots ≤ 560 px, min 240 | `hooks/useGalleryData` + **new** `useFacetGrid` | Hexbin 520; Ext pilot fixed viewBox ×3; facet maths copied ×4 |
+| Margins | `MARGIN` unless the chart needs a label gutter | `lib/theme` + **new** `labelGutter(strings)` | 9 literal margins; 7 char-width gutter guesses (6.1–8 px/char) |
+| Axes, ticks, titles | `XAxis` / `YAxis` (11 px ticks, 12/600 titles); band scales for category rows | `components/Axes`, add `gridHeight` to `XAxis` | ~12 hand-drawn axes or row labels; 4 hand-drawn vertical grids |
+| Domain | `pairDomain` for crossplots; **new** `robustDomain(vals, lo, hi)` returning clamp + pinned count for clipped charts | `lib/axes` | 6 calibration variants (0.5–99.5 %, 2–98 %, p99, hard caps); 6 gallery quantile clips |
+| 1:1, zero, one, marker lines | One style per kind (identity `5 4` w1.5 `INK.identity`; zero/one solid `INK.axis` .7; marker dashed `3 3` + mono 10 label) | **new** `RefLine`, `IdentityLine`, `Marker` | ~25 hand-drawn lines with 5 dash patterns |
+| Fit lines and equations | `RegressionLines` for every fit, saved or live; `equation()` for text (3 dp, "y =") | `components/RegressionOverlay`, `lib/regressionPrefs` | CrossSiteTransfer clips by hand; 3 equation formats (`fmtFit` 2 dp, `equation` 3 dp, inline strings) |
+| Intervals | Whisker bars share one style | **new** `IntervalBar` (beside `RegressionBand`) | HipsYork, CrossSiteTransfer, Meeting ×2, BC LoadingPlot: 3 whisker styles |
+| Guardrails | Slope box and held-out floor drawn one way | **new** `GuardrailBands` in `charts/calibration/common` | 4 slope boxes, 3 floor styles |
+| Tooltip | `useTooltip` only; no native `<title>` alongside it | `hooks/useTooltip` | 5 charts show both tooltips; ~10 show only native `<title>` |
+| Tooltip content | `id`, `site · date`, `name: value unit`, trailing "click for details" | **new** `filterMarkHandlers(row, lines)` next to `useHighlight` | 7 copies of hover + tip + open; 4 wordings (`x: v`, `x = v`, `≈`, `median =`) |
+| Legend | `Legend` / `useLegend` as the HTML row inside `.chart-wrap`; `ColorLegend` for every ramp | `components/Legend`, `ColorLegend`; extend `useLegend` with background keys (seasons) and an in-SVG mode for export | 3 legends bypass `useLegend`; ~10 in-SVG one-offs; Meeting `Key`; FilterSpectrum div legend; 3 legends outside `.chart-wrap` |
+| Highlight, pin, dim | `focusStyle` for filter marks; **new** `selectedStyle` for a selected configuration | `lib/highlight` | Meeting Scatter, ParallelCoordinates, DistributionPanel outliers; 6 selected-config styles |
+| Brush | One accent brush style | **new** `useD3Brush` | Scatterplot uses d3 grey; ParallelCoordinates .18; DateBrush .14 |
+| Season shading | One component for bands / strips / arcs | **new** `SeasonBands` | 5 implementations |
+| Colours | Sites and seasons from `meta`; INK tokens; **new** `METHOD_COLOR` for baselines keyed like `PREPROCESSING`; **new** region-shade token | `lib/theme`, `lib/labels` | AIRSpec/VIBES defined 7×, 3 different colours for full-range VIBES; INK values typed as hex in ≥15 places |
+| Heatmap cells | Luminance-based text colour; always a `ColorLegend` | **new** `HeatCell` | Hand-tuned thresholds ×2; SlopeInterceptTrap and SeasonMatrix have no colour legend |
+| Numbers | `fmt` (null → "—"); **new** `fmtSigned`, `fmtPct`; one unit prettifier | `lib/stats`, `lib/theme.withUnit` | 6 local formatters (`f`, `f2`, `f3`, local `fmt`); ~25 `?.toFixed(3) ?? '—'`; 3 unit prettifiers |
+| Statistics | Shared helpers for repeated maths | **new** `monthlyStats`, `correlationMatrix` in `lib/stats` | IQR at n≥4 (MonthlyBand) vs n≥3 (SeasonalClock); correlation matrix ×3 |
+| Data loading | One fetch + schema check + loading/error panel | **new** `useExport(url, validate)` | 6 copies; 4 pages show a bare "Loading…" outside any panel |
+| Empty state | `Empty`, and the chart is not drawn behind it | `components/ChartFrame` | AvailabilityHeatmap none; Treemap and BubbleMap draw an empty chart under it |
+| Transitions | `.animated` class | `styles.css` | 5 charts snap; 3 use inline transitions |
+| View state | `useSearchParam` for anything a link should reopen | `lib/url` | ~8 `useState` controls on research pages |
+| Small constants | `MONTHS`, heat ramps defined once | `lib/theme` | `MONTHS` ×3, `HEAT` ×2 |
+
+## 2. Composite charts that exist in many copies
+
+These carry most of the duplication. Each should become one component that
+uses the primitives above.
+
+1. **Crossplot**: Scatterplot, DensityHexbin, ConnectedScatter, RunCrossplot,
+   AnalogLab, CrossSiteTransfer multiples, Meeting `Scatter`, Ext
+   `AllFilterScatter`. They share square sizing, `pairDomain`, origin-crossing
+   axes, the identity line, intercept markers, fit lines and the "points
+   dropped" note. Today: 3 identity styles, 2 sizes, 3 scale builders, and the
+   Meeting and Ext copies ignore the axes policy (they keep negative points
+   while the Correlation tab's default "From 0,0" hides them).
+2. **Spectrum plot**: FilterSpectrum, `SpectraOverlay`, Meeting `panel` and
+   `SpectraPanel`, Similarity `SpectraTraces`, Baselines `SpectraPlot`. They
+   differ in y-domain, grid, clip-path id (two fixed ids would collide),
+   tooltip, legend and excluded-region shading (3 colours). Trace loading is
+   also implemented 3 times (`lib/filterSpectrum`, Meeting `useTraces`,
+   Similarity `useBinary`).
+3. **Dot-interval rows** (forest plots and lollipops): CorrelationRanking,
+   Similarity `GroupRanking`, Meeting `RepeatStrip` and `Combined`, Baselines
+   `LoadingPlot`, HipsYork, CrossSiteTransfer ordering. 3 whisker styles, label
+   gutters of 130/250/260 px.
+
+## 3. Bugs and visible contradictions to fix first
+
+These are small and independent of the refactor. **Done 1 Oct**: ConnectedScatter
+clip, `.data-table` (now `census-table`), duplicate native tooltips (map + 5
+Baselines charts), null cells and the Ext `fmt` guard, SeasonalClock IQR now
+n≥4, and the Meeting keys and text now follow the active estimator. Still
+open: export (step 4) and the colour clashes (step 2).
+
+- `charts/correlation/ConnectedScatter.tsx`: no clip path or `inDomain`, so in
+  "From 0,0" mode a negative median draws into the margin.
+- `ChartFrame` export (`components/ChartFrame.tsx:46`) serialises only the
+  first `<svg>`: faceted charts export one panel, and HTML legends are dropped.
+  This is why several pages hand-draw legends inside the SVG.
+- Meeting follow-up text says "black line", but the fit is drawn in the
+  estimator colour (magenta dashed for Deming); the ThreePlots key is fixed to
+  Deming even in the OLS and York views.
+- `.data-table` (CutoffSweep) has no CSS rule, so the table is unstyled.
+- `SiteBubbleMap` and 5 research charts show the native browser tooltip on top
+  of the custom one.
+- `SlopeInterceptTrap` table cells render empty for null (missing `?? '—'`);
+  `BaselineExternalPilot` local `fmt` has no null guard.
+- MonthlyBand says "IQR n/a (n<4)" for a site-month that SeasonalClock draws
+  an IQR for (n≥3), although its comment says they match.
+- Same baseline, different colour by tab: AIRSpec is `#2C6E9E` on Baselines and
+  in the drawer, `#2171b5` (the accent and OLS colour) on Meeting and
+  Calibration; full-range VIBES is purple, orange or red depending on the page.
+- One colour, several meanings: `#c026d3` is the Deming line, 2nd-derivative
+  spectra, a HipsYork variant and a SelectionRanking series; white-filled
+  markers mean "selected", "rule choice" or "pinned off-axis" depending on
+  the chart.
+
+## 4. Proposed order
+
+1. **Bugs** (§3). Small, no design decisions.
+2. **Tokens and formatters**: `METHOD_COLOR`, region shade, INK hex
+   replacements, `fmt` / `fmtSigned` / `fmtPct`, one unit prettifier, `MONTHS`,
+   `HEAT`. Mechanical, mostly invisible except the colour fixes.
+3. **Primitives**: `RefLine` / `IdentityLine` / `Marker`, `XAxis gridHeight`,
+   band-scale row labels, `robustDomain`, `selectedStyle`, `IntervalBar`,
+   `GuardrailBands`, `filterMarkHandlers`, `useD3Brush`, `SeasonBands`,
+   `useLegend` background keys, `HeatCell`, `useExport`, `useFacetGrid`.
+4. **Composite charts**: `Crossplot`, `SpectrumPlot`, `DotIntervalRows`, and
+   whole-panel export (all facets plus legend in one SVG).
+
+Each step should leave the published numbers unchanged; where a chart's
+picture changes (colours, decimals, domains), the change is listed in that
+step's commit.
+
+## 5. Decisions (1 Oct 2026)
+
+- **Baseline colours**: AIRSpec `#2C6E9E`, archived VIBES `#7A4FA3`, and one new
+  distinct colour for full-range VIBES. `#2171b5` means only accent and OLS.
+- **Precision**: concentrations and loadings 2 dp with unit; slope, intercept
+  and R² 3 dp; equations as `equation()` writes them (`Deming y = 0.950x − 1.230`).
+- **IQR minimum n**: 4, as MonthlyBand already does (default, not yet confirmed).
+- **Research-page crossplots** keep showing every point ("Data" axes); the
+  shared `Crossplot` takes the axes mode as a prop.
+- **Export** saves the whole panel: every facet plus the legend in one SVG.

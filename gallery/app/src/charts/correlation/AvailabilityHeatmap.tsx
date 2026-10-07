@@ -59,9 +59,10 @@ export function AvailabilityHeatmap({ rows, meta, xField, yField }: { rows: Filt
       provenance="stands in for the data-availability strip charts · react-graph-gallery.com/heatmap"
       controls={
         <Segmented
-          label="count filters with"
+          label="Count filters with"
           value={which}
           options={['x', 'y', 'both'] as const}
+          optionLabel={(o) => (o === 'both' ? 'Both' : `${o} field`)}
           onChange={setWhich}
           title={`x = ${xField} · y = ${yField}`}
         />

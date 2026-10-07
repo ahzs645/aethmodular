@@ -1,17 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, ExplainOnly, Note, Select } from '@/components/ChartFrame'
+import { ChartFrame, Empty, ExplainOnly, Note, Select, Toggle } from '@/components/ChartFrame'
 import { PageToc } from '@/components/PageToc'
+import { FullRangeVibesStatus } from '@/components/FullRangeVibesStatus'
+import { FullRangeVibesResults } from '@/components/FullRangeVibesResults'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { FONT, INK } from '@/lib/theme'
 import { useHighlight, type FilterRecord } from '@/lib/highlight'
 import { baselineMetrics, pairedAbsoluteErrorDifference, retainedWavenumber } from '@/lib/baselineComparison'
-import { BaselineResearchDiagnostics, svgLegendItem, type SvgLegendState } from '@/pages/BaselineResearchDiagnostics'
+import { BaselineResearchDiagnostics, RegionContribution, SiteBandPattern, BlankSpread, svgLegendItem, type SvgLegendState } from '@/pages/BaselineResearchDiagnostics'
 import { useLegend } from '@/components/Legend'
+import { BaselineFollowup } from '@/pages/BaselineFollowup'
+import { CompletedVibesDiagnostics } from '@/pages/BaselineResearchDiagnostics'
 import { BaselineExternalPilot } from '@/pages/BaselineExternalPilot'
 import { useSearchParam as useComparisonParam } from '@/lib/url'
+import { useFilterSpectrum, traceVersionLabel } from '@/lib/filterSpectrum'
 import type { BaselineCohort, BaselineData, BaselineGroup, BaselineMethod, BaselinePair, BaselineSpectrum, HistoricalMask } from '@/lib/baselineComparison'
 
 const METHODS: BaselineMethod[] = ['AIRSpec', 'VIBES']
@@ -24,28 +29,53 @@ const maskName = (x: string) => ({ full: 'No selection mask', no_co2: 'Exclude 1
 export function BaselineComparisonPage({ mac, demingLambda }: { mac: number; demingLambda: number }) {
   const [data, setData] = useState<BaselineData | null>(null)
   const [error, setError] = useState('')
+  const [loadedArchive, setLoadedArchive] = useState<boolean | null>(null)
   const [cohort, setCohort] = useComparisonParam<BaselineCohort>('bcohort', 'full_pool', ['full_pool','locked800'])
   const [site, setSite] = useComparisonParam<string>('bsite', 'All sites')
   const [band, setBand] = useComparisonParam<string>('bband', 'All loadings', ['All loadings','Q1','Q2','Q3','Q4'])
   const [sample, setSample] = useComparisonParam<string>('bsample', 'improve:1970697')
+  const [archiveMode, setArchiveMode] = useComparisonParam<string>('barchive', 'hide', ['hide','show'])
+  const showArchived=archiveMode==='show'
   useEffect(() => {
     const controller = new AbortController()
-    fetch(BASE + 'baseline_comparison.json', { signal: controller.signal })
+    setData(null); setError('')
+    fetch(BASE + (showArchived ? 'baseline_comparison.json' : 'baseline_paired_r70.json'), { signal: controller.signal })
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
-      .then((d: BaselineData) => { if (d.schema_version !== 1) throw new Error('Unsupported data version'); setData(d) })
+      .then((d: BaselineData) => { if (d.schema_version !== 1 || (!showArchived && d.run.background_rank !== 70)) throw new Error('Unsupported data version'); setData(d); setLoadedArchive(showArchived) })
       .catch(e => { if (e.name !== 'AbortError') setError(String(e)) })
     return () => controller.abort()
-  }, [])
+  }, [showArchived])
   const all = useMemo(() => data?.pairs.filter(r => r.cohort === cohort) ?? [], [data, cohort])
   const rows = useMemo(() => all.filter(r => (site === 'All sites' || r.Site === site) && (band === 'All loadings' || r.loading_band === band)), [all, site, band])
   const sites = useMemo(() => ['All sites', ...Array.from(new Set(all.map(r => r.Site))).sort()], [all])
-  if (error) return <ChartFrame title="AIRSpec / VIBES" exportable={false}><Empty>Could not load the comparison: {error}. Run <code>uv run --locked --no-sync python gallery/data/export_baseline_comparison.py</code> and reload.</Empty></ChartFrame>
-  if (!data) return <p>Loading the frozen AIRSpec / VIBES comparison…</p>
+  if (error) return <ChartFrame title="Baselines" exportable={false}><Empty>Could not load the comparison: {error}. Run <code>uv run --locked --no-sync python gallery/data/export_baseline_comparison.py</code> and reload.</Empty></ChartFrame>
+  if (!data || loadedArchive !== showArchived) return <p>Loading baseline comparisons…</p>
   const subset = site !== 'All sites' || band !== 'All loadings'
   const interval = data.groups.find(g => g.cohort === cohort && g.dimension === 'overall')!
   const spectrum = data.spectra.find(r => r.sample_id === sample) ?? data.spectra[0]
   const masks = data.historical_masks.filter(r => ['full','no_co2','no_co2_max3600','no_co2_max3500'].includes(r.mask))
+  const archiveControl=<ChartFrame title="Baseline versions" exportable={false} controls={<Toggle label="Show archived benchmark (VIBES fit 4000–1425)" checked={showArchived} onChange={v=>setArchiveMode(v?'show':'hide')}/> }>
+    <p>Completed rank-70 VIBES results appear below. The earlier fit restricted to 4000–1425 cm⁻¹ and its scores are archived.</p>
+    <p><a href="#tab=meeting">Open per-filter overlays and completed rank-70 seasonal comparisons</a></p>
+  </ChartFrame>
+  if(!showArchived) return <PageToc>
+    {archiveControl}
+    <FullRangeVibesStatus />
+    <FullRangeVibesResults />
+    <CompletedPairedViews />
+    <BaselineFollowup completed />
+    <CompletedVibesDiagnostics />
+    <BaselineExternalPilot completed mac={mac} demingLambda={demingLambda} />
+    <SpectraPlot key="current" spectrum={spectrum} data={data} onSample={setSample} masks={masks} archivedBenchmark={false}/>
+  </PageToc>
   return <PageToc>
+    {archiveControl}
+    <FullRangeVibesStatus linkToMeeting />
+    <FullRangeVibesResults />
+    <ChartFrame title="Archived comparison · VIBES fit 4000–1425 cm⁻¹" exportable={false}>
+      <ExplainOnly><p>This page preserves the earlier truncated-grid benchmark and its notebook follow-up. VIBES was fitted after restricting both samples and blanks to approximately 4000–1425 cm⁻¹. Its results do not describe the newer full-range VIBES fit cropped afterwards.</p></ExplainOnly>
+      <p><a href="#tab=meeting">Open the current full-range VIBES comparisons</a></p>
+    </ChartFrame>
     <ExplainOnly><ChartFrame title="AIRSpec / VIBES comparison" exportable={false}>
       <p style={{ fontSize: 14, lineHeight: 1.6 }}>Frozen results from {data.evidence_date}: <strong>{data.run.n_cases.toLocaleString()} correction cases</strong>, {data.run.n_failed} final failures. AIRSpec fits segmented splines. VIBES learns background patterns from {data.run.n_background_blanks} independent blanks (rank {data.run.background_rank}). Each method has its own fitted EC calibration.</p>
       <p style={{ fontSize: 14, lineHeight: 1.6 }}><strong>Spectral-cut clarification:</strong> the earlier 1800–2500 cm⁻¹ exclusion and optional &gt;3600 / &gt;3500 cuts changed <strong>analog selection only</strong>. Those earlier PLS fits still used all 2,002 channels. The original Colab run uses the full pool or lowest-OC/EC membership; the separate notebook follow-up below refits site-restricted masked analog selections. Both correction methods and EC fits use approximately 1426–3998 cm⁻¹.</p>
@@ -159,7 +189,7 @@ function ErrorDifferencePlot({ rows, cohort }: { rows: BaselinePair[]; cohort: B
     <Note>{cohortName(cohort)}, current display subset. Each filter contributes one value: |VIBES − TOR| − |AIRSpec − TOR|. Negative favors VIBES; positive favors AIRSpec.</Note>
     <div ref={ref} className="chart-wrap">{!rows.length ? <Empty>No test filters match both selections.</Empty> : <svg width={w} height={360} role="img" aria-label="Histogram of paired absolute error differences, VIBES minus AIRSpec"><g transform="translate(70,30)">
       <YAxis scale={y} x={0} gridWidth={iw} label="Physical filters" format={v=>Number.isInteger(v)?String(v):''}/>
-      {bins.map((b,i)=>lg.show(side(b))&&<rect key={i} x={x(b.x0!)+.5} y={y(b.length)} width={Math.max(0,x(b.x1!)-x(b.x0!)-1)} height={ih-y(b.length)} fill={b.x1!<=0?COLOR.VIBES:COLOR.AIRSpec} fillOpacity={.8*lg.dim(side(b))} onMouseEnter={e=>tip.show(e,[`${f(b.x0)} to ${f(b.x1)} µg/filter`,`${b.length} filters (${f(100*b.length/rows.length,1)}%)`,`Lower bound included; upper bound ${i===bins.length-1?'included':'excluded'}.`])} onMouseLeave={tip.hide}><title>{`${f(b.x0)} to ${f(b.x1)}: ${b.length} filters`}</title></rect>)}
+      {bins.map((b,i)=>lg.show(side(b))&&<rect key={i} x={x(b.x0!)+.5} y={y(b.length)} width={Math.max(0,x(b.x1!)-x(b.x0!)-1)} height={ih-y(b.length)} fill={b.x1!<=0?COLOR.VIBES:COLOR.AIRSpec} fillOpacity={.8*lg.dim(side(b))} onMouseEnter={e=>tip.show(e,[`${f(b.x0)} to ${f(b.x1)} µg/filter`,`${b.length} filters (${f(100*b.length/rows.length,1)}%)`,`Lower bound included; upper bound ${i===bins.length-1?'included':'excluded'}.`])} onMouseLeave={tip.hide}></rect>)}
       <line x1={x(0)} x2={x(0)} y2={ih} stroke={INK.text} strokeDasharray="4 3"/>
       <XAxis scale={x} y={ih} label="Δ absolute error (µg/filter)"/>
     </g><MethodLegend width={w} y={348} items={[{label:'VIBES closer (<0)',color:COLOR.VIBES},{label:'AIRSpec closer (>0)',color:COLOR.AIRSpec}]} lg={lg}/></svg>}{tip.node}</div>
@@ -175,36 +205,105 @@ function LoadingPlot({ groups }: { groups: BaselineGroup[] }) {
     <div ref={ref} className="chart-wrap"><svg width={w} height={265} role="img" aria-label="Loading quartile paired RMSE differences and confidence intervals"><g transform="translate(130,20)" fontFamily={FONT.family}><line x1={x(0)} x2={x(0)} y2={ih} stroke={INK.identity} strokeDasharray="4 3"/>{groups.map((g,i)=><g key={g.group} transform={`translate(0,${20+i*42})`}><text x={-12} textAnchor="end" dy="0.3em" fontSize={12}>{g.group} (n={g.n})</text><line x1={x(g.delta_RMSE_ci_low??g.delta_RMSE)} x2={x(g.delta_RMSE_ci_high??g.delta_RMSE)} stroke={COLOR.VIBES} strokeWidth={2}/><circle cx={x(g.delta_RMSE)} r={5} fill={COLOR.VIBES}><title>{`${g.group}: ΔRMSE ${f(g.delta_RMSE)}, interval ${f(g.delta_RMSE_ci_low)} to ${f(g.delta_RMSE_ci_high)}`}</title></circle></g>)}<XAxis scale={x} y={ih} label="VIBES − AIRSpec RMSE (µg/filter)"/></g></svg></div>
   </ChartFrame>
 }
-function SpectraPlot({ spectrum:s, data, onSample, masks }: { spectrum: BaselineSpectrum; data: BaselineData; onSample:(x:string)=>void; masks:HistoricalMask[] }) {
+function SpectraPlot({ spectrum:s, data, onSample, masks, archivedBenchmark=true }: { spectrum: BaselineSpectrum; data: BaselineData; onSample:(x:string)=>void; masks:HistoricalMask[]; archivedBenchmark?:boolean }) {
   const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref);const lg=useLegend()
-  const [view,setView]=useComparisonParam<string>('bview', 'Corrected spectra', ['Corrected spectra','Raw and baselines','VIBES − AIRSpec']);const [mask,setMask]=useComparisonParam<string>('bmask', 'no_co2_max3600', ['full','no_co2','no_co2_max3600','no_co2_max3500'])
+  const [view,setView]=useComparisonParam<string>('bview', 'Corrected spectra', archivedBenchmark?['Corrected spectra','Raw and baselines','VIBES − AIRSpec']:['Corrected spectra']);const [mask,setMask]=useComparisonParam<string>('bmask', archivedBenchmark?'no_co2_max3600':'full', ['full','no_co2','no_co2_max3600','no_co2_max3500'])
   const [regions,setRegions]=useComparisonParam<string>('bregions', 'Shade excluded regions', ['Shade excluded regions','Hide excluded regions'])
+  const [range,setRange]=useComparisonParam<string>('brange', archivedBenchmark?'Shared (4000–1425)':'Full (4000–500)', ['Shared (4000–1425)','Full (4000–500)'])
+  const [layout,setLayout]=useComparisonParam<string>('bspectrumlayout', 'Overlay', ['Overlay','One method at a time','Stacked'])
+  const [method,setMethod]=useComparisonParam<string>('bspectrummethod', 'AIRSpec')
+  const fullRange=range==='Full (4000–500)'
+  const [vibesRank,setVibesRank]=useComparisonParam<'30'|'70'>('bvibesRank','70',['30','70'])
+  const fullSpectrum=useFilterSpectrum((!archivedBenchmark||fullRange)&&view==='Corrected spectra'?s.sample_id:null,archivedBenchmark?['VIBES']:['AIRSpec','VIBES'],vibesRank)
+  const fullTrace=fullSpectrum?.series.VIBES
   const hidden=regions==='Hide excluded regions'
   const chosen=masks.find(m=>m.mask===mask)!
-  const visible=data.wn.map(wn=>!hidden||retainedWavenumber(wn,chosen))
+  const visible=(wn:number)=>wn>=(fullRange?500:1425)&&wn<=4000&&(!hidden||retainedWavenumber(wn,chosen))
   const w=Math.max(300,width),iw=w-100,ih=270
-  const x=d3.scaleLinear().domain([4000,1425]).range([0,iw])
+  const x=d3.scaleLinear().domain([4000,fullRange?500:1425]).range([0,iw])
   const difference=view==='VIBES − AIRSpec'
-  const series=difference?[{label:'VIBES − AIRSpec',values:s.vibes.map((v,i)=>v-s.airspec[i]),color:COLOR.VIBES}]:view==='Corrected spectra'?[{label:'AIRSpec',values:s.airspec,color:COLOR.AIRSpec},{label:'VIBES',values:s.vibes,color:COLOR.VIBES}]:[{label:'Raw',values:s.raw,color:INK.muted},{label:'AIRSpec baseline',values:s.raw.map((v,i)=>v-s.airspec[i]),color:COLOR.AIRSpec},{label:'VIBES baseline',values:s.raw.map((v,i)=>v-s.vibes[i]),color:COLOR.VIBES}]
-  const drawn=series.filter(r=>lg.show(r.label))
-  const ext=d3.extent((drawn.length?drawn:series).flatMap(r=>r.values.filter((_,i)=>visible[i]))) as [number,number]
+  const archived=difference?[{label:'VIBES − AIRSpec',values:s.vibes.map((v,i)=>v-s.airspec[i]),color:COLOR.VIBES}]:view==='Corrected spectra'?[{label:'AIRSpec',values:s.airspec,color:COLOR.AIRSpec},{label:'VIBES',values:s.vibes,color:COLOR.VIBES}]:[{label:'Raw',values:s.raw,color:INK.muted},{label:'AIRSpec baseline',values:s.raw.map((v,i)=>v-s.airspec[i]),color:COLOR.AIRSpec},{label:'VIBES baseline',values:s.raw.map((v,i)=>v-s.vibes[i]),color:COLOR.VIBES}]
+  const currentAir=fullSpectrum?.series.AIRSpec
+  const currentSeries=[...(currentAir?[{label:'AIRSpec',values:Array.from(currentAir.y),wn:currentAir.wn,color:COLOR.AIRSpec}]:[]),...(fullTrace?[{label:'Full-range VIBES',values:Array.from(fullTrace.y),wn:fullTrace.wn,color:'#d95f0e'}]:[])]
+  const series=archivedBenchmark?[...archived.map(r=>({...r,label:r.label==='VIBES'?'Archived VIBES':r.label,wn:data.wn})),...(fullRange&&fullTrace&&view==='Corrected spectra'?[{label:'Full-range VIBES',values:Array.from(fullTrace.y),wn:fullTrace.wn,color:'#d95f0e'}]:[])]:currentSeries
+  const active=series.some(r=>r.label===method)?method:series[0]?.label??'AIRSpec'
+  const drawn=series.filter(r=>lg.show(r.label)&&(layout!=='One method at a time'||r.label===active))
+  // Keep a shared vertical scale when switching or stacking methods.
+  const extent=d3.extent(series.flatMap(r=>r.values.filter((v,i)=>visible(r.wn[i])&&Number.isFinite(v))))
+  const ext:[number,number]=[extent[0]??0,extent[1]??0.01]
   if(difference){const bound=Math.max(Math.abs(ext[0]),Math.abs(ext[1]));ext[0]=-bound;ext[1]=bound}
   const pad=(ext[1]-ext[0])*.06||0.01
   const y=d3.scaleLinear().domain([ext[0]-pad,ext[1]+pad]).nice().range([ih,0])
-  const line=d3.line<number>().defined((v,i)=>visible[i]&&Number.isFinite(v)).x((_,i)=>x(data.wn[i])).y(v=>y(v))
+  const line=(r:typeof series[number])=>d3.line<number>().defined((v,i)=>visible(r.wn[i])&&Number.isFinite(v)).x((_,i)=>x(r.wn[i])).y(v=>y(v))(r.values)??''
   const shade=(lo:number,hi:number)=><g key={lo}>{hidden?<><line x1={x(lo)} x2={x(lo)} y2={ih} stroke={INK.axis} strokeDasharray="3 3"/><line x1={x(hi)} x2={x(hi)} y2={ih} stroke={INK.axis} strokeDasharray="3 3"/><text x={(x(lo)+x(hi))/2} y={15} textAnchor="middle" fontFamily={FONT.family} fontSize={11} fill={INK.muted}>Hidden</text></>:<rect x={x(hi)} width={x(lo)-x(hi)} height={ih} fill="#c49442" fillOpacity={0.18}/>}</g>
-  return <ChartFrame id="baseline-spectrum" title="One physical filter, both corrections" controls={<>
-    <label className="control">Inspection case<select className="select" value={s.sample_id} onChange={e=>onSample(e.target.value)}>{data.spectra.map(r=><option key={r.sample_id} value={r.sample_id}>{r.site} / {r.sample_id} ({r.direction})</option>)}</select></label>
-    <Select label="Spectrum view" value={view} options={['Corrected spectra','Raw and baselines','VIBES − AIRSpec']} onChange={setView}/>
+  return <ChartFrame id="baseline-spectrum" title={archivedBenchmark?'One physical filter, both corrections':'One physical filter, spline and full-range VIBES'} controls={<>
+    <Select label="Full-range VIBES run" value={vibesRank} options={['70','30']} optionLabel={v=>v==='70'?'Rank 70 · completed':'Rank 30 · preliminary'} onChange={v=>setVibesRank(v as '30'|'70')}/>
+    <label className="control">Inspection case<select className="select" value={s.sample_id} onChange={e=>onSample(e.target.value)}>{data.spectra.map(r=><option key={r.sample_id} value={r.sample_id}>{r.site} / {r.sample_id}{archivedBenchmark?` (${r.direction})`:''}</option>)}</select></label>
+    {archivedBenchmark&&<Select label="Spectrum view" value={view} options={['Corrected spectra','Raw and baselines','VIBES − AIRSpec']} onChange={setView}/>}
+    <Select label="Spectrum range" value={range} options={['Shared (4000–1425)','Full (4000–500)']} onChange={setRange}/>
+    <Select label="Spectrum layout" value={layout} options={['Overlay','One method at a time','Stacked']} onChange={setLayout}/>
+    {layout==='One method at a time'&&series.length>0&&<Select label="Display method" value={active} options={series.map(r=>r.label)} onChange={setMethod}/>}
     <label className="control">Earlier selection mask<select className="select" value={mask} onChange={e=>setMask(e.target.value)}>{masks.map(m=><option key={m.mask} value={m.mask}>{maskName(m.mask)}</option>)}</select></label>
     <Select label="Excluded regions" value={regions} options={['Shade excluded regions','Hide excluded regions']} onChange={setRegions}/>
   </>}>
-    <Note><strong>Display only:</strong> {hidden?`${visible.filter(Boolean).length.toLocaleString()} of ${data.wn.length.toLocaleString()} channels shown. Excluded curves are hidden, with gaps preserving wavenumber spacing. The vertical axis uses visible values.`:'Amber marks regions excluded from earlier analog matching; all spectral points are shown.'} Saved predictions, correction and model-fitting grids remain unchanged.</Note>
+    <Note><strong>Display only:</strong> {hidden?'Excluded curves are hidden, with gaps preserving wavenumber spacing. The vertical axis uses visible values.':'Amber marks regions excluded from earlier analog matching; all available spectral points are shown.'} Saved predictions, correction and model-fitting grids remain unchanged.</Note>
+    {archivedBenchmark&&fullRange&&<Note>The archived raw spectrum and paired corrections end near 1425 cm⁻¹. {view==='Corrected spectra'?<>Orange shows the selected full-range VIBES correction (4000–500 cm⁻¹; 8-channel display means{fullTrace?`; ${traceVersionLabel(fullTrace)}`:''}). The prediction values below still refer to the archived fits.{!fullTrace&&' Full-range trace is loading or unavailable for this filter.'}</>:<>Choose Corrected spectra to display the current full-range VIBES trace. Raw/baseline and difference values below 1425 cm⁻¹ are unavailable.</>}</Note>}
+    {!archivedBenchmark&&<Note>VIBES is corrected on 4000–500 cm⁻¹{fullTrace?` (${traceVersionLabel(fullTrace)})`:''}; the spline ends near 1425 cm⁻¹. Traces are 8-channel display means. Selecting the shared window crops the display of the full-range fit.{!fullTrace&&' Full-range VIBES is loading or unavailable; no archived trace is substituted.'}</Note>}
     {difference&&<Note>Pointwise corrected absorbance: VIBES − AIRSpec. Zero means the corrections agree at that channel; a difference does not establish which is chemically correct.</Note>}
-    <div ref={ref} className="chart-wrap"><svg width={w} height={385} role="img" aria-label={`Single-filter ${view.toLowerCase()}, ${regions.toLowerCase()}`}><g transform="translate(72,20)"><YAxis scale={y} x={0} gridWidth={iw} label={difference?'Δ absorbance':'Absorbance'}/>{chosen.co2_low!==null&&shade(chosen.co2_low,chosen.co2_high!)}{chosen.upper!==null&&shade(chosen.upper,4000)}{difference&&<line x2={iw} y1={y(0)} y2={y(0)} stroke={INK.fit} strokeDasharray="4 3"/>}{drawn.map(r=><path key={r.label} d={line(r.values)??''} stroke={r.color} strokeWidth={1.7} strokeOpacity={lg.dim(r.label)} fill="none"/>)}<XAxis scale={x} y={ih} label="Wavenumber (cm⁻¹)" tickCount={7}/></g><MethodLegend width={w} y={350} items={series.map(r=>({label:r.label,color:r.color}))} lg={lg}/><text x={24} y={375} fontFamily={FONT.family} fontSize={10} fill={INK.muted}>{`${maskName(mask)} · ${hidden?'hidden':'shaded'} · display only`}</text></svg></div>
-    <Note>{s.site}, {s.sample_id}, {s.date}. TOR {f(s.truth)}, AIRSpec {f(s.AIRSpec_prediction)}, VIBES {f(s.VIBES_prediction)} µg/filter. All values refer to the full-pool fit, independent of the cohort/display filters above.</Note>
-    <Note>These 12 cases were selected post hoc as three worse and three better cases at BRIS1 and CACR1. They are individual spectra, not representative averages. Both severe negative-prediction cases remain in evaluation.</Note>
+    <div ref={ref} className="chart-wrap"><svg width={w} height={385*(layout==='Stacked'?Math.max(1,drawn.length):1)} role="img" aria-label={`Single-filter ${view.toLowerCase()}, ${range}, ${layout}`}>
+      {(layout==='Stacked'&&drawn.length?drawn.map(r=>[r]):[drawn]).map((panel,k)=><g key={k} transform={`translate(0,${k*385})`} data-spectrum-panel={layout==='Stacked'?panel[0]?.label??'comparison':'comparison'}>
+        <g transform="translate(72,20)"><YAxis scale={y} x={0} gridWidth={iw} label={difference?'Δ absorbance':'Absorbance'}/>{chosen.co2_low!==null&&shade(chosen.co2_low,chosen.co2_high!)}{chosen.upper!==null&&shade(chosen.upper,4000)}{difference&&<line x2={iw} y1={y(0)} y2={y(0)} stroke={INK.fit} strokeDasharray="4 3"/>}{panel.map(r=><path key={r.label} aria-label={r.label} d={line(r)} stroke={r.color} strokeWidth={1.7} strokeOpacity={lg.dim(r.label)} fill="none"/>)}<XAxis scale={x} y={ih} label="Wavenumber (cm⁻¹)" tickCount={7}/></g>
+        <MethodLegend width={w} y={350} items={(layout==='Stacked'&&k>0?panel:series).map(r=>({label:r.label,color:r.color}))} lg={lg}/><text x={24} y={375} fontFamily={FONT.family} fontSize={10} fill={INK.muted}>{`${range} · VIBES ${vibesRank==='70'?'completed rank 70':'preliminary rank 30'} · ${maskName(mask)} · display only`}</text>
+      </g>)}
+    </svg></div>
+    <Note>{s.site}, {s.sample_id}, {s.date}. TOR {f(s.truth)} µg/filter.{archivedBenchmark&&<> AIRSpec {f(s.AIRSpec_prediction)}, archived VIBES {f(s.VIBES_prediction)} µg/filter. Predictions refer to the archived full-pool benchmark.</>}</Note>
+    <Note>These 12 cases were selected post hoc as three worse and three better cases at BRIS1 and CACR1 in the archived benchmark. They are individual spectra, not representative averages or a ranking of current full-range performance.</Note>
   </ChartFrame>
+}
+/** Current shared-window predictions; archived benchmark remains unchanged. */
+function CompletedPairedViews() {
+  const [data, setData] = useState<BaselineData | null>(null)
+  const [error, setError] = useState('')
+  const [cohort, setCohort] = useComparisonParam<BaselineCohort>('r70cohort', 'full_pool', ['full_pool','locked800'])
+  const [site, setSite] = useComparisonParam<string>('r70site', 'All sites')
+  const [band, setBand] = useComparisonParam<string>('r70band', 'All loadings', ['All loadings','Q1','Q2','Q3','Q4'])
+  const [sample, setSample] = useComparisonParam<string>('r70sample', 'improve:1970697')
+  useEffect(() => {
+    const c = new AbortController()
+    fetch(BASE + 'baseline_paired_r70.json', {signal:c.signal})
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
+      .then((d:BaselineData) => { if(d.run.background_rank !== 70 || d.pairs.length !== 2464) throw new Error('Unexpected current paired export'); setData(d) })
+      .catch(e => { if(e.name !== 'AbortError') setError(String(e)) })
+    return () => c.abort()
+  }, [])
+  const all = data?.pairs.filter(r => r.cohort === cohort) ?? []
+  const rows = all.filter(r => (site === 'All sites' || r.Site === site) && (band === 'All loadings' || r.loading_band === band))
+  if (!data) return <ChartFrame title="Rank-70 paired diagnostics" exportable={false}><Empty>{error || 'Loading rank-70 paired diagnostics…'}</Empty></ChartFrame>
+  const sites = ['All sites', ...Array.from(new Set(all.map(r => r.Site))).sort()]
+  const selected = data.spectra.find(r => r.sample_id === sample) ?? data.spectra[0]
+  const interval = data.groups.find(r => r.cohort === cohort && r.dimension === 'overall')!
+  return <>
+    <ChartFrame id="rank70-paired" title="Completed rank 70 · paired EC diagnostics" exportable={false} controls={<>
+      <Select label="Calibration cohort" value={cohort} options={['full_pool','locked800']} optionLabel={v => cohortName(v as BaselineCohort)} onChange={v => {setCohort(v as BaselineCohort);setSite('All sites');setBand('All loadings')}} />
+      <Select label="Test site" value={sites.includes(site) ? site : 'All sites'} options={sites} onChange={setSite} />
+      <Select label="Training-defined loading band" value={band} options={['All loadings','Q1','Q2','Q3','Q4']} onChange={setBand} />
+      <Select label="Decomposition inspection case" value={selected.sample_id} options={data.spectra.map(r=>r.sample_id)} onChange={setSample} />
+    </>}>
+      <p>VIBES correction: 4000–500 cm⁻¹, rank 70. Both EC models use the shared 4000–1425 channels. {rows.length.toLocaleString()} paired test filters shown out of {all.length.toLocaleString()}.</p>
+      <table className="census-table"><thead><tr><th>Baseline</th><th>PLS factors</th><th>RMSE</th><th>MAE</th><th>Bias</th><th>Predictive R²</th></tr></thead><tbody>{METHODS.map(method => {
+        const metrics=baselineMetrics(rows,method)
+        return <tr key={method}><td>{method==='AIRSpec'?'Spline baseline':'VIBES · completed rank 70'}</td><td>{data.scores.find(s=>s.cohort===cohort&&s.method===method)?.k}</td><td>{f(metrics?.rmse)}</td><td>{f(metrics?.mae)}</td><td>{f(metrics?.bias)}</td><td>{f(metrics?.r2)}</td></tr>
+      })}</tbody></table>
+      <Note>Complete-cohort ΔRMSE: {f(interval.delta_RMSE)} µg/filter; paired site interval {f(interval.delta_RMSE_ci_low)} to {f(interval.delta_RMSE_ci_high)}. This interval conditions on the saved fits and does not describe a selected display subset. The previously inspected test set makes these diagnostics exploratory.</Note>
+      <p><a href={BASE+'baseline_paired_r70_predictions.csv'} download>Rank-70 paired predictions</a> · <a href={BASE+'baseline_paired_r70.json'} download>Current diagnostics and source hashes</a></p>
+    </ChartFrame>
+    <ResidualPlot rows={rows} onInspect={setSample} available={new Set(data.spectra.map(r=>r.sample_id))} cohort={cohort} />
+    <ErrorDifferencePlot rows={rows} cohort={cohort} />
+    <LoadingPlot groups={data.groups.filter(g=>g.cohort===cohort && g.dimension==='loading_band')} />
+    <RegionContribution data={data} sample={selected.sample_id} />
+    <SiteBandPattern rows={rows} cohort={cohort} />
+    <BlankSpread data={data} />
+  </>
 }
 function RecoveryPlot({data}:{data:BaselineData}) {
   const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref);const lg=useLegend();const [outcome,setOutcome]=useComparisonParam<string>('boutcome', 'Blank residual RMS', ['Blank residual RMS','Synthetic recovery RMSE'])

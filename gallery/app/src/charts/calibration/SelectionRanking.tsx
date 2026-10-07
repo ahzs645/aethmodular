@@ -60,7 +60,7 @@ export function SelectionRanking({ runs, calib }: { runs: CalibRunsFile; calib: 
       provenance="calibration_explorer /api/ranking · Selection tab"
       controls={
         <>
-          <Select label="cohort" value={cohort} options={cohorts} onChange={setCohort} optionLabel={(c) => label(COHORT, c)} />
+          <Select label="Cohort" value={cohort} options={cohorts} onChange={setCohort} optionLabel={(c) => label(COHORT, c)} />
           <Segmented value={view} options={VIEWS} onChange={setView} />
           <span className="control">{primary ? `${primary.n_total.toLocaleString()} candidates · cutoff ${cutoff}` : ''}</span>
         </>

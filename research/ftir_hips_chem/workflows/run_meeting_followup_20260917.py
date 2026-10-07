@@ -140,7 +140,8 @@ def stage_selections(ctx, gm):
                              "shared": len(s1 & s2)})
     for g in gm:
         s1 = set(ctx.lib.filter_id.values[sel[("AIRSpec", "locked", g)]])
-        s2 = set(ctx.lib.filter_id.values[sel[("VIBES", "locked", g)]])
+        comparison = 'VIBES' if 'VIBES' in ctx.methods else 'VIBES-full-cut-r70'
+        s2 = set(ctx.lib.filter_id.values[sel[(comparison, "locked", g)]])
         overlaps.append({"method": "AIRSpec_vs_VIBES", "mask": "locked", "a": g, "b": g,
                          "shared": len(s1 & s2)})
     save(pd.concat(members, ignore_index=True), "analog_membership")
@@ -210,7 +211,7 @@ def stage_allimprove(ctx, gm, sel):
         f = ab.fit_cohort(ctx.X[method][idx], sub.y, sub.Site,
                           train=sub.split.eq("train").to_numpy())
         predictors = {f"all-IMPROVE lot {LOT}": (f.predict, f.k, int(f.train.sum()), True)}
-        if method in ab.METHODS:   # the frozen Colab full-pool models exist for the first run's baselines only
+        if method in ab.METHODS or method.endswith('-r70'):
             predictors["all-IMPROVE both lots (frozen Colab)"] = (*frozen_full_pool(method), 10066, False)
         log(f"all-IMPROVE lot {LOT} {method}: k={f.k} in {time.time() - t0:.0f}s")
         for label, (predict, k, train_n, lot_only) in predictors.items():
@@ -463,7 +464,7 @@ def main():
     rep = stage_repeats(ctx, gm, sel)
     save(rep, "repeated_splits")
     # spectra summaries (median + IQR) for the crossplot-beside-spectra slides
-    spectra = {"wn": ctx.wn.tolist(), **{f"wn|{m}": ctx.wn_of(m).tolist() for m in ctx.methods if m not in ab.METHODS}}
+    spectra = {"wn": ctx.wn.tolist(), **{f"wn|{m}": ctx.wn_of(m).tolist() for m in ctx.methods}}
     for method in ctx.methods:
         for g, take in gm.items():
             pos = sel[(method, "locked", g)]

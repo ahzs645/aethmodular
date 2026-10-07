@@ -1,3 +1,6 @@
+import { confidence } from '@/lib/regressionCI'
+import { useRegressions, fitsFor, equation } from '@/lib/regressionPrefs'
+import { fitUncertainty } from '@/lib/fitUncertainty'
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
@@ -28,6 +31,7 @@ const kindOf = (d: { r: number; trivial: boolean }) => (d.trivial ? SAME : d.r >
  * offsets alone (Simpson's), so "one site" is the honest default.
  */
 export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; meta: MetaFile; target: string }) {
+  const { methods, showCI } = useRegressions()
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
@@ -44,28 +48,29 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
 
   const ranked = useMemo(() => {
     const src = site.startsWith('All') ? rows : rows.filter((r) => r.site === site)
-    const out: { field: string; r2: number; r: number; n: number; slope: number | null; intercept: number | null; trivial: boolean }[] = []
+    const out: { field: string; r2: number; r: number; n: number; slope: number | null; intercept: number | null; trivial: boolean; stats: import('@/lib/stats').RegressionStats }[] = []
     for (const f of meta.fields) {
       if (f === target || isBookkeeping(f)) continue
       // a restatement of another candidate (HIPS BC = HIPS Fabs / MAC) only earns a row when it restates the target itself
       if (f in RESTATES && !sameProduct(f, target)) continue
       const xs: number[] = []
       const ys: number[] = []
+      const paired: FilterRow[] = []
       for (const r of src) {
         const a = r[f]
         const b = r[target]
         if (typeof a === 'number' && typeof b === 'number' && Number.isFinite(a) && Number.isFinite(b)) {
           xs.push(a)
           ys.push(b)
+          paired.push(r)
         }
       }
       if (xs.length < Number(minN)) continue
-      // both axes are measurements: report the Deming (λ=1) fit, not y-on-x least squares
-      const s = regression(xs, ys, { errorsInVariables: true })
-      if (s) out.push({ field: f, r2: s.r2, r: s.r, n: s.n, slope: s.demingSlope, intercept: s.demingIntercept, trivial: sameProduct(f, target) })
+      const s = regression(xs, ys, fitUncertainty(paired, f, target, meta))
+      if (s) out.push({ field: f, r2: s.r2, r: s.r, n: s.n, stats: s, slope: s.demingSlope, intercept: s.demingIntercept, trivial: sameProduct(f, target) })
     }
     return out.sort((a, b) => b.r2 - a.r2)
-  }, [rows, target, site, minN, meta.fields])
+  }, [rows, target, site, minN, meta])
 
   const rowH = 22
   // right gutter holds the "0.939 · n=190" annotation, which used to run
@@ -85,8 +90,8 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
       provenance="stands in for 70 barplot + 11 lollipop figures · react-graph-gallery.com/lollipop"
       controls={
         <>
-          <Select label="site" value={site} options={siteOptions} onChange={setSiteFilter} title="Pooled sites can rank a species highly on site offsets alone" />
-          <Select label="min n" value={minN} options={['10', '30', '50', '100']} onChange={setMinN} />
+          <Select label="Site" value={site} options={siteOptions} onChange={setSiteFilter} title="Pooled sites can rank a species highly on site offsets alone" />
+          <Select label="Min n" value={minN} options={['10', '30', '50', '100']} onChange={setMinN} />
           <span className="control">{ranked.length} pairs</span>
         </>
       }
@@ -112,9 +117,10 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
                         d.field,
                         `R² = ${fmt(d.r2, 4)}`,
                         `r = ${fmt(d.r, 3)}`,
-                        d.slope !== null && d.intercept !== null
-                          ? `Deming y = ${fmt(d.slope, 4)}x ${d.intercept < 0 ? '−' : '+'} ${fmt(Math.abs(d.intercept), 4)}`
-                          : 'Deming fit: —',
+                        ...fitsFor(d.stats, methods).flatMap(fit => {
+                          const ci = showCI ? confidence(d.stats, fit.method) : null
+                          return [equation(fit, 4), ...(showCI ? [ci ? `95% slope [${fmt(ci.slope[0], 3)}, ${fmt(ci.slope[1], 3)}]; intercept [${fmt(ci.intercept[0], 3)}, ${fmt(ci.intercept[1], 3)}]` : '95% CI unavailable'] : [])]
+                        }),
                         `n = ${d.n}`,
                         ...(d.trivial ? ['derived from the target by arithmetic — not a finding'] : []),
                       ])

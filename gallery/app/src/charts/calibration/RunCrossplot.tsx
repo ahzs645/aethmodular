@@ -1,3 +1,7 @@
+import { RegressionLines, RegressionReadout } from '@/components/RegressionOverlay'
+import { monthBlocks } from '@/lib/regressionCI'
+import { regression } from '@/lib/stats'
+import { demingLambda } from './seasonView'
 import { useId, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
@@ -7,9 +11,9 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { baseFilterId, focusStyle, useHighlight } from '@/lib/highlight'
 import { fmt } from '@/lib/stats'
-import { INK, MARGIN, FONT } from '@/lib/theme'
+import { INK, MARGIN } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile, MetaFile } from '@/lib/types'
-import { groupColorFn, metricRow, presetName } from './common'
+import { groupColorFn, presetName } from './common'
 
 const XMODES = ['reference', 'deployed EC'] as const
 const SETS = ['fixed', 'all'] as const
@@ -26,7 +30,7 @@ const SETS = ['fixed', 'all'] as const
  * filters (Addis only), which is the explorer's vs-deployed panel.
  * Clicking an Addis point opens the gallery's sample drawer for that filter.
  */
-export function RunCrossplot({ run, runs, meta, knownIds }: { run: CalibRun; runs: CalibRunsFile; meta: MetaFile; knownIds: Set<string> }) {
+export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96 }: { run: CalibRun; runs: CalibRunsFile; meta: MetaFile; knownIds: Set<string>; lambda10?: number }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
@@ -58,9 +62,7 @@ export function RunCrossplot({ run, runs, meta, knownIds }: { run: CalibRun; run
     return out
   }, [run.eval, evalSet, hasFixed, hidden, useDeployed, isFabs, mac])
 
-  const m = metricRow(run.metrics, hasFixed ? evalSet : 'all', isFabs ? mac : null)
-  const slope = m ? m.deming_slope : null
-  const icpt = m ? m.deming_intercept : null
+  const st = regression(pts.map(p => p.x), pts.map(p => p.y), { errorsInVariables: true, lambda: demingLambda(isFabs && !useDeployed ? mac : null, lambda10), bootstrapGroups: monthBlocks(pts.map(p => ({ site: run.target, date: run.eval.date?.[p.i] }))) })
 
   const cols = width > 760 ? 2 : 1
   const panelW = Math.floor((width - (cols - 1) * 12) / cols)
@@ -110,12 +112,12 @@ export function RunCrossplot({ run, runs, meta, knownIds }: { run: CalibRun; run
     <ChartFrame
       id="run-crossplot"
       title={`Crossplot — predicted EC vs ${useDeployed ? 'deployed EC' : 'HIPS reference'} at ${target?.site ?? run.target}`}
-      subtitle="Every test-set filter under this configuration, coloured by season. The fitted line is the Deming fit from the explorer's own metrics row for the chosen test set and MAC. The residual panel shows whether the calibration's error is a constant offset (a flat band) or tracks loading (a slope)."
+      subtitle="Every test-set filter under this configuration, coloured by season. The regression fits selected in the sidebar use the displayed filters and MAC. The residual panel shows whether the calibration's error is a constant offset (a flat band) or tracks loading (a slope)."
       provenance={`calibration_explorer /api/run · ${run.n_cohort} calibration cohort filters, ${run.k} PLS factors${run.k !== run.auto_k ? ` (rule ${run.auto_k})` : ''} · site-grouped CV`}
       controls={
         <>
           {hasDeployed && <Segmented label="x" value={xmode} options={XMODES} onChange={setXmode} />}
-          {hasFixed && <Segmented label="test set" value={evalSet} options={SETS} onChange={setEvalSet} title="fixed = the filters with a deployed EC (Addis fixed-190); all = every filter with a reference" />}
+          {hasFixed && <Segmented label="Test set" value={evalSet} options={SETS} onChange={setEvalSet} title="fixed = the filters with a deployed EC (Addis fixed-190); all = every filter with a reference" />}
           {isFabs && macs.length > 1 && <Segmented label="MAC" value={String(mac)} options={macs.map(String)} onChange={(v) => setMac(Number(v))} />}
           <span className="control">n = {pts.length}{run.extrap_pct !== null ? ` · score OOD ${run.extrap_pct}%` : ''}{run.q_residual_pct !== null ? ` · Q OOD ${run.q_residual_pct}%` : ''}</span>
         </>
@@ -135,9 +137,7 @@ export function RunCrossplot({ run, runs, meta, knownIds }: { run: CalibRun; run
                   <XAxis scale={x} y={S} label={xLabel} />
                   <g clipPath={`url(#${clipId})`}>
                     <line x1={x(0)} y1={y(0)} x2={x(hi)} y2={y(hi)} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="5 4" />
-                    {slope !== null && icpt !== null && !useDeployed && (
-                      <line x1={x(x.domain()[0])} y1={y(slope * x.domain()[0] + icpt)} x2={x(x.domain()[1])} y2={y(slope * x.domain()[1] + icpt)} stroke={INK.deming} strokeWidth={2} strokeDasharray="7 3" />
-                    )}
+                    <RegressionLines stats={st} x={x} y={y} domain={x.domain()} width={S} height={S} />
                   </g>
                   {pts.map((p) => {
                     const st = focusStyle(p.id ?? `#${p.i}`, hl.focusId)
@@ -147,14 +147,7 @@ export function RunCrossplot({ run, runs, meta, knownIds }: { run: CalibRun; run
                         onMouseEnter={(e) => enter(e, p)} onMouseLeave={leave} onClick={() => click(p)} />
                     )
                   })}
-                  {m && !useDeployed && (
-                    <g transform="translate(10,10)" fontFamily={FONT.mono} fontSize={11} pointerEvents="none">
-                      <rect width={250} height={62} rx={5} fill="#fff" fillOpacity={0.93} stroke={INK.border} />
-                      <text x={9} y={18} fill={INK.text}>n = {m.n} · {m.evaluation_set} test set{isFabs ? ` · MAC ${m.MAC}` : ''}</text>
-                      <text x={9} y={33} fill={INK.deming}>Deming: y = {fmt(slope, 3)}x {icpt !== null && icpt < 0 ? '−' : '+'} {fmt(Math.abs(icpt ?? 0), 3)}</text>
-                      <text x={9} y={48} fill={INK.muted}>R² = {fmt(m.R2 ?? null, 3)}{run.heldout ? ` · IMPROVE CV R² ${fmt(run.heldout.R2, 2)}` : ''}</text>
-                    </g>
-                  )}
+                  <RegressionReadout stats={st} />
                 </g>
               </svg>
             </div>
@@ -174,7 +167,7 @@ export function RunCrossplot({ run, runs, meta, knownIds }: { run: CalibRun; run
             </div>
           </div>
         )}
-        <Legend items={groups.map((g) => ({ label: g, color: color(g), detail: `n=${run.eval.group.filter((x) => x === g).length}` }))} {...legendProps} note="dashed grey = 1:1 · dashed magenta = Deming fit" />
+        <Legend items={groups.map((g) => ({ label: g, color: color(g), detail: `n=${run.eval.group.filter((x) => x === g).length}` }))} {...legendProps} note="dashed grey = 1:1 · regression fits selected in the sidebar" />
         {tip.node}
       </div>
     </ChartFrame>

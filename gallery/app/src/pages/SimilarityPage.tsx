@@ -8,7 +8,9 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { downloadCsv } from '@/lib/export'
 import { useSearchParam } from '@/lib/url'
+import { baseFilterId, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { FONT, INK, MARGIN } from '@/lib/theme'
+import { PREPROCESSING } from '@/lib/labels'
 import {
   BASE, PairMatrix, TopLists, Traces, calendarOf, fetchBinary, groupColor, groupIndex, groupKey, groupLabel, members, siteName, siteWhere,
   type SimilarityMeta,
@@ -73,7 +75,13 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
 
   const [site, setSite] = useSearchParam<string>('ssite', 'ETAD', siteCodes)
   const [season, setSeason] = useSearchParam<string>('sseason', 'all')
-  const [method, setMethod] = useSearchParam<string>('smethod', meta.methods[0], meta.methods)
+  const [archiveMode, setArchiveMode] = useSearchParam<string>('sarchive', 'hide', ['hide', 'show'])
+  const showArchived = archiveMode === 'show'
+  const methods = meta.methods.filter(m => showArchived || m !== 'VIBES')
+  const [methodValue, setMethod] = useSearchParam<string>('smethod', methods[0], methods)
+  const method = methods.includes(methodValue) ? methodValue : methods[0]
+  const grid = meta.method_grids?.[method]
+  const activeMeta = grid ? { ...meta, bin_wn: grid.bin_wn, masks: grid.masks } : meta
   const [mask, setMask] = useSearchParam<string>('smask', meta.default_mask, maskKeys)
   const [by, setBy] = useSearchParam<'site-seasons' | 'sites'>('sby', 'site-seasons', ['site-seasons', 'sites'])
   const [minN, setMinN] = useSearchParam<string>('smin', '10', MIN_N)
@@ -95,7 +103,7 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
   const F = meta.filters.site.length
   const pairs = useBinary(`pairs_${method}_${mask}.bin`, (b) => new PairMatrix(new Int16Array(b), G, meta.scale))
   const tops = useBinary(`top_${method}_${mask}.bin`, (b) => new TopLists(b, G, meta.top_k, meta.scale))
-  const traces = useBinary(`traces_${method}.bin`, (b) => new Traces(b, F, meta.bin_wn.length))
+  const traces = useBinary(`traces_${method}.bin`, (b) => new Traces(b, F, activeMeta.bin_wn.length))
   const loadError = pairs.error || tops.error || traces.error
 
   const selfR = pairs.value?.get(target, target) ?? null
@@ -123,10 +131,55 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
   }, [tops.value, target, includeTest, topN, meta])
 
   const [hoverFilter, setHoverFilter] = useState<number | null>(null)
-  const [pinned, setPinned] = useState<number | null>(null)
-  useEffect(() => setPinned(null), [target])
+  const { pinnedId, setPinned, openRecord, dismissSample } = useHighlight()
+  const filterIndex = useMemo(() => new Map(meta.filters.sample_id.map((id, f) => [baseFilterId(id), f])), [meta])
+  const pinned = pinnedId == null ? null : filterIndex.get(baseFilterId(pinnedId)) ?? null
   const targetLabel = groupLabel(meta, target)
-  const maskMeta = meta.masks.find((m) => m.key === mask)!
+  const maskMeta = activeMeta.masks.find((m) => m.key === mask)!
+  const pinnedRecord = useMemo<FilterRecord | null>(() => {
+    if (pinned == null) return null
+    const site = meta.sites[meta.filters.site[pinned]]
+    const season = meta.filters.season[pinned]
+    const rank = topFilters.rows.findIndex((row) => row.filter === pinned)
+    const isTarget = meta.filters.site[pinned] === tg.site && (tg.season == null || season === tg.season)
+    return {
+      id: meta.filters.sample_id[pinned],
+      source: 'Spectral similarity',
+      site: `${site.site} · ${siteName(site)}`,
+      date: meta.filters.date[pinned] ?? undefined,
+      fields: [
+        ['Site', site.site],
+        ['Site name', siteName(site)],
+        ['Latitude (°)', site.lat],
+        ['Longitude (°)', site.lon],
+        ['Elevation (m)', site.elevation],
+        ['Land use', site.land_use],
+        ['Setting', site.setting],
+        ['Sampling date', meta.filters.date[pinned]],
+        ['Season', season < 0 ? 'Undated' : calendarOf(meta, meta.filters.site[pinned])[season].name],
+        ['Site role', site.split === 'train' ? 'Calibration set site' : splitName(site.split)],
+        ['Compared with', targetLabel],
+        ['Filter role', isTarget ? 'Target filter' : rank >= 0 ? 'Most similar filter' : 'Comparison filter'],
+        ['Similarity rank (displayed list)', rank >= 0 ? rank + 1 : null],
+        ['Mean signed Pearson r', rank >= 0 ? topFilters.rows[rank].r.toFixed(4) : null],
+        ['Spectra', method === 'AIRSpec' ? 'Spline baseline (AIRSpec)' : method],
+        ['Selection mask', maskMeta.label],
+      ],
+      note: 'Similarity scores compare this filter with every target filter over the selected channels. Seasons are fixed calendar month bins. Spectra in the main chart are 8-channel means for display.',
+    }
+  }, [pinned, meta, tg.site, tg.season, topFilters.rows, targetLabel, method, maskMeta.label])
+  const previousTarget = useRef(target)
+  useEffect(() => {
+    const changedTarget = previousTarget.current !== target
+    previousTarget.current = target
+    if (changedTarget) {
+      setHoverFilter(null)
+      if (pinnedRecord) dismissSample()
+    } else if (pinnedRecord) {
+      openRecord(pinnedRecord)
+    }
+  }, [target, pinnedRecord, openRecord, dismissSample])
+  const onPin = (f: number | null) => setPinned(f == null ? null : meta.filters.sample_id[f])
   const seasonOptions = ['all', ...calendar.map((_, i) => String(i)).filter((i) => index.has(`${site}:${i}`))]
   const setTarget = (g: number) => {
     const grp = meta.groups[g]
@@ -161,14 +214,17 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
           <Select label="Season" value={seasonOptions.includes(season) ? season : 'all'} options={seasonOptions}
             onChange={(v) => { setSeason(v); setCompareKey('') }}
             optionLabel={(o) => o === 'all' ? `All year (${meta.sites[siteIdx].n})` : `${calendar[Number(o)].name} (${meta.groups[index.get(`${site}:${o}`)!].n})`} />
-          <Segmented label="Spectra" value={method} options={meta.methods} onChange={setMethod} />
-          <Select label="Selection mask" value={mask} options={maskKeys} onChange={setMask} optionLabel={(k) => `${meta.masks.find((m) => m.key === k)!.label} (${meta.masks.find((m) => m.key === k)!.n_channels} ch)`} />
+          <Toggle label="Show archived VIBES fit (4000–1425)" checked={showArchived} onChange={v => setArchiveMode(v ? 'show' : 'hide')} />
+<span className="control">{method.endsWith('-r70') ? `Completed rank 70 · ${grid?.bin_wn.length ? (method.includes('cut') ? 'shared channels' : 'full available range') : ''}` : method === 'VIBES' ? 'Archived truncated correction' : 'Spline baseline'}</span>
+          <Select label="Spectra" value={method} options={methods} onChange={setMethod} optionLabel={v => PREPROCESSING[v] ?? v} />
+          <Select label="Selection mask" value={mask} options={maskKeys} onChange={setMask} optionLabel={(k) => `${activeMeta.masks.find((m) => m.key === k)!.label} (${activeMeta.masks.find((m) => m.key === k)!.n_channels} ch)`} />
         </>}
       >
         <p style={{ fontSize: 13, margin: '2px 0', color: INK.muted }}>
           <strong style={{ color: groupColor(meta, target, INK.text) }}>{targetLabel}</strong> · <span title={siteWhere(meta.sites[tg.site])}>{siteName(meta.sites[tg.site])}</span> · {tg.n} filters · {splitName(meta.sites[tg.site].split)} · within-group r <strong style={{ color: INK.text }}>{f3(selfR)}</strong>
         </p>
         {loadError && <Note>Could not load part of the export: {loadError}</Note>}
+        {method === 'VIBES' && <Note>Archived VIBES fit (4000–1425 cm⁻¹): these similarity scores and traces use the earlier truncated fit. Current full-range VIBES comparisons are on <a href="#tab=meeting">Follow up meeting</a>.</Note>}
       </ChartFrame>
 
       <GroupRanking meta={meta} ranked={ranked} target={target} selfR={selfR} compare={compare} onCompare={(g) => setCompareKey(g == null ? '' : groupKey(meta, g))}
@@ -177,23 +233,23 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
           <Segmented label="Compare" value={by} options={['site-seasons', 'sites'] as const} onChange={setBy} />
           <Segmented label="Min filters" value={minN} options={MIN_N} onChange={setMinN} />
           <Segmented label="Rows" value={show} options={SHOW} onChange={setShow} />
-          <Toggle label="outer test sites" checked={includeTest} onChange={(v) => setTestParam(v ? 'on' : 'off')} />
-          <Toggle label="target's own site" checked={includeSame} onChange={(v) => setSameParam(v ? 'on' : 'off')} />
+          <Toggle label="Outer test sites" checked={includeTest} onChange={(v) => setTestParam(v ? 'on' : 'off')} />
+          <Toggle label="Target's own site" checked={includeSame} onChange={(v) => setSameParam(v ? 'on' : 'off')} />
         </>}
         show={Number(show)} maskLabel={maskMeta.label} method={method} />
 
       <SeasonMatrix meta={meta} pairs={pairs.value} target={target} columns={ranked.slice(0, 16).map((r) => r.g)} />
 
-      <SpectraTraces meta={meta} traces={traces.value} target={target} topFilters={topFilters.rows} compare={compare} mask={mask}
-        hoverFilter={hoverFilter} pinned={pinned} onPin={setPinned} method={method}
+      <SpectraTraces meta={activeMeta} traces={traces.value} target={target} topFilters={topFilters.rows} compare={compare} mask={mask}
+        hoverFilter={hoverFilter} pinned={pinned} onPin={onPin} method={method}
         controls={<>
           <Segmented label="Most similar" value={topN} options={TOP_N} onChange={setTopN} />
-          <Toggle label="outer test sites" checked={includeTest} onChange={(v) => setTestParam(v ? 'on' : 'off')} />
+          <Toggle label="Outer test sites" checked={includeTest} onChange={(v) => setTestParam(v ? 'on' : 'off')} />
         </>} />
 
       <TopComposition meta={meta} rows={topFilters.rows} available={topFilters.available} targetLabel={targetLabel} />
 
-      <FilterTable meta={meta} rows={topFilters.rows} targetLabel={targetLabel} maskLabel={maskMeta.label} method={method} onHover={setHoverFilter} pinned={pinned} onPin={setPinned} />
+      <FilterTable meta={meta} rows={topFilters.rows} targetLabel={targetLabel} maskLabel={maskMeta.label} method={method} onHover={setHoverFilter} pinned={pinned} onPin={onPin} />
 
       <ExplainOnly>
         <ChartFrame title="Provenance" exportable={false}>
@@ -492,7 +548,7 @@ function SpectraTraces({ meta, traces, target, topFilters, compare, mask, hoverF
             <button type="button" className="btn quiet" onClick={() => onPin(null)}>Unpin</button>
           </p>
         )}
-        <Note>{tLabel}. {backLabel}. Hover a trace to identify it and click to pin it; hovering a row in the filter table traces that filter too.</Note>
+        <Note>{tLabel}. {backLabel}. Hover a trace to identify it; click a trace or filter-table row to pin it and open its details in the sidebar.</Note>
         {tip.node}
       </div>
     </ChartFrame>

@@ -35,7 +35,7 @@ def test_exported_and_returns_calculated_stats():
     assert stats["intercept"] == pytest.approx(1.0)
     assert ax.get_xlabel() == "Observed"
     assert ax.get_ylabel() == "Predicted"
-    assert {line.get_label() for line in ax.lines} == {"Best fit", "1:1 line"}
+    assert {line.get_label() for line in ax.lines} == {"Deming fit", "1:1 line"}
     assert ax.get_aspect() == pytest.approx(1.0)
 
 
@@ -83,6 +83,9 @@ def test_precomputed_pls_metrics_are_returned_without_recalculation(monkeypatch)
         "MAE": 0.31,
         "bias": 0.05,
         "median_bias": 0.02,
+        "deming_slope": 1.2,
+        "deming_intercept": -0.3,
+        "deming_lambda": 3.3354,
     }
 
     def fail_if_called(*_args, **_kwargs):
@@ -104,7 +107,10 @@ def test_precomputed_pls_metrics_are_returned_without_recalculation(monkeypatch)
     assert "r_squared" not in supplied
     box_text = ax.texts[-1].get_text()
     assert "R² = 0.975" in box_text
-    assert "RMSE = 0.42" in box_text
+    assert "Deming: y = 1.200x - 0.30" in box_text
+    assert "RMSE" not in box_text
+    fit = next(line for line in ax.lines if line.get_label() == 'Deming fit')
+    np.testing.assert_allclose(fit.get_ydata(), 1.2 * fit.get_xdata() - 0.3)
 
 
 def test_panel_toggles_suppress_optional_artists():
@@ -153,8 +159,8 @@ def test_explicit_toggles_override_and_restore_plot_config():
 # --- errors-in-variables regression -----------------------------------------
 # A 1:1 line asserts both axes measure the same quantity, so x carries error and
 # OLS of y-on-x is biased shallow (regression dilution). These pin that the
-# Deming slope is reported alongside OLS, and that nothing changes for callers
-# who did not ask for it.
+# Deming equation and line replace the displayed OLS fit on comparison panels;
+# the returned OLS metrics remain available for calculations.
 
 def _errors_in_both(seed=0, n=400, true_slope=1.0, err=1.2):
     rng = np.random.default_rng(seed)
@@ -219,6 +225,10 @@ def test_crossplot_enables_eiv_automatically_for_a_one_to_one_panel():
     plt.close("all")
     assert "deming_slope" in result
     assert "Deming" in ax.texts[-1].get_text()
+    assert 'OLS' not in ax.texts[-1].get_text()
+    assert len(ax.texts[-1].get_text().splitlines()) == 3
+    fit = next(line for line in ax.lines if line.get_label() == 'Deming fit')
+    np.testing.assert_allclose(fit.get_ydata(), result['deming_slope'] * fit.get_xdata() + result['deming_intercept'])
 
 
 def test_crossplot_leaves_non_comparison_panels_on_ols():
@@ -238,9 +248,7 @@ def test_crossplot_eiv_can_be_forced_off_on_a_one_to_one_panel():
     assert "Deming" not in ax.texts[-1].get_text()
 
 
-def test_precomputed_stats_are_not_second_guessed():
-    """A caller supplying its own metrics is authoritative; do not silently
-    append a Deming slope it did not ask for or compute."""
+def test_precomputed_ols_metrics_are_preserved_and_supplemented_only_for_display():
     x, y = _errors_in_both()
     supplied = {"n": len(x), "slope": 0.5, "intercept": 0.0, "R2": 0.9}
     _, ax = plt.subplots()
@@ -248,9 +256,11 @@ def test_precomputed_stats_are_not_second_guessed():
     plt.close("all")
     assert result is supplied
     assert "deming_slope" not in result
+    assert 'Deming: y =' in ax.texts[-1].get_text()
+    assert '0.500x' not in ax.texts[-1].get_text()
 
 
-def test_deming_line_is_opt_in_and_drawn_when_requested():
+def test_legacy_deming_line_switch_does_not_duplicate_or_add_ols():
     x, y = _errors_in_both()
     _, ax_off = plt.subplots()
     overlays.crossplot_on_axes(ax_off, x, y, "x", "y")
@@ -261,5 +271,54 @@ def test_deming_line_is_opt_in_and_drawn_when_requested():
     labels_on = [ln.get_label() for ln in ax_on.lines]
     plt.close("all")
 
-    assert not any("Deming" in str(la) for la in labels_off)
-    assert any("Deming" in str(la) for la in labels_on)
+    assert labels_off == labels_on == ['Deming fit', '1:1 line']
+
+
+def test_crossplot_uses_the_supplied_measurement_error_ratio():
+    x, y = _errors_in_both()
+    _, ax = plt.subplots()
+    stats = overlays.crossplot_on_axes(ax, x, y, 'HIPS BC', 'FTIR EC', sigma_x=0.3, sigma_y=0.6)
+    assert stats['deming_lambda'] == pytest.approx(4.0)
+    expected = utils.deming(x, y, 4.0)
+    assert stats['deming_slope'] == pytest.approx(expected[0])
+
+
+def test_degenerate_deming_does_not_fall_back_to_an_ols_equation_or_line():
+    _, ax = plt.subplots()
+    overlays.crossplot_on_axes(ax, [1, 2, 3, 4], [1, 3, 3, 1], 'x', 'y')
+    assert 'Deming unavailable' in ax.texts[-1].get_text()
+    assert [line.get_label() for line in ax.lines] == ['1:1 line']
+
+
+@pytest.mark.parametrize('kind', ['scatter', 'iron'])
+def test_other_axes_comparison_helpers_draw_the_same_single_deming_fit(kind):
+    x, y = _errors_in_both()
+    _, ax = plt.subplots()
+    if kind == 'scatter':
+        stats = overlays.scatter_on_axes(ax, x, y, 'x', 'y', sigma_x=0.3, sigma_y=0.6)
+    else:
+        stats, _ = overlays.iron_gradient_on_axes(ax, x, y, np.arange(len(x)), 'x', 'y', sigma_x=0.3, sigma_y=0.6)
+    assert stats['deming_lambda'] == pytest.approx(4)
+    assert [line.get_label() for line in ax.lines] == ['Deming fit', '1:1 line']
+    assert 'Deming: y =' in ax.texts[-1].get_text()
+    assert 'OLS' not in ax.texts[-1].get_text()
+
+
+def test_ols_only_saved_stats_use_the_saved_error_ratio_for_display():
+    x, y = _errors_in_both()
+    saved = utils.calculate_regression_stats(x, y)
+    saved['deming_lambda'] = 3.3354
+    _, ax = plt.subplots()
+    result = overlays.crossplot_on_axes(ax, x, y, 'x', 'y', stats=saved)
+    assert result is saved and 'deming_slope' not in saved
+    slope, intercept = utils.deming(x, y, saved['deming_lambda'])
+    assert f'Deming: {utils.format_equation(slope, intercept)}' in ax.texts[-1].get_text()
+
+
+def test_explicit_error_ratio_and_legacy_deming_line_request():
+    x, y = _errors_in_both()
+    _, ax = plt.subplots()
+    result = overlays.crossplot_on_axes(ax, x, y, 'x', 'y', one_to_one=False,
+                                       fit_line=False, deming_line=True, lambda_ratio=3.3354)
+    assert result['deming_lambda'] == 3.3354
+    assert [line.get_label() for line in ax.lines] == ['Deming fit']

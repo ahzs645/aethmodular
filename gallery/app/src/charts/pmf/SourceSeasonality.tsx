@@ -69,8 +69,8 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
       provenance={`normalised via normalize_gf_fractions · calendar: ${meta.season_convention}`}
       controls={
         <>
-          <Segmented label="scale" value={mode} options={MODES} onChange={setMode} />
-          <Select label="dominance threshold" value={threshold} options={['20', '30', '40', '50', '60']} onChange={setThreshold} />
+          <Segmented label="Scale" value={mode} options={MODES} onChange={setMode} />
+          <Select label="Dominance threshold" value={threshold} options={['20', '30', '40', '50', '60']} onChange={setThreshold} />
         </>
       }
     >

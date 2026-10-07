@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { RegressionControls } from '@/lib/regressionPrefs'
+import { useRef } from 'react'
 import { useDimensions } from '@/hooks/useGalleryData'
+import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 import { DateBrush, type DateRange } from '@/components/DateBrush'
 import { FieldSelect, prettyUnit } from '@/components/FieldSelect'
 import { Segmented, SwapButton, Toggle } from '@/components/ChartFrame'
@@ -86,10 +88,6 @@ const CALENDAR_LABEL: Record<string, string> = {
   belg_feb: 'Shared Ethiopian month bins · Feb in Belg',
 }
 
-const OPEN_KEY = 'gallery.filters.open'
-const readOpen = () => { try { return localStorage.getItem(OPEN_KEY) === '1' } catch { return false } }
-const writeOpen = (v: boolean) => { try { localStorage.setItem(OPEN_KEY, v ? '1' : '0') } catch { /* private window */ } }
-
 /**
  * Global subset controls, as a floating side panel. A tab on the left edge
  * shows how many filters are in view and whether anything is filtered; it
@@ -115,19 +113,11 @@ export function SubsetBar({
   state: SubsetState
   actions: SubsetActions
 }) {
-  const [open, setOpenState] = useState(readOpen)
-  const setOpen = (v: boolean) => { setOpenState(v); writeOpen(v) }
-  const [top, setTop] = useState(96)
+  const [open, setOpen] = useSidePanelOpen()
+  // sit just below the sticky app header, whatever height its tab row wraps to
+  const top = useHeaderHeight()
   const { explain } = usePrefs()
   const hl = useHighlight()
-
-  // sit just below the sticky app header, whatever height its tab row wraps to
-  useEffect(() => {
-    const measure = () => setTop((document.querySelector('.app-header') as HTMLElement | null)?.offsetHeight ?? 96)
-    measure()
-    window.addEventListener('resize', measure)
-    return () => window.removeEventListener('resize', measure)
-  }, [])
 
   const allSeasons = s.activeSeasons.size === s.seasons.length
   const allSites = s.activeSites.size === s.sites.length
@@ -185,11 +175,12 @@ export function SubsetBar({
             <strong>Filters</strong>
             <span className="pill">{s.shown} of {s.total} {caps.datasetLabel}</span>
             <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 4 }}>
-              {!isDefault && <button type="button" className="btn quiet" onClick={a.onReset} title="Clear every filter">reset</button>}
+              {!isDefault && <button type="button" className="btn quiet" onClick={a.onReset} title="Clear every filter">Reset</button>}
               <button type="button" className="btn quiet" onClick={() => setOpen(false)} aria-label="Close filters" title="Close">✕</button>
             </span>
           </header>
           {summary}
+          <RegressionControls />
 
           {caps.fields === 'pair' && (
             <>
@@ -204,15 +195,15 @@ export function SubsetBar({
                   label="1:1 line"
                   checked={s.axes.identity}
                   onChange={(v) => a.onAxes({ ...s.axes, identity: v })}
-                  title="Squares the panels, shares the x and y domain, and turns on the Deming slope"
+                  title="Squares the panels and keeps equal units per pixel on both axes"
                 />
                 <Segmented
                   value={s.axes.mode}
                   options={AXES_MODES}
                   onChange={(v) => a.onAxes({ ...s.axes, mode: v })}
-                  title="Data: 0 always visible, negatives kept · From 0,0: both axes start at zero · Show intercept: extend to the fitted lines' y-intercepts and mark them"
+                  title="Data: 0 always visible, negatives kept · From 0,0: both axes start at zero (default) · Show intercept: keep all points and mark fitted intercepts with compact margins"
                 />
-                <Toggle label="log axes" checked={s.axes.log} onChange={(v) => a.onAxes({ ...s.axes, log: v })} />
+                <Toggle label="Log axes" checked={s.axes.log} onChange={(v) => a.onAxes({ ...s.axes, log: v })} />
                 {explain && <span className="row-note">applies to the scatterplot, hexbin and connected scatter together</span>}
               </Row>
             </>
@@ -231,7 +222,7 @@ export function SubsetBar({
 
           {caps.sites && (
             <Row label="sites">
-              <Chip active={allSites} color="var(--ink-muted)" onClick={a.onAllSites} label="all" />
+              <Chip active={allSites} color="var(--ink-muted)" onClick={a.onAllSites} label="All" />
               {s.sites.map((name) => {
                 const n = s.siteCounts[name] ?? 0
                 return (
@@ -270,7 +261,7 @@ export function SubsetBar({
                     </span>
                   </Row>
                   <div className="season-chips">
-                    <Chip active={allSeasons} color="var(--ink-muted)" onClick={a.onAllSeasons} label="all" />
+                    <Chip active={allSeasons} color="var(--ink-muted)" onClick={a.onAllSeasons} label="All" />
                   </div>
                   {seasonGroups.map((g) => (
                     <div key={g.site ?? 'shared'} className="season-group">
@@ -312,7 +303,7 @@ export function SubsetBar({
                 <>
                   <Segmented value={s.pmfScheme ?? PMF_SCHEMES[0]} options={PMF_SCHEMES} onChange={(v) => a.onPmfScheme?.(v)} title="Dominant source: the largest of the five ETAD PMF factors that day · Marine vs combustion: the Sea Salt + Polluted Marine factors against wood, charcoal and fossil fuel" />
                   <div className="season-chips">
-                    <Chip active={allPmf} color="var(--ink-muted)" onClick={() => a.onAllPmf?.()} label="all" />
+                    <Chip active={allPmf} color="var(--ink-muted)" onClick={() => a.onAllPmf?.()} label="All" />
                     {s.pmfGroups.map((g) => {
                       const n = s.pmfCounts?.[g.name] ?? 0
                       return (
@@ -342,7 +333,7 @@ export function SubsetBar({
                 {s.dateRange ? (
                   <>
                     {s.dateRange[0]} → {s.dateRange[1]}{' '}
-                    <button type="button" className="btn quiet" onClick={() => a.onDateRange(null)}>clear</button>
+                    <button type="button" className="btn quiet" onClick={() => a.onDateRange(null)}>Clear</button>
                   </>
                 ) : explain ? (
                   'drag across the timeline to keep only a date range; snaps to whole months'
@@ -357,7 +348,7 @@ export function SubsetBar({
             {caps.excluded ? (
               <label className="toggle">
                 <input type="checkbox" checked={s.includeExcluded} onChange={(e) => a.onIncludeExcluded(e.target.checked)} />
-                include {s.nExcluded} excluded samples
+                Include {s.nExcluded} excluded samples
               </label>
             ) : null}
             {caps.note && explain && <span className="row-note">{caps.note}</span>}
@@ -412,8 +403,8 @@ function PinnedCard({
       {row.excluded && <span className="reason">excluded: {row.exclusion_reason}</span>}
       {!inSubset && <span className="row-note">(outside the current subset)</span>}
       <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 4 }}>
-        <button type="button" className="btn" onClick={onOpen}>details</button>
-        <button type="button" className="btn quiet" onClick={onUnpin}>unpin</button>
+        <button type="button" className="btn" onClick={onOpen}>Details</button>
+        <button type="button" className="btn quiet" onClick={onUnpin}>Unpin</button>
       </span>
     </div>
   )
