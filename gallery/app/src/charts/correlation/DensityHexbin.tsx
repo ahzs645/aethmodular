@@ -1,6 +1,7 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
-import { RegressionLines, RegressionReadout } from '@/components/RegressionOverlay'
-import { fitsFor, useRegressions } from '@/lib/regressionPrefs'
+import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
+import { fitsFor, useRegressions, FitGroupingControl } from '@/lib/regressionPrefs'
+import { groupedRegressions } from '@/lib/siteRegression'
 import { useId, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { hexbin as d3Hexbin } from 'd3-hexbin'
@@ -27,11 +28,17 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const clipId = useId()
-  const { methods } = useRegressions()
+  const { methods, grouping, showCI } = useRegressions()
   const MAX_SQUARE = 520
 
   const [radius, setRadius] = useState('14')
   const opts: AxesOpts = { ...axes, log: false }
+  const pairedRows = useMemo(() => rows.filter(r => typeof r[xField] === 'number' && typeof r[yField] === 'number' && Number.isFinite(r[xField]) && Number.isFinite(r[yField])), [rows, xField, yField])
+  const fitGroups = useMemo(() => groupedRegressions(pairedRows, grouping, {
+    x: r => r[xField] as number, y: r => r[yField] as number, site: r => r.site,
+    color: r => meta.sites.find(s => s.name === r.site)?.color ?? INK.muted,
+    options: members => fitUncertainty(members, xField, yField, meta),
+  }), [pairedRows, grouping, xField, yField, meta])
 
   const points = useMemo(
     () =>
@@ -47,14 +54,16 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   const availW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const innerW = Math.min(availW, MAX_SQUARE)
   const innerH = innerW
-  const svgHeight = innerH + MARGIN.top + MARGIN.bottom
+  const svgWidth = innerW + MARGIN.left + MARGIN.right
+  const siteFits = grouping === 'site' && methods.length > 0
+  const svgHeight = innerH + MARGIN.top + MARGIN.bottom + (siteFits ? regressionGroupReadoutLayout(fitGroups.length, svgWidth, methods, showCI).height : 0)
 
   const { x, y, stats, domain } = useMemo(() => {
     const xs = points.map((p) => p[0])
     const ys = points.map((p) => p[1])
     // Fit the same paired observations as the scatterplot.
     const stats = regression(xs, ys, fitUncertainty(rows.filter(r => typeof r[xField] === 'number' && typeof r[yField] === 'number' && Number.isFinite(r[xField]) && Number.isFinite(r[yField])), xField, yField, meta))
-    const intercepts = fitsFor(stats, methods).map(fit => fit.intercept)
+    const intercepts = fitGroups.flatMap(group => fitsFor(group.stats, methods).map(fit => fit.intercept))
     const domain = pairDomain(xs, ys, opts, intercepts)
     const scale = (d: [number, number], range: [number, number]) => {
       const s = d3.scaleLinear().domain(d).range(range)
@@ -67,7 +76,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
       domain,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [points, rows, xField, yField, meta, methods, innerW, innerH, opts.identity, opts.mode])
+  }, [points, rows, xField, yField, meta, methods, fitGroups, innerW, innerH, opts.identity, opts.mode])
 
   const bins = useMemo(() => {
     const hb = d3Hexbin<[number, number]>()
@@ -92,6 +101,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
       controls={
         <>
           <Select label="Hex radius" value={radius} options={['8', '11', '14', '18', '24']} onChange={setRadius} />
+          <FitGroupingControl />
         </>
       }
     >
@@ -99,7 +109,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
         {points.length < 3 ? (
           <Empty>Fewer than 3 filters carry both fields in this subset.</Empty>
         ) : (
-          <svg width={innerW + MARGIN.left + MARGIN.right} height={svgHeight} className="animated">
+          <svg width={svgWidth} height={svgHeight} className="animated">
             <defs>
               <clipPath id={clipId}>
                 <rect x={0} y={0} width={innerW} height={innerH} />
@@ -137,21 +147,23 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
                 {opts.identity && <line x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="5 4" />}
                 {stats && (
                   <>
-                    <RegressionLines stats={stats} x={x} y={y} domain={x.domain()} width={innerW} height={innerH} />
+                    {grouping === 'site' ? <RegressionGroupLines groups={fitGroups} x={x} y={y} width={innerW} height={innerH} />
+                      : <RegressionLines stats={stats} x={x} y={y} domain={x.domain()} width={innerW} height={innerH} />}
                   </>
                 )}
               </g>
               {stats && opts.mode === 'Show intercept' && (
                 <g pointerEvents="none" fontFamily={FONT.mono} fontSize={10.5}>
-                  {fitsFor(stats, methods).map(fit => <g key={fit.method}>
-                    <circle cx={x(0)} cy={y(fit.intercept)} r={4.5} fill="#fff" stroke={fit.color} strokeWidth={2} />
+                  {fitGroups.flatMap(group => fitsFor(group.stats, methods).map(fit => <g key={group.name + fit.method}>
+                    <circle cx={x(0)} cy={y(fit.intercept)} r={4.5} fill="#fff" stroke={group.color ?? fit.color} strokeWidth={2} />
                     <title>{fit.label} b = {fmt(fit.intercept, 3)}</title>
-                  </g>)}
+                  </g>))}
                 </g>
               )}
 
-              <RegressionReadout stats={stats} />
+              {grouping === 'pooled' && <RegressionReadout stats={stats} />}
             </g>
+            {siteFits && <RegressionGroupReadouts groups={fitGroups} width={svgWidth} y={innerH + MARGIN.top + MARGIN.bottom} />}
           </svg>
         )}
         <div className="legend">

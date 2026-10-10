@@ -5,7 +5,7 @@ import * as d3 from 'd3'
 import { Segmented, Toggle } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
 import { INK, FONT } from '@/lib/theme'
-import { useFilterSpectrum, traceVersionLabel, type FilterSpectrumData, type SpectrumMethod } from '@/lib/filterSpectrum'
+import { useAddisStatus, useFilterSpectrum, traceVersionLabel, type AddisStatus, type FilterSpectrumData, type SpectrumMethod } from '@/lib/filterSpectrum'
 import { useDimensions } from '@/hooks/useGalleryData'
 
 // the baseline colours used on the AIRSpec / VIBES pages
@@ -18,17 +18,30 @@ const METHODS_OF: Record<(typeof VIEWS)[number], SpectrumMethod[]> = {
   both: ['AIRSpec', 'VIBES'],
 }
 
+/** One line saying where an Addis filter stands (1 Oct: label excluded samples clearly). */
+function AddisStatusNote({ status }: { status: AddisStatus }) {
+  return <p className="chart-note" style={{ display: 'block', margin: '4px 0 8px' }}>
+    <span className={`badge ${status.in_test_set ? '' : 'danger'}`} style={{ marginRight: 6 }}>{status.in_test_set ? 'Addis test set' : 'not in the Addis test set'}</span>
+    {status.note.charAt(0).toUpperCase() + status.note.slice(1)}.
+  </p>
+}
+
 /**
  * This filter's baseline-corrected FTIR spectrum, when the Spectral similarity
- * export carries it. Renders nothing otherwise (and while loading), so drawers
- * for filters without a spectrum look exactly as before.
+ * export carries it. For Addis filters a status line always says whether the
+ * filter is in the test set and, if not, why (no HIPS, PM10, blank, not in the run);
+ * other filters without a spectrum render nothing, as before.
  */
 export function FilterSpectrum({ id }: { id: string }) {
   const [view, setView] = useState<(typeof VIEWS)[number]>('both')
   const [expanded, setExpanded] = useState(false)
   const methods = METHODS_OF[view]
   const spec = useFilterSpectrum(id, methods)
-  if (!spec) return null
+  const status = useAddisStatus(id)
+  if (!spec) return status && !status.in_run ? <section className="drawer-section">
+    <h3>Baseline-corrected spectrum</h3>
+    <AddisStatusNote status={status} />
+  </section> : null
   const shown = methods.filter((m) => spec.series[m])
   if (!shown.length) return <section className="drawer-section">
     <h3>Baseline-corrected spectrum</h3>
@@ -39,6 +52,7 @@ export function FilterSpectrum({ id }: { id: string }) {
   return (
     <section className="drawer-section">
       <h3>Baseline-corrected spectrum</h3>
+      {status && <AddisStatusNote status={status} />}
       <div className="frame-controls" style={{ marginBottom: 4, flexWrap: 'wrap' }}>
         <Segmented value={view} options={VIEWS} onChange={setView} />
         <button type="button" className="btn" aria-haspopup="dialog" onClick={() => setExpanded(true)}>Expand spectrum</button>

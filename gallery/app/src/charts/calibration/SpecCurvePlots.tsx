@@ -131,10 +131,11 @@ function SpecPanel(props: Props & {
     <g transform={`translate(0,${TOP_H + GAP})`}>
       {props.choiceIndices.map(c => <image key={c} href={strips[c]} x={0} y={rowY(c)} width={plotW} height={ROW_H - 1.5} preserveAspectRatio="none" style={{ imageRendering: 'pixelated' }} />)}
       {labels && props.groups.map(g => <text key={g.title} x={-labelPad + 4} y={rowY(g.start) - 5} fontSize={11.5} fontWeight={700} fill={INK.text}>{g.title}</text>)}
-      {labels && props.choiceIndices.map(c => <g key={c} style={{cursor:'pointer'}} onClick={() => props.toggleChoice(c)}>
+      {labels && props.choiceIndices.map(c => <g key={c} style={{cursor:'pointer'}} role="button" tabIndex={0} aria-label={file.choices[c]} aria-pressed={props.required.has(c)}
+        onClick={() => props.toggleChoice(c)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); props.toggleChoice(c) } }}>
         {props.required.has(c) && <rect x={-labelPad + 4} y={rowY(c) + 1} width={labelPad - 8} height={ROW_H - 2} rx={3} fill={INK.accent} fillOpacity={0.12} />}
         <text x={-8} y={rowY(c) + ROW_H / 2} dy="0.32em" textAnchor="end" fontSize={11} fill={props.required.has(c) ? INK.accent : INK.text}>{file.choices[c]}</text>
-        <title>Click to toggle this analytic-choice filter across every selection.</title>
+        <title>Click to toggle this choice. Alternatives within the same setting are combined; different settings must all match.</title>
       </g>)}
       <XAxis scale={x} y={stripH} label="Configuration rank by intercept" tickCount={Math.max(2, Math.floor(plotW / 85))} format={v => d3.format(',')(v)} />
     </g>

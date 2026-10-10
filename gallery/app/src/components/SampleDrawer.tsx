@@ -1,6 +1,7 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
-import { RegressionLines, RegressionReadout } from '@/components/RegressionOverlay'
-import { useRegressions, fitsFor, equation } from '@/lib/regressionPrefs'
+import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
+import { useRegressions, fitsFor, equation, FitGroupingControl } from '@/lib/regressionPrefs'
+import { groupedRegressions } from '@/lib/siteRegression'
 import { useEffect, useMemo, useState } from 'react'
 import * as d3 from 'd3'
 import { FieldSelect, prettyUnit } from '@/components/FieldSelect'
@@ -62,7 +63,7 @@ export function SampleDrawer({
   onOpen: (id: string) => void
   onClose: () => void
 }) {
-  const { methods } = useRegressions()
+  const { methods, grouping, showCI } = useRegressions()
   const [cx, setCx] = useState(xField)
   const [cy, setCy] = useState(yField)
   const referenceOptions = ['same', ...meta.sites.map(s => s.name), 'study', 'network']
@@ -137,14 +138,18 @@ export function SampleDrawer({
       .map((r) => ({ r, x: r[cx], y: r[cy] }))
       .filter((p): p is { r: ReferenceRow; x: number; y: number } => isNum(p.x) && isNum(p.y))
     const stats = regression(pool.map((p) => p.x), pool.map((p) => p.y), fitUncertainty(pool.map(p => p.r), cx, cy, meta))
-    return { pool, stats }
-  }, [referenceRows, cx, cy, meta])
+    const fitGroups = groupedRegressions(pool, grouping, { x: p => p.x, y: p => p.y, site: p => p.r.site,
+      color: p => meta.sites.find(s => s.code === p.r.code)?.color ?? INK.muted,
+      options: members => fitUncertainty(members.map(p => p.r), cx, cy, meta) })
+    return { pool, stats, fitGroups }
+  }, [referenceRows, cx, cy, meta, grouping])
   const W = 400
   const m = { top: 12, right: 14, bottom: 46, left: 62 }
   const iw = W - m.left - m.right
   // square plot area, like every crossplot in the gallery
   const ih = iw
-  const H = ih + m.top + m.bottom
+  const siteFits = grouping === 'site' && methods.length > 0
+  const H = ih + m.top + m.bottom + (siteFits ? regressionGroupReadoutLayout(cross.fitGroups.length, W, methods, showCI).height : 0)
   const here = isNum(row[cx]) && isNum(row[cy]) ? { x: row[cx] as number, y: row[cy] as number } : null
   const axisPoints = here ? [...cross.pool, here] : cross.pool
   const xs = d3.scaleLinear().domain([Math.min(0, d3.min(axisPoints, p => p.x) ?? 0), Math.max(0, d3.max(axisPoints, p => p.x) ?? 1) * 1.05 || 1]).range([0, iw]).nice()
@@ -268,6 +273,7 @@ export function SampleDrawer({
           <FieldSelect label="x" value={cx} meta={meta} onChange={setCx} />
           <SwapButton onClick={() => { setCx(cy); setCy(cx) }} />
           <FieldSelect label="y" value={cy} meta={meta} onChange={setCy} />
+          <FitGroupingControl />
         </div>
         {cross.pool.length < 3 ? (
           <p className="frame-empty">Fewer than 3 filters in {referenceLabel} carry both {cx} and {cy}. Choose another pair or reference population.</p>
@@ -281,8 +287,8 @@ export function SampleDrawer({
                   <title>{p.r.id} · {p.r.site} · {p.r.date} · {cx}: {fmt(p.x, 3)} · {cy}: {fmt(p.y, 3)}</title>
                 </circle>
               ))}
-              <RegressionLines stats={cross.stats} x={xs} y={ys} domain={xs.domain()} width={iw} height={ih} />
-              <RegressionReadout stats={cross.stats} width={260} />
+              {grouping === 'site' ? <RegressionGroupLines groups={cross.fitGroups} x={xs} y={ys} width={iw} height={ih} />
+                : <><RegressionLines stats={cross.stats} x={xs} y={ys} domain={xs.domain()} width={iw} height={ih} /><RegressionReadout stats={cross.stats} width={260} /></>}
               {here && (
                 <>
                   <line x1={xs(here.x)} x2={xs(here.x)} y1={0} y2={ih} stroke={INK.text} strokeDasharray="3 3" strokeOpacity={0.4} />
@@ -291,11 +297,12 @@ export function SampleDrawer({
                 </>
               )}
             </g>
+            {siteFits && <RegressionGroupReadouts groups={cross.fitGroups} width={W} y={ih + m.top + m.bottom} />}
           </svg>
         )}
         {here ? (
           <p className="chart-note" style={{ fontFamily: FONT.mono }}>
-            {cross.stats && <>n = {cross.stats.n} · R² = {fmt(cross.stats.r2, 3)}{fitsFor(cross.stats, methods).map(fit => <span key={fit.method}> · {equation(fit)}</span>)}</>}
+            {grouping === 'pooled' && cross.stats && <>n = {cross.stats.n} · R² = {fmt(cross.stats.r2, 3)}{fitsFor(cross.stats, methods).map(fit => <span key={fit.method}> · {equation(fit)}</span>)}</>}
 
           </p>
         ) : (

@@ -1,6 +1,7 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
-import { RegressionLines, RegressionReadout } from '@/components/RegressionOverlay'
-import { useRegressions, fitsFor } from '@/lib/regressionPrefs'
+import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
+import { useRegressions, fitsFor, FitGroupingControl } from '@/lib/regressionPrefs'
+import { groupedRegressions, type RegressionGroup } from '@/lib/siteRegression'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Segmented, Toggle } from '@/components/ChartFrame'
@@ -60,7 +61,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const hl = useHighlight()
-  const { methods } = useRegressions()
+  const { methods, grouping } = useRegressions()
 
   const [colorBy, setColorBy] = useState<(typeof COLOR_BY)[number]>('Site')
   const [colorField, setColorField] = useState(meta.fields.includes('Iron') ? 'Iron' : meta.fields[0])
@@ -115,13 +116,16 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
     return raw.map((p) => ({
       ...p,
       stats: regression(p.points.map((q) => q.x), p.points.map((q) => q.y), fitUncertainty(p.points.map(q => q.row), xField, yField, meta)),
+      fitGroups: groupedRegressions(p.points, grouping, { x: q => q.x, y: q => q.y, site: q => q.row.site,
+        color: q => meta.sites.find(s => s.name === q.row.site)?.color ?? INK.muted,
+        options: members => fitUncertainty(members.map(q => q.row), xField, yField, meta) }),
     }))
-  }, [layout, points, meta, xField, yField])
+  }, [layout, points, meta, xField, yField, grouping])
 
   // Shared domain across every panel — a per-site grid with different axes
   // per panel silently hides that one site's slope is twice another's.
   const domain = useMemo(() => {
-    const intercepts = panels.flatMap(p => fitsFor(p.stats, methods).map(fit => fit.intercept))
+    const intercepts = panels.flatMap(p => p.fitGroups.flatMap(group => fitsFor(group.stats, methods).map(fit => fit.intercept)))
     return pairDomain(points.map((p) => p.x), points.map((p) => p.y), axes, showFit ? intercepts : [])
   }, [points, panels, axes, showFit, methods])
 
@@ -162,6 +166,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
           {colorBy === 'Value' && <FieldSelect label="by" value={colorField} meta={meta} onChange={setColorField} />}
           <FieldSelect label="Size" value={sizeField} meta={meta} onChange={setSizeField} extraOptions={[NO_SIZE]} title="Bubble plot: mark area proportional to a fourth measurement" />
           <Toggle label="Fit lines" checked={showFit} onChange={setShowFit} />
+          <FitGroupingControl />
           <Toggle label="Brush to select" checked={brushing} onChange={(v) => { setBrushing(v); if (!v) hl.setSelected(null) }} title="Drag a rectangle: the enclosed filters are highlighted on every chart of this tab" />
           {hl.selected && (
             <span className="control">
@@ -185,6 +190,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
                 titleColor={p.color}
                 points={p.points}
                 stats={p.stats}
+                fitGroups={p.fitGroups}
                 domain={domain}
                 innerW={innerW}
                 innerH={innerH}
@@ -243,12 +249,13 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
 
 /** One axes: used once for the combined layout, once per site for the grid. */
 function ScatterPanel({
-  title, titleColor, points, stats, domain, innerW, innerH, axes, showFit, xLabel, yLabel, colorOf, radiusOf, dimOf, fitDim, focusId, selected, brushing, onBrush, onEnter, onLeave, onClick,
+  title, titleColor, points, stats, fitGroups, domain, innerW, innerH, axes, showFit, xLabel, yLabel, colorOf, radiusOf, dimOf, fitDim, focusId, selected, brushing, onBrush, onEnter, onLeave, onClick,
 }: {
   title: string | null
   titleColor: string
   points: Point[]
   stats: RegressionStats | null
+  fitGroups: RegressionGroup[]
   domain: PairDomain
   innerW: number
   innerH: number
@@ -332,8 +339,11 @@ function ScatterPanel({
   }
   const markIntercepts = axes.mode === 'Show intercept' && showFit && !axes.log && stats
   const originAxes = axes.mode === 'Show intercept' && !axes.log && xScale.domain()[0] < 0 && yScale.domain()[0] < 0
-  const { methods } = useRegressions()
-  const selectedFits = fitsFor(stats, showFit ? methods : [])
+  const { methods, grouping, showCI } = useRegressions()
+  const siteFits = grouping === 'site' && showFit && methods.length > 0
+  const selectedFits = fitGroups.flatMap(group => fitsFor(group.stats, showFit ? methods : []).map(fit => ({ ...fit, color: group.color ?? fit.color, name: group.name })))
+  const svgWidth = innerW + MARGIN.left + MARGIN.right
+  const readoutHeight = siteFits ? regressionGroupReadoutLayout(fitGroups.length, svgWidth, methods, showCI).height : 0
 
   return (
     <div>
@@ -343,7 +353,7 @@ function ScatterPanel({
           <span style={{ color: 'var(--ink-muted)', fontWeight: 400, fontFamily: 'var(--mono)', fontSize: 11 }}>n={points.length}</span>
         </p>
       )}
-      <svg width={innerW + MARGIN.left + MARGIN.right} height={innerH + MARGIN.top + MARGIN.bottom} className="animated">
+      <svg width={svgWidth} height={innerH + MARGIN.top + MARGIN.bottom + readoutHeight} className="animated">
         <defs>
           {/* fit and identity lines are clipped to the axes: a slope above 1 otherwise leaves through the top margin */}
           <clipPath id={clipId}>
@@ -371,7 +381,8 @@ function ScatterPanel({
             )}
             {stats && showFit && (
               <g opacity={fitDim}>
-                <RegressionLines stats={stats} x={xScale} y={v => yScale(yv(v))} domain={xScale.domain()} width={innerW} height={innerH} />
+                {grouping === 'site' ? <RegressionGroupLines groups={fitGroups} x={xScale} y={v => yScale(yv(v))} width={innerW} height={innerH} />
+                  : <RegressionLines stats={stats} x={xScale} y={v => yScale(yv(v))} domain={xScale.domain()} width={innerW} height={innerH} />}
               </g>
             )}
           </g>
@@ -414,15 +425,16 @@ function ScatterPanel({
           {markIntercepts && (
             <g pointerEvents="none" fontFamily={FONT.mono} fontSize={10.5}>
               {!originAxes && <line x1={xScale(0)} x2={xScale(0)} y1={0} y2={innerH} stroke={INK.axis} strokeDasharray="2 3" strokeOpacity={0.6} />}
-              {selectedFits.map(fit => <g key={fit.method}>
+              {selectedFits.map(fit => <g key={fit.name + fit.method}>
                 <circle cx={xScale(0)} cy={yScale(fit.intercept)} r={4.5} fill="#fff" stroke={fit.color} strokeWidth={2} />
                 <text x={xScale(0) + 8} y={yScale(fit.intercept)} dy="0.35em" fill={fit.color} stroke="#fff" strokeWidth={3} paintOrder="stroke">{fit.label} b = {fmt(fit.intercept, 3)}</text>
               </g>)}
             </g>
           )}
 
-          <RegressionReadout stats={stats} />
+          {grouping === 'pooled' && <RegressionReadout stats={stats} />}
         </g>
+        {siteFits && <RegressionGroupReadouts groups={fitGroups} width={svgWidth} y={innerH + MARGIN.top + MARGIN.bottom} />}
       </svg>
     </div>
   )

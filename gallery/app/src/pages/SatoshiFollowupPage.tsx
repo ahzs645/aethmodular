@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState, useId } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, ExplainOnly, Note, Segmented, Select } from '@/components/ChartFrame'
 import { PageToc } from '@/components/PageToc'
+import { Combobox } from '@/components/Combobox'
+import { SatoshiSpectra } from '@/components/SatoshiSpectra'
+import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -49,9 +52,16 @@ type Baseline = (typeof BASELINES)[number]
 const BASE_COLOR: Record<string, string> = { [SPLINE]: '#2C6E9E', [VIBES]: '#d95f0e' }
 const SHORT: Record<string, string> = { [SPLINE]: 'Spline', [VIBES]: 'VIBES' }
 const LONG: Record<string, string> = { [SPLINE]: 'Spline baseline (4000–1425)', [VIBES]: 'VIBES baseline (4000–500, rank 70)' }
-const MASKS = ['presented', 'oct1'] as const
+const MASKS = ['oct1', 'presented'] as const
 type Mask = (typeof MASKS)[number]
-const MASK_SHORT: Record<string, string> = { presented: 'As presented 1 Oct', oct1: 'Agreed 1 Oct region' }
+const MASK_SHORT: Record<Mask, string> = {
+  oct1: '600–3600 cm⁻¹ · exclude CO₂ 1800–2500 + PTFE 1050–1250',
+  presented: '500–3600 cm⁻¹ · exclude CO₂ 1800–2500',
+}
+const MASK_DESCRIPTION: Record<Mask, string> = {
+  oct1: 'Use 600–3600 cm⁻¹, excluding CO₂ (1800–2500 cm⁻¹) and PTFE (1050–1250 cm⁻¹).',
+  presented: 'Use 500–3600 cm⁻¹, excluding CO₂ (1800–2500 cm⁻¹). The PTFE band remains included.',
+}
 const SHARED_COLOR = '#4b5563'
 const STANDARD_COLOR = '#6b7280'
 
@@ -82,7 +92,8 @@ export function SatoshiFollowupPage() {
 }
 
 function SatoshiView({ data }: { data: SatoshiData }) {
-  const [mask, setMask] = useSearchParam<Mask>('sregion', 'presented', MASKS)
+  const [mask, setMask] = useSearchParam<Mask>('sregion', 'oct1', MASKS)
+  const oct1 = useOct1()
   const hl = useHighlight()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') hl.setPinned(null) }
@@ -90,20 +101,41 @@ function SatoshiView({ data }: { data: SatoshiData }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [hl])
   return (
+    <>
+    <SimilarityRegionSidebar mask={mask} onMask={setMask} />
     <PageToc>
-      <Answers data={data} />
-      <ChartFrame title="Similarity region — which spectral region chose the analogs on every chart below" exportable={false}
-        controls={<Segmented label="Similarity region" value={mask} options={MASKS} optionLabel={(m) => MASK_SHORT[m]} onChange={setMask} />}>
-        <p className="chart-note">{data.summary.masks?.[mask]}. The spline baseline only covers 4000–1425 cm⁻¹, so its analogs are identical under both regions; only the VIBES analogs change. Every PLS model is still fitted on each baseline's full predictor grid (the region only chooses the analogs).</p>
-      </ChartFrame>
+      <ExplainOnly><Conclusion s={data} o={oct1.data} /></ExplainOnly>
+      <ExplainOnly><Answers data={data} /></ExplainOnly>
       <Overlap data={data} mask={mask} />
+      <SatoshiSpectra membership={data.members} groups={data.groups} region={mask} />
       <Swap data={data} mask={mask} />
       <Vip data={data} mask={mask} />
       <Ladder data={data} mask={mask} />
       <Envelope data={data} mask={mask} />
+      <Oct1Sections o={oct1} />
       <ExplainOnly><Methods data={data} /></ExplainOnly>
     </PageToc>
+    </>
   )
+}
+
+function SimilarityRegionSidebar({ mask, onMask }: { mask: Mask; onMask: (mask: Mask) => void }) {
+  const [open, setOpen] = useSidePanelOpen()
+  const top = useHeaderHeight()
+  return <>
+    <button type="button" className={`subset-tab ${open ? 'open' : ''}`} style={{ top: top + 24 }}
+      aria-expanded={open} onClick={() => setOpen(!open)} title={open ? 'Hide the filters' : 'Show the filters'}>
+      <span className="subset-tab-label">Filters</span>
+    </button>
+    {open && <aside className="panel subset subset-panel" style={{ top, height: `calc(100vh - ${top}px)` }} aria-label="Filters">
+      <header className="subset-head"><strong>Filters</strong>
+        <span style={{ marginLeft: 'auto' }}><button type="button" className="btn quiet" onClick={() => setOpen(false)} aria-label="Close filters" title="Close">✕</button></span>
+      </header>
+      <Combobox label="Similarity region" value={mask} options={MASKS.map(key => ({ key, label: MASK_SHORT[key] }))} onChange={onMask} />
+      <p className="chart-note">{MASK_DESCRIPTION[mask]}</p>
+      <ExplainOnly><p className="chart-note">This region chooses the analogs on the charts. The spline baseline only covers 4000–1425 cm⁻¹, so its analogs are identical under both regions; only the VIBES analogs change. Every PLS model is still fitted on each baseline's full predictor grid.</p></ExplainOnly>
+    </aside>}
+  </>
 }
 
 // ------------------------------------------------------------------ answers
@@ -118,7 +150,7 @@ function Answers({ data }: { data: SatoshiData }) {
   const ecRatio = data.groups.map((g) => prop(g, 'VIBES only')!.tor_ec_median / prop(g, 'spline only')!.tor_ec_median)
   const higherOcEc = data.groups.filter((g) => prop(g, 'VIBES only')!.oc_ec_median > prop(g, 'spline only')!.oc_ec_median)
   return (
-    <ChartFrame source="gallery/app/src/pages/SatoshiFollowupPage.tsx › Answers" title="Satoshi's questions, 2 Oct — short answers (similarity region as presented 1 Oct; completed rank-70 VIBES)" exportable={false}>
+    <ChartFrame source="gallery/app/src/pages/SatoshiFollowupPage.tsx › Answers" title="Satoshi's questions, 2 Oct · original 1 Oct region — short answers (similarity region as presented 1 Oct; completed rank-70 VIBES)" exportable={false}>
       <table className="census-table">
         <thead><tr><th style={{ width: '24%' }}>Question</th><th>Short answer</th></tr></thead>
         <tbody>
@@ -170,7 +202,7 @@ function BaselineSeg({ value, onChange }: { value: string; onChange: (v: Baselin
   return <Segmented label="Baseline" value={value as Baseline} options={BASELINES} optionLabel={(b) => SHORT[b]} onChange={onChange} />
 }
 /** The analog set a baseline uses under a region: the spline set is the same under both. */
-const maskFor = (baseline: string, mask: string) => (baseline === SPLINE ? 'presented' : mask)
+const maskFor = (baseline: string, mask: Mask): Mask => (baseline === SPLINE ? 'presented' : mask)
 
 function improveRecord(id: number | string, site: string, source: string, fields: FilterRecord['fields']): FilterRecord {
   return { id: `improve:${id}`, source, site, fields }
@@ -311,7 +343,7 @@ function Swap({ data, mask }: { data: SatoshiData; mask: Mask }) {
   return (
     <ChartFrame id="satoshi-swap" source="gallery/app/src/pages/SatoshiFollowupPage.tsx › Swap"
       title={`Training set or baseline — Addis Deming ${metric} when each analog set is calibrated on each baseline`}
-      subtitle="Each analog set (selected on the spline or VIBES baseline) is calibrated on both baselines with the same site-grouped cross-validation. Dots are medians over 100 site-disjoint calibration splits; whiskers span the 10th–90th percentile; open diamonds are the protocol split shown in the meeting tab. Colour is the baseline the PLS model was calibrated on; shape is the baseline that chose the analogs."
+      subtitle="Each analog set (selected on the spline or VIBES baseline) is calibrated on both baselines with the same site-grouped cross-validation. Dots are medians over 100 site-disjoint calibration splits; whiskers span the 10th–90th percentile; open diamonds are the protocol split shown in the Follow up meeting view. Colour is the baseline the PLS model was calibrated on; shape is the baseline that chose the analogs."
       controls={<Segmented label="Readout" value={metric} options={SWAP_METRICS} onChange={setMetric} />}>
       <div ref={ref} style={{ position: 'relative' }}>
         <svg width={iw + m.left + m.right} height={ih + m.top + m.bottom} fontFamily={FONT.family}>
@@ -354,14 +386,14 @@ function Swap({ data, mask }: { data: SatoshiData; mask: Mask }) {
           <td>{effCell(g, 'training set', 'calibrated on spline')}</td><td>{effCell(g, 'training set', 'calibrated on VIBES')}</td>
           <td>{effCell(g, 'baseline', 'selected on spline')}</td><td>{effCell(g, 'baseline', 'selected on VIBES')}</td></tr>)}</tbody>
       </table>
-      <Note>Change in the Addis Deming {metric}, median [10th, 90th percentile]. The baseline effect is paired: same cohort and same split, two baselines. The training-set effect compares different cohorts, so its interval is over all pairs of splits and is wider by construction. The diagonal arms reproduce the meeting tab's seasonal calibrations exactly (k, slope and intercept checked to 1e-6).</Note>
+      <Note>Change in the Addis Deming {metric}, median [10th, 90th percentile]. The baseline effect is paired: same cohort and same split, two baselines. The training-set effect compares different cohorts, so its interval is over all pairs of splits and is wider by construction. The diagonal arms reproduce the Follow up meeting view's seasonal calibrations exactly (k, slope and intercept checked to 1e-6).</Note>
     </ChartFrame>
   )
 }
 
 // ------------------------------------------------------------------ 3. VIP
 const SHADE: { lo: number; hi: number; label: string; region: 'both' | 'oct1' | 'presented' }[] = [
-  { lo: 1800, hi: 2500, label: 'CO₂, excluded from similarity', region: 'both' },
+  { lo: 1800, hi: 2500, label: 'CO₂ region 1800–2500 cm⁻¹, excluded from similarity', region: 'both' },
   { lo: 3600, hi: 4000, label: '>3600, excluded from similarity', region: 'both' },
   { lo: 1050, hi: 1250, label: 'PTFE, excluded from similarity (agreed region)', region: 'oct1' },
   { lo: 400, hi: 600, label: '<600, excluded from similarity (agreed region)', region: 'oct1' },
@@ -517,7 +549,7 @@ function LadderTable({ rows }: { rows: { label: string; color: string; rows: (Ro
 }
 
 /** Cross-validation predictions of the analog model next to the standard model's out-of-sample predictions of the same filters. */
-function LadderCrossplots({ data, analogId, baseline, mask, group }: { data: SatoshiData; analogId: string; baseline: string; mask: string; group: string }) {
+function LadderCrossplots({ data, analogId, baseline, mask, group }: { data: SatoshiData; analogId: string; baseline: string; mask: Mask; group: string }) {
   const lp = data.ladder_points, ep = data.envelope_points
   const own = lp.model_id.map((_, i) => i).filter((i) => lp.model_id[i] === analogId)
   const ids = new Set(own.map((i) => lp.filter_id[i]))
@@ -670,15 +702,332 @@ function Methods({ data }: { data: SatoshiData }) {
   return (
     <ChartFrame title="How this was computed — and what from the 1 Oct list is not here" exportable={false}>
       <table className="census-table"><tbody>
-        <tr><td>Inputs</td><td>The completed rank-70 context the Follow up meeting tab uses: {s.improve_n?.toLocaleString()} IMPROVE filters, {s.addis_n} Addis filters, the frozen site-disjoint split. Baselines: {LONG[SPLINE]}; {LONG[VIBES]}.</td></tr>
-        <tr><td>Analogs</td><td>Top {s.n_analogs} IMPROVE filters by Pearson r to each group's median Addis spectrum. The "as presented" selections reproduce the meeting tab's exactly.</td></tr>
+        <tr><td>Inputs</td><td>The completed rank-70 context the Follow up meeting view uses: {s.improve_n?.toLocaleString()} IMPROVE filters, {s.addis_n} Addis filters, the frozen site-disjoint split. Baselines: {LONG[SPLINE]}; {LONG[VIBES]}.</td></tr>
+        <tr><td>Analogs</td><td>Top {s.n_analogs} IMPROVE filters by Pearson r to each group's median Addis spectrum. The "as presented" selections reproduce the Follow up meeting view's exactly.</td></tr>
         <tr><td>Standard model</td><td>{s.standard_model}.</td></tr>
         <tr><td>Swap test</td><td>{s.n_repeats} site-disjoint 80/20 splits per cohort (seed 20260917), each calibrated on both baselines; k by site-grouped cross-validation, first major minimum.</td></tr>
         <tr><td>Deming</td><td>Addis: λ* {f2(s.lambda_addis)} (HIPS uncertainty vs IMPROVE cross-validation RMSE). IMPROVE stages: each calibration's RMSECV against a {(100 * (s.ref_rel_uncertainty ?? 0)).toFixed(1)} % reference uncertainty, so λ is large and Deming sits close to ordinary least squares of FTIR on TOR.</td></tr>
         <tr><td>Reproduce</td><td><code>uv run --no-sync python research/ftir_hips_chem/workflows/run_satoshi_followup_20261002.py</code> ({s.seconds} s), then <code>uv run --no-sync python gallery/data/export_satoshi_followup.py</code>.</td></tr>
-        <tr><td>Not in this tab</td><td>From the 1 Oct list: VIBES refits with all lot-251 blanks and with all IMPROVE blanks (need new Colab background fits); the Addis within-season correlation groupings below 1500 cm⁻¹; the full-range closest-match spectra plot; the excluded-sample labels.</td></tr>
+        <tr><td>Rest of the 1 Oct list (7 Oct)</td><td>Blank banks and fingerprint groupings: the sections above, from <code>research/ftir_hips_chem/workflows/run_oct1_remaining_20261007.py</code> then <code>gallery/data/export_oct1_remaining.py</code>; the VIBES re-corrections ran on Colab via <code>scripts/vibes_fullrange_run.py --blank-policy</code>. Seasonal slope/intercept toggle and separate-calibration titles: Follow up meeting view. Agreed region: a Similarity tab mask and shaded on the meeting spectra. Excluded and out-of-test-set Addis filters: labelled in filter drawers and similarity tooltips. Closest-match spectra already reach 500 cm⁻¹ on full-range VIBES.</td></tr>
       </tbody></table>
     </ChartFrame>
   )
 }
 
+
+// ================================================================== 1 Oct list: remaining items (7 Oct)
+/**
+ * The open items from the 1 Oct task list, run 7 Oct 2026: VIBES re-corrected on
+ * Colab with every labeled lot-251 blank and with every labeled blank, and the
+ * within-season fingerprint groupings of the Addis spectra. Data from
+ * research/ftir_hips_chem/workflows/run_oct1_remaining_20261007.py via
+ * gallery/data/export_oct1_remaining.py.
+ */
+const OCT1_URL = `${import.meta.env.BASE_URL}data/satoshi/oct1_remaining_20261007.json`
+interface Oct1Data {
+  schema_version: number
+  summary: Row
+  season_colors: Record<string, string>
+  groups: string[]
+  seasons: string[]
+  banks: Row[]
+  rank_cv: Cols
+  blank_residuals: Row[]
+  ladder: Row[]
+  vip_bands: Row[]
+  overlap: Row[]
+  repeats: Row[]
+  group_tests: Row[]
+  group_summary: Row[]
+  group_members: Cols
+  group_spectra: { wn: Record<string, number[]>; median: Record<string, number[]>; regions: Record<string, string> }
+}
+const BANK_ORDER = ['AIRSpec', 'VIBES-full-r70', 'VIBES-lot251', 'VIBES-allblanks', 'VIBES-lot251-x1', 'VIBES-allblanks-x1']
+const BANK_COLOR: Record<string, string> = { AIRSpec: '#2C6E9E', 'VIBES-full-r70': '#d95f0e', 'VIBES-lot251': '#a6761d', 'VIBES-allblanks': '#7A4FA3', 'VIBES-lot251-x1': '#1b9e77', 'VIBES-allblanks-x1': '#e7298a' }
+const BANK_SHORT: Record<string, string> = { AIRSpec: 'Spline', 'VIBES-full-r70': 'VIBES, 87 blanks (until now)', 'VIBES-lot251': 'VIBES, every lot-251 blank', 'VIBES-allblanks': 'VIBES, every labeled blank', 'VIBES-lot251-x1': 'VIBES, lot-251 blanks minus LABE1', 'VIBES-allblanks-x1': 'VIBES, all labeled minus LABE1' }
+const CLUSTER_COLORS = ['#1b9e77', '#d95f02', '#7570b3', '#e7298a']
+
+function useOct1() {
+  const [data, setData] = useState<Oct1Data | null>(null)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    const c = new AbortController()
+    fetch(OCT1_URL, { signal: c.signal })
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
+      .then((d: Oct1Data) => { if (d.schema_version !== 1) throw new Error('unsupported data version'); setData(d) })
+      .catch((e) => { if (e.name !== 'AbortError') setError(String(e)) })
+    return () => c.abort()
+  }, [])
+  return { data, error }
+}
+
+function Oct1Sections({ o }: { o: ReturnType<typeof useOct1> }) {
+  if (o.error) return <ChartFrame title="1 Oct list — remaining items" exportable={false}><Empty>Could not load the export: {o.error}. Run <code>uv run --no-sync python research/ftir_hips_chem/workflows/run_oct1_remaining_20261007.py</code>, then <code>uv run --no-sync python gallery/data/export_oct1_remaining.py</code>.</Empty></ChartFrame>
+  if (!o.data) return <ChartFrame title="1 Oct list — remaining items" exportable={false}><Empty>Loading…</Empty></ChartFrame>
+  const d = o.data
+  return <>
+    <BlankBanks d={d} />
+    <BlankEffect d={d} />
+    <BlankModels d={d} />
+    <FingerprintGroups d={d} />
+  </>
+}
+
+const banksIn = (d: Oct1Data) => BANK_ORDER.filter((b) => d.repeats.some((r) => r.baseline === b))
+const ladderAt = (d: Oct1Data, model: string, stage: string, evalGroup?: string) =>
+  d.ladder.find((l) => l.model_id === model && l.stage === stage && (evalGroup == null || l.eval_group === evalGroup))
+
+// ------------------------------------------------------------------ where we stand
+function Conclusion({ s, o }: { s: SatoshiData; o: Oct1Data | null }) {
+  const h = s.headlines
+  const banks = o ? o.banks : []
+  const bank = (b: string) => banks.find((x) => x.baseline === b)
+  const std = (b: string) => o ? ladderAt(o, `standard|${b}`, 'Addis test set', 'All Addis') : undefined
+  const newBanks = ['VIBES-lot251', 'VIBES-allblanks'].filter((b) => bank(b))
+  // the fair comparison: the big banks without the LABE1 outlier blank (rank ~80)
+  const cleanBanks = ['VIBES-lot251-x1', 'VIBES-allblanks-x1'].filter((b) => bank(b))
+  const testOf = (b: string) => o ? ladderAt(o, `standard|${b}`, 'IMPROVE test sites') : undefined
+  // VIBES standard models split by how many PLS factors cross-validation chose
+  const vibesStd = ['VIBES-full-r70', 'VIBES-lot251', 'VIBES-allblanks', ...cleanBanks].filter((b) => bank(b))
+  const lowK = vibesStd.filter((b) => (testOf(b)?.k ?? 99) <= 5 && (std(b)?.deming_intercept ?? -99) > -2)
+  const highK = vibesStd.filter((b) => (testOf(b)?.k ?? 0) > 5)
+  const kir = (b: string) => o?.repeats.find((r) => r.baseline === b && r.group === 'Kiremt (Jun-Sep)')
+  const blankRatio = (b: string) => { const q = (m: string) => o?.blank_residuals.find((x) => x.baseline === m && x.source === 'etad' && x.band === 'all (no CO₂)')?.rms_median; const a = q(b), c = q('VIBES-full-r70'); return a && c ? a / c : null }
+  // groupings are judged on the cleanest background (87 blanks, rank 70); the low-rank banks leave PTFE residue
+  const tests = o ? o.group_tests.filter((t) => t.region === 'fingerprint' && t.baseline === 'VIBES-full-r70') : []
+  const dustAll = o ? o.group_tests.filter((t) => t.region === 'fingerprint').every((t) => t.kruskal_p_Al == null || +t.kruskal_p_Al < 0.01) : false
+  const realGroups = tests.filter((t) => t.structure_beyond_null)
+  const sig = (p: any) => p != null && Number.isFinite(+p) && +p < 0.01
+  const ecGroups = tests.filter((t) => sig(t.kruskal_p_ec))
+  const dustGroups = tests.filter((t) => sig(t.kruskal_p_Al))
+  return (
+    <ChartFrame id="satoshi-conclusion" source="gallery/app/src/pages/SatoshiFollowupPage.tsx › Conclusion" title="Where we stand, 7 Oct — the current conclusion" exportable={false}>
+      <ol style={{ margin: '4px 0 0 18px', lineHeight: 1.55 }}>
+        <li><strong>The IMPROVE analogs fit TOR EC well; the bias only appears at Addis.</strong> Seasonal analog calibrations reproduce TOR EC in cross-validation (R² {range(h.analog_cv_r2[SPLINE])} spline) with intercepts within about ±0.2 µg/m³, but predict Addis with negative intercepts. The problem is transfer to Addis, not the fitting.</li>
+        <li><strong>The baseline correction, not the choice of analogs, sets the Addis intercept.</strong> Spline calibrations stay near zero whichever analogs they get; VIBES calibrations go strongly negative whichever analogs they get (swap test). Spline and VIBES pick mostly different analogs ({s.seasons.map((g) => `${h.overlap[g].shared}`).join(' / ')} of 500 shared, Dry / Belg / Kiremt), yet that matters less than the baseline.</li>
+        <li><strong>With the 87-blank VIBES background, PLS leans on the PTFE region.</strong> {pct(h.vibes_analog_vip2_1050_1425[0])}–{pct(h.vibes_analog_vip2_1050_1425[1])} of the VIBES analog models' VIP² sits in 1050–1425 cm⁻¹, where Teflon residuals live. Spline models use the same bands as the standard model.</li>
+        {o && cleanBanks.length > 0 && <li><strong>More blanks, compared fairly, give the cleanest background but do not fix Addis.</strong> The first big-bank runs were dominated by one outlier blank (LABE1, 28 Jul 2022; see the Blanks tab), which forced a rank-{bank('VIBES-lot251')?.rank} background. Without it ({cleanBanks.map((b, i) => <span key={b}>{i ? '; ' : ''}{bank(b)?.n_blanks} blanks, rank {bank(b)?.rank}</span>)}), held-out blanks correct as cleanly or better than with the 87-blank background ({cleanBanks.map((b) => `${f2(blankRatio(b))}×`).join(' / ')} its residue). Standard all-IMPROVE model at Addis: {['VIBES-full-r70', ...cleanBanks, 'VIBES-allblanks'].filter((b) => bank(b)).map((b, i) => <span key={b}>{i ? '; ' : ''}{bank(b)?.n_blanks} blanks / rank {bank(b)?.rank}: {f2(std(b)?.deming_slope)}x {signed(std(b)?.deming_intercept)} with {testOf(b)?.k} PLS factors (IMPROVE test R² {f2(testOf(b)?.R2)})</span>)}; spline {f2(std('AIRSpec')?.deming_slope)}x {signed(std('AIRSpec')?.deming_intercept)}. <em>The Addis intercept follows the number of PLS factors, not the blank bank:</em> the VIBES models that land near spline use only {lowK.map((b) => testOf(b)?.k).join(' / ')} factors and fit IMPROVE test sites worse, while every VIBES model with {d3.min(highK, (b) => testOf(b)?.k as number)}+ factors is strongly negative, including the cleanest-background one. Seasonal analog calibrations stay strongly negative with every bank (Kiremt {['VIBES-full-r70', ...cleanBanks].map((b) => signed(kir(b)?.addis_intercept_median)).join(' / ')} µg/m³ vs spline {signed(kir('AIRSpec')?.addis_intercept_median)}), with IMPROVE cross-validation intercepts near zero.</li>}
+        {o && cleanBanks.length === 0 && newBanks.length > 0 && <li><strong>More blanks did not fix VIBES</strong>, but those runs were dominated by one outlier blank that forced a rank-{bank('VIBES-lot251')?.rank} background (see the Blanks tab); the reruns without it are pending.</li>}
+        {o && <li><strong>Fingerprint groupings below 1500 cm⁻¹ track dust, not EC.</strong> Within a season the Addis spectra form {realGroups.length ? `distinct clusters only in ${realGroups.map((t) => shortSeason(t.group)).join(', ')}` : 'no clusters more distinct than structureless data'}; the clusters differ in aluminium (dust) in {dustGroups.map((t) => shortSeason(t.group)).join(', ') || 'no season'} and in HIPS EC in {ecGroups.map((t) => shortSeason(t.group)).join(', ') || 'no season'} (Kruskal–Wallis p &lt; 0.01; 87-blank VIBES).{dustAll ? ' The dust separation holds on every blank bank; EC differences do not.' : ''}</li>}
+        <li><strong>Not explained by sampling the lower envelope or by loading alone.</strong> Analogs sit mid-distribution of the standard model's residuals (median percentile {range(h.envelope_pct_median[SPLINE]).replace(/\.\d+/g, '')}), and VIBES analogs that cover the Addis loading range still give the most negative intercepts.</li>
+      </ol>
+      <Note>Working conclusion: the spline-baseline calibrations remain the defensible ones for Addis. A clean, large VIBES blank bank removes the background problems (held-out blanks correct cleanly) but not the Addis bias: VIBES models that use enough PLS factors to fit IMPROVE well predict Addis with large negative intercepts, and every VIBES seasonal analog calibration does too. The remaining VIBES problem is how the extra VIBES spectral information transfers to Addis, not the blank count. The PTFE region should stay out of analog similarity.</Note>
+    </ChartFrame>
+  )
+}
+
+// ------------------------------------------------------------------ blank banks
+function BlankBanks({ d }: { d: Oct1Data }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const { width } = useDimensions(ref)
+  const tip = useTooltip(ref)
+  const cv = d.rank_cv
+  const banks = BANK_ORDER.filter((b) => d.banks.some((x) => x.baseline === b))
+  const series = banks.map((b) => {
+    const pts: { k: number; mse: number }[] = []
+    for (let i = 0; i < cv.baseline.length; i++) if (cv.baseline[i] === b) pts.push({ k: cv.components[i] as number, mse: cv.mean_mse[i] as number })
+    return { b, pts, rank: d.banks.find((x) => x.baseline === b)!.rank as number }
+  })
+  const m = { top: 24, right: 16, bottom: 44, left: 64 }, height = 280
+  const iw = Math.max(280, width - m.left - m.right), ih = height - m.top - m.bottom
+  const all = series.flatMap((s) => s.pts)
+  const x = d3.scaleLinear().domain([1, d3.max(all, (p) => p.k) ?? 85]).range([0, iw])
+  const y = d3.scaleLog().domain(d3.extent(all, (p) => p.mse) as [number, number]).nice().range([ih, 0])
+  const line = d3.line<{ k: number; mse: number }>().x((p) => x(p.k)).y((p) => y(p.mse))
+  const res = d.blank_residuals.filter((r) => r.source === 'etad')
+  const bands = [...new Set(res.map((r) => r.band))]
+  return (
+    <ChartFrame id="satoshi-blanks" source="gallery/app/src/pages/SatoshiFollowupPage.tsx › BlankBanks"
+      title="Blanks for the VIBES baseline — which labeled blanks trained the background, and the rank each bank supports"
+      subtitle="1 Oct: use every labeled lot-251 blank, then every IMPROVE blank. Only lots 248 and 251 have spectra locally, so 'every labeled blank' means both lots, all sites; other MTL lots need a database pull. All banks also include the ETAD training blanks. Each bank re-corrected all 12,808 spectra (3998–500 cm⁻¹) on Colab; rank = blank-only leave-one-out one-SE rule, cap 85.">
+      <table className="census-table">
+        <thead><tr><th>Bank</th><th>Blanks</th><th>IMPROVE / ETAD</th><th>Lot 251 / 248</th><th>From IMPROVE test sites</th><th>Background rank</th><th>Failed fits</th><th>Colab hours</th></tr></thead>
+        <tbody>{d.banks.map((b) => <tr key={b.baseline}><td style={{ color: BANK_COLOR[b.baseline], fontWeight: 600 }}>{BANK_SHORT[b.baseline]}</td><td>{b.n_blanks}</td><td>{b.n_improve} / {b.n_etad}</td><td>{b.n_lot251} / {b.n_lot248}</td><td>{b.n_test_site}</td><td><strong>{b.rank}</strong></td><td>{b.n_failed}</td><td>{f2(b.hours)}</td></tr>)}</tbody>
+      </table>
+      <Note>The 87-blank bank behind every VIBES result so far was not 10 blanks per lot: it was a random draw of labeled blanks at training sites (at most 50 per lot after holding 25 % out: 50 lot-251 and 9 lot-248 IMPROVE blanks) plus 28 ETAD blanks. Lot numbers are missing for 7 ETAD blanks.</Note>
+      <div ref={ref} style={{ position: 'relative', marginTop: 8 }}>
+        <svg width={iw + m.left + m.right} height={height} fontFamily={FONT.family}>
+          <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>Leave-one-blank-out error vs background rank</text>
+          <g transform={`translate(${m.left},${m.top})`}>
+            <YAxis scale={y} x={0} label="Mean squared error" tickCount={5} gridWidth={iw} labelX={-52} format={(v) => (+v).toExponential(0)} />
+            <XAxis scale={x} y={ih} label="Background PCA components" tickCount={8} labelDy={36} />
+            {series.map((s) => <g key={s.b}>
+              <path d={line(s.pts) ?? ''} fill="none" stroke={BANK_COLOR[s.b]} strokeWidth={1.8} />
+              {s.pts.filter((p) => p.k === s.rank).map((p) => <circle key={p.k} cx={x(p.k)} cy={y(p.mse)} r={5} fill={BANK_COLOR[s.b]} stroke="white"
+                onMouseEnter={(e) => tip.show(e, [BANK_SHORT[s.b], `chosen rank ${s.rank}`, `LOO MSE ${p.mse.toExponential(2)}`])} onMouseLeave={tip.hide} />)}
+            </g>)}
+          </g>
+        </svg>
+        {tip.node}
+      </div>
+      <Key items={[...series.map((s) => ({ label: `${BANK_SHORT[s.b]}: rank ${s.rank}`, color: BANK_COLOR[s.b], kind: 'line' as const }))]} />
+      {res.length > 0 && <>
+        <table className="census-table" style={{ marginTop: 10 }}>
+          <thead><tr><th>Held-out ETAD blanks (n {res[0].n}): RMS corrected absorbance, median [90th pct]</th>{bands.map((b) => <th key={b}>{b}</th>)}</tr></thead>
+          <tbody>{BANK_ORDER.filter((b) => res.some((r) => r.baseline === b)).map((b) => <tr key={b}><td style={{ color: BANK_COLOR[b], fontWeight: 600 }}>{BANK_SHORT[b]}</td>
+            {bands.map((band) => { const r = res.find((x) => x.baseline === b && x.band === band); return <td key={band}>{r ? `${(1e5 * r.rms_median).toFixed(1)} [${(1e5 * r.rms_p90).toFixed(1)}]` : '—'}</td> })}</tr>)}</tbody>
+        </table>
+        <Note>×10⁻⁵ absorbance. A held-out blank should correct to zero. These 9 ETAD blanks are the only blanks no bank trained on (the all-labeled bank uses every IMPROVE blank).</Note>
+      </>}
+    </ChartFrame>
+  )
+}
+
+// ------------------------------------------------------------------ effect on calibrations
+const OCT1_METRICS = ['intercept', 'slope'] as const
+function BlankEffect({ d }: { d: Oct1Data }) {
+  const [metric, setMetric] = useSearchParam<(typeof OCT1_METRICS)[number]>('sblankm', 'intercept', OCT1_METRICS)
+  const ref = useRef<HTMLDivElement>(null)
+  const { width } = useDimensions(ref)
+  const tip = useTooltip(ref)
+  const banks = banksIn(d)
+  const rows = d.groups.flatMap((g) => banks.map((b) => ({ g, b, r: d.repeats.find((x) => x.baseline === b && x.group === g) })))
+  const vals = rows.flatMap((r) => ['addis', 'improve'].flatMap((p) => [r.r?.[`${p}_${metric}_p10`], r.r?.[`${p}_${metric}_p90`]])).filter((v) => v != null && Number.isFinite(v)) as number[]
+  const ref0 = metric === 'intercept' ? 0 : 1
+  const m = { top: 10, right: 20, bottom: 44, left: 220 }
+  const rowH = 20, gap = 14, per = banks.length
+  const iw = Math.max(260, width - m.left - m.right)
+  const x = d3.scaleLinear().domain(d3.extent([...vals, ref0]) as [number, number]).nice().range([0, iw])
+  const yOf = (i: number) => i * rowH + Math.floor(i / per) * gap
+  const ih = yOf(rows.length - 1) + rowH
+  return (
+    <ChartFrame id="satoshi-blank-effect" source="gallery/app/src/pages/SatoshiFollowupPage.tsx › BlankEffect"
+      title={`Do more blanks change the answer? One separate calibration per season, built from that season's 500 IMPROVE analogs (agreed 1 Oct region) — Deming ${metric}`}
+      subtitle="Each baseline selects its own analogs and is calibrated with 100 site-disjoint 80/20 splits (k by site-grouped cross-validation). Filled dots: Addis test set, FTIR EC vs Fabs / MAC 10. Hollow dots: the held-out IMPROVE analog sites, FTIR EC vs TOR EC. Whiskers: 10th–90th percentile over splits."
+      controls={<Segmented label="Readout" value={metric} options={OCT1_METRICS} onChange={setMetric} />}>
+      <div ref={ref} style={{ position: 'relative' }}>
+        <svg width={iw + m.left + m.right} height={ih + m.top + m.bottom} fontFamily={FONT.family}>
+          <g transform={`translate(${m.left},${m.top})`}>
+            {d.groups.map((g, gi) => <g key={g}>
+              <rect x={-m.left + 4} y={yOf(gi * per) - 3} width={iw + m.left - 4} height={rowH * per + 4} fill={gi % 2 ? 'transparent' : INK.page} />
+              <text x={-m.left + 8} y={yOf(gi * per) + rowH * per / 2} dy="0.32em" fontSize={11.5} fontWeight={700} fill={d.season_colors[g]}>{shortSeason(g)}</text>
+            </g>)}
+            <XAxis scale={x} y={ih + 4} tickCount={6} label={`Deming ${metric}${metric === 'intercept' ? ' (µg/m³)' : ''}`} labelDy={36} format={(v) => String(+(+v).toFixed(2))} />
+            <line x1={x(ref0)} x2={x(ref0)} y1={-4} y2={ih + 4} stroke={INK.axis} strokeOpacity={0.7} />
+            {rows.map((r, i) => {
+              const a = r.r
+              if (!a) return null
+              const cy = yOf(i) + rowH / 2, color = BANK_COLOR[r.b]
+              const A = (p: string, q: string) => a[`${p}_${metric}_${q}`]
+              return <g key={i} onMouseEnter={(e) => tip.show(e, [`${r.g} · ${BANK_SHORT[r.b]}`, `Addis ${metric} ${f2(A('addis', 'median'))} [${f2(A('addis', 'p10'))} to ${f2(A('addis', 'p90'))}]`, `IMPROVE held-out ${metric} ${f2(A('improve', 'median'))} [${f2(A('improve', 'p10'))} to ${f2(A('improve', 'p90'))}]`, `PLS factors median ${f2(a.k_median)}`])} onMouseLeave={tip.hide}>
+                <text x={-10} y={cy} dy="0.32em" textAnchor="end" fontSize={11} fill={INK.text}>{BANK_SHORT[r.b]}</text>
+                <line x1={x(A('improve', 'p10'))} x2={x(A('improve', 'p90'))} y1={cy + 3} y2={cy + 3} stroke={color} strokeOpacity={0.45} strokeWidth={1.4} />
+                <circle cx={x(A('improve', 'median'))} cy={cy + 3} r={4} fill="white" stroke={color} strokeWidth={1.5} />
+                <line x1={x(A('addis', 'p10'))} x2={x(A('addis', 'p90'))} y1={cy - 3} y2={cy - 3} stroke={color} strokeWidth={1.8} />
+                <circle cx={x(A('addis', 'median'))} cy={cy - 3} r={5} fill={color} />
+                <rect x={-m.left + 4} y={cy - rowH / 2} width={iw + m.left} height={rowH} fill="transparent" />
+              </g>
+            })}
+          </g>
+        </svg>
+        {tip.node}
+      </div>
+      <Key items={[...banks.map((b) => ({ label: BANK_SHORT[b], color: BANK_COLOR[b], kind: 'bar' as const })), { label: 'Addis test set', color: INK.axis, kind: 'dot' }, { label: 'IMPROVE held-out analog sites', color: INK.axis, kind: 'hollow' }]} />
+    </ChartFrame>
+  )
+}
+
+function BlankModels({ d }: { d: Oct1Data }) {
+  const banks = banksIn(d)
+  const cell = (l?: Row) => l ? <>{f2(l.deming_slope)}x {signed(l.deming_intercept)}<br /><span style={{ color: INK.muted, fontSize: 11 }}>R² {f2(l.R2)} · n {l.n}</span></> : '—'
+  const vip = (model: string) => {
+    const b = d.vip_bands.filter((v) => v.model_id === model && (v.band === 'PTFE C–F (1050–1250)' || v.band === '1250–1425'))
+    return b.length ? pct(d3.sum(b, (v) => v.vip2_share)) : '— (no channels)'
+  }
+  const ov = (g: string) => d.overlap.filter((o) => o.group === g)
+  return (
+    <ChartFrame id="satoshi-blank-models" source="gallery/app/src/pages/SatoshiFollowupPage.tsx › BlankModels"
+      title="The standard all-IMPROVE model and the protocol-split analog calibrations on each blank bank" exportable={false}>
+      <table className="census-table">
+        <thead><tr><th>Standard model (lot 251)</th><th>k</th><th>IMPROVE test sites</th>{d.groups.map((g) => <th key={g}>Addis: {g}</th>)}<th>VIP² in 1050–1425</th></tr></thead>
+        <tbody>{banks.map((b) => { const id = `standard|${b}`; return <tr key={b}><td style={{ color: BANK_COLOR[b], fontWeight: 600 }}>{BANK_SHORT[b]}</td><td>{ladderAt(d, id, 'IMPROVE test sites')?.k}</td><td>{cell(ladderAt(d, id, 'IMPROVE test sites'))}</td>{d.groups.map((g) => <td key={g}>{cell(ladderAt(d, id, 'Addis test set', g))}</td>)}<td>{vip(id)}</td></tr> })}</tbody>
+      </table>
+      <table className="census-table" style={{ marginTop: 10 }}>
+        <thead><tr><th>Analog calibration (agreed region)</th>{d.groups.map((g) => <th key={g}>{g}: cross-validation → Addis</th>)}</tr></thead>
+        <tbody>{banks.map((b) => <tr key={b}><td style={{ color: BANK_COLOR[b], fontWeight: 600 }}>{BANK_SHORT[b]}</td>{d.groups.map((g) => { const id = `analog|${b}|oct1|${g}`; const cv = ladderAt(d, id, 'cross-validation'), a = ladderAt(d, id, 'Addis test set', g); return <td key={g}>{f2(cv?.deming_slope)}x {signed(cv?.deming_intercept)} → <strong>{f2(a?.deming_slope)}x {signed(a?.deming_intercept)}</strong><br /><span style={{ color: INK.muted, fontSize: 11 }}>k {a?.k} · VIP² 1050–1425 {vip(id)}</span></td> })}</tr>)}</tbody>
+      </table>
+      <table className="census-table" style={{ marginTop: 10 }}>
+        <thead><tr><th>Analogs shared (of 500)</th>{d.groups.map((g) => <th key={g}>{g}</th>)}</tr></thead>
+        <tbody>{[...new Set(d.overlap.map((o) => `${o.a}|${o.b}`))].map((pair) => { const [a, b] = pair.split('|'); return <tr key={pair}><td>{BANK_SHORT[a]} vs {BANK_SHORT[b]}</td>{d.groups.map((g) => <td key={g}>{ov(g).find((o) => o.a === a && o.b === b)?.shared ?? '—'}</td>)}</tr> })}</tbody>
+      </table>
+      <Note>Standard model: all-IMPROVE lot 251, frozen site-disjoint split, k by site-grouped cross-validation. Addis: FTIR EC vs Fabs / MAC 10, Deming with the meeting's error ratio. Analog rows: protocol split, so they match the ladder on the 2 Oct sections above for the spline and 87-blank VIBES rows.</Note>
+    </ChartFrame>
+  )
+}
+
+// ------------------------------------------------------------------ fingerprint groupings
+function FingerprintGroups({ d }: { d: Oct1Data }) {
+  const baselines = BANK_ORDER.filter((b) => d.group_tests.some((t) => t.baseline === b))
+  const regions = Object.keys(d.group_spectra.regions)
+  const [baseline, setBaseline] = useSearchParam<string>('sgbase', baselines[baselines.length - 1] ?? baselines[0], baselines)
+  const [region, setRegion] = useSearchParam<string>('sgregion', 'fingerprint', regions)
+  const [season, setSeason] = useSearchParam<string>('sgseason', 'Kiremt (Jun-Sep)', d.seasons)
+  const ref = useRef<HTMLDivElement>(null)
+  const { width } = useDimensions(ref)
+  const tip = useTooltip(ref)
+  const mem = d.group_members
+  const pts: { id: string; pc1: number; ec: number; c: number; res: number }[] = []
+  for (let i = 0; i < mem.baseline.length; i++) if (mem.baseline[i] === baseline && mem.region[i] === region && mem.group[i] === season)
+    pts.push({ id: String(mem.filter_id[i]), pc1: mem.pc1[i] as number, ec: mem.ec_fabs10[i] as number, c: mem.cluster[i] as number, res: mem.residual[i] as number })
+  const t = d.group_tests.find((x) => x.baseline === baseline && x.region === region && x.group === season)
+  const summ = d.group_summary.filter((x) => x.baseline === baseline && x.region === region && x.group === season)
+  const half = Math.max(260, Math.floor((width - 24) / 2))
+  const m = { top: 24, right: 12, bottom: 44, left: 56 }, h = 280
+  const iw = half - m.left - m.right, ih = h - m.top - m.bottom
+  const x = d3.scaleLinear().domain(d3.extent(pts, (p) => p.pc1) as [number, number]).nice().range([0, iw])
+  const y = d3.scaleLinear().domain(d3.extent(pts, (p) => p.ec) as [number, number]).nice().range([ih, 0])
+  const wn = d.group_spectra.wn[baseline] ?? []
+  const lo = 500, hi = 1800
+  const idx = wn.map((w, i) => [w, i] as const).filter(([w]) => w >= lo && w <= hi)
+  const specs = summ.map((s) => ({ c: s.cluster as number, n: s.n as number, v: d.group_spectra.median[`${baseline}|${region}|${season}|${s.cluster}`] ?? [] }))
+  const sx = d3.scaleLinear().domain([hi, lo]).range([0, iw])
+  const sy = d3.scaleLinear().domain(d3.extent(specs.flatMap((s) => idx.map(([, i]) => s.v[i]))) as [number, number]).nice().range([ih, 0])
+  const sline = (v: number[]) => d3.line<readonly [number, number]>().x(([w]) => sx(w)).y(([, i]) => sy(v[i]))(idx) ?? ''
+  const pfmt = (p: any) => p == null ? '—' : p < 0.001 ? '<0.001' : f3(p)
+  const allTests = d.group_tests.filter((x) => x.baseline === baseline && x.region === region)
+  return (
+    <ChartFrame id="satoshi-groups" source="gallery/app/src/pages/SatoshiFollowupPage.tsx › FingerprintGroups"
+      title="Within-season groupings of the Addis spectra below 1500 cm⁻¹ — do they line up with higher EC?"
+      subtitle={`1 Oct: correlate the Addis spectra within each season over the region VIBES newly covers and look for distinct groupings. Raw correlations are ~0.95, so each spectrum is scaled to unit length, the season mean is subtracted, and the shape deviations are clustered (PCA to 90 % variance, Ward, k 2–4 by silhouette, clusters of at least 5). 'Distinct' means a silhouette above the 95th percentile of structureless Gaussian data with the same variances. Region: ${d.group_spectra.regions[region]}.`}
+      controls={<>
+        <Select label="Baseline" value={baseline} options={baselines} optionLabel={(b) => BANK_SHORT[b]} onChange={setBaseline} />
+        <Segmented label="Region" value={region} options={regions} optionLabel={(r) => r === 'fingerprint' ? 'PTFE dropped' : 'PTFE kept'} onChange={setRegion} />
+        <Segmented label="Season" value={season} options={d.seasons} optionLabel={shortSeason} onChange={setSeason} />
+      </>}>
+      <div ref={ref} style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 24 }}>
+        <svg width={half} height={h} fontFamily={FONT.family}>
+          <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>Main shape deviation (PC1) vs HIPS EC</text>
+          <g transform={`translate(${m.left},${m.top})`}>
+            <YAxis scale={y} x={0} label="Fabs / 10 (µg/m³)" tickCount={5} gridWidth={iw} labelX={-42} />
+            <XAxis scale={x} y={ih} label="PC1 score of the shape deviation" tickCount={5} labelDy={36} format={(v) => String(+(+v).toFixed(3))} />
+            {pts.map((p) => <circle key={p.id} cx={x(p.pc1)} cy={y(p.ec)} r={4} fill={CLUSTER_COLORS[(p.c - 1) % 4]} fillOpacity={0.8}
+              onMouseEnter={(e) => tip.show(e, [p.id, `cluster ${p.c}`, `Fabs/10 ${f2(p.ec)} µg/m³`, `standard spline model error ${signed(p.res)} µg/m³`])} onMouseLeave={tip.hide} />)}
+          </g>
+        </svg>
+        <svg width={half} height={h} fontFamily={FONT.family}>
+          <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>Median spectrum of each cluster, 1800–500 cm⁻¹</text>
+          <g transform={`translate(${m.left},${m.top})`}>
+            <rect x={sx(1250)} width={sx(1050) - sx(1250)} height={ih} fill={region === 'fingerprint' ? '#f1ece0' : 'transparent'} />
+            <rect x={sx(1800)} width={sx(1500) - sx(1800)} height={ih} fill="#eef0f3" />
+            <rect x={sx(600)} width={sx(500) - sx(600)} height={ih} fill="#eef0f3" />
+            <YAxis scale={sy} x={0} label="Absorbance" tickCount={5} gridWidth={iw} labelX={-48} format={(v) => String(+(+v).toFixed(3))} />
+            <XAxis scale={sx} y={ih} label="Wavenumber (cm⁻¹)" tickCount={6} labelDy={36} />
+            {specs.map((s) => <path key={s.c} d={sline(s.v)} fill="none" stroke={CLUSTER_COLORS[(s.c - 1) % 4]} strokeWidth={1.8} />)}
+          </g>
+        </svg>
+        {tip.node}
+      </div>
+      <Key items={[...summ.map((s) => ({ label: `cluster ${s.cluster} (n ${s.n}, median Fabs/10 ${f2(s.ec_fabs10_median)})`, color: CLUSTER_COLORS[(s.cluster - 1) % 4] })), { label: 'outside the clustering region', color: '#eef0f3', kind: 'bar' as const }]} />
+      {t && <Note>{shortSeason(season)}: {t.k} clusters, silhouette {f2(t.silhouette)} vs {f2(t.silhouette_null_p95)} for structureless data ({t.structure_beyond_null ? 'more distinct than chance' : t.min_cluster < 5 ? `the best split only isolates ${t.min_cluster} outlier filter${t.min_cluster > 1 ? 's' : ''}` : 'no more distinct than chance'}). Clusters differ in HIPS EC p {pfmt(t.kruskal_p_ec)}, in the standard model's error p {pfmt(t.kruskal_p_residual)}, in Al (dust) p {pfmt(t.kruskal_p_Al)}. PC1 vs EC Spearman ρ {f2(t.pc1_spearman_ec)}.</Note>}
+      <table className="census-table" style={{ marginTop: 8 }}>
+        <thead><tr><th>Cluster ({shortSeason(season)})</th><th>n</th><th>Fabs/10 median</th><th>Percentile in all Addis</th><th>Std. model error</th><th>Nitrate</th><th>Sulfate</th><th>K⁺</th><th>Al (ng/m³)</th><th>PM2.5</th></tr></thead>
+        <tbody>{summ.map((s) => <tr key={s.cluster}><td style={{ color: CLUSTER_COLORS[(s.cluster - 1) % 4], fontWeight: 600 }}>{s.cluster}</td><td>{s.n}</td><td>{f2(s.ec_fabs10_median)}</td><td>{Math.round(s.ec_pct_all_addis_median)}</td><td>{signed(s.residual_median)}</td><td>{f2(s.nitrate_median)}</td><td>{f2(s.sulfate_median)}</td><td>{f2(s.K_ion_median)}</td><td>{Math.round(s.Al_median)}</td><td>{f2(s.PM25_median)}</td></tr>)}</tbody>
+      </table>
+      <table className="census-table" style={{ marginTop: 8 }}>
+        <thead><tr><th>All seasons ({BANK_SHORT[baseline]})</th><th>k</th><th>Silhouette / null 95th</th><th>Distinct?</th><th>p: EC</th><th>p: model error</th><th>p: Al</th><th>p: K⁺</th><th>p: nitrate</th><th>PC1–EC ρ</th></tr></thead>
+        <tbody>{allTests.map((x) => <tr key={x.group}><td style={{ color: d.season_colors[x.group], fontWeight: 600 }}>{x.group}</td><td>{x.k}</td><td>{f2(x.silhouette)} / {f2(x.silhouette_null_p95)}</td><td>{x.structure_beyond_null ? 'yes' : x.min_cluster < 5 ? `no (only ${x.min_cluster} outlier${x.min_cluster > 1 ? 's' : ''} split off)` : 'no'}</td><td>{pfmt(x.kruskal_p_ec)}</td><td>{pfmt(x.kruskal_p_residual)}</td><td>{pfmt(x.kruskal_p_Al)}</td><td>{pfmt(x.kruskal_p_K_ion)}</td><td>{pfmt(x.kruskal_p_nitrate)}</td><td>{f2(x.pc1_spearman_ec)}</td></tr>)}</tbody>
+      </table>
+      <Note>SPARTAN chemistry in µg/m³ except Al (ng/m³); Kruskal–Wallis across clusters. Standard model error = all-IMPROVE spline model (lot 251) minus Fabs/10. Dry has no SPARTAN chemistry for most filters.</Note>
+    </ChartFrame>
+  )
+}

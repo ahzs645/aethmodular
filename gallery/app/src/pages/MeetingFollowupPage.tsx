@@ -1,7 +1,8 @@
-import { RegressionLines, RegressionReadout, RegressionBand } from '@/components/RegressionOverlay'
+import { RegressionLines, RegressionReadout, RegressionBand, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
+import { groupedRegressions } from '@/lib/siteRegression'
 import { monthBlocks } from '@/lib/regressionCI'
 import { regression, type RegressionStats } from '@/lib/stats'
-import { EstimatorViews, FIT_STYLE, useEstimator, useRegressions, fitsFor } from '@/lib/regressionPrefs'
+import { EstimatorViews, FIT_STYLE, useEstimator, useRegressions, fitsFor, FitGroupingControl } from '@/lib/regressionPrefs'
 import { useId, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, ExplainOnly, Note, Select, Segmented } from '@/components/ChartFrame'
@@ -138,7 +139,7 @@ function MeetingView({ data, galleryRows, galleryMeta, version, onVersion, showA
   }, [hl])
   return (
     <PageToc>
-      <FullRangeVibesStatus />
+      <ExplainOnly><FullRangeVibesStatus /></ExplainOnly>
       <ChartFrame title="Analysis version" exportable={false} controls={<Select label="VIBES analysis" value={version} options={['current', 'earlier']} onChange={onVersion} optionLabel={v => v === 'current' ? 'Completed · rank 70' : 'Archived · preliminary rank 30'} />}>
         <p>{version === 'current' ? 'All seasonal, combined-set, calibration and specification-grid VIBES models below use the completed rank-70 correction. Full and shared prediction windows are separate options.' : 'Earlier seasonal and specification results retain their original preliminary rank-30 corrections. These archived models have not been overwritten.'}</p>
       </ChartFrame>
@@ -280,6 +281,14 @@ function Scatter({ points, stats, xLabel, yLabel, title, maxSide = 360, extraLin
   const iw = side, ih = side, w = side + m.left + m.right, height = side + m.top + m.bottom
   const clipId = useId()
   const validPoints = points.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y) && p.x != null && p.y != null)
+  const { grouping, methods, showCI } = useRegressions()
+  const multiSite = new Set(validPoints.map(p => p.rec?.site)).size > 1
+  const siteFits = multiSite && grouping === 'site' && methods.length > 0
+  const fitGroups = useMemo(() => groupedRegressions(points, grouping, {
+    x: p => p.x, y: p => p.y, site: p => p.rec?.site ?? 'Unknown site', color: p => p.color,
+    options: members => ({ errorsInVariables: true, lambda: stats?.deming_lambda ?? demingLambda ?? 1,
+      bootstrapGroups: monthBlocks(members.map(p => p.rec ?? {})) }),
+  }), [points, grouping, stats?.deming_lambda, demingLambda])
   const st = regression(validPoints.map(p => p.x), validPoints.map(p => p.y), { errorsInVariables: true, lambda: stats?.deming_lambda ?? demingLambda ?? 1, bootstrapGroups: monthBlocks(validPoints.map(p => p.rec ?? {})) })
   const xs = validPoints.map((p) => p.x), ys = validPoints.map((p) => p.y)
   const hi = (d3.max([...xs, ...ys]) ?? 1) * 1.05
@@ -291,6 +300,7 @@ function Scatter({ points, stats, xLabel, yLabel, title, maxSide = 360, extraLin
   const line = (s: number, b: number) => ({ x1: x(x0), y1: y(s * x0 + b), x2: x(x1), y2: y(s * x1 + b) })
   return (
     <div ref={ref} style={{ position: 'relative' }}>
+      {multiSite && <FitGroupingControl />}
       <svg width={w} height={height} fontFamily={FONT.family}>
         <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>
         <g transform={`translate(${m.left},${m.top})`}>
@@ -313,12 +323,19 @@ function Scatter({ points, stats, xLabel, yLabel, title, maxSide = 360, extraLin
                   onClick={() => { if (p.rec) hl.openRecord(p.rec); if (key) hl.setPinned(key) }} />
               )
             })}
-            <RegressionLines stats={st} x={x} y={y} domain={x.domain()} width={iw} height={ih} />
+            {siteFits ? <RegressionGroupLines groups={fitGroups} x={x} y={y} width={iw} height={ih} />
+              : <RegressionLines stats={st} x={x} y={y} domain={x.domain()} width={iw} height={ih} />}
             {extraLines.map((l) => <g key={l.label}><RegressionBand stats={l.stats} method={l.method} color={l.color} x={x} y={y} domain={x.domain()} /><line {...line(l.slope, l.intercept)} stroke={l.color} strokeWidth={1.8} strokeDasharray={l.dash} /></g>)}
           </g>
-          <RegressionReadout stats={st} x={8} y={6} />
+          {!siteFits && <RegressionReadout stats={st} x={8} y={6} />}
         </g>
       </svg>
+      {siteFits && <details><summary>Per-site fit statistics ({fitGroups.length} sites)</summary>
+        <svg width={w} height={regressionGroupReadoutLayout(fitGroups.length, w, methods, showCI).height}>
+          <RegressionGroupReadouts groups={fitGroups} width={w} />
+        </svg>
+        <p className="chart-note">Fits use each site's paired filters and observed x range. Sites with fewer than three pairs or constant values have no fitted line. Point colours retain the selected meeting grouping.</p>
+      </details>}
       {tip.node}
     </div>
   )
@@ -627,12 +644,17 @@ function SpectraPanel({ data, method, group }: { data: MeetingData; method: stri
         {mode === 'individual filters' && <Segmented label="Most similar analogs" value={topN as any} options={TOP_N} onChange={setTopN as any} />}
       </div>
       <svg width={w} height={height} fontFamily={FONT.family}>
+        <defs><pattern id="oct1-hatch" width={6} height={6} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width={6} height={6} fill="#f6f1e7" /><line x1={0} y1={0} x2={0} y2={6} stroke="#d9c9a3" strokeWidth={2} /></pattern></defs>
         <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>
           Spectra: {mode === 'individual filters' ? `${impT.length} most similar IMPROVE analogs and ${addT.length} Addis filters` : 'median and IQR'}
         </text>
         <g transform={`translate(${m.left},${m.top})`}>
           <rect x={x(2500)} width={x(1800) - x(2500)} height={ih} fill="#eef0f3" />
           <rect x={x(wnMax)} width={x(3600) - x(wnMax)} height={ih} fill="#eef0f3" />
+          {/* also dropped by the region agreed 1 Oct (similarity only; PLS still sees them) */}
+          {x.domain()[1] < 1050 && <rect x={x(1250)} width={x(1050) - x(1250)} height={ih} fill="url(#oct1-hatch)" />}
+          {x.domain()[1] < 600 && <rect x={x(600)} width={x(x.domain()[1]) - x(600)} height={ih} fill="url(#oct1-hatch)" />}
           <rect width={iw} height={ih} fill="transparent" onClick={() => hl.setPinned(null)} />
           <YAxis scale={y} x={0} label="Absorbance" tickCount={4} labelX={-48} format={(v) => String(+v.toFixed(3))} />
           <XAxis scale={x} y={ih} label="Wavenumber (cm⁻¹)" tickCount={6} labelDy={38} />
@@ -665,45 +687,54 @@ function SpectraPanel({ data, method, group }: { data: MeetingData; method: stri
         { label: `pinned filter${pinnedSid ? ` (${hl.pinnedId})` : ': none, click a point or trace'}`, color: INK.text, kind: 'line' },
         { label: 'hovered filter', color: INK.text, kind: 'dash' },
         { label: 'excluded from analog selection only (CO₂, >3600 cm⁻¹)', color: '#dfe3e8', kind: 'bar' },
+        ...(x.domain()[1] < 1050 ? [{ label: 'also excluded by the region agreed 1 Oct (<600, 1050–1250 PTFE); see the Satoshi 2 Oct view in Meeting', color: '#e6d8b5', kind: 'bar' as const }] : []),
       ]} />
       {tip.node}
     </div>
   )
 }
 
+const REPEAT_METRICS = ['slope', 'intercept'] as const
+
 function RepeatStrip({ data }: { data: MeetingData }) {
   const [method, setMethod] = useSearchParam<string>('mrmethod', 'AIRSpec', METHODS)
+  // 1 Oct: Ann asked for the intercept beside the slope, to see whether the IMPROVE
+  // analogs also carry the large negative Addis intercept.
+  const [metric, setMetric] = useSearchParam<(typeof REPEAT_METRICS)[number]>('mrmetric', 'slope', REPEAT_METRICS)
+  const isSlope = metric === 'slope'
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
   const measures = [
-    { key: 'addis_slope', label: 'Test set (Addis): FTIR vs Fabs/10' },
-    { key: 'ftir_vs_fabs_slope', label: 'IMPROVE cross-validation: FTIR vs Fabs/10' },
-    { key: 'tor_vs_fabs_slope', label: 'IMPROVE cross-validation: TOR EC vs Fabs/10' },
-    { key: 'ftir_vs_tor_slope', label: 'IMPROVE cross-validation: FTIR vs TOR EC' },
-  ]
+    { base: 'addis', label: 'Test set (Addis): FTIR vs Fabs/10' },
+    { base: 'ftir_vs_fabs', label: 'IMPROVE cross-validation: FTIR vs Fabs/10' },
+    { base: 'tor_vs_fabs', label: 'IMPROVE cross-validation: TOR EC vs Fabs/10' },
+    { base: 'ftir_vs_tor', label: 'IMPROVE cross-validation: FTIR vs TOR EC' },
+  ].map((ms) => ({ ...ms, key: `${ms.base}_${metric}` }))
   const r = data.repeats
   const rows: { g: string; m: string; label: string; vals: number[] }[] = []
   for (const g of data.groups) for (const ms of measures) {
     const vals: number[] = []
     for (let i = 0; i < r.method.length; i++) if (r.method[i] === method && r.group[i] === g && r[ms.key][i] != null) vals.push(r[ms.key][i] as number)
-    rows.push({ g, m: ms.key, label: ms.label, vals: vals.sort((a, b) => a - b) })
+    rows.push({ g, m: ms.base, label: ms.label, vals: vals.sort((a, b) => a - b) })
   }
   const rowH = 17, gap = 12, left = 250, right = 20
   const h = rows.length * rowH + data.groups.length * gap + 62
   const w = Math.max(560, width)
   const all = rows.flatMap((r) => [d3.quantile(r.vals, 0.05) ?? 0, d3.quantile(r.vals, 0.95) ?? 1])
-  const x = d3.scaleLinear().domain([Math.min(0, d3.min(all) ?? 0), Math.max(1.6, d3.max(all) ?? 1)]).range([0, w - left - right]).nice()
-  const colors: Record<string, string> = { addis_slope: '#111827', ftir_vs_fabs_slope: '#c026d3', tor_vs_fabs_slope: '#0f766e', ftir_vs_tor_slope: '#2171b5' }
+  const ref0 = isSlope ? 1 : 0
+  const x = d3.scaleLinear().domain(isSlope ? [Math.min(0, d3.min(all) ?? 0), Math.max(1.6, d3.max(all) ?? 1)]
+    : [Math.min(-0.5, d3.min(all) ?? 0), Math.max(0.5, d3.max(all) ?? 0)]).range([0, w - left - right]).nice()
+  const colors: Record<string, string> = { addis: '#111827', ftir_vs_fabs: '#c026d3', tor_vs_fabs: '#0f766e', ftir_vs_tor: '#2171b5' }
   let yCursor = 0
   return (
-    <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › RepeatStrip" title="Analogs vs Addis — are the IMPROVE analogs, in cross-validation, mispredicted the way the Addis test set is? Deming slope, median and 10–90 % over 100 site-grouped splits per season"
-      subtitle="Each split holds about 20 % of the season's 500 analogs out of the calibration set by whole site (cross-validation), picks the number of PLS factors on the rest, and predicts both those IMPROVE filters and the season's Addis filters (the test set) with the same calibration."
-      controls={<MethodSeg value={method} onChange={setMethod} />}>
+    <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › RepeatStrip" title={`One separate calibration per season, built from that season's IMPROVE spectral analogs: are the analogs mispredicted the way Addis is? Deming ${metric}, median and 10–90 % over 100 splits`}
+      subtitle={`Each block is its own calibration set: the 500 IMPROVE filters whose spectra correlate best with that season's median Addis spectrum ("All Addis" uses the all-season median). Each split holds about 20 % of those analogs out by whole site (cross-validation), picks the number of PLS factors on the rest, and predicts both the held-out IMPROVE filters and the season's Addis filters (the test set) with the same calibration.${isSlope ? '' : ' Intercepts are in µg/m³ of EC.'}`}
+      controls={<><MethodSeg value={method} onChange={setMethod} /><Segmented label="Show" value={metric} options={REPEAT_METRICS} onChange={setMetric} /></>}>
       <div ref={ref}>
         <svg width={w} height={h} fontFamily={FONT.family}>
           <g transform={`translate(${left},10)`}>
-            <line x1={x(1)} x2={x(1)} y1={0} y2={h - 52} stroke={INK.identity} strokeDasharray="4 3" />
+            <line x1={x(ref0)} x2={x(ref0)} y1={0} y2={h - 52} stroke={INK.identity} strokeDasharray="4 3" />
             {data.groups.map((g) => {
               const block = rows.filter((r) => r.g === g)
               const top = yCursor
@@ -715,7 +746,7 @@ function RepeatStrip({ data }: { data: MeetingData }) {
                     const q10 = d3.quantile(r.vals, 0.1) ?? NaN, q50 = d3.quantile(r.vals, 0.5) ?? NaN, q90 = d3.quantile(r.vals, 0.9) ?? NaN
                     const yy = j * rowH + 8
                     return (
-                      <g key={r.m} onMouseEnter={(e) => tip.show(e, [`${g} · ${r.label}`, `median ${f2(q50)}`, `10–90 %: ${f2(q10)} – ${f2(q90)}`, `${r.vals.length} splits`])} onMouseLeave={tip.hide}>
+                      <g key={r.m} onMouseEnter={(e) => tip.show(e, [`${g} · ${r.label} · ${metric}`, `median ${f2(q50)}`, `10–90 %: ${f2(q10)} – ${f2(q90)}`, `${r.vals.length} splits`])} onMouseLeave={tip.hide}>
                         <text x={-8} y={yy + 4} fontSize={10.5} textAnchor="end" fill={INK.muted}>{r.label}</text>
                         <line x1={x(q10)} x2={x(q90)} y1={yy} y2={yy} stroke={colors[r.m]} strokeWidth={3} strokeOpacity={0.45} />
                         <circle cx={x(q50)} cy={yy} r={4.5} fill={colors[r.m]} />
@@ -725,14 +756,14 @@ function RepeatStrip({ data }: { data: MeetingData }) {
                 </g>
               )
             })}
-            <XAxis scale={x} y={h - 52} label="Deming slope (1 = agreement)" tickCount={8} labelDy={34} />
+            <XAxis scale={x} y={h - 52} label={isSlope ? 'Deming slope (1 = agreement)' : 'Deming intercept, µg/m³ (0 = agreement)'} tickCount={8} labelDy={34} />
           </g>
         </svg>
         <Key items={[
-          ...measures.map((ms) => ({ label: ms.label, color: colors[ms.key] })),
+          ...measures.map((ms) => ({ label: ms.label, color: colors[ms.base] })),
           { label: 'median', color: INK.text },
           { label: '10–90 % of splits', color: INK.muted, kind: 'bar' as const },
-          { label: 'slope 1 (agreement)', color: INK.identity, kind: 'dash' as const },
+          { label: isSlope ? 'slope 1 (agreement)' : 'intercept 0 (agreement)', color: INK.identity, kind: 'dash' as const },
         ]} />
         {tip.node}
       </div>

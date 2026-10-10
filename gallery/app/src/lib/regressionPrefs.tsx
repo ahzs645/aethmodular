@@ -1,12 +1,16 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { fmt, type RegressionStats } from './stats'
+import { useSearchParam } from './url'
+import { Combobox } from '@/components/Combobox'
+import type { FitGrouping } from './siteRegression'
 
 import { ESTIMATORS, FIT_STYLE, type Estimator } from './regressionMethods'
 export { ESTIMATORS, FIT_STYLE, parseEstimators, estimatorParam, type Estimator } from './regressionMethods'
 
-const Ctx = createContext<{ methods: Estimator[]; setMethods: (v: Estimator[]) => void; showCI: boolean; setShowCI: (v: boolean) => void }>({ methods: ['deming'], setMethods: () => {}, showCI: false, setShowCI: () => {} })
+const Ctx = createContext<{ methods: Estimator[]; setMethods: (v: Estimator[]) => void; showCI: boolean; setShowCI: (v: boolean) => void; grouping: FitGrouping; setGrouping: (v: FitGrouping) => void }>({ methods: ['deming'], setMethods: () => {}, showCI: false, setShowCI: () => {}, grouping: 'pooled', setGrouping: () => {} })
 export function RegressionProvider({ methods, setMethods, showCI, setShowCI, children }: { methods: Estimator[]; setMethods: (v: Estimator[]) => void; showCI: boolean; setShowCI: (v: boolean) => void; children: ReactNode }) {
-  const value = useMemo(() => ({ methods, setMethods, showCI, setShowCI }), [methods, setMethods, showCI, setShowCI])
+  const [grouping, setGrouping] = useSearchParam<FitGrouping>('fitgroup', 'pooled', ['pooled', 'site'])
+  const value = useMemo(() => ({ methods, setMethods, showCI, setShowCI, grouping, setGrouping }), [methods, setMethods, showCI, setShowCI, grouping])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 export const useRegressions = () => useContext(Ctx)
@@ -23,10 +27,19 @@ export function fitsFor(stats: RegressionStats | null, methods: Estimator[]): Fi
 }
 export const equation = (fit: Fit, digits = 3) => `${fit.label} y = ${fmt(fit.slope, digits)}x ${fit.intercept < 0 ? '−' : '+'} ${fmt(Math.abs(fit.intercept), digits)}`
 
+/** One setting shared by the gallery's scatterplots with paired data at several sites. */
+export function FitGroupingControl() {
+  const { grouping, setGrouping } = useRegressions()
+  return <Combobox label="Fit grouping" value={grouping} onChange={setGrouping} options={[
+    { key: 'pooled', label: 'One pooled fit' }, { key: 'site', label: 'Separate fit per site' },
+  ]} />
+}
+
 export function RegressionControls() {
-  const { methods, setMethods, showCI, setShowCI } = useRegressions()
+  const { methods, setMethods, showCI, setShowCI, setGrouping } = useRegressions()
   return <fieldset className="regression-controls">
     <legend>Regression fits</legend>
+    <FitGroupingControl />
     <div className="regression-options">{ESTIMATORS.map(method => <label key={method}>
       <input type="checkbox" checked={methods.includes(method)} onChange={() => setMethods(ESTIMATORS.filter(e => e === method ? !methods.includes(e) : methods.includes(e)))} />
       <span style={{ color: FIT_STYLE[method].color }}>{FIT_STYLE[method].label}</span>
@@ -35,7 +48,7 @@ export function RegressionControls() {
     <label><input type="checkbox" checked={showCI} onChange={e => setShowCI(e.target.checked)} /> 95% fit uncertainty</label>
     <p>Show line confidence bands and coefficient intervals where available. These describe the fit, not individual measurement errors or prediction ranges.</p>
     {methods.includes('york') && <p>York uses point uncertainties when supplied; otherwise it uses constant errors with the Deming error ratio. Constant-error York and Deming coincide.</p>}
-    <button className="btn quiet" type="button" onClick={() => { setMethods(['deming']); setShowCI(false) }}>Reset fits</button>
+    <button className="btn quiet" type="button" onClick={() => { setMethods(['deming']); setShowCI(false); setGrouping('pooled') }}>Reset fits</button>
   </fieldset>
 }
 
@@ -43,10 +56,10 @@ export function RegressionControls() {
 const Active = createContext<Estimator>('deming')
 export const useEstimator = () => useContext(Active)
 export function EstimatorViews({ children, available = ESTIMATORS }: { children: (method: Estimator) => ReactNode; available?: readonly Estimator[] }) {
-  const { methods, setMethods, showCI, setShowCI } = useRegressions()
+  const { methods, setMethods, showCI, setShowCI, grouping, setGrouping } = useRegressions()
   if (!methods.length) return <p className="chart-note">Regression fits hidden. Select an estimator in the sidebar to show this comparison.</p>
   return <>{methods.map(method => <Active.Provider key={method} value={method}>
-    <Ctx.Provider value={{ methods: [method], setMethods, showCI, setShowCI }}>
+    <Ctx.Provider value={{ methods: [method], setMethods, showCI, setShowCI, grouping, setGrouping }}>
     <div className="estimator-view" data-estimator={method}>
       {/* the caption tells stacked copies apart; Deming alone is the default view and needs none */}
       {(methods.length > 1 || method !== 'deming') && <p className="estimator-caption" style={{ color: FIT_STYLE[method].color }}>{FIT_STYLE[method].label}

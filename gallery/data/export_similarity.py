@@ -43,7 +43,20 @@ MASKS = (
     ("no_co2", "Exclude 1800–2500", 1800, None),
     ("no_co2_max3600", "Exclude 1800–2500 and >3600", 1800, 3600),
     ("no_co2_max3500", "Exclude 1800–2500 and >3500", 1800, 3500),
+    # Agreed at the 1 Oct 2026 meeting (mask "oct1" in analog_transfer_checks).
+    ("oct1", "Agreed 1 Oct: 600–3600, exclude 1800–2500 and 1050–1250 (PTFE)", 1800, 3600),
 )
+EXTRA = {"oct1": {"low": 600, "drop": ((1050, 1250),)}}
+
+
+def selection_mask(wn, key, co2_low, upper):
+    mask = spectral_region_mask(wn, co2_low, upper)
+    extra = EXTRA.get(key)
+    if extra:
+        mask &= np.asarray(wn) >= extra["low"]
+        for a, b in extra["drop"]:
+            mask &= ~((np.asarray(wn) >= a) & (np.asarray(wn) <= b))
+    return mask
 TOP_K = 500          # the analog cohorts are 500 filters
 BIN = 8              # channels per displayed trace point (~10.3 cm⁻¹)
 SCALE = 10000        # r stored as int16 r * SCALE
@@ -203,7 +216,7 @@ def main() -> None:
             out.write(q.tobytes())
 
         for key, label, co2_low, upper in MASKS:
-            mask = spectral_region_mask(wn_method, co2_low, upper)
+            mask = selection_mask(wn_method, key, co2_low, upper)
             U = centered_unit_spectra(X[:, mask])
             means = member_matrix @ U                     # G × channels
             total = (means @ means.T) * np.outer(sizes, sizes)

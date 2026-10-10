@@ -8,7 +8,7 @@ import { ColorLegend } from '@/components/ColorLegend'
 import type { Config } from './common'
 import { useEstimator, FIT_STYLE } from '@/lib/regressionPrefs'
 import { COHORT, CV_PROTOCOL, PREPROCESSING, SELECTION_SPACE, label } from '@/lib/labels'
-import { DEFAULT_HIGHLIGHT_LIMITS, highlightMatches, type HighlightLimits, type HighlightRule } from '@/lib/specification'
+import { choiceFilterDimensions, choiceFilterSets, matchesChoiceFilters, DEFAULT_HIGHLIGHT_LIMITS, highlightMatches, type HighlightLimits, type HighlightRule } from '@/lib/specification'
 import { SpecCurvePlots, type SpecLayout } from './SpecCurvePlots'
 
 /** spec_curve.json, written by gallery/data/export_spec_curve.py */
@@ -129,6 +129,9 @@ export function SpecCurve({
     intercept, slope: file.slope[i], cv: file.heldout[i], guardrails: file.ok[i] === '1',
   }, rule, limits)) : [], [file, rule, limits])
 
+  const choiceDimensions = useMemo(() => file ? choiceFilterDimensions(file) : [], [file])
+  const choiceGroups = useMemo(() => choiceFilterSets(required, choiceDimensions), [required, choiceDimensions])
+
   // the specifications left after the choice and guardrail filters, still in intercept order
   const shown = useMemo(() => {
     if (!file) return [] as number[]
@@ -143,12 +146,10 @@ export function SpecCurve({
       if ((['co', 'sp', 'sel', 'mo', 'lot'] as const).some(key => filters[key] !== ALL && file.categories[key][file[key][i]] !== filters[key])) continue
       if (filters.cut !== ALL && (file.cut[i] === null ? NO_CUTOFF : String(file.cut[i])) !== filters.cut) continue
       if (filters.k !== ALL && String(file.k[i]) !== filters.k) continue
-      let keep = true
-      for (const c of required) if (file.masks[c][i] !== '1') { keep = false; break }
-      if (keep) out.push(i)
+      if (matchesChoiceFilters(file.masks, i, choiceGroups)) out.push(i)
     }
     return out
-  }, [file, required, passOnly, filters, highlighted, comparison, excludePreprocessing])
+  }, [file, choiceGroups, passOnly, filters, highlighted, comparison, excludePreprocessing])
 
   const setFilter = (key: FilterKey, value: string) => {
     if ((key === 'sel' || key === 'sp') && (value === 'vibes' || value.startsWith('vibes-'))) setComparison('all')
@@ -193,13 +194,16 @@ export function SpecCurve({
     return `${label(COHORT, c.co)}${c.cut !== null ? ' · cutoff ' + c.cut : ''} · ${label(SELECTION_SPACE, c.sel)} × ${label(PREPROCESSING, c.sp)} · ${label(CV_PROTOCOL, mode)} · ${f.k[i] ?? '?'} PLS factors${lot !== 'all' ? ' · calibration lot ' + lot : ''}`
   }
 
-  const toggleChoice = (c: number) => setRequired((s) => { const n = new Set(s); if (n.has(c)) n.delete(c); else n.add(c); return n })
+  const toggleChoice = (c: number) => {
+    setRequired((s) => { const n = new Set(s); if (n.has(c)) n.delete(c); else n.add(c); return n })
+    tip.hide()
+  }
 
   return (
     <ChartFrame
       id={id}
       title={title ?? 'Specification curve — every Addis configuration, sorted by the intercept it produces'}
-      subtitle={subtitle ? subtitle(file) : `All ${file ? f.n.toLocaleString() + ' ' : ''}scored Addis specifications (every cohort, cutoff, baseline, protocol and k), sorted by Deming intercept at MAC 10, with the analytic choices underneath: a darker strip means more of the specifications at that position used the choice. Click a choice to keep only specifications that use it; click several to intersect. Red points use the selected highlight rule; the default is every saved guardrail${file ? ': ' + f.guardrails : ''}.`}
+      subtitle={subtitle ? subtitle(file) : `All ${file ? f.n.toLocaleString() + ' ' : ''}scored Addis specifications (every cohort, cutoff, baseline, protocol and k), sorted by Deming intercept at MAC 10, with the analytic choices underneath: a darker strip means more of the specifications at that position used the choice. Click choices to filter: alternatives within the same setting are combined, while different settings must all match. Red points use the selected highlight rule; the default is every saved guardrail${file ? ': ' + f.guardrails : ''}.`}
       provenance={provenance ?? 'calibration_explorer batch results via research/ftir_ec_phase3/scripts/spec_curve.py · figure twin: pathways/01_specification_curve.png'}
       controls={
         <>
@@ -239,6 +243,9 @@ export function SpecCurve({
           <Toggle label={rule === 'guardrails' ? 'Guardrail passers only' : 'Highlight matches only'} checked={passOnly} onChange={setPassOnly} />
           {(required.size > 0 || Object.values(filters).some(value => value !== ALL) || passOnly || (file?.categories.sel.some(s => s.startsWith('vibes')) && comparison !== 'all')) && <button type="button" className="btn quiet" onClick={() => { setRequired(new Set()); setFilters(initialFilters()); setPassOnly(false); setComparison('all'); tip.hide() }}>Reset filters</button>}
           {file && <span className="control">{m.toLocaleString()} of {availableCount.toLocaleString()} shown · {passCount.toLocaleString()} saved guardrail passers{rule !== 'guardrails' && ` · ${matchCount.toLocaleString()} highlight matches`}{availableCount < f.n && ` · ${(f.n - availableCount).toLocaleString()} archived configurations hidden`}</span>}
+          {file && required.size > 0 && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', width: '100%' }} aria-label="Selected choice filters">
+            {[...required].map(c => <button key={c} type="button" className="btn quiet" aria-label={`Remove choice filter: ${file.choices[c]}`} onClick={() => toggleChoice(c)}>{file.choices[c]} ×</button>)}
+          </div>}
         </>
       }
     >

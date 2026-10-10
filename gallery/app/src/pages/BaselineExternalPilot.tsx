@@ -6,6 +6,9 @@ import { ChartFrame, Empty, ExplainOnly, Note } from '@/components/ChartFrame'
 import { INK } from '@/lib/theme'
 import { regression } from '@/lib/stats'
 import { useHighlight, type FilterRecord } from '@/lib/highlight'
+import { useSearchParam } from '@/lib/url'
+import { useRegressions } from '@/lib/regressionPrefs'
+import { Combobox } from '@/components/Combobox'
 
 type Method = 'AIRSpec' | 'VIBES'
 type Reference = 'ECTR' | 'ECTT'
@@ -210,6 +213,9 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
 }) {
   const hl = useHighlight()
   const optical = mode === 'optical'
+  const { methods, showCI, grouping } = useRegressions()
+  const [fitPreference, setFitPreference] = useSearchParam<string>(optical ? 'bopticalfits' : 'bspectralfits', 'default', ['default', 'none', 'pooled', 'site'])
+  const fitGrouping = fitPreference === 'default' ? (optical || grouping === 'site' ? grouping : 'none') : fitPreference
   // Optical: HIPS Fabs ÷ MAC puts x in µg/m³ like the FTIR EC prediction, so the
   // panel can carry a 1:1 line (equal axes; Deming only, both axes carry error).
   const allPoints = rows.flatMap(r => {
@@ -227,23 +233,37 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
   const yext = d3.extent(allPoints, r => r.yv)
   // the optical panel is square with one shared domain; the band panel keeps its own axes
   // both panels are square plot areas with the key to the right, like every crossplot in the gallery
-  const W = 720, H = 500
+  const W = 800
   const plot = optical ? { l: 80, r: 480, t: 30, b: 430 } : { l: 95, r: 495, t: 30, b: 430 }
   const shared: [number, number] = [Math.min(0, xext[0] ?? 0, yext[0] ?? 0), Math.max(xext[1] ?? 1, yext[1] ?? 1) * 1.06]
   const x = d3.scaleLinear().domain(optical ? shared : [Math.min(0, xext[0] ?? 0), (xext[1] ?? 1) * 1.06]).nice().range([plot.l, plot.r])
   const y = d3.scaleLinear().domain(optical ? shared : [Math.min(0, yext[0] ?? 0), (yext[1] ?? 1) * 1.08]).nice().range([plot.b, plot.t])
   if (optical) y.domain(x.domain())
-  const st = optical ? regression(points.map(r => r.xv), points.map(r => r.yv), { errorsInVariables: true, lambda: demingLambda, bootstrapGroups: monthBlocks(points) }) : null
+  const fitGroups = fitGrouping === 'none' ? [] : (fitGrouping === 'site' ? ['Addis', 'Bishoftu'] : ['All selected sites']).flatMap(name => {
+    const members = fitGrouping === 'site' ? points.filter(r => r.site === name) : points
+    const stats = regression(members.map(r => r.xv), members.map(r => r.yv), {
+      errorsInVariables: true, lambda: optical ? demingLambda : 1, bootstrapGroups: monthBlocks(members),
+    })
+    if (!stats) return []
+    return [{ name, stats, color: fitGrouping === 'site' ? name === 'Addis' ? '#2C6E9E' : '#C49442' : undefined,
+      domain: fitGrouping === 'site' ? d3.extent(members, r => r.xv) as [number, number] : x.domain() }]
+  })
+  const readoutGap = 70 + methods.length * (showCI ? 45 : 15)
+  const H = Math.max(500, 94 + fitGroups.length * readoutGap)
   const [d0, d1] = x.domain()
   const note = optical
     ? <><p>{points.length} physical filters shown: {counts.Addis} Addis and {counts.Bishoftu} Bishoftu. The full frozen Addis target set has 253 spectra; 20 have no paired HIPS Fabs and cannot appear on this optical plot. No thermal EC is measured at either site in this plot.</p>
         <p>x is HIPS Fabs ÷ MAC {mac}, an optical BC equivalent, so the 1:1 line shows optical–FTIR agreement, not EC accuracy. Deming uses λ = {fmt(demingLambda, 2)} (HIPS uncertainty ÷ MAC against the AIRSpec IMPROVE cross-validation error, AGENTS.md), because both axes carry measurement error.</p></>
-    : <p>{points.length} physical filters shown: {counts.Addis} Addis and {counts.Bishoftu} Bishoftu. All 253 Addis and 26 Bishoftu corrected spectra appear by default, including Addis records without HIPS Fabs. Band heights are local peak-minus-continuum descriptors, not chemical identifications.</p>
+    : <p>{points.length} physical filters shown: {counts.Addis} Addis and {counts.Bishoftu} Bishoftu. All 253 Addis and 26 Bishoftu corrected spectra appear by default, including Addis records without HIPS Fabs. Band heights are local peak-minus-continuum descriptors, not chemical identifications. Spectral-band Deming fits assume equal error variances (λ = 1); band-specific uncertainties are unavailable.</p>
   const legendX = plot.r + 30
   const legendY = plot.t + 4
-  return <ChartFrame title={title} tip={note} controls={<>
+  return <ChartFrame id={optical ? 'baseline-optical-sites' : 'baseline-spectral-sites'} title={title} tip={<>{note}<p>Separate fits use only each site's paired points and cover that site's observed x range. Fit equations describe the displayed pairs; saved EC calibrations remain frozen.</p></>} controls={<>
     <label className="control">Correction<select className="select" value={method} onChange={e => onMethod(e.target.value as Method)}>{METHODS.map(m => <option key={m}>{m}</option>)}</select></label>
     <label className="control">Site<select className="select" value={site} onChange={e => onSite(e.target.value)}>{['Both sites', 'Addis', 'Bishoftu'].map(s => <option key={s}>{s}</option>)}</select></label>
+    <Combobox label="Fit grouping" value={fitPreference} options={[
+      { key: 'default', label: `Use gallery setting (${fitGrouping === 'site' ? 'per site' : fitGrouping === 'pooled' ? 'pooled' : 'no lines'})` },
+      { key: 'none', label: 'No fitted lines' }, { key: 'pooled', label: 'One pooled fit' }, { key: 'site', label: 'Separate fit per site' },
+    ]} onChange={setFitPreference} />
   </>}>
     <div className="chart-wrap" style={{ overflowX: 'auto' }}><svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ minWidth: 620, maxWidth: W, margin: '0 auto' }} role="img" aria-label={`${title}: ${counts.Addis} Addis and ${counts.Bishoftu} Bishoftu points`}>
       {y.ticks(5).map(v => <g key={'y' + v}><line x1={plot.l} x2={plot.r} y1={y(v)} y2={y(v)} stroke="#E8EBEF"/><text x={plot.l - 8} y={y(v) + 4} textAnchor="end" fontSize={10} fill="#5B6470">{optical ? fmt(v, 1) : fmt(v, 3)}</text></g>)}
@@ -252,14 +272,16 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
       {optical && <line x1={plot.l} x2={plot.l} y1={plot.t} y2={plot.b} stroke="#5B6470"/>}
       {optical && <line x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} stroke={INK.identity} strokeWidth={1.2} strokeDasharray="5 4"/>}
       {points.map(r => <circle key={r.site + r.id} cx={x(r.xv)} cy={y(r.yv)} r={r.site === 'Bishoftu' ? 5 : 3.4} fill={r.site === 'Bishoftu' ? '#C49442' : '#2C6E9E'} fillOpacity={r.site === 'Bishoftu' ? .9 : .45} stroke={r.site === 'Bishoftu' ? '#755A24' : 'none'} strokeWidth={.7} style={{ cursor: 'pointer' }} onClick={() => hl.openRecord(siteRecord(r, title, mac))}><title>{`${r.site} ${r.id} · ${r.date} · lot ${r.lot ?? 'unknown'} · ${optical ? `Fabs ${fmt(r.Fabs!, 2)} Mm⁻¹ (÷ MAC ${mac} = ${fmt(r.xv, 3)} µg/m³); ${method} FTIR EC ${fmt(r.yv, 3)} µg/m³` : `${method} local 2920 ${fmt(r.xv, 5)}, local 1617 ${fmt(r.yv, 5)} absorbance`}`}</title></circle>)}
-      <g transform={`translate(${plot.l},${plot.t})`}><RegressionLines stats={st} x={v => x(v) - plot.l} y={v => y(v) - plot.t} domain={x.domain()} width={plot.r - plot.l} height={plot.b - plot.t}/></g>
+      <g transform={`translate(${plot.l},${plot.t})`}>{fitGroups.map(group => <g key={group.name} data-fit-site={group.name}>
+        <RegressionLines stats={group.stats} color={group.color} x={v => x(v) - plot.l} y={v => y(v) - plot.t} domain={group.domain} width={plot.r - plot.l} height={plot.b - plot.t}/>
+      </g>)}</g>
       <text x={(plot.l + plot.r) / 2} y={plot.b + 49} textAnchor="middle" fontSize={12} fill="#5B6470">{optical ? `HIPS Fabs ÷ MAC ${mac} (µg/m³)` : '2920 cm⁻¹ local height (corrected absorbance)'}</text>
       <text transform={`translate(19 ${(plot.t + plot.b) / 2}) rotate(-90)`} textAnchor="middle" fontSize={12} fill="#5B6470">{optical ? 'Frozen FTIR EC prediction (µg/m³)' : '1617 cm⁻¹ local height (corrected absorbance)'}</text>
       <g fontSize={11} fill={INK.text}>
         <circle cx={legendX} cy={legendY} r={4} fill="#2C6E9E"/><text x={legendX + 10} y={legendY + 4}>Addis</text>
         <circle cx={legendX} cy={legendY + 20} r={4} fill="#C49442"/><text x={legendX + 10} y={legendY + 24}>Bishoftu</text>
       </g>
-      {optical && <RegressionReadout stats={st} x={plot.l + 8} y={plot.t + 8} />}
+      {methods.length > 0 && fitGroups.map((group, i) => <RegressionReadout key={group.name} stats={group.stats} title={group.name} color={group.color} x={legendX} y={legendY + 50 + i * readoutGap} width={250} />)}
     </svg></div>
   </ChartFrame>
 }

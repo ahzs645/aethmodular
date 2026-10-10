@@ -33,6 +33,8 @@ import { BaselineComparisonPage } from '@/pages/BaselineComparisonPage'
 import { SimilarityPage } from '@/pages/SimilarityPage'
 import { MeetingFollowupPage } from '@/pages/MeetingFollowupPage'
 import { SatoshiFollowupPage } from '@/pages/SatoshiFollowupPage'
+import { BlanksPage } from '@/pages/BlanksPage'
+import { Combobox } from '@/components/Combobox'
 import { SubsetBar, type SubsetActions, type SubsetCaps, type SubsetState } from '@/components/SubsetBar'
 import { SampleDrawer } from '@/components/SampleDrawer'
 import { RecordDrawer } from '@/components/RecordDrawer'
@@ -60,12 +62,23 @@ const TABS = [
   { key: 'calibration', label: 'Calibration' },
   { key: 'baseline', label: 'Baselines', title: 'AIRSpec spline vs VIBES baseline correction' },
   { key: 'similarity', label: 'Spectral similarity' },
-  { key: 'meeting', label: 'Follow up meeting', title: 'Follow-up to the 17 Sep 2026 meeting' },
-  { key: 'satoshi', label: 'Satoshi 2 Oct', title: "Satoshi's questions after the 1 Oct 2026 meeting" },
+  { key: 'meeting', label: 'Meeting', title: 'Meeting follow-ups and Satoshi’s 2 Oct questions' },
+  { key: 'blanks', label: 'Blanks', title: 'PTFE field blanks behind the VIBES background' },
 ] as const
 
 type TabKey = (typeof TABS)[number]['key']
 const isTab = (v: string | null): v is TabKey => !!v && TABS.some((t) => t.key === v)
+
+const MEETINGS = [
+  { key: 'followup', label: 'Follow up meeting' },
+  { key: 'satoshi', label: 'Satoshi 2 Oct' },
+] as const
+type MeetingKey = (typeof MEETINGS)[number]['key']
+// Keep existing #tab=satoshi links working under the shared Meeting tab.
+const tabFromParams = (p: URLSearchParams): TabKey =>
+  p.get('tab') === 'satoshi' ? 'meeting' : isTab(p.get('tab')) ? p.get('tab') as TabKey : 'correlation'
+const meetingFromParams = (p: URLSearchParams): MeetingKey =>
+  p.get('tab') === 'satoshi' || p.get('meeting') === 'satoshi' ? 'satoshi' : 'followup'
 
 /**
  * What each tab's underlying data can actually support. The PMF solution is
@@ -73,7 +86,7 @@ const isTab = (v: string | null): v is TabKey => !!v && TABS.some((t) => t.key =
  * 942-filter count there would just be wrong.
  */
 const FILTERS: SubsetCaps = { seasons: true, sites: true, excluded: true, dates: true, fields: 'single', datasetLabel: 'SPARTAN filters' }
-const CAPS: Record<Exclude<TabKey, 'census' | 'baseline' | 'similarity' | 'meeting' | 'satoshi'>, SubsetCaps> = {
+const CAPS: Record<Exclude<TabKey, 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks'>, SubsetCaps> = {
   correlation: { ...FILTERS, fields: 'pair' },
   distribution: FILTERS,
   evolution: FILTERS,
@@ -117,7 +130,8 @@ export default function App() {
 
   // ---- state, seeded from the URL hash so a pasted link reopens the same view
   const init = useMemo(() => readParams(), [])
-  const [tab, setTab] = useState<TabKey>(isTab(init.get('tab')) ? (init.get('tab') as TabKey) : 'correlation')
+  const [tab, setTab] = useState<TabKey>(() => tabFromParams(init))
+  const [meeting, setMeeting] = useState<MeetingKey>(() => meetingFromParams(init))
   // Mirrors get_clean_data: excluded samples are hidden by default but never
   // deleted, so you can always put them back and see what was removed.
   const [includeExcluded, setIncludeExcluded] = useState(init.get('excl') === '1')
@@ -164,6 +178,7 @@ export default function App() {
   useEffect(() => {
     writeParams({
       tab,
+      meeting: tab === 'meeting' && meeting !== 'followup' ? meeting : null,
       fits: estimatorParam(estimators),
       ci: showCI ? '1' : null,
       cal: convention,
@@ -184,7 +199,7 @@ export default function App() {
       ax: axes.mode !== DEFAULT_AXES.mode ? axes.mode : null,
       log: axes.log ? '1' : null,
     })
-  }, [tab, estimators, showCI, convention, activeSeasons, activeSites, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, pinnedId, axes])
+  }, [tab, meeting, estimators, showCI, convention, activeSeasons, activeSites, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -193,7 +208,10 @@ export default function App() {
       const p = readParams()
       setEstimators(parseEstimators(p.get('fits')))
       setShowCI(p.get('ci') === '1')
-      if (isTab(p.get('tab'))) setTab(p.get('tab') as TabKey)
+      if (isTab(p.get('tab')) || p.get('tab') === 'satoshi') {
+        setTab(tabFromParams(p))
+        if (tabFromParams(p) === 'meeting') setMeeting(meetingFromParams(p))
+      }
       setConvention(p.get('cal'))
       setActiveSeasons(listParam(p.get('seasons')))
       setActiveSites(listParam(p.get('sites')))
@@ -401,7 +419,7 @@ export default function App() {
   )
 
   const subset = (() => {
-    if (tab === 'census' || tab === 'baseline' || tab === 'similarity' || tab === 'meeting' || tab === 'satoshi') return null
+    if (tab === 'census' || tab === 'baseline' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks') return null
     const caps = CAPS[tab]
     const pmfMode = tab === 'pmf'
     const calMode = tab === 'calibration'
@@ -528,13 +546,18 @@ export default function App() {
         />
       )}
       {!openRow && openRec && <RecordDrawer rec={openRec} onClose={dismissSample} />}
-      <Shell nav={nav} wide={tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'satoshi'}>
+      <Shell nav={nav} wide={tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks'}>
         {/* tabs without the filter panel still get the fit controls where they draw fits */}
-        {subset ?? ((tab === 'baseline' || tab === 'meeting') && <RegressionSidebar />)}
+        {subset ?? ((tab === 'baseline' || (tab === 'meeting' && meeting === 'followup')) && <RegressionSidebar />)}
         {tab === 'census' && <CensusPage census={census} />}
         {tab === 'similarity' && <SimilarityPage />}
-        {tab === 'meeting' && <MeetingFollowupPage galleryRows={filters.rows} galleryMeta={data.meta} />}
-        {tab === 'satoshi' && <SatoshiFollowupPage />}
+        {tab === 'meeting' && <>
+          <div className="panel" aria-label="Meeting selection">
+            <Combobox label="Meeting" value={meeting} options={MEETINGS} onChange={setMeeting} />
+          </div>
+          {meeting === 'followup' ? <MeetingFollowupPage galleryRows={filters.rows} galleryMeta={data.meta} /> : <SatoshiFollowupPage />}
+        </>}
+        {tab === 'blanks' && <BlanksPage />}
         {tab === 'baseline' && <BaselineComparisonPage mac={meta.mac_value} demingLambda={data.calibration?.deming_lambda_mac10 ?? 1} />}
         {tab === 'calibration' && <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />}
         {tab === 'correlation' && (

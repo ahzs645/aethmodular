@@ -21,8 +21,10 @@ gallery/
 │   ├── export_calibration.py       # calibration_explorer batch results -> calibration.json
 │   ├── export_calibration_runs.py  # explorer per-filter readouts + diagnostics -> calibration_runs.json
 │   ├── export_similarity.py        # frozen AIRSpec/VIBES spectra -> similarity/ (Spectral similarity tab)
-│   ├── export_meeting_followup.py  # 17 Sep meeting follow-up tables -> meeting/ (Meeting follow-up tab)
-│   ├── export_satoshi_followup.py  # Satoshi's 2 Oct questions -> satoshi/ (Satoshi 2 Oct tab)
+│   ├── export_meeting_followup.py  # 17 Sep meeting follow-up tables -> meeting/ (Follow up meeting view)
+│   ├── export_satoshi_followup.py  # Satoshi's 2 Oct questions -> satoshi/ (Satoshi 2 Oct view in Meeting)
+│   ├── export_oct1_remaining.py    # rest of the 1 Oct list (blank banks, groupings) -> satoshi/ (Satoshi 2 Oct view in Meeting)
+│   ├── export_blanks.py            # PTFE blanks behind the VIBES background -> blanks/ (Blanks tab)
 │   └── fetch_basemap.py    # one-off Natural Earth download for the map
 └── app/                    # the React + D3 gallery
     ├── public/data/        # generated JSON — committed, so the app just runs
@@ -114,6 +116,11 @@ uv run --no-sync python gallery/data/export_meeting_followup.py
 # Satoshi's 2 Oct questions (analog overlap, swap test, VIP, fit ladder, envelope): ~5 min, then export
 uv run --no-sync python research/ftir_hips_chem/workflows/run_satoshi_followup_20261002.py
 uv run --no-sync python gallery/data/export_satoshi_followup.py
+# Rest of the 1 Oct list (blank-bank runs on Drive, fingerprint groupings): ~5 min, then export
+uv run --no-sync python research/ftir_hips_chem/workflows/run_oct1_remaining_20261007.py
+uv run --no-sync python gallery/data/export_oct1_remaining.py
+# Blanks tab (reads the bundle, the capped run and the Drive blank-bank runs): ~2 min
+uv run --no-sync python gallery/data/export_blanks.py
 python gallery/data/fetch_basemap.py      # only if world.geojson goes missing
 ```
 
@@ -134,7 +141,29 @@ uv run python gallery/data/export_etad_ids.py                 # similarity/etad_
 
 ## What the census found
 
-The Meeting follow-up tab displays an Addis coverage table independently of
+The **Meeting** tab groups **Follow up meeting** and **Satoshi 2 Oct** under a
+Meeting dropdown. Each view retains its charts and controls. Copied links keep
+the selected view (`#tab=meeting` or `#tab=meeting&meeting=satoshi`); existing
+`#tab=satoshi` links still open Satoshi's follow-up.
+The picker is a styled combobox with keyboard navigation. The full-range VIBES
+status, Satoshi's "Where we stand, 7 Oct" conclusion and short-answer table appear only with
+**Explain** enabled, keeping the presentation view focused on charts.
+In Satoshi's view, **Filters → Similarity region** chooses the saved exclusion
+range. **600–3600 cm⁻¹ · exclude CO₂ + PTFE** is the default; the alternative
+is **500–3600 cm⁻¹ · exclude CO₂**. The sidebar describes the excluded bands.
+Copied links preserve explicit region choices. The short-answer table is
+labelled as a summary of the original 1 Oct region.
+The Satoshi view's **Spectra** panel overlays every frozen Addis test-set filter
+in the chosen season with the top 50, 100, 250 or 500 saved IMPROVE analogs.
+Ranks use correlation to the median Addis spectrum from the meeting analysis;
+they are not recomputed from the display traces or the Spectral similarity
+page's mean-pair scores. Baseline and season controls, an outer-test-site
+toggle, gaps/shading and hover/click filter details use the shared spectra
+renderer. The sidebar region controls the saved cohort and excluded channels;
+CO₂ is labelled explicitly as 1800–2500 cm⁻¹. Top-N and site controls affect
+the display only, leaving the saved calibration scores unchanged.
+
+The Follow up meeting view displays an Addis coverage table independently of
 the regression selection. The current gallery has 190 paired filters; the
 frozen test-set evaluation has 233 filters, sharing 189 with the gallery and
 adding 44 later filters. Gallery filter ETAD-0248 is absent from the frozen
@@ -145,7 +174,7 @@ ratio (about 3.3354); it must not silently become the equal-error default.
 Regression options control the displayed lines and equations, with Deming
 selected by default; they do not change the fitted calibrations or guardrails.
 
-The Follow up meeting tab also includes Addis seasonal chemistry, with stacked
+The Follow up meeting view also includes Addis seasonal chemistry, with stacked
 bars in concentration units or percentages. It uses the existing gallery
 chemistry after exclusions, with FTIR EC and OC counted once. Its default is
 the Addis local `belg_feb` calendar; a control switches to the frozen meeting's
@@ -506,6 +535,11 @@ selection spectra, cohort cutoff, model spectra, cross-validation protocol,
 PLS factor count, and calibration lot where available. These filters intersect
 with clicked choice strips and the guardrail toggle; the shown/pass counts
 refer to the filtered configurations. Reset filters restores the full search.
+Multiple clicked choices within the same setting (such as three cohort methods
+or both cross-validation protocols) are combined. Choices across different
+settings intersect, so selecting cohort methods and a factor range retains
+those methods only within that range. Selected choices can also be removed
+using the buttons above the plot, including when no saved configuration matches.
 The search selector switches between the original spline/raw/derivative export
 and the 17 Sep spline/VIBES export. In the latter, selection and model baselines
 are paired in the saved runs, so mixed-baseline selections have no results.
@@ -531,7 +565,7 @@ The VIBES **fit restricted to 4000–1425 cm⁻¹** is archived. Calibration hid
 its configurations and dropdown entries unless **Show archived VIBES fit** is
 enabled; reset filters retains that archive choice. Counts use the available
 active population and separately report hidden archived configurations. The
-Follow up meeting tab follows the same default. The full-range fit cropped to
+Follow up meeting view follows the same default. The full-range fit cropped to
 4000–1425 for prediction stays available as a clearly labelled sensitivity
 comparison, rather than being conflated with the older truncated fit.
 
@@ -824,6 +858,22 @@ variability ranges across cross-validation splits and spectral percentile envelo
 retain their own meaning and are unaffected by the 95% fit control. Reset fits
 restores Deming alone with fit uncertainty off.
 
+**Fit grouping** in the Fits sidebar switches between one pooled fit and a
+separate fit per site (`fitgroup=site` in shared URLs). It applies to the main
+scatterplot, density plot, scatter matrix, sample-drawer crossplot, multi-site
+meeting analog crossplots, and the Addis/Bishoftu Baselines plots. The same
+styled control is available beside those charts. Per-site fits use only finite
+paired values from that site, including aligned uncertainty vectors and month
+blocks, and cover that site's observed x range. Sites need at least three pairs
+and nonconstant axes. Statistics appear below the plot; meeting analog plots
+keep their longer per-site readouts in an expandable section. Site colours come
+from gallery metadata where available; meeting point colours retain their
+role/season meaning. Matrix correlation summaries remain pooled for the selected
+population. Baselines chart controls can explicitly override the gallery setting;
+their default follows it, while two-band fits stay hidden in default pooled mode.
+Reset fits also restores pooled grouping. Single-site calibration plots and
+existing per-site transfer panels already have one fit for each displayed site.
+
 Drawer reference choices persist in copied URLs (`sampleRef` query parameter).
 Site/four-site references use the complete gallery export after canonical
 exclusion flags, independently of the main graph's subset. The public-network
@@ -845,6 +895,13 @@ full gallery record have hover details without opening a nonexistent record.
 Current Baselines views include paired residuals, loading strata, exact spectral
 region decomposition, blank distributions, common-test calibration selection,
 spectrum-only routing, training-only PCA and the 31-spectrum external pilot.
+The Addis/Bishoftu optical and two-band scatterplots offer no fitted lines,
+one pooled fit, or separate fits per site. Site fits match the point colours,
+use only that site's paired values, and cover its observed x range. Equations,
+R² and pair counts appear beside the plot; the Fits sidebar controls estimators
+and uncertainty. Optical Deming fits retain the configured HIPS error ratio;
+two-band Deming fits assume equal error variance. These display fits do not
+refit the frozen EC prediction models.
 Seasonal/combined calibrations were refitted on both the full (2,722 channels)
 and shared (2,002 channels) corrected grids. The category grid is complete:
 9,010 fits, including 3,138 unchanged spline fits and 2,936 per VIBES window.

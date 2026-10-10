@@ -21,6 +21,11 @@ interface SimIndex { bin_wn: number[]; n: number; index: Map<string, number> }
 
 let simPromise: Promise<SimIndex> | null = null
 let etadPromise: Promise<Record<string, string[]>> | null = null
+let etadJsonPromise: Promise<EtadJson> | null = null
+
+/** Why an Addis filter does or does not have a spectrum / test-set result (export_etad_ids.py). */
+export interface AddisStatus { in_run: boolean; in_test_set: boolean; note: string }
+interface EtadJson { ids: Record<string, string[]>; status?: Record<string, AddisStatus> }
 
 const getJson = <T,>(name: string): Promise<T> =>
   fetch(BASE + name).then((r) => {
@@ -38,8 +43,14 @@ function simIndex(): Promise<SimIndex> {
   return simPromise
 }
 
+function etadJson(): Promise<EtadJson> {
+  etadJsonPromise ??= getJson<EtadJson>('etad_ids.json')
+  etadJsonPromise.catch(() => { etadJsonPromise = null })
+  return etadJsonPromise
+}
+
 function etadIds(): Promise<Record<string, string[]>> {
-  etadPromise ??= getJson<{ ids: Record<string, string[]> }>('etad_ids.json').then((j) => j.ids)
+  etadPromise ??= etadJson().then((j) => j.ids)
   etadPromise.catch(() => { etadPromise = null })
   return etadPromise
 }
@@ -123,4 +134,49 @@ export function useFilterSpectrum(id: string | null | undefined, methods: readon
   }, [id, key, vibesRank]) // eslint-disable-line react-hooks/exhaustive-deps
   // a method switch keeps the old lines until the new ones land; a new filter clears them
   return data && data.requestKey === requestKey ? data : null
+}
+
+/** Base id (ETAD-0017) for an Addis drawer id or an "etad:<MediaId>" sample id; null otherwise. */
+async function addisBase(id: string): Promise<string | null> {
+  if (id.startsWith('etad:')) {
+    const ids = await etadIds()
+    return Object.keys(ids).find((b) => ids[b].includes(id)) ?? null
+  }
+  const base = baseFilterId(id)
+  return /^ETAD-\d{4}$/.test(base) ? base : null
+}
+
+/**
+ * Status of an Addis filter: in the test set, in the spectra run only (no HIPS),
+ * a PM10 or blank filter, and so on. Null for non-Addis ids and while loading.
+ */
+export function useAddisStatus(id: string | null | undefined): AddisStatus | null {
+  const [status, setStatus] = useState<{ id: string; s: AddisStatus } | null>(null)
+  useEffect(() => {
+    if (!id) return
+    let live = true
+    ;(async () => {
+      const base = await addisBase(id)
+      const all = (await etadJson()).status ?? {}
+      const s = base ? all[base] ?? { in_run: false, in_test_set: false, note: 'not in the frozen spectra run or the Addis test set' } : null
+      if (live && s) setStatus({ id, s })
+    })().catch(() => {})
+    return () => { live = false }
+  }, [id])
+  return status && status.id === id ? status.s : null
+}
+
+/** All Addis statuses keyed by similarity sample id ("etad:<MediaId>"), for tooltips. */
+export function useAddisStatusBySample(): Map<string, AddisStatus> {
+  const [map, setMap] = useState<Map<string, AddisStatus>>(new Map())
+  useEffect(() => {
+    let live = true
+    etadJson().then((j) => {
+      const m = new Map<string, AddisStatus>()
+      for (const [b, sids] of Object.entries(j.ids)) for (const sid of sids) if (j.status?.[b]) m.set(sid, j.status[b])
+      if (live) setMap(m)
+    }).catch(() => {})
+    return () => { live = false }
+  }, [])
+  return map
 }

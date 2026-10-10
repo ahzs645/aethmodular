@@ -1,5 +1,7 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
-import { RegressionLines } from '@/components/RegressionOverlay'
+import { RegressionLines, RegressionGroupLines } from '@/components/RegressionOverlay'
+import { FitGroupingControl, useRegressions } from '@/lib/regressionPrefs'
+import { groupedRegressions } from '@/lib/siteRegression'
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
@@ -108,7 +110,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
           <Select label="Site" value={block.code} options={siteCodes} onChange={setSiteCode} optionLabel={(c) => (c === 'All' ? 'All sites' : meta.sites.find((s) => s.code === c)?.name ?? c)} />
           <Segmented label="Encoding" value={encoding} options={ENCODINGS} onChange={setEncoding} />
           {encoding === 'Scatter matrix' ? (
-            <Select label="Species" value={family} options={families} onChange={setFamily} title="At most six species per matrix" />
+            <><Select label="Species" value={family} options={families} onChange={setFamily} title="At most six species per matrix" /><FitGroupingControl /></>
           ) : (
             <span className="control">{block.fields.length} species</span>
           )}
@@ -194,6 +196,7 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, meta }: {
   units: Record<string, string>
   dim: (site: string) => number
 }) {
+  const { grouping } = useRegressions()
   const n = fields.length
   const pad = 6
   // the row labels sit in the left gutter: size it from the longest name
@@ -243,6 +246,9 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, meta }: {
               .filter((p): p is { row: FilterRow; x: number; y: number } => typeof p.x === 'number' && typeof p.y === 'number' && Number.isFinite(p.x) && Number.isFinite(p.y))
             // Deming (λ=1) rather than y-on-x least squares: both species are measured with error
             const st = regression(pts.map((p) => p.x), pts.map((p) => p.y), fitUncertainty(pts.map(p => p.row), fx, fy, meta))
+            const fitGroups = groupedRegressions(pts, grouping, { x: p => p.x, y: p => p.y, site: p => p.row.site,
+              color: p => meta.sites.find(s => s.name === p.row.site)?.color ?? INK.muted,
+              options: members => fitUncertainty(members.map(p => p.row), fx, fy, meta) })
             return (
               <g key={`${i}-${j}`} transform={`translate(${ox},${oy})`}>
                 <rect width={cellS} height={cellS} fill="#fff" stroke={INK.grid} />
@@ -260,7 +266,8 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, meta }: {
                     />
                   )
                 })}
-                <RegressionLines stats={st} x={sx} y={v => cellS - sy(v)} domain={sx.domain() as number[]} width={cellS} height={cellS} />
+                {grouping === 'site' ? <RegressionGroupLines groups={fitGroups} x={sx} y={v => cellS - sy(v)} width={cellS} height={cellS} />
+                  : <RegressionLines stats={st} x={sx} y={v => cellS - sy(v)} domain={sx.domain() as number[]} width={cellS} height={cellS} />}
                 {st && <text x={cellS - 4} y={11} textAnchor="end" fontSize={9.5} fill={INK.text} fontFamily={FONT.mono} pointerEvents="none">r={st.r.toFixed(2)}</text>}
               </g>
             )

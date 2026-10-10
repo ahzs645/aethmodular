@@ -63,6 +63,8 @@ IMPROVE_SUBDIR = "Improve"
 ETAD_SUBDIR = "DAVIS/ETAD FTIR"
 
 LOCAL_DB_SUBDIR = "local_db"
+# Colab VIBES outputs (results, checkpoint mirrors) live on Drive, not in the repo.
+VIBES_COLAB_RESULTS_SUBDIR = "Aethmodular VIBES/results"
 
 
 def ftir_spectra_dir() -> Path:
@@ -72,6 +74,14 @@ def ftir_spectra_dir() -> Path:
         return Path(env).expanduser()
     root = drive_root()
     return first_existing([root / rel for rel in FTIR_DIR_CANDIDATES])
+
+
+def vibes_colab_results_dir() -> Path:
+    """Return the Drive directory the Colab VIBES runs write their results to."""
+    env = os.environ.get("AETHMODULAR_VIBES_COLAB_RESULTS")
+    if env:
+        return Path(env).expanduser()
+    return drive_root() / VIBES_COLAB_RESULTS_SUBDIR
 
 
 def maia_data_root() -> Path:
@@ -227,5 +237,6 @@ def describe() -> dict[str, tuple[Path, bool]]:
         "weather_dir": weather_dir(),
         "ftir_spectra_dir": ftir_spectra_dir(),
         "ftir_local_db": ftir_local_db(),
+        "vibes_colab_results_dir": vibes_colab_results_dir(),
     }
     return {name: (path, path.is_dir()) for name, path in entries.items()}
