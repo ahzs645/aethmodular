@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { Marker } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
@@ -62,7 +63,7 @@ export function CVCurve({ run, runs }: { run: CalibRun; runs: CalibRunsFile }) {
               <XAxis scale={x} y={innerH} label={METRIC.k} tickCount={8} />
               {seOn && <path d={band(pts) ?? ''} fill={INK.accent} fillOpacity={0.12 * lg.dim(SE, 0.3)} />}
               {lg.show('RMSECV') && <path d={line(pts) ?? ''} fill="none" stroke={INK.accent} strokeWidth={2} strokeOpacity={lg.dim('RMSECV')} />}
-              <line x1={x(run.auto_k)} x2={x(run.auto_k)} y1={0} y2={innerH} stroke={INK.muted} strokeDasharray="3 3" />
+              <Marker orient="v" at={x(run.auto_k)} from={0} to={innerH} />
               {lg.show('RMSECV') && pts.map((p) => (
                 <circle key={p.k} opacity={lg.dim('RMSECV')} cx={x(p.k)} cy={y(p.rmsecv)} r={p.k === run.auto_k ? 6 : 3} fill={p.k === run.auto_k ? '#fff' : INK.accent} stroke={p.k === run.auto_k ? INK.text : INK.accent} strokeWidth={p.k === run.auto_k ? 2 : 1}
                   onMouseEnter={(e) => tip.show(e, [`${p.k} PLS factors${p.k === run.auto_k ? ' (rule choice)' : ''}`, `RMSECV ${fmt(p.rmsecv, 4)} µg${p.se !== null ? ` ± ${fmt(p.se, 4)}` : ''}`])}

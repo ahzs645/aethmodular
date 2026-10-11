@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { styleBrush } from '@/lib/brush'
+import { robustDomain } from '@/lib/axes'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Segmented, Select, Toggle } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
@@ -114,8 +116,7 @@ export function ParallelCoordinates({ rows, meta }: { rows: FilterRow[]; meta: M
   const axes = useMemo<Axis[]>(
     () =>
       fields.map((f, i) => {
-        const p02 = d3.quantile(f.sorted, 0.02) ?? 0
-        const p98 = d3.quantile(f.sorted, 0.98) ?? 1
+        const [p02, p98] = robustDomain(f.sorted, 0.02, 0.98).domain
         // ÷ p98 needs a positive denominator; fall back to the max, then to 1
         const denom = p98 > 0 ? p98 : (f.sorted[f.sorted.length - 1] ?? 0) > 0 ? f.sorted[f.sorted.length - 1] : 1
         const plot = normalise ? (v: number) => v / denom : (v: number) => v
@@ -190,9 +191,7 @@ export function ParallelCoordinates({ rows, meta }: { rows: FilterRow[]; meta: M
           setBrushes((b) => (s ? { ...b, [a.field]: s } : a.field in b ? without(b, a.field) : b))
         })
       sel.call(brush)
-      // the svg's `animated` transition would make the brush trail the pointer
-      sel.selectAll('rect').style('transition', 'none')
-      sel.selectAll('.selection').attr('fill', INK.accent).attr('fill-opacity', 0.18).attr('stroke', INK.accent)
+      styleBrush(sel)
       sel.on('dblclick', () => {
         sel.call(brush.move, null)
         setBrushes((b) => without(b, a.field))

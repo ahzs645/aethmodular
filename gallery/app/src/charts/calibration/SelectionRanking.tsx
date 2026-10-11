@@ -1,4 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
+import { robustDomain } from '@/lib/axes'
+import { Marker } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
@@ -43,9 +45,7 @@ export function SelectionRanking({ runs, calib }: { runs: CalibRunsFile; calib: 
   // The tail of the pool (OC/EC in the hundreds) would flatten the whole curve
   // near zero; clip the axis at p99, as the histogram view does, and pin the tail.
   const sortedMetric = allMetric.filter(Number.isFinite).sort(d3.ascending)
-  const yHi = d3.quantile(sortedMetric, 0.99) ?? d3.max(sortedMetric) ?? 1
-  const yLo = sortedMetric[0] ?? 0
-  const nClipped = sortedMetric.filter((v) => v > yHi).length
+  const { domain: [yLo, yHi], above: nClipped } = robustDomain(sortedMetric, 0, 0.99)
   const y = d3.scaleLinear().domain([yLo, yHi]).range([innerH, 0]).nice()
   const yTop = y.domain()[1]
   const hx = d3.scaleLinear().domain(d3.extent(primary?.hist.centers ?? [0, 1]) as [number, number]).range([0, innerW]).nice()
@@ -75,7 +75,7 @@ export function SelectionRanking({ runs, calib }: { runs: CalibRunsFile; calib: 
               <YAxis scale={y} x={0} label={primary.label} gridWidth={innerW} tickCount={5} />
               <XAxis scale={x} y={innerH} label="rank (most Addis-like first)" />
               <rect x={0} y={0} width={x(cutoff)} height={innerH} fill={cohortColor(cohort)} fillOpacity={0.06} />
-              <line x1={x(cutoff)} x2={x(cutoff)} y1={0} y2={innerH} stroke={INK.negative} strokeDasharray="5 3" />
+              <Marker orient="v" at={x(cutoff)} from={0} to={innerH} color={INK.negative} />
               <text x={x(cutoff) + 4} y={12} fontSize={10} fill={INK.negative} fontFamily={FONT.mono}>cutoff {cutoff}</text>
               {shown.map((s) => {
                 const line = d3.line<number>().x((_, i) => x(s.rank[i])).y((v) => y(Math.min(v, yTop)))
@@ -101,7 +101,7 @@ export function SelectionRanking({ runs, calib }: { runs: CalibRunsFile; calib: 
                 return <rect key={i} x={hx(c) - w / 2} y={hy(primary.hist.counts[i])} width={Math.max(0.5, w - 0.6)} height={innerH - hy(primary.hist.counts[i])} fill={selected ? cohortColor(cohort) : INK.muted} fillOpacity={selected ? 0.7 : 0.35}
                   onMouseEnter={(e) => tip.show(e, [`${fmt(c, 4)}`, `${primary.hist.counts[i]} filters`, selected ? 'inside the cutoff' : 'rest of pool'])} onMouseLeave={tip.hide} />
               })}
-              <line x1={hx(primary.cutoff_metric)} x2={hx(primary.cutoff_metric)} y1={0} y2={innerH} stroke={INK.negative} strokeDasharray="5 3" />
+              <Marker orient="v" at={hx(primary.cutoff_metric)} from={0} to={innerH} color={INK.negative} />
               <text x={hx(primary.cutoff_metric) + 4} y={12} fontSize={10} fill={INK.negative} fontFamily={FONT.mono}>cutoff {cutoff} → {fmt(primary.cutoff_metric, 3)}</text>
             </g>
           </svg>

@@ -1,4 +1,6 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
+import { styleBrush } from '@/lib/brush'
+import { IdentityLine, RefLine } from '@/components/RefLines'
 import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
 import { useRegressions, fitsFor, FitGroupingControl } from '@/lib/regressionPrefs'
 import { groupedRegressions, type RegressionGroup } from '@/lib/siteRegression'
@@ -12,7 +14,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { focusStyle, useHighlight } from '@/lib/highlight'
-import { inDomain, pairDomain, type AxesOpts, type PairDomain } from '@/lib/axes'
+import { inDomain, pairDomain, type AxesOpts, type PairDomain, robustDomain } from '@/lib/axes'
 import { regression, fmt, type RegressionStats } from '@/lib/stats'
 import { INK, MARGIN, FONT, RAMP_SEQUENTIAL, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -26,9 +28,7 @@ const NO_SIZE = 'none'
 
 /** Sequential ramp over the 2–98 % bulk of a third variable, so one outlier does not wash the rest to the first colour. */
 function valueScale(values: number[]) {
-  const sorted = values.slice().sort(d3.ascending)
-  const lo = d3.quantile(sorted, 0.02) ?? 0
-  const hi = d3.quantile(sorted, 0.98) ?? 1
+  const [lo, hi] = robustDomain(values, 0.02, 0.98).domain
   return d3.scaleSequential(d3.interpolateRgbBasis(RAMP_SEQUENTIAL.slice(2))).domain([lo, hi === lo ? lo + 1 : hi]).clamp(true)
 }
 
@@ -316,6 +316,7 @@ function ScatterPanel({
         onBrush(ids.size ? ids : null)
       })
     sel.call(brush)
+    styleBrush(sel)
     return () => { sel.on('.brush', null); sel.selectAll('*').remove() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brushing, drawn, innerW, innerH])
@@ -377,7 +378,7 @@ function ScatterPanel({
 
           <g clipPath={`url(#${clipId})`}>
             {axes.identity && (
-              <line x1={xScale(d0)} y1={yScale(d0)} x2={xScale(d1)} y2={yScale(d1)} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="5 4" />
+              <IdentityLine x1={xScale(d0)} y1={yScale(d0)} x2={xScale(d1)} y2={yScale(d1)} />
             )}
             {stats && showFit && (
               <g opacity={fitDim}>
@@ -424,7 +425,7 @@ function ScatterPanel({
 
           {markIntercepts && (
             <g pointerEvents="none" fontFamily={FONT.mono} fontSize={10.5}>
-              {!originAxes && <line x1={xScale(0)} x2={xScale(0)} y1={0} y2={innerH} stroke={INK.axis} strokeDasharray="2 3" strokeOpacity={0.6} />}
+              {!originAxes && <RefLine orient="v" at={xScale(0)} from={0} to={innerH} />}
               {selectedFits.map(fit => <g key={fit.name + fit.method}>
                 <circle cx={xScale(0)} cy={yScale(fit.intercept)} r={4.5} fill="#fff" stroke={fit.color} strokeWidth={2} />
                 <text x={xScale(0) + 8} y={yScale(fit.intercept)} dy="0.35em" fill={fit.color} stroke="#fff" strokeWidth={3} paintOrder="stroke">{fit.label} b = {fmt(fit.intercept, 3)}</text>

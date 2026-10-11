@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { robustDomain } from '@/lib/axes'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Segmented, Select, Toggle } from '@/components/ChartFrame'
 import { Legend, toggleIn, useLegend } from '@/components/Legend'
@@ -82,8 +83,7 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   // a handful of genuinely negative values near the detection limit, either of
   // which otherwise squeezes the bulk of the data into a few pixels. The count
   // outside is reported below rather than silently dropped.
-  const hi = d3.quantile(all, 0.99) ?? (d3.max(all) ?? 1)
-  const lo = Math.min(0, d3.quantile(all, 0.01) ?? d3.min(all) ?? 0)
+  const [lo, hi] = robustDomain(all, 0.01, 0.99, { include: [0] }).domain
   const x = d3.scaleLinear().domain([lo, hi]).range([0, innerW]).nice()
   const [dLo, dHi] = x.domain() as [number, number]
   const nOutside = all.filter((v) => v < dLo || v > dHi).length

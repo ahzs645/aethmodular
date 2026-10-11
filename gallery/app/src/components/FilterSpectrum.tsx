@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { RefLine } from '@/components/RefLines'
 import { createPortal } from 'react-dom'
 import type { ReactNode } from 'react'
 import * as d3 from 'd3'
@@ -216,7 +217,7 @@ function SpectrumPlot({ spec, shown, expanded = false }: { spec: FilterSpectrumD
         <YAxis scale={ys} x={0} label="absorbance" gridWidth={iw} tickCount={4} labelX={-50} format={(v: number) => d3.format('~g')(v)} />
         <XAxis scale={xs} y={ih} label="wavenumber (cm⁻¹)" tickCount={6} labelDy={36} />
         <g clipPath={`url(#${clipId})`}>
-          {ys.domain()[0] < 0 && ys.domain()[1] > 0 && <line x1={0} x2={iw} y1={ys(0)} y2={ys(0)} stroke={INK.identity} strokeDasharray="3 3" />}
+          {ys.domain()[0] < 0 && ys.domain()[1] > 0 && <RefLine orient="h" at={ys(0)} from={0} to={iw} />}
           {shown.map(k => <path key={k} aria-label={`${NAME[k]} corrected spectrum`} d={line(k)} fill="none" stroke={COLOR[k]} strokeWidth={1.4} strokeOpacity={shown.length > 1 ? 0.85 : 1} />)}
         </g>
         <rect ref={hitRef} width={iw} height={ih} fill="transparent" pointerEvents={enabled ? 'all' : 'none'} style={{ cursor: enabled ? 'grab' : undefined, touchAction: enabled ? 'none' : 'auto' }} />

@@ -91,3 +91,27 @@ export function pairDomain(
 }
 
 export const inDomain = (d: PairDomain, x: number, y: number) => x >= d.x[0] && y >= d.y[0]
+
+/** A domain clipped to the bulk of the data, and how many finite values fall outside it. */
+export interface RobustDomain { domain: [number, number]; below: number; above: number }
+
+/**
+ * The one way charts clip wild tails (docs/gallery-chart-standards.md §1):
+ * the [lo, hi] quantiles of the finite values (0 and 1 mean the min and max),
+ * widened to `include` (values that must stay in frame, e.g. 0 or a target of 1),
+ * then capped by `limit`. `below`/`above` count the values left outside, so a
+ * chart can pin them to the edge and say how many it pinned.
+ *
+ *   robustDomain(ys, 0.02, 0.98)                              2–98 % bulk
+ *   robustDomain(ys, 0.02, 0.98, { include: [1], limit: [-15, 8] })
+ */
+export function robustDomain(values: Iterable<number | null | undefined>, lo = 0.02, hi = 0.98,
+  { include = [], limit, fallback = [0, 1] }: { include?: number[]; limit?: [number, number]; fallback?: [number, number] } = {}): RobustDomain {
+  const v = [...values].filter((x): x is number => x != null && Number.isFinite(x)).sort(d3.ascending)
+  if (!v.length) return { domain: [...fallback] as [number, number], below: 0, above: 0 }
+  let a = lo <= 0 ? v[0] : d3.quantileSorted(v, lo)!
+  let b = hi >= 1 ? v[v.length - 1] : d3.quantileSorted(v, hi)!
+  for (const x of include) { a = Math.min(a, x); b = Math.max(b, x) }
+  if (limit) { a = Math.max(a, limit[0]); b = Math.min(b, limit[1]) }
+  return { domain: [a, b], below: v.filter((x) => x < a).length, above: v.filter((x) => x > b).length }
+}

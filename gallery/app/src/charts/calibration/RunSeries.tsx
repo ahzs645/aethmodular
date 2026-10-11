@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { Marker } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Toggle } from '@/components/ChartFrame'
 import { Legend, toggleIn } from '@/components/Legend'
@@ -91,7 +92,7 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
               <YAxis scale={y} x={0} label="predicted EC (µg/m³)" gridWidth={innerW} />
               <XAxis scale={x as any} y={innerH} format={(d: Date) => d3.timeFormat('%b %Y')(d)} tickCount={7} />
               <line x1={0} x2={innerW} y1={y(0)} y2={y(0)} stroke={INK.negative} strokeWidth={1} strokeOpacity={0.7} />
-              {y.domain()[1] >= 8 && <line x1={0} x2={innerW} y1={y(8)} y2={y(8)} stroke={INK.muted} strokeDasharray="3 3" strokeOpacity={0.7} />}
+              {y.domain()[1] >= 8 && <Marker orient="h" at={y(8)} from={0} to={innerW} />}
               {showDeployed && shown.filter((p) => p.dep !== null).map((p) => (
                 <circle key={`d${p.i}`} cx={x(p.d)} cy={y(p.dep as number)} r={3} fill="none" stroke={INK.axis} strokeWidth={1} strokeOpacity={dim(DEPLOYED_LABEL)} />
               ))}

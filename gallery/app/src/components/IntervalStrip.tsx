@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { Marker } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { XAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -110,7 +111,7 @@ export function IntervalStrip({ blocks, panels, labelWidth = 220, rowHeight = 20
               {p.heading && <text x={0} y={-10} fontSize={12} fontWeight={600} fill={INK.text}>{p.heading}</text>}
               {p.reference != null && <line x1={x(p.reference)} x2={x(p.reference)} y1={-4} y2={ih + 4} stroke={INK.axis} strokeOpacity={0.7} />}
               {p.marker && <g>
-                <line x1={x(p.marker.value)} x2={x(p.marker.value)} y1={-6} y2={ih + 4} stroke={INK.text} strokeDasharray="3 3" />
+                <Marker orient="v" at={x(p.marker.value)} from={-6} to={ih + 4} />
                 <text x={x(p.marker.value)} y={-10} textAnchor="middle" fontSize={10} fontFamily={FONT.mono} fill={INK.muted}>{p.marker.label}</text>
               </g>}
               <XAxis scale={x} y={ih + 4} tickCount={6} label={p.label} labelDy={36} format={(v) => p.format ? p.format(+v) : String(+(+v).toFixed(2))} />

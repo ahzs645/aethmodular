@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { robustDomain } from '@/lib/axes'
 import * as d3 from 'd3'
 import { XAxis, YAxis } from '@/components/Axes'
 import { FONT, INK } from '@/lib/theme'
@@ -38,7 +39,7 @@ export function SpecCurvePlots(props: Props) {
   const stripH = choiceIndices.length * ROW_H + groups.length * GROUP_H
   const panelH = 48 + TOP_H + GAP + stripH + 60
   const ys = shown.map(i => file.value[i])
-  const qLo = d3.quantile(ys, 0.003) ?? metric.band[0], qHi = d3.quantile(ys, 0.997) ?? metric.band[1]
+  const [qLo, qHi] = robustDomain(ys, 0.003, 0.997, { fallback: metric.band }).domain
   const pad = 0.08 * Math.max(qHi - qLo, metric.band[1] - metric.band[0])
   // the intercept keeps its long-standing frame; other measures pad around the data and the target band
   const domain: [number, number] = metric.ref === 0 && metric.band[0] === -0.5 ? [qLo - 0.6, Math.max(2.6, qHi + 1.9)]

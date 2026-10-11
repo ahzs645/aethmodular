@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { RefLine } from '@/components/RefLines'
 import { useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
@@ -8,7 +9,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
-import { FONT, INK, BASELINE_COLOR } from '@/lib/theme'
+import { FONT, BASELINE_COLOR } from '@/lib/theme'
 import { fmt } from '@/lib/format'
 
 interface Score { cohort: string; method: string; RMSE: number; predictive_R2: number; k: number; n_train: number; n_test: number }
@@ -76,7 +77,7 @@ function Intervals({ rows }: { rows: Interval[] }) {
   const x = d3.scaleLinear().domain(extent).nice().range([0, iw])
   return <ChartFrame id="completed-vibes-intervals" title="Paired uncertainty · VIBES minus spline RMSE">
     <div ref={ref} className="chart-wrap"><svg width={w} height={ih+78} role="img" aria-label="Paired site-bootstrap RMSE intervals" fontFamily={FONT.family}><g transform={`translate(${left},20)`}>
-      <line x1={x(0)} x2={x(0)} y2={ih} stroke={INK.identity} strokeDasharray="5 4" />
+      <RefLine orient="v" at={x(0)} from={0} to={ih} />
       {rows.map((r, i) => <g key={r.method} transform={`translate(0,${22+i*44})`} onMouseEnter={e => tip.show(e,[NAMES[r.method], `ΔRMSE ${f(r.delta_rmse)} µg/filter`, `95% interval ${f(r.ci_low)} to ${f(r.ci_high)}`, `${r.n_sites} held-out sites; 2,000 paired resamples`])} onMouseLeave={tip.hide}>
         <text x={-10} textAnchor="end" dy=".35em" fontSize={11}>{NAMES[r.method]}</text><line x1={x(r.ci_low)} x2={x(r.ci_high)} stroke={COLORS[r.method]} strokeWidth={2} /><circle cx={x(r.delta_rmse)} r={5} fill={COLORS[r.method]} />
       </g>)}<XAxis scale={x} y={ih} label="RMSE difference (µg/filter); negative favours VIBES" /></g></svg>{tip.node}</div>
@@ -131,7 +132,7 @@ function InjectionRecovery({ data }: { data: Evidence }) {
   return <ChartFrame id="completed-vibes-injections" title="Known-signal preservation · synthetic additions">
     <div ref={ref} className="chart-wrap">{!shown.length?<Empty>Select a method in the legend.</Empty>:<svg width={w} height={345} role="img" aria-label="Synthetic spectral area recovery" fontFamily={FONT.family}><g transform="translate(64,20)">
       <YAxis scale={y} x={0} gridWidth={iw} label="Recovered / added spectral area"/><XAxis scale={x} y={ih} label="Synthetic addition amplitude (absorbance)"/>
-      <line x2={iw} y1={y(1)} y2={y(1)} stroke={INK.identity} strokeDasharray="5 4"/>
+      <RefLine orient="h" at={y(1)} from={0} to={iw} />
       {shown.map(m=>{const rows=data.injections.filter(r=>r.method===m);return <g key={m}><path d={d3.line<typeof rows[number]>().x(r=>x(r.amplitude)).y(r=>y(r.signal_area_recovery))(rows)??''} stroke={COLORS[m]} fill="none" strokeWidth={1.5}/>{rows.map(r=><circle key={r.amplitude} cx={x(r.amplitude)} cy={y(r.signal_area_recovery)} r={4} fill={COLORS[m]}/>)}</g>})}
       {shown.map((m,i)=><g key={m} transform={`translate(0,${ih+60+i*18})`}><line x2={18} stroke={COLORS[m]} strokeWidth={2}/><text x={25} dy=".35em" fontSize={11}>{NAMES[m]}</text></g>)}
     </g></svg>}<Legend items={methods.map(m=>({label:NAMES[m],color:COLORS[m],shape:'line' as const}))} {...legend.props}/></div>

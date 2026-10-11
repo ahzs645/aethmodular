@@ -1,4 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
+import { SEASON_SHADE } from '@/components/SeasonBands'
+import { robustDomain } from '@/lib/axes'
 import * as d3 from 'd3'
 import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
 import { ChartFrame, Empty, Note, Segmented, Toggle } from '@/components/ChartFrame'
@@ -93,8 +95,7 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
     const sorted = filled.map((c) => c.value).sort(d3.ascending)
     const interp = d3.interpolateRgbBasis(RAMP_SEQUENTIAL.slice(2))
     if (stat === 'Count') return d3.scaleSequential(interp).domain([0, Math.max(1, d3.max(sorted) ?? 1)]).clamp(true)
-    const lo = d3.quantile(sorted, 0.02) ?? 0
-    const hi = d3.quantile(sorted, 0.98) ?? 1
+    const [lo, hi] = robustDomain(sorted, 0.02, 0.98).domain
     return d3.scaleSequential(interp).domain([lo, hi === lo ? lo + 1 : hi]).clamp(true)
   }, [filled, stat])
 
@@ -163,7 +164,7 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
                   return (
                     <rect
                       key={p} x={i * cellW} y={-stripH - 6} width={Math.max(1, cellW - 0.6)} height={stripH}
-                      fill={s?.color ?? INK.neutral} rx={1}
+                      fill={s?.color ?? INK.neutral} fillOpacity={SEASON_SHADE.strip} rx={1}
                       onMouseEnter={(e) => tip.show(e, [p, `season: ${s?.name ?? '—'} (${calendarLabel(meta)})`])}
                       onMouseLeave={tip.hide}
                     />
@@ -175,7 +176,7 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
                 const s = seasonOf(c.period, c.site)
                 return (
                   <g key={`${c.site}|${c.period}`}>
-                  {seasonStrip && mixed && <rect x={xi * cellW} y={yi * rowH + rowH - 4} width={Math.max(1, cellW - 0.6)} height={3} fill={s?.color ?? INK.neutral} pointerEvents="none" />}
+                  {seasonStrip && mixed && <rect x={xi * cellW} y={yi * rowH + rowH - 4} width={Math.max(1, cellW - 0.6)} height={3} fill={s?.color ?? INK.neutral} fillOpacity={SEASON_SHADE.strip} pointerEvents="none" />}
                   <rect
                     x={xi * cellW} y={yi * rowH}
                     width={Math.max(1, cellW - 0.6)} height={rowH - 4}

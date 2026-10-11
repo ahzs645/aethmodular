@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { Marker } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
@@ -60,9 +61,9 @@ export function CohortComposition({ info, label }: { info: CohortInfo | undefine
                   {lg.show(COHORT) && <rect x={x(cx) - bw / 2} y={y(c.cohort[i] / cohortMax)} width={Math.max(0.5, bw - 0.5)} height={innerH - y(c.cohort[i] / cohortMax)} fill={INK.accent} fillOpacity={0.55 * lg.dim(COHORT, 0.2)} pointerEvents="none" />}
                 </g>
               ))}
-              <line x1={x(c.addis_marker)} x2={x(c.addis_marker)} y1={0} y2={innerH} stroke={INK.negative} strokeWidth={1.5} strokeDasharray="5 3" />
+              <Marker orient="v" at={x(c.addis_marker)} from={0} to={innerH} color={INK.negative} />
               <text x={x(c.addis_marker) + 4} y={12} fontSize={10} fill={INK.negative} fontFamily={FONT.mono}>Addis {c.addis_marker}</text>
-              <line x1={x(c.pool_median)} x2={x(c.pool_median)} y1={0} y2={innerH} stroke={INK.axis} strokeWidth={1} strokeDasharray="2 3" />
+              <Marker orient="v" at={x(c.pool_median)} from={0} to={innerH} />
               <text x={x(c.pool_median) + 4} y={26} fontSize={10} fill={INK.muted} fontFamily={FONT.mono}>pool median {c.pool_median}</text>
             </g>
           </svg>

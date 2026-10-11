@@ -1,4 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
+import { robustDomain } from '@/lib/axes'
+import { Marker } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Select, Toggle } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
@@ -218,8 +220,7 @@ function SweepPanel({ series, metric, height, width, innerW, x, calib, yLabel, d
   // Tiny cohorts (cutoff ≈ 100) produce wild fits that would squash the
   // readable range into a few pixels; the axis follows the 2–98 % bulk and the
   // extremes are pinned to the edge, with a count below the chart.
-  const sortedY = all.map((p) => p.y).sort(d3.ascending)
-  const yExt: [number, number] = [d3.quantile(sortedY, 0.02) ?? 0, d3.quantile(sortedY, 0.98) ?? 1]
+  const yExt = robustDomain(all.map((p) => p.y), 0.02, 0.98).domain
   const slope = !isCvMetric(metric) && isSlopeMetric(metric)
   const intercept = !isCvMetric(metric) && isInterceptMetric(metric)
   const yLo = intercept ? Math.min(0, yExt[0]) : slope ? Math.min(0.5, yExt[0]) : Math.min(0, yExt[0])
@@ -240,7 +241,7 @@ function SweepPanel({ series, metric, height, width, innerW, x, calib, yLabel, d
           {slope && (
             <rect x={0} y={Math.max(0, y(calib.slope_box[1]))} width={innerW} height={Math.max(0, Math.min(innerH, y(calib.slope_box[0])) - Math.max(0, y(calib.slope_box[1])))} fill={INK.accent} fillOpacity={0.06} />
           )}
-          {(metric === CV_METRIC || metric === 'ho') && <line x1={0} x2={innerW} y1={y(calib.heldout_floor)} y2={y(calib.heldout_floor)} stroke={INK.axis} strokeDasharray="4 3" />}
+          {(metric === CV_METRIC || metric === 'ho') && <Marker orient="h" at={y(calib.heldout_floor)} from={0} to={innerW} />}
           <YAxis scale={y} x={0} label={yLabel} gridWidth={innerW} />
           <XAxis scale={x} y={innerH} label={X_LABELS[axis]} />
           {(intercept || slope) && (
@@ -248,7 +249,7 @@ function SweepPanel({ series, metric, height, width, innerW, x, calib, yLabel, d
           )}
           {locked.filter((l) => x(l.x) >= 0 && x(l.x) <= innerW).map((l, i) => (
             <g key={l.x}>
-              <line x1={x(l.x)} x2={x(l.x)} y1={0} y2={innerH} stroke={l.color} strokeOpacity={0.6} strokeDasharray="3 3" />
+              <Marker orient="v" at={x(l.x)} from={0} to={innerH} color={l.color} />
               <text x={Math.min(innerW - 5, x(l.x) + 4)} y={12 + i * 12} textAnchor={x(l.x) > innerW * 0.7 ? 'end' : 'start'} fontSize={10} fill={l.color} fontFamily={FONT.mono}>{l.label}</text>
             </g>
           ))}

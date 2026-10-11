@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { SeasonBands, timeSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { Legend, toggleIn, useLegend } from '@/components/Legend'
@@ -79,22 +80,7 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
 
   const seasonBands = useMemo(() => {
     if (!rows.length) return []
-    const [d0, d1] = x.domain() as [Date, Date]
-    const monthToSeason = new Map<number, string>()
-    for (const s of meta.seasons) for (const m of s.months) monthToSeason.set(m, s.color)
-    const bands: { x: number; w: number; color: string }[] = []
-    let cur = new Date(d0.getFullYear(), d0.getMonth(), 1)
-    while (cur < d1) {
-      const next = new Date(cur.getFullYear(), cur.getMonth() + 1, 1)
-      const c = monthToSeason.get(cur.getMonth() + 1)
-      if (c) {
-        const a = Math.max(0, x(cur))
-        const b = Math.min(innerW, x(next))
-        if (b > a) bands.push({ x: a, w: b - a, color: c })
-      }
-      cur = next
-    }
-    return bands
+    return timeSeasonBands(x, meta.seasons, innerW)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, innerW, meta.seasons])
 
@@ -118,9 +104,7 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
         ) : (
           <svg width={width} height={height} className="animated">
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-              {seasonBands.map((b, i) => (
-                <rect key={i} x={b.x} y={-6} width={b.w} height={6} fill={b.color} fillOpacity={0.55} />
-              ))}
+              <SeasonBands bands={seasonBands} height={innerH} strip />
               <YAxis
                 scale={y}
                 x={0}

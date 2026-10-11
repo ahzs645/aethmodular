@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Marker } from '@/components/RefLines'
 import { dataUrl, useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
@@ -83,7 +84,7 @@ function SelectionChart({data}:{data:FollowupData}) {
   const y=d3.scaleBand().domain(MODEL_ORDER).range([0,ih]).padding(.26)
   return <ChartFrame title="Common-test calibration selection" tip={<p>The 500-filter analog memberships use AIRSpec spectral similarity to Addis targets, with masks applied to ranking only; every PLS fit retains 2,002 channels. The lowest-OC/EC membership uses historical carbon labels. All intervals are exploratory site-cluster intervals conditional on the fits.</p>} controls={<Select label="Correction method" value={method} options={['AIRSpec','VIBES']} onChange={v=>setMethod(v as BaselineMethod)}/>} subtitle="All fits scored against the same 2,327 IMPROVE TOR-labelled outer-site filters; lower RMSE is better." provenance={data.background_rank === 70 ? 'Rank-70 migration CLI · newly fitted EC models on completed corrections' : 'Executed CLI notebook · EC fits on archived corrections'}>
     <div ref={ref} className="chart-wrap"><svg width={w} height={ih+100} role="img" aria-label={`${method} calibration selection RMSE on the common test`}><g transform={`translate(${left},23)`} fontFamily={FONT.family}>
-      <line x1={x(baseline.RMSE)} x2={x(baseline.RMSE)} y2={ih} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="4 3"/>
+      <Marker orient="v" at={x(baseline.RMSE)} from={0} to={ih} />
       {rows.map(r=><g key={r.model} transform={`translate(0,${y(r.model)})`}>
         <text x={-11} y={y.bandwidth()/2+4} textAnchor="end" fontSize={11} fill={INK.text}>{MODEL_NAME[r.model]}</text>
         <rect y={2} width={x(r.RMSE)} height={Math.max(2,y.bandwidth()-4)} rx={2} fill={methodColor(method, data.background_rank)} fillOpacity={r.model==='full_pool'?1:.77} onMouseEnter={e=>tip.show(e,[`${MODEL_NAME[r.model]} · ${method}`,`RMSE ${f(r.RMSE)}; MAE ${f(r.MAE)} µg/filter`,`${r.n_train} training filters / ${r.n_train_sites} sites; PLS k=${r.components}`,`ΔRMSE vs full-pool AIRSpec ${f(r.delta_RMSE_vs_full_AIRSpec)} [${f(r.delta_RMSE_CI_low)}, ${f(r.delta_RMSE_CI_high)}]`])} onMouseLeave={tip.hide}></rect>

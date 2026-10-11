@@ -1,4 +1,6 @@
 import { monthBlocks } from '@/lib/regressionCI'
+import { robustDomain } from '@/lib/axes'
+import { Marker, RefLine } from '@/components/RefLines'
 import { regression } from '@/lib/stats'
 import { EstimatorViews, FIT_STYLE, useEstimator, useRegressions, fitsFor } from '@/lib/regressionPrefs'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -456,7 +458,7 @@ function BaselineCompare({ data }: { data: MeetingData }) {
         <g transform={`translate(${m.left},${m.top})`}>
           <YAxis scale={y} x={0} label="Absorbance" tickCount={4} labelX={-46} format={(v) => String(+v.toFixed(3))} />
           <XAxis scale={x} y={ih} label="Wavenumber (cm⁻¹)" tickCount={6} labelDy={36} />
-          <line x1={0} x2={iw} y1={y(0)} y2={y(0)} stroke={INK.identity} strokeDasharray="3 3" />
+          <RefLine orient="h" at={y(0)} from={0} to={iw} />
           {lines.map((l) => (
             <path key={l.name} aria-label={l.name} d={d3.line<number>().defined((_, i) => l.wn[i] >= lo && Number.isFinite(l.v[i])).x((_, i) => x(l.wn[i])).y((_, i) => y(l.v[i]))(Array.from(l.v)) ?? ''}
               fill="none" stroke={l.color} strokeWidth={1.5} />
@@ -801,7 +803,7 @@ function MacEnvelope({ data }: { data: MeetingData }) {
           <g transform={`translate(${m.left},${m.top})`}>
             <YAxis scale={y} x={0} label="Share of filters" tickCount={4} gridWidth={iw} labelX={-46} format={(v) => (+v).toFixed(2)} />
             <XAxis scale={x as any} y={ih} label="Fabs / TOR EC (m²/g)" labelDy={38} tickCount={6} format={(v) => String(+(+v).toPrecision(2))} />
-            <line x1={x(10)} x2={x(10)} y1={0} y2={ih} stroke={INK.fit} strokeDasharray="3 3" />
+            <Marker orient="v" at={x(10)} from={0} to={ih} />
             <text x={x(10) + 4} y={10} fontSize={11}>MAC 10</text>
             {series.map((s) => <path key={s.key} d={path(hst[s.key] ?? [])} fill="none" stroke={s.color} strokeWidth={s.key === 'pool' ? 3 : 2} />)}
             {series.map((s) => s.med != null && <line key={s.key + 'm'} x1={x(s.med)} x2={x(s.med)} y1={ih} y2={ih - 12} stroke={s.color} strokeWidth={3} />)}
@@ -1005,8 +1007,8 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
   one('deployed|SPARTAN|current SPARTAN calibration', '#b91c1c', 'x', 'Current SPARTAN calibration')
 
   const xs = pts.map((p) => p.x).filter(Number.isFinite), ys = pts.map((p) => p.y).filter(Number.isFinite)
-  const xDom = [Math.min(0, d3.quantile(xs.sort(d3.ascending), 0.005) ?? 0), Math.max(1.5, d3.quantile(xs, 0.995) ?? 2)]
-  const yDom = [Math.min(-1, d3.quantile(ys.sort(d3.ascending), 0.005) ?? -5), Math.max(1, d3.quantile(ys, 0.995) ?? 1)]
+  const xDom = robustDomain(xs, 0.005, 0.995, { include: [0, 1.5], fallback: [0, 2] }).domain
+  const yDom = robustDomain(ys, 0.005, 0.995, { include: [-1, 1], fallback: [-5, 1] }).domain
   const m = { top: 20, right: 20, bottom: 50, left: 64 }
   const side = Math.max(300, Math.min((width || 600) - m.left - m.right, 560))
   const x = d3.scaleLinear().domain(xDom).range([0, side]).nice()
@@ -1036,8 +1038,8 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
             <rect x={x(0.8)} width={x(1.2) - x(0.8)} y={y(1)} height={y(-1) - y(1)} fill={INK.good} fillOpacity={0.1} />
             <YAxis scale={y} x={0} label="Test set Deming intercept (µg/m³)" gridWidth={side} tickCount={6} labelX={-46} />
             <XAxis scale={x} y={side} label="Test set Deming slope" tickCount={6} labelDy={38} />
-            <line x1={x(1)} x2={x(1)} y1={0} y2={side} stroke={INK.identity} strokeDasharray="4 3" />
-            <line x1={0} x2={side} y1={y(0)} y2={y(0)} stroke={INK.identity} strokeDasharray="4 3" />
+            <RefLine orient="v" at={x(1)} from={0} to={side} />
+            <RefLine orient="h" at={y(0)} from={0} to={side} />
             {showCI && pts.filter(p => p.ci).map((p, i) => <g key={`ci-${i}`} data-fit-uncertainty="saved-coefficients" stroke={p.color} strokeOpacity={0.55} pointerEvents="none">
               <line x1={cx(p.ci![0])} x2={cx(p.ci![1])} y1={cy(p.y)} y2={cy(p.y)} />
               <line x1={cx(p.x)} x2={cx(p.x)} y1={cy(p.ci![2])} y2={cy(p.ci![3])} />

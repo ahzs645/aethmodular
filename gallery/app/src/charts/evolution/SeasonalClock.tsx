@@ -1,4 +1,5 @@
 import { useId, useMemo, useRef, useState } from 'react'
+import { seasonShade } from '@/components/SeasonBands'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { Legend, toggleIn } from '@/components/Legend'
@@ -197,7 +198,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
               {d3.range(1, 13).map((m) => {
                 const s = seasonOf(m)
                 if (!s) return null
-                return <path key={m} d={arc({ r0: Math.max(0, hole - 6), r1: outerR + 4, a0: monthStart(m), a1: monthStart(m + 1) }) ?? ''} fill={s.color} fillOpacity={seasonHover === null ? 0.12 : seasonHover === s.name ? 0.28 : 0.04} pointerEvents="none" />
+                return <path key={m} d={arc({ r0: Math.max(0, hole - 6), r1: outerR + 4, a0: monthStart(m), a1: monthStart(m + 1) }) ?? ''} fill={s.color} fillOpacity={seasonShade(s.name, seasonHover)} pointerEvents="none" />
               })}
               {/* month spokes */}
               {d3.range(1, 13).map((m) => {

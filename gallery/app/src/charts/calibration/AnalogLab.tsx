@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { IdentityLine } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
@@ -124,7 +125,7 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
                 <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
                   <YAxis scale={ry} x={0} label="alternative rank" gridWidth={S} tickCount={5} />
                   <XAxis scale={rx} y={S} label="committed rank" tickCount={5} />
-                  <line x1={rx(0)} y1={ry(0)} x2={rx(lab.n)} y2={ry(lab.n)} stroke={INK.identity} strokeDasharray="5 4" />
+                  <IdentityLine x1={rx(0)} y1={ry(0)} x2={rx(lab.n)} y2={ry(lab.n)} />
                   <rect x={0} y={ry(cutoff)} width={rx(cutoff)} height={S - ry(cutoff)} fill={cohortColor('analogs')} fillOpacity={0.08} />
                   {rankPts.map((p, i) => lg.show(cls(p.c)) && (
                     <circle key={i} cx={rx(p.c)} cy={ry(p.a)} r={1.6} fill={p.c < cutoff ? cohortColor('analogs') : INK.muted} fillOpacity={(p.c < cutoff ? 0.8 : 0.3) * lg.dim(cls(p.c))} pointerEvents="none" />

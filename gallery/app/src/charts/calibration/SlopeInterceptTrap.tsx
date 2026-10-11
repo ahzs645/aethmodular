@@ -1,4 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
+import { robustDomain } from '@/lib/axes'
+import { RefLine } from '@/components/RefLines'
 import { EstimatorName } from '@/lib/regressionPrefs'
 import * as d3 from 'd3'
 import { hexbin as d3Hexbin } from 'd3-hexbin'
@@ -65,10 +67,11 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
   // clip the wild tails so the box is readable; count what is off-canvas
   const xs = rows.map(mOf)
   const ys = rows.map(bOf)
-  const xHi = Math.min(d3.quantile(xs.slice().sort(d3.ascending), 0.98) ?? 3, 4)
-  const yLo = Math.max(d3.quantile(ys.slice().sort(d3.ascending), 0.02) ?? -12, -15)
+  const xHi = robustDomain(xs, 0, 0.98, { limit: [-Infinity, 4], fallback: [0, 3] }).domain[1]
+  const yBulk = robustDomain(ys, 0.02, 0.98, { include: [1], limit: [-15, 8], fallback: [-12, 1] }).domain
+  const yLo = yBulk[0]
   const x = d3.scaleLinear().domain([0, Math.max(1.3, xHi)]).range([0, innerW]).nice()
-  const yHi = Math.min(Math.max(1, d3.quantile(ys.slice().sort(d3.ascending), 0.98) ?? 1), 8)
+  const yHi = yBulk[1]
   const y = d3.scaleLinear().domain([Math.min(-1, yLo), yHi]).range([innerH, 0]).nice()
   const clampX = (v: number) => Math.max(x.domain()[0], Math.min(x.domain()[1], v))
   const clampYv = (v: number) => Math.max(y.domain()[0], Math.min(y.domain()[1], v))
@@ -112,7 +115,7 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
               <YAxis scale={y} x={0} label={`Test set Deming intercept (${calib.targets[target]?.site ?? target}, µg/m³)`} gridWidth={innerW} />
               <XAxis scale={x} y={innerH} label={`Test set Deming slope (${calib.targets[target]?.site ?? target})`} />
               <line x1={0} x2={innerW} y1={y(0)} y2={y(0)} stroke={INK.axis} />
-              <line x1={x(1)} x2={x(1)} y1={0} y2={innerH} stroke={INK.axis} strokeDasharray="4 3" />
+              <RefLine orient="v" at={x(1)} from={0} to={innerH} />
               {view === 'Density hex' && hexes.map((h, i) => (
                 <path
                   key={i} d={h.path} transform={`translate(${h.bin.x},${h.bin.y})`}

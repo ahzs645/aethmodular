@@ -26,3 +26,14 @@ test('intercept view includes every selected intercept, including those outside 
     assert.equal(d.dropped, 0)
   }
 })
+
+test('robustDomain clips to quantiles, keeps required values and counts what it leaves out', async () => {
+  const { robustDomain } = await import('./axes.ts')
+  const v = Array.from({ length: 101 }, (_, i) => i)          // 0..100
+  assert.deepEqual(robustDomain(v, 0.02, 0.98).domain, [2, 98])
+  assert.deepEqual(robustDomain(v, 0.02, 0.98), { domain: [2, 98], below: 2, above: 2 })
+  assert.deepEqual(robustDomain(v, 0, 1).domain, [0, 100])
+  assert.deepEqual(robustDomain(v, 0.5, 0.5, { include: [0] }).domain, [0, 50])
+  assert.deepEqual(robustDomain(v, 0, 1, { limit: [10, 40] }), { domain: [10, 40], below: 10, above: 60 })
+  assert.deepEqual(robustDomain([null, NaN, undefined], 0.02, 0.98, { fallback: [-12, 3] }).domain, [-12, 3])
+})

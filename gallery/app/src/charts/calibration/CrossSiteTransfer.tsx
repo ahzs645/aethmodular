@@ -1,4 +1,5 @@
 import { RegressionBand } from '@/components/RegressionOverlay'
+import { IdentityLine, RefLine } from '@/components/RefLines'
 import { confidence, monthBlocks } from '@/lib/regressionCI'
 import { regression } from '@/lib/stats'
 import { demingLambda } from './seasonView'
@@ -168,7 +169,7 @@ function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel }: {
                     <rect width={S} height={S} fill="none" stroke={flagged ? '#f59e0b' : 'none'} strokeDasharray="4 3" />
                     <YAxis scale={y} x={0} gridWidth={S} tickCount={4} label={k % cols === 0 ? 'predicted EC (µg/m³)' : undefined} />
                     <XAxis scale={x} y={S} tickCount={4} />
-                    <line x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} stroke={INK.identity} strokeDasharray="5 4" />
+                    <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />
                     {pts[k].map((p) => (
                       <circle
                         key={p.i} cx={x(p.x)} cy={y(p.y)} r={2.6} fill={color} fillOpacity={0.45}
@@ -302,7 +303,7 @@ function OrderingAcrossCalibrations({ runs, sites, presetKey, mac, onPick }: {
           <g transform={`translate(${left},12)`}>
             <XAxis scale={x} y={ih} label={`Test set ${metric === 'R²' ? 'R²' : `Deming ${metric}`}${metric === 'intercept' ? ' (µg/m³)' : ''} · MAC ${mac}`} />
             {x.ticks(6).map((t) => <line key={t} x1={x(t)} x2={x(t)} y1={0} y2={ih} stroke={INK.grid} />)}
-            {ref !== null && <line x1={x(ref)} x2={x(ref)} y1={0} y2={ih} stroke={INK.axis} strokeDasharray="4 3" />}
+            {ref !== null && <RefLine orient="v" at={x(ref)} from={0} to={ih} />}
             {sites.map((s) => {
               const t = runs.targets[s]
               return (

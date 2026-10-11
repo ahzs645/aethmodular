@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { robustDomain } from '@/lib/axes'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Segmented, Toggle } from '@/components/ChartFrame'
 import { XAxis } from '@/components/Axes'
@@ -72,9 +73,7 @@ export function Ridgeline({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   const height = innerH + margin.top + margin.bottom
 
   const allVals = groups.flatMap((g) => g.values)
-  const sorted = allVals.slice().sort(d3.ascending)
-  const lo = clip ? (d3.quantile(sorted, 0.01) ?? d3.min(sorted) ?? 0) : (d3.min(sorted) ?? 0)
-  const hi = clip ? (d3.quantile(sorted, 0.99) ?? d3.max(sorted) ?? 1) : (d3.max(sorted) ?? 1)
+  const [lo, hi] = clip ? robustDomain(allVals, 0.01, 0.99).domain : robustDomain(allVals, 0, 1).domain
   const x = d3.scaleLinear().domain([lo, hi]).range([0, innerW]).nice()
   const [dLo, dHi] = x.domain() as [number, number]
   const nOutside = allVals.filter((v) => v < dLo || v > dHi).length

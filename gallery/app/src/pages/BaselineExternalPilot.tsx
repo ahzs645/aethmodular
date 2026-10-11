@@ -1,4 +1,5 @@
 import { monthBlocks } from '@/lib/regressionCI'
+import { IdentityLine } from '@/components/RefLines'
 import { dataUrl, useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
 import { RegressionLines, RegressionReadout } from '@/components/RegressionOverlay'
@@ -282,7 +283,7 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
       {x.ticks(optical ? 5 : 6).map(v => <g key={'x' + v}>{optical && <line x1={x(v)} x2={x(v)} y1={plot.t} y2={plot.b} stroke="#E8EBEF"/>}<line x1={x(v)} x2={x(v)} y1={plot.b} y2={plot.b + 4} stroke="#5B6470"/><text x={x(v)} y={plot.b + 21} textAnchor="middle" fontSize={10} fill="#5B6470">{optical ? fmt(v, 1) : fmt(v, 3)}</text></g>)}
       <line x1={plot.l} x2={plot.r} y1={plot.b} y2={plot.b} stroke="#5B6470"/>
       {optical && <line x1={plot.l} x2={plot.l} y1={plot.t} y2={plot.b} stroke="#5B6470"/>}
-      {optical && <line x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} stroke={INK.identity} strokeWidth={1.2} strokeDasharray="5 4"/>}
+      {optical && <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />}
       {points.map(r => <circle key={r.site + r.id} cx={x(r.xv)} cy={y(r.yv)} r={r.site === 'Bishoftu' ? 5 : 3.4} fill={r.site === 'Bishoftu' ? '#C49442' : '#2C6E9E'} fillOpacity={r.site === 'Bishoftu' ? .9 : .45} stroke={r.site === 'Bishoftu' ? '#755A24' : 'none'} strokeWidth={.7} style={{ cursor: 'pointer' }} onClick={() => hl.openRecord(siteRecord(r, title, mac))}><title>{`${r.site} ${r.id} · ${r.date} · lot ${r.lot ?? 'unknown'} · ${optical ? `Fabs ${fmt(r.Fabs!, 2)} Mm⁻¹ (÷ MAC ${mac} = ${fmt(r.xv, 3)} µg/m³); ${method} FTIR EC ${fmt(r.yv, 3)} µg/m³` : `${method} local 2920 ${fmt(r.xv, 5)}, local 1617 ${fmt(r.yv, 5)} absorbance`}`}</title></circle>)}
       <g transform={`translate(${plot.l},${plot.t})`}>{fitGroups.map(group => <g key={group.name} data-fit-site={group.name}>
         <RegressionLines stats={group.stats} color={group.color} x={v => x(v) - plot.l} y={v => y(v) - plot.t} domain={group.domain} width={plot.r - plot.l} height={plot.b - plot.t}/>

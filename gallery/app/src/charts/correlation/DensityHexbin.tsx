@@ -1,4 +1,5 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
+import { IdentityLine } from '@/components/RefLines'
 import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
 import { fitsFor, useRegressions, FitGroupingControl } from '@/lib/regressionPrefs'
 import { groupedRegressions } from '@/lib/siteRegression'
@@ -144,7 +145,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
               ))}
 
               <g clipPath={`url(#${clipId})`} pointerEvents="none">
-                {opts.identity && <line x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="5 4" />}
+                {opts.identity && <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />}
                 {stats && (
                   <>
                     {grouping === 'site' ? <RegressionGroupLines groups={fitGroups} x={x} y={y} width={innerW} height={innerH} />

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
+import { styleBrush } from '@/lib/brush'
 import * as d3 from 'd3'
 import { INK } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -94,8 +95,7 @@ export function DateBrush({
         onChange([iso(d0), iso(d1)])
       })
     sel.call(brush)
-    sel.selectAll('.selection').attr('fill', INK.accent).attr('fill-opacity', 0.14).attr('stroke', INK.accent)
-    sel.selectAll('.handle').attr('fill', INK.accent).attr('fill-opacity', 0.6)
+    styleBrush(sel)
     if (range) {
       const a = x(new Date(range[0] + 'T00:00:00'))
       const b = x(new Date(range[1] + 'T00:00:00'))

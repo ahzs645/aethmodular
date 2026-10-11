@@ -1,4 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
+import { robustDomain } from '@/lib/axes'
+import { Marker } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
@@ -80,7 +82,7 @@ export function SpectraDumbbell({ calib, selected, onSelect }: { calib: CalibFil
   const all = vis.flatMap((r) => r.pts.map((p) => p.v)).sort(d3.ascending)
   // tiny cohorts (cutoff ≈ 100) fit wildly; the axis follows the 2–98 % bulk
   // and extremes are pinned hollow at the edge, as in the cutoff sweep
-  const ext: [number, number] = all.length ? [d3.quantile(all, 0.02) ?? 0, d3.quantile(all, 0.98) ?? 1] : [0, 1]
+  const ext = robustDomain(all, 0.02, 0.98).domain
   const lo = isInterceptMetric(metric) ? Math.min(0, ext[0]) : isSlopeMetric(metric) ? Math.min(0.5, ext[0]) : Math.min(0, ext[0])
   const hi = isInterceptMetric(metric) ? Math.max(0, ext[1]) : isSlopeMetric(metric) ? Math.max(1.2, ext[1]) : Math.max(1, ext[1])
   const x = d3.scaleLinear().domain([lo, hi]).range([0, innerW]).nice()
@@ -114,7 +116,7 @@ export function SpectraDumbbell({ calib, selected, onSelect }: { calib: CalibFil
               {isSlopeMetric(metric) && (
                 <rect x={Math.max(0, x(calib.slope_box[0]))} y={0} width={Math.max(0, Math.min(innerW, x(calib.slope_box[1])) - Math.max(0, x(calib.slope_box[0])))} height={innerH} fill={INK.accent} fillOpacity={0.06} />
               )}
-              {metric === 'held-out TOR R²' && <line x1={x(calib.heldout_floor)} x2={x(calib.heldout_floor)} y1={0} y2={innerH} stroke={INK.axis} strokeDasharray="4 3" />}
+              {metric === 'held-out TOR R²' && <Marker orient="v" at={x(calib.heldout_floor)} from={0} to={innerH} />}
               {x.ticks(6).map((t) => (
                 <line key={t} x1={x(t)} x2={x(t)} y1={0} y2={innerH} stroke={INK.grid} />
               ))}

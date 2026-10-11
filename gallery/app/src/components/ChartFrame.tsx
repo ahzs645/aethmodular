@@ -1,6 +1,6 @@
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { downloadPng, downloadSvg } from '@/lib/export'
+import { composePanel, downloadPng, downloadSvg } from '@/lib/export'
 import { usePrefs } from '@/lib/prefs'
 
 /**
@@ -43,7 +43,8 @@ export function ChartFrame({
   const { explain } = usePrefs()
   const [info, setInfo] = useState(explain)
   useEffect(() => setInfo(explain), [explain])
-  const firstSvg = () => ref.current?.querySelector('svg') ?? null
+  // the whole figure (every facet and the legend), not just the first <svg>
+  const figure = () => (ref.current ? composePanel(ref.current) : null)
 
   const dash = title.indexOf(' — ')
   const short = dash > 0 ? title.slice(0, dash) : title
@@ -81,10 +82,10 @@ export function ChartFrame({
           </button>
           {exportable && (
             <>
-              <button type="button" className="btn quiet" title="Download this chart as SVG (editable, for Illustrator / Inkscape)" onClick={() => { const s = firstSvg(); if (s) downloadSvg(s, short) }}>
+              <button type="button" className="btn quiet" title="Download the whole figure (every facet and the legend) as SVG, editable in Illustrator / Inkscape" onClick={() => { const s = figure(); if (s) downloadSvg(s, short) }}>
                 SVG
               </button>
-              <button type="button" className="btn quiet" title="Download this chart as a 2× PNG (for a slide)" onClick={() => { const s = firstSvg(); if (s) downloadPng(s, short) }}>
+              <button type="button" className="btn quiet" title="Download the whole figure (every facet and the legend) as a 2× PNG, for a slide" onClick={() => { const s = figure(); if (s) downloadPng(s, short) }}>
                 PNG
               </button>
             </>

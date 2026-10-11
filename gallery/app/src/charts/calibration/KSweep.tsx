@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react'
+import { Marker } from '@/components/RefLines'
 import { FIT_STYLE, useEstimator, estimatorText } from '@/lib/regressionPrefs'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
@@ -99,10 +100,10 @@ export function KSweep({ calib, selected, onSelect }: { calib: CalibFile; select
                       {panel.id === 'slope' && (
                         <rect x={0} y={Math.max(0, y(calib.slope_box[1]))} width={iw} height={Math.max(0, Math.min(ih, y(calib.slope_box[0])) - Math.max(0, y(calib.slope_box[1])))} fill={INK.accent} fillOpacity={0.06} />
                       )}
-                      {panel.id === 'r2' && <line x1={0} x2={iw} y1={y(calib.heldout_floor)} y2={y(calib.heldout_floor)} stroke={INK.good} strokeDasharray="2 3" strokeOpacity={0.6} />}
+                      {panel.id === 'r2' && <Marker orient="h" at={y(calib.heldout_floor)} from={0} to={iw} color={INK.good} />}
                       {autoK !== null && (
                         <g>
-                          <line x1={x(autoK)} x2={x(autoK)} y1={0} y2={ih} stroke={INK.muted} strokeDasharray="3 3" />
+                          <Marker orient="v" at={x(autoK)} from={0} to={ih} />
                           <text x={x(autoK) + 3} y={-6} fontSize={9.5} fill={INK.muted} fontFamily={FONT.mono}>rule: {autoK}</text>
                         </g>
                       )}

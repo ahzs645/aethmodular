@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { SeasonBands, timeSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented, Toggle } from '@/components/ChartFrame'
 import { Legend, toggleIn } from '@/components/Legend'
@@ -96,22 +97,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
   const mixed = mixedCalendars(meta)
   const bandsFor = (x: d3.ScaleTime<number, number>, site: string | null) => {
     if (!seasonShading || (mixed && !site)) return []
-    const [d0, d1] = x.domain() as [Date, Date]
-    const bands: { x: number; w: number; color: string; name: string }[] = []
-    const monthToSeason = new Map<number, { name: string; color: string }>()
-    for (const s of seasonsForSite(meta, site)) for (const m of s.months) monthToSeason.set(m, s)
-    let cur = new Date(d0.getFullYear(), d0.getMonth(), 1)
-    while (cur < d1) {
-      const next = new Date(cur.getFullYear(), cur.getMonth() + 1, 1)
-      const c = monthToSeason.get(cur.getMonth() + 1)
-      if (c) {
-        const x0 = Math.max(0, x(cur))
-        const x1 = Math.min(innerW, x(next))
-        if (x1 > x0) bands.push({ x: x0, w: x1 - x0, color: c.color, name: c.name })
-      }
-      cur = next
-    }
-    return bands
+    return timeSeasonBands(x, seasonsForSite(meta, site), innerW)
   }
 
   return (
@@ -158,9 +144,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
                   >
                     {/* catches pointer moves in the empty parts of the panel */}
                     <rect x={0} y={0} width={innerW} height={innerH} fill="transparent" />
-                    {bandsFor(x, panel.title).map((b, i) => (
-                      <rect key={i} x={b.x} y={0} width={b.w} height={innerH} fill={b.color} fillOpacity={seasonHover === null ? 0.1 : seasonHover === b.name ? 0.24 : 0.03} pointerEvents="none" />
-                    ))}
+                    <SeasonBands bands={bandsFor(x, panel.title)} height={innerH} hover={seasonHover} />
                     <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} tickCount={layout === 'Overlay' ? 6 : 4} />
                     <XAxis scale={x as any} y={innerH} format={(d: Date) => d3.timeFormat('%b %Y')(d)} tickCount={7} />
                     {panel.series.map((s) => (

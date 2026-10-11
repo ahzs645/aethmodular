@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { SeasonBands, monthSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Toggle } from '@/components/ChartFrame'
 import { Legend, toggleIn } from '@/components/Legend'
@@ -87,14 +88,7 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
         ) : (
           <svg width={width} height={height} className="animated">
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-              {!mixed && d3.range(1, 13).map((m) => {
-                const s = seasonOf(m)
-                if (!s) return null
-                const step = innerW / 11
-                const x0 = Math.max(0, (x(m) ?? 0) - step / 2)
-                const x1 = Math.min(innerW, (x(m) ?? 0) + step / 2)
-                return <rect key={m} x={x0} y={0} width={Math.max(0, x1 - x0)} height={innerH} fill={s.color} fillOpacity={seasonHover === null ? 0.08 : seasonHover === s.name ? 0.22 : 0.03} />
-              })}
+              {!mixed && <SeasonBands bands={monthSeasonBands((m) => x(m) ?? 0, (m) => seasonOf(m), innerW / 11, innerW)} height={innerH} hover={seasonHover} />}
               <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} />
               <XAxis scale={x as any} y={innerH} format={(m: number) => MONTHS[m - 1]} tickCount={12} />
 

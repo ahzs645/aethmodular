@@ -1,4 +1,5 @@
 import { useId, useMemo, useRef, useState } from 'react'
+import { IdentityLine } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { seasonsForSite } from '@/siteSeasons'
 import { ChartFrame, Empty, Segmented, Toggle } from '@/components/ChartFrame'
@@ -8,7 +9,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { pairDomain, type AxesOpts } from '@/lib/axes'
 import { fmt } from '@/lib/stats'
-import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
+import { MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -124,7 +125,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
               <XAxis scale={x} y={innerH} label={withUnit(xField, meta.field_units)} />
               <g clipPath={`url(#${clipId})`}>
               {opts.identity && (
-                <line x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="5 4" />
+                <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />
               )}
               {series.map((s) => (
                 <g key={s.name} opacity={dim(s.name)}>

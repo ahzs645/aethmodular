@@ -1,4 +1,5 @@
 import { useId, useMemo, useRef, type ReactNode } from 'react'
+import { IdentityLine } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { RegressionLines, RegressionReadout, RegressionBand, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
 import { XAxis, YAxis } from '@/components/Axes'
@@ -87,7 +88,7 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
           <g clipPath={`url(#${clipId})`}>
             <rect width={iw} height={ih} fill="transparent" onClick={() => hl.setPinned(null)} />
             {background?.(x, y)}
-            <line {...line(1, 0)} stroke={INK.identity} strokeDasharray="5 4" strokeWidth={1.5} pointerEvents="none" />
+            <IdentityLine {...line(1, 0)} />
             {valid.map((p, i) => {
               const key = p.id ? baseFilterId(p.id) : null
               const focus = !!key && (key === hl.pinnedId || key === hl.hoverId)

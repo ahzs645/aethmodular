@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react'
+import { RefLine } from '@/components/RefLines'
 import { dataUrl, useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
 import { IntervalStrip } from '@/components/IntervalStrip'
@@ -159,7 +160,7 @@ function ResidualPlot({ rows, available, onInspect, cohort }: { rows: BaselinePa
       return <g key={method} transform={`translate(${ox},${oy})`}>
         <text y={-10} fontSize={12} fontWeight={600} fill={COLOR[method]} fontFamily={FONT.family}>{method}<tspan fill={INK.muted} fontWeight={400}>{`  ·  MAE ${f(mae)} µg/filter`}</tspan></text>
         <YAxis scale={y} x={0} gridWidth={pw} label={k === 0 || !side ? 'Prediction − TOR (µg/filter)' : undefined}/><XAxis scale={x} y={ih} label="Measured TOR EC (µg/filter)"/>
-        <line x2={pw} y1={y(0)} y2={y(0)} stroke={INK.fit} strokeDasharray="4 3"/>
+        <RefLine orient="h" at={y(0)} from={0} to={pw} />
         {rows.map(r => <circle key={r.sample_id} cx={x(r.y)} cy={y(r[method]-r.y)} r={available.has(r.sample_id)?4:2.5} fill={COLOR[method]} fillOpacity={0.45} stroke={available.has(r.sample_id)?INK.text:'none'} style={{cursor:'pointer'}} onClick={()=>{ hl.openRecord(pairRecord(r, 'the AIRSpec / VIBES error plot')); if (available.has(r.sample_id)) onInspect(r.sample_id) }} onMouseEnter={e=>tip.show(e,[`${r.Site} / ${r.sample_id}`,`${r.date} · ${r.loading_band}`,`TOR ${f(r.y)}, AIRSpec ${f(r.AIRSpec)}, VIBES ${f(r.VIBES)} µg/filter`,`${method} error ${f(r[method]-r.y)}`,available.has(r.sample_id)?'Click for details and the stored spectrum':'Click for details (spectrum not in the 12-case inspection)'])} onMouseLeave={tip.hide}/>)}
       </g>
     })}</svg>}{tip.node}</div>
@@ -186,7 +187,7 @@ function ErrorDifferencePlot({ rows, cohort }: { rows: BaselinePair[]; cohort: B
     <div ref={ref} className="chart-wrap">{!rows.length ? <Empty>No test filters match both selections.</Empty> : <svg width={w} height={360} role="img" aria-label="Histogram of paired absolute error differences, VIBES minus AIRSpec"><g transform="translate(70,30)">
       <YAxis scale={y} x={0} gridWidth={iw} label="Physical filters" format={v=>Number.isInteger(v)?String(v):''}/>
       {bins.map((b,i)=>lg.show(side(b))&&<rect key={i} x={x(b.x0!)+.5} y={y(b.length)} width={Math.max(0,x(b.x1!)-x(b.x0!)-1)} height={ih-y(b.length)} fill={b.x1!<=0?COLOR.VIBES:COLOR.AIRSpec} fillOpacity={.8*lg.dim(side(b))} onMouseEnter={e=>tip.show(e,[`${f(b.x0)} to ${f(b.x1)} µg/filter`,`${b.length} filters (${f(100*b.length/rows.length,1)}%)`,`Lower bound included; upper bound ${i===bins.length-1?'included':'excluded'}.`])} onMouseLeave={tip.hide}></rect>)}
-      <line x1={x(0)} x2={x(0)} y2={ih} stroke={INK.text} strokeDasharray="4 3"/>
+      <RefLine orient="v" at={x(0)} from={0} to={ih} />
       <XAxis scale={x} y={ih} label="Δ absolute error (µg/filter)"/>
     </g><MethodLegend width={w} y={348} items={[{label:'VIBES closer (<0)',color:COLOR.VIBES},{label:'AIRSpec closer (>0)',color:COLOR.AIRSpec}]} lg={lg}/></svg>}{tip.node}</div>
     <Note>{rows.length.toLocaleString()} paired filters: VIBES closer {better.toLocaleString()}, AIRSpec closer {worse.toLocaleString()}, exact ties {values.length-better-worse}. Mean difference (ΔMAE): {f(d3.mean(values))}; median: {f(d3.median(values))} µg/filter. All tails are shown. Exact ties fall in the bin starting at zero.</Note>

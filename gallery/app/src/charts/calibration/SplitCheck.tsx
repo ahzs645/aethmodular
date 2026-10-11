@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { RefLine } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
@@ -62,8 +63,8 @@ export function SplitCheck({ run, runs }: { run: CalibRun; runs: CalibRunsFile }
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
               <YAxis scale={y} x={0} label="Test set Deming intercept (µg/m³)" gridWidth={innerW} tickCount={5} />
               <XAxis scale={x} y={innerH} label="Test set Deming slope" tickCount={6} />
-              {x.domain()[0] <= 1 && 1 <= x.domain()[1] && <line x1={x(1)} x2={x(1)} y1={0} y2={innerH} stroke={INK.text} strokeDasharray="2 3" />}
-              {y.domain()[0] <= 0 && 0 <= y.domain()[1] && <line x1={0} x2={innerW} y1={y(0)} y2={y(0)} stroke={INK.text} strokeDasharray="2 3" />}
+              {x.domain()[0] <= 1 && 1 <= x.domain()[1] && <RefLine orient="v" at={x(1)} from={0} to={innerH} />}
+              {y.domain()[0] <= 0 && 0 <= y.domain()[1] && <RefLine orient="h" at={y(0)} from={0} to={innerW} />}
               {rows.map((r, i) => (
                 <g key={r.split} onMouseEnter={(e) => tip.show(e, [`${SPLIT_LABEL[r.split] ?? r.split} (n=${r.n})`, `Deming slope ${fmt(slopeOf(r), 3)} · intercept ${fmt(icOf(r), 3)} µg/m³`, `R² ${fmt(r.m!.R2 ?? null, 3)}`])} onMouseLeave={tip.hide}>
                   {r.split === 'all'

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useId } from 'react'
+import { robustDomain } from '@/lib/axes'
+import { Marker } from '@/components/RefLines'
 import { useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
@@ -378,7 +380,7 @@ function Vip({ data, mask }: { data: SatoshiData; mask: Mask }) {
             <SpectralRegions x={x} height={ih} regions={shades} />
             <YAxis scale={y} x={0} label="VIP" tickCount={5} gridWidth={iw} labelX={-38} />
             <XAxis scale={x} y={ih} label="Wavenumber (cm⁻¹)" tickCount={8} labelDy={38} />
-            <line x1={0} x2={iw} y1={y(1)} y2={y(1)} stroke={INK.axis} strokeDasharray="3 3" />
+            <Marker orient="h" at={y(1)} from={0} to={iw} />
             <path d={line(std.vip)} fill="none" stroke={STANDARD_COLOR} strokeWidth={1.4} />
             {ana && <path d={line(ana.vip)} fill="none" stroke={data.season_colors[group]} strokeWidth={1.6} strokeOpacity={0.9} />}
             {hover != null && <line x1={x(wn[hover])} x2={x(wn[hover])} y1={0} y2={ih} stroke={INK.text} strokeOpacity={0.4} />}
@@ -497,8 +499,10 @@ function LadderCrossplots({ data, analogId, baseline, mask, group }: { data: Sat
   const a: Pt[] = own.map((i) => ({ x: lp.tor_ec_ugm3[i] as number, y: (lp.role[i] === 'train' ? lp.cv_ugm3[i] : lp.fitted_ugm3[i]) as number, hollow: lp.role[i] !== 'train', id: String(lp.filter_id[i]), site: String(lp.Site[i]), note: lp.role[i] === 'train' ? 'cross-validation (out-of-fold)' : 'IMPROVE test site' }))
   const s: Pt[] = std.map((i) => ({ x: ep.tor_ec_ugm3[i] as number, y: ep.ftir_oos_ugm3[i] as number, hollow: ep.role[i] !== 'cv', id: String(ep.filter_id[i]), site: String(ep.Site[i]), note: ep.role[i] === 'cv' ? 'cross-validation (out-of-fold)' : 'IMPROVE test site' }))
   const all = [...a, ...s].flatMap((p) => [p.x, p.y]).filter(Number.isFinite)
-  const hi = (d3.quantile(all.sort(d3.ascending), 0.995) ?? 1) * 1.05
-  const lo = Math.min(0, d3.min(all) ?? 0)
+  // top 0.5 % outside the frame (said in the note); 0 always in view
+  const bulk = robustDomain(all, 0, 0.995)
+  const hi = bulk.domain[1] * 1.05
+  const lo = Math.min(0, bulk.domain[0])
   const missing = ids.size - s.length
   return (
     <>
@@ -538,7 +542,7 @@ function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
   const pool = useMemo(() => ep.baseline.map((_, i) => i).filter((i) => ep.baseline[i] === baseline), [ep, baseline])
   const analogs = pool.filter((i) => analogIds.has(ep.filter_id[i]))
   const xsAll = pool.map((i) => ep.tor_ec_ugm3[i] as number)
-  const hi = (d3.quantile([...xsAll].sort(d3.ascending), 0.995) ?? 1) * 1.1
+  const hi = robustDomain(xsAll, 0, 0.995).domain[1] * 1.1
   const m = { top: 22, right: 14, bottom: 44, left: 56 }
   const side = Math.max(220, Math.min((width - 40) / 2 - m.left - m.right, 380))
   // one domain for both axes (the shared crossplot is square), a little below zero for negative predictions
@@ -587,7 +591,7 @@ function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
             <XAxis scale={hx} y={side} label="Residual percentile (low = lower envelope)" tickCount={5} labelDy={36} />
             {hist.map((b, i) => <rect key={i} x={hx(b.x0!) + 1} width={Math.max(0, hx(b.x1!) - hx(b.x0!) - 2)} y={hy(b.length / Math.max(1, analogs.length))} height={side - hy(b.length / Math.max(1, analogs.length))} fill={color} fillOpacity={0.8}
               onMouseEnter={(e) => tip.show(e, [`percentile ${b.x0}–${b.x1}`, `${b.length} analogs (${pct(b.length / Math.max(1, analogs.length))})`])} onMouseLeave={tip.hide} />)}
-            <line x1={0} x2={side} y1={hy(0.1)} y2={hy(0.1)} stroke={INK.text} strokeDasharray="4 3" />
+            <Marker orient="h" at={hy(0.1)} from={0} to={side} />
             <text x={side - 4} y={hy(0.1) - 5} textAnchor="end" fontSize={10} fontFamily={FONT.mono} fill={INK.text}>typical: 10 % per bar</text>
           </g>
         </svg>

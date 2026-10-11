@@ -120,7 +120,7 @@ Each step should leave the published numbers unchanged; where a chart's
 picture changes (colours, decimals, domains), the change is listed in that
 step's commit.
 
-## 4b. Status (10 Oct 2026)
+## 4b. Status (11 Oct 2026)
 
 Done, and each defined once in `gallery/app/src`:
 
@@ -139,8 +139,16 @@ Done, and each defined once in `gallery/app/src`:
 | Dot-interval rows | `components/IntervalStrip.tsx` | Meeting `RepeatStrip`, `Combined`; Satoshi `Swap`, `BlankEffect`; Baselines `LoadingPlot`; `HipsYork`; Similarity `GroupRanking` (stems, selectable rows, labelled marker). `CrossSiteTransfer` ordering is a jittered dot plot with per-dot picking, a different chart, and stays. |
 | Heat-map cells | `lib/theme.inkOn` (contrast-based label ink), `components/HeatCell.tsx` | Label ink in Correlogram, CrossSiteHeatmap, OverlapMatrix and the Similarity season matrix (which now has its `ColorLegend`). |
 | Table cells | `components/TableCells.tsx` (`FitCell`, `BandCell`) | Meeting and Satoshi fit and median-interval cells. |
+| Reference lines | `components/RefLines.tsx` (`IdentityLine`, `RefLine`, `Marker`) | 1:1 lines, slope-1 / intercept-0 / zero lines and labelled markers on every calibration, correlation, Meeting, Satoshi, Baselines and Blanks chart (39 hand-drawn lines). Crosshairs, the time cursor, stems and fit lines are not reference lines and keep their own styles. |
+| Clipped domains | `lib/axes.ts` (`robustDomain(values, lo, hi, { include, limit, fallback })`, returns the domain and the counts above and below) | SpectraDumbbell, SlopeInterceptTrap, CutoffSweep, SelectionRanking, SpecCurvePlots, Scatterplot, Correlogram, Ridgeline, Histogram, ParallelCoordinates, MonthlyHeatmap, Meeting slope-intercept map, Satoshi ladder and envelope, Blanks raw spectra. Each keeps its own quantiles; they now share one implementation and one pinned count. |
+| Season shading | `components/SeasonBands.tsx` (`SEASON_SHADE`, `seasonShade`, `timeSeasonBands`, `monthSeasonBands`, `<SeasonBands>`) | Timeseries, MonthlyBand, SourceStack (strip), SeasonalClock arcs, MonthlyHeatmap strips. One set of opacities, including the legend-hover deepen/fade. |
+| Brush | `lib/brush.ts` (`BRUSH_STYLE`, `styleBrush`) | Scatterplot, ParallelCoordinates, DateBrush: accent fill .14, handles .6, no transition. A style helper rather than a hook, because each chart owns its d3 brush lifecycle. |
+| Export | `lib/export.ts` (`composePanel`), `components/ChartFrame.tsx` | SVG and PNG save the whole panel: every chart `<svg>` at its on-screen position plus legend and facet-title text and swatches, without the panel title, controls or tooltips. Mark other HTML text with `data-export="text"` to include it. |
 
-Still open from §1: `RefLine`/`Marker`, `robustDomain`, `SeasonBands`, `useD3Brush`, whole-panel export.
+Not built yet from §1: `useFacetGrid`, `labelGutter`, `XAxis gridHeight`,
+`IntervalBar`, `GuardrailBands`, `filterMarkHandlers` (and the tooltip
+de-duplication it carries), `selectedStyle`, `monthlyStats` /
+`correlationMatrix`.
 
 ## 5. Decisions (1 Oct 2026)
 

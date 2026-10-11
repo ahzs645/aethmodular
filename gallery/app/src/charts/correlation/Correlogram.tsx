@@ -1,4 +1,5 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
+import { robustDomain } from '@/lib/axes'
 import { RegressionLines, RegressionGroupLines } from '@/components/RegressionOverlay'
 import { FitGroupingControl, useRegressions } from '@/lib/regressionPrefs'
 import { groupedRegressions } from '@/lib/siteRegression'
@@ -207,8 +208,7 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, meta }: {
       fields.map((f) => {
         const vals = rows.map((r) => r[f]).filter((v): v is number => typeof v === 'number' && Number.isFinite(v)).sort(d3.ascending)
         // 1–99 % so a single spike does not push the cloud into a corner
-        const lo = Math.min(0, d3.quantile(vals, 0.01) ?? 0)
-        const hi = d3.quantile(vals, 0.99) ?? 1
+        const [lo, hi] = robustDomain(vals, 0.01, 0.99, { include: [0] }).domain
         return d3.scaleLinear().domain([lo, hi === lo ? lo + 1 : hi]).range([0, cellS]).nice()
       }),
     [rows, fields, cellS]

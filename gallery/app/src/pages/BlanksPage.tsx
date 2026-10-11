@@ -1,4 +1,6 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { robustDomain } from '@/lib/axes'
+import { Marker } from '@/components/RefLines'
 import { useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
@@ -211,7 +213,7 @@ function RawSpectra({ d }: { d: BlanksData }) {
   const show = (g: string) => lg.show(g)
   const idx = d3.range(nBlanks(d)).filter((i) => show(inv(d, 'group')[i]))
   const vals = mode === 'every blank' ? idx.flatMap((i) => pts.map(([, j]) => d.raw[i][j])) : groups.filter(show).flatMap((g) => pts.flatMap(([, j]) => [d.groups[g].q[0][j], d.groups[g].q[4][j]]))
-  const yDom: [number, number] = [d3.quantile(vals, 0.002) ?? 0, d3.quantile(vals, 0.998) ?? 1]
+  const yDom = robustDomain(vals, 0.002, 0.998).domain
   return (
     <ChartFrame id="blanks-raw" source="gallery/app/src/pages/BlanksPage.tsx › RawSpectra"
       title="Raw blank spectra — what a clean PTFE filter looks like, by lot"
@@ -399,7 +401,7 @@ function RankSelection({ d }: { d: BlanksData }) {
               return <g key={b} opacity={lg.dim(d.bank_labels[b])}>
                 <path d={d3.area<typeof pts[0]>().x((p) => x(p.k)).y0((p) => y(p.lo)).y1((p) => y(p.hi))(pts) ?? ''} fill={c} fillOpacity={0.15} />
                 <path d={d3.line<typeof pts[0]>().x((p) => x(p.k)).y((p) => y(p.v))(pts) ?? ''} fill="none" stroke={c} strokeWidth={1.8} />
-                <line x1={0} x2={iw} y1={y(B.one_se_threshold)} y2={y(B.one_se_threshold)} stroke={c} strokeDasharray="4 3" strokeOpacity={0.8} />
+                <Marker orient="h" at={y(B.one_se_threshold)} from={0} to={iw} color={c} />
                 <circle cx={x(B.rank)} cy={y(B.loo_mean[B.rank - 1])} r={6} fill={c} stroke="white" strokeWidth={1.5}
                   onMouseEnter={(e) => tip.show(e, [d.bank_labels[b], `chosen rank ${B.rank} (one-SE rule)`, `error ${sci(B.loo_mean[B.rank - 1])}, ${f2(B.loo_mean[B.rank - 1] / B.loo_mean[B.rank_min_loo - 1])}× the minimum at ${B.rank_min_loo}`])} onMouseLeave={tip.hide} />
               </g>
@@ -451,7 +453,7 @@ function PerBlankError({ d }: { d: BlanksData }) {
           <g transform={`translate(${m.left},${m.top})`}>
             {groups.map((g) => <text key={g} x={-6} y={(yb(g) ?? 0) + yb.bandwidth() / 2} dy="0.32em" textAnchor="end" fontSize={10} fill={GROUP_COLOR[g]}>{g.replace('IMPROVE ', 'IMP ')}</text>)}
             <XAxis scale={x} y={ih} label={`LOO squared error at rank ${rk} (log)`} tickCount={6} labelDy={36} format={(v) => (+v).toExponential(0)} />
-            <line x1={x(med)} x2={x(med)} y1={0} y2={ih} stroke={INK.axis} strokeDasharray="3 3" />
+            <Marker orient="v" at={x(med)} from={0} to={ih} />
             {rows.map((r) => { const g = inv(d, 'group')[r.i]; return <circle key={r.id} cx={x(r.e)} cy={(yb(g) ?? 0) + jitter(r.i) * yb.bandwidth()} r={r.id === B.worst.id ? 6 : 3} fill={GROUP_COLOR[g]} fillOpacity={0.8} stroke={r.id === B.worst.id ? INK.negative : 'none'} strokeWidth={2}
               onMouseEnter={(ev) => tip.show(ev, [r.id, `${inv(d, 'site')[r.i]} · ${inv(d, 'date')[r.i] ?? 'undated'}`, `error ${sci(r.e)} (${Math.round(r.e / med).toLocaleString()}× median)`])} onMouseLeave={tip.hide} />})}
           </g>
@@ -561,7 +563,7 @@ function Capture({ d }: { d: BlanksData }) {
           <g transform={`translate(${m.left},${m.top})`}>
             <YAxis scale={y} x={0} label="Share inside blank subspace" tickCount={5} gridWidth={iw} labelX={-46} format={(v) => `${Math.round(100 * v)} %`} />
             <XAxis scale={x} y={ih} label="Blank components (k)" tickCount={9} labelDy={36} />
-            <line x1={x(B.rank)} x2={x(B.rank)} y1={0} y2={ih} stroke={BANK_COLOR[bank]} strokeDasharray="4 3" />
+            <Marker orient="v" at={x(B.rank)} from={0} to={ih} color={BANK_COLOR[bank]} />
             <text x={x(B.rank) + 4} y={12} fontSize={10} fontFamily={FONT.mono} fill={BANK_COLOR[bank]}>chosen rank {B.rank}</text>
             {POPS.map((p) => { const c = B.capture[p]; if (!c) return null; const ks = c.median.map((_, i) => i)
               return <g key={p}>
