@@ -22,6 +22,18 @@
       ],
       "cwd": "gallery/app",
       "port": 5178
+    },
+    {
+      "name": "gallery-share",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5180",
+        "-d",
+        "gallery/share/dist"
+      ],
+      "port": 5180
     }
   ]
 }
