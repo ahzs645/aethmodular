@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
+import { dataUrl, useExport } from '@/lib/data'
+import { ExportState } from '@/components/ExportState'
+import { IntervalStrip } from '@/components/IntervalStrip'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, ExplainOnly, Note, Select, Toggle } from '@/components/ChartFrame'
 import { PageToc } from '@/components/PageToc'
@@ -7,7 +10,10 @@ import { FullRangeVibesResults } from '@/components/FullRangeVibesResults'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { FONT, INK } from '@/lib/theme'
+import { BASELINE_COLOR, FONT, INK } from '@/lib/theme'
+import { fmt as f } from '@/lib/format'
+import { baselineName } from '@/lib/labels'
+import { BaselineRankProvider, useBaselineColors } from '@/lib/baselineRank'
 import { useHighlight, type FilterRecord } from '@/lib/highlight'
 import { baselineMetrics, pairedAbsoluteErrorDifference, retainedWavenumber } from '@/lib/baselineComparison'
 import { BaselineResearchDiagnostics, RegionContribution, SiteBandPattern, BlankSpread, svgLegendItem, type SvgLegendState } from '@/pages/BaselineResearchDiagnostics'
@@ -20,36 +26,24 @@ import { useFilterSpectrum, traceVersionLabel } from '@/lib/filterSpectrum'
 import type { BaselineCohort, BaselineData, BaselineGroup, BaselineMethod, BaselinePair, BaselineSpectrum, HistoricalMask } from '@/lib/baselineComparison'
 
 const METHODS: BaselineMethod[] = ['AIRSpec', 'VIBES']
-const COLOR = { AIRSpec: '#2C6E9E', VIBES: '#7A4FA3' }
-const BASE = `${import.meta.env.BASE_URL}data/`
-const f = (x: number | null | undefined, digits = 3) => x == null || !Number.isFinite(x) ? '—' : x.toFixed(digits)
+const BASE = dataUrl('')
 const cohortName = (x: BaselineCohort) => x === 'full_pool' ? 'Full pool' : 'Restricted lowest-OC/EC'
 const maskName = (x: string) => ({ full: 'No selection mask', no_co2: 'Exclude 1800–2500', no_co2_max3600: 'Also exclude >3600', no_co2_max3500: 'Also exclude >3500' }[x] ?? x)
 
 export function BaselineComparisonPage({ mac, demingLambda }: { mac: number; demingLambda: number }) {
-  const [data, setData] = useState<BaselineData | null>(null)
-  const [error, setError] = useState('')
-  const [loadedArchive, setLoadedArchive] = useState<boolean | null>(null)
+  const COLOR = useBaselineColors()
   const [cohort, setCohort] = useComparisonParam<BaselineCohort>('bcohort', 'full_pool', ['full_pool','locked800'])
   const [site, setSite] = useComparisonParam<string>('bsite', 'All sites')
   const [band, setBand] = useComparisonParam<string>('bband', 'All loadings', ['All loadings','Q1','Q2','Q3','Q4'])
   const [sample, setSample] = useComparisonParam<string>('bsample', 'improve:1970697')
   const [archiveMode, setArchiveMode] = useComparisonParam<string>('barchive', 'hide', ['hide','show'])
   const showArchived=archiveMode==='show'
-  useEffect(() => {
-    const controller = new AbortController()
-    setData(null); setError('')
-    fetch(BASE + (showArchived ? 'baseline_comparison.json' : 'baseline_paired_r70.json'), { signal: controller.signal })
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
-      .then((d: BaselineData) => { if (d.schema_version !== 1 || (!showArchived && d.run.background_rank !== 70)) throw new Error('Unsupported data version'); setData(d); setLoadedArchive(showArchived) })
-      .catch(e => { if (e.name !== 'AbortError') setError(String(e)) })
-    return () => controller.abort()
-  }, [showArchived])
+  const { data, error } = useExport<BaselineData>(showArchived ? 'baseline_comparison.json' : 'baseline_paired_r70.json',
+    (d) => d.schema_version !== 1 || (!showArchived && d.run.background_rank !== 70) ? 'unsupported data version' : null)
   const all = useMemo(() => data?.pairs.filter(r => r.cohort === cohort) ?? [], [data, cohort])
   const rows = useMemo(() => all.filter(r => (site === 'All sites' || r.Site === site) && (band === 'All loadings' || r.loading_band === band)), [all, site, band])
   const sites = useMemo(() => ['All sites', ...Array.from(new Set(all.map(r => r.Site))).sort()], [all])
-  if (error) return <ChartFrame title="Baselines" exportable={false}><Empty>Could not load the comparison: {error}. Run <code>uv run --locked --no-sync python gallery/data/export_baseline_comparison.py</code> and reload.</Empty></ChartFrame>
-  if (!data || loadedArchive !== showArchived) return <p>Loading baseline comparisons…</p>
+  if (!data) return <ExportState title="Baselines" what="the baseline comparison" error={error} command="uv run --locked --no-sync python gallery/data/export_baseline_comparison.py" />
   const subset = site !== 'All sites' || band !== 'All loadings'
   const interval = data.groups.find(g => g.cohort === cohort && g.dimension === 'overall')!
   const spectrum = data.spectra.find(r => r.sample_id === sample) ?? data.spectra[0]
@@ -58,7 +52,7 @@ export function BaselineComparisonPage({ mac, demingLambda }: { mac: number; dem
     <p>Completed rank-70 VIBES results appear below. The earlier fit restricted to 4000–1425 cm⁻¹ and its scores are archived.</p>
     <p><a href="#tab=meeting">Open per-filter overlays and completed rank-70 seasonal comparisons</a></p>
   </ChartFrame>
-  if(!showArchived) return <PageToc>
+  if(!showArchived) return <BaselineRankProvider rank={70}><PageToc>
     {archiveControl}
     <FullRangeVibesStatus />
     <FullRangeVibesResults />
@@ -67,8 +61,8 @@ export function BaselineComparisonPage({ mac, demingLambda }: { mac: number; dem
     <CompletedVibesDiagnostics />
     <BaselineExternalPilot completed mac={mac} demingLambda={demingLambda} />
     <SpectraPlot key="current" spectrum={spectrum} data={data} onSample={setSample} masks={masks} archivedBenchmark={false}/>
-  </PageToc>
-  return <PageToc>
+  </PageToc></BaselineRankProvider>
+  return <BaselineRankProvider rank={data.run.background_rank}><PageToc>
     {archiveControl}
     <FullRangeVibesStatus linkToMeeting />
     <FullRangeVibesResults />
@@ -82,7 +76,7 @@ export function BaselineComparisonPage({ mac, demingLambda }: { mac: number; dem
       <Note>VIBES improves held-out blank removal. The original pooled EC comparison does not establish an accuracy gain. The new exploratory notebook fits and its provenance appear below; neither analysis clips predictions or introduces new exclusions.</Note>
     </ChartFrame></ExplainOnly>
     <ChartFrame title="Paired EC performance" exportable={false} tip={<p><strong>Complete-cohort reference, {cohortName(cohort)}:</strong> ΔRMSE {f(interval.delta_RMSE)} µg/filter, paired 95% interval {f(interval.delta_RMSE_ci_low)} to {f(interval.delta_RMSE_ci_high)}. {subset && 'This interval does not describe the selected display subset.'} Both pooled intervals include zero. Different test populations prevent ranking the two calibration cohorts by these errors.</p>} controls={<>
-      <label className="control">Calibration cohort<select className="select" value={cohort} onChange={e => { setCohort(e.target.value as BaselineCohort); setSite('All sites'); setBand('All loadings') }}><option value="full_pool">Full pool</option><option value="locked800">Restricted lowest-OC/EC</option></select></label>
+      <Select label="Calibration cohort" value={cohort} options={['full_pool', 'locked800']} optionLabel={v => cohortName(v as BaselineCohort)} onChange={v => { setCohort(v as BaselineCohort); setSite('All sites'); setBand('All loadings') }} />
       <Select label="Test site" value={site} options={sites} onChange={setSite} />
       <Select label="Training-defined loading band" value={band} options={['All loadings','Q1','Q2','Q3','Q4']} onChange={setBand} />
       <button className="btn quiet" onClick={() => { setSite('All sites'); setBand('All loadings') }}>Reset subset</button>
@@ -115,7 +109,7 @@ export function BaselineComparisonPage({ mac, demingLambda }: { mac: number; dem
       <p style={{ fontSize: 13, display: 'flex', gap: 18, flexWrap: 'wrap' }}><a href={BASE+'baseline_pool_ledger.csv'} download>IMPROVE inclusion ledger</a><a href={BASE+'baseline_addis_ledger.csv'} download>Addis inclusion ledger</a><a href={BASE+'baseline_paired_predictions.csv'} download>Paired test predictions</a><a href={BASE+'baseline_comparison.json'} download>Comparison data and source hashes</a><a href={BASE+'baseline_applicability.json'} download>Training spectral distance data</a></p>
       <details><summary style={{ cursor: 'pointer', fontSize: 12 }}>Source files and SHA-256 provenance</summary><p style={{ fontSize: 11, overflowWrap: 'anywhere' }}>Run signature: {data.run.signature}</p>{Object.entries(data.source_sha256).map(([name, hash]) => <p key={name} style={{ fontSize: 11, overflowWrap: 'anywhere' }}><code>{name}</code><br />{hash}</p>)}</details>
     </ChartFrame></ExplainOnly>
-  </PageToc>
+  </PageToc></BaselineRankProvider>
 }
 
 /** One paired test filter as a drawer record: TOR, both predictions and their errors. */
@@ -147,6 +141,7 @@ function MethodLegend({ width, y, items, lg }: { width: number; y: number; items
 }
 
 function ResidualPlot({ rows, available, onInspect, cohort }: { rows: BaselinePair[]; available: Set<string>; onInspect: (s: string) => void; cohort: BaselineCohort }) {
+  const COLOR = useBaselineColors()
   const ref = useRef<HTMLDivElement>(null); const { width } = useDimensions(ref); const tip = useTooltip(ref); const hl = useHighlight()
   // One panel per method on shared axes: overlaid at this density the two purples/blues merge into one cloud.
   const w = Math.max(300, width), side = w >= 760, gap = 36
@@ -171,6 +166,7 @@ function ResidualPlot({ rows, available, onInspect, cohort }: { rows: BaselinePa
   </ChartFrame>
 }
 function ErrorDifferencePlot({ rows, cohort }: { rows: BaselinePair[]; cohort: BaselineCohort }) {
+  const COLOR = useBaselineColors()
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
@@ -197,15 +193,16 @@ function ErrorDifferencePlot({ rows, cohort }: { rows: BaselinePair[]; cohort: B
   </ChartFrame>
 }
 function LoadingPlot({ groups }: { groups: BaselineGroup[] }) {
-  const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref)
-  const w=Math.max(300,width),iw=w-165,ih=180
-  const bounds=groups.flatMap(g=>[g.delta_RMSE_ci_low??g.delta_RMSE,g.delta_RMSE_ci_high??g.delta_RMSE,0])
-  const x=d3.scaleLinear().domain(d3.extent(bounds) as [number,number]).nice().range([0,iw])
+  const COLOR = useBaselineColors()
   return <ChartFrame title="Loading-band differences" tip={<p>Full-pool Q3 = (3.739, 6.994] µg/filter. Restricted Q3 = (2.915, 7.881]. Boundaries come from each cohort's training labels. They do not establish a prediction-time switching rule.</p>} subtitle="Points show VIBES minus AIRSpec RMSE. Negative favors VIBES. Whiskers are paired 95% site-cluster intervals, conditional on the frozen models.">
-    <div ref={ref} className="chart-wrap"><svg width={w} height={265} role="img" aria-label="Loading quartile paired RMSE differences and confidence intervals"><g transform="translate(130,20)" fontFamily={FONT.family}><line x1={x(0)} x2={x(0)} y2={ih} stroke={INK.identity} strokeDasharray="4 3"/>{groups.map((g,i)=><g key={g.group} transform={`translate(0,${20+i*42})`}><text x={-12} textAnchor="end" dy="0.3em" fontSize={12}>{g.group} (n={g.n})</text><line x1={x(g.delta_RMSE_ci_low??g.delta_RMSE)} x2={x(g.delta_RMSE_ci_high??g.delta_RMSE)} stroke={COLOR.VIBES} strokeWidth={2}/><circle cx={x(g.delta_RMSE)} r={5} fill={COLOR.VIBES}><title>{`${g.group}: ΔRMSE ${f(g.delta_RMSE)}, interval ${f(g.delta_RMSE_ci_low)} to ${f(g.delta_RMSE_ci_high)}`}</title></circle></g>)}<XAxis scale={x} y={ih} label="VIBES − AIRSpec RMSE (µg/filter)"/></g></svg></div>
+    <div className="chart-wrap"><IntervalStrip labelWidth={130} rowHeight={30} panels={[{ label: 'VIBES − AIRSpec RMSE (µg/filter)', reference: 0 }]}
+      blocks={[{ key: 'bands', rows: groups.map(g => ({ key: g.group, label: `${g.group} (n=${g.n})`,
+        tip: [g.group, `ΔRMSE ${f(g.delta_RMSE)} µg/filter`, `interval ${f(g.delta_RMSE_ci_low)} to ${f(g.delta_RMSE_ci_high)}`],
+        marks: [[{ lo: g.delta_RMSE_ci_low ?? g.delta_RMSE, hi: g.delta_RMSE_ci_high ?? g.delta_RMSE, mid: g.delta_RMSE, color: COLOR.VIBES, r: 5 }]] })) }]} /></div>
   </ChartFrame>
 }
 function SpectraPlot({ spectrum:s, data, onSample, masks, archivedBenchmark=true }: { spectrum: BaselineSpectrum; data: BaselineData; onSample:(x:string)=>void; masks:HistoricalMask[]; archivedBenchmark?:boolean }) {
+  const COLOR = useBaselineColors()
   const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref);const lg=useLegend()
   const [view,setView]=useComparisonParam<string>('bview', 'Corrected spectra', archivedBenchmark?['Corrected spectra','Raw and baselines','VIBES − AIRSpec']:['Corrected spectra']);const [mask,setMask]=useComparisonParam<string>('bmask', archivedBenchmark?'no_co2_max3600':'full', ['full','no_co2','no_co2_max3600','no_co2_max3500'])
   const [regions,setRegions]=useComparisonParam<string>('bregions', 'Shade excluded regions', ['Shade excluded regions','Hide excluded regions'])
@@ -224,8 +221,8 @@ function SpectraPlot({ spectrum:s, data, onSample, masks, archivedBenchmark=true
   const difference=view==='VIBES − AIRSpec'
   const archived=difference?[{label:'VIBES − AIRSpec',values:s.vibes.map((v,i)=>v-s.airspec[i]),color:COLOR.VIBES}]:view==='Corrected spectra'?[{label:'AIRSpec',values:s.airspec,color:COLOR.AIRSpec},{label:'VIBES',values:s.vibes,color:COLOR.VIBES}]:[{label:'Raw',values:s.raw,color:INK.muted},{label:'AIRSpec baseline',values:s.raw.map((v,i)=>v-s.airspec[i]),color:COLOR.AIRSpec},{label:'VIBES baseline',values:s.raw.map((v,i)=>v-s.vibes[i]),color:COLOR.VIBES}]
   const currentAir=fullSpectrum?.series.AIRSpec
-  const currentSeries=[...(currentAir?[{label:'AIRSpec',values:Array.from(currentAir.y),wn:currentAir.wn,color:COLOR.AIRSpec}]:[]),...(fullTrace?[{label:'Full-range VIBES',values:Array.from(fullTrace.y),wn:fullTrace.wn,color:'#d95f0e'}]:[])]
-  const series=archivedBenchmark?[...archived.map(r=>({...r,label:r.label==='VIBES'?'Archived VIBES':r.label,wn:data.wn})),...(fullRange&&fullTrace&&view==='Corrected spectra'?[{label:'Full-range VIBES',values:Array.from(fullTrace.y),wn:fullTrace.wn,color:'#d95f0e'}]:[])]:currentSeries
+  const currentSeries=[...(currentAir?[{label:'AIRSpec',values:Array.from(currentAir.y),wn:currentAir.wn,color:COLOR.AIRSpec}]:[]),...(fullTrace?[{label:'Full-range VIBES',values:Array.from(fullTrace.y),wn:fullTrace.wn,color:BASELINE_COLOR['VIBES-full-r70']}]:[])]
+  const series=archivedBenchmark?[...archived.map(r=>({...r,label:r.label==='VIBES'?'Archived VIBES':r.label,wn:data.wn})),...(fullRange&&fullTrace&&view==='Corrected spectra'?[{label:'Full-range VIBES',values:Array.from(fullTrace.y),wn:fullTrace.wn,color:BASELINE_COLOR['VIBES-full-r70']}]:[])]:currentSeries
   const active=series.some(r=>r.label===method)?method:series[0]?.label??'AIRSpec'
   const drawn=series.filter(r=>lg.show(r.label)&&(layout!=='One method at a time'||r.label===active))
   // Keep a shared vertical scale when switching or stacking methods.
@@ -238,12 +235,12 @@ function SpectraPlot({ spectrum:s, data, onSample, masks, archivedBenchmark=true
   const shade=(lo:number,hi:number)=><g key={lo}>{hidden?<><line x1={x(lo)} x2={x(lo)} y2={ih} stroke={INK.axis} strokeDasharray="3 3"/><line x1={x(hi)} x2={x(hi)} y2={ih} stroke={INK.axis} strokeDasharray="3 3"/><text x={(x(lo)+x(hi))/2} y={15} textAnchor="middle" fontFamily={FONT.family} fontSize={11} fill={INK.muted}>Hidden</text></>:<rect x={x(hi)} width={x(lo)-x(hi)} height={ih} fill="#c49442" fillOpacity={0.18}/>}</g>
   return <ChartFrame id="baseline-spectrum" title={archivedBenchmark?'One physical filter, both corrections':'One physical filter, spline and full-range VIBES'} controls={<>
     <Select label="Full-range VIBES run" value={vibesRank} options={['70','30']} optionLabel={v=>v==='70'?'Rank 70 · completed':'Rank 30 · preliminary'} onChange={v=>setVibesRank(v as '30'|'70')}/>
-    <label className="control">Inspection case<select className="select" value={s.sample_id} onChange={e=>onSample(e.target.value)}>{data.spectra.map(r=><option key={r.sample_id} value={r.sample_id}>{r.site} / {r.sample_id}{archivedBenchmark?` (${r.direction})`:''}</option>)}</select></label>
+    <Select label="Inspection case" value={s.sample_id} options={data.spectra.map(r=>r.sample_id)} optionLabel={id=>{const r=data.spectra.find(x=>x.sample_id===id)!; return `${r.site} / ${r.sample_id}${archivedBenchmark?` (${r.direction})`:''}`}} onChange={onSample}/>
     {archivedBenchmark&&<Select label="Spectrum view" value={view} options={['Corrected spectra','Raw and baselines','VIBES − AIRSpec']} onChange={setView}/>}
     <Select label="Spectrum range" value={range} options={['Shared (4000–1425)','Full (4000–500)']} onChange={setRange}/>
     <Select label="Spectrum layout" value={layout} options={['Overlay','One method at a time','Stacked']} onChange={setLayout}/>
     {layout==='One method at a time'&&series.length>0&&<Select label="Display method" value={active} options={series.map(r=>r.label)} onChange={setMethod}/>}
-    <label className="control">Earlier selection mask<select className="select" value={mask} onChange={e=>setMask(e.target.value)}>{masks.map(m=><option key={m.mask} value={m.mask}>{maskName(m.mask)}</option>)}</select></label>
+    <Select label="Earlier selection mask" value={mask} options={masks.map(m=>m.mask)} optionLabel={maskName} onChange={setMask}/>
     <Select label="Excluded regions" value={regions} options={['Shade excluded regions','Hide excluded regions']} onChange={setRegions}/>
   </>}>
     <Note><strong>Display only:</strong> {hidden?'Excluded curves are hidden, with gaps preserving wavenumber spacing. The vertical axis uses visible values.':'Amber marks regions excluded from earlier analog matching; all available spectral points are shown.'} Saved predictions, correction and model-fitting grids remain unchanged.</Note>
@@ -262,23 +259,16 @@ function SpectraPlot({ spectrum:s, data, onSample, masks, archivedBenchmark=true
 }
 /** Current shared-window predictions; archived benchmark remains unchanged. */
 function CompletedPairedViews() {
-  const [data, setData] = useState<BaselineData | null>(null)
-  const [error, setError] = useState('')
+  // the same file as the page above; the shared cache downloads it once
+  const { data, error } = useExport<BaselineData>('baseline_paired_r70.json',
+    (d) => d.run.background_rank !== 70 || d.pairs.length !== 2464 ? 'unexpected current paired export' : null)
   const [cohort, setCohort] = useComparisonParam<BaselineCohort>('r70cohort', 'full_pool', ['full_pool','locked800'])
   const [site, setSite] = useComparisonParam<string>('r70site', 'All sites')
   const [band, setBand] = useComparisonParam<string>('r70band', 'All loadings', ['All loadings','Q1','Q2','Q3','Q4'])
   const [sample, setSample] = useComparisonParam<string>('r70sample', 'improve:1970697')
-  useEffect(() => {
-    const c = new AbortController()
-    fetch(BASE + 'baseline_paired_r70.json', {signal:c.signal})
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
-      .then((d:BaselineData) => { if(d.run.background_rank !== 70 || d.pairs.length !== 2464) throw new Error('Unexpected current paired export'); setData(d) })
-      .catch(e => { if(e.name !== 'AbortError') setError(String(e)) })
-    return () => c.abort()
-  }, [])
   const all = data?.pairs.filter(r => r.cohort === cohort) ?? []
   const rows = all.filter(r => (site === 'All sites' || r.Site === site) && (band === 'All loadings' || r.loading_band === band))
-  if (!data) return <ChartFrame title="Rank-70 paired diagnostics" exportable={false}><Empty>{error || 'Loading rank-70 paired diagnostics…'}</Empty></ChartFrame>
+  if (!data) return <ExportState title="Rank-70 paired diagnostics" what="the rank-70 paired diagnostics" error={error} />
   const sites = ['All sites', ...Array.from(new Set(all.map(r => r.Site))).sort()]
   const selected = data.spectra.find(r => r.sample_id === sample) ?? data.spectra[0]
   const interval = data.groups.find(r => r.cohort === cohort && r.dimension === 'overall')!
@@ -292,7 +282,7 @@ function CompletedPairedViews() {
       <p>VIBES correction: 4000–500 cm⁻¹, rank 70. Both EC models use the shared 4000–1425 channels. {rows.length.toLocaleString()} paired test filters shown out of {all.length.toLocaleString()}.</p>
       <table className="census-table"><thead><tr><th>Baseline</th><th>PLS factors</th><th>RMSE</th><th>MAE</th><th>Bias</th><th>Predictive R²</th></tr></thead><tbody>{METHODS.map(method => {
         const metrics=baselineMetrics(rows,method)
-        return <tr key={method}><td>{method==='AIRSpec'?'Spline baseline':'VIBES · completed rank 70'}</td><td>{data.scores.find(s=>s.cohort===cohort&&s.method===method)?.k}</td><td>{f(metrics?.rmse)}</td><td>{f(metrics?.mae)}</td><td>{f(metrics?.bias)}</td><td>{f(metrics?.r2)}</td></tr>
+        return <tr key={method}><td>{baselineName(method, { backgroundRank: 70 })}</td><td>{data.scores.find(s=>s.cohort===cohort&&s.method===method)?.k}</td><td>{f(metrics?.rmse)}</td><td>{f(metrics?.mae)}</td><td>{f(metrics?.bias)}</td><td>{f(metrics?.r2)}</td></tr>
       })}</tbody></table>
       <Note>Complete-cohort ΔRMSE: {f(interval.delta_RMSE)} µg/filter; paired site interval {f(interval.delta_RMSE_ci_low)} to {f(interval.delta_RMSE_ci_high)}. This interval conditions on the saved fits and does not describe a selected display subset. The previously inspected test set makes these diagnostics exploratory.</Note>
       <p><a href={BASE+'baseline_paired_r70_predictions.csv'} download>Rank-70 paired predictions</a> · <a href={BASE+'baseline_paired_r70.json'} download>Current diagnostics and source hashes</a></p>
@@ -306,6 +296,7 @@ function CompletedPairedViews() {
   </>
 }
 function RecoveryPlot({data}:{data:BaselineData}) {
+  const COLOR = useBaselineColors()
   const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref);const lg=useLegend();const [outcome,setOutcome]=useComparisonParam<string>('boutcome', 'Blank residual RMS', ['Blank residual RMS','Synthetic recovery RMSE'])
   const blank=outcome==='Blank residual RMS'
   const categories=blank?['etad','improve']:['0.01','0.05','0.15']

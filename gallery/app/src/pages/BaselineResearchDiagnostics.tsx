@@ -1,40 +1,33 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useRef, useState, type KeyboardEvent } from 'react'
+import { useExport } from '@/lib/data'
+import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, ExplainOnly, Note, Select } from '@/components/ChartFrame'
+import { ChartFrame, ExplainOnly, Note, Select } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { FONT, INK } from '@/lib/theme'
+import { FONT, INK, baselineColor } from '@/lib/theme'
+import { fixed as f } from '@/lib/format'
+import { useBaselineColors } from '@/lib/baselineRank'
 import { useHighlight } from '@/lib/highlight'
 import { useLegend } from '@/components/Legend'
 import { BaselineFollowup } from '@/pages/BaselineFollowup'
 import type { ApplicabilityData, ApplicabilityRow, BaselineCohort, BaselineContribution, BaselineData, BaselineMethod, BaselinePair } from '@/lib/baselineComparison'
 
 const METHODS: BaselineMethod[] = ['AIRSpec','VIBES']
-const COLOR = { AIRSpec:'#2C6E9E', VIBES:'#7A4FA3' }
-const f = (x:number|null|undefined,n=2) => x == null || !Number.isFinite(x) ? '—' : x.toFixed(n)
 const BANDS = ['1425_1799','1800_2499','2500_2999','3000_4000'] as const
 const bandName = (b:string) => b.replace('_','–')
 const metricKey = (m:string) => m === 'PCA score distance' ? 't2_train_percentile' : 'q_train_percentile'
 
 export function BaselineResearchDiagnostics({ data, rows, cohort, sample }: { data:BaselineData; rows:BaselinePair[]; cohort:BaselineCohort; sample:string }) {
-  const [app,setApp] = useState<ApplicabilityData|null>(null)
-  const [error,setError] = useState('')
-  useEffect(()=>{
-    const controller = new AbortController()
-    fetch(`${import.meta.env.BASE_URL}data/baseline_applicability.json`,{signal:controller.signal})
-      .then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json()})
-      .then((v:ApplicabilityData)=>{if(v.schema_version!==1||v.scope!=='full_pool'||v.rows.length!==5160)throw new Error('Unexpected distance export');setApp(v)})
-      .catch(e=>{if(e.name!=='AbortError')setError(String(e))})
-    return ()=>controller.abort()
-  },[])
+  const {data:app,error} = useExport<ApplicabilityData>('baseline_applicability.json', v=>v.schema_version!==1||v.scope!=='full_pool'||v.rows.length!==5160 ? 'unexpected distance export' : null)
   return <>
     <ExplainOnly><ChartFrame id="baseline-research" title="Research diagnostics" exportable={false}>
       <p>The executed notebook follow-up compares calibration selections on one IMPROVE test population and checks a spectrum-only routing rule. The other views inspect the original frozen corrections and predictions. All follow-up outcomes are exploratory because the original test set was already examined. The distance view adds a training-only PCA fit; it is not a validated operating cutoff.</p>
       <p><a href="https://amt.copernicus.org/articles/9/441/2016/" target="_blank" rel="noreferrer">Site-transfer study</a> · <a href="https://escholarship.org/uc/item/3ms682c5" target="_blank" rel="noreferrer">Multilevel EC study</a> · <a href="https://amt.copernicus.org/articles/9/2615/2016/" target="_blank" rel="noreferrer">Baseline-correction study</a></p>
     </ChartFrame></ExplainOnly>
     <BaselineFollowup/>
-    {app ? <ApplicabilityViews data={app}/> : <ChartFrame title="Training spectral space" exportable={false}><Empty>{error||'Loading training-only spectral distances…'}</Empty></ChartFrame>}
+    {app ? <ApplicabilityViews data={app}/> : <ExportState title="Training spectral space" what="the training-only spectral distances" error={error}/>}
     <RegionContribution data={data} sample={sample}/>
     <SiteBandPattern rows={rows} cohort={cohort}/>
     <BlankSpread data={data}/>
@@ -42,24 +35,15 @@ export function BaselineResearchDiagnostics({ data, rows, cohort, sample }: { da
 }
 
 export function CompletedVibesDiagnostics() {
-  const [data,setData] = useState<ApplicabilityData|null>(null)
-  const [error,setError] = useState('')
-  useEffect(()=>{
-    const abort = new AbortController()
-    fetch(`${import.meta.env.BASE_URL}data/baseline_applicability_r70.json`, {signal:abort.signal})
-      .then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json()})
-      .then(d=>{if(d.schema_version!==1||d.background_rank!==70||d.rows.length!==5160)throw new Error('Unexpected rank-70 distance export');setData(d)})
-      .catch(e=>{if(e.name!=='AbortError')setError(String(e))})
-    return ()=>abort.abort()
-  },[])
+  const {data,error} = useExport<ApplicabilityData>('baseline_applicability_r70.json', d=>d.schema_version!==1||d.background_rank!==70||d.rows.length!==5160 ? 'unexpected rank-70 distance export' : null)
   return data ? <>
     <ChartFrame title="Completed rank-70 training spectral space" exportable={false}><p>Separate training-only PCA fits use spline spectra and rank-70 VIBES corrected over 4000–500 cm⁻¹, then restricted to the shared 4000–1425 channels. Distances and EC errors are recomputed from those spectra and their paired models.</p></ChartFrame>
     <ApplicabilityViews data={data}/>
-  </> : <ChartFrame title="Completed spectral diagnostics" exportable={false}><Empty>{error||'Loading rank-70 distances…'}</Empty></ChartFrame>
+  </> : <ExportState title="Completed spectral diagnostics" what="the rank-70 distances" error={error}/>
 }
 
 function ApplicabilityViews({data}:{data:ApplicabilityData}) {
-  const COLOR = { AIRSpec:'#2C6E9E', VIBES:data.background_rank===70?'#d95f0e':'#7A4FA3' }
+  const COLOR = { AIRSpec:baselineColor('AIRSpec'), VIBES:baselineColor('VIBES', data.background_rank) }
   const [metric,setMetric]=useState('PCA score distance')
   const key=metricKey(metric)
   const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref)
@@ -99,6 +83,7 @@ function ApplicabilityViews({data}:{data:ApplicabilityData}) {
 }
 
 export function RegionContribution({data,sample}:{data:BaselineData;sample:string}) {
+  const COLOR = useBaselineColors()
   const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref);const lg=useLegend()
   const row=data.contributions.find(r=>r.cohort==='full_pool'&&r.sample_id===sample) as BaselineContribution|undefined
   if(!row)return null
@@ -140,6 +125,7 @@ export function SiteBandPattern({rows,cohort}:{rows:BaselinePair[];cohort:Baseli
 }
 
 export function BlankSpread({data}:{data:BaselineData}) {
+  const COLOR = useBaselineColors()
   const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref)
   const [source,setSource]=useState('ETAD')
   const points=data.blank_details.filter(r=>r.source===source.toLowerCase())

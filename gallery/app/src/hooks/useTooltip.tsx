@@ -15,7 +15,7 @@ export type TipBody = ReactNode | string[]
  * A string[] body renders one line each with the first line bold, which is
  * the convention the charts already follow.
  */
-export function useTooltip(wrapRef: RefObject<HTMLElement>) {
+export function useTooltip(wrapRef: RefObject<HTMLElement>, { large = false }: { large?: boolean } = {}) {
   // Viewport coordinates: the tooltip is portalled to <body> with position:fixed,
   // so a chart inside a scrolling box (overflow-x: auto) can no longer clip it.
   const method = useEstimator()
@@ -37,15 +37,22 @@ export function useTooltip(wrapRef: RefObject<HTMLElement>) {
     return () => window.removeEventListener('scroll', hide, { capture: true })
   }, [tip, hide])
 
-  // open towards whichever side has room, so a point near the right or bottom edge keeps its label on screen
-  const flipX = tip ? tip.x > window.innerWidth - 300 : false
+  // open towards whichever side has room, so a point near the right or bottom edge keeps its label on screen.
+  // Large readouts are wider than either side of a narrow window, so they open towards the roomier side
+  // and wrap to fit it rather than running off the other edge.
+  const LARGE_MAX = 560, GAP = 14, MARGIN = 8
+  const roomRight = tip ? window.innerWidth - tip.x - GAP - MARGIN : 0
+  const roomLeft = tip ? tip.x - GAP - MARGIN : 0
+  const flipX = tip ? (large ? roomRight < LARGE_MAX && roomLeft > roomRight : tip.x > window.innerWidth - 300) : false
+  const maxWidth = large ? Math.max(160, Math.min(LARGE_MAX, flipX ? roomLeft : roomRight)) : undefined
   const flipY = tip ? tip.y > window.innerHeight - 160 : false
   const node = tip
     ? createPortal(
         <div
-          className="tooltip"
+          className={large ? 'tooltip large' : 'tooltip'}
           style={{
             position: 'fixed',
+            ...(maxWidth ? { maxWidth } : {}),
             ...(flipX ? { right: window.innerWidth - tip.x + 14 } : { left: tip.x + 14 }),
             ...(flipY ? { bottom: window.innerHeight - tip.y + 10 } : { top: tip.y + 10 }),
           }}

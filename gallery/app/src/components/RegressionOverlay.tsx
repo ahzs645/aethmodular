@@ -53,9 +53,12 @@ export function RegressionReadout({ stats, x = 10, y = 10, width = 280, title, c
     ] : [{ text: '95% CI unavailable (data / resamples)', color: INK.muted }] : [])]
   }),
     ...(missingYork ? [{ text: 'York unavailable: check uncertainties', color: INK.muted }] : [])]
-  return <g transform={`translate(${x},${y})`} fontFamily={FONT.mono} fontSize={10.5} pointerEvents="none">
-    <rect width={width} height={lines.length * 15 + 12} rx={5} fill="#fff" fillOpacity={0.94} stroke={INK.border}/>
-    {lines.map((l, i) => <text key={i} x={8} y={18 + i * 15} fill={l.color}>{l.text}</text>)}
+  // a narrow panel shrinks the monospace text to fit its box instead of letting the SVG edge clip it
+  const fontSize = Math.max(8, Math.min(10.5, (width - 16) / (0.61 * Math.max(...lines.map(l => l.text.length)))))
+  const step = Math.round(fontSize * 1.43)
+  return <g transform={`translate(${x},${y})`} fontFamily={FONT.mono} fontSize={fontSize} pointerEvents="none">
+    <rect width={width} height={lines.length * step + 12} rx={5} fill="#fff" fillOpacity={0.94} stroke={INK.border}/>
+    {lines.map((l, i) => <text key={i} x={8} y={step + 3 + i * step} fill={l.color}>{l.text}</text>)}
     <title>{[fits.find(f => f.method === 'york')?.assumption, ...(showCI ? fits.map(f => confidence(stats, f.method)?.description ?? 'CI unavailable: requires at least 8 pairs, 6 months per site for block resampling, and 90% valid resamples') : [])].filter(Boolean).join('; ')}</title>
   </g>
 }

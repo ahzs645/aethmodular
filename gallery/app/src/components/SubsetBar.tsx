@@ -1,4 +1,5 @@
 import { RegressionControls } from '@/lib/regressionPrefs'
+import { CONVENTION_LABEL } from '@/lib/seasons'
 import { useRef } from 'react'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
@@ -81,12 +82,8 @@ export interface SubsetActions {
   onReset: () => void
 }
 
-/** The calendar picker's wording: per-site is the default; the Ethiopian bins are shared month bins. */
-const CALENDAR_LABEL: Record<string, string> = {
-  local: 'Per site · each site’s local calendar',
-  dry_feb: 'Shared Ethiopian month bins · Feb in dry',
-  belg_feb: 'Shared Ethiopian month bins · Feb in Belg',
-}
+/** The calendar picker's wording lives with the calendars (lib/seasons). */
+const CALENDAR_LABEL = CONVENTION_LABEL
 
 /**
  * Global subset controls, as a floating side panel. A tab on the left edge

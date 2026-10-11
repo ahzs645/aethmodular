@@ -3,11 +3,11 @@ import { useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
-import { XAxis } from '@/components/Axes'
+import { IntervalStrip } from '@/components/IntervalStrip'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
-import { INK, MARGIN, FONT } from '@/lib/theme'
+import { MARGIN } from '@/lib/theme'
 import type { CalibRunsFile, YorkFit } from '@/lib/types'
 
 const VARIANTS = ['deployed', 'lot_lin', 'lot_quad'] as const
@@ -34,11 +34,10 @@ export function HipsYork({ runs }: { runs: CalibRunsFile }) {
   const LEFT = 104
   const innerW = Math.max(240, width - LEFT - MARGIN.right)
   const rowH = 44
-  const innerH = rows.length * rowH
   const vals = rows.flatMap((r) => shown.map((v) => r.fits![v]).filter((f): f is YorkFit => !!f && !('error' in f)).flatMap((f) => [f[what] - (showCI && Number.isFinite(f[`${what}_se`]) ? 1.96 * f[`${what}_se`] : 0), f[what] + (showCI && Number.isFinite(f[`${what}_se`]) ? 1.96 * f[`${what}_se`] : 0)]))
   const ext = d3.extent(vals) as [number, number]
+  // the slope view always spans 0.8–1.2 so agreement stays in frame
   const x = d3.scaleLinear().domain([Math.min(what === 'slope' ? 0.8 : 0, ext[0] ?? 0), Math.max(what === 'slope' ? 1.2 : 0, ext[1] ?? 1)]).range([0, innerW]).nice()
-  const y = d3.scaleBand<string>().domain(rows.map((r) => r.site)).range([0, innerH]).padding(0.3)
 
   return (
     <ChartFrame
@@ -52,32 +51,22 @@ export function HipsYork({ runs }: { runs: CalibRunsFile }) {
         {rows.length === 0 ? (
           <Empty>No HIPS York rows exported.</Empty>
         ) : (
-          <svg width={width} height={innerH + MARGIN.top + MARGIN.bottom}>
-            <g transform={`translate(${LEFT},${MARGIN.top})`}>
-              {rows.map((r) => (
-                <text key={r.site} x={-10} y={(y(r.site) ?? 0) + y.bandwidth() / 2} dy="0.32em" textAnchor="end" fontSize={11.5} fill={runs.targets[r.site]?.color ?? INK.text} fontWeight={600} fontFamily={FONT.family}>
-                  {runs.targets[r.site]?.site ?? r.site}
-                </text>
-              ))}
-              <XAxis scale={x} y={innerH} label={what === 'intercept' ? 'York intercept (µg/m³)' : 'York slope'} />
-              <line x1={x(what === 'slope' ? 1 : 0)} x2={x(what === 'slope' ? 1 : 0)} y1={0} y2={innerH} stroke={INK.axis} strokeDasharray="4 3" />
-              {rows.map((r) =>
-                VARIANTS.map((v, k) => {
+          <IntervalStrip labelWidth={LEFT} rowHeight={rowH} minPanelWidth={240}
+            panels={[{ label: what === 'intercept' ? 'York intercept (µg/m³)' : 'York slope', reference: what === 'slope' ? 1 : 0, domain: x.domain() as [number, number] }]}
+            blocks={[{ key: 'sites', rows: rows.map((r) => {
+              const fits = shown.map((v) => [v, r.fits![v]] as const).filter((e): e is readonly [typeof e[0], YorkFit] => !!e[1] && !('error' in e[1]))
+              return { key: r.site, label: runs.targets[r.site]?.site ?? r.site, labelColor: runs.targets[r.site]?.color,
+                tip: [`${runs.targets[r.site]?.site ?? r.site}`,
+                  ...fits.map(([v, f]) => `${VARIANT_LABEL[v]}: ${what} ${fmt(f[what], 3)}${showCI ? ` · approx. 95% CI [${fmt(f[what] - 1.96 * f[`${what}_se`], 3)}, ${fmt(f[what] + 1.96 * f[`${what}_se`], 3)}]` : ''} (slope ${fmt(f.slope, 3)} · intercept ${fmt(f.intercept, 3)} · κ ${fmt(f.kappa, 2)})`),
+                  `${r.n_matched} of ${r.n} filters matched · ${((r.frac_below_blank_r1 ?? 0) * 100).toFixed(0)} % below the blank R1 range`],
+                // one mark per blank-line convention, stacked within the site's row
+                marks: [VARIANTS.map((v, k) => {
                   const f = r.fits![v]
                   if (!f || 'error' in f || !lg.show(VARIANT_LABEL[v])) return null
-                  const cy = (y(r.site) ?? 0) + (y.bandwidth() * (k + 0.5)) / VARIANTS.length
-                  const val = f[what]
-                  const se = f[`${what}_se`]
-                  return (
-                    <g key={v} onMouseEnter={(e) => tip.show(e, [`${runs.targets[r.site]?.site ?? r.site} · ${VARIANT_LABEL[v]}`, `${what} ${fmt(val, 3)}${showCI ? ` · approx. 95% CI [${fmt(val - 1.96 * se, 3)}, ${fmt(val + 1.96 * se, 3)}]` : ''}`, `slope ${fmt(f.slope, 3)} · intercept ${fmt(f.intercept, 3)} · κ ${fmt(f.kappa, 2)}`, `${r.n_matched} of ${r.n} filters matched · ${((r.frac_below_blank_r1 ?? 0) * 100).toFixed(0)} % below the blank R1 range`])} onMouseLeave={tip.hide} opacity={lg.dim(VARIANT_LABEL[v])}>
-                      {showCI && Number.isFinite(se) && se >= 0 && <line data-fit-uncertainty="york-normal" x1={x(val - 1.96 * se)} x2={x(val + 1.96 * se)} y1={cy} y2={cy} stroke={VARIANT_COLOR[v]} strokeWidth={1.5} />}
-                      <circle cx={x(val)} cy={cy} r={4} fill={VARIANT_COLOR[v]} />
-                    </g>
-                  )
-                })
-              )}
-            </g>
-          </svg>
+                  const se = f[`${what}_se`], ok = showCI && Number.isFinite(se) && se >= 0
+                  return { mid: f[what], lo: ok ? f[what] - 1.96 * se : null, hi: ok ? f[what] + 1.96 * se : null, color: VARIANT_COLOR[v], r: 4, dy: (k - (VARIANTS.length - 1) / 2) * 10 }
+                }).filter((mk): mk is NonNullable<typeof mk> => mk !== null)] }
+            }) }]} />
         )}
         <Legend items={VARIANTS.map((v) => ({ label: VARIANT_LABEL[v], color: VARIANT_COLOR[v] }))} {...lg.props} note={showCI ? "bars = approximate 95% normal CI (±1.96 SE); missing SE has no bar" : "fit uncertainty hidden"} />
         {runs.hips.blanks && (

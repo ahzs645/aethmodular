@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { loadJson } from '@/lib/data'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Select, Toggle } from '@/components/ChartFrame'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -36,12 +37,18 @@ export interface SpecCurveFile {
   lot: number[]
 }
 
-const BASE = `${import.meta.env.BASE_URL}data`
 type FilterKey = 'co' | 'sp' | 'sel' | 'mo' | 'lot' | 'cut' | 'k'
 const ALL = '*'
 const NO_CUTOFF = 'complete'
 const initialFilters = (): Record<FilterKey, string> => ({ co: ALL, sp: ALL, sel: ALL, mo: ALL, lot: ALL, cut: ALL, k: ALL })
-const BAND = 0.5
+/** what the curve sorts and plots: the Addis intercept (default), the Addis slope, or IMPROVE cross-validation R² */
+export type SpecMetric = 'intercept' | 'slope' | 'heldout'
+export interface SpecMetricInfo { axis: string; rank: string; ref: number; band: [number, number] }
+const METRICS: Record<SpecMetric, { name: string } & SpecMetricInfo> = {
+  intercept: { name: 'Addis intercept', axis: 'Deming intercept, MAC 10 (µg/m³)', rank: 'Configuration rank by intercept', ref: 0, band: [-0.5, 0.5] },
+  slope: { name: 'Addis slope', axis: 'Deming slope, MAC 10 (1 = agreement)', rank: 'Configuration rank by slope', ref: 1, band: [0.7, 1.3] },
+  heldout: { name: 'IMPROVE cross-validation R²', axis: 'IMPROVE held-out TOR R² (site-grouped CV only)', rank: 'Configuration rank by IMPROVE cross-validation R²', ref: 0.85, band: [0.85, 1] },
+}
 const RULE_LABELS: Record<HighlightRule, string> = { guardrails: 'Saved guardrails', intercept: 'Near-zero intercept', 'cv-slope': 'Slope + cross-validation', custom: 'Intercept + slope + cross-validation' }
 /** strip heat map: share of specifications using a choice, white (none) to dark red (all) */
 const HEAT = (t: number) => d3.interpolateReds(0.12 + 0.88 * t)
@@ -79,7 +86,7 @@ export function SpecCurve({
   const method = useEstimator()
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
-  const tip = useTooltip(wrapRef)
+  const tip = useTooltip(wrapRef, { large: true })
   const [data, setData] = useState<SpecCurveFile | null | 'missing'>(null)
   const [required, setRequired] = useState<Set<number>>(new Set())
   const [passOnly, setPassOnly] = useState(false)
@@ -89,6 +96,7 @@ export function SpecCurve({
   const [comparison, setComparison] = useState<string>(defaultComparison)
   const [showDots, setShowDots] = useState(true)
   const [rule, setRule] = useState<HighlightRule>('guardrails')
+  const [metric, setMetric] = useState<SpecMetric>('intercept')
   const [limits, setLimits] = useState<HighlightLimits>({ ...DEFAULT_HIGHLIGHT_LIMITS })
   const excludedKey = excludePreprocessing.join('|')
 
@@ -105,8 +113,7 @@ export function SpecCurve({
     setData(null)
     setRequired(new Set())
     setFilters(initialFilters())
-    fetch(`${BASE}/${src}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+    loadJson<SpecCurveFile>(src)
       .then((d) => !cancelled && setData(d))
       .catch(() => !cancelled && setData('missing'))
     return () => { cancelled = true }
@@ -114,16 +121,20 @@ export function SpecCurve({
 
   const file = useMemo(() => {
     if (!data || data === 'missing') return null
-    if (method !== 'ols') return data
-    if (!data.olsIntercept || !data.olsSlope) return null
-    const order = data.olsIntercept.map((_, i) => i).filter(i => data.olsIntercept![i] !== null && data.olsSlope![i] !== null)
-      .sort((a, b) => data.olsIntercept![a]! - data.olsIntercept![b]!)
+    if (method === 'ols' && (!data.olsIntercept || !data.olsSlope)) return null
+    const intercept = method === 'ols' ? data.olsIntercept! : data.intercept
+    const slope = method === 'ols' ? data.olsSlope! : data.slope
+    const value = { intercept, slope, heldout: data.heldout }[metric]
+    if (method !== 'ols' && metric === 'intercept') return { ...data, value: data.intercept }
+    // re-sort by the chosen measure; configurations without it (no CV split, no slope) drop out
+    const order = value.map((_, i) => i).filter(i => value[i] !== null && intercept[i] !== null && slope[i] !== null)
+      .sort((a, b) => value[a]! - value[b]!)
     const pick = <T,>(a: T[]) => order.map(i => a[i])
     const bits = (s: string) => order.map(i => s[i]).join('')
-    return { ...data, n: order.length, n_pass: order.filter(i => data.ok[i] === '1').length,
-      intercept: pick(data.olsIntercept) as number[], slope: pick(data.olsSlope), heldout: pick(data.heldout), cut: pick(data.cut), k: pick(data.k),
+    return { ...data, n: order.length, n_pass: order.filter(i => data.ok[i] === '1').length, value: pick(value) as number[],
+      intercept: pick(intercept) as number[], slope: pick(slope), heldout: pick(data.heldout), cut: pick(data.cut), k: pick(data.k),
       co: pick(data.co), sp: pick(data.sp), sel: pick(data.sel), mo: pick(data.mo), lot: pick(data.lot), masks: data.masks.map(bits), ok: bits(data.ok) }
-  }, [data, method])
+  }, [data, method, metric])
 
   const highlighted = useMemo(() => file ? file.intercept.map((intercept, i) => highlightMatches({
     intercept, slope: file.slope[i], cv: file.heldout[i], guardrails: file.ok[i] === '1',
@@ -180,7 +191,7 @@ export function SpecCurve({
   </label>
 
   // helpers below run only once the file has loaded (the body is empty until then)
-  const f = file as SpecCurveFile
+  const f = file as SpecCurveFile & { value: number[] }
   const cfgOf = (i: number): Config => ({
     co: f.categories.co[f.co[i]],
     cut: f.cut[i],
@@ -208,6 +219,8 @@ export function SpecCurve({
       controls={
         <>
           {controls}
+          <Select label="Sort and plot by" value={metric} options={Object.keys(METRICS)} onChange={v => { setMetric(v as SpecMetric); tip.hide() }}
+            optionLabel={v => METRICS[v as SpecMetric].name} title="The curve is the chosen measure, sorted; the choice strips and red dots follow the same order." />
           <Select label="Graph view" value={layout} options={['single', 'separate', 'stacked', 'overlay', 'combined']} onChange={v => setLayout(v as SpecLayout)}
             optionLabel={v => ({ single: 'One selection at a time', separate: 'Side by side', stacked: 'Stacked selections', overlay: 'Combined overlay', combined: 'Combined ordered curve' }[v] ?? v)} />
           {layout === 'single' && availableSelections.length > 0 && <Select label="Display selection" value={selection} options={availableSelections} onChange={setActiveSelection} optionLabel={v => label(PREPROCESSING, v)} />}
@@ -257,8 +270,8 @@ export function SpecCurve({
         ) : m === 0 ? (
           <Empty>No saved configuration matches these filters{passOnly ? ' and the highlight criteria' : ''}.</Empty>
         ) : (
-          <SpecCurvePlots file={f} shown={shown} width={width} id={id + '-' + method} layout={layout} activeSelection={selection}
-            highlighted={highlighted} showDots={showDots} highlightLabel={highlightDescription} band={BAND}
+          <SpecCurvePlots file={f} metric={METRICS[metric]} shown={shown} width={width} id={id + '-' + method} layout={layout} activeSelection={selection}
+            highlighted={highlighted} showDots={showDots} highlightLabel={highlightDescription}
             required={required} toggleChoice={toggleChoice} selectedIndices={selectedIndices}
             showTip={tip.show} hideTip={tip.hide} select={onSelect ? i => onSelect(cfgOf(i)) : undefined}
             describe={i => [describe(i),
@@ -273,6 +286,7 @@ export function SpecCurve({
           </div>
         )}
         {layout === 'overlay' && <p className="chart-note">Each selection is sorted independently on a percentile axis. Curves compare distributions, not matched configurations. Choice strips are shown in the separate and combined ordered views.</p>}
+        {file && data && data !== 'missing' && data.n > file.n && <p className="chart-note">{(data.n - file.n).toLocaleString()} configurations have no {METRICS[metric].name}{metric === 'heldout' ? ' (interleaved cross-validation holds no whole IMPROVE site out)' : ''} and are left out of this view.</p>}
         {rule !== 'guardrails' && <p className="chart-note">Custom highlights use the displayed fit's intercept, slope and IMPROVE cross-validation R². They do not apply the saved guardrails' out-of-domain or negative-prediction limits; saved guardrail results stay unchanged.</p>}
         {tip.node}
       </div>

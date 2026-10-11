@@ -4,7 +4,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { FONT, INK } from '@/lib/theme'
 import { PREPROCESSING, label } from '@/lib/labels'
 import { selectionPanels } from '@/lib/specification'
-import type { SpecCurveFile } from './SpecCurve'
+import type { SpecCurveFile, SpecMetricInfo } from './SpecCurve'
 
 export type SpecLayout = 'combined' | 'separate' | 'overlay' | 'stacked' | 'single'
 const TOP_H = 250, ROW_H = 17, GROUP_H = 18, GAP = 24
@@ -13,8 +13,8 @@ const COLOURS = ['#2171b5', '#0f766e', '#8856a7', '#d95f0e', '#636363']
 const selectionName = (key: string) => `${label(PREPROCESSING, key)} selection`
 
 interface Props {
-  file: SpecCurveFile; shown: number[]; width: number; id: string; layout: SpecLayout; activeSelection?: string
-  highlighted: boolean[]; showDots: boolean; highlightLabel: string; band: number
+  file: SpecCurveFile & { value: number[] }; metric: SpecMetricInfo; shown: number[]; width: number; id: string; layout: SpecLayout; activeSelection?: string
+  highlighted: boolean[]; showDots: boolean; highlightLabel: string
   required: Set<number>; toggleChoice: (c: number) => void
   selectedIndices: Set<number>; describe: (i: number) => string[]
   showTip: (e: React.MouseEvent, lines: string[]) => void; hideTip: () => void
@@ -22,7 +22,7 @@ interface Props {
 }
 
 export function SpecCurvePlots(props: Props) {
-  const { file, shown, width, layout, id, highlighted, showDots, band, highlightLabel } = props
+  const { file, metric, shown, width, layout, id, highlighted, showDots, highlightLabel } = props
   const panels = useMemo(() => selectionPanels(shown, file.sel, file.categories.sel), [shown, file])
   const colorOf = (key: string) => COLOURS[file.categories.sel.indexOf(key) % COLOURS.length]
   // The baseline is already identified by the panel and selection controls.
@@ -37,28 +37,32 @@ export function SpecCurvePlots(props: Props) {
   const rowY = (c: number) => choiceIndices.indexOf(c) * ROW_H + (groups.length ? (groups.findIndex(g => c >= g.start && c < g.end) + 1) * GROUP_H : 0)
   const stripH = choiceIndices.length * ROW_H + groups.length * GROUP_H
   const panelH = 48 + TOP_H + GAP + stripH + 60
-  const ys = shown.map(i => file.intercept[i])
-  const domain: [number, number] = [(d3.quantile(ys, 0.003) ?? -1) - 0.6, Math.max(2.6, (d3.quantile(ys, 0.997) ?? 0) + 1.9)]
+  const ys = shown.map(i => file.value[i])
+  const qLo = d3.quantile(ys, 0.003) ?? metric.band[0], qHi = d3.quantile(ys, 0.997) ?? metric.band[1]
+  const pad = 0.08 * Math.max(qHi - qLo, metric.band[1] - metric.band[0])
+  // the intercept keeps its long-standing frame; other measures pad around the data and the target band
+  const domain: [number, number] = metric.ref === 0 && metric.band[0] === -0.5 ? [qLo - 0.6, Math.max(2.6, qHi + 1.9)]
+    : [Math.min(qLo, metric.band[0]) - pad, Math.max(qHi, metric.band[1]) + pad]
   const y = d3.scaleLinear().domain(domain).range([TOP_H, 0])
   const panelList = layout === 'combined' ? [{ key: 'combined', indices: shown }] : layout === 'single' ? panels.filter(p => p.key === props.activeSelection) : panels
   const height = layout === 'overlay' ? TOP_H + 150 : Math.ceil(panelList.length / columns) * panelH
   return <svg width={Math.max(width, labelPad + space + 20)} height={height} fontFamily={FONT.family} data-layout={layout}>
     {layout === 'overlay' ? <g transform="translate(74,46)">
-      <YAxis scale={y} x={0} label="Deming intercept, MAC 10 (µg/m³)" gridWidth={Math.max(240, width - 100)} tickCount={6} />
-      <rect x={0} y={y(band)} width={Math.max(240, width - 100)} height={y(-band) - y(band)} fill={INK.good} fillOpacity={0.08} />
-      <line x1={0} x2={Math.max(240, width - 100)} y1={y(0)} y2={y(0)} stroke={INK.text} />
+      <YAxis scale={y} x={0} label={metric.axis} gridWidth={Math.max(240, width - 100)} tickCount={6} />
+      <rect x={0} y={y(metric.band[1])} width={Math.max(240, width - 100)} height={y(metric.band[0]) - y(metric.band[1])} fill={INK.good} fillOpacity={0.08} />
+      <line x1={0} x2={Math.max(240, width - 100)} y1={y(metric.ref)} y2={y(metric.ref)} stroke={INK.text} />
       {panels.map(p => {
         const w = Math.max(240, width - 100), n = p.indices.length
         const x = d3.scaleLinear().domain([0, 100]).range([0, w])
         const rank = (j: number) => n === 1 ? 50 : j / (n - 1) * 100
         const samples = p.indices.map((i, j) => ({ i, j })).filter((_, j) => j % Math.max(1, Math.floor(n / (w * 2))) === 0 || j === n - 1)
-        const line = d3.line<typeof samples[number]>().x(d => x(rank(d.j))).y(d => y(Math.max(domain[0], file.intercept[d.i])))
+        const line = d3.line<typeof samples[number]>().x(d => x(rank(d.j))).y(d => y(Math.max(domain[0], file.value[d.i])))
         return <g key={p.key} data-selection={p.key}>
           <path d={line(samples) ?? ''} fill="none" stroke={colorOf(p.key)} strokeWidth={1.8} />
-          {showDots && p.indices.map((i, j) => highlighted[i] && <circle key={i} data-highlight="true" cx={x(rank(j))} cy={y(Math.max(domain[0], file.intercept[i]))} r={2.3} fill={INK.negative} />)}
+          {showDots && p.indices.map((i, j) => highlighted[i] && <circle key={i} data-highlight="true" cx={x(rank(j))} cy={y(Math.max(domain[0], file.value[i]))} r={2.3} fill={INK.negative} />)}
         </g>
       })}
-      <XAxis scale={d3.scaleLinear().domain([0, 100]).range([0, Math.max(240, width - 100)])} y={TOP_H} label="Percentile within each selection, ordered by intercept" tickCount={6} format={v => `${v}%`} />
+      <XAxis scale={d3.scaleLinear().domain([0, 100]).range([0, Math.max(240, width - 100)])} y={TOP_H} label={`Percentile within each selection, ${metric.rank.replace('Configuration rank by', 'ordered by')}`} tickCount={6} format={v => `${v}%`} />
       <rect x={0} y={0} width={Math.max(240, width - 100)} height={TOP_H} fill="transparent"
         onMouseMove={e => {
           const r = e.currentTarget.getBoundingClientRect(), t = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))
@@ -90,10 +94,10 @@ function SpecPanel(props: Props & {
   const { file, indices, plotW, y, labelPad, labels, rowY, stripH, highlighted, showDots } = props
   const [cursor, setCursor] = useState<number | null>(null)
   const n = indices.length, x = d3.scaleLinear().domain([0, Math.max(1, n)]).range([0, plotW])
-  const yLo = y.domain()[0], clamp = (i: number) => y(Math.max(yLo, file.intercept[i]))
+  const yLo = y.domain()[0], clamp = (i: number) => y(Math.max(yLo, file.value[i]))
   const samples = indices.map((i, j) => ({ i, j })).filter((_, j) => j % Math.max(1, Math.floor(n / (plotW * 2))) === 0 || j === n - 1)
   const line = d3.line<typeof samples[number]>().x(p => x(p.j + 0.5)).y(p => clamp(p.i))
-  const area = d3.area<typeof samples[number]>().x(p => x(p.j + 0.5)).y0(y(0)).y1(p => clamp(p.i))
+  const area = d3.area<typeof samples[number]>().x(p => x(p.j + 0.5)).y0(y(props.metric.ref)).y1(p => clamp(p.i))
   const strips = useMemo(() => {
     const cols = Math.max(1, Math.min(indices.length, Math.round(plotW)))
     return file.masks.map(mask => {
@@ -115,15 +119,15 @@ function SpecPanel(props: Props & {
     <text x={0} y={-22} fontSize={11.5} fontWeight={600} fill={props.color}>{props.name.length > plotW / 6.1 ? props.name.slice(0, Math.max(10, Math.floor(plotW / 6.1) - 1)) + '…' : props.name}<title>{props.name}</title></text>
     <text x={0} y={-6} fontSize={10.5} fill={INK.muted}>{n.toLocaleString()} configurations · {count.toLocaleString()} match</text>
     <defs><clipPath id={props.clipId}><rect width={plotW} height={TOP_H} /></clipPath></defs>
-    {labels ? <YAxis scale={y} x={0} label="Deming intercept, MAC 10 (µg/m³)" gridWidth={plotW} tickCount={6} /> : y.ticks(6).map(v => <line key={v} x1={0} x2={plotW} y1={y(v)} y2={y(v)} stroke={INK.grid} />)}
-    <rect x={0} y={y(props.band)} width={plotW} height={y(-props.band) - y(props.band)} fill={INK.good} fillOpacity={0.08} />
+    {labels ? <YAxis scale={y} x={0} label={props.metric.axis} gridWidth={plotW} tickCount={6} /> : y.ticks(6).map(v => <line key={v} x1={0} x2={plotW} y1={y(v)} y2={y(v)} stroke={INK.grid} />)}
+    <rect x={0} y={y(props.metric.band[1])} width={plotW} height={y(props.metric.band[0]) - y(props.metric.band[1])} fill={INK.good} fillOpacity={0.08} />
     <g clipPath={`url(#${props.clipId})`}>
       <path d={area(samples) ?? ''} fill={props.color} fillOpacity={0.12} />
       <path d={line(samples) ?? ''} fill="none" stroke={props.color} strokeWidth={1.4} />
       {indices.map((i, j) => props.selectedIndices.has(i) && <circle key={`s${i}`} cx={x(j + 0.5)} cy={clamp(i)} r={3.4} fill="none" stroke={INK.text} strokeOpacity={0.7} />)}
       {showDots && indices.map((i, j) => highlighted[i] && <circle key={`h${i}`} data-highlight="true" cx={x(j + 0.5)} cy={clamp(i)} r={2.3} fill={INK.negative} />)}
     </g>
-    <line x1={0} x2={plotW} y1={y(0)} y2={y(0)} stroke={INK.text} />
+    <line x1={0} x2={plotW} y1={y(props.metric.ref)} y2={y(props.metric.ref)} stroke={INK.text} />
     {cursor !== null && cursor < n && <line x1={x(cursor + 0.5)} x2={x(cursor + 0.5)} y1={0} y2={TOP_H + GAP + stripH} stroke={INK.text} strokeOpacity={0.5} pointerEvents="none" />}
     <rect x={0} y={0} width={plotW} height={TOP_H} fill="transparent" style={{ cursor: props.select ? 'pointer' : 'default' }}
       onMouseMove={e => { const j = locate(e); setCursor(j); props.showTip(e, [`#${(j + 1).toLocaleString()} of ${n.toLocaleString()} · ${props.name}`, ...props.describe(indices[j])]) }}
@@ -137,7 +141,7 @@ function SpecPanel(props: Props & {
         <text x={-8} y={rowY(c) + ROW_H / 2} dy="0.32em" textAnchor="end" fontSize={11} fill={props.required.has(c) ? INK.accent : INK.text}>{file.choices[c]}</text>
         <title>Click to toggle this choice. Alternatives within the same setting are combined; different settings must all match.</title>
       </g>)}
-      <XAxis scale={x} y={stripH} label="Configuration rank by intercept" tickCount={Math.max(2, Math.floor(plotW / 85))} format={v => d3.format(',')(v)} />
+      <XAxis scale={x} y={stripH} label={props.metric.rank} tickCount={Math.max(2, Math.floor(plotW / 85))} format={v => d3.format(',')(v)} />
     </g>
   </g>
 }

@@ -139,6 +139,40 @@ uv run python gallery/data/export_vibes_fullrange_results.py  # vibes_fullrange_
 uv run python gallery/data/export_etad_ids.py                 # similarity/etad_ids.json
 ```
 
+### Define it once
+
+Before adding a constant, picker or chart to a page, use the shared one
+(full list and what is still open: `docs/gallery-chart-standards.md` §4b):
+colours, regions and trace styles in `lib/theme.ts`; names and axis titles in
+`lib/labels.ts`; number formats in `lib/format.ts`; season names and the two
+Addis calendars in `lib/seasons.ts`; every data file through `lib/data.ts`
+(`useExport`, `loadJson`) and spectra through `lib/similarity.loadTraces`;
+`components/Pickers`, `Crossplot`, `Key`, `SpectralRegions`, `IntervalStrip`
+and `ExportState` for the recurring UI. URL keys must be unique across pages
+(development builds warn when two controls share one).
+
+### Sharing a read-only copy
+
+The full app carries ~126 MB of data, most of it gitignored, so a clone is not
+a way to share it. `gallery/share/build_share.py` builds a static copy that
+offers only the listed tabs (via `VITE_SHARE_TABS`) and keeps only the data
+those tabs fetch: Meeting + Map is ~34 MB.
+
+```bash
+python3 gallery/share/build_share.py                       # Meeting + Map
+python3 gallery/share/build_share.py --tabs meeting,map,blanks
+```
+
+The result in `gallery/share/dist/` (gitignored) uses relative paths and must
+be served over HTTP, not opened as a file; the `gallery-share` entry in
+`.claude/launch.json` serves it on port 5180. It holds unpublished data, so
+it stays local until someone decides where to host it.
+
+The Meeting tab's "all held-out IMPROVE" crossplots need
+`pool_test_predictions.csv` from
+`research/ftir_hips_chem/workflows/run_pool_test_points_20261009.py`, then
+`uv run python research/ftir_hips_chem/workflows/migrate_vibes_gallery_rank70.py export-meeting`.
+
 ## What the census found
 
 The **Meeting** tab groups **Follow up meeting** and **Satoshi 2 Oct** under a

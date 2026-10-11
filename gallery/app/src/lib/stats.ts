@@ -197,8 +197,8 @@ export function kde(values: number[], grid: number[], bandwidth?: number): numbe
   })
 }
 
-export const fmt = (v: number | null | undefined, digits = 3): string =>
-  v === null || v === undefined || !Number.isFinite(v) ? '—' : v.toFixed(digits)
+/** Formatting lives in lib/format.ts; re-exported here for the charts that import it from stats. */
+export { fmt } from './format.ts'
 
 /**
  * Two-sample comparison for the mirror histogram: Welch's t (unequal

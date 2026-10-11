@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { loadJson } from '@/lib/data'
 import * as d3 from 'd3'
 import type { FeatureCollection } from 'geojson'
 import { ChartFrame, Empty, Note, Segmented, Select } from '@/components/ChartFrame'
@@ -59,22 +60,19 @@ export function SiteBubbleMap({ rows, meta, field, focusSite }: {
   }, [focusSite])
 
   useEffect(() => {
-    const controller = new AbortController()
-    fetch(`${import.meta.env.BASE_URL}data/world.geojson`, { signal: controller.signal })
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
-      .then(setWorld).catch(() => {})
-    return () => controller.abort()
+    let live = true
+    loadJson<any>('world.geojson').then((w) => { if (live) setWorld(w) }).catch(() => {})
+    return () => { live = false }
   }, [])
 
   useEffect(() => {
     if (!isNetwork || network) return
-    const controller = new AbortController()
+    let live = true
     setError('')
-    fetch(`${import.meta.env.BASE_URL}data/${isImprove ? 'improve' : 'spartan'}_map.json`, { signal: controller.signal })
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
-      .then(isImprove ? setImprove : setSpartan)
-      .catch(e => { if (e.name !== 'AbortError') setError(String(e)) })
-    return () => controller.abort()
+    loadJson<any>(`${isImprove ? 'improve' : 'spartan'}_map.json`)
+      .then((d) => { if (live) (isImprove ? setImprove : setSpartan)(d) })
+      .catch(e => { if (live) setError(String(e)) })
+    return () => { live = false }
   }, [isImprove, isNetwork, network])
 
   const sites = useMemo(() => {

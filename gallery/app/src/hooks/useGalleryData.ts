@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { dataUrl, loadDerived } from '@/lib/data'
 import type { CalibFile, CalibRunsFile, CensusFile, FiltersFile, MetaFile, PmfFile } from '@/lib/types'
 
 export interface GalleryData {
@@ -12,7 +13,6 @@ export interface GalleryData {
   calibrationRuns: CalibRunsFile | null
 }
 
-const BASE = `${import.meta.env.BASE_URL}data`
 
 /**
  * Loads every exported dataset once and shares it across the app.
@@ -24,14 +24,15 @@ export function useGalleryData() {
 
   useEffect(() => {
     let cancelled = false
-    const get = async (name: string) => {
-      const res = await fetch(`${BASE}/${name}.json`)
+    // cached in lib/data, so a remount (or React's development double effect) does not download twice
+    const get = (name: string) => loadDerived(`gallery:${name}`, async () => {
+      const res = await fetch(dataUrl(`${name}.json`))
       if (!res.ok) throw new Error(`${name}.json -> HTTP ${res.status}`)
       if (!name.startsWith('calibration')) return res.json()
       // The calibration explorer names USPA "Pasadena"; the filter data (config.SITES)
       // call it JPL. Relabel on load so one site has one name on every tab.
       return JSON.parse((await res.text()).replace(/\bPasadena\b/g, 'JPL'))
-    }
+    })
     // pmf.json is ETAD-only and optional — a checkout without the factor CSVs
     // should still render everything else.
     Promise.all([

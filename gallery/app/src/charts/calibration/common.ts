@@ -1,6 +1,7 @@
 import * as d3 from 'd3'
 import type { CalibFile, CalibRow, MetaFile, MetricRow, SweepRow } from '@/lib/types'
 import { METRIC, PREPROCESSING, SELECTION_SPACE, label } from '@/lib/labels'
+import { BASELINE_COLOR, INK } from '@/lib/theme'
 
 /** A configuration is what the explorer fits: cohort × cutoff × selection space × calibration spectra. */
 export interface Config {
@@ -28,17 +29,19 @@ export const presetName = (p: { label: string; spectra: string }) =>
 
 /** Fixed cohort colours — not in config.py, so declared once here. */
 export const COHORT_COLOR: Record<string, string> = {
-  pool: '#7b8794',
+  pool: INK.muted,
   smoke: '#8d5524',
   eth_shaped: '#E67E22',
   analogs: '#8e44ad',
   ocec: '#2b6cb0',
 }
-export const cohortColor = (co: string) => COHORT_COLOR[co] ?? '#5b6470'
+export const cohortColor = (co: string) => COHORT_COLOR[co] ?? INK.axis
 
 /** Colour per calibration spectra space, shared by every chart that puts the preprocessings side by side. */
-export const SPECTRA_COLOR: Record<string, string> = { raw: '#1f2933', airspec: '#2171b5', deriv2: '#c026d3', neutral: '#0f766e' }
-export const spectraColor = (sp: string) => SPECTRA_COLOR[sp] ?? '#5b6470'
+// the calibration grid's four spectra spaces (their order is the legend order); the spline baseline takes
+// its tab-wide colour (lib/theme BASELINE_COLOR) since #2171b5 is reserved for the accent and OLS
+export const SPECTRA_COLOR: Record<string, string> = { raw: INK.text, airspec: BASELINE_COLOR.airspec, deriv2: '#c026d3', neutral: INK.good }
+export const spectraColor = (sp: string) => SPECTRA_COLOR[sp] ?? BASELINE_COLOR[sp] ?? INK.axis
 
 
 export const METRICS = [
@@ -95,8 +98,9 @@ export const passes = (r: CalibRow, calib: CalibFile) => {
   return m !== null && m >= calib.slope_box[0] && m <= calib.slope_box[1] && (r.ho ?? 0) >= calib.heldout_floor
 }
 
+/** A saved fit as "0.820x − 1.060", at the agreed coefficient precision (lib/format coef, 3 dp). */
 export const fmtFit = (m: number | null, b: number | null) =>
-  m === null || b === null ? '—' : `${m.toFixed(2)}x ${b < 0 ? '−' : '+'} ${Math.abs(b).toFixed(2)}`
+  m === null || b === null ? '—' : `${m.toFixed(3)}x ${b < 0 ? '−' : '+'} ${Math.abs(b).toFixed(3)}`
 
 /** Colour for an evaluation group: the Ethiopian season colours from config when the label matches, else a fixed ordinal. */
 export function groupColorFn(meta: MetaFile, groups: string[]): (g: string) => string {

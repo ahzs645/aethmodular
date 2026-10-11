@@ -4,12 +4,13 @@ import type { ReactNode } from 'react'
 import * as d3 from 'd3'
 import { Segmented, Toggle } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
-import { INK, FONT } from '@/lib/theme'
+import { INK, FONT, BASELINE_COLOR } from '@/lib/theme'
 import { useAddisStatus, useFilterSpectrum, traceVersionLabel, type AddisStatus, type FilterSpectrumData, type SpectrumMethod } from '@/lib/filterSpectrum'
 import { useDimensions } from '@/hooks/useGalleryData'
 
 // the baseline colours used on the AIRSpec / VIBES pages
-const COLOR: Record<SpectrumMethod, string> = { AIRSpec: '#2C6E9E', VIBES: '#d95f0e' }
+// the drawer's VIBES is always the completed full-range run
+const COLOR: Record<SpectrumMethod, string> = { AIRSpec: BASELINE_COLOR.AIRSpec, VIBES: BASELINE_COLOR['VIBES-full-r70'] }
 const NAME: Record<SpectrumMethod, string> = { AIRSpec: 'Spline baseline (AIRSpec)', VIBES: 'VIBES baseline' }
 const VIEWS = ['Spline baseline (AIRSpec)', 'VIBES baseline', 'both'] as const
 const METHODS_OF: Record<(typeof VIEWS)[number], SpectrumMethod[]> = {

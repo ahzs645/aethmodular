@@ -35,7 +35,22 @@ export const listToParam = (s: Set<string> | null): string | null =>
  * copied URL and the back button; the fallback is never written, so a
  * default view keeps a clean URL.
  */
+/**
+ * Query keys are shared by every page, so two controls that mean different things
+ * must not use the same key (one would silently overwrite the other). In
+ * development, a key registered with two different option lists is reported.
+ */
+const registered = new Map<string, string>()
+function registerKey(name: string, allowed?: readonly string[]) {
+  if (!import.meta.env?.DEV || !allowed) return
+  const sig = [...allowed].sort().join('|')
+  const prev = registered.get(name)
+  if (prev !== undefined && prev !== sig) console.warn(`URL key "${name}" is used by two controls with different options: [${prev}] vs [${sig}]`)
+  else registered.set(name, sig)
+}
+
 export function useSearchParam<T extends string>(name: string, fallback: T, allowed?: readonly string[]): [T, (v: T) => void] {
+  registerKey(name, allowed)
   const read = () => {
     const value = new URL(window.location.href).searchParams.get(name)
     return value && (!allowed || allowed.includes(value)) ? (value as T) : fallback

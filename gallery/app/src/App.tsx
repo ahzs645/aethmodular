@@ -67,7 +67,11 @@ const TABS = [
 ] as const
 
 type TabKey = (typeof TABS)[number]['key']
-const isTab = (v: string | null): v is TabKey => !!v && TABS.some((t) => t.key === v)
+/** A share build (VITE_SHARE_TABS=meeting,map; gallery/share/build_share.py) offers only these tabs, the first as landing tab. */
+const SHARE_TABS: string[] = (import.meta.env.VITE_SHARE_TABS ?? '').split(',').map((t: string) => t.trim()).filter(Boolean)
+const shared = (key: string) => SHARE_TABS.length === 0 || SHARE_TABS.includes(key)
+const isTab = (v: string | null): v is TabKey => !!v && shared(v) && TABS.some((t) => t.key === v)
+const LANDING_TAB = (SHARE_TABS.find((t) => TABS.some((x) => x.key === t)) ?? 'correlation') as TabKey
 
 const MEETINGS = [
   { key: 'followup', label: 'Follow up meeting' },
@@ -76,7 +80,7 @@ const MEETINGS = [
 type MeetingKey = (typeof MEETINGS)[number]['key']
 // Keep existing #tab=satoshi links working under the shared Meeting tab.
 const tabFromParams = (p: URLSearchParams): TabKey =>
-  p.get('tab') === 'satoshi' ? 'meeting' : isTab(p.get('tab')) ? p.get('tab') as TabKey : 'correlation'
+  p.get('tab') === 'satoshi' && shared('meeting') ? 'meeting' : isTab(p.get('tab')) ? p.get('tab') as TabKey : LANDING_TAB
 const meetingFromParams = (p: URLSearchParams): MeetingKey =>
   p.get('tab') === 'satoshi' || p.get('meeting') === 'satoshi' ? 'satoshi' : 'followup'
 
@@ -410,7 +414,7 @@ export default function App() {
 
   const nav = (
     <nav className="nav">
-      {TABS.filter((t) => !('hidden' in t && t.hidden) || t.key === tab).map((t) => (
+      {TABS.filter((t) => shared(t.key) && (!('hidden' in t && t.hidden) || t.key === tab)).map((t) => (
         <button key={t.key} className={`nav-btn ${tab === t.key ? 'active' : ''}`} title={'title' in t ? t.title : undefined} onClick={() => setTab(t.key)}>
           {t.label}
         </button>

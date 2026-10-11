@@ -1,15 +1,18 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
+import { dataUrl, useExport } from '@/lib/data'
+import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, ExplainOnly, Note, Select } from '@/components/ChartFrame'
+import { ChartFrame, ExplainOnly, Note, Select } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { FONT, INK } from '@/lib/theme'
+import { FONT, INK, baselineColor } from '@/lib/theme'
+import { fmt as f } from '@/lib/format'
 import type { BaselineMethod } from '@/lib/baselineComparison'
 
-const BASE = `${import.meta.env.BASE_URL}data/`
-const METHOD_COLOR: Record<string,string> = { AIRSpec:'#2C6E9E', VIBES:'#7A4FA3', routed:'#4D7C68' }
-const f = (x:number|null|undefined,n=3) => x == null || !Number.isFinite(x) ? '—' : x.toFixed(n)
+const BASE = dataUrl('')
+/** Baseline colours follow the run's rank; the per-filter router is its own series. */
+const methodColor = (method: string, rank?: number | null) => method === 'routed' ? '#4D7C68' : baselineColor(method, rank)
 const MODEL_ORDER = ['full_pool','locked800','analog_full','analog_exclude_1800_2500',
   'analog_exclude_1800_2500_above_3600','analog_exclude_1800_2500_above_3500']
 const MODEL_NAME: Record<string,string> = {
@@ -44,22 +47,11 @@ interface FollowupData {
 
 export function BaselineFollowup({ completed = false }: { completed?: boolean } = {}) {
   const prefix = completed ? 'baseline_followup_r70_' : 'baseline_followup_'
-  const [data,setData]=useState<FollowupData|null>(null)
-  const [error,setError]=useState('')
-  useEffect(()=>{
-    const controller=new AbortController()
-    fetch(BASE+(completed ? 'baseline_followup_r70.json' : 'baseline_followup.json'),{signal:controller.signal})
-      .then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json()})
-      .then((v:FollowupData)=>{
-        if(v.schema_version!==1||v.scope!=='new_exploratory_followup_on_saved_corrections'
-          ||(completed && v.background_rank !== 70)||v.common_test_n!==2327||v.selection_metrics.length!==12||v.routing_metrics.length!==6)
-          throw new Error('Unexpected notebook follow-up export')
-        setData(v)
-      })
-      .catch(e=>{if(e.name!=='AbortError')setError(String(e))})
-    return ()=>controller.abort()
-  },[completed])
-  if(!data) return <ChartFrame title="Notebook follow-up" exportable={false}><Empty>{error||'Loading executed notebook results…'}</Empty></ChartFrame>
+  const {data,error}=useExport<FollowupData>(completed ? 'baseline_followup_r70.json' : 'baseline_followup.json', v=>
+    v.schema_version!==1||v.scope!=='new_exploratory_followup_on_saved_corrections'
+      ||(completed && v.background_rank !== 70)||v.common_test_n!==2327||v.selection_metrics.length!==12||v.routing_metrics.length!==6
+      ? 'unexpected notebook follow-up export' : null)
+  if(!data) return <ExportState title="Notebook follow-up" what="the executed notebook results" error={error}/>
   return <>
     {completed && <ChartFrame title="Completed rank-70 calibration selection and routing" exportable={false}><p>VIBES is corrected on 4000–500 cm⁻¹ with background rank 70. These EC models use the shared 4000–1425 channels, the original site split and the same training-only routing protocol. Outcomes are exploratory because this IMPROVE test set was previously inspected.</p></ChartFrame>}
     <ExplainOnly><ChartFrame id="baseline-followup" title="Executed notebook follow-up" exportable={false}>
@@ -94,12 +86,12 @@ function SelectionChart({data}:{data:FollowupData}) {
       <line x1={x(baseline.RMSE)} x2={x(baseline.RMSE)} y2={ih} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="4 3"/>
       {rows.map(r=><g key={r.model} transform={`translate(0,${y(r.model)})`}>
         <text x={-11} y={y.bandwidth()/2+4} textAnchor="end" fontSize={11} fill={INK.text}>{MODEL_NAME[r.model]}</text>
-        <rect y={2} width={x(r.RMSE)} height={Math.max(2,y.bandwidth()-4)} rx={2} fill={(data.background_rank===70 && method==='VIBES' ? '#d95f0e' : METHOD_COLOR[method])} fillOpacity={r.model==='full_pool'?1:.77} onMouseEnter={e=>tip.show(e,[`${MODEL_NAME[r.model]} · ${method}`,`RMSE ${f(r.RMSE)}; MAE ${f(r.MAE)} µg/filter`,`${r.n_train} training filters / ${r.n_train_sites} sites; PLS k=${r.components}`,`ΔRMSE vs full-pool AIRSpec ${f(r.delta_RMSE_vs_full_AIRSpec)} [${f(r.delta_RMSE_CI_low)}, ${f(r.delta_RMSE_CI_high)}]`])} onMouseLeave={tip.hide}></rect>
+        <rect y={2} width={x(r.RMSE)} height={Math.max(2,y.bandwidth()-4)} rx={2} fill={methodColor(method, data.background_rank)} fillOpacity={r.model==='full_pool'?1:.77} onMouseEnter={e=>tip.show(e,[`${MODEL_NAME[r.model]} · ${method}`,`RMSE ${f(r.RMSE)}; MAE ${f(r.MAE)} µg/filter`,`${r.n_train} training filters / ${r.n_train_sites} sites; PLS k=${r.components}`,`ΔRMSE vs full-pool AIRSpec ${f(r.delta_RMSE_vs_full_AIRSpec)} [${f(r.delta_RMSE_CI_low)}, ${f(r.delta_RMSE_CI_high)}]`])} onMouseLeave={tip.hide}></rect>
         <text x={x(r.RMSE)+6} y={y.bandwidth()/2+4} fontSize={10} fill={INK.text}>{f(r.RMSE)}</text>
       </g>)}
       <XAxis scale={x} y={ih} label="RMSE vs TOR EC (µg/filter)"/>
       <g transform={`translate(0,${ih+56})`} fontSize={10} fill={INK.text}>
-        <rect width={11} height={11} fill={(data.background_rank===70 && method==='VIBES' ? '#d95f0e' : METHOD_COLOR[method])}/><text x={17} y={10}>{`${method} RMSE per calibration selection`}</text>
+        <rect width={11} height={11} fill={methodColor(method, data.background_rank)}/><text x={17} y={10}>{`${method} RMSE per calibration selection`}</text>
         <line x1={230} x2={254} y1={5.5} y2={5.5} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="4 3"/><text x={260} y={10}>{`Full-pool AIRSpec reference, RMSE ${f(baseline.RMSE)}`}</text>
       </g>
     </g></svg>{tip.node}</div>
@@ -128,9 +120,9 @@ function RoutingChart({data}:{data:FollowupData}) {
   return <ChartFrame title="Spectrum-only method routing" subtitle="A training-only spectral classifier chooses AIRSpec or VIBES per filter. Both base methods are retained for comparison." provenance={data.background_rank === 70 ? 'Rank-70 migration CLI · grouped training-site folds refit EC calibration and router' : 'Executed CLI notebook · grouped training-site folds refit EC calibration and router'}>
     <div ref={ref} className="chart-wrap"><svg width={w} height={ih+112} role="img" aria-label="AIRSpec, VIBES and routed EC error across training-site folds and previously inspected test sites"><g transform={`translate(${left},20)`} fontFamily={FONT.family}>
       <YAxis scale={y} x={0} gridWidth={iw} label="RMSE (µg/filter)" labelX={-47}/>
-      {data.routing_metrics.map(r=><rect key={r.population+r.method} x={x(r.population)!+inner(r.method)!} y={y(r.RMSE)} width={inner.bandwidth()} height={ih-y(r.RMSE)} fill={(data.background_rank===70 && r.method==='VIBES' ? '#d95f0e' : METHOD_COLOR[r.method])} onMouseEnter={e=>tip.show(e,[`${names[r.population]} · ${r.method}`,`RMSE ${f(r.RMSE)}; MAE ${f(r.MAE)} µg/filter`,`${r.n.toLocaleString()} filters / ${r.n_sites} sites`,r.method==='routed'?`VIBES chosen for ${r.selected_VIBES?.toLocaleString()} filters`:undefined].filter(Boolean) as string[])} onMouseLeave={tip.hide}></rect>)}
+      {data.routing_metrics.map(r=><rect key={r.population+r.method} x={x(r.population)!+inner(r.method)!} y={y(r.RMSE)} width={inner.bandwidth()} height={ih-y(r.RMSE)} fill={methodColor(r.method, data.background_rank)} onMouseEnter={e=>tip.show(e,[`${names[r.population]} · ${r.method}`,`RMSE ${f(r.RMSE)}; MAE ${f(r.MAE)} µg/filter`,`${r.n.toLocaleString()} filters / ${r.n_sites} sites`,r.method==='routed'?`VIBES chosen for ${r.selected_VIBES?.toLocaleString()} filters`:undefined].filter(Boolean) as string[])} onMouseLeave={tip.hide}></rect>)}
       <XAxis scale={x} y={ih} format={v=>names[v]} label="Evaluation population"/>
-      {methods.map((method,i)=><g key={method} transform={`translate(${i*125},${ih+67})`}><rect width={11} height={11} fill={(data.background_rank===70 && method==='VIBES' ? '#d95f0e' : METHOD_COLOR[method])}/><text x={17} y={10} fontSize={10} fill={INK.text}>{method==='routed'?'Routed':method}</text></g>)}
+      {methods.map((method,i)=><g key={method} transform={`translate(${i*125},${ih+67})`}><rect width={11} height={11} fill={methodColor(method, data.background_rank)}/><text x={17} y={10} fontSize={10} fill={INK.text}>{method==='routed'?'Routed':method}</text></g>)}
     </g></svg>{tip.node}</div>
     <Note>Routing versus AIRSpec on the previously inspected test: ΔRMSE {f(routed.delta_RMSE_vs_AIRSpec)} µg/filter; paired 95% site interval {f(routed.delta_RMSE_CI_low)} to {f(routed.delta_RMSE_CI_high)}. {routed.delta_RMSE_CI_low <= 0 && routed.delta_RMSE_CI_high >= 0 ? 'The interval includes zero.' : 'The interval excludes zero; this remains an exploratory comparison.'} The large training-fold VIBES RMSE includes {extreme.sample_id} at {extreme.Site} (VIBES {f(extreme.VIBES)} vs TOR {f(extreme.y)}); that filter was not excluded.</Note>
   </ChartFrame>

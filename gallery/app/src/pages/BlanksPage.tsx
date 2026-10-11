@@ -1,13 +1,18 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { useExport } from '@/lib/data'
+import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Note, Segmented, Select } from '@/components/ChartFrame'
+import { ChartFrame, Note, Segmented, Select } from '@/components/ChartFrame'
 import { PageToc } from '@/components/PageToc'
 import { XAxis, YAxis } from '@/components/Axes'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
-import { FONT, INK, MARGIN } from '@/lib/theme'
+import { BankPicker } from '@/components/Pickers'
+import { SpectralRegions } from '@/components/SpectralRegions'
+import { BANK_COLOR, FONT, INK, MARGIN, SPECTRAL_REGION } from '@/lib/theme'
+import { f2, pct, sci } from '@/lib/format'
 
 /**
  * Blanks analysis: the PTFE field blanks that train the VIBES background.
@@ -16,7 +21,7 @@ import { FONT, INK, MARGIN } from '@/lib/theme'
  * Drive); nothing is refitted in the browser.
  */
 
-const URL_PATH = `${import.meta.env.BASE_URL}data/blanks/blanks_20261007.json`
+const BLANKS_PATH = 'blanks/blanks_20261007.json'
 type Cols = Record<string, (number | string | boolean | null)[]>
 interface Bank {
   n_blanks: number; rank: number; rank_min_loo: number; cap: number
@@ -42,37 +47,22 @@ interface BlanksData {
 
 const ALL_BANKS = ['VIBES-full-r70', 'VIBES-lot251', 'VIBES-allblanks', 'VIBES-lot251-x1', 'VIBES-allblanks-x1'] as const
 /** Banks present in the export (the minus-LABE1 reruns appear once they are on Drive). */
-let BANKS: readonly string[] = ALL_BANKS
+const banksOf = (d: BlanksData): string[] => ALL_BANKS.filter((b) => d.banks[b])
 type BankKey = string
-const BANK_COLOR: Record<string, string> = { 'VIBES-full-r70': '#d95f0e', 'VIBES-lot251': '#a6761d', 'VIBES-allblanks': '#7A4FA3', 'VIBES-lot251-x1': '#1b9e77', 'VIBES-allblanks-x1': '#e7298a' }
 const GROUP_COLOR: Record<string, string> = { 'IMPROVE lot 251': '#2C6E9E', 'IMPROVE lot 248': '#7fb3d5', 'ETAD lot 251': '#c0392b', 'ETAD lot 248': '#f1948a', 'ETAD lot ?': '#999999' }
 const ROLE_COLOR: Record<string, string> = { 'trains this background': '#1f2933', 'held out, evaluated': '#0f766e', 'not used': '#c7ccd1' }
 /** Regions shaded on every spectrum: CO₂ (never used for similarity) and the PTFE C–F band. */
-const SHADES = [{ lo: 1050, hi: 1250, fill: '#f1ece0', label: 'PTFE C–F 1050–1250' }, { lo: 1800, hi: 2500, fill: '#eef0f3', label: 'CO₂ 1800–2500' }]
+const SHADES = [SPECTRAL_REGION.ptfe, SPECTRAL_REGION.co2]
 const RANGES = ['4000–500', '4000–1500', '1500–500'] as const
 const rangeOf = (r: string): [number, number] => r === '4000–1500' ? [4000, 1500] : r === '1500–500' ? [1500, 500] : [4000, 500]
-const f2 = (v: any) => (v == null || !Number.isFinite(+v) ? '—' : (+v).toFixed(2))
-const sci = (v: any) => (v == null || !Number.isFinite(+v) ? '—' : (+v).toExponential(1))
-const pct = (v: any) => (v == null || !Number.isFinite(+v) ? '—' : `${Math.round(100 * +v)} %`)
 
 export function BlanksPage() {
-  const [data, setData] = useState<BlanksData | null>(null)
-  const [error, setError] = useState('')
-  useEffect(() => {
-    const c = new AbortController()
-    fetch(URL_PATH, { signal: c.signal })
-      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
-      .then((d: BlanksData) => { if (d.schema_version !== 1) throw new Error('unsupported data version'); setData(d) })
-      .catch((e) => { if (e.name !== 'AbortError') setError(String(e)) })
-    return () => c.abort()
-  }, [])
-  if (error) return <ChartFrame title="Blanks" exportable={false}><Empty>Could not load the export: {error}. Run <code>uv run --no-sync python gallery/data/export_blanks.py</code>.</Empty></ChartFrame>
-  if (!data) return <ChartFrame title="Blanks" exportable={false}><Empty>Loading the blanks analysis…</Empty></ChartFrame>
+  const { data, error } = useExport<BlanksData>(BLANKS_PATH, (d) => d.schema_version === 1 ? null : 'unsupported data version')
+  if (!data) return <ExportState title="Blanks" what="the blanks analysis" error={error} command="uv run --no-sync python gallery/data/export_blanks.py" />
   return <BlanksView d={data} />
 }
 
 function BlanksView({ d }: { d: BlanksData }) {
-  BANKS = ALL_BANKS.filter((b) => d.banks[b])
   return (
     <PageToc>
       <Findings d={d} />
@@ -113,7 +103,7 @@ function SpectrumPlot({ width, height = 300, domainX, domainY, yLabel, title, ch
     <svg width={iw + m.left + m.right} height={height} fontFamily={FONT.family}>
       {title && <text x={m.left} y={15} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>}
       <g transform={`translate(${m.left},${m.top})`}>
-        {SHADES.filter((s) => s.lo < domainX[0] && s.hi > domainX[1]).map((s) => <rect key={s.lo} x={x(Math.min(s.hi, domainX[0]))} width={x(Math.max(s.lo, domainX[1])) - x(Math.min(s.hi, domainX[0]))} height={ih} fill={s.fill} />)}
+        <SpectralRegions x={x} height={ih} regions={SHADES} />
         <YAxis scale={y as any} x={0} label={yLabel} tickCount={5} gridWidth={iw} labelX={-54} format={(v) => Math.abs(+v) < 1e-3 && +v !== 0 ? (+v).toExponential(0) : String(+(+v).toPrecision(3))} />
         <XAxis scale={x} y={ih} label="Wavenumber (cm⁻¹)" tickCount={8} labelDy={36} />
         <g>{children(x, y)}</g>
@@ -156,7 +146,7 @@ function Findings({ d }: { d: BlanksData }) {
 
 // ------------------------------------------------------------------ 1. inventory
 function Inventory({ d }: { d: BlanksData }) {
-  const [bank, setBank] = useSearchParam<BankKey>('bkbank', 'VIBES-allblanks', [...BANKS])
+  const [bank, setBank] = useSearchParam<BankKey>('bkbank', 'VIBES-allblanks', banksOf(d))
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
@@ -170,12 +160,12 @@ function Inventory({ d }: { d: BlanksData }) {
   const undated = rows.filter((r) => !r.date)
   const ux = d3.scalePoint<number>().domain(undated.map((r) => r.i)).range([0, iw]).padding(0.5)
   const jitter = (i: number) => ((Math.sin(i * 12.9898) * 43758.5453) % 1 + 1) % 1
-  const counts = BANKS.map((b) => ({ b, n: d.banks[b].n_blanks, lots: groups.map((g) => rows.filter((r) => r.group === g && inv(d, `in_${b}`)[r.i]).length) }))
+  const counts = banksOf(d).map((b) => ({ b, n: d.banks[b].n_blanks, lots: groups.map((g) => rows.filter((r) => r.group === g && inv(d, `in_${b}`)[r.i]).length) }))
   return (
     <ChartFrame id="blanks-inventory" source="gallery/app/src/pages/BlanksPage.tsx › Inventory"
       title="Inventory — every labeled blank, when it was sampled, and which background it trained"
       subtitle={`${n} labeled blanks: IMPROVE blanks carry a sampling date; ETAD blanks have none and are spread out in MediaId order. Colour shows the blank's role in the selected background.`}
-      controls={<Select label="Background" value={bank} options={[...BANKS]} optionLabel={(b) => d.bank_labels[b]} onChange={setBank} />}>
+      controls={<BankPicker value={bank} banks={banksOf(d)} labels={d.bank_labels} onChange={setBank} />}>
       <div ref={ref} style={{ position: 'relative' }}>
         <svg width={iw + m.left + m.right} height={ih + m.top + m.bottom} fontFamily={FONT.family}>
           <g transform={`translate(${m.left},${m.top})`}>
@@ -284,7 +274,7 @@ function PcaMap({ d }: { d: BlanksData }) {
   const [px, setPx] = useSearchParam<string>('bkpcx', 'PC1', pcs)
   const [py, setPy] = useSearchParam<string>('bkpcy', 'PC2', pcs)
   const [colorBy, setColorBy] = useSearchParam<string>('bkpccol', 'lot / source', [...PCA_COLOR])
-  const [bank, setBank] = useSearchParam<BankKey>('bkpcbank', 'VIBES-allblanks', [...BANKS])
+  const [bank, setBank] = useSearchParam<BankKey>('bkpcbank', 'VIBES-allblanks', banksOf(d))
   const [pin, setPin] = useState<number | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
@@ -312,7 +302,7 @@ function PcaMap({ d }: { d: BlanksData }) {
         <Segmented label="x" value={px} options={pcs} onChange={setPx} />
         <Segmented label="y" value={py} options={pcs} onChange={setPy} />
         <Select label="Colour" value={colorBy} options={[...PCA_COLOR]} onChange={setColorBy} />
-        {colorBy === 'role in background' && <Select label="Background" value={bank} options={[...BANKS]} optionLabel={(b) => d.bank_labels[b]} onChange={setBank} />}
+        {colorBy === 'role in background' && <BankPicker value={bank} banks={banksOf(d)} labels={d.bank_labels} onChange={setBank} />}
       </>}>
       <div ref={ref} style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 16 }}>
         <svg width={side + m.left + m.right} height={side + m.top + m.bottom} fontFamily={FONT.family}>
@@ -390,7 +380,7 @@ function RankSelection({ d }: { d: BlanksData }) {
   const lg = useLegend()
   const m = { top: 12, right: 16, bottom: 44, left: 70 }, h = 320
   const iw = Math.max(300, width - m.left - m.right), ih = h - m.top - m.bottom
-  const shown = BANKS.filter((b) => lg.show(d.bank_labels[b]))
+  const shown = banksOf(d).filter((b) => lg.show(d.bank_labels[b]))
   const all = shown.flatMap((b) => d.banks[b].loo_mean.map((v, i) => [v - d.banks[b].loo_se[i], v + d.banks[b].loo_se[i]]).flat()).filter((v) => v > 0)
   const x = d3.scaleLinear().domain([1, 85]).range([0, iw])
   const y = d3.scaleLog().domain(d3.extent(all) as [number, number]).nice().range([ih, 0])
@@ -418,10 +408,10 @@ function RankSelection({ d }: { d: BlanksData }) {
         </svg>
         {tip.node}
       </div>
-      <Legend {...lg.props} items={BANKS.map((b) => ({ label: d.bank_labels[b], color: BANK_COLOR[b], shape: 'line' as const, detail: `${d.banks[b].n_blanks} blanks → rank ${d.banks[b].rank}` }))} />
+      <Legend {...lg.props} items={banksOf(d).map((b) => ({ label: d.bank_labels[b], color: BANK_COLOR[b], shape: 'line' as const, detail: `${d.banks[b].n_blanks} blanks → rank ${d.banks[b].rank}` }))} />
       <table className="census-table" style={{ marginTop: 8 }}>
         <thead><tr><th>Background</th><th>Chosen rank</th><th>Error minimum at</th><th>Worst 5 % carry</th><th>Remove the worst blank</th><th>Remove 2</th><th>Remove 3</th></tr></thead>
-        <tbody>{BANKS.map((b) => { const B = d.banks[b]; return <tr key={b}><td style={{ color: BANK_COLOR[b], fontWeight: 600 }}>{d.bank_labels[b]}</td><td>{B.rank}</td><td>{B.rank_min_loo}</td><td>{pct(B.top5pct_share)}</td>
+        <tbody>{banksOf(d).map((b) => { const B = d.banks[b]; return <tr key={b}><td style={{ color: BANK_COLOR[b], fontWeight: 600 }}>{d.bank_labels[b]}</td><td>{B.rank}</td><td>{B.rank_min_loo}</td><td>{pct(B.top5pct_share)}</td>
           {B.drop_one.map((x, i) => <td key={i}><strong>rank {x.rank}</strong><br /><span style={{ color: INK.muted, fontSize: 11 }}>without {x.removed[x.removed.length - 1]}</span></td>)}</tr> })}</tbody>
       </table>
       <Note>Removing blanks recomputes the leave-one-out curve on the remaining blanks only; nothing else changes. The big banks jump from rank 13–15 to about 80 once one blank is left out.</Note>
@@ -431,7 +421,7 @@ function RankSelection({ d }: { d: BlanksData }) {
 
 // ------------------------------------------------------------------ 7. per-blank error
 function PerBlankError({ d }: { d: BlanksData }) {
-  const [bank, setBank] = useSearchParam<BankKey>('bkerrbank', 'VIBES-allblanks', [...BANKS])
+  const [bank, setBank] = useSearchParam<BankKey>('bkerrbank', 'VIBES-allblanks', banksOf(d))
   const B = d.banks[bank]
   const ranks = Object.keys(B.per_blank).sort((a, b) => +a - +b)
   const [rankSel, setRankSel] = useState<string>(String(B.rank))
@@ -455,7 +445,7 @@ function PerBlankError({ d }: { d: BlanksData }) {
     <ChartFrame id="blanks-outliers" source="gallery/app/src/pages/BlanksPage.tsx › PerBlankError"
       title="Which blanks dominate — each blank's leave-one-out error"
       subtitle="How badly the background built from all the other blanks reconstructs each blank, at the selected rank (log scale). Points far to the right are blanks no other blank resembles; they set the SE in the rank rule."
-      controls={<><Select label="Background" value={bank} options={[...BANKS]} optionLabel={(b) => d.bank_labels[b]} onChange={setBank} /><Segmented label="Rank" value={rk} options={ranks} onChange={setRankSel} /></>}>
+      controls={<><BankPicker value={bank} banks={banksOf(d)} labels={d.bank_labels} onChange={setBank} /><Segmented label="Rank" value={rk} options={ranks} onChange={setRankSel} /></>}>
       <div ref={ref} style={{ position: 'relative' }}>
         <svg width={iw + m.left + m.right} height={h} fontFamily={FONT.family}>
           <g transform={`translate(${m.left},${m.top})`}>
@@ -485,7 +475,7 @@ function PerBlankError({ d }: { d: BlanksData }) {
 
 // ------------------------------------------------------------------ 8. components
 function Components({ d }: { d: BlanksData }) {
-  const [bank, setBank] = useSearchParam<BankKey>('bkcompbank', 'VIBES-full-r70', [...BANKS])
+  const [bank, setBank] = useSearchParam<BankKey>('bkcompbank', 'VIBES-full-r70', banksOf(d))
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const B = d.banks[bank]
@@ -496,7 +486,7 @@ function Components({ d }: { d: BlanksData }) {
     <ChartFrame id="blanks-components" source="gallery/app/src/pages/BlanksPage.tsx › Components"
       title="Background components — the shapes VIBES may subtract from every spectrum"
       subtitle={`First ${B.loadings.length} PCA components of the selected bank's blanks (unit-length loadings). The background is the bank's mean blank plus any combination of the first ${B.rank} components; anything a sample shares with these shapes can be absorbed as background.`}
-      controls={<Select label="Background" value={bank} options={[...BANKS]} optionLabel={(b) => `${d.bank_labels[b]} (rank ${d.banks[b].rank})`} onChange={setBank} />}>
+      controls={<BankPicker value={bank} banks={banksOf(d)} labels={d.bank_labels} ranks={Object.fromEntries(banksOf(d).map((b) => [b, d.banks[b].rank]))} onChange={setBank} />}>
       <div ref={ref} style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 12 }}>
         {B.loadings.map((l, k) => <SpectrumPlot key={k} width={w} height={170} domainX={[4000, 500]} domainY={d3.extent(l) as [number, number]} yLabel="" title={`PC${k + 1} · ${pct(B.var[k])} of blank variance${k >= B.rank ? ' · not used' : ''}`}>
           {(xx, yy) => <><line x1={0} x2={xx.range()[1]} y1={yy(0)} y2={yy(0)} stroke={INK.axis} strokeOpacity={0.5} /><path d={linePath(pts, l, xx, yy)} fill="none" stroke={k >= B.rank ? INK.neutral : BANK_COLOR[bank]} strokeWidth={1.4} /></>}
@@ -514,12 +504,12 @@ function AfterCorrection({ d }: { d: BlanksData }) {
   const lg = useLegend()
   const dom = rangeOf(range)
   const pts = inRange(d.bin_wn, dom)
-  const stats = Object.fromEntries(BANKS.map((b) => {
+  const stats = Object.fromEntries(banksOf(d).map((b) => {
     const H = d.banks[b].held_corrected
     const q = (p: number) => d.bin_wn.map((_, j) => d3.quantile(H.map((r) => r[j]).filter((v) => v != null), p) ?? NaN)
     return [b, { lo: q(0.1), med: q(0.5), hi: q(0.9) }]
   }))
-  const vals = BANKS.filter((b) => lg.show(d.bank_labels[b])).flatMap((b) => pts.flatMap(([, j]) => [stats[b].lo[j], stats[b].hi[j]]))
+  const vals = banksOf(d).filter((b) => lg.show(d.bank_labels[b])).flatMap((b) => pts.flatMap(([, j]) => [stats[b].lo[j], stats[b].hi[j]]))
   const bands: [string, number, number][] = [['all (no CO₂)', 4000, 500], ['PTFE 1050–1250', 1250, 1050], ['600–1500', 1500, 600], ['1500–4000', 4000, 1500]]
   const rms = (b: string, hi: number, lo: number) => {
     const js = d.bin_wn.map((w, j) => [w, j] as const).filter(([w]) => w <= hi && w >= lo && !(w > 1800 && w < 2500)).map(([, j]) => j)
@@ -533,16 +523,16 @@ function AfterCorrection({ d }: { d: BlanksData }) {
       <div ref={ref} className="chart-wrap">
         <SpectrumPlot width={width} domainX={dom} domainY={[Math.min(0, d3.min(vals) ?? 0), d3.max(vals) ?? 1e-4]} yLabel="Corrected absorbance">
           {(x, y) => <><line x1={0} x2={x.range()[1]} y1={y(0)} y2={y(0)} stroke={INK.axis} strokeOpacity={0.6} />
-            {BANKS.filter((b) => lg.show(d.bank_labels[b])).map((b) => <g key={b} opacity={lg.dim(d.bank_labels[b])}>
+            {banksOf(d).filter((b) => lg.show(d.bank_labels[b])).map((b) => <g key={b} opacity={lg.dim(d.bank_labels[b])}>
               <path d={bandPath(pts, stats[b].lo, stats[b].hi, x, y)} fill={BANK_COLOR[b]} fillOpacity={0.15} />
               <path d={linePath(pts, stats[b].med, x, y)} fill="none" stroke={BANK_COLOR[b]} strokeWidth={1.7} />
             </g>)}</>}
         </SpectrumPlot>
       </div>
-      <Legend {...lg.props} items={BANKS.map((b) => ({ label: d.bank_labels[b], color: BANK_COLOR[b], shape: 'line' as const, detail: `rank ${d.banks[b].rank}` }))} />
+      <Legend {...lg.props} items={banksOf(d).map((b) => ({ label: d.bank_labels[b], color: BANK_COLOR[b], shape: 'line' as const, detail: `rank ${d.banks[b].rank}` }))} />
       <table className="census-table" style={{ marginTop: 8 }}>
         <thead><tr><th>Median RMS residue (×10⁻⁵)</th>{bands.map(([l]) => <th key={l}>{l}</th>)}</tr></thead>
-        <tbody>{BANKS.map((b) => <tr key={b}><td style={{ color: BANK_COLOR[b], fontWeight: 600 }}>{d.bank_labels[b]}</td>{bands.map(([l, hi, lo]) => <td key={l}>{(1e5 * rms(b, hi, lo)).toFixed(1)}</td>)}</tr>)}</tbody>
+        <tbody>{banksOf(d).map((b) => <tr key={b}><td style={{ color: BANK_COLOR[b], fontWeight: 600 }}>{d.bank_labels[b]}</td>{bands.map(([l, hi, lo]) => <td key={l}>{(1e5 * rms(b, hi, lo)).toFixed(1)}</td>)}</tr>)}</tbody>
       </table>
     </ChartFrame>
   )
@@ -552,7 +542,7 @@ function AfterCorrection({ d }: { d: BlanksData }) {
 const POPS = ['held-out blanks', 'IMPROVE samples', 'Addis samples'] as const
 const POP_COLOR: Record<string, string> = { 'held-out blanks': INK.axis, 'IMPROVE samples': '#2C6E9E', 'Addis samples': '#c0392b' }
 function Capture({ d }: { d: BlanksData }) {
-  const [bank, setBank] = useSearchParam<BankKey>('bkcapbank', 'VIBES-full-r70', [...BANKS])
+  const [bank, setBank] = useSearchParam<BankKey>('bkcapbank', 'VIBES-full-r70', banksOf(d))
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
@@ -565,7 +555,7 @@ function Capture({ d }: { d: BlanksData }) {
     <ChartFrame id="blanks-capture" source="gallery/app/src/pages/BlanksPage.tsx › Capture"
       title="What the background could absorb — share of each spectrum inside the blank subspace"
       subtitle="For each raw spectrum, the fraction of its deviation from the bank's mean blank that lies in the span of the first k blank components (median and 10–90 %). Blanks should be near 1; for ambient samples, a high fraction means the background can mimic most of the sample, analyte included. This is a geometric bound, not the VIBES fit itself (VIBES adds a positive analyte term and priors)."
-      controls={<Select label="Background" value={bank} options={[...BANKS]} optionLabel={(b) => d.bank_labels[b]} onChange={setBank} />}>
+      controls={<BankPicker value={bank} banks={banksOf(d)} labels={d.bank_labels} onChange={setBank} />}>
       <div ref={ref} style={{ position: 'relative' }}>
         <svg width={iw + m.left + m.right} height={h} fontFamily={FONT.family}>
           <g transform={`translate(${m.left},${m.top})`}>

@@ -12,7 +12,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { focusStyle, useHighlight } from '@/lib/highlight'
 import { RESTATES, isBookkeeping, sameProduct } from '@/fieldLineage'
 import { fmt, regression } from '@/lib/stats'
-import { INK, RAMP_DIVERGING, FONT } from '@/lib/theme'
+import { INK, RAMP_DIVERGING, FONT, inkOn } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 
 const ENCODINGS = ['Colour', 'Circle size', 'Scatter matrix'] as const
@@ -149,7 +149,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
                       {cell > 26 && encoding === 'Colour' && (
                         <text
                           x={cx + cell / 2} y={cy + cell / 2} dy="0.34em" textAnchor="middle"
-                          fontSize={Math.min(10, cell / 3.4)} fill={Math.abs(r) > 0.55 ? '#fff' : INK.text}
+                          fontSize={Math.min(10, cell / 3.4)} fill={inkOn(color(r))}
                           fontFamily={FONT.mono} pointerEvents="none"
                         >
                           {r.toFixed(2)}

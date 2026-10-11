@@ -1,15 +1,13 @@
-import { RegressionLines, RegressionReadout } from '@/components/RegressionOverlay'
-import { monthBlocks } from '@/lib/regressionCI'
-import { regression } from '@/lib/stats'
 import { demingLambda } from './seasonView'
-import { useId, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { baseFilterId, focusStyle, useHighlight } from '@/lib/highlight'
+import { baseFilterId, focusStyle, useHighlight, type FilterRecord } from '@/lib/highlight'
+import { Crossplot } from '@/components/Crossplot'
 import { fmt } from '@/lib/stats'
 import { INK, MARGIN } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile, MetaFile } from '@/lib/types'
@@ -35,7 +33,6 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96 }: { r
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const hl = useHighlight()
-  const clipId = useId()
 
   const [xmode, setXmode] = useState<(typeof XMODES)[number]>('reference')
   const [evalSet, setEvalSet] = useState<(typeof SETS)[number]>('fixed')
@@ -62,15 +59,14 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96 }: { r
     return out
   }, [run.eval, evalSet, hasFixed, hidden, useDeployed, isFabs, mac])
 
-  const st = regression(pts.map(p => p.x), pts.map(p => p.y), { errorsInVariables: true, lambda: demingLambda(isFabs && !useDeployed ? mac : null, lambda10), bootstrapGroups: monthBlocks(pts.map(p => ({ site: run.target, date: run.eval.date?.[p.i] }))) })
 
   const cols = width > 760 ? 2 : 1
   const panelW = Math.floor((width - (cols - 1) * 12) / cols)
   const S = Math.max(220, Math.min(460, panelW - MARGIN.left - MARGIN.right))
   const hi = Math.max(d3.max(pts, (p) => p.x) ?? 1, d3.max(pts, (p) => p.y) ?? 1) * 1.06
   const lo = Math.min(0, d3.min(pts, (p) => p.y) ?? 0) * 1.05
+  // one domain for both axes (the shared crossplot is square); the residual panel reuses its x
   const x = d3.scaleLinear().domain([Math.min(0, lo), hi]).range([0, S]).nice()
-  const y = d3.scaleLinear().domain([lo, hi]).range([S, 0]).nice()
   const res = pts.map((p) => ({ ...p, r: p.y - p.x }))
   const rExt = d3.extent(res, (p) => p.r) as [number, number]
   const rPad = Math.max(0.2, ((rExt[1] ?? 1) - (rExt[0] ?? 0)) * 0.08)
@@ -80,19 +76,19 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96 }: { r
   const groups = [...new Set(run.eval.group)]
   const target = runs.targets[run.target]
 
+  const tipLines = (p: (typeof pts)[number]) => [
+    p.id ?? `filter #${p.i + 1}`,
+    `${target?.site ?? run.target} · ${run.eval.date?.[p.i] ?? 'no date'} · ${p.g}`,
+    `${xLabel}: ${fmt(p.x, 3)}`,
+    `predicted EC: ${fmt(p.y, 3)} µg/m³ · residual ${fmt(p.y - p.x, 3)}`,
+    p.fixed ? 'fixed test set' : 'outside the fixed test set',
+  ]
   const enter = (e: React.MouseEvent, p: (typeof pts)[number]) => {
     if (p.id) hl.setHover(p.id)
-    tip.show(e, [
-      p.id ?? `filter #${p.i + 1}`,
-      `${target?.site ?? run.target} · ${run.eval.date?.[p.i] ?? 'no date'} · ${p.g}`,
-      `${xLabel}: ${fmt(p.x, 3)}`,
-      `predicted EC: ${fmt(p.y, 3)} µg/m³ · residual ${fmt(p.y - p.x, 3)}`,
-      p.fixed ? 'fixed test set' : 'outside the fixed test set',
-      p.id && knownIds.has(baseFilterId(p.id)) ? 'click for the full filter record' : 'click for this filter\'s values',
-    ].filter(Boolean))
+    tip.show(e, [...tipLines(p), p.id && knownIds.has(baseFilterId(p.id)) ? 'click for the full filter record' : 'click for this filter\'s values'])
   }
   const leave = () => { hl.setHover(null); tip.hide() }
-  const click = (p: (typeof pts)[number]) => hl.openRecord({
+  const record = (p: (typeof pts)[number]): FilterRecord => ({
     id: p.id ?? `${run.target} filter #${p.i + 1}`,
     source: 'the calibration crossplot',
     site: target?.site ?? run.target,
@@ -107,6 +103,7 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96 }: { r
       ['in the fixed test set', p.fixed ? 'yes' : 'no'],
     ],
   })
+  const click = (p: (typeof pts)[number]) => hl.openRecord(record(p))
 
   return (
     <ChartFrame
@@ -129,27 +126,9 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96 }: { r
         ) : (
           <div className="facet-grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
             <div>
-              <p className="facet-title">predicted vs {useDeployed ? 'deployed' : 'reference'}</p>
-              <svg width={S + MARGIN.left + MARGIN.right} height={S + MARGIN.top + MARGIN.bottom} className="animated">
-                <defs><clipPath id={clipId}><rect width={S} height={S} /></clipPath></defs>
-                <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-                  <YAxis scale={y} x={0} label="predicted FTIR EC (µg/m³)" gridWidth={S} />
-                  <XAxis scale={x} y={S} label={xLabel} />
-                  <g clipPath={`url(#${clipId})`}>
-                    <line x1={x(0)} y1={y(0)} x2={x(hi)} y2={y(hi)} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="5 4" />
-                    <RegressionLines stats={st} x={x} y={y} domain={x.domain()} width={S} height={S} />
-                  </g>
-                  {pts.map((p) => {
-                    const st = focusStyle(p.id ?? `#${p.i}`, hl.focusId)
-                    return (
-                      <circle key={p.i} cx={x(p.x)} cy={y(p.y)} r={st.r} fill={color(p.g)} fillOpacity={st.opacity * dim(p.g)} stroke={st.stroke} strokeWidth={st.strokeWidth}
-                        style={{ cursor: 'pointer' }}
-                        onMouseEnter={(e) => enter(e, p)} onMouseLeave={leave} onClick={() => click(p)} />
-                    )
-                  })}
-                  <RegressionReadout stats={st} />
-                </g>
-              </svg>
+              <Crossplot title={`predicted vs ${useDeployed ? 'deployed' : 'reference'}`} maxSide={460} domain={x.domain() as [number, number]}
+                errorRatio={demingLambda(isFabs && !useDeployed ? mac : null, lambda10)} xLabel={xLabel} yLabel="predicted FTIR EC (µg/m³)"
+                points={pts.map((p) => ({ x: p.x, y: p.y, color: color(p.g), opacity: dim(p.g), id: p.id ?? undefined, tip: tipLines(p), rec: record(p) }))} />
             </div>
             <div>
               <p className="facet-title">residuals (predicted − {useDeployed ? 'deployed' : 'reference'})</p>

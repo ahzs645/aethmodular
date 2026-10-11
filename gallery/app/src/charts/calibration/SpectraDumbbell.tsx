@@ -5,13 +5,13 @@ import { Legend, useLegend } from '@/components/Legend'
 import { XAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { INK, MARGIN, FONT } from '@/lib/theme'
+import { BASELINE_COLOR, INK, MARGIN, FONT } from '@/lib/theme'
 import type { CalibFile, CalibRow } from '@/lib/types'
 import { METRICS, SPECTRA_COLOR, cohortColor, fmtFit, isInterceptMetric, isSlopeMetric, metricLabel, metricOf, sameConfig, type Config, type Metric } from './common'
 import { COHORT, CV_PROTOCOL, METRIC, PREPROCESSING, SELECTION_SPACE, label as nameOf } from '@/lib/labels'
 
 const ROWSETS = ['Locked cutoffs', 'One cohort, every cutoff'] as const
-const spectraColor = (sp: string) => SPECTRA_COLOR[sp] ?? INK.muted
+const spectraColor = (sp: string) => SPECTRA_COLOR[sp] ?? BASELINE_COLOR[sp] ?? INK.muted
 
 interface DRow { key: string; cfg: Omit<Config, 'sp'>; label: string; pts: { sp: string; v: number; r: CalibRow }[] }
 

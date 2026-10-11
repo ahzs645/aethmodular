@@ -4,16 +4,20 @@ import { ChartFrame, Empty, ExplainOnly, Note, Segmented, Select, Toggle } from 
 import { PageToc } from '@/components/PageToc'
 import { SpectraTraces } from '@/components/SimilaritySpectra'
 import { Legend, useLegend } from '@/components/Legend'
-import { XAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { downloadCsv } from '@/lib/export'
 import { useSearchParam } from '@/lib/url'
 import { baseFilterId, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { FONT, INK } from '@/lib/theme'
+import { f3 } from '@/lib/format'
+import { IntervalStrip } from '@/components/IntervalStrip'
+import { HeatCell } from '@/components/HeatCell'
+import { ColorLegend } from '@/components/ColorLegend'
+import { ANALYSIS_CALENDAR_NOTE } from '@/lib/seasons'
 import { PREPROCESSING } from '@/lib/labels'
 import {
-  BASE, PairMatrix, TopLists, Traces, calendarOf, fetchBinary, groupColor, groupIndex, groupKey, groupLabel, siteName, siteWhere,
+  PairMatrix, loadSimilarityMeta, TopLists, Traces, calendarOf, fetchBinary, groupColor, groupIndex, groupKey, groupLabel, siteName, siteWhere,
   type SimilarityMeta,
 } from '@/lib/similarity'
 
@@ -21,7 +25,6 @@ const TOP_N = ['50', '100', '250', '500'] as const
 const MIN_N = ['1', '5', '10', '20'] as const
 const SHOW = ['15', '30', '60'] as const
 const TEST_COLOR = '#9a6b2f'
-const f3 = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? '—' : v.toFixed(3))
 const splitName = (s: string) => (s === 'test' ? 'outer test site' : s === 'external' ? 'Addis target' : 'training site')
 
 /** Fetch and decode one exported binary; `null` until the named file has arrived. */
@@ -53,12 +56,9 @@ export function SimilarityPage() {
   const [meta, setMeta] = useState<SimilarityMeta | null>(null)
   const [error, setError] = useState('')
   useEffect(() => {
-    const controller = new AbortController()
-    fetch(BASE + 'similarity.json', { signal: controller.signal })
-      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
-      .then((d: SimilarityMeta) => { if (d.schema_version !== 1) throw new Error('Unsupported data version'); setMeta(d) })
-      .catch((e) => { if (e.name !== 'AbortError') setError(String(e)) })
-    return () => controller.abort()
+    let live = true
+    loadSimilarityMeta().then((d) => { if (live) setMeta(d) }).catch((e) => { if (live) setError(String(e)) })
+    return () => { live = false }
   }, [])
   if (error) return <ChartFrame title="Spectral similarity" exportable={false}><Empty>Could not load the similarity export: {error}. Run <code>uv run --locked --no-sync python gallery/data/export_similarity.py</code> and reload.</Empty></ChartFrame>
   if (!meta) return <p>Loading the spectral similarity export…</p>
@@ -203,6 +203,7 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
         exportable={false}
         tip={<>
           <p><strong>Within-group r</strong> is the mean r between the target's own filters. It is the dashed line in the ranking below: a group scoring above it is as close to the target as the target's own filters are to each other.</p>
+          {site === 'ETAD' && <p>{ANALYSIS_CALENDAR_NOTE}</p>}
           {site === 'ETAD' && meta.undated.length > 0 && <p>{meta.undated.length} Addis filters have no date in the frozen ledger ({meta.undated.join(', ')}). They count toward all-year Addis but toward no season.</p>}
         </>}
         controls={<>
@@ -272,7 +273,6 @@ function GroupRanking({ meta, ranked, target, selfR, compare, onCompare, onTarge
   const nW = 64
   const rowH = 20
   const innerW = Math.max(160, width - labelW - nW - 16)
-  const h = rows.length * rowH + 40
   const vals = rows.map((r) => r.r).concat(selfR != null ? [selfR] : [])
   const lo = d3.min(vals) ?? 0
   const hi = d3.max(vals) ?? 1
@@ -291,38 +291,16 @@ function GroupRanking({ meta, ranked, target, selfR, compare, onCompare, onTarge
     >
       <div ref={ref} className="chart-wrap">
         {loading ? <Empty>Loading scores…</Empty> : rows.length === 0 ? <Empty>No group passes these filters.</Empty> : (
-          <svg width={width} height={h}>
-            <g transform={`translate(${labelW},24)`} fontFamily={FONT.family}>
-              <XAxis scale={x} y={rows.length * rowH + 4} tickCount={6} format={(v) => (+v).toFixed(3)} />
-              {x.ticks(6).map((t) => <line key={t} x1={x(t)} x2={x(t)} y1={-4} y2={rows.length * rowH} stroke={INK.grid} />)}
-              {selfR != null && x(selfR) >= 0 && x(selfR) <= innerW && (
-                <g>
-                  <line x1={x(selfR)} x2={x(selfR)} y1={-8} y2={rows.length * rowH} stroke={INK.fit} strokeDasharray="4 3" />
-                  <text x={x(selfR)} y={-12} textAnchor="middle" fontSize={10} fill={INK.muted}>target within-group r {selfR.toFixed(3)}</text>
-                </g>
-              )}
-              {rows.map((r, i) => {
-                const g = meta.groups[r.g]
-                const s = meta.sites[g.site]
-                const color = groupColor(meta, r.g, INK.accent)
-                const sel = compare === r.g
-                const y = i * rowH + rowH / 2
-                return (
-                  <g key={r.g} style={{ cursor: 'pointer' }} onClick={() => onCompare(sel ? null : r.g)}
-                    onMouseMove={(e) => tip.show(e, [groupLabel(meta, r.g), siteWhere(s), `mean r ${r.r.toFixed(4)}`, `${g.n} filters · ${splitName(s.split)}`, selfR != null ? `${r.r >= selfR ? '+' : ''}${(r.r - selfR).toFixed(4)} vs target's own r` : '', sel ? 'click to clear the overlay' : 'click to overlay its spectra'].filter(Boolean))}
-                    onMouseLeave={tip.hide}>
-                    <rect x={-labelW} y={i * rowH} width={labelW + innerW + nW} height={rowH} fill={sel ? '#eef4fb' : i % 2 ? '#fafbfc' : 'transparent'} />
-                    <text x={-8} y={y} dy="0.35em" textAnchor="end" fontSize={11.5} fill={s.split === 'test' ? TEST_COLOR : INK.text} fontWeight={sel ? 600 : 400}>
-                      {groupLabel(meta, r.g)}{s.split === 'test' ? ' †' : ''}
-                    </text>
-                    <line x1={0} x2={x(r.r)} y1={y} y2={y} stroke={color} strokeOpacity={0.45} strokeWidth={1.5} />
-                    <circle cx={x(r.r)} cy={y} r={sel ? 5.5 : 4.5} fill={color} stroke={sel ? INK.text : '#fff'} strokeWidth={1} />
-                    <text x={innerW + 8} y={y} dy="0.35em" fontSize={10.5} fill={INK.muted} fontFamily={FONT.mono}>n={g.n}</text>
-                  </g>
-                )
-              })}
-            </g>
-          </svg>
+          <IntervalStrip labelWidth={labelW} rowHeight={rowH} noteWidth={nW} minPanelWidth={160}
+            panels={[{ label: 'Mean Pearson r', domain: x.domain() as [number, number], stems: true, format: (v) => v.toFixed(3),
+              marker: selfR != null && x(selfR) >= 0 && x(selfR) <= innerW ? { value: selfR, label: `target within-group r ${selfR.toFixed(3)}` } : undefined }]}
+            blocks={[{ key: 'ranked', rows: rows.map((r) => {
+              const g = meta.groups[r.g], s = meta.sites[g.site], sel = compare === r.g
+              return { key: String(r.g), label: `${groupLabel(meta, r.g)}${s.split === 'test' ? ' †' : ''}`, labelColor: s.split === 'test' ? TEST_COLOR : undefined,
+                note: `n=${g.n}`, selected: sel, onClick: () => onCompare(sel ? null : r.g),
+                tip: [groupLabel(meta, r.g), siteWhere(s), `mean r ${r.r.toFixed(4)}`, `${g.n} filters · ${splitName(s.split)}`, selfR != null ? `${r.r >= selfR ? '+' : ''}${(r.r - selfR).toFixed(4)} vs target's own r` : '', sel ? 'click to clear the overlay' : 'click to overlay its spectra'].filter(Boolean),
+                marks: [[{ mid: r.r, color: groupColor(meta, r.g, INK.accent), r: 4.5 }]] }
+            }) }]} />
         )}
         <Note>{ranked.length} groups pass these filters, of which the top {rows.length} are shown. † marks an outer test site. Small groups score noisily, so raise "Min filters" before reading much into the top rows.</Note>
         {compare != null && (
@@ -355,7 +333,6 @@ function SeasonMatrix({ meta, pairs, target, columns }: { meta: SimilarityMeta; 
   const ch = 28
   const vals = cells.map((c) => c.v).filter((v): v is number => v != null)
   const color = d3.scaleSequential(d3.interpolateBlues).domain([d3.min(vals) ?? 0, d3.max(vals) ?? 1])
-  const mid = ((d3.min(vals) ?? 0) + (d3.max(vals) ?? 1)) / 2
   return (
     <ChartFrame
       title="Season by season — is the match year-round or one season only?"
@@ -378,16 +355,15 @@ function SeasonMatrix({ meta, pairs, target, columns }: { meta: SimilarityMeta; 
                 const i = rowGroups.indexOf(r)
                 const j = columns.indexOf(c)
                 return (
-                  <g key={`${r}-${c}`} onMouseMove={(e) => tip.show(e, [`${groupLabel(meta, r)} vs ${groupLabel(meta, c)}`, `mean r ${v == null ? '—' : v.toFixed(4)}`, siteWhere(meta.sites[meta.groups[c].site])])} onMouseLeave={tip.hide}>
-                    <rect x={labelW + j * cw} y={top + i * ch} width={cw - 1} height={ch - 1} fill={v == null ? INK.empty : color(v)} stroke={r === target ? INK.text : 'none'} strokeWidth={r === target ? 1 : 0} />
-                    {cw >= 40 && v != null && <text x={labelW + j * cw + cw / 2} y={top + i * ch + ch / 2} dy="0.35em" textAnchor="middle" fontSize={10} fontFamily={FONT.mono} fill={v > mid ? '#fff' : INK.text} pointerEvents="none">{v.toFixed(3)}</text>}
-                  </g>
+                  <HeatCell key={`${r}-${c}`} x={labelW + j * cw} y={top + i * ch} width={cw - 1} height={ch - 1} fill={v == null ? null : color(v)} outline={r === target}
+                    label={cw >= 40 && v != null ? v.toFixed(3) : null} onEnter={(e) => tip.show(e, [`${groupLabel(meta, r)} vs ${groupLabel(meta, c)}`, `mean r ${v == null ? '—' : v.toFixed(4)}`, siteWhere(meta.sites[meta.groups[c].site])])} onLeave={tip.hide} />
                 )
               })}
             </g>
           </svg>
         )}
-        {vals.length > 0 && <Note>Colour runs from {f3(d3.min(vals))} (light) to {f3(d3.max(vals))} (dark). The outlined row is the current target.</Note>}
+        {vals.length > 0 && <div className="legend"><ColorLegend scale={color} label="mean Pearson r between the two groups" width={200} format={(v) => v.toFixed(3)} /></div>}
+        {vals.length > 0 && <Note>The outlined row is the current target.</Note>}
         {tip.node}
       </div>
     </ChartFrame>

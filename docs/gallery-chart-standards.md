@@ -120,6 +120,28 @@ Each step should leave the published numbers unchanged; where a chart's
 picture changes (colours, decimals, domains), the change is listed in that
 step's commit.
 
+## 4b. Status (10 Oct 2026)
+
+Done, and each defined once in `gallery/app/src`:
+
+| Feature | Lives in | Notes |
+|---|---|---|
+| Baseline colours (`BASELINE_COLOR`, `baselineColor(method, rank)`), IMPROVE grey, Addis-all yellow, bank colours, spectral regions, pinned/hovered trace style | `lib/theme.ts` | The Baselines exports call every VIBES run "VIBES"; `lib/baselineRank.tsx` gives each view its run's rank so rank-70 VIBES is orange on every tab. `#2171b5` is now only accent and OLS. |
+| Baseline names, short names, EC axis titles | `lib/labels.ts` (`baselineName`, `PREPROCESSING_SHORT`, `ecAxis`) | |
+| Number formats | `lib/format.ts` (`fmt`, `f2`, `f3`, `signed`, `pct`, `sci`, `fitLine`, `coef`, `coefSigned`) | `lib/stats.fmt` re-exports it. The §5 precision is applied (11 Oct): slopes, intercepts and R² at 3 dp through `coef`/`coefSigned`, `FitCell`/`BandCell` and `fmtFit`; concentrations stay at 2 dp. |
+| Seasons | `lib/seasons.ts` | Two Addis calendars on purpose (docs/site-seasonality.md): pages showing frozen calibrations use `dry_feb` and say so (`ANALYSIS_CALENDAR_NOTE`); names are normalised to one dash. |
+| Data loading | `lib/data.ts` (`loadJson`, `loadBinary`, `useExport`), `components/ExportState` | One cache: every file downloads once per session. Spectra: `lib/similarity.loadTraces` checks the grid against the filter table for every page and the drawer. |
+| Pickers | `components/Pickers.tsx` (`BaselinePicker`, `SeasonPicker`, `BankPicker`) | Page option lists come from data or context, not module `let`. Raw `<select>`/checkbox controls replaced. |
+| URL keys | `lib/url.ts` | Development warning when two controls use one key with different options; the `sregion` collision is fixed. |
+| Crossplot | `components/Crossplot.tsx` | Meeting, Satoshi (`Cross`, `Envelope` with a density `background`), `RunCrossplot` (residual panel kept beside it on the same x), Ext `AllFilterScatter` optical panel (its own `grouping`). The Ext band-height panel is not a 1:1 comparison and keeps its own axes. |
+| Static key | `components/Key.tsx` | Meeting and Satoshi; in-SVG legends kept where export needs them. |
+| Spectrum shading | `components/SpectralRegions.tsx` | Meeting, Satoshi VIP, Blanks. The Baselines amber band marks the earlier selection masks (a different meaning) and stays. |
+| Dot-interval rows | `components/IntervalStrip.tsx` | Meeting `RepeatStrip`, `Combined`; Satoshi `Swap`, `BlankEffect`; Baselines `LoadingPlot`; `HipsYork`; Similarity `GroupRanking` (stems, selectable rows, labelled marker). `CrossSiteTransfer` ordering is a jittered dot plot with per-dot picking, a different chart, and stays. |
+| Heat-map cells | `lib/theme.inkOn` (contrast-based label ink), `components/HeatCell.tsx` | Label ink in Correlogram, CrossSiteHeatmap, OverlapMatrix and the Similarity season matrix (which now has its `ColorLegend`). |
+| Table cells | `components/TableCells.tsx` (`FitCell`, `BandCell`) | Meeting and Satoshi fit and median-interval cells. |
+
+Still open from §1: `RefLine`/`Marker`, `robustDomain`, `SeasonBands`, `useD3Brush`, whole-panel export.
+
 ## 5. Decisions (1 Oct 2026)
 
 - **Baseline colours**: AIRSpec `#2C6E9E`, archived VIBES `#7A4FA3`, and one new

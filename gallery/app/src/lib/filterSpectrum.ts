@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { BASE, Traces, fetchBinary } from '@/lib/similarity'
+import { loadEtadIds, loadSimilarityMeta, loadTraces, type Traces } from '@/lib/similarity'
+import { loadDerived } from '@/lib/data'
 import { baseFilterId } from '@/lib/highlight'
 
 /**
@@ -7,7 +8,8 @@ import { baseFilterId } from '@/lib/highlight'
  * (gallery/data/export_similarity.py), for the filter drawers. Nothing is
  * fetched until a drawer asks, and the traces binary only once the filter is
  * known to be in the export. VIBES uses the separate full-range export and
- * its own grid; AIRSpec retains the original spline-corrected grid.
+ * its own grid; AIRSpec retains the original spline-corrected grid. Files are
+ * loaded through lib/similarity, so the drawer shares them with every page.
  *
  * Id resolution: "improve:<FilterId>" and "etad:<MediaId>" are similarity
  * sample ids already; an Addis SPARTAN id ("ETAD-0017", or "ETAD-0017-1") goes
@@ -19,67 +21,27 @@ export type SpectrumMethod = (typeof SPECTRUM_METHODS)[number]
 
 interface SimIndex { bin_wn: number[]; n: number; index: Map<string, number> }
 
-let simPromise: Promise<SimIndex> | null = null
-let etadPromise: Promise<Record<string, string[]>> | null = null
-let etadJsonPromise: Promise<EtadJson> | null = null
-
 /** Why an Addis filter does or does not have a spectrum / test-set result (export_etad_ids.py). */
 export interface AddisStatus { in_run: boolean; in_test_set: boolean; note: string }
 interface EtadJson { ids: Record<string, string[]>; status?: Record<string, AddisStatus> }
 
-const getJson = <T,>(name: string): Promise<T> =>
-  fetch(BASE + name).then((r) => {
-    if (!r.ok) throw new Error(`${name}: HTTP ${r.status}`)
-    return r.json() as Promise<T>
-  })
-
-function simIndex(): Promise<SimIndex> {
-  simPromise ??= getJson<{ bin_wn: number[]; filters: { sample_id: string[] } }>('similarity.json').then((m) => ({
-    bin_wn: m.bin_wn,
-    n: m.filters.sample_id.length,
-    index: new Map(m.filters.sample_id.map((id, i) => [id, i])),
-  }))
-  simPromise.catch(() => { simPromise = null })
-  return simPromise
-}
-
-function etadJson(): Promise<EtadJson> {
-  etadJsonPromise ??= getJson<EtadJson>('etad_ids.json')
-  etadJsonPromise.catch(() => { etadJsonPromise = null })
-  return etadJsonPromise
-}
-
-function etadIds(): Promise<Record<string, string[]>> {
-  etadPromise ??= etadJson().then((j) => j.ids)
-  etadPromise.catch(() => { etadPromise = null })
-  return etadPromise
-}
+const simIndex = (): Promise<SimIndex> => loadDerived('similarity-index', async () => {
+  const m = await loadSimilarityMeta()
+  return { bin_wn: m.bin_wn, n: m.filters.sample_id.length, index: new Map(m.filters.sample_id.map((id, i) => [id, i])) }
+})
+const etadJson = () => loadEtadIds<EtadJson>()
+const etadIds = () => etadJson().then((j) => j.ids)
 
 interface SpectrumTrace { wn: number[]; y: Float32Array; rankCap?: number; backgroundRank?: number; presentationStatus?: string }
 interface TraceSource { wn: number[]; traces: Traces; rankCap?: number; backgroundRank?: number; presentationStatus?: string }
-interface FullGrid { bin_wn: number[]; n: number; rank_cap?: number; background_rank?: number; presentation_status?: string }
 
 export const traceVersionLabel = (t: { rankCap?: number; backgroundRank?: number; presentationStatus?: string }) =>
   t.presentationStatus === 'completed_uncapped' ? `completed, background rank ${t.backgroundRank ?? 70}` : `preliminary, rank cap ${t.rankCap ?? 30}`
 
-const traceCache = new Map<string, Promise<TraceSource>>()
-function traces(method: SpectrumMethod, sim: SimIndex, rank: '30' | '70'): Promise<TraceSource> {
-  const source = method === 'VIBES' ? (rank === '70' ? 'VIBES-full-r70' : 'VIBES-full') : method
-  let p = traceCache.get(source)
-  if (!p) {
-    // VIBES is fitted on its full range, not the archived truncated-grid run.
-    // Each correction retains its own grid; the two bin counts are different.
-    const grid: Promise<FullGrid> = method === 'VIBES'
-      ? getJson<FullGrid>(`traces_${source}.json`)
-      : Promise.resolve({ bin_wn: sim.bin_wn, n: sim.n })
-    p = Promise.all([fetchBinary(`traces_${source}.bin`), grid]).then(([buf, meta]) => {
-      if (meta.n !== sim.n || !meta.bin_wn.length || !meta.bin_wn.every(Number.isFinite)) throw new Error('Spectrum grid does not match the filter table')
-      return { wn: meta.bin_wn, traces: new Traces(buf, sim.n, meta.bin_wn.length), rankCap: meta.rank_cap, backgroundRank: meta.background_rank, presentationStatus: meta.presentation_status }
-    })
-    p.catch(() => traceCache.delete(source))
-    traceCache.set(source, p)
-  }
-  return p
+// VIBES is fitted on its full range, not the archived truncated-grid run; each run keeps its own grid
+async function traces(method: SpectrumMethod, rank: '30' | '70'): Promise<TraceSource> {
+  const t = await loadTraces(method === 'VIBES' ? (rank === '70' ? 'VIBES-full-r70' : 'VIBES-full') : method)
+  return { wn: t.wn, traces: t.traces, rankCap: t.run?.rank_cap, backgroundRank: t.run?.background_rank, presentationStatus: t.run?.presentation_status }
 }
 
 /** Similarity sample ids for a drawer id; empty when the filter is not in the export. */
@@ -120,7 +82,7 @@ export function useFilterSpectrum(id: string | null | undefined, methods: readon
       const sampleId = sids[0]
       const k = sim.index.get(sampleId)!
       const loaded = await Promise.allSettled(methods.map(async (m) => {
-        const source = await traces(m, sim, vibesRank)
+        const source = await traces(m, vibesRank)
         return [m, { wn: source.wn, y: source.traces.of(k), rankCap: source.rankCap, backgroundRank: source.backgroundRank, presentationStatus: source.presentationStatus }] as const
       }))
       const series: FilterSpectrumData['series'] = {}, unavailable: SpectrumMethod[] = []

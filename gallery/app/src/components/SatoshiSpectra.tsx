@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChartFrame, Empty, Segmented, Select, Toggle } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Segmented, Toggle } from '@/components/ChartFrame'
 import { SpectraTraces } from '@/components/SimilaritySpectra'
 import { useSearchParam } from '@/lib/url'
 import { useHighlight } from '@/lib/highlight'
-import { BASE, Traces, fetchBinary, siteName, type SimilarityMeta } from '@/lib/similarity'
+import { BaselinePicker, SeasonPicker } from '@/components/Pickers'
+import { baselineName } from '@/lib/labels'
+import { Traces, fetchBinary, loadEtadIds, loadSimilarityMeta, siteName, type SimilarityMeta } from '@/lib/similarity'
 import { addisTargetSpectra, rankedAnalogSpectra, type AddisSpectrumIds, type AnalogBaseline, type AnalogRegion } from '@/lib/satoshiSpectra'
 
 const TOP_N = ['50', '100', '250', '500'] as const
 const BASELINES: AnalogBaseline[] = ['AIRSpec', 'VIBES-full-r70']
-const baselineLabel = (baseline: string) => baseline === 'AIRSpec' ? 'Spline baseline' : 'VIBES baseline · full range, rank 70'
+const baselineLabel = (baseline: string) => baselineName(baseline)
 type Columns = Record<string, (number | string | null)[]>
 
 export function SatoshiSpectra({ membership, groups, region }: { membership: Columns; groups: string[]; region: AnalogRegion }) {
@@ -23,16 +25,12 @@ export function SatoshiSpectra({ membership, groups, region }: { membership: Col
   const hl = useHighlight()
 
   useEffect(() => {
-    const c = new AbortController()
-    const json = (file: string) => fetch(BASE + file, { signal: c.signal }).then(r => {
-      if (!r.ok) throw new Error(`${file}: HTTP ${r.status}`)
-      return r.json()
-    })
-    Promise.all([json('similarity.json'), json('etad_ids.json')]).then(([meta, ids]) => {
-      if (meta.schema_version !== 1 || !ids.status) throw new Error('Unsupported spectral export')
-      setMeta(meta); setIds(ids)
-    }).catch(e => { if (e.name !== 'AbortError') setError(String(e)) })
-    return () => c.abort()
+    let live = true
+    Promise.all([loadSimilarityMeta(), loadEtadIds<AddisSpectrumIds>()]).then(([meta, ids]) => {
+      if (!ids.status) throw new Error('etad_ids.json has no Addis status')
+      if (live) { setMeta(meta); setIds(ids) }
+    }).catch(e => { if (live) setError(String(e)) })
+    return () => { live = false }
   }, [])
 
   const activeMeta = useMemo(() => {
@@ -88,8 +86,8 @@ export function SatoshiSpectra({ membership, groups, region }: { membership: Col
     pinInstructions="Hover a trace to identify it; click to pin it and open its filter details. Ranks compare each analog with the median Addis spectrum."
     provenance="Saved Satoshi follow-up membership ranks · export_similarity.py binned per-filter traces · frozen Addis test-set membership"
     controls={<>
-      <Select label="Baseline" value={baseline} options={BASELINES} onChange={value => setBaseline(value as AnalogBaseline)} optionLabel={baselineLabel} />
-      <Select label="Analogs of" value={group} options={groups} onChange={setGroup} />
+      <BaselinePicker as="select" value={baseline} options={BASELINES} onChange={value => setBaseline(value as AnalogBaseline)} />
+      <SeasonPicker as="select" label="Analogs of" value={group} groups={groups} onChange={setGroup} />
       <Segmented label="Most similar" value={topN} options={TOP_N} onChange={setTopN} />
       <Toggle label="Outer test sites" checked={test === 'on'} onChange={value => setTest(value ? 'on' : 'off')} />
     </>} />

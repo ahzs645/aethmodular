@@ -5,7 +5,7 @@ import { ColorLegend } from '@/components/ColorLegend'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { INK, FONT, RAMP_SEQUENTIAL } from '@/lib/theme'
+import { INK, FONT, RAMP_SEQUENTIAL, inkOn } from '@/lib/theme'
 import type { OverlapRow } from '@/lib/types'
 import { cohortColor } from './common'
 
@@ -119,7 +119,7 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
                     return (
                       <g key={b} onMouseEnter={(e) => tip.show(e, diag ? [a, `${v} filters`] : [`${short(a)} ∩ ${short(b)}`, `${v} shared filters`, `${(frac * 100).toFixed(0)} % of the smaller cohort`])} onMouseLeave={tip.hide}>
                         <rect x={j * size + 1} y={1} width={size - 2} height={size - 2} rx={3} fill={diag ? INK.empty : color(frac)} stroke="#fff" />
-                        <text x={j * size + size / 2} y={size / 2} dy="0.32em" textAnchor="middle" fontSize={10.5} fontFamily={FONT.mono} fill={!diag && frac > 0.6 ? '#fff' : INK.text} pointerEvents="none">
+                        <text x={j * size + size / 2} y={size / 2} dy="0.32em" textAnchor="middle" fontSize={10.5} fontFamily={FONT.mono} fill={inkOn(diag ? INK.empty : color(frac))} pointerEvents="none">
                           {v}
                         </text>
                       </g>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useExport } from '@/lib/data'
 import { ChartFrame, Note } from '@/components/ChartFrame'
 
 interface FullRangeEvidence {
@@ -18,17 +18,9 @@ interface FullRangeEvidence {
 
 /** Completed correction with explicitly recorded numerical recovery. */
 export function FullRangeVibesStatus({ linkToMeeting = false }: { linkToMeeting?: boolean }) {
-  const [evidence, setEvidence] = useState<FullRangeEvidence | null>(null)
-  useEffect(() => {
-    const controller = new AbortController()
-    fetch(`${import.meta.env.BASE_URL}data/similarity/traces_VIBES-full-r70.json`, { signal: controller.signal })
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
-      .then((d: FullRangeEvidence) => {
-        if (d.presentation_status === 'completed_uncapped' && d.n_corrected === d.n_cases && d.n_failed === 0) setEvidence(d)
-      })
-      .catch(() => { /* The spectra panel reports missing trace exports. */ })
-    return () => controller.abort()
-  }, [])
+  // shown only for a complete run; a missing file is reported by the spectra panel, not here
+  const { data: evidence } = useExport<FullRangeEvidence>('similarity/traces_VIBES-full-r70.json',
+    (d) => d.presentation_status === 'completed_uncapped' && d.n_corrected === d.n_cases && d.n_failed === 0 ? null : 'run not complete')
   if (!evidence) return null
   const e = evidence
   return <ChartFrame id="full-range-vibes-status" title={`Completed full-range VIBES · background rank ${e.background_rank}`} exportable={false}

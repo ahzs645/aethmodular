@@ -4,7 +4,7 @@ import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { INK, FONT, RAMP_DIVERGING, RAMP_SEQUENTIAL } from '@/lib/theme'
+import { INK, FONT, RAMP_DIVERGING, RAMP_SEQUENTIAL, inkOn } from '@/lib/theme'
 import type { CalibFile, CalibRow } from '@/lib/types'
 import { configKey, fmtFit, passes, sameConfig, score, shortConfig, type Config } from './common'
 import { METRIC } from '@/lib/labels'
@@ -115,7 +115,7 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
                             onMouseLeave={tip.hide}
                           />
                           {v !== null && (
-                            <text x={j * cellW + cellW / 2} y={rowH / 2} dy="0.32em" textAnchor="middle" fontSize={10.5} fontFamily={FONT.mono} fill={cell === 'R²' ? (v > 0.6 ? '#fff' : INK.text) : Math.abs(cell === 'Deming slope' ? v - 1 : v) > (cell === 'Deming slope' ? 0.45 : 3.5) ? '#fff' : INK.text} pointerEvents="none">
+                            <text x={j * cellW + cellW / 2} y={rowH / 2} dy="0.32em" textAnchor="middle" fontSize={10.5} fontFamily={FONT.mono} fill={inkOn(color(v))} pointerEvents="none">
                               {cell === 'R²' ? v.toFixed(2) : v.toFixed(2)}
                             </text>
                           )}

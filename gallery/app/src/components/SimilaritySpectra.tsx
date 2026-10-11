@@ -7,10 +7,10 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
 import { useAddisStatusBySample } from '@/lib/filterSpectrum'
-import { INK, MARGIN } from '@/lib/theme'
+import { IMPROVE_GREY, INK, MARGIN, TRACE } from '@/lib/theme'
 import { calendarOf, groupColor, groupLabel, members, siteWhere, type SimilarityMeta, type Traces } from '@/lib/similarity'
 
-const TOP_GREY = '#8a8f98'
+const TOP_GREY = IMPROVE_GREY
 const GROUP_GREY = '#39404d'
 
 export function SpectraTraces({ meta, traces, target, topFilters, compare, mask, hoverFilter, pinned, onPin, method, controls,
@@ -152,8 +152,8 @@ export function SpectraTraces({ meta, traces, target, topFilters, compare, mask,
               <g clipPath={`url(#${clip})`}>
               {vis!.back.map((t) => <path key={`b${t.f}`} d={line(Array.from(t.v)) ?? ''} fill="none" stroke={useGroup ? GROUP_GREY : TOP_GREY} strokeOpacity={(useGroup ? 0.3 : 0.22) * lg.dim(BACK, 0.2)} strokeWidth={0.7} />)}
               {vis!.tgt.map((t) => <path key={`t${t.f}`} d={line(Array.from(t.v)) ?? ''} fill="none" stroke={tColor(t.f)} strokeOpacity={0.55 * lg.dim(tKey(t.f), 0.12)} strokeWidth={0.8} />)}
-              {drawn.pin && <path d={line(Array.from(drawn.pin.v)) ?? ''} fill="none" stroke={INK.fit} strokeWidth={2.2} />}
-              {drawn.hover && <path d={line(Array.from(drawn.hover.v)) ?? ''} fill="none" stroke={INK.negative} strokeWidth={1.8} />}
+              {drawn.pin && <path d={line(Array.from(drawn.pin.v)) ?? ''} fill="none" {...TRACE.pinned} />}
+              {drawn.hover && <path d={line(Array.from(drawn.hover.v)) ?? ''} fill="none" {...TRACE.hovered} />}
               </g>
               <rect x={0} y={0} width={innerW} height={innerH} fill="transparent" style={{ cursor: hoverTrace != null ? 'pointer' : 'crosshair' }}
                 onMouseMove={onMove} onMouseLeave={() => { setHoverTrace(null); tip.hide() }}

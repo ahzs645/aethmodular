@@ -1,4 +1,5 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
+import { loadJson } from '@/lib/data'
 import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
 import { useRegressions, fitsFor, equation, FitGroupingControl } from '@/lib/regressionPrefs'
 import { groupedRegressions } from '@/lib/siteRegression'
@@ -78,16 +79,15 @@ export function SampleDrawer({
 
   useEffect(() => {
     if (reference !== 'network' || network) return
-    const controller = new AbortController()
+    let live = true
     setNetworkError('')
-    fetch(`${import.meta.env.BASE_URL}data/spartan_reference.json`, { signal: controller.signal })
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
-      .then((data: SpartanReference) => {
+    loadJson<SpartanReference>('spartan_reference.json')
+      .then((data) => {
         if (data.schema_version !== 1 || !Array.isArray(data.rows)) throw new Error('Unsupported reference export')
-        setNetwork(data)
+        if (live) setNetwork(data)
       })
-      .catch(e => { if (e.name !== 'AbortError') setNetworkError(String(e)) })
-    return () => controller.abort()
+      .catch(e => { if (live) setNetworkError(String(e)) })
+    return () => { live = false }
   }, [reference, network])
 
   useEffect(() => {

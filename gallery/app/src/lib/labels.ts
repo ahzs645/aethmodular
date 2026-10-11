@@ -28,6 +28,37 @@ export const PREPROCESSING: Record<string, string> = {
   'vibes-full-cut-r70': 'Sensitivity: VIBES fit 4000–500, predict 4000–1425 (completed rank 70)',
 }
 
+/** Short names for controls, legends and table rows where the long name does not fit. */
+export const PREPROCESSING_SHORT: Record<string, string> = {
+  raw: 'Raw',
+  airspec: 'Spline',
+  AIRSpec: 'Spline',
+  deriv2: '2nd derivative',
+  vibes: 'Archived VIBES',
+  VIBES: 'Archived VIBES',
+  'VIBES-full': 'VIBES (rank 30)',
+  'vibes-full': 'VIBES (rank 30)',
+  'VIBES-full-cut': 'VIBES (rank 30), 4000–1425',
+  'vibes-full-cut': 'VIBES (rank 30), 4000–1425',
+  'VIBES-full-r70': 'VIBES',
+  'vibes-full-r70': 'VIBES',
+  'VIBES-full-cut-r70': 'VIBES, 4000–1425',
+  'vibes-full-cut-r70': 'VIBES, 4000–1425',
+}
+
+/**
+ * Reader-facing name of a baseline. Older exports call every VIBES run "VIBES";
+ * pass the run's background rank so a completed rank-70 run gets the current name.
+ */
+export function baselineName(method: string, { short = false, backgroundRank }: { short?: boolean; backgroundRank?: number | null } = {}): string {
+  const key = (method === 'VIBES' || method === 'vibes') && backgroundRank === 70 ? 'VIBES-full-r70' : method
+  return (short ? PREPROCESSING_SHORT : PREPROCESSING)[key] ?? method
+}
+
+/** Axis titles for the EC crossplots, in either concentration or per-filter mass. */
+export const ecAxis = (what: 'hips' | 'tor' | 'ftir', unit = 'µg/m³') =>
+  `${{ hips: 'HIPS Fabs / MAC 10', tor: 'TOR EC', ftir: 'FTIR EC' }[what]} (${unit})`
+
 /** One-line definitions, for tooltips and the explain text. */
 export const PREPROCESSING_NOTE: Record<string, string> = {
   airspec: 'Smoothing-spline baseline correction (AIRSpec; Kuzmiakova, Dillner and Takahama 2016), 4000–1425 cm⁻¹',

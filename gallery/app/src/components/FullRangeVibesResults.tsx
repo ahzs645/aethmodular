@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
+import { useExport } from '@/lib/data'
+import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Select, Toggle } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
@@ -6,7 +8,8 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
-import { FONT, INK } from '@/lib/theme'
+import { FONT, INK, BASELINE_COLOR } from '@/lib/theme'
+import { fmt } from '@/lib/format'
 
 interface Score { cohort: string; method: string; RMSE: number; predictive_R2: number; k: number; n_train: number; n_test: number }
 interface Interval { cohort: string; method: string; delta_rmse: number; ci_low: number; ci_high: number; n_sites: number }
@@ -18,26 +21,18 @@ interface Evidence {
   injections: { method: string; amplitude: number; signal_area_recovery: number; relative_rms_error: number }[]
   spectra: Record<string, Record<string, Spectrum>>
 }
-const COLORS: Record<string, string> = { AIRSpec: '#2C6E9E', VIBES: '#d95f0e', uncapped_full: '#d95f0e', capped_shared: '#7A4FA3', capped_full: '#7A4FA3', archived_truncated: '#666666' }
+// benchmark variants by run: rank 70 is the current VIBES, rank 30 the archived full-range fit
+const COLORS: Record<string, string> = { AIRSpec: BASELINE_COLOR.AIRSpec, VIBES: BASELINE_COLOR['VIBES-full-r70'], uncapped_full: BASELINE_COLOR['VIBES-full-r70'], capped_shared: BASELINE_COLOR['VIBES-full'], capped_full: BASELINE_COLOR['VIBES-full'], archived_truncated: '#666666' }
 const NAMES: Record<string, string> = { AIRSpec: 'Spline · shared input', VIBES: 'Rank 70 · shared input', uncapped_full: 'Rank 70 · full input', capped_shared: 'Rank 30 · shared input', capped_full: 'Rank 30 · full input', archived_truncated: 'Archived truncated fit' }
 const SPECTRUM_NAMES: Record<string, string> = { AIRSpec: 'Spline baseline', uncapped_full: 'VIBES rank 70 · completed', capped_full: 'VIBES rank 30 · preliminary' }
-const f = (v: number) => v.toFixed(3)
+const f = (v: number) => fmt(v, 3)
 
 /** Completed rank-70 benchmark; archived results remain separate. */
 export function FullRangeVibesResults() {
-  const [data, setData] = useState<Evidence | null>(null)
-  const [error, setError] = useState('')
+  const { data, error } = useExport<Evidence>('vibes_fullrange_results.json', (d) => d.schema_version === 1 ? null : 'unsupported full-range results')
   const [cohort, setCohort] = useSearchParam<string>('vfcohort', 'full_pool', ['full_pool', 'locked800'])
   const [extras, setExtras] = useSearchParam<string>('vfextras', 'hide', ['hide', 'show'])
-  useEffect(() => {
-    const abort = new AbortController()
-    fetch(`${import.meta.env.BASE_URL}data/vibes_fullrange_results.json`, { signal: abort.signal })
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
-      .then((d: Evidence) => { if (d.schema_version !== 1) throw new Error('Unsupported full-range results'); setData(d) })
-      .catch(e => { if (e.name !== 'AbortError') setError(String(e)) })
-    return () => abort.abort()
-  }, [])
-  if (!data) return <ChartFrame title="Completed full-range results" exportable={false}><Empty>{error || 'Loading completed full-range results…'}</Empty></ChartFrame>
+  if (!data) return <ExportState title="Completed full-range results" what="the completed full-range results" error={error} command="uv run --no-sync python gallery/data/export_vibes_fullrange_results.py" />
   const methods = extras === 'show' ? ['AIRSpec', 'VIBES', 'uncapped_full', 'capped_shared', 'capped_full', 'archived_truncated'] : ['AIRSpec', 'VIBES', 'uncapped_full']
   const scores = methods.map(m => data.scores.find(s => s.cohort === cohort && s.method === m)!)
   const intervals = methods.filter(m => m !== 'AIRSpec').map(m => data.intervals.find(s => s.cohort === cohort && s.method === m)!)

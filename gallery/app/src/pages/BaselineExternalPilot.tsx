@@ -1,9 +1,17 @@
 import { monthBlocks } from '@/lib/regressionCI'
+import { dataUrl, useExport } from '@/lib/data'
+import { ExportState } from '@/components/ExportState'
 import { RegressionLines, RegressionReadout } from '@/components/RegressionOverlay'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, ExplainOnly, Note } from '@/components/ChartFrame'
-import { INK } from '@/lib/theme'
+import { ChartFrame, ExplainOnly, Note, Select } from '@/components/ChartFrame'
+import { BaselinePicker } from '@/components/Pickers'
+import { Crossplot } from '@/components/Crossplot'
+import type { FitGrouping } from '@/lib/siteRegression'
+import { Key } from '@/components/Key'
+import { useBaselineStyle } from '@/lib/baselineRank'
+import { INK, baselineColor } from '@/lib/theme'
+import { fixed as fmt } from '@/lib/format'
 import { regression } from '@/lib/stats'
 import { useHighlight, type FilterRecord } from '@/lib/highlight'
 import { useSearchParam } from '@/lib/url'
@@ -63,38 +71,27 @@ type Pilot = {
   limitations: { adama: string; bishoftu: string; matching: string }
 }
 
-const BASE = `${import.meta.env.BASE_URL}data/`
+const BASE = dataUrl('')
 const METHODS: Method[] = ['AIRSpec', 'VIBES']
-const COLORS: Record<Method, string> = { AIRSpec: '#2C6E9E', VIBES: '#7A4FA3' }
-const fmt = (x: number | null | undefined, n = 2) => x == null || !Number.isFinite(x) ? '—' : x.toFixed(n)
+/** Archived runs keep the archived VIBES colour; the completed rank-70 pilot uses the current one. */
+const colorsFor = (completed: boolean): Record<Method, string> => ({ AIRSpec: baselineColor('AIRSpec'), VIBES: baselineColor('VIBES', completed ? 70 : null) })
 
 /**
  * `mac` is config.MAC_VALUE (via meta.json) and `demingLambda` the explorer's
  * lambda* at that MAC (via calibration.json): passed in, not restated here.
  */
 export function BaselineExternalPilot({ mac, demingLambda, completed = false }: { mac: number; demingLambda: number; completed?: boolean }) {
+  const COLORS = colorsFor(completed)
   const hl = useHighlight()
-  const [data, setData] = useState<Pilot | null>(null)
-  const [error, setError] = useState('')
+  const { data, error } = useExport<Pilot>(completed ? 'rank70/baseline_external_pilot.json' : 'baseline_external_pilot.json', (d) =>
+    d.schema_version !== 1 || (completed && d.background_rank !== 70) || d.adama.length !== 5 || d.bishoftu.length !== 26 || d.addis.length !== 253 || d.matched.length !== 5 ? 'unexpected pilot dataset' : null)
   const [reference, setReference] = useState<Reference>('ECTR')
   const [method, setMethod] = useState<Method>('AIRSpec')
   const [opticalMethod, setOpticalMethod] = useState<Method>('AIRSpec')
   const [spectralMethod, setSpectralMethod] = useState<Method>('AIRSpec')
   const [opticalSite, setOpticalSite] = useState('Both sites')
   const [spectralSite, setSpectralSite] = useState('Both sites')
-  useEffect(() => {
-    const controller = new AbortController()
-    fetch(BASE + (completed ? 'rank70/baseline_external_pilot.json' : 'baseline_external_pilot.json'), { signal: controller.signal })
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
-      .then((d: Pilot) => {
-        if (d.schema_version !== 1 || (completed && d.background_rank !== 70) || d.adama.length !== 5 || d.bishoftu.length !== 26 || d.addis.length !== 253 || d.matched.length !== 5) throw new Error('Unexpected pilot dataset')
-        setData(d)
-      })
-      .catch(e => { if (e.name !== 'AbortError') setError(String(e)) })
-    return () => controller.abort()
-  }, [completed])
-  if (error) return <ChartFrame title="External Ethiopia pilot" exportable={false}><Empty>{error}. Run the frozen pilot and gallery export.</Empty></ChartFrame>
-  if (!data) return <p>Loading the Adama and Bishoftu pilot…</p>
+  if (!data) return <ExportState title="External Ethiopia pilot" what="the Adama and Bishoftu pilot" error={error} command="uv run --no-sync python gallery/data/export_baseline_external_pilot.py" />
   const y = d3.scaleLinear().domain([0, 2]).range([190, 20])
   const x = (i: number) => 105 + i * 130
   const unflagged = data.adama.filter(r => !r.flag)
@@ -117,7 +114,7 @@ export function BaselineExternalPilot({ mac, demingLambda, completed = false }: 
       <p style={{ fontSize: 11, overflowWrap: 'anywhere' }}>Frozen run: <code>{data.frozen_run_signature}</code> · Evidence date {data.evidence_date}</p>
     </ChartFrame></ExplainOnly>
 
-    <ChartFrame title="Adama against quartz thermal EC" subtitle="Five date-candidate PTFE/quartz pairs. Ringed points have a sampler flag." controls={<label className="control">Thermal convention<select className="select" value={reference} onChange={e => setReference(e.target.value as Reference)}><option value="ECTR">TOR EC</option><option value="ECTT">TOT EC</option></select></label>}>
+    <ChartFrame title="Adama against quartz thermal EC" subtitle="Five date-candidate PTFE/quartz pairs. Ringed points have a sampler flag." controls={<Select label="Thermal convention" value={reference} options={['ECTR', 'ECTT']} optionLabel={(v) => (v === 'ECTR' ? 'TOR EC' : 'TOT EC')} onChange={(v) => setReference(v as Reference)} />}>
       <div className="chart-wrap" style={{ overflowX: 'auto' }}><svg viewBox="0 0 760 260" width="100%" style={{ minWidth: 620, maxWidth: 760, margin: '0 auto' }} role="img" aria-label={`Adama frozen prediction divided by quartz ${reference} for five candidate dates`}>
         {[0, .5, 1, 1.5, 2].map(v => <g key={v}><line x1={75} x2={720} y1={y(v)} y2={y(v)} stroke={v === 1 ? '#4C5965' : '#E8EBEF'} strokeDasharray={v === 1 ? '4 3' : undefined}/><text x={68} y={y(v) + 4} textAnchor="end" fontSize={11} fill="#5B6470">{v.toFixed(1)}</text></g>)}
         {data.adama.map((r, i) => <g key={r.date}><text x={x(i)} y={215} textAnchor="middle" fontSize={11} fill="#1F2933">{r.date.slice(5)}</text>{r.flag && <text x={x(i)} y={232} textAnchor="middle" fontSize={10} fill="#B2182B">{r.flag}</text>}{METHODS.map((m, j) => <circle key={m} cx={x(i) + (j ? 9 : -9)} cy={y(ratio(r, m))} r={5.5} fill={COLORS[m]} stroke={r.flag ? '#1F2933' : 'white'} strokeWidth={r.flag ? 2 : 1} style={{ cursor: 'pointer' }} onClick={() => hl.openRecord(adamaRecord(r))}><title>{`${r.date} ${m}: ${fmt(ratio(r, m), 3)}× ${reference}; PTFE ${r.FilterId_ptfe}, quartz ${r.FilterId_quartz}${r.flag ? `; ${r.flag}` : ''}`}</title></circle>)}</g>)}
@@ -130,7 +127,7 @@ export function BaselineExternalPilot({ mac, demingLambda, completed = false }: 
     <AllFilterScatter rows={siteRows} mode="optical" method={opticalMethod} onMethod={setOpticalMethod} site={opticalSite} onSite={setOpticalSite} mac={mac} demingLambda={demingLambda} />
     <AllFilterScatter rows={siteRows} mode="spectral" method={spectralMethod} onMethod={setSpectralMethod} site={spectralSite} onSite={setSpectralSite} mac={mac} demingLambda={demingLambda} />
 
-    <ChartFrame title="Bishoftu versus Addis at near-equal HIPS Fabs" subtitle="Five unique lot-251, October–December pairs within 20% optical-loading caliper; dates differ by year." controls={<label className="control">Frozen correction<select className="select" value={method} onChange={e => setMethod(e.target.value as Method)}>{METHODS.map(m => <option key={m}>{m}</option>)}</select></label>}>
+    <ChartFrame title="Bishoftu versus Addis at near-equal HIPS Fabs" subtitle="Five unique lot-251, October–December pairs within 20% optical-loading caliper; dates differ by year." controls={<BaselinePicker as="select" label="Frozen correction" value={method} options={METHODS} backgroundRank={completed ? 70 : null} onChange={(v) => setMethod(v as Method)} />}>
       <div className="chart-wrap" style={{ overflowX: 'auto' }}><svg viewBox="0 0 760 270" width="100%" style={{ minWidth: 620, maxWidth: 760, margin: '0 auto' }} role="img" aria-label={`${method} predicted EC for five Addis and Bishoftu optical-loading-matched pairs`}>
         {data.matched.map((r, i) => { const a = r[`addis_${method}_EC_ugm3`], b = r[`bishoftu_${method}_EC_ugm3`], py = 35 + i * 39; return <g key={r.bishoftu_filter_id}><text x={180} y={py + 4} textAnchor="end" fontSize={11} fill="#1F2933">{r.bishoftu_filter_id} / {r.addis_filter_id}</text><line x1={sx(a)} x2={sx(b)} y1={py} y2={py} stroke="#A7B1BA" strokeWidth={2}/><circle cx={sx(a)} cy={py} r={5} fill="#2C6E9E" style={{ cursor: 'pointer' }} onClick={() => hl.openRecord(pairSide(r, 'addis'))}><title>{`Addis ${fmt(a, 3)} µg/m³; ${r.addis_date}`}</title></circle><circle cx={sx(b)} cy={py} r={5} fill="#C49442" style={{ cursor: 'pointer' }} onClick={() => hl.openRecord(pairSide(r, 'bishoftu'))}><title>{`Bishoftu ${fmt(b, 3)} µg/m³; ${r.bishoftu_date}; Fabs ratio ${fmt(r.Fabs_ratio, 3)}`}</title></circle></g> })}
         <line x1={188} x2={700} y1={230} y2={230} stroke="#5B6470"/>{sx.ticks(5).map(t => <g key={t}><line x1={sx(t)} x2={sx(t)} y1={230} y2={234} stroke="#5B6470"/><text x={sx(t)} y={248} textAnchor="middle" fontSize={10} fill="#5B6470">{fmt(t, 1)}</text></g>)}<text x={450} y={267} textAnchor="middle" fontSize={11} fill="#5B6470">Frozen FTIR EC prediction (µg/m³)</text>
@@ -211,6 +208,7 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
   mac: number
   demingLambda: number
 }) {
+  const { rank } = useBaselineStyle()
   const hl = useHighlight()
   const optical = mode === 'optical'
   const { methods, showCI, grouping } = useRegressions()
@@ -255,16 +253,30 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
     ? <><p>{points.length} physical filters shown: {counts.Addis} Addis and {counts.Bishoftu} Bishoftu. The full frozen Addis target set has 253 spectra; 20 have no paired HIPS Fabs and cannot appear on this optical plot. No thermal EC is measured at either site in this plot.</p>
         <p>x is HIPS Fabs ÷ MAC {mac}, an optical BC equivalent, so the 1:1 line shows optical–FTIR agreement, not EC accuracy. Deming uses λ = {fmt(demingLambda, 2)} (HIPS uncertainty ÷ MAC against the AIRSpec IMPROVE cross-validation error, AGENTS.md), because both axes carry measurement error.</p></>
     : <p>{points.length} physical filters shown: {counts.Addis} Addis and {counts.Bishoftu} Bishoftu. All 253 Addis and 26 Bishoftu corrected spectra appear by default, including Addis records without HIPS Fabs. Band heights are local peak-minus-continuum descriptors, not chemical identifications. Spectral-band Deming fits assume equal error variances (λ = 1); band-specific uncertainties are unavailable.</p>
-  const legendX = plot.r + 30
-  const legendY = plot.t + 4
-  return <ChartFrame id={optical ? 'baseline-optical-sites' : 'baseline-spectral-sites'} title={title} tip={<>{note}<p>Separate fits use only each site's paired points and cover that site's observed x range. Fit equations describe the displayed pairs; saved EC calibrations remain frozen.</p></>} controls={<>
-    <label className="control">Correction<select className="select" value={method} onChange={e => onMethod(e.target.value as Method)}>{METHODS.map(m => <option key={m}>{m}</option>)}</select></label>
-    <label className="control">Site<select className="select" value={site} onChange={e => onSite(e.target.value)}>{['Both sites', 'Addis', 'Bishoftu'].map(s => <option key={s}>{s}</option>)}</select></label>
+  const siteColor = (site: string) => (site === 'Bishoftu' ? '#C49442' : '#2C6E9E')
+  const controls = <>
+    <BaselinePicker as="select" label="Correction" value={method} options={METHODS} backgroundRank={rank} onChange={(v) => onMethod(v as Method)} />
+    <Select label="Site" value={site} options={['Both sites', 'Addis', 'Bishoftu']} onChange={onSite} />
     <Combobox label="Fit grouping" value={fitPreference} options={[
       { key: 'default', label: `Use gallery setting (${fitGrouping === 'site' ? 'per site' : fitGrouping === 'pooled' ? 'pooled' : 'no lines'})` },
       { key: 'none', label: 'No fitted lines' }, { key: 'pooled', label: 'One pooled fit' }, { key: 'site', label: 'Separate fit per site' },
     ]} onChange={setFitPreference} />
-  </>}>
+  </>
+  const tipContent = <>{note}<p>Separate fits use only each site's paired points and cover that site's observed x range. Fit equations describe the displayed pairs; saved EC calibrations remain frozen.</p></>
+  // the optical panel compares like with like (µg/m³ on both axes): the shared 1:1 crossplot, on a domain fixed
+  // across the site selector so a filtered cloud still compares with the full one
+  if (optical) return <ChartFrame id="baseline-optical-sites" title={title} tip={tipContent} controls={controls}>
+    <div className="chart-wrap centered">
+      <Crossplot title="" maxSide={460} domain={x.domain() as [number, number]} errorRatio={demingLambda} grouping={fitGrouping as FitGrouping | 'none'}
+        xLabel={`HIPS Fabs ÷ MAC ${mac} (µg/m³)`} yLabel="Frozen FTIR EC prediction (µg/m³)"
+        points={points.map((r) => ({ x: r.xv, y: r.yv, color: siteColor(r.site), id: r.id, rec: siteRecord(r, title, mac),
+          tip: [`${r.site} ${r.id} · ${r.date} · lot ${r.lot ?? 'unknown'} · ${optical ? `Fabs ${fmt(r.Fabs!, 2)} Mm⁻¹ (÷ MAC ${mac} = ${fmt(r.xv, 3)} µg/m³); ${method} FTIR EC ${fmt(r.yv, 3)} µg/m³` : `${method} local 2920 ${fmt(r.xv, 5)}, local 1617 ${fmt(r.yv, 5)} absorbance`}`] }))} />
+      <Key items={[{ label: `Addis (n ${counts.Addis})`, color: siteColor('Addis') }, { label: `Bishoftu (n ${counts.Bishoftu})`, color: siteColor('Bishoftu') }]} />
+    </div>
+  </ChartFrame>
+  const legendX = plot.r + 30
+  const legendY = plot.t + 4
+  return <ChartFrame id="baseline-spectral-sites" title={title} tip={tipContent} controls={controls}>
     <div className="chart-wrap" style={{ overflowX: 'auto' }}><svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ minWidth: 620, maxWidth: W, margin: '0 auto' }} role="img" aria-label={`${title}: ${counts.Addis} Addis and ${counts.Bishoftu} Bishoftu points`}>
       {y.ticks(5).map(v => <g key={'y' + v}><line x1={plot.l} x2={plot.r} y1={y(v)} y2={y(v)} stroke="#E8EBEF"/><text x={plot.l - 8} y={y(v) + 4} textAnchor="end" fontSize={10} fill="#5B6470">{optical ? fmt(v, 1) : fmt(v, 3)}</text></g>)}
       {x.ticks(optical ? 5 : 6).map(v => <g key={'x' + v}>{optical && <line x1={x(v)} x2={x(v)} y1={plot.t} y2={plot.b} stroke="#E8EBEF"/>}<line x1={x(v)} x2={x(v)} y1={plot.b} y2={plot.b + 4} stroke="#5B6470"/><text x={x(v)} y={plot.b + 21} textAnchor="middle" fontSize={10} fill="#5B6470">{optical ? fmt(v, 1) : fmt(v, 3)}</text></g>)}
