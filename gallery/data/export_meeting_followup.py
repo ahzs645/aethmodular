@@ -169,13 +169,31 @@ def main():
     ap["model"] = np.where(ap.family.eq("seasonal"), "seasonal calibration", parts.str[2])
     ap["group"] = np.where(ap.family.eq("seasonal"), parts.str[3], parts.str[3])
     ap["fabs10"] = ap.fabs_Mm1 / 10.0
+    # vol: sampled air volume (m³), so the crossplots can switch from concentration
+    # to mass per filter; IMPROVE samples ~4x more air than SPARTAN (Ann, 9 Oct)
+    ap["vol"] = ap.tor_volume_m3
     analog_cols = ["family", "method", "model", "group", "filter_id", "Site", "date", "lot", "role",
-                   "tor_ec_ugm3", "fabs10", "ftir_ec_ugm3", "op_tor_frac", "tor_oc_ec", "y"]
+                   "tor_ec_ugm3", "fabs10", "ftir_ec_ugm3", "op_tor_frac", "tor_oc_ec", "y", "vol"]
     analogs = columns(ap[analog_cols], 4)
 
     adp = adp.loc[~adp.fit_id.str.contains(r"\|meeting\|")].copy()
     adp["fabs10"] = adp.Fabs / 10.0
-    addis = columns(adp[["fit_id", "MediaId", "ExternalFilterId", "date", "season", "fabs10", "ftir_ec_ugm3"]], 4)
+    addis_cols = ["fit_id", "MediaId", "ExternalFilterId", "date", "season", "fabs10", "ftir_ec_ugm3"]
+    if (SRC / "addis_evaluation.csv").exists():
+        vol = pd.read_csv(SRC / "addis_evaluation.csv", usecols=["MediaId", "Volume_m3"]).drop_duplicates("MediaId")
+        adp = adp.merge(vol.rename(columns={"Volume_m3": "vol"}), on="MediaId", how="left")
+        addis_cols.append("vol")
+    addis = columns(adp[addis_cols], 4)
+
+    # every held-out IMPROVE filter under the all-IMPROVE models, not just the analogs
+    # (research/ftir_hips_chem/workflows/run_pool_test_points_20261009.py)
+    pool = None
+    if (SRC / "pool_test_predictions.csv").exists():
+        pp = pd.read_csv(SRC / "pool_test_predictions.csv")
+        pp["fabs10"] = pp.fabs_Mm1 / 10.0
+        pp["vol"] = pp.tor_volume_m3
+        pool = columns(pp[["fit_id", "filter_id", "Site", "date", "lot", "tor_ec_ugm3", "fabs10",
+                           "ftir_ec_ugm3", "op_tor_frac", "tor_oc_ec", "y", "vol"]], 4)
 
     # ---- pool MAC histogram and analog-set MAC distributions (log bins)
     ok = (refs.tor_ec_ugm3 > 0.02) & (refs.fabs_Mm1 > 0)
@@ -259,6 +277,7 @@ def main():
         "stats": records(stats),
         "analogs": analogs,
         "addis": addis,
+        "pool": pool,
         "repeats": columns(rep, 4),
         "stitched_repeats": columns(stitched, 4),
         "op_summary": records(op),
