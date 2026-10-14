@@ -129,6 +129,8 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
                 </>
               )}
 
+              {/* hexes centred near an edge would spill over the axes and their tick labels */}
+              <g clipPath={`url(#${clipId})`}>
               {bins.map((b, i) => (
                 <path
                   key={i}
@@ -143,6 +145,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
                   onMouseLeave={tip.hide}
                 />
               ))}
+              </g>
 
               <g clipPath={`url(#${clipId})`} pointerEvents="none">
                 {opts.identity && <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />}

@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import * as d3 from 'd3'
 import type { FeatureCollection } from 'geojson'
@@ -21,26 +21,36 @@ export interface SiteItem {
 }
 
 /**
- * Sites for the Filters sidebar. The selection shows as chips; a search box adds or removes
- * sites, and **Map** opens a large map in a dialog to pick them by clicking. Both edit the same
- * selection. With the four focus sites, plain chips are enough.
+ * Sites for the Filters sidebar: a search box that filters a scrolling checkbox list (picked
+ * sites first), quick buttons (focus sites, all, none) and **Map…**, a large map dialog for
+ * picking by clicking. All edit one selection. With only the four focus sites, plain chips.
  */
-export function SitePicker({ items, onToggle, onAll, onClear, allSelected = false, chipsOnly = false, limitNote, noun = 'sites' }: {
+export function SitePicker({ items, onToggle, onAll, onClear, onFocus, allSelected = false, chipsOnly = false, limitNote, noun = 'sites' }: {
   items: SiteItem[]
   onToggle: (key: string) => void
+  /** select every site (absent where sites load one by one, e.g. IMPROVE) */
   onAll?: () => void
+  /** deselect every site: the charts then show nothing until sites are picked */
   onClear?: () => void
-  /** every site is in (SPARTAN's default): show one "All N sites" chip instead of N chips */
+  /** back to the four focus sites (SPARTAN's default) */
+  onFocus?: () => void
   allSelected?: boolean
-  /** few sites (the focus sites): toggle chips, no search box */
+  /** few sites (the focus-sites view): toggle chips, no list */
   chipsOnly?: boolean
   /** e.g. "3 of 10 IMPROVE sites" */
   limitNote?: string
   noun?: string
 }) {
   const [mapOpen, setMapOpen] = useState(false)
+  const [query, setQuery] = useState('')
   const selected = items.filter((it) => it.selected)
   const mapButton = <button type="button" className="btn quiet" onClick={() => setMapOpen(true)} title="Pick sites on a large map">Map…</button>
+  const q = query.trim().toLowerCase()
+  const shown = useMemo(() => {
+    const hit = q ? items.filter((it) => `${it.label} ${it.sub ?? ''} ${it.key}`.toLowerCase().includes(q)) : items
+    // picked sites first, each block in its own order, so the selection is visible without scrolling
+    return [...hit.filter((it) => it.selected), ...hit.filter((it) => !it.selected)]
+  }, [items, q])
   return (
     <div className="site-picker">
       {chipsOnly ? (
@@ -56,76 +66,34 @@ export function SitePicker({ items, onToggle, onAll, onClear, allSelected = fals
         </div>
       ) : (
         <>
-          <div className="site-chips">
-            {allSelected
-              ? <span className="site-chip all">All {items.length} {noun}</span>
-              : selected.map((it) => (
-                <span key={it.key} className="site-chip" style={{ ['--chip' as string]: it.color }}>
-                  <span className="dot" aria-hidden="true" />{it.label}
-                  <button type="button" aria-label={`Remove ${it.label}`} onClick={() => onToggle(it.key)}>×</button>
-                </span>
-              ))}
-            {!allSelected && selected.length === 0 && <span className="site-empty">No {noun} picked yet: search below or open the map.</span>}
+          <div className="site-picker-bar">
+            {onFocus && <button type="button" className="btn quiet" onClick={onFocus} title="Beijing, Delhi, JPL and Addis Ababa">Focus sites</button>}
+            {onAll && <button type="button" className="btn quiet" onClick={onAll} disabled={allSelected}>Select all</button>}
+            {onClear && <button type="button" className="btn quiet" onClick={onClear} disabled={selected.length === 0}>Deselect all</button>}
+            <span className="site-picker-count">{limitNote ?? `${selected.length} of ${items.length}`}</span>
           </div>
           <div className="site-picker-bar">
-            <SiteSearch items={items} onToggle={onToggle} noun={noun} />
+            <input className="select site-filter" type="search" placeholder={`Search ${items.length} ${noun}…`} value={query}
+              onChange={(e) => setQuery(e.target.value)} aria-label={`Search ${noun}`} />
             {mapButton}
           </div>
-          <div className="site-picker-bar">
-            {onAll && !allSelected && <button type="button" className="btn quiet" onClick={onAll}>Select all</button>}
-            {onClear && selected.length > 0 && !allSelected && <button type="button" className="btn quiet" onClick={onClear}>Clear</button>}
-            <span className="site-picker-count">{limitNote ?? `${allSelected ? items.length : selected.length} of ${items.length} selected`}</span>
-          </div>
+          <ul className="site-list" aria-label={noun}>
+            {shown.map((it) => (
+              <li key={it.key}>
+                <label className={`site-row ${it.selected ? 'on' : ''}`}>
+                  <input type="checkbox" checked={it.selected} onChange={() => onToggle(it.key)} />
+                  <span className="site-check" style={{ ['--chip' as string]: it.color }} aria-hidden="true" />
+                  <span className="site-name">{it.label}{it.sub && <span className="site-sub"> · {it.sub}</span>}</span>
+                  <span className="site-n">{it.n.toLocaleString()}</span>
+                </label>
+              </li>
+            ))}
+            {shown.length === 0 && <li className="site-empty">No site matches “{query}”.</li>}
+          </ul>
+          {selected.length === 0 && <span className="site-empty">No {noun} selected: the charts are empty until you pick some.</span>}
         </>
       )}
       {mapOpen && <MapDialog items={items} onToggle={onToggle} onClose={() => setMapOpen(false)} limitNote={limitNote} noun={noun} />}
-    </div>
-  )
-}
-
-/** A combo box: type to filter, arrow keys to move, Enter or click to add/remove; stays open for several picks. */
-function SiteSearch({ items, onToggle, noun }: { items: SiteItem[]; onToggle: (key: string) => void; noun: string }) {
-  const id = useId()
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-  const [active, setActive] = useState(0)
-  const box = useRef<HTMLDivElement>(null)
-  const q = query.trim().toLowerCase()
-  const shown = useMemo(() => (q ? items.filter((it) => `${it.label} ${it.sub ?? ''} ${it.key}`.toLowerCase().includes(q)) : items), [items, q])
-  useEffect(() => setActive(0), [q])
-  useEffect(() => {
-    if (!open) return
-    const close = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false) }
-    document.addEventListener('mousedown', close)
-    return () => document.removeEventListener('mousedown', close)
-  }, [open])
-  const pick = (it: SiteItem | undefined) => { if (it) onToggle(it.key) }
-  return (
-    <div className="site-search" ref={box}>
-      <input className="select" type="text" role="combobox" aria-expanded={open} aria-controls={`${id}-list`} aria-autocomplete="list"
-        aria-activedescendant={open && shown[active] ? `${id}-opt-${active}` : undefined}
-        placeholder={`Search ${items.length} ${noun}…`} value={query}
-        onFocus={() => setOpen(true)} onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
-        onKeyDown={(e) => {
-          if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setActive((a) => Math.min(shown.length - 1, a + 1)) }
-          else if (e.key === 'ArrowUp') { e.preventDefault(); setActive((a) => Math.max(0, a - 1)) }
-          else if (e.key === 'Enter') { e.preventDefault(); pick(shown[active]) }
-          else if (e.key === 'Escape') { setOpen(false) }
-        }} />
-      {open && (
-        <ul id={`${id}-list`} className="site-list" role="listbox" aria-multiselectable="true" aria-label={`${noun} to pick`}>
-          {shown.map((it, i) => (
-            <li key={it.key} id={`${id}-opt-${i}`} role="option" aria-selected={it.selected}
-              className={`site-row ${it.selected ? 'on' : ''} ${i === active ? 'active' : ''}`}
-              onMouseEnter={() => setActive(i)} onMouseDown={(e) => { e.preventDefault(); pick(it) }}>
-              <span className="site-check" style={{ ['--chip' as string]: it.color }} aria-hidden="true" />
-              <span className="site-name">{it.label}{it.sub && <span className="site-sub"> · {it.sub}</span>}</span>
-              <span className="site-n">{it.n.toLocaleString()}</span>
-            </li>
-          ))}
-          {shown.length === 0 && <li className="site-empty">No site matches “{query}”.</li>}
-        </ul>
-      )}
     </div>
   )
 }

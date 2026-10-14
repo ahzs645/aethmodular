@@ -76,6 +76,9 @@ export interface SubsetState {
   siteLimitNote?: string
   /** calendars the picker offers (networks have no per-site local calendar) */
   calendarOptions: string[]
+  /** the site pick is the network's default (SPARTAN: the four focus sites) */
+  sitesAtDefault?: boolean
+  allSitesSelected?: boolean
 }
 
 export interface SubsetActions {
@@ -90,6 +93,7 @@ export interface SubsetActions {
   onToggleSite: (key: string) => void
   onAllSites: () => void
   onClearSites?: () => void
+  onFocusSites?: () => void
   onNetwork: (n: Network) => void
   onIncludeExcluded: (v: boolean) => void
   onDateRange: (r: DateRange | null) => void
@@ -137,7 +141,7 @@ export function SubsetBar({
   const hl = useHighlight()
 
   const allSeasons = s.activeSeasons.size === s.seasons.length
-  const allSites = s.activeSites.size === s.sites.length
+  const allSites = s.sitesAtDefault ?? s.activeSites.size === s.sites.length
   const seasonsOn = s.seasonsOn ?? true
   const pmfOn = !!caps.pmf && !!s.pmfOn
   const allPmf = !pmfOn || !s.pmfGroups || (s.activePmf?.size ?? 0) === s.pmfGroups.length
@@ -158,7 +162,7 @@ export function SubsetBar({
   const summary = (
     <div className="subset-summary">
       {caps.seasons && seasonsOn && !allSeasons && <span>seasons: {[...s.activeSeasons].join(', ')}</span>}
-      {caps.sites && !allSites && <span>sites: {[...s.activeSites].join(', ')}</span>}
+      {caps.sites && !allSites && <span>sites: {s.network === 'focus' ? [...s.activeSites].join(', ') : s.siteItems.filter((x) => x.selected).map((x) => x.label).join(', ') || 'none'}</span>}
       {pmfOn && <span>PMF: {allPmf ? 'every source (PMF days only)' : [...(s.activePmf ?? [])].join(', ')}</span>}
       {s.dateRange && <span>{s.dateRange[0]} → {s.dateRange[1]}</span>}
       {s.includeExcluded && caps.excluded && <span>+{s.nExcluded} excluded</span>}
@@ -200,7 +204,7 @@ export function SubsetBar({
           {summary}
           <Row label="network">
             {caps.networks ? (
-              <Segmented value={net.label as any} options={NETWORKS.map((x) => x.label) as any}
+              <Segmented value={net.label as any} options={NETWORKS.filter((x) => x.key !== 'focus' || s.network === 'focus').map((x) => x.label) as any}
                 onChange={(v: string) => a.onNetwork(NETWORKS.find((x) => x.label === v)?.key ?? 'focus')} title={NETWORKS.map((x) => `${x.label}: ${x.note}`).join(' · ')} />
             ) : (
               <span className="method-note">{s.chosenNetwork === 'focus' ? net.label : `This tab shows the focus sites; ${NETWORKS.find((x) => x.key === s.chosenNetwork)?.label} applies on Correlation, Distribution, Evolution, Ranking and Part of a whole.`}</span>
@@ -253,8 +257,9 @@ export function SubsetBar({
           {caps.sites && (
             <Row label="sites">
               <SitePicker items={s.siteItems} onToggle={a.onToggleSite}
-                onAll={s.network === 'improve' ? undefined : a.onAllSites} allSelected={s.network !== 'improve' && allSites}
-                onClear={a.onClearSites} chipsOnly={s.network === 'focus'} limitNote={s.siteLimitNote}
+                onAll={s.network === 'improve' ? undefined : a.onAllSites} allSelected={!!s.allSitesSelected}
+                onClear={s.network === 'focus' ? undefined : a.onClearSites} onFocus={s.network === 'spartan' ? a.onFocusSites : undefined}
+                chipsOnly={s.network === 'focus'} limitNote={s.siteLimitNote}
                 noun={s.network === 'improve' ? 'IMPROVE sites' : s.network === 'spartan' ? 'SPARTAN sites' : 'sites'} />
             </Row>
           )}

@@ -176,17 +176,20 @@ and `ExportState` for the recurring UI. URL keys must be unique across pages
 
 ### Networks in the Filters sidebar
 
-The chart tabs (Correlation, Distribution, Evolution, Ranking, Part of a whole) can draw
-a whole network instead of the four focus sites. **Network** at the top of the Filters
-sidebar picks Focus sites (default: `filters.json`, HIPS + FTIR), SPARTAN (every site,
-public ChemSpec from `spartan_reference.json`) or IMPROVE (TOR EC/OC, HIPS absorption,
-mass, iron, silicon, soil). Picked sites show as chips; a search box adds or removes
-them, and **Map…** opens a large map dialog to pick them by clicking. All three edit one
-selection. Open, the Filters panel covers the full window height over the header. IMPROVE loads one file per site (`improve_samples/`, from
-`uv run python gallery/data/export_improve_samples.py`, gitignored, ~26 MB) and allows ten
-at a time, because the SVG charts cannot draw all ~388,000 samples. Networks use shared
-three-month bins; only the focus sites have local calendars. Map, Flow and the research
-tabs always show the focus sites. The choice is in the URL (`net`, `sites`, `isites`).
+The chart tabs (Correlation, Distribution, Evolution, Ranking, Part of a whole) draw a
+network chosen at the top of the Filters sidebar. **SPARTAN** is the default and starts on
+the four focus sites, which keep their `filters.json` rows (HIPS, FTIR groups, exclusions,
+local calendars), so the default view is unchanged; any other SPARTAN site can be added and
+brings its public ChemSpec rows from `spartan_reference.json`. **IMPROVE** offers TOR EC/OC,
+HIPS absorption, mass, iron, silicon and soil, one file per site (`improve_samples/`, from
+`uv run python gallery/data/export_improve_samples.py`, gitignored, ~26 MB), ten at a time
+because the SVG charts cannot draw all ~388,000 samples. Sites are picked in a searchable
+checkbox list (picked first), with **Focus sites**, **Select all** and **Deselect all**
+(which shows nothing), or on a large map (**Map…**). With only focus sites picked the local
+calendars are the default; with others, shared three-month bins. Map, Flow and the research
+tabs always show the focus sites. URL: `net` (spartan default; `net=focus` keeps the old
+focus-only view for links), `ssites` (absent = focus sites, `*` = all, `-` = none, else
+codes), `isites` (IMPROVE codes).
 
 Builds for outside readers (`publish_pages.py`, `build_share.py`) set
 `VITE_HIDE_EXPLAIN=1`, which removes the header's Explain toggle; local dev keeps it.

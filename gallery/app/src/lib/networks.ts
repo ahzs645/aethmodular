@@ -16,8 +16,8 @@ import type { FilterRow, SeasonMeta, SiteMeta } from './types'
 
 export type Network = 'focus' | 'spartan' | 'improve'
 export const NETWORKS: { key: Network; label: string; note: string }[] = [
-  { key: 'focus', label: 'Focus sites', note: 'Beijing, Delhi, JPL and Addis Ababa: SPARTAN filters with HIPS and FTIR' },
-  { key: 'spartan', label: 'SPARTAN', note: 'Every SPARTAN site, public PM2.5 chemistry; EC/OC are FTIR-derived, no HIPS' },
+  { key: 'focus', label: 'Focus sites', note: 'Beijing, Delhi, JPL and Addis Ababa only (kept for links: net=focus)' },
+  { key: 'spartan', label: 'SPARTAN', note: 'Starts on the four focus sites (HIPS, FTIR groups, local calendars); add any SPARTAN site, which brings public PM2.5 chemistry (FTIR-derived EC/OC, no HIPS)' },
   { key: 'improve', label: 'IMPROVE', note: 'Every IMPROVE site: TOR EC/OC, HIPS absorption, mass, iron, silicon, soil' },
 ]
 export const isNetwork = (v: string | null): v is Network => v === 'focus' || v === 'spartan' || v === 'improve'
@@ -28,7 +28,7 @@ export const MAX_IMPROVE_SITES = 10
 /** Axis and measurement defaults per network, used when the current choice has no data there. */
 export const NETWORK_DEFAULTS: Record<Network, { x: string; y: string; field: string }> = {
   focus: { x: 'HIPS BC', y: 'EC (FTIR)', field: 'EC (FTIR)' },
-  spartan: { x: 'PM2.5 mass', y: 'EC (FTIR)', field: 'EC (FTIR)' },
+  spartan: { x: 'HIPS BC', y: 'EC (FTIR)', field: 'EC (FTIR)' },
   improve: { x: 'HIPS BC', y: 'EC (TOR)', field: 'EC (TOR)' },
 }
 

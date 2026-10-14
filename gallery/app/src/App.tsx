@@ -40,7 +40,7 @@ import { SideDock, SubsetBar, type SubsetActions, type SubsetCaps, type SubsetSt
 import { SampleDrawer } from '@/components/SampleDrawer'
 import { RecordDrawer } from '@/components/RecordDrawer'
 import type { DateRange } from '@/components/DateBrush'
-import type { FilterRow, SeasonMeta } from '@/lib/types'
+import type { FilterRow, SeasonMeta, SiteMeta } from '@/lib/types'
 import { AXES_MODES, DEFAULT_AXES, type AxesMode, type AxesOpts } from '@/lib/axes'
 import { localSeasonsFor, qualifySeason } from '@/siteSeasons'
 import { MAX_IMPROVE_SITES, MONTH_QUARTERS, NETWORK_DEFAULTS, isNetwork, networkColor, useNetworkData, type Network } from '@/lib/networks'
@@ -92,6 +92,10 @@ const meetingFromParams = (p: URLSearchParams): MeetingKey =>
  * ETAD-only and carries no exclusion flags, so offering four site chips and a
  * 942-filter count there would just be wrong.
  */
+/** `ssites` in the URL: absent = the four focus sites, * = every SPARTAN site, - = none, else codes */
+const parseSpartanSel = (v: string | null): string[] | 'all' | null =>
+  v == null || v === '' ? null : v === '*' ? 'all' : v === '-' ? [] : v.split(',').filter(Boolean)
+
 /** tabs whose charts can draw a whole network (Filters sidebar → network) */
 const NETWORK_TABS = ['correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole'] as const
 const FILTERS: SubsetCaps = { seasons: true, sites: true, excluded: true, dates: true, fields: 'single', datasetLabel: 'SPARTAN filters' }
@@ -147,8 +151,11 @@ export default function App() {
   const [convention, setConvention] = useState<string | null>(init.get('cal'))
   const [activeSeasons, setActiveSeasons] = useState<Set<string> | null>(listParam(init.get('seasons')))
   const [activeSites, setActiveSites] = useState<Set<string> | null>(listParam(init.get('sites')))
-  // which filters the chart tabs draw: the four focus sites (default) or a whole network (lib/networks)
-  const [network, setNetwork] = useState<Network>(isNetwork(init.get('net')) ? init.get('net') as Network : 'focus')
+  // which filters the chart tabs draw (lib/networks): SPARTAN by default, starting on the four focus
+  // sites; IMPROVE; or the focus-sites-only view, kept for links (net=focus)
+  const [network, setNetwork] = useState<Network>(isNetwork(init.get('net')) ? init.get('net') as Network : 'spartan')
+  // SPARTAN sites by code: null = the four focus sites (default), 'all', or an explicit list ([] = none)
+  const [spartanSel, setSpartanSel] = useState<string[] | 'all' | null>(() => parseSpartanSel(init.get('ssites')))
   // IMPROVE sites load one file each, so they are an explicit pick (codes), never "all"
   const [improveSites, setImproveSites] = useState<string[]>(() => (init.get('isites') ?? '').split(',').filter(Boolean).slice(0, MAX_IMPROVE_SITES))
   // PMF source filter (PMF and calibration tabs): which grouping, and which groups are kept
@@ -202,7 +209,8 @@ export default function App() {
       cal: convention,
       seasons: listToParam(activeSeasons),
       sites: listToParam(activeSites),
-      net: network !== 'focus' ? network : null,
+      net: network !== 'spartan' ? network : null,
+      ssites: spartanSel === null ? null : spartanSel === 'all' ? '*' : spartanSel.length ? spartanSel.join(',') : '-',
       isites: improveSites.length ? improveSites.join(',') : null,
       pmfg: pmfScheme === 'Marine vs combustion' ? 'class' : null,
       pmf: listToParam(activePmf),
@@ -220,7 +228,7 @@ export default function App() {
       log: axes.log ? '1' : null,
       pax: axes.panels === 'Own' ? 'own' : null,
     })
-  }, [tab, meeting, estimators, showCI, convention, activeSeasons, activeSites, network, improveSites, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, pinnedId, axes])
+  }, [tab, meeting, estimators, showCI, convention, activeSeasons, activeSites, network, spartanSel, improveSites, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -236,7 +244,8 @@ export default function App() {
       setConvention(p.get('cal'))
       setActiveSeasons(listParam(p.get('seasons')))
       setActiveSites(listParam(p.get('sites')))
-      setNetwork(isNetwork(p.get('net')) ? p.get('net') as Network : 'focus')
+      setNetwork(isNetwork(p.get('net')) ? p.get('net') as Network : 'spartan')
+      setSpartanSel(parseSpartanSel(p.get('ssites')))
       setImproveSites((p.get('isites') ?? '').split(',').filter(Boolean).slice(0, MAX_IMPROVE_SITES))
       setPmfScheme(p.get('pmfg') === 'class' ? 'Marine vs combustion' : 'Dominant source')
       setActivePmf(listParam(p.get('pmf')))
@@ -264,18 +273,30 @@ export default function App() {
   const netData = useNetworkData(net, improveSites)
   // the chosen network's sites, coloured in selection order, and its rows recoloured to match
   const netView = useMemo(() => {
-    if (net === 'focus') return null
+    if (net === 'focus' || !data) return null
     const d = netData.data
-    if (!d) return { all: [], chosen: [], rows: [] as FilterRow[], fields: [] as string[], field_units: {}, field_groups: [], coverage: {} }
-    const picked = net === 'improve' ? new Set(improveSites) : null
-    const chosen = d.sites.filter((x) => (picked ? picked.has(x.code) : !activeSites || activeSites.has(x.name)))
-    const colour = new Map(chosen.map((x, i) => [x.name, networkColor(i)]))
+    if (!d) return { all: [] as SiteMeta[], chosen: [] as SiteMeta[], chosenCodes: new Set<string>(), chosenNames: new Set<string>(), rows: [] as FilterRow[], fields: [] as string[], field_units: {} as Record<string, string>, field_groups: [] as { label: string; fields: string[] }[], coverage: {} as Record<string, number> }
+    // SPARTAN: the four focus sites keep their filters.json rows (HIPS, FTIR groups, exclusions,
+    // local calendars) and their names and colours; the other sites bring the public ChemSpec rows
+    const focus = net === 'spartan' ? new Map(data.meta.sites.map((x) => [x.code, x])) : new Map<string, SiteMeta>()
+    const sites = d.sites.map((x) => focus.get(x.code) ?? x)
+    for (const f of focus.values()) if (!sites.some((x) => x.code === f.code)) sites.push(f)
+    const chosenCodes = new Set(net === 'improve' ? improveSites
+      : spartanSel === null ? [...focus.keys()] : spartanSel === 'all' ? sites.map((x) => x.code) : spartanSel)
+    let i = 0
+    const colour = new Map(sites.filter((x) => chosenCodes.has(x.code)).map((x) => [x.name, focus.get(x.code)?.color ?? networkColor(i++)]))
     const paint = (name: string) => colour.get(name) ?? '#9aa5b1'
-    const all = d.sites.map((x) => ({ ...x, color: paint(x.name) }))
-    const rows: FilterRow[] = d.rows.map((r) => ({ ...r, color: paint(r.site) }))
-    const coverage = Object.fromEntries(d.fields.map((f) => [f, rows.filter((r) => typeof r[f] === 'number').length]))
-    return { all, chosen: all.filter((x) => colour.has(x.name)), rows, fields: d.fields, field_units: d.field_units, field_groups: d.field_groups, coverage }
-  }, [net, netData.data, improveSites, activeSites])
+    const all = sites.map((x) => ({ ...x, color: paint(x.name) }))
+    const rows: FilterRow[] = [...(net === 'spartan' ? data.filters.rows : []), ...d.rows.filter((r) => !focus.has(r.code))]
+      .map((r) => ({ ...r, color: paint(r.site) }))
+    const fields = net === 'spartan' ? [...new Set([...data.meta.fields, ...d.fields])] : d.fields
+    const groups = net === 'spartan' ? data.meta.field_groups : d.field_groups
+    const chosenNames = new Set(all.filter((x) => chosenCodes.has(x.code)).map((x) => x.name))
+    const inChosen = rows.filter((r) => chosenNames.has(r.site))
+    const coverage = Object.fromEntries(fields.map((f) => [f, inChosen.filter((r) => typeof r[f] === 'number').length]))
+    return { all, chosen: all.filter((x) => chosenCodes.has(x.code)), chosenCodes, chosenNames, rows, fields,
+      field_units: net === 'spartan' ? { ...d.field_units, ...data.meta.field_units } : d.field_units, field_groups: groups, coverage }
+  }, [net, data, netData.data, improveSites, spartanSel])
   const activeFields = netView ? netView.fields : data?.meta.fields ?? []
 
   // Fields that vanished from the export, or that the chosen network does not measure,
@@ -292,6 +313,12 @@ export default function App() {
   const siteNames = useMemo(
     () => (netView ? (net === 'improve' ? netView.chosen : netView.all).map((s) => s.name) : data?.meta.sites.map((s) => s.name) ?? []),
     [data, netView, net])
+  // old links named focus sites in `sites`; under SPARTAN that becomes a code pick
+  useEffect(() => {
+    if (!data || network !== 'spartan' || !activeSites || spartanSel !== null) return
+    setSpartanSel(data.meta.sites.filter((x) => activeSites.has(x.name)).map((x) => x.code))
+    setActiveSites(null)
+  }, [data, network, activeSites, spartanSel])
   const pmfSiteName = data?.pmf?.site_name ?? 'Addis Ababa'
   // Season calendar. 'local' (the default) bins every filter by its own site's
   // calendar (docs/site-seasonality.md): Beijing's four seasons, Delhi's monsoon,
@@ -299,7 +326,10 @@ export default function App() {
   // bins stay available for like-month comparisons across sites.
   // networks have no per-site local calendars (siteSeasons.ts covers the four focus sites only)
   const conventions = useMemo<Record<string, SeasonMeta[]>>(() => ({ ...(data?.meta.season_conventions ?? {}), quarters: MONTH_QUARTERS }), [data])
-  const activeConvention = net === 'focus' ? convention ?? 'local' : convention && convention !== 'local' ? convention : 'quarters'
+  // the local calendars cover the four focus sites; with other sites in view, shared quarters are the default
+  const focusOnly = net === 'focus' || (net === 'spartan' && !!netView && netView.chosen.every((x) => data?.meta.sites.some((f) => f.name === x.name)))
+  const defaultConvention = focusOnly ? 'local' : 'quarters'
+  const activeConvention = net === 'improve' && convention === 'local' ? 'quarters' : convention ?? defaultConvention
   const isLocal = activeConvention === 'local'
   // PMF is Addis-only, so its season names need no site prefix; the filter data
   // always carries four calendars, so labels are site-qualified and never collide
@@ -307,15 +337,16 @@ export default function App() {
   const addisOnlyTab = tab === 'pmf' || tab === 'calibration'
   const qualify = !addisOnlyTab
   const calendarSites = useMemo(
-    () => (addisOnlyTab ? [pmfSiteName] : activeSites ? siteNames.filter((n) => activeSites.has(n)) : siteNames),
-    [addisOnlyTab, pmfSiteName, activeSites, siteNames]
+    () => (addisOnlyTab ? [pmfSiteName] : netView ? netView.chosen.map((x) => x.name) : activeSites ? siteNames.filter((n) => activeSites.has(n)) : siteNames),
+    [addisOnlyTab, pmfSiteName, activeSites, siteNames, netView]
   )
   const sharedSeasons = useMemo(
     () => conventions[isLocal ? data?.meta.season_convention ?? 'quarters' : activeConvention] ?? data?.meta.seasons ?? [],
     [data, conventions, isLocal, activeConvention]
   )
   const calendarOf = useCallback(
-    (site: string) => (isLocal ? localSeasonsFor(site, data?.meta) ?? sharedSeasons : sharedSeasons),
+    // sites without a local calendar fall back to the shared quarters, not the Ethiopian bins
+    (site: string) => (isLocal ? localSeasonsFor(site, data?.meta) ?? MONTH_QUARTERS : sharedSeasons),
     [isLocal, data, sharedSeasons]
   )
   const seasons = useMemo(
@@ -365,8 +396,8 @@ export default function App() {
       baseRows
         .filter(inRange)
         .filter((r) => !seasonSel || seasonSel.has(r.season))
-        .filter((r) => net === 'improve' || !activeSites || activeSites.has(r.site)),
-    [baseRows, inRange, seasonSel, activeSites, net]
+        .filter((r) => (netView ? netView.chosenNames.has(r.site) : !activeSites || activeSites.has(r.site))),
+    [baseRows, inRange, seasonSel, activeSites, netView]
   )
 
   // The map has its own site scope; keep date, season and exclusion choices.
@@ -472,7 +503,7 @@ export default function App() {
 
   const subset = (() => {
     if (tab === 'census' || tab === 'baseline' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks') return null
-    const caps = net === 'focus' ? CAPS[tab] : { ...CAPS[tab], datasetLabel: net === 'improve' ? 'IMPROVE samples' : 'SPARTAN filters (all sites)', excluded: sourceRows.some((r) => r.excluded) }
+    const caps = net === 'focus' ? CAPS[tab] : { ...CAPS[tab], datasetLabel: net === 'improve' ? 'IMPROVE samples' : 'SPARTAN filters', excluded: sourceRows.some((r) => r.excluded) }
     const pmfMode = tab === 'pmf'
     const calMode = tab === 'calibration'
     // Counts are computed *before* the dimension's own filter is applied,
@@ -503,14 +534,14 @@ export default function App() {
     const siteItems: SiteItem[] = net === 'focus'
       ? rawMeta.sites.map((x) => ({ key: x.name, label: x.name, sub: x.location, lat: x.lat, lon: x.lon, color: x.color, n: siteCounts[x.name] ?? 0, selected: !activeSites || activeSites.has(x.name) }))
       : (netView?.all ?? []).map((x) => {
-        const on = net === 'improve' ? improveSites.includes(x.code) : !activeSites || activeSites.has(x.name)
-        return { key: net === 'improve' ? x.code : x.name, label: x.name, sub: net === 'improve' ? x.location : x.code, lat: x.lat, lon: x.lon,
+        const on = netView!.chosenCodes.has(x.code)
+        return { key: x.code, label: x.name, sub: net === 'improve' ? x.location : x.code, lat: x.lat, lon: x.lon,
           color: on ? x.color : '#9aa5b1', n: net === 'improve' && !on ? x.n_filters : siteCounts[x.name] ?? 0, selected: on }
       })
 
     const state: SubsetState = {
       convention: activeConvention,
-      defaultConvention: 'local',
+      defaultConvention,
       seasons,
       activeSeasons: seasonSel ?? new Set(seasons.map((s) => s.name)),
       seasonCounts,
@@ -540,7 +571,9 @@ export default function App() {
       networkError: netData.error,
       siteItems,
       siteLimitNote: net === 'improve' ? `${improveSites.length} of ${MAX_IMPROVE_SITES} IMPROVE sites` : undefined,
-      calendarOptions: net === 'focus' ? ['local', ...Object.keys(conventions)] : ['quarters', ...Object.keys(data.meta.season_conventions)],
+      calendarOptions: net === 'improve' ? ['quarters', ...Object.keys(data.meta.season_conventions)] : ['local', ...Object.keys(conventions)],
+      sitesAtDefault: net === 'spartan' ? spartanSel === null : net === 'improve' ? improveSites.length > 0 : !activeSites,
+      allSitesSelected: net === 'spartan' ? !!netView && netView.chosen.length === netView.all.length : !activeSites,
     }
     const actions: SubsetActions = {
       onConvention: (v) => {
@@ -569,17 +602,25 @@ export default function App() {
           setImproveSites((cur) => cur.includes(key) ? cur.filter((c) => c !== key) : cur.length >= MAX_IMPROVE_SITES ? cur : [...cur, key])
           return
         }
-        // with many sites, the first pick from "all" keeps just that site; with the four focus sites, a click toggles one off
-        const cur = new Set<string>(activeSites ?? (net === 'spartan' ? [] : siteNames))
+        if (net === 'spartan') {
+          const cur = new Set(netView?.chosenCodes ?? [])
+          if (cur.has(key)) cur.delete(key)
+          else cur.add(key)
+          setSpartanSel(cur.size === (netView?.all.length ?? -1) ? 'all' : [...cur])
+          return
+        }
+        const cur = new Set<string>(activeSites ?? siteNames)
         if (cur.has(key)) cur.delete(key)
         else cur.add(key)
         setActiveSites(cur.size === 0 || cur.size === siteNames.length ? null : cur)
       },
-      onAllSites: () => setActiveSites(null),
-      // "Clear" empties an explicit pick; SPARTAN with nothing picked goes back to all its sites
-      onClearSites: () => (net === 'improve' ? setImproveSites([]) : setActiveSites(null)),
+      onAllSites: () => (net === 'spartan' ? setSpartanSel('all') : setActiveSites(null)),
+      // "Deselect all" empties the pick: the charts show nothing until sites are chosen again
+      onClearSites: () => (net === 'improve' ? setImproveSites([]) : net === 'spartan' ? setSpartanSel([]) : setActiveSites(null)),
+      onFocusSites: () => setSpartanSel(null),
       onNetwork: (n) => {
         setNetwork(n)
+        setSpartanSel(null)
         // each network opens on its own natural pair (focus: HIPS BC vs FTIR EC; IMPROVE: HIPS BC vs TOR EC)
         setXField(NETWORK_DEFAULTS[n].x)
         setYField(NETWORK_DEFAULTS[n].y)
@@ -600,6 +641,7 @@ export default function App() {
       onReset: () => {
         setActiveSeasons(null)
         setActiveSites(null)
+        setSpartanSel(null)
         if (net === 'improve') setImproveSites([])
         setActivePmf(null)
         setSeasonsOn(true)
