@@ -17,7 +17,6 @@ Inputs (completed rank-70 meeting run, spline = AIRSpec baseline, Deming at MAC 
 """
 
 from pathlib import Path
-import shutil
 import sys
 
 import matplotlib
@@ -197,9 +196,47 @@ ax.set_ylim(0, 1.02)
 ax.legend(loc="upper left", fontsize=10.5)
 save(fig, "f4_loading_per_filter.png")
 
-# ---------------------------------------------------------------- f5 spectra (9 Oct notebook figure)
-shutil.copy(HC / "output/plots/ann_followup_20261009/addis_vs_improve_low_wavenumber.png",
-            FIG / "f5_addis_vs_improve_spectra.png")
+# ---------------------------------------------------------------- f5 FTIR/TOR vs loading
+# x = HIPS loading per filter (independent of TOR, so the ratio is not plotted against its own denominator)
+def with_load(d):
+    d = d.assign(load=d.fabs_Mm1 / MAC * d.tor_volume_m3, ratio=d.ftir_ec_ugm3 / d.tor_ec_ugm3)
+    return d[(d.load > 0) & (d.tor_ec_ugm3 > 0)]
+
+
+pl, al = with_load(pool), with_load(an)
+LBINS = np.array([1, 2, 4, 8, 16, 32, 64])
+
+
+def binned(d, min_n=8):
+    b = pd.cut(d.load, LBINS)
+    g = d.groupby(b, observed=True).ratio.agg(["median", "size"])
+    g = g[g["size"] >= min_n]
+    mids = np.array([np.sqrt(i.left * i.right) for i in g.index])
+    return mids, g["median"].to_numpy(), g
+
+
+pm, pr, pg = binned(pl)
+am, ar, ag = binned(al)
+ad_lo, ad_hi = np.percentile(ad_mass, [5, 95])
+fig, ax = plt.subplots(figsize=(10.5, 5.0))
+ax.axvspan(ad_lo, ad_hi, color=AMBER, alpha=.18, lw=0)
+ax.text(np.sqrt(ad_lo * ad_hi), 1.95, "where Addis\nfilters sit\n(middle 90 %)", ha="center", va="top", fontsize=10.5, color="#8A6420")
+ax.scatter(pl.load, pl.ratio.clip(upper=1.98), s=8, color=GREY, alpha=.3, lw=0, label=f"held-out IMPROVE (n {len(pl):,})")
+ax.scatter(al.load, al.ratio.clip(upper=1.98), s=24, color=ACCENT, alpha=.85, edgecolor="white", lw=.4,
+           label=f"most Addis-like IMPROVE (n {len(al)})")
+ax.plot(pm, pr, color=INK, lw=2.2, marker="o", ms=5, label="median, held-out IMPROVE")
+ax.plot(am, ar, color=ACCENT, lw=2.2, marker="o", ms=5, label="median, Addis-like")
+ax.axhline(1, color=GREY, ls=":", lw=1.2)
+ax.text(1.05, 1.02, "FTIR = TOR", fontsize=9.5, color=GREY)
+ax.set_xscale("log"); ax.set_xlim(1, 80); ax.set_ylim(0, 2)
+ax.set_xticks([1, 2, 5, 10, 20, 50], ["1", "2", "5", "10", "20", "50"])
+ax.set_xlabel("EC loading on the filter, HIPS Fabs / MAC 10 × sampled volume (µg per filter)")
+ax.set_ylabel("FTIR EC / TOR EC")
+ax.legend(loc="lower left", fontsize=10, framealpha=.9, frameon=True, edgecolor="white")
+save(fig, "f5_ratio_vs_loading.png")
+hi_pool = float(pl[pl.load > 16].ratio.median()); mid_pool = float(pl[(pl.load > 2) & (pl.load <= 8)].ratio.median())
+hi_an = float(al[al.load > 16].ratio.median()); n_hi_an = int((al.load > 16).sum())
+print("ratio vs loading, pool:\n", pg.round(2), "\nanalogs:\n", ag.round(2))
 
 # ---------------------------------------------------------------- f6 Addis chemistry by season
 from data_matching import load_filter_data  # noqa: E402
@@ -297,7 +334,7 @@ notes(s,
       "First a bit of context on what the air in Addis is made of. Then the problem itself: FTIR elemental carbon "
       "in Addis correlates with an independent measurement but sits on the wrong scale. Then the twist: the same "
       "FTIR method works well on typical US filters, but not on the US filters that look most like Addis. "
-      "Last, why: those samples are much more heavily loaded and contain more dust than what the calibration learned from.",
+      "Last, why: those samples are much more heavily loaded than what the calibration learned from, and FTIR under-reads more the heavier a filter gets.",
       "This is a practice run of the AAAR poster story, laid out as slides first (Ann's suggestion). "
       "PLS calibration-search material (specification curve, cohorts, VIBES baseline, k-sweep) is deliberately "
       "left out of the main slides; it is for discussion. Leave at least 20 minutes for questions.")
@@ -378,27 +415,32 @@ fig_slide(
     "because of the volume difference; per filter is the fair comparison for what the FTIR sees. "
     "Loading alone is not the whole story: analogs that cover the Addis loading range are still biased.")
 
-# 7 composition
+# 7 under-reading grows with loading
 fig_slide(
-    "Addis spectra also carry a strong silicate dust band that IMPROVE filters lack",
-    FIG / "f5_addis_vs_improve_spectra.png",
-    "Second, composition. These are the typical infrared spectra in the low-wavenumber region, US in grey and "
-    "Addis by season in colour. Look at the band near 1035: that is silicon-oxygen, mineral dust. Addis has 1.4 "
-    "to 2.6 times more of it than IMPROVE, depending on season, and it correlates with aluminium and silicon in "
-    "the Addis chemistry. The sulfate band, by contrast, is about the same. So Addis samples are both heavier and "
-    "dustier than what the calibration learned from.",
-    "Figure from the 9 Oct notebook (research/ftir_hips_chem/ann_followup_20261009.ipynb, section 4); "
-    "medians of band-area-normalised spectra (an exception to 'no averages' because the point is the typical shape; "
-    "the gallery shows the IQR). Si-O ~1035 cm⁻¹: Spearman ρ with Si 0.90, Al 0.92. The sharp peaks at 1153/1210 "
-    "are PTFE filter residue (3.7× IMPROVE), separate from the dust hump. Not sulfate: the SO₄ ν3 band is no stronger "
-    "than IMPROVE. Colours here are the notebook's, not the house palette [FIX before AAAR].")
+    "FTIR under-reads more as filters get heavier, and Addis filters are heavier still",
+    FIG / "f5_ratio_vs_loading.png",
+    "This ties the last two slides together. Each point is one held-out US filter: how much EC is on it along "
+    "the bottom, and FTIR divided by TOR up the side, where 1 means they agree. For typical loadings FTIR and TOR "
+    f"agree, a ratio of about {mid_pool:.1f}. As filters get heavier the ratio drops below 1, to about {hi_pool:.1f} for "
+    f"the heaviest US filters, and the Addis-like ones in red follow the same path, about {hi_an:.1f}. The shaded band is where "
+    "Addis filters sit: past the end of almost everything the calibration has seen. So the heavier the sample, the "
+    "more FTIR under-reads, and Addis is the extreme case.",
+    "Loading on x is from HIPS (Fabs / MAC 10 × volume), not TOR, so the ratio is not plotted against its own "
+    "denominator. Same all-IMPROVE lot-251 spline calibration and held-out sites as slides 4 and 5. Filters below 1 µg are not shown and ratios above 2 "
+    "are drawn at the top edge. At low loadings the ratio is above 1 mostly because of the small positive "
+    "intercept (+0.02 µg/m³ ≈ 0.6 µg per IMPROVE filter); read the right-hand side. "
+    f"Binned medians, held-out IMPROVE: 2 to 8 µg {mid_pool:.2f}, above 16 µg {hi_pool:.2f}; Addis-like above 16 µg "
+    f"{hi_an:.2f} (n {n_hi_an}, small). The Addis band is from HIPS, because Addis has no TOR: we cannot plot Addis "
+    "points here. Composition, if asked: Addis spectra have about 2× the Si-O dust band (~1035 cm⁻¹) of a typical "
+    "IMPROVE filter, and Kiremt CH peaks stand out more against OH/NH, but both stay inside IMPROVE's range filter by "
+    "filter (about 2 % of Addis above IMPROVE p95). Loading is the clear outlier; composition is not on its own.")
 
 # 8 takeaway
 text_slide(
     "Validating on the whole US network hides a calibration gap that matters for the Global South",
     ["FTIR EC calibrated on IMPROVE works well on typical US filters.",
      "It under-reads the US filters that look most like Addis Ababa, even though TOR and HIPS agree on them.",
-     "Addis filters are far more heavily loaded and dustier than the calibration set.",
+     "FTIR under-reads more as loading rises, and Addis filters are far more heavily loaded than the calibration set.",
      "So the Addis bias is a coverage problem that also exists inside the US network, not a quirk of one site."],
     "To sum up. The established FTIR method works on the samples it was built from. It struggles on samples "
     "that look like Addis, and those exist inside the US network too, they are just rare, so whole-network "

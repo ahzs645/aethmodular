@@ -8,7 +8,8 @@ Deck: `aaar_practice_2026-10-15.pptx` (8 slides, built by `build.py`; every numb
 An established FTIR EC calibration built on IMPROVE works on typical US filters (held-out slope 0.93, R² 0.73)
 but reads only about half of TOR on the 97 held-out US filters that look most like Addis (0.48, R² 0.46), even
 though TOR and HIPS agree on them (0.91, R² 0.82). Addis filters carry ~9× the EC per filter of a typical IMPROVE
-filter (76 % above IMPROVE's p99) and a strong Si-O dust band. Coverage problem, not a one-site quirk.
+filter (76 % above IMPROVE's p99), and in IMPROVE itself FTIR/TOR drops from ~1.0 to ~0.8 as filters get
+heavier. Coverage problem, not a one-site quirk.
 
 ## Slide order
 
@@ -18,7 +19,7 @@ filter (76 % above IMPROVE's p99) and a strong Si-O dust band. Coverage problem,
 4. Method works on held-out IMPROVE
 5. Same calibration under-reads Addis-like IMPROVE filters (key slide)
 6. Loading per filter, ~9×
-7. Si-O dust band in Addis spectra
+7. FTIR/TOR falls with loading; Addis sits beyond the IMPROVE range
 8. Takeaway
 
 ## Ann's asks from the 9 Oct email
@@ -33,7 +34,10 @@ filter (76 % above IMPROVE's p99) and a strong Si-O dust band. Coverage problem,
   high. Say "transfers poorly", not "underestimates", for Addis. "Under-reads" is right for the IMPROVE analogs.
 - No TOR at Addis; HIPS is the reference there. TOR and HIPS agree on IMPROVE analogs.
 - "Most Addis-like" depends on the similarity metric; spline and VIBES pick mostly different analogs.
-- Spectra slide shows medians (exception to the no-averages rule) and uses the notebook's colours. [FIX before AAAR]
+- Slide 7: loading on x is from HIPS, not TOR (avoids plotting a ratio against its own denominator). Addis has no
+  TOR, so there are no Addis points on it, only the band. Low-loading ratios > 1 are the small positive intercept.
+- Don't claim Addis is "dustier than IMPROVE" outright: its Si-O band is ~2x a typical IMPROVE filter but inside
+  IMPROVE's range filter by filter. Loading is the clear outlier.
 - Chemistry slide: OM is FTIR-derived, BC is HIPS-based; medians don't sum to median PM2.5.
 - The 14 Oct k-sweep and the VIBES material are for the discussion, not the poster.
 
