@@ -12,7 +12,8 @@ Inputs (completed rank-70 meeting run, spline = AIRSpec baseline, Deming at MAC 
 - research/ftir_hips_chem/output/tables/vibes_fullrange/gallery_rank70_20261002/meeting/
     panel_stats.csv, addis_predictions.csv, addis_evaluation.csv, pool_test_predictions.csv,
     analog_predictions.csv, improve_references.csv
-- SPARTAN ETAD chemistry via research/ftir_hips_chem/scripts/data_matching.load_filter_data
+- data/spartan/raw/FilterBased/ChemSpecPM25 (SPARTAN public release v3.1.4, all sites)
+- research/spartan/.cache/improve_chemistry_clean_cache.pkl (IMPROVE FED export, all sites)
 - research/ftir_hips_chem/output/plots/ann_followup_20261009/addis_vs_improve_low_wavenumber.png
 """
 
@@ -171,9 +172,34 @@ stat_box(ax, S_AN, extra=f"\nDry-season analogs: {S_DRY.deming_slope:.2f}x, R² 
 fig.tight_layout()
 save(fig, "f3_addis_like_improve.png")
 
-# ---------------------------------------------------------------- f4 two ways Addis is extreme
-from data_matching import load_filter_data  # noqa: E402
+# ---------------------------------------------------------------- public SPARTAN chemistry (all sites)
+# data/spartan/raw = the SPARTAN public FilterBased ChemSpecPM25 release (v3.1.4, Aug 2026). The older in-house
+# unified_filter_dataset reports ETAD OC about 1.96x lower than this release, filter for filter, so it is not used.
+# SPARTAN has no thermal-optical carbon: OC/EC/OM are FTIR products (method 218), BC is HIPS (method 221).
+SP_RAW = ROOT / "data/spartan/raw/FilterBased/ChemSpecPM25"
 
+
+def load_spartan_site(path):
+    d = pd.read_csv(path, comment="#", low_memory=False)
+    scale = np.where(d.Units.str.startswith("Nanograms"), 1e-3, 1.0)       # elements: ng/m³ -> µg/m³
+    d = d.assign(Value=d.Value * scale,
+                 date=pd.to_datetime(dict(year=d.Start_Year_local, month=d.Start_Month_local, day=d.Start_Day_local),
+                                     errors="coerce"))
+    w = d.pivot_table(index=["Site_Code", "Filter_ID", "date"], columns="Parameter_Name", values="Value",
+                      aggfunc="first").reset_index()
+    name = next(l.split(":", 1)[1].strip() for l in open(path) if l.startswith("# Site:"))
+    return w.assign(site_name=name.split(",")[0])
+
+
+sp_all = pd.concat([load_spartan_site(f) for f in sorted(SP_RAW.glob("FilterBased_ChemSpecPM25_*.csv"))],
+                   ignore_index=True)
+for c in ["OC PM2.5", "BC PM2.5"]:
+    sp_all[c] = sp_all.get(c)
+sp_all["oc_ec"] = sp_all["OC PM2.5"] / sp_all["BC PM2.5"].where(sp_all["BC PM2.5"] > 0)
+etad = sp_all[sp_all.Site_Code.eq("ETAD")]
+ad_oe = etad.oc_ec[etad.oc_ec > 0]
+
+# ---------------------------------------------------------------- f4 loading per filter
 refs = pd.read_csv(M / "improve_references.csv")
 ev = pd.read_csv(M / "addis_evaluation.csv")
 imp_mass = (refs.fabs_Mm1 / MAC * refs.tor_volume_m3).dropna()
@@ -183,16 +209,6 @@ ratio = ad_mass.median() / imp_mass.median()
 p99 = imp_mass.quantile(.99)
 assert 8 < ratio < 10, ratio   # storyline: ~9x
 
-imp_oe = refs.tor_oc_ec[(refs.tor_oc_ec > 0) & np.isfinite(refs.tor_oc_ec)]
-fd = load_filter_data()
-ew = fd[fd.Site.eq("ETAD")].pivot_table(index="FilterId", columns="Parameter", values="Concentration", aggfunc="mean")
-# Addis has no TOR: OC is SPARTAN's FTIR-derived OC, EC is HIPS-based BC (both µg/m³)
-ad_oe = (ew["ChemSpec_OC_PM2.5"] / ew["ChemSpec_BC_PM2.5"]).dropna()
-ad_oe = ad_oe[ad_oe > 0]
-oe_pct = 100 * (imp_oe < ad_oe.median()).mean()
-imp_oe_p5 = imp_oe.quantile(.05)
-assert ad_oe.median() < 1 and oe_pct < 2, (ad_oe.median(), oe_pct)
-
 
 def ecdf(ax, vals, color, lab):
     v = np.sort(np.asarray(vals))
@@ -200,36 +216,86 @@ def ecdf(ax, vals, color, lab):
     ax.axvline(np.median(v), color=color, ls="--", lw=1.1)
 
 
-fig, axes = plt.subplots(1, 2, figsize=(12.4, 4.9))
-ax = axes[0]
+fig, ax = plt.subplots(figsize=(10.5, 4.6))
 ecdf(ax, imp_mass, GREY, f"IMPROVE calibration pool (n {len(imp_mass):,})")
-ecdf(ax, ad_mass, AMBER, f"Addis Ababa (n {len(ad_mass)})")
+ecdf(ax, ad_mass, AMBER, f"Addis Ababa, SPARTAN (n {len(ad_mass)})")
+ax.axvline(p99, color=INK, ls=":", lw=1.2)
+ax.text(p99, 0.04, "IMPROVE 99th \npercentile ", fontsize=10, va="bottom", ha="right")
+ax.text(ad_mass.max() * 1.15, 0.55, f"Addis median is\n{ratio:.0f}× the IMPROVE median", fontsize=11)
 ax.set_xscale("log"); ax.set_ylim(0, 1.02)
-ax.set_xlabel("EC on the filter (µg per filter, from HIPS)")
+ax.set_xlabel("EC on the filter, HIPS Fabs / MAC 10 × sampled volume (µg per filter)")
 ax.set_ylabel("Fraction of filters")
-ax.set_title(f"Heavier: Addis median {ratio:.0f}× IMPROVE", loc="left", fontsize=12.5)
-ax.legend(loc="upper left", fontsize=10)
-ax = axes[1]
-ecdf(ax, imp_oe, GREY, f"IMPROVE, TOR OC/EC (n {len(imp_oe):,})")
-ecdf(ax, ad_oe, AMBER, f"Addis, OC (FTIR) / BC (HIPS) (n {len(ad_oe)})")
-ax.set_xscale("log"); ax.set_xlim(0.2, 60); ax.set_ylim(0, 1.02)
-ax.set_xticks([0.2, 0.5, 1, 2, 5, 10, 20, 50], ["0.2", "0.5", "1", "2", "5", "10", "20", "50"])
-ax.set_xlabel("OC / EC ratio")
-ax.set_title(f"More EC-rich: OC/EC {ad_oe.median():.1f} vs {imp_oe.median():.1f}", loc="left", fontsize=12.5)
-ax.legend(loc="lower right", fontsize=10)
-fig.tight_layout()
-save(fig, "f4_addis_extremes.png")
+ax.legend(loc="upper left", fontsize=10.5)
+save(fig, "f4_loading_per_filter.png")
 
-# ---------------------------------------------------------------- f5 FTIR/TOR vs OC/EC
-pl = pool.assign(ratio=pool.ftir_ec_ugm3 / pool.tor_ec_ugm3, load=pool.fabs_Mm1 / MAC * pool.tor_volume_m3)
-pl = pl[(pl.tor_ec_ugm3 > 0) & (pl.tor_oc_ec > 0) & (pl.load > 0)]
-al = an.assign(ratio=an.ftir_ec_ugm3 / an.tor_ec_ugm3)
-al = al[(al.tor_ec_ugm3 > 0) & (al.tor_oc_ec > 0)]
-OBINS = np.array([1, 2, 3, 4.5, 6, 8, 11, 16, 30])
+# ---------------------------------------------------------------- f5 OC/EC continuum, every IMPROVE and SPARTAN site
+# One EC definition for both networks: HIPS absorption / MAC 10 (IMPROVE fAbs, SPARTAN BC PM2.5).
+# OC: IMPROVE thermal-optical, SPARTAN FTIR. Site medians; IMPROVE sites need >= 50 filters, SPARTAN >= 10.
+
+imp_net = pd.read_pickle(ROOT / "research/spartan/.cache/improve_chemistry_clean_cache.pkl")
+imp_net = imp_net[(imp_net.fAbs_Val > 0) & (imp_net.OCf_Val > 0)]
+imp_net = imp_net.assign(oc_ec=imp_net.OCf_Val / (imp_net.fAbs_Val / MAC))
+
+
+def site_table(df, site, val, min_n):
+    t = df[[site, val]].dropna().groupby(site)[val].agg(
+        n="size", median="median", p25=lambda v: v.quantile(.25), p75=lambda v: v.quantile(.75))
+    return t[t.n >= min_n]
+
+
+imp_sites = site_table(imp_net, "SiteCode", "oc_ec", 50).assign(network="IMPROVE")
+sp_sites = site_table(sp_all[sp_all.oc_ec > 0], "Site_Code", "oc_ec", 10).assign(network="SPARTAN")
+sp_sites["name"] = sp_all.groupby("Site_Code").site_name.first().reindex(sp_sites.index)
+cont = pd.concat([imp_sites, sp_sites]).sort_values("median").reset_index(names="site")
+cont["rank"] = np.arange(len(cont))
+n_below_imp_min = int((sp_sites["median"] < imp_sites["median"].min()).sum())
+sp_below_imp_med = int((sp_sites["median"] < imp_sites["median"].median()).sum())
+etad_rank_all = int(cont.index[cont.site.eq("ETAD")][0]) + 1
+assert sp_sites.loc["ETAD", "median"] < imp_sites["median"].min()
+
+fig, ax = plt.subplots(figsize=(12.4, 5.2))
+im = cont[cont.network.eq("IMPROVE")]
+ax.vlines(im["rank"], im.p25, im.p75, color="#D8D5CE", lw=1)
+ax.scatter(im["rank"], im["median"], s=12, color=GREY, zorder=3, label=f"IMPROVE sites (n {len(im)})")
+sp = cont[cont.network.eq("SPARTAN")]
+ax.vlines(sp["rank"], sp.p25, sp.p75, color=PURPLE, alpha=.35, lw=1.2)
+ax.scatter(sp["rank"], sp["median"], s=95, marker="*", color=PURPLE, zorder=4, edgecolor="white", lw=.4,
+           label=f"SPARTAN sites (n {len(sp)})")
+ea = cont[cont.site.eq("ETAD")].iloc[0]
+ax.scatter([ea["rank"]], [ea["median"]], s=320, marker="*", color=AMBER, zorder=5, edgecolor=INK, lw=.6,
+           label="Addis Ababa")
+# label text sits below the curve with a leader line; (dx in ranks, y of the text)
+LABEL = {"AEAZ": ("Abu Dhabi", 14, 0.25), "ETAD": ("Addis Ababa", 14, 0.75), "CLST": ("Santiago", 22, 1.0),
+         "INDH": ("Delhi", 26, 1.55), "CLTA": ("Talca", 30, 2.05), "CHTS": ("Beijing", 26, 2.45),
+         "USPA": ("Pasadena", 14, 3.0)}
+for code, (lab, dx, ty) in LABEL.items():
+    r = cont[cont.site.eq(code)]
+    if len(r):
+        r = r.iloc[0]
+        ax.annotate(lab, (r["rank"], r["median"]), xytext=(r["rank"] + dx, ty), textcoords="data",
+                    fontsize=10, color=INK if code == "ETAD" else PURPLE, va="center",
+                    fontweight="bold" if code == "ETAD" else "normal",
+                    arrowprops=dict(arrowstyle="-", color="#B9B5AC", lw=.8, shrinkA=2, shrinkB=4))
+ax.set_ylim(0, 10.5)
+ax.set_xlim(-3, len(cont) + 2)
+ax.set_xlabel("All sites, ranked by median OC/EC")
+ax.set_ylabel("OC / EC  (EC from HIPS absorption / MAC 10)")
+ax.legend(loc="upper left", fontsize=10.5)
+save(fig, "f5_ocec_site_continuum.png")
+cont.round(3).to_csv(FIG / "f5_ocec_site_continuum.csv", index=False)
+
+# ---------------------------------------------------------------- f6 FTIR/TOR vs OC/EC (held-out IMPROVE)
+# x uses HIPS EC, not TOR EC, so x and y (FTIR/TOR) do not share a denominator
+pl = pool.assign(ratio=pool.ftir_ec_ugm3 / pool.tor_ec_ugm3, load=pool.fabs_Mm1 / MAC * pool.tor_volume_m3,
+                 x=pool.tor_oc_ec * pool.tor_ec_ugm3 / (pool.fabs_Mm1 / MAC))
+pl = pl[(pl.tor_ec_ugm3 > 0) & (pl.tor_oc_ec > 0) & (pl.fabs_Mm1 > 0)]
+al = an.assign(ratio=an.ftir_ec_ugm3 / an.tor_ec_ugm3, x=an.tor_oc_ugm3 / (an.fabs_Mm1 / MAC))
+al = al[(al.tor_ec_ugm3 > 0) & (al.tor_oc_ugm3 > 0) & (al.fabs_Mm1 > 0)]
+OBINS = np.array([0.5, 1.5, 2.5, 3.5, 5, 7, 10, 20, 60])
 
 
 def binned(d, min_n=8):
-    g = d.groupby(pd.cut(d.tor_oc_ec, OBINS), observed=True).ratio.agg(["median", "size"])
+    g = d.groupby(pd.cut(d.x, OBINS), observed=True).ratio.agg(["median", "size"])
     g = g[g["size"] >= min_n]
     return np.array([np.sqrt(i.left * i.right) for i in g.index]), g["median"].to_numpy(), g
 
@@ -239,53 +305,44 @@ am, ar, ag = binned(al)
 oe_lo, oe_hi = np.percentile(ad_oe, [5, 95])
 fig, ax = plt.subplots(figsize=(10.5, 5.0))
 ax.axvspan(oe_lo, oe_hi, color=AMBER, alpha=.18, lw=0)
-ax.text(np.sqrt(oe_lo * oe_hi), 1.95, "where Addis\nfilters sit\n(middle 90 %)", ha="center", va="top", fontsize=10.5, color="#8A6420")
-ax.scatter(pl.tor_oc_ec, pl.ratio.clip(upper=1.98), s=8, color=GREY, alpha=.3, lw=0, label=f"held-out IMPROVE (n {len(pl):,})")
-ax.scatter(al.tor_oc_ec, al.ratio.clip(upper=1.98), s=24, color=ACCENT, alpha=.85, edgecolor="white", lw=.4,
+ax.text(np.sqrt(oe_lo * oe_hi), 1.95, "where Addis\nfilters sit\n(middle 90 %)", ha="center", va="top",
+        fontsize=10.5, color="#8A6420")
+ax.scatter(pl.x, pl.ratio.clip(upper=1.98), s=8, color=GREY, alpha=.3, lw=0, label=f"held-out IMPROVE (n {len(pl):,})")
+ax.scatter(al.x, al.ratio.clip(upper=1.98), s=24, color=ACCENT, alpha=.85, edgecolor="white", lw=.4,
            label=f"most Addis-like IMPROVE (n {len(al)})")
 ax.plot(pm, pr, color=INK, lw=2.2, marker="o", ms=5, label="median, held-out IMPROVE")
 ax.plot(am, ar, color=ACCENT, lw=2.2, marker="o", ms=5, label="median, Addis-like")
 ax.axhline(1, color=GREY, ls=":", lw=1.2)
-ax.text(28, 1.03, "FTIR = TOR", fontsize=9.5, color=GREY, ha="right")
-ax.set_xscale("log"); ax.set_xlim(0.3, 30); ax.set_ylim(0, 2)
-ax.set_xticks([0.5, 1, 2, 5, 10, 20], ["0.5", "1", "2", "5", "10", "20"])
-ax.set_xlabel("OC / EC ratio (IMPROVE: TOR)")
+ax.text(55, 1.03, "FTIR = TOR", fontsize=9.5, color=GREY, ha="right")
+ax.set_xscale("log"); ax.set_xlim(0.5, 60); ax.set_ylim(0, 2)
+ax.set_xticks([0.5, 1, 2, 5, 10, 20, 50], ["0.5", "1", "2", "5", "10", "20", "50"])
+ax.set_xlabel("OC / EC  (EC from HIPS absorption / MAC 10)")
 ax.set_ylabel("FTIR EC / TOR EC")
 ax.legend(loc="lower right", fontsize=10, framealpha=.9, frameon=True, edgecolor="white")
-save(fig, "f5_ratio_vs_ocec.png")
-lo_pool = float(pl[pl.tor_oc_ec <= 3].ratio.median()); n_lo = int((pl.tor_oc_ec <= 3).sum())
-mid_pool = float(pl[(pl.tor_oc_ec > 4.5) & (pl.tor_oc_ec <= 8)].ratio.median())
-hi_pool = float(pl[pl.tor_oc_ec > 11].ratio.median())
-# does OC/EC still matter at fixed loading? (the loading trend is mostly OC/EC: heavier filters are more EC-rich)
-within = pl.assign(lb=pd.cut(pl.load, [0, 2, 4, 8, 16, 1000]), ob=pd.cut(pl.tor_oc_ec, [0, 3, 8, 1e4])) \
+save(fig, "f6_ratio_vs_ocec.png")
+lo_pool = float(pl[pl.x <= 2.5].ratio.median()); n_lo = int((pl.x <= 2.5).sum())
+mid_pool = float(pl[(pl.x > 3.5) & (pl.x <= 7)].ratio.median())
+hi_pool = float(pl[pl.x > 10].ratio.median())
+within = pl.assign(lb=pd.cut(pl.load, [0, 4, 8, 16, 1000]), ob=pd.cut(pl.x, [0, 2.5, 6, 1e4])) \
     .pivot_table(index="lb", columns="ob", values="ratio", aggfunc="median", observed=True)
-assert (within.iloc[:, 0] < within.iloc[:, -1]).all(), within
-lo_range = (float(within.iloc[:, 0].min()), float(within.iloc[:, 0].max()))
-print("ratio vs OC/EC, pool:\n", pg.round(2), "\nanalogs:\n", ag.round(2), "\nwithin loading bins:\n", within.round(2))
+print("ratio vs OC/EC(HIPS), pool:\n", pg.round(2), "\nanalogs:\n", ag.round(2), "\nwithin loading bins:\n", within.round(2))
+print(f"continuum: {len(imp_sites)} IMPROVE, {len(sp_sites)} SPARTAN; ETAD {sp_sites.loc['ETAD','median']:.2f}, "
+      f"rank {etad_rank_all}/{len(cont)}; SPARTAN below lowest IMPROVE site: {n_below_imp_min}; "
+      f"below IMPROVE median: {sp_below_imp_med}")
 
-# ---------------------------------------------------------------- f6 Addis chemistry by season
-f = fd
-e = f[f.Site.eq("ETAD") & f.Parameter.str.startswith("ChemSpec_")].copy()
-datecol = "SampleDate"
-# elements are reported in ng/m³, ions/OM/BC/mass in µg/m³: put everything in µg/m³
-units = e.Concentration_Units.str.lower().str.replace("µ", "u")
-assert units.isin(["ug/m3", "ng/m3"]).all(), units.unique()
-e["Concentration"] = e.Concentration / np.where(units.eq("ng/m3"), 1000.0, 1.0)
-w = e.pivot_table(index="FilterId", columns="Parameter", values="Concentration", aggfunc="mean")
-dates = e.groupby("FilterId")[datecol].first()
-w = w[w["ChemSpec_Filter_PM2.5_mass"].notna()]
-month = pd.to_datetime(dates.reindex(w.index)).dt.month
-w["season"] = np.select([month.isin([10, 11, 12, 1, 2]), month.isin([3, 4, 5])],
+# ---------------------------------------------------------------- f7 Addis chemistry by season (public release)
+e = etad.copy()
+month = e.date.dt.month
+e["season"] = np.select([month.isin([10, 11, 12, 1, 2]), month.isin([3, 4, 5])],
                         ["Dry (Oct-Feb)", "Belg (Mar-May)"], "Kiremt (Jun-Sep)")
-g = lambda c: w.get(c, pd.Series(np.nan, index=w.index))
-soil = (2.20 * g("ChemSpec_Aluminum_PM2.5") + 2.49 * g("ChemSpec_Silicon_PM2.5")
-        + 1.63 * g("ChemSpec_Calcium_PM2.5") + 2.42 * g("ChemSpec_Iron_PM2.5")
-        + 1.94 * g("ChemSpec_Titanium_PM2.5"))
+e = e[e["Filter PM2.5 mass"].notna()]
+g = lambda c: e.get(c, pd.Series(np.nan, index=e.index))
+soil = (2.20 * g("Aluminum PM2.5") + 2.49 * g("Silicon PM2.5") + 1.63 * g("Calcium PM2.5")
+        + 2.42 * g("Iron PM2.5") + 1.94 * g("Titanium PM2.5"))
 comp = pd.DataFrame({
-    "Sulfate": g("ChemSpec_Sulfate_Ion_PM2.5"), "Nitrate": g("ChemSpec_Nitrate_Ion_PM2.5"),
-    "Ammonium": g("ChemSpec_Ammonium_Ion_PM2.5"), "Organic matter (FTIR)": g("ChemSpec_OM_PM2.5"),
-    "Black carbon (HIPS)": g("ChemSpec_BC_PM2.5"), "Dust (soil formula)": soil,
-    "season": w.season, "PM2.5": g("ChemSpec_Filter_PM2.5_mass")})
+    "Sulfate": g("Sulfate Ion PM2.5"), "Nitrate": g("Nitrate Ion PM2.5"), "Ammonium": g("Ammonium Ion PM2.5"),
+    "Organic matter (FTIR)": g("OM PM2.5"), "Black carbon (HIPS)": g("BC PM2.5"), "Dust (soil formula)": soil,
+    "season": e.season, "PM2.5": g("Filter PM2.5 mass")})
 COMP_COLORS = {"Sulfate": ACCENT, "Nitrate": BLUE, "Ammonium": AMBER, "Organic matter (FTIR)": "#5E8C4A",
                "Black carbon (HIPS)": INK, "Dust (soil formula)": "#A6774B"}
 med = comp.groupby("season")[list(COMP_COLORS) + ["PM2.5"]].median().reindex(SEASONS)
@@ -299,9 +356,9 @@ ax.scatter(range(3), med["PM2.5"], marker="_", s=900, color=INK, lw=2, zorder=5,
 ax.set_xticks(range(3), [f"{SEASON_LABEL[s]}\nn {counts[s]}" for s in SEASONS])
 ax.set_ylabel("Median concentration (µg/m³)")
 ax.legend(loc="upper left", bbox_to_anchor=(1.0, 1.0), fontsize=10.5)
-save(fig, "f6_addis_chemistry.png")
+save(fig, "f7_addis_chemistry.png")
 chem_summary = med.round(2)
-chem_summary.to_csv(FIG / "f6_addis_chemistry_medians.csv")
+chem_summary.to_csv(FIG / "f7_addis_chemistry_medians.csv")
 
 # ---------------------------------------------------------------- deck
 prs = Presentation()
@@ -365,7 +422,7 @@ notes(s,
 # 2 chemistry context
 fig_slide(
     "Addis Ababa PM2.5 peaks in the Kiremt rainy season; black carbon, organics and dust are each large shares",
-    FIG / "f6_addis_chemistry.png",
+    FIG / "f7_addis_chemistry.png",
     "This is what PM2.5 in Addis Ababa is made of, by season. Each bar is the median of each component. "
     "Ethiopia has three seasons: a long dry season, the short Belg rains, and the main Kiremt rainy season. "
     "Kiremt has the highest concentrations, partly because the boundary layer is shallow then, so pollution is "
@@ -374,7 +431,7 @@ fig_slide(
     "Medians of each component are stacked; medians do not add up exactly to the median PM2.5 mass (black tick), "
     "and unmeasured mass (water, other ions) is not shown. Organic matter is SPARTAN's FTIR-derived OM. "
     "Black carbon is the SPARTAN HIPS-based BC, not FTIR EC. Dust uses the IMPROVE soil formula "
-    "(2.20 Al + 2.49 Si + 1.63 Ca + 2.42 Fe + 1.94 Ti). Season medians: see figures/f6_addis_chemistry_medians.csv. "
+    "(2.20 Al + 2.49 Si + 1.63 Ca + 2.42 Fe + 1.94 Ti). Season medians: see figures/f7_addis_chemistry_medians.csv. Source: SPARTAN public release v3.1.4 (Aug 2026). "
     "Boundary layer: ERA5 median daily BLH ~370-410 m in Kiremt vs 650-800 m in Dry; normalising by BLH is on the list, not done. "
     "Season names: 'Bega' for Dry is from one source; the literature mostly says Dry / Belg / Kiremt.")
 
@@ -425,41 +482,52 @@ fig_slide(
     "Ann's self-prediction question: IMPROVE predicts IMPROVE well overall (slide 4) and the analogs fit well "
     "when they are themselves the calibration set (CV R² 0.5-0.9, bias ~0); the failure is transfer.")
 
-# 6 two extremes
+# 6 loading
 fig_slide(
-    "Addis filters are extreme in two ways: far heavier and far more EC-rich than US filters",
-    FIG / "f4_addis_extremes.png",
-    "Why would that happen? Addis filters are unusual in two ways. On the left, how much EC sits on each filter: "
-    f"the typical Addis filter carries about {ratio:.0f} times more than the typical US filter. On the right, the ratio of "
-    f"organic carbon to elemental carbon. US filters sit around {imp_oe.median():.0f}; Addis sits around {ad_oe.median():.1f}, "
-    f"lower than {100 - oe_pct:.1f} percent of the US filters. So Addis samples are both heavier and much more "
-    "soot-dominated than anything the calibration learned from.",
-    "Left: per filter = HIPS Fabs / MAC 10 × sampled volume, so both networks are on the same footing "
-    "(IMPROVE ~33 m³ per filter at 22 L/min, SPARTAN ~7 m³ at 5 L/min); in concentration the gap looks like ~41×. "
-    f"{100 * (ad_mass > p99).mean():.0f} % of Addis filters are above IMPROVE's 99th percentile. "
-    "Right: Addis has no TOR, so Addis OC/EC is SPARTAN OC (FTIR-derived) over SPARTAN BC (HIPS-based); IMPROVE is "
-    f"TOR OC/EC. The FTIR OC is partly circular, but OC would have to be about {imp_oe_p5 / ad_oe.median():.0f}× higher "
-    f"for the Addis median to reach even IMPROVE's 5th percentile ({imp_oe_p5:.1f}). Dashed lines are medians.")
+    f"Addis filters carry about {ratio:.0f} times more EC per filter than a typical IMPROVE filter",
+    FIG / "f4_loading_per_filter.png",
+    "Why would that happen? First, loading. This shows how much EC sits on each filter, on a log scale. "
+    f"Grey is the IMPROVE calibration pool, amber is Addis. The median Addis filter has about {ratio:.0f} times "
+    f"more EC on it than the median IMPROVE filter, and {100 * (ad_mass > p99).mean():.0f} percent of Addis filters are above "
+    "IMPROVE's 99th percentile. The calibration has almost never seen filters like these.",
+    "Per filter = HIPS Fabs / MAC 10 × sampled volume, so both networks are on the same footing "
+    "(IMPROVE ~33 m³ per filter at 22 L/min, SPARTAN ~7 m³ at 5 L/min). In concentration the gap looks like ~41× "
+    "because of the volume difference; per filter is the fair comparison for what the FTIR sees. "
+    "Loading is not the driver on its own (next two slides): at fixed loading, OC/EC still matters.")
 
-# 7 FTIR/TOR vs OC/EC
+# 7 OC/EC site continuum
 fig_slide(
-    "FTIR under-reads EC on EC-rich US filters, and Addis is more EC-rich than almost all of them",
-    FIG / "f5_ratio_vs_ocec.png",
-    "This connects the two. Each point is one held-out US filter: its OC/EC ratio along the bottom, and FTIR divided "
-    f"by TOR up the side, where 1 means they agree. For typical US filters FTIR and TOR agree, a ratio around {mid_pool:.1f}. "
-    f"On the most EC-rich US filters, OC/EC below 3, FTIR reads only about {lo_pool:.1f} of TOR, and the Addis-like "
-    "filters in red follow the same line. The shaded band is where Addis sits: further down the OC/EC scale than "
-    "nearly any US filter. So the more soot-dominated the sample, the more FTIR under-reads, and Addis is the "
-    "extreme case.",
-    "Same all-IMPROVE lot-251 spline calibration and held-out sites as slides 4 and 5; ratios above 2 drawn at the "
-    f"top edge. Binned medians: OC/EC ≤ 3 {lo_pool:.2f} (n {n_lo}), 4.5 to 8 {mid_pool:.2f}, > 11 {hi_pool:.2f}. "
-    "High-OC/EC filters read above 1 partly because they are the low-EC filters, where the small positive intercept "
-    "matters. Not a loading effect in disguise: within every loading band the OC/EC ≤ 3 filters read lower "
-    f"(medians {lo_range[0]:.2f} to {lo_range[1]:.2f}) than OC/EC > 8; in a robust fit of log ratio on log loading and "
-    "log OC/EC, OC/EC carries the effect (+0.57) and loading almost none (-0.09). Heavier US filters are also more "
-    "EC-rich, which is why FTIR/TOR also drifts down with loading. Addis band uses OC (FTIR) / BC (HIPS), see slide 6; "
-    "no Addis points because Addis has no TOR. Composition beyond OC/EC: Addis Si-O dust band ~2× typical IMPROVE but "
-    "inside IMPROVE's range filter by filter.")
+    f"Addis is more EC-rich than every IMPROVE site, and {sp_below_imp_med} of {len(sp_sites)} SPARTAN sites sit below the typical US site",
+    FIG / "f5_ocec_site_continuum.png",
+    "Second, composition. Every site in both networks, ranked by its typical ratio of organic to elemental carbon. "
+    f"Grey dots are the {len(imp_sites)} IMPROVE sites; purple stars are the {len(sp_sites)} SPARTAN sites around the "
+    f"world. Addis, the big gold star, has an OC/EC of about {sp_sites.loc['ETAD', 'median']:.1f}, lower than every "
+    f"single US site. {sp_below_imp_med} of the {len(sp_sites)} SPARTAN sites sit below the typical US site. So the "
+    "US calibration network covers the organic-rich end well, and the soot-rich end, where much of the world lives, "
+    "barely at all.",
+    "One EC definition for both networks so the ranking does not lean on FTIR EC: EC = HIPS absorption / MAC 10 "
+    "(IMPROVE fAbs; SPARTAN 'BC PM2.5', HIPS, method 221). OC: IMPROVE thermal-optical; SPARTAN 'OC PM2.5' is FTIR "
+    "(method 218): SPARTAN has no thermal carbon, so the earlier 'thermal' labels on this plot were wrong. "
+    "Site medians with IQR; IMPROVE sites with >= 50 filters (FED export, 1988-2025), SPARTAN >= 10 "
+    f"(public release v3.1.4, Aug 2026). Addis ranks {etad_rank_all} of {len(cont)} sites; {n_below_imp_min} SPARTAN "
+    "sites sit below the lowest IMPROVE site (Abu Dhabi is lowest overall). The older in-house file had Addis OC "
+    "about 2x lower than the current release; this slide uses the release. Full table: figures/f5_ocec_site_continuum.csv.")
+
+# 8 FTIR/TOR vs OC/EC
+fig_slide(
+    "On US filters, FTIR under-reads EC as OC/EC falls, and Addis sits further down still",
+    FIG / "f6_ratio_vs_ocec.png",
+    "This connects the two. Each point is one held-out US filter: its OC/EC along the bottom, and FTIR divided by "
+    f"TOR up the side, where 1 means they agree. For typical US filters they agree, about {mid_pool:.1f}. On the most "
+    f"EC-rich US filters, OC/EC below 2.5, FTIR reads only about {lo_pool:.1f} of TOR, and the Addis-like filters in red "
+    "follow the same line. The shaded band is where Addis sits, at the far low end. So the more soot-dominated the "
+    "sample, the more FTIR under-reads, and Addis is beyond the edge of the US data.",
+    "x uses the same OC/EC as slide 7 (EC from HIPS), so x and y do not share TOR EC in the denominator. "
+    "Same all-IMPROVE lot-251 spline calibration and held-out sites as slides 4 and 5; ratios above 2 drawn at the top. "
+    f"Binned medians: OC/EC <= 2.5 {lo_pool:.2f} (n {n_lo}), 3.5 to 7 {mid_pool:.2f}, > 10 {hi_pool:.2f}. "
+    "High ratios at high OC/EC are partly the small positive intercept on low-EC filters. The OC/EC trend holds within "
+    "most loading bands (it flattens above ~16 µg per filter, where n is small). TOR's OC/EC split can still couple OC "
+    "and TOR EC (charring), so treat the slope of the trend as indicative. No Addis points: Addis has no TOR.")
 
 # 8 takeaway
 text_slide(
@@ -483,13 +551,13 @@ prs.save(out)
 
 # ---------------------------------------------------------------- verify
 chk = Presentation(out)
-assert len(chk.slides) == 8
+assert len(chk.slides) == 9
 for i, sl in enumerate(chk.slides, 1):
     assert sl.notes_slide.notes_text_frame.text.startswith("SAY:"), i
     txt = sl.notes_slide.notes_text_frame.text + " ".join(sh.text_frame.text for sh in sl.shapes if sh.has_text_frame)
     assert "—" not in txt, f"em dash on slide {i}"
 n_pics = sum(1 for sl in chk.slides for sh in sl.shapes if sh.shape_type == 13)
-assert n_pics == 6, n_pics
+assert n_pics == 7, n_pics
 print(f"wrote {out.relative_to(ROOT)}: {len(chk.slides)} slides, {n_pics} figures; "
       f"loading ratio {ratio:.1f}x, {100 * (ad_mass > p99).mean():.0f}% of Addis above IMPROVE p99")
 print(chem_summary.to_string())
@@ -505,5 +573,5 @@ for sl in clean.slides:
 clean_out = HERE / "aaar_practice_2026-10-15_no_notes.pptx"
 clean.save(clean_out)
 chk = Presentation(clean_out)
-assert len(chk.slides) == 8 and not any(sl.has_notes_slide for sl in chk.slides)
+assert len(chk.slides) == 9 and not any(sl.has_notes_slide for sl in chk.slides)
 print(f"wrote {clean_out.relative_to(ROOT)}: {len(chk.slides)} slides, no speaker notes")
