@@ -33,18 +33,31 @@ EPOCH = datetime(1900, 1, 1)   # the store's time axis is hours since 1900-01-01
 OUT = os.environ.get("ARCO_FILL_OUT", "/content/arco_blh_fill.npz")   # override to test off Colab
 
 
-def sites_arg() -> str:
-    """code:lat:lon;... for every SPARTAN and IMPROVE site with coordinates (run locally)."""
+def sites_arg(networks=("spartan", "improve")) -> str:
+    """network/code:lat:lon;... for every site with coordinates in these networks (run locally)."""
     root = Path(__file__).resolve().parents[3]
     parts = []
-    for network in ("spartan", "improve"):
+    for network in networks:
         for s in json.loads((root / f"gallery/app/public/data/{network}_map.json").read_text())["sites"]:
             if s.get("lat") is not None and s.get("lon") is not None:
                 parts.append(f"{network}/{s['code']}:{s['lat']:.4f}:{s['lon']:.4f}")
     return ";".join(parts)
 
 
-def main(start: str, end: str, sites: str):
+def parse_hours(spec: str) -> list[int]:
+    """"START..END" (ISO hours, inclusive) or "r:a-b,c-d" (store hour indices, inclusive runs)."""
+    if spec.startswith("r:"):
+        out = []
+        for run in spec[2:].split(","):
+            a, b = run.split("-")
+            out.extend(range(int(a), int(b) + 1))
+        return out
+    start, end = spec.split("..")
+    t0, t1 = datetime.fromisoformat(start), datetime.fromisoformat(end)
+    return [int((t0 - EPOCH).total_seconds() // 3600) + k for k in range(int((t1 - t0).total_seconds() // 3600) + 1)]
+
+
+def main(spec: str, sites: str):
     import numpy as np
     try:
         import numcodecs
@@ -59,8 +72,7 @@ def main(start: str, end: str, sites: str):
         rows.append(int(round((90 - float(lat)) / 0.25)))            # latitude runs 90 -> -90
         cols.append(int(round((float(lon) % 360) / 0.25)) % 1440)     # longitude runs 0 -> 359.75
     rows, cols = np.array(rows), np.array(cols)
-    t0, t1 = datetime.fromisoformat(start), datetime.fromisoformat(end)
-    hours = [int((t0 - EPOCH).total_seconds() // 3600) + k for k in range(int((t1 - t0).total_seconds() // 3600) + 1)]
+    hours = parse_hours(spec)
 
     blosc = numcodecs.Blosc()
     nbytes = [0] * len(hours)
@@ -79,7 +91,7 @@ def main(start: str, end: str, sites: str):
         return field[rows, cols]
 
     tic = time.time()
-    with ThreadPoolExecutor(64) as pool:
+    with ThreadPoolExecutor(96) as pool:
         values = np.stack(list(pool.map(one, range(len(hours)))))
     seconds = time.time() - tic
     times = np.array([np.datetime64(EPOCH + timedelta(hours=h), "h") for h in hours])
@@ -93,7 +105,9 @@ def main(start: str, end: str, sites: str):
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] == ["--sites-arg"]:
-        print(sites_arg())
-    else:
-        main(*sys.argv[1:4])
+    if sys.argv[1:2] == ["--sites-arg"]:
+        print(sites_arg(sys.argv[2:] or ("spartan", "improve")))
+    elif len(sys.argv) == 4:   # START END SITES, the original Jan-Jun 2024 gap-fill call
+        main(f"{sys.argv[1]}..{sys.argv[2]}", sys.argv[3])
+    else:                      # HOURS SITES, e.g. "r:906000-906043,906072-906115" (workflows/improve_blh_colab.py)
+        main(sys.argv[1], sys.argv[2])
