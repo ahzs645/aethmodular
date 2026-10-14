@@ -171,7 +171,9 @@ stat_box(ax, S_AN, extra=f"\nDry-season analogs: {S_DRY.deming_slope:.2f}x, R² 
 fig.tight_layout()
 save(fig, "f3_addis_like_improve.png")
 
-# ---------------------------------------------------------------- f4 loading per filter
+# ---------------------------------------------------------------- f4 two ways Addis is extreme
+from data_matching import load_filter_data  # noqa: E402
+
 refs = pd.read_csv(M / "improve_references.csv")
 ev = pd.read_csv(M / "addis_evaluation.csv")
 imp_mass = (refs.fabs_Mm1 / MAC * refs.tor_volume_m3).dropna()
@@ -180,68 +182,89 @@ ad_mass = (ev.Fabs / MAC * ev.Volume_m3).dropna()
 ratio = ad_mass.median() / imp_mass.median()
 p99 = imp_mass.quantile(.99)
 assert 8 < ratio < 10, ratio   # storyline: ~9x
-fig, ax = plt.subplots(figsize=(10.5, 4.6))
-for vals, color, lab in [(imp_mass, GREY, f"IMPROVE calibration pool (n {len(imp_mass):,})"),
-                         (ad_mass, AMBER, f"Addis Ababa, SPARTAN (n {len(ad_mass)})")]:
-    v = np.sort(vals.to_numpy())
+
+imp_oe = refs.tor_oc_ec[(refs.tor_oc_ec > 0) & np.isfinite(refs.tor_oc_ec)]
+fd = load_filter_data()
+ew = fd[fd.Site.eq("ETAD")].pivot_table(index="FilterId", columns="Parameter", values="Concentration", aggfunc="mean")
+# Addis has no TOR: OC is SPARTAN's FTIR-derived OC, EC is HIPS-based BC (both µg/m³)
+ad_oe = (ew["ChemSpec_OC_PM2.5"] / ew["ChemSpec_BC_PM2.5"]).dropna()
+ad_oe = ad_oe[ad_oe > 0]
+oe_pct = 100 * (imp_oe < ad_oe.median()).mean()
+imp_oe_p5 = imp_oe.quantile(.05)
+assert ad_oe.median() < 1 and oe_pct < 2, (ad_oe.median(), oe_pct)
+
+
+def ecdf(ax, vals, color, lab):
+    v = np.sort(np.asarray(vals))
     ax.step(v, np.arange(1, len(v) + 1) / len(v), where="post", color=color, lw=2.4, label=lab)
     ax.axvline(np.median(v), color=color, ls="--", lw=1.1)
-ax.axvline(p99, color=INK, ls=":", lw=1.2)
-ax.text(p99, 0.04, " IMPROVE 99th\n percentile", fontsize=10, va="bottom")
-ax.text(ad_mass.max() * 1.15, 0.55, f"Addis median is\n{ratio:.0f}× the IMPROVE median", fontsize=11, color=INK)
-ax.set_xscale("log")
-ax.set_xlabel("EC loading on the filter, HIPS Fabs / MAC 10 × sampled volume (µg per filter)")
+
+
+fig, axes = plt.subplots(1, 2, figsize=(12.4, 4.9))
+ax = axes[0]
+ecdf(ax, imp_mass, GREY, f"IMPROVE calibration pool (n {len(imp_mass):,})")
+ecdf(ax, ad_mass, AMBER, f"Addis Ababa (n {len(ad_mass)})")
+ax.set_xscale("log"); ax.set_ylim(0, 1.02)
+ax.set_xlabel("EC on the filter (µg per filter, from HIPS)")
 ax.set_ylabel("Fraction of filters")
-ax.set_ylim(0, 1.02)
-ax.legend(loc="upper left", fontsize=10.5)
-save(fig, "f4_loading_per_filter.png")
+ax.set_title(f"Heavier: Addis median {ratio:.0f}× IMPROVE", loc="left", fontsize=12.5)
+ax.legend(loc="upper left", fontsize=10)
+ax = axes[1]
+ecdf(ax, imp_oe, GREY, f"IMPROVE, TOR OC/EC (n {len(imp_oe):,})")
+ecdf(ax, ad_oe, AMBER, f"Addis, OC (FTIR) / BC (HIPS) (n {len(ad_oe)})")
+ax.set_xscale("log"); ax.set_xlim(0.2, 60); ax.set_ylim(0, 1.02)
+ax.set_xticks([0.2, 0.5, 1, 2, 5, 10, 20, 50], ["0.2", "0.5", "1", "2", "5", "10", "20", "50"])
+ax.set_xlabel("OC / EC ratio")
+ax.set_title(f"More EC-rich: OC/EC {ad_oe.median():.1f} vs {imp_oe.median():.1f}", loc="left", fontsize=12.5)
+ax.legend(loc="lower right", fontsize=10)
+fig.tight_layout()
+save(fig, "f4_addis_extremes.png")
 
-# ---------------------------------------------------------------- f5 FTIR/TOR vs loading
-# x = HIPS loading per filter (independent of TOR, so the ratio is not plotted against its own denominator)
-def with_load(d):
-    d = d.assign(load=d.fabs_Mm1 / MAC * d.tor_volume_m3, ratio=d.ftir_ec_ugm3 / d.tor_ec_ugm3)
-    return d[(d.load > 0) & (d.tor_ec_ugm3 > 0)]
-
-
-pl, al = with_load(pool), with_load(an)
-LBINS = np.array([1, 2, 4, 8, 16, 32, 64])
+# ---------------------------------------------------------------- f5 FTIR/TOR vs OC/EC
+pl = pool.assign(ratio=pool.ftir_ec_ugm3 / pool.tor_ec_ugm3, load=pool.fabs_Mm1 / MAC * pool.tor_volume_m3)
+pl = pl[(pl.tor_ec_ugm3 > 0) & (pl.tor_oc_ec > 0) & (pl.load > 0)]
+al = an.assign(ratio=an.ftir_ec_ugm3 / an.tor_ec_ugm3)
+al = al[(al.tor_ec_ugm3 > 0) & (al.tor_oc_ec > 0)]
+OBINS = np.array([1, 2, 3, 4.5, 6, 8, 11, 16, 30])
 
 
 def binned(d, min_n=8):
-    b = pd.cut(d.load, LBINS)
-    g = d.groupby(b, observed=True).ratio.agg(["median", "size"])
+    g = d.groupby(pd.cut(d.tor_oc_ec, OBINS), observed=True).ratio.agg(["median", "size"])
     g = g[g["size"] >= min_n]
-    mids = np.array([np.sqrt(i.left * i.right) for i in g.index])
-    return mids, g["median"].to_numpy(), g
+    return np.array([np.sqrt(i.left * i.right) for i in g.index]), g["median"].to_numpy(), g
 
 
 pm, pr, pg = binned(pl)
 am, ar, ag = binned(al)
-ad_lo, ad_hi = np.percentile(ad_mass, [5, 95])
+oe_lo, oe_hi = np.percentile(ad_oe, [5, 95])
 fig, ax = plt.subplots(figsize=(10.5, 5.0))
-ax.axvspan(ad_lo, ad_hi, color=AMBER, alpha=.18, lw=0)
-ax.text(np.sqrt(ad_lo * ad_hi), 1.95, "where Addis\nfilters sit\n(middle 90 %)", ha="center", va="top", fontsize=10.5, color="#8A6420")
-ax.scatter(pl.load, pl.ratio.clip(upper=1.98), s=8, color=GREY, alpha=.3, lw=0, label=f"held-out IMPROVE (n {len(pl):,})")
-ax.scatter(al.load, al.ratio.clip(upper=1.98), s=24, color=ACCENT, alpha=.85, edgecolor="white", lw=.4,
+ax.axvspan(oe_lo, oe_hi, color=AMBER, alpha=.18, lw=0)
+ax.text(np.sqrt(oe_lo * oe_hi), 1.95, "where Addis\nfilters sit\n(middle 90 %)", ha="center", va="top", fontsize=10.5, color="#8A6420")
+ax.scatter(pl.tor_oc_ec, pl.ratio.clip(upper=1.98), s=8, color=GREY, alpha=.3, lw=0, label=f"held-out IMPROVE (n {len(pl):,})")
+ax.scatter(al.tor_oc_ec, al.ratio.clip(upper=1.98), s=24, color=ACCENT, alpha=.85, edgecolor="white", lw=.4,
            label=f"most Addis-like IMPROVE (n {len(al)})")
 ax.plot(pm, pr, color=INK, lw=2.2, marker="o", ms=5, label="median, held-out IMPROVE")
 ax.plot(am, ar, color=ACCENT, lw=2.2, marker="o", ms=5, label="median, Addis-like")
 ax.axhline(1, color=GREY, ls=":", lw=1.2)
-ax.text(1.05, 1.02, "FTIR = TOR", fontsize=9.5, color=GREY)
-ax.set_xscale("log"); ax.set_xlim(1, 80); ax.set_ylim(0, 2)
-ax.set_xticks([1, 2, 5, 10, 20, 50], ["1", "2", "5", "10", "20", "50"])
-ax.set_xlabel("EC loading on the filter, HIPS Fabs / MAC 10 × sampled volume (µg per filter)")
+ax.text(28, 1.03, "FTIR = TOR", fontsize=9.5, color=GREY, ha="right")
+ax.set_xscale("log"); ax.set_xlim(0.3, 30); ax.set_ylim(0, 2)
+ax.set_xticks([0.5, 1, 2, 5, 10, 20], ["0.5", "1", "2", "5", "10", "20"])
+ax.set_xlabel("OC / EC ratio (IMPROVE: TOR)")
 ax.set_ylabel("FTIR EC / TOR EC")
-ax.legend(loc="lower left", fontsize=10, framealpha=.9, frameon=True, edgecolor="white")
-save(fig, "f5_ratio_vs_loading.png")
-hi_pool = float(pl[pl.load > 16].ratio.median()); mid_pool = float(pl[(pl.load > 2) & (pl.load <= 8)].ratio.median())
-hi_an = float(al[al.load > 16].ratio.median()); n_hi_an = int((al.load > 16).sum())
-print("ratio vs loading, pool:\n", pg.round(2), "\nanalogs:\n", ag.round(2))
+ax.legend(loc="lower right", fontsize=10, framealpha=.9, frameon=True, edgecolor="white")
+save(fig, "f5_ratio_vs_ocec.png")
+lo_pool = float(pl[pl.tor_oc_ec <= 3].ratio.median()); n_lo = int((pl.tor_oc_ec <= 3).sum())
+mid_pool = float(pl[(pl.tor_oc_ec > 4.5) & (pl.tor_oc_ec <= 8)].ratio.median())
+hi_pool = float(pl[pl.tor_oc_ec > 11].ratio.median())
+# does OC/EC still matter at fixed loading? (the loading trend is mostly OC/EC: heavier filters are more EC-rich)
+within = pl.assign(lb=pd.cut(pl.load, [0, 2, 4, 8, 16, 1000]), ob=pd.cut(pl.tor_oc_ec, [0, 3, 8, 1e4])) \
+    .pivot_table(index="lb", columns="ob", values="ratio", aggfunc="median", observed=True)
+assert (within.iloc[:, 0] < within.iloc[:, -1]).all(), within
+lo_range = (float(within.iloc[:, 0].min()), float(within.iloc[:, 0].max()))
+print("ratio vs OC/EC, pool:\n", pg.round(2), "\nanalogs:\n", ag.round(2), "\nwithin loading bins:\n", within.round(2))
 
 # ---------------------------------------------------------------- f6 Addis chemistry by season
-from data_matching import load_filter_data  # noqa: E402
-
-f = load_filter_data()
+f = fd
 e = f[f.Site.eq("ETAD") & f.Parameter.str.startswith("ChemSpec_")].copy()
 datecol = "SampleDate"
 # elements are reported in ng/m³, ions/OM/BC/mass in µg/m³: put everything in µg/m³
@@ -334,7 +357,7 @@ notes(s,
       "First a bit of context on what the air in Addis is made of. Then the problem itself: FTIR elemental carbon "
       "in Addis correlates with an independent measurement but sits on the wrong scale. Then the twist: the same "
       "FTIR method works well on typical US filters, but not on the US filters that look most like Addis. "
-      "Last, why: those samples are much more heavily loaded than what the calibration learned from, and FTIR under-reads more the heavier a filter gets.",
+      "Last, why: those samples are much heavier and much more soot-dominated than what the calibration learned from, and FTIR under-reads EC-rich filters.",
       "This is a practice run of the AAAR poster story, laid out as slides first (Ann's suggestion). "
       "PLS calibration-search material (specification curve, cohorts, VIBES baseline, k-sweep) is deliberately "
       "left out of the main slides; it is for discussion. Leave at least 20 minutes for questions.")
@@ -402,45 +425,48 @@ fig_slide(
     "Ann's self-prediction question: IMPROVE predicts IMPROVE well overall (slide 4) and the analogs fit well "
     "when they are themselves the calibration set (CV R² 0.5-0.9, bias ~0); the failure is transfer.")
 
-# 6 loading
+# 6 two extremes
 fig_slide(
-    f"Addis filters carry about {ratio:.0f} times more EC per filter than a typical IMPROVE filter",
-    FIG / "f4_loading_per_filter.png",
-    "Why would that happen? First, loading. This shows how much EC sits on each filter, on a log scale. "
-    f"Grey is the IMPROVE calibration pool, amber is Addis. The median Addis filter has about {ratio:.0f} times "
-    f"more EC on it than the median IMPROVE filter, and {100 * (ad_mass > p99).mean():.0f} percent of Addis filters are above "
-    "IMPROVE's 99th percentile. The calibration has almost never seen filters like these.",
-    "Per filter = HIPS Fabs / MAC 10 × sampled volume, so both networks are on the same footing "
-    "(IMPROVE ~33 m³ per filter at 22 L/min, SPARTAN ~7 m³ at 5 L/min). In concentration the gap looks like ~41× "
-    "because of the volume difference; per filter is the fair comparison for what the FTIR sees. "
-    "Loading alone is not the whole story: analogs that cover the Addis loading range are still biased.")
+    "Addis filters are extreme in two ways: far heavier and far more EC-rich than US filters",
+    FIG / "f4_addis_extremes.png",
+    "Why would that happen? Addis filters are unusual in two ways. On the left, how much EC sits on each filter: "
+    f"the typical Addis filter carries about {ratio:.0f} times more than the typical US filter. On the right, the ratio of "
+    f"organic carbon to elemental carbon. US filters sit around {imp_oe.median():.0f}; Addis sits around {ad_oe.median():.1f}, "
+    f"lower than {100 - oe_pct:.1f} percent of the US filters. So Addis samples are both heavier and much more "
+    "soot-dominated than anything the calibration learned from.",
+    "Left: per filter = HIPS Fabs / MAC 10 × sampled volume, so both networks are on the same footing "
+    "(IMPROVE ~33 m³ per filter at 22 L/min, SPARTAN ~7 m³ at 5 L/min); in concentration the gap looks like ~41×. "
+    f"{100 * (ad_mass > p99).mean():.0f} % of Addis filters are above IMPROVE's 99th percentile. "
+    "Right: Addis has no TOR, so Addis OC/EC is SPARTAN OC (FTIR-derived) over SPARTAN BC (HIPS-based); IMPROVE is "
+    f"TOR OC/EC. The FTIR OC is partly circular, but OC would have to be about {imp_oe_p5 / ad_oe.median():.0f}× higher "
+    f"for the Addis median to reach even IMPROVE's 5th percentile ({imp_oe_p5:.1f}). Dashed lines are medians.")
 
-# 7 under-reading grows with loading
+# 7 FTIR/TOR vs OC/EC
 fig_slide(
-    "FTIR under-reads more as filters get heavier, and Addis filters are heavier still",
-    FIG / "f5_ratio_vs_loading.png",
-    "This ties the last two slides together. Each point is one held-out US filter: how much EC is on it along "
-    "the bottom, and FTIR divided by TOR up the side, where 1 means they agree. For typical loadings FTIR and TOR "
-    f"agree, a ratio of about {mid_pool:.1f}. As filters get heavier the ratio drops below 1, to about {hi_pool:.1f} for "
-    f"the heaviest US filters, and the Addis-like ones in red follow the same path, about {hi_an:.1f}. The shaded band is where "
-    "Addis filters sit: past the end of almost everything the calibration has seen. So the heavier the sample, the "
-    "more FTIR under-reads, and Addis is the extreme case.",
-    "Loading on x is from HIPS (Fabs / MAC 10 × volume), not TOR, so the ratio is not plotted against its own "
-    "denominator. Same all-IMPROVE lot-251 spline calibration and held-out sites as slides 4 and 5. Filters below 1 µg are not shown and ratios above 2 "
-    "are drawn at the top edge. At low loadings the ratio is above 1 mostly because of the small positive "
-    "intercept (+0.02 µg/m³ ≈ 0.6 µg per IMPROVE filter); read the right-hand side. "
-    f"Binned medians, held-out IMPROVE: 2 to 8 µg {mid_pool:.2f}, above 16 µg {hi_pool:.2f}; Addis-like above 16 µg "
-    f"{hi_an:.2f} (n {n_hi_an}, small). The Addis band is from HIPS, because Addis has no TOR: we cannot plot Addis "
-    "points here. Composition, if asked: Addis spectra have about 2× the Si-O dust band (~1035 cm⁻¹) of a typical "
-    "IMPROVE filter, and Kiremt CH peaks stand out more against OH/NH, but both stay inside IMPROVE's range filter by "
-    "filter (about 2 % of Addis above IMPROVE p95). Loading is the clear outlier; composition is not on its own.")
+    "FTIR under-reads EC on EC-rich US filters, and Addis is more EC-rich than almost all of them",
+    FIG / "f5_ratio_vs_ocec.png",
+    "This connects the two. Each point is one held-out US filter: its OC/EC ratio along the bottom, and FTIR divided "
+    f"by TOR up the side, where 1 means they agree. For typical US filters FTIR and TOR agree, a ratio around {mid_pool:.1f}. "
+    f"On the most EC-rich US filters, OC/EC below 3, FTIR reads only about {lo_pool:.1f} of TOR, and the Addis-like "
+    "filters in red follow the same line. The shaded band is where Addis sits: further down the OC/EC scale than "
+    "nearly any US filter. So the more soot-dominated the sample, the more FTIR under-reads, and Addis is the "
+    "extreme case.",
+    "Same all-IMPROVE lot-251 spline calibration and held-out sites as slides 4 and 5; ratios above 2 drawn at the "
+    f"top edge. Binned medians: OC/EC ≤ 3 {lo_pool:.2f} (n {n_lo}), 4.5 to 8 {mid_pool:.2f}, > 11 {hi_pool:.2f}. "
+    "High-OC/EC filters read above 1 partly because they are the low-EC filters, where the small positive intercept "
+    "matters. Not a loading effect in disguise: within every loading band the OC/EC ≤ 3 filters read lower "
+    f"(medians {lo_range[0]:.2f} to {lo_range[1]:.2f}) than OC/EC > 8; in a robust fit of log ratio on log loading and "
+    "log OC/EC, OC/EC carries the effect (+0.57) and loading almost none (-0.09). Heavier US filters are also more "
+    "EC-rich, which is why FTIR/TOR also drifts down with loading. Addis band uses OC (FTIR) / BC (HIPS), see slide 6; "
+    "no Addis points because Addis has no TOR. Composition beyond OC/EC: Addis Si-O dust band ~2× typical IMPROVE but "
+    "inside IMPROVE's range filter by filter.")
 
 # 8 takeaway
 text_slide(
     "Validating on the whole US network hides a calibration gap that matters for the Global South",
     ["FTIR EC calibrated on IMPROVE works well on typical US filters.",
      "It under-reads the US filters that look most like Addis Ababa, even though TOR and HIPS agree on them.",
-     "FTIR under-reads more as loading rises, and Addis filters are far more heavily loaded than the calibration set.",
+     "FTIR under-reads EC-rich filters, and Addis filters are heavier and more EC-rich than almost any US filter.",
      "So the Addis bias is a coverage problem that also exists inside the US network, not a quirk of one site."],
     "To sum up. The established FTIR method works on the samples it was built from. It struggles on samples "
     "that look like Addis, and those exist inside the US network too, they are just rare, so whole-network "

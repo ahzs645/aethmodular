@@ -8,8 +8,8 @@ Deck: `aaar_practice_2026-10-15.pptx` (8 slides, built by `build.py`; every numb
 An established FTIR EC calibration built on IMPROVE works on typical US filters (held-out slope 0.93, R² 0.73)
 but reads only about half of TOR on the 97 held-out US filters that look most like Addis (0.48, R² 0.46), even
 though TOR and HIPS agree on them (0.91, R² 0.82). Addis filters carry ~9× the EC per filter of a typical IMPROVE
-filter (76 % above IMPROVE's p99), and in IMPROVE itself FTIR/TOR drops from ~1.0 to ~0.8 as filters get
-heavier. Coverage problem, not a one-site quirk.
+filter and have OC/EC ~0.7 vs IMPROVE ~5.5 (below 99.6 % of IMPROVE). In IMPROVE itself FTIR reads ~0.7 of TOR on
+filters with OC/EC below 3, at every loading. Coverage problem, not a one-site quirk.
 
 ## Slide order
 
@@ -18,8 +18,8 @@ heavier. Coverage problem, not a one-site quirk.
 3. The problem: Addis FTIR vs HIPS, Deming 2.30x −6.09, R² 0.78
 4. Method works on held-out IMPROVE
 5. Same calibration under-reads Addis-like IMPROVE filters (key slide)
-6. Loading per filter, ~9×
-7. FTIR/TOR falls with loading; Addis sits beyond the IMPROVE range
+6. Two extremes: ~9× more EC per filter, OC/EC 0.7 vs 5.5
+7. FTIR/TOR falls with OC/EC (0.7 below OC/EC 3); Addis sits further down still
 8. Takeaway
 
 ## Ann's asks from the 9 Oct email
@@ -34,8 +34,12 @@ heavier. Coverage problem, not a one-site quirk.
   high. Say "transfers poorly", not "underestimates", for Addis. "Under-reads" is right for the IMPROVE analogs.
 - No TOR at Addis; HIPS is the reference there. TOR and HIPS agree on IMPROVE analogs.
 - "Most Addis-like" depends on the similarity metric; spline and VIBES pick mostly different analogs.
-- Slide 7: loading on x is from HIPS, not TOR (avoids plotting a ratio against its own denominator). Addis has no
-  TOR, so there are no Addis points on it, only the band. Low-loading ratios > 1 are the small positive intercept.
+- Addis OC/EC is SPARTAN OC (FTIR-derived) / BC (HIPS): no TOR at Addis. OC would need ~3x higher just to reach
+  IMPROVE's 5th percentile, so the conclusion survives the circularity.
+- It is OC/EC, not loading: OC/EC < 3 reads lower in every loading band; robust fit gives OC/EC +0.57, loading
+  -0.09. The loading trend we saw first is heavier US filters also being more EC-rich.
+- No Addis points on slide 7 (no TOR), only the band. High-OC/EC ratios > 1 are partly the small intercept on
+  low-EC filters.
 - Don't claim Addis is "dustier than IMPROVE" outright: its Si-O band is ~2x a typical IMPROVE filter but inside
   IMPROVE's range filter by filter. Loading is the clear outlier.
 - Chemistry slide: OM is FTIR-derived, BC is HIPS-based; medians don't sum to median PM2.5.
