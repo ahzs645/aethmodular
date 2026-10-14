@@ -34,6 +34,18 @@
         "gallery/share/dist"
       ],
       "port": 5180
+    },
+    {
+      "name": "gallery-pages",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5181",
+        "-d",
+        "gallery/share/pages-dist"
+      ],
+      "port": 5181
     }
   ]
 }
