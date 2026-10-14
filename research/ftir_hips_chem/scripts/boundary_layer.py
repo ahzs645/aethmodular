@@ -16,6 +16,10 @@ site-year as parquet, so an interrupted pull resumes where it stopped.
     fetch_site('ETAD', 9.0, 38.76, '2022-01-01', '2024-12-31', cache)   # downloads missing years
     blh = load_site('ETAD', cache)                                       # hourly UTC series, metres
     window_mean(blh, '2023-07-01 00:00', '2023-07-02 00:00')             # mean over a sampling window
+
+Open-Meteo's ERA5 BLH is empty for Jan-Jun 2024. workflows/colab_arco_blh_gapfill.py fills it from
+the public ARCO-ERA5 store on a Colab VM; import_arco_fill() stores the result and load_site uses it
+only for hours Open-Meteo left empty.
 """
 
 from __future__ import annotations
@@ -120,7 +124,38 @@ def load_site(code: str, cache) -> pd.Series:
     if not files:
         raise FileNotFoundError(f"no cached boundary-layer height for {code} in {cache}")
     frame = pd.concat(pd.read_parquet(f).astype({"blh_m": "float64"}) for f in files).drop_duplicates("time").sort_values("time")
-    return frame.set_index("time").blh_m
+    blh = frame.set_index("time").blh_m
+    fill_path = Path(cache) / FILL_FILE
+    if fill_path.exists() and blh.isna().any():
+        # Open-Meteo has no BLH for Jan-Jun 2024; fill only those empty hours from ARCO-ERA5
+        fill = pd.read_parquet(fill_path).query("code == @code").set_index("time").blh_m
+        blh = blh.fillna(fill.reindex(blh.index))
+    return blh
+
+
+FILL_FILE = "arco_fill.parquet"
+
+
+def import_arco_fill(npz, cache_root) -> dict:
+    """Split the Colab ARCO-ERA5 gap fill (workflows/colab_arco_blh_gapfill.py) into per-network files.
+
+    ``cache_root`` holds one folder per network (spartan/, improve/); codes in the npz
+    are "network/CODE". load_site then uses these values only where Open-Meteo is empty.
+    """
+    import numpy as np
+    d = np.load(npz)
+    times = pd.to_datetime(d["time"].astype("datetime64[h]"))
+    counts = {}
+    for network in sorted({c.split("/")[0] for c in d["code"]}):
+        cols = [i for i, c in enumerate(d["code"]) if c.startswith(network + "/")]
+        frame = pd.DataFrame({"time": np.tile(times, len(cols)),
+                              "code": np.repeat([d["code"][i].split("/", 1)[1] for i in cols], len(times)),
+                              "blh_m": d["blh_m"][:, cols].T.ravel().astype("float64")})
+        out = Path(cache_root) / network / FILL_FILE
+        out.parent.mkdir(parents=True, exist_ok=True)
+        frame.to_parquet(out, index=False)
+        counts[network] = len(cols)
+    return counts
 
 
 def window_mean(blh: pd.Series, start, end) -> float:
