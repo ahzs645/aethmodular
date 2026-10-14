@@ -429,6 +429,14 @@ export default function App() {
     return kept.size === 0 || kept.size === names.size ? null : kept
   }, [seasonsOn, activeSeasons, seasons])
 
+  // what the date brush draws: every filter except the date cut, so its range follows the picked sites
+  const brushRows = useMemo(
+    () => baseRows
+      .filter((r) => !seasonSel || seasonSel.has(r.season))
+      .filter((r) => (netView ? netView.chosenNames.has(r.site) : !activeSites || activeSites.has(r.site)))
+      .filter((r) => !dropIds.has(r.id) && (!keepIds || keepIds.has(r.id))),
+    [baseRows, seasonSel, activeSites, netView, dropIds, keepIds]
+  )
   const rows = useMemo(
     () =>
       baseRows
@@ -714,7 +722,7 @@ export default function App() {
         setConvention(null)
       },
     }
-    return <SubsetBar meta={meta} caps={caps} brushRows={baseRows} state={state} actions={actions} />
+    return <SubsetBar meta={meta} caps={caps} brushRows={brushRows} state={state} actions={actions} />
   })()
 
   return (

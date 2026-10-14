@@ -48,7 +48,9 @@ export function DateBrush({
     const first = new Date(keys[0] + '-01T00:00:00')
     const last = new Date(keys[keys.length - 1] + '-01T00:00:00')
     const end = new Date(last.getFullYear(), last.getMonth() + 1, 1)
-    const x = d3.scaleTime().domain([first, end]).range([0, innerW])
+    // a little room either side (3 % of the span, at least a month) so the first and last bars are not on the edge
+    const pad = Math.max(31 * 864e5, 0.03 * (end.getTime() - first.getTime()))
+    const x = d3.scaleTime().domain([new Date(first.getTime() - pad), new Date(end.getTime() + pad)]).range([0, innerW])
     const siteNames = meta.sites.map((s) => s.name)
     const stacks = keys.map((k) => {
       const rec = byMonth.get(k)!
