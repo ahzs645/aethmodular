@@ -12,6 +12,8 @@ export interface SiteItem {
   label: string
   /** state, country or site code under the name */
   sub?: string
+  /** the network, when two are shown together */
+  group?: string
   lat: number | null
   lon: number | null
   color: string
@@ -25,7 +27,7 @@ export interface SiteItem {
  * sites first), quick buttons (focus sites, all, none) and **Map…**, a large map dialog for
  * picking by clicking. All edit one selection. With only the four focus sites, plain chips.
  */
-export function SitePicker({ items, onToggle, onAll, onClear, onFocus, allSelected = false, chipsOnly = false, limitNote, noun = 'sites' }: {
+export function SitePicker({ items, onToggle, onAll, onClear, onFocus, allSelected = false, chipsOnly = false, limitNote, noun = 'sites', allLabel = 'Select all' }: {
   items: SiteItem[]
   onToggle: (key: string) => void
   /** select every site (absent where sites load one by one, e.g. IMPROVE) */
@@ -40,10 +42,12 @@ export function SitePicker({ items, onToggle, onAll, onClear, onFocus, allSelect
   /** e.g. "3 of 10 IMPROVE sites" */
   limitNote?: string
   noun?: string
+  allLabel?: string
 }) {
   const [mapOpen, setMapOpen] = useState(false)
   const [query, setQuery] = useState('')
   const selected = items.filter((it) => it.selected)
+  const mixed = new Set(items.map((it) => it.group)).size > 1
   const mapButton = <button type="button" className="btn quiet" onClick={() => setMapOpen(true)} title="Pick sites on a large map">Map…</button>
   const q = query.trim().toLowerCase()
   const shown = useMemo(() => {
@@ -68,7 +72,7 @@ export function SitePicker({ items, onToggle, onAll, onClear, onFocus, allSelect
         <>
           <div className="site-picker-bar">
             {onFocus && <button type="button" className="btn quiet" onClick={onFocus} title="Beijing, Delhi, JPL and Addis Ababa">Focus sites</button>}
-            {onAll && <button type="button" className="btn quiet" onClick={onAll} disabled={allSelected}>Select all</button>}
+            {onAll && <button type="button" className="btn quiet" onClick={onAll} disabled={allSelected}>{allLabel}</button>}
             {onClear && <button type="button" className="btn quiet" onClick={onClear} disabled={selected.length === 0}>Deselect all</button>}
             <span className="site-picker-count">{limitNote ?? `${selected.length} of ${items.length}`}</span>
           </div>
@@ -84,6 +88,7 @@ export function SitePicker({ items, onToggle, onAll, onClear, onFocus, allSelect
                   <input type="checkbox" checked={it.selected} onChange={() => onToggle(it.key)} />
                   <span className="site-check" style={{ ['--chip' as string]: it.color }} aria-hidden="true" />
                   <span className="site-name">{it.label}{it.sub && <span className="site-sub"> · {it.sub}</span>}</span>
+                  {it.group && mixed && <span className={`site-net ${it.group.toLowerCase()}`}>{it.group}</span>}
                   <span className="site-n">{it.n.toLocaleString()}</span>
                 </label>
               </li>

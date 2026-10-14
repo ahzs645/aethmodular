@@ -13,7 +13,7 @@ import { usePrefs } from '@/lib/prefs'
 import { useHighlight } from '@/lib/highlight'
 import type { FilterRow, MetaFile, SeasonMeta } from '@/lib/types'
 import { PMF_SCHEMES, type PmfGroup, type PmfScheme } from '@/lib/pmfGroups'
-import { NETWORKS, type Network } from '@/lib/networks'
+import { NETWORKS, hasImprove, hasSpartan, networkOf, type Network } from '@/lib/networks'
 import { SitePicker, type SiteItem } from '@/components/SitePicker'
 import { Combobox } from '@/components/Combobox'
 
@@ -76,6 +76,9 @@ export interface SubsetState {
   siteLimitNote?: string
   /** calendars the picker offers (networks have no per-site local calendar) */
   calendarOptions: string[]
+  /** filters dropped by hand from a brush, and the size of a "keep only" set (null: none) */
+  dropped?: number
+  kept?: number | null
   /** the site pick is the network's default (SPARTAN: the four focus sites) */
   sitesAtDefault?: boolean
   allSitesSelected?: boolean
@@ -94,6 +97,10 @@ export interface SubsetActions {
   onAllSites: () => void
   onClearSites?: () => void
   onFocusSites?: () => void
+  onDropIds?: (ids: Set<string>) => void
+  onKeepIds?: (ids: Set<string>) => void
+  onClearDrop?: () => void
+  onClearKeep?: () => void
   onNetwork: (n: Network) => void
   onIncludeExcluded: (v: boolean) => void
   onDateRange: (r: DateRange | null) => void
@@ -145,9 +152,10 @@ export function SubsetBar({
   const seasonsOn = s.seasonsOn ?? true
   const pmfOn = !!caps.pmf && !!s.pmfOn
   const allPmf = !pmfOn || !s.pmfGroups || (s.activePmf?.size ?? 0) === s.pmfGroups.length
+  const handEdits = (s.dropped ?? 0) > 0 || s.kept != null
   const isDefault =
-    allSeasons && allSites && !pmfOn && seasonsOn && !s.includeExcluded && !s.dateRange && s.convention === s.defaultConvention
-  const nActive = (caps.seasons && seasonsOn && !allSeasons ? 1 : 0) + (caps.sites && !allSites ? 1 : 0) + (pmfOn ? 1 : 0) + (s.dateRange ? 1 : 0) + (s.includeExcluded && caps.excluded ? 1 : 0)
+    allSeasons && allSites && !pmfOn && seasonsOn && !s.includeExcluded && !s.dateRange && s.convention === s.defaultConvention && !handEdits
+  const nActive = (caps.seasons && seasonsOn && !allSeasons ? 1 : 0) + (caps.sites && !allSites ? 1 : 0) + (pmfOn ? 1 : 0) + (s.dateRange ? 1 : 0) + (s.includeExcluded && caps.excluded ? 1 : 0) + (handEdits ? 1 : 0)
 
   // seasons grouped by the site whose calendar they belong to (one group under the shared bins)
   const seasonGroups: { site: string | null; seasons: SeasonMeta[] }[] = []
@@ -167,11 +175,21 @@ export function SubsetBar({
       {s.dateRange && <span>{s.dateRange[0]} → {s.dateRange[1]}</span>}
       {s.includeExcluded && caps.excluded && <span>+{s.nExcluded} excluded</span>}
       {hl.selected && (
-        <span className="pill" title="Filters picked by a brush; every chart dims the rest. A highlight, not a filter: statistics still use the whole subset.">
-          {hl.selected.size} brushed
-          <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 4 }} onClick={() => hl.setSelected(null)}>×</button>
+        <span className="brush-actions">
+          <span className="pill" title="Filters picked by a brush; every chart dims the rest. A highlight until you keep or exclude them.">
+            {hl.selected.size} brushed
+            <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 4 }} onClick={() => hl.setSelected(null)} aria-label="Clear the brush">×</button>
+          </span>
+          {a.onKeepIds && <button type="button" className="btn quiet" title="Filter every chart to the brushed filters"
+            onClick={() => { a.onKeepIds!(hl.selected!); hl.setSelected(null) }}>Keep only these</button>}
+          {a.onDropIds && <button type="button" className="btn quiet" title="Remove the brushed filters from every chart (kept in the link; Clear puts them back)"
+            onClick={() => { a.onDropIds!(hl.selected!); hl.setSelected(null) }}>Exclude these</button>}
         </span>
       )}
+      {(s.dropped ?? 0) > 0 && <span className="pill">{s.dropped} excluded by hand
+        <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 4 }} onClick={a.onClearDrop} aria-label="Put the hand-excluded filters back">×</button></span>}
+      {s.kept != null && <span className="pill">keeping {s.kept} brushed
+        <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 4 }} onClick={a.onClearKeep} aria-label="Stop keeping only the brushed filters">×</button></span>}
     </div>
   )
 
@@ -204,12 +222,22 @@ export function SubsetBar({
           {summary}
           <Row label="network">
             {caps.networks ? (
-              <Segmented value={net.label as any} options={NETWORKS.filter((x) => x.key !== 'focus' || s.network === 'focus').map((x) => x.label) as any}
-                onChange={(v: string) => a.onNetwork(NETWORKS.find((x) => x.label === v)?.key ?? 'focus')} title={NETWORKS.map((x) => `${x.label}: ${x.note}`).join(' · ')} />
+              <span className="net-toggles" role="group" aria-label="Networks (pick one or both)">
+                {s.network === 'focus' && <button type="button" className="net-toggle" aria-pressed="true" disabled>Focus sites</button>}
+                {(['spartan', 'improve'] as const).map((k) => {
+                  const on = k === 'spartan' ? hasSpartan(s.network) : hasImprove(s.network)
+                  const other = k === 'spartan' ? hasImprove(s.network) : hasSpartan(s.network)
+                  return <button key={k} type="button" className="net-toggle" aria-pressed={on}
+                    title={`${NETWORKS.find((x) => x.key === k)!.note}${on && other ? ' · click to show only the other network' : !on ? ' · click to add' : ''}`}
+                    onClick={() => a.onNetwork(s.network === 'focus' ? k : on ? (other ? networkOf(k !== 'spartan', k !== 'improve') : s.network) : 'both')}>
+                    {k === 'spartan' ? 'SPARTAN' : 'IMPROVE'}
+                  </button>
+                })}
+              </span>
             ) : (
               <span className="method-note">{s.chosenNetwork === 'focus' ? net.label : `This tab shows the focus sites; ${NETWORKS.find((x) => x.key === s.chosenNetwork)?.label} applies on Correlation, Distribution, Evolution, Ranking and Part of a whole.`}</span>
             )}
-            {caps.networks && <span className="method-note" style={{ display: 'block' }}>{net.note}{s.networkLoading ? ' · loading…' : ''}{s.networkError ? ` · could not load: ${s.networkError}` : ''}</span>}
+            {caps.networks && <span className="method-note" style={{ display: 'block' }}>{s.network === 'both' ? 'SPARTAN and IMPROVE together; HIPS absorption and PM₂.₅ mass are measured by both, EC/OC by different methods (FTIR vs TOR)' : net.note}{s.networkLoading ? ' · loading…' : ''}{s.networkError ? ` · could not load: ${s.networkError}` : ''}</span>}
           </Row>
           <RegressionControls />
 
@@ -217,7 +245,7 @@ export function SubsetBar({
             <>
               <Row label="axes">
                 <FieldSelect label="x" value={s.xField} meta={meta} onChange={a.onXField} />
-                <SwapButton onClick={() => { a.onXField(s.yField); a.onYField(s.xField) }} />
+                <SwapButton onClick={() => a.onXField(s.yField)} />
                 <FieldSelect label="y" value={s.yField} meta={meta} onChange={a.onYField} />
                 {explain && <span className="row-note">shared by every chart on this tab</span>}
               </Row>
@@ -258,9 +286,10 @@ export function SubsetBar({
             <Row label="sites">
               <SitePicker items={s.siteItems} onToggle={a.onToggleSite}
                 onAll={s.network === 'improve' ? undefined : a.onAllSites} allSelected={!!s.allSitesSelected}
-                onClear={s.network === 'focus' ? undefined : a.onClearSites} onFocus={s.network === 'spartan' ? a.onFocusSites : undefined}
+                onClear={s.network === 'focus' ? undefined : a.onClearSites} onFocus={hasSpartan(s.network) ? a.onFocusSites : undefined}
                 chipsOnly={s.network === 'focus'} limitNote={s.siteLimitNote}
-                noun={s.network === 'improve' ? 'IMPROVE sites' : s.network === 'spartan' ? 'SPARTAN sites' : 'sites'} />
+                noun={s.network === 'improve' ? 'IMPROVE sites' : s.network === 'spartan' ? 'SPARTAN sites' : 'sites'}
+                allLabel={s.network === 'both' ? 'All SPARTAN' : 'Select all'} />
             </Row>
           )}
 

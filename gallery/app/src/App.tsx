@@ -1,7 +1,7 @@
 import { RegressionProvider, RegressionControls, parseEstimators, estimatorParam, type Estimator } from '@/lib/regressionPrefs'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useGalleryData } from '@/hooks/useGalleryData'
-import { HighlightProvider, baseFilterId, type FilterRecord } from '@/lib/highlight'
+import { HighlightProvider, baseFilterId, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { NO_PMF, pmfGroups, pmfKeyByDate, pmfLabel, type PmfScheme } from '@/lib/pmfGroups'
 import { EXPLAIN_AVAILABLE, PrefsProvider, usePrefs } from '@/lib/prefs'
 import { listParam, listToParam, readParams, writeParams } from '@/lib/url'
@@ -36,6 +36,8 @@ import { SatoshiFollowupPage } from '@/pages/SatoshiFollowupPage'
 import { BlanksPage } from '@/pages/BlanksPage'
 import { Combobox } from '@/components/Combobox'
 import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
+import { ViewsMenu } from '@/components/ViewsMenu'
+import { currentView, isEmbed, viewUrl } from '@/lib/views'
 import { SideDock, SubsetBar, type SubsetActions, type SubsetCaps, type SubsetState } from '@/components/SubsetBar'
 import { SampleDrawer } from '@/components/SampleDrawer'
 import { RecordDrawer } from '@/components/RecordDrawer'
@@ -43,7 +45,7 @@ import type { DateRange } from '@/components/DateBrush'
 import type { FilterRow, SeasonMeta, SiteMeta } from '@/lib/types'
 import { AXES_MODES, DEFAULT_AXES, type AxesMode, type AxesOpts } from '@/lib/axes'
 import { localSeasonsFor, qualifySeason } from '@/siteSeasons'
-import { MAX_IMPROVE_SITES, MONTH_QUARTERS, NETWORK_DEFAULTS, isNetwork, networkColor, useNetworkData, type Network } from '@/lib/networks'
+import { MAX_IMPROVE_SITES, MONTH_QUARTERS, NETWORK_DEFAULTS, hasImprove, hasSpartan, isNetwork, mergeGroups, networkColor, useNetworkData, type Network } from '@/lib/networks'
 import type { SiteItem } from '@/components/SitePicker'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 
@@ -92,6 +94,9 @@ const meetingFromParams = (p: URLSearchParams): MeetingKey =>
  * ETAD-only and carries no exclusion flags, so offering four site chips and a
  * 942-filter count there would just be wrong.
  */
+/** a comma-separated id list from the URL (filters dropped or kept by hand) */
+const idSet = (v: string | null): Set<string> | null => (v ? new Set(v.split(',').filter(Boolean)) : null)
+
 /** `ssites` in the URL: absent = the four focus sites, * = every SPARTAN site, - = none, else codes */
 const parseSpartanSel = (v: string | null): string[] | 'all' | null =>
   v == null || v === '' ? null : v === '*' ? 'all' : v === '-' ? [] : v.split(',').filter(Boolean)
@@ -163,6 +168,9 @@ export default function App() {
   const [activePmf, setActivePmf] = useState<Set<string> | null>(listParam(init.get('pmf')))
   // each filter dimension can be switched off: seasonality is on by default; PMF source is off,
   // and switching it on keeps only filters that have a PMF day
+  // hand edits from a brush, on top of the dataset's exclusions: drop these filters, or keep only these
+  const [dropIds, setDropIds] = useState<Set<string>>(() => idSet(init.get('drop')) ?? new Set())
+  const [keepIds, setKeepIds] = useState<Set<string> | null>(() => idSet(init.get('keep')))
   const [seasonsOn, setSeasonsOn] = useState(init.get('seas') !== '0')
   const [pmfOn, setPmfOn] = useState(init.get('pmfon') === '1')
   const [dateRange, setDateRange] = useState<DateRange | null>(
@@ -196,8 +204,11 @@ export default function App() {
     setOpenRec(null)
   }, [])
 
+  // x and y never show the same field: picking the other axis's field swaps the two
+  const chooseX = useCallback((f: string) => { if (f === yField) setYField(xField); setXField(f) }, [xField, yField])
+  const chooseY = useCallback((f: string) => { if (f === xField) setXField(yField); setYField(f) }, [xField, yField])
   // axis titles on the charts edit the same x / y / measurement as the sidebar (components/AxisFieldPopover)
-  const setAxisField = useCallback((role: AxisRole, f: string) => (role === 'x' ? setXField : role === 'y' ? setYField : setField)(f), [])
+  const setAxisField = useCallback((role: AxisRole, f: string) => (role === 'x' ? chooseX : role === 'y' ? chooseY : setField)(f), [chooseX, chooseY])
   const axisValues = useMemo(() => ({ x: xField, y: yField, field }), [xField, yField, field])
 
   useEffect(() => {
@@ -219,6 +230,8 @@ export default function App() {
       from: dateRange?.[0],
       to: dateRange?.[1],
       excl: includeExcluded ? '1' : null,
+      drop: dropIds.size ? [...dropIds].join(',') : null,
+      keep: keepIds ? [...keepIds].join(',') : null,
       x: xField !== DEFAULT_X ? xField : null,
       y: yField !== DEFAULT_Y ? yField : null,
       f: field !== DEFAULT_FIELD ? field : null,
@@ -228,7 +241,7 @@ export default function App() {
       log: axes.log ? '1' : null,
       pax: axes.panels === 'Own' ? 'own' : null,
     })
-  }, [tab, meeting, estimators, showCI, convention, activeSeasons, activeSites, network, spartanSel, improveSites, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, pinnedId, axes])
+  }, [tab, meeting, estimators, showCI, convention, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, keepIds, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -253,6 +266,8 @@ export default function App() {
       setPmfOn(p.get('pmfon') === '1')
       setDateRange(p.get('from') && p.get('to') ? [p.get('from')!, p.get('to')!] : null)
       setIncludeExcluded(p.get('excl') === '1')
+      setDropIds(idSet(p.get('drop')) ?? new Set())
+      setKeepIds(idSet(p.get('keep')))
       setXField(p.get('x') ?? DEFAULT_X)
       setYField(p.get('y') ?? DEFAULT_Y)
       setField(p.get('f') ?? DEFAULT_FIELD)
@@ -275,27 +290,31 @@ export default function App() {
   const netView = useMemo(() => {
     if (net === 'focus' || !data) return null
     const d = netData.data
-    if (!d) return { all: [] as SiteMeta[], chosen: [] as SiteMeta[], chosenCodes: new Set<string>(), chosenNames: new Set<string>(), rows: [] as FilterRow[], fields: [] as string[], field_units: {} as Record<string, string>, field_groups: [] as { label: string; fields: string[] }[], coverage: {} as Record<string, number> }
+    if (!d) return { all: [] as SiteMeta[], chosen: [] as SiteMeta[], chosenCodes: new Set<string>(), chosenNames: new Set<string>(), improveCodes: new Set<string>(), nSpartan: 0, rows: [] as FilterRow[], fields: [] as string[], field_units: {} as Record<string, string>, field_groups: [] as { label: string; fields: string[] }[], coverage: {} as Record<string, number> }
+    const sp = hasSpartan(net), im = hasImprove(net)
     // SPARTAN: the four focus sites keep their filters.json rows (HIPS, FTIR groups, exclusions,
     // local calendars) and their names and colours; the other sites bring the public ChemSpec rows
-    const focus = net === 'spartan' ? new Map(data.meta.sites.map((x) => [x.code, x])) : new Map<string, SiteMeta>()
+    const focus = sp ? new Map(data.meta.sites.map((x) => [x.code, x])) : new Map<string, SiteMeta>()
     const sites = d.sites.map((x) => focus.get(x.code) ?? x)
     for (const f of focus.values()) if (!sites.some((x) => x.code === f.code)) sites.push(f)
-    const chosenCodes = new Set(net === 'improve' ? improveSites
-      : spartanSel === null ? [...focus.keys()] : spartanSel === 'all' ? sites.map((x) => x.code) : spartanSel)
+    const spartanCodes = sites.filter((x) => !d.improveCodes.has(x.code)).map((x) => x.code)
+    const chosenCodes = new Set([
+      ...(sp ? (spartanSel === null ? [...focus.keys()] : spartanSel === 'all' ? spartanCodes : spartanSel) : []),
+      ...(im ? improveSites : []),
+    ])
     let i = 0
     const colour = new Map(sites.filter((x) => chosenCodes.has(x.code)).map((x) => [x.name, focus.get(x.code)?.color ?? networkColor(i++)]))
     const paint = (name: string) => colour.get(name) ?? '#9aa5b1'
     const all = sites.map((x) => ({ ...x, color: paint(x.name) }))
-    const rows: FilterRow[] = [...(net === 'spartan' ? data.filters.rows : []), ...d.rows.filter((r) => !focus.has(r.code))]
+    const rows: FilterRow[] = [...(sp ? data.filters.rows : []), ...d.rows.filter((r) => !focus.has(r.code))]
       .map((r) => ({ ...r, color: paint(r.site) }))
-    const fields = net === 'spartan' ? [...new Set([...data.meta.fields, ...d.fields])] : d.fields
-    const groups = net === 'spartan' ? data.meta.field_groups : d.field_groups
+    const fields = sp ? [...new Set([...data.meta.fields, ...d.fields])] : d.fields
+    const groups = sp ? mergeGroups(data.meta.field_groups, d.field_groups) : d.field_groups
     const chosenNames = new Set(all.filter((x) => chosenCodes.has(x.code)).map((x) => x.name))
     const inChosen = rows.filter((r) => chosenNames.has(r.site))
     const coverage = Object.fromEntries(fields.map((f) => [f, inChosen.filter((r) => typeof r[f] === 'number').length]))
-    return { all, chosen: all.filter((x) => chosenCodes.has(x.code)), chosenCodes, chosenNames, rows, fields,
-      field_units: net === 'spartan' ? { ...d.field_units, ...data.meta.field_units } : d.field_units, field_groups: groups, coverage }
+    return { all, chosen: all.filter((x) => chosenCodes.has(x.code)), chosenCodes, chosenNames, improveCodes: d.improveCodes, nSpartan: spartanCodes.length,
+      rows, fields, field_units: sp ? { ...d.field_units, ...data.meta.field_units } : d.field_units, field_groups: groups, coverage }
   }, [net, data, netData.data, improveSites, spartanSel])
   const activeFields = netView ? netView.fields : data?.meta.fields ?? []
 
@@ -327,7 +346,7 @@ export default function App() {
   // networks have no per-site local calendars (siteSeasons.ts covers the four focus sites only)
   const conventions = useMemo<Record<string, SeasonMeta[]>>(() => ({ ...(data?.meta.season_conventions ?? {}), quarters: MONTH_QUARTERS }), [data])
   // the local calendars cover the four focus sites; with other sites in view, shared quarters are the default
-  const focusOnly = net === 'focus' || (net === 'spartan' && !!netView && netView.chosen.every((x) => data?.meta.sites.some((f) => f.name === x.name)))
+  const focusOnly = net === 'focus' || (hasSpartan(net) && !!netView && netView.chosen.every((x) => data?.meta.sites.some((f) => f.name === x.name)))
   const defaultConvention = focusOnly ? 'local' : 'quarters'
   const activeConvention = net === 'improve' && convention === 'local' ? 'quarters' : convention ?? defaultConvention
   const isLocal = activeConvention === 'local'
@@ -396,8 +415,9 @@ export default function App() {
       baseRows
         .filter(inRange)
         .filter((r) => !seasonSel || seasonSel.has(r.season))
-        .filter((r) => (netView ? netView.chosenNames.has(r.site) : !activeSites || activeSites.has(r.site))),
-    [baseRows, inRange, seasonSel, activeSites, netView]
+        .filter((r) => (netView ? netView.chosenNames.has(r.site) : !activeSites || activeSites.has(r.site)))
+        .filter((r) => !dropIds.has(r.id) && (!keepIds || keepIds.has(r.id))),
+    [baseRows, inRange, seasonSel, activeSites, netView, dropIds, keepIds]
   )
 
   // The map has its own site scope; keep date, season and exclusion choices.
@@ -503,7 +523,7 @@ export default function App() {
 
   const subset = (() => {
     if (tab === 'census' || tab === 'baseline' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks') return null
-    const caps = net === 'focus' ? CAPS[tab] : { ...CAPS[tab], datasetLabel: net === 'improve' ? 'IMPROVE samples' : 'SPARTAN filters', excluded: sourceRows.some((r) => r.excluded) }
+    const caps = net === 'focus' ? CAPS[tab] : { ...CAPS[tab], datasetLabel: net === 'improve' ? 'IMPROVE samples' : net === 'both' ? 'SPARTAN filters + IMPROVE samples' : 'SPARTAN filters', excluded: sourceRows.some((r) => r.excluded) }
     const pmfMode = tab === 'pmf'
     const calMode = tab === 'calibration'
     // Counts are computed *before* the dimension's own filter is applied,
@@ -535,7 +555,7 @@ export default function App() {
       ? rawMeta.sites.map((x) => ({ key: x.name, label: x.name, sub: x.location, lat: x.lat, lon: x.lon, color: x.color, n: siteCounts[x.name] ?? 0, selected: !activeSites || activeSites.has(x.name) }))
       : (netView?.all ?? []).map((x) => {
         const on = netView!.chosenCodes.has(x.code)
-        return { key: x.code, label: x.name, sub: net === 'improve' ? x.location : x.code, lat: x.lat, lon: x.lon,
+        return { key: x.code, label: x.name, group: netView!.improveCodes.has(x.code) ? 'IMPROVE' : 'SPARTAN', sub: net === 'improve' ? x.location : x.code, lat: x.lat, lon: x.lon,
           color: on ? x.color : '#9aa5b1', n: net === 'improve' && !on ? x.n_filters : siteCounts[x.name] ?? 0, selected: on }
       })
 
@@ -567,13 +587,16 @@ export default function App() {
       pmfCounts,
       network: net,
       chosenNetwork: network,
+      dropped: dropIds.size,
+      kept: keepIds?.size ?? null,
       networkLoading: netData.loading,
       networkError: netData.error,
       siteItems,
-      siteLimitNote: net === 'improve' ? `${improveSites.length} of ${MAX_IMPROVE_SITES} IMPROVE sites` : undefined,
+      siteLimitNote: net === 'improve' ? `${improveSites.length} of ${MAX_IMPROVE_SITES} IMPROVE sites`
+        : net === 'both' && netView ? `${netView.chosen.length - improveSites.length} SPARTAN · ${improveSites.length}/${MAX_IMPROVE_SITES} IMPROVE` : undefined,
       calendarOptions: net === 'improve' ? ['quarters', ...Object.keys(data.meta.season_conventions)] : ['local', ...Object.keys(conventions)],
-      sitesAtDefault: net === 'spartan' ? spartanSel === null : net === 'improve' ? improveSites.length > 0 : !activeSites,
-      allSitesSelected: net === 'spartan' ? !!netView && netView.chosen.length === netView.all.length : !activeSites,
+      sitesAtDefault: net === 'spartan' ? spartanSel === null : net === 'improve' ? improveSites.length > 0 : net === 'both' ? spartanSel === null && improveSites.length === 0 : !activeSites,
+      allSitesSelected: hasSpartan(net) ? !!netView && netView.chosen.length - (net === 'both' ? improveSites.length : 0) === netView.nSpartan : !activeSites,
     }
     const actions: SubsetActions = {
       onConvention: (v) => {
@@ -598,15 +621,16 @@ export default function App() {
       onSeasonsOn: (v) => { setSeasonsOn(v); if (!v) setActiveSeasons(null) },
       onPmfOn: (v) => { setPmfOn(v); if (!v) setActivePmf(null) },
       onToggleSite: (key) => {
-        if (net === 'improve') {
+        // a site belongs to one network: IMPROVE codes load per site, SPARTAN codes go in spartanSel
+        if (hasImprove(net) && netView?.improveCodes.has(key)) {
           setImproveSites((cur) => cur.includes(key) ? cur.filter((c) => c !== key) : cur.length >= MAX_IMPROVE_SITES ? cur : [...cur, key])
           return
         }
-        if (net === 'spartan') {
-          const cur = new Set(netView?.chosenCodes ?? [])
+        if (hasSpartan(net)) {
+          const cur = new Set([...(netView?.chosenCodes ?? [])].filter((c) => !netView?.improveCodes.has(c)))
           if (cur.has(key)) cur.delete(key)
           else cur.add(key)
-          setSpartanSel(cur.size === (netView?.all.length ?? -1) ? 'all' : [...cur])
+          setSpartanSel(cur.size === (netView?.nSpartan ?? -1) ? 'all' : [...cur])
           return
         }
         const cur = new Set<string>(activeSites ?? siteNames)
@@ -614,13 +638,24 @@ export default function App() {
         else cur.add(key)
         setActiveSites(cur.size === 0 || cur.size === siteNames.length ? null : cur)
       },
-      onAllSites: () => (net === 'spartan' ? setSpartanSel('all') : setActiveSites(null)),
+      onAllSites: () => (hasSpartan(net) ? setSpartanSel('all') : setActiveSites(null)),
       // "Deselect all" empties the pick: the charts show nothing until sites are chosen again
-      onClearSites: () => (net === 'improve' ? setImproveSites([]) : net === 'spartan' ? setSpartanSel([]) : setActiveSites(null)),
+      onClearSites: () => {
+        if (hasImprove(net)) setImproveSites([])
+        if (hasSpartan(net)) setSpartanSel([])
+        if (net === 'focus') setActiveSites(null)
+      },
       onFocusSites: () => setSpartanSel(null),
+      onDropIds: (ids) => setDropIds((cur) => new Set([...cur, ...ids])),
+      // keeping again narrows the kept set to filters in both brushes
+      onKeepIds: (ids) => setKeepIds((cur) => (cur ? new Set([...ids].filter((id) => cur.has(id))) : new Set(ids))),
+      onClearDrop: () => setDropIds(new Set()),
+      onClearKeep: () => setKeepIds(null),
       onNetwork: (n) => {
+        // turning a network on or off keeps the other network's pick
+        if (!hasSpartan(n)) setSpartanSel(null)
+        if (!hasImprove(n)) setImproveSites([])
         setNetwork(n)
-        setSpartanSel(null)
         // each network opens on its own natural pair (focus: HIPS BC vs FTIR EC; IMPROVE: HIPS BC vs TOR EC)
         setXField(NETWORK_DEFAULTS[n].x)
         setYField(NETWORK_DEFAULTS[n].y)
@@ -632,8 +667,8 @@ export default function App() {
       },
       onIncludeExcluded: setIncludeExcluded,
       onDateRange: setDateRange,
-      onXField: setXField,
-      onYField: setYField,
+      onXField: chooseX,
+      onYField: chooseY,
       onField: setField,
       onAxes: setAxes,
       onUnpin: dismissSample,
@@ -642,6 +677,8 @@ export default function App() {
         setActiveSeasons(null)
         setActiveSites(null)
         setSpartanSel(null)
+        setDropIds(new Set())
+        setKeepIds(null)
         if (net === 'improve') setImproveSites([])
         setActivePmf(null)
         setSeasonsOn(true)
@@ -674,6 +711,10 @@ export default function App() {
         />
       )}
       {!openRow && openRec && <RecordDrawer rec={openRec} onClose={dismissSample} />}
+      {isEmbed() && <a className="embed-open" href="#" onClick={async (e) => { e.preventDefault(); window.open((await viewUrl(currentView())), '_blank', 'noopener') }}>Open in the gallery ↗</a>}
+      {(NETWORK_TABS as readonly string[]).includes(tab) && <BrushBar
+        onKeep={(ids) => setKeepIds((cur) => (cur ? new Set([...ids].filter((id) => cur.has(id))) : new Set(ids)))}
+        onDrop={(ids) => setDropIds((cur) => new Set([...cur, ...ids]))} />}
       <Shell nav={nav} wide={tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks'}>
         {/* tabs without the filter panel still get the fit controls where they draw fits */}
         {subset ?? ((tab === 'baseline' || (tab === 'meeting' && meeting === 'followup')) && <RegressionSidebar />)}
@@ -763,24 +804,16 @@ function Shell({ children, nav, wide = false }: { children: React.ReactNode; nav
   )
 }
 
-/** Explain toggle (absent in public builds, see lib/prefs) and copy-link, at the right of the title row. */
+/** Explain toggle (absent in public builds, see lib/prefs) and the Views menu (presets, saved views, share and embed). */
 function HeaderTools() {
   const { explain, setExplain } = usePrefs()
-  const [copied, setCopied] = useState(false)
   return (
     <span className="header-tools">
       {EXPLAIN_AVAILABLE && <label className="toggle" title="Show every chart's explanation and provenance, and the subset bar's captions">
         <input type="checkbox" checked={explain} onChange={(e) => setExplain(e.target.checked)} />
         Explain
       </label>}
-      <button
-        type="button"
-        className="btn quiet"
-        title="The whole view (tab, subset, axes, pinned filter) is in the URL"
-        onClick={() => navigator.clipboard?.writeText(window.location.href).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) })}
-      >
-        {copied ? 'Copied' : 'Copy link'}
-      </button>
+      <ViewsMenu />
     </span>
   )
 }
@@ -797,4 +830,19 @@ function RegressionSidebar() {
       </aside>
     </SideDock>
   </>
+}
+
+/** While a brush is active, a bar at the bottom offers to keep only the brushed filters or exclude them (both go in the link). */
+function BrushBar({ onKeep, onDrop }: { onKeep: (ids: Set<string>) => void; onDrop: (ids: Set<string>) => void }) {
+  const hl = useHighlight()
+  if (!hl.selected) return null
+  const ids = hl.selected
+  return (
+    <div className="brush-bar" role="region" aria-label="Brushed filters">
+      <strong>{ids.size} brushed</strong>
+      <button type="button" className="btn" onClick={() => { onKeep(ids); hl.setSelected(null) }} title="Filter every chart to these filters">Keep only these</button>
+      <button type="button" className="btn" onClick={() => { onDrop(ids); hl.setSelected(null) }} title="Remove these filters from every chart; the Filters panel can put them back">Exclude these</button>
+      <button type="button" className="btn quiet" onClick={() => hl.setSelected(null)} aria-label="Clear the brush">×</button>
+    </div>
+  )
 }

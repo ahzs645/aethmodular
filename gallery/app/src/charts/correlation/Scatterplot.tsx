@@ -303,6 +303,7 @@ function ScatterPanel({
   const HIT = 18
   // d3.brush owns its own DOM, so it is attached imperatively to an empty <g>
   const brushRef = useRef<SVGGElement>(null)
+  const brushObj = useRef<d3.BrushBehavior<unknown> | null>(null)
   useEffect(() => {
     const g = brushRef.current
     if (!g) return
@@ -323,9 +324,14 @@ function ScatterPanel({
       })
     sel.call(brush)
     styleBrush(sel)
+    brushObj.current = brush
     return () => { sel.on('.brush', null); sel.selectAll('*').remove() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brushing, drawn, innerW, innerH])
+  // a selection cleared elsewhere (the brush bar's keep / exclude / ×) takes the drawn box with it
+  useEffect(() => {
+    if (!selected && brushRef.current && brushObj.current && d3.brushSelection(brushRef.current)) d3.select(brushRef.current).call(brushObj.current.move, null)
+  }, [selected])
   const nearest = (e: React.MouseEvent<SVGRectElement>): Point | null => {
     if (drawn.length === 0) return null
     const [mx, my] = d3.pointer(e)

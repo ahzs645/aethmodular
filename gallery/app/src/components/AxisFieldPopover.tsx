@@ -41,13 +41,15 @@ export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; an
     input.current?.focus()
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     const onDown = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) onClose() }
+    // the page scrolling away from the title closes it; scrolling the popover's own list must not
+    const onScroll = (e: Event) => { if (!box.current?.contains(e.target as Node)) onClose() }
     window.addEventListener('keydown', onKey)
     document.addEventListener('pointerdown', onDown)
-    window.addEventListener('scroll', onClose, { passive: true, capture: true })
+    window.addEventListener('scroll', onScroll, { passive: true, capture: true })
     return () => {
       window.removeEventListener('keydown', onKey)
       document.removeEventListener('pointerdown', onDown)
-      window.removeEventListener('scroll', onClose, { capture: true })
+      window.removeEventListener('scroll', onScroll, { capture: true })
     }
   }, [onClose])
   if (!ctx) return null
@@ -69,7 +71,7 @@ export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; an
       <div className="axis-popover-head">
         <strong>{ROLE_TITLE[role]}</strong>
         {role !== 'field' && <button type="button" className="btn quiet" title="Swap x and y"
-          onClick={() => { const x = value.x; set('x', value.y); set('y', x); onClose() }}>⇅ swap</button>}
+          onClick={() => { set('x', value.y); onClose() }}>⇅ swap</button>}
       </div>
       <input ref={input} className="select" type="text" placeholder="Search measurements…" value={query}
         onChange={(e) => { setQuery(e.target.value); setActive(0) }}
@@ -87,6 +89,7 @@ export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; an
               onMouseEnter={() => setActive(i)} onClick={() => pick(r.f)}>
               <span className="combobox-check" aria-hidden="true">{r.f === value[role] ? '✓' : ''}</span>
               <span className="combobox-text">{chemText(r.f)}{prettyUnit(meta.field_units?.[r.f]) && <span className="site-sub"> · {prettyUnit(meta.field_units?.[r.f])}</span>}</span>
+              {role !== 'field' && r.f === value[role === 'x' ? 'y' : 'x'] && <span className="combobox-hint" title="Choosing it swaps x and y">on {role === 'x' ? 'y' : 'x'} · swap</span>}
               {meta.coverage?.[r.f] !== undefined && <span className="combobox-hint">{meta.coverage[r.f]}</span>}
             </button>
           </div>

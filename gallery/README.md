@@ -194,6 +194,27 @@ codes), `isites` (IMPROVE codes).
 Builds for outside readers (`publish_pages.py`, `build_share.py`) set
 `VITE_HIDE_EXPLAIN=1`, which removes the header's Explain toggle; local dev keeps it.
 
+### Views, sharing and embeds
+
+**Views ▾** in the header holds built-in presets (`lib/views.ts` PRESETS), the reader's own
+saved views (this browser only, localStorage) and two share actions. **Copy link** puts the
+whole view (tab, networks, sites, fields, seasons, dates, hand-excluded or kept filters, and
+the per-chart controls in the query string) into one `#v=<token>` made with
+`@firstform/json-url` (the webforms share codec): a preset left unchanged is a ~30-character
+reference, anything else is lz-compressed or raw, whichever is shorter (a view keeping 101
+brushed filters: 564 characters against 1,352 for the plain URL). **Copy embed code** gives an
+iframe with `?embed=1`, which hides the header and filter panel and adds an "Open in the gallery"
+link. Plain hash links still work.
+
+SPARTAN and IMPROVE are a multi-select: with both on, sites from either network share the list,
+the map and the charts (HIPS absorption and PM₂.₅ mass are measured by both; EC/OC by FTIR in
+SPARTAN and TOR in IMPROVE).
+
+With **Brush to select** on the scatterplot, a bar offers **Keep only these** or **Exclude these**:
+hand edits that filter every chart on top of the dataset's exclusions, listed (and clearable) in
+the Filters panel and carried in the link (`keep`, `drop`). Picking the field the other axis
+already shows swaps x and y, so a crossplot never plots a field against itself.
+
 ### Pickers and axes
 
 Every dropdown is the one styled `components/Combobox` (native-select height; groups, long

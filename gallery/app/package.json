@@ -12,6 +12,7 @@
     "test": "node --test src/lib/*.test.mjs"
   },
   "dependencies": {
+    "@firstform/json-url": "^4.2.0",
     "d3": "^7.9.0",
     "d3-hexbin": "^0.2.2",
     "d3-sankey": "^0.12.3",

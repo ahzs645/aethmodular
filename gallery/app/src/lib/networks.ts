@@ -14,13 +14,18 @@ import { useEffect, useMemo, useState } from 'react'
 import { loadJson } from './data'
 import type { FilterRow, SeasonMeta, SiteMeta } from './types'
 
-export type Network = 'focus' | 'spartan' | 'improve'
+/** 'both' draws SPARTAN and IMPROVE sites together (the two network toggles are a multi-select) */
+export type Network = 'focus' | 'spartan' | 'improve' | 'both'
+export const hasSpartan = (n: Network) => n === 'spartan' || n === 'both'
+export const hasImprove = (n: Network) => n === 'improve' || n === 'both'
+/** the network value for a set of toggled networks (never empty) */
+export const networkOf = (spartan: boolean, improve: boolean): Network => (spartan && improve ? 'both' : improve ? 'improve' : 'spartan')
 export const NETWORKS: { key: Network; label: string; note: string }[] = [
   { key: 'focus', label: 'Focus sites', note: 'Beijing, Delhi, JPL and Addis Ababa only (kept for links: net=focus)' },
   { key: 'spartan', label: 'SPARTAN', note: 'Starts on the four focus sites (HIPS, FTIR groups, local calendars); add any SPARTAN site, which brings public PM2.5 chemistry (FTIR-derived EC/OC, no HIPS)' },
   { key: 'improve', label: 'IMPROVE', note: 'Every IMPROVE site: TOR EC/OC, HIPS absorption, mass, iron, silicon, soil' },
 ]
-export const isNetwork = (v: string | null): v is Network => v === 'focus' || v === 'spartan' || v === 'improve'
+export const isNetwork = (v: string | null): v is Network => v === 'focus' || v === 'spartan' || v === 'improve' || v === 'both'
 
 /** IMPROVE sites load per site; more than this many at once makes the SVG charts crawl. */
 export const MAX_IMPROVE_SITES = 10
@@ -30,6 +35,8 @@ export const NETWORK_DEFAULTS: Record<Network, { x: string; y: string; field: st
   focus: { x: 'HIPS BC', y: 'EC (FTIR)', field: 'EC (FTIR)' },
   spartan: { x: 'HIPS BC', y: 'EC (FTIR)', field: 'EC (FTIR)' },
   improve: { x: 'HIPS BC', y: 'EC (TOR)', field: 'EC (TOR)' },
+  // HIPS absorption and PM2.5 mass are the measurements both networks share
+  both: { x: 'HIPS BC', y: 'PM2.5 mass', field: 'PM2.5 mass' },
 }
 
 /** Shared month bins for network views: no hemisphere-specific names, so they read the same in Chile and Alaska. */
@@ -47,6 +54,8 @@ export const networkColor = (i: number) => SITE_PALETTE[i % SITE_PALETTE.length]
 interface NetworkData {
   /** every site the network offers, for the site picker */
   sites: SiteMeta[]
+  /** which of those sites are IMPROVE (the rest are SPARTAN) */
+  improveCodes: Set<string>
   /** rows of the sites that are loaded (all for SPARTAN; the picked ones for IMPROVE) */
   rows: FilterRow[]
   fields: string[]
@@ -98,7 +107,7 @@ async function loadSpartan(): Promise<NetworkData> {
     return row(String(r.id), s, String(r.date), !!r.excluded, (r.exclusion_reason as string) || null, values)
   })
   const fields = ref.fields.filter((f) => rows.some((r) => typeof r[f] === 'number'))
-  return { sites, rows, fields, field_units: ref.field_units, field_groups: SPARTAN_GROUPS.map((g) => ({ ...g, fields: g.fields.filter((f) => fields.includes(f)) })).filter((g) => g.fields.length) }
+  return { sites, improveCodes: new Set(), rows, fields, field_units: ref.field_units, field_groups: SPARTAN_GROUPS.map((g) => ({ ...g, fields: g.fields.filter((f) => fields.includes(f)) })).filter((g) => g.fields.length) }
 }
 
 async function loadImprove(picked: string[]): Promise<NetworkData> {
@@ -117,17 +126,35 @@ async function loadImprove(picked: string[]): Promise<NetworkData> {
       rows.push(row(`${f.code}-${d}${f.poc[i] !== 1 ? `-${f.poc[i]}` : ''}`, s, d, false, null, values))
     })
   }
-  return { sites, rows, fields: index.fields, field_units: index.field_units, field_groups: index.field_groups }
+  return { sites, improveCodes: new Set(sites.map((x) => x.code)), rows, fields: index.fields, field_units: index.field_units, field_groups: index.field_groups }
+}
+
+/** Groups merged by label, fields unioned in order: one picker for two networks. */
+export function mergeGroups(a: NetworkData['field_groups'], b: NetworkData['field_groups']) {
+  const out = a.map((g) => ({ label: g.label, fields: [...g.fields] }))
+  for (const g of b) {
+    const hit = out.find((x) => x.label === g.label)
+    if (hit) hit.fields.push(...g.fields.filter((f) => !hit.fields.includes(f)))
+    else out.push({ label: g.label, fields: [...g.fields] })
+  }
+  return out
+}
+
+async function loadBoth(picked: string[]): Promise<NetworkData> {
+  const [sp, im] = await Promise.all([loadSpartan(), loadImprove(picked)])
+  return { sites: [...sp.sites, ...im.sites], improveCodes: im.improveCodes, rows: [...sp.rows, ...im.rows],
+    fields: [...new Set([...sp.fields, ...im.fields])], field_units: { ...im.field_units, ...sp.field_units },
+    field_groups: mergeGroups(sp.field_groups, im.field_groups) }
 }
 
 /** The chosen network's sites and rows; null while loading, and for the focus sites (App uses filters.json). */
 export function useNetworkData(network: Network, improveSites: string[]) {
-  const key = network === 'improve' ? `improve:${[...improveSites].sort().join(',')}` : network
+  const key = hasImprove(network) ? `${network}:${[...improveSites].sort().join(',')}` : network
   const [state, setState] = useState<{ key: string; data: NetworkData | null; error: string } | null>(null)
   useEffect(() => {
     if (network === 'focus') return
     let live = true
-    ;(network === 'spartan' ? loadSpartan() : loadImprove(improveSites))
+    ;(network === 'both' ? loadBoth(improveSites) : network === 'spartan' ? loadSpartan() : loadImprove(improveSites))
       .then((data) => { if (live) setState({ key, data, error: '' }) })
       .catch((e) => { if (live) setState({ key, data: null, error: String(e instanceof Error ? e.message : e) }) })
     return () => { live = false }
