@@ -46,6 +46,21 @@
         "gallery/share/pages-dist"
       ],
       "port": 5181
+    },
+    {
+      "name": "gallery-dev-b",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--no-open",
+        "--port",
+        "5183",
+        "--strictPort"
+      ],
+      "cwd": "gallery/app",
+      "port": 5183
     }
   ]
 }

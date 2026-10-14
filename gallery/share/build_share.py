@@ -57,7 +57,7 @@ def main():
     if missing:
         raise SystemExit(f"missing exports (run the gallery/data exporters first): {missing}")
 
-    env = {**os.environ, "VITE_SHARE_TABS": ",".join(tabs)}
+    env = {**os.environ, "VITE_SHARE_TABS": ",".join(tabs), "VITE_HIDE_EXPLAIN": "1"}   # no Explain toggle for outside readers
     subprocess.run(["npx", "vite", "build", "--base", "./", "--outDir", str(OUT), "--emptyOutDir"],
                    cwd=APP, env=env, check=True)
 

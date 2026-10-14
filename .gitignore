@@ -233,3 +233,6 @@ gallery/app/public/data/satoshi/
 
 # full-gallery Pages build (gallery/share/publish_pages.py)
 gallery/share/pages-dist/
+
+# per-site IMPROVE samples for the network picker (gallery/data/export_improve_samples.py; ~26 MB)
+gallery/app/public/data/improve_samples/

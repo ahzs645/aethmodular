@@ -163,27 +163,81 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .subset-summary { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--ink-muted); }
 .pill, .subset-summary .pill { background: var(--accent-soft); color: var(--accent); border-radius: 12px; padding: 2px 9px; font-family: var(--mono); font-size: 11.5px; }
 
-/* the filter panel floats over the left of the page; a tab on the edge opens it */
+/* the filter panel floats over the left of the page; a tab on its edge opens it. Panel and tab
+   are one fixed dock that slides as a unit (SideDock), so the tab travels with the panel. */
+.side-dock {
+  position: fixed; left: 0; top: 0; height: 100vh; z-index: 45; width: min(380px, 100vw - 36px);
+  transform: translateX(-100%); transition: transform 0.2s ease-out;
+}
+.side-dock.open { transform: none; }
+.side-dock-body { height: 100%; }
+.side-dock:not(.open) .side-dock-body { visibility: hidden; transition: visibility 0s linear 0.2s; }
+.side-dock-tab { position: absolute; left: 100%; }
+@media (prefers-reduced-motion: reduce) { .side-dock { transition: none; } }
 .subset-tab {
-  position: fixed; left: 0; z-index: 36;
+  position: relative; z-index: 36;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   padding: 12px 7px; border: 1px solid var(--ink-border); border-left: 0;
   border-radius: 0 10px 10px 0; background: var(--ink-panel); color: var(--ink-text);
   box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.08); cursor: pointer; font-family: var(--font);
-  transition: left 0.18s ease-out;
 }
 .subset-tab:hover { color: var(--accent); border-color: var(--accent); }
-.subset-tab.open { left: min(380px, 100vw - 36px); }
 .subset-tab-label { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 12.5px; font-weight: 600; letter-spacing: 0.3px; }
 .subset-tab-count { writing-mode: vertical-rl; transform: rotate(180deg); font-family: var(--mono); font-size: 10.5px; color: var(--ink-muted); }
 .subset-tab-badge { background: var(--accent); color: #fff; border-radius: 9px; min-width: 17px; height: 17px; font-size: 10.5px; line-height: 17px; text-align: center; font-weight: 600; }
 .subset-panel {
-  position: fixed; left: 0; z-index: 35; width: min(380px, 100vw - 36px); margin: 0;
-  border-radius: 0 10px 0 0; border-left: 0; overflow-y: auto; overflow-x: hidden; gap: 12px; padding: 14px 16px 32px;
+  height: 100%; box-sizing: border-box; margin: 0;
+  border-radius: 0; border-left: 0; overflow-y: auto; overflow-x: hidden; gap: 12px; padding: 14px 16px 32px;
   box-shadow: 6px 0 24px rgba(0, 0, 0, 0.1);
-  animation: subset-in 0.18s ease-out;
 }
-@keyframes subset-in { from { transform: translateX(-16px); opacity: 0; } to { transform: none; opacity: 1; } }
+/* Side panels scroll on their own while the page stays usable beside them (not a modal, so the
+   page keeps its scrollbar). Their own scrollbar is thin and only shows while the pointer is over
+   the panel; scrolling to the end does not carry on into the page; the gutter is reserved so the
+   content does not jump when the scrollbar appears. */
+.subset-panel, .drawer {
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.subset-panel:hover, .subset-panel:focus-within, .drawer:hover, .drawer:focus-within { scrollbar-color: rgba(60, 70, 85, 0.35) transparent; }
+.subset-panel::-webkit-scrollbar, .drawer::-webkit-scrollbar { width: 8px; }
+.subset-panel::-webkit-scrollbar-thumb, .drawer::-webkit-scrollbar-thumb { background: transparent; border-radius: 8px; }
+.subset-panel:hover::-webkit-scrollbar-thumb, .drawer:hover::-webkit-scrollbar-thumb { background: rgba(60, 70, 85, 0.35); }
+
+/* site picker: chips for the selection, a search combo box, and a map dialog */
+.site-picker { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.site-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.site-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 4px 2px 8px; border-radius: 12px; font-size: 11.5px;
+  background: color-mix(in srgb, var(--chip, #8a94a3) 14%, white); border: 1px solid color-mix(in srgb, var(--chip, #8a94a3) 45%, white); }
+.site-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--chip, #8a94a3); }
+.site-chip button { border: 0; background: none; cursor: pointer; font-size: 14px; line-height: 1; color: var(--ink-muted); padding: 0 3px; }
+.site-chip button:hover { color: var(--danger, #b42318); }
+.site-chip.all { padding-right: 8px; background: var(--accent-soft); border-color: var(--accent-soft); color: var(--accent); }
+.site-picker-bar { display: flex; align-items: center; gap: 6px; }
+.site-picker-count { margin-left: auto; font-size: 11.5px; color: var(--ink-muted); font-family: var(--mono); }
+.site-search { position: relative; flex: 1; min-width: 0; }
+.site-search input { width: 100%; box-sizing: border-box; }
+.site-list { position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 3px); list-style: none; margin: 0; padding: 3px 0;
+  max-height: 260px; overflow-y: auto; background: var(--ink-panel); border: 1px solid var(--ink-border); border-radius: 8px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.12); overscroll-behavior: contain; scrollbar-width: thin; }
+.site-row { display: flex; align-items: center; gap: 8px; padding: 5px 9px; font-size: 12px; cursor: pointer; color: var(--ink-text); }
+.site-row.active { background: var(--accent-soft); }
+.site-check { width: 11px; height: 11px; border-radius: 3px; border: 1.5px solid var(--chip, #8a94a3); flex: none; }
+.site-row.on .site-check { background: var(--chip, #8a94a3); }
+.site-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.site-sub { color: var(--ink-muted); }
+.site-n { font-family: var(--mono); font-size: 11px; color: var(--ink-muted); }
+.site-empty { padding: 4px 2px; font-size: 12px; color: var(--ink-muted); }
+.map-dialog-backdrop { position: fixed; inset: 0; z-index: 70; background: rgba(17, 24, 39, 0.35); display: grid; place-items: center; padding: 16px; }
+.map-dialog { width: min(1100px, 100%); max-height: calc(100vh - 32px); overflow: auto; background: var(--ink-panel); border-radius: 12px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.25); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; outline: none; }
+.map-dialog header { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+.map-dialog header .site-picker-count { margin-left: auto; }
+.site-map { position: relative; border: 1px solid var(--ink-border); border-radius: 8px; overflow: hidden; background: #f3f6fa; }
+.site-map svg { display: block; touch-action: none; }
+.site-map-tools { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; background: rgba(255, 255, 255, 0.9); border-radius: 6px; padding: 2px; }
+.site-map-note { font-size: 12px; color: var(--ink-muted); padding: 5px 10px; border-top: 1px solid var(--ink-grid); background: var(--ink-panel); }
 .subset-panel .row-label { width: 100%; }
 .subset-panel .row-tail { margin-left: 0; }
 .subset-head { display: flex; align-items: center; gap: 8px; font-size: 13.5px; padding-bottom: 8px; border-bottom: 1px solid var(--ink-grid); }

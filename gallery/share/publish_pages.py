@@ -65,7 +65,7 @@ work in progress on FTIR elemental-carbon calibration for Addis Ababa; numbers t
 
 def build():
     subprocess.run(["npx", "vite", "build", "--base", "./", "--outDir", str(BUILD), "--emptyOutDir"],
-                   cwd=APP, env={k: v for k, v in os.environ.items() if k != "VITE_SHARE_TABS"}, check=True)
+                   cwd=APP, env={**{k: v for k, v in os.environ.items() if k != "VITE_SHARE_TABS"}, "VITE_HIDE_EXPLAIN": "1"}, check=True)
     changed = 0
     for path in BUILD.rglob("*"):
         if path.is_file() and path.suffix in TEXT:

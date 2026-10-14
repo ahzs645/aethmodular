@@ -1,0 +1,230 @@
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import * as d3 from 'd3'
+import type { FeatureCollection } from 'geojson'
+import { useDimensions } from '@/hooks/useGalleryData'
+import { loadJson } from '@/lib/data'
+import { FONT, INK } from '@/lib/theme'
+
+/** One pickable site: a row in the search box's list and a dot on the map. */
+export interface SiteItem {
+  key: string
+  label: string
+  /** state, country or site code under the name */
+  sub?: string
+  lat: number | null
+  lon: number | null
+  color: string
+  /** filters in the current subset (or in the site file before it is loaded) */
+  n: number
+  selected: boolean
+}
+
+/**
+ * Sites for the Filters sidebar. The selection shows as chips; a search box adds or removes
+ * sites, and **Map** opens a large map in a dialog to pick them by clicking. Both edit the same
+ * selection. With the four focus sites, plain chips are enough.
+ */
+export function SitePicker({ items, onToggle, onAll, onClear, allSelected = false, chipsOnly = false, limitNote, noun = 'sites' }: {
+  items: SiteItem[]
+  onToggle: (key: string) => void
+  onAll?: () => void
+  onClear?: () => void
+  /** every site is in (SPARTAN's default): show one "All N sites" chip instead of N chips */
+  allSelected?: boolean
+  /** few sites (the focus sites): toggle chips, no search box */
+  chipsOnly?: boolean
+  /** e.g. "3 of 10 IMPROVE sites" */
+  limitNote?: string
+  noun?: string
+}) {
+  const [mapOpen, setMapOpen] = useState(false)
+  const selected = items.filter((it) => it.selected)
+  const mapButton = <button type="button" className="btn quiet" onClick={() => setMapOpen(true)} title="Pick sites on a large map">Map…</button>
+  return (
+    <div className="site-picker">
+      {chipsOnly ? (
+        <div className="season-chips">
+          {onAll && <button type="button" className={`chip ${allSelected ? 'active' : ''}`} style={{ ['--chip' as string]: 'var(--ink-muted)' }} onClick={onAll}>All</button>}
+          {items.map((it) => (
+            <button key={it.key} type="button" className={`chip ${it.selected ? 'active' : ''} ${it.n === 0 ? 'disabled' : ''}`}
+              style={{ ['--chip' as string]: it.color }} disabled={it.n === 0} onClick={() => onToggle(it.key)}>
+              {it.label} · {it.n}
+            </button>
+          ))}
+          {mapButton}
+        </div>
+      ) : (
+        <>
+          <div className="site-chips">
+            {allSelected
+              ? <span className="site-chip all">All {items.length} {noun}</span>
+              : selected.map((it) => (
+                <span key={it.key} className="site-chip" style={{ ['--chip' as string]: it.color }}>
+                  <span className="dot" aria-hidden="true" />{it.label}
+                  <button type="button" aria-label={`Remove ${it.label}`} onClick={() => onToggle(it.key)}>×</button>
+                </span>
+              ))}
+            {!allSelected && selected.length === 0 && <span className="site-empty">No {noun} picked yet: search below or open the map.</span>}
+          </div>
+          <div className="site-picker-bar">
+            <SiteSearch items={items} onToggle={onToggle} noun={noun} />
+            {mapButton}
+          </div>
+          <div className="site-picker-bar">
+            {onAll && !allSelected && <button type="button" className="btn quiet" onClick={onAll}>Select all</button>}
+            {onClear && selected.length > 0 && !allSelected && <button type="button" className="btn quiet" onClick={onClear}>Clear</button>}
+            <span className="site-picker-count">{limitNote ?? `${allSelected ? items.length : selected.length} of ${items.length} selected`}</span>
+          </div>
+        </>
+      )}
+      {mapOpen && <MapDialog items={items} onToggle={onToggle} onClose={() => setMapOpen(false)} limitNote={limitNote} noun={noun} />}
+    </div>
+  )
+}
+
+/** A combo box: type to filter, arrow keys to move, Enter or click to add/remove; stays open for several picks. */
+function SiteSearch({ items, onToggle, noun }: { items: SiteItem[]; onToggle: (key: string) => void; noun: string }) {
+  const id = useId()
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const [active, setActive] = useState(0)
+  const box = useRef<HTMLDivElement>(null)
+  const q = query.trim().toLowerCase()
+  const shown = useMemo(() => (q ? items.filter((it) => `${it.label} ${it.sub ?? ''} ${it.key}`.toLowerCase().includes(q)) : items), [items, q])
+  useEffect(() => setActive(0), [q])
+  useEffect(() => {
+    if (!open) return
+    const close = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [open])
+  const pick = (it: SiteItem | undefined) => { if (it) onToggle(it.key) }
+  return (
+    <div className="site-search" ref={box}>
+      <input className="select" type="text" role="combobox" aria-expanded={open} aria-controls={`${id}-list`} aria-autocomplete="list"
+        aria-activedescendant={open && shown[active] ? `${id}-opt-${active}` : undefined}
+        placeholder={`Search ${items.length} ${noun}…`} value={query}
+        onFocus={() => setOpen(true)} onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setActive((a) => Math.min(shown.length - 1, a + 1)) }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); setActive((a) => Math.max(0, a - 1)) }
+          else if (e.key === 'Enter') { e.preventDefault(); pick(shown[active]) }
+          else if (e.key === 'Escape') { setOpen(false) }
+        }} />
+      {open && (
+        <ul id={`${id}-list`} className="site-list" role="listbox" aria-multiselectable="true" aria-label={`${noun} to pick`}>
+          {shown.map((it, i) => (
+            <li key={it.key} id={`${id}-opt-${i}`} role="option" aria-selected={it.selected}
+              className={`site-row ${it.selected ? 'on' : ''} ${i === active ? 'active' : ''}`}
+              onMouseEnter={() => setActive(i)} onMouseDown={(e) => { e.preventDefault(); pick(it) }}>
+              <span className="site-check" style={{ ['--chip' as string]: it.color }} aria-hidden="true" />
+              <span className="site-name">{it.label}{it.sub && <span className="site-sub"> · {it.sub}</span>}</span>
+              <span className="site-n">{it.n.toLocaleString()}</span>
+            </li>
+          ))}
+          {shown.length === 0 && <li className="site-empty">No site matches “{query}”.</li>}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+/** A large map in a dialog: click dots to add or remove sites; scroll, drag or +/− to move. */
+function MapDialog({ items, onToggle, onClose, limitNote, noun }: { items: SiteItem[]; onToggle: (key: string) => void; onClose: () => void; limitNote?: string; noun: string }) {
+  const dialog = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    dialog.current?.focus()
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  const n = items.filter((it) => it.selected).length
+  return createPortal(
+    <div className="map-dialog-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="map-dialog" role="dialog" aria-modal="true" aria-label={`Pick ${noun} on the map`} tabIndex={-1} ref={dialog}>
+        <header>
+          <strong>Pick {noun} on the map</strong>
+          <span className="site-picker-count">{limitNote ?? `${n} of ${items.length} selected`}</span>
+          <button type="button" className="btn" onClick={onClose}>Done</button>
+        </header>
+        <SiteMap items={items} onToggle={onToggle} />
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
+function SiteMap({ items, onToggle }: { items: SiteItem[]; onToggle: (key: string) => void }) {
+  const wrap = useRef<HTMLDivElement>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
+  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
+  const { width } = useDimensions(wrap)
+  const height = Math.max(320, Math.round(Math.min(window.innerHeight * 0.68, width * 0.6)))
+  const [world, setWorld] = useState<FeatureCollection | null>(null)
+  const [zoom, setZoom] = useState(d3.zoomIdentity)
+  const [hover, setHover] = useState<SiteItem | null>(null)
+  useEffect(() => { loadJson<FeatureCollection>('world.geojson').then(setWorld).catch(() => {}) }, [])
+
+  const located = items.filter((it) => it.lat != null && it.lon != null && Number.isFinite(it.lat) && Number.isFinite(it.lon))
+  // open on the middle 90 % of sites, so a few overseas IMPROVE sites do not shrink the US to a speck
+  const frameKey = located.map((it) => it.key).join(',')
+  const projection = useMemo(() => {
+    const lons = located.map((it) => it.lon as number).sort(d3.ascending)
+    const lats = located.map((it) => it.lat as number).sort(d3.ascending)
+    const q = (a: number[], p: number) => d3.quantileSorted(a, p) ?? 0
+    const [x0, x1] = located.length > 8 ? [q(lons, 0.05), q(lons, 0.95)] : [lons[0] ?? -180, lons[lons.length - 1] ?? 180]
+    const [y0, y1] = located.length > 8 ? [q(lats, 0.05), q(lats, 0.95)] : [lats[0] ?? -60, lats[lats.length - 1] ?? 75]
+    const pad = Math.max(4, 0.12 * Math.max(x1 - x0, y1 - y0))
+    const box = { type: 'Feature', properties: {}, geometry: { type: 'MultiPoint', coordinates: [[x0 - pad, y0 - pad], [x1 + pad, y1 + pad], [x0 - pad, y1 + pad], [x1 + pad, y0 - pad]] } } as const
+    return d3.geoNaturalEarth1().fitExtent([[12, 12], [Math.max(120, width - 12), height - 12]], box as any)
+    // the frame follows the set of sites, not their selection
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frameKey, width, height])
+  const path = useMemo(() => d3.geoPath(projection), [projection])
+
+  useEffect(() => {
+    if (!svgRef.current) return
+    const svg = d3.select(svgRef.current)
+    const behavior = d3.zoom<SVGSVGElement, unknown>().scaleExtent([0.2, 32]).on('zoom', (e) => setZoom(e.transform))
+    zoomRef.current = behavior
+    svg.call(behavior).on('dblclick.zoom', null)
+    svg.call(behavior.transform, d3.zoomIdentity)
+    return () => { svg.on('.zoom', null) }
+  }, [projection])
+  const zoomBy = (k: number) => { if (svgRef.current && zoomRef.current) d3.select(svgRef.current).transition().duration(200).call(zoomRef.current.scaleBy, k) }
+  const reset = () => { if (svgRef.current && zoomRef.current) d3.select(svgRef.current).transition().duration(200).call(zoomRef.current.transform, d3.zoomIdentity) }
+
+  return (
+    <div ref={wrap} className="site-map">
+      <div className="site-map-tools">
+        <button type="button" className="btn quiet" aria-label="Zoom out" onClick={() => zoomBy(0.5)}>−</button>
+        <button type="button" className="btn quiet" aria-label="Zoom in" onClick={() => zoomBy(2)}>+</button>
+        <button type="button" className="btn quiet" onClick={reset}>Reset view</button>
+      </div>
+      <svg ref={svgRef} width={width} height={height} fontFamily={FONT.family} role="img" aria-label="Map of the sites; click a dot to select or deselect it">
+        <rect width={width} height={height} fill="#f3f6fa" />
+        <g transform={zoom.toString()}>
+          {world && <path d={path(world) ?? ''} fill="#e1e6ed" stroke="#ffffff" strokeWidth={0.7 / zoom.k} />}
+        </g>
+        {located.map((it) => {
+          const p = projection([it.lon as number, it.lat as number])
+          if (!p) return null
+          const [x, y] = zoom.apply(p)
+          if (x < -12 || x > width + 12 || y < -12 || y > height + 12) return null
+          const on = it.selected, hot = hover?.key === it.key
+          return (
+            <g key={it.key} transform={`translate(${x},${y})`} style={{ cursor: 'pointer' }}
+              onClick={(e) => { e.stopPropagation(); onToggle(it.key) }} onMouseEnter={() => setHover(it)} onMouseLeave={() => setHover(null)}>
+              {/* a generous invisible hit area, so small dots are easy to click */}
+              <circle r={12} fill="transparent" />
+              <circle r={on ? 7 : hot ? 6.5 : 5} fill={on ? it.color : '#ffffff'} stroke={on || hot ? INK.text : '#7d8796'} strokeWidth={on || hot ? 1.6 : 1.2} />
+              {(on || hot) && <text x={10} y={4} fontSize={12} fontWeight={on ? 600 : 400} fill={INK.text} stroke="#ffffff" strokeWidth={3} paintOrder="stroke">{it.label}</text>}
+            </g>
+          )
+        })}
+      </svg>
+      <div className="site-map-note">{hover ? `${hover.label}${hover.sub ? ` · ${hover.sub}` : ''} · ${hover.n.toLocaleString()} · click to ${hover.selected ? 'remove' : 'add'}` : 'Click a dot to add or remove a site · scroll or drag to move, or use − / +'}</div>
+    </div>
+  )
+}

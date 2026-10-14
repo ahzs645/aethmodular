@@ -174,6 +174,23 @@ Addis calendars in `lib/seasons.ts`; every data file through `lib/data.ts`
 and `ExportState` for the recurring UI. URL keys must be unique across pages
 (development builds warn when two controls share one).
 
+### Networks in the Filters sidebar
+
+The chart tabs (Correlation, Distribution, Evolution, Ranking, Part of a whole) can draw
+a whole network instead of the four focus sites. **Network** at the top of the Filters
+sidebar picks Focus sites (default: `filters.json`, HIPS + FTIR), SPARTAN (every site,
+public ChemSpec from `spartan_reference.json`) or IMPROVE (TOR EC/OC, HIPS absorption,
+mass, iron, silicon, soil). Picked sites show as chips; a search box adds or removes
+them, and **Map…** opens a large map dialog to pick them by clicking. All three edit one
+selection. Open, the Filters panel covers the full window height over the header. IMPROVE loads one file per site (`improve_samples/`, from
+`uv run python gallery/data/export_improve_samples.py`, gitignored, ~26 MB) and allows ten
+at a time, because the SVG charts cannot draw all ~388,000 samples. Networks use shared
+three-month bins; only the focus sites have local calendars. Map, Flow and the research
+tabs always show the focus sites. The choice is in the URL (`net`, `sites`, `isites`).
+
+Builds for outside readers (`publish_pages.py`, `build_share.py`) set
+`VITE_HIDE_EXPLAIN=1`, which removes the header's Explain toggle; local dev keeps it.
+
 ### Sharing a read-only copy
 
 The full app carries ~126 MB of data, most of it gitignored, so a clone is not

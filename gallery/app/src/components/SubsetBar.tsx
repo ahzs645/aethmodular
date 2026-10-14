@@ -1,6 +1,6 @@
 import { RegressionControls } from '@/lib/regressionPrefs'
 import { CONVENTION_LABEL } from '@/lib/seasons'
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 import { DateBrush, type DateRange } from '@/components/DateBrush'
@@ -12,6 +12,8 @@ import { usePrefs } from '@/lib/prefs'
 import { useHighlight } from '@/lib/highlight'
 import type { FilterRow, MetaFile, SeasonMeta } from '@/lib/types'
 import { PMF_SCHEMES, type PmfGroup, type PmfScheme } from '@/lib/pmfGroups'
+import { NETWORKS, type Network } from '@/lib/networks'
+import { SitePicker, type SiteItem } from '@/components/SitePicker'
 
 export interface SubsetCaps {
   /** the tab's charts respond to the season filter */
@@ -30,6 +32,8 @@ export interface SubsetCaps {
   note?: string
   /** the tab's filters can be grouped by their ETAD PMF source */
   pmf?: boolean
+  /** the tab's charts can show a whole network (SPARTAN, IMPROVE) instead of the focus sites */
+  networks?: boolean
 }
 
 export interface SubsetState {
@@ -58,6 +62,18 @@ export interface SubsetState {
   pmfCounts?: Record<string, number>
   seasonsOn?: boolean
   pmfOn?: boolean
+  /** the network the charts draw (always 'focus' on tabs without network support) */
+  network: Network
+  /** the network the reader picked, kept while a focus-only tab is open */
+  chosenNetwork: Network
+  networkLoading?: boolean
+  networkError?: string
+  /** sites for the map and list picker */
+  siteItems: SiteItem[]
+  /** e.g. "3 of 10" for IMPROVE, where sites load one by one */
+  siteLimitNote?: string
+  /** calendars the picker offers (networks have no per-site local calendar) */
+  calendarOptions: string[]
 }
 
 export interface SubsetActions {
@@ -69,8 +85,10 @@ export interface SubsetActions {
   onAllPmf?: () => void
   onSeasonsOn?: (v: boolean) => void
   onPmfOn?: (v: boolean) => void
-  onToggleSite: (name: string) => void
+  onToggleSite: (key: string) => void
   onAllSites: () => void
+  onClearSites?: () => void
+  onNetwork: (n: Network) => void
   onIncludeExcluded: (v: boolean) => void
   onDateRange: (r: DateRange | null) => void
   onXField: (v: string) => void
@@ -151,12 +169,14 @@ export function SubsetBar({
     </div>
   )
 
+  const net = NETWORKS.find((x) => x.key === s.network)!
+  const sitesNote = s.network === 'improve' ? 'IMPROVE EC/OC: TOR (thermal-optical reflectance) · absorption from HIPS'
+    : 'SPARTAN EC/OC: FTIR-derived · no TOR reference on these filters'
   return (
-    <>
+    <SideDock open={open} top={top} tab={
       <button
         type="button"
-        className={`subset-tab ${open ? 'open' : ''}`}
-        style={{ top: top + 24 }}
+        className="subset-tab"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         title={open ? 'Hide the filters' : 'Show the filters'}
@@ -165,9 +185,8 @@ export function SubsetBar({
         <span className="subset-tab-count">{s.shown}/{s.total}</span>
         {nActive > 0 && <span className="subset-tab-badge" title={`${nActive} filter${nActive === 1 ? '' : 's'} active`}>{nActive}</span>}
       </button>
-
-      {open && (
-        <aside className="panel subset subset-panel" style={{ top, height: `calc(100vh - ${top}px)` }} aria-label="Filters">
+    }>
+        <aside className="panel subset subset-panel" aria-label="Filters">
           <header className="subset-head">
             <strong>Filters</strong>
             <span className="pill">{s.shown} of {s.total} {caps.datasetLabel}</span>
@@ -177,6 +196,15 @@ export function SubsetBar({
             </span>
           </header>
           {summary}
+          <Row label="network">
+            {caps.networks ? (
+              <Segmented value={net.label as any} options={NETWORKS.map((x) => x.label) as any}
+                onChange={(v: string) => a.onNetwork(NETWORKS.find((x) => x.label === v)?.key ?? 'focus')} title={NETWORKS.map((x) => `${x.label}: ${x.note}`).join(' · ')} />
+            ) : (
+              <span className="method-note">{s.chosenNetwork === 'focus' ? net.label : `This tab shows the focus sites; ${NETWORKS.find((x) => x.key === s.chosenNetwork)?.label} applies on Correlation, Distribution, Evolution, Ranking and Part of a whole.`}</span>
+            )}
+            {caps.networks && <span className="method-note" style={{ display: 'block' }}>{net.note}{s.networkLoading ? ' · loading…' : ''}{s.networkError ? ` · could not load: ${s.networkError}` : ''}</span>}
+          </Row>
           <RegressionControls />
 
           {caps.fields === 'pair' && (
@@ -219,20 +247,10 @@ export function SubsetBar({
 
           {caps.sites && (
             <Row label="sites">
-              <Chip active={allSites} color="var(--ink-muted)" onClick={a.onAllSites} label="All" />
-              {s.sites.map((name) => {
-                const n = s.siteCounts[name] ?? 0
-                return (
-                  <Chip
-                    key={name}
-                    active={s.activeSites.has(name)}
-                    color={meta.sites.find((x) => x.name === name)?.color ?? 'var(--ink-muted)'}
-                    disabled={n === 0}
-                    onClick={() => n > 0 && a.onToggleSite(name)}
-                    label={`${name} · ${n}`}
-                  />
-                )
-              })}
+              <SitePicker items={s.siteItems} onToggle={a.onToggleSite}
+                onAll={s.network === 'improve' ? undefined : a.onAllSites} allSelected={s.network !== 'improve' && allSites}
+                onClear={a.onClearSites} chipsOnly={s.network === 'focus'} limitNote={s.siteLimitNote}
+                noun={s.network === 'improve' ? 'IMPROVE sites' : s.network === 'spartan' ? 'SPARTAN sites' : 'sites'} />
             </Row>
           )}
 
@@ -244,7 +262,7 @@ export function SubsetBar({
                 <>
                   <Row label="calendar">
                     <select className="select" value={s.convention} onChange={(e) => a.onConvention(e.target.value)}>
-                      {['local', ...Object.keys(meta.season_conventions)].map((k) => (
+                      {s.calendarOptions.map((k) => (
                         <option key={k} value={k}>
                           {CALENDAR_LABEL[k] ?? k}
                           {k === s.defaultConvention ? ' (default)' : ''}
@@ -254,6 +272,8 @@ export function SubsetBar({
                     <span className="row-note" style={{ display: 'block' }}>
                       {s.convention === 'local'
                         ? 'Each filter is binned by its own site’s calendar (docs/site-seasonality.md). Fixed month bins, not observed weather.'
+                        : s.convention === 'quarters'
+                        ? 'The same three-month bins at every site. Only the four focus sites have local calendars; Dec–Feb is winter in the north and summer in the south.'
                         : <>Shared month bins across every site, for like-month comparison: “Belg” at Beijing only means those months. February sits in <strong style={{ color: 'var(--ink-text)' }}>{s.seasons.find((x) => x.months.includes(2))?.name ?? '—'}</strong>.</>}
                     </span>
                   </Row>
@@ -349,7 +369,7 @@ export function SubsetBar({
               </label>
             ) : null}
             {caps.note && explain && <span className="row-note">{caps.note}</span>}
-            {caps.sites && <span className="method-note">SPARTAN EC/OC: FTIR-derived · no TOR reference on these filters</span>}
+            {caps.sites && <span className="method-note">{sitesNote}</span>}
             <span className="row-tail">MAC = {meta.mac_value}</span>
           </Row>
 
@@ -357,8 +377,27 @@ export function SubsetBar({
             <PinnedCard row={s.pinned} meta={meta} fields={[s.xField, s.yField, s.field]} inSubset={s.pinnedInSubset} onUnpin={a.onUnpin} onOpen={a.onOpenPinned} />
           )}
         </aside>
-      )}
-    </>
+    </SideDock>
+  )
+}
+
+/**
+ * The left side panel and its edge tab, as one sliding unit: the tab is attached to the
+ * panel's right edge, so it travels with the panel instead of jumping on its own. The
+ * panel stays mounted while closed (slid out of view and inert), so opening animates.
+ * Shared by the Filters panel and the Fits panel.
+ */
+export function SideDock({ open, top, tab, children }: { open: boolean; top: number; tab: React.ReactNode; children: React.ReactNode }) {
+  const body = useRef<HTMLDivElement>(null)
+  // closed: out of the tab order and hidden from assistive tech, though still painted for the slide
+  useEffect(() => { body.current?.toggleAttribute('inert', !open) }, [open])
+  // open, the panel runs the full window height over the app header (like the sample drawer);
+  // the tab keeps its place just below the header so it does not move up and down
+  return (
+    <div className={`side-dock ${open ? 'open' : ''}`}>
+      <div ref={body} className="side-dock-body" aria-hidden={!open}>{children}</div>
+      <div className="side-dock-tab" style={{ top: top + 24 }}>{tab}</div>
+    </div>
   )
 }
 

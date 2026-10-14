@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useGalleryData } from '@/hooks/useGalleryData'
 import { HighlightProvider, baseFilterId, type FilterRecord } from '@/lib/highlight'
 import { NO_PMF, pmfGroups, pmfKeyByDate, pmfLabel, type PmfScheme } from '@/lib/pmfGroups'
-import { PrefsProvider, usePrefs } from '@/lib/prefs'
+import { EXPLAIN_AVAILABLE, PrefsProvider, usePrefs } from '@/lib/prefs'
 import { listParam, listToParam, readParams, writeParams } from '@/lib/url'
 import { Scatterplot } from '@/charts/correlation/Scatterplot'
 import { Correlogram } from '@/charts/correlation/Correlogram'
@@ -35,13 +35,15 @@ import { MeetingFollowupPage } from '@/pages/MeetingFollowupPage'
 import { SatoshiFollowupPage } from '@/pages/SatoshiFollowupPage'
 import { BlanksPage } from '@/pages/BlanksPage'
 import { Combobox } from '@/components/Combobox'
-import { SubsetBar, type SubsetActions, type SubsetCaps, type SubsetState } from '@/components/SubsetBar'
+import { SideDock, SubsetBar, type SubsetActions, type SubsetCaps, type SubsetState } from '@/components/SubsetBar'
 import { SampleDrawer } from '@/components/SampleDrawer'
 import { RecordDrawer } from '@/components/RecordDrawer'
 import type { DateRange } from '@/components/DateBrush'
-import type { FilterRow } from '@/lib/types'
+import type { FilterRow, SeasonMeta } from '@/lib/types'
 import { AXES_MODES, DEFAULT_AXES, type AxesMode, type AxesOpts } from '@/lib/axes'
 import { localSeasonsFor, qualifySeason } from '@/siteSeasons'
+import { MAX_IMPROVE_SITES, MONTH_QUARTERS, NETWORK_DEFAULTS, isNetwork, networkColor, useNetworkData, type Network } from '@/lib/networks'
+import type { SiteItem } from '@/components/SitePicker'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 
 /**
@@ -89,13 +91,15 @@ const meetingFromParams = (p: URLSearchParams): MeetingKey =>
  * ETAD-only and carries no exclusion flags, so offering four site chips and a
  * 942-filter count there would just be wrong.
  */
+/** tabs whose charts can draw a whole network (Filters sidebar → network) */
+const NETWORK_TABS = ['correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole'] as const
 const FILTERS: SubsetCaps = { seasons: true, sites: true, excluded: true, dates: true, fields: 'single', datasetLabel: 'SPARTAN filters' }
 const CAPS: Record<Exclude<TabKey, 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks'>, SubsetCaps> = {
-  correlation: { ...FILTERS, fields: 'pair' },
-  distribution: FILTERS,
-  evolution: FILTERS,
-  ranking: FILTERS,
-  partOfWhole: { ...FILTERS, fields: 'none' },
+  correlation: { ...FILTERS, fields: 'pair', networks: true },
+  distribution: { ...FILTERS, networks: true },
+  evolution: { ...FILTERS, networks: true },
+  ranking: { ...FILTERS, networks: true },
+  partOfWhole: { ...FILTERS, fields: 'none', networks: true },
   map: FILTERS,
   flow: { ...FILTERS, fields: 'none' },
   pmf: {
@@ -142,6 +146,10 @@ export default function App() {
   const [convention, setConvention] = useState<string | null>(init.get('cal'))
   const [activeSeasons, setActiveSeasons] = useState<Set<string> | null>(listParam(init.get('seasons')))
   const [activeSites, setActiveSites] = useState<Set<string> | null>(listParam(init.get('sites')))
+  // which filters the chart tabs draw: the four focus sites (default) or a whole network (lib/networks)
+  const [network, setNetwork] = useState<Network>(isNetwork(init.get('net')) ? init.get('net') as Network : 'focus')
+  // IMPROVE sites load one file each, so they are an explicit pick (codes), never "all"
+  const [improveSites, setImproveSites] = useState<string[]>(() => (init.get('isites') ?? '').split(',').filter(Boolean).slice(0, MAX_IMPROVE_SITES))
   // PMF source filter (PMF and calibration tabs): which grouping, and which groups are kept
   const [pmfScheme, setPmfScheme] = useState<PmfScheme>(init.get('pmfg') === 'class' ? 'Marine vs combustion' : 'Dominant source')
   const [activePmf, setActivePmf] = useState<Set<string> | null>(listParam(init.get('pmf')))
@@ -188,6 +196,8 @@ export default function App() {
       cal: convention,
       seasons: listToParam(activeSeasons),
       sites: listToParam(activeSites),
+      net: network !== 'focus' ? network : null,
+      isites: improveSites.length ? improveSites.join(',') : null,
       pmfg: pmfScheme === 'Marine vs combustion' ? 'class' : null,
       pmf: listToParam(activePmf),
       seas: seasonsOn ? null : '0',
@@ -203,7 +213,7 @@ export default function App() {
       ax: axes.mode !== DEFAULT_AXES.mode ? axes.mode : null,
       log: axes.log ? '1' : null,
     })
-  }, [tab, meeting, estimators, showCI, convention, activeSeasons, activeSites, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, pinnedId, axes])
+  }, [tab, meeting, estimators, showCI, convention, activeSeasons, activeSites, network, improveSites, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -219,6 +229,8 @@ export default function App() {
       setConvention(p.get('cal'))
       setActiveSeasons(listParam(p.get('seasons')))
       setActiveSites(listParam(p.get('sites')))
+      setNetwork(isNetwork(p.get('net')) ? p.get('net') as Network : 'focus')
+      setImproveSites((p.get('isites') ?? '').split(',').filter(Boolean).slice(0, MAX_IMPROVE_SITES))
       setPmfScheme(p.get('pmfg') === 'class' ? 'Marine vs combustion' : 'Dominant source')
       setActivePmf(listParam(p.get('pmf')))
       setSeasonsOn(p.get('seas') !== '0')
@@ -239,22 +251,47 @@ export default function App() {
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
 
-  // Fields that vanished from the export shouldn't leave a chart empty forever.
-  useEffect(() => {
-    if (!data) return
-    const ok = (f: string) => data.meta.fields.includes(f)
-    if (!ok(xField)) setXField(ok(DEFAULT_X) ? DEFAULT_X : data.meta.fields[0])
-    if (!ok(yField)) setYField(ok(DEFAULT_Y) ? DEFAULT_Y : data.meta.fields[1] ?? data.meta.fields[0])
-    if (!ok(field)) setField(ok(DEFAULT_FIELD) ? DEFAULT_FIELD : data.meta.fields[0])
-  }, [data, xField, yField, field])
+  // The network only applies on the chart tabs; everything else always shows the focus sites.
+  const net: Network = (NETWORK_TABS as readonly string[]).includes(tab) ? network : 'focus'
+  const netData = useNetworkData(net, improveSites)
+  // the chosen network's sites, coloured in selection order, and its rows recoloured to match
+  const netView = useMemo(() => {
+    if (net === 'focus') return null
+    const d = netData.data
+    if (!d) return { all: [], chosen: [], rows: [] as FilterRow[], fields: [] as string[], field_units: {}, field_groups: [], coverage: {} }
+    const picked = net === 'improve' ? new Set(improveSites) : null
+    const chosen = d.sites.filter((x) => (picked ? picked.has(x.code) : !activeSites || activeSites.has(x.name)))
+    const colour = new Map(chosen.map((x, i) => [x.name, networkColor(i)]))
+    const paint = (name: string) => colour.get(name) ?? '#9aa5b1'
+    const all = d.sites.map((x) => ({ ...x, color: paint(x.name) }))
+    const rows: FilterRow[] = d.rows.map((r) => ({ ...r, color: paint(r.site) }))
+    const coverage = Object.fromEntries(d.fields.map((f) => [f, rows.filter((r) => typeof r[f] === 'number').length]))
+    return { all, chosen: all.filter((x) => colour.has(x.name)), rows, fields: d.fields, field_units: d.field_units, field_groups: d.field_groups, coverage }
+  }, [net, netData.data, improveSites, activeSites])
+  const activeFields = netView ? netView.fields : data?.meta.fields ?? []
 
-  const siteNames = useMemo(() => data?.meta.sites.map((s) => s.name) ?? [], [data])
+  // Fields that vanished from the export, or that the chosen network does not measure,
+  // fall back to that network's defaults instead of leaving a chart empty.
+  useEffect(() => {
+    if (!data || (netView && !netView.fields.length)) return
+    const ok = (f: string) => activeFields.includes(f)
+    const d = NETWORK_DEFAULTS[net]
+    if (!ok(xField)) setXField(ok(d.x) ? d.x : activeFields[0])
+    if (!ok(yField)) setYField(ok(d.y) ? d.y : activeFields[1] ?? activeFields[0])
+    if (!ok(field)) setField(ok(d.field) ? d.field : activeFields[0])
+  }, [data, netView, activeFields, net, xField, yField, field])
+
+  const siteNames = useMemo(
+    () => (netView ? (net === 'improve' ? netView.chosen : netView.all).map((s) => s.name) : data?.meta.sites.map((s) => s.name) ?? []),
+    [data, netView, net])
   const pmfSiteName = data?.pmf?.site_name ?? 'Addis Ababa'
   // Season calendar. 'local' (the default) bins every filter by its own site's
   // calendar (docs/site-seasonality.md): Beijing's four seasons, Delhi's monsoon,
   // JPL's wet/dry windows, Addis's Bega/Belg/Kiremt. The shared Ethiopian month
   // bins stay available for like-month comparisons across sites.
-  const activeConvention = convention ?? 'local'
+  // networks have no per-site local calendars (siteSeasons.ts covers the four focus sites only)
+  const conventions = useMemo<Record<string, SeasonMeta[]>>(() => ({ ...(data?.meta.season_conventions ?? {}), quarters: MONTH_QUARTERS }), [data])
+  const activeConvention = net === 'focus' ? convention ?? 'local' : convention && convention !== 'local' ? convention : 'quarters'
   const isLocal = activeConvention === 'local'
   // PMF is Addis-only, so its season names need no site prefix; the filter data
   // always carries four calendars, so labels are site-qualified and never collide
@@ -266,8 +303,8 @@ export default function App() {
     [addisOnlyTab, pmfSiteName, activeSites, siteNames]
   )
   const sharedSeasons = useMemo(
-    () => data?.meta.season_conventions[isLocal ? data.meta.season_convention : activeConvention] ?? data?.meta.seasons ?? [],
-    [data, isLocal, activeConvention]
+    () => conventions[isLocal ? data?.meta.season_convention ?? 'quarters' : activeConvention] ?? data?.meta.seasons ?? [],
+    [data, conventions, isLocal, activeConvention]
   )
   const calendarOf = useCallback(
     (site: string) => (isLocal ? localSeasonsFor(site, data?.meta) ?? sharedSeasons : sharedSeasons),
@@ -295,15 +332,16 @@ export default function App() {
   )
 
   // Rows after the exclusion toggle and calendar relabel — the brush draws these.
+  const sourceRows = useMemo(() => (netView ? netView.rows : data?.filters.rows ?? []), [netView, data])
   const baseRows = useMemo(() => {
     if (!data) return []
-    return data.filters.rows
+    return sourceRows
       .filter((r) => includeExcluded || !r.excluded)
       .map((r) => {
         const s = seasonForFilter(r)
         return s !== r.season ? { ...r, season: s } : r
       })
-  }, [data, includeExcluded, seasonForFilter])
+  }, [data, sourceRows, includeExcluded, seasonForFilter])
 
   // The season selection, kept only for seasons that exist under the current
   // calendar and sites; a selection that no longer names any season means "all".
@@ -319,8 +357,8 @@ export default function App() {
       baseRows
         .filter(inRange)
         .filter((r) => !seasonSel || seasonSel.has(r.season))
-        .filter((r) => !activeSites || activeSites.has(r.site)),
-    [baseRows, inRange, seasonSel, activeSites]
+        .filter((r) => net === 'improve' || !activeSites || activeSites.has(r.site)),
+    [baseRows, inRange, seasonSel, activeSites, net]
   )
 
   // The map has its own site scope; keep date, season and exclusion choices.
@@ -362,13 +400,13 @@ export default function App() {
 
   const pinned: FilterRow | null = useMemo(
     () => {
-      const raw = pinnedId && data ? data.filters.rows.find((r) => r.id === pinnedId) : null
+      const raw = pinnedId && data ? sourceRows.find((r) => r.id === pinnedId) ?? data.filters.rows.find((r) => r.id === pinnedId) : null
       return raw ? { ...raw, season: seasonForFilter(raw) } : null
     },
-    [pinnedId, data, seasonForFilter]
+    [pinnedId, data, sourceRows, seasonForFilter]
   )
   // filter ids the gallery knows, so calibration charts can open the drawer for Addis points
-  const knownIds = useMemo(() => new Set((data?.filters.rows ?? []).map((r) => r.id)), [data])
+  const knownIds = useMemo(() => new Set([...(data?.filters.rows ?? []), ...sourceRows].map((r) => r.id)), [data, sourceRows])
   // sampling dates of the Addis evaluation filters the calibration runs score (the same set for every preset)
   const addisEvalDates = useMemo(
     () => data?.calibrationRuns?.runs.find((r) => r.target === 'addis')?.eval.date ?? [],
@@ -387,10 +425,10 @@ export default function App() {
   }, [knownIds])
   const openRow: FilterRow | null = useMemo(
     () => {
-      const raw = openId && data ? data.filters.rows.find((r) => r.id === openId) : null
+      const raw = openId && data ? sourceRows.find((r) => r.id === openId) ?? data.filters.rows.find((r) => r.id === openId) : null
       return raw ? { ...raw, season: seasonForFilter(raw) } : null
     },
-    [openId, data, seasonForFilter]
+    [openId, data, sourceRows, seasonForFilter]
   )
 
   if (error) {
@@ -409,8 +447,10 @@ export default function App() {
   const { filters, meta: rawMeta, census, pmf } = data
   // Charts read meta.seasons for colours and ordering; hand them the active
   // calendar so the legends match what the subset bar says is in force.
-  const meta = { ...rawMeta, seasons, season_convention: activeConvention,
-    season_site: isLocal && calendarSites.length === 1 ? calendarSites[0] : undefined }
+  const meta = { ...rawMeta, season_conventions: conventions, seasons, season_convention: activeConvention,
+    season_site: isLocal && calendarSites.length === 1 ? calendarSites[0] : undefined,
+    // a network view hands the charts its own sites (the chosen ones), fields and units
+    ...(netView ? { sites: netView.chosen, fields: netView.fields, field_units: netView.field_units, field_groups: netView.field_groups, coverage: netView.coverage } : {}) }
 
   const nav = (
     <nav className="nav">
@@ -424,7 +464,7 @@ export default function App() {
 
   const subset = (() => {
     if (tab === 'census' || tab === 'baseline' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks') return null
-    const caps = CAPS[tab]
+    const caps = net === 'focus' ? CAPS[tab] : { ...CAPS[tab], datasetLabel: net === 'improve' ? 'IMPROVE samples' : 'SPARTAN filters (all sites)', excluded: sourceRows.some((r) => r.excluded) }
     const pmfMode = tab === 'pmf'
     const calMode = tab === 'calibration'
     // Counts are computed *before* the dimension's own filter is applied,
@@ -451,6 +491,14 @@ export default function App() {
     const siteCounts: Record<string, number> = {}
     for (const n of siteNames) siteCounts[n] = 0
     for (const r of sitePool) if (r.site in siteCounts) siteCounts[r.site] += 1
+    // the map and list picker: focus and SPARTAN sites are keyed by name, IMPROVE (loaded per site) by code
+    const siteItems: SiteItem[] = net === 'focus'
+      ? rawMeta.sites.map((x) => ({ key: x.name, label: x.name, sub: x.location, lat: x.lat, lon: x.lon, color: x.color, n: siteCounts[x.name] ?? 0, selected: !activeSites || activeSites.has(x.name) }))
+      : (netView?.all ?? []).map((x) => {
+        const on = net === 'improve' ? improveSites.includes(x.code) : !activeSites || activeSites.has(x.name)
+        return { key: net === 'improve' ? x.code : x.name, label: x.name, sub: net === 'improve' ? x.location : x.code, lat: x.lat, lon: x.lon,
+          color: on ? x.color : '#9aa5b1', n: net === 'improve' && !on ? x.n_filters : siteCounts[x.name] ?? 0, selected: on }
+      })
 
     const state: SubsetState = {
       convention: activeConvention,
@@ -462,7 +510,7 @@ export default function App() {
       activeSites: activeSites ?? new Set(siteNames),
       siteCounts,
       includeExcluded,
-      nExcluded: filters.n_excluded,
+      nExcluded: netView ? sourceRows.filter((r) => r.excluded).length : filters.n_excluded,
       dateRange,
       xField,
       yField,
@@ -471,13 +519,20 @@ export default function App() {
       pinned,
       pinnedInSubset: !!pinned && rows.some((r) => r.id === pinned.id),
       shown: pmfMode ? pmfRows.length : calMode ? pool.filter(inSeason).filter(inPmf).length : rows.length,
-      total: pmfMode ? (data.pmf?.n ?? 0) : calMode ? pool.length : filters.n,
+      total: pmfMode ? (data.pmf?.n ?? 0) : calMode ? pool.length : netView ? sourceRows.length : filters.n,
       pmfScheme,
       pmfGroups: pmfGroupList,
       activePmf: pmfSel ?? new Set(pmfGroupList.map((g) => g.name)),
       seasonsOn,
       pmfOn,
       pmfCounts,
+      network: net,
+      chosenNetwork: network,
+      networkLoading: netData.loading,
+      networkError: netData.error,
+      siteItems,
+      siteLimitNote: net === 'improve' ? `${improveSites.length} of ${MAX_IMPROVE_SITES} IMPROVE sites` : undefined,
+      calendarOptions: net === 'focus' ? ['local', ...Object.keys(conventions)] : ['quarters', ...Object.keys(data.meta.season_conventions)],
     }
     const actions: SubsetActions = {
       onConvention: (v) => {
@@ -501,13 +556,31 @@ export default function App() {
       onAllPmf: () => setActivePmf(null),
       onSeasonsOn: (v) => { setSeasonsOn(v); if (!v) setActiveSeasons(null) },
       onPmfOn: (v) => { setPmfOn(v); if (!v) setActivePmf(null) },
-      onToggleSite: (name) => {
-        const cur = new Set(activeSites ?? siteNames)
-        if (cur.has(name)) cur.delete(name)
-        else cur.add(name)
+      onToggleSite: (key) => {
+        if (net === 'improve') {
+          setImproveSites((cur) => cur.includes(key) ? cur.filter((c) => c !== key) : cur.length >= MAX_IMPROVE_SITES ? cur : [...cur, key])
+          return
+        }
+        // with many sites, the first pick from "all" keeps just that site; with the four focus sites, a click toggles one off
+        const cur = new Set<string>(activeSites ?? (net === 'spartan' ? [] : siteNames))
+        if (cur.has(key)) cur.delete(key)
+        else cur.add(key)
         setActiveSites(cur.size === 0 || cur.size === siteNames.length ? null : cur)
       },
       onAllSites: () => setActiveSites(null),
+      // "Clear" empties an explicit pick; SPARTAN with nothing picked goes back to all its sites
+      onClearSites: () => (net === 'improve' ? setImproveSites([]) : setActiveSites(null)),
+      onNetwork: (n) => {
+        setNetwork(n)
+        // each network opens on its own natural pair (focus: HIPS BC vs FTIR EC; IMPROVE: HIPS BC vs TOR EC)
+        setXField(NETWORK_DEFAULTS[n].x)
+        setYField(NETWORK_DEFAULTS[n].y)
+        setField(NETWORK_DEFAULTS[n].field)
+        setActiveSites(null)
+        setActiveSeasons(null)
+        setConvention(null)
+        setPinnedId(null)
+      },
       onIncludeExcluded: setIncludeExcluded,
       onDateRange: setDateRange,
       onXField: setXField,
@@ -519,6 +592,7 @@ export default function App() {
       onReset: () => {
         setActiveSeasons(null)
         setActiveSites(null)
+        if (net === 'improve') setImproveSites([])
         setActivePmf(null)
         setSeasonsOn(true)
         setPmfOn(false)
@@ -537,7 +611,7 @@ export default function App() {
       {openRow && (
         <SampleDrawer
           row={openRow}
-          allRows={filters.rows}
+          allRows={sourceRows.some((r) => r.id === openRow.id) ? sourceRows : filters.rows}
           meta={meta}
           xField={xField}
           yField={yField}
@@ -637,16 +711,16 @@ function Shell({ children, nav, wide = false }: { children: React.ReactNode; nav
   )
 }
 
-/** Explain toggle and copy-link, at the right of the title row. */
+/** Explain toggle (absent in public builds, see lib/prefs) and copy-link, at the right of the title row. */
 function HeaderTools() {
   const { explain, setExplain } = usePrefs()
   const [copied, setCopied] = useState(false)
   return (
     <span className="header-tools">
-      <label className="toggle" title="Show every chart's explanation and provenance, and the subset bar's captions">
+      {EXPLAIN_AVAILABLE && <label className="toggle" title="Show every chart's explanation and provenance, and the subset bar's captions">
         <input type="checkbox" checked={explain} onChange={(e) => setExplain(e.target.checked)} />
         Explain
-      </label>
+      </label>}
       <button
         type="button"
         className="btn quiet"
@@ -664,10 +738,11 @@ function RegressionSidebar() {
   const [open, setOpen] = useSidePanelOpen()
   const top = useHeaderHeight()
   return <>
-    <button className={`subset-tab ${open ? 'open' : ''}`} style={{ top: top + 24 }} type="button" aria-expanded={open} onClick={() => setOpen(!open)} title={open ? 'Hide the fits' : 'Show the fits'}><span className="subset-tab-label">Fits</span></button>
-    {open && <aside className="panel subset subset-panel" style={{ top, height: `calc(100vh - ${top}px)` }} aria-label="Fits">
-      <header className="subset-head"><strong>Fits</strong><span style={{ marginLeft: 'auto' }}><button type="button" className="btn quiet" onClick={() => setOpen(false)} aria-label="Close fits" title="Close">✕</button></span></header>
-      <RegressionControls />
-    </aside>}
+    <SideDock open={open} top={top} tab={<button className="subset-tab" type="button" aria-expanded={open} onClick={() => setOpen(!open)} title={open ? 'Hide the fits' : 'Show the fits'}><span className="subset-tab-label">Fits</span></button>}>
+      <aside className="panel subset subset-panel" aria-label="Fits">
+        <header className="subset-head"><strong>Fits</strong><span style={{ marginLeft: 'auto' }}><button type="button" className="btn quiet" onClick={() => setOpen(false)} aria-label="Close fits" title="Close">✕</button></span></header>
+        <RegressionControls />
+      </aside>
+    </SideDock>
   </>
 }
