@@ -46,7 +46,7 @@ import { RecordDrawer } from '@/components/RecordDrawer'
 import type { DateRange } from '@/components/DateBrush'
 import type { FilterRow, SeasonMeta, SiteMeta } from '@/lib/types'
 import { AXES_MODES, DEFAULT_AXES, type AxesMode, type AxesOpts } from '@/lib/axes'
-import { localSeasonsFor, qualifySeason } from '@/siteSeasons'
+import { hasLocalCalendar, localSeasonsFor, qualifySeason } from '@/siteSeasons'
 import { MAX_IMPROVE_SITES, MONTH_QUARTERS, NETWORK_DEFAULTS, hasImprove, hasSpartan, isNetwork, mergeGroups, networkColor, useNetworkData, type Network } from '@/lib/networks'
 import type { SiteItem } from '@/components/SitePicker'
 import { FilterEditsProvider, type FilterGroup } from '@/lib/filterEdits'
@@ -379,12 +379,13 @@ export default function App() {
   // calendar (docs/site-seasonality.md): Beijing's four seasons, Delhi's monsoon,
   // JPL's wet/dry windows, Addis's Bega/Belg/Kiremt. The shared Ethiopian month
   // bins stay available for like-month comparisons across sites.
-  // networks have no per-site local calendars (siteSeasons.ts covers the four focus sites only)
+  // every SPARTAN site and the two Santiago IMPROVE sites have their own calendar (siteSeasons.network.json)
   const conventions = useMemo<Record<string, SeasonMeta[]>>(() => ({ ...(data?.meta.season_conventions ?? {}), quarters: MONTH_QUARTERS, custom: customSeasonMeta(customSeasons) }), [data, customSeasons])
-  // the local calendars cover the four focus sites; with other sites in view, shared quarters are the default
-  const focusOnly = net === 'focus' || (hasSpartan(net) && !!netView && netView.chosen.every((x) => data?.meta.sites.some((f) => f.name === x.name)))
-  const defaultConvention = focusOnly ? 'local' : 'quarters'
-  const activeConvention = net === 'improve' && convention === 'local' ? 'quarters' : convention ?? defaultConvention
+  // local calendars are the default wherever every site in view has one; otherwise shared quarters
+  const siteCode = useMemo(() => new Map((netView?.all ?? []).map((x) => [x.name, x.code])), [netView])
+  const allLocal = net === 'focus' || (!!netView && netView.chosen.length > 0 && netView.chosen.every((x) => hasLocalCalendar(x.name, x.code)))
+  const defaultConvention = allLocal ? 'local' : 'quarters'
+  const activeConvention = convention ?? defaultConvention
   const isLocal = activeConvention === 'local'
   // PMF is Addis-only, so its season names need no site prefix; the filter data
   // always carries four calendars, so labels are site-qualified and never collide
@@ -401,8 +402,8 @@ export default function App() {
   )
   const calendarOf = useCallback(
     // sites without a local calendar fall back to the shared quarters, not the Ethiopian bins
-    (site: string) => (isLocal ? localSeasonsFor(site, data?.meta) ?? MONTH_QUARTERS : sharedSeasons),
-    [isLocal, data, sharedSeasons]
+    (site: string) => (isLocal ? localSeasonsFor(site, data?.meta, siteCode.get(site)) ?? MONTH_QUARTERS : sharedSeasons),
+    [isLocal, data, sharedSeasons, siteCode]
   )
   const seasons = useMemo(
     () => isLocal
@@ -651,7 +652,7 @@ export default function App() {
       siteItems,
       siteLimitNote: net === 'improve' ? `${improveSites.length} of ${MAX_IMPROVE_SITES} IMPROVE sites`
         : net === 'both' && netView ? `${netView.chosen.length - improveSites.length} SPARTAN · ${improveSites.length}/${MAX_IMPROVE_SITES} IMPROVE` : undefined,
-      calendarOptions: net === 'improve' ? ['quarters', ...Object.keys(data.meta.season_conventions), 'custom'] : ['local', ...Object.keys(conventions)],
+      calendarOptions: ['local', ...Object.keys(conventions)],
       customSeasons,
       sitesAtDefault: net === 'spartan' ? spartanSel === null : net === 'improve' ? improveSites.length > 0 : net === 'both' ? spartanSel === null && improveSites.length === 0 : !activeSites,
       allSitesSelected: hasSpartan(net) ? !!netView && netView.chosen.length - (net === 'both' ? improveSites.length : 0) === netView.nSpartan : !activeSites,

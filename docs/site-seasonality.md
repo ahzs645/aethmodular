@@ -9,6 +9,10 @@ for like-month comparison; under it, “Belg” on a Beijing, Delhi, or JPL char
 only means the selected months, not the local weather regime. These are fixed
 month approximations, not classifications from observed weather on each filter day.
 
+Every other SPARTAN site, and the IMPROVE Santiago sites ANTU1 and LCON1, has its own
+calendar in [site-seasonality-network.md](site-seasonality-network.md); the gallery uses
+those under the same per-site default.
+
 | Site | Recommended local bins | Evidence and qualification |
 |---|---|---|
 | Beijing (CHTS) | Spring Mar–May; summer Jun–Aug; autumn Sep–Nov; winter Dec–Feb | [Beijing municipal visitor service](https://english.visitbeijing.com.cn/article/4JQ27e27tU6) gives these months. [China Meteorological Administration](https://www.cma.gov.cn/zfxxgk/gknr/flfgbz/bz/202209/P020220921552240920203.pdf) also defines *climate season onset* from persistent daily temperature thresholds; the actual onset can differ from fixed months. Summer is the main rainy period, but “spring” and “autumn” are not wet/dry equivalents. |

@@ -75,7 +75,7 @@ export interface SubsetState {
   siteItems: SiteItem[]
   /** e.g. "3 of 10" for IMPROVE, where sites load one by one */
   siteLimitNote?: string
-  /** calendars the picker offers (networks have no per-site local calendar) */
+  /** calendars the picker offers */
   calendarOptions: string[]
   /** the reader's custom month bins, edited when the calendar is 'custom' */
   customSeasons?: { name: string; months: number[] }[]
@@ -333,11 +333,11 @@ export function SubsetBar({
                       options={s.calendarOptions.map((k) => ({ key: k, label: `${CALENDAR_LABEL[k] ?? k}${k === s.defaultConvention ? ' (default)' : ''}` }))} />
                     <span className="row-note" style={{ display: 'block' }}>
                       {s.convention === 'local'
-                        ? 'Each filter is binned by its own site’s calendar (docs/site-seasonality.md). Fixed month bins, not observed weather.'
+                        ? 'Each filter is binned by its own site’s calendar: the met service’s or a site paper’s month bins (docs/site-seasonality.md, docs/site-seasonality-network.md); sites without one use quarters. Fixed month bins, not observed weather.'
                         : s.convention === 'custom'
                         ? 'Your own bins, applied to every site. Pick a season, click months to move them into it, rename freely; they travel in the link.'
                         : s.convention === 'quarters'
-                        ? 'The same three-month bins at every site. Only the four focus sites have local calendars; Dec–Feb is winter in the north and summer in the south.'
+                        ? 'The same three-month bins at every site, for like-month comparison; Dec–Feb is winter in the north and summer in the south.'
                         : <>Shared month bins across every site, for like-month comparison: “Belg” at Beijing only means those months. February sits in <strong style={{ color: 'var(--ink-text)' }}>{s.seasons.find((x) => x.months.includes(2))?.name ?? '—'}</strong>.</>}
                     </span>
                   </Row>

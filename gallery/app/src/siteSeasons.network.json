@@ -1,0 +1,1975 @@
+{
+  "AEAZ": {
+    "site": "Abu Dhabi, UAE",
+    "seasons": [
+      {
+        "name": "Winter (Dec–Mar)",
+        "months": [
+          12,
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "Spring transition (Apr–May)",
+        "months": [
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Summer (Jun–Sep)",
+        "months": [
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "name": "Autumn transition (Oct–Nov)",
+        "months": [
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "World Bank Climate Change Knowledge Portal, United Arab Emirates: Current Climate (blocks automated fetch; months seen in search excerpt)",
+        "url": "https://climateknowledgeportal.worldbank.org/node/4318"
+      }
+    ],
+    "note": "National two-season-plus-transitions description, not an NCM page; dust is highest roughly Mar–Jun, so dust-season work may prefer different bins. Re-check this source in a browser before formal citation."
+  },
+  "ARCB": {
+    "site": "Buenos Aires, Argentina",
+    "seasons": [
+      {
+        "name": "Summer (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Autumn (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Winter (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Spring (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "source",
+    "sources": [
+      {
+        "title": "Palavecino, Godoy, Dillon and Skansi (2023), Servicio Meteorológico Nacional technical note, wind intensity at Ezeiza station",
+        "url": "https://repositorio.smn.gob.ar/bitstream/handle/20.500.12160/2374/0007ID2023.pdf?sequence=1&isAllowed=y"
+      }
+    ],
+    "note": "SMN authors use these calendar seasons for Ezeiza in Greater Buenos Aires; this is the standard convention rather than an SMN policy page."
+  },
+  "AUMN": {
+    "site": "Melbourne, Australia",
+    "seasons": [
+      {
+        "name": "Summer (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Autumn (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Winter (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Spring (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "Bureau of Meteorology, Climate glossary: Seasons (blocks automated fetch)",
+        "url": "http://www.bom.gov.au/climate/glossary/seasons.shtml"
+      },
+      {
+        "title": "Copy of the BoM glossary definition quoted on the ANU Link mailing list (2009)",
+        "url": "https://mailman.anu.edu.au/pipermail/link/2009-June/016410.html"
+      }
+    ],
+    "note": "BoM's national definition (summer = December, January, February); Melbourne's winter wood-heater PM2.5 peak and autumn planned burns fall within these bins."
+  },
+  "BDDU": {
+    "site": "Dhaka, Bangladesh",
+    "seasons": [
+      {
+        "name": "Winter (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Pre-monsoon (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Monsoon (Jun–Sep)",
+        "months": [
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "name": "Post-monsoon (Oct–Nov)",
+        "months": [
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "Khatun, Rashid and Hygen (2016), Climate of Bangladesh, MET report 08/2016 (Bangladesh Meteorological Department with MET Norway)",
+        "url": "https://www.met.no/publikasjoner/met-report/met-report-2016/_/attachment/download/b50e3f06-4485-4f34-b642-0a1e86f12c7d:a483b63367b0f087f3bd9410e135a5e0837d1927/MET-report-08-2016.pdf"
+      }
+    ],
+    "note": "Bangladesh Meteorological Department authors recognise these four seasons nationally; note Bangladesh puts December in winter, unlike IMD."
+  },
+  "BIBU": {
+    "site": "Bujumbura, Burundi",
+    "seasons": [
+      {
+        "name": "Short dry season (Jan)",
+        "months": [
+          1
+        ]
+      },
+      {
+        "name": "Long rains (Feb–May)",
+        "months": [
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Long dry season (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Short rains (Sep–Dec)",
+        "months": [
+          9,
+          10,
+          11,
+          12
+        ]
+      }
+    ],
+    "confidence": "source",
+    "sources": [
+      {
+        "title": "Ndamuzi et al. (2023), arXiv:2312.12003, Modelling and characterization of fine particulate matter dynamics in Bujumbura using low cost sensors",
+        "url": "https://arxiv.org/pdf/2312.12003"
+      },
+      {
+        "title": "MSF (2025), Aperçus saisonniers – Afrique centrale",
+        "url": "https://www.msf.org/sites/default/files/2025-03/Apercus%20saisonniers%20-%20Afrique%20centrale.pdf"
+      }
+    ],
+    "note": "The Bujumbura paper (a preprint) gives the short dry season as mid-January to mid-February, assigned here to January only; fold January into the long rains if samples are thin. No IGEBU definition was found."
+  },
+  "CADO": {
+    "site": "Downsview, Canada",
+    "seasons": [
+      {
+        "name": "Winter (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Spring (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Summer (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Autumn (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Winter 2024/2025 (Dec–Feb)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/winter-2025-bulletin.html"
+      },
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Spring 2025 (Mar–May)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/spring-2025-bulletin.html"
+      },
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Summer 2024 (Jun–Aug)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/summer-2024-bulletin.html"
+      },
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Autumn 2024 (Sep–Nov)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/autumn-2024-bulletin.html"
+      }
+    ],
+    "note": "Environment and Climate Change Canada national reporting seasons applied to Toronto (Downsview)."
+  },
+  "CAHA": {
+    "site": "Halifax, Canada",
+    "seasons": [
+      {
+        "name": "Winter (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Spring (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Summer (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Autumn (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Winter 2024/2025 (Dec–Feb)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/winter-2025-bulletin.html"
+      },
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Spring 2025 (Mar–May)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/spring-2025-bulletin.html"
+      },
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Summer 2024 (Jun–Aug)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/summer-2024-bulletin.html"
+      },
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Autumn 2024 (Sep–Nov)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/autumn-2024-bulletin.html"
+      }
+    ],
+    "note": "Environment and Climate Change Canada national reporting seasons applied to Halifax."
+  },
+  "CAKE": {
+    "site": "Kelowna, Canada",
+    "seasons": [
+      {
+        "name": "Winter (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Spring (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Summer (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Autumn (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Winter 2024/2025 (Dec–Feb)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/winter-2025-bulletin.html"
+      },
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Spring 2025 (Mar–May)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/spring-2025-bulletin.html"
+      },
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Summer 2024 (Jun–Aug)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/summer-2024-bulletin.html"
+      },
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Autumn 2024 (Sep–Nov)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/autumn-2024-bulletin.html"
+      }
+    ],
+    "note": "Environment and Climate Change Canada national reporting seasons applied to Kelowna; wildfire smoke peaks July–August and can extend into September, so the summer bin carries most smoke days."
+  },
+  "CALE": {
+    "site": "Lethbridge, Canada",
+    "seasons": [
+      {
+        "name": "Winter (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Spring (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Summer (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Autumn (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Winter 2024/2025 (Dec–Feb)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/winter-2025-bulletin.html"
+      },
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Spring 2025 (Mar–May)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/spring-2025-bulletin.html"
+      },
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Summer 2024 (Jun–Aug)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/summer-2024-bulletin.html"
+      },
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Autumn 2024 (Sep–Nov)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/autumn-2024-bulletin.html"
+      }
+    ],
+    "note": "Environment and Climate Change Canada national reporting seasons applied to Lethbridge."
+  },
+  "CASH": {
+    "site": "Sherbrooke, Canada",
+    "seasons": [
+      {
+        "name": "Winter (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Spring (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Summer (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Autumn (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Winter 2024/2025 (Dec–Feb)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/winter-2025-bulletin.html"
+      },
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Spring 2025 (Mar–May)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/spring-2025-bulletin.html"
+      },
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Summer 2024 (Jun–Aug)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/summer-2024-bulletin.html"
+      },
+      {
+        "title": "ECCC Climate Trends and Variations Bulletin, Autumn 2024 (Sep–Nov)",
+        "url": "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/climate-trends-variability/trends-variations/autumn-2024-bulletin.html"
+      }
+    ],
+    "note": "Environment and Climate Change Canada national reporting seasons applied to Sherbrooke."
+  },
+  "CHTS": {
+    "site": "Beijing, China",
+    "seasons": [
+      {
+        "name": "Winter (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Spring (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Summer (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Autumn (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "source",
+    "sources": [
+      {
+        "title": "Beijing municipal visitor service",
+        "url": "https://english.visitbeijing.com.cn/article/4JQ27e27tU6"
+      },
+      {
+        "title": "China Meteorological Administration, climate season onset standard",
+        "url": "https://www.cma.gov.cn/zfxxgk/gknr/flfgbz/bz/202209/P020220921552240920203.pdf"
+      }
+    ],
+    "note": "Existing calendar from docs/site-seasonality.md, unchanged; CMA's threshold-based season onset can differ from these fixed months."
+  },
+  "CLST": {
+    "site": "Santiago, Chile",
+    "seasons": [
+      {
+        "name": "Cold (Apr–Sep)",
+        "months": [
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "name": "Warm (Oct–Mar)",
+        "months": [
+          10,
+          11,
+          12,
+          1,
+          2,
+          3
+        ]
+      }
+    ],
+    "confidence": "source",
+    "sources": [
+      {
+        "title": "Koutrakis et al. (2005), J. Air Waste Manage. Assoc. 55:342, PM10 and PM2.5 in Santiago, Chile, 1989–2001 (cold season April–September, warm season October–March)",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/15828676"
+      },
+      {
+        "title": "SEREMI Medio Ambiente RM, Informe Gestión de Episodios Críticos 2020 (GEC period 1 May–31 Aug)",
+        "url": "https://airerm.mma.gob.cl/wp-content/uploads/2022/08/INFORME-GEC-2020.pdf"
+      }
+    ],
+    "note": "Santiago PM2.5 cold/warm seasons from Koutrakis et al.; the regulatory critical-episode (GEC) period is narrower (1 May–31 Aug), so May–Aug are the episode months within the cold bin."
+  },
+  "CLTA": {
+    "site": "Talca, Chile",
+    "seasons": [
+      {
+        "name": "Cold (Apr–Sep)",
+        "months": [
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "name": "Warm (Oct–Mar)",
+        "months": [
+          10,
+          11,
+          12,
+          1,
+          2,
+          3
+        ]
+      }
+    ],
+    "confidence": "source",
+    "sources": [
+      {
+        "title": "Ministerio del Medio Ambiente, Informe final GEC 2023, PDA Talca-Maule (GEC period 1 April–30 September)",
+        "url": "https://ppda.mma.gob.cl/wp-content/uploads/2023/11/INFORME_FINAL_GEC_2023_PDA_Talca-Maule_oct-2023.pdf"
+      },
+      {
+        "title": "Koutrakis et al. (2005), J. Air Waste Manage. Assoc. 55:342, PM10 and PM2.5 in Santiago, Chile, 1989–2001 (cold season April–September, warm season October–March)",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/15828676"
+      }
+    ],
+    "note": "Talca's critical-episode management period is exactly April–September, matching the Santiago cold/warm split; no Dirección Meteorológica de Chile month definition was found."
+  },
+  "CODC": {
+    "site": "Palmira, Colombia",
+    "seasons": [
+      {
+        "name": "First dry (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "First wet (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Second dry (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Second wet (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "source",
+    "sources": [
+      {
+        "title": "Aragón-Moreno and Lerma-Lerma (2019), Rev. Fac. Ing. 28(51), Bogotá rainfall regime (DEF and JJA dry, MAM and SON wet)",
+        "url": "https://redalyc.org/journal/4139/413959633004/html/"
+      },
+      {
+        "title": "Acta Agronómica (UNAL), Palmira climate (semi-dry Dec–Feb, rainy Mar–May, very dry Jun–Sep, rainy Oct–Nov)",
+        "url": "https://revistas.unal.edu.co/index.php/acta_agronomica/article/download/48912/49987"
+      }
+    ],
+    "note": "Bins follow the site coordinates (4.64 N, 74.08 W, which is Bogotá), not the name Palmira; Palmira's own bimodal regime is shifted (very dry Jun–Sep, rainy Oct–Nov), and Bogotá PM2.5 peaks Feb–Mar rather than tracking the dry periods."
+  },
+  "ETAD": {
+    "site": "Addis Ababa, Ethiopia",
+    "seasons": [
+      {
+        "name": "Bega (Oct–Jan)",
+        "months": [
+          10,
+          11,
+          12,
+          1
+        ]
+      },
+      {
+        "name": "Belg (Feb–May)",
+        "months": [
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Kiremt (Jun–Sep)",
+        "months": [
+          6,
+          7,
+          8,
+          9
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "Ethiopian Meteorological Institute, Annual climate bulletin 2023",
+        "url": "https://www.ethiomet.gov.et/documents/108/Annual_bull_for_2023.pdf"
+      }
+    ],
+    "note": "Existing calendar from docs/site-seasonality.md, unchanged (the gallery's belg_feb bins); the legacy dry_feb option places February in dry instead."
+  },
+  "ETBI": {
+    "site": "Bishoftu, Ethiopia",
+    "seasons": [
+      {
+        "name": "Bega (Oct–Jan)",
+        "months": [
+          10,
+          11,
+          12,
+          1
+        ]
+      },
+      {
+        "name": "Belg (Feb–May)",
+        "months": [
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Kiremt (Jun–Sep)",
+        "months": [
+          6,
+          7,
+          8,
+          9
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "Ethiopian Meteorological Institute, Annual climate bulletin 2023",
+        "url": "https://www.ethiomet.gov.et/documents/108/Annual_bull_for_2023.pdf"
+      },
+      {
+        "title": "Yemenu and Chemeda (2010), HESSD 7:3733, Climate resources analysis for use of planning in crop production and rainfall water management in the central highlands of Ethiopia: the case of Bishoftu district",
+        "url": "https://hess.copernicus.org/preprints/7/3733/2010/hessd-7-3733-2010.pdf"
+      }
+    ],
+    "note": "Same Ethiopian Meteorological Institute bins as Addis Ababa (45 km away); the Bishoftu study puts Belg rains mid-March to mid-May and the long rains mid-June to late September."
+  },
+  "IDBD": {
+    "site": "Bandung, Indonesia",
+    "seasons": [
+      {
+        "name": "Rainy (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Wet-to-dry transition (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Dry (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Dry-to-wet transition (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "Shubri, Vonnisa and Marzuki (2023), JPPIPA, Seasonal and diurnal variation of lightning over Java and its relationship with aerosol",
+        "url": "https://jppipa.unram.ac.id/index.php/jppipa/article/view/4784"
+      },
+      {
+        "title": "Aldrian and Susanto (2003), Int. J. Climatol. 23:1435, Identification of three dominant rainfall regions within Indonesia",
+        "url": "https://www2.atmos.umd.edu/~dwi/papers/aldrian_susanto_ijc.pdf"
+      }
+    ],
+    "note": "Java-wide DJF rainy / JJA dry convention from peer-reviewed papers; BMKG declares season onset each year per zone from dekadal rainfall rather than fixed months, and no Bandung-specific bins were found."
+  },
+  "ILHA": {
+    "site": "Haifa, Israel",
+    "seasons": [
+      {
+        "name": "Winter (Dec–Mar)",
+        "months": [
+          12,
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "Spring (Apr–May)",
+        "months": [
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Summer (Jun–Sep)",
+        "months": [
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "name": "Autumn (Oct–Nov)",
+        "months": [
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "Alpert, Osetinsky, Ziv and Shafir (2004), Int. J. Climatol. 24:1013, A new seasons definition based on classified daily synoptic systems: an example for the Eastern Mediterranean",
+        "url": "https://www.tau.ac.il/~pinhas/papers/2004/Alpert_et_al_IJC_2004b.pdf"
+      }
+    ],
+    "note": "Synoptic season definition for the Eastern Mediterranean (Israel data) rounded to whole months, applied to Haifa; spring is the Sharav-low/dust-storm season, and no Israel Meteorological Service month definition was found."
+  },
+  "ILNZ": {
+    "site": "Rehovot, Israel",
+    "seasons": [
+      {
+        "name": "Winter (Dec–Mar)",
+        "months": [
+          12,
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "Spring (Apr–May)",
+        "months": [
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Summer (Jun–Sep)",
+        "months": [
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "name": "Autumn (Oct–Nov)",
+        "months": [
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "Alpert, Osetinsky, Ziv and Shafir (2004), Int. J. Climatol. 24:1013, A new seasons definition based on classified daily synoptic systems: an example for the Eastern Mediterranean",
+        "url": "https://www.tau.ac.il/~pinhas/papers/2004/Alpert_et_al_IJC_2004b.pdf"
+      }
+    ],
+    "note": "Synoptic season definition for the Eastern Mediterranean (Israel data) rounded to whole months, applied to Rehovot; spring is the Sharav-low/dust-storm season, and no Israel Meteorological Service month definition was found."
+  },
+  "INDH": {
+    "site": "Delhi, India",
+    "seasons": [
+      {
+        "name": "Winter (Jan–Feb)",
+        "months": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Pre-monsoon (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Monsoon (Jun–Sep)",
+        "months": [
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "name": "Post-monsoon (Oct–Dec)",
+        "months": [
+          10,
+          11,
+          12
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "India Meteorological Department seasonal classification",
+        "url": "https://mausam.imd.gov.in/imd_latest/contents/pdf/IMDposoco.pdf"
+      },
+      {
+        "title": "IMD Delhi monsoon onset/withdrawal series",
+        "url": "https://mausam.imd.gov.in/newdelhi/mcdata/seasonal_report.pdf"
+      }
+    ],
+    "note": "Existing calendar from docs/site-seasonality.md, unchanged; IMD national seasons, and monsoon onset and withdrawal vary by year."
+  },
+  "INJA": {
+    "site": "Jaipur, India",
+    "seasons": [
+      {
+        "name": "Winter (Jan–Feb)",
+        "months": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Pre-monsoon (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Southwest monsoon (Jun–Sep)",
+        "months": [
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "name": "Post-monsoon (Oct–Dec)",
+        "months": [
+          10,
+          11,
+          12
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "India Meteorological Department, Statement on the Climate of India during 2025 (hosted by WMO)",
+        "url": "https://wmo.int/node/38178"
+      },
+      {
+        "title": "MAUSAM (IMD), Weather in India: Winter season (January–February 2025)",
+        "url": "https://mausamjournal.imd.gov.in/index.php/MAUSAM/article/view/7411"
+      }
+    ],
+    "note": "IMD national seasons applied to Jaipur, same as Delhi; many Indo-Gangetic aerosol papers instead put December in winter (Dec–Feb) and use Oct–Nov as post-monsoon, so state the convention when comparing with literature."
+  },
+  "INKA": {
+    "site": "Kanpur, India",
+    "seasons": [
+      {
+        "name": "Winter (Jan–Feb)",
+        "months": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Pre-monsoon (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Southwest monsoon (Jun–Sep)",
+        "months": [
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "name": "Post-monsoon (Oct–Dec)",
+        "months": [
+          10,
+          11,
+          12
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "India Meteorological Department, Statement on the Climate of India during 2025 (hosted by WMO)",
+        "url": "https://wmo.int/node/38178"
+      },
+      {
+        "title": "MAUSAM (IMD), Weather in India: Winter season (January–February 2025)",
+        "url": "https://mausamjournal.imd.gov.in/index.php/MAUSAM/article/view/7411"
+      }
+    ],
+    "note": "IMD national seasons applied to Kanpur, same as Delhi; many Indo-Gangetic aerosol papers instead put December in winter (Dec–Feb) and use Oct–Nov as post-monsoon, so state the convention when comparing with literature."
+  },
+  "KRSE": {
+    "site": "Seoul, Korea",
+    "seasons": [
+      {
+        "name": "Winter (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Spring (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Summer (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Autumn (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "Korea Meteorological Administration, Monthly (May) and Seasonal (March–May) 2011 Climate Summary",
+        "url": "https://www.kma.go.kr/download_01/2011_May_climate.pdf"
+      },
+      {
+        "title": "Korea Meteorological Administration, Monthly (November) and Seasonal (September–November) 2011 Climate Summary",
+        "url": "https://www.kma.go.kr/download_01/2011_November_climate.pdf"
+      }
+    ],
+    "note": "KMA national reporting seasons applied to Seoul; no city-specific PM2.5 paper stating different bins was found."
+  },
+  "KRUL": {
+    "site": "Ulsan, Korea",
+    "seasons": [
+      {
+        "name": "Winter (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Spring (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Summer (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Autumn (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "Korea Meteorological Administration, Monthly (May) and Seasonal (March–May) 2011 Climate Summary",
+        "url": "https://www.kma.go.kr/download_01/2011_May_climate.pdf"
+      },
+      {
+        "title": "Korea Meteorological Administration, Monthly (November) and Seasonal (September–November) 2011 Climate Summary",
+        "url": "https://www.kma.go.kr/download_01/2011_November_climate.pdf"
+      }
+    ],
+    "note": "KMA national reporting seasons applied to Ulsan; no city-specific PM2.5 paper stating different bins was found."
+  },
+  "MXMC": {
+    "site": "Mexico City, Mexico",
+    "seasons": [
+      {
+        "name": "Cold-dry (Nov–Feb)",
+        "months": [
+          11,
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Warm-dry (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Rainy (Jun–Oct)",
+        "months": [
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+      }
+    ],
+    "confidence": "source",
+    "sources": [
+      {
+        "title": "CAMe/SEMARNAT (7 Dec 2023), Temporada seca-fría press presentation (November to end of February)",
+        "url": "https://www.gob.mx/cms/uploads/attachment/file/875058/Presentacion_Conf_Megalopolis_07dic2023.pdf"
+      },
+      {
+        "title": "CAMe/SEDEMA, Balance de la temporada seca-caliente 2025 (March–May)",
+        "url": "https://www.gob.mx/cms/uploads/attachment/file/1015242/presentacion_conferencia_balance_temporada_seca_caliente_2025.pdf"
+      },
+      {
+        "title": "Retama et al. (2015), ACP 15:9693, Seasonal and diurnal trends in black carbon properties and co-pollutants in Mexico City",
+        "url": "https://acp.copernicus.org/articles/15/9693/2015/"
+      }
+    ],
+    "note": "Megalopolis environmental commission seasons; Retama et al. instead use cold-dry Nov–Mar and warm-dry Apr–May, and the ozone season runs mid-February to early June."
+  },
+  "NGIL": {
+    "site": "Ilorin, Nigeria",
+    "seasons": [
+      {
+        "name": "Harmattan/dry (Nov–Mar)",
+        "months": [
+          11,
+          12,
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "Wet (Apr–Oct)",
+        "months": [
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+      }
+    ],
+    "confidence": "source",
+    "sources": [
+      {
+        "title": "Balarabe and Isah (2019), FUDMA J. Sci. 3(1):428–433, ANN models for predicting aerosol optical depth in Ilorin, Nigeria",
+        "url": "https://fjs.fudutsinma.edu.ng/index.php/fjs/article/download/1471/1142"
+      },
+      {
+        "title": "University of Maryland, Ilorin observation site description",
+        "url": "https://www2.atmos.umd.edu/~srb/eos/observation_site.htm"
+      }
+    ],
+    "note": "Ilorin aerosol paper uses Harmattan November–March and wet April–October; the UMD site page instead ends the dry season in February, and the dust AOD peak is Dec–Feb."
+  },
+  "PHMO": {
+    "site": "Manila, Philippines",
+    "seasons": [
+      {
+        "name": "Cool dry (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Hot dry (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Rainy (Jun–Nov)",
+        "months": [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "PAGASA, Climate of the Philippines",
+        "url": "https://pagasa.dost.gov.ph/information/climate-philippines"
+      }
+    ],
+    "note": "PAGASA national seasons applied to Metro Manila; actual rainy-season onset is declared each year and can fall in late May or June."
+  },
+  "PRFJ": {
+    "site": "Fajardo, PuertoRico",
+    "seasons": [
+      {
+        "name": "Dry (Dec–Mar)",
+        "months": [
+          12,
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "Early rainfall season (Apr–Jul)",
+        "months": [
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      {
+        "name": "Late rainfall season (Aug–Nov)",
+        "months": [
+          8,
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "Watkins (2024), LSU MS thesis, Anticipating the impact of the Saharan Air Layer on the Puerto Rican early rainfall season",
+        "url": "https://repository.lsu.edu/gradschool_theses/5965"
+      },
+      {
+        "title": "NWS San Juan, 2009 climate review",
+        "url": "https://www.weather.gov/sju/2009_review"
+      }
+    ],
+    "note": "The thesis defines the early (Apr–Jul) and late (Aug–Nov) rainfall seasons and the dry season is the remaining months (NWS San Juan starts it in January); African dust peaks June–August, across the two rainfall seasons."
+  },
+  "SGSU": {
+    "site": "Singapore, Singapore",
+    "seasons": [
+      {
+        "name": "Northeast monsoon (Dec–Mar)",
+        "months": [
+          12,
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "Inter-monsoon (Apr–May)",
+        "months": [
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Southwest monsoon (Jun–Sep)",
+        "months": [
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "name": "Inter-monsoon (Oct–Nov)",
+        "months": [
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "source",
+    "sources": [
+      {
+        "title": "Meteorological Service Singapore, Climate of Singapore",
+        "url": "https://www.weather.gov.sg/climate-climate-of-singapore/"
+      }
+    ],
+    "note": "MSS gives Northeast monsoon as December to early March and the inter-monsoon months as April, May, October and November; transboundary haze from Sumatra/Kalimantan usually falls late in the southwest monsoon (Aug–Oct)."
+  },
+  "TWKA": {
+    "site": "Kaohsiung, Taiwan",
+    "seasons": [
+      {
+        "name": "Spring (Feb–Apr)",
+        "months": [
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "name": "Summer (May–Jul)",
+        "months": [
+          5,
+          6,
+          7
+        ]
+      },
+      {
+        "name": "Autumn (Aug–Oct)",
+        "months": [
+          8,
+          9,
+          10
+        ]
+      },
+      {
+        "name": "Winter (Nov–Jan)",
+        "months": [
+          11,
+          12,
+          1
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "Hwang et al. (2016), IJERPH, southern Taiwan PM2.5 study defining Feb–Apr / May–Jul / Aug–Oct / Nov–Jan seasons",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4847028/"
+      },
+      {
+        "title": "NOWnews (28 Apr 2026), Central Weather Administration spring review covering February–April",
+        "url": "https://www.nownews.com/news/6811885"
+      },
+      {
+        "title": "Liberty Times (1 Nov 2023), Central Weather Administration: November to January is Taiwan's winter",
+        "url": "https://news.ltn.com.tw/news/life/breakingnews/4476915"
+      },
+      {
+        "title": "PTS (6 Nov 2023), October to March is the northeast-monsoon, poor-dispersion season in southern Taiwan",
+        "url": "https://news.pts.org.tw/article/665252"
+      }
+    ],
+    "note": "The Central Weather Administration's climate reviews use these bins, but its seasonal outlooks use Dec–Feb/Mar–May/Jun–Aug/Sep–Nov; chosen here because Nov–Jan keeps the northeast-monsoon PM2.5 peak together (the Oct–Mar poor-dispersion season straddles autumn and winter)."
+  },
+  "TWTA": {
+    "site": "Taipei, Taiwan",
+    "seasons": [
+      {
+        "name": "Spring (Feb–Apr)",
+        "months": [
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "name": "Summer (May–Jul)",
+        "months": [
+          5,
+          6,
+          7
+        ]
+      },
+      {
+        "name": "Autumn (Aug–Oct)",
+        "months": [
+          8,
+          9,
+          10
+        ]
+      },
+      {
+        "name": "Winter (Nov–Jan)",
+        "months": [
+          11,
+          12,
+          1
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "Hwang et al. (2016), IJERPH, southern Taiwan PM2.5 study defining Feb–Apr / May–Jul / Aug–Oct / Nov–Jan seasons",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4847028/"
+      },
+      {
+        "title": "NOWnews (28 Apr 2026), Central Weather Administration spring review covering February–April",
+        "url": "https://www.nownews.com/news/6811885"
+      },
+      {
+        "title": "Liberty Times (1 Nov 2023), Central Weather Administration: November to January is Taiwan's winter",
+        "url": "https://news.ltn.com.tw/news/life/breakingnews/4476915"
+      }
+    ],
+    "note": "The Central Weather Administration's climate reviews use these bins, but its seasonal outlooks use Dec–Feb/Mar–May/Jun–Aug/Sep–Nov; chosen here because Nov–Jan keeps the northeast-monsoon PM2.5 peak together."
+  },
+  "USBA": {
+    "site": "Baltimore, UnitedStates",
+    "seasons": [
+      {
+        "name": "Winter (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Spring (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Summer (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Autumn (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "NOAA NCEI, Meteorological versus astronomical seasons",
+        "url": "https://www.ncei.noaa.gov/news/meteorological-versus-astronomical-seasons"
+      }
+    ],
+    "note": "NOAA NCEI meteorological seasons applied to Baltimore; no site-specific aerosol season bins were sought beyond the national convention."
+  },
+  "USBO": {
+    "site": "Bondville, United States",
+    "seasons": [
+      {
+        "name": "Winter (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Spring (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Summer (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Autumn (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "NOAA NCEI, Meteorological versus astronomical seasons",
+        "url": "https://www.ncei.noaa.gov/news/meteorological-versus-astronomical-seasons"
+      }
+    ],
+    "note": "NOAA NCEI meteorological seasons applied to Bondville; no site-specific aerosol season bins were sought beyond the national convention."
+  },
+  "USMC": {
+    "site": "Mammoth Cave, United States",
+    "seasons": [
+      {
+        "name": "Winter (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Spring (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Summer (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Autumn (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "NOAA NCEI, Meteorological versus astronomical seasons",
+        "url": "https://www.ncei.noaa.gov/news/meteorological-versus-astronomical-seasons"
+      }
+    ],
+    "note": "NOAA NCEI meteorological seasons applied to Mammoth Cave; no site-specific aerosol season bins were sought beyond the national convention."
+  },
+  "USNO": {
+    "site": "Norman, United States",
+    "seasons": [
+      {
+        "name": "Winter (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Spring (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Summer (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Autumn (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "NOAA NCEI, Meteorological versus astronomical seasons",
+        "url": "https://www.ncei.noaa.gov/news/meteorological-versus-astronomical-seasons"
+      }
+    ],
+    "note": "NOAA NCEI meteorological seasons applied to Norman; no site-specific aerosol season bins were sought beyond the national convention."
+  },
+  "USPA": {
+    "site": "Pasadena, United States",
+    "seasons": [
+      {
+        "name": "Wet window (Oct–Apr)",
+        "months": [
+          10,
+          11,
+          12,
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "name": "Dry window (May–Sep)",
+        "months": [
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "NASA JPL, Who we are (Pasadena area)",
+        "url": "https://www.jpl.nasa.gov/who-we-are/"
+      },
+      {
+        "title": "California Department of Water Resources, Roadmap for a climate-resilient forecasting framework",
+        "url": "https://water.ca.gov/News/Blog/2023/July-23/Roadmap-for-a-Climate-Resilient-Forecasting-Framework"
+      }
+    ],
+    "note": "Existing calendar from docs/site-seasonality.md, unchanged; a California precipitation window, not a site wet-day classification."
+  },
+  "USSL": {
+    "site": "StLouis, UnitedStates",
+    "seasons": [
+      {
+        "name": "Winter (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Spring (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Summer (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Autumn (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "NOAA NCEI, Meteorological versus astronomical seasons",
+        "url": "https://www.ncei.noaa.gov/news/meteorological-versus-astronomical-seasons"
+      }
+    ],
+    "note": "NOAA NCEI meteorological seasons applied to St. Louis; no site-specific aerosol season bins were sought beyond the national convention."
+  },
+  "VNHN": {
+    "site": "Hanoi, Vietnam",
+    "seasons": [
+      {
+        "name": "Winter (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Spring (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Summer (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Autumn (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "source",
+    "sources": [
+      {
+        "title": "Luong et al. (2022), APN Science Bulletin 12(1):56–65, PM2.5 and biomass burning in Hanoi and Chiang Rai",
+        "url": "https://www.apn-gcr.org/bulletin/wp-content/uploads/2022/08/05_CRRP2019-11MY-Nguyen.pdf"
+      }
+    ],
+    "note": "A Hanoi PM2.5 paper states these four seasons; Hanoi's haze season (roughly Oct–Mar, northeast monsoon) spans autumn and winter, and no source found states a full dry/rainy month partition."
+  },
+  "ZAJB": {
+    "site": "Johannesburg, South Africa",
+    "seasons": [
+      {
+        "name": "Summer (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Autumn (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Winter (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Spring (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "Hersey et al. (2014), ACPD 14:24701 (ACP 15:4259, 2015), aerosols in South Africa: DJF/MAM/JJA/SON season definition",
+        "url": "https://acp.copernicus.org/preprints/14/24701/2014/acpd-14-24701-2014.pdf"
+      },
+      {
+        "title": "van der Walt and Fitchett (2020), S Afr J Sci 116(9/10) Art. 7614, season lengths in South Africa",
+        "url": "https://sajs.co.za/article/view/7614/10471"
+      }
+    ],
+    "note": "Standard southern-hemisphere seasons as defined in a South African aerosol overview, applied to Johannesburg; SAWS has no official season definition, and the Highveld wet season (about Oct–Mar) and dry winter-burning season (about May–Sep) cross these bins."
+  },
+  "ZAPR": {
+    "site": "Pretoria, South Africa",
+    "seasons": [
+      {
+        "name": "Summer (Dec–Feb)",
+        "months": [
+          12,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Autumn (Mar–May)",
+        "months": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "name": "Winter (Jun–Aug)",
+        "months": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "name": "Spring (Sep–Nov)",
+        "months": [
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "confidence": "regional",
+    "sources": [
+      {
+        "title": "Hersey et al. (2014), ACPD 14:24701 (ACP 15:4259, 2015), aerosols in South Africa: DJF/MAM/JJA/SON season definition",
+        "url": "https://acp.copernicus.org/preprints/14/24701/2014/acpd-14-24701-2014.pdf"
+      },
+      {
+        "title": "van der Walt and Fitchett (2020), S Afr J Sci 116(9/10) Art. 7614, season lengths in South Africa",
+        "url": "https://sajs.co.za/article/view/7614/10471"
+      }
+    ],
+    "note": "Standard southern-hemisphere seasons as defined in a South African aerosol overview, applied to Pretoria; SAWS has no official season definition, and the Highveld wet season (about Oct–Mar) and dry winter-burning season (about May–Sep) cross these bins."
+  },
+  "ANTU1": {
+    "site": "Antumapu, Santiago, Chile (IMPROVE)",
+    "seasons": [
+      {
+        "name": "Cold (Apr–Sep)",
+        "months": [
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "name": "Warm (Oct–Mar)",
+        "months": [
+          10,
+          11,
+          12,
+          1,
+          2,
+          3
+        ]
+      }
+    ],
+    "confidence": "source",
+    "sources": [
+      {
+        "title": "Koutrakis et al. (2005), J. Air Waste Manage. Assoc. 55:342, PM10 and PM2.5 in Santiago, Chile, 1989–2001 (cold season April–September, warm season October–March)",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/15828676"
+      },
+      {
+        "title": "SEREMI Medio Ambiente RM, Informe Gestión de Episodios Críticos 2020 (GEC period 1 May–31 Aug)",
+        "url": "https://airerm.mma.gob.cl/wp-content/uploads/2022/08/INFORME-GEC-2020.pdf"
+      }
+    ],
+    "note": "Santiago PM2.5 cold/warm seasons from Koutrakis et al.; the regulatory critical-episode (GEC) period is narrower (1 May–31 Aug), so May–Aug are the episode months within the cold bin."
+  },
+  "LCON1": {
+    "site": "Las Condes, Santiago, Chile (IMPROVE)",
+    "seasons": [
+      {
+        "name": "Cold (Apr–Sep)",
+        "months": [
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "name": "Warm (Oct–Mar)",
+        "months": [
+          10,
+          11,
+          12,
+          1,
+          2,
+          3
+        ]
+      }
+    ],
+    "confidence": "source",
+    "sources": [
+      {
+        "title": "Koutrakis et al. (2005), J. Air Waste Manage. Assoc. 55:342, PM10 and PM2.5 in Santiago, Chile, 1989–2001 (cold season April–September, warm season October–March)",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/15828676"
+      },
+      {
+        "title": "SEREMI Medio Ambiente RM, Informe Gestión de Episodios Críticos 2020 (GEC period 1 May–31 Aug)",
+        "url": "https://airerm.mma.gob.cl/wp-content/uploads/2022/08/INFORME-GEC-2020.pdf"
+      }
+    ],
+    "note": "Santiago PM2.5 cold/warm seasons from Koutrakis et al.; the regulatory critical-episode (GEC) period is narrower (1 May–31 Aug), so May–Aug are the episode months within the cold bin."
+  }
+}

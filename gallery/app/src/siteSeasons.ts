@@ -1,4 +1,5 @@
 import type { MetaFile, SeasonMeta } from '@/lib/types'
+import networkCalendars from './siteSeasons.network.json' with { type: 'json' }
 
 /** Fixed, source-backed local month bins; see docs/site-seasonality.md. */
 const LOCAL_SEASONS: Record<string, SeasonMeta[]> = {
@@ -20,11 +21,50 @@ const LOCAL_SEASONS: Record<string, SeasonMeta[]> = {
   ],
 }
 
-export function localSeasonsFor(site: string | null, meta: MetaFile | undefined): SeasonMeta[] | null {
+/**
+ * Every other SPARTAN site, plus the two Santiago IMPROVE sites: month bins from each
+ * country's met service or a site paper (siteSeasons.network.json, sources and caveats
+ * in docs/site-seasonality-network.md). Keyed by code and by the gallery's site name.
+ */
+interface NetworkCalendar { site: string; seasons: { name: string; months: number[] }[]; confidence: string; note?: string }
+// colour by what the season is, so "winter" reads the same at every site
+const KEYWORD_COLORS: [RegExp, string][] = [
+  [/post-monsoon|autumn|fall/i, '#AA6B78'],
+  [/pre-monsoon|summer|hot|warm/i, '#D99145'],
+  [/winter|cold|harmattan/i, '#6F86BA'],
+  [/spring/i, '#67A96A'],
+  [/monsoon|rain|wet/i, '#428EAF'],
+  [/dry/i, '#B8860B'],
+  [/transition/i, '#8A6FB0'],
+]
+const SPARE_COLORS = ['#6F86BA', '#67A96A', '#D99145', '#AA6B78', '#428EAF', '#B8860B', '#8A6FB0', '#5A9E9A']
+function colourSeasons(seasons: { name: string; months: number[] }[]): SeasonMeta[] {
+  const used = new Set<string>()
+  return seasons.map((se) => {
+    // two seasons of one kind at a site (Bujumbura's short and long dry) still need two colours
+    let color = KEYWORD_COLORS.find(([re]) => re.test(se.name))?.[1]
+    if (!color || used.has(color)) color = SPARE_COLORS.find((c) => !used.has(c)) ?? '#9aa5b1'
+    used.add(color)
+    return { name: se.name, months: se.months, color }
+  })
+}
+const NETWORK_SEASONS = new Map<string, SeasonMeta[]>()
+for (const [code, cal] of Object.entries(networkCalendars as Record<string, NetworkCalendar>)) {
+  const seasons = colourSeasons(cal.seasons)
+  NETWORK_SEASONS.set(code, seasons)
+  NETWORK_SEASONS.set(cal.site, seasons)
+}
+
+/** A site's own calendar: the focus sites' (as before), then the network table by name or code. */
+export function localSeasonsFor(site: string | null, meta: MetaFile | undefined, code?: string): SeasonMeta[] | null {
   if (!site || !meta) return null
   if (site === 'Addis Ababa') return meta.season_conventions.belg_feb ?? null
-  return LOCAL_SEASONS[site] ?? null
+  return LOCAL_SEASONS[site] ?? NETWORK_SEASONS.get(site) ?? (code ? NETWORK_SEASONS.get(code) : undefined) ?? null
 }
+
+/** Whether a site has a calendar of its own (otherwise the local view bins it by quarters). */
+export const hasLocalCalendar = (site: string, code?: string) =>
+  site === 'Addis Ababa' || site in LOCAL_SEASONS || NETWORK_SEASONS.has(site) || (!!code && NETWORK_SEASONS.has(code))
 
 export function calendarLabel(meta: MetaFile & { season_site?: string }): string {
   if (meta.season_convention !== 'local') return `shared Ethiopian ${meta.season_convention} month bins`
