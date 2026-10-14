@@ -9,7 +9,13 @@
  * whichever is shorter, behind a version prefix. Older plain-hash links keep working: the
  * token is only read when the hash starts with `v=`.
  */
+import { Buffer } from 'buffer'
 import createWebShareEngine from '@firstform/json-url/web-share'
+
+// json-url's codecs (raw, lz) use Node's global Buffer; browsers have none, and only the dev
+// server happened to supply it, so a production build failed to read any link
+const g = globalThis as { Buffer?: typeof Buffer }
+g.Buffer ??= Buffer
 
 export interface ViewState {
   /** hash parameters (App's subset state) */
