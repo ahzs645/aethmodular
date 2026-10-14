@@ -13,7 +13,7 @@ Run from the repo root:
     uv run python research/ftir_hips_chem/workflows/improve_blh_colab.py run 2003-2010     # one VM per chunk
     uv run python research/ftir_hips_chem/workflows/improve_blh_colab.py run 2011-2018
     uv run python research/ftir_hips_chem/workflows/improve_blh_colab.py run 2019-2026
-    uv run python research/ftir_hips_chem/workflows/improve_blh_colab.py assemble          # tracked dataset
+    uv run python research/ftir_hips_chem/workflows/improve_blh_colab.py assemble          # tracked dataset (parquet)
 
 Sites and coordinates: gallery/app/public/data/improve_map.json (217 sites; FOCO2 has none).
 Sample dates: the validated IMPROVE archive's cleaned table (improve_io.improve_clean_path()).
@@ -137,7 +137,8 @@ def assemble():
                                     median_blh_mean_m=("blh_mean_m", "median"), incomplete_days=("hours", lambda h: int((h < 24).sum())))
     meta = meta.drop(columns=["date_min", "date_max"]).merge(stats.reset_index(), on="code", how="left")
     OUT.mkdir(parents=True, exist_ok=True)
-    out.to_csv(OUT / "blh_sampleday_improve.csv", index=False)
+    # parquet in the repo (the CSV is ~18 MB); write a CSV beside it with to_csv if a spreadsheet needs one
+    out.astype({"code": "category"}).to_parquet(OUT / "blh_sampleday_improve.parquet", index=False, compression="zstd")
     meta.to_csv(OUT / "sites_improve.csv", index=False)
     print(f"improve: {meta.code.size} sites, {len(out):,} site sample days, {int((out.hours < 24).sum())} incomplete -> {OUT.relative_to(ROOT)}")
 
