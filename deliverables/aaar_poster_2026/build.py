@@ -425,3 +425,17 @@ assert n_pics == 6, n_pics
 print(f"wrote {out.relative_to(ROOT)}: {len(chk.slides)} slides, {n_pics} figures; "
       f"loading ratio {ratio:.1f}x, {100 * (ad_mass > p99).mean():.0f}% of Addis above IMPROVE p99")
 print(chem_summary.to_string())
+
+# ---------------------------------------------------------------- copy without speaker notes (to share)
+from pptx.opc.constants import RELATIONSHIP_TYPE as RT  # noqa: E402
+
+clean = Presentation(out)
+for sl in clean.slides:
+    for rId, rel in list(sl.part.rels.items()):
+        if rel.reltype == RT.NOTES_SLIDE:
+            sl.part.drop_rel(rId)
+clean_out = HERE / "aaar_practice_2026-10-15_no_notes.pptx"
+clean.save(clean_out)
+chk = Presentation(clean_out)
+assert len(chk.slides) == 8 and not any(sl.has_notes_slide for sl in chk.slides)
+print(f"wrote {clean_out.relative_to(ROOT)}: {len(chk.slides)} slides, no speaker notes")
