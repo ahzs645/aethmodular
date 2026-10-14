@@ -39,7 +39,23 @@ SCRUB = [
     (re.compile(r"/Users/[^/\"\\\s]+/github/aethmodular/"), ""),
     (re.compile(r"/Users/[^/\"\\\s]+/"), "~/"),
 ]
-FORBIDDEN = re.compile(r"/Users/|GoogleDrive-|ahmadjalil|@gmail\.com|gh[op]_[A-Za-z0-9]{20,}")
+def forbidden_pattern() -> re.Pattern:
+    """Machine paths, Drive mounts, GitHub tokens, and this machine's own account names.
+
+    The account names (login and git email) are read at run time so they never appear in
+    this public script. A bare "@gmail.com" is not blocked: third-party licence headers in
+    the bundle (e.g. lzma's author address) legitimately contain one.
+    """
+    import getpass
+    terms = {getpass.getuser()}
+    email = subprocess.run(["git", "config", "user.email"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
+    if email:
+        terms |= {email, email.split("@")[0]}
+    names = "|".join(re.escape(t) for t in sorted(terms) if len(t) >= 4)
+    return re.compile(r"/Users/|GoogleDrive-|gh[op]_[A-Za-z0-9]{20,}" + (f"|{names}" if names else ""), re.IGNORECASE)
+
+
+FORBIDDEN = forbidden_pattern()
 
 README = """# Aethmodular graph gallery
 
