@@ -10,7 +10,8 @@ Run from the repo root:
     python3 gallery/share/publish_pages.py --dry-run        # build and check only
 
 Defaults: repo ahzs645/aethmodular-gallery, local clone ../aethmodular-gallery,
-page https://ahzs645.github.io/aethmodular-gallery/. The first run creates the repo
+page https://projects.ahmadjalil.com/aethmodular-gallery/ (the account's custom domain;
+ahzs645.github.io/aethmodular-gallery redirects there). The first run creates the repo
 and turns on Pages.
 """
 
@@ -46,7 +47,7 @@ Static build of the interactive gallery in [ahzs645/aethmodular](https://github.
 (`gallery/`), published with `gallery/share/publish_pages.py`. This repo holds only the built
 site; change the source repo, not these files.
 
-**Live page:** https://ahzs645.github.io/aethmodular-gallery/
+**Live page:** https://projects.ahmadjalil.com/aethmodular-gallery/
 
 Built {built} from aethmodular `{sha}`.
 
@@ -115,7 +116,9 @@ def publish():
     pages = subprocess.run(["gh", "api", f"repos/{REPO}/pages"], capture_output=True)
     if pages.returncode != 0:
         subprocess.run(["gh", "api", "-X", "POST", f"repos/{REPO}/pages", "-f", "source[branch]=main", "-f", "source[path]=/"], check=True)
-    print(f"pushed; page: https://{REPO.split('/')[0]}.github.io/{REPO.split('/')[1]}/")
+    # an account-level custom domain (projects.ahmadjalil.com) replaces github.io; ask Pages for the real address
+    url = subprocess.run(["gh", "api", f"repos/{REPO}/pages", "-q", ".html_url"], capture_output=True, text=True).stdout.strip()
+    print(f"pushed; page: {url or 'https://ahzs645.github.io/aethmodular-gallery/'} (rebuilds in about a minute)")
 
 
 def main():
