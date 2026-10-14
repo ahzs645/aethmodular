@@ -524,3 +524,9 @@ html:not([data-explain="1"]) .reference-guide { display: none; }
 html[data-embed="1"] .app-header, html[data-embed="1"] .side-dock { display: none; }
 .embed-open { position: fixed; right: 12px; bottom: 10px; z-index: 44; font-size: 12px; background: var(--ink-panel); padding: 4px 9px;
   border: 1px solid var(--ink-border); border-radius: 6px; color: var(--accent); text-decoration: none; }
+
+.info-dot { color: var(--ink-muted); font-size: 11px; cursor: help; margin-left: 2px; }
+
+/* scatterplot "Per season" with several sites: one group per site */
+.season-groups { display: flex; flex-direction: column; gap: 14px; }
+.season-panel-group h4 { margin: 4px 0 2px; font-size: 13px; }

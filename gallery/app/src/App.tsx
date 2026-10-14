@@ -38,6 +38,7 @@ import { Combobox } from '@/components/Combobox'
 import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
 import { ViewsMenu } from '@/components/ViewsMenu'
 import { currentView, isEmbed, viewUrl } from '@/lib/views'
+import { useExport } from '@/lib/data'
 import { SideDock, SubsetBar, type SubsetActions, type SubsetCaps, type SubsetState } from '@/components/SubsetBar'
 import { SampleDrawer } from '@/components/SampleDrawer'
 import { RecordDrawer } from '@/components/RecordDrawer'
@@ -94,6 +95,10 @@ const meetingFromParams = (p: URLSearchParams): MeetingKey =>
  * ETAD-only and carries no exclusion flags, so offering four site chips and a
  * 942-filter count there would just be wrong.
  */
+/** FTIR EC under each spectral baseline: none is the SPARTAN product in filters.json */
+type FtirBaseline = 'none' | 'spline' | 'vibes'
+const FTIR_VARIANT = { spline: 'EC (FTIR, spline)', vibes: 'EC (FTIR, VIBES)' } as const
+
 /** a comma-separated id list from the URL (filters dropped or kept by hand) */
 const idSet = (v: string | null): Set<string> | null => (v ? new Set(v.split(',').filter(Boolean)) : null)
 
@@ -145,6 +150,16 @@ const DEFAULT_FIELD = 'EC (FTIR)'
 
 export default function App() {
   const { data, error } = useGalleryData()
+  // spline / VIBES FTIR EC for the Addis test set (gallery/data/export_baseline_ftir_ec.py); optional
+  const baselines = useExport<{ rows: Record<string, { spline?: number; vibes?: number }> }>('baseline_ftir_ec.json').data
+  const focusRows = useMemo(() => {
+    const rows = data?.filters.rows ?? []
+    if (!baselines) return rows
+    return rows.map((r) => {
+      const b = baselines.rows[r.id]
+      return b ? { ...r, [FTIR_VARIANT.spline]: b.spline ?? null, [FTIR_VARIANT.vibes]: b.vibes ?? null } : r
+    })
+  }, [data, baselines])
 
   // ---- state, seeded from the URL hash so a pasted link reopens the same view
   const init = useMemo(() => readParams(), [])
@@ -171,6 +186,8 @@ export default function App() {
   // hand edits from a brush, on top of the dataset's exclusions: drop these filters, or keep only these
   const [dropIds, setDropIds] = useState<Set<string>>(() => idSet(init.get('drop')) ?? new Set())
   const [keepIds, setKeepIds] = useState<Set<string> | null>(() => idSet(init.get('keep')))
+  // which spectral baseline FTIR EC is shown with (Addis test set only for spline and VIBES)
+  const [ftirBaseline, setFtirBaseline] = useState<FtirBaseline>(() => (['spline', 'vibes'] as string[]).includes(init.get('fb') ?? '') ? init.get('fb') as FtirBaseline : 'none')
   const [seasonsOn, setSeasonsOn] = useState(init.get('seas') !== '0')
   const [pmfOn, setPmfOn] = useState(init.get('pmfon') === '1')
   const [dateRange, setDateRange] = useState<DateRange | null>(
@@ -231,6 +248,7 @@ export default function App() {
       to: dateRange?.[1],
       excl: includeExcluded ? '1' : null,
       drop: dropIds.size ? [...dropIds].join(',') : null,
+      fb: ftirBaseline !== 'none' ? ftirBaseline : null,
       keep: keepIds ? [...keepIds].join(',') : null,
       x: xField !== DEFAULT_X ? xField : null,
       y: yField !== DEFAULT_Y ? yField : null,
@@ -241,7 +259,7 @@ export default function App() {
       log: axes.log ? '1' : null,
       pax: axes.panels === 'Own' ? 'own' : null,
     })
-  }, [tab, meeting, estimators, showCI, convention, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, keepIds, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, pinnedId, axes])
+  }, [tab, meeting, estimators, showCI, convention, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, keepIds, ftirBaseline, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -267,6 +285,7 @@ export default function App() {
       setDateRange(p.get('from') && p.get('to') ? [p.get('from')!, p.get('to')!] : null)
       setIncludeExcluded(p.get('excl') === '1')
       setDropIds(idSet(p.get('drop')) ?? new Set())
+      setFtirBaseline((['spline', 'vibes'] as string[]).includes(p.get('fb') ?? '') ? p.get('fb') as FtirBaseline : 'none')
       setKeepIds(idSet(p.get('keep')))
       setXField(p.get('x') ?? DEFAULT_X)
       setYField(p.get('y') ?? DEFAULT_Y)
@@ -306,7 +325,7 @@ export default function App() {
     const colour = new Map(sites.filter((x) => chosenCodes.has(x.code)).map((x) => [x.name, focus.get(x.code)?.color ?? networkColor(i++)]))
     const paint = (name: string) => colour.get(name) ?? '#9aa5b1'
     const all = sites.map((x) => ({ ...x, color: paint(x.name) }))
-    const rows: FilterRow[] = [...(sp ? data.filters.rows : []), ...d.rows.filter((r) => !focus.has(r.code))]
+    const rows: FilterRow[] = [...(sp ? focusRows : []), ...d.rows.filter((r) => !focus.has(r.code))]
       .map((r) => ({ ...r, color: paint(r.site) }))
     const fields = sp ? [...new Set([...data.meta.fields, ...d.fields])] : d.fields
     const groups = sp ? mergeGroups(data.meta.field_groups, d.field_groups) : d.field_groups
@@ -315,7 +334,7 @@ export default function App() {
     const coverage = Object.fromEntries(fields.map((f) => [f, inChosen.filter((r) => typeof r[f] === 'number').length]))
     return { all, chosen: all.filter((x) => chosenCodes.has(x.code)), chosenCodes, chosenNames, improveCodes: d.improveCodes, nSpartan: spartanCodes.length,
       rows, fields, field_units: sp ? { ...d.field_units, ...data.meta.field_units } : d.field_units, field_groups: groups, coverage }
-  }, [net, data, netData.data, improveSites, spartanSel])
+  }, [net, data, focusRows, netData.data, improveSites, spartanSel])
   const activeFields = netView ? netView.fields : data?.meta.fields ?? []
 
   // Fields that vanished from the export, or that the chosen network does not measure,
@@ -390,7 +409,7 @@ export default function App() {
   )
 
   // Rows after the exclusion toggle and calendar relabel — the brush draws these.
-  const sourceRows = useMemo(() => (netView ? netView.rows : data?.filters.rows ?? []), [netView, data])
+  const sourceRows = useMemo(() => (netView ? netView.rows : focusRows), [netView, focusRows])
   const baseRows = useMemo(() => {
     if (!data) return []
     return sourceRows
@@ -510,6 +529,10 @@ export default function App() {
     season_site: isLocal && calendarSites.length === 1 ? calendarSites[0] : undefined,
     // a network view hands the charts its own sites (the chosen ones), fields and units
     ...(netView ? { sites: netView.chosen, fields: netView.fields, field_units: netView.field_units, field_groups: netView.field_groups, coverage: netView.coverage } : {}) }
+  // the baseline variants are drawn but never offered in the pickers
+  meta.field_units = { ...meta.field_units, [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3' }
+  const eff = (f: string) => (f === 'EC (FTIR)' && ftirBaseline !== 'none' ? FTIR_VARIANT[ftirBaseline] : f)
+  const xEff = eff(xField), yEff = eff(yField), fieldEff = eff(field)
 
   const nav = (
     <nav className="nav">
@@ -588,6 +611,8 @@ export default function App() {
       network: net,
       chosenNetwork: network,
       dropped: dropIds.size,
+      ftirBaseline,
+      showFtirBaseline: [xField, yField, field].includes('EC (FTIR)'),
       kept: keepIds?.size ?? null,
       networkLoading: netData.loading,
       networkError: netData.error,
@@ -646,6 +671,7 @@ export default function App() {
         if (net === 'focus') setActiveSites(null)
       },
       onFocusSites: () => setSpartanSel(null),
+      onFtirBaseline: setFtirBaseline,
       onDropIds: (ids) => setDropIds((cur) => new Set([...cur, ...ids])),
       // keeping again narrows the kept set to filters in both brushes
       onKeepIds: (ids) => setKeepIds((cur) => (cur ? new Set([...ids].filter((id) => cur.has(id))) : new Set(ids))),
@@ -732,40 +758,40 @@ export default function App() {
         <AxisFieldsProvider meta={meta} value={axisValues} set={setAxisField}>
         {tab === 'correlation' && (
           <>
-            <Scatterplot rows={rows} meta={meta} xField={xField} yField={yField} axes={axes} />
-            <DensityHexbin rows={rows} meta={meta} xField={xField} yField={yField} axes={axes} />
-            <ConnectedScatter rows={rows} meta={meta} xField={xField} yField={yField} axes={axes} />
+            <Scatterplot rows={rows} meta={meta} xField={xEff} yField={yEff} axes={axes} />
+            <DensityHexbin rows={rows} meta={meta} xField={xEff} yField={yEff} axes={axes} />
+            <ConnectedScatter rows={rows} meta={meta} xField={xEff} yField={yEff} axes={axes} />
             <Correlogram rows={rows} meta={meta} />
             <SpeciesGraph rows={rows} meta={meta} />
-            <AvailabilityHeatmap rows={rows} meta={meta} xField={xField} yField={yField} />
+            <AvailabilityHeatmap rows={rows} meta={meta} xField={xEff} yField={yEff} />
           </>
         )}
         {tab === 'distribution' && (
           <>
-            <DistributionPanel rows={rows} meta={meta} field={field} />
-            <Histogram rows={rows} meta={meta} field={field} />
-            <Ridgeline rows={rows} meta={meta} field={field} />
+            <DistributionPanel rows={rows} meta={meta} field={fieldEff} />
+            <Histogram rows={rows} meta={meta} field={fieldEff} />
+            <Ridgeline rows={rows} meta={meta} field={fieldEff} />
           </>
         )}
         {tab === 'evolution' && (
           <>
-            <Timeseries rows={rows} meta={meta} field={field} />
-            <MonthlyBand rows={rows} meta={meta} field={field} />
-            <SeasonalClock rows={rows} meta={meta} field={field} />
-            <MonthlyHeatmap rows={rows} meta={meta} field={field} />
+            <Timeseries rows={rows} meta={meta} field={fieldEff} />
+            <MonthlyBand rows={rows} meta={meta} field={fieldEff} />
+            <SeasonalClock rows={rows} meta={meta} field={fieldEff} />
+            <MonthlyHeatmap rows={rows} meta={meta} field={fieldEff} />
           </>
         )}
         {tab === 'ranking' && (
           <>
-            <CorrelationRanking rows={rows} meta={meta} target={field} />
-            <Barplot rows={rows} meta={meta} field={field} />
+            <CorrelationRanking rows={rows} meta={meta} target={fieldEff} />
+            <Barplot rows={rows} meta={meta} field={fieldEff} />
             <SiteRadar rows={rows} meta={meta} />
             <ParallelCoordinates rows={rows} meta={meta} />
           </>
         )}
         {tab === 'partOfWhole' && <CompositionTreemap rows={rows} meta={meta} />}
         </AxisFieldsProvider>
-        {tab === 'map' && <SiteBubbleMap rows={mapRows} meta={meta} field={field} focusSite={activeSites?.size === 1 ? [...activeSites][0] : undefined} />}
+        {tab === 'map' && <SiteBubbleMap rows={mapRows} meta={meta} field={fieldEff} focusSite={activeSites?.size === 1 ? [...activeSites][0] : undefined} />}
         {tab === 'flow' && <MethodSankey rows={rows} meta={meta} />}
         {tab === 'pmf' &&
           (pmf ? (

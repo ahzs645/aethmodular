@@ -1,8 +1,8 @@
 {
-"generated": "2026-09-22T21:16:12+00:00",
+"generated": "2026-10-14T23:01:59+00:00",
 "source": "research/ftir_hips_chem/Filter Data/unified_filter_dataset.pkl",
 "n": 942,
-"n_excluded": 3,
+"n_excluded": 4,
 "fields": [
 "Alcohol COH",
 "Alkane CH",
@@ -39597,8 +39597,8 @@
 "season": "Kiremt (Jun-Sep)",
 "lat": 9.0106,
 "lon": 38.8207,
-"excluded": false,
-"exclusion_reason": null,
+"excluded": true,
+"exclusion_reason": "PM10 filter (has HIPS Fabs), not PM2.5: outside every PM2.5 comparison; also absent from the frozen spectral run (etad_ids.json)",
 "PM2.5 mass": null,
 "OC (ChemSpec FTIR)": null,
 "EC (ChemSpec FTIR)": null,

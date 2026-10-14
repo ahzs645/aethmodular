@@ -10,7 +10,7 @@ export { ESTIMATORS, FIT_STYLE, parseEstimators, estimatorParam, type Estimator 
 
 const Ctx = createContext<{ methods: Estimator[]; setMethods: (v: Estimator[]) => void; showCI: boolean; setShowCI: (v: boolean) => void; grouping: FitGrouping; setGrouping: (v: FitGrouping) => void }>({ methods: ['deming'], setMethods: () => {}, showCI: false, setShowCI: () => {}, grouping: 'pooled', setGrouping: () => {} })
 export function RegressionProvider({ methods, setMethods, showCI, setShowCI, children }: { methods: Estimator[]; setMethods: (v: Estimator[]) => void; showCI: boolean; setShowCI: (v: boolean) => void; children: ReactNode }) {
-  const [grouping, setGrouping] = useSearchParam<FitGrouping>('fitgroup', 'pooled', ['pooled', 'site'])
+  const [grouping, setGrouping] = useSearchParam<FitGrouping>('fitgroup', 'pooled', ['pooled', 'site', 'season'])
   const value = useMemo(() => ({ methods, setMethods, showCI, setShowCI, grouping, setGrouping }), [methods, setMethods, showCI, setShowCI, grouping])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
@@ -32,7 +32,7 @@ export const equation = (fit: Fit, digits = 3) => `${fit.label} y = ${fmt(fit.sl
 export function FitGroupingControl() {
   const { grouping, setGrouping } = useRegressions()
   return <Combobox label="Fit grouping" value={grouping} onChange={setGrouping} options={[
-    { key: 'pooled', label: 'One pooled fit' }, { key: 'site', label: 'Separate fit per site' },
+    { key: 'pooled', label: 'One pooled fit' }, { key: 'site', label: 'Separate fit per site' }, { key: 'season', label: 'Separate fit per season' },
   ]} />
 }
 
@@ -46,8 +46,7 @@ export function RegressionControls() {
       <span style={{ color: FIT_STYLE[method].color }}>{FIT_STYLE[method].label}</span>
     </label>)}</div>
     <p>Compare fits or deselect all to hide them. Deming is the default.</p>
-    <label><input type="checkbox" checked={showCI} onChange={e => setShowCI(e.target.checked)} /> 95% fit uncertainty</label>
-    <p>Show line confidence bands and coefficient intervals where available. These describe the fit, not individual measurement errors or prediction ranges.</p>
+    <label title="Show line confidence bands and coefficient intervals where available. These describe the fit, not individual measurement errors or prediction ranges."><input type="checkbox" checked={showCI} onChange={e => setShowCI(e.target.checked)} /> 95% fit uncertainty <span className="info-dot" aria-hidden="true">ⓘ</span></label>
     {methods.includes('york') && <p>York uses point uncertainties when supplied; otherwise it uses constant errors with the Deming error ratio. Constant-error York and Deming coincide.</p>}
     <button className="btn quiet" type="button" onClick={() => { setMethods(['deming']); setShowCI(false); setGrouping('pooled') }}>Reset fits</button>
   </fieldset>

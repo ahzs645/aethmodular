@@ -68,7 +68,14 @@ EXCLUDED_SAMPLES = {
             'reason': 'FTIR EC > 1000 threshold - likely contamination'
         },
     ],
-    'Addis_Ababa': []
+    'Addis_Ababa': [
+        {
+            'date': '2024-08-07',
+            'filter_id': 'ETAD-0248',
+            'reason': 'PM10 filter (has HIPS Fabs), not PM2.5: outside every PM2.5 comparison; '
+                      'also absent from the frozen spectral run (etad_ids.json)'
+        },
+    ]
 }
 
 # =============================================================================
@@ -146,9 +153,15 @@ def apply_exclusion_flags(matched_df, site_name, date_tolerance_days=1):
             (matched_df['date'] <= excl_date + pd.Timedelta(days=date_tolerance_days))
         )
 
-        # Optionally also match by filter_id if provided
+        # Optionally also match by filter_id if provided. Tables pivoted per physical
+        # filter carry base_filter_id (ETAD-0248) rather than filter_id (ETAD-0248-1),
+        # so fall back to it: two filters can share a date (ETAD-0241 and ETAD-0248).
         if excl_filter_id and 'filter_id' in matched_df.columns:
             date_mask = date_mask & (matched_df['filter_id'] == excl_filter_id)
+        elif excl_filter_id and 'base_filter_id' in matched_df.columns:
+            parts = str(excl_filter_id).split('-')
+            excl_base = '-'.join(parts[:2]) if len(parts) > 2 else str(excl_filter_id)
+            date_mask = date_mask & (matched_df['base_filter_id'].astype(str) == excl_base)
 
         # Apply exclusion
         matched_df.loc[date_mask, 'is_excluded'] = True

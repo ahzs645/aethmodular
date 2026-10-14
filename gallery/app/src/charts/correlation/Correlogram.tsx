@@ -246,7 +246,7 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, meta }: {
               .filter((p): p is { row: FilterRow; x: number; y: number } => typeof p.x === 'number' && typeof p.y === 'number' && Number.isFinite(p.x) && Number.isFinite(p.y))
             // Deming (λ=1) rather than y-on-x least squares: both species are measured with error
             const st = regression(pts.map((p) => p.x), pts.map((p) => p.y), fitUncertainty(pts.map(p => p.row), fx, fy, meta))
-            const fitGroups = groupedRegressions(pts, grouping, { x: p => p.x, y: p => p.y, site: p => p.row.site,
+            const fitGroups = groupedRegressions(pts, grouping, { x: p => p.x, y: p => p.y, site: p => p.row.site, season: p => p.row.season, seasonColor: p => meta.seasons.find(se => se.name === p.row.season)?.color ?? INK.muted,
               color: p => meta.sites.find(s => s.name === p.row.site)?.color ?? INK.muted,
               options: members => fitUncertainty(members.map(p => p.row), fx, fy, meta) })
             return (
@@ -266,7 +266,7 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, meta }: {
                     />
                   )
                 })}
-                {grouping === 'site' ? <RegressionGroupLines groups={fitGroups} x={sx} y={v => cellS - sy(v)} width={cellS} height={cellS} />
+                {grouping !== 'pooled' ? <RegressionGroupLines groups={fitGroups} x={sx} y={v => cellS - sy(v)} width={cellS} height={cellS} />
                   : <RegressionLines stats={st} x={sx} y={v => cellS - sy(v)} domain={sx.domain() as number[]} width={cellS} height={cellS} />}
                 {st && <text x={cellS - 4} y={11} textAnchor="end" fontSize={9.5} fill={INK.text} fontFamily={FONT.mono} pointerEvents="none">r={st.r.toFixed(2)}</text>}
               </g>

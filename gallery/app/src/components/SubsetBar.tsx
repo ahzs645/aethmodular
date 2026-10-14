@@ -78,6 +78,9 @@ export interface SubsetState {
   calendarOptions: string[]
   /** filters dropped by hand from a brush, and the size of a "keep only" set (null: none) */
   dropped?: number
+  /** spectral baseline for FTIR EC, offered when an axis or the measurement is EC (FTIR) */
+  ftirBaseline?: 'none' | 'spline' | 'vibes'
+  showFtirBaseline?: boolean
   kept?: number | null
   /** the site pick is the network's default (SPARTAN: the four focus sites) */
   sitesAtDefault?: boolean
@@ -98,6 +101,7 @@ export interface SubsetActions {
   onClearSites?: () => void
   onFocusSites?: () => void
   onDropIds?: (ids: Set<string>) => void
+  onFtirBaseline?: (v: 'none' | 'spline' | 'vibes') => void
   onKeepIds?: (ids: Set<string>) => void
   onClearDrop?: () => void
   onClearKeep?: () => void
@@ -222,7 +226,8 @@ export function SubsetBar({
           {summary}
           <Row label="network">
             {caps.networks ? (
-              <span className="net-toggles" role="group" aria-label="Networks (pick one or both)">
+              <span className="net-toggles" role="group" aria-label="Networks (pick one or both)"
+                title={s.network === 'both' ? 'SPARTAN and IMPROVE together: HIPS absorption and PM₂.₅ mass are measured by both; EC/OC by different methods (FTIR in SPARTAN, TOR in IMPROVE)' : net.note}>
                 {s.network === 'focus' && <button type="button" className="net-toggle" aria-pressed="true" disabled>Focus sites</button>}
                 {(['spartan', 'improve'] as const).map((k) => {
                   const on = k === 'spartan' ? hasSpartan(s.network) : hasImprove(s.network)
@@ -237,7 +242,7 @@ export function SubsetBar({
             ) : (
               <span className="method-note">{s.chosenNetwork === 'focus' ? net.label : `This tab shows the focus sites; ${NETWORKS.find((x) => x.key === s.chosenNetwork)?.label} applies on Correlation, Distribution, Evolution, Ranking and Part of a whole.`}</span>
             )}
-            {caps.networks && <span className="method-note" style={{ display: 'block' }}>{s.network === 'both' ? 'SPARTAN and IMPROVE together; HIPS absorption and PM₂.₅ mass are measured by both, EC/OC by different methods (FTIR vs TOR)' : net.note}{s.networkLoading ? ' · loading…' : ''}{s.networkError ? ` · could not load: ${s.networkError}` : ''}</span>}
+            {caps.networks && (s.networkLoading || s.networkError) && <span className="method-note" style={{ display: 'block' }}>{s.networkLoading ? 'loading…' : `could not load: ${s.networkError}`}</span>}
           </Row>
           <RegressionControls />
 
@@ -282,11 +287,19 @@ export function SubsetBar({
             </Row>
           )}
 
+          {caps.fields !== 'none' && s.showFtirBaseline && a.onFtirBaseline && (
+            <Row label="FTIR baseline">
+              <Segmented value={({ none: 'None', spline: 'Spline', vibes: 'VIBES' } as const)[s.ftirBaseline ?? 'none'] as any} options={['None', 'Spline', 'VIBES'] as any}
+                onChange={(v: string) => a.onFtirBaseline!(v === 'Spline' ? 'spline' : v === 'VIBES' ? 'vibes' : 'none')}
+                title="FTIR EC with no baseline correction (the SPARTAN product), the spline (AIRSpec) baseline, or the VIBES baseline. Spline and VIBES come from the same all-IMPROVE calibration pool and exist for the Addis test set only, so other sites drop out of EC (FTIR) charts while they are chosen." />
+              {s.ftirBaseline && s.ftirBaseline !== 'none' && <span className="method-note" style={{ display: 'block' }}>Addis test set only (189 gallery filters)</span>}
+            </Row>
+          )}
           {caps.sites && (
             <Row label="sites">
               <SitePicker items={s.siteItems} onToggle={a.onToggleSite}
                 onAll={s.network === 'improve' ? undefined : a.onAllSites} allSelected={!!s.allSitesSelected}
-                onClear={s.network === 'focus' ? undefined : a.onClearSites} onFocus={hasSpartan(s.network) ? a.onFocusSites : undefined}
+                onClear={s.network === 'focus' ? undefined : a.onClearSites}
                 chipsOnly={s.network === 'focus'} limitNote={s.siteLimitNote}
                 noun={s.network === 'improve' ? 'IMPROVE sites' : s.network === 'spartan' ? 'SPARTAN sites' : 'sites'}
                 allLabel={s.network === 'both' ? 'All SPARTAN' : 'Select all'} />

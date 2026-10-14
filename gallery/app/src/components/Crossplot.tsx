@@ -64,7 +64,7 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   const fitting = fit && groupingOverride !== 'none'
   const grouping: FitGrouping = groupingOverride && groupingOverride !== 'none' ? groupingOverride : prefs.grouping
   const multiSite = fitting && new Set(valid.map((p) => p.rec?.site)).size > 1
-  const siteFits = multiSite && grouping === 'site' && methods.length > 0
+  const siteFits = multiSite && grouping === 'site' && methods.length > 0   // its points carry no season
   const fitGroups = useMemo(() => fitting ? groupedRegressions(valid, grouping, {
     x: (p) => p.x, y: (p) => p.y, site: (p) => p.rec?.site ?? 'Unknown site', color: (p) => p.color,
     options: (members) => ({ errorsInVariables: true, lambda, bootstrapGroups: monthBlocks(members.map((p) => p.rec ?? {})) }),

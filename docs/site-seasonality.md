@@ -19,7 +19,7 @@ month approximations, not classifications from observed weather on each filter d
 ## Coverage in the current gallery export
 
 Counts below are included **base filter records**, grouped using the local
-bins above from `gallery/app/public/data/filters.json` (939 records total).
+bins above from `gallery/app/public/data/filters.json` (938 records total).
 They describe sampling coverage, not weather observations. The separate public
 SPARTAN CSV inventory was refreshed on 2026-09-22; the gallery export has not
 been rebuilt from it.
@@ -29,7 +29,11 @@ been rebuilt from it.
 | Beijing | Winter 73; spring 84; summer 100; autumn 118 |
 | Delhi | Winter 7; pre-monsoon 45; monsoon 22; post-monsoon 22 |
 | JPL | Wet-season window 163; dry-season window 115 |
-| Addis Ababa | Bega 55; Belg 69; Kiremt 66 |
+| Addis Ababa | Bega 55; Belg 69; Kiremt 65 |
+
+ETAD-0248 (2024-08-07) is excluded: it is a PM10 filter, outside every PM2.5
+comparison, so Addis has 189 included filters (the frozen calibration runs never
+had it).
 
 Delhi has **zero September filters** in this export, and only seven winter
 filters. Avoid interpreting its fixed-bin winter/monsoon contrasts as a balanced

@@ -8,8 +8,8 @@ const filters = JSON.parse(readFileSync(new URL('../../public/data/filters.json'
 
 test('Addis seasonal chemistry uses the canonical local calendar and once-only carbon', () => {
   const result = seasonalComposition(filters.rows, meta)
-  assert.deepEqual(result.stats.map(s => s.n), [55, 69, 66])
-  assert.equal(result.rows.length, 190)
+  assert.deepEqual(result.stats.map(s => s.n), [55, 69, 65])
+  assert.equal(result.rows.length, 189)
   assert.equal(result.species.filter(f => f.startsWith('EC')).length, 1)
   assert.equal(result.species.filter(f => f.startsWith('OC')).length, 1)
   assert.ok(!result.species.includes('HIPS BC'))

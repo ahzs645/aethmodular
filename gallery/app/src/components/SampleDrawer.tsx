@@ -139,7 +139,7 @@ export function SampleDrawer({
       .map((r) => ({ r, x: r[cx], y: r[cy] }))
       .filter((p): p is { r: ReferenceRow; x: number; y: number } => isNum(p.x) && isNum(p.y))
     const stats = regression(pool.map((p) => p.x), pool.map((p) => p.y), fitUncertainty(pool.map(p => p.r), cx, cy, meta))
-    const fitGroups = groupedRegressions(pool, grouping, { x: p => p.x, y: p => p.y, site: p => p.r.site,
+    const fitGroups = groupedRegressions(pool, grouping, { x: p => p.x, y: p => p.y, site: p => p.r.site, season: p => String(p.r.season ?? ""), seasonColor: p => meta.seasons.find(se => se.name === p.r.season)?.color ?? INK.muted,
       color: p => meta.sites.find(s => s.code === p.r.code)?.color ?? INK.muted,
       options: members => fitUncertainty(members.map(p => p.r), cx, cy, meta) })
     return { pool, stats, fitGroups }
@@ -149,7 +149,7 @@ export function SampleDrawer({
   const iw = W - m.left - m.right
   // square plot area, like every crossplot in the gallery
   const ih = iw
-  const siteFits = grouping === 'site' && methods.length > 0
+  const siteFits = grouping !== 'pooled' && methods.length > 0
   const H = ih + m.top + m.bottom + (siteFits ? regressionGroupReadoutLayout(cross.fitGroups.length, W, methods, showCI).height : 0)
   const here = isNum(row[cx]) && isNum(row[cy]) ? { x: row[cx] as number, y: row[cy] as number } : null
   const axisPoints = here ? [...cross.pool, here] : cross.pool
@@ -288,7 +288,7 @@ export function SampleDrawer({
                   <title>{p.r.id} · {p.r.site} · {p.r.date} · {cx}: {fmt(p.x, 3)} · {cy}: {fmt(p.y, 3)}</title>
                 </circle>
               ))}
-              {grouping === 'site' ? <RegressionGroupLines groups={cross.fitGroups} x={xs} y={ys} width={iw} height={ih} />
+              {grouping !== 'pooled' ? <RegressionGroupLines groups={cross.fitGroups} x={xs} y={ys} width={iw} height={ih} />
                 : <><RegressionLines stats={cross.stats} x={xs} y={ys} domain={xs.domain()} width={iw} height={ih} /><RegressionReadout stats={cross.stats} width={260} /></>}
               {here && (
                 <>

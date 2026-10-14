@@ -128,6 +128,17 @@ class TestApplyExclusionFlags:
         assert bool(out.loc[0, "is_excluded"]) is True
         assert bool(out.loc[1, "is_excluded"]) is False, "filter_id must narrow the date match"
 
+    def test_base_filter_id_narrows_the_match_on_pivoted_tables(self):
+        """Per-filter pivots carry base_filter_id; ETAD-0241 (PM2.5) and the PM10
+        filter ETAD-0248 share 2024-08-07, so a date-only match would drop both."""
+        df = _frame(["2024-08-07", "2024-08-07", "2024-08-04"],
+                    base_filter_id=["ETAD-0248", "ETAD-0241", "ETAD-0240"],
+                    hips_fabs=[85.9, 40.0, 30.0])
+        out = apply_exclusion_flags(df, "Addis_Ababa")
+
+        assert list(out["is_excluded"]) == [True, False, False]
+        assert "PM10" in out.loc[0, "exclusion_reason"]
+
 
 # ---------------------------------------------------------------------------
 # apply_threshold_flags

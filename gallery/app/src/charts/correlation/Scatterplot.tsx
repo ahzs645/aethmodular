@@ -1,5 +1,6 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
 import { styleBrush } from '@/lib/brush'
+import { seasonsForSite } from '@/siteSeasons'
 import { IdentityLine, RefLine } from '@/components/RefLines'
 import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
 import { useRegressions, fitsFor, FitGroupingControl } from '@/lib/regressionPrefs'
@@ -22,7 +23,8 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 type Point = { row: FilterRow; x: number; y: number; c: number | null; s: number | null }
 type Scale = d3.ScaleLinear<number, number> | d3.ScaleLogarithmic<number, number>
 
-const LAYOUTS = ['Combined', 'Per site'] as const
+/** Per season: one site's seasons side by side, or each site's seasons grouped under it */
+const LAYOUTS = ['Combined', 'Per site', 'Per season'] as const
 const COLOR_BY = ['Site', 'Season', 'Value'] as const
 const NO_SIZE = 'none'
 
@@ -106,9 +108,16 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
   const radiusOf = (p: Point) => (sScale ? (p.s === null ? 1.5 : sScale(p.s)) : 4)
 
   const panels = useMemo(() => {
-    const raw = layout === 'Combined'
+    const raw: { key: string; title: string | null; color: string; points: Point[]; group?: string }[] = layout === 'Combined'
       ? [{ key: 'all', title: null as string | null, color: INK.text, points }]
-      : meta.sites
+      : layout === 'Per season'
+        // each site's own seasons under the active calendar (local calendars carry the site in the name)
+        ? meta.sites.flatMap((s) => seasonsForSite(meta, s.name).map((se) => ({
+            key: `${s.code}|${se.name}`, group: s.name, color: se.color,
+            title: se.site && se.name.startsWith(`${se.site} · `) ? se.name.slice(se.site.length + 3) : se.name,
+            points: points.filter((p) => p.row.site === s.name && p.row.season === se.name),
+          }))).filter((p) => p.points.length > 0)
+        : meta.sites
           .map((s) => ({ key: s.code, title: s.name, color: s.color, points: points.filter((p) => p.row.site === s.name) }))
           .filter((p) => p.points.length > 0)
     // Deming lambda: when both axes are the same measured quantity we default to
@@ -116,7 +125,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
     return raw.map((p) => ({
       ...p,
       stats: regression(p.points.map((q) => q.x), p.points.map((q) => q.y), fitUncertainty(p.points.map(q => q.row), xField, yField, meta)),
-      fitGroups: groupedRegressions(p.points, grouping, { x: q => q.x, y: q => q.y, site: q => q.row.site,
+      fitGroups: groupedRegressions(p.points, grouping, { x: q => q.x, y: q => q.y, site: q => q.row.site, season: q => q.row.season, seasonColor: q => meta.seasons.find(se => se.name === q.row.season)?.color ?? INK.muted,
         color: q => meta.sites.find(s => s.name === q.row.site)?.color ?? INK.muted,
         options: members => fitUncertainty(members.map(q => q.row), xField, yField, meta) }),
     }))
@@ -148,48 +157,20 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
 
   // PlotConfig.equal_axes: a 1:1 line only reads correctly on a square panel.
   const MAX_SQUARE = 560
-  const cols = layout === 'Per site' && width > 700 ? 2 : 1
+  const seasonGroups = layout === 'Per season' ? [...new Set(panels.map((p) => p.group ?? ''))] : []
+  const perGroup = layout === 'Per season' ? Math.max(1, ...seasonGroups.map((g) => panels.filter((p) => p.group === g).length)) : 1
+  const cols = layout === 'Per site' && width > 700 ? 2 : layout === 'Per season' ? Math.min(perGroup, width > 1000 ? 4 : width > 640 ? 2 : 1) : 1
   const panelOuterW = Math.floor((width - (cols - 1) * 12) / cols)
   const availW = Math.max(200, panelOuterW - MARGIN.left - MARGIN.right)
   // every crossplot panel is square, with or without the 1:1 line
-  const innerW = Math.min(availW, layout === 'Per site' ? 420 : MAX_SQUARE)
+  const innerW = Math.min(availW, layout === 'Per site' ? 420 : layout === 'Per season' ? 320 : MAX_SQUARE)
   const innerH = innerW
 
   if (xField === yField) return <ChartFrame title="Scatterplot"><Empty>x and y are the same field — pick two different measurements in the bar above.</Empty></ChartFrame>
 
   const unitOf = (f: string) => withUnit(f, meta.field_units)
 
-  return (
-    <ChartFrame
-      id="scatter"
-      title="Scatterplot — the crossplot family"
-      subtitle="Any measured quantity against any other, coloured by site, by the selected season calendar, or by a third measurement (the 123 'colour-coded' crossplots in the estate); a fourth can size the marks. The stats box reports R² and the regression fits selected in the sidebar. Hover anywhere near a point to find it in every other chart; click it for the full record."
-      provenance="stands in for 281 scatter + 123 colour-by-third-variable figures across 116 notebooks · plotting/crossplots.py · react-graph-gallery.com/scatter-plot · /bubble-plot"
-      controls={
-        <>
-          <Segmented label="Layout" value={layout} options={LAYOUTS} onChange={setLayout} title="PlotConfig.layout: combined overlays sites; per site is the grid" />
-          <Segmented label="Colour" value={colorBy} options={COLOR_BY} onChange={(v) => { setColorBy(v); setHidden(new Set()) }} title="Value: a third measurement on a sequential ramp (2–98 % of its range)" />
-          {colorBy === 'Value' && <FieldSelect label="by" value={colorField} meta={meta} onChange={setColorField} />}
-          <FieldSelect label="Size" value={sizeField} meta={meta} onChange={setSizeField} extraOptions={[NO_SIZE]} title="Bubble plot: mark area proportional to a fourth measurement" />
-          <Toggle label="Fit lines" checked={showFit} onChange={setShowFit} />
-          <FitGroupingControl />
-          <Toggle label="Brush to select" checked={brushing} onChange={(v) => { setBrushing(v); if (!v) hl.setSelected(null) }} title="Drag a rectangle: the enclosed filters are highlighted on every chart of this tab" />
-          {hl.selected && (
-            <span className="control">
-              <strong>{hl.selected.size}</strong> selected
-              <button type="button" className="btn quiet" onClick={() => hl.setSelected(null)}>Clear</button>
-            </span>
-          )}
-          <span className="control">{points.length} points</span>
-        </>
-      }
-    >
-      <div ref={wrapRef} className="chart-wrap centered">
-        {points.length < 3 ? (
-          <Empty>Fewer than 3 filters carry both {xField} and {yField} in this subset.</Empty>
-        ) : (
-          <div className="facet-grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
-            {panels.map((p) => (
+  const renderPanel = (p: (typeof panels)[number]) => (
               <ScatterPanel
                 key={p.key}
                 title={p.title}
@@ -229,8 +210,50 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
                 onLeave={() => { hl.setHover(null); tip.hide() }}
                 onClick={(row) => hl.openSample(row.id)}
               />
-            ))}
-          </div>
+  )
+
+  return (
+    <ChartFrame
+      id="scatter"
+      title="Scatterplot — the crossplot family"
+      subtitle="Any measured quantity against any other, coloured by site, by the selected season calendar, or by a third measurement (the 123 'colour-coded' crossplots in the estate); a fourth can size the marks. The stats box reports R² and the regression fits selected in the sidebar. Hover anywhere near a point to find it in every other chart; click it for the full record."
+      provenance="stands in for 281 scatter + 123 colour-by-third-variable figures across 116 notebooks · plotting/crossplots.py · react-graph-gallery.com/scatter-plot · /bubble-plot"
+      controls={
+        <>
+          <Segmented label="Layout" value={layout} options={LAYOUTS} onChange={setLayout} title="PlotConfig.layout: combined overlays sites; per site is the grid" />
+          <Segmented label="Colour" value={colorBy} options={COLOR_BY} onChange={(v) => { setColorBy(v); setHidden(new Set()) }} title="Value: a third measurement on a sequential ramp (2–98 % of its range)" />
+          {colorBy === 'Value' && <FieldSelect label="by" value={colorField} meta={meta} onChange={setColorField} />}
+          <FieldSelect label="Size" value={sizeField} meta={meta} onChange={setSizeField} extraOptions={[NO_SIZE]} title="Bubble plot: mark area proportional to a fourth measurement" />
+          <Toggle label="Fit lines" checked={showFit} onChange={setShowFit} />
+          <FitGroupingControl />
+          <Toggle label="Brush to select" checked={brushing} onChange={(v) => { setBrushing(v); if (!v) hl.setSelected(null) }} title="Drag a rectangle: the enclosed filters are highlighted on every chart of this tab" />
+          {hl.selected && (
+            <span className="control">
+              <strong>{hl.selected.size}</strong> selected
+              <button type="button" className="btn quiet" onClick={() => hl.setSelected(null)}>Clear</button>
+            </span>
+          )}
+          <span className="control">{points.length} points</span>
+        </>
+      }
+    >
+      <div ref={wrapRef} className="chart-wrap centered">
+        {points.length < 3 ? (
+          <Empty>Fewer than 3 filters carry both {xField} and {yField} in this subset.</Empty>
+        ) : (
+          layout === 'Per season' && seasonGroups.length > 1
+            // several sites: one group per site, its seasons side by side
+            ? <div className="season-groups">{seasonGroups.map((g) => (
+                <section key={g} className="season-panel-group">
+                  <h4 style={{ color: meta.sites.find((x) => x.name === g)?.color }}>{g}</h4>
+                  <div className="facet-grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+                    {panels.filter((p) => p.group === g).map(renderPanel)}
+                  </div>
+                </section>
+              ))}</div>
+            : <div className="facet-grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+                {panels.map(renderPanel)}
+              </div>
         )}
         <div className="legend">
           {colorBy === 'Value' && cScale ? (
@@ -353,7 +376,7 @@ function ScatterPanel({
   const markIntercepts = axes.mode === 'Show intercept' && showFit && !axes.log && stats
   const originAxes = axes.mode === 'Show intercept' && !axes.log && xScale.domain()[0] < 0 && yScale.domain()[0] < 0
   const { methods, grouping, showCI } = useRegressions()
-  const siteFits = grouping === 'site' && showFit && methods.length > 0
+  const siteFits = grouping !== 'pooled' && showFit && methods.length > 0
   const selectedFits = fitGroups.flatMap(group => fitsFor(group.stats, showFit ? methods : []).map(fit => ({ ...fit, color: group.color ?? fit.color, name: group.name })))
   const svgWidth = innerW + MARGIN.left + MARGIN.right
   const readoutHeight = siteFits ? regressionGroupReadoutLayout(fitGroups.length, svgWidth, methods, showCI).height : 0
@@ -394,7 +417,7 @@ function ScatterPanel({
             )}
             {stats && showFit && (
               <g opacity={fitDim}>
-                {grouping === 'site' ? <RegressionGroupLines groups={fitGroups} x={xScale} y={v => yScale(yv(v))} width={innerW} height={innerH} />
+                {grouping !== 'pooled' ? <RegressionGroupLines groups={fitGroups} x={xScale} y={v => yScale(yv(v))} width={innerW} height={innerH} />
                   : <RegressionLines stats={stats} x={xScale} y={v => yScale(yv(v))} domain={xScale.domain()} width={innerW} height={innerH} />}
               </g>
             )}

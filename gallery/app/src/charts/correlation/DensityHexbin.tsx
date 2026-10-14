@@ -37,6 +37,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   const pairedRows = useMemo(() => rows.filter(r => typeof r[xField] === 'number' && typeof r[yField] === 'number' && Number.isFinite(r[xField]) && Number.isFinite(r[yField])), [rows, xField, yField])
   const fitGroups = useMemo(() => groupedRegressions(pairedRows, grouping, {
     x: r => r[xField] as number, y: r => r[yField] as number, site: r => r.site,
+    season: r => r.season, seasonColor: r => meta.seasons.find(se => se.name === r.season)?.color ?? INK.muted,
     color: r => meta.sites.find(s => s.name === r.site)?.color ?? INK.muted,
     options: members => fitUncertainty(members, xField, yField, meta),
   }), [pairedRows, grouping, xField, yField, meta])
@@ -56,7 +57,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   const innerW = Math.min(availW, MAX_SQUARE)
   const innerH = innerW
   const svgWidth = innerW + MARGIN.left + MARGIN.right
-  const siteFits = grouping === 'site' && methods.length > 0
+  const siteFits = grouping !== 'pooled' && methods.length > 0
   const svgHeight = innerH + MARGIN.top + MARGIN.bottom + (siteFits ? regressionGroupReadoutLayout(fitGroups.length, svgWidth, methods, showCI).height : 0)
 
   const { x, y, stats, domain } = useMemo(() => {
@@ -151,7 +152,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
                 {opts.identity && <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />}
                 {stats && (
                   <>
-                    {grouping === 'site' ? <RegressionGroupLines groups={fitGroups} x={x} y={y} width={innerW} height={innerH} />
+                    {grouping !== 'pooled' ? <RegressionGroupLines groups={fitGroups} x={x} y={y} width={innerW} height={innerH} />
                       : <RegressionLines stats={stats} x={x} y={y} domain={x.domain()} width={innerW} height={innerH} />}
                   </>
                 )}
