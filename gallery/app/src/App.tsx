@@ -49,6 +49,8 @@ import { AXES_MODES, DEFAULT_AXES, type AxesMode, type AxesOpts } from '@/lib/ax
 import { localSeasonsFor, qualifySeason } from '@/siteSeasons'
 import { MAX_IMPROVE_SITES, MONTH_QUARTERS, NETWORK_DEFAULTS, hasImprove, hasSpartan, isNetwork, mergeGroups, networkColor, useNetworkData, type Network } from '@/lib/networks'
 import type { SiteItem } from '@/components/SitePicker'
+import { FilterEditsProvider, type FilterGroup } from '@/lib/filterEdits'
+import { GroupDrawer } from '@/components/GroupDrawer'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 
 /**
@@ -216,6 +218,13 @@ export default function App() {
   const [openId, setOpenId] = useState<string | null>(null)
   // what the clicked chart knows about the open filter; a filter outside filters.json opens from this alone
   const [openRec, setOpenRec] = useState<FilterRecord | null>(null)
+  // a bin of filters (a hex, a histogram bar) listed in the side panel
+  const [group, setGroup] = useState<FilterGroup | null>(null)
+  useEffect(() => setGroup(null), [tab])
+  // hand edits from the charts' right-click menu and the side panel; the brush writes the same sets
+  const dropFilters = useCallback((ids: Set<string>) => setDropIds((cur) => new Set([...cur, ...ids])), [])
+  const keepFilters = useCallback((ids: Set<string>) => setKeepIds((cur) => (cur ? new Set([...ids].filter((id) => cur.has(id))) : new Set(ids))), [])
+  const restoreFilters = useCallback((ids: Set<string>) => setDropIds((cur) => new Set([...cur].filter((id) => !ids.has(id)))), [])
   const dismissSample = useCallback(() => {
     setPinnedId(null)
     setOpenId(null)
@@ -418,6 +427,7 @@ export default function App() {
 
   // Rows after the exclusion toggle and calendar relabel — the brush draws these.
   const sourceRows = useMemo(() => (netView ? netView.rows : focusRows), [netView, focusRows])
+  const sourceById = useMemo(() => new Map(sourceRows.map((r) => [r.id, r])), [sourceRows])
   const baseRows = useMemo(() => {
     if (!data) return []
     return sourceRows
@@ -629,6 +639,10 @@ export default function App() {
       network: net,
       chosenNetwork: network,
       dropped: dropIds.size,
+      droppedList: [...dropIds].map((id) => {
+        const r = sourceById.get(id)
+        return { id, label: r ? `${r.site} · ${r.date}` : 'not in the current network' }
+      }),
       ftirBaseline,
       showFtirBaseline: [xField, yField, field].includes('EC (FTIR)'),
       kept: keepIds?.size ?? null,
@@ -692,9 +706,10 @@ export default function App() {
       onFocusSites: () => setSpartanSel(null),
       onFtirBaseline: setFtirBaseline,
       onCustomSeasons: (v) => { setCustomSeasons(v); setActiveSeasons(null) },
-      onDropIds: (ids) => setDropIds((cur) => new Set([...cur, ...ids])),
+      onDropIds: dropFilters,
       // keeping again narrows the kept set to filters in both brushes
-      onKeepIds: (ids) => setKeepIds((cur) => (cur ? new Set([...ids].filter((id) => cur.has(id))) : new Set(ids))),
+      onKeepIds: keepFilters,
+      onRestoreIds: restoreFilters,
       onClearDrop: () => setDropIds(new Set()),
       onClearKeep: () => setKeepIds(null),
       onNetwork: (n) => {
@@ -741,6 +756,8 @@ export default function App() {
     <RegressionProvider methods={estimators} setMethods={setEstimators} showCI={showCI} setShowCI={setShowCI}>
     <PrefsProvider>
     <HighlightProvider pinnedId={pinnedId} setPinned={setPinnedId} openSample={openSample} openRecord={openRecord} onDismiss={dismissSample}>
+    <FilterEditsProvider enabled={(NETWORK_TABS as readonly string[]).includes(tab)} dropped={dropIds} kept={keepIds}
+      onDrop={dropFilters} onKeep={keepFilters} onRestore={restoreFilters} group={group} onGroup={setGroup}>
       {openRow && (
         <SampleDrawer
           row={openRow}
@@ -757,10 +774,10 @@ export default function App() {
         />
       )}
       {!openRow && openRec && <RecordDrawer rec={openRec} onClose={dismissSample} />}
+      {!openRow && !openRec && group && <GroupDrawer group={group} byId={sourceById} meta={meta}
+        fields={tab === 'correlation' ? [xField, yField] : [field]} onClose={() => setGroup(null)} />}
       {isEmbed() && <a className="embed-open" href="#" onClick={async (e) => { e.preventDefault(); window.open((await viewUrl(currentView())), '_blank', 'noopener') }}>Open in the gallery ↗</a>}
-      {(NETWORK_TABS as readonly string[]).includes(tab) && <BrushBar
-        onKeep={(ids) => setKeepIds((cur) => (cur ? new Set([...ids].filter((id) => cur.has(id))) : new Set(ids)))}
-        onDrop={(ids) => setDropIds((cur) => new Set([...cur, ...ids]))} />}
+      {(NETWORK_TABS as readonly string[]).includes(tab) && <BrushBar onKeep={keepFilters} onDrop={dropFilters} />}
       <Shell nav={nav} wide={tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks'}>
         {/* tabs without the filter panel still get the fit controls where they draw fits */}
         {subset ?? ((tab === 'baseline' || (tab === 'meeting' && meeting === 'followup')) && <RegressionSidebar />)}
@@ -825,6 +842,7 @@ export default function App() {
             </p>
           ))}
       </Shell>
+    </FilterEditsProvider>
     </HighlightProvider>
     </PrefsProvider>
     </RegressionProvider>

@@ -71,7 +71,7 @@ export function XAxis({
             fontWeight={600}
             fill={INK.text}
           >
-            {estimatorText(label, method)}{pick && <tspan className="axis-pick-caret" dx={4}>▾</tspan>}
+            {estimatorText(label, method)}{pick && <tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>}
           </text>
         </AxisTitle>
       )}
@@ -131,7 +131,7 @@ export function YAxis({
             fontWeight={600}
             fill={INK.text}
           >
-            {estimatorText(label, method)}{pick && <tspan className="axis-pick-caret" dx={4}>▾</tspan>}
+            {estimatorText(label, method)}{pick && <tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>}
           </text>
         </AxisTitle>
       )}

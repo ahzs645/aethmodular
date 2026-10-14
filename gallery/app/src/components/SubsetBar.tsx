@@ -81,6 +81,8 @@ export interface SubsetState {
   customSeasons?: { name: string; months: number[] }[]
   /** filters dropped by hand from a brush, and the size of a "keep only" set (null: none) */
   dropped?: number
+  /** the hand-excluded filters, each with a "site · date" label */
+  droppedList?: { id: string; label: string }[]
   /** spectral baseline for FTIR EC, offered when an axis or the measurement is EC (FTIR) */
   ftirBaseline?: 'none' | 'spline' | 'vibes'
   showFtirBaseline?: boolean
@@ -108,6 +110,8 @@ export interface SubsetActions {
   onCustomSeasons?: (v: { name: string; months: number[] }[]) => void
   onKeepIds?: (ids: Set<string>) => void
   onClearDrop?: () => void
+  /** put some hand-excluded filters back */
+  onRestoreIds?: (ids: Set<string>) => void
   onClearKeep?: () => void
   onNetwork: (n: Network) => void
   onIncludeExcluded: (v: boolean) => void
@@ -194,8 +198,16 @@ export function SubsetBar({
             onClick={() => { a.onDropIds!(hl.selected!); hl.setSelected(null) }}>Exclude these</button>}
         </span>
       )}
-      {(s.dropped ?? 0) > 0 && <span className="pill">{s.dropped} excluded by hand
-        <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 4 }} onClick={a.onClearDrop} aria-label="Put the hand-excluded filters back">×</button></span>}
+      {(s.dropped ?? 0) > 0 && <details className="dropped-details">
+        <summary title="Excluded from the charts' right-click menu, the side panel or a brush; open to put single filters back">
+          <span className="pill">{s.dropped} excluded by hand ▾
+            <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 4 }} onClick={(e) => { e.preventDefault(); a.onClearDrop?.() }} aria-label="Put every hand-excluded filter back" title="Put them all back">×</button></span>
+        </summary>
+        <div className="dropped-list">
+          {(s.droppedList ?? []).map((d) => <span key={d.id} className="pill" title={d.label}>{d.id}
+            {a.onRestoreIds && <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 4 }} onClick={() => a.onRestoreIds!(new Set([d.id]))} aria-label={`Put ${d.id} back`} title="Put this filter back">↺</button>}</span>)}
+        </div>
+      </details>}
       {s.kept != null && <span className="pill">keeping {s.kept} brushed
         <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 4 }} onClick={a.onClearKeep} aria-label="Stop keeping only the brushed filters">×</button></span>}
     </div>

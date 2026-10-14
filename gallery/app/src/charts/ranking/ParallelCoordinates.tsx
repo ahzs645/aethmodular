@@ -320,7 +320,7 @@ export function ParallelCoordinates({ rows, meta }: { rows: FilterRow[]; meta: M
                     onMouseEnter={(e) => showTip(e, l)}
                     onMouseMove={(e) => tip.show(e, [l.row.id, `${l.row.site} · ${l.row.date}`, ...axes.map((a, i) => `${a.field}: ${fmt(l.values[i])}`)])}
                     onMouseLeave={() => { hl.setHover(null); tip.hide() }}
-                    onClick={() => hl.openSample(l.row.id)}
+                    data-fid={l.row.id} onClick={() => hl.openSample(l.row.id)}
                   />
                 ))}
               </g>

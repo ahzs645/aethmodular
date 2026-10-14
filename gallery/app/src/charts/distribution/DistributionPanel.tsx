@@ -132,7 +132,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                             style={{ cursor: 'pointer' }}
                             onMouseEnter={(e) => { hl.setHover(it.row.id); tip.show(e, [it.row.id, `${it.row.site} · ${it.row.date}`, `${field} = ${fmt(it.v)}`, 'click for details']) }}
                             onMouseLeave={() => { hl.setHover(null); tip.hide() }}
-                            onClick={() => hl.openSample(it.row.id)}
+                            data-fid={it.row.id} onClick={() => hl.openSample(it.row.id)}
                           />
                         )
                       })}
@@ -160,7 +160,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                           style={{ cursor: 'pointer' }}
                           onMouseEnter={(e) => { e.stopPropagation(); hl.setHover(it.row.id); tip.show(e, [it.row.id, `${it.row.date} · ${it.row.site}`, `${fmt(it.v)} (outside 1.5·IQR)`, 'click for the filter record']) }}
                           onMouseLeave={() => { hl.setHover(null); tip.hide() }}
-                          onClick={() => hl.openSample(it.row.id)}
+                          data-fid={it.row.id} onClick={() => hl.openSample(it.row.id)}
                         />
                       ))}
                     </g>
@@ -180,7 +180,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                           style={{ cursor: 'pointer' }}
                           onMouseEnter={(e) => { hl.setHover(it.row.id); tip.show(e, [it.row.id, `${it.row.site} · ${it.row.date}`, `${field} = ${fmt(it.v)}`, 'click for details']) }}
                           onMouseLeave={() => { hl.setHover(null); tip.hide() }}
-                          onClick={() => hl.openSample(it.row.id)}
+                          data-fid={it.row.id} onClick={() => hl.openSample(it.row.id)}
                         />
                       )
                     })}

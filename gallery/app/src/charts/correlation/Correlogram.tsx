@@ -262,7 +262,7 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, meta }: {
                       style={{ cursor: 'pointer' }}
                       onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.site} · ${p.row.date}`, `${fx}: ${fmt(p.x)}`, `${fy}: ${fmt(p.y)}`]) }}
                       onMouseLeave={() => { hl.setHover(null); tip.hide() }}
-                      onClick={() => hl.openSample(p.row.id)}
+                      data-fid={p.row.id} onClick={() => hl.openSample(p.row.id)}
                     />
                   )
                 })}

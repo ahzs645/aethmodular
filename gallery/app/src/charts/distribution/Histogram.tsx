@@ -7,13 +7,15 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { kde, fmt, twoSample } from '@/lib/stats'
+import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 
 const LAYOUTS = ['Overlay', 'Density', 'Small multiples', 'Mirror'] as const
 type Layout = (typeof LAYOUTS)[number]
 
-interface Series { name: string; color: string; values: number[] }
+/** `ids[i]` is the filter behind `values[i]`, so a bar can name its filters */
+interface Series { name: string; color: string; values: number[]; ids: string[] }
 
 /**
  * Histogram + density — 36 histogram figures in the estate. Three layouts,
@@ -38,6 +40,7 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
+  const edits = useFilterEdits()
 
   const [bins, setBins] = useState(30)
   const [layout, setLayout] = useState<Layout>('Overlay')
@@ -49,11 +52,13 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   const [mirrorB, setMirrorB] = useState<string>('')
 
   const seasonColor = useMemo(() => new Map(meta.seasons.map((s) => [s.name, s.color])), [meta.seasons])
-  const valuesOf = (pred: (r: FilterRow) => boolean) =>
-    rows.filter(pred).map((r) => r[field]).filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
+  const valuesOf = (pred: (r: FilterRow) => boolean) => {
+    const kept = rows.filter((r) => pred(r) && typeof r[field] === 'number' && Number.isFinite(r[field]))
+    return { values: kept.map((r) => r[field] as number), ids: kept.map((r) => r.id) }
+  }
 
   const allSeries = useMemo<Series[]>(
-    () => meta.sites.map((s) => ({ name: s.name, color: s.color, values: valuesOf((r) => r.site === s.name) })).filter((s) => s.values.length >= 5),
+    () => meta.sites.map((s) => ({ name: s.name, color: s.color, ...valuesOf((r) => r.site === s.name) })).filter((s) => s.values.length >= 5),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rows, field, meta.sites]
   )
@@ -61,7 +66,7 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   const mirrorGroups = useMemo<Series[]>(
     () => [
       ...allSeries,
-      ...meta.seasons.map((s) => ({ name: s.name, color: s.color, values: valuesOf((r) => r.season === s.name) })).filter((s) => s.values.length >= 5),
+      ...meta.seasons.map((s) => ({ name: s.name, color: s.color, ...valuesOf((r) => r.season === s.name) })).filter((s) => s.values.length >= 5),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [allSeries, rows, field, meta.seasons, seasonColor]
@@ -91,8 +96,8 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   const densityOnly = layout === 'Density'
   const showBars = !densityOnly
   const showDensity = overlayDensity || densityOnly
-  const binner = d3.bin<number, number>().domain([dLo, dHi]).thresholds(bins)
-  const binned = series.map((s) => ({ ...s, bins: binner(s.values) }))
+  // bin the indices, not the values, so each bar still knows which filters it holds
+  const binned = series.map((s) => ({ ...s, bins: d3.bin<number, number>().value((i) => s.values[i]).domain([dLo, dHi]).thresholds(bins)(d3.range(s.values.length)) }))
 
   const grid = useMemo(() => d3.range(80).map((i) => dLo + ((dHi - dLo) * i) / 79), [dLo, dHi])
 
@@ -137,10 +142,13 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
               key={i}
               x={x0} y={top} width={Math.max(0, x1 - x0 - 0.7)} height={Math.abs(y(sign * v) - y0)}
               fill={s.color} fillOpacity={0.4} stroke={s.color} strokeOpacity={0.6}
+              style={{ cursor: 'pointer' }}
+              {...fidsProps(b.map((k) => s.ids[k]), `${s.name} · ${field} ${fmt(b.x0, 2)} – ${fmt(b.x1, 2)}`)}
               onMouseEnter={(e) =>
-                tip.show(e, [s.name, `${fmt(b.x0, 2)} – ${fmt(b.x1, 2)}`, `${b.length} filters`, `${((b.length / s.values.length) * 100).toFixed(1)} % of ${s.name}`])
+                tip.show(e, [s.name, `${fmt(b.x0, 2)} – ${fmt(b.x1, 2)}`, `${b.length} filters`, `${((b.length / s.values.length) * 100).toFixed(1)} % of ${s.name}`, 'click to list them · right-click to exclude'])
               }
               onMouseLeave={tip.hide}
+              onClick={(e) => { e.stopPropagation(); tip.hide(); edits.openGroup({ title: `${s.name} · ${field} ${fmt(b.x0, 2)} – ${fmt(b.x1, 2)}`, ids: b.map((k) => s.ids[k]), fields: [field] }) }}
             />
           )
         })}

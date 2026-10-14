@@ -15,6 +15,9 @@ import { inDomain, pairDomain, type AxesOpts } from '@/lib/axes'
 import { regression, fmt } from '@/lib/stats'
 import { INK, MARGIN, RAMP_SEQUENTIAL, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
+
+type Pt = [number, number, string]
 
 /**
  * 2D density (hexbin) — 16 figures in the estate, all of them on the large
@@ -28,6 +31,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
+  const edits = useFilterEdits()
   const clipId = useId()
   const { methods, grouping, showCI } = useRegressions()
   const MAX_SQUARE = 520
@@ -42,15 +46,10 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
     options: members => fitUncertainty(members, xField, yField, meta),
   }), [pairedRows, grouping, xField, yField, meta])
 
+  // [x, y, filter id]: the id rides along so a hex can list and exclude its filters
   const points = useMemo(
-    () =>
-      rows
-        .map((r) => [r[xField], r[yField]] as [unknown, unknown])
-        .filter(
-          (p): p is [number, number] =>
-            typeof p[0] === 'number' && typeof p[1] === 'number' && Number.isFinite(p[0]) && Number.isFinite(p[1])
-        ),
-    [rows, xField, yField]
+    () => pairedRows.map((r) => [r[xField] as number, r[yField] as number, r.id] as Pt),
+    [pairedRows, xField, yField]
   )
 
   const availW = Math.max(240, width - MARGIN.left - MARGIN.right)
@@ -81,7 +80,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   }, [points, rows, xField, yField, meta, methods, fitGroups, innerW, innerH, opts.identity, opts.mode])
 
   const bins = useMemo(() => {
-    const hb = d3Hexbin<[number, number]>()
+    const hb = d3Hexbin<Pt>()
       .x((d) => x(d[0]))
       .y((d) => y(d[1]))
       .radius(Number(radius))
@@ -90,6 +89,9 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   }, [points, x, y, radius, innerW, innerH, domain])
 
   const maxCount = d3.max(bins, (b) => b.length) ?? 1
+  const binTitle = (b: { x: number; y: number }) => `Hex at ${xField} ≈ ${fmt(x.invert(b.x), 2)}, ${yField} ≈ ${fmt(y.invert(b.y), 2)}`
+  // the hex whose filters are in the side panel stays outlined until the panel closes
+  const openTitle = edits.group?.title ?? null
   const color = d3.scaleQuantize<string>().domain([0, maxCount]).range(RAMP_SEQUENTIAL)
   const [d0, d1] = x.domain() as [number, number]
   const originAxes = opts.mode === 'Show intercept' && d0 < 0 && (y.domain()[0] as number) < 0
@@ -132,19 +134,30 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
 
               {/* hexes centred near an edge would spill over the axes and their tick labels */}
               <g clipPath={`url(#${clipId})`}>
-              {bins.map((b, i) => (
-                <path
-                  key={i}
-                  d={b.path}
-                  transform={`translate(${b.x},${b.y})`}
-                  fill={color(b.length)}
-                  stroke="#fff"
-                  strokeWidth={0.4}
-                  onMouseEnter={(e) =>
-                    tip.show(e, [`${b.length} filters`, `${xField} ≈ ${fmt(x.invert(b.x), 2)}`, `${yField} ≈ ${fmt(y.invert(b.y), 2)}`])
-                  }
-                  onMouseLeave={tip.hide}
-                />
+              {bins.map((b, i) => {
+                const title = binTitle(b)
+                const ids = b.map((p) => p[2])
+                return (
+                  <path
+                    key={i}
+                    d={b.path}
+                    transform={`translate(${b.x},${b.y})`}
+                    fill={color(b.length)}
+                    stroke={openTitle === title ? INK.fit : '#fff'}
+                    strokeWidth={openTitle === title ? 2 : 0.4}
+                    style={{ cursor: 'pointer' }}
+                    {...fidsProps(ids, title)}
+                    onMouseEnter={(e) =>
+                      tip.show(e, [`${b.length} filters`, `${xField} ≈ ${fmt(x.invert(b.x), 2)}`, `${yField} ≈ ${fmt(y.invert(b.y), 2)}`, 'click to list them · right-click to exclude'])
+                    }
+                    onMouseLeave={tip.hide}
+                    onClick={(e) => { e.stopPropagation(); tip.hide(); edits.openGroup({ title, ids, fields: [xField, yField] }) }}
+                  />
+                )
+              })}
+              {/* the open hex on top, so its outline is not covered by its neighbours */}
+              {bins.filter((b) => binTitle(b) === openTitle).map((b) => (
+                <path key="open" d={b.path} transform={`translate(${b.x},${b.y})`} fill="none" stroke={INK.fit} strokeWidth={2} pointerEvents="none" />
               ))}
               </g>
 

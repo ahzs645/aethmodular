@@ -178,7 +178,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
                             style={{ cursor: 'pointer' }}
                             onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.date} · ${p.row.season}`, `${field}: ${fmt(p.value)}`, p.row.excluded ? `excluded: ${p.row.exclusion_reason}` : 'click for details']) }}
                             onMouseLeave={() => { hl.setHover(null); tip.hide() }}
-                            onClick={() => hl.openSample(p.row.id)}
+                            data-fid={p.row.id} onClick={() => hl.openSample(p.row.id)}
                           />
                         ))}
                       </g>

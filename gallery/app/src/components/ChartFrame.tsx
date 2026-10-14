@@ -1,7 +1,7 @@
 import { Combobox } from '@/components/Combobox'
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { composePanel, downloadPng, downloadSvg } from '@/lib/export'
+import { ExportButton } from '@/components/ExportDialog'
 import { usePrefs } from '@/lib/prefs'
 
 /**
@@ -28,7 +28,7 @@ export function ChartFrame({
   provenance?: ReactNode
   controls?: ReactNode
   children: ReactNode
-  /** show the SVG / PNG download buttons (off for text panels) */
+  /** show the export button (off for text panels) */
   exportable?: boolean
   /** anchor id so a URL can jump straight to this chart */
   id?: string
@@ -44,9 +44,6 @@ export function ChartFrame({
   const { explain } = usePrefs()
   const [info, setInfo] = useState(explain)
   useEffect(() => setInfo(explain), [explain])
-  // the whole figure (every facet and the legend), not just the first <svg>
-  const figure = () => (ref.current ? composePanel(ref.current) : null)
-
   const dash = title.indexOf(' — ')
   const short = dash > 0 ? title.slice(0, dash) : title
   const rest = dash > 0 ? title.slice(dash + 3) : ''
@@ -81,16 +78,8 @@ export function ChartFrame({
           <button type="button" className="btn quiet" title="Copy a reference to this chart (title, source file, current view URL) for development" onClick={copyRef}>
             {refCopied ? 'Copied' : 'Ref'}
           </button>
-          {exportable && (
-            <>
-              <button type="button" className="btn quiet" title="Download the whole figure (every facet and the legend) as SVG, editable in Illustrator / Inkscape" onClick={() => { const s = figure(); if (s) downloadSvg(s, short) }}>
-                SVG
-              </button>
-              <button type="button" className="btn quiet" title="Download the whole figure (every facet and the legend) as a 2× PNG, for a slide" onClick={() => { const s = figure(); if (s) downloadPng(s, short) }}>
-                PNG
-              </button>
-            </>
-          )}
+          {/* the whole figure (every facet and the legend), not just the first <svg> */}
+          {exportable && <ExportButton panelRef={ref} title={short} />}
         </div>
       </header>
       {controls && <div className="frame-controls">{controls}</div>}

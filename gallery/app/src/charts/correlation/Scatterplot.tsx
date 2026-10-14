@@ -15,6 +15,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { focusStyle, useHighlight } from '@/lib/highlight'
+import { useFilterEdits } from '@/lib/filterEdits'
 import { inDomain, pairDomain, type AxesOpts, type PairDomain, robustDomain } from '@/lib/axes'
 import { regression, fmt, type RegressionStats } from '@/lib/stats'
 import { INK, MARGIN, FONT, RAMP_SEQUENTIAL, withUnit } from '@/lib/theme'
@@ -305,6 +306,7 @@ function ScatterPanel({
   onClick: (row: FilterRow) => void
 }) {
   const clipId = useId()
+  const edits = useFilterEdits()
   const mk = (dom: [number, number], range: [number, number]): Scale => {
     if (axes.log) return d3.scaleLog().domain([Math.max(1e-4, dom[0]), dom[1]]).range(range).nice()
     const scale = d3.scaleLinear().domain(dom).range(range)
@@ -453,6 +455,11 @@ function ScatterPanel({
                 const p = nearest(e)
                 if (p) { e.stopPropagation(); onClick(p.row) }
                 else { hoverRef.current = null; onLeave() }
+              }}
+              onContextMenu={(e) => {
+                // the nearest point gets the filter menu; on empty plot the page-level menu offers the brush and undo
+                const p = nearest(e)
+                if (p) edits.openMenu(e, { ids: [p.row.id], title: p.row.id })
               }}
             />
           )}
