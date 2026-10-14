@@ -11,7 +11,7 @@ spline (AIRSpec) baseline, Deming at MAC 10. The gallery views to screenshot are
 
 ## Working title
 
-FTIR elemental carbon calibrated on US filters underestimates heavily loaded, Ethiopia-like samples,
+FTIR elemental carbon calibrated on US filters transfers poorly to heavily loaded, Ethiopia-like samples,
 in Addis Ababa and in the US network itself
 
 ## One-sentence message
