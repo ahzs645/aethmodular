@@ -264,3 +264,95 @@ def test_area_columns_have_no_duplicates(tmp_path):
     area_columns = [c for c in clean.columns if c.startswith("EC_loading_ug_cm2_area_")]
     assert len(area_columns) == len(set(area_columns))
     assert clean.columns.duplicated().sum() == 0
+
+
+def integrated_rows():
+    rows = []
+    for parameter, module, value, unit in [
+        ("ECf", "C", 2.0, "ug/m^3"), ("OCf", "C", 4.0, "ug/m^3"),
+        ("fAbs", "A", 10.0, "1/Mm"), ("MF", "A", 20.0, "ug/m^3"),
+        ("FlowRate", "A", 10.0, "R"), ("FlowRate", "C", 20.0, "R"),
+        ("FlowRate", "D", 99.0, "R"),
+        ("SampDur", "A", 100.0, "minutes"), ("SampDur", "C", 200.0, "minutes"),
+    ]:
+        rows.append({"SiteCode": "TEST1", "POC": 1, "FactDate": "2026-02-01",
+                     "ParamCode": parameter, "F3": module, "FactValue": value,
+                     "Units": unit, "Status": "V0", "ProviderStatus": "NM"})
+    return pd.DataFrame(rows)
+
+
+def test_integrated_modules_keep_carbon_and_ptfe_volumes_separate():
+    wide = improve_io.pivot_improve_integrated(integrated_rows(), source_name="validated.zip")
+    clean = improve_io.clean_improve(wide)
+    assert len(clean) == 1
+    assert clean.iloc[0].volume_m3 == pytest.approx(4.0)
+    assert clean.iloc[0].MF_volume_m3 == pytest.approx(1.0)
+    assert clean.iloc[0].EC_loading_ug == pytest.approx(8.0)
+    assert clean.iloc[0].MF_loading_ug == pytest.approx(20.0)
+    assert wide.iloc[0].validation == "validated"
+
+
+def test_integrated_qc_flags_preserve_reported_values_and_qualified_results():
+    data = integrated_rows()
+    data.loc[data.ParamCode.eq("ECf"), "Status"] = "I1"
+    data.loc[data.ParamCode.eq("fAbs"), "Status"] = "V6"
+    wide = improve_io.pivot_improve_integrated(data, source_name="validated.zip")
+    row = wide.iloc[0]
+    assert row.ECf_Reported == 2.0
+    assert pd.isna(row.ECf_Val)
+    assert row.ECf_Status == "I1"
+    assert row.fAbs_Val == 10.0
+    assert row.fAbs_Status == "V6"
+    assert bool(row.is_excluded)
+    assert row.exclusion_reason
+
+
+def test_integrated_older_unspecified_modules_keep_measurements_without_inventing_volume():
+    data = integrated_rows().loc[lambda d: ~d.ParamCode.isin(["FlowRate", "SampDur"])].copy()
+    data["F3"] = "---"
+    wide = improve_io.pivot_improve_integrated(data, source_name="IMPAER_2003.txt.zip")
+    assert wide.iloc[0].ECf_Val == 2.0
+    assert wide.iloc[0].ECf_ModuleTypeCode == "---"
+    assert not bool(wide.iloc[0].is_excluded)
+    assert pd.isna(improve_io.clean_improve(wide).iloc[0].volume_m3)
+
+
+def test_integrated_poc_occurrences_do_not_collapse_and_duplicates_fail():
+    first = integrated_rows()
+    second = first.assign(POC=2)
+    wide = improve_io.pivot_improve_integrated(pd.concat([first, second]), source_name="validated.zip")
+    assert set(wide.POC) == {1, 2}
+    with pytest.raises(ValueError, match="Ambiguous"):
+        improve_io.pivot_improve_integrated(pd.concat([first, first.iloc[[0]]]), source_name="validated.zip")
+
+
+def test_integrated_preliminary_and_wrong_units_are_rejected():
+    with pytest.raises(ValueError, match="validated IMPAER"):
+        improve_io.pivot_improve_integrated(integrated_rows().assign(Dataset="IMPAERPRE"),
+                                           source_name="query.txt")
+    with pytest.raises(ValueError, match="Preliminary"):
+        improve_io.read_improve_integrated_export("IMPAERPRE_query.txt")
+    data = integrated_rows()
+    data.loc[data.ParamCode.eq("ECf"), "Units"] = "ng/m^3"
+    with pytest.raises(ValueError, match="units"):
+        improve_io.pivot_improve_integrated(data, source_name="validated.zip")
+
+
+def test_integrated_report_preserves_site_metadata_and_missing_sentinels(tmp_path):
+    data = integrated_rows().rename(columns={"FactDate": "Date", "FactValue": "Val",
+                                            "F3": "ModuleTypeCode", "Units": "Unit"})
+    data.insert(0, "Dataset", "IMPAER")
+    data["AuxID"] = 0
+    # Match the actual Query Wizard's normalized header ordering.
+    columns = ["Dataset", "SiteCode", "POC", "Date", "ParamCode", "Val",
+               "ModuleTypeCode", "Unit", "Status", "AuxID", "ProviderStatus"]
+    data.loc[data.ParamCode.eq("OCf"), "Val"] = -999
+    path = tmp_path / "IMPAER_validated_query.txt"
+    prefix = ('Datasets\n\nDataset|Code\n"IMPROVE Aerosol"|"IMPAER"\n\n'
+              'Sites\n\nSite|Code|Latitude|Longitude\n"Test site"|"TEST1"|1|2\n\n'
+              'Parameters\n\nParameter|Code\nCarbon|ECf\n\nData\n\n')
+    path.write_text(prefix + data[columns].to_csv(sep="|", index=False))
+    wide, sites = improve_io.read_improve_integrated_export(path)
+    assert pd.isna(wide.iloc[0].OCf_Val)
+    assert sites.iloc[0].Code == "TEST1"
+    assert sites.iloc[0].Latitude == 1

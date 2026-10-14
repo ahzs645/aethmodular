@@ -52,10 +52,27 @@ def main():
     source = improve_clean_path()
     with source.open("rb") as stream:
         digest = hashlib.file_digest(stream, "sha256").hexdigest()
+    manifest_path = source.with_suffix(".manifest.json")
+    manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else None
+    if manifest and (manifest["cache_sha256"] != digest or manifest["validation"] != "validated"):
+        raise ValueError("Validated IMPROVE provenance does not match the cleaned cache")
+    provenance = {}
+    note = "All sites in the locally available cleaned IMPROVE export."
+    if manifest:
+        provenance = {key: manifest[key] for key in
+                      ["validation", "retrieved_on", "date_min", "date_max", "samples", "sites"]}
+        note = (f"Validated FED IMPROVE Aerosol, {manifest['date_min']}–{manifest['date_max']}; "
+                f"downloaded {manifest['retrieved_on'][:10]}. Preliminary data are excluded.")
+    note += (" Counts describe dated samples with positive, available EC and absorption, "
+             "rather than the full historical network or the FTIR calibration set. "
+             "Measurement summaries use each field's available values. "
+             "Study-site, season, date and exclusion controls do not apply to these summaries.")
+    if manifest:
+        note += " " + " ".join(manifest.get("coverage_notes", []))
     out = ROOT / "gallery/app/public/data/improve_map.json"
     out.write_text(json.dumps(dict(
         generated=datetime.now(timezone.utc).isoformat(), source=display_path(source), source_sha256=digest,
-        note="All sites in the locally available cleaned IMPROVE export. The canonical loader deduplicates FED sample keys and retains dated samples with positive EC and absorption. Counts describe this available population, not the full historical network or the FTIR calibration set. Study-site, season, date and exclusion controls do not apply to these summaries.",
+        note=note, provenance=provenance,
         field_units={label: "Mm⁻¹" if label == "Absorption" else "µg/m³" for label in FIELDS},
         sites=sites,
     ), separators=(",", ":"), allow_nan=False))

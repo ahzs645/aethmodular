@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import csv
 import os
 import zipfile
 from pathlib import Path
@@ -70,6 +71,132 @@ _NUMERIC_COLS = [
     "SampDur_Val",
     "SOILf_Val",
 ]
+
+# Integrated archives contain several sampler modules' flow/duration records
+# for the same site/date/POC. Never average these together during the pivot.
+INTEGRATED_PARAMETERS = {
+    "ECf": "C", "OCf": "C", "EC1f": "C", "EC2f": "C", "EC3f": "C",
+    "OC1f": "C", "OC2f": "C", "OC3f": "C", "OC4f": "C",
+    "OPf": "C", "OPTf": "C", "fAbs": "A", "MF": "A", "FEf": "A",
+    "SIf": "A", "SOILf": "A", "RefF_635": "C", "TransF_635": "C",
+    "RefI_635": "C", "TransI_635": "C", "RefM_635": "C", "TransM_635": "C",
+    "FlowRate": None, "SampDur": None,
+}
+
+
+def pivot_improve_integrated(data, *, source_name):
+    """Pivot validated FED records without mixing modules or sample occurrences.
+
+    Keep source values and QA codes together. Invalid/missing status values are
+    unavailable for statistics, but remain in the raw archive and *_Reported
+    columns. FED V* qualified values remain available with their flags intact.
+    """
+    data = data.rename(columns={"FactDate": "Date", "FactValue": "Val",
+                                "Units": "Unit", "F3": "ModuleTypeCode",
+                                "F2": "ObjectiveCode", "ProviderStatus": "ProviderFlag",
+                                "MethodID": "Method"}).copy()
+    if "Dataset" in data and not data.Dataset.eq("IMPAER").all():
+        raise ValueError("Only validated IMPAER records may enter the gallery cache")
+    required = {"SiteCode", "POC", "Date", "ParamCode", "Val", "Status", "ModuleTypeCode"}
+    if missing := required - set(data.columns):
+        raise ValueError(f"Missing integrated FED fields: {sorted(missing)}")
+    data = data.loc[data.ParamCode.isin(INTEGRATED_PARAMETERS)].copy()
+    expected = data.ParamCode.map(INTEGRATED_PARAMETERS)
+    # Flow and duration are retained independently for A (PTFE) and C (quartz).
+    unspecified_module = data.ModuleTypeCode.isna() | data.ModuleTypeCode.isin(["---", "-999", ""])
+    keep = data.ModuleTypeCode.eq(expected) | (expected.notna() & unspecified_module) | (
+        expected.isna() & data.ModuleTypeCode.isin(["A", "C"]))
+    data = data.loc[keep].copy()
+    data["Date"] = pd.to_datetime(data.Date, errors="raise").dt.normalize()
+    data["field"] = data.ParamCode
+    module_specific = data.ParamCode.isin(["FlowRate", "SampDur"])
+    data.loc[module_specific, "field"] += "_" + data.loc[module_specific, "ModuleTypeCode"]
+    keys = ["SiteCode", "POC", "Date"]
+    if data.duplicated(keys + ["field"]).any():
+        raise ValueError(f"Ambiguous site/date/POC/parameter/module records in {source_name}")
+    data["Reported"] = pd.to_numeric(data.Val, errors="raise").replace(-999, np.nan)
+    if "Unit" in data:
+        for parameter, unit in {"ECf": "ug/m^3", "OCf": "ug/m^3", "MF": "ug/m^3",
+                                "FEf": "ug/m^3", "SIf": "ug/m^3", "SOILf": "ug/m^3",
+                                "fAbs": "1/Mm", "SampDur": "minutes"}.items():
+            units = set(data.loc[data.ParamCode.eq(parameter), "Unit"].dropna())
+            if units and units != {unit}:
+                raise ValueError(f"Unexpected {parameter} units in {source_name}: {units}")
+    data["Val"] = data.Reported.where(data.Status.str.startswith("V", na=False))
+    for column in ["Unc", "MDL"]:
+        if column in data:
+            data[column] = pd.to_numeric(data[column], errors="raise").replace(-999, np.nan)
+    pieces = []
+    for column in ["Val", "Reported", "Status", "ProviderFlag", "Method", "Unit",
+                   "ModuleTypeCode", "ObjectiveCode", "Unc", "MDL"]:
+        if column in data:
+            pieces.append(data.pivot(index=keys, columns="field", values=column)
+                          .add_suffix(f"_{column}"))
+    wide = pd.concat(pieces, axis=1).reset_index()
+    for parameter in INTEGRATED_PARAMETERS:
+        if parameter not in ["FlowRate", "SampDur"] and f"{parameter}_Val" not in wide:
+            wide[f"{parameter}_Val"] = np.nan
+    for parameter in ["FlowRate", "SampDur"]:
+        for module in ["A", "C"]:
+            if f"{parameter}_{module}_Val" not in wide:
+                wide[f"{parameter}_{module}_Val"] = np.nan
+        # Legacy EC loading columns use the carbon sampler's volume.
+        wide[f"{parameter}_Val"] = wide[f"{parameter}_C_Val"]
+    wide["Dataset"] = "IMPAER"
+    wide["AuxID"] = 0
+    wide["validation"] = "validated"
+    wide["source_file"] = source_name
+    wide["is_excluded"] = ~(wide.ECf_Val.gt(0) & wide.fAbs_Val.gt(0))
+    wide["exclusion_reason"] = np.select(
+        [~wide.ECf_Val.gt(0), ~wide.fAbs_Val.gt(0)],
+        ["Missing, invalid or nonpositive TOR EC", "Missing, invalid or nonpositive absorption"],
+        default="",
+    )
+    return wide
+
+
+def read_improve_integrated_export(path):
+    """Read one validated yearly ZIP or normalized Query Wizard text report.
+
+    Returns a wide, flagged sample table and the report's site metadata. Read
+    archives in chunks so the full 107-parameter network need not fit in memory.
+    """
+    path = Path(path)
+    sites = pd.DataFrame()
+    if "PRE" in path.name.upper():
+        raise ValueError("Preliminary exports must stay separate from validated IMPROVE")
+    if path.suffix.lower() == ".zip":
+        archive = zipfile.ZipFile(path)
+        names = [name for name in archive.namelist() if not name.endswith("/")]
+        if len(names) != 1:
+            archive.close()
+            raise ValueError("Expected exactly one integrated data file per archive")
+        stream = archive.open(names[0])
+    else:
+        archive = None
+        stream = path.open(encoding="utf-8-sig", newline="")
+        prefix = []
+        for line in stream:
+            if line.startswith("Dataset|SiteCode|POC|Date|ParamCode|"):
+                header = next(csv.reader([line], delimiter="|"))
+                break
+            prefix.append(line)
+        else:
+            stream.close()
+            raise ValueError("Expected a normalized pipe-delimited FED data header")
+        text = "".join(prefix).replace("\r\n", "\n")
+        site_text = text.split("\nSites\n\n", 1)[1].split("\n\nParameters", 1)[0]
+        sites = pd.read_csv(io.StringIO(site_text), sep="|", na_values=NA_VALUES)
+    parts = []
+    try:
+        kwargs = {"names": header} if archive is None else {}
+        for chunk in pd.read_csv(stream, sep="|", chunksize=250_000, low_memory=False, **kwargs):
+            parts.append(chunk.loc[chunk.ParamCode.isin(INTEGRATED_PARAMETERS)].copy())
+    finally:
+        stream.close()
+        if archive:
+            archive.close()
+    return pivot_improve_integrated(pd.concat(parts, ignore_index=True), source_name=path.name), sites
 
 
 def improve_dir() -> Path:
@@ -447,7 +574,12 @@ def clean_improve(
         / 1000.0
     )
     valid["EC_loading_ug"] = valid["ECf_Val"] * valid["volume_m3"]
-    valid["MF_loading_ug"] = valid["MF_Val"] * valid["volume_m3"]
+    valid["MF_volume_m3"] = valid["volume_m3"]
+    if {"FlowRate_A_Val", "SampDur_A_Val"}.issubset(valid.columns):
+        a_flow = pd.to_numeric(valid["FlowRate_A_Val"], errors="coerce")
+        a_duration = pd.to_numeric(valid["SampDur_A_Val"], errors="coerce")
+        valid["MF_volume_m3"] = (a_flow * a_duration / 1000).where(a_flow.gt(0) & a_duration.gt(0))
+    valid["MF_loading_ug"] = valid["MF_Val"] * valid["MF_volume_m3"]
 
     for area in list(areas) + [SPARTAN_DEPOSIT_AREA_CM2]:
         column = f"EC_loading_ug_cm2_area_{safe_area(area)}"

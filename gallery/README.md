@@ -77,6 +77,29 @@ The compact, committed `improve_map.json` contains site summaries rather than
 individual records; regenerate it with
 `uv run python gallery/data/export_improve_map.py` after updating IMPROVE data.
 Map scope, focus, measurement and size choices survive in a copied URL.
+The validated IMPROVE refresh uses yearly FED Aerosol ZIPs for 2003–2025
+and a current-year Query Wizard report. Preliminary `IMPAERPRE` exports stay
+outside the gallery cache. The map displays the release dates and any known
+absorption coverage gaps. Its sample counts still describe the paired,
+positive EC/absorption population, rather than every downloaded measurement.
+
+To refresh, export **IMPROVE Aerosol** (validated) in Query Wizard with all
+sites, parameters and fields; the current year and all months; text output,
+normalized rows, pipe delimiter, and data plus metadata. Then run:
+
+```bash
+uv run aeth doctor
+uv run python research/ftir_hips_chem/workflows/refresh_improve_gallery.py --refresh-downloads --query "$IMPROVE_VALIDATED_REPORT"
+uv run python gallery/data/export_improve_map.py
+uv run python gallery/share/build_share.py
+```
+
+Set `IMPROVE_VALIDATED_REPORT` to the downloaded file. Raw downloads, flagged
+sample Parquets, checksums, monthly coverage and the comparison with the old
+cache live under `research/ftir_hips_chem/output/tables/improve_validated_archive/`.
+The previous cache is backed up before replacement. Module A and C flow and
+duration records remain separate; missing historical volumes stay missing.
+
 Every scope supports dragging to pan, wheel/pinch zoom and +/− buttons.
 IMPROVE opens on the US mainland; **All sites** fits the entire available
 network, including Alaska, Hawaii and overseas sites. Bubble radii stay fixed
