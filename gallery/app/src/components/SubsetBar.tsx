@@ -1,4 +1,5 @@
 import { RegressionControls } from '@/lib/regressionPrefs'
+import { chemText } from '@/lib/format'
 import { CONVENTION_LABEL } from '@/lib/seasons'
 import { useEffect, useRef } from 'react'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -6,7 +7,7 @@ import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 import { DateBrush, type DateRange } from '@/components/DateBrush'
 import { FieldSelect, prettyUnit } from '@/components/FieldSelect'
 import { Segmented, SwapButton, Toggle } from '@/components/ChartFrame'
-import { AXES_MODES, type AxesOpts } from '@/lib/axes'
+import { AXES_MODES, PANEL_AXES, type AxesOpts } from '@/lib/axes'
 import { fmt } from '@/lib/stats'
 import { usePrefs } from '@/lib/prefs'
 import { useHighlight } from '@/lib/highlight'
@@ -14,6 +15,7 @@ import type { FilterRow, MetaFile, SeasonMeta } from '@/lib/types'
 import { PMF_SCHEMES, type PmfGroup, type PmfScheme } from '@/lib/pmfGroups'
 import { NETWORKS, type Network } from '@/lib/networks'
 import { SitePicker, type SiteItem } from '@/components/SitePicker'
+import { Combobox } from '@/components/Combobox'
 
 export interface SubsetCaps {
   /** the tab's charts respond to the season filter */
@@ -229,6 +231,9 @@ export function SubsetBar({
                   title="Data: 0 always visible, negatives kept · From 0,0: both axes start at zero (default) · Show intercept: keep all points and mark fitted intercepts with compact margins"
                 />
                 <Toggle label="Log axes" checked={s.axes.log} onChange={(v) => a.onAxes({ ...s.axes, log: v })} />
+                <Segmented label="Panel axes" value={(s.axes.panels ?? 'Shared') as any} options={PANEL_AXES as any}
+                  onChange={(v: string) => a.onAxes({ ...s.axes, panels: v as AxesOpts['panels'] })}
+                  title="Per-site panels: Shared gives every site the same range, so slopes and levels compare by eye · Own fits each panel to its site's data. With the 1:1 line on, each panel stays square with equal x and y spans." />
                 {explain && <span className="row-note">applies to the scatterplot, hexbin and connected scatter together</span>}
               </Row>
             </>
@@ -261,14 +266,8 @@ export function SubsetBar({
               {seasonsOn && (
                 <>
                   <Row label="calendar">
-                    <select className="select" value={s.convention} onChange={(e) => a.onConvention(e.target.value)}>
-                      {s.calendarOptions.map((k) => (
-                        <option key={k} value={k}>
-                          {CALENDAR_LABEL[k] ?? k}
-                          {k === s.defaultConvention ? ' (default)' : ''}
-                        </option>
-                      ))}
-                    </select>
+                    <Combobox label="" title="Season calendar" value={s.convention} onChange={a.onConvention}
+                      options={s.calendarOptions.map((k) => ({ key: k, label: `${CALENDAR_LABEL[k] ?? k}${k === s.defaultConvention ? ' (default)' : ''}` }))} />
                     <span className="row-note" style={{ display: 'block' }}>
                       {s.convention === 'local'
                         ? 'Each filter is binned by its own site’s calendar (docs/site-seasonality.md). Fixed month bins, not observed weather.'
@@ -433,7 +432,7 @@ function PinnedCard({
       </span>
       {shown.map((f) => (
         <span key={f} className="kv">
-          <span>{f}</span> {fmt(row[f] as number | null, 3)}
+          <span>{chemText(f)}</span> {fmt(row[f] as number | null, 3)}
         </span>
       ))}
       {row.excluded && <span className="reason">excluded: {row.exclusion_reason}</span>}

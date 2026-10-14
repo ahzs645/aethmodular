@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { fmt, type RegressionStats } from './stats'
+import { chemText } from './format'
 import { useSearchParam } from './url'
 import { Combobox } from '@/components/Combobox'
 import type { FitGrouping } from './siteRegression'
@@ -87,6 +88,7 @@ export function projectRun<T extends import('./types').CalibRun>(run: T, method:
 
 export const estimatorText = (text: string, method: Estimator) => {
   const at = text.toLowerCase().indexOf('guardrail')
-  return at < 0 ? text.replace(/Deming/g, FIT_STYLE[method].label) : text.slice(0, at).replace(/Deming/g, FIT_STYLE[method].label) + text.slice(at)
+  const named = at < 0 ? text.replace(/Deming/g, FIT_STYLE[method].label) : text.slice(0, at).replace(/Deming/g, FIT_STYLE[method].label) + text.slice(at)
+  return chemText(named)   // PM₂.₅, SO₄ … in every rendered label
 }
 export function EstimatorName() { return <>{FIT_STYLE[useEstimator()].label}</> }

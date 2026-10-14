@@ -22,9 +22,15 @@ export interface AxesOpts {
   identity: boolean
   mode: AxesMode
   log: boolean
+  /** per-site panels: one range for every panel (slopes compare by eye), or each fitted to its own
+   *  data (shapes within a site); with the 1:1 line on, every panel stays square either way */
+  panels?: PanelAxes
 }
 
-export const DEFAULT_AXES: AxesOpts = { identity: true, mode: 'From 0,0', log: false }
+export const PANEL_AXES = ['Shared', 'Own'] as const
+export type PanelAxes = (typeof PANEL_AXES)[number]
+
+export const DEFAULT_AXES: AxesOpts = { identity: true, mode: 'From 0,0', log: false, panels: 'Shared' }
 
 export interface PairDomain {
   x: [number, number]

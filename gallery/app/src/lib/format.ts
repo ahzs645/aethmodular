@@ -56,3 +56,18 @@ export const fitLine = (slope: unknown, intercept: unknown, digits = 2): string 
 export const coef = (v: unknown): string => fmt(v, 3)
 /** An intercept or a difference with its sign, at the coefficient precision. */
 export const coefSigned = (v: unknown): string => signed(v, 3)
+
+/**
+ * Chemical subscripts for display: "PM2.5 mass" reads PM₂.₅ mass, "SO4" SO₄. Field names stay
+ * plain in data, URLs and lookups; only rendered text goes through this (via estimatorText,
+ * which every chart title, axis, legend and tooltip already uses, and the pickers).
+ */
+const SUBSCRIPTS: [RegExp, string][] = [
+  [/\bPM2\.5\b/g, 'PM₂.₅'], [/\bPM10\b/g, 'PM₁₀'], [/\bPM1\b/g, 'PM₁'],
+  [/\bSO4\b/g, 'SO₄'], [/\bNO3\b/g, 'NO₃'], [/\bNH4\b/g, 'NH₄'], [/\bCO2\b/g, 'CO₂'], [/\bNO2\b/g, 'NO₂'], [/\bSO2\b/g, 'SO₂'],
+]
+export const chemText = (text: string): string => {
+  let out = text
+  for (const [re, sub] of SUBSCRIPTS) out = out.replace(re, sub)
+  return out
+}

@@ -1,3 +1,4 @@
+import { Combobox } from '@/components/Combobox'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useSearchParam } from '@/lib/url'
 import { useHeaderHeight } from '@/hooks/useSidePanel'
@@ -68,12 +69,9 @@ export function PageToc({ children }: { children: ReactNode }) {
       <div ref={mainRef} style={{ minWidth: 0 }}>
         {entries.length > 1 && (
           <div ref={jumpRef} className="toc-controls" style={{ top }}>
-            {showNavigation && <label className="toc-select control">
-              Jump to
-              <select className="select" value={active ?? ''} onChange={(e) => go(e.target.value)}>
-                {entries.map((e) => <option key={e.id} value={e.id}>{e.label}</option>)}
-              </select>
-            </label>}
+            {showNavigation && <span className="toc-select">
+              <Combobox label="Jump to" value={active ?? entries[0].id} options={entries.map((e) => ({ key: e.id, label: e.label }))} onChange={go} />
+            </span>}
             <button type="button" className="btn quiet" aria-expanded={showNavigation}
               title={showNavigation ? 'Hide section navigation and give charts the full width' : 'Show section navigation'}
               onClick={() => setNavigation(showNavigation ? 'hidden' : 'shown')}>

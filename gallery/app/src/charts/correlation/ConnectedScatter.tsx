@@ -121,8 +121,8 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
               </clipPath>
             </defs>
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-              <YAxis scale={y} x={0} label={withUnit(yField, meta.field_units)} gridWidth={innerW} />
-              <XAxis scale={x} y={innerH} label={withUnit(xField, meta.field_units)} />
+              <YAxis scale={y} x={0} label={withUnit(yField, meta.field_units)} gridWidth={innerW} pick="y" />
+              <XAxis scale={x} y={innerH} label={withUnit(xField, meta.field_units)} pick="x" />
               <g clipPath={`url(#${clipId})`}>
               {opts.identity && (
                 <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />

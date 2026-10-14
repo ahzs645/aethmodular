@@ -82,7 +82,7 @@ export function Barplot({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFi
         ) : (
           <svg width={width} height={height} className="animated">
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-              <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} />
+              <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} pick="field" />
               <XAxis scale={x0} y={innerH} />
               {shown.map((d, i) => {
                 const x1 = x1BySite.get(d.site)!

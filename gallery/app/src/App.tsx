@@ -35,6 +35,7 @@ import { MeetingFollowupPage } from '@/pages/MeetingFollowupPage'
 import { SatoshiFollowupPage } from '@/pages/SatoshiFollowupPage'
 import { BlanksPage } from '@/pages/BlanksPage'
 import { Combobox } from '@/components/Combobox'
+import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
 import { SideDock, SubsetBar, type SubsetActions, type SubsetCaps, type SubsetState } from '@/components/SubsetBar'
 import { SampleDrawer } from '@/components/SampleDrawer'
 import { RecordDrawer } from '@/components/RecordDrawer'
@@ -171,6 +172,7 @@ export default function App() {
     identity: init.get('eq') !== '0',
     mode: (AXES_MODES as readonly string[]).includes(init.get('ax') ?? '') ? (init.get('ax') as AxesMode) : DEFAULT_AXES.mode,
     log: init.get('log') === '1',
+    panels: init.get('pax') === 'own' ? 'Own' : 'Shared',
   })
   // the sample whose detail drawer is open; opening also pins
   const [openId, setOpenId] = useState<string | null>(null)
@@ -186,6 +188,10 @@ export default function App() {
     setOpenId(id)
     setOpenRec(null)
   }, [])
+
+  // axis titles on the charts edit the same x / y / measurement as the sidebar (components/AxisFieldPopover)
+  const setAxisField = useCallback((role: AxisRole, f: string) => (role === 'x' ? setXField : role === 'y' ? setYField : setField)(f), [])
+  const axisValues = useMemo(() => ({ x: xField, y: yField, field }), [xField, yField, field])
 
   useEffect(() => {
     writeParams({
@@ -212,6 +218,7 @@ export default function App() {
       eq: axes.identity ? null : '0',
       ax: axes.mode !== DEFAULT_AXES.mode ? axes.mode : null,
       log: axes.log ? '1' : null,
+      pax: axes.panels === 'Own' ? 'own' : null,
     })
   }, [tab, meeting, estimators, showCI, convention, activeSeasons, activeSites, network, improveSites, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, pinnedId, axes])
 
@@ -245,6 +252,7 @@ export default function App() {
         identity: p.get('eq') !== '0',
         mode: (AXES_MODES as readonly string[]).includes(p.get('ax') ?? '') ? (p.get('ax') as AxesMode) : DEFAULT_AXES.mode,
         log: p.get('log') === '1',
+        panels: p.get('pax') === 'own' ? 'Own' : 'Shared',
       })
     }
     window.addEventListener('hashchange', onHash)
@@ -638,6 +646,7 @@ export default function App() {
         {tab === 'blanks' && <BlanksPage />}
         {tab === 'baseline' && <BaselineComparisonPage mac={meta.mac_value} demingLambda={data.calibration?.deming_lambda_mac10 ?? 1} />}
         {tab === 'calibration' && <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />}
+        <AxisFieldsProvider meta={meta} value={axisValues} set={setAxisField}>
         {tab === 'correlation' && (
           <>
             <Scatterplot rows={rows} meta={meta} xField={xField} yField={yField} axes={axes} />
@@ -672,6 +681,7 @@ export default function App() {
           </>
         )}
         {tab === 'partOfWhole' && <CompositionTreemap rows={rows} meta={meta} />}
+        </AxisFieldsProvider>
         {tab === 'map' && <SiteBubbleMap rows={mapRows} meta={meta} field={field} focusSite={activeSites?.size === 1 ? [...activeSites][0] : undefined} />}
         {tab === 'flow' && <MethodSankey rows={rows} meta={meta} />}
         {tab === 'pmf' &&

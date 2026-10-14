@@ -122,12 +122,18 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
     }))
   }, [layout, points, meta, xField, yField, grouping])
 
-  // Shared domain across every panel — a per-site grid with different axes
-  // per panel silently hides that one site's slope is twice another's.
+  // Shared domain across every panel by default — a per-site grid with different axes
+  // per panel silently hides that one site's slope is twice another's. "Own" panel axes
+  // (sidebar) fit each site's panel to its own points, still square when 1:1 is on.
   const domain = useMemo(() => {
     const intercepts = panels.flatMap(p => p.fitGroups.flatMap(group => fitsFor(group.stats, methods).map(fit => fit.intercept)))
     return pairDomain(points.map((p) => p.x), points.map((p) => p.y), axes, showFit ? intercepts : [])
   }, [points, panels, axes, showFit, methods])
+  const ownAxes = layout === 'Per site' && axes.panels === 'Own'
+  const panelDomains = useMemo(() => ownAxes
+    ? new Map(panels.map(p => [p.key, pairDomain(p.points.map(q => q.x), p.points.map(q => q.y), axes,
+      showFit ? p.fitGroups.flatMap(group => fitsFor(group.stats, methods).map(fit => fit.intercept)) : [])]))
+    : null, [ownAxes, panels, axes, showFit, methods])
 
   const legend = useMemo(
     () =>
@@ -191,7 +197,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
                 points={p.points}
                 stats={p.stats}
                 fitGroups={p.fitGroups}
-                domain={domain}
+                domain={panelDomains?.get(p.key) ?? domain}
                 innerW={innerW}
                 innerH={innerH}
                 axes={axes}
@@ -366,13 +372,13 @@ function ScatterPanel({
               intercept markers sit on the y axis and the x axis runs through the cloud. */}
           {originAxes ? (
             <>
-              <YAxis scale={yScale} x={xScale(0)} label={yLabel} gridWidth={innerW} gridFrom={0} labelX={-50} />
-              <XAxis scale={xScale} y={yScale(0)} label={xLabel} labelDy={innerH - yScale(0) + 40} />
+              <YAxis scale={yScale} x={xScale(0)} label={yLabel} gridWidth={innerW} gridFrom={0} labelX={-50} pick="y" />
+              <XAxis scale={xScale} y={yScale(0)} label={xLabel} labelDy={innerH - yScale(0) + 40} pick="x" />
             </>
           ) : (
             <>
-              <YAxis scale={yScale} x={0} label={yLabel} gridWidth={innerW} />
-              <XAxis scale={xScale} y={innerH} label={xLabel} />
+              <YAxis scale={yScale} x={0} label={yLabel} gridWidth={innerW} pick="y" />
+              <XAxis scale={xScale} y={innerH} label={xLabel} pick="x" />
             </>
           )}
 

@@ -145,7 +145,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
                     {/* catches pointer moves in the empty parts of the panel */}
                     <rect x={0} y={0} width={innerW} height={innerH} fill="transparent" />
                     <SeasonBands bands={bandsFor(x, panel.title)} height={innerH} hover={seasonHover} />
-                    <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} tickCount={layout === 'Overlay' ? 6 : 4} />
+                    <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} tickCount={layout === 'Overlay' ? 6 : 4} pick="field" />
                     <XAxis scale={x as any} y={innerH} format={(d: Date) => d3.timeFormat('%b %Y')(d)} tickCount={7} />
                     {panel.series.map((s) => (
                       <g key={s.name} opacity={dim(s.name)}>

@@ -1,4 +1,5 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
+import { chemText } from '@/lib/format'
 import { loadJson } from '@/lib/data'
 import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
 import { useRegressions, fitsFor, equation, FitGroupingControl } from '@/lib/regressionPrefs'
@@ -221,7 +222,7 @@ export function SampleDrawer({
                 {fields.map((f) => {
                   const p = placement[f]
                   if (!p) return <tr key={f}>
-                    <td className="f">{f}</td>
+                    <td className="f">{chemText(f)}</td>
                     <td className="v">{fmt(row[f] as number, 3)} <span className="u">{prettyUnit(meta.field_units[f])}</span></td>
                     <td className="u" colSpan={2}>Reference unavailable · n={referenceCoverage[f]}</td>
                   </tr>
@@ -230,7 +231,7 @@ export function SampleDrawer({
                   const hot = f === xField || f === yField || f === focusField
                   return (
                     <tr key={f} className={hot ? 'hot' : ''}>
-                      <td className="f">{f}</td>
+                      <td className="f">{chemText(f)}</td>
                       <td className="v">{fmt(p.v, 3)} <span className="u">{prettyUnit(meta.field_units[f])}</span></td>
                       <td className="strip" title={`${referenceLabel}: min ${fmt(p.min, 2)} · q1 ${fmt(p.q1, 2)} · median ${fmt(p.med, 2)} · q3 ${fmt(p.q3, 2)} · max ${fmt(p.max, 2)} · n=${p.n}${outside ? ` · filter is ${outside} the reference range; dot shown at the edge` : ''}`}>
                         <span className="track" />
@@ -256,7 +257,7 @@ export function SampleDrawer({
             <tbody>
               {ratios.map((r) => (
                 <tr key={r.label}>
-                  <td className="f" title={r.why}>{r.label}</td>
+                  <td className="f" title={r.why}>{chemText(r.label)}</td>
                   <td className="v">{fmt(r.value, 3)}</td>
                   <td className="u" colSpan={2}>{referenceLabel} median {fmt(r.reference.median, 3)} · n={r.reference.n}{r.reference.n === 0 && ' (unavailable)'} · {r.why}</td>
                 </tr>

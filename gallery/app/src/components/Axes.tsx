@@ -1,5 +1,6 @@
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
-import { useMemo } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
+import { AxisFieldPopover, useAxisFields, type AxisRole } from '@/components/AxisFieldPopover'
 import type { ScaleLinear, ScaleTime, ScaleBand } from 'd3'
 import { INK, FONT } from '@/lib/theme'
 
@@ -25,10 +26,13 @@ export function XAxis({
   format,
   rotate = 0,
   labelDy,
+  pick,
 }: {
   scale: AnyScale
   y: number
   label?: string
+  /** the shared field this axis shows; its title then opens a field picker (AxisFieldPopover) */
+  pick?: AxisRole
   tickCount?: number
   format?: (v: any) => string
   rotate?: number
@@ -58,16 +62,18 @@ export function XAxis({
         </g>
       ))}
       {label && (
-        <text
-          x={(x0 + x1) / 2}
-          y={labelDy ?? (rotate ? 52 : 40)}
-          textAnchor="middle"
-          fontSize={12}
-          fontWeight={600}
-          fill={INK.text}
-        >
-          {estimatorText(label, method)}
-        </text>
+        <AxisTitle pick={pick}>
+          <text
+            x={(x0 + x1) / 2}
+            y={labelDy ?? (rotate ? 52 : 40)}
+            textAnchor="middle"
+            fontSize={12}
+            fontWeight={600}
+            fill={INK.text}
+          >
+            {estimatorText(label, method)}{pick && <tspan className="axis-pick-caret" dx={4}>▾</tspan>}
+          </text>
+        </AxisTitle>
       )}
     </g>
   )
@@ -82,10 +88,13 @@ export function YAxis({
   gridWidth,
   gridFrom,
   labelX,
+  pick,
 }: {
   scale: AnyScale
   x: number
   label?: string
+  /** the shared field this axis shows; its title then opens a field picker (AxisFieldPopover) */
+  pick?: AxisRole
   tickCount?: number
   format?: (v: any) => string
   gridWidth?: number
@@ -114,16 +123,36 @@ export function YAxis({
         </g>
       ))}
       {label && (
-        <text
-          transform={`translate(${labelX ?? x - 50},${(y0 + y1) / 2}) rotate(-90)`}
-          textAnchor="middle"
-          fontSize={12}
-          fontWeight={600}
-          fill={INK.text}
-        >
-          {estimatorText(label, method)}
-        </text>
+        <AxisTitle pick={pick}>
+          <text
+            transform={`translate(${labelX ?? x - 50},${(y0 + y1) / 2}) rotate(-90)`}
+            textAnchor="middle"
+            fontSize={12}
+            fontWeight={600}
+            fill={INK.text}
+          >
+            {estimatorText(label, method)}{pick && <tspan className="axis-pick-caret" dx={4}>▾</tspan>}
+          </text>
+        </AxisTitle>
       )}
     </g>
+  )
+}
+
+/** An axis title that, when the axis shows a shared field, opens the field picker on click or Enter. */
+function AxisTitle({ pick, children }: { pick?: AxisRole; children: ReactNode }) {
+  const ctx = useAxisFields()
+  const [anchor, setAnchor] = useState<DOMRect | null>(null)
+  if (!pick || !ctx) return <>{children}</>
+  const open = (el: Element) => setAnchor(el.getBoundingClientRect())
+  return (
+    <>
+      <g className="axis-pick" role="button" tabIndex={0} aria-haspopup="dialog" aria-label={`Change the ${pick === 'field' ? 'measurement' : `${pick} axis`}: ${ctx.value[pick]}`}
+        onClick={(e) => open(e.currentTarget)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e.currentTarget) } }}>
+        <title>Click to choose another measurement</title>
+        {children}
+      </g>
+      {anchor && <AxisFieldPopover role={pick} anchor={anchor} onClose={() => setAnchor(null)} />}
+    </>
   )
 }

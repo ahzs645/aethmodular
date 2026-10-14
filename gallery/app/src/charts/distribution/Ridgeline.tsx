@@ -131,7 +131,7 @@ export function Ridgeline({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
                 )
               })}
 
-              <XAxis scale={x} y={innerH + 14} label={withUnit(field, meta.field_units)} />
+              <XAxis scale={x} y={innerH + 14} label={withUnit(field, meta.field_units)} pick="field" />
             </g>
           </svg>
         )}

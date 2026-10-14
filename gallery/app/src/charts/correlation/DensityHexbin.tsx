@@ -119,13 +119,13 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
               {originAxes ? (
                 <>
-                  <YAxis scale={y} x={x(0)} label={withUnit(yField, meta.field_units)} gridWidth={innerW} gridFrom={0} labelX={-50} />
-                  <XAxis scale={x} y={y(0)} label={withUnit(xField, meta.field_units)} labelDy={innerH - y(0) + 40} />
+                  <YAxis scale={y} x={x(0)} label={withUnit(yField, meta.field_units)} gridWidth={innerW} gridFrom={0} labelX={-50} pick="y" />
+                  <XAxis scale={x} y={y(0)} label={withUnit(xField, meta.field_units)} labelDy={innerH - y(0) + 40} pick="x" />
                 </>
               ) : (
                 <>
-                  <YAxis scale={y} x={0} label={withUnit(yField, meta.field_units)} gridWidth={innerW} />
-                  <XAxis scale={x} y={innerH} label={withUnit(xField, meta.field_units)} />
+                  <YAxis scale={y} x={0} label={withUnit(yField, meta.field_units)} gridWidth={innerW} pick="y" />
+                  <XAxis scale={x} y={innerH} label={withUnit(xField, meta.field_units)} pick="x" />
                 </>
               )}
 

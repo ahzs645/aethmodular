@@ -90,7 +90,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
         ) : (
           <svg width={width} height={height} className="animated">
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-              <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} />
+              <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} pick="field" />
               <XAxis scale={x} y={innerH} />
 
               {groups.map((g, gi) => {

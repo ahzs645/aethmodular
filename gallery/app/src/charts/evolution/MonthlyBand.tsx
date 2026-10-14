@@ -89,7 +89,7 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
           <svg width={width} height={height} className="animated">
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
               {!mixed && <SeasonBands bands={monthSeasonBands((m) => x(m) ?? 0, (m) => seasonOf(m), innerW / 11, innerW)} height={innerH} hover={seasonHover} />}
-              <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} />
+              <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} pick="field" />
               <XAxis scale={x as any} y={innerH} format={(m: number) => MONTHS[m - 1]} tickCount={12} />
 
               {series.map((s) => {

@@ -1,5 +1,6 @@
 import type { MetaFile } from '@/lib/types'
 import { sentence } from '@/components/ChartFrame'
+import { Combobox } from '@/components/Combobox'
 
 /** "ug/m3" -> "µg/m³" for labels. */
 export const prettyUnit = (u: string | undefined) =>
@@ -27,34 +28,13 @@ export function FieldSelect({
   extraOptions?: string[]
   title?: string
 }) {
-  return (
-    <label className="control" title={title}>
-      {label}
-      <select className="select" value={value} onChange={(e) => onChange(e.target.value)}>
-        {extraOptions.length > 0 && (
-          <optgroup label="—">
-            {extraOptions.map((o) => (
-              <option key={o} value={o}>
-                {sentence(o)}
-              </option>
-            ))}
-          </optgroup>
-        )}
-        {meta.field_groups.map((g) => (
-          <optgroup key={g.label} label={g.label}>
-            {g.fields.map((f) => {
-              const u = prettyUnit(meta.field_units?.[f])
-              const cov = meta.coverage?.[f]
-              return (
-                <option key={f} value={f}>
-                  {u ? `${f} — ${u}` : f}
-                  {cov !== undefined ? ` (${cov})` : ''}
-                </option>
-              )
-            })}
-          </optgroup>
-        ))}
-      </select>
-    </label>
-  )
+  const options = [
+    ...extraOptions.map((o) => ({ key: o, label: sentence(o) })),
+    ...meta.field_groups.flatMap((g) => g.fields.map((f) => {
+      const u = prettyUnit(meta.field_units?.[f])
+      const cov = meta.coverage?.[f]
+      return { key: f, label: u ? `${f} — ${u}` : f, group: g.label, hint: cov !== undefined ? String(cov) : undefined }
+    })),
+  ]
+  return <Combobox label={label} value={value} options={options} onChange={onChange} title={title} />
 }

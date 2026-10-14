@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { chemText } from '@/lib/format'
 import { CompositionTreemap } from '@/charts/partOfWhole/CompositionTreemap'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { seasonalComposition, type CompositionCalendar } from '@/lib/seasonalComposition'
@@ -26,7 +27,7 @@ export function SeasonalComposition({ rows, meta }: { rows: FilterRow[]; meta?: 
         <p className="chart-note">These are existing SPARTAN filter chemistry records after exclusions, not the new-prediction test set. Carbon uses EC and OC from the existing FTIR product once. Duplicate ChemSpec carbon, optical HIPS BC, organic matter and functional groups are not extra slices.</p>
         <p className="chart-note">Start with concentration to compare absolute seasonal amounts, then switch to composition (%) to compare relative shares. Percentages sum the positive visible species means (or medians), not measured PM2.5; hiding a legend item recalculates that total. Available species can use different filters, so these stacks are descriptive rather than matched-filter mass closure. Missing species are absent, not zero. Signed observations remain in the statistics; non-positive aggregate values have no positive slice.</p>
         <table className="census-table">
-          <thead><tr><th>Season / chemistry filters</th><th>Sampling window</th><th>Mean measured PM2.5 (µg/m³)</th></tr></thead>
+          <thead><tr><th>Season / chemistry filters</th><th>Sampling window</th><th>Mean measured PM₂.₅ (µg/m³)</th></tr></thead>
           <tbody>{stats.map(s => {
             const pm = s.fields.find(f => f.field === 'PM2.5 mass')!
             return <tr key={s.season.name}><td>{s.season.name} · n={s.n}</td><td>{s.start && s.end ? `${s.start} to ${s.end}` : 'No dated filters'}</td><td>{fmt(pm.mean, 2)} · n={pm.n}</td></tr>
@@ -36,7 +37,7 @@ export function SeasonalComposition({ rows, meta }: { rows: FilterRow[]; meta?: 
         <details><summary>Species coverage by season (available / seasonal filters; negative observations)</summary>
           <div style={{ overflowX: 'auto' }}><table className="census-table">
             <thead><tr><th>Species</th>{stats.map(s => <th key={s.season.name}>{s.season.name}</th>)}</tr></thead>
-            <tbody>{species.map(field => <tr key={field}><td>{field}</td>{stats.map(s => {
+            <tbody>{species.map(field => <tr key={field}><td>{chemText(field)}</td>{stats.map(s => {
               const f = s.fields.find(f => f.field === field)!
               return <td key={s.season.name}>{f.n ? `${f.n}/${s.n}${f.negative ? ` · ${f.negative} negative` : ''}` : `Unavailable (0/${s.n})`}</td>
             })}</tr>)}</tbody>

@@ -1,3 +1,4 @@
+import { Combobox } from '@/components/Combobox'
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { composePanel, downloadPng, downloadSvg } from '@/lib/export'
@@ -115,18 +116,8 @@ export function Select({
   optionLabel?: (o: string) => string
 }) {
   const method = useEstimator()
-  return (
-    <label className="control" title={title}>
-      {label}
-      <select className="select" value={value} onChange={(e) => onChange(e.target.value)}>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {estimatorText(optionLabel ? optionLabel(o) : o, method)}
-          </option>
-        ))}
-      </select>
-    </label>
-  )
+  return <Combobox label={label} value={value} title={title} onChange={onChange}
+    options={options.map((o) => ({ key: o, label: estimatorText(optionLabel ? optionLabel(o) : o, method) }))} />
 }
 
 /**

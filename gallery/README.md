@@ -191,6 +191,18 @@ tabs always show the focus sites. The choice is in the URL (`net`, `sites`, `isi
 Builds for outside readers (`publish_pages.py`, `build_share.py`) set
 `VITE_HIDE_EXPLAIN=1`, which removes the header's Explain toggle; local dev keeps it.
 
+### Pickers and axes
+
+Every dropdown is the one styled `components/Combobox` (native-select height; groups, long
+lists and type-ahead), including the chart controls, field pickers, calendar and Jump to.
+Axis titles that show the shared x, y or measurement (crossplots, distribution, evolution,
+bar plot) are clickable: they open a searchable field popover that edits the same choice as
+the sidebar. **Panel axes** in the sidebar's crossplot row switches per-site panels between
+one shared range (the default, so slopes compare by eye) and each panel's own range; with
+the 1:1 line on, every panel stays square either way. Rendered text shows chemical
+subscripts (PM₂.₅, SO₄, NO₃, …) via `lib/format.chemText`; field names stay plain in data
+and URLs.
+
 ### Sharing a read-only copy
 
 The full app carries ~126 MB of data, most of it gitignored, so a clone is not
