@@ -16,6 +16,7 @@ import { PMF_SCHEMES, type PmfGroup, type PmfScheme } from '@/lib/pmfGroups'
 import { NETWORKS, hasImprove, hasSpartan, networkOf, type Network } from '@/lib/networks'
 import { SitePicker, type SiteItem } from '@/components/SitePicker'
 import { Combobox } from '@/components/Combobox'
+import { SeasonEditor } from '@/components/SeasonEditor'
 
 export interface SubsetCaps {
   /** the tab's charts respond to the season filter */
@@ -76,6 +77,8 @@ export interface SubsetState {
   siteLimitNote?: string
   /** calendars the picker offers (networks have no per-site local calendar) */
   calendarOptions: string[]
+  /** the reader's custom month bins, edited when the calendar is 'custom' */
+  customSeasons?: { name: string; months: number[] }[]
   /** filters dropped by hand from a brush, and the size of a "keep only" set (null: none) */
   dropped?: number
   /** spectral baseline for FTIR EC, offered when an axis or the measurement is EC (FTIR) */
@@ -102,6 +105,7 @@ export interface SubsetActions {
   onFocusSites?: () => void
   onDropIds?: (ids: Set<string>) => void
   onFtirBaseline?: (v: 'none' | 'spline' | 'vibes') => void
+  onCustomSeasons?: (v: { name: string; months: number[] }[]) => void
   onKeepIds?: (ids: Set<string>) => void
   onClearDrop?: () => void
   onClearKeep?: () => void
@@ -318,11 +322,14 @@ export function SubsetBar({
                     <span className="row-note" style={{ display: 'block' }}>
                       {s.convention === 'local'
                         ? 'Each filter is binned by its own site’s calendar (docs/site-seasonality.md). Fixed month bins, not observed weather.'
+                        : s.convention === 'custom'
+                        ? 'Your own bins, applied to every site. Pick a season, click months to move them into it, rename freely; they travel in the link.'
                         : s.convention === 'quarters'
                         ? 'The same three-month bins at every site. Only the four focus sites have local calendars; Dec–Feb is winter in the north and summer in the south.'
                         : <>Shared month bins across every site, for like-month comparison: “Belg” at Beijing only means those months. February sits in <strong style={{ color: 'var(--ink-text)' }}>{s.seasons.find((x) => x.months.includes(2))?.name ?? '—'}</strong>.</>}
                     </span>
                   </Row>
+                  {s.convention === 'custom' && s.customSeasons && a.onCustomSeasons && <SeasonEditor seasons={s.customSeasons} onChange={a.onCustomSeasons} />}
                   <div className="season-chips">
                     <Chip active={allSeasons} color="var(--ink-muted)" onClick={a.onAllSeasons} label="All" />
                   </div>

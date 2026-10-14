@@ -530,3 +530,16 @@ html[data-embed="1"] .app-header, html[data-embed="1"] .side-dock { display: non
 /* scatterplot "Per season" with several sites: one group per site */
 .season-groups { display: flex; flex-direction: column; gap: 14px; }
 .season-panel-group h4 { margin: 4px 0 2px; font-size: 13px; }
+
+/* custom season editor (components/SeasonEditor) */
+.season-editor { display: flex; flex-direction: column; gap: 5px; padding: 6px; border: 1px solid var(--ink-grid); border-radius: 8px; }
+.season-months { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2px; }
+.season-month { border: 0; border-radius: 4px; padding: 5px 0; font: 600 11px var(--font); color: #fff; background: var(--chip); cursor: pointer; }
+.season-month span { font-weight: 400; opacity: 0.85; }
+@media (max-width: 420px) { .season-month span { display: none; } }
+.season-edit-row { display: flex; align-items: center; gap: 6px; padding: 2px; border-radius: 6px; }
+.season-edit-row.on { background: var(--accent-soft); }
+.season-edit-row input { flex: 1; min-width: 0; }
+.season-swatch { width: 16px; height: 16px; border-radius: 4px; border: 2px solid transparent; cursor: pointer; flex: none; }
+.season-edit-row.on .season-swatch { border-color: var(--ink-text); }
+.season-edit-range { font-size: 11px; color: var(--ink-muted); font-family: var(--mono); white-space: nowrap; }

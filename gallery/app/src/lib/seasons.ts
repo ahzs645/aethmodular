@@ -20,6 +20,7 @@ export const CONVENTION_LABEL: Record<string, string> = {
   dry_feb: 'Shared Ethiopian month bins · Feb in dry',
   belg_feb: 'Shared Ethiopian month bins · Feb in Belg',
   quarters: 'Shared month bins · Dec–Feb, Mar–May, Jun–Aug, Sep–Nov',
+  custom: 'Custom bins · your own, shared by every site',
 }
 
 /** The calendar every frozen calibration export was binned with. */

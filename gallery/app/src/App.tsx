@@ -39,6 +39,7 @@ import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover
 import { ViewsMenu } from '@/components/ViewsMenu'
 import { currentView, isEmbed, viewUrl } from '@/lib/views'
 import { useExport } from '@/lib/data'
+import { customSeasonMeta, customSeasonsParam, parseCustomSeasons } from '@/components/SeasonEditor'
 import { SideDock, SubsetBar, type SubsetActions, type SubsetCaps, type SubsetState } from '@/components/SubsetBar'
 import { SampleDrawer } from '@/components/SampleDrawer'
 import { RecordDrawer } from '@/components/RecordDrawer'
@@ -95,6 +96,9 @@ const meetingFromParams = (p: URLSearchParams): MeetingKey =>
  * ETAD-only and carries no exclusion flags, so offering four site chips and a
  * 942-filter count there would just be wrong.
  */
+/** the starting point for custom bins: northern-hemisphere quarters, renamed and repainted freely */
+const DEFAULT_CUSTOM = [{ name: 'Winter', months: [12, 1, 2] }, { name: 'Spring', months: [3, 4, 5] }, { name: 'Summer', months: [6, 7, 8] }, { name: 'Autumn', months: [9, 10, 11] }]
+
 /** FTIR EC under each spectral baseline: none is the SPARTAN product in filters.json */
 type FtirBaseline = 'none' | 'spline' | 'vibes'
 const FTIR_VARIANT = { spline: 'EC (FTIR, spline)', vibes: 'EC (FTIR, VIBES)' } as const
@@ -169,6 +173,8 @@ export default function App() {
   // deleted, so you can always put them back and see what was removed.
   const [includeExcluded, setIncludeExcluded] = useState(init.get('excl') === '1')
   const [convention, setConvention] = useState<string | null>(init.get('cal'))
+  // the reader's own month bins (calendar "custom"), shared by every site; in the URL as cs
+  const [customSeasons, setCustomSeasons] = useState(() => parseCustomSeasons(init.get('cs')) ?? DEFAULT_CUSTOM)
   const [activeSeasons, setActiveSeasons] = useState<Set<string> | null>(listParam(init.get('seasons')))
   const [activeSites, setActiveSites] = useState<Set<string> | null>(listParam(init.get('sites')))
   // which filters the chart tabs draw (lib/networks): SPARTAN by default, starting on the four focus
@@ -235,6 +241,7 @@ export default function App() {
       fits: estimatorParam(estimators),
       ci: showCI ? '1' : null,
       cal: convention,
+      cs: convention === 'custom' ? customSeasonsParam(customSeasons) : null,
       seasons: listToParam(activeSeasons),
       sites: listToParam(activeSites),
       net: network !== 'spartan' ? network : null,
@@ -259,7 +266,7 @@ export default function App() {
       log: axes.log ? '1' : null,
       pax: axes.panels === 'Own' ? 'own' : null,
     })
-  }, [tab, meeting, estimators, showCI, convention, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, keepIds, ftirBaseline, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, pinnedId, axes])
+  }, [tab, meeting, estimators, showCI, convention, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, keepIds, ftirBaseline, customSeasons, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -273,6 +280,7 @@ export default function App() {
         if (tabFromParams(p) === 'meeting') setMeeting(meetingFromParams(p))
       }
       setConvention(p.get('cal'))
+      setCustomSeasons(parseCustomSeasons(p.get('cs')) ?? DEFAULT_CUSTOM)
       setActiveSeasons(listParam(p.get('seasons')))
       setActiveSites(listParam(p.get('sites')))
       setNetwork(isNetwork(p.get('net')) ? p.get('net') as Network : 'spartan')
@@ -363,7 +371,7 @@ export default function App() {
   // JPL's wet/dry windows, Addis's Bega/Belg/Kiremt. The shared Ethiopian month
   // bins stay available for like-month comparisons across sites.
   // networks have no per-site local calendars (siteSeasons.ts covers the four focus sites only)
-  const conventions = useMemo<Record<string, SeasonMeta[]>>(() => ({ ...(data?.meta.season_conventions ?? {}), quarters: MONTH_QUARTERS }), [data])
+  const conventions = useMemo<Record<string, SeasonMeta[]>>(() => ({ ...(data?.meta.season_conventions ?? {}), quarters: MONTH_QUARTERS, custom: customSeasonMeta(customSeasons) }), [data, customSeasons])
   // the local calendars cover the four focus sites; with other sites in view, shared quarters are the default
   const focusOnly = net === 'focus' || (hasSpartan(net) && !!netView && netView.chosen.every((x) => data?.meta.sites.some((f) => f.name === x.name)))
   const defaultConvention = focusOnly ? 'local' : 'quarters'
@@ -575,7 +583,9 @@ export default function App() {
 
     const seasonCounts: Record<string, number> = {}
     for (const s of seasons) seasonCounts[s.name] = 0
-    for (const r of seasonPool.filter((r) => pmfMode || calMode || !activeSites || activeSites.has(r.site))) {
+    // count only the picked sites (a network view keeps every site's rows for the site list)
+    const pickedSite = (site: string) => (netView ? netView.chosenNames.has(site) : !activeSites || activeSites.has(site))
+    for (const r of seasonPool.filter((r) => pmfMode || calMode || pickedSite(r.site))) {
       if (r.season in seasonCounts) seasonCounts[r.season] += 1
     }
     const siteCounts: Record<string, number> = {}
@@ -627,7 +637,8 @@ export default function App() {
       siteItems,
       siteLimitNote: net === 'improve' ? `${improveSites.length} of ${MAX_IMPROVE_SITES} IMPROVE sites`
         : net === 'both' && netView ? `${netView.chosen.length - improveSites.length} SPARTAN · ${improveSites.length}/${MAX_IMPROVE_SITES} IMPROVE` : undefined,
-      calendarOptions: net === 'improve' ? ['quarters', ...Object.keys(data.meta.season_conventions)] : ['local', ...Object.keys(conventions)],
+      calendarOptions: net === 'improve' ? ['quarters', ...Object.keys(data.meta.season_conventions), 'custom'] : ['local', ...Object.keys(conventions)],
+      customSeasons,
       sitesAtDefault: net === 'spartan' ? spartanSel === null : net === 'improve' ? improveSites.length > 0 : net === 'both' ? spartanSel === null && improveSites.length === 0 : !activeSites,
       allSitesSelected: hasSpartan(net) ? !!netView && netView.chosen.length - (net === 'both' ? improveSites.length : 0) === netView.nSpartan : !activeSites,
     }
@@ -680,6 +691,7 @@ export default function App() {
       },
       onFocusSites: () => setSpartanSel(null),
       onFtirBaseline: setFtirBaseline,
+      onCustomSeasons: (v) => { setCustomSeasons(v); setActiveSeasons(null) },
       onDropIds: (ids) => setDropIds((cur) => new Set([...cur, ...ids])),
       // keeping again narrows the kept set to filters in both brushes
       onKeepIds: (ids) => setKeepIds((cur) => (cur ? new Set([...ids].filter((id) => cur.has(id))) : new Set(ids))),
