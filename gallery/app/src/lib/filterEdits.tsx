@@ -18,6 +18,8 @@ export interface FilterGroup {
   ids: string[]
   /** fields worth a column in the side panel, in order (defaults to the chart's x and y) */
   fields?: string[]
+  /** a review of the hand edits: the panel keeps adding filters as they are excluded (or kept) */
+  live?: 'dropped' | 'kept'
 }
 
 interface MenuTarget { ids: string[]; title: string; group?: FilterGroup }

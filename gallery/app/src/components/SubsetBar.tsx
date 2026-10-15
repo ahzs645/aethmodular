@@ -11,6 +11,7 @@ import { AXES_MODES, PANEL_AXES, type AxesOpts } from '@/lib/axes'
 import { fmt } from '@/lib/stats'
 import { usePrefs } from '@/lib/prefs'
 import { useHighlight } from '@/lib/highlight'
+import { useFilterEdits } from '@/lib/filterEdits'
 import type { FilterRow, MetaFile, SeasonMeta } from '@/lib/types'
 import { PMF_SCHEMES, type PmfGroup, type PmfScheme } from '@/lib/pmfGroups'
 import { NETWORKS, hasImprove, hasSpartan, networkOf, type Network } from '@/lib/networks'
@@ -89,6 +90,8 @@ export interface SubsetState {
   ftirBaseline?: 'none' | 'spline' | 'vibes'
   showFtirBaseline?: boolean
   kept?: number | null
+  /** the "keep only" set's ids, for its review panel */
+  keptIds?: string[]
   /** the site pick is the network's default (SPARTAN: the four focus sites) */
   sitesAtDefault?: boolean
   allSitesSelected?: boolean
@@ -161,6 +164,9 @@ export function SubsetBar({
   const top = useHeaderHeight()
   const { explain } = usePrefs()
   const hl = useHighlight()
+  const edits = useFilterEdits()
+  // the review panel shows the fields the open tab is drawing
+  const reviewFields = caps.fields === 'pair' ? [s.xField, s.yField] : caps.fields === 'single' ? [s.field] : []
 
   const allSeasons = s.activeSeasons.size === s.seasons.length
   const allSites = s.sitesAtDefault ?? s.activeSites.size === s.sites.length
@@ -207,12 +213,17 @@ export function SubsetBar({
             <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 4 }} onClick={(e) => { e.preventDefault(); a.onClearDrop?.() }} aria-label="Put every hand-excluded filter back" title="Put them all back">×</button></span>
         </summary>
         <div className="dropped-list">
-          {(s.droppedList ?? []).map((d) => <span key={d.id} className="pill" title={d.label}>{d.id}
+          <button type="button" className="btn quiet dropped-review" title="List every excluded filter in the side panel: site, date, values; put any or all back"
+            onClick={() => edits.openGroup({ title: 'Excluded by hand', ids: (s.droppedList ?? []).map((d) => d.id), fields: reviewFields, live: 'dropped' })}>Review all {s.dropped} ›</button>
+          {(s.droppedList ?? []).map((d) => <span key={d.id} className="pill" title={d.label}>
+            <button type="button" className="pill-link" onClick={() => hl.openSample(d.id)} title={`${d.label} · open this filter's details`}>{d.id}</button>
             {a.onRestoreIds && <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 4 }} onClick={() => a.onRestoreIds!(new Set([d.id]))} aria-label={`Put ${d.id} back`} title="Put this filter back">↺</button>}</span>)}
         </div>
       </details>}
-      {s.kept != null && <span className="pill">keeping {s.kept} brushed
-        <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 4 }} onClick={a.onClearKeep} aria-label="Stop keeping only the brushed filters">×</button></span>}
+      {s.kept != null && <span className="pill">keeping {s.kept}
+        <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 4 }} title="List the kept filters in the side panel"
+          onClick={() => edits.openGroup({ title: 'Kept by hand (every other filter is hidden)', ids: s.keptIds ?? [], fields: reviewFields, live: 'kept' })}>review</button>
+        <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 2 }} onClick={a.onClearKeep} aria-label="Stop keeping only the brushed filters">×</button></span>}
     </div>
   )
 

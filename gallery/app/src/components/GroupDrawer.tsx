@@ -34,7 +34,7 @@ export function GroupDrawer({ group, byId, meta, fields, onClose }: {
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const cols = (group.fields ?? fields).filter((f, i, a) => a.indexOf(f) === i)
+  const cols = (group.fields?.length ? group.fields : fields).filter((f, i, a) => a.indexOf(f) === i)
   const rows = useMemo(() => group.ids.map((id) => byId.get(id)).filter((r): r is FilterRow => !!r)
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id < b.id ? -1 : 1)), [group, byId])
   const live = rows.filter((r) => !ed.dropped.has(r.id))

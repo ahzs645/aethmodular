@@ -235,6 +235,10 @@ export default function App() {
   // hand edits from the charts' right-click menu and the side panel; the brush writes the same sets
   const dropFilters = useCallback((ids: Set<string>) => setDropIds((cur) => new Set([...cur, ...ids])), [])
   const keepFilters = useCallback((ids: Set<string>) => setKeepIds((cur) => (cur ? new Set([...ids].filter((id) => cur.has(id))) : new Set(ids))), [])
+  // "review" panels list the current hand edits; ones put back stay listed (to undo) until the panel closes
+  const shownGroup = useMemo<FilterGroup | null>(() => !group ? null
+    : group.live === 'dropped' ? { ...group, ids: [...new Set([...group.ids, ...dropIds])] }
+      : group.live === 'kept' ? { ...group, ids: [...new Set([...group.ids, ...(keepIds ?? [])])] } : group, [group, dropIds, keepIds])
   const restoreFilters = useCallback((ids: Set<string>) => setDropIds((cur) => new Set([...cur].filter((id) => !ids.has(id)))), [])
   const dismissSample = useCallback(() => {
     setPinnedId(null)
@@ -492,10 +496,11 @@ export default function App() {
     [baseRows, inRange, seasonSel, activeSites, netView, dropIds, keepIds]
   )
 
-  // The map has its own site scope; keep date, season and exclusion choices.
+  // The map has its own site scope; keep date, season and exclusion choices, hand edits included.
   const mapRows = useMemo(
-    () => baseRows.filter(inRange).filter((r) => !seasonSel || seasonSel.has(r.season)),
-    [baseRows, inRange, seasonSel]
+    () => baseRows.filter(inRange).filter((r) => !seasonSel || seasonSel.has(r.season))
+      .filter((r) => !dropIds.has(r.id) && (!keepIds || keepIds.has(r.id))),
+    [baseRows, inRange, seasonSel, dropIds, keepIds]
   )
 
   // PMF rows get the same calendar + season treatment as the filter rows, so
@@ -615,7 +620,8 @@ export default function App() {
       ? (data.pmf?.rows ?? []).map((r) => ({ season: seasonOf(pmfSiteName, r.month, r.season), site: pmfSiteName, pmf: pmfLabel(data.pmf, r.dominant_source, pmfScheme) }))
       : calMode
         ? addisEvalDates.map((d) => ({ season: seasonOf(pmfSiteName, d ? Number(d.slice(5, 7)) : null, 'undated'), site: pmfSiteName, pmf: pmfLabelOfDate(d) }))
-        : baseRows.filter(inRange).map((r) => ({ season: r.season, site: r.site, pmf: NO_PMF }))
+        // hand exclusions count like any other filter, so the chips add up to what the charts draw
+        : baseRows.filter(inRange).filter((r) => !dropIds.has(r.id) && (!keepIds || keepIds.has(r.id))).map((r) => ({ season: r.season, site: r.site, pmf: NO_PMF }))
     const usePmf = pmfMode || calMode
     const inSeason = (r: { season: string }) => !seasonSel || seasonSel.has(r.season)
     const inPmf = (r: { pmf: string }) => !usePmf || !pmfKeep || pmfKeep.has(r.pmf)
@@ -680,6 +686,7 @@ export default function App() {
       ftirBaseline,
       showFtirBaseline: [xField, yField, field].includes('EC (FTIR)'),
       kept: keepIds?.size ?? null,
+      keptIds: keepIds ? [...keepIds] : [],
       networkLoading: netData.loading,
       networkError: netData.error,
       siteItems,
@@ -819,7 +826,7 @@ export default function App() {
         />
       )}
       {!openRow && openRec && <RecordDrawer rec={openRec} onClose={dismissSample} />}
-      {!openRow && !openRec && group && <GroupDrawer group={group} byId={sourceById} meta={meta}
+      {!openRow && !openRec && shownGroup && <GroupDrawer group={shownGroup} byId={sourceById} meta={meta}
         fields={tab === 'correlation' ? [xField, yField] : [field]} onClose={() => setGroup(null)} />}
       {isEmbed() && <a className="embed-open" href="#" onClick={async (e) => { e.preventDefault(); window.open((await viewUrl(currentView())), '_blank', 'noopener') }}>Open in the gallery ↗</a>}
       {(NETWORK_TABS as readonly string[]).includes(tab) && <BrushBar onKeep={keepFilters} onDrop={dropFilters} />}
