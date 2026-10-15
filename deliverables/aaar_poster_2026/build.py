@@ -386,9 +386,10 @@ ROWS = [("Which IMPROVE filters calibrate", [
             ("Ethiopia-shaped smoke", "Ethiopia-shaped smoke"),
             ("Spectral analogs, weighted distance", "Spectral analogs (VIP-weighted distance)")]),
         ("Calibration settings", [
-            ("Setting A", "Site-grouped cross-validation"), ("Setting B", "Interleaved cross-validation"),
-            ("Setting C", "9 or fewer PLS factors"), ("Setting D", "15 or more PLS factors"),
-            ("Setting E", "Cohort under 600 filters")])]
+            ("Site-grouped cross-validation", "Site-grouped cross-validation"),
+            ("Interleaved cross-validation", "Interleaved cross-validation"),
+            ("9 or fewer PLS factors", "9 or fewer PLS factors"), ("15 or more PLS factors", "15 or more PLS factors"),
+            ("Cohort under 600 filters", "Cohort under 600 filters")])]
 n_rows = sum(len(r) for _, r in ROWS) + len(ROWS)
 fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(12.6, 6.6), sharex=True,
                                gridspec_kw=dict(height_ratios=[1, 2.4], hspace=.06))
@@ -437,9 +438,9 @@ for ax, g in zip(axes, SEASONS):
     ax.scatter(sv.Fabs / MAC, sv.ftir_ec_ugm3, s=22, color=SEASON_COLOR[g], alpha=.9, edgecolor="white", lw=.4,
                label="season-specific calibration")
     xs = np.array([0, lim])
-    ax.plot(xs, xs, ls=":", color=GREY, lw=1.2)
-    ax.plot(xs, s0.deming_intercept + s0.deming_slope * xs, color=GREY, lw=1.6)
-    ax.plot(xs, s1.deming_intercept + s1.deming_slope * xs, color=SEASON_COLOR[g], lw=2)
+    ax.plot(xs, xs, ls=":", color=GREY, lw=1.2, label="1:1")
+    ax.plot(xs, s0.deming_intercept + s0.deming_slope * xs, color=GREY, lw=1.6, label="fit, IMPROVE calibration")
+    ax.plot(xs, s1.deming_intercept + s1.deming_slope * xs, color=SEASON_COLOR[g], lw=2, label="fit, season-specific")
     ax.set_xlim(0, lim); ax.set_ylim(-1, lim)
     ax.set_title(SEASON_LABEL[g], loc="left", fontsize=12.5)
     ax.set_xlabel("HIPS EC (µg/m³)")
@@ -447,8 +448,15 @@ for ax, g in zip(axes, SEASONS):
                       f"season:   {s1.deming_slope:.2f}x {s1.deming_intercept:+.2f}, R² {s1.R2:.2f}",
             transform=ax.transAxes, va="top", fontsize=9.8, bbox=dict(boxstyle="round,pad=0.35", fc="white", ec="#D8D5CE"))
 axes[0].set_ylabel("FTIR EC (µg/m³)")
-axes[2].legend(loc="lower right", fontsize=9.5)
-fig.tight_layout()
+# one shared legend under the panels; neutral swatches so it reads for every season
+from matplotlib.lines import Line2D  # noqa: E402
+handles = [Line2D([], [], ls="", marker="o", ms=6, color=GREY, alpha=.7, label="IMPROVE calibration (points)"),
+           Line2D([], [], color=GREY, lw=1.8, label="fit, IMPROVE calibration"),
+           Line2D([], [], ls="", marker="o", ms=6, color=INK, label="season-specific calibration (points, season colour)"),
+           Line2D([], [], color=INK, lw=2, label="fit, season-specific (season colour)"),
+           Line2D([], [], color=GREY, ls=":", lw=1.4, label="1:1")]
+fig.tight_layout(rect=(0, 0.1, 1, 1))
+fig.legend(handles=handles, loc="lower center", ncol=3, fontsize=10, frameon=False, bbox_to_anchor=(0.5, 0.0))
 save(fig, "f8_seasonal_calibrations.png")
 SEAS = {g: (s0, s1) for g, s0, s1 in seas_rows}
 S_STITCH = addis_fit(pd.concat(stitched))
@@ -621,8 +629,8 @@ fig_slide(
     "half a microgram of zero, though not always with a good slope. "
     "We have not found a calibration that gets Addis right yet, but this is how we are searching.",
     "Spline baseline only (the VIBES baseline and no-baseline runs have their own versions of this plot). Deming "
-    f"intercept at MAC 10, median {np.median(inter):.1f} µg/m³. Settings rows (A-E) are cross-validation scheme, number "
-    "of PLS factors and cohort size; don't go into them. The explorer scores all 233 Addis filters with HIPS (its "
+    f"intercept at MAC 10, median {np.median(inter):.1f} µg/m³. Settings rows: cross-validation scheme, number of PLS "
+    "factors and cohort size; name them if asked, but don't go into them. The explorer scores all 233 Addis filters with HIPS (its "
     "stored grid has no per-filter predictions to re-score), while slides 3, 8 and 10 use the 189 that also have a "
     "current SPARTAN value. From the gallery export "
     "gallery/app/public/data/meeting-r70/spec_curve_20260917.json (rank-70 run).")
@@ -633,8 +641,9 @@ fig_slide(
     "Season-specific calibrations help in Kiremt, but not yet in the Dry or Belg seasons",
     FIG / "f8_seasonal_calibrations.png",
     "One option we tried: a separate calibration for each Addis season, built from the IMPROVE filters whose spectra "
-    "look most like that season. Grey is the single IMPROVE calibration from slide 8; colour is the season-specific "
-    f"one. In Kiremt the slope improves from {k[0].deming_slope:.2f} to {k[1].deming_slope:.2f} and R² from "
+    "look most like that season. Grey points and the grey line are the single IMPROVE calibration from slide 8; "
+    "coloured points and line are the season-specific one; the dotted line is 1:1. "
+    f"In Kiremt the slope improves from {k[0].deming_slope:.2f} to {k[1].deming_slope:.2f} and R² from "
     f"{k[0].R2:.2f} to {k[1].R2:.2f}. In the dry season it barely changes, and in Belg it gets worse. So seasonality "
     "matters, and it is one of the levers we are exploring.",
     "Each season: 500 IMPROVE spectral analogs (correlation, spectral region 600-3600 cm⁻¹ without CO₂ and the "
