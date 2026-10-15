@@ -14,8 +14,8 @@ const MIN_N = 10
  * The comparison across sites: for every site in the pick, Spearman ρ between the chosen
  * measurement and each window-mean weather variable (ERA5), with the site's own weather
  * level beside it. Same question at every site, so the rows read as "where does rain,
- * humidity or a shallow boundary layer go with higher concentrations". Click a site to
- * open it in the one-site view above.
+ * humidity or a shallow boundary layer go with higher concentrations". Clicking a site narrows
+ * the Filters panel's pick to it (the one-site view).
  */
 export function SiteWeatherSummary({ rows, meta, field, current, onSite }: {
   rows: FilterRow[]; meta: MetaFile; field: string; current: string | null
@@ -47,7 +47,7 @@ export function SiteWeatherSummary({ rows, meta, field, current, onSite }: {
 
   return (
     <ChartFrame id="weather-sites" title="Sites compared — which weather goes with the measurement where"
-      subtitle={`Spearman ρ between ${field} and each weather variable over the filters' windows (ERA5), one row per site in the Filters panel's pick; blank below ${MIN_N} filters. Hover a cell for the site's mean of that variable. Click a site to open it above.`}
+      subtitle={`Spearman ρ between ${field} and each weather variable over the filters' windows (ERA5), one row per site in the Filters panel's pick; blank below ${MIN_N} filters. Hover a cell for the site's mean of that variable; click a site to look at it alone.`}
       provenance="the per-site meteorology questions of addis_03_meteorology and meteorology_source_interaction, side by side">
       <div ref={wrapRef} className="chart-wrap" style={{ overflowX: 'auto' }}>
         {table.length === 0 ? <Empty>No site in the pick has both {field} and weather.</Empty> : (
@@ -70,7 +70,7 @@ export function SiteWeatherSummary({ rows, meta, field, current, onSite }: {
                     const fill = c.rho === null ? '#f3f4f6' : color(c.rho)
                     return <g key={c.v.key} transform={`translate(${labelW + numW * 2 + j * cell},0)`}
                       onMouseEnter={(e) => tip.show(e, [`${t.site}: ${field} vs ${c.v.label}`, c.rho === null ? `n = ${c.n} (too few)` : `ρ = ${fmt(c.rho, 2)} · n = ${c.n}`,
-                        `site mean ${c.v.label.toLowerCase()}: ${fmt(c.level, 1)}`, 'click to open this site above'])} onMouseLeave={tip.hide}>
+                        `site mean ${c.v.label.toLowerCase()}: ${fmt(c.level, 1)}`, 'click to look at this site alone'])} onMouseLeave={tip.hide}>
                       <rect x={1} width={cell - 2} height={rowH - 2} fill={fill} />
                       {c.rho !== null && <text x={cell / 2} y={rowH / 2} dy="0.1em" textAnchor="middle" fontSize={10.5} fontFamily={FONT.mono} fill={inkOn(fill)}>{fmt(c.rho, 2)}</text>}
                     </g>
