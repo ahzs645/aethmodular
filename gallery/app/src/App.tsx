@@ -1,5 +1,5 @@
 import { RegressionProvider, RegressionControls, parseEstimators, estimatorParam, type Estimator } from '@/lib/regressionPrefs'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useGalleryData } from '@/hooks/useGalleryData'
 import { HighlightProvider, baseFilterId, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { NO_PMF, pmfGroups, pmfKeyByDate, pmfLabel, type PmfScheme } from '@/lib/pmfGroups'
@@ -397,11 +397,19 @@ export default function App() {
     if (!ok(field)) setField(ok(d.field) ? d.field : activeFields[0])
   }, [data, netView, activeFields, net, xField, yField, field])
 
-  // Sites outside the four focus sites have no in-house HIPS BC, only the public HIPS BC. When a
-  // chosen site would drop out of an axis for that reason, the axis moves to the public field
-  // (which every chosen site with HIPS data carries) instead of leaving that site's panels empty.
+  // Three SPARTAN sites (Kanpur, Ilorin, Singapore) have the public HIPS BC but nothing in HIPS
+  // batches 1–51. When a newly chosen site would drop out of an axis for that reason, the axis moves
+  // to the public field instead of leaving that site's panels empty. Only when the choice of sites
+  // changes, and not over a field the link named, so HIPS BC can still be picked by hand.
+  const seenSites = useRef<string | null>(null)
+  const linkNamedField = useRef(!!(init.get('x') || init.get('y') || init.get('f')))
   useEffect(() => {
-    if (!netView || !hasSpartan(net) || !netView.fields.includes(PUBLIC_BC)) return
+    if (!netView || !hasSpartan(net) || !netView.rows.length) return
+    const key = [...netView.chosenCodes].sort().join(',')
+    if (key === seenSites.current) return
+    seenSites.current = key
+    if (linkNamedField.current) { linkNamedField.current = false; return }
+    if (!netView.fields.includes(PUBLIC_BC)) return
     const missing = netView.chosen.some((x) => {
       const own = netView.rows.filter((r) => r.site === x.name)
       return own.length && !own.some((r) => typeof r['HIPS BC'] === 'number') && own.some((r) => typeof r[PUBLIC_BC] === 'number')

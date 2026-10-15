@@ -207,7 +207,7 @@ export function SampleDrawer({
             onChange={setReference} />
         </div>
         <p className="reference-summary">{referenceLabel} · {reference === 'network' && !network ? '…' : referenceRows.length.toLocaleString()} filters after known exclusions{referenceDates.length > 0 && <> · {referenceDates[0]} to {referenceDates[referenceDates.length - 1]}</>}. Coverage varies by measurement; hover a bar for n. Uses all dates, independently of the main graph filters.</p>
-        {reference === 'network' && <p className="reference-summary">Public SPARTAN chemistry at {network?.n_sites ?? '…'} sites, weighted by physical filter count. Carbon uses the public FTIR-derived reports. HIPS and FTIR functional groups are unavailable; public BC is not substituted for HIPS BC.</p>}
+        {reference === 'network' && <p className="reference-summary">Public SPARTAN chemistry at {network?.n_sites ?? '…'} sites, weighted by physical filter count. Carbon uses the public FTIR-derived reports. HIPS comes from batches 1–51 (27 sites); public BC is not substituted for HIPS BC. FTIR functional groups are unavailable.</p>}
         {reference === 'network' && !network && <p className="frame-empty">{networkError ? `Could not load the SPARTAN reference: ${networkError}` : 'Loading public SPARTAN filter reference…'}</p>}
         <p className="chart-note reference-guide">Bars show the reference range; the darker band is its interquartile range and the tick is its median. The dot retains this filter's value. Percentile is the percentage of measured reference values strictly below it. Values outside the range are marked at the nearest edge.</p>
         {meta.field_groups.map((g) => {

@@ -3,8 +3,9 @@
  * the default), or a whole network chosen in the Filters sidebar.
  *
  * - SPARTAN: public ChemSpec PM2.5 at every site (spartan_reference.json + spartan_map.json).
- *   EC/OC are FTIR-derived; HIPS appears only as the public BC ('BC (public HIPS)', HIPS-measured
- *   values only); FTIR functional groups are not public.
+ *   EC/OC are FTIR-derived. HIPS (Fabs, uncertainty, MDL, BC = Fabs / MAC) at the 27 sites in
+ *   HIPS batches 1–51, under the focus sites' field names; the public BC ('BC (public HIPS)')
+ *   stays its own field. FTIR functional groups are not public.
  * - IMPROVE: one file per site (improve_samples/, gallery/data/export_improve_samples.py),
  *   fetched only when picked, because ~388,000 samples cannot be drawn at once.
  *
@@ -23,7 +24,7 @@ export const hasImprove = (n: Network) => n === 'improve' || n === 'both'
 export const networkOf = (spartan: boolean, improve: boolean): Network => (spartan && improve ? 'both' : improve ? 'improve' : 'spartan')
 export const NETWORKS: { key: Network; label: string; note: string }[] = [
   { key: 'focus', label: 'Focus sites', note: 'Beijing, Delhi, JPL and Addis Ababa only (kept for links: net=focus)' },
-  { key: 'spartan', label: 'SPARTAN', note: 'Starts on the four focus sites (HIPS, FTIR groups, local calendars); add any SPARTAN site, which brings public PM2.5 chemistry (FTIR-derived EC/OC, no HIPS)' },
+  { key: 'spartan', label: 'SPARTAN', note: 'Starts on the four focus sites (HIPS, FTIR groups, local calendars); add any SPARTAN site, which brings public PM2.5 chemistry (FTIR-derived EC/OC) and, at 27 sites, HIPS absorption' },
   { key: 'improve', label: 'IMPROVE', note: 'Every IMPROVE site: TOR EC/OC, HIPS absorption, mass, iron, silicon, soil' },
 ]
 export const isNetwork = (v: string | null): v is Network => v === 'focus' || v === 'spartan' || v === 'improve' || v === 'both'
@@ -75,8 +76,8 @@ type ImproveSite = { code: string; date: string[]; poc: number[] } & Record<stri
 const COUNTRY: Record<string, string> = { CL: 'Chile', KR: 'South Korea', CA: 'Canada', MX: 'Mexico', VI: 'US Virgin Islands', PR: 'Puerto Rico' }
 
 const SPARTAN_GROUPS = [
-  // public BC where HIPS measured it (fAbs / 10); kept apart from the in-house 'HIPS BC' of the focus sites
-  { label: 'Optical (HIPS)', fields: ['BC (public HIPS)'] },
+  // HIPS batches 1–51 (the focus sites' source too), then the public BC where HIPS measured it (fAbs / 10)
+  { label: 'Optical (HIPS)', fields: ['HIPS BC', 'HIPS Fabs', 'HIPS Fabs uncertainty', 'HIPS MDL', 'BC (public HIPS)'] },
   { label: 'Carbon', fields: ['EC (FTIR)', 'OC (FTIR)', 'OM (FTIR)', 'EC (ChemSpec FTIR)', 'OC (ChemSpec FTIR)'] },
   { label: 'Mass', fields: ['PM2.5 mass'] },
   { label: 'Ions', fields: ['Sulfate', 'Nitrate', 'Ammonium', 'Potassium', 'Sodium', 'Calcium', 'Magnesium'] },

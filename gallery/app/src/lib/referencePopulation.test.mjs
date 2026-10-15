@@ -43,7 +43,13 @@ test('public network export counts unique physical filters and does not substitu
   assert.equal(new Set(network.rows.map(r => `${r.code}|${r.id}`)).size, network.n)
   assert.equal(new Set(network.rows.map(r => r.code)).size, network.n_sites)
   assert.ok(network.n_sites > 4)
-  assert.ok(!network.fields.includes('HIPS BC') && !network.fields.includes('Alkane CH'))
+  assert.ok(!network.fields.includes('Alkane CH'))
+  // HIPS BC is the in-house HIPS (Fabs / MAC 10), never the public BC put in its place
+  for (const r of network.rows) {
+    if (r['HIPS BC'] === null) continue
+    assert.equal(typeof r['HIPS Fabs'], 'number', `${r.id}: HIPS BC without its Fabs`)
+    assert.ok(Math.abs(r['HIPS BC'] - r['HIPS Fabs'] / 10) < 1e-5, `${r.id}: HIPS BC is not Fabs / 10`)
+  }
   for (const r of network.rows) {
     assert.equal(r['EC (FTIR)'], r['EC (ChemSpec FTIR)'])
     assert.equal(r['OC (FTIR)'], r['OC (ChemSpec FTIR)'])
@@ -52,6 +58,12 @@ test('public network export counts unique physical filters and does not substitu
   assert.ok(clean.length > 0)
   assert.ok(clean.every(r => !r.excluded))
   const gallery = JSON.parse(fs.readFileSync(new URL('../../public/data/filters.json', import.meta.url)))
+  // the network's HIPS is the same table as the focus sites' HIPS
+  const byId = new Map(network.rows.map(r => [r.id, r]))
+  for (const r of gallery.rows.filter(r => typeof r['HIPS Fabs'] === 'number')) {
+    const n = byId.get(r.id)
+    if (n && n['HIPS Fabs'] !== null) assert.ok(Math.abs(n['HIPS Fabs'] - r['HIPS Fabs']) < 1e-4, `${r.id}: HIPS Fabs differs from filters.json`)
+  }
   for (const r of gallery.rows.filter(r => r.excluded)) {
     const publicRow = network.rows.find(p => p.id === r.id)
     if (publicRow) assert.equal(publicRow.excluded, true, `Known exclusion ${r.id} must carry into the public reference`)
