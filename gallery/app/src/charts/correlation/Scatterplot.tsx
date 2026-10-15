@@ -59,7 +59,11 @@ function valueScale(values: number[]) {
  * The 1:1 toggle and the axes mode live in the subset bar so the hexbin and
  * the connected scatter below draw the same frame.
  */
-export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: FilterRow[]; meta: MetaFile; xField: string; yField: string; axes: AxesOpts }) {
+export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', title = 'Scatterplot — the crossplot family' }: {
+  rows: FilterRow[]; meta: MetaFile; xField: string; yField: string; axes: AxesOpts
+  /** another tab reusing the crossplot (Weather) names it for what it shows */
+  id?: string; title?: string
+}) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
@@ -215,8 +219,8 @@ export function Scatterplot({ rows, meta, xField, yField, axes }: { rows: Filter
 
   return (
     <ChartFrame
-      id="scatter"
-      title="Scatterplot — the crossplot family"
+      id={id}
+      title={title}
       subtitle="Any measured quantity against any other, coloured by site, by the selected season calendar, or by a third measurement (the 123 'colour-coded' crossplots in the estate); a fourth can size the marks. The stats box reports R² and the regression fits selected in the sidebar. Hover anywhere near a point to find it in every other chart; click it for the full record."
       provenance="stands in for 281 scatter + 123 colour-by-third-variable figures across 116 notebooks · plotting/crossplots.py · react-graph-gallery.com/scatter-plot · /bubble-plot"
       controls={

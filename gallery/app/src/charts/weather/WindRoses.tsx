@@ -20,14 +20,17 @@ const SIZE = 210
  * filter's dominant PMF source, meteorology_source_interaction §2's question: do some source
  * types arrive from particular directions?
  */
-export function WindRoses({ rows, meta, roses, source, site, pmfLabelOfDate }: {
+export function WindRoses({ rows, meta, roses, source, site, pmfLabelOfDate, splits = SPLITS, id = 'weather-roses', title = 'Wind roses — where the air came from while the filters sampled' }: {
   rows: FilterRow[]; meta: MetaFile; roses: RoseFile | null; source: WeatherSource
+  /** the splits on offer: the one-site view splits by season or PMF source, the comparison by site */
+  splits?: readonly (typeof SPLITS)[number][]; id?: string; title?: string
   site: { name: string; code: string } | null
   pmfLabelOfDate: (d: string | null | undefined) => string | null
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const tip = useTooltip(wrapRef)
-  const [split, setSplit] = useState<(typeof SPLITS)[number]>('Site')
+  const [chosen, setSplit] = useState<(typeof SPLITS)[number]>(splits[0])
+  const split = splits.includes(chosen) ? chosen : splits[0]
   const table = roses ? (source === 'station' ? roses.station : roses.era5) : null
 
   const groups = useMemo(() => {
@@ -55,10 +58,10 @@ export function WindRoses({ rows, meta, roses, source, site, pmfLabelOfDate }: {
   const label = (name: string) => name.replace(`${site?.name} · `, '')
 
   return (
-    <ChartFrame id="weather-roses" title="Wind roses — where the air came from while the filters sampled"
+    <ChartFrame id={id} title={title}
       subtitle={`Hours inside the filters' sampling windows, by direction (8 sectors) and speed; the number in the middle is calm (${roses?.calm ?? '< 0.5 m/s'}). ${source === 'station' ? 'Airport station winds (10 m, open site).' : 'ERA5 10 m winds are a 0.25° grid-box average and run lower than an airport mast.'} Every panel shares one radial scale.`}
       provenance="meteorology_source_interaction §2 · meteorology_revisions R1"
-      controls={<Segmented label="Split by" value={split} options={SPLITS} onChange={setSplit}
+      controls={splits.length < 2 ? undefined : <Segmented label="Split by" value={split} options={splits} onChange={setSplit}
         title="Site: one rose per site. Season and PMF source: the site chosen above the charts (PMF exists for Addis 2023 only)." />}>
       <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
         {!roses ? <Empty>Loading the wind roses…</Empty> : shown.length === 0 ? <Empty>{split === 'PMF source' ? 'No filter here falls on a PMF day (ETAD 2023 only).' : 'No filters with wind data in this subset.'}</Empty> : shown.map((g) => (

@@ -47,7 +47,7 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
   const fw = labelW + species.length * cell + 10, fh = 70 + vars.length * cell + 10
 
   return (
-    <ChartFrame id="weather-correlations" title={`Weather × chemistry correlations${site ? ` — ${site.name}` : ''}, by season`}
+    <ChartFrame id="weather-correlations" title={`${site ? `${site.name} · ` : ''}weather × chemistry correlations, by season`}
       subtitle={`Spearman ρ between each weather variable over the filter's window and each species, for every filter at the site and then within each season (blank: fewer than ${MIN_N} filters). Pooled correlations mostly follow the seasonal cycle; the per-season ones are closer to "does this weather change the day's air".`}
       provenance="meteorology_revisions R5 (seasonal correlation matrices) · meteorology_source_interaction §3 (temperature range as an inversion proxy)">
       <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 18 }}>

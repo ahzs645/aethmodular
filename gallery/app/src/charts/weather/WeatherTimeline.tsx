@@ -88,7 +88,7 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
   const title = (k: string) => ({ temp: 'Temperature (°C)', prcp: 'Precip. (mm/day)', rh: 'RH (%)', blh: 'BLH (m)', field: withUnit(field, meta.field_units) } as Record<string, string>)[k]
 
   return (
-    <ChartFrame id="weather-timeline" title={`Weather timeline${site ? ` — ${site.name}` : ''}`}
+    <ChartFrame id="weather-timeline" title={`${site ? `${site.name} · ` : ''}weather timeline`}
       subtitle="Daily ERA5 at the site (local standard day): temperature range and mean, precipitation, relative humidity and boundary-layer height, above the chosen measurement for each filter. Seasons are the site's local calendar."
       provenance="addis_03_meteorology (station data) generalised to every SPARTAN site · ERA5 via Open-Meteo, Copernicus Climate Change Service"
       controls={<Toggle label="Boundary-layer height" checked={showBlh} onChange={setShowBlh} />}>

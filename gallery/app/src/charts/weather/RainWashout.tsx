@@ -20,7 +20,9 @@ const H = 260, M = { top: 26, right: 12, bottom: 44, left: 52 }
  * whether rain lowers BC (and in meteorology_source_interaction, whether it lowers biomass
  * BC more than fossil), so a falling box ladder is the washout signature.
  */
-export function RainWashout({ rows, meta, field, prcpField }: { rows: FilterRow[]; meta: MetaFile; field: string; prcpField: string }) {
+export function RainWashout({ rows, meta, field, prcpField, id = 'weather-washout', title = "Rain washout — the measurement by how wet each filter's window was" }: {
+  rows: FilterRow[]; meta: MetaFile; field: string; prcpField: string; id?: string; title?: string
+}) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
@@ -47,7 +49,7 @@ export function RainWashout({ rows, meta, field, prcpField }: { rows: FilterRow[
   const x = d3.scaleBand<string>().domain(RAIN_CLASSES.map((c) => c.key)).range([0, iw]).padding(0.25)
 
   return (
-    <ChartFrame id="weather-washout" title="Rain washout — the measurement by how wet each filter's window was"
+    <ChartFrame id={id} title={title}
       subtitle={`Each filter sorted by its window's mean precipitation (${prcpField}); boxes are the median and IQR, dots are filters coloured by season. ρ is Spearman's rank correlation between rain rate and ${field} at that site.`}
       provenance="addis_03_meteorology Tasks 2 and 5, meteorology_source_interaction §1">
       <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>

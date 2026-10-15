@@ -11,7 +11,7 @@ import { seasonsForSite } from '@/siteSeasons'
 
 const MONTHS = 'JFMAMJJASOND'.split('')
 const MAX_SITES = 16
-const W = 250, H = 150, M = { top: 22, right: 30, bottom: 34, left: 34 }
+const M = { top: 22, right: 30, bottom: 34, left: 34 }
 
 /**
  * Does each site's season calendar match its weather? Mean monthly precipitation (bars)
@@ -19,8 +19,13 @@ const W = 250, H = 150, M = { top: 22, right: 30, bottom: 34, left: 34 }
  * calendar as a strip under the months. The rain-based "dynamic seasons" of
  * addis_03_meteorology, as a check on the fixed month bins (docs/site-seasonality*.md).
  */
-export function MonthlyClimate({ meta, sites }: { meta: MetaFile; sites: { name: string; code: string }[] }) {
+export function MonthlyClimate({ meta, sites, id = 'weather-climate', title = 'Monthly climate and the season calendar — one panel per site', large = false }: {
+  meta: MetaFile; sites: { name: string; code: string }[]; id?: string; title?: string
+  /** one big panel (the one-site view) instead of small multiples */
+  large?: boolean
+}) {
   const wrapRef = useRef<HTMLDivElement>(null)
+  const W = large ? 620 : 250, H = large ? 240 : 150
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const [data, setData] = useState<Record<string, DailyWeather | null>>({})
@@ -55,7 +60,7 @@ export function MonthlyClimate({ meta, sites }: { meta: MetaFile; sites: { name:
   const x = d3.scaleBand<number>().domain(d3.range(1, 13)).range([0, iw]).padding(0.15)
 
   return (
-    <ChartFrame id="weather-climate" title="Monthly climate and the season calendar — one panel per site"
+    <ChartFrame id={id} title={title}
       subtitle="Mean monthly precipitation (bars, mm) and temperature (line, °C) from daily ERA5 over each site's sampling span; the strip under the months is the site's local season calendar. Wet bars under a 'dry' season are where a calendar and the weather disagree."
       provenance="addis_03_meteorology Task 3 (dynamic, rain-based seasons) for every site · ERA5 via Open-Meteo">
       <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>

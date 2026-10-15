@@ -496,6 +496,28 @@ export default function App() {
     [baseRows, inRange, seasonSel, activeSites, netView, dropIds, keepIds]
   )
 
+  // The Weather tab's one-site view can open any SPARTAN site, whatever the Filters panel picks;
+  // dates, hand edits and the season choice (for the seasons it names) still apply.
+  const seasonNames = useMemo(() => new Set(seasons.map((s) => s.name)), [seasons])
+  const anySiteRows = useMemo(
+    () => tab !== 'weather' ? [] : baseRows.filter(inRange)
+      .filter((r) => !seasonSel || seasonSel.has(r.season) || !seasonNames.has(r.season))
+      .filter((r) => !dropIds.has(r.id) && (!keepIds || keepIds.has(r.id))),
+    [tab, baseRows, inRange, seasonSel, seasonNames, dropIds, keepIds]
+  )
+  /** one site's calendar under the calendar in force, labelled the way the rows are */
+  const seasonsOfSite = useCallback((site: string) => isLocal
+    ? calendarOf(site).map((se) => ({ ...se, site, name: qualifySeason(site, se.name, qualify) }))
+    : sharedSeasons, [isLocal, calendarOf, qualify, sharedSeasons])
+  // the Weather tab's "add to comparison": the same SPARTAN pick the Filters panel edits
+  const toggleSpartanSite = useCallback((code: string) => {
+    if (!netView || !hasSpartan(net)) return
+    const cur = new Set([...netView.chosenCodes].filter((c) => !netView.improveCodes.has(c)))
+    if (cur.has(code)) cur.delete(code)
+    else cur.add(code)
+    setSpartanSel(cur.size === netView.nSpartan ? 'all' : [...cur])
+  }, [netView, net])
+
   // The map has its own site scope; keep date, season and exclusion choices, hand edits included.
   const mapRows = useMemo(
     () => baseRows.filter(inRange).filter((r) => !seasonSel || seasonSel.has(r.season))
@@ -879,7 +901,9 @@ export default function App() {
           </>
         )}
         {tab === 'partOfWhole' && <CompositionTreemap rows={rows} meta={meta} />}
-        {tab === 'weather' && <WeatherPage rows={rows} meta={meta} field={fieldEff} xField={xEff} yField={yEff} axes={axes} setField={setField} pmfLabelOfDate={pmfLabelOfDate} />}
+        {tab === 'weather' && <WeatherPage rows={rows} anySiteRows={anySiteRows} allSites={netView?.all ?? meta.sites} seasonsOfSite={seasonsOfSite}
+          picked={netView?.chosenCodes ?? new Set()} onToggleSite={toggleSpartanSite}
+          meta={meta} field={fieldEff} xField={xEff} yField={yEff} axes={axes} setField={setField} pmfLabelOfDate={pmfLabelOfDate} />}
         </AxisFieldsProvider>
         {tab === 'map' && <SiteBubbleMap rows={mapRows} meta={meta} field={fieldEff} focusSite={activeSites?.size === 1 ? [...activeSites][0] : undefined} />}
         {tab === 'flow' && <MethodSankey rows={rows} meta={meta} />}
