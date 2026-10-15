@@ -258,8 +258,9 @@ function PcaMap({ d }: { d: BlanksData }) {
       title="PCA map of every blank — which blanks look alike"
       subtitle={`One PCA of all ${n} raw blank spectra (4000–500 cm⁻¹, mean-centred). ${px} carries ${pct(d.shared_pca.var[ix])} of the variance, ${py} ${pct(d.shared_pca.var[iy])}. Click a blank to see how it differs from the average blank. The ringed point is the outlier blank that sets the big banks' rank.`}
       controls={<>
-        <Segmented label="x" value={px} options={pcs} onChange={setPx} />
-        <Segmented label="y" value={py} options={pcs} onChange={setPy} />
+        {/* x and y never show the same component: picking the other axis's swaps them */}
+        <Segmented label="x" value={px} options={pcs} onChange={(v) => { if (v === py) setPy(px); setPx(v) }} />
+        <Segmented label="y" value={py} options={pcs} onChange={(v) => { if (v === px) setPx(py); setPy(v) }} />
         <Select label="Colour" value={colorBy} options={[...PCA_COLOR]} onChange={setColorBy} />
         {colorBy === 'role in background' && <BankPicker value={bank} banks={banksOf(d)} labels={d.bank_labels} onChange={setBank} />}
       </>}>

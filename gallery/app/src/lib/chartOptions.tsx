@@ -54,7 +54,9 @@ export function useChartOptions(chartId: string, defs: readonly OptionDef[], fac
       ? <Segmented key={d.key} label={d.label} value={it.value} options={it.offered.map((c) => c.value)} optionLabel={label} onChange={(v) => set(v)} title={d.title} />
       : <Combobox key={d.key} label={d.label ?? ''} value={it.value} title={d.title} onChange={(v) => set(v)} options={it.offered.map((c) => ({ key: c.value, label: c.label }))} />
   })}</>
-  return { values, controls, ctx }
+  // set an option from outside its control (a click on another chart picks the configuration)
+  const set = (key: string, v: OptionValue) => { const i = defs.findIndex((d) => d.key === key); if (i >= 0) setter(i)(v) }
+  return { values, controls, set, ctx }
 }
 
 function useStoredOption(chartId: string, d: OptionDef): [OptionValue, (v: OptionValue) => void] {

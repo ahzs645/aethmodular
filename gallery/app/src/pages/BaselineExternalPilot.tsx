@@ -215,7 +215,10 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
   const optical = mode === 'optical'
   const { methods, showCI, grouping } = useRegressions()
   const [fitPreference, setFitPreference] = useSearchParam<string>(optical ? 'bopticalfits' : 'bspectralfits', 'default', ['default', 'none', 'pooled', 'site'])
-  const fitGrouping = fitPreference === 'default' ? (optical || grouping === 'site' ? grouping : 'none') : fitPreference
+  const chosenFit = fitPreference === 'default' ? (optical || grouping === 'site' ? grouping : 'none') : fitPreference
+  // with one site shown, a fit per site is the pooled fit
+  const oneSite = site !== 'Both sites'
+  const fitGrouping = oneSite && chosenFit === 'site' ? 'pooled' : chosenFit
   // Optical: HIPS Fabs ÷ MAC puts x in µg/m³ like the FTIR EC prediction, so the
   // panel can carry a 1:1 line (equal axes; Deming only, both axes carry error).
   const allPoints = rows.flatMap(r => {
@@ -263,9 +266,9 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
   const controls = <>
     <BaselinePicker as="select" label="Correction" value={method} options={METHODS} backgroundRank={rank} onChange={(v) => onMethod(v as Method)} />
     <Select label="Site" value={site} options={['Both sites', 'Addis', 'Bishoftu']} onChange={onSite} />
-    <Combobox label="Fit grouping" value={fitPreference} options={[
+    <Combobox label="Fit grouping" value={oneSite && fitPreference === 'site' ? 'pooled' : fitPreference} options={[
       { key: 'default', label: `Use gallery setting (${fitGrouping === 'site' ? 'per site' : fitGrouping === 'pooled' ? 'pooled' : 'no lines'})` },
-      { key: 'none', label: 'No fitted lines' }, { key: 'pooled', label: 'One pooled fit' }, { key: 'site', label: 'Separate fit per site' },
+      { key: 'none', label: 'No fitted lines' }, { key: 'pooled', label: oneSite ? `One fit (${site})` : 'One pooled fit' }, ...(oneSite ? [] : [{ key: 'site', label: 'Separate fit per site' }]),
     ]} onChange={setFitPreference} />
   </>
   const tipContent = <>{note}<p>Separate fits use only each site's paired points and cover that site's observed x range. Fit equations describe the displayed pairs; saved EC calibrations remain frozen.</p></>

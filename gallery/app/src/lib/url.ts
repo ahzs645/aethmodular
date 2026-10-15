@@ -51,9 +51,11 @@ function registerKey(name: string, allowed?: readonly string[]) {
 
 export function useSearchParam<T extends string>(name: string, fallback: T, allowed?: readonly string[]): [T, (v: T) => void] {
   registerKey(name, allowed)
+  // an empty list means the options are still loading: keep a link's value until they arrive
+  const known = (v: string) => !allowed || allowed.length === 0 || allowed.includes(v)
   const read = () => {
     const value = new URL(window.location.href).searchParams.get(name)
-    return value && (!allowed || allowed.includes(value)) ? (value as T) : fallback
+    return value && known(value) ? (value as T) : fallback
   }
   const [value, setValue] = useState<T>(read)
   useEffect(() => {
@@ -68,5 +70,9 @@ export function useSearchParam<T extends string>(name: string, fallback: T, allo
     else url.searchParams.set(name, v)
     window.history.replaceState(null, '', url)
   }
-  return [value, update]
+  // checked on every render, not only on mount: the options can change (another export, a
+  // version switch) and a fallback the data does not have (a missing bank or season) must not
+  // reach a chart that looks it up; then the first allowed value stands in
+  const valid = known(value) ? value : allowed && allowed.includes(fallback) ? fallback : ((allowed?.[0] ?? fallback) as T)
+  return [valid, update]
 }

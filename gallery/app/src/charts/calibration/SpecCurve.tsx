@@ -96,7 +96,12 @@ export function SpecCurve({
   const [comparison, setComparison] = useState<string>(defaultComparison)
   const [showDots, setShowDots] = useState(true)
   const [rule, setRule] = useState<HighlightRule>('guardrails')
-  const [metric, setMetric] = useState<SpecMetric>('intercept')
+  const [chosenMetric, setMetric] = useState<SpecMetric>('intercept')
+  // interleaved cross-validation holds out no IMPROVE site, so no configuration has a held-out R²:
+  // with the protocol filtered to it the held-out readout is not offered (it would draw nothing)
+  const interleavedOnly = filters.mo.startsWith('app')
+  const metricOptions = (Object.keys(METRICS) as SpecMetric[]).filter((k) => k !== 'heldout' || !interleavedOnly)
+  const metric: SpecMetric = metricOptions.includes(chosenMetric) ? chosenMetric : 'intercept'
   const [limits, setLimits] = useState<HighlightLimits>({ ...DEFAULT_HIGHLIGHT_LIMITS })
   const excludedKey = excludePreprocessing.join('|')
 
@@ -219,7 +224,7 @@ export function SpecCurve({
       controls={
         <>
           {controls}
-          <Select label="Sort and plot by" value={metric} options={Object.keys(METRICS)} onChange={v => { setMetric(v as SpecMetric); tip.hide() }}
+          <Select label="Sort and plot by" value={metric} options={metricOptions} onChange={v => { setMetric(v as SpecMetric); tip.hide() }}
             optionLabel={v => METRICS[v as SpecMetric].name} title="The curve is the chosen measure, sorted; the choice strips and red dots follow the same order." />
           <Select label="Graph view" value={layout} options={['single', 'separate', 'stacked', 'overlay', 'combined']} onChange={v => setLayout(v as SpecLayout)}
             optionLabel={v => ({ single: 'One selection at a time', separate: 'Side by side', stacked: 'Stacked selections', overlay: 'Combined overlay', combined: 'Combined ordered curve' }[v] ?? v)} />
@@ -246,8 +251,9 @@ export function SpecCurve({
           </>}
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
             <Toggle label="Show red dots" checked={showDots} onChange={setShowDots} />
-            <Select label="Red-dot criteria" value={rule} options={Object.keys(RULE_LABELS)} onChange={v => setRule(v as HighlightRule)} optionLabel={v => RULE_LABELS[v as HighlightRule]} />
-            {rule !== 'guardrails' && <>
+            {/* the criteria pick the red dots, or the passers kept; with neither on they would only change a count */}
+            {(showDots || passOnly) && <Select label="Red-dot criteria" value={rule} options={Object.keys(RULE_LABELS)} onChange={v => setRule(v as HighlightRule)} optionLabel={v => RULE_LABELS[v as HighlightRule]} />}
+            {(showDots || passOnly) && rule !== 'guardrails' && <>
               {rule !== 'cv-slope' && numberControl('intercept', '|intercept| ≤ (µg/m³)', 0)}
               {rule !== 'intercept' && <>{numberControl('slopeMin', 'slope ≥', 0)}{numberControl('slopeMax', 'slope ≤', 0)}{numberControl('cvMin', 'cross-validation R² ≥', 0, 1)}</>}
               <button type="button" className="btn quiet" onClick={() => setLimits({ ...DEFAULT_HIGHLIGHT_LIMITS })}>Reset criteria</button>

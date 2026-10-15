@@ -1,7 +1,8 @@
 import { demingLambda } from './seasonView'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
+import { useChartOptions } from '@/lib/chartOptions'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -34,15 +35,24 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96 }: { r
   const tip = useTooltip(wrapRef)
   const hl = useHighlight()
 
-  const [xmode, setXmode] = useState<(typeof XMODES)[number]>('reference')
-  const [evalSet, setEvalSet] = useState<(typeof SETS)[number]>('fixed')
-  const [mac, setMac] = useState<number>(runs.mac_value)
   const { hidden, dim, props: legendProps } = useLegend()
 
   const macs = useMemo(() => [...new Set(run.metrics.map((m) => m.MAC).filter((v): v is number => v !== null))].sort((a, b) => a - b), [run.metrics])
   const isFabs = run.ref_kind === 'fabs'
   const hasDeployed = !!run.eval.deployed?.some((v) => v !== null)
   const hasFixed = run.eval.fixed.some(Boolean)
+  // the options and when each applies (lib/chartOptions): on the deployed-EC axis only the fixed
+  // filters carry a value, so the test-set switch is moot, and the MAC (which converts Fabs) is unused
+  const o = useChartOptions('run-crossplot', [
+    { key: 'x', label: 'x', choices: XMODES, default: 'reference', hidden: 'reference', when: (c) => !!c.hasDeployed },
+    { key: 'set', label: 'Test set', choices: SETS, default: 'fixed', hidden: 'fixed', when: (c) => !!c.hasFixed && c.x !== 'deployed EC',
+      title: 'fixed = the filters with a deployed EC (Addis fixed-190); all = every filter with a reference' },
+    { key: 'mac', label: 'MAC', choices: macs.map(String), default: String(runs.mac_value), hidden: String(runs.mac_value), when: (c) => !!c.isFabs && c.x !== 'deployed EC' },
+    { key: 'n', node: () => <span className="control">n = {pts.length}{run.extrap_pct !== null ? ` · score OOD ${run.extrap_pct}%` : ''}{run.q_residual_pct !== null ? ` · Q OOD ${run.q_residual_pct}%` : ''}</span> },
+  ], { hasDeployed, hasFixed, isFabs })
+  const xmode = o.values.x as (typeof XMODES)[number]
+  const evalSet = o.values.set as (typeof SETS)[number]
+  const mac = Number(o.values.mac)
   const useDeployed = xmode === 'deployed EC' && hasDeployed
   const color = useMemo(() => groupColorFn(meta, run.eval.group), [meta, run.eval.group])
 
@@ -111,14 +121,7 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96 }: { r
       title={`Crossplot — predicted EC vs ${useDeployed ? 'deployed EC' : 'HIPS reference'} at ${target?.site ?? run.target}`}
       subtitle="Every test-set filter under this configuration, coloured by season. The regression fits selected in the sidebar use the displayed filters and MAC. The residual panel shows whether the calibration's error is a constant offset (a flat band) or tracks loading (a slope)."
       provenance={`calibration_explorer /api/run · ${run.n_cohort} calibration cohort filters, ${run.k} PLS factors${run.k !== run.auto_k ? ` (rule ${run.auto_k})` : ''} · site-grouped CV`}
-      controls={
-        <>
-          {hasDeployed && <Segmented label="x" value={xmode} options={XMODES} onChange={setXmode} />}
-          {hasFixed && <Segmented label="Test set" value={evalSet} options={SETS} onChange={setEvalSet} title="fixed = the filters with a deployed EC (Addis fixed-190); all = every filter with a reference" />}
-          {isFabs && macs.length > 1 && <Segmented label="MAC" value={String(mac)} options={macs.map(String)} onChange={(v) => setMac(Number(v))} />}
-          <span className="control">n = {pts.length}{run.extrap_pct !== null ? ` · score OOD ${run.extrap_pct}%` : ''}{run.q_residual_pct !== null ? ` · Q OOD ${run.q_residual_pct}%` : ''}</span>
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap">
         {pts.length < 3 ? (

@@ -4,9 +4,10 @@ import { confidence, monthBlocks } from '@/lib/regressionCI'
 import { regression } from '@/lib/stats'
 import { demingLambda } from './seasonView'
 import { EstimatorName, FIT_STYLE, useEstimator, useRegressions, fitsFor, type Estimator } from '@/lib/regressionPrefs'
+import { useChartOptions } from '@/lib/chartOptions'
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -42,24 +43,28 @@ const TRANSFER_TIP = (
  */
 export function CrossSiteTransfer({ runs }: { runs: CalibRunsFile }) {
   const presets = runs.presets.filter((p) => runs.runs.some((r) => r.preset === p.key))
-  const [presetKey, setPresetKey] = useState(presets.some((p) => p.key === 'ocec800_airspec') ? 'ocec800_airspec' : presets[0]?.key ?? '')
-  const [mac, setMac] = useState(runs.mac_value)
 
   const sites = useMemo(() => {
     const present = [...new Set(runs.runs.map((r) => r.target))]
     return [...SITE_ORDER.filter((s) => present.includes(s)), ...present.filter((s) => !SITE_ORDER.includes(s)).sort()]
   }, [runs.runs])
-  const siteRuns = sites.map((s) => runs.runs.find((r) => r.preset === presetKey && r.target === s)).filter((r): r is CalibRun => !!r)
   const macs = useMemo(() => [...new Set(runs.runs.flatMap((r) => r.metrics.map((m) => m.MAC)).filter((v): v is number => v !== null))].sort((a, b) => a - b), [runs.runs])
+  // the options and when each applies (lib/chartOptions): the MAC converts HIPS Fabs, so it is
+  // offered only for a calibration referenced to Fabs (and only with more than one MAC)
+  const o = useChartOptions('cross-site', [
+    { key: 'preset', label: 'Calibration', style: 'select', default: presets.some((p) => p.key === 'ocec800_airspec') ? 'ocec800_airspec' : presets[0]?.key ?? '',
+      choices: presets.map((p) => ({ value: p.key, label: presetName(p) })) },
+    { key: 'mac', label: 'MAC', choices: macs.map(String), default: String(runs.mac_value), hidden: String(runs.mac_value),
+      when: (c) => runs.runs.some((r) => r.preset === c.preset && r.ref_kind === 'fabs'), title: 'Converts HIPS Fabs to BC for calibrations referenced to Fabs' },
+  ])
+  const presetKey = o.values.preset as string
+  const mac = Number(o.values.mac)
+  const setPresetKey = (k: string) => o.set('preset', k)
+  const siteRuns = sites.map((s) => runs.runs.find((r) => r.preset === presetKey && r.target === s)).filter((r): r is CalibRun => !!r)
   const preset = presets.find((p) => p.key === presetKey)
 
   if (!presets.length) return null
-  const controls = (
-    <>
-      <Select label="Calibration" value={presetKey} options={presets.map((p) => p.key)} optionLabel={(k) => { const p = presets.find((q) => q.key === k); return p ? presetName(p) : k }} onChange={setPresetKey} />
-      <Segmented label="MAC" value={String(mac)} options={macs.map(String)} onChange={(v) => setMac(Number(v))} />
-    </>
-  )
+  const controls = o.controls()
   return (
     <>
       <SiteMultiples runs={runs} siteRuns={siteRuns} mac={mac} controls={controls} presetLabel={preset ? presetName(preset) : presetKey} />

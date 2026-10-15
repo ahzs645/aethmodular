@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from 'react'
+import { useChartOptions } from '@/lib/chartOptions'
 import { IdentityLine } from '@/components/RefLines'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -29,11 +30,20 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
   const cls = (rank: number) => (rank < cutoff ? TOP : REST)
 
   const spaces = Object.keys(bySpace)
-  const [space, setSpace] = useState(spaces[0] ?? 'raw')
+  const ranked = (sp: unknown) => { const l = bySpace[sp as string]; return l ? l.metrics.filter((x) => x !== 'committed' && l.ranks[x]) : [] }
+  const allMetrics = [...new Set(spaces.flatMap(ranked))]
+  // the options and when each applies (lib/chartOptions): each preprocessing ranked its own metrics
+  const o = useChartOptions('analog-lab', [
+    { key: 'space', label: 'Preprocessing', default: spaces[0] ?? 'raw', choices: spaces.map((sp) => ({ value: sp, label: label(PREPROCESSING, sp) })) },
+    { key: 'metric', label: 'Alternative metric', style: 'select', default: 'mahalanobis_pca', choices: allMetrics.map((x) => ({ value: x, when: (c: Record<string, unknown>) => ranked(c.space).includes(x) })) },
+    { key: 'rho', when: (c) => !!bySpace[c.space as string] && ranked(c.space).length > 0, node: (c) => {
+      const l = bySpace[c.space as string], mm = c.metric as string
+      return <span className="control">ρ = {fmt(l.agreement[mm] ?? null, 3)} · {l.labels[mm] ?? mm}</span>
+    } },
+  ])
+  const space = o.values.space as string
   const lab = bySpace[space]
-  const metrics = lab ? lab.metrics.filter((m) => m !== 'committed' && lab.ranks[m]) : []
-  const [metric, setMetric] = useState(metrics.includes('mahalanobis_pca') ? 'mahalanobis_pca' : metrics[0] ?? '')
-  const m = metrics.includes(metric) ? metric : metrics[0] ?? ''
+  const m = ranked(space).includes(o.values.metric as string) ? o.values.metric as string : ''
 
   const cols = width > 760 ? 2 : 1
   const panelW = Math.floor((width - (cols - 1) * 12) / cols)
@@ -85,13 +95,7 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
       title="Analog lab — does the committed spectral-analog ranking survive other metrics?"
       subtitle={`Left: PCA of normalised spectra, pool subsample with the committed top-${cutoff} analogs in colour and every Addis filter as a star. Right: committed rank against the chosen metric's rank; Spearman ρ says how far the two selections would agree.`}
       provenance="calibration_explorer /api/analog_lab · Analogs tab"
-      controls={
-        <>
-          {spaces.length > 1 && <Segmented label="Preprocessing" value={label(PREPROCESSING, space)} options={spaces.map((s) => label(PREPROCESSING, s))} onChange={(v) => setSpace(spaces.find((s) => label(PREPROCESSING, s) === v) ?? space)} />}
-          {metrics.length > 0 && <Select label="Alternative metric" value={m} options={metrics} onChange={setMetric} />}
-          {lab && m && <span className="control">ρ = {fmt(lab.agreement[m] ?? null, 3)} · {lab.labels[m] ?? m}</span>}
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap">
         {!lab || !pca ? (
@@ -142,7 +146,7 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
             <thead><tr><th>metric</th><th>Spearman ρ with committed</th></tr></thead>
             <tbody>
               {Object.entries(lab.agreement).map(([k, v]) => (
-                <tr key={k} className="link" onClick={() => setMetric(k)}><td className="f">{lab.labels[k] ?? k}</td><td className="v">{fmt(v, 3)}</td></tr>
+                <tr key={k} className="link" onClick={() => o.set('metric', k)}><td className="f">{lab.labels[k] ?? k}</td><td className="v">{fmt(v, 3)}</td></tr>
               ))}
             </tbody>
           </table>

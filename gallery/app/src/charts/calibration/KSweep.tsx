@@ -1,13 +1,14 @@
 import { useMemo } from 'react'
 import { FIT_STYLE, useEstimator, estimatorText } from '@/lib/regressionPrefs'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { useChartOptions } from '@/lib/chartOptions'
 import { FacetGrid } from '@/components/FacetGrid'
 import { Legend, useLegend } from '@/components/Legend'
 import { SweepPlot } from '@/components/SweepPlot'
 import { INK } from '@/lib/theme'
 import type { CalibFile } from '@/lib/types'
-import { configLabel, sameConfig, type Config } from './common'
+import { configKey, configLabel, sameConfig, type Config } from './common'
 import { COHORT, CV_PROTOCOL, METRIC, PREPROCESSING, SELECTION_SPACE, label } from '@/lib/labels'
 
 // Saved coefficient fields are projected to the active estimator by CalibrationPage.
@@ -29,17 +30,39 @@ export function KSweep({ calib, selected, onSelect }: { calib: CalibFile; select
   const method = useEstimator()
   const panels = PANELS.map(panel => ({ ...panel, keys: panel.keys.map(key => key.key === 'dm' || key.key === 'db' ? { ...key, color: FIT_STYLE[method].color, dash: FIT_STYLE[method].dash } : key) }))
 
-  const cohorts = useMemo(() => [...new Set(calib.sweeps.map((s) => s.co))], [calib.sweeps])
-  const cutoffs = useMemo(
-    () => [...new Set(calib.sweeps.filter((s) => s.co === selected.co).map((s) => s.cut))].filter((c): c is number => c !== null).sort((a, b) => a - b),
-    [calib.sweeps, selected.co]
-  )
-  const sels = useMemo(() => [...new Set(calib.sweeps.filter((s) => s.co === selected.co && s.cut === selected.cut).map((s) => s.sel ?? 'raw'))], [calib.sweeps, selected])
-  const sps = useMemo(() => [...new Set(calib.sweeps.filter((s) => s.co === selected.co && s.cut === selected.cut && (s.sel ?? 'raw') === (selected.sel ?? 'raw')).map((s) => s.sp))], [calib.sweeps, selected])
-
+  // the options and when each applies (lib/chartOptions): cohort, then cohort size, selection and
+  // preprocessing, each offered only where a sweep exists for the choices before it, so the chart
+  // never asks for a configuration the batch did not run. Bound to the page's shared selection.
+  const sweeps = calib.sweeps
+  const cohorts = useMemo(() => [...new Set(sweeps.map((s) => s.co))], [sweeps])
+  const allCuts = useMemo(() => [...new Set(sweeps.map((s) => s.cut))].filter((c): c is number => c !== null).sort((a, b) => a - b), [sweeps])
+  const allSels = useMemo(() => [...new Set(sweeps.map((s) => s.sel ?? ''))], [sweeps])
+  const allSps = useMemo(() => [...new Set(sweeps.map((s) => s.sp))], [sweeps])
+  const cutOf = (v: unknown) => (v === '' || v == null ? null : Number(v))
+  const at = (c: Record<string, unknown>) => sweeps.filter((s) => s.co === c.co
+    && ('cut' in c ? s.cut === cutOf(c.cut) : true) && ('sel' in c ? (s.sel ?? '') === c.sel : true))
+  const pick = (patch: Partial<Config>) => onSelect({ ...eff(), ...patch })
+  const o = useChartOptions('k-sweep', [
+    { key: 'co', label: 'Cohort', style: 'select', default: selected.co, choices: cohorts.map((c) => ({ value: c, label: label(COHORT, c) })),
+      bind: [selected.co, ((co: string) => { const first = sweeps.find((s) => s.co === co); onSelect({ co, cut: first?.cut ?? null, sel: first?.sel ?? null, sp: first?.sp ?? 'raw' }) }) as (v: never) => void] },
+    { key: 'cut', label: 'Calibration cohort size', style: 'select', default: String(selected.cut ?? ''), hidden: '',
+      when: (c: Record<string, unknown>) => sweeps.some((s) => s.co === c.co && s.cut !== null),
+      choices: allCuts.map((k) => ({ value: String(k), when: (c: Record<string, unknown>) => sweeps.some((s) => s.co === c.co && s.cut === k) })),
+      bind: [String(selected.cut ?? ''), ((v: string) => pick({ cut: cutOf(v) })) as (v: never) => void] },
+    { key: 'sel', label: 'Selected on', style: 'select', default: selected.sel ?? '',
+      choices: allSels.map((v) => ({ value: v, label: label(SELECTION_SPACE, v || 'raw'), when: (c: Record<string, unknown>) => at(c).some((s) => (s.sel ?? '') === v) })),
+      bind: [selected.sel ?? '', ((v: string) => pick({ sel: v || null })) as (v: never) => void] },
+    { key: 'sp', label: 'Preprocessing', style: 'select', default: selected.sp,
+      choices: allSps.map((v) => ({ value: v, label: label(PREPROCESSING, v), when: (c: Record<string, unknown>) => at(c).some((s) => s.sp === v) })),
+      bind: [selected.sp, ((v: string) => pick({ sp: v })) as (v: never) => void] },
+    { key: 'n', node: () => <span className="control">{rows.length} PLS-factor counts{autoK !== null ? ` · rule: ${autoK} factors` : ''}</span> },
+  ])
+  // the configuration drawn: what the options resolved to, which always exists in the batch
+  const eff = (): Config => ({ co: o.values.co as string, cut: cutOf(o.values.cut), sel: (o.values.sel as string) || null, sp: o.values.sp as string })
+  const config = eff()
   const rows = useMemo(
-    () => calib.sweeps.filter((s) => sameConfig({ co: s.co, cut: s.cut, sel: s.sel, sp: s.sp }, selected)).sort((a, b) => a.k - b.k),
-    [calib.sweeps, selected]
+    () => sweeps.filter((s) => sameConfig({ co: s.co, cut: s.cut, sel: s.sel, sp: s.sp }, config)).sort((a, b) => a.k - b.k),
+    [sweeps, configKey(config)] // eslint-disable-line react-hooks/exhaustive-deps
   )
   const autoK = rows[0]?.ak ?? null
 
@@ -58,20 +81,7 @@ export function KSweep({ calib, selected, onSelect }: { calib: CalibFile; select
       title="PLS-factor sweep — choosing the number of PLS factors for one configuration"
       subtitle={`Every number of PLS factors the batch tried for the configuration chosen here (or clicked in the cutoff sweep above), read out on the Addis test set, with the calibration cohort cross-validated by ${CV_PROTOCOL.site_heldout}. The dashed vertical line is the number the explorer's rule would choose on its own.`}
       provenance="calibration_explorer batch results · Addis test set · site-grouped CV · MAC 10 · fixed set"
-      controls={
-        <>
-          <Select label="Cohort" value={selected.co} options={cohorts} optionLabel={(c) => label(COHORT, c)} onChange={(co) => {
-            const first = calib.sweeps.find((s) => s.co === co)
-            onSelect({ co, cut: first?.cut ?? null, sel: first?.sel ?? null, sp: first?.sp ?? 'raw' })
-          }} />
-          {cutoffs.length > 0 && (
-            <Select label="Calibration cohort size" value={String(selected.cut ?? '')} options={cutoffs.map(String)} onChange={(v) => onSelect({ ...selected, cut: Number(v) })} />
-          )}
-          {sels.length > 1 && <Select label="Selected on" value={selected.sel ?? 'raw'} options={sels} optionLabel={(s) => label(SELECTION_SPACE, s)} onChange={(v) => onSelect({ ...selected, sel: v })} />}
-          <Select label="Preprocessing" value={selected.sp} options={sps.length ? sps : [selected.sp]} optionLabel={(s) => label(PREPROCESSING, s)} onChange={(v) => onSelect({ ...selected, sp: v })} />
-          <span className="control">{rows.length} PLS-factor counts{autoK !== null ? ` · rule: ${autoK} factors` : ''}</span>
-        </>
-      }
+      controls={o.controls()}
     >
       <div className="chart-wrap">
         {rows.length < 2 ? (

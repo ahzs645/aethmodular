@@ -465,7 +465,8 @@ function BaselineCompare({ data }: { data: MeetingData }) {
       title={`Baselines compared — one filter (${key ?? 'example: first Addis filter'}), spline vs VIBES where both exist, and the full-range VIBES`}
       controls={<>
         <Segmented label="Comparison range" value={range} options={['Shared (4000–1425)', 'Full (4000–500)']} onChange={setRange} />
-        <Segmented label="Plot layout" value={layout} options={['Stacked', 'Side by side']} onChange={setLayout} />
+        {/* side by side places the full-range panel beside the comparison: nothing to place without one */}
+        {fullLine && <Segmented label="Plot layout" value={layout} options={['Stacked', 'Side by side']} onChange={setLayout} />}
         {series.map((s2) => <label key={s2.method} className="control">
           <input type="checkbox" checked={!hidden.has(s2.method)} onChange={() => toggleSeries(s2.method)} />
           <span style={{ color: s2.color }}>{s2.name}</span>
@@ -1097,7 +1098,8 @@ function GridStep({ data }: { data: MeetingData }) {
         <Segmented label="Cross-validation protocol" value={CV_PROTOCOL_SHORT[mode] as any} options={[CV_PROTOCOL_SHORT.site_heldout, CV_PROTOCOL_SHORT.app] as any} onChange={(v: string) => setMode(v === CV_PROTOCOL_SHORT.app ? 'app' : 'site_heldout')} />
         <Segmented label="Colour" value={metric as any} options={METRICS} onChange={setMetric as any} />
         {metric !== 'CV R²' && <Segmented label="Test set (Addis) readout" value={readout as any} options={READOUTS} onChange={setReadout as any} />}
-        {mode === 'site_heldout' && <Toggle label="Fade cells failing IMPROVE cross-validation R² ≥ 0.85" checked={gate} onChange={setGate} />}
+        {/* fading by CV R² is moot when the cells are already coloured by it */}
+        {mode === 'site_heldout' && metric !== 'CV R²' && <Toggle label="Fade cells failing IMPROVE cross-validation R² ≥ 0.85" checked={gate} onChange={setGate} />}
       </>}>
       <div ref={ref} style={{ overflowX: 'auto' }}>
         <svg width={w} height={h} fontFamily={FONT.family}>

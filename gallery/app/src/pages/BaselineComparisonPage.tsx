@@ -239,10 +239,12 @@ function SpectraPlot({ spectrum:s, data, onSample, masks, archivedBenchmark=true
     <Select label="Inspection case" value={s.sample_id} options={data.spectra.map(r=>r.sample_id)} optionLabel={id=>{const r=data.spectra.find(x=>x.sample_id===id)!; return `${r.site} / ${r.sample_id}${archivedBenchmark?` (${r.direction})`:''}`}} onChange={onSample}/>
     {archivedBenchmark&&<Select label="Spectrum view" value={view} options={['Corrected spectra','Raw and baselines','VIBES − AIRSpec']} onChange={setView}/>}
     <Select label="Spectrum range" value={range} options={['Shared (4000–1425)','Full (4000–500)']} onChange={setRange}/>
-    <Select label="Spectrum layout" value={layout} options={['Overlay','One method at a time','Stacked']} onChange={setLayout}/>
+    {/* one curve (the VIBES − AIRSpec difference) has no layout to choose */}
+    {series.length>1&&<Select label="Spectrum layout" value={layout} options={['Overlay','One method at a time','Stacked']} onChange={setLayout}/>}
     {layout==='One method at a time'&&series.length>0&&<Select label="Display method" value={active} options={series.map(r=>r.label)} onChange={setMethod}/>}
     <Select label="Earlier selection mask" value={mask} options={masks.map(m=>m.mask)} optionLabel={maskName} onChange={setMask}/>
-    <Select label="Excluded regions" value={regions} options={['Shade excluded regions','Hide excluded regions']} onChange={setRegions}/>
+    {/* the full mask excludes nothing, so there is nothing to shade or hide */}
+    {mask!=='full'&&<Select label="Excluded regions" value={regions} options={['Shade excluded regions','Hide excluded regions']} onChange={setRegions}/>}
   </>}>
     <Note><strong>Display only:</strong> {hidden?'Excluded curves are hidden, with gaps preserving wavenumber spacing. The vertical axis uses visible values.':'Amber marks regions excluded from earlier analog matching; all available spectral points are shown.'} Saved predictions, correction and model-fitting grids remain unchanged.</Note>
     {archivedBenchmark&&fullRange&&<Note>The archived raw spectrum and paired corrections end near 1425 cm⁻¹. {view==='Corrected spectra'?<>Orange shows the selected full-range VIBES correction (4000–500 cm⁻¹; 8-channel display means{fullTrace?`; ${traceVersionLabel(fullTrace)}`:''}). The prediction values below still refer to the archived fits.{!fullTrace&&' Full-range trace is loading or unavailable for this filter.'}</>:<>Choose Corrected spectra to display the current full-range VIBES trace. Raw/baseline and difference values below 1425 cm⁻¹ are unavailable.</>}</Note>}

@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
+import { useChartOptions } from '@/lib/chartOptions'
 import { robustDomain } from '@/lib/axes'
 import { Marker } from '@/components/RefLines'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Select, Toggle } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -65,30 +66,50 @@ function sweepSeries(rows: CalibRow[], metric: SweepMetric, allPairs: boolean, a
     .sort((a, b) => a.label.localeCompare(b.label))
 }
 
+// readouts with no all-pairs version: the toggle would change nothing
+const NO_ALL_PAIRS = new Set<Metric>(['Deming intercept @ MAC 6'])
+
 export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; selected: Config; onSelect: (c: Config) => void }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
 
   const rankedCohorts = Object.keys(calib.default_cutoff)
-  const [cohort, setCohort] = useState(rankedCohorts.includes('ocec') ? 'ocec' : rankedCohorts[0])
-  const [mode, setMode] = useState('site_heldout')
-  const [target, setTarget] = useState('addis')
-  const [metric, setMetric] = useState<Metric>('Deming intercept')
-  const [allPairs, setAllPairs] = useState(false)
-  const [cvMetric, setCvMetric] = useState<CalibrationReadout>('cv_rmse')
-  const [axisPreference, setAxisPreference] = useState<CutoffAxis>('fitted')
   const { hidden, dim, props: legendProps } = useLegend()
 
   const targets = useMemo(() => [...new Set(calib.grid.map((r) => r.tg))].sort(), [calib.grid])
   const modes = useMemo(() => Object.keys(calib.modes).filter((m) => calib.grid.some((r) => r.mo === m)), [calib])
+  // the swept rows for a cohort / protocol / test set (any of them may be left out)
+  const swept = (c: Record<string, unknown>) => calib.grid.filter((r) => r.lot === 'all' && r.el === 'all' && r.cut !== null
+    && r.co === c.cohort && (!('mode' in c) || r.mo === c.mode) && (!('target' in c) || r.tg === c.target))
+  // the options and when each applies (lib/chartOptions): protocols and test sets are offered only
+  // where the batch swept them for the chosen cohort; the fitted-count axis only where the rows carry
+  // fitted counts; "all pairs" only for a readout that has an all-pairs version
+  const o = useChartOptions('cutoff-sweep', [
+    { key: 'cohort', label: 'Cohort', style: 'select', default: rankedCohorts.includes('ocec') ? 'ocec' : rankedCohorts[0], choices: rankedCohorts.map((c) => ({ value: c, label: label(COHORT, c) })) },
+    { key: 'mode', label: 'Cross-validation protocol', style: 'select', default: 'site_heldout',
+      choices: modes.map((m) => ({ value: m, label: label(CV_PROTOCOL, m), when: (c: Record<string, unknown>) => swept({ cohort: c.cohort, mode: m }).length > 0 })) },
+    { key: 'target', label: 'Test set', style: 'select', default: 'addis',
+      choices: targets.map((t) => ({ value: t, label: calib.targets[t]?.label ?? t, when: (c: Record<string, unknown>) => swept({ cohort: c.cohort, mode: c.mode, target: t }).length > 0 })) },
+    { key: 'metric', label: 'Test-set readout', style: 'select', default: 'Deming intercept', choices: TEST_METRICS.map((m) => ({ value: m, label: metricLabel(m) })) },
+    { key: 'cvMetric', label: 'Calibration cross-validation readout', style: 'select', default: 'cv_rmse', choices: (['cv_rmse', 'ho', 'rmsecv'] as const).map((m) => ({ value: m, label: CV_LABELS[m] })) },
+    { key: 'axis', label: 'Horizontal axis', style: 'select', default: 'fitted',
+      choices: (['fitted', 'cutoff'] as const).map((a) => ({ value: a, label: X_LABELS[a], when: a === 'fitted' ? (c: Record<string, unknown>) => swept(c).some((r) => cutoffPosition(r, 'fitted') !== null) : undefined })) },
+    { key: 'allPairs', label: 'All pairs (not the fixed set)', toggle: true, default: false, hidden: false, when: (c) => !NO_ALL_PAIRS.has(c.metric as Metric) },
+  ])
+  const cohort = o.values.cohort as string
+  const mode = o.values.mode as string
+  const target = o.values.target as string
+  const metric = o.values.metric as Metric
+  const cvMetric = o.values.cvMetric as CalibrationReadout
+  const allPairs = o.values.allPairs as boolean
+  const axis = o.values.axis as CutoffAxis
 
   const rows = useMemo(
     () => calib.grid.filter((r) => r.co === cohort && r.mo === mode && r.tg === target && r.lot === 'all' && r.el === 'all' && r.cut !== null),
     [calib.grid, cohort, mode, target]
   )
   const hasFitCounts = rows.some((r) => cutoffPosition(r, 'fitted') !== null)
-  const axis = axisPreference === 'fitted' && hasFitCounts ? 'fitted' : 'cutoff'
   const missingFitCounts = rows.filter((r) => cutoffPosition(r, 'fitted') === null).length
   const series = useMemo(() => sweepSeries(rows, metric, allPairs, axis), [rows, metric, allPairs, axis])
   const cvSeries = useMemo(() => sweepSeries(rows, cvMetric, false, axis), [rows, cvMetric, axis])
@@ -135,17 +156,7 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
       title="Cutoff sweep — how big should the IMPROVE calibration cohort be?"
       subtitle="Readouts at the explorer's rule number of PLS factors, one line per spectral preprocessing (colour); a dashed line is a cohort selected on baseline-corrected rather than raw spectra. The top panel scores the test set (the evaluation site, never used in fitting); the bottom panel scores IMPROVE cross-validation. IMPROVE RMSE measures TOR loading in µg/filter. Fitted counts exclude the whole-site holdout and can differ at the same requested cutoff. Vertical markers locate the locked cutoff. Click a point to load its original cutoff into the PLS-factor sweep below."
       provenance={`calibration_explorer batch results · ${calib.n_source_rows.toLocaleString()} rows · DENSE_SWEEP_RESULTS_2026-08-20.md`}
-      controls={
-        <>
-          <Select label="Cohort" value={cohort} options={rankedCohorts} onChange={setCohort} optionLabel={(c) => label(COHORT, c)} />
-          <Select label="Cross-validation protocol" value={mode} options={modes} onChange={setMode} optionLabel={(m) => label(CV_PROTOCOL, m)} />
-          <Select label="Test set" value={target} options={targets} onChange={setTarget} optionLabel={(t) => calib.targets[t]?.label ?? t} />
-          <Select label="Test-set readout" value={metric} options={[...TEST_METRICS]} onChange={(v) => setMetric(v as Metric)} optionLabel={metricLabel} />
-          <Select label="Calibration cross-validation readout" value={cvMetric} options={['cv_rmse', 'ho', 'rmsecv']} onChange={(v) => setCvMetric(v as CalibrationReadout)} optionLabel={(m) => CV_LABELS[m as CalibrationReadout]} />
-          <Select label="Horizontal axis" value={axis} options={hasFitCounts ? ['fitted', 'cutoff'] : ['cutoff']} onChange={(v) => setAxisPreference(v as CutoffAxis)} optionLabel={(a) => X_LABELS[a as CutoffAxis]} />
-          <Toggle label="All pairs (not the fixed set)" checked={allPairs} onChange={setAllPairs} />
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap">
         {!hasFitCounts && <p className="chart-note">Actual fitting counts are unavailable for these saved rows; the axis shows requested cutoffs. No test-set pair count or cutoff is substituted for a fit count.</p>}
