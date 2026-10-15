@@ -5,23 +5,26 @@ Deck: `aaar_practice_2026-10-15.pptx` (8 slides, built by `build.py`; every numb
 
 ## One breath
 
-An established FTIR EC calibration built on IMPROVE works on typical US filters (held-out slope 0.93, R² 0.73)
-but reads only about half of TOR on the 97 held-out US filters that look most like Addis (0.48, R² 0.46), even
-though TOR and HIPS agree on them (0.91, R² 0.82). Addis filters carry ~9× the EC per filter of a typical IMPROVE
-filter, and Addis OC/fAbs (~0.12) is lower than every one of 211 IMPROVE sites; 31 of 32 SPARTAN sites sit below
-the typical US site. On US filters FTIR reads ~0.7 of TOR at OC/fAbs below 0.25. Coverage problem, not a one-site quirk.
+EC in Addis Ababa is very high (~31× typical IMPROVE). The current FTIR calibration predicts it on the wrong scale
+(2.30x −6.09), and the same kind of calibration poorly predicts the 97 held-out IMPROVE filters whose spectra look like
+Addis (0.46x vs HIPS, R² 0.52), even though TOR and HIPS agree on them. Addis filters carry ~9× the EC per filter of
+a typical IMPROVE filter, and Addis EC is above every IMPROVE site (21 of 36 SPARTAN sites are too). Baseline
+correction moves the Addis intercept from −6.1 to −1.1; a calibration explorer tests thousands of calibrations;
+season-specific calibrations help in Kiremt (slope 0.51 → 0.94) but not Dry or Belg.
 
-## Slide order
+## Slide order (after Ann's 15 Oct review)
 
 1. Title + roadmap
-2. Addis chemistry by season (context for a general audience)
-3. The problem: Addis FTIR vs HIPS, Deming 2.30x −6.09, R² 0.78
-4. Method works on held-out IMPROVE
-5. Same calibration under-reads Addis-like IMPROVE filters (key slide)
-6. Loading per filter, ~9×
-7. OC/fAbs continuum: every IMPROVE and SPARTAN site ranked, each SPARTAN site in the legend; Addis 2nd of 243
-8. FTIR/TOR falls with OC/fAbs on US filters; Addis sits further down
-9. Takeaway
+2. Addis EC by season vs typical IMPROVE (EC focus; no sulfate/dust)
+3. The problem: current SPARTAN FTIR EC vs HIPS, 2.30x −6.09
+4. FTIR predicts EC well on typical IMPROVE filters
+5. Current calibrations poorly predict IMPROVE FTIR EC for Addis-like spectra (HIPS on both x axes)
+6. ~9× more EC per filter
+7. EC by site: every IMPROVE and SPARTAN site, Addis above all IMPROVE sites
+8. Baseline correction: −6.1 → −1.1
+9. Calibration explorer (spline only, bars; settings unnamed)
+10. Season-specific calibrations
+11. Conclusions
 
 ## Ann's asks from the 9 Oct email
 
@@ -31,21 +34,19 @@ the typical US site. On US filters FTIR reads ~0.7 of TOR at OC/fAbs below 0.25.
 
 ## Don't get caught
 
-- Title used to say "underestimates"; at Addis the slope is 2.3, so low filters read low and high filters read
-  high. Say "transfers poorly", not "underestimates", for Addis. "Under-reads" is right for the IMPROVE analogs.
-- No TOR at Addis; HIPS is the reference there. TOR and HIPS agree on IMPROVE analogs.
-- SPARTAN has no thermal carbon: public OC/EC/OM are FTIR (method 218), BC is HIPS (221). The older site plot
-  that labelled SPARTAN stars "thermal" was wrong.
-- Slides 7-8 use OC/fAbs (×10 = OC/EC at MAC 10): no FTIR EC, and x and y on slide 8 do not share TOR EC.
-  SPARTAN fAbs = 10 × 'BC PM2.5' (checked: Addis median ratio 10.00). SPARTAN OC is still FTIR.
-- Data source: SPARTAN public release v3.1.4 (Aug 2026). The older in-house unified file has Addis OC ~2× lower
-  (filter for filter); don't quote its 0.66 OC/EC (0.066 OC/fAbs).
-- Slide 8 trend holds within most loading bands but flattens above ~16 µg per filter (small n). TOR's OC/EC split
-  can still couple x and y a little (charring).
-- Don't claim Addis is "dustier than IMPROVE" outright: its Si-O band is ~2x a typical IMPROVE filter but inside
-  IMPROVE's range filter by filter.
-- Chemistry slide: OM is FTIR-derived, BC is HIPS-based; medians don't sum to median PM2.5.
-- The 14 Oct k-sweep and the VIBES material are for the discussion, not the poster.
+- No OLS anywhere (Ann). Say "poorly predicts", not "under-reads" or "half of TOR": FTIR is high at the low end
+  and low at the high end.
+- Say IMPROVE, not "US".
+- No TOR at Addis; HIPS is the reference there.
+- Slide 8 compares the current calibration with a baseline-corrected IMPROVE calibration; they differ in more
+  than the baseline (training set, protocol). The slope drops to 0.56: better intercept, not solved.
+- Slide 9: don't explain the settings rows or the guardrails. 3,137 of 3,138 beat the current intercept; 254 are
+  within ±0.5 µg/m³ of zero, not always with a good slope.
+- Slide 10: combining the three seasonal calibrations gives 1.43x −4.23 overall (each season lands at a different
+  offset). Belg gets worse.
+- Don't bring up Abu Dhabi (OC predictions there are unreliable: lots of dust, little organics).
+- SPARTAN carbon is FTIR, not thermal; SPARTAN BC = HIPS fAbs / 10. Data: SPARTAN public release v3.1.4.
+- OC/fAbs by site, the k-sweep and VIBES are discussion material, not on slides.
 
 ## [FILL IN]
 
