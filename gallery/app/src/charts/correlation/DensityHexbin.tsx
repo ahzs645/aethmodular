@@ -1,12 +1,13 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
 import { IdentityLine } from '@/components/RefLines'
 import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
-import { fitsFor, useRegressions, FitGroupingControl, effectiveGrouping } from '@/lib/regressionPrefs'
-import { groupedRegressions } from '@/lib/siteRegression'
-import { useId, useMemo, useRef, useState } from 'react'
+import { fitsFor, useRegressions } from '@/lib/regressionPrefs'
+import { fitGroupingOption, useChartOptions } from '@/lib/chartOptions'
+import { groupedRegressions, type FitGrouping } from '@/lib/siteRegression'
+import { useId, useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { hexbin as d3Hexbin } from 'd3-hexbin'
-import { ChartFrame, Empty, Note, Select } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -33,15 +34,20 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   const tip = useTooltip(wrapRef)
   const edits = useFilterEdits()
   const clipId = useId()
-  const { methods, grouping: chosenGrouping, showCI } = useRegressions()
+  const { methods, grouping: chosenGrouping, setGrouping, showCI } = useRegressions()
   const MAX_SQUARE = 520
 
-  const [radius, setRadius] = useState('14')
   const opts: AxesOpts = { ...axes, log: false }
   const pairedRows = useMemo(() => rows.filter(r => typeof r[xField] === 'number' && typeof r[yField] === 'number' && Number.isFinite(r[xField]) && Number.isFinite(r[yField])), [rows, xField, yField])
   // one site in view: a fit per site is the pooled fit, so it is not offered
   const oneSite = useMemo(() => new Set(pairedRows.map((r) => r.site)).size <= 1, [pairedRows])
-  const grouping = effectiveGrouping(chosenGrouping, oneSite ? 'site' : 'combined')
+  // one panel: every grouping applies, except a fit per site with a single site in view (it is the pooled fit)
+  const o = useChartOptions('hexbin', [
+    { key: 'radius', label: 'Hex radius', choices: ['8', '11', '14', '18', '24'], default: '14', style: 'select' },
+    fitGroupingOption({ bind: [chosenGrouping, setGrouping as (v: never) => void], when: (c) => (c.estimators as number) > 0, offerSite: (c) => !c.oneSite }),
+  ], { estimators: methods.length, oneSite })
+  const radius = o.values.radius as string
+  const grouping = o.values.grouping as FitGrouping
   const fitGroups = useMemo(() => groupedRegressions(pairedRows, grouping, {
     x: r => r[xField] as number, y: r => r[yField] as number, site: r => r.site,
     season: r => r.season, seasonColor: r => meta.seasons.find(se => se.name === r.season)?.color ?? INK.muted,
@@ -105,12 +111,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
       title="2D density (hexbin) — where the crossplot is actually dense"
       subtitle="The same pair and the same axes as the scatterplot, binned. Overplotting hides that most filters sit in a small low-loading core; the hexbin shows the mass of the data rather than its outline."
       provenance="stands in for 16 hexbin+plot+scatter figures · react-graph-gallery.com/2d-density-plot"
-      controls={
-        <>
-          <Select label="Hex radius" value={radius} options={['8', '11', '14', '18', '24']} onChange={setRadius} />
-          {methods.length > 0 && <FitGroupingControl only={oneSite ? ['pooled', 'season'] : undefined} value={grouping} />}
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap centered">
         {points.length < 3 ? (

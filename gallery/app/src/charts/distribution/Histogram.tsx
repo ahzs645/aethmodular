@@ -1,12 +1,13 @@
 import { useMemo, useRef, useState } from 'react'
 import { robustDomain } from '@/lib/axes'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Note, Segmented, Select, Toggle } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Note, Select } from '@/components/ChartFrame'
 import { Legend, toggleIn, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { kde, fmt, twoSample } from '@/lib/stats'
+import { useChartOptions } from '@/lib/chartOptions'
 import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -43,9 +44,6 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   const edits = useFilterEdits()
 
   const [bins, setBins] = useState(30)
-  const [layout, setLayout] = useState<Layout>('Overlay')
-  const [overlayDensity, setOverlayDensity] = useState(true)
-  const [normalise, setNormalise] = useState(true)
   const { hidden, setHidden, dim, hover, setHover } = useLegend()
   const mirror = useLegend()
   const [mirrorA, setMirrorA] = useState<string>('')
@@ -72,6 +70,29 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
     [allSeries, rows, field, meta.seasons, seasonColor]
   )
   const groupNames = mirrorGroups.map((g) => g.name)
+  // the options and when each applies (lib/chartOptions): small multiples need more than one
+  // series, a mirror two groups; the density layout draws no bars, so no bins and no extra curve
+  const o = useChartOptions('histogram', [
+    { key: 'layout', label: 'Layout', default: 'Overlay', choices: [
+      { value: 'Overlay' }, { value: 'Density' },
+      { value: 'Small multiples', when: (c) => (c.nSeries as number) > 1 },
+      { value: 'Mirror', when: (c) => (c.nGroups as number) >= 2 },
+    ] },
+    { key: 'mirror', when: (c) => c.layout === 'Mirror', node: () => <>
+      <Select label="Top" value={aName} options={groupNames} onChange={setMirrorA} />
+      <Select label="Bottom" value={bName} options={groupNames.filter((n) => n !== aName)} onChange={setMirrorB} />
+    </> },
+    { key: 'bins', when: (c) => c.layout !== 'Density', node: () => <label className="control" title="Number of bins across the displayed range">
+      Bins
+      <input type="range" min={8} max={80} step={1} value={bins} onChange={(e) => setBins(Number(e.target.value))} style={{ width: 110 }} />
+      <span style={{ fontFamily: 'var(--mono)', width: 20 }}>{bins}</span>
+    </label> },
+    { key: 'normalise', label: 'Normalise to fraction', toggle: true, default: true },
+    { key: 'density', label: 'Density curve', toggle: true, default: true, hidden: true, when: (c) => c.layout !== 'Density' },
+  ], { nSeries: allSeries.length, nGroups: groupNames.length })
+  const layout = o.values.layout as Layout
+  const normalise = o.values.normalise as boolean
+  const overlayDensity = o.values.density as boolean
   const aName = groupNames.includes(mirrorA) ? mirrorA : groupNames[0] ?? ''
   const bName = groupNames.includes(mirrorB) && mirrorB !== aName ? mirrorB : groupNames.find((n) => n !== aName) ?? ''
 
@@ -174,25 +195,7 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
       title="Histogram + density — overlaid, panelled, or mirrored"
       subtitle="Counts per bin with an optional kernel density curve. Normalising to a fraction lets Delhi (n≈97) and Beijing (n≈375) be compared directly instead of the larger site simply looking taller. Mirror puts any two groups (a site or a season) back to back. Drag the bin slider to see how much the shape depends on it."
       provenance="stands in for 36 histogram figures · react-graph-gallery.com/histogram · /histogram-mirror · /histogram-small-multiple"
-      controls={
-        <>
-          <Segmented label="Layout" value={layout} options={LAYOUTS} onChange={setLayout} />
-          {layout === 'Mirror' && (
-            <>
-              <Select label="Top" value={aName} options={groupNames} onChange={setMirrorA} />
-              <Select label="Bottom" value={bName} options={groupNames.filter((n) => n !== aName)} onChange={setMirrorB} />
-            </>
-          )}
-          {/* the density layout draws no bars: bins would only rescale the curves */}
-          {!densityOnly && <label className="control" title="Number of bins across the displayed range">
-            Bins
-            <input type="range" min={8} max={80} step={1} value={bins} onChange={(e) => setBins(Number(e.target.value))} style={{ width: 110 }} />
-            <span style={{ fontFamily: 'var(--mono)', width: 20 }}>{bins}</span>
-          </label>}
-          <Toggle label="Normalise to fraction" checked={normalise} onChange={setNormalise} />
-          {!densityOnly && <Toggle label="Density curve" checked={overlayDensity} onChange={setOverlayDensity} />}
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap">
         {(layout === 'Mirror' ? mirrorPair.length < 2 : series.length === 0) ? (

@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, type ComponentType, type ReactNode } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
@@ -15,7 +15,7 @@ import { coef, f2, f3, fmt, pct } from '@/lib/format'
 import { Markdown } from '@/lib/markdown'
 import { densities, num, rowsOf, summarize, uniq, where, INTERVAL_LABEL, type Interval, type Row, type Table, type Value } from '@/lib/table'
 import { BASELINE_COLOR, FONT, INK, RAMP_DIVERGING, RAMP_SEQUENTIAL, SPECTRAL_REGION } from '@/lib/theme'
-import { useSearchParam } from '@/lib/url'
+import { useChartOptions, type OptionDef } from '@/lib/chartOptions'
 
 /**
  * A chart from a description: the chart kind and which columns of a long
@@ -43,6 +43,15 @@ interface Base {
   where?: Record<string, Value | Value[]>
   /** controls that keep only the rows with the chosen value of a column */
   choose?: { column: string; label?: string; default?: string }[]
+  /**
+   * reader-facing variants of the same figure: each choice patches the spec (a log y scale,
+   * another column on x, a facet). Rules as everywhere in the gallery (lib/chartOptions): a
+   * variant or a choice with `when` is offered only while it holds for the values chosen so far
+   * (earlier variants and the `choose` columns), and a choice no longer offered falls back.
+   * A patch changes how the figure is drawn, not where its rows come from (`table`, `data`,
+   * `where` are read before the choices resolve).
+   */
+  variants?: FigureVariant[]
   /** colours for category values, over the bundle's and the gallery's (baselines, seasons) */
   colors?: Record<string, string>
   /** a note under the chart, Markdown */
@@ -58,6 +67,14 @@ export type FigureSpec =
   | (Base & { kind: 'table'; columns?: { key: string; label?: string; format?: FormatName }[] })
   | (Base & { kind: 'custom'; component: string; props?: Record<string, unknown> })
 export type RegionName = 'analog' | 'oct1' | 'ptfe' | 'co2'
+export interface FigureVariant {
+  key: string
+  label?: string
+  default?: string
+  title?: string
+  when?: (chosen: Record<string, unknown>) => boolean
+  choices: { value: string; label?: string; patch?: Record<string, unknown>; when?: (chosen: Record<string, unknown>) => boolean }[]
+}
 
 export interface MeetingBundle {
   schema_version: number
@@ -99,16 +116,27 @@ function useColors(spec: Base) {
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
 
-export function Figure(spec: FigureSpec) {
+export function Figure(props: FigureSpec) {
+  let spec = props
   const bundle = useContext(BundleContext)
   const id = spec.id ?? slug(spec.title)
   const all = useMemo(() => where(rowsOf(spec.data ?? (spec.table ? bundle?.tables[spec.table] : null)), spec.where), [spec.data, spec.table, spec.where, bundle])
-  const choices = (spec.choose ?? []).map((c) => ({ ...c, options: uniq(all, c.column).map(String) }))
-  const picks = choices.map((c) => ChoiceState(`${id}.${c.column}`, c.default ?? c.options[0] ?? '', c.options))
-  const rows = useMemo(() => all.filter((r) => choices.every((c, i) => String(r[c.column]) === picks[i][0])), [all, picks.map((p) => p[0]).join('|')])
-  const controls = choices.length ? <>{choices.map((c, i) => c.options.length > 4
-    ? <Select key={c.column} label={c.label ?? c.column} value={picks[i][0]} options={c.options} onChange={picks[i][1]} />
-    : <Segmented key={c.column} label={c.label ?? c.column} value={picks[i][0]} options={c.options} onChange={picks[i][1]} />)}</> : undefined
+  // `choose` columns and `variants` resolve together, in order, through the gallery's options
+  // engine; both are kept in the URL (`${id}.${column}` / `${id}.${key}`)
+  const variants = spec.variants ?? []
+  const o = useChartOptions(id, [
+    ...(spec.choose ?? []).map((c): OptionDef => {
+      const options = uniq(all, c.column).map(String)
+      return { key: c.column, label: c.label ?? c.column, persist: true, default: c.default ?? options[0] ?? '', style: options.length > 4 ? 'select' : 'segmented', choices: options }
+    }),
+    ...variants.map((v): OptionDef => ({ key: v.key, label: v.label ?? v.key, persist: true, default: v.default ?? v.choices[0]?.value ?? '', title: v.title,
+      when: v.when, choices: v.choices.map((c) => ({ value: c.value, label: c.label, when: c.when })) })),
+  ])
+  const rows = useMemo(() => all.filter((r) => (spec.choose ?? []).every((c) => String(r[c.column]) === o.values[c.column])),
+    [all, (spec.choose ?? []).map((c) => o.values[c.column]).join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
+  // the chosen variants' patches, applied over the spec in the order the variants are declared
+  spec = variants.reduce((acc, v) => ({ ...acc, ...(v.choices.find((c) => c.value === o.values[v.key])?.patch ?? {}) }), spec) as FigureSpec
+  const controls = (spec.choose?.length || variants.length) ? o.controls() : undefined
 
   const Custom = spec.kind === 'custom' ? CUSTOM.get(spec.component) : null
   const body = spec.kind === 'custom'
@@ -129,8 +157,6 @@ export function Figure(spec: FigureSpec) {
     </ChartFrame>
   )
 }
-// a hook in a loop over a spec's fixed list of controls: the list never changes for a mounted figure
-function ChoiceState(key: string, fallback: string, options: string[]) { return useSearchParam<string>(key, fallback, options) }
 
 const facetsOf = (rows: Row[], facet?: string) => (facet ? uniq(rows, facet).map((f) => ({ key: String(f), rows: rows.filter((r) => r[facet] === f) })) : [{ key: '', rows }])
 

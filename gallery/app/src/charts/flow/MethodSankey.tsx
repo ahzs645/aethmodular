@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { sankey, sankeyLinkHorizontal, sankeyLeft } from 'd3-sankey'
-import { ChartFrame, Empty, Segmented, Toggle } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { useChartOptions } from '@/lib/chartOptions'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { INK, FONT } from '@/lib/theme'
@@ -36,11 +37,16 @@ export function MethodSankey({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const [chosenStage3, setStage3] = useState<(typeof STAGE3)[number]>('HIPS coverage')
   const [hoverNode, setHoverNode] = useState<string | null>(null)
-  const [bothOnly, setBothOnly] = useState(true)
-  // with only FTIR+HIPS filters every one has HIPS, so a HIPS-coverage stage would be one node: show seasons
-  const stage3 = bothOnly ? 'Season' : chosenStage3
+  // the options and when each applies (lib/chartOptions): with only FTIR+HIPS filters every one
+  // has HIPS, so a HIPS-coverage stage would be one node; the third stage is then the season
+  const o = useChartOptions('sankey', [
+    { key: 'bothOnly', label: 'Only filters with both FTIR EC and HIPS', toggle: true, default: true, title: 'Drop filters missing an FTIR EC value (in both exports) or missing HIPS Fabs' },
+    { key: 'stage3', label: 'Third stage', choices: STAGE3, default: 'HIPS coverage', hidden: 'Season', when: (c) => !c.bothOnly },
+    { key: 'count', node: () => <span className="control">{total} filters shown</span> },
+  ])
+  const bothOnly = o.values.bothOnly as boolean
+  const stage3 = o.values.stage3 as (typeof STAGE3)[number]
   const height = 460
 
   const has = (r: FilterRow, f: string) => typeof r[f] === 'number' && Number.isFinite(r[f] as number)
@@ -124,13 +130,7 @@ export function MethodSankey({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
       title="Sankey — which filters reach which measurement"
       subtitle="Each filter flows from its site through availability in the in-house FTIR EC export, the public ChemSpec FTIR EC export, both, or neither, then to HIPS coverage or season. Every number is a count of filters. By default only filters with both an FTIR EC value (either export) and HIPS Fabs are shown, the set that can enter an FTIR-vs-HIPS comparison; untick the box to see the whole subset. The two EC feeds report the same FTIR product; none of these SPARTAN filters has an independent TOR EC result. Hover a node to isolate its flows."
       provenance="zero flow figures in the estate; described in gallery/app/src/charts/flow/README.md · react-graph-gallery.com/sankey-diagram"
-      controls={
-        <>
-          {!bothOnly && <Segmented label="Third stage" value={stage3} options={STAGE3} onChange={setStage3} />}
-          <Toggle label="Only filters with both FTIR EC and HIPS" checked={bothOnly} onChange={setBothOnly} title="Drop filters missing an FTIR EC value (in both exports) or missing HIPS Fabs" />
-          <span className="control">{total} filters shown</span>
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap">
         <p className="chart-note" style={{ marginTop: 0 }}>

@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import { SeasonBands, timeSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { useChartOptions } from '@/lib/chartOptions'
 import { Legend, toggleIn, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -34,8 +35,14 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
   const hl = useHighlight()
   const height = 440
 
-  const [mode, setMode] = useState<(typeof MODES)[number]>('Relative (%)')
-  const [chosenShape, setShape] = useState<(typeof SHAPES)[number]>('Stacked')
+  // the options and when each applies (lib/chartOptions): relative shares sum to 100 % every
+  // day, so a streamgraph would only wobble the baseline; it is offered on the absolute scale
+  const o = useChartOptions('sourcestack', [
+    { key: 'mode', label: 'Scale', choices: MODES, default: 'Relative (%)' },
+    { key: 'shape', label: 'Shape', choices: SHAPES, default: 'Stacked', hidden: 'Stacked', when: (c) => c.mode !== 'Relative (%)', title: 'Streamgraph: wiggle offset, inside-out order — no baseline, better shape' },
+    { key: 'count', node: () => <span className="control">{rows.length} filters · {pmf.site_name}</span> },
+  ])
+  const mode = o.values.mode as (typeof MODES)[number]
   const { hidden, setHidden, dim, hover, setHover } = useLegend()
 
   const labels = pmf.sources.map((s) => s.label).filter((l) => !hidden.has(l))
@@ -51,7 +58,7 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const innerH = height - MARGIN.top - MARGIN.bottom
   const relative = mode === 'Relative (%)'
-  const shape = relative ? 'Stacked' : chosenShape
+  const shape = o.values.shape as (typeof SHAPES)[number]
 
   const stacked = useMemo(() => {
     const src = relative ? 'fraction' : 'ugm3'
@@ -91,14 +98,7 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
       title="Stacked area · Streamgraph — PMF source contributions over time"
       subtitle={`${pmf.n} ETAD filters with a PMF solution. Relative mode stacks the normalised source mix to 100 %; absolute mode stacks the K_Fn concentrations in µg/m³, so the height is total apportioned mass. Click a source in the legend to drop it from the stack.`}
       provenance="the estate has exactly 1 stacked-area figure in 827 · react-graph-gallery.com/stacked-area-plot · /streamchart"
-      controls={
-        <>
-          <Segmented label="Scale" value={mode} options={MODES} onChange={setMode} />
-          {/* relative shares sum to 100 % every day, so a streamgraph would only wobble the baseline */}
-          {!relative && <Segmented label="Shape" value={shape} options={SHAPES} onChange={setShape} title="Streamgraph: wiggle offset, inside-out order — no baseline, better shape" />}
-          <span className="control">{rows.length} filters · {pmf.site_name}</span>
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap">
         {!rows.length ? (

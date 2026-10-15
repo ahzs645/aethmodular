@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
+import { useChartOptions } from '@/lib/chartOptions'
 import { FONT, INK } from '@/lib/theme'
 import type { RoseFile, WeatherSource } from '@/lib/weather'
 import { NO_PMF } from '@/lib/pmfGroups'
@@ -29,8 +30,12 @@ export function WindRoses({ rows, meta, roses, source, site, pmfLabelOfDate, spl
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const tip = useTooltip(wrapRef)
-  const [chosen, setSplit] = useState<(typeof SPLITS)[number]>(splits[0])
-  const split = splits.includes(chosen) ? chosen : splits[0]
+  // the options and when each applies (lib/chartOptions): the page says which splits it offers
+  const o = useChartOptions(id, [
+    { key: 'split', label: 'Split by', default: splits[0], choices: SPLITS.map((v) => ({ value: v, when: () => splits.includes(v) })),
+      title: 'Site: one rose per site. Season and PMF source: the chosen site (PMF exists for Addis 2023 only).' },
+  ])
+  const split = o.values.split as (typeof SPLITS)[number]
   const table = roses ? (source === 'station' ? roses.station : roses.era5) : null
 
   const groups = useMemo(() => {
@@ -61,8 +66,7 @@ export function WindRoses({ rows, meta, roses, source, site, pmfLabelOfDate, spl
     <ChartFrame id={id} title={title}
       subtitle={`Hours inside the filters' sampling windows, by direction (8 sectors) and speed; the number in the middle is calm (${roses?.calm ?? '< 0.5 m/s'}). ${source === 'station' ? 'Airport station winds (10 m, open site).' : 'ERA5 10 m winds are a 0.25° grid-box average and run lower than an airport mast.'} Every panel shares one radial scale.`}
       provenance="meteorology_source_interaction §2 · meteorology_revisions R1"
-      controls={splits.length < 2 ? undefined : <Segmented label="Split by" value={split} options={splits} onChange={setSplit}
-        title="Site: one rose per site. Season and PMF source: the site chosen above the charts (PMF exists for Addis 2023 only)." />}>
+      controls={o.controls()}>
       <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
         {!roses ? <Empty>Loading the wind roses…</Empty> : shown.length === 0 ? <Empty>{split === 'PMF source' ? 'No filter here falls on a PMF day (ETAD 2023 only).' : 'No filters with wind data in this subset.'}</Empty> : shown.map((g) => (
           <svg key={g.name} width={SIZE} height={SIZE + 18} fontFamily={FONT.family}>

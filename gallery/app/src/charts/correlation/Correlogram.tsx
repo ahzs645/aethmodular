@@ -1,11 +1,12 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
 import { robustDomain } from '@/lib/axes'
 import { RegressionLines, RegressionGroupLines } from '@/components/RegressionOverlay'
-import { FitGroupingControl, effectiveGrouping, useRegressions } from '@/lib/regressionPrefs'
+import { useRegressions } from '@/lib/regressionPrefs'
+import { fitGroupingOption, useChartOptions } from '@/lib/chartOptions'
 import { groupedRegressions, type FitGrouping } from '@/lib/siteRegression'
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -39,8 +40,6 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const hl = useHighlight()
-  const [siteCode, setSiteCode] = useState('ETAD')
-  const [encoding, setEncoding] = useState<(typeof ENCODINGS)[number]>('Colour')
   const [family, setFamily] = useState(ALL_FAMILIES)
   const lg = useLegend()
 
@@ -48,11 +47,22 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
     () => ['All', ...meta.sites.filter((s) => rows.some((r) => r.code === s.code)).map((s) => s.code)],
     [meta.sites, rows]
   )
-  const effectiveSite = siteCodes.includes(siteCode) ? siteCode : siteCodes[0] ?? 'All'
+  const { methods, grouping: chosenGrouping, setGrouping } = useRegressions()
+  // the options and when each applies (lib/chartOptions): species and fit grouping belong to the
+  // scatter matrix; with one site in the matrix (a site picked, or one in view) a fit per site is the pooled fit
+  const o = useChartOptions('correlogram', [
+    { key: 'site', label: 'Site', style: 'select', default: 'ETAD', choices: siteCodes.map((c) => ({ value: c, label: c === 'All' ? 'All sites' : meta.sites.find((s) => s.code === c)?.name ?? c })) },
+    { key: 'encoding', label: 'Encoding', choices: ENCODINGS, default: 'Colour' },
+    { key: 'species', when: (c) => c.encoding === 'Scatter matrix', node: () => <Select label="Species" value={family} options={families} onChange={setFamily} title="At most six species per matrix" /> },
+    fitGroupingOption({ bind: [chosenGrouping, setGrouping as (v: never) => void],
+      when: (c) => c.encoding === 'Scatter matrix' && (c.estimators as number) > 0,
+      offerSite: (c) => c.site === 'All' && (c.nSites as number) > 1 }),
+    { key: 'count', when: (c) => c.encoding !== 'Scatter matrix', node: () => <span className="control">{block.fields.length} species</span> },
+  ], { estimators: methods.length, nSites: siteCodes.length - 1 })
+  const effectiveSite = o.values.site as string
+  const encoding = o.values.encoding as (typeof ENCODINGS)[number]
+  const matrixGrouping = o.values.grouping as FitGrouping
   const sub = useMemo(() => (effectiveSite === 'All' ? rows : rows.filter((r) => r.code === effectiveSite)), [rows, effectiveSite])
-  const { methods, grouping: chosenGrouping } = useRegressions()
-  const oneSiteMatrix = useMemo(() => new Set(sub.map((r) => r.site)).size <= 1, [sub])
-  const matrixGrouping = effectiveGrouping(chosenGrouping, oneSiteMatrix ? 'site' : 'combined')
 
   // Computed from the live subset rather than a precomputed file, so the
   // season/site/date filters above actually move these numbers.
@@ -109,18 +119,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
       title="Correlogram — how the chemistry co-varies"
       subtitle="Pearson r between species at one site. Blue is negative, red positive. The in-house and ChemSpec EC feeds both report FTIR EC, so the duplicate ChemSpec carbon fields are omitted. 'Scatter matrix' shows the clouds behind a few cells, with each species' histogram on the diagonal."
       provenance="stands in for 14 correlogram + heatmap figures · react-graph-gallery.com/correlogram"
-      controls={
-        <>
-          <Select label="Site" value={block.code} options={siteCodes} onChange={setSiteCode} optionLabel={(c) => (c === 'All' ? 'All sites' : meta.sites.find((s) => s.code === c)?.name ?? c)} />
-          <Segmented label="Encoding" value={encoding} options={ENCODINGS} onChange={setEncoding} />
-          {encoding === 'Scatter matrix' ? (
-            <><Select label="Species" value={family} options={families} onChange={setFamily} title="At most six species per matrix" />
-              {methods.length > 0 && <FitGroupingControl only={oneSiteMatrix ? ['pooled', 'season'] : undefined} value={matrixGrouping} />}</>
-          ) : (
-            <span className="control">{block.fields.length} species</span>
-          )}
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap centered" style={{ overflowX: 'auto' }}>
         {block.fields.length < 2 ? (

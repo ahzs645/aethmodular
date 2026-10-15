@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { SeasonBands, timeSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented, Toggle } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Legend, toggleIn } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -11,6 +11,7 @@ import { fmt, splitAtGaps } from '@/lib/stats'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
+import { useChartOptions } from '@/lib/chartOptions'
 
 const LAYOUTS = ['Overlay', 'Per site'] as const
 type Pt = { row: FilterRow; date: Date; value: number }
@@ -36,9 +37,6 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
   const tip = useTooltip(wrapRef)
   const hl = useHighlight()
 
-  const [layout, setLayout] = useState<(typeof LAYOUTS)[number]>('Per site')
-  const [smooth, setSmooth] = useState(true)
-  const [seasonShading, setSeasonShading] = useState(true)
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [hover, setHover] = useState<string | null>(null)
   const [cursor, setCursor] = useState<Date | null>(null)
@@ -57,6 +55,18 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
         .filter((s) => s.pts.length > 1),
     [rows, field, meta.sites, hidden]
   )
+
+  // the options and when each applies (lib/chartOptions): with one site, overlay and per-site
+  // panels are the same chart; an overlay of sites on their own calendars has nothing to shade
+  const o = useChartOptions('timeseries', [
+    { key: 'layout', label: 'Layout', choices: LAYOUTS, default: 'Per site', when: (c) => (c.nSeries as number) > 1, hidden: 'Per site' },
+    { key: 'smooth', label: 'Rolling median', toggle: true, default: true },
+    { key: 'shading', label: 'Season shading', toggle: true, default: true, hidden: false, when: (c) => !(c.mixed && c.layout === 'Overlay') },
+    { key: 'cursor', when: () => !!cursor, node: () => <span className="control" style={{ fontFamily: 'var(--mono)' }}>{cursor && d3.timeFormat('%Y-%m-%d')(cursor)}</span> },
+  ], { nSeries: series.length, mixed: mixedCalendars(meta) })
+  const layout = o.values.layout as (typeof LAYOUTS)[number]
+  const smooth = o.values.smooth as boolean
+  const seasonShading = o.values.shading as boolean
 
   // a hovered site dims the other sites; a hovered season (a background key, not a series) deepens its own bands
   const siteHover = hover && series.some((s) => s.name === hover) ? hover : null
@@ -106,15 +116,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
       title="Timeseries — filter measurements over time"
       subtitle={`Every filter as a point, with an optional 7-sample rolling median that breaks at sampling gaps over 45 days. Season bands use the ${calendarLabel(meta)} selected in the filters${mixedCalendars(meta) ? ', one per site panel (the overlay has no single calendar, so it is left unshaded)' : ''}. Move the pointer across any panel and a date cursor follows on every other panel. Drag on the timeline in the subset bar to zoom every tab to a date range.`}
       provenance="stands in for 73 timeseries + 59 area + 46 line figures · plotting/timeseries.py · react-graph-gallery.com/timeseries · /line-chart-synchronized-cursors"
-      controls={
-        <>
-          <Segmented label="Layout" value={layout} options={LAYOUTS} onChange={setLayout} />
-          <Toggle label="Rolling median" checked={smooth} onChange={setSmooth} />
-          {/* the overlay has no single calendar when sites keep their own, so there is nothing to shade */}
-          {!(mixed && layout === 'Overlay') && <Toggle label="Season shading" checked={seasonShading} onChange={setSeasonShading} />}
-          {cursor && <span className="control" style={{ fontFamily: 'var(--mono)' }}>{d3.timeFormat('%Y-%m-%d')(cursor)}</span>}
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap">
         {series.length === 0 ? (
@@ -213,7 +215,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
         <Legend
           items={[
             ...meta.sites.filter((s) => rows.some((r) => r.site === s.name)).map((s) => ({ label: s.name, color: s.color })),
-            ...(seasonShading && !(mixed && layout === 'Overlay') ? meta.seasons.map((s) => ({ label: s.name, color: s.color, shape: 'band' as const })) : []),
+            ...(seasonShading ? meta.seasons.map((s) => ({ label: s.name, color: s.color, shape: 'band' as const })) : []),
           ]}
           hidden={hidden}
           onToggle={(l) => { if (meta.sites.some((s) => s.name === l)) setHidden((h) => toggleIn(h, l)) }}

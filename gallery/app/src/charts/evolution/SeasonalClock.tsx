@@ -1,13 +1,14 @@
 import { useId, useMemo, useRef, useState } from 'react'
 import { seasonShade } from '@/components/SeasonBands'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { Legend, toggleIn } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { INK, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile, SeasonMeta } from '@/lib/types'
+import { useChartOptions } from '@/lib/chartOptions'
 import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -76,8 +77,6 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
   // textPath needs a path id; useId keeps two clocks on one page from sharing one
   const uid = useId().replace(/:/g, '')
 
-  const [stat, setStat] = useState<(typeof STATS)[number]>('Median')
-  const [chosenLayout, setLayout] = useState<(typeof LAYOUTS)[number]>('Grouped')
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [hover, setHover] = useState<string | null>(null)
 
@@ -106,9 +105,16 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
     [rows, field, meta.sites]
   )
   const series = allSeries.filter((s) => !hidden.has(s.name))
-  // a ring per site needs at least two sites to compare and room for each ring: 8 at most
-  const ringsOk = series.length >= 2 && series.length <= MAX_RINGS
-  const layout = ringsOk ? chosenLayout : 'Grouped'
+  // the options and when each applies (lib/chartOptions): a ring per site needs at least two
+  // sites to compare and room for each ring, 8 at most
+  const o = useChartOptions('clock', [
+    { key: 'stat', label: 'Bar', choices: STATS, default: 'Median', title: "Statistic of the measurement across the month's filters" },
+    { key: 'layout', label: 'Layout', choices: LAYOUTS, default: 'Grouped', hidden: 'Grouped',
+      when: (c) => (c.nSeries as number) >= 2 && (c.nSeries as number) <= MAX_RINGS,
+      title: 'Grouped: sites side by side in each month. Rings: one ring per site, each with its own baseline, on a shared value scale' },
+  ], { nSeries: series.length })
+  const stat = o.values.stat as (typeof STATS)[number]
+  const layout = o.values.layout as (typeof LAYOUTS)[number]
   // a hovered site dims the other sites' bars; a hovered season (a background key, not a series) deepens its own sectors
   const siteHover = hover && series.some((s) => s.name === hover) ? hover : null
   const seasonHover = hover && meta.seasons.some((s) => s.name === hover) ? hover : null
@@ -178,12 +184,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
       title="Seasonal clock — the year as a circle"
       subtitle={`Monthly statistic of the measurement, laid around a circle so December and January sit next to each other. ${mixed ? 'Each site keeps its own calendar, so the sectors are left unshaded; hover a bar for its local season, or pick one site to see its seasons.' : `Shaded sectors use the ${calendarLabel(meta)}.`}`}
       provenance="react-graph-gallery.com/circular-barplot · not in the estate"
-      controls={
-        <>
-          <Segmented label="Bar" value={stat} options={STATS} onChange={setStat} title="Statistic of the measurement across the month's filters" />
-          {ringsOk && <Segmented label="Layout" value={layout} options={LAYOUTS} onChange={setLayout} title="Grouped: sites side by side in each month. Rings: one ring per site, each with its own baseline, on a shared value scale" />}
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap centered">
         {allSeries.length === 0 ? (

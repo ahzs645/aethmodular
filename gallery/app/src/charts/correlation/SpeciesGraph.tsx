@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { XAxis } from '@/components/Axes'
-import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Legend, useLegend, type LegendItem } from '@/components/Legend'
+import { useChartOptions } from '@/lib/chartOptions'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { RESTATES, isBookkeeping, sameProduct } from '@/fieldLineage'
@@ -94,25 +95,35 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const [siteCode, setSiteCode] = useState('ETAD')
-  const [view, setView] = useState<(typeof VIEWS)[number]>('Network')
-  const [thresholdS, setThresholdS] = useState('0.7')
-  const [cutS, setCutS] = useState('0.3')
   const [hover, setHover] = useState<number | null>(null)
   // families and edge signs toggle in Network/Arc; dendrogram clusters only highlight, since
   // dropping species would re-cut the tree and renumber every cluster
   const lg = useLegend()
   const cl = useLegend()
-  const off = view === 'Dendrogram' ? null : lg.hidden
-  const threshold = Number(thresholdS)
-  const cut = Number(cutS)
   const w = Math.max(400, width)
 
   const siteCodes = useMemo(
     () => ['All', ...meta.sites.filter((s) => rows.some((r) => r.code === s.code)).map((s) => s.code)],
     [meta.sites, rows]
   )
-  const effectiveSite = siteCodes.includes(siteCode) ? siteCode : siteCodes[0] ?? 'All'
+  // the options and when each applies (lib/chartOptions): the |r| threshold draws the network and
+  // arc edges; the dendrogram clusters every species and is cut at a distance instead
+  const o = useChartOptions('species-graph', [
+    { key: 'site', label: 'Site', style: 'select', default: 'ETAD', choices: siteCodes.map((c) => ({ value: c, label: c === 'All' ? 'All sites' : meta.sites.find((s) => s.code === c)?.name ?? c })) },
+    { key: 'view', label: 'View', choices: VIEWS, default: 'Network' },
+    { key: 'threshold', label: '|r| ≥', style: 'select', choices: THRESHOLDS, default: '0.7', when: (c) => c.view !== 'Dendrogram' },
+    { key: 'cut', label: 'Cut at', style: 'select', choices: CUTS, default: '0.3', when: (c) => c.view === 'Dendrogram', title: 'distance 1 − |r| at which the tree is cut into clusters' },
+    { key: 'count', node: (c) => <span className="control">
+      {nSpecies} species{c.view === 'Dendrogram' ? (dendro ? ` · ${dendro.nClusters} clusters at ${cutS}` : '') : ` · ${nEdges} edges`}
+    </span> },
+  ])
+  const effectiveSite = o.values.site as string
+  const view = o.values.view as (typeof VIEWS)[number]
+  const thresholdS = o.values.threshold as string
+  const cutS = o.values.cut as string
+  const off = view === 'Dendrogram' ? null : lg.hidden
+  const threshold = Number(thresholdS)
+  const cut = Number(cutS)
 
   // ---- the correlation matrix, identical to Correlogram.tsx
   const block = useMemo(() => {
@@ -350,19 +361,7 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
       title="Species network · arc · dendrogram — which measurements move together"
       subtitle="The correlogram above shows every retained pair as a cell; this shows pairs above a threshold as a graph — line colour is the sign of r, line width its strength, node colour the measurement family. The dendrogram groups species by average-linkage clustering on 1 − |r|. Duplicate ChemSpec FTIR carbon fields are omitted from both views. Hover a species to isolate its partners."
       provenance="react-graph-gallery.com/network-chart · /arc-diagram · /dendrogram · not in the estate (0 flow figures)"
-      controls={
-        <>
-          <Select label="Site" value={block.code} options={siteCodes} onChange={setSiteCode} optionLabel={(c) => (c === 'All' ? 'All sites' : meta.sites.find((s) => s.code === c)?.name ?? c)} />
-          <Segmented label="View" value={view} options={VIEWS} onChange={setView} />
-          {view !== 'Dendrogram' && <Select label="|r| ≥" value={thresholdS} options={THRESHOLDS} onChange={setThresholdS} />}
-          {view === 'Dendrogram' && <Select label="Cut at" value={cutS} options={CUTS} onChange={setCutS} title="distance 1 − |r| at which the tree is cut into clusters" />}
-          <span className="control">
-            {/* the dendrogram has no edges: it clusters every species, whatever the |r| threshold */}
-            {nSpecies} species{view === 'Dendrogram' ? '' : ` · ${nEdges} edges`}
-            {view === 'Dendrogram' && dendro ? ` · ${dendro.nClusters} clusters at ${cutS}` : ''}
-          </span>
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap">
         {nSpecies < 3 ? (

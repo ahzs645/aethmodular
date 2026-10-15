@@ -1,4 +1,10 @@
 import type { MeetingSpec } from './types'
+import type { FigureVariant } from '@/components/Figure'
+
+// a reader-facing variant (components/Figure `variants`): the loadings span three decades, so log by default
+const LOG_AXIS: FigureVariant = { key: 'axis', label: 'x axis', default: 'log', choices: [
+  { value: 'log', label: 'Log', patch: { log: true } }, { value: 'linear', label: 'Linear', patch: { log: false } },
+] }
 
 const SEASON_ROWS = ['All Addis', 'Dry (Oct-Feb)', 'Belg (Mar-May)', 'Kiremt (Jun-Sep)']
 
@@ -89,10 +95,12 @@ export default {
         {
           kind: 'histogram', id: 'a1009-conc', table: 'loading', value: 'conc', series: 'population', log: true,
           title: 'Concentration', xLabel: 'HIPS Fabs / MAC 10 (µg/m³)',
+          variants: [LOG_AXIS],
         },
         {
           kind: 'histogram', id: 'a1009-mass', table: 'loading', value: 'mass', series: 'population', log: true,
           title: 'Mass per filter', xLabel: 'HIPS Fabs / MAC 10 × volume (µg per filter)',
+          variants: [LOG_AXIS],
         },
         {
           kind: 'table', id: 'a1009-mass-table', table: 'loading_summary', title: 'Where the Addis median sits in the IMPROVE distribution',

@@ -3,11 +3,12 @@ import { styleBrush } from '@/lib/brush'
 import { seasonsForSite } from '@/siteSeasons'
 import { IdentityLine, RefLine } from '@/components/RefLines'
 import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
-import { useRegressions, fitsFor, FitGroupingControl, effectiveGrouping } from '@/lib/regressionPrefs'
+import { useRegressions, fitsFor } from '@/lib/regressionPrefs'
+import { fitGroupingOption, useChartOptions } from '@/lib/chartOptions'
 import { groupedRegressions, type FitGrouping, type RegressionGroup } from '@/lib/siteRegression'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Note, Segmented, Toggle } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { ColorLegend, SizeLegend } from '@/components/ColorLegend'
 import { FieldSelect } from '@/components/FieldSelect'
 import { Legend, toggleIn, useLegend } from '@/components/Legend'
@@ -68,20 +69,36 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const hl = useHighlight()
-  const { methods, grouping: chosenGrouping } = useRegressions()
-
-  const [colorBy, setColorBy] = useState<(typeof COLOR_BY)[number]>('Site')
+  const { methods, grouping: chosenGrouping, setGrouping } = useRegressions()
+  const { hidden, setHidden, dim, hover, setHover } = useLegend()
   // the reader's colour field, or Iron, or the first field, among the fields this view has now: the
   // chart can mount while a network's fields are still loading (empty), or keep a field the next network lacks
   const [colorChoice, setColorField] = useState<string | null>(null)
   const colorField = [colorChoice, 'Iron', meta.fields[0]].find((f): f is string => !!f && meta.fields.includes(f)) ?? ''
   const [sizeField, setSizeField] = useState(NO_SIZE)
-  const [layout, setLayout] = useState<(typeof LAYOUTS)[number]>('Combined')
-  // the panels may already split by site or season; draw (and offer) only the groupings that still differ
-  const grouping = effectiveGrouping(chosenGrouping, layout === 'Per site' ? 'site' : layout === 'Per season' ? 'season' : 'combined')
-  const [showFit, setShowFit] = useState(true)
-  const [brushing, setBrushing] = useState(false)
-  const { hidden, setHidden, dim, hover, setHover } = useLegend()
+  // the options and when each applies (lib/chartOptions). Fits are per panel, so the grouping
+  // offered follows the layout: a fit per site inside a site's panel is the pooled fit, and a
+  // per-season panel holds one site in one season, so every grouping is its one fit
+  const o = useChartOptions('scatter', [
+    { key: 'layout', label: 'Layout', choices: LAYOUTS, default: 'Combined', title: 'PlotConfig.layout: combined overlays sites; per site is the grid' },
+    { key: 'colorBy', label: 'Colour', choices: COLOR_BY, default: 'Site', title: 'Value: a third measurement on a sequential ramp (2–98 % of its range)', onChange: () => setHidden(new Set()) },
+    { key: 'colorField', when: (c) => c.colorBy === 'Value', node: () => <FieldSelect label="by" value={colorField} meta={meta} onChange={setColorField} /> },
+    { key: 'size', node: () => <FieldSelect label="Size" value={sizeField} meta={meta} onChange={setSizeField} extraOptions={[NO_SIZE]} title="Bubble plot: mark area proportional to a fourth measurement" /> },
+    { key: 'fitLines', label: 'Fit lines', toggle: true, default: true },
+    fitGroupingOption({ bind: [chosenGrouping, setGrouping as (v: never) => void],
+      when: (c) => !!c.fitLines && (c.estimators as number) > 0 && c.layout !== 'Per season',
+      hiddenNote: (c) => (c.fitLines && (c.estimators as number) > 0 && c.layout === 'Per season' ? 'one fit per panel' : null),
+      offerSite: (c) => c.layout === 'Combined',
+      pooledLabel: (c) => (c.layout === 'Per site' ? 'One fit per site' : 'One pooled fit') }),
+    { key: 'brushing', label: 'Brush to select', toggle: true, default: false, title: 'Drag a rectangle: the enclosed filters are highlighted on every chart of this tab', onChange: ((v: boolean) => { if (!v) hl.setSelected(null) }) as (v: never) => void },
+    { key: 'selected', when: () => !!hl.selected, node: () => <span className="control"><strong>{hl.selected?.size}</strong> selected<button type="button" className="btn quiet" onClick={() => hl.setSelected(null)}>Clear</button></span> },
+    { key: 'count', node: () => <span className="control">{points.length} points</span> },
+  ], { estimators: methods.length })
+  const layout = o.values.layout as (typeof LAYOUTS)[number]
+  const colorBy = o.values.colorBy as (typeof COLOR_BY)[number]
+  const showFit = o.values.fitLines as boolean
+  const brushing = o.values.brushing as boolean
+  const grouping = o.values.grouping as FitGrouping
   const { log: logAxes } = axes
 
   const seasonColor = useMemo(() => new Map(meta.seasons.map((s) => [s.name, s.color])), [meta.seasons])
@@ -230,29 +247,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
       title={title}
       subtitle="Any measured quantity against any other, coloured by site, by the selected season calendar, or by a third measurement (the 123 'colour-coded' crossplots in the estate); a fourth can size the marks. The stats box reports R² and the regression fits selected in the sidebar. Hover anywhere near a point to find it in every other chart; click it for the full record."
       provenance="stands in for 281 scatter + 123 colour-by-third-variable figures across 116 notebooks · plotting/crossplots.py · react-graph-gallery.com/scatter-plot · /bubble-plot"
-      controls={
-        <>
-          <Segmented label="Layout" value={layout} options={LAYOUTS} onChange={setLayout} title="PlotConfig.layout: combined overlays sites; per site is the grid" />
-          <Segmented label="Colour" value={colorBy} options={COLOR_BY} onChange={(v) => { setColorBy(v); setHidden(new Set()) }} title="Value: a third measurement on a sequential ramp (2–98 % of its range)" />
-          {colorBy === 'Value' && <FieldSelect label="by" value={colorField} meta={meta} onChange={setColorField} />}
-          <FieldSelect label="Size" value={sizeField} meta={meta} onChange={setSizeField} extraOptions={[NO_SIZE]} title="Bubble plot: mark area proportional to a fourth measurement" />
-          <Toggle label="Fit lines" checked={showFit} onChange={setShowFit} />
-          {/* grouping only where it changes something: each per-season panel holds one site in one season */}
-          {showFit && methods.length > 0 && layout !== 'Per season' && <FitGroupingControl
-            only={layout === 'Per site' ? ['pooled', 'season'] : undefined}
-            labels={layout === 'Per site' ? { pooled: 'One fit per site', season: 'Separate fit per season' } : undefined}
-            value={grouping} />}
-          {showFit && methods.length > 0 && layout === 'Per season' && <span className="control hint" title="Each panel holds one site in one season, so it gets one fit">one fit per panel</span>}
-          <Toggle label="Brush to select" checked={brushing} onChange={(v) => { setBrushing(v); if (!v) hl.setSelected(null) }} title="Drag a rectangle: the enclosed filters are highlighted on every chart of this tab" />
-          {hl.selected && (
-            <span className="control">
-              <strong>{hl.selected.size}</strong> selected
-              <button type="button" className="btn quiet" onClick={() => hl.setSelected(null)}>Clear</button>
-            </span>
-          )}
-          <span className="control">{points.length} points</span>
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap centered">
         {points.length < 3 ? (

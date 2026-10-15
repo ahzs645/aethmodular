@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { useMemo, useRef, type ReactNode } from 'react'
 import * as d3 from 'd3'
 import { HIDDEN_DUPLICATES, RESTATES } from '@/fieldLineage'
-import { ChartFrame, Empty, Segmented, Toggle } from '@/components/ChartFrame'
+import { useChartOptions } from '@/lib/chartOptions'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -40,11 +41,21 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const [mode, setMode] = useState<(typeof MODES)[number]>('Stacked bars')
-  const [stat, setStat] = useState<(typeof STATS)[number]>('Mean')
-  const [grouping, setGrouping] = useState<(typeof GROUPINGS)[number]>(initialGrouping)
-  const [unitMode, setUnitMode] = useState<(typeof UNIT_MODES)[number]>('concentration (µg/m³)')
-  const [twoLevel, setTwoLevel] = useState(true)
+  // the options and when each applies (lib/chartOptions): bars and units belong to the stacked
+  // bars, the family level to the hierarchy views; bars by season need more than one season in view
+  const o = useChartOptions(id, [
+    { key: 'mode', label: 'Encoding', choices: MODES, default: 'Stacked bars', hidden: 'Stacked bars', when: () => !stackedOnly },
+    { key: 'bars', label: 'Bars', choices: GROUPINGS, default: initialGrouping, hidden: 'per site', title: 'One bar per site, or one per season within each site',
+      when: (c) => c.mode === 'Stacked bars' && (c.nSeasons as number) > 1 },
+    { key: 'units', label: 'Units', choices: UNIT_MODES, default: 'concentration (µg/m³)', hidden: 'concentration (µg/m³)', when: (c) => c.mode === 'Stacked bars' },
+    { key: 'stat', label: 'Statistic', choices: STATS, default: 'Mean' },
+    { key: 'twoLevel', label: 'Group by family', toggle: true, default: true, hidden: true, when: (c) => c.mode !== 'Stacked bars', title: 'Two levels of hierarchy: family → species' },
+  ], { nSeasons: new Set(rows.map((r) => r.season)).size })
+  const mode = o.values.mode as (typeof MODES)[number]
+  const stat = o.values.stat as (typeof STATS)[number]
+  const grouping = o.values.bars as (typeof GROUPINGS)[number]
+  const unitMode = o.values.units as (typeof UNIT_MODES)[number]
+  const twoLevel = o.values.twoLevel as boolean
   const lg = useLegend()
   const fam = useLegend()
 
@@ -144,15 +155,7 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
       title={title}
       subtitle="Available species grouped by measurement family (carbon, ions, metals & crustal). Concentration stacks the selected mean or median in µg/m³. Composition (%) divides each positive, visible species statistic by the sum of those statistics; it is not a percentage of measured PM2.5 or an average of individual-filter percentages. Coverage can differ by species. Missing values are omitted, never filled with zero. Negative or zero aggregate species values have no positive slice. Hiding a species or family changes the percentage denominator. PM2.5 mass is a separate measurement: the difference is not a measured residual or full mass closure."
       provenance="1 stackplot + 2 pie calls in the estate · react-graph-gallery.com/barplot (stacked) · /treemap · /circular-packing · /donut"
-      controls={
-        <>
-          {!stackedOnly && <Segmented label="Encoding" value={mode} options={MODES} onChange={setMode} />}
-          {mode === 'Stacked bars' && <Segmented label="Bars" value={grouping} options={GROUPINGS} onChange={setGrouping} title="One bar per site, or one per season within each site" />}
-          {mode === 'Stacked bars' && <Segmented label="Units" value={unitMode} options={UNIT_MODES} onChange={setUnitMode} />}
-          <Segmented label="Statistic" value={stat} options={STATS} onChange={setStat} />
-          {mode !== 'Stacked bars' && <Toggle label="Group by family" checked={twoLevel} onChange={setTwoLevel} title="Two levels of hierarchy: family → species" />}
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
         {composition.sites.length === 0 && <Empty>No sites in this subset.</Empty>}
