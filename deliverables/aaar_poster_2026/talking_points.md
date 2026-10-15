@@ -8,7 +8,7 @@ Deck: `aaar_practice_2026-10-15.pptx` (8 slides, built by `build.py`; every numb
 EC in Addis Ababa is very high (~31× typical IMPROVE). The current FTIR calibration predicts it on the wrong scale
 (2.30x −6.09), and the same kind of calibration poorly predicts the 97 held-out IMPROVE filters whose spectra look like
 Addis (0.46x vs HIPS, R² 0.52), even though TOR and HIPS agree on them. Addis filters carry ~9× the EC per filter of
-a typical IMPROVE filter, and Addis EC is above every IMPROVE site (21 of 36 SPARTAN sites are too). Baseline
+a typical IMPROVE filter, and Addis EC is above every IMPROVE site (17 of 29 SPARTAN sites are too). Baseline
 correction moves the Addis intercept from −6.1 to −1.1; a calibration explorer tests thousands of calibrations;
 season-specific calibrations help in Kiremt (slope 0.51 → 0.94) but not Dry or Belg.
 
@@ -48,7 +48,8 @@ season-specific calibrations help in Kiremt (slope 0.51 → 0.94) but not Dry or
 - Slide 10: combining the three seasonal calibrations gives 1.43x −4.23 overall (each season lands at a different
   offset). Belg gets worse.
 - Don't bring up Abu Dhabi (OC predictions there are unreliable: lots of dust, little organics).
-- SPARTAN carbon is FTIR, not thermal; SPARTAN BC = HIPS fAbs / 10. Data: SPARTAN public release v3.1.4.
+- SPARTAN carbon is FTIR, not thermal; SPARTAN BC = HIPS fAbs / 10. Slide 7 uses HIPS-measured BC only (public
+  values 'estimated from the HIPS-SSR curve' are left out), so 29 SPARTAN sites qualify. Data: SPARTAN public release v3.1.4.
 - OC/fAbs by site, the k-sweep and VIBES are discussion material, not on slides.
 
 ## [FILL IN]

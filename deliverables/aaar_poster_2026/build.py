@@ -203,6 +203,8 @@ SP_RAW = ROOT / "data/spartan/raw/FilterBased/ChemSpecPM25"
 
 def load_spartan_site(path):
     d = pd.read_csv(path, comment="#", low_memory=False)
+    # BC: keep HIPS measurements only; drop values "Estimated from the HIPS-SSR BC curve" (method 220)
+    d = d[~(d.Parameter_Name.eq("BC PM2.5") & ~d.Analysis_Description.fillna("").str.upper().eq("HIPS"))]
     scale = np.where(d.Units.str.startswith("Nanograms"), 1e-3, 1.0)       # elements: ng/m³ -> µg/m³
     d = d.assign(Value=d.Value * scale,
                  date=pd.to_datetime(dict(year=d.Start_Year_local, month=d.Start_Month_local, day=d.Start_Day_local),
@@ -585,6 +587,7 @@ fig_slide(
     f"{sp_sites.loc['ETAD', 'median']:.1f} µg/m³, above every IMPROVE site, and most SPARTAN sites sit at the high end. "
     "So this is not only Addis: the IMPROVE calibration network barely covers the EC levels much of the world lives with.",
     "EC from HIPS for both networks (IMPROVE fAbs / 10, SPARTAN 'BC PM2.5' = fAbs / 10), so no FTIR EC is used. "
+    "SPARTAN BC values estimated from the HIPS-SSR curve (method 220) are left out; only HIPS measurements count. "
     "Site medians with IQR, log scale; every site, Addis included, uses all its public filters (Addis n "
     f"{int(sp_sites.loc['ETAD', 'n'])}), so the comparison is like for like across sites. IMPROVE sites with >= 50 filters (FED export, 1988-2025); SPARTAN >= 10 "
     f"(public release v3.1.4). Addis is number {etad_rank_top} of {len(cont)} sites from the top; {sp_above_imp_max} "
