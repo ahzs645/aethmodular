@@ -55,6 +55,7 @@ import { FilterEditsProvider, HandEditsBadge, type FilterGroup } from '@/lib/fil
 import { GroupDrawer } from '@/components/GroupDrawer'
 import { WeatherPage } from '@/pages/WeatherPage'
 import { HIDDEN_DUPLICATES } from '@/fieldLineage'
+import { PageSidebarProvider, PageSidebarSlot } from '@/lib/pageSidebar'
 import { WEATHER_GROUP, type WeatherFile } from '@/lib/weather'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 
@@ -843,6 +844,7 @@ export default function App() {
     <PrefsProvider>
     <HighlightProvider pinnedId={pinnedId} setPinned={setPinnedId} openSample={openSample} openRecord={openRecord} onDismiss={dismissSample}>
     {/* hand edits hold on every tab: each chart that draws a filter leaves the excluded ones out */}
+    <PageSidebarProvider>
     <FilterEditsProvider enabled dropped={dropIds} kept={keepIds}
       onDrop={dropFilters} onKeep={keepFilters} onRestore={restoreFilters} group={group} onGroup={setGroup}>
       {openRow && (
@@ -866,8 +868,9 @@ export default function App() {
       {isEmbed() && <a className="embed-open" href="#" onClick={async (e) => { e.preventDefault(); window.open((await viewUrl(currentView())), '_blank', 'noopener') }}>Open in the gallery ↗</a>}
       {(NETWORK_TABS as readonly string[]).includes(tab) && <BrushBar onKeep={keepFilters} onDrop={dropFilters} />}
       <Shell nav={nav} wide={tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks'} editsBadge={!subset}>
-        {/* tabs without the filter panel still get the fit controls where they draw fits */}
-        {subset ?? ((tab === 'baseline' || (tab === 'meeting' && meeting === 'followup')) && <RegressionSidebar />)}
+        {/* tabs without the Filters panel: a sidebar for the page's own controls, with the fits where the page fits */}
+        {subset ?? ((tab === 'baseline' || tab === 'blanks' || (tab === 'meeting' && (meeting === 'followup' || meeting === 'satoshi')))
+          && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'} />)}
         {tab === 'census' && <CensusPage census={census} />}
         {tab === 'similarity' && <SimilarityPage />}
         {tab === 'meeting' && <>
@@ -934,6 +937,7 @@ export default function App() {
           ))}
       </Shell>
     </FilterEditsProvider>
+    </PageSidebarProvider>
     </HighlightProvider>
     </PrefsProvider>
     </RegressionProvider>
@@ -975,15 +979,16 @@ function HeaderTools() {
   )
 }
 
-/** The filter panel's counterpart on tabs that have fits but no filters: same edge tab, same place, same open state. */
-function RegressionSidebar() {
+/** The sidebar of a tab without the Filters panel: the page's own controls (lib/pageSidebar), and the fits where it draws them. */
+function PageSidebar({ fits }: { fits: boolean }) {
   const [open, setOpen] = useSidePanelOpen()
   const top = useHeaderHeight()
   return <>
-    <SideDock open={open} top={top} tab={<button className="subset-tab" type="button" aria-expanded={open} onClick={() => setOpen(!open)} title={open ? 'Hide the fits' : 'Show the fits'}><span className="subset-tab-label">Fits</span></button>}>
-      <aside className="panel subset subset-panel" aria-label="Fits">
-        <header className="subset-head"><strong>Fits</strong><span style={{ marginLeft: 'auto' }}><button type="button" className="btn quiet" onClick={() => setOpen(false)} aria-label="Close fits" title="Close">✕</button></span></header>
-        <RegressionControls />
+    <SideDock open={open} top={top} tab={<button className="subset-tab" type="button" aria-expanded={open} onClick={() => setOpen(!open)} title={open ? 'Hide the filters' : 'Show the filters'}><span className="subset-tab-label">Filters</span></button>}>
+      <aside className="panel subset subset-panel" aria-label="Filters">
+        <header className="subset-head"><strong>Filters</strong><span style={{ marginLeft: 'auto' }}><button type="button" className="btn quiet" onClick={() => setOpen(false)} aria-label="Close filters" title="Close">✕</button></span></header>
+        <PageSidebarSlot />
+        {fits && <RegressionControls />}
       </aside>
     </SideDock>
   </>

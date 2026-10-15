@@ -9,12 +9,12 @@ import { PageToc } from '@/components/PageToc'
 import { Combobox } from '@/components/Combobox'
 import { SatoshiSpectra } from '@/components/SatoshiSpectra'
 import { BankPicker, BaselinePicker, SeasonPicker } from '@/components/Pickers'
-import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
 import { PageChoiceControls, PageChoices, usePageChoice } from '@/lib/pageChoices'
+import { SidebarControls } from '@/lib/pageSidebar'
 import { useHighlight, type FilterRecord } from '@/lib/highlight'
 import { BANK_COLOR, BASELINE_COLOR, FONT, INK, OCT1_HATCH, SPECTRAL_REGION } from '@/lib/theme'
 import { f2, f3, pct, signed, coef, coefSigned } from '@/lib/format'
@@ -129,25 +129,14 @@ function SatoshiView({ data }: { data: SatoshiData }) {
   )
 }
 
+/** The page's filters (baseline, season, similarity region), in the gallery's shared sidebar (lib/pageSidebar). */
 function SimilarityRegionSidebar({ mask, onMask }: { mask: Mask; onMask: (mask: Mask) => void }) {
-  const [open, setOpen] = useSidePanelOpen()
-  const top = useHeaderHeight()
-  return <>
-    <button type="button" className={`subset-tab ${open ? 'open' : ''}`} style={{ top: top + 24 }}
-      aria-expanded={open} onClick={() => setOpen(!open)} title={open ? 'Hide the filters' : 'Show the filters'}>
-      <span className="subset-tab-label">Filters</span>
-    </button>
-    {open && <aside className="panel subset subset-panel" style={{ top, height: `calc(100vh - ${top}px)` }} aria-label="Filters">
-      <header className="subset-head"><strong>Filters</strong>
-        <span style={{ marginLeft: 'auto' }}><button type="button" className="btn quiet" onClick={() => setOpen(false)} aria-label="Close filters" title="Close">✕</button></span>
-      </header>
-      {/* baseline and season: one choice for every chart on the page */}
-      <div className="page-choices"><PageChoiceControls /></div>
-      <Combobox label="Similarity region" value={mask} options={MASKS.map(key => ({ key, label: MASK_SHORT[key] }))} onChange={onMask} />
-      <p className="chart-note">{MASK_DESCRIPTION[mask]}</p>
-      <ExplainOnly><p className="chart-note">This region chooses the analogs on the charts. The spline baseline only covers 4000–1425 cm⁻¹, so its analogs are identical under both regions; only the VIBES analogs change. Every PLS model is still fitted on each baseline's full predictor grid.</p></ExplainOnly>
-    </aside>}
-  </>
+  return <SidebarControls title="For every chart on this page">
+    <PageChoiceControls />
+    <Combobox label="Similarity region" value={mask} options={MASKS.map(key => ({ key, label: MASK_SHORT[key] }))} onChange={onMask} />
+    <p className="chart-note">{MASK_DESCRIPTION[mask]}</p>
+    <ExplainOnly><p className="chart-note">This region chooses the analogs on the charts. The spline baseline only covers 4000–1425 cm⁻¹, so its analogs are identical under both regions; only the VIBES analogs change. Every PLS model is still fitted on each baseline's full predictor grid.</p></ExplainOnly>
+  </SidebarControls>
 }
 
 // ------------------------------------------------------------------ answers

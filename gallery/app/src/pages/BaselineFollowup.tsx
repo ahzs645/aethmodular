@@ -54,7 +54,7 @@ export function BaselineFollowup({ completed = false }: { completed?: boolean } 
       ? 'unexpected notebook follow-up export' : null)
   if(!data) return <ExportState title="Notebook follow-up" what="the executed notebook results" error={error}/>
   return <>
-    {completed && <ChartFrame title="Completed rank-70 calibration selection and routing" exportable={false}><p>VIBES is corrected on 4000–500 cm⁻¹ with background rank 70. These EC models use the shared 4000–1425 channels, the original site split and the same training-only routing protocol. Outcomes are exploratory because this IMPROVE test set was previously inspected.</p></ChartFrame>}
+    {completed && <ExplainOnly><ChartFrame title="Completed rank-70 calibration selection and routing" exportable={false}><p>VIBES is corrected on 4000–500 cm⁻¹ with background rank 70. These EC models use the shared 4000–1425 channels, the original site split and the same training-only routing protocol. Outcomes are exploratory because this IMPROVE test set was previously inspected.</p></ChartFrame></ExplainOnly>}
     <ExplainOnly><ChartFrame id="baseline-followup" title="Executed notebook follow-up" exportable={false}>
       <p>{completed ? 'The common-test and routing analyses below were rerun through the migration CLI on the completed rank-70 corrections.' : 'The common-test and routing analyses below were run separately through the Jupyter CLI on the earlier Colab corrections.'} They refit EC calibrations; the original 12,808 corrected spectra and outer site split remain frozen. The original test outcomes had already been inspected, so these comparisons are exploratory.</p>
       <p style={{display:'flex',gap:16,flexWrap:'wrap',fontSize:13}}>

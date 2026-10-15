@@ -6,6 +6,8 @@ import { IntervalStrip } from '@/components/IntervalStrip'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, ExplainOnly, Note, Select, Toggle } from '@/components/ChartFrame'
 import { PageToc } from '@/components/PageToc'
+import { SidebarControls } from '@/lib/pageSidebar'
+import { PageChoiceControls, PageChoices, usePageChoice, type PageChoiceDef } from '@/lib/pageChoices'
 import { FullRangeVibesStatus } from '@/components/FullRangeVibesStatus'
 import { FullRangeVibesResults } from '@/components/FullRangeVibesResults'
 import { XAxis, YAxis } from '@/components/Axes'
@@ -49,23 +51,32 @@ export function BaselineComparisonPage({ mac, demingLambda }: { mac: number; dem
   const interval = data.groups.find(g => g.cohort === cohort && g.dimension === 'overall')!
   const spectrum = data.spectra.find(r => r.sample_id === sample) ?? data.spectra[0]
   const masks = data.historical_masks.filter(r => ['full','no_co2','no_co2_max3600','no_co2_max3500'].includes(r.mask))
-  const archiveControl=<ChartFrame title="Baseline versions" exportable={false} controls={<Toggle label="Show archived benchmark (VIBES fit 4000–1425)" checked={showArchived} onChange={v=>setArchiveMode(v?'show':'hide')}/> }>
-    <p>Completed rank-70 VIBES results appear below. The earlier fit restricted to 4000–1425 cm⁻¹ and its scores are archived.</p>
-    <p><a href="#tab=meeting">Open per-filter overlays and completed rank-70 seasonal comparisons</a></p>
-  </ChartFrame>
-  if(!showArchived) return <BaselineRankProvider rank={70}><PageToc>
+  // one calibration cohort for the benchmark and the paired diagnostics, set in the sidebar
+  const cohortChoice: PageChoiceDef = { key: 'cohort', urlKey: 'r70cohort', label: 'Calibration cohort', default: 'full_pool', options: ['full_pool', 'locked800'], legacy: ['vfcohort'],
+    render: (v, set) => <Select label="Calibration cohort" value={v} options={['full_pool','locked800']} optionLabel={o => cohortName(o as BaselineCohort)} onChange={set} /> }
+  // the version switch lives in the sidebar; what the versions are is explanation (Explain on)
+  const archiveControl=<>
+    <SidebarControls title="Baselines"><Toggle label="Show archived benchmark (VIBES fit 4000–1425)" checked={showArchived} onChange={v=>setArchiveMode(v?'show':'hide')}/></SidebarControls>
+    <ExplainOnly><ChartFrame title="Baseline versions" exportable={false}>
+      <p>Completed rank-70 VIBES results appear below. The earlier fit restricted to 4000–1425 cm⁻¹ and its scores are archived.</p>
+      <p><a href="#tab=meeting">Open per-filter overlays and completed rank-70 seasonal comparisons</a></p>
+    </ChartFrame></ExplainOnly>
+  </>
+  if(!showArchived) return <BaselineRankProvider rank={70}><PageChoices panel={false} defs={[cohortChoice]}><PageToc>
     {archiveControl}
-    <FullRangeVibesStatus />
+    <SidebarControls><PageChoiceControls /></SidebarControls>
+    <ExplainOnly><FullRangeVibesStatus /></ExplainOnly>
     <FullRangeVibesResults />
     <CompletedPairedViews />
     <BaselineFollowup completed />
     <CompletedVibesDiagnostics />
     <BaselineExternalPilot completed mac={mac} demingLambda={demingLambda} />
     <SpectraPlot key="current" spectrum={spectrum} data={data} onSample={setSample} masks={masks} archivedBenchmark={false}/>
-  </PageToc></BaselineRankProvider>
-  return <BaselineRankProvider rank={data.run.background_rank}><PageToc>
+  </PageToc></PageChoices></BaselineRankProvider>
+  return <BaselineRankProvider rank={data.run.background_rank}><PageChoices panel={false} defs={[cohortChoice]}><PageToc>
     {archiveControl}
-    <FullRangeVibesStatus linkToMeeting />
+    <SidebarControls><PageChoiceControls /></SidebarControls>
+    <ExplainOnly><FullRangeVibesStatus linkToMeeting /></ExplainOnly>
     <FullRangeVibesResults />
     <ChartFrame title="Archived comparison · VIBES fit 4000–1425 cm⁻¹" exportable={false}>
       <ExplainOnly><p>This page preserves the earlier truncated-grid benchmark and its notebook follow-up. VIBES was fitted after restricting both samples and blanks to approximately 4000–1425 cm⁻¹. Its results do not describe the newer full-range VIBES fit cropped afterwards.</p></ExplainOnly>
@@ -110,7 +121,7 @@ export function BaselineComparisonPage({ mac, demingLambda }: { mac: number; dem
       <p style={{ fontSize: 13, display: 'flex', gap: 18, flexWrap: 'wrap' }}><a href={BASE+'baseline_pool_ledger.csv'} download>IMPROVE inclusion ledger</a><a href={BASE+'baseline_addis_ledger.csv'} download>Addis inclusion ledger</a><a href={BASE+'baseline_paired_predictions.csv'} download>Paired test predictions</a><a href={BASE+'baseline_comparison.json'} download>Comparison data and source hashes</a><a href={BASE+'baseline_applicability.json'} download>Training spectral distance data</a></p>
       <details><summary style={{ cursor: 'pointer', fontSize: 12 }}>Source files and SHA-256 provenance</summary><p style={{ fontSize: 11, overflowWrap: 'anywhere' }}>Run signature: {data.run.signature}</p>{Object.entries(data.source_sha256).map(([name, hash]) => <p key={name} style={{ fontSize: 11, overflowWrap: 'anywhere' }}><code>{name}</code><br />{hash}</p>)}</details>
     </ChartFrame></ExplainOnly>
-  </PageToc></BaselineRankProvider>
+  </PageToc></PageChoices></BaselineRankProvider>
 }
 
 /** One paired test filter as a drawer record: TOR, both predictions and their errors. */
@@ -265,7 +276,7 @@ function CompletedPairedViews() {
   // the same file as the page above; the shared cache downloads it once
   const { data, error } = useExport<BaselineData>('baseline_paired_r70.json',
     (d) => d.run.background_rank !== 70 || d.pairs.length !== 2464 ? 'unexpected current paired export' : null)
-  const [cohort, setCohort] = useComparisonParam<BaselineCohort>('r70cohort', 'full_pool', ['full_pool','locked800'])
+  const { value: cohort } = usePageChoice('cohort', ['full_pool','locked800']) as { value: BaselineCohort }
   const [site, setSite] = useComparisonParam<string>('r70site', 'All sites')
   const [band, setBand] = useComparisonParam<string>('r70band', 'All loadings', ['All loadings','Q1','Q2','Q3','Q4'])
   const [sample, setSample] = useComparisonParam<string>('r70sample', 'improve:1970697')
@@ -276,13 +287,14 @@ function CompletedPairedViews() {
   const selected = data.spectra.find(r => r.sample_id === sample) ?? data.spectra[0]
   const interval = data.groups.find(r => r.cohort === cohort && r.dimension === 'overall')!
   return <>
-    <ChartFrame id="rank70-paired" title="Completed rank 70 · paired EC diagnostics" exportable={false} controls={<>
-      <Select label="Calibration cohort" value={cohort} options={['full_pool','locked800']} optionLabel={v => cohortName(v as BaselineCohort)} onChange={v => {setCohort(v as BaselineCohort);setSite('All sites');setBand('All loadings')}} />
+    <SidebarControls title="Paired diagnostics">
       <Select label="Test site" value={sites.includes(site) ? site : 'All sites'} options={sites} onChange={setSite} />
       <Select label="Training-defined loading band" value={band} options={['All loadings','Q1','Q2','Q3','Q4']} onChange={setBand} />
       <Select label="Decomposition inspection case" value={selected.sample_id} options={data.spectra.map(r=>r.sample_id)} onChange={setSample} />
-    </>}>
-      <p>VIBES correction: 4000–500 cm⁻¹, rank 70. Both EC models use the shared 4000–1425 channels. {rows.length.toLocaleString()} paired test filters shown out of {all.length.toLocaleString()}.</p>
+    </SidebarControls>
+    <ChartFrame id="rank70-paired" title="Completed rank 70 · paired EC diagnostics" exportable={false}>
+      <ExplainOnly><p>VIBES correction: 4000–500 cm⁻¹, rank 70. Both EC models use the shared 4000–1425 channels.</p></ExplainOnly>
+      <p className="chart-note" style={{ marginTop: 0 }}>{cohortName(cohort)} · {rows.length.toLocaleString()} of {all.length.toLocaleString()} paired test filters shown</p>
       <table className="census-table"><thead><tr><th>Baseline</th><th>PLS factors</th><th>RMSE</th><th>MAE</th><th>Bias</th><th>Predictive R²</th></tr></thead><tbody>{METHODS.map(method => {
         const metrics=baselineMetrics(rows,method)
         return <tr key={method}><td>{baselineName(method, { backgroundRank: 70 })}</td><td>{data.scores.find(s=>s.cohort===cohort&&s.method===method)?.k}</td><td>{f(metrics?.rmse)}</td><td>{f(metrics?.mae)}</td><td>{f(metrics?.bias)}</td><td>{f(metrics?.r2)}</td></tr>

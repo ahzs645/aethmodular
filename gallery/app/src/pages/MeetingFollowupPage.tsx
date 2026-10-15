@@ -25,7 +25,8 @@ import { SweepPlot } from '@/components/SweepPlot'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
-import { PageChoices, usePageChoice } from '@/lib/pageChoices'
+import { PageChoiceControls, PageChoices, usePageChoice } from '@/lib/pageChoices'
+import { SidebarControls } from '@/lib/pageSidebar'
 import { baseFilterId, useHighlight } from '@/lib/highlight'
 import { ADDIS_ALL, BASELINE_COLOR, FONT, IMPROVE_GREY, INK, OCT1_HATCH, RAMP_DIVERGING, SPECTRAL_REGION } from '@/lib/theme'
 import { ANALOG_SELECTION_EXCLUDED, OCT1_ALSO_EXCLUDED } from '@/components/SpectralRegions'
@@ -135,21 +136,26 @@ function MeetingView({ data, galleryRows, galleryMeta, version, onVersion, showA
     <PageToc>
       <ExplainOnly><FullRangeVibesStatus /></ExplainOnly>
       {/* share builds ship only the current rank-70 export (gallery/share/build_share.py) */}
-      {!import.meta.env.VITE_SHARE_TABS && <ChartFrame title="Analysis version" exportable={false} controls={<Select label="VIBES analysis" value={version} options={['current', 'earlier']} onChange={onVersion} optionLabel={v => v === 'current' ? 'Completed · rank 70' : 'Archived · preliminary rank 30'} />}>
+      {/* the version switches sit in the sidebar; what each version is, is explanation (Explain on) */}
+      <SidebarControls title="Analysis">
+        {!import.meta.env.VITE_SHARE_TABS && <Select label="VIBES analysis" value={version} options={['current', 'earlier']} onChange={onVersion} optionLabel={v => v === 'current' ? 'Completed · rank 70' : 'Archived · preliminary rank 30'} />}
+        {version === 'earlier' && <Toggle label="Show archived 4000–1425 fit" checked={showArchived} onChange={onShowArchived} />}
+      </SidebarControls>
+      {!import.meta.env.VITE_SHARE_TABS && <ExplainOnly><ChartFrame title="Analysis version" exportable={false}>
         <p>{version === 'current' ? 'All seasonal, combined-set, calibration and specification-grid VIBES models below use the completed rank-70 correction. Full and shared prediction windows are separate options.' : 'Earlier seasonal and specification results retain their original preliminary rank-30 corrections. These archived models have not been overwritten.'}</p>
-      </ChartFrame>}
+      </ChartFrame></ExplainOnly>}
       <ExplainOnly>
       <ChartFrame title="Baseline versions" exportable={false}>
         <p>The VIBES fit restricted to 4000–1425 cm⁻¹ is archived. Current VIBES variants fit the full available 4000–500 cm⁻¹ grid. The narrower prediction variant is a sensitivity comparison: it uses the corrected 4000–1425 channels to test the effect of adding lower-wavenumber information. Archived results and their mixed specification grid remain available below.</p>
       </ChartFrame></ExplainOnly>
-      {version === 'earlier' && <Toggle label="Show archived 4000–1425 fit" checked={showArchived} onChange={onShowArchived} />}
       <CohortCoverage data={data} galleryRows={galleryRows} />
       <SeasonalComposition rows={galleryRows} meta={galleryMeta} />
       <ExplainOnly><Answers data={data} /></ExplainOnly>
       <ExplainOnly><Levers data={data} /></ExplainOnly>
-      <PageChoices defs={[{ key: 'baseline', urlKey: 'mbase', label: 'Baseline', default: 'AIRSpec', options: baselines,
+      <PageChoices panel={false} defs={[{ key: 'baseline', urlKey: 'mbase', label: 'Baseline', default: 'AIRSpec', options: baselines,
         legacy: ['mrmethod', 'm3method', 'mmmethod', 'msmethod', 'mtmethod', 'mimethod', 'mcmethod', 'mgmethod'],
         render: (v, set) => <BaselinePicker value={v} onChange={set} /> }]}>
+      <SidebarControls title="For every chart on this page"><PageChoiceControls /></SidebarControls>
       <EstimatorViews>{method => <StartingPoint data={projectMeeting(data, method)} />}</EstimatorViews>
       <EstimatorViews fixed="deming">{() => <RepeatStrip data={data} />}</EstimatorViews>
       <EstimatorViews>{method => <ThreePlots data={projectMeeting(data, method)} />}</EstimatorViews>

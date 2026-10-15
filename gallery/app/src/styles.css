@@ -266,6 +266,12 @@ code { font-family: var(--mono); font-size: 0.92em; }
 /* a filter dimension in the side panel, with an on/off switch in its header */
 .filter-section { display: flex; flex-direction: column; gap: 8px; padding: 10px 0 4px; border-top: 1px solid var(--ink-grid); }
 .filter-section.off { gap: 0; }
+/* a page's own controls in the left sidebar (lib/pageSidebar): stacked, full width */
+.page-sidebar-title { font: 600 12px var(--font); color: var(--ink-text); text-transform: uppercase; letter-spacing: 0.4px; }
+.page-sidebar-controls { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.page-sidebar-controls > *, .page-sidebar-controls .control { max-width: 100%; }
+.page-sidebar-controls select { max-width: 100%; }
+.page-sidebar-controls .chart-note { margin: 0; }
 .section-switch { display: flex; align-items: center; gap: 8px; }
 .section-switch-label { border: 0; background: none; padding: 0; font: 600 12px var(--font); color: var(--ink-text); text-transform: uppercase; letter-spacing: 0.4px; cursor: pointer; }
 .filter-section.off .section-switch-label { color: var(--ink-muted); }

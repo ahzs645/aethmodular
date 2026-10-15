@@ -4,14 +4,15 @@ import { Marker } from '@/components/RefLines'
 import { useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
-import { ChartFrame, Note, Segmented, Select } from '@/components/ChartFrame'
+import { ChartFrame, ExplainOnly, Note, Segmented, Select } from '@/components/ChartFrame'
 import { PageToc } from '@/components/PageToc'
 import { XAxis, YAxis } from '@/components/Axes'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
-import { PageChoices, usePageChoice } from '@/lib/pageChoices'
+import { PageChoiceControls, PageChoices, usePageChoice } from '@/lib/pageChoices'
+import { SidebarControls } from '@/lib/pageSidebar'
 import { BankPicker } from '@/components/Pickers'
 import { SpectrumPlot } from '@/components/SpectrumPlot'
 import { SweepPlot } from '@/components/SweepPlot'
@@ -70,11 +71,13 @@ export function BlanksPage() {
 function BlanksView({ d }: { d: BlanksData }) {
   const banks = banksOf(d)
   return (
-    <PageChoices title="Background bank — for every chart on this page" defs={[{ key: 'bank', urlKey: 'bkbank', label: 'Background bank',
+    <PageChoices panel={false} defs={[{ key: 'bank', urlKey: 'bkbank', label: 'Background bank',
       default: banks.includes('VIBES-full-r70') ? 'VIBES-full-r70' : banks[0], options: banks, legacy: ['bkpcbank', 'bkerrbank', 'bkcompbank', 'bkcapbank'],
       render: (v, set) => <BankPicker value={v} banks={banks} labels={d.bank_labels} ranks={Object.fromEntries(banks.map((b) => [b, d.banks[b].rank]))} onChange={set} /> }]}>
     <PageToc>
-      <Findings d={d} />
+      {/* the bank is a page-wide switch: in the sidebar; the findings are explanation (Explain on) */}
+      <SidebarControls title="For every chart on this page"><PageChoiceControls /></SidebarControls>
+      <ExplainOnly><Findings d={d} /></ExplainOnly>
       <Inventory d={d} />
       <RawSpectra d={d} />
       <Variability d={d} />

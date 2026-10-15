@@ -37,7 +37,7 @@ export function BaselineResearchDiagnostics({ data, rows, cohort, sample }: { da
 export function CompletedVibesDiagnostics() {
   const {data,error} = useExport<ApplicabilityData>('baseline_applicability_r70.json', d=>d.schema_version!==1||d.background_rank!==70||d.rows.length!==5160 ? 'unexpected rank-70 distance export' : null)
   return data ? <>
-    <ChartFrame title="Completed rank-70 training spectral space" exportable={false}><p>Separate training-only PCA fits use spline spectra and rank-70 VIBES corrected over 4000–500 cm⁻¹, then restricted to the shared 4000–1425 channels. Distances and EC errors are recomputed from those spectra and their paired models.</p></ChartFrame>
+    <ExplainOnly><ChartFrame title="Completed rank-70 training spectral space" exportable={false}><p>Separate training-only PCA fits use spline spectra and rank-70 VIBES corrected over 4000–500 cm⁻¹, then restricted to the shared 4000–1425 channels. Distances and EC errors are recomputed from those spectra and their paired models.</p></ChartFrame></ExplainOnly>
     <ApplicabilityViews data={data}/>
   </> : <ExportState title="Completed spectral diagnostics" what="the rank-70 distances" error={error}/>
 }
