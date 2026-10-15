@@ -25,6 +25,7 @@ import { SweepPlot } from '@/components/SweepPlot'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
+import { PageChoices, usePageChoice } from '@/lib/pageChoices'
 import { baseFilterId, useHighlight } from '@/lib/highlight'
 import { ADDIS_ALL, BASELINE_COLOR, FONT, IMPROVE_GREY, INK, OCT1_HATCH, RAMP_DIVERGING, SPECTRAL_REGION } from '@/lib/theme'
 import { ANALOG_SELECTION_EXCLUDED, OCT1_ALSO_EXCLUDED } from '@/components/SpectralRegions'
@@ -123,6 +124,7 @@ function MeetingView({ data, galleryRows, galleryMeta, version, onVersion, showA
   data: MeetingData; galleryRows: FilterRow[]; galleryMeta?: MetaFile; version: string; onVersion: (v: string) => void; showArchived: boolean; onShowArchived: (v: boolean) => void
 }) {
   const hl = useHighlight()
+  const baselines = useBaselineOptions()
   // a clicked filter stays pinned on every chart until empty plot space is clicked or Esc
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') hl.setPinned(null) }
@@ -145,15 +147,18 @@ function MeetingView({ data, galleryRows, galleryMeta, version, onVersion, showA
       <SeasonalComposition rows={galleryRows} meta={galleryMeta} />
       <ExplainOnly><Answers data={data} /></ExplainOnly>
       <ExplainOnly><Levers data={data} /></ExplainOnly>
+      <PageChoices defs={[{ key: 'baseline', urlKey: 'mbase', label: 'Baseline', default: 'AIRSpec', options: baselines,
+        legacy: ['mrmethod', 'm3method', 'mmmethod', 'msmethod', 'mtmethod', 'mimethod', 'mcmethod', 'mgmethod'],
+        render: (v, set) => <BaselinePicker value={v} onChange={set} /> }]}>
       <EstimatorViews>{method => <StartingPoint data={projectMeeting(data, method)} />}</EstimatorViews>
-      <EstimatorViews available={['deming', 'york']}>{() => <RepeatStrip data={data} />}</EstimatorViews>
+      <EstimatorViews fixed="deming">{() => <RepeatStrip data={data} />}</EstimatorViews>
       <EstimatorViews>{method => <ThreePlots data={projectMeeting(data, method)} />}</EstimatorViews>
       <BaselineCompare data={data} />
       <MacEnvelope data={data} />
       <ExplainOnly><OpStep data={data} /></ExplainOnly>
       <EstimatorViews>{method => <Seasonality data={projectMeeting(data, method)} />}</EstimatorViews>
       <EstimatorViews>{method => <Stitched data={projectMeeting(data, method)} />}</EstimatorViews>
-      <EstimatorViews available={['deming', 'york']}>{() => <SlopeInterceptMap data={data} />}</EstimatorViews>
+      <EstimatorViews fixed="deming">{() => <SlopeInterceptMap data={data} />}</EstimatorViews>
       <EstimatorViews>{method => <Combined data={projectMeeting(data, method)} />}</EstimatorViews>
       <EstimatorViews available={['deming', 'york']}>{() => <SpecCurve
         id="meeting-spec-curve"
@@ -164,7 +169,8 @@ function MeetingView({ data, galleryRows, galleryMeta, version, onVersion, showA
         subtitle={(f) => `All ${f ? f.n.toLocaleString() + ' ' : ''}baselined Addis specifications after the 17 Sep levers (spline and VIBES baselines; CO₂ and >3600 cm⁻¹ excluded from selection; site-grouped or interleaved cross-validation; cohort sizes every 5 filters; number of PLS factors by each protocol's rule), sorted by Deming intercept at MAC 10, with the analytic choices underneath: a darker strip means more of the specifications at that position used the choice. Click a choice to keep only specifications that use it; click several to intersect. Red points use the selected highlight criteria; by default they pass every saved guardrail${f ? ': ' + f.guardrails : ''}.`}
         provenance={version === 'current' ? 'Completed rank-70 migration · category_grid.jsonl · original specification guardrails' : 'Archived meeting_followup_20260917/category_grid.jsonl · original specification guardrails'}
       />}</EstimatorViews>
-      <EstimatorViews available={['deming', 'york']}>{() => <GridStep data={data} />}</EstimatorViews>
+      <EstimatorViews fixed="deming">{() => <GridStep data={data} />}</EstimatorViews>
+      </PageChoices>
       <ExplainOnly><NextSteps data={data} /></ExplainOnly>
     </PageToc>
   )
@@ -583,7 +589,8 @@ const REPEAT_METRICS = ['slope', 'intercept'] as const
 
 function RepeatStrip({ data }: { data: MeetingData }) {
   const methods = useBaselineOptions()
-  const [method, setMethod] = useSearchParam<string>('mrmethod', 'AIRSpec', methods)
+  // the page's one baseline (PageChoices at the top of the page)
+  const { value: method } = usePageChoice('baseline', methods)
   // 1 Oct: Ann asked for the intercept beside the slope, to see whether the IMPROVE
   // analogs also carry the large negative Addis intercept.
   const [metric, setMetric] = useSearchParam<(typeof REPEAT_METRICS)[number]>('mrmetric', 'slope', REPEAT_METRICS)
@@ -606,7 +613,7 @@ function RepeatStrip({ data }: { data: MeetingData }) {
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › RepeatStrip" title={`One separate calibration per season, built from that season's IMPROVE spectral analogs: are the analogs mispredicted the way Addis is? Deming ${metric}, median and 10–90 % over 100 splits`}
       subtitle={`Each block is its own calibration set: the 500 IMPROVE filters whose spectra correlate best with that season's median Addis spectrum ("All Addis" uses the all-season median). Each split holds about 20 % of those analogs out by whole site (cross-validation), picks the number of PLS factors on the rest, and predicts both the held-out IMPROVE filters and the season's Addis filters (the test set) with the same calibration.${isSlope ? '' : ' Intercepts are in µg/m³ of EC.'}`}
-      controls={<><BaselinePicker value={method} onChange={setMethod} /><Segmented label="Show" value={metric} options={REPEAT_METRICS} onChange={setMetric} /></>}>
+      controls={<><Segmented label="Show" value={metric} options={REPEAT_METRICS} onChange={setMetric} /></>}>
       <div>
         <IntervalStrip labelWidth={250} rowHeight={17} blockGap={12}
           panels={[{ label: isSlope ? 'Deming slope (1 = agreement)' : 'Deming intercept, µg/m³ (0 = agreement)', reference: ref0 }]}
@@ -636,7 +643,8 @@ const UNITS = ['µg/m³', 'µg per filter'] as const
 function ThreePlots({ data }: { data: MeetingData }) {
   const methods = useBaselineOptions()
   const fit = FIT_STYLE[useEstimator()]
-  const [method, setMethod] = useSearchParam<string>('m3method', 'AIRSpec', methods)
+  // the page's one baseline (PageChoices at the top of the page)
+  const { value: method } = usePageChoice('baseline', methods)
   const [season, setSeason] = useSearchParam<string>('mseason', 'Dry (Oct-Feb)', data.groups)
   const FAMS = ['seasonal calibration', ...MODELS] as const
   const [fam, setFam] = useSearchParam<string>('mfam', 'seasonal calibration', FAMS)
@@ -675,7 +683,6 @@ function ThreePlots({ data }: { data: MeetingData }) {
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › ThreePlots" title="Three crossplots per season — TOR EC vs HIPS, FTIR vs TOR and FTIR vs HIPS on held-out IMPROVE filters, beside the Addis test set from the same calibration and the spectra"
       subtitle="Only IMPROVE filters from sites held out of the calibration set are drawn (cross-validation). 'Seasonal calibration' is one model per season from its 500 analogs; the all-IMPROVE models are Ann's reading of the current model (lot 251, or the frozen full-pool model for the selected analysis version). For the all-IMPROVE models, the IMPROVE panels can show either the season's analogs or every held-out IMPROVE filter."
       controls={<>
-        <BaselinePicker value={method} onChange={setMethod} />
         <ModelSeg label="Calibration" value={fam} options={FAMS} onChange={setFam} />
         <SeasonPicker value={season} groups={data.groups} onChange={setSeason} />
         {canPool && <Segmented label="IMPROVE filters" value={pop as any} options={POPULATIONS} onChange={setPop as any} />}
@@ -733,7 +740,8 @@ function ThreePlots({ data }: { data: MeetingData }) {
 // ------------------------------------------------------------------ 6. MAC envelope
 function MacEnvelope({ data }: { data: MeetingData }) {
   const methods = useBaselineOptions()
-  const [method, setMethod] = useSearchParam<string>('mmmethod', 'AIRSpec', methods)
+  // the page's one baseline (PageChoices at the top of the page)
+  const { value: method } = usePageChoice('baseline', methods)
   const hst = data.mac_hist
   const edges: number[] = hst.edges
   const dens = (c: number[]) => { const n = d3.sum(c) || 1; return c.map((v) => v / n) }
@@ -743,7 +751,7 @@ function MacEnvelope({ data }: { data: MeetingData }) {
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › MacEnvelope" title="MAC envelope — where the analogs sit in the IMPROVE TOR-vs-HIPS envelope (Fabs / TOR EC)"
       subtitle="Ann: does TOR EC vs Fabs give a MAC near 10 for the analogs, or do these samples sit at the low-EC end of the envelope?"
-      controls={<BaselinePicker label="Baseline (selection space)" value={method} onChange={setMethod} />}>
+      >
       <SweepPlot height={320} minWidth={560} xScale="log" xDomain={[edges[0], edges[edges.length - 1]]} yDomain={[0, ymax * 1.1]}
         xLabel="Fabs / TOR EC (m²/g)" yLabel="Share of filters" yFormat={(v) => v.toFixed(2)} xMarkers={[{ at: 10, label: 'MAC 10' }]}
         series={series.map((s) => ({ id: s.key, label: s.label, color: s.color, curve: 'monotone' as const, marks: false, interval: 'none' as const, width: s.key === 'pool' ? 3 : 2,
@@ -840,13 +848,13 @@ function Seasonality({ data }: { data: MeetingData }) {
   const methods = useBaselineOptions()
   const { showCI } = useRegressions()
   const fitName = FIT_STYLE[useEstimator()].label
-  const [method, setMethod] = useSearchParam<string>('msmethod', 'AIRSpec', methods)
+  // the page's one baseline (PageChoices at the top of the page)
+  const { value: method } = usePageChoice('baseline', methods)
   const [model, setModel] = useSearchParam<string>('msmodel', MODELS[0], MODELS)
   const fitId = `allimprove|${method}|${model}`
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › Seasonality" title="Addis by season, all-IMPROVE model — the full baseline-corrected Addis test set coloured by season, with a Deming line per season"
       controls={<>
-        <BaselinePicker value={method} onChange={setMethod} />
         <ModelSeg label="Model" value={model} options={MODELS} onChange={setModel} />
       </>}>
       <Grid>
@@ -869,7 +877,8 @@ function stitchedSpread(data: MeetingData, method: string) {
 function Stitched({ data }: { data: MeetingData }) {
   const methods = useBaselineOptions()
   const fitName = FIT_STYLE[useEstimator()].label
-  const [method, setMethod] = useSearchParam<string>('mtmethod', 'AIRSpec', methods)
+  // the page's one baseline (PageChoices at the top of the page)
+  const { value: method } = usePageChoice('baseline', methods)
   const fitId = `stitched|${method}|season calibrations`
   const sp = stitchedSpread(data, method)
   const all = statRow(data.stats, { fit_id: fitId, population: 'addis', eval_group: ALL_ADDIS })
@@ -878,7 +887,7 @@ function Stitched({ data }: { data: MeetingData }) {
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › Stitched"
       title="Seasons stitched — each season's Addis filters predicted by its own season calibration, all on one test set crossplot"
       subtitle={`Ann's top priority: calibrate each season on its own analogs, then put the three seasons back together. Each season's line is its own calibration's readout; the ${fitName} line is the combined Addis result.`}
-      controls={<BaselinePicker value={method} onChange={setMethod} />}>
+      >
       <Grid>
         <SeasonCrossplot data={data} fitId={fitId} title={`Addis, own-season calibrations (${methodName(method)})`} />
         <div style={{ fontSize: 13, lineHeight: 1.6, alignSelf: 'center' }}>
@@ -901,7 +910,8 @@ function Stitched({ data }: { data: MeetingData }) {
 function SlopeInterceptMap({ data }: { data: MeetingData }) {
   const methods = useBaselineOptions()
   const { showCI } = useRegressions()
-  const [method, setMethod] = useSearchParam<string>('mimethod', 'AIRSpec', methods)
+  // the page's one baseline (PageChoices at the top of the page)
+  const { value: method } = usePageChoice('baseline', methods)
   const [gridSet, setGridSet] = useSearchParam<string>('migrid', 'passing', ['passing', 'all', 'none'])
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
@@ -968,7 +978,6 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
       title="Slope vs intercept — where the season calibrations land among every configuration tried, against the target (slope 1, intercept 0)"
       subtitle="Test set (Addis) Deming slope and intercept at MAC 10. Grid points, the all-IMPROVE model, SPARTAN and the stitched seasons are read out on all Addis; each season calibration is also shown read out on its own season."
       controls={<>
-        <BaselinePicker value={method} onChange={setMethod} />
         <Segmented label="Grid configurations" value={gridSet as any} options={['passing', 'all', 'none'] as const} onChange={setGridSet as any} />
       </>}>
       <div ref={ref}>
@@ -1008,7 +1017,8 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
 function Combined({ data }: { data: MeetingData }) {
   const methods = useBaselineOptions()
   const { showCI } = useRegressions()
-  const [method, setMethod] = useSearchParam<string>('mcmethod', 'AIRSpec', methods)
+  // the page's one baseline (PageChoices at the top of the page)
+  const { value: method } = usePageChoice('baseline', methods)
   const cals = [
     { label: 'All-IMPROVE lot 251', fit: `allimprove|${method}|all-IMPROVE lot 251`, byGroup: true },
     { label: 'All-IMPROVE both lots (frozen)', fit: `allimprove|${method}|all-IMPROVE both lots (frozen Colab)`, byGroup: true },
@@ -1029,7 +1039,7 @@ function Combined({ data }: { data: MeetingData }) {
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › Combined" title="Calibrations compared — Addis Deming slope and intercept by season for every calibration"
       subtitle="Ann: combine the three seasonal analog sets into one calibration and compare against the VIP/Euclidean analogs and the seasonally calibrated results."
-      controls={<BaselinePicker value={method} onChange={setMethod} />}>
+      >
       <div>
         <IntervalStrip labelWidth={260} rowHeight={16} panels={[
           { heading: 'Slope (1 = agreement)', label: 'Deming slope', reference: 1, domain: slopeDomain },
@@ -1057,7 +1067,8 @@ const METRICS = ['intercept', 'slope', 'CV R²'] as const
 const READOUTS = ['all', 'dry', 'belg', 'kiremt'] as const
 function GridStep({ data }: { data: MeetingData }) {
   const methods = useBaselineOptions()
-  const [method, setMethod] = useSearchParam<string>('mgmethod', 'AIRSpec', methods)
+  // the page's one baseline (PageChoices at the top of the page)
+  const { value: method } = usePageChoice('baseline', methods)
   const [mode, setMode] = useSearchParam<string>('mmode', 'site_heldout', ['site_heldout', 'app'])
   const [metric, setMetric] = useSearchParam<string>('mmetric', 'intercept', METRICS)
   const [readout, setReadout] = useSearchParam<string>('mread', 'all', READOUTS)
@@ -1094,7 +1105,6 @@ function GridStep({ data }: { data: MeetingData }) {
     <ChartFrame title="Category grid — prioritization categories re-run on baselined spectra: Addis readout by cohort size"
       subtitle={`${data.grid_n} fitted cohorts: category × cutoff (step 5) × baseline × CV. Cells average the fits inside each 25-filter bin. Replaces the intercept continuum plot.`}
       controls={<>
-        <BaselinePicker value={method} onChange={setMethod} />
         <Segmented label="Cross-validation protocol" value={CV_PROTOCOL_SHORT[mode] as any} options={[CV_PROTOCOL_SHORT.site_heldout, CV_PROTOCOL_SHORT.app] as any} onChange={(v: string) => setMode(v === CV_PROTOCOL_SHORT.app ? 'app' : 'site_heldout')} />
         <Segmented label="Colour" value={metric as any} options={METRICS} onChange={setMetric as any} />
         {metric !== 'CV R²' && <Segmented label="Test set (Addis) readout" value={readout as any} options={READOUTS} onChange={setReadout as any} />}

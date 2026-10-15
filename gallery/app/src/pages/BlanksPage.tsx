@@ -11,6 +11,7 @@ import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
+import { PageChoices, usePageChoice } from '@/lib/pageChoices'
 import { BankPicker } from '@/components/Pickers'
 import { SpectrumPlot } from '@/components/SpectrumPlot'
 import { SweepPlot } from '@/components/SweepPlot'
@@ -67,7 +68,11 @@ export function BlanksPage() {
 }
 
 function BlanksView({ d }: { d: BlanksData }) {
+  const banks = banksOf(d)
   return (
+    <PageChoices title="Background bank — for every chart on this page" defs={[{ key: 'bank', urlKey: 'bkbank', label: 'Background bank',
+      default: banks.includes('VIBES-full-r70') ? 'VIBES-full-r70' : banks[0], options: banks, legacy: ['bkpcbank', 'bkerrbank', 'bkcompbank', 'bkcapbank'],
+      render: (v, set) => <BankPicker value={v} banks={banks} labels={d.bank_labels} ranks={Object.fromEntries(banks.map((b) => [b, d.banks[b].rank]))} onChange={set} /> }]}>
     <PageToc>
       <Findings d={d} />
       <Inventory d={d} />
@@ -81,6 +86,7 @@ function BlanksView({ d }: { d: BlanksData }) {
       <AfterCorrection d={d} />
       <Capture d={d} />
     </PageToc>
+    </PageChoices>
   )
 }
 
@@ -124,7 +130,8 @@ function Findings({ d }: { d: BlanksData }) {
 
 // ------------------------------------------------------------------ 1. inventory
 function Inventory({ d }: { d: BlanksData }) {
-  const [bank, setBank] = useSearchParam<BankKey>('bkbank', 'VIBES-allblanks', banksOf(d))
+  // the page's background bank (PageChoices at the top of the page)
+  const { value: bank } = usePageChoice('bank', banksOf(d))
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
@@ -143,7 +150,7 @@ function Inventory({ d }: { d: BlanksData }) {
     <ChartFrame id="blanks-inventory" source="gallery/app/src/pages/BlanksPage.tsx › Inventory"
       title="Inventory — every labeled blank, when it was sampled, and which background it trained"
       subtitle={`${n} labeled blanks: IMPROVE blanks carry a sampling date; ETAD blanks have none and are spread out in MediaId order. Colour shows the blank's role in the selected background.`}
-      controls={<BankPicker value={bank} banks={banksOf(d)} labels={d.bank_labels} onChange={setBank} />}>
+      >
       <div ref={ref} style={{ position: 'relative' }}>
         <svg width={iw + m.left + m.right} height={ih + m.top + m.bottom} fontFamily={FONT.family}>
           <g transform={`translate(${m.left},${m.top})`}>
@@ -234,7 +241,8 @@ function PcaMap({ d }: { d: BlanksData }) {
   const [px, setPx] = useSearchParam<string>('bkpcx', 'PC1', pcs)
   const [py, setPy] = useSearchParam<string>('bkpcy', 'PC2', pcs)
   const [colorBy, setColorBy] = useSearchParam<string>('bkpccol', 'lot / source', [...PCA_COLOR])
-  const [bank, setBank] = useSearchParam<BankKey>('bkpcbank', 'VIBES-allblanks', banksOf(d))
+  // the page's background bank (PageChoices at the top of the page)
+  const { value: bank } = usePageChoice('bank', banksOf(d))
   const [pin, setPin] = useState<number | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
@@ -262,7 +270,6 @@ function PcaMap({ d }: { d: BlanksData }) {
         <Segmented label="x" value={px} options={pcs} onChange={(v) => { if (v === py) setPy(px); setPx(v) }} />
         <Segmented label="y" value={py} options={pcs} onChange={(v) => { if (v === px) setPx(py); setPy(v) }} />
         <Select label="Colour" value={colorBy} options={[...PCA_COLOR]} onChange={setColorBy} />
-        {colorBy === 'role in background' && <BankPicker value={bank} banks={banksOf(d)} labels={d.bank_labels} onChange={setBank} />}
       </>}>
       <div ref={ref} style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 16 }}>
         <svg width={side + m.left + m.right} height={side + m.top + m.bottom} fontFamily={FONT.family}>
@@ -366,7 +373,8 @@ function RankSelection({ d }: { d: BlanksData }) {
 
 // ------------------------------------------------------------------ 7. per-blank error
 function PerBlankError({ d }: { d: BlanksData }) {
-  const [bank, setBank] = useSearchParam<BankKey>('bkerrbank', 'VIBES-allblanks', banksOf(d))
+  // the page's background bank (PageChoices at the top of the page)
+  const { value: bank } = usePageChoice('bank', banksOf(d))
   const B = d.banks[bank]
   const ranks = Object.keys(B.per_blank).sort((a, b) => +a - +b)
   const [rankSel, setRankSel] = useState<string>(String(B.rank))
@@ -389,7 +397,7 @@ function PerBlankError({ d }: { d: BlanksData }) {
     <ChartFrame id="blanks-outliers" source="gallery/app/src/pages/BlanksPage.tsx › PerBlankError"
       title="Which blanks dominate — each blank's leave-one-out error"
       subtitle="How badly the background built from all the other blanks reconstructs each blank, at the selected rank (log scale). Points far to the right are blanks no other blank resembles; they set the SE in the rank rule."
-      controls={<><BankPicker value={bank} banks={banksOf(d)} labels={d.bank_labels} onChange={setBank} /><Segmented label="Rank" value={rk} options={ranks} onChange={setRankSel} /></>}>
+      controls={<><Segmented label="Rank" value={rk} options={ranks} onChange={setRankSel} /></>}>
       <div ref={ref} style={{ position: 'relative' }}>
         <svg width={iw + m.left + m.right} height={h} fontFamily={FONT.family}>
           <g transform={`translate(${m.left},${m.top})`}>
@@ -419,13 +427,14 @@ function PerBlankError({ d }: { d: BlanksData }) {
 
 // ------------------------------------------------------------------ 8. components
 function Components({ d }: { d: BlanksData }) {
-  const [bank, setBank] = useSearchParam<BankKey>('bkcompbank', 'VIBES-full-r70', banksOf(d))
+  // the page's background bank (PageChoices at the top of the page)
+  const { value: bank } = usePageChoice('bank', banksOf(d))
   const B = d.banks[bank]
   return (
     <ChartFrame id="blanks-components" source="gallery/app/src/pages/BlanksPage.tsx › Components"
       title="Background components — the shapes VIBES may subtract from every spectrum"
       subtitle={`First ${B.loadings.length} PCA components of the selected bank's blanks (unit-length loadings). The background is the bank's mean blank plus any combination of the first ${B.rank} components; anything a sample shares with these shapes can be absorbed as background.`}
-      controls={<BankPicker value={bank} banks={banksOf(d)} labels={d.bank_labels} ranks={Object.fromEntries(banksOf(d).map((b) => [b, d.banks[b].rank]))} onChange={setBank} />}>
+      >
       <FacetGrid items={B.loadings} gap={12} render={(l, cw, k) =>
         <SpectrumPlot width={cw} minWidth={0} height={170} window={[4000, 500]} regions={SHADES} hover="none" zeroLine yLabel=""
           series={[{ id: `PC${k + 1}`, wn: d.bin_wn, y: l, color: k >= B.rank ? INK.neutral : BANK_COLOR[bank], width: 1.4 }]}
@@ -474,7 +483,8 @@ function AfterCorrection({ d }: { d: BlanksData }) {
 const POPS = ['held-out blanks', 'IMPROVE samples', 'Addis samples'] as const
 const POP_COLOR: Record<string, string> = { 'held-out blanks': INK.axis, 'IMPROVE samples': '#2C6E9E', 'Addis samples': '#c0392b' }
 function Capture({ d }: { d: BlanksData }) {
-  const [bank, setBank] = useSearchParam<BankKey>('bkcapbank', 'VIBES-full-r70', banksOf(d))
+  // the page's background bank (PageChoices at the top of the page)
+  const { value: bank } = usePageChoice('bank', banksOf(d))
   const B = d.banks[bank]
   const pops = POPS.filter((p) => B.capture[p])
   const series = pops.map((p) => { const c = B.capture[p]
@@ -484,7 +494,7 @@ function Capture({ d }: { d: BlanksData }) {
     <ChartFrame id="blanks-capture" source="gallery/app/src/pages/BlanksPage.tsx › Capture"
       title="What the background could absorb — share of each spectrum inside the blank subspace"
       subtitle="For each raw spectrum, the fraction of its deviation from the bank's mean blank that lies in the span of the first k blank components (median and 10–90 %). Blanks should be near 1; for ambient samples, a high fraction means the background can mimic most of the sample, analyte included. This is a geometric bound, not the VIBES fit itself (VIBES adds a positive analyte term and priors)."
-      controls={<BankPicker value={bank} banks={banksOf(d)} labels={d.bank_labels} onChange={setBank} />}>
+      >
       <SweepPlot series={series} xDomain={[1, B.cap]} yDomain={[0, 1]} height={300}
         xLabel="Blank components (k)" yLabel="Share inside blank subspace" yFormat={(v) => `${Math.round(100 * v)} %`}
         xMarkers={[{ at: B.rank, label: `chosen rank ${B.rank}`, color: BANK_COLOR[bank] }]}

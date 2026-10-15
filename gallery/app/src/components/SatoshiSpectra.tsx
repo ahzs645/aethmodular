@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { ChartFrame, Empty, Segmented, Toggle } from '@/components/ChartFrame'
 import { SpectraTraces } from '@/components/SimilaritySpectra'
 import { useSearchParam } from '@/lib/url'
+import { usePageChoice } from '@/lib/pageChoices'
 import { useHighlight } from '@/lib/highlight'
-import { BaselinePicker, SeasonPicker } from '@/components/Pickers'
 import { baselineName } from '@/lib/labels'
 import { Traces, fetchBinary, loadEtadIds, loadSimilarityMeta, siteName, type SimilarityMeta } from '@/lib/similarity'
 import { addisTargetSpectra, rankedAnalogSpectra, type AddisSpectrumIds, type AnalogBaseline, type AnalogRegion } from '@/lib/satoshiSpectra'
@@ -14,8 +14,9 @@ const baselineLabel = (baseline: string) => baselineName(baseline)
 type Columns = Record<string, (number | string | null)[]>
 
 export function SatoshiSpectra({ membership, groups, region }: { membership: Columns; groups: string[]; region: AnalogRegion }) {
-  const [baseline, setBaseline] = useSearchParam<AnalogBaseline>('satSpecBaseline', 'VIBES-full-r70', BASELINES)
-  const [group, setGroup] = useSearchParam<string>('satSpecGroup', 'All Addis', groups)
+  // the page's baseline and season (pages/SatoshiFollowupPage PageChoices)
+  const { value: baseline } = usePageChoice('baseline', BASELINES) as { value: AnalogBaseline }
+  const { value: group } = usePageChoice('season', groups)
   const [topN, setTopN] = useSearchParam<string>('satSpecN', '500', TOP_N)
   const [test, setTest] = useSearchParam<'on' | 'off'>('satSpecTest', 'on', ['on', 'off'])
   const [meta, setMeta] = useState<SimilarityMeta | null>(null)
@@ -86,8 +87,6 @@ export function SatoshiSpectra({ membership, groups, region }: { membership: Col
     pinInstructions="Hover a trace to identify it; click to pin it and open its filter details. Ranks compare each analog with the median Addis spectrum."
     provenance="Saved Satoshi follow-up membership ranks · export_similarity.py binned per-filter traces · frozen Addis test-set membership"
     controls={<>
-      <BaselinePicker as="select" value={baseline} options={BASELINES} onChange={value => setBaseline(value as AnalogBaseline)} />
-      <SeasonPicker as="select" label="Analogs of" value={group} groups={groups} onChange={setGroup} />
       <Segmented label="Most similar" value={topN} options={TOP_N} onChange={setTopN} />
       <Toggle label="Outer test sites" checked={test === 'on'} onChange={value => setTest(value ? 'on' : 'off')} />
     </>} />

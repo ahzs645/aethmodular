@@ -14,6 +14,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
+import { PageChoiceControls, PageChoices, usePageChoice } from '@/lib/pageChoices'
 import { useHighlight, type FilterRecord } from '@/lib/highlight'
 import { BANK_COLOR, BASELINE_COLOR, FONT, INK, OCT1_HATCH, SPECTRAL_REGION } from '@/lib/theme'
 import { f2, f3, pct, signed, coef, coefSigned } from '@/lib/format'
@@ -104,7 +105,12 @@ function SatoshiView({ data }: { data: SatoshiData }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [hl])
   return (
-    <>
+    <PageChoices panel={false} defs={[
+      { key: 'baseline', urlKey: 'satbase', label: 'Baseline', default: VIBES, options: BASELINES, legacy: ['svipbase', 'sladbase', 'senvbase', 'satSpecBaseline'],
+        render: (v, set) => <BaselinePicker value={v} options={BASELINES} short onChange={set} /> },
+      { key: 'season', urlKey: 'satgroup', label: 'Season', default: 'Kiremt (Jun-Sep)', options: data.groups, legacy: ['sovgroup', 'svipgroup', 'sladgroup', 'senvgroup', 'satSpecGroup', 'sgseason'],
+        render: (v, set) => <SeasonPicker as="select" label="Analogs of" value={v} groups={data.groups} onChange={set} /> },
+    ]}>
     <SimilarityRegionSidebar mask={mask} onMask={setMask} />
     <PageToc>
       <p className="chart-note">{ANALYSIS_CALENDAR_NOTE}</p>
@@ -119,7 +125,7 @@ function SatoshiView({ data }: { data: SatoshiData }) {
       <Oct1Sections o={oct1} />
       <ExplainOnly><Methods data={data} /></ExplainOnly>
     </PageToc>
-    </>
+    </PageChoices>
   )
 }
 
@@ -135,6 +141,8 @@ function SimilarityRegionSidebar({ mask, onMask }: { mask: Mask; onMask: (mask: 
       <header className="subset-head"><strong>Filters</strong>
         <span style={{ marginLeft: 'auto' }}><button type="button" className="btn quiet" onClick={() => setOpen(false)} aria-label="Close filters" title="Close">✕</button></span>
       </header>
+      {/* baseline and season: one choice for every chart on the page */}
+      <div className="page-choices"><PageChoiceControls /></div>
       <Combobox label="Similarity region" value={mask} options={MASKS.map(key => ({ key, label: MASK_SHORT[key] }))} onChange={onMask} />
       <p className="chart-note">{MASK_DESCRIPTION[mask]}</p>
       <ExplainOnly><p className="chart-note">This region chooses the analogs on the charts. The spline baseline only covers 4000–1425 cm⁻¹, so its analogs are identical under both regions; only the VIBES analogs change. Every PLS model is still fitted on each baseline's full predictor grid.</p></ExplainOnly>
@@ -151,8 +159,10 @@ function Answers({ data }: { data: SatoshiData }) {
   const close = data.seasons.filter((g) => !training.includes(g) && eff[g].training > 0.5 * eff[g].baseline)
   // composition of the two "only" sets, straight from the table below
   const prop = (g: string, part: string) => data.overlap_props.find((p) => p.mask === 'presented' && p.group === g && p.part === part)
-  const ecRatio = data.groups.map((g) => prop(g, 'VIBES only')!.tor_ec_median / prop(g, 'spline only')!.tor_ec_median)
-  const higherOcEc = data.groups.filter((g) => prop(g, 'VIBES only')!.oc_ec_median > prop(g, 'spline only')!.oc_ec_median)
+  // a season missing either set is left out of these summaries rather than failing the page
+  const both = data.groups.filter((g) => prop(g, 'VIBES only') && prop(g, 'spline only'))
+  const ecRatio = both.map((g) => prop(g, 'VIBES only')!.tor_ec_median / prop(g, 'spline only')!.tor_ec_median)
+  const higherOcEc = both.filter((g) => prop(g, 'VIBES only')!.oc_ec_median > prop(g, 'spline only')!.oc_ec_median)
   return (
     <ChartFrame source="gallery/app/src/pages/SatoshiFollowupPage.tsx › Answers" title="Satoshi's questions, 2 Oct · original 1 Oct region — short answers (similarity region as presented 1 Oct; completed rank-70 VIBES)" exportable={false}>
       <table className="census-table">
@@ -178,12 +188,6 @@ function Answers({ data }: { data: SatoshiData }) {
 
 // ------------------------------------------------------------------ shared bits
 
-function GroupSelect({ data, value, onChange, label = 'Analogs of' }: { data: SatoshiData; value: string; onChange: (v: string) => void; label?: string }) {
-  return <SeasonPicker as="select" label={label} value={value} groups={data.groups} onChange={onChange} />
-}
-function BaselineSeg({ value, onChange }: { value: string; onChange: (v: Baseline) => void }) {
-  return <BaselinePicker value={value} options={BASELINES} short onChange={(v) => onChange(v as Baseline)} />
-}
 /** The analog set a baseline uses under a region: the spline set is the same under both. */
 const maskFor = (baseline: string, mask: Mask): Mask => (baseline === SPLINE ? 'presented' : mask)
 
@@ -196,11 +200,13 @@ const PARTS = ['spline only', 'shared', 'VIBES only'] as const
 const PART_COLOR: Record<string, string> = { 'spline only': BASE_COLOR[SPLINE], shared: SHARED_COLOR, 'VIBES only': BASE_COLOR[VIBES] }
 
 function Overlap({ data, mask }: { data: SatoshiData; mask: Mask }) {
-  const [group, setGroup] = useSearchParam<string>('sovgroup', 'Kiremt (Jun-Sep)', data.groups)
+  // the page's season and baseline (PageChoices, in the Filters sidebar)
+  const { value: group } = usePageChoice('season', data.groups)
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
-  const rows = data.groups.map((g) => data.overlap.find((o) => o.mask === mask && o.group === g)!)
+  // a season this mask was not run for is left out rather than failing the chart
+  const rows = data.groups.flatMap((g) => data.overlap.filter((o) => o.mask === mask && o.group === g).slice(0, 1))
   const changed = data.overlap.filter((o) => o.mask === 'presented_vs_oct1')
   const m = { top: 8, right: 16, bottom: 30, left: 130 }
   const rowH = 30
@@ -211,7 +217,7 @@ function Overlap({ data, mask }: { data: SatoshiData; mask: Mask }) {
     <ChartFrame id="satoshi-overlap" source="gallery/app/src/pages/SatoshiFollowupPage.tsx › Overlap"
       title="Analog overlap — how many of the 500 analogs per set both baselines select"
       subtitle="Each bar is the union of the two 500-filter analog sets for one Addis group: left, filters only the spline baseline selects; middle, filters both select; right, filters only VIBES selects. A bar with a wide middle would mean the baselines agree on the training set."
-      controls={<GroupSelect data={data} value={group} onChange={setGroup} label="Properties for" />}>
+      >
       <div ref={ref} style={{ position: 'relative' }}>
         <svg width={iw + m.left + m.right} height={m.top + rows.length * rowH + m.bottom} fontFamily={FONT.family}>
           <g transform={`translate(${m.left},${m.top})`}>
@@ -344,8 +350,9 @@ function Swap({ data, mask }: { data: SatoshiData; mask: Mask }) {
 // ------------------------------------------------------------------ 3. VIP
 
 function Vip({ data, mask }: { data: SatoshiData; mask: Mask }) {
-  const [baseline, setBaseline] = useSearchParam<Baseline>('svipbase', VIBES, BASELINES)
-  const [group, setGroup] = useSearchParam<string>('svipgroup', 'Kiremt (Jun-Sep)', data.groups)
+  // the page's season and baseline (PageChoices, in the Filters sidebar)
+  const { value: group } = usePageChoice('season', data.groups)
+  const { value: baseline } = usePageChoice('baseline', BASELINES) as { value: Baseline }
   const wn = data.vip.wn[baseline]
   const mm = maskFor(baseline, mask)
   const std = data.vip.models[`standard|${baseline}`]
@@ -359,7 +366,7 @@ function Vip({ data, mask }: { data: SatoshiData; mask: Mask }) {
     <ChartFrame id="satoshi-vip" source="gallery/app/src/pages/SatoshiFollowupPage.tsx › Vip"
       title="What PLS sees as EC — VIP of the standard all-IMPROVE model vs the analog-trained model"
       subtitle="Variable importance in projection (Wold VIP, Takahama et al. 2019 Eq. 14) for each calibration, on the baseline's full predictor grid. VIP ≥ 1 marks channels that carry more than their share of the explained TOR EC variance. The standard model is the all-IMPROVE lot-251 calibration (frozen site-disjoint split); the analog model is that season's 500-filter calibration from the meeting tab."
-      controls={<><BaselineSeg value={baseline} onChange={setBaseline} /><GroupSelect data={data} value={group} onChange={setGroup} /></>}>
+      >
       <SpectrumPlot window={[4000, baseline === SPLINE ? 1400 : 500]} yDomain={[0, yMax * 1.05]} yLabel="VIP" height={340} regions={shades} hover="readout"
         series={[{ id: 'standard', label: 'standard model VIP', wn, y: std.vip, color: STANDARD_COLOR, width: 1.4 },
           ...(ana ? [{ id: 'analog', label: `${group} analog model VIP`, wn, y: ana.vip, color: data.season_colors[group], width: 1.6, opacity: 0.9 }] : [])]}
@@ -386,8 +393,9 @@ const metricOf: Record<LadderMetric, (r: Row) => number | null> = {
 }
 
 function Ladder({ data, mask }: { data: SatoshiData; mask: Mask }) {
-  const [baseline, setBaseline] = useSearchParam<Baseline>('sladbase', SPLINE, BASELINES)
-  const [group, setGroup] = useSearchParam<string>('sladgroup', 'Kiremt (Jun-Sep)', data.groups)
+  // the page's season and baseline (PageChoices, in the Filters sidebar)
+  const { value: group } = usePageChoice('season', data.groups)
+  const { value: baseline } = usePageChoice('baseline', BASELINES) as { value: Baseline }
   const [metric, setMetric] = useSearchParam<LadderMetric>('sladmetric', 'intercept ÷ median reference', LADDER_METRICS)
   const mm = maskFor(baseline, mask)
   const L = data.ladder
@@ -418,7 +426,7 @@ function Ladder({ data, mask }: { data: SatoshiData; mask: Mask }) {
     <ChartFrame id="satoshi-ladder" source="gallery/app/src/pages/SatoshiFollowupPage.tsx › Ladder"
       title="Fitting or extrapolation — the same readout at every stage, from calibration fit to Addis"
       subtitle="Calibration fit: in-sample predictions of the calibration set. Cross-validation: site-grouped out-of-fold predictions at the chosen number of factors (the curve that chose k). IMPROVE test sites: sites held out of the calibration. Addis test set: FTIR EC vs HIPS Fabs / MAC 10. IMPROVE stages compare FTIR EC with TOR EC. Intercepts are divided by the median reference so stages at 0.1 and 5 µg/m³ can share an axis."
-      controls={<><BaselineSeg value={baseline} onChange={setBaseline} /><GroupSelect data={data} value={group} onChange={setGroup} /><Select label="Readout" value={metric} options={[...LADDER_METRICS]} onChange={(v) => setMetric(v as LadderMetric)} /></>}>
+      controls={<><Select label="Readout" value={metric} options={[...LADDER_METRICS]} onChange={(v) => setMetric(v as LadderMetric)} /></>}>
       <div style={{ maxWidth: 860 }}>
         <SweepPlot series={sweep} xScale="point" xLabel="" yLabel={`Deming ${metric}${unit}`.replace('Deming R²', 'R²').replace('Deming mean bias', 'Mean bias, FTIR − reference')}
           yDomain={yDomain} reference={ref0} dividers={['IMPROVE test sites']} height={314} yFormat={(v) => String(+v.toFixed(2))} />
@@ -484,8 +492,9 @@ function Cross({ title, pts, color, dom, source }: { title: string; pts: Pt[]; c
 
 // ------------------------------------------------------------------ 5. envelope
 function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
-  const [baseline, setBaseline] = useSearchParam<Baseline>('senvbase', SPLINE, BASELINES)
-  const [group, setGroup] = useSearchParam<string>('senvgroup', 'Kiremt (Jun-Sep)', data.groups)
+  // the page's season and baseline (PageChoices, in the Filters sidebar)
+  const { value: group } = usePageChoice('season', data.groups)
+  const { value: baseline } = usePageChoice('baseline', BASELINES) as { value: Baseline }
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
@@ -529,7 +538,7 @@ function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
     <ChartFrame id="satoshi-envelope" source="gallery/app/src/pages/SatoshiFollowupPage.tsx › Envelope"
       title="Lower envelope? — where the analogs sit among the standard model's out-of-sample predictions"
       subtitle="Grey: every lot-251 IMPROVE filter, predicted out of sample by the standard model (site-grouped cross-validation for its calibration sites, direct prediction for its test sites). Coloured: the analogs of one Addis group. Right: each analog's residual (FTIR − TOR) as a percentile among all pool filters in the same TOR EC decile; analogs on the lower envelope would pile up on the left, typical filters spread flat at 10 % per bar."
-      controls={<><BaselineSeg value={baseline} onChange={setBaseline} /><GroupSelect data={data} value={group} onChange={setGroup} /></>}>
+      >
       <div ref={ref} style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 24 }}>
         <div style={{ width: side + m.left + m.right }}>
           <Crossplot title={`Standard model (${SHORT[baseline]}), out of sample`} fit={false} domain={dom} maxSide={side}
@@ -682,7 +691,7 @@ function BlankBanks({ d }: { d: Oct1Data }) {
   const series = banks.map((b) => {
     const pts: { k: number; mse: number }[] = []
     for (let i = 0; i < cv.baseline.length; i++) if (cv.baseline[i] === b) pts.push({ k: cv.components[i] as number, mse: cv.mean_mse[i] as number })
-    return { b, pts, rank: d.banks.find((x) => x.baseline === b)!.rank as number }
+    return { b, pts, rank: (d.banks.find((x) => x.baseline === b)?.rank ?? NaN) as number }
   })
   const all = series.flatMap((s) => s.pts)
   const yDomain = d3.scaleLog().domain(d3.extent(all, (p) => p.mse) as [number, number]).nice().domain() as [number, number]
@@ -776,7 +785,8 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
   const regions = Object.keys(d.group_spectra.regions)
   const [baseline, setBaseline] = useSearchParam<string>('sgbase', baselines[baselines.length - 1] ?? baselines[0], baselines)
   const [region, setRegion] = useSearchParam<string>('sgregion', 'fingerprint', regions)
-  const [season, setSeason] = useSearchParam<string>('sgseason', 'Kiremt (Jun-Sep)', d.seasons)
+  // the page's season; this export may lack it, and then shows its first and says so
+  const { value: season, note: seasonNote } = usePageChoice('season', d.seasons)
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
@@ -806,10 +816,11 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
       title="Within-season groupings of the Addis spectra below 1500 cm⁻¹ — do they line up with higher EC?"
       subtitle={`1 Oct: correlate the Addis spectra within each season over the region VIBES newly covers and look for distinct groupings. Raw correlations are ~0.95, so each spectrum is scaled to unit length, the season mean is subtracted, and the shape deviations are clustered (PCA to 90 % variance, Ward, k 2–4 by silhouette, clusters of at least 5). 'Distinct' means a silhouette above the 95th percentile of structureless Gaussian data with the same variances. Region: ${d.group_spectra.regions[region]}.`}
       controls={<>
-        <BankPicker label="Baseline" value={baseline} banks={baselines} labels={BANK_SHORT} onChange={setBaseline} />
+        {/* a field-blank bank, not the page's spline / VIBES baseline */}
+        <BankPicker label="Background bank" value={baseline} banks={baselines} labels={BANK_SHORT} onChange={setBaseline} />
         <Segmented label="Region" value={region} options={regions} optionLabel={(r) => r === 'fingerprint' ? 'PTFE dropped' : 'PTFE kept'} onChange={setRegion} />
-        <SeasonPicker value={season} groups={d.seasons} short onChange={setSeason} />
       </>}>
+      {seasonNote && <Note>{seasonNote}</Note>}
       <div ref={ref} style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 24 }}>
         <svg width={half} height={h} fontFamily={FONT.family}>
           <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>Main shape deviation (PC1) vs HIPS EC</text>

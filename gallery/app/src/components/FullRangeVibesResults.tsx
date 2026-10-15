@@ -37,13 +37,14 @@ export function FullRangeVibesResults() {
   const [extras, setExtras] = useSearchParam<string>('vfextras', 'hide', ['hide', 'show'])
   if (!data) return <ExportState title="Completed full-range results" what="the completed full-range results" error={error} command="uv run --no-sync python gallery/data/export_vibes_fullrange_results.py" />
   const methods = extras === 'show' ? ['AIRSpec', 'VIBES', 'uncapped_full', 'capped_shared', 'capped_full', 'archived_truncated'] : ['AIRSpec', 'VIBES', 'uncapped_full']
-  const scores = methods.map(m => data.scores.find(s => s.cohort === cohort && s.method === m)!)
-  const intervals = methods.filter(m => m !== 'AIRSpec').map(m => data.intervals.find(s => s.cohort === cohort && s.method === m)!)
+  // a variant this export lacks for the cohort is left out, not a crash
+  const scores = methods.flatMap(m => data.scores.filter(s => s.cohort === cohort && s.method === m).slice(0, 1))
+  const intervals = methods.filter(m => m !== 'AIRSpec').flatMap(m => data.intervals.filter(s => s.cohort === cohort && s.method === m).slice(0, 1))
   return <>
     <ChartFrame id="completed-vibes-benchmark" title="Completed VIBES · EC prediction benchmark" exportable={false}
       controls={<><Select label="Calibration cohort" value={cohort} options={['full_pool','locked800']} optionLabel={v=>v==='full_pool'?'Full calibration pool':'Restricted lowest OC/EC'} onChange={setCohort} />
         <Toggle label="Include preliminary and archived variants" checked={extras === 'show'} onChange={v => setExtras(v ? 'show' : 'hide')} /></>}>
-      <p>Same {scores[0].n_train.toLocaleString()} calibration filters and {scores[0].n_test.toLocaleString()} held-out IMPROVE filters for every variant. PLS factors are selected using calibration-site cross-validation only.</p>
+      <p>Same {scores[0]?.n_train.toLocaleString() ?? '–'} calibration filters and {scores[0]?.n_test.toLocaleString() ?? '–'} held-out IMPROVE filters for every variant. PLS factors are selected using calibration-site cross-validation only.</p>
       <Note>VIBES rank 70 is corrected over 4000–500 cm⁻¹. “Shared input” uses its corrected 4000–1425 channels in the EC model; “full input” uses 4000–500. These source-domain results do not establish EC accuracy at Addis. Seasonal comparisons and the specification grid use completed rank-70 models by default.</Note>
     </ChartFrame>
     <Performance scores={scores} source={data.source} />

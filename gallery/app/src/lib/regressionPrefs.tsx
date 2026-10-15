@@ -73,8 +73,19 @@ export function RegressionControls({ grouping = true }: { grouping?: boolean } =
 /** Saved-summary charts have no per-filter uncertainty vectors. Keep the assumption visible. */
 const Active = createContext<Estimator>('deming')
 export const useEstimator = () => useContext(Active)
-export function EstimatorViews({ children, available = ESTIMATORS }: { children: (method: Estimator) => ReactNode; available?: readonly Estimator[] }) {
+/**
+ * One copy of a chart per estimator ticked in the sidebar. `fixed` is for a chart of saved
+ * results that does not change with the estimator (it reads Deming fits exported from Python):
+ * it is drawn once, captioned with the estimator it shows, instead of once per ticked estimator.
+ */
+export function EstimatorViews({ children, available = ESTIMATORS, fixed }: { children: (method: Estimator) => ReactNode; available?: readonly Estimator[]; fixed?: Estimator }) {
   const { methods, setMethods, showCI, setShowCI, grouping, setGrouping } = useRegressions()
+  if (fixed) return <Active.Provider value={fixed}>
+    <div className="estimator-view" data-estimator={fixed}>
+      {(methods.length !== 1 || methods[0] !== fixed) && <p className="estimator-caption" style={{ color: FIT_STYLE[fixed].color }}>{FIT_STYLE[fixed].label} · saved fits; the sidebar's estimator choice does not change this chart</p>}
+      {children(fixed)}
+    </div>
+  </Active.Provider>
   if (!methods.length) return <p className="chart-note">Regression fits hidden. Select an estimator in the sidebar to show this comparison.</p>
   return <>{methods.map(method => <Active.Provider key={method} value={method}>
     <Ctx.Provider value={{ methods: [method], setMethods, showCI, setShowCI, grouping, setGrouping }}>

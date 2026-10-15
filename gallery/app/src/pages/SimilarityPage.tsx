@@ -132,7 +132,8 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
   const filterIndex = useMemo(() => new Map(meta.filters.sample_id.map((id, f) => [baseFilterId(id), f])), [meta])
   const pinned = pinnedId == null ? null : filterIndex.get(baseFilterId(pinnedId)) ?? null
   const targetLabel = groupLabel(meta, target)
-  const maskMeta = activeMeta.masks.find((m) => m.key === mask)!
+  // a mask this method's grid lacks falls back to its first mask rather than failing the page
+  const maskMeta = activeMeta.masks.find((m) => m.key === mask) ?? activeMeta.masks[0]
   const pinnedRecord = useMemo<FilterRecord | null>(() => {
     if (pinned == null) return null
     const site = meta.sites[meta.filters.site[pinned]]
@@ -215,7 +216,7 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
           <Toggle label="Show archived VIBES fit (4000–1425)" checked={showArchived} onChange={v => setArchiveMode(v ? 'show' : 'hide')} />
 <span className="control">{method.endsWith('-r70') ? `Completed rank 70 · ${grid?.bin_wn.length ? (method.includes('cut') ? 'shared channels' : 'full available range') : ''}` : method === 'VIBES' ? 'Archived truncated correction' : 'Spline baseline'}</span>
           <Select label="Spectra" value={method} options={methods} onChange={setMethod} optionLabel={v => PREPROCESSING[v] ?? v} />
-          <Select label="Selection mask" value={mask} options={maskKeys} onChange={setMask} optionLabel={(k) => `${activeMeta.masks.find((m) => m.key === k)!.label} (${activeMeta.masks.find((m) => m.key === k)!.n_channels} ch)`} />
+          <Select label="Selection mask" value={mask} options={maskKeys} onChange={setMask} optionLabel={(k) => `${activeMeta.masks.find((m) => m.key === k)?.label ?? k} (${activeMeta.masks.find((m) => m.key === k)?.n_channels ?? '?'} ch)`} />
         </>}
       >
         <p style={{ fontSize: 13, margin: '2px 0', color: INK.muted }}>

@@ -31,7 +31,9 @@ export function SpectraTraces({ meta, traces, target, topFilters, compare, mask,
   const height = 420
   const innerW = Math.max(260, width - MARGIN.left - MARGIN.right)
   const innerH = height - MARGIN.top - MARGIN.bottom
-  const keep = meta.masks.find((m) => m.key === mask)!.bins
+  // a mask this export lacks keeps every channel rather than failing
+  const keep = meta.masks.find((m) => m.key === mask)?.bins ?? meta.bin_wn.map(() => true)
+  const ignoresAny = keep.some((k) => !k)
   const wn = meta.bin_wn
   const clip = useId()
   const targetMembers = useMemo(() => targetFilters ?? members(meta, target), [targetFilters, meta, target])
@@ -134,9 +136,10 @@ export function SpectraTraces({ meta, traces, target, topFilters, compare, mask,
       subtitle={`Every ${targetName} filter in colour, drawn over ${useGroup ? `every ${groupLabel(meta, compare!)} filter in dark grey` : `its ${topFilters.length} most similar filters from other sites in grey`}. ${method} baseline-corrected absorbance. Gaps or shading mark the channels the selection mask leaves out of the score. The y-axis spans the scored channels only.`}
       provenance={provenance ?? 'export_similarity.py · traces_{method}.bin (8-channel means) and top_{method}_{mask}.bin'}
       controls={<>
-        {controls}
+        {/* the page's controls shape the most-similar set; a grey selected group does not use them */}
+        {!useGroup && controls}
         {compare != null && <Segmented label="Grey" value={bg} options={['most similar', 'selected group'] as const} onChange={setBg} />}
-        <Segmented label="Ignored channels" value={regions} options={['gaps', 'shaded'] as const} onChange={setRegions} />
+        {ignoresAny && <Segmented label="Ignored channels" value={regions} options={['gaps', 'shaded'] as const} onChange={setRegions} />}
       </>}
     >
       <div ref={ref} className="chart-wrap">
