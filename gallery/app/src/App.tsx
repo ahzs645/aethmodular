@@ -46,7 +46,7 @@ import { RecordDrawer } from '@/components/RecordDrawer'
 import type { DateRange } from '@/components/DateBrush'
 import type { FilterRow, SeasonMeta, SiteMeta } from '@/lib/types'
 import { AXES_MODES, DEFAULT_AXES, type AxesMode, type AxesOpts } from '@/lib/axes'
-import { hasLocalCalendar, localSeasonsFor, qualifySeason } from '@/siteSeasons'
+import { calendarVariants, hasLocalCalendar, localSeasonsFor, qualifySeason } from '@/siteSeasons'
 import { MAX_IMPROVE_SITES, MONTH_QUARTERS, NETWORK_DEFAULTS, hasImprove, hasSpartan, isNetwork, mergeGroups, networkColor, useNetworkData, type Network } from '@/lib/networks'
 import type { SiteItem } from '@/components/SitePicker'
 import { FilterEditsProvider, type FilterGroup } from '@/lib/filterEdits'
@@ -100,6 +100,9 @@ const meetingFromParams = (p: URLSearchParams): MeetingKey =>
  */
 /** the starting point for custom bins: northern-hemisphere quarters, renamed and repainted freely */
 const DEFAULT_CUSTOM = [{ name: 'Winter', months: [12, 1, 2] }, { name: 'Spring', months: [3, 4, 5] }, { name: 'Summer', months: [6, 7, 8] }, { name: 'Autumn', months: [9, 10, 11] }]
+/** cv=CODC:palmira,TWTA:outlook → { CODC: 'palmira', TWTA: 'outlook' } */
+const parseVariants = (v: string | null): Record<string, string> =>
+  Object.fromEntries((v ?? '').split(',').map((x) => x.split(':')).filter((x) => x.length === 2 && x[0] && x[1]))
 
 /** FTIR EC under each spectral baseline: none is the SPARTAN product in filters.json */
 type FtirBaseline = 'none' | 'spline' | 'vibes'
@@ -177,6 +180,8 @@ export default function App() {
   const [convention, setConvention] = useState<string | null>(init.get('cal'))
   // the reader's own month bins (calendar "custom"), shared by every site; in the URL as cs
   const [customSeasons, setCustomSeasons] = useState(() => parseCustomSeasons(init.get('cs')) ?? DEFAULT_CUSTOM)
+  // a site's alternative calendar where the sources disagree (CODC Bogotá / Palmira, Taiwan review / outlook); in the URL as cv=CODC:palmira,…
+  const [calVariants, setCalVariants] = useState<Record<string, string>>(() => parseVariants(init.get('cv')))
   const [activeSeasons, setActiveSeasons] = useState<Set<string> | null>(listParam(init.get('seasons')))
   const [activeSites, setActiveSites] = useState<Set<string> | null>(listParam(init.get('sites')))
   // which filters the chart tabs draw (lib/networks): SPARTAN by default, starting on the four focus
@@ -251,6 +256,7 @@ export default function App() {
       ci: showCI ? '1' : null,
       cal: convention,
       cs: convention === 'custom' ? customSeasonsParam(customSeasons) : null,
+      cv: Object.keys(calVariants).length ? Object.entries(calVariants).map(([c, k]) => `${c}:${k}`).join(',') : null,
       seasons: listToParam(activeSeasons),
       sites: listToParam(activeSites),
       net: network !== 'spartan' ? network : null,
@@ -275,7 +281,7 @@ export default function App() {
       log: axes.log ? '1' : null,
       pax: axes.panels === 'Own' ? 'own' : null,
     })
-  }, [tab, meeting, estimators, showCI, convention, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, keepIds, ftirBaseline, customSeasons, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, pinnedId, axes])
+  }, [tab, meeting, estimators, showCI, convention, calVariants, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, keepIds, ftirBaseline, customSeasons, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -290,6 +296,7 @@ export default function App() {
       }
       setConvention(p.get('cal'))
       setCustomSeasons(parseCustomSeasons(p.get('cs')) ?? DEFAULT_CUSTOM)
+      setCalVariants(parseVariants(p.get('cv')))
       setActiveSeasons(listParam(p.get('seasons')))
       setActiveSites(listParam(p.get('sites')))
       setNetwork(isNetwork(p.get('net')) ? p.get('net') as Network : 'spartan')
@@ -402,8 +409,12 @@ export default function App() {
   )
   const calendarOf = useCallback(
     // sites without a local calendar fall back to the shared quarters, not the Ethiopian bins
-    (site: string) => (isLocal ? localSeasonsFor(site, data?.meta, siteCode.get(site)) ?? MONTH_QUARTERS : sharedSeasons),
-    [isLocal, data, sharedSeasons, siteCode]
+    (site: string) => {
+      if (!isLocal) return sharedSeasons
+      const code = siteCode.get(site)
+      return localSeasonsFor(site, data?.meta, code, code ? calVariants[code] : undefined) ?? MONTH_QUARTERS
+    },
+    [isLocal, data, sharedSeasons, siteCode, calVariants]
   )
   const seasons = useMemo(
     () => isLocal
@@ -654,6 +665,12 @@ export default function App() {
         : net === 'both' && netView ? `${netView.chosen.length - improveSites.length} SPARTAN · ${improveSites.length}/${MAX_IMPROVE_SITES} IMPROVE` : undefined,
       calendarOptions: ['local', ...Object.keys(conventions)],
       customSeasons,
+      // sites in view whose sources disagree, with the calendar each is binned by
+      calendarVariants: isLocal ? calendarSites.flatMap((site) => {
+        const code = siteCode.get(site)
+        const options = calendarVariants(site, code)
+        return options && code ? [{ site, code, options, value: calVariants[code] ?? options[0].key }] : []
+      }) : [],
       sitesAtDefault: net === 'spartan' ? spartanSel === null : net === 'improve' ? improveSites.length > 0 : net === 'both' ? spartanSel === null && improveSites.length === 0 : !activeSites,
       allSitesSelected: hasSpartan(net) ? !!netView && netView.chosen.length - (net === 'both' ? improveSites.length : 0) === netView.nSpartan : !activeSites,
     }
@@ -707,6 +724,11 @@ export default function App() {
       onFocusSites: () => setSpartanSel(null),
       onFtirBaseline: setFtirBaseline,
       onCustomSeasons: (v) => { setCustomSeasons(v); setActiveSeasons(null) },
+      // the default calendar is left out of the link
+      onCalendarVariant: (code, key, isDefault) => {
+        setCalVariants((cur) => { const next = { ...cur }; if (isDefault) delete next[code]; else next[code] = key; return next })
+        setActiveSeasons(null)
+      },
       onDropIds: dropFilters,
       // keeping again narrows the kept set to filters in both brushes
       onKeepIds: keepFilters,

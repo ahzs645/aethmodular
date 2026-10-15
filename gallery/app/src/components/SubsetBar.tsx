@@ -79,6 +79,8 @@ export interface SubsetState {
   calendarOptions: string[]
   /** the reader's custom month bins, edited when the calendar is 'custom' */
   customSeasons?: { name: string; months: number[] }[]
+  /** sites in view with more than one defensible calendar, and the one each is binned by */
+  calendarVariants?: { site: string; code: string; options: { key: string; label: string; note?: string }[]; value: string }[]
   /** filters dropped by hand from a brush, and the size of a "keep only" set (null: none) */
   dropped?: number
   /** the hand-excluded filters, each with a "site · date" label */
@@ -108,6 +110,7 @@ export interface SubsetActions {
   onDropIds?: (ids: Set<string>) => void
   onFtirBaseline?: (v: 'none' | 'spline' | 'vibes') => void
   onCustomSeasons?: (v: { name: string; months: number[] }[]) => void
+  onCalendarVariant?: (code: string, key: string, isDefault: boolean) => void
   onKeepIds?: (ids: Set<string>) => void
   onClearDrop?: () => void
   /** put some hand-excluded filters back */
@@ -354,6 +357,16 @@ export function SubsetBar({
                           {g.site}
                         </span>
                       )}
+                      {(() => {
+                        // where the sources disagree, the reader picks the calendar (docs/site-seasonality-network.md)
+                        const v = s.calendarVariants?.find((x) => x.site === g.site)
+                        if (!v || !a.onCalendarVariant) return null
+                        const note = v.options.find((o) => o.key === v.value)?.note
+                        return <div className="season-variant">
+                          <Segmented value={v.value} options={v.options.map((o) => o.key)} optionLabel={(k) => v.options.find((o) => o.key === k)?.label ?? k}
+                            title={note} onChange={(k) => a.onCalendarVariant!(v.code, k, k === v.options[0].key)} />
+                        </div>
+                      })()}
                       <div className="season-chips">
                         {g.seasons.map((se) => {
                           const n = s.seasonCounts[se.name] ?? 0

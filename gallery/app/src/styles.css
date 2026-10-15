@@ -622,3 +622,6 @@ html[data-embed="1"] .app-header, html[data-embed="1"] .side-dock { display: non
   .export-body { grid-template-columns: 1fr; }
   .export-preview { min-height: 180px; }
 }
+/* a site whose sources disagree: pick its calendar under its heading (SubsetBar) */
+.season-variant { margin: 2px 0 4px; }
+.season-variant .seg button { font-size: 11px; padding: 3px 7px; }

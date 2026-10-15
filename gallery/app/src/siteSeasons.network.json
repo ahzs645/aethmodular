@@ -691,7 +691,99 @@
         "url": "https://revistas.unal.edu.co/index.php/acta_agronomica/article/download/48912/49987"
       }
     ],
-    "note": "Bins follow the site coordinates (4.64 N, 74.08 W, which is Bogotá), not the name Palmira; Palmira's own bimodal regime is shifted (very dry Jun–Sep, rainy Oct–Nov), and Bogotá PM2.5 peaks Feb–Mar rather than tracking the dry periods."
+    "note": "Bins follow the site coordinates (4.64 N, 74.08 W, which is Bogotá), not the name Palmira; Palmira's own bimodal regime is shifted (very dry Jun–Sep, rainy Oct–Nov), and Bogotá PM2.5 peaks Feb–Mar rather than tracking the dry periods. Both calendars are offered in the gallery (Bogotá by default) until the site location is confirmed.",
+    "variants": [
+      {
+        "key": "bogota",
+        "label": "Bogotá",
+        "seasons": [
+          {
+            "name": "First dry (Dec–Feb)",
+            "months": [
+              12,
+              1,
+              2
+            ]
+          },
+          {
+            "name": "First wet (Mar–May)",
+            "months": [
+              3,
+              4,
+              5
+            ]
+          },
+          {
+            "name": "Second dry (Jun–Aug)",
+            "months": [
+              6,
+              7,
+              8
+            ]
+          },
+          {
+            "name": "Second wet (Sep–Nov)",
+            "months": [
+              9,
+              10,
+              11
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "title": "Aragón-Moreno and Lerma-Lerma (2019), Rev. Fac. Ing. 28(51), Bogotá rainfall regime (DEF and JJA dry, MAM and SON wet)",
+            "url": "https://redalyc.org/journal/4139/413959633004/html/"
+          }
+        ],
+        "note": "Bins for the map coordinates (4.64 N, 74.08 W, Bogotá): dry Dec–Feb and Jun–Aug, wet Mar–May and Sep–Nov."
+      },
+      {
+        "key": "palmira",
+        "label": "Palmira",
+        "seasons": [
+          {
+            "name": "Semi-dry (Dec–Feb)",
+            "months": [
+              12,
+              1,
+              2
+            ]
+          },
+          {
+            "name": "First rains (Mar–May)",
+            "months": [
+              3,
+              4,
+              5
+            ]
+          },
+          {
+            "name": "Very dry (Jun–Sep)",
+            "months": [
+              6,
+              7,
+              8,
+              9
+            ]
+          },
+          {
+            "name": "Second rains (Oct–Nov)",
+            "months": [
+              10,
+              11
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "title": "Acta Agronómica (UNAL), Palmira climate (semi-dry Dec–Feb, rainy Mar–May, very dry Jun–Sep, rainy Oct–Nov)",
+            "url": "https://revistas.unal.edu.co/index.php/acta_agronomica/article/download/48912/49987"
+          }
+        ],
+        "note": "Bins for Palmira (Valle del Cauca), the site's name: semi-dry Dec–Feb, rains Mar–May, very dry Jun–Sep, rains Oct–Nov."
+      }
+    ]
   },
   "ETAD": {
     "site": "Addis Ababa, Ethiopia",
@@ -1430,9 +1522,125 @@
       {
         "title": "PTS (6 Nov 2023), October to March is the northeast-monsoon, poor-dispersion season in southern Taiwan",
         "url": "https://news.pts.org.tw/article/665252"
+      },
+      {
+        "title": "Central Weather Administration, seasonal long-range outlook issued 28 Feb 2025, valid March–May 2025 (copy hosted by NTU drought research group)",
+        "url": "https://drought.cook.as.ntu.edu.tw/PDF/%e4%b8%ad%e5%a4%ae%e6%b0%a3%e8%b1%a1%e5%b1%80%e5%ad%a3%e9%95%b7%e6%9c%9f%e5%a4%a9%e6%b0%a3%e5%b1%95%e6%9c%9b_1140228.pdf"
+      },
+      {
+        "title": "Liberty Times (31 May 2024), Central Weather Administration seasonal outlook for the next season, June–August",
+        "url": "https://news.ltn.com.tw/news/life/breakingnews/4691165"
       }
     ],
-    "note": "The Central Weather Administration's climate reviews use these bins, but its seasonal outlooks use Dec–Feb/Mar–May/Jun–Aug/Sep–Nov; chosen here because Nov–Jan keeps the northeast-monsoon PM2.5 peak together (the Oct–Mar poor-dispersion season straddles autumn and winter)."
+    "note": "The Central Weather Administration's climate reviews use these bins, but its seasonal outlooks use Dec–Feb/Mar–May/Jun–Aug/Sep–Nov; chosen here because Nov–Jan keeps the northeast-monsoon PM2.5 peak together (the Oct–Mar poor-dispersion season straddles autumn and winter). Both calendars are offered in the gallery (climate reviews by default).",
+    "variants": [
+      {
+        "key": "review",
+        "label": "Winter Nov–Jan",
+        "seasons": [
+          {
+            "name": "Spring (Feb–Apr)",
+            "months": [
+              2,
+              3,
+              4
+            ]
+          },
+          {
+            "name": "Summer (May–Jul)",
+            "months": [
+              5,
+              6,
+              7
+            ]
+          },
+          {
+            "name": "Autumn (Aug–Oct)",
+            "months": [
+              8,
+              9,
+              10
+            ]
+          },
+          {
+            "name": "Winter (Nov–Jan)",
+            "months": [
+              11,
+              12,
+              1
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "title": "Hwang et al. (2016), IJERPH, southern Taiwan PM2.5 study defining Feb–Apr / May–Jul / Aug–Oct / Nov–Jan seasons",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4847028/"
+          },
+          {
+            "title": "NOWnews (28 Apr 2026), Central Weather Administration spring review covering February–April",
+            "url": "https://www.nownews.com/news/6811885"
+          },
+          {
+            "title": "Liberty Times (1 Nov 2023), Central Weather Administration: November to January is Taiwan's winter",
+            "url": "https://news.ltn.com.tw/news/life/breakingnews/4476915"
+          },
+          {
+            "title": "PTS (6 Nov 2023), October to March is the northeast-monsoon, poor-dispersion season in southern Taiwan",
+            "url": "https://news.pts.org.tw/article/665252"
+          }
+        ],
+        "note": "Central Weather Administration climate-review bins (Feb–Apr, May–Jul, Aug–Oct, Nov–Jan); keeps the northeast-monsoon PM2.5 peak in one season."
+      },
+      {
+        "key": "outlook",
+        "label": "Winter Dec–Feb",
+        "seasons": [
+          {
+            "name": "Winter (Dec–Feb)",
+            "months": [
+              12,
+              1,
+              2
+            ]
+          },
+          {
+            "name": "Spring (Mar–May)",
+            "months": [
+              3,
+              4,
+              5
+            ]
+          },
+          {
+            "name": "Summer (Jun–Aug)",
+            "months": [
+              6,
+              7,
+              8
+            ]
+          },
+          {
+            "name": "Autumn (Sep–Nov)",
+            "months": [
+              9,
+              10,
+              11
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "title": "Central Weather Administration, seasonal long-range outlook issued 28 Feb 2025, valid March–May 2025 (copy hosted by NTU drought research group)",
+            "url": "https://drought.cook.as.ntu.edu.tw/PDF/%e4%b8%ad%e5%a4%ae%e6%b0%a3%e8%b1%a1%e5%b1%80%e5%ad%a3%e9%95%b7%e6%9c%9f%e5%a4%a9%e6%b0%a3%e5%b1%95%e6%9c%9b_1140228.pdf"
+          },
+          {
+            "title": "Liberty Times (31 May 2024), Central Weather Administration seasonal outlook for the next season, June–August",
+            "url": "https://news.ltn.com.tw/news/life/breakingnews/4691165"
+          }
+        ],
+        "note": "Central Weather Administration seasonal-outlook bins (Dec–Feb, Mar–May, Jun–Aug, Sep–Nov); the meteorological seasons used at most other northern sites."
+      }
+    ]
   },
   "TWTA": {
     "site": "Taipei, Taiwan",
@@ -1483,9 +1691,121 @@
       {
         "title": "Liberty Times (1 Nov 2023), Central Weather Administration: November to January is Taiwan's winter",
         "url": "https://news.ltn.com.tw/news/life/breakingnews/4476915"
+      },
+      {
+        "title": "Central Weather Administration, seasonal long-range outlook issued 28 Feb 2025, valid March–May 2025 (copy hosted by NTU drought research group)",
+        "url": "https://drought.cook.as.ntu.edu.tw/PDF/%e4%b8%ad%e5%a4%ae%e6%b0%a3%e8%b1%a1%e5%b1%80%e5%ad%a3%e9%95%b7%e6%9c%9f%e5%a4%a9%e6%b0%a3%e5%b1%95%e6%9c%9b_1140228.pdf"
+      },
+      {
+        "title": "Liberty Times (31 May 2024), Central Weather Administration seasonal outlook for the next season, June–August",
+        "url": "https://news.ltn.com.tw/news/life/breakingnews/4691165"
       }
     ],
-    "note": "The Central Weather Administration's climate reviews use these bins, but its seasonal outlooks use Dec–Feb/Mar–May/Jun–Aug/Sep–Nov; chosen here because Nov–Jan keeps the northeast-monsoon PM2.5 peak together."
+    "note": "The Central Weather Administration's climate reviews use these bins, but its seasonal outlooks use Dec–Feb/Mar–May/Jun–Aug/Sep–Nov; chosen here because Nov–Jan keeps the northeast-monsoon PM2.5 peak together. Both calendars are offered in the gallery (climate reviews by default).",
+    "variants": [
+      {
+        "key": "review",
+        "label": "Winter Nov–Jan",
+        "seasons": [
+          {
+            "name": "Spring (Feb–Apr)",
+            "months": [
+              2,
+              3,
+              4
+            ]
+          },
+          {
+            "name": "Summer (May–Jul)",
+            "months": [
+              5,
+              6,
+              7
+            ]
+          },
+          {
+            "name": "Autumn (Aug–Oct)",
+            "months": [
+              8,
+              9,
+              10
+            ]
+          },
+          {
+            "name": "Winter (Nov–Jan)",
+            "months": [
+              11,
+              12,
+              1
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "title": "Hwang et al. (2016), IJERPH, southern Taiwan PM2.5 study defining Feb–Apr / May–Jul / Aug–Oct / Nov–Jan seasons",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4847028/"
+          },
+          {
+            "title": "NOWnews (28 Apr 2026), Central Weather Administration spring review covering February–April",
+            "url": "https://www.nownews.com/news/6811885"
+          },
+          {
+            "title": "Liberty Times (1 Nov 2023), Central Weather Administration: November to January is Taiwan's winter",
+            "url": "https://news.ltn.com.tw/news/life/breakingnews/4476915"
+          }
+        ],
+        "note": "Central Weather Administration climate-review bins (Feb–Apr, May–Jul, Aug–Oct, Nov–Jan); keeps the northeast-monsoon PM2.5 peak in one season."
+      },
+      {
+        "key": "outlook",
+        "label": "Winter Dec–Feb",
+        "seasons": [
+          {
+            "name": "Winter (Dec–Feb)",
+            "months": [
+              12,
+              1,
+              2
+            ]
+          },
+          {
+            "name": "Spring (Mar–May)",
+            "months": [
+              3,
+              4,
+              5
+            ]
+          },
+          {
+            "name": "Summer (Jun–Aug)",
+            "months": [
+              6,
+              7,
+              8
+            ]
+          },
+          {
+            "name": "Autumn (Sep–Nov)",
+            "months": [
+              9,
+              10,
+              11
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "title": "Central Weather Administration, seasonal long-range outlook issued 28 Feb 2025, valid March–May 2025 (copy hosted by NTU drought research group)",
+            "url": "https://drought.cook.as.ntu.edu.tw/PDF/%e4%b8%ad%e5%a4%ae%e6%b0%a3%e8%b1%a1%e5%b1%80%e5%ad%a3%e9%95%b7%e6%9c%9f%e5%a4%a9%e6%b0%a3%e5%b1%95%e6%9c%9b_1140228.pdf"
+          },
+          {
+            "title": "Liberty Times (31 May 2024), Central Weather Administration seasonal outlook for the next season, June–August",
+            "url": "https://news.ltn.com.tw/news/life/breakingnews/4691165"
+          }
+        ],
+        "note": "Central Weather Administration seasonal-outlook bins (Dec–Feb, Mar–May, Jun–Aug, Sep–Nov); the meteorological seasons used at most other northern sites."
+      }
+    ]
   },
   "USBA": {
     "site": "Baltimore, UnitedStates",

@@ -18,6 +18,17 @@ hemisphere seasons with no specific source; no site needed it. Counts:
 through a quoted copy or search excerpt; re-check them in a browser before
 formal citation.
 
+## Sites with two calendars
+
+Where the sources support two different bins, both are kept and the gallery's Filters
+panel shows a switch under the site's season heading (in the link as `cv=CODE:key`).
+The first is the default.
+
+| Site | Default | Alternative | Why both |
+|---|---|---|---|
+| Palmira, Colombia (CODC) | `bogota`: dry Dec–Feb, wet Mar–May, dry Jun–Aug, wet Sep–Nov ([Aragón-Moreno and Lerma-Lerma 2019](https://redalyc.org/journal/4139/413959633004/html/)) | `palmira`: semi-dry Dec–Feb, rains Mar–May, very dry Jun–Sep, rains Oct–Nov ([Acta Agronómica, UNAL](https://revistas.unal.edu.co/index.php/acta_agronomica/article/download/48912/49987)) | `spartan_map.json` puts CODC at 4.64 N, 74.08 W, which is Bogotá, but the site is named Palmira. Keep both until the location is confirmed. CODC has no filters in the current export, so the switch only appears once it does. |
+| Taipei (TWTA), Kaohsiung (TWKA) | `review`: Feb–Apr, May–Jul, Aug–Oct, Nov–Jan (CWA climate reviews; [Hwang et al. 2016](https://pmc.ncbi.nlm.nih.gov/articles/PMC4847028/)) | `outlook`: Dec–Feb, Mar–May, Jun–Aug, Sep–Nov (CWA seasonal outlooks: [outlook issued 28 Feb 2025 for Mar–May](https://drought.cook.as.ntu.edu.tw/PDF/%e4%b8%ad%e5%a4%ae%e6%b0%a3%e8%b1%a1%e5%b1%80%e5%ad%a3%e9%95%b7%e6%9c%9f%e5%a4%a9%e6%b0%a3%e5%b1%95%e6%9c%9b_1140228.pdf), [Liberty Times, 31 May 2024, outlook for Jun–Aug](https://news.ltn.com.tw/news/life/breakingnews/4691165)) | The Central Weather Administration uses both. `review` keeps the Nov–Jan northeast-monsoon PM2.5 peak in one season; `outlook` matches the meteorological seasons used at most other northern sites. |
+
 ## South Asia
 
 | Site | Local bins | Confidence | Evidence and qualification |

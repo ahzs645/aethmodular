@@ -26,7 +26,10 @@ const LOCAL_SEASONS: Record<string, SeasonMeta[]> = {
  * country's met service or a site paper (siteSeasons.network.json, sources and caveats
  * in docs/site-seasonality-network.md). Keyed by code and by the gallery's site name.
  */
-interface NetworkCalendar { site: string; seasons: { name: string; months: number[] }[]; confidence: string; note?: string }
+interface RawSeason { name: string; months: number[] }
+/** a second defensible calendar for a site (CODC: Bogotá or Palmira; Taiwan: review or outlook bins); the first is the default */
+interface CalendarVariant { key: string; label: string; seasons: RawSeason[]; note?: string }
+interface NetworkCalendar { site: string; seasons: RawSeason[]; confidence: string; note?: string; variants?: CalendarVariant[] }
 // colour by what the season is, so "winter" reads the same at every site
 const KEYWORD_COLORS: [RegExp, string][] = [
   [/post-monsoon|autumn|fall/i, '#AA6B78'],
@@ -49,17 +52,34 @@ function colourSeasons(seasons: { name: string; months: number[] }[]): SeasonMet
   })
 }
 const NETWORK_SEASONS = new Map<string, SeasonMeta[]>()
+const NETWORK_VARIANTS = new Map<string, { key: string; label: string; note?: string; seasons: SeasonMeta[] }[]>()
 for (const [code, cal] of Object.entries(networkCalendars as Record<string, NetworkCalendar>)) {
   const seasons = colourSeasons(cal.seasons)
   NETWORK_SEASONS.set(code, seasons)
   NETWORK_SEASONS.set(cal.site, seasons)
+  if (cal.variants?.length) {
+    const variants = cal.variants.map((v) => ({ key: v.key, label: v.label, note: v.note, seasons: colourSeasons(v.seasons) }))
+    NETWORK_VARIANTS.set(code, variants)
+    NETWORK_VARIANTS.set(cal.site, variants)
+  }
 }
 
-/** A site's own calendar: the focus sites' (as before), then the network table by name or code. */
-export function localSeasonsFor(site: string | null, meta: MetaFile | undefined, code?: string): SeasonMeta[] | null {
+/** The calendars a site can be binned by, when it has more than one (else null). */
+export function calendarVariants(site: string, code?: string) {
+  const v = NETWORK_VARIANTS.get(site) ?? (code ? NETWORK_VARIANTS.get(code) : undefined)
+  return v ? v.map(({ key, label, note }) => ({ key, label, note })) : null
+}
+
+/**
+ * A site's own calendar: the focus sites' (as before), then the network table by name or
+ * code. `variant` picks one of a site's alternative calendars; unknown or absent = the default.
+ */
+export function localSeasonsFor(site: string | null, meta: MetaFile | undefined, code?: string, variant?: string): SeasonMeta[] | null {
   if (!site || !meta) return null
   if (site === 'Addis Ababa') return meta.season_conventions.belg_feb ?? null
-  return LOCAL_SEASONS[site] ?? NETWORK_SEASONS.get(site) ?? (code ? NETWORK_SEASONS.get(code) : undefined) ?? null
+  if (LOCAL_SEASONS[site]) return LOCAL_SEASONS[site]
+  const alt = variant ? (NETWORK_VARIANTS.get(site) ?? (code ? NETWORK_VARIANTS.get(code) : undefined))?.find((v) => v.key === variant) : undefined
+  return alt?.seasons ?? NETWORK_SEASONS.get(site) ?? (code ? NETWORK_SEASONS.get(code) : undefined) ?? null
 }
 
 /** Whether a site has a calendar of its own (otherwise the local view bins it by quarters). */
