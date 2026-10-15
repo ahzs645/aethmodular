@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useHighlight } from '@/lib/highlight'
+import { baseFilterId, useHighlight } from '@/lib/highlight'
 
 /**
  * Hand edits from inside the charts: right-click a filter (or a bin of filters) to
@@ -42,6 +42,29 @@ const Ctx = createContext<FilterEdits>({
   group: null, openGroup: () => {}, openMenu: () => {},
 })
 export const useFilterEdits = () => useContext(Ctx)
+
+/** a SPARTAN filter id after the replicate suffix is dropped (ETAD-0144-8 -> ETAD-0144) */
+const SPARTAN_ID = /^[A-Z]{4}-\d{4}$/
+
+/**
+ * The hand edits as a test any chart can apply to the filters it draws, so an exclusion made
+ * on one page holds on every page: a dropped filter is out everywhere; "keep only" narrows
+ * SPARTAN filters (ids the gallery knows), never the IMPROVE pools or blanks a page also shows.
+ * `note` words what a chart says about the filters it hid.
+ */
+export function useHandEdits() {
+  const { dropped, kept } = useContext(Ctx)
+  return useMemo(() => {
+    const isOut = (id: string | null | undefined) => {
+      if (!id) return false
+      const b = baseFilterId(id)
+      return dropped.has(b) || dropped.has(id) || (!!kept && SPARTAN_ID.test(b) && !kept.has(b) && !kept.has(id))
+    }
+    const note = (n: number, { refit = false, saved = false }: { refit?: boolean; saved?: boolean } = {}) =>
+      n <= 0 ? null : `${n} filter${n === 1 ? '' : 's'} excluded by hand ${n === 1 ? 'is' : 'are'} hidden here${refit ? ' and left out of the refit' : ''}${saved ? '; the saved statistics were computed with every filter' : ''}.`
+    return { isOut, note, active: dropped.size > 0 || kept !== null }
+  }, [dropped, kept])
+}
 
 /** the attributes a mark carries; spread onto a <circle>, <path>, <rect> … */
 export const fidProps = (id: string) => ({ 'data-fid': id })
@@ -169,5 +192,24 @@ function FilterMenu({ x, y, target, onClose }: { x: number; y: number; target: M
         <button type="button" role="menuitem" onClick={act(() => ed.restore(ed.dropped))}>Put back all {plural(ed.dropped.size)} excluded by hand</button>
       </>}
     </div>
+  )
+}
+
+/**
+ * The hand edits for a page without the Filters panel (Baselines, Meeting, Similarity, Blanks):
+ * the count, a review of them in the side panel, and a way to put them all back, so a filter
+ * hidden by an exclusion made on another page is never hidden silently.
+ */
+export function HandEditsBadge() {
+  const ed = useFilterEdits()
+  if (!ed.dropped.size && !ed.kept) return null
+  return (
+    <span className="hand-edits-badge" title="Filters excluded (or kept) by hand on any page; every chart that draws them follows">
+      {ed.dropped.size > 0 && <>
+        <button type="button" className="pill-link" onClick={() => ed.openGroup({ title: 'Excluded by hand', ids: [...ed.dropped], live: 'dropped' })}>{ed.dropped.size} excluded by hand</button>
+        <button type="button" className="btn quiet" onClick={() => ed.restore(ed.dropped)} title="Put every hand-excluded filter back" aria-label="Put every hand-excluded filter back">↺</button>
+      </>}
+      {ed.kept && <button type="button" className="pill-link" onClick={() => ed.openGroup({ title: 'Kept by hand (every other filter is hidden)', ids: [...ed.kept!], live: 'kept' })}>keeping {ed.kept.size}</button>}
+    </span>
   )
 }

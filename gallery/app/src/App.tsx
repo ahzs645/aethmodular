@@ -51,7 +51,7 @@ import { AXES_MODES, DEFAULT_AXES, type AxesMode, type AxesOpts } from '@/lib/ax
 import { calendarVariants, hasLocalCalendar, localSeasonsFor, qualifySeason } from '@/siteSeasons'
 import { MAX_IMPROVE_SITES, MONTH_QUARTERS, NETWORK_DEFAULTS, hasImprove, hasSpartan, isNetwork, mergeGroups, networkColor, useNetworkData, type Network } from '@/lib/networks'
 import type { SiteItem } from '@/components/SitePicker'
-import { FilterEditsProvider, type FilterGroup } from '@/lib/filterEdits'
+import { FilterEditsProvider, HandEditsBadge, type FilterGroup } from '@/lib/filterEdits'
 import { GroupDrawer } from '@/components/GroupDrawer'
 import { WeatherPage } from '@/pages/WeatherPage'
 import { HIDDEN_DUPLICATES } from '@/fieldLineage'
@@ -842,7 +842,8 @@ export default function App() {
     <RegressionProvider methods={estimators} setMethods={setEstimators} showCI={showCI} setShowCI={setShowCI}>
     <PrefsProvider>
     <HighlightProvider pinnedId={pinnedId} setPinned={setPinnedId} openSample={openSample} openRecord={openRecord} onDismiss={dismissSample}>
-    <FilterEditsProvider enabled={(NETWORK_TABS as readonly string[]).includes(tab)} dropped={dropIds} kept={keepIds}
+    {/* hand edits hold on every tab: each chart that draws a filter leaves the excluded ones out */}
+    <FilterEditsProvider enabled dropped={dropIds} kept={keepIds}
       onDrop={dropFilters} onKeep={keepFilters} onRestore={restoreFilters} group={group} onGroup={setGroup}>
       {openRow && (
         <SampleDrawer
@@ -864,7 +865,7 @@ export default function App() {
         fields={tab === 'correlation' ? [xField, yField] : [field]} onClose={() => setGroup(null)} />}
       {isEmbed() && <a className="embed-open" href="#" onClick={async (e) => { e.preventDefault(); window.open((await viewUrl(currentView())), '_blank', 'noopener') }}>Open in the gallery ↗</a>}
       {(NETWORK_TABS as readonly string[]).includes(tab) && <BrushBar onKeep={keepFilters} onDrop={dropFilters} />}
-      <Shell nav={nav} wide={tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks'}>
+      <Shell nav={nav} wide={tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks'} editsBadge={!subset}>
         {/* tabs without the filter panel still get the fit controls where they draw fits */}
         {subset ?? ((tab === 'baseline' || (tab === 'meeting' && meeting === 'followup')) && <RegressionSidebar />)}
         {tab === 'census' && <CensusPage census={census} />}
@@ -940,7 +941,8 @@ export default function App() {
 }
 
 /** `wide` gives the long research tabs room for the table-of-contents column. */
-function Shell({ children, nav, wide = false }: { children: React.ReactNode; nav?: React.ReactNode; wide?: boolean }) {
+/** `editsBadge`: show the hand edits in the header, for tabs without the Filters panel that lists them */
+function Shell({ children, nav, wide = false, editsBadge = false }: { children: React.ReactNode; nav?: React.ReactNode; wide?: boolean; editsBadge?: boolean }) {
   const container = wide ? 'container wide' : 'container'
   return (
     <>
@@ -948,6 +950,7 @@ function Shell({ children, nav, wide = false }: { children: React.ReactNode; nav
         <div className={container}>
           <div className="app-title-row">
             <h1 className="app-title">Aethmodular graph gallery</h1>
+            {editsBadge && <HandEditsBadge />}
             <HeaderTools />
           </div>
           {nav}

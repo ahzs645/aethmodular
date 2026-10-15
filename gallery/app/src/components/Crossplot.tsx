@@ -6,6 +6,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { groupedRegressions, type FitGrouping } from '@/lib/siteRegression'
+import { fidProps, useHandEdits } from '@/lib/filterEdits'
 import { monthBlocks } from '@/lib/regressionCI'
 import { regression, type RegressionStats } from '@/lib/stats'
 import { useRegressions, FitGroupingControl } from '@/lib/regressionPrefs'
@@ -57,7 +58,11 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   const side = Math.max(160, Math.min(width - m.left - m.right, maxSide))
   const iw = side, ih = side, w = side + m.left + m.right, height = side + m.top + m.bottom
   const clipId = useId()
-  const valid = points.filter((p) => p.x != null && p.y != null && Number.isFinite(p.x) && Number.isFinite(p.y))
+  // a filter excluded by hand on any page is left out here too, points and refit alike
+  const edits = useHandEdits()
+  const drawable = points.filter((p) => p.x != null && p.y != null && Number.isFinite(p.x) && Number.isFinite(p.y))
+  const valid = drawable.filter((p) => !edits.isOut(p.id ?? p.rec?.id))
+  const handNote = edits.note(drawable.length - valid.length, { refit: fit && groupingOverride !== 'none', saved: extraLines.length > 0 })
   const lambda = errorRatio ?? 1
   const prefs = useRegressions()
   const { methods, showCI } = prefs
@@ -78,7 +83,8 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   const line = (s: number, b: number) => ({ x1: x(x0), y1: y(s * x0 + b), x2: x(x1), y2: y(s * x1 + b) })
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      {multiSite && !groupingOverride && <FitGroupingControl />}
+      {/* its points carry a site but no season, so a per-season grouping would only draw the pooled fit */}
+      {multiSite && !groupingOverride && <FitGroupingControl only={['pooled', 'site']} value={grouping === 'season' ? 'pooled' : grouping} />}
       <svg width={w} height={height} fontFamily={FONT.family}>
         <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>
         <g transform={`translate(${m.left},${m.top})`}>
@@ -99,6 +105,7 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
                   fillOpacity={(dim ? 0.25 : 0.7) * (p.opacity ?? 1)} strokeOpacity={(dim ? 0.3 : 1) * (p.opacity ?? 1)} style={{ cursor: p.rec ? 'pointer' : 'default' }}
                   onMouseEnter={(e) => { tip.show(e, p.rec ? [...p.tip, 'click to pin it on every chart and open its record'] : p.tip); if (key) hl.setHover(key) }}
                   onMouseLeave={() => { tip.hide(); hl.setHover(null) }}
+                  {...(key ? fidProps(key) : {})}
                   onClick={() => { if (p.rec) hl.openRecord(p.rec); if (key) hl.setPinned(key) }} />
               )
             })}
@@ -115,6 +122,7 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
         </svg>
         <p className="chart-note">Fits use each site's paired filters and observed x range. Sites with fewer than three pairs or constant values have no fitted line. Point colours retain the selected grouping.</p>
       </details>}
+      {handNote && <p className="chart-note">{handNote}</p>}
       {tip.node}
     </div>
   )

@@ -7,6 +7,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { baseFilterId, focusStyle, useHighlight } from '@/lib/highlight'
+import { fidProps, useHandEdits } from '@/lib/filterEdits'
 import { fmt, splitAtGaps } from '@/lib/stats'
 import { INK, MARGIN } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile, MetaFile } from '@/lib/types'
@@ -47,7 +48,11 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
       .filter((p): p is typeof p & { d: Date } => p.d !== null && Number.isFinite(p.v))
       .sort((a, b) => +a.d - +b.d)
   }, [run.eval])
-  const shown = dated.filter((p) => !hidden.has(p.g))
+  // filters excluded by hand on any page drop out of the series and its summary; the run's saved metrics do not change
+  const edits = useHandEdits()
+  const kept = dated.filter((p) => !edits.isOut(p.id))
+  const handNote = edits.note(dated.length - kept.length, { saved: true })
+  const shown = kept.filter((p) => !hidden.has(p.g))
   const hasDeployed = dated.some((p) => p.dep !== null)
 
   const roll = useMemo(() =>
@@ -103,6 +108,7 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
                     style={{ cursor: 'pointer' }}
                     onMouseEnter={(e) => { if (p.id) hl.setHover(p.id); tip.show(e, [p.id ?? `filter #${p.i + 1}`, `${run.eval.date?.[p.i]} · ${p.g}`, `predicted EC ${fmt(p.v, 3)} µg/m³`, ...(p.dep !== null ? [`deployed EC ${fmt(p.dep, 3)}`] : []), p.id && knownIds.has(baseFilterId(p.id)) ? 'click for the full filter record' : 'click for this filter\'s values']) }}
                     onMouseLeave={() => { hl.setHover(null); tip.hide() }}
+                    {...(p.id ? fidProps(baseFilterId(p.id)) : {})}
                     onClick={() => hl.openRecord({
                       id: p.id ?? `${run.target} filter #${p.i + 1}`,
                       source: 'the dated series',
@@ -147,6 +153,7 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
             </tbody>
           </table>
         )}
+        {handNote && <p className="chart-note">{handNote}</p>}
         {tip.node}
       </div>
     </ChartFrame>

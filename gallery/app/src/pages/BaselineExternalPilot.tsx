@@ -15,6 +15,7 @@ import { INK, baselineColor } from '@/lib/theme'
 import { fixed as fmt } from '@/lib/format'
 import { regression } from '@/lib/stats'
 import { useHighlight, type FilterRecord } from '@/lib/highlight'
+import { useHandEdits } from '@/lib/filterEdits'
 import { useSearchParam } from '@/lib/url'
 import { useRegressions } from '@/lib/regressionPrefs'
 import { Combobox } from '@/components/Combobox'
@@ -223,7 +224,11 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
     return xv != null && yv != null && Number.isFinite(xv) && Number.isFinite(yv)
       ? [{ ...r, xv, yv }] : []
   })
-  const points = allPoints.filter(r => site === 'Both sites' || r.site === site)
+  // filters excluded by hand on any page are left out of the points and the live fits
+  const edits = useHandEdits()
+  const inSite = allPoints.filter(r => site === 'Both sites' || r.site === site)
+  const points = inSite.filter(r => !edits.isOut(String(r.id)))
+  const handNote = edits.note(inSite.length - points.length, { refit: true })
   const counts = Object.fromEntries(['Addis', 'Bishoftu'].map(s => [s, points.filter(r => r.site === s).length]))
   const title = optical ? 'Every filter with HIPS and frozen FTIR EC' : 'Every corrected spectrum: two local bands'
   // Keep axis scales fixed while the site selector changes, so a filtered
@@ -296,5 +301,6 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
       </g>
       {methods.length > 0 && fitGroups.map((group, i) => <RegressionReadout key={group.name} stats={group.stats} title={group.name} color={group.color} x={legendX} y={legendY + 50 + i * readoutGap} width={250} />)}
     </svg></div>
+    {handNote && <Note>{handNote}</Note>}
   </ChartFrame>
 }
