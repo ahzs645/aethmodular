@@ -5,6 +5,15 @@ export const RESTATES: Record<string, string> = {
   'OC (ChemSpec FTIR)': 'OC (FTIR)', // public report of the same FTIR product
 }
 
+/**
+ * Restatements kept in the rows but never offered in a picker: the public ChemSpec report
+ * of the FTIR carbon is the same product as EC / OC (FTIR) (identical on every SPARTAN
+ * network filter; within 0.3 µg/m³ on the focus sites' shared filters), so a crossplot of
+ * one against the other only shows R² = 1. Charts that need the public report on purpose
+ * (the method Sankey, the ChemSpec composition) still read the row values.
+ */
+export const HIDDEN_DUPLICATES = ['EC (ChemSpec FTIR)', 'OC (ChemSpec FTIR)']
+
 export function sameProduct(a: string, b: string): boolean {
   return RESTATES[a] === b || RESTATES[b] === a
 }

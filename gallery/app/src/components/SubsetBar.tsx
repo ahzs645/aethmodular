@@ -510,7 +510,7 @@ function PinnedCard({
   onUnpin: () => void
   onOpen: () => void
 }) {
-  const shown = [...new Set([...fields, 'EC (FTIR)', 'EC (ChemSpec FTIR)', 'HIPS BC', 'PM2.5 mass'])].filter((f) =>
+  const shown = [...new Set([...fields, 'EC (FTIR)', 'HIPS BC', 'PM2.5 mass'])].filter((f) =>
     meta.fields.includes(f)
   )
   return (

@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 import * as d3 from 'd3'
+import { HIDDEN_DUPLICATES, RESTATES } from '@/fieldLineage'
 import { ChartFrame, Empty, Segmented, Toggle } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -57,7 +58,8 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
     if (speciesOverride) return speciesOverride.filter((f) => meta.fields.includes(f))
     const wanted = new Set(['Ions', 'Metals & crustal'])
     const fromGroups = meta.field_groups.filter((g) => wanted.has(g.label)).flatMap((g) => g.fields)
-    return ['OC (ChemSpec FTIR)', 'EC (ChemSpec FTIR)', ...fromGroups].filter((f) => meta.fields.includes(f))
+    // the public ChemSpec carbon on purpose: same reports as the ions (hidden from pickers, still in the rows)
+    return [...HIDDEN_DUPLICATES.slice().reverse(), ...fromGroups].filter((f) => meta.fields.includes(f) || (HIDDEN_DUPLICATES.includes(f) && meta.fields.includes(RESTATES[f])))
   }, [meta, speciesOverride])
   const familyOf = (f: string) => (f.startsWith('OC') || f.startsWith('EC') ? 'Carbon' : meta.field_groups.find((g) => g.fields.includes(f))?.label ?? 'Other')
   const families = useMemo(() => [...new Set(speciesFields.map(familyOf))], [speciesFields]) // eslint-disable-line react-hooks/exhaustive-deps

@@ -52,6 +52,7 @@ import type { SiteItem } from '@/components/SitePicker'
 import { FilterEditsProvider, type FilterGroup } from '@/lib/filterEdits'
 import { GroupDrawer } from '@/components/GroupDrawer'
 import { WeatherPage } from '@/pages/WeatherPage'
+import { HIDDEN_DUPLICATES } from '@/fieldLineage'
 import { WEATHER_GROUP, type WeatherFile } from '@/lib/weather'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 
@@ -364,12 +365,14 @@ export default function App() {
     const fields = sp ? [...new Set([...data.meta.fields, ...d.fields])] : d.fields
     const groups = sp ? mergeGroups(data.meta.field_groups, d.field_groups) : d.field_groups
     const chosenNames = new Set(all.filter((x) => chosenCodes.has(x.code)).map((x) => x.name))
-    const inChosen = rows.filter((r) => chosenNames.has(r.site))
+    // counts in the field pickers follow the exclusion toggle, like every chart (Addis: 189, not 190)
+    const inChosen = rows.filter((r) => chosenNames.has(r.site) && (includeExcluded || !r.excluded))
     const coverage = Object.fromEntries(fields.map((f) => [f, inChosen.filter((r) => typeof r[f] === 'number').length]))
     return { all, chosen: all.filter((x) => chosenCodes.has(x.code)), chosenCodes, chosenNames, improveCodes: d.improveCodes, nSpartan: spartanCodes.length,
       rows, fields, field_units: sp ? { ...d.field_units, ...data.meta.field_units } : d.field_units, field_groups: groups, coverage }
-  }, [net, data, focusRows, netData.data, improveSites, spartanSel])
-  const activeFields = netView ? netView.fields : data?.meta.fields ?? []
+  }, [net, data, focusRows, netData.data, improveSites, spartanSel, includeExcluded])
+  // the ChemSpec restatements of the FTIR carbon are never offered; a link naming one falls back
+  const activeFields = (netView ? netView.fields : data?.meta.fields ?? []).filter((f) => !HIDDEN_DUPLICATES.includes(f))
 
   // Fields that vanished from the export, or that the chosen network does not measure,
   // fall back to that network's defaults instead of leaving a chart empty.
@@ -590,6 +593,9 @@ export default function App() {
     season_site: isLocal && calendarSites.length === 1 ? calendarSites[0] : undefined,
     // a network view hands the charts its own sites (the chosen ones), fields and units
     ...(netView ? { sites: netView.chosen, fields: netView.fields, field_units: netView.field_units, field_groups: netView.field_groups, coverage: netView.coverage } : {}) }
+  // the ChemSpec carbon restates EC / OC (FTIR): keep the values in the rows, out of every picker
+  meta.fields = meta.fields.filter((f) => !HIDDEN_DUPLICATES.includes(f))
+  meta.field_groups = (meta.field_groups ?? []).map((g) => ({ ...g, fields: g.fields.filter((f) => !HIDDEN_DUPLICATES.includes(f)) })).filter((g) => g.fields.length)
   // the weather fields join the pickers as their own group, after the measured ones
   if (weather) {
     const present = weather.fields.filter((f) => sourceRows.some((r) => typeof r[f] === 'number'))
