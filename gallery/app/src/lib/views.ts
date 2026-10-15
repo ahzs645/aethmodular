@@ -33,6 +33,8 @@ const v = (h: Record<string, string>, q: Record<string, string> = {}): ViewState
 export const PRESETS: ViewPreset[] = [
   { key: 'focus', label: 'Focus sites · HIPS BC vs FTIR EC', note: 'The default view: Beijing, Delhi, JPL, Addis Ababa', view: v({ tab: 'correlation' }) },
   { key: 'addis-seasons', label: 'Addis Ababa · FTIR EC by season', note: 'Distributions under the local Bega / Belg / Kiremt calendar', view: v({ tab: 'distribution', ssites: 'ETAD' }) },
+  { key: 'addis-weather', label: 'Addis Ababa · weather and the filters', note: 'Rain washout, humidity, wind roses and seasonal correlations, on ERA5 and the airport station',
+    view: v({ tab: 'weather', ssites: 'ETAD' }) },
   { key: 'chile', label: 'Chile · SPARTAN + IMPROVE, PM₂.₅ over time', note: 'Santiago and Talca (SPARTAN) with Antumapu and Las Condes (IMPROVE)',
     view: v({ tab: 'evolution', net: 'both', ssites: 'CLST,CLTA', isites: 'ANTU1,LCON1', y: 'PM2.5 mass', f: 'PM2.5 mass' }) },
   { key: 'chile-improve-tor', label: 'Chile IMPROVE · TOR EC vs HIPS BC', note: 'Thermal EC against absorption at the two new IMPROVE sites',

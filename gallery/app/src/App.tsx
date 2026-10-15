@@ -51,6 +51,8 @@ import { MAX_IMPROVE_SITES, MONTH_QUARTERS, NETWORK_DEFAULTS, hasImprove, hasSpa
 import type { SiteItem } from '@/components/SitePicker'
 import { FilterEditsProvider, type FilterGroup } from '@/lib/filterEdits'
 import { GroupDrawer } from '@/components/GroupDrawer'
+import { WeatherPage } from '@/pages/WeatherPage'
+import { WEATHER_GROUP, type WeatherFile } from '@/lib/weather'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 
 /**
@@ -66,6 +68,7 @@ const TABS = [
   { key: 'ranking', label: 'Ranking' },
   { key: 'partOfWhole', label: 'Part of a whole' },
   { key: 'map', label: 'Map' },
+  { key: 'weather', label: 'Weather', title: 'Weather over each filter’s sampling window: ERA5 at every SPARTAN site, the airport station at Addis' },
   { key: 'flow', label: 'Flow' },
   { key: 'pmf', label: 'PMF sources' },
   { key: 'calibration', label: 'Calibration' },
@@ -116,7 +119,7 @@ const parseSpartanSel = (v: string | null): string[] | 'all' | null =>
   v == null || v === '' ? null : v === '*' ? 'all' : v === '-' ? [] : v.split(',').filter(Boolean)
 
 /** tabs whose charts can draw a whole network (Filters sidebar → network) */
-const NETWORK_TABS = ['correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole'] as const
+const NETWORK_TABS = ['correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'weather'] as const
 const FILTERS: SubsetCaps = { seasons: true, sites: true, excluded: true, dates: true, fields: 'single', datasetLabel: 'SPARTAN filters' }
 const CAPS: Record<Exclude<TabKey, 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks'>, SubsetCaps> = {
   correlation: { ...FILTERS, fields: 'pair', networks: true },
@@ -124,6 +127,7 @@ const CAPS: Record<Exclude<TabKey, 'census' | 'baseline' | 'similarity' | 'meeti
   evolution: { ...FILTERS, networks: true },
   ranking: { ...FILTERS, networks: true },
   partOfWhole: { ...FILTERS, fields: 'none', networks: true },
+  weather: { ...FILTERS, networks: true },
   map: FILTERS,
   flow: { ...FILTERS, fields: 'none' },
   pmf: {
@@ -161,6 +165,8 @@ export default function App() {
   const { data, error } = useGalleryData()
   // spline / VIBES FTIR EC for the Addis test set (gallery/data/export_baseline_ftir_ec.py); optional
   const baselines = useExport<{ rows: Record<string, { spline?: number; vibes?: number }> }>('baseline_ftir_ec.json').data
+  // weather over each filter's sampling window (gallery/data/export_weather.py, lib/weather); optional
+  const weather = useExport<WeatherFile>('weather/filters.json').data
   const focusRows = useMemo(() => {
     const rows = data?.filters.rows ?? []
     if (!baselines) return rows
@@ -365,7 +371,8 @@ export default function App() {
   // fall back to that network's defaults instead of leaving a chart empty.
   useEffect(() => {
     if (!data || (netView && !netView.fields.length)) return
-    const ok = (f: string) => activeFields.includes(f)
+    // weather fields (lib/weather) load on their own, after this first check, so they are known by name
+    const ok = (f: string) => activeFields.includes(f) || /\((ERA5|station)\)$/.test(f)
     const d = NETWORK_DEFAULTS[net]
     if (!ok(xField)) setXField(ok(d.x) ? d.x : activeFields[0])
     if (!ok(yField)) setYField(ok(d.y) ? d.y : activeFields[1] ?? activeFields[0])
@@ -438,7 +445,15 @@ export default function App() {
   )
 
   // Rows after the exclusion toggle and calendar relabel — the brush draws these.
-  const sourceRows = useMemo(() => (netView ? netView.rows : focusRows), [netView, focusRows])
+  const sourceRows = useMemo(() => {
+    const rows = netView ? netView.rows : focusRows
+    if (!weather) return rows
+    // the weather fields ride on every row, so every chart and picker can use them
+    return rows.map((r) => {
+      const w = weather.rows[r.id]
+      return w ? { ...r, ...Object.fromEntries(weather.fields.map((f, i) => [f, w[i]])) } : r
+    })
+  }, [netView, focusRows, weather])
   const sourceById = useMemo(() => new Map(sourceRows.map((r) => [r.id, r])), [sourceRows])
   const baseRows = useMemo(() => {
     if (!data) return []
@@ -567,6 +582,13 @@ export default function App() {
     season_site: isLocal && calendarSites.length === 1 ? calendarSites[0] : undefined,
     // a network view hands the charts its own sites (the chosen ones), fields and units
     ...(netView ? { sites: netView.chosen, fields: netView.fields, field_units: netView.field_units, field_groups: netView.field_groups, coverage: netView.coverage } : {}) }
+  // the weather fields join the pickers as their own group, after the measured ones
+  if (weather) {
+    const present = weather.fields.filter((f) => sourceRows.some((r) => typeof r[f] === 'number'))
+    meta.fields = [...meta.fields, ...present.filter((f) => !meta.fields.includes(f))]
+    meta.field_units = { ...meta.field_units, ...weather.field_units }
+    meta.field_groups = [...(meta.field_groups ?? []).filter((g) => g.label !== WEATHER_GROUP), ...(present.length ? [{ label: WEATHER_GROUP, fields: present }] : [])]
+  }
   // the baseline variants are drawn but never offered in the pickers
   meta.field_units = { ...meta.field_units, [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3' }
   const eff = (f: string) => (f === 'EC (FTIR)' && ftirBaseline !== 'none' ? FTIR_VARIANT[ftirBaseline] : f)
@@ -850,6 +872,7 @@ export default function App() {
           </>
         )}
         {tab === 'partOfWhole' && <CompositionTreemap rows={rows} meta={meta} />}
+        {tab === 'weather' && <WeatherPage rows={rows} meta={meta} field={fieldEff} xField={xEff} yField={yEff} axes={axes} setField={setField} pmfLabelOfDate={pmfLabelOfDate} />}
         </AxisFieldsProvider>
         {tab === 'map' && <SiteBubbleMap rows={mapRows} meta={meta} field={fieldEff} focusSite={activeSites?.size === 1 ? [...activeSites][0] : undefined} />}
         {tab === 'flow' && <MethodSankey rows={rows} meta={meta} />}

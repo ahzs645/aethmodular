@@ -49,11 +49,16 @@ OUT = Path(os.environ.get("WEATHER_OUT", "/content/weather"))
 def sites_arg() -> str:
     """CODE:lat:lon:first:last;... for every SPARTAN site with filter dates (run locally)."""
     root = Path(__file__).resolve().parents[3]
+    # the focus sites' HIPS filters (gallery filters.json) can start before or run past the public chemistry
+    focus: dict[str, list[str]] = {}
+    for f in json.loads((root / "gallery/app/public/data/filters.json").read_text())["rows"]:
+        focus.setdefault(f["code"], []).append(f["date"])
     parts = []
     for s in json.loads((root / "gallery/app/public/data/spartan_map.json").read_text())["sites"]:
         if s.get("lat") is None or str(s.get("date_min", "—")).startswith("—"):
             continue
-        parts.append(f"{s['code']}:{s['lat']:.4f}:{s['lon']:.4f}:{s['date_min'][:10]}:{s['date_max'][:10]}")
+        dates = [s["date_min"][:10], s["date_max"][:10], *focus.get(s["code"], [])]
+        parts.append(f"{s['code']}:{s['lat']:.4f}:{s['lon']:.4f}:{min(dates)}:{max(dates)}")
     return ";".join(parts)
 
 

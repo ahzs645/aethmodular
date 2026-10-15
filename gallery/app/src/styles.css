@@ -625,3 +625,9 @@ html[data-embed="1"] .app-header, html[data-embed="1"] .side-dock { display: non
 /* a site whose sources disagree: pick its calendar under its heading (SubsetBar) */
 .season-variant { margin: 2px 0 4px; }
 .season-variant .seg button { font-size: 11px; padding: 3px 7px; }
+
+/* ---------- Weather tab (pages/WeatherPage) ---------- */
+.weather-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+.weather-head > div:first-child { flex: 1 1 420px; }
+.weather-head h2 { font-size: 16px; }
+.weather-head-controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
