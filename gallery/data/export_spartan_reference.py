@@ -1,8 +1,9 @@
 """Export physical-filter public SPARTAN chemistry for drawer reference populations.
 
 Run: uv run python gallery/data/export_spartan_reference.py
-Keeps public-source rows and known exclusion flags; never substitutes public BC
-for a HIPS measurement. Carbon is the public FTIR product, not thermal EC/OC.
+Keeps public-source rows and known exclusion flags. Public 'BC PM2.5' measured by HIPS
+(fAbs / 10; SSR-curve estimates are dropped) is exported as its own field, 'BC (public HIPS)', never
+written into the in-house 'HIPS BC'. Carbon is the public FTIR product, not thermal EC/OC.
 """
 from __future__ import annotations
 
@@ -31,6 +32,7 @@ PARAMETERS = {
     'Potassium': 'Potassium Ion PM2.5', 'Sodium': 'Sodium Ion PM2.5',
     'Calcium': 'Calcium Ion PM2.5', 'Magnesium': 'Magnesium Ion PM2.5',
     **{name: f'{name} PM2.5' for name in ['Iron', 'Aluminum', 'Titanium', 'Silicon', 'Zinc', 'Copper', 'Lead']},
+    'BC (public HIPS)': 'BC PM2.5',
 }
 
 
@@ -46,6 +48,9 @@ def build_site(path: Path, site_name: str) -> pd.DataFrame:
         if parameter in {'EC PM2.5', 'OC PM2.5', 'OM PM2.5'}:
             if not values.Analysis_Description.fillna('').str.upper().eq('FTIR').all():
                 raise ValueError(f'Non-FTIR carbon in {path.name}: {parameter}')
+        if parameter == 'BC PM2.5':
+            # keep only HIPS measurements; drop values "Estimated from the HIPS-SSR BC curve" (method 220)
+            values = values[values.Analysis_Description.fillna('').str.upper().eq('HIPS')]
         units = values.Units.fillna('').str.lower()
         nano = units.str.contains(r'ng/m3|ng/m\^3|ng m-3|nanograms', regex=True)
         micro = units.str.contains(r'ug/m3|µg/m3|ug/m\^3|ug m-3|micrograms', regex=True)
@@ -86,7 +91,7 @@ def main():
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(dict(schema_version=1, generated=datetime.now(timezone.utc).isoformat(),
         source='Local mirror of public SPARTAN ChemSpecPM25', source_sha256=sources,
-        note='Public PM2.5 chemistry, one row per physical filter over all available dates. EC/OC/OM are FTIR-derived public reports; the two EC and OC labels refer to the same product. HIPS and FTIR functional-group measurements are unavailable here. Known study exclusions are flagged; other sites retain public reporting quality decisions. No sidebar season/date subset is applied.',
+        note='Public PM2.5 chemistry, one row per physical filter over all available dates. EC/OC/OM are FTIR-derived public reports; the two EC and OC labels refer to the same product. BC (public HIPS) is the public BC where HIPS measured it (fAbs / 10; values estimated from the HIPS-SSR curve are dropped), kept separate from the in-house HIPS BC; FTIR functional groups are unavailable here. Known study exclusions are flagged; other sites retain public reporting quality decisions. No sidebar season/date subset is applied.',
         fields=list(PARAMETERS), field_units={f: 'µg/m³' for f in PARAMETERS},
         field_sources=PARAMETERS, n=len(rows), n_sites=len(paths), rows=rows),
         separators=(',', ':'), allow_nan=False))

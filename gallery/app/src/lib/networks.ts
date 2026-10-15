@@ -3,7 +3,8 @@
  * the default), or a whole network chosen in the Filters sidebar.
  *
  * - SPARTAN: public ChemSpec PM2.5 at every site (spartan_reference.json + spartan_map.json).
- *   EC/OC are FTIR-derived; HIPS and FTIR functional groups are not public.
+ *   EC/OC are FTIR-derived; HIPS appears only as the public BC ('BC (public HIPS)', HIPS-measured
+ *   values only); FTIR functional groups are not public.
  * - IMPROVE: one file per site (improve_samples/, gallery/data/export_improve_samples.py),
  *   fetched only when picked, because ~388,000 samples cannot be drawn at once.
  *
@@ -74,6 +75,8 @@ type ImproveSite = { code: string; date: string[]; poc: number[] } & Record<stri
 const COUNTRY: Record<string, string> = { CL: 'Chile', KR: 'South Korea', CA: 'Canada', MX: 'Mexico', VI: 'US Virgin Islands', PR: 'Puerto Rico' }
 
 const SPARTAN_GROUPS = [
+  // public BC where HIPS measured it (fAbs / 10); kept apart from the in-house 'HIPS BC' of the focus sites
+  { label: 'Optical (HIPS)', fields: ['BC (public HIPS)'] },
   { label: 'Carbon', fields: ['EC (FTIR)', 'OC (FTIR)', 'OM (FTIR)', 'EC (ChemSpec FTIR)', 'OC (ChemSpec FTIR)'] },
   { label: 'Mass', fields: ['PM2.5 mass'] },
   { label: 'Ions', fields: ['Sulfate', 'Nitrate', 'Ammonium', 'Potassium', 'Sodium', 'Calcium', 'Magnesium'] },

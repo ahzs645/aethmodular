@@ -159,6 +159,8 @@ const CAPS: Record<Exclude<TabKey, 'census' | 'baseline' | 'similarity' | 'meeti
 // 1.898 / Deming 2.379 at ETAD), so the app opens agreeing with the repo's
 // published numbers.
 const DEFAULT_X = 'HIPS BC'
+/** public SPARTAN BC where HIPS measured it (gallery/data/export_spartan_reference.py) */
+const PUBLIC_BC = 'BC (public HIPS)'
 const DEFAULT_Y = 'EC (FTIR)'
 const DEFAULT_FIELD = 'EC (FTIR)'
 
@@ -360,7 +362,10 @@ export default function App() {
     const colour = new Map(sites.filter((x) => chosenCodes.has(x.code)).map((x) => [x.name, focus.get(x.code)?.color ?? networkColor(i++)]))
     const paint = (name: string) => colour.get(name) ?? '#9aa5b1'
     const all = sites.map((x) => ({ ...x, color: paint(x.name) }))
-    const rows: FilterRow[] = [...(sp ? focusRows : []), ...d.rows.filter((r) => !focus.has(r.code))]
+    // the focus sites also get the public HIPS BC, so one absorption axis spans every SPARTAN site
+    const pubBC = new Map<string, number>(d.rows.flatMap((r) => (focus.has(r.code) && typeof r[PUBLIC_BC] === 'number' ? [[r.id, r[PUBLIC_BC] as number]] : [])))
+    const focusWithPub = focusRows.map((r): FilterRow => { const v = pubBC.get(r.id); return v === undefined ? r : { ...r, [PUBLIC_BC]: v } })
+    const rows: FilterRow[] = [...(sp ? focusWithPub : []), ...d.rows.filter((r) => !focus.has(r.code))]
       .map((r) => ({ ...r, color: paint(r.site) }))
     const fields = sp ? [...new Set([...data.meta.fields, ...d.fields])] : d.fields
     const groups = sp ? mergeGroups(data.meta.field_groups, d.field_groups) : d.field_groups
@@ -385,6 +390,21 @@ export default function App() {
     if (!ok(yField)) setYField(ok(d.y) ? d.y : activeFields[1] ?? activeFields[0])
     if (!ok(field)) setField(ok(d.field) ? d.field : activeFields[0])
   }, [data, netView, activeFields, net, xField, yField, field])
+
+  // Sites outside the four focus sites have no in-house HIPS BC, only the public HIPS BC. When a
+  // chosen site would drop out of an axis for that reason, the axis moves to the public field
+  // (which every chosen site with HIPS data carries) instead of leaving that site's panels empty.
+  useEffect(() => {
+    if (!netView || !hasSpartan(net) || !netView.fields.includes(PUBLIC_BC)) return
+    const missing = netView.chosen.some((x) => {
+      const own = netView.rows.filter((r) => r.site === x.name)
+      return own.length && !own.some((r) => typeof r['HIPS BC'] === 'number') && own.some((r) => typeof r[PUBLIC_BC] === 'number')
+    })
+    if (!missing) return
+    if (xField === 'HIPS BC') setXField(PUBLIC_BC)
+    if (yField === 'HIPS BC') setYField(PUBLIC_BC)
+    if (field === 'HIPS BC') setField(PUBLIC_BC)
+  }, [netView, net, xField, yField, field])
 
   const siteNames = useMemo(
     () => (netView ? (net === 'improve' ? netView.chosen : netView.all).map((s) => s.name) : data?.meta.sites.map((s) => s.name) ?? []),
