@@ -38,6 +38,9 @@ season-specific calibrations help in Kiremt (slope 0.51 → 0.94) but not Dry or
   and low at the high end.
 - Say IMPROVE, not "US".
 - No TOR at Addis; HIPS is the reference there.
+- Addis n: slides 2, 3, 6, 8 and 10 all use the same 189 filters (those with a current SPARTAN FTIR EC; 44 of the
+  233 have none). The explorer (slide 9) scored all 233. 190 is the older phase-3 cohort; don't quote it. Slide 7 uses
+  every public filter per site (Addis 246) so all sites are treated alike.
 - Slide 8 compares the current calibration with a baseline-corrected IMPROVE calibration; they differ in more
   than the baseline (training set, protocol). The slope drops to 0.56: better intercept, not solved.
 - Slide 9: don't explain the settings rows or the guardrails. 3,137 of 3,138 beat the current intercept; 254 are

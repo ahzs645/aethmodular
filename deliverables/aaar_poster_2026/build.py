@@ -97,6 +97,28 @@ assert int(S_ADDIS.n) == 189 and int(S_POOL.n) == 2078 and int(S_AN.n) == 97
 
 ad = pd.read_csv(M / "addis_predictions.csv")
 ad = ad[ad.fit_id == "deployed|SPARTAN|current SPARTAN calibration"].dropna(subset=["ftir_ec_ugm3", "Fabs"])
+# One Addis cohort for every Addis slide: the 189 filters that have the current SPARTAN FTIR EC (of the 233 in the
+# evaluation set; the other 44 have no deployed value). Not the older fixed 190-filter phase-3 cohort.
+COHORT = set(ad.MediaId)
+COHORT_FID = set(ad.ExternalFilterId.astype(str).str.rsplit("-", n=1).str[0])
+assert len(COHORT) == 189
+import json  # noqa: E402
+from types import SimpleNamespace  # noqa: E402
+import pls_ksweep as pk  # noqa: E402
+
+# Addis Deming lambda (sigma_x from HIPS uncertainty, sigma_y 0.531), as in every Addis panel
+LAM_ADDIS = json.loads((HC / "output/tables/ksweep_20261014/summary.json").read_text())["lambda_addis"]
+
+
+def addis_fit(d):
+    x, y = d.Fabs.to_numpy(float) / MAC, d.ftir_ec_ugm3.to_numpy(float)
+    sl, ic = pk.deming(x, y, LAM_ADDIS)
+    return SimpleNamespace(deming_slope=float(sl[0]), deming_intercept=float(ic[0]),
+                           R2=float(pk.r2(x, y)[0]), n=len(x))
+
+
+_chk = addis_fit(ad)
+assert abs(_chk.deming_slope - S_ADDIS.deming_slope) < 1e-6 and abs(_chk.deming_intercept - S_ADDIS.deming_intercept) < 1e-6
 pool = pd.read_csv(M / "pool_test_predictions.csv")
 pool = pool[pool.fit_id == FIT].dropna(subset=["ftir_ec_ugm3", "tor_ec_ugm3"])
 an = pd.read_csv(M / "analog_predictions.csv")
@@ -204,6 +226,7 @@ ad_oe = etad.oc_ec[etad.oc_ec > 0]
 # ---------------------------------------------------------------- f4 loading per filter
 refs = pd.read_csv(M / "improve_references.csv")
 ev = pd.read_csv(M / "addis_evaluation.csv")
+ev = ev[ev.MediaId.isin(COHORT)]
 imp_mass = (refs.fabs_Mm1 / MAC * refs.tor_volume_m3).dropna()
 imp_mass = imp_mass[imp_mass > 0]
 ad_mass = (ev.Fabs / MAC * ev.Volume_m3).dropna()
@@ -244,7 +267,7 @@ def site_table(df, site, val, min_n):
 
 # ---------------------------------------------------------------- f2b Addis EC by season (slide 2)
 # EC = SPARTAN 'BC PM2.5' (HIPS fAbs / 10), the same quantity as IMPROVE fAbs / 10
-e = etad.copy()
+e = etad[etad.Filter_ID.isin(COHORT_FID)].copy()
 month = e.date.dt.month
 e["season"] = np.select([month.isin([10, 11, 12, 1, 2]), month.isin([3, 4, 5])],
                         ["Dry (Oct-Feb)", "Belg (Mar-May)"], "Kiremt (Jun-Sep)")
@@ -311,9 +334,10 @@ print(f"EC continuum: {len(imp_sites)} IMPROVE, {len(sp_sites)} SPARTAN; ETAD {s
 
 
 # ---------------------------------------------------------------- f6 baselining helps (Addis, before/after)
-S_BASE = stat(FIT, "addis", "ftir_vs_fabs", eval_group="All Addis")
 base = pd.read_csv(M / "addis_predictions.csv")
-base = base[base.fit_id == FIT].dropna(subset=["ftir_ec_ugm3", "Fabs"])
+base = base[(base.fit_id == FIT) & base.MediaId.isin(COHORT)].dropna(subset=["ftir_ec_ugm3", "Fabs"])
+assert len(base) == len(COHORT)
+S_BASE = addis_fit(base)
 
 
 def addis_panel(ax, d, s, title, lim):
@@ -340,7 +364,6 @@ fig.tight_layout()
 save(fig, "f6_baseline_before_after.png")
 
 # ---------------------------------------------------------------- f7 the calibration explorer (spline only)
-import json  # noqa: E402
 
 SPEC = ROOT / "gallery/app/public/data/meeting-r70/spec_curve_20260917.json"   # gallery/data export, rank-70 run
 spec = json.loads(SPEC.read_text())
@@ -398,14 +421,15 @@ save(fig, "f7_calibration_explorer.png")
 # ---------------------------------------------------------------- f8 season-specific calibrations
 SEAS_FIT = {g: f"seasonal|AIRSpec|locked|{g}" for g in SEASONS}
 allp = pd.read_csv(M / "addis_predictions.csv")
+stitched = []
 fig, axes = plt.subplots(1, 3, figsize=(13.2, 4.9), sharey=True)
 seas_rows = []
 lim = 12
 for ax, g in zip(axes, SEASONS):
     b0 = base[base.season == g]
-    sv = allp[(allp.fit_id == SEAS_FIT[g]) & (allp.season == g)].dropna(subset=["ftir_ec_ugm3"])
-    s0 = stat(FIT, "addis", "ftir_vs_fabs", eval_group=g)
-    s1 = stat(SEAS_FIT[g], "addis", "ftir_vs_fabs", eval_group=g)
+    sv = allp[(allp.fit_id == SEAS_FIT[g]) & (allp.season == g) & allp.MediaId.isin(COHORT)].dropna(subset=["ftir_ec_ugm3"])
+    s0, s1 = addis_fit(b0), addis_fit(sv)
+    stitched.append(sv)
     seas_rows.append((g, s0, s1))
     ax.scatter(b0.Fabs / MAC, b0.ftir_ec_ugm3, s=16, color=GREY, alpha=.55, lw=0, label="IMPROVE calibration")
     ax.scatter(sv.Fabs / MAC, sv.ftir_ec_ugm3, s=22, color=SEASON_COLOR[g], alpha=.9, edgecolor="white", lw=.4,
@@ -425,6 +449,8 @@ axes[2].legend(loc="lower right", fontsize=9.5)
 fig.tight_layout()
 save(fig, "f8_seasonal_calibrations.png")
 SEAS = {g: (s0, s1) for g, s0, s1 in seas_rows}
+S_STITCH = addis_fit(pd.concat(stitched))
+assert S_STITCH.n == len(COHORT)
 
 # ---------------------------------------------------------------- deck
 prs = Presentation()
@@ -495,7 +521,7 @@ fig_slide(
     "the dotted line. That is why we care about measuring EC well in Addis.",
     "EC = SPARTAN 'BC PM2.5', which is HIPS absorption / 10 (checked on Addis: median ratio 10.00), the same "
     "definition as IMPROVE fAbs / 10 for the dotted line (median over all IMPROVE filters in the FED export). "
-    "Medians with IQR; SPARTAN public release v3.1.4 (Aug 2026). Kiremt is partly worse because the boundary layer "
+    f"Medians with IQR over the same {len(COHORT)} Addis filters used on every Addis slide; SPARTAN public release v3.1.4 (Aug 2026). Kiremt is partly worse because the boundary layer "
     "is shallow (ERA5 median ~370-410 m vs 650-800 m in Dry). Season names: Dry is also called Bega.")
 
 # 3 the problem
@@ -547,7 +573,8 @@ fig_slide(
     f"{100 * (ad_mass > p99).mean():.0f} percent of Addis filters are above IMPROVE's 99th percentile. The calibration "
     "has almost never seen filters like these.",
     "Per filter = HIPS Fabs / MAC 10 × sampled volume, so both networks are on the same footing "
-    "(IMPROVE ~33 m³ per filter at 22 L/min, SPARTAN ~7 m³ at 5 L/min).")
+    "(IMPROVE ~33 m³ per filter at 22 L/min, SPARTAN ~7 m³ at 5 L/min). "
+    f"Addis: the same {len(COHORT)} filters as slides 3, 8 and 10.")
 
 # 7 EC by site
 fig_slide(
@@ -558,7 +585,8 @@ fig_slide(
     f"{sp_sites.loc['ETAD', 'median']:.1f} µg/m³, above every IMPROVE site, and most SPARTAN sites sit at the high end. "
     "So this is not only Addis: the IMPROVE calibration network barely covers the EC levels much of the world lives with.",
     "EC from HIPS for both networks (IMPROVE fAbs / 10, SPARTAN 'BC PM2.5' = fAbs / 10), so no FTIR EC is used. "
-    "Site medians with IQR, log scale. IMPROVE sites with >= 50 filters (FED export, 1988-2025); SPARTAN >= 10 "
+    "Site medians with IQR, log scale; every site, Addis included, uses all its public filters (Addis n "
+    f"{int(sp_sites.loc['ETAD', 'n'])}), so the comparison is like for like across sites. IMPROVE sites with >= 50 filters (FED export, 1988-2025); SPARTAN >= 10 "
     f"(public release v3.1.4). Addis is number {etad_rank_top} of {len(cont)} sites from the top; {sp_above_imp_max} "
     f"SPARTAN sites are above the highest IMPROVE site ({imp_max:.2f} µg/m³). Concentration, not per-filter loading: "
     "per filter the SPARTAN values would be ~4.6x lower relative to IMPROVE. Table: figures/f5_ec_site_continuum.csv.")
@@ -572,8 +600,8 @@ fig_slide(
     "built on baseline-corrected IMPROVE spectra. The intercept moves from "
     f"{S_ADDIS.deming_intercept:.1f} to {S_BASE.deming_intercept:.1f} µg/m³. The slope drops to "
     f"{S_BASE.deming_slope:.2f}, so FTIR now reads low at high EC: better, but not solved.",
-    f"Left: current SPARTAN calibration, n {int(S_ADDIS.n)}. Right: spline (AIRSpec) baseline, all-IMPROVE lot-251 "
-    f"calibration, n {int(S_BASE.n)}, R² {S_BASE.R2:.2f}. The two calibrations differ in more than the baseline "
+    f"Both panels: the same {len(COHORT)} Addis filters (those with a current SPARTAN FTIR EC value). Right: spline "
+    f"(AIRSpec) baseline, all-IMPROVE lot-251 calibration, R² {S_BASE.R2:.2f}; on all 233 filters it is 0.56x -1.08. The two calibrations differ in more than the baseline "
     "(training set and protocol too), so this is before/after for the approach, not a single-variable test. "
     "A second baseline method (VIBES) is being tested as well; it gives a more negative Addis intercept so far.")
 
@@ -591,7 +619,9 @@ fig_slide(
     "We have not found a calibration that gets Addis right yet, but this is how we are searching.",
     "Spline baseline only (the VIBES baseline and no-baseline runs have their own versions of this plot). Deming "
     f"intercept at MAC 10, median {np.median(inter):.1f} µg/m³. Settings rows (A-E) are cross-validation scheme, number "
-    "of PLS factors and cohort size; don't go into them. From the gallery export "
+    "of PLS factors and cohort size; don't go into them. The explorer scores all 233 Addis filters with HIPS (its "
+    "stored grid has no per-filter predictions to re-score), while slides 3, 8 and 10 use the 189 that also have a "
+    "current SPARTAN value. From the gallery export "
     "gallery/app/public/data/meeting-r70/spec_curve_20260917.json (rank-70 run).")
 
 # 10 seasonal calibrations
@@ -609,8 +639,9 @@ fig_slide(
     f"Dry {d0[0].deming_slope:.2f}x {d0[0].deming_intercept:+.2f} -> {d0[1].deming_slope:.2f}x {d0[1].deming_intercept:+.2f}; "
     f"Belg {b0[0].deming_slope:.2f}x {b0[0].deming_intercept:+.2f} -> {b0[1].deming_slope:.2f}x {b0[1].deming_intercept:+.2f}; "
     f"Kiremt {k[0].deming_slope:.2f}x {k[0].deming_intercept:+.2f} -> {k[1].deming_slope:.2f}x {k[1].deming_intercept:+.2f}. "
-    "Putting the three seasonal predictions together gives 1.43x -4.23 overall, because each season lands at a "
-    "different offset.")
+    f"Putting the three seasonal predictions together gives {S_STITCH.deming_slope:.2f}x "
+    f"{S_STITCH.deming_intercept:+.2f} overall, because each season lands at a different offset. Same {len(COHORT)} "
+    "Addis filters as slides 3 and 8.")
 
 # 11 conclusions
 text_slide(
