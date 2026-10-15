@@ -28,19 +28,37 @@ export function fitsFor(stats: RegressionStats | null, methods: Estimator[]): Fi
 }
 export const equation = (fit: Fit, digits = 3) => `${fit.label} y = ${fmt(fit.slope, digits)}x ${fit.intercept < 0 ? '−' : '+'} ${fmt(Math.abs(fit.intercept), digits)}`
 
-/** One setting shared by the gallery's scatterplots with paired data at several sites. */
-export function FitGroupingControl() {
+const GROUPING_LABEL: Record<FitGrouping, string> = { pooled: 'One pooled fit', site: 'Separate fit per site', season: 'Separate fit per season' }
+
+/**
+ * One setting shared by the gallery's scatterplots with paired data at several sites. A chart
+ * whose panels already split the data offers only the groupings that still change anything
+ * (`only`), with its own wording (`labels`); `value` is the grouping the chart actually draws.
+ */
+export function FitGroupingControl({ only, labels, value }: { only?: FitGrouping[]; labels?: Partial<Record<FitGrouping, string>>; value?: FitGrouping } = {}) {
   const { grouping, setGrouping } = useRegressions()
-  return <Combobox label="Fit grouping" value={grouping} onChange={setGrouping} options={[
-    { key: 'pooled', label: 'One pooled fit' }, { key: 'site', label: 'Separate fit per site' }, { key: 'season', label: 'Separate fit per season' },
-  ]} />
+  const keys = only ?? (['pooled', 'site', 'season'] as FitGrouping[])
+  return <Combobox label="Fit grouping" value={value ?? grouping} onChange={setGrouping}
+    options={keys.map((k) => ({ key: k, label: labels?.[k] ?? GROUPING_LABEL[k] }))} />
 }
 
-export function RegressionControls() {
+/**
+ * The grouping a chart draws when its panels already split by site or season: inside a
+ * per-site panel a fit per site is the pooled fit, and a per-season panel holds one site in
+ * one season, so every grouping is that panel's single fit.
+ */
+export function effectiveGrouping(grouping: FitGrouping, panels: 'combined' | 'site' | 'season'): FitGrouping {
+  if (panels === 'season') return 'pooled'
+  if (panels === 'site' && grouping === 'site') return 'pooled'
+  return grouping
+}
+
+/** The estimator and uncertainty choices; `grouping` adds the fit-grouping box for tabs whose charts lack their own. */
+export function RegressionControls({ grouping = true }: { grouping?: boolean } = {}) {
   const { methods, setMethods, showCI, setShowCI, setGrouping } = useRegressions()
   return <fieldset className="regression-controls">
     <legend>Regression fits</legend>
-    <FitGroupingControl />
+    {grouping && <FitGroupingControl />}
     <div className="regression-options">{ESTIMATORS.map(method => <label key={method}>
       <input type="checkbox" checked={methods.includes(method)} onChange={() => setMethods(ESTIMATORS.filter(e => e === method ? !methods.includes(e) : methods.includes(e)))} />
       <span style={{ color: FIT_STYLE[method].color }}>{FIT_STYLE[method].label}</span>

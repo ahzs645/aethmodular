@@ -41,8 +41,9 @@ export function Barplot({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFi
           site: s.name,
           season,
           value: stat === 'Mean' ? (d3.mean(vals) ?? 0) : (d3.quantile(vals, 0.5) ?? 0),
-          q1: d3.quantile(vals, 0.25) ?? 0,
-          q3: d3.quantile(vals, 0.75) ?? 0,
+          // whiskers that belong to the statistic: the IQR around a median, a 95 % interval around a mean
+          q1: stat === 'Mean' ? (d3.mean(vals) ?? 0) - 1.96 * (d3.deviation(vals) ?? 0) / Math.sqrt(vals.length) : d3.quantile(vals, 0.25) ?? 0,
+          q3: stat === 'Mean' ? (d3.mean(vals) ?? 0) + 1.96 * (d3.deviation(vals) ?? 0) / Math.sqrt(vals.length) : d3.quantile(vals, 0.75) ?? 0,
           n: vals.length,
           color: meta.seasons.find((x) => x.name === season)?.color ?? s.color,
         })
@@ -68,7 +69,7 @@ export function Barplot({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFi
     <ChartFrame
       id="barplot"
       title="Barplot — site by season, with the spread shown"
-      subtitle="Median per site per selected season (each site on its own calendar unless shared Ethiopian bins are chosen), whiskered to the interquartile range. A bar alone would imply a precision these n≈10–90 groups don't have, so the IQR travels with it."
+      subtitle={`${stat} per site per selected season (each site on its own calendar unless shared Ethiopian bins are chosen), whiskered to ${stat === 'Mean' ? 'the 95 % confidence interval of the mean' : 'the interquartile range'}. A bar alone would imply a precision these n≈10–90 groups don't have, so the spread travels with it.`}
       provenance="stands in for 70 bar/barh figures · comparisons.summary_bars · react-graph-gallery.com/barplot"
       controls={
         <>
@@ -92,7 +93,7 @@ export function Barplot({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFi
                   <g
                     key={i}
                     opacity={lg.dim(d.season)}
-                    onMouseEnter={(e) => tip.show(e, [`${d.site} · ${d.season}`, `${stat.toLowerCase()} = ${fmt(d.value)}`, `IQR ${fmt(d.q1)} – ${fmt(d.q3)}`, `n = ${d.n}`])}
+                    onMouseEnter={(e) => tip.show(e, [`${d.site} · ${d.season}`, `${stat.toLowerCase()} = ${fmt(d.value)}`, `${stat === 'Mean' ? '95 % CI of the mean' : 'IQR'} ${fmt(d.q1)} – ${fmt(d.q3)}`, `n = ${d.n}`])}
                     onMouseLeave={tip.hide}
                   >
                     <rect x={bx} y={Math.min(y(d.value), y(0))} width={bw} height={Math.abs(y(d.value) - y(0))} fill={d.color} fillOpacity={0.78} rx={2} />

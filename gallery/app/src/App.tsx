@@ -123,12 +123,12 @@ const parseSpartanSel = (v: string | null): string[] | 'all' | null =>
 const NETWORK_TABS = ['correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'weather'] as const
 const FILTERS: SubsetCaps = { seasons: true, sites: true, excluded: true, dates: true, fields: 'single', datasetLabel: 'SPARTAN filters' }
 const CAPS: Record<Exclude<TabKey, 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks'>, SubsetCaps> = {
-  correlation: { ...FILTERS, fields: 'pair', networks: true },
+  correlation: { ...FILTERS, fields: 'pair', networks: true, fits: true },
   distribution: { ...FILTERS, networks: true },
   evolution: { ...FILTERS, networks: true },
   ranking: { ...FILTERS, networks: true },
   partOfWhole: { ...FILTERS, fields: 'none', networks: true },
-  weather: { ...FILTERS, networks: true },
+  weather: { ...FILTERS, networks: true, fits: true },
   map: FILTERS,
   flow: { ...FILTERS, fields: 'none' },
   pmf: {
@@ -144,6 +144,7 @@ const CAPS: Record<Exclude<TabKey, 'census' | 'baseline' | 'similarity' | 'meeti
   // the calibration tab's per-filter section scores Addis evaluation filters; only
   // the season filter means anything there, and only for those charts
   calibration: {
+    fits: true,
     seasons: true,
     sites: false,
     excluded: false,

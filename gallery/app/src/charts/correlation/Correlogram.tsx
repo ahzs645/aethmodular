@@ -1,8 +1,8 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
 import { robustDomain } from '@/lib/axes'
 import { RegressionLines, RegressionGroupLines } from '@/components/RegressionOverlay'
-import { FitGroupingControl, useRegressions } from '@/lib/regressionPrefs'
-import { groupedRegressions } from '@/lib/siteRegression'
+import { FitGroupingControl, effectiveGrouping, useRegressions } from '@/lib/regressionPrefs'
+import { groupedRegressions, type FitGrouping } from '@/lib/siteRegression'
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
@@ -50,6 +50,9 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
   )
   const effectiveSite = siteCodes.includes(siteCode) ? siteCode : siteCodes[0] ?? 'All'
   const sub = useMemo(() => (effectiveSite === 'All' ? rows : rows.filter((r) => r.code === effectiveSite)), [rows, effectiveSite])
+  const { methods, grouping: chosenGrouping } = useRegressions()
+  const oneSiteMatrix = useMemo(() => new Set(sub.map((r) => r.site)).size <= 1, [sub])
+  const matrixGrouping = effectiveGrouping(chosenGrouping, oneSiteMatrix ? 'site' : 'combined')
 
   // Computed from the live subset rather than a precomputed file, so the
   // season/site/date filters above actually move these numbers.
@@ -111,7 +114,8 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
           <Select label="Site" value={block.code} options={siteCodes} onChange={setSiteCode} optionLabel={(c) => (c === 'All' ? 'All sites' : meta.sites.find((s) => s.code === c)?.name ?? c)} />
           <Segmented label="Encoding" value={encoding} options={ENCODINGS} onChange={setEncoding} />
           {encoding === 'Scatter matrix' ? (
-            <><Select label="Species" value={family} options={families} onChange={setFamily} title="At most six species per matrix" /><FitGroupingControl /></>
+            <><Select label="Species" value={family} options={families} onChange={setFamily} title="At most six species per matrix" />
+              {methods.length > 0 && <FitGroupingControl only={oneSiteMatrix ? ['pooled', 'season'] : undefined} value={matrixGrouping} />}</>
           ) : (
             <span className="control">{block.fields.length} species</span>
           )}
@@ -125,7 +129,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
           splomFields.length < 2 ? (
             <Empty>Fewer than two species of that family have ≥20 filters here.</Empty>
           ) : (
-            <ScatterMatrix meta={meta} rows={sub.filter((r) => lg.show(r.site))} fields={splomFields} width={Math.min(width, 760)} tip={tip} hl={hl} units={meta.field_units} dim={lg.dim} />
+            <ScatterMatrix grouping={matrixGrouping} meta={meta} rows={sub.filter((r) => lg.show(r.site))} fields={splomFields} width={Math.min(width, 760)} tip={tip} hl={hl} units={meta.field_units} dim={lg.dim} />
           )
         ) : (
           <svg width={size + labelPad + 30} height={size + labelPad + 20} className="animated">
@@ -187,7 +191,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
 }
 
 /** Pairwise scatter matrix for a few species, histograms on the diagonal. */
-function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, meta }: {
+function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, meta, grouping }: {
   meta: MetaFile
   rows: FilterRow[]
   fields: string[]
@@ -196,8 +200,9 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, meta }: {
   hl: ReturnType<typeof useHighlight>
   units: Record<string, string>
   dim: (site: string) => number
+  /** the grouping drawn (one site in view: per site is the pooled fit) */
+  grouping: FitGrouping
 }) {
-  const { grouping } = useRegressions()
   const n = fields.length
   const pad = 6
   // the row labels sit in the left gutter: size it from the longest name

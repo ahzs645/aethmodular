@@ -30,6 +30,8 @@ export interface SubsetCaps {
   dates: boolean
   /** which axis fields the tab's charts share: an x/y pair, one measurement, or none */
   fields: 'pair' | 'single' | 'none'
+  /** the tab draws regression fits, so the estimator choices belong in the panel */
+  fits?: boolean
   /** e.g. "filters" or "PMF filters" — what the count is counting */
   datasetLabel: string
   /** shown when a control is absent because the data can't support it */
@@ -270,11 +272,12 @@ export function SubsetBar({
                 })}
               </span>
             ) : (
-              <span className="method-note">{s.chosenNetwork === 'focus' ? net.label : `This tab shows the focus sites; ${NETWORKS.find((x) => x.key === s.chosenNetwork)?.label} applies on Correlation, Distribution, Evolution, Ranking and Part of a whole.`}</span>
+              <span className="method-note">{s.chosenNetwork === 'focus' ? net.label : `This tab shows the focus sites; ${NETWORKS.find((x) => x.key === s.chosenNetwork)?.label} applies on Correlation, Distribution, Evolution, Ranking, Part of a whole and Weather.`}</span>
             )}
             {caps.networks && (s.networkLoading || s.networkError) && <span className="method-note" style={{ display: 'block' }}>{s.networkLoading ? 'loading…' : `could not load: ${s.networkError}`}</span>}
           </Row>
-          <RegressionControls />
+          {/* only where fits are drawn; each chart offers the fit grouping that fits its layout */}
+          {caps.fits && <RegressionControls grouping={false} />}
 
           {caps.fields === 'pair' && (
             <>

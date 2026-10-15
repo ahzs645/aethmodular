@@ -3,8 +3,8 @@ import { styleBrush } from '@/lib/brush'
 import { seasonsForSite } from '@/siteSeasons'
 import { IdentityLine, RefLine } from '@/components/RefLines'
 import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
-import { useRegressions, fitsFor, FitGroupingControl } from '@/lib/regressionPrefs'
-import { groupedRegressions, type RegressionGroup } from '@/lib/siteRegression'
+import { useRegressions, fitsFor, FitGroupingControl, effectiveGrouping } from '@/lib/regressionPrefs'
+import { groupedRegressions, type FitGrouping, type RegressionGroup } from '@/lib/siteRegression'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Segmented, Toggle } from '@/components/ChartFrame'
@@ -68,7 +68,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const hl = useHighlight()
-  const { methods, grouping } = useRegressions()
+  const { methods, grouping: chosenGrouping } = useRegressions()
 
   const [colorBy, setColorBy] = useState<(typeof COLOR_BY)[number]>('Site')
   // the reader's colour field, or Iron, or the first field, among the fields this view has now: the
@@ -77,6 +77,8 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   const colorField = [colorChoice, 'Iron', meta.fields[0]].find((f): f is string => !!f && meta.fields.includes(f)) ?? ''
   const [sizeField, setSizeField] = useState(NO_SIZE)
   const [layout, setLayout] = useState<(typeof LAYOUTS)[number]>('Combined')
+  // the panels may already split by site or season; draw (and offer) only the groupings that still differ
+  const grouping = effectiveGrouping(chosenGrouping, layout === 'Per site' ? 'site' : layout === 'Per season' ? 'season' : 'combined')
   const [showFit, setShowFit] = useState(true)
   const [brushing, setBrushing] = useState(false)
   const { hidden, setHidden, dim, hover, setHover } = useLegend()
@@ -146,7 +148,8 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
     const intercepts = panels.flatMap(p => p.fitGroups.flatMap(group => fitsFor(group.stats, methods).map(fit => fit.intercept)))
     return pairDomain(points.map((p) => p.x), points.map((p) => p.y), axes, showFit ? intercepts : [])
   }, [points, panels, axes, showFit, methods])
-  const ownAxes = layout === 'Per site' && axes.panels === 'Own'
+  // 'Own' panel axes apply to any split layout (one panel per site, or per site and season)
+  const ownAxes = layout !== 'Combined' && axes.panels === 'Own'
   const panelDomains = useMemo(() => ownAxes
     ? new Map(panels.map(p => [p.key, pairDomain(p.points.map(q => q.x), p.points.map(q => q.y), axes,
       showFit ? p.fitGroups.flatMap(group => fitsFor(group.stats, methods).map(fit => fit.intercept)) : [])]))
@@ -181,6 +184,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   const renderPanel = (p: (typeof panels)[number]) => (
               <ScatterPanel
                 key={p.key}
+                grouping={grouping}
                 title={p.title}
                 titleColor={p.color}
                 points={p.points}
@@ -233,7 +237,12 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
           {colorBy === 'Value' && <FieldSelect label="by" value={colorField} meta={meta} onChange={setColorField} />}
           <FieldSelect label="Size" value={sizeField} meta={meta} onChange={setSizeField} extraOptions={[NO_SIZE]} title="Bubble plot: mark area proportional to a fourth measurement" />
           <Toggle label="Fit lines" checked={showFit} onChange={setShowFit} />
-          <FitGroupingControl />
+          {/* grouping only where it changes something: each per-season panel holds one site in one season */}
+          {showFit && methods.length > 0 && layout !== 'Per season' && <FitGroupingControl
+            only={layout === 'Per site' ? ['pooled', 'season'] : undefined}
+            labels={layout === 'Per site' ? { pooled: 'One fit per site', season: 'Separate fit per season' } : undefined}
+            value={grouping} />}
+          {showFit && methods.length > 0 && layout === 'Per season' && <span className="control hint" title="Each panel holds one site in one season, so it gets one fit">one fit per panel</span>}
           <Toggle label="Brush to select" checked={brushing} onChange={(v) => { setBrushing(v); if (!v) hl.setSelected(null) }} title="Drag a rectangle: the enclosed filters are highlighted on every chart of this tab" />
           {hl.selected && (
             <span className="control">
@@ -286,8 +295,10 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
 
 /** One axes: used once for the combined layout, once per site for the grid. */
 function ScatterPanel({
-  title, titleColor, points, stats, fitGroups, domain, innerW, innerH, axes, showFit, xLabel, yLabel, colorOf, radiusOf, dimOf, fitDim, focusId, selected, brushing, onBrush, onEnter, onLeave, onClick,
+  title, titleColor, points, stats, fitGroups, domain, innerW, innerH, axes, showFit, xLabel, yLabel, colorOf, radiusOf, dimOf, fitDim, focusId, selected, brushing, onBrush, onEnter, onLeave, onClick, grouping,
 }: {
+  /** the grouping the chart draws (lib/regressionPrefs effectiveGrouping), not the raw setting */
+  grouping: FitGrouping
   title: string | null
   titleColor: string
   points: Point[]
@@ -384,7 +395,7 @@ function ScatterPanel({
   }
   const markIntercepts = axes.mode === 'Show intercept' && showFit && !axes.log && stats
   const originAxes = axes.mode === 'Show intercept' && !axes.log && xScale.domain()[0] < 0 && yScale.domain()[0] < 0
-  const { methods, grouping, showCI } = useRegressions()
+  const { methods, showCI } = useRegressions()
   const siteFits = grouping !== 'pooled' && showFit && methods.length > 0
   const selectedFits = fitGroups.flatMap(group => fitsFor(group.stats, showFit ? methods : []).map(fit => ({ ...fit, color: group.color ?? fit.color, name: group.name })))
   const svgWidth = innerW + MARGIN.left + MARGIN.right
@@ -482,7 +493,7 @@ function ScatterPanel({
             </g>
           )}
 
-          {grouping === 'pooled' && <RegressionReadout stats={stats} />}
+          {grouping === 'pooled' && showFit && <RegressionReadout stats={stats} />}
         </g>
         {siteFits && <RegressionGroupReadouts groups={fitGroups} width={svgWidth} y={innerH + MARGIN.top + MARGIN.bottom} />}
       </svg>

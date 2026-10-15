@@ -66,10 +66,11 @@ export function HumidityAgreement({ rows, meta, xField: x0, yField: y0, rhField 
       subtitle={`${yField} against ${xField}, split at ${thr} % relative humidity over each filter's window; OLS fit per half. The sweep shows both slopes at every threshold, with the count of filters on each side (thin lines). With several sites picked the halves mix sites, so pick one for the notebook's question.`}
       provenance="meteorology_source_interaction §4 · meteorology_revisions R2, R2C (threshold sweep)"
       controls={<>
-        <Select label="x" value={xField} options={fields} onChange={setX} />
-        <Select label="y" value={yField} options={fields} onChange={setY} />
+        {/* x and y never show the same field: picking the other axis's field swaps them */}
+        <Select label="x" value={xField} options={fields} onChange={(f) => { if (f === yField) setY(xField); setX(f) }} />
+        <Select label="y" value={yField} options={fields} onChange={(f) => { if (f === xField) setX(yField); setY(f) }} />
         <label className="control">RH threshold
-          <input type="range" min={30} max={80} step={2.5} value={thr} onChange={(e) => setThr(Number(e.target.value))} style={{ width: 110 }} />
+          <input type="range" min={30} max={82.5} step={2.5} value={thr} onChange={(e) => setThr(Number(e.target.value))} style={{ width: 110 }} />
           <span style={{ fontFamily: 'var(--mono)' }}>{thr} %</span></label>
       </>}>
       <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>

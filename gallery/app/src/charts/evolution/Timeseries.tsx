@@ -110,7 +110,8 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
         <>
           <Segmented label="Layout" value={layout} options={LAYOUTS} onChange={setLayout} />
           <Toggle label="Rolling median" checked={smooth} onChange={setSmooth} />
-          <Toggle label="Season shading" checked={seasonShading} onChange={setSeasonShading} />
+          {/* the overlay has no single calendar when sites keep their own, so there is nothing to shade */}
+          {!(mixed && layout === 'Overlay') && <Toggle label="Season shading" checked={seasonShading} onChange={setSeasonShading} />}
           {cursor && <span className="control" style={{ fontFamily: 'var(--mono)' }}>{d3.timeFormat('%Y-%m-%d')(cursor)}</span>}
         </>
       }
@@ -212,7 +213,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
         <Legend
           items={[
             ...meta.sites.filter((s) => rows.some((r) => r.site === s.name)).map((s) => ({ label: s.name, color: s.color })),
-            ...(seasonShading ? meta.seasons.map((s) => ({ label: s.name, color: s.color, shape: 'band' as const })) : []),
+            ...(seasonShading && !(mixed && layout === 'Overlay') ? meta.seasons.map((s) => ({ label: s.name, color: s.color, shape: 'band' as const })) : []),
           ]}
           hidden={hidden}
           onToggle={(l) => { if (meta.sites.some((s) => s.name === l)) setHidden((h) => toggleIn(h, l)) }}

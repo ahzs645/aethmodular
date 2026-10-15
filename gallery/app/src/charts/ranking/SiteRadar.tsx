@@ -102,6 +102,9 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
       <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', justifyContent: 'center' }}>
         {species.length < 3 || sites.length === 0 ? (
           <Empty>Need at least 3 species with ≥5 filters per site.</Empty>
+        ) : sites.length === 1 ? (
+          // both normalisations divide a lone site by itself: every axis would read 1
+          <Empty>The radar compares site profiles, so it needs two or more sites; with only {sites[0].name} every axis is 1. Pick more sites in the Filters panel.</Empty>
         ) : (
           <svg width={size} height={size} className="animated">
             {rings.map((v) => (

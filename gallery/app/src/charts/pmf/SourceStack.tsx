@@ -35,7 +35,7 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
   const height = 440
 
   const [mode, setMode] = useState<(typeof MODES)[number]>('Relative (%)')
-  const [shape, setShape] = useState<(typeof SHAPES)[number]>('Stacked')
+  const [chosenShape, setShape] = useState<(typeof SHAPES)[number]>('Stacked')
   const { hidden, setHidden, dim, hover, setHover } = useLegend()
 
   const labels = pmf.sources.map((s) => s.label).filter((l) => !hidden.has(l))
@@ -51,6 +51,7 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const innerH = height - MARGIN.top - MARGIN.bottom
   const relative = mode === 'Relative (%)'
+  const shape = relative ? 'Stacked' : chosenShape
 
   const stacked = useMemo(() => {
     const src = relative ? 'fraction' : 'ugm3'
@@ -93,7 +94,8 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
       controls={
         <>
           <Segmented label="Scale" value={mode} options={MODES} onChange={setMode} />
-          <Segmented label="Shape" value={shape} options={SHAPES} onChange={setShape} title="Streamgraph: wiggle offset, inside-out order — no baseline, better shape" />
+          {/* relative shares sum to 100 % every day, so a streamgraph would only wobble the baseline */}
+          {!relative && <Segmented label="Shape" value={shape} options={SHAPES} onChange={setShape} title="Streamgraph: wiggle offset, inside-out order — no baseline, better shape" />}
           <span className="control">{rows.length} filters · {pmf.site_name}</span>
         </>
       }

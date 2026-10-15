@@ -357,7 +357,8 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
           {view !== 'Dendrogram' && <Select label="|r| ≥" value={thresholdS} options={THRESHOLDS} onChange={setThresholdS} />}
           {view === 'Dendrogram' && <Select label="Cut at" value={cutS} options={CUTS} onChange={setCutS} title="distance 1 − |r| at which the tree is cut into clusters" />}
           <span className="control">
-            {nSpecies} species · {nEdges} edges
+            {/* the dendrogram has no edges: it clusters every species, whatever the |r| threshold */}
+            {nSpecies} species{view === 'Dendrogram' ? '' : ` · ${nEdges} edges`}
             {view === 'Dendrogram' && dendro ? ` · ${dendro.nClusters} clusters at ${cutS}` : ''}
           </span>
         </>

@@ -36,9 +36,11 @@ export function MethodSankey({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const [stage3, setStage3] = useState<(typeof STAGE3)[number]>('HIPS coverage')
+  const [chosenStage3, setStage3] = useState<(typeof STAGE3)[number]>('HIPS coverage')
   const [hoverNode, setHoverNode] = useState<string | null>(null)
   const [bothOnly, setBothOnly] = useState(true)
+  // with only FTIR+HIPS filters every one has HIPS, so a HIPS-coverage stage would be one node: show seasons
+  const stage3 = bothOnly ? 'Season' : chosenStage3
   const height = 460
 
   const has = (r: FilterRow, f: string) => typeof r[f] === 'number' && Number.isFinite(r[f] as number)
@@ -124,7 +126,7 @@ export function MethodSankey({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
       provenance="zero flow figures in the estate; described in gallery/app/src/charts/flow/README.md · react-graph-gallery.com/sankey-diagram"
       controls={
         <>
-          <Segmented label="Third stage" value={stage3} options={STAGE3} onChange={setStage3} />
+          {!bothOnly && <Segmented label="Third stage" value={stage3} options={STAGE3} onChange={setStage3} />}
           <Toggle label="Only filters with both FTIR EC and HIPS" checked={bothOnly} onChange={setBothOnly} title="Drop filters missing an FTIR EC value (in both exports) or missing HIPS Fabs" />
           <span className="control">{total} filters shown</span>
         </>

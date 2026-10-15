@@ -13,6 +13,7 @@ import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const STATS = ['Median', 'Mean'] as const
 const LAYOUTS = ['Grouped', 'Rings'] as const
+const MAX_RINGS = 8
 /** A site-month with fewer filters than this is a stub, not a value: a median of two is a coin toss. */
 const MIN_N = 3
 /** an IQR needs four filters, the same rule as the monthly band chart */
@@ -76,7 +77,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
   const uid = useId().replace(/:/g, '')
 
   const [stat, setStat] = useState<(typeof STATS)[number]>('Median')
-  const [layout, setLayout] = useState<(typeof LAYOUTS)[number]>('Grouped')
+  const [chosenLayout, setLayout] = useState<(typeof LAYOUTS)[number]>('Grouped')
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [hover, setHover] = useState<string | null>(null)
 
@@ -105,6 +106,9 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
     [rows, field, meta.sites]
   )
   const series = allSeries.filter((s) => !hidden.has(s.name))
+  // a ring per site needs at least two sites to compare and room for each ring: 8 at most
+  const ringsOk = series.length >= 2 && series.length <= MAX_RINGS
+  const layout = ringsOk ? chosenLayout : 'Grouped'
   // a hovered site dims the other sites' bars; a hovered season (a background key, not a series) deepens its own sectors
   const siteHover = hover && series.some((s) => s.name === hover) ? hover : null
   const seasonHover = hover && meta.seasons.some((s) => s.name === hover) ? hover : null
@@ -177,7 +181,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
       controls={
         <>
           <Segmented label="Bar" value={stat} options={STATS} onChange={setStat} title="Statistic of the measurement across the month's filters" />
-          <Segmented label="Layout" value={layout} options={LAYOUTS} onChange={setLayout} title="Grouped: sites side by side in each month. Rings: one ring per site, each with its own baseline, on a shared value scale" />
+          {ringsOk && <Segmented label="Layout" value={layout} options={LAYOUTS} onChange={setLayout} title="Grouped: sites side by side in each month. Rings: one ring per site, each with its own baseline, on a shared value scale" />}
         </>
       }
     >

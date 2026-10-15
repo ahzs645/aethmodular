@@ -16,8 +16,8 @@ const MODES = ['Relative (%)', 'Absolute (µg/m³)'] as const
  *
  * `dominant_source` is only meaningful on normalised fractions — on the raw GF
  * columns the dominant fraction tops out near 0.24 and no filter ever crosses
- * a 30 % threshold. After normalisation the mean is ~46 %, which is what the
- * threshold line here is drawn against.
+ * a 30 % threshold. After normalisation the mean is ~46 %; the threshold control sets
+ * the share used for the dominated-filter count in the subtitle.
  */
 export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; rows: PmfRow[]; meta: MetaFile }) {
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -70,7 +70,8 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
       controls={
         <>
           <Segmented label="Scale" value={mode} options={MODES} onChange={setMode} />
-          <Select label="Dominance threshold" value={threshold} options={['20', '30', '40', '50', '60']} onChange={setThreshold} />
+          {/* the share one source needs before a filter counts as dominated; it sets the count in the subtitle (a line would misread on stacked bars) */}
+          <Select label="Count filters dominated above" value={threshold} options={['20', '30', '40', '50', '60']} optionLabel={(o) => `${o} %`} onChange={setThreshold} />
         </>
       }
     >

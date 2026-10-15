@@ -183,11 +183,12 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
               <Select label="Bottom" value={bName} options={groupNames.filter((n) => n !== aName)} onChange={setMirrorB} />
             </>
           )}
-          <label className="control" title="Number of bins across the displayed range">
+          {/* the density layout draws no bars: bins would only rescale the curves */}
+          {!densityOnly && <label className="control" title="Number of bins across the displayed range">
             Bins
             <input type="range" min={8} max={80} step={1} value={bins} onChange={(e) => setBins(Number(e.target.value))} style={{ width: 110 }} />
             <span style={{ fontFamily: 'var(--mono)', width: 20 }}>{bins}</span>
-          </label>
+          </label>}
           <Toggle label="Normalise to fraction" checked={normalise} onChange={setNormalise} />
           {!densityOnly && <Toggle label="Density curve" checked={overlayDensity} onChange={setOverlayDensity} />}
         </>

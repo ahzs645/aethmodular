@@ -1,7 +1,7 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
 import { IdentityLine } from '@/components/RefLines'
 import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
-import { fitsFor, useRegressions, FitGroupingControl } from '@/lib/regressionPrefs'
+import { fitsFor, useRegressions, FitGroupingControl, effectiveGrouping } from '@/lib/regressionPrefs'
 import { groupedRegressions } from '@/lib/siteRegression'
 import { useId, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
@@ -33,12 +33,15 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   const tip = useTooltip(wrapRef)
   const edits = useFilterEdits()
   const clipId = useId()
-  const { methods, grouping, showCI } = useRegressions()
+  const { methods, grouping: chosenGrouping, showCI } = useRegressions()
   const MAX_SQUARE = 520
 
   const [radius, setRadius] = useState('14')
   const opts: AxesOpts = { ...axes, log: false }
   const pairedRows = useMemo(() => rows.filter(r => typeof r[xField] === 'number' && typeof r[yField] === 'number' && Number.isFinite(r[xField]) && Number.isFinite(r[yField])), [rows, xField, yField])
+  // one site in view: a fit per site is the pooled fit, so it is not offered
+  const oneSite = useMemo(() => new Set(pairedRows.map((r) => r.site)).size <= 1, [pairedRows])
+  const grouping = effectiveGrouping(chosenGrouping, oneSite ? 'site' : 'combined')
   const fitGroups = useMemo(() => groupedRegressions(pairedRows, grouping, {
     x: r => r[xField] as number, y: r => r[yField] as number, site: r => r.site,
     season: r => r.season, seasonColor: r => meta.seasons.find(se => se.name === r.season)?.color ?? INK.muted,
@@ -105,7 +108,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
       controls={
         <>
           <Select label="Hex radius" value={radius} options={['8', '11', '14', '18', '24']} onChange={setRadius} />
-          <FitGroupingControl />
+          {methods.length > 0 && <FitGroupingControl only={oneSite ? ['pooled', 'season'] : undefined} value={grouping} />}
         </>
       }
     >
@@ -179,7 +182,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
                 </g>
               )}
 
-              {grouping === 'pooled' && <RegressionReadout stats={stats} />}
+              {grouping === 'pooled' && methods.length > 0 && <RegressionReadout stats={stats} />}
             </g>
             {siteFits && <RegressionGroupReadouts groups={fitGroups} width={svgWidth} y={innerH + MARGIN.top + MARGIN.bottom} />}
           </svg>
