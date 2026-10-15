@@ -1,6 +1,6 @@
 import { monthBlocks } from '@/lib/regressionCI'
 import { robustDomain } from '@/lib/axes'
-import { Marker, RefLine } from '@/components/RefLines'
+import { RefLine } from '@/components/RefLines'
 import { regression } from '@/lib/stats'
 import { EstimatorViews, FIT_STYLE, useEstimator, useRegressions, fitsFor } from '@/lib/regressionPrefs'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -19,12 +19,15 @@ import { MeetingCalibrationDetails } from '@/components/MeetingCalibrationDetail
 import { SeasonalComposition } from '@/components/SeasonalComposition'
 import { SpecCurve } from '@/charts/calibration/SpecCurve'
 import { XAxis, YAxis } from '@/components/Axes'
+import { SpectrumPlot, type SpectrumBand, type SpectrumSeries } from '@/components/SpectrumPlot'
+import { channelQuantiles, iqrRows } from '@/lib/spectra'
+import { SweepPlot } from '@/components/SweepPlot'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
 import { baseFilterId, useHighlight } from '@/lib/highlight'
-import { ADDIS_ALL, BASELINE_COLOR, FONT, IMPROVE_GREY, INK, OCT1_HATCH, RAMP_DIVERGING, SPECTRAL_REGION, TRACE } from '@/lib/theme'
-import { ANALOG_SELECTION_EXCLUDED, OCT1_ALSO_EXCLUDED, SpectralRegions } from '@/components/SpectralRegions'
+import { ADDIS_ALL, BASELINE_COLOR, FONT, IMPROVE_GREY, INK, OCT1_HATCH, RAMP_DIVERGING, SPECTRAL_REGION } from '@/lib/theme'
+import { ANALOG_SELECTION_EXCLUDED, OCT1_ALSO_EXCLUDED } from '@/components/SpectralRegions'
 import { coef, coefSigned, f2, fmt, signed } from '@/lib/format'
 import { ALL_ADDIS, ANALYSIS_CALENDAR_NOTE, inSeasonGroup, isAllAddis, seasonPhrase, shortSeason } from '@/lib/seasons'
 import { ColorLegend } from '@/components/ColorLegend'
@@ -446,27 +449,10 @@ function BaselineCompare({ data }: { data: MeetingData }) {
     const k = t.index.get(sid)
     return k == null ? null : { wn: t.meta.bin_wn, v: t.traces.of(k) }
   }
-  const panel = (title: string, lines: { name: string; color: string; wn: number[]; v: Float32Array }[], lo: number, w: number, caption?: string) => {
-    const m = { top: caption ? 40 : 22, right: 12, bottom: 44, left: 58 }, h = caption ? 298 : 280, iw = w - m.left - m.right, ih = h - m.top - m.bottom
-    const vals = lines.flatMap((l) => Array.from(l.v).filter((_, i) => l.wn[i] >= lo))
-    const x = d3.scaleLinear().domain([4000, lo]).range([0, iw])
-    const y = d3.scaleLinear().domain([Math.min(0, d3.min(vals) ?? 0), d3.max(vals) ?? 0.01]).range([ih, 0]).nice()
-    return (
-      <svg width={w} height={h} fontFamily={FONT.family} role="img" aria-label={title}>
-        <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>
-        {caption && <text x={m.left} y={30} fontSize={11} fill={INK.muted}>{caption}</text>}
-        <g transform={`translate(${m.left},${m.top})`}>
-          <YAxis scale={y} x={0} label="Absorbance" tickCount={4} labelX={-46} format={(v) => String(+v.toFixed(3))} />
-          <XAxis scale={x} y={ih} label="Wavenumber (cm⁻¹)" tickCount={6} labelDy={36} />
-          <RefLine orient="h" at={y(0)} from={0} to={iw} />
-          {lines.map((l) => (
-            <path key={l.name} aria-label={l.name} d={d3.line<number>().defined((_, i) => l.wn[i] >= lo && Number.isFinite(l.v[i])).x((_, i) => x(l.wn[i])).y((_, i) => y(l.v[i]))(Array.from(l.v)) ?? ''}
-              fill="none" stroke={l.color} strokeWidth={1.5} />
-          ))}
-        </g>
-      </svg>
-    )
-  }
+  const panel = (title: string, lines: { name: string; color: string; wn: number[]; v: Float32Array }[], lo: number, w: number, caption?: string) =>
+    <SpectrumPlot width={w} height={280} window={[4000, lo]} includeZero zeroLine hover="readout"
+      title={<span>{title}{caption && <span style={{ fontWeight: 400, color: INK.muted, fontSize: 11, marginLeft: 8 }}>{caption}</span>}</span>}
+      series={lines.map((l) => ({ id: l.name, label: l.name, wn: l.wn, y: l.v, color: l.color, width: 1.5 }))} />
   const lines = visibleSeries.map((s2) => { const g = get(s2.t); return g ? { name: s2.name, color: s2.color, ...g } : null }).filter(Boolean) as { name: string; color: string; wn: number[]; v: Float32Array }[]
   const completeLine = lines.find(l => l.name === 'VIBES baseline (4000–500, completed rank 70)')
   const fullLine = completeLine ?? lines.find((l) => l.name === PREPROCESSING['VIBES-full'])
@@ -511,9 +497,6 @@ const TOP_N = ['50', '100', '250', '500'] as const
  * any chart, is drawn on top in black, so a crossplot point can be read as a spectrum.
  */
 function SpectraPanel({ data, method, group }: { data: MeetingData; method: string; group: string }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const hl = useHighlight()
   const [mode, setMode] = useSearchParam<string>('mspec', 'individual filters', SPEC_MODES)
   const [topN, setTopN] = useSearchParam<string>('mspecn', '100', TOP_N)
@@ -541,12 +524,9 @@ function SpectraPanel({ data, method, group }: { data: MeetingData; method: stri
   }, [data, method, group])
 
   const toSid = (key: string | null) => (key == null ? null : key.startsWith('improve:') ? key : etadOf.get(key) ?? null)
-  const pinnedSid = toSid(hl.pinnedId), hoverSid = toSid(hl.hoverId)
 
-  const m = { top: 10, right: 14, bottom: 46, left: 60 }, height = 286
-  const w = Math.max(320, width), iw = w - m.left - m.right, ih = height - m.top - m.bottom
   if (tr.error) return <Empty>Could not load the per-filter spectra: {tr.error}</Empty>
-  if (!tr.value) return <div ref={ref}><Empty>Loading per-filter spectra…</Empty></div>
+  if (!tr.value) return <div><Empty>Loading per-filter spectra…</Empty></div>
   const { meta, traces, index } = tr.value
   const wn = meta.bin_wn
   const wnFloor = method.includes('full-cut') ? 1425 : 0
@@ -557,71 +537,43 @@ function SpectraPanel({ data, method, group }: { data: MeetingData; method: stri
   // the export's quantiles cover all 500 analogs; for fewer, take them from the same traces the
   // individual view draws, so both views describe the same N most similar filters (Ann, 9 Oct)
   const qImp = topN === '500' || impT.length === 0 ? data.spectra[`${method}|${group}|improve`] as number[][] | undefined
-    : wn.map((_, j) => { const col = impT.map((t) => t.v[j]).sort(d3.ascending); return [0.1, 0.25, 0.5, 0.75, 0.9].map((p) => d3.quantileSorted(col, p) ?? NaN) })
-      .reduce((rows, qs) => { qs.forEach((v, r) => rows[r].push(v)); return rows }, [[], [], [], [], []] as number[][])
+    : channelQuantiles(impT.map((t) => t.v), [0.1, 0.25, 0.5, 0.75, 0.9])
   const qImpWn: number[] = topN === '500' || impT.length === 0 ? (data.spectra[`wn|${method}`] ?? data.spectra.wn) : Array.from(wn)
   const qAdd = data.spectra[`${method}|${group}|addis`] as number[][] | undefined
   const qwn: number[] = data.spectra[`wn|${method}`] ?? data.spectra.wn
-  const pool = mode === 'individual filters'
-    ? [...impT, ...addT].flatMap((t) => [d3.quantile(t.v, 0.995) ?? 0, d3.min(t.v) ?? 0])
-    : [...(qImp ? [...qImp[1], ...qImp[3]] : []), ...(qAdd ? [...qAdd[1], ...qAdd[3]] : [])]
-  const pin = pinnedSid ? get(pinnedSid) : null
-  const hov = hoverSid && hoverSid !== pinnedSid ? get(hoverSid) : null
-  const x = d3.scaleLinear().domain([d3.max(wn) ?? 4000, Math.max(wnFloor, d3.min(wn) ?? 1400)]).range([0, iw])
-  const y = d3.scaleLinear().domain([Math.min(0, d3.min(pool) ?? 0), Math.max(d3.max(pool) ?? 0.01, pin ? d3.max(pin) ?? 0 : 0)]).range([ih, 0]).nice()
-  const path = (v: ArrayLike<number>, grid: number[] = wn) => d3.line<number>().defined((_, i) => grid[i] >= wnFloor).x((_, i) => x(grid[i])).y((_, i) => y(v[i]))(Array.from(v)) ?? ''
-  const area = (q: number[][], grid: number[] = qwn) => d3.area<number>().defined((_, i) => grid[i] >= wnFloor).x((_, i) => x(grid[i])).y0((_, i) => y(q[1][i])).y1((_, i) => y(q[3][i]))(grid) ?? ''
-  const enter = (e: React.MouseEvent, key: string, lines: string[]) => { tip.show(e, [...lines, 'click to pin it on every chart']); hl.setHover(key) }
-  const leave = () => { tip.hide(); hl.setHover(null) }
+  const individual = mode === 'individual filters'
+  const series: SpectrumSeries[] = individual
+    ? [...impT.map((t) => ({ id: t.sid, wn, y: t.v, color: IMPROVE_GREY, role: 'trace' as const, tip: [t.sid, 'IMPROVE analog'] })),
+      ...addT.map((t) => ({ id: t.key, wn, y: t.v, color: data.season_colors[t.season] ?? col, role: 'trace' as const, opacity: 0.4, width: 0.9, tip: [t.label, `Addis · ${t.season}`] }))]
+    : [...(qImp ? [{ id: 'improve-median', label: 'IMPROVE median', wn: qImpWn, y: iqrRows(qImp).mid, color: INK.muted, width: 1.4, hoverable: false }] : []),
+      ...(qAdd ? [{ id: 'addis-median', label: 'Addis median', wn: qwn, y: iqrRows(qAdd).mid, color: col, width: 1.5, hoverable: false }] : [])]
+  const bands: SpectrumBand[] = individual ? [] : [
+    ...(qImp ? [{ id: 'improve', wn: qImpWn, ...iqrRows(qImp), color: IMPROVE_GREY, opacity: 0.25 }] : []),
+    ...(qAdd ? [{ id: 'addis', wn: qwn, ...iqrRows(qAdd), color: col, opacity: 0.25 }] : [])]
+  const lookup = (key: string) => { const sid = toSid(key), v = sid ? get(sid) : null; return v ? { wn, y: v } : null }
+  const lo = Math.max(wnFloor, d3.min(wn) ?? 1400)
+  const pinnedSid = toSid(hl.pinnedId)
   return (
-    <div ref={ref} style={{ marginTop: 10 }}>
+    <div style={{ marginTop: 10 }}>
       <div className="frame-controls" style={{ padding: 0 }}>
         <Segmented label="Spectra" value={mode as any} options={SPEC_MODES} onChange={setMode as any} />
         <Segmented label="Most similar analogs" value={topN as any} options={TOP_N} onChange={setTopN as any} />
       </div>
-      {/* HTML, not SVG text, so the title wraps instead of being clipped on a narrow screen */}
-      <div style={{ fontSize: 12.5, fontWeight: 600, color: INK.text, margin: `6px 0 0 ${m.left}px` }}>
-        Spectra: {mode === 'individual filters' ? `${impT.length} most similar IMPROVE analogs and ${addT.length} Addis filters` : `median and IQR · ${topN === '500' ? 500 : impT.length} most similar IMPROVE analogs`}
-      </div>
-      <svg width={w} height={height} fontFamily={FONT.family}>
-        <g transform={`translate(${m.left},${m.top})`}>
-          {/* grey: dropped from analog selection; hatched: also dropped by the region agreed 1 Oct (similarity only; PLS still sees them) */}
-          <SpectralRegions x={x} height={ih} regions={[...ANALOG_SELECTION_EXCLUDED, ...OCT1_ALSO_EXCLUDED]} />
-          <rect width={iw} height={ih} fill="transparent" onClick={() => hl.setPinned(null)} />
-          <YAxis scale={y} x={0} label="Absorbance" tickCount={4} labelX={-48} format={(v) => String(+v.toFixed(3))} />
-          <XAxis scale={x} y={ih} label="Wavenumber (cm⁻¹)" tickCount={6} labelDy={38} />
-          {mode === 'individual filters' ? (
-            <>
-              {impT.map((t) => (
-                <path key={t.sid} d={path(t.v)} fill="none" stroke={IMPROVE_GREY} strokeOpacity={0.18} strokeWidth={0.8} style={{ cursor: 'pointer' }}
-                  onMouseEnter={(e) => enter(e, t.sid, [t.sid, 'IMPROVE analog'])} onMouseLeave={leave} onClick={() => hl.setPinned(t.sid)} />
-              ))}
-              {addT.map((t) => (
-                <path key={t.sid} d={path(t.v)} fill="none" stroke={data.season_colors[t.season] ?? col} strokeOpacity={0.4} strokeWidth={0.9} style={{ cursor: 'pointer' }}
-                  onMouseEnter={(e) => enter(e, t.key, [t.label, `Addis · ${t.season}`])} onMouseLeave={leave} onClick={() => hl.setPinned(t.key)} />
-              ))}
-            </>
-          ) : (
-            <>
-              {qImp && <><path d={area(qImp, qImpWn)} fill={IMPROVE_GREY} fillOpacity={0.25} /><path d={path(qImp[2], qImpWn)} stroke={INK.muted} fill="none" strokeWidth={1.4} /></>}
-              {qAdd && <><path d={area(qAdd)} fill={col} fillOpacity={0.25} /><path d={path(qAdd[2], qwn)} stroke={col} fill="none" strokeWidth={1.5} /></>}
-            </>
-          )}
-          {hov && <path d={path(hov)} fill="none" {...TRACE.hovered} pointerEvents="none" />}
-          {pin && <path d={path(pin)} fill="none" {...TRACE.pinned} pointerEvents="none" />}
-        </g>
-      </svg>
+      {/* grey: dropped from analog selection; hatched: also dropped by the region agreed 1 Oct (similarity only; PLS still sees them) */}
+      <SpectrumPlot series={series} bands={bands} window={[d3.max(wn) ?? 4000, lo]} height={286} includeZero
+        regions={[...ANALOG_SELECTION_EXCLUDED, ...OCT1_ALSO_EXCLUDED]} hover={individual ? 'nearest' : 'readout'} highlight={hl} lookup={lookup}
+        yFormat={(v) => String(+v.toFixed(3))}
+        title={`Spectra: ${individual ? `${impT.length} most similar IMPROVE analogs and ${addT.length} Addis filters` : `median and IQR · ${topN === '500' ? 500 : impT.length} most similar IMPROVE analogs`}`} />
       <Key items={[
-        { label: mode === 'individual filters' ? `IMPROVE analogs, ranks 1–${impT.length}` : `IMPROVE analogs, ranks 1–${topN === '500' ? 500 : impT.length}: median, IQR`, color: IMPROVE_GREY, kind: mode === 'individual filters' ? 'line' : 'bar' },
-        ...(mode === 'individual filters'
+        { label: individual ? `IMPROVE analogs, ranks 1–${impT.length}` : `IMPROVE analogs, ranks 1–${topN === '500' ? 500 : impT.length}: median, IQR`, color: IMPROVE_GREY, kind: individual ? 'line' : 'bar' },
+        ...(individual
           ? (isAllAddis(group) ? data.seasons : [group]).map((g) => ({ label: `Addis ${g} filters`, color: data.season_colors[g], kind: 'line' as const }))
           : [{ label: `Addis ${seasonPhrase(group)}: median, IQR`, color: col, kind: 'bar' as const }]),
         { label: `pinned filter${pinnedSid ? ` (${hl.pinnedId})` : ': none, click a point or trace'}`, color: INK.text, kind: 'line' },
         { label: 'hovered filter', color: INK.text, kind: 'dash' },
         { label: 'excluded from analog selection only (CO₂, >3600 cm⁻¹)', color: SPECTRAL_REGION.co2.fill, kind: 'bar' },
-        ...(x.domain()[1] < 1050 ? [{ label: 'also excluded by the region agreed 1 Oct (<600, 1050–1250 PTFE); see the Satoshi 2 Oct view in Meeting', color: OCT1_HATCH.stroke, kind: 'bar' as const }] : []),
+        ...(lo < 1050 ? [{ label: 'also excluded by the region agreed 1 Oct (<600, 1050–1250 PTFE); see the Satoshi 2 Oct view in Meeting', color: OCT1_HATCH.stroke, kind: 'bar' as const }] : []),
       ]} />
-      {tip.node}
     </div>
   )
 }
@@ -781,39 +733,25 @@ function ThreePlots({ data }: { data: MeetingData }) {
 function MacEnvelope({ data }: { data: MeetingData }) {
   const methods = useBaselineOptions()
   const [method, setMethod] = useSearchParam<string>('mmmethod', 'AIRSpec', methods)
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
   const hst = data.mac_hist
   const edges: number[] = hst.edges
-  const w = Math.max(560, width), height = 320, m = { top: 20, right: 20, bottom: 48, left: 60 }
-  const iw = w - m.left - m.right, ih = height - m.top - m.bottom
-  const x = d3.scaleLog().domain([edges[0], edges[edges.length - 1]]).range([0, iw])
   const dens = (c: number[]) => { const n = d3.sum(c) || 1; return c.map((v) => v / n) }
   const series = [{ key: 'pool', label: `IMPROVE pool (n ${hst.pool_n})`, color: IMPROVE_GREY, med: hst.pool_median },
     ...data.seasons.map((g) => ({ key: `${method}|${g}`, label: `${g} analogs`, color: data.season_colors[g], med: hst[`${method}|${g}|median`] }))]
   const ymax = d3.max(series.flatMap((s) => dens(hst[s.key] ?? []))) ?? 0.1
-  const y = d3.scaleLinear().domain([0, ymax * 1.1]).range([ih, 0])
-  const path = (c: number[]) => d3.line<number>().x((_, i) => x(Math.sqrt(edges[i] * edges[i + 1]))).y((v) => y(v)).curve(d3.curveMonotoneX)(dens(c)) ?? ''
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › MacEnvelope" title="MAC envelope — where the analogs sit in the IMPROVE TOR-vs-HIPS envelope (Fabs / TOR EC)"
       subtitle="Ann: does TOR EC vs Fabs give a MAC near 10 for the analogs, or do these samples sit at the low-EC end of the envelope?"
       controls={<BaselinePicker label="Baseline (selection space)" value={method} onChange={setMethod} />}>
-      <div ref={ref}>
-        <svg width={w} height={height} fontFamily={FONT.family}>
-          <g transform={`translate(${m.left},${m.top})`}>
-            <YAxis scale={y} x={0} label="Share of filters" tickCount={4} gridWidth={iw} labelX={-46} format={(v) => (+v).toFixed(2)} />
-            <XAxis scale={x as any} y={ih} label="Fabs / TOR EC (m²/g)" labelDy={38} tickCount={6} format={(v) => String(+(+v).toPrecision(2))} />
-            <Marker orient="v" at={x(10)} from={0} to={ih} />
-            <text x={x(10) + 4} y={10} fontSize={11}>MAC 10</text>
-            {series.map((s) => <path key={s.key} d={path(hst[s.key] ?? [])} fill="none" stroke={s.color} strokeWidth={s.key === 'pool' ? 3 : 2} />)}
-            {series.map((s) => s.med != null && <line key={s.key + 'm'} x1={x(s.med)} x2={x(s.med)} y1={ih} y2={ih - 12} stroke={s.color} strokeWidth={3} />)}
-            <g transform={`translate(${iw - 230},12)`} fontSize={11}>
-              {series.map((s, i) => <g key={s.key} transform={`translate(0,${i * 16})`}><rect width={12} height={3} y={4} fill={s.color} /><text x={18} y={9}>{s.label} · median {f2(s.med)}</text></g>)}
-            </g>
-          </g>
-        </svg>
-      </div>
-      <ExplainOnly><Note>Filters with TOR EC ≤ 0.02 µg/m³ are excluded (ratio unstable). A higher ratio means TOR EC is low for its absorption.</Note></ExplainOnly>
+      <SweepPlot height={320} minWidth={560} xScale="log" xDomain={[edges[0], edges[edges.length - 1]]} yDomain={[0, ymax * 1.1]}
+        xLabel="Fabs / TOR EC (m²/g)" yLabel="Share of filters" yFormat={(v) => v.toFixed(2)} xMarkers={[{ at: 10, label: 'MAC 10' }]}
+        series={series.map((s) => ({ id: s.key, label: s.label, color: s.color, curve: 'monotone' as const, marks: false, interval: 'none' as const, width: s.key === 'pool' ? 3 : 2,
+          points: dens(hst[s.key] ?? []).map((v, i) => ({ x: Math.sqrt(edges[i] * edges[i + 1]), y: v })) }))}>
+        {/* each population's median as a tick on the x axis */}
+        {({ x, ih }) => series.map((s) => s.med != null && <line key={s.key} x1={(x as d3.ScaleLogarithmic<number, number>)(s.med)} x2={(x as d3.ScaleLogarithmic<number, number>)(s.med)} y1={ih} y2={ih - 12} stroke={s.color} strokeWidth={3} />)}
+      </SweepPlot>
+      <Key items={series.map((s) => ({ label: `${s.label} · median ${f2(s.med)}`, color: s.color, kind: 'line' as const }))} />
+      <ExplainOnly><Note>Filters with TOR EC ≤ 0.02 µg/m³ are excluded (ratio unstable). A higher ratio means TOR EC is low for its absorption. Ticks on the axis mark each population's median.</Note></ExplainOnly>
     </ChartFrame>
   )
 }

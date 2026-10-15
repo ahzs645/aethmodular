@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useId } from 'react'
+import { useEffect, useMemo, useRef, useId } from 'react'
 import { robustDomain } from '@/lib/axes'
 import { Marker } from '@/components/RefLines'
 import { useExport } from '@/lib/data'
@@ -20,10 +20,12 @@ import { f2, f3, pct, signed, coef, coefSigned } from '@/lib/format'
 import { ALL_ADDIS, ANALYSIS_CALENDAR_NOTE, shortSeason } from '@/lib/seasons'
 import { baselineName, ecAxis } from '@/lib/labels'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
+import { SpectrumPlot } from '@/components/SpectrumPlot'
+import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { Key } from '@/components/Key'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { BandCell, FitCell } from '@/components/TableCells'
-import { ANALOG_SELECTION_EXCLUDED, OCT1_ALSO_EXCLUDED, SpectralRegions } from '@/components/SpectralRegions'
+import { ANALOG_SELECTION_EXCLUDED, OCT1_ALSO_EXCLUDED } from '@/components/SpectralRegions'
 
 /**
  * Satoshi's questions after the 1 Oct 2026 meeting (his email of 2 Oct). Every
@@ -344,51 +346,24 @@ function Swap({ data, mask }: { data: SatoshiData; mask: Mask }) {
 function Vip({ data, mask }: { data: SatoshiData; mask: Mask }) {
   const [baseline, setBaseline] = useSearchParam<Baseline>('svipbase', VIBES, BASELINES)
   const [group, setGroup] = useSearchParam<string>('svipgroup', 'Kiremt (Jun-Sep)', data.groups)
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
-  const [hover, setHover] = useState<number | null>(null)
   const wn = data.vip.wn[baseline]
   const mm = maskFor(baseline, mask)
   const std = data.vip.models[`standard|${baseline}`]
   const ana = data.vip.models[`analog|${baseline}|${mm}|${group}`]
-  const m = { top: 14, right: 18, bottom: 46, left: 56 }
-  const iw = Math.max(300, width - m.left - m.right), ih = 280
-  const x = d3.scaleLinear().domain([4000, baseline === SPLINE ? 1400 : 500]).range([0, iw])
   const yMax = Math.max(d3.max(std.vip) ?? 1, d3.max(ana?.vip ?? [1]) ?? 1)
-  const y = d3.scaleLinear().domain([0, yMax * 1.05]).nice().range([ih, 0])
-  const line = (v: number[]) => d3.line<number>().x((_, i) => x(wn[i])).y((d) => y(d)).defined((d) => Number.isFinite(d))(v) ?? ''
   const sim = data.vip_similarity.find((s) => s.model_id === `analog|${baseline}|${mm}|${group}`)
   const bands = (mid: string) => data.vip_bands.filter((b) => b.model_id === mid)
   const bs = bands(`standard|${baseline}`), ba = bands(`analog|${baseline}|${mm}|${group}`)
   const shades = mm === 'oct1' ? [...ANALOG_SELECTION_EXCLUDED, ...OCT1_ALSO_EXCLUDED] : ANALOG_SELECTION_EXCLUDED
-  const onMove = (e: React.MouseEvent<SVGRectElement>) => {
-    const px = e.nativeEvent.offsetX - m.left
-    const w = x.invert(px)
-    const i = d3.minIndex(wn, (v) => Math.abs(v - w))
-    setHover(i)
-    tip.show(e, [`${wn[i].toFixed(0)} cm⁻¹`, `standard model VIP ${f2(std.vip[i])}`, `${group} analog model VIP ${f2(ana?.vip[i])}`])
-  }
   return (
     <ChartFrame id="satoshi-vip" source="gallery/app/src/pages/SatoshiFollowupPage.tsx › Vip"
       title="What PLS sees as EC — VIP of the standard all-IMPROVE model vs the analog-trained model"
       subtitle="Variable importance in projection (Wold VIP, Takahama et al. 2019 Eq. 14) for each calibration, on the baseline's full predictor grid. VIP ≥ 1 marks channels that carry more than their share of the explained TOR EC variance. The standard model is the all-IMPROVE lot-251 calibration (frozen site-disjoint split); the analog model is that season's 500-filter calibration from the meeting tab."
       controls={<><BaselineSeg value={baseline} onChange={setBaseline} /><GroupSelect data={data} value={group} onChange={setGroup} /></>}>
-      <div ref={ref} style={{ position: 'relative' }}>
-        <svg width={iw + m.left + m.right} height={ih + m.top + m.bottom} fontFamily={FONT.family}>
-          <g transform={`translate(${m.left},${m.top})`}>
-            <SpectralRegions x={x} height={ih} regions={shades} />
-            <YAxis scale={y} x={0} label="VIP" tickCount={5} gridWidth={iw} labelX={-38} />
-            <XAxis scale={x} y={ih} label="Wavenumber (cm⁻¹)" tickCount={8} labelDy={38} />
-            <Marker orient="h" at={y(1)} from={0} to={iw} />
-            <path d={line(std.vip)} fill="none" stroke={STANDARD_COLOR} strokeWidth={1.4} />
-            {ana && <path d={line(ana.vip)} fill="none" stroke={data.season_colors[group]} strokeWidth={1.6} strokeOpacity={0.9} />}
-            {hover != null && <line x1={x(wn[hover])} x2={x(wn[hover])} y1={0} y2={ih} stroke={INK.text} strokeOpacity={0.4} />}
-            <rect width={iw} height={ih} fill="transparent" onMouseMove={onMove} onMouseLeave={() => { setHover(null); tip.hide() }} />
-          </g>
-        </svg>
-        {tip.node}
-      </div>
+      <SpectrumPlot window={[4000, baseline === SPLINE ? 1400 : 500]} yDomain={[0, yMax * 1.05]} yLabel="VIP" height={340} regions={shades} hover="readout"
+        series={[{ id: 'standard', label: 'standard model VIP', wn, y: std.vip, color: STANDARD_COLOR, width: 1.4 },
+          ...(ana ? [{ id: 'analog', label: `${group} analog model VIP`, wn, y: ana.vip, color: data.season_colors[group], width: 1.6, opacity: 0.9 }] : [])]}
+        markers={[{ orient: 'h', at: 1 }]} />
       <Key items={[{ label: `Standard model (all IMPROVE lot 251, k ${std.k})`, color: STANDARD_COLOR, kind: 'line' }, { label: `${group} analog model (k ${ana?.k ?? '—'})`, color: data.season_colors[group], kind: 'line' }, { label: 'Excluded from similarity, both regions', color: SPECTRAL_REGION.co2.fill, kind: 'bar' }, { label: 'Excluded only in the agreed region', color: OCT1_HATCH.stroke, kind: 'bar' }]} />
       <table className="census-table" style={{ marginTop: 10 }}>
         <thead><tr><th>Band (cm⁻¹)</th><th>Channels</th><th>Mean VIP, standard</th><th>Mean VIP, analog</th><th>Share of VIP², standard</th><th>Share of VIP², analog</th></tr></thead>
@@ -414,9 +389,6 @@ function Ladder({ data, mask }: { data: SatoshiData; mask: Mask }) {
   const [baseline, setBaseline] = useSearchParam<Baseline>('sladbase', SPLINE, BASELINES)
   const [group, setGroup] = useSearchParam<string>('sladgroup', 'Kiremt (Jun-Sep)', data.groups)
   const [metric, setMetric] = useSearchParam<LadderMetric>('sladmetric', 'intercept ÷ median reference', LADDER_METRICS)
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const mm = maskFor(baseline, mask)
   const L = data.ladder
   const analogId = `analog|${baseline}|${mm}|${group}`
@@ -433,10 +405,12 @@ function Ladder({ data, mask }: { data: SatoshiData; mask: Mask }) {
   const get = metricOf[metric]
   const vals = series.flatMap((s) => s.rows.map((r) => (r ? get(r) : null))).filter((v): v is number => v != null && Number.isFinite(v))
   const ref0 = metric === 'slope' || metric === 'R²' ? 1 : 0
-  const m = { top: 14, right: 20, bottom: 40, left: 64 }
-  const iw = Math.max(300, Math.min(width, 860) - m.left - m.right), ih = 260
-  const xb = d3.scalePoint<string>().domain(STAGES as unknown as string[]).range([0, iw]).padding(0.5)
-  const y = d3.scaleLinear().domain(d3.extent([...vals, ref0]) as [number, number]).nice().range([ih, 0])
+  const yDomain = d3.scaleLinear().domain(d3.extent([...vals, ref0]) as [number, number]).nice().domain() as [number, number]
+  const sweep: SweepSeries[] = series.map((s) => ({ id: s.key, label: s.label, color: s.color, dash: s.dash, width: 2, r: 4, marks: true,
+    points: s.rows.map((r, i) => {
+      const v = r ? get(r) : null
+      return { x: STAGES[i], y: v, tip: r ? [s.label, STAGES[i], `n ${r.n} · R² ${coef(r.R2)} · RMSE ${f3(r.RMSE)} µg/m³`, `Deming ${coef(r.deming_slope)}x ${coefSigned(r.deming_intercept)} (median reference ${f3(r.x_median)} µg/m³)`, `mean bias ${signed(r.bias, 3)} µg/m³ · PLS factors ${r.k}`] : undefined }
+    }) }))
   const ex = find({ model_id: analogId, stage: 'Addis test set', eval_group: group })
   const exStd = find({ model_id: stdId, stage: 'Addis test set', eval_group: group })
   const unit = metric === 'mean bias' ? ' (µg/m³)' : ''
@@ -445,27 +419,9 @@ function Ladder({ data, mask }: { data: SatoshiData; mask: Mask }) {
       title="Fitting or extrapolation — the same readout at every stage, from calibration fit to Addis"
       subtitle="Calibration fit: in-sample predictions of the calibration set. Cross-validation: site-grouped out-of-fold predictions at the chosen number of factors (the curve that chose k). IMPROVE test sites: sites held out of the calibration. Addis test set: FTIR EC vs HIPS Fabs / MAC 10. IMPROVE stages compare FTIR EC with TOR EC. Intercepts are divided by the median reference so stages at 0.1 and 5 µg/m³ can share an axis."
       controls={<><BaselineSeg value={baseline} onChange={setBaseline} /><GroupSelect data={data} value={group} onChange={setGroup} /><Select label="Readout" value={metric} options={[...LADDER_METRICS]} onChange={(v) => setMetric(v as LadderMetric)} /></>}>
-      <div ref={ref} style={{ position: 'relative' }}>
-        <svg width={iw + m.left + m.right} height={ih + m.top + m.bottom} fontFamily={FONT.family}>
-          <g transform={`translate(${m.left},${m.top})`}>
-            <YAxis scale={y} x={0} label={`Deming ${metric}${unit}`.replace('Deming R²', 'R²').replace('Deming mean bias', 'Mean bias, FTIR − reference')} tickCount={6} gridWidth={iw} labelX={-48} format={(v) => String(+(+v).toFixed(2))} />
-            <XAxis scale={xb as any} y={ih} tickCount={4} />
-            <line x1={0} x2={iw} y1={y(ref0)} y2={y(ref0)} stroke={INK.axis} strokeOpacity={0.7} />
-            <line x1={(xb('IMPROVE test sites')! + xb('Addis test set')!) / 2} x2={(xb('IMPROVE test sites')! + xb('Addis test set')!) / 2} y1={0} y2={ih} stroke={INK.border} strokeDasharray="2 3" />
-            {series.map((s) => {
-              const pts = s.rows.map((r, i) => (r && get(r) != null && Number.isFinite(get(r)!) ? { x: xb(STAGES[i])!, y: y(get(r)!), r, stage: STAGES[i] } : null))
-              const path = d3.line<any>().defined((p) => !!p).x((p) => p.x).y((p) => p.y)(pts as any) ?? ''
-              return (
-                <g key={s.key}>
-                  <path d={path} fill="none" stroke={s.color} strokeWidth={2} strokeDasharray={s.dash} />
-                  {pts.map((p, i) => p && <circle key={i} cx={p.x} cy={p.y} r={5} fill={s.color} stroke="white" strokeWidth={1}
-                    onMouseEnter={(e) => tip.show(e, [s.label, p.stage, `n ${p.r.n} · R² ${coef(p.r.R2)} · RMSE ${f3(p.r.RMSE)} µg/m³`, `Deming ${coef(p.r.deming_slope)}x ${coefSigned(p.r.deming_intercept)} (median reference ${f3(p.r.x_median)} µg/m³)`, `mean bias ${signed(p.r.bias, 3)} µg/m³ · PLS factors ${p.r.k}`])} onMouseLeave={tip.hide} />)}
-                </g>
-              )
-            })}
-          </g>
-        </svg>
-        {tip.node}
+      <div style={{ maxWidth: 860 }}>
+        <SweepPlot series={sweep} xScale="point" xLabel="" yLabel={`Deming ${metric}${unit}`.replace('Deming R²', 'R²').replace('Deming mean bias', 'Mean bias, FTIR − reference')}
+          yDomain={yDomain} reference={ref0} dividers={['IMPROVE test sites']} height={314} yFormat={(v) => String(+v.toFixed(2))} />
       </div>
       <Key items={series.map((s) => ({ label: s.label, color: s.color, kind: s.dash ? 'dash' as const : 'line' as const }))} />
       <LadderTable rows={series} />
@@ -721,9 +677,6 @@ function Conclusion({ s, o }: { s: SatoshiData; o: Oct1Data | null }) {
 
 // ------------------------------------------------------------------ blank banks
 function BlankBanks({ d }: { d: Oct1Data }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const cv = d.rank_cv
   const banks = BANK_ORDER.filter((b) => d.banks.some((x) => x.baseline === b))
   const series = banks.map((b) => {
@@ -731,12 +684,10 @@ function BlankBanks({ d }: { d: Oct1Data }) {
     for (let i = 0; i < cv.baseline.length; i++) if (cv.baseline[i] === b) pts.push({ k: cv.components[i] as number, mse: cv.mean_mse[i] as number })
     return { b, pts, rank: d.banks.find((x) => x.baseline === b)!.rank as number }
   })
-  const m = { top: 24, right: 16, bottom: 44, left: 64 }, height = 280
-  const iw = Math.max(280, width - m.left - m.right), ih = height - m.top - m.bottom
   const all = series.flatMap((s) => s.pts)
-  const x = d3.scaleLinear().domain([1, d3.max(all, (p) => p.k) ?? 85]).range([0, iw])
-  const y = d3.scaleLog().domain(d3.extent(all, (p) => p.mse) as [number, number]).nice().range([ih, 0])
-  const line = d3.line<{ k: number; mse: number }>().x((p) => x(p.k)).y((p) => y(p.mse))
+  const yDomain = d3.scaleLog().domain(d3.extent(all, (p) => p.mse) as [number, number]).nice().domain() as [number, number]
+  const sweep: SweepSeries[] = series.map((s) => ({ id: s.b, label: BANK_SHORT[s.b], color: BANK_COLOR[s.b], marks: false,
+    points: s.pts.map((p) => ({ x: p.k, y: p.mse, tip: [BANK_SHORT[s.b], p.k === s.rank ? `chosen rank ${s.rank}` : `${p.k} components (chosen rank ${s.rank})`, `LOO MSE ${p.mse.toExponential(2)}`] })) }))
   const res = d.blank_residuals.filter((r) => r.source === 'etad')
   const bands = [...new Set(res.map((r) => r.band))]
   return (
@@ -748,20 +699,9 @@ function BlankBanks({ d }: { d: Oct1Data }) {
         <tbody>{d.banks.map((b) => <tr key={b.baseline}><td style={{ color: BANK_COLOR[b.baseline], fontWeight: 600 }}>{BANK_SHORT[b.baseline]}</td><td>{b.n_blanks}</td><td>{b.n_improve} / {b.n_etad}</td><td>{b.n_lot251} / {b.n_lot248}</td><td>{b.n_test_site}</td><td><strong>{b.rank}</strong></td><td>{b.n_failed}</td><td>{f2(b.hours)}</td></tr>)}</tbody>
       </table>
       <Note>The 87-blank bank behind every VIBES result so far was not 10 blanks per lot: it was a random draw of labeled blanks at training sites (at most 50 per lot after holding 25 % out: 50 lot-251 and 9 lot-248 IMPROVE blanks) plus 28 ETAD blanks. Lot numbers are missing for 7 ETAD blanks.</Note>
-      <div ref={ref} style={{ position: 'relative', marginTop: 8 }}>
-        <svg width={iw + m.left + m.right} height={height} fontFamily={FONT.family}>
-          <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>Leave-one-blank-out error vs background rank</text>
-          <g transform={`translate(${m.left},${m.top})`}>
-            <YAxis scale={y} x={0} label="Mean squared error" tickCount={5} gridWidth={iw} labelX={-52} format={(v) => (+v).toExponential(0)} />
-            <XAxis scale={x} y={ih} label="Background PCA components" tickCount={8} labelDy={36} />
-            {series.map((s) => <g key={s.b}>
-              <path d={line(s.pts) ?? ''} fill="none" stroke={BANK_COLOR[s.b]} strokeWidth={1.8} />
-              {s.pts.filter((p) => p.k === s.rank).map((p) => <circle key={p.k} cx={x(p.k)} cy={y(p.mse)} r={5} fill={BANK_COLOR[s.b]} stroke="white"
-                onMouseEnter={(e) => tip.show(e, [BANK_SHORT[s.b], `chosen rank ${s.rank}`, `LOO MSE ${p.mse.toExponential(2)}`])} onMouseLeave={tip.hide} />)}
-            </g>)}
-          </g>
-        </svg>
-        {tip.node}
+      <div style={{ marginTop: 8 }}>
+        <SweepPlot series={sweep} title="Leave-one-blank-out error vs background rank" xDomain={[1, d3.max(all, (p) => p.k) ?? 85]} xLabel="Background PCA components"
+          yLabel="Mean squared error" yScale="log" yDomain={yDomain} yFormat={(v) => v.toExponential(0)} chosen={series.map((s) => ({ series: s.b, x: s.rank }))} height={262} />
       </div>
       <Key items={[...series.map((s) => ({ label: `${BANK_SHORT[s.b]}: rank ${s.rank}`, color: BANK_COLOR[s.b], kind: 'line' as const }))]} />
       {res.length > 0 && <>
@@ -855,9 +795,10 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
   const lo = 500, hi = 1800
   const idx = wn.map((w, i) => [w, i] as const).filter(([w]) => w >= lo && w <= hi)
   const specs = summ.map((s) => ({ c: s.cluster as number, n: s.n as number, v: d.group_spectra.median[`${baseline}|${region}|${season}|${s.cluster}`] ?? [] }))
-  const sx = d3.scaleLinear().domain([hi, lo]).range([0, iw])
-  const sy = d3.scaleLinear().domain(d3.extent(specs.flatMap((s) => idx.map(([, i]) => s.v[i]))) as [number, number]).nice().range([ih, 0])
-  const sline = (v: number[]) => d3.line<readonly [number, number]>().x(([w]) => sx(w)).y(([, i]) => sy(v[i]))(idx) ?? ''
+  const sDomain = d3.extent(specs.flatMap((s) => idx.map(([, i]) => s.v[i]))) as [number, number]
+  // grey: outside the 1500–600 clustering region; PTFE shaded only when it was dropped from the clustering
+  const sRegions = [{ lo: 1500, hi: 1800, fill: '#eef0f3', label: 'outside the clustering region' }, { lo: 500, hi: 600, fill: '#eef0f3', label: 'outside the clustering region' },
+    ...(region === 'fingerprint' ? [SPECTRAL_REGION.ptfe] : [])]
   const pfmt = (p: any) => p == null ? '—' : p < 0.001 ? '<0.001' : f3(p)
   const allTests = d.group_tests.filter((x) => x.baseline === baseline && x.region === region)
   return (
@@ -879,17 +820,9 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
               onMouseEnter={(e) => tip.show(e, [p.id, `cluster ${p.c}`, `Fabs/10 ${f2(p.ec)} µg/m³`, `standard spline model error ${signed(p.res)} µg/m³`])} onMouseLeave={tip.hide} />)}
           </g>
         </svg>
-        <svg width={half} height={h} fontFamily={FONT.family}>
-          <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>Median spectrum of each cluster, 1800–500 cm⁻¹</text>
-          <g transform={`translate(${m.left},${m.top})`}>
-            <rect x={sx(1250)} width={sx(1050) - sx(1250)} height={ih} fill={region === 'fingerprint' ? '#f1ece0' : 'transparent'} />
-            <rect x={sx(1800)} width={sx(1500) - sx(1800)} height={ih} fill="#eef0f3" />
-            <rect x={sx(600)} width={sx(500) - sx(600)} height={ih} fill="#eef0f3" />
-            <YAxis scale={sy} x={0} label="Absorbance" tickCount={5} gridWidth={iw} labelX={-48} format={(v) => String(+(+v).toFixed(3))} />
-            <XAxis scale={sx} y={ih} label="Wavenumber (cm⁻¹)" tickCount={6} labelDy={36} />
-            {specs.map((s) => <path key={s.c} d={sline(s.v)} fill="none" stroke={CLUSTER_COLORS[(s.c - 1) % 4]} strokeWidth={1.8} />)}
-          </g>
-        </svg>
+        <SpectrumPlot width={half} minWidth={260} height={262} title="Median spectrum of each cluster, 1800–500 cm⁻¹" window={[hi, lo]} yDomain={sDomain}
+          regions={sRegions} hover="readout" yFormat={(v) => String(+v.toFixed(3))}
+          series={specs.map((s) => ({ id: `c${s.c}`, label: `cluster ${s.c}`, wn, y: s.v, color: CLUSTER_COLORS[(s.c - 1) % 4], width: 1.8 }))} />
         {tip.node}
       </div>
       <Key items={[...summ.map((s) => ({ label: `cluster ${s.cluster} (n ${s.n}, median Fabs/10 ${f2(s.ec_fabs10_median)})`, color: CLUSTER_COLORS[(s.cluster - 1) % 4] })), { label: 'outside the clustering region', color: '#eef0f3', kind: 'bar' as const }]} />

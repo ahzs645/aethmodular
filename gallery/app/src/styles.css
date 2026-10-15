@@ -635,3 +635,7 @@ html[data-embed="1"] .app-header, html[data-embed="1"] .side-dock { display: non
 .pill-link:hover { text-decoration: underline; }
 .dropped-review { font-size: 11.5px; padding: 1px 6px; }
 .weather-head .btn.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+/* two figures side by side in a declared meeting section (pages/MeetingSpecPage), stacked on narrow screens */
+.figure-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 0 16px; }
+.figure-pair > .panel:last-child:nth-child(odd) { grid-column: 1 / -1; }

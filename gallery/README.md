@@ -174,6 +174,52 @@ Addis calendars in `lib/seasons.ts`; every data file through `lib/data.ts`
 and `ExportState` for the recurring UI. URL keys must be unique across pages
 (development builds warn when two controls share one).
 
+Four chart types cover most research figures; draw with them instead of
+hand-rolling d3 and axes: `Crossplot` (1:1), `SpectrumPlot` (reversed
+wavenumber axis, faint traces, emphasised lines, median/IQR bands, regions,
+hover that names a trace or reads out every line, pin linked to the page
+through `highlight={useHighlight()}`), `SweepPlot` (a metric against k, a
+cutoff, a rank, a stage or a date: bands or whiskers, the agreement line,
+labelled markers, the chosen setting ringed, clipped points drawn hollow at
+the edge) and `IntervalStrip` (dot-interval rows). `FacetGrid` lays out small
+multiples. Each takes a `children` render prop for the odd extra mark, so a
+chart that needs one more line does not have to be rebuilt from scratch.
+
+### Declaring a figure or a whole meeting
+
+`components/Figure` draws a chart from a description: the kind and which
+columns of a long table (one row per point) to use.
+
+```tsx
+<Figure kind="spectrum" data={rows} wn="wn" y="median" lo="q25" hi="q75" series="series" title="…" />
+<Figure kind="sweep" data={splits} x="k" y="addis_intercept" series="baseline" facet="group"
+        aggregate={{ stat: 'median', interval: 'iqr' }} xLabel="PLS factors (k)" yLabel="Addis intercept" reference={0} title="…" />
+```
+
+Kinds: `crossplot`, `spectrum`, `sweep`, `intervals` (median and interval per
+row and series, summarised in the browser from repeated splits), `histogram`
+(densities on shared, optionally log, bins), `heatmap`, `table`, and `custom`
+for anything a description cannot say (linked charts, live refits): a
+component registered with `registerFigure(name, Component)`. `choose` adds a
+control that keeps the rows with the picked value of a column; `where`
+filters rows; colours come from the figure, then the meeting bundle, then the
+gallery's baseline colours.
+
+A meeting page needs no TSX:
+
+1. An exporter, `gallery/data/export_meeting_<date>.py`, that builds long
+   tables and the answer text from the saved outputs and calls
+   `meeting_bundle.write_bundle(id, tables=…, text=…, colors=…)`. It writes
+   `public/data/meetings/<id>.json`. Write the text from the same numbers the
+   figures draw, so prose and charts cannot disagree.
+2. A spec, `app/src/meetings/<id>.meeting.ts`: sections of Markdown text
+   (`@key` = a paragraph from the bundle) and `FigureSpec`s naming its
+   tables. It shows up in the Meeting tab's picker by itself.
+
+`ann-20261009` (the 9 Oct questions from Ann) is the worked example:
+`gallery/data/export_meeting_20261009.py` and
+`app/src/meetings/ann-20261009.meeting.ts`.
+
 ### Networks in the Filters sidebar
 
 The chart tabs (Correlation, Distribution, Evolution, Ranking, Part of a whole) draw a

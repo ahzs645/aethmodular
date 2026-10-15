@@ -5,7 +5,9 @@ import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Select, Toggle } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
-import { XAxis, YAxis } from '@/components/Axes'
+import { XAxis } from '@/components/Axes'
+import { SpectrumPlot } from '@/components/SpectrumPlot'
+import { SweepPlot } from '@/components/SweepPlot'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
@@ -86,26 +88,22 @@ function Intervals({ rows }: { rows: Interval[] }) {
 }
 
 function AggregateSpectra({ data }: { data: Evidence }) {
-  const ref = useRef<HTMLDivElement>(null), { width } = useDimensions(ref)
   const [population, setPopulation] = useSearchParam<string>('vfpopulation', 'target', ['target', 'calibration'])
   const [range, setRange] = useSearchParam<string>('vfrange', 'Full', ['Full', 'Shared'])
   const legend = useLegend([SPECTRUM_NAMES.capped_full])
   const series = Object.entries(data.spectra[population]).map(([method, s]) => ({ method, ...s }))
   const visible = series.filter(s => legend.show(SPECTRUM_NAMES[s.method]))
-  const lo = range === 'Full' ? 500 : 1425, w = Math.max(320, width), iw = w-88, ih = 245
+  const lo = range === 'Full' ? 500 : 1425
   const ext = d3.extent(visible.flatMap(s => s.q.flatMap(q => q.filter((_, i) => s.wn[i]>=lo))))
-  const x = d3.scaleLinear().domain([4000, lo]).range([0, iw]), y = d3.scaleLinear().domain([Math.min(0, ext[0]??0), ext[1]??.01]).nice().range([ih, 0])
   return <ChartFrame id="completed-vibes-spectra" title="Completed correction · paired spectral overlay" controls={<>
     <Select label="Spectral population" value={population} options={['target','calibration']} optionLabel={v=>v==='target'?'Addis test-set spectra':'IMPROVE source spectra'} onChange={setPopulation} />
     <Select label="Spectral range" value={range} options={['Full', 'Shared']} onChange={setRange} /></>}>
-    <div ref={ref} className="chart-wrap">{!visible.length ? <Empty>Select a baseline in the legend to display spectra.</Empty> : <svg width={w} height={380} role="img" aria-label="Median corrected spectra with interquartile ranges" fontFamily={FONT.family}><g transform="translate(64,15)">
-      <YAxis scale={y} x={0} gridWidth={iw} label="Corrected absorbance" format={v=>Number(v).toPrecision(2)} /><XAxis scale={x} y={ih} label="Wavenumber (cm⁻¹)" />
-      {visible.map(s => <g key={s.method}>
-        <path d={d3.area<number>().defined((_, i)=>s.wn[i]>=lo).x((_,i)=>x(s.wn[i])).y0((_,i)=>y(s.q[0][i])).y1((_,i)=>y(s.q[2][i]))(s.q[1])??''} fill={COLORS[s.method]} fillOpacity={.12} />
-        <path aria-label={SPECTRUM_NAMES[s.method]} d={d3.line<number>().defined((_, i)=>s.wn[i]>=lo).x((_,i)=>x(s.wn[i])).y(v=>y(v))(s.q[1])??''} fill="none" stroke={COLORS[s.method]} strokeWidth={1.6} />
-      </g>)}
-      {visible.map((s,i)=><g key={s.method} transform={`translate(0,${ih+60+i*18})`}><line x2={18} stroke={COLORS[s.method]} strokeWidth={2}/><text x={25} dy=".35em" fontSize={11}>{SPECTRUM_NAMES[s.method]}</text></g>)}
-    </g></svg>}<Legend items={series.map(s=>({label:SPECTRUM_NAMES[s.method],color:COLORS[s.method],shape:'line' as const}))} {...legend.props}/></div>
+    <div className="chart-wrap">{!visible.length ? <Empty>Select a baseline in the legend to display spectra.</Empty> :
+      <SpectrumPlot height={300} window={[4000, lo]} yDomain={[Math.min(0, ext[0]??0), ext[1]??.01]} yLabel="Corrected absorbance" yFormat={v=>Number(v).toPrecision(2)}
+        hover="readout" dim={g=>legend.dim(g)}
+        series={visible.map(s => ({ id: s.method, label: SPECTRUM_NAMES[s.method], group: SPECTRUM_NAMES[s.method], wn: s.wn, y: s.q[1], color: COLORS[s.method] }))}
+        bands={visible.map(s => ({ id: s.method, group: SPECTRUM_NAMES[s.method], wn: s.wn, lo: s.q[0], hi: s.q[2], color: COLORS[s.method], opacity: .12 }))} />}
+      <Legend items={series.map(s=>({label:SPECTRUM_NAMES[s.method],color:COLORS[s.method],shape:'line' as const}))} {...legend.props}/></div>
     <Note>Same {series[0].n.toLocaleString()} physical filters for each method; median and IQR of 8-channel display means. Spline spectra end near 1425 cm⁻¹. These broad features do not identify a chemical species, and the export ends at 500 rather than 400 cm⁻¹.</Note>
   </ChartFrame>
 }
@@ -125,17 +123,15 @@ function BlankMedians({ data }: { data: Evidence }) {
 }
 
 function InjectionRecovery({ data }: { data: Evidence }) {
-  const ref=useRef<HTMLDivElement>(null),{width}=useDimensions(ref),legend=useLegend()
+  const legend=useLegend()
   const methods=['AIRSpec','capped_shared','VIBES'],shown=methods.filter(m=>legend.show(NAMES[m]))
-  const w=Math.max(320,width),iw=w-88,ih=210
-  const x=d3.scaleLinear().domain([0,.16]).range([0,iw]),y=d3.scaleLinear().domain([.75,1.03]).range([ih,0])
   return <ChartFrame id="completed-vibes-injections" title="Known-signal preservation · synthetic additions">
-    <div ref={ref} className="chart-wrap">{!shown.length?<Empty>Select a method in the legend.</Empty>:<svg width={w} height={345} role="img" aria-label="Synthetic spectral area recovery" fontFamily={FONT.family}><g transform="translate(64,20)">
-      <YAxis scale={y} x={0} gridWidth={iw} label="Recovered / added spectral area"/><XAxis scale={x} y={ih} label="Synthetic addition amplitude (absorbance)"/>
-      <RefLine orient="h" at={y(1)} from={0} to={iw} />
-      {shown.map(m=>{const rows=data.injections.filter(r=>r.method===m);return <g key={m}><path d={d3.line<typeof rows[number]>().x(r=>x(r.amplitude)).y(r=>y(r.signal_area_recovery))(rows)??''} stroke={COLORS[m]} fill="none" strokeWidth={1.5}/>{rows.map(r=><circle key={r.amplitude} cx={x(r.amplitude)} cy={y(r.signal_area_recovery)} r={4} fill={COLORS[m]}/>)}</g>})}
-      {shown.map((m,i)=><g key={m} transform={`translate(0,${ih+60+i*18})`}><line x2={18} stroke={COLORS[m]} strokeWidth={2}/><text x={25} dy=".35em" fontSize={11}>{NAMES[m]}</text></g>)}
-    </g></svg>}<Legend items={methods.map(m=>({label:NAMES[m],color:COLORS[m],shape:'line' as const}))} {...legend.props}/></div>
+    <div className="chart-wrap">{!shown.length?<Empty>Select a method in the legend.</Empty>:
+      <SweepPlot height={268} xDomain={[0,.16]} yDomain={[.75,1.03]} reference={1} dim={g=>legend.dim(g)}
+        xLabel="Synthetic addition amplitude (absorbance)" yLabel="Recovered / added spectral area"
+        series={shown.map(m=>({ id: m, label: NAMES[m], group: NAMES[m], color: COLORS[m], width: 1.5, marks: true, interval: 'none' as const,
+          points: data.injections.filter(r=>r.method===m).map(r=>({ x: r.amplitude, y: r.signal_area_recovery })) }))} />}
+      <Legend items={methods.map(m=>({label:NAMES[m],color:COLORS[m],shape:'line' as const}))} {...legend.props}/></div>
     <Note>Medians across nine Addis blank parents at each of three synthetic amplitudes (27 additions), evaluated on the shared window. This is a numerical stress test, not chemical standards or independent EC validation.</Note>
   </ChartFrame>
 }

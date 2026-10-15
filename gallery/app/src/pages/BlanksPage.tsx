@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { robustDomain } from '@/lib/axes'
 import { Marker } from '@/components/RefLines'
 import { useExport } from '@/lib/data'
@@ -12,8 +12,10 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
 import { BankPicker } from '@/components/Pickers'
-import { SpectralRegions } from '@/components/SpectralRegions'
-import { BANK_COLOR, FONT, INK, MARGIN, SPECTRAL_REGION } from '@/lib/theme'
+import { SpectrumPlot } from '@/components/SpectrumPlot'
+import { SweepPlot } from '@/components/SweepPlot'
+import { FacetGrid } from '@/components/FacetGrid'
+import { BANK_COLOR, FONT, INK, SPECTRAL_REGION } from '@/lib/theme'
 import { f2, pct, sci } from '@/lib/format'
 
 /**
@@ -91,34 +93,8 @@ function roleIn(d: BlanksData, bank: BankKey, i: number) {
   return 'not used'
 }
 
-/** Spectrum axes with the agreed shading; children draw in the plot's coordinates. */
-function SpectrumPlot({ width, height = 300, domainX, domainY, yLabel, title, children, onMove, onLeave, logY }: {
-  width: number; height?: number; domainX: [number, number]; domainY: [number, number]; yLabel: string; title?: string
-  children: (x: d3.ScaleLinear<number, number>, y: d3.ScaleContinuousNumeric<number, number>) => ReactNode
-  onMove?: (wn: number, yv: number, e: React.MouseEvent) => void; onLeave?: () => void; logY?: boolean
-}) {
-  const m = { ...MARGIN, top: title ? 26 : 12, left: 66 }
-  const iw = Math.max(240, width - m.left - m.right), ih = height - m.top - m.bottom
-  const x = d3.scaleLinear().domain(domainX).range([0, iw])
-  const y = (logY ? d3.scaleLog() : d3.scaleLinear()).domain(domainY).range([ih, 0]).nice() as d3.ScaleContinuousNumeric<number, number>
-  return (
-    <svg width={iw + m.left + m.right} height={height} fontFamily={FONT.family}>
-      {title && <text x={m.left} y={15} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>}
-      <g transform={`translate(${m.left},${m.top})`}>
-        <SpectralRegions x={x} height={ih} regions={SHADES} />
-        <YAxis scale={y as any} x={0} label={yLabel} tickCount={5} gridWidth={iw} labelX={-54} format={(v) => Math.abs(+v) < 1e-3 && +v !== 0 ? (+v).toExponential(0) : String(+(+v).toPrecision(3))} />
-        <XAxis scale={x} y={ih} label="Wavenumber (cm⁻¹)" tickCount={8} labelDy={36} />
-        <g>{children(x, y)}</g>
-        {onMove && <rect width={iw} height={ih} fill="transparent" onMouseMove={(e) => { const [mx, my] = d3.pointer(e); onMove(x.invert(mx), y.invert(my), e) }} onMouseLeave={onLeave} />}
-      </g>
-    </svg>
-  )
-}
-const inRange = (wn: number[], dom: [number, number]) => wn.map((w, i) => [w, i] as const).filter(([w]) => w <= dom[0] && w >= dom[1])
-const linePath = (pts: readonly (readonly [number, number])[], v: number[], x: (w: number) => number, y: (v: number) => number) =>
-  d3.line<readonly [number, number]>().defined(([, i]) => v[i] != null && Number.isFinite(v[i])).x(([w]) => x(w)).y(([, i]) => y(v[i]))(pts) ?? ''
-const bandPath = (pts: readonly (readonly [number, number])[], lo: number[], hi: number[], x: (w: number) => number, y: (v: number) => number) =>
-  d3.area<readonly [number, number]>().x(([w]) => x(w)).y0(([, i]) => y(lo[i])).y1(([, i]) => y(hi[i]))(pts) ?? ''
+/** Channels inside a [high, low] wavenumber window. */
+const chans = (wn: number[], [hi, lo]: [number, number]) => d3.range(wn.length).filter((j) => wn[j] <= hi && wn[j] >= lo)
 
 // ------------------------------------------------------------------ 0. findings
 function Findings({ d }: { d: BlanksData }) {
@@ -202,40 +178,27 @@ const SPEC_MODES = ['median & IQR', 'every blank'] as const
 function RawSpectra({ d }: { d: BlanksData }) {
   const [mode, setMode] = useSearchParam<(typeof SPEC_MODES)[number]>('bkmode', 'median & IQR', SPEC_MODES)
   const [range, setRange] = useSearchParam<(typeof RANGES)[number]>('bkrange', '4000–500', RANGES)
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const lg = useLegend()
-  const [hover, setHover] = useState<number | null>(null)
   const dom = rangeOf(range)
-  const pts = inRange(d.bin_wn, dom)
+  const js = chans(d.bin_wn, dom)
   const groups = Object.keys(d.groups)
   const show = (g: string) => lg.show(g)
   const idx = d3.range(nBlanks(d)).filter((i) => show(inv(d, 'group')[i]))
-  const vals = mode === 'every blank' ? idx.flatMap((i) => pts.map(([, j]) => d.raw[i][j])) : groups.filter(show).flatMap((g) => pts.flatMap(([, j]) => [d.groups[g].q[0][j], d.groups[g].q[4][j]]))
+  const vals = mode === 'every blank' ? idx.flatMap((i) => js.map((j) => d.raw[i][j])) : groups.filter(show).flatMap((g) => js.flatMap((j) => [d.groups[g].q[0][j], d.groups[g].q[4][j]]))
   const yDom = robustDomain(vals, 0.002, 0.998).domain
+  const every = mode === 'every blank'
+  const series = every
+    ? idx.map((i) => { const g = inv(d, 'group')[i] as string, id = inv(d, 'sample_id')[i] as string
+      return { id, wn: d.bin_wn, y: d.raw[i], color: GROUP_COLOR[g], role: 'trace' as const, width: 0.7, group: g, tip: [id, `${inv(d, 'site')[i]} · ${inv(d, 'date')[i] ?? 'undated'}`, g] } })
+    : groups.filter(show).map((g) => ({ id: g, wn: d.bin_wn, y: d.groups[g].q[2], color: GROUP_COLOR[g], width: 1.8, group: g }))
+  const bands = every ? [] : groups.filter(show).map((g) => ({ id: g, wn: d.bin_wn, lo: d.groups[g].q[1], hi: d.groups[g].q[3], color: GROUP_COLOR[g], opacity: 0.18, group: g }))
   return (
     <ChartFrame id="blanks-raw" source="gallery/app/src/pages/BlanksPage.tsx › RawSpectra"
       title="Raw blank spectra — what a clean PTFE filter looks like, by lot"
       subtitle="Uncorrected absorbance of every labeled blank (8-channel means). Median and interquartile band per lot and source, or every blank as a faint line; hover a line to name it. Shading: PTFE C–F band and CO₂."
       controls={<><Segmented label="Show" value={mode} options={SPEC_MODES} onChange={setMode} /><Segmented label="Range" value={range} options={RANGES} onChange={setRange} /></>}>
-      <div ref={ref} className="chart-wrap" style={{ position: 'relative' }}>
-        <SpectrumPlot width={width} height={340} domainX={dom} domainY={yDom} yLabel="Absorbance (raw)"
-          onMove={mode === 'every blank' ? (w, yv, e) => {
-            const j = pts.reduce((a, p) => Math.abs(p[0] - w) < Math.abs(a[0] - w) ? p : a)[1]
-            const best = idx.reduce((a, i) => Math.abs(d.raw[i][j] - yv) < Math.abs(d.raw[a][j] - yv) ? i : a, idx[0])
-            setHover(best); tip.show(e, [inv(d, 'sample_id')[best], `${inv(d, 'site')[best]} · ${inv(d, 'date')[best] ?? 'undated'}`, inv(d, 'group')[best]])
-          } : undefined} onLeave={() => { setHover(null); tip.hide() }}>
-          {(x, y) => mode === 'every blank'
-            ? <>{idx.map((i) => <path key={i} d={linePath(pts, d.raw[i], x, y)} fill="none" stroke={GROUP_COLOR[inv(d, 'group')[i]]} strokeOpacity={0.18 * lg.dim(inv(d, 'group')[i])} strokeWidth={0.7} />)}
-              {hover != null && <path d={linePath(pts, d.raw[hover], x, y)} fill="none" stroke={INK.negative} strokeWidth={1.8} />}</>
-            : groups.filter(show).map((g) => <g key={g} opacity={lg.dim(g)}>
-              <path d={bandPath(pts, d.groups[g].q[1], d.groups[g].q[3], x, y)} fill={GROUP_COLOR[g]} fillOpacity={0.18} />
-              <path d={linePath(pts, d.groups[g].q[2], x, y)} fill="none" stroke={GROUP_COLOR[g]} strokeWidth={1.8} />
-            </g>)}
-        </SpectrumPlot>
-        {tip.node}
-      </div>
+      <SpectrumPlot series={series} bands={bands} window={dom} yDomain={yDom} height={340} yLabel="Absorbance (raw)" regions={SHADES}
+        hover={every ? 'nearest' : 'none'} dim={lg.dim} />
       <Legend {...lg.props} items={groups.map((g) => ({ label: g, color: GROUP_COLOR[g], shape: 'line' as const, detail: `n=${d.groups[g].n}` }))} />
     </ChartFrame>
   )
@@ -246,24 +209,19 @@ const VAR_MODES = ['as measured', 'offset removed'] as const
 function Variability({ d }: { d: BlanksData }) {
   const [mode, setMode] = useSearchParam<(typeof VAR_MODES)[number]>('bkvar', 'as measured', VAR_MODES)
   const [range, setRange] = useSearchParam<(typeof RANGES)[number]>('bkvrange', '4000–500', RANGES)
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
   const lg = useLegend(['ETAD lot ?'])
   const dom = rangeOf(range)
-  const pts = inRange(d.bin_wn, dom)
+  const js = chans(d.bin_wn, dom)
   const groups = Object.keys(d.groups).filter((g) => d.groups[g].n >= 5)
   const key = mode === 'as measured' ? 'sd' : 'sd_detrended'
-  const vals = groups.filter(lg.show).flatMap((g) => pts.map(([, j]) => (d.groups[g] as any)[key][j] as number))
+  const vals = groups.filter(lg.show).flatMap((g) => js.map((j) => d.groups[g][key][j]))
   return (
     <ChartFrame id="blanks-variability" source="gallery/app/src/pages/BlanksPage.tsx › Variability"
       title="Where blanks vary — standard deviation across blanks at each wavenumber"
       subtitle="This is what the background model has to absorb. 'Offset removed' subtracts each blank's own mean absorbance first, leaving shape differences (PTFE bands, slope). Lots with fewer than 5 blanks are not drawn."
       controls={<><Segmented label="Blanks" value={mode} options={VAR_MODES} onChange={setMode} /><Segmented label="Range" value={range} options={RANGES} onChange={setRange} /></>}>
-      <div ref={ref} className="chart-wrap">
-        <SpectrumPlot width={width} domainX={dom} domainY={[0, d3.max(vals) ?? 0.01]} yLabel="SD of absorbance">
-          {(x, y) => groups.filter(lg.show).map((g) => <path key={g} d={linePath(pts, (d.groups[g] as any)[key], x, y)} fill="none" stroke={GROUP_COLOR[g]} strokeWidth={1.7} opacity={lg.dim(g)} />)}
-        </SpectrumPlot>
-      </div>
+      <SpectrumPlot series={groups.filter(lg.show).map((g) => ({ id: g, wn: d.bin_wn, y: d.groups[g][key], color: GROUP_COLOR[g], width: 1.7, group: g }))}
+        window={dom} yDomain={[0, d3.max(vals) ?? 0.01]} yLabel="SD of absorbance" regions={SHADES} hover="none" dim={lg.dim} />
       <Legend {...lg.props} items={groups.map((g) => ({ label: g, color: GROUP_COLOR[g], shape: 'line' as const, detail: `n=${d.groups[g].n}` }))} />
     </ChartFrame>
   )
@@ -292,7 +250,6 @@ function PcaMap({ d }: { d: BlanksData }) {
   const dateScale = d3.scaleSequential(d3.interpolateViridis).domain(d3.extent(dates.filter(Number.isFinite)) as [number, number])
   const color = (i: number) => colorBy === 'lot / source' ? GROUP_COLOR[inv(d, 'group')[i]] : colorBy === 'sampling date' ? (Number.isFinite(dates[i]) ? dateScale(dates[i]) : INK.neutral) : ROLE_COLOR[roleIn(d, bank, i)]
   const worst = d.banks['VIBES-allblanks'].worst.id
-  const pinPts = inRange(d.bin_wn, [4000, 500])
   const devOf = (i: number) => d.raw[i].map((v, j) => v - d.shared_pca.mean[j])
   const legendItems = colorBy === 'lot / source' ? Object.keys(d.groups).map((g) => ({ label: g, color: GROUP_COLOR[g] }))
     : colorBy === 'role in background' ? Object.entries(ROLE_COLOR).map(([label, c]) => ({ label, color: c })) : [{ label: 'earliest', color: dateScale.range()[0] as unknown as string }, { label: 'latest', color: d3.interpolateViridis(1) }, { label: 'undated (ETAD)', color: INK.neutral }]
@@ -322,13 +279,12 @@ function PcaMap({ d }: { d: BlanksData }) {
         </svg>
         <div style={{ flex: '1 1 300px', minWidth: 280 }}>
           {pin == null ? <Note>Click a blank in the map to see its spectrum minus the average blank. The loadings of {px} and {py} are below for reference.</Note> : null}
-          <SpectrumPlot width={Math.max(300, width - side - m.left - m.right - 24)} height={220} domainX={[4000, 500]}
-            domainY={pin == null ? (d3.extent([...d.shared_pca.loadings[ix], ...d.shared_pca.loadings[iy]]) as [number, number]) : (d3.extent(devOf(pin)) as [number, number])}
-            yLabel={pin == null ? 'Loading' : 'Blank − average'} title={pin == null ? `${px} (solid) and ${py} (dashed) loadings` : `${inv(d, 'sample_id')[pin]} minus the average blank`}>
-            {(xx, yy) => pin == null
-              ? <><path d={linePath(pinPts, d.shared_pca.loadings[ix], xx, yy)} fill="none" stroke={INK.text} strokeWidth={1.5} /><path d={linePath(pinPts, d.shared_pca.loadings[iy], xx, yy)} fill="none" stroke={INK.text} strokeDasharray="4 3" strokeWidth={1.3} /></>
-              : <><line x1={0} x2={xx.range()[1]} y1={yy(0)} y2={yy(0)} stroke={INK.axis} strokeOpacity={0.6} /><path d={linePath(pinPts, devOf(pin), xx, yy)} fill="none" stroke={color(pin)} strokeWidth={1.6} /></>}
-          </SpectrumPlot>
+          <SpectrumPlot width={Math.max(300, width - side - m.left - m.right - 24)} height={220} window={[4000, 500]} regions={SHADES} hover="none" zeroLine={pin != null}
+            series={pin == null
+              ? [{ id: px, wn: d.bin_wn, y: d.shared_pca.loadings[ix], color: INK.text, width: 1.5 }, { id: py, wn: d.bin_wn, y: d.shared_pca.loadings[iy], color: INK.text, width: 1.3, dash: '4 3' }]
+              : [{ id: 'dev', wn: d.bin_wn, y: devOf(pin), color: color(pin), width: 1.6 }]}
+            yDomain={pin == null ? (d3.extent([...d.shared_pca.loadings[ix], ...d.shared_pca.loadings[iy]]) as [number, number]) : (d3.extent(devOf(pin)) as [number, number])}
+            yLabel={pin == null ? 'Loading' : 'Blank − average'} title={pin == null ? `${px} (solid) and ${py} (dashed) loadings` : `${inv(d, 'sample_id')[pin]} minus the average blank`} />
         </div>
         {tip.node}
       </div>
@@ -376,40 +332,26 @@ function Drift({ d }: { d: BlanksData }) {
 
 // ------------------------------------------------------------------ 6. rank selection
 function RankSelection({ d }: { d: BlanksData }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const lg = useLegend()
-  const m = { top: 12, right: 16, bottom: 44, left: 70 }, h = 320
-  const iw = Math.max(300, width - m.left - m.right), ih = h - m.top - m.bottom
   const shown = banksOf(d).filter((b) => lg.show(d.bank_labels[b]))
   const all = shown.flatMap((b) => d.banks[b].loo_mean.map((v, i) => [v - d.banks[b].loo_se[i], v + d.banks[b].loo_se[i]]).flat()).filter((v) => v > 0)
-  const x = d3.scaleLinear().domain([1, 85]).range([0, iw])
-  const y = d3.scaleLog().domain(d3.extent(all) as [number, number]).nice().range([ih, 0])
+  // the band's lower edge (mean − SE) often goes below zero: floor it at the axis
+  const yDom = d3.scaleLog().domain(d3.extent(all) as [number, number]).nice().domain() as [number, number]
+  const series = shown.map((b) => {
+    const B = d.banks[b], label = d.bank_labels[b]
+    return { id: b, label, color: BANK_COLOR[b], group: label, points: B.loo_mean.map((v, i) => ({
+      x: i + 1, y: v, lo: Math.max(v - B.loo_se[i], yDom[0]), hi: v + B.loo_se[i],
+      tip: i + 1 === B.rank ? [label, `chosen rank ${B.rank} (one-SE rule)`, `error ${sci(v)}, ${f2(v / B.loo_mean[B.rank_min_loo - 1])}× the minimum at ${B.rank_min_loo}`]
+        : [label, `rank ${i + 1}`, `error ${sci(v)} ± ${sci(B.loo_se[i])}`] })) }
+  })
   return (
     <ChartFrame id="blanks-rank" source="gallery/app/src/pages/BlanksPage.tsx › RankSelection"
       title="Rank selection — how many background components each blank bank supports"
       subtitle="Leave-one-blank-out reconstruction error (mean ± 1 SE over blanks) against the number of PCA components. The one-SE rule takes the smallest rank whose error is within one SE of the minimum (dashed line). A single extreme blank inflates the SE, so the rule stops early even though the error keeps falling.">
-      <div ref={ref} style={{ position: 'relative' }}>
-        <svg width={iw + m.left + m.right} height={h} fontFamily={FONT.family}>
-          <g transform={`translate(${m.left},${m.top})`}>
-            <YAxis scale={y} x={0} label="LOO mean squared error" tickCount={5} gridWidth={iw} labelX={-58} format={(v) => (+v).toExponential(0)} />
-            <XAxis scale={x} y={ih} label="Background PCA components" tickCount={9} labelDy={36} />
-            {shown.map((b) => {
-              const B = d.banks[b], c = BANK_COLOR[b]
-              const pts = B.loo_mean.map((v, i) => ({ k: i + 1, v, lo: Math.max(v - B.loo_se[i], y.domain()[0]), hi: v + B.loo_se[i] }))
-              return <g key={b} opacity={lg.dim(d.bank_labels[b])}>
-                <path d={d3.area<typeof pts[0]>().x((p) => x(p.k)).y0((p) => y(p.lo)).y1((p) => y(p.hi))(pts) ?? ''} fill={c} fillOpacity={0.15} />
-                <path d={d3.line<typeof pts[0]>().x((p) => x(p.k)).y((p) => y(p.v))(pts) ?? ''} fill="none" stroke={c} strokeWidth={1.8} />
-                <Marker orient="h" at={y(B.one_se_threshold)} from={0} to={iw} color={c} />
-                <circle cx={x(B.rank)} cy={y(B.loo_mean[B.rank - 1])} r={6} fill={c} stroke="white" strokeWidth={1.5}
-                  onMouseEnter={(e) => tip.show(e, [d.bank_labels[b], `chosen rank ${B.rank} (one-SE rule)`, `error ${sci(B.loo_mean[B.rank - 1])}, ${f2(B.loo_mean[B.rank - 1] / B.loo_mean[B.rank_min_loo - 1])}× the minimum at ${B.rank_min_loo}`])} onMouseLeave={tip.hide} />
-              </g>
-            })}
-          </g>
-        </svg>
-        {tip.node}
-      </div>
+      <SweepPlot series={series} xDomain={[1, 85]} yScale="log" yDomain={yDom} height={320} dim={lg.dim}
+        xLabel="Background PCA components" yLabel="LOO mean squared error" yFormat={(v) => v.toExponential(0)}
+        yMarkers={shown.map((b) => ({ at: d.banks[b].one_se_threshold, color: BANK_COLOR[b] }))}
+        chosen={shown.map((b) => ({ series: b, x: d.banks[b].rank }))} />
       <Legend {...lg.props} items={banksOf(d).map((b) => ({ label: d.bank_labels[b], color: BANK_COLOR[b], shape: 'line' as const, detail: `${d.banks[b].n_blanks} blanks → rank ${d.banks[b].rank}` }))} />
       <table className="census-table" style={{ marginTop: 8 }}>
         <thead><tr><th>Background</th><th>Chosen rank</th><th>Error minimum at</th><th>Worst 5 % carry</th><th>Remove the worst blank</th><th>Remove 2</th><th>Remove 3</th></tr></thead>
@@ -442,7 +384,6 @@ function PerBlankError({ d }: { d: BlanksData }) {
   const yb = d3.scaleBand().domain(groups).range([0, ih]).padding(0.25)
   const jitter = (i: number) => ((Math.sin(i * 78.233) * 43758.5453) % 1 + 1) % 1
   const top = rows.slice(-8).reverse()
-  const pts = inRange(d.bin_wn, [4000, 500])
   return (
     <ChartFrame id="blanks-outliers" source="gallery/app/src/pages/BlanksPage.tsx › PerBlankError"
       title="Which blanks dominate — each blank's leave-one-out error"
@@ -466,9 +407,9 @@ function PerBlankError({ d }: { d: BlanksData }) {
           <tbody>{top.map((r) => <tr key={r.id}><td>{r.id}</td><td>{inv(d, 'site')[r.i]} · {inv(d, 'date')[r.i] ?? 'undated'}</td><td>{Math.round(r.e / med).toLocaleString()}</td></tr>)}</tbody>
         </table>
         <div style={{ flex: '1 1 340px' }}>
-          <SpectrumPlot width={Math.max(320, width / 2)} height={230} domainX={[4000, 500]} domainY={d3.extent(B.worst.minus_bank_median) as [number, number]} yLabel="Blank − bank median" title={`${B.worst.id} minus the median blank of this bank`}>
-            {(xx, yy) => <><line x1={0} x2={xx.range()[1]} y1={yy(0)} y2={yy(0)} stroke={INK.axis} strokeOpacity={0.6} /><path d={linePath(pts, B.worst.minus_bank_median, xx, yy)} fill="none" stroke={INK.negative} strokeWidth={1.6} /></>}
-          </SpectrumPlot>
+          <SpectrumPlot width={Math.max(320, width / 2)} height={230} window={[4000, 500]} regions={SHADES} hover="none" zeroLine
+            series={[{ id: B.worst.id, wn: d.bin_wn, y: B.worst.minus_bank_median, color: INK.negative, width: 1.6 }]}
+            yDomain={d3.extent(B.worst.minus_bank_median) as [number, number]} yLabel="Blank − bank median" title={`${B.worst.id} minus the median blank of this bank`} />
         </div>
       </div>
     </ChartFrame>
@@ -478,22 +419,16 @@ function PerBlankError({ d }: { d: BlanksData }) {
 // ------------------------------------------------------------------ 8. components
 function Components({ d }: { d: BlanksData }) {
   const [bank, setBank] = useSearchParam<BankKey>('bkcompbank', 'VIBES-full-r70', banksOf(d))
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
   const B = d.banks[bank]
-  const pts = inRange(d.bin_wn, [4000, 500])
-  const cols = width > 900 ? 4 : width > 560 ? 2 : 1
-  const w = Math.floor((width - (cols - 1) * 12) / cols)
   return (
     <ChartFrame id="blanks-components" source="gallery/app/src/pages/BlanksPage.tsx › Components"
       title="Background components — the shapes VIBES may subtract from every spectrum"
       subtitle={`First ${B.loadings.length} PCA components of the selected bank's blanks (unit-length loadings). The background is the bank's mean blank plus any combination of the first ${B.rank} components; anything a sample shares with these shapes can be absorbed as background.`}
       controls={<BankPicker value={bank} banks={banksOf(d)} labels={d.bank_labels} ranks={Object.fromEntries(banksOf(d).map((b) => [b, d.banks[b].rank]))} onChange={setBank} />}>
-      <div ref={ref} style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 12 }}>
-        {B.loadings.map((l, k) => <SpectrumPlot key={k} width={w} height={170} domainX={[4000, 500]} domainY={d3.extent(l) as [number, number]} yLabel="" title={`PC${k + 1} · ${pct(B.var[k])} of blank variance${k >= B.rank ? ' · not used' : ''}`}>
-          {(xx, yy) => <><line x1={0} x2={xx.range()[1]} y1={yy(0)} y2={yy(0)} stroke={INK.axis} strokeOpacity={0.5} /><path d={linePath(pts, l, xx, yy)} fill="none" stroke={k >= B.rank ? INK.neutral : BANK_COLOR[bank]} strokeWidth={1.4} /></>}
-        </SpectrumPlot>)}
-      </div>
+      <FacetGrid items={B.loadings} gap={12} render={(l, cw, k) =>
+        <SpectrumPlot width={cw} minWidth={0} height={170} window={[4000, 500]} regions={SHADES} hover="none" zeroLine yLabel=""
+          series={[{ id: `PC${k + 1}`, wn: d.bin_wn, y: l, color: k >= B.rank ? INK.neutral : BANK_COLOR[bank], width: 1.4 }]}
+          yDomain={d3.extent(l) as [number, number]} title={`PC${k + 1} · ${pct(B.var[k])} of blank variance${k >= B.rank ? ' · not used' : ''}`} />} />
     </ChartFrame>
   )
 }
@@ -501,17 +436,16 @@ function Components({ d }: { d: BlanksData }) {
 // ------------------------------------------------------------------ 9. after correction
 function AfterCorrection({ d }: { d: BlanksData }) {
   const [range, setRange] = useSearchParam<(typeof RANGES)[number]>('bkcrange', '4000–500', RANGES)
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
   const lg = useLegend()
   const dom = rangeOf(range)
-  const pts = inRange(d.bin_wn, dom)
+  const js = chans(d.bin_wn, dom)
   const stats = Object.fromEntries(banksOf(d).map((b) => {
     const H = d.banks[b].held_corrected
     const q = (p: number) => d.bin_wn.map((_, j) => d3.quantile(H.map((r) => r[j]).filter((v) => v != null), p) ?? NaN)
     return [b, { lo: q(0.1), med: q(0.5), hi: q(0.9) }]
   }))
-  const vals = banksOf(d).filter((b) => lg.show(d.bank_labels[b])).flatMap((b) => pts.flatMap(([, j]) => [stats[b].lo[j], stats[b].hi[j]]))
+  const shown = banksOf(d).filter((b) => lg.show(d.bank_labels[b]))
+  const vals = shown.flatMap((b) => js.flatMap((j) => [stats[b].lo[j], stats[b].hi[j]]))
   const bands: [string, number, number][] = [['all (no CO₂)', 4000, 500], ['PTFE 1050–1250', 1250, 1050], ['600–1500', 1500, 600], ['1500–4000', 4000, 1500]]
   const rms = (b: string, hi: number, lo: number) => {
     const js = d.bin_wn.map((w, j) => [w, j] as const).filter(([w]) => w <= hi && w >= lo && !(w > 1800 && w < 2500)).map(([, j]) => j)
@@ -522,15 +456,10 @@ function AfterCorrection({ d }: { d: BlanksData }) {
       title="After correction — what is left on blanks no background trained on"
       subtitle={`VIBES-corrected spectra of the ${d.held_ids.length} blanks held out by every bank (${d.held_source.filter((s) => s === 'IMPROVE').length} IMPROVE, ${d.held_source.filter((s) => s === 'ETAD').length} ETAD). A perfect background leaves zero everywhere; residue is what the background could not explain and would be read as analyte. Median and 10–90 % band per background.`}
       controls={<Segmented label="Range" value={range} options={RANGES} onChange={setRange} />}>
-      <div ref={ref} className="chart-wrap">
-        <SpectrumPlot width={width} domainX={dom} domainY={[Math.min(0, d3.min(vals) ?? 0), d3.max(vals) ?? 1e-4]} yLabel="Corrected absorbance">
-          {(x, y) => <><line x1={0} x2={x.range()[1]} y1={y(0)} y2={y(0)} stroke={INK.axis} strokeOpacity={0.6} />
-            {banksOf(d).filter((b) => lg.show(d.bank_labels[b])).map((b) => <g key={b} opacity={lg.dim(d.bank_labels[b])}>
-              <path d={bandPath(pts, stats[b].lo, stats[b].hi, x, y)} fill={BANK_COLOR[b]} fillOpacity={0.15} />
-              <path d={linePath(pts, stats[b].med, x, y)} fill="none" stroke={BANK_COLOR[b]} strokeWidth={1.7} />
-            </g>)}</>}
-        </SpectrumPlot>
-      </div>
+      <SpectrumPlot window={dom} regions={SHADES} hover="none" zeroLine dim={lg.dim} yLabel="Corrected absorbance"
+        yDomain={[Math.min(0, d3.min(vals) ?? 0), d3.max(vals) ?? 1e-4]}
+        bands={shown.map((b) => ({ id: b, wn: d.bin_wn, lo: stats[b].lo, hi: stats[b].hi, color: BANK_COLOR[b], opacity: 0.15, group: d.bank_labels[b] }))}
+        series={shown.map((b) => ({ id: b, wn: d.bin_wn, y: stats[b].med, color: BANK_COLOR[b], width: 1.7, group: d.bank_labels[b] }))} />
       <Legend {...lg.props} items={banksOf(d).map((b) => ({ label: d.bank_labels[b], color: BANK_COLOR[b], shape: 'line' as const, detail: `rank ${d.banks[b].rank}` }))} />
       <table className="census-table" style={{ marginTop: 8 }}>
         <thead><tr><th>Median RMS residue (×10⁻⁵)</th>{bands.map(([l]) => <th key={l}>{l}</th>)}</tr></thead>
@@ -545,36 +474,20 @@ const POPS = ['held-out blanks', 'IMPROVE samples', 'Addis samples'] as const
 const POP_COLOR: Record<string, string> = { 'held-out blanks': INK.axis, 'IMPROVE samples': '#2C6E9E', 'Addis samples': '#c0392b' }
 function Capture({ d }: { d: BlanksData }) {
   const [bank, setBank] = useSearchParam<BankKey>('bkcapbank', 'VIBES-full-r70', banksOf(d))
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const B = d.banks[bank]
-  const m = { top: 12, right: 16, bottom: 44, left: 60 }, h = 300
-  const iw = Math.max(300, width - m.left - m.right), ih = h - m.top - m.bottom
-  const x = d3.scaleLinear().domain([1, B.cap]).range([0, iw])
-  const y = d3.scaleLinear().domain([0, 1]).range([ih, 0])
+  const pops = POPS.filter((p) => B.capture[p])
+  const series = pops.map((p) => { const c = B.capture[p]
+    return { id: p, label: p, color: POP_COLOR[p], points: c.median.map((v, i) => ({ x: i + 1, y: v, lo: c.p10[i], hi: c.p90[i],
+      tip: [p, `n ${c.n}`, `at rank ${i + 1}: median ${pct(v)} [${pct(c.p10[i])}–${pct(c.p90[i])}]`] })) } })
   return (
     <ChartFrame id="blanks-capture" source="gallery/app/src/pages/BlanksPage.tsx › Capture"
       title="What the background could absorb — share of each spectrum inside the blank subspace"
       subtitle="For each raw spectrum, the fraction of its deviation from the bank's mean blank that lies in the span of the first k blank components (median and 10–90 %). Blanks should be near 1; for ambient samples, a high fraction means the background can mimic most of the sample, analyte included. This is a geometric bound, not the VIBES fit itself (VIBES adds a positive analyte term and priors)."
       controls={<BankPicker value={bank} banks={banksOf(d)} labels={d.bank_labels} onChange={setBank} />}>
-      <div ref={ref} style={{ position: 'relative' }}>
-        <svg width={iw + m.left + m.right} height={h} fontFamily={FONT.family}>
-          <g transform={`translate(${m.left},${m.top})`}>
-            <YAxis scale={y} x={0} label="Share inside blank subspace" tickCount={5} gridWidth={iw} labelX={-46} format={(v) => `${Math.round(100 * v)} %`} />
-            <XAxis scale={x} y={ih} label="Blank components (k)" tickCount={9} labelDy={36} />
-            <Marker orient="v" at={x(B.rank)} from={0} to={ih} color={BANK_COLOR[bank]} />
-            <text x={x(B.rank) + 4} y={12} fontSize={10} fontFamily={FONT.mono} fill={BANK_COLOR[bank]}>chosen rank {B.rank}</text>
-            {POPS.map((p) => { const c = B.capture[p]; if (!c) return null; const ks = c.median.map((_, i) => i)
-              return <g key={p}>
-                <path d={d3.area<number>().x((i) => x(i + 1)).y0((i) => y(c.p10[i])).y1((i) => y(c.p90[i]))(ks) ?? ''} fill={POP_COLOR[p]} fillOpacity={0.14} />
-                <path d={d3.line<number>().x((i) => x(i + 1)).y((i) => y(c.median[i]))(ks) ?? ''} fill="none" stroke={POP_COLOR[p]} strokeWidth={1.8} />
-                <circle cx={x(B.rank)} cy={y(c.median[B.rank - 1])} r={4.5} fill={POP_COLOR[p]} onMouseEnter={(e) => tip.show(e, [p, `n ${c.n}`, `at rank ${B.rank}: median ${pct(c.median[B.rank - 1])} [${pct(c.p10[B.rank - 1])}–${pct(c.p90[B.rank - 1])}]`])} onMouseLeave={tip.hide} />
-              </g> })}
-          </g>
-        </svg>
-        {tip.node}
-      </div>
+      <SweepPlot series={series} xDomain={[1, B.cap]} yDomain={[0, 1]} height={300}
+        xLabel="Blank components (k)" yLabel="Share inside blank subspace" yFormat={(v) => `${Math.round(100 * v)} %`}
+        xMarkers={[{ at: B.rank, label: `chosen rank ${B.rank}`, color: BANK_COLOR[bank] }]}
+        chosen={pops.map((p) => ({ series: p, x: B.rank }))} />
       <Legend items={POPS.map((p) => ({ label: p, color: POP_COLOR[p], shape: 'line' as const, detail: `n=${B.capture[p]?.n ?? 0}` }))} />
     </ChartFrame>
   )

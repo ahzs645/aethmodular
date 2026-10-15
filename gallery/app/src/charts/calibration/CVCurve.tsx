@@ -1,13 +1,9 @@
-import { useRef } from 'react'
-import { Marker } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
-import { XAxis, YAxis } from '@/components/Axes'
-import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
+import { SweepPlot } from '@/components/SweepPlot'
 import { fmt } from '@/lib/stats'
-import { INK, MARGIN, FONT } from '@/lib/theme'
+import { INK } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile } from '@/lib/types'
 import { CV_PROTOCOL, METRIC, label } from '@/lib/labels'
 
@@ -19,24 +15,16 @@ import { CV_PROTOCOL, METRIC, label } from '@/lib/labels'
  * rule stopped where it did (first major minimum under protocol A).
  */
 export function CVCurve({ run, runs }: { run: CalibRun; runs: CalibRunsFile }) {
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(wrapRef)
-  const tip = useTooltip(wrapRef)
   const lg = useLegend()
-  const height = 320
-
   const pts = run.curve.filter((c) => c.rmsecv !== null && Number.isFinite(c.rmsecv)) as { k: number; rmsecv: number; se: number | null }[]
-  const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
-  const innerH = height - MARGIN.top - MARGIN.bottom
-  const x = d3.scaleLinear().domain([1, d3.max(pts, (p) => p.k) ?? 30]).range([0, innerW])
   const hasSe = pts.some((p) => p.se !== null && Number.isFinite(p.se))
   const SE = '± 1 SE across folds'
-  const seOn = hasSe && lg.show(SE)
+  const seOn = hasSe && lg.show(SE), lineOn = lg.show('RMSECV')
   const yMax = d3.max(pts, (p) => p.rmsecv + (seOn ? p.se ?? 0 : 0)) ?? 1
   const yMin = d3.min(pts, (p) => p.rmsecv - (seOn ? p.se ?? 0 : 0)) ?? 0
-  const y = d3.scaleLinear().domain([Math.max(0, yMin - (yMax - yMin) * 0.1), yMax * 1.04]).range([innerH, 0]).nice()
-  const line = d3.line<(typeof pts)[number]>().x((p) => x(p.k)).y((p) => y(p.rmsecv))
-  const band = d3.area<(typeof pts)[number]>().x((p) => x(p.k)).y0((p) => y(p.rmsecv - (p.se ?? 0))).y1((p) => y(p.rmsecv + (p.se ?? 0)))
+  const yDomain = d3.scaleLinear().domain([Math.max(0, yMin - (yMax - yMin) * 0.1), yMax * 1.04]).nice().domain() as [number, number]
+  const lo = (p: (typeof pts)[number]) => (seOn && p.se !== null ? p.rmsecv - p.se : null)
+  const hi = (p: (typeof pts)[number]) => (seOn && p.se !== null ? p.rmsecv + p.se : null)
   const target = runs.targets[run.target]
 
   return (
@@ -53,28 +41,25 @@ export function CVCurve({ run, runs }: { run: CalibRun; runs: CalibRunsFile }) {
         </span>
       }
     >
-      <div ref={wrapRef} className="chart-wrap">
+      <div className="chart-wrap">
         {pts.length < 2 ? (
           <Empty>No curve saved for this configuration at {target?.site ?? run.target}.</Empty>
         ) : (
-          <svg width={width} height={height}>
-            <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-              <YAxis scale={y} x={0} label="IMPROVE cross-validation RMSE (µg / filter)" gridWidth={innerW} />
-              <XAxis scale={x} y={innerH} label={METRIC.k} tickCount={8} />
-              {seOn && <path d={band(pts) ?? ''} fill={INK.accent} fillOpacity={0.12 * lg.dim(SE, 0.3)} />}
-              {lg.show('RMSECV') && <path d={line(pts) ?? ''} fill="none" stroke={INK.accent} strokeWidth={2} strokeOpacity={lg.dim('RMSECV')} />}
-              <Marker orient="v" at={x(run.auto_k)} from={0} to={innerH} />
-              {lg.show('RMSECV') && pts.map((p) => (
-                <circle key={p.k} opacity={lg.dim('RMSECV')} cx={x(p.k)} cy={y(p.rmsecv)} r={p.k === run.auto_k ? 6 : 3} fill={p.k === run.auto_k ? '#fff' : INK.accent} stroke={p.k === run.auto_k ? INK.text : INK.accent} strokeWidth={p.k === run.auto_k ? 2 : 1}
-                  onMouseEnter={(e) => tip.show(e, [`${p.k} PLS factors${p.k === run.auto_k ? ' (rule choice)' : ''}`, `RMSECV ${fmt(p.rmsecv, 4)} µg${p.se !== null ? ` ± ${fmt(p.se, 4)}` : ''}`])}
-                  onMouseLeave={tip.hide} />
-              ))}
-              <text x={x(run.auto_k) + 5} y={12} fontSize={10} fill={INK.muted} fontFamily={FONT.mono}>rule: {run.auto_k}</text>
-            </g>
-          </svg>
+          <SweepPlot height={320} xDomain={[1, d3.max(pts, (p) => p.k) ?? 30]} yDomain={yDomain}
+            xLabel={METRIC.k} yLabel="IMPROVE cross-validation RMSE (µg / filter)"
+            // the SE band keeps full strength while its own legend entry is hovered
+            dim={(g) => (lg.hover === SE ? 1 : lg.dim(g))}
+            xMarkers={[{ at: run.auto_k, label: `rule: ${run.auto_k}` }]}
+            chosen={lineOn ? [{ series: 'rmsecv', x: run.auto_k }] : []}
+            series={lineOn ? [{ id: 'rmsecv', label: 'RMSECV', group: 'RMSECV', color: INK.accent, width: 2,
+              points: pts.map((p) => ({ x: p.k, y: p.rmsecv, lo: lo(p), hi: hi(p),
+                tip: [`${p.k} PLS factors${p.k === run.auto_k ? ' (rule choice)' : ''}`, `RMSECV ${fmt(p.rmsecv, 4)} µg${p.se !== null ? ` ± ${fmt(p.se, 4)}` : ''}`] })) }] : []}>
+            {/* the band alone, when the line is toggled off */}
+            {({ x, y }) => !lineOn && seOn && <path fill={INK.accent} fillOpacity={0.15 * lg.dim(SE, 0.3)}
+              d={d3.area<(typeof pts)[number]>().x((p) => (x as d3.ScaleLinear<number, number>)(p.k)).y0((p) => y(lo(p) ?? p.rmsecv)).y1((p) => y(hi(p) ?? p.rmsecv))(pts) ?? ''} />}
+          </SweepPlot>
         )}
         <Legend items={[{ label: 'RMSECV', color: INK.accent, shape: 'line' }, ...(hasSe ? [{ label: SE, color: INK.accent, shape: 'band' as const }] : [])]} {...lg.props} />
-        {tip.node}
       </div>
     </ChartFrame>
   )

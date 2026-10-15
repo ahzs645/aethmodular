@@ -29,12 +29,18 @@ export function RefLine(props: Span) {
  * A value to compare against: a guardrail floor, the chosen k, a cutoff, a median.
  * `color` ties it to one series (a bank, a cohort); the label sits at the line's start.
  */
-export function Marker({ label, color = INK.text, opacity = 0.75, ...span }: Span & { label?: string; color?: string; opacity?: number }) {
+export function Marker({ label, color = INK.text, opacity = 0.75, labelSide = 'right', labelDy = 0, ...span }: Span & {
+  label?: string; color?: string; opacity?: number
+  /** vertical markers: which side of the line the label sits (left near the right edge) */
+  labelSide?: 'left' | 'right'
+  /** push the label down, so several markers' labels do not overlap */
+  labelDy?: number
+}) {
   const e = ends(span)
   return <g pointerEvents="none">
     <line {...e} {...marker} stroke={color} strokeOpacity={opacity} />
     {label && (span.orient === 'v'
-      ? <text x={e.x1 + 4} y={Math.min(e.y1, e.y2) + 10} fontSize={10} fontFamily={FONT.mono} fill={color}>{label}</text>
+      ? <text x={labelSide === 'left' ? e.x1 - 4 : e.x1 + 4} y={Math.min(e.y1, e.y2) + 10 + labelDy} textAnchor={labelSide === 'left' ? 'end' : 'start'} fontSize={10} fontFamily={FONT.mono} fill={color}>{label}</text>
       : <text x={Math.max(e.x1, e.x2) - 4} y={e.y1 - 4} textAnchor="end" fontSize={10} fontFamily={FONT.mono} fill={color}>{label}</text>)}
   </g>
 }

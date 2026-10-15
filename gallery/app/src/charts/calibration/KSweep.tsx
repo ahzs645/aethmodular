@@ -1,13 +1,11 @@
-import { useMemo, useRef } from 'react'
-import { Marker } from '@/components/RefLines'
+import { useMemo } from 'react'
 import { FIT_STYLE, useEstimator, estimatorText } from '@/lib/regressionPrefs'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
+import { FacetGrid } from '@/components/FacetGrid'
 import { Legend, useLegend } from '@/components/Legend'
-import { XAxis, YAxis } from '@/components/Axes'
-import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
-import { INK, FONT } from '@/lib/theme'
+import { SweepPlot } from '@/components/SweepPlot'
+import { INK } from '@/lib/theme'
 import type { CalibFile } from '@/lib/types'
 import { configLabel, sameConfig, type Config } from './common'
 import { COHORT, CV_PROTOCOL, METRIC, PREPROCESSING, SELECTION_SPACE, label } from '@/lib/labels'
@@ -27,9 +25,6 @@ const PANELS: { id: 'intercept' | 'slope' | 'r2'; title: string; keys: { key: 'd
  * intercept is rarely the k to report (CONVERSATION_OPTIMIZATION_AUDIT).
  */
 export function KSweep({ calib, selected, onSelect }: { calib: CalibFile; selected: Config; onSelect: (c: Config) => void }) {
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(wrapRef)
-  const tip = useTooltip(wrapRef)
   const lg = useLegend()
   const method = useEstimator()
   const panels = PANELS.map(panel => ({ ...panel, keys: panel.keys.map(key => key.key === 'dm' || key.key === 'db' ? { ...key, color: FIT_STYLE[method].color, dash: FIT_STYLE[method].dash } : key) }))
@@ -48,12 +43,14 @@ export function KSweep({ calib, selected, onSelect }: { calib: CalibFile; select
   )
   const autoK = rows[0]?.ak ?? null
 
-  const cols = width > 760 ? 3 : 1
-  const panelW = Math.floor((width - (cols - 1) * 12) / cols)
-  const m = { top: 24, right: 14, bottom: 42, left: 52 }
-  const iw = Math.max(160, panelW - m.left - m.right)
-  const ih = 200
-  const x = d3.scaleLinear().domain([1, d3.max(rows, (r) => r.k) ?? 30]).range([0, iw])
+  const tipOf = (k: number) => {
+    const r = rows.find((q) => q.k === k)!
+    return [
+      `${METRIC.k}: ${k}${k === autoK ? ' (rule)' : ''}`,
+      `Test set (Addis): Deming ${r.dm?.toFixed(3) ?? '—'}x ${(r.db ?? 0) < 0 ? '−' : '+'} ${Math.abs(r.db ?? 0).toFixed(3)} · R² ${r.r2?.toFixed(3) ?? '—'}`,
+      `${METRIC.cvR2}: ${r.ho?.toFixed(3) ?? '—'}`,
+    ]
+  }
 
   return (
     <ChartFrame
@@ -76,70 +73,35 @@ export function KSweep({ calib, selected, onSelect }: { calib: CalibFile; select
         </>
       }
     >
-      <div ref={wrapRef} className="chart-wrap">
+      <div className="chart-wrap">
         {rows.length < 2 ? (
           <Empty>No PLS-factor sweep saved for {configLabel(selected, calib)} on Addis.</Empty>
         ) : (
-          <div className="facet-grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
-            {panels.map((panel) => {
-              const keys = panel.keys.filter((k) => lg.show(k.label))
-              const hot = panel.keys.some((k) => k.label === lg.hover) ? lg.hover : null
-              const vals = keys.flatMap((k) => rows.map((r) => r[k.key]).filter((v): v is number => v !== null))
-              const ext = (vals.length ? d3.extent(vals) : [panel.ref ?? 0, panel.ref ?? 1]) as [number, number]
-              const lo = panel.ref !== undefined ? Math.min(panel.ref, ext[0]) : Math.min(0, ext[0])
-              const hi = panel.ref !== undefined ? Math.max(panel.ref, ext[1]) : Math.max(1, ext[1])
-              const y = d3.scaleLinear().domain([lo, hi]).range([ih, 0]).nice()
-              return (
-                <div key={panel.id}>
-                  <p className="facet-title">{estimatorText(panel.title, method)}</p>
-                  <svg width={panelW} height={ih + m.top + m.bottom} className="animated">
-                    <g transform={`translate(${m.left},${m.top})`}>
-                      <YAxis scale={y} x={0} gridWidth={iw} tickCount={5} />
-                      <XAxis scale={x} y={ih} label={METRIC.k} tickCount={6} />
-                      {panel.ref !== undefined && <line x1={0} x2={iw} y1={y(panel.ref)} y2={y(panel.ref)} stroke={INK.axis} strokeOpacity={0.7} />}
-                      {panel.id === 'slope' && (
-                        <rect x={0} y={Math.max(0, y(calib.slope_box[1]))} width={iw} height={Math.max(0, Math.min(ih, y(calib.slope_box[0])) - Math.max(0, y(calib.slope_box[1])))} fill={INK.accent} fillOpacity={0.06} />
-                      )}
-                      {panel.id === 'r2' && <Marker orient="h" at={y(calib.heldout_floor)} from={0} to={iw} color={INK.good} />}
-                      {autoK !== null && (
-                        <g>
-                          <Marker orient="v" at={x(autoK)} from={0} to={ih} />
-                          <text x={x(autoK) + 3} y={-6} fontSize={9.5} fill={INK.muted} fontFamily={FONT.mono}>rule: {autoK}</text>
-                        </g>
-                      )}
-                      {keys.map((k) => {
-                        const pts = rows.map((r) => ({ k: r.k, v: r[k.key] })).filter((p): p is { k: number; v: number } => p.v !== null)
-                        const line = d3.line<{ k: number; v: number }>().x((p) => x(p.k)).y((p) => y(p.v))
-                        return (
-                          <g key={k.key} opacity={hot && hot !== k.label ? 0.15 : 1}>
-                            <path d={line(pts) ?? ''} fill="none" stroke={k.color} strokeWidth={1.8} strokeDasharray={k.dash} pointerEvents="none" />
-                            {pts.map((p) => (
-                              <circle
-                                key={p.k} cx={x(p.k)} cy={y(p.v)} r={p.k === autoK ? 4.5 : 2.8} fill={p.k === autoK ? '#fff' : k.color} stroke={k.color} strokeWidth={p.k === autoK ? 2 : 1}
-                                onMouseEnter={(e) => {
-                                  const r = rows.find((q) => q.k === p.k)!
-                                  tip.show(e, [
-                                    `${METRIC.k}: ${p.k}${p.k === autoK ? ' (rule)' : ''}`,
-                                    `Test set (Addis): Deming ${r.dm?.toFixed(3) ?? '—'}x ${(r.db ?? 0) < 0 ? '−' : '+'} ${Math.abs(r.db ?? 0).toFixed(3)} · R² ${r.r2?.toFixed(3) ?? '—'}`,
-                                    `${METRIC.cvR2}: ${r.ho?.toFixed(3) ?? '—'}`,
-                                  ])
-                                }}
-                                onMouseLeave={tip.hide}
-                              />
-                            ))}
-                          </g>
-                        )
-                      })}
-                    </g>
-                  </svg>
-                  <Legend items={panel.keys.map((k) => ({ label: k.label, color: k.color, shape: k.dash ? ('dashed' as const) : ('line' as const) }))} {...lg.props} highlighted={hot} />
-                </div>
-              )
-            })}
-          </div>
+          <FacetGrid items={panels} minCell={250} maxCols={3} gap={12} render={(panel, cw) => {
+            const keys = panel.keys.filter((k) => lg.show(k.label))
+            const hot = panel.keys.some((k) => k.label === lg.hover) ? lg.hover : null
+            const vals = keys.flatMap((k) => rows.map((r) => r[k.key]).filter((v): v is number => v !== null))
+            const ext = (vals.length ? d3.extent(vals) : [panel.ref ?? 0, panel.ref ?? 1]) as [number, number]
+            const lo = panel.ref !== undefined ? Math.min(panel.ref, ext[0]) : Math.min(0, ext[0])
+            const hi = panel.ref !== undefined ? Math.max(panel.ref, ext[1]) : Math.max(1, ext[1])
+            return <>
+              <SweepPlot width={cw} minWidth={200} height={258} title={estimatorText(panel.title, method)} xLabel={METRIC.k} yLabel=""
+                xDomain={[1, d3.max(rows, (r) => r.k) ?? 30]} yDomain={d3.scaleLinear().domain([lo, hi]).nice().domain() as [number, number]}
+                reference={panel.ref} dim={(g) => (hot && hot !== g ? 0.15 : 1)}
+                xMarkers={autoK !== null ? [{ at: autoK, label: `rule: ${autoK}` }] : []}
+                yMarkers={panel.id === 'r2' ? [{ at: calib.heldout_floor, color: INK.good }] : []}
+                chosen={autoK !== null ? keys.map((k) => ({ series: k.key, x: autoK })) : []}
+                series={keys.map((k) => ({ id: k.key, label: k.label, group: k.label, color: k.color, dash: k.dash, marks: true,
+                  points: rows.filter((r) => r[k.key] !== null).map((r) => ({ x: r.k, y: r[k.key], tip: tipOf(r.k) })) }))}
+                background={({ y, iw, ih }) => panel.id === 'slope' && (() => {
+                  const top = Math.max(0, y(calib.slope_box[1])), bot = Math.min(ih, y(calib.slope_box[0]))
+                  return <rect x={0} y={top} width={iw} height={Math.max(0, bot - top)} fill={INK.accent} fillOpacity={0.06} />
+                })()} />
+              <Legend items={panel.keys.map((k) => ({ label: k.label, color: k.color, shape: k.dash ? ('dashed' as const) : ('line' as const) }))} {...lg.props} highlighted={hot} />
+            </>
+          }} />
         )}
         <p className="chart-note">{configLabel(selected, calib)}</p>
-        {tip.node}
       </div>
     </ChartFrame>
   )

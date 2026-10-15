@@ -1,13 +1,11 @@
-import { useMemo, useRef, useState } from 'react'
-import * as d3 from 'd3'
+import { useState } from 'react'
 import { ChartFrame, Empty, Segmented, Toggle } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
-import { XAxis, YAxis } from '@/components/Axes'
-import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
-import { fmt } from '@/lib/stats'
-import { INK, MARGIN, FONT } from '@/lib/theme'
+import { SpectrumPlot } from '@/components/SpectrumPlot'
+import { INK } from '@/lib/theme'
 import { PREPROCESSING, label } from '@/lib/labels'
+
+const MARKS = [{ wn: 1600, label: '~1600 aromatic / carboxylate' }, { wn: 2920, label: 'C–H stretch' }, { wn: 1720, label: 'C=O' }]
 
 export interface SpectrumSeries {
   label: string
@@ -38,24 +36,11 @@ export function SpectraOverlay({
   bySpace: Record<string, SpectrumSeries[]>
   defaultSpace?: string
 }) {
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(wrapRef)
-  const tip = useTooltip(wrapRef)
-  const height = 380
-
   const spaces = Object.keys(bySpace)
   const [space, setSpace] = useState(spaces.includes(defaultSpace) ? defaultSpace : spaces[0] ?? '')
   const [bands, setBands] = useState(true)
   const { hidden, dim, props: legendProps } = useLegend()
   const series = (bySpace[space] ?? []).filter((s) => !hidden.has(s.label))
-
-  const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
-  const innerH = height - MARGIN.top - MARGIN.bottom
-  const wnExt = d3.extent(series.flatMap((s) => s.wn)) as [number, number]
-  const x = d3.scaleLinear().domain([wnExt[1] ?? 4000, wnExt[0] ?? 400]).range([0, innerW])
-  const vals = series.flatMap((s) => (bands ? [...s.q25, ...s.q75] : s.median))
-  const y = d3.scaleLinear().domain(d3.extent(vals) as [number, number]).range([innerH, 0]).nice()
-  const marks = useMemo(() => [{ wn: 1600, label: '~1600 aromatic / carboxylate' }, { wn: 2920, label: 'C–H stretch' }, { wn: 1720, label: 'C=O' }], [])
 
   return (
     <ChartFrame
@@ -70,42 +55,16 @@ export function SpectraOverlay({
         </>
       }
     >
-      <div ref={wrapRef} className="chart-wrap">
+      <div className="chart-wrap">
         {series.length === 0 ? (
           <Empty>No spectra exported for this space.</Empty>
         ) : (
-          <svg width={width} height={height}>
-            <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-              <YAxis scale={y} x={0} label={space === 'raw' ? 'absorbance' : 'baselined absorbance'} gridWidth={innerW} tickCount={5} />
-              <XAxis scale={x} y={innerH} label="wavenumber (cm⁻¹)" tickCount={8} />
-              {marks.filter((m) => m.wn <= x.domain()[0] && m.wn >= x.domain()[1]).map((m) => (
-                <g key={m.wn}>
-                  <line x1={x(m.wn)} x2={x(m.wn)} y1={0} y2={innerH} stroke={INK.grid} strokeDasharray="3 3" />
-                  <text x={x(m.wn) + (x(m.wn) > innerW - 150 ? -3 : 3)} y={10} textAnchor={x(m.wn) > innerW - 150 ? 'end' : 'start'} fontSize={9.5} fill={INK.muted} fontFamily={FONT.mono}>{m.label}</text>
-                </g>
-              ))}
-              {series.map((s) => {
-                const area = d3.area<number>().x((_, i) => x(s.wn[i])).y0((_, i) => y(s.q25[i])).y1((_, i) => y(s.q75[i]))
-                const line = d3.line<number>().x((_, i) => x(s.wn[i])).y((v) => y(v))
-                return (
-                  <g key={s.label} opacity={dim(s.label)}>
-                    {bands && <path d={area(s.median) ?? ''} fill={s.color} fillOpacity={0.12} pointerEvents="none" />}
-                    <path d={line(s.median) ?? ''} fill="none" stroke={s.color} strokeWidth={1.8} strokeDasharray={s.dash} pointerEvents="none" />
-                  </g>
-                )
-              })}
-              <rect x={0} y={0} width={innerW} height={innerH} fill="transparent"
-                onMouseMove={(e) => {
-                  const b = wrapRef.current!.getBoundingClientRect()
-                  const wn = x.invert(e.clientX - b.left - MARGIN.left)
-                  tip.show(e, [`${Math.round(wn)} cm⁻¹`, ...series.map((s) => { const i = d3.bisector((w: number) => -w).left(s.wn.map((w) => -w), -wn); const k = Math.min(i, s.wn.length - 1); return `${s.label}: ${fmt(s.median[k], 4)}` })])
-                }}
-                onMouseLeave={tip.hide} />
-            </g>
-          </svg>
+          <SpectrumPlot height={380} hover="readout" dim={dim} xLabel="wavenumber (cm⁻¹)" yLabel={space === 'raw' ? 'absorbance' : 'baselined absorbance'}
+            series={series.map((s) => ({ id: s.label, label: s.label, group: s.label, wn: s.wn, y: s.median, color: s.color, dash: s.dash, width: 1.8 }))}
+            bands={bands ? series.map((s) => ({ id: s.label, group: s.label, wn: s.wn, lo: s.q25, hi: s.q75, color: s.color, opacity: 0.12 })) : []}
+            markers={MARKS.map((m) => ({ at: m.wn, label: m.label, color: INK.muted }))} />
         )}
         <Legend items={(bySpace[space] ?? []).map((s) => ({ label: s.label, color: s.color, shape: s.dash ? ('dashed' as const) : ('line' as const) }))} {...legendProps} />
-        {tip.node}
       </div>
     </ChartFrame>
   )

@@ -33,6 +33,8 @@ import { BaselineComparisonPage } from '@/pages/BaselineComparisonPage'
 import { SimilarityPage } from '@/pages/SimilarityPage'
 import { MeetingFollowupPage } from '@/pages/MeetingFollowupPage'
 import { SatoshiFollowupPage } from '@/pages/SatoshiFollowupPage'
+import { MeetingSpecPage } from '@/pages/MeetingSpecPage'
+import { SPEC_MEETINGS } from '@/meetings'
 import { BlanksPage } from '@/pages/BlanksPage'
 import { Combobox } from '@/components/Combobox'
 import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
@@ -86,16 +88,18 @@ const shared = (key: string) => SHARE_TABS.length === 0 || SHARE_TABS.includes(k
 const isTab = (v: string | null): v is TabKey => !!v && shared(v) && TABS.some((t) => t.key === v)
 const LANDING_TAB = (SHARE_TABS.find((t) => TABS.some((x) => x.key === t)) ?? 'correlation') as TabKey
 
-const MEETINGS = [
+// hand-built meeting pages, then every declared one (src/meetings/*.meeting.ts), newest first
+const MEETINGS: { key: string; label: string }[] = [
   { key: 'followup', label: 'Follow up meeting' },
   { key: 'satoshi', label: 'Satoshi 2 Oct' },
-] as const
-type MeetingKey = (typeof MEETINGS)[number]['key']
+  ...SPEC_MEETINGS.map((m) => ({ key: m.id, label: m.label })),
+]
+type MeetingKey = string
 // Keep existing #tab=satoshi links working under the shared Meeting tab.
 const tabFromParams = (p: URLSearchParams): TabKey =>
   p.get('tab') === 'satoshi' && shared('meeting') ? 'meeting' : isTab(p.get('tab')) ? p.get('tab') as TabKey : LANDING_TAB
 const meetingFromParams = (p: URLSearchParams): MeetingKey =>
-  p.get('tab') === 'satoshi' || p.get('meeting') === 'satoshi' ? 'satoshi' : 'followup'
+  p.get('tab') === 'satoshi' ? 'satoshi' : MEETINGS.find((m) => m.key === p.get('meeting'))?.key ?? 'followup'
 
 /**
  * What each tab's underlying data can actually support. The PMF solution is
@@ -869,7 +873,9 @@ export default function App() {
           <div className="panel" aria-label="Meeting selection">
             <Combobox label="Meeting" value={meeting} options={MEETINGS} onChange={setMeeting} />
           </div>
-          {meeting === 'followup' ? <MeetingFollowupPage galleryRows={filters.rows} galleryMeta={data.meta} /> : <SatoshiFollowupPage />}
+          {meeting === 'followup' ? <MeetingFollowupPage galleryRows={filters.rows} galleryMeta={data.meta} />
+            : meeting === 'satoshi' ? <SatoshiFollowupPage />
+            : <MeetingSpecPage key={meeting} spec={SPEC_MEETINGS.find((m) => m.id === meeting) ?? SPEC_MEETINGS[0]} />}
         </>}
         {tab === 'blanks' && <BlanksPage />}
         {tab === 'baseline' && <BaselineComparisonPage mac={meta.mac_value} demingLambda={data.calibration?.deming_lambda_mac10 ?? 1} />}
