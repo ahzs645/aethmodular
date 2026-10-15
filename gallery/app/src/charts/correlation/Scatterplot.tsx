@@ -71,7 +71,10 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   const { methods, grouping } = useRegressions()
 
   const [colorBy, setColorBy] = useState<(typeof COLOR_BY)[number]>('Site')
-  const [colorField, setColorField] = useState(meta.fields.includes('Iron') ? 'Iron' : meta.fields[0])
+  // the reader's colour field, or Iron, or the first field, among the fields this view has now: the
+  // chart can mount while a network's fields are still loading (empty), or keep a field the next network lacks
+  const [colorChoice, setColorField] = useState<string | null>(null)
+  const colorField = [colorChoice, 'Iron', meta.fields[0]].find((f): f is string => !!f && meta.fields.includes(f)) ?? ''
   const [sizeField, setSizeField] = useState(NO_SIZE)
   const [layout, setLayout] = useState<(typeof LAYOUTS)[number]>('Combined')
   const [showFit, setShowFit] = useState(true)
