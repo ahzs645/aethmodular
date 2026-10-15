@@ -508,9 +508,23 @@ def text_slide(title, lines_, say, note, size=17):
 s = prs.slides.add_slide(BLANK)
 title_box(s, "FTIR elemental carbon calibrated on IMPROVE filters transfers poorly to heavily loaded "
              "samples like those in Addis Ababa, and to similar samples within IMPROVE", size=28, top=2.2)
-tb = s.shapes.add_textbox(Inches(0.55), Inches(4.4), Inches(12), Inches(1.2))
-p = tb.text_frame.paragraphs[0]; p.text = "Ahmad Jalil, Ann M. Dillner, Satoshi Takahama  [FILL IN: affiliations, co-authors]"
-p.font.size = Pt(16); p.font.color.rgb = RGBColor(0x8F, 0x8C, 0x84)
+# authors and affiliations as on the AAAR abstract
+AUTHORS = ("Ahmad Jalil¹,⁴, Sina Hasheminassab², Kyan Shlipak⁵,², Tesfaye Mamo Mekonnen³, Araya Asfaw³, "
+           "Hossein Kazemian¹, Ann M. Dillner⁴")
+AFFILIATIONS = [
+    "¹ Materials Technology & Environmental Research (MATTER) lab, University of Northern British Columbia, Prince George, BC, Canada",
+    "² NASA Jet Propulsion Laboratory, Pasadena, CA, USA",
+    "³ Addis Ababa University, Addis Ababa, Ethiopia",
+    "⁴ University of California Davis, Air Quality Research Center, Davis, CA, USA",
+    "⁵ Northwestern University, Evanston, IL, USA",
+]
+tb = s.shapes.add_textbox(Inches(0.55), Inches(4.25), Inches(12.2), Inches(2.6))
+tf = tb.text_frame; tf.word_wrap = True
+p = tf.paragraphs[0]; p.text = AUTHORS
+p.font.size = Pt(16); p.font.bold = True; p.font.color.rgb = RGBColor(0x22, 0x25, 0x2A); p.space_after = Pt(8)
+for line in AFFILIATIONS:
+    q = tf.add_paragraph(); q.text = line
+    q.font.size = Pt(12); q.font.color.rgb = RGBColor(0x6E, 0x6B, 0x64)
 notes(s,
       "This talk is about measuring elemental carbon, EC, in Addis Ababa, Ethiopia. First why we care: EC there is "
       "very high. Then the problem: the current FTIR calibration predicts Addis EC on the wrong scale, and the same "

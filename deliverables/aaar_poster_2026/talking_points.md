@@ -54,5 +54,4 @@ season-specific calibrations help in Kiremt (slope 0.51 → 0.94) but not Dry or
 
 ## [FILL IN]
 
-- Co-author list and affiliations on slide 1.
 - Poster vs talk format at AAAR, session/time.
