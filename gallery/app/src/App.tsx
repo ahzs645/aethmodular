@@ -1045,9 +1045,13 @@ function Shell({ children, nav, wide = false, editsBadge = false }: { children: 
 
 /** Explain toggle (absent in public builds, see lib/prefs) and the Views menu (presets, saved views, share and embed). */
 function HeaderTools() {
-  const { explain, setExplain } = usePrefs()
+  const { explain, setExplain, density, setDensity } = usePrefs()
   return (
     <span className="header-tools">
+      <label className="toggle" title="Larger text in every chart, control and table (for a projector or easier reading); remembered in this browser">
+        <input type="checkbox" checked={density === 'readable'} onChange={(e) => setDensity(e.target.checked ? 'readable' : 'compact')} />
+        Readable
+      </label>
       {EXPLAIN_AVAILABLE && <label className="toggle" title="Show every chart's explanation and provenance, and the subset bar's captions">
         <input type="checkbox" checked={explain} onChange={(e) => setExplain(e.target.checked)} />
         Explain

@@ -1,4 +1,5 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { chemText } from '@/lib/format'
 
 export interface ComboOption<T extends string> {
@@ -15,7 +16,9 @@ export interface ComboOption<T extends string> {
  * chart's control row (the height of a native select) and used for every picker, so they
  * all look and behave alike. Focus stays on the trigger while browsing; arrows, Home/End,
  * Enter/Space and type-ahead (several letters) work as in a native select. Long lists
- * scroll, can carry group headings, and open upwards when there is no room below.
+ * scroll, can carry group headings, and open upwards when there is no room below. The list
+ * floats on the page (a portal at the trigger's place), so a dialog, sidebar or chart frame
+ * that clips its content never cuts it off.
  */
 export function Combobox<T extends string>({ label, value, options, onChange, title, minWidth }: {
   label: string
@@ -30,7 +33,7 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
   const root = useRef<HTMLDivElement>(null)
   const menu = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
-  const [up, setUp] = useState(false)
+  const [place, setPlace] = useState<CSSProperties | null>(null)
   const found = options.findIndex((option) => option.key === value)
   const selected = Math.max(0, found)
   const [active, setActive] = useState(selected)
@@ -39,16 +42,30 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
   useEffect(() => {
     if (!open) return
     const dismiss = (event: PointerEvent) => {
-      if (!root.current?.contains(event.target as Node)) setOpen(false)
+      const t = event.target as Node
+      if (!root.current?.contains(t) && !menu.current?.contains(t)) setOpen(false)
     }
     document.addEventListener('pointerdown', dismiss)
     return () => document.removeEventListener('pointerdown', dismiss)
   }, [open])
-  // open upwards when the menu would run off the bottom of the window
+  // the list sits under the trigger (above it when the window has no room below), inside the
+  // window's edges, and follows the trigger while the page or a panel scrolls
   useLayoutEffect(() => {
-    if (!open || !root.current) return
-    const r = root.current.getBoundingClientRect()
-    setUp(window.innerHeight - r.bottom < 260 && r.top > window.innerHeight - r.bottom)
+    if (!open) { setPlace(null); return }
+    const trigger = root.current?.querySelector('.combobox-trigger')
+    if (!trigger) return
+    const update = () => {
+      const r = trigger.getBoundingClientRect()
+      const up = window.innerHeight - r.bottom < 260 && r.top > window.innerHeight - r.bottom
+      const w = menu.current?.offsetWidth ?? r.width
+      const left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8))
+      setPlace({ position: 'fixed', left, minWidth: r.width, ...(up ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }) })
+    }
+    update()
+    const onScroll = (e: Event) => { if (!menu.current?.contains(e.target as Node)) update() }
+    window.addEventListener('scroll', onScroll, true)
+    window.addEventListener('resize', update)
+    return () => { window.removeEventListener('scroll', onScroll, true); window.removeEventListener('resize', update) }
   }, [open])
   useEffect(() => {
     if (open) menu.current?.querySelector(`#${CSS.escape(`${id}-option-${active}`)}`)?.scrollIntoView({ block: 'nearest' })
@@ -108,7 +125,8 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
         <span className="combobox-value">{chemText(found >= 0 ? options[found].label : value)}</span>
         <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
-      {open && <div className={`combobox-menu${up ? ' up' : ''}`} role="listbox" id={`${id}-list`} ref={menu}
+      {open && createPortal(<div className="combobox-menu floating" role="listbox" id={`${id}-list`} ref={menu}
+        style={place ?? { position: 'fixed', visibility: 'hidden' }}
         aria-labelledby={label ? `${id}-label` : undefined} aria-label={label ? undefined : title}>
         {options.map((option, index) => <div key={option.key} role="presentation">
           {option.group && option.group !== options[index - 1]?.group && <div className="combobox-group" role="presentation">{option.group}</div>}
@@ -121,7 +139,7 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
             {option.hint && <span className="combobox-hint">{option.hint}</span>}
           </button>
         </div>)}
-      </div>}
+      </div>, document.body)}
     </div>
   </div>
 }
