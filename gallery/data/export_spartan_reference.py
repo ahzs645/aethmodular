@@ -9,10 +9,11 @@ product, not thermal EC/OC. Elements measured by XRF/ICP-MS that share a name wi
 (Ca, K, Na, Mg) are labelled '(element)'. Filters dated after the export day are dropped (a
 public date typo, e.g. ILHA-0216 in the October 2026 pull).
 
-'Sampled volume' (m³, for the gallery's mass-per-filter units) is HIPS's measured volume where the
-filter has HIPS, else the public hours sampled × 0.3 m³/h (5 L/min) for the SS5i samplers, which
-matches HIPS's volume to a median ratio of 1.00 (5-95 %: 0.95-1.03) on 2,524 shared filters. Older SS4i
-filters have no validated flow and get no volume.
+'Sampled volume' (m³, for the gallery's mass-per-filter units; docs/mass-per-filter.md) is HIPS's
+measured volume where the filter has HIPS, else the lab FTIR deliverable's volume (identical to HIPS's
+on 715 shared filters), else the public hours sampled × 0.3 m³/h (5 L/min) for the SS5i samplers,
+which matches HIPS's volume to a median ratio of 1.00 (5-95 %: 0.95-1.03) on 2,524 shared filters.
+Older SS4i filters have no validated flow and get no volume.
 
 FTIR functional groups (alkane CH, alcohol COH, carboxylic COOH, non-acid CO) come from the lab's
 batch 2-3 deliverable. Its OM equals the public OM; the batch 4 deliverable's organic groups run
@@ -109,7 +110,8 @@ def load_functional_groups() -> tuple[Path, pd.DataFrame]:
     out['date'] = pd.to_datetime(out.date, errors='coerce')
     for field, column in FG_COLUMNS.items():
         out[field] = pd.to_numeric(out[column], errors='coerce')
-    return path, out[['code', 'date', *FG_FIELDS]].replace([np.inf, -np.inf], np.nan)
+    out['lab_volume'] = pd.to_numeric(out.volume, errors='coerce')
+    return path, out[['code', 'date', *FG_FIELDS, 'lab_volume']].replace([np.inf, -np.inf], np.nan)
 
 
 def build_site(path: Path | None, site_name: str, labs: list[tuple[pd.DataFrame, list[str]]]) -> pd.DataFrame:
@@ -120,9 +122,10 @@ def build_site(path: Path | None, site_name: str, labs: list[tuple[pd.DataFrame,
         # a lab table joins on the physical filter; a filter only it has takes its sample date
         info = info.join(lab[fields], how='outer')
         info['date'] = info.date.fillna(lab.date.reindex(info.index))
-    # HIPS's measured volume first, else the SS5i hours estimate (public_chemistry)
+    # HIPS's measured volume first, then the lab FTIR deliverable's, then the SS5i hours estimate (public_chemistry)
     hips_volume = labs[0][0].hips_volume.reindex(info.index)
-    info[VOLUME] = hips_volume.fillna(info.get('ss5i_volume', pd.Series(np.nan, index=info.index)))
+    lab_volume = labs[1][0].lab_volume.reindex(info.index)
+    info[VOLUME] = hips_volume.fillna(lab_volume).fillna(info.get('ss5i_volume', pd.Series(np.nan, index=info.index)))
     # a filter needs a value (288 PM2.5 HIPS rows have no Fabs) and a date to be drawn
     info = info[info[[*PARAMETERS, *LAB_FIELDS]].notna().any(axis=1) & info.date.notna()]
     info = info.reset_index()
@@ -211,7 +214,7 @@ def main():
         field_sources={**{f: p + (f' ({METHOD[f].lower()})' if f in METHOD else '') for f, p in PARAMETERS.items()},
                        **{f: f'{HIPS_CSV[1]}: {HIPS_COLUMNS.get(f, "Fabs / MAC")}' for f in HIPS_FIELDS},
                        **{f: f'{FG_CSV[-1]}: {c}' for f, c in FG_COLUMNS.items()},
-                       VOLUME: f'{HIPS_CSV[1]}: Volume, else public Hours_sampled × {SS5I_M3_PER_HOUR} m³/h (SS5i)'},
+                       VOLUME: f'{HIPS_CSV[1]}: Volume, else {FG_CSV[-1]}: volume, else public Hours_sampled × {SS5I_M3_PER_HOUR} m³/h (SS5i)'},
         n=len(rows), n_sites=len(codes), rows=rows),
         separators=(',', ':'), allow_nan=False))
     with_hips = sum('HIPS Fabs' in r for r in rows)

@@ -22,7 +22,10 @@ OP = 0 is a reported value (often laser saturation on heavily loaded filters) an
 The cleaned table is validated IMPAER only: preliminary IMPAERPRE records are never read, and
 values whose status is not valid ("V*") are already blank. Sampled volume is the carbon
 (quartz, module C) sampler's FlowRate (L/min) / 1000 x SampDur (min), as tor_volume_m3 in
-analog_bias.py; the cleaned table has flow and duration from mid-2015 on.
+analog_bias.py; the cleaned table has flow and duration from mid-2015 on. Earlier samples take
+the same quantity from the FTIR local database's TOR results (AverageFlowRate x ElapsedTime,
+2005 on, only filters in the FTIR lots: about 31,000 more), which agrees with the cleaned table
+to a ratio of 1.0000 on 27,189 shared samples. The rest have no volume (docs/mass-per-filter.md).
 """
 
 from __future__ import annotations
@@ -78,11 +81,32 @@ def sig(v, digits=4):
     return round(float(v), max(0, digits - 1 - int(math.floor(math.log10(abs(v))))))
 
 
+def tor_volumes() -> dict | None:
+    """(SiteCode, YYYY-MM-DD) -> m³ from the FTIR local database's TOR results, or None when unavailable."""
+    from data_paths import ftir_local_db  # research scripts are on sys.path (above)
+    path = ftir_local_db() / "tables" / "results_tor.csv"
+    if not path.exists():
+        print(f"! {path.name} not found; sampled volume stays mid-2015 on")
+        return None
+    r = pd.read_csv(path, usecols=["Site", "SampleDate", "AverageFlowRate", "ElapsedTime"], dtype={"Site": str, "SampleDate": str})
+    r = r.dropna(subset=["AverageFlowRate", "ElapsedTime"])
+    r["date"] = pd.to_datetime(r.SampleDate.str[:10], format="%m/%d/%Y", errors="coerce").dt.strftime("%Y-%m-%d")
+    r["vol"] = r.AverageFlowRate / 1000.0 * r.ElapsedTime
+    # one value per site and date (every parameter row of a filter repeats it)
+    return r.groupby(["Site", "date"]).vol.median().to_dict()
+
+
 def main():
     cols = ["SiteCode", "POC", "Date", "SiteName", "State", "Country", "Latitude", "Longitude"] + sorted({c for c, _, _ in FIELDS.values()} - {"volume_m3"}) + VOLUME_COLS
     df = pd.read_csv(improve_clean_path(), usecols=cols, low_memory=False)
     df["volume_m3"] = df.FlowRate_C_Val / 1000.0 * df.SampDur_C_Val
     df["Date"] = pd.to_datetime(df.Date).dt.strftime("%Y-%m-%d")
+    tor = tor_volumes()
+    if tor is not None:
+        fill = df.set_index(["SiteCode", "Date"]).index.map(tor.get)
+        before = df.volume_m3.notna().sum()
+        df["volume_m3"] = df.volume_m3.fillna(pd.Series(fill, index=df.index, dtype=float))
+        print(f"sampled volume: {before:,} from the cleaned table, {df.volume_m3.notna().sum() - before:,} more from the TOR results")
     df = df.sort_values(["SiteCode", "Date", "POC"])
     OUT.mkdir(parents=True, exist_ok=True)
     for old in OUT.glob("*.json"):
@@ -103,7 +127,7 @@ def main():
     index = {"generated": datetime.now(timezone.utc).isoformat(), "source": "validated IMPROVE cleaned table",
              "notes": ["TOR thermal fractions: validated IMPAER only (no preliminary IMPAERPRE); OP is OPf (reflectance), "
                        "EC (TOR) = EC1+EC2+EC3-OP, OC (TOR) = OC1+OC2+OC3+OC4+OP; OP = 0 is reported, not missing.",
-                       "Sampled volume: carbon (quartz, module C) FlowRate L/min / 1000 x SampDur min; mid-2015 onward."],
+                       "Sampled volume: carbon (quartz, module C) FlowRate L/min / 1000 x SampDur min (cleaned table, mid-2015 on), else AverageFlowRate x ElapsedTime from the FTIR local database's TOR results (FTIR-lot filters, 2005 on)."],
              "mac_value": MAC_VALUE, "fields": list(FIELDS), "field_units": {f: u for f, (_, u, _) in FIELDS.items()},
              "field_groups": GROUPS, "n": int(len(df)), "sites": sites}
     (OUT / "index.json").write_text(json.dumps(index, separators=(",", ":"), ensure_ascii=False))

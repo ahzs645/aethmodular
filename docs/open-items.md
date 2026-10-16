@@ -4,6 +4,9 @@ This is the current action list. Historical investigations, measurements, and
 resolved or rejected proposals are retained in
 [`cleanup-history.md`](cleanup-history.md); the plotting census and measurement
 details are in [`plot-taxonomy.md`](plot-taxonomy.md).
+Research questions (as opposed to code decisions) are in
+[`research-questions-2026-10.md`](research-questions-2026-10.md); sampled volumes and the
+mass-per-filter view in [`mass-per-filter.md`](mass-per-filter.md).
 
 ## Decisions needed
 
