@@ -15,12 +15,17 @@ Inputs (completed rank-70 meeting run, spline = AIRSpec baseline, Deming at MAC 
 - data/spartan/raw/FilterBased/ChemSpecPM25 (SPARTAN public release v3.1.4, all sites)
 - research/spartan/.cache/improve_chemistry_clean_cache.pkl (IMPROVE FED export, all sites)
 - research/ftir_hips_chem/output/plots/ann_followup_20261009/addis_vs_improve_low_wavenumber.png
+
+16 Oct, after the 15 Oct practice talk: f2b gains IMPROVE reference lines (median and 95th percentile EC, median
+PM2.5) and a µg-per-filter panel; f4b is a histogram version of the f4 ECDF and is the one on the slide; axis titles
+say what is plotted; speaker notes define every term and walk through the axes.
 """
 
 from pathlib import Path
 import sys
 
 import matplotlib
+import matplotlib.ticker
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -55,6 +60,13 @@ SEASON_LABEL = {"Dry (Oct-Feb)": "Dry, Bega (Oct-Feb)", "Belg (Mar-May)": "Belg 
                 "Kiremt (Jun-Sep)": "Kiremt (Jun-Sep)"}
 SEASON_COLOR = {"Dry (Oct-Feb)": AMBER, "Belg (Mar-May)": PURPLE, "Kiremt (Jun-Sep)": BLUE}
 FIT = "allimprove|AIRSpec|all-IMPROVE lot 251"
+# Plain-language axis titles (15 Oct practice-talk feedback): say what each axis physically is.
+X_HIPS = "HIPS light absorption as EC (Fabs / MAC 10, µg/m³)"
+Y_FTIR = "FTIR-predicted EC (calibrated on IMPROVE TOR, µg/m³)"
+Y_TOR = "TOR EC, thermal-optical reference (µg/m³)"
+# How the analog filters were chosen, in words (replaces shorthand such as "Addis-like" in the notes)
+ANALOG_DEF = ("the IMPROVE spectra that most resemble Addis spectra (highest correlation across wavenumbers, "
+              "excluding defined regions such as the CO₂ band)")
 
 
 def save(fig, name):
@@ -119,6 +131,13 @@ def addis_fit(d):
 
 _chk = addis_fit(ad)
 assert abs(_chk.deming_slope - S_ADDIS.deming_slope) < 1e-6 and abs(_chk.deming_intercept - S_ADDIS.deming_intercept) < 1e-6
+# "Changing MAC changes the slope, not the intercept": rescale x (and its error, so lambda scales by (MAC/10)²)
+MAC_CHECK = {}
+for _m in (6, 14):
+    _sl, _ic = pk.deming(ad.Fabs.to_numpy(float) / _m, ad.ftir_ec_ugm3.to_numpy(float), LAM_ADDIS * (_m / MAC) ** 2)
+    MAC_CHECK[_m] = (float(_sl[0]), float(_ic[0]),
+                     float(pk.deming(ad.Fabs.to_numpy(float) / _m, ad.ftir_ec_ugm3.to_numpy(float), LAM_ADDIS)[1][0]))
+    assert abs(_ic[0] - S_ADDIS.deming_intercept) < 1e-6 and abs(_sl[0] - S_ADDIS.deming_slope * _m / MAC) < 1e-6
 pool = pd.read_csv(M / "pool_test_predictions.csv")
 pool = pool[pool.fit_id == FIT].dropna(subset=["ftir_ec_ugm3", "tor_ec_ugm3"])
 an = pd.read_csv(M / "analog_predictions.csv")
@@ -152,8 +171,8 @@ for sname in SEASONS:
 lim = float(np.ceil(max(ad.Fabs.max() / MAC, ad.ftir_ec_ugm3.max())))
 lines(ax, S_ADDIS, lim)
 ax.set_ylim(min(0, ad.ftir_ec_ugm3.min() - .3), lim)
-ax.set_xlabel("HIPS EC = Fabs / MAC 10 (µg/m³)")
-ax.set_ylabel("SPARTAN FTIR EC, current calibration (µg/m³)")
+ax.set_xlabel(X_HIPS)
+ax.set_ylabel("FTIR-predicted EC, current SPARTAN calibration\n(calibrated on IMPROVE TOR, µg/m³)")
 ax.legend(loc="lower right", fontsize=10.5)
 stat_box(ax, S_ADDIS)
 save(fig, "f1_addis_problem.png")
@@ -164,8 +183,8 @@ ax.scatter(pool.tor_ec_ugm3, pool.ftir_ec_ugm3, s=9, color=GREY, alpha=.45, lw=0
 lim = 1.2
 lines(ax, S_POOL, lim)
 ax.set_ylim(-0.1, lim)
-ax.set_xlabel("TOR EC (µg/m³)")
-ax.set_ylabel("FTIR EC (µg/m³)")
+ax.set_xlabel(Y_TOR)
+ax.set_ylabel(Y_FTIR)
 stat_box(ax, S_POOL)
 ax.text(0.97, 0.03, f"{(pool.tor_ec_ugm3 > lim).sum() + (pool.ftir_ec_ugm3 > lim).sum()} points beyond axes not shown",
         transform=ax.transAxes, ha="right", fontsize=9, color=GREY)
@@ -177,9 +196,9 @@ lim = 1.2
 ax = axes[0]
 ax.scatter(pool.fabs_Mm1 / MAC, pool.tor_ec_ugm3, s=7, color=GREY, alpha=.25, lw=0, label="all held-out IMPROVE")
 ax.scatter(an.fabs_Mm1 / MAC, an.tor_ec_ugm3, s=26, color=ACCENT, alpha=.9, edgecolor="white", lw=.4,
-           label="most Addis-like (97)")
+           label="spectra most correlated\nwith Addis (97)")
 lines(ax, S_AN_REF, lim, ACCENT)
-ax.set_xlabel("HIPS EC = Fabs / MAC 10 (µg/m³)"); ax.set_ylabel("TOR EC (µg/m³)")
+ax.set_xlabel(X_HIPS); ax.set_ylabel(Y_TOR)
 ax.set_title("TOR and HIPS agree", loc="left", fontsize=12.5)
 stat_box(ax, S_AN_REF)
 ax.legend(loc="lower right", fontsize=10)
@@ -188,7 +207,7 @@ ax.scatter(pool.fabs_Mm1 / MAC, pool.ftir_ec_ugm3, s=7, color=GREY, alpha=.25, l
 ax.scatter(an.fabs_Mm1 / MAC, an.ftir_ec_ugm3, s=26, color=ACCENT, alpha=.9, edgecolor="white", lw=.4)
 lines(ax, S_AN_HIPS, lim, ACCENT)
 ax.set_ylim(-0.1, lim)
-ax.set_xlabel("HIPS EC = Fabs / MAC 10 (µg/m³)"); ax.set_ylabel("FTIR EC (µg/m³)")
+ax.set_xlabel(X_HIPS); ax.set_ylabel(Y_FTIR)
 ax.set_title("FTIR EC is poorly predicted", loc="left", fontsize=12.5)
 stat_box(ax, S_AN_HIPS)
 fig.tight_layout()
@@ -255,10 +274,55 @@ ax.set_ylabel("Fraction of filters")
 ax.legend(loc="upper left", fontsize=10.5)
 save(fig, "f4_loading_per_filter.png")
 
+# f4b: the same two distributions as histograms (15 Oct: the ECDF needed too much explaining). Log-spaced bins,
+# each network normalised to 100% so a 189-filter set and a 12,000-filter set can share one axis.
+bins = np.logspace(np.log10(min(imp_mass.min(), ad_mass.min()) * .9),
+                   np.log10(max(imp_mass.max(), ad_mass.max()) * 1.1), 46)
+fig, ax = plt.subplots(figsize=(10.5, 4.8))
+for vals, color, lab in [(imp_mass, GREY, f"IMPROVE calibration filters (n {len(imp_mass):,})"),
+                         (ad_mass, AMBER, f"Addis Ababa, SPARTAN (n {len(ad_mass)})")]:
+    w = np.full(len(vals), 100 / len(vals))
+    ax.hist(vals, bins=bins, weights=w, color=color, alpha=.35, lw=0)
+    ax.hist(vals, bins=bins, weights=w, histtype="step", color=color, lw=2, label=lab)
+top = ax.get_ylim()[1] * 1.12
+ax.set_ylim(0, top)
+for v, color, lab, side in [(imp_mass.median(), GREY, "IMPROVE\nmedian", "right"),
+                            (ad_mass.median(), AMBER, "Addis\nmedian", "left")]:
+    ax.axvline(v, color=color, ls="--", lw=1.4)
+    ax.text(v * (1.06 if side == "left" else 1 / 1.06), top * .97, f"{lab}\n{v:.0f} µg", va="top", ha=side,
+            fontsize=10, color=INK)
+ax.axvline(p99, color=INK, ls=":", lw=1.4)
+ax.text(p99 / 1.06, top * .62, f"IMPROVE 99th\npercentile\n{p99:.0f} µg", va="top", ha="right", fontsize=10)
+ax.set_xscale("log")
+ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:g}"))
+ax.set_xlabel("EC on one filter (µg per filter, log scale), from HIPS: Fabs / MAC 10 × volume of air sampled")
+ax.set_ylabel("Percent of filters\n(each network adds to 100%)")
+ax.legend(loc="center left", bbox_to_anchor=(0.0, 0.62), fontsize=10.5)
+save(fig, "f4b_loading_per_filter_hist.png")
+
 # ---------------------------------------------------------------- IMPROVE network (all sites, FED export)
 imp_net = pd.read_pickle(ROOT / "research/spartan/.cache/improve_chemistry_clean_cache.pkl")
 imp_net = imp_net[imp_net.fAbs_Val > 0].assign(ec_hips=lambda d: d.fAbs_Val / MAC)
 imp_ec_median = float(imp_net.ec_hips.median())
+# Reference levels for slide 2, from the same filters as the typical-IMPROVE EC line (every IMPROVE filter with fAbs).
+# MF = IMPROVE gravimetric PM2.5 on the same Teflon (module A) filter that fAbs and FTIR are measured on.
+imp_ec_p95 = float(imp_net.ec_hips.quantile(.95))
+imp_pm_median = float(imp_net.MF_Val.dropna().median())
+# Per filter: module A volume = flow (L/min) × duration (min) / 1000, where the export reports both (2003 onward rows
+# that have them); a few negative/zero flags are dropped.
+_v = imp_net.FlowRate_Val * imp_net.SampDur_Val / 1000
+imp_pf = imp_net.assign(vol=_v)[(imp_net.FlowRate_Val > 0) & (imp_net.SampDur_Val > 0)]
+imp_flow_median = float(imp_pf.FlowRate_Val.median())
+imp_vol_median = float(imp_pf.vol.median())
+imp_pf_ec = imp_pf.ec_hips * imp_pf.vol
+imp_pf_ec_median, imp_pf_ec_p95 = float(imp_pf_ec.median()), float(imp_pf_ec.quantile(.95))
+imp_pf_pm_median = float((imp_pf.MF_Val * imp_pf.vol).dropna().median())
+imp_share_lo, imp_share_hi = (100 * (imp_net.ec_hips / imp_net.MF_Val.where(imp_net.MF_Val > 0))).quantile([.05, .95])
+print(f"IMPROVE reference (n {len(imp_net):,} filters with fAbs): EC median {imp_ec_median:.3f}, p95 {imp_ec_p95:.3f}, "
+      f"PM2.5 median {imp_pm_median:.2f} µg/m³ (EC share {100 * imp_ec_median / imp_pm_median:.1f}%). Per filter "
+      f"(n {len(imp_pf):,} with flow and duration; median flow {imp_flow_median:.1f} L/min, volume "
+      f"{imp_vol_median:.1f} m³): EC median {imp_pf_ec_median:.2f}, p95 {imp_pf_ec_p95:.2f}, PM2.5 median "
+      f"{imp_pf_pm_median:.1f} µg per filter")
 
 
 def site_table(df, site, val, min_n):
@@ -279,19 +343,89 @@ sea = e.groupby("season").agg(ec=("BC PM2.5", "median"), ec25=("BC PM2.5", lambd
                              n=("BC PM2.5", "size")).reindex(SEASONS)
 ad_ec_median = float(e["BC PM2.5"].median())
 ec_x_improve = ad_ec_median / imp_ec_median
-fig, ax = plt.subplots(figsize=(9.6, 5.0))
+# Addis volume per filter from the evaluation table (same 189 filters); SPARTAN samples about 5 L/min
+_vol = ev.assign(fid=ev.ExternalFilterId.astype(str).str.rsplit("-", n=1).str[0]).groupby("fid").Volume_m3.first()
+e["vol"] = e.Filter_ID.map(_vol)
+assert e.vol.notna().all(), e.vol.isna().sum()
+e["ec_pf"], e["pm_pf"] = e["BC PM2.5"] * e.vol, e["Filter PM2.5 mass"] * e.vol
+sea_pf = e.groupby("season").agg(ec=("ec_pf", "median"), ec25=("ec_pf", lambda v: v.quantile(.25)),
+                                ec75=("ec_pf", lambda v: v.quantile(.75)), pm=("pm_pf", "median")).reindex(SEASONS)
+ad_vol_median = float(e.vol.median())
+ad_pf_ec_median, ad_pf_pm_median = float(e.ec_pf.median()), float(e.pm_pf.median())
+ad_pm_median = float(e["Filter PM2.5 mass"].median())
+ec_x_improve_pf = ad_pf_ec_median / imp_pf_ec_median
+print(f"Addis (n {len(e)}): EC median {ad_ec_median:.2f}, PM2.5 median {ad_pm_median:.1f} µg/m³ "
+      f"({ec_x_improve:.0f}x IMPROVE EC); per filter (volume {ad_vol_median:.2f} m³): EC {ad_pf_ec_median:.1f}, "
+      f"PM2.5 {ad_pf_pm_median:.0f} µg ({ec_x_improve_pf:.1f}x IMPROVE EC per filter)")
+
+
+def ref_lines(ax, refs, x_label, min_gap=0.1):
+    """Full-width IMPROVE reference lines, each labelled at the right end of the axes.
+
+    Labels are pushed apart vertically (in axes fraction) so lines that sit close together near zero stay legible;
+    a thin leader joins a label to its line when it had to move.
+    """
+    y0, y1 = ax.get_ylim()
+    frac = lambda v: (v - y0) / (y1 - y0)  # noqa: E731
+    order = sorted(refs, key=lambda r: r[0])
+    placed = []
+    for v, lab, style in order:
+        ax.axhline(v, zorder=1.5, **style)
+        y = max(frac(v) + 0.012, placed[-1] + min_gap if placed else 0.0)
+        placed.append(y)
+        tr = ax.get_yaxis_transform()
+        ax.text(x_label + 0.014, y, lab, transform=ax.transAxes, va="bottom", ha="left", fontsize=9.6,
+                color=style["color"], fontweight="bold", zorder=4,
+                bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=.9))
+        if y - frac(v) > 0.03:
+            ax.annotate("", xy=(x_label + 0.006, v), xycoords=tr, xytext=(x_label + 0.006, y + 0.03),
+                        textcoords="axes fraction", arrowprops=dict(arrowstyle="-", color=style["color"], lw=.8))
+
+
+STY_EC = dict(color=INK, ls=":", lw=2.0)
+STY_P95 = dict(color=ACCENT, ls=(0, (6, 2, 1.5, 2)), lw=1.8)
+STY_PM = dict(color="#55524C", ls="--", lw=1.6)
+fig, axes = plt.subplots(1, 2, figsize=(14.2, 5.6), gridspec_kw=dict(wspace=.22))
 xs = np.arange(3)
-ax.bar(xs - 0.2, sea.pm, width=.38, color="#E4E1DA", label="PM2.5 mass (median)")
-ax.bar(xs + 0.2, sea.ec, width=.38, color=[SEASON_COLOR[g] for g in SEASONS], label="EC from HIPS (median)",
-       yerr=[sea.ec - sea.ec25, sea.ec75 - sea.ec], capsize=4, ecolor=INK, error_kw=dict(lw=1))
-for i, g in enumerate(SEASONS):
-    ax.text(i + 0.2, sea.ec75.iloc[i] + 0.6, f"{sea.ec.iloc[i]:.1f}", ha="center", fontsize=11.5, fontweight="bold")
-    ax.text(i - 0.2, sea.pm.iloc[i] + 0.6, f"{sea.pm.iloc[i]:.0f}", ha="center", fontsize=10.5, color="#6E6B64")
-ax.axhline(imp_ec_median, color=INK, ls=":", lw=1.3, label=f"typical IMPROVE EC ({imp_ec_median:.2f} µg/m³)")
-ax.set_xticks(xs, [f"{SEASON_LABEL[g]}\nn {int(sea.n.iloc[i])}" for i, g in enumerate(SEASONS)])
-ax.set_ylabel("Concentration (µg/m³)")
-ax.legend(loc="upper left", fontsize=10.5)
+for ax, t, unit, ttl, refs in [
+        (axes[0], sea, "µg/m³", "In the air: concentration",
+         [(imp_ec_median, f"IMPROVE median EC\n{imp_ec_median:.2f} µg/m³", STY_EC),
+          (imp_ec_p95, f"IMPROVE 95th\npercentile EC {imp_ec_p95:.2f}", STY_P95),
+          (imp_pm_median, f"IMPROVE median\nPM2.5 {imp_pm_median:.1f} µg/m³", STY_PM)]),
+        (axes[1], sea_pf, "µg per filter", "On the filter: mass per filter (what FTIR sees)",
+         [(imp_pf_ec_median, f"IMPROVE median EC\n{imp_pf_ec_median:.1f} µg", STY_EC),
+          (imp_pf_ec_p95, f"IMPROVE 95th\npercentile EC {imp_pf_ec_p95:.0f} µg", STY_P95),
+          (imp_pf_pm_median, f"IMPROVE median\nPM2.5 {imp_pf_pm_median:.0f} µg", STY_PM)])]:
+    ax.bar(xs - 0.2, t.pm, width=.38, color="#E4E1DA", label="Addis PM2.5 mass (median)", zorder=2)
+    ax.bar(xs + 0.2, t.ec, width=.38, color=[SEASON_COLOR[g] for g in SEASONS], label="Addis EC from HIPS (median, IQR)",
+           yerr=[t.ec - t.ec25, t.ec75 - t.ec], capsize=4, ecolor=INK, error_kw=dict(lw=1), zorder=2)
+    pad = 0.015 * t.pm.max()
+    for i in range(3):
+        ax.text(i + 0.2, t.ec75.iloc[i] + pad, f"{t.ec.iloc[i]:.1f}", ha="center", va="bottom", fontsize=11.5,
+                fontweight="bold", zorder=3)
+        ax.text(i - 0.2, t.pm.iloc[i] + pad, f"{t.pm.iloc[i]:.0f}", ha="center", va="bottom", fontsize=10.5,
+                color="#6E6B64", zorder=3)
+        ax.text(i - 0.2, t.pm.iloc[i] * .55, f"EC is\n{100 * t.ec.iloc[i] / t.pm.iloc[i]:.0f}%\nof\nPM2.5", ha="center",
+                va="center", fontsize=9.5, color="#55524C", zorder=3)
+    ax.set_xlim(-0.55, 3.3)
+    ax.set_ylim(0, t.pm.max() * 1.16)
+    ax.set_xticks(xs, [f"{SEASON_LABEL[g]}\nn {int(sea.n.iloc[i])}"
+                       for i, g in enumerate(SEASONS)], fontsize=10)
+    ax.set_ylabel(f"Median {'concentration' if unit == 'µg/m³' else 'mass on the filter'} ({unit})")
+    ax.set_title(ttl, loc="left", fontsize=12.5)
+    ref_lines(ax, refs, (2.45 + 0.55) / 3.85)
+axes[0].legend(loc="upper left", fontsize=10)
+fig.text(0.01, -0.06,
+         f"IMPROVE reference lines: all {len(imp_net):,} IMPROVE filters with HIPS Fabs, 2003 to 2025 (right panel: the "
+         f"{len(imp_pf):,} that also report flow and sampling time); typical IMPROVE EC is "
+         f"{100 * imp_ec_median / imp_pm_median:.0f}% of PM2.5. IMPROVE samples about 22 L/min "
+         f"(about {imp_vol_median:.0f} m³ per filter), SPARTAN about 5 L/min (about {ad_vol_median:.0f} m³), so the "
+         f"Addis/IMPROVE gap is much larger in the air ({ec_x_improve:.0f}× for EC) than on the filter "
+         f"({ec_x_improve_pf:.0f}×). FTIR measures the mass on the filter.",
+         fontsize=9.6, color="#55524C", ha="left", va="top", wrap=True)
 save(fig, "f2b_addis_ec_by_season.png")
+# claims made in the slide 2 notes
+assert (sea.ec > imp_pm_median).all() and (sea.ec > imp_ec_p95).all() and (sea_pf.ec > imp_pf_ec_p95).all()
 
 # ---------------------------------------------------------------- f5 EC by site, every IMPROVE and SPARTAN site
 # EC from HIPS for both networks (IMPROVE fAbs / 10; SPARTAN BC PM2.5 = fAbs / 10). Site medians with IQR;
@@ -335,7 +469,7 @@ print(f"EC continuum: {len(imp_sites)} IMPROVE, {len(sp_sites)} SPARTAN; ETAD {s
       f"{sp_above_imp_max}, above IMPROVE median {sp_above_imp_med}")
 
 
-# ---------------------------------------------------------------- f6 baselining helps (Addis, before/after)
+# ---------------------------------------------------------------- f6 baseline correction of the spectra helps (Addis, before/after)
 base = pd.read_csv(M / "addis_predictions.csv")
 base = base[(base.fit_id == FIT) & base.MediaId.isin(COHORT)].dropna(subset=["ftir_ec_ugm3", "Fabs"])
 assert len(base) == len(COHORT)
@@ -351,7 +485,7 @@ def addis_panel(ax, d, s, title, lim):
     ax.plot(xs, xs, ls=":", color=GREY, lw=1.2)
     ax.plot(xs, s.deming_intercept + s.deming_slope * xs, color=INK, lw=1.8)
     ax.set_xlim(0, lim); ax.set_ylim(-1, lim)
-    ax.set_xlabel("HIPS EC = Fabs / MAC 10 (µg/m³)")
+    ax.set_xlabel(X_HIPS)
     ax.set_title(title, loc="left", fontsize=12.5)
     stat_box(ax, s)
 
@@ -360,7 +494,7 @@ lim = float(np.ceil(max(ad.Fabs.max() / MAC, ad.ftir_ec_ugm3.max(), base.ftir_ec
 fig, axes = plt.subplots(1, 2, figsize=(11.6, 5.4), sharey=True)
 addis_panel(axes[0], ad, S_ADDIS, "Current calibration, no baseline correction", lim)
 addis_panel(axes[1], base, S_BASE, "Baseline-corrected spectra, IMPROVE calibration", lim)
-axes[0].set_ylabel("FTIR EC (µg/m³)")
+axes[0].set_ylabel(Y_FTIR)
 axes[1].legend(loc="lower right", fontsize=10)
 fig.tight_layout()
 save(fig, "f6_baseline_before_after.png")
@@ -383,7 +517,9 @@ ROWS = [("Which IMPROVE filters calibrate", [
             ("Spectral analogs, Dry season", "Spectral analogs (correlation), Dry season"),
             ("Spectral analogs, Belg season", "Spectral analogs (correlation), Belg season"),
             ("Spectral analogs, Kiremt season", "Spectral analogs (correlation), Kiremt season"),
-            ("Ethiopia-shaped smoke", "Ethiopia-shaped smoke"),
+            # explorer key "Ethiopia-shaped smoke": IMPROVE smoke filters ranked by C-H, carbonyl and 1600 cm⁻¹
+            # band features nearest the Addis median (pls_transfer.band_feature_distance); not the correlation pick
+            ("Smoke filters nearest Addis in C-H/carbonyl bands", "Ethiopia-shaped smoke"),
             ("Spectral analogs, weighted distance", "Spectral analogs (VIP-weighted distance)")]),
         ("Calibration settings", [
             ("Site-grouped cross-validation", "Site-grouped cross-validation"),
@@ -443,11 +579,11 @@ for ax, g in zip(axes, SEASONS):
     ax.plot(xs, s1.deming_intercept + s1.deming_slope * xs, color=SEASON_COLOR[g], lw=2, label="fit, season-specific")
     ax.set_xlim(0, lim); ax.set_ylim(-1, lim)
     ax.set_title(SEASON_LABEL[g], loc="left", fontsize=12.5)
-    ax.set_xlabel("HIPS EC (µg/m³)")
+    ax.set_xlabel("HIPS light absorption as EC\n(Fabs / MAC 10, µg/m³)")
     ax.text(.03, .97, f"IMPROVE: {s0.deming_slope:.2f}x {s0.deming_intercept:+.2f}, R² {s0.R2:.2f}\n"
                       f"season:   {s1.deming_slope:.2f}x {s1.deming_intercept:+.2f}, R² {s1.R2:.2f}",
             transform=ax.transAxes, va="top", fontsize=9.8, bbox=dict(boxstyle="round,pad=0.35", fc="white", ec="#D8D5CE"))
-axes[0].set_ylabel("FTIR EC (µg/m³)")
+axes[0].set_ylabel("FTIR-predicted EC\n(calibrated on IMPROVE TOR, µg/m³)")
 # one shared legend under the panels; neutral swatches so it reads for every season
 from matplotlib.lines import Line2D  # noqa: E402
 handles = [Line2D([], [], ls="", marker="o", ms=6, color=GREY, alpha=.7, label="IMPROVE calibration (points)"),
@@ -526,49 +662,96 @@ for line in AFFILIATIONS:
     q = tf.add_paragraph(); q.text = line
     q.font.size = Pt(12); q.font.color.rgb = RGBColor(0x6E, 0x6B, 0x64)
 notes(s,
-      "This talk is about measuring elemental carbon, EC, in Addis Ababa, Ethiopia. First why we care: EC there is "
-      "very high. Then the problem: the current FTIR calibration predicts Addis EC on the wrong scale, and the same "
-      "calibration also struggles on the IMPROVE filters that look most like Addis. Then why: Addis filters carry far "
-      "more EC than almost anything the calibration learned from. Then what we are doing about it: baseline correction, "
-      "a calibration explorer to test thousands of calibrations, and season-specific calibrations.",
+      "This talk is about measuring elemental carbon in Addis Ababa, the capital of Ethiopia, a high-altitude city of "
+      "about five million people. Elemental carbon, EC, is the black, soot-like part of fine particle pollution, "
+      "mostly from burning. Organic carbon, OC, is the rest of the particle carbon, and organic matter, OM, is that "
+      "carbon plus the hydrogen and oxygen attached to it. First why we care: EC in Addis is very high. Then the "
+      "problem: the current FTIR calibration predicts Addis EC on the wrong scale, and the same calibration also "
+      "struggles on the IMPROVE filters whose spectra most resemble Addis spectra. Then why: Addis filters carry far "
+      "more EC than almost anything the calibration learned from. Then what we are doing about it: baseline "
+      "correction of the spectra, a calibration explorer to test thousands of calibrations, and season-specific "
+      "calibrations.",
       "Practice run of the AAAR poster, laid out as slides first. Work in progress by design: the goal is feedback. "
-      "Leave at least 20 minutes for questions; keep the first part of the discussion general.")
+      "Leave at least 20 minutes for questions; keep the first part of the discussion general. Each later slide "
+      "defines its terms the first time they come up; a full glossary is in talking_points.md.")
 
 # 2 EC by season
 fig_slide(
     f"Elemental carbon in Addis Ababa is very high in every season, about {ec_x_improve:.0f}× the typical IMPROVE level",
     FIG / "f2b_addis_ec_by_season.png",
     "Addis Ababa has three seasons: a long dry season, the short Belg rains, and the main Kiremt rainy season. "
-    "The grey bars are total PM2.5 and the coloured bars are elemental carbon, EC. Two things: the rainy Kiremt "
-    "season has the worst air, and EC is very high in every season, around "
-    f"{sea.ec.min():.0f} to {sea.ec.max():.0f} µg/m³, against about {imp_ec_median:.1f} at a typical IMPROVE site, "
-    "the dotted line. That is why we care about measuring EC well in Addis.",
+    "The Addis filters come from SPARTAN, a global network of low-cost filter samplers in mostly urban, polluted "
+    "places; we compare with IMPROVE, the US network that samples air in national parks and rural areas. "
+    "Point at the axes first. On the left, up the side is concentration in the air, micrograms per cubic metre. "
+    "The grey bars are total PM2.5, the fine particle mass, and the coloured bars are EC. EC here comes from HIPS, "
+    "a measurement of how much light the filter absorbs. "
+    "The three lines are IMPROVE references: the dotted line is typical IMPROVE EC, "
+    f"{imp_ec_median:.2f} µg/m³; the red dash-dot line is the IMPROVE 95th percentile, {imp_ec_p95:.2f}, so 95 "
+    f"percent of IMPROVE filters are below it; and the dashed line is typical IMPROVE PM2.5, {imp_pm_median:.1f}. "
+    f"Addis EC is around {sea.ec.min():.0f} to {sea.ec.max():.0f} µg/m³ in every season, about "
+    f"{ad_ec_median / imp_ec_p95:.0f} times even the 95th-percentile IMPROVE filter, and higher than typical "
+    "IMPROVE PM2.5 as a whole. EC is also a much bigger share of the mass: about "
+    f"{100 * (sea.ec / sea.pm).min():.0f} to {100 * (sea.ec / sea.pm).max():.0f} percent of PM2.5 in Addis, against "
+    f"about {100 * imp_ec_median / imp_pm_median:.0f} percent at a typical IMPROVE site. The rainy Kiremt season has "
+    "the worst air. "
+    "The right panel is the same thing as mass on the filter, which is what FTIR actually sees. IMPROVE pulls about "
+    "22 litres of air per minute through its filter, SPARTAN about 5, so an IMPROVE filter collects about four times "
+    f"more air. On the filter the EC gap shrinks from about {ec_x_improve:.0f} times to about {ec_x_improve_pf:.0f} "
+    "times, but Addis is still above the IMPROVE 95th percentile in every season. That is why we care about "
+    "measuring EC well in Addis.",
     "EC = SPARTAN 'BC PM2.5', which is HIPS absorption / 10 (checked on Addis: median ratio 10.00), the same "
-    "definition as IMPROVE fAbs / 10 for the dotted line (median over all IMPROVE filters in the FED export). "
-    f"Medians with IQR over the same {len(COHORT)} Addis filters used on every Addis slide; SPARTAN public release v3.1.4 (Aug 2026). Kiremt is partly worse because the boundary layer "
-    "is shallow (ERA5 median ~370-410 m vs 650-800 m in Dry). Season names: Dry is also called Bega.")
+    "definition as IMPROVE fAbs / 10 for the reference lines. IMPROVE references over all "
+    f"{len(imp_net):,} IMPROVE filters with fAbs in the FED export (2003 to 2025): EC median {imp_ec_median:.3f}, "
+    f"95th percentile {imp_ec_p95:.3f}, PM2.5 median {imp_pm_median:.2f} µg/m³ (IMPROVE gravimetric mass, MF, on "
+    f"the same Teflon filter). Per filter, IMPROVE EC is {imp_share_lo:.0f} to {imp_share_hi:.0f}% of PM2.5 for the "
+    "middle 90% of filters. Per-filter panel: IMPROVE volume = flow × sampling time where the export has both "
+    f"({len(imp_pf):,} filters; median {imp_flow_median:.1f} L/min, {imp_vol_median:.1f} m³), giving EC median "
+    f"{imp_pf_ec_median:.1f} µg, 95th percentile {imp_pf_ec_p95:.1f} µg, PM2.5 median {imp_pf_pm_median:.0f} µg per "
+    f"filter; Addis volumes from the evaluation table (median {ad_vol_median:.1f} m³). "
+    f"Medians with IQR over the {len(e)} of the {len(COHORT)} Addis filters used on every Addis slide that have a "
+    "public BC value; SPARTAN public release v3.1.4 (Aug 2026). Kiremt is partly worse because the boundary layer "
+    "is shallow (ERA5 median ~370-410 m vs 650-800 m in Dry). Season names: Dry is also called Bega. "
+    "To do: per-filter comparison ignores any difference in deposit area between the two samplers; check before "
+    "quoting areal loading (µg/cm²).")
 
 # 3 the problem
 fig_slide(
     "In Addis Ababa, current SPARTAN FTIR EC is well correlated with HIPS EC but on the wrong scale",
     FIG / "f1_addis_problem.png",
-    "Here is the problem. Each point is one Addis filter. Along the bottom is EC from HIPS, an optical "
-    "absorption measurement. Up the side is EC from FTIR with the current SPARTAN calibration. They are well "
-    f"correlated, R² {S_ADDIS.R2:.2f}, but the line has a slope of {S_ADDIS.deming_slope:.1f} and an intercept of "
-    f"{S_ADDIS.deming_intercept:.0f} µg/m³: lower-EC filters, mostly dry season, come out too low, and the high Kiremt "
-    "filters too high.",
+    "Here is the problem. Point at the axes first. Along the bottom is EC from HIPS: HIPS measures how much light "
+    "the filter absorbs, Fabs, and we turn that into EC by dividing by the mass absorption cross-section, MAC, which "
+    "is how strongly one gram of EC absorbs light; we use 10 square metres per gram. Up the side is EC predicted "
+    "from the FTIR spectrum with the current SPARTAN calibration. FTIR is infrared spectroscopy: infrared light goes "
+    "through the filter and we record how much is absorbed at each wavenumber; that curve is the spectrum. A PLS "
+    "model, partial least squares, a standard regression method for spectra, learns from a calibration set, here "
+    "IMPROVE filters whose EC was measured in the lab by TOR, how to turn a spectrum into EC. "
+    f"Each point is one Addis filter. R² is {S_ADDIS.R2:.2f}, so the two measurements are clearly related. But the "
+    f"slope of {S_ADDIS.deming_slope:.1f} and the intercept of {S_ADDIS.deming_intercept:.0f} µg/m³ are not "
+    f"physically sensible: a filter with no EC on it would be predicted at about {S_ADDIS.deming_intercept:.0f}. "
+    "Lower-EC filters, mostly dry season, come out too low, and the high Kiremt filters too high. And it is not just "
+    "the MAC: changing the MAC stretches the bottom axis, which changes the slope, not the intercept.",
     "Deming regression, HIPS EC = Fabs / MAC 10 on x. SPARTAN filters have no thermal-optical (TOR) analysis, so "
     f"HIPS is the independent reference at Addis. n {int(S_ADDIS.n)}. The current calibration uses spectra without "
-    "baseline correction (slide 8). Colours are the three seasons from slide 2.")
+    "baseline correction (slide 8). Colours are the three seasons from slide 2. MAC check (Deming with the HIPS "
+    f"error rescaled with the axis): MAC 6 gives {MAC_CHECK[6][0]:.2f}x {MAC_CHECK[6][1]:+.2f}, MAC 14 gives "
+    f"{MAC_CHECK[14][0]:.2f}x {MAC_CHECK[14][1]:+.2f}; the intercept does not move. (If the Deming error ratio is "
+    f"held fixed instead, the intercept drifts a little, {MAC_CHECK[6][2]:.1f} to {MAC_CHECK[14][2]:.1f}, but stays "
+    "strongly negative.)")
 
 # 4 method works
 fig_slide(
     "On typical IMPROVE filters, the same FTIR method predicts EC well",
     FIG / "f2_improve_heldout.png",
-    "Now IMPROVE, where filters have both FTIR and the thermal method, TOR. The calibration is built on IMPROVE "
-    "filters and tested on filters from sites it never saw. On these "
+    "Now IMPROVE. Point at the axes first: along the bottom is EC from TOR, thermal-optical reflectance, the standard "
+    "lab method that heats a punch of a quartz-fibre filter and measures the carbon that comes off; up the side is EC "
+    "predicted from the FTIR spectrum. IMPROVE collects a Teflon filter for FTIR and a quartz filter for TOR from the "
+    "same air at the same time, which is why every FTIR EC calibration is built on IMPROVE. Here the calibration is "
+    "built on IMPROVE filters and tested on filters from sites it never saw. On these "
     f"{int(S_POOL.n):,} held-out filters, FTIR matches TOR well: slope {S_POOL.deming_slope:.2f}, intercept close to "
     f"zero, R² {S_POOL.R2:.2f}.",
+    "Why calibrate with IMPROVE? (likely question) IMPROVE's collocated FTIR + TOR quartz library is the only one "
+    "that exists anywhere; there is no Addis or urban equivalent, and CSN (the US urban network) filters are "
+    "different (bigger, thicker, lower flow), so they cannot simply be added. "
     "Baseline-corrected (spline, AIRSpec) spectra, all-IMPROVE calibration on lot 251, held-out sites. "
     f"TOR vs HIPS on the same filters: {S_POOL_REF.deming_slope:.2f}x {S_POOL_REF.deming_intercept:+.2f}, "
     f"R² {S_POOL_REF.R2:.2f}. FTIR vs HIPS on the same filters: 0.88x +0.04, R² 0.47. Axis clipped at 1.2 µg/m³.")
@@ -577,13 +760,15 @@ fig_slide(
 fig_slide(
     "Current calibrations poorly predict IMPROVE FTIR EC for spectra similar to Addis Ababa spectra",
     FIG / "f3_addis_like_improve.png",
-    "Out of the held-out IMPROVE filters, we picked the 97 whose infrared spectra look most like Addis Ababa, in red; "
-    "grey is all held-out IMPROVE. On the left, TOR and HIPS agree on them: "
+    f"Out of the held-out IMPROVE filters, we picked 97 from {ANALOG_DEF}, in red; grey is all held-out IMPROVE. "
+    "Point at the axes first: both panels have HIPS EC along the bottom; up the side is TOR EC on the left and "
+    "FTIR-predicted EC on the right. On the left, TOR and HIPS agree on them: "
     f"slope {S_AN_REF.deming_slope:.2f}, R² {S_AN_REF.R2:.2f}. On the right, FTIR EC against HIPS: slope "
     f"{S_AN_HIPS.deming_slope:.2f} and R² {S_AN_HIPS.R2:.2f}. FTIR is too high at the low end and too low at the high "
     "end. Same calibration as the last slide; only the samples changed. So the Addis problem also shows up inside "
-    "IMPROVE, for its most Addis-like filters.",
-    "Analogs: the 500 IMPROVE filters whose spectra correlate best with Addis; 97 are from held-out sites (88 lot 251, "
+    "IMPROVE, for the IMPROVE filters whose spectra most resemble Addis spectra.",
+    "Analogs: the 500 IMPROVE filters whose spectra correlate best with the Addis median spectrum (Pearson "
+    "correlation across wavenumbers, CO₂ region masked); 97 are from held-out sites (88 lot 251, "
     f"9 lot 248) and none trained the calibration. Against TOR instead of HIPS: {S_AN.deming_slope:.2f}x "
     f"{S_AN.deming_intercept:+.2f}, R² {S_AN.R2:.2f}. Self-prediction: IMPROVE predicts IMPROVE well (slide 4), and the "
     "analogs fit well when they are themselves the calibration set (CV R² 0.5-0.9); the failure is transfer.")
@@ -591,14 +776,20 @@ fig_slide(
 # 6 loading
 fig_slide(
     f"Addis filters carry about {ratio:.0f} times more EC per filter than a typical IMPROVE filter",
-    FIG / "f4_loading_per_filter.png",
-    "Why? This is how much EC sits on each filter, on a log scale: grey is the IMPROVE calibration pool, gold is "
-    f"Addis. The typical Addis filter has about {ratio:.0f} times more EC on it, and "
-    f"{100 * (ad_mass > p99).mean():.0f} percent of Addis filters are above IMPROVE's 99th percentile. The calibration "
-    "has almost never seen filters like these.",
+    FIG / "f4b_loading_per_filter_hist.png",
+    "Why? Point at the axes first. Along the bottom is how much EC sits on one filter, in micrograms, on a log "
+    "scale, so each labelled tick is ten times the one before. Up the side is the percent of filters at that "
+    "loading; each network adds up to 100 percent, so the small Addis set and the large IMPROVE set can share one "
+    "plot. Grey is the IMPROVE filters the calibration learned from, gold is Addis. The two humps barely overlap. "
+    f"The dashed lines are the medians: the typical Addis filter has about {ratio:.0f} times more EC on it. The "
+    f"dotted line is IMPROVE's 99th percentile, and {100 * (ad_mass > p99).mean():.0f} percent of Addis filters are "
+    "to the right of it. The calibration has almost never seen filters like these.",
     "Per filter = HIPS Fabs / MAC 10 × sampled volume, so both networks are on the same footing "
     "(IMPROVE ~33 m³ per filter at 22 L/min, SPARTAN ~7 m³ at 5 L/min). "
-    f"Addis: the same {len(COHORT)} filters as slides 3, 8 and 10.")
+    f"Addis: the same {len(COHORT)} filters as slides 3, 8 and 10. IMPROVE: the calibration pool "
+    f"(n {len(imp_mass):,}), volume from the TOR record. Medians {imp_mass.median():.1f} and {ad_mass.median():.1f} µg, "
+    f"IMPROVE 99th percentile {p99:.1f} µg. The 15 Oct version of this slide used a cumulative distribution "
+    "(figures/f4_loading_per_filter.png, still built) that needed too much explaining.")
 
 # 7 EC by site
 fig_slide(
@@ -616,15 +807,20 @@ fig_slide(
     f"SPARTAN sites are above the highest IMPROVE site ({imp_max:.2f} µg/m³). Concentration, not per-filter loading: "
     "per filter the SPARTAN values would be ~4.6x lower relative to IMPROVE. Table: figures/f5_ec_site_continuum.csv.")
 
-# 8 baselining
+# 8 baseline correction of the spectra
 fig_slide(
     f"Baseline-correcting the spectra shrinks the Addis intercept from {S_ADDIS.deming_intercept:.1f} to {S_BASE.deming_intercept:.1f} µg/m³",
     FIG / "f6_baseline_before_after.png",
-    "What are we doing about it? The first thing we learned is that the spectra need baseline correction. On the "
-    "left is the current calibration, without it. On the right, the same Addis filters predicted by a calibration "
-    "built on baseline-corrected IMPROVE spectra. The intercept moves from "
+    "What are we doing about it? The first thing we learned is that the spectra need baseline correction. A raw "
+    "spectrum sits on a sloping, curved background from the filter material and from light scattering; baseline "
+    "correction fits that background and subtracts it, so only the absorption bands of the particles are left. "
+    "Point at the axes first: the same as slide 3, HIPS EC along the bottom and FTIR-predicted EC up the side. On "
+    "the left is the current calibration, without baseline correction. On the right, the same Addis filters "
+    "predicted by a calibration built on baseline-corrected IMPROVE spectra. The intercept moves from "
     f"{S_ADDIS.deming_intercept:.1f} to {S_BASE.deming_intercept:.1f} µg/m³. The slope drops to "
-    f"{S_BASE.deming_slope:.2f}, so FTIR now reads low at high EC: better, but not solved.",
+    f"{S_BASE.deming_slope:.2f}, so FTIR now reads low at high EC: better, but not solved. As before, R² only says "
+    "the two are related; the slope and intercept are what have to become physically sensible, and the MAC choice "
+    "moves the slope, not the intercept.",
     f"Both panels: the same {len(COHORT)} Addis filters (those with a current SPARTAN FTIR EC value). Right: spline "
     f"(AIRSpec) baseline, all-IMPROVE lot-251 calibration, R² {S_BASE.R2:.2f}; on all 233 filters it is 0.56x -1.08. The two calibrations differ in more than the baseline "
     "(training set and protocol too), so this is before/after for the approach, not a single-variable test. "
@@ -638,7 +834,8 @@ fig_slide(
     "baseline-corrected spectra, ordered by how far off their Addis intercept is, from worst on the left to best on "
     "the right. The top line is that intercept; the current calibration is the red dashed line. Underneath, each row "
     "shows which calibrations used a choice: first, which IMPROVE filters to calibrate with, for example filters with "
-    "the lowest OC/EC, or filters whose spectra look like each Addis season; second, the calibration settings. "
+    "the lowest OC/EC, or the IMPROVE spectra that most resemble each Addis season's spectra; second, the "
+    "calibration settings. "
     f"{n_better:,} of the {n_spec:,} do better than the current calibration, and {n_near0} get the intercept within "
     "half a microgram of zero, though not always with a good slope. "
     "We have not found a calibration that gets Addis right yet, but this is how we are searching.",
@@ -647,15 +844,22 @@ fig_slide(
     "factors and cohort size; name them if asked, but don't go into them. The explorer scores all 233 Addis filters with HIPS (its "
     "stored grid has no per-filter predictions to re-score), while slides 3, 8 and 10 use the 189 that also have a "
     "current SPARTAN value. From the gallery export "
-    "gallery/app/public/data/meeting-r70/spec_curve_20260917.json (rank-70 run).")
+    "gallery/app/public/data/meeting-r70/spec_curve_20260917.json (rank-70 run). Selection rows: 'Spectral analogs' "
+    "= the IMPROVE spectra with the highest correlation to the Addis (or one season's) median spectrum across "
+    "wavenumbers, excluding defined regions such as the CO₂ band; 'weighted distance' ranks by a distance that "
+    "weights wavenumbers by their importance in the PLS model; 'Smoke filters nearest Addis in C-H/carbonyl bands' "
+    "(called 'Ethiopia-shaped smoke' in the explorer) = IMPROVE smoke-affected filters ranked by how close three "
+    "band heights (C-H, carbonyl, 1600 cm⁻¹ shoulder) are to the Addis median.")
 
 # 10 seasonal calibrations
 k = SEAS["Kiremt (Jun-Sep)"]; d0 = SEAS["Dry (Oct-Feb)"]; b0 = SEAS["Belg (Mar-May)"]
 fig_slide(
     "Season-specific calibrations help in Kiremt, but not yet in the Dry or Belg seasons",
     FIG / "f8_seasonal_calibrations.png",
-    "One option we tried: a separate calibration for each Addis season, built from the IMPROVE filters whose spectra "
-    "look most like that season. Grey points and the grey line are the single IMPROVE calibration from slide 8; "
+    "One option we tried: a separate calibration for each Addis season, built from the IMPROVE spectra that most "
+    "resemble that season's Addis spectra (highest correlation across wavenumbers, excluding defined regions). "
+    "Axes as before: HIPS EC along the bottom, FTIR-predicted EC up the side. "
+    "Grey points and the grey line are the single IMPROVE calibration from slide 8; "
     "coloured points and line are the season-specific one; the dotted line is 1:1. "
     f"In Kiremt the slope improves from {k[0].deming_slope:.2f} to {k[1].deming_slope:.2f} and R² from "
     f"{k[0].R2:.2f} to {k[1].R2:.2f}. In the dry season it barely changes, and in Belg it gets worse. So seasonality "
@@ -673,17 +877,20 @@ fig_slide(
 text_slide(
     "Conclusions",
     [f"EC in Addis Ababa is very high, about {ec_x_improve:.0f}× typical IMPROVE, and highest in the Kiremt rainy season.",
-     "Current FTIR calibrations poorly predict Addis EC, and also IMPROVE filters with Addis-like spectra.",
+     "Current FTIR calibrations poorly predict Addis EC, and also the IMPROVE filters whose spectra most resemble Addis.",
      f"Addis filters carry ~{ratio:.0f}× more EC than typical IMPROVE filters; most SPARTAN sites are also beyond IMPROVE.",
      f"Baseline correction helps: the Addis intercept goes from {S_ADDIS.deming_intercept:.1f} to {S_BASE.deming_intercept:.1f} µg/m³.",
      "Season-specific calibrations help in Kiremt; a calibration explorer is helping us search for better ones."],
     "To sum up. Addis has very high EC, and the calibrations built on IMPROVE do not predict it well, for Addis and "
-    "for the IMPROVE filters that look like Addis. Addis filters are far heavier than what the calibration has seen. "
+    "for the IMPROVE filters whose spectra most resemble Addis. Addis filters are far heavier than what the "
+    "calibration has seen. "
     "Baseline correction is a real improvement, season-specific calibrations help in one season, and we have a tool "
     "to test many more options. I would love your ideas on what to try next.",
     "Open for discussion: VIBES baseline; the 14 Oct k-sweep (Addis intercept gets more negative with more PLS "
     "factors: spline -0.1 to -1.6, VIBES -0.3 to -7.0 µg/m³ at k 2 to 20); OC/fAbs by site (Addis lowest of the "
-    "IMPROVE sites, a possible reason; not on a slide); boundary-layer normalisation; Chile sites after AAAR.",
+    "IMPROVE sites, a possible reason; not on a slide); boundary-layer normalisation; Chile sites after AAAR. "
+    "From the 15 Oct practice talk (not run yet): EC-to-PM2.5 mass ratio as a calibration-set selection criterion; "
+    "check TOR optical pyrolysis (OP) on fire-affected and Addis-like IMPROVE filters.",
     size=16)
 
 out = HERE / "aaar_practice_2026-10-15.pptx"
