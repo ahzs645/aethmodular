@@ -271,9 +271,9 @@ export function SampleDrawer({
         <h3>This filter on any crossplot</h3>
         <p className="reference-summary">Reference: {referenceLabel} · {cross.pool.length.toLocaleString()} paired filters. The highlighted filter remains {row.id} from {row.site}.</p>
         <div className="frame-controls" style={{ marginBottom: 6 }}>
-          <FieldSelect label="x" value={cx} meta={meta} onChange={setCx} />
+          <FieldSelect label="x" value={cx} meta={meta} onChange={setCx} ratios={false} />
           <SwapButton onClick={() => { setCx(cy); setCy(cx) }} />
-          <FieldSelect label="y" value={cy} meta={meta} onChange={setCy} />
+          <FieldSelect label="y" value={cy} meta={meta} onChange={setCy} ratios={false} />
           <FitGroupingControl />
         </div>
         {cross.pool.length < 3 ? (

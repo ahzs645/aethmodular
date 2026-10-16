@@ -14,6 +14,15 @@ the FED yearly archives by workflows/refresh_improve_gallery.py). Every retained
 has valid, positive EC and absorption. Field names follow the focus-site export where the
 quantity is the same: HIPS BC = HIPS Fabs / MAC 10, as in filters.json. Sulfate and the
 other ions are not in the cleaned table yet.
+
+TOR thermal fractions (OP, EC1-EC3, OC1-OC4) come from the same cleaned table, so they share
+the existing SiteCode + POC + Date rows with no extra join. OP is the reflectance pyrolysis
+correction (IMPROVE OPf, "OPTR"), so EC (TOR) = EC1 + EC2 + EC3 - OP and OC (TOR) = OC1..OC4 + OP.
+OP = 0 is a reported value (often laser saturation on heavily loaded filters) and is kept.
+The cleaned table is validated IMPAER only: preliminary IMPAERPRE records are never read, and
+values whose status is not valid ("V*") are already blank. Sampled volume is the carbon
+(quartz, module C) sampler's FlowRate (L/min) / 1000 x SampDur (min), as tor_volume_m3 in
+analog_bias.py; the cleaned table has flow and duration from mid-2015 on.
 """
 
 from __future__ import annotations
@@ -41,11 +50,24 @@ FIELDS = {  # gallery field -> (cleaned column, unit, scale)
     "Iron": ("FEf_Val", "ug/m3", 1.0),
     "Silicon": ("SIf_Val", "ug/m3", 1.0),
     "Soil": ("SOILf_Val", "ug/m3", 1.0),
+    "OP": ("OPf_Val", "ug/m3", 1.0),
+    "EC1": ("EC1f_Val", "ug/m3", 1.0),
+    "EC2": ("EC2f_Val", "ug/m3", 1.0),
+    "EC3": ("EC3f_Val", "ug/m3", 1.0),
+    "OC1": ("OC1f_Val", "ug/m3", 1.0),
+    "OC2": ("OC2f_Val", "ug/m3", 1.0),
+    "OC3": ("OC3f_Val", "ug/m3", 1.0),
+    "OC4": ("OC4f_Val", "ug/m3", 1.0),
+    # derived in main(): carbon-module FlowRate_C_Val (L/min) / 1000 x SampDur_C_Val (min)
+    "Sampled volume": ("volume_m3", "m³", 1.0),
 }
+VOLUME_COLS = ["FlowRate_C_Val", "SampDur_C_Val"]
 GROUPS = [{"label": "Carbon (TOR)", "fields": ["EC (TOR)", "OC (TOR)"]},
           {"label": "Optical (HIPS)", "fields": ["HIPS Fabs", "HIPS BC"]},
           {"label": "Mass", "fields": ["PM2.5 mass"]},
-          {"label": "Metals & crustal", "fields": ["Silicon", "Iron", "Soil"]}]
+          {"label": "Metals & crustal", "fields": ["Silicon", "Iron", "Soil"]},
+          {"label": "TOR thermal fractions", "fields": ["OP", "EC1", "EC2", "EC3", "OC1", "OC2", "OC3", "OC4"]},
+          {"label": "Sampling", "fields": ["Sampled volume"]}]
 
 
 def sig(v, digits=4):
@@ -57,8 +79,9 @@ def sig(v, digits=4):
 
 
 def main():
-    cols = ["SiteCode", "POC", "Date", "SiteName", "State", "Country", "Latitude", "Longitude"] + sorted({c for c, _, _ in FIELDS.values()})
+    cols = ["SiteCode", "POC", "Date", "SiteName", "State", "Country", "Latitude", "Longitude"] + sorted({c for c, _, _ in FIELDS.values()} - {"volume_m3"}) + VOLUME_COLS
     df = pd.read_csv(improve_clean_path(), usecols=cols, low_memory=False)
+    df["volume_m3"] = df.FlowRate_C_Val / 1000.0 * df.SampDur_C_Val
     df["Date"] = pd.to_datetime(df.Date).dt.strftime("%Y-%m-%d")
     df = df.sort_values(["SiteCode", "Date", "POC"])
     OUT.mkdir(parents=True, exist_ok=True)
@@ -78,6 +101,9 @@ def main():
                       "n_filters": len(g), "date_min": g.Date.min(), "date_max": g.Date.max(),
                       "coverage": {f: int(g[c].notna().sum()) for f, (c, _, _) in FIELDS.items()}})
     index = {"generated": datetime.now(timezone.utc).isoformat(), "source": "validated IMPROVE cleaned table",
+             "notes": ["TOR thermal fractions: validated IMPAER only (no preliminary IMPAERPRE); OP is OPf (reflectance), "
+                       "EC (TOR) = EC1+EC2+EC3-OP, OC (TOR) = OC1+OC2+OC3+OC4+OP; OP = 0 is reported, not missing.",
+                       "Sampled volume: carbon (quartz, module C) FlowRate L/min / 1000 x SampDur min; mid-2015 onward."],
              "mac_value": MAC_VALUE, "fields": list(FIELDS), "field_units": {f: u for f, (_, u, _) in FIELDS.items()},
              "field_groups": GROUPS, "n": int(len(df)), "sites": sites}
     (OUT / "index.json").write_text(json.dumps(index, separators=(",", ":"), ensure_ascii=False))

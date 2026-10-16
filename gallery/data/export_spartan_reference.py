@@ -9,6 +9,11 @@ product, not thermal EC/OC. Elements measured by XRF/ICP-MS that share a name wi
 (Ca, K, Na, Mg) are labelled '(element)'. Filters dated after the export day are dropped (a
 public date typo, e.g. ILHA-0216 in the October 2026 pull).
 
+'Sampled volume' (m³, for the gallery's mass-per-filter units) is HIPS's measured volume where the
+filter has HIPS, else the public hours sampled × 0.3 m³/h (5 L/min) for the SS5i samplers, which
+matches HIPS's volume to a median ratio of 1.00 (5-95 %: 0.95-1.03) on 2,524 shared filters. Older SS4i
+filters have no validated flow and get no volume.
+
 FTIR functional groups (alkane CH, alcohol COH, carboxylic COOH, non-acid CO) come from the lab's
 batch 2-3 deliverable. Its OM equals the public OM; the batch 4 deliverable's organic groups run
 about 2x the public OM and the four-site file (its OC and EC agree), so batch 4 is not used.
@@ -63,6 +68,8 @@ METHOD = {'BC (public HIPS)': 'HIPS', 'BC (public SSR estimate)': 'ESTIMATED FRO
 # in-house HIPS, with the field names filters.json uses, so one axis spans every site
 HIPS_COLUMNS = {'HIPS Fabs': 'Fabs', 'HIPS Fabs uncertainty': 'Uncertainty', 'HIPS MDL': 'MDL'}
 HIPS_FIELDS = [*HIPS_COLUMNS, 'HIPS BC']
+VOLUME = 'Sampled volume'
+SS5I_M3_PER_HOUR = 0.3  # 5 L/min
 HIPS_UNITS = {'HIPS Fabs': 'Mm⁻¹', 'HIPS Fabs uncertainty': 'Mm⁻¹', 'HIPS MDL': 'Mm⁻¹', 'HIPS BC': 'µg/m³'}
 HIPS_CSV = ('Spartan', 'SPARTAN_HIPS_Batch1-51.v2.csv')
 # FTIR functional groups, lab batch 2-3 (gallery field names, as in filters.json)
@@ -85,7 +92,8 @@ def load_hips() -> tuple[Path, pd.DataFrame]:
     for field, column in HIPS_COLUMNS.items():
         out[field] = pd.to_numeric(out[column], errors='coerce')
     out['HIPS BC'] = out['HIPS Fabs'] / MAC_VALUE
-    return path, out[['code', 'date', *HIPS_FIELDS]].replace([np.inf, -np.inf], np.nan)
+    out['hips_volume'] = pd.to_numeric(out.Volume, errors='coerce')
+    return path, out[['code', 'date', *HIPS_FIELDS, 'hips_volume']].replace([np.inf, -np.inf], np.nan)
 
 
 def load_functional_groups() -> tuple[Path, pd.DataFrame]:
@@ -106,12 +114,15 @@ def load_functional_groups() -> tuple[Path, pd.DataFrame]:
 
 def build_site(path: Path | None, site_name: str, labs: list[tuple[pd.DataFrame, list[str]]]) -> pd.DataFrame:
     """One row per physical filter: the public chemistry (when the site has a file) and the lab tables."""
-    info = public_chemistry(path) if path is not None else pd.DataFrame(columns=['date', *PARAMETERS]).rename_axis('id')
+    info = public_chemistry(path) if path is not None else pd.DataFrame(columns=['date', 'ss5i_volume', *PARAMETERS]).rename_axis('id')
     info['date'] = info.date.astype('datetime64[ns]')
     for lab, fields in labs:
         # a lab table joins on the physical filter; a filter only it has takes its sample date
         info = info.join(lab[fields], how='outer')
         info['date'] = info.date.fillna(lab.date.reindex(info.index))
+    # HIPS's measured volume first, else the SS5i hours estimate (public_chemistry)
+    hips_volume = labs[0][0].hips_volume.reindex(info.index)
+    info[VOLUME] = hips_volume.fillna(info.get('ss5i_volume', pd.Series(np.nan, index=info.index)))
     # a filter needs a value (288 PM2.5 HIPS rows have no Fabs) and a date to be drawn
     info = info[info[[*PARAMETERS, *LAB_FIELDS]].notna().any(axis=1) & info.date.notna()]
     info = info.reset_index()
@@ -135,6 +146,10 @@ def public_chemistry(path: Path) -> pd.DataFrame:
     if unmapped:
         raise ValueError(f'Unmapped public parameters in {path.name}: {sorted(unmapped)}; add them to PARAMETERS')
     info = raw.groupby('id', sort=True).date.first().to_frame()
+    first = raw.groupby('id', sort=True)
+    hours = first.Hours_sampled.apply(lambda v: pd.to_numeric(v, errors='coerce').median())
+    ss5i = first.Collection_Description.first().fillna('').str.contains('SS5i', case=False)
+    info['ss5i_volume'] = (hours * SS5I_M3_PER_HOUR).where(ss5i & hours.gt(0))
     for field, parameter in PARAMETERS.items():
         values = raw.loc[raw.Parameter_Name.eq(parameter), ['id', 'Value', 'Units', 'Analysis_Description']].copy()
         if parameter in {'EC PM2.5', 'OC PM2.5', 'OM PM2.5'}:
@@ -185,16 +200,18 @@ def main():
                 date=str(r['date'])[:10] if pd.notna(r['date']) else '',
                 excluded=bool(r['is_excluded']), exclusion_reason=r['exclusion_reason'],
                 **{field: float(r[field]) for field in PARAMETERS if pd.notna(r[field])},
-                **{field: round(float(r[field]), 6) for field in LAB_FIELDS if pd.notna(r[field])}))
+                **{field: round(float(r[field]), 6) for field in LAB_FIELDS if pd.notna(r[field])},
+                **({VOLUME: round(float(r[VOLUME]), 4)} if pd.notna(r[VOLUME]) else {})))
     out = ROOT / 'gallery/app/public/data/spartan_reference.json'
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(dict(schema_version=1, generated=datetime.now(timezone.utc).isoformat(),
         source='Local mirror of public SPARTAN ChemSpecPM25; SPARTAN_HIPS_Batch1-51.v2.csv (HIPS); SPARTAN FTIR batch 2-3 lab deliverable (functional groups)', source_sha256=sources,
         note='Public PM2.5 chemistry, one row per physical filter over all available dates. EC/OC/OM are FTIR-derived public reports; the two EC and OC labels refer to the same product. BC (public HIPS) is the public BC where HIPS measured it (fAbs / 10), kept separate from the in-house HIPS BC; BC (public SSR estimate) is the public BC estimated from the HIPS-SSR curve, and Equivalent BC (SSR) the smoke-stain reflectometer value. Elements sharing a name with an ion field are labelled (element). HIPS Fabs, its uncertainty and MDL, and HIPS BC (Fabs / MAC 10) come from HIPS batches 1–51 (PM2.5 filters; blanks and PM10 left out) wherever that table covers a site, including filters without public chemistry. FTIR functional groups come from the lab batch 2-3 deliverable (2020-01 to 2023-03; the batch 4 groups are about 2x the public OM and are not used). Known study exclusions are flagged; other sites retain public reporting quality decisions. No sidebar season/date subset is applied.',
-        fields=fields, field_units={**{f: 'µg/m³' for f in [*PARAMETERS, *FG_FIELDS]}, **HIPS_UNITS},
+        fields=[*fields, VOLUME], field_units={**{f: 'µg/m³' for f in [*PARAMETERS, *FG_FIELDS]}, **HIPS_UNITS, VOLUME: 'm³'},
         field_sources={**{f: p + (f' ({METHOD[f].lower()})' if f in METHOD else '') for f, p in PARAMETERS.items()},
                        **{f: f'{HIPS_CSV[1]}: {HIPS_COLUMNS.get(f, "Fabs / MAC")}' for f in HIPS_FIELDS},
-                       **{f: f'{FG_CSV[-1]}: {c}' for f, c in FG_COLUMNS.items()}},
+                       **{f: f'{FG_CSV[-1]}: {c}' for f, c in FG_COLUMNS.items()},
+                       VOLUME: f'{HIPS_CSV[1]}: Volume, else public Hours_sampled × {SS5I_M3_PER_HOUR} m³/h (SS5i)'},
         n=len(rows), n_sites=len(codes), rows=rows),
         separators=(',', ':'), allow_nan=False))
     with_hips = sum('HIPS Fabs' in r for r in rows)

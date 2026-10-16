@@ -15,11 +15,14 @@ export const RESTATES: Record<string, string> = {
  */
 export const HIDDEN_DUPLICATES = ['EC (ChemSpec FTIR)', 'OC (ChemSpec FTIR)']
 
+/** a reader's ratio (lib/viewFields, "num / den") shares a term with its numerator and its denominator */
+const ratioParts = (f: string) => { const i = f.indexOf(' / '); return i > 0 ? [f.slice(0, i), f.slice(i + 3)] : [] }
+
 export function sameProduct(a: string, b: string): boolean {
-  return RESTATES[a] === b || RESTATES[b] === a
+  return RESTATES[a] === b || RESTATES[b] === a || ratioParts(a).includes(b) || ratioParts(b).includes(a)
 }
 
 /** Uncertainties and detection limits are bookkeeping columns, not species to correlate or rank. */
 export function isBookkeeping(field: string): boolean {
-  return field.includes('uncertainty') || field.includes('MDL')
+  return field.includes('uncertainty') || field.includes('MDL') || field === 'Sampled volume'
 }

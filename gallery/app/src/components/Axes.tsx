@@ -3,6 +3,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { AxisFieldPopover, useAxisFields, type AxisRole } from '@/components/AxisFieldPopover'
 import type { ScaleLinear, ScaleTime, ScaleBand } from 'd3'
 import { INK, FONT } from '@/lib/theme'
+import { describeField } from '@/lib/glossary'
 
 type AnyScale =
   | ScaleLinear<number, number>
@@ -149,7 +150,7 @@ function AxisTitle({ pick, children }: { pick?: AxisRole; children: ReactNode })
     <>
       <g className="axis-pick" role="button" tabIndex={0} aria-haspopup="dialog" aria-label={`Change the ${pick === 'field' ? 'measurement' : `${pick} axis`}: ${ctx.value[pick]}`}
         onClick={(e) => open(e.currentTarget)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e.currentTarget) } }}>
-        <title>Click to choose another measurement</title>
+        <title>{describeField(ctx.value[pick])}{'\n'}Click to choose another measurement</title>
         {children}
       </g>
       {anchor && <AxisFieldPopover role={pick} anchor={anchor} onClose={() => setAnchor(null)} />}

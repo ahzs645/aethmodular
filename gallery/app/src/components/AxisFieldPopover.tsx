@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { prettyUnit } from '@/components/FieldSelect'
+import { DEFINE_RATIO, useRatios } from '@/components/RatioDialog'
+import { RATIO_GROUP } from '@/lib/viewFields'
 import { chemText } from '@/lib/format'
 import type { MetaFile } from '@/lib/types'
 
@@ -33,6 +35,7 @@ const ROLE_TITLE: Record<AxisRole, string> = { x: 'x axis', y: 'y axis', field: 
 /** A searchable, grouped field list anchored to the clicked axis title. */
 export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; anchor: DOMRect; onClose: () => void }) {
   const ctx = useAxisFields()
+  const ratio = useRatios()
   const box = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
@@ -57,7 +60,14 @@ export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; an
   const q = query.trim().toLowerCase()
   const rows = meta.field_groups.flatMap((g) => g.fields.filter((f) => meta.fields.includes(f)).map((f) => ({ f, group: g.label })))
     .filter((r) => !q || `${r.f} ${r.group}`.toLowerCase().includes(q))
-  const pick = (f: string | undefined) => { if (f) { set(role, f); onClose() } }
+  // the ratio dialog (components/RatioDialog), always last
+  if (ratio) rows.push({ f: DEFINE_RATIO, group: RATIO_GROUP })
+  const pick = (f: string | undefined) => {
+    if (!f) return
+    onClose()
+    if (f === DEFINE_RATIO) ratio?.open((field) => set(role, field))
+    else set(role, f)
+  }
   // below the title, kept inside the window
   const W = 300
   const left = Math.max(8, Math.min(window.innerWidth - W - 8, anchor.left + anchor.width / 2 - W / 2))
@@ -88,13 +98,13 @@ export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; an
               className={`combobox-option${i === active ? ' active' : ''}`}
               onMouseEnter={() => setActive(i)} onClick={() => pick(r.f)}>
               <span className="combobox-check" aria-hidden="true">{r.f === value[role] ? '✓' : ''}</span>
-              <span className="combobox-text">{chemText(r.f)}{prettyUnit(meta.field_units?.[r.f]) && <span className="site-sub"> · {prettyUnit(meta.field_units?.[r.f])}</span>}</span>
+              <span className="combobox-text">{r.f === DEFINE_RATIO ? 'Define a ratio…' : chemText(r.f)}{prettyUnit(meta.field_units?.[r.f]) && <span className="site-sub"> · {prettyUnit(meta.field_units?.[r.f])}</span>}</span>
               {role !== 'field' && r.f === value[role === 'x' ? 'y' : 'x'] && <span className="combobox-hint" title="Choosing it swaps x and y">on {role === 'x' ? 'y' : 'x'} · swap</span>}
               {meta.coverage?.[r.f] !== undefined && <span className="combobox-hint">{meta.coverage[r.f]}</span>}
             </button>
           </div>
         ))}
-        {rows.length === 0 && <div className="site-empty">No measurement matches “{query}”.</div>}
+        {rows.length === (ratio ? 1 : 0) && <div className="site-empty">No measurement matches “{query}”.</div>}
       </div>
     </div>,
     document.body,

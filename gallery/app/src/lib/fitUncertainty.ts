@@ -5,7 +5,9 @@ import { monthBlocks } from './regressionCI.ts'
 export function fitUncertainty(rows: { site: string; date: string; [field: string]: unknown }[], x: string, y: string, meta: MetaFile, lambda = 1) {
   const errors = (field: string) => {
     if (field !== 'HIPS BC' && field !== 'HIPS Fabs') return undefined
-    const values = rows.map(r => Number(r['HIPS Fabs uncertainty']) / (field === 'HIPS BC' ? meta.mac_value : 1))
+    // HIPS BC in mass per filter (lib/viewFields) carries the filter's volume too, so its errors do
+    const perFilter = (r: Record<string, unknown>) => (field === 'HIPS BC' && meta.basis === 'mass' ? Number(r['Sampled volume']) : 1)
+    const values = rows.map(r => Number(r['HIPS Fabs uncertainty']) / (field === 'HIPS BC' ? meta.mac_value : 1) * perFilter(r))
     // Partial coverage cannot be described as a measured uncertainty vector.
     if (!values.length || values.some(v => !Number.isFinite(v) || v <= 0)) return undefined
     const sorted = values.slice().sort((a, b) => a - b)

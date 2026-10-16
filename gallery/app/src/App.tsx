@@ -56,6 +56,9 @@ import { GroupDrawer } from '@/components/GroupDrawer'
 import { WeatherPage } from '@/pages/WeatherPage'
 import { HIDDEN_DUPLICATES } from '@/fieldLineage'
 import { PageSidebarProvider, PageSidebarSlot } from '@/lib/pageSidebar'
+import { RATIO_GROUP, RATIO_PRESETS, VOLUME, parseRatios, ratioKey, ratiosParam, viewRows, viewUnits, type Basis, type RatioDef } from '@/lib/viewFields'
+import { RatiosProvider } from '@/components/RatioDialog'
+import { GlossaryButton } from '@/components/Glossary'
 import { WEATHER_GROUP, type WeatherFile } from '@/lib/weather'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 
@@ -121,6 +124,9 @@ const FTIR_VARIANT = { spline: 'EC (FTIR, spline)', vibes: 'EC (FTIR, VIBES)' } 
 const idSet = (v: string | null): Set<string> | null => (v ? new Set(v.split(',').filter(Boolean)) : null)
 
 /** `ssites` in the URL: absent = the four focus sites, * = every SPARTAN site, - = none, else codes */
+/** `mac` in the URL: a MAC for HIPS BC other than the export's (null: the export's) */
+const parseMac = (v: string | null): number | null => { const n = Number(v); return v && Number.isFinite(n) && n > 0 ? n : null }
+
 const parseSpartanSel = (v: string | null): string[] | 'all' | null =>
   v == null || v === '' ? null : v === '*' ? 'all' : v === '-' ? [] : v.split(',').filter(Boolean)
 
@@ -224,6 +230,10 @@ export default function App() {
   const [xField, setXField] = useState(init.get('x') ?? DEFAULT_X)
   const [yField, setYField] = useState(init.get('y') ?? DEFAULT_Y)
   const [field, setField] = useState(init.get('f') ?? DEFAULT_FIELD)
+  // the reader's view of the measurements (lib/viewFields): own ratios, a MAC for HIPS BC, mass per filter
+  const [ratios, setRatios] = useState<RatioDef[]>(() => parseRatios(init.get('ratios')))
+  const [mac, setMac] = useState<number | null>(() => parseMac(init.get('mac')))
+  const [basis, setBasis] = useState<Basis>(init.get('basis') === 'mass' ? 'mass' : 'conc')
   const [estimators, setEstimators] = useState<Estimator[]>(() => parseEstimators(init.get('fits')))
   const [showCI, setShowCI] = useState(init.get('ci') === '1')
   const [pinnedId, setPinnedId] = useState<string | null>(init.get('pin'))
@@ -294,13 +304,16 @@ export default function App() {
       x: xField !== DEFAULT_X ? xField : null,
       y: yField !== DEFAULT_Y ? yField : null,
       f: field !== DEFAULT_FIELD ? field : null,
+      ratios: ratiosParam(ratios),
+      mac: mac !== null ? String(mac) : null,
+      basis: basis === 'mass' ? 'mass' : null,
       pin: pinnedId,
       eq: axes.identity ? null : '0',
       ax: axes.mode !== DEFAULT_AXES.mode ? axes.mode : null,
       log: axes.log ? '1' : null,
       pax: axes.panels === 'Own' ? 'own' : null,
     })
-  }, [tab, meeting, estimators, showCI, convention, calVariants, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, keepIds, ftirBaseline, customSeasons, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, pinnedId, axes])
+  }, [tab, meeting, estimators, showCI, convention, calVariants, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, keepIds, ftirBaseline, customSeasons, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, ratios, mac, basis, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -333,6 +346,9 @@ export default function App() {
       setXField(p.get('x') ?? DEFAULT_X)
       setYField(p.get('y') ?? DEFAULT_Y)
       setField(p.get('f') ?? DEFAULT_FIELD)
+      setRatios(parseRatios(p.get('ratios')))
+      setMac(parseMac(p.get('mac')))
+      setBasis(p.get('basis') === 'mass' ? 'mass' : 'conc')
       setPinnedId(p.get('pin'))
       setAxes({
         identity: p.get('eq') !== '0',
@@ -390,18 +406,28 @@ export default function App() {
   }, [net, data, focusRows, netData.data, improveSites, spartanSel, includeExcluded])
   // the ChemSpec restatements of the FTIR carbon are never offered; a link naming one falls back
   const activeFields = (netView ? netView.fields : data?.meta.fields ?? []).filter((f) => !HIDDEN_DUPLICATES.includes(f))
+  // ratios whose two fields this view has: the presets, then the reader's own (lib/viewFields)
+  const activeKey = activeFields.join('|')
+  const ratioView = useMemo(() => {
+    const has = new Set([...activeFields, ...(weather?.fields ?? [])])
+    const fits = (d: RatioDef) => has.has(d.num) && has.has(d.den)
+    const presets = RATIO_PRESETS.filter(fits)
+    const own = ratios.filter((d) => fits(d) && !presets.some((x) => ratioKey(x) === ratioKey(d)))
+    return { presets, all: [...presets, ...own] }
+  }, [activeKey, weather, ratios]) // eslint-disable-line react-hooks/exhaustive-deps
+  const ratioFields = useMemo(() => ratioView.all.map(ratioKey), [ratioView])
 
   // Fields that vanished from the export, or that the chosen network does not measure,
   // fall back to that network's defaults instead of leaving a chart empty.
   useEffect(() => {
     if (!data || (netView && !netView.fields.length)) return
     // weather fields (lib/weather) load on their own, after this first check, so they are known by name
-    const ok = (f: string) => activeFields.includes(f) || /\((ERA5|station)\)$/.test(f)
+    const ok = (f: string) => activeFields.includes(f) || ratioFields.includes(f) || /\((ERA5|station)\)$/.test(f)
     const d = NETWORK_DEFAULTS[net]
     if (!ok(xField)) setXField(ok(d.x) ? d.x : activeFields[0])
     if (!ok(yField)) setYField(ok(d.y) ? d.y : activeFields[1] ?? activeFields[0])
     if (!ok(field)) setField(ok(d.field) ? d.field : activeFields[0])
-  }, [data, netView, activeFields, net, xField, yField, field])
+  }, [data, netView, activeFields, ratioFields, net, xField, yField, field])
 
   // Three SPARTAN sites (Kanpur, Ilorin, Singapore) have the public HIPS BC but nothing in HIPS
   // batches 1–51. When a newly chosen site would drop out of an axis for that reason, the axis moves
@@ -492,7 +518,7 @@ export default function App() {
   )
 
   // Rows after the exclusion toggle and calendar relabel — the brush draws these.
-  const sourceRows = useMemo(() => {
+  const rawSourceRows = useMemo(() => {
     const rows = netView ? netView.rows : focusRows
     if (!weather) return rows
     // the weather fields ride on every row, so every chart and picker can use them
@@ -501,6 +527,13 @@ export default function App() {
       return w ? { ...r, ...Object.fromEntries(weather.fields.map((f, i) => [f, w[i]])) } : r
     })
   }, [netView, focusRows, weather])
+  // the reader's view (lib/viewFields): MAC, mass per filter, ratios; the drawer keeps the exported values
+  const exportMac = data?.meta.mac_value ?? 10
+  const viewOpts = useMemo(() => ({
+    mac: mac ?? exportMac, exportMac, basis, ratios: ratioView.all,
+    units: { ...(netView ? netView.field_units : data?.meta.field_units ?? {}), ...(weather?.field_units ?? {}), [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3' },
+  }), [mac, exportMac, basis, ratioView, netView, data, weather])
+  const sourceRows = useMemo(() => viewRows(rawSourceRows, viewOpts), [rawSourceRows, viewOpts])
   const sourceById = useMemo(() => new Map(sourceRows.map((r) => [r.id, r])), [sourceRows])
   const baseRows = useMemo(() => {
     if (!data) return []
@@ -511,6 +544,13 @@ export default function App() {
         return s !== r.season ? { ...r, season: s } : r
       })
   }, [data, sourceRows, includeExcluded, seasonForFilter])
+  // how many filters in view carry each ratio, for the pickers' counts and the dialog
+  const inViewRows = useMemo(() => (netView ? baseRows.filter((r) => netView.chosenNames.has(r.site)) : baseRows), [baseRows, netView])
+  const ratioCoverage = useMemo(() => Object.fromEntries(ratioFields.map((f) => [f, inViewRows.filter((r) => typeof r[f] === 'number').length])), [ratioFields, inViewRows])
+  const countRatio = useCallback((d: RatioDef) =>
+    inViewRows.filter((r) => typeof r[d.num] === 'number' && typeof r[d.den] === 'number' && r[d.den] !== 0).length, [inViewRows])
+  const addRatio = useCallback((d: RatioDef) => setRatios((cur) => (cur.some((x) => ratioKey(x) === ratioKey(d)) || RATIO_PRESETS.some((x) => ratioKey(x) === ratioKey(d)) ? cur : [...cur, d])), [])
+  const removeRatio = useCallback((f: string) => setRatios((cur) => cur.filter((x) => ratioKey(x) !== f)), [])
 
   // The season selection, kept only for seasons that exist under the current
   // calendar and sites; a selection that no longer names any season means "all".
@@ -607,10 +647,10 @@ export default function App() {
   }, [knownIds])
   const openRow: FilterRow | null = useMemo(
     () => {
-      const raw = openId && data ? sourceRows.find((r) => r.id === openId) ?? data.filters.rows.find((r) => r.id === openId) : null
+      const raw = openId && data ? rawSourceRows.find((r) => r.id === openId) ?? data.filters.rows.find((r) => r.id === openId) : null
       return raw ? { ...raw, season: seasonForFilter(raw) } : null
     },
-    [openId, data, sourceRows, seasonForFilter]
+    [openId, data, rawSourceRows, seasonForFilter]
   )
 
   if (error) {
@@ -645,6 +685,15 @@ export default function App() {
   }
   // the baseline variants are drawn but never offered in the pickers
   meta.field_units = { ...meta.field_units, [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3' }
+  // the drawer compares a filter with exported reference populations, so it keeps the exported units
+  const drawerMeta = { ...meta }
+  // the reader's view (lib/viewFields): ratios join the pickers; µg/m³ becomes µg/filter in mass mode
+  meta.fields = [...meta.fields, ...ratioFields.filter((f) => !meta.fields.includes(f))]
+  meta.field_groups = [...meta.field_groups.filter((g) => g.label !== RATIO_GROUP), ...(ratioFields.length ? [{ label: RATIO_GROUP, fields: ratioFields }] : [])]
+  meta.field_units = viewUnits({ ...viewOpts, units: meta.field_units })
+  meta.coverage = { ...meta.coverage, ...ratioCoverage }
+  meta.mac_value = viewOpts.mac
+  meta.basis = basis
   const eff = (f: string) => (f === 'EC (FTIR)' && ftirBaseline !== 'none' ? FTIR_VARIANT[ftirBaseline] : f)
   const xEff = eff(xField), yEff = eff(yField), fieldEff = eff(field)
 
@@ -700,6 +749,8 @@ export default function App() {
       })
 
     const state: SubsetState = {
+      basis, mac: viewOpts.mac, exportMac,
+      withVolume: basis === 'mass' ? [inViewRows.filter((r) => typeof r[VOLUME] === 'number').length, inViewRows.length] : undefined,
       convention: activeConvention,
       defaultConvention,
       seasons,
@@ -753,6 +804,8 @@ export default function App() {
       allSitesSelected: hasSpartan(net) ? !!netView && netView.chosen.length - (net === 'both' ? improveSites.length : 0) === netView.nSpartan : !activeSites,
     }
     const actions: SubsetActions = {
+      onBasis: setBasis,
+      onMac: setMac,
       onConvention: (v) => {
         setConvention(v)
         setActiveSeasons(null)
@@ -859,13 +912,15 @@ export default function App() {
     <HighlightProvider pinnedId={pinnedId} setPinned={setPinnedId} openSample={openSample} openRecord={openRecord} onDismiss={dismissSample}>
     {/* hand edits hold on every tab: each chart that draws a filter leaves the excluded ones out */}
     <PageSidebarProvider>
+    {/* "Define a ratio…" in every field picker (components/RatioDialog) */}
+    <RatiosProvider meta={meta} presets={ratioView.presets} custom={ratios} onAdd={addRatio} onRemove={removeRatio} count={countRatio}>
     <FilterEditsProvider enabled dropped={dropIds} kept={keepIds}
       onDrop={dropFilters} onKeep={keepFilters} onRestore={restoreFilters} group={group} onGroup={setGroup}>
       {openRow && (
         <SampleDrawer
           row={openRow}
-          allRows={sourceRows.some((r) => r.id === openRow.id) ? sourceRows : filters.rows}
-          meta={meta}
+          allRows={rawSourceRows.some((r) => r.id === openRow.id) ? rawSourceRows : filters.rows}
+          meta={drawerMeta}
           xField={xField}
           yField={yField}
           focusField={field}
@@ -896,8 +951,8 @@ export default function App() {
             : <MeetingSpecPage key={meeting} spec={SPEC_MEETINGS.find((m) => m.id === meeting) ?? SPEC_MEETINGS[0]} />}
         </>}
         {tab === 'blanks' && <BlanksPage />}
-        {tab === 'baseline' && <BaselineComparisonPage mac={meta.mac_value} demingLambda={data.calibration?.deming_lambda_mac10 ?? 1} />}
-        {tab === 'calibration' && <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />}
+        {tab === 'baseline' && <BaselineComparisonPage mac={exportMac} demingLambda={data.calibration?.deming_lambda_mac10 ?? 1} />}
+        {tab === 'calibration' && <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={drawerMeta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />}
         <AxisFieldsProvider meta={meta} value={axisValues} set={setAxisField}>
         {tab === 'correlation' && (
           <>
@@ -951,6 +1006,7 @@ export default function App() {
           ))}
       </Shell>
     </FilterEditsProvider>
+    </RatiosProvider>
     </PageSidebarProvider>
     </HighlightProvider>
     </PrefsProvider>
@@ -988,6 +1044,7 @@ function HeaderTools() {
         <input type="checkbox" checked={explain} onChange={(e) => setExplain(e.target.checked)} />
         Explain
       </label>}
+      <GlossaryButton />
       <ViewsMenu />
     </span>
   )

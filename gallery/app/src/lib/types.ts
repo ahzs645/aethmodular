@@ -49,6 +49,8 @@ export interface SeasonMeta {
 export interface MetaFile {
   generated: string
   mac_value: number
+  /** the gallery's units view (lib/viewFields): concentration, or mass per filter */
+  basis?: 'conc' | 'mass'
   season_convention: string
   seasons: SeasonMeta[]
   /** every registered Ethiopian calendar, keyed by convention name */

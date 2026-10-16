@@ -17,6 +17,8 @@ import { PMF_SCHEMES, type PmfGroup, type PmfScheme } from '@/lib/pmfGroups'
 import { NETWORKS, hasImprove, hasSpartan, networkOf, type Network } from '@/lib/networks'
 import { SitePicker, type SiteItem } from '@/components/SitePicker'
 import { Combobox } from '@/components/Combobox'
+import { useRatios } from '@/components/RatioDialog'
+import { MAC_CHOICES, type Basis } from '@/lib/viewFields'
 import { SeasonEditor } from '@/components/SeasonEditor'
 
 export interface SubsetCaps {
@@ -97,6 +99,12 @@ export interface SubsetState {
   /** the site pick is the network's default (SPARTAN: the four focus sites) */
   sitesAtDefault?: boolean
   allSitesSelected?: boolean
+  /** the units view (lib/viewFields): concentration or mass per filter, and the MAC for HIPS BC */
+  basis?: Basis
+  mac?: number
+  exportMac?: number
+  /** filters in view with a sampled volume, of all in view (mass per filter needs one) */
+  withVolume?: [number, number]
 }
 
 export interface SubsetActions {
@@ -131,6 +139,8 @@ export interface SubsetActions {
   onUnpin: () => void
   onOpenPinned: () => void
   onReset: () => void
+  onBasis?: (b: Basis) => void
+  onMac?: (mac: number | null) => void
 }
 
 /** The calendar picker's wording lives with the calendars (lib/seasons). */
@@ -320,6 +330,23 @@ export function SubsetBar({
             </Row>
           )}
 
+          {caps.fields !== 'none' && a.onBasis && a.onMac && (
+            <Row label="units">
+              <Segmented value={s.basis === 'mass' ? 'Mass per filter' : 'Concentration'} options={['Concentration', 'Mass per filter'] as any}
+                onChange={(v: string) => a.onBasis!(v === 'Mass per filter' ? 'mass' : 'conc')}
+                title="Concentration: µg/m³ in the air. Mass per filter: µg on the filter (concentration × sampled volume), what FTIR sees. IMPROVE samples about 33 m³ a day, SPARTAN about 7." />
+              <Combobox label="MAC" value={String(s.mac ?? s.exportMac ?? 10)} minWidth={70}
+                title="Mass absorption cross-section (m²/g) turning HIPS absorption into BC: HIPS BC = Fabs / MAC. It multiplies the absorption axis, so it scales a fit's slope; the intercept stays put for OLS and moves only slightly for Deming (fixed error ratio)."
+                options={MAC_CHOICES.map((m) => ({ key: String(m), label: m === s.exportMac ? `${m} (export)` : String(m) }))}
+                onChange={(v) => a.onMac!(Number(v) === s.exportMac ? null : Number(v))} />
+              {s.basis === 'mass' && s.withVolume && <span className="method-note" style={{ display: 'block' }}>
+                {s.withVolume[0].toLocaleString()} of {s.withVolume[1].toLocaleString()} filters in view have a sampled volume; the rest drop out
+              </span>}
+              {explain && <span className="row-note">MAC scales the slope of a fit against HIPS BC; the intercept barely moves (exactly unchanged for OLS)</span>}
+            </Row>
+          )}
+          {caps.fields !== 'none' && <RatioRow explain={explain} />}
+
           {caps.fields !== 'none' && s.showFtirBaseline && a.onFtirBaseline && (
             <Row label="FTIR baseline">
               <Segmented value={({ none: 'None', spline: 'Spline', vibes: 'VIBES' } as const)[s.ftirBaseline ?? 'none'] as any} options={['None', 'Spline', 'VIBES'] as any}
@@ -462,7 +489,6 @@ export function SubsetBar({
             ) : null}
             {caps.note && explain && <span className="row-note">{caps.note}</span>}
             {caps.sites && <span className="method-note">{sitesNote}</span>}
-            <span className="row-tail">MAC = {meta.mac_value}</span>
           </Row>
 
           {s.pinned && (
@@ -559,6 +585,24 @@ function SectionSwitch({ label, on, onChange, offNote, title }: { label: string;
       <button type="button" className="section-switch-label" onClick={() => onChange(!on)} title={title}>{label}</button>
       {!on && <span className="switch-note">{offNote}</span>}
     </div>
+  )
+}
+
+/** the reader's own ratios (lib/viewFields), each removable; presets live in the pickers */
+function RatioRow({ explain }: { explain: boolean }) {
+  const r = useRatios()
+  if (!r) return null
+  return (
+    <Row label="ratios">
+      <span className="ratio-list">
+        {r.custom.map((d) => {
+          const f = `${d.num} / ${d.den}`
+          return <span key={f} className="chip active">{f}<button type="button" className="btn quiet" aria-label={`Remove ${f}`} title="Remove this ratio" onClick={() => r.remove(f)}>✕</button></span>
+        })}
+        <button type="button" className="btn quiet" onClick={() => r.open(() => {})}>+ Define a ratio</button>
+      </span>
+      {explain && <span className="row-note">ratios sit in every field picker under Ratios, with presets (EC / PM2.5 mass, OC / EC …)</span>}
+    </Row>
   )
 }
 

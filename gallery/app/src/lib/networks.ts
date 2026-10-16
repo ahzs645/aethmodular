@@ -25,7 +25,7 @@ export const networkOf = (spartan: boolean, improve: boolean): Network => (spart
 export const NETWORKS: { key: Network; label: string; note: string }[] = [
   { key: 'focus', label: 'Focus sites', note: 'Beijing, Delhi, JPL and Addis Ababa only (kept for links: net=focus)' },
   { key: 'spartan', label: 'SPARTAN', note: 'Starts on the four focus sites (HIPS, FTIR groups, local calendars); add any SPARTAN site, which brings its public PM2.5 chemistry (FTIR-derived EC/OC, ions, elements), HIPS absorption at 27 sites and FTIR functional groups at 24 (2020–Mar 2023)' },
-  { key: 'improve', label: 'IMPROVE', note: 'Every IMPROVE site: TOR EC/OC, HIPS absorption, mass, iron, silicon, soil' },
+  { key: 'improve', label: 'IMPROVE', note: 'Every IMPROVE site: TOR EC/OC and thermal fractions (OP, EC1–3, OC1–4), HIPS absorption, mass, iron, silicon, soil' },
 ]
 export const isNetwork = (v: string | null): v is Network => v === 'focus' || v === 'spartan' || v === 'improve' || v === 'both'
 
@@ -87,6 +87,8 @@ const SPARTAN_GROUPS = [
   { label: 'Trace elements', fields: ['Manganese', 'Chromium', 'Vanadium', 'Nickel', 'Cobalt', 'Arsenic', 'Selenium', 'Cadmium', 'Antimony', 'Tin', 'Barium', 'Cerium', 'Strontium', 'Rubidium', 'Lithium', 'Phosphorus'] },
   // XRF elements that restate an ion or sulfate (S vs SO4, Cl, Ca/K/Na/Mg as elements)
   { label: 'Elements (XRF)', fields: ['Sulfur', 'Chlorine', 'Calcium (element)', 'Potassium (element)', 'Sodium (element)', 'Magnesium (element)'] },
+  // HIPS's measured volume, else hours sampled × 5 L/min (SS5i); what mass per filter multiplies by
+  { label: 'Sampling', fields: ['Sampled volume'] },
 ]
 
 const site = (code: string, name: string, location: string, lat: number | null, lon: number | null, n: number, a: string, b: string): SiteMeta =>
