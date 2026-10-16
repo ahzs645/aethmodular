@@ -1,13 +1,20 @@
-"""Publish the full gallery as a static GitHub Pages site in its own public repo.
+"""Publish the full gallery as a static GitHub Pages site from its own public repo.
 
-Builds gallery/app with relative paths, copies every export in public/data, scrubs
-machine paths and account names from the published copy (the sources are untouched),
-refuses to continue if any remain, and pushes the result to a separate repo that
-holds only the built site. Pages serves that repo's main branch.
+Default (release): nothing is built or copied on this machine. The script packs
+gallery/app/public/data into one scrubbed archive (machine paths and account names removed;
+it refuses if any remain), attaches it to a release of the gallery repo (tag data-<hash>,
+skipped when that exact data is already there), installs the deploy workflow
+(gallery/share/pages-deploy.yml), and starts it: GitHub checks out this repo's gallery/app at
+the pushed commit, unpacks the data, builds and deploys Pages. The gallery source must be
+committed and pushed first, since GitHub builds from GitHub.
+
+--branch (the earlier way, kept as a fallback): build here, copy into a local clone of the
+gallery repo (CLONE) and push the built files; Pages then serves its main branch.
 
 Run from the repo root:
-    python3 gallery/share/publish_pages.py                  # build, check, commit and push
-    python3 gallery/share/publish_pages.py --dry-run        # build and check only
+    python3 gallery/share/publish_pages.py                  # data release + GitHub build and deploy
+    python3 gallery/share/publish_pages.py --dry-run        # pack and check the data only
+    python3 gallery/share/publish_pages.py --branch         # build here and push the built files
 
 Defaults: repo ahzs645/aethmodular-gallery, local clone ../aethmodular-gallery,
 page https://projects.ahmadjalil.com/aethmodular-gallery/ (the account's custom domain;
@@ -18,10 +25,19 @@ and turns on Pages.
 from __future__ import annotations
 
 import argparse
+import base64
+import calendar
+import gzip
+import hashlib
+import io
+import json
 import os
 import re
 import shutil
 import subprocess
+import tarfile
+import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -79,6 +95,142 @@ work in progress on FTIR elemental-carbon calibration for Addis Ababa; numbers t
 """
 
 
+# ---------------------------------------------------------------- release (default)
+WORKFLOW = Path(__file__).with_name("pages-deploy.yml")
+WORKFLOW_PATH = ".github/workflows/deploy.yml"
+DATA_ASSET = "gallery-data.tar.gz"
+DATA = APP / "public/data"
+
+README_RELEASE = """# Aethmodular graph gallery
+
+GitHub Pages site for the interactive gallery in [ahzs645/aethmodular](https://github.com/ahzs645/aethmodular)
+(`gallery/`). **Live page:** https://projects.ahmadjalil.com/aethmodular-gallery/
+
+Published with `gallery/share/publish_pages.py`: the data (`gallery/app/public/data`, machine paths
+scrubbed) is a release of this repo (`data-<hash>`, asset `gallery-data.tar.gz`), and
+`.github/workflows/deploy.yml` builds the site from the source repo at a pushed commit and deploys it.
+The files on `main` from before October 2026 are an earlier static build, kept as a fallback
+(`publish_pages.py --branch`); Pages no longer serves them.
+
+## Data
+
+Filter chemistry and FTIR/HIPS work on SPARTAN sites and the IMPROVE network. Several tabs (Meeting,
+Calibration, Baselines, Spectral similarity, Blanks) show work in progress on FTIR elemental-carbon
+calibration for Addis Ababa; numbers there are preliminary.
+
+- IMPROVE data: please cite Malm et al. (1994), J. Geophys. Res. 99, 1347-1370, and see the IMPROVE
+  data advisories (http://vista.cira.colostate.edu/IMPROVE/Data/QA_QC/Advisory.htm).
+- SPARTAN data: see https://www.spartan-network.org for data use and citation.
+"""
+
+
+def run(*cmd, cwd=None, check=True) -> subprocess.CompletedProcess:
+    return subprocess.run(cmd, cwd=cwd or ROOT, capture_output=True, text=True, check=check)
+
+
+def pack_data(dest: Path) -> tuple[str, int, int]:
+    """public/data as a deterministic, scrubbed tar.gz (same data, same bytes); sha256, files, scrubbed."""
+    files = sorted(p for p in DATA.rglob("*") if p.is_file() and p.name != ".DS_Store")
+    left, scrubbed = [], 0
+    with dest.open("wb") as raw, gzip.GzipFile(fileobj=raw, mode="wb", mtime=0, compresslevel=6) as gz, \
+            tarfile.open(fileobj=gz, mode="w", format=tarfile.PAX_FORMAT) as tar:
+        for path in files:
+            rel = path.relative_to(DATA).as_posix()
+            body = path.read_bytes()
+            if path.suffix in TEXT:
+                text = body.decode("utf-8", errors="surrogateescape")
+                new = text
+                for pattern, repl in SCRUB:
+                    new = pattern.sub(repl, new)
+                if new != text:
+                    scrubbed += 1
+                    body = new.encode("utf-8", errors="surrogateescape")
+                if FORBIDDEN.search(new):
+                    left.append(rel)
+            info = tarfile.TarInfo(rel)
+            info.size, info.mtime, info.mode = len(body), 0, 0o644
+            tar.addfile(info, io.BytesIO(body))
+    if left:
+        raise SystemExit(f"refusing to publish: machine paths or account names remain in {left}")
+    return hashlib.sha256(dest.read_bytes()).hexdigest(), len(files), scrubbed
+
+
+def put_file(path: str, content: str, message: str) -> bool:
+    """Create or update one file on the gallery repo's main branch; True when it changed."""
+    cur = run("gh", "api", f"repos/{REPO}/contents/{path}", check=False)
+    sha = None
+    if cur.returncode == 0:
+        meta = json.loads(cur.stdout)
+        if base64.b64decode(meta["content"]).decode() == content:
+            return False
+        sha = meta["sha"]
+    args = ["gh", "api", "-X", "PUT", f"repos/{REPO}/contents/{path}", "-f", f"message={message}",
+            "-f", f"content={base64.b64encode(content.encode()).decode()}", "-f", "branch=main"]
+    run(*args, *(["-f", f"sha={sha}"] if sha else []))
+    return True
+
+
+def publish_release(dry_run: bool) -> None:
+    run("git", "fetch", "-q", "origin", "main")
+    sha = run("git", "rev-parse", "HEAD").stdout.strip()
+    # GitHub builds the committed source, so what is drawn must be what is pushed
+    dirty = run("git", "status", "--porcelain", "--", "gallery/app", ":!gallery/app/public/data").stdout.strip()
+    if dirty:
+        raise SystemExit(f"commit the gallery source first (GitHub builds the pushed commit):\n{dirty}")
+    if run("git", "merge-base", "--is-ancestor", "HEAD", "origin/main", check=False).returncode != 0:
+        raise SystemExit(f"push first: {sha[:7]} is not on origin/main, and GitHub builds from GitHub")
+    with tempfile.TemporaryDirectory() as tmp:
+        archive = Path(tmp) / DATA_ASSET
+        digest, n, scrubbed = pack_data(archive)
+        tag = f"data-{digest[:12]}"
+        size = archive.stat().st_size
+        print(f"data: {n} files, {scrubbed} scrubbed, {size / 1e6:.0f} MB packed, {tag}")
+        if dry_run:
+            return
+        if run("gh", "release", "view", tag, "--repo", REPO, check=False).returncode == 0:
+            print(f"{tag} is already a release: the data is unchanged, nothing uploaded")
+        else:
+            run("gh", "release", "create", tag, str(archive), "--repo", REPO, "--target", "main",
+                "--title", f"Gallery data {digest[:12]}",
+                "--notes", f"gallery/app/public/data from ahzs645/aethmodular {sha[:7]}, machine paths scrubbed. "
+                           f"sha256 {digest}. Deployed by {WORKFLOW_PATH}.")
+            print(f"uploaded {DATA_ASSET} to release {tag}")
+    if put_file(WORKFLOW_PATH, WORKFLOW.read_text(), "Deploy workflow from aethmodular gallery/share/pages-deploy.yml"):
+        print(f"installed {WORKFLOW_PATH}")
+        time.sleep(5)  # let GitHub register the workflow before it is started
+    put_file("README.md", README_RELEASE, "README: published by the deploy workflow")
+    pages = json.loads(run("gh", "api", f"repos/{REPO}/pages").stdout)
+    switched = pages.get("build_type") != "workflow"
+    if switched:
+        run("gh", "api", "-X", "PUT", f"repos/{REPO}/pages", "-f", "build_type=workflow")
+        print("Pages now deploys from the workflow (was: the main branch)")
+    started = time.time()
+    run("gh", "workflow", "run", "deploy.yml", "--repo", REPO, "--ref", "main", "-f", f"source_sha={sha}", "-f", f"data_tag={tag}")
+    run_id = None
+    for _ in range(30):  # the dispatched run appears after a moment
+        time.sleep(3)
+        runs = json.loads(run("gh", "run", "list", "--repo", REPO, "--workflow", "deploy.yml", "--limit", "5",
+                              "--json", "databaseId,createdAt,event").stdout)
+        fresh = [r for r in runs if r["event"] == "workflow_dispatch"
+                 and calendar.timegm(time.strptime(r["createdAt"], "%Y-%m-%dT%H:%M:%SZ")) >= started - 60]
+        if fresh:
+            run_id = fresh[0]["databaseId"]
+            break
+    if run_id is None:
+        raise SystemExit(f"started the deploy but could not find its run: see https://github.com/{REPO}/actions")
+    print(f"building on GitHub: https://github.com/{REPO}/actions/runs/{run_id}")
+    ok = subprocess.run(["gh", "run", "watch", str(run_id), "--repo", REPO, "--exit-status", "--interval", "10"],
+                        stdout=subprocess.DEVNULL).returncode == 0
+    if not ok:
+        if switched:  # leave the site as it was: back to serving the branch
+            run("gh", "api", "-X", "PUT", f"repos/{REPO}/pages", "-f", "build_type=legacy", "-f", "source[branch]=main", "-f", "source[path]=/")
+            print("deploy failed: Pages is back on the main branch")
+        raise SystemExit(f"deploy failed: https://github.com/{REPO}/actions/runs/{run_id}")
+    url = run("gh", "api", f"repos/{REPO}/pages", "-q", ".html_url").stdout.strip()
+    print(f"deployed {sha[:7]} with {tag}: {url}")
+
+
+# ---------------------------------------------------------------- branch (fallback)
 def build():
     subprocess.run(["npx", "vite", "build", "--base", "./", "--outDir", str(BUILD), "--emptyOutDir"],
                    cwd=APP, env={**{k: v for k, v in os.environ.items() if k != "VITE_SHARE_TABS"}, "VITE_HIDE_EXPLAIN": "1"}, check=True)
@@ -139,8 +291,12 @@ def publish():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--dry-run", action="store_true", help="build and check, do not commit or push")
+    ap.add_argument("--dry-run", action="store_true", help="pack (or with --branch, build) and check; do not upload or push")
+    ap.add_argument("--branch", action="store_true", help="the earlier way: build here and push the built files to the gallery repo")
     args = ap.parse_args()
+    if not args.branch:
+        publish_release(args.dry_run)
+        return
     build()
     if not args.dry_run:
         publish()

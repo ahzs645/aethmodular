@@ -1,0 +1,78 @@
+# Deploys the gallery to GitHub Pages. Installed into ahzs645/aethmodular-gallery as
+# .github/workflows/deploy.yml by gallery/share/publish_pages.py (edit it here, not there).
+#
+# The site is built from the public source repo at a pushed commit, with the data from a
+# release of this repo (gallery-data.tar.gz: gallery/app/public/data, machine paths scrubbed
+# before upload). Nothing built is committed anywhere.
+name: Deploy gallery
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: ahzs645/aethmodular commit to build
+        required: true
+      data_tag:
+        description: release of this repo holding gallery-data.tar.gz
+        required: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ahzs645/aethmodular
+          ref: ${{ inputs.source_sha }}
+          sparse-checkout: gallery/app
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: gallery/app/package-lock.json
+      - name: Install
+        working-directory: gallery/app
+        run: npm ci --no-audit --no-fund
+      - name: Data snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "${{ inputs.data_tag }}" --repo "${{ github.repository }}" --pattern gallery-data.tar.gz --dir "$RUNNER_TEMP"
+          rm -rf gallery/app/public/data && mkdir -p gallery/app/public/data
+          tar -xzf "$RUNNER_TEMP/gallery-data.tar.gz" -C gallery/app/public/data
+          du -sh gallery/app/public/data
+      - name: Build
+        working-directory: gallery/app
+        env:
+          VITE_HIDE_EXPLAIN: '1'
+        run: npx vite build --base ./ --outDir "$RUNNER_TEMP/site" --emptyOutDir
+      - name: Check
+        run: |
+          touch "$RUNNER_TEMP/site/.nojekyll"
+          if grep -rIlE '/Users/|GoogleDrive-|gh[op]_[A-Za-z0-9]{20,}' "$RUNNER_TEMP/site"; then
+            echo "::error::machine paths or tokens in the build"; exit 1
+          fi
+          du -sh "$RUNNER_TEMP/site"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
