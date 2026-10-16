@@ -2,6 +2,7 @@ import { Combobox } from '@/components/Combobox'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useSearchParam } from '@/lib/url'
 import { useHeaderHeight } from '@/hooks/useSidePanel'
+import { useHeaderNav } from '@/lib/headerNav'
 
 interface Entry { id: string; label: string }
 
@@ -10,12 +11,15 @@ interface Entry { id: string; label: string }
  * titles (`section.panel h2`) out of its own content after render, so a new
  * ChartFrame appears here without being registered anywhere. Wide screens get
  * a side column that marks the section in view; narrow ones a sticky jump menu.
+ * Hidden by default; its Show / Hide button is in the header beside Views (lib/headerNav).
  */
 export function PageToc({ children }: { children: ReactNode }) {
   const mainRef = useRef<HTMLDivElement>(null)
   const jumpRef = useRef<HTMLDivElement>(null)
-  const [navigation, setNavigation] = useSearchParam<'shown' | 'hidden'>('toc', 'shown', ['shown', 'hidden'])
-  const showNavigation = navigation === 'shown'
+  // the header owns the shown / hidden state (lib/headerNav); a PageToc outside the app keeps its own
+  const header = useHeaderNav()
+  const [own, setOwn] = useSearchParam<'shown' | 'hidden'>(header ? 'toc-local' : 'toc', 'hidden', ['shown', 'hidden'])
+  const showNavigation = header ? header.tocShown : own === 'shown'
   const [entries, setEntries] = useState<Entry[]>([])
   const [active, setActive] = useState<string | null>(null)
   // sit just below the sticky app header, whatever height its tab row wraps to
@@ -42,6 +46,14 @@ export function PageToc({ children }: { children: ReactNode }) {
     return () => mo.disconnect()
   }, [])
 
+  // tell the header there is a contents list to show or hide
+  const present = entries.length > 1
+  useEffect(() => {
+    if (!header) return
+    header.setTocPresent(present)
+    return () => header.setTocPresent(false)
+  }, [present]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // the active entry is the last section whose top has passed under the header
   useEffect(() => {
     const onScroll = () => {
@@ -67,16 +79,16 @@ export function PageToc({ children }: { children: ReactNode }) {
   return (
     <div className={`toc-layout${entries.length > 1 && showNavigation ? ' has-toc' : ''}`}>
       <div ref={mainRef} style={{ minWidth: 0 }}>
-        {entries.length > 1 && (
+        {entries.length > 1 && (showNavigation || !header) && (
           <div ref={jumpRef} className="toc-controls" style={{ top }}>
             {showNavigation && <span className="toc-select">
               <Combobox label="Jump to" value={active ?? entries[0].id} options={entries.map((e) => ({ key: e.id, label: e.label }))} onChange={go} />
             </span>}
-            <button type="button" className="btn quiet" aria-expanded={showNavigation}
+            {!header && <button type="button" className="btn quiet" aria-expanded={showNavigation}
               title={showNavigation ? 'Hide section navigation and give charts the full width' : 'Show section navigation'}
-              onClick={() => setNavigation(showNavigation ? 'hidden' : 'shown')}>
+              onClick={() => setOwn(showNavigation ? 'hidden' : 'shown')}>
               {showNavigation ? 'Hide sidebar' : 'Show sidebar'}
-            </button>
+            </button>}
           </div>
         )}
         {children}

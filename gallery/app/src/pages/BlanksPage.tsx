@@ -7,6 +7,7 @@ import * as d3 from 'd3'
 import { ChartFrame, ExplainOnly, Note, Segmented, Select } from '@/components/ChartFrame'
 import { PageToc } from '@/components/PageToc'
 import { XAxis, YAxis } from '@/components/Axes'
+import { AxisChoices } from '@/components/AxisChoices'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -269,16 +270,16 @@ function PcaMap({ d }: { d: BlanksData }) {
       title="PCA map of every blank — which blanks look alike"
       subtitle={`One PCA of all ${n} raw blank spectra (4000–500 cm⁻¹, mean-centred). ${px} carries ${pct(d.shared_pca.var[ix])} of the variance, ${py} ${pct(d.shared_pca.var[iy])}. Click a blank to see how it differs from the average blank. The ringed point is the outlier blank that sets the big banks' rank.`}
       controls={<>
-        {/* x and y never show the same component: picking the other axis's swaps them */}
-        <Segmented label="x" value={px} options={pcs} onChange={(v) => { if (v === py) setPy(px); setPx(v) }} />
-        <Segmented label="y" value={py} options={pcs} onChange={(v) => { if (v === px) setPx(py); setPy(v) }} />
         <Select label="Colour" value={colorBy} options={[...PCA_COLOR]} onChange={setColorBy} />
       </>}>
+      {/* the components behind the axis titles, the gallery's shared axis picker (components/AxisChoices) */}
+      <AxisChoices noun="components" x={[px, setPx]} y={[py, setPy]}
+        options={pcs.map((pc, i) => ({ key: pc, group: 'Principal components', hint: pct(d.shared_pca.var[i]) }))}>
       <div ref={ref} style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 16 }}>
         <svg width={side + m.left + m.right} height={side + m.top + m.bottom} fontFamily={FONT.family}>
           <g transform={`translate(${m.left},${m.top})`}>
-            <YAxis scale={y} x={0} label={`${py} score`} tickCount={6} gridWidth={side} labelX={-46} />
-            <XAxis scale={x} y={side} label={`${px} score`} tickCount={6} labelDy={36} />
+            <YAxis scale={y} x={0} label={`${py} score`} tickCount={6} gridWidth={side} labelX={-46} pick="y" />
+            <XAxis scale={x} y={side} label={`${px} score`} tickCount={6} labelDy={36} pick="x" />
             {d3.range(n).map((i) => {
               const id = inv(d, 'sample_id')[i] as string
               return <circle key={id} cx={x(sx[i])} cy={y(sy[i])} r={id === worst ? 6 : 3.4} fill={color(i)} fillOpacity={0.85}
@@ -299,6 +300,7 @@ function PcaMap({ d }: { d: BlanksData }) {
         </div>
         {tip.node}
       </div>
+      </AxisChoices>
       <Legend items={legendItems} />
     </ChartFrame>
   )

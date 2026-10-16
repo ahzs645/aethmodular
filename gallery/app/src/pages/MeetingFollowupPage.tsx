@@ -3,7 +3,7 @@ import { robustDomain } from '@/lib/axes'
 import { RefLine } from '@/components/RefLines'
 import { regression } from '@/lib/stats'
 import { EstimatorViews, FIT_STYLE, useEstimator, useRegressions, fitsFor } from '@/lib/regressionPrefs'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, ExplainOnly, Note, Select, Segmented, Toggle } from '@/components/ChartFrame'
 import { BaselineOptionsProvider, BaselinePicker, SeasonPicker, useBaselineOptions } from '@/components/Pickers'
@@ -36,6 +36,8 @@ import { ColorLegend } from '@/components/ColorLegend'
 import { CV_PROTOCOL_SHORT, PREPROCESSING, baselineName, ecAxis } from '@/lib/labels'
 import { Traces, loadTraces } from '@/lib/similarity'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
+import { withUnit } from '@/lib/theme'
 
 /**
  * Click-through for the 2026-09-17 Ann/Satoshi meeting follow-up. Every number
@@ -87,7 +89,11 @@ function ModelSeg({label, value, options, onChange}: {label:string; value:string
 const MAC_LABEL = ecAxis('hips')
 
 
-export function MeetingFollowupPage({ galleryRows = [], galleryMeta }: { galleryRows?: FilterRow[]; galleryMeta?: MetaFile } = {}) {
+export function MeetingFollowupPage({ galleryRows = [], galleryMeta, viewRows = [], viewMeta }: {
+  galleryRows?: FilterRow[]; galleryMeta?: MetaFile
+  /** the gallery's rows and meta under the reader's view (ratios, MAC, mass per filter, weather): the season plots' other axes */
+  viewRows?: FilterRow[]; viewMeta?: MetaFile
+} = {}) {
   const [archiveMode, setArchiveMode] = useSearchParam<string>('marchive', 'hide', ['hide', 'show'])
   const [version, setVersion] = useSearchParam<string>('mversion', 'current', import.meta.env.VITE_SHARE_TABS ? ['current'] : ['current', 'earlier'])
   const showArchived = version === 'earlier' && archiveMode === 'show'
@@ -95,7 +101,7 @@ export function MeetingFollowupPage({ galleryRows = [], galleryMeta }: { gallery
     (d) => d.schema_version !== 1 || (version === 'current' && d.summary.background_rank !== 70) ? 'unsupported data version' : null)
   if (!data) return <ExportState title="Meeting follow-up" what="the meeting follow-up export" error={error} command="uv run --no-sync python gallery/data/export_meeting_followup.py" />
   const methods: string[] = (data.summary.methods ?? ['AIRSpec', 'VIBES']).filter((m: string) => showArchived || m !== 'VIBES')
-  return <BaselineOptionsProvider methods={methods}><MeetingView key={version + String(showArchived)} data={data} galleryRows={galleryRows} galleryMeta={galleryMeta}
+  return <BaselineOptionsProvider methods={methods}><MeetingView key={version + String(showArchived)} data={data} galleryRows={galleryRows} galleryMeta={galleryMeta} viewRows={viewRows} viewMeta={viewMeta}
     version={version} onVersion={setVersion} showArchived={showArchived} onShowArchived={v => setArchiveMode(v ? 'show' : 'hide')} /></BaselineOptionsProvider>
 }
 
@@ -121,10 +127,12 @@ function statRow(stats: Row[], q: Row): Row | undefined {
 type Pt = CrossPoint
 
 // ------------------------------------------------------------------ page
-function MeetingView({ data, galleryRows, galleryMeta, version, onVersion, showArchived, onShowArchived }: {
-  data: MeetingData; galleryRows: FilterRow[]; galleryMeta?: MetaFile; version: string; onVersion: (v: string) => void; showArchived: boolean; onShowArchived: (v: boolean) => void
+function MeetingView({ data, galleryRows, galleryMeta, viewRows, viewMeta, version, onVersion, showArchived, onShowArchived }: {
+  data: MeetingData; galleryRows: FilterRow[]; galleryMeta?: MetaFile; viewRows: FilterRow[]; viewMeta?: MetaFile
+  version: string; onVersion: (v: string) => void; showArchived: boolean; onShowArchived: (v: boolean) => void
 }) {
   const hl = useHighlight()
+  const seasonAxes = useSeasonAxes(viewRows, viewMeta)
   const baselines = useBaselineOptions()
   // a clicked filter stays pinned on every chart until empty plot space is clicked or Esc
   useEffect(() => {
@@ -133,6 +141,8 @@ function MeetingView({ data, galleryRows, galleryMeta, version, onVersion, showA
     return () => window.removeEventListener('keydown', onKey)
   }, [hl])
   return (
+    <SeasonAxesCtx.Provider value={seasonAxes.value}>
+    <AxisChoices noun="measurements" options={seasonAxes.options} x={seasonAxes.x} y={seasonAxes.y}>
     <PageToc>
       <ExplainOnly><FullRangeVibesStatus /></ExplainOnly>
       {/* share builds ship only the current rank-70 export (gallery/share/build_share.py) */}
@@ -179,7 +189,41 @@ function MeetingView({ data, galleryRows, galleryMeta, version, onVersion, showA
       </PageChoices>
       <ExplainOnly><NextSteps data={data} /></ExplainOnly>
     </PageToc>
+    </AxisChoices>
+    </SeasonAxesCtx.Provider>
   )
+}
+
+// ------------------------------------------------------------------ the season crossplots' axes
+/**
+ * One x and one y for every season crossplot on the page (Starting point, Addis by season,
+ * Seasons stitched), behind their axis titles (components/AxisChoices). By default the
+ * calibration's FTIR EC against HIPS Fabs / MAC; any gallery measurement, ratio or weather field
+ * of the same Addis filter can take either axis. The gallery's MAC and mass-per-filter choices
+ * apply (Filters → units).
+ */
+const PRED = 'FTIR EC, this calibration'
+const RESID = 'FTIR EC − HIPS BC'
+const HIPS = 'HIPS BC'
+const EC_LIKE = new Set([PRED, HIPS, 'EC (FTIR)', 'BC (public HIPS)'])
+interface SeasonAxes { x: string; y: string; byId: Map<string, FilterRow>; meta?: MetaFile; mac: number; mass: boolean }
+const SeasonAxesCtx = createContext<SeasonAxes | null>(null)
+
+function useSeasonAxes(rows: FilterRow[], meta?: MetaFile) {
+  const byId = useMemo(() => new Map(rows.filter((r) => r.code === 'ETAD').map((r) => [r.id, r])), [rows])
+  const mass = meta?.basis === 'mass', mac = meta?.mac_value ?? 10
+  const unit = mass ? 'µg/filter' : 'µg/m³'
+  const options = useMemo<AxisOption[]>(() => [
+    { key: PRED, group: 'This calibration', unit }, { key: RESID, group: 'This calibration', unit }, { key: HIPS, group: 'HIPS', unit },
+    ...(meta?.field_groups ?? []).flatMap((g) => g.fields
+      .filter((f) => f !== HIPS && meta!.fields.includes(f) && [...byId.values()].some((r) => typeof r[f] === 'number'))
+      .map((f) => ({ key: f, group: g.label, unit: meta!.field_units?.[f] }))),
+  ], [meta, byId, unit])
+  const keys = options.map((o) => o.key)
+  const x = useSearchParam<string>('mcx', HIPS, keys)
+  const y = useSearchParam<string>('mcy', PRED, keys)
+  const value = useMemo(() => ({ x: x[0], y: y[0], byId, meta, mac, mass }), [x, y, byId, meta, mac, mass])
+  return { options, x, y, value }
 }
 
 // ------------------------------------------------------------------ 1. answers
@@ -348,13 +392,17 @@ function usePoolPoints(data: MeetingData) {
   }
 }
 
+/** an Addis test-set point, with the values the season axes can be built from */
+type AddisPt = Pt & { fabs10: number; pred: number; vol: number }
+
 function useAddisPoints(data: MeetingData) {
   const idx = useIndex(data.addis, ['fit_id'])
   return (fitId: string, season: string | 'all', color?: (s: string) => string, perFilter = false) => {
     const a = data.addis
     const k = (i: number) => (perFilter ? (a.vol?.[i] as number | null) ?? NaN : 1)
-    return (idx.get(fitId) ?? []).filter((i) => typeof a.fabs10[i] === 'number' && Number.isFinite(a.fabs10[i]) && typeof a.ftir_ec_ugm3[i] === 'number' && Number.isFinite(a.ftir_ec_ugm3[i]) && inSeasonGroup(String(a.season[i]), season)).map((i): Pt => ({
+    return (idx.get(fitId) ?? []).filter((i) => typeof a.fabs10[i] === 'number' && Number.isFinite(a.fabs10[i]) && typeof a.ftir_ec_ugm3[i] === 'number' && Number.isFinite(a.ftir_ec_ugm3[i]) && inSeasonGroup(String(a.season[i]), season)).map((i): AddisPt => ({
       x: (a.fabs10[i] as number) * k(i), y: (a.ftir_ec_ugm3[i] as number) * k(i),
+      fabs10: a.fabs10[i] as number, pred: a.ftir_ec_ugm3[i] as number, vol: (a.vol?.[i] as number | null) ?? NaN,
       color: color ? color(String(a.season[i])) : data.season_colors[String(a.season[i])] ?? INK.axis,
       tip: [`${a.ExternalFilterId?.[i] ?? 'Addis'} · ${String(a.date[i]).slice(0, 10)}`, String(a.season[i]), `Fabs/10 ${f2(a.fabs10[i])} · FTIR ${f2(a.ftir_ec_ugm3[i])}`],
       id: String(a.ExternalFilterId?.[i] ?? `ETAD media ${a.MediaId[i]}`),
@@ -798,23 +846,54 @@ function OpStep({ data }: { data: MeetingData }) {
 function SeasonCrossplot({ data, fitId, title }: { data: MeetingData; fitId: string; title: string }) {
   const { methods } = useRegressions()
   const addisPts = useAddisPoints(data)
-  const lines = data.seasons.flatMap((g) => {
-    const s = statRow(data.stats, { fit_id: fitId, population: 'addis', eval_group: g })
-    const points = addisPts(fitId, g)
-    const st = regression(points.map(p => p.x), points.map(p => p.y), { errorsInVariables: true, lambda: s?.deming_lambda ?? data.summary.lambda, bootstrapGroups: monthBlocks(points.map(p => p.rec ?? {})) })
-    return fitsFor(st, methods).map(fit => ({ ...fit, stats: st, color: data.season_colors[g], label: `${g} · ${fit.label}` }))
+  // the page's season axes (useSeasonAxes); the saved fits describe only the default axes at MAC 10
+  const ax = useContext(SeasonAxesCtx)
+  const custom = !!ax && (ax.x !== HIPS || ax.y !== PRED || ax.mac !== 10 || ax.mass)
+  const valueOf = (k: string, p: AddisPt) => {
+    if (!ax) return k === HIPS ? p.fabs10 : p.pred
+    const per = ax.mass ? p.vol : 1, bc = (p.fabs10 * 10) / ax.mac
+    if (k === HIPS) return bc * per
+    if (k === PRED) return p.pred * per
+    if (k === RESID) return (p.pred - bc) * per
+    const v = ax.byId.get(baseFilterId(p.id ?? ''))?.[k]
+    return typeof v === 'number' ? v : NaN
+  }
+  const pts = (season: string) => (addisPts(fitId, season) as AddisPt[]).flatMap((p) => {
+    if (!custom) return [p]
+    const x = valueOf(ax!.x, p), y = valueOf(ax!.y, p)
+    return Number.isFinite(x) && Number.isFinite(y) ? [{ ...p, x, y }] : []
   })
   const all = statRow(data.stats, { fit_id: fitId, population: 'addis', eval_group: ALL_ADDIS })
+  // the saved error ratio belongs to FTIR EC vs Fabs / MAC 10; other axes are fitted with λ = 1
+  const lambdaOf = (s?: Row) => (custom ? 1 : s?.deming_lambda ?? data.summary.lambda)
+  const seasonFits = data.seasons.map((g) => {
+    const s = statRow(data.stats, { fit_id: fitId, population: 'addis', eval_group: g })
+    const points = pts(g)
+    const st = regression(points.map(p => p.x), points.map(p => p.y), { errorsInVariables: true, lambda: lambdaOf(s), bootstrapGroups: monthBlocks(points.map(p => p.rec ?? {})) })
+    return { g, saved: s, st }
+  })
+  const unit = ax?.mass ? 'µg/filter' : 'µg/m³'
+  const sameScale = !ax || (EC_LIKE.has(ax.x) && EC_LIKE.has(ax.y))
+  // Deming needs comparable axes; between different quantities (iron vs a residual) the lines are OLS
+  const lineMethods = sameScale ? methods : ['ols' as const]
+  const lines = seasonFits.flatMap(({ g, st }) => fitsFor(st, lineMethods).map(fit => ({ ...fit, stats: st, color: data.season_colors[g], label: `${g} · ${fit.label}` })))
+  const labelOf = (k: string) => k === HIPS ? `HIPS Fabs / MAC ${ax?.mac ?? 10} (${unit})` : k === PRED ? `FTIR EC (${unit})`
+    : k === RESID ? `FTIR EC − Fabs / MAC ${ax?.mac ?? 10} (${unit})` : withUnit(k, ax?.meta?.field_units ?? {})
   return (
     <div>
-      <Crossplot title={title} points={addisPts(fitId, 'all')} errorRatio={all?.deming_lambda ?? data.summary.lambda} extraLines={lines} xLabel={MAC_LABEL} yLabel="FTIR EC (µg/m³)" maxSide={480} />
+      {/* unlike axes: the season OLS lines only (a pooled Deming refit would need comparable axes) */}
+      <Crossplot title={title} points={pts('all')} errorRatio={lambdaOf(all)} extraLines={lines} pick={!!ax} sameScale={sameScale} grouping={sameScale ? undefined : 'none'}
+        xLabel={custom ? labelOf(ax!.x) : MAC_LABEL} yLabel={custom ? labelOf(ax!.y) : 'FTIR EC (µg/m³)'} maxSide={480} />
       <Key items={[
-        ...data.seasons.map((g) => {
-          const s = statRow(data.stats, { fit_id: fitId, population: 'addis', eval_group: g })
-          return { label: `${g}: ${s ? `${coef(s.deming_slope)}x ${coefSigned(s.deming_intercept)}` : '—'}`, color: data.season_colors[g] }
+        ...seasonFits.map(({ g, saved, st }) => {
+          const sl = !custom ? saved?.deming_slope : sameScale ? st?.demingSlope : st?.slope
+          const ic = !custom ? saved?.deming_intercept : sameScale ? st?.demingIntercept : st?.intercept
+          return { label: `${g}: ${sameScale ? '' : 'OLS '}${sl != null && Number.isFinite(sl) ? `${coef(sl)}x ${coefSigned(ic)}` : '—'}`, color: data.season_colors[g] }
         }),
-        { label: `${FIT_STYLE[methods[0] ?? 'deming'].label} fit, all Addis`, color: FIT_STYLE[methods[0] ?? 'deming'].color, kind: FIT_STYLE[methods[0] ?? 'deming'].dash ? 'dash' : 'line' },
-        { label: '1:1', color: INK.identity, kind: 'dash' },
+        ...(sameScale ? [
+          { label: `${FIT_STYLE[methods[0] ?? 'deming'].label} fit, all Addis`, color: FIT_STYLE[methods[0] ?? 'deming'].color, kind: (FIT_STYLE[methods[0] ?? 'deming'].dash ? 'dash' : 'line') as 'dash' | 'line' },
+          { label: '1:1', color: INK.identity, kind: 'dash' as const },
+        ] : []),
       ]} />
     </div>
   )

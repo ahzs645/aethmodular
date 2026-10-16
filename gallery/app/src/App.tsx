@@ -59,6 +59,8 @@ import { PageSidebarProvider, PageSidebarSlot } from '@/lib/pageSidebar'
 import { RATIO_GROUP, RATIO_PRESETS, VOLUME, parseRatios, ratioKey, ratiosParam, viewRows, viewUnits, type Basis, type RatioDef } from '@/lib/viewFields'
 import { RatiosProvider } from '@/components/RatioDialog'
 import { GlossaryButton } from '@/components/Glossary'
+import { CommandPaletteButton } from '@/components/CommandPalette'
+import { HeaderNavProvider, useHeaderNav } from '@/lib/headerNav'
 import { WEATHER_GROUP, type WeatherFile } from '@/lib/weather'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 
@@ -99,6 +101,8 @@ const MEETINGS: { key: string; label: string }[] = [
   ...SPEC_MEETINGS.map((m) => ({ key: m.id, label: m.label })),
 ]
 type MeetingKey = string
+/** what the ⌘K search offers: the tabs this build shows (lib/headerNav) */
+const NAV_TABS = TABS.filter((t) => shared(t.key) && !('hidden' in t && t.hidden)).map((t) => ({ key: t.key as string, label: t.label as string, title: 'title' in t ? t.title as string : undefined }))
 // Keep existing #tab=satoshi links working under the shared Meeting tab.
 const tabFromParams = (p: URLSearchParams): TabKey =>
   p.get('tab') === 'satoshi' && shared('meeting') ? 'meeting' : isTab(p.get('tab')) ? p.get('tab') as TabKey : LANDING_TAB
@@ -195,6 +199,8 @@ export default function App() {
   const init = useMemo(() => readParams(), [])
   const [tab, setTab] = useState<TabKey>(() => tabFromParams(init))
   const [meeting, setMeeting] = useState<MeetingKey>(() => meetingFromParams(init))
+  // the ⌘K search's way to a tab or meeting page (lib/headerNav)
+  const openTab = useCallback((t: string, m?: string) => { if (isTab(t)) setTab(t); if (m) setMeeting(m) }, [])
   // Mirrors get_clean_data: excluded samples are hidden by default but never
   // deleted, so you can always put them back and see what was removed.
   const [includeExcluded, setIncludeExcluded] = useState(init.get('excl') === '1')
@@ -907,6 +913,7 @@ export default function App() {
   })()
 
   return (
+    <HeaderNavProvider tabs={NAV_TABS} meetings={MEETINGS} open={openTab}>
     <RegressionProvider methods={estimators} setMethods={setEstimators} showCI={showCI} setShowCI={setShowCI}>
     <PrefsProvider>
     <HighlightProvider pinnedId={pinnedId} setPinned={setPinnedId} openSample={openSample} openRecord={openRecord} onDismiss={dismissSample}>
@@ -946,7 +953,7 @@ export default function App() {
           <div className="panel" aria-label="Meeting selection">
             <Combobox label="Meeting" value={meeting} options={MEETINGS} onChange={setMeeting} />
           </div>
-          {meeting === 'followup' ? <MeetingFollowupPage galleryRows={filters.rows} galleryMeta={data.meta} />
+          {meeting === 'followup' ? <MeetingFollowupPage galleryRows={filters.rows} galleryMeta={data.meta} viewRows={sourceRows} viewMeta={meta} />
             : meeting === 'satoshi' ? <SatoshiFollowupPage />
             : <MeetingSpecPage key={meeting} spec={SPEC_MEETINGS.find((m) => m.id === meeting) ?? SPEC_MEETINGS[0]} />}
         </>}
@@ -1011,6 +1018,7 @@ export default function App() {
     </HighlightProvider>
     </PrefsProvider>
     </RegressionProvider>
+    </HeaderNavProvider>
   )
 }
 
@@ -1044,10 +1052,22 @@ function HeaderTools() {
         <input type="checkbox" checked={explain} onChange={(e) => setExplain(e.target.checked)} />
         Explain
       </label>}
+      <CommandPaletteButton />
       <GlossaryButton />
+      <TocToggle />
       <ViewsMenu />
     </span>
   )
+}
+
+/** Show or hide the "On this tab" contents sidebar (components/PageToc), on tabs that have one. */
+function TocToggle() {
+  const nav = useHeaderNav()
+  if (!nav?.tocPresent) return null
+  return <button type="button" className="btn quiet" aria-expanded={nav.tocShown} onClick={() => nav.setTocShown(!nav.tocShown)}
+    title={nav.tocShown ? 'Hide the list of sections and give charts the full width' : 'Show the list of sections on this tab'}>
+    {nav.tocShown ? 'Hide sidebar' : 'Show sidebar'}
+  </button>
 }
 
 /** The sidebar of a tab without the Filters panel: the page's own controls (lib/pageSidebar), and the fits where it draws them. */

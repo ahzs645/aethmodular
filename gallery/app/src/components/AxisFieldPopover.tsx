@@ -13,6 +13,10 @@ interface AxisFields {
   meta: MetaFile
   value: Record<AxisRole, string>
   set: (role: AxisRole, field: string) => void
+  /** offer "Define a ratio…" (the gallery's fields); a chart's own choices (PC1, PC2 …) leave it out */
+  ratios?: boolean
+  /** the search box's placeholder */
+  noun?: string
 }
 
 const Ctx = createContext<AxisFields | null>(null)
@@ -23,8 +27,8 @@ const Ctx = createContext<AxisFields | null>(null)
  * button that opens a field popover. Both edit the same state, so the sidebar, the URL and
  * every chart on the tab stay in step. Without a provider, axes stay plain text.
  */
-export function AxisFieldsProvider({ meta, value, set, children }: AxisFields & { children: ReactNode }) {
-  const ctx = useMemo(() => ({ meta, value, set }), [meta, value, set])
+export function AxisFieldsProvider({ meta, value, set, ratios = true, noun, children }: AxisFields & { children: ReactNode }) {
+  const ctx = useMemo(() => ({ meta, value, set, ratios, noun }), [meta, value, set, ratios, noun])
   return <Ctx.Provider value={ctx}>{children}</Ctx.Provider>
 }
 
@@ -35,7 +39,8 @@ const ROLE_TITLE: Record<AxisRole, string> = { x: 'x axis', y: 'y axis', field: 
 /** A searchable, grouped field list anchored to the clicked axis title. */
 export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; anchor: DOMRect; onClose: () => void }) {
   const ctx = useAxisFields()
-  const ratio = useRatios()
+  const ratioCtx = useRatios()
+  const ratio = ctx?.ratios === false ? null : ratioCtx
   const box = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
@@ -83,7 +88,7 @@ export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; an
         {role !== 'field' && <button type="button" className="btn quiet" title="Swap x and y"
           onClick={() => { set('x', value.y); onClose() }}>⇅ swap</button>}
       </div>
-      <input ref={input} className="select" type="text" placeholder="Search measurements…" value={query}
+      <input ref={input} className="select" type="text" placeholder={`Search ${ctx.noun ?? 'measurements'}…`} value={query}
         onChange={(e) => { setQuery(e.target.value); setActive(0) }}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown') { e.preventDefault(); setActive((a) => Math.min(rows.length - 1, a + 1)) }

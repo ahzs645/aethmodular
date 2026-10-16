@@ -32,7 +32,7 @@ export interface CrossLine { slope: number; intercept: number; color: string; la
  * With `fit`, the browser refits the drawn points under the chosen estimators
  * (pooled, or one line per site); without it the plot only shows saved results.
  */
-export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain, fit = true, errorRatio, extraLines = [], grouping: groupingOverride, background }: {
+export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain, fit = true, errorRatio, extraLines = [], grouping: groupingOverride, background, pick, sameScale = true }: {
   points: CrossPoint[]
   title: string
   xLabel: string
@@ -49,6 +49,10 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   grouping?: FitGrouping | 'none'
   /** drawn under the points on the same scales, e.g. a density of the wider population */
   background?: (x: d3.ScaleLinear<number, number>, y: d3.ScaleLinear<number, number>) => ReactNode
+  /** axis titles open the nearest axis picker (components/AxisFieldPopover: the page's or the gallery's) */
+  pick?: boolean
+  /** one range and a 1:1 line for both axes (comparable measurements); false: each axis its own range */
+  sameScale?: boolean
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
@@ -76,11 +80,15 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   }) : [], [valid, grouping, lambda, fitting])
   const st = fitting ? regression(valid.map((p) => p.x), valid.map((p) => p.y), { errorsInVariables: true, lambda, bootstrapGroups: monthBlocks(valid.map((p) => p.rec ?? {})) }) : null
   const xs = valid.map((p) => p.x), ys = valid.map((p) => p.y)
-  const dom = domain ?? d3.scaleLinear().domain([Math.min(0, d3.min([...xs, ...ys]) ?? 0), (d3.max([...xs, ...ys]) ?? 1) * 1.05]).nice().domain() as [number, number]
+  const span = (v: number[]) => d3.scaleLinear().domain([Math.min(0, d3.min(v) ?? 0), (d3.max(v) ?? 1) * 1.05]).nice().domain() as [number, number]
+  const dom = domain ?? span(sameScale ? [...xs, ...ys] : xs)
   const x = d3.scaleLinear().domain(dom).range([0, iw])
-  const y = d3.scaleLinear().domain(dom).range([ih, 0])
+  const y = d3.scaleLinear().domain(sameScale ? dom : span(ys)).range([ih, 0])
   const [x0, x1] = dom
   const line = (s: number, b: number) => ({ x1: x(x0), y1: y(s * x0 + b), x2: x(x1), y2: y(s * x1 + b) })
+  // a filter hovered or pinned on another chart dims this one only when this one draws it too
+  const keys = useMemo(() => new Set(valid.map((p) => (p.id ? baseFilterId(p.id) : ''))), [valid])
+  const active = [hl.pinnedId, hl.hoverId].some((k) => !!k && keys.has(k))
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       {/* its points carry a site but no season, so a per-season grouping would only draw the pooled fit */}
@@ -89,16 +97,16 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
         <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>
         <g transform={`translate(${m.left},${m.top})`}>
           <defs><clipPath id={clipId}><rect width={iw} height={ih} /></clipPath></defs>
-          <YAxis scale={y} x={0} label={yLabel} tickCount={5} gridWidth={iw} labelX={-42} format={(v) => String(+(+v).toFixed(2))} />
-          <XAxis scale={x} y={ih} label={xLabel} tickCount={5} format={(v) => String(+(+v).toFixed(2))} labelDy={38} />
+          <YAxis scale={y} x={0} label={yLabel} tickCount={5} gridWidth={iw} labelX={-42} format={(v) => String(+(+v).toFixed(2))} pick={pick ? 'y' : undefined} />
+          <XAxis scale={x} y={ih} label={xLabel} tickCount={5} format={(v) => String(+(+v).toFixed(2))} labelDy={38} pick={pick ? 'x' : undefined} />
           <g clipPath={`url(#${clipId})`}>
             <rect width={iw} height={ih} fill="transparent" onClick={() => hl.setPinned(null)} />
             {background?.(x, y)}
-            <IdentityLine {...line(1, 0)} />
+            {sameScale && <IdentityLine {...line(1, 0)} />}
             {valid.map((p, i) => {
               const key = p.id ? baseFilterId(p.id) : null
               const focus = !!key && (key === hl.pinnedId || key === hl.hoverId)
-              const dim = !!(hl.pinnedId || hl.hoverId) && !focus
+              const dim = active && !focus
               return (
                 <circle key={i} cx={x(p.x)} cy={y(p.y)} r={focus ? 6 : 3.2} fill={p.hollow ? 'none' : p.color}
                   stroke={focus ? INK.text : p.color} strokeWidth={focus ? 2 : p.hollow ? 1 : 0.4}

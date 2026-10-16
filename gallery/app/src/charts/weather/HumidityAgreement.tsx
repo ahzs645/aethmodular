@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Note, Select } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -21,16 +21,15 @@ const BEST_N = 15
  * threshold sweep: both halves' slopes at every threshold from 30 to 82.5 %, with the
  * threshold that separates them most marked (meteorology_source_interaction §4,
  * meteorology_revisions R2 / R2C, which did this with the Addis airport station).
+ * The pair is the gallery's shared x and y: click an axis title (or use the Correlation tab's
+ * sidebar) to change it, and every crossplot follows.
  */
-export function HumidityAgreement({ rows, meta, xField: x0, yField: y0, rhField }: { rows: FilterRow[]; meta: MetaFile; xField: string; yField: string; rhField: string }) {
+export function HumidityAgreement({ rows, meta, xField, yField, rhField }: { rows: FilterRow[]; meta: MetaFile; xField: string; yField: string; rhField: string }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const hl = useHighlight()
-  const [xField, setX] = useState(x0)
-  const [yField, setY] = useState(y0)
   const [thr, setThr] = useState(50)
-  const fields = meta.fields.filter((f) => !f.includes('(ERA5)') && !f.includes('(station)'))
 
   const pts = useMemo(() => rows.filter((r) => [xField, yField, rhField].every((f) => typeof r[f] === 'number' && Number.isFinite(r[f])))
     .map((r) => ({ row: r, x: r[xField] as number, y: r[yField] as number, rh: r[rhField] as number })), [rows, xField, yField, rhField])
@@ -66,9 +65,6 @@ export function HumidityAgreement({ rows, meta, xField: x0, yField: y0, rhField 
       subtitle={`${yField} against ${xField}, split at ${thr} % relative humidity over each filter's window; OLS fit per half. The sweep shows both slopes at every threshold, with the count of filters on each side (thin lines). With several sites picked the halves mix sites, so pick one for the notebook's question.`}
       provenance="meteorology_source_interaction §4 · meteorology_revisions R2, R2C (threshold sweep)"
       controls={<>
-        {/* x and y never show the same field: picking the other axis's field swaps them */}
-        <Select label="x" value={xField} options={fields} onChange={(f) => { if (f === yField) setY(xField); setX(f) }} />
-        <Select label="y" value={yField} options={fields} onChange={(f) => { if (f === xField) setX(yField); setY(f) }} />
         <label className="control">RH threshold
           <input type="range" min={30} max={82.5} step={2.5} value={thr} onChange={(e) => setThr(Number(e.target.value))} style={{ width: 110 }} />
           <span style={{ fontFamily: 'var(--mono)' }}>{thr} %</span></label>
@@ -77,8 +73,8 @@ export function HumidityAgreement({ rows, meta, xField: x0, yField: y0, rhField 
         {pts.length < MIN_N * 2 ? <Empty>Fewer than {MIN_N * 2} filters carry {xField}, {yField} and {rhField} in this subset.</Empty> : <>
           <svg width={sq + M.left + 20} height={sq + M.top + M.bottom} fontFamily={FONT.family}>
             <g transform={`translate(${M.left},${M.top})`}>
-              <YAxis scale={y} x={0} label={withUnit(yField, meta.field_units)} gridWidth={sq} labelX={-46} />
-              <XAxis scale={x} y={sq} label={withUnit(xField, meta.field_units)} />
+              <YAxis scale={y} x={0} label={withUnit(yField, meta.field_units)} gridWidth={sq} labelX={-46} pick="y" />
+              <XAxis scale={x} y={sq} label={withUnit(xField, meta.field_units)} pick="x" />
               <line x1={0} y1={sq} x2={sq} y2={0} stroke={INK.muted} strokeDasharray="4 4" />
               {pts.map((p) => {
                 const st = focusStyle(p.row.id, hl.focusId, { r: 3, opacity: 0.7 }, hl.selected)
