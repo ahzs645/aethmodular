@@ -55,6 +55,21 @@ export function NavMenu({ groups, tab, meeting, onPick, extra }: {
     return () => ro.disconnect()
   }, [labels, groups.length])
 
+  // one list open at a time: hovering another group swaps at once; leaving closes after a short grace
+  // (enough to cross from a button into its own list)
+  const [openId, setOpenId] = useState<string | null>(null)
+  const timer = useRef<number>()
+  const openedAt = useRef(0)
+  const menu = (id: string) => ({
+    open: openId === id,
+    show: () => { window.clearTimeout(timer.current); if (openId !== id) openedAt.current = Date.now(); setOpenId(id) },
+    hide: () => { window.clearTimeout(timer.current); timer.current = window.setTimeout(() => setOpenId((cur) => (cur === id ? null : cur)), 90) },
+    // a tap fires a hover and a click together: a click right after the hover opened it keeps it open
+    toggle: () => { if (openId === id && Date.now() - openedAt.current < 500) return; setOpenId(openId === id ? null : id) },
+    close: () => { window.clearTimeout(timer.current); setOpenId(null) },
+  })
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+
   const shown = groups.slice(0, fit), folded = groups.slice(fit)
   return (
     <div className="navmenu" ref={box}>
@@ -64,12 +79,12 @@ export function NavMenu({ groups, tab, meeting, onPick, extra }: {
         <span data-measure="more" className="nav-btn nav-group">More ▾</span>
       </div>
       {shown.map((g) => (
-        <Dropdown key={g.label} label={label(g)} active={g.items.some((i) => isActive(i, tab, meeting))}>
+        <Dropdown key={g.label} {...menu(g.label)} label={label(g)} active={g.items.some((i) => isActive(i, tab, meeting))}>
           {(close) => g.items.map((i) => <Item key={`${i.tab}-${i.meeting ?? ''}`} i={i} on={isActive(i, tab, meeting)} pick={() => { onPick(i); close() }} />)}
         </Dropdown>
       ))}
       {(folded.length > 0 || (phone && extra)) && (
-        <Dropdown label={fit === 0 ? 'Menu' : 'More'} active={folded.some((g) => g.items.some((i) => isActive(i, tab, meeting)))}>
+        <Dropdown {...menu('__more')} label={fit === 0 ? 'Menu' : 'More'} active={folded.some((g) => g.items.some((i) => isActive(i, tab, meeting)))}>
           {(close) => <>
             {folded.map((g) => <div key={g.label} className="navmenu-section">
               <div className="navmenu-heading">{g.label}</div>
@@ -89,31 +104,27 @@ function Item({ i, on, pick }: { i: NavItem; on: boolean; pick: () => void }) {
   </button>
 }
 
-/** a group button whose list opens on hover (with a short grace period) or click */
-function Dropdown({ label, active, children }: { label: string; active: boolean; children: (close: () => void) => React.ReactNode }) {
-  const [open, setOpen] = useState(false)
+/** a group button whose list opens on hover or click; NavMenu keeps one open at a time */
+function Dropdown({ label, active, open, show, hide, toggle, close, children }: {
+  label: string; active: boolean; open: boolean
+  show: () => void; hide: () => void; toggle: () => void; close: () => void
+  children: (close: () => void) => React.ReactNode
+}) {
   const root = useRef<HTMLDivElement>(null)
-  const timer = useRef<number>()
-  // a tap fires a hover and a click together: a click right after the hover opened it keeps it open
-  const openedAt = useRef(0)
-  const show = () => { window.clearTimeout(timer.current); if (!open) openedAt.current = Date.now(); setOpen(true) }
-  const hide = () => { window.clearTimeout(timer.current); timer.current = window.setTimeout(() => setOpen(false), 160) }
   useEffect(() => {
     if (!open) return
-    const onDown = (e: PointerEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false) }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    const onDown = (e: PointerEvent) => { if (!root.current?.contains(e.target as Node)) close() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
     document.addEventListener('pointerdown', onDown)
     window.addEventListener('keydown', onKey)
     return () => { document.removeEventListener('pointerdown', onDown); window.removeEventListener('keydown', onKey) }
-  }, [open])
-  useEffect(() => () => window.clearTimeout(timer.current), [])
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="navmenu-group" ref={root} onMouseEnter={show} onMouseLeave={hide}>
-      <button type="button" className={`nav-btn nav-group${active ? ' active' : ''}`} aria-haspopup="menu" aria-expanded={open}
-        onClick={() => { if (open && Date.now() - openedAt.current < 500) return; setOpen(!open) }}>
+      <button type="button" className={`nav-btn nav-group${active ? ' active' : ''}`} aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
         {label} <span className="nav-caret" aria-hidden>▾</span>
       </button>
-      {open && <div className="navmenu-list" role="menu">{children(() => setOpen(false))}</div>}
+      {open && <div className="navmenu-list" role="menu">{children(close)}</div>}
     </div>
   )
 }
