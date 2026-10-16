@@ -43,10 +43,13 @@ test('public network export counts unique physical filters and does not substitu
   assert.equal(new Set(network.rows.map(r => `${r.code}|${r.id}`)).size, network.n)
   assert.equal(new Set(network.rows.map(r => r.code)).size, network.n_sites)
   assert.ok(network.n_sites > 4)
-  assert.ok(!network.fields.includes('Alkane CH'))
+  // functional groups from the lab batch 2-3 deliverable: their sum is the OM (the batch 4 groups ran ~2x)
+  const om = network.rows.filter(r => typeof r['OM (FTIR)'] === 'number' && r['OM (FTIR)'] > 1 && ['Alkane CH', 'Alcohol COH', 'Carboxylic COOH', 'Non-acid CO'].every(f => typeof r[f] === 'number'))
+    .map(r => (r['Alkane CH'] + r['Alcohol COH'] + r['Carboxylic COOH'] + r['Non-acid CO']) / r['OM (FTIR)']).sort((a, b) => a - b)
+  assert.ok(om.length > 500 && om[om.length >> 1] > 0.8 && om[om.length >> 1] < 1.25, `functional groups / OM median ${om[om.length >> 1]}`)
   // HIPS BC is the in-house HIPS (Fabs / MAC 10), never the public BC put in its place
   for (const r of network.rows) {
-    if (r['HIPS BC'] === null) continue
+    if (typeof r['HIPS BC'] !== 'number') continue
     assert.equal(typeof r['HIPS Fabs'], 'number', `${r.id}: HIPS BC without its Fabs`)
     assert.ok(Math.abs(r['HIPS BC'] - r['HIPS Fabs'] / 10) < 1e-5, `${r.id}: HIPS BC is not Fabs / 10`)
   }
@@ -62,7 +65,7 @@ test('public network export counts unique physical filters and does not substitu
   const byId = new Map(network.rows.map(r => [r.id, r]))
   for (const r of gallery.rows.filter(r => typeof r['HIPS Fabs'] === 'number')) {
     const n = byId.get(r.id)
-    if (n && n['HIPS Fabs'] !== null) assert.ok(Math.abs(n['HIPS Fabs'] - r['HIPS Fabs']) < 1e-4, `${r.id}: HIPS Fabs differs from filters.json`)
+    if (n && typeof n['HIPS Fabs'] === 'number') assert.ok(Math.abs(n['HIPS Fabs'] - r['HIPS Fabs']) < 1e-4, `${r.id}: HIPS Fabs differs from filters.json`)
   }
   for (const r of gallery.rows.filter(r => r.excluded)) {
     const publicRow = network.rows.find(p => p.id === r.id)

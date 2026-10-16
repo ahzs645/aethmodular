@@ -2,10 +2,10 @@
  * Which filters the chart tabs draw: the four focus sites (filters.json, HIPS + FTIR,
  * the default), or a whole network chosen in the Filters sidebar.
  *
- * - SPARTAN: public ChemSpec PM2.5 at every site (spartan_reference.json + spartan_map.json).
- *   EC/OC are FTIR-derived. HIPS (Fabs, uncertainty, MDL, BC = Fabs / MAC) at the 27 sites in
- *   HIPS batches 1–51, under the focus sites' field names; the public BC ('BC (public HIPS)')
- *   stays its own field. FTIR functional groups are not public.
+ * - SPARTAN: every public ChemSpec PM2.5 measurement at every site (spartan_reference.json +
+ *   spartan_map.json). EC/OC are FTIR-derived. HIPS (Fabs, uncertainty, MDL, BC = Fabs / MAC) at
+ *   the 27 sites in HIPS batches 1–51 and FTIR functional groups (lab batch 2–3, 2020–Mar 2023) at
+ *   24 sites, under the focus sites' field names; the public BC ('BC (public HIPS)') stays its own field.
  * - IMPROVE: one file per site (improve_samples/, gallery/data/export_improve_samples.py),
  *   fetched only when picked, because ~388,000 samples cannot be drawn at once.
  *
@@ -24,7 +24,7 @@ export const hasImprove = (n: Network) => n === 'improve' || n === 'both'
 export const networkOf = (spartan: boolean, improve: boolean): Network => (spartan && improve ? 'both' : improve ? 'improve' : 'spartan')
 export const NETWORKS: { key: Network; label: string; note: string }[] = [
   { key: 'focus', label: 'Focus sites', note: 'Beijing, Delhi, JPL and Addis Ababa only (kept for links: net=focus)' },
-  { key: 'spartan', label: 'SPARTAN', note: 'Starts on the four focus sites (HIPS, FTIR groups, local calendars); add any SPARTAN site, which brings public PM2.5 chemistry (FTIR-derived EC/OC) and, at 27 sites, HIPS absorption' },
+  { key: 'spartan', label: 'SPARTAN', note: 'Starts on the four focus sites (HIPS, FTIR groups, local calendars); add any SPARTAN site, which brings its public PM2.5 chemistry (FTIR-derived EC/OC, ions, elements), HIPS absorption at 27 sites and FTIR functional groups at 24 (2020–Mar 2023)' },
   { key: 'improve', label: 'IMPROVE', note: 'Every IMPROVE site: TOR EC/OC, HIPS absorption, mass, iron, silicon, soil' },
 ]
 export const isNetwork = (v: string | null): v is Network => v === 'focus' || v === 'spartan' || v === 'improve' || v === 'both'
@@ -77,11 +77,16 @@ const COUNTRY: Record<string, string> = { CL: 'Chile', KR: 'South Korea', CA: 'C
 
 const SPARTAN_GROUPS = [
   // HIPS batches 1–51 (the focus sites' source too), then the public BC where HIPS measured it (fAbs / 10)
-  { label: 'Optical (HIPS)', fields: ['HIPS BC', 'HIPS Fabs', 'HIPS Fabs uncertainty', 'HIPS MDL', 'BC (public HIPS)'] },
+  { label: 'Optical (HIPS)', fields: ['HIPS BC', 'HIPS Fabs', 'HIPS Fabs uncertainty', 'HIPS MDL', 'BC (public HIPS)', 'BC (public SSR estimate)', 'Equivalent BC (SSR)'] },
   { label: 'Carbon', fields: ['EC (FTIR)', 'OC (FTIR)', 'OM (FTIR)', 'EC (ChemSpec FTIR)', 'OC (ChemSpec FTIR)'] },
+  { label: 'FTIR functional groups', fields: ['Alkane CH', 'Alcohol COH', 'Carboxylic COOH', 'Non-acid CO'] },
   { label: 'Mass', fields: ['PM2.5 mass'] },
-  { label: 'Ions', fields: ['Sulfate', 'Nitrate', 'Ammonium', 'Potassium', 'Sodium', 'Calcium', 'Magnesium'] },
+  // 'Ions' and 'Metals & crustal' are the composition charts' species; the groups below are not summed there
+  { label: 'Ions', fields: ['Sulfate', 'Nitrate', 'Ammonium', 'Potassium', 'Sodium', 'Calcium', 'Magnesium', 'Nitrite', 'Phosphate', 'Bromide'] },
   { label: 'Metals & crustal', fields: ['Silicon', 'Aluminum', 'Iron', 'Titanium', 'Zinc', 'Copper', 'Lead'] },
+  { label: 'Trace elements', fields: ['Manganese', 'Chromium', 'Vanadium', 'Nickel', 'Cobalt', 'Arsenic', 'Selenium', 'Cadmium', 'Antimony', 'Tin', 'Barium', 'Cerium', 'Strontium', 'Rubidium', 'Lithium', 'Phosphorus'] },
+  // XRF elements that restate an ion or sulfate (S vs SO4, Cl, Ca/K/Na/Mg as elements)
+  { label: 'Elements (XRF)', fields: ['Sulfur', 'Chlorine', 'Calcium (element)', 'Potassium (element)', 'Sodium (element)', 'Magnesium (element)'] },
 ]
 
 const site = (code: string, name: string, location: string, lat: number | null, lon: number | null, n: number, a: string, b: string): SiteMeta =>

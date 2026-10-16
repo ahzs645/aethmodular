@@ -3,6 +3,7 @@ export const RESTATES: Record<string, string> = {
   'HIPS BC': 'HIPS Fabs', // divide by MAC
   'EC (ChemSpec FTIR)': 'EC (FTIR)', // public report of the same FTIR product
   'OC (ChemSpec FTIR)': 'OC (FTIR)', // public report of the same FTIR product
+  'BC (public HIPS)': 'HIPS BC', // public Fabs / 10 of the same HIPS measurement
 }
 
 /**

@@ -368,9 +368,15 @@ export default function App() {
     const colour = new Map(sites.filter((x) => chosenCodes.has(x.code)).map((x) => [x.name, focus.get(x.code)?.color ?? networkColor(i++)]))
     const paint = (name: string) => colour.get(name) ?? '#9aa5b1'
     const all = sites.map((x) => ({ ...x, color: paint(x.name) }))
-    // the focus sites also get the public HIPS BC, so one absorption axis spans every SPARTAN site
-    const pubBC = new Map<string, number>(d.rows.flatMap((r) => (focus.has(r.code) && typeof r[PUBLIC_BC] === 'number' ? [[r.id, r[PUBLIC_BC] as number]] : [])))
-    const focusWithPub = focusRows.map((r): FilterRow => { const v = pubBC.get(r.id); return v === undefined ? r : { ...r, [PUBLIC_BC]: v } })
+    // the focus sites also get the public fields filters.json does not carry (public HIPS BC, the trace
+    // elements, the rest of the ions), so every axis spans every SPARTAN site; their own fields stay theirs
+    const pub = new Map(d.rows.filter((r) => focus.has(r.code)).map((r) => [r.id, r]))
+    const focusWithPub = focusRows.map((r): FilterRow => {
+      const p = pub.get(r.id)
+      if (!p) return r
+      const add = Object.fromEntries(d.fields.filter((f) => !(f in r) && typeof p[f] === 'number').map((f) => [f, p[f]]))
+      return Object.keys(add).length ? { ...r, ...add } : r
+    })
     const rows: FilterRow[] = [...(sp ? focusWithPub : []), ...d.rows.filter((r) => !focus.has(r.code))]
       .map((r) => ({ ...r, color: paint(r.site) }))
     const fields = sp ? [...new Set([...data.meta.fields, ...d.fields])] : d.fields

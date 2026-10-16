@@ -61,6 +61,8 @@ def main():
                 sources[display_path(path)] = hashlib.file_digest(stream, 'sha256').hexdigest()
             data = read_spartan_csv(path)
             data['id'] = normalize_fid(data.Filter_ID)
+            # a filter dated after today is a public date typo (ILHA-0216 in the October 2026 pull)
+            data = data[~(build_datetime(data).reindex(data.index) > pd.Timestamp.now().normalize())]
             n = int(data.id.nunique())
             dates = build_datetime(data)
             if len(dates):
