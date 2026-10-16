@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { TERMS } from '@/lib/glossary'
+import { BookIcon } from '@/components/Icons'
 
 /** The header's Glossary button and its dialog: every term the gallery uses, searchable. */
 export function GlossaryButton() {
   const [open, setOpen] = useState(false)
   return <>
-    <button type="button" className="btn quiet" onClick={() => setOpen(true)} title="What FTIR, HIPS, TOR, MAC, IMPROVE, SPARTAN … mean">Glossary</button>
+    <button type="button" className="btn quiet icon-btn" onClick={() => setOpen(true)} aria-label="Glossary" title="Glossary: what FTIR, HIPS, TOR, MAC, IMPROVE, SPARTAN … mean"><BookIcon /></button>
     {open && <GlossaryDialog onClose={() => setOpen(false)} />}
   </>
 }

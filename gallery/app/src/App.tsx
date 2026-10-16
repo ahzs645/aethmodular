@@ -61,6 +61,8 @@ import { RatiosProvider } from '@/components/RatioDialog'
 import { GlossaryButton } from '@/components/Glossary'
 import { CommandPaletteButton } from '@/components/CommandPalette'
 import { HeaderNavProvider, useHeaderNav } from '@/lib/headerNav'
+import { NavMenu, type NavGroup, type NavItem } from '@/components/NavMenu'
+import { ExplainIcon, SidebarIcon, TextSizeIcon } from '@/components/Icons'
 import { WEATHER_GROUP, type WeatherFile } from '@/lib/weather'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 
@@ -101,6 +103,16 @@ const MEETINGS: { key: string; label: string }[] = [
   ...SPEC_MEETINGS.map((m) => ({ key: m.id, label: m.label })),
 ]
 type MeetingKey = string
+/** the header's page menu (components/NavMenu): tabs in groups, the meeting pages under Meetings */
+const tabItem = (key: string): NavItem[] => TABS.filter((t) => t.key === key && shared(t.key))
+  .map((t) => ({ key: t.key, label: t.label, title: 'title' in t ? t.title : undefined, tab: t.key }))
+const NAV_GROUPS: NavGroup[] = [
+  { label: 'Charts', items: ['correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'flow'].flatMap(tabItem) },
+  { label: 'Sites', items: ['map', 'weather', 'pmf'].flatMap(tabItem) },
+  { label: 'Calibration', items: ['calibration', 'baseline', 'similarity', 'blanks'].flatMap(tabItem) },
+  { label: 'Meetings', items: shared('meeting') ? MEETINGS.map((m) => ({ key: m.key, label: m.label, tab: 'meeting', meeting: m.key })) : [] },
+].filter((g) => g.items.length)
+
 /** what the ⌘K search offers: the tabs this build shows (lib/headerNav) */
 const NAV_TABS = TABS.filter((t) => shared(t.key) && !('hidden' in t && t.hidden)).map((t) => ({ key: t.key as string, label: t.label as string, title: 'title' in t ? t.title as string : undefined }))
 // Keep existing #tab=satoshi links working under the shared Meeting tab.
@@ -704,12 +716,8 @@ export default function App() {
   const xEff = eff(xField), yEff = eff(yField), fieldEff = eff(field)
 
   const nav = (
-    <nav className="nav">
-      {TABS.filter((t) => shared(t.key) && (!('hidden' in t && t.hidden) || t.key === tab)).map((t) => (
-        <button key={t.key} className={`nav-btn ${tab === t.key ? 'active' : ''}`} title={'title' in t ? t.title : undefined} onClick={() => setTab(t.key)}>
-          {t.label}
-        </button>
-      ))}
+    <nav className="nav" aria-label="Pages">
+      <NavMenu groups={NAV_GROUPS} tab={tab} meeting={meeting} onPick={(i) => openTab(i.tab, i.meeting)} extra={<DisplayToggles />} />
     </nav>
   )
 
@@ -1031,11 +1039,11 @@ function Shell({ children, nav, wide = false, editsBadge = false }: { children: 
       <header className="app-header">
         <div className={container}>
           <div className="app-title-row">
-            <h1 className="app-title">Aethmodular graph gallery</h1>
+            <h1 className="app-title">Air Gallery</h1>
             {editsBadge && <HandEditsBadge />}
+            {nav ?? <span className="nav" />}
             <HeaderTools />
           </div>
-          {nav}
         </div>
       </header>
       <div className={container}>{children}</div>
@@ -1045,22 +1053,33 @@ function Shell({ children, nav, wide = false, editsBadge = false }: { children: 
 
 /** Explain toggle (absent in public builds, see lib/prefs) and the Views menu (presets, saved views, share and embed). */
 function HeaderTools() {
-  const { explain, setExplain, density, setDensity } = usePrefs()
   return (
     <span className="header-tools">
-      <label className="toggle" title="Larger text in every chart, control and table (for a projector or easier reading); remembered in this browser">
-        <input type="checkbox" checked={density === 'readable'} onChange={(e) => setDensity(e.target.checked ? 'readable' : 'compact')} />
-        Readable
-      </label>
-      {EXPLAIN_AVAILABLE && <label className="toggle" title="Show every chart's explanation and provenance, and the subset bar's captions">
-        <input type="checkbox" checked={explain} onChange={(e) => setExplain(e.target.checked)} />
-        Explain
-      </label>}
+      <span className="header-display"><DisplayToggles /></span>
       <CommandPaletteButton />
       <GlossaryButton />
-      <TocToggle />
       <ViewsMenu />
     </span>
+  )
+}
+
+/** Readable text, Explain, the sections list: in the header, or in the page menu on a phone */
+function DisplayToggles() {
+  const { explain, setExplain, density, setDensity } = usePrefs()
+  return (
+    <>
+      <button type="button" className={`btn quiet icon-btn${density === 'readable' ? ' on' : ''}`} aria-pressed={density === 'readable'}
+        aria-label="Readable text" onClick={() => setDensity(density === 'readable' ? 'compact' : 'readable')}
+        title={density === 'readable' ? 'Readable: larger text everywhere (click for compact)' : 'Compact text (click for readable: larger text in every chart, control and table); remembered in this browser'}>
+        <TextSizeIcon />
+      </button>
+      {EXPLAIN_AVAILABLE && <button type="button" className={`btn quiet icon-btn${explain ? ' on' : ''}`} aria-pressed={explain} aria-label="Explain"
+        onClick={() => setExplain(!explain)}
+        title={explain ? 'Explain is on: every chart shows its explanation and provenance (click to hide)' : "Explain: show every chart's explanation and provenance, and the sidebar's captions"}>
+        <ExplainIcon />
+      </button>}
+      <TocToggle />
+    </>
   )
 }
 
@@ -1068,9 +1087,10 @@ function HeaderTools() {
 function TocToggle() {
   const nav = useHeaderNav()
   if (!nav?.tocPresent) return null
-  return <button type="button" className="btn quiet" aria-expanded={nav.tocShown} onClick={() => nav.setTocShown(!nav.tocShown)}
+  return <button type="button" className={`btn quiet icon-btn${nav.tocShown ? ' on' : ''}`} aria-pressed={nav.tocShown} aria-label="Sections on this tab"
+    onClick={() => nav.setTocShown(!nav.tocShown)}
     title={nav.tocShown ? 'Hide the list of sections and give charts the full width' : 'Show the list of sections on this tab'}>
-    {nav.tocShown ? 'Hide sidebar' : 'Show sidebar'}
+    <SidebarIcon />
   </button>
 }
 

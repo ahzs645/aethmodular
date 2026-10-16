@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useHeaderNav, type ChartTarget } from '@/lib/headerNav'
 import index from '@/chartIndex.json'
+import { SearchIcon } from '@/components/Icons'
 
 /**
  * ⌘K / Ctrl K: search every tab, meeting page and chart (by title, or by the component that
@@ -26,8 +27,8 @@ export function CommandPaletteButton() {
   if (!nav) return null
   const mac = /Mac|iPhone|iPad/.test(navigator.platform)
   return <>
-    <button type="button" className="btn quiet palette-btn" onClick={() => setOpen(true)} title="Search tabs, meetings and charts">
-      Search <kbd>{mac ? '⌘' : 'Ctrl'} K</kbd>
+    <button type="button" className="btn quiet icon-btn" onClick={() => setOpen(true)} aria-label="Search" title={`Search tabs, meetings and charts (${mac ? '⌘' : 'Ctrl'} K)`}>
+      <SearchIcon />
     </button>
     {open && <Palette onClose={() => setOpen(false)} />}
   </>

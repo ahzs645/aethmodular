@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ViewsIcon } from '@/components/Icons'
 import { PRESETS, applyView, currentView, encodeView, sameView, savedViews, saveViews, viewUrl, type SavedView } from '@/lib/views'
 
 /**
@@ -43,7 +44,8 @@ export function ViewsMenu() {
 
   return (
     <div className="views-menu" ref={box}>
-      <button type="button" className="btn quiet" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(!open)}>Views ▾</button>
+      <button type="button" className={`btn quiet icon-btn${open ? ' on' : ''}`} aria-haspopup="dialog" aria-expanded={open} aria-label="Views"
+        title="Views: presets, saved views, copy link, embed" onClick={() => setOpen(!open)}><ViewsIcon /></button>
       {open && (
         <div className="views-pop" role="dialog" aria-label="Views">
           <div className="views-section">Presets</div>

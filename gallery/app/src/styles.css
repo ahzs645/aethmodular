@@ -708,3 +708,41 @@ html[data-density="readable"] svg [font-size="13.5"] { font-size: calc(13.5px * 
 html[data-density="readable"] svg [font-size="14"] { font-size: calc(14px * var(--chart-text-scale)); }
 html[data-density="readable"] svg [font-size="15"] { font-size: calc(15px * var(--chart-text-scale)); }
 html[data-density="readable"] svg [font-size="16"] { font-size: calc(16px * var(--chart-text-scale)); }
+
+/* ---------- header page menu (components/NavMenu) ---------- */
+.app-title-row { flex-wrap: nowrap; align-items: center; margin-bottom: 0; }
+.app-title { white-space: nowrap; }
+/* the page menu takes the space the title and tools leave (basis 0), and measures that */
+.app-title-row > .nav { flex: 1 1 0; min-width: 0; }
+.header-tools { gap: 6px; flex-shrink: 0; }
+/* fills the space between title and tools, so its width is the room the groups have */
+.navmenu { position: relative; display: flex; gap: 4px; align-items: center; min-width: 0; width: 100%; }
+.navmenu-measure { position: absolute; visibility: hidden; pointer-events: none; display: flex; gap: 4px; white-space: nowrap; left: 0; top: 0; }
+.navmenu-group { position: relative; }
+.nav-group { white-space: nowrap; }
+.nav-caret { font-size: calc(10px * var(--text-scale)); opacity: 0.7; }
+.navmenu-list { position: absolute; left: 0; top: 100%; z-index: 40; min-width: 200px; padding: 4px; margin-top: 4px;
+  background: var(--ink-panel); border: 1px solid var(--ink-border); border-radius: 8px; box-shadow: 0 8px 24px rgba(31, 41, 51, 0.14);
+  display: flex; flex-direction: column; max-height: 70vh; overflow-y: auto; }
+/* a bridge over the gap, so moving the pointer from the button to its list keeps it open */
+.navmenu-list::before { content: ''; position: absolute; left: 0; right: 0; top: -8px; height: 8px; }
+.navmenu-item { text-align: left; border: 0; background: none; padding: 6px 10px; border-radius: 6px; font: calc(13px * var(--text-scale)) var(--font); color: var(--ink-text); cursor: pointer; white-space: nowrap; }
+.navmenu-item:hover, .navmenu-item:focus-visible { background: var(--accent-soft); outline: none; }
+.navmenu-item.on { color: var(--accent); font-weight: 600; }
+.navmenu-heading { padding: 6px 10px 2px; font-size: calc(10.5px * var(--text-scale)); font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; color: var(--ink-muted); }
+.navmenu-section + .navmenu-section { border-top: 1px solid var(--ink-grid); margin-top: 4px; padding-top: 2px; }
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; padding: 5px 7px; }
+.icon-btn svg { display: block; }
+.app-title-row > .nav { min-width: 72px; }
+.header-display { display: inline-flex; gap: 6px; }
+.navmenu-extra { display: none; }
+.navmenu-extra-row { display: flex; gap: 6px; padding: 4px 8px 6px; }
+/* a phone: the display toggles leave the header for the page menu */
+@media (max-width: 560px) {
+  .header-display { display: none; }
+  .navmenu-extra { display: block; }
+  .app-title { font-size: calc(18px * var(--text-scale)); }
+}
+.navmenu-section { display: flex; flex-direction: column; }
+.navmenu-extra { display: none; }
+@media (max-width: 560px) { .navmenu-extra { display: flex; } }
