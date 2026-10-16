@@ -240,6 +240,25 @@ codes), `isites` (IMPROVE codes).
 Builds for outside readers (`publish_pages.py`, `build_share.py`) set
 `VITE_HIDE_EXPLAIN=1`, which removes the header's Explain toggle; local dev keeps it.
 
+### Publishing
+
+`python3 gallery/share/publish_pages.py` publishes the public site
+(https://projects.ahmadjalil.com/aethmodular-gallery/) without building anything here:
+
+1. It packs `gallery/app/public/data` into one archive. Machine paths and account names are
+   scrubbed, and it refuses to continue if any remain. The same data always gives the same bytes.
+2. It attaches the archive to a release of `ahzs645/aethmodular-gallery` (`data-<hash>`). If that
+   data is already there, it skips the upload.
+3. It starts that repo's deploy workflow (`gallery/share/pages-deploy.yml`, installed there as
+   `.github/workflows/deploy.yml`). GitHub then checks out `gallery/app` at the pushed commit,
+   unpacks the data, builds, re-checks and deploys. This takes about a minute.
+
+Commit and push the gallery source first: the script refuses uncommitted changes under
+`gallery/app` (exports in `public/data` excepted), because GitHub builds the pushed commit.
+`--dry-run` packs and checks only. `--branch` is the earlier way (build here, push the built
+files to the repo's `main`). Pages no longer serves `main`, so `--branch` needs the Pages
+source switched back to the branch.
+
 ### Views, sharing and embeds
 
 **Views ▾** in the header holds built-in presets (`lib/views.ts` PRESETS), the reader's own
