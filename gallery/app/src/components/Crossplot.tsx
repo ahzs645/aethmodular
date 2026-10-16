@@ -49,8 +49,8 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   grouping?: FitGrouping | 'none'
   /** drawn under the points on the same scales, e.g. a density of the wider population */
   background?: (x: d3.ScaleLinear<number, number>, y: d3.ScaleLinear<number, number>) => ReactNode
-  /** axis titles open the nearest axis picker (components/AxisFieldPopover: the page's or the gallery's) */
-  pick?: boolean
+  /** axis titles open the nearest axis picker (components/AxisFieldPopover: the page's or the gallery's); 'x' or 'y' for one */
+  pick?: boolean | 'x' | 'y'
   /** one range and a 1:1 line for both axes (comparable measurements); false: each axis its own range */
   sameScale?: boolean
   /** with sameScale false, a fixed y range (e.g. shared with a neighbouring panel); `domain` is then x's */
@@ -99,8 +99,8 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
         <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>
         <g transform={`translate(${m.left},${m.top})`}>
           <defs><clipPath id={clipId}><rect width={iw} height={ih} /></clipPath></defs>
-          <YAxis scale={y} x={0} label={yLabel} tickCount={5} gridWidth={iw} labelX={-42} format={(v) => String(+(+v).toFixed(2))} pick={pick ? 'y' : undefined} />
-          <XAxis scale={x} y={ih} label={xLabel} tickCount={5} format={(v) => String(+(+v).toFixed(2))} labelDy={38} pick={pick ? 'x' : undefined} />
+          <YAxis scale={y} x={0} label={yLabel} tickCount={5} gridWidth={iw} labelX={-42} format={(v) => String(+(+v).toFixed(2))} pick={pick === true || pick === 'y' ? 'y' : undefined} />
+          <XAxis scale={x} y={ih} label={xLabel} tickCount={5} format={(v) => String(+(+v).toFixed(2))} labelDy={38} pick={pick === true || pick === 'x' ? 'x' : undefined} />
           <g clipPath={`url(#${clipId})`}>
             <rect width={iw} height={ih} fill="transparent" onClick={() => hl.setPinned(null)} />
             {background?.(x, y)}

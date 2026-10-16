@@ -38,6 +38,8 @@ export interface IntervalBlock { key: string; title?: string; color?: string; ro
 export interface IntervalPanel {
   /** axis title under the panel */
   label: string
+  /** the title opens the nearest axis picker for x (components/AxisChoices) */
+  pick?: boolean
   /** agreement value, drawn as the reference line (1 for a slope, 0 for an intercept) */
   reference?: number
   /** heading above the panel when there are several */
@@ -114,7 +116,7 @@ export function IntervalStrip({ blocks, panels, labelWidth = 220, rowHeight = 20
                 <Marker orient="v" at={x(p.marker.value)} from={-6} to={ih + 4} />
                 <text x={x(p.marker.value)} y={-10} textAnchor="middle" fontSize={10} fontFamily={FONT.mono} fill={INK.muted}>{p.marker.label}</text>
               </g>}
-              <XAxis scale={x} y={ih + 4} tickCount={6} label={p.label} labelDy={36} format={(v) => p.format ? p.format(+v) : String(+(+v).toFixed(2))} />
+              <XAxis scale={x} y={ih + 4} tickCount={6} label={p.label} labelDy={36} pick={p.pick ? 'x' : undefined} format={(v) => p.format ? p.format(+v) : String(+(+v).toFixed(2))} />
             </g>
           })}
           {layout.map(({ b, rowsTop }) => b.rows.map((r, j) => {

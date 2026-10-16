@@ -150,7 +150,7 @@ function AxisTitle({ pick, children }: { pick?: AxisRole; children: ReactNode })
     <>
       <g className="axis-pick" role="button" tabIndex={0} aria-haspopup="dialog" aria-label={`Change the ${pick === 'field' ? 'measurement' : `${pick} axis`}: ${ctx.value[pick]}`}
         onClick={(e) => open(e.currentTarget)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e.currentTarget) } }}>
-        <title>{describeField(ctx.value[pick])}{'\n'}Click to choose what this axis shows</title>
+        <title>{describeField(ctx.labelOf?.(ctx.value[pick]) ?? ctx.value[pick])}{'\n'}Click to choose what this axis shows</title>
         {children}
       </g>
       {anchor && <AxisFieldPopover role={pick} anchor={anchor} onClose={() => setAnchor(null)} />}

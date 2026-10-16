@@ -14,6 +14,8 @@ export interface OptionChoice {
 }
 export interface OptionDef {
   key: string
+  /** the option chooses what an axis shows: it leaves the control row for that axis title's picker (lib/chartOptions axisChoices) */
+  axis?: 'x' | 'y'
   label?: string
   /** a string list or full choices; omit for a toggle */
   choices?: readonly (string | OptionChoice)[]

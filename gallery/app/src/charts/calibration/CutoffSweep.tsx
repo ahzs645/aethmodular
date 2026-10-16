@@ -13,6 +13,7 @@ import type { CalibFile, CalibRow } from '@/lib/types'
 import { METRICS, fmtFit, spectraColor, isInterceptMetric, isSlopeMetric, metricLabel, metricOf, sameConfig, type Config, type Metric } from './common'
 import { COHORT, CV_PROTOCOL, CV_PROTOCOL_SHORT, METRIC, PREPROCESSING, SELECTION_SPACE, label } from '@/lib/labels'
 import { calibrationReadout, cutoffPosition, fittingCounts, cutoffConfig, type CalibrationReadout, type CutoffAxis } from '@/lib/cutoffSweep'
+import { AxisChoices } from '@/components/AxisChoices'
 
 /**
  * Cutoff sweep — the "try somewhat more and somewhat less" experiment from
@@ -91,9 +92,9 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
       choices: modes.map((m) => ({ value: m, label: label(CV_PROTOCOL, m), when: (c: Record<string, unknown>) => swept({ cohort: c.cohort, mode: m }).length > 0 })) },
     { key: 'target', label: 'Test set', style: 'select', default: 'addis',
       choices: targets.map((t) => ({ value: t, label: calib.targets[t]?.label ?? t, when: (c: Record<string, unknown>) => swept({ cohort: c.cohort, mode: c.mode, target: t }).length > 0 })) },
-    { key: 'metric', label: 'Test-set readout', style: 'select', default: 'Deming intercept', choices: TEST_METRICS.map((m) => ({ value: m, label: metricLabel(m) })) },
-    { key: 'cvMetric', label: 'Calibration cross-validation readout', style: 'select', default: 'cv_rmse', choices: (['cv_rmse', 'ho', 'rmsecv'] as const).map((m) => ({ value: m, label: CV_LABELS[m] })) },
-    { key: 'axis', label: 'Horizontal axis', style: 'select', default: 'fitted',
+    { key: 'metric', axis: 'y', label: 'Test-set readout', style: 'select', default: 'Deming intercept', choices: TEST_METRICS.map((m) => ({ value: m, label: metricLabel(m) })) },
+    { key: 'cvMetric', axis: 'y', label: 'Calibration cross-validation readout', style: 'select', default: 'cv_rmse', choices: (['cv_rmse', 'ho', 'rmsecv'] as const).map((m) => ({ value: m, label: CV_LABELS[m] })) },
+    { key: 'axis', axis: 'x', label: 'Horizontal axis', style: 'select', default: 'fitted',
       choices: (['fitted', 'cutoff'] as const).map((a) => ({ value: a, label: X_LABELS[a], when: a === 'fitted' ? (c: Record<string, unknown>) => swept(c).some((r) => cutoffPosition(r, 'fitted') !== null) : undefined })) },
     { key: 'allPairs', label: 'All pairs (not the fixed set)', toggle: true, default: false, hidden: false, when: (c) => !NO_ALL_PAIRS.has(c.metric as Metric) },
   ])
@@ -165,7 +166,7 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
         {shown.flatMap((s) => s.pts).length === 0 ? (
           <Empty>No rows for {label(COHORT, cohort)} · {shortMode} · {siteName}.{mode !== 'site_heldout' ? ' Interleaved CV covers AIRSpec spectra at every site (Colab batch, 2026-09-23); raw and 2nd-derivative spectra only at Addis and Bishoftu, on the 5-point cutoff ladder.' : ''}</Empty>
         ) : (
-          panel(shown, metric, 340, testLabel(metric))
+          <AxisChoices {...o.axisChoices({ x: 'axis', y: 'metric' })}>{panel(shown, metric, 340, testLabel(metric))}</AxisChoices>
         )}
         <p style={{ ...cvPanelTitle, marginTop: 18, paddingTop: 12, borderTop: '1px solid var(--ink-border)' }}>
           Calibration set: IMPROVE cross-validation
@@ -183,7 +184,7 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
               : <>No {CV_LABELS[cvMetric]} is saved for {label(COHORT, cohort)} at these cutoffs. Missing RMSE is not replaced by the test-set RMSE.</>}
           </Empty>
         ) : (
-          panel(cvShown, cvMetric, 250, CV_AXIS_LABELS[cvMetric])
+          <AxisChoices {...o.axisChoices({ x: 'axis', y: 'cvMetric' })}>{panel(cvShown, cvMetric, 250, CV_AXIS_LABELS[cvMetric])}</AxisChoices>
         )}
         <Legend
           items={legendSeries.map((s) => ({ label: s.label, color: s.color, shape: s.dash ? ('dashed' as const) : ('line' as const) }))}
@@ -253,8 +254,8 @@ function SweepPanel({ series, metric, height, width, innerW, x, calib, yLabel, d
             <rect x={0} y={Math.max(0, y(calib.slope_box[1]))} width={innerW} height={Math.max(0, Math.min(innerH, y(calib.slope_box[0])) - Math.max(0, y(calib.slope_box[1])))} fill={INK.accent} fillOpacity={0.06} />
           )}
           {(metric === CV_METRIC || metric === 'ho') && <Marker orient="h" at={y(calib.heldout_floor)} from={0} to={innerW} />}
-          <YAxis scale={y} x={0} label={yLabel} gridWidth={innerW} />
-          <XAxis scale={x} y={innerH} label={X_LABELS[axis]} />
+          <YAxis scale={y} x={0} label={yLabel} gridWidth={innerW} pick="y" />
+          <XAxis scale={x} y={innerH} label={X_LABELS[axis]} pick="x" />
           {(intercept || slope) && (
             <line x1={0} x2={innerW} y1={y(slope ? 1 : 0)} y2={y(slope ? 1 : 0)} stroke={INK.axis} strokeWidth={1} strokeOpacity={0.7} />
           )}

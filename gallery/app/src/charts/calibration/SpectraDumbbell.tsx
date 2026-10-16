@@ -11,6 +11,7 @@ import { BASELINE_COLOR, INK, MARGIN, FONT } from '@/lib/theme'
 import type { CalibFile, CalibRow } from '@/lib/types'
 import { METRICS, SPECTRA_COLOR, cohortColor, fmtFit, isInterceptMetric, isSlopeMetric, metricLabel, metricOf, sameConfig, type Config, type Metric } from './common'
 import { COHORT, CV_PROTOCOL, METRIC, PREPROCESSING, SELECTION_SPACE, label as nameOf } from '@/lib/labels'
+import { AxisChoices } from '@/components/AxisChoices'
 
 const ROWSETS = ['Locked cutoffs', 'One cohort, every cutoff'] as const
 const spectraColor = (sp: string) => SPECTRA_COLOR[sp] ?? BASELINE_COLOR[sp] ?? INK.muted
@@ -103,7 +104,6 @@ export function SpectraDumbbell({ calib, selected, onSelect }: { calib: CalibFil
           <Segmented label="Rows" value={rowset} options={ROWSETS} onChange={setRowset} />
           {rowset !== 'Locked cutoffs' && <Select label="Cohort" value={cohort} options={cohorts} onChange={setCohort} optionLabel={(c) => nameOf(COHORT, c)} />}
           <Select label="Test set" value={target} options={targets} onChange={setTarget} optionLabel={(t) => calib.targets[t]?.label ?? t} />
-          <Select label="Readout" value={metric} options={[...METRICS]} onChange={(v) => setMetric(v as Metric)} optionLabel={metricLabel} />
         </>
       }
     >
@@ -111,6 +111,7 @@ export function SpectraDumbbell({ calib, selected, onSelect }: { calib: CalibFil
         {rows.length === 0 ? (
           <Empty>No configuration has two preprocessings at {siteName}.</Empty>
         ) : (
+          <AxisChoices noun="readouts" x={[metric, (v) => setMetric(v as Metric)]} options={METRICS.map((m) => ({ key: m, label: metricLabel(m), group: 'Readout', roles: ['x'] }))}>
           <svg width={width} height={innerH + MARGIN.top + MARGIN.bottom} className="animated">
             <g transform={`translate(${labelW},${MARGIN.top})`}>
               {isSlopeMetric(metric) && (
@@ -159,9 +160,10 @@ export function SpectraDumbbell({ calib, selected, onSelect }: { calib: CalibFil
                   </g>
                 )
               })}
-              <XAxis scale={x} y={innerH} label={axisLabel} />
+              <XAxis scale={x} y={innerH} label={axisLabel} pick="x" />
             </g>
           </svg>
+          </AxisChoices>
         )}
         <Legend
           items={[

@@ -56,7 +56,8 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96, galle
   // the options and when each applies (lib/chartOptions): on the deployed-EC axis only the fixed
   // filters carry a value, so the test-set switch is moot, and the MAC (which converts Fabs) is unused
   const o = useChartOptions('run-crossplot', [
-    { key: 'x', label: 'x', choices: XMODES, default: 'reference', hidden: 'reference', when: (c) => !!c.hasDeployed },
+    // the crossplot's x (the HIPS reference or the deployed SPARTAN EC), picked from its axis title
+    { key: 'x', axis: 'x', label: 'Crossplot x', choices: XMODES.map((v) => ({ value: v, label: v === 'reference' ? 'HIPS reference (Fabs ÷ MAC)' : 'Deployed SPARTAN EC' })), default: 'reference', hidden: 'reference', when: (c) => !!c.hasDeployed },
     { key: 'set', label: 'Test set', choices: SETS, default: 'fixed', hidden: 'fixed', when: (c) => !!c.hasFixed && c.x !== 'deployed EC',
       title: 'fixed = the filters with a deployed EC (Addis fixed-190); all = every filter with a reference' },
     { key: 'mac', label: 'MAC', choices: macs.map(String), default: String(runs.mac_value), hidden: String(runs.mac_value), when: (c) => !!c.isFabs && c.x !== 'deployed EC' },
@@ -169,9 +170,11 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96, galle
         ) : (
           <div className="facet-grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
             <div>
-              <Crossplot title={`predicted vs ${useDeployed ? 'deployed' : 'reference'}`} maxSide={460} domain={x.domain() as [number, number]}
+              <AxisChoices {...o.axisChoices({ x: 'x' })}>
+              <Crossplot title={`predicted vs ${useDeployed ? 'deployed' : 'reference'}`} maxSide={460} domain={x.domain() as [number, number]} pick={hasDeployed ? 'x' : undefined}
                 errorRatio={demingLambda(isFabs && !useDeployed ? mac : null, lambda10)} xLabel={xLabel} yLabel="predicted FTIR EC (µg/m³)"
                 points={pts.map((p) => ({ x: p.x, y: p.y, color: color(p.g), opacity: dim(p.g), id: p.id ?? undefined, tip: tipLines(p), rec: record(p) }))} />
+              </AxisChoices>
             </div>
             <div>
               <p className="facet-title">{rx === REF && rY === RESID ? `residuals (predicted − ${useDeployed ? 'deployed' : 'reference'})` : `${rY} against ${rx}`}

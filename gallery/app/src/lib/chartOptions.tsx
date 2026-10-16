@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Combobox } from '@/components/Combobox'
 import { Segmented, Toggle } from '@/components/ChartFrame'
 import { useSearchParam } from '@/lib/url'
+import type { AxisOption } from '@/components/AxisChoices'
 
 /**
  * A chart's options, declared once with the rules for when each applies, instead of
@@ -44,6 +45,8 @@ export function useChartOptions(chartId: string, defs: readonly OptionDef[], fac
 
   const controls = () => <>{items.map((it) => {
     const d = it.def, i = defs.indexOf(d), set = setter(i)
+    // an axis option is drawn by its axis title (axisChoices), not in the row
+    if (d.axis && it.kind === 'choice') return null
     if (it.kind === 'node') return <span key={d.key} className="option-node">{d.node!(it.ctx)}</span>
     if (it.kind === 'hidden') return it.note ? <span key={d.key} className="control hint" title={d.title}>{it.note}</span> : null
     if (it.kind === 'toggle') return <Toggle key={d.key} label={d.label ?? d.key} checked={it.value} onChange={(x) => set(x)} title={d.title} />
@@ -56,7 +59,24 @@ export function useChartOptions(chartId: string, defs: readonly OptionDef[], fac
   })}</>
   // set an option from outside its control (a click on another chart picks the configuration)
   const set = (key: string, v: OptionValue) => { const i = defs.findIndex((d) => d.key === key); if (i >= 0) setter(i)(v) }
-  return { values, controls, set, ctx }
+  // the axis options, for <AxisChoices {...o.axisChoices()}> around the plot (axes get pick="x" / "y"):
+  // each axis offers only its own option's choices, labelled as in the row they left. A chart with
+  // several panels names the options of each panel's axes: axisChoices({ x: 'axis', y: 'cvMetric' })
+  const axisChoices = (pick?: { x?: string; y?: string }) => {
+    const out: { options: AxisOption[]; x?: [string, (v: string) => void]; y?: [string, (v: string) => void]; noun: string } = { options: [], noun: 'choices' }
+    for (const it of items) {
+      const d = it.def
+      if (!d.axis || it.kind !== 'choice') continue
+      if (pick && pick[d.axis] !== d.key) continue
+      const set = setter(defs.indexOf(d))
+      out[d.axis] = [it.value, (v: string) => set(v)]
+      out.options.push(...it.offered.map((c) => ({ key: c.value, label: c.label, group: d.label ?? d.key, roles: [d.axis!] })))
+    }
+    return out
+  }
+  /** the label an axis option's value is shown with (for the axis title) */
+  const axisLabel = (key: string) => { const it = items.find((x) => x.def.key === key); return it?.kind === 'choice' ? it.offered.find((c) => c.value === it.value)?.label ?? it.value : '' }
+  return { values, controls, set, ctx, axisChoices, axisLabel }
 }
 
 function useStoredOption(chartId: string, d: OptionDef): [OptionValue, (v: OptionValue) => void] {

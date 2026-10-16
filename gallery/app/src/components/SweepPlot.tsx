@@ -53,13 +53,15 @@ type XScale = d3.ScaleLinear<number, number> | d3.ScaleLogarithmic<number, numbe
 export function SweepPlot({
   series, xScale: kind, xDomain, xLabel, yLabel, yScale = 'linear', yDomain, yClip, include = [], reference,
   xMarkers = [], yMarkers = [], chosen = [], dividers = [], onPoint, height = 240, width: fixedWidth, title,
-  dim, xFormat, yFormat, background, children, minWidth,
+  dim, xFormat, yFormat, background, children, minWidth, pick,
 }: {
   series: SweepSeries[]
   xScale?: 'linear' | 'log' | 'time' | 'point'
   xDomain?: [number, number] | [Date, Date]
   xLabel?: string
   yLabel: string
+  /** axis titles that open the nearest axis picker (components/AxisChoices): 'x', 'y' or both */
+  pick?: 'x' | 'y' | 'both'
   yScale?: 'linear' | 'log'
   yDomain?: [number, number]
   /** quantiles for a clipped y range; outside points go hollow at the edge */
@@ -147,8 +149,8 @@ export function SweepPlot({
       {title && <div className="facet-title" style={{ marginLeft: m.left }}>{title}</div>}
       <svg width={w} height={height} fontFamily={FONT.family}>
         <g transform={`translate(${m.left},${m.top})`}>
-          <YAxis scale={y as d3.ScaleLinear<number, number>} x={0} label={yLabel} tickCount={5} gridWidth={iw} labelX={-50} format={(v) => fmtY(+v)} />
-          <XAxis scale={x as d3.ScaleLinear<number, number>} y={ih} label={xLabel} tickCount={Math.max(3, Math.min(8, Math.floor(iw / 70)))} labelDy={38}
+          <YAxis scale={y as d3.ScaleLinear<number, number>} x={0} label={yLabel} tickCount={5} gridWidth={iw} labelX={-50} format={(v) => fmtY(+v)} pick={pick === 'y' || pick === 'both' ? 'y' : undefined} />
+          <XAxis scale={x as d3.ScaleLinear<number, number>} y={ih} label={xLabel} tickCount={Math.max(3, Math.min(8, Math.floor(iw / 70)))} labelDy={38} pick={pick === 'x' || pick === 'both' ? 'x' : undefined}
             format={xFormat ?? (k === 'time' ? (v) => d3.timeFormat('%b %Y')(v as Date) : k === 'log' ? logLabel(x as d3.ScaleLogarithmic<number, number>) : undefined)} />
           {reference != null && !clamped(reference) && <RefLine orient="h" at={y(reference)} from={0} to={iw} />}
           {dividers.map((after) => {

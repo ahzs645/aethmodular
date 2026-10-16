@@ -17,6 +17,9 @@ interface AxisFields {
   ratios?: boolean
   /** the search box's placeholder */
   noun?: string
+  /** a chart's own choices: what each is called, and which axes offer it (default: every axis) */
+  labelOf?: (key: string) => string
+  rolesOf?: (key: string) => AxisRole[]
 }
 
 const Ctx = createContext<AxisFields | null>(null)
@@ -27,8 +30,8 @@ const Ctx = createContext<AxisFields | null>(null)
  * button that opens a field popover. Both edit the same state, so the sidebar, the URL and
  * every chart on the tab stay in step. Without a provider, axes stay plain text.
  */
-export function AxisFieldsProvider({ meta, value, set, ratios = true, noun, children }: AxisFields & { children: ReactNode }) {
-  const ctx = useMemo(() => ({ meta, value, set, ratios, noun }), [meta, value, set, ratios, noun])
+export function AxisFieldsProvider({ meta, value, set, ratios = true, noun, labelOf, rolesOf, children }: AxisFields & { children: ReactNode }) {
+  const ctx = useMemo(() => ({ meta, value, set, ratios, noun, labelOf, rolesOf }), [meta, value, set, ratios, noun, labelOf, rolesOf])
   return <Ctx.Provider value={ctx}>{children}</Ctx.Provider>
 }
 
@@ -63,8 +66,9 @@ export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; an
   if (!ctx) return null
   const { meta, value, set } = ctx
   const q = query.trim().toLowerCase()
-  const rows = meta.field_groups.flatMap((g) => g.fields.filter((f) => meta.fields.includes(f)).map((f) => ({ f, group: g.label })))
-    .filter((r) => !q || `${r.f} ${r.group}`.toLowerCase().includes(q))
+  const shown = (f: string) => ctx.labelOf?.(f) ?? f
+  const rows = meta.field_groups.flatMap((g) => g.fields.filter((f) => meta.fields.includes(f) && (!ctx.rolesOf || ctx.rolesOf(f).includes(role))).map((f) => ({ f, group: g.label })))
+    .filter((r) => !q || `${shown(r.f)} ${r.group}`.toLowerCase().includes(q))
   // the ratio dialog (components/RatioDialog), always last
   if (ratio) rows.push({ f: DEFINE_RATIO, group: RATIO_GROUP })
   const pick = (f: string | undefined) => {
@@ -85,7 +89,7 @@ export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; an
     <div className="axis-popover" ref={box} style={{ ...style, width: W }} role="dialog" aria-label={`Choose the ${ROLE_TITLE[role].toLowerCase()} field`}>
       <div className="axis-popover-head">
         <strong>{ROLE_TITLE[role]}</strong>
-        {role !== 'field' && <button type="button" className="btn quiet" title="Swap x and y"
+        {role !== 'field' && value.x && value.y && (!ctx.rolesOf || ctx.rolesOf(value[role === 'x' ? 'y' : 'x']).includes(role)) && <button type="button" className="btn quiet" title="Swap x and y"
           onClick={() => { set('x', value.y); onClose() }}>⇅ swap</button>}
       </div>
       <input ref={input} className="select" type="text" placeholder={`Search ${ctx.noun ?? 'measurements'}…`} value={query}
@@ -103,7 +107,7 @@ export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; an
               className={`combobox-option${i === active ? ' active' : ''}`}
               onMouseEnter={() => setActive(i)} onClick={() => pick(r.f)}>
               <span className="combobox-check" aria-hidden="true">{r.f === value[role] ? '✓' : ''}</span>
-              <span className="combobox-text">{r.f === DEFINE_RATIO ? 'Define a ratio…' : chemText(r.f)}{prettyUnit(meta.field_units?.[r.f]) && <span className="site-sub"> · {prettyUnit(meta.field_units?.[r.f])}</span>}</span>
+              <span className="combobox-text">{r.f === DEFINE_RATIO ? 'Define a ratio…' : chemText(shown(r.f))}{prettyUnit(meta.field_units?.[r.f]) && <span className="site-sub"> · {prettyUnit(meta.field_units?.[r.f])}</span>}</span>
               {role !== 'field' && r.f === value[role === 'x' ? 'y' : 'x'] && <span className="combobox-hint" title="Choosing it swaps x and y">on {role === 'x' ? 'y' : 'x'} · swap</span>}
               {meta.coverage?.[r.f] !== undefined && <span className="combobox-hint">{meta.coverage[r.f]}</span>}
             </button>

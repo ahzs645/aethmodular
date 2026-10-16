@@ -5,7 +5,7 @@ import { Marker } from '@/components/RefLines'
 import { useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
-import { ChartFrame, ExplainOnly, Note, Segmented, Select } from '@/components/ChartFrame'
+import { ChartFrame, ExplainOnly, Note, Segmented } from '@/components/ChartFrame'
 import { PageToc } from '@/components/PageToc'
 import { Combobox } from '@/components/Combobox'
 import { SatoshiSpectra } from '@/components/SatoshiSpectra'
@@ -318,9 +318,9 @@ function Swap({ data, mask }: { data: SatoshiData; mask: Mask }) {
   return (
     <ChartFrame id="satoshi-swap" source="gallery/app/src/pages/SatoshiFollowupPage.tsx › Swap"
       title={`Training set or baseline — Addis Deming ${metric} when each analog set is calibrated on each baseline`}
-      subtitle="Each analog set (selected on the spline or VIBES baseline) is calibrated on both baselines with the same site-grouped cross-validation. Dots are medians over 100 site-disjoint calibration splits; whiskers span the 10th–90th percentile; open diamonds are the protocol split shown in the Follow up meeting view. Colour is the baseline the PLS model was calibrated on; shape is the baseline that chose the analogs."
-      controls={<Segmented label="Readout" value={metric} options={SWAP_METRICS} onChange={setMetric} />}>
-      <IntervalStrip labelWidth={190} panels={[{ label: `Test set (Addis) Deming ${metric}, FTIR EC vs Fabs / MAC 10`, reference: ref0 }]}
+      subtitle="Each analog set (selected on the spline or VIBES baseline) is calibrated on both baselines with the same site-grouped cross-validation. Dots are medians over 100 site-disjoint calibration splits; whiskers span the 10th–90th percentile; open diamonds are the protocol split shown in the Follow up meeting view. Colour is the baseline the PLS model was calibrated on; shape is the baseline that chose the analogs.">
+      <AxisChoices noun="readouts" x={[metric, (v) => setMetric(v as (typeof SWAP_METRICS)[number])]} options={SWAP_METRICS.map((m) => ({ key: m, label: `Deming ${m}`, group: 'Readout', roles: ['x'] }))}>
+      <IntervalStrip labelWidth={190} panels={[{ label: `Test set (Addis) Deming ${metric}, FTIR EC vs Fabs / MAC 10`, reference: ref0, pick: true }]}
         blocks={data.groups.map((g) => ({ key: g, title: shortSeason(g), color: data.season_colors[g], rows: ARMS.map((arm_) => {
           const a = arm(g, arm_.sel, arm_.cal)
           if (!a) return { key: arm_.label, label: arm_.label, marks: [[]] }
@@ -329,6 +329,7 @@ function Swap({ data, mask }: { data: SatoshiData; mask: Mask }) {
             tip: [`${g} · ${arm_.label}`, `median ${coef(med)} [10–90 %: ${coef(lo)} to ${coef(hi)}]`, `protocol split ${coef(prot)} (k ${a.k_protocol})`, `PLS factors median ${f2(a.k_median)} · IMPROVE test R² median ${coef(a.improve_test_R2_median)}`, `Addis R² median ${coef(a.addis_R2_median)}`],
             marks: [[{ lo, hi, mid: med, color: BASE_COLOR[arm_.cal], shape: arm_.sel === SPLINE ? 'dot' as const : 'square' as const, r: 5 }, { mid: prot, color: INK.text, shape: 'diamond' as const, r: 5 }]] }
         }) }))} />
+      </AxisChoices>
       <Key items={[{ label: 'Calibrated on spline', color: BASE_COLOR[SPLINE], kind: 'bar' }, { label: 'Calibrated on VIBES', color: BASE_COLOR[VIBES], kind: 'bar' }, { label: 'Analogs selected on spline', color: INK.axis, kind: 'dot' }, { label: 'Analogs selected on VIBES', color: INK.axis, kind: 'square' }, { label: 'Protocol split', color: INK.text, kind: 'diamond' }]} />
       <table className="census-table" style={{ marginTop: 10 }}>
         <thead>
@@ -422,11 +423,12 @@ function Ladder({ data, mask }: { data: SatoshiData; mask: Mask }) {
   return (
     <ChartFrame id="satoshi-ladder" source="gallery/app/src/pages/SatoshiFollowupPage.tsx › Ladder"
       title="Fitting or extrapolation — the same readout at every stage, from calibration fit to Addis"
-      subtitle="Calibration fit: in-sample predictions of the calibration set. Cross-validation: site-grouped out-of-fold predictions at the chosen number of factors (the curve that chose k). IMPROVE test sites: sites held out of the calibration. Addis test set: FTIR EC vs HIPS Fabs / MAC 10. IMPROVE stages compare FTIR EC with TOR EC. Intercepts are divided by the median reference so stages at 0.1 and 5 µg/m³ can share an axis."
-      controls={<><Select label="Readout" value={metric} options={[...LADDER_METRICS]} onChange={(v) => setMetric(v as LadderMetric)} /></>}>
+      subtitle="Calibration fit: in-sample predictions of the calibration set. Cross-validation: site-grouped out-of-fold predictions at the chosen number of factors (the curve that chose k). IMPROVE test sites: sites held out of the calibration. Addis test set: FTIR EC vs HIPS Fabs / MAC 10. IMPROVE stages compare FTIR EC with TOR EC. Intercepts are divided by the median reference so stages at 0.1 and 5 µg/m³ can share an axis.">
       <div style={{ maxWidth: 860 }}>
+        <AxisChoices noun="readouts" y={[metric, (v) => setMetric(v as LadderMetric)]} options={LADDER_METRICS.map((m) => ({ key: m, label: m === 'R²' || m === 'mean bias' ? m : `Deming ${m}`, group: 'Readout', roles: ['y'] }))}>
         <SweepPlot series={sweep} xScale="point" xLabel="" yLabel={`Deming ${metric}${unit}`.replace('Deming R²', 'R²').replace('Deming mean bias', 'Mean bias, FTIR − reference')}
-          yDomain={yDomain} reference={ref0} dividers={['IMPROVE test sites']} height={314} yFormat={(v) => String(+v.toFixed(2))} />
+          yDomain={yDomain} reference={ref0} dividers={['IMPROVE test sites']} pick="y" height={314} yFormat={(v) => String(+v.toFixed(2))} />
+        </AxisChoices>
       </div>
       <Key items={series.map((s) => ({ label: s.label, color: s.color, kind: s.dash ? 'dash' as const : 'line' as const }))} />
       <LadderTable rows={series} />
@@ -762,9 +764,9 @@ function BlankEffect({ d }: { d: Oct1Data }) {
   return (
     <ChartFrame id="satoshi-blank-effect" source="gallery/app/src/pages/SatoshiFollowupPage.tsx › BlankEffect"
       title={`Do more blanks change the answer? One separate calibration per season, built from that season's 500 IMPROVE analogs (agreed 1 Oct region) — Deming ${metric}`}
-      subtitle="Each baseline selects its own analogs and is calibrated with 100 site-disjoint 80/20 splits (k by site-grouped cross-validation). Filled dots: Addis test set, FTIR EC vs Fabs / MAC 10. Hollow dots: the held-out IMPROVE analog sites, FTIR EC vs TOR EC. Whiskers: 10th–90th percentile over splits."
-      controls={<Segmented label="Readout" value={metric} options={OCT1_METRICS} onChange={setMetric} />}>
-      <IntervalStrip labelWidth={220} panels={[{ label: `Deming ${metric}${metric === 'intercept' ? ' (µg/m³)' : ''}`, reference: ref0 }]}
+      subtitle="Each baseline selects its own analogs and is calibrated with 100 site-disjoint 80/20 splits (k by site-grouped cross-validation). Filled dots: Addis test set, FTIR EC vs Fabs / MAC 10. Hollow dots: the held-out IMPROVE analog sites, FTIR EC vs TOR EC. Whiskers: 10th–90th percentile over splits.">
+      <AxisChoices noun="readouts" x={[metric, (v) => setMetric(v as (typeof OCT1_METRICS)[number])]} options={OCT1_METRICS.map((m) => ({ key: m, label: `Deming ${m}`, group: 'Readout', roles: ['x'] }))}>
+      <IntervalStrip labelWidth={220} panels={[{ label: `Deming ${metric}${metric === 'intercept' ? ' (µg/m³)' : ''}`, reference: ref0, pick: true }]}
         blocks={d.groups.map((g) => ({ key: g, title: shortSeason(g), color: d.season_colors[g], rows: banks.map((b) => {
           const a = d.repeats.find((x) => x.baseline === b && x.group === g)
           if (!a) return { key: b, label: BANK_SHORT[b], marks: [[]] }
@@ -774,6 +776,7 @@ function BlankEffect({ d }: { d: Oct1Data }) {
             marks: [[{ lo: A('improve', 'p10'), hi: A('improve', 'p90'), mid: A('improve', 'median'), color: BANK_COLOR[b], shape: 'hollow' as const, r: 4, dy: 3, faint: true },
               { lo: A('addis', 'p10'), hi: A('addis', 'p90'), mid: A('addis', 'median'), color: BANK_COLOR[b], r: 5, dy: -3 }]] }
         }) }))} />
+      </AxisChoices>
       <Key items={[...banks.map((b) => ({ label: BANK_SHORT[b], color: BANK_COLOR[b], kind: 'bar' as const })), { label: 'Addis test set', color: INK.axis, kind: 'dot' }, { label: 'IMPROVE held-out analog sites', color: INK.axis, kind: 'hollow' }]} />
     </ChartFrame>
   )

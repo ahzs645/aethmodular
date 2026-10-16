@@ -666,16 +666,17 @@ function RepeatStrip({ data }: { data: MeetingData }) {
   const colors: Record<string, string> = { addis: '#111827', ftir_vs_fabs: '#c026d3', tor_vs_fabs: '#0f766e', ftir_vs_tor: '#2171b5' }
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › RepeatStrip" title={`One separate calibration per season, built from that season's IMPROVE spectral analogs: are the analogs mispredicted the way Addis is? Deming ${metric}, median and 10–90 % over 100 splits`}
-      subtitle={`Each block is its own calibration set: the 500 IMPROVE filters whose spectra correlate best with that season's median Addis spectrum ("All Addis" uses the all-season median). Each split holds about 20 % of those analogs out by whole site (cross-validation), picks the number of PLS factors on the rest, and predicts both the held-out IMPROVE filters and the season's Addis filters (the test set) with the same calibration.${isSlope ? '' : ' Intercepts are in µg/m³ of EC.'}`}
-      controls={<><Segmented label="Show" value={metric} options={REPEAT_METRICS} onChange={setMetric} /></>}>
+      subtitle={`Each block is its own calibration set: the 500 IMPROVE filters whose spectra correlate best with that season's median Addis spectrum ("All Addis" uses the all-season median). Each split holds about 20 % of those analogs out by whole site (cross-validation), picks the number of PLS factors on the rest, and predicts both the held-out IMPROVE filters and the season's Addis filters (the test set) with the same calibration.${isSlope ? '' : ' Intercepts are in µg/m³ of EC.'}`}>
       <div>
+        <AxisChoices noun="readouts" x={[metric, (v) => setMetric(v as (typeof REPEAT_METRICS)[number])]} options={REPEAT_METRICS.map((m) => ({ key: m, label: `Deming ${m}`, group: 'Readout', roles: ['x'] }))}>
         <IntervalStrip labelWidth={250} rowHeight={17} blockGap={12}
-          panels={[{ label: isSlope ? 'Deming slope (1 = agreement)' : 'Deming intercept, µg/m³ (0 = agreement)', reference: ref0 }]}
+          panels={[{ label: isSlope ? 'Deming slope (1 = agreement)' : 'Deming intercept, µg/m³ (0 = agreement)', reference: ref0, pick: true }]}
           blocks={data.groups.map((g) => ({ key: g, title: g, color: data.season_colors[g], rows: rows.filter((r) => r.g === g).map((r) => {
             const q10 = d3.quantile(r.vals, 0.1) ?? NaN, q50 = d3.quantile(r.vals, 0.5) ?? NaN, q90 = d3.quantile(r.vals, 0.9) ?? NaN
             return { key: r.m, label: r.label, tip: [`${g} · ${r.label} · ${metric}`, `median ${coef(q50)}`, `10–90 %: ${coef(q10)} – ${coef(q90)}`, `${r.vals.length} splits`],
               marks: [[{ lo: q10, hi: q90, mid: q50, color: colors[r.m] }]] }
           }) }))} />
+        </AxisChoices>
         <Key items={[
           ...measures.map((ms) => ({ label: ms.label, color: colors[ms.base] })),
           { label: 'median', color: INK.text },

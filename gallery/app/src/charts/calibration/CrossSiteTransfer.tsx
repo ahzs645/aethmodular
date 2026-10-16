@@ -16,6 +16,7 @@ import { INK, FONT } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile } from '@/lib/types'
 import { cohortColor, fmtFit, metricRow, presetName } from './common'
 import { PREPROCESSING, label } from '@/lib/labels'
+import { AxisChoices } from '@/components/AxisChoices'
 
 /** Ethiopian sites first (the calibration's own target, then its neighbour), then the other SPARTAN sites. */
 const SITE_ORDER = ['addis', 'etbi', 'indh', 'chts', 'uspa']
@@ -301,12 +302,14 @@ function OrderingAcrossCalibrations({ runs, sites, presetKey, mac, onPick }: {
       title="Does the site ordering hold across calibrations?"
       subtitle="Each dot is one exported calibration read out at one site, coloured by cohort, shaped by preprocessing; the ringed dot is the calibration picked above. Click a dot to pick that calibration. A site whose dots stay together is robust to the calibration choice."
       tip={TRANSFER_TIP}
-      controls={<Segmented label="Readout" value={metric} options={DOT_METRICS} onChange={setMetric} />}
     >
       <div ref={wrapRef} className="chart-wrap">
+        {/* the readout is what the x axis shows: picked from its title (components/AxisChoices) */}
+        <AxisChoices noun="readouts" x={[metric, (v) => setMetric(v as (typeof DOT_METRICS)[number])]}
+          options={DOT_METRICS.map((m) => ({ key: m, label: m === 'R²' ? 'Test set R²' : `Test set Deming ${m}`, group: 'Readout', roles: ['x'] }))}>
         <svg width={width} height={ih + 96} fontFamily={FONT.family}>
           <g transform={`translate(${left},12)`}>
-            <XAxis scale={x} y={ih} label={`Test set ${metric === 'R²' ? 'R²' : `Deming ${metric}`}${metric === 'intercept' ? ' (µg/m³)' : ''} · MAC ${mac}`} />
+            <XAxis scale={x} y={ih} label={`Test set ${metric === 'R²' ? 'R²' : `Deming ${metric}`}${metric === 'intercept' ? ' (µg/m³)' : ''} · MAC ${mac}`} pick="x" />
             {x.ticks(6).map((t) => <line key={t} x1={x(t)} x2={x(t)} y1={0} y2={ih} stroke={INK.grid} />)}
             {ref !== null && <RefLine orient="v" at={x(ref)} from={0} to={ih} />}
             {sites.map((s) => {
@@ -352,6 +355,7 @@ function OrderingAcrossCalibrations({ runs, sites, presetKey, mac, onPick }: {
             ))}
           </g>
         </svg>
+        </AxisChoices>
         {tip.node}
       </div>
     </ChartFrame>

@@ -12,6 +12,7 @@ import { INK, MARGIN, FONT } from '@/lib/theme'
 import { PREPROCESSING, label } from '@/lib/labels'
 import type { AnalogLab as AnalogLabData } from '@/lib/types'
 import { cohortColor } from './common'
+import { AxisChoices } from '@/components/AxisChoices'
 
 /**
  * The analog lab: does the committed spectral-analog ranking agree with
@@ -35,7 +36,9 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
   // the options and when each applies (lib/chartOptions): each preprocessing ranked its own metrics
   const o = useChartOptions('analog-lab', [
     { key: 'space', label: 'Preprocessing', default: spaces[0] ?? 'raw', choices: spaces.map((sp) => ({ value: sp, label: label(PREPROCESSING, sp) })) },
-    { key: 'metric', label: 'Alternative metric', style: 'select', default: 'mahalanobis_pca', choices: allMetrics.map((x) => ({ value: x, when: (c: Record<string, unknown>) => ranked(c.space).includes(x) })) },
+    // the alternative metric is what the rank plot's y axis shows: picked from its title
+    { key: 'metric', axis: 'y', label: 'Alternative metric', style: 'select', default: 'mahalanobis_pca',
+      choices: allMetrics.map((x) => ({ value: x, label: spaces.map((sp) => bySpace[sp].labels?.[x]).find(Boolean) ?? x, when: (c: Record<string, unknown>) => ranked(c.space).includes(x) })) },
     { key: 'rho', when: (c) => !!bySpace[c.space as string] && ranked(c.space).length > 0, node: (c) => {
       const l = bySpace[c.space as string], mm = c.metric as string
       return <span className="control">ρ = {fmt(l.agreement[mm] ?? null, 3)} · {l.labels[mm] ?? mm}</span>
@@ -125,9 +128,10 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
             </div>
             <div>
               <p className="facet-title">committed rank vs {lab.labels[m] ?? m}</p>
+              <AxisChoices {...o.axisChoices()}>
               <svg width={S + MARGIN.left + MARGIN.right} height={S + MARGIN.top + MARGIN.bottom}>
                 <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-                  <YAxis scale={ry} x={0} label="alternative rank" gridWidth={S} tickCount={5} />
+                  <YAxis scale={ry} x={0} label={`rank by ${o.axisLabel('metric') || 'the alternative metric'}`} gridWidth={S} tickCount={5} pick="y" />
                   <XAxis scale={rx} y={S} label="committed rank" tickCount={5} />
                   <IdentityLine x1={rx(0)} y1={ry(0)} x2={rx(lab.n)} y2={ry(lab.n)} />
                   <rect x={0} y={ry(cutoff)} width={rx(cutoff)} height={S - ry(cutoff)} fill={cohortColor('analogs')} fillOpacity={0.08} />
@@ -136,6 +140,7 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
                   ))}
                 </g>
               </svg>
+              </AxisChoices>
             </div>
           </div>
         )}
