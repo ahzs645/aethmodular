@@ -1,4 +1,6 @@
 import { useRef } from 'react'
+import { AxisChoices } from '@/components/AxisChoices'
+import { useSearchParam } from '@/lib/url'
 import { RefLine } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
@@ -34,6 +36,11 @@ export function SplitCheck({ run, runs }: { run: CalibRun; runs: CalibRunsFile }
     .filter((s) => s.m && s.m.deming_slope !== null)
   const slopeOf = (r: (typeof rows)[number]) => r.m!.deming_slope as number
   const icOf = (r: (typeof rows)[number]) => r.m!.deming_intercept as number
+  // either axis (click its title, components/AxisChoices): slope, intercept or R² of each half
+  const SPLIT_AXES: Record<string, (r: (typeof rows)[number]) => number> = { 'Deming slope': slopeOf, 'Deming intercept': icOf, 'R²': (r) => (r.m!.R2 ?? NaN) as number }
+  const sx = useSearchParam<string>('splitx', 'Deming slope', Object.keys(SPLIT_AXES))
+  const sy = useSearchParam<string>('splity', 'Deming intercept', Object.keys(SPLIT_AXES))
+  const fx = SPLIT_AXES[sx[0]], fy = SPLIT_AXES[sy[0]]
 
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const innerH = height - MARGIN.top - MARGIN.bottom
@@ -42,8 +49,8 @@ export function SplitCheck({ run, runs }: { run: CalibRun; runs: CalibRunsFile }
     const pad = Math.max((hi - lo) * 0.35, floor)
     return [lo - pad, hi + pad]
   }
-  const x = d3.scaleLinear().domain(span(rows.map(slopeOf), 0.02)).range([0, innerW]).nice()
-  const y = d3.scaleLinear().domain(span(rows.map(icOf), 0.08)).range([innerH, 0]).nice()
+  const x = d3.scaleLinear().domain(span(rows.map(fx), sx[0] === 'Deming intercept' ? 0.08 : 0.02)).range([0, innerW]).nice()
+  const y = d3.scaleLinear().domain(span(rows.map(fy), sy[0] === 'Deming intercept' ? 0.08 : 0.02)).range([innerH, 0]).nice()
   const by = Object.fromEntries(rows.map((r) => [r.split, r]))
   const gap = (a: string, b: string) => by[a] && by[b] ? `${a} → ${b}: intercept ${fmt(icOf(by[a]), 2)} → ${fmt(icOf(by[b]), 2)} (Δ ${fmt(Math.abs(icOf(by[a]) - icOf(by[b])), 2)}), slope ${fmt(slopeOf(by[a]), 2)} → ${fmt(slopeOf(by[b]), 2)}` : null
   const target = runs.targets[run.target]
@@ -59,22 +66,24 @@ export function SplitCheck({ run, runs }: { run: CalibRun; runs: CalibRunsFile }
         {rows.length < 2 ? (
           <Empty>Too few test-set filters to split into equal halves.</Empty>
         ) : (
+          <AxisChoices noun="metrics" x={sx} y={sy} options={Object.keys(SPLIT_AXES).map((k) => ({ key: k, group: 'Each half', unit: k === 'Deming intercept' ? 'µg/m³' : undefined }))}>
           <svg width={width} height={height}>
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-              <YAxis scale={y} x={0} label="Test set Deming intercept (µg/m³)" gridWidth={innerW} tickCount={5} />
-              <XAxis scale={x} y={innerH} label="Test set Deming slope" tickCount={6} />
-              {x.domain()[0] <= 1 && 1 <= x.domain()[1] && <RefLine orient="v" at={x(1)} from={0} to={innerH} />}
-              {y.domain()[0] <= 0 && 0 <= y.domain()[1] && <RefLine orient="h" at={y(0)} from={0} to={innerW} />}
+              <YAxis scale={y} x={0} label={`Test set ${sy[0]}${sy[0] === 'Deming intercept' ? ' (µg/m³)' : ''}`} gridWidth={innerW} tickCount={5} pick="y" />
+              <XAxis scale={x} y={innerH} label={`Test set ${sx[0]}${sx[0] === 'Deming intercept' ? ' (µg/m³)' : ''}`} tickCount={6} pick="x" />
+              {sx[0] === 'Deming slope' && x.domain()[0] <= 1 && 1 <= x.domain()[1] && <RefLine orient="v" at={x(1)} from={0} to={innerH} />}
+              {sy[0] === 'Deming intercept' && y.domain()[0] <= 0 && 0 <= y.domain()[1] && <RefLine orient="h" at={y(0)} from={0} to={innerW} />}
               {rows.map((r, i) => (
                 <g key={r.split} onMouseEnter={(e) => tip.show(e, [`${SPLIT_LABEL[r.split] ?? r.split} (n=${r.n})`, `Deming slope ${fmt(slopeOf(r), 3)} · intercept ${fmt(icOf(r), 3)} µg/m³`, `R² ${fmt(r.m!.R2 ?? null, 3)}`])} onMouseLeave={tip.hide}>
                   {r.split === 'all'
-                    ? <rect x={x(slopeOf(r)) - 6} y={y(icOf(r)) - 6} width={12} height={12} transform={`rotate(45 ${x(slopeOf(r))} ${y(icOf(r))})`} fill={SPLIT_COLOR.all} />
-                    : <circle cx={x(slopeOf(r))} cy={y(icOf(r))} r={6} fill={SPLIT_COLOR[r.split] ?? INK.muted} />}
-                  <text x={x(slopeOf(r))} y={y(icOf(r)) + (i % 2 ? 18 : -11)} textAnchor="middle" fontSize={10} fill={INK.text} fontFamily={FONT.mono}>{r.split}</text>
+                    ? <rect x={x(fx(r)) - 6} y={y(fy(r)) - 6} width={12} height={12} transform={`rotate(45 ${x(fx(r))} ${y(fy(r))})`} fill={SPLIT_COLOR.all} />
+                    : <circle cx={x(fx(r))} cy={y(fy(r))} r={6} fill={SPLIT_COLOR[r.split] ?? INK.muted} />}
+                  <text x={x(fx(r))} y={y(fy(r)) + (i % 2 ? 18 : -11)} textAnchor="middle" fontSize={10} fill={INK.text} fontFamily={FONT.mono}>{r.split}</text>
                 </g>
               ))}
             </g>
           </svg>
+          </AxisChoices>
         )}
         <p className="chart-note">
           {[gap('early', 'late'), gap('odd', 'even')].filter(Boolean).map((t, i) => <span key={i} style={{ display: 'block' }}>{t}</span>)}

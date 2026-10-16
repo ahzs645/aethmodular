@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useId } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useId } from 'react'
 import { robustDomain } from '@/lib/axes'
+import { AxisChoices } from '@/components/AxisChoices'
 import { Marker } from '@/components/RefLines'
 import { useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
@@ -97,6 +98,9 @@ export function SatoshiFollowupPage() {
 function SatoshiView({ data }: { data: SatoshiData }) {
   // 'sregion' is the similarity spectra's shading key; the mask gets its own so the two never overwrite each other
   const [mask, setMask] = useSearchParam<Mask>('satmask', 'oct1', MASKS)
+  // the IMPROVE crossplots' axes (ladder and envelope), behind their titles (components/AxisChoices)
+  const sx = useSearchParam<string>('satx', 'TOR EC', [...SAT_AXES])
+  const sy = useSearchParam<string>('saty', 'FTIR EC', [...SAT_AXES])
   const oct1 = useOct1()
   const hl = useHighlight()
   useEffect(() => {
@@ -112,6 +116,8 @@ function SatoshiView({ data }: { data: SatoshiData }) {
         render: (v, set) => <SeasonPicker as="select" label="Analogs of" value={v} groups={data.groups} onChange={set} /> },
     ]}>
     <SimilarityRegionSidebar mask={mask} onMask={setMask} />
+    <SatAxesCtx.Provider value={{ x: sx[0], y: sy[0] }}>
+    <AxisChoices noun="quantities" x={sx} y={sy} options={SAT_AXES.map((k) => ({ key: k, group: 'Each IMPROVE filter', unit: k === 'FTIR ÷ TOR' ? 'ratio' : 'µg/m³' }))}>
     <PageToc>
       <p className="chart-note">{ANALYSIS_CALENDAR_NOTE}</p>
       <ExplainOnly><Conclusion s={data} o={oct1.data} /></ExplainOnly>
@@ -125,6 +131,8 @@ function SatoshiView({ data }: { data: SatoshiData }) {
       <Oct1Sections o={oct1} />
       <ExplainOnly><Methods data={data} /></ExplainOnly>
     </PageToc>
+    </AxisChoices>
+    </SatAxesCtx.Provider>
     </PageChoices>
   )
 }
@@ -443,6 +451,18 @@ function LadderTable({ rows }: { rows: { label: string; color: string; rows: (Ro
   )
 }
 
+// ------------------------------------------------------------------ the IMPROVE crossplots' axes
+/** what each IMPROVE crossplot on the page can put on x and y, from a filter's TOR EC and its FTIR prediction */
+const SAT_AXES = ['TOR EC', 'FTIR EC', 'FTIR − TOR', 'FTIR ÷ TOR'] as const
+const SatAxesCtx = createContext<{ x: string; y: string }>({ x: 'TOR EC', y: 'FTIR EC' })
+const satValue = (k: string, tor: number, ftir: number) =>
+  k === 'TOR EC' ? tor : k === 'FTIR EC' ? ftir : k === 'FTIR − TOR' ? ftir - tor : tor > 0 ? ftir / tor : NaN
+const satLabel = (k: string, ftirLabel = ecAxis('ftir')) =>
+  k === 'TOR EC' ? ecAxis('tor') : k === 'FTIR EC' ? ftirLabel : k === 'FTIR − TOR' ? 'FTIR − TOR EC (µg/m³)' : 'FTIR ÷ TOR EC'
+/** the default pair, TOR against FTIR, keeps one square range and the 1:1 line */
+const satSquare = (a: { x: string; y: string }) => ['TOR EC', 'FTIR EC'].includes(a.x) && ['TOR EC', 'FTIR EC'].includes(a.y)
+const robust = (v: number[]): [number, number] => { const d = robustDomain(v.filter(Number.isFinite), 0.005, 0.995).domain; const pad = (d[1] - d[0]) * 0.05; return [Math.min(0, d[0] - pad), d[1] + pad] }
+
 /** Cross-validation predictions of the analog model next to the standard model's out-of-sample predictions of the same filters. */
 function LadderCrossplots({ data, analogId, baseline, mask, group }: { data: SatoshiData; analogId: string; baseline: string; mask: Mask; group: string }) {
   const lp = data.ladder_points, ep = data.envelope_points
@@ -457,26 +477,38 @@ function LadderCrossplots({ data, analogId, baseline, mask, group }: { data: Sat
   const hi = bulk.domain[1] * 1.05
   const lo = Math.min(0, bulk.domain[0])
   const missing = ids.size - s.length
+  // the page's axes: the default pair is the square TOR / FTIR view; others share a range across both panels
+  const ax = useContext(SatAxesCtx)
+  const square = satSquare(ax)
+  const view = (ps: Pt[]) => square ? ps : ps.map((p) => ({ ...p, tor: p.x, ftir: p.y, x: satValue(ax.x, p.x, p.y), y: satValue(ax.y, p.x, p.y) })).filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y))
+  const va = view(a), vs = view(s)
+  const xdom = square ? [lo, hi] as [number, number] : robust([...va, ...vs].map((p) => p.x))
+  const ydom = square ? undefined : robust([...va, ...vs].map((p) => p.y))
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 14, marginTop: 12 }}>
-        <Cross title={`${shortSeason(group)} analog model (${SHORT[baseline]})`} pts={a} color={data.season_colors[group]} dom={[lo, hi]} source={`Satoshi 2 Oct · ${analogId}`} />
-        <Cross title={`Standard model, same analogs (${SHORT[baseline]})`} pts={s} color={STANDARD_COLOR} dom={[lo, hi]} source={`Satoshi 2 Oct · standard|${baseline} · analogs of ${group}`} />
+        <Cross title={`${shortSeason(group)} analog model (${SHORT[baseline]})`} pts={va} color={data.season_colors[group]} dom={xdom} ydom={ydom} source={`Satoshi 2 Oct · ${analogId}`} />
+        <Cross title={`Standard model, same analogs (${SHORT[baseline]})`} pts={vs} color={STANDARD_COLOR} dom={xdom} ydom={ydom} source={`Satoshi 2 Oct · standard|${baseline} · analogs of ${group}`} />
       </div>
       <Note>Filled points are out-of-fold cross-validation predictions; open points are IMPROVE test sites. Both panels share axes; the top 0.5 % of values is outside the frame. {missing > 0 ? `${missing} analogs are lot 248 and so outside the lot-251 standard model; they are not in the right panel. ` : ''}Similarity region: {MASK_SHORT[mask]}.</Note>
     </>
   )
 }
 
-interface Pt { x: number; y: number; hollow?: boolean; id: string; site: string; note: string }
-/** A TOR-vs-FTIR crossplot of saved predictions (nothing is refitted on this page), on axes shared with its neighbour. */
-function Cross({ title, pts, color, dom, source }: { title: string; pts: Pt[]; color: string; dom: [number, number]; source: string }) {
-  const points: CrossPoint[] = pts.map((p) => ({
-    x: p.x, y: p.y, color, hollow: p.hollow, id: `improve:${p.id}`,
-    tip: [`IMPROVE ${p.site} · filter ${p.id}`, p.note, `TOR EC ${f3(p.x)} · FTIR EC ${f3(p.y)} µg/m³`],
-    rec: improveRecord(p.id, p.site, source, [['prediction', p.note], ['TOR EC (µg/m³)', p.x], ['FTIR EC (µg/m³)', p.y], ['FTIR − TOR (µg/m³)', p.y - p.x]]),
-  }))
-  return <Crossplot title={title} points={points} domain={dom} fit={false} maxSide={340} xLabel={ecAxis('tor')} yLabel={ecAxis('ftir')} />
+interface Pt { x: number; y: number; hollow?: boolean; id: string; site: string; note: string; tor?: number; ftir?: number }
+/** A crossplot of saved predictions (nothing is refitted on this page), on axes shared with its neighbour; TOR against FTIR unless the page's axes say otherwise. */
+function Cross({ title, pts, color, dom, ydom, source }: { title: string; pts: Pt[]; color: string; dom: [number, number]; ydom?: [number, number]; source: string }) {
+  const ax = useContext(SatAxesCtx)
+  const points: CrossPoint[] = pts.map((p) => {
+    const tor = p.tor ?? p.x, ftir = p.ftir ?? p.y
+    return {
+      x: p.x, y: p.y, color, hollow: p.hollow, id: `improve:${p.id}`,
+      tip: [`IMPROVE ${p.site} · filter ${p.id}`, p.note, `TOR EC ${f3(tor)} · FTIR EC ${f3(ftir)} µg/m³`],
+      rec: improveRecord(p.id, p.site, source, [['prediction', p.note], ['TOR EC (µg/m³)', tor], ['FTIR EC (µg/m³)', ftir], ['FTIR − TOR (µg/m³)', ftir - tor]]),
+    }
+  })
+  return <Crossplot title={title} points={points} domain={dom} yDomain={ydom} sameScale={satSquare(ax)} fit={false} maxSide={340} pick
+    xLabel={satLabel(ax.x)} yLabel={satLabel(ax.y)} />
 }
 
 // ------------------------------------------------------------------ 5. envelope
@@ -489,6 +521,11 @@ function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
   const tip = useTooltip(ref)
   const mm = maskFor(baseline, mask)
   const ep = data.envelope_points, mb = data.members
+  // the page's axes (default: TOR against FTIR, square)
+  const ax = useContext(SatAxesCtx)
+  const square = satSquare(ax)
+  const vx = (i: number) => satValue(ax.x, ep.tor_ec_ugm3[i] as number, ep.ftir_oos_ugm3[i] as number)
+  const vy = (i: number) => satValue(ax.y, ep.tor_ec_ugm3[i] as number, ep.ftir_oos_ugm3[i] as number)
   const analogIds = useMemo(() => {
     const keep = baseline === SPLINE ? ['spline only', 'shared'] : ['VIBES only', 'shared']
     return new Set(mb.mask.map((_, i) => i).filter((i) => mb.mask[i] === mm && mb.group[i] === group && keep.includes(String(mb.part[i]))).map((i) => mb.filter_id[i]))
@@ -499,20 +536,22 @@ function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
   const hi = robustDomain(xsAll, 0, 0.995).domain[1] * 1.1
   const m = { top: 22, right: 14, bottom: 44, left: 56 }
   const side = Math.max(220, Math.min((width - 40) / 2 - m.left - m.right, 380))
-  // one domain for both axes (the shared crossplot is square), a little below zero for negative predictions
-  const dom: [number, number] = [Math.min(0, -0.1 * hi), hi]
-  const nb = 48, step = (dom[1] - dom[0]) / nb
+  // one domain for both axes (the shared crossplot is square), a little below zero for negative predictions;
+  // other axes get their own robust ranges
+  const dom: [number, number] = square ? [Math.min(0, -0.1 * hi), hi] : robust(pool.map(vx))
+  const ydom: [number, number] = square ? dom : robust(pool.map(vy))
+  const nb = 48, step = (dom[1] - dom[0]) / nb, ystep = (ydom[1] - ydom[0]) / nb
   // the wider population as a density in data units, drawn under the analogs
   const bins = useMemo(() => {
     const b = new Map<string, number>()
     for (const i of pool) {
-      const xv = ep.tor_ec_ugm3[i] as number, yv = ep.ftir_oos_ugm3[i] as number
-      if (!(xv >= dom[0] && xv <= dom[1] && yv >= dom[0] && yv <= dom[1])) continue
-      const k = `${Math.floor((xv - dom[0]) / step)}|${Math.floor((yv - dom[0]) / step)}`
+      const xv = vx(i), yv = vy(i)
+      if (!(xv >= dom[0] && xv <= dom[1] && yv >= ydom[0] && yv <= ydom[1])) continue
+      const k = `${Math.floor((xv - dom[0]) / step)}|${Math.floor((yv - ydom[0]) / ystep)}`
       b.set(k, (b.get(k) ?? 0) + 1)
     }
     return b
-  }, [pool, ep, hi])  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pool, ep, hi, ax.x, ax.y])  // eslint-disable-line react-hooks/exhaustive-deps
   const maxBin = d3.max([...bins.values()]) ?? 1
   const hist = d3.bin().domain([0, 100]).thresholds(d3.range(0, 100, 10))(analogs.map((i) => ep.residual_pct[i] as number).filter(Number.isFinite))
   const hx = d3.scaleLinear().domain([0, 100]).range([0, side])
@@ -530,12 +569,12 @@ function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
       >
       <div ref={ref} style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 24 }}>
         <div style={{ width: side + m.left + m.right }}>
-          <Crossplot title={`Standard model (${SHORT[baseline]}), out of sample`} fit={false} domain={dom} maxSide={side}
-            xLabel={ecAxis('tor')} yLabel="FTIR EC, standard model (µg/m³)"
+          <Crossplot title={`Standard model (${SHORT[baseline]}), out of sample`} fit={false} domain={dom} yDomain={ydom} sameScale={square} maxSide={side} pick
+            xLabel={satLabel(ax.x, 'FTIR EC, standard model (µg/m³)')} yLabel={satLabel(ax.y, 'FTIR EC, standard model (µg/m³)')}
             background={(x, y) => [...bins.entries()].map(([k, n]) => { const [bx, by] = k.split('|').map(Number)
-              const x0 = dom[0] + bx * step, y0 = dom[0] + by * step
-              return <rect key={k} x={x(x0)} y={y(y0 + step)} width={x(x0 + step) - x(x0)} height={y(y0) - y(y0 + step)} fill={INK.axis} fillOpacity={0.08 + 0.6 * Math.sqrt(n / maxBin)} /> })}
-            points={analogs.map((i) => ({ x: ep.tor_ec_ugm3[i] as number, y: ep.ftir_oos_ugm3[i] as number, color, id: `improve:${ep.filter_id[i]}`,
+              const x0 = dom[0] + bx * step, y0 = ydom[0] + by * ystep
+              return <rect key={k} x={x(x0)} y={y(y0 + ystep)} width={x(x0 + step) - x(x0)} height={y(y0) - y(y0 + ystep)} fill={INK.axis} fillOpacity={0.08 + 0.6 * Math.sqrt(n / maxBin)} /> })}
+            points={analogs.filter((i) => Number.isFinite(vx(i)) && Number.isFinite(vy(i))).map((i) => ({ x: vx(i), y: vy(i), color, id: `improve:${ep.filter_id[i]}`,
               tip: [`IMPROVE ${ep.Site[i]} · filter ${ep.filter_id[i]}`, `TOR EC ${f3(ep.tor_ec_ugm3[i])} · FTIR ${f3(ep.ftir_oos_ugm3[i])} µg/m³`, `residual percentile ${f2(ep.residual_pct[i])}`] }))} />
         </div>
         <svg width={side + m.left + m.right} height={side + m.top + m.bottom} fontFamily={FONT.family}>

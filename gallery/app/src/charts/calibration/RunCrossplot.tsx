@@ -10,12 +10,16 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { baseFilterId, focusStyle, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { Crossplot } from '@/components/Crossplot'
 import { fmt } from '@/lib/stats'
-import { INK, MARGIN } from '@/lib/theme'
-import type { CalibRun, CalibRunsFile, MetaFile } from '@/lib/types'
+import { INK, MARGIN, withUnit } from '@/lib/theme'
+import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
+import { useSearchParam } from '@/lib/url'
+import type { CalibRun, CalibRunsFile, FilterRow, MetaFile } from '@/lib/types'
 import { groupColorFn, presetName } from './common'
 
 const XMODES = ['reference', 'deployed EC'] as const
 const SETS = ['fixed', 'all'] as const
+// the residual panel's own axes (components/AxisChoices): this calibration's values, or any gallery field
+const REF = 'Crossplot x (reference)', PRED = 'Predicted FTIR EC', RESID = 'Residual (predicted − x)'
 
 /**
  * The explorer's Calibrate crossplot and its residual panel, for one preset
@@ -28,8 +32,16 @@ const SETS = ['fixed', 'all'] as const
  * "deployed EC" swaps the x axis for the deployed SPARTAN EC on the same
  * filters (Addis only), which is the explorer's vs-deployed panel.
  * Clicking an Addis point opens the gallery's sample drawer for that filter.
+ *
+ * The right panel is the explorer: residual against the reference by default, but either axis
+ * (click its title) can be the predicted EC, the residual, or any gallery measurement, ratio or
+ * weather field of the same filter (residual against iron, against EC / PM2.5 …), from
+ * `galleryRows` under the gallery's view.
  */
-export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96 }: { run: CalibRun; runs: CalibRunsFile; meta: MetaFile; knownIds: Set<string>; lambda10?: number }) {
+export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96, galleryRows = [], galleryMeta }: {
+  run: CalibRun; runs: CalibRunsFile; meta: MetaFile; knownIds: Set<string>; lambda10?: number
+  galleryRows?: FilterRow[]; galleryMeta?: MetaFile
+}) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
@@ -86,6 +98,34 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96 }: { r
   const groups = [...new Set(run.eval.group)]
   const target = runs.targets[run.target]
 
+  // the residual panel's axes: this calibration's three values, then the gallery's fields for these filters
+  const byId = useMemo(() => new Map(galleryRows.map((r) => [r.id, r])), [galleryRows])
+  const options = useMemo<AxisOption[]>(() => {
+    const ids = new Set(pts.flatMap((p) => (p.id ? [baseFilterId(p.id)] : [])))
+    const mine = galleryRows.filter((r) => ids.has(r.id))
+    return [
+      { key: REF, group: 'This calibration', unit: 'µg/m³' }, { key: PRED, group: 'This calibration', unit: 'µg/m³' }, { key: RESID, group: 'This calibration', unit: 'µg/m³' },
+      ...(galleryMeta?.field_groups ?? []).flatMap((g) => g.fields.filter((f) => galleryMeta!.fields.includes(f) && mine.some((r) => typeof r[f] === 'number'))
+        .map((f) => ({ key: f, group: g.label, unit: galleryMeta!.field_units?.[f] }))),
+    ]
+  }, [pts, galleryRows, galleryMeta])
+  const keys = options.map((o) => o.key)
+  const [rx, setRx] = useSearchParam<string>('rcx', REF, keys)
+  const [rY, setRy] = useSearchParam<string>('rcy', RESID, keys)
+  const valueOf = (k: string, p: (typeof pts)[number]) => {
+    if (k === REF) return p.x
+    if (k === PRED) return p.y
+    if (k === RESID) return p.y - p.x
+    const v = p.id ? byId.get(baseFilterId(p.id))?.[k] : undefined
+    return typeof v === 'number' ? v : NaN
+  }
+  const explore = res.flatMap((p) => { const ex = valueOf(rx, p), ey = valueOf(rY, p); return Number.isFinite(ex) && Number.isFinite(ey) ? [{ ...p, ex, ey }] : [] })
+  const span = (v: number[]) => { const e = d3.extent(v) as [number, number]; const pad = Math.max(1e-9, ((e[1] ?? 1) - (e[0] ?? 0)) * 0.06); return [Math.min(0, (e[0] ?? 0) - pad), (e[1] ?? 1) + pad] as [number, number] }
+  // the default pair keeps the crossplot's x scale and the residual scale, so the two panels read side by side
+  const ex = rx === REF ? x : d3.scaleLinear().domain(span(explore.map((p) => p.ex))).range([0, S]).nice()
+  const ey = rY === RESID ? ry : d3.scaleLinear().domain(span(explore.map((p) => p.ey))).range([S, 0]).nice()
+  const axisLabel = (k: string) => (k === REF ? xLabel : k === PRED ? 'predicted FTIR EC (µg/m³)' : k === RESID ? 'residual (µg/m³)' : withUnit(k, galleryMeta?.field_units ?? {}))
+
   const tipLines = (p: (typeof pts)[number]) => [
     p.id ?? `filter #${p.i + 1}`,
     `${target?.site ?? run.target} · ${run.eval.date?.[p.i] ?? 'no date'} · ${p.g}`,
@@ -134,18 +174,21 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96 }: { r
                 points={pts.map((p) => ({ x: p.x, y: p.y, color: color(p.g), opacity: dim(p.g), id: p.id ?? undefined, tip: tipLines(p), rec: record(p) }))} />
             </div>
             <div>
-              <p className="facet-title">residuals (predicted − {useDeployed ? 'deployed' : 'reference'})</p>
+              <p className="facet-title">{rx === REF && rY === RESID ? `residuals (predicted − ${useDeployed ? 'deployed' : 'reference'})` : `${rY} against ${rx}`}
+                {explore.length < pts.length && ` · ${explore.length} of ${pts.length} filters carry both`}</p>
+              <AxisChoices noun="measurements" options={options} x={[rx, setRx]} y={[rY, setRy]}>
               <svg width={S + MARGIN.left + MARGIN.right} height={S + MARGIN.top + MARGIN.bottom} className="animated">
                 <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-                  <YAxis scale={ry} x={0} label="residual (µg/m³)" gridWidth={S} tickCount={5} />
-                  <XAxis scale={x} y={S} label={xLabel} />
-                  <line x1={0} x2={S} y1={ry(0)} y2={ry(0)} stroke={INK.text} strokeWidth={1.4} />
-                  {res.map((p) => {
+                  <YAxis scale={ey} x={0} label={axisLabel(rY)} gridWidth={S} tickCount={5} pick="y" />
+                  <XAxis scale={ex} y={S} label={axisLabel(rx)} pick="x" />
+                  {rY === RESID && <line x1={0} x2={S} y1={ey(0)} y2={ey(0)} stroke={INK.text} strokeWidth={1.4} />}
+                  {explore.map((p) => {
                     const st = focusStyle(p.id ?? `#${p.i}`, hl.focusId, { r: 3.2, opacity: 0.7 })
-                    return <circle key={p.i} cx={x(p.x)} cy={ry(p.r)} r={st.r} fill={color(p.g)} fillOpacity={st.opacity * dim(p.g)} stroke={st.stroke} strokeWidth={st.strokeWidth} onMouseEnter={(e) => enter(e, p)} onMouseLeave={leave} onClick={() => click(p)} style={{ cursor: 'pointer' }} />
+                    return <circle key={p.i} cx={ex(p.ex)} cy={ey(p.ey)} r={st.r} fill={color(p.g)} fillOpacity={st.opacity * dim(p.g)} stroke={st.stroke} strokeWidth={st.strokeWidth} onMouseEnter={(e) => enter(e, p)} onMouseLeave={leave} onClick={() => click(p)} style={{ cursor: 'pointer' }} />
                   })}
                 </g>
               </svg>
+              </AxisChoices>
             </div>
           </div>
         )}

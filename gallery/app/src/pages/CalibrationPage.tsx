@@ -24,7 +24,7 @@ import { runCalendar, seasonalRun } from '@/charts/calibration/seasonView'
 import { INK } from '@/lib/theme'
 import { usePrefs } from '@/lib/prefs'
 import { useSearchParam } from '@/lib/url'
-import type { CalibFile, CalibRunsFile, MetaFile } from '@/lib/types'
+import type { FilterRow, CalibFile, CalibRunsFile, MetaFile } from '@/lib/types'
 
 /**
  * The phase-3 FTIR-EC calibration work, in two halves.
@@ -40,10 +40,13 @@ import type { CalibFile, CalibRunsFile, MetaFile } from '@/lib/types'
  * This is the reading view; for a new configuration, a new batch, or a k
  * you cannot find here, run `python calibration_explorer/app.py` (port 5058).
  */
-export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null, pmfSel = null, pmfLabelOfDate }: {
+export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null, pmfSel = null, pmfLabelOfDate, galleryRows, galleryMeta }: {
   calib: CalibFile | null
   runs: CalibRunsFile | null
   meta: MetaFile
+  /** the gallery's rows and meta under the reader's view, for the crossplot's explorer panel */
+  galleryRows?: FilterRow[]
+  galleryMeta?: MetaFile
   knownIds: Set<string>
   seasonSel?: Set<string> | null
   /** PMF-source groups kept in the Filters panel (Addis dates only), and a filter's group from its date */
@@ -186,7 +189,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
           {run ? (
             <>
               <CVCurve run={run} runs={runs} />
-              <RunCrossplot lambda10={calib?.deming_lambda_mac10 ?? 2.96} run={runView ?? run} runs={runs} meta={meta} knownIds={knownIds} />
+              <RunCrossplot lambda10={calib?.deming_lambda_mac10 ?? 2.96} run={runView ?? run} runs={runs} meta={meta} knownIds={knownIds} galleryRows={galleryRows} galleryMeta={galleryMeta} />
               <RunSeries run={runView ?? run} runs={runs} meta={meta} knownIds={knownIds} />
               {/* the blind-half readouts are the explorer's own, on every season */}
               <EstimatorViews>{method => <SplitCheck run={projectRun(run, method)} runs={runs} />}</EstimatorViews>

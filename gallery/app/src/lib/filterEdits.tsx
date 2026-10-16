@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { baseFilterId, useHighlight } from '@/lib/highlight'
+import { usePresentation } from '@/lib/presentation'
 
 /**
  * Hand edits from inside the charts: right-click a filter (or a bin of filters) to
@@ -54,7 +55,10 @@ const SPARTAN_ID = /^[A-Z]{4}-\d{4}$/
  */
 export function useHandEdits() {
   const { dropped, kept } = useContext(Ctx)
+  // a meeting page shown as presented (lib/presentation) is untouched by exclusions made elsewhere
+  const presented = usePresentation() === 'presented'
   return useMemo(() => {
+    if (presented) return { isOut: () => false, note: () => null, active: false }
     const isOut = (id: string | null | undefined) => {
       if (!id) return false
       const b = baseFilterId(id)
@@ -63,7 +67,7 @@ export function useHandEdits() {
     const note = (n: number, { refit = false, saved = false }: { refit?: boolean; saved?: boolean } = {}) =>
       n <= 0 ? null : `${n} filter${n === 1 ? '' : 's'} excluded by hand ${n === 1 ? 'is' : 'are'} hidden here${refit ? ' and left out of the refit' : ''}${saved ? '; the saved statistics were computed with every filter' : ''}.`
     return { isOut, note, active: dropped.size > 0 || kept !== null }
-  }, [dropped, kept])
+  }, [dropped, kept, presented])
 }
 
 /** the attributes a mark carries; spread onto a <circle>, <path>, <rect> … */

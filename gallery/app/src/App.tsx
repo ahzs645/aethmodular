@@ -55,10 +55,12 @@ import { FilterEditsProvider, HandEditsBadge, type FilterGroup } from '@/lib/fil
 import { GroupDrawer } from '@/components/GroupDrawer'
 import { WeatherPage } from '@/pages/WeatherPage'
 import { HIDDEN_DUPLICATES } from '@/fieldLineage'
-import { PageSidebarProvider, PageSidebarSlot } from '@/lib/pageSidebar'
+import { PageSidebarProvider, PageSidebarSlot, SidebarControls } from '@/lib/pageSidebar'
 import { RATIO_GROUP, RATIO_PRESETS, VOLUME, parseRatios, ratioKey, ratiosParam, viewRows, viewUnits, type Basis, type RatioDef } from '@/lib/viewFields'
 import { RatiosProvider } from '@/components/RatioDialog'
 import { GlossaryButton } from '@/components/Glossary'
+import { PresentationProvider, PresentationSwitch, type Presentation } from '@/lib/presentation'
+import { useSearchParam } from '@/lib/url'
 import { CommandPaletteButton } from '@/components/CommandPalette'
 import { HeaderNavProvider, useHeaderNav } from '@/lib/headerNav'
 import { NavMenu, type NavGroup, type NavItem } from '@/components/NavMenu'
@@ -252,6 +254,8 @@ export default function App() {
   const [ratios, setRatios] = useState<RatioDef[]>(() => parseRatios(init.get('ratios')))
   const [mac, setMac] = useState<number | null>(() => parseMac(init.get('mac')))
   const [basis, setBasis] = useState<Basis>(init.get('basis') === 'mass' ? 'mass' : 'conc')
+  // meeting pages: as presented (default) or following the gallery (lib/presentation); ?mview=exploring
+  const [presentation, setPresentation] = useSearchParam<Presentation>('mview', 'presented', ['presented', 'exploring'])
   const [estimators, setEstimators] = useState<Estimator[]>(() => parseEstimators(init.get('fits')))
   const [showCI, setShowCI] = useState(init.get('ci') === '1')
   const [pinnedId, setPinnedId] = useState<string | null>(init.get('pin'))
@@ -552,6 +556,10 @@ export default function App() {
     units: { ...(netView ? netView.field_units : data?.meta.field_units ?? {}), ...(weather?.field_units ?? {}), [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3' },
   }), [mac, exportMac, basis, ratioView, netView, data, weather])
   const sourceRows = useMemo(() => viewRows(rawSourceRows, viewOpts), [rawSourceRows, viewOpts])
+  // a meeting page as presented: the reader's ratios, but MAC as exported and µg/m³
+  const presentOpts = useMemo(() => ({ ...viewOpts, mac: exportMac, basis: 'conc' as const }), [viewOpts, exportMac])
+  const presentRows = useMemo(() => (tab === 'meeting' && presentation === 'presented' ? viewRows(rawSourceRows, presentOpts) : sourceRows),
+    [tab, presentation, rawSourceRows, presentOpts, sourceRows])
   const sourceById = useMemo(() => new Map(sourceRows.map((r) => [r.id, r])), [sourceRows])
   const baseRows = useMemo(() => {
     if (!data) return []
@@ -712,6 +720,9 @@ export default function App() {
   meta.coverage = { ...meta.coverage, ...ratioCoverage }
   meta.mac_value = viewOpts.mac
   meta.basis = basis
+  const presentMeta = presentation === 'presented'
+    ? { ...meta, field_units: viewUnits({ ...presentOpts, units: drawerMeta.field_units }), mac_value: exportMac, basis: 'conc' as const }
+    : meta
   const eff = (f: string) => (f === 'EC (FTIR)' && ftirBaseline !== 'none' ? FTIR_VARIANT[ftirBaseline] : f)
   const xEff = eff(xField), yEff = eff(yField), fieldEff = eff(field)
 
@@ -953,21 +964,24 @@ export default function App() {
       {(NETWORK_TABS as readonly string[]).includes(tab) && <BrushBar onKeep={keepFilters} onDrop={dropFilters} />}
       <Shell nav={nav} wide={tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks'} editsBadge={!subset}>
         {/* tabs without the Filters panel: a sidebar for the page's own controls, with the fits where the page fits */}
-        {subset ?? ((tab === 'baseline' || tab === 'blanks' || (tab === 'meeting' && (meeting === 'followup' || meeting === 'satoshi')))
+        {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting')
           && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'} />)}
         {tab === 'census' && <CensusPage census={census} />}
         {tab === 'similarity' && <SimilarityPage />}
-        {tab === 'meeting' && <>
+        {tab === 'meeting' && <PresentationProvider mode={presentation} set={setPresentation}>
           <div className="panel" aria-label="Meeting selection">
             <Combobox label="Meeting" value={meeting} options={MEETINGS} onChange={setMeeting} />
           </div>
-          {meeting === 'followup' ? <MeetingFollowupPage galleryRows={filters.rows} galleryMeta={data.meta} viewRows={sourceRows} viewMeta={meta} />
+          <SidebarControls title="Meeting figures">
+            <PresentationSwitch ignored={dropIds.size + (keepIds ? 1 : 0)} viewChanged={viewOpts.mac !== exportMac || basis !== 'conc'} />
+          </SidebarControls>
+          {meeting === 'followup' ? <MeetingFollowupPage galleryRows={filters.rows} galleryMeta={data.meta} viewRows={presentRows} viewMeta={presentMeta} />
             : meeting === 'satoshi' ? <SatoshiFollowupPage />
             : <MeetingSpecPage key={meeting} spec={SPEC_MEETINGS.find((m) => m.id === meeting) ?? SPEC_MEETINGS[0]} />}
-        </>}
+        </PresentationProvider>}
         {tab === 'blanks' && <BlanksPage />}
         {tab === 'baseline' && <BaselineComparisonPage mac={exportMac} demingLambda={data.calibration?.deming_lambda_mac10 ?? 1} />}
-        {tab === 'calibration' && <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={drawerMeta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />}
+        {tab === 'calibration' && <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={drawerMeta} galleryRows={sourceRows} galleryMeta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />}
         <AxisFieldsProvider meta={meta} value={axisValues} set={setAxisField}>
         {tab === 'correlation' && (
           <>

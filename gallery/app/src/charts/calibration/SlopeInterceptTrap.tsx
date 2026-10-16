@@ -1,4 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
+import { AxisChoices } from '@/components/AxisChoices'
+import { useSearchParam } from '@/lib/url'
 import { robustDomain } from '@/lib/axes'
 import { RefLine } from '@/components/RefLines'
 import { EstimatorName } from '@/lib/regressionPrefs'
@@ -24,12 +26,26 @@ import { COHORT, CV_PROTOCOL, METRIC, label } from '@/lib/labels'
  * before it ranks anything; dimmed points fail it or the IMPROVE
  * cross-validation R² floor.
  */
-/** Which evaluation set supplies the Deming intercept (and its matching slope). Deming only: agreed with Ann, 23 Sep 2026. */
-const INTERCEPTS = {
-  'Deming · fixed set': { m: (r: CalibRow) => r.dm, b: (r: CalibRow) => r.db },
-  'Deming · all pairs': { m: (r: CalibRow) => r.adm, b: (r: CalibRow) => r.adb },
-} as const
-type InterceptKey = keyof typeof INTERCEPTS
+/**
+ * What each axis can show (click its title, components/AxisChoices): the test-set Deming slope and
+ * intercept on the fixed set or on all pairs (Deming only: agreed with Ann, 23 Sep 2026), the fit
+ * quality, the number of PLS factors, the cohort size and the explorer's score. The trap itself is
+ * slope (x) against intercept (y); the slope box and the reference lines follow slope and intercept
+ * wherever they sit.
+ */
+type Kind = 'slope' | 'intercept' | 'other'
+const METRICS: Record<string, { get: (r: CalibRow) => number | null; kind: Kind; unit?: string }> = {
+  'Slope · fixed set': { get: (r) => r.dm, kind: 'slope' },
+  'Intercept · fixed set': { get: (r) => r.db, kind: 'intercept', unit: 'µg/m³' },
+  'Slope · all pairs': { get: (r) => r.adm, kind: 'slope' },
+  'Intercept · all pairs': { get: (r) => r.adb, kind: 'intercept', unit: 'µg/m³' },
+  'Test set R²': { get: (r) => r.r2, kind: 'other' },
+  'IMPROVE cross-validation R²': { get: (r) => r.ho, kind: 'other' },
+  'PLS factors': { get: (r) => r.k, kind: 'other' },
+  'Cohort size': { get: (r) => r.cut ?? r.n_cohort ?? null, kind: 'other' },
+  'Score': { get: (r) => score(r) ?? null, kind: 'other' },
+}
+const METRIC_KEYS = Object.keys(METRICS)
 const VIEWS = ['Points', 'Density hex'] as const
 const MAX_SQUARE = 560
 
@@ -37,9 +53,10 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const [intercept, setIntercept] = useState<InterceptKey>('Deming · fixed set')
+  const ax = useSearchParam<string>('trapx', 'Slope · fixed set', METRIC_KEYS)
+  const ay = useSearchParam<string>('trapy', 'Intercept · fixed set', METRIC_KEYS)
   const [view, setView] = useState<(typeof VIEWS)[number]>('Points')
-  const fit = INTERCEPTS[intercept]
+  const mx = METRICS[ax[0]], my = METRICS[ay[0]]
 
   const [target, setTarget] = useState('addis')
   const [mode, setMode] = useState('site_heldout')
@@ -52,9 +69,9 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
   const rows = useMemo(
     () =>
       calib.grid.filter(
-        (r) => r.tg === target && r.mo === mode && r.lot === 'all' && r.el === 'all' && fit.m(r) !== null && fit.b(r) !== null && !hidden.has(r.co) && (!onlyPassing || passes(r, calib))
+        (r) => r.tg === target && r.mo === mode && r.lot === 'all' && r.el === 'all' && Number.isFinite(mx.get(r) as number) && Number.isFinite(my.get(r) as number) && !hidden.has(r.co) && (!onlyPassing || passes(r, calib))
       ),
-    [calib, target, mode, hidden, onlyPassing, fit]
+    [calib, target, mode, hidden, onlyPassing, mx, my]
   )
   const cohorts = useMemo(() => [...new Set(calib.grid.filter((r) => r.tg === target && r.mo === mode).map((r) => r.co))], [calib.grid, target, mode])
 
@@ -62,17 +79,19 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
   const innerW = Math.min(MAX_SQUARE, Math.max(240, width - MARGIN.left - MARGIN.right))
   const innerH = innerW
   const height = innerH + MARGIN.top + MARGIN.bottom
-  const mOf = (r: CalibRow) => fit.m(r) as number
-  const bOf = (r: CalibRow) => fit.b(r) as number
+  const mOf = (r: CalibRow) => mx.get(r) as number
+  const bOf = (r: CalibRow) => my.get(r) as number
   // clip the wild tails so the box is readable; count what is off-canvas
   const xs = rows.map(mOf)
   const ys = rows.map(bOf)
-  const xHi = robustDomain(xs, 0, 0.98, { limit: [-Infinity, 4], fallback: [0, 3] }).domain[1]
-  const yBulk = robustDomain(ys, 0.02, 0.98, { include: [1], limit: [-15, 8], fallback: [-12, 1] }).domain
-  const yLo = yBulk[0]
-  const x = d3.scaleLinear().domain([0, Math.max(1.3, xHi)]).range([0, innerW]).nice()
-  const yHi = yBulk[1]
-  const y = d3.scaleLinear().domain([Math.min(-1, yLo), yHi]).range([innerH, 0]).nice()
+  // each kind keeps its own sensible range: slopes from 0 past 1, intercepts around 0, the rest robust
+  const rangeOf = (kind: Kind, v: number[]): [number, number] => {
+    if (kind === 'slope') return [0, Math.max(1.3, robustDomain(v, 0, 0.98, { limit: [-Infinity, 4], fallback: [0, 3] }).domain[1])]
+    if (kind === 'intercept') { const d = robustDomain(v, 0.02, 0.98, { include: [1], limit: [-15, 8], fallback: [-12, 1] }).domain; return [Math.min(-1, d[0]), d[1]] }
+    const d = robustDomain(v, 0.01, 0.99, { fallback: [0, 1] }).domain; const pad = (d[1] - d[0]) * 0.05 || 0.5; return [d[0] - pad, d[1] + pad]
+  }
+  const x = d3.scaleLinear().domain(rangeOf(mx.kind, xs)).range([0, innerW]).nice()
+  const y = d3.scaleLinear().domain(rangeOf(my.kind, ys)).range([innerH, 0]).nice()
   const clampX = (v: number) => Math.max(x.domain()[0], Math.min(x.domain()[1], v))
   const clampYv = (v: number) => Math.max(y.domain()[0], Math.min(y.domain()[1], v))
   const off = rows.filter((r) => clampX(mOf(r)) !== mOf(r) || clampYv(bOf(r)) !== bOf(r)).length
@@ -83,7 +102,7 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
     const hb = d3Hexbin<CalibRow>().x((r) => x(clampX(mOf(r)))).y((r) => y(clampYv(bOf(r)))).radius(12).extent([[0, 0], [innerW, innerH]])
     return hb(rows).map((bin) => ({ bin, path: hb.hexagon(), pass: bin.filter((r) => passes(r, calib)).length }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, rows, innerW, innerH, fit, x.domain().join(), y.domain().join()])
+  }, [view, rows, innerW, innerH, mx, my, x.domain().join(), y.domain().join()])
   const hexMax = d3.max(hexes, (h) => h.bin.length) ?? 1
   const hexColor = d3.scaleQuantize<string>().domain([0, hexMax]).range(RAMP_SEQUENTIAL.slice(1))
   const best = useMemo(() => rows.filter((r) => passes(r, calib)).sort((a, b) => (score(a) ?? 1e9) - (score(b) ?? 1e9)).slice(0, 5), [rows, calib])
@@ -92,13 +111,12 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
     <ChartFrame
       id="slope-trap"
       title="Slope vs intercept — the full-scale slope trap"
-      subtitle={`Every fitted configuration at its rule number of PLS factors, test-set ${intercept} at MAC 10. A flat line always has a small intercept, so ranking by intercept alone rewards slope-0.4 fits; the shaded column is the slope box the explorer enforces first, and dimmed points fail it or the IMPROVE cross-validation R² floor. Click a point to load it into the PLS-factor sweep. Density hex bins the same points to show where the grid is crowded. The guardrails (slope box, cross-validation R² floor) stay the explorer rule on the fixed-set Deming fit, whichever intercept is plotted.`}
+      subtitle={`Every fitted configuration at its rule number of PLS factors, test-set Deming at MAC 10; by default slope against intercept (click an axis title for another metric). A flat line always has a small intercept, so ranking by intercept alone rewards slope-0.4 fits; the shaded column is the slope box the explorer enforces first, and dimmed points fail it or the IMPROVE cross-validation R² floor. Click a point to load it into the PLS-factor sweep. Density hex bins the same points to show where the grid is crowded. The guardrails (slope box, cross-validation R² floor) stay the explorer rule on the fixed-set Deming fit, whichever intercept is plotted.`}
       provenance="FIVE_SITE_GRID_2026-08-23.md “scoring lesson first” · ftir_17"
       controls={
         <>
           <Select label="Test set" value={target} options={targets} onChange={setTarget} optionLabel={(t) => calib.targets[t]?.label ?? t} />
           <Select label="Cross-validation protocol" value={mode} options={modes} onChange={setMode} optionLabel={(m) => label(CV_PROTOCOL, m)} />
-          <Select label="Intercept" value={intercept} options={Object.keys(INTERCEPTS)} onChange={(v) => setIntercept(v as InterceptKey)} title="Which fit's intercept goes on y, with its matching slope on x" />
           <Segmented value={view} options={VIEWS} onChange={setView} />
           <Toggle label="Only configurations that pass the guardrails" checked={onlyPassing} onChange={setOnlyPassing} />
           <span className="control">{rows.length} configurations</span>
@@ -109,18 +127,22 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
         {rows.length === 0 ? (
           <Empty>No rows for {calib.targets[target]?.label ?? target} · {label(CV_PROTOCOL, mode)}.</Empty>
         ) : (
+          <AxisChoices noun="metrics" x={ax} y={ay} options={METRIC_KEYS.map((k) => ({ key: k, group: METRICS[k].kind === 'other' ? 'Quality and size' : 'Test set Deming fit', unit: METRICS[k].unit }))}>
           <svg width={width} height={height} className="animated">
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-              <rect x={x(calib.slope_box[0])} y={0} width={x(calib.slope_box[1]) - x(calib.slope_box[0])} height={innerH} fill={INK.accent} fillOpacity={0.07} />
-              <YAxis scale={y} x={0} label={`Test set Deming intercept (${calib.targets[target]?.site ?? target}, µg/m³)`} gridWidth={innerW} />
-              <XAxis scale={x} y={innerH} label={`Test set Deming slope (${calib.targets[target]?.site ?? target})`} />
-              <line x1={0} x2={innerW} y1={y(0)} y2={y(0)} stroke={INK.axis} />
-              <RefLine orient="v" at={x(1)} from={0} to={innerH} />
+              {mx.kind === 'slope' && <rect x={x(calib.slope_box[0])} y={0} width={x(calib.slope_box[1]) - x(calib.slope_box[0])} height={innerH} fill={INK.accent} fillOpacity={0.07} />}
+              {my.kind === 'slope' && <rect x={0} y={y(calib.slope_box[1])} width={innerW} height={y(calib.slope_box[0]) - y(calib.slope_box[1])} fill={INK.accent} fillOpacity={0.07} />}
+              <YAxis scale={y} x={0} label={`${my.kind !== 'other' ? 'Test set ' : ''}${ay[0]}${my.kind !== 'other' ? ` (${calib.targets[target]?.site ?? target}${my.unit ? `, ${my.unit}` : ''})` : ''}`} gridWidth={innerW} pick="y" />
+              <XAxis scale={x} y={innerH} label={`${mx.kind !== 'other' ? 'Test set ' : ''}${ax[0]}${mx.kind !== 'other' ? ` (${calib.targets[target]?.site ?? target}${mx.unit ? `, ${mx.unit}` : ''})` : ''}`} pick="x" />
+              {my.kind === 'intercept' && <line x1={0} x2={innerW} y1={y(0)} y2={y(0)} stroke={INK.axis} />}
+              {mx.kind === 'intercept' && <line x1={x(0)} x2={x(0)} y1={0} y2={innerH} stroke={INK.axis} />}
+              {mx.kind === 'slope' && <RefLine orient="v" at={x(1)} from={0} to={innerH} />}
+              {my.kind === 'slope' && <RefLine orient="h" at={y(1)} from={0} to={innerW} />}
               {view === 'Density hex' && hexes.map((h, i) => (
                 <path
                   key={i} d={h.path} transform={`translate(${h.bin.x},${h.bin.y})`}
                   fill={hexColor(h.bin.length)} stroke="#fff" strokeWidth={0.6}
-                  onMouseEnter={(e) => tip.show(e, [`${h.bin.length} configuration${h.bin.length === 1 ? '' : 's'} in this hex`, `${h.pass} pass the guardrails`, `slope ≈ ${x.invert(h.bin.x).toFixed(2)} · intercept ≈ ${y.invert(h.bin.y).toFixed(2)}`])}
+                  onMouseEnter={(e) => tip.show(e, [`${h.bin.length} configuration${h.bin.length === 1 ? '' : 's'} in this hex`, `${h.pass} pass the guardrails`, `${ax[0]} ≈ ${x.invert(h.bin.x).toFixed(2)} · ${ay[0]} ≈ ${y.invert(h.bin.y).toFixed(2)}`])}
                   onMouseLeave={tip.hide}
                 />
               ))}
@@ -164,6 +186,7 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
               ))}
             </g>
           </svg>
+          </AxisChoices>
         )}
         <Legend
           items={cohorts.map((c) => ({ label: c, color: cohortColor(c), detail: COHORT[c] ?? calib.cohorts[c] }))}

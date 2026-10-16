@@ -32,7 +32,7 @@ export interface CrossLine { slope: number; intercept: number; color: string; la
  * With `fit`, the browser refits the drawn points under the chosen estimators
  * (pooled, or one line per site); without it the plot only shows saved results.
  */
-export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain, fit = true, errorRatio, extraLines = [], grouping: groupingOverride, background, pick, sameScale = true }: {
+export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain, fit = true, errorRatio, extraLines = [], grouping: groupingOverride, background, pick, sameScale = true, yDomain }: {
   points: CrossPoint[]
   title: string
   xLabel: string
@@ -53,6 +53,8 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   pick?: boolean
   /** one range and a 1:1 line for both axes (comparable measurements); false: each axis its own range */
   sameScale?: boolean
+  /** with sameScale false, a fixed y range (e.g. shared with a neighbouring panel); `domain` is then x's */
+  yDomain?: [number, number]
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
@@ -83,7 +85,7 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   const span = (v: number[]) => d3.scaleLinear().domain([Math.min(0, d3.min(v) ?? 0), (d3.max(v) ?? 1) * 1.05]).nice().domain() as [number, number]
   const dom = domain ?? span(sameScale ? [...xs, ...ys] : xs)
   const x = d3.scaleLinear().domain(dom).range([0, iw])
-  const y = d3.scaleLinear().domain(sameScale ? dom : span(ys)).range([ih, 0])
+  const y = d3.scaleLinear().domain(sameScale ? dom : yDomain ?? span(ys)).range([ih, 0])
   const [x0, x1] = dom
   const line = (s: number, b: number) => ({ x1: x(x0), y1: y(s * x0 + b), x2: x(x1), y2: y(s * x1 + b) })
   // a filter hovered or pinned on another chart dims this one only when this one draws it too
