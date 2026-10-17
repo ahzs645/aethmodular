@@ -8,12 +8,14 @@ import { ColorLegend } from '@/components/ColorLegend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
-import { INK, FONT, RAMP_SEQUENTIAL, withUnit } from '@/lib/theme'
+import { INK, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { useColourScheme } from '@/lib/colourSchemes'
+import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
 
 const STATS = ['Median', 'Mean', 'Count'] as const
 type Stat = (typeof STATS)[number]
-type Cell = { site: string; period: string; n: number; value: number | null }
+type Cell = { site: string; period: string; n: number; value: number | null; ids: string[] }
 
 /** Every 'YYYY-MM' from a to b inclusive, so a month with no filters is still a column. */
 function monthRange(a: string, b: string): string[] {
@@ -69,6 +71,7 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
     const periods = dates.length ? monthRange(dates[0].slice(0, 7), dates[dates.length - 1].slice(0, 7)) : []
     // values per site-month; only filters that actually carry the field count
     const vals = new Map<string, number[]>()
+    const ids = new Map<string, string[]>()
     for (const r of rows) {
       const v = r[field]
       if (typeof v !== 'number' || !Number.isFinite(v)) continue
@@ -76,6 +79,7 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
       const arr = vals.get(k)
       if (arr) arr.push(v)
       else vals.set(k, [v])
+      ids.set(k, [...(ids.get(k) ?? []), r.id])
     }
     const cells: Cell[] = []
     for (const site of sites) {
@@ -83,7 +87,7 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
         const arr = (vals.get(`${site}|${period}`) ?? []).sort(d3.ascending)
         const n = arr.length
         const value = n === 0 ? null : stat === 'Count' ? n : stat === 'Median' ? (d3.quantile(arr, 0.5) ?? null) : (d3.mean(arr) ?? null)
-        cells.push({ site, period, n, value })
+        cells.push({ site, period, n, value, ids: ids.get(`${site}|${period}`) ?? [] })
       }
     }
     const filled = cells.filter((c): c is Cell & { value: number } => c.value !== null)
@@ -91,13 +95,16 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
   }, [rows, field, stat, meta.sites])
   const nEmpty = cells.length - filled.length
 
+  const colours = useColourScheme('monthly-heatmap', 'sequential')
+  const edits = useFilterEdits()
   const color = useMemo(() => {
     const sorted = filled.map((c) => c.value).sort(d3.ascending)
-    const interp = d3.interpolateRgbBasis(RAMP_SEQUENTIAL.slice(2))
+    // the gallery blues start two steps in, so the faintest month still reads against white
+    const interp = d3.interpolateRgbBasis(colours.name === 'Gallery' && !colours.reverse ? colours.stops.slice(2) : colours.stops)
     if (stat === 'Count') return d3.scaleSequential(interp).domain([0, Math.max(1, d3.max(sorted) ?? 1)]).clamp(true)
     const [lo, hi] = robustDomain(sorted, 0.02, 0.98).domain
     return d3.scaleSequential(interp).domain([lo, hi === lo ? lo + 1 : hi]).clamp(true)
-  }, [filled, stat])
+  }, [filled, stat, colours.stops.join()]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- geometry: the left gutter is measured from the longest site name so it never clips
   const labelPad = useMemo(() => {
@@ -147,6 +154,7 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
         <>
           <Segmented label="Cell" value={stat} options={STATS} onChange={setStat} title="Statistic across the month's filters at that site" />
           <Toggle label="Season strip" checked={seasonStrip} onChange={setSeasonStrip} title="A strip above the columns coloured by the selected season calendar" />
+          {colours.picker}
         </>
       }
     >
@@ -181,12 +189,17 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
                     x={xi * cellW} y={yi * rowH}
                     width={Math.max(1, cellW - 0.6)} height={rowH - 4}
                     fill={c.value === null ? INK.empty : color(c.value)} rx={1.5}
+                    // a cell is a site's month of filters: click lists them in the side panel, right-click excludes or keeps them
+                    {...(c.ids.length ? fidsProps(c.ids, `${c.site} · ${c.period}`) : {})}
+                    style={{ cursor: c.ids.length ? 'pointer' : 'default' }}
+                    onClick={() => { if (c.ids.length) { tip.hide(); edits.openGroup({ title: `${c.site} · ${c.period}`, ids: c.ids, fields: [field] }) } }}
                     onMouseEnter={(e) =>
                       tip.show(e, [
                         c.site,
                         c.period,
                         c.value === null ? 'no filters' : `${statLabel} = ${fmtCell(c.value)}`,
                         `n = ${c.n} filter${c.n === 1 ? '' : 's'}`,
+                        ...(c.n ? ['click to list them · right-click to exclude or keep'] : []),
                         `season: ${s?.name ?? '—'} (${calendarLabel(meta)})`,
                       ])
                     }

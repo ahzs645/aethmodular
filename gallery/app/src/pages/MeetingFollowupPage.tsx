@@ -28,7 +28,7 @@ import { useSearchParam } from '@/lib/url'
 import { PageChoiceControls, PageChoices, usePageChoice } from '@/lib/pageChoices'
 import { SidebarControls } from '@/lib/pageSidebar'
 import { baseFilterId, useHighlight } from '@/lib/highlight'
-import { ADDIS_ALL, BASELINE_COLOR, FONT, IMPROVE_GREY, INK, OCT1_HATCH, RAMP_DIVERGING, SPECTRAL_REGION } from '@/lib/theme'
+import { ADDIS_ALL, BASELINE_COLOR, FONT, IMPROVE_GREY, INK, OCT1_HATCH, SPECTRAL_REGION } from '@/lib/theme'
 import { ANALOG_SELECTION_EXCLUDED, OCT1_ALSO_EXCLUDED } from '@/components/SpectralRegions'
 import { coef, coefSigned, f2, fmt, signed } from '@/lib/format'
 import { ALL_ADDIS, ANALYSIS_CALENDAR_NOTE, inSeasonGroup, isAllAddis, seasonPhrase, shortSeason } from '@/lib/seasons'
@@ -38,6 +38,7 @@ import { Traces, loadTraces } from '@/lib/similarity'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
 import { withUnit } from '@/lib/theme'
+import { useColourScheme } from '@/lib/colourSchemes'
 
 /**
  * Click-through for the 2026-09-17 Ann/Satoshi meeting follow-up. Every number
@@ -1185,14 +1186,20 @@ function GridStep({ data }: { data: MeetingData }) {
   const w = Math.max(600, width), cw = Math.max(3, (w - left - 20) / Math.max(1, bins.length)), chH = 26
   const h = cats.length * chH + 70
   const dom = metric === 'intercept' ? [-2.5, 0, 2.5] : metric === 'slope' ? [0, 1, 2] : [0.5, 0.85, 1]
+  // intercept and slope diverge around agreement; CV R² is sequential: each with its own palette (lib/colourSchemes)
+  const divColours = useColourScheme('category-grid', 'diverging')
+  const seqColours = useColourScheme('category-grid-r2', 'sequential')
+  const colours = metric === 'CV R²' ? seqColours : divColours
+  const ds = divColours.stops, ss = seqColours.stops
   const color = d3.scaleLinear<string>().domain([dom[0], (dom[0] + dom[1]) / 2, dom[1], (dom[1] + dom[2]) / 2, dom[2]])
-    .range(metric === 'CV R²' ? ['#f7f7f7', '#d1e5f0', '#67a9cf', '#2166ac', '#053061'] : [RAMP_DIVERGING[0], RAMP_DIVERGING[2], '#f7f7f7', RAMP_DIVERGING[4], RAMP_DIVERGING[6]]).clamp(true)
+    .range(metric === 'CV R²' ? [ss[0], ss[2], ss[4], ss[6], ss[7]] : [ds[0], ds[2], ds[3], ds[4], ds[6]]).clamp(true)
   return (
     <ChartFrame title="Category grid — prioritization categories re-run on baselined spectra: Addis readout by cohort size"
       subtitle={`${data.grid_n} fitted cohorts: category × cutoff (step 5) × baseline × CV. Cells average the fits inside each 25-filter bin. Replaces the intercept continuum plot.`}
       controls={<>
         <Segmented label="Cross-validation protocol" value={CV_PROTOCOL_SHORT[mode] as any} options={[CV_PROTOCOL_SHORT.site_heldout, CV_PROTOCOL_SHORT.app] as any} onChange={(v: string) => setMode(v === CV_PROTOCOL_SHORT.app ? 'app' : 'site_heldout')} />
-        <Segmented label="Colour" value={metric as any} options={METRICS} onChange={setMetric as any} />
+        <Segmented label="Cell" value={metric as any} options={METRICS} onChange={setMetric as any} />
+        {colours.picker}
         {metric !== 'CV R²' && <Segmented label="Test set (Addis) readout" value={readout as any} options={READOUTS} onChange={setReadout as any} />}
         {/* fading by CV R² is moot when the cells are already coloured by it */}
         {mode === 'site_heldout' && metric !== 'CV R²' && <Toggle label="Fade cells failing IMPROVE cross-validation R² ≥ 0.85" checked={gate} onChange={setGate} />}

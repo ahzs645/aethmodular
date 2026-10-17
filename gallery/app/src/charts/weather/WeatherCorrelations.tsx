@@ -5,9 +5,10 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { chemText } from '@/lib/format'
-import { FONT, INK, RAMP_DIVERGING, inkOn } from '@/lib/theme'
+import { FONT, INK, inkOn } from '@/lib/theme'
 import { WEATHER_VARS, spearman, weatherField, type WeatherSource } from '@/lib/weather'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { useColourScheme } from '@/lib/colourSchemes'
 
 /** species worth a column when they are measured; the rest of the field list would only add empty columns */
 const PREFERRED = ['PM2.5 mass', 'HIPS BC', 'HIPS Fabs', 'EC (FTIR)', 'OC (FTIR)', 'OM (FTIR)', 'Sulfate', 'Nitrate', 'Ammonium', 'Potassium', 'Sodium', 'Calcium', 'Iron', 'Silicon', 'Aluminum', 'Zinc', 'Lead']
@@ -42,12 +43,13 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
     }))
   }, [at, vars.map((v) => v.field).join(), species.join(), meta.seasons, site]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const color = d3.scaleQuantize<string>().domain([-1, 1]).range(RAMP_DIVERGING)
+  const colours = useColourScheme('weather-correlations', 'diverging')
+  const color = d3.scaleQuantize<string>().domain([-1, 1]).range(colours.stops)
   const labelW = 150, cell = Math.max(22, Math.min(34, (Math.min(width, 900) - labelW - 20) / Math.max(1, species.length)))
   const fw = labelW + species.length * cell + 10, fh = 70 + vars.length * cell + 10
 
   return (
-    <ChartFrame id="weather-correlations" title={`${site ? `${site.name} · ` : ''}weather × chemistry correlations, by season`}
+    <ChartFrame id="weather-correlations" controls={colours.picker} title={`${site ? `${site.name} · ` : ''}weather × chemistry correlations, by season`}
       subtitle={`Spearman ρ between each weather variable over the filter's window and each species, for every filter at the site and then within each season (blank: fewer than ${MIN_N} filters). Pooled correlations mostly follow the seasonal cycle; the per-season ones are closer to "does this weather change the day's air".`}
       provenance="meteorology_revisions R5 (seasonal correlation matrices) · meteorology_source_interaction §3 (temperature range as an inversion proxy)">
       <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 18 }}>
@@ -69,9 +71,9 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
         {tip.node}
       </div>
       <div className="legend">
-        <span className="legend-item"><span className="swatch square" style={{ background: RAMP_DIVERGING[0] }} />ρ = −1</span>
-        <span className="legend-item"><span className="swatch square" style={{ background: RAMP_DIVERGING[3], outline: '1px solid #ddd' }} />0</span>
-        <span className="legend-item"><span className="swatch square" style={{ background: RAMP_DIVERGING[6] }} />+1</span>
+        <span className="legend-item"><span className="swatch square" style={{ background: colours.stops[0] }} />ρ = −1</span>
+        <span className="legend-item"><span className="swatch square" style={{ background: colours.stops[3], outline: '1px solid #ddd' }} />0</span>
+        <span className="legend-item"><span className="swatch square" style={{ background: colours.stops[6] }} />+1</span>
         <span className="legend-item">values shown where |ρ| ≥ 0.3</span>
       </div>
     </ChartFrame>

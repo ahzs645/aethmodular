@@ -67,6 +67,17 @@ export function IntervalStrip({ blocks, panels, labelWidth = 220, rowHeight = 20
   const tip = useTooltip(ref)
   const panelGap = 28
   const m = { top: panels.some((p) => p.heading || p.marker) ? 24 : 10, right: 20 + noteWidth, bottom: 44, left: labelWidth }
+  // panels that cannot sit side by side at their minimum width stack, one strip each, instead of
+  // pushing the page into a horizontal scroll
+  const fits = !width || m.left + m.right + panels.length * minPanelWidth + panelGap * (panels.length - 1) <= width
+  if (!fits && panels.length > 1) return (
+    <div ref={ref} className="interval-stack">
+      {panels.map((p, k) => (
+        <IntervalStrip key={k} panels={[p]} labelWidth={labelWidth} rowHeight={rowHeight} blockGap={blockGap} minPanelWidth={minPanelWidth} noteWidth={noteWidth}
+          blocks={blocks.map((b) => ({ ...b, rows: b.rows.map((r) => ({ ...r, marks: [r.marks[k] ?? []] })) }))} />
+      ))}
+    </div>
+  )
   const pw = Math.max(minPanelWidth, (width - m.left - m.right - panelGap * (panels.length - 1)) / panels.length)
   const scales = panels.map((p, k) => {
     if (p.domain) return d3.scaleLinear().domain(p.domain).range([0, pw])

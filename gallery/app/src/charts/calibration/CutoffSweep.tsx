@@ -196,6 +196,7 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
         />
         {countRows.length > 0 && <div style={{ overflowX: 'auto', marginTop: 12 }}>
           <p className="chart-note">Cutoff {countCut}: actual calibration counts and scores. Click a chart point to inspect another cutoff. Fitted and held-out counts describe the final fit split; internal CV repeatedly holds out folds within the fitted set.</p>
+          <div style={{ overflowX: 'auto' }}>
           <table className="census-table" style={{ width: '100%', minWidth: 800, fontSize: 12 }}>
             <thead><tr><th>Spectra / selection</th><th>Selected cohort</th><th>Fitted</th><th>Held-out</th><th>Site CV R²</th><th>Site CV RMSE (µg/filter)</th><th>Internal CV RMSE (µg/filter)</th></tr></thead>
             <tbody>{countRows.map((r) => {
@@ -203,6 +204,7 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
               return <tr key={`${r.sp}|${r.sel}`}><td>{label(PREPROCESSING, r.sp)}{r.sel && r.sel !== 'raw' ? ` · ${label(SELECTION_SPACE, r.sel)}` : ''}</td><td>{fmtCount(counts.cohort)}</td><td>{fmtCount(counts.fitted)}</td><td>{fmtCount(counts.heldout)}</td><td>{r.ho?.toFixed(3) ?? 'unavailable'}</td><td>{calibrationReadout(r, 'cv_rmse')?.toFixed(3) ?? 'unavailable'}</td><td>{calibrationReadout(r, 'rmsecv')?.toFixed(3) ?? 'unavailable'}</td></tr>
             })}</tbody>
           </table>
+          </div>
         </div>}
         {tip.node}
       </div>

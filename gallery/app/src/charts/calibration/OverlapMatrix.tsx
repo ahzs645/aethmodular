@@ -5,9 +5,10 @@ import { ColorLegend } from '@/components/ColorLegend'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { INK, FONT, RAMP_SEQUENTIAL, inkOn } from '@/lib/theme'
+import { INK, FONT, inkOn } from '@/lib/theme'
 import type { OverlapRow } from '@/lib/types'
 import { cohortColor } from './common'
+import { useColourScheme } from '@/lib/colourSchemes'
 
 const VIEWS = ['Matrix', 'Chord'] as const
 
@@ -59,8 +60,10 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
   }, [rows])
 
   const labelW = 230
-  const size = Math.max(48, Math.min(72, (width - labelW - 20) / Math.max(1, names.length)))
-  const color = d3.scaleQuantize<string>().domain([0, 1]).range(RAMP_SEQUENTIAL)
+  // the matrix, its row labels and the 150 px kept for the rotated column labels fit the panel
+  const size = Math.max(40, Math.min(72, (width - labelW - 150) / Math.max(1, names.length)))
+  const colours = useColourScheme('cohort-overlap', 'sequential')
+  const color = d3.scaleQuantize<string>().domain([0, 1]).range(colours.stops)
   const short = (n: string) => n.replace(' (', ' ').replace(')', '')
   const vnames = useMemo(() => names.filter((n) => !lg.hidden.has(short(n))), [names, lg.hidden])
 
@@ -98,7 +101,7 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
       title="Cohort overlap — are the selection methods picking the same filters?"
       subtitle="Shared members between every pair of cohorts at their locked cutoffs. Matrix: shaded as a fraction of the smaller cohort, the diagonal is each cohort's size. Chord: every cohort is an arc sized by its member count, ribbons are the filters two cohorts share, and the unribboned part of an arc is what that cohort alone selects."
       provenance="calibration_explorer /api/overlap · meeting item · react-graph-gallery.com/chord-diagram"
-      controls={<Segmented label="View" value={view} options={VIEWS} onChange={setView} />}
+      controls={<><Segmented label="View" value={view} options={VIEWS} onChange={setView} />{view === 'Matrix' && colours.picker}</>}
     >
       <div ref={wrapRef} className="chart-wrap centered">
         {names.length < 2 ? (

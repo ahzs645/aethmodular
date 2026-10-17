@@ -4,10 +4,11 @@ import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { INK, FONT, RAMP_DIVERGING, RAMP_SEQUENTIAL, inkOn } from '@/lib/theme'
+import { INK, FONT, inkOn } from '@/lib/theme'
 import type { CalibFile, CalibRow } from '@/lib/types'
 import { configKey, fmtFit, passes, sameConfig, score, shortConfig, type Config } from './common'
 import { METRIC } from '@/lib/labels'
+import { useColourScheme } from '@/lib/colourSchemes'
 
 const CELLS = ['Deming intercept', 'Deming slope', 'R²'] as const
 type Cell = (typeof CELLS)[number]
@@ -58,11 +59,15 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
     if (cell === 'Deming slope') return r.dm
     return r.r2
   }
+  // intercept and slope diverge around agreement (0, 1); R² is a sequential scale: each its own palette
+  const divColours = useColourScheme('cross-site', 'diverging')
+  const seqColours = useColourScheme('cross-site-r2', 'sequential')
+  const colours = cell === 'R²' ? seqColours : divColours
   const color = useMemo(() => {
-    if (cell === 'Deming intercept') return d3.scaleLinear<string>().domain([-6, -4, -2, 0, 2, 4, 6]).range(RAMP_DIVERGING).clamp(true)
-    if (cell === 'Deming slope') return d3.scaleLinear<string>().domain([0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75]).range(RAMP_DIVERGING).clamp(true)
-    return d3.scaleQuantize<string>().domain([0, 1]).range(RAMP_SEQUENTIAL)
-  }, [cell])
+    if (cell === 'Deming intercept') return d3.scaleLinear<string>().domain([-6, -4, -2, 0, 2, 4, 6]).range(divColours.stops).clamp(true)
+    if (cell === 'Deming slope') return d3.scaleLinear<string>().domain([0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75]).range(divColours.stops).clamp(true)
+    return d3.scaleQuantize<string>().domain([0, 1]).range(seqColours.stops)
+  }, [cell, divColours.stops.join(), seqColours.stops.join()]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const labelW = 250
   const cellW = Math.max(70, Math.min(140, (width - labelW - 20) / Math.max(1, targets.length)))
@@ -79,6 +84,7 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
         <>
           <Segmented label="Cell" value={cell} options={CELLS} onChange={setCell} />
           <Select label="Top N at Addis" value={topN} options={['5', '10', '15', '25', '40']} onChange={setTopN} />
+          {colours.picker}
         </>
       }
     >
