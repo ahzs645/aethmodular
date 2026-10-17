@@ -2,7 +2,7 @@ import { RegressionProvider, RegressionControls, parseEstimators, estimatorParam
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useGalleryData } from '@/hooks/useGalleryData'
 import { HighlightProvider, baseFilterId, useHighlight, type FilterRecord } from '@/lib/highlight'
-import { NO_PMF, pmfGroups, pmfKeyByDate, pmfLabel, type PmfScheme } from '@/lib/pmfGroups'
+import { NO_PMF, PMF_GROUP, PMF_SOURCE, isPmfField, pmfGroups, pmfKeyByDate, pmfLabel, pmfShareFields, withPmf, type PmfScheme } from '@/lib/pmfGroups'
 import { EXPLAIN_AVAILABLE, PrefsProvider, usePrefs } from '@/lib/prefs'
 import { listParam, listToParam, readParams, writeParams } from '@/lib/url'
 import { Scatterplot } from '@/charts/correlation/Scatterplot'
@@ -114,6 +114,9 @@ const NAV_GROUPS: NavGroup[] = [
   { label: 'Calibration', items: ['calibration', 'baseline', 'similarity', 'blanks'].flatMap(tabItem) },
   { label: 'Meetings', items: shared('meeting') ? MEETINGS.map((m) => ({ key: m.key, label: m.label, tab: 'meeting', meeting: m.key })) : [] },
 ].filter((g) => g.items.length)
+
+/** a row of a site without PMF, which the PMF filter passes through */
+const OTHER_SITE = '__other_site'
 
 /** what the ⌘K search offers: the tabs this build shows (lib/headerNav) */
 const NAV_TABS = TABS.filter((t) => shared(t.key) && !('hidden' in t && t.hidden)).map((t) => ({ key: t.key as string, label: t.label as string, title: 'title' in t ? t.title as string : undefined }))
@@ -431,12 +434,12 @@ export default function App() {
   // ratios whose two fields this view has: the presets, then the reader's own (lib/viewFields)
   const activeKey = activeFields.join('|')
   const ratioView = useMemo(() => {
-    const has = new Set([...activeFields, ...(weather?.fields ?? [])])
+    const has = new Set([...activeFields, ...(weather?.fields ?? []), ...pmfShareFields(data?.pmf ?? null)])
     const fits = (d: RatioDef) => has.has(d.num) && has.has(d.den)
     const presets = RATIO_PRESETS.filter(fits)
     const own = ratios.filter((d) => fits(d) && !presets.some((x) => ratioKey(x) === ratioKey(d)))
     return { presets, all: [...presets, ...own] }
-  }, [activeKey, weather, ratios]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeKey, weather, ratios, data]) // eslint-disable-line react-hooks/exhaustive-deps
   const ratioFields = useMemo(() => ratioView.all.map(ratioKey), [ratioView])
 
   // Fields that vanished from the export, or that the chosen network does not measure,
@@ -444,7 +447,7 @@ export default function App() {
   useEffect(() => {
     if (!data || (netView && !netView.fields.length)) return
     // weather fields (lib/weather) load on their own, after this first check, so they are known by name
-    const ok = (f: string) => activeFields.includes(f) || ratioFields.includes(f) || /\((ERA5|station)\)$/.test(f)
+    const ok = (f: string) => activeFields.includes(f) || ratioFields.includes(f) || isPmfField(f) || /\((ERA5|station)\)$/.test(f)
     const d = NETWORK_DEFAULTS[net]
     if (!ok(xField)) setXField(ok(d.x) ? d.x : activeFields[0])
     if (!ok(yField)) setYField(ok(d.y) ? d.y : activeFields[1] ?? activeFields[0])
@@ -542,13 +545,14 @@ export default function App() {
   // Rows after the exclusion toggle and calendar relabel — the brush draws these.
   const rawSourceRows = useMemo(() => {
     const rows = netView ? netView.rows : focusRows
-    if (!weather) return rows
     // the weather fields ride on every row, so every chart and picker can use them
-    return rows.map((r) => {
+    const withWeather = !weather ? rows : rows.map((r) => {
       const w = weather.rows[r.id]
       return w ? { ...r, ...Object.fromEntries(weather.fields.map((f, i) => [f, w[i]])) } : r
     })
-  }, [netView, focusRows, weather])
+    // so do the PMF source shares and dominant source, at the site the PMF solution covers (lib/pmfGroups)
+    return withPmf(withWeather, data?.pmf ?? null, pmfScheme)
+  }, [netView, focusRows, weather, data, pmfScheme])
   // the reader's view (lib/viewFields): MAC, mass per filter, ratios; the drawer keeps the exported values
   const exportMac = data?.meta.mac_value ?? 10
   const viewOpts = useMemo(() => ({
@@ -587,36 +591,6 @@ export default function App() {
     return kept.size === 0 || kept.size === names.size ? null : kept
   }, [seasonsOn, activeSeasons, seasons])
 
-  // what the date brush draws: every filter except the date cut, so its range follows the picked sites
-  const brushRows = useMemo(
-    () => baseRows
-      .filter((r) => !seasonSel || seasonSel.has(r.season))
-      .filter((r) => (netView ? netView.chosenNames.has(r.site) : !activeSites || activeSites.has(r.site)))
-      .filter((r) => !dropIds.has(r.id) && (!keepIds || keepIds.has(r.id))),
-    [baseRows, seasonSel, activeSites, netView, dropIds, keepIds]
-  )
-  const rows = useMemo(
-    () =>
-      baseRows
-        .filter(inRange)
-        .filter((r) => !seasonSel || seasonSel.has(r.season))
-        .filter((r) => (netView ? netView.chosenNames.has(r.site) : !activeSites || activeSites.has(r.site)))
-        .filter((r) => !dropIds.has(r.id) && (!keepIds || keepIds.has(r.id))),
-    [baseRows, inRange, seasonSel, activeSites, netView, dropIds, keepIds]
-  )
-
-  // the Weather tab's site table can narrow the Filters panel's pick to one site (and put it back)
-  const setSpartanPick = useCallback((codes: string[]) => setSpartanSel(codes), [])
-
-  // The map has its own site scope; keep date, season and exclusion choices, hand edits included.
-  const mapRows = useMemo(
-    () => baseRows.filter(inRange).filter((r) => !seasonSel || seasonSel.has(r.season))
-      .filter((r) => !dropIds.has(r.id) && (!keepIds || keepIds.has(r.id))),
-    [baseRows, inRange, seasonSel, dropIds, keepIds]
-  )
-
-  // PMF rows get the same calendar + season treatment as the filter rows, so
-  // one season selection means the same thing on every tab.
   // PMF groups under the chosen scheme; the calibration tab also offers "No PMF day",
   // since most Addis evaluation filters fall outside the 2023 PMF run
   const pmfGroupList = useMemo(() => pmfGroups(data?.pmf ?? null, pmfScheme, false), [data, pmfScheme])
@@ -632,6 +606,48 @@ export default function App() {
     () => (pmfOn ? pmfSel ?? new Set(pmfGroupList.map((g) => g.name)) : null),
     [pmfOn, pmfSel, pmfGroupList]
   )
+  // on the chart tabs the PMF filter narrows only the PMF site's filters (by their dominant source);
+  // other sites pass through untouched
+  const pmfSite = data?.pmf?.site ?? null
+  const chartPmf = (NETWORK_TABS as readonly string[]).includes(tab) && !!pmfKeep
+  const inChartPmf = useCallback((r: FilterRow) => !chartPmf || r.code !== pmfSite || pmfKeep!.has(String(r[PMF_SOURCE] ?? NO_PMF)),
+    [chartPmf, pmfSite, pmfKeep])
+  // a site with PMF is among the picked ones: the chart tabs then offer the PMF section
+  const pmfSiteInView = useMemo(() => !!pmfSite && baseRows.some((r) => r.code === pmfSite && (netView ? netView.chosenNames.has(r.site) : !activeSites || activeSites.has(r.site))),
+    [pmfSite, baseRows, netView, activeSites])
+
+  // what the date brush draws: every filter except the date cut, so its range follows the picked sites
+  const brushRows = useMemo(
+    () => baseRows
+      .filter((r) => !seasonSel || seasonSel.has(r.season))
+      .filter((r) => (netView ? netView.chosenNames.has(r.site) : !activeSites || activeSites.has(r.site)))
+      .filter(inChartPmf)
+      .filter((r) => !dropIds.has(r.id) && (!keepIds || keepIds.has(r.id))),
+    [baseRows, seasonSel, activeSites, netView, dropIds, keepIds, inChartPmf]
+  )
+  const rows = useMemo(
+    () =>
+      baseRows
+        .filter(inRange)
+        .filter((r) => !seasonSel || seasonSel.has(r.season))
+        .filter((r) => (netView ? netView.chosenNames.has(r.site) : !activeSites || activeSites.has(r.site)))
+        .filter(inChartPmf)
+        .filter((r) => !dropIds.has(r.id) && (!keepIds || keepIds.has(r.id))),
+    [baseRows, inRange, seasonSel, activeSites, netView, dropIds, keepIds, inChartPmf]
+  )
+
+  // the Weather tab's site table can narrow the Filters panel's pick to one site (and put it back)
+  const setSpartanPick = useCallback((codes: string[]) => setSpartanSel(codes), [])
+
+  // The map has its own site scope; keep date, season and exclusion choices, hand edits included.
+  const mapRows = useMemo(
+    () => baseRows.filter(inRange).filter((r) => !seasonSel || seasonSel.has(r.season))
+      .filter((r) => !dropIds.has(r.id) && (!keepIds || keepIds.has(r.id))),
+    [baseRows, inRange, seasonSel, dropIds, keepIds]
+  )
+
+  // PMF rows get the same calendar + season treatment as the filter rows, so
+  // one season selection means the same thing on every tab.
   const pmfByDate = useMemo(() => pmfKeyByDate(data?.pmf ?? null), [data])
   const pmfLabelOfDate = useCallback(
     (d: string | null | undefined) => pmfLabel(data?.pmf ?? null, d ? pmfByDate.get(d.slice(0, 10)) : null, pmfScheme),
@@ -709,6 +725,14 @@ export default function App() {
     meta.field_units = { ...meta.field_units, ...weather.field_units }
     meta.field_groups = [...(meta.field_groups ?? []).filter((g) => g.label !== WEATHER_GROUP), ...(present.length ? [{ label: WEATHER_GROUP, fields: present }] : [])]
   }
+  // the PMF source shares join the pickers as their own group where a site in view has PMF (lib/pmfGroups)
+  const pmfPresent = pmfShareFields(pmf ?? null).filter((f) => sourceRows.some((r) => typeof r[f] === 'number'))
+  if (pmfPresent.length) {
+    meta.fields = [...meta.fields, ...pmfPresent.filter((f) => !meta.fields.includes(f))]
+    meta.field_units = { ...meta.field_units, ...Object.fromEntries(pmfPresent.map((f) => [f, 'share'])) }
+    meta.field_groups = [...(meta.field_groups ?? []).filter((g) => g.label !== PMF_GROUP), { label: PMF_GROUP, fields: pmfPresent }]
+    meta.pmf_groups = pmfGroups(pmf ?? null, pmfScheme, true)
+  }
   // the baseline variants are drawn but never offered in the pickers
   meta.field_units = { ...meta.field_units, [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3' }
   // the drawer compares a filter with exported reference populations, so it keeps the exported units
@@ -734,7 +758,10 @@ export default function App() {
 
   const subset = (() => {
     if (tab === 'census' || tab === 'baseline' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks') return null
-    const caps = net === 'focus' ? CAPS[tab] : { ...CAPS[tab], datasetLabel: net === 'improve' ? 'IMPROVE samples' : net === 'both' ? 'SPARTAN filters + IMPROVE samples' : 'SPARTAN filters', excluded: sourceRows.some((r) => r.excluded) }
+    const baseCaps = net === 'focus' ? CAPS[tab] : { ...CAPS[tab], datasetLabel: net === 'improve' ? 'IMPROVE samples' : net === 'both' ? 'SPARTAN filters + IMPROVE samples' : 'SPARTAN filters', excluded: sourceRows.some((r) => r.excluded) }
+    // the chart tabs offer the PMF section while a site with PMF is picked
+    const chartTab = (NETWORK_TABS as readonly string[]).includes(tab)
+    const caps = chartTab && pmfSiteInView ? { ...baseCaps, pmf: true } : baseCaps
     const pmfMode = tab === 'pmf'
     const calMode = tab === 'calibration'
     // Counts are computed *before* the dimension's own filter is applied,
@@ -744,10 +771,11 @@ export default function App() {
       : calMode
         ? addisEvalDates.map((d) => ({ season: seasonOf(pmfSiteName, d ? Number(d.slice(5, 7)) : null, 'undated'), site: pmfSiteName, pmf: pmfLabelOfDate(d) }))
         // hand exclusions count like any other filter, so the chips add up to what the charts draw
-        : baseRows.filter(inRange).filter((r) => !dropIds.has(r.id) && (!keepIds || keepIds.has(r.id))).map((r) => ({ season: r.season, site: r.site, pmf: NO_PMF }))
-    const usePmf = pmfMode || calMode
+        : baseRows.filter(inRange).filter((r) => !dropIds.has(r.id) && (!keepIds || keepIds.has(r.id)))
+          .map((r) => ({ season: r.season, site: r.site, pmf: r.code === pmfSite ? String(r[PMF_SOURCE] ?? NO_PMF) : OTHER_SITE }))
+    const usePmf = pmfMode || calMode || (chartTab && pmfSiteInView)
     const inSeason = (r: { season: string }) => !seasonSel || seasonSel.has(r.season)
-    const inPmf = (r: { pmf: string }) => !usePmf || !pmfKeep || pmfKeep.has(r.pmf)
+    const inPmf = (r: { pmf: string }) => !usePmf || !pmfKeep || r.pmf === OTHER_SITE || pmfKeep.has(r.pmf)
     // each dimension's chips count what selecting them would give under the *other* filters
     const seasonPool = pool.filter(inPmf)
     const sitePool = seasonPool.filter(inSeason)
@@ -775,6 +803,7 @@ export default function App() {
 
     const state: SubsetState = {
       basis, mac: viewOpts.mac, exportMac,
+      pmfNote: chartTab && pmfSiteInView ? `Narrows ${pmf?.site_name ?? 'the PMF site'}'s filters only (${pmf?.n ?? 0} PMF days); other sites are unaffected. Each source's share is also a measurement (PMF sources), and the scatterplot can colour by PMF source.` : undefined,
       withVolume: basis === 'mass' ? [inViewRows.filter((r) => typeof r[VOLUME] === 'number').length, inViewRows.length] : undefined,
       convention: activeConvention,
       defaultConvention,

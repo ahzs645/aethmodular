@@ -51,6 +51,8 @@ export interface MetaFile {
   mac_value: number
   /** the gallery's units view (lib/viewFields): concentration, or mass per filter */
   basis?: 'conc' | 'mass'
+  /** the PMF groups under the chosen scheme, with 'No PMF day', where a site in view has PMF (lib/pmfGroups) */
+  pmf_groups?: { name: string; color: string }[]
   season_convention: string
   seasons: SeasonMeta[]
   /** every registered Ethiopian calendar, keyed by convention name */

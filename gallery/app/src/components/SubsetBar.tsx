@@ -103,6 +103,8 @@ export interface SubsetState {
   basis?: Basis
   mac?: number
   exportMac?: number
+  /** the PMF section's scope on a tab that mixes sites (only the PMF site's filters are narrowed) */
+  pmfNote?: string
   /** filters in view with a sampled volume, of all in view (mass per filter needs one) */
   withVolume?: [number, number]
 }
@@ -454,8 +456,8 @@ export function SubsetBar({
                       )
                     })}
                   </div>
-                  <span className="row-note" style={{ display: 'block' }}>
-                    Only filters with an ETAD PMF day (102 days of 2023, matched by exact date) are kept while this is on. Combines with seasonality.
+                  <span className={s.pmfNote ? 'method-note' : 'row-note'} style={{ display: 'block' }}>
+                    {s.pmfNote ?? 'Only filters with an ETAD PMF day (102 days of 2023, matched by exact date) are kept while this is on. Combines with seasonality.'}
                   </span>
                 </>
               )}
