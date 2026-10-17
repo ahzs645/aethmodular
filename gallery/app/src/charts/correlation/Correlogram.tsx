@@ -4,9 +4,12 @@ import { RegressionLines, RegressionGroupLines } from '@/components/RegressionOv
 import { useRegressions } from '@/lib/regressionPrefs'
 import { fitGroupingOption, useChartOptions } from '@/lib/chartOptions'
 import { groupedRegressions, type FitGrouping } from '@/lib/siteRegression'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { FieldMultiSelect, type FieldPreset } from '@/components/FieldMultiSelect'
+import { isPmfField } from '@/lib/pmfGroups'
+import { useSearchParam } from '@/lib/url'
 import { ColorLegend } from '@/components/ColorLegend'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -18,7 +21,23 @@ import { INK, RAMP_DIVERGING, FONT, inkOn } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 
 const ENCODINGS = ['Colour', 'Circle size', 'Scatter matrix'] as const
-const ALL_FAMILIES = 'Top 6 by coverage'
+const MIN_N = 20
+const SPLOM_MAX = 6
+
+/** the named field sets (FieldMultiSelect presets): only the fields this view has count */
+const listed = (names: string[]) => (av: string[]) => names.filter((f) => av.includes(f))
+const isWeather = (f: string) => /\((ERA5|station)\)$/.test(f)
+const BASE_PRESETS: FieldPreset[] = [
+  { key: 'carbon', label: 'Carbon & optical', fields: listed(['EC (FTIR)', 'OC (FTIR)', 'OM (FTIR)', 'EC (TOR)', 'OC (TOR)', 'HIPS BC', 'HIPS Fabs', 'BC (public HIPS)', 'Equivalent BC (SSR)', 'PM2.5 mass']) },
+  { key: 'ions', label: 'Ions & mass', fields: listed(['PM2.5 mass', 'Sulfate', 'Nitrate', 'Ammonium', 'Potassium', 'Sodium', 'Calcium', 'Magnesium', 'Nitrite', 'Phosphate', 'Bromide']) },
+  { key: 'dust', label: 'Dust & metals', fields: listed(['Silicon', 'Aluminum', 'Iron', 'Titanium', 'Calcium (element)', 'Potassium (element)', 'Manganese', 'Soil', 'Zinc', 'Copper', 'Lead']) },
+  { key: 'combustion', label: 'Combustion tracers', note: 'EC, OC and BC with potassium, zinc, lead and the combustion PMF factors',
+    fields: listed(['EC (FTIR)', 'OC (FTIR)', 'HIPS BC', 'EC (TOR)', 'Potassium', 'Zinc', 'Lead', 'Wood Burning share (PMF)', 'Charcoal share (PMF)', 'Fossil Fuel Combustion share (PMF)']) },
+  { key: 'groups', label: 'FTIR functional groups', fields: listed(['Alkane CH', 'Alcohol COH', 'Carboxylic COOH', 'Non-acid CO', 'OM (FTIR)', 'OC (FTIR)', 'EC (FTIR)']) },
+  { key: 'pmf', label: 'PMF sources', note: 'the PMF factor shares with EC and BC', fields: (av) => [...listed(['EC (FTIR)', 'HIPS BC'])(av), ...av.filter(isPmfField)] },
+  { key: 'weather', label: 'Weather', note: 'EC, BC and mass with the weather over each filter', fields: (av) => [...listed(['EC (FTIR)', 'HIPS BC', 'PM2.5 mass'])(av), ...av.filter(isWeather)].slice(0, 14) },
+  { key: 'all', label: 'Everything', note: 'every field with enough values', fields: (av) => av },
+]
 
 /**
  * Correlogram — the chemistry correlation matrix, 14 figures in the estate.
@@ -40,7 +59,6 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const hl = useHighlight()
-  const [family, setFamily] = useState(ALL_FAMILIES)
   const lg = useLegend()
 
   const siteCodes = useMemo(
@@ -53,23 +71,39 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
   const o = useChartOptions('correlogram', [
     { key: 'site', label: 'Site', style: 'select', default: 'ETAD', choices: siteCodes.map((c) => ({ value: c, label: c === 'All' ? 'All sites' : meta.sites.find((s) => s.code === c)?.name ?? c })) },
     { key: 'encoding', label: 'Encoding', choices: ENCODINGS, default: 'Colour' },
-    { key: 'species', when: (c) => c.encoding === 'Scatter matrix', node: () => <Select label="Species" value={family} options={families} onChange={setFamily} title="At most six species per matrix" /> },
+    // which fields: a preset or the reader's own (components/FieldMultiSelect); the scatter matrix draws the first six
+    { key: 'fields', node: () => <FieldMultiSelect meta={meta} available={avail} value={chosen} preset={presetKey === 'custom' ? null : presetKey} presets={presets}
+      max={encoding === 'Scatter matrix' ? SPLOM_MAX : undefined} onChange={(fs, p) => { setCustom(fs.join('|')); setPreset(p ?? 'custom') }} /> },
     fitGroupingOption({ bind: [chosenGrouping, setGrouping as (v: never) => void],
       when: (c) => c.encoding === 'Scatter matrix' && (c.estimators as number) > 0,
       offerSite: (c) => c.site === 'All' && (c.nSites as number) > 1 }),
-    { key: 'count', when: (c) => c.encoding !== 'Scatter matrix', node: () => <span className="control">{block.fields.length} species</span> },
   ], { estimators: methods.length, nSites: siteCodes.length - 1 })
   const effectiveSite = o.values.site as string
   const encoding = o.values.encoding as (typeof ENCODINGS)[number]
   const matrixGrouping = o.values.grouping as FitGrouping
   const sub = useMemo(() => (effectiveSite === 'All' ? rows : rows.filter((r) => r.code === effectiveSite)), [rows, effectiveSite])
 
+  // the fields that can be shown here: measured (no restatements, uncertainties, MDLs) with ≥ MIN_N filters
+  const { avail, nOf } = useMemo(() => {
+    const nOf: Record<string, number> = {}
+    for (const f of meta.fields) if (!(f in RESTATES) && !isBookkeeping(f)) nOf[f] = sub.filter((r) => typeof r[f] === 'number').length
+    return { avail: Object.keys(nOf).filter((f) => nOf[f] >= MIN_N), nOf }
+  }, [sub, meta.fields])
+  const presets = useMemo<FieldPreset[]>(() => [
+    { key: 'top', label: 'Top 12 by coverage', note: 'the twelve fields with the most filters here', fields: (av) => [...av].sort((a, b) => (nOf[b] ?? 0) - (nOf[a] ?? 0)).slice(0, 12) },
+    ...BASE_PRESETS,
+  ], [nOf])
+  const [presetKey, setPreset] = useSearchParam<string>('corrp', 'top', [...presets.map((p) => p.key), 'custom'])
+  const [customParam, setCustom] = useSearchParam<string>('corrf', '')
+  const chosen = useMemo(() => {
+    if (presetKey !== 'custom') return (presets.find((p) => p.key === presetKey) ?? presets[0]).fields(avail)
+    return customParam.split('|').filter((f) => avail.includes(f))
+  }, [presetKey, customParam, presets, avail])
+
   // Computed from the live subset rather than a precomputed file, so the
   // season/site/date filters above actually move these numbers.
   const block = useMemo(() => {
-    const fields = meta.fields
-      .filter((f) => !(f in RESTATES) && !isBookkeeping(f))
-      .filter((f) => sub.filter((r) => typeof r[f] === 'number').length >= 20)
+    const fields = chosen
     const matrix = fields.map((fa) =>
       fields.map((fb) => {
         if (sameProduct(fa, fb)) return null
@@ -91,18 +125,10 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
     for (const f of fields) n[f] = sub.filter((r) => typeof r[f] === 'number').length
     const name = effectiveSite === 'All' ? 'All sites' : meta.sites.find((s) => s.code === effectiveSite)?.name ?? effectiveSite
     return { code: effectiveSite, name, fields, matrix, n }
-  }, [sub, effectiveSite, meta.fields, meta.sites])
+  }, [sub, effectiveSite, chosen, meta.sites])
 
-  // the scatter matrix cannot show 28 species: pick a family, or the six best-covered
-  const families = [ALL_FAMILIES, ...meta.field_groups.map((g) => g.label)]
-  const splomFields = useMemo(() => {
-    // uncertainties and detection limits are bookkeeping, not species
-    const measured = (f: string) => !f.includes('uncertainty') && !f.includes('MDL')
-    const pool = family === ALL_FAMILIES
-      ? block.fields.filter(measured).sort((a, b) => (block.n[b] ?? 0) - (block.n[a] ?? 0))
-      : (meta.field_groups.find((g) => g.label === family)?.fields ?? []).filter((f) => block.fields.includes(f) && measured(f))
-    return pool.slice(0, 6)
-  }, [family, block, meta.field_groups])
+  // the scatter matrix reads at a handful: the first six of the chosen fields
+  const splomFields = chosen.slice(0, SPLOM_MAX)
 
   const labelPad = 128
   const size = Math.min(Math.max(320, width - labelPad - 40), 660)
@@ -123,10 +149,10 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
     >
       <div ref={wrapRef} className="chart-wrap centered" style={{ overflowX: 'auto' }}>
         {block.fields.length < 2 ? (
-          <p className="frame-empty">Fewer than two species with ≥20 filters in this subset.</p>
+          <p className="frame-empty">{avail.length < 2 ? `Fewer than two fields with ≥${MIN_N} filters in this subset.` : 'Choose at least two fields (Fields ▾).'}</p>
         ) : encoding === 'Scatter matrix' ? (
           splomFields.length < 2 ? (
-            <Empty>Fewer than two species of that family have ≥20 filters here.</Empty>
+            <Empty>Choose at least two fields (Fields ▾).</Empty>
           ) : (
             <ScatterMatrix grouping={matrixGrouping} meta={meta} rows={sub.filter((r) => lg.show(r.site))} fields={splomFields} width={Math.min(width, 760)} tip={tip} hl={hl} units={meta.field_units} dim={lg.dim} />
           )
