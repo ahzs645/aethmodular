@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "meeting_date": "2026-09-17",
+  "main_slides": 18,
+  "backup_slides": 8,
+  "source_archive": "Aethmodular_Weekly_Meeting_Package_2026-09-17.zip",
+  "source_archive_size_bytes": 4997659,
+  "source_archive_sha256": "f27ed88c96e634e2982d8f63c27733719a526c89f32f87e40663035eee24e3c2",
+  "archive_root": "Aethmodular_Weekly_Meeting_2026-09-17",
+  "destination": "deliverables/ann_weekly_2026-09-17/bundle",
+  "scope": "Approved weekly meeting package only. No raw spectra arrays, complete meeting transcript, or 232 MB Colab bundle.",
+  "binaries_uploaded_by_connector": false,
+  "artifacts": {
+    "Aethmodular_Weekly_Meeting_2026-09-17.pptx": {
+      "size_bytes": 2260968,
+      "sha256": "ec06cbb2d7ecaca79808d187c3f2e87d8fcd9cfd215073c5b4577442061f8f1f"
+    },
+    "Aethmodular_Weekly_Meeting_2026-09-17.pdf": {
+      "size_bytes": 1537161,
+      "sha256": "a71518e123b682cdb35a2cd78bcd4debfa092ca28601b8706971a7d1c128419b"
+    },
+    "Presenter_Notes.md": {
+      "size_bytes": 24575,
+      "sha256": "dd63a7534e01adaf7fbf94dfd920d8c57018c6c9cf27166c0d2287c24468153e"
+    }
+  }
+}
