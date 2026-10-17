@@ -4,7 +4,7 @@ import { RegressionLines, RegressionGroupLines } from '@/components/RegressionOv
 import { useRegressions } from '@/lib/regressionPrefs'
 import { fitGroupingOption, useChartOptions } from '@/lib/chartOptions'
 import { groupedRegressions, type FitGrouping } from '@/lib/siteRegression'
-import { useMemo, useRef } from 'react'
+import { memo, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { FieldMultiSelect, type FieldPreset } from '@/components/FieldMultiSelect'
@@ -17,7 +17,8 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { focusStyle, useHighlight } from '@/lib/highlight'
 import { RESTATES, isBookkeeping, sameProduct } from '@/fieldLineage'
 import { fmt, regression } from '@/lib/stats'
-import { INK, RAMP_DIVERGING, FONT, inkOn } from '@/lib/theme'
+import { INK, FONT, inkOn } from '@/lib/theme'
+import { useColourScheme } from '@/lib/colourSchemes'
 import type { FilterRow, MetaFile } from '@/lib/types'
 
 const ENCODINGS = ['Colour', 'Circle size', 'Scatter matrix'] as const
@@ -60,6 +61,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
   const tip = useTooltip(wrapRef)
   const hl = useHighlight()
   const lg = useLegend()
+  const colours = useColourScheme('correlogram', 'diverging')
 
   const siteCodes = useMemo(
     () => ['All', ...meta.sites.filter((s) => rows.some((r) => r.code === s.code)).map((s) => s.code)],
@@ -71,6 +73,8 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
   const o = useChartOptions('correlogram', [
     { key: 'site', label: 'Site', style: 'select', default: 'ETAD', choices: siteCodes.map((c) => ({ value: c, label: c === 'All' ? 'All sites' : meta.sites.find((s) => s.code === c)?.name ?? c })) },
     { key: 'encoding', label: 'Encoding', choices: ENCODINGS, default: 'Colour' },
+    // the matrix's colours (lib/colourSchemes, one picker); the scatter matrix colours by site instead
+    { key: 'colours', when: (c) => c.encoding !== 'Scatter matrix', node: () => colours.picker },
     // which fields: a preset or the reader's own (components/FieldMultiSelect); the scatter matrix draws the first six
     { key: 'fields', node: () => <FieldMultiSelect meta={meta} available={avail} value={chosen} preset={presetKey === 'custom' ? null : presetKey} presets={presets}
       max={encoding === 'Scatter matrix' ? SPLOM_MAX : undefined} onChange={(fs, p) => { setCustom(fs.join('|')); setPreset(p ?? 'custom') }} /> },
@@ -129,21 +133,25 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
 
   // the scatter matrix reads at a handful: the first six of the chosen fields
   const splomFields = chosen.slice(0, SPLOM_MAX)
+  // stable inputs for the matrix's memoised panels: the rows only change with the data or the legend
+  const hiddenKey = meta.sites.filter((x) => !lg.show(x.name)).map((x) => x.name).join('|')
+  const splomRows = useMemo(() => sub.filter((r) => lg.show(r.site)), [sub, hiddenKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  const dimKey = `${hiddenKey}#${lg.hover ?? ''}`
 
   const labelPad = 128
   const size = Math.min(Math.max(320, width - labelPad - 40), 660)
   const cell = size / Math.max(1, block.fields.length)
 
   const color = useMemo(
-    () => d3.scaleLinear<string>().domain([-1, -0.66, -0.33, 0, 0.33, 0.66, 1]).range(RAMP_DIVERGING).clamp(true),
-    []
+    () => d3.scaleLinear<string>().domain([-1, -0.66, -0.33, 0, 0.33, 0.66, 1]).range(colours.stops).clamp(true),
+    [colours.stops.join()] // eslint-disable-line react-hooks/exhaustive-deps
   )
 
   return (
     <ChartFrame
       id="correlogram"
       title="Correlogram — how the chemistry co-varies"
-      subtitle="Pearson r between species at one site. Blue is negative, red positive. The in-house and ChemSpec EC feeds both report FTIR EC, so the duplicate ChemSpec carbon fields are omitted. 'Scatter matrix' shows the clouds behind a few cells, with each species' histogram on the diagonal."
+      subtitle="Pearson r between species at one site; the colour scale below runs from negative to positive r (choose the colours under Colours). The in-house and ChemSpec EC feeds both report FTIR EC, so the duplicate ChemSpec carbon fields are omitted. 'Scatter matrix' shows the clouds behind a few cells, with each species' histogram on the diagonal."
       provenance="stands in for 14 correlogram + heatmap figures · react-graph-gallery.com/correlogram"
       controls={o.controls()}
     >
@@ -154,7 +162,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
           splomFields.length < 2 ? (
             <Empty>Choose at least two fields (Fields ▾).</Empty>
           ) : (
-            <ScatterMatrix grouping={matrixGrouping} meta={meta} rows={sub.filter((r) => lg.show(r.site))} fields={splomFields} width={Math.min(width, 760)} tip={tip} hl={hl} units={meta.field_units} dim={lg.dim} />
+            <ScatterMatrix grouping={matrixGrouping} meta={meta} rows={splomRows} fields={splomFields} width={Math.min(width, 760)} tip={tip} hl={hl} units={meta.field_units} dim={lg.dim} dimKey={dimKey} />
           )
         ) : (
           <svg width={size + labelPad + 30} height={size + labelPad + 20} className="animated">
@@ -216,7 +224,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
 }
 
 /** Pairwise scatter matrix for a few species, histograms on the diagonal. */
-function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, meta, grouping }: {
+function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, dimKey, meta, grouping }: {
   meta: MetaFile
   rows: FilterRow[]
   fields: string[]
@@ -225,6 +233,8 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, meta, groupin
   hl: ReturnType<typeof useHighlight>
   units: Record<string, string>
   dim: (site: string) => number
+  /** changes when the legend's dimming does (dim itself is a new function every render) */
+  dimKey: string
   /** the grouping drawn (one site in view: per site is the pooled fit) */
   grouping: FitGrouping
 }) {
@@ -271,36 +281,10 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, meta, groupin
                 </g>
               )
             }
-            const pts = rows
-              .map((r) => ({ row: r, x: r[fx], y: r[fy] }))
-              .filter((p): p is { row: FilterRow; x: number; y: number } => typeof p.x === 'number' && typeof p.y === 'number' && Number.isFinite(p.x) && Number.isFinite(p.y))
-            // Deming (λ=1) rather than y-on-x least squares: both species are measured with error
-            const st = regression(pts.map((p) => p.x), pts.map((p) => p.y), fitUncertainty(pts.map(p => p.row), fx, fy, meta))
-            const fitGroups = groupedRegressions(pts, grouping, { x: p => p.x, y: p => p.y, site: p => p.row.site, season: p => p.row.season, seasonColor: p => meta.seasons.find(se => se.name === p.row.season)?.color ?? INK.muted,
-              color: p => meta.sites.find(s => s.name === p.row.site)?.color ?? INK.muted,
-              options: members => fitUncertainty(members.map(p => p.row), fx, fy, meta) })
-            return (
-              <g key={`${i}-${j}`} transform={`translate(${ox},${oy})`}>
-                <rect width={cellS} height={cellS} fill="#fff" stroke={INK.grid} />
-                {pts.map((p) => {
-                  const f = focusStyle(p.row.id, hl.focusId, { r: 2, opacity: 0.55 }, hl.selected)
-                  const cx = Math.max(0, Math.min(cellS, sx(p.x)))
-                  const cy = Math.max(0, Math.min(cellS, cellS - sy(p.y)))
-                  return (
-                    <circle
-                      key={p.row.id} cx={cx} cy={cy} r={f.r} fill={p.row.color as string} fillOpacity={f.opacity * dim(p.row.site)} stroke={f.stroke} strokeWidth={f.strokeWidth}
-                      style={{ cursor: 'pointer' }}
-                      onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.site} · ${p.row.date}`, `${fx}: ${fmt(p.x)}`, `${fy}: ${fmt(p.y)}`]) }}
-                      onMouseLeave={() => { hl.setHover(null); tip.hide() }}
-                      data-fid={p.row.id} onClick={() => hl.openSample(p.row.id)}
-                    />
-                  )
-                })}
-                {grouping !== 'pooled' ? <RegressionGroupLines groups={fitGroups} x={sx} y={v => cellS - sy(v)} width={cellS} height={cellS} />
-                  : <RegressionLines stats={st} x={sx} y={v => cellS - sy(v)} domain={sx.domain() as number[]} width={cellS} height={cellS} />}
-                {st && <text x={cellS - 4} y={11} textAnchor="end" fontSize={9.5} fill={INK.text} fontFamily={FONT.mono} pointerEvents="none">r={st.r.toFixed(2)}</text>}
-              </g>
-            )
+            return <g key={`${i}-${j}`} transform={`translate(${ox},${oy})`}>
+              <SplomCell rows={rows} fx={fx} fy={fy} sx={sx} sy={sy} cellS={cellS} grouping={grouping} meta={meta}
+                pinnedId={hl.pinnedId} selected={hl.selected} dimKey={dimKey} dim={dim} tip={tip} open={hl.openSample} />
+            </g>
           })
         )}
         {fields.map((f, i) => (
@@ -313,3 +297,51 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, meta, groupin
     </svg>
   )
 }
+
+/**
+ * One off-diagonal panel of the scatter matrix. Hovering highlights the filter here only (a
+ * gallery-wide hover would redraw every panel, and every chart, on each mouse move); clicking
+ * pins it, which highlights it everywhere and opens its record. The fits are cached per panel,
+ * and the panel redraws only when its data, the pinned filter, the brush or the legend change.
+ */
+const SplomCell = memo(function SplomCell({ rows, fx, fy, sx, sy, cellS, grouping, meta, pinnedId, selected, dim, tip, open }: {
+  rows: FilterRow[]; fx: string; fy: string
+  sx: d3.ScaleLinear<number, number>; sy: d3.ScaleLinear<number, number>; cellS: number
+  grouping: FitGrouping; meta: MetaFile
+  pinnedId: string | null; selected: Set<string> | null; dimKey: string; dim: (site: string) => number
+  tip: ReturnType<typeof useTooltip>; open: (id: string) => void
+}) {
+  const [hover, setHover] = useState<string | null>(null)
+  const pts = useMemo(() => rows
+    .map((r) => ({ row: r, x: r[fx], y: r[fy] }))
+    .filter((p): p is { row: FilterRow; x: number; y: number } => typeof p.x === 'number' && typeof p.y === 'number' && Number.isFinite(p.x) && Number.isFinite(p.y)), [rows, fx, fy])
+  // Deming (λ=1) rather than y-on-x least squares: both species are measured with error
+  const { st, fitGroups } = useMemo(() => ({
+    st: regression(pts.map((p) => p.x), pts.map((p) => p.y), fitUncertainty(pts.map(p => p.row), fx, fy, meta)),
+    fitGroups: grouping === 'pooled' ? [] : groupedRegressions(pts, grouping, { x: p => p.x, y: p => p.y, site: p => p.row.site, season: p => p.row.season, seasonColor: p => meta.seasons.find(se => se.name === p.row.season)?.color ?? INK.muted,
+      color: p => meta.sites.find(s => s.name === p.row.site)?.color ?? INK.muted,
+      options: members => fitUncertainty(members.map(p => p.row), fx, fy, meta) }),
+  }), [pts, grouping, fx, fy, meta])
+  const focusId = hover ?? pinnedId
+  return <>
+    <rect width={cellS} height={cellS} fill="#fff" stroke={INK.grid} />
+    {pts.map((p) => {
+      const f = focusStyle(p.row.id, focusId, { r: 2, opacity: 0.55 }, selected)
+      const cx = Math.max(0, Math.min(cellS, sx(p.x)))
+      const cy = Math.max(0, Math.min(cellS, cellS - sy(p.y)))
+      return (
+        <circle
+          key={p.row.id} cx={cx} cy={cy} r={f.r} fill={p.row.color as string} fillOpacity={f.opacity * dim(p.row.site)} stroke={f.stroke} strokeWidth={f.strokeWidth}
+          style={{ cursor: 'pointer' }}
+          onMouseEnter={(e) => { setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.site} · ${p.row.date}`, `${fx}: ${fmt(p.x)}`, `${fy}: ${fmt(p.y)}`, 'click to pin it on every chart']) }}
+          onMouseLeave={() => { setHover(null); tip.hide() }}
+          data-fid={p.row.id} onClick={() => open(p.row.id)}
+        />
+      )
+    })}
+    {grouping !== 'pooled' ? <RegressionGroupLines groups={fitGroups} x={sx} y={v => cellS - sy(v)} width={cellS} height={cellS} />
+      : <RegressionLines stats={st} x={sx} y={v => cellS - sy(v)} domain={sx.domain() as number[]} width={cellS} height={cellS} />}
+    {st && <text x={cellS - 4} y={11} textAnchor="end" fontSize={9.5} fill={INK.text} fontFamily={FONT.mono} pointerEvents="none">r={st.r.toFixed(2)}</text>}
+  </>
+}, (a, b) => a.rows === b.rows && a.fx === b.fx && a.fy === b.fy && a.sx === b.sx && a.sy === b.sy && a.cellS === b.cellS
+  && a.grouping === b.grouping && a.meta === b.meta && a.pinnedId === b.pinnedId && a.selected === b.selected && a.dimKey === b.dimKey)

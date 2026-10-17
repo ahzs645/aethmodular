@@ -14,7 +14,8 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { inDomain, pairDomain, type AxesOpts } from '@/lib/axes'
 import { regression, fmt } from '@/lib/stats'
-import { INK, MARGIN, RAMP_SEQUENTIAL, FONT, withUnit } from '@/lib/theme'
+import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
+import { useColourScheme } from '@/lib/colourSchemes'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
 
@@ -42,8 +43,11 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   // one site in view: a fit per site is the pooled fit, so it is not offered
   const oneSite = useMemo(() => new Set(pairedRows.map((r) => r.site)).size <= 1, [pairedRows])
   // one panel: every grouping applies, except a fit per site with a single site in view (it is the pooled fit)
+  const colours = useColourScheme('hexbin', 'sequential')
   const o = useChartOptions('hexbin', [
     { key: 'radius', label: 'Hex radius', choices: ['8', '11', '14', '18', '24'], default: '14', style: 'select' },
+    // the bins' colours (lib/colourSchemes, the same picker as the correlogram's)
+    { key: 'colours', node: () => colours.picker },
     fitGroupingOption({ bind: [chosenGrouping, setGrouping as (v: never) => void], when: (c) => (c.estimators as number) > 0, offerSite: (c) => !c.oneSite }),
   ], { estimators: methods.length, oneSite })
   const radius = o.values.radius as string
@@ -101,7 +105,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   const binTitle = (b: { x: number; y: number }) => `Hex at ${xField} ≈ ${fmt(x.invert(b.x), 2)}, ${yField} ≈ ${fmt(y.invert(b.y), 2)}`
   // the hex whose filters are in the side panel stays outlined until the panel closes
   const openTitle = edits.group?.title ?? null
-  const color = d3.scaleQuantize<string>().domain([0, maxCount]).range(RAMP_SEQUENTIAL)
+  const color = d3.scaleQuantize<string>().domain([0, maxCount]).range(colours.stops)
   const [d0, d1] = x.domain() as [number, number]
   const originAxes = opts.mode === 'Show intercept' && d0 < 0 && (y.domain()[0] as number) < 0
 
