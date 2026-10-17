@@ -6,7 +6,7 @@ import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGro
 import { useRegressions, fitsFor } from '@/lib/regressionPrefs'
 import { fitGroupingOption, useChartOptions } from '@/lib/chartOptions'
 import { groupedRegressions, type FitGrouping, type RegressionGroup } from '@/lib/siteRegression'
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { ColorLegend, SizeLegend } from '@/components/ColorLegend'
@@ -23,6 +23,7 @@ import { INK, MARGIN, FONT, RAMP_SEQUENTIAL, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { NO_PMF, PMF_SOURCE } from '@/lib/pmfGroups'
 import { useFitHeight } from '@/lib/chartFit'
+import { useTileSetting } from '@/lib/url'
 
 type Point = { row: FilterRow; x: number; y: number; c: number | null; s: number | null }
 type Scale = d3.ScaleLinear<number, number> | d3.ScaleLogarithmic<number, number>
@@ -77,10 +78,12 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   const { hidden, setHidden, dim, hover, setHover } = useLegend()
   // the reader's colour field, or Iron, or the first field, among the fields this view has now: the
   // chart can mount while a network's fields are still loading (empty), or keep a field the next network lacks
-  const [colorChoice, setColorField] = useState<string | null>(null)
+  const [colorParam, setColorParam] = useTileSetting<string>('scatter.colorField', '')
+  const colorChoice = colorParam || null
+  const setColorField = (f: string | null) => setColorParam(f ?? '')
   const hasPmf = !!meta.pmf_groups?.length && rows.some((r) => typeof r[PMF_SOURCE] === 'string')
   const colorField = [colorChoice, 'Iron', meta.fields[0]].find((f): f is string => !!f && (meta.fields.includes(f) || (f === PMF_COLOUR && hasPmf))) ?? ''
-  const [sizeField, setSizeField] = useState(NO_SIZE)
+  const [sizeField, setSizeField] = useTileSetting<string>('scatter.size', NO_SIZE)
   // the options and when each applies (lib/chartOptions). Fits are per panel, so the grouping
   // offered follows the layout: a fit per site inside a site's panel is the pooled fit, and a
   // per-season panel holds one site in one season, so every grouping is its one fit

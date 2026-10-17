@@ -6,6 +6,7 @@ import { fmt } from '@/lib/stats'
 import { INK } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile } from '@/lib/types'
 import { CV_PROTOCOL, METRIC, label } from '@/lib/labels'
+import { useFitHeight } from '@/lib/chartFit'
 
 /**
  * The cross-validation curve that chose k: RMSECV against PLS component
@@ -15,6 +16,7 @@ import { CV_PROTOCOL, METRIC, label } from '@/lib/labels'
  * rule stopped where it did (first major minimum under protocol A).
  */
 export function CVCurve({ run, runs }: { run: CalibRun; runs: CalibRunsFile }) {
+  const fit = useFitHeight()
   const lg = useLegend()
   const pts = run.curve.filter((c) => c.rmsecv !== null && Number.isFinite(c.rmsecv)) as { k: number; rmsecv: number; se: number | null }[]
   const hasSe = pts.some((p) => p.se !== null && Number.isFinite(p.se))
@@ -45,7 +47,7 @@ export function CVCurve({ run, runs }: { run: CalibRun; runs: CalibRunsFile }) {
         {pts.length < 2 ? (
           <Empty>No curve saved for this configuration at {target?.site ?? run.target}.</Empty>
         ) : (
-          <SweepPlot height={320} xDomain={[1, d3.max(pts, (p) => p.k) ?? 30]} yDomain={yDomain}
+          <SweepPlot height={fit ?? 320} xDomain={[1, d3.max(pts, (p) => p.k) ?? 30]} yDomain={yDomain}
             xLabel={METRIC.k} yLabel="IMPROVE cross-validation RMSE (µg / filter)"
             // the SE band keeps full strength while its own legend entry is hovered
             dim={(g) => (lg.hover === SE ? 1 : lg.dim(g))}

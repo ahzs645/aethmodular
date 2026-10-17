@@ -495,21 +495,29 @@ export default function App() {
   // changes, and not over a field the link named, so HIPS BC can still be picked by hand.
   const seenSites = useRef<string | null>(null)
   const linkNamedField = useRef(!!(init.get('x') || init.get('y') || init.get('f')))
+  // the axes this moved to public BC: when no chosen site needs it any more they go back to HIPS BC,
+  // so a pick of every site and then the focus sites again does not leave public BC behind
+  const fellBack = useRef(new Set<'x' | 'y' | 'f'>())
   useEffect(() => {
     if (!netView || !hasSpartan(net) || !netView.rows.length) return
     const key = [...netView.chosenCodes].sort().join(',')
     if (key === seenSites.current) return
     seenSites.current = key
     if (linkNamedField.current) { linkNamedField.current = false; return }
-    if (!netView.fields.includes(PUBLIC_BC)) return
-    const missing = netView.chosen.some((x) => {
+    const missing = netView.fields.includes(PUBLIC_BC) && netView.chosen.some((x) => {
       const own = netView.rows.filter((r) => r.site === x.name)
       return own.length && !own.some((r) => typeof r['HIPS BC'] === 'number') && own.some((r) => typeof r[PUBLIC_BC] === 'number')
     })
-    if (!missing) return
-    if (xField === 'HIPS BC') setXField(PUBLIC_BC)
-    if (yField === 'HIPS BC') setYField(PUBLIC_BC)
-    if (field === 'HIPS BC') setField(PUBLIC_BC)
+    if (!missing) {
+      if (fellBack.current.has('x') && xField === PUBLIC_BC) setXField('HIPS BC')
+      if (fellBack.current.has('y') && yField === PUBLIC_BC) setYField('HIPS BC')
+      if (fellBack.current.has('f') && field === PUBLIC_BC) setField('HIPS BC')
+      fellBack.current.clear()
+      return
+    }
+    if (xField === 'HIPS BC') { setXField(PUBLIC_BC); fellBack.current.add('x') }
+    if (yField === 'HIPS BC') { setYField(PUBLIC_BC); fellBack.current.add('y') }
+    if (field === 'HIPS BC') { setField(PUBLIC_BC); fellBack.current.add('f') }
   }, [netView, net, xField, yField, field])
 
   const siteNames = useMemo(
@@ -1053,7 +1061,8 @@ export default function App() {
         {tab === 'baseline' && <BaselineComparisonPage mac={exportMac} demingLambda={data.calibration?.deming_lambda_mac10 ?? 1} />}
         {tab === 'calibration' && <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={drawerMeta} galleryRows={sourceRows} galleryMeta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />}
         {tab === 'dashboard' && <DashboardPage dash={dash} setDash={setDash} filters={dashFilters} onScope={setDashScope} onPickSite={pickDashSite} display={<DisplayToggles />}
-          data={{ rows, meta, axes, pmf: pmf ?? null, pmfRows, eff, defaults: { x: xField, y: yField, field }, openSite: openDashSite }} />}
+          data={{ rows, meta, axes, pmf: pmf ?? null, pmfRows, eff, defaults: { x: xField, y: yField, field }, openSite: openDashSite, pmfLabelOfDate,
+            calibration: data.calibrationRuns ? { runs: data.calibrationRuns, lambda10: data.calibration?.deming_lambda_mac10 ?? 2.96, knownIds, galleryRows: sourceRows, galleryMeta: meta, meta: drawerMeta } : null }} />}
         <AxisFieldsProvider meta={meta} value={axisValues} set={setAxisField}>
         {tab === 'correlation' && (
           <>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { dataUrl, loadDerived } from '@/lib/data'
 import type { CalibFile, CalibRunsFile, CensusFile, FiltersFile, MetaFile, PmfFile } from '@/lib/types'
+import { useTileLegend } from '@/lib/chartFit'
 
 export interface GalleryData {
   filters: FiltersFile
@@ -57,6 +58,8 @@ export function useGalleryData() {
 
 /** Observes an element and reports its pixel size, so charts stay responsive. */
 export function useDimensions<T extends HTMLElement>(ref: React.RefObject<T>) {
+  // a Dashboard tile with its legend on the right keeps that column out of the chart's width
+  const legend = useTileLegend()
   const [size, setSize] = useState({ width: 720, height: 460 })
   useEffect(() => {
     const el = ref.current
@@ -72,5 +75,5 @@ export function useDimensions<T extends HTMLElement>(ref: React.RefObject<T>) {
     ro.observe(el)
     return () => ro.disconnect()
   }, [ref])
-  return size
+  return legend?.mode === 'right' ? { ...size, width: Math.max(120, size.width - legend.reserve) } : size
 }

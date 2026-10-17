@@ -47,6 +47,8 @@ many places currently deviate. **New** marks a primitive that does not exist yet
 | Empty state | `Empty`, and the chart is not drawn behind it | `components/ChartFrame` | AvailabilityHeatmap none; Treemap and BubbleMap draw an empty chart under it |
 | Transitions | `.animated` class | `styles.css` | 5 charts snap; 3 use inline transitions |
 | View state | `useSearchParam` for anything a link should reopen | `lib/url` | ~8 `useState` controls on research pages |
+| Height in a tile | The chart's height (or row height, or square side) from `useFitHeight() ?? its own`; legends through `Legend` so a tile can compact, move or hide them | `lib/chartFit`, `components/Legend` | Wind roses (fixed-size roses) and multi-panel layouts (per-site grids) keep their size and scroll inside the tile |
+| Dashboard tile | One `ChartFrame` per chart; registered in the Add chart menu; settings in `useChartOptions` / `useTileSetting` so a shared dashboard reopens them | `components/dashboard/registry`, `lib/url` | The Weather and Calibration charts join through adapters (`components/dashboard/extraTiles`) |
 | Small constants | `MONTHS`, heat ramps defined once | `lib/theme` | `MONTHS` ×3, `HEAT` ×2 |
 
 ## 2. Composite charts that exist in many copies
@@ -148,6 +150,8 @@ Done, and each defined once in `gallery/app/src`:
 | Sweep chart | `components/SweepPlot.tsx` | Calibration `CVCurve`, `KSweep` (three facets); Blanks rank selection and capture; Satoshi ladder (point scale with a divider) and blank-bank rank CV; Meeting MAC envelope (log x); full-range VIBES injection recovery. Bands or whiskers, the agreement value, labelled markers, the chosen setting ringed, clipped points hollow at the edge. Left on their own: `CutoffSweep` (switchable fitted/requested axis, stacked panels), `RunSeries` (time series with gap breaks and record links), `SelectionRanking` (thousands of points, histogram view), Blanks drift. |
 | Small multiples | `components/FacetGrid.tsx`, `lib/facets.ts` (`facetGrid`) | Blanks components, `KSweep`, and every faceted `Figure`. Replaces per-chart column guesses (`useFacetGrid` in §1). |
 | Declared figures and meetings | `components/Figure.tsx` (kinds `crossplot`, `spectrum`, `sweep`, `intervals`, `histogram`, `heatmap`, `table`, `custom` via `registerFigure`), `lib/table.ts`, `lib/markdown.tsx`, `pages/MeetingSpecPage.tsx`, `src/meetings/*.meeting.ts`, `gallery/data/meeting_bundle.py` | A meeting page is an exporter writing long tables and answer text plus a spec file (gallery/README.md "Declaring a figure or a whole meeting"). First one: Ann 9 Oct (`ann-20261009`). Vega-Lite was considered and not used: it would drop the gallery's look, estimator switching, the sample drawer and whole-panel export. |
+
+| Dashboard | `pages/DashboardPage.tsx`, `components/dashboard/` (`DashHeader`, `registry`, `extraTiles`), `lib/dashboard.ts` (layout engine, node-tested), `lib/chartFit.tsx`, `charts/summary/` (`StatTile`, `SiteCards`, `SiteSummary`), `charts/ranking/SiteRank.tsx` | Added 17 Oct 2026. Scopes Site / Compare / Network with named sheets; 12 × 12 grid fitted to the window, phones one column; tiles compact (⋯ menu) with per-tile legend modes; every tile setting in the URL. |
 
 Not built yet from §1: `labelGutter`, `XAxis gridHeight`,
 `IntervalBar`, `GuardrailBands`, `filterMarkHandlers` (and the tooltip

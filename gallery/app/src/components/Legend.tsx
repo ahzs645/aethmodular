@@ -1,7 +1,7 @@
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import { useState } from 'react'
 import { usePrefs } from '@/lib/prefs'
-import { useFitHeight } from '@/lib/chartFit'
+import { useFitHeight, useTileLegend } from '@/lib/chartFit'
 
 /** in a Dashboard tile, a legend longer than this shows its first items and "+N more" */
 const TILE_LIMIT = 8
@@ -42,9 +42,12 @@ export function Legend({
   const live = !!(onToggle || onHover)
   // in a fitted tile a long legend would take the chart's height: the first few, then "+N more"
   const inTile = useFitHeight() !== null
+  const tile = useTileLegend()
   const [all, setAll] = useState(false)
-  const long = inTile && items.length > TILE_LIMIT + 1
+  // a tile's legend setting: off draws nothing; bottom and right draw every item
+  const long = inTile && (tile?.mode ?? 'auto') === 'auto' && items.length > TILE_LIMIT + 1
   const shown = long && !all ? items.slice(0, TILE_LIMIT) : items
+  if (tile?.mode === 'off') return null
   return (
     <div className="legend">
       {shown.map((it) => {

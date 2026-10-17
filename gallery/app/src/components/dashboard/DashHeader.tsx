@@ -30,7 +30,7 @@ const NARROW = 820
  * dates, the full Filters panel behind one button (with the count), the sheet, then Grid /
  * Focus and Edit. On a narrow screen everything but the scope and sheet folds into ⋯.
  */
-export function DashHeader({ meta, filters, scope, onScope, onPickSite, layout, onLayout, edit, onEdit, onAdd, rowsUsed, sheets, display }: {
+export function DashHeader({ meta, filters, scope, onScope, onPickSite, layout, onLayout, edit, onEdit, onAdd, rowsUsed, sheets, display, onPresent }: {
   meta: MetaFile
   filters: DashFilters | null
   scope: Scope
@@ -46,6 +46,8 @@ export function DashHeader({ meta, filters, scope, onScope, onPickSite, layout, 
   sheets: SheetActions
   /** the header's display toggles (readable text, explain), moved into ⋯ to keep one line */
   display?: ReactNode
+  /** present the sheets full screen (absent on a phone) */
+  onPresent?: () => void
 }) {
   const [, setFiltersOpen] = useSidePanelOpen()
   const narrow = useNarrow(NARROW)
@@ -73,10 +75,18 @@ export function DashHeader({ meta, filters, scope, onScope, onPickSite, layout, 
       : <span className="dash-head-note" title="Every site in the network; All filters switches to IMPROVE">{picked.length} sites</span>
   const seasons = s.seasons.length > 0 && <HeaderPopover label={allSeasons || !s.seasonsOn ? 'Seasons' : `${s.activeSeasons.size}/${s.seasons.length} seasons`}
     active={!allSeasons && !!s.seasonsOn} title="Seasons under the calendar in force (All filters changes the calendar)">
-    <div className="dash-chips">
-      {s.seasons.map((se) => <button key={se.name} type="button" className={`chip${s.activeSeasons.has(se.name) ? ' active' : ''}`}
-        style={{ ['--chip' as string]: se.color }} onClick={() => a.onToggleSeason(se.name)} disabled={!s.seasonCounts[se.name]}>
-        {se.name} <span className="dash-chip-n">{s.seasonCounts[se.name] ?? 0}</span></button>)}
+    {/* grouped by the site whose calendar each season is (one group under shared bins), as in the Filters panel */}
+    <div className="dash-season-groups">
+      {[...new Set(s.seasons.map((se) => se.site ?? ''))].map((site) => (
+        <div key={site || 'all'} className="dash-season-group">
+          {site && <div className="dash-season-site">{site}</div>}
+          <div className="dash-chips">
+            {s.seasons.filter((se) => (se.site ?? '') === site).map((se) => <button key={se.name} type="button" className={`chip${s.activeSeasons.has(se.name) ? ' active' : ''}`}
+              style={{ ['--chip' as string]: se.color }} onClick={() => a.onToggleSeason(se.name)} disabled={!s.seasonCounts[se.name]} title={se.name}>
+              {site && se.name.startsWith(`${site} · `) ? se.name.slice(site.length + 3) : se.name} <span className="dash-chip-n">{s.seasonCounts[se.name] ?? 0}</span></button>)}
+          </div>
+        </div>
+      ))}
     </div>
     {!allSeasons && <button type="button" className="btn quiet" onClick={a.onAllSeasons}>Every season</button>}
   </HeaderPopover>
@@ -122,6 +132,8 @@ export function DashHeader({ meta, filters, scope, onScope, onPickSite, layout, 
         {edit && rowsUsed > ROWS && <span className="dash-warn" title="The tiles reach below the window, so the grid scrolls: shrink or remove some to fit">{rowsUsed}/{ROWS} rows</span>}
         {edit && <button type="button" className="btn" onClick={onAdd}>+ Add</button>}
         {layoutSeg}
+        {onPresent && !edit && <button type="button" className="btn" onClick={onPresent}
+          title="Present: the sheets full screen with no controls; → and ← step through them, Esc ends">▶ Present</button>}
         <button type="button" className={`btn${edit ? ' on' : ''}`} aria-pressed={edit} onClick={() => onEdit(!edit)}
           title={edit ? 'Done arranging' : 'Arrange: drag a tile by its bar, resize from its corner, add and remove tiles'}>{edit ? 'Done' : 'Edit'}</button>
         {display && <HeaderPopover label="Aa" title="Display: readable text, explanations" align="right"><div className="dash-more">{display}</div></HeaderPopover>}

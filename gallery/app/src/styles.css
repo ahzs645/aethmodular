@@ -816,6 +816,8 @@ html.dash-mode .app-title-row > .nav { flex: 0 0 auto; width: 84px; }
 .dash-pop-panel.wide { min-width: 600px; max-width: 640px; }
 .dash-pop-panel.right { left: auto; right: 0; }
 .dash-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.dash-season-groups { display: flex; flex-direction: column; gap: 8px; max-height: min(60vh, 440px); overflow-y: auto; padding-right: 4px; }
+.dash-season-site { font-size: calc(11px * var(--text-scale)); font-weight: 600; color: var(--ink-muted); margin-bottom: 3px; }
 .dash-chip-n { font-family: var(--mono); opacity: 0.7; font-size: 0.9em; }
 .dash-more { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .dash-more .header-display { display: inline-flex; }
@@ -866,6 +868,7 @@ html.dash-mode .app-title-row > .nav { flex: 0 0 auto; width: 84px; }
   padding: 2px 8px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-size: calc(12px * var(--text-scale));
   white-space: nowrap; overflow: hidden; }
 .tile-edit-bar:active { cursor: grabbing; }
+.tile-edit-bar:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .tile-edit-bar .frame-sub { overflow: hidden; text-overflow: ellipsis; }
 .tile-size { margin-left: auto; font-family: var(--mono); font-size: 0.9em; opacity: 0.8; }
 .frame-sub { margin-left: 2px; font-weight: 400; color: var(--ink-muted); font-size: 0.9em; }
@@ -879,6 +882,15 @@ html.dash-mode .app-title-row > .nav { flex: 0 0 auto; width: 84px; }
 
 /* legends in a tile: compact; a long one shows its first items and "+N more" (components/Legend) */
 .panel.compact .legend { row-gap: 3px; column-gap: 10px; padding: 2px 0 3px; font-size: calc(11.5px * var(--text-scale)); }
+/* a tile's legend setting (⋯ menu): off hides every key; right puts it in a column beside the plot,
+   which the chart leaves free (useDimensions measures --legend-w narrower) */
+.dash-tile.legend-off .panel .legend, .dash-tile.legend-off .panel .legend-note { display: none; }
+.dash-tile.legend-right .chart-wrap:has(> .legend) { display: grid; grid-template-columns: minmax(0, 1fr) var(--legend-w); column-gap: 8px; align-items: start; }
+.dash-tile.legend-right .chart-wrap:has(> .legend) > :not(.legend) { grid-column: 1; }
+.dash-tile.legend-right .chart-wrap > .legend { grid-column: 2; grid-row: 1 / span 40; flex-direction: column; flex-wrap: nowrap; align-items: flex-start;
+  gap: 3px; max-height: 100%; overflow-y: auto; padding-top: 4px; }
+.dash-tile.legend-right .chart-wrap.centered:has(> .legend) { justify-items: center; }
+.tile-legend-mode { flex-basis: 100%; padding-top: 4px; }
 .legend-more { border: 1px solid var(--ink-border); background: var(--ink-panel); border-radius: 10px; padding: 0 7px; font: inherit; font-size: 0.92em;
   color: var(--accent); cursor: pointer; }
 
@@ -916,6 +928,15 @@ html.dash-mode .app-title-row > .nav { flex: 0 0 auto; width: 84px; }
 .site-card-bar { grid-area: b; height: 4px; background: var(--ink-grid); border-radius: 2px; overflow: hidden; }
 .site-card-bar span { display: block; height: 100%; background: var(--site); opacity: 0.75; }
 .site-card-spark { grid-area: s; width: 64px; height: 16px; }
+.site-card-value.none { font-weight: 400; color: var(--ink-muted); font-size: calc(11px * var(--text-scale)); font-style: italic; }
+.site-summary { display: flex; flex-direction: column; gap: 8px; padding-right: 26px; }
+.site-summary-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.site-summary-head strong { font-size: calc(13px * var(--text-scale)); }
+.site-summary-meta { color: var(--ink-muted); font-size: calc(11px * var(--text-scale)); }
+.site-summary-groups { display: flex; flex-wrap: wrap; gap: 3px 10px; margin-top: 3px; font-size: calc(11px * var(--text-scale)); }
+.site-summary-group em { font-style: normal; font-family: var(--mono); color: var(--ink-muted); font-size: 0.92em; }
+.site-summary-group.none { color: var(--ink-muted); }
+.site-summary-group.none em { font-style: italic; font-family: inherit; }
 
 .dash-catalog { width: min(1000px, 92vw); max-height: 86vh; overflow: auto; margin: 0; }
 .dash-catalog-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px 18px; }
@@ -927,6 +948,15 @@ html.dash-mode .app-title-row > .nav { flex: 0 0 auto; width: 84px; }
 .dash-card strong { font-size: calc(13px * var(--text-scale)); }
 .dash-card span { font-size: calc(12px * var(--text-scale)); color: var(--ink-muted); }
 .dash-card em { font-style: normal; font-size: calc(11px * var(--text-scale)); color: var(--accent); }
+
+/* presenting: the window is the dashboard; the sheet bar fades in when the pointer is near it */
+html.dash-present .app-header, html.dash-present .tile-menu-btn, html.dash-present .brush-bar { display: none !important; }
+html.dash-present body { background: var(--ink-panel); }
+html.dash-present .container.dash { padding-top: 10px; }
+.dash-present-bar { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 80; display: flex; align-items: center; gap: 6px;
+  padding: 4px 6px 4px 12px; background: var(--ink-panel); border: 1px solid var(--ink-border); border-radius: 999px;
+  box-shadow: 0 6px 20px rgba(17, 24, 39, 0.16); font-size: calc(12.5px * var(--text-scale)); opacity: 0.25; transition: opacity 0.15s; }
+.dash-present-bar:hover, .dash-present-bar:focus-within { opacity: 1; }
 
 /* a phone (pages/DashboardPage PHONE): one column in reading order, each tile its own height, the page scrolls */
 .dash-phone { display: flex; flex-direction: column; padding-bottom: 24px; }

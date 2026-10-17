@@ -168,5 +168,45 @@ export const updateTile = (tiles: Tile[], id: string, patch: Partial<Omit<Tile, 
   return 'x' in patch || 'y' in patch || 'w' in patch || 'h' in patch ? arrange(next, id) : next
 }
 
+/**
+ * Move a tile to (x, y). Dropped exactly on a tile of the same size, the two swap places, so
+ * two tiles trade without a hole or a push off the window; anywhere else (or onto a tile of
+ * another size, where a swap would overlap) the others make room as in `arrange`.
+ */
+export function placeTile(tiles: Tile[], id: string, x: number, y: number): Tile[] {
+  const moved = tiles.find((t) => t.id === id)
+  if (!moved) return tiles
+  const nx = clamp(x, 0, COLS - moved.w), ny = Math.max(0, y)
+  if (nx === moved.x && ny === moved.y) return tiles
+  const other = tiles.find((t) => t.id !== id && t.x === nx && t.y === ny && t.w === moved.w && t.h === moved.h)
+  const next = tiles.map((t) => (t.id === id ? { ...t, x: nx, y: ny } : other && t.id === other.id ? { ...t, x: moved.x, y: moved.y } : t))
+  return arrange(next, id)
+}
+
+/**
+ * One keyboard step: the tile trades places with the tile next to it on that side (for →, the
+ * one that starts where this one ends and shares a row), as reordering does; with nothing
+ * there it moves one cell. A plain one-cell step would just float back up (↓) or push the
+ * neighbour down below everything (→).
+ */
+export function stepTile(tiles: Tile[], id: string, dir: 'left' | 'right' | 'up' | 'down'): Tile[] {
+  const t = tiles.find((x) => x.id === id)
+  if (!t) return tiles
+  const rows = (o: Tile) => o.y < t.y + t.h && t.y < o.y + o.h
+  const cols = (o: Tile) => o.x < t.x + t.w && t.x < o.x + o.w
+  const others = tiles.filter((o) => o.id !== id).sort(reading)
+  const n = dir === 'right' ? others.find((o) => o.x === t.x + t.w && rows(o))
+    : dir === 'left' ? others.find((o) => o.x + o.w === t.x && rows(o))
+      : dir === 'down' ? others.find((o) => o.y === t.y + t.h && cols(o))
+        : others.find((o) => o.y + o.h === t.y && cols(o))
+  if (!n) return dir === 'left' || dir === 'right' ? placeTile(tiles, id, t.x + (dir === 'right' ? 1 : -1), t.y)
+    : placeTile(tiles, id, t.x, t.y + (dir === 'down' ? 1 : -1))
+  const swap = dir === 'right' ? { t: { x: n.x + n.w - t.w }, n: { x: t.x } }
+    : dir === 'left' ? { t: { x: n.x }, n: { x: n.x + t.w } }
+      : dir === 'down' ? { t: { y: n.y + n.h - t.h }, n: { y: t.y } }
+        : { t: { y: n.y }, n: { y: n.y + t.h } }
+  return arrange(tiles.map((o) => (o.id === id ? { ...o, ...swap.t } : o.id === n.id ? { ...o, ...swap.n } : o)), id)
+}
+
 /** the URL query keys a tile's charts wrote, to clear when the tile goes */
 export const tileKeyPrefix = (scope: Scope, sheet: string, id: string) => `${scope}.${sheet}.${id}.`

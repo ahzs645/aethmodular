@@ -9,6 +9,7 @@ import { boxStats, fmt } from '@/lib/stats'
 import { FONT, INK, withUnit } from '@/lib/theme'
 import { RAIN_CLASSES, rainClass, spearman } from '@/lib/weather'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { useFitHeight } from '@/lib/chartFit'
 
 const MAX_SITES = 12
 const H = 260, M = { top: 26, right: 12, bottom: 44, left: 52 }
@@ -45,7 +46,9 @@ export function RainWashout({ rows, meta, field, prcpField, id = 'weather-washou
 
   const cols = Math.max(1, Math.min(shown.length, Math.floor((width + 12) / 300)))
   const pw = (width - (cols - 1) * 12) / cols
-  const iw = pw - M.left - M.right, ih = H - M.top - M.bottom
+  const fit = useFitHeight()
+  const h = fit === null ? H : Math.max(140, fit)
+  const iw = pw - M.left - M.right, ih = h - M.top - M.bottom
   const x = d3.scaleBand<string>().domain(RAIN_CLASSES.map((c) => c.key)).range([0, iw]).padding(0.25)
 
   return (
@@ -57,7 +60,7 @@ export function RainWashout({ rows, meta, field, prcpField, id = 'weather-washou
           const vals = p.classes.flatMap((c) => c.members.map((r) => r[field] as number))
           const y = d3.scaleLinear().domain([Math.min(0, d3.min(vals) ?? 0), d3.quantile(vals.slice().sort(d3.ascending), 0.99)! * 1.1 || 1]).range([ih, 0]).nice()
           return (
-            <svg key={p.site} width={pw} height={H} fontFamily={FONT.family}>
+            <svg key={p.site} width={pw} height={h} fontFamily={FONT.family}>
               <text x={M.left} y={15} fontSize={12} fontWeight={600} fill={INK.text}>{p.site}</text>
               <text x={pw - M.right} y={15} fontSize={11} textAnchor="end" fill={INK.muted} fontFamily={FONT.mono}>ρ = {fmt(p.rho, 2)} · n = {p.n}</text>
               <g transform={`translate(${M.left},${M.top})`}>

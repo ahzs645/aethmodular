@@ -63,7 +63,9 @@ export function SiteCards({ rows, meta, fields, onOpenSite }: { rows: FilterRow[
             {c.stats.map((s, i) => (
               <span key={s.field} className="site-card-row">
                 <span className="site-card-field" title={s.field}>{s.field}</span>
-                <span className="site-card-value">{s.median === null ? '—' : fmt(s.median, 3)}<small> {prettyUnit(meta.field_units?.[s.field])}</small></span>
+                {s.median === null
+                  ? <span className="site-card-value none" title={`${s.field} was not measured at ${c.site} in this subset`}>not measured</span>
+                  : <span className="site-card-value">{fmt(s.median, 3)}<small> {prettyUnit(meta.field_units?.[s.field])}</small></span>}
                 <span className="site-card-bar"><span style={{ width: `${s.median === null || !maxOf[i] ? 0 : Math.max(2, (100 * Math.max(0, s.median)) / maxOf[i])}%` }} /></span>
                 <Spark pts={s.spark} color={c.color} />
               </span>

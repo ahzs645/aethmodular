@@ -285,6 +285,13 @@
    "file": "charts/ranking/SiteRadar.tsx"
   },
   {
+   "title": "Sites ranked — median and interquartile range of … per site",
+   "id": "siterank",
+   "component": "SiteRank",
+   "tab": "ranking",
+   "file": "charts/ranking/SiteRank.tsx"
+  },
+  {
    "title": "Humidity and method agreement — dry vs humid filters",
    "id": "weather-humidity",
    "component": "HumidityAgreement",

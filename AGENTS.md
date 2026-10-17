@@ -488,6 +488,12 @@ Do:
 - When an inline overlay is needed (seasonal shading, event line, etc.),
   copy the canonical pattern from this file's "Known gaps" section so
   colors and semantics stay consistent.
+- Gallery charts (`gallery/app/src/charts/`): a new chart reads its height
+  from `useFitHeight()` (`lib/chartFit`; null outside a Dashboard tile, so it
+  keeps its own height elsewhere), keeps view settings in `useChartOptions` or
+  `useTileSetting` rather than bare `useState`, draws one `ChartFrame`, and
+  registers itself in `components/dashboard/registry.tsx` so the Dashboard's
+  Add chart menu offers it. Run `npm run index:charts` after adding one.
 
 Don't:
 

@@ -59,6 +59,37 @@ export const ParamScope = ({ prefix, children }: { prefix: string; children: Rea
   createElement(ScopeCtx.Provider, { value: useContext(ScopeCtx) + prefix }, children)
 export const useParamScope = () => useContext(ScopeCtx)
 
+/**
+ * A chart's own setting kept in plain state (a statistic, a bin count, a colour field): inside a
+ * Dashboard tile it lives in the URL under the tile's prefix, so a saved or shared dashboard
+ * reopens each tile as it was; everywhere else it is ordinary component state, as before.
+ */
+export function useTileSetting<T extends string>(key: string, fallback: T, allowed?: readonly string[]): [T, (v: T) => void] {
+  const prefix = useParamScope()
+  const name = prefix + key
+  const read = (): T => {
+    if (!prefix) return fallback
+    const v = new URL(window.location.href).searchParams.get(name)
+    return v !== null && (!allowed || allowed.length === 0 || allowed.includes(v)) ? (v as T) : fallback
+  }
+  const [value, setValue] = useState<T>(read)
+  useEffect(() => {
+    if (!prefix) return
+    const sync = () => setValue(read())
+    window.addEventListener('popstate', sync)
+    return () => window.removeEventListener('popstate', sync)
+  }, [name]) // eslint-disable-line react-hooks/exhaustive-deps
+  const update = (v: T) => {
+    setValue(v)
+    if (!prefix) return
+    const url = new URL(window.location.href)
+    if (v === fallback) url.searchParams.delete(name)
+    else url.searchParams.set(name, v)
+    window.history.replaceState(null, '', url)
+  }
+  return [value, update]
+}
+
 /** forget every query key under a prefix (a removed Dashboard tile's controls) */
 export function clearScopedParams(prefix: string) {
   const url = new URL(window.location.href)

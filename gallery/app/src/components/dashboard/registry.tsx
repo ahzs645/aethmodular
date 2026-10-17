@@ -4,6 +4,9 @@ import type { FilterRow, MetaFile, PmfFile, PmfRow } from '@/lib/types'
 import type { Scope } from '@/lib/dashboard'
 import { StatTile } from '@/charts/summary/StatTile'
 import { SiteCards } from '@/charts/summary/SiteCards'
+import { SiteSummary } from '@/charts/summary/SiteSummary'
+import { SiteRank } from '@/charts/ranking/SiteRank'
+import { CVCurveTile, MonthlyClimateTile, RainWashoutTile, RunCrossplotTile, WeatherCorrelationsTile, WeatherSummaryTile, WeatherTimelineTile, WindRosesTile, type CalibrationData } from '@/components/dashboard/extraTiles'
 import { Scatterplot } from '@/charts/correlation/Scatterplot'
 import { Correlogram } from '@/charts/correlation/Correlogram'
 import { AvailabilityHeatmap } from '@/charts/correlation/AvailabilityHeatmap'
@@ -40,6 +43,10 @@ export interface DashboardData {
   defaults: { x: string; y: string; field: string }
   /** open one site on its own (the One site scope); a map bubble or a site card calls it */
   openSite?: (code: string) => void
+  /** a date's PMF source, for the wind roses' split by source */
+  pmfLabelOfDate?: (d: string | null | undefined) => string | null
+  /** the calibration explorer's runs, for the calibration tiles (absent: those tiles are not offered) */
+  calibration?: CalibrationData | null
 }
 
 /**
@@ -64,6 +71,8 @@ export interface DashboardChart {
 const CHARTS: DashboardChart[] = [
   { kind: 'sitecards', label: 'Site cards', group: 'Summary', blurb: 'one card per site: three numbers, bars and sparklines; click to open the site', fields: 'trio', size: [12, 6],
     render: (d, f) => <SiteCards rows={d.rows} meta={d.meta} fields={f} onOpenSite={d.openSite} /> },
+  { kind: 'sitesummary', label: 'Site summary', group: 'Summary', blurb: 'where, when, and which measurements exist (and on how many filters)', fields: 'none', size: [3, 2],
+    render: (d) => <SiteSummary rows={d.rows} meta={d.meta} /> },
   { kind: 'stat', label: 'Headline number', group: 'Summary', blurb: 'median, spread and monthly sparkline of one field', fields: 'single', size: [3, 2],
     render: (d, [f]) => <StatTile rows={d.rows} meta={d.meta} field={f} /> },
   { kind: 'scatter', label: 'Scatterplot', group: 'Correlation', blurb: 'x against y, fit lines, per-site panels', fields: 'pair', size: [4, 5],
@@ -97,6 +106,8 @@ const CHARTS: DashboardChart[] = [
 
   { kind: 'corrrank', label: 'Correlation ranking', group: 'Ranking', blurb: 'what tracks one field best', fields: 'single', size: [4, 6],
     render: (d, [f]) => <CorrelationRanking rows={d.rows} meta={d.meta} target={f} /> },
+  { kind: 'siterank', label: 'Sites ranked', group: 'Ranking', blurb: 'median and IQR per site, sorted; reads at 38 sites; click to open one', fields: 'single', size: [4, 8],
+    render: (d, [f]) => <SiteRank rows={d.rows} meta={d.meta} field={f} onOpenSite={d.openSite} /> },
   { kind: 'barplot', label: 'Barplot', group: 'Ranking', blurb: 'one field by site', fields: 'single', size: [6, 5],
     render: (d, [f]) => <Barplot rows={d.rows} meta={d.meta} field={f} /> },
   { kind: 'radar', label: 'Site radar', group: 'Ranking', blurb: 'sites across many fields', fields: 'none', size: [4, 5],
@@ -110,6 +121,24 @@ const CHARTS: DashboardChart[] = [
     render: (d, [f]) => <SiteBubbleMap rows={d.rows} meta={d.meta} field={f} onSite={d.openSite} /> },
   { kind: 'sankey', label: 'Method flow', group: 'Flow', blurb: 'site → EC method → HIPS / season', fields: 'none', size: [6, 5],
     render: (d) => <MethodSankey rows={d.rows} meta={d.meta} /> },
+
+  { kind: 'wxtimeline', label: 'Weather timeline', group: 'Weather', blurb: 'daily weather under the filters (one site)', fields: 'single', size: [8, 6],
+    render: (d, [f]) => <WeatherTimelineTile rows={d.rows} meta={d.meta} field={f} /> },
+  { kind: 'wxclimate', label: 'Monthly climate', group: 'Weather', blurb: 'temperature and rain by month against the season calendar', fields: 'none', size: [4, 6],
+    render: (d) => <MonthlyClimateTile rows={d.rows} meta={d.meta} /> },
+  { kind: 'wxwashout', label: 'Rain washout', group: 'Weather', blurb: "the measurement by how wet each filter's window was", fields: 'single', size: [4, 6],
+    render: (d, [f]) => <RainWashoutTile rows={d.rows} meta={d.meta} field={f} /> },
+  { kind: 'wxroses', label: 'Wind roses', group: 'Weather', blurb: 'where the air came from while the filters sampled', fields: 'none', size: [4, 6],
+    render: (d) => <WindRosesTile rows={d.rows} meta={d.meta} pmfLabelOfDate={d.pmfLabelOfDate} /> },
+  { kind: 'wxcorr', label: 'Weather correlations', group: 'Weather', blurb: 'which weather goes with each measurement, by season', fields: 'none', size: [6, 6],
+    render: (d) => <WeatherCorrelationsTile rows={d.rows} meta={d.meta} /> },
+  { kind: 'wxsummary', label: 'Weather by site', group: 'Weather', blurb: 'per site: which weather goes with the measurement; click to open a site', fields: 'single', size: [8, 6],
+    render: (d, [f]) => <WeatherSummaryTile rows={d.rows} meta={d.meta} field={f} onOpenSite={d.openSite} /> },
+
+  { kind: 'calcross', label: 'Calibration crossplot', group: 'Calibration', blurb: 'one run: predicted FTIR EC against the reference, per filter', fields: 'none', size: [6, 7],
+    available: (d) => !!d.calibration, render: (d) => d.calibration && <RunCrossplotTile cal={d.calibration} /> },
+  { kind: 'calcv', label: 'Cross-validation curve', group: 'Calibration', blurb: 'one run: error against the number of PLS components', fields: 'none', size: [6, 5],
+    available: (d) => !!d.calibration, render: (d) => d.calibration && <CVCurveTile cal={d.calibration} /> },
 
   { kind: 'sourcestack', label: 'PMF sources over time', group: 'PMF sources', blurb: 'factor contributions, Addis 2023', fields: 'none', size: [8, 5],
     available: (d) => !!d.pmf, render: (d) => d.pmf && <SourceStack pmf={d.pmf} rows={d.pmfRows} meta={d.meta} /> },
@@ -138,6 +167,8 @@ export const startFields = (chart: DashboardChart, d: DashboardData): string[] =
 
 type Start = { kind: string; w: number; h: number; fields?: string[] }
 const KPIS: Start[] = ['PM2.5 mass', 'EC (FTIR)', 'HIPS BC', 'OC (FTIR)'].map((f) => ({ kind: 'stat', w: 3, h: 2, fields: [f] }))
+/** one site's top row: what the site is, then three headline numbers */
+const SITE_TOP: Start[] = [{ kind: 'sitesummary', w: 3, h: 2 }, ...KPIS.slice(0, 3)]
 const EC = ['EC (FTIR)']
 
 /**
@@ -148,9 +179,12 @@ const EC = ['EC (FTIR)']
  */
 export const STARTER: Record<Scope, { name: string; tiles: Start[] }[]> = {
   site: [
-    { name: 'Overview', tiles: [...KPIS,
+    { name: 'Overview', tiles: [...SITE_TOP,
       { kind: 'timeseries', w: 8, h: 5, fields: EC }, { kind: 'clock', w: 4, h: 5, fields: EC },
       { kind: 'scatter', w: 4, h: 5 }, { kind: 'composition', w: 4, h: 5 }, { kind: 'histogram', w: 4, h: 5, fields: EC }] },
+    { name: 'Weather', tiles: [
+      { kind: 'wxtimeline', w: 8, h: 7, fields: EC }, { kind: 'wxclimate', w: 4, h: 7 },
+      { kind: 'wxwashout', w: 4, h: 5, fields: EC }, { kind: 'wxroses', w: 4, h: 5 }, { kind: 'wxcorr', w: 4, h: 5 }] },
     { name: 'Seasons', tiles: [
       { kind: 'monthlyband', w: 6, h: 6, fields: EC }, { kind: 'monthlyheatmap', w: 6, h: 6, fields: EC },
       { kind: 'distribution', w: 6, h: 6, fields: EC }, { kind: 'ridgeline', w: 6, h: 6, fields: EC }] },
@@ -164,7 +198,7 @@ export const STARTER: Record<Scope, { name: string; tiles: Start[] }[]> = {
   network: [
     { name: 'Map', tiles: [{ kind: 'map', w: 8, h: 12, fields: ['PM2.5 mass'] }, { kind: 'sitecards', w: 4, h: 12 }] },
     { name: 'Charts', tiles: [...KPIS,
-      { kind: 'distribution', w: 8, h: 5, fields: ['PM2.5 mass'] }, { kind: 'corrrank', w: 4, h: 5, fields: EC },
-      { kind: 'scatter', w: 4, h: 5 }, { kind: 'availability', w: 8, h: 5 }] },
+      { kind: 'siterank', w: 4, h: 10, fields: ['PM2.5 mass'] }, { kind: 'siterank', w: 4, h: 10, fields: EC },
+      { kind: 'scatter', w: 4, h: 5 }, { kind: 'corrrank', w: 4, h: 5, fields: EC }] },
   ],
 }

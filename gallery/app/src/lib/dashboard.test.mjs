@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { addTile, arrange, dashParams, firstFit, nextTileId, parseDash, parseSheets, parseTiles, removeTile, rowsUsed, sheetsParam, tilesParam, updateTile } from './dashboard.ts'
+import { addTile, arrange, placeTile, stepTile, dashParams, firstFit, nextTileId, parseDash, parseSheets, parseTiles, removeTile, rowsUsed, sheetsParam, tilesParam, updateTile } from './dashboard.ts'
 
 const T = (id, x, y, w, h, kind = 'histogram', fields = []) => ({ id, kind, x, y, w, h, fields })
 const at = (tiles) => Object.fromEntries(tiles.map((t) => [t.id, [t.x, t.y, t.w, t.h]]))
@@ -50,4 +50,25 @@ test('firstFit fills the first gap; add, remove and ids', () => {
   assert.deepEqual(at(added).t2, [9, 0, 3, 4])
   assert.deepEqual(at(removeTile(added, 't1')), { t3: [6, 0, 3, 4], t2: [9, 0, 3, 4] })
   assert.equal(rowsUsed([T('a', 0, 0, 12, 5), T('b', 0, 5, 4, 7)]), 12)
+})
+
+test('placeTile: onto a tile of the same size the two swap; otherwise the others make room', () => {
+  const tiles = [T('a', 0, 0, 6, 4), T('b', 6, 0, 6, 4), T('c', 0, 4, 12, 3)]
+  assert.deepEqual(at(placeTile(tiles, 'a', 6, 0)), { b: [0, 0, 6, 4], a: [6, 0, 6, 4], c: [0, 4, 12, 3] })
+  // different sizes: no swap (it would overlap), the one in the way moves down
+  const t2 = [T('a', 0, 0, 3, 2), T('b', 3, 0, 9, 2)]
+  assert.deepEqual(at(placeTile(t2, 'a', 3, 0)), { a: [3, 0, 3, 2], b: [3, 2, 9, 2] })
+  assert.deepEqual(at(placeTile(tiles, 'c', 0, 0)), { c: [0, 0, 12, 3], a: [0, 3, 6, 4], b: [6, 3, 6, 4] })
+  assert.equal(placeTile(tiles, 'a', 0, 0), tiles)
+})
+
+test('stepTile: an arrow trades places with the neighbour on that side, else moves a cell', () => {
+  const row = [T('a', 0, 0, 4, 4), T('b', 4, 0, 4, 4), T('c', 8, 0, 4, 4)]
+  assert.deepEqual(at(stepTile(row, 'a', 'right')), { b: [0, 0, 4, 4], a: [4, 0, 4, 4], c: [8, 0, 4, 4] })
+  assert.deepEqual(at(stepTile(row, 'c', 'left')), { a: [0, 0, 4, 4], c: [4, 0, 4, 4], b: [8, 0, 4, 4] })
+  const col = [T('a', 0, 0, 12, 2), T('b', 0, 2, 12, 5)]
+  assert.deepEqual(at(stepTile(col, 'a', 'down')), { b: [0, 0, 12, 5], a: [0, 5, 12, 2] })
+  assert.deepEqual(at(stepTile(col, 'b', 'up')), { b: [0, 0, 12, 5], a: [0, 5, 12, 2] })
+  // nothing to the right: one cell
+  assert.deepEqual(at(stepTile([T('a', 0, 0, 4, 2)], 'a', 'right')), { a: [1, 0, 4, 2] })
 })

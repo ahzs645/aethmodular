@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
@@ -9,6 +9,7 @@ import { fmt } from '@/lib/stats'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
+import { useTileSetting } from '@/lib/url'
 
 const STATS = ['Median', 'Mean'] as const
 
@@ -24,7 +25,7 @@ export function Barplot({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFi
   const tip = useTooltip(wrapRef)
   const height = useFitHeight() ?? 430
 
-  const [stat, setStat] = useState<(typeof STATS)[number]>('Median')
+  const [stat, setStat] = useTileSetting<(typeof STATS)[number]>('barplot.stat', 'Median', STATS)
   const seasons = meta.seasons.map((s) => s.name)
   const lg = useLegend()
 

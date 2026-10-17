@@ -12,6 +12,7 @@ import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
+import { useTileSetting } from '@/lib/url'
 
 const LAYOUTS = ['Overlay', 'Density', 'Small multiples', 'Mirror'] as const
 type Layout = (typeof LAYOUTS)[number]
@@ -44,7 +45,9 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   const tip = useTooltip(wrapRef)
   const edits = useFilterEdits()
 
-  const [bins, setBins] = useState(30)
+  const [binsParam, setBinsParam] = useTileSetting<string>('histogram.bins', '30')
+  const bins = Math.min(80, Math.max(8, Number(binsParam) || 30))
+  const setBins = (n: number) => setBinsParam(String(n))
   const { hidden, setHidden, dim, hover, setHover } = useLegend()
   const mirror = useLegend()
   const [mirrorA, setMirrorA] = useState<string>('')

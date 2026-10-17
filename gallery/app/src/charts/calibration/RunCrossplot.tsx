@@ -15,6 +15,7 @@ import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
 import { useSearchParam } from '@/lib/url'
 import type { CalibRun, CalibRunsFile, FilterRow, MetaFile } from '@/lib/types'
 import { groupColorFn, presetName } from './common'
+import { useFitHeight } from '@/lib/chartFit'
 
 const XMODES = ['reference', 'deployed EC'] as const
 const SETS = ['fixed', 'all'] as const
@@ -42,6 +43,7 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96, galle
   run: CalibRun; runs: CalibRunsFile; meta: MetaFile; knownIds: Set<string>; lambda10?: number
   galleryRows?: FilterRow[]; galleryMeta?: MetaFile
 }) {
+  const fit = useFitHeight()
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
@@ -171,7 +173,7 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96, galle
           <div className="facet-grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
             <div>
               <AxisChoices {...o.axisChoices({ x: 'x' })}>
-              <Crossplot title={`predicted vs ${useDeployed ? 'deployed' : 'reference'}`} maxSide={460} domain={x.domain() as [number, number]} pick={hasDeployed ? 'x' : undefined}
+              <Crossplot title={`predicted vs ${useDeployed ? 'deployed' : 'reference'}`} maxSide={fit === null ? 460 : Math.max(160, Math.min(460, fit - 70))} domain={x.domain() as [number, number]} pick={hasDeployed ? 'x' : undefined}
                 errorRatio={demingLambda(isFabs && !useDeployed ? mac : null, lambda10)} xLabel={xLabel} yLabel="predicted FTIR EC (µg/m³)"
                 points={pts.map((p) => ({ x: p.x, y: p.y, color: color(p.g), opacity: dim(p.g), id: p.id ?? undefined, tip: tipLines(p), rec: record(p) }))} />
               </AxisChoices>

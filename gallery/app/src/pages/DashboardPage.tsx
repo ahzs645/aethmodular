@@ -1,14 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { FrameExtrasContext, type FrameExtras } from '@/components/ChartFrame'
+import { FrameExtrasContext, Segmented, type FrameExtras } from '@/components/ChartFrame'
 import { FieldSelect } from '@/components/FieldSelect'
 import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
 import { DashHeader, type DashFilters, type SheetActions } from '@/components/dashboard/DashHeader'
 import { dashboardChart, dashboardCharts, startFields, STARTER, type DashboardChart, type DashboardData } from '@/components/dashboard/registry'
 import { useHeaderHeight } from '@/hooks/useSidePanel'
-import { ChartFit } from '@/lib/chartFit'
-import { addTile, arrange, COLS, nextId, nextTileId, removeTile, ROWS, rowsUsed, tileKeyPrefix, updateTile, type DashState, type Scope, type Sheet, type Tile } from '@/lib/dashboard'
-import { clearScopedParams, copyScopedParams, ParamScope } from '@/lib/url'
+import { ChartFit, LEGEND_MODES, TileLegend, type LegendMode } from '@/lib/chartFit'
+import { addTile, arrange, COLS, nextId, nextTileId, placeTile, removeTile, stepTile, ROWS, rowsUsed, tileKeyPrefix, updateTile, type DashState, type Scope, type Sheet, type Tile } from '@/lib/dashboard'
+import { clearScopedParams, copyScopedParams, ParamScope, useSearchParam } from '@/lib/url'
 
 const GAP = 10
 /** at or below this width the dashboard is one column and the page scrolls (Grafana and Observable do the same) */
@@ -56,6 +56,32 @@ export function DashboardPage({ data, dash, setDash, filters, onScope, onPickSit
   const phone = usePhone()
   useEffect(() => { setMaxId(null); setFocusId(null) }, [scope, active])
 
+  // presenting: no header and no tile chrome, the window (full screen where the browser allows);
+  // → / ← (or Page Down / Up, space) step through the scope's sheets, Esc ends it
+  const [present, setPresent] = useState(false)
+  const startPresent = () => {
+    setEdit(false); setMaxId(null); setPresent(true)
+    document.documentElement.requestFullscreen?.().catch(() => { /* not allowed here: present in the window */ })
+  }
+  const stopPresent = () => { setPresent(false); if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}) }
+  const goSheet = (by: number) => setDash({ ...dash, sheet: (active + by + sheets.length) % sheets.length })
+  useEffect(() => {
+    if (!present) return
+    const html = document.documentElement
+    html.classList.add('dash-present')
+    const key = (e: KeyboardEvent) => {
+      if ((e.target as Element)?.closest?.('input, textarea, [role="listbox"]')) return
+      if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); goSheet(1) }
+      else if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); goSheet(-1) }
+      else if (e.key === 'Escape') stopPresent()
+    }
+    // Esc in full screen leaves full screen without a keydown: end presenting with it
+    const left = () => { if (!document.fullscreenElement) setPresent(false) }
+    window.addEventListener('keydown', key)
+    document.addEventListener('fullscreenchange', left)
+    return () => { html.classList.remove('dash-present'); window.removeEventListener('keydown', key); document.removeEventListener('fullscreenchange', left) }
+  }) // eslint-disable-line react-hooks/exhaustive-deps
+
   // the page never scrolls, except on a phone; the grid fills the window under the header
   useEffect(() => {
     document.documentElement.classList.add('dash-mode')
@@ -101,8 +127,8 @@ export function DashboardPage({ data, dash, setDash, filters, onScope, onPickSit
     const step = (e: PointerEvent) => {
       const dx = Math.round((e.clientX - drag.px) / (colPx + GAP)), dy = Math.round((e.clientY - drag.py) / (rowPx + GAP))
       const t = drag.tile
-      const patch = drag.mode === 'move' ? { x: t.x + dx, y: Math.max(0, t.y + dy) } : { w: Math.max(1, t.w + dx), h: Math.max(1, t.h + dy) }
-      return updateTile(tiles, drag.id, patch)
+      return drag.mode === 'move' ? placeTile(tiles, drag.id, t.x + dx, Math.max(0, t.y + dy))
+        : updateTile(tiles, drag.id, { w: Math.max(1, t.w + dx), h: Math.max(1, t.h + dy) })
     }
     const move = (e: PointerEvent) => setPreview(step(e))
     const up = (e: PointerEvent) => { setTiles(step(e)); setPreview(null); setDrag(null) }
@@ -111,6 +137,18 @@ export function DashboardPage({ data, dash, setDash, filters, onScope, onPickSit
     return () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
   }, [drag]) // eslint-disable-line react-hooks/exhaustive-deps
   const shown = preview ?? tiles
+  // the keyboard: arrows move the focused tile a cell, Shift + arrows resize it, Delete removes it;
+  // the tile keeps the focus as it moves (its bar refocuses after the grid re-renders)
+  const [kbFocus, setKbFocus] = useState<string | null>(null)
+  const keyMove = (t: Tile, e: React.KeyboardEvent) => {
+    const d = ({ ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] } as Record<string, [number, number]>)[e.key]
+    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); remove(t.id); return }
+    if (!d) return
+    e.preventDefault()
+    setKbFocus(t.id)
+    const dir = d[0] < 0 ? 'left' : d[0] > 0 ? 'right' : d[1] < 0 ? 'up' : 'down'
+    setTiles(e.shiftKey ? updateTile(tiles, t.id, { w: Math.max(1, t.w + d[0]), h: Math.max(1, t.h + d[1]) }) : stepTile(tiles, t.id, dir))
+  }
 
   // ---- tiles and sheets
   const prefix = (id: string, sh = sheet) => tileKeyPrefix(scope, sh.id, id)
@@ -162,6 +200,7 @@ export function DashboardPage({ data, dash, setDash, filters, onScope, onPickSit
     return <TileView key={`${scope}-${sheet.id}-${t.id}`} scopePrefix={prefix(t.id)} tile={t} chart={chart} data={data} width={w} height={h} style={style}
       edit={edit && role === 'grid'} role={role} dragging={drag?.id === t.id}
       onMoveStart={(e) => startDrag(t.id, 'move', e)} onResizeStart={(e) => startDrag(t.id, 'resize', e)}
+      onKey={(e) => keyMove(t, e)} keepFocus={kbFocus === t.id}
       onChange={(patch) => setTiles(updateTile(tiles, t.id, patch))}
       onDuplicate={() => duplicate(t)} onRemove={() => remove(t.id)}
       onMaximize={() => setMaxId(maxId === t.id ? null : t.id)} onFocus={role === 'rail' ? () => setFocusId(t.id) : undefined} />
@@ -196,8 +235,9 @@ export function DashboardPage({ data, dash, setDash, filters, onScope, onPickSit
     <>
       {slot && createPortal(<DashHeader meta={data.meta} filters={filters} scope={scope} onScope={onScope}
         onPickSite={onPickSite} layout={layout} onLayout={(l) => setDash({ ...dash, layout: l })} edit={edit && !phone} onEdit={setEdit}
-        onAdd={() => setAdding(true)} rowsUsed={reach} sheets={sheetActions} display={display} />, slot)}
-      <div ref={mainRef} className={`dash-main${edit ? ' editing' : ''}${phone ? ' phone' : ''}`} style={phone ? undefined : { height: `calc(100vh - ${top}px - 12px)` }}>
+        onAdd={() => setAdding(true)} rowsUsed={reach} sheets={sheetActions} display={display} onPresent={phone ? undefined : startPresent} />, slot)}
+      <div ref={mainRef} className={`dash-main${edit ? ' editing' : ''}${phone ? ' phone' : ''}`}
+        style={phone ? undefined : { height: present ? 'calc(100vh - 20px)' : `calc(100vh - ${top}px - 12px)` }}>
         {tiles.length === 0 && <div className="dash-empty">
           <p>“{sheet.name}” has no charts yet.</p>
           <span><button type="button" className="btn" onClick={() => setAdding(true)}>+ Add chart</button></span>
@@ -205,6 +245,12 @@ export function DashboardPage({ data, dash, setDash, filters, onScope, onPickSit
         {body}
       </div>
       {adding && <ChartCatalog data={data} onPick={add} onClose={() => setAdding(false)} />}
+      {present && <div className="dash-present-bar" role="toolbar" aria-label="Presenting">
+        <button type="button" className="btn quiet" onClick={() => goSheet(-1)} disabled={sheets.length < 2} aria-label="Previous sheet">‹</button>
+        <span>{sheet.name} <span className="dash-count">{active + 1}/{sheets.length}</span></span>
+        <button type="button" className="btn quiet" onClick={() => goSheet(1)} disabled={sheets.length < 2} aria-label="Next sheet">›</button>
+        <button type="button" className="btn quiet" onClick={stopPresent} title="Stop presenting (Esc)">✕</button>
+      </div>}
     </>
   )
 }
@@ -217,6 +263,18 @@ const starterSheets = (scope: Scope, data: DashboardData): Sheet[] => STARTER[sc
     return chart ? addTile(acc, { kind: t.kind, w: t.w, h: t.h, fields: t.fields ?? startFields(chart, data) }) : acc
   }, [])),
 }))
+
+/** true once the element is within a screen of the viewport (always true when not `lazy`) */
+function useNear(ref: React.RefObject<HTMLElement>, lazy: boolean) {
+  const [near, setNear] = useState(!lazy)
+  useEffect(() => {
+    if (!lazy || near || !ref.current) return
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) setNear(true) }, { rootMargin: '100% 0px' })
+    io.observe(ref.current)
+    return () => io.disconnect()
+  }, [lazy, near, ref])
+  return near
+}
 
 function usePhone() {
   const q = `(max-width: ${PHONE}px)`
@@ -275,7 +333,7 @@ function ChartCatalog({ data, onPick, onClose }: { data: DashboardData; onPick: 
  * each draw by what is left over, so legends and readouts of any height fill the tile; a
  * chart that cannot shrink enough scrolls inside its tile, never the page.
  */
-function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, role, dragging, onMoveStart, onResizeStart, onChange, onDuplicate, onRemove, onMaximize, onFocus }: {
+function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, role, dragging, onMoveStart, onResizeStart, onKey, keepFocus, onChange, onDuplicate, onRemove, onMaximize, onFocus }: {
   tile: Tile
   chart: DashboardChart
   data: DashboardData
@@ -288,6 +346,9 @@ function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, 
   dragging: boolean
   onMoveStart: (e: React.PointerEvent) => void
   onResizeStart: (e: React.PointerEvent) => void
+  onKey: (e: React.KeyboardEvent) => void
+  /** the tile the keyboard is arranging: its bar takes the focus back after each move */
+  keepFocus: boolean
   onChange: (patch: Partial<Omit<Tile, 'id'>>) => void
   onDuplicate: () => void
   onRemove: () => void
@@ -309,15 +370,22 @@ function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, 
   const axisValue = { x: fields[0] ?? '', y: fields[1] ?? '', field: fields[0] ?? '' }
   const axisSet = (role: AxisRole, f: string) => setField(role === 'y' ? 1 : 0, f)
 
+  // where the chart's legends go (⋯ menu), kept with the tile's other URL keys
+  const [legend, setLegend] = useSearchParam<LegendMode>(`${scopePrefix}legend`, 'auto', LEGEND_MODES)
+  const legendReserve = Math.round(Math.min(220, Math.max(130, width * 0.28)))
+
   // ---- fit: a first guess, then corrected by the frame's leftover (or overflow) after each draw
-  const minFit = chart.kind === 'stat' ? 16 : 120
+  const minFit = chart.kind === 'stat' || chart.kind === 'sitesummary' ? 16 : 120
   const ref = useRef<HTMLDivElement>(null)
   const [fit, setFit] = useState(() => Math.max(minFit, height - 70))
   const tries = useRef(0)
-  const key = `${width}|${height}|${tile.kind}|${fields.join('|')}`
+  const key = `${width}|${height}|${tile.kind}|${fields.join('|')}|${legend}`
   const lastKey = useRef(key)
   if (lastKey.current !== key) { lastKey.current = key; tries.current = 0 }
-  useEffect(() => { tries.current = 0 }, [data.rows, data.meta])
+  // new rows (a filter, the data still arriving) start the correction over, in this render: an
+  // effect would run after the measuring below and leave a chart sized for the loading state
+  const lastData = useRef<[unknown, unknown]>([data.rows, data.meta])
+  if (lastData.current[0] !== data.rows || lastData.current[1] !== data.meta) { lastData.current = [data.rows, data.meta]; tries.current = 0 }
   useLayoutEffect(() => {
     const panel = ref.current?.querySelector(':scope > .panel') as HTMLElement | null
     if (!panel || tries.current >= 6) return
@@ -329,9 +397,13 @@ function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, 
       bottom = Math.max(bottom, el.getBoundingClientRect().bottom)
     }
     const pad = parseFloat(getComputedStyle(panel).paddingBottom) || 0
-    const slack = panel.clientHeight - (bottom - top + pad + panel.scrollTop)
+    // overflowing: the panel's own overflow, which counts margins that spill past the last child;
+    // otherwise the room left under the last child
+    const over = panel.scrollHeight - panel.clientHeight
+    const slack = over > 0 ? -over : panel.clientHeight - (bottom - top + pad + panel.scrollTop)
     if (Math.abs(slack) <= 2) return
-    const next = Math.max(minFit, Math.round(fit + slack))
+    // never taller than the tile: past that a chart only scrolls
+    const next = Math.min(Math.max(minFit, height), Math.max(minFit, Math.round(fit + slack)))
     if (next === fit) return
     tries.current += 1
     setFit(next)
@@ -344,6 +416,11 @@ function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, 
     <button type="button" className="btn quiet" onClick={() => { close(); onMaximize() }}>{role === 'max' ? '⤡ Back' : '⤢ Full window'}</button>
     <button type="button" className="btn quiet" onClick={() => { close(); onDuplicate() }}>⧉ Duplicate</button>
     <button type="button" className="btn quiet" onClick={() => { close(); onRemove() }}>✕ Remove</button>
+    {chart.kind !== 'stat' && chart.kind !== 'sitecards' && <span className="tile-legend-mode">
+      <Segmented label="Legend" value={legend} options={[...LEGEND_MODES]} onChange={setLegend}
+        optionLabel={(m) => ({ auto: 'Auto', bottom: 'Bottom', right: 'Right', off: 'Off' }[m as LegendMode])}
+        title="Auto: the first few and +N more · Bottom: every item · Right: a column beside the chart (where the chart has its legend with the plot) · Off" />
+    </span>}
   </>
   const pickers: ReactNode = n === 0 ? null : <span className="dash-fields">
     {chart.fields === 'pair'
@@ -351,22 +428,32 @@ function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, 
         <FieldSelect label="y" value={fields[1]} meta={data.meta} onChange={(f) => setField(1, f)} /></>
       : fields.map((f, i) => <FieldSelect key={i} label={n === 1 ? 'Measurement' : `Field ${i + 1}`} value={f} meta={data.meta} onChange={(v) => setField(i, v)} />)}
   </span>
-  const editBar = edit ? <div className="tile-edit-bar" onPointerDown={onMoveStart} title="Drag to move">
+  const barRef = useRef<HTMLDivElement>(null)
+  useEffect(() => { if (edit && keepFocus && document.activeElement !== barRef.current) barRef.current?.focus() })
+  const editBar = edit ? <div ref={barRef} className="tile-edit-bar" onPointerDown={onMoveStart} onKeyDown={onKey} tabIndex={0} role="button"
+    aria-label={`${chart.label}, ${tile.w} by ${tile.h} at column ${tile.x + 1}, row ${tile.y + 1}. Arrow keys move it, Shift and arrows resize, Delete removes`}
+    title="Drag to move · arrow keys move, Shift + arrows resize, Delete removes">
     <span aria-hidden>⠿</span> <strong>{chart.label}</strong>{(subtitle ?? (chart.kind === 'stat' ? fields[0] : null)) && <span className="frame-sub">{subtitle ?? fields[0]}</span>}
     <span className="tile-size">{tile.w} × {tile.h}</span>
   </div> : undefined
   const extras: FrameExtras = { compact: true, menu, controls: pickers, subtitle, editBar }
+
+  // on a phone (one long column) a tile draws once it comes near the screen, and then stays
+  const near = useNear(ref, role === 'phone')
 
   // did the chart draw its own frame? if not, the tile draws one with its menu
   const [framed, setFramed] = useState(true)
   useLayoutEffect(() => { const has = !!ref.current?.querySelector(':scope > .panel:not(.dash-fallback)'); if (has !== framed) setFramed(has) })
 
   return (
-    <div ref={ref} className={`dash-tile${dragging ? ' dragging' : ''}${edit ? ' editing' : ''}${chart.kind === 'stat' ? ' stat' : ''}`} style={style}>
+    <div ref={ref} className={`dash-tile legend-${legend}${dragging ? ' dragging' : ''}${edit ? ' editing' : ''}${chart.kind === 'stat' ? ' stat' : ''}`}
+      style={{ ...style, ['--legend-w' as string]: `${legendReserve}px` }}>
       <ParamScope prefix={scopePrefix}>
         <FrameExtrasContext.Provider value={extras}>
           <AxisFieldsProvider meta={data.meta} value={axisValue} set={axisSet}>
-            <ChartFit height={fit}>{chart.render(data, fields.map(data.eff))}</ChartFit>
+            <TileLegend mode={legend} reserve={legendReserve}><ChartFit height={fit}>
+              {near ? chart.render(data, fields.map(data.eff)) : <section className="panel compact"><p className="frame-empty">{chart.label}</p></section>}
+            </ChartFit></TileLegend>
           </AxisFieldsProvider>
         </FrameExtrasContext.Provider>
       </ParamScope>

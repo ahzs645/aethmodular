@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Combobox } from '@/components/Combobox'
 import { Segmented, Toggle } from '@/components/ChartFrame'
-import { useSearchParam } from '@/lib/url'
+import { useParamScope, useSearchParam } from '@/lib/url'
 import type { AxisOption } from '@/components/AxisChoices'
 
 /**
@@ -39,7 +39,10 @@ export type { OptionChoice, OptionContext, OptionDef, OptionValue } from '@/lib/
 /** The resolved values, and `controls()` for the chart's ChartFrame. */
 export function useChartOptions(chartId: string, defs: readonly OptionDef[], facts: OptionContext = {}) {
   // one state per option, in a fixed order: a mounted chart never changes its list of options
-  const stored = defs.map((d) => useStoredOption(chartId, d)) // eslint-disable-line react-hooks/rules-of-hooks
+  // inside a Dashboard tile every option is kept in the URL (under the tile's prefix), so a shared
+  // dashboard reopens each tile as it was; elsewhere only the options marked `persist` are
+  const inTile = useParamScope() !== ''
+  const stored = defs.map((d) => useStoredOption(chartId, d, inTile)) // eslint-disable-line react-hooks/rules-of-hooks
   const { values, items, ctx } = resolveOptions(defs, stored.map((s) => s[0]), facts)
   const setter = (i: number) => (v: OptionValue) => { stored[i][1](v); (defs[i].onChange as ((v: OptionValue) => void) | undefined)?.(v) }
 
@@ -79,10 +82,11 @@ export function useChartOptions(chartId: string, defs: readonly OptionDef[], fac
   return { values, controls, set, ctx, axisChoices, axisLabel }
 }
 
-function useStoredOption(chartId: string, d: OptionDef): [OptionValue, (v: OptionValue) => void] {
-  // the kind of storage is fixed per option, so the hooks below run in the same order every render
+function useStoredOption(chartId: string, d: OptionDef, inTile: boolean): [OptionValue, (v: OptionValue) => void] {
+  // the kind of storage is fixed per option (and a chart never moves in or out of a tile), so the
+  // hooks below run in the same order every render
   if (d.bind) return d.bind as [OptionValue, (v: OptionValue) => void]
-  if (d.persist) {
+  if (d.persist || inTile) {
     const [v, set] = useSearchParam<string>(`${chartId}.${d.key}`, d.toggle ? (d.default ? '1' : '0') : String(d.default ?? '')) // eslint-disable-line react-hooks/rules-of-hooks
     return d.toggle ? [v === '1', (x) => set(x ? '1' : '0')] : [v, (x) => set(String(x))]
   }

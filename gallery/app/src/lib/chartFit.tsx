@@ -22,3 +22,15 @@ export const useFitHeight = () => useContext(FitCtx)
 /** an inner plot height from a fitted outer one, never below `min` */
 export const fitInner = (fit: number | null, margins: number, min = 80) =>
   fit === null ? null : Math.max(min, fit - margins)
+
+/**
+ * Where a tile puts its chart's legends (the tile's ⋯ menu): auto (the first few, "+N more"),
+ * bottom (every item), right (a column beside the chart: the chart measures that much narrower,
+ * hooks/useGalleryData useDimensions), or off. Outside a tile: null, legends as everywhere.
+ */
+export type LegendMode = 'auto' | 'bottom' | 'right' | 'off'
+export const LEGEND_MODES: readonly LegendMode[] = ['auto', 'bottom', 'right', 'off']
+const LegendCtx = createContext<{ mode: LegendMode; reserve: number } | null>(null)
+export const TileLegend = ({ mode, reserve, children }: { mode: LegendMode; reserve: number; children: ReactNode }) =>
+  <LegendCtx.Provider value={{ mode, reserve }}>{children}</LegendCtx.Provider>
+export const useTileLegend = () => useContext(LegendCtx)
