@@ -60,9 +60,9 @@ function Popover({ anchor, kind, value, reverse, onChange, onClose }: {
           </button>
         ))}
       </div>
-      <label className="scheme-reverse">
+      <label className="scheme-reverse" title={kind === 'diverging' ? 'Swap the colours of negative and positive values' : 'Swap the colours of the low and high ends'}>
         <input type="checkbox" checked={reverse} onChange={(e) => onChange(value, e.target.checked)} />
-        Reverse {kind === 'diverging' ? '(swap negative and positive colours)' : '(swap the low and high ends)'}
+        Reverse
       </label>
     </div>,
     document.body,
