@@ -16,6 +16,7 @@ import type { FilterRecord } from '@/lib/highlight'
 import { RecordSection } from '@/components/RecordDrawer'
 import { FilterSpectrum } from '@/components/FilterSpectrum'
 import { useSearchParam } from '@/lib/url'
+import { NO_PMF, PMF_SOURCE, pmfShareField } from '@/lib/pmfGroups'
 import { cleanReference, placements, stripPosition, ratioReference, isFiniteNumber, type ReferenceRow, type SpartanReference } from '@/lib/referencePopulation'
 
 
@@ -199,6 +200,9 @@ export function SampleDrawer({
       {/* Addis filters resolve to their similarity trace via etad_ids.json; nothing renders without one */}
       <FilterSpectrum id={row.id} />
 
+      {/* the day's PMF solution, at a site that has one (lib/pmfGroups) */}
+      <PmfDay row={row} meta={meta} />
+
       <section className="drawer-section">
         <h3>Where this filter sits {referenceLabel === row.site ? `at ${row.site}` : `against ${referenceLabel}`}</h3>
         <div className="frame-controls" style={{ margin: '8px 0' }}>
@@ -332,5 +336,34 @@ export function SampleDrawer({
         </section>
       )}
     </aside>
+  )
+}
+
+/** The filter's PMF day: its dominant source and each factor's share, where its site has a PMF solution. */
+function PmfDay({ row, meta }: { row: FilterRow; meta: MetaFile }) {
+  const sources = meta.pmf_sources ?? []
+  const label = row[PMF_SOURCE]
+  if (!sources.length || typeof label !== 'string') return null
+  const shares = sources.map((s) => ({ ...s, v: row[pmfShareField(s.name)] })).filter((s): s is typeof s & { v: number } => typeof s.v === 'number')
+    .sort((a, b) => b.v - a.v)
+  const dominant = meta.pmf_groups?.find((g) => g.name === label)
+  return (
+    <section className="drawer-section">
+      <h3>PMF sources on this day</h3>
+      {label === NO_PMF || !shares.length
+        ? <p className="chart-note">No PMF day for this filter: the PMF solution at {row.site} does not include its sampling date.</p>
+        : <>
+          <p className="pmf-dominant">
+            Dominant: <span className="pmf-dot" style={{ background: dominant?.color ?? INK.neutral }} /> <strong>{label}</strong> · {fmt(shares[0].v * 100, 0)} % of the PMF factors' total
+          </p>
+          <div className="pmf-shares">
+            {shares.map((s) => <div key={s.name} className="pmf-share" title={`${s.name}: ${fmt(s.v * 100, 1)} %`}>
+              <span className="pmf-share-name">{s.name}</span>
+              <span className="pmf-share-bar"><span style={{ width: `${Math.max(1, s.v * 100)}%`, background: s.color }} /></span>
+              <span className="pmf-share-v">{fmt(s.v * 100, 0)} %</span>
+            </div>)}
+          </div>
+        </>}
+    </section>
   )
 }

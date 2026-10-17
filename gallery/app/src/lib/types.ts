@@ -53,6 +53,8 @@ export interface MetaFile {
   basis?: 'conc' | 'mass'
   /** the PMF groups under the chosen scheme, with 'No PMF day', where a site in view has PMF (lib/pmfGroups) */
   pmf_groups?: { name: string; color: string }[]
+  /** the PMF factors themselves (their shares are the 'PMF sources' fields), for the sample drawer */
+  pmf_sources?: { name: string; color: string }[]
   season_convention: string
   seasons: SeasonMeta[]
   /** every registered Ethiopian calendar, keyed by convention name */

@@ -28,7 +28,9 @@ type Scale = d3.ScaleLinear<number, number> | d3.ScaleLogarithmic<number, number
 
 /** Per season: one site's seasons side by side, or each site's seasons grouped under it */
 const LAYOUTS = ['Combined', 'Per site', 'Per season'] as const
-const COLOR_BY = ['Site', 'Season', 'PMF source', 'Value'] as const
+const COLOR_BY = ['Site', 'Season', 'Value'] as const
+/** Value's categorical choice where a site in view has PMF: each point by its day's dominant source */
+const PMF_COLOUR = 'PMF source (dominant)'
 const NO_SIZE = 'none'
 
 /** Sequential ramp over the 2–98 % bulk of a third variable, so one outlier does not wash the rest to the first colour. */
@@ -75,17 +77,17 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   // the reader's colour field, or Iron, or the first field, among the fields this view has now: the
   // chart can mount while a network's fields are still loading (empty), or keep a field the next network lacks
   const [colorChoice, setColorField] = useState<string | null>(null)
-  const colorField = [colorChoice, 'Iron', meta.fields[0]].find((f): f is string => !!f && meta.fields.includes(f)) ?? ''
+  const hasPmf = !!meta.pmf_groups?.length && rows.some((r) => typeof r[PMF_SOURCE] === 'string')
+  const colorField = [colorChoice, 'Iron', meta.fields[0]].find((f): f is string => !!f && (meta.fields.includes(f) || (f === PMF_COLOUR && hasPmf))) ?? ''
   const [sizeField, setSizeField] = useState(NO_SIZE)
   // the options and when each applies (lib/chartOptions). Fits are per panel, so the grouping
   // offered follows the layout: a fit per site inside a site's panel is the pooled fit, and a
   // per-season panel holds one site in one season, so every grouping is its one fit
   const o = useChartOptions('scatter', [
     { key: 'layout', label: 'Layout', choices: LAYOUTS, default: 'Combined', title: 'PlotConfig.layout: combined overlays sites; per site is the grid' },
-    // PMF source only where a site in view has a PMF solution (lib/pmfGroups; Addis so far)
-    { key: 'colorBy', label: 'Colour', choices: COLOR_BY.map((v) => ({ value: v, when: v === 'PMF source' ? (c: Record<string, unknown>) => !!c.hasPmf : undefined })), default: 'Site',
-      title: 'Value: a third measurement on a sequential ramp (2–98 % of its range) · PMF source: the dominant PMF factor of the filter\'s day (grey: no PMF day or no PMF at its site)', onChange: () => setHidden(new Set()) },
-    { key: 'colorField', when: (c) => c.colorBy === 'Value', node: () => <FieldSelect label="by" value={colorField} meta={meta} onChange={setColorField} /> },
+    { key: 'colorBy', label: 'Colour', choices: COLOR_BY, default: 'Site', title: 'Value: a third measurement on a sequential ramp (2–98 % of its range), or, where a site in view has PMF, its day\'s dominant source', onChange: () => setHidden(new Set()) },
+    // where a site in view has PMF (lib/pmfGroups; Addis so far), its dominant source heads the list, beside the PMF shares
+    { key: 'colorField', when: (c) => c.colorBy === 'Value', node: () => <FieldSelect label="by" value={colorField} meta={meta} onChange={(f) => { setColorField(f); setHidden(new Set()) }} extraOptions={hasPmf ? [PMF_COLOUR] : []} /> },
     { key: 'size', node: () => <FieldSelect label="Size" value={sizeField} meta={meta} onChange={setSizeField} extraOptions={[NO_SIZE]} title="Bubble plot: mark area proportional to a fourth measurement" /> },
     { key: 'fitLines', label: 'Fit lines', toggle: true, default: true },
     fitGroupingOption({ bind: [chosenGrouping, setGrouping as (v: never) => void],
@@ -96,7 +98,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
     { key: 'brushing', label: 'Brush to select', toggle: true, default: false, title: 'Drag a rectangle: the enclosed filters are highlighted on every chart of this tab', onChange: ((v: boolean) => { if (!v) hl.setSelected(null) }) as (v: never) => void },
     { key: 'selected', when: () => !!hl.selected, node: () => <span className="control"><strong>{hl.selected?.size}</strong> selected<button type="button" className="btn quiet" onClick={() => hl.setSelected(null)}>Clear</button></span> },
     { key: 'count', node: () => <span className="control">{points.length} points</span> },
-  ], { estimators: methods.length, hasPmf: !!meta.pmf_groups?.length && rows.some((r) => typeof r[PMF_SOURCE] === 'string') })
+  ], { estimators: methods.length })
   const layout = o.values.layout as (typeof LAYOUTS)[number]
   const colorBy = o.values.colorBy as (typeof COLOR_BY)[number]
   const showFit = o.values.fitLines as boolean
@@ -107,7 +109,9 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   const seasonColor = useMemo(() => new Map(meta.seasons.map((s) => [s.name, s.color])), [meta.seasons])
   const pmfColor = useMemo(() => new Map((meta.pmf_groups ?? []).map((g) => [g.name, g.color])), [meta.pmf_groups])
   const pmfOf = (r: FilterRow) => (typeof r[PMF_SOURCE] === 'string' ? (r[PMF_SOURCE] as string) : NO_PMF)
-  const groupOf = (r: FilterRow) => (colorBy === 'Season' ? r.season : colorBy === 'PMF source' ? pmfOf(r) : r.site)
+  // colour by PMF source is categorical: its legend groups (and hides) by source
+  const pmfColouring = colorBy === 'Value' && colorField === PMF_COLOUR
+  const groupOf = (r: FilterRow) => (colorBy === 'Season' ? r.season : pmfColouring ? pmfOf(r) : r.site)
   const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 
   const points = useMemo<Point[]>(
@@ -126,7 +130,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   )
 
   // third variable → colour; fourth → size (sqrt, so area is proportional)
-  const cScale = useMemo(() => (colorBy === 'Value' ? valueScale(points.map((p) => p.c).filter((v): v is number => v !== null)) : null), [points, colorBy])
+  const cScale = useMemo(() => (colorBy === 'Value' && !pmfColouring ? valueScale(points.map((p) => p.c).filter((v): v is number => v !== null)) : null), [points, colorBy, pmfColouring])
   const sScale = useMemo(() => {
     if (sizeField === NO_SIZE) return null
     const vals = points.map((p) => p.s).filter((v): v is number => v !== null && v > 0)
@@ -136,8 +140,9 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   const nNoSize = sScale ? points.filter((p) => p.s === null).length : 0
 
   const colorOf = (p: Point) =>
-    colorBy === 'Value' ? (p.c === null || !cScale ? INK.neutral : cScale(p.c)) : colorBy === 'Season' ? seasonColor.get(p.row.season) ?? INK.muted
-      : colorBy === 'PMF source' ? pmfColor.get(pmfOf(p.row)) ?? INK.neutral : (p.row.color as string)
+    pmfColouring ? pmfColor.get(pmfOf(p.row)) ?? INK.neutral
+      : colorBy === 'Value' ? (p.c === null || !cScale ? INK.neutral : cScale(p.c)) : colorBy === 'Season' ? seasonColor.get(p.row.season) ?? INK.muted
+      : (p.row.color as string)
   const radiusOf = (p: Point) => (sScale ? (p.s === null ? 1.5 : sScale(p.s)) : 4)
 
   const panels = useMemo(() => {
@@ -180,13 +185,13 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
 
   const legend = useMemo(
     () =>
-      (colorBy === 'Season' ? meta.seasons : colorBy === 'PMF source' ? (meta.pmf_groups ?? []).map((g) => ({ name: g.name, color: g.color })) : meta.sites).map((s) => ({
+      (colorBy === 'Season' ? meta.seasons : pmfColouring ? (meta.pmf_groups ?? []).map((g) => ({ name: g.name, color: g.color })) : meta.sites).map((s) => ({
         label: s.name,
-        color: colorBy === 'Value' ? INK.neutral : s.color,
+        color: colorBy === 'Value' && !pmfColouring ? INK.neutral : s.color,
         detail: `n=${rows.filter((r) => groupOf(r) === s.name && typeof r[xField] === 'number' && typeof r[yField] === 'number').length}`,
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [colorBy, meta, rows, xField, yField]
+    [colorBy, pmfColouring, meta, rows, xField, yField]
   )
 
   // PlotConfig.equal_axes: a 1:1 line only reads correctly on a square panel.
@@ -274,7 +279,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
               </div>
         )}
         <div className="legend">
-          {colorBy === 'Value' && cScale ? (
+          {colorBy === 'Value' && cScale && !pmfColouring ? (
             <ColorLegend scale={cScale} label={unitOf(colorField)} note={nNoColor > 0 ? `${nNoColor} points without ${colorField} in grey` : undefined} />
           ) : (
             <Legend items={legend} hidden={hidden} onToggle={(l) => setHidden((h) => toggleIn(h, l))} onHover={setHover} highlighted={hover} note={showFit ? 'fit selection and line styles: sidebar' : undefined} />
@@ -282,7 +287,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
           {sScale && <SizeLegend scale={sScale} label={unitOf(sizeField)} />}
           {sScale && nNoSize > 0 && <span className="legend-note">{nNoSize} points without {sizeField} drawn smallest</span>}
         </div>
-        {colorBy === 'Value' && (
+        {colorBy === 'Value' && !pmfColouring && (
           <Legend items={legend} hidden={hidden} onToggle={(l) => setHidden((h) => toggleIn(h, l))} onHover={setHover} highlighted={hover} note="click a site to drop it; colour is the value above" />
         )}
         {domain.dropped > 0 && (

@@ -747,3 +747,13 @@ html[data-density="readable"] svg [font-size="16"] { font-size: calc(16px * var(
 .navmenu-section { display: flex; flex-direction: column; }
 .navmenu-extra { display: none; }
 @media (max-width: 560px) { .navmenu-extra { display: flex; } }
+
+/* ---------- PMF day in the sample drawer ---------- */
+.pmf-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; vertical-align: middle; }
+.pmf-shares { display: flex; flex-direction: column; gap: 4px; }
+.pmf-share { display: grid; grid-template-columns: 150px minmax(0, 1fr) 42px; gap: 8px; align-items: center; font-size: calc(12px * var(--text-scale)); }
+.pmf-share-name { color: var(--ink-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pmf-share-bar { height: 8px; background: var(--ink-grid); border-radius: 4px; overflow: hidden; }
+.pmf-share-bar > span { display: block; height: 100%; border-radius: 4px; }
+.pmf-share-v { text-align: right; font-family: var(--mono); color: var(--ink-muted); }
+.pmf-dominant { margin: 0 0 8px; font-size: calc(12.5px * var(--text-scale)); color: var(--ink-text); }

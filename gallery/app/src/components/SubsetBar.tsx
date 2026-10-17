@@ -105,6 +105,8 @@ export interface SubsetState {
   exportMac?: number
   /** the PMF section's scope on a tab that mixes sites (only the PMF site's filters are narrowed) */
   pmfNote?: string
+  /** hide the sites without PMF too, so only PMF filters remain */
+  pmfOnly?: boolean
   /** filters in view with a sampled volume, of all in view (mass per filter needs one) */
   withVolume?: [number, number]
 }
@@ -142,6 +144,7 @@ export interface SubsetActions {
   onOpenPinned: () => void
   onReset: () => void
   onBasis?: (b: Basis) => void
+  onPmfOnly?: (v: boolean) => void
   onMac?: (mac: number | null) => void
 }
 
@@ -456,6 +459,7 @@ export function SubsetBar({
                       )
                     })}
                   </div>
+                  {s.pmfNote && a.onPmfOnly && <Toggle label="Only filters with a PMF day (hide sites without PMF)" checked={!!s.pmfOnly} onChange={a.onPmfOnly} />}
                   <span className={s.pmfNote ? 'method-note' : 'row-note'} style={{ display: 'block' }}>
                     {s.pmfNote ?? 'Only filters with an ETAD PMF day (102 days of 2023, matched by exact date) are kept while this is on. Combines with seasonality.'}
                   </span>

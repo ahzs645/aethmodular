@@ -247,6 +247,8 @@ export default function App() {
   const [ftirBaseline, setFtirBaseline] = useState<FtirBaseline>(() => (['spline', 'vibes'] as string[]).includes(init.get('fb') ?? '') ? init.get('fb') as FtirBaseline : 'none')
   const [seasonsOn, setSeasonsOn] = useState(init.get('seas') !== '0')
   const [pmfOn, setPmfOn] = useState(init.get('pmfon') === '1')
+  // with the PMF filter on: also hide the sites (and days) without PMF, so only PMF filters remain
+  const [pmfOnly, setPmfOnly] = useState(init.get('pmfonly') === '1')
   const [dateRange, setDateRange] = useState<DateRange | null>(
     init.get('from') && init.get('to') ? [init.get('from')!, init.get('to')!] : null
   )
@@ -320,6 +322,7 @@ export default function App() {
       pmf: listToParam(activePmf),
       seas: seasonsOn ? null : '0',
       pmfon: pmfOn ? '1' : null,
+      pmfonly: pmfOnly ? '1' : null,
       from: dateRange?.[0],
       to: dateRange?.[1],
       excl: includeExcluded ? '1' : null,
@@ -338,7 +341,7 @@ export default function App() {
       log: axes.log ? '1' : null,
       pax: axes.panels === 'Own' ? 'own' : null,
     })
-  }, [tab, meeting, estimators, showCI, convention, calVariants, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, keepIds, ftirBaseline, customSeasons, pmfScheme, activePmf, seasonsOn, pmfOn, dateRange, includeExcluded, xField, yField, field, ratios, mac, basis, pinnedId, axes])
+  }, [tab, meeting, estimators, showCI, convention, calVariants, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, keepIds, ftirBaseline, customSeasons, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, includeExcluded, xField, yField, field, ratios, mac, basis, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -363,6 +366,7 @@ export default function App() {
       setActivePmf(listParam(p.get('pmf')))
       setSeasonsOn(p.get('seas') !== '0')
       setPmfOn(p.get('pmfon') === '1')
+      setPmfOnly(p.get('pmfonly') === '1')
       setDateRange(p.get('from') && p.get('to') ? [p.get('from')!, p.get('to')!] : null)
       setIncludeExcluded(p.get('excl') === '1')
       setDropIds(idSet(p.get('drop')) ?? new Set())
@@ -610,8 +614,8 @@ export default function App() {
   // other sites pass through untouched
   const pmfSite = data?.pmf?.site ?? null
   const chartPmf = (NETWORK_TABS as readonly string[]).includes(tab) && !!pmfKeep
-  const inChartPmf = useCallback((r: FilterRow) => !chartPmf || r.code !== pmfSite || pmfKeep!.has(String(r[PMF_SOURCE] ?? NO_PMF)),
-    [chartPmf, pmfSite, pmfKeep])
+  const inChartPmf = useCallback((r: FilterRow) => !chartPmf || (r.code !== pmfSite ? !pmfOnly : pmfKeep!.has(String(r[PMF_SOURCE] ?? NO_PMF))),
+    [chartPmf, pmfSite, pmfKeep, pmfOnly])
   // a site with PMF is among the picked ones: the chart tabs then offer the PMF section
   const pmfSiteInView = useMemo(() => !!pmfSite && baseRows.some((r) => r.code === pmfSite && (netView ? netView.chosenNames.has(r.site) : !activeSites || activeSites.has(r.site))),
     [pmfSite, baseRows, netView, activeSites])
@@ -732,6 +736,7 @@ export default function App() {
     meta.field_units = { ...meta.field_units, ...Object.fromEntries(pmfPresent.map((f) => [f, 'share'])) }
     meta.field_groups = [...(meta.field_groups ?? []).filter((g) => g.label !== PMF_GROUP), { label: PMF_GROUP, fields: pmfPresent }]
     meta.pmf_groups = pmfGroups(pmf ?? null, pmfScheme, true)
+    meta.pmf_sources = (pmf?.sources ?? []).map((x) => ({ name: x.label, color: x.color }))
   }
   // the baseline variants are drawn but never offered in the pickers
   meta.field_units = { ...meta.field_units, [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3' }
@@ -775,7 +780,7 @@ export default function App() {
           .map((r) => ({ season: r.season, site: r.site, pmf: r.code === pmfSite ? String(r[PMF_SOURCE] ?? NO_PMF) : OTHER_SITE }))
     const usePmf = pmfMode || calMode || (chartTab && pmfSiteInView)
     const inSeason = (r: { season: string }) => !seasonSel || seasonSel.has(r.season)
-    const inPmf = (r: { pmf: string }) => !usePmf || !pmfKeep || r.pmf === OTHER_SITE || pmfKeep.has(r.pmf)
+    const inPmf = (r: { pmf: string }) => !usePmf || !pmfKeep || (r.pmf === OTHER_SITE ? !pmfOnly : pmfKeep.has(r.pmf))
     // each dimension's chips count what selecting them would give under the *other* filters
     const seasonPool = pool.filter(inPmf)
     const sitePool = seasonPool.filter(inSeason)
@@ -803,7 +808,8 @@ export default function App() {
 
     const state: SubsetState = {
       basis, mac: viewOpts.mac, exportMac,
-      pmfNote: chartTab && pmfSiteInView ? `Narrows ${pmf?.site_name ?? 'the PMF site'}'s filters only (${pmf?.n ?? 0} PMF days); other sites are unaffected. Each source's share is also a measurement (PMF sources), and the scatterplot can colour by PMF source.` : undefined,
+      pmfNote: chartTab && pmfSiteInView ? (pmfOnly ? `Only ${pmf?.site_name ?? 'the PMF site'}'s filters with a PMF day (${pmf?.n ?? 0} days) are drawn; sites without PMF are hidden.` : `Narrows ${pmf?.site_name ?? 'the PMF site'}'s filters only (${pmf?.n ?? 0} PMF days); other sites are unaffected.`) + ' Each source\'s share is also a measurement (PMF sources), and the scatterplot can colour by PMF source (Colour → Value).' : undefined,
+      pmfOnly,
       withVolume: basis === 'mass' ? [inViewRows.filter((r) => typeof r[VOLUME] === 'number').length, inViewRows.length] : undefined,
       convention: activeConvention,
       defaultConvention,
@@ -859,6 +865,7 @@ export default function App() {
     }
     const actions: SubsetActions = {
       onBasis: setBasis,
+      onPmfOnly: setPmfOnly,
       onMac: setMac,
       onConvention: (v) => {
         setConvention(v)
