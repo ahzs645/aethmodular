@@ -1,4 +1,4 @@
-import { ChartFrame } from '@/components/ChartFrame'
+import { ChartFrame, ExplainOnly } from '@/components/ChartFrame'
 import { ExportState } from '@/components/ExportState'
 import { BundleContext, Figure, type MeetingBundle } from '@/components/Figure'
 import { PageToc } from '@/components/PageToc'
@@ -10,6 +10,8 @@ import type { MeetingSpec } from '@/meetings/types'
  * Draws a declared meeting (src/meetings/*.meeting.ts): each section's text as
  * a panel, then its figures. The bundle is the exporter's tables and text; a
  * paragraph that is just "@key" is replaced by the bundle's text for that key.
+ * The page intro and the sections' text (answers, open items) are explanation:
+ * shown with Explain on; the figures always show.
  */
 export function MeetingSpecPage({ spec }: { spec: MeetingSpec }) {
   const { data, error } = useExport<MeetingBundle>(`meetings/${spec.id}.json`, (b) =>
@@ -22,11 +24,11 @@ export function MeetingSpecPage({ spec }: { spec: MeetingSpec }) {
   return (
     <BundleContext.Provider value={data}>
       <PageToc>
-        <ChartFrame title={spec.title} exportable={false} subtitle={`Data: ${data.generated_from}`}>
+        <ExplainOnly><ChartFrame title={spec.title} exportable={false} subtitle={`Data: ${data.generated_from}`}>
           {spec.intro && <Markdown text={text(spec.intro)} />}
-        </ChartFrame>
+        </ChartFrame></ExplainOnly>
         {spec.sections.map((s) => <div key={s.id} id={`sec-${spec.id}-${s.id}`}>
-          <ChartFrame title={s.title} exportable={false}>{s.text ? <Markdown text={text(s.text)} /> : null}</ChartFrame>
+          <ExplainOnly><ChartFrame title={s.title} exportable={false}>{s.text ? <Markdown text={text(s.text)} /> : null}</ChartFrame></ExplainOnly>
           <div className={s.columns === 2 ? 'figure-pair' : undefined}>
             {(s.figures ?? []).map((f, i) => <Figure key={f.id ?? i} {...f} />)}
           </div>
