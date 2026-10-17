@@ -1,8 +1,28 @@
 import { Combobox } from '@/components/Combobox'
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { ExportButton } from '@/components/ExportDialog'
 import { usePrefs } from '@/lib/prefs'
+import { useParamScope } from '@/lib/url'
+
+/**
+ * What a frame's host adds to it. A Dashboard tile draws the frame compact: no header
+ * line, the chart's name, actions and options folded into a ⋯ menu that shows on hover
+ * (always on a touch screen), the way Grafana's panel menu and Power BI's visual header do.
+ */
+export interface FrameExtras {
+  /** a tile: the ⋯ menu instead of the header line */
+  compact?: boolean
+  /** the tile's own actions in the menu (full window, duplicate, remove …); `close` shuts the menu */
+  menu?: (close: () => void) => ReactNode
+  /** ahead of the chart's own controls in the menu, e.g. the tile's field pickers */
+  controls?: ReactNode
+  /** after the name, e.g. the tile's fields */
+  subtitle?: ReactNode
+  /** arranging: a bar with the name to drag the tile by (pages/DashboardPage) */
+  editBar?: ReactNode
+}
+export const FrameExtrasContext = createContext<FrameExtras | null>(null)
 
 /**
  * The panel every chart sits in. Quiet by default: the title's first clause,
@@ -38,6 +58,10 @@ export function ChartFrame({
   source?: string
 }) {
   const method = useEstimator()
+  const extras = useContext(FrameExtrasContext)
+  // inside a Dashboard tile the anchor carries the tile's prefix: two tiles, two ids
+  const scope = useParamScope()
+  if (id && scope) id = `${scope}${id}`
   title = estimatorText(title, method)
   subtitle = subtitle ? estimatorText(subtitle, method) : subtitle
   const ref = useRef<HTMLElement>(null)
@@ -49,6 +73,8 @@ export function ChartFrame({
   const rest = dash > 0 ? title.slice(dash + 3) : ''
   const hasInfo = !!(rest || subtitle || provenance)
   const [refCopied, setRefCopied] = useState(false)
+  const compact = !!extras?.compact
+  const allControls = (controls || extras?.controls) ? <>{extras?.controls}{controls}</> : null
   // a paste-able pointer for development: which chart, where its code lives, and the exact view
   const copyRef = () => {
     const text = [`Gallery chart: "${short}"${id ? ` (#${id})` : ''}`,
@@ -57,8 +83,16 @@ export function ChartFrame({
     navigator.clipboard?.writeText(text).then(() => { setRefCopied(true); setTimeout(() => setRefCopied(false), 1400) })
   }
 
+  const anchor = id && method !== 'deming' ? `${id}-${method}` : id
+  if (compact) return (
+    <section className="panel compact" ref={ref} id={anchor}>
+      <TileMenu name={short} extras={extras!} about={hasInfo ? <>{rest && <p>{rest}</p>}{subtitle && <p className="subtitle">{subtitle}</p>}{provenance && <p className="provenance">{provenance}</p>}</> : null}
+        tip={tip} controls={allControls} export={exportable ? <ExportButton panelRef={ref} title={short} /> : null} onCopyRef={copyRef} copied={refCopied} />
+      {children}
+    </section>
+  )
   return (
-    <section className="panel" ref={ref} id={id && method !== 'deming' ? `${id}-${method}` : id}>
+    <section className="panel" ref={ref} id={anchor}>
       <header className="frame-head">
         <div>
           <h2>
@@ -85,6 +119,49 @@ export function ChartFrame({
       {controls && <div className="frame-controls">{controls}</div>}
       {children}
     </section>
+  )
+}
+
+/**
+ * A tile's ⋯ button and its menu: the chart's name and fields, the tile's actions, export,
+ * "About this chart", then the chart's options. A click in another tile or Esc closes it;
+ * clicks in a picker's or the export dialog's own popup (drawn outside the tile) do not.
+ */
+function TileMenu({ name, extras, about, tip, controls, export: exportNode, onCopyRef, copied }: {
+  name: string; extras: FrameExtras; about: ReactNode; tip?: ReactNode; controls: ReactNode; export: ReactNode; onCopyRef: () => void; copied: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  // a tile low in the window opens its menu upward, so the menu is not cut off at the bottom
+  const [up, setUp] = useState(false)
+  const root = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const off = (e: PointerEvent) => {
+      const t = e.target as Element
+      if (t.closest?.('.dash-main') && !root.current?.parentElement?.contains(t)) setOpen(false)
+    }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    window.addEventListener('pointerdown', off)
+    window.addEventListener('keydown', esc)
+    return () => { window.removeEventListener('pointerdown', off); window.removeEventListener('keydown', esc) }
+  }, [open])
+  const close = () => setOpen(false)
+  return (
+    <div ref={root} className={`tile-head${open ? ' open' : ''}${up ? ' up' : ''}`}>
+      {extras.editBar}
+      <button type="button" className="tile-menu-btn" aria-expanded={open} aria-label={`${name}: menu`} title={name}
+        onClick={(e) => { setUp(e.currentTarget.getBoundingClientRect().top > window.innerHeight * 0.55); setOpen(!open) }}>⋯</button>
+      {open && <div className="tile-menu" role="dialog" aria-label={name}>
+        <div className="tile-menu-title"><strong>{name}</strong>{extras.subtitle && <span className="frame-sub">{extras.subtitle}</span>}{tip && <InfoTip>{tip}</InfoTip>}</div>
+        <div className="tile-menu-actions">
+          {extras.menu?.(close)}
+          {exportNode}
+          <button type="button" className="btn quiet" onClick={onCopyRef} title="Copy a reference to this chart (title, source file, view URL)">{copied ? 'Copied' : 'Ref'}</button>
+        </div>
+        {about && <details className="tile-about"><summary>About this chart</summary>{about}</details>}
+        {controls && <div className="frame-controls">{controls}</div>}
+      </div>}
+    </div>
   )
 }
 

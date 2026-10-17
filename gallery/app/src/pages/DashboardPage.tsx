@@ -1,0 +1,382 @@
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { FrameExtrasContext, type FrameExtras } from '@/components/ChartFrame'
+import { FieldSelect } from '@/components/FieldSelect'
+import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
+import { DashHeader, type DashFilters, type SheetActions } from '@/components/dashboard/DashHeader'
+import { dashboardChart, dashboardCharts, startFields, STARTER, type DashboardChart, type DashboardData } from '@/components/dashboard/registry'
+import { useHeaderHeight } from '@/hooks/useSidePanel'
+import { ChartFit } from '@/lib/chartFit'
+import { addTile, arrange, COLS, nextId, nextTileId, removeTile, ROWS, rowsUsed, tileKeyPrefix, updateTile, type DashState, type Scope, type Sheet, type Tile } from '@/lib/dashboard'
+import { clearScopedParams, copyScopedParams, ParamScope } from '@/lib/url'
+
+const GAP = 10
+/** at or below this width the dashboard is one column and the page scrolls (Grafana and Observable do the same) */
+const PHONE = 820
+/** a grid row's height on a phone, where the window no longer sets it */
+const PHONE_ROW = 60
+
+type Role = 'grid' | 'hero' | 'rail' | 'strip' | 'max' | 'phone'
+type Drag = { id: string; mode: 'move' | 'resize'; px: number; py: number; tile: Tile }
+
+/**
+ * The Dashboard tab: the reader's own pages of gallery charts, fitted to the window. Three
+ * scopes (one site, compare sites, the network), each with named sheets of tiles. The header
+ * holds the scope's site picker and the common filters beside the page menu (components/
+ * dashboard/DashHeader); the full Filters panel is one click away, so every tab's filtering
+ * applies.
+ *
+ * Grid: tiles placed on a 12 × 12 grid the size of the window. In Edit the grid's cells show;
+ * drag a tile by its bar to place it, or its corner to resize: the tiles in the way move down
+ * and everything floats up (lib/dashboard arrange, as in Grafana / react-grid-layout).
+ * Focus: headline numbers on top, one chart large, the rest in a rail. A tile's ⋯ (on hover)
+ * holds its name, actions and options. On a phone: one column in reading order, the page
+ * scrolls. State is in the URL (lib/dashboard), so Views → Save / Share keep a dashboard.
+ */
+export function DashboardPage({ data, dash, setDash, filters, onScope, onPickSite, display }: {
+  data: DashboardData
+  dash: DashState
+  setDash: (d: DashState) => void
+  filters: DashFilters | null
+  onScope: (s: Scope) => void
+  onPickSite: (code: string) => void
+  display?: ReactNode
+}) {
+  const { scope, layout } = dash
+  const sheets = dash.sheets[scope] ?? starterSheets(scope, data)
+  const active = Math.min(dash.sheet, sheets.length - 1)
+  const sheet = sheets[active]
+  const tiles = sheet.tiles
+  const setSheets = (next: Sheet[] | null, sheetIdx = active) => setDash({ ...dash, sheet: sheetIdx, sheets: { ...dash.sheets, [scope]: next } })
+  const setTiles = (next: Tile[]) => setSheets(sheets.map((s, i) => (i === active ? { ...s, tiles: next } : s)))
+  const [edit, setEdit] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [maxId, setMaxId] = useState<string | null>(null)
+  const [focusId, setFocusId] = useState<string | null>(null)
+  const phone = usePhone()
+  useEffect(() => { setMaxId(null); setFocusId(null) }, [scope, active])
+
+  // the page never scrolls, except on a phone; the grid fills the window under the header
+  useEffect(() => {
+    document.documentElement.classList.add('dash-mode')
+    return () => document.documentElement.classList.remove('dash-mode')
+  }, [])
+  useEffect(() => {
+    if (!maxId) return
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setMaxId(null) }
+    window.addEventListener('keydown', esc)
+    return () => window.removeEventListener('keydown', esc)
+  }, [maxId])
+  // the header's slot (App's Shell) appears after the first commit
+  const [slot, setSlot] = useState<HTMLElement | null>(null)
+  useEffect(() => setSlot(document.getElementById('dash-bar')), [])
+
+  const top = useHeaderHeight()
+  const mainRef = useRef<HTMLDivElement>(null)
+  const [box, setBox] = useState({ w: 1200, h: 700 })
+  useLayoutEffect(() => {
+    const el = mainRef.current
+    if (!el) return
+    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight })
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const rowPx = phone ? PHONE_ROW : Math.max(36, (box.h - (ROWS - 1) * GAP) / ROWS)
+  const colPx = (box.w - (COLS - 1) * GAP) / COLS
+  const span = (n: number, unit: number) => n * unit + (n - 1) * GAP
+
+  // ---- arranging: the tile follows the pointer in whole cells; the rest make room as it goes
+  const [drag, setDrag] = useState<Drag | null>(null)
+  const [preview, setPreview] = useState<Tile[] | null>(null)
+  const startDrag = (id: string, mode: Drag['mode'], e: React.PointerEvent) => {
+    const t = tiles.find((x) => x.id === id)
+    if (!t || e.button !== 0) return
+    e.preventDefault()
+    setDrag({ id, mode, px: e.clientX, py: e.clientY, tile: t })
+  }
+  useEffect(() => {
+    if (!drag) return
+    const step = (e: PointerEvent) => {
+      const dx = Math.round((e.clientX - drag.px) / (colPx + GAP)), dy = Math.round((e.clientY - drag.py) / (rowPx + GAP))
+      const t = drag.tile
+      const patch = drag.mode === 'move' ? { x: t.x + dx, y: Math.max(0, t.y + dy) } : { w: Math.max(1, t.w + dx), h: Math.max(1, t.h + dy) }
+      return updateTile(tiles, drag.id, patch)
+    }
+    const move = (e: PointerEvent) => setPreview(step(e))
+    const up = (e: PointerEvent) => { setTiles(step(e)); setPreview(null); setDrag(null) }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up, { once: true })
+    return () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
+  }, [drag]) // eslint-disable-line react-hooks/exhaustive-deps
+  const shown = preview ?? tiles
+
+  // ---- tiles and sheets
+  const prefix = (id: string, sh = sheet) => tileKeyPrefix(scope, sh.id, id)
+  const add = (chart: DashboardChart) => {
+    setTiles(addTile(tiles, { kind: chart.kind, w: chart.size[0], h: chart.size[1], fields: startFields(chart, data) }))
+    setAdding(false)
+  }
+  const remove = (id: string) => { clearScopedParams(prefix(id)); setTiles(removeTile(tiles, id)) }
+  const duplicate = (t: Tile) => {
+    copyScopedParams(prefix(t.id), prefix(nextTileId(tiles)))
+    setTiles(addTile(tiles, { kind: t.kind, w: t.w, h: t.h, fields: t.fields }))
+  }
+  const sheetActions: SheetActions = {
+    names: sheets.map((s) => s.name),
+    active,
+    onPick: (i) => setDash({ ...dash, sheet: i }),
+    onAdd: () => { setSheets([...sheets, { id: nextId('s', sheets), name: `Sheet ${sheets.length + 1}`, tiles: [] }], sheets.length); setAdding(true) },
+    onDuplicate: () => {
+      const id = nextId('s', sheets)
+      sheet.tiles.forEach((t) => copyScopedParams(prefix(t.id), tileKeyPrefix(scope, id, t.id)))
+      setSheets([...sheets, { ...sheet, id, name: `${sheet.name} copy` }], sheets.length)
+    },
+    onRename: (name) => setSheets(sheets.map((s, i) => (i === active ? { ...s, name } : s))),
+    onDelete: () => {
+      clearScopedParams(`${scope}.${sheet.id}.`)
+      setSheets(sheets.filter((_, i) => i !== active), Math.max(0, active - 1))
+    },
+    onReset: () => { sheets.forEach((s) => clearScopedParams(`${scope}.${s.id}.`)); setSheets(null, 0) },
+  }
+
+  // focus: the headline numbers in a strip across the top, one chart large, the rest in a rail
+  const strip = tiles.filter((t) => t.kind === 'stat')
+  const charts = tiles.filter((t) => t.kind !== 'stat')
+  const hero = charts.find((t) => t.id === focusId) ?? charts[0]
+  const rail = charts.filter((t) => t !== hero)
+  const stripH = strip.length ? span(2, rowPx) : 0
+  const bodyH = box.h - (stripH ? stripH + GAP : 0)
+  const railN = Math.min(rail.length, 3)
+  const railH = railN ? Math.max(150, (bodyH - (railN - 1) * GAP) / railN) : 0
+
+  const tileView = (t: Tile, w: number, h: number, role: Role) => {
+    const chart = dashboardChart(t.kind)
+    const style: React.CSSProperties | undefined = role === 'grid' ? { gridColumn: `${t.x + 1} / span ${t.w}`, gridRow: `${t.y + 1} / span ${t.h}` }
+      : role === 'rail' ? { height: h, flex: 'none' } : role === 'strip' ? { height: h, flex: '1 1 0' } : role === 'phone' ? { height: h } : undefined
+    if (!chart) return <div key={t.id} className="dash-tile panel" style={style}>
+      <p className="frame-empty">A chart this gallery no longer has (“{t.kind}”).</p>
+      <button type="button" className="btn" onClick={() => remove(t.id)}>Remove</button>
+    </div>
+    return <TileView key={`${scope}-${sheet.id}-${t.id}`} scopePrefix={prefix(t.id)} tile={t} chart={chart} data={data} width={w} height={h} style={style}
+      edit={edit && role === 'grid'} role={role} dragging={drag?.id === t.id}
+      onMoveStart={(e) => startDrag(t.id, 'move', e)} onResizeStart={(e) => startDrag(t.id, 'resize', e)}
+      onChange={(patch) => setTiles(updateTile(tiles, t.id, patch))}
+      onDuplicate={() => duplicate(t)} onRemove={() => remove(t.id)}
+      onMaximize={() => setMaxId(maxId === t.id ? null : t.id)} onFocus={role === 'rail' ? () => setFocusId(t.id) : undefined} />
+  }
+  const maxTile = maxId ? tiles.find((t) => t.id === maxId) : undefined
+  const reach = rowsUsed(shown)
+  const gridVars = { ['--col' as string]: `${colPx}px`, ['--row' as string]: `${rowPx}px`, ['--gap' as string]: `${GAP}px` }
+
+  let body: ReactNode
+  if (maxTile) body = <div className="dash-max">{tileView(maxTile, box.w, box.h, 'max')}</div>
+  else if (phone) body = <div className="dash-phone" style={{ gap: GAP }}>
+    {(layout === 'focus' && hero ? [...strip, hero, ...rail] : tiles).map((t) => tileView(t, box.w, Math.max(120, t.h * PHONE_ROW), 'phone'))}
+  </div>
+  else if (layout === 'grid') body = (
+    <div className={`dash-grid${edit ? ' editing' : ''}`} style={{ gridAutoRows: rowPx, gap: GAP, ...gridVars, minHeight: edit ? span(Math.max(ROWS, reach + 2), rowPx) : undefined }}>
+      {shown.map((t) => tileView(t, span(t.w, colPx), span(t.h, rowPx), 'grid'))}
+      {edit && <div className="dash-fold" style={{ top: ROWS * (rowPx + GAP) - GAP / 2 }} title="The bottom of the window: tiles below it scroll"><span>window</span></div>}
+    </div>
+  )
+  else body = (
+    <div className="dash-focus-wrap" style={{ gap: GAP }}>
+      {strip.length > 0 && <div className="dash-strip" style={{ gap: GAP, height: stripH }}>
+        {strip.map((t) => tileView(t, (box.w - (strip.length - 1) * GAP) / strip.length, stripH, 'strip'))}</div>}
+      {hero && <div className="dash-focus" style={{ gap: GAP, height: bodyH }}>
+        <div className="dash-hero" style={{ flexBasis: rail.length ? '68%' : '100%' }}>{tileView(hero, rail.length ? box.w * 0.68 : box.w, bodyH, 'hero')}</div>
+        {rail.length > 0 && <div className="dash-rail" style={{ gap: GAP }}>{rail.map((t) => tileView(t, box.w * 0.32 - GAP, railH, 'rail'))}</div>}
+      </div>}
+    </div>
+  )
+
+  return (
+    <>
+      {slot && createPortal(<DashHeader meta={data.meta} filters={filters} scope={scope} onScope={onScope}
+        onPickSite={onPickSite} layout={layout} onLayout={(l) => setDash({ ...dash, layout: l })} edit={edit && !phone} onEdit={setEdit}
+        onAdd={() => setAdding(true)} rowsUsed={reach} sheets={sheetActions} display={display} />, slot)}
+      <div ref={mainRef} className={`dash-main${edit ? ' editing' : ''}${phone ? ' phone' : ''}`} style={phone ? undefined : { height: `calc(100vh - ${top}px - 12px)` }}>
+        {tiles.length === 0 && <div className="dash-empty">
+          <p>“{sheet.name}” has no charts yet.</p>
+          <span><button type="button" className="btn" onClick={() => setAdding(true)}>+ Add chart</button></span>
+        </div>}
+        {body}
+      </div>
+      {adding && <ChartCatalog data={data} onPick={add} onClose={() => setAdding(false)} />}
+    </>
+  )
+}
+
+const starterSheets = (scope: Scope, data: DashboardData): Sheet[] => STARTER[scope].map((s, i) => ({
+  id: `s${i + 1}`,
+  name: s.name,
+  tiles: arrange(s.tiles.reduce<Tile[]>((acc, t) => {
+    const chart = dashboardChart(t.kind)
+    return chart ? addTile(acc, { kind: t.kind, w: t.w, h: t.h, fields: t.fields ?? startFields(chart, data) }) : acc
+  }, [])),
+}))
+
+function usePhone() {
+  const q = `(max-width: ${PHONE}px)`
+  const [phone, setPhone] = useState(() => window.matchMedia(q).matches)
+  useEffect(() => {
+    const m = window.matchMedia(q)
+    const on = () => setPhone(m.matches)
+    m.addEventListener('change', on)
+    return () => m.removeEventListener('change', on)
+  }, [q])
+  return phone
+}
+
+/** the Add chart menu: every registered kind, under the tab it comes from */
+function ChartCatalog({ data, onPick, onClose }: { data: DashboardData; onPick: (c: DashboardChart) => void; onClose: () => void }) {
+  const groups = useMemo(() => {
+    const out = new Map<string, DashboardChart[]>()
+    for (const c of dashboardCharts()) if (!c.available || c.available(data)) out.set(c.group, [...(out.get(c.group) ?? []), c])
+    return [...out]
+  }, [data])
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', esc)
+    return () => window.removeEventListener('keydown', esc)
+  }, [onClose])
+  const fieldsNote = (c: DashboardChart) => (c.fields === 'pair' ? 'x and y' : c.fields === 'single' ? 'one field' : c.fields === 'trio' ? 'three fields' : '')
+  return (
+    <div className="map-dialog-backdrop" onPointerDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="panel dash-catalog" role="dialog" aria-label="Add a chart">
+        <header className="frame-head">
+          <div><h2>Add a chart</h2><p className="subtitle">It goes in the first free space; drag it anywhere in Edit. Change its fields from its ⋯ menu.</p></div>
+          <div className="frame-actions"><button type="button" className="btn quiet" onClick={onClose} aria-label="Close">✕</button></div>
+        </header>
+        <div className="dash-catalog-groups">
+          {groups.map(([group, charts]) => (
+            <section key={group}>
+              <h3>{group}</h3>
+              {charts.map((c) => (
+                <button key={c.kind} type="button" className="dash-card" onClick={() => onPick(c)}>
+                  <strong>{c.label}</strong>
+                  <span>{c.blurb}</span>
+                  {fieldsNote(c) && <em>{fieldsNote(c)}</em>}
+                </button>
+              ))}
+            </section>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * One tile: the chart in its compact ChartFrame (name, actions and options behind ⋯),
+ * fitted to the tile. The tile tells the chart a height (lib/chartFit) and corrects it after
+ * each draw by what is left over, so legends and readouts of any height fill the tile; a
+ * chart that cannot shrink enough scrolls inside its tile, never the page.
+ */
+function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, role, dragging, onMoveStart, onResizeStart, onChange, onDuplicate, onRemove, onMaximize, onFocus }: {
+  tile: Tile
+  chart: DashboardChart
+  data: DashboardData
+  width: number
+  height: number
+  style?: React.CSSProperties
+  scopePrefix: string
+  edit: boolean
+  role: Role
+  dragging: boolean
+  onMoveStart: (e: React.PointerEvent) => void
+  onResizeStart: (e: React.PointerEvent) => void
+  onChange: (patch: Partial<Omit<Tile, 'id'>>) => void
+  onDuplicate: () => void
+  onRemove: () => void
+  onMaximize: () => void
+  onFocus?: () => void
+}) {
+  const n = chart.fields === 'pair' ? 2 : chart.fields === 'single' ? 1 : chart.fields === 'trio' ? 3 : 0
+  const start = startFields(chart, data)
+  const fields = Array.from({ length: n }, (_, i) => tile.fields[i] ?? start[i])
+  // x and y never show the same field: picking the other one's field swaps the two (as in App)
+  const setField = (i: number, f: string) => {
+    const next = [...fields]
+    const other = next.indexOf(f)
+    if (other >= 0 && other !== i) next[other] = next[i]
+    next[i] = f
+    onChange({ fields: next })
+  }
+  // the tile's axis titles open the field popover on the tile's own fields
+  const axisValue = { x: fields[0] ?? '', y: fields[1] ?? '', field: fields[0] ?? '' }
+  const axisSet = (role: AxisRole, f: string) => setField(role === 'y' ? 1 : 0, f)
+
+  // ---- fit: a first guess, then corrected by the frame's leftover (or overflow) after each draw
+  const minFit = chart.kind === 'stat' ? 16 : 120
+  const ref = useRef<HTMLDivElement>(null)
+  const [fit, setFit] = useState(() => Math.max(minFit, height - 70))
+  const tries = useRef(0)
+  const key = `${width}|${height}|${tile.kind}|${fields.join('|')}`
+  const lastKey = useRef(key)
+  if (lastKey.current !== key) { lastKey.current = key; tries.current = 0 }
+  useEffect(() => { tries.current = 0 }, [data.rows, data.meta])
+  useLayoutEffect(() => {
+    const panel = ref.current?.querySelector(':scope > .panel') as HTMLElement | null
+    if (!panel || tries.current >= 6) return
+    const top = panel.getBoundingClientRect().top
+    let bottom = top
+    for (const c of panel.children) {
+      const el = c as HTMLElement
+      if (getComputedStyle(el).position === 'absolute') continue
+      bottom = Math.max(bottom, el.getBoundingClientRect().bottom)
+    }
+    const pad = parseFloat(getComputedStyle(panel).paddingBottom) || 0
+    const slack = panel.clientHeight - (bottom - top + pad + panel.scrollTop)
+    if (Math.abs(slack) <= 2) return
+    const next = Math.max(minFit, Math.round(fit + slack))
+    if (next === fit) return
+    tries.current += 1
+    setFit(next)
+  })
+
+  // a short name for the bar and the menu
+  const subtitle = chart.fields === 'pair' ? `${fields[1]} vs ${fields[0]}` : chart.fields === 'single' && chart.kind !== 'stat' ? fields[0] : undefined
+  const menu = (close: () => void) => <>
+    {onFocus && <button type="button" className="btn quiet" onClick={() => { close(); onFocus() }}>◱ Show large</button>}
+    <button type="button" className="btn quiet" onClick={() => { close(); onMaximize() }}>{role === 'max' ? '⤡ Back' : '⤢ Full window'}</button>
+    <button type="button" className="btn quiet" onClick={() => { close(); onDuplicate() }}>⧉ Duplicate</button>
+    <button type="button" className="btn quiet" onClick={() => { close(); onRemove() }}>✕ Remove</button>
+  </>
+  const pickers: ReactNode = n === 0 ? null : <span className="dash-fields">
+    {chart.fields === 'pair'
+      ? <><FieldSelect label="x" value={fields[0]} meta={data.meta} onChange={(f) => setField(0, f)} />
+        <FieldSelect label="y" value={fields[1]} meta={data.meta} onChange={(f) => setField(1, f)} /></>
+      : fields.map((f, i) => <FieldSelect key={i} label={n === 1 ? 'Measurement' : `Field ${i + 1}`} value={f} meta={data.meta} onChange={(v) => setField(i, v)} />)}
+  </span>
+  const editBar = edit ? <div className="tile-edit-bar" onPointerDown={onMoveStart} title="Drag to move">
+    <span aria-hidden>⠿</span> <strong>{chart.label}</strong>{(subtitle ?? (chart.kind === 'stat' ? fields[0] : null)) && <span className="frame-sub">{subtitle ?? fields[0]}</span>}
+    <span className="tile-size">{tile.w} × {tile.h}</span>
+  </div> : undefined
+  const extras: FrameExtras = { compact: true, menu, controls: pickers, subtitle, editBar }
+
+  // did the chart draw its own frame? if not, the tile draws one with its menu
+  const [framed, setFramed] = useState(true)
+  useLayoutEffect(() => { const has = !!ref.current?.querySelector(':scope > .panel:not(.dash-fallback)'); if (has !== framed) setFramed(has) })
+
+  return (
+    <div ref={ref} className={`dash-tile${dragging ? ' dragging' : ''}${edit ? ' editing' : ''}${chart.kind === 'stat' ? ' stat' : ''}`} style={style}>
+      <ParamScope prefix={scopePrefix}>
+        <FrameExtrasContext.Provider value={extras}>
+          <AxisFieldsProvider meta={data.meta} value={axisValue} set={axisSet}>
+            <ChartFit height={fit}>{chart.render(data, fields.map(data.eff))}</ChartFit>
+          </AxisFieldsProvider>
+        </FrameExtrasContext.Provider>
+      </ParamScope>
+      {!framed && <section className="panel compact dash-fallback">
+        <div className="tile-head">{editBar}</div>
+        <p className="frame-empty"><strong>{chart.label}</strong>: nothing to draw for this subset.</p>
+        <div className="tile-menu-actions">{menu(() => {})}</div>
+        {pickers && <div className="frame-controls">{pickers}</div>}
+      </section>}
+      {edit && <span className="dash-resize" onPointerDown={onResizeStart} title="Drag to resize" aria-hidden />}
+    </div>
+  )
+}

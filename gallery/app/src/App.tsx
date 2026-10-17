@@ -36,6 +36,9 @@ import { SatoshiFollowupPage } from '@/pages/SatoshiFollowupPage'
 import { MeetingSpecPage } from '@/pages/MeetingSpecPage'
 import { SPEC_MEETINGS } from '@/meetings'
 import { BlanksPage } from '@/pages/BlanksPage'
+import { DashboardPage } from '@/pages/DashboardPage'
+import { dashParams, parseDash, type DashState, type Scope } from '@/lib/dashboard'
+import type { DashFilters } from '@/components/dashboard/DashHeader'
 import { Combobox } from '@/components/Combobox'
 import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
 import { ViewsMenu } from '@/components/ViewsMenu'
@@ -75,6 +78,7 @@ import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
  */
 const TABS = [
   { key: 'census', label: 'Census', hidden: true },
+  { key: 'dashboard', label: 'Dashboard', title: 'Your own page of gallery charts: add, arrange and size tiles' },
   { key: 'correlation', label: 'Correlation' },
   { key: 'distribution', label: 'Distribution' },
   { key: 'evolution', label: 'Evolution' },
@@ -109,7 +113,7 @@ type MeetingKey = string
 const tabItem = (key: string): NavItem[] => TABS.filter((t) => t.key === key && shared(t.key))
   .map((t) => ({ key: t.key, label: t.label, title: 'title' in t ? t.title : undefined, tab: t.key }))
 const NAV_GROUPS: NavGroup[] = [
-  { label: 'Charts', items: ['correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'flow'].flatMap(tabItem) },
+  { label: 'Charts', items: ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'flow'].flatMap(tabItem) },
   { label: 'Sites', items: ['map', 'weather', 'pmf'].flatMap(tabItem) },
   { label: 'Calibration', items: ['calibration', 'baseline', 'similarity', 'blanks'].flatMap(tabItem) },
   { label: 'Meetings', items: shared('meeting') ? MEETINGS.map((m) => ({ key: m.key, label: m.label, tab: 'meeting', meeting: m.key })) : [] },
@@ -152,10 +156,12 @@ const parseSpartanSel = (v: string | null): string[] | 'all' | null =>
   v == null || v === '' ? null : v === '*' ? 'all' : v === '-' ? [] : v.split(',').filter(Boolean)
 
 /** tabs whose charts can draw a whole network (Filters sidebar → network) */
-const NETWORK_TABS = ['correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'weather'] as const
+const NETWORK_TABS = ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'weather'] as const
 const FILTERS: SubsetCaps = { seasons: true, sites: true, excluded: true, dates: true, fields: 'single', datasetLabel: 'SPARTAN filters' }
 const CAPS: Record<Exclude<TabKey, 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks'>, SubsetCaps> = {
   correlation: { ...FILTERS, fields: 'pair', networks: true, fits: true },
+  // each tile picks its own fields
+  dashboard: { ...FILTERS, fields: 'none', networks: true, fits: true },
   distribution: { ...FILTERS, networks: true },
   evolution: { ...FILTERS, networks: true },
   ranking: { ...FILTERS, networks: true },
@@ -196,6 +202,9 @@ const DEFAULT_X = 'HIPS BC'
 const PUBLIC_BC = 'BC (public HIPS)'
 const DEFAULT_Y = 'EC (FTIR)'
 const DEFAULT_FIELD = 'EC (FTIR)'
+/** the Dashboard's One site scope opens on Addis Ababa */
+const DASH_SITE = 'ETAD'
+
 
 export default function App() {
   const { data, error } = useGalleryData()
@@ -255,6 +264,8 @@ export default function App() {
   const [xField, setXField] = useState(init.get('x') ?? DEFAULT_X)
   const [yField, setYField] = useState(init.get('y') ?? DEFAULT_Y)
   const [field, setField] = useState(init.get('f') ?? DEFAULT_FIELD)
+  // the Dashboard tab: scope, layout and each scope's tiles (lib/dashboard)
+  const [dash, setDash] = useState<DashState>(() => parseDash(init))
   // the reader's view of the measurements (lib/viewFields): own ratios, a MAC for HIPS BC, mass per filter
   const [ratios, setRatios] = useState<RatioDef[]>(() => parseRatios(init.get('ratios')))
   const [mac, setMac] = useState<number | null>(() => parseMac(init.get('mac')))
@@ -300,6 +311,24 @@ export default function App() {
   // x and y never show the same field: picking the other axis's field swaps the two
   const chooseX = useCallback((f: string) => { if (f === yField) setYField(xField); setXField(f) }, [xField, yField])
   const chooseY = useCallback((f: string) => { if (f === xField) setXField(yField); setYField(f) }, [xField, yField])
+  // the Dashboard's scope picks the sites: one SPARTAN site, several (the four focus sites to
+  // start), or every one; the header's site picker then edits that pick
+  const setDashScope = useCallback((scope: Scope) => {
+    setDash((d) => (d.scope === scope ? d : { ...d, scope, sheet: 0 }))
+    if (scope !== 'sites' && !hasSpartan(network)) setNetwork('spartan')
+    if (scope === 'network') setSpartanSel('all')
+    if (scope === 'sites') setSpartanSel((sel) => (Array.isArray(sel) && sel.length > 1 ? sel : null))
+    if (scope === 'site') setSpartanSel((sel) => (Array.isArray(sel) && sel.length >= 1 ? [sel[0]] : [DASH_SITE]))
+  }, [network])
+  const pickDashSite = useCallback((code: string) => setSpartanSel([code]), [])
+  // a map bubble or a site card opens that site on its own
+  const openDashSite = useCallback((code: string) => { setDashScope('site'); setSpartanSel([code]) }, [setDashScope])
+  // a pick made in the Filters panel that no longer matches the scope moves it to Compare sites
+  useEffect(() => {
+    if (tab !== 'dashboard') return
+    const one = Array.isArray(spartanSel) && spartanSel.length === 1 && hasSpartan(network)
+    if ((dash.scope === 'site' && !one) || (dash.scope === 'network' && (spartanSel !== 'all' || !hasSpartan(network)))) setDash((d) => ({ ...d, scope: 'sites' }))
+  }, [tab, dash.scope, spartanSel, network])
   // axis titles on the charts edit the same x / y / measurement as the sidebar (components/AxisFieldPopover)
   const setAxisField = useCallback((role: AxisRole, f: string) => (role === 'x' ? chooseX : role === 'y' ? chooseY : setField)(f), [chooseX, chooseY])
   const axisValues = useMemo(() => ({ x: xField, y: yField, field }), [xField, yField, field])
@@ -332,6 +361,7 @@ export default function App() {
       x: xField !== DEFAULT_X ? xField : null,
       y: yField !== DEFAULT_Y ? yField : null,
       f: field !== DEFAULT_FIELD ? field : null,
+      ...dashParams(dash),
       ratios: ratiosParam(ratios),
       mac: mac !== null ? String(mac) : null,
       basis: basis === 'mass' ? 'mass' : null,
@@ -341,7 +371,7 @@ export default function App() {
       log: axes.log ? '1' : null,
       pax: axes.panels === 'Own' ? 'own' : null,
     })
-  }, [tab, meeting, estimators, showCI, convention, calVariants, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, keepIds, ftirBaseline, customSeasons, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, includeExcluded, xField, yField, field, ratios, mac, basis, pinnedId, axes])
+  }, [tab, meeting, estimators, showCI, convention, calVariants, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, keepIds, ftirBaseline, customSeasons, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, includeExcluded, xField, yField, field, dash, ratios, mac, basis, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -375,6 +405,7 @@ export default function App() {
       setXField(p.get('x') ?? DEFAULT_X)
       setYField(p.get('y') ?? DEFAULT_Y)
       setField(p.get('f') ?? DEFAULT_FIELD)
+      setDash(parseDash(p))
       setRatios(parseRatios(p.get('ratios')))
       setMac(parseMac(p.get('mac')))
       setBasis(p.get('basis') === 'mass' ? 'mass' : 'conc')
@@ -761,6 +792,8 @@ export default function App() {
     </nav>
   )
 
+  // the Dashboard's header draws the common filters from the same state and actions (components/dashboard/DashHeader)
+  let dashFilters: DashFilters | null = null
   const subset = (() => {
     if (tab === 'census' || tab === 'baseline' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks') return null
     const baseCaps = net === 'focus' ? CAPS[tab] : { ...CAPS[tab], datasetLabel: net === 'improve' ? 'IMPROVE samples' : net === 'both' ? 'SPARTAN filters + IMPROVE samples' : 'SPARTAN filters', excluded: sourceRows.some((r) => r.excluded) }
@@ -964,6 +997,7 @@ export default function App() {
         setConvention(null)
       },
     }
+    if (tab === 'dashboard') dashFilters = { state, actions, brushRows }
     return <SubsetBar meta={meta} caps={caps} brushRows={brushRows} state={state} actions={actions} />
   })()
 
@@ -998,7 +1032,7 @@ export default function App() {
         fields={tab === 'correlation' ? [xField, yField] : [field]} onClose={() => setGroup(null)} />}
       {isEmbed() && <a className="embed-open" href="#" onClick={async (e) => { e.preventDefault(); window.open((await viewUrl(currentView())), '_blank', 'noopener') }}>Open in the gallery ↗</a>}
       {(NETWORK_TABS as readonly string[]).includes(tab) && <BrushBar onKeep={keepFilters} onDrop={dropFilters} />}
-      <Shell nav={nav} wide={tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks'} editsBadge={!subset}>
+      <Shell nav={nav} dash={tab === 'dashboard'} wide={tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks'} editsBadge={!subset}>
         {/* tabs without the Filters panel: a sidebar for the page's own controls, with the fits where the page fits */}
         {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting')
           && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'} />)}
@@ -1018,6 +1052,8 @@ export default function App() {
         {tab === 'blanks' && <BlanksPage />}
         {tab === 'baseline' && <BaselineComparisonPage mac={exportMac} demingLambda={data.calibration?.deming_lambda_mac10 ?? 1} />}
         {tab === 'calibration' && <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={drawerMeta} galleryRows={sourceRows} galleryMeta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />}
+        {tab === 'dashboard' && <DashboardPage dash={dash} setDash={setDash} filters={dashFilters} onScope={setDashScope} onPickSite={pickDashSite} display={<DisplayToggles />}
+          data={{ rows, meta, axes, pmf: pmf ?? null, pmfRows, eff, defaults: { x: xField, y: yField, field }, openSite: openDashSite }} />}
         <AxisFieldsProvider meta={meta} value={axisValues} set={setAxisField}>
         {tab === 'correlation' && (
           <>
@@ -1082,8 +1118,9 @@ export default function App() {
 
 /** `wide` gives the long research tabs room for the table-of-contents column. */
 /** `editsBadge`: show the hand edits in the header, for tabs without the Filters panel that lists them */
-function Shell({ children, nav, wide = false, editsBadge = false }: { children: React.ReactNode; nav?: React.ReactNode; wide?: boolean; editsBadge?: boolean }) {
-  const container = wide ? 'container wide' : 'container'
+/** `dash`: the Dashboard, full width, its options in the header (pages/DashboardPage portals them into #dash-bar) */
+function Shell({ children, nav, wide = false, editsBadge = false, dash = false }: { children: React.ReactNode; nav?: React.ReactNode; wide?: boolean; editsBadge?: boolean; dash?: boolean }) {
+  const container = dash ? 'container dash' : wide ? 'container wide' : 'container'
   return (
     <>
       <header className="app-header">
@@ -1092,6 +1129,7 @@ function Shell({ children, nav, wide = false, editsBadge = false }: { children: 
             <h1 className="app-title">Air Gallery</h1>
             {editsBadge && <HandEditsBadge />}
             {nav ?? <span className="nav" />}
+            {dash && <div id="dash-bar" className="dash-bar-slot" />}
             <HeaderTools />
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { createContext, createElement, useContext, useEffect, useState, type ReactNode } from 'react'
 
 /**
  * The whole subset — tab, calendar, seasons, sites, date range, the fields on
@@ -49,7 +49,32 @@ function registerKey(name: string, allowed?: readonly string[]) {
   else registered.set(name, sig)
 }
 
-export function useSearchParam<T extends string>(name: string, fallback: T, allowed?: readonly string[]): [T, (v: T) => void] {
+/**
+ * A prefix for every query key read inside it: a Dashboard tile wraps its chart in
+ * <ParamScope prefix="t3."> so the chart's controls are `t3.scatter.layout`, not the
+ * Correlation tab's `scatter.layout`, and two copies of one chart keep their own.
+ */
+const ScopeCtx = createContext('')
+export const ParamScope = ({ prefix, children }: { prefix: string; children: ReactNode }) =>
+  createElement(ScopeCtx.Provider, { value: useContext(ScopeCtx) + prefix }, children)
+export const useParamScope = () => useContext(ScopeCtx)
+
+/** forget every query key under a prefix (a removed Dashboard tile's controls) */
+export function clearScopedParams(prefix: string) {
+  const url = new URL(window.location.href)
+  for (const k of [...url.searchParams.keys()]) if (k.startsWith(prefix)) url.searchParams.delete(k)
+  window.history.replaceState(null, '', url)
+}
+
+/** copy every query key under one prefix to another (a duplicated tile starts with the same controls) */
+export function copyScopedParams(from: string, to: string) {
+  const url = new URL(window.location.href)
+  for (const [k, v] of [...url.searchParams]) if (k.startsWith(from)) url.searchParams.set(to + k.slice(from.length), v)
+  window.history.replaceState(null, '', url)
+}
+
+export function useSearchParam<T extends string>(key: string, fallback: T, allowed?: readonly string[]): [T, (v: T) => void] {
+  const name = useParamScope() + key
   registerKey(name, allowed)
   // an empty list means the options are still loading: keep a link's value until they arrive
   const known = (v: string) => !allowed || allowed.length === 0 || allowed.includes(v)

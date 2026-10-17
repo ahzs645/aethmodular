@@ -60,7 +60,10 @@ gallery/
         ├── lib/            stats (OLS/Deming/KDE/box), highlight (cross-chart hover/pin),
         │                   axes (shared crossplot axis policy), url (hash state), export,
         │                   derived, theme, types
-        ├── pages/          CensusPage, CalibrationPage
+        ├── pages/          CensusPage, CalibrationPage, DashboardPage (full-window tiles for one site,
+        │                   compare sites or the network; chart kinds in components/dashboard/registry,
+        │                   layout in lib/dashboard, charts fit a tile through lib/chartFit; a new chart
+        │                   joins the Add chart menu with registerDashboardChart)
         └── styles.css      the one stylesheet for everything that isn't an SVG mark
 ```
 
