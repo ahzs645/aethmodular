@@ -11,6 +11,7 @@ import { useChartOptions } from '@/lib/chartOptions'
 import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { useFitHeight } from '@/lib/chartFit'
 
 const LAYOUTS = ['Overlay', 'Density', 'Small multiples', 'Mirror'] as const
 type Layout = (typeof LAYOUTS)[number]
@@ -101,7 +102,8 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   const dimOf = layout === 'Mirror' ? mirror.dim : dim
 
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
-  const panelH = layout === 'Small multiples' ? 190 : 420
+  const fit = useFitHeight()
+  const panelH = layout === 'Small multiples' ? 190 : fit ?? 420
   const innerH = panelH - MARGIN.top - MARGIN.bottom
 
   const all = series.flatMap((s) => s.values).sort(d3.ascending)

@@ -12,6 +12,7 @@ import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
 import { useChartOptions } from '@/lib/chartOptions'
+import { useFitHeight } from '@/lib/chartFit'
 
 const LAYOUTS = ['Overlay', 'Per site'] as const
 type Pt = { row: FilterRow; date: Date; value: number }
@@ -74,7 +75,8 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
   const dim = (name: string) => (siteHover === null || siteHover === name ? 1 : 0.15)
 
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
-  const panelH = layout === 'Overlay' ? 430 : 250
+  const fit = useFitHeight()
+  const panelH = layout === 'Overlay' ? fit ?? 430 : 250
   const innerH = panelH - MARGIN.top - MARGIN.bottom
 
   const panels = layout === 'Overlay' ? [{ key: 'all', title: null as string | null, color: INK.text, series }] : series.map((s) => ({ key: s.name, title: s.name, color: s.color, series: [s] }))
@@ -149,7 +151,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
                     <rect x={0} y={0} width={innerW} height={innerH} fill="transparent" />
                     <SeasonBands bands={bandsFor(x, panel.title)} height={innerH} hover={seasonHover} />
                     <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} tickCount={layout === 'Overlay' ? 6 : 4} pick="field" />
-                    <XAxis scale={x as any} y={innerH} format={(d: Date) => d3.timeFormat('%b %Y')(d)} tickCount={7} />
+                    <XAxis scale={x as any} y={innerH} format={(d: Date) => d3.timeFormat('%b %Y')(d)} tickCount={Math.max(2, Math.min(7, Math.floor(innerW / 80)))} />
                     {panel.series.map((s) => (
                       <g key={s.name} opacity={dim(s.name)}>
                         {s.pts.map((p) => {

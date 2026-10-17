@@ -20,6 +20,7 @@ import { fmt, regression } from '@/lib/stats'
 import { INK, FONT, inkOn } from '@/lib/theme'
 import { useColourScheme } from '@/lib/colourSchemes'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { useFitHeight } from '@/lib/chartFit'
 
 const ENCODINGS = ['Colour', 'Circle size', 'Scatter matrix'] as const
 const MIN_N = 20
@@ -139,7 +140,9 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
   const dimKey = `${hiddenKey}#${lg.hover ?? ''}`
 
   const labelPad = 128
-  const size = Math.min(Math.max(320, width - labelPad - 40), 660)
+  const fit = useFitHeight()
+  const size = fit === null ? Math.min(Math.max(320, width - labelPad - 40), 660)
+    : Math.max(120, Math.min(width - labelPad - 40, 660, fit - labelPad - 20))
   const cell = size / Math.max(1, block.fields.length)
 
   const color = useMemo(

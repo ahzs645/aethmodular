@@ -10,6 +10,7 @@ import { fmt } from '@/lib/stats'
 import { INK, MARGIN, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
+import { useFitHeight } from '@/lib/chartFit'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -26,7 +27,7 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const height = 420
+  const height = useFitHeight() ?? 420
 
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [hover, setHover] = useState<string | null>(null)

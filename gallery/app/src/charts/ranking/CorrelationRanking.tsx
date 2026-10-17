@@ -12,6 +12,7 @@ import { RESTATES, isBookkeeping, sameProduct } from '@/fieldLineage'
 import { regression, fmt } from '@/lib/stats'
 import { INK, MARGIN, FONT } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { useFitHeight } from '@/lib/chartFit'
 
 const POS = INK.positive
 const NEG = INK.negative
@@ -72,12 +73,13 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
     return out.sort((a, b) => b.r2 - a.r2)
   }, [rows, target, site, minN, meta])
 
-  const rowH = 22
+  const fit = useFitHeight()
   // right gutter holds the "0.939 · n=190" annotation, which used to run
   // off the canvas for the top-ranked rows
   const LABEL_GUTTER = 96
   const innerW = Math.max(160, width - MARGIN.left - 60 - MARGIN.right - LABEL_GUTTER)
   const shown = ranked.filter((d) => lg.show(kindOf(d)))
+  const rowH = fit === null ? 22 : Math.max(12, Math.min(22, (fit - MARGIN.top - MARGIN.bottom) / Math.max(1, shown.length)))
   const innerH = shown.length * rowH
   const height = innerH + MARGIN.top + MARGIN.bottom
   const x = d3.scaleLinear().domain([0, 1]).range([0, innerW])

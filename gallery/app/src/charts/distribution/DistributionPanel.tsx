@@ -8,6 +8,7 @@ import { focusStyle, useHighlight } from '@/lib/highlight'
 import { boxStats, kde, fmt } from '@/lib/stats'
 import { INK, MARGIN, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { useFitHeight } from '@/lib/chartFit'
 
 const MODES = ['Boxplot', 'Box + points', 'Violin', 'Beeswarm'] as const
 const GROUPS = ['Site', 'Season'] as const
@@ -25,7 +26,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const hl = useHighlight()
-  const height = 440
+  const height = useFitHeight() ?? 440
 
   const [groupBy, setGroupBy] = useState<(typeof GROUPS)[number]>('Site')
   const [mode, setMode] = useState<(typeof MODES)[number]>('Boxplot')

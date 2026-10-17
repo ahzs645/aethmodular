@@ -7,6 +7,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { INK, FONT } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { useFitHeight } from '@/lib/chartFit'
 
 const NORMS = ['÷ max site median', '÷ pooled median'] as const
 
@@ -63,7 +64,8 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
   }, [rows, meta.sites, species, norm])
 
   const shown = sites.filter((s) => !hidden.has(s.name))
-  const size = Math.min(520, Math.max(320, width - 40))
+  const fit = useFitHeight()
+  const size = fit === null ? Math.min(520, Math.max(320, width - 40)) : Math.max(160, Math.min(520, width - 40, fit))
   // gutter sized from the longest species label so nothing runs off the canvas:
   // labels sit 12 px outside the rim and need ~6.6 px per character beyond that
   const labelPad = Math.min(160, 26 + 8 * Math.max(6, ...species.map((f) => f.length)))

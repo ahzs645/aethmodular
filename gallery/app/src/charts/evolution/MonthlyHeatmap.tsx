@@ -12,6 +12,7 @@ import { INK, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
+import { useFitHeight } from '@/lib/chartFit'
 
 const STATS = ['Median', 'Mean', 'Count'] as const
 type Stat = (typeof STATS)[number]
@@ -113,7 +114,8 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
   }, [sites])
   const stripH = 6
   const margin = { top: 12 + (seasonStrip && !mixedCalendars(meta) ? stripH + 6 : 0), right: 12, bottom: 40, left: labelPad }
-  const rowH = 34
+  const fit = useFitHeight()
+  const rowH = fit === null ? 34 : Math.max(10, Math.min(34, (fit - margin.top - margin.bottom) / Math.max(1, sites.length)))
   const innerH = sites.length * rowH
   const innerW = Math.max(320, width - margin.left - margin.right)
   // the svg grows with the content rather than letting cells escape a narrow box

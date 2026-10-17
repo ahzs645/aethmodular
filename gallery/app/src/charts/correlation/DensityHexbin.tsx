@@ -18,6 +18,7 @@ import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import { useColourScheme } from '@/lib/colourSchemes'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
+import { useFitHeight } from '@/lib/chartFit'
 
 type Pt = [number, number, string]
 
@@ -65,8 +66,9 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
     [pairedRows, xField, yField]
   )
 
+  const fit = useFitHeight()
   const availW = Math.max(240, width - MARGIN.left - MARGIN.right)
-  const innerW = Math.min(availW, MAX_SQUARE)
+  const innerW = Math.min(availW, fit === null ? MAX_SQUARE : Math.min(MAX_SQUARE, Math.max(140, fit - MARGIN.top - MARGIN.bottom)))
   const innerH = innerW
   const svgWidth = innerW + MARGIN.left + MARGIN.right
   const siteFits = grouping !== 'pooled' && methods.length > 0

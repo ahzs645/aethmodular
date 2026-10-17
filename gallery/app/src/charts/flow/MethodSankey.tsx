@@ -6,6 +6,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { INK, FONT } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { useFitHeight } from '@/lib/chartFit'
 
 const STAGE3 = ['HIPS coverage', 'Season'] as const
 const FEED_BOTH = 'FTIR EC: both exports'
@@ -47,7 +48,7 @@ export function MethodSankey({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
   ])
   const bothOnly = o.values.bothOnly as boolean
   const stage3 = o.values.stage3 as (typeof STAGE3)[number]
-  const height = 460
+  const height = useFitHeight() ?? 460
 
   const has = (r: FilterRow, f: string) => typeof r[f] === 'number' && Number.isFinite(r[f] as number)
   const hasFtir = (r: FilterRow) => has(r, 'EC (FTIR)') || has(r, 'EC (ChemSpec FTIR)')

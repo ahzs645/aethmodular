@@ -11,6 +11,7 @@ import { fmt } from '@/lib/stats'
 import { INK, FONT, withUnit } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { useFitHeight } from '@/lib/chartFit'
 
 const STATS = ['Median', 'Mean', 'Sample count'] as const
 const SCOPES = ['Four focus sites', 'Single focus site', 'All SPARTAN sites', 'All IMPROVE sites'] as const
@@ -24,13 +25,16 @@ interface NetworkMap {
 }
 
 /** Offline bubble map with independent study-site and IMPROVE scopes. */
-export function SiteBubbleMap({ rows, meta, field, focusSite }: {
+export function SiteBubbleMap({ rows, meta, field, focusSite, onSite }: {
   rows: FilterRow[]; meta: MetaFile; field: string; focusSite?: string
+  /** a click on a site's bubble (the Dashboard opens that site's own page) */
+  onSite?: (code: string) => void
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const height = 400
+  const fitted = useFitHeight()
+  const height = fitted ?? 400
   const svgRef = useRef<SVGSVGElement>(null)
   const zoomBehavior = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
   const [zoom, setZoom] = useState(d3.zoomIdentity)
@@ -93,9 +97,19 @@ export function SiteBubbleMap({ rows, meta, field, focusSite }: {
         && (isNetwork || (s.value != null && Number.isFinite(s.value) && s.n_filters > 0)))
   }, [rows, meta.sites, metric, stat, scope, focus, isNetwork, isSpartan, network])
 
+  // in a fitted dashboard tile the frame is the sites in view (20° around them), not the whole
+  // globe, which a short wide tile would shrink to a sliver; elsewhere the world as before
+  const frame = useMemo(() => {
+    if (fitted === null || !sites.length) return null
+    const lons = sites.map((s) => s.lon), lats = sites.map((s) => s.lat)
+    const lo = (v: number[], pad: number, min: number) => Math.max(min, d3.min(v)! - pad)
+    const hi = (v: number[], pad: number, max: number) => Math.min(max, d3.max(v)! + pad)
+    const [w0, w1, s0, n0] = [lo(lons, 20, -180), hi(lons, 20, 180), lo(lats, 20, -60), hi(lats, 20, 80)]
+    return { type: 'MultiPoint', coordinates: [[w0, s0], [w0, n0], [w1, s0], [w1, n0], [(w0 + w1) / 2, s0], [(w0 + w1) / 2, n0]] } as GeoJSON.MultiPoint
+  }, [fitted, sites])
   const projection = useMemo(() => {
-    return d3.geoNaturalEarth1().fitExtent([[10, 10], [Math.max(60, width - 10), height - 10]], { type: 'Sphere' })
-  }, [width])
+    return d3.geoNaturalEarth1().fitExtent([[10, 10], [Math.max(60, width - 10), height - 10]], frame ?? { type: 'Sphere' })
+  }, [width, height, frame])
   const path = useMemo(() => d3.geoPath(projection), [projection])
   const rScale = d3.scaleSqrt().domain([0, Math.max(1, d3.max(sites, s => s.value) ?? 1)]).range([0, isNetwork ? 16 : 26])
 
@@ -157,7 +171,7 @@ export function SiteBubbleMap({ rows, meta, field, focusSite }: {
             const p = zoom.apply(projected)
             const available = s.value != null && s.n_filters > 0
             const r = available ? Math.max(4, rScale(Math.max(0, s.value!))) : 4
-            return <g key={s.code} opacity={lg.dim(s.label, 0.2)} onMouseEnter={e => tip.show(e, [
+            return <g key={s.code} opacity={lg.dim(s.label, 0.2)} onClick={onSite ? () => onSite(s.code) : undefined} style={onSite ? { cursor: 'pointer' } : undefined} onMouseEnter={e => tip.show(e, [
               `${s.name} (${s.code})`, s.location,
               `${s.n_filters.toLocaleString()} samples · ${s.date_min} → ${s.date_max}`,
               ...(stat === 'Sample count' ? [] : [
@@ -167,7 +181,8 @@ export function SiteBubbleMap({ rows, meta, field, focusSite }: {
             ])} onMouseLeave={tip.hide}>
               <circle cx={p[0]} cy={p[1]} r={r} fill={available ? s.color : '#fff'} fillOpacity={available ? 0.55 : 1} stroke={s.color} strokeWidth={1.6} />
               {available && <circle cx={p[0]} cy={p[1]} r={2} fill={s.color} />}
-              {(!isNetwork || lg.hover === s.label || (isSpartan && meta.sites.some(f => f.code === s.code))) && <text x={p[0]} y={p[1] - r - 6} textAnchor="middle" fontSize={11} fontWeight={600} fill={INK.text} fontFamily={FONT.family}>{isSpartan ? meta.sites.find(f => f.code === s.code)?.name ?? s.label : s.label}</text>}
+              {/* every name while few sites are drawn; with many, the hovered one (the rest crowd into each other) */}
+              {((!isNetwork && sites.length <= 8) || lg.hover === s.label || (isSpartan && meta.sites.some(f => f.code === s.code))) && <text x={p[0]} y={p[1] - r - 6} textAnchor="middle" fontSize={11} fontWeight={600} fill={INK.text} fontFamily={FONT.family}>{isSpartan ? meta.sites.find(f => f.code === s.code)?.name ?? s.label : s.label}</text>}
             </g>
           })}
           </g>

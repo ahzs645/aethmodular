@@ -7,6 +7,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { kde } from '@/lib/stats'
 import { INK, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { useFitHeight } from '@/lib/chartFit'
 
 const ROWS = ['Season', 'Site', 'Year'] as const
 const OVERLAPS = ['None', 'Some', 'Ridge'] as const
@@ -63,10 +64,12 @@ export function Ridgeline({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
     return Math.min(210, Math.round(longest * 6.4) + 26)
   }, [groups])
 
-  const rowH = 62
+  const fit = useFitHeight()
   // how far a row's peak may rise into the row above: the ridgeline's defining
   // trick, but at 1.7 rows it reads as a collision, so it is a control
   const overlap = OVERLAP_FACTOR[overlapMode]
+  // in a fitted tile the rows share the height: top margin + rows + bottom = rowH × (n + overlap − 1) + 82
+  const rowH = fit === null ? 62 : Math.max(18, Math.min(62, (fit - 82) / Math.max(1, groups.length + overlap - 1)))
   const margin = { top: Math.ceil(rowH * (overlap - 1)) + 16, right: 26, bottom: 66, left: labelPad }
   const innerW = Math.max(240, width - margin.left - margin.right)
   const innerH = groups.length * rowH
@@ -125,8 +128,10 @@ export function Ridgeline({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
                 return (
                   <g key={`lab-${g.name}`}>
                     <line x1={0} x2={innerW} y1={yBase} y2={yBase} stroke={INK.grid} strokeWidth={1} />
-                    <text x={-10} y={yBase - 5} textAnchor="end" fontSize={11.5} fill={INK.text} fontFamily={FONT.family}>{g.name}</text>
-                    <text x={-10} y={yBase + 9} textAnchor="end" fontSize={10} fill={INK.muted} fontFamily={FONT.mono}>n={g.values.length}</text>
+                    {/* short rows (a fitted dashboard tile) keep the name only; the count is in the tooltip */}
+                    <text x={-10} y={rowH < 30 ? yBase - 2 : yBase - 5} textAnchor="end" fontSize={rowH < 30 ? 10.5 : 11.5} fill={INK.text} fontFamily={FONT.family}>
+                      {g.name}</text>
+                    {rowH >= 30 && <text x={-10} y={yBase + 9} textAnchor="end" fontSize={10} fill={INK.muted} fontFamily={FONT.mono}>n={g.values.length}</text>}
                   </g>
                 )
               })}

@@ -10,6 +10,7 @@ import { INK, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile, SeasonMeta } from '@/lib/types'
 import { useChartOptions } from '@/lib/chartOptions'
 import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
+import { useFitHeight } from '@/lib/chartFit'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const STATS = ['Median', 'Mean'] as const
@@ -122,10 +123,15 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
   const valueOf = (c: Cell) => (c.n >= MIN_N ? (stat === 'Median' ? c.median : c.mean) : null)
 
   // ---- geometry: a square, with room outside the ring for month and season labels
-  const size = Math.max(280, Math.min(width, 520))
+  const fit = useFitHeight()
+  const size = fit === null ? Math.max(280, Math.min(width, 520)) : Math.max(160, Math.min(width, 520, fit))
   const cx = size / 2
   const cy = size / 2
-  const outerR = size / 2 - 64
+  // the room outside the ring shrinks with the clock: season names need ~64 px, month names ~30,
+  // single-letter months ~18; a small clock (a dashboard tile) keeps the ring and drops the rest
+  const seasonNames = size >= 340
+  const labelRoom = seasonNames ? 64 : size >= 220 ? 30 : 18
+  const outerR = size / 2 - labelRoom
   const hole = Math.round(outerR * 0.24)
   const monthLabelR = outerR + 14
   const seasonLabelR = outerR + 38
@@ -290,17 +296,17 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
                 const [x, y] = polar(monthLabelR, monthStart(idx + 1) + TAU / 24)
                 return (
                   <text key={name} x={x} y={y} dy="0.35em" textAnchor="middle" fontSize={11} fill={emphasizeFebruary && idx === 1 ? INK.text : INK.muted} fontWeight={emphasizeFebruary && idx === 1 ? 600 : 400} pointerEvents="none">
-                    {name}
+                    {size >= 220 ? name : name[0]}
                   </text>
                 )
               })}
 
               {/* season names curved along the outside of their wedge */}
-              {wedgeSeasons.flatMap((s) =>
+              {seasonNames && wedgeSeasons.flatMap((s) =>
                 circularRuns(s.months).map((_, i) => (
                   <text key={`${s.name}-${i}`} fontSize={10.5} fontWeight={600} fill={s.color} opacity={seasonHover === null || seasonHover === s.name ? 1 : 0.35} pointerEvents="none">
                     <textPath href={`#${uid}-season-${s.name.replace(/\W+/g, '')}-${i}`} startOffset="50%" textAnchor="middle">
-                      {s.name}
+                      {shortSeason(s.name, size)}
                     </textPath>
                   </text>
                 ))
@@ -328,4 +334,10 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
       </div>
     </ChartFrame>
   )
+}
+
+/** a season name that fits its arc: "Addis Ababa · Bega (Oct-Jan, dry)" → "Bega (Oct-Jan, dry)", → "Bega" on a smaller clock */
+const shortSeason = (name: string, size: number) => {
+  const bare = name.includes(' · ') ? name.slice(name.indexOf(' · ') + 3) : name
+  return size >= 460 ? bare : bare.replace(/\s*\(.*\)$/, '')
 }

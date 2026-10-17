@@ -11,6 +11,7 @@ import { fmt } from '@/lib/stats'
 import { useHighlight } from '@/lib/highlight'
 import { INK, MARGIN } from '@/lib/theme'
 import type { MetaFile, PmfFile, PmfRow } from '@/lib/types'
+import { useFitHeight } from '@/lib/chartFit'
 
 const MODES = ['Relative (%)', 'Absolute (µg/m³)'] as const
 const SHAPES = ['Stacked', 'Streamgraph'] as const
@@ -33,7 +34,7 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const hl = useHighlight()
-  const height = 440
+  const height = useFitHeight() ?? 440
 
   // the options and when each applies (lib/chartOptions): relative shares sum to 100 % every
   // day, so a streamgraph would only wobble the baseline; it is offered on the absolute scale

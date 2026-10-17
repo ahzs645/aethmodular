@@ -7,6 +7,7 @@ import { INK, FONT } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
+import { useFitHeight } from '@/lib/chartFit'
 
 /**
  * Heatmap — sample coverage by site and month. The matplotlib equivalents are
@@ -52,7 +53,8 @@ export function AvailabilityHeatmap({ rows, meta, xField, yField }: { rows: Filt
 
   const margin = { top: 14, right: 20, bottom: 56, left: 110 }
   const innerW = Math.max(320, width - margin.left - margin.right)
-  const rowH = 34
+  const fit = useFitHeight()
+  const rowH = fit === null ? 34 : Math.max(10, Math.min(34, (fit - margin.top - margin.bottom) / Math.max(1, sites.length)))
   const innerH = sites.length * rowH
   const cellW = innerW / Math.max(1, periods.length)
   const color = d3.scaleQuantize<string>().domain([0, maxCount]).range(colours.stops)

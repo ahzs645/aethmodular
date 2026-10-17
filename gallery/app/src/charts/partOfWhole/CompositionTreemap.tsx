@@ -10,6 +10,7 @@ import { fmt } from '@/lib/stats'
 import { INK, FONT } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { calendarLabel, seasonsForSite } from '@/siteSeasons'
+import { useFitHeight } from '@/lib/chartFit'
 
 // Stacked bars are the recommended view (PI decision, 23 Sep 2026); the
 // hierarchy encodings stay selectable for the within-site reading.
@@ -292,7 +293,8 @@ function StackedBars({ bars, grouped, pct, families, val, dim, famDim, color, fa
 }) {
   const margin = { top: 16, right: 20, bottom: grouped ? 72 : 40, left: 60 }
   const innerW = Math.max(240, width - margin.left - margin.right)
-  const innerH = 320
+  const fit = useFitHeight()
+  const innerH = fit === null ? 320 : Math.max(100, fit - margin.top - margin.bottom)
   // a spacer slot between site clusters so the seasons of one site read as a group
   const slots: string[] = []
   const siteOrder = [...new Set(bars.map((b) => b.site))]

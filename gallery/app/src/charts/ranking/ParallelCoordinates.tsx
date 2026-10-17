@@ -10,6 +10,7 @@ import { useHighlight } from '@/lib/highlight'
 import { fmt } from '@/lib/stats'
 import { INK, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { useFitHeight } from '@/lib/chartFit'
 
 const COLOR_BY = ['Site', 'Season'] as const
 /** an axis needs this many numeric values before it earns a column */
@@ -110,7 +111,8 @@ export function ParallelCoordinates({ rows, meta }: { rows: FilterRow[]; meta: M
   const step = fields.length > 1 ? innerW / (fields.length - 1) : innerW
   const stagger = fields.length > 1 && maxTitleW > step * 0.95
   const top = stagger ? 58 : 36
-  const innerH = HEIGHT - top - BOTTOM
+  const height = useFitHeight() ?? HEIGHT
+  const innerH = Math.max(80, height - top - BOTTOM)
   const xs = fields.map((_, i) => (fields.length > 1 ? (i * innerW) / (fields.length - 1) : innerW / 2))
 
   const axes = useMemo<Axis[]>(
@@ -268,7 +270,7 @@ export function ParallelCoordinates({ rows, meta }: { rows: FilterRow[]; meta: M
         ) : lines.length === 0 ? (
           <Empty>No filter in this subset carries at least 2 {group} species.</Empty>
         ) : (
-          <svg width={innerW + gutterL + gutterR} height={HEIGHT} className="animated">
+          <svg width={innerW + gutterL + gutterR} height={height} className="animated">
             <g transform={`translate(${gutterL},${top})`}>
               {/* axes, ticks and titles first so the lines paint over the grid */}
               {axes.map((a, i) => {

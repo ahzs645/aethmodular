@@ -11,6 +11,7 @@ import { pairDomain, type AxesOpts } from '@/lib/axes'
 import { fmt } from '@/lib/stats'
 import { MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { useFitHeight } from '@/lib/chartFit'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const STEPS = ['Month of year', 'Year'] as const
@@ -70,7 +71,8 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
   const clipId = useId()
   const MAX_SQUARE = 560
   const availW = Math.max(240, width - MARGIN.left - MARGIN.right)
-  const innerW = Math.min(availW, MAX_SQUARE)
+  const fit = useFitHeight()
+  const innerW = Math.min(availW, fit === null ? MAX_SQUARE : Math.min(MAX_SQUARE, Math.max(140, fit - MARGIN.top - MARGIN.bottom)))
   const innerH = innerW
   const height = innerH + MARGIN.top + MARGIN.bottom
 

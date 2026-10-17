@@ -22,6 +22,7 @@ import { regression, fmt, type RegressionStats } from '@/lib/stats'
 import { INK, MARGIN, FONT, RAMP_SEQUENTIAL, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { NO_PMF, PMF_SOURCE } from '@/lib/pmfGroups'
+import { useFitHeight } from '@/lib/chartFit'
 
 type Point = { row: FilterRow; x: number; y: number; c: number | null; s: number | null }
 type Scale = d3.ScaleLinear<number, number> | d3.ScaleLogarithmic<number, number>
@@ -196,13 +197,14 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
 
   // PlotConfig.equal_axes: a 1:1 line only reads correctly on a square panel.
   const MAX_SQUARE = 560
+  const fit = useFitHeight()
   const seasonGroups = layout === 'Per season' ? [...new Set(panels.map((p) => p.group ?? ''))] : []
   const perGroup = layout === 'Per season' ? Math.max(1, ...seasonGroups.map((g) => panels.filter((p) => p.group === g).length)) : 1
   const cols = layout === 'Per site' && width > 700 ? 2 : layout === 'Per season' ? Math.min(perGroup, width > 1000 ? 4 : width > 640 ? 2 : 1) : 1
   const panelOuterW = Math.floor((width - (cols - 1) * 12) / cols)
   const availW = Math.max(200, panelOuterW - MARGIN.left - MARGIN.right)
   // every crossplot panel is square, with or without the 1:1 line
-  const innerW = Math.min(availW, layout === 'Per site' ? 420 : layout === 'Per season' ? 320 : MAX_SQUARE)
+  const innerW = Math.min(availW, layout === 'Per site' ? 420 : layout === 'Per season' ? 320 : fit === null ? MAX_SQUARE : Math.min(MAX_SQUARE, Math.max(140, fit - MARGIN.top - MARGIN.bottom)))
   const innerH = innerW
 
   if (xField === yField) return <ChartFrame title="Scatterplot"><Empty>x and y are the same field — pick two different measurements in the bar above.</Empty></ChartFrame>

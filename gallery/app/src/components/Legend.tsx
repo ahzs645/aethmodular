@@ -1,6 +1,10 @@
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import { useState } from 'react'
 import { usePrefs } from '@/lib/prefs'
+import { useFitHeight } from '@/lib/chartFit'
+
+/** in a Dashboard tile, a legend longer than this shows its first items and "+N more" */
+const TILE_LIMIT = 8
 
 export interface LegendItem {
   label: string
@@ -36,9 +40,14 @@ export function Legend({
   const method = useEstimator()
   const { explain } = usePrefs()
   const live = !!(onToggle || onHover)
+  // in a fitted tile a long legend would take the chart's height: the first few, then "+N more"
+  const inTile = useFitHeight() !== null
+  const [all, setAll] = useState(false)
+  const long = inTile && items.length > TILE_LIMIT + 1
+  const shown = long && !all ? items.slice(0, TILE_LIMIT) : items
   return (
     <div className="legend">
-      {items.map((it) => {
+      {shown.map((it) => {
         const off = hidden?.has(it.label) ?? false
         const dim = !!highlighted && highlighted !== it.label && !off
         const cls = ['legend-item', onToggle ? 'clickable' : '', onHover ? 'hoverable' : '', off ? 'off' : '', dim ? 'dim' : ''].filter(Boolean).join(' ')
@@ -66,6 +75,9 @@ export function Legend({
           </span>
         )
       })}
+      {long && <button type="button" className="legend-more" onClick={() => setAll(!all)} aria-expanded={all}
+        title={all ? 'Show the first few only' : 'Show every item (the chart shrinks to make room, or the tile scrolls)'}>
+        {all ? 'fewer' : `+${items.length - TILE_LIMIT} more`}</button>}
       {note && explain && <span className="legend-note">{estimatorText(note, method)}</span>}
     </div>
   )

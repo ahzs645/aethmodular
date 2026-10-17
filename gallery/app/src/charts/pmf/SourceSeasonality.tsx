@@ -8,6 +8,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { INK, MARGIN, FONT } from '@/lib/theme'
 import type { MetaFile, PmfFile, PmfRow } from '@/lib/types'
+import { useFitHeight } from '@/lib/chartFit'
 
 const MODES = ['Relative (%)', 'Absolute (µg/m³)'] as const
 
@@ -23,7 +24,7 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const height = 400
+  const height = useFitHeight() ?? 400
 
   const [mode, setMode] = useState<(typeof MODES)[number]>('Relative (%)')
   const [threshold, setThreshold] = useState('30')
