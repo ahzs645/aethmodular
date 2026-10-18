@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { addTile, arrange, placeTile, stepTile, dashParams, firstFit, nextTileId, parseDash, parseSheets, parseTiles, removeTile, rowsUsed, sheetsParam, tilesParam, updateTile } from './dashboard.ts'
+import { addTile, arrange, placeNew, placeTile, stepTile, dashParams, firstFit, nextTileId, parseDash, parseSheets, parseTiles, removeTile, rowsUsed, sheetsParam, tilesParam, updateTile } from './dashboard.ts'
 
 const T = (id, x, y, w, h, kind = 'histogram', fields = []) => ({ id, kind, x, y, w, h, fields })
 const at = (tiles) => Object.fromEntries(tiles.map((t) => [t.id, [t.x, t.y, t.w, t.h]]))
@@ -71,4 +71,25 @@ test('stepTile: an arrow trades places with the neighbour on that side, else mov
   assert.deepEqual(at(stepTile(col, 'b', 'up')), { b: [0, 0, 12, 5], a: [0, 5, 12, 2] })
   // nothing to the right: one cell
   assert.deepEqual(at(stepTile([T('a', 0, 0, 4, 2)], 'a', 'right')), { a: [1, 0, 4, 2] })
+})
+
+test('placeNew: a free gap, else shrunk into the largest gap, else half of the largest tile; never below the window', () => {
+  // room: the first gap
+  assert.deepEqual(placeNew([T('a', 0, 0, 6, 12)], 4, 5), { tiles: [T('a', 0, 0, 6, 12)], x: 6, y: 0, w: 4, h: 5 })
+  // only a 4 x 3 hole left: the 6 x 5 tile shrinks into it
+  const holey = [T('a', 0, 0, 12, 9), T('b', 0, 9, 8, 3)]
+  const p1 = placeNew(holey, 6, 5)
+  assert.deepEqual([p1.x, p1.y, p1.w, p1.h], [8, 9, 4, 3])
+  // full: the largest tile gives up half (across its longer side)
+  const full = [T('a', 0, 0, 8, 12), T('b', 8, 0, 4, 12)]
+  const p2 = placeNew(full, 4, 5)
+  assert.deepEqual(at(p2.tiles), { a: [0, 0, 4, 12], b: [8, 0, 4, 12] })
+  assert.deepEqual([p2.x, p2.y, p2.w, p2.h], [4, 0, 4, 12])
+  // a tall narrow tile splits top and bottom
+  const p3 = placeNew([T('a', 0, 0, 4, 12), T('b', 4, 0, 8, 12)].map((t) => ({ ...t })), 3, 3)
+  assert.deepEqual(at(p3.tiles).b, [4, 0, 4, 12])
+  // through addTile: a full sheet stays inside the window
+  const added = addTile(full, { kind: 'scatter', w: 4, h: 5, fields: [] })
+  assert.equal(rowsUsed(added), 12)
+  assert.equal(added.length, 3)
 })

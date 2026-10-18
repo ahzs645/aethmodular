@@ -85,9 +85,15 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96, galle
   }, [run.eval, evalSet, hasFixed, hidden, useDeployed, isFabs, mac])
 
 
-  const cols = width > 760 ? 2 : 1
+  // the two square panels (crossplot, residuals) side by side or stacked; in a fitted tile, whichever
+  // gives the larger squares, sized to the tile (a facet title of ~22 px above each)
+  const margins = MARGIN.left + MARGIN.right
+  const sideBy = (w: number, h: number) => Math.min((w - 12) / 2 - margins, h - 22 - MARGIN.top - MARGIN.bottom)
+  const stacked = (w: number, h: number) => Math.min(w - margins, (h - 12) / 2 - 22 - MARGIN.top - MARGIN.bottom)
+  const cols = fit === null ? (width > 760 ? 2 : 1) : sideBy(width, fit) >= stacked(width, fit) ? 2 : 1
   const panelW = Math.floor((width - (cols - 1) * 12) / cols)
-  const S = Math.max(220, Math.min(460, panelW - MARGIN.left - MARGIN.right))
+  const fitSide = fit === null ? null : Math.max(140, Math.min(460, cols === 2 ? sideBy(width, fit) : stacked(width, fit)))
+  const S = fitSide ?? Math.max(220, Math.min(460, panelW - margins))
   const hi = Math.max(d3.max(pts, (p) => p.x) ?? 1, d3.max(pts, (p) => p.y) ?? 1) * 1.06
   const lo = Math.min(0, d3.min(pts, (p) => p.y) ?? 0) * 1.05
   // one domain for both axes (the shared crossplot is square); the residual panel reuses its x
@@ -173,7 +179,7 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96, galle
           <div className="facet-grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
             <div>
               <AxisChoices {...o.axisChoices({ x: 'x' })}>
-              <Crossplot title={`predicted vs ${useDeployed ? 'deployed' : 'reference'}`} maxSide={fit === null ? 460 : Math.max(160, Math.min(460, fit - 70))} domain={x.domain() as [number, number]} pick={hasDeployed ? 'x' : undefined}
+              <Crossplot title={`predicted vs ${useDeployed ? 'deployed' : 'reference'}`} maxSide={fitSide ?? 460} domain={x.domain() as [number, number]} pick={hasDeployed ? 'x' : undefined}
                 errorRatio={demingLambda(isFabs && !useDeployed ? mac : null, lambda10)} xLabel={xLabel} yLabel="predicted FTIR EC (µg/m³)"
                 points={pts.map((p) => ({ x: p.x, y: p.y, color: color(p.g), opacity: dim(p.g), id: p.id ?? undefined, tip: tipLines(p), rec: record(p) }))} />
               </AxisChoices>

@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
@@ -9,6 +9,8 @@ import { FONT, INK, inkOn } from '@/lib/theme'
 import { WEATHER_VARS, spearman, weatherField, type WeatherSource } from '@/lib/weather'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useColourScheme } from '@/lib/colourSchemes'
+import { useFitHeight } from '@/lib/chartFit'
+import { useTileSetting } from '@/lib/url'
 
 /** species worth a column when they are measured; the rest of the field list would only add empty columns */
 const PREFERRED = ['PM2.5 mass', 'HIPS BC', 'HIPS Fabs', 'EC (FTIR)', 'OC (FTIR)', 'OM (FTIR)', 'Sulfate', 'Nitrate', 'Ammonium', 'Potassium', 'Sodium', 'Calcium', 'Iron', 'Silicon', 'Aluminum', 'Zinc', 'Lead']
@@ -24,6 +26,9 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
+  const fit = useFitHeight()
+  // a fitted tile shows one matrix, sized to it (the tile's ⋯ menu picks which); elsewhere every season
+  const [pick, setPick] = useTileSetting<string>('season', 'All filters')
 
   const at = useMemo(() => rows.filter((r) => r.site === site?.name), [rows, site])
   const vars: { label: string; field: string }[] = WEATHER_VARS.flatMap((v) => {
@@ -45,15 +50,25 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
 
   const colours = useColourScheme('weather-correlations', 'diverging')
   const color = d3.scaleQuantize<string>().domain([-1, 1]).range(colours.stops)
-  const labelW = 150, cell = Math.max(22, Math.min(34, (Math.min(width, 900) - labelW - 20) / Math.max(1, species.length)))
+  const EVERY = 'Every season'
+  const one = fit !== null && pick !== EVERY
+  const chosen = facets.find((f) => f.name === pick) ?? facets[0]
+  const shownFacets = one && chosen ? [chosen] : facets
+  const labelW = one ? 120 : 150
+  const cell = one
+    ? Math.max(12, Math.min(48, (width - labelW - 14) / Math.max(1, species.length), (fit - 80) / Math.max(1, vars.length)))
+    : Math.max(22, Math.min(34, (Math.min(width, 900) - labelW - 20) / Math.max(1, species.length)))
   const fw = labelW + species.length * cell + 10, fh = 70 + vars.length * cell + 10
+  const facetPicker = fit !== null && facets.length > 1
+    ? <Select label="Show" value={one && chosen ? chosen.name : EVERY} options={[...facets.map((f) => f.name), EVERY]} onChange={setPick} />
+    : null
 
   return (
-    <ChartFrame id="weather-correlations" controls={colours.picker} title={`${site ? `${site.name} · ` : ''}weather × chemistry correlations, by season`}
+    <ChartFrame id="weather-correlations" controls={<>{facetPicker}{colours.picker}</>} title={`${site ? `${site.name} · ` : ''}weather × chemistry correlations, by season`}
       subtitle={`Spearman ρ between each weather variable over the filter's window and each species, for every filter at the site and then within each season (blank: fewer than ${MIN_N} filters). Pooled correlations mostly follow the seasonal cycle; the per-season ones are closer to "does this weather change the day's air".`}
       provenance="meteorology_revisions R5 (seasonal correlation matrices) · meteorology_source_interaction §3 (temperature range as an inversion proxy)">
       <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 18 }}>
-        {!site || species.length === 0 || vars.length === 0 ? <Empty>No site with weather and at least {MIN_N} measured filters in this subset.</Empty> : facets.map((fc) => (
+        {!site || species.length === 0 || vars.length === 0 ? <Empty>No site with weather and at least {MIN_N} measured filters in this subset.</Empty> : shownFacets.map((fc) => (
           <svg key={fc.name} width={fw} height={fh} fontFamily={FONT.family}>
             <text x={labelW} y={14} fontSize={12} fontWeight={600} fill={fc.color}>{fc.name} <tspan fill={INK.muted} fontWeight={400} fontSize={10.5}>n={fc.n}</tspan></text>
             {species.map((f, j) => <text key={f} transform={`translate(${labelW + j * cell + cell / 2},${66}) rotate(-50)`} fontSize={10} fill={INK.muted}>{chemText(f)}</text>)}
@@ -63,7 +78,7 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
               return <g key={`${i}-${j}`} transform={`translate(${labelW + j * cell},${70 + i * cell})`}
                 onMouseEnter={(e) => tip.show(e, [`${fc.name}: ${c.v.label} vs ${c.f}`, c.rho === null ? `n = ${c.n} (too few)` : `ρ = ${fmt(c.rho, 2)} · n = ${c.n}`])} onMouseLeave={tip.hide}>
                 <rect width={cell - 1} height={cell - 1} fill={fill} />
-                {c.rho !== null && Math.abs(c.rho) >= 0.3 && <text x={cell / 2} y={cell / 2} dy="0.35em" textAnchor="middle" fontSize={9} fill={inkOn(fill)} fontFamily={FONT.mono}>{fmt(c.rho, 1)}</text>}
+                {c.rho !== null && Math.abs(c.rho) >= 0.3 && cell >= 18 && <text x={cell / 2} y={cell / 2} dy="0.35em" textAnchor="middle" fontSize={9} fill={inkOn(fill)} fontFamily={FONT.mono}>{fmt(c.rho, 1)}</text>}
               </g>
             }))}
           </svg>

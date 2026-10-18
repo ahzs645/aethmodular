@@ -305,7 +305,7 @@ function ChartCatalog({ data, onPick, onClose }: { data: DashboardData; onPick: 
     <div className="map-dialog-backdrop" onPointerDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div className="panel dash-catalog" role="dialog" aria-label="Add a chart">
         <header className="frame-head">
-          <div><h2>Add a chart</h2><p className="subtitle">It goes in the first free space; drag it anywhere in Edit. Change its fields from its ⋯ menu.</p></div>
+          <div><h2>Add a chart</h2><p className="subtitle">It goes in the first free space, smaller if that is all there is, or takes half of the largest tile when the sheet is full. Drag it anywhere in Edit; change its fields from its ⋯ menu.</p></div>
           <div className="frame-actions"><button type="button" className="btn quiet" onClick={onClose} aria-label="Close">✕</button></div>
         </header>
         <div className="dash-catalog-groups">
@@ -386,6 +386,27 @@ function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, 
   // effect would run after the measuring below and leave a chart sized for the loading state
   const lastData = useRef<[unknown, unknown]>([data.rows, data.meta])
   if (lastData.current[0] !== data.rows || lastData.current[1] !== data.meta) { lastData.current = [data.rows, data.meta]; tries.current = 0 }
+  // a chart that loads its own data (the daily weather, the wind roses) redraws by itself, without
+  // this tile rendering again: when its contents change the tile measures again, and the correction
+  // starts over if it had run out (at most 12 times in any 5 s, so a chart that redraws on every
+  // correction cannot loop)
+  const [, redraw] = useState(0)
+  useEffect(() => {
+    // the tile, not its panel: a chart whose data is still coming draws no frame at first
+    const root = ref.current
+    if (!root) return
+    const resets: number[] = []
+    const mo = new MutationObserver(() => {
+      const now = performance.now()
+      while (resets.length && now - resets[0] > 5000) resets.shift()
+      if (resets.length >= 12) return
+      resets.push(now)
+      if (tries.current >= 6) tries.current = 0
+      redraw((n) => n + 1)
+    })
+    mo.observe(root, { childList: true, subtree: true })
+    return () => mo.disconnect()
+  }, [tile.kind])
   useLayoutEffect(() => {
     const panel = ref.current?.querySelector(':scope > .panel') as HTMLElement | null
     if (!panel || tries.current >= 6) return

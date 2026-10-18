@@ -2,6 +2,8 @@ import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { useTooltip } from '@/hooks/useTooltip'
+import { useDimensions } from '@/hooks/useGalleryData'
+import { useFitHeight } from '@/lib/chartFit'
 import { fmt } from '@/lib/stats'
 import { useChartOptions } from '@/lib/chartOptions'
 import { FONT, INK } from '@/lib/theme'
@@ -30,6 +32,8 @@ export function WindRoses({ rows, meta, roses, source, site, pmfLabelOfDate, spl
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const tip = useTooltip(wrapRef)
+  const { width } = useDimensions(wrapRef)
+  const fit = useFitHeight()
   // the options and when each applies (lib/chartOptions): the page says which splits it offers
   const o = useChartOptions(id, [
     { key: 'split', label: 'Split by', default: splits[0], choices: SPLITS.map((v) => ({ value: v, when: () => splits.includes(v) })),
@@ -57,7 +61,10 @@ export function WindRoses({ rows, meta, roses, source, site, pmfLabelOfDate, spl
   }, [table, rows, split, site, meta, pmfLabelOfDate])
   const shown = groups.slice(0, MAX_PANELS)
   const rMax = d3.max(shown, (g) => d3.max(d3.range(8), (s) => g.pct[s * 3] + g.pct[s * 3 + 1] + g.pct[s * 3 + 2])) ?? 10
-  const R = SIZE / 2 - 26
+  // in a fitted tile the roses share it: the column count that gives the largest rose fitting both
+  // the width and the height (a title line under each, 10 px gaps); elsewhere a fixed 210 px
+  const size = fit === null || !shown.length ? SIZE : Math.round(Math.max(110, Math.min(280, largestRose(shown.length, width, fit))))
+  const R = size / 2 - 26
   const r = d3.scaleSqrt().domain([0, rMax]).range([16, R]).nice()
   const arc = d3.arc<{ a: number; r0: number; r1: number }>().startAngle((d) => d.a - Math.PI / 8 + 0.03).endAngle((d) => d.a + Math.PI / 8 - 0.03).innerRadius((d) => d.r0).outerRadius((d) => d.r1)
   const label = (name: string) => name.replace(`${site?.name} · `, '')
@@ -69,9 +76,9 @@ export function WindRoses({ rows, meta, roses, source, site, pmfLabelOfDate, spl
       controls={o.controls()}>
       <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
         {!roses ? <Empty>Loading the wind roses…</Empty> : shown.length === 0 ? <Empty>{split === 'PMF source' ? 'No filter here falls on a PMF day (ETAD 2023 only).' : 'No filters with wind data in this subset.'}</Empty> : shown.map((g) => (
-          <svg key={g.name} width={SIZE} height={SIZE + 18} fontFamily={FONT.family}>
-            <text x={SIZE / 2} y={13} textAnchor="middle" fontSize={11.5} fontWeight={600} fill={g.color === INK.muted ? INK.text : g.color}>{label(g.name)}</text>
-            <g transform={`translate(${SIZE / 2},${SIZE / 2 + 14})`}>
+          <svg key={g.name} width={size} height={size + 18} fontFamily={FONT.family}>
+            <text x={size / 2} y={13} textAnchor="middle" fontSize={11.5} fontWeight={600} fill={g.color === INK.muted ? INK.text : g.color}>{label(g.name)}</text>
+            <g transform={`translate(${size / 2},${size / 2 + 14})`}>
               {r.ticks(3).filter((t) => t > 0).map((t) => <g key={t}><circle r={r(t)} fill="none" stroke={INK.grid} /><text x={2} y={-r(t) - 2} fontSize={8.5} fill={INK.muted}>{t}%</text></g>)}
               {['N', 'E', 'S', 'W'].map((d, i) => <text key={d} x={Math.sin((i * Math.PI) / 2) * (R + 10)} y={-Math.cos((i * Math.PI) / 2) * (R + 10)} dy="0.35em" textAnchor="middle" fontSize={10} fill={INK.muted}>{d}</text>)}
               {d3.range(8).map((s) => {
@@ -88,7 +95,7 @@ export function WindRoses({ rows, meta, roses, source, site, pmfLabelOfDate, spl
               })}
               <circle r={14} fill="#fff" stroke={INK.grid} />
               <text dy="0.35em" textAnchor="middle" fontSize={9} fill={INK.muted} fontFamily={FONT.mono}>{fmt(g.pct[24], 0)}%</text>
-              <text y={SIZE / 2 - 4} textAnchor="middle" fontSize={9} fill={INK.muted}>{g.n} filters · {g.hours} h</text>
+              <text y={size / 2 - 4} textAnchor="middle" fontSize={9} fill={INK.muted}>{g.n} filters · {g.hours} h</text>
             </g>
           </svg>
         ))}
@@ -101,4 +108,14 @@ export function WindRoses({ rows, meta, roses, source, site, pmfLabelOfDate, spl
       {groups.length > MAX_PANELS && <Note>Showing the {MAX_PANELS} groups with the most filters of {groups.length}.</Note>}
     </ChartFrame>
   )
+}
+
+/** the largest rose side that lays n roses out in width × height (10 px gaps, 18 px title per rose) */
+function largestRose(n: number, width: number, height: number) {
+  let best = 0
+  for (let cols = 1; cols <= n; cols++) {
+    const rows = Math.ceil(n / cols)
+    best = Math.max(best, Math.min((width - (cols - 1) * 10) / cols, (height - (rows - 1) * 10) / rows - 18))
+  }
+  return best
 }

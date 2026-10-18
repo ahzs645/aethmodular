@@ -154,10 +154,55 @@ export function firstFit(tiles: Tile[], w: number, h: number): { x: number; y: n
 /** rows the tiles reach down to; more than ROWS means the grid scrolls */
 export const rowsUsed = (tiles: Tile[]) => tiles.reduce((m, t) => Math.max(m, t.y + t.h), 0)
 
+/** the smallest a new tile is shrunk to before a sheet's tile is split to make room for it */
+const MIN_W = 3, MIN_H = 3
+/** a grid cell's width over its height on a typical laptop window (1280 × 800: ~95 × 52 px) */
+const CELL_ASPECT = 1.8
+
+/**
+ * Where a new w × h tile goes without leaving the window: the first gap it fits in; else the
+ * largest gap it fits in shrunk (to no less than 3 × 3); else the largest tile on the sheet is
+ * split in half (across its longer side on screen) and the new tile takes one half, the way tiling window
+ * managers make room. Only a sheet with nothing left to split puts it below the window.
+ * Returns the sheet (with a split tile resized) and the new tile's place and size.
+ */
+export function placeNew(tiles: Tile[], w: number, h: number, rows = ROWS): { tiles: Tile[]; x: number; y: number; w: number; h: number } {
+  const ww = clamp(w, 1, COLS), hh = Math.max(1, h)
+  const inside = (x: number, y: number, cw: number, ch: number) => y + ch <= rows && !tiles.some((t) => hits(t, { x, y, w: cw, h: ch }))
+  const scan = (cw: number, ch: number) => {
+    for (let y = 0; y + ch <= rows; y++) for (let x = 0; x + cw <= COLS; x++) if (inside(x, y, cw, ch)) return { x, y }
+    return null
+  }
+  const exact = scan(ww, hh)
+  if (exact) return { tiles, ...exact, w: ww, h: hh }
+  // shrunk: the largest area that fits, keeping as much of the asked width as it can
+  let best: { x: number; y: number; w: number; h: number } | null = null
+  for (let cw = ww; cw >= Math.min(MIN_W, ww); cw--) for (let ch = hh; ch >= Math.min(MIN_H, hh); ch--) {
+    if (best && cw * ch <= best.w * best.h) continue
+    const at = scan(cw, ch)
+    if (at) best = { ...at, w: cw, h: ch }
+  }
+  if (best) return { tiles, ...best }
+  // split the largest tile that halves into two tiles of at least the minimum size
+  const splittable = tiles.filter((t) => t.y + t.h <= rows && (t.w >= 2 * MIN_W || t.h >= 2 * MIN_H))
+    .sort((a, b) => b.w * b.h - a.w * a.h || reading(a, b))
+  const big = splittable[0]
+  if (big) {
+    const across = big.w >= 2 * MIN_W && (big.w * CELL_ASPECT >= big.h || big.h < 2 * MIN_H)
+    const keep = across ? Math.ceil(big.w / 2) : Math.ceil(big.h / 2)
+    const resized = tiles.map((t) => (t.id !== big.id ? t : across ? { ...t, w: keep } : { ...t, h: keep }))
+    return across
+      ? { tiles: resized, x: big.x + keep, y: big.y, w: big.w - keep, h: big.h }
+      : { tiles: resized, x: big.x, y: big.y + keep, w: big.w, h: big.h - keep }
+  }
+  return { tiles, ...firstFit(tiles, ww, hh), w: ww, h: hh }
+}
+
 export const addTile = (tiles: Tile[], tile: Omit<Tile, 'id' | 'x' | 'y'> & Partial<Pick<Tile, 'x' | 'y'>>): Tile[] => {
-  const at = tile.x !== undefined && tile.y !== undefined ? { x: tile.x, y: tile.y } : firstFit(tiles, tile.w, tile.h)
   const id = nextTileId(tiles)
-  return arrange([...tiles, { ...tile, ...at, id }], id)
+  if (tile.x !== undefined && tile.y !== undefined) return arrange([...tiles, { ...tile, x: tile.x, y: tile.y, id }], id)
+  const p = placeNew(tiles, tile.w, tile.h)
+  return arrange([...p.tiles, { ...tile, x: p.x, y: p.y, w: p.w, h: p.h, id }], id)
 }
 
 export const removeTile = (tiles: Tile[], id: string): Tile[] => arrange(tiles.filter((t) => t.id !== id))
