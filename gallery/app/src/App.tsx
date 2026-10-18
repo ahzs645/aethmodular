@@ -1231,7 +1231,7 @@ function PageSidebar({ fits }: { fits: boolean }) {
   const [open, setOpen] = useSidePanelOpen()
   const top = useHeaderHeight()
   return <>
-    <SideDock open={open} top={top} tab={<button className="subset-tab" type="button" aria-expanded={open} onClick={() => setOpen(!open)} title={open ? 'Hide the filters' : 'Show the filters'}><span className="subset-tab-label">Filters</span></button>}>
+    <SideDock open={open} top={top} onClose={() => setOpen(false)} tab={<button className="subset-tab" type="button" aria-expanded={open} onClick={() => setOpen(!open)} title={open ? 'Hide the filters' : 'Show the filters'}><span className="subset-tab-label">Filters</span></button>}>
       <aside className="panel subset subset-panel" aria-label="Filters">
         <header className="subset-head"><strong>Filters</strong><span style={{ marginLeft: 'auto' }}><button type="button" className="btn quiet" onClick={() => setOpen(false)} aria-label="Close filters" title="Close">✕</button></span></header>
         <PageSidebarSlot />

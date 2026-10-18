@@ -6,6 +6,7 @@ import { fmt } from '@/lib/stats'
 import { chemText } from '@/lib/format'
 import { prettyUnit } from '@/components/FieldSelect'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { DrawerShell } from '@/components/DrawerShell'
 
 /**
  * The side panel for a bin of filters (a hex, a histogram bar): every filter in it,
@@ -47,7 +48,7 @@ export function GroupDrawer({ group, byId, meta, fields, onClose }: {
   const all = live.length > 0 && tickedLive.length === live.length
 
   return (
-    <aside className="drawer" role="dialog" aria-label={`${rows.length} filters`}>
+    <DrawerShell label={`${rows.length} filters`} onClose={onClose}>
       <header className="drawer-head">
         <div>
           <div className="drawer-id">{rows.length} filter{rows.length === 1 ? '' : 's'}</div>
@@ -113,6 +114,6 @@ export function GroupDrawer({ group, byId, meta, fields, onClose }: {
         </table>
         {rows.length < group.ids.length && <p className="u">{group.ids.length - rows.length} filters in the bin are not in the current data.</p>}
       </div>
-    </aside>
+    </DrawerShell>
   )
 }

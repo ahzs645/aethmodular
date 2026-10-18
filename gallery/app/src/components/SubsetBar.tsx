@@ -247,7 +247,7 @@ export function SubsetBar({
   const sitesNote = s.network === 'improve' ? 'IMPROVE EC/OC: TOR (thermal-optical reflectance) · absorption from HIPS'
     : 'SPARTAN EC/OC: FTIR-derived · no TOR reference on these filters'
   return (
-    <SideDock open={open} top={top} tab={
+    <SideDock open={open} top={top} onClose={() => setOpen(false)} tab={
       <button
         type="button"
         className="subset-tab"
@@ -511,18 +511,20 @@ export function SubsetBar({
  * panel stays mounted while closed (slid out of view and inert), so opening animates.
  * Shared by the Filters panel and the Fits panel.
  */
-export function SideDock({ open, top, tab, children }: { open: boolean; top: number; tab: React.ReactNode; children: React.ReactNode }) {
+export function SideDock({ open, top, tab, onClose, children }: { open: boolean; top: number; tab: React.ReactNode; onClose?: () => void; children: React.ReactNode }) {
   const body = useRef<HTMLDivElement>(null)
   // closed: out of the tab order and hidden from assistive tech, though still painted for the slide
   useEffect(() => { body.current?.toggleAttribute('inert', !open) }, [open])
   // open, the panel runs the full window height over the app header (like the sample drawer);
   // the tab keeps its place just below the header so it does not move up and down
-  return (
+  // on a phone the dock is a bottom sheet (styles.css) and the scrim behind it closes it
+  return <>
+    {open && onClose && <div className="sheet-scrim dock-scrim" onClick={onClose} aria-hidden />}
     <div className={`side-dock ${open ? 'open' : ''}`}>
       <div ref={body} className="side-dock-body" aria-hidden={!open}>{children}</div>
       <div className="side-dock-tab" style={{ top: top + 24 }}>{tab}</div>
     </div>
-  )
+  </>
 }
 
 /**

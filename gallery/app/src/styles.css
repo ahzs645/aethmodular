@@ -386,6 +386,34 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 }
 @keyframes drawer-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 .drawer-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+/* On a phone the drawers and the Filters panel are bottom sheets over a scrim (DrawerShell,
+   SideDock): a drawer rises to 85 % of the screen with a grip to pull it down; the Filters
+   panel is the taller main sheet, opened from a pill at the foot of the screen. */
+.sheet-scrim, .sheet-grip { display: none; }
+@media (max-width: 640px) {
+  .sheet-scrim { display: block; position: fixed; inset: 0; z-index: 49; background: rgba(17, 24, 39, 0.32); touch-action: none; animation: scrim-in 0.18s ease-out; }
+  .sheet-scrim.dock-scrim { z-index: 44; }
+  .drawer {
+    top: auto; bottom: 0; left: 0; right: 0; width: 100%; height: auto; max-height: 85vh; max-height: 85dvh; z-index: 50;
+    border-left: 0; border-top: 1px solid var(--ink-border); border-radius: 16px 16px 0 0;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.16); padding: 0 16px calc(28px + env(safe-area-inset-bottom, 0px)); scrollbar-gutter: auto;
+    transition: transform 0.2s ease-out; animation: sheet-in 0.22s ease-out;
+  }
+  .sheet-grip { display: block; position: sticky; top: 0; z-index: 2; height: 22px; margin: 0 -16px 4px; background: var(--ink-panel); cursor: grab; touch-action: none; }
+  .sheet-grip::after { content: ''; position: absolute; left: 50%; top: 8px; width: 38px; height: 5px; margin-left: -19px; border-radius: 3px; background: var(--ink-border); }
+  .drawer-head { position: sticky; top: 22px; z-index: 1; background: var(--ink-panel); padding-bottom: 6px; margin-bottom: 4px; }
+
+  .side-dock { top: auto; bottom: 0; width: 100%; height: 90vh; height: 90dvh; transform: translateY(100%); }
+  .side-dock.open { transform: none; }
+  .subset-panel { border-radius: 16px 16px 0 0; border: 0; border-top: 1px solid var(--ink-border); box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.16); }
+  .side-dock-tab { top: auto !important; left: 50%; bottom: calc(100% + 18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); transition: opacity 0.15s; }
+  .side-dock.open .side-dock-tab { opacity: 0; pointer-events: none; }
+  .subset-tab { flex-direction: row; padding: 9px 16px; border: 1px solid var(--ink-border); border-radius: 22px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16); }
+  .subset-tab-label, .subset-tab-count { writing-mode: horizontal-tb; transform: none; }
+}
+@keyframes sheet-in { from { transform: translateY(40%); opacity: 0.4; } to { transform: none; opacity: 1; } }
+@keyframes scrim-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .drawer, .sheet-scrim { animation: none; } }
 .drawer-head > div:first-child { flex: 1; min-width: 0; }
 .drawer-id { font-size: calc(17px * var(--text-scale)); font-weight: 650; display: flex; align-items: center; gap: 8px; font-family: var(--mono); }
 .drawer-sub { color: var(--ink-muted); margin-top: 3px; }

@@ -18,6 +18,7 @@ import { FilterSpectrum } from '@/components/FilterSpectrum'
 import { useSearchParam } from '@/lib/url'
 import { NO_PMF, PMF_SOURCE, pmfShareField } from '@/lib/pmfGroups'
 import { cleanReference, placements, stripPosition, ratioReference, isFiniteNumber, type ReferenceRow, type SpartanReference } from '@/lib/referencePopulation'
+import { DrawerShell } from '@/components/DrawerShell'
 
 
 /** English ordinal suffix: 1st, 2nd, 3rd, 11th, 51st. */
@@ -169,7 +170,7 @@ export function SampleDrawer({
   }
 
   return (
-    <aside className="drawer" role="dialog" aria-label={`Sample ${row.id}`}>
+    <DrawerShell label={`Sample ${row.id}`} onClose={onClose}>
       <header className="drawer-head">
         <div>
           <div className="drawer-id">
@@ -335,7 +336,7 @@ export function SampleDrawer({
           </table>
         </section>
       )}
-    </aside>
+    </DrawerShell>
   )
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { fmt } from '@/lib/stats'
 import type { FilterRecord } from '@/lib/highlight'
 import { FilterSpectrum } from '@/components/FilterSpectrum'
+import { DrawerShell } from '@/components/DrawerShell'
 
 /** A value as a drawer cell: numbers to 3 decimals, missing as an em dash. */
 const cell = (v: FilterRecord['fields'][number][1]) =>
@@ -43,7 +44,7 @@ export function RecordDrawer({ rec, onClose }: { rec: FilterRecord; onClose: () 
   const copy = () => navigator.clipboard?.writeText(rec.id).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) })
 
   return (
-    <aside className="drawer" role="dialog" aria-label={`Filter ${rec.id}`}>
+    <DrawerShell label={`Filter ${rec.id}`} onClose={onClose}>
       <header className="drawer-head">
         <div>
           <div className="drawer-id">{rec.id}</div>
@@ -58,6 +59,6 @@ export function RecordDrawer({ rec, onClose }: { rec: FilterRecord; onClose: () 
       </div>
       <RecordSection rec={rec} />
       <FilterSpectrum id={rec.id} />
-    </aside>
+    </DrawerShell>
   )
 }
