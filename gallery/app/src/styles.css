@@ -342,7 +342,9 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 
 /* ---------- chart wrapper ---------- */
 
-.chart-wrap { position: relative; width: 100%; }
+/* a chart wider than its card (a correlogram, a heat map, the species network on a phone) scrolls
+   inside the card, never the page; tooltips are portalled (hooks/useTooltip) so nothing is clipped */
+.chart-wrap { position: relative; width: 100%; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; }
 .chart-wrap svg { display: block; }
 /* charts whose shape is fixed (square 1:1 panels, matrices, the clock) sit in the middle of the panel, legend and notes with them */
 .chart-wrap.centered > svg { margin-left: auto; margin-right: auto; }
@@ -718,7 +720,8 @@ html[data-density="readable"] svg [font-size="16"] { font-size: calc(16px * var(
 .header-tools { gap: 6px; flex-shrink: 0; }
 /* fills the space between title and tools, so its width is the room the groups have */
 .navmenu { position: relative; display: flex; gap: 4px; align-items: center; min-width: 0; width: 100%; }
-.navmenu-measure { position: absolute; visibility: hidden; pointer-events: none; display: flex; gap: 4px; white-space: nowrap; left: 0; top: 0; }
+/* laid out off to the left of the menu: measured there, it cannot widen the page (a phone scrolled sideways) */
+.navmenu-measure { position: absolute; visibility: hidden; pointer-events: none; display: flex; gap: 4px; white-space: nowrap; right: 100%; top: 0; }
 .navmenu-group { position: relative; }
 .nav-group { white-space: nowrap; }
 .nav-caret { font-size: calc(10px * var(--text-scale)); opacity: 0.7; }
@@ -968,4 +971,24 @@ html.dash-present .container.dash { padding-top: 10px; }
   .dash-pop-panel.wide { min-width: 0; width: min(92vw, 360px); }
   .dash-pop-panel { max-width: 92vw; }
   .dash-empty { inset: 40px 12px auto; }
+}
+
+/* a fit's readout as text under the plot (components/RegressionOverlay, phones) */
+.fit-readout { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: 6px 0 0; padding: 6px 8px; border: 1px solid var(--ink-border); border-radius: 6px;
+  font-family: var(--mono); font-size: calc(11px * var(--text-scale)); background: var(--ink-panel); }
+
+
+/* ---------- phones: nothing wider than the window ---------- */
+@media (max-width: 640px) {
+  /* a wide table scrolls inside its card (a block that scrolls; its rows still lay out as a table) */
+  table.census-table { display: block; overflow-x: auto; max-width: 100%; }
+  /* a dropdown and its label share the card's width; the value ellipsises instead of pushing past it */
+  .combobox-control { max-width: 100%; min-width: 0; }
+  .combobox-control > .combobox { min-width: 0; flex: 1 1 auto; }
+  .combobox-trigger { max-width: 100%; }
+  /* long unbroken text (notebook paths, field ids) wraps instead of widening the card */
+  .panel { overflow-wrap: anywhere; }
+  /* the last resort: a card whose figure is drawn outside .chart-wrap (Meeting, Blanks) scrolls
+     sideways inside itself; its dropdowns, pickers and tooltips are portalled, so none is clipped */
+  .panel:not(.compact) { overflow-x: auto; }
 }

@@ -2,7 +2,7 @@ import { fitUncertainty } from '@/lib/fitUncertainty'
 import { styleBrush } from '@/lib/brush'
 import { seasonsForSite } from '@/siteSeasons'
 import { IdentityLine, RefLine } from '@/components/RefLines'
-import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
+import { RegressionLines, RegressionReadout, RegressionReadoutText, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
 import { useRegressions, fitsFor } from '@/lib/regressionPrefs'
 import { fitGroupingOption, useChartOptions } from '@/lib/chartOptions'
 import { groupedRegressions, type FitGrouping, type RegressionGroup } from '@/lib/siteRegression'
@@ -24,6 +24,7 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import { NO_PMF, PMF_SOURCE } from '@/lib/pmfGroups'
 import { useFitHeight } from '@/lib/chartFit'
 import { useTileSetting } from '@/lib/url'
+import { useNarrowScreen } from '@/hooks/useMediaQuery'
 
 type Point = { row: FilterRow; x: number; y: number; c: number | null; s: number | null }
 type Scale = d3.ScaleLinear<number, number> | d3.ScaleLogarithmic<number, number>
@@ -407,6 +408,8 @@ function ScatterPanel({
   const markIntercepts = axes.mode === 'Show intercept' && showFit && !axes.log && stats
   const originAxes = axes.mode === 'Show intercept' && !axes.log && xScale.domain()[0] < 0 && yScale.domain()[0] < 0
   const { methods, showCI } = useRegressions()
+  // on a phone the fit readout goes under the plot: inside it the box covers points and runs off the panel
+  const narrow = useNarrowScreen()
   const siteFits = grouping !== 'pooled' && showFit && methods.length > 0
   const selectedFits = fitGroups.flatMap(group => fitsFor(group.stats, showFit ? methods : []).map(fit => ({ ...fit, color: group.color ?? fit.color, name: group.name })))
   const svgWidth = innerW + MARGIN.left + MARGIN.right
@@ -504,10 +507,11 @@ function ScatterPanel({
             </g>
           )}
 
-          {grouping === 'pooled' && showFit && <RegressionReadout stats={stats} />}
+          {grouping === 'pooled' && showFit && !narrow && <RegressionReadout stats={stats} />}
         </g>
         {siteFits && <RegressionGroupReadouts groups={fitGroups} width={svgWidth} y={innerH + MARGIN.top + MARGIN.bottom} />}
       </svg>
+      {grouping === 'pooled' && showFit && narrow && <RegressionReadoutText stats={stats} />}
     </div>
   )
 }

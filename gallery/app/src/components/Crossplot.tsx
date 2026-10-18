@@ -1,7 +1,7 @@
 import { useId, useMemo, useRef, type ReactNode } from 'react'
 import { IdentityLine } from '@/components/RefLines'
 import * as d3 from 'd3'
-import { RegressionLines, RegressionReadout, RegressionBand, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
+import { RegressionLines, RegressionReadout, RegressionReadoutText, RegressionBand, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -13,6 +13,7 @@ import { useRegressions, FitGroupingControl } from '@/lib/regressionPrefs'
 import type { Estimator } from '@/lib/regressionMethods'
 import { baseFilterId, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { FONT, INK } from '@/lib/theme'
+import { useNarrowScreen } from '@/hooks/useMediaQuery'
 
 /** One filter on a crossplot. `rec` opens the record drawer; `id` links hover and pin across charts. */
 export interface CrossPoint {
@@ -76,6 +77,8 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   const grouping: FitGrouping = groupingOverride && groupingOverride !== 'none' ? groupingOverride : prefs.grouping
   const multiSite = fitting && new Set(valid.map((p) => p.rec?.site)).size > 1
   const siteFits = multiSite && grouping === 'site' && methods.length > 0   // its points carry no season
+  // on a phone the fit readout goes under the plot (in it, the box covers points and runs off the panel)
+  const narrow = useNarrowScreen()
   const fitGroups = useMemo(() => fitting ? groupedRegressions(valid, grouping, {
     x: (p) => p.x, y: (p) => p.y, site: (p) => p.rec?.site ?? 'Unknown site', color: (p) => p.color,
     options: (members) => ({ errorsInVariables: true, lambda, bootstrapGroups: monthBlocks(members.map((p) => p.rec ?? {})) }),
@@ -123,9 +126,10 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
               : <RegressionLines stats={st} x={x} y={y} domain={dom} width={iw} height={ih} />)}
             {extraLines.map((l) => <g key={l.label}><RegressionBand stats={l.stats} method={l.method} color={l.color} x={x} y={y} domain={dom} /><line {...line(l.slope, l.intercept)} stroke={l.color} strokeWidth={1.8} strokeDasharray={l.dash} /></g>)}
           </g>
-          {fitting && !siteFits && <RegressionReadout stats={st} x={8} y={6} width={Math.min(280, iw - 12)} />}
+          {fitting && !siteFits && !narrow && <RegressionReadout stats={st} x={8} y={6} width={Math.min(280, iw - 12)} />}
         </g>
       </svg>
+      {fitting && !siteFits && narrow && <RegressionReadoutText stats={st} />}
       {siteFits && <details><summary>Per-site fit statistics ({fitGroups.length} sites)</summary>
         <svg width={w} height={regressionGroupReadoutLayout(fitGroups.length, w, methods, showCI).height}>
           <RegressionGroupReadouts groups={fitGroups} width={w} />

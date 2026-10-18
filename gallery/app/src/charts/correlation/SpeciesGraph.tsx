@@ -101,7 +101,16 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
   // dropping species would re-cut the tree and renumber every cluster
   const lg = useLegend()
   const cl = useLegend()
-  const w = Math.max(400, width)
+  // a phone gets the chart at its own width: shorter forces, labels hung straight down in the
+  // arc and cut short in the dendrogram (full names on hover), a taller network to spread into
+  const w = Math.max(280, width)
+  const narrow = w < 560
+  const short = (f: string) => (narrow && f.length > 18 ? `${f.slice(0, 17)}…` : f)
+  const netH = narrow ? 540 : NETWORK_HEIGHT
+  // the network and the arc need room to be read at all: on a phone they keep a readable width
+  // and scroll sideways inside the card (.chart-wrap) instead of crushing 60-odd species into it
+  const nw = narrow ? Math.max(w, 600) : w
+  const k = Math.min(1, Math.max(0.45, nw / 700))
 
   const siteCodes = useMemo(
     () => ['All', ...meta.sites.filter((s) => rows.some((r) => r.code === s.code)).map((s) => s.code)],
@@ -219,7 +228,7 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
     let row = 0
     for (const i of isolated) {
       const need = 12 + labelW(fields[i]) + 18
-      if (sx + need > w - 12 && sx > 14) {
+      if (sx + need > nw - 12 && sx > 14) {
         sx = 14
         row++
       }
@@ -227,7 +236,7 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
       sx += need
     }
     const stripH = isolated.length ? 30 + (row + 1) * 20 : 0
-    const simH = NETWORK_HEIGHT - stripH
+    const simH = netH - stripH
 
     const nodes: SimNode[] = connected.map((i) => ({ i }))
     const index = new Map(connected.map((i, k) => [i, k]))
@@ -239,25 +248,25 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
         d3
           .forceLink<SimNode, SimLink>(links)
           // strongest pairs sit closest: (1 − |r|) rescaled over the visible range
-          .distance((l) => 70 + 110 * ((1 - Math.abs(l.r)) / Math.max(0.05, 1 - threshold)))
+          .distance((l) => k * (70 + 110 * ((1 - Math.abs(l.r)) / Math.max(0.05, 1 - threshold))))
       )
-      .force('charge', d3.forceManyBody().strength(-260))
-      .force('center', d3.forceCenter(w / 2, simH / 2))
+      .force('charge', d3.forceManyBody().strength(-260 * k))
+      .force('center', d3.forceCenter(nw / 2, simH / 2))
       // a weak pull to the middle keeps small disconnected clusters (sulfate–ammonium,
       // lead–zinc) on the canvas instead of flung to an edge and clamped there
-      .force('x', d3.forceX<SimNode>(w / 2).strength(0.03))
+      .force('x', d3.forceX<SimNode>(nw / 2).strength(0.03))
       .force('y', d3.forceY<SimNode>(simH / 2).strength(0.06))
       // collide on the node plus part of its label, so names do not stack on each other
-      .force('collide', d3.forceCollide<SimNode>((n) => 14 + labelW(fields[n.i]) * 0.35).iterations(2))
+      .force('collide', d3.forceCollide<SimNode>((n) => 14 + labelW(fields[n.i]) * 0.35 * k).iterations(2))
       .stop()
     for (let k = 0; k < 300; k++) sim.tick()
 
     // clamp into the box: the invariant check flags any circle past the edge
     const pad = 18
     const pos = new Map<number, { x: number; y: number }>()
-    for (const n of nodes) pos.set(n.i, { x: Math.max(pad, Math.min(w - pad, n.x ?? 0)), y: Math.max(pad, Math.min(simH - pad, n.y ?? 0)) })
+    for (const n of nodes) pos.set(n.i, { x: Math.max(pad, Math.min(nw - pad, n.x ?? 0)), y: Math.max(pad, Math.min(simH - pad, n.y ?? 0)) })
     return { pos, strip, stripH, simH }
-  }, [block, graph, w, threshold])
+  }, [block, graph, nw, threshold, netH, k])
 
   // ---- Arc: nodes on a line ordered by family then name; arc height ∝ span
   const arc = useMemo(() => {
@@ -265,16 +274,18 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
       .map((_, i) => i)
       .filter((i) => graph.vis[i])
       .sort((i, j) => familyRank(block.fields[i]) - familyRank(block.fields[j]) || block.fields[i].localeCompare(block.fields[j]))
-    const maxLabel = Math.max(0, ...block.fields.map(labelW))
-    // labels hang down-left at 45°, so they need ~0.71 × their length both ways
-    const ml = Math.ceil(0.71 * maxLabel) + 14
+    const maxLabel = Math.max(0, ...block.fields.map((f) => labelW(short(f))))
+    // labels hang down-left at 45°, so they need ~0.71 × their length both ways; on a phone they
+    // hang straight down and need no room to the side
+    const ml = narrow ? 14 : Math.ceil(0.71 * maxLabel) + 14
     const mr = 16
-    const x = d3.scalePoint<number>().domain(order).range([ml, w - mr])
+    const aw = narrow ? Math.max(w, ml + mr + 14 * order.length) : w
+    const x = d3.scalePoint<number>().domain(order).range([ml, aw - mr])
     const spans = graph.edges.map((e) => Math.abs((x(e.a) ?? 0) - (x(e.b) ?? 0)))
     const maxArc = spans.length ? 0.35 * Math.max(...spans) : 30
     const top = 14
     const y0 = top + maxArc
-    const height = y0 + 12 + Math.ceil(0.71 * maxLabel) + 22
+    const height = y0 + 12 + Math.ceil((narrow ? 1 : 0.71) * maxLabel) + 22
     const path = (e: Edge) => {
       const x1 = x(e.a) ?? 0
       const x2 = x(e.b) ?? 0
@@ -282,8 +293,8 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
       // a quadratic whose peak is 0.35 × span above the line (peak = half the control offset)
       return `M${x1},${y0} Q${(x1 + x2) / 2},${y0 - 0.7 * span} ${x2},${y0}`
     }
-    return { order, x, y0, height, path }
-  }, [block, graph, w, familyRank])
+    return { order, x, y0, height, path, w: aw }
+  }, [block, graph, w, familyRank, narrow])
 
   // ---- Dendrogram: average linkage on d = 1 − |r|; a missing r counts as
   // unrelated (d = 1) rather than being dropped from the tree.
@@ -296,7 +307,7 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
     const leafH = 18
     const mt = 12
     const ml = 16
-    const mr = Math.ceil(Math.max(0, ...fields.map(labelW))) + 18
+    const mr = Math.ceil(Math.max(0, ...fields.map((f) => labelW(short(f))))) + 18
     const mb = 58
     const plotH = n * leafH
     const plotW = Math.max(200, w - ml - mr)
@@ -319,7 +330,7 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
     walk(root)
 
     return { root, xs, px, ml, mt, mr, mb, plotW, plotH, height: mt + plotH + mb, clusterOf, nClusters: k }
-  }, [block, w, cut])
+  }, [block, w, cut, narrow])
 
   // indexed directly rather than via scaleOrdinal, whose colour order would
   // depend on which cluster happened to be painted first; wraps past 10
@@ -354,7 +365,7 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
         {nSpecies < 3 ? (
           <Empty>Fewer than three species with ≥20 filters in this subset.</Empty>
         ) : view === 'Network' ? (
-          <svg width={w} height={NETWORK_HEIGHT} fontFamily={FONT.family}>
+          <svg width={nw} height={netH} fontFamily={FONT.family}>
             {graph.edges.map((e, k) => {
               const p = network.pos.get(e.a)
               const q = network.pos.get(e.b)
@@ -393,9 +404,11 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
               const f = block.fields[i]
               const r = Math.min(16, 6 + 2 * graph.degree[i])
               // label points away from the middle (out of the cluster), unless that side would leave the canvas
-              const fitsRight = p.x + r + 4 + labelW(f) <= w - 4
+              // a phone labels the well-connected species, and the rest when one of them is touched
+              if (narrow && graph.degree[i] < 3 && !(hover !== null && neighbour(i))) return null
+              const fitsRight = p.x + r + 4 + labelW(f) <= nw - 4
               const fitsLeft = p.x - r - 4 - labelW(f) >= 4
-              const right = fitsRight && (p.x >= w / 2 || !fitsLeft)
+              const right = fitsRight && (p.x >= nw / 2 || !fitsLeft)
               return (
                 <g key={`label-${i}`} opacity={(neighbour(i) ? 1 : 0.15) * famDim(i)} style={{ transition: 'opacity 0.2s' }}>
                   <text
@@ -414,7 +427,7 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
             })}
             {network.strip.length > 0 && (
               <g transform={`translate(0,${network.simH})`}>
-                <line x1={12} x2={w - 12} y1={0} y2={0} stroke={INK.grid} />
+                <line x1={12} x2={nw - 12} y1={0} y2={0} stroke={INK.grid} />
                 <text x={14} y={14} fontSize={10} fill={INK.muted}>
                   uncorrelated with everything at |r| ≥ {thresholdS}:
                 </text>
@@ -438,7 +451,7 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
             )}
           </svg>
         ) : view === 'Arc' ? (
-          <svg width={w} height={arc.height} fontFamily={FONT.family}>
+          <svg width={arc.w} height={arc.height} fontFamily={FONT.family}>
             <line x1={arc.x.range()[0]} x2={arc.x.range()[1]} y1={arc.y0} y2={arc.y0} stroke={INK.grid} />
             {graph.edges.map((e, k) => (
               <path
@@ -472,12 +485,12 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
                     <circle cx={x} cy={arc.y0} r={r} fill={familyColor(familyOf(f))} stroke="#fff" strokeWidth={1.5} />
                   )}
                   <text
-                    transform={`translate(${x},${arc.y0 + 12}) rotate(-45)`}
+                    transform={`translate(${x},${arc.y0 + 12}) rotate(${narrow ? -90 : -45})`}
                     textAnchor="end" dy="0.32em"
                     fontSize={10.5} fill={deg === 0 ? INK.muted : INK.text}
                     fontWeight={hover === i ? 600 : 400}
                   >
-                    {f}
+                    {short(f)}
                   </text>
                 </g>
               )
@@ -519,7 +532,7 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
                   >
                     <circle cx={dendro.px(l)} cy={l.x} r={4.5} fill={clusterColor(c)} stroke="#fff" strokeWidth={1} />
                     <text x={dendro.px(l) + 8} y={l.x} dy="0.32em" fontSize={10.5} fill={INK.text} fontWeight={hover === i ? 600 : 400}>
-                      {f}
+                      {short(f)}
                     </text>
                   </g>
                 )

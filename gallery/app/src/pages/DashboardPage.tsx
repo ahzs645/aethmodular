@@ -6,6 +6,7 @@ import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover
 import { DashHeader, type DashFilters, type SheetActions } from '@/components/dashboard/DashHeader'
 import { dashboardChart, dashboardCharts, startFields, STARTER, type DashboardChart, type DashboardData } from '@/components/dashboard/registry'
 import { useHeaderHeight } from '@/hooks/useSidePanel'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { ChartFit, LEGEND_MODES, TileLegend, type LegendMode } from '@/lib/chartFit'
 import { addTile, arrange, COLS, nextId, nextTileId, placeTile, removeTile, stepTile, ROWS, rowsUsed, tileKeyPrefix, updateTile, type DashState, type Scope, type Sheet, type Tile } from '@/lib/dashboard'
 import { clearScopedParams, copyScopedParams, ParamScope, useSearchParam } from '@/lib/url'
@@ -276,17 +277,7 @@ function useNear(ref: React.RefObject<HTMLElement>, lazy: boolean) {
   return near
 }
 
-function usePhone() {
-  const q = `(max-width: ${PHONE}px)`
-  const [phone, setPhone] = useState(() => window.matchMedia(q).matches)
-  useEffect(() => {
-    const m = window.matchMedia(q)
-    const on = () => setPhone(m.matches)
-    m.addEventListener('change', on)
-    return () => m.removeEventListener('change', on)
-  }, [q])
-  return phone
-}
+const usePhone = () => useMediaQuery(`(max-width: ${PHONE}px)`)
 
 /** the Add chart menu: every registered kind, under the tab it comes from */
 function ChartCatalog({ data, onPick, onClose }: { data: DashboardData; onPick: (c: DashboardChart) => void; onClose: () => void }) {

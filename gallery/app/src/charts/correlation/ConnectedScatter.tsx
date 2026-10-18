@@ -70,7 +70,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
   // a median outside the axes (negative under "From 0,0") is clipped, not drawn into the margin
   const clipId = useId()
   const MAX_SQUARE = 560
-  const availW = Math.max(240, width - MARGIN.left - MARGIN.right)
+  const availW = Math.max(200, width - MARGIN.left - MARGIN.right)
   const fit = useFitHeight()
   const innerW = Math.min(availW, fit === null ? MAX_SQUARE : Math.min(MAX_SQUARE, Math.max(140, fit - MARGIN.top - MARGIN.bottom)))
   const innerH = innerW

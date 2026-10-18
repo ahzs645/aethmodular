@@ -38,7 +38,8 @@ export function RegressionLines({ stats, x, y, domain, width, height, color, lab
   </g></g>
 }
 
-export function RegressionReadout({ stats, x = 10, y = 10, width = 280, title, color }: { stats: RegressionStats | null; x?: number; y?: number; width?: number; title?: string; color?: string }) {
+/** the readout's lines (title, n and R², each fit's equation, CIs) and its hover note, shared by the SVG box and the text form */
+function useReadout(stats: RegressionStats | null, title?: string, color?: string) {
   const { methods, showCI } = useRegressions()
   if (!stats) return null
   const fits = fitsFor(stats, methods)
@@ -53,14 +54,35 @@ export function RegressionReadout({ stats, x = 10, y = 10, width = 280, title, c
     ] : [{ text: '95% CI unavailable (data / resamples)', color: INK.muted }] : [])]
   }),
     ...(missingYork ? [{ text: 'York unavailable: check uncertainties', color: INK.muted }] : [])]
+  const note = [fits.find(f => f.method === 'york')?.assumption, ...(showCI ? fits.map(f => confidence(stats, f.method)?.description ?? 'CI unavailable: requires at least 8 pairs, 6 months per site for block resampling, and 90% valid resamples') : [])].filter(Boolean).join('; ')
+  return { lines, note }
+}
+
+export function RegressionReadout({ stats, x = 10, y = 10, width = 280, title, color }: { stats: RegressionStats | null; x?: number; y?: number; width?: number; title?: string; color?: string }) {
+  const r = useReadout(stats, title, color)
+  if (!r) return null
+  const { lines, note } = r
   // a narrow panel shrinks the monospace text to fit its box instead of letting the SVG edge clip it
   const fontSize = Math.max(8, Math.min(10.5, (width - 16) / (0.61 * Math.max(...lines.map(l => l.text.length)))))
   const step = Math.round(fontSize * 1.43)
   return <g transform={`translate(${x},${y})`} fontFamily={FONT.mono} fontSize={fontSize} pointerEvents="none">
     <rect width={width} height={lines.length * step + 12} rx={5} fill="#fff" fillOpacity={0.94} stroke={INK.border}/>
     {lines.map((l, i) => <text key={i} x={8} y={step + 3 + i * step} fill={l.color}>{l.text}</text>)}
-    <title>{[fits.find(f => f.method === 'york')?.assumption, ...(showCI ? fits.map(f => confidence(stats, f.method)?.description ?? 'CI unavailable: requires at least 8 pairs, 6 months per site for block resampling, and 90% valid resamples') : [])].filter(Boolean).join('; ')}</title>
+    <title>{note}</title>
   </g>
+}
+
+/**
+ * The same readout as text under the chart, for a phone: inside the plot the box covers points
+ * and runs off a narrow panel. Charts draw this instead of RegressionReadout when
+ * useNarrowScreen() holds (export keeps it: it is legend-row text).
+ */
+export function RegressionReadoutText({ stats, title, color }: { stats: RegressionStats | null; title?: string; color?: string }) {
+  const r = useReadout(stats, title, color)
+  if (!r) return null
+  return <p className="fit-readout legend" data-export="text" title={r.note || undefined}>
+    {r.lines.map((l, i) => <span key={i} style={{ color: l.color }}>{l.text}</span>)}
+  </p>
 }
 
 export function RegressionGroupLines({ groups, ...props }: Omit<Parameters<typeof RegressionLines>[0], 'stats' | 'color' | 'domain'> & { groups: RegressionGroup[] }) {

@@ -4,6 +4,7 @@ import { DateBrush } from '@/components/DateBrush'
 import { SitePicker } from '@/components/SitePicker'
 import type { SubsetActions, SubsetState } from '@/components/SubsetBar'
 import { useSidePanelOpen } from '@/hooks/useSidePanel'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { ROWS, SCOPES, SCOPE_LABEL, type Layout, type Scope } from '@/lib/dashboard'
 import type { FilterRow, MetaFile } from '@/lib/types'
 
@@ -50,7 +51,7 @@ export function DashHeader({ meta, filters, scope, onScope, onPickSite, layout, 
   onPresent?: () => void
 }) {
   const [, setFiltersOpen] = useSidePanelOpen()
-  const narrow = useNarrow(NARROW)
+  const narrow = useMediaQuery(`(max-width: ${NARROW}px)`)
   if (!filters) return null
   const { state: s, actions: a } = filters
   const spartan = s.siteItems.filter((x) => x.group !== 'IMPROVE')
@@ -173,17 +174,6 @@ function SheetMenu({ sheets: sh }: { sheets: SheetActions }) {
   )
 }
 
-function useNarrow(px: number) {
-  const q = `(max-width: ${px}px)`
-  const [narrow, setNarrow] = useState(() => window.matchMedia(q).matches)
-  useEffect(() => {
-    const m = window.matchMedia(q)
-    const on = () => setNarrow(m.matches)
-    m.addEventListener('change', on)
-    return () => m.removeEventListener('change', on)
-  }, [q])
-  return narrow
-}
 
 /** a header button that opens a small panel below it; a click outside (not in a picker's popup) or Esc closes it */
 function HeaderPopover({ label, title, active = false, wide = false, align = 'left', children }: {
