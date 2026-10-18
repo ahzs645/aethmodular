@@ -175,7 +175,8 @@ const EC = ['EC (FTIR)']
  * What each scope opens with before the reader changes it: a few named sheets, each laid
  * out to fill the 12 × 12 grid. One site: how it varies over time and season. Compare: the
  * crossplots that matter here, with the sites in one colour each (BC against EC is the
- * calibration question; OC, mass, potassium and dust say what kind of carbon it is), then the
+ * calibration question; OC, mass, potassium and dust say what kind of carbon it is), then what
+ * tracks EC and BC with a column per site (a Compare ranking opens side by side), then the
  * same numbers per site (cards), then the charts that set sites side by side. Network: map
  * first (a click opens a site), then the network's charts. A pair of fields this network
  * lacks falls back to the chart's own start fields.
@@ -198,6 +199,7 @@ export const STARTER: Record<Scope, { name: string; tiles: Start[] }[]> = {
       { kind: 'scatter', w: 4, h: 6, fields: ['PM2.5 mass', 'EC (FTIR)'] },
       { kind: 'scatter', w: 4, h: 6, fields: ['Potassium', 'EC (FTIR)'] }, { kind: 'scatter', w: 4, h: 6, fields: ['Silicon', 'Iron'] },
       { kind: 'corrrank', w: 4, h: 6, fields: EC }] },
+    { name: 'Side by side', tiles: [{ kind: 'corrrank', w: 6, h: 12, fields: EC }, { kind: 'corrrank', w: 6, h: 12, fields: ['HIPS BC'] }] },
     { name: 'Cards', tiles: [{ kind: 'sitecards', w: 12, h: 4 }, { kind: 'barplot', w: 6, h: 8, fields: EC }, { kind: 'ridgeline', w: 6, h: 8, fields: EC }] },
     { name: 'Charts', tiles: [...KPIS,
       { kind: 'map', w: 5, h: 5, fields: EC }, { kind: 'barplot', w: 7, h: 5, fields: EC },
