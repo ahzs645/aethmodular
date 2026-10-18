@@ -7,7 +7,8 @@ import { useChartOptions } from '@/lib/chartOptions'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { RESTATES, isBookkeeping, sameProduct } from '@/fieldLineage'
-import { fmt, regression } from '@/lib/stats'
+import { corrMatrix, fmt } from '@/lib/stats'
+import { useStableRows } from '@/lib/stable'
 import { INK, FONT } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 
@@ -89,7 +90,7 @@ function averageLinkage(dist: number[][]): Clade {
  *
  * The matrix is computed exactly as the correlogram computes it — same
  * RESTATES / sameProduct filtering, same ≥ 20 numeric values rule,
- * same regression() — so the two charts can never disagree on an r.
+ * same corrMatrix() (lib/stats) — so the two charts can never disagree on an r.
  */
 export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile }) {
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -126,30 +127,16 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
   const cut = Number(cutS)
 
   // ---- the correlation matrix, identical to Correlogram.tsx
+  // the site's rows, kept as the same array while their values are unchanged: a pick of other
+  // sites in the sidebar does not recompute this site's matrix, layout and tree (lib/stable)
+  const siteRows = useMemo(() => (effectiveSite === 'All' ? rows : rows.filter((r) => r.code === effectiveSite)), [rows, effectiveSite])
+  const sub = useStableRows(siteRows, meta.fields)
   const block = useMemo(() => {
-    const sub = effectiveSite === 'All' ? rows : rows.filter((r) => r.code === effectiveSite)
     const fields = meta.fields
       .filter((f) => !(f in RESTATES) && !isBookkeeping(f))
       .filter((f) => sub.filter((r) => typeof r[f] === 'number').length >= 20)
-    const matrix = fields.map((fa) =>
-      fields.map((fb) => {
-        if (sameProduct(fa, fb)) return null
-        const xs: number[] = []
-        const ys: number[] = []
-        for (const r of sub) {
-          const a = r[fa]
-          const b = r[fb]
-          if (typeof a === 'number' && typeof b === 'number' && Number.isFinite(a) && Number.isFinite(b)) {
-            xs.push(a)
-            ys.push(b)
-          }
-        }
-        const st = regression(xs, ys)
-        return st ? st.r : null
-      })
-    )
-    return { code: effectiveSite, fields, matrix }
-  }, [rows, effectiveSite, meta.fields])
+    return { code: effectiveSite, fields, matrix: corrMatrix(sub, fields, sameProduct) }
+  }, [sub, effectiveSite, meta.fields])
 
   // ---- families: field → measurement group label, coloured by Tableau10
   const { familyOf, familyRank } = useMemo(() => {

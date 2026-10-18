@@ -16,7 +16,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { focusStyle, useHighlight } from '@/lib/highlight'
 import { RESTATES, isBookkeeping, sameProduct } from '@/fieldLineage'
-import { fmt, regression } from '@/lib/stats'
+import { corrMatrix, fmt, regression } from '@/lib/stats'
 import { INK, FONT, inkOn } from '@/lib/theme'
 import { useColourScheme } from '@/lib/colourSchemes'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -109,23 +109,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
   // season/site/date filters above actually move these numbers.
   const block = useMemo(() => {
     const fields = chosen
-    const matrix = fields.map((fa) =>
-      fields.map((fb) => {
-        if (sameProduct(fa, fb)) return null
-        const xs: number[] = []
-        const ys: number[] = []
-        for (const r of sub) {
-          const a = r[fa]
-          const b = r[fb]
-          if (typeof a === 'number' && typeof b === 'number' && Number.isFinite(a) && Number.isFinite(b)) {
-            xs.push(a)
-            ys.push(b)
-          }
-        }
-        const st = regression(xs, ys)
-        return st ? st.r : null
-      })
-    )
+    const matrix = corrMatrix(sub, fields, sameProduct)
     const n: Record<string, number> = {}
     for (const f of fields) n[f] = sub.filter((r) => typeof r[f] === 'number').length
     const name = effectiveSite === 'All' ? 'All sites' : meta.sites.find((s) => s.code === effectiveSite)?.name ?? effectiveSite

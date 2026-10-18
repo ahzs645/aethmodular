@@ -1,10 +1,11 @@
 import { RegressionProvider, RegressionControls, parseEstimators, estimatorParam, type Estimator } from '@/lib/regressionPrefs'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useGalleryData } from '@/hooks/useGalleryData'
 import { HighlightProvider, baseFilterId, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { NO_PMF, PMF_GROUP, PMF_SOURCE, isPmfField, pmfGroups, pmfKeyByDate, pmfLabel, pmfShareFields, withPmf, type PmfScheme } from '@/lib/pmfGroups'
 import { EXPLAIN_AVAILABLE, PrefsProvider, usePrefs } from '@/lib/prefs'
 import { listParam, listToParam, readParams, writeParams } from '@/lib/url'
+import { useShared } from '@/lib/stable'
 import { Scatterplot } from '@/charts/correlation/Scatterplot'
 import { Correlogram } from '@/charts/correlation/Correlogram'
 import { AvailabilityHeatmap } from '@/charts/correlation/AvailabilityHeatmap'
@@ -205,6 +206,12 @@ const DEFAULT_FIELD = 'EC (FTIR)'
 /** the Dashboard's One site scope opens on Addis Ababa */
 const DASH_SITE = 'ETAD'
 
+/** rows of the picked sites in their site's colour (a network view's `paint`); other rows, and a
+ * row already in its colour, are kept as they are (a row is wide, so a copy is not free) */
+function paintRows(rows: FilterRow[], paint: ((site: string) => string | undefined) | undefined): FilterRow[] {
+  if (!paint) return rows
+  return rows.map((r) => { const c = paint(r.site); return c === undefined || r.color === c ? r : { ...r, color: c } })
+}
 
 export default function App() {
   const { data, error } = useGalleryData()
@@ -424,26 +431,19 @@ export default function App() {
   // The network only applies on the chart tabs; everything else always shows the focus sites.
   const net: Network = (NETWORK_TABS as readonly string[]).includes(tab) ? network : 'focus'
   const netData = useNetworkData(net, improveSites)
-  // the chosen network's sites, coloured in selection order, and its rows recoloured to match
-  const netView = useMemo(() => {
+  // the chosen network's sites, rows and fields: independent of which sites are picked, so a site
+  // pick does not rebuild (and re-join weather, PMF, units and seasons onto) every row
+  const netBase = useMemo(() => {
     if (net === 'focus' || !data) return null
     const d = netData.data
-    if (!d) return { all: [] as SiteMeta[], chosen: [] as SiteMeta[], chosenCodes: new Set<string>(), chosenNames: new Set<string>(), improveCodes: new Set<string>(), nSpartan: 0, rows: [] as FilterRow[], fields: [] as string[], field_units: {} as Record<string, string>, field_groups: [] as { label: string; fields: string[] }[], coverage: {} as Record<string, number> }
-    const sp = hasSpartan(net), im = hasImprove(net)
+    if (!d) return { sites: [] as SiteMeta[], focusCodes: [] as string[], spartanCodes: [] as string[], improveCodes: new Set<string>(), rows: [] as FilterRow[], fields: [] as string[], field_units: {} as Record<string, string>, field_groups: [] as { label: string; fields: string[] }[] }
+    const sp = hasSpartan(net)
     // SPARTAN: the four focus sites keep their filters.json rows (HIPS, FTIR groups, exclusions,
     // local calendars) and their names and colours; the other sites bring the public ChemSpec rows
     const focus = sp ? new Map(data.meta.sites.map((x) => [x.code, x])) : new Map<string, SiteMeta>()
     const sites = d.sites.map((x) => focus.get(x.code) ?? x)
     for (const f of focus.values()) if (!sites.some((x) => x.code === f.code)) sites.push(f)
     const spartanCodes = sites.filter((x) => !d.improveCodes.has(x.code)).map((x) => x.code)
-    const chosenCodes = new Set([
-      ...(sp ? (spartanSel === null ? [...focus.keys()] : spartanSel === 'all' ? spartanCodes : spartanSel) : []),
-      ...(im ? improveSites : []),
-    ])
-    let i = 0
-    const colour = new Map(sites.filter((x) => chosenCodes.has(x.code)).map((x) => [x.name, focus.get(x.code)?.color ?? networkColor(i++)]))
-    const paint = (name: string) => colour.get(name) ?? '#9aa5b1'
-    const all = sites.map((x) => ({ ...x, color: paint(x.name) }))
     // the focus sites also get the public fields filters.json does not carry (public HIPS BC, the trace
     // elements, the rest of the ions), so every axis spans every SPARTAN site; their own fields stay theirs
     const pub = new Map(d.rows.filter((r) => focus.has(r.code)).map((r) => [r.id, r]))
@@ -454,16 +454,31 @@ export default function App() {
       return Object.keys(add).length ? { ...r, ...add } : r
     })
     const rows: FilterRow[] = [...(sp ? focusWithPub : []), ...d.rows.filter((r) => !focus.has(r.code))]
-      .map((r) => ({ ...r, color: paint(r.site) }))
     const fields = sp ? [...new Set([...data.meta.fields, ...d.fields])] : d.fields
     const groups = sp ? mergeGroups(data.meta.field_groups, d.field_groups) : d.field_groups
+    return { sites, focusCodes: [...focus.keys()], spartanCodes, improveCodes: d.improveCodes, rows, fields,
+      field_units: sp ? { ...d.field_units, ...data.meta.field_units } : d.field_units, field_groups: groups }
+  }, [net, data, focusRows, netData.data])
+  // the pick on top: the chosen sites, coloured in selection order (`paint` gives a row its site's colour)
+  const netView = useMemo(() => {
+    if (!netBase) return null
+    const { sites, focusCodes, spartanCodes, rows, fields } = netBase
+    const sp = hasSpartan(net), im = hasImprove(net)
+    const chosenCodes = new Set([
+      ...(sp ? (spartanSel === null ? focusCodes : spartanSel === 'all' ? spartanCodes : spartanSel) : []),
+      ...(im ? improveSites : []),
+    ])
+    const focusColour = new Map((data?.meta.sites ?? []).map((x) => [x.code, x.color]))
+    let i = 0
+    const colour = new Map(sites.filter((x) => chosenCodes.has(x.code)).map((x) => [x.name, (sp && focusColour.get(x.code)) || networkColor(i++)]))
+    const paint = (name: string) => colour.get(name)
+    const all = sites.map((x) => ({ ...x, color: paint(x.name) ?? '#9aa5b1' }))
     const chosenNames = new Set(all.filter((x) => chosenCodes.has(x.code)).map((x) => x.name))
     // counts in the field pickers follow the exclusion toggle, like every chart (Addis: 189, not 190)
     const inChosen = rows.filter((r) => chosenNames.has(r.site) && (includeExcluded || !r.excluded))
     const coverage = Object.fromEntries(fields.map((f) => [f, inChosen.filter((r) => typeof r[f] === 'number').length]))
-    return { all, chosen: all.filter((x) => chosenCodes.has(x.code)), chosenCodes, chosenNames, improveCodes: d.improveCodes, nSpartan: spartanCodes.length,
-      rows, fields, field_units: sp ? { ...d.field_units, ...data.meta.field_units } : d.field_units, field_groups: groups, coverage }
-  }, [net, data, focusRows, netData.data, improveSites, spartanSel, includeExcluded])
+    return { ...netBase, all, chosen: all.filter((x) => chosenCodes.has(x.code)), chosenCodes, chosenNames, nSpartan: spartanCodes.length, paint, coverage }
+  }, [netBase, net, data, improveSites, spartanSel, includeExcluded])
   // the ChemSpec restatements of the FTIR carbon are never offered; a link naming one falls back
   const activeFields = (netView ? netView.fields : data?.meta.fields ?? []).filter((f) => !HIDDEN_DUPLICATES.includes(f))
   // ratios whose two fields this view has: the presets, then the reader's own (lib/viewFields)
@@ -587,7 +602,7 @@ export default function App() {
 
   // Rows after the exclusion toggle and calendar relabel — the brush draws these.
   const rawSourceRows = useMemo(() => {
-    const rows = netView ? netView.rows : focusRows
+    const rows = netBase ? netBase.rows : focusRows
     // the weather fields ride on every row, so every chart and picker can use them
     const withWeather = !weather ? rows : rows.map((r) => {
       const w = weather.rows[r.id]
@@ -595,28 +610,34 @@ export default function App() {
     })
     // so do the PMF source shares and dominant source, at the site the PMF solution covers (lib/pmfGroups)
     return withPmf(withWeather, data?.pmf ?? null, pmfScheme)
-  }, [netView, focusRows, weather, data, pmfScheme])
+  }, [netBase, focusRows, weather, data, pmfScheme])
   // the reader's view (lib/viewFields): MAC, mass per filter, ratios; the drawer keeps the exported values
   const exportMac = data?.meta.mac_value ?? 10
   const viewOpts = useMemo(() => ({
     mac: mac ?? exportMac, exportMac, basis, ratios: ratioView.all,
-    units: { ...(netView ? netView.field_units : data?.meta.field_units ?? {}), ...(weather?.field_units ?? {}), [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3' },
-  }), [mac, exportMac, basis, ratioView, netView, data, weather])
-  const sourceRows = useMemo(() => viewRows(rawSourceRows, viewOpts), [rawSourceRows, viewOpts])
+    units: { ...(netBase ? netBase.field_units : data?.meta.field_units ?? {}), ...(weather?.field_units ?? {}), [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3' },
+  }), [mac, exportMac, basis, ratioView, netBase, data, weather])
+  const plainSourceRows = useMemo(() => viewRows(rawSourceRows, viewOpts), [rawSourceRows, viewOpts])
+  // the site colours go on last, so a site pick repaints the rows without rebuilding them; the
+  // lookups, counts and drawers (colours from meta.sites) take the rows unpainted
+  const paint = netView?.paint
+  const sourceRows = plainSourceRows
+  const paintedSourceRows = useMemo(() => (tab === 'meeting' || tab === 'calibration' || tab === 'dashboard' ? paintRows(sourceRows, paint) : sourceRows), [tab, sourceRows, paint])
   // a meeting page as presented: the reader's ratios, but MAC as exported and µg/m³
   const presentOpts = useMemo(() => ({ ...viewOpts, mac: exportMac, basis: 'conc' as const }), [viewOpts, exportMac])
-  const presentRows = useMemo(() => (tab === 'meeting' && presentation === 'presented' ? viewRows(rawSourceRows, presentOpts) : sourceRows),
-    [tab, presentation, rawSourceRows, presentOpts, sourceRows])
+  const presentRows = useMemo(() => (tab === 'meeting' && presentation === 'presented' ? paintRows(viewRows(rawSourceRows, presentOpts), paint) : paintedSourceRows),
+    [tab, presentation, rawSourceRows, presentOpts, paintedSourceRows, paint])
   const sourceById = useMemo(() => new Map(sourceRows.map((r) => [r.id, r])), [sourceRows])
-  const baseRows = useMemo(() => {
+  const plainBaseRows = useMemo(() => {
     if (!data) return []
-    return sourceRows
+    return plainSourceRows
       .filter((r) => includeExcluded || !r.excluded)
       .map((r) => {
         const s = seasonForFilter(r)
         return s !== r.season ? { ...r, season: s } : r
       })
-  }, [data, sourceRows, includeExcluded, seasonForFilter])
+  }, [data, plainSourceRows, includeExcluded, seasonForFilter])
+  const baseRows = useMemo(() => paintRows(plainBaseRows, paint), [plainBaseRows, paint])
   // how many filters in view carry each ratio, for the pickers' counts and the dialog
   const inViewRows = useMemo(() => (netView ? baseRows.filter((r) => netView.chosenNames.has(r.site)) : baseRows), [baseRows, netView])
   const ratioCoverage = useMemo(() => Object.fromEntries(ratioFields.map((f) => [f, inViewRows.filter((r) => typeof r[f] === 'number').length])), [ratioFields, inViewRows])
@@ -738,6 +759,9 @@ export default function App() {
     [openId, data, rawSourceRows, seasonForFilter]
   )
 
+  // the charts' meta is rebuilt below on every render; shared with the last one, its unchanged
+  // parts keep their identity and the charts' memos hold (lib/stable)
+  const stable = useShared()
   if (error) {
     return (
       <Shell>
@@ -754,7 +778,7 @@ export default function App() {
   const { filters, meta: rawMeta, census, pmf } = data
   // Charts read meta.seasons for colours and ordering; hand them the active
   // calendar so the legends match what the subset bar says is in force.
-  const meta = { ...rawMeta, season_conventions: conventions, seasons, season_convention: activeConvention,
+  let meta = { ...rawMeta, season_conventions: conventions, seasons, season_convention: activeConvention,
     season_site: isLocal && calendarSites.length === 1 ? calendarSites[0] : undefined,
     // a network view hands the charts its own sites (the chosen ones), fields and units
     ...(netView ? { sites: netView.chosen, fields: netView.fields, field_units: netView.field_units, field_groups: netView.field_groups, coverage: netView.coverage } : {}) }
@@ -780,7 +804,7 @@ export default function App() {
   // the baseline variants are drawn but never offered in the pickers
   meta.field_units = { ...meta.field_units, [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3' }
   // the drawer compares a filter with exported reference populations, so it keeps the exported units
-  const drawerMeta = { ...meta }
+  const drawerMeta = stable('drawerMeta', { ...meta })
   // the reader's view (lib/viewFields): ratios join the pickers; µg/m³ becomes µg/filter in mass mode
   meta.fields = [...meta.fields, ...ratioFields.filter((f) => !meta.fields.includes(f))]
   meta.field_groups = [...meta.field_groups.filter((g) => g.label !== RATIO_GROUP), ...(ratioFields.length ? [{ label: RATIO_GROUP, fields: ratioFields }] : [])]
@@ -788,8 +812,9 @@ export default function App() {
   meta.coverage = { ...meta.coverage, ...ratioCoverage }
   meta.mac_value = viewOpts.mac
   meta.basis = basis
+  meta = stable('meta', meta)
   const presentMeta = presentation === 'presented'
-    ? { ...meta, field_units: viewUnits({ ...presentOpts, units: drawerMeta.field_units }), mac_value: exportMac, basis: 'conc' as const }
+    ? stable('presentMeta', { ...meta, field_units: viewUnits({ ...presentOpts, units: drawerMeta.field_units }), mac_value: exportMac, basis: 'conc' as const })
     : meta
   const eff = (f: string) => (f === 'EC (FTIR)' && ftirBaseline !== 'none' ? FTIR_VARIANT[ftirBaseline] : f)
   const xEff = eff(xField), yEff = eff(yField), fieldEff = eff(field)
@@ -929,32 +954,42 @@ export default function App() {
       onAllPmf: () => setActivePmf(null),
       onSeasonsOn: (v) => { setSeasonsOn(v); if (!v) setActiveSeasons(null) },
       onPmfOn: (v) => { setPmfOn(v); if (!v) setActivePmf(null) },
-      onToggleSite: (key) => {
+      // the sidebar ticks the box itself (SitePicker); the charts follow as a transition, which a
+      // newer click interrupts, so clicking through sites stays responsive. Updates are functional
+      // because a click can land while the previous pick is still rendering
+      onToggleSite: (key) => startTransition(() => {
         // a site belongs to one network: IMPROVE codes load per site, SPARTAN codes go in spartanSel
         if (hasImprove(net) && netView?.improveCodes.has(key)) {
           setImproveSites((cur) => cur.includes(key) ? cur.filter((c) => c !== key) : cur.length >= MAX_IMPROVE_SITES ? cur : [...cur, key])
           return
         }
-        if (hasSpartan(net)) {
-          const cur = new Set([...(netView?.chosenCodes ?? [])].filter((c) => !netView?.improveCodes.has(c)))
-          if (cur.has(key)) cur.delete(key)
-          else cur.add(key)
-          setSpartanSel(cur.size === (netView?.nSpartan ?? -1) ? 'all' : [...cur])
+        if (hasSpartan(net) && netView) {
+          const spAll = netView.all.filter((x) => !netView.improveCodes.has(x.code)).map((x) => x.code)
+          const focusCodes = data?.meta.sites.map((x) => x.code) ?? []
+          setSpartanSel((sel) => {
+            const cur = new Set(sel === null ? focusCodes : sel === 'all' ? spAll : sel)
+            if (cur.has(key)) cur.delete(key)
+            else cur.add(key)
+            return cur.size === spAll.length ? 'all' : [...cur]
+          })
           return
         }
-        const cur = new Set<string>(activeSites ?? siteNames)
-        if (cur.has(key)) cur.delete(key)
-        else cur.add(key)
-        setActiveSites(cur.size === 0 || cur.size === siteNames.length ? null : cur)
-      },
-      onAllSites: () => (hasSpartan(net) ? setSpartanSel('all') : setActiveSites(null)),
+        if (hasSpartan(net)) return
+        setActiveSites((sel) => {
+          const cur = new Set<string>(sel ?? siteNames)
+          if (cur.has(key)) cur.delete(key)
+          else cur.add(key)
+          return cur.size === 0 || cur.size === siteNames.length ? null : cur
+        })
+      }),
+      onAllSites: () => startTransition(() => (hasSpartan(net) ? setSpartanSel('all') : setActiveSites(null))),
       // "Deselect all" empties the pick: the charts show nothing until sites are chosen again
-      onClearSites: () => {
+      onClearSites: () => startTransition(() => {
         if (hasImprove(net)) setImproveSites([])
         if (hasSpartan(net)) setSpartanSel([])
         if (net === 'focus') setActiveSites(null)
-      },
-      onFocusSites: () => setSpartanSel(null),
+      }),
+      onFocusSites: () => startTransition(() => setSpartanSel(null)),
       onFtirBaseline: setFtirBaseline,
       onCustomSeasons: (v) => { setCustomSeasons(v); setActiveSeasons(null) },
       // the default calendar is left out of the link
@@ -1059,10 +1094,10 @@ export default function App() {
         </PresentationProvider>}
         {tab === 'blanks' && <BlanksPage />}
         {tab === 'baseline' && <BaselineComparisonPage mac={exportMac} demingLambda={data.calibration?.deming_lambda_mac10 ?? 1} />}
-        {tab === 'calibration' && <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={drawerMeta} galleryRows={sourceRows} galleryMeta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />}
+        {tab === 'calibration' && <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={drawerMeta} galleryRows={paintedSourceRows} galleryMeta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />}
         {tab === 'dashboard' && <DashboardPage dash={dash} setDash={setDash} filters={dashFilters} onScope={setDashScope} onPickSite={pickDashSite} display={<DisplayToggles />}
           data={{ rows, meta, axes, pmf: pmf ?? null, pmfRows, eff, defaults: { x: xField, y: yField, field }, openSite: openDashSite, pmfLabelOfDate,
-            calibration: data.calibrationRuns ? { runs: data.calibrationRuns, lambda10: data.calibration?.deming_lambda_mac10 ?? 2.96, knownIds, galleryRows: sourceRows, galleryMeta: meta, meta: drawerMeta } : null }} />}
+            calibration: data.calibrationRuns ? { runs: data.calibrationRuns, lambda10: data.calibration?.deming_lambda_mac10 ?? 2.96, knownIds, galleryRows: paintedSourceRows, galleryMeta: meta, meta: drawerMeta } : null }} />}
         <AxisFieldsProvider meta={meta} value={axisValues} set={setAxisField}>
         {tab === 'correlation' && (
           <>

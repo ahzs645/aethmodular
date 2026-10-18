@@ -23,11 +23,23 @@ export interface SiteItem {
 }
 
 /**
+ * Run `fn` once the browser has painted the current frame (the ticked box), so the charts' work
+ * starts after it rather than before. rAF then a task is the usual "yield to paint"; the timeout
+ * covers a hidden page, where rAF does not fire.
+ */
+function afterPaint(fn: () => void) {
+  let done = false
+  const run = () => { if (!done) { done = true; fn() } }
+  requestAnimationFrame(() => setTimeout(run, 0))
+  setTimeout(run, 100)
+}
+
+/**
  * Sites for the Filters sidebar: a search box that filters a scrolling checkbox list (picked
  * sites first), quick buttons (focus sites, all, none) and **Map…**, a large map dialog for
  * picking by clicking. All edit one selection. With only the four focus sites, plain chips.
  */
-export function SitePicker({ items, onToggle, onAll, onClear, onFocus, allSelected = false, chipsOnly = false, limitNote, noun = 'sites', allLabel = 'Select all' }: {
+export function SitePicker({ items: itemsIn, onToggle: toggleIn, onAll, onClear, onFocus, allSelected = false, chipsOnly = false, limitNote, noun = 'sites', allLabel = 'Select all' }: {
   items: SiteItem[]
   onToggle: (key: string) => void
   /** select every site (absent where sites load one by one, e.g. IMPROVE) */
@@ -46,6 +58,27 @@ export function SitePicker({ items, onToggle, onAll, onClear, onFocus, allSelect
 }) {
   const [mapOpen, setMapOpen] = useState(false)
   const [query, setQuery] = useState('')
+  // a click ticks the box at once (local state, a cheap render) while App applies the pick to the
+  // charts as a transition; an entry goes once the items agree, or after a while if App refused it
+  // (the IMPROVE site cap)
+  const [pending, setPending] = useState<Map<string, { on: boolean; t: number }>>(() => new Map())
+  useEffect(() => {
+    setPending((cur) => {
+      if (!cur.size) return cur
+      const now = performance.now(), byKey = new Map(itemsIn.map((it) => [it.key, it.selected]))
+      const next = new Map([...cur].filter(([k, p]) => byKey.get(k) !== p.on && now - p.t < 2000))
+      return next.size === cur.size ? cur : next
+    })
+  }, [itemsIn])
+  const items = useMemo(() => (pending.size ? itemsIn.map((it) => {
+    const p = pending.get(it.key)
+    return p && p.on !== it.selected ? { ...it, selected: p.on } : it
+  }) : itemsIn), [itemsIn, pending])
+  const onToggle = (key: string) => {
+    const it = items.find((x) => x.key === key)
+    if (it) setPending((cur) => new Map(cur).set(key, { on: !it.selected, t: performance.now() }))
+    afterPaint(() => toggleIn(key))
+  }
   const selected = items.filter((it) => it.selected)
   const mixed = new Set(items.map((it) => it.group)).size > 1
   const mapButton = <button type="button" className="btn quiet" onClick={() => setMapOpen(true)} title="Pick sites on a large map">Map…</button>
@@ -59,7 +92,7 @@ export function SitePicker({ items, onToggle, onAll, onClear, onFocus, allSelect
     <div className="site-picker">
       {chipsOnly ? (
         <div className="season-chips">
-          {onAll && <button type="button" className={`chip ${allSelected ? 'active' : ''}`} style={{ ['--chip' as string]: 'var(--ink-muted)' }} onClick={onAll}>All</button>}
+          {onAll && <button type="button" className={`chip ${allSelected ? 'active' : ''}`} style={{ ['--chip' as string]: 'var(--ink-muted)' }} onClick={() => { setPending(new Map()); onAll() }}>All</button>}
           {items.map((it) => (
             <button key={it.key} type="button" className={`chip ${it.selected ? 'active' : ''} ${it.n === 0 ? 'disabled' : ''}`}
               style={{ ['--chip' as string]: it.color }} disabled={it.n === 0} onClick={() => onToggle(it.key)}>
@@ -71,9 +104,9 @@ export function SitePicker({ items, onToggle, onAll, onClear, onFocus, allSelect
       ) : (
         <>
           <div className="site-picker-bar">
-            {onFocus && <button type="button" className="btn quiet" onClick={onFocus} title="Beijing, Delhi, JPL and Addis Ababa">Focus sites</button>}
-            {onAll && <button type="button" className="btn quiet" onClick={onAll} disabled={allSelected}>{allLabel}</button>}
-            {onClear && <button type="button" className="btn quiet" onClick={onClear} disabled={selected.length === 0}>Deselect all</button>}
+            {onFocus && <button type="button" className="btn quiet" onClick={() => { setPending(new Map()); onFocus() }} title="Beijing, Delhi, JPL and Addis Ababa">Focus sites</button>}
+            {onAll && <button type="button" className="btn quiet" onClick={() => { setPending(new Map()); onAll() }} disabled={allSelected}>{allLabel}</button>}
+            {onClear && <button type="button" className="btn quiet" onClick={() => { setPending(new Map()); onClear() }} disabled={selected.length === 0}>Deselect all</button>}
             <span className="site-picker-count">{limitNote ?? `${selected.length} of ${items.length}`}</span>
           </div>
           <div className="site-picker-bar">

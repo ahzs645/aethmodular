@@ -208,7 +208,6 @@ export function SubsetBar({
   const summary = (
     <div className="subset-summary">
       {caps.seasons && seasonsOn && !allSeasons && <span>seasons: {[...s.activeSeasons].join(', ')}</span>}
-      {caps.sites && !allSites && <span>sites: {s.network === 'focus' ? [...s.activeSites].join(', ') : s.siteItems.filter((x) => x.selected).map((x) => x.label).join(', ') || 'none'}</span>}
       {pmfOn && <span>PMF: {allPmf ? 'every source (PMF days only)' : [...(s.activePmf ?? [])].join(', ')}</span>}
       {s.dateRange && <span>{s.dateRange[0]} → {s.dateRange[1]}</span>}
       {s.includeExcluded && caps.excluded && <span>+{s.nExcluded} excluded</span>}
@@ -264,7 +263,7 @@ export function SubsetBar({
         <aside className="panel subset subset-panel" aria-label="Filters">
           <header className="subset-head">
             <strong>Filters</strong>
-            <span className="pill">{s.shown} of {s.total} {caps.datasetLabel}</span>
+            <span className="pill" title={`${s.shown} of ${s.total} ${caps.datasetLabel} in view`}>{s.shown} of {s.total}</span>
             <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 4 }}>
               {!isDefault && <button type="button" className="btn quiet" onClick={a.onReset} title="Clear every filter">Reset</button>}
               <button type="button" className="btn quiet" onClick={() => setOpen(false)} aria-label="Close filters" title="Close">✕</button>
@@ -291,6 +290,17 @@ export function SubsetBar({
             )}
             {caps.networks && (s.networkLoading || s.networkError) && <span className="method-note" style={{ display: 'block' }}>{s.networkLoading ? 'loading…' : `could not load: ${s.networkError}`}</span>}
           </Row>
+          {/* the sites belong to the network picked above, so they sit right under it */}
+          {caps.sites && (
+            <Row label="sites">
+              <SitePicker items={s.siteItems} onToggle={a.onToggleSite}
+                onAll={s.network === 'improve' ? undefined : a.onAllSites} allSelected={!!s.allSitesSelected}
+                onClear={s.network === 'focus' ? undefined : a.onClearSites}
+                chipsOnly={s.network === 'focus'} limitNote={s.siteLimitNote}
+                noun={s.network === 'improve' ? 'IMPROVE sites' : s.network === 'spartan' ? 'SPARTAN sites' : 'sites'}
+                allLabel={s.network === 'both' ? 'All SPARTAN' : 'Select all'} />
+            </Row>
+          )}
           {/* only where fits are drawn; each chart offers the fit grouping that fits its layout */}
           {caps.fits && <RegressionControls grouping={false} />}
 
@@ -358,16 +368,6 @@ export function SubsetBar({
                 onChange={(v: string) => a.onFtirBaseline!(v === 'Spline' ? 'spline' : v === 'VIBES' ? 'vibes' : 'none')}
                 title="FTIR EC with no baseline correction (the SPARTAN product), the spline (AIRSpec) baseline, or the VIBES baseline. Spline and VIBES come from the same all-IMPROVE calibration pool and exist for the Addis test set only, so other sites drop out of EC (FTIR) charts while they are chosen." />
               {s.ftirBaseline && s.ftirBaseline !== 'none' && <span className="method-note" style={{ display: 'block' }}>Addis test set only (189 gallery filters)</span>}
-            </Row>
-          )}
-          {caps.sites && (
-            <Row label="sites">
-              <SitePicker items={s.siteItems} onToggle={a.onToggleSite}
-                onAll={s.network === 'improve' ? undefined : a.onAllSites} allSelected={!!s.allSitesSelected}
-                onClear={s.network === 'focus' ? undefined : a.onClearSites}
-                chipsOnly={s.network === 'focus'} limitNote={s.siteLimitNote}
-                noun={s.network === 'improve' ? 'IMPROVE sites' : s.network === 'spartan' ? 'SPARTAN sites' : 'sites'}
-                allLabel={s.network === 'both' ? 'All SPARTAN' : 'Select all'} />
             </Row>
           )}
 

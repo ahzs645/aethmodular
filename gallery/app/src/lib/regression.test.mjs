@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { regression, york } from './stats.ts'
+import { corrMatrix, pearson, regression, york } from './stats.ts'
 import { parseEstimators, estimatorParam } from './regressionMethods.ts'
 import { fitUncertainty } from './fitUncertainty.ts'
 
@@ -64,4 +64,26 @@ test('HIPS York weights use paired per-filter uncertainty and the displayed MAC'
   assert.equal(opts.lambda, 2.96)
   const incomplete = fitUncertainty([...rows, {}], 'HIPS BC', 'EC (FTIR)', { mac_value: 10 })
   assert.equal(incomplete.sigmaX, undefined)
+})
+
+test('pearson and corrMatrix give regression()’s r, with the same nulls', () => {
+  // a seeded mix of correlated, noisy, constant and partly missing columns
+  let seed = 7
+  const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647
+  const rows = Array.from({ length: 60 }, (_, i) => {
+    const a = rand() * 10
+    return { a, b: 2 * a + rand() * 3, c: rand(), flat: 4, gap: i % 3 ? rand() : null }
+  })
+  const fields = ['a', 'b', 'c', 'flat', 'gap']
+  const m = corrMatrix(rows, fields, (x, y) => x === y)
+  for (let i = 0; i < fields.length; i++) for (let j = 0; j < fields.length; j++) {
+    if (i === j) { assert.equal(m[i][j], null); continue }
+    const both = rows.filter((r) => typeof r[fields[i]] === 'number' && typeof r[fields[j]] === 'number')
+    const xs = both.map((r) => r[fields[i]]), ys = both.map((r) => r[fields[j]])
+    const ref = regression(xs, ys)?.r ?? null
+    if (ref === null || !Number.isFinite(ref)) assert.equal(m[i][j], null, `${fields[i]}~${fields[j]}`)
+    else assert.ok(Math.abs(m[i][j] - ref) < 1e-12, `${fields[i]}~${fields[j]}: ${m[i][j]} vs ${ref}`)
+    assert.equal(pearson(xs, ys), m[i][j])
+  }
+  assert.equal(pearson([1, 2], [1, 2]), null)
 })

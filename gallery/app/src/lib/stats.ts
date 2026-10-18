@@ -133,10 +133,42 @@ export function york(xs: number[], ys: number[], sx: number[], sy: number[]): { 
   return null
 }
 
-/** Pearson correlation, NaN-safe on paired arrays. */
+/** Pearson correlation, NaN-safe on paired arrays: regression()'s r (same two-pass sums, same
+ * nulls: fewer than three pairs, or no spread), without the fit's other statistics. */
 export function pearson(xs: number[], ys: number[]): number | null {
-  const s = regression(xs, ys)
-  return s ? s.r : null
+  if (xs.length !== ys.length) return null
+  let n = 0, sx = 0, sy = 0
+  for (let i = 0; i < xs.length; i++) if (Number.isFinite(xs[i]) && Number.isFinite(ys[i])) { n++; sx += xs[i]; sy += ys[i] }
+  if (n < 3) return null
+  const mx = sx / n, my = sy / n
+  let sxx = 0, syy = 0, sxy = 0
+  for (let i = 0; i < xs.length; i++) {
+    if (!Number.isFinite(xs[i]) || !Number.isFinite(ys[i])) continue
+    const dx = xs[i] - mx, dy = ys[i] - my
+    sxx += dx * dx; syy += dy * dy; sxy += dx * dy
+  }
+  return sxx === 0 || syy === 0 ? null : sxy / Math.sqrt(sxx * syy)
+}
+
+/**
+ * The correlogram's matrix: r for every pair of fields over the rows where both are numbers,
+ * null on the diagonal's restatements (`skip`) or where r is undefined. r is symmetric, so each
+ * pair is computed once and mirrored.
+ */
+export function corrMatrix(rows: Record<string, unknown>[], fields: string[], skip: (a: string, b: string) => boolean): (number | null)[][] {
+  const cols = fields.map((f) => rows.map((r) => { const v = r[f]; return typeof v === 'number' && Number.isFinite(v) ? v : NaN }))
+  const m: (number | null)[][] = fields.map(() => fields.map(() => null))
+  const xs: number[] = [], ys: number[] = []
+  for (let i = 0; i < fields.length; i++) {
+    for (let j = i; j < fields.length; j++) {
+      if (skip(fields[i], fields[j])) continue
+      xs.length = 0; ys.length = 0
+      const a = cols[i], b = cols[j]
+      for (let k = 0; k < a.length; k++) if (a[k] === a[k] && b[k] === b[k]) { xs.push(a[k]); ys.push(b[k]) }
+      m[i][j] = m[j][i] = pearson(xs, ys)
+    }
+  }
+  return m
 }
 
 /** Five-number summary + outliers, matching matplotlib's boxplot whiskers. */
