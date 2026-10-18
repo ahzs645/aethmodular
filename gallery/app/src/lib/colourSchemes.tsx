@@ -1,16 +1,19 @@
 import * as d3 from 'd3'
 import { DIVERGING_SCHEMES, RAMP_SEQUENTIAL } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
-import { ColourSchemePicker } from '@/components/ColourSchemePicker'
+import { ColourSchemePicker, type SchemeChoice } from '@/components/ColourSchemePicker'
 
 /**
  * The colour schemes a chart can offer, and one picker for them (components/ColourSchemePicker):
  * diverging schemes for signed values (a correlogram's r), sequential ones for counts and
- * densities (a hexbin). A chart asks for its stops and gets the picker to put in its controls:
+ * densities (a hexbin). A chart asks for its stops and hands the scheme to its colour ramp, which
+ * opens the list of palettes when clicked (components/ColorLegend):
  *
  *   const colours = useColourScheme('hexbin', 'sequential')
- *   d3.scaleQuantize<string>().domain([0, max]).range(colours.stops) · controls: colours.picker
+ *   const color = d3.scaleQuantize<string>().domain([0, max]).range(colours.stops)
+ *   <ColorLegend scale={color} scheme={colours.scheme} …>
  *
+ * A chart without a ramp puts `colours.picker` (a button with the same list) in its controls.
  * The choice is kept in the URL as `<chart>.palette` / `<chart>.reverse`.
  */
 export type SchemeKind = 'diverging' | 'sequential'
@@ -44,7 +47,7 @@ export function useColourScheme(chartId: string, kind: SchemeKind, fallback = 'G
   const [rev, setRev] = useSearchParam<string>(`${chartId}.reverse`, '0', ['0', '1'])
   const reverse = rev === '1'
   const stops = schemeStops(kind, name, reverse)
-  const picker = <ColourSchemePicker kind={kind} value={name} reverse={reverse}
-    onChange={(n, r) => { setName(n); setRev(r ? '1' : '0') }} />
-  return { name, reverse, stops, picker }
+  const scheme: SchemeChoice = { kind, value: name, reverse, onChange: (n, r) => { setName(n); setRev(r ? '1' : '0') } }
+  const picker = <ColourSchemePicker {...scheme} />
+  return { name, reverse, stops, scheme, picker }
 }

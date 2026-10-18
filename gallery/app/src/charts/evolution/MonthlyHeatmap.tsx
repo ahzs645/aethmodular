@@ -156,7 +156,6 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
         <>
           <Segmented label="Cell" value={stat} options={STATS} onChange={setStat} title="Statistic across the month's filters at that site" />
           <Toggle label="Season strip" checked={seasonStrip} onChange={setSeasonStrip} title="A strip above the columns coloured by the selected season calendar" />
-          {colours.picker}
         </>
       }
     >
@@ -233,6 +232,7 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
           <div className="legend">
             <ColorLegend
               scale={color}
+              scheme={colours.scheme}
               label={stat === 'Count' ? 'filters per month' : unit}
               format={stat === 'Count' ? (v) => v.toFixed(0) : undefined}
               note={stat === 'Count' ? undefined : 'ramp spans the 2–98 % of cell values; the ends are clamped'}

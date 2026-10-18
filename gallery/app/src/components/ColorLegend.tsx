@@ -1,6 +1,8 @@
+import { useRef, useState } from 'react'
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import * as d3 from 'd3'
 import { INK, FONT } from '@/lib/theme'
+import { SchemePopover, type SchemeChoice } from '@/components/ColourSchemePicker'
 
 /**
  * Continuous colour-ramp legend — react-graph-gallery's "color legend" for a
@@ -11,6 +13,10 @@ import { INK, FONT } from '@/lib/theme'
  * Accepts any d3 scale that maps a number to a colour (sequential, linear
  * with a colour range, or quantize); the ramp is sampled from the scale
  * itself, so the legend cannot disagree with the marks.
+ *
+ * Given the chart's `scheme` (lib/colourSchemes useColourScheme), the ramp is the colour control:
+ * clicking it opens the list of palettes and the Reverse switch, so the chart needs no separate
+ * Colours button. (A span, not a <button>: the export draws the ramp and leaves buttons out.)
  */
 export function ColorLegend({
   scale,
@@ -19,6 +25,7 @@ export function ColorLegend({
   format,
   note,
   ticks = 4,
+  scheme,
 }: {
   scale: { domain(): number[]; (v: number): string }
   label?: string
@@ -27,8 +34,12 @@ export function ColorLegend({
   /** trailing caption, e.g. "white = 0" */
   note?: string
   ticks?: number
+  /** the chart's colour scheme: makes the ramp open the palette list */
+  scheme?: SchemeChoice
 }) {
   const method = useEstimator()
+  const ramp = useRef<HTMLSpanElement>(null)
+  const [open, setOpen] = useState(false)
   const dom = scale.domain()
   const lo = dom[0]
   const hi = dom[dom.length - 1]
@@ -41,23 +52,29 @@ export function ColorLegend({
   const svgH = h + 20
   // room for the end tick labels, which are centred on the ramp's edges
   const PAD = 18
+  const svg = (
+    <svg width={width + 2 * PAD} height={svgH} fontFamily={FONT.family}>
+      <g transform={`translate(${PAD},0)`}>
+        {stops.map((c, i) => (
+          <rect key={i} x={(i * width) / (n + 1)} y={0} width={width / (n + 1) + 0.5} height={h} fill={c} />
+        ))}
+        <rect x={0} y={0} width={width} height={h} fill="none" stroke={INK.border} />
+        {tickVals.map((t) => (
+          <g key={t} transform={`translate(${x(t)},${h})`}>
+            <line y2={3} stroke={INK.axis} />
+            <text y={13} textAnchor="middle" fontSize={10} fill={INK.muted}>{fmtV(t)}</text>
+          </g>
+        ))}
+      </g>
+    </svg>
+  )
   return (
     <span className="legend-item" style={{ gap: 8 }}>
       {label && <span>{label ? estimatorText(label, method) : label}</span>}
-      <svg width={width + 2 * PAD} height={svgH} fontFamily={FONT.family}>
-        <g transform={`translate(${PAD},0)`}>
-          {stops.map((c, i) => (
-            <rect key={i} x={(i * width) / (n + 1)} y={0} width={width / (n + 1) + 0.5} height={h} fill={c} />
-          ))}
-          <rect x={0} y={0} width={width} height={h} fill="none" stroke={INK.border} />
-          {tickVals.map((t) => (
-            <g key={t} transform={`translate(${x(t)},${h})`}>
-              <line y2={3} stroke={INK.axis} />
-              <text y={13} textAnchor="middle" fontSize={10} fill={INK.muted}>{fmtV(t)}</text>
-            </g>
-          ))}
-        </g>
-      </svg>
+      {scheme ? <span ref={ramp} className={`legend-ramp${open ? ' open' : ''}`} role="button" tabIndex={0} aria-haspopup="dialog" aria-expanded={open}
+        title={`Colours: ${scheme.value}${scheme.reverse ? ', reversed' : ''}. Click for other palettes`}
+        onClick={(e) => { e.stopPropagation(); setOpen(!open) }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(!open) } }}>{svg}</span> : svg}
+      {open && scheme && ramp.current && <SchemePopover anchor={ramp.current} {...scheme} onClose={() => setOpen(false)} />}
       {note && <span className="legend-note">{note}</span>}
     </span>
   )

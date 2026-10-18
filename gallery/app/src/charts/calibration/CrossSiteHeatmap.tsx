@@ -84,7 +84,6 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
         <>
           <Segmented label="Cell" value={cell} options={CELLS} onChange={setCell} />
           <Select label="Top N at Addis" value={topN} options={['5', '10', '15', '25', '40']} onChange={setTopN} />
-          {colours.picker}
         </>
       }
     >
@@ -137,6 +136,7 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
         <div className="legend">
           <ColorLegend
             scale={color}
+            scheme={colours.scheme}
             label={cell === 'Deming intercept' ? 'Test set Deming intercept (µg/m³)' : `Test set ${cell}`}
             width={200}
             ticks={cell === 'R²' ? 5 : 6}

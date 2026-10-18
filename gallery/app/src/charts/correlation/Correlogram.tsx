@@ -74,8 +74,6 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
   const o = useChartOptions('correlogram', [
     { key: 'site', label: 'Site', style: 'select', default: 'ETAD', choices: siteCodes.map((c) => ({ value: c, label: c === 'All' ? 'All sites' : meta.sites.find((s) => s.code === c)?.name ?? c })) },
     { key: 'encoding', label: 'Encoding', choices: ENCODINGS, default: 'Colour' },
-    // the matrix's colours (lib/colourSchemes, one picker); the scatter matrix colours by site instead
-    { key: 'colours', when: (c) => c.encoding !== 'Scatter matrix', node: () => colours.picker },
     // which fields: a preset or the reader's own (components/FieldMultiSelect); the scatter matrix draws the first six
     { key: 'fields', node: () => <FieldMultiSelect meta={meta} available={avail} value={chosen} preset={presetKey === 'custom' ? null : presetKey} presets={presets}
       max={encoding === 'Scatter matrix' ? SPLOM_MAX : undefined} onChange={(fs, p) => { setCustom(fs.join('|')); setPreset(p ?? 'custom') }} /> },
@@ -138,7 +136,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
     <ChartFrame
       id="correlogram"
       title="Correlogram — how the chemistry co-varies"
-      subtitle="Pearson r between species at one site; the colour scale below runs from negative to positive r (choose the colours under Colours). The in-house and ChemSpec EC feeds both report FTIR EC, so the duplicate ChemSpec carbon fields are omitted. 'Scatter matrix' shows the clouds behind a few cells, with each species' histogram on the diagonal."
+      subtitle="Pearson r between species at one site; the colour scale below runs from negative to positive r (click the scale for other colours). The in-house and ChemSpec EC feeds both report FTIR EC, so the duplicate ChemSpec carbon fields are omitted. 'Scatter matrix' shows the clouds behind a few cells, with each species' histogram on the diagonal."
       provenance="stands in for 14 correlogram + heatmap figures · react-graph-gallery.com/correlogram"
       controls={o.controls()}
     >
@@ -201,7 +199,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
           {encoding === 'Scatter matrix' ? (
             <Legend items={meta.sites.filter((s) => sub.some((r) => r.site === s.name)).map((s) => ({ label: s.name, color: s.color }))} {...lg.props} note="diagonal: histogram of the species · off-diagonal: the pair, selected regression fits, r" />
           ) : (
-            <ColorLegend scale={color} label="Pearson r" width={180} ticks={5} format={(v) => (v > 0 ? `+${v}` : String(v))} note="Repeated fields omitted: HIPS BC is Fabs ÷ MAC; ChemSpec EC/OC repeat the FTIR products" />
+            <ColorLegend scale={color} scheme={colours.scheme} label="Pearson r" width={180} ticks={5} format={(v) => (v > 0 ? `+${v}` : String(v))} note="Repeated fields omitted: HIPS BC is Fabs ÷ MAC; ChemSpec EC/OC repeat the FTIR products" />
           )}
         </div>
         {tip.node}

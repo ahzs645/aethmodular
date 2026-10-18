@@ -7,10 +7,14 @@ const Swatch = ({ stops, wide = false }: { stops: string[]; wide?: boolean }) =>
   <span className={`scheme-swatch${wide ? ' wide' : ''}`} style={{ background: `linear-gradient(90deg, ${stops.join(', ')})` }} aria-hidden />
 )
 
+/** what a colour control needs: the scheme's kind, the current palette and direction, and how to change them */
+export interface SchemeChoice { kind: SchemeKind; value: string; reverse: boolean; onChange: (name: string, reverse: boolean) => void }
+
 /**
- * The charts' one colour control (lib/colourSchemes useColourScheme): a button showing the
- * current palette, opening a list of palettes (each as a swatch, in the current direction)
- * and a Reverse switch.
+ * A colour control for a chart with no colour ramp to click (lib/colourSchemes useColourScheme):
+ * a button showing the current palette, opening a list of palettes (each as a swatch, in the
+ * current direction) and a Reverse switch. A chart with a ramp (components/ColorLegend) is given
+ * the scheme instead, and the ramp itself opens the same list.
  */
 export function ColourSchemePicker({ kind, value, reverse, onChange }: {
   kind: SchemeKind; value: string; reverse: boolean; onChange: (name: string, reverse: boolean) => void
@@ -25,19 +29,22 @@ export function ColourSchemePicker({ kind, value, reverse, onChange }: {
         <Swatch stops={schemeStops(kind, value, reverse)} />
         <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
-      {open && btn.current && <Popover anchor={btn.current} kind={kind} value={value} reverse={reverse} onChange={onChange} onClose={() => setOpen(false)} />}
+      {open && btn.current && <SchemePopover anchor={btn.current} kind={kind} value={value} reverse={reverse} onChange={onChange} onClose={() => setOpen(false)} />}
     </span>
   )
 }
 
-function Popover({ anchor, kind, value, reverse, onChange, onClose }: {
+/** the list of palettes and the Reverse switch, opened under `anchor` (the picker's button, or a legend's ramp) */
+export function SchemePopover({ anchor, kind, value, reverse, onChange, onClose }: {
   anchor: HTMLElement; kind: SchemeKind; value: string; reverse: boolean; onChange: (name: string, reverse: boolean) => void; onClose: () => void
 }) {
   const box = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
+  // under the anchor, or above it when there is no room below (a ramp at the foot of the window)
   useLayoutEffect(() => {
-    const r = anchor.getBoundingClientRect(), W = 250
-    setPos({ left: Math.max(8, Math.min(r.left, window.innerWidth - W - 8)), top: r.bottom + 4 })
+    const r = anchor.getBoundingClientRect(), W = 250, h = box.current?.offsetHeight ?? 0
+    const below = r.bottom + 4, above = r.top - 4 - h
+    setPos({ left: Math.max(8, Math.min(r.left, window.innerWidth - W - 8)), top: below + h > window.innerHeight - 8 && above >= 8 ? above : below })
   }, [anchor])
   useEffect(() => {
     const onDown = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node) && !anchor.contains(e.target as Node)) onClose() }
@@ -48,9 +55,10 @@ function Popover({ anchor, kind, value, reverse, onChange, onClose }: {
     window.addEventListener('scroll', onScroll, { passive: true, capture: true })
     return () => { document.removeEventListener('pointerdown', onDown); window.removeEventListener('keydown', onKey); window.removeEventListener('scroll', onScroll, { capture: true }) }
   }, [anchor, onClose])
-  if (!pos) return null
   return createPortal(
-    <div ref={box} className="scheme-pop" role="dialog" aria-label="Colour scheme" style={pos}>
+    <div ref={box} className="scheme-pop" role="dialog" aria-label="Colour scheme" style={pos ?? { left: 0, top: 0, visibility: 'hidden' }}
+      // React events bubble through the portal: a pick should not reach the chart the ramp sits in
+      onClick={(e) => e.stopPropagation()}>
       <div className="scheme-list" role="listbox">
         {Object.keys(SCHEMES[kind]).map((n) => (
           <button key={n} type="button" role="option" aria-selected={n === value} className={`scheme-item${n === value ? ' on' : ''}`} onClick={() => onChange(n, reverse)}>

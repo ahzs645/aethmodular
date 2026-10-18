@@ -8,6 +8,7 @@ import { FONT, INK, inkOn } from '@/lib/theme'
 import { WEATHER_VARS, spearman } from '@/lib/weather'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useColourScheme } from '@/lib/colourSchemes'
+import { ColorLegend } from '@/components/ColorLegend'
 
 const MIN_N = 10
 
@@ -48,7 +49,7 @@ export function SiteWeatherSummary({ rows, meta, field, current, onSite }: {
   const w = labelW + numW * 2 + WEATHER_VARS.length * cell, h = head + table.length * rowH + 6
 
   return (
-    <ChartFrame id="weather-sites" controls={colours.picker} title="Sites compared — which weather goes with the measurement where"
+    <ChartFrame id="weather-sites" title="Sites compared — which weather goes with the measurement where"
       subtitle={`Spearman ρ between ${field} and each weather variable over the filters' windows (ERA5), one row per site in the Filters panel's pick; blank below ${MIN_N} filters. Hover a cell for the site's mean of that variable; click a site to look at it alone.`}
       provenance="the per-site meteorology questions of addis_03_meteorology and meteorology_source_interaction, side by side">
       <div ref={wrapRef} className="chart-wrap" style={{ overflowX: 'auto' }}>
@@ -85,9 +86,7 @@ export function SiteWeatherSummary({ rows, meta, field, current, onSite }: {
         {tip.node}
       </div>
       <div className="legend">
-        <span className="legend-item"><span className="swatch square" style={{ background: colours.stops[0] }} />ρ = −1</span>
-        <span className="legend-item"><span className="swatch square" style={{ background: colours.stops[3], outline: '1px solid #ddd' }} />0</span>
-        <span className="legend-item"><span className="swatch square" style={{ background: colours.stops[6] }} />+1</span>
+        <ColorLegend scale={color} scheme={colours.scheme} label="Spearman ρ" width={160} ticks={4} format={(v) => (v > 0 ? `+${v}` : v < 0 ? `−${-v}` : '0')} />
       </div>
     </ChartFrame>
   )

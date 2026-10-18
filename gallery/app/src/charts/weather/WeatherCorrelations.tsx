@@ -9,6 +9,7 @@ import { FONT, INK, inkOn } from '@/lib/theme'
 import { WEATHER_VARS, spearman, weatherField, type WeatherSource } from '@/lib/weather'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useColourScheme } from '@/lib/colourSchemes'
+import { ColorLegend } from '@/components/ColorLegend'
 import { useFitHeight } from '@/lib/chartFit'
 import { useTileSetting } from '@/lib/url'
 
@@ -64,7 +65,7 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
     : null
 
   return (
-    <ChartFrame id="weather-correlations" controls={<>{facetPicker}{colours.picker}</>} title={`${site ? `${site.name} · ` : ''}weather × chemistry correlations, by season`}
+    <ChartFrame id="weather-correlations" controls={facetPicker} title={`${site ? `${site.name} · ` : ''}weather × chemistry correlations, by season`}
       subtitle={`Spearman ρ between each weather variable over the filter's window and each species, for every filter at the site and then within each season (blank: fewer than ${MIN_N} filters). Pooled correlations mostly follow the seasonal cycle; the per-season ones are closer to "does this weather change the day's air".`}
       provenance="meteorology_revisions R5 (seasonal correlation matrices) · meteorology_source_interaction §3 (temperature range as an inversion proxy)">
       <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 18 }}>
@@ -86,9 +87,7 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
         {tip.node}
       </div>
       <div className="legend">
-        <span className="legend-item"><span className="swatch square" style={{ background: colours.stops[0] }} />ρ = −1</span>
-        <span className="legend-item"><span className="swatch square" style={{ background: colours.stops[3], outline: '1px solid #ddd' }} />0</span>
-        <span className="legend-item"><span className="swatch square" style={{ background: colours.stops[6] }} />+1</span>
+        <ColorLegend scale={color} scheme={colours.scheme} label="Spearman ρ" width={160} ticks={4} format={(v) => (v > 0 ? `+${v}` : v < 0 ? `−${-v}` : '0')} />
         <span className="legend-item">values shown where |ρ| ≥ 0.3</span>
       </div>
     </ChartFrame>

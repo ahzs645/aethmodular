@@ -1199,7 +1199,6 @@ function GridStep({ data }: { data: MeetingData }) {
       controls={<>
         <Segmented label="Cross-validation protocol" value={CV_PROTOCOL_SHORT[mode] as any} options={[CV_PROTOCOL_SHORT.site_heldout, CV_PROTOCOL_SHORT.app] as any} onChange={(v: string) => setMode(v === CV_PROTOCOL_SHORT.app ? 'app' : 'site_heldout')} />
         <Segmented label="Cell" value={metric as any} options={METRICS} onChange={setMetric as any} />
-        {colours.picker}
         {metric !== 'CV R²' && <Segmented label="Test set (Addis) readout" value={readout as any} options={READOUTS} onChange={setReadout as any} />}
         {/* fading by CV R² is moot when the cells are already coloured by it */}
         {mode === 'site_heldout' && metric !== 'CV R²' && <Toggle label="Fade cells failing IMPROVE cross-validation R² ≥ 0.85" checked={gate} onChange={setGate} />}
@@ -1225,7 +1224,7 @@ function GridStep({ data }: { data: MeetingData }) {
           </g>
         </svg>
         <Key items={mode === 'site_heldout' && gate && metric !== 'CV R²' ? [{ label: 'no fit in the bin passes IMPROVE cross-validation R² ≥ 0.85', color: '#9aa5b1', kind: 'faded' }] : []}>
-          <ColorLegend scale={color} width={220}
+          <ColorLegend scale={color} scheme={colours.scheme} width={220}
             label={metric === 'intercept' ? `Test set (Addis) Deming intercept (µg/m³, ${readout})` : metric === 'slope' ? `Test set (Addis) Deming slope (${readout})` : 'IMPROVE cross-validation R² (calibration set)'}
             note={metric === 'intercept' ? 'white = 0' : metric === 'slope' ? 'white = 1' : undefined} />
         </Key>

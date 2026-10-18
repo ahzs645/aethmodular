@@ -6,6 +6,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { INK, FONT } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useColourScheme } from '@/lib/colourSchemes'
+import { ColorLegend } from '@/components/ColorLegend'
 import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { useFitHeight } from '@/lib/chartFit'
 
@@ -74,7 +75,6 @@ export function AvailabilityHeatmap({ rows, meta, xField, yField }: { rows: Filt
           onChange={setWhich}
           title={`x = ${xField} · y = ${yField}`}
         />
-        {colours.picker}
       </>}
     >
       <div ref={wrapRef} className="chart-wrap">
@@ -112,11 +112,9 @@ export function AvailabilityHeatmap({ rows, meta, xField, yField }: { rows: Filt
             )}
           </g>
         </svg>
+        {/* the ramp is the colour control: click it for the palettes */}
         <div className="legend">
-          <span>0 filters</span>
-          <span style={{ display: 'inline-block', width: 160, height: 10, borderRadius: 2, background: `linear-gradient(to right, ${colours.stops.join(',')})` }} />
-          <span>{maxCount}</span>
-          <span className="legend-note">counting {label}</span>
+          <ColorLegend scale={color} scheme={colours.scheme} label="filters per month" width={160} format={(v) => String(Math.round(v))} note={`counting ${label}`} />
         </div>
         {tip.node}
       </div>

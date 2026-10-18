@@ -19,7 +19,8 @@ import { focusStyle, useHighlight } from '@/lib/highlight'
 import { useFilterEdits } from '@/lib/filterEdits'
 import { inDomain, pairDomain, type AxesOpts, type PairDomain, robustDomain } from '@/lib/axes'
 import { regression, fmt, type RegressionStats } from '@/lib/stats'
-import { INK, MARGIN, FONT, RAMP_SEQUENTIAL, withUnit } from '@/lib/theme'
+import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
+import { useColourScheme } from '@/lib/colourSchemes'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { NO_PMF, PMF_SOURCE } from '@/lib/pmfGroups'
 import { useFitHeight } from '@/lib/chartFit'
@@ -36,10 +37,15 @@ const COLOR_BY = ['Site', 'Season', 'Value'] as const
 const PMF_COLOUR = 'PMF source (dominant)'
 const NO_SIZE = 'none'
 
-/** Sequential ramp over the 2–98 % bulk of a third variable, so one outlier does not wash the rest to the first colour. */
-function valueScale(values: number[]) {
+/**
+ * Sequential ramp over the 2–98 % bulk of a third variable, so one outlier does not wash the rest to the first colour.
+ * The palette's two palest stops are left out (whichever end they are at): a near-white point vanishes on the plot.
+ */
+function valueScale(values: number[], stops: string[]) {
   const [lo, hi] = robustDomain(values, 0.02, 0.98).domain
-  return d3.scaleSequential(d3.interpolateRgbBasis(RAMP_SEQUENTIAL.slice(2))).domain([lo, hi === lo ? lo + 1 : hi]).clamp(true)
+  const paleFirst = d3.lab(stops[0]).l > d3.lab(stops[stops.length - 1]).l
+  const ramp = paleFirst ? stops.slice(2) : stops.slice(0, -2)
+  return d3.scaleSequential(d3.interpolateRgbBasis(ramp)).domain([lo, hi === lo ? lo + 1 : hi]).clamp(true)
 }
 
 /**
@@ -135,7 +141,10 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   )
 
   // third variable → colour; fourth → size (sqrt, so area is proportional)
-  const cScale = useMemo(() => (colorBy === 'Value' && !pmfColouring ? valueScale(points.map((p) => p.c).filter((v): v is number => v !== null)) : null), [points, colorBy, pmfColouring])
+  // the ramp's palette (lib/colourSchemes): chosen by clicking the ramp in the legend
+  const colours = useColourScheme('scatter', 'sequential')
+  const cScale = useMemo(() => (colorBy === 'Value' && !pmfColouring ? valueScale(points.map((p) => p.c).filter((v): v is number => v !== null), colours.stops) : null),
+    [points, colorBy, pmfColouring, colours.stops.join()]) // eslint-disable-line react-hooks/exhaustive-deps
   const sScale = useMemo(() => {
     if (sizeField === NO_SIZE) return null
     const vals = points.map((p) => p.s).filter((v): v is number => v !== null && v > 0)
@@ -286,7 +295,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
         )}
         <div className="legend">
           {colorBy === 'Value' && cScale && !pmfColouring ? (
-            <ColorLegend scale={cScale} label={unitOf(colorField)} note={nNoColor > 0 ? `${nNoColor} points without ${colorField} in grey` : undefined} />
+            <ColorLegend scale={cScale} scheme={colours.scheme} label={unitOf(colorField)} note={nNoColor > 0 ? `${nNoColor} points without ${colorField} in grey` : undefined} />
           ) : (
             <Legend items={legend} hidden={hidden} onToggle={(l) => setHidden((h) => toggleIn(h, l))} onHover={setHover} highlighted={hover} note={showFit ? 'fit selection and line styles: sidebar' : undefined} />
           )}

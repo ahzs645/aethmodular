@@ -45,11 +45,10 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   // one site in view: a fit per site is the pooled fit, so it is not offered
   const oneSite = useMemo(() => new Set(pairedRows.map((r) => r.site)).size <= 1, [pairedRows])
   // one panel: every grouping applies, except a fit per site with a single site in view (it is the pooled fit)
+  // the bins' colours (lib/colourSchemes): chosen by clicking the ramp under the plot
   const colours = useColourScheme('hexbin', 'sequential')
   const o = useChartOptions('hexbin', [
     { key: 'radius', label: 'Hex radius', choices: ['8', '11', '14', '18', '24'], default: '14', style: 'select' },
-    // the bins' colours (lib/colourSchemes, the same picker as the correlogram's)
-    { key: 'colours', node: () => colours.picker },
     fitGroupingOption({ bind: [chosenGrouping, setGrouping as (v: never) => void], when: (c) => (c.estimators as number) > 0, offerSite: (c) => !c.oneSite }),
   ], { estimators: methods.length, oneSite })
   const radius = o.values.radius as string
@@ -199,7 +198,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
         )}
         {grouping === 'pooled' && methods.length > 0 && narrow && <RegressionReadoutText stats={stats} />}
         <div className="legend">
-          <ColorLegend scale={color} label="filters per hex" format={(v) => String(Math.round(v))} />
+          <ColorLegend scale={color} scheme={colours.scheme} label="filters per hex" format={(v) => String(Math.round(v))} />
         </div>
         {domain.dropped > 0 && <Note>{domain.dropped} points below zero are outside the axes and not binned; they are still in the fit.</Note>}
         {tip.node}
