@@ -167,7 +167,7 @@
    "file": "charts/correlation/Scatterplot.tsx"
   },
   {
-   "title": "Species network · arc · dendrogram — which measurements move together",
+   "title": "Species network — which measurements move together",
    "id": "species-graph",
    "component": "SpeciesGraph",
    "tab": "correlation",

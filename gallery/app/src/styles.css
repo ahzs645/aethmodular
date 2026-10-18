@@ -323,6 +323,14 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .swatch.dashed { width: 16px; height: 0; border-top: 2px dashed currentColor; background: none !important; }
 .swatch.ring { box-sizing: border-box; border: 1.5px solid currentColor; background: none !important; }
 .legend-note { color: var(--ink-muted); font-size: calc(11.5px * var(--text-scale)); }
+/* the species network's groups in words (charts/correlation/SpeciesGraph): one row per colour */
+.species-groups { display: flex; flex-direction: column; gap: 2px; padding: 6px 0 4px; font-size: calc(12px * var(--text-scale)); color: var(--ink-text); }
+.species-groups-head { color: var(--ink-muted); padding-bottom: 2px; }
+.species-group { display: grid; grid-template-columns: 10px 14px minmax(0, 1fr) auto; align-items: baseline; gap: 6px; padding: 3px 6px; border-radius: 6px; cursor: default; }
+.species-group .swatch { align-self: center; }
+.species-group:hover, .species-group.on { background: var(--accent-soft); }
+.species-group-r { color: var(--ink-muted); font-size: 0.92em; white-space: nowrap; }
+.species-alone { color: var(--ink-muted); padding: 4px 6px 0; }
 /* a colour ramp that is the chart's colour control (components/ColorLegend `scheme`): click for the palettes */
 .legend-ramp { display: inline-flex; align-items: flex-start; cursor: pointer; border-radius: 5px; padding: 3px 4px 0 0; margin: -3px -4px 0 0; transition: background 0.12s; }
 .legend-ramp::after { content: '▾'; color: var(--ink-muted); font-size: 11px; line-height: 10px; margin-left: -12px; }
@@ -891,10 +899,10 @@ html.dash-mode .app-title-row > .nav { flex: 0 0 auto; width: 84px; }
 .dash-tile:hover .tile-menu-btn, .dash-tile:focus-within .tile-menu-btn, .tile-head.open .tile-menu-btn, .dash-tile.editing .tile-menu-btn { opacity: 1; }
 .tile-menu-btn:hover, .tile-head.open .tile-menu-btn { color: var(--accent); border-color: var(--accent); }
 @media (hover: none) { .tile-menu-btn { opacity: 0.85; } }
-.tile-menu { position: absolute; top: calc(100% + 4px); right: 0; width: min(380px, 80vw); max-height: min(70vh, 520px); overflow: auto; padding: 10px;
+/* fixed to the window and placed from the ⋯ button (components/ChartFrame TileMenu), so no tile edge clips it */
+.tile-menu { position: fixed; z-index: 60; width: min(380px, calc(100vw - 16px)); max-height: min(70vh, 520px); overflow: auto; padding: 10px;
   background: var(--ink-panel); border: 1px solid var(--ink-border); border-radius: 8px; box-shadow: 0 10px 28px rgba(17, 24, 39, 0.18);
   display: flex; flex-direction: column; gap: 8px; font-size: calc(12.5px * var(--text-scale)); }
-.tile-head.up .tile-menu { top: auto; bottom: calc(100% + 4px); }
 .tile-menu-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
 .tile-menu-title strong { font-size: calc(13.5px * var(--text-scale)); }
 .tile-menu-actions { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--ink-grid); padding-bottom: 6px; }

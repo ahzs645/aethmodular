@@ -261,7 +261,9 @@ const starterSheets = (scope: Scope, data: DashboardData): Sheet[] => STARTER[sc
   name: s.name,
   tiles: arrange(s.tiles.reduce<Tile[]>((acc, t) => {
     const chart = dashboardChart(t.kind)
-    return chart ? addTile(acc, { kind: t.kind, w: t.w, h: t.h, fields: t.fields ?? startFields(chart, data) }) : acc
+    // a starter's fields where this network has them all, else the chart's own start fields
+    const known = !t.fields || data.meta.fields.length === 0 || t.fields.every((f) => data.meta.fields.includes(f))
+    return chart ? addTile(acc, { kind: t.kind, w: t.w, h: t.h, fields: (known && t.fields) || startFields(chart, data) }) : acc
   }, [])),
 }))
 

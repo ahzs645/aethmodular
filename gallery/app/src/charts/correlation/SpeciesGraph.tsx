@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { XAxis } from '@/components/Axes'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
-import { Legend, useLegend, type LegendItem } from '@/components/Legend'
+import { Legend, type LegendItem } from '@/components/Legend'
 import { useChartOptions } from '@/lib/chartOptions'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -10,16 +10,25 @@ import { RESTATES, isBookkeeping, sameProduct } from '@/fieldLineage'
 import { corrMatrix, fmt } from '@/lib/stats'
 import { useStableRows } from '@/lib/stable'
 import { INK, FONT } from '@/lib/theme'
+import { WEATHER_GROUP } from '@/lib/weather'
+import { PMF_GROUP } from '@/lib/pmfGroups'
+import { RATIO_GROUP } from '@/lib/viewFields'
 import type { FilterRow, MetaFile } from '@/lib/types'
 
-const VIEWS = ['Network', 'Arc', 'Dendrogram'] as const
+const VIEWS = ['Network', 'Tree'] as const
 const THRESHOLDS = ['0.5', '0.6', '0.7', '0.8', '0.9']
-const CUTS = ['0.2', '0.3', '0.4', '0.5']
-const NETWORK_HEIGHT = 480
-const SIGNS = ['positive r', 'negative r']
-const signLabel = (r: number) => (r > 0 ? SIGNS[0] : SIGNS[1])
+/**
+ * Which fields take part. Chemistry is the measured species; weather, the PMF factor shares
+ * (model outputs), ratios (restate their parts) and the XRF elements that repeat an ion
+ * (S beside sulfate) would otherwise make most of the lines and say little.
+ */
+const INCLUDE = ['Chemistry', 'With weather', 'Everything'] as const
+const NOT_CHEMISTRY = [WEATHER_GROUP, PMF_GROUP, RATIO_GROUP, 'Elements (XRF)', 'Sampling']
+const isWeather = (f: string) => /\((ERA5|station)\)$/.test(f)
+const NETWORK_HEIGHT = 460
+const ALONE = '#9aa5b1'
 
-/** One edge of the species graph: two field indices and the signed r between them. */
+/** One edge: two field indices and the signed r between them. */
 interface Edge {
   a: number
   b: number
@@ -40,18 +49,14 @@ interface SimLink extends d3.SimulationLinkDatum<SimNode> {
   r: number
 }
 
-/**
- * Rough pixel width of a label at 10.5 px sans. Used to size gutters and to
- * choose which side of a node a label goes, so nothing draws outside the
- * <svg> (the README's rendering invariant is checked in the browser).
- */
+/** Rough pixel width of a label at 10.5 px sans: sizes gutters and keeps labels off each other. */
 const labelW = (s: string) => s.length * 6.2
 
 /**
  * Agglomerative clustering with average linkage on a distance matrix.
  * Start with singletons; repeatedly merge the two clusters whose mean
  * pairwise distance is smallest; record that mean as the merge height.
- * n ≤ ~30 species, so the O(n³) scan is nothing.
+ * n ≤ ~60 species, so the O(n³) scan is nothing.
  */
 function averageLinkage(dist: number[][]): Clade {
   let clusters: { members: number[]; node: Clade }[] = dist.map((_, i) => ({ members: [i], node: { idx: i, height: 0 } }))
@@ -82,33 +87,32 @@ function averageLinkage(dist: number[][]): Clade {
 }
 
 /**
- * Three react-graph-gallery views over the correlogram's data. The
- * correlogram shows every pair as a cell; here only the pairs above a
- * threshold survive, as a graph, so "which species move together" is a
- * shape rather than a scan. The dendrogram uses every pair (average linkage
- * on 1 − |r|) and needs no threshold.
+ * Which measurements move together, as groups. The correlogram shows every pair as a cell;
+ * this one answers the question it raises: which species rise and fall together.
  *
- * The matrix is computed exactly as the correlogram computes it — same
- * RESTATES / sameProduct filtering, same ≥ 20 numeric values rule,
- * same corrMatrix() (lib/stats) — so the two charts can never disagree on an r.
+ * - Groups: average-linkage clustering on 1 − |r|, cut where the members' average |r| with
+ *   each other reaches the threshold. A group is two or more species; the rest have no
+ *   strong partner. Both views colour by these groups and list them under the plot.
+ * - Network: a line joins two species with |r| ≥ the threshold (thicker = stronger, dashed =
+ *   one rises as the other falls). Members of a group are pulled together.
+ * - Tree: the clustering itself (a dendrogram), cut at the same threshold.
+ *
+ * The matrix is computed exactly as the correlogram computes it — same RESTATES / sameProduct
+ * filtering, same ≥ 20 numeric values rule, same corrMatrix() (lib/stats) — so the two charts
+ * can never disagree on an r.
  */
 export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const [hover, setHover] = useState<number | null>(null)
-  // families and edge signs toggle in Network/Arc; dendrogram clusters only highlight, since
-  // dropping species would re-cut the tree and renumber every cluster
-  const lg = useLegend()
-  const cl = useLegend()
-  // a phone gets the chart at its own width: shorter forces, labels hung straight down in the
-  // arc and cut short in the dendrogram (full names on hover), a taller network to spread into
+  const [hoverGroup, setHoverGroup] = useState<number | null>(null)
+  // a phone gets the chart at its own width: shorter forces, names cut short (full on hover),
+  // and the network keeps a readable width, scrolling sideways inside the card (.chart-wrap)
   const w = Math.max(280, width)
   const narrow = w < 560
   const short = (f: string) => (narrow && f.length > 18 ? `${f.slice(0, 17)}…` : f)
-  const netH = narrow ? 540 : NETWORK_HEIGHT
-  // the network and the arc need room to be read at all: on a phone they keep a readable width
-  // and scroll sideways inside the card (.chart-wrap) instead of crushing 60-odd species into it
+  const netH = narrow ? 520 : NETWORK_HEIGHT
   const nw = narrow ? Math.max(w, 600) : w
   const k = Math.min(1, Math.max(0.45, nw / 700))
 
@@ -116,24 +120,26 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
     () => ['All', ...meta.sites.filter((s) => rows.some((r) => r.code === s.code)).map((s) => s.code)],
     [meta.sites, rows]
   )
-  // the options and when each applies (lib/chartOptions): the |r| threshold draws the network and
-  // arc edges; the dendrogram clusters every species and is cut at a distance instead
   const o = useChartOptions('species-graph', [
     { key: 'site', label: 'Site', style: 'select', default: 'ETAD', choices: siteCodes.map((c) => ({ value: c, label: c === 'All' ? 'All sites' : meta.sites.find((s) => s.code === c)?.name ?? c })) },
-    { key: 'view', label: 'View', choices: VIEWS, default: 'Network' },
-    { key: 'threshold', label: '|r| ≥', style: 'select', choices: THRESHOLDS, default: '0.7', when: (c) => c.view !== 'Dendrogram' },
-    { key: 'cut', label: 'Cut at', style: 'select', choices: CUTS, default: '0.3', when: (c) => c.view === 'Dendrogram', title: 'distance 1 − |r| at which the tree is cut into clusters' },
-    { key: 'count', node: (c) => <span className="control">
-      {nSpecies} species{c.view === 'Dendrogram' ? (dendro ? ` · ${dendro.nClusters} clusters at ${cutS}` : '') : ` · ${nEdges} edges`}
-    </span> },
+    { key: 'include', label: 'Fields', choices: INCLUDE, default: 'Chemistry',
+      title: 'Chemistry: the measured species. With weather: and the weather over each filter. Everything: also the PMF factor shares, ratios and XRF elements that repeat an ion' },
+    { key: 'view', label: 'View', choices: VIEWS, default: 'Network', title: 'Network: lines between strongly correlated species. Tree: the grouping itself (a dendrogram)' },
+    { key: 'threshold', label: 'Strong at |r| ≥', style: 'select', choices: THRESHOLDS, default: '0.7',
+      title: 'Lines join pairs at least this correlated; a group\'s members average at least this with each other' },
   ])
   const effectiveSite = o.values.site as string
+  const include = o.values.include as (typeof INCLUDE)[number]
   const view = o.values.view as (typeof VIEWS)[number]
   const thresholdS = o.values.threshold as string
-  const cutS = o.values.cut as string
-  const off = view === 'Dendrogram' ? null : lg.hidden
   const threshold = Number(thresholdS)
-  const cut = Number(cutS)
+
+  // ---- families: field → measurement group label (shown in the tooltip)
+  const familyOf = useMemo(() => {
+    const label = new Map<string, string>()
+    for (const g of meta.field_groups) for (const f of g.fields) label.set(f, g.label)
+    return (f: string) => label.get(f) ?? 'Other'
+  }, [meta.field_groups])
 
   // ---- the correlation matrix, identical to Correlogram.tsx
   // the site's rows, kept as the same array while their values are unchanged: a pick of other
@@ -141,43 +147,69 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
   const siteRows = useMemo(() => (effectiveSite === 'All' ? rows : rows.filter((r) => r.code === effectiveSite)), [rows, effectiveSite])
   const sub = useStableRows(siteRows, meta.fields)
   const block = useMemo(() => {
+    const wanted = (f: string) => {
+      if (include === 'Everything') return true
+      const fam = familyOf(f)
+      if (include === 'With weather' && (fam === WEATHER_GROUP || isWeather(f))) return true
+      return !NOT_CHEMISTRY.includes(fam) && !isWeather(f)
+    }
     const fields = meta.fields
-      .filter((f) => !(f in RESTATES) && !isBookkeeping(f))
+      .filter((f) => !(f in RESTATES) && !isBookkeeping(f) && wanted(f))
       .filter((f) => sub.filter((r) => typeof r[f] === 'number').length >= 20)
-    return { code: effectiveSite, fields, matrix: corrMatrix(sub, fields, sameProduct) }
-  }, [sub, effectiveSite, meta.fields])
+    return { fields, matrix: corrMatrix(sub, fields, sameProduct) }
+  }, [sub, meta.fields, include, familyOf])
 
-  // ---- families: field → measurement group label, coloured by Tableau10
-  const { familyOf, familyRank } = useMemo(() => {
-    const label = new Map<string, string>()
-    const rank = new Map<string, number>()
-    meta.field_groups.forEach((g, k) => {
-      rank.set(g.label, k)
-      for (const f of g.fields) label.set(f, g.label)
+  // ---- the groups: average linkage on d = 1 − |r| (a missing r counts as unrelated, d = 1),
+  // cut at 1 − threshold. Groups (≥ 2 species) are numbered top to bottom in the tree's leaf order
+  const tree = useMemo(() => {
+    const { fields, matrix } = block
+    const n = fields.length
+    if (n < 2) return null
+    const dist = matrix.map((row) => row.map((r) => (r === null ? 1 : 1 - Math.abs(r))))
+    const root = d3.hierarchy<Clade>(averageLinkage(dist), (d) => d.children)
+    const cut = 1 - threshold
+    const groupOf = new Array<number>(n).fill(-1)
+    const members: number[][] = []
+    const walk = (node: d3.HierarchyNode<Clade>) => {
+      if (!node.children || node.data.height <= cut + 1e-9) {
+        const leaves = node.leaves().map((l) => l.data.idx ?? -1)
+        if (leaves.length >= 2) {
+          for (const i of leaves) groupOf[i] = members.length
+          members.push(leaves)
+        }
+      } else node.children.forEach(walk)
+    }
+    walk(root)
+    const groups = members.map((m) => {
+      const rs: number[] = []
+      let best: { a: number; b: number; r: number } | null = null
+      for (let x = 0; x < m.length; x++) for (let y = x + 1; y < m.length; y++) {
+        const r = matrix[m[x]][m[y]]
+        if (r === null) continue
+        rs.push(Math.abs(r))
+        if (!best || Math.abs(r) > Math.abs(best.r)) best = { a: m[x], b: m[y], r }
+      }
+      return { members: m, meanR: d3.mean(rs) ?? NaN, best }
     })
-    const familyOf = (f: string) => label.get(f) ?? 'Other'
-    // 'Other' (a field in no group) sorts after every declared family
-    const familyRank = (f: string) => rank.get(familyOf(f)) ?? meta.field_groups.length
-    return { familyOf, familyRank }
-  }, [meta.field_groups])
-  const familyColor = useMemo(
-    () => d3.scaleOrdinal<string, string>(d3.schemeTableau10).domain([...meta.field_groups.map((g) => g.label), 'Other']),
-    [meta.field_groups]
-  )
+    return { root, groupOf, groups }
+  }, [block, threshold])
+
+  // indexed directly rather than via scaleOrdinal, so group 1 is always the first colour; wraps past 10
+  const groupColor = (g: number) => (g < 0 ? ALONE : d3.schemeTableau10[g % d3.schemeTableau10.length])
+  const groupOf = (i: number) => tree?.groupOf[i] ?? -1
 
   // ---- edges above the threshold, degrees, and each species' strongest partner
   const graph = useMemo(() => {
     const { fields, matrix } = block
     const n = fields.length
-    const vis = fields.map((f) => !off?.has(familyOf(f)))
     const edges: Edge[] = []
     const degree = new Array<number>(n).fill(0)
     const strongest = new Array<{ j: number; r: number } | null>(n).fill(null)
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {
         const r = matrix[i][j]
-        if (r === null || !vis[i] || !vis[j]) continue // by-construction pairs are null in the matrix
-        if (Math.abs(r) >= threshold && !off?.has(signLabel(r))) {
+        if (r === null) continue // by-construction pairs are null in the matrix
+        if (Math.abs(r) >= threshold) {
           edges.push({ a: i, b: j, r })
           degree[i]++
           degree[j]++
@@ -188,59 +220,60 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
         }
       }
     }
-    return { edges, degree, strongest, vis }
-  }, [block, threshold, off, familyOf])
+    return { edges, degree, strongest }
+  }, [block, threshold])
 
-  const widthOf = useMemo(
-    // every edge is already ≥ threshold, so widths are scaled from the
-    // threshold up rather than from 0 — otherwise all edges look the same
-    () => d3.scaleLinear().domain([threshold, 1]).range([1, 5]).clamp(true),
-    [threshold]
-  )
-  const signColor = (r: number) => (r > 0 ? INK.positive : INK.negative)
-  const touches = (e: Edge) => hover === null || e.a === hover || e.b === hover
-  const neighbour = (i: number) => hover === null || i === hover || graph.edges.some((e) => (e.a === hover && e.b === i) || (e.b === hover && e.a === i))
-  const famDim = (i: number) => (!lg.hover || SIGNS.includes(lg.hover) || lg.hover === familyOf(block.fields[i]) ? 1 : 0.15)
-  const edgeDim = (e: Edge) => (!lg.hover ? 1 : SIGNS.includes(lg.hover) ? lg.dim(signLabel(e.r)) : famDim(e.a) === 1 || famDim(e.b) === 1 ? 1 : 0.15)
+  // every edge is already ≥ threshold, so widths are scaled from the threshold up
+  const widthOf = useMemo(() => d3.scaleLinear().domain([threshold, 1]).range([1, 5]).clamp(true), [threshold])
+
+  // what is lit: a hovered species and its partners, or a hovered group's members
+  const isPartner = (i: number) => graph.edges.some((e) => (e.a === hover && e.b === i) || (e.b === hover && e.a === i))
+  const lit = (i: number) =>
+    hoverGroup !== null ? groupOf(i) === hoverGroup : hover === null || i === hover || isPartner(i)
+  const edgeLit = (e: Edge) =>
+    hoverGroup !== null ? groupOf(e.a) === hoverGroup && groupOf(e.b) === hoverGroup : hover === null || e.a === hover || e.b === hover
+  const groupName = (g: number) => (g < 0 ? 'no group' : `group ${g + 1}`)
 
   const nodeTip = (i: number): string[] => {
     const s = graph.strongest[i]
+    const g = groupOf(i)
     return [
       block.fields[i],
-      familyOf(block.fields[i]),
+      `${familyOf(block.fields[i])} · ${g < 0 ? `in no group at |r| ≥ ${thresholdS}` : groupName(g)}`,
       `${graph.degree[i]} partner${graph.degree[i] === 1 ? '' : 's'} at |r| ≥ ${thresholdS}`,
       s ? `strongest: ${block.fields[s.j]} · r = ${fmt(s.r, 3)}` : 'no correlated partner',
     ]
   }
+  const edgeTip = (e: Edge) => [`${block.fields[e.a]} — ${block.fields[e.b]}`,
+    `r = ${fmt(e.r, 3)} · R² = ${fmt(e.r * e.r, 3)}`, e.r > 0 ? 'rise and fall together' : 'one rises as the other falls']
 
-  // ---- Network: run the force layout to completion synchronously so the
-  // positions are deterministic and there is no animation loop to manage.
+  // ---- Network: run the force layout to completion synchronously so the positions are
+  // deterministic and there is no animation loop. Species with no partner are listed under the
+  // plot instead of floating as loose dots.
   const network = useMemo(() => {
     const { fields } = block
-    const isolated = fields.map((_, i) => i).filter((i) => graph.vis[i] && graph.degree[i] === 0)
     const connected = fields.map((_, i) => i).filter((i) => graph.degree[i] > 0)
-
-    // Species with no edges sit in a strip at the bottom, wrapped into rows
-    // as needed, so the reader sees what is uncorrelated at this threshold
-    // without them drifting off-canvas under forceManyBody.
-    const strip: { i: number; x: number; row: number }[] = []
-    let sx = 14
-    let row = 0
-    for (const i of isolated) {
-      const need = 12 + labelW(fields[i]) + 18
-      if (sx + need > nw - 12 && sx > 14) {
-        sx = 14
-        row++
-      }
-      strip.push({ i, x: sx + 6, row })
-      sx += need
-    }
-    const stripH = isolated.length ? 30 + (row + 1) * 20 : 0
-    const simH = netH - stripH
-
     const nodes: SimNode[] = connected.map((i) => ({ i }))
     const index = new Map(connected.map((i, k) => [i, k]))
     const links: SimLink[] = graph.edges.map((e) => ({ source: index.get(e.a)!, target: index.get(e.b)!, r: e.r }))
+    const gOf = tree?.groupOf ?? []
+    // a group's members drift toward the group's middle, so each group reads as one patch of colour
+    const pullTogether = (alpha: number) => {
+      const mid = new Map<number, { x: number; y: number; n: number }>()
+      for (const nd of nodes) {
+        const g = gOf[nd.i] ?? -1
+        if (g < 0) continue
+        const m = mid.get(g) ?? { x: 0, y: 0, n: 0 }
+        m.x += nd.x ?? 0; m.y += nd.y ?? 0; m.n++
+        mid.set(g, m)
+      }
+      for (const nd of nodes) {
+        const m = mid.get(gOf[nd.i] ?? -1)
+        if (!m) continue
+        nd.vx = (nd.vx ?? 0) + (m.x / m.n - (nd.x ?? 0)) * 0.12 * alpha
+        nd.vy = (nd.vy ?? 0) + (m.y / m.n - (nd.y ?? 0)) * 0.12 * alpha
+      }
+    }
     const sim = d3
       .forceSimulation<SimNode>(nodes)
       .force(
@@ -248,310 +281,220 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
         d3
           .forceLink<SimNode, SimLink>(links)
           // strongest pairs sit closest: (1 − |r|) rescaled over the visible range
-          .distance((l) => k * (70 + 110 * ((1 - Math.abs(l.r)) / Math.max(0.05, 1 - threshold))))
+          .distance((l) => k * (60 + 100 * ((1 - Math.abs(l.r)) / Math.max(0.05, 1 - threshold))))
+          // a line between two groups pulls less than one inside a group
+          .strength((l) => ((gOf[(l.source as SimNode).i] ?? -1) >= 0 && gOf[(l.source as SimNode).i] === gOf[(l.target as SimNode).i] ? 0.7 : 0.15))
       )
-      .force('charge', d3.forceManyBody().strength(-260 * k))
-      .force('center', d3.forceCenter(nw / 2, simH / 2))
-      // a weak pull to the middle keeps small disconnected clusters (sulfate–ammonium,
-      // lead–zinc) on the canvas instead of flung to an edge and clamped there
-      .force('x', d3.forceX<SimNode>(nw / 2).strength(0.03))
-      .force('y', d3.forceY<SimNode>(simH / 2).strength(0.06))
-      // collide on the node plus part of its label, so names do not stack on each other
-      .force('collide', d3.forceCollide<SimNode>((n) => 14 + labelW(fields[n.i]) * 0.35 * k).iterations(2))
+      .force('charge', d3.forceManyBody().strength(-240 * k))
+      .force('center', d3.forceCenter(nw / 2, netH / 2))
+      // a weak pull to the middle keeps small separate groups on the canvas instead of flung to an edge
+      .force('x', d3.forceX<SimNode>(nw / 2).strength(0.04))
+      .force('y', d3.forceY<SimNode>(netH / 2).strength(0.07))
+      .force('group', pullTogether)
+      .force('collide', d3.forceCollide<SimNode>((n) => 14 + labelW(fields[n.i]) * 0.3 * k).iterations(2))
       .stop()
-    for (let k = 0; k < 300; k++) sim.tick()
+    for (let t = 0; t < 300; t++) sim.tick()
 
     // clamp into the box: the invariant check flags any circle past the edge
     const pad = 18
     const pos = new Map<number, { x: number; y: number }>()
-    for (const n of nodes) pos.set(n.i, { x: Math.max(pad, Math.min(nw - pad, n.x ?? 0)), y: Math.max(pad, Math.min(simH - pad, n.y ?? 0)) })
-    return { pos, strip, stripH, simH }
-  }, [block, graph, nw, threshold, netH, k])
+    for (const n of nodes) pos.set(n.i, { x: Math.max(pad, Math.min(nw - pad, n.x ?? 0)), y: Math.max(pad, Math.min(netH - pad, n.y ?? 0)) })
 
-  // ---- Arc: nodes on a line ordered by family then name; arc height ∝ span
-  const arc = useMemo(() => {
-    const order = block.fields
-      .map((_, i) => i)
-      .filter((i) => graph.vis[i])
-      .sort((i, j) => familyRank(block.fields[i]) - familyRank(block.fields[j]) || block.fields[i].localeCompare(block.fields[j]))
-    const maxLabel = Math.max(0, ...block.fields.map((f) => labelW(short(f))))
-    // labels hang down-left at 45°, so they need ~0.71 × their length both ways; on a phone they
-    // hang straight down and need no room to the side
-    const ml = narrow ? 14 : Math.ceil(0.71 * maxLabel) + 14
-    const mr = 16
-    const aw = narrow ? Math.max(w, ml + mr + 14 * order.length) : w
-    const x = d3.scalePoint<number>().domain(order).range([ml, aw - mr])
-    const spans = graph.edges.map((e) => Math.abs((x(e.a) ?? 0) - (x(e.b) ?? 0)))
-    const maxArc = spans.length ? 0.35 * Math.max(...spans) : 30
-    const top = 14
-    const y0 = top + maxArc
-    const height = y0 + 12 + Math.ceil((narrow ? 1 : 0.71) * maxLabel) + 22
-    const path = (e: Edge) => {
-      const x1 = x(e.a) ?? 0
-      const x2 = x(e.b) ?? 0
-      const span = Math.abs(x2 - x1)
-      // a quadratic whose peak is 0.35 × span above the line (peak = half the control offset)
-      return `M${x1},${y0} Q${(x1 + x2) / 2},${y0 - 0.7 * span} ${x2},${y0}`
+    // labels: the best-connected species first, each on the side away from the middle when that
+    // fits, and none drawn over an earlier one (the rest show when their species is hovered)
+    const placed: { x0: number; x1: number; y0: number; y1: number }[] = []
+    const label = new Map<number, { x: number; anchor: 'start' | 'end' }>()
+    const order = [...pos.keys()].sort((a, b) => graph.degree[b] - graph.degree[a])
+    for (const i of order) {
+      const p = pos.get(i)!
+      const r = nodeR(graph.degree[i])
+      const lw = labelW(short(fields[i]))
+      const sides: ('start' | 'end')[] = p.x >= nw / 2 ? ['start', 'end'] : ['end', 'start']
+      for (const side of sides) {
+        const x0 = side === 'start' ? p.x + r + 4 : p.x - r - 4 - lw
+        const box = { x0, x1: x0 + lw, y0: p.y - 7, y1: p.y + 7 }
+        if (box.x0 < 2 || box.x1 > nw - 2) continue
+        if (placed.some((q) => box.x0 < q.x1 && box.x1 > q.x0 && box.y0 < q.y1 && box.y1 > q.y0)) continue
+        placed.push(box)
+        label.set(i, { x: side === 'start' ? p.x + r + 4 : p.x - r - 4, anchor: side })
+        break
+      }
     }
-    return { order, x, y0, height, path, w: aw }
-  }, [block, graph, w, familyRank, narrow])
+    const alone = fields.map((_, i) => i).filter((i) => graph.degree[i] === 0)
+    return { pos, label, alone }
+  }, [block, graph, tree, nw, threshold, netH, k, narrow]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ---- Dendrogram: average linkage on d = 1 − |r|; a missing r counts as
-  // unrelated (d = 1) rather than being dropped from the tree.
+  // ---- Tree: d3.cluster gives the vertical spread; the horizontal position is the merge
+  // height, so the axis reads 1 − |r|
   const dendro = useMemo(() => {
-    const { fields, matrix } = block
-    const n = fields.length
-    if (n < 2) return null
-    const dist = matrix.map((row) => row.map((r) => (r === null ? 1 : 1 - Math.abs(r))))
-    const root = d3.hierarchy<Clade>(averageLinkage(dist), (d) => d.children)
+    if (!tree) return null
+    const n = block.fields.length
     const leafH = 18
-    const mt = 12
+    const mt = 22
     const ml = 16
-    const mr = Math.ceil(Math.max(0, ...fields.map((f) => labelW(short(f))))) + 18
+    const mr = Math.ceil(Math.max(0, ...block.fields.map((f) => labelW(short(f))))) + 18
     const mb = 58
     const plotH = n * leafH
     const plotW = Math.max(200, w - ml - mr)
-    // d3.cluster gives the vertical spread; the horizontal position is
-    // overridden with the merge height so the x axis reads 1 − |r|.
-    d3.cluster<Clade>().size([plotH, plotW]).separation(() => 1)(root)
+    d3.cluster<Clade>().size([plotH, plotW]).separation(() => 1)(tree.root)
     const xs = d3.scaleLinear().domain([1, 0]).range([0, plotW])
     const px = (d: d3.HierarchyNode<Clade>) => xs(d.data.height)
-
-    // clusters at the cut: every subtree whose merge height ≤ cut is one
-    // cluster, numbered top to bottom so colours read in leaf order
-    const clusterOf = new Map<number, number>()
-    let k = 0
-    const walk = (node: d3.HierarchyNode<Clade>) => {
-      if (!node.children || node.data.height <= cut) {
-        for (const l of node.leaves()) clusterOf.set(l.data.idx ?? -1, k)
-        k++
-      } else node.children.forEach(walk)
-    }
-    walk(root)
-
-    return { root, xs, px, ml, mt, mr, mb, plotW, plotH, height: mt + plotH + mb, clusterOf, nClusters: k }
-  }, [block, w, cut, narrow])
-
-  // indexed directly rather than via scaleOrdinal, whose colour order would
-  // depend on which cluster happened to be painted first; wraps past 10
-  const clusterColor = (c: number) => d3.schemeTableau10[c % d3.schemeTableau10.length]
-
-  const familiesPresent = useMemo(() => {
-    const seen = new Set(block.fields.map(familyOf))
-    return [...meta.field_groups.map((g) => g.label), 'Other'].filter((l) => seen.has(l))
-  }, [block.fields, familyOf, meta.field_groups])
-
-  const legendItems: LegendItem[] =
-    view === 'Dendrogram' && dendro
-      ? d3.range(dendro.nClusters).map((c) => ({ label: `cluster ${c + 1}`, color: clusterColor(c), shape: 'dot' as const }))
-      : [
-          ...familiesPresent.map((l) => ({ label: l, color: familyColor(l), shape: 'dot' as const })),
-          { label: 'positive r', color: INK.positive, shape: 'line' as const },
-          { label: 'negative r', color: INK.negative, shape: 'line' as const },
-        ]
+    return { xs, px, ml, mt, plotW, plotH, height: mt + plotH + mb }
+  }, [tree, block, w, narrow]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const nSpecies = block.fields.length
-  const nEdges = graph.edges.length
+  const groups = tree?.groups ?? []
+  const nGrouped = groups.reduce((s, g) => s + g.members.length, 0)
+  const anyNegative = graph.edges.some((e) => e.r < 0)
+  const siteName = effectiveSite === 'All' ? 'all sites' : meta.sites.find((s) => s.code === effectiveSite)?.name ?? effectiveSite
+  const edgeKey: LegendItem[] = [
+    { label: 'rise and fall together', color: INK.axis, shape: 'line' },
+    ...(anyNegative ? [{ label: 'one rises as the other falls', color: INK.negative, shape: 'dashed' as const }] : []),
+  ]
 
   return (
     <ChartFrame
       id="species-graph"
-      title="Species network · arc · dendrogram — which measurements move together"
-      subtitle="The correlogram above shows every retained pair as a cell; this shows pairs above a threshold as a graph — line colour is the sign of r, line width its strength, node colour the measurement family. The dendrogram groups species by average-linkage clustering on 1 − |r|. Duplicate ChemSpec FTIR carbon fields are omitted from both views. Hover a species to isolate its partners."
-      provenance="react-graph-gallery.com/network-chart · /arc-diagram · /dendrogram · not in the estate (0 flow figures)"
-      controls={o.controls()}
+      title="Species network — which measurements move together"
+      subtitle="Each dot is a measurement. A line joins two that rise and fall together from filter to filter (|r| at or above the threshold; thicker is stronger). Dots of one colour form a group: species whose correlations with each other average at least the threshold, listed under the plot. Grey dots have a partner or two but belong to no group. 'Tree' shows the same grouping as a dendrogram. Hover a dot or a group to pick it out."
+      provenance="react-graph-gallery.com/network-chart · /dendrogram · groups: average-linkage clustering on 1 − |r|"
+      controls={<>{o.controls()}<span className="control hint">{nSpecies} species · {groups.length} group{groups.length === 1 ? '' : 's'}</span></>}
     >
       <div ref={wrapRef} className="chart-wrap">
-        {nSpecies < 3 ? (
+        {nSpecies < 3 || !tree ? (
           <Empty>Fewer than three species with ≥20 filters in this subset.</Empty>
         ) : view === 'Network' ? (
+          network.pos.size === 0 ? <Empty>No pair reaches |r| ≥ {thresholdS} here; try a lower threshold.</Empty> : (
           <svg width={nw} height={netH} fontFamily={FONT.family}>
-            {graph.edges.map((e, k) => {
+            {graph.edges.map((e, n) => {
               const p = network.pos.get(e.a)
               const q = network.pos.get(e.b)
               if (!p || !q) return null
+              const inside = groupOf(e.a) >= 0 && groupOf(e.a) === groupOf(e.b)
               return (
                 <line
-                  key={k}
+                  key={n}
                   x1={p.x} y1={p.y} x2={q.x} y2={q.y}
-                  stroke={signColor(e.r)}
+                  stroke={e.r < 0 ? INK.negative : inside ? groupColor(groupOf(e.a)) : INK.axis}
+                  strokeDasharray={e.r < 0 ? '5 3' : undefined}
                   strokeWidth={widthOf(Math.abs(e.r))}
-                  strokeOpacity={(touches(e) ? 0.7 : 0.15) * edgeDim(e)}
+                  strokeOpacity={edgeLit(e) ? (inside ? 0.6 : 0.35) : 0.06}
                   style={{ transition: 'stroke-opacity 0.2s' }}
-                  onMouseEnter={(ev) => tip.show(ev, [`${block.fields[e.a]} — ${block.fields[e.b]}`, `r = ${fmt(e.r, 3)} · R² = ${fmt(e.r * e.r, 3)}`])}
+                  onMouseEnter={(ev) => tip.show(ev, edgeTip(e))}
                   onMouseLeave={tip.hide}
                 />
               )
             })}
-            {[...network.pos.entries()].map(([i, p]) => {
-              const f = block.fields[i]
-              const r = Math.min(16, 6 + 2 * graph.degree[i])
-              const on = neighbour(i)
-              return (
-                <g
-                  key={i}
-                  opacity={(on ? 1 : 0.15) * famDim(i)}
-                  style={{ transition: 'opacity 0.2s', cursor: 'default' }}
-                  onMouseEnter={(ev) => { setHover(i); tip.show(ev, nodeTip(i)) }}
-                  onMouseLeave={() => { setHover(null); tip.hide() }}
-                >
-                  <circle cx={p.x} cy={p.y} r={r} fill={familyColor(familyOf(f))} stroke="#fff" strokeWidth={1.5} />
-                </g>
-              )
-            })}
-            {/* labels in their own pass, above every node, so no circle paints over a name */}
-            {[...network.pos.entries()].map(([i, p]) => {
-              const f = block.fields[i]
-              const r = Math.min(16, 6 + 2 * graph.degree[i])
-              // label points away from the middle (out of the cluster), unless that side would leave the canvas
-              // a phone labels the well-connected species, and the rest when one of them is touched
-              if (narrow && graph.degree[i] < 3 && !(hover !== null && neighbour(i))) return null
-              const fitsRight = p.x + r + 4 + labelW(f) <= nw - 4
-              const fitsLeft = p.x - r - 4 - labelW(f) >= 4
-              const right = fitsRight && (p.x >= nw / 2 || !fitsLeft)
-              return (
-                <g key={`label-${i}`} opacity={(neighbour(i) ? 1 : 0.15) * famDim(i)} style={{ transition: 'opacity 0.2s' }}>
-                  <text
-                    x={right ? p.x + r + 4 : p.x - r - 4}
-                    y={p.y} dy="0.32em"
-                    textAnchor={right ? 'start' : 'end'}
-                    fontSize={10.5} fill={INK.text}
-                    fontWeight={hover === i ? 600 : 400}
-                    stroke="#fff" strokeWidth={3} paintOrder="stroke"
-                    pointerEvents="none"
-                  >
-                    {f}
-                  </text>
-                </g>
-              )
-            })}
-            {network.strip.length > 0 && (
-              <g transform={`translate(0,${network.simH})`}>
-                <line x1={12} x2={nw - 12} y1={0} y2={0} stroke={INK.grid} />
-                <text x={14} y={14} fontSize={10} fill={INK.muted}>
-                  uncorrelated with everything at |r| ≥ {thresholdS}:
-                </text>
-                {network.strip.map(({ i, x, row }) => {
-                  const f = block.fields[i]
-                  const y = 30 + row * 20
-                  return (
-                    <g
-                      key={i}
-                      opacity={(hover === null || hover === i ? 1 : 0.15) * famDim(i)}
-                      style={{ cursor: 'default' }}
-                      onMouseEnter={(ev) => { setHover(i); tip.show(ev, nodeTip(i)) }}
-                      onMouseLeave={() => { setHover(null); tip.hide() }}
-                    >
-                      <circle cx={x} cy={y} r={6} fill="#fff" stroke={INK.neutral} strokeWidth={2} />
-                      <text x={x + 10} y={y} dy="0.32em" fontSize={10.5} fill={INK.muted}>{f}</text>
-                    </g>
-                  )
-                })}
-              </g>
-            )}
-          </svg>
-        ) : view === 'Arc' ? (
-          <svg width={arc.w} height={arc.height} fontFamily={FONT.family}>
-            <line x1={arc.x.range()[0]} x2={arc.x.range()[1]} y1={arc.y0} y2={arc.y0} stroke={INK.grid} />
-            {graph.edges.map((e, k) => (
-              <path
-                key={k}
-                d={arc.path(e)}
-                fill="none"
-                stroke={signColor(e.r)}
-                strokeWidth={widthOf(Math.abs(e.r))}
-                strokeOpacity={(touches(e) ? 0.65 : 0.12) * edgeDim(e)}
-                style={{ transition: 'stroke-opacity 0.2s' }}
-                onMouseEnter={(ev) => tip.show(ev, [`${block.fields[e.a]} — ${block.fields[e.b]}`, `r = ${fmt(e.r, 3)} · R² = ${fmt(e.r * e.r, 3)}`])}
-                onMouseLeave={tip.hide}
+            {[...network.pos.entries()].map(([i, p]) => (
+              <circle
+                key={i}
+                cx={p.x} cy={p.y} r={nodeR(graph.degree[i])}
+                fill={groupColor(groupOf(i))} stroke="#fff" strokeWidth={1.5}
+                opacity={lit(i) ? 1 : 0.15}
+                style={{ transition: 'opacity 0.2s', cursor: 'default' }}
+                onMouseEnter={(ev) => { setHover(i); tip.show(ev, nodeTip(i)) }}
+                onMouseLeave={() => { setHover(null); tip.hide() }}
               />
             ))}
-            {arc.order.map((i) => {
+            {/* labels in their own pass, above every node; a hovered species and its partners always show theirs */}
+            {[...network.pos.entries()].map(([i, p]) => {
               const f = block.fields[i]
-              const x = arc.x(i) ?? 0
-              const deg = graph.degree[i]
-              const r = Math.min(12, 5 + deg)
+              const r = nodeR(graph.degree[i])
+              const forced = (hover !== null && (i === hover || isPartner(i))) || (hoverGroup !== null && groupOf(i) === hoverGroup)
+              const at = network.label.get(i) ?? (forced ? (p.x + r + 4 + labelW(f) <= nw - 4 ? { x: p.x + r + 4, anchor: 'start' as const } : { x: p.x - r - 4, anchor: 'end' as const }) : null)
+              if (!at) return null
               return (
-                <g
-                  key={i}
-                  opacity={(neighbour(i) ? 1 : 0.15) * famDim(i)}
-                  style={{ transition: 'opacity 0.2s', cursor: 'default' }}
-                  onMouseEnter={(ev) => { setHover(i); tip.show(ev, nodeTip(i)) }}
-                  onMouseLeave={() => { setHover(null); tip.hide() }}
+                <text
+                  key={`label-${i}`}
+                  x={at.x} y={p.y} dy="0.32em"
+                  textAnchor={at.anchor}
+                  fontSize={10.5} fill={INK.text}
+                  fontWeight={hover === i ? 600 : 400}
+                  stroke="#fff" strokeWidth={3} paintOrder="stroke"
+                  opacity={lit(i) ? 1 : 0.15}
+                  style={{ transition: 'opacity 0.2s' }}
+                  pointerEvents="none"
                 >
-                  {deg === 0 ? (
-                    <circle cx={x} cy={arc.y0} r={5} fill="#fff" stroke={INK.neutral} strokeWidth={2} />
-                  ) : (
-                    <circle cx={x} cy={arc.y0} r={r} fill={familyColor(familyOf(f))} stroke="#fff" strokeWidth={1.5} />
-                  )}
-                  <text
-                    transform={`translate(${x},${arc.y0 + 12}) rotate(${narrow ? -90 : -45})`}
-                    textAnchor="end" dy="0.32em"
-                    fontSize={10.5} fill={deg === 0 ? INK.muted : INK.text}
-                    fontWeight={hover === i ? 600 : 400}
-                  >
-                    {short(f)}
-                  </text>
-                </g>
+                  {forced ? f : short(f)}
+                </text>
               )
             })}
-          </svg>
+          </svg>)
         ) : dendro ? (
           <svg width={w} height={dendro.height} fontFamily={FONT.family}>
             <g transform={`translate(${dendro.ml},${dendro.mt})`}>
-              {/* right-angled links: out from the parent's height, then across to the child's */}
-              {dendro.root.links().map((l, k) => (
-                <path
-                  key={k}
-                  d={`M${dendro.px(l.source)},${l.source.x} V${l.target.x} H${dendro.px(l.target)}`}
-                  fill="none"
-                  stroke={INK.axis}
-                  strokeWidth={1}
-                />
-              ))}
-              <line
-                x1={dendro.xs(cut)} x2={dendro.xs(cut)} y1={0} y2={dendro.plotH}
-                stroke={INK.muted} strokeDasharray="4 3"
-              />
-              <text x={dendro.xs(cut) + 4} y={10} fontSize={10} fill={INK.muted}>cut {cutS}</text>
-              {dendro.root.leaves().map((l) => {
+              {/* right-angled links: out from the parent's height, then across to the child's;
+                  a link inside a group takes the group's colour */}
+              {tree.root.links().map((l, n) => {
+                const g = l.target.leaves().map((x) => groupOf(x.data.idx ?? -1))
+                const one = g.every((x) => x >= 0 && x === g[0]) && l.source.data.height <= 1 - threshold + 1e-9 ? g[0] : -1
+                return (
+                  <path
+                    key={n}
+                    d={`M${dendro.px(l.source)},${l.source.x} V${l.target.x} H${dendro.px(l.target)}`}
+                    fill="none"
+                    stroke={one >= 0 ? groupColor(one) : INK.axis}
+                    strokeWidth={one >= 0 ? 1.6 : 1}
+                    opacity={hoverGroup === null || one === hoverGroup ? 1 : 0.25}
+                  />
+                )
+              })}
+              <line x1={dendro.xs(1 - threshold)} x2={dendro.xs(1 - threshold)} y1={-6} y2={dendro.plotH} stroke={INK.muted} strokeDasharray="4 3" />
+              <text x={dendro.xs(1 - threshold)} y={-10} textAnchor="middle" fontSize={10} fill={INK.muted}>groups cut at |r| ≥ {thresholdS}</text>
+              {tree.root.leaves().map((l) => {
                 const i = l.data.idx ?? -1
                 const f = block.fields[i]
-                const c = dendro.clusterOf.get(i) ?? 0
-                const s = graph.strongest[i]
                 return (
                   <g
                     key={i}
-                    opacity={cl.dim(`cluster ${c + 1}`)}
+                    opacity={lit(i) ? 1 : 0.25}
                     style={{ cursor: 'default' }}
-                    onMouseEnter={(ev) => {
-                      setHover(i)
-                      tip.show(ev, [f, familyOf(f), `cluster ${c + 1} at cut ${cutS}`, s ? `nearest: ${block.fields[s.j]} · r = ${fmt(s.r, 3)}` : 'no correlated partner'])
-                    }}
+                    onMouseEnter={(ev) => { setHover(i); tip.show(ev, nodeTip(i)) }}
                     onMouseLeave={() => { setHover(null); tip.hide() }}
                   >
-                    <circle cx={dendro.px(l)} cy={l.x} r={4.5} fill={clusterColor(c)} stroke="#fff" strokeWidth={1} />
-                    <text x={dendro.px(l) + 8} y={l.x} dy="0.32em" fontSize={10.5} fill={INK.text} fontWeight={hover === i ? 600 : 400}>
+                    <circle cx={dendro.px(l)} cy={l.x} r={4.5} fill={groupColor(groupOf(i))} stroke="#fff" strokeWidth={1} />
+                    <text x={dendro.px(l) + 8} y={l.x} dy="0.32em" fontSize={10.5} fill={groupOf(i) < 0 ? INK.muted : INK.text} fontWeight={hover === i ? 600 : 400}>
                       {short(f)}
                     </text>
                   </g>
                 )
               })}
-              <XAxis scale={dendro.xs} y={dendro.plotH + 12} label="1 − |r|" tickCount={5} format={(v) => fmt(v, 1)} />
+              <XAxis scale={dendro.xs} y={dendro.plotH + 12} label="1 − |r|: joined further right = more alike" tickCount={5} format={(v) => fmt(v, 1)} />
             </g>
           </svg>
         ) : null}
-        <Legend
-          items={legendItems}
-          {...(view === 'Dendrogram' ? { highlighted: cl.hover, onHover: cl.setHover } : lg.props)}
-          note={
-            view === 'Dendrogram'
-              ? 'leaf colour = cluster at the cut · lower on the axis = more correlated'
-              : 'node size = number of partners · hover a node to isolate its partners'
-          }
-        />
+        {tree && nSpecies >= 3 && <>
+          {/* the groups, in words: what the colours mean, and the answer the chart is for */}
+          <div className="species-groups" data-export="text">
+            <div className="species-groups-head">
+              {groups.length === 0
+                ? `No group at |r| ≥ ${thresholdS} at ${siteName}: no species move together this strongly.`
+                : `At ${siteName}, ${nGrouped} of ${nSpecies} species fall into ${groups.length} group${groups.length === 1 ? '' : 's'} that move together:`}
+            </div>
+            {groups.map((g, n) => (
+              <div key={n} className={`species-group${hoverGroup === n ? ' on' : ''}`}
+                onMouseEnter={() => setHoverGroup(n)} onMouseLeave={() => setHoverGroup(null)}>
+                <span className="swatch" style={{ background: groupColor(n) }} />
+                <strong>{n + 1}</strong>
+                <span className="species-group-names">{g.members.map((i) => block.fields[i]).join(', ')}</span>
+                <span className="species-group-r" title={g.best ? `strongest pair: ${block.fields[g.best.a]} and ${block.fields[g.best.b]}, r = ${fmt(g.best.r, 3)}` : undefined}>
+                  average |r| {fmt(g.meanR, 2)}
+                </span>
+              </div>
+            ))}
+            {view === 'Network' && network.alone.length > 0 && (
+              <div className="species-alone">
+                No partner at |r| ≥ {thresholdS}: {network.alone.map((i) => block.fields[i]).join(', ')}
+              </div>
+            )}
+          </div>
+          {view === 'Network' && <Legend items={edgeKey} note="bigger dot = more partners" />}
+        </>}
         {tip.node}
       </div>
     </ChartFrame>
   )
 }
+
+/** a node's radius: bigger with more partners, capped so a hub does not cover its neighbours */
+const nodeR = (degree: number) => Math.min(13, 5 + 1.5 * degree)

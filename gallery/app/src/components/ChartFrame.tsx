@@ -131,8 +131,10 @@ function TileMenu({ name, extras, about, tip, controls, export: exportNode, onCo
   name: string; extras: FrameExtras; about: ReactNode; tip?: ReactNode; controls: ReactNode; export: ReactNode; onCopyRef: () => void; copied: boolean
 }) {
   const [open, setOpen] = useState(false)
-  // a tile low in the window opens its menu upward, so the menu is not cut off at the bottom
-  const [up, setUp] = useState(false)
+  // the menu is fixed to the window, placed from the ⋯ button: the tile's panel scrolls (overflow),
+  // so a menu inside it would be clipped at the tile's edge. It opens upward from a tile low in the
+  // window, and is kept inside the window on the left and right
+  const [place, setPlace] = useState<React.CSSProperties>({})
   const root = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!open) return
@@ -141,17 +143,40 @@ function TileMenu({ name, extras, about, tip, controls, export: exportNode, onCo
       if (t.closest?.('.dash-main') && !root.current?.parentElement?.contains(t)) setOpen(false)
     }
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    // a fixed menu would stay put while its tile scrolls away under it (a scroll inside the menu,
+    // or in a picker's list opened from it, moves nothing)
+    const scroll = (e: Event) => {
+      const t = e.target
+      if (t === document || (t instanceof Node && root.current && t.contains(root.current))) setOpen(false)
+    }
+    const resize = () => setOpen(false)
     window.addEventListener('pointerdown', off)
     window.addEventListener('keydown', esc)
-    return () => { window.removeEventListener('pointerdown', off); window.removeEventListener('keydown', esc) }
+    window.addEventListener('scroll', scroll, { passive: true, capture: true })
+    window.addEventListener('resize', resize)
+    return () => {
+      window.removeEventListener('pointerdown', off); window.removeEventListener('keydown', esc)
+      window.removeEventListener('scroll', scroll, { capture: true }); window.removeEventListener('resize', resize)
+    }
   }, [open])
   const close = () => setOpen(false)
+  const toggle = (btn: HTMLElement) => {
+    if (open) { setOpen(false); return }
+    const r = btn.getBoundingClientRect(), W = window.innerWidth, H = window.innerHeight
+    const width = Math.min(380, W - 16)
+    const left = Math.max(8, Math.min(r.right - width, W - width - 8))
+    const up = r.top > H * 0.55
+    setPlace(up
+      ? { left, width, bottom: H - r.top + 4, maxHeight: Math.min(520, r.top - 12) }
+      : { left, width, top: r.bottom + 4, maxHeight: Math.min(520, H - r.bottom - 12) })
+    setOpen(true)
+  }
   return (
-    <div ref={root} className={`tile-head${open ? ' open' : ''}${up ? ' up' : ''}`}>
+    <div ref={root} className={`tile-head${open ? ' open' : ''}`}>
       {extras.editBar}
       <button type="button" className="tile-menu-btn" aria-expanded={open} aria-label={`${name}: menu`} title={name}
-        onClick={(e) => { setUp(e.currentTarget.getBoundingClientRect().top > window.innerHeight * 0.55); setOpen(!open) }}>⋯</button>
-      {open && <div className="tile-menu" role="dialog" aria-label={name}>
+        onClick={(e) => toggle(e.currentTarget)}>⋯</button>
+      {open && <div className="tile-menu" role="dialog" aria-label={name} style={place}>
         <div className="tile-menu-title"><strong>{name}</strong>{extras.subtitle && <span className="frame-sub">{extras.subtitle}</span>}{tip && <InfoTip>{tip}</InfoTip>}</div>
         <div className="tile-menu-actions">
           {extras.menu?.(close)}

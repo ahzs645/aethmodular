@@ -33,7 +33,7 @@ gallery/
         │   ├── correlation/    Scatterplot (combined / per-site grid; colour or size by a
         │   │                   third variable; brush to select), DensityHexbin,
         │   │                   ConnectedScatter, Correlogram (r matrix / scatter matrix),
-        │   │                   SpeciesGraph (network / arc / dendrogram), AvailabilityHeatmap
+        │   │                   SpeciesGraph (groups as a network / tree), AvailabilityHeatmap
         │   ├── distribution/   DistributionPanel (box / box+points / violin / beeswarm),
         │   │                   Histogram (overlay / density / small multiples / mirror
         │   │                   with two-sample statistics), Ridgeline
