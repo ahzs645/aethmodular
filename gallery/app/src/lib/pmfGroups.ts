@@ -60,6 +60,8 @@ export const PMF_GROUP = 'PMF sources'
 export const PMF_SOURCE = 'pmf_source'
 export const pmfShareField = (label: string) => `${label} share (PMF)`
 export const isPmfField = (f: string) => / share \(PMF\)$/.test(f)
+/** In a field list under the PMF sources heading, a share field is just its source: "Fossil Fuel Combustion". */
+export const pickerName = (f: string) => f.replace(/ share \(PMF\)$/, '')
 
 export function pmfShareFields(pmf: PmfFile | null): string[] {
   return (pmf?.sources ?? []).map((s) => pmfShareField(s.label))

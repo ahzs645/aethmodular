@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { pickerName } from '@/lib/pmfGroups'
 import { createPortal } from 'react-dom'
 import { chemText } from '@/lib/format'
 import { prettyUnit } from '@/components/FieldSelect'
@@ -102,7 +103,7 @@ function Popover({ anchor, meta, available, value, preset, presets, onChange, ma
             </label>
             {g.fields.map((f) => <label key={f} className="field-multi-item">
               <input type="checkbox" checked={chosen.has(f)} onChange={() => toggle(f)} />
-              <span>{chemText(f)}</span>
+              <span title={chemText(f)}>{chemText(pickerName(f))}</span>
               {prettyUnit(meta.field_units?.[f]) && <span className="field-multi-n">{prettyUnit(meta.field_units?.[f])}</span>}
             </label>)}
           </div>

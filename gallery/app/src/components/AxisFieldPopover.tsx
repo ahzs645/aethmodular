@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode, useLayoutEffect } from 'react'
+import { pickerName } from '@/lib/pmfGroups'
 import { createPortal } from 'react-dom'
 import { prettyUnit } from '@/components/FieldSelect'
 import { DEFINE_RATIO, useRatios } from '@/components/RatioDialog'
@@ -63,6 +64,20 @@ export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; an
       window.removeEventListener('scroll', onScroll, { capture: true })
     }
   }, [onClose])
+  // open at the current choice, centred in the list, so stepping through nearby fields needs no scrolling
+  useLayoutEffect(() => {
+    const list = box.current?.querySelector<HTMLElement>('.axis-popover-list')
+    const cur = list?.querySelector<HTMLElement>('[aria-selected="true"]')
+    if (!list || !cur) return
+    const top = cur.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop
+    list.scrollTop = Math.max(0, top - list.clientHeight / 2 + cur.offsetHeight / 2)
+    setActive(Number(cur.dataset.i ?? 0))
+  }, [])
+  // arrow keys keep their choice in view; opening and hovering never move the list
+  const keyTo = (i: number) => {
+    setActive(i)
+    requestAnimationFrame(() => box.current?.querySelector<HTMLElement>(`.axis-popover-list [data-i="${i}"]`)?.scrollIntoView({ block: 'nearest' }))
+  }
   if (!ctx) return null
   const { meta, value, set } = ctx
   const q = query.trim().toLowerCase()
@@ -95,19 +110,19 @@ export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; an
       <input ref={input} className="select" type="text" placeholder={`Search ${ctx.noun ?? 'measurements'}…`} value={query}
         onChange={(e) => { setQuery(e.target.value); setActive(0) }}
         onKeyDown={(e) => {
-          if (e.key === 'ArrowDown') { e.preventDefault(); setActive((a) => Math.min(rows.length - 1, a + 1)) }
-          else if (e.key === 'ArrowUp') { e.preventDefault(); setActive((a) => Math.max(0, a - 1)) }
+          if (e.key === 'ArrowDown') { e.preventDefault(); keyTo(Math.min(rows.length - 1, active + 1)) }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); keyTo(Math.max(0, active - 1)) }
           else if (e.key === 'Enter') { e.preventDefault(); pick(rows[active]?.f) }
         }} />
       <div className="axis-popover-list" role="listbox">
         {rows.map((r, i) => (
           <div key={r.f} role="presentation">
             {r.group !== rows[i - 1]?.group && <div className="combobox-group">{r.group}</div>}
-            <button type="button" role="option" aria-selected={r.f === value[role]}
+            <button type="button" role="option" aria-selected={r.f === value[role]} data-i={i}
               className={`combobox-option${i === active ? ' active' : ''}`}
               onMouseEnter={() => setActive(i)} onClick={() => pick(r.f)}>
               <span className="combobox-check" aria-hidden="true">{r.f === value[role] ? '✓' : ''}</span>
-              <span className="combobox-text">{r.f === DEFINE_RATIO ? 'Define a ratio…' : chemText(shown(r.f))}{prettyUnit(meta.field_units?.[r.f]) && <span className="site-sub"> · {prettyUnit(meta.field_units?.[r.f])}</span>}</span>
+              <span className="combobox-text" title={r.f === DEFINE_RATIO ? undefined : chemText(shown(r.f))}>{r.f === DEFINE_RATIO ? 'Define a ratio…' : chemText(pickerName(shown(r.f)))}{prettyUnit(meta.field_units?.[r.f]) && <span className="site-sub"> · {prettyUnit(meta.field_units?.[r.f])}</span>}</span>
               {role !== 'field' && r.f === value[role === 'x' ? 'y' : 'x'] && <span className="combobox-hint" title="Choosing it swaps x and y">on {role === 'x' ? 'y' : 'x'} · swap</span>}
               {meta.coverage?.[r.f] !== undefined && <span className="combobox-hint">{meta.coverage[r.f]}</span>}
             </button>

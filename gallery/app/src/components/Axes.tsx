@@ -1,4 +1,5 @@
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
+import { chemText } from '@/lib/format'
 import { useMemo, useState, type ReactNode } from 'react'
 import { AxisFieldPopover, useAxisFields, type AxisRole } from '@/components/AxisFieldPopover'
 import type { ScaleLinear, ScaleTime, ScaleBand } from 'd3'
@@ -72,7 +73,7 @@ export function XAxis({
             fontWeight={600}
             fill={INK.text}
           >
-            {estimatorText(label, method)}{pick && <tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>}
+            {chemText(estimatorText(label, method))}{pick && <tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>}
           </text>
         </AxisTitle>
       )}
@@ -132,7 +133,7 @@ export function YAxis({
             fontWeight={600}
             fill={INK.text}
           >
-            {estimatorText(label, method)}{pick && <tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>}
+            {chemText(estimatorText(label, method))}{pick && <tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>}
           </text>
         </AxisTitle>
       )}
@@ -141,7 +142,7 @@ export function YAxis({
 }
 
 /** An axis title that, when the axis shows a shared field, opens the field picker on click or Enter. */
-function AxisTitle({ pick, children }: { pick?: AxisRole; children: ReactNode }) {
+export function AxisTitle({ pick, children }: { pick?: AxisRole; children: ReactNode }) {
   const ctx = useAxisFields()
   const [anchor, setAnchor] = useState<DOMRect | null>(null)
   if (!pick || !ctx) return <>{children}</>

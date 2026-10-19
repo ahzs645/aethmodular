@@ -145,7 +145,7 @@ code { font-family: var(--mono); font-size: 0.92em; }
 }
 .combobox-option.active { background: var(--accent-soft); }
 .combobox-option[aria-selected="true"] { color: var(--accent); font-weight: 600; }
-.combobox-text { flex: 1; white-space: nowrap; }
+.combobox-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .combobox-hint { margin-left: 12px; font-family: var(--mono); font-size: calc(10.5px * var(--text-scale)); color: var(--ink-muted); font-weight: 400; }
 .combobox-check { width: 14px; flex: none; text-align: center; color: var(--accent); }
 .toggle { font-size: calc(12px * var(--text-scale)); color: var(--ink-muted); display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
@@ -309,6 +309,13 @@ code { font-family: var(--mono); font-size: 0.92em; }
 /* ---------- legend ---------- */
 
 .legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 4px 0 8px; font-size: calc(12px * var(--text-scale)); color: var(--ink-muted); align-items: center; }
+.legend.grouped { row-gap: 4px; }
+/* the bubble map with its site list beside it; stacked on narrow screens */
+.map-with-sites { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 14px; align-items: start; }
+.map-with-sites .map-sites .site-list { max-height: 330px; }
+@media (max-width: 760px) { .map-with-sites { grid-template-columns: minmax(0, 1fr); } }
+.legend-group { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; width: 100%; }
+.legend-group-name { font-weight: 600; color: var(--ink-text); min-width: 6.5em; }
 .legend-item { display: inline-flex; gap: 6px; align-items: center; cursor: default; user-select: none; }
 .legend-item.clickable { cursor: pointer; }
 .legend-item.clickable:hover { color: var(--ink-text); }
@@ -572,7 +579,7 @@ html:not([data-explain="1"]) .reference-guide { display: none; }
 .axis-popover-head { display: flex; align-items: center; gap: 8px; font-size: calc(12.5px * var(--text-scale)); }
 .axis-popover-head .btn { margin-left: auto; }
 .axis-popover input { width: 100%; box-sizing: border-box; }
-.axis-popover-list { max-height: var(--list-max, 300px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.axis-popover-list { max-height: var(--list-max, 300px); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; }
 
 /* actions for a brushed selection, floating above the charts */
 .brush-bar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 44; display: flex; align-items: center; gap: 8px;

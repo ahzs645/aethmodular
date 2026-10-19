@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { SitePicker } from '@/components/SitePicker'
 import { loadJson } from '@/lib/data'
 import * as d3 from 'd3'
 import type { FeatureCollection } from 'geojson'
@@ -14,8 +15,9 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
 
 const STATS = ['Median', 'Mean', 'Sample count'] as const
-const SCOPES = ['Four focus sites', 'Single focus site', 'All SPARTAN sites', 'All IMPROVE sites'] as const
-const LEGACY_SCOPES = [...SCOPES, 'All study sites', 'Focus site'] as const
+const SCOPES = ['Four focus sites', 'All SPARTAN sites', 'All IMPROVE sites'] as const
+// old links: a single focus site is now a pick in the site list beside the map
+const LEGACY_SCOPES = [...SCOPES, 'All study sites', 'Focus site', 'Single focus site'] as const
 interface Summary { n: number; median: number | null; mean: number | null }
 interface NetworkMap {
   note: string
@@ -25,7 +27,7 @@ interface NetworkMap {
 }
 
 /** Offline bubble map with independent study-site and IMPROVE scopes. */
-export function SiteBubbleMap({ rows, meta, field, focusSite, onSite }: {
+export function SiteBubbleMap({ rows, meta, field, onSite }: {
   rows: FilterRow[]; meta: MetaFile; field: string; focusSite?: string
   /** a click on a site's bubble (the Dashboard opens that site's own page) */
   onSite?: (code: string) => void
@@ -41,8 +43,7 @@ export function SiteBubbleMap({ rows, meta, field, focusSite, onSite }: {
   const clipId = useId().replace(/:/g, '')
   const [stat, setStat] = useSearchParam<(typeof STATS)[number]>('mapstat', 'Median', STATS)
   const [savedScope, setScope] = useSearchParam<(typeof LEGACY_SCOPES)[number]>('mapscope', 'Four focus sites', LEGACY_SCOPES)
-  const scope = savedScope === 'All study sites' ? 'Four focus sites' : savedScope === 'Focus site' ? 'Single focus site' : savedScope
-  const [focus, setFocus] = useSearchParam('mapsite', focusSite ?? 'Addis Ababa', meta.sites.map(s => s.name))
+  const scope: (typeof SCOPES)[number] = (SCOPES as readonly string[]).includes(savedScope) ? savedScope as (typeof SCOPES)[number] : 'Four focus sites'
   const [improveField, setImproveField] = useSearchParam<string>('mapfield', 'EC (TOR)')
   const [world, setWorld] = useState<FeatureCollection | null>(null)
   const [improve, setImprove] = useState<NetworkMap | null>(null)
@@ -58,10 +59,6 @@ export function SiteBubbleMap({ rows, meta, field, focusSite, onSite }: {
   const metric = isNetwork ? (network?.field_units[selectedField] ? selectedField : isImprove ? 'EC (TOR)' : 'PM2.5 mass') : field
   const units = isNetwork ? network?.field_units ?? {} : meta.field_units
   const unlocated = network?.sites.filter(s => s.lat == null || s.lon == null) ?? []
-
-  useEffect(() => {
-    if (!new URL(window.location.href).searchParams.has('mapsite')) setFocus(focusSite ?? 'Addis Ababa')
-  }, [focusSite])
 
   useEffect(() => {
     let live = true
@@ -84,7 +81,7 @@ export function SiteBubbleMap({ rows, meta, field, focusSite, onSite }: {
       ? (network?.sites ?? []).map(s => ({ ...s, label: s.code,
           color: isSpartan ? meta.sites.find(f => f.code === s.code)?.color ?? INK.accent : INK.accent,
           summary: s.stats[metric] ?? { n: 0, mean: null, median: null } }))
-      : meta.sites.filter(s => scope !== 'Single focus site' || s.name === focus).map(s => {
+      : meta.sites.map(s => {
           const subset = rows.filter(r => r.site === s.name)
           const vals = subset.map(r => r[metric]).filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
           return { ...s, n_filters: subset.length, label: s.name,
@@ -95,7 +92,11 @@ export function SiteBubbleMap({ rows, meta, field, focusSite, onSite }: {
       .filter((s): s is typeof s & { lat: number; lon: number } =>
         s.lat != null && s.lon != null && Number.isFinite(s.lat) && Number.isFinite(s.lon)
         && (isNetwork || (s.value != null && Number.isFinite(s.value) && s.n_filters > 0)))
-  }, [rows, meta.sites, metric, stat, scope, focus, isNetwork, isSpartan, network])
+  }, [rows, meta.sites, metric, stat, scope, isNetwork, isSpartan, network])
+  // the site list beside the map picks which sites are drawn (the legend's hidden set); a dashboard
+  // tile, too narrow for the list, keeps the legend
+  const sidePanel = fitted === null
+  const drawnSites = sites.filter((s) => lg.show(s.label))
 
   // in a fitted dashboard tile the frame is the sites in view (20° around them), not the whole
   // globe, which a short wide tile would shrink to a sliver; elsewhere the world as before
@@ -118,7 +119,8 @@ export function SiteBubbleMap({ rows, meta, field, focusSite, onSite }: {
     if (!points.length) return d3.zoomIdentity
     const x0 = d3.min(points, p => p[0])!, x1 = d3.max(points, p => p[0])!
     const y0 = d3.min(points, p => p[1])!, y1 = d3.max(points, p => p[1])!
-    const k = Math.max(1, Math.min(16, Math.min((width - 60) / Math.max(1, x1 - x0), (height - 60) / Math.max(1, y1 - y0))))
+    // one site has no extent: a regional view around it rather than the deepest zoom
+    const k = points.length === 1 ? 5 : Math.max(1, Math.min(16, Math.min((width - 60) / Math.max(1, x1 - x0), (height - 60) / Math.max(1, y1 - y0))))
     return d3.zoomIdentity.translate(width / 2 - k * (x0 + x1) / 2, height / 2 - k * (y0 + y1) / 2).scale(k)
   }
   const home = () => isImprove ? fit([[-125, 24], [-125, 50], [-66, 24], [-66, 50]]) : d3.zoomIdentity
@@ -137,12 +139,11 @@ export function SiteBubbleMap({ rows, meta, field, focusSite, onSite }: {
 
   return (
     <ChartFrame id="map" source="gallery/app/src/charts/map/SiteBubbleMap.tsx"
-      title={`Bubble map — ${scope === 'Single focus site' ? focus : scope.toLowerCase()}`}
-      subtitle={`${stat === 'Sample count' ? 'Sample counts' : `${stat} ${withUnit(metric, units)}`} at ${isNetwork ? `the available ${isImprove ? 'IMPROVE' : 'SPARTAN'} sites` : scope === 'Single focus site' ? focus : 'the four focus sites: Beijing, Delhi, JPL and Addis Ababa'}. Drag to pan; scroll or use +/− to zoom. Bubble sizes stay fixed while zooming. The four-focus-site views retain sidebar season, date and exclusion choices.`}
+      title={`Bubble map — ${drawnSites.length === 1 ? drawnSites[0].name : scope.toLowerCase()}`}
+      subtitle={`${stat === 'Sample count' ? 'Sample counts' : `${stat} ${withUnit(metric, units)}`} at ${isNetwork ? `the available ${isImprove ? 'IMPROVE' : 'SPARTAN'} sites` : 'the four focus sites: Beijing, Delhi, JPL and Addis Ababa'}; pick or search sites in the list beside the map. Drag to pan; scroll or use +/− to zoom. Bubble sizes stay fixed while zooming. The four-focus-site views retain sidebar season, date and exclusion choices.`}
       provenance="notebooks/analysis/meteorology/map.ipynb · Natural Earth 110m basemap"
       controls={<>
         <Segmented label="Sites" value={scope} options={SCOPES} onChange={setScope} />
-        {scope === 'Single focus site' && <Select label="Focus site" value={focus} options={meta.sites.map(s => s.name)} onChange={setFocus} />}
         {isNetwork && network && stat !== 'Sample count' && <Select label={`${isImprove ? 'IMPROVE' : 'SPARTAN'} measurement`} value={metric} options={Object.keys(network.field_units)} onChange={isImprove ? setImproveField : setSpartanField} />}
         <Segmented label="Size by" value={stat} options={STATS} onChange={setStat} />
         <span className="control">View
@@ -151,10 +152,11 @@ export function SiteBubbleMap({ rows, meta, field, focusSite, onSite }: {
           <span>{zoom.k.toFixed(1)}×</span>
           <button className="btn quiet" type="button" onClick={() => move(home())}>Reset view</button>
           {isImprove && <button className="btn quiet" type="button" onClick={() => move(home())}>US mainland</button>}
-          <button className="btn quiet" type="button" onClick={() => move(fit(sites.map(s => [s.lon, s.lat])))}>All sites</button>
+          <button className="btn quiet" type="button" title="Fit the sites ticked in the list" onClick={() => move(fit(drawnSites.map(s => [s.lon, s.lat])))}>Fit sites</button>
         </span>
       </>}
     >
+      <div className={sidePanel ? 'map-with-sites' : undefined}>
       <div ref={wrapRef} className="chart-wrap">
       {isNetwork && !network ? <Empty>{error ? <>Could not load site summaries ({error}). Run <code>uv run python gallery/data/export_{isImprove ? 'improve' : 'spartan'}_map.py</code> and reopen the map.</> : 'Loading network sites…'}</Empty> : <>
         <svg ref={svgRef} width={width} height={height} role="img" aria-label={`Bubble map: ${scope}, ${stat.toLowerCase()}`} style={{ cursor: 'grab', touchAction: 'none' }}>
@@ -188,15 +190,23 @@ export function SiteBubbleMap({ rows, meta, field, focusSite, onSite }: {
           </g>
         </svg>
         <div className="legend"><SizeLegend scale={rScale} label={stat === 'Sample count' ? 'sample count' : `${stat.toLowerCase()} ${withUnit(metric, units)}`} format={v => stat === 'Sample count' ? String(Math.round(v)) : fmt(v, 1)} /></div>
-        <div style={isNetwork ? { maxHeight: 140, overflowY: 'auto' } : undefined}>
+        {!sidePanel && <div style={isNetwork ? { maxHeight: 140, overflowY: 'auto' } : undefined}>
           <Legend items={sites.map(s => ({ label: s.label, color: s.color, detail: stat === 'Sample count' ? String(s.n_filters) : fmt(s.value, 2) }))} {...lg.props} />
-        </div>
+        </div>}
         {!sites.length && <Empty>No samples with coordinates{stat === 'Sample count' ? '' : ` and ${metric}`} in this selection.</Empty>}
-        <Note>Drag to pan · scroll or use +/− to zoom · All sites fits the full network.{isImprove && ' IMPROVE opens on the US mainland; All sites also shows Alaska, Hawaii and overseas sites.'}</Note>
+        <Note>Drag to pan · scroll or use +/− to zoom · Fit sites frames the ticked sites.{isImprove && ' IMPROVE opens on the US mainland; Fit sites also takes in Alaska, Hawaii and overseas sites.'}</Note>
         {isNetwork && network && <Note>{sites.length} sites mapped.{unlocated.length > 0 && ` Missing coordinates: ${unlocated.map(s => s.code).join(', ')}.`} {network.note}</Note>}
         {!world && <Note>Basemap unavailable; bubbles remain positioned by site coordinates.</Note>}
       </>}
         {tip.node}
+      </div>
+      {sidePanel && <aside className="map-sites" aria-label="Sites on the map">
+        <SitePicker mapPicker={false} noun={isImprove ? 'IMPROVE sites' : isSpartan ? 'SPARTAN sites' : 'sites'}
+          items={sites.map(s => ({ key: s.label, label: isSpartan ? meta.sites.find(f => f.code === s.code)?.name ?? s.name ?? s.label : s.name ?? s.label,
+            sub: s.code, lat: s.lat, lon: s.lon, color: s.color, n: s.n_filters, selected: lg.show(s.label) }))}
+          onToggle={lg.toggle} onAll={() => lg.setHidden(new Set())} allSelected={lg.hidden.size === 0}
+          onClear={() => lg.setHidden(new Set(sites.map(s => s.label)))} />
+      </aside>}
       </div>
     </ChartFrame>
   )

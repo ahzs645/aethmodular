@@ -1,3 +1,4 @@
+import { chemText } from './format.ts'
 /**
  * Visual constants. Site colours are NOT invented here — they are exported
  * from research/ftir_hips_chem/scripts/config.py (SITES[site]['color']) and
@@ -145,9 +146,10 @@ export const FONT = {
 }
 
 /** "EC (FTIR)" + "ug/m3" -> "EC (FTIR) (µg/m³)". Units come from meta.json. */
+/** A field's display label with its unit; chemistry subscripted (PM₂.₅, SO₄²⁻) wherever it is drawn. */
 export function withUnit(field: string, units: Record<string, string> | undefined): string {
   const u = units?.[field]
-  if (!u) return field
+  if (!u) return chemText(field)
   const pretty = u.replace('ug/m3', 'µg/m³').replace('Mm-1', 'Mm⁻¹')
-  return `${field} (${pretty})`
+  return chemText(`${field} (${pretty})`)
 }

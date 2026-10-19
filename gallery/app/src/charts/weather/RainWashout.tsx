@@ -8,6 +8,8 @@ import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
 import { fidProps, fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { boxStats, fmt } from '@/lib/stats'
 import { FONT, INK, withUnit } from '@/lib/theme'
+import { AxisTitle } from '@/components/Axes'
+import { useAxisFields } from '@/components/AxisFieldPopover'
 import { RAIN_CLASSES, rainClass, spearman } from '@/lib/weather'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
@@ -27,6 +29,7 @@ export function RainWashout({ rows, meta, field, prcpField, id = 'weather-washou
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
+  const axisPicker = !!useAxisFields()
   const tip = useTooltip(wrapRef)
   const hl = useHighlight()
   const edits = useFilterEdits()
@@ -66,7 +69,9 @@ export function RainWashout({ rows, meta, field, prcpField, id = 'weather-washou
               <text x={pw - M.right} y={15} fontSize={11} textAnchor="end" fill={INK.muted} fontFamily={FONT.mono}>ρ = {fmt(p.rho, 2)} · n = {p.n}</text>
               <g transform={`translate(${M.left},${M.top})`}>
                 {y.ticks(4).map((t) => <g key={t}><line x1={0} x2={iw} y1={y(t)} y2={y(t)} stroke={INK.grid} /><text x={-5} y={y(t)} dy="0.32em" textAnchor="end" fontSize={10} fill={INK.muted}>{t}</text></g>)}
-                <text transform={`translate(${-38},${ih / 2}) rotate(-90)`} textAnchor="middle" fontSize={10.5} fill={INK.muted}>{withUnit(field, meta.field_units)}</text>
+                {/* the measurement is the page's: its title opens the same field picker as the crossplots */}
+                <AxisTitle pick="field"><text transform={`translate(${-38},${ih / 2}) rotate(-90)`} textAnchor="middle" fontSize={10.5} fontWeight={600} fill={INK.text}>
+                  {withUnit(field, meta.field_units)}{axisPicker && <tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>}</text></AxisTitle>
                 {p.classes.map((c) => {
                   const cx = (x(c.key) ?? 0) + x.bandwidth() / 2, bw = x.bandwidth()
                   const title = `${p.site} · ${seasonOnly(c.key)}`

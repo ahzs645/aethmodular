@@ -39,7 +39,7 @@ function afterPaint(fn: () => void) {
  * sites first), quick buttons (focus sites, all, none) and **Map…**, a large map dialog for
  * picking by clicking. All edit one selection. With only the four focus sites, plain chips.
  */
-export function SitePicker({ items: itemsIn, onToggle: toggleIn, onAll, onClear, onFocus, allSelected = false, chipsOnly = false, limitNote, noun = 'sites', allLabel = 'Select all' }: {
+export function SitePicker({ items: itemsIn, onToggle: toggleIn, onAll, onClear, onFocus, allSelected = false, chipsOnly = false, limitNote, noun = 'sites', allLabel = 'Select all', mapPicker = true }: {
   items: SiteItem[]
   onToggle: (key: string) => void
   /** select every site (absent where sites load one by one, e.g. IMPROVE) */
@@ -55,6 +55,8 @@ export function SitePicker({ items: itemsIn, onToggle: toggleIn, onAll, onClear,
   limitNote?: string
   noun?: string
   allLabel?: string
+  /** the Map… dialog; off where the picker already sits beside a map */
+  mapPicker?: boolean
 }) {
   const [mapOpen, setMapOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -81,7 +83,7 @@ export function SitePicker({ items: itemsIn, onToggle: toggleIn, onAll, onClear,
   }
   const selected = items.filter((it) => it.selected)
   const mixed = new Set(items.map((it) => it.group)).size > 1
-  const mapButton = <button type="button" className="btn quiet" onClick={() => setMapOpen(true)} title="Pick sites on a large map">Map…</button>
+  const mapButton = mapPicker && <button type="button" className="btn quiet" onClick={() => setMapOpen(true)} title="Pick sites on a large map">Map…</button>
   const q = query.trim().toLowerCase()
   const shown = useMemo(() => {
     const hit = q ? items.filter((it) => `${it.label} ${it.sub ?? ''} ${it.key}`.toLowerCase().includes(q)) : items

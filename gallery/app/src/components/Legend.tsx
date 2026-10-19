@@ -50,37 +50,53 @@ export function Legend({
   const long = inTile && (tile?.mode ?? 'auto') === 'auto' && displayItems.length > TILE_LIMIT + 1
   const shown = long && !all ? displayItems.slice(0, TILE_LIMIT) : displayItems
   if (tile?.mode === 'off' || (!displayItems.length && !(note && explain))) return null
+  // "Site · Season" labels: grouped one line per site, the site named once; with a single site
+  // its name is dropped altogether (the chart says which site). Other labels stay as they are.
+  const PREFIX = ' · '
+  const parts = shown.map((it) => {
+    const text = label(it.label)
+    const k = text.indexOf(PREFIX)
+    return { it, group: k > 0 ? text.slice(0, k) : null, text: k > 0 ? text.slice(k + PREFIX.length) : text }
+  })
+  const groups = [...new Set(parts.map((p) => p.group).filter((g): g is string => !!g))]
+  const grouped = groups.length > 1
+  const item = ({ it, group, text }: (typeof parts)[number]) => {
+    const off = hidden?.has(it.label) ?? false
+    const dim = !!highlighted && highlighted !== it.label && !off
+    const cls = ['legend-item', onToggle ? 'clickable' : '', onHover ? 'hoverable' : '', off ? 'off' : '', dim ? 'dim' : ''].filter(Boolean).join(' ')
+    return (
+      <span
+        key={it.label}
+        data-export-series={it.label} data-export-color={it.color}
+        className={cls}
+        onClick={onToggle ? () => onToggle(it.label) : undefined}
+        onKeyDown={onToggle ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(it.label) } } : undefined}
+        onMouseEnter={onHover ? () => onHover(it.label) : undefined}
+        onMouseLeave={onHover ? () => onHover(null) : undefined}
+        onFocus={onHover ? () => onHover(it.label) : undefined}
+        onBlur={onHover ? () => onHover(null) : undefined}
+        title={[group ? `${group} · ${text}` : '', onToggle ? (off ? 'click to show' : 'click to hide') : ''].filter(Boolean).join(' — ') || undefined}
+        role={onToggle ? 'button' : undefined}
+        aria-pressed={onToggle ? !off : undefined}
+        aria-label={group ? `${group} · ${text}` : undefined}
+        tabIndex={live ? 0 : undefined}
+      >
+        <span
+          className={`swatch ${it.shape ?? 'dot'}`}
+          style={it.shape === 'dashed' || it.shape === 'ring' ? { color: it.color } : { background: it.color }}
+        />
+        {estimatorText(text, method)}
+        {it.detail && <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>{it.detail}</span>}
+      </span>
+    )
+  }
   return (
-    <div className="legend">
-      {shown.map((it) => {
-        const off = hidden?.has(it.label) ?? false
-        const dim = !!highlighted && highlighted !== it.label && !off
-        const cls = ['legend-item', onToggle ? 'clickable' : '', onHover ? 'hoverable' : '', off ? 'off' : '', dim ? 'dim' : ''].filter(Boolean).join(' ')
-        return (
-          <span
-            key={it.label}
-            data-export-series={it.label} data-export-color={it.color}
-            className={cls}
-            onClick={onToggle ? () => onToggle(it.label) : undefined}
-            onKeyDown={onToggle ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(it.label) } } : undefined}
-            onMouseEnter={onHover ? () => onHover(it.label) : undefined}
-            onMouseLeave={onHover ? () => onHover(null) : undefined}
-            onFocus={onHover ? () => onHover(it.label) : undefined}
-            onBlur={onHover ? () => onHover(null) : undefined}
-            title={onToggle ? (off ? 'click to show' : 'click to hide') : undefined}
-            role={onToggle ? 'button' : undefined}
-            aria-pressed={onToggle ? !off : undefined}
-            tabIndex={live ? 0 : undefined}
-          >
-            <span
-              className={`swatch ${it.shape ?? 'dot'}`}
-              style={it.shape === 'dashed' || it.shape === 'ring' ? { color: it.color } : { background: it.color }}
-            />
-            {estimatorText(label(it.label), method)}
-            {it.detail && <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>{it.detail}</span>}
-          </span>
-        )
-      })}
+    <div className={`legend${grouped ? ' grouped' : ''}`}>
+      {parts.filter((p) => !grouped || !p.group).map(item)}
+      {grouped && groups.map((g) => <div key={g} className="legend-group">
+        <span className="legend-group-name">{g}</span>
+        {parts.filter((p) => p.group === g).map(item)}
+      </div>)}
       {long && <button type="button" className="legend-more" onClick={() => setAll(!all)} aria-expanded={all}
         title={all ? 'Show the first few only' : 'Show every item (the chart shrinks to make room, or the tile scrolls)'}>
         {all ? 'fewer' : `+${displayItems.length - TILE_LIMIT} more`}</button>}
