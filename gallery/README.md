@@ -1116,6 +1116,8 @@ Opening a filter loads that site's native record directory and that filter's
 compressed float32 spectrum, independently of its chemistry. All spectra stay
 at native resolution; repeat analyses are selectable. The existing Addis
 baseline-corrected spectra remain a separate result from the frozen runs.
+For Addis filter drawers, expand “Baseline-corrected spectrum” to load those
+larger corrected-trace archives; they are not requested merely to see a raw spectrum.
 
 Configure the unpacked source folders through `AETHMODULAR_SPARTAN_FTIR_BUNDLE`
 and `AETHMODULAR_SPARTAN_HIPS_BUNDLE` in the gitignored repo `.env`, then run:

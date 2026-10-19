@@ -30,7 +30,20 @@ function AddisStatusNote({ status }: { status: AddisStatus }) {
  * other filters without a spectrum render nothing, as before.
  */
 export function FilterSpectrum({ id }: { id: string }) {
-  return <><NativeFilterMeasurements id={id} /><CorrectedFilterSpectrum id={id} /></>
+  const [correctedOpen, setCorrectedOpen] = useState(false)
+  const status = useAddisStatus(id)
+  // Native spectra are small per-filter files. The frozen corrected export spans
+  // both networks, so fetch it only when the reader explicitly asks to see it.
+  const addisFilter = /^ETAD-\d{4}/.test(id)
+  return <><NativeFilterMeasurements id={id} />
+    {addisFilter ? <section className="drawer-section">
+      {!correctedOpen && status && <AddisStatusNote status={status} />}
+      <details onToggle={e => setCorrectedOpen(e.currentTarget.open)}>
+        <summary>Baseline-corrected spectrum</summary>
+        {correctedOpen && <CorrectedFilterSpectrum id={id} />}
+      </details>
+    </section> : <CorrectedFilterSpectrum id={id} />}
+  </>
 }
 
 function CorrectedFilterSpectrum({ id }: { id: string }) {
