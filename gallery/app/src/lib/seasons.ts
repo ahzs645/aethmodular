@@ -21,6 +21,7 @@ export const CONVENTION_LABEL: Record<string, string> = {
   belg_feb: 'Shared Ethiopian month bins · Feb in Belg',
   quarters: 'Shared month bins · Dec–Feb, Mar–May, Jun–Aug, Sep–Nov',
   custom: 'Custom bins · your own, shared by every site',
+  pmf_paper: 'PMF paper (Addis 2023) · First Dry, Less Rainy, More Rainy, Second Dry, by date',
 }
 
 /** The calendar every frozen calibration export was binned with. */
@@ -53,5 +54,19 @@ export const shortSeason = (group: string) => (isAllAddis(group) ? ALL_ADDIS : g
 export const seasonPhrase = (group: string) => (isAllAddis(group) ? 'all seasons' : shortSeason(group))
 
 /** The season a calendar month falls in, under one calendar. */
+/**
+ * A filter's season under a calendar: by its sampling date where the calendar has day boundaries
+ * (`from` on its seasons), otherwise by month. One rule for every chart and filter.
+ */
+export function seasonOfDate(date: string | null | undefined, month: number | null | undefined, seasons: readonly SeasonMeta[]): SeasonMeta | null {
+  if (date && seasons.some((s) => s.from)) {
+    const md = date.slice(5, 10)
+    const byStart = seasons.filter((s) => s.from).sort((a, b) => a.from!.localeCompare(b.from!))
+    // before the first start of the year, the year's last season carries on from December
+    return [...byStart].reverse().find((s) => md >= s.from!) ?? byStart[byStart.length - 1] ?? null
+  }
+  return seasonOfMonth(month, seasons)
+}
+
 export const seasonOfMonth = (month: number | null | undefined, seasons: readonly SeasonMeta[]) =>
   month ? seasons.find((s) => s.months.includes(month)) ?? null : null

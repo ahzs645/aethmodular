@@ -1,5 +1,6 @@
 import type { ScaleTime } from 'd3'
 import type { SeasonBand } from '@/components/SeasonBands'
+import type { SeasonMeta } from '@/lib/types'
 
 /**
  * The PMF paper's own conventions (Anwar et al., Addis Ababa, Atmos. Env. draft), shared by the
@@ -18,11 +19,13 @@ import type { SeasonBand } from '@/components/SeasonBands'
  * cadence, perhaps a filter the paper left out). Stacking order and colours are its Figure 7's.
  */
 export const PAPER_SEASONS = [
-  { name: 'First Dry', from: '01-01', color: '#f8cfa5', note: '1 Jan – 25 Feb' },
-  { name: 'Less Rainy', from: '02-26', color: '#a8d8e8', note: '27 Feb – 27 Apr' },
-  { name: 'More Rainy', from: '04-29', color: '#5aaee8', note: '30 Apr – 30 Sep' },
-  { name: 'Second Dry', from: '10-01', color: '#f09a5a', note: '1 Oct – 17 Dec' },
+  { name: 'First Dry', from: '01-01', months: [1, 2], color: '#f8cfa5', note: '1 Jan – 25 Feb' },
+  { name: 'Less Rainy', from: '02-26', months: [3, 4], color: '#a8d8e8', note: '27 Feb – 27 Apr' },
+  { name: 'More Rainy', from: '04-29', months: [5, 6, 7, 8, 9], color: '#5aaee8', note: '30 Apr – 30 Sep' },
+  { name: 'Second Dry', from: '10-01', months: [10, 11, 12], color: '#f09a5a', note: '1 Oct – 17 Dec' },
 ] as const
+/** the same seasons as a gallery calendar (Filters → season calendar 'PMF paper'), dated boundaries included */
+export const PAPER_CALENDAR: SeasonMeta[] = PAPER_SEASONS.map(({ name, from, months, color }) => ({ name, from, months: [...months], color }))
 export const PAPER_ORDER = ['Fossil Fuel Combustion', 'Polluted Marine', 'Sea Salt Mixed', 'Wood Burning', 'Charcoal']
 export const PAPER_COLORS: Record<string, string> = {
   'Fossil Fuel Combustion': '#f4b6c2', 'Polluted Marine': '#e0191c', 'Sea Salt Mixed': '#0a14d0', 'Wood Burning': '#92e192', Charcoal: '#2e8b2e',

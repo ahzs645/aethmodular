@@ -7,6 +7,8 @@ import { NO_PMF, PMF_GROUP, PMF_SOURCE, isPmfField, pmfGroups, pmfKeyByDate, pmf
 import { EXPLAIN_AVAILABLE, PrefsProvider, usePrefs } from '@/lib/prefs'
 import { listParam, listToParam, readParams, writeParams } from '@/lib/url'
 import { useShared } from '@/lib/stable'
+import { PAPER_CALENDAR } from '@/lib/pmfPaper'
+import { seasonOfDate } from '@/lib/seasons'
 import { Scatterplot } from '@/charts/correlation/Scatterplot'
 import { Correlogram } from '@/charts/correlation/Correlogram'
 import { AvailabilityHeatmap } from '@/charts/correlation/AvailabilityHeatmap'
@@ -552,7 +554,8 @@ export default function App() {
   // JPL's wet/dry windows, Addis's Bega/Belg/Kiremt. The shared Ethiopian month
   // bins stay available for like-month comparisons across sites.
   // every SPARTAN site and the two Santiago IMPROVE sites have their own calendar (siteSeasons.network.json)
-  const conventions = useMemo<Record<string, SeasonMeta[]>>(() => ({ ...(data?.meta.season_conventions ?? {}), quarters: MONTH_QUARTERS, custom: customSeasonMeta(customSeasons) }), [data, customSeasons])
+  // pmf_paper: the PMF paper's four Addis seasons, split by date (lib/pmfPaper, lib/seasons seasonOfDate)
+  const conventions = useMemo<Record<string, SeasonMeta[]>>(() => ({ ...(data?.meta.season_conventions ?? {}), pmf_paper: PAPER_CALENDAR, quarters: MONTH_QUARTERS, custom: customSeasonMeta(customSeasons) }), [data, customSeasons])
   // local calendars are the default wherever every site in view has one; otherwise shared quarters
   const siteCode = useMemo(() => new Map((netView?.all ?? []).map((x) => [x.name, x.code])), [netView])
   const allLocal = net === 'focus' || (!!netView && netView.chosen.length > 0 && netView.chosen.every((x) => hasLocalCalendar(x.name, x.code)))
@@ -590,12 +593,13 @@ export default function App() {
 
   // month -> season for one site under the *currently selected* calendar, so
   // switching calendar re-labels every chart rather than needing a re-export
-  const seasonOf = useCallback((site: string, month: number | null | undefined, fallback: string) => {
-    if (!month) return fallback
-    const se = calendarOf(site).find((x) => x.months.includes(month))
+  // a calendar with day boundaries goes by the sampling date (lib/seasons seasonOfDate)
+  const seasonOf = useCallback((site: string, month: number | null | undefined, fallback: string, date?: string | null) => {
+    if (!month && !date) return fallback
+    const se = seasonOfDate(date, month, calendarOf(site))
     return se ? (isLocal ? qualifySeason(site, se.name, qualify) : se.name) : fallback
   }, [calendarOf, isLocal, qualify])
-  const seasonForFilter = useCallback((r: FilterRow) => seasonOf(r.site, r.month, r.season), [seasonOf])
+  const seasonForFilter = useCallback((r: FilterRow) => seasonOf(r.site, r.month, r.season, r.date), [seasonOf])
 
   const inRange = useCallback(
     (r: { date: string }) => !dateRange || (r.date >= dateRange[0] && r.date <= dateRange[1]),
@@ -723,7 +727,7 @@ export default function App() {
   const pmfRows = useMemo(() => {
     const src = data?.pmf?.rows ?? []
     return src
-      .map((r) => ({ ...r, season: seasonOf(pmfSiteName, r.month, r.season) }))
+      .map((r) => ({ ...r, season: seasonOf(pmfSiteName, r.month, r.season, r.date) }))
       .filter((r) => !seasonSel || seasonSel.has(r.season))
       .filter((r) => !pmfKeep || pmfKeep.has(pmfLabel(data?.pmf ?? null, r.dominant_source, pmfScheme)))
   }, [data, seasonOf, pmfSiteName, seasonSel, pmfKeep, pmfScheme])
@@ -840,9 +844,9 @@ export default function App() {
     // Counts are computed *before* the dimension's own filter is applied,
     // so a chip always shows what selecting it would give you.
     const pool: { season: string; site: string; pmf: string }[] = pmfMode
-      ? (data.pmf?.rows ?? []).map((r) => ({ season: seasonOf(pmfSiteName, r.month, r.season), site: pmfSiteName, pmf: pmfLabel(data.pmf, r.dominant_source, pmfScheme) }))
+      ? (data.pmf?.rows ?? []).map((r) => ({ season: seasonOf(pmfSiteName, r.month, r.season, r.date), site: pmfSiteName, pmf: pmfLabel(data.pmf, r.dominant_source, pmfScheme) }))
       : calMode
-        ? addisEvalDates.map((d) => ({ season: seasonOf(pmfSiteName, d ? Number(d.slice(5, 7)) : null, 'undated'), site: pmfSiteName, pmf: pmfLabelOfDate(d) }))
+        ? addisEvalDates.map((d) => ({ season: seasonOf(pmfSiteName, d ? Number(d.slice(5, 7)) : null, 'undated', d), site: pmfSiteName, pmf: pmfLabelOfDate(d) }))
         // hand exclusions count like any other filter, so the chips add up to what the charts draw
         : baseRows.filter(inRange).filter((r) => !dropIds.has(r.id) && (!keepIds || keepIds.has(r.id)))
           .map((r) => ({ season: r.season, site: r.site, pmf: r.code === pmfSite ? String(r[PMF_SOURCE] ?? NO_PMF) : OTHER_SITE }))

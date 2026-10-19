@@ -40,8 +40,15 @@ export interface SiteMeta {
 
 export interface SeasonMeta {
   name: string
+  /** the months it covers, for month axes (and the rule itself when no season has `from`) */
   months: number[]
   color: string
+  /**
+   * a calendar whose seasons split mid-month (the PMF paper's: 26 Feb, 29 Apr) gives each season
+   * its first day as 'MM-DD'; a filter then takes the season whose start its sampling date has
+   * reached (lib/seasons seasonOfDate). Without it, seasons go by month.
+   */
+  from?: string
   /** set under the per-site calendar: the site whose local calendar this season belongs to */
   site?: string
 }

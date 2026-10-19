@@ -16,8 +16,22 @@ export const seasonShade = (name: string, hover: string | null | undefined) =>
 export interface SeasonBand { x: number; w: number; color: string; name: string }
 
 /** Month-by-month bands along a time axis, under one calendar, clipped to [0, width]. */
-export function timeSeasonBands(x: ScaleTime<number, number>, seasons: readonly Pick<SeasonMeta, 'name' | 'months' | 'color'>[], width: number): SeasonBand[] {
+export function timeSeasonBands(x: ScaleTime<number, number>, seasons: readonly Pick<SeasonMeta, 'name' | 'months' | 'color' | 'from'>[], width: number): SeasonBand[] {
   const [d0, d1] = x.domain() as [Date, Date]
+  // a calendar with day boundaries (lib/seasons seasonOfDate): each season from its first day to the next's
+  const dated = seasons.filter((s) => s.from).sort((a, b) => a.from!.localeCompare(b.from!))
+  if (dated.length) {
+    const out: SeasonBand[] = []
+    for (let year = d0.getFullYear() - 1; year <= d1.getFullYear(); year++) {
+      dated.forEach((s, i) => {
+        const start = new Date(`${year}-${s.from}T00:00:00`)
+        const end = i + 1 < dated.length ? new Date(`${year}-${dated[i + 1].from}T00:00:00`) : new Date(`${year + 1}-${dated[0].from}T00:00:00`)
+        const a = Math.max(0, x(start)), b = Math.min(width, x(end))
+        if (b > a) out.push({ x: a, w: b - a, color: s.color, name: s.name })
+      })
+    }
+    return out
+  }
   const byMonth = new Map<number, { name: string; color: string }>()
   for (const s of seasons) for (const m of s.months) byMonth.set(m, s)
   const bands: SeasonBand[] = []
