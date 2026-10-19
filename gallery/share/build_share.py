@@ -29,7 +29,7 @@ OUT = ROOT / "gallery/share/dist"
 # Loaded on every page: filters/meta/census/pmf (calibration*.json are optional and
 # only feed the Calibration tab), the sample drawer's SPARTAN reference, and the
 # per-filter spectra the drawer and Meeting spectra panels draw.
-COMMON = ["filters.json", "meta.json", "census.json", "pmf.json", "spartan_reference.json",
+COMMON = ["filters.json", "meta.json", "census.json", "pmf.json", "spartan_network/index.json",
           "similarity/similarity.json", "similarity/etad_ids.json",
           "similarity/traces_AIRSpec.bin", "similarity/traces_VIBES-full-r70.bin",
           "similarity/traces_VIBES-full-r70.json"]
@@ -53,6 +53,10 @@ def main():
         raise SystemExit(f"no data list for tab(s) {unknown}; add them to BY_TAB first")
 
     keep = COMMON + [f for t in tabs for f in BY_TAB[t]]
+    # Site picks and drawer spectra fetch content-addressed shards lazily. Keep
+    # them in shared copies too; they add no initial page transfer.
+    keep += [p.relative_to(APP / 'public/data').as_posix()
+             for p in (APP / 'public/data/spartan_network').rglob('*') if p.is_file()]
     missing = [f for f in keep if not (APP / "public/data" / f).is_file()]
     if missing:
         raise SystemExit(f"missing exports (run the gallery/data exporters first): {missing}")

@@ -2,8 +2,7 @@
  * Which filters the chart tabs draw: the four focus sites (filters.json, HIPS + FTIR,
  * the default), or a whole network chosen in the Filters sidebar.
  *
- * - SPARTAN: every public ChemSpec PM2.5 measurement at every site (spartan_reference.json +
- *   spartan_map.json). EC/OC are FTIR-derived. HIPS (Fabs, uncertainty, MDL, BC = Fabs / MAC) at
+ * - SPARTAN: one compressed filter file per chosen site (spartan_network/index.json). EC/OC are FTIR-derived. HIPS (Fabs, uncertainty, MDL, BC = Fabs / MAC) at
  *   the 27 sites in HIPS batches 1–51 and FTIR functional groups (lab batch 2–3, 2020–Mar 2023) at
  *   24 sites, under the focus sites' field names; the public BC ('BC (public HIPS)') stays its own field.
  * - IMPROVE: one file per site (improve_samples/, gallery/data/export_improve_samples.py),
@@ -14,6 +13,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { loadJson } from './data'
+import { loadSpartanFilters } from './spartan'
 import type { FilterRow, SeasonMeta, SiteMeta } from './types'
 
 /** 'both' draws SPARTAN and IMPROVE sites together (the two network toggles are a multi-select) */
@@ -24,7 +24,7 @@ export const hasImprove = (n: Network) => n === 'improve' || n === 'both'
 export const networkOf = (spartan: boolean, improve: boolean): Network => (spartan && improve ? 'both' : improve ? 'improve' : 'spartan')
 export const NETWORKS: { key: Network; label: string; note: string }[] = [
   { key: 'focus', label: 'Focus sites', note: 'Beijing, Delhi, JPL and Addis Ababa only (kept for links: net=focus)' },
-  { key: 'spartan', label: 'SPARTAN', note: 'Starts on the four focus sites (HIPS, FTIR groups, local calendars); add any SPARTAN site, which brings its public PM2.5 chemistry (FTIR-derived EC/OC, ions, elements), HIPS absorption at 27 sites and FTIR functional groups at 24 (2020–Mar 2023)' },
+  { key: 'spartan', label: 'SPARTAN', note: 'Starts on the four focus sites; add any SPARTAN site to load its PM2.5 filters and available chemistry. Open a filter for native FTIR spectra and HIPS sample readings where matched records exist. Public EC/OC are FTIR-derived.' },
   { key: 'improve', label: 'IMPROVE', note: 'Every IMPROVE site: TOR EC/OC and thermal fractions (OP, EC1–3, OC1–4), HIPS absorption, mass, iron, silicon, soil' },
 ]
 export const isNetwork = (v: string | null): v is Network => v === 'focus' || v === 'spartan' || v === 'improve' || v === 'both'
@@ -58,15 +58,13 @@ interface NetworkData {
   sites: SiteMeta[]
   /** which of those sites are IMPROVE (the rest are SPARTAN) */
   improveCodes: Set<string>
-  /** rows of the sites that are loaded (all for SPARTAN; the picked ones for IMPROVE) */
+  /** rows of the selected sites only; the site index is always complete */
   rows: FilterRow[]
   fields: string[]
   field_units: Record<string, string>
   field_groups: { label: string; fields: string[] }[]
 }
 
-interface SpartanMapSite { code: string; name: string; lat: number | null; lon: number | null; n_filters: number; date_min: string; date_max: string }
-interface SpartanRef { fields: string[]; field_units: Record<string, string>; rows: Record<string, string | number | boolean | null>[] }
 interface ImproveIndex {
   fields: string[]; field_units: Record<string, string>; field_groups: { label: string; fields: string[] }[]
   sites: { code: string; name: string; state: string | null; country: string | null; lat: number | null; lon: number | null; n_filters: number; date_min: string; date_max: string }[]
@@ -100,25 +98,15 @@ function row(id: string, s: SiteMeta, date: string, excluded: boolean, reason: s
     lon: Number.isFinite(s.lon) ? s.lon : null, excluded, exclusion_reason: reason, ...values }
 }
 
-async function loadSpartan(): Promise<NetworkData> {
-  const [ref, map] = await Promise.all([loadJson<SpartanRef>('spartan_reference.json'), loadJson<{ sites: SpartanMapSite[] }>('spartan_map.json')])
-  const byCode = new Map(map.sites.map((x) => [x.code, x]))
-  const present = [...new Set(ref.rows.map((r) => String(r.code)))].sort((a, b) =>
-    (byCode.get(a)?.name ?? a).localeCompare(byCode.get(b)?.name ?? b))
-  const sites = present.map((code) => {
-    const m = byCode.get(code)
-    const n = ref.rows.filter((r) => r.code === code)
-    const dates = n.map((r) => String(r.date)).sort()
-    return site(code, m?.name ?? code, m?.name ?? code, m?.lat ?? null, m?.lon ?? null, n.length, dates[0] ?? '', dates[dates.length - 1] ?? '')
-  })
-  const sMap = new Map(sites.map((s) => [s.code, s]))
-  const rows = ref.rows.map((r) => {
-    const s = sMap.get(String(r.code))!
-    const values = Object.fromEntries(ref.fields.map((f) => [f, typeof r[f] === 'number' ? (r[f] as number) : null]))
-    return row(String(r.id), s, String(r.date), !!r.excluded, (r.exclusion_reason as string) || null, values)
-  })
-  const fields = ref.fields.filter((f) => rows.some((r) => typeof r[f] === 'number'))
-  return { sites, improveCodes: new Set(), rows, fields, field_units: ref.field_units, field_groups: SPARTAN_GROUPS.map((g) => ({ ...g, fields: g.fields.filter((f) => fields.includes(f)) })).filter((g) => g.fields.length) }
+async function loadSpartan(picked: string[] | 'all'): Promise<NetworkData> {
+  const { index, rows: records } = await loadSpartanFilters(picked)
+  const sites = index.sites.map(s => site(s.code, s.name, s.location, s.lat, s.lon, s.n_filters, s.date_min, s.date_max))
+  const byCode = new Map(sites.map(s => [s.code, s]))
+  const rows = records.map(r => ({ ...r, ...row(r.id, byCode.get(r.code)!, r.date, r.excluded, r.exclusion_reason,
+    Object.fromEntries(index.fields.map(field => [field, typeof r[field] === 'number' ? r[field] as number : null]))) }))
+  return { sites, improveCodes: new Set(), rows, fields: index.fields, field_units: index.field_units,
+    field_groups: SPARTAN_GROUPS
+      .map(g => ({ ...g, fields: g.fields.filter(f => index.fields.includes(f)) })).filter(g => g.fields.length) }
 }
 
 async function loadImprove(picked: string[]): Promise<NetworkData> {
@@ -151,21 +139,22 @@ export function mergeGroups(a: NetworkData['field_groups'], b: NetworkData['fiel
   return out
 }
 
-async function loadBoth(picked: string[]): Promise<NetworkData> {
-  const [sp, im] = await Promise.all([loadSpartan(), loadImprove(picked)])
+async function loadBoth(picked: string[], spartanSites: string[] | 'all'): Promise<NetworkData> {
+  const [sp, im] = await Promise.all([loadSpartan(spartanSites), loadImprove(picked)])
   return { sites: [...sp.sites, ...im.sites], improveCodes: im.improveCodes, rows: [...sp.rows, ...im.rows],
     fields: [...new Set([...sp.fields, ...im.fields])], field_units: { ...im.field_units, ...sp.field_units },
     field_groups: mergeGroups(sp.field_groups, im.field_groups) }
 }
 
 /** The chosen network's sites and rows; null while loading, and for the focus sites (App uses filters.json). */
-export function useNetworkData(network: Network, improveSites: string[]) {
-  const key = hasImprove(network) ? `${network}:${[...improveSites].sort().join(',')}` : network
+export function useNetworkData(network: Network, improveSites: string[], spartanSites: string[] | 'all') {
+  const skey = spartanSites === 'all' ? 'all' : [...spartanSites].sort().join(',')
+  const key = `${network}:${hasSpartan(network) ? skey : ''}:${hasImprove(network) ? [...improveSites].sort().join(',') : ''}`
   const [state, setState] = useState<{ key: string; data: NetworkData | null; error: string } | null>(null)
   useEffect(() => {
     if (network === 'focus') return
     let live = true
-    ;(network === 'both' ? loadBoth(improveSites) : network === 'spartan' ? loadSpartan() : loadImprove(improveSites))
+    ;(network === 'both' ? loadBoth(improveSites, spartanSites) : network === 'spartan' ? loadSpartan(spartanSites) : loadImprove(improveSites))
       .then((data) => { if (live) setState({ key, data, error: '' }) })
       .catch((e) => { if (live) setState({ key, data: null, error: String(e instanceof Error ? e.message : e) }) })
     return () => { live = false }

@@ -73,7 +73,7 @@ export function useFilterSpectrum(id: string | null | undefined, methods: readon
   const key = methods.join(',')
   const requestKey = `${id}|${key}|${vibesRank}`
   useEffect(() => {
-    if (!id) return
+    if (!id || (!id.startsWith('improve:') && !id.startsWith('etad:') && !/^ETAD-\d{4}/.test(id))) return
     let live = true
     ;(async () => {
       const sim = await simIndex()
@@ -115,7 +115,7 @@ async function addisBase(id: string): Promise<string | null> {
 export function useAddisStatus(id: string | null | undefined): AddisStatus | null {
   const [status, setStatus] = useState<{ id: string; s: AddisStatus } | null>(null)
   useEffect(() => {
-    if (!id) return
+    if (!id || (!id.startsWith('etad:') && !/^ETAD-\d{4}/.test(id))) return
     let live = true
     ;(async () => {
       const base = await addisBase(id)

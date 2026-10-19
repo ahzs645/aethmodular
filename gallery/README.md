@@ -1107,3 +1107,55 @@ The meeting export rejects incomplete or duplicated grids. Derived outputs live
 in `output/tables/vibes_fullrange/gallery_rank70_20261002`; generated gallery
 assets are git-ignored. See [migration audit](../docs/vibes-gallery-rank70-migration.md)
 for source provenance and coverage.
+
+### Native SPARTAN network data and loading
+
+The chart site picker uses `public/data/spartan_network/index.json`, a small
+site/coverage directory. Only the selected sites' compressed filter tables load.
+Opening a filter loads that site's native record directory and that filter's
+compressed float32 spectrum, independently of its chemistry. All spectra stay
+at native resolution; repeat analyses are selectable. The existing Addis
+baseline-corrected spectra remain a separate result from the frozen runs.
+
+Configure the unpacked source folders through `AETHMODULAR_SPARTAN_FTIR_BUNDLE`
+and `AETHMODULAR_SPARTAN_HIPS_BUNDLE` in the gitignored repo `.env`, then run:
+
+```sh
+uv run aeth doctor
+# Rebuild the existing public/lab chemistry first if those sources changed:
+uv run python gallery/data/export_spartan_reference.py
+uv run python gallery/data/export_spartan_network.py
+```
+
+The exporter verifies both native bundles' source hashes, keeps the native
+archives outside the gallery, derives `−log10(sample/background)` with each
+analysis's own scans and scaling, and writes gzip assets with content hashes
+in their names. Nonpositive single-beam pairs become gaps; unsupported formats,
+missing scan references, and background extrapolation stop the export. The
+index is replaced only after its assets are complete. Native FTIR and HIPS
+coverage is reported separately from public and delivered measurements. Raw
+HIPS transmittance/reflectance is never substituted for delivered Fabs or BC.
+
+The 19 October 2026 snapshot has 40 known site entries (38 with filter rows),
+5,182 physical PM2.5 filters across the existing chemistry and native metadata,
+and 4,452 native FTIR analyses across 28 sites. The native spectrum archive also
+retains PM10 and field blanks with their types; chart rows and the PM2.5 drawers
+never substitute those for PM2.5 measurements. It includes 4,274 registered-site
+HIPS sample readings. Unassigned native lab blanks stay in the original bundle.
+Missing native records are coverage gaps; public measurements are retained.
+Filter counts are distinct from non-null measurement or matched-pair counts.
+
+Measured files for this snapshot: the default four sites' filter payloads total
+about 172 KB compressed, versus 4.44 MB for the previous monolithic network
+reference. All sites' filter payloads total about 729 KB; a median full-resolution
+filter spectrum is about 9 KB compressed. These are data-transfer sizes, not a
+page load-time benchmark. Calibration exports load separately after the initial
+filter view and only on pages that use them.
+
+Both full publication and `gallery/share/build_share.py` retain the site and
+spectrum shards, so online site picks and drawers have the same coverage as
+local ones. The loader decompresses explicit `.gz` files in the browser; static
+hosting needs no special `Content-Encoding` setup. The publication scanner
+inspects compressed JSON as well as ordinary text. Regenerated shards are
+ignored by Git and travel with the existing gallery data snapshot, rather than
+in the source repository.

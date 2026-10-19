@@ -32,11 +32,23 @@ async function get(path: string): Promise<Response> {
   return r
 }
 
+/** Explicit gzip assets work on static hosts without Content-Encoding configuration.
+ * A host may also decode gzip in transit; the magic bytes prevent double decoding. */
+async function bytes(path: string): Promise<ArrayBuffer> {
+  const buffer = await (await get(path)).arrayBuffer()
+  const header = new Uint8Array(buffer, 0, Math.min(2, buffer.byteLength))
+  if (path.endsWith('.gz') && header[0] === 0x1f && header[1] === 0x8b) {
+    return new Response(new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer()
+  }
+  return buffer
+}
+
 /** Parsed JSON of an exported file (cached per session). */
-export const loadJson = <T,>(path: string): Promise<T> => cached(`json:${path}`, () => get(path).then((r) => r.json() as Promise<T>))
+export const loadJson = <T,>(path: string): Promise<T> => cached(`json:${path}`, async () =>
+  path.endsWith('.gz') ? JSON.parse(new TextDecoder().decode(await bytes(path))) as T : (await get(path)).json() as Promise<T>)
 
 /** Raw bytes of an exported binary (cached per session). */
-export const loadBinary = (path: string): Promise<ArrayBuffer> => cached(`bin:${path}`, () => get(path).then((r) => r.arrayBuffer()))
+export const loadBinary = (path: string): Promise<ArrayBuffer> => cached(`bin:${path}`, () => bytes(path))
 
 /** Any derived value built from loaded files (an index, a decoded table), cached under its own key. */
 export const loadDerived = <T,>(key: string, build: () => Promise<T>): Promise<T> => cached(`derived:${key}`, build)

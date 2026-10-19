@@ -214,7 +214,9 @@ function paintRows(rows: FilterRow[], paint: ((site: string) => string | undefin
 }
 
 export default function App() {
-  const { data, error } = useGalleryData()
+  const init = useMemo(() => readParams(), [])
+  const [tab, setTab] = useState<TabKey>(() => tabFromParams(init))
+  const { data, error, calibrationLoading } = useGalleryData(['calibration', 'baseline', 'dashboard'].includes(tab))
   // spline / VIBES FTIR EC for the Addis test set (gallery/data/export_baseline_ftir_ec.py); optional
   const baselines = useExport<{ rows: Record<string, { spline?: number; vibes?: number }> }>('baseline_ftir_ec.json').data
   // weather over each filter's sampling window (gallery/data/export_weather.py, lib/weather); optional
@@ -229,8 +231,6 @@ export default function App() {
   }, [data, baselines])
 
   // ---- state, seeded from the URL hash so a pasted link reopens the same view
-  const init = useMemo(() => readParams(), [])
-  const [tab, setTab] = useState<TabKey>(() => tabFromParams(init))
   const [meeting, setMeeting] = useState<MeetingKey>(() => meetingFromParams(init))
   // the ⌘K search's way to a tab or meeting page (lib/headerNav)
   const openTab = useCallback((t: string, m?: string) => { if (isTab(t)) setTab(t); if (m) setMeeting(m) }, [])
@@ -430,7 +430,7 @@ export default function App() {
 
   // The network only applies on the chart tabs; everything else always shows the focus sites.
   const net: Network = (NETWORK_TABS as readonly string[]).includes(tab) ? network : 'focus'
-  const netData = useNetworkData(net, improveSites)
+  const netData = useNetworkData(net, improveSites, spartanSel ?? data?.meta.sites.map(s => s.code) ?? [])
   // the chosen network's sites, rows and fields: independent of which sites are picked, so a site
   // pick does not rebuild (and re-join weather, PMF, units and seasons onto) every row
   const netBase = useMemo(() => {
@@ -441,19 +441,21 @@ export default function App() {
     // SPARTAN: the four focus sites keep their filters.json rows (HIPS, FTIR groups, exclusions,
     // local calendars) and their names and colours; the other sites bring the public ChemSpec rows
     const focus = sp ? new Map(data.meta.sites.map((x) => [x.code, x])) : new Map<string, SiteMeta>()
-    const sites = d.sites.map((x) => focus.get(x.code) ?? x)
+    const sites = d.sites.map((x) => { const f = focus.get(x.code); return f ? { ...x, name: f.name, color: f.color, timezone: f.timezone } : x })
     for (const f of focus.values()) if (!sites.some((x) => x.code === f.code)) sites.push(f)
     const spartanCodes = sites.filter((x) => !d.improveCodes.has(x.code)).map((x) => x.code)
     // the focus sites also get the public fields filters.json does not carry (public HIPS BC, the trace
     // elements, the rest of the ions), so every axis spans every SPARTAN site; their own fields stay theirs
     const pub = new Map(d.rows.filter((r) => focus.has(r.code)).map((r) => [r.id, r]))
-    const focusWithPub = focusRows.map((r): FilterRow => {
+    const loadedFocus = new Set(d.rows.filter(r => focus.has(r.code)).map(r => r.code))
+    const focusIds = new Set(focusRows.map(r => r.id))
+    const focusWithPub = focusRows.filter(r => loadedFocus.has(r.code)).map((r): FilterRow => {
       const p = pub.get(r.id)
       if (!p) return r
       const add = Object.fromEntries(d.fields.filter((f) => !(f in r) && typeof p[f] === 'number').map((f) => [f, p[f]]))
       return Object.keys(add).length ? { ...r, ...add } : r
     })
-    const rows: FilterRow[] = [...(sp ? focusWithPub : []), ...d.rows.filter((r) => !focus.has(r.code))]
+    const rows: FilterRow[] = [...(sp ? focusWithPub : []), ...d.rows.filter((r) => !focus.has(r.code) || !focusIds.has(r.id)).map(r => focus.has(r.code) ? { ...r, site: focus.get(r.code)!.name } : r)]
     const fields = sp ? [...new Set([...data.meta.fields, ...d.fields])] : d.fields
     const groups = sp ? mergeGroups(data.meta.field_groups, d.field_groups) : d.field_groups
     return { sites, focusCodes: [...focus.keys()], spartanCodes, improveCodes: d.improveCodes, rows, fields,
@@ -1060,6 +1062,7 @@ export default function App() {
           row={openRow}
           allRows={rawSourceRows.some((r) => r.id === openRow.id) ? rawSourceRows : filters.rows}
           meta={drawerMeta}
+          studyRows={filters.rows}
           xField={xField}
           yField={yField}
           focusField={field}
@@ -1093,8 +1096,8 @@ export default function App() {
             : <MeetingSpecPage key={meeting} spec={SPEC_MEETINGS.find((m) => m.id === meeting) ?? SPEC_MEETINGS[0]} />}
         </PresentationProvider>}
         {tab === 'blanks' && <BlanksPage />}
-        {tab === 'baseline' && <BaselineComparisonPage mac={exportMac} demingLambda={data.calibration?.deming_lambda_mac10 ?? 1} />}
-        {tab === 'calibration' && <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={drawerMeta} galleryRows={paintedSourceRows} galleryMeta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />}
+        {tab === 'baseline' && (calibrationLoading ? <p>Loading calibration data…</p> : <BaselineComparisonPage mac={exportMac} demingLambda={data.calibration?.deming_lambda_mac10 ?? 1} />)}
+        {tab === 'calibration' && (calibrationLoading ? <p>Loading calibration data…</p> : <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={drawerMeta} galleryRows={paintedSourceRows} galleryMeta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />)}
         {tab === 'dashboard' && <DashboardPage dash={dash} setDash={setDash} filters={dashFilters} onScope={setDashScope} onPickSite={pickDashSite} display={<DisplayToggles />}
           data={{ rows, meta, axes, pmf: pmf ?? null, pmfRows, eff, defaults: { x: xField, y: yField, field }, openSite: openDashSite, pmfLabelOfDate,
             calibration: data.calibrationRuns ? { runs: data.calibrationRuns, lambda10: data.calibration?.deming_lambda_mac10 ?? 2.96, knownIds, galleryRows: paintedSourceRows, galleryMeta: meta, meta: drawerMeta } : null }} />}

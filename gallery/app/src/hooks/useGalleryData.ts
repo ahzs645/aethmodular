@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { dataUrl, loadDerived } from '@/lib/data'
+import { loadDerived, loadJson } from '@/lib/data'
 import type { CalibFile, CalibRunsFile, CensusFile, FiltersFile, MetaFile, PmfFile } from '@/lib/types'
 import { useTileLegend } from '@/lib/chartFit'
 
@@ -19,20 +19,20 @@ export interface GalleryData {
  * Loads every exported dataset once and shares it across the app.
  * Regenerate the files with `python gallery/data/export_data.py`.
  */
-export function useGalleryData() {
+export function useGalleryData(includeCalibration = false) {
   const [data, setData] = useState<GalleryData | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [calibrationLoaded, setCalibrationLoaded] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     // cached in lib/data, so a remount (or React's development double effect) does not download twice
     const get = (name: string) => loadDerived(`gallery:${name}`, async () => {
-      const res = await fetch(dataUrl(`${name}.json`))
-      if (!res.ok) throw new Error(`${name}.json -> HTTP ${res.status}`)
-      if (!name.startsWith('calibration')) return res.json()
+      const value = await loadJson<unknown>(`${name}.json`)
+      if (!name.startsWith('calibration')) return value
       // The calibration explorer names USPA "Pasadena"; the filter data (config.SITES)
       // call it JPL. Relabel on load so one site has one name on every tab.
-      return JSON.parse((await res.text()).replace(/\bPasadena\b/g, 'JPL'))
+      return JSON.parse(JSON.stringify(value).replace(/\bPasadena\b/g, 'JPL'))
     })
     // pmf.json is ETAD-only and optional — a checkout without the factor CSVs
     // should still render everything else.
@@ -41,11 +41,9 @@ export function useGalleryData() {
       get('meta'),
       get('census'),
       get('pmf').catch(() => null),
-      get('calibration').catch(() => null),
-      get('calibration_runs').catch(() => null),
     ])
-      .then(([filters, meta, census, pmf, calibration, calibrationRuns]) => {
-        if (!cancelled) setData({ filters, meta, census, pmf, calibration, calibrationRuns })
+      .then(([filters, meta, census, pmf]) => {
+        if (!cancelled) setData({ filters, meta, census, pmf, calibration: null, calibrationRuns: null })
       })
       .catch((e) => !cancelled && setError(String(e)))
     return () => {
@@ -53,7 +51,25 @@ export function useGalleryData() {
     }
   }, [])
 
-  return { data, error }
+  // Large calibration exports are needed only by their pages/dashboard tiles.
+  // They never delay the first render of the filter charts.
+  const ready = !!data
+  useEffect(() => {
+    if (!includeCalibration || !ready) return
+    let live = true
+    const get = <T,>(name: string) => loadDerived<T>(`gallery:${name}`, async () =>
+      JSON.parse(JSON.stringify(await loadJson(`${name}.json`)).replace(/\bPasadena\b/g, 'JPL')))
+    Promise.all([get<CalibFile>('calibration').catch(() => null), get<CalibRunsFile>('calibration_runs').catch(() => null)])
+      .then(([calibration, calibrationRuns]) => {
+        if (live) {
+          setData(d => d ? { ...d, calibration, calibrationRuns } : d)
+          setCalibrationLoaded(true)
+        }
+      })
+    return () => { live = false }
+  }, [includeCalibration, ready])
+
+  return { data, error, calibrationLoading: includeCalibration && !calibrationLoaded }
 }
 
 /** Observes an element and reports its pixel size, so charts stay responsive. */

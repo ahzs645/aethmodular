@@ -101,6 +101,19 @@ WORKFLOW_PATH = ".github/workflows/deploy.yml"
 DATA_ASSET = "gallery-data.tar.gz"
 DATA = APP / "public/data"
 
+
+def is_text_asset(path: Path) -> bool:
+    return path.suffix in TEXT or (path.suffix == '.gz' and path.with_suffix('').suffix in TEXT)
+
+
+def asset_text(path: Path, body: bytes) -> str:
+    return (gzip.decompress(body) if path.suffix == '.gz' else body).decode('utf-8', errors='surrogateescape')
+
+
+def encode_text_asset(path: Path, text: str) -> bytes:
+    body = text.encode('utf-8', errors='surrogateescape')
+    return gzip.compress(body, mtime=0) if path.suffix == '.gz' else body
+
 README_RELEASE = """# Aethmodular graph gallery
 
 GitHub Pages site for the interactive gallery in [ahzs645/aethmodular](https://github.com/ahzs645/aethmodular)
@@ -137,14 +150,14 @@ def pack_data(dest: Path) -> tuple[str, int, int]:
         for path in files:
             rel = path.relative_to(DATA).as_posix()
             body = path.read_bytes()
-            if path.suffix in TEXT:
-                text = body.decode("utf-8", errors="surrogateescape")
+            if is_text_asset(path):
+                text = asset_text(path, body)
                 new = text
                 for pattern, repl in SCRUB:
                     new = pattern.sub(repl, new)
                 if new != text:
                     scrubbed += 1
-                    body = new.encode("utf-8", errors="surrogateescape")
+                    body = encode_text_asset(path, new)
                 if FORBIDDEN.search(new):
                     left.append(rel)
             info = tarfile.TarInfo(rel)
@@ -236,16 +249,16 @@ def build():
                    cwd=APP, env={**{k: v for k, v in os.environ.items() if k != "VITE_SHARE_TABS"}, "VITE_HIDE_EXPLAIN": "1"}, check=True)
     changed = 0
     for path in BUILD.rglob("*"):
-        if path.is_file() and path.suffix in TEXT:
-            text = path.read_text(errors="surrogateescape")
+        if path.is_file() and is_text_asset(path):
+            text = asset_text(path, path.read_bytes())
             new = text
             for pattern, repl in SCRUB:
                 new = pattern.sub(repl, new)
             if new != text:
-                path.write_text(new, errors="surrogateescape")
+                path.write_bytes(encode_text_asset(path, new))
                 changed += 1
     left = [str(p.relative_to(BUILD)) for p in BUILD.rglob("*")
-            if p.is_file() and p.suffix in TEXT and FORBIDDEN.search(p.read_text(errors="replace"))]
+            if p.is_file() and is_text_asset(p) and FORBIDDEN.search(asset_text(p, p.read_bytes()))]
     if left:
         raise SystemExit(f"refusing to publish: machine paths or account names remain in {left}")
     (BUILD / ".nojekyll").write_text("")

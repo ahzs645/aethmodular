@@ -1,6 +1,6 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
 import { chemText } from '@/lib/format'
-import { loadJson } from '@/lib/data'
+import { loadSpartanReference } from '@/lib/spartan'
 import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
 import { useRegressions, fitsFor, equation, FitGroupingControl } from '@/lib/regressionPrefs'
 import { groupedRegressions } from '@/lib/siteRegression'
@@ -43,6 +43,7 @@ const RATIOS: { label: string; num: string; den: string; why: string }[] = [
 export function SampleDrawer({
   row,
   allRows,
+  studyRows,
   meta,
   xField,
   yField,
@@ -58,6 +59,7 @@ export function SampleDrawer({
   row: FilterRow
   /** every exported filter, unfiltered — reference distributions use the full available population */
   allRows: FilterRow[]
+  studyRows: FilterRow[]
   meta: MetaFile
   xField: string
   yField: string
@@ -84,7 +86,7 @@ export function SampleDrawer({
     if (reference !== 'network' || network) return
     let live = true
     setNetworkError('')
-    loadJson<SpartanReference>('spartan_reference.json')
+    loadSpartanReference()
       .then((data) => {
         if (data.schema_version !== 1 || !Array.isArray(data.rows)) throw new Error('Unsupported reference export')
         if (live) setNetwork(data)
@@ -107,7 +109,7 @@ export function SampleDrawer({
   const isNum = isFiniteNumber
   const referenceSite = reference === 'same' ? row.site : reference === 'network' || reference === 'study' ? undefined : reference
   const referenceLabel = reference === 'network' ? 'SPARTAN network' : reference === 'study' ? 'Four gallery sites' : referenceSite!
-  const referenceRows = useMemo(() => cleanReference(reference === 'network' ? network?.rows ?? [] : allRows, referenceSite), [reference, network, allRows, referenceSite])
+  const referenceRows = useMemo(() => cleanReference(reference === 'network' ? network?.rows ?? [] : reference === 'study' ? studyRows : allRows, referenceSite), [reference, network, allRows, studyRows, referenceSite])
   const knownIds = useMemo(() => new Set(allRows.map(r => r.id)), [allRows])
   const referenceDates = referenceRows.map(r => r.date).filter(Boolean).sort()
 
