@@ -200,7 +200,6 @@ export function SampleDrawer({
           <div className="drawer-sub">
             {/* the site is already named: its season without the "Site · " prefix */}
             {row.site} ({row.code}) · {row.date}{row.season ? <> · {String(row.season).startsWith(`${row.site} · `) ? String(row.season).slice(row.site.length + 3) : row.season}</> : null}
-            {idx >= 0 && <> · filter {idx + 1} of {siteRows.length} at this site</>}
           </div>
           {row.excluded && <div className="drawer-reason">{row.exclusion_reason}</div>}
         </div>
