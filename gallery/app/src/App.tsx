@@ -226,7 +226,8 @@ export default function App() {
   const init = useMemo(() => readParams(), [])
   const [tab, setTab] = useState<TabKey>(() => tabFromParams(init))
   const { data, error, calibrationLoading } = useGalleryData(['calibration', 'baseline', 'dashboard'].includes(tab))
-  // spline / VIBES FTIR EC for the Addis test set (gallery/data/export_baseline_ftir_ec.py); optional
+  // spline / VIBES FTIR EC (gallery/data/export_baseline_ftir_ec.py): the Addis test set from the
+  // frozen runs, every other SPARTAN PM2.5 filter with a spectrum from the network baselines; optional
   const baselines = useExport<{ rows: Record<string, { spline?: number; vibes?: number }> }>('baseline_ftir_ec.json').data
   const focusRows = useMemo(() => {
     const rows = data?.filters.rows ?? []
@@ -268,7 +269,7 @@ export default function App() {
   // hand edits from a brush, on top of the dataset's exclusions: drop these filters, or keep only these
   const [dropIds, setDropIds] = useState<Set<string>>(() => idSet(init.get('drop')) ?? new Set())
   const [keepIds, setKeepIds] = useState<Set<string> | null>(() => idSet(init.get('keep')))
-  // which spectral baseline FTIR EC is shown with (Addis test set only for spline and VIBES)
+  // which spectral baseline FTIR EC is shown with (spline and VIBES where a filter has a native spectrum)
   const [ftirBaseline, setFtirBaseline] = useState<FtirBaseline>(() => (['spline', 'vibes'] as string[]).includes(init.get('fb') ?? '') ? init.get('fb') as FtirBaseline : 'none')
   const [seasonsOn, setSeasonsOn] = useState(init.get('seas') !== '0')
   const [pmfOn, setPmfOn] = useState(init.get('pmfon') === '1')
@@ -622,7 +623,12 @@ export default function App() {
 
   // Rows after the exclusion toggle and calendar relabel — the brush draws these.
   const rawSourceRows = useMemo(() => {
-    const rows = netBase ? netBase.rows : focusRows
+    const base = netBase ? netBase.rows : focusRows
+    // the network's rows get their spline / VIBES FTIR EC too (focus rows already carry theirs)
+    const rows = !baselines ? base : base.map((r) => {
+      const b = baselines.rows[r.id]
+      return b && r[FTIR_VARIANT.spline] === undefined ? { ...r, [FTIR_VARIANT.spline]: b.spline ?? null, [FTIR_VARIANT.vibes]: b.vibes ?? null } : r
+    })
     // the weather fields ride on every row, so every chart and picker can use them
     const withWeather = !weather ? rows : rows.map((r) => {
       const w = weather.rows[r.id]
@@ -630,7 +636,7 @@ export default function App() {
     })
     // so do the PMF source shares and dominant source, at the site the PMF solution covers (lib/pmfGroups)
     return withPmf(withWeather, data?.pmf ?? null, pmfScheme)
-  }, [netBase, focusRows, weather, data, pmfScheme])
+  }, [netBase, focusRows, weather, data, pmfScheme, baselines])
   // the reader's view (lib/viewFields): MAC, mass per filter, ratios; the drawer keeps the exported values
   const exportMac = data?.meta.mac_value ?? 10
   const viewOpts = useMemo(() => ({

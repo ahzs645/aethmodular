@@ -359,6 +359,78 @@ def compare(args):
     worst = r.sort_values("rel_rms", ascending=False).groupby("method").head(5)
     print(worst[["method", "filter_id", "kind", "analyses", "rel_rms", "r"]].round(5).to_string(index=False))
 
+# the calibrations the gallery's "FTIR baseline" switch already uses for the Addis test set: the
+# frozen all-IMPROVE (both lots) PLS models, identified by reproducing its Addis values exactly
+TABLES = ROOT / "research/ftir_hips_chem/output/tables"
+EC_MODELS = {
+    "spline": (TABLES / "vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/pls_full_pool_AIRSpec.npz",
+               TABLES / "vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/wn.npy"),
+    "vibes": (TABLES / "vibes_fullrange/interpretation_20261002/benchmark/pls_full_pool_uncapped_full.npz", None),
+}
+FROZEN_ADDIS_EC = TABLES / "vibes_fullrange/gallery_rank70_20261002/meeting/addis_predictions.csv"
+FROZEN_FITS = {"spline": "allimprove|AIRSpec|all-IMPROVE both lots (frozen Colab)",
+               "vibes": "allimprove|VIBES-full-r70|all-IMPROVE both lots (frozen Colab)"}
+
+
+def _site_volumes():
+    """sampled volume (m3) by physical filter id, from the gallery's site shards"""
+    idx = json.loads((NET / "index.json").read_text())
+    vol = {}
+    for s in idx["sites"]:
+        for r in _gz_json(NET.parent / s["filters"])["rows"]:
+            v = r.get("Sampled volume")
+            if isinstance(v, (int, float)) and v > 0:
+                vol[r["id"]] = float(v)
+    return vol
+
+
+def ec(args):
+    """FTIR EC under each baseline for every PM2.5 filter: the frozen models applied to the corrected
+    spectra (prediction in ug per filter / sampled volume, as for the Addis test set). Repeat
+    analyses of a filter are averaged; the models are linear, so this equals predicting the mean
+    spectrum, as the frozen runs did."""
+    bundle = OUT / "vibes_bundle"
+    cases = pd.read_csv(bundle / "cases.csv", dtype={"analysis_id": str, "media_id": str})
+    grid = np.load(bundle / "background_model.npz")["wn"]
+    X = np.load(bundle / "X_model_grid.npy").astype(float)
+    vibes_corr = X - np.load(OUT / "vibes_baselines_model_grid.npy").astype(float)
+    air = np.load(OUT / "airspec_baselines.npz")
+    air_by = {k.split("_")[0][1:]: (int(k.split("_")[1]), air[k]) for k in air.files}
+    native = {a["analysis_id"]: (wn, y) for a, wn, y in native_analyses()}
+    zs = np.load(EC_MODELS["spline"][0]); wn_s = np.load(EC_MODELS["spline"][1])
+    zv = np.load(EC_MODELS["vibes"][0])
+    if zv["coefficient"].size != len(grid) or zs["coefficient"].size != len(wn_s):
+        raise ValueError("model and grid sizes differ")
+    lin = lambda z, x: float((x - z["x_mean"]) @ z["coefficient"].ravel() + float(z["intercept"][0]))
+    rows = []
+    for c in cases[cases.filter_type.eq("PM2.5")].itertuples():
+        wn, y = native[c.analysis_id]
+        i0, b = air_by[c.analysis_id]
+        span = wn[i0:i0 + len(b)]
+        corr, _ = resample(span, y[i0:i0 + len(b)] - b, wn_s)
+        spline = lin(zs, corr) if np.isfinite(corr).all() else np.nan
+        v = vibes_corr[c.case_row]
+        vibes_ug = lin(zv, v) if np.isfinite(v).all() else np.nan
+        rows.append({"id": c.filter_key, "code": c.code, "analysis_id": c.analysis_id, "spline_ug": spline, "vibes_ug": vibes_ug})
+    per = pd.DataFrame(rows).groupby(["id", "code"], as_index=False).agg(
+        analyses=("analysis_id", "size"), spline_ug=("spline_ug", "mean"), vibes_ug=("vibes_ug", "mean"))
+    vol = _site_volumes()
+    per["volume_m3"] = per.id.map(vol)
+    per["spline_ugm3"] = per.spline_ug / per.volume_m3
+    per["vibes_ugm3"] = per.vibes_ug / per.volume_m3
+    per.to_csv(OUT / "network_ec.csv", index=False)
+    ok = per.volume_m3.notna()
+    print(f"{len(per)} PM2.5 filters at {per.code.nunique()} sites; {ok.sum()} with a sampled volume (EC in ug/m3)")
+    # Addis: against the frozen values the gallery shows today
+    fz = pd.read_csv(FROZEN_ADDIS_EC)
+    fz["id"] = fz.ExternalFilterId.str.replace(r"-\d+$", "", regex=True)
+    for m, fit in FROZEN_FITS.items():
+        f = fz[fz.fit_id.eq(fit)].groupby("id").ftir_ec_ugm3.mean()
+        j = per.set_index("id")[f"{m}_ugm3"].reindex(f.index).dropna()
+        d = j - f.reindex(j.index)
+        print(f"  {m}: {len(j)} Addis filters vs frozen: median |diff| {d.abs().median():.3f} ug/m3, "
+              f"max {d.abs().max():.3f}, r {np.corrcoef(j, f.reindex(j.index))[0, 1]:.4f}")
+
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -366,6 +438,7 @@ def main():
     sub.add_parser("prepare")
     sub.add_parser("check")
     sub.add_parser("compare")
+    sub.add_parser("ec")
     p = sub.add_parser("airspec")
     p.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     p = sub.add_parser("vibes")

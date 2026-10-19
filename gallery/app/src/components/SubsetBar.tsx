@@ -370,8 +370,8 @@ export function SubsetBar({
             <Row label="FTIR baseline">
               <Segmented value={({ none: 'None', spline: 'Spline', vibes: 'VIBES' } as const)[s.ftirBaseline ?? 'none'] as any} options={['None', 'Spline', 'VIBES'] as any}
                 onChange={(v: string) => a.onFtirBaseline!(v === 'Spline' ? 'spline' : v === 'VIBES' ? 'vibes' : 'none')}
-                title="FTIR EC with no baseline correction (the SPARTAN product), the spline (AIRSpec) baseline, or the VIBES baseline. Spline and VIBES come from the same all-IMPROVE calibration pool and exist for the Addis test set only, so other sites drop out of EC (FTIR) charts while they are chosen." />
-              {s.ftirBaseline && s.ftirBaseline !== 'none' && <span className="method-note" style={{ display: 'block' }}>Addis test set only (189 gallery filters)</span>}
+                title="FTIR EC with no baseline correction (the SPARTAN product), the spline (AIRSpec) baseline, or the VIBES baseline. Spline and VIBES come from the same all-IMPROVE calibration pool: the Addis test set from the frozen calibration runs, every other SPARTAN PM2.5 filter with a native spectrum and a sampled volume from those models applied to the network baselines. Filters without one (and IMPROVE) drop out of EC (FTIR) charts while they are chosen." />
+              {s.ftirBaseline && s.ftirBaseline !== 'none' && <span className="method-note" style={{ display: 'block' }}>SPARTAN filters with a native spectrum (28 sites, about 3,250 filters); Addis test set from the frozen runs</span>}
             </Row>
           )}
 
