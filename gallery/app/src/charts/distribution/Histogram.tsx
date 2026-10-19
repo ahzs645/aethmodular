@@ -157,7 +157,7 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
     const dens = scaledDensities[si] ?? []
     const line = d3.line<number>().x((_, i) => x(grid[i])).y((_, i) => y(sign * (dens[i] ?? 0))).curve(d3.curveBasis)
     return (
-      <g key={s.name} opacity={dimOf(s.name)}>
+      <g key={s.name} opacity={dimOf(s.name)} data-export-site={s.name} data-export-series={s.name} data-export-color={s.color}>
         {showBars && s.bins.map((b, i) => {
           const v = val(s, b)
           if (!v) return null

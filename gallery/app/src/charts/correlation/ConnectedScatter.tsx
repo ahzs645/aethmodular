@@ -114,7 +114,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
           <svg width={innerW + MARGIN.left + MARGIN.right} height={height}>
             <defs>
               {series.map((s) => (
-                <marker key={s.name} id={`arrow-${s.name.replace(/\s/g, '')}`} viewBox="0 0 10 10" refX={8} refY={5} markerWidth={7} markerHeight={7} orient="auto-start-reverse">
+                <marker key={s.name} data-export-site={s.name} data-export-color={s.color} id={`arrow-${s.name.replace(/\s/g, '')}`} viewBox="0 0 10 10" refX={8} refY={5} markerWidth={7} markerHeight={7} orient="auto-start-reverse">
                   <path d="M 0 0 L 10 5 L 0 10 z" fill={s.color} />
                 </marker>
               ))}
@@ -130,7 +130,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
                 <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />
               )}
               {series.map((s) => (
-                <g key={s.name} opacity={dim(s.name)}>
+                <g key={s.name} opacity={dim(s.name)} data-export-site={s.name} data-export-color={s.color}>
                   <path
                     d={line(s.pts) ?? ''}
                     fill="none"

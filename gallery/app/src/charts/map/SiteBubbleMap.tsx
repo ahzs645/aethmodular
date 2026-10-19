@@ -171,7 +171,7 @@ export function SiteBubbleMap({ rows, meta, field, focusSite, onSite }: {
             const p = zoom.apply(projected)
             const available = s.value != null && s.n_filters > 0
             const r = available ? Math.max(4, rScale(Math.max(0, s.value!))) : 4
-            return <g key={s.code} opacity={lg.dim(s.label, 0.2)} onClick={onSite ? () => onSite(s.code) : undefined} style={onSite ? { cursor: 'pointer' } : undefined} onMouseEnter={e => tip.show(e, [
+            return <g key={s.code} data-export-site={s.name} data-export-color={s.color} opacity={lg.dim(s.label, 0.2)} onClick={onSite ? () => onSite(s.code) : undefined} style={onSite ? { cursor: 'pointer' } : undefined} onMouseEnter={e => tip.show(e, [
               `${s.name} (${s.code})`, s.location,
               `${s.n_filters.toLocaleString()} samples · ${s.date_min} → ${s.date_max}`,
               ...(stat === 'Sample count' ? [] : [

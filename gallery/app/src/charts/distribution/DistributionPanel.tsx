@@ -107,7 +107,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                   const wScale = d3.scaleLinear().domain([0, maxD]).range([0, bw / 2])
                   const area = d3.area<number>().x0((_, i) => cx - wScale(dens[i])).x1((_, i) => cx + wScale(dens[i])).y((d) => y(d)).curve(d3.curveCatmullRom)
                   return (
-                    <g key={g.name} onMouseEnter={(e) => tip.show(e, [g.name, `n = ${g.box.n}`, `median = ${fmt(g.box.median)}`])} onMouseLeave={tip.hide}>
+                    <g key={g.name} data-export-site={groupBy === 'Site' ? g.name : undefined} data-export-series={g.name} data-export-color={g.color} onMouseEnter={(e) => tip.show(e, [g.name, `n = ${g.box.n}`, `median = ${fmt(g.box.median)}`])} onMouseLeave={tip.hide}>
                       <path d={area(grid) ?? ''} fill={g.color} fillOpacity={0.55} stroke={g.color} strokeWidth={1.2} />
                       <line x1={cx} x2={cx} y1={y(g.box.q1)} y2={y(g.box.q3)} stroke={INK.text} strokeWidth={5} strokeLinecap="round" />
                       <circle cx={cx} cy={y(g.box.median)} r={3} fill="#fff" stroke={INK.text} strokeWidth={1.4} />
@@ -117,7 +117,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
 
                 if (mode === 'Beeswarm') {
                   return (
-                    <g key={g.name}>
+                    <g key={g.name} data-export-site={groupBy === 'Site' ? g.name : undefined} data-export-series={g.name} data-export-color={g.color}>
                       {g.items.map((it, i) => {
                         const st = focusStyle(it.row.id, hl.focusId, { r: 3, opacity: 0.6 }, hl.selected)
                         return (
@@ -145,7 +145,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                 const b = g.box
                 const withPoints = mode === 'Box + points'
                 return (
-                  <g key={g.name}>
+                  <g key={g.name} data-export-site={groupBy === 'Site' ? g.name : undefined} data-export-series={g.name} data-export-color={g.color}>
                     <g onMouseEnter={(e) => tip.show(e, [g.name, `n = ${b.n}`, `median = ${fmt(b.median)}`, `IQR = ${fmt(b.q1)} – ${fmt(b.q3)}`, `${b.outliers.length} outside 1.5·IQR`])} onMouseLeave={tip.hide}>
                       <line x1={cx} x2={cx} y1={y(b.max)} y2={y(b.q3)} stroke={INK.text} strokeWidth={1.2} />
                       <line x1={cx} x2={cx} y1={y(b.q1)} y2={y(b.min)} stroke={INK.text} strokeWidth={1.2} />

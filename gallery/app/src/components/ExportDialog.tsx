@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
+import { ExportColorOptions } from '@/components/ExportColorOptions'
+import { useExportSites } from '@/lib/exportSites'
+import { applyExportColors, DEFAULT_EXPORT_COLORS, readExportColors, type ExportColors } from '@/lib/exportColors'
 import { Combobox } from '@/components/Combobox'
 import { Segmented } from '@/components/ChartFrame'
 import {
@@ -30,8 +33,8 @@ const SCALES: { key: string; scale: number; label: string }[] = [
 const LEGENDS: LegendPlacement[] = ['shown', 'right', 'bottom', 'top', 'none']
 const LEGEND_LABEL: Record<LegendPlacement, string> = { shown: 'As on screen', right: 'Right', bottom: 'Bottom', top: 'Top', none: 'None' }
 
-interface Settings { format: ExportFormat; scale: string; legend: LegendPlacement; background: ExportBackground }
-const DEFAULTS: Settings = { format: 'png', scale: '2', legend: 'shown', background: 'white' }
+interface Settings { format: ExportFormat; scale: string; legend: LegendPlacement; background: ExportBackground; colors: ExportColors }
+const DEFAULTS: Settings = { format: 'png', scale: '2', legend: 'shown', background: 'white', colors: DEFAULT_EXPORT_COLORS }
 const KEY = 'gallery.export'
 // the reader's last choices: a per-browser convenience, so the button says what it will save
 function loadSettings(): Settings {
@@ -42,6 +45,7 @@ function loadSettings(): Settings {
       scale: SCALES.some((x) => x.key === s.scale) ? s.scale : DEFAULTS.scale,
       legend: LEGENDS.includes(s.legend) ? s.legend : DEFAULTS.legend,
       background: s.background === 'transparent' ? 'transparent' : 'white',
+      colors: readExportColors(s.colors),
     }
   } catch { return DEFAULTS }
 }
@@ -72,22 +76,30 @@ type Rendered = { blob: Blob | null; error: string | null }
 
 function ExportDialog({ panel, title, onClose }: { panel: HTMLElement; title: string; onClose: (saved?: ExportFormat) => void }) {
   // cloned once, when the dialog opens: later re-renders of the chart do not change the export
-  const fig = useMemo<Figure | null>(() => composeFigure(panel), [panel])
+  const sites = useExportSites()
+  const fig = useMemo<Figure | null>(() => composeFigure(panel, sites), [panel]) // capture the figure and its palette together
   const [s, setS] = useState<Settings>(loadSettings)
   const set = (patch: Partial<Settings>) => setS((cur) => { const next = { ...cur, ...patch }; saveSettings(next); return next })
   const hasLegend = !!fig && fig.legends.length > 0
   const legend = hasLegend ? s.legend : 'none'
-  const svg = useMemo(() => (fig ? layoutFigure(fig, legend) : null), [fig, legend])
+  const svg = useMemo(() => {
+    if (!fig) return null
+    const clone = layoutFigure(fig, legend)
+    applyExportColors(clone, fig.palette, s.colors)
+    return clone
+  }, [fig, legend, s.colors])
   const width = Number(svg?.getAttribute('width') ?? 0), height = Number(svg?.getAttribute('height') ?? 0)
   const scale = SCALES.find((x) => x.key === s.scale)!.scale
   const raster = s.format === 'png' || s.format === 'jpeg'
 
   // every format at the current settings, so the sizes sit next to the choices and switching is instant
-  const [out, setOut] = useState<Partial<Record<ExportFormat, Rendered>>>({})
+  const request = useMemo(() => ({ svg, scale, background: s.background }), [svg, scale, s.background])
+  const [rendered, setRendered] = useState<{ request: typeof request; out: Partial<Record<ExportFormat, Rendered>> } | null>(null)
+  // Never download an old color/size variant while its replacement is still rendering.
+  const out = rendered?.request === request ? rendered.out : {}
   useEffect(() => {
     if (!svg) return
     let live = true
-    setOut({})
     const timer = setTimeout(async () => {
       // the chosen format first (SVG before PDF, as the PDF's preview), then the others for their sizes
       const first: ExportFormat[] = s.format === 'pdf' ? ['svg', 'pdf'] : [s.format]
@@ -96,21 +108,22 @@ function ExportDialog({ panel, title, onClose }: { panel: HTMLElement; title: st
         let r: Rendered
         try { r = { blob: await renderFigure(svg, { format, scale, background: s.background }), error: null } } catch (e) { r = { blob: null, error: e instanceof Error ? e.message : String(e) } }
         if (!live) return
-        setOut((cur) => ({ ...cur, [format]: r }))
+        setRendered(cur => ({ request, out: { ...(cur?.request === request ? cur.out : {}), [format]: r } }))
       }
     }, 120)
     return () => { live = false; clearTimeout(timer) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [svg, scale, s.background])
+  }, [request])
 
   // the preview is the file itself for PNG / JPEG / SVG; a PDF previews as its SVG
   const current = out[s.format]
   const previewBlob = s.format === 'pdf' ? out.svg?.blob : current?.blob
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [preview, setPreview] = useState<{ blob: Blob; url: string } | null>(null)
+  const previewUrl = preview && preview.blob === previewBlob ? preview.url : null
   useEffect(() => {
-    if (!previewBlob) { setPreviewUrl(null); return }
+    if (!previewBlob) return
     const url = URL.createObjectURL(previewBlob)
-    setPreviewUrl(url)
+    setPreview({ blob: previewBlob, url })
     return () => URL.revokeObjectURL(url)
   }, [previewBlob])
 
@@ -153,39 +166,42 @@ function ExportDialog({ panel, title, onClose }: { panel: HTMLElement; title: st
               {previewUrl ? <img src={previewUrl} alt={`Preview of the ${s.format.toUpperCase()} export`} /> : <span className="export-wait">Rendering…</span>}
             </div>
             <div className="export-options">
-              <fieldset className="export-formats">
-                <legend>Format</legend>
-                {FORMATS.map((f) => {
-                  const r = out[f.key]
-                  return (
-                    <label key={f.key} className={s.format === f.key ? 'on' : ''}>
-                      <input type="radio" name="export-format" checked={s.format === f.key} onChange={() => set({ format: f.key })} />
-                      <span className="export-format-name">{f.label}</span>
-                      <span className="export-format-note">{f.note}</span>
-                      <span className="export-format-size">{r ? (r.blob ? fileSize(r.blob.size) : '–') : '…'}</span>
-                    </label>
-                  )
-                })}
-              </fieldset>
-              <div className="export-row">
-                <Combobox label="Resolution" value={s.scale} onChange={(v) => set({ scale: v })}
-                  title={raster ? 'Pixel density of the image; 300 dpi is the usual print requirement' : 'Vector formats have no resolution; this only applies to PNG and JPEG'}
-                  options={SCALES.map((x) => ({ key: x.key, label: x.label, hint: scaleHint(x.scale) }))} />
+              <div className="export-settings">
+                <fieldset className="export-formats">
+                  <legend>Format</legend>
+                  {FORMATS.map((f) => {
+                    const r = out[f.key]
+                    return (
+                      <label key={f.key} className={s.format === f.key ? 'on' : ''}>
+                        <input type="radio" name="export-format" checked={s.format === f.key} onChange={() => set({ format: f.key })} />
+                        <span className="export-format-name">{f.label}</span>
+                        <span className="export-format-note">{f.note}</span>
+                        <span className="export-format-size">{r ? (r.blob ? fileSize(r.blob.size) : '–') : '…'}</span>
+                      </label>
+                    )
+                  })}
+                </fieldset>
+                <div className="export-row">
+                  <Combobox label="Resolution" value={s.scale} onChange={(v) => set({ scale: v })}
+                    title={raster ? 'Pixel density of the image; 300 dpi is the usual print requirement' : 'Vector formats have no resolution; this only applies to PNG and JPEG'}
+                    options={SCALES.map((x) => ({ key: x.key, label: x.label, hint: scaleHint(x.scale) }))} />
+                </div>
+                <div className="export-row">
+                  <Segmented label="Legend" value={legend} options={hasLegend ? LEGENDS : ['none'] as LegendPlacement[]} optionLabel={(o) => LEGEND_LABEL[o]}
+                    onChange={(v) => set({ legend: v })} title={hasLegend ? 'Where the legend sits in the file; the chart on the page is not changed' : 'This chart has no legend'} />
+                </div>
+                <div className="export-row">
+                  <Segmented label="Background" value={s.format === 'jpeg' ? 'white' : s.background} options={['white', 'transparent'] as ExportBackground[]}
+                    onChange={(v) => set({ background: v })} title={s.format === 'jpeg' ? 'JPEG has no transparency; it is always white' : 'Transparent suits a coloured slide or poster background'} />
+                </div>
+                <ExportColorOptions palette={fig.palette} value={s.colors} onChange={colors => set({ colors })} />
+                <p className="export-facts">
+                  {raster
+                    ? <>{Math.round(width * scale).toLocaleString()} × {Math.round(height * scale).toLocaleString()} px · prints at {inches(width)} × {inches(height)} in at 300 dpi</>
+                    : <>{width} × {height} px canvas · vector, sharp at any size{s.format === 'pdf' ? ` · page ${(width / 96).toFixed(1)} × ${(height / 96).toFixed(1)} in, Inter font embedded` : ''}</>}
+                </p>
+                {current?.error && <p className="export-error">Could not make this file: {current.error}.</p>}
               </div>
-              <div className="export-row">
-                <Segmented label="Legend" value={legend} options={hasLegend ? LEGENDS : ['none'] as LegendPlacement[]} optionLabel={(o) => LEGEND_LABEL[o]}
-                  onChange={(v) => set({ legend: v })} title={hasLegend ? 'Where the legend sits in the file; the chart on the page is not changed' : 'This chart has no legend'} />
-              </div>
-              <div className="export-row">
-                <Segmented label="Background" value={s.format === 'jpeg' ? 'white' : s.background} options={['white', 'transparent'] as ExportBackground[]}
-                  onChange={(v) => set({ background: v })} title={s.format === 'jpeg' ? 'JPEG has no transparency; it is always white' : 'Transparent suits a coloured slide or poster background'} />
-              </div>
-              <p className="export-facts">
-                {raster
-                  ? <>{Math.round(width * scale).toLocaleString()} × {Math.round(height * scale).toLocaleString()} px · prints at {inches(width)} × {inches(height)} in at 300 dpi</>
-                  : <>{width} × {height} px canvas · vector, sharp at any size{s.format === 'pdf' ? ` · page ${(width / 96).toFixed(1)} × ${(height / 96).toFixed(1)} in, Inter font embedded` : ''}</>}
-              </p>
-              {current?.error && <p className="export-error">Could not make this file: {current.error}.</p>}
               <div className="export-actions">
                 <button type="button" className="btn quiet" onClick={() => onClose()}>Cancel</button>
                 <button type="button" className="btn primary export-download" disabled={!current?.blob} onClick={save}>

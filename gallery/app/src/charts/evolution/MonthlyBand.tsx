@@ -99,7 +99,7 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
                 const withMedian = s.points.filter((p) => p.median !== null)
                 const line = d3.line<(typeof withMedian)[number]>().x((p) => x(p.month) ?? 0).y((p) => y(p.median!)).curve(d3.curveMonotoneX)
                 return (
-                  <g key={s.name} opacity={dim(s.name)}>
+                  <g key={s.name} opacity={dim(s.name)} data-export-site={s.name} data-export-color={s.color}>
                     {bands && <path d={area(withBand) ?? ''} fill={s.color} fillOpacity={0.18} pointerEvents="none" />}
                     <path d={line(withMedian) ?? ''} fill="none" stroke={s.color} strokeWidth={2.4} pointerEvents="none" />
                     {withMedian.map((p) => (

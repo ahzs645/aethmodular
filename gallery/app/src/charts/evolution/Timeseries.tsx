@@ -155,7 +155,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
                     <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} tickCount={layout === 'Overlay' ? 6 : 4} pick="field" />
                     <XAxis scale={x as any} y={innerH} format={(d: Date) => d3.timeFormat('%b %Y')(d)} tickCount={Math.max(2, Math.min(7, Math.floor(innerW / 80)))} />
                     {panel.series.map((s) => (
-                      <g key={s.name} opacity={dim(s.name)}>
+                      <g key={s.name} opacity={dim(s.name)} data-export-site={s.name} data-export-color={s.color}>
                         {s.pts.map((p) => {
                           const st = focusStyle(p.row.id, hl.focusId, { r: 2.6, opacity: smooth ? 0.32 : 0.75 }, hl.selected)
                           return (
@@ -200,7 +200,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
                           const py = y(p.value)
                           const right = px < innerW - 90
                           return (
-                            <g key={s.name} opacity={dim(s.name)}>
+                            <g key={s.name} opacity={dim(s.name)} data-export-site={s.name} data-export-color={s.color}>
                               <circle cx={px} cy={py} r={5} fill="#fff" stroke={s.color} strokeWidth={2} />
                               <text x={right ? px + 9 : px - 9} y={py} dy="0.35em" textAnchor={right ? 'start' : 'end'} fill={s.color} stroke="#fff" strokeWidth={3} paintOrder="stroke" fontWeight={600}>
                                 {fmt(p.value, 2)} · {d3.timeFormat('%d %b %y')(p.date)}

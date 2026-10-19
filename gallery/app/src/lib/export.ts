@@ -1,3 +1,4 @@
+import { collectExportPalette, paintColor, type ExportPalette, type ExportSite } from './exportColors'
 /**
  * Download a chart as PNG, JPEG, SVG or PDF. The decks in this repo are built
  * from figures, so a chart that can only be screenshotted is a chart that will
@@ -31,6 +32,7 @@ export interface Figure {
   chart: Piece[]
   /** each HTML legend on the panel, split into its items so they can be re-flowed */
   legends: Piece[][]
+  palette: ExportPalette
 }
 
 const visible = (el: Element) => {
@@ -49,7 +51,7 @@ const union = (boxes: Box[]): Box => ({
  * The panel's title, controls, buttons and tooltips are left out.
  * docs/gallery-chart-standards.md §1: export the whole panel, not its first facet.
  */
-export function composeFigure(panel: HTMLElement): Figure | null {
+export function composeFigure(panel: HTMLElement, sites: readonly ExportSite[] = []): Figure | null {
   const svgs = [...panel.querySelectorAll('svg')].filter((s) =>
     !s.closest(SKIP) && !s.parentElement?.closest('svg') && visible(s))
   if (!svgs.length) return null
@@ -73,6 +75,27 @@ export function composeFigure(panel: HTMLElement): Figure | null {
       while (item.parentElement && item.parentElement !== legend) item = item.parentElement
     }
     slot.set(item, [...(slot.get(item) ?? []), piece])
+  }
+
+  const annotate = (source: Element, target: Element) => {
+    const method = source.closest('[data-regression-color]')?.getAttribute('data-regression-color')
+    if (method) target.setAttribute('data-regression-color', method)
+    const series = source.closest('[data-export-series]')
+    if (series) {
+      const name = series.getAttribute('data-export-series')!, native = series.getAttribute('data-export-color')
+      target.setAttribute('data-export-series', name)
+      const site = sites.find(s => s.name === name && paintColor(s.color) === paintColor(native))
+      if (site) {
+        target.setAttribute('data-export-site', site.code)
+        target.setAttribute('data-export-color', native!)
+        target.setAttribute('data-export-legend-site', site.code)
+      }
+    }
+    const scope = source.closest('[data-export-site], [data-fit-site]')
+    if (scope) {
+      target.setAttribute('data-export-site', scope.getAttribute('data-export-site') ?? scope.getAttribute('data-fit-site')!)
+      if (scope.hasAttribute('data-export-color')) target.setAttribute('data-export-color', scope.getAttribute('data-export-color')!)
+    }
   }
 
   for (const svg of svgs) {
@@ -108,6 +131,7 @@ export function composeFigure(panel: HTMLElement): Figure | null {
         el.setAttribute('fill', dashed ? cs.borderTopColor : cs.backgroundColor)
         if (cs.opacity !== '1') el.setAttribute('opacity', cs.opacity)
       }
+      annotate(sw, el)
       place(sw, { els: [el], box: boxOf(rect) })
     }
     const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT)
@@ -134,6 +158,7 @@ export function composeFigure(panel: HTMLElement): Figure | null {
       el.textContent = text
       // its width on screen: the PDF draws it in Inter, which runs wider, and shrinks it to fit
       el.setAttribute('data-w', rect.width.toFixed(1))
+      annotate(parent, el)
       place(parent, { els: [el], box: boxOf(rect) })
     }
   }
@@ -142,7 +167,7 @@ export function composeFigure(panel: HTMLElement): Figure | null {
     .map((ps) => ({ els: ps.flatMap((p) => p.els), box: union(ps.map((p) => p.box)) })))
     .filter((l) => l.length)
   if (!chart.length) return null
-  return { chart, legends }
+  return { chart, legends, palette: collectExportPalette([...chart, ...legends.flat()].flatMap(p => p.els), sites) }
 }
 
 /** One <svg> from a composed figure, with the legend where it was asked for. */

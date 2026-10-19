@@ -119,7 +119,7 @@ export function Ridgeline({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
                     const yBase = i * rowH + rowH
                     const h = d3.scaleLinear().domain([0, maxDensity]).range([0, rowH * overlap])
                     const area = d3.area<number>().x((_, k) => x(grid[k])).y0(yBase).y1((_, k) => yBase - h(dens[k])).curve(d3.curveBasis)
-                    return <path key={g.name} d={area(grid) ?? ''} fill={g.color} fillOpacity={0.62} stroke={g.color} strokeWidth={1.4} />
+                    return <path key={g.name} data-export-site={g.name} data-export-series={g.name} data-export-color={g.color} d={area(grid) ?? ''} fill={g.color} fillOpacity={0.62} stroke={g.color} strokeWidth={1.4} />
                   })}
               </g>
 

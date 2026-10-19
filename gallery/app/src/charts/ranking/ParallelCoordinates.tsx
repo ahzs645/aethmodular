@@ -302,13 +302,13 @@ export function ParallelCoordinates({ rows, meta }: { rows: FilterRow[]; meta: M
               <g fill="none" strokeLinejoin="round" strokeLinecap="round" pointerEvents="none">
                 {lines.map((l) =>
                   l.row.id === focusId ? null : (
-                    <path key={l.row.id} d={l.d} stroke={colorOf(l.row)} strokeWidth={1} strokeOpacity={strokeOpacityOf(l) * dim(groupOf(l.row))} />
+                    <path key={l.row.id} data-export-site={colorBy === 'Site' ? l.row.site : undefined} data-export-color={colorOf(l.row)} d={l.d} stroke={colorOf(l.row)} strokeWidth={1} strokeOpacity={strokeOpacityOf(l) * dim(groupOf(l.row))} />
                   )
                 )}
                 {focused && (
                   <>
                     <path d={focused.d} stroke={INK.fit} strokeWidth={4.5} strokeOpacity={1} />
-                    <path d={focused.d} stroke={colorOf(focused.row)} strokeWidth={2.5} strokeOpacity={1} />
+                    <path data-export-site={colorBy === 'Site' ? focused.row.site : undefined} data-export-color={colorOf(focused.row)} d={focused.d} stroke={colorOf(focused.row)} strokeWidth={2.5} strokeOpacity={1} />
                   </>
                 )}
               </g>

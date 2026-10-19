@@ -137,7 +137,7 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
               )
             })}
             {shown.map((s) => (
-              <path key={s.name} d={pathFor(s)} fill={s.color} fillOpacity={0.14 * dim(s.name)} stroke={s.color} strokeOpacity={dim(s.name)} strokeWidth={2} strokeLinejoin="round" />
+              <path key={s.name} data-export-site={s.name} data-export-color={s.color} d={pathFor(s)} fill={s.color} fillOpacity={0.14 * dim(s.name)} stroke={s.color} strokeOpacity={dim(s.name)} strokeWidth={2} strokeLinejoin="round" />
             ))}
             {shown.map((s) =>
               species.map((f) => {
@@ -147,7 +147,7 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
                 const [px, py] = polar(f, Math.min(rMax, ratio))
                 return (
                   <circle
-                    key={`${s.name}-${f}`}
+                    key={`${s.name}-${f}`} data-export-site={s.name} data-export-color={s.color}
                     cx={px} cy={py} r={3.5} fill={s.color} stroke="#fff" strokeWidth={1} opacity={dim(s.name)}
                     onMouseEnter={(e) =>
                       tip.show(e, [

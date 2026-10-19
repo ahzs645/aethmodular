@@ -59,6 +59,7 @@ export function Legend({
         return (
           <span
             key={it.label}
+            data-export-series={it.label} data-export-color={it.color}
             className={cls}
             onClick={onToggle ? () => onToggle(it.label) : undefined}
             onKeyDown={onToggle ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(it.label) } } : undefined}

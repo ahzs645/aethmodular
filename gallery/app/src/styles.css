@@ -1052,3 +1052,23 @@ html.dash-present .container.dash { padding-top: 10px; }
 
 .reference-sites { margin: 6px 0 10px; }
 .reference-sites > summary { cursor: pointer; margin-bottom: 6px; font-weight: 600; }
+
+.export-colors { border: 0; border-top: 1px solid var(--ink-border); padding: 10px 0 0; margin: 0; min-width: 0; }
+.export-colors legend { color: var(--ink-muted); padding: 0 6px 0 0; font-size: 12px; }
+.export-color-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.export-same-color { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.export-site-colors { max-height: 220px; overflow-y: auto; scrollbar-width: thin; }
+.export-color-choice { display: flex; align-items: center; gap: 6px; min-height: 32px; }
+.export-color-name { flex: 1; min-width: 0; display: flex; gap: 5px; align-items: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.export-color-name small { font-weight: normal; color: var(--ink-muted); }
+.export-color-choice input[type="color"] { width: 28px; height: 26px; padding: 1px; flex: none; border: 1px solid var(--ink-border); border-radius: 4px; background: var(--ink-panel); cursor: pointer; }
+.export-color-hex { width: 78px; min-width: 0; padding: 3px 5px; font-family: var(--mono); font-size: 11px; }
+.export-color-hex[aria-invalid="true"] { border-color: var(--danger); }
+.export-fit-colors { margin-top: 8px; }
+.export-fit-colors > strong { font-size: 11.5px; color: var(--ink-muted); }
+.export-color-note { color: var(--ink-muted); font-size: 11px; line-height: 1.45; margin: 6px 0 0; }
+@media (min-width: 761px) { .export-preview { position: sticky; top: 0; } }
+
+.export-settings { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.export-actions { padding-top: 8px; border-top: 1px solid var(--ink-border); }
+@media (min-width: 761px) { .export-settings { max-height: calc(100dvh - 170px); overflow-y: auto; padding-right: 4px; scrollbar-width: thin; } }

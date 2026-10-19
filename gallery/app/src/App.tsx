@@ -48,6 +48,7 @@ import { currentView, isEmbed, viewUrl } from '@/lib/views'
 import { useExport } from '@/lib/data'
 import { customSeasonMeta, customSeasonsParam, parseCustomSeasons } from '@/components/SeasonEditor'
 import { SideDock, SubsetBar, type SubsetActions, type SubsetCaps, type SubsetState } from '@/components/SubsetBar'
+import { ExportSitesProvider } from '@/lib/exportSites'
 import { SampleDrawer } from '@/components/SampleDrawer'
 import { RecordDrawer } from '@/components/RecordDrawer'
 import type { DateRange } from '@/components/DateBrush'
@@ -1047,6 +1048,7 @@ export default function App() {
     <HeaderNavProvider tabs={NAV_TABS} meetings={MEETINGS} open={openTab}>
     <RegressionProvider methods={estimators} setMethods={setEstimators} showCI={showCI} setShowCI={setShowCI}>
     <PrefsProvider>
+    <ExportSitesProvider sites={[...new Map([...rawMeta.sites, ...meta.sites].map(s => [s.code, s])).values()]}>
     <HighlightProvider pinnedId={pinnedId} setPinned={setPinnedId} openSample={openSample} openRecord={openRecord} onDismiss={dismissSample}>
     {/* hand edits hold on every tab: each chart that draws a filter leaves the excluded ones out */}
     <PageSidebarProvider>
@@ -1154,6 +1156,7 @@ export default function App() {
     </RatiosProvider>
     </PageSidebarProvider>
     </HighlightProvider>
+    </ExportSitesProvider>
     </PrefsProvider>
     </RegressionProvider>
     </HeaderNavProvider>

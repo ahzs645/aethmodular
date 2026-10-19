@@ -230,6 +230,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
               <ScatterPanel
                 key={p.key}
                 grouping={grouping}
+                siteColoring={colorBy === 'Site'}
                 title={p.title ? chartLabel(p.title) || null : null}
                 titleColor={p.color}
                 points={p.points}
@@ -316,10 +317,11 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
 
 /** One axes: used once for the combined layout, once per site for the grid. */
 function ScatterPanel({
-  title, titleColor, points, stats, fitGroups, domain, innerW, innerH, axes, showFit, xLabel, yLabel, colorOf, radiusOf, dimOf, fitDim, focusId, selected, brushing, onBrush, onEnter, onLeave, onClick, grouping,
+  title, titleColor, points, stats, fitGroups, domain, innerW, innerH, axes, showFit, xLabel, yLabel, colorOf, radiusOf, dimOf, fitDim, focusId, selected, brushing, onBrush, onEnter, onLeave, onClick, grouping, siteColoring,
 }: {
   /** the grouping the chart draws (lib/regressionPrefs effectiveGrouping), not the raw setting */
   grouping: FitGrouping
+  siteColoring: boolean
   title: string | null
   titleColor: string
   points: Point[]
@@ -427,7 +429,7 @@ function ScatterPanel({
   return (
     <div>
       {title && (
-        <p className="facet-title">
+        <p className="facet-title" data-export-site={title ?? undefined} data-export-color={titleColor}>
           <span className="swatch" style={{ background: titleColor }} /> {title}
           <span style={{ color: 'var(--ink-muted)', fontWeight: 400, fontFamily: 'var(--mono)', fontSize: 11 }}>n={points.length}</span>
         </p>
@@ -472,6 +474,7 @@ function ScatterPanel({
             return (
               <circle
                 key={p.row.id}
+                data-export-site={siteColoring ? p.row.site : undefined} data-export-color={siteColoring ? colorOf(p) : undefined}
                 cx={xScale(p.x)}
                 cy={yScale(p.y)}
                 r={st.r}
@@ -510,8 +513,8 @@ function ScatterPanel({
             <g pointerEvents="none" fontFamily={FONT.mono} fontSize={10.5}>
               {!originAxes && <RefLine orient="v" at={xScale(0)} from={0} to={innerH} />}
               {selectedFits.map(fit => <g key={fit.name + fit.method}>
-                <circle cx={xScale(0)} cy={yScale(fit.intercept)} r={4.5} fill="#fff" stroke={fit.color} strokeWidth={2} />
-                <text x={xScale(0) + 8} y={yScale(fit.intercept)} dy="0.35em" fill={fit.color} stroke="#fff" strokeWidth={3} paintOrder="stroke">{fit.label} b = {fmt(fit.intercept, 3)}</text>
+                <circle cx={xScale(0)} cy={yScale(fit.intercept)} r={4.5} fill="#fff" stroke={fit.color} data-regression-stroke={fit.method} strokeWidth={2} />
+                <text x={xScale(0) + 8} y={yScale(fit.intercept)} dy="0.35em" fill={fit.color} data-regression-color={fit.method} stroke="#fff" strokeWidth={3} paintOrder="stroke">{fit.label} b = {fmt(fit.intercept, 3)}</text>
               </g>)}
             </g>
           )}

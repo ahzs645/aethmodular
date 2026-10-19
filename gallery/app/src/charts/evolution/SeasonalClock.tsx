@@ -221,7 +221,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
 
               {/* radial axis: baseline per ring, faint tick rings, values printed once along the January spoke */}
               {(layout === 'Rings' ? series : series.slice(0, 1)).map((s, i) => (
-                <g key={s.name} pointerEvents="none">
+                <g key={s.name} pointerEvents="none" data-export-site={s.name} data-export-color={s.color}>
                   <circle r={ringInner(i)} fill="none" stroke={INK.axis} strokeOpacity={0.55} strokeWidth={1} />
                   {ticks.map((t) => (
                     <circle key={t} r={rOf(i, t)} fill="none" stroke={INK.axis} strokeOpacity={0.28} strokeWidth={0.8} strokeDasharray="2 3" />
@@ -246,7 +246,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
 
               {/* the bars */}
               {series.map((s, i) => (
-                <g key={s.name} opacity={dim(s.name)}>
+                <g key={s.name} opacity={dim(s.name)} data-export-site={s.name} data-export-color={s.color}>
                   {s.cells.map((c) => {
                     const a0 = layout === 'Grouped' ? monthStart(c.month) + (subBand(s.name) ?? 0) : monthStart(c.month) + sectorPad
                     const a1 = layout === 'Grouped' ? a0 + subBand.bandwidth() : monthStart(c.month + 1) - sectorPad

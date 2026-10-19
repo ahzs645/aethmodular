@@ -45,12 +45,12 @@ function useReadout(stats: RegressionStats | null, title?: string, color?: strin
   const fits = fitsFor(stats, methods)
   const missingYork = methods.includes('york') && !fits.some(f => f.method === 'york')
   const firstCI = showCI ? fits.map(f => confidence(stats, f.method)).find(Boolean) : null
-  const lines = [...(title ? [{ text: title, color: color ?? INK.text }] : []), { text: `n = ${stats.n} · R² = ${fmt(stats.r2, 3)}`, color: INK.text },
+  const lines: { text: string; color: string; method?: Estimator }[] = [...(title ? [{ text: title, color: color ?? INK.text }] : []), { text: `n = ${stats.n} · R² = ${fmt(stats.r2, 3)}`, color: INK.text },
     ...(firstCI ? [{ text: firstCI.description.includes('month-block') ? '95% CI · months within site' : '95% CI · independent pairs assumed', color: INK.muted }] : []), ...fits.flatMap(f => {
     const ci = showCI ? confidence(stats, f.method) : null
-    return [{ text: equation(f), color: color ?? f.color }, ...(showCI ? ci ? [
-      { text: `95% slope [${fmt(ci.slope[0], 3)}, ${fmt(ci.slope[1], 3)}]`, color: color ?? f.color },
-      { text: `95% intercept [${fmt(ci.intercept[0], 3)}, ${fmt(ci.intercept[1], 3)}]`, color: color ?? f.color },
+    return [{ text: equation(f), color: color ?? f.color, method: f.method }, ...(showCI ? ci ? [
+      { text: `95% slope [${fmt(ci.slope[0], 3)}, ${fmt(ci.slope[1], 3)}]`, color: color ?? f.color, method: f.method },
+      { text: `95% intercept [${fmt(ci.intercept[0], 3)}, ${fmt(ci.intercept[1], 3)}]`, color: color ?? f.color, method: f.method },
     ] : [{ text: '95% CI unavailable (data / resamples)', color: INK.muted }] : [])]
   }),
     ...(missingYork ? [{ text: 'York unavailable: check uncertainties', color: INK.muted }] : [])]
@@ -67,7 +67,7 @@ export function RegressionReadout({ stats, x = 10, y = 10, width = 280, title, c
   const step = Math.round(fontSize * 1.43)
   return <g transform={`translate(${x},${y})`} fontFamily={FONT.mono} fontSize={fontSize} pointerEvents="none">
     <rect width={width} height={lines.length * step + 12} rx={5} fill="#fff" fillOpacity={0.94} stroke={INK.border}/>
-    {lines.map((l, i) => <text key={i} x={8} y={step + 3 + i * step} fill={l.color}>{l.text}</text>)}
+    {lines.map((l, i) => <text key={i} x={8} y={step + 3 + i * step} fill={l.color} data-regression-color={l.method}>{l.text}</text>)}
     <title>{note}</title>
   </g>
 }
@@ -81,12 +81,12 @@ export function RegressionReadoutText({ stats, title, color }: { stats: Regressi
   const r = useReadout(stats, title, color)
   if (!r) return null
   return <p className="fit-readout legend" data-export="text" title={r.note || undefined}>
-    {r.lines.map((l, i) => <span key={i} style={{ color: l.color }}>{l.text}</span>)}
+    {r.lines.map((l, i) => <span key={i} style={{ color: l.color }} data-regression-color={l.method}>{l.text}</span>)}
   </p>
 }
 
 export function RegressionGroupLines({ groups, ...props }: Omit<Parameters<typeof RegressionLines>[0], 'stats' | 'color' | 'domain'> & { groups: RegressionGroup[] }) {
-  return <>{groups.map(group => <g key={group.name} data-fit-site={group.name}>
+  return <>{groups.map(group => <g key={group.name} data-fit-site={group.name} data-export-color={group.color}>
     <RegressionLines {...props} stats={group.stats} color={group.color} label={group.name} domain={group.domain} />
   </g>)}</>
 }
@@ -102,7 +102,7 @@ export function regressionGroupReadoutLayout(count: number, width: number, metho
 export function RegressionGroupReadouts({ groups, width, x = 0, y = 0 }: { groups: RegressionGroup[]; width: number; x?: number; y?: number }) {
   const { methods, showCI } = useRegressions()
   const layout = regressionGroupReadoutLayout(groups.length, width, methods, showCI)
-  return <g transform={`translate(${x},${y})`}>{groups.map((group, i) => <RegressionReadout key={group.name}
+  return <g transform={`translate(${x},${y})`}>{groups.map((group, i) => <g key={group.name} data-fit-site={group.name} data-export-color={group.color}><RegressionReadout
     stats={group.stats} title={group.name} color={group.color} width={layout.cellWidth}
-    x={(i % layout.columns) * (layout.cellWidth + 12)} y={Math.floor(i / layout.columns) * layout.rowHeight} />)}</g>
+    x={(i % layout.columns) * (layout.cellWidth + 12)} y={Math.floor(i / layout.columns) * layout.rowHeight} /></g>)}</g>
 }
