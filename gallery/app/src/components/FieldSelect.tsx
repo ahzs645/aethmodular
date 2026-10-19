@@ -1,10 +1,11 @@
 import type { MetaFile } from '@/lib/types'
+import { chemText } from '@/lib/format'
 import { pickerName } from '@/lib/pmfGroups'
 import { sentence } from '@/components/ChartFrame'
 import { Combobox } from '@/components/Combobox'
 import { DEFINE_RATIO, useRatios } from '@/components/RatioDialog'
 import { RATIO_GROUP } from '@/lib/viewFields'
-import { describeField } from '@/lib/glossary'
+import { fieldHelp } from '@/lib/glossary'
 
 /** "ug/m3" -> "µg/m³" for labels. */
 export const prettyUnit = (u: string | undefined) =>
@@ -43,10 +44,10 @@ export function FieldSelect({
     ...meta.field_groups.flatMap((g) => g.fields.map((f) => {
       const u = prettyUnit(meta.field_units?.[f])
       const cov = meta.coverage?.[f]
-      return { key: f, label: u ? `${pickerName(f)} — ${u}` : pickerName(f), group: g.label, hint: cov !== undefined ? String(cov) : undefined }
+      return { key: f, label: u ? `${pickerName(f)} — ${u}` : pickerName(f), group: g.label, hint: cov !== undefined ? String(cov) : undefined, title: chemText(fieldHelp(f)) }
     })).filter((o) => define || o.group !== RATIO_GROUP),
     ...(define ? [{ key: DEFINE_RATIO, label: 'Define a ratio…', group: RATIO_GROUP }] : []),
   ]
   const pick = (v: string) => (v === DEFINE_RATIO && define ? define.open(onChange) : onChange(v))
-  return <Combobox label={label} value={value} options={options} onChange={pick} title={title ?? describeField(value)} />
+  return <Combobox label={label} value={value} options={options} onChange={pick} title={title ?? chemText(fieldHelp(value))} />
 }

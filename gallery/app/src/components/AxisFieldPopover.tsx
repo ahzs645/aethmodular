@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode, useLayoutEffect } from 'react'
+import { fieldHelp } from '@/lib/glossary'
 import { pickerName } from '@/lib/pmfGroups'
 import { createPortal } from 'react-dom'
 import { prettyUnit } from '@/components/FieldSelect'
@@ -122,7 +123,7 @@ export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; an
               className={`combobox-option${i === active ? ' active' : ''}`}
               onMouseEnter={() => setActive(i)} onClick={() => pick(r.f)}>
               <span className="combobox-check" aria-hidden="true">{r.f === value[role] ? '✓' : ''}</span>
-              <span className="combobox-text" title={r.f === DEFINE_RATIO ? undefined : chemText(shown(r.f))}>{r.f === DEFINE_RATIO ? 'Define a ratio…' : chemText(pickerName(shown(r.f)))}{prettyUnit(meta.field_units?.[r.f]) && <span className="site-sub"> · {prettyUnit(meta.field_units?.[r.f])}</span>}</span>
+              <span className="combobox-text" title={r.f === DEFINE_RATIO ? undefined : chemText(fieldHelp(r.f, shown(r.f)))}>{r.f === DEFINE_RATIO ? 'Define a ratio…' : chemText(pickerName(shown(r.f)))}{prettyUnit(meta.field_units?.[r.f]) && <span className="site-sub"> · {prettyUnit(meta.field_units?.[r.f])}</span>}</span>
               {role !== 'field' && r.f === value[role === 'x' ? 'y' : 'x'] && <span className="combobox-hint" title="Choosing it swaps x and y">on {role === 'x' ? 'y' : 'x'} · swap</span>}
               {meta.coverage?.[r.f] !== undefined && <span className="combobox-hint">{meta.coverage[r.f]}</span>}
             </button>

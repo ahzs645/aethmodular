@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import { chemText } from '@/lib/format'
 
 export interface ComboOption<T extends string> {
+  /** hover text for this option (a field's description and origin) */
+  title?: string
   key: T
   label: string
   /** heading the option sits under (consecutive options share one heading) */
@@ -135,7 +137,7 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
             className={`combobox-option${index === active ? ' active' : ''}`}
             onMouseEnter={() => setActive(index)} onMouseDown={(event) => event.preventDefault()} onClick={() => choose(index)}>
             <span className="combobox-check" aria-hidden="true">{option.key === value ? '✓' : ''}</span>
-            <span className="combobox-text">{chemText(option.label)}</span>
+            <span className="combobox-text" title={option.title}>{chemText(option.label)}</span>
             {option.hint && <span className="combobox-hint">{option.hint}</span>}
           </button>
         </div>)}

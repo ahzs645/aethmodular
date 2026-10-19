@@ -66,3 +66,43 @@ export function describeField(f: string): string {
   if (/uncertainty|MDL/.test(f)) return `${f}: bookkeeping for the measurement it names.`
   return f
 }
+
+/**
+ * How a field came to be: measured (and by what), derived from other fields, a model's output or a
+ * reanalysis, and which dataset it comes from. Shown under describeField() when a measurement is
+ * hovered in a picker or on an axis title. Field names are shared across networks (Iron is SPARTAN's
+ * or IMPROVE's), so a line names both where they differ.
+ */
+const ION = /^(Sulfate|Nitrate|Nitrite|Ammonium|Phosphate|Bromide|Chloride|Lithium|Potassium|Sodium|Calcium|Magnesium)$/
+const ELEMENT = /^(Aluminum|Silicon|Iron|Titanium|Zinc|Copper|Lead|Antimony|Arsenic|Barium|Cadmium|Cerium|Chlorine|Chromium|Cobalt|Manganese|Nickel|Phosphorus|Rubidium|Selenium|Strontium|Sulfur|Tin|Vanadium)$/
+export function fieldOrigin(f: string): string {
+  const name = f.replace(/ share \(PMF\)$/, '')
+  if (/ share \(PMF\)$/.test(f)) return `Model output: positive matrix factorization of the Addis filter chemistry; this is the ${name} factor's share of the day's PMF total.`
+  if (f.includes(' / ')) return 'Derived: the ratio of two measurements on the same filter, computed in the gallery.'
+  if (/\(ERA5\)$/.test(f)) return 'Reanalysis: ECMWF ERA5 hourly fields, via the Open-Meteo archive.'
+  if (/\(station\)$/.test(f)) return 'Measured: Bole airport weather station (Meteostat, WMO 63450). Addis only.'
+  if (/^(EC|OC) \(FTIR\)$/.test(f) || /^EC \(FTIR, (spline|VIBES)/.test(f)) return 'Derived: the filter\'s FTIR spectrum (UC Davis) put through a PLS calibration trained on IMPROVE filters with TOR values. Not measured by combustion. Focus sites: the gallery\'s export; other SPARTAN sites: SPARTAN\'s public product.'
+  if (/\(ChemSpec FTIR\)$/.test(f)) return 'Derived: the same FTIR-calibrated value as published in SPARTAN\'s public ChemSpec files (a restatement, kept for comparison).'
+  if (f === 'OM (FTIR)') return 'Derived: the sum of the FTIR functional-group masses (alkane, alcohol, carboxylic, non-acid carbonyl).'
+  if (/^(Alkane CH|Alcohol COH|Carboxylic COOH|Non-acid CO)$/.test(f)) return 'Derived: the FTIR absorbance band for this bond, calibrated to laboratory standards (UC Davis).'
+  if (f === 'HIPS Fabs') return 'Measured: Hybrid Integrating Plate and Sphere, light transmitted and reflected by the Teflon filter at 633 nm (UC Davis for SPARTAN and IMPROVE).'
+  if (f === 'HIPS BC') return 'Derived: HIPS Fabs divided by the MAC chosen in the sidebar (10 m²/g unless changed).'
+  if (f === 'BC (public HIPS)') return 'Derived: SPARTAN\'s published BC, HIPS Fabs / 10.'
+  if (/SSR/.test(f)) return 'Measured: smoke-stain reflectometer reflectance of the filter, converted to BC by SPARTAN (the older optical method).'
+  if (/^HIPS (Fabs uncertainty|MDL)$/.test(f)) return 'Measured: the HIPS analysis\'s own uncertainty and detection limit, reported with Fabs.'
+  if (f === 'PM2.5 mass') return 'Measured: gravimetric. The Teflon filter is weighed before and after sampling on a microbalance, and the gain is divided by the air sampled. SPARTAN and IMPROVE each weigh their own filters.'
+  if (f === 'Sampled volume') return 'Measured: the sampler\'s flow rate over the sampling time, from its log.'
+  if (/^(EC|OC) \(TOR\)$/.test(f) || /^(EC[123]|OC[1-4]|OP)$/.test(f)) return 'Measured: thermal/optical reflectance on the IMPROVE quartz filter (heated in steps while a laser tracks charring; EC = EC1 + EC2 + EC3 - OP). IMPROVE only.'
+  if (f === 'Soil') return 'Derived: IMPROVE\'s soil estimate from the crustal elements (2.20 Al + 2.49 Si + 1.63 Ca + 2.42 Fe + 1.94 Ti).'
+  if (f.endsWith('(element)') || ELEMENT.test(f)) return 'Measured: elemental analysis of the Teflon filter, X-ray fluorescence (and for SPARTAN, ICP-MS for some metals); IMPROVE uses XRF.'
+  if (ION.test(f)) return 'Measured: ion chromatography of a filter extract (SPARTAN).'
+  if (/uncertainty|MDL/.test(f)) return 'Measured: the analysis\'s uncertainty or detection limit for the field it names.'
+  return ''
+}
+
+/** the hover text for a measurement: what it is, then how it was obtained */
+export function fieldHelp(f: string, shown = f): string {
+  const what = describeField(f)
+  const how = fieldOrigin(f)
+  return [what === f ? shown : what, how].filter(Boolean).join('\n')
+}

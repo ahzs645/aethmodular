@@ -1,4 +1,5 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
+import { fieldHelp } from '@/lib/glossary'
 import { seasonOnly } from '@/lib/seasons'
 import { chemText } from '@/lib/format'
 import { useFilterReference } from '@/hooks/useFilterReference'
@@ -258,7 +259,7 @@ export function SampleDrawer({
                     <td className="v">{fmt(row[f] as number, 3)} <span className="u">{prettyUnit(meta.field_units[f])}</span></td>
                     <td className="u" colSpan={2}>Reference unavailable · n={referenceCoverage[f]}</td>
                   </tr>
-                  return placeRow(f, chemText(f), p, prettyUnit(meta.field_units[f]), f === xField || f === yField || f === focusField)
+                  return placeRow(f, chemText(f), p, prettyUnit(meta.field_units[f]), f === xField || f === yField || f === focusField, chemText(fieldHelp(f)))
                 })}
               </tbody>
             </table>
