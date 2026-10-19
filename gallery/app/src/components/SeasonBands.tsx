@@ -17,6 +17,21 @@ export interface SeasonBand { x: number; w: number; color: string; name: string 
 
 /** Month-by-month bands along a time axis, under one calendar, clipped to [0, width]. */
 export function timeSeasonBands(x: ScaleTime<number, number>, seasons: readonly Pick<SeasonMeta, 'name' | 'months' | 'color' | 'from' | 'spans'>[], width: number): SeasonBand[] {
+  return mergeBands(seasonBandsRaw(x, seasons, width))
+}
+
+/** adjacent bands of one season (a month-by-month calendar draws one per month) as one band */
+export function mergeBands(bands: SeasonBand[]): SeasonBand[] {
+  const out: SeasonBand[] = []
+  for (const b of [...bands].sort((p, q) => p.x - q.x)) {
+    const last = out[out.length - 1]
+    if (last && last.name === b.name && Math.abs(last.x + last.w - b.x) < 0.5) last.w = b.x + b.w - last.x
+    else out.push({ ...b })
+  }
+  return out
+}
+
+function seasonBandsRaw(x: ScaleTime<number, number>, seasons: readonly Pick<SeasonMeta, 'name' | 'months' | 'color' | 'from' | 'spans'>[], width: number): SeasonBand[] {
   const [d0, d1] = x.domain() as [Date, Date]
   // a data-computed calendar (lib/rainSeasons): its exact date ranges
   if (seasons.some((s) => s.spans?.length)) {

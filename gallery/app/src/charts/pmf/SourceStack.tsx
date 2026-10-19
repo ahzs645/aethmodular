@@ -152,7 +152,12 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
               {/* the season strip, solid as in the paper's figure, named where a band has room */}
               <g pointerEvents="none">
                 {seasonBands.map((b, i) => <rect key={i} data-export-season={b.name} data-export-color={b.color} x={b.x} y={-14} width={b.w} height={11} fill={b.color} />)}
-                {seasonBands.filter((b) => b.w > 56).map((b, i) => <text key={i} x={b.x + b.w / 2} y={-5.5} textAnchor="middle" fontSize={9} fill={INK.text}>{seasonOnly(b.name)}</text>)}
+                {seasonBands.map((b, i) => {
+                  // the full name where it fits, else its first word (Belg), else nothing (about 5 px a character at 9 px)
+                  const full = seasonOnly(b.name), short = full.split(' (')[0]
+                  const text = full.length * 5 + 8 <= b.w ? full : short.length * 5 + 8 <= b.w ? short : ''
+                  return text && <text key={i} x={b.x + b.w / 2} y={-5.5} textAnchor="middle" fontSize={9} fill={INK.text}>{text}</text>
+                })}
               </g>
               <YAxis
                 scale={y}
