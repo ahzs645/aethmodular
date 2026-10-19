@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { seasonOnly } from '@/lib/seasons'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Toggle } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
@@ -116,7 +117,7 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
                     const st = focusStyle(p.row.id, hl.focusId, { r: 3, opacity: 0.8 }, hl.selected)
                     return <circle key={p.row.id} cx={x(p.t)} cy={yF(p.v)} r={st.r} fill={meta.seasons.find((s) => s.name === p.row.season)?.color ?? INK.text}
                       fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
-                      onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.date} · ${p.row.season}`, `${field}: ${fmt(p.v)}`, 'click for details · right-click to exclude']) }}
+                      onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`, `${field}: ${fmt(p.v)}`, 'click for details · right-click to exclude']) }}
                       onMouseLeave={() => { hl.setHover(null); tip.hide() }} onClick={() => hl.openSample(p.row.id)} />
                   })}
                   {k !== 'field' && <rect width={innerW} height={panelH} fill="transparent"

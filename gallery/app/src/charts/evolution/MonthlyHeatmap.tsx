@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState } from 'react'
+import { seasonOnly } from '@/lib/seasons'
 import { SEASON_SHADE } from '@/components/SeasonBands'
 import { robustDomain } from '@/lib/axes'
 import * as d3 from 'd3'
-import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
+import { mixedCalendars, seasonsForSite } from '@/siteSeasons'
 import { ChartFrame, Empty, Note, Segmented, Toggle } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -174,7 +175,7 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
                     <rect
                       key={p} x={i * cellW} y={-stripH - 6} width={Math.max(1, cellW - 0.6)} height={stripH}
                       fill={s?.color ?? INK.neutral} fillOpacity={SEASON_SHADE.strip} rx={1}
-                      onMouseEnter={(e) => tip.show(e, [p, `season: ${s?.name ?? '—'} (${calendarLabel(meta)})`])}
+                      onMouseEnter={(e) => tip.show(e, [p, `season: ${s ? seasonOnly(s.name) : '—'}`])}
                       onMouseLeave={tip.hide}
                     />
                   )
@@ -201,7 +202,7 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
                         c.value === null ? 'no filters' : `${statLabel} = ${fmtCell(c.value)}`,
                         `n = ${c.n} filter${c.n === 1 ? '' : 's'}`,
                         ...(c.n ? ['click to list them · right-click to exclude or keep'] : []),
-                        `season: ${s?.name ?? '—'} (${calendarLabel(meta)})`,
+                        `season: ${s ? seasonOnly(s.name) : '—'}`,
                       ])
                     }
                     onMouseLeave={tip.hide}

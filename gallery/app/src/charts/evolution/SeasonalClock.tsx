@@ -1,4 +1,5 @@
 import { useId, useMemo, useRef, useState } from 'react'
+import { seasonOnly } from '@/lib/seasons'
 import { seasonShade } from '@/components/SeasonBands'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
@@ -251,7 +252,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
                     const a0 = layout === 'Grouped' ? monthStart(c.month) + (subBand(s.name) ?? 0) : monthStart(c.month) + sectorPad
                     const a1 = layout === 'Grouped' ? a0 + subBand.bandwidth() : monthStart(c.month + 1) - sectorPad
                     const season = seasonOf(c.month, s.name)
-                    const seasonLine = `season: ${season?.name ?? '—'} (${calendarLabel(meta)})`
+                    const seasonLine = `season: ${season ? seasonOnly(season.name) : '—'}`
                     if (c.n === 0) return null
                     const v = valueOf(c)
                     if (v === null) {

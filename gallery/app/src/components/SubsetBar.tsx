@@ -1,6 +1,6 @@
 import { RegressionControls } from '@/lib/regressionPrefs'
 import { chemText } from '@/lib/format'
-import { CONVENTION_LABEL } from '@/lib/seasons'
+import { CONVENTION_LABEL, seasonOnly } from '@/lib/seasons'
 import { useEffect, useRef } from 'react'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
@@ -555,7 +555,7 @@ function PinnedCard({
       <span className="id">📌 {row.id}</span>
       <span>
         <span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: 5, background: row.color as string, marginRight: 5 }} />
-        {row.site} · {row.date} · {row.season}
+        {row.site} · {row.date} · {seasonOnly(String(row.season ?? ''))}
       </span>
       {shown.map((f) => (
         <span key={f} className="kv">

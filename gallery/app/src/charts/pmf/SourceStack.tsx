@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react'
+import { seasonOnly } from '@/lib/seasons'
 import { SeasonBands, timeSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
@@ -143,7 +144,7 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
                   onMouseMove={(e) => {
                     const near = nearestTo(e)
                     tip.show(e, [
-                      `${near.date} · ${near.season}`,
+                      `${near.date} · ${seasonOnly(String(near.season ?? ''))}`,
                       ...labels.map((l) => {
                         const f = near.fraction[l]
                         const a = near.ugm3[l]

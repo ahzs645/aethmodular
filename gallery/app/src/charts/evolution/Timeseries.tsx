@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { seasonOnly } from '@/lib/seasons'
 import { SeasonBands, timeSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
@@ -183,7 +184,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
                           <circle
                             key={`hit-${p.row.id}`} cx={x(p.date)} cy={y(p.value)} r={7} fill="transparent"
                             style={{ cursor: 'pointer' }}
-                            onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.date} · ${p.row.season}`, `${field}: ${fmt(p.value)}`, p.row.excluded ? `excluded: ${p.row.exclusion_reason}` : 'click for details']) }}
+                            onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`, `${field}: ${fmt(p.value)}`, p.row.excluded ? `excluded: ${p.row.exclusion_reason}` : 'click for details']) }}
                             onMouseLeave={() => { hl.setHover(null); tip.hide() }}
                             data-fid={p.row.id} onClick={() => hl.openSample(p.row.id)}
                           />

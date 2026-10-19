@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { seasonOnly } from '@/lib/seasons'
 import { SeasonBands, monthSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Toggle } from '@/components/ChartFrame'
@@ -114,7 +115,7 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
                             `median = ${fmt(p.median)}`,
                             p.q1 !== null ? `IQR ${fmt(p.q1)} – ${fmt(p.q3)}` : 'IQR n/a (n<4)',
                             `n = ${p.n}`,
-                            `season: ${seasonOf(p.month, s.name)?.name ?? '—'} (${calendarLabel(meta)})`,
+                            `season: ${seasonOnly(seasonOf(p.month, s.name)?.name ?? '—')}`,
                           ])
                         }
                         onMouseLeave={tip.hide}

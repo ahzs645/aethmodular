@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react'
+import { seasonOnly } from '@/lib/seasons'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -68,7 +69,7 @@ export function RainWashout({ rows, meta, field, prcpField, id = 'weather-washou
                 <text transform={`translate(${-38},${ih / 2}) rotate(-90)`} textAnchor="middle" fontSize={10.5} fill={INK.muted}>{withUnit(field, meta.field_units)}</text>
                 {p.classes.map((c) => {
                   const cx = (x(c.key) ?? 0) + x.bandwidth() / 2, bw = x.bandwidth()
-                  const title = `${p.site} · ${c.key}`
+                  const title = `${p.site} · ${seasonOnly(c.key)}`
                   return (
                     <g key={c.key}>
                       {c.box && <g style={{ cursor: 'pointer' }} {...fidsProps(c.members.map((r) => r.id), title)}
@@ -86,7 +87,7 @@ export function RainWashout({ rows, meta, field, prcpField, id = 'weather-washou
                         const jx = ((i * 0.6180339) % 1 - 0.5) * bw * 0.8
                         return <circle key={r.id} cx={cx + jx} cy={y(v)} r={st.r} fill={meta.seasons.find((s) => s.name === r.season)?.color ?? INK.muted}
                           fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} style={{ cursor: 'pointer' }} {...fidProps(r.id)}
-                          onMouseEnter={(e) => { hl.setHover(r.id); tip.show(e, [r.id, `${r.date} · ${r.season}`, `${field}: ${fmt(r[field])}`, `rain ${fmt(r[prcpField], 2)} mm/day`]) }}
+                          onMouseEnter={(e) => { hl.setHover(r.id); tip.show(e, [r.id, `${r.date} · ${seasonOnly(String(r.season ?? ''))}`, `${field}: ${fmt(r[field])}`, `rain ${fmt(r[prcpField], 2)} mm/day`]) }}
                           onMouseLeave={() => { hl.setHover(null); tip.hide() }} onClick={(e) => { e.stopPropagation(); hl.openSample(r.id) }} />
                       })}
                       <text x={cx} y={ih + 14} textAnchor="middle" fontSize={9.5} fill={INK.muted}>{c.key.split(' (')[0]}</text>

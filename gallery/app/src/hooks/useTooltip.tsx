@@ -1,5 +1,5 @@
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
-import { useCallback, useEffect, useState, type ReactNode, type RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 
 export type TipBody = ReactNode | string[]
@@ -46,9 +46,24 @@ export function useTooltip(wrapRef: RefObject<HTMLElement>, { large = false }: {
   const flipX = tip ? (large ? roomRight < LARGE_MAX && roomLeft > roomRight : tip.x > window.innerWidth - 300) : false
   const maxWidth = large ? Math.max(160, Math.min(LARGE_MAX, flipX ? roomLeft : roomRight)) : undefined
   const flipY = tip ? tip.y > window.innerHeight - 160 : false
+  // after layout, the card's real size: keep it inside the window, on whichever side of the pointer has room
+  const boxRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = boxRef.current
+    if (!tip || !el) return
+    const r = el.getBoundingClientRect(), W = window.innerWidth, H = window.innerHeight
+    let left = tip.x + GAP
+    if (left + r.width > W - MARGIN) left = tip.x - GAP - r.width
+    left = Math.max(MARGIN, Math.min(left, W - MARGIN - r.width))
+    let top = tip.y + 10
+    if (top + r.height > H - MARGIN) top = tip.y - 10 - r.height
+    top = Math.max(MARGIN, Math.min(top, H - MARGIN - r.height))
+    Object.assign(el.style, { left: `${left}px`, top: `${top}px`, right: 'auto', bottom: 'auto' })
+  }, [tip])
   const node = tip
     ? createPortal(
         <div
+          ref={boxRef}
           className={large ? 'tooltip large' : 'tooltip'}
           style={{
             position: 'fixed',

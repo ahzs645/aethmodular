@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react'
+import { seasonOnly } from '@/lib/seasons'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
@@ -96,7 +97,7 @@ export function Barplot({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFi
                     key={i}
                     data-export-season={d.season} data-export-color={d.color}
                     opacity={lg.dim(d.season)}
-                    onMouseEnter={(e) => tip.show(e, [`${d.site} · ${d.season}`, `${stat.toLowerCase()} = ${fmt(d.value)}`, `${stat === 'Mean' ? '95 % CI of the mean' : 'IQR'} ${fmt(d.q1)} – ${fmt(d.q3)}`, `n = ${d.n}`])}
+                    onMouseEnter={(e) => tip.show(e, [`${d.site} · ${seasonOnly(d.season)}`, `${stat.toLowerCase()} = ${fmt(d.value)}`, `${stat === 'Mean' ? '95 % CI of the mean' : 'IQR'} ${fmt(d.q1)} – ${fmt(d.q3)}`, `n = ${d.n}`])}
                     onMouseLeave={tip.hide}
                   >
                     <rect x={bx} y={Math.min(y(d.value), y(0))} width={bw} height={Math.abs(y(d.value) - y(0))} fill={d.color} fillOpacity={0.78} rx={2} />

@@ -43,6 +43,9 @@ export const inSeasonGroup = (season: string | null | undefined, group: string) 
  */
 export const normalizeSeasonName = (name: string) => name.replace(/\s*[–—]\s*/g, '-')
 
+/** "Addis Ababa · Kiremt (Jun-Sep)" -> "Kiremt (Jun-Sep)": the season alone, where the site is already named. */
+export const seasonOnly = (name: string) => name.replace(/^[^·]+ · /, '')
+
 /** "Kiremt (Jun-Sep)" -> "Kiremt"; "All Addis" stays whole. */
 export const shortSeason = (group: string) => (isAllAddis(group) ? ALL_ADDIS : group.split(' ')[0])
 

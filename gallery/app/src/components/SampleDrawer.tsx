@@ -1,4 +1,5 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
+import { seasonOnly } from '@/lib/seasons'
 import { chemText } from '@/lib/format'
 import { useFilterReference } from '@/hooks/useFilterReference'
 import { SitePicker } from '@/components/SitePicker'
@@ -199,7 +200,7 @@ export function SampleDrawer({
           </div>
           <div className="drawer-sub">
             {/* the site is already named: its season without the "Site · " prefix */}
-            {row.site} ({row.code}) · {row.date}{row.season ? <> · {String(row.season).startsWith(`${row.site} · `) ? String(row.season).slice(row.site.length + 3) : row.season}</> : null}
+            {row.site} ({row.code}) · {row.date}{row.season ? <> · {seasonOnly(String(row.season))}</> : null}
           </div>
           {row.excluded && <div className="drawer-reason">{row.exclusion_reason}</div>}
         </div>

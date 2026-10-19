@@ -347,7 +347,9 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 .tooltip {
   position: fixed; pointer-events: none; z-index: 60;
   background: rgba(17, 24, 39, 0.94); color: #fff; padding: 7px 10px; border-radius: 6px;
-  font-size: calc(11.5px * var(--text-scale)); line-height: 1.5; font-family: var(--mono); white-space: nowrap;
+  font-size: calc(11.5px * var(--text-scale)); line-height: 1.5; font-family: var(--mono);
+  /* a long line wraps rather than running off the window (useTooltip keeps the card on screen) */
+  max-width: min(420px, calc(100vw - 16px)); white-space: normal; overflow-wrap: anywhere;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
 }
 .tooltip strong { color: #fff; }
