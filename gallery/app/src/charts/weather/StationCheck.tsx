@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
+import { useSearchParam } from '@/lib/url'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt, pearson } from '@/lib/stats'
@@ -23,22 +24,26 @@ export function StationCheck({ data }: { data: StationCompare | null }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const cols = Math.max(1, Math.min(3, Math.floor((width + 10) / (S + 10))))
-  const pw = Math.min(S + 60, (width - (cols - 1) * 10) / cols), iw = pw - M.left - M.right, ih = S - M.top - M.bottom
+  // every variable as a small square, or one larger; x and y share one scale, so each panel is square
+  const [pick, setPick] = useSearchParam<string>('stationvar', 'All', ['All', ...VARS.map((v) => v.k)])
+  const shownVars = pick === 'All' ? VARS : VARS.filter((v) => v.k === pick)
+  const side = pick === 'All' ? S - M.top - M.bottom : Math.max(160, Math.min(440, (width || 600) - M.left - M.right - 10))
+  const iw = side, ih = side, pw = side + M.left + M.right, ph = side + M.top + M.bottom
 
   return (
     <ChartFrame id="weather-station" title="ERA5 against the Addis Ababa airport station — day by day"
       subtitle="Each dot is one local day with at least 18 station hours. Dashed: 1:1. ERA5 is a 0.25° grid-box average, so it smooths the station's extremes; precipitation is the weakest match (ERA5 is known to over-rain the Ethiopian highlands), so rain-washout results from ERA5 at Addis deserve the station check."
-      provenance="Meteostat hourly, WMO 63450 (the station behind addis_03_meteorology and the meteorology notebooks) · ERA5 via Open-Meteo">
-      <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-        {!data ? <Empty>Loading the station comparison…</Empty> : VARS.map((v) => {
+      provenance="Meteostat hourly, WMO 63450 (the station behind addis_03_meteorology and the meteorology notebooks) · ERA5 via Open-Meteo"
+      controls={<Select label="Show" value={pick} options={['All', ...VARS.map((v) => v.k)]} optionLabel={(k) => (k === 'All' ? 'Every variable' : VARS.find((v) => v.k === k)?.label ?? k)} onChange={setPick} />}>
+      <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+        {!data ? <Empty>Loading the station comparison…</Empty> : shownVars.map((v) => {
           const pairs = data.date.map((d, i) => ({ d, s: data.station[v.k][i], e: data.era5[v.k][i] })).filter((p): p is { d: string; s: number; e: number } => p.s !== null && p.e !== null)
           const hi = d3.max(pairs, (p) => Math.max(p.s, p.e)) ?? 1, lo = Math.min(0, d3.min(pairs, (p) => Math.min(p.s, p.e)) ?? 0)
           const x = d3.scaleLinear().domain([lo, hi]).range([0, iw]).nice(), y = d3.scaleLinear().domain(x.domain()).range([ih, 0])
           const bias = d3.mean(pairs, (p) => p.e - p.s), r = pearson(pairs.map((p) => p.s), pairs.map((p) => p.e))
           const tot = v.k === 'p' ? [d3.sum(pairs, (p) => p.s), d3.sum(pairs, (p) => p.e)] : null
           return (
-            <svg key={v.k} width={pw} height={S} fontFamily={FONT.family}>
+            <svg key={v.k} width={pw} height={ph} fontFamily={FONT.family}>
               <text x={M.left} y={13} fontSize={11.5} fontWeight={600} fill={INK.text}>{v.label} <tspan fontWeight={400} fill={INK.muted}>({v.unit})</tspan></text>
               <g transform={`translate(${M.left},${M.top})`}>
                 {x.ticks(4).map((t) => <g key={t}>

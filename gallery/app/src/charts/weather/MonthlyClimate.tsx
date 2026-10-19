@@ -63,7 +63,7 @@ export function MonthlyClimate({ meta, sites, id = 'weather-climate', title = 'M
     <ChartFrame id={id} title={title}
       subtitle="Mean monthly precipitation (bars, mm) and temperature (line, °C) from daily ERA5 over each site's sampling span; the strip under the months is the site's local season calendar. Wet bars under a 'dry' season are where a calendar and the weather disagree."
       provenance="addis_03_meteorology Task 3 (dynamic, rain-based seasons) for every site · ERA5 via Open-Meteo">
-      <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+      <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
         {shown.length === 0 && <Empty>No SPARTAN sites in the current pick.</Empty>}
         {climate.map(({ site, months }) => {
           if (!months) return <div key={site.code} style={{ width: pw, height: H }} className="u">{data[site.code] === null ? `${site.name}: no daily weather` : `${site.name}: loading…`}</div>

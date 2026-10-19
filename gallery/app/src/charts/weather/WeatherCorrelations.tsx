@@ -28,8 +28,8 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const fit = useFitHeight()
-  // a fitted tile shows one matrix, sized to it (the tile's ⋯ menu picks which); elsewhere every season
-  const [pick, setPick] = useTileSetting<string>('season', 'All filters')
+  // one matrix (all filters, or one season) or every season side by side; a fitted tile opens on one
+  const [pick, setPick] = useTileSetting<string>('season', fit !== null ? 'All filters' : 'Every season')
 
   const at = useMemo(() => rows.filter((r) => r.site === site?.name), [rows, site])
   const vars: { label: string; field: string }[] = WEATHER_VARS.flatMap((v) => {
@@ -52,23 +52,23 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
   const colours = useColourScheme('weather-correlations', 'diverging')
   const color = d3.scaleQuantize<string>().domain([-1, 1]).range(colours.stops)
   const EVERY = 'Every season'
-  const one = fit !== null && pick !== EVERY
+  const one = pick !== EVERY
   const chosen = facets.find((f) => f.name === pick) ?? facets[0]
   const shownFacets = one && chosen ? [chosen] : facets
-  const labelW = one ? 120 : 150
+  const labelW = one ? 140 : 150
   const cell = one
-    ? Math.max(12, Math.min(48, (width - labelW - 14) / Math.max(1, species.length), (fit - 80) / Math.max(1, vars.length)))
+    ? Math.max(12, Math.min(fit !== null ? 48 : 40, (width - labelW - 14) / Math.max(1, species.length), fit !== null ? (fit - 80) / Math.max(1, vars.length) : Infinity))
     : Math.max(22, Math.min(34, (Math.min(width, 900) - labelW - 20) / Math.max(1, species.length)))
   const fw = labelW + species.length * cell + 10, fh = 70 + vars.length * cell + 10
-  const facetPicker = fit !== null && facets.length > 1
-    ? <Select label="Show" value={one && chosen ? chosen.name : EVERY} options={[...facets.map((f) => f.name), EVERY]} onChange={setPick} />
+  const facetPicker = facets.length > 1
+    ? <Select label="Show" value={one && chosen ? chosen.name : EVERY} options={[EVERY, ...facets.map((f) => f.name)]} onChange={setPick} />
     : null
 
   return (
     <ChartFrame id="weather-correlations" controls={facetPicker} title={`${site ? `${site.name} · ` : ''}weather × chemistry correlations, by season`}
       subtitle={`Spearman ρ between each weather variable over the filter's window and each species, for every filter at the site and then within each season (blank: fewer than ${MIN_N} filters). Pooled correlations mostly follow the seasonal cycle; the per-season ones are closer to "does this weather change the day's air".`}
       provenance="meteorology_revisions R5 (seasonal correlation matrices) · meteorology_source_interaction §3 (temperature range as an inversion proxy)">
-      <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 18 }}>
+      <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 18, justifyContent: one ? 'center' : undefined }}>
         {!site || species.length === 0 || vars.length === 0 ? <Empty>No site with weather and at least {MIN_N} measured filters in this subset.</Empty> : shownFacets.map((fc) => (
           <svg key={fc.name} width={fw} height={fh} fontFamily={FONT.family}>
             <text x={labelW} y={14} fontSize={12} fontWeight={600} fill={fc.color}>{fc.name} <tspan fill={INK.muted} fontWeight={400} fontSize={10.5}>n={fc.n}</tspan></text>

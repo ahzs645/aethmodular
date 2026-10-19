@@ -63,7 +63,10 @@ export function WindRoses({ rows, meta, roses, source, site, pmfLabelOfDate, spl
   const rMax = d3.max(shown, (g) => d3.max(d3.range(8), (s) => g.pct[s * 3] + g.pct[s * 3 + 1] + g.pct[s * 3 + 2])) ?? 10
   // in a fitted tile the roses share it: the column count that gives the largest rose fitting both
   // the width and the height (a title line under each, 10 px gaps); elsewhere a fixed 210 px
-  const size = fit === null || !shown.length ? SIZE : Math.round(Math.max(110, Math.min(280, largestRose(shown.length, width, fit))))
+  // on a page, roses grow to share the row (210 to 300 px each) rather than staying small
+  const size = !shown.length ? SIZE : fit === null
+    ? Math.round(Math.max(SIZE, Math.min(300, (width - (shown.length - 1) * 10) / shown.length)))
+    : Math.round(Math.max(110, Math.min(280, largestRose(shown.length, width, fit))))
   const R = size / 2 - 26
   const r = d3.scaleSqrt().domain([0, rMax]).range([16, R]).nice()
   const arc = d3.arc<{ a: number; r0: number; r1: number }>().startAngle((d) => d.a - Math.PI / 8 + 0.03).endAngle((d) => d.a + Math.PI / 8 - 0.03).innerRadius((d) => d.r0).outerRadius((d) => d.r1)
@@ -74,7 +77,7 @@ export function WindRoses({ rows, meta, roses, source, site, pmfLabelOfDate, spl
       subtitle={`Hours inside the filters' sampling windows, by direction (8 sectors) and speed; the number in the middle is calm (${roses?.calm ?? '< 0.5 m/s'}). ${source === 'station' ? 'Airport station winds (10 m, open site).' : 'ERA5 10 m winds are a 0.25° grid-box average and run lower than an airport mast.'} Every panel shares one radial scale.`}
       provenance="meteorology_source_interaction §2 · meteorology_revisions R1"
       controls={o.controls()}>
-      <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+      <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
         {!roses ? <Empty>Loading the wind roses…</Empty> : shown.length === 0 ? <Empty>{split === 'PMF source' ? 'No filter here falls on a PMF day (ETAD 2023 only).' : 'No filters with wind data in this subset.'}</Empty> : shown.map((g) => (
           <svg key={g.name} width={size} height={size + 18} fontFamily={FONT.family}>
             <text x={size / 2} y={13} textAnchor="middle" fontSize={11.5} fontWeight={600} fill={g.color === INK.muted ? INK.text : g.color}>{label(g.name)}</text>
