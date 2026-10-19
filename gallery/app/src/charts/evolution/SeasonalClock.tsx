@@ -210,7 +210,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
               {d3.range(1, 13).map((m) => {
                 const s = seasonOf(m)
                 if (!s) return null
-                return <path key={m} d={arc({ r0: Math.max(0, hole - 6), r1: outerR + 4, a0: monthStart(m), a1: monthStart(m + 1) }) ?? ''} fill={s.color} fillOpacity={seasonShade(s.name, seasonHover)} pointerEvents="none" />
+                return <path key={m} data-export-season={s.name} data-export-color={s.color} d={arc({ r0: Math.max(0, hole - 6), r1: outerR + 4, a0: monthStart(m), a1: monthStart(m + 1) }) ?? ''} fill={s.color} fillOpacity={seasonShade(s.name, seasonHover)} pointerEvents="none" />
               })}
               {/* month spokes */}
               {d3.range(1, 13).map((m) => {
@@ -305,7 +305,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
               {/* season names curved along the outside of their wedge */}
               {seasonNames && wedgeSeasons.flatMap((s) =>
                 circularRuns(s.months).map((_, i) => (
-                  <text key={`${s.name}-${i}`} fontSize={10.5} fontWeight={600} fill={s.color} opacity={seasonHover === null || seasonHover === s.name ? 1 : 0.35} pointerEvents="none">
+                  <text key={`${s.name}-${i}`} data-export-season={s.name} data-export-color={s.color} fontSize={10.5} fontWeight={600} fill={s.color} opacity={seasonHover === null || seasonHover === s.name ? 1 : 0.35} pointerEvents="none">
                     <textPath href={`#${uid}-season-${s.name.replace(/\W+/g, '')}-${i}`} startOffset="50%" textAnchor="middle">
                       {shortSeason(s.name)}
                     </textPath>

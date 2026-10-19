@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { ExportColorOptions } from '@/components/ExportColorOptions'
-import { useExportSites } from '@/lib/exportSites'
+import { useExportSeasons, useExportSites } from '@/lib/exportSites'
 import { applyExportColors, DEFAULT_EXPORT_COLORS, readExportColors, type ExportColors } from '@/lib/exportColors'
 import { Combobox } from '@/components/Combobox'
 import { Segmented } from '@/components/ChartFrame'
@@ -77,14 +77,15 @@ type Rendered = { blob: Blob | null; error: string | null }
 function ExportDialog({ panel, title, onClose }: { panel: HTMLElement; title: string; onClose: (saved?: ExportFormat) => void }) {
   // cloned once, when the dialog opens: later re-renders of the chart do not change the export
   const sites = useExportSites()
-  const fig = useMemo<Figure | null>(() => composeFigure(panel, sites), [panel]) // capture the figure and its palette together
+  const seasons = useExportSeasons()
+  const fig = useMemo<Figure | null>(() => composeFigure(panel, sites, seasons), [panel]) // capture the figure and its palette together
   const [s, setS] = useState<Settings>(loadSettings)
   const set = (patch: Partial<Settings>) => setS((cur) => { const next = { ...cur, ...patch }; saveSettings(next); return next })
   const hasLegend = !!fig && fig.legends.length > 0
   const legend = hasLegend ? s.legend : 'none'
   const svg = useMemo(() => {
     if (!fig) return null
-    const clone = layoutFigure(fig, legend)
+    const clone = layoutFigure(fig, legend, s.colors.consolidateSeasons)
     applyExportColors(clone, fig.palette, s.colors)
     return clone
   }, [fig, legend, s.colors])

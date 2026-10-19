@@ -230,7 +230,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
               <ScatterPanel
                 key={p.key}
                 grouping={grouping}
-                siteColoring={colorBy === 'Site'}
+                siteColoring={colorBy === 'Site'} seasonColoring={colorBy === 'Season'}
                 title={p.title ? chartLabel(p.title) || null : null}
                 titleColor={p.color}
                 points={p.points}
@@ -317,10 +317,11 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
 
 /** One axes: used once for the combined layout, once per site for the grid. */
 function ScatterPanel({
-  title, titleColor, points, stats, fitGroups, domain, innerW, innerH, axes, showFit, xLabel, yLabel, colorOf, radiusOf, dimOf, fitDim, focusId, selected, brushing, onBrush, onEnter, onLeave, onClick, grouping, siteColoring,
+  title, titleColor, points, stats, fitGroups, domain, innerW, innerH, axes, showFit, xLabel, yLabel, colorOf, radiusOf, dimOf, fitDim, focusId, selected, brushing, onBrush, onEnter, onLeave, onClick, grouping, siteColoring, seasonColoring,
 }: {
   /** the grouping the chart draws (lib/regressionPrefs effectiveGrouping), not the raw setting */
   grouping: FitGrouping
+  seasonColoring: boolean
   siteColoring: boolean
   title: string | null
   titleColor: string
@@ -474,7 +475,7 @@ function ScatterPanel({
             return (
               <circle
                 key={p.row.id}
-                data-export-site={siteColoring ? p.row.site : undefined} data-export-color={siteColoring ? colorOf(p) : undefined}
+                data-export-season={seasonColoring ? p.row.season : undefined} data-export-site={siteColoring ? p.row.site : undefined} data-export-color={siteColoring || seasonColoring ? colorOf(p) : undefined}
                 cx={xScale(p.x)}
                 cy={yScale(p.y)}
                 r={st.r}

@@ -94,6 +94,7 @@ export function Barplot({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFi
                 return (
                   <g
                     key={i}
+                    data-export-season={d.season} data-export-color={d.color}
                     opacity={lg.dim(d.season)}
                     onMouseEnter={(e) => tip.show(e, [`${d.site} · ${d.season}`, `${stat.toLowerCase()} = ${fmt(d.value)}`, `${stat === 'Mean' ? '95 % CI of the mean' : 'IQR'} ${fmt(d.q1)} – ${fmt(d.q3)}`, `n = ${d.n}`])}
                     onMouseLeave={tip.hide}

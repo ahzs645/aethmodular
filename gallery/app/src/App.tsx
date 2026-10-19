@@ -1048,7 +1048,7 @@ export default function App() {
     <HeaderNavProvider tabs={NAV_TABS} meetings={MEETINGS} open={openTab}>
     <RegressionProvider methods={estimators} setMethods={setEstimators} showCI={showCI} setShowCI={setShowCI}>
     <PrefsProvider>
-    <ExportSitesProvider sites={[...new Map([...rawMeta.sites, ...meta.sites].map(s => [s.code, s])).values()]}>
+    <ExportSitesProvider seasons={meta.seasons} sites={[...new Map([...rawMeta.sites, ...meta.sites].map(s => [s.code, s])).values()]}>
     <HighlightProvider pinnedId={pinnedId} setPinned={setPinnedId} openSample={openSample} openRecord={openRecord} onDismiss={dismissSample}>
     {/* hand edits hold on every tab: each chart that draws a filter leaves the excluded ones out */}
     <PageSidebarProvider>

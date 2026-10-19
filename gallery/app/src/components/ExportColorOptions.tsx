@@ -1,3 +1,4 @@
+import { seasonColorRows, seasonExportColor } from '@/lib/exportSeasons'
 import { useEffect, useState, type ReactNode } from 'react'
 import { DEFAULT_EXPORT_COLORS, hexColor, recommendExportColors, siteExportColor, type ExportColors, type ExportPalette } from '@/lib/exportColors'
 import { FIT_STYLE } from '@/lib/regressionMethods'
@@ -15,15 +16,15 @@ function ColorChoice({ label, value, onChange, icon, note }: { label: string; va
 }
 
 export function ExportColorOptions({ palette, value, onChange }: { palette: ExportPalette; value: ExportColors; onChange: (value: ExportColors) => void }) {
-  if (!palette.sites.length && !palette.fits.length) return null
+  if (!palette.sites.length && !palette.seasons.length && !palette.fits.length) return null
   const recommend = () => {
-    const next = recommendExportColors(palette, value.sameSites)
-    onChange({ ...next, sites: { ...value.sites, ...next.sites }, fits: { ...value.fits, ...next.fits } })
+    const next = recommendExportColors(palette, value.sameSites, value.consolidateSeasons)
+    onChange({ ...next, seasons: { ...value.seasons, ...next.seasons }, sites: { ...value.sites, ...next.sites }, fits: { ...value.fits, ...next.fits } })
   }
   return <fieldset className="export-colors">
     <legend>Export colors</legend>
     <div className="export-color-actions">
-      <button type="button" className="btn" onClick={recommend} title="Recommend contrasting site and fit colors for a light background">Recommend colors</button>
+      <button type="button" className="btn" onClick={recommend} title="Recommend contrasting site, season and fit colors for a light background">Recommend colors</button>
       <button type="button" className="btn quiet" onClick={() => onChange({ ...DEFAULT_EXPORT_COLORS })}>Reset colors</button>
     </div>
     {palette.sites.length > 0 && <>
@@ -35,6 +36,14 @@ export function ExportColorOptions({ palette, value, onChange }: { palette: Expo
             onChange={color => onChange({ ...value, sites: { ...value.sites, [site.key]: color } })} />)}
       </div>
     </>}
+    {palette.seasons.length > 0 && <>
+      <label className="export-same-color"><input type="checkbox" checked={value.consolidateSeasons} onChange={e => onChange({ ...value, consolidateSeasons: e.target.checked })} /> Consolidate matching seasons across sites</label>
+      <div className="export-site-colors" aria-label="Season colors">
+        {seasonColorRows(palette.seasons, value.consolidateSeasons).map(season => <ColorChoice key={season.key} label={season.label}
+          value={seasonExportColor(season, value, palette.seasons)} onChange={color => onChange({ ...value, seasons: { ...value.seasons, [season.key]: color } })} />)}
+      </div>
+      <p className="export-color-note">Matching names and months share a color and one legend entry with combined counts. The consolidated legend is reflowed below the chart when “As on screen” is selected. Fits keep their original populations.</p>
+    </>}
     {palette.fits.length > 0 && <div className="export-fit-colors" aria-label="Fit line colors">
       <strong>Fit lines</strong>
       {palette.fits.map(fit => {
@@ -44,6 +53,6 @@ export function ExportColorOptions({ palette, value, onChange }: { palette: Expo
           onChange={color => onChange({ ...value, fits: { ...value.fits, [fit.key]: color } })} />
       })}
     </div>}
-    <p className="export-color-note">Recommendations spread site hues apart and use darker fit colors for a light background. Fit dash patterns stay visible.</p>
+    <p className="export-color-note">Recommendations spread category hues apart and use darker fit colors for a light background. Fit dash patterns stay visible.</p>
   </fieldset>
 }

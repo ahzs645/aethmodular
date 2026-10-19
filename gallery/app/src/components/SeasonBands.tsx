@@ -50,7 +50,7 @@ export function monthSeasonBands(x: (m: number) => number, seasonOf: (m: number)
 export function SeasonBands({ bands, height, hover, strip = false }: { bands: SeasonBand[]; height: number; hover?: string | null; strip?: boolean }) {
   return <g pointerEvents="none">
     {bands.map((b, i) => strip
-      ? <rect key={i} x={b.x} y={-6} width={b.w} height={6} fill={b.color} fillOpacity={SEASON_SHADE.strip} />
-      : <rect key={i} x={b.x} y={0} width={b.w} height={height} fill={b.color} fillOpacity={seasonShade(b.name, hover)} />)}
+      ? <rect key={i} data-export-season={b.name} data-export-color={b.color} x={b.x} y={-6} width={b.w} height={6} fill={b.color} fillOpacity={SEASON_SHADE.strip} />
+      : <rect key={i} data-export-season={b.name} data-export-color={b.color} x={b.x} y={0} width={b.w} height={height} fill={b.color} fillOpacity={seasonShade(b.name, hover)} />)}
   </g>
 }

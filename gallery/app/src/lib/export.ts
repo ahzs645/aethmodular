@@ -1,3 +1,4 @@
+import { paletteSeason, type ExportSeason, type PaletteSeason } from './exportSeasons'
 import { collectExportPalette, paintColor, type ExportPalette, type ExportSite } from './exportColors'
 /**
  * Download a chart as PNG, JPEG, SVG or PDF. The decks in this repo are built
@@ -26,7 +27,7 @@ export type ExportBackground = 'white' | 'transparent'
 
 interface Box { left: number; top: number; right: number; bottom: number }
 /** a piece of the figure, already built at its page position */
-interface Piece { els: Element[]; box: Box }
+interface Piece { els: Element[]; box: Box; season?: PaletteSeason; detail?: string; off?: boolean }
 export interface Figure {
   /** axes, marks, facet titles: everything that stays where it is */
   chart: Piece[]
@@ -51,7 +52,7 @@ const union = (boxes: Box[]): Box => ({
  * The panel's title, controls, buttons and tooltips are left out.
  * docs/gallery-chart-standards.md §1: export the whole panel, not its first facet.
  */
-export function composeFigure(panel: HTMLElement, sites: readonly ExportSite[] = []): Figure | null {
+export function composeFigure(panel: HTMLElement, sites: readonly ExportSite[] = [], seasons: readonly ExportSeason[] = []): Figure | null {
   const svgs = [...panel.querySelectorAll('svg')].filter((s) =>
     !s.closest(SKIP) && !s.parentElement?.closest('svg') && visible(s))
   if (!svgs.length) return null
@@ -84,6 +85,8 @@ export function composeFigure(panel: HTMLElement, sites: readonly ExportSite[] =
     if (series) {
       const name = series.getAttribute('data-export-series')!, native = series.getAttribute('data-export-color')
       target.setAttribute('data-export-series', name)
+      target.setAttribute('data-export-color', native ?? '')
+      if (seasons.some(s => s.name === name)) target.setAttribute('data-export-season', name)
       const site = sites.find(s => s.name === name && paintColor(s.color) === paintColor(native))
       if (site) {
         target.setAttribute('data-export-site', site.code)
@@ -164,14 +167,52 @@ export function composeFigure(panel: HTMLElement, sites: readonly ExportSite[] =
   }
 
   const legends = legendEls.map((l) => [...items.get(l)!.values()].filter((ps) => ps.length)
-    .map((ps) => ({ els: ps.flatMap((p) => p.els), box: union(ps.map((p) => p.box)) })))
+    .map((ps) => {
+      const els = ps.flatMap(p => p.els)
+      const name = els.find(el => el.hasAttribute('data-export-season'))?.getAttribute('data-export-season')
+      const season = seasons.find(s => s.name === name)
+      const detail = els.filter(el => el.tagName === 'text').map(el => el.textContent ?? '').find(t => /^n=\d+$/.test(t))
+      return { els, box: union(ps.map(p => p.box)), season: season ? paletteSeason(season) : undefined, detail,
+        off: els.some(el => el.getAttribute('text-decoration') === 'line-through') }
+    }))
     .filter((l) => l.length)
   if (!chart.length) return null
-  return { chart, legends, palette: collectExportPalette([...chart, ...legends.flat()].flatMap(p => p.els), sites) }
+  return { chart, legends, palette: collectExportPalette([...chart, ...legends.flat()].flatMap(p => p.els), sites, seasons) }
+}
+
+/** Consolidate legend keys only; chart marks and regression populations stay intact. */
+function consolidateSeasonLegend(items: Piece[]): Piece[] {
+  const groups = new Map<string, Piece[]>()
+  for (const item of items) {
+    // Keep hidden and shown entries separate: a crossed-out key must not describe visible marks.
+    const key = item.season ? `${item.season.group}|${item.off}` : `other:${groups.size}`
+    groups.set(key, [...(groups.get(key) ?? []), item])
+  }
+  return [...groups.values()].map(group => {
+    const first = group[0], season = first.season
+    if (!season) return first
+    const label = first.els.find(el => el.tagName === 'text')
+    if (!label) return first
+    const text = label.cloneNode(true) as SVGTextElement
+    const counts = group.map(item => item.detail && /^n=(\d+)$/.exec(item.detail))
+    const detail = counts.every(Boolean) ? `n=${counts.reduce((sum, match) => sum + Number(match![1]), 0)}` : undefined
+    text.textContent = season.groupLabel + (detail ? `  ${detail}` : '')
+    const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d')!
+    ctx.font = `${text.getAttribute('font-weight') ?? '400'} ${text.getAttribute('font-size') ?? '12px'} ${FONT}`
+    const width = ctx.measureText(text.textContent).width
+    text.setAttribute('data-w', width.toFixed(1))
+    const x = Number(text.getAttribute('x'))
+    const els = [...first.els.filter(el => el.tagName !== 'text').map(el => el.cloneNode(true) as Element), text]
+    return { ...first, els, detail, box: { ...first.box, right: Math.max(x + width, first.box.left + 12) } }
+  })
 }
 
 /** One <svg> from a composed figure, with the legend where it was asked for. */
-export function layoutFigure(fig: Figure, legend: LegendPlacement = 'shown'): SVGSVGElement {
+export function layoutFigure(fig: Figure, legend: LegendPlacement = 'shown', consolidateSeasons = false): SVGSVGElement {
+  if (consolidateSeasons && fig.palette.seasons.length) {
+    fig = { ...fig, legends: fig.legends.map(consolidateSeasonLegend) }
+    if (legend === 'shown') legend = 'bottom'
+  }
   const out = document.createElementNS(NS, 'svg') as SVGSVGElement
   const placed: { piece: Piece; dx: number; dy: number }[] = fig.chart.map((piece) => ({ piece, dx: 0, dy: 0 }))
   const chartBox = union(fig.chart.map((p) => p.box))

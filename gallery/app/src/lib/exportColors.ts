@@ -1,12 +1,13 @@
+import { paletteSeason, seasonExportColor, seasonColorRows, type ExportSeason, type PaletteSeason } from './exportSeasons.ts'
 import { color, hcl, lab, schemeDark2, schemeTableau10 } from 'd3'
 import { ESTIMATORS, FIT_STYLE, type Estimator } from './regressionMethods.ts'
 
 export interface ExportSite { code: string; name: string; color: string }
 export interface PaletteSite { key: string; label: string; color: string }
 export interface PaletteFit { key: Estimator; label: string; color: string; mixed: boolean }
-export interface ExportPalette { sites: PaletteSite[]; fits: PaletteFit[] }
-export interface ExportColors { sameSites: boolean; shared: string; sites: Record<string, string>; fits: Partial<Record<Estimator, string>> }
-export const DEFAULT_EXPORT_COLORS: ExportColors = { sameSites: false, shared: '#2171b5', sites: {}, fits: {} }
+export interface ExportPalette { sites: PaletteSite[]; seasons: PaletteSeason[]; fits: PaletteFit[] }
+export interface ExportColors { consolidateSeasons: boolean; seasons: Record<string, string>; sameSites: boolean; shared: string; sites: Record<string, string>; fits: Partial<Record<Estimator, string>> }
+export const DEFAULT_EXPORT_COLORS: ExportColors = { consolidateSeasons: false, seasons: {}, sameSites: false, shared: '#2171b5', sites: {}, fits: {} }
 
 export const hexColor = (value: unknown): string | null => typeof value === 'string' && /^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(value.trim()) ? color(value.trim())!.formatHex() : null
 export const paintColor = (value: string | null): string | null => {
@@ -16,7 +17,7 @@ export const paintColor = (value: string | null): string | null => {
 export function readExportColors(value: unknown): ExportColors {
   const v = value && typeof value === 'object' ? value as Partial<ExportColors> : {}
   const valid = (o: unknown) => Object.fromEntries(Object.entries(o && typeof o === 'object' && !Array.isArray(o) ? o : {}).flatMap(([k, c]) => hexColor(c) ? [[k, hexColor(c)!]] : []))
-  return { sameSites: v.sameSites === true, shared: hexColor(v.shared) ?? DEFAULT_EXPORT_COLORS.shared, sites: valid(v.sites),
+  return { consolidateSeasons: v.consolidateSeasons === true, seasons: valid(v.seasons), sameSites: v.sameSites === true, shared: hexColor(v.shared) ?? DEFAULT_EXPORT_COLORS.shared, sites: valid(v.sites),
     fits: Object.fromEntries(Object.entries(valid(v.fits)).filter(([k]) => ESTIMATORS.includes(k as Estimator))) }
 }
 export const siteExportColor = (site: PaletteSite, prefs: ExportColors) => prefs.sameSites ? prefs.shared : prefs.sites[site.key] ?? site.color
@@ -44,7 +45,7 @@ export function contrastRatio(a: string, b = '#ffffff'): number {
 /** D3 categorical palettes, extended in HCL for large selections. Greedy Lab spacing
  * separates sites and estimators; all suggestions target a light background.
  * https://d3js.org/d3-scale-chromatic/categorical */
-export function recommendExportColors(palette: ExportPalette, sameSites: boolean): ExportColors {
+export function recommendExportColors(palette: ExportPalette, sameSites: boolean, consolidateSeasons = false): ExportColors {
   const candidates = [...new Set([...schemeTableau10, ...schemeDark2,
     ...Array.from({ length: 144 }, (_, i) => hcl((i % 36) * 10, i < 72 ? 45 : 65, Math.floor(i / 36) % 2 ? 55 : 45).formatHex())])]
     .filter(c => contrastRatio(c) >= 3).map(c => ({ color: c, lab: lab(c) }))
@@ -57,21 +58,24 @@ export function recommendExportColors(palette: ExportPalette, sameSites: boolean
     used.push(next)
     return next.color
   }
-  const prefs: ExportColors = { sameSites, shared: '#2171b5', sites: {}, fits: {} }
+  const prefs: ExportColors = { consolidateSeasons, seasons: {}, sameSites, shared: '#2171b5', sites: {}, fits: {} }
   // Fit colors also color their equations, so use the stronger text contrast threshold.
   for (const fit of palette.fits) prefs.fits[fit.key] = pick(true)
   if (sameSites && palette.sites.length) prefs.shared = pick()
   else for (const site of palette.sites) prefs.sites[site.key] = pick()
+  for (const season of seasonColorRows(palette.seasons, consolidateSeasons)) prefs.seasons[season.key] = pick()
   return prefs
 }
 
 /** Mark only figure elements that actually encode sites. A legend is a fallback for older
  * charts; explicit mark annotations distinguish sites that happen to share a source color. */
-export function collectExportPalette(roots: Element[], sites: readonly ExportSite[]): ExportPalette {
+export function collectExportPalette(roots: Element[], sites: readonly ExportSite[], seasons: readonly ExportSeason[] = []): ExportPalette {
   const byName = new Map(sites.map(s => [s.name, s]))
   const byCode = new Map(sites.map(s => [s.code, s]))
   const found = new Map<string, PaletteSite>()
   const explicitSites = new Set<string>()
+  const bySeason = new Map(seasons.map(s => [s.name, paletteSeason(s)]))
+  const foundSeasons = new Map<string, PaletteSeason>()
   const fits = new Map<Estimator, Set<string>>()
   const all = roots.flatMap(root => [root, ...root.querySelectorAll('*')])
   for (const el of all) {
@@ -83,6 +87,13 @@ export function collectExportPalette(roots: Element[], sites: readonly ExportSit
       el.setAttribute('data-export-color', native)
       found.set(site.code, { key: site.code, label: site.name, color: native })
       if (!el.hasAttribute('data-export-legend-site') && !el.closest('[data-fit-site]')) explicitSites.add(site.code)
+    }
+    const seasonName = el.getAttribute('data-export-season') ?? el.getAttribute('data-export-series') ?? el.getAttribute('data-fit-site') ?? el.getAttribute('data-export-site')
+    const season = seasonName && bySeason.get(seasonName)
+    if (season) {
+      el.setAttribute('data-export-season', season.key)
+      el.setAttribute('data-export-color', paintColor(el.getAttribute('data-export-color')) ?? season.color)
+      foundSeasons.set(season.key, season)
     }
     const method = el.getAttribute('data-regression') ?? el.getAttribute('data-regression-color') ?? el.getAttribute('data-regression-stroke') ?? el.getAttribute('data-fit-uncertainty')
     if (method && ESTIMATORS.includes(method as Estimator)) {
@@ -107,21 +118,25 @@ export function collectExportPalette(roots: Element[], sites: readonly ExportSit
       if (keys?.size === 1) el.setAttribute(`data-export-${attr}-site`, [...keys][0])
     }
   }
-  return { sites: [...found.values()].sort((a, b) => a.label.localeCompare(b.label)),
+  return { seasons: [...foundSeasons.values()], sites: [...found.values()].sort((a, b) => a.label.localeCompare(b.label)),
     fits: ESTIMATORS.filter(m => fits.has(m)).map(m => ({ key: m, label: FIT_STYLE[m].label, color: [...fits.get(m)!][0] ?? FIT_STYLE[m].color, mixed: fits.get(m)!.size > 1 })) }
 }
 
 /** Runs on the laid-out clone, never on the live chart or the captured source figure. */
 export function applyExportColors(svg: SVGSVGElement, palette: ExportPalette, prefs: ExportColors) {
   const sites = new Map(palette.sites.map(s => [s.key, s]))
+  const seasons = new Map(palette.seasons.map(s => [s.key, s]))
   for (const el of [svg, ...svg.querySelectorAll('*')]) {
     const scope = el.closest('[data-export-site]')
+    const seasonScope = el.closest('[data-export-season]')
+    const season = seasons.get(seasonScope?.getAttribute('data-export-season') ?? '')
     for (const attr of ['fill', 'stroke']) {
       const paint = el.getAttribute(attr)
       if (!paint) continue
       const key = el.getAttribute(`data-export-${attr}-site`) ?? scope?.getAttribute('data-export-site')
       const site = key ? sites.get(key) : undefined
-      if (site) el.setAttribute(attr, replacePaint(paint, scope?.getAttribute('data-export-color') ?? site.color, siteExportColor(site, prefs)))
+      if (season) el.setAttribute(attr, replacePaint(paint, seasonScope?.getAttribute('data-export-color') ?? season.color, seasonExportColor(season, prefs, palette.seasons)))
+      else if (site) el.setAttribute(attr, replacePaint(paint, scope?.getAttribute('data-export-color') ?? site.color, siteExportColor(site, prefs)))
     }
     // Explicit estimator overrides take precedence over grouped site colors.
     const strokeMethod = el.getAttribute('data-regression') ?? el.getAttribute('data-regression-stroke')

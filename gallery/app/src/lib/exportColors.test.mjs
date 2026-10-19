@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { DEFAULT_EXPORT_COLORS, contrastRatio, hexColor, paintColor, readExportColors, recommendExportColors, replacePaint, siteExportColor } from './exportColors.ts'
 
 const palette = {
+  seasons: [],
   sites: Array.from({ length: 40 }, (_, i) => ({ key: `S${i}`, label: `Site ${i}`, color: '#2171b5' })),
   fits: ['ols', 'deming', 'york'].map(key => ({ key, label: key, color: '#2171b5', mixed: false })),
 }
@@ -10,7 +11,7 @@ test('saved colors reject malformed values and accept valid hex without letting 
   assert.equal(hexColor(' #AbC '), '#aabbcc')
   assert.equal(hexColor('var(--color)'), null)
   assert.deepEqual(readExportColors({ sameSites: 'yes', shared: '#fff', sites: { A: '#123456', B: 'red' }, fits: { deming: '#789', other: '#fff' } }),
-    { sameSites: false, shared: '#ffffff', sites: { A: '#123456' }, fits: { deming: '#778899' } })
+    { consolidateSeasons: false, seasons: {}, sameSites: false, shared: '#ffffff', sites: { A: '#123456' }, fits: { deming: '#778899' } })
   assert.deepEqual(readExportColors(null), DEFAULT_EXPORT_COLORS)
 })
 test('site overrides, shared mode and reset resolve independently of fit colors', () => {
