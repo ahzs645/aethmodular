@@ -148,7 +148,7 @@ async function loadBoth(picked: string[], spartanSites: string[] | 'all'): Promi
 
 /** The chosen network's sites and rows; null while loading, and for the focus sites (App uses filters.json). */
 export function useNetworkData(network: Network, improveSites: string[], spartanSites: string[] | 'all') {
-  const skey = spartanSites === 'all' ? 'all' : [...spartanSites].sort().join(',')
+  const skey = spartanSites === 'all' ? '*' : [...spartanSites].sort().join(',')
   const key = `${network}:${hasSpartan(network) ? skey : ''}:${hasImprove(network) ? [...improveSites].sort().join(',') : ''}`
   const [state, setState] = useState<{ key: string; data: NetworkData | null; error: string } | null>(null)
   useEffect(() => {
