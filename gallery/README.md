@@ -1148,8 +1148,9 @@ Missing native records are coverage gaps; public measurements are retained.
 Filter counts are distinct from non-null measurement or matched-pair counts.
 
 Measured files for this snapshot: the default four sites' filter payloads total
-about 172 KB compressed, versus 4.44 MB for the previous monolithic network
-reference. All sites' filter payloads total about 729 KB; a median full-resolution
+about 173 KB compressed. The previous monolithic network reference is 4.44 MB
+as JSON, or about 701 KB gzipped: the default site transfer is about 75% smaller
+when comparing compressed sizes. All sites' filter payloads total about 730 KB; a median full-resolution
 filter spectrum is about 9 KB compressed. These are data-transfer sizes, not a
 page load-time benchmark. Calibration exports load separately after the initial
 filter view and only on pages that use them.
