@@ -68,7 +68,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
 
   const fit = useFitHeight()
   const availW = Math.max(200, width - MARGIN.left - MARGIN.right)
-  const innerW = Math.min(availW, fit === null ? MAX_SQUARE : Math.min(MAX_SQUARE, Math.max(140, fit - MARGIN.top - MARGIN.bottom)))
+  const innerW = Math.min(availW, fit === null ? MAX_SQUARE : Math.max(100, fit - MARGIN.top - MARGIN.bottom))
   const innerH = innerW
   const svgWidth = innerW + MARGIN.left + MARGIN.right
   const siteFits = grouping !== 'pooled' && methods.length > 0
@@ -121,7 +121,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
       provenance="stands in for 16 hexbin+plot+scatter figures · react-graph-gallery.com/2d-density-plot"
       controls={o.controls()}
     >
-      <div ref={wrapRef} className="chart-wrap centered">
+      <div ref={wrapRef} className={`chart-wrap centered${fit === null ? '' : ' fit-square'}`} style={fit === null ? undefined : { minHeight: fit }}>
         {points.length < 3 ? (
           <Empty>Fewer than 3 filters carry both fields in this subset.</Empty>
         ) : (

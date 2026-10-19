@@ -8,7 +8,7 @@ import { fitGroupingOption, useChartOptions } from '@/lib/chartOptions'
 import { groupedRegressions, type FitGrouping, type RegressionGroup } from '@/lib/siteRegression'
 import { useEffect, useId, useMemo, useRef } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { ColorLegend, SizeLegend } from '@/components/ColorLegend'
 import { FieldSelect } from '@/components/FieldSelect'
 import { Legend, toggleIn, useLegend } from '@/components/Legend'
@@ -23,7 +23,7 @@ import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import { useColourScheme } from '@/lib/colourSchemes'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { NO_PMF, PMF_SOURCE } from '@/lib/pmfGroups'
-import { useFitHeight } from '@/lib/chartFit'
+import { useChartLabel, useFitHeight } from '@/lib/chartFit'
 import { useTileSetting } from '@/lib/url'
 import { useNarrowScreen } from '@/hooks/useMediaQuery'
 
@@ -77,6 +77,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   /** another tab reusing the crossplot (Weather) names it for what it shows */
   id?: string; title?: string
 }) {
+  const chartLabel = useChartLabel()
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
@@ -217,7 +218,8 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   const panelOuterW = Math.floor((width - (cols - 1) * 12) / cols)
   const availW = Math.max(200, panelOuterW - MARGIN.left - MARGIN.right)
   // every crossplot panel is square, with or without the 1:1 line
-  const innerW = Math.min(availW, layout === 'Per site' ? 420 : layout === 'Per season' ? 320 : fit === null ? MAX_SQUARE : Math.min(MAX_SQUARE, Math.max(140, fit - MARGIN.top - MARGIN.bottom)))
+  const panelRows = Math.max(1, Math.ceil(panels.length / cols))
+  const innerW = Math.min(availW, fit === null ? (layout === 'Per site' ? 420 : layout === 'Per season' ? 320 : MAX_SQUARE) : Math.max(100, fit / panelRows - MARGIN.top - MARGIN.bottom))
   const innerH = innerW
 
   if (xField === yField) return <ChartFrame title="Scatterplot"><Empty>x and y are the same field — pick two different measurements in the bar above.</Empty></ChartFrame>
@@ -228,7 +230,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
               <ScatterPanel
                 key={p.key}
                 grouping={grouping}
-                title={p.title}
+                title={p.title ? chartLabel(p.title) || null : null}
                 titleColor={p.color}
                 points={p.points}
                 stats={p.stats}
@@ -274,8 +276,9 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
       subtitle="Any measured quantity against any other, coloured by site, by the selected season calendar, or by a third measurement (the 123 'colour-coded' crossplots in the estate); a fourth can size the marks. The stats box reports R² and the regression fits selected in the sidebar. Hover anywhere near a point to find it in every other chart; click it for the full record."
       provenance="stands in for 281 scatter + 123 colour-by-third-variable figures across 116 notebooks · plotting/crossplots.py · react-graph-gallery.com/scatter-plot · /bubble-plot"
       controls={o.controls()}
+      tip={domain.dropped > 0 ? `${domain.dropped} point${domain.dropped === 1 ? ' is' : 's are'} below zero and outside the displayed axes. These points are still included in the fit. Choose “Data” in the axes settings to see them.` : undefined}
     >
-      <div ref={wrapRef} className="chart-wrap centered">
+      <div ref={wrapRef} className={`chart-wrap centered${fit === null ? '' : ' fit-square'}`} style={fit === null ? undefined : { minHeight: fit }}>
         {points.length < 3 ? (
           <Empty>Fewer than 3 filters carry both {xField} and {yField} in this subset.</Empty>
         ) : (
@@ -304,9 +307,6 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
         </div>
         {colorBy === 'Value' && !pmfColouring && (
           <Legend items={legend} hidden={hidden} onToggle={(l) => setHidden((h) => toggleIn(h, l))} onHover={setHover} highlighted={hover} note="click a site to drop it; colour is the value above" />
-        )}
-        {domain.dropped > 0 && (
-          <Note>{domain.dropped} point{domain.dropped === 1 ? '' : 's'} below zero are outside the axes and not drawn; they are still in the fit. Switch axes to “Data” in the bar to see them.</Note>
         )}
         {tip.node}
       </div>

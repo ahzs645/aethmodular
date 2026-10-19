@@ -72,7 +72,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
   const MAX_SQUARE = 560
   const availW = Math.max(200, width - MARGIN.left - MARGIN.right)
   const fit = useFitHeight()
-  const innerW = Math.min(availW, fit === null ? MAX_SQUARE : Math.min(MAX_SQUARE, Math.max(140, fit - MARGIN.top - MARGIN.bottom)))
+  const innerW = Math.min(availW, fit === null ? MAX_SQUARE : Math.max(100, fit - MARGIN.top - MARGIN.bottom))
   const innerH = innerW
   const height = innerH + MARGIN.top + MARGIN.bottom
 
@@ -107,7 +107,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
         </>
       }
     >
-      <div ref={wrapRef} className="chart-wrap centered">
+      <div ref={wrapRef} className={`chart-wrap centered${fit === null ? '' : ' fit-square'}`} style={fit === null ? undefined : { minHeight: fit }}>
         {all.length < 2 ? (
           <Empty>Not enough steps with ≥{minN} filters carrying both fields.</Empty>
         ) : (

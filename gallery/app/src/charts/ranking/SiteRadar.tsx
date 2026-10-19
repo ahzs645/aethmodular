@@ -65,7 +65,7 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
 
   const shown = sites.filter((s) => !hidden.has(s.name))
   const fit = useFitHeight()
-  const size = fit === null ? Math.min(520, Math.max(320, width - 40)) : Math.max(160, Math.min(520, width - 40, fit))
+  const size = fit === null ? Math.min(520, Math.max(320, width - 40)) : Math.max(160, Math.min(width - 40, fit))
   // gutter sized from the longest species label so nothing runs off the canvas:
   // labels sit 12 px outside the rim and need ~6.6 px per character beyond that
   const labelPad = Math.min(160, 26 + 8 * Math.max(6, ...species.map((f) => f.length)))

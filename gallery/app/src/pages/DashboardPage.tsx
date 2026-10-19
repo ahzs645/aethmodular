@@ -7,7 +7,7 @@ import { DashHeader, type DashFilters, type SheetActions } from '@/components/da
 import { dashboardChart, dashboardCharts, startFields, STARTER, type DashboardChart, type DashboardData } from '@/components/dashboard/registry'
 import { useHeaderHeight } from '@/hooks/useSidePanel'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
-import { ChartFit, LEGEND_MODES, TileLegend, type LegendMode } from '@/lib/chartFit'
+import { ChartSite, ChartFit, LEGEND_MODES, TileLegend, type LegendMode } from '@/lib/chartFit'
 import { addTile, arrange, COLS, nextId, nextTileId, placeTile, removeTile, stepTile, ROWS, rowsUsed, tileKeyPrefix, updateTile, type DashState, type Scope, type Sheet, type Tile } from '@/lib/dashboard'
 import { clearScopedParams, copyScopedParams, ParamScope, useSearchParam } from '@/lib/url'
 
@@ -348,6 +348,7 @@ function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, 
   onMaximize: () => void
   onFocus?: () => void
 }) {
+  const siteName = useMemo(() => scopePrefix.startsWith('site.') && new Set(data.rows.map(r => r.site)).size === 1 ? data.rows[0].site : null, [scopePrefix, data.rows])
   const n = chart.fields === 'pair' ? 2 : chart.fields === 'single' ? 1 : chart.fields === 'trio' ? 3 : 0
   const start = startFields(chart, data)
   const fields = Array.from({ length: n }, (_, i) => tile.fields[i] ?? start[i])
@@ -465,9 +466,9 @@ function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, 
       <ParamScope prefix={scopePrefix}>
         <FrameExtrasContext.Provider value={extras}>
           <AxisFieldsProvider meta={data.meta} value={axisValue} set={axisSet}>
-            <TileLegend mode={legend} reserve={legendReserve}><ChartFit height={fit}>
+            <ChartSite name={siteName}><TileLegend mode={legend} reserve={legendReserve}><ChartFit height={fit}>
               {near ? chart.render(data, fields.map(data.eff)) : <section className="panel compact"><p className="frame-empty">{chart.label}</p></section>}
-            </ChartFit></TileLegend>
+            </ChartFit></TileLegend></ChartSite>
           </AxisFieldsProvider>
         </FrameExtrasContext.Provider>
       </ParamScope>

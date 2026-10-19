@@ -1034,3 +1034,14 @@ html.dash-present .container.dash { padding-top: 10px; }
      sideways inside itself; its dropdowns, pickers and tooltips are portalled, so none is clipped */
   .panel:not(.compact) { overflow-x: auto; }
 }
+
+/* Corner notes stay visible; their body lives outside the tile's scroll container. */
+.tile-info-btn { flex: none; padding: 0; width: 20px; height: 20px; }
+.tile-info-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.info-tip-body.floating { display: block; z-index: 100; margin: 0; overflow-y: auto; }
+.site-summary-group:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+
+/* Width can limit a square plot: balance its remaining space without stretching its axes. */
+.dash-tile:not(.legend-right) .fit-square { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.fit-square > * { flex-shrink: 0; }
+.fit-square > .facet-grid, .fit-square > .season-groups { width: 100%; }

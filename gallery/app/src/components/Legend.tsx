@@ -1,7 +1,7 @@
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import { useState } from 'react'
 import { usePrefs } from '@/lib/prefs'
-import { useFitHeight, useTileLegend } from '@/lib/chartFit'
+import { useChartLabel, useFitHeight, useTileLegend } from '@/lib/chartFit'
 
 /** in a Dashboard tile, a legend longer than this shows its first items and "+N more" */
 const TILE_LIMIT = 8
@@ -37,6 +37,8 @@ export function Legend({
   highlighted?: string | null
   note?: string
 }) {
+  const label = useChartLabel()
+  const displayItems = items.filter(it => label(it.label))
   const method = useEstimator()
   const { explain } = usePrefs()
   const live = !!(onToggle || onHover)
@@ -45,9 +47,9 @@ export function Legend({
   const tile = useTileLegend()
   const [all, setAll] = useState(false)
   // a tile's legend setting: off draws nothing; bottom and right draw every item
-  const long = inTile && (tile?.mode ?? 'auto') === 'auto' && items.length > TILE_LIMIT + 1
-  const shown = long && !all ? items.slice(0, TILE_LIMIT) : items
-  if (tile?.mode === 'off') return null
+  const long = inTile && (tile?.mode ?? 'auto') === 'auto' && displayItems.length > TILE_LIMIT + 1
+  const shown = long && !all ? displayItems.slice(0, TILE_LIMIT) : displayItems
+  if (tile?.mode === 'off' || (!displayItems.length && !(note && explain))) return null
   return (
     <div className="legend">
       {shown.map((it) => {
@@ -56,7 +58,7 @@ export function Legend({
         const cls = ['legend-item', onToggle ? 'clickable' : '', onHover ? 'hoverable' : '', off ? 'off' : '', dim ? 'dim' : ''].filter(Boolean).join(' ')
         return (
           <span
-            key={estimatorText(it.label, method)}
+            key={it.label}
             className={cls}
             onClick={onToggle ? () => onToggle(it.label) : undefined}
             onKeyDown={onToggle ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(it.label) } } : undefined}
@@ -73,14 +75,14 @@ export function Legend({
               className={`swatch ${it.shape ?? 'dot'}`}
               style={it.shape === 'dashed' || it.shape === 'ring' ? { color: it.color } : { background: it.color }}
             />
-            {estimatorText(it.label, method)}
+            {estimatorText(label(it.label), method)}
             {it.detail && <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>{it.detail}</span>}
           </span>
         )
       })}
       {long && <button type="button" className="legend-more" onClick={() => setAll(!all)} aria-expanded={all}
         title={all ? 'Show the first few only' : 'Show every item (the chart shrinks to make room, or the tile scrolls)'}>
-        {all ? 'fewer' : `+${items.length - TILE_LIMIT} more`}</button>}
+        {all ? 'fewer' : `+${displayItems.length - TILE_LIMIT} more`}</button>}
       {note && explain && <span className="legend-note">{estimatorText(note, method)}</span>}
     </div>
   )

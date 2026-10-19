@@ -11,7 +11,7 @@ import { useChartOptions } from '@/lib/chartOptions'
 import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
-import { useFitHeight } from '@/lib/chartFit'
+import { useChartLabel, useFitHeight } from '@/lib/chartFit'
 import { useTileSetting } from '@/lib/url'
 
 const LAYOUTS = ['Overlay', 'Density', 'Small multiples', 'Mirror'] as const
@@ -40,6 +40,7 @@ interface Series { name: string; color: string; values: number[]; ids: string[] 
  * appears to say and the reader should be able to see that happen.
  */
 export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFile; field: string }) {
+  const chartLabel = useChartLabel()
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
@@ -106,7 +107,7 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
 
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const fit = useFitHeight()
-  const panelH = layout === 'Small multiples' ? 190 : fit ?? 420
+  const panelH = fit === null ? (layout === 'Small multiples' ? 190 : 420) : Math.max(140, fit / (layout === 'Small multiples' ? Math.max(1, series.length) : 1))
   const innerH = panelH - MARGIN.top - MARGIN.bottom
 
   const all = series.flatMap((s) => s.values).sort(d3.ascending)
@@ -208,9 +209,9 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
         ) : (
           panels.map((panel) => (
             <div key={panel.key}>
-              {panel.title && (
+              {panel.title && chartLabel(panel.title) && (
                 <p className="facet-title">
-                  <span className="swatch" style={{ background: panel.color }} /> {panel.title}
+                  <span className="swatch" style={{ background: panel.color }} /> {chartLabel(panel.title!)}
                   <span style={{ color: 'var(--ink-muted)', fontWeight: 400, fontFamily: 'var(--mono)', fontSize: 11 }}>n={panel.items[0]?.values.length ?? 0}</span>
                 </p>
               )}

@@ -1,6 +1,7 @@
 import { Combobox } from '@/components/Combobox'
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { createContext, useId, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { ExportButton } from '@/components/ExportDialog'
 import { usePrefs } from '@/lib/prefs'
 import { useParamScope } from '@/lib/url'
@@ -174,10 +175,11 @@ function TileMenu({ name, extras, about, tip, controls, export: exportNode, onCo
   return (
     <div ref={root} className={`tile-head${open ? ' open' : ''}`}>
       {extras.editBar}
+      {tip && <FloatingInfoTip>{tip}</FloatingInfoTip>}
       <button type="button" className="tile-menu-btn" aria-expanded={open} aria-label={`${name}: menu`} title={name}
         onClick={(e) => toggle(e.currentTarget)}>⋯</button>
       {open && <div className="tile-menu" role="dialog" aria-label={name} style={place}>
-        <div className="tile-menu-title"><strong>{name}</strong>{extras.subtitle && <span className="frame-sub">{extras.subtitle}</span>}{tip && <InfoTip>{tip}</InfoTip>}</div>
+        <div className="tile-menu-title"><strong>{name}</strong>{extras.subtitle && <span className="frame-sub">{extras.subtitle}</span>}</div>
         <div className="tile-menu-actions">
           {extras.menu?.(close)}
           {exportNode}
@@ -310,6 +312,37 @@ export function InfoTip({ children, label = 'Notes on this chart' }: { children:
       <span className="info-tip-body" role="tooltip">{children}</span>
     </span>
   )
+}
+
+/** A corner note is portalled outside the scrolling tile, so it cannot be clipped. */
+function FloatingInfoTip({ children }: { children: ReactNode }) {
+  const id = useId()
+  const [place, setPlace] = useState<React.CSSProperties | null>(null)
+  const closeTimer = useRef<ReturnType<typeof setTimeout>>()
+  const cancelClose = () => clearTimeout(closeTimer.current)
+  const closeSoon = () => { cancelClose(); closeTimer.current = setTimeout(() => setPlace(null), 120) }
+  useEffect(() => {
+    const close = () => setPlace(null)
+    window.addEventListener('resize', close)
+    window.addEventListener('scroll', close, true)
+    return () => { cancelClose(); window.removeEventListener('resize', close); window.removeEventListener('scroll', close, true) }
+  }, [])
+  const show = (el: HTMLElement) => {
+    cancelClose()
+    const r = el.getBoundingClientRect()
+    const width = Math.min(360, window.innerWidth - 24)
+    const below = window.innerHeight - r.bottom > 160
+    setPlace({ position: 'fixed', width, left: Math.max(12, Math.min(r.right - width, window.innerWidth - width - 12)),
+      ...(below ? { top: r.bottom + 6, maxHeight: window.innerHeight - r.bottom - 18 } : { bottom: window.innerHeight - r.top + 6, maxHeight: r.top - 18 }) })
+  }
+  return <>
+    <button type="button" className="tile-info-btn info-tip-icon" aria-label="Notes on this chart" aria-describedby={place ? id : undefined}
+      onMouseEnter={e => show(e.currentTarget)} onMouseLeave={closeSoon}
+      onFocus={e => show(e.currentTarget)} onBlur={closeSoon}
+      onClick={e => show(e.currentTarget)} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); cancelClose(); setPlace(null) } }}>i</button>
+    {place && createPortal(<div id={id} role="tooltip" className="info-tip-body floating" style={place}
+      onMouseEnter={cancelClose} onMouseLeave={closeSoon}>{children}</div>, document.body)}
+  </>
 }
 
 /** Background prose the reader can do without: rendered only when the header's "explain" toggle is on. */

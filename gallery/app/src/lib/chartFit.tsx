@@ -10,7 +10,7 @@ import { createContext, useContext, type ReactNode } from 'react'
  *
  * The tile adjusts the number until the chart's frame fills the tile without overflow
  * (pages/DashboardPage), so a chart only has to draw taller for a larger number. A chart
- * with several panels (per-site grids) may ignore it; its tile then scrolls inside itself.
+ * with several panels divides the height between them; minimum legible sizes can still scroll.
  */
 const FitCtx = createContext<number | null>(null)
 
@@ -22,6 +22,15 @@ export const useFitHeight = () => useContext(FitCtx)
 /** an inner plot height from a fitted outer one, never below `min` */
 export const fitInner = (fit: number | null, margins: number, min = 80) =>
   fit === null ? null : Math.max(min, fit - margins)
+
+/** Display context only: data keys and legend interactions retain their full site names. */
+const SiteCtx = createContext<string | null>(null)
+export const ChartSite = ({ name, children }: { name: string | null; children: ReactNode }) =>
+  <SiteCtx.Provider value={name}>{children}</SiteCtx.Provider>
+export const useChartLabel = () => {
+  const site = useContext(SiteCtx)
+  return (label: string) => site && label === site ? '' : site && label.startsWith(`${site} · `) ? label.slice(site.length + 3) : label
+}
 
 /**
  * Where a tile puts its chart's legends (the tile's ⋯ menu): auto (the first few, "+N more"),

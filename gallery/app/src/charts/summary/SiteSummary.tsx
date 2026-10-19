@@ -11,19 +11,19 @@ const SKIP = new Set([RATIO_GROUP, 'Sampling'])
 /**
  * What the filters in view are, before any chart (OpenAQ's location page opens the same
  * way): the site and where it is, the dates and count, and for each group of measurements
- * how many of its fields were measured and on what share of the filters. A dash on a site
+ * how many filters have at least one measurement. The tooltip lists each field’s coverage. A dash on a site
  * card ("not measured") is explained here. With several sites in view, one line each.
  */
 export function SiteSummary({ rows, meta }: { rows: FilterRow[]; meta: MetaFile }) {
   const fit = useFitHeight()
   const sites = useMemo(() => [...d3.group(rows, (r) => r.site)].map(([site, rs]) => {
     const m = meta.sites.find((s) => s.name === site)
-    const has = (f: string) => rs.filter((r) => typeof r[f] === 'number').length
+    const has = (f: string) => rs.filter((r) => typeof r[f] === 'number' && Number.isFinite(r[f])).length
     // the derived groups (ratios of other fields, the sampled volume) say nothing about what was measured
     const groups = meta.field_groups.filter((g) => !SKIP.has(g.label)).map((g) => {
       const counts = g.fields.map((f) => ({ f, n: has(f) }))
       const measured = counts.filter((c) => c.n > 0)
-      return { label: g.label, of: g.fields.length, measured, share: measured.length ? d3.max(measured, (c) => c.n)! / rs.length : 0 }
+      return { label: g.label, of: g.fields.length, measured, filters: rs.filter(r => g.fields.some(f => typeof r[f] === 'number' && Number.isFinite(r[f]))).length }
     })
     return { site, code: rs[0].code, color: rs[0].color, location: m?.location, lat: m?.lat, lon: m?.lon, n: rs.length,
       from: d3.min(rs, (r) => r.date) ?? '', to: d3.max(rs, (r) => r.date) ?? '', months: new Set(rs.map((r) => r.date.slice(0, 7))).size, groups }
@@ -38,14 +38,14 @@ export function SiteSummary({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
             <div className="site-summary-head">
               <span className="swatch" style={{ background: s.color }} />
               <strong>{s.site}</strong><span className="site-card-n">{s.code}</span>
-              <span className="site-summary-meta">{s.location}{s.lat != null && s.lon != null ? ` · ${s.lat.toFixed(2)}°, ${s.lon.toFixed(2)}°` : ''}</span>
+              <span className="site-summary-meta">{s.location !== s.site ? s.location : null}{s.lat != null && s.lon != null ? `${s.location && s.location !== s.site ? ' · ' : ''}${s.lat.toFixed(2)}°, ${s.lon.toFixed(2)}°` : ''}</span>
             </div>
             <div className="site-summary-meta">{s.n} filters · {s.from} → {s.to} · {s.months} months</div>
             <div className="site-summary-groups">
               {s.groups.filter((g) => g.of > 0).map((g) => (
                 <span key={g.label} className={`site-summary-group${g.measured.length ? '' : ' none'}`}
-                  title={g.measured.length ? g.measured.map((c) => `${c.f}: ${c.n} of ${s.n} filters`).join('\n') : `${g.label}: not measured at ${s.site}`}>
-                  {chemText(g.label)} <em>{g.measured.length ? `${g.measured.length}/${g.of} · ${Math.round(100 * g.share)}%` : 'not measured'}</em>
+                  tabIndex={0} title={g.measured.length ? `${g.filters} of ${s.n} filters have at least one measurement in this group. ${g.measured.length} of ${g.of} measurement types are available.\n` + g.measured.map((c) => `${c.f}: ${c.n} of ${s.n} filters`).join('\n') : `${g.label}: not measured at ${s.site}`}>
+                  {chemText(g.label)} <em>{g.measured.length ? `${g.filters}/${s.n} filters` : 'not measured'}</em>
                 </span>
               ))}
             </div>

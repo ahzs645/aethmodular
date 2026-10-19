@@ -57,7 +57,7 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
   const panels = ['temp', 'prcp', 'rh', ...(showBlh ? ['blh'] : []), 'field'] as const
   // in a fitted dashboard tile the panels share its height
   const fit = useFitHeight()
-  const panelH = fit === null ? PANEL : Math.max(40, Math.min(PANEL, (fit - M.top - M.bottom - (panels.length - 1) * GAP) / Math.max(1, panels.length)))
+  const panelH = fit === null ? PANEL : Math.max(40, (fit - M.top - M.bottom - (panels.length - 1) * GAP) / Math.max(1, panels.length))
   const height = M.top + M.bottom + panels.length * panelH + (panels.length - 1) * GAP
   const x = d3.scaleTime().domain(domain ?? [new Date(), new Date()]).range([0, innerW])
   const top = (k: string) => M.top + panels.indexOf(k as never) * (panelH + GAP)

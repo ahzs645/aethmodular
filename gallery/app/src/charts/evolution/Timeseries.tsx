@@ -12,7 +12,7 @@ import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
 import { useChartOptions } from '@/lib/chartOptions'
-import { useFitHeight } from '@/lib/chartFit'
+import { useChartLabel, useFitHeight } from '@/lib/chartFit'
 
 const LAYOUTS = ['Overlay', 'Per site'] as const
 type Pt = { row: FilterRow; date: Date; value: number }
@@ -33,6 +33,7 @@ type Pt = { row: FilterRow; date: Date; value: number }
  * value labelled, which is how "was Delhi high the same month" gets read.
  */
 export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFile; field: string }) {
+  const chartLabel = useChartLabel()
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
@@ -76,7 +77,8 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
 
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const fit = useFitHeight()
-  const panelH = layout === 'Overlay' ? fit ?? 430 : 250
+  const panelCount = layout === 'Overlay' ? 1 : Math.max(1, series.length)
+  const panelH = fit === null ? (layout === 'Overlay' ? 430 : 250) : Math.max(140, fit / panelCount)
   const innerH = panelH - MARGIN.top - MARGIN.bottom
 
   const panels = layout === 'Overlay' ? [{ key: 'all', title: null as string | null, color: INK.text, series }] : series.map((s) => ({ key: s.name, title: s.name, color: s.color, series: [s] }))
@@ -132,9 +134,9 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
             const cursorIn = cursor && cursor >= x0d && cursor <= x1d
             return (
               <div key={panel.key}>
-                {panel.title && (
+                {panel.title && chartLabel(panel.title) && (
                   <p className="facet-title">
-                    <span className="swatch" style={{ background: panel.color }} /> {panel.title}
+                    <span className="swatch" style={{ background: panel.color }} /> {chartLabel(panel.title!)}
                     <span style={{ color: 'var(--ink-muted)', fontWeight: 400, fontFamily: 'var(--mono)', fontSize: 11 }}>n={pts.length}</span>
                   </p>
                 )}

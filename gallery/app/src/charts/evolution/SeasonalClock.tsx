@@ -75,6 +75,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
+  // Recreate the SVG when its size changes: WebKit can retain stale textPath geometry.
   // textPath needs a path id; useId keeps two clocks on one page from sharing one
   const uid = useId().replace(/:/g, '')
 
@@ -124,7 +125,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
 
   // ---- geometry: a square, with room outside the ring for month and season labels
   const fit = useFitHeight()
-  const size = fit === null ? Math.max(280, Math.min(width, 520)) : Math.max(160, Math.min(width, 520, fit))
+  const size = fit === null ? Math.max(280, Math.min(width, 520)) : Math.max(160, Math.min(width, fit))
   const cx = size / 2
   const cy = size / 2
   // the room outside the ring shrinks with the clock: season names need ~64 px, month names ~30,
@@ -192,11 +193,11 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
       provenance="react-graph-gallery.com/circular-barplot · not in the estate"
       controls={o.controls()}
     >
-      <div ref={wrapRef} className="chart-wrap centered">
+      <div ref={wrapRef} className={`chart-wrap centered${fit === null ? '' : ' fit-square'}`} style={fit === null ? undefined : { minHeight: fit }}>
         {allSeries.length === 0 ? (
           <Empty>No site has {field} in this subset.</Empty>
         ) : (
-          <svg width={size} height={size} className="animated">
+          <svg key={size} width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="animated">
             <defs>
               {wedgeSeasons.flatMap((s) =>
                 circularRuns(s.months).map((run, i) => (
@@ -306,7 +307,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
                 circularRuns(s.months).map((_, i) => (
                   <text key={`${s.name}-${i}`} fontSize={10.5} fontWeight={600} fill={s.color} opacity={seasonHover === null || seasonHover === s.name ? 1 : 0.35} pointerEvents="none">
                     <textPath href={`#${uid}-season-${s.name.replace(/\W+/g, '')}-${i}`} startOffset="50%" textAnchor="middle">
-                      {shortSeason(s.name, size)}
+                      {shortSeason(s.name)}
                     </textPath>
                   </text>
                 ))
@@ -336,8 +337,8 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
   )
 }
 
-/** a season name that fits its arc: "Addis Ababa · Bega (Oct-Jan, dry)" → "Bega (Oct-Jan, dry)", → "Bega" on a smaller clock */
-const shortSeason = (name: string, size: number) => {
+/** Short names stay within their arc; the legend retains the full month ranges. */
+const shortSeason = (name: string) => {
   const bare = name.includes(' · ') ? name.slice(name.indexOf(' · ') + 3) : name
-  return size >= 460 ? bare : bare.replace(/\s*\(.*\)$/, '')
+  return bare.replace(/\s*\(.*\)$/, '')
 }

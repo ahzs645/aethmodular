@@ -10,7 +10,7 @@ import { fmt } from '@/lib/stats'
 import { INK, FONT } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { calendarLabel, seasonsForSite } from '@/siteSeasons'
-import { useFitHeight } from '@/lib/chartFit'
+import { useChartLabel, useFitHeight } from '@/lib/chartFit'
 
 // Stacked bars are the recommended view (PI decision, 23 Sep 2026); the
 // hierarchy encodings stay selectable for the within-site reading.
@@ -39,6 +39,7 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
   title = 'Stacked bars — what the PM2.5 is made of, per site and season', species: speciesOverride, notes, stackedOnly = false,
 }: { rows: FilterRow[]; meta: MetaFile; initialGrouping?: (typeof GROUPINGS)[number]; id?: string;
   title?: string; species?: string[]; notes?: ReactNode; stackedOnly?: boolean }) {
+  const chartLabel = useChartLabel()
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
@@ -60,8 +61,11 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
   const lg = useLegend()
   const fam = useLegend()
 
-  const panelW = Math.max(240, Math.floor((width - 26) / 2))
-  const panelH = 260
+  const fit = useFitHeight()
+  const siteCount = new Set(rows.map(r => r.site)).size
+  const cols = Math.max(1, Math.min(siteCount, width >= 600 ? 2 : 1))
+  const panelW = Math.max(200, Math.floor((width - 24 * (cols - 1)) / cols))
+  const panelH = fit === null ? 260 : Math.max(100, fit / Math.max(1, Math.ceil(siteCount / cols)))
   const UNITS = 'µg/m³'
 
   // Species in the exporter's family order. PM2.5 mass is a separate
@@ -133,7 +137,7 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
   const pct = unitMode === 'composition (%)'
   const bars: Bar[] = bySeason
     ? composition.seasonBars.map((b) => ({ ...b, children: b.children.filter(vis) }))
-    : shownSites.map((s) => ({ key: s.code, label: s.name, site: s.name, siteColor: s.color, barColor: s.color, pm25_mean: s.pm25_mean, nRows: rows.filter((r) => r.site === s.name).length, children: s.children }))
+    : shownSites.map((s) => ({ key: s.code, label: chartLabel(s.name), site: s.name, siteColor: s.color, barColor: s.color, pm25_mean: s.pm25_mean, nRows: rows.filter((r) => r.site === s.name).length, children: s.children }))
 
   /** family → species hierarchy (or flat), summed on the chosen statistic */
   const rootFor = (siteName: string, kids: Kid[]) => {
@@ -178,7 +182,7 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
               <div key={site.code} style={{ width: panelW }}>
                 <p className="facet-title">
                   <span className="swatch" style={{ background: site.color }} />
-                  {site.name}
+                  {chartLabel(site.name)}
                   <span style={{ fontWeight: 400, color: 'var(--ink-muted)', fontSize: 11.5 }}>
                     PM2.5 {fmt(site.pm25_mean, 1)} µg/m³ · speciated {fmt(total, 1)}
                   </span>
@@ -291,6 +295,7 @@ function StackedBars({ bars, grouped, pct, families, val, dim, famDim, color, fa
   units: string
   statistic: string
 }) {
+  const chartLabel = useChartLabel()
   const margin = { top: 16, right: 20, bottom: grouped ? 72 : 40, left: 60 }
   const innerW = Math.max(240, width - margin.left - margin.right)
   const fit = useFitHeight()
@@ -382,7 +387,7 @@ function StackedBars({ bars, grouped, pct, families, val, dim, famDim, color, fa
           return (
             <g key={site} pointerEvents="none">
               <line x1={x0} x2={x1} y1={innerH + 50} y2={innerH + 50} stroke={mine[0].siteColor} strokeWidth={1.5} />
-              <text x={(x0 + x1) / 2} y={innerH + 64} textAnchor="middle" fontSize={11.5} fontWeight={600} fill={mine[0].siteColor} fontFamily={FONT.family}>{site}</text>
+              <text x={(x0 + x1) / 2} y={innerH + 64} textAnchor="middle" fontSize={11.5} fontWeight={600} fill={mine[0].siteColor} fontFamily={FONT.family}>{chartLabel(site)}</text>
             </g>
           )
         })}
