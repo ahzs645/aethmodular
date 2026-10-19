@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { ExpandIcon } from '@/components/Icons'
 import { SpectrumModal } from '@/components/FilterSpectrumPlot'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
@@ -81,7 +82,7 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
       </SpectrumModal>}
       <div className="legend">
         <ColorLegend scale={color} scheme={colours.scheme} label="Spearman ρ" width={160} ticks={4} format={(v) => (v > 0 ? `+${v}` : v < 0 ? `−${-v}` : '0')} />
-        <span className="legend-item">values shown where |ρ| ≥ 0.3{fit === null ? ' · click a matrix to open it larger' : ''}</span>
+        <span className="legend-item">values shown where |ρ| ≥ 0.3{fit === null ? ' · ⤢ opens a matrix larger' : ''}</span>
       </div>
     </ChartFrame>
   )
@@ -89,10 +90,9 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
   function matrix(fc: (typeof facets)[number], cell: number, labelW: number, onOpen?: () => void) {
     const fw = labelW + species.length * cell + 10, fh = 70 + vars.length * cell + 10
     return (
-          <svg key={fc.name} width={fw} height={fh} fontFamily={FONT.family}
-            role={onOpen ? 'button' : undefined} tabIndex={onOpen ? 0 : undefined} style={onOpen ? { cursor: 'zoom-in' } : undefined}
-            aria-label={onOpen ? `${fc.name}: open larger` : undefined}
-            onClick={onOpen} onKeyDown={onOpen ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() } } : undefined}>
+          <div key={fc.name} className="expandable-panel">
+          {onOpen && <button type="button" className="btn quiet panel-expand" style={{ right: 10 }} onClick={onOpen} aria-label={`Open ${fc.name} larger`} title="Open larger"><ExpandIcon /></button>}
+          <svg width={fw} height={fh} fontFamily={FONT.family}>
             <text x={labelW} y={14} fontSize={12} fontWeight={600} fill={fc.color}>{fc.name} <tspan fill={INK.muted} fontWeight={400} fontSize={10.5}>n={fc.n}</tspan></text>
             {species.map((f, j) => <text key={f} transform={`translate(${labelW + j * cell + cell / 2},${66}) rotate(-50)`} fontSize={10} fill={INK.muted}>{chemText(f)}</text>)}
             {vars.map((v, i) => <text key={v.field} x={labelW - 6} y={70 + i * cell + cell / 2} dy="0.35em" textAnchor="end" fontSize={10.5} fill={INK.text}>{v.label}</text>)}
@@ -105,6 +105,7 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
               </g>
             }))}
           </svg>
+          </div>
     )
   }
 }

@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { seasonOnly } from '@/lib/seasons'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
@@ -71,7 +72,7 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
       controls={
         <>
           <Segmented label="Scale" value={mode} options={MODES} onChange={setMode} />
-          {/* the share one source needs before a filter counts as dominated; it sets the count in the subtitle (a line would misread on stacked bars) */}
+          {/* the share one source needs before a filter counts as dominated: counted under each bar and in the note below */}
           <Select label="Count filters dominated above" value={threshold} options={['20', '30', '40', '50', '60']} optionLabel={(o) => `${o} %`} onChange={setThreshold} />
         </>
       }
@@ -99,13 +100,13 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
                           key={l}
                           x={x(g.name) ?? 0} y={y1} width={x.bandwidth()} height={Math.max(0, y0 - y1)}
                           fill={colorOf.get(l) ?? INK.muted} fillOpacity={0.88 * lg.dim(l)} stroke="#fff" strokeWidth={0.8}
-                          onMouseEnter={(e) => tip.show(e, [`${l} · ${g.name}`, relative ? `mean share ${(v * 100).toFixed(1)} %` : `mean ${fmt(v, 2)} µg/m³`, `dominant on ${dominant} of ${g.n} filters`])}
+                          onMouseEnter={(e) => tip.show(e, [`${l} · ${seasonOnly(g.name)}`, relative ? `mean share ${(v * 100).toFixed(1)} %` : `mean ${fmt(v, 2)} µg/m³`, `dominant on ${dominant} of ${g.n} filters`, `above ${threshold} % on ${g.rows.filter((r) => (r.fraction[l] ?? 0) >= thr).length} of ${g.n}`])}
                           onMouseLeave={tip.hide}
                         />
                       )
                     })}
                     <text x={(x(g.name) ?? 0) + x.bandwidth() / 2} y={innerH + 30} textAnchor="middle" fontSize={10} fill={INK.muted} fontFamily={FONT.mono}>
-                      n={g.n}
+                      n={g.n} · {g.rows.filter((r) => (r.dominant_fraction ?? 0) >= thr).length} above {threshold} %
                     </text>
                   </g>
                 )
@@ -114,6 +115,7 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
           </svg>
         )}
         <Legend items={pmf.sources.map((s) => ({ label: s.label, color: s.color, shape: 'square' as const }))} {...lg.props} />
+        <p className="chart-note" style={{ display: 'block' }}>{crossing} of {subsetRows.length} filters have one source above {threshold} % of the day's PMF total (the count under each bar is that season's).</p>
         {tip.node}
       </div>
     </ChartFrame>

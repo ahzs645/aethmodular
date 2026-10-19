@@ -9,6 +9,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt, regression } from '@/lib/stats'
 import { FONT, INK } from '@/lib/theme'
+import { ExpandIcon } from '@/components/Icons'
 import type { StationCompare } from '@/lib/weather'
 
 const VARS = [
@@ -39,7 +40,7 @@ export function StationCheck({ data }: { data: StationCompare | null }) {
 
   return (
     <ChartFrame id="weather-station" title="ERA5 against the Addis Ababa airport station — day by day"
-      subtitle="Each dot is one local day with at least 18 station hours. Dashed: 1:1; the fit lines and readout follow the sidebar's fit choice. ERA5 is a 0.25° grid-box average, so it smooths the station's extremes; precipitation is the weakest match (ERA5 is known to over-rain the Ethiopian highlands), so rain-washout results from ERA5 at Addis deserve the station check. Click a panel to open it larger."
+      subtitle="Each dot is one local day with at least 18 station hours. Dashed: 1:1; the fit lines and readout follow the sidebar's fit choice; ⤢ opens a panel larger. ERA5 is a 0.25° grid-box average, so it smooths the station's extremes; precipitation is the weakest match (ERA5 is known to over-rain the Ethiopian highlands), so rain-washout results from ERA5 at Addis deserve the station check."
       provenance="Meteostat hourly, WMO 63450 (the station behind addis_03_meteorology and the meteorology notebooks) · ERA5 via Open-Meteo">
       <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
         {!data ? <Empty>Loading the station comparison…</Empty> : VARS.map((v) => (
@@ -71,10 +72,9 @@ function StationPanel({ v, data, side, tip, onOpen }: {
   const [d0, d1] = x.domain()
   const r = side > 300 ? 3.2 : 2.6
   return (
-    <svg width={side + M.left + M.right} height={side + M.top + M.bottom} fontFamily={FONT.family}
-      role={onOpen ? 'button' : undefined} tabIndex={onOpen ? 0 : undefined} style={onOpen ? { cursor: 'zoom-in' } : undefined}
-      aria-label={onOpen ? `${v.label}: open larger` : undefined}
-      onClick={onOpen} onKeyDown={onOpen ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() } } : undefined}>
+    <div className="expandable-panel">
+    {onOpen && <button type="button" className="btn quiet panel-expand" style={{ right: M.right }} onClick={onOpen} aria-label={`Open ${v.label} larger`} title="Open larger"><ExpandIcon /></button>}
+    <svg width={side + M.left + M.right} height={side + M.top + M.bottom} fontFamily={FONT.family}>
       <text x={M.left} y={13} fontSize={12} fontWeight={600} fill={INK.text}>{v.label}
         <tspan fontWeight={400} fill={INK.muted} fontSize={10.5}> · bias {bias !== undefined && bias >= 0 ? '+' : ''}{fmt(bias, 2)} {v.unit}{tot ? ` · totals ${fmt(tot[0], 0)} / ${fmt(tot[1], 0)} mm` : ''}</tspan></text>
       <g transform={`translate(${M.left},${M.top})`}>
@@ -87,5 +87,6 @@ function StationPanel({ v, data, side, tip, onOpen }: {
         <RegressionReadout stats={stats} width={Math.min(250, side - 16)} x={6} y={6} />
       </g>
     </svg>
+    </div>
   )
 }
