@@ -1072,3 +1072,10 @@ html.dash-present .container.dash { padding-top: 10px; }
 .export-settings { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .export-actions { padding-top: 8px; border-top: 1px solid var(--ink-border); }
 @media (min-width: 761px) { .export-settings { max-height: calc(100dvh - 170px); overflow-y: auto; padding-right: 4px; scrollbar-width: thin; } }
+
+.export-colors > .segmented { margin-bottom: 6px; }
+.export-colors > .export-color-note { margin-bottom: 8px; }
+.export-swatch-toggle { flex: none; padding: 2px 4px; font-size: 16px; }
+.export-color-swatches { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 0 8px; }
+.export-color-swatch { width: 22px; height: 22px; border: 1px solid var(--ink-border); border-radius: 4px; cursor: pointer; }
+.export-color-swatch:hover, .export-color-swatch[aria-pressed="true"] { outline: 2px solid var(--ink-text); outline-offset: 2px; }

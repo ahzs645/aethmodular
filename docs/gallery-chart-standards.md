@@ -162,7 +162,9 @@ requires matching season names and months, sums legend counts, and applies one s
 color; it leaves filters and fitted populations intact. Encodings of other variables can use `data-export-series` to keep their
 colors independent of site overrides. `RegressionOverlay` tags each estimator's
 line, band and equation; use those shared components for fitted charts. Colors
-apply to the export clone, and the browser remembers export preferences. The
+apply to the export clone, and the browser remembers export preferences. Standard mode
+uses the original chart colors without discarding the saved Custom palette. Each
+color row offers named swatches, its chart standard, a custom picker and hex input. The
 recommendation button spaces colors in Lab, using D3 categorical palettes and an
 HCL extension for larger selections, with contrast thresholds against white.
 

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { DEFAULT_EXPORT_COLORS, contrastRatio, hexColor, paintColor, readExportColors, recommendExportColors, replacePaint, siteExportColor } from './exportColors.ts'
+import { DEFAULT_EXPORT_COLORS, effectiveExportColors, contrastRatio, hexColor, paintColor, readExportColors, recommendExportColors, replacePaint, siteExportColor } from './exportColors.ts'
 
 const palette = {
   seasons: [],
@@ -11,7 +11,7 @@ test('saved colors reject malformed values and accept valid hex without letting 
   assert.equal(hexColor(' #AbC '), '#aabbcc')
   assert.equal(hexColor('var(--color)'), null)
   assert.deepEqual(readExportColors({ sameSites: 'yes', shared: '#fff', sites: { A: '#123456', B: 'red' }, fits: { deming: '#789', other: '#fff' } }),
-    { consolidateSeasons: false, seasons: {}, sameSites: false, shared: '#ffffff', sites: { A: '#123456' }, fits: { deming: '#778899' } })
+    { mode: 'custom', consolidateSeasons: false, seasons: {}, sameSites: false, shared: '#ffffff', sites: { A: '#123456' }, fits: { deming: '#778899' } })
   assert.deepEqual(readExportColors(null), DEFAULT_EXPORT_COLORS)
 })
 test('site overrides, shared mode and reset resolve independently of fit colors', () => {
@@ -40,4 +40,19 @@ test('recommendations give 40 unique site colors and separate readable colors fo
   assert.deepEqual(shared.sites, {})
   assert.ok(contrastRatio(shared.shared) >= 3)
   assert.ok(!Object.values(shared.fits).includes(shared.shared))
+})
+
+test('standard colors bypass saved custom colors without losing them, including after storage reload', () => {
+  const custom = readExportColors({sameSites:true, shared:'#123456', sites:{S0:'#abcdef'}, seasons:{winter:'#234567'}, fits:{deming:'#345678'}, consolidateSeasons:true})
+  assert.equal(custom.mode, 'custom') // migrate preferences saved before scheme choices existed
+  const standard = readExportColors({...custom, mode:'standard'})
+  const effective = effectiveExportColors(standard)
+  assert.deepEqual(effective.sites,{})
+  assert.deepEqual(effective.seasons,{})
+  assert.deepEqual(effective.fits,{})
+  assert.equal(effective.sameSites,false)
+  assert.equal(effective.consolidateSeasons,true)
+  assert.equal(standard.sites.S0,'#abcdef')
+  assert.deepEqual(effectiveExportColors({...standard,mode:'custom'}),custom)
+  assert.equal(readExportColors({mode:'unknown'}).mode,'standard')
 })

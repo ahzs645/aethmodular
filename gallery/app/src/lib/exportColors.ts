@@ -6,8 +6,8 @@ export interface ExportSite { code: string; name: string; color: string }
 export interface PaletteSite { key: string; label: string; color: string }
 export interface PaletteFit { key: Estimator; label: string; color: string; mixed: boolean }
 export interface ExportPalette { sites: PaletteSite[]; seasons: PaletteSeason[]; fits: PaletteFit[] }
-export interface ExportColors { consolidateSeasons: boolean; seasons: Record<string, string>; sameSites: boolean; shared: string; sites: Record<string, string>; fits: Partial<Record<Estimator, string>> }
-export const DEFAULT_EXPORT_COLORS: ExportColors = { consolidateSeasons: false, seasons: {}, sameSites: false, shared: '#2171b5', sites: {}, fits: {} }
+export interface ExportColors { mode: 'standard' | 'custom'; consolidateSeasons: boolean; seasons: Record<string, string>; sameSites: boolean; shared: string; sites: Record<string, string>; fits: Partial<Record<Estimator, string>> }
+export const DEFAULT_EXPORT_COLORS: ExportColors = { mode: 'standard', consolidateSeasons: false, seasons: {}, sameSites: false, shared: '#2171b5', sites: {}, fits: {} }
 
 export const hexColor = (value: unknown): string | null => typeof value === 'string' && /^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(value.trim()) ? color(value.trim())!.formatHex() : null
 export const paintColor = (value: string | null): string | null => {
@@ -17,9 +17,16 @@ export const paintColor = (value: string | null): string | null => {
 export function readExportColors(value: unknown): ExportColors {
   const v = value && typeof value === 'object' ? value as Partial<ExportColors> : {}
   const valid = (o: unknown) => Object.fromEntries(Object.entries(o && typeof o === 'object' && !Array.isArray(o) ? o : {}).flatMap(([k, c]) => hexColor(c) ? [[k, hexColor(c)!]] : []))
-  return { consolidateSeasons: v.consolidateSeasons === true, seasons: valid(v.seasons), sameSites: v.sameSites === true, shared: hexColor(v.shared) ?? DEFAULT_EXPORT_COLORS.shared, sites: valid(v.sites),
+  const customized = v.sameSites === true || Object.keys(valid(v.sites)).length > 0 || Object.keys(valid(v.seasons)).length > 0 || Object.keys(valid(v.fits)).length > 0
+  return { mode: v.mode === 'standard' ? 'standard' : v.mode === 'custom' || customized ? 'custom' : 'standard', consolidateSeasons: v.consolidateSeasons === true, seasons: valid(v.seasons), sameSites: v.sameSites === true, shared: hexColor(v.shared) ?? DEFAULT_EXPORT_COLORS.shared, sites: valid(v.sites),
     fits: Object.fromEntries(Object.entries(valid(v.fits)).filter(([k]) => ESTIMATORS.includes(k as Estimator))) }
 }
+
+/** Standard colors bypass overrides without discarding the reader's custom palette. */
+export function effectiveExportColors(prefs: ExportColors): ExportColors {
+  return prefs.mode === 'standard' ? { ...prefs, sameSites: false, sites: {}, seasons: {}, fits: {} } : prefs
+}
+
 export const siteExportColor = (site: PaletteSite, prefs: ExportColors) => prefs.sameSites ? prefs.shared : prefs.sites[site.key] ?? site.color
 
 /** Preserve alpha in a paint value; opacity attributes remain untouched too. */
@@ -58,7 +65,7 @@ export function recommendExportColors(palette: ExportPalette, sameSites: boolean
     used.push(next)
     return next.color
   }
-  const prefs: ExportColors = { consolidateSeasons, seasons: {}, sameSites, shared: '#2171b5', sites: {}, fits: {} }
+  const prefs: ExportColors = { mode: 'custom', consolidateSeasons, seasons: {}, sameSites, shared: '#2171b5', sites: {}, fits: {} }
   // Fit colors also color their equations, so use the stronger text contrast threshold.
   for (const fit of palette.fits) prefs.fits[fit.key] = pick(true)
   if (sameSites && palette.sites.length) prefs.shared = pick()
@@ -124,6 +131,7 @@ export function collectExportPalette(roots: Element[], sites: readonly ExportSit
 
 /** Runs on the laid-out clone, never on the live chart or the captured source figure. */
 export function applyExportColors(svg: SVGSVGElement, palette: ExportPalette, prefs: ExportColors) {
+  prefs = effectiveExportColors(prefs)
   const sites = new Map(palette.sites.map(s => [s.key, s]))
   const seasons = new Map(palette.seasons.map(s => [s.key, s]))
   for (const el of [svg, ...svg.querySelectorAll('*')]) {
