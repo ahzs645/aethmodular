@@ -1079,3 +1079,16 @@ html.dash-present .container.dash { padding-top: 10px; }
 .export-color-swatches { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 0 8px; }
 .export-color-swatch { width: 22px; height: 22px; border: 1px solid var(--ink-border); border-radius: 4px; cursor: pointer; }
 .export-color-swatch:hover, .export-color-swatch[aria-pressed="true"] { outline: 2px solid var(--ink-text); outline-offset: 2px; }
+
+.export-color-picker { display: flex; align-items: center; gap: 8px; }
+.export-color-picker > button { display: inline-flex; align-items: center; gap: 8px; }
+.export-color-sample { display: inline-flex; gap: 2px; }
+.export-color-sample > span { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(0,0,0,.12); }
+.export-color-popover { position: fixed; z-index: 90; width: min(390px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); display: flex; flex-direction: column;
+  background: var(--ink-panel); border: 1px solid var(--ink-border); border-radius: 10px; box-shadow: 0 12px 36px rgba(0,0,0,.24); }
+.export-color-popover > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-bottom: 1px solid var(--ink-border); }
+.export-color-popover-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px; scrollbar-width: thin; }
+.export-color-popover > footer { padding: 8px 12px; border-top: 1px solid var(--ink-border); display: flex; justify-content: flex-end; }
+.export-color-popover .export-colors { border: 0; padding: 0; }
+.export-color-popover .export-colors > legend { display: none; }
+.export-color-popover .export-site-colors { max-height: none; overflow: visible; }

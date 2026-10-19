@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { ExportColorOptions } from '@/components/ExportColorOptions'
+import { ExportColorPicker } from '@/components/ExportColorOptions'
 import { useExportSeasons, useExportSites } from '@/lib/exportSites'
 import { applyExportColors, DEFAULT_EXPORT_COLORS, readExportColors, type ExportColors } from '@/lib/exportColors'
 import { Combobox } from '@/components/Combobox'
@@ -130,7 +130,7 @@ function ExportDialog({ panel, title, onClose }: { panel: HTMLElement; title: st
 
   const dialogRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose() } }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !dialogRef.current?.querySelector('.export-color-popover')) { e.stopPropagation(); onClose() } }
     window.addEventListener('keydown', onKey, true)
     dialogRef.current?.querySelector<HTMLButtonElement>('.export-download')?.focus()
     return () => window.removeEventListener('keydown', onKey, true)
@@ -195,7 +195,7 @@ function ExportDialog({ panel, title, onClose }: { panel: HTMLElement; title: st
                   <Segmented label="Background" value={s.format === 'jpeg' ? 'white' : s.background} options={['white', 'transparent'] as ExportBackground[]}
                     onChange={(v) => set({ background: v })} title={s.format === 'jpeg' ? 'JPEG has no transparency; it is always white' : 'Transparent suits a coloured slide or poster background'} />
                 </div>
-                <ExportColorOptions palette={fig.palette} value={s.colors} onChange={colors => set({ colors })} />
+                <ExportColorPicker palette={fig.palette} value={s.colors} onChange={colors => set({ colors })} />
                 <p className="export-facts">
                   {raster
                     ? <>{Math.round(width * scale).toLocaleString()} × {Math.round(height * scale).toLocaleString()} px · prints at {inches(width)} × {inches(height)} in at 300 dpi</>

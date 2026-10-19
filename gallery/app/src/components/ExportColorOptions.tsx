@@ -1,6 +1,7 @@
+import { createPortal } from 'react-dom'
 import { Segmented } from '@/components/ChartFrame'
 import { seasonColorRows, seasonExportColor } from '@/lib/exportSeasons'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { DEFAULT_EXPORT_COLORS, effectiveExportColors, hexColor, recommendExportColors, siteExportColor, type ExportColors, type ExportPalette } from '@/lib/exportColors'
 import { FIT_STYLE } from '@/lib/regressionMethods'
 
@@ -32,7 +33,7 @@ function ColorChoice({ label, value, standard, onChange, onStandard, icon, note 
   </div>
 }
 
-export function ExportColorOptions({ palette, value, onChange }: { palette: ExportPalette; value: ExportColors; onChange: (value: ExportColors) => void }) {
+function ExportColorOptions({ palette, value, onChange }: { palette: ExportPalette; value: ExportColors; onChange: (value: ExportColors) => void }) {
   if (!palette.sites.length && !palette.seasons.length && !palette.fits.length) return null
   const shown = effectiveExportColors(value)
   const customize = (patch: Partial<ExportColors>) => onChange({ ...value, ...patch, mode: 'custom' })
@@ -77,4 +78,82 @@ export function ExportColorOptions({ palette, value, onChange }: { palette: Expo
     </div>}
     <p className="export-color-note">Recommendations spread category hues apart and use darker fit colors for a light background. Fit dash patterns stay visible.</p>
   </fieldset>
+}
+
+
+/** One compact entry point keeps all color editing out of the export settings column. */
+export function ExportColorPicker({ palette, value, onChange }: { palette: ExportPalette; value: ExportColors; onChange: (value: ExportColors) => void }) {
+  const [open, setOpen] = useState(false)
+  const anchor = useRef<HTMLButtonElement>(null)
+  if (!palette.sites.length && !palette.seasons.length && !palette.fits.length) return null
+  const shown = effectiveExportColors(value)
+  const colors = [...palette.sites.map(site => siteExportColor(site, shown)),
+    ...seasonColorRows(palette.seasons, value.consolidateSeasons).map(season => seasonExportColor(season, shown, palette.seasons)),
+    ...palette.fits.map(fit => shown.fits[fit.key] ?? fit.color)].slice(0, 6)
+  return <div className="export-color-picker">
+    <span className="combobox-label">Colors</span>
+    <button ref={anchor} type="button" className={`combobox-trigger${open ? ' open' : ''}`} aria-label="Export colors" aria-haspopup="dialog" aria-expanded={open}
+      title="Site, season and fit colors: standard palettes, custom colors and recommendations" onClick={() => setOpen(!open)}>
+      <span className="export-color-sample" aria-hidden="true">{colors.map((color, i) => <span key={i} style={{ background: color }} />)}</span>
+      {value.mode === 'standard' ? 'Standard' : 'Custom'}
+      <span aria-hidden="true">▾</span>
+    </button>
+    {open && anchor.current && <ExportColorPopover anchor={anchor.current} onClose={() => setOpen(false)}>
+      <ExportColorOptions palette={palette} value={value} onChange={onChange} />
+    </ExportColorPopover>}
+  </div>
+}
+
+function ExportColorPopover({ anchor, onClose, children }: { anchor: HTMLButtonElement; onClose: () => void; children: ReactNode }) {
+  const box = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
+  useLayoutEffect(() => {
+    const place = () => {
+      const r = anchor.getBoundingClientRect(), width = box.current?.offsetWidth ?? 390, height = box.current?.offsetHeight ?? 0
+      const below = r.bottom + 8, above = r.top - height - 8
+      const top = below + height <= window.innerHeight - 16 ? below : above >= 16 ? above : Math.max(16, window.innerHeight - height - 16)
+      setPos({ left: Math.max(12, Math.min(r.left, window.innerWidth - width - 12)), top })
+    }
+    place()
+    const observer = new ResizeObserver(place)
+    if (box.current) observer.observe(box.current)
+    observer.observe(anchor)
+    const dialog = anchor.closest('.export-dialog')
+    if (dialog) observer.observe(dialog)
+    const onScroll = (e: Event) => { if (!box.current?.contains(e.target as Node)) place() }
+    window.addEventListener('scroll', onScroll, { passive: true, capture: true })
+    window.addEventListener('resize', place)
+    return () => { observer.disconnect(); window.removeEventListener('resize', place); window.removeEventListener('scroll', onScroll, { capture: true }) }
+  }, [anchor])
+  const positioned = pos !== null
+  useEffect(() => {
+    if (positioned) box.current?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true })
+  }, [positioned])
+  useEffect(() => {
+    const closeAndFocus = () => { onClose(); anchor.focus() }
+    const onDown = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node) && !anchor.contains(e.target as Node)) onClose() }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeAndFocus() }
+      if (e.key !== 'Tab') return
+      const controls = [...(box.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), [tabindex="0"]') ?? [])]
+        .filter(el => el.getClientRects().length > 0)
+      const first = controls[0], last = controls[controls.length - 1]
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus() }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus() }
+    }
+    document.addEventListener('pointerdown', onDown)
+    window.addEventListener('keydown', onKey, true)
+    return () => {
+      document.removeEventListener('pointerdown', onDown)
+      window.removeEventListener('keydown', onKey, true)
+    }
+  }, [anchor, onClose])
+  // Keep the popover inside the export dialog's accessible modal, outside its scrolling settings.
+  return createPortal(<div ref={box} className="export-color-popover" role="dialog" aria-label="Export color options"
+    style={pos ?? { left: 0, top: 0, visibility: 'hidden' }}>
+    <header><strong>Colors</strong><button type="button" className="btn quiet" aria-label="Close color options" title="Close colors (Esc)"
+      onClick={() => { onClose(); anchor.focus() }}>✕</button></header>
+    <div className="export-color-popover-body">{children}</div>
+    <footer><button type="button" className="btn" onClick={() => { onClose(); anchor.focus() }}>Done</button></footer>
+  </div>, anchor.closest('.export-dialog') ?? document.body)
 }

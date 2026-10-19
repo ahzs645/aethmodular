@@ -164,7 +164,9 @@ colors independent of site overrides. `RegressionOverlay` tags each estimator's
 line, band and equation; use those shared components for fitted charts. Colors
 apply to the export clone, and the browser remembers export preferences. Standard mode
 uses the original chart colors without discarding the saved Custom palette. Each
-color row offers named swatches, its chart standard, a custom picker and hex input. The
+color row offers named swatches, its chart standard, a custom picker and hex input.
+All color controls open together from the export dialog’s Colors popover; Escape
+closes the popover first and returns focus to its trigger. The
 recommendation button spaces colors in Lab, using D3 categorical palettes and an
 HCL extension for larger selections, with contrast thresholds against white.
 
