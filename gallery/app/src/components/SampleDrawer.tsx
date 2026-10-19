@@ -1,23 +1,25 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
 import { chemText } from '@/lib/format'
-import { loadSpartanReference } from '@/lib/spartan'
+import { useFilterReference } from '@/hooks/useFilterReference'
+import { SitePicker } from '@/components/SitePicker'
 import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
-import { useRegressions, fitsFor, equation, FitGroupingControl } from '@/lib/regressionPrefs'
+import { useRegressions, FitGroupingControl } from '@/lib/regressionPrefs'
 import { groupedRegressions } from '@/lib/siteRegression'
 import { useEffect, useMemo, useState } from 'react'
 import * as d3 from 'd3'
 import { FieldSelect, prettyUnit } from '@/components/FieldSelect'
-import { Select, SwapButton } from '@/components/ChartFrame'
+import { Select } from '@/components/ChartFrame'
+import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
+import { RATIO_GROUP } from '@/lib/viewFields'
 import { XAxis, YAxis } from '@/components/Axes'
 import { regression, fmt } from '@/lib/stats'
-import { INK, FONT } from '@/lib/theme'
+import { INK, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import type { FilterRecord } from '@/lib/highlight'
 import { RecordSection } from '@/components/RecordDrawer'
 import { FilterSpectrum } from '@/components/FilterSpectrum'
-import { useSearchParam } from '@/lib/url'
 import { NO_PMF, PMF_SOURCE, pmfShareField } from '@/lib/pmfGroups'
-import { cleanReference, placements, stripPosition, ratioReference, isFiniteNumber, type ReferenceRow, type SpartanReference } from '@/lib/referencePopulation'
+import { placements, stripPosition, ratioReference, isFiniteNumber, type ReferenceRow } from '@/lib/referencePopulation'
 import { DrawerShell } from '@/components/DrawerShell'
 
 
@@ -72,10 +74,15 @@ export function SampleDrawer({
   const { methods, grouping, showCI } = useRegressions()
   const [cx, setCx] = useState(xField)
   const [cy, setCy] = useState(yField)
-  const referenceOptions = ['same', ...meta.sites.map(s => s.name), 'study', 'network']
-  const [reference, setReference] = useSearchParam<string>('sampleRef', 'same', referenceOptions)
-  const [network, setNetwork] = useState<SpartanReference | null>(null)
-  const [networkError, setNetworkError] = useState('')
+  const crossMeta = useMemo(() => ({ ...meta, field_groups: meta.field_groups.filter(g => g.label !== RATIO_GROUP) }), [meta])
+  // Selecting the other axis's measurement swaps the pair, as in the main gallery.
+  const chooseCrossField = (role: AxisRole, field: string) => {
+    if (role === 'y') { if (field === cx) setCx(cy); setCy(field) }
+    else { if (field === cy) setCy(cx); setCx(field) }
+  }
+  const swapCrossFields = () => { setCx(cy); setCy(cx) }
+  const ref = useFilterReference(row, meta, allRows, studyRows)
+  const { mode: reference, rows: referenceRows, label: referenceLabel } = ref
   const [copied, setCopied] = useState(false)
 
   // follow the bar's pair when it changes, but let the drawer diverge
@@ -83,20 +90,9 @@ export function SampleDrawer({
   useEffect(() => { setCy(yField) }, [yField])
 
   useEffect(() => {
-    if (reference !== 'network' || network) return
-    let live = true
-    setNetworkError('')
-    loadSpartanReference()
-      .then((data) => {
-        if (data.schema_version !== 1 || !Array.isArray(data.rows)) throw new Error('Unsupported reference export')
-        if (live) setNetwork(data)
-      })
-      .catch(e => { if (live) setNetworkError(String(e)) })
-    return () => { live = false }
-  }, [reference, network])
-
-  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if ((e.target as Element)?.closest('input, textarea, select, [role="combobox"], .axis-popover')) return
+      if (document.querySelector('.axis-popover, .map-dialog-backdrop')) return
       if (e.key === 'Escape') onClose()
       if (e.key === 'ArrowLeft' && prev) onOpen(prev.id)
       if (e.key === 'ArrowRight' && next) onOpen(next.id)
@@ -107,9 +103,6 @@ export function SampleDrawer({
 
   const site = meta.sites.find((s) => s.name === row.site)
   const isNum = isFiniteNumber
-  const referenceSite = reference === 'same' ? row.site : reference === 'network' || reference === 'study' ? undefined : reference
-  const referenceLabel = reference === 'network' ? 'SPARTAN network' : reference === 'study' ? 'Four gallery sites' : referenceSite!
-  const referenceRows = useMemo(() => cleanReference(reference === 'network' ? network?.rows ?? [] : reference === 'study' ? studyRows : allRows, referenceSite), [reference, network, allRows, studyRows, referenceSite])
   const knownIds = useMemo(() => new Set(allRows.map(r => r.id)), [allRows])
   const referenceDates = referenceRows.map(r => r.date).filter(Boolean).sort()
 
@@ -144,10 +137,10 @@ export function SampleDrawer({
       .filter((p): p is { r: ReferenceRow; x: number; y: number } => isNum(p.x) && isNum(p.y))
     const stats = regression(pool.map((p) => p.x), pool.map((p) => p.y), fitUncertainty(pool.map(p => p.r), cx, cy, meta))
     const fitGroups = groupedRegressions(pool, grouping, { x: p => p.x, y: p => p.y, site: p => p.r.site, season: p => String(p.r.season ?? ""), seasonColor: p => meta.seasons.find(se => se.name === p.r.season)?.color ?? INK.muted,
-      color: p => meta.sites.find(s => s.code === p.r.code)?.color ?? INK.muted,
+      color: p => ref.sites.find(s => s.code === p.r.code)?.color ?? INK.muted,
       options: members => fitUncertainty(members.map(p => p.r), cx, cy, meta) })
     return { pool, stats, fitGroups }
-  }, [referenceRows, cx, cy, meta, grouping])
+  }, [referenceRows, cx, cy, meta, grouping, ref.sites])
   const W = 400
   const m = { top: 12, right: 14, bottom: 46, left: 62 }
   const iw = W - m.left - m.right
@@ -212,15 +205,21 @@ export function SampleDrawer({
       <section className="drawer-section">
         <h3>Where this filter sits {referenceLabel === row.site ? `at ${row.site}` : `against ${referenceLabel}`}</h3>
         <div className="frame-controls" style={{ margin: '8px 0' }}>
-          <Select label="Reference population" value={reference} options={referenceOptions}
-            optionLabel={v => v === 'same' ? `Filter's site (${row.site})` : v === 'study' ? 'Four gallery sites' : v === 'network' ? 'SPARTAN network — public filters' : v}
-            onChange={setReference} />
+          <Select label="Reference population" value={reference} options={ref.options}
+            optionLabel={v => v === 'same' ? `Filter's site (${row.site})` : v === 'study' ? 'Four gallery sites' : v === 'network' ? 'All SPARTAN sites' : v === 'sites' ? 'Choose multiple sites…' : v}
+            onChange={ref.setMode} />
         </div>
-        <p className="reference-summary">{referenceLabel} · {reference === 'network' && !network ? '…' : referenceRows.length.toLocaleString()} filters after known exclusions{referenceDates.length > 0 && <> · {referenceDates[0]} to {referenceDates[referenceDates.length - 1]}</>}. Coverage varies by measurement; hover a bar for n. Uses all dates, independently of the main graph filters.</p>
-        {reference === 'network' && <p className="reference-summary">Public SPARTAN chemistry at {network?.n_sites ?? '…'} sites, weighted by physical filter count. Carbon uses the public FTIR-derived reports. HIPS comes from batches 1–51 (27 sites); public BC is not substituted for HIPS BC. FTIR functional groups are unavailable.</p>}
-        {reference === 'network' && !network && <p className="frame-empty">{networkError ? `Could not load the SPARTAN reference: ${networkError}` : 'Loading public SPARTAN filter reference…'}</p>}
+        {reference === 'sites' && <details className="reference-sites" open>
+          <summary>Reference sites · {ref.codes.length} selected</summary>
+          <SitePicker items={ref.sites.map(s => ({ key: s.code, label: s.name, sub: s.code, lat: s.lat, lon: s.lon, color: s.color, n: s.n_filters, selected: ref.codes.includes(s.code) }))}
+            onToggle={ref.toggleSite} onAll={() => ref.setMode('network')} allLabel="Use all SPARTAN sites" onClear={ref.clearSites} noun="reference sites" />
+        </details>}
+        <p className="reference-summary">{referenceLabel} · {ref.loading ? '…' : referenceRows.length.toLocaleString()} filters after known exclusions{referenceDates.length > 0 && <> · {referenceDates[0]} to {referenceDates[referenceDates.length - 1]}</>}. Coverage varies by measurement; hover a bar for n. Uses all dates, independently of the main graph filters.</p>
+        {reference === 'network' && <p className="reference-summary">{ref.loading ? '…' : ref.networkSize} SPARTAN sites with filter data, weighted by physical filter count. Each measurement uses its own available coverage; missing measurements are not filled with zero.</p>}
+        {ref.loading && <p className="frame-empty">Loading reference filters…</p>}
+        {ref.error && <p className="frame-empty" role="alert">Could not load the reference: {ref.error}</p>}
         <p className="chart-note reference-guide">Bars show the reference range; the darker band is its interquartile range and the tick is its median. The dot retains this filter's value. Percentile is the percentage of measured reference values strictly below it. Values outside the range are marked at the nearest edge.</p>
-        {meta.field_groups.map((g) => {
+        {!ref.loading && !ref.error && meta.field_groups.map((g) => {
           const fields = g.fields.filter(f => isNum(row[f]))
           if (!fields.length) return null
           return (
@@ -277,49 +276,52 @@ export function SampleDrawer({
         </section>
       )}
 
-      <section className="drawer-section">
-        <h3>This filter on any crossplot</h3>
-        <p className="reference-summary">Reference: {referenceLabel} · {cross.pool.length.toLocaleString()} paired filters. The highlighted filter remains {row.id} from {row.site}.</p>
-        <div className="frame-controls" style={{ marginBottom: 6 }}>
-          <FieldSelect label="x" value={cx} meta={meta} onChange={setCx} ratios={false} />
-          <SwapButton onClick={() => { setCx(cy); setCy(cx) }} />
-          <FieldSelect label="y" value={cy} meta={meta} onChange={setCy} ratios={false} />
-          <FitGroupingControl />
-        </div>
-        {cross.pool.length < 3 ? (
-          <p className="frame-empty">Fewer than 3 filters in {referenceLabel} carry both {cx} and {cy}. Choose another pair or reference population.</p>
-        ) : (
-          <svg width={W} height={H} style={{ display: 'block', maxWidth: '100%' }}>
-            <g transform={`translate(${m.left},${m.top})`}>
-              <YAxis scale={ys} x={0} label={cy} gridWidth={iw} tickCount={5} labelX={-48} />
-              <XAxis scale={xs} y={ih} label={cx} tickCount={5} />
-              {cross.pool.map((p) => (
-                <circle key={p.r.id} cx={xs(p.x)} cy={ys(p.y)} r={2.4} fill={meta.sites.find(s => s.code === p.r.code)?.color ?? INK.muted} fillOpacity={0.35} style={{ cursor: knownIds.has(p.r.id) ? 'pointer' : 'default' }} onClick={() => { if (knownIds.has(p.r.id)) onOpen(p.r.id) }}>
-                  <title>{p.r.id} · {p.r.site} · {p.r.date} · {cx}: {fmt(p.x, 3)} · {cy}: {fmt(p.y, 3)}</title>
-                </circle>
-              ))}
-              {grouping !== 'pooled' ? <RegressionGroupLines groups={cross.fitGroups} x={xs} y={ys} width={iw} height={ih} />
-                : <><RegressionLines stats={cross.stats} x={xs} y={ys} domain={xs.domain()} width={iw} height={ih} /><RegressionReadout stats={cross.stats} width={260} /></>}
-              {here && (
-                <>
-                  <line x1={xs(here.x)} x2={xs(here.x)} y1={0} y2={ih} stroke={INK.text} strokeDasharray="3 3" strokeOpacity={0.4} />
-                  <line x1={0} x2={iw} y1={ys(here.y)} y2={ys(here.y)} stroke={INK.text} strokeDasharray="3 3" strokeOpacity={0.4} />
-                  <circle cx={xs(here.x)} cy={ys(here.y)} r={7} fill={site?.color ?? INK.text} stroke="#111827" strokeWidth={2} />
-                </>
-              )}
-            </g>
-            {siteFits && <RegressionGroupReadouts groups={cross.fitGroups} width={W} y={ih + m.top + m.bottom} />}
-          </svg>
-        )}
-        {here ? (
-          <p className="chart-note" style={{ fontFamily: FONT.mono }}>
-            {grouping === 'pooled' && cross.stats && <>n = {cross.stats.n} · R² = {fmt(cross.stats.r2, 3)}{fitsFor(cross.stats, methods).map(fit => <span key={fit.method}> · {equation(fit)}</span>)}</>}
-
-          </p>
-        ) : (
-          <p className="chart-note">This filter does not carry both {cx} and {cy}.</p>
-        )}
-      </section>
+      <AxisFieldsProvider meta={crossMeta} value={{ x: cx, y: cy, field: cx }} set={chooseCrossField} ratios={false}>
+        <section className="drawer-section drawer-crossplot">
+          <div className="drawer-crossplot-head">
+            <h3>This filter on any crossplot</h3>
+            <button type="button" className="btn quiet drawer-swap" onClick={swapCrossFields} title="Swap x and y" aria-label="Swap x and y">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 3v6h-6" /><path d="M21 9l-2.7-2.7A9 9 0 1 0 21 12" />
+              </svg>
+            </button>
+          </div>
+          <p className="reference-summary">Reference: {referenceLabel} · {ref.loading ? '…' : cross.pool.length.toLocaleString()} paired filters. The highlighted filter remains {row.id} from {row.site}.</p>
+          <div className="frame-controls" style={{ marginBottom: 6 }}><FitGroupingControl /></div>
+          {ref.loading ? <p className="frame-empty">Loading reference crossplot…</p> : cross.pool.length < 3 ? (
+            <>
+              <div className="frame-controls">
+                <FieldSelect label="x" value={cx} meta={crossMeta} onChange={f => chooseCrossField('x', f)} ratios={false} />
+                <FieldSelect label="y" value={cy} meta={crossMeta} onChange={f => chooseCrossField('y', f)} ratios={false} />
+              </div>
+              <p className="frame-empty">Fewer than 3 filters in {referenceLabel} carry both {cx} and {cy}. Choose another pair or reference population.</p>
+            </>
+          ) : (
+            <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', maxWidth: '100%', height: 'auto' }}>
+              <g transform={`translate(${m.left},${m.top})`}>
+                <YAxis scale={ys} x={0} label={withUnit(cy, meta.field_units)} gridWidth={iw} tickCount={5} labelX={-48} pick="y" />
+                <XAxis scale={xs} y={ih} label={withUnit(cx, meta.field_units)} tickCount={5} pick="x" />
+                {cross.pool.map((p) => (
+                  <circle key={p.r.id} cx={xs(p.x)} cy={ys(p.y)} r={2.4} fill={ref.sites.find(s => s.code === p.r.code)?.color ?? INK.muted} fillOpacity={0.35} style={{ cursor: knownIds.has(p.r.id) ? 'pointer' : 'default' }} onClick={() => { if (knownIds.has(p.r.id)) onOpen(p.r.id) }}>
+                    <title>{p.r.id} · {p.r.site} · {p.r.date} · {cx}: {fmt(p.x, 3)} · {cy}: {fmt(p.y, 3)}</title>
+                  </circle>
+                ))}
+                {grouping !== 'pooled' ? <RegressionGroupLines groups={cross.fitGroups} x={xs} y={ys} width={iw} height={ih} />
+                  : <><RegressionLines stats={cross.stats} x={xs} y={ys} domain={xs.domain()} width={iw} height={ih} /><RegressionReadout stats={cross.stats} width={260} /></>}
+                {here && (
+                  <>
+                    <line x1={xs(here.x)} x2={xs(here.x)} y1={0} y2={ih} stroke={INK.text} strokeDasharray="3 3" strokeOpacity={0.4} />
+                    <line x1={0} x2={iw} y1={ys(here.y)} y2={ys(here.y)} stroke={INK.text} strokeDasharray="3 3" strokeOpacity={0.4} />
+                    <circle cx={xs(here.x)} cy={ys(here.y)} r={7} fill={site?.color ?? INK.text} stroke="#111827" strokeWidth={2} />
+                  </>
+                )}
+              </g>
+              {siteFits && <RegressionGroupReadouts groups={cross.fitGroups} width={W} y={ih + m.top + m.bottom} />}
+            </svg>
+          )}
+          {!here && <p className="chart-note">This filter does not carry both {cx} and {cy}.</p>}
+        </section>
+      </AxisFieldsProvider>
 
       {neighbours.length > 1 && (
         <section className="drawer-section">
@@ -349,27 +351,24 @@ export function SampleDrawer({
 function PmfDay({ row, meta }: { row: FilterRow; meta: MetaFile }) {
   const sources = meta.pmf_sources ?? []
   const label = row[PMF_SOURCE]
-  if (!sources.length || typeof label !== 'string') return null
-  const shares = sources.map((s) => ({ ...s, v: row[pmfShareField(s.name)] })).filter((s): s is typeof s & { v: number } => typeof s.v === 'number')
+  if (!sources.length || typeof label !== 'string' || label === NO_PMF) return null
+  const shares = sources.map((s) => ({ ...s, v: row[pmfShareField(s.name)] })).filter((s): s is typeof s & { v: number } => typeof s.v === 'number' && Number.isFinite(s.v))
     .sort((a, b) => b.v - a.v)
+  if (!shares.length) return null
   const dominant = meta.pmf_groups?.find((g) => g.name === label)
   return (
     <section className="drawer-section">
       <h3>PMF sources on this day</h3>
-      {label === NO_PMF || !shares.length
-        ? <p className="chart-note">No PMF day for this filter: the PMF solution at {row.site} does not include its sampling date.</p>
-        : <>
-          <p className="pmf-dominant">
-            Dominant: <span className="pmf-dot" style={{ background: dominant?.color ?? INK.neutral }} /> <strong>{label}</strong> · {fmt(shares[0].v * 100, 0)} % of the PMF factors' total
-          </p>
-          <div className="pmf-shares">
-            {shares.map((s) => <div key={s.name} className="pmf-share" title={`${s.name}: ${fmt(s.v * 100, 1)} %`}>
-              <span className="pmf-share-name">{s.name}</span>
-              <span className="pmf-share-bar"><span style={{ width: `${Math.max(1, s.v * 100)}%`, background: s.color }} /></span>
-              <span className="pmf-share-v">{fmt(s.v * 100, 0)} %</span>
-            </div>)}
-          </div>
-        </>}
+      <p className="pmf-dominant">
+        Dominant: <span className="pmf-dot" style={{ background: dominant?.color ?? INK.neutral }} /> <strong>{label}</strong> · {fmt(shares[0].v * 100, 0)} % of the PMF factors' total
+      </p>
+      <div className="pmf-shares">
+        {shares.map((s) => <div key={s.name} className="pmf-share" title={`${s.name}: ${fmt(s.v * 100, 1)} %`}>
+          <span className="pmf-share-name">{s.name}</span>
+          <span className="pmf-share-bar"><span style={{ width: `${Math.max(1, s.v * 100)}%`, background: s.color }} /></span>
+          <span className="pmf-share-v">{fmt(s.v * 100, 0)} %</span>
+        </div>)}
+      </div>
     </section>
   )
 }

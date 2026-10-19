@@ -36,3 +36,17 @@ export function ratioReference(reference: ReferenceRow[], numerator: string, den
     ? [(r[numerator] as number) / (r[denominator] as number)] : []).filter(isFiniteNumber).sort((a, b) => a - b)
   return { n: values.length, median: values.length ? quantile(values, .5) : null }
 }
+
+/** Match by physical filter ID, keeping known precision, joined fields and exclusions. */
+export function mergeReferenceRows(exported: ReferenceRow[], known: ReferenceRow[]): ReferenceRow[] {
+  const byId = new Map(known.map(r => [r.id, r]))
+  return exported.map(extra => {
+    const primary = byId.get(extra.id)
+    if (!primary) return extra
+    if (primary.code !== extra.code) throw new Error('Reference filter ID belongs to a different site')
+    const additions = Object.fromEntries(Object.entries(extra).filter(([f, v]) =>
+      (primary[f] == null || (typeof primary[f] === 'number' && !Number.isFinite(primary[f]))) && isFiniteNumber(v)))
+    return { ...extra, ...primary, ...additions, excluded: primary.excluded || extra.excluded,
+      exclusion_reason: [...new Set([primary.exclusion_reason, extra.exclusion_reason].filter(v => typeof v === 'string' && v))].join('; ') || null }
+  })
+}

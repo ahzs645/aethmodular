@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import fs from 'node:fs'
-import { cleanReference, placements, stripPosition, ratioReference } from './referencePopulation.ts'
+import { cleanReference, mergeReferenceRows, placements, stripPosition, ratioReference } from './referencePopulation.ts'
 
 const rows = [1, 2, 3, 4].map((v, i) => ({ id: `A-${i}`, site: 'A', code: 'AAAA', date: '2020-01-01', excluded: false, x: v, y: 2 * v }))
 rows.push({ ...rows[0], id: 'bad', x: 1000, excluded: true })
@@ -71,4 +71,21 @@ test('public network export counts unique physical filters and does not substitu
     const publicRow = network.rows.find(p => p.id === r.id)
     if (publicRow) assert.equal(publicRow.excluded, true, `Known exclusion ${r.id} must carry into the public reference`)
   }
+})
+
+test('remote references preserve physical filters, local precision, joined fields, and exclusions', () => {
+  const exported = [{ ...rows[0], x: 1.23, y: 7, excluded: true, exclusion_reason: 'source QC' }, { ...rows[5] }]
+  const known = [{ ...rows[0], x: 1.234567, y: null, pmf: 0.4, excluded: false }, { ...rows[0], x: 0, y: null, pmf: 0.5, excluded: false }]
+  const before = JSON.stringify([exported, known])
+  const merged = mergeReferenceRows(exported, known)
+  assert.equal(merged.length, 2)
+  assert.equal(merged[0].x, 0)
+  assert.equal(merged[0].y, 7)
+  assert.equal(merged[0].pmf, 0.5)
+  assert.equal(merged[0].excluded, true)
+  assert.equal(merged[0].exclusion_reason, 'source QC')
+  assert.deepEqual(cleanReference(merged), [exported[1]])
+  assert.equal(JSON.stringify([exported, known]), before)
+  assert.equal(mergeReferenceRows(exported, [known[0]])[0].x, 1.234567)
+  assert.throws(() => mergeReferenceRows(exported, [{ ...known[0], code: 'WRONG' }]), /different site/)
 })

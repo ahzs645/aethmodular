@@ -1045,3 +1045,10 @@ html.dash-present .container.dash { padding-top: 10px; }
 .dash-tile:not(.legend-right) .fit-square { display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .fit-square > * { flex-shrink: 0; }
 .fit-square > .facet-grid, .fit-square > .season-groups { width: 100%; }
+
+.drawer-crossplot-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.drawer-crossplot-head h3 { margin: 0; }
+.drawer-swap { display: inline-flex; align-items: center; justify-content: center; flex: none; padding: 5px; }
+
+.reference-sites { margin: 6px 0 10px; }
+.reference-sites > summary { cursor: pointer; margin-bottom: 6px; font-weight: 600; }
