@@ -23,8 +23,9 @@ export function NativeFilterMeasurements({ id }: { id: string }) {
   const [state, setState] = useState<{ code: string; index: SpartanIndex | null; data: NativeSite | null; error: string } | null>(null)
   const [choice, setChoice] = useState<{ base: string; analysis: string } | null>(null)
   const [trace, setTrace] = useState<{ key: string; traces: NativeTraces | null; error: string } | null>(null)
-  // any combination of the traces, drawn together; at least one stays on
-  const [picked, setPicked] = useState<TraceKey[]>(['raw'])
+  // any combination of the traces, drawn together; at least one stays on. The spline-corrected
+  // spectrum by default (raw where a filter has no AIRSpec trace)
+  const [picked, setPicked] = useState<TraceKey[]>(['airspec'])
   const [expanded, setExpanded] = useState(false)
   useEffect(() => {
     if (!code) return

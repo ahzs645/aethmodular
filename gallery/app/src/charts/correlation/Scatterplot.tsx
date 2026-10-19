@@ -4,7 +4,7 @@ import { seasonsForSite } from '@/siteSeasons'
 import { IdentityLine, RefLine } from '@/components/RefLines'
 import { RegressionLines, RegressionReadout, RegressionReadoutText, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
 import { useRegressions, fitsFor } from '@/lib/regressionPrefs'
-import { fitGroupingOption, useChartOptions } from '@/lib/chartOptions'
+import { fitGroupingOption, useChartOptions, type OptionContext } from '@/lib/chartOptions'
 import { groupedRegressions, type FitGrouping, type RegressionGroup } from '@/lib/siteRegression'
 import { useEffect, useId, useMemo, useRef } from 'react'
 import * as d3 from 'd3'
@@ -92,12 +92,15 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   const hasPmf = !!meta.pmf_groups?.length && rows.some((r) => typeof r[PMF_SOURCE] === 'string')
   const colorField = [colorChoice, 'Iron', meta.fields[0]].find((f): f is string => !!f && (meta.fields.includes(f) || (f === PMF_COLOUR && hasPmf))) ?? ''
   const [sizeField, setSizeField] = useTileSetting<string>('scatter.size', NO_SIZE)
+  const nSites = useMemo(() => new Set(rows.map((r) => r.site)).size, [rows])
   // the options and when each applies (lib/chartOptions). Fits are per panel, so the grouping
   // offered follows the layout: a fit per site inside a site's panel is the pooled fit, and a
   // per-season panel holds one site in one season, so every grouping is its one fit
   const o = useChartOptions('scatter', [
-    { key: 'layout', label: 'Layout', choices: LAYOUTS, default: 'Combined', title: 'PlotConfig.layout: combined overlays sites; per site is the grid' },
-    { key: 'colorBy', label: 'Colour', choices: COLOR_BY, default: 'Site', title: 'Value: a third measurement on a sequential ramp (2–98 % of its range), or, where a site in view has PMF, its day\'s dominant source', onChange: () => setHidden(new Set()) },
+    // one site in view: no per-site grid, and per-season panels colour by season (one site colour says nothing)
+    { key: 'layout', label: 'Layout', choices: LAYOUTS.map((v) => ({ value: v, when: v === 'Per site' ? (c: OptionContext) => (c.sites as number) > 1 : undefined })),
+      default: 'Combined', title: 'PlotConfig.layout: combined overlays sites; per site is the grid' },
+    { key: 'colorBy', label: 'Colour', choices: COLOR_BY.map((v) => ({ value: v, when: v === 'Site' ? (c: OptionContext) => !(c.layout === 'Per season' && (c.sites as number) <= 1) : undefined })), default: 'Site', title: 'Value: a third measurement on a sequential ramp (2–98 % of its range), or, where a site in view has PMF, its day\'s dominant source', onChange: () => setHidden(new Set()) },
     // where a site in view has PMF (lib/pmfGroups; Addis so far), its dominant source heads the list, beside the PMF shares
     { key: 'colorField', when: (c) => c.colorBy === 'Value', node: () => <FieldSelect label="by" value={colorField} meta={meta} onChange={(f) => { setColorField(f); setHidden(new Set()) }} extraOptions={hasPmf ? [PMF_COLOUR] : []} /> },
     { key: 'size', node: () => <FieldSelect label="Size" value={sizeField} meta={meta} onChange={setSizeField} extraOptions={[NO_SIZE]} title="Bubble plot: mark area proportional to a fourth measurement" /> },
@@ -110,7 +113,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
     { key: 'brushing', label: 'Brush to select', toggle: true, default: false, title: 'Drag a rectangle: the enclosed filters are highlighted on every chart of this tab', onChange: ((v: boolean) => { if (!v) hl.setSelected(null) }) as (v: never) => void },
     { key: 'selected', when: () => !!hl.selected, node: () => <span className="control"><strong>{hl.selected?.size}</strong> selected<button type="button" className="btn quiet" onClick={() => hl.setSelected(null)}>Clear</button></span> },
     { key: 'count', node: () => <span className="control">{points.length} points</span> },
-  ], { estimators: methods.length })
+  ], { estimators: methods.length, sites: nSites })
   const layout = o.values.layout as (typeof LAYOUTS)[number]
   const colorBy = o.values.colorBy as (typeof COLOR_BY)[number]
   const showFit = o.values.fitLines as boolean
