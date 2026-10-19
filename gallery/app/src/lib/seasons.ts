@@ -25,6 +25,9 @@ export const CONVENTION_LABEL: Record<string, string> = {
   rain_rule: 'Rain rule · each site and year from its own rain (ERA5): First Dry, Less Rainy, More Rainy, Second Dry',
 }
 
+/** a calendar's short name for a picker ('Rain rule', 'Per site', 'Shared Ethiopian month bins'): its label up to the ' · ' */
+export const calendarShortName = (key: string | null | undefined) => (CONVENTION_LABEL[key ?? ''] ?? key ?? '').split(' · ')[0]
+
 /** The calendar every frozen calibration export was binned with. */
 export const ANALYSIS_CALENDAR: SeasonConvention = 'dry_feb'
 export const ANALYSIS_CALENDAR_NOTE =

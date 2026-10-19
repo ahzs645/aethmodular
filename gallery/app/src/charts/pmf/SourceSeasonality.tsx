@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { seasonOnly } from '@/lib/seasons'
+import { calendarShortName, seasonOnly } from '@/lib/seasons'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
@@ -81,7 +81,8 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
           {/* the share one source needs before a filter counts as dominated: counted under each bar and in the note below */}
           <Select label="Count filters dominated above" value={threshold} options={['20', '30', '40', '50', '60']} optionLabel={(o) => `${o} %`} onChange={setThreshold} />
           <Select label="Seasons" value={calendar} options={['Season calendar', 'Paper (four seasons)']} onChange={(v) => setCalendar(v as typeof calendar)}
-            title="The sidebar's season calendar, or the PMF paper's four seasons (First Dry, Less Rainy, More Rainy, Second Dry)" />
+            optionLabel={(v) => (v === 'Season calendar' ? `Sidebar: ${calendarShortName(meta.season_convention)}` : v)}
+            title="The Filters sidebar's season calendar (it follows any change there), or the PMF paper's four seasons (First Dry, Less Rainy, More Rainy, Second Dry)" />
           <Segmented label="Colours" value={palette} options={['Gallery', 'Paper'] as const} onChange={setPalette} title="Paper: the PMF paper's source colours and stacking order" />
         </>
       }

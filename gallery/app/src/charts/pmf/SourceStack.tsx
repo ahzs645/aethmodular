@@ -1,5 +1,5 @@
 import { useMemo, useRef } from 'react'
-import { seasonOnly } from '@/lib/seasons'
+import { calendarShortName, seasonOnly } from '@/lib/seasons'
 import { timeSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
@@ -47,7 +47,8 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
     { key: 'mode', label: 'Scale', choices: MODES, default: 'Relative (%)' },
     { key: 'shape', label: 'Shape', choices: SHAPES.map((v) => ({ value: v, when: v === 'Streamgraph' ? (c: OptionContext) => c.mode !== 'Relative (%)' : undefined })), default: 'Stacked',
       title: 'Daily bars: one bar per sampling day on the date axis (the PMF paper\'s Figure 7). Streamgraph (absolute scale): wiggle offset, inside-out order — no baseline, better shape' },
-    { key: 'calendar', label: 'Seasons', choices: CALENDARS, default: 'Paper (four seasons)', style: 'select', title: 'The strip along the top: the sidebar\'s season calendar, or the PMF paper\'s four seasons' },
+    { key: 'calendar', label: 'Seasons', choices: CALENDARS.map((v) => ({ value: v, label: v === 'Season calendar' ? `Sidebar: ${calendarShortName(meta.season_convention)}` : v })), default: 'Paper (four seasons)', style: 'select',
+      title: 'The strip along the top: the Filters sidebar\'s season calendar (it follows any change there), or the PMF paper\'s four seasons' },
     { key: 'palette', label: 'Colours', choices: PALETTES, default: 'Paper', title: 'Paper: the PMF paper\'s source colours and stacking order' },
     { key: 'count', node: () => <span className="control">{rows.length} filters · {pmf.site_name}</span> },
   ])
