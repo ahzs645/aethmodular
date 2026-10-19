@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react'
 import { seasonOnly } from '@/lib/seasons'
-import { SeasonBands, timeSeasonBands } from '@/components/SeasonBands'
+import { timeSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { useChartOptions, type OptionContext } from '@/lib/chartOptions'
@@ -107,6 +107,8 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
     return paperSeasons ? paperSeasonBands(x, innerW) : timeSeasonBands(x, meta.seasons, innerW)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, innerW, meta.seasons, paperSeasons])
+  // the strip's seasons in order, each once, for its legend
+  const stripSeasons = [...new Map(seasonBands.map((b) => [b.name, b])).values()]
   // a bar per sampling day: three-quarters of the typical spacing between samples, so gaps read as gaps
   const spacing = d3.median(rows.slice(1).map((r, i) => x(r.d) - x(rows[i].d))) ?? 6
   const barW = Math.max(1.5, Math.min(18, spacing * 0.75, x(new Date(+rows[0]?.d + 3 * DAY)) - x(rows[0]?.d ?? new Date())))
@@ -146,7 +148,11 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
         ) : (
           <svg width={width} height={height} className="animated">
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-              <SeasonBands bands={seasonBands} height={innerH} strip />
+              {/* the season strip, solid as in the paper's figure, named where a band has room */}
+              <g pointerEvents="none">
+                {seasonBands.map((b, i) => <rect key={i} data-export-season={b.name} data-export-color={b.color} x={b.x} y={-14} width={b.w} height={11} fill={b.color} />)}
+                {seasonBands.filter((b) => b.w > 56).map((b, i) => <text key={i} x={b.x + b.w / 2} y={-5.5} textAnchor="middle" fontSize={9} fill={INK.text}>{seasonOnly(b.name)}</text>)}
+              </g>
               <YAxis
                 scale={y}
                 x={0}
@@ -185,10 +191,10 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
           onToggle={(l) => setHidden((h) => toggleIn(h, l))}
           onHover={setHover}
           highlighted={hover}
-          note={paperSeasons ? undefined : 'top strip = selected season calendar'}
+          note={undefined}
         />
-        {paperSeasons && <div className="legend">{PAPER_SEASONS.map((s) => <span key={s.name} className="legend-item" title={`${s.name}: ${s.note} 2023`}><span className="swatch square" style={{ background: s.color }} />{s.name}</span>)}
-          <span className="legend-note">the PMF paper's seasons, set from 2023 precipitation (hover a season for its dates)</span></div>}
+        {stripSeasons.length > 0 && <div className="legend">{stripSeasons.map((b) => <span key={b.name} className="legend-item" title={paperSeasons ? PAPER_SEASONS.find((p) => p.name === b.name)?.note + ' 2023' : undefined}><span className="swatch square" style={{ background: b.color }} />{seasonOnly(b.name)}</span>)}
+          <span className="legend-note">{paperSeasons ? 'top strip: the PMF paper\'s seasons (its 2023 dates)' : `top strip: ${meta.season_convention === 'rain_rule' ? 'the rain rule, from this year\'s rain' : 'the selected season calendar'}`}</span></div>}
         {tip.node}
       </div>
     </ChartFrame>
