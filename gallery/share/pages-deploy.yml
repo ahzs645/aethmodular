@@ -5,6 +5,7 @@
 # release of this repo (gallery-data.tar.gz: gallery/app/public/data, machine paths scrubbed
 # before upload). Nothing built is committed anywhere.
 name: Deploy gallery
+run-name: Deploy gallery · ${{ inputs.source_sha }} · ${{ inputs.data_tag }}
 
 on:
   workflow_dispatch:
@@ -23,7 +24,7 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:

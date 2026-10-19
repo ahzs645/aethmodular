@@ -1162,3 +1162,36 @@ hosting needs no special `Content-Encoding` setup. The publication scanner
 inspects compressed JSON as well as ordinary text. Regenerated shards are
 ignored by Git and travel with the existing gallery data snapshot, rather than
 in the source repository.
+
+### Checking what a network update adds
+
+```sh
+uv run python gallery/data/audit_spartan_update.py
+```
+
+This compares physical IDs against the union of the old focus and network
+exports, FTIR analysis IDs against the previously staged site pulls and Addis
+spectra, raw HIPS readings against the previous archive, and downloaded public
+chemistry files against the local mirror. Summary JSON and per-ID/site CSVs go
+to `research/ftir_hips_chem/output/tables/spartan_network_update/`; hashes pin the
+compared inputs. Override the previous-source options when comparing another
+snapshot. Counts retain native repeats and identify their filter populations.
+
+The October 19 bundle adds 81 physical PM2.5 filters beyond both old gallery
+exports, 3,383 FTIR analyses beyond the previous 1,069 (23 additional sites),
+and 152 raw HIPS sample analyses / 304 sample-and-reference readings. No previous
+analysis IDs or raw HIPS readings were lost, and common HIPS measurement values
+were unchanged. All 74 downloaded public chemistry files match the local mirror.
+
+When combining focus filters with network sources, the app now fills both absent
+fields and explicit nulls. This recovers 96 EC values, 96 OC values, and 51 HIPS
+Fabs values on existing focus filters, alongside other chemistry. These are
+previously unshown available products, not new independent carbon measurements;
+ChemSpec carbon remains a duplicate FTIR product. Existing non-null values,
+including zero and the more precise in-house FTIR values, retain precedence.
+Exclusions from either source remain flagged. The drawer lists fields filled
+from the network export. Frozen calibration predictions are not rerun.
+
+The Pages workflow uses one concurrency group with cancellation enabled: a new
+deployment supersedes older ones. Run names include the source commit and data
+snapshot so the current version can be identified in Actions.

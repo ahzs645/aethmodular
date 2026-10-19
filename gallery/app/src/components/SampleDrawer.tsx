@@ -199,6 +199,9 @@ export function SampleDrawer({
       </div>
 
       {context && <RecordSection rec={context} />}
+      {row.network_filled_fields && <p className="chart-note" style={{ display: 'block' }}>
+        Measurements added from the SPARTAN network export: {row.network_filled_fields}.
+      </p>}
 
       {/* Addis filters resolve to their similarity trace via etad_ids.json; nothing renders without one */}
       <FilterSpectrum id={row.id} />

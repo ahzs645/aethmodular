@@ -1,6 +1,7 @@
 import { RegressionProvider, RegressionControls, parseEstimators, estimatorParam, type Estimator } from '@/lib/regressionPrefs'
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useGalleryData } from '@/hooks/useGalleryData'
+import { supplementFilter } from '@/lib/filterMerge'
 import { HighlightProvider, baseFilterId, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { NO_PMF, PMF_GROUP, PMF_SOURCE, isPmfField, pmfGroups, pmfKeyByDate, pmfLabel, pmfShareFields, withPmf, type PmfScheme } from '@/lib/pmfGroups'
 import { EXPLAIN_AVAILABLE, PrefsProvider, usePrefs } from '@/lib/prefs'
@@ -445,16 +446,12 @@ export default function App() {
     for (const f of focus.values()) if (!sites.some((x) => x.code === f.code)) sites.push(f)
     const spartanCodes = sites.filter((x) => !d.improveCodes.has(x.code)).map((x) => x.code)
     // the focus sites also get the public fields filters.json does not carry (public HIPS BC, the trace
-    // elements, the rest of the ions), so every axis spans every SPARTAN site; their own fields stay theirs
+    // elements, the rest of the ions), and missing measurements filled on the same physical ID.
     const pub = new Map(d.rows.filter((r) => focus.has(r.code)).map((r) => [r.id, r]))
     const loadedFocus = new Set(d.rows.filter(r => focus.has(r.code)).map(r => r.code))
     const focusIds = new Set(focusRows.map(r => r.id))
-    const focusWithPub = focusRows.filter(r => loadedFocus.has(r.code)).map((r): FilterRow => {
-      const p = pub.get(r.id)
-      if (!p) return r
-      const add = Object.fromEntries(d.fields.filter((f) => !(f in r) && typeof p[f] === 'number').map((f) => [f, p[f]]))
-      return Object.keys(add).length ? { ...r, ...add } : r
-    })
+    const focusWithPub = focusRows.filter(r => loadedFocus.has(r.code))
+      .map(r => supplementFilter(r, pub.get(r.id), d.fields))
     const rows: FilterRow[] = [...(sp ? focusWithPub : []), ...d.rows.filter((r) => !focus.has(r.code) || !focusIds.has(r.id)).map(r => focus.has(r.code) ? { ...r, site: focus.get(r.code)!.name } : r)]
     const fields = sp ? [...new Set([...data.meta.fields, ...d.fields])] : d.fields
     const groups = sp ? mergeGroups(data.meta.field_groups, d.field_groups) : d.field_groups
