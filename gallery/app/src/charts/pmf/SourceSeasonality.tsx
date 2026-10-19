@@ -10,6 +10,7 @@ import { fmt } from '@/lib/stats'
 import { INK, MARGIN, FONT } from '@/lib/theme'
 import type { MetaFile, PmfFile, PmfRow } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
+import { PAPER_COLORS, PAPER_ORDER, PAPER_SEASONS, paperSeasonOf } from '@/lib/pmfPaper'
 
 const MODES = ['Relative (%)', 'Absolute (µg/m³)'] as const
 
@@ -29,18 +30,23 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
 
   const [mode, setMode] = useState<(typeof MODES)[number]>('Relative (%)')
   const [threshold, setThreshold] = useState('30')
+  // as on the stacked chart: the sidebar's calendar or the PMF paper's four seasons; gallery or paper colours
+  const [calendar, setCalendar] = useState<'Season calendar' | 'Paper (four seasons)'>('Season calendar')
+  const [palette, setPalette] = useState<'Gallery' | 'Paper'>('Gallery')
+  const paperSeasons = calendar === 'Paper (four seasons)', paper = palette === 'Paper'
   const lg = useLegend()
 
-  const labels = pmf.sources.map((s) => s.label)
+  const ordered = paper ? [...pmf.sources].sort((a, b) => PAPER_ORDER.indexOf(a.label) - PAPER_ORDER.indexOf(b.label)) : pmf.sources
+  const labels = ordered.map((s) => s.label)
   const keyOfLabel = useMemo(() => new Map(pmf.sources.map((s) => [s.label, s.key])), [pmf.sources])
-  const colorOf = useMemo(() => new Map(pmf.sources.map((s) => [s.label, s.color])), [pmf.sources])
+  const colorOf = useMemo(() => new Map(pmf.sources.map((s) => [s.label, paper ? PAPER_COLORS[s.label] ?? s.color : s.color])), [pmf.sources, paper])
   const relative = mode === 'Relative (%)'
 
   const groups = useMemo(() => {
-    const names = meta.seasons.map((s) => s.name)
+    const names = paperSeasons ? PAPER_SEASONS.map((s) => s.name) : meta.seasons.map((s) => s.name)
     return names
       .map((name) => {
-        const sub = subsetRows.filter((r) => r.season === name)
+        const sub = subsetRows.filter((r) => (paperSeasons ? paperSeasonOf(r.date)?.name : r.season) === name)
         if (!sub.length) return null
         const means: Record<string, number> = {}
         for (const l of labels) {
@@ -50,7 +56,7 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
         return { name, n: sub.length, means, rows: sub }
       })
       .filter((g): g is NonNullable<typeof g> => !!g)
-  }, [subsetRows, meta.seasons, labels, relative])
+  }, [subsetRows, meta.seasons, labels, relative, paperSeasons])
 
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const innerH = height - MARGIN.top - MARGIN.bottom
@@ -74,6 +80,9 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
           <Segmented label="Scale" value={mode} options={MODES} onChange={setMode} />
           {/* the share one source needs before a filter counts as dominated: counted under each bar and in the note below */}
           <Select label="Count filters dominated above" value={threshold} options={['20', '30', '40', '50', '60']} optionLabel={(o) => `${o} %`} onChange={setThreshold} />
+          <Select label="Seasons" value={calendar} options={['Season calendar', 'Paper (four seasons)']} onChange={(v) => setCalendar(v as typeof calendar)}
+            title="The sidebar's season calendar, or the PMF paper's four seasons (First Dry, Less Rainy, More Rainy, Second Dry)" />
+          <Segmented label="Colours" value={palette} options={['Gallery', 'Paper'] as const} onChange={setPalette} title="Paper: the PMF paper's source colours and stacking order" />
         </>
       }
     >
@@ -114,7 +123,7 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
             </g>
           </svg>
         )}
-        <Legend items={pmf.sources.map((s) => ({ label: s.label, color: s.color, shape: 'square' as const }))} {...lg.props} />
+        <Legend items={ordered.map((s) => ({ label: s.label, color: colorOf.get(s.label) ?? s.color, shape: 'square' as const }))} {...lg.props} />
         <p className="chart-note" style={{ display: 'block' }}>{crossing} of {subsetRows.length} filters have one source above {threshold} % of the day's PMF total (the count under each bar is that season's).</p>
         {tip.node}
       </div>

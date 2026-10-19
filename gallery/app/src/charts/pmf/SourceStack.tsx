@@ -4,6 +4,7 @@ import { SeasonBands, timeSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { useChartOptions, type OptionContext } from '@/lib/chartOptions'
+import { PAPER_COLORS, PAPER_ORDER, PAPER_SEASONS } from '@/lib/pmfPaper'
 import { Legend, toggleIn, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -18,21 +19,6 @@ const MODES = ['Relative (%)', 'Absolute (µg/m³)'] as const
 const SHAPES = ['Stacked', 'Daily bars', 'Streamgraph'] as const
 const CALENDARS = ['Season calendar', 'Paper (four seasons)'] as const
 const PALETTES = ['Gallery', 'Paper'] as const
-/**
- * The PMF paper's Figure 7 (daily contribution of sources to OM, Addis 2023): its four seasons,
- * read off the figure's strip (First Dry Jan–Feb, Less Rainy Mar–Apr, More Rainy May–Sep, Second
- * Dry Oct–Dec), its stacking order from the bottom, and its colours.
- */
-const PAPER_SEASONS = [
-  { name: 'First Dry', months: [1, 2], color: '#f8cfa5' },
-  { name: 'Less Rainy', months: [3, 4], color: '#a8d8e8' },
-  { name: 'More Rainy', months: [5, 6, 7, 8, 9], color: '#5aaee8' },
-  { name: 'Second Dry', months: [10, 11, 12], color: '#f09a5a' },
-]
-const PAPER_ORDER = ['Fossil Fuel Combustion', 'Polluted Marine', 'Sea Salt Mixed', 'Wood Burning', 'Charcoal']
-const PAPER_COLORS: Record<string, string> = {
-  'Fossil Fuel Combustion': '#f4b6c2', 'Polluted Marine': '#e0191c', 'Sea Salt Mixed': '#0a14d0', 'Wood Burning': '#92e192', Charcoal: '#2e8b2e',
-}
 const DAY = 86_400_000
 
 /**
