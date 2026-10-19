@@ -14,7 +14,7 @@ import { ColorLegend } from '@/components/ColorLegend'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { focusStyle, useHighlight } from '@/lib/highlight'
+import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
 import { RESTATES, isBookkeeping, sameProduct } from '@/fieldLineage'
 import { corrMatrix, fmt, regression } from '@/lib/stats'
 import { INK, FONT, inkOn } from '@/lib/theme'
@@ -310,7 +310,7 @@ const SplomCell = memo(function SplomCell({ rows, fx, fy, sx, sy, cellS, groupin
   const focusId = hover ?? pinnedId
   return <>
     <rect width={cellS} height={cellS} fill="#fff" stroke={INK.grid} />
-    {pts.map((p) => {
+    {focusLast(pts, (p) => p.row.id, focusId).map(([p]) => {
       const f = focusStyle(p.row.id, focusId, { r: 2, opacity: 0.55 }, selected)
       const cx = Math.max(0, Math.min(cellS, sx(p.x)))
       const cy = Math.max(0, Math.min(cellS, cellS - sy(p.y)))

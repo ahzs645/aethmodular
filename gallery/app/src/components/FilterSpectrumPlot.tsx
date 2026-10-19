@@ -68,6 +68,8 @@ export function SpectrumPlot({ spec, shown, expanded = false, names = NAME, colo
   dashed?: string[]
   plotLabel?: string; roundWindow?: boolean; actions?: ReactNode
 }) {
+  // a trace still loading (or absent) is skipped rather than drawn
+  shown = shown.filter(k => spec.series[k])
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const clipId = useId()

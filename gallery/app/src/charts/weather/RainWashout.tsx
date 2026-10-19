@@ -3,7 +3,7 @@ import * as d3 from 'd3'
 import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { focusStyle, useHighlight } from '@/lib/highlight'
+import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
 import { fidProps, fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { boxStats, fmt } from '@/lib/stats'
 import { FONT, INK, withUnit } from '@/lib/theme'
@@ -79,7 +79,7 @@ export function RainWashout({ rows, meta, field, prcpField, id = 'weather-washou
                         <rect x={cx - bw / 2} width={bw} y={y(c.box.q3)} height={Math.max(1, y(c.box.q1) - y(c.box.q3))} fill={c.color} fillOpacity={0.35} stroke={c.color} />
                         <line x1={cx - bw / 2} x2={cx + bw / 2} y1={y(c.box.median)} y2={y(c.box.median)} stroke={INK.text} strokeWidth={2} />
                       </g>}
-                      {c.members.map((r, i) => {
+                      {focusLast(c.members, (r) => r.id, hl.focusId).map(([r, i]) => {
                         const v = Math.min(r[field] as number, y.domain()[1])
                         const st = focusStyle(r.id, hl.focusId, { r: 2.2, opacity: 0.7 }, hl.selected)
                         // deterministic jitter so a re-render does not shuffle the dots

@@ -30,20 +30,10 @@ function AddisStatusNote({ status }: { status: AddisStatus }) {
  * other filters without a spectrum render nothing, as before.
  */
 export function FilterSpectrum({ id }: { id: string }) {
-  const [correctedOpen, setCorrectedOpen] = useState(false)
-  const status = useAddisStatus(id)
-  // Native spectra are small per-filter files. The frozen corrected export spans
-  // both networks, so fetch it only when the reader explicitly asks to see it.
-  const addisFilter = /^ETAD-\d{4}/.test(id)
-  return <><NativeFilterMeasurements id={id} />
-    {addisFilter ? <section className="drawer-section">
-      {status && <AddisStatusNote status={status} />}
-      <details className="ftir-more" onToggle={e => setCorrectedOpen(e.currentTarget.open)}>
-        <summary title="The corrected spectra the Addis calibration runs used, from the Spectral similarity export">Calibration-run spectrum (frozen Addis runs, 10 cm⁻¹ bins)</summary>
-        {correctedOpen && <CorrectedFilterSpectrum id={id} embedded />}
-      </details>
-    </section> : <CorrectedFilterSpectrum id={id} />}
-  </>
+  // SPARTAN filters (Addis included) have the native FTIR block; the frozen export's corrected
+  // trace stays only for the IMPROVE samples, which have no native spectrum
+  const native = /^[A-Z]{4}-\d{4}/.test(id)
+  return <><NativeFilterMeasurements id={id} />{!native && <CorrectedFilterSpectrum id={id} />}</>
 }
 
 function CorrectedFilterSpectrum({ id, embedded = false }: { id: string; embedded?: boolean }) {

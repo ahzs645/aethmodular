@@ -5,7 +5,7 @@ import { SitePicker } from '@/components/SitePicker'
 import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
 import { useRegressions, FitGroupingControl } from '@/lib/regressionPrefs'
 import { groupedRegressions } from '@/lib/siteRegression'
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import * as d3 from 'd3'
 import { FieldSelect, prettyUnit } from '@/components/FieldSelect'
 import { Select } from '@/components/ChartFrame'
@@ -18,8 +18,9 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import type { FilterRecord } from '@/lib/highlight'
 import { RecordSection } from '@/components/RecordDrawer'
 import { FilterSpectrum } from '@/components/FilterSpectrum'
+import { HipsReadings } from '@/components/NativeFilterMeasurements'
 import { NO_PMF, PMF_SOURCE, pmfShareField } from '@/lib/pmfGroups'
-import { placements, stripPosition, ratioReference, isFiniteNumber, type ReferenceRow } from '@/lib/referencePopulation'
+import { placements, stripPosition, ratioPlacement, ratioReference, isFiniteNumber, type Placement, type ReferenceRow } from '@/lib/referencePopulation'
 import { DrawerShell } from '@/components/DrawerShell'
 
 
@@ -122,13 +123,35 @@ export function SampleDrawer({
   const placement = useMemo(() => placements(row, meta.fields, referenceRows), [row, referenceRows, meta.fields])
   const referenceCoverage = useMemo(() => Object.fromEntries(meta.fields.map(f => [f, referenceRows.filter(r => isNum(r[f])).length])), [meta.fields, referenceRows])
   const unavailableFields = meta.fields.filter(f => isNum(row[f]) && !(f in placement))
+  // the group the raw HIPS readouts sit under (Optical (HIPS)); without one they close the section
+  const hipsGroup = meta.field_groups.find((g) => /HIPS/i.test(g.label))?.label ?? null
 
   const ratios = RATIOS.map((r) => {
     const a = row[r.num]
     const b = row[r.den]
     const ok = isNum(a) && isNum(b) && b !== 0
-    return { ...r, value: ok ? (a as number) / (b as number) : null, reference: ratioReference(referenceRows, r.num, r.den) }
+    const value = ok ? (a as number) / (b as number) : null
+    return { ...r, value, reference: ratioReference(referenceRows, r.num, r.den), place: value === null ? null : ratioPlacement(value, referenceRows, r.num, r.den) }
   }).filter((r) => r.value !== null)
+
+  // one measurement (or ratio) against the reference: value, range strip with IQR and median, percentile
+  const placeRow = (key: string, label: string, p: Placement, unit: string, hot = false, title?: string) => {
+    const s = (value: number) => stripPosition(value, p)
+    const outside = p.v < p.min ? 'below' : p.v > p.max ? 'above' : null
+    return (
+      <tr key={key} className={hot ? 'hot' : ''}>
+        <td className="f" title={title}>{label}</td>
+        <td className="v">{fmt(p.v, 3)} <span className="u">{unit}</span></td>
+        <td className="strip" title={`${referenceLabel}: min ${fmt(p.min, 2)} · q1 ${fmt(p.q1, 2)} · median ${fmt(p.med, 2)} · q3 ${fmt(p.q3, 2)} · max ${fmt(p.max, 2)} · n=${p.n}${outside ? ` · filter is ${outside} the reference range; dot shown at the edge` : ''}`}>
+          <span className="track" />
+          <span className="iqr" style={{ left: `${s(p.q1)}%`, width: `${Math.max(1, s(p.q3) - s(p.q1))}%` }} />
+          <span className="med" style={{ left: `${s(p.med)}%` }} />
+          <span className={`dot${outside ? ' outside' : ''}`} data-outside-range={outside ?? undefined} style={{ left: `${s(p.v)}%`, background: site?.color ?? INK.text }} />
+        </td>
+        <td className="pct">{p.pct.toFixed(0)}<span className="u">{ordinal(Math.round(p.pct))}</span>{outside && <span className="u" style={{ display: 'block' }}>{outside} range</span>}</td>
+      </tr>
+    )
+  }
 
   // ---- mini crossplot
   const cross = useMemo(() => {
@@ -175,7 +198,8 @@ export function SampleDrawer({
             {pinned && <span className="badge">pinned</span>}
           </div>
           <div className="drawer-sub">
-            {row.site} ({row.code}) · {row.date} · {row.season}
+            {/* the site is already named: its season without the "Site · " prefix */}
+            {row.site} ({row.code}) · {row.date}{row.season ? <> · {String(row.season).startsWith(`${row.site} · `) ? String(row.season).slice(row.site.length + 3) : row.season}</> : null}
             {idx >= 0 && <> · filter {idx + 1} of {siteRows.length} at this site</>}
           </div>
           {row.excluded && <div className="drawer-reason">{row.exclusion_reason}</div>}
@@ -192,9 +216,6 @@ export function SampleDrawer({
       </div>
 
       {context && <RecordSection rec={context} />}
-      {row.network_filled_fields && <p className="chart-note" style={{ display: 'block' }}>
-        Measurements added from the SPARTAN network export: {row.network_filled_fields}.
-      </p>}
 
       {/* Addis filters resolve to their similarity trace via etad_ids.json; nothing renders without one */}
       <FilterSpectrum id={row.id} />
@@ -204,7 +225,7 @@ export function SampleDrawer({
 
       <section className="drawer-section">
         <h3>Where this filter sits {referenceLabel === row.site ? `at ${row.site}` : `against ${referenceLabel}`}</h3>
-        <div className="frame-controls" style={{ margin: '8px 0' }}>
+        <div className="frame-controls" style={{ margin: '8px 0' }} title={`${referenceLabel} · ${ref.loading ? '…' : referenceRows.length.toLocaleString()} filters after known exclusions${referenceDates.length > 0 ? ` · ${referenceDates[0]} to ${referenceDates[referenceDates.length - 1]}` : ''}. Coverage varies by measurement; hover a bar for n. Uses all dates, independently of the main graph filters.`}>
           <Select label="Reference population" value={reference} options={ref.options}
             optionLabel={v => v === 'same' ? `Filter's site (${row.site})` : v === 'study' ? 'Four gallery sites' : v === 'network' ? 'All SPARTAN sites' : v === 'sites' ? 'Choose multiple sites…' : v}
             onChange={ref.setMode} />
@@ -214,16 +235,18 @@ export function SampleDrawer({
           <SitePicker items={ref.sites.map(s => ({ key: s.code, label: s.name, sub: s.code, lat: s.lat, lon: s.lon, color: s.color, n: s.n_filters, selected: ref.codes.includes(s.code) }))}
             onToggle={ref.toggleSite} onAll={() => ref.setMode('network')} allLabel="Use all SPARTAN sites" onClear={ref.clearSites} noun="reference sites" />
         </details>}
-        <p className="reference-summary">{referenceLabel} · {ref.loading ? '…' : referenceRows.length.toLocaleString()} filters after known exclusions{referenceDates.length > 0 && <> · {referenceDates[0]} to {referenceDates[referenceDates.length - 1]}</>}. Coverage varies by measurement; hover a bar for n. Uses all dates, independently of the main graph filters.</p>
         {reference === 'network' && <p className="reference-summary">{ref.loading ? '…' : ref.networkSize} SPARTAN sites with filter data, weighted by physical filter count. Each measurement uses its own available coverage; missing measurements are not filled with zero.</p>}
         {ref.loading && <p className="frame-empty">Loading reference filters…</p>}
         {ref.error && <p className="frame-empty" role="alert">Could not load the reference: {ref.error}</p>}
         <p className="chart-note reference-guide">Bars show the reference range; the darker band is its interquartile range and the tick is its median. The dot retains this filter's value. Percentile is the percentage of measured reference values strictly below it. Values outside the range are marked at the nearest edge.</p>
         {!ref.loading && !ref.error && meta.field_groups.map((g) => {
           const fields = g.fields.filter(f => isNum(row[f]))
-          if (!fields.length) return null
+          // the raw HIPS readouts follow the delivered HIPS values
+          const hipsHere = g.label === hipsGroup
+          if (!fields.length) return hipsHere ? <HipsReadings key={g.label} id={row.id} /> : null
           return (
-            <table key={g.label} className="placement">
+            <Fragment key={g.label}>
+            <table className="placement">
               <thead>
                 <tr><th colSpan={4}>{g.label}</th></tr>
               </thead>
@@ -235,58 +258,33 @@ export function SampleDrawer({
                     <td className="v">{fmt(row[f] as number, 3)} <span className="u">{prettyUnit(meta.field_units[f])}</span></td>
                     <td className="u" colSpan={2}>Reference unavailable · n={referenceCoverage[f]}</td>
                   </tr>
-                  const s = (value: number) => stripPosition(value, p)
-                  const outside = p.v < p.min ? 'below' : p.v > p.max ? 'above' : null
-                  const hot = f === xField || f === yField || f === focusField
-                  return (
-                    <tr key={f} className={hot ? 'hot' : ''}>
-                      <td className="f">{chemText(f)}</td>
-                      <td className="v">{fmt(p.v, 3)} <span className="u">{prettyUnit(meta.field_units[f])}</span></td>
-                      <td className="strip" title={`${referenceLabel}: min ${fmt(p.min, 2)} · q1 ${fmt(p.q1, 2)} · median ${fmt(p.med, 2)} · q3 ${fmt(p.q3, 2)} · max ${fmt(p.max, 2)} · n=${p.n}${outside ? ` · filter is ${outside} the reference range; dot shown at the edge` : ''}`}>
-                        <span className="track" />
-                        <span className="iqr" style={{ left: `${s(p.q1)}%`, width: `${Math.max(1, s(p.q3) - s(p.q1))}%` }} />
-                        <span className="med" style={{ left: `${s(p.med)}%` }} />
-                        <span className={`dot${outside ? ' outside' : ''}`} data-outside-range={outside ?? undefined} style={{ left: `${s(p.v)}%`, background: site?.color ?? INK.text }} />
-                      </td>
-                      <td className="pct">{p.pct.toFixed(0)}<span className="u">{ordinal(Math.round(p.pct))}</span>{outside && <span className="u" style={{ display: 'block' }}>{outside} range</span>}</td>
-                    </tr>
-                  )
+                  return placeRow(f, chemText(f), p, prettyUnit(meta.field_units[f]), f === xField || f === yField || f === focusField)
                 })}
               </tbody>
             </table>
+            {hipsHere && <HipsReadings id={row.id} />}
+            </Fragment>
           )
         })}
+        {!hipsGroup && <HipsReadings id={row.id} />}
+        {!ref.loading && !ref.error && ratios.length > 0 && <table className="placement">
+          <thead><tr><th colSpan={4}>Ratios</th></tr></thead>
+          <tbody>{ratios.map((r) => r.place ? placeRow(r.label, chemText(r.label), r.place, '', false, r.why)
+            : <tr key={r.label}><td className="f" title={r.why}>{chemText(r.label)}</td><td className="v">{fmt(r.value, 3)}</td><td className="u" colSpan={2}>Reference unavailable · n={r.reference.n}</td></tr>)}</tbody>
+        </table>}
         {unavailableFields.length > 0 && <details className="reference-unavailable"><summary>{unavailableFields.length} measurements without a reference percentile</summary><p>{unavailableFields.join(', ')}. A percentile needs at least four finite reference values for that measurement.</p></details>}
       </section>
-
-      {ratios.length > 0 && (
-        <section className="drawer-section">
-          <h3>Ratios</h3>
-          <table className="placement">
-            <tbody>
-              {ratios.map((r) => (
-                <tr key={r.label}>
-                  <td className="f" title={r.why}>{chemText(r.label)}</td>
-                  <td className="v">{fmt(r.value, 3)}</td>
-                  <td className="u" colSpan={2}>{referenceLabel} median {fmt(r.reference.median, 3)} · n={r.reference.n}{r.reference.n === 0 && ' (unavailable)'} · {r.why}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      )}
 
       <AxisFieldsProvider meta={crossMeta} value={{ x: cx, y: cy, field: cx }} set={chooseCrossField} ratios={false}>
         <section className="drawer-section drawer-crossplot">
           <div className="drawer-crossplot-head">
-            <h3>This filter on any crossplot</h3>
+            <h3 title={`Reference: ${referenceLabel} · ${ref.loading ? '…' : cross.pool.length.toLocaleString()} paired filters; the highlighted filter is ${row.id} from ${row.site}.`}>This filter on any crossplot</h3>
             <button type="button" className="btn quiet drawer-swap" onClick={swapCrossFields} title="Swap x and y" aria-label="Swap x and y">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M21 3v6h-6" /><path d="M21 9l-2.7-2.7A9 9 0 1 0 21 12" />
               </svg>
             </button>
           </div>
-          <p className="reference-summary">Reference: {referenceLabel} · {ref.loading ? '…' : cross.pool.length.toLocaleString()} paired filters. The highlighted filter remains {row.id} from {row.site}.</p>
           <div className="frame-controls" style={{ marginBottom: 6 }}><FitGroupingControl /></div>
           {ref.loading ? <p className="frame-empty">Loading reference crossplot…</p> : cross.pool.length < 3 ? (
             <>

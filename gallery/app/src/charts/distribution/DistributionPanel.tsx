@@ -4,7 +4,7 @@ import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { focusStyle, useHighlight } from '@/lib/highlight'
+import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
 import { boxStats, kde, fmt } from '@/lib/stats'
 import { INK, MARGIN, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -118,7 +118,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                 if (mode === 'Beeswarm') {
                   return (
                     <g key={g.name} data-export-site={groupBy === 'Site' ? g.name : undefined} data-export-series={g.name} data-export-color={g.color}>
-                      {g.items.map((it, i) => {
+                      {focusLast(g.items, (it) => it.row.id, hl.focusId).map(([it, i]) => {
                         const st = focusStyle(it.row.id, hl.focusId, { r: 3, opacity: 0.6 }, hl.selected)
                         return (
                           <circle
@@ -166,7 +166,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                       ))}
                     </g>
                     {/* boxplot-with-jitter: every filter over its own summary, so the box can be read against the n it summarises */}
-                    {withPoints && g.items.map((it, i) => {
+                    {withPoints && focusLast(g.items, (it) => it.row.id, hl.focusId).map(([it, i]) => {
                       const st = focusStyle(it.row.id, hl.focusId, { r: 2.4, opacity: 0.55 }, hl.selected)
                       return (
                         <circle

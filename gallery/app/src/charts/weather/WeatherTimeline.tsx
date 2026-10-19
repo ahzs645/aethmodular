@@ -4,7 +4,7 @@ import { ChartFrame, Empty, Toggle } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { focusStyle, useHighlight } from '@/lib/highlight'
+import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
 import { fidProps } from '@/lib/filterEdits'
 import { fmt } from '@/lib/stats'
 import { INK, withUnit } from '@/lib/theme'
@@ -112,7 +112,7 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
                   {k === 'prcp' && days.map(({ t, i }) => val(daily.p, i) ? <rect key={i} x={x(t)} width={Math.max(1, innerW / days.length)} y={yP(daily.p[i]!)} height={panelH - yP(daily.p[i]!)} fill="#4292c6" /> : null)}
                   {k === 'rh' && <path d={line(daily.rh, yR)} fill="none" stroke="#2c7fb8" strokeWidth={1.1} />}
                   {k === 'blh' && <path d={line(daily.blh, yB)} fill="none" stroke="#7b6fb0" strokeWidth={1.1} />}
-                  {k === 'field' && pts.map((p) => {
+                  {k === 'field' && focusLast(pts, (p) => p.row.id, hl.focusId).map(([p]) => {
                     const st = focusStyle(p.row.id, hl.focusId, { r: 3, opacity: 0.8 }, hl.selected)
                     return <circle key={p.row.id} cx={x(p.t)} cy={yF(p.v)} r={st.r} fill={meta.seasons.find((s) => s.name === p.row.season)?.color ?? INK.text}
                       fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}

@@ -6,7 +6,7 @@ import { Legend, toggleIn } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { baseFilterId, focusStyle, useHighlight } from '@/lib/highlight'
+import { baseFilterId, focusLast, focusStyle, useHighlight } from '@/lib/highlight'
 import { fidProps, useHandEdits } from '@/lib/filterEdits'
 import { fmt, splitAtGaps } from '@/lib/stats'
 import { INK, MARGIN } from '@/lib/theme'
@@ -101,7 +101,7 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
               {showDeployed && shown.filter((p) => p.dep !== null).map((p) => (
                 <circle key={`d${p.i}`} cx={x(p.d)} cy={y(p.dep as number)} r={3} fill="none" stroke={INK.axis} strokeWidth={1} strokeOpacity={dim(DEPLOYED_LABEL)} />
               ))}
-              {shown.map((p) => {
+              {focusLast(shown, (p) => p.id ?? `#${p.i}`, hl.focusId).map(([p]) => {
                 const st = focusStyle(p.id ?? `#${p.i}`, hl.focusId, { r: 3.2, opacity: showRoll ? 0.55 : 0.8 })
                 return (
                   <circle key={p.i} cx={x(p.d)} cy={y(p.v)} r={st.r} fill={color(p.g)} fillOpacity={st.opacity * dim(p.g)} stroke={st.stroke} strokeWidth={st.strokeWidth}

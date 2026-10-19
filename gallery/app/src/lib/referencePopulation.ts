@@ -31,6 +31,14 @@ export function placements(row: ReferenceRow, fields: string[], reference: Refer
 export function stripPosition(value: number, p: Pick<Placement, 'min' | 'max'>) {
   return p.min === p.max ? value < p.min ? 0 : value > p.max ? 100 : 50 : Math.max(0, Math.min(100, 100 * (value - p.min) / (p.max - p.min)))
 }
+/** A ratio's place in the reference, as `placements` gives a measurement's (null with < 4 reference values). */
+export function ratioPlacement(value: number, reference: ReferenceRow[], numerator: string, denominator: string): Placement | null {
+  const values = reference.flatMap(r => isFiniteNumber(r[numerator]) && isFiniteNumber(r[denominator]) && r[denominator] !== 0
+    ? [(r[numerator] as number) / (r[denominator] as number)] : []).filter(isFiniteNumber).sort((a, b) => a - b)
+  if (!isFiniteNumber(value) || values.length < 4) return null
+  return { v: value, pct: values.filter(x => x < value).length / values.length * 100,
+    min: values[0], q1: quantile(values, .25), med: quantile(values, .5), q3: quantile(values, .75), max: values[values.length - 1], n: values.length }
+}
 export function ratioReference(reference: ReferenceRow[], numerator: string, denominator: string) {
   const values = reference.flatMap(r => isFiniteNumber(r[numerator]) && isFiniteNumber(r[denominator]) && r[denominator] !== 0
     ? [(r[numerator] as number) / (r[denominator] as number)] : []).filter(isFiniteNumber).sort((a, b) => a - b)

@@ -6,7 +6,7 @@ import { Legend, toggleIn } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { focusStyle, useHighlight } from '@/lib/highlight'
+import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
 import { fmt, splitAtGaps } from '@/lib/stats'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -156,7 +156,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
                     <XAxis scale={x as any} y={innerH} format={(d: Date) => d3.timeFormat('%b %Y')(d)} tickCount={Math.max(2, Math.min(7, Math.floor(innerW / 80)))} />
                     {panel.series.map((s) => (
                       <g key={s.name} opacity={dim(s.name)} data-export-site={s.name} data-export-color={s.color}>
-                        {s.pts.map((p) => {
+                        {focusLast(s.pts, (p) => p.row.id, hl.focusId).map(([p]) => {
                           const st = focusStyle(p.row.id, hl.focusId, { r: 2.6, opacity: smooth ? 0.32 : 0.75 }, hl.selected)
                           return (
                             <circle

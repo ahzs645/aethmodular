@@ -15,7 +15,7 @@ import { Legend, toggleIn, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { focusStyle, useHighlight } from '@/lib/highlight'
+import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
 import { useFilterEdits } from '@/lib/filterEdits'
 import { inDomain, pairDomain, type AxesOpts, type PairDomain, robustDomain } from '@/lib/axes'
 import { regression, fmt, type RegressionStats } from '@/lib/stats'
@@ -469,7 +469,7 @@ function ScatterPanel({
             )}
           </g>
 
-          {drawn.map((p) => {
+          {focusLast(drawn, (p) => p.row.id, focusId).map(([p]) => {
             const st = focusStyle(p.row.id, focusId, { r: radiusOf(p), opacity: 0.72 }, selected)
             const k = dimOf(p)
             return (

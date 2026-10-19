@@ -114,6 +114,21 @@ export const useHighlight = () => useContext(Ctx)
  * bigger + opaque when it is the one, dimmed when another is or when a brush
  * selection exists that it is not part of.
  */
+/**
+ * Marks in draw order with the focused one (hovered or pinned) last, so it paints over its
+ * neighbours; SVG has no z-index. Each comes with its original index, for charts that place a
+ * mark by its index (deterministic jitter). Unfocused, the order is unchanged.
+ */
+export function focusLast<T>(items: readonly T[], idOf: (t: T) => string | undefined, focusId: string | null): [T, number][] {
+  const out = items.map((t, i): [T, number] => [t, i])
+  if (!focusId) return out
+  const k = items.findIndex((t) => idOf(t) === focusId)
+  if (k < 0 || k === items.length - 1) return out
+  const [f] = out.splice(k, 1)
+  out.push(f)
+  return out
+}
+
 export function focusStyle(id: string, focusId: string | null, base = { r: 4, opacity: 0.72 }, selected: Set<string> | null = null) {
   if (focusId === id) return { r: base.r * 1.9, opacity: 1, stroke: INK.fit, strokeWidth: 2 }
   if (focusId) return { r: base.r, opacity: Math.min(base.opacity, 0.25), stroke: '#fff', strokeWidth: 0.6 }

@@ -7,7 +7,7 @@ import { Legend, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { baseFilterId, focusStyle, useHighlight, type FilterRecord } from '@/lib/highlight'
+import { baseFilterId, focusLast, focusStyle, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { Crossplot } from '@/components/Crossplot'
 import { fmt } from '@/lib/stats'
 import { INK, MARGIN, withUnit } from '@/lib/theme'
@@ -193,7 +193,7 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96, galle
                   <YAxis scale={ey} x={0} label={axisLabel(rY)} gridWidth={S} tickCount={5} pick="y" />
                   <XAxis scale={ex} y={S} label={axisLabel(rx)} pick="x" />
                   {rY === RESID && <line x1={0} x2={S} y1={ey(0)} y2={ey(0)} stroke={INK.text} strokeWidth={1.4} />}
-                  {explore.map((p) => {
+                  {focusLast(explore, (p) => p.id ?? `#${p.i}`, hl.focusId).map(([p]) => {
                     const st = focusStyle(p.id ?? `#${p.i}`, hl.focusId, { r: 3.2, opacity: 0.7 })
                     return <circle key={p.i} cx={ex(p.ex)} cy={ey(p.ey)} r={st.r} fill={color(p.g)} fillOpacity={st.opacity * dim(p.g)} stroke={st.stroke} strokeWidth={st.strokeWidth} onMouseEnter={(e) => enter(e, p)} onMouseLeave={leave} onClick={() => click(p)} style={{ cursor: 'pointer' }} />
                   })}
