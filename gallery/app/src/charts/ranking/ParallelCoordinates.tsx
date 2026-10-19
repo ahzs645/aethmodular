@@ -275,6 +275,10 @@ export function ParallelCoordinates({ rows, meta }: { rows: FilterRow[]; meta: M
               {/* axes, ticks and titles first so the lines paint over the grid */}
               {axes.map((a, i) => {
                 const row = stagger && i % 2 === 0 ? -24 : 0
+                // a name gets the room to its same-row neighbours (two axes apart when staggered), shortened past it
+                const room = (xs.length > 1 ? Math.abs(xs[1] - xs[0]) : innerW) * (stagger ? 2 : 1) - 8
+                const maxChars = Math.max(4, Math.floor(room / 6.6))
+                const name = a.name.length > maxChars ? `${a.name.slice(0, maxChars - 1)}…` : a.name
                 return (
                   <g key={a.field} transform={`translate(${xs[i]},0)`} fontFamily={FONT.family}>
                     <line y1={0} y2={innerH} stroke={INK.axis} />
@@ -287,7 +291,7 @@ export function ParallelCoordinates({ rows, meta }: { rows: FilterRow[]; meta: M
                       </g>
                     ))}
                     <text y={-22 + row} textAnchor="middle" fontSize={11} fontWeight={600} fill={INK.text}>
-                      {a.name}
+                      {name !== a.name && <title>{a.name}</title>}{name}
                     </text>
                     {a.unit && (
                       <text y={-9 + row} textAnchor="middle" fontSize={9.5} fill={INK.muted}>

@@ -116,7 +116,10 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
                       )
                     })}
                     <text x={(x(g.name) ?? 0) + x.bandwidth() / 2} y={innerH + 30} textAnchor="middle" fontSize={10} fill={INK.muted} fontFamily={FONT.mono}>
-                      n={g.n} · {g.rows.filter((r) => (r.dominant_fraction ?? 0) >= thr).length} above {threshold} %
+                      n={g.n}
+                    </text>
+                    <text x={(x(g.name) ?? 0) + x.bandwidth() / 2} y={innerH + 42} textAnchor="middle" fontSize={9.5} fill={INK.muted} fontFamily={FONT.mono}>
+                      {g.rows.filter((r) => (r.dominant_fraction ?? 0) >= thr).length}{x.step() >= 90 ? ` above ${threshold} %` : ` > ${threshold}%`}
                     </text>
                   </g>
                 )

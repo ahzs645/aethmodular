@@ -20,6 +20,28 @@ function ticksOf(scale: AnyScale, count: number): { v: any; pos: number }[] {
   return s.ticks(count).map((t) => ({ v: t, pos: s(t) }))
 }
 
+/** a tick label's width at the axis's 11 px (about 6.2 px a character) plus a gap */
+const labelWidth = (text: string) => text.length * 6.2 + 12
+
+/**
+ * The scale's ticks, thinned until no two labels overlap and none runs off the axis: d3 is asked
+ * for fewer ticks in turn, and if it still crowds, every second label is kept. Band axes and
+ * rotated labels are left as they are.
+ */
+function fittedTicks(scale: AnyScale, count: number, format: ((v: any) => string) | undefined, rotate: number) {
+  const all = ticksOf(scale, count)
+  if ('bandwidth' in scale || rotate || all.length < 3) return all
+  const text = (v: any) => (format ? format(v) : String(v))
+  const fits = (t: { v: any; pos: number }[]) => t.every((a, i) => i === 0 || a.pos - t[i - 1].pos >= (labelWidth(text(a.v)) + labelWidth(text(t[i - 1].v))) / 2)
+  let t = all, n = count
+  while (!fits(t) && n > 2) {
+    n = Math.min(n - 1, t.length - 1)
+    t = ticksOf(scale, n)
+  }
+  while (!fits(t) && t.length > 2) t = t.filter((_, i) => i % 2 === 0)
+  return t
+}
+
 export function XAxis({
   scale,
   y,
@@ -42,7 +64,8 @@ export function XAxis({
   labelDy?: number
 }) {
   const method = useEstimator()
-  const ticks = useMemo(() => ticksOf(scale, tickCount), [scale, tickCount])
+  // as many ticks as fit: fewer when the labels (dates above all, 'Feb 2023') would touch at this width
+  const ticks = useMemo(() => fittedTicks(scale, tickCount, format, rotate), [scale, tickCount, format, rotate])
   const range = scale.range() as [number, number]
   const x0 = Math.min(...range)
   const x1 = Math.max(...range)

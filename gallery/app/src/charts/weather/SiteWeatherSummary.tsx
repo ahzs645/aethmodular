@@ -57,8 +57,15 @@ export function SiteWeatherSummary({ rows, meta, field, current, onSite }: {
           <svg width={w} height={h} fontFamily={FONT.family}>
             <text x={labelW + 4} y={head - 8} fontSize={10.5} fill={INK.muted}>filters</text>
             <text x={labelW + numW + 4} y={head - 8} fontSize={10.5} fill={INK.muted}>median</text>
-            {WEATHER_VARS.map((v, j) => <text key={v.key} x={labelW + numW * 2 + j * cell + cell / 2} y={head - 8} textAnchor="middle" fontSize={10.5} fill={INK.text}>
-              {v.label.replace('Daily temperature range', 'Temp. range').replace('Boundary-layer height', 'BLH').replace('Relative humidity', 'RH')}</text>)}
+            {WEATHER_VARS.map((v, j) => {
+              // short names, and on two lines where a column is too narrow for one
+              const name = v.label.replace('Daily temperature range', 'Temp. range').replace('Boundary-layer height', 'BLH').replace('Relative humidity', 'RH').replace('Precipitation', 'Precip.').replace('Temperature', 'Temp.')
+              const words = name.split(' ')
+              const lines = name.length * 6 + 6 > cell && words.length > 1 ? [words.slice(0, Math.ceil(words.length / 2)).join(' '), words.slice(Math.ceil(words.length / 2)).join(' ')] : [name]
+              return <text key={v.key} x={labelW + numW * 2 + j * cell + cell / 2} y={head - 8 - (lines.length - 1) * 12} textAnchor="middle" fontSize={10.5} fill={INK.text}>
+                <title>{v.label}</title>
+                {lines.map((l, k) => <tspan key={k} x={labelW + numW * 2 + j * cell + cell / 2} dy={k ? 12 : 0}>{l}</tspan>)}</text>
+            })}
             {table.map((t, i) => {
               const y = head + i * rowH
               const on = t.code === current

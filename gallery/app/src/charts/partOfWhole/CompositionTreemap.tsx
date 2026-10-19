@@ -374,7 +374,16 @@ function StackedBars({ bars, grouped, pct, families, val, dim, famDim, color, fa
               ) : (
                 <>
                   <text x={bx + bw / 2} y={innerH + 16} textAnchor="middle" fontSize={11.5} fontWeight={600} fill={bar.siteColor} fontFamily={FONT.family}>{bar.label}</text>
-                  <text x={bx + bw / 2} y={innerH + 30} textAnchor="middle" fontSize={10} fill={INK.muted} fontFamily={FONT.mono}>{fmt(total, 1)} of PM2.5 {fmt(bar.pm25_mean, 1)} {units}</text>
+                  {/* two short lines, so neighbouring bars' readouts never run into each other; on a narrow
+                      bar the unit and the 'of PM2.5' words go (about 6 px a character at 10 px mono) */}
+                  {(() => {
+                    const room = bw + 10, wide = `${fmt(total, 1)} ${units}`.length * 6 <= room
+                    return <>
+                      <text x={bx + bw / 2} y={innerH + 30} textAnchor="middle" fontSize={10} fill={INK.muted} fontFamily={FONT.mono}>{wide ? `${fmt(total, 1)} ${units}` : fmt(total, 1)}</text>
+                      <text x={bx + bw / 2} y={innerH + 42} textAnchor="middle" fontSize={9.5} fill={INK.muted} fontFamily={FONT.mono}>
+                        <title>{`${fmt(total, 1)} of PM2.5 ${fmt(bar.pm25_mean, 1)} ${units}`}</title>{`of PM₂.₅ ${fmt(bar.pm25_mean, 1)}`.length * 5.8 <= room ? `of PM₂.₅ ${fmt(bar.pm25_mean, 1)}` : `/ ${fmt(bar.pm25_mean, 1)}`}</text>
+                    </>
+                  })()}
                 </>
               )}
             </g>
