@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { gzipSync } from 'node:zlib'
 import { loadJson, loadBinary } from './data.ts'
-import { nativeTrace } from './spartan.ts'
+import { decodeTrace, nativeTraces } from './spartan.ts'
 
 test('gzip data works on plain static hosts and hosts that already decoded it; concurrent reads share a fetch', async () => {
   const original = globalThis.fetch
@@ -34,13 +34,45 @@ test('failed requests are retryable, including malformed compressed data', async
 test('native spectra keep analysis offsets, descending grids, negative absorbance and gaps', () => {
   const values = new Float32Array([99, 98, .25, -.5, NaN])
   const a = { first: 4000, last: 500, n: 3, offset: 2 }
-  const result = nativeTrace(values.buffer, a)
+  const result = nativeTraces(values.buffer, a).raw
   assert.deepEqual(result.wn, [4000, 2250, 500])
   assert.equal(result.y[0], .25)
   assert.equal(result.y[1], -.5)
   assert.ok(Number.isNaN(result.y[2]))
-  assert.throws(() => nativeTrace(values.buffer, { ...a, n: 4 }), /length/)
-  assert.throws(() => nativeTrace(values.buffer, { ...a, offset: -1 }), /length/)
+  assert.throws(() => nativeTraces(values.buffer, { ...a, n: 4 }), /length/)
+  assert.throws(() => nativeTraces(values.buffer, { ...a, offset: -1 }), /length/)
+})
+
+// the layout gallery/data/spectrum_codec.py writes: integer steps, differences, four byte planes
+const planes = (diffs) => {
+  const n = diffs.length, out = new Uint8Array(4 * n), view = new DataView(new ArrayBuffer(4))
+  diffs.forEach((d, i) => { view.setInt32(0, d, true); for (let k = 0; k < 4; k++) out[k * n + i] = view.getUint8(k) })
+  return out
+}
+
+test('encoded traces decode to steps, keep negatives and gaps, and check their length', () => {
+  // 0.25, -0.5, then a gap stored as the previous value
+  const body = planes([25_000_000, -75_000_000, 0])
+  const buf = new Uint8Array(8 + body.length); buf.set(body, 8)
+  const y = decodeTrace(buf.buffer, { offset: 8, n: 3, step: 1e-8, nan: [[2, 1]] })
+  assert.ok(Math.abs(y[0] - .25) < 1e-12 && Math.abs(y[1] + .5) < 1e-12)
+  assert.ok(Number.isNaN(y[2]))
+  assert.throws(() => decodeTrace(buf.buffer, { offset: 8, n: 4, step: 1e-8 }), /length/)
+})
+
+test('schema 2 analyses give raw, AIRSpec (raw minus its baseline over its span) and VIBES on its own grid', () => {
+  const raw = planes([30, 10, 10, 10]), base = planes([10, 0]), vib = planes([5, 5, 5])
+  const buf = new Uint8Array(raw.length + base.length + vib.length)
+  buf.set(raw, 0); buf.set(base, raw.length); buf.set(vib, raw.length + base.length)
+  const a = { first: 4000, last: 1000, n: 4, invalid_points: 0, series: {
+    raw: { offset: 0, n: 4, step: 1 }, airspec_baseline: { offset: raw.length, n: 2, step: 1, start: 1 },
+    vibes_corrected: { offset: raw.length + base.length, n: 3, step: 1 } } }
+  const t = nativeTraces(buf.buffer, a, { first: 3000, last: 1000, n: 3 })
+  assert.deepEqual(Array.from(t.raw.y), [30, 40, 50, 60])
+  assert.deepEqual(t.airspec.wn, [3000, 2000])
+  assert.deepEqual(Array.from(t.airspec.y), [30, 40])
+  assert.deepEqual(t.vibes.wn, [3000, 2000, 1000])
+  assert.deepEqual(Array.from(t.vibes.y), [5, 10, 15])
 })
 
 test('site selection fetches only selected filter shards, keeps the whole site index and never requests spectra', async () => {

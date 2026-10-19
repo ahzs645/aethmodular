@@ -37,22 +37,23 @@ export function FilterSpectrum({ id }: { id: string }) {
   const addisFilter = /^ETAD-\d{4}/.test(id)
   return <><NativeFilterMeasurements id={id} />
     {addisFilter ? <section className="drawer-section">
-      {!correctedOpen && status && <AddisStatusNote status={status} />}
-      <details onToggle={e => setCorrectedOpen(e.currentTarget.open)}>
-        <summary>Baseline-corrected spectrum</summary>
-        {correctedOpen && <CorrectedFilterSpectrum id={id} />}
+      {status && <AddisStatusNote status={status} />}
+      <details className="ftir-more" onToggle={e => setCorrectedOpen(e.currentTarget.open)}>
+        <summary title="The corrected spectra the Addis calibration runs used, from the Spectral similarity export">Calibration-run spectrum (frozen Addis runs, 10 cm⁻¹ bins)</summary>
+        {correctedOpen && <CorrectedFilterSpectrum id={id} embedded />}
       </details>
     </section> : <CorrectedFilterSpectrum id={id} />}
   </>
 }
 
-function CorrectedFilterSpectrum({ id }: { id: string }) {
+function CorrectedFilterSpectrum({ id, embedded = false }: { id: string; embedded?: boolean }) {
   const [view, setView] = useState<(typeof VIEWS)[number]>('both')
   const [expanded, setExpanded] = useState(false)
   const methods = METHODS_OF[view]
   const spec = useFilterSpectrum(id, methods)
   const status = useAddisStatus(id)
-  if (!spec) return status && !status.in_run ? <section className="drawer-section">
+  if (!spec) return embedded ? <p className="chart-note" style={{ display: 'block' }}>{status && !status.in_run ? 'This filter is not in the frozen runs.' : 'Loading…'}</p>
+    : status && !status.in_run ? <section className="drawer-section">
     <h3>Baseline-corrected spectrum</h3>
     <AddisStatusNote status={status} />
   </section> : null
@@ -63,15 +64,16 @@ function CorrectedFilterSpectrum({ id }: { id: string }) {
     <p className="chart-note" style={{ display: 'block' }}>The requested corrected spectra could not be loaded.</p>
   </section>
 
+  const Wrap = embedded ? 'div' : 'section'
   return (
-    <section className="drawer-section">
-      <h3>Baseline-corrected spectrum</h3>
-      {status && <AddisStatusNote status={status} />}
+    <Wrap className={embedded ? undefined : 'drawer-section'}>
+      {!embedded && <h3>Baseline-corrected spectrum</h3>}
+      {!embedded && status && <AddisStatusNote status={status} />}
       <div className="frame-controls" style={{ marginBottom: 4, flexWrap: 'wrap' }}>
         <Segmented value={view} options={VIEWS} onChange={setView} />
-        <button type="button" className="btn" aria-haspopup="dialog" onClick={() => setExpanded(true)}>Expand spectrum</button>
       </div>
-      <SpectrumPlot key={id} spec={spec} shown={shown} />
+      <SpectrumPlot key={id} spec={spec} shown={shown}
+        actions={<button type="button" className="btn quiet" aria-haspopup="dialog" onClick={() => setExpanded(true)}>Expand</button>} />
       <SpectrumLegend shown={shown} />
       <SpectrumNote spec={spec} methods={methods} shown={shown} />
       {expanded && <SpectrumModal id={id} onClose={() => setExpanded(false)}>
@@ -82,7 +84,7 @@ function CorrectedFilterSpectrum({ id }: { id: string }) {
         <SpectrumLegend shown={shown} />
         <SpectrumNote spec={spec} methods={methods} shown={shown} />
       </SpectrumModal>}
-    </section>
+    </Wrap>
   )
 }
 

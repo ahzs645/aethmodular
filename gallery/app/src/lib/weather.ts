@@ -5,7 +5,8 @@
  * ("Temperature (ERA5)" …), so every chart can plot them; the Weather tab also reads the
  * daily series, the wind roses and the station comparison from here.
  */
-import { loadJson } from './data.ts'
+import { useEffect, useState } from 'react'
+import { loadJson, useExport } from './data.ts'
 
 export interface WeatherFile {
   source: string
@@ -18,6 +19,35 @@ export interface WeatherFile {
   rows: Record<string, (number | null)[]>
   /** id -> [local start, local end, hours sampled, window assumed] */
   windows: Record<string, [string, string, number | null, boolean]>
+}
+
+/** weather/index.json: the fields, units and sources, and how many filters each site's file holds */
+export interface WeatherIndex extends Omit<WeatherFile, 'rows' | 'windows'> { sites: Record<string, number> }
+
+/**
+ * The per-filter weather for the sites in view: the small index once, then one file per site
+ * (weather/filters/<CODE>.json, export_weather.py), so a page loads only the sites it shows.
+ * While a newly picked site loads, the previous result stays, so the rows do not lose their
+ * weather fields in between. Weather is optional: a site without a file simply has none.
+ */
+export function useWeather(codes: readonly string[]): WeatherFile | null {
+  const index = useExport<WeatherIndex>('weather/index.json').data
+  const key = index ? [...new Set(codes)].filter((c) => index.sites[c]).sort().join(',') : ''
+  const [state, setState] = useState<{ key: string; data: WeatherFile } | null>(null)
+  useEffect(() => {
+    if (!index) return
+    let live = true
+    const want = key ? key.split(',') : []
+    Promise.all(want.map((c) => loadJson<Pick<WeatherFile, 'rows' | 'windows'>>(`weather/filters/${c}.json`)))
+      .then((parts) => {
+        if (!live) return
+        const { sites: _sites, ...rest } = index
+        setState({ key, data: { ...rest, rows: Object.assign({}, ...parts.map((p) => p.rows)), windows: Object.assign({}, ...parts.map((p) => p.windows)) } })
+      })
+      .catch(() => { /* weather is optional; the rows go without it */ })
+    return () => { live = false }
+  }, [index, key])
+  return state?.data ?? null
 }
 
 export interface RoseFile {

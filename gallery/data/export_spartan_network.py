@@ -34,6 +34,44 @@ from aethmodular_cli.env import load_repo_env  # noqa: E402
 from config import SITES  # noqa: E402
 from data_matching import base_filter_id  # noqa: E402
 from outliers import apply_exclusion_flags  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from spectrum_codec import DEFAULT_STEP, encode  # noqa: E402
+
+BASELINES = ROOT / 'research/ftir_hips_chem/output/tables/network_baselines_20261019'
+
+
+def load_baselines(folder):
+    """Precomputed baselines by analysis id (research/ftir_hips_chem/workflows/network_baselines_20261019.py).
+
+    airspec: (start index on the native grid, baseline values) over the spline's 1425-4000 cm-1 span.
+    vibes: the corrected spectrum on the VIBES background's own grid (resampled input minus baseline).
+    Returns ({}, None) when the run is absent; the export then carries raw spectra only.
+    """
+    folder = Path(folder)
+    out, grid = defaultdict(dict), None
+    if (folder / 'airspec_baselines.npz').exists():
+        z = np.load(folder / 'airspec_baselines.npz')
+        native_n = pd.read_csv(folder / 'airspec_cases.csv', dtype={'analysis_id': str}).set_index('analysis_id').native_n.to_dict()
+        for k in z.files:
+            aid, start = k[1:].split('_')
+            out[aid]['airspec'] = (int(start), z[k].astype(float))
+            out[aid]['native_n'] = int(native_n[aid])
+    if (folder / 'vibes_baselines_model_grid.npy').exists():
+        bundle = folder / 'vibes_bundle'
+        cases = pd.read_csv(bundle / 'cases.csv', dtype={'analysis_id': str})
+        X = np.load(bundle / 'X_model_grid.npy').astype(float)
+        base = np.load(folder / 'vibes_baselines_model_grid.npy').astype(float)
+        diag = pd.read_csv(folder / 'vibes_fit_diagnostics.csv')
+        ok = set(diag.loc[diag.success.astype(bool), 'case_row'].astype(int))
+        for c in cases.itertuples():
+            if c.case_row in ok and np.isfinite(base[c.case_row]).all():
+                out[c.analysis_id]['vibes'] = X[c.case_row] - base[c.case_row]
+        wn = np.load(bundle / 'background_model.npz')['wn']
+        manifest = json.loads((bundle / 'MANIFEST.json').read_text())
+        grid = dict(first=float(wn[0]), last=float(wn[-1]), n=int(len(wn)), model=manifest['model'],
+                    model_rank=manifest['model_rank'], model_blanks=manifest['model_blanks'], resampling=manifest['resampling'],
+                    fits_failed=int(len(diag) - len(ok)))
+    return out, grid
 
 
 def read_csv(path):
@@ -106,7 +144,8 @@ def write_asset(out, stem, body, kind='json'):
     return 'spartan_network/' + rel
 
 
-def build(ftir, hips, data):
+def build(ftir, hips, data, baselines_dir=BASELINES, step=DEFAULT_STEP):
+    baselines, vibes_grid = load_baselines(baselines_dir)
     ftir_receipt = verify_bundle(ftir)
     verify_bundle(hips)
     out = data / 'spartan_network'
@@ -179,15 +218,33 @@ def build(ftir, hips, data):
                     first=float(wn[0]), last=float(wn[-1]), n=len(y), invalid_points=invalid), y))
         smeta = {}
         for key, entries in sorted(spectra.items()):
+            # each trace: integer steps, differences, byte planes (spectrum_codec); offsets in bytes
             offset = 0
             descriptors, blocks = [], []
+
+            def add(values):
+                nonlocal offset
+                body, desc = encode(values, step)
+                blocks.append(body)
+                desc['offset'] = offset
+                offset += len(body)
+                return desc
             for descriptor, y in entries:
-                descriptors.append({**descriptor, 'offset': offset})
-                blocks.append(y.tobytes())
-                offset += len(y)
+                series = {'raw': add(y)}
+                b = baselines.get(descriptor['analysis_id'], {})
+                if b and b.get('native_n', len(y)) != len(y):
+                    raise ValueError(f"Baselines for analysis {descriptor['analysis_id']} were computed on another spectrum; rerun network_baselines")
+                if 'airspec' in b:
+                    start, base = b['airspec']
+                    if start + len(base) > len(y):
+                        raise ValueError(f"AIRSpec baseline longer than its spectrum: {descriptor['analysis_id']}")
+                    series['airspec_baseline'] = {**add(base), 'start': start}
+                if 'vibes' in b:
+                    series['vibes_corrected'] = add(b['vibes'])
+                descriptors.append({**descriptor, 'series': series})
             file = write_asset(out, f'spectra/{code}/{key}', b''.join(blocks), 'bin')
             smeta[key] = dict(file=file, analyses=descriptors)
-        native = dict(schema_version=1, code=code, spectra=smeta, hips=dict(raw_hips[code]))
+        native = dict(schema_version=2, code=code, spectra=smeta, hips=dict(raw_hips[code]))
         native_file = write_asset(out, f'native/{code}', json_bytes(native))
         rows = public[code]
         for key, f in native_pm25[code].items():
@@ -220,7 +277,7 @@ def build(ftir, hips, data):
         print(f'{code}: {len(records)} PM2.5 filters; {sites[-1]["n_ftir_analyses"]} FTIR analyses (all filter types)')
     if sum(s['n_ftir_analyses'] for s in sites) != int(ftir_receipt['Analyses']):
         raise ValueError('Exported FTIR total differs from source receipt')
-    index = dict(schema_version=1, generated=datetime.now(timezone.utc).isoformat(),
+    index = dict(schema_version=2, generated=datetime.now(timezone.utc).isoformat(),
         source_bundles=[ftir.name, hips.name],
         unassigned_native_filters=sum(not f['SiteId'] for f in filters),
         source_sha256={name: hashlib.sha256(p.read_bytes()).hexdigest() for name, p in [
@@ -232,7 +289,12 @@ def build(ftir, hips, data):
              'Raw absorbance = -log10(sample/background), native resolution, no baseline correction; '
              'nonpositive single-beam pairs are NaN. Raw HIPS readings are not final Fabs or BC. '
              'Missing native records do not imply missing public measurements.',
-        fields=ref['fields'], field_units=ref['field_units'], sites=sites)
+        fields=ref['fields'], field_units=ref['field_units'], sites=sites,
+        spectrum_encoding=dict(step=step, note='integer steps of `step`, differences, four byte planes per trace (gallery/data/spectrum_codec.py)'),
+        baselines=dict(
+            airspec=dict(method='AIRSpec/APRLssb segmented smoothing spline, DF1=6, DF2=4, on each native grid; 1425-4000 cm-1') if any('airspec' in b for b in baselines.values()) else None,
+            vibes=dict(method='VIBES with the saved gallery background (no refit), ELBO + MAP, tau 0.1, PB loss', grid=vibes_grid) if vibes_grid else None,
+            source=str(Path(baselines_dir).relative_to(ROOT)) if baselines else None))
     # Publish the index last: every content-addressed asset is complete before readers see it.
     temp = out / 'index.tmp'
     temp.write_bytes(json_bytes(index))
@@ -246,10 +308,12 @@ def main():
     ap.add_argument('--ftir-bundle', default=os.getenv('AETHMODULAR_SPARTAN_FTIR_BUNDLE'))
     ap.add_argument('--hips-bundle', default=os.getenv('AETHMODULAR_SPARTAN_HIPS_BUNDLE'))
     ap.add_argument('--data-dir', type=Path, default=ROOT / 'gallery/app/public/data')
+    ap.add_argument('--baselines', type=Path, default=BASELINES, help='network_baselines run folder (absent: raw only)')
+    ap.add_argument('--step', type=float, default=DEFAULT_STEP, help='absorbance step for stored traces (1e-8 default; 1e-7 is ~25%% smaller)')
     args = ap.parse_args()
     if not args.ftir_bundle or not args.hips_bundle:
         ap.error('Set both native bundle paths in .env or pass --ftir-bundle and --hips-bundle')
-    build(Path(args.ftir_bundle).expanduser(), Path(args.hips_bundle).expanduser(), args.data_dir)
+    build(Path(args.ftir_bundle).expanduser(), Path(args.hips_bundle).expanduser(), args.data_dir, args.baselines, args.step)
 
 
 if __name__ == '__main__':

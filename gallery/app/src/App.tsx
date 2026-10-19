@@ -71,7 +71,7 @@ import { CommandPaletteButton } from '@/components/CommandPalette'
 import { HeaderNavProvider, useHeaderNav } from '@/lib/headerNav'
 import { NavMenu, type NavGroup, type NavItem } from '@/components/NavMenu'
 import { ExplainIcon, SidebarIcon, TextSizeIcon } from '@/components/Icons'
-import { WEATHER_GROUP, type WeatherFile } from '@/lib/weather'
+import { WEATHER_GROUP, useWeather } from '@/lib/weather'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 
 /**
@@ -221,8 +221,6 @@ export default function App() {
   const { data, error, calibrationLoading } = useGalleryData(['calibration', 'baseline', 'dashboard'].includes(tab))
   // spline / VIBES FTIR EC for the Addis test set (gallery/data/export_baseline_ftir_ec.py); optional
   const baselines = useExport<{ rows: Record<string, { spline?: number; vibes?: number }> }>('baseline_ftir_ec.json').data
-  // weather over each filter's sampling window (gallery/data/export_weather.py, lib/weather); optional
-  const weather = useExport<WeatherFile>('weather/filters.json').data
   const focusRows = useMemo(() => {
     const rows = data?.filters.rows ?? []
     if (!baselines) return rows
@@ -459,6 +457,10 @@ export default function App() {
     return { sites, focusCodes: [...focus.keys()], spartanCodes, improveCodes: d.improveCodes, rows, fields,
       field_units: sp ? { ...d.field_units, ...data.meta.field_units } : d.field_units, field_groups: groups }
   }, [net, data, focusRows, netData.data])
+  // weather over each filter's sampling window (export_weather.py, lib/weather), for the sites
+  // whose rows are in view: one small file per site, loaded as sites are picked
+  const weatherCodes = useMemo(() => [...new Set((netBase ? netBase.rows : focusRows).map((r) => r.code))], [netBase, focusRows])
+  const weather = useWeather(weatherCodes)
   // the pick on top: the chosen sites, coloured in selection order (`paint` gives a row its site's colour)
   const netView = useMemo(() => {
     if (!netBase) return null

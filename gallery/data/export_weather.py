@@ -16,7 +16,9 @@ negative or longer than 40 days falls back to 24 h from the start; filters not i
 public files (focus-site HIPS filters) get 24 h from their gallery date, flagged "assumed".
 
 Writes to gallery/app/public/data/weather/:
-  filters.json        per filter: the weather fields below, ERA5 and (Addis) station
+  filters.json        per filter: the weather fields below, ERA5 and (Addis) station (the whole set, for scripts)
+  index.json + filters/<CODE>.json   the same split by site: the gallery loads only the sites in view
+                      (``--split-only`` rewrites these from an existing filters.json)
   roses.json          per filter: hours by wind sector (8) and speed class (3), plus calm hours
   daily/<CODE>.json   per site: daily ERA5 (local standard day) for the timeline and climatology
   station_ETAD.json   daily station values beside ERA5 at Addis, for the comparison chart
@@ -129,6 +131,27 @@ def r(v, nd=2):
     return None if v is None or not np.isfinite(v) else round(float(v), nd)
 
 
+def write_split(payload: dict) -> None:
+    """filters.json split by site (a filter id starts with its site code): a small index with the
+    fields, units and sources, and one file per site with its filters' values and windows."""
+    rows, wins = {}, {}
+    for fid, v in payload["rows"].items():
+        rows.setdefault(fid.split("-")[0], {})[fid] = v
+    for fid, v in payload.get("windows", {}).items():
+        wins.setdefault(fid.split("-")[0], {})[fid] = v
+    folder = OUT / "filters"
+    folder.mkdir(parents=True, exist_ok=True)
+    for old in folder.glob("*.json"):
+        old.unlink()
+    for code in sorted(rows):
+        (folder / f"{code}.json").write_text(json.dumps(dict(rows=rows[code], windows=wins.get(code, {})),
+                                                        separators=(",", ":"), allow_nan=False))
+    index = {k: v for k, v in payload.items() if k not in ("rows", "windows")}
+    index["sites"] = {code: len(v) for code, v in sorted(rows.items())}
+    (OUT / "index.json").write_text(json.dumps(index, separators=(",", ":"), allow_nan=False))
+    print(f"weather split: {len(rows)} sites, {sum(index['sites'].values())} filters")
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "daily").mkdir(exist_ok=True)
@@ -193,6 +216,7 @@ def main():
                    rows={fid: v + srows.get(fid, [None] * len(station_names)) for fid, v in rows.items()},
                    windows=wins)
     (OUT / "filters.json").write_text(json.dumps(payload, separators=(",", ":"), allow_nan=False))
+    write_split(payload)
     (OUT / "roses.json").write_text(json.dumps(dict(**meta, sectors=["N", "NE", "E", "SE", "S", "SW", "W", "NW"],
         speed_classes=[f"< {SPEED_EDGES[0]:g} m/s", f"{SPEED_EDGES[0]:g}–{SPEED_EDGES[1]:g} m/s", f"≥ {SPEED_EDGES[1]:g} m/s"], calm=f"< {CALM:g} m/s",
         era5=roses, station=sroses), separators=(",", ":")))
@@ -236,4 +260,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if "--split-only" in sys.argv:
+        write_split(json.loads((OUT / "filters.json").read_text()))
+    else:
+        main()

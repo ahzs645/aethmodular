@@ -446,6 +446,22 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
   background: var(--ink-panel); color: var(--ink-text); overflow: auto;
   box-shadow: 0 16px 60px rgba(0, 0, 0, 0.25);
 }
+.spectrum-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 2px 0 4px; font-size: calc(11px * var(--text-scale)); color: var(--ink-muted); }
+.spectrum-zoom { display: inline-flex; gap: 2px; }
+.spectrum-zoom .btn { min-width: 26px; padding: 1px 6px; }
+.spectrum-window { cursor: help; }
+.spectrum-actions { margin-left: auto; display: inline-flex; gap: 4px; }
+/* the drawer's FTIR spectrum: one heading row, a view switch, the plot, a legend, the rest behind details */
+.ftir-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ftir-head h3 { margin: 0; }
+.ftir-meta { font-size: calc(11.5px * var(--text-scale)); color: var(--ink-muted); }
+.ftir-meta select { font: inherit; color: inherit; background: transparent; border: 1px solid var(--ink-border); border-radius: 4px; padding: 0 2px; }
+.ftir-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: calc(11.5px * var(--text-scale)); color: var(--ink-text); margin: 2px 0 4px; }
+.ftir-legend i { display: inline-block; width: 16px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 5px; }
+.ftir-legend i.dashed { border-top-style: dashed; }
+.ftir-more { font-size: calc(11.5px * var(--text-scale)); color: var(--ink-muted); margin-top: 4px; }
+.ftir-more summary { cursor: pointer; }
+.ftir-more p { margin: 4px 0; }
 .spectrum-modal::backdrop { background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(2px); }
 .spectrum-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 14px; }
 .spectrum-modal-head h2 { margin: 0; font-size: calc(18px * var(--text-scale)); }

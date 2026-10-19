@@ -10,6 +10,10 @@ PATH = Path(__file__).resolve().parents[1] / 'gallery/data/export_spartan_networ
 spec = importlib.util.spec_from_file_location('spartan_network_export', PATH)
 export = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(export)
+CODEC = Path(__file__).resolve().parents[1] / 'gallery/data/spectrum_codec.py'
+codec_spec = importlib.util.spec_from_file_location('spectrum_codec', CODEC)
+codec = importlib.util.module_from_spec(codec_spec)
+codec_spec.loader.exec_module(codec)
 
 
 def scan(values, first=4000, last=500, scale=1):
@@ -85,7 +89,7 @@ def test_network_package_keeps_repeats_missing_records_and_filter_types_separate
     (data / 'spartan_reference.json').write_text(json.dumps(dict(rows=chemistry, fields=['EC (FTIR)', 'HIPS Fabs'], field_units={})))
     (data / 'filters.json').write_text(json.dumps(dict(rows=chemistry)))
     (data / 'spartan_map.json').write_text(json.dumps(dict(sites=[dict(code='ETAD', name='Addis Ababa', lat=9, lon=39)])))
-    export.build(ftir, hips, data)
+    export.build(ftir, hips, data, baselines_dir=tmp_path / 'no-baselines')
     index = json.loads((data / 'spartan_network/index.json').read_text())
     site = index['sites'][0]
     rows = json.loads(gzip.decompress((data / site['filters']).read_bytes()))['rows']
@@ -99,6 +103,24 @@ def test_network_package_keeps_repeats_missing_records_and_filter_types_separate
     assert native['spectra']['ETAD-0002']['analyses'][0]['filter_type'] == 'PM10'
     assert len(native['hips']['ETAD-0001']) == 1  # reference reading never masquerades as a sample
     entry = native['spectra']['ETAD-0001']
-    values = np.frombuffer(gzip.decompress((data / entry['file']).read_bytes()), dtype='<f4')
-    np.testing.assert_allclose(values, np.log10(2), atol=1e-7)
-    assert [a['offset'] for a in entry['analyses']] == [0, 2]
+    body = gzip.decompress((data / entry['file']).read_bytes())
+    raws = [a['series']['raw'] for a in entry['analyses']]
+    assert [r['offset'] for r in raws] == [0, 8]  # bytes: two 2-point traces of 4-byte steps
+    for r in raws:
+        np.testing.assert_allclose(codec.decode(body, r, r['offset']), np.log10(2), atol=1e-8)
+    assert all(set(a['series']) == {'raw'} for a in entry['analyses'])  # no baselines folder: raw only
+    assert index['baselines']['airspec'] is None and index['baselines']['vibes'] is None
+
+
+def test_spectrum_codec_round_trips_within_half_a_step_and_keeps_gaps():
+    rng = np.random.default_rng(0)
+    y = np.cumsum(rng.normal(0, 1e-3, 2500)) + 0.3
+    y[[0, 1, 700, 701, 2499]] = np.nan
+    body, desc = codec.encode(y)
+    assert len(body) == 4 * len(y)
+    assert desc['nan'] == [[0, 2], [700, 2], [2499, 1]]
+    back = codec.decode(body, desc)
+    np.testing.assert_array_equal(np.isnan(back), np.isnan(y))
+    assert np.nanmax(np.abs(back - y)) <= codec.DEFAULT_STEP / 2 + 1e-15
+    coarse, d = codec.encode(y, step=1e-7)
+    assert np.nanmax(np.abs(codec.decode(coarse, d) - y)) <= 5e-8 + 1e-15

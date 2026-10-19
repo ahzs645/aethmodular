@@ -1113,11 +1113,31 @@ for source provenance and coverage.
 The chart site picker uses `public/data/spartan_network/index.json`, a small
 site/coverage directory. Only the selected sites' compressed filter tables load.
 Opening a filter loads that site's native record directory and that filter's
-compressed float32 spectrum, independently of its chemistry. All spectra stay
-at native resolution; repeat analyses are selectable. The existing Addis
-baseline-corrected spectra remain a separate result from the frozen runs.
-For Addis filter drawers, expand “Baseline-corrected spectrum” to load those
-larger corrected-trace archives; they are not requested merely to see a raw spectrum.
+spectrum file, independently of its chemistry. All spectra stay at native
+resolution; repeat analyses are selectable. The drawer's **FTIR spectrum** block
+switches between Raw, Spline (AIRSpec), VIBES and Both; the corrections are
+precomputed for every analysis (below), never fitted in the browser. For Addis
+filters, “Calibration-run spectrum” (collapsed) still loads the frozen runs'
+corrected traces, 10 cm⁻¹ bins, the ones the calibration used.
+
+**Stored traces** (`gallery/data/spectrum_codec.py`, decoded by `lib/spartan.ts`):
+integer steps of 1e-8 absorbance, stored as differences from the previous point,
+with each 32-bit difference split into four byte planes, then gzip. The rounding
+(≤ 5e-9) is below float32's own spacing, and a file is about half the size of
+float32: measured on 400 spectra, 10.6 KB → 5.5 KB per filter (1e-7 steps would give
+4.3 KB with rounding still ~40× below the point noise; `--step 1e-7`). Gaps are kept
+as runs. Each analysis carries `series.raw`, and where the baseline run has it,
+`series.airspec_baseline` (native grid, 1425–4000 cm⁻¹; corrected = raw − baseline)
+and `series.vibes_corrected` (on the VIBES background's 2,722-point grid, given in
+`index.json` `baselines.vibes.grid`).
+
+**Baselines** come from `research/ftir_hips_chem/workflows/network_baselines_20261019.py`:
+AIRSpec (APRLssb spline, df 6/4) on each native grid, locally (~2 min for all
+4,452 analyses); VIBES with the gallery's saved background (87 blanks, rank 70; no
+refit), after averaging each native spectrum onto that background's grid, on a
+Colab VM. The exporter picks them up from that run's folder when present and
+checks each against its spectrum's length. Non-Addis VIBES traces use a background
+learned from IMPROVE and Addis blanks, which the drawer says.
 
 Configure the unpacked source folders through `AETHMODULAR_SPARTAN_FTIR_BUNDLE`
 and `AETHMODULAR_SPARTAN_HIPS_BUNDLE` in the gitignored repo `.env`, then run:
@@ -1150,8 +1170,8 @@ Filter counts are distinct from non-null measurement or matched-pair counts.
 Measured files for this snapshot: the default four sites' filter payloads total
 about 173 KB compressed. The previous monolithic network reference is 4.44 MB
 as JSON, or about 701 KB gzipped: the default site transfer is about 75% smaller
-when comparing compressed sizes. All sites' filter payloads total about 730 KB; a median full-resolution
-filter spectrum is about 9 KB compressed. These are data-transfer sizes, not a
+when comparing compressed sizes. All sites' filter payloads total about 730 KB; a filter's spectrum
+file (raw plus AIRSpec) is about 7 KB compressed, 32 MB for the network. These are data-transfer sizes, not a
 page load-time benchmark. Calibration exports load separately after the initial
 filter view and only on pages that use them.
 
