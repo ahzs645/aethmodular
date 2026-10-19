@@ -1,4 +1,5 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
+import { PAPER_COLORS, PAPER_ORDER, paperSeasonOf } from '@/lib/pmfPaper'
 import { fieldHelp } from '@/lib/glossary'
 import { seasonOnly } from '@/lib/seasons'
 import { chemText } from '@/lib/format'
@@ -346,24 +347,34 @@ export function SampleDrawer({
   )
 }
 
-/** The filter's PMF day: its dominant source and each factor's share, where its site has a PMF solution. */
+/**
+ * The filter's PMF day: its dominant source, the day's bar from the PMF paper's Figure 7 (the
+ * sources stacked in the paper's order and colours) and each factor's share, with the paper's
+ * season for the day. Shown where the site has a PMF solution.
+ */
 function PmfDay({ row, meta }: { row: FilterRow; meta: MetaFile }) {
   const sources = meta.pmf_sources ?? []
   const label = row[PMF_SOURCE]
   if (!sources.length || typeof label !== 'string' || label === NO_PMF) return null
-  const shares = sources.map((s) => ({ ...s, v: row[pmfShareField(s.name)] })).filter((s): s is typeof s & { v: number } => typeof s.v === 'number' && Number.isFinite(s.v))
+  const colour = (name: string, fallback: string) => PAPER_COLORS[name] ?? fallback
+  const shares = sources.map((s) => ({ ...s, color: colour(s.name, s.color), v: row[pmfShareField(s.name)] })).filter((s): s is typeof s & { v: number } => typeof s.v === 'number' && Number.isFinite(s.v))
     .sort((a, b) => b.v - a.v)
   if (!shares.length) return null
-  const dominant = meta.pmf_groups?.find((g) => g.name === label)
+  const stack = [...shares].sort((a, b) => PAPER_ORDER.indexOf(a.name) - PAPER_ORDER.indexOf(b.name))
+  const total = shares.reduce((t, s) => t + s.v, 0) || 1
+  const season = paperSeasonOf(row.date)
   return (
     <section className="drawer-section">
-      <h3>PMF sources on this day</h3>
+      <h3>PMF sources on this day{season && <span className="pmf-season" title="The PMF paper's season for this date"><span className="pmf-dot" style={{ background: season.color }} />{season.name}</span>}</h3>
       <p className="pmf-dominant">
-        Dominant: <span className="pmf-dot" style={{ background: dominant?.color ?? INK.neutral }} /> <strong>{label}</strong> · {fmt(shares[0].v * 100, 0)} % of the PMF factors' total
+        Dominant: <span className="pmf-dot" style={{ background: colour(label, INK.neutral) }} /> <strong>{label}</strong> · {fmt(shares[0].v * 100, 0)} % of the PMF factors' total
       </p>
+      <div className="pmf-daybar" role="img" aria-label={`The day's sources: ${stack.map((s) => `${s.name} ${fmt(s.v * 100, 0)} %`).join(', ')}`}>
+        {stack.map((s) => <span key={s.name} style={{ width: `${(s.v / total) * 100}%`, background: s.color }} title={`${s.name}: ${fmt(s.v * 100, 1)} %`} />)}
+      </div>
       <div className="pmf-shares">
         {shares.map((s) => <div key={s.name} className="pmf-share" title={`${s.name}: ${fmt(s.v * 100, 1)} %`}>
-          <span className="pmf-share-name">{s.name}</span>
+          <span className="pmf-share-name"><span className="pmf-dot" style={{ background: s.color }} />{s.name}</span>
           <span className="pmf-share-bar"><span style={{ width: `${Math.max(1, s.v * 100)}%`, background: s.color }} /></span>
           <span className="pmf-share-v">{fmt(s.v * 100, 0)} %</span>
         </div>)}

@@ -51,6 +51,8 @@ export function useTooltip(wrapRef: RefObject<HTMLElement>, { large = false }: {
   useLayoutEffect(() => {
     const el = boxRef.current
     if (!tip || !el) return
+    // measure at the window's left edge, where nothing squeezes it, then place it
+    Object.assign(el.style, { left: '0px', top: '0px', right: 'auto', bottom: 'auto' })
     const r = el.getBoundingClientRect(), W = window.innerWidth, H = window.innerHeight
     let left = tip.x + GAP
     if (left + r.width > W - MARGIN) left = tip.x - GAP - r.width

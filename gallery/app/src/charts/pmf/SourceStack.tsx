@@ -4,7 +4,7 @@ import { SeasonBands, timeSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { useChartOptions, type OptionContext } from '@/lib/chartOptions'
-import { PAPER_COLORS, PAPER_ORDER, PAPER_SEASONS } from '@/lib/pmfPaper'
+import { PAPER_COLORS, PAPER_ORDER, PAPER_SEASONS, paperSeasonBands, paperSeasonOf } from '@/lib/pmfPaper'
 import { Legend, toggleIn, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -47,8 +47,8 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
     { key: 'mode', label: 'Scale', choices: MODES, default: 'Relative (%)' },
     { key: 'shape', label: 'Shape', choices: SHAPES.map((v) => ({ value: v, when: v === 'Streamgraph' ? (c: OptionContext) => c.mode !== 'Relative (%)' : undefined })), default: 'Stacked',
       title: 'Daily bars: one bar per sampling day on the date axis (the PMF paper\'s Figure 7). Streamgraph (absolute scale): wiggle offset, inside-out order — no baseline, better shape' },
-    { key: 'calendar', label: 'Seasons', choices: CALENDARS, default: 'Season calendar', style: 'select', title: 'The strip along the top: the sidebar\'s season calendar, or the PMF paper\'s four seasons' },
-    { key: 'palette', label: 'Colours', choices: PALETTES, default: 'Gallery', title: 'Paper: the PMF paper\'s source colours and stacking order' },
+    { key: 'calendar', label: 'Seasons', choices: CALENDARS, default: 'Paper (four seasons)', style: 'select', title: 'The strip along the top: the sidebar\'s season calendar, or the PMF paper\'s four seasons' },
+    { key: 'palette', label: 'Colours', choices: PALETTES, default: 'Paper', title: 'Paper: the PMF paper\'s source colours and stacking order' },
     { key: 'count', node: () => <span className="control">{rows.length} filters · {pmf.site_name}</span> },
   ])
   const mode = o.values.mode as (typeof MODES)[number]
@@ -61,6 +61,8 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
   const labels = ordered.map((s) => s.label).filter((l) => !hidden.has(l))
   const colorOf = useMemo(() => new Map(pmf.sources.map((s) => [s.label, paper ? PAPER_COLORS[s.label] ?? s.color : s.color])), [pmf.sources, paper])
   const paperSeasons = o.values.calendar === 'Paper (four seasons)'
+  // the export keys the dominant source (polluted_marine); readers see its name
+  const labelOfKey = (k: string | null | undefined) => pmf.sources.find((s) => s.key === k)?.label ?? k ?? '—'
 
   // Season filtering and the active calendar are applied upstream by the
   // global subset bar, so every tab means the same thing by "Kiremt".
@@ -102,7 +104,7 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
 
   const seasonBands = useMemo(() => {
     if (!rows.length) return []
-    return timeSeasonBands(x, paperSeasons ? PAPER_SEASONS : meta.seasons, innerW)
+    return paperSeasons ? paperSeasonBands(x, innerW) : timeSeasonBands(x, meta.seasons, innerW)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, innerW, meta.seasons, paperSeasons])
   // a bar per sampling day: three-quarters of the typical spacing between samples, so gaps read as gaps
@@ -116,17 +118,17 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
     fields: [
       ['season', near.season],
       ...labels.map((l): [string, string] => [l, `${near.fraction[l] !== null ? (near.fraction[l]! * 100).toFixed(1) + ' %' : '—'}${near.ugm3[l] !== null ? ` · ${fmt(near.ugm3[l], 2)} µg/m³` : ''}`]),
-      ['dominant source', near.dominant_source ? `${near.dominant_source} (${((near.dominant_fraction ?? 0) * 100).toFixed(0)} %)` : null],
+      ['dominant source', near.dominant_source ? `${labelOfKey(near.dominant_source)} (${((near.dominant_fraction ?? 0) * 100).toFixed(0)} %)` : null],
     ],
   })
   const tipOf = (near: (typeof rows)[number]) => [
-    `${near.date} · ${seasonOnly(String(near.season ?? ''))}`,
+    `${near.date} · ${paperSeasons ? paperSeasonOf(near.date)?.name ?? '' : seasonOnly(String(near.season ?? ''))}`,
     ...labels.map((l) => {
       const f = near.fraction[l]
       const a = near.ugm3[l]
       return `${l}: ${f !== null ? (f * 100).toFixed(1) + ' %' : '—'}${a !== null ? ` (${fmt(a, 2)} µg/m³)` : ''}`
     }),
-    `dominant: ${near.dominant_source ?? '—'} ${near.dominant_fraction !== null ? `(${(near.dominant_fraction * 100).toFixed(0)} %)` : ''}`,
+    `dominant: ${labelOfKey(near.dominant_source)} ${near.dominant_fraction !== null ? `(${(near.dominant_fraction * 100).toFixed(0)} %)` : ''}`,
     'click for the filter record',
   ]
 
@@ -185,8 +187,8 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
           highlighted={hover}
           note={paperSeasons ? undefined : 'top strip = selected season calendar'}
         />
-        {paperSeasons && <div className="legend">{PAPER_SEASONS.map((s) => <span key={s.name} className="legend-item"><span className="swatch square" style={{ background: s.color }} />{s.name}</span>)}
-          <span className="legend-note">the PMF paper's seasons (read off its Figure 7)</span></div>}
+        {paperSeasons && <div className="legend">{PAPER_SEASONS.map((s) => <span key={s.name} className="legend-item" title={`${s.name}: ${s.note} 2023`}><span className="swatch square" style={{ background: s.color }} />{s.name}</span>)}
+          <span className="legend-note">the PMF paper's seasons, set from 2023 precipitation (hover a season for its dates)</span></div>}
         {tip.node}
       </div>
     </ChartFrame>

@@ -31,8 +31,8 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
   const [mode, setMode] = useState<(typeof MODES)[number]>('Relative (%)')
   const [threshold, setThreshold] = useState('30')
   // as on the stacked chart: the sidebar's calendar or the PMF paper's four seasons; gallery or paper colours
-  const [calendar, setCalendar] = useState<'Season calendar' | 'Paper (four seasons)'>('Season calendar')
-  const [palette, setPalette] = useState<'Gallery' | 'Paper'>('Gallery')
+  const [calendar, setCalendar] = useState<'Season calendar' | 'Paper (four seasons)'>('Paper (four seasons)')
+  const [palette, setPalette] = useState<'Gallery' | 'Paper'>('Paper')
   const paperSeasons = calendar === 'Paper (four seasons)', paper = palette === 'Paper'
   const lg = useLegend()
 
