@@ -69,6 +69,10 @@ historical presentation decks remain tracked pending retention review.
 - [`commands.md`](commands.md): stable diagnostics, notebook, pipeline,
   SPARTAN, and research-builder commands.
 
+- [`spartan-network-data-pulls.md`](spartan-network-data-pulls.md): Davis FTIR
+  and HIPS exports, public ChemSpec refresh, coverage reconciliation, and
+  archive verification.
+
 - [`filter-optics-reference.md`](filter-optics-reference.md): SPARTAN PTFE
   filter spec (PT25DMCAN-PF03A, 3 μm pore, FEP ring), SPARTAN SSR + HIPS
   optical chain (MAC = 10 m² g⁻¹, public BC = Fabs / 10), IMPROVE filter +

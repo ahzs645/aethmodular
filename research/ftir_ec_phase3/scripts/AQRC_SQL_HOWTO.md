@@ -1,5 +1,12 @@
 # How to query the AQRC SQL Server directly (cookbook)
 
+**Current network procedure (2026-10-19):** use
+[SPARTAN network data pulls](../../../docs/spartan-network-data-pulls.md).
+`Networks_1_0` is now readable and contains SPARTAN FTIR and HIPS data. The
+access limitations and connection examples below describe the August discovery
+session; use the current guide's external connection configuration and export
+checks for new work.
+
 Established 2026-08-20. This is the practical guide; the schema knowledge and
 the investigation trail live in [AQRC_DB_NOTES.md](AQRC_DB_NOTES.md), and the
 ready-made ETBI script is [get_etbi_spectra.ps1](get_etbi_spectra.ps1).

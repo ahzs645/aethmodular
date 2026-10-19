@@ -1,0 +1,376 @@
+# SPARTAN network exports: FTIR, HIPS and public ChemSpec
+
+Working procedure and findings from the Davis session on 2026-10-19. This is
+the current network workflow; the August SQL notes are historical. Database
+reads were SELECT-only. Exports were left in Davis's Downloads directory for
+the user to place in the archive. Nothing was published or added to the gallery.
+
+## Which source answers which question?
+
+| Source | Grain and purpose | Important limitation |
+|---|---|---|
+| Public `ChemSpecPM25` / `ChemSpecPM10` | Filter × parameter × method; concentrations, units, MDLs, uncertainty, flags | Public products, not the raw spectra or HIPS instrument observations |
+| `spartan.Filters`, `spartan.Sites` | Media identity, external filter ID, site, filter type, sampling metadata | A registered filter need not have a completed measurement |
+| `ftir.SampleAnalysis`, `ftir.Scan` | Analysis and referenced sample/background scans | Repeats are real records; scans are native binary single-beam data |
+| `hips.SampleAnalysis`, `hips.Results` | Analysis and sample/reference instrument readings | Raw T/R readings are not official Fabs/BC concentrations |
+| Remaining `hips.*` tables | Calibration, instruments, QC types/flags | Empty source tables are possible and must be reported as empty |
+| `SPARTAN_HIPS_Batch1-51.v2.csv` | Lab-delivered HIPS optical products and applied calibration lines | Older delivery; preserve alongside a new raw pull |
+
+Public EC/OC are FTIR-derived (method codes 217/218). They are not TOR, and
+the public ChemSpec carbon and in-house FTIR carbon must not be counted as
+independent measurements. Public BC methods 219/221 are HIPS; method 220 is
+estimated from the HIPS–SSR curve. Keep these sources separate.
+
+## Local ChemSpec mirror
+
+The repo already has the public files under
+`data/spartan/raw/FilterBased/{ChemSpecPM25,ChemSpecPM10}/` (gitignored).
+`scripts/common/spartan_io.py` owns the paths, header reader and ID normalizer.
+Do not use plain `read_csv` without skipping the comment header.
+
+```sh
+uv run aeth doctor
+uv run aeth spartan pull --check-updates
+# If there are changes, synchronize and regenerate the inventory:
+uv run aeth spartan pull
+# Offline inventory rebuild:
+uv run aeth spartan pull --skip-download
+```
+
+The pull command covers other public SPARTAN products too. Its downloader
+compares SHA256 of the response with the local file and installs changed files
+atomically. `research/spartan/inventory/overview.csv` records object metadata.
+Use `gallery/data/export_spartan_reference.py` only when intentionally rebuilding
+the gallery after reviewing changes; an archive pull does not require rebuilding it.
+
+On 2026-10-19 all **74 ChemSpec files** (37 PM2.5 + 37 PM10) were compared with
+the public objects byte for byte and were unchanged. Their sizes were
+48,549,807 and 2,821,955 bytes respectively. PM2.5 had 160,677 parameter rows,
+4,449 distinct filter IDs, and 3,581 filters with public EC/OC at 32 sites.
+The gallery's 3,581-filter count is therefore a carbon-coverage count, not the
+size of the entire public chemistry population.
+
+Within those 3,581 EC filters, 3,375 have a non-null public BC value from direct
+HIPS methods, 198 have a HIPS–SSR curve estimate, and eight have neither public
+BC product. These are distinct filter-ID intersections with method codes
+retained, not a claim of available raw instrument readings. The counts refer to
+the current public mirror; query the new native HIPS export separately.
+
+Public source: [SPARTAN data directory](https://www.spartan-network.org/data),
+with the CSVs obtained from its public `GroupByProduct/FilterBased/` S3 mirror
+by `scripts/pipelines/spartan_pull_and_summarize.py`. Carbon/method provenance
+is also documented in
+[`research/spartan_ec_2026_06_16/README.md`](../research/spartan_ec_2026_06_16/README.md).
+
+## Connect on Davis
+
+Use the Windows account with existing database read access and the required
+institutional network/VPN. Windows PowerShell's built-in .NET
+`System.Data.SqlClient` worked; no ODBC installation was needed.
+
+Keep the SQL endpoint and machine configuration outside version control. Set
+`AETHMODULAR_AQRC_CONNECTION_STRING` in the Windows session from the local
+configuration, using `Database=Networks_1_0`, `Integrated Security=SSPI` and
+`Connect Timeout=60`. Do not print or commit its value. The October session
+connected without a certificate-validation override. A pre-login timeout
+resolved on retry with the longer timeout; do not treat a timeout as evidence
+that the database is empty or change TLS settings to address it.
+
+```powershell
+$ErrorActionPreference = 'Stop'
+if (-not $env:AETHMODULAR_AQRC_CONNECTION_STRING) {
+    throw 'Set the connection string in this Windows session first.'
+}
+$c = New-Object System.Data.SqlClient.SqlConnection(
+    $env:AETHMODULAR_AQRC_CONNECTION_STRING)
+$c.Open()
+
+function Q([string]$sql) {
+    $cmd = $c.CreateCommand()
+    $cmd.CommandText = $sql
+    $cmd.CommandTimeout = 600
+    $dt = New-Object System.Data.DataTable
+    (New-Object System.Data.SqlClient.SqlDataAdapter($cmd)).Fill($dt) | Out-Null
+    return ,$dt
+}
+
+function E($dt, [string]$path) {
+    $rows = foreach ($r in $dt.Rows) {
+        $p = [ordered]@{}
+        foreach ($cl in $dt.Columns) {
+            $v = $r[$cl]
+            if ($v -is [DBNull]) { $v = '' }
+            elseif ($v -is [byte[]]) { $v = [Convert]::ToBase64String($v) }
+            elseif ($v -is [datetime]) { $v = $v.ToString('o') }
+            $p[$cl.ColumnName] = $v
+        }
+        [pscustomobject]$p
+    }
+    if ($dt.Rows.Count) {
+        $rows | Export-Csv $path -NoTypeInformation -Encoding UTF8
+    } else {
+        # Preserve the schema even when the source has zero rows.
+        $header = ($dt.Columns | ForEach-Object {
+            '"' + $_.ColumnName.Replace('"', '""') + '"'
+        }) -join ','
+        Set-Content $path $header -Encoding UTF8
+    }
+    if (@(Import-Csv $path).Count -ne $dt.Rows.Count) {
+        throw "CSV row mismatch: $path"
+    }
+}
+```
+
+`return ,$dt` matters: PowerShell otherwise enumerates the DataTable into rows,
+and downstream code can lose its column schema. Do not export `byte[]` as
+`System.Byte[]`; the base64 conversion is required. ISO timestamps avoid
+locale-dependent dates. Empty strings represent SQL NULL in these CSVs, so
+consult the saved SQL schema when restoring types.
+
+## Inventory before exporting
+
+Save `INFORMATION_SCHEMA.COLUMNS` for `spartan`, `ftir` and `hips`, including
+column order and types. Discover tables before assuming an old schema still
+applies. In particular, SPARTAN HIPS is under `hips.*`, not IMPROVE's
+`analysis.Results`. `hips.Results` joins to
+`hips.SampleAnalysis.Id` through `SampleAnalysisId`; it has no direct MediaId.
+
+Start with one row per registered media, using correlated counts or aggregated
+subqueries. Joining both analysis tables directly multiplies repeated analyses.
+
+```sql
+SELECT s.SiteCode, f.ExternalFilterId, f.MediaId, f.ExternalFilterType,
+       f.SamplingStartDate,
+       (SELECT COUNT(*) FROM ftir.SampleAnalysis a
+        WHERE a.MediaId = f.MediaId) AS FtirAnalyses,
+       (SELECT COUNT(*) FROM hips.SampleAnalysis a
+        WHERE a.MediaId = f.MediaId) AS HipsAnalyses,
+       (SELECT COUNT(*) FROM hips.SampleAnalysis a
+        JOIN hips.Results r ON r.SampleAnalysisId = a.Id
+        WHERE a.MediaId = f.MediaId AND r.ResultTypeId = 0) AS HipsSampleResults
+FROM spartan.Filters f
+JOIN spartan.Sites s ON s.Id = f.SiteId;
+```
+
+Resolve `ResultTypeId` from `hips.ResultTypes` on every pull; 0 meant Sample
+and 1 meant Reference in the inspected schema. A HIPS analysis row without a
+sample result is not evidence of a measured optical value.
+
+## Export FTIR without losing repeats or background scans
+
+Create a fresh timestamped output folder. Export all `spartan.Filters` and
+`spartan.Sites`, then, per site with FTIR analyses:
+
+1. `<SITE>_filters.csv`: filter metadata for that site.
+2. `<SITE>_ftir_analysis.csv`: **every** analysis whose MediaId belongs to it.
+3. `<SITE>_scans_base64.csv`: the union of SampleScanId and BackgroundScanId
+   referenced by those analyses, preserving all scan columns and base64 Data.
+
+The SELECTs in
+[`get_spartan_spectra.ps1`](../research/ftir_ec_phase3/scripts/get_spartan_spectra.ps1)
+show the established join path. Use the connection and export helpers above
+instead of its older hardcoded connection settings. Derive the site list from
+the database inventory, never from the four focus sites or from stale console
+variables. Parameterize site predicates in reusable implementations.
+
+Verify analysis counts against the starting inventory, unique analysis and scan
+IDs, and that **every referenced scan ID** is present. Keep PM2.5, PM10, field
+blanks, lab blanks and repeat analyses identifiable; do not collapse MediaIds
+in the source archive.
+
+The native pull is not the 2,722-point absorbance table. The existing
+[`build_spartan_target.py`](../research/ftir_ec_phase3/scripts/build_spartan_target.py)
+decodes little-endian float32 scans, forms `-log10(sample/background)` and
+interpolates onto the calibration grid. It selects among repeated MediaIds:
+review/change that selection before using it for an all-analysis archive.
+Validate scaling, grid endpoints/length, finite values and agreement with a known
+Addis spectrum before generating gallery-ready spectra. Keep source and derived
+artifacts separate.
+
+## Export the complete HIPS source
+
+Export all current base tables in the `hips` schema, rather than only the
+flattened drift-diagnostic CSV. The October schema had 11 tables:
+`AnalysisFlags`, `AnalysisTypes`, `Calibrations`, `CalibrationSetFilters`,
+`CalibrationSets`, `Instruments`, `QcSamples`, `QcSampleTypes`, `Results`,
+`ResultTypes`, `SampleAnalysis`.
+
+```powershell
+$out = Join-Path $HOME ('Downloads\spartan_hips_network_' +
+    (Get-Date -Format yyyyMMdd_HHmmss))
+New-Item $out -ItemType Directory | Out-Null
+$tables = Q @"
+SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_SCHEMA = 'hips' AND TABLE_TYPE = 'BASE TABLE'
+ORDER BY TABLE_NAME
+"@
+$counts = foreach ($t in $tables.Rows) {
+    $name = $t.TABLE_NAME
+    $dt = Q ('SELECT * FROM hips.[' + $name.Replace(']', ']]') + ']')
+    E $dt (Join-Path $out ('hips_' + $name + '.csv'))
+    [pscustomobject]@{Table = $name; Rows = $dt.Rows.Count}
+}
+$counts | Export-Csv (Join-Path $out 'counts.csv') -NoTypeInformation
+E (Q 'SELECT * FROM spartan.Filters') (Join-Path $out 'spartan_Filters.csv')
+E (Q 'SELECT * FROM spartan.Sites') (Join-Path $out 'spartan_Sites.csv')
+```
+
+Also save the schema and filter inventory. Export a convenient joined view:
+
+```sql
+SELECT s.SiteCode, f.ExternalFilterId, f.ExternalLotId, f.SamplingStartDate,
+       a.MediaId, r.*
+FROM hips.Results r
+JOIN hips.SampleAnalysis a ON a.Id = r.SampleAnalysisId
+JOIN spartan.Filters f ON f.MediaId = a.MediaId
+JOIN spartan.Sites s ON s.Id = f.SiteId;
+```
+
+Retaining the unjoined tables preserves calibration/QC records that would be
+lost by restricting the entire schema to registered SPARTAN filters. Check
+orphan result/analysis keys explicitly. Keep the older delivered HIPS CSV:
+it contains Fabs, MDL, uncertainty and applied lines that the joined raw data
+does not replace. `reconstruct_hips_fabs.py` produces provisional values with
+assumptions, not a new official lab release.
+
+## Reconcile cohorts and verify the archive
+
+Compare physical filter keys with the public PM2.5 cohort, preserving original
+IDs. Use `base_filter_id` / `add_base_filter_id` or
+`config.BASE_FILTER_ID_PATTERN`; the operational public pipeline exposes the
+equivalent `common.spartan_io.normalize_fid`. Keep PM10 and blanks separate.
+Compare coverage by method/parameter, not only by site presence or row totals.
+
+Save one row per public filter with public EC/OC/BC method coverage, database
+presence, FTIR analysis/paired-scan coverage and HIPS sample-result coverage.
+Save the anti-join lists and per-site rollup as well. Missing records are a
+source gap to investigate, not a reason to manufacture a measurement or silently
+drop the filter. A matched raw result still does not establish final QC-passed
+Fabs availability.
+
+After placing the unpacked HIPS bundle on the analysis machine, the companion
+[`audit_spartan_network_parity.py`](../research/ftir_ec_phase3/scripts/audit_spartan_network_parity.py)
+compares its `filter_inventory.csv` and `spartan_hips_raw_all.csv` with the
+local public mirror. Set `AETHMODULAR_SPARTAN_HIPS_BUNDLE` in the session to
+the chosen unpacked folder, then run:
+
+```sh
+uv run python research/ftir_ec_phase3/scripts/audit_spartan_network_parity.py \
+  "$AETHMODULAR_SPARTAN_HIPS_BUNDLE" \
+  --out research/ftir_ec_phase3/output/tables/spartan_network_parity
+```
+
+It writes filter parity, gaps, per-site counts and a source-hash receipt.
+It counts distinct sample-analysis IDs for HIPS, keeps reference-only records
+from masquerading as samples, and rejects ambiguous PM2.5 metadata keys.
+It tests FTIR analysis presence; scan-reference completeness is the separate
+export check above. Its fixture verification covered repeats, reference-only
+rows, missing metadata and separation of direct HIPS from SSR estimates.
+
+Before compressing, re-import CSVs for row counts and write a manifest with
+relative filenames, sizes, SHA256, query text, UTC retrieval time and database
+name (no endpoint, account or secrets). Include zero-row table counts. Create a
+new ZIP, then read **every ZIP entry as a stream** and compare its SHA256 with
+the original file. Windows `Compress-Archive` may use backslashes in entry
+names: normalize `\` to `/` before matching manifest names. Save a separate
+SHA256 checksum for the ZIP itself. Close the SQL connection in `finally`.
+
+Leave the ZIP, checksum and unpacked folder together until the user chooses the
+archive destination. Once moved, configure paths through `.env` / existing
+`data_paths` resolvers and record paths with `env.display_path()`; do not commit
+raw spectra, machine paths or account-specific Drive locations.
+
+## Windows App input lessons
+
+The remote terminal was usable through Windows App with Unicode keyboard input.
+Scancode input dropped Shift on this session (`$` became `4`, parentheses became
+digits); stop immediately if a harmless test command is corrupted. Clipboard
+paste also failed in this session. Click the terminal prompt first, send short
+commands, inspect the typed command, then press Return and inspect its output.
+Long simulated typing lost chunks. Use ASCII script text and a saved script file
+when available; a `param()` block belongs at the start of a script file and is
+not safe to paste into an already-running console. Escape cleared unfinished
+input. An unchanged screen does not establish command completion.
+
+## October 19 FTIR export receipt
+
+`spartan_ftir_network_20261019_072611.zip`, left in Davis Downloads:
+
+| Quantity | Count |
+|---|---:|
+| Sites with FTIR scans | 28 |
+| Registered filter metadata rows exported | 4,272 |
+| Distinct filters with FTIR analyses | 4,270 |
+| FTIR analyses, all with both scan IDs | 4,452 |
+| Per-site exported scan rows (sample + background) | 5,233 |
+| Unpacked source/audit bytes | 95,140,843 |
+| ZIP bytes | 55,739,025 |
+| Files verified inside ZIP | 88 |
+
+Scanned-media inventory: 3,517 PM2.5 filters / 3,685 analyses; 219 PM10 /
+222 analyses; 534 field blanks / 545 analyses. These sum to 4,270 media and
+4,452 analyses. The extra two metadata rows have no FTIR analysis. The native
+DB cohort and the 3,581 public-carbon filters are different populations.
+
+The old sizing argument `319 Addis spectra / 246 public filters` mixed cohorts.
+Only 267 of those existing Addis analyses match the 246 public filters, so the
+matched repeat factor is about 1.085, not 1.30. Existing staged FTIR pulls also
+existed for CHTS, INDH, USPA and ETBI; Addis was not the only spectra source.
+For storage estimates specify whether counting native scans, derived absorbance
+spectra, repeat analyses, or public physical filters. At 4,650 × 2,722 points,
+float32 values alone occupy 50,629,200 bytes; that is an estimate for a derived
+array, not the observed native archive size.
+
+## October 19 HIPS and parity findings
+
+The fresh export folder is `spartan_hips_network_20261019_074717` in Davis
+Downloads. It contains all 11 native HIPS base tables, the schema, full SPARTAN
+filter/site metadata, a joined raw HIPS view, the 74 public ChemSpec CSVs and
+their object index, and filter-level/per-site parity tables. It supplements the
+separate FTIR archive above. The joined HIPS view contains raw readings; final
+Fabs remains a separate delivered product.
+
+`spartan_hips_network_20261019_074717.zip` contains **99 files**; each ZIP
+entry was read back and its SHA256 matched to the source file. The unpacked
+folder and a `.zip.sha256.txt` checksum are beside it. Native CSV row counts
+were also checked against all 11 table counts, including the four empty tables.
+
+| Quantity | Count |
+|---|---:|
+| Native `hips.SampleAnalysis` rows (whole table) | 5,111 |
+| Native `hips.Results` rows (whole table) | 8,605 |
+| Result rows joined to registered SPARTAN filters | 7,180 |
+| SPARTAN sample readings / distinct sample analyses | 4,274 |
+| Distinct SPARTAN filters with sample readings, all types | 4,267 |
+| HIPS results without a parent analysis | 0 |
+| Public ChemSpec downloads with mismatched object MD5 | 0 / 74 |
+
+The older staged raw HIPS CSV had 6,876 result rows and 4,122 sample analyses;
+the new pull adds 304 result rows / 152 sample analyses by count. The whole native
+tables also preserve records outside the registered-SPARTAN join. Do not call
+the whole-table count a SPARTAN physical-filter count.
+
+The public EC cohort was reconciled against native PM2.5 metadata by normalized
+physical filter ID, not by approximate site totals:
+
+| Public EC cohort | Present in this native pull | Missing from this native pull |
+|---|---:|---:|
+| FTIR analysis | 2,754 | 827 |
+| HIPS sample reading | 2,753 | 828 |
+
+Denominator: 3,581 public EC filters. **Full raw-data parity is not established.**
+The database's complete available export is not the entire public cohort.
+Among sites with public EC, CADO (28), CALE (13), INKA (15), VNHN (12) and
+SGSU (13) have no matched native FTIR analysis or HIPS sample in this pull.
+Other sites also have partial coverage. `INDH-0280` has a matched native FTIR
+analysis but no native HIPS sample reading. See `public_ec_gaps.csv`,
+`public_ec_site_parity.csv`, `public_filter_parity.csv` and
+`parity_summary.json` inside the export for the exact missing cohort.
+
+Preserve those missing IDs for the next source request: locate additional lab
+deliveries or ask the database owner which source/import holds them. Do not
+replace the public HIPS product with a reconstructed raw-data value or infer
+that a public measurement did not happen because this database lacks its raw row.
+`hips.AnalysisFlags`, `hips.CalibrationSetFilters`, `hips.QcSamples` and
+`hips.QcSampleTypes` were empty in this source; an export cannot supply absent
+calibration-filter membership or QC history.

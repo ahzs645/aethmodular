@@ -1,5 +1,9 @@
 # AQRC database structure — mined from Sean's Shiny app code (2026-08-20)
 
+For current access, complete network exports, and cohort reconciliation, see
+[SPARTAN network data pulls](../../../docs/spartan-network-data-pulls.md)
+(2026-10-19). The initial access-denied findings below are historical.
+
 Source: the "FTIR Calibration" app zip Sean shared 2026-07-02, now at
 `My Drive/University/Research/Grad/FTIR Calibration/` (`global.R` +
 `R/selectorServer.R`). This is the "knowledge of the IMPROVE database
