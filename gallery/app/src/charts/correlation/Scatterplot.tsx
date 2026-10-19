@@ -382,6 +382,8 @@ function ScatterPanel({
     const brush = d3.brush<unknown>()
       .extent([[0, 0], [innerW, innerH]])
       .on('end', (ev: d3.D3BrushEvent<unknown>) => {
+        // the box is cleared below once the points are picked; that clear is not the reader's
+        if (!ev.sourceEvent) return
         if (!ev.selection) { onBrush(null); return }
         const [[x0, y0], [x1, y1]] = ev.selection as [[number, number], [number, number]]
         const ids = new Set<string>()
@@ -391,6 +393,8 @@ function ScatterPanel({
           if (px >= x0 && px <= x1 && py >= y0 && py <= y1) ids.add(p.row.id)
         }
         onBrush(ids.size ? ids : null)
+        // keep the picked points, not the rectangle: they stay highlighted on every chart
+        sel.call(brush.move, null)
       })
     sel.call(brush)
     styleBrush(sel)
