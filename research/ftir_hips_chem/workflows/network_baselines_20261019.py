@@ -44,6 +44,9 @@ HERE = Path(__file__).resolve()
 ROOT = HERE.parents[3]
 NET = ROOT / "gallery/app/public/data/spartan_network"
 OUT = ROOT / "research/ftir_hips_chem/output/tables/network_baselines_20261019"
+sys.path.insert(0, str(ROOT / "gallery/data"))
+from spectrum_codec import decode  # noqa: E402
+
 MODEL = ROOT / ("research/ftir_hips_chem/output/tables/vibes_colab_full500_rank85_resume_20261001/"
                 "persistent_results/full500-rank85-9345e818c61929fe/background_model.npz")
 TYPE_ORDER = {"PM2.5": 0, "FB": 1, "PM10": 2}   # PM2.5 first, so a partial run covers the charts' filters
@@ -60,9 +63,11 @@ def native_analyses():
         d = _gz_json(f)
         for key, s in sorted(d["spectra"].items()):
             buf = gzip.decompress((NET.parent / s["file"]).read_bytes())
-            y_all = np.frombuffer(buf, dtype="<f4")
             for a in s["analyses"]:
-                y = y_all[a["offset"]:a["offset"] + a["n"]].astype(float)
+                if "series" in a:   # schema 2: the compact codec (gallery/data/spectrum_codec.py)
+                    y = decode(buf, a["series"]["raw"], a["series"]["raw"]["offset"])
+                else:               # schema 1: float32, offsets in values
+                    y = np.frombuffer(buf, dtype="<f4")[a["offset"]:a["offset"] + a["n"]].astype(float)
                 wn = np.linspace(a["first"], a["last"], a["n"])
                 out.append(({**a, "code": d["code"], "filter_key": key, "file": s["file"]}, wn, y))
     return out
@@ -337,6 +342,8 @@ def compare(args):
                     v[(fa_wn > span[0] - 2) | (fa_wn < span[-1] + 2)] = np.nan
                     traces.append(v)
                 ours = np.nanmean(traces, axis=0)
+            if not np.isfinite(ours).any():   # not computed yet (a VM still running)
+                continue
             rows.append({"method": method, "media_id": media, "filter_id": c.get("filter_id"), "kind": c["kind"],
                          "analyses": len(mine), **_agree(ours, np.asarray(frozen[j], dtype=float))})
     r = pd.DataFrame(rows)
