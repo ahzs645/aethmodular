@@ -3,7 +3,7 @@ import { seasonOnly } from '@/lib/seasons'
 import { SeasonBands, timeSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
-import { useChartOptions } from '@/lib/chartOptions'
+import { useChartOptions, type OptionContext } from '@/lib/chartOptions'
 import { Legend, toggleIn, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -15,7 +15,25 @@ import type { MetaFile, PmfFile, PmfRow } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
 
 const MODES = ['Relative (%)', 'Absolute (µg/m³)'] as const
-const SHAPES = ['Stacked', 'Streamgraph'] as const
+const SHAPES = ['Stacked', 'Daily bars', 'Streamgraph'] as const
+const CALENDARS = ['Season calendar', 'Paper (four seasons)'] as const
+const PALETTES = ['Gallery', 'Paper'] as const
+/**
+ * The PMF paper's Figure 7 (daily contribution of sources to OM, Addis 2023): its four seasons,
+ * read off the figure's strip (First Dry Jan–Feb, Less Rainy Mar–Apr, More Rainy May–Sep, Second
+ * Dry Oct–Dec), its stacking order from the bottom, and its colours.
+ */
+const PAPER_SEASONS = [
+  { name: 'First Dry', months: [1, 2], color: '#f8cfa5' },
+  { name: 'Less Rainy', months: [3, 4], color: '#a8d8e8' },
+  { name: 'More Rainy', months: [5, 6, 7, 8, 9], color: '#5aaee8' },
+  { name: 'Second Dry', months: [10, 11, 12], color: '#f09a5a' },
+]
+const PAPER_ORDER = ['Fossil Fuel Combustion', 'Polluted Marine', 'Sea Salt Mixed', 'Wood Burning', 'Charcoal']
+const PAPER_COLORS: Record<string, string> = {
+  'Fossil Fuel Combustion': '#f4b6c2', 'Polluted Marine': '#e0191c', 'Sea Salt Mixed': '#0a14d0', 'Wood Burning': '#92e192', Charcoal: '#2e8b2e',
+}
+const DAY = 86_400_000
 
 /**
  * Stacked area / streamgraph — PMF source contributions over time.
@@ -41,14 +59,22 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
   // day, so a streamgraph would only wobble the baseline; it is offered on the absolute scale
   const o = useChartOptions('sourcestack', [
     { key: 'mode', label: 'Scale', choices: MODES, default: 'Relative (%)' },
-    { key: 'shape', label: 'Shape', choices: SHAPES, default: 'Stacked', hidden: 'Stacked', when: (c) => c.mode !== 'Relative (%)', title: 'Streamgraph: wiggle offset, inside-out order — no baseline, better shape' },
+    { key: 'shape', label: 'Shape', choices: SHAPES.map((v) => ({ value: v, when: v === 'Streamgraph' ? (c: OptionContext) => c.mode !== 'Relative (%)' : undefined })), default: 'Stacked',
+      title: 'Daily bars: one bar per sampling day on the date axis (the PMF paper\'s Figure 7). Streamgraph (absolute scale): wiggle offset, inside-out order — no baseline, better shape' },
+    { key: 'calendar', label: 'Seasons', choices: CALENDARS, default: 'Season calendar', style: 'select', title: 'The strip along the top: the sidebar\'s season calendar, or the PMF paper\'s four seasons' },
+    { key: 'palette', label: 'Colours', choices: PALETTES, default: 'Gallery', title: 'Paper: the PMF paper\'s source colours and stacking order' },
     { key: 'count', node: () => <span className="control">{rows.length} filters · {pmf.site_name}</span> },
   ])
   const mode = o.values.mode as (typeof MODES)[number]
   const { hidden, setHidden, dim, hover, setHover } = useLegend()
 
-  const labels = pmf.sources.map((s) => s.label).filter((l) => !hidden.has(l))
-  const colorOf = useMemo(() => new Map(pmf.sources.map((s) => [s.label, s.color])), [pmf.sources])
+  const paper = o.values.palette === 'Paper'
+  const bars = o.values.shape === 'Daily bars'
+  // the paper's order from the bottom (Fossil Fuel up to Charcoal) for its colours or its bars
+  const ordered = paper || bars ? [...pmf.sources].sort((a, b) => PAPER_ORDER.indexOf(a.label) - PAPER_ORDER.indexOf(b.label)) : pmf.sources
+  const labels = ordered.map((s) => s.label).filter((l) => !hidden.has(l))
+  const colorOf = useMemo(() => new Map(pmf.sources.map((s) => [s.label, paper ? PAPER_COLORS[s.label] ?? s.color : s.color])), [pmf.sources, paper])
+  const paperSeasons = o.values.calendar === 'Paper (four seasons)'
 
   // Season filtering and the active calendar are applied upstream by the
   // global subset bar, so every tab means the same thing by "Kiremt".
@@ -90,9 +116,33 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
 
   const seasonBands = useMemo(() => {
     if (!rows.length) return []
-    return timeSeasonBands(x, meta.seasons, innerW)
+    return timeSeasonBands(x, paperSeasons ? PAPER_SEASONS : meta.seasons, innerW)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, innerW, meta.seasons])
+  }, [rows, innerW, meta.seasons, paperSeasons])
+  // a bar per sampling day: three-quarters of the typical spacing between samples, so gaps read as gaps
+  const spacing = d3.median(rows.slice(1).map((r, i) => x(r.d) - x(rows[i].d))) ?? 6
+  const barW = Math.max(1.5, Math.min(18, spacing * 0.75, x(new Date(+rows[0]?.d + 3 * DAY)) - x(rows[0]?.d ?? new Date())))
+  const recordOf = (near: (typeof rows)[number]) => hl.openRecord({
+    id: near.id,
+    source: 'the PMF source stack',
+    site: 'Addis Ababa',
+    date: near.date,
+    fields: [
+      ['season', near.season],
+      ...labels.map((l): [string, string] => [l, `${near.fraction[l] !== null ? (near.fraction[l]! * 100).toFixed(1) + ' %' : '—'}${near.ugm3[l] !== null ? ` · ${fmt(near.ugm3[l], 2)} µg/m³` : ''}`]),
+      ['dominant source', near.dominant_source ? `${near.dominant_source} (${((near.dominant_fraction ?? 0) * 100).toFixed(0)} %)` : null],
+    ],
+  })
+  const tipOf = (near: (typeof rows)[number]) => [
+    `${near.date} · ${seasonOnly(String(near.season ?? ''))}`,
+    ...labels.map((l) => {
+      const f = near.fraction[l]
+      const a = near.ugm3[l]
+      return `${l}: ${f !== null ? (f * 100).toFixed(1) + ' %' : '—'}${a !== null ? ` (${fmt(a, 2)} µg/m³)` : ''}`
+    }),
+    `dominant: ${near.dominant_source ?? '—'} ${near.dominant_fraction !== null ? `(${(near.dominant_fraction * 100).toFixed(0)} %)` : ''}`,
+    'click for the filter record',
+  ]
 
   return (
     <ChartFrame
@@ -118,7 +168,13 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
               />
               <XAxis scale={x as any} y={innerH} format={(d: Date) => d3.timeFormat('%b %Y')(d)} tickCount={7} />
 
-              {stacked.map((layer) => (
+              {bars && stacked.map((layer) => (
+                <g key={String(layer.key)} fill={colorOf.get(String(layer.key)) ?? INK.muted} fillOpacity={dim(String(layer.key))}>
+                  {layer.map((d) => <rect key={d.data.id} x={x(d.data.d) - barW / 2} width={barW} y={y(d[1])} height={Math.max(0, y(d[0]) - y(d[1]))}
+                    style={{ cursor: 'pointer' }} onClick={() => recordOf(d.data)} onMouseMove={(e) => tip.show(e, tipOf(d.data))} onMouseLeave={tip.hide} />)}
+                </g>
+              ))}
+              {!bars && stacked.map((layer) => (
                 <path
                   key={String(layer.key)}
                   d={area(layer) ?? ''}
@@ -127,33 +183,8 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
                   stroke="#fff"
                   strokeWidth={0.4}
                   style={{ transition: 'd 0.35s', cursor: 'pointer' }}
-                  onClick={(e) => {
-                    const near = nearestTo(e)
-                    hl.openRecord({
-                      id: near.id,
-                      source: 'the PMF source stack',
-                      site: 'Addis Ababa',
-                      date: near.date,
-                      fields: [
-                        ['season', near.season],
-                        ...labels.map((l): [string, string] => [l, `${near.fraction[l] !== null ? (near.fraction[l]! * 100).toFixed(1) + ' %' : '—'}${near.ugm3[l] !== null ? ` · ${fmt(near.ugm3[l], 2)} µg/m³` : ''}`]),
-                        ['dominant source', near.dominant_source ? `${near.dominant_source} (${((near.dominant_fraction ?? 0) * 100).toFixed(0)} %)` : null],
-                      ],
-                    })
-                  }}
-                  onMouseMove={(e) => {
-                    const near = nearestTo(e)
-                    tip.show(e, [
-                      `${near.date} · ${seasonOnly(String(near.season ?? ''))}`,
-                      ...labels.map((l) => {
-                        const f = near.fraction[l]
-                        const a = near.ugm3[l]
-                        return `${l}: ${f !== null ? (f * 100).toFixed(1) + ' %' : '—'}${a !== null ? ` (${fmt(a, 2)} µg/m³)` : ''}`
-                      }),
-                      `dominant: ${near.dominant_source ?? '—'} ${near.dominant_fraction !== null ? `(${(near.dominant_fraction * 100).toFixed(0)} %)` : ''}`,
-                      'click for the filter record',
-                    ])
-                  }}
+                  onClick={(e) => recordOf(nearestTo(e))}
+                  onMouseMove={(e) => tip.show(e, tipOf(nearestTo(e)))}
                   onMouseLeave={tip.hide}
                 />
               ))}
@@ -161,13 +192,15 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
           </svg>
         )}
         <Legend
-          items={pmf.sources.map((s) => ({ label: s.label, color: s.color, shape: 'square' as const }))}
+          items={ordered.map((s) => ({ label: s.label, color: colorOf.get(s.label) ?? s.color, shape: 'square' as const }))}
           hidden={hidden}
           onToggle={(l) => setHidden((h) => toggleIn(h, l))}
           onHover={setHover}
           highlighted={hover}
-          note="top strip = selected season calendar"
+          note={paperSeasons ? undefined : 'top strip = selected season calendar'}
         />
+        {paperSeasons && <div className="legend">{PAPER_SEASONS.map((s) => <span key={s.name} className="legend-item"><span className="swatch square" style={{ background: s.color }} />{s.name}</span>)}
+          <span className="legend-note">the PMF paper's seasons (read off its Figure 7)</span></div>}
         {tip.node}
       </div>
     </ChartFrame>
