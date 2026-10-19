@@ -49,6 +49,11 @@ export interface SeasonMeta {
    * reached (lib/seasons seasonOfDate). Without it, seasons go by month.
    */
   from?: string
+  /**
+   * a calendar computed from data (lib/rainSeasons: each site's rains, year by year) lists the
+   * exact date ranges [start, end) that are this season; it takes precedence over `from` and months
+   */
+  spans?: [string, string][]
   /** set under the per-site calendar: the site whose local calendar this season belongs to */
   site?: string
 }

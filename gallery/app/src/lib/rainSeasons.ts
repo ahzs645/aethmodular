@@ -1,0 +1,80 @@
+/**
+ * Rain-rule seasons: each site's seasons, year by year, from its own daily rain, by the rule the
+ * Addis PMF paper describes for 2023 ("using precipitation data and following the seasonal
+ * representation used in Ethiopia") and the dynamic seasons of addis_03_meteorology (Task 3,
+ * a rolling rain sum against thresholds).
+ *
+ * For each calendar year, on the rolling mean of daily rain (`window` days, centred):
+ *   rains begin     first day the mean exceeds `onset` mm/day          -> Less Rainy
+ *   heavy rains     first day after that it exceeds `heavy` mm/day     -> More Rainy
+ *   rains end       the day after the last day above `heavy`           -> Second Dry
+ * Before the rains begin is First Dry. A year whose mean never passes `heavy` has no More Rainy:
+ * Less Rainy runs to the last day above `onset`; a year without rains in the record is First Dry
+ * (Second Dry if its record only starts in the second half, e.g. a December start).
+ *
+ * Defaults (30 days, 1.5, 9 mm/day) were fitted to the paper's 2023 dates on ERA5 at Addis:
+ * rains begin 26 Feb (paper 26 Feb), heavy 25 Apr (29 Apr), end 26 Sep (1 Oct).
+ */
+import type { SeasonMeta } from './types'
+
+export interface RainRule { window: number; onset: number; heavy: number }
+export const DEFAULT_RAIN_RULE: RainRule = { window: 30, onset: 1.5, heavy: 9 }
+
+/** the four seasons' names, colours and (for month axes only) their usual months at Addis */
+export const RAIN_SEASONS = [
+  { name: 'First Dry', color: '#f8cfa5', months: [1, 2] },
+  { name: 'Less Rainy', color: '#a8d8e8', months: [3, 4] },
+  { name: 'More Rainy', color: '#5aaee8', months: [5, 6, 7, 8, 9] },
+  { name: 'Second Dry', color: '#f09a5a', months: [10, 11, 12] },
+] as const
+
+export const rainRuleParam = (r: RainRule) => `${r.window},${r.onset},${r.heavy}`
+export function parseRainRule(v: string | null): RainRule | null {
+  const [w, o, h] = (v ?? '').split(',').map(Number)
+  return Number.isFinite(w) && w >= 3 && Number.isFinite(o) && o >= 0 && Number.isFinite(h) && h > o ? { window: Math.round(w), onset: o, heavy: h } : null
+}
+
+const iso = (t: number) => new Date(t).toISOString().slice(0, 10)
+const DAY = 86_400_000
+
+/**
+ * The rule's seasons for one site: the four seasons, each with `spans` ([start, end) ISO dates),
+ * one set per calendar year in the daily record.
+ */
+export function rainRuleCalendar(daily: { date: string[]; p: (number | null)[] }, rule: RainRule = DEFAULT_RAIN_RULE): SeasonMeta[] {
+  const n = daily.date.length
+  const t = daily.date.map((d) => Date.parse(`${d}T00:00:00Z`))
+  // centred rolling mean, needing half the window present
+  const half = Math.floor(rule.window / 2)
+  const mean: (number | null)[] = new Array(n).fill(null)
+  for (let i = 0; i < n; i++) {
+    let s = 0, k = 0
+    for (let j = Math.max(0, i - half); j <= Math.min(n - 1, i + half - (rule.window % 2 ? 0 : 1)); j++) {
+      const v = daily.p[j]
+      if (v != null && Number.isFinite(v)) { s += v; k++ }
+    }
+    mean[i] = k >= rule.window / 2 ? s / k : null
+  }
+  const spans: [string, string][][] = RAIN_SEASONS.map(() => [])
+  const years = [...new Set(daily.date.map((d) => d.slice(0, 4)))]
+  for (const y of years) {
+    const idx = daily.date.map((d, i) => (d.startsWith(y) ? i : -1)).filter((i) => i >= 0)
+    if (!idx.length) continue
+    const y0 = Date.parse(`${y}-01-01T00:00:00Z`), y1 = Date.parse(`${Number(y) + 1}-01-01T00:00:00Z`)
+    const above = (thr: number, from: number) => idx.filter((i) => t[i] >= from && (mean[i] ?? -1) > thr)
+    const wet = above(rule.onset, y0)
+    // no rains in the record for this year: the dry season it is in (a record starting in
+    // December is the end of the previous rains, Second Dry; one ending in February, First Dry)
+    if (!wet.length) { spans[daily.date[idx[0]].slice(5) >= '07-01' ? 3 : 0].push([iso(y0), iso(y1)]); continue }
+    const onset = t[wet[0]]
+    const heavy = above(rule.heavy, onset)
+    const end = heavy.length ? t[heavy[heavy.length - 1]] + DAY : t[wet[wet.length - 1]] + DAY
+    spans[0].push([iso(y0), iso(onset)])
+    if (heavy.length) {
+      spans[1].push([iso(onset), iso(t[heavy[0]])])
+      spans[2].push([iso(t[heavy[0]]), iso(end)])
+    } else spans[1].push([iso(onset), iso(end)])
+    spans[3].push([iso(end), iso(y1)])
+  }
+  return RAIN_SEASONS.map((s, i) => ({ name: s.name, color: s.color, months: [...s.months], spans: spans[i].filter(([a, b]) => a < b) }))
+}

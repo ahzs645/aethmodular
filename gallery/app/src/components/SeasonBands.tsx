@@ -16,8 +16,17 @@ export const seasonShade = (name: string, hover: string | null | undefined) =>
 export interface SeasonBand { x: number; w: number; color: string; name: string }
 
 /** Month-by-month bands along a time axis, under one calendar, clipped to [0, width]. */
-export function timeSeasonBands(x: ScaleTime<number, number>, seasons: readonly Pick<SeasonMeta, 'name' | 'months' | 'color' | 'from'>[], width: number): SeasonBand[] {
+export function timeSeasonBands(x: ScaleTime<number, number>, seasons: readonly Pick<SeasonMeta, 'name' | 'months' | 'color' | 'from' | 'spans'>[], width: number): SeasonBand[] {
   const [d0, d1] = x.domain() as [Date, Date]
+  // a data-computed calendar (lib/rainSeasons): its exact date ranges
+  if (seasons.some((s) => s.spans?.length)) {
+    const out: SeasonBand[] = []
+    for (const s of seasons) for (const [a0, b0] of s.spans ?? []) {
+      const a = Math.max(0, x(new Date(`${a0}T00:00:00`))), b = Math.min(width, x(new Date(`${b0}T00:00:00`)))
+      if (b > a) out.push({ x: a, w: b - a, color: s.color, name: s.name })
+    }
+    return out.sort((p, q) => p.x - q.x)
+  }
   // a calendar with day boundaries (lib/seasons seasonOfDate): each season from its first day to the next's
   const dated = seasons.filter((s) => s.from).sort((a, b) => a.from!.localeCompare(b.from!))
   if (dated.length) {

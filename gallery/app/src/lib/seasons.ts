@@ -21,7 +21,8 @@ export const CONVENTION_LABEL: Record<string, string> = {
   belg_feb: 'Shared Ethiopian month bins · Feb in Belg',
   quarters: 'Shared month bins · Dec–Feb, Mar–May, Jun–Aug, Sep–Nov',
   custom: 'Custom bins · your own, shared by every site',
-  pmf_paper: 'PMF paper (Addis 2023) · First Dry, Less Rainy, More Rainy, Second Dry, by date',
+  pmf_paper: 'PMF paper dates · First Dry, Less Rainy, More Rainy, Second Dry, its 2023 cut points every year',
+  rain_rule: 'Rain rule · each site and year from its own rain (ERA5): First Dry, Less Rainy, More Rainy, Second Dry',
 }
 
 /** The calendar every frozen calibration export was binned with. */
@@ -59,6 +60,11 @@ export const seasonPhrase = (group: string) => (isAllAddis(group) ? 'all seasons
  * (`from` on its seasons), otherwise by month. One rule for every chart and filter.
  */
 export function seasonOfDate(date: string | null | undefined, month: number | null | undefined, seasons: readonly SeasonMeta[]): SeasonMeta | null {
+  if (date && seasons.some((s) => s.spans?.length)) {
+    const d = date.slice(0, 10)
+    const hit = seasons.find((s) => s.spans?.some(([a, b]) => d >= a && d < b))
+    if (hit) return hit
+  }
   if (date && seasons.some((s) => s.from)) {
     const md = date.slice(5, 10)
     const byStart = seasons.filter((s) => s.from).sort((a, b) => a.from!.localeCompare(b.from!))

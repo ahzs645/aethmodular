@@ -9,6 +9,8 @@ import { listParam, listToParam, readParams, writeParams } from '@/lib/url'
 import { useShared } from '@/lib/stable'
 import { PAPER_CALENDAR } from '@/lib/pmfPaper'
 import { seasonOfDate } from '@/lib/seasons'
+import { DEFAULT_RAIN_RULE, RAIN_SEASONS, parseRainRule, rainRuleParam, type RainRule } from '@/lib/rainSeasons'
+import { useRainCalendars } from '@/hooks/useRainCalendars'
 import { Scatterplot } from '@/charts/correlation/Scatterplot'
 import { Correlogram } from '@/charts/correlation/Correlogram'
 import { AvailabilityHeatmap } from '@/charts/correlation/AvailabilityHeatmap'
@@ -217,6 +219,9 @@ function paintRows(rows: FilterRow[], paint: ((site: string) => string | undefin
   return rows.map((r) => { const c = paint(r.site); return c === undefined || r.color === c ? r : { ...r, color: c } })
 }
 
+/** the rain rule's seasons before a site's rain has loaded (or where it has none): its usual Addis months */
+const RAIN_PLACEHOLDER: SeasonMeta[] = RAIN_SEASONS.map((s) => ({ name: s.name, color: s.color, months: [...s.months] }))
+
 export default function App() {
   const init = useMemo(() => readParams(), [])
   const [tab, setTab] = useState<TabKey>(() => tabFromParams(init))
@@ -242,6 +247,8 @@ export default function App() {
   const [convention, setConvention] = useState<string | null>(init.get('cal'))
   // the reader's own month bins (calendar "custom"), shared by every site; in the URL as cs
   const [customSeasons, setCustomSeasons] = useState(() => parseCustomSeasons(init.get('cs')) ?? DEFAULT_CUSTOM)
+  // the rain rule's settings (lib/rainSeasons), in the URL as rr=window,onset,heavy
+  const [rainRule, setRainRule] = useState<RainRule>(() => parseRainRule(init.get('rr')) ?? DEFAULT_RAIN_RULE)
   // a site's alternative calendar where the sources disagree (CODC Bogotá / Palmira, Taiwan review / outlook); in the URL as cv=CODC:palmira,…
   const [calVariants, setCalVariants] = useState<Record<string, string>>(() => parseVariants(init.get('cv')))
   const [activeSeasons, setActiveSeasons] = useState<Set<string> | null>(listParam(init.get('seasons')))
@@ -350,6 +357,7 @@ export default function App() {
       ci: showCI ? '1' : null,
       cal: convention,
       cs: convention === 'custom' ? customSeasonsParam(customSeasons) : null,
+      rr: convention === 'rain_rule' && rainRuleParam(rainRule) !== rainRuleParam(DEFAULT_RAIN_RULE) ? rainRuleParam(rainRule) : null,
       cv: Object.keys(calVariants).length ? Object.entries(calVariants).map(([c, k]) => `${c}:${k}`).join(',') : null,
       seasons: listToParam(activeSeasons),
       sites: listToParam(activeSites),
@@ -380,7 +388,7 @@ export default function App() {
       log: axes.log ? '1' : null,
       pax: axes.panels === 'Own' ? 'own' : null,
     })
-  }, [tab, meeting, estimators, showCI, convention, calVariants, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, keepIds, ftirBaseline, customSeasons, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, includeExcluded, xField, yField, field, dash, ratios, mac, basis, pinnedId, axes])
+  }, [tab, meeting, estimators, showCI, convention, calVariants, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, keepIds, ftirBaseline, customSeasons, rainRule, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, includeExcluded, xField, yField, field, dash, ratios, mac, basis, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -395,6 +403,7 @@ export default function App() {
       }
       setConvention(p.get('cal'))
       setCustomSeasons(parseCustomSeasons(p.get('cs')) ?? DEFAULT_CUSTOM)
+      setRainRule(parseRainRule(p.get('rr')) ?? DEFAULT_RAIN_RULE)
       setCalVariants(parseVariants(p.get('cv')))
       setActiveSeasons(listParam(p.get('seasons')))
       setActiveSites(listParam(p.get('sites')))
@@ -555,13 +564,15 @@ export default function App() {
   // bins stay available for like-month comparisons across sites.
   // every SPARTAN site and the two Santiago IMPROVE sites have their own calendar (siteSeasons.network.json)
   // pmf_paper: the PMF paper's four Addis seasons, split by date (lib/pmfPaper, lib/seasons seasonOfDate)
-  const conventions = useMemo<Record<string, SeasonMeta[]>>(() => ({ ...(data?.meta.season_conventions ?? {}), pmf_paper: PAPER_CALENDAR, quarters: MONTH_QUARTERS, custom: customSeasonMeta(customSeasons) }), [data, customSeasons])
+  const conventions = useMemo<Record<string, SeasonMeta[]>>(() => ({ ...(data?.meta.season_conventions ?? {}), pmf_paper: PAPER_CALENDAR, rain_rule: RAIN_PLACEHOLDER, quarters: MONTH_QUARTERS, custom: customSeasonMeta(customSeasons) }), [data, customSeasons])
   // local calendars are the default wherever every site in view has one; otherwise shared quarters
   const siteCode = useMemo(() => new Map((netView?.all ?? []).map((x) => [x.name, x.code])), [netView])
   const allLocal = net === 'focus' || (!!netView && netView.chosen.length > 0 && netView.chosen.every((x) => hasLocalCalendar(x.name, x.code)))
   const defaultConvention = allLocal ? 'local' : 'quarters'
   const activeConvention = convention ?? defaultConvention
-  const isLocal = activeConvention === 'local'
+  // the rain rule is per site too: every site's seasons come from its own rain, year by year
+  const rainOn = activeConvention === 'rain_rule'
+  const isLocal = activeConvention === 'local' || rainOn
   // PMF is Addis-only, so its season names need no site prefix; the filter data
   // always carries four calendars, so labels are site-qualified and never collide
   // PMF and the calibration per-filter section are Addis-only: one calendar, bare season names
@@ -575,14 +586,17 @@ export default function App() {
     () => conventions[isLocal ? data?.meta.season_convention ?? 'quarters' : activeConvention] ?? data?.meta.seasons ?? [],
     [data, conventions, isLocal, activeConvention]
   )
+  const codeOfSite = useCallback((site: string) => siteCode.get(site) ?? data?.meta.sites.find((x) => x.name === site)?.code, [siteCode, data])
+  const rainCals = useRainCalendars(rainOn ? calendarSites.map(codeOfSite).filter((c): c is string => !!c) : [], rainRule)
   const calendarOf = useCallback(
     // sites without a local calendar fall back to the shared quarters, not the Ethiopian bins
     (site: string) => {
+      if (rainOn) return rainCals.get(codeOfSite(site) ?? '') ?? RAIN_PLACEHOLDER
       if (!isLocal) return sharedSeasons
       const code = siteCode.get(site)
       return localSeasonsFor(site, data?.meta, code, code ? calVariants[code] : undefined) ?? MONTH_QUARTERS
     },
-    [isLocal, data, sharedSeasons, siteCode, calVariants]
+    [isLocal, data, sharedSeasons, siteCode, calVariants, rainOn, rainCals, codeOfSite]
   )
   const seasons = useMemo(
     () => isLocal
@@ -926,8 +940,9 @@ export default function App() {
         : net === 'both' && netView ? `${netView.chosen.length - improveSites.length} SPARTAN · ${improveSites.length}/${MAX_IMPROVE_SITES} IMPROVE` : undefined,
       calendarOptions: ['local', ...Object.keys(conventions)],
       customSeasons,
+      rainRule,
       // sites in view whose sources disagree, with the calendar each is binned by
-      calendarVariants: isLocal ? calendarSites.flatMap((site) => {
+      calendarVariants: isLocal && !rainOn ? calendarSites.flatMap((site) => {
         const code = siteCode.get(site)
         const options = calendarVariants(site, code)
         return options && code ? [{ site, code, options, value: calVariants[code] ?? options[0].key }] : []
@@ -998,6 +1013,7 @@ export default function App() {
       onFocusSites: () => startTransition(() => setSpartanSel(null)),
       onFtirBaseline: setFtirBaseline,
       onCustomSeasons: (v) => { setCustomSeasons(v); setActiveSeasons(null) },
+      onRainRule: (v) => { setRainRule(v); setActiveSeasons(null) },
       // the default calendar is left out of the link
       onCalendarVariant: (code, key, isDefault) => {
         setCalVariants((cur) => { const next = { ...cur }; if (isDefault) delete next[code]; else next[code] = key; return next })

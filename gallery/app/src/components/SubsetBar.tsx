@@ -20,6 +20,7 @@ import { Combobox } from '@/components/Combobox'
 import { useRatios } from '@/components/RatioDialog'
 import { MAC_CHOICES, type Basis } from '@/lib/viewFields'
 import { SeasonEditor } from '@/components/SeasonEditor'
+import { DEFAULT_RAIN_RULE, type RainRule } from '@/lib/rainSeasons'
 
 export interface SubsetCaps {
   /** the tab's charts respond to the season filter */
@@ -84,6 +85,8 @@ export interface SubsetState {
   calendarOptions: string[]
   /** the reader's custom month bins, edited when the calendar is 'custom' */
   customSeasons?: { name: string; months: number[] }[]
+  /** the rain rule's settings, edited when the calendar is 'rain_rule' (lib/rainSeasons) */
+  rainRule?: RainRule
   /** sites in view with more than one defensible calendar, and the one each is binned by */
   calendarVariants?: { site: string; code: string; options: { key: string; label: string; note?: string }[]; value: string }[]
   /** filters dropped by hand from a brush, and the size of a "keep only" set (null: none) */
@@ -127,6 +130,7 @@ export interface SubsetActions {
   onDropIds?: (ids: Set<string>) => void
   onFtirBaseline?: (v: 'none' | 'spline' | 'vibes') => void
   onCustomSeasons?: (v: { name: string; months: number[] }[]) => void
+  onRainRule?: (v: RainRule) => void
   onCalendarVariant?: (code: string, key: string, isDefault: boolean) => void
   onKeepIds?: (ids: Set<string>) => void
   onClearDrop?: () => void
@@ -391,6 +395,7 @@ export function SubsetBar({
                     </span>
                   </Row>
                   {s.convention === 'custom' && s.customSeasons && a.onCustomSeasons && <SeasonEditor seasons={s.customSeasons} onChange={a.onCustomSeasons} />}
+                  {s.convention === 'rain_rule' && s.rainRule && a.onRainRule && <RainRuleEditor rule={s.rainRule} onChange={a.onRainRule} />}
                   <div className="season-chips">
                     <Chip active={allSeasons} color="var(--ink-muted)" onClick={a.onAllSeasons} label="All" />
                   </div>
@@ -648,5 +653,30 @@ function Chip({
     >
       {label}
     </button>
+  )
+}
+
+/**
+ * The rain rule's three settings: smoothing window and the two thresholds on the rolling daily
+ * rain (lib/rainSeasons). Each site's seasons, year by year, follow from its own ERA5 rain.
+ */
+function RainRuleEditor({ rule, onChange }: { rule: RainRule; onChange: (r: RainRule) => void }) {
+  const num = (k: keyof RainRule, label: string, step: number, title: string) => (
+    <label className="rain-rule-field" title={title}>{label}
+      <input type="number" className="select" step={step} min={k === 'window' ? 3 : 0} value={rule[k]}
+        onChange={(e) => { const v = Number(e.target.value); if (Number.isFinite(v)) { const next = { ...rule, [k]: v }; if (next.heavy > next.onset && next.window >= 3) onChange(next) } }} />
+    </label>
+  )
+  const isDefault = rule.window === DEFAULT_RAIN_RULE.window && rule.onset === DEFAULT_RAIN_RULE.onset && rule.heavy === DEFAULT_RAIN_RULE.heavy
+  return (
+    <div className="rain-rule">
+      <p className="method-note" style={{ display: 'block', margin: '4px 0' }}>Each site and year from its own daily rain (ERA5), {rule.window}-day mean: rains begin above {rule.onset} mm/day (First Dry → Less Rainy), heavy rains above {rule.heavy} (More Rainy) until the last such day (Second Dry). Fitted to the PMF paper's 2023 Addis dates.</p>
+      <div className="rain-rule-fields">
+        {num('window', 'Window (days)', 1, 'Days in the centred rolling mean of daily rain')}
+        {num('onset', 'Rains begin (mm/day)', 0.5, 'Mean rain above which the dry season ends')}
+        {num('heavy', 'Heavy rains (mm/day)', 0.5, 'Mean rain above which it is the More Rainy season')}
+        {!isDefault && <button type="button" className="btn quiet" onClick={() => onChange(DEFAULT_RAIN_RULE)}>Reset</button>}
+      </div>
+    </div>
   )
 }
