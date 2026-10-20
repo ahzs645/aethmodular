@@ -1230,3 +1230,14 @@ html.dash-present .container.dash { padding-top: 10px; }
 .combobox-option.multi:focus { outline: none; }
 .multi-tick { width: 14px; height: 14px; border: 1.5px solid var(--ink-border); border-radius: 3px; display: inline-grid; place-items: center; font-size: 10px; line-height: 1; color: #fff; flex: none; }
 .multi-tick.on { background: var(--accent); border-color: var(--accent); }
+/* excluded samples: the repo's (with their reason) and the reader's hand exclusions (with a reason box) */
+.excluded-toggle { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.excluded-toggle .dropped-details > summary { list-style: none; cursor: pointer; color: var(--accent); font-size: calc(11.5px * var(--text-scale)); }
+.excluded-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 2px 8px; padding: 5px 0; border-top: 1px solid var(--ink-border); }
+/* id and where on the first line, the reason (or its box) across the row below */
+.excluded-row > .excluded-reason, .excluded-row > .excluded-why { grid-column: 1 / -1; grid-row: 2; }
+.excluded-row .pill-link { font-family: var(--mono); font-size: calc(11.5px * var(--text-scale)); }
+.excluded-where { color: var(--ink-muted); font-size: calc(11.5px * var(--text-scale)); white-space: nowrap; }
+.excluded-reason { font-size: calc(11.5px * var(--text-scale)); color: var(--ink-text); }
+.excluded-why { max-width: none; width: 100%; min-width: 160px; }
+.excluded-copy { justify-self: start; }

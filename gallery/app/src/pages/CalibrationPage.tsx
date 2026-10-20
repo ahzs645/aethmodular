@@ -2,6 +2,7 @@ import { EstimatorViews, ESTIMATORS, projectGrid, projectRun, useRegressions } f
 import { useMemo, useState } from 'react'
 import { ChartFrame, Select } from '@/components/ChartFrame'
 import { Combobox } from '@/components/Combobox'
+import type { AxesOpts } from '@/lib/axes'
 import { PageToc } from '@/components/PageToc'
 import { SpecCurve } from '@/charts/calibration/SpecCurve'
 import { CutoffSweep } from '@/charts/calibration/CutoffSweep'
@@ -61,18 +62,23 @@ const SPEC_VIEWS = [
   { key: 'orig:only:deriv2', label: '2nd derivative only', group: 'Spline, raw and 2nd derivative' },
 ]
 
-export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null, pmfSel = null, pmfLabelOfDate, galleryRows, galleryMeta }: {
+export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null, pmfSel = null, pmfLabelOfDate, galleryRows, sourceRows, galleryMeta, axes, onAxes }: {
   calib: CalibFile | null
   runs: CalibRunsFile | null
   meta: MetaFile
   /** the gallery's rows and meta under the reader's view, for the crossplot's explorer panel */
   galleryRows?: FilterRow[]
+  /** every filter's row before the view's options (a filter's own values, e.g. its deployed SPARTAN EC) */
+  sourceRows?: FilterRow[]
   galleryMeta?: MetaFile
   knownIds: Set<string>
   seasonSel?: Set<string> | null
   /** PMF-source groups kept in the Filters panel (Addis dates only), and a filter's group from its date */
   pmfSel?: Set<string> | null
   pmfLabelOfDate?: (date: string | null | undefined) => string
+  /** the gallery's axes options (Panel axes is shared with the correlation crossplots) */
+  axes?: AxesOpts
+  onAxes?: (a: AxesOpts) => void
 }) {
   const { methods } = useRegressions()
   const calibrationViews = useMemo(() => Object.fromEntries(ESTIMATORS.map(method => [method, calib ? { ...calib, grid: calib.grid.map(r => projectGrid(r, method)), sweeps: calib.sweeps.map(r => projectGrid(r, method)) } : null])) as Record<typeof ESTIMATORS[number], CalibFile | null>, [calib])
@@ -210,7 +216,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
           {run ? (
             <>
               <CVCurve run={run} runs={runs} />
-              <RunCrossplot lambda10={calib?.deming_lambda_mac10 ?? 2.96} run={runView ?? run} runs={runs} meta={meta} knownIds={knownIds} galleryRows={galleryRows} galleryMeta={galleryMeta} />
+              <RunCrossplot lambda10={calib?.deming_lambda_mac10 ?? 2.96} run={runView ?? run} runs={runs} meta={meta} knownIds={knownIds} galleryRows={galleryRows} sourceRows={sourceRows} galleryMeta={galleryMeta} />
               <RunSeries run={runView ?? run} runs={runs} meta={meta} knownIds={knownIds} />
               {/* the blind-half readouts are the explorer's own, on every season */}
               <EstimatorViews>{method => <SplitCheck run={projectRun(run, method)} runs={runs} />}</EstimatorViews>
@@ -223,7 +229,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
             <span className="pill">Cross-site transfer</span>
             <span style={{ color: 'var(--ink-muted)' }}>one IMPROVE-trained calibration, applied unchanged to every SPARTAN site</span>
           </SectionBar>
-          <EstimatorViews>{method => <CrossSiteTransfer runs={{ ...runs, runs: runs.runs.map(r => projectRun(r, method)) }} />}</EstimatorViews>
+          <EstimatorViews>{method => <CrossSiteTransfer runs={{ ...runs, runs: runs.runs.map(r => projectRun(r, method)) }} axes={axes} onAxes={onAxes} galleryRows={galleryRows} sourceRows={sourceRows} galleryMeta={galleryMeta} />}</EstimatorViews>
 
           <SectionBar>
             <span className="pill">Cohort diagnostics</span>

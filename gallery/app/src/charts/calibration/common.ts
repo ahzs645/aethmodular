@@ -1,5 +1,8 @@
 import * as d3 from 'd3'
-import type { CalibFile, CalibRow, MetaFile, MetricRow, SweepRow } from '@/lib/types'
+import type { CalibFile, CalibRow, CalibRun, FilterRow, MetaFile, MetricRow, SweepRow } from '@/lib/types'
+import { baseFilterId } from '@/lib/highlight'
+import { useEffect, useState } from 'react'
+import { loadSpartanFilters } from '@/lib/spartan'
 import { COHORT_SHORT, METRIC, PREPROCESSING, PREPROCESSING_SHORT, SELECTION_SPACE, label } from '@/lib/labels'
 import { BASELINE_COLOR, INK } from '@/lib/theme'
 
@@ -128,3 +131,39 @@ export function metricRow(rows: MetricRow[] | undefined, set: 'fixed' | 'all', m
 }
 
 export const PRESET_COLOR: Record<string, string> = {}
+
+/**
+ * A filter's deployed SPARTAN EC (the network's FTIR EC product), and where it came from: the
+ * explorer's own column where it exported one (the Addis fixed set), else the gallery's in-house
+ * 'EC (FTIR)' for the same filter (the same values: on the 190 Addis filters that have both they agree
+ * to 5e-5 µg/m³), else the public SPARTAN release (`network`, for sites and filters the gallery's
+ * focus rows lack; it differs from the in-house value by more than 0.01 µg/m³ on 19 of 542 shared filters).
+ */
+export const DEPLOYED_FIELD = 'EC (FTIR)'
+export type DeployedSource = 'run' | 'gallery' | 'public release'
+export function deployedECFrom(run: CalibRun, i: number, byId: ReadonlyMap<string, FilterRow>, network?: ReadonlyMap<string, FilterRow> | null): { v: number; from: DeployedSource } | null {
+  const own = run.eval.deployed?.[i]
+  if (own !== null && own !== undefined && Number.isFinite(own)) return { v: own, from: 'run' }
+  const id = run.eval.id[i]
+  if (!id) return null
+  const key = baseFilterId(id)
+  const g = byId.get(key)?.[DEPLOYED_FIELD]
+  if (typeof g === 'number' && Number.isFinite(g)) return { v: g, from: 'gallery' }
+  const n = network?.get(key)?.[DEPLOYED_FIELD]
+  return typeof n === 'number' && Number.isFinite(n) ? { v: n, from: 'public release' } : null
+}
+export const deployedEC = (run: CalibRun, i: number, byId: ReadonlyMap<string, FilterRow>, network?: ReadonlyMap<string, FilterRow> | null) =>
+  deployedECFrom(run, i, byId, network)?.v ?? null
+
+/** The public SPARTAN release's rows for these site codes, by filter id (null until loaded). */
+export function useNetworkRows(codes: readonly string[]): ReadonlyMap<string, FilterRow> | null {
+  const key = [...new Set(codes)].sort().join(',')
+  const [rows, setRows] = useState<{ key: string; map: Map<string, FilterRow> } | null>(null)
+  useEffect(() => {
+    if (!key) return
+    let live = true
+    loadSpartanFilters(key.split(',')).then((r) => { if (live) setRows({ key, map: new Map(r.rows.map((x) => [x.id, x])) }) }).catch(() => {})
+    return () => { live = false }
+  }, [key])
+  return rows && rows.key === key ? rows.map : null
+}

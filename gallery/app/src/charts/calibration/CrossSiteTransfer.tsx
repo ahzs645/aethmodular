@@ -8,16 +8,19 @@ import { useChartOptions } from '@/lib/chartOptions'
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
-import { XAxis, YAxis } from '@/components/Axes'
+import { AxisTitle, XAxis, YAxis } from '@/components/Axes'
+import { prettyUnit } from '@/components/FieldSelect'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { INK, FONT } from '@/lib/theme'
-import type { CalibRun, CalibRunsFile } from '@/lib/types'
-import { cohortColor, fmtFit, metricRow, presetName } from './common'
+import type { CalibRun, CalibRunsFile, FilterRow, MetaFile } from '@/lib/types'
+import { cohortColor, deployedECFrom, fmtFit, metricRow, presetName, useNetworkRows } from './common'
 import { COHORT, PREPROCESSING, label } from '@/lib/labels'
-import { AxisChoices } from '@/components/AxisChoices'
-import { PANEL_AXES, type PanelAxes } from '@/lib/axes'
+import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
+import { useSearchParam } from '@/lib/url'
+import { baseFilterId } from '@/lib/highlight'
+import { PANEL_AXES, type AxesOpts, type PanelAxes } from '@/lib/axes'
 
 /** Ethiopian sites first (the calibration's own target, then its neighbour), then the other SPARTAN sites. */
 const SITE_ORDER = ['addis', 'etbi', 'indh', 'chts', 'uspa']
@@ -47,7 +50,14 @@ const noteOf = (p: Preset) => p.label.match(/×[^(]*\(([^)]*)\)\s*$/)?.[1]
  * cross-validation score (calibration set), and whether the site ordering holds across all the
  * exported calibrations.
  */
-export function CrossSiteTransfer({ runs }: { runs: CalibRunsFile }) {
+export function CrossSiteTransfer({ runs, axes, onAxes, galleryRows, sourceRows, galleryMeta }: {
+  runs: CalibRunsFile
+  /** the gallery's axes options (its Panel axes is the sidebar's, shared with the correlation crossplots) */
+  axes?: AxesOpts; onAxes?: (a: AxesOpts) => void
+  galleryRows?: FilterRow[]; galleryMeta?: MetaFile
+  /** every filter's row before the view's options, for its deployed SPARTAN EC */
+  sourceRows?: FilterRow[]
+}) {
   const presets = runs.presets.filter((p) => runs.runs.some((r) => r.preset === p.key))
 
   const sites = useMemo(() => {
@@ -83,7 +93,9 @@ export function CrossSiteTransfer({ runs }: { runs: CalibRunsFile }) {
   const controls = o.controls()
   return (
     <>
-      <SiteMultiples runs={runs} siteRuns={siteRuns} mac={mac} controls={controls} presetLabel={preset ? presetName(preset) : presetKey} />
+      <SiteMultiples runs={runs} siteRuns={siteRuns} mac={mac} controls={controls} presetLabel={preset ? presetName(preset) : presetKey}
+        panelAxes={axes ? axes.panels ?? 'Shared' : undefined} onPanelAxes={axes && onAxes ? (v) => onAxes({ ...axes, panels: v }) : undefined}
+        galleryRows={galleryRows} sourceRows={sourceRows} galleryMeta={galleryMeta} />
       <TransferTable runs={runs} siteRuns={siteRuns} mac={mac} presetLabel={preset ? presetName(preset) : presetKey} />
       <OrderingAcrossCalibrations runs={runs} sites={sites} presetKey={presetKey} mac={mac} onPick={setPresetKey} />
     </>
@@ -112,8 +124,15 @@ function statsFor(run: CalibRun, mac: number, method: Estimator) {
     Math.abs(live.slope - saved.slope) < 1e-4 && Math.abs(live.intercept - saved.intercept) < 1e-4 ? st : null
 }
 
-function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel }: {
+// the readouts this calibration gives every panel; gallery measurements join by filter id
+const REF = 'reference', PRED = 'predicted', RESID = 'residual', DEP = 'deployed'
+const EC_KEYS = [REF, PRED, DEP]
+
+function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel, panelAxes, onPanelAxes, galleryRows = [], sourceRows, galleryMeta }: {
   runs: CalibRunsFile; siteRuns: CalibRun[]; mac: number; controls: React.ReactNode; presetLabel: string
+  /** the gallery's Panel axes setting (the sidebar's, shared with the correlation crossplots) */
+  panelAxes?: PanelAxes; onPanelAxes?: (v: PanelAxes) => void
+  galleryRows?: FilterRow[]; galleryMeta?: MetaFile; sourceRows?: FilterRow[]
 }) {
   const estimator = useEstimator()
   const { showCI } = useRegressions()
@@ -122,55 +141,116 @@ function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel }: {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  // per-site panels on one range or each on its own, named as everywhere else (lib/axes PANEL_AXES)
-  const [axes, setAxes] = useState<PanelAxes>('Own')
+  // Panel axes is the gallery's one setting (lib/axes, the sidebar's Axes section); a page that does
+  // not pass it keeps its own
+  const [ownAxes, setOwnAxes] = useState<PanelAxes>('Shared')
+  const axes = panelAxes ?? ownAxes
+  const setAxes = onPanelAxes ?? setOwnAxes
 
-  const pts = siteRuns.map((run) => {
+  // x and y picked from the axis titles (the gallery's axis popover, as on the correlation crossplots):
+  // this calibration's readouts, then any gallery measurement these filters carry
+  const byId = useMemo(() => new Map(galleryRows.map((r) => [r.id, r])), [galleryRows])
+  const sourceById = useMemo(() => (sourceRows ? new Map(sourceRows.map((r) => [r.id, r])) : byId), [sourceRows, byId])
+  // filters the gallery's own rows lack (Bishoftu, much of Delhi) take the public SPARTAN release's value
+  const network = useNetworkRows(siteRuns.map((r) => runs.targets[r.target]?.code ?? '').filter(Boolean))
+  const deployedOf = (run: CalibRun, i: number) => deployedECFrom(run, i, sourceById, network)
+  const hasDeployed = siteRuns.some((r) => r.eval.pred.some((_, i) => deployedOf(r, i) !== null))
+  const options = useMemo<AxisOption[]>(() => {
+    const ids = new Set(siteRuns.flatMap((r) => r.eval.id.flatMap((id) => (id ? [baseFilterId(id)] : []))))
+    const mine = galleryRows.filter((r) => ids.has(r.id))
+    return [
+      { key: REF, label: `HIPS Fabs ÷ MAC ${mac}`, group: 'This calibration', unit: 'µg/m³' },
+      { key: PRED, label: 'Predicted FTIR EC', group: 'This calibration', unit: 'µg/m³' },
+      { key: RESID, label: 'Residual, predicted − reference', group: 'This calibration', unit: 'µg/m³' },
+      ...(hasDeployed ? [{ key: DEP, label: 'Deployed SPARTAN EC', group: 'This calibration', unit: 'µg/m³' }] : []),
+      ...(galleryMeta?.field_groups ?? []).flatMap((g) => g.fields.filter((f) => galleryMeta!.fields.includes(f) && mine.some((r) => typeof r[f] === 'number'))
+        .map((f) => ({ key: f, group: g.label, unit: prettyUnit(galleryMeta!.field_units?.[f]) || undefined }))),
+    ]
+  }, [siteRuns, galleryRows, galleryMeta, mac, hasDeployed])
+  const keys = options.map((o) => o.key)
+  const [xk, setXk] = useSearchParam<string>('csx', REF, keys)
+  const [yk, setYk] = useSearchParam<string>('csy', PRED, keys)
+  const titleOf = (k: string) => { const o = options.find((x) => x.key === k); return o ? `${o.label ?? o.key}${o.unit ? ` (${o.unit})` : ''}` : k }
+  // the calibration's own pair: square panels, the 1:1 line and the saved fit; any other pair is a plain scatter
+  const ecPair = EC_KEYS.includes(xk) && EC_KEYS.includes(yk)
+  const savedPair = xk === REF && yk === PRED
+
+  const valueOf = (run: CalibRun, i: number, k: string): number => {
     const e = run.eval
+    const ref = run.ref_kind === 'fabs' ? e.ref[i] / mac : e.ref[i]
+    if (k === REF) return ref
+    if (k === PRED) return e.pred[i]
+    if (k === RESID) return e.pred[i] - ref
+    if (k === DEP) return deployedOf(run, i)?.v ?? NaN
+    const v = e.id[i] ? byId.get(baseFilterId(e.id[i]!))?.[k] : undefined
+    return typeof v === 'number' ? v : NaN
+  }
+  const pts = siteRuns.map((run) => {
     const out: { x: number; y: number; i: number }[] = []
-    for (let i = 0; i < e.pred.length; i++) {
-      const x = run.ref_kind === 'fabs' ? e.ref[i] / mac : e.ref[i]
-      if (Number.isFinite(x) && Number.isFinite(e.pred[i])) out.push({ x, y: e.pred[i], i })
+    for (let i = 0; i < run.eval.pred.length; i++) {
+      const x = valueOf(run, i, xk), y = valueOf(run, i, yk)
+      if (Number.isFinite(x) && Number.isFinite(y)) out.push({ x, y, i })
     }
     return out
   })
-  const domainOf = (p: { x: number; y: number }[]): [number, number] => [
+  const pad = (e: [number, number]): [number, number] => { const d = Math.max(1e-9, (e[1] - e[0]) * 0.06); return [Math.min(0, e[0] - d), e[1] + d] }
+  const square = (p: { x: number; y: number }[]): [number, number] => [
     Math.min(0, d3.min(p, (d) => Math.min(d.x, d.y)) ?? 0),
     Math.max(d3.max(p, (d) => d.x) ?? 1, d3.max(p, (d) => d.y) ?? 1) * 1.06,
   ]
-  const shared = domainOf(pts.flat())
+  const ext = (v: number[]): [number, number] => pad([d3.min(v) ?? 0, d3.max(v) ?? 1])
+  const all = pts.flat()
+  const sharedSq = square(all), sharedX = ext(all.map((p) => p.x)), sharedY = ext(all.map((p) => p.y))
 
   const gap = 18
   // as many columns as fit, then balanced so five sites wrap 3 + 2 rather than 4 + 1
-  const maxCols = Math.max(1, Math.min(siteRuns.length, Math.floor((width + gap) / 230)))
+  // every panel plots the same two quantities, so the axis titles are said once for the grid (y down
+  // the left, x underneath), not per panel; with shared axes the inner panels also drop their
+  // repeated tick numbers (gridlines stay), as in a small-multiples figure
+  const titleW = 22
+  const gridW = Math.max(0, width - titleW)
+  const maxCols = Math.max(1, Math.min(siteRuns.length, Math.floor((gridW + gap) / 230)))
   const cols = Math.ceil(siteRuns.length / Math.ceil(siteRuns.length / maxCols))
-  const cellW = (width - (cols - 1) * gap) / cols
-  const m = { l: 42, r: 8, t: 40, b: 58 }
+  const rows = Math.ceil(siteRuns.length / cols)
+  const cellW = (gridW - (cols - 1) * gap) / cols
+  const m = { l: 42, r: 8, t: 40, b: 44 }
   const S = Math.max(150, Math.min(300, cellW - m.l - m.r))
+  const gridH = rows * (S + m.t + m.b) + (rows - 1) * gap
+  const sharedTicks = axes === 'Shared'
+  const caret = <tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>
 
   return (
     <ChartFrame
       id="cross-site-multiples"
       title={`Every site under one calibration — ${presetLabel}`}
-      subtitle="One panel per SPARTAN site: the calibration's predicted FTIR EC against HIPS Fabs ÷ MAC, with the 1:1 line (dashed) and the Deming fit from the explorer's metrics for every filter at that site (each site is a test set the model never saw)."
+      subtitle="One panel per SPARTAN site: by default the calibration's predicted FTIR EC against HIPS Fabs ÷ MAC, with the 1:1 line (dashed) and the Deming fit from the explorer's metrics for every filter at that site (each site is a test set the model never saw). Click an axis title for another readout or any gallery measurement these filters carry."
       provenance="calibration_explorer /api/run for each target · test set 'all'"
       tip={TRANSFER_TIP}
-      controls={<>{controls}<Segmented label="Panel axes" value={axes} options={PANEL_AXES} onChange={setAxes} /></>}
+      controls={<>{controls}<Segmented label="Panel axes" value={axes} options={PANEL_AXES} onChange={setAxes}
+        title="Per-site panels: Shared gives every site the same range, so slopes and levels compare by eye · Own fits each panel to its site's data. The same setting as the sidebar's (Axes)" /></>}
     >
       <div ref={wrapRef} className="chart-wrap">
         {!siteRuns.length ? (
           <Empty>No site readouts exported for this calibration.</Empty>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap, justifyItems: 'center' }}>
+          <AxisChoices noun="measurements" options={options} x={[xk, setXk]} y={[yk, setYk]}>
+          <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+          <svg width={titleW} height={gridH} fontFamily={FONT.family} style={{ flex: 'none', overflow: 'visible' }}>
+            <AxisTitle pick="y">
+              <text transform={`translate(13,${(m.t + gridH - m.b) / 2}) rotate(-90)`} textAnchor="middle" fontSize={12} fontWeight={600} fill={INK.text}>{titleOf(yk)}{caret}</text>
+            </AxisTitle>
+          </svg>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap, justifyItems: 'center', flex: 1, minWidth: 0 }}>
             {siteRuns.map((run, k) => {
               const t = runs.targets[run.target]
-              const dom = axes === 'Shared' ? shared : domainOf(pts[k])
-              const x = d3.scaleLinear().domain(dom).range([0, S]).nice()
-              const y = d3.scaleLinear().domain(x.domain()).range([S, 0])
+              const xDom = ecPair ? (sharedTicks ? sharedSq : square(pts[k])) : sharedTicks ? sharedX : ext(pts[k].map((p) => p.x))
+              const x = d3.scaleLinear().domain(xDom).range([0, S]).nice()
+              const y = ecPair ? d3.scaleLinear().domain(x.domain()).range([S, 0])
+                : d3.scaleLinear().domain(sharedTicks ? sharedY : ext(pts[k].map((p) => p.y))).range([S, 0]).nice()
               const [d0, d1] = x.domain()
-              const fit = lineOf(run, mac)
-              const st = showCI ? statsFor(run, mac, estimator) : null
-              const ci = showCI ? confidence(st, estimator) : null
+              const fit = savedPair ? lineOf(run, mac) : null
+              const st = savedPair && showCI ? statsFor(run, mac, estimator) : null
+              const ci = savedPair && showCI ? confidence(st, estimator) : null
               // clip the fitted line to the square
               const seg = fit && fit.slope !== null && fit.intercept !== null ? (() => {
                 const f = (v: number) => fit.slope! * v + fit.intercept!
@@ -189,33 +269,42 @@ function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel }: {
                   </text>
                   <g transform={`translate(${m.l},${m.t})`}>
                     <rect width={S} height={S} fill="none" stroke={flagged ? '#f59e0b' : 'none'} strokeDasharray="4 3" />
-                    <YAxis scale={y} x={0} gridWidth={S} tickCount={4} label={k % cols === 0 ? 'predicted EC (µg/m³)' : undefined} />
-                    <XAxis scale={x} y={S} tickCount={4} />
-                    <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />
+                    {/* shared axes: tick numbers only on the left column and the bottom panel of each column */}
+                    <YAxis scale={y} x={0} gridWidth={S} tickCount={4} format={sharedTicks && k % cols !== 0 ? () => '' : undefined} />
+                    <XAxis scale={x} y={S} tickCount={4} format={sharedTicks && k + cols < siteRuns.length ? () => '' : undefined} />
+                    {ecPair && <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />}
+                    {yk === RESID && y.domain()[0] < 0 && y.domain()[1] > 0 && <line x1={0} x2={S} y1={y(0)} y2={y(0)} stroke={INK.text} strokeWidth={1.2} />}
+                    {pts[k].length === 0 && <text x={S / 2} y={S / 2} textAnchor="middle" fontSize={11} fill={INK.muted}>no filters carry both</text>}
                     {pts[k].map((p) => (
                       <circle
                         key={p.i} cx={x(p.x)} cy={y(p.y)} r={2.6} fill={color} fillOpacity={0.45}
                         onMouseEnter={(e) => tip.show(e, [
                           run.eval.id[p.i] ?? `filter #${p.i + 1}`,
                           `${t?.site ?? run.target} · ${run.eval.date?.[p.i] ?? 'no date'} · ${run.eval.group[p.i]}`,
-                          `HIPS Fabs ÷ MAC ${mac}: ${fmt(p.x, 3)} µg/m³`,
-                          `predicted EC: ${fmt(p.y, 3)} µg/m³ · residual ${fmt(p.y - p.x, 3)}`,
+                          `${titleOf(xk)}: ${fmt(p.x, 3)}${xk === DEP && deployedOf(run, p.i)?.from === 'public release' ? ' (public SPARTAN release)' : ''}`,
+                          `${titleOf(yk)}: ${fmt(p.y, 3)}${yk === DEP && deployedOf(run, p.i)?.from === 'public release' ? ' (public SPARTAN release)' : ''}`,
                         ])}
                         onMouseLeave={tip.hide}
                       />
                     ))}
                     {seg && <svg width={S} height={S} overflow="hidden"><RegressionBand stats={st} method={estimator} color={fitStyle.color} x={x} y={y} domain={x.domain()} /></svg>}
                     {seg && <line {...seg} stroke={fitStyle.color} strokeWidth={1.8} strokeDasharray={fitStyle.dash} />}
-                    <text x={S / 2} y={S + 34} textAnchor="middle" fontSize={10.5} fill={INK.muted}>{`HIPS Fabs ÷ MAC ${mac} (µg/m³)`}</text>
-                    <text x={S / 2} y={S + 51} textAnchor="middle" fontSize={11} fontFamily={FONT.mono} fill={fitStyle.color}>
+                    {savedPair && <text x={S / 2} y={S + 36} textAnchor="middle" fontSize={11} fontFamily={FONT.mono} fill={fitStyle.color}>
                       {`${fitName} ${fmtFit(fit?.slope ?? null, fit?.intercept ?? null)} · R² ${fmt(fit?.m.R2 ?? null, 2)}`}
                       <title>{showCI ? ci ? `${ci.description}; slope [${fmt(ci.slope[0], 3)}, ${fmt(ci.slope[1], 3)}]; intercept [${fmt(ci.intercept[0], 3)}, ${fmt(ci.intercept[1], 3)}]` : '95% CI unavailable: insufficient data or saved fit differs from live pairs' : ''}</title>
-                    </text>
+                    </text>}
                   </g>
                 </svg>
               )
             })}
           </div>
+          </div>
+          <svg width={width} height={22} fontFamily={FONT.family} style={{ display: 'block', overflow: 'visible' }}>
+            <AxisTitle pick="x">
+              <text x={titleW + gridW / 2 + (m.l - m.r) / 2} y={15} textAnchor="middle" fontSize={12} fontWeight={600} fill={INK.text}>{titleOf(xk)}{caret}</text>
+            </AxisTitle>
+          </svg>
+          </AxisChoices>
         )}
         {tip.node}
       </div>

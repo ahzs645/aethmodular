@@ -14,7 +14,7 @@ import { INK, MARGIN, withUnit } from '@/lib/theme'
 import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
 import { useSearchParam } from '@/lib/url'
 import type { CalibRun, CalibRunsFile, FilterRow, MetaFile } from '@/lib/types'
-import { groupColorFn, presetName } from './common'
+import { deployedEC, groupColorFn, presetName, useNetworkRows } from './common'
 import { useFitHeight } from '@/lib/chartFit'
 
 const XMODES = ['reference', 'deployed EC'] as const
@@ -39,9 +39,11 @@ const REF = 'Crossplot x (reference)', PRED = 'Predicted FTIR EC', RESID = 'Resi
  * weather field of the same filter (residual against iron, against EC / PM2.5 …), from
  * `galleryRows` under the gallery's view.
  */
-export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96, galleryRows = [], galleryMeta }: {
+export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96, galleryRows = [], sourceRows, galleryMeta }: {
   run: CalibRun; runs: CalibRunsFile; meta: MetaFile; knownIds: Set<string>; lambda10?: number
   galleryRows?: FilterRow[]; galleryMeta?: MetaFile
+  /** every filter's row before the view's options, for its deployed SPARTAN EC (default: galleryRows) */
+  sourceRows?: FilterRow[]
 }) {
   const fit = useFitHeight()
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -53,7 +55,12 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96, galle
 
   const macs = useMemo(() => [...new Set(run.metrics.map((m) => m.MAC).filter((v): v is number => v !== null))].sort((a, b) => a - b), [run.metrics])
   const isFabs = run.ref_kind === 'fabs'
-  const hasDeployed = !!run.eval.deployed?.some((v) => v !== null)
+  // the deployed SPARTAN EC: the run's own column (Addis fixed set) or the gallery's EC (FTIR) for the filter
+  const byId = useMemo(() => new Map(galleryRows.map((r) => [r.id, r])), [galleryRows])
+  const sourceById = useMemo(() => (sourceRows ? new Map(sourceRows.map((r) => [r.id, r])) : byId), [sourceRows, byId])
+  const network = useNetworkRows([runs.targets[run.target]?.code ?? ''].filter(Boolean))
+  const deployed = (i: number) => deployedEC(run, i, sourceById, network)
+  const hasDeployed = run.eval.pred.some((_, i) => deployed(i) !== null)
   const hasFixed = run.eval.fixed.some(Boolean)
   // the options and when each applies (lib/chartOptions): on the deployed-EC axis only the fixed
   // filters carry a value, so the test-set switch is moot, and the MAC (which converts Fabs) is unused
@@ -77,12 +84,12 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96, galle
     for (let i = 0; i < e.pred.length; i++) {
       if (evalSet === 'fixed' && hasFixed && !e.fixed[i]) continue
       if (hidden.has(e.group[i])) continue
-      const x = useDeployed ? e.deployed?.[i] ?? null : isFabs ? e.ref[i] / mac : e.ref[i]
+      const x = useDeployed ? deployed(i) : isFabs ? e.ref[i] / mac : e.ref[i]
       if (x === null || !Number.isFinite(x) || !Number.isFinite(e.pred[i])) continue
       out.push({ i, x, y: e.pred[i], g: e.group[i], id: e.id[i], fixed: e.fixed[i] })
     }
     return out
-  }, [run.eval, evalSet, hasFixed, hidden, useDeployed, isFabs, mac])
+  }, [run.eval, evalSet, hasFixed, hidden, useDeployed, isFabs, mac, sourceById, network]) // eslint-disable-line react-hooks/exhaustive-deps
 
 
   // the two square panels (crossplot, residuals) side by side or stacked; in a fitted tile, whichever
@@ -108,7 +115,6 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96, galle
   const target = runs.targets[run.target]
 
   // the residual panel's axes: this calibration's three values, then the gallery's fields for these filters
-  const byId = useMemo(() => new Map(galleryRows.map((r) => [r.id, r])), [galleryRows])
   const options = useMemo<AxisOption[]>(() => {
     const ids = new Set(pts.flatMap((p) => (p.id ? [baseFilterId(p.id)] : [])))
     const mine = galleryRows.filter((r) => ids.has(r.id))
@@ -158,7 +164,7 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96, galle
       [xLabel, p.x],
       ['predicted FTIR EC (µg/m³)', p.y],
       ['residual, predicted − x (µg/m³)', p.y - p.x],
-      ['deployed SPARTAN EC (µg/m³)', run.eval.deployed?.[p.i] ?? null],
+      ['deployed SPARTAN EC (µg/m³)', deployed(p.i)],
       ['in the fixed test set', p.fixed ? 'yes' : 'no'],
     ],
   })

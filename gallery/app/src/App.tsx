@@ -153,6 +153,10 @@ const FTIR_VARIANT = { spline: 'EC (FTIR, spline)', vibes: 'EC (FTIR, VIBES)' } 
 
 /** a comma-separated id list from the URL (filters dropped or kept by hand) */
 const idSet = (v: string | null): Set<string> | null => (v ? new Set(v.split(',').filter(Boolean)) : null)
+/** `dropwhy` in the URL: a JSON object, filter id -> the reader's reason for excluding it by hand */
+const parseWhy = (v: string | null): Record<string, string> => {
+  try { const o = v ? JSON.parse(v) : null; return o && typeof o === 'object' && !Array.isArray(o) ? Object.fromEntries(Object.entries(o).filter(([, r]) => typeof r === 'string')) as Record<string, string> : {} } catch { return {} }
+}
 
 /** `ssites` in the URL: absent = the four focus sites, * = every SPARTAN site, - = none, else codes */
 /** `mac` in the URL: a MAC for HIPS BC other than the export's (null: the export's) */
@@ -267,6 +271,9 @@ export default function App() {
   // and switching it on keeps only filters that have a PMF day
   // hand edits from a brush, on top of the dataset's exclusions: drop these filters, or keep only these
   const [dropIds, setDropIds] = useState<Set<string>>(() => idSet(init.get('drop')) ?? new Set())
+  // the reasons written beside hand exclusions; they travel in the link (and a shared view) with the ids
+  const [dropWhy, setDropWhy] = useState<Record<string, string>>(() => parseWhy(init.get('dropwhy')))
+  const dropWhyParam = useMemo(() => { const kept = Object.entries(dropWhy).filter(([id, r]) => dropIds.has(id) && r.trim()); return kept.length ? JSON.stringify(Object.fromEntries(kept)) : null }, [dropWhy, dropIds])
   const [keepIds, setKeepIds] = useState<Set<string> | null>(() => idSet(init.get('keep')))
   // which spectral baseline FTIR EC is shown with (spline and VIBES where a filter has a native spectrum)
   const [ftirBaseline, setFtirBaseline] = useState<FtirBaseline>(() => (['spline', 'vibes'] as string[]).includes(init.get('fb') ?? '') ? init.get('fb') as FtirBaseline : 'none')
@@ -373,6 +380,7 @@ export default function App() {
       to: dateRange?.[1],
       excl: includeExcluded ? '1' : null,
       drop: dropIds.size ? [...dropIds].join(',') : null,
+      dropwhy: dropWhyParam,
       fb: ftirBaseline !== 'none' ? ftirBaseline : null,
       keep: keepIds ? [...keepIds].join(',') : null,
       x: xField !== DEFAULT_X ? xField : null,
@@ -388,7 +396,7 @@ export default function App() {
       log: axes.log ? '1' : null,
       pax: axes.panels === 'Own' ? 'own' : null,
     })
-  }, [tab, meeting, estimators, showCI, convention, calVariants, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, keepIds, ftirBaseline, customSeasons, rainRule, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, includeExcluded, xField, yField, field, dash, ratios, mac, basis, pinnedId, axes])
+  }, [tab, meeting, estimators, showCI, convention, calVariants, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, dropWhyParam, keepIds, ftirBaseline, customSeasons, rainRule, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, includeExcluded, xField, yField, field, dash, ratios, mac, basis, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -418,6 +426,7 @@ export default function App() {
       setDateRange(p.get('from') && p.get('to') ? [p.get('from')!, p.get('to')!] : null)
       setIncludeExcluded(p.get('excl') === '1')
       setDropIds(idSet(p.get('drop')) ?? new Set())
+      setDropWhy(parseWhy(p.get('dropwhy')))
       setFtirBaseline((['spline', 'vibes'] as string[]).includes(p.get('fb') ?? '') ? p.get('fb') as FtirBaseline : 'none')
       setKeepIds(idSet(p.get('keep')))
       setXField(p.get('x') ?? DEFAULT_X)
@@ -911,7 +920,8 @@ export default function App() {
       activeSites: activeSites ?? new Set(siteNames),
       siteCounts,
       includeExcluded,
-      nExcluded: netView ? sourceRows.filter((r) => r.excluded).length : filters.n_excluded,
+      // counted from the same rows the list under it shows (the export's count misses rows the app marks itself)
+      nExcluded: (netView ? sourceRows : rawSourceRows).filter((r) => r.excluded).length,
       dateRange,
       xField,
       yField,
@@ -932,8 +942,11 @@ export default function App() {
       dropped: dropIds.size,
       droppedList: [...dropIds].map((id) => {
         const r = sourceById.get(id)
-        return { id, label: r ? `${r.site} · ${r.date}` : 'not in the current network' }
+        return { id, label: r ? `${r.site} · ${r.date}` : 'not in the current network', reason: dropWhy[id] ?? '' }
       }),
+      // the repo's own exclusions (the export's `excluded` rows), with the reason it recorded
+      excludedList: (netView ? sourceRows : rawSourceRows).filter((r) => r.excluded)
+        .map((r) => ({ id: r.id, label: `${r.site} · ${r.date}`, reason: String(r.exclusion_reason ?? '') })),
       ftirBaseline,
       showFtirBaseline: [xField, yField, field].includes('EC (FTIR)'),
       kept: keepIds?.size ?? null,
@@ -1029,6 +1042,7 @@ export default function App() {
       onKeepIds: keepFilters,
       onRestoreIds: restoreFilters,
       onClearDrop: () => setDropIds(new Set()),
+      onDropReason: (id: string, reason: string) => setDropWhy((cur) => ({ ...cur, [id]: reason })),
       onClearKeep: () => setKeepIds(null),
       onNetwork: (n) => {
         // turning a network on or off keeps the other network's pick
@@ -1120,10 +1134,10 @@ export default function App() {
         </PresentationProvider>}
         {tab === 'blanks' && <BlanksPage />}
         {tab === 'baseline' && (calibrationLoading ? <p>Loading calibration data…</p> : <BaselineComparisonPage mac={exportMac} demingLambda={data.calibration?.deming_lambda_mac10 ?? 1} />)}
-        {tab === 'calibration' && (calibrationLoading ? <p>Loading calibration data…</p> : <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={drawerMeta} galleryRows={paintedSourceRows} galleryMeta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />)}
+        {tab === 'calibration' && (calibrationLoading ? <p>Loading calibration data…</p> : <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={drawerMeta} galleryRows={paintedSourceRows} sourceRows={rawSourceRows} galleryMeta={meta} axes={axes} onAxes={setAxes} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />)}
         {tab === 'dashboard' && <DashboardPage dash={dash} setDash={setDash} filters={dashFilters} onScope={setDashScope} onPickSite={pickDashSite} display={<DisplayToggles />}
           data={{ rows, meta, axes, pmf: pmf ?? null, pmfRows, eff, defaults: { x: xField, y: yField, field }, openSite: openDashSite, pmfLabelOfDate,
-            calibration: data.calibrationRuns ? { runs: data.calibrationRuns, lambda10: data.calibration?.deming_lambda_mac10 ?? 2.96, knownIds, galleryRows: paintedSourceRows, galleryMeta: meta, meta: drawerMeta } : null }} />}
+            calibration: data.calibrationRuns ? { runs: data.calibrationRuns, lambda10: data.calibration?.deming_lambda_mac10 ?? 2.96, knownIds, galleryRows: paintedSourceRows, sourceRows: rawSourceRows, galleryMeta: meta, meta: drawerMeta } : null }} />}
         <AxisFieldsProvider meta={meta} value={axisValues} set={setAxisField}>
         {tab === 'correlation' && (
           <>

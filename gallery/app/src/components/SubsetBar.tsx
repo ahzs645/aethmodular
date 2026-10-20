@@ -1,7 +1,7 @@
 import { RegressionControls } from '@/lib/regressionPrefs'
 import { chemText } from '@/lib/format'
 import { CONVENTION_LABEL, seasonOnly } from '@/lib/seasons'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 import { DateBrush, type DateRange } from '@/components/DateBrush'
@@ -92,7 +92,9 @@ export interface SubsetState {
   /** filters dropped by hand from a brush, and the size of a "keep only" set (null: none) */
   dropped?: number
   /** the hand-excluded filters, each with a "site · date" label */
-  droppedList?: { id: string; label: string }[]
+  droppedList?: { id: string; label: string; reason?: string }[]
+  /** the repo's own exclusions (rows the export marked `excluded`), with their recorded reason */
+  excludedList?: { id: string; label: string; reason: string }[]
   /** spectral baseline for FTIR EC, offered when an axis or the measurement is EC (FTIR) */
   ftirBaseline?: 'none' | 'spline' | 'vibes'
   showFtirBaseline?: boolean
@@ -134,6 +136,8 @@ export interface SubsetActions {
   onCalendarVariant?: (code: string, key: string, isDefault: boolean) => void
   onKeepIds?: (ids: Set<string>) => void
   onClearDrop?: () => void
+  /** the reader's reason for a hand exclusion (kept in the link as `dropwhy`) */
+  onDropReason?: (id: string, reason: string) => void
   /** put some hand-excluded filters back */
   onRestoreIds?: (ids: Set<string>) => void
   onClearKeep?: () => void
@@ -235,9 +239,17 @@ export function SubsetBar({
         <div className="dropped-list">
           <button type="button" className="btn quiet dropped-review" title="List every excluded filter in the side panel: site, date, values; put any or all back"
             onClick={() => edits.openGroup({ title: 'Excluded by hand', ids: (s.droppedList ?? []).map((d) => d.id), fields: reviewFields, live: 'dropped' })}>Review all {s.dropped} ›</button>
-          {(s.droppedList ?? []).map((d) => <span key={d.id} className="pill" title={d.label}>
+          <CopyExclusions rows={(s.droppedList ?? []).map((d) => ({ id: d.id, label: d.label, reason: d.reason ?? '', source: 'by hand' }))} />
+          {/* each hand exclusion with a reason the reader writes; the reasons travel in the link with the ids */}
+          {(s.droppedList ?? []).map((d) => <div key={d.id} className="excluded-row">
             <button type="button" className="pill-link" onClick={() => hl.openSample(d.id)} title={`${d.label} · open this filter's details`}>{d.id}</button>
-            {a.onRestoreIds && <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 4 }} onClick={() => a.onRestoreIds!(new Set([d.id]))} aria-label={`Put ${d.id} back`} title="Put this filter back">↺</button>}</span>)}
+            <span className="excluded-where">{d.label}</span>
+            {a.onDropReason
+              ? <input className="select excluded-why" value={d.reason ?? ''} placeholder="Why excluded? (kept in the link)" aria-label={`Reason for excluding ${d.id}`}
+                onChange={(e) => a.onDropReason!(d.id, e.target.value)} />
+              : d.reason ? <span className="excluded-reason">{d.reason}</span> : null}
+            {a.onRestoreIds && <button type="button" className="btn quiet" style={{ padding: '0 4px' }} onClick={() => a.onRestoreIds!(new Set([d.id]))} aria-label={`Put ${d.id} back`} title="Put this filter back">↺</button>}
+          </div>)}
         </div>
       </details>}
       {s.kept != null && <span className="pill">keeping {s.kept}
@@ -493,7 +505,21 @@ export function SubsetBar({
 
           <Row label="">
             {caps.excluded ? (
-              <Toggle label={`Include ${s.nExcluded} excluded samples`} checked={s.includeExcluded} onChange={a.onIncludeExcluded} />
+              <span className="excluded-toggle">
+                <Toggle label={`Include ${s.nExcluded} excluded samples`} checked={s.includeExcluded} onChange={a.onIncludeExcluded} />
+                {/* the repo's exclusions and the reason each was set, from the export */}
+                {(s.excludedList ?? []).length > 0 && <details className="dropped-details">
+                  <summary title="Which samples the repo excludes, and why">why? ▾</summary>
+                  <div className="dropped-list">
+                    <CopyExclusions rows={(s.excludedList ?? []).map((d) => ({ ...d, source: 'repo' }))} />
+                    {(s.excludedList ?? []).map((d) => <div key={d.id} className="excluded-row">
+                      <button type="button" className="pill-link" onClick={() => hl.openSample(d.id)} title={`${d.label} · open this filter's details`}>{d.id}</button>
+                      <span className="excluded-where">{d.label}</span>
+                      <span className="excluded-reason">{d.reason || 'no reason recorded'}</span>
+                    </div>)}
+                  </div>
+                </details>}
+              </span>
             ) : null}
             {caps.note && explain && <span className="row-note">{caps.note}</span>}
             {caps.sites && <span className="method-note">{sitesNote}</span>}
@@ -676,4 +702,14 @@ function RainRuleEditor({ rule, onChange }: { rule: RainRule; onChange: (r: Rain
       </div>
     </div>
   )
+}
+
+/** Copy a list of exclusions (id, site · date, reason) as JSON, e.g. to add to the repo's exclusion list. */
+function CopyExclusions({ rows }: { rows: { id: string; label: string; reason: string; source: string }[] }) {
+  const [done, setDone] = useState(false)
+  const copy = () => {
+    const json = JSON.stringify(rows.map((r) => ({ id: r.id, where: r.label, reason: r.reason || null, excluded: r.source })), null, 2)
+    navigator.clipboard?.writeText(json).then(() => { setDone(true); setTimeout(() => setDone(false), 1500) }).catch(() => {})
+  }
+  return <button type="button" className="btn quiet excluded-copy" onClick={copy} title="Copy these exclusions and their reasons as JSON">{done ? 'Copied ✓' : 'Copy as JSON'}</button>
 }

@@ -97,6 +97,8 @@ export interface CalibrationData {
   lambda10: number
   knownIds: Set<string>
   galleryRows: FilterRow[]
+  /** every filter's row before the view's options (its deployed SPARTAN EC) */
+  sourceRows?: FilterRow[]
   galleryMeta: MetaFile
   /** the drawer's meta (exported units), as the Calibration tab passes it */
   meta: MetaFile
@@ -123,7 +125,7 @@ export function RunCrossplotTile({ cal }: { cal: CalibrationData }) {
   const { run, picker } = useRun(cal)
   if (!run) return <Empty>No calibration run for this preset.</Empty>
   return <WithControls controls={picker}>
-    <RunCrossplot lambda10={cal.lambda10} run={run} runs={cal.runs} meta={cal.meta} knownIds={cal.knownIds} galleryRows={cal.galleryRows} galleryMeta={cal.galleryMeta} />
+    <RunCrossplot lambda10={cal.lambda10} run={run} runs={cal.runs} meta={cal.meta} knownIds={cal.knownIds} galleryRows={cal.galleryRows} sourceRows={cal.sourceRows} galleryMeta={cal.galleryMeta} />
   </WithControls>
 }
 
