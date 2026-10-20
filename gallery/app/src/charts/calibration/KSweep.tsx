@@ -45,7 +45,7 @@ export function KSweep({ calib, selected, onSelect }: { calib: CalibFile; select
   const o = useChartOptions('k-sweep', [
     { key: 'co', label: 'Cohort', style: 'select', default: selected.co, choices: cohorts.map((c) => ({ value: c, label: label(COHORT, c) })),
       bind: [selected.co, ((co: string) => { const first = sweeps.find((s) => s.co === co); onSelect({ co, cut: first?.cut ?? null, sel: first?.sel ?? null, sp: first?.sp ?? 'raw' }) }) as (v: never) => void] },
-    { key: 'cut', label: 'Calibration cohort size', style: 'select', default: String(selected.cut ?? ''), hidden: '',
+    { key: 'cut', label: 'Cohort size', style: 'select', default: String(selected.cut ?? ''), hidden: '',
       when: (c: Record<string, unknown>) => sweeps.some((s) => s.co === c.co && s.cut !== null),
       choices: allCuts.map((k) => ({ value: String(k), when: (c: Record<string, unknown>) => sweeps.some((s) => s.co === c.co && s.cut === k) })),
       bind: [String(selected.cut ?? ''), ((v: string) => pick({ cut: cutOf(v) })) as (v: never) => void] },

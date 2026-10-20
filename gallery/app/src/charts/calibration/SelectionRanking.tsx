@@ -68,7 +68,7 @@ export function SelectionRanking({ runs, calib }: { runs: CalibRunsFile; calib: 
     >
       <div ref={wrapRef} className="chart-wrap">
         {!primary ? (
-          <Empty>No ranking exported for {cohort}.</Empty>
+          <Empty>No ranking exported for {label(COHORT, cohort)}.</Empty>
         ) : view === 'metric vs rank' ? (
           <svg width={width} height={height}>
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>

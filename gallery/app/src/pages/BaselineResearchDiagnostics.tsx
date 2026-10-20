@@ -2,12 +2,13 @@ import { useRef, useState, type KeyboardEvent } from 'react'
 import { useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
-import { ChartFrame, ExplainOnly, Note, Select } from '@/components/ChartFrame'
+import { ChartFrame, ExplainOnly, Note, Segmented } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { FONT, INK, baselineColor } from '@/lib/theme'
 import { fixed as f } from '@/lib/format'
+import { useColourScheme } from '@/lib/colourSchemes'
 import { useBaselineColors } from '@/lib/baselineRank'
 import { useHighlight } from '@/lib/highlight'
 import { useLegend } from '@/components/Legend'
@@ -63,7 +64,7 @@ function ApplicabilityViews({data}:{data:ApplicabilityData}) {
     return group.filter(r=>r[key]>95).length/group.length*100
   }
   return <>
-    <ChartFrame title="Distance from training spectra" controls={<Select label="Spectral diagnostic" value={metric} options={['PCA score distance','Unmodeled spectral variation']} onChange={setMetric}/>}
+    <ChartFrame title="Distance from training spectra" controls={<Segmented label="Spectral diagnostic" value={metric} options={['PCA score distance','Unmodeled spectral variation']} onChange={setMetric}/>}
       subtitle="Mean held-out absolute EC error by percentile of the training-only spectral distribution. Each method uses its own PCA fit.">
       <Note>Full-pool held-out IMPROVE filters only; 2,327 physical test filters per method. {metric==='PCA score distance'?'Score distance (T²) from an eight-component PCA fit. This is not the saved PLS score space.':'Residual spectral RMS (Q) after eight PCA components.'} Values are percentiles of the corresponding training spectra.</Note>
       <div ref={ref} className="chart-wrap"><svg width={w} height={310} role="img" aria-label="Mean absolute held-out EC error by training spectral distance percentile"><g transform="translate(70,20)"><YAxis scale={y} x={0} gridWidth={iw} label="Mean |error| (µg/filter)"/><rect x={x(95)} width={x(100)-x(95)} height={ih} fill="#c49442" fillOpacity={.12}/>{METHODS.filter(lg.show).map(method=>{
@@ -104,6 +105,8 @@ export function RegionContribution({data,sample}:{data:BaselineData;sample:strin
 }
 
 export function SiteBandPattern({rows,cohort}:{rows:BaselinePair[];cohort:BaselineCohort}) {
+  // the diverging palette is the reader's pick (lib/colourSchemes), Purple–orange by default
+  const colours=useColourScheme('baseline-research-pattern','diverging','Purple–orange')
   const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref)
   const tip=useTooltip(ref)
   const sites=Array.from(new Set(rows.map(r=>r.Site))).sort()
@@ -116,9 +119,9 @@ export function SiteBandPattern({rows,cohort}:{rows:BaselinePair[];cohort:Baseli
   const w=Math.max(300,width),iw=w-115,ih=sites.length*22
   const x=d3.scaleBand().domain(bands).range([0,iw]).padding(.07)
   const y=d3.scaleBand().domain(sites).range([0,ih]).padding(.06)
-  const color=d3.scaleDiverging([-bound,0,bound],d3.interpolatePuOr).clamp(true)
-  return <ChartFrame title="Site and loading pattern" subtitle="Mean VIBES minus AIRSpec absolute EC error in the selected frozen test population. This screens for heterogeneity; it is not a trained model-routing rule.">
-    <ExplainOnly><Note>{cohort==='full_pool'?'Full pool':'Restricted lowest-OC/EC'}, current display subset ({rows.length} paired physical filters). Colors show ΔMAE in µg/filter: purple favors VIBES, orange favors AIRSpec. Cells with fewer than five filters are gray; blank cells have none.</Note></ExplainOnly>
+  const color=d3.scaleDiverging([-bound,0,bound],d3.interpolateRgbBasis(colours.stops)).clamp(true)
+  return <ChartFrame title="Site and loading pattern" controls={colours.picker} subtitle="Mean VIBES minus AIRSpec absolute EC error in the selected frozen test population. This screens for heterogeneity; it is not a trained model-routing rule.">
+    <ExplainOnly><Note>{cohort==='full_pool'?'Full pool':'Restricted lowest-OC/EC'}, current display subset ({rows.length} paired physical filters). Colors show ΔMAE in µg/filter: the negative end of the palette favors VIBES, the positive end favors the spline baseline (AIRSpec. Cells with fewer than five filters are gray; blank cells have none.</Note></ExplainOnly>
     <div ref={ref} className="chart-wrap"><svg width={w} height={ih+118} role="img" aria-label="Site by training loading quartile heatmap of paired absolute error difference"><g transform="translate(77,25)" fontFamily={FONT.family}>{cells.map(c=>c.n?<rect key={c.site+c.band} x={x(c.band)} y={y(c.site)} width={x.bandwidth()} height={y.bandwidth()} fill={c.n<5?INK.grid:color(c.delta!)} stroke="white" onMouseEnter={e=>tip.show(e,[`${c.site} / ${c.band}`,`${c.n} physical filters`,`ΔMAE ${f(c.delta,3)} µg/filter`,c.n<5?'Shown gray: fewer than five filters':''])} onMouseLeave={tip.hide}></rect>:null)}{sites.map(s=><text key={s} x={-8} y={y(s)!+y.bandwidth()/2+4} textAnchor="end" fontSize={10} fill={INK.text}>{s}</text>)}<XAxis scale={x} y={ih} label="Training-defined EC loading quartile"/></g><ColorKey x={77} y={ih+92} bound={bound} color={color}/></svg>{tip.node}</div>
     <ExplainOnly><Note>Color saturates beyond ±{f(bound,2)} µg/filter, the 90th percentile of displayed cell magnitudes; hover gives exact values and counts. The quartiles use measured TOR EC, so they cannot route an Addis prediction without independent EC. The separate CLI notebook evaluates an exploratory spectrum-only router; this heatmap is not that model.</Note></ExplainOnly>
   </ChartFrame>
@@ -136,7 +139,7 @@ export function BlankSpread({data}:{data:BaselineData}) {
   const x=d3.scaleBand().domain(METHODS).range([0,iw]).padding(.45)
   const ymax=d3.max(points,p=>p.rms_from_zero*1e4)||1
   const y=d3.scaleLinear().domain([0,ymax*1.12]).nice().range([ih,0])
-  return <ChartFrame title="Held-out blank spread" controls={<Select label="Blank source" value={source} options={['ETAD','IMPROVE']} onChange={setSource}/>} subtitle="Every paired held-out blank, beyond the medians shown above.">
+  return <ChartFrame title="Held-out blank spread" controls={<Segmented label="Blank source" value={source} options={['ETAD','IMPROVE']} onChange={setSource}/>} subtitle="Every paired held-out blank, beyond the medians shown above.">
     <Note>{source}: {new Set(points.map(r=>r.sample_id)).size} physical field blanks. Residual RMS after correction; smaller is closer to zero absorbance.</Note>
     <div ref={ref} className="chart-wrap"><svg width={w} height={300} role="img" aria-label="Individual held-out blank residual RMS by correction method"><g transform="translate(75,20)"><YAxis scale={y} x={0} gridWidth={iw} label="RMS (10⁻⁴ absorbance)"/>{points.map((p,i)=><circle key={p.sample_id+p.method} cx={x(p.method)!+x.bandwidth()/2+((i%9)-4)*2.4} cy={y(p.rms_from_zero*1e4)} r={source==='ETAD'?4:2.7} fill={COLOR[p.method]} fillOpacity={.55} style={{cursor:'pointer'}} onClick={()=>openBlank(p.sample_id)}><title>{`${p.sample_id} ${p.method}: ${f(p.rms_from_zero,7)} absorbance`}</title></circle>)}<XAxis scale={x} y={ih} label="Correction method"/></g></svg></div>
     <Note>Field blanks can carry artifacts or residual material. This assesses background removal, not ambient EC accuracy. The nine ETAD blanks are independent parents; synthetic injections reuse parents at multiple amplitudes.</Note>

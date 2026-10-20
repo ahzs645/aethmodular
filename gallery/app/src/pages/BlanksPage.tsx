@@ -4,10 +4,11 @@ import { Marker } from '@/components/RefLines'
 import { useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
-import { ChartFrame, ExplainOnly, Note, Segmented, Select } from '@/components/ChartFrame'
+import { ChartFrame, ExplainOnly, Note, Segmented } from '@/components/ChartFrame'
 import { PageToc } from '@/components/PageToc'
 import { XAxis, YAxis } from '@/components/Axes'
 import { AxisChoices } from '@/components/AxisChoices'
+import { useColourScheme } from '@/lib/colourSchemes'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -207,7 +208,7 @@ function RawSpectra({ d }: { d: BlanksData }) {
     <ChartFrame id="blanks-raw" source="gallery/app/src/pages/BlanksPage.tsx › RawSpectra"
       title="Raw blank spectra — what a clean PTFE filter looks like, by lot"
       subtitle="Uncorrected absorbance of every labeled blank (8-channel means). Median and interquartile band per lot and source, or every blank as a faint line; hover a line to name it. Shading: PTFE C–F band and CO₂."
-      controls={<><Segmented label="Show" value={mode} options={SPEC_MODES} onChange={setMode} /><Segmented label="Range" value={range} options={RANGES} onChange={setRange} /></>}>
+      controls={<><Segmented label="Show" value={mode} options={SPEC_MODES} optionLabel={(v) => v === 'median & IQR' ? 'Median + IQR' : 'Every blank'} onChange={setMode} /><Segmented label="Range" value={range} options={RANGES} onChange={setRange} /></>}>
       <SpectrumPlot series={series} bands={bands} window={dom} yDomain={yDom} height={340} yLabel="Absorbance (raw)" regions={SHADES}
         hover={every ? 'nearest' : 'none'} dim={lg.dim} />
       <Legend {...lg.props} items={groups.map((g) => ({ label: g, color: GROUP_COLOR[g], shape: 'line' as const, detail: `n=${d.groups[g].n}` }))} />
@@ -245,6 +246,7 @@ function PcaMap({ d }: { d: BlanksData }) {
   const [px, setPx] = useSearchParam<string>('bkpcx', 'PC1', pcs)
   const [py, setPy] = useSearchParam<string>('bkpcy', 'PC2', pcs)
   const [colorBy, setColorBy] = useSearchParam<string>('bkpccol', 'lot / source', [...PCA_COLOR])
+  const dateColours = useColourScheme('blanks-pca-date', 'sequential', 'Viridis')
   // the page's background bank (PageChoices at the top of the page)
   const { value: bank } = usePageChoice('bank', banksOf(d))
   const [pin, setPin] = useState<number | null>(null)
@@ -259,18 +261,19 @@ function PcaMap({ d }: { d: BlanksData }) {
   const x = d3.scaleLinear().domain(d3.extent(sx) as [number, number]).nice().range([0, side])
   const y = d3.scaleLinear().domain(d3.extent(sy) as [number, number]).nice().range([side, 0])
   const dates = inv(d, 'date').map((v) => (v ? +new Date(v) : NaN))
-  const dateScale = d3.scaleSequential(d3.interpolateViridis).domain(d3.extent(dates.filter(Number.isFinite)) as [number, number])
+  const dateScale = d3.scaleSequential(d3.interpolateRgbBasis(dateColours.stops)).domain(d3.extent(dates.filter(Number.isFinite)) as [number, number])
   const color = (i: number) => colorBy === 'lot / source' ? GROUP_COLOR[inv(d, 'group')[i]] : colorBy === 'sampling date' ? (Number.isFinite(dates[i]) ? dateScale(dates[i]) : INK.neutral) : ROLE_COLOR[roleIn(d, bank, i)]
   const worst = d.banks['VIBES-allblanks'].worst.id
   const devOf = (i: number) => d.raw[i].map((v, j) => v - d.shared_pca.mean[j])
   const legendItems = colorBy === 'lot / source' ? Object.keys(d.groups).map((g) => ({ label: g, color: GROUP_COLOR[g] }))
-    : colorBy === 'role in background' ? Object.entries(ROLE_COLOR).map(([label, c]) => ({ label, color: c })) : [{ label: 'earliest', color: dateScale.range()[0] as unknown as string }, { label: 'latest', color: d3.interpolateViridis(1) }, { label: 'undated (ETAD)', color: INK.neutral }]
+    : colorBy === 'role in background' ? Object.entries(ROLE_COLOR).map(([label, c]) => ({ label, color: c })) : [{ label: 'earliest', color: dateScale.range()[0] as unknown as string }, { label: 'latest', color: dateColours.stops[dateColours.stops.length - 1] }, { label: 'undated (ETAD)', color: INK.neutral }]
   return (
     <ChartFrame id="blanks-pca" source="gallery/app/src/pages/BlanksPage.tsx › PcaMap"
       title="PCA map of every blank — which blanks look alike"
       subtitle={`One PCA of all ${n} raw blank spectra (4000–500 cm⁻¹, mean-centred). ${px} carries ${pct(d.shared_pca.var[ix])} of the variance, ${py} ${pct(d.shared_pca.var[iy])}. Click a blank to see how it differs from the average blank. The ringed point is the outlier blank that sets the big banks' rank.`}
       controls={<>
-        <Select label="Colour" value={colorBy} options={[...PCA_COLOR]} onChange={setColorBy} />
+        <Segmented label="Colour" value={colorBy} options={[...PCA_COLOR]} onChange={setColorBy} />
+        {colorBy === 'sampling date' && dateColours.picker}
       </>}>
       {/* the components behind the axis titles, the gallery's shared axis picker (components/AxisChoices) */}
       <AxisChoices noun="components" x={[px, setPx]} y={[py, setPy]}
@@ -325,11 +328,13 @@ function Drift({ d }: { d: BlanksData }) {
     <ChartFrame id="blanks-drift" source="gallery/app/src/pages/BlanksPage.tsx › Drift"
       title="Drift over time — do blanks change across the sampling period?"
       subtitle={`Shared-PCA score of each dated (IMPROVE) blank against its sampling date, with the monthly median per lot. A trend would mean a background trained on one period fits another period worse.`}
-      controls={<Segmented label="Score" value={pc} options={pcs} onChange={setPc} />}>
+      >
+      {/* the component behind the y-axis title (components/AxisChoices), as on the PCA map above */}
+      <AxisChoices noun="components" y={[pc, setPc]} options={pcs.map((p) => ({ key: p, label: `${p} score`, group: 'Principal components', roles: ['y'] as ('x' | 'y')[] }))}>
       <div ref={ref} style={{ position: 'relative' }}>
         <svg width={iw + m.left + m.right} height={h} fontFamily={FONT.family}>
           <g transform={`translate(${m.left},${m.top})`}>
-            <YAxis scale={y} x={0} label={`${pc} score`} tickCount={5} gridWidth={iw} labelX={-46} />
+            <YAxis scale={y} x={0} label={`${pc} score`} tickCount={5} gridWidth={iw} labelX={-46} pick="y" />
             <XAxis scale={x} y={ih} label="Sampling date" tickCount={8} labelDy={36} format={(v) => d3.timeFormat('%b %Y')(v as Date)} />
             {pts.map((p) => <circle key={p.i} cx={x(p.t)} cy={y(p.v)} r={2.8} fill={GROUP_COLOR[p.g]} fillOpacity={0.55}
               onMouseEnter={(e) => tip.show(e, [inv(d, 'sample_id')[p.i], `${inv(d, 'site')[p.i]} · ${inv(d, 'date')[p.i]}`, `${pc} ${f2(p.v)}`])} onMouseLeave={tip.hide} />)}
@@ -338,6 +343,7 @@ function Drift({ d }: { d: BlanksData }) {
         </svg>
         {tip.node}
       </div>
+      </AxisChoices>
       <Legend items={[...new Set(pts.map((p) => p.g))].map((g) => ({ label: g, color: GROUP_COLOR[g] }))} note="lines: monthly median" />
     </ChartFrame>
   )

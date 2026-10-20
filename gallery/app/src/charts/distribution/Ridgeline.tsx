@@ -8,6 +8,7 @@ import { kde } from '@/lib/stats'
 import { INK, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
+import { useColourScheme } from '@/lib/colourSchemes'
 
 const ROWS = ['Season', 'Site', 'Year'] as const
 const OVERLAPS = ['None', 'Some', 'Ridge'] as const
@@ -30,6 +31,9 @@ export function Ridgeline({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   const [groupBy, setGroupBy] = useState<(typeof ROWS)[number]>('Season')
   const [clip, setClip] = useState(true)
   const [overlapMode, setOverlapMode] = useState<(typeof OVERLAPS)[number]>('Some')
+  // ordered rows (years) take their colours from a palette (lib/colourSchemes); seasons and sites keep theirs
+  const colours = useColourScheme('ridgeline', 'sequential', 'Viridis')
+  const ramp = useMemo(() => d3.interpolateRgbBasis(colours.stops), [colours.stops.join()]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const groups = useMemo(() => {
     const keyOf = (r: FilterRow) => (groupBy === 'Season' ? r.season : groupBy === 'Site' ? r.site : String(r.year ?? ''))
@@ -52,10 +56,10 @@ export function Ridgeline({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
         ? meta.seasons.find((s) => s.name === k)?.color ?? INK.muted
         : groupBy === 'Site'
           ? meta.sites.find((s) => s.name === k)?.color ?? INK.muted
-          : d3.interpolateViridis(order.indexOf(k) / Math.max(1, order.length - 1))
+          : ramp(order.indexOf(k) / Math.max(1, order.length - 1))
 
     return order.filter((k) => m.get(k)!.length >= 8).map((k) => ({ name: k, values: m.get(k)!, color: colorFor(k) }))
-  }, [rows, field, groupBy, meta])
+  }, [rows, field, groupBy, meta, ramp])
 
   // Row labels can be long ("Belg (Feb-May, short rains)"), so the gutter is
   // sized from the actual text rather than a fixed margin that clips them.
@@ -96,6 +100,7 @@ export function Ridgeline({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
           <Segmented label="Rows" value={groupBy} options={ROWS} onChange={setGroupBy} />
           <Segmented label="Overlap" value={overlapMode} options={OVERLAPS} onChange={setOverlapMode} title="How far each density may rise into the row above" />
           <Toggle label="Clip to 1–99 %" checked={clip} onChange={setClip} />
+          {groupBy !== 'Season' && groupBy !== 'Site' && colours.picker}
         </>
       }
     >

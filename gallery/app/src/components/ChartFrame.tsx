@@ -220,7 +220,11 @@ export function Select({
  */
 export const sentence = (s: string) => /^[a-z]{2}/.test(s) ? s[0].toUpperCase() + s.slice(1) : s
 
-/** Segmented control — for 2–4 mutually exclusive options that deserve to be visible at once. */
+/**
+ * Segmented control: for 2–5 mutually exclusive options that deserve to be visible at once (more
+ * than five, or long labels: Select). Labels follow the page's estimator ('Deming' reads 'OLS'
+ * under OLS), as Select's do.
+ */
 export function Segmented<T extends string>({
   label,
   value,
@@ -237,13 +241,14 @@ export function Segmented<T extends string>({
   /** display text per option; defaults to the option in sentence case */
   optionLabel?: (o: T) => string
 }) {
+  const method = useEstimator()
   return (
     <span className="control" title={title}>
       {label}
       <span className="seg" role="radiogroup">
         {options.map((o) => (
           <button key={o} type="button" role="radio" aria-checked={o === value} className={o === value ? 'active' : ''} onClick={() => onChange(o)}>
-            {optionLabel ? optionLabel(o) : sentence(o)}
+            {estimatorText(optionLabel ? optionLabel(o) : sentence(o), method)}
           </button>
         ))}
       </span>

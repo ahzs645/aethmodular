@@ -83,6 +83,20 @@ export const COHORT: Record<string, string> = {
   corr_kiremt: 'Spectral analogs (correlation), Kiremt season',
 }
 
+/** Short cohort names, for table rows, tooltips and legends where COHORT's full names do not fit. */
+export const COHORT_SHORT: Record<string, string> = {
+  pool: 'All IMPROVE',
+  smoke: 'Smoke (906)',
+  ocec: 'Lowest OC/EC',
+  analogs: 'Analogs (VIP)',
+  vip_analogs: 'Analogs (VIP)',
+  eth_shaped: 'Ethiopia-shaped',
+  corr_all: 'Analogs (r), all Addis',
+  corr_dry: 'Analogs (r), Dry',
+  corr_belg: 'Analogs (r), Belg',
+  corr_kiremt: 'Analogs (r), Kiremt',
+}
+
 /** Where the analog/cohort similarity was measured. */
 export const SELECTION_SPACE: Record<string, string> = {
   raw: 'selected on raw spectra',

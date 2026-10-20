@@ -17,10 +17,10 @@ import type { CalibRun, CalibRunsFile } from '@/lib/types'
 import { cohortColor, fmtFit, metricRow, presetName } from './common'
 import { COHORT, PREPROCESSING, label } from '@/lib/labels'
 import { AxisChoices } from '@/components/AxisChoices'
+import { PANEL_AXES, type PanelAxes } from '@/lib/axes'
 
 /** Ethiopian sites first (the calibration's own target, then its neighbour), then the other SPARTAN sites. */
 const SITE_ORDER = ['addis', 'etbi', 'indh', 'chts', 'uspa']
-const AXES = ['per site', 'shared'] as const
 const DOT_METRICS = ['intercept', 'slope', 'R²'] as const
 /** The explorer's own threshold for "partially out of domain" (CROSS_SITE_EVALUATION_2026-08-22.md). */
 const EXTRAP_FLAG = 20
@@ -66,7 +66,7 @@ export function CrossSiteTransfer({ runs }: { runs: CalibRunsFile }) {
     { key: 'size', label: 'Cohort size', style: 'select', default: start ? sizeOf(start) : '',
       choices: [...new Set(presets.map(sizeOf))].map((z) => ({ value: z, label: z === 'complete' ? 'Complete cohort' : `${z} filters`,
         when: (c) => presets.some((p) => p.cohort === c.cohort && sizeOf(p) === z) })) },
-    { key: 'spectra', label: 'Spectra', style: 'select', default: start?.spectra ?? '',
+    { key: 'spectra', label: 'Preprocessing', style: 'select', default: start?.spectra ?? '',
       choices: [...new Set(presets.map((p) => p.spectra))].map((sp) => ({ value: sp,
         label: (c) => { const q = presets.find((p) => p.cohort === c.cohort && sizeOf(p) === c.size && p.spectra === sp); const n = q && noteOf(q); return label(PREPROCESSING, sp) + (n ? ` (${n})` : '') },
         when: (c) => presets.some((p) => p.cohort === c.cohort && sizeOf(p) === c.size && p.spectra === sp) })) },
@@ -122,7 +122,8 @@ function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel }: {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const [axes, setAxes] = useState<(typeof AXES)[number]>('per site')
+  // per-site panels on one range or each on its own, named as everywhere else (lib/axes PANEL_AXES)
+  const [axes, setAxes] = useState<PanelAxes>('Own')
 
   const pts = siteRuns.map((run) => {
     const e = run.eval
@@ -154,7 +155,7 @@ function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel }: {
       subtitle="One panel per SPARTAN site: the calibration's predicted FTIR EC against HIPS Fabs ÷ MAC, with the 1:1 line (dashed) and the Deming fit from the explorer's metrics for every filter at that site (each site is a test set the model never saw)."
       provenance="calibration_explorer /api/run for each target · test set 'all'"
       tip={TRANSFER_TIP}
-      controls={<>{controls}<Segmented label="Axes" value={axes} options={AXES} onChange={setAxes} /></>}
+      controls={<>{controls}<Segmented label="Panel axes" value={axes} options={PANEL_AXES} onChange={setAxes} /></>}
     >
       <div ref={wrapRef} className="chart-wrap">
         {!siteRuns.length ? (
@@ -163,7 +164,7 @@ function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel }: {
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap, justifyItems: 'center' }}>
             {siteRuns.map((run, k) => {
               const t = runs.targets[run.target]
-              const dom = axes === 'shared' ? shared : domainOf(pts[k])
+              const dom = axes === 'Shared' ? shared : domainOf(pts[k])
               const x = d3.scaleLinear().domain(dom).range([0, S]).nice()
               const y = d3.scaleLinear().domain(x.domain()).range([S, 0])
               const [d0, d1] = x.domain()

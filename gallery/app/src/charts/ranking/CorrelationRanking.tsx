@@ -112,7 +112,7 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
     { key: 'top', label: 'Show', default: '25', when: (c) => c.view === 'Side by side',
       choices: [{ value: '15', label: 'Top 15' }, { value: '25', label: 'Top 25' }, { value: 'all', label: 'All' }],
       title: 'The first rows in the order chosen; the rest are one click away' },
-    { key: 'minN', label: 'Min n', style: 'select', default: '30', choices: ['10', '30', '50', '100'] },
+    { key: 'minN', label: 'Min filters', default: '30', choices: ['10', '30', '50', '100'] },
   ])
   const view = o.values.view as (typeof VIEWS)[number]
   const site = o.values.site as string

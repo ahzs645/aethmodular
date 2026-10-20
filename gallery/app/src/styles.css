@@ -137,6 +137,14 @@ code { font-family: var(--mono); font-size: 0.92em; }
 /* the list floats on the page (portal), above dialogs and sidebars */
 /* min-width 100% would mean the window for a fixed list: its width is set inline from the trigger instead */
 .combobox-menu.floating { top: auto; z-index: 1000; min-width: 0; }
+/* long lists: a search box pinned at the top of the menu */
+.combobox-search { position: sticky; top: -4px; z-index: 1; background: var(--ink-panel); padding: 2px 2px 6px; margin-top: -2px; }
+.combobox-search input {
+  width: 100%; box-sizing: border-box; font: inherit; font-size: calc(12px * var(--text-scale)); padding: 5px 8px;
+  border: 1px solid var(--ink-border); border-radius: 6px; background: #fff; color: var(--ink-text);
+}
+.combobox-search input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+.combobox-empty { padding: 6px 10px; color: var(--ink-muted); font-size: calc(12px * var(--text-scale)); }
 .combobox-group { padding: 6px 8px 2px; font-size: calc(10.5px * var(--text-scale)); font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; color: var(--ink-muted); }
 .combobox-option {
   display: flex; align-items: center; gap: 6px; width: 100%;
@@ -364,7 +372,8 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 /* ---------- tooltip ---------- */
 
 .tooltip {
-  position: fixed; pointer-events: none; z-index: 60;
+  /* above everything: dialogs (80), the guardrail confirm (90) and floating menus (1000) */
+  position: fixed; pointer-events: none; z-index: 1100;
   background: rgba(17, 24, 39, 0.94); color: #fff; padding: 7px 10px; border-radius: 6px;
   font-size: calc(11.5px * var(--text-scale)); line-height: 1.5; font-family: var(--mono);
   /* a long line wraps rather than running off the window (useTooltip keeps the card on screen) */
@@ -1150,7 +1159,12 @@ html.dash-present .container.dash { padding-top: 10px; }
 .guard-builder .rule { background: var(--ink-panel); border-radius: 6px; padding: 4px 6px; }
 /* a single value is an input; a range (between) is a span holding two */
 .guard-builder input.rule-value { width: 90px; }
-.guard-builder span.rule-value { display: inline-flex; gap: 6px; border: 0; padding: 0; background: none; max-width: none; }
+.guard-builder span.rule-value { display: inline-flex; align-items: center; gap: 10px; border: 0; padding: 0; background: none; max-width: none; }
+/* a range: the two bounds spaced apart */
+.guard-builder span.rule-value .rule-value-list-item + .rule-value-list-item { margin-left: 14px; }
+/* remove a condition or group: red, so it reads as delete */
+.guard-builder .rule-remove, .guard-builder .ruleGroup-remove { color: var(--danger); font-weight: 600; }
+.guard-builder .rule-remove:hover, .guard-builder .ruleGroup-remove:hover { color: var(--danger); border-color: var(--danger); }
 .guard-builder .rule-value-list-item {
   width: 80px; font-size: calc(12px * var(--text-scale)); padding: 4px 7px; border: 1px solid var(--ink-border); border-radius: 6px;
   background: #fff; color: var(--ink-text); font-family: var(--font);
@@ -1174,3 +1188,45 @@ html.dash-present .container.dash { padding-top: 10px; }
   .guard-builder .rule { flex-wrap: wrap; }
   .guard-formula { flex-wrap: wrap; }
 }
+.guard-and { color: var(--ink-muted); }
+.guard-result { align-items: center; }
+.guard-step-toggle { margin-left: auto; }
+.guard-steps { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: flex-start; }
+.guard-step-table { flex: 1 1 520px; }
+.guard-step-table td, .guard-step-table th { white-space: nowrap; }
+.guard-step-table .guard-step-label { white-space: normal; max-width: 360px; }
+.guard-step-table tr.on td { background: var(--accent-soft); }
+.guard-pct { color: var(--ink-muted); font-size: 0.92em; }
+.guard-shared-table { border-collapse: collapse; font-size: calc(11.5px * var(--text-scale)); font-family: var(--mono); }
+.guard-shared-table th, .guard-shared-table td { padding: 3px 7px; text-align: center; }
+.guard-shared-table td { border: 1px solid var(--ink-panel); }
+.guard-shared { display: flex; flex-direction: column; gap: 6px; }
+.guard-steps .guard-help { flex-basis: 100%; }
+.guard-and { color: var(--ink-muted); }
+.guard-result { align-items: center; }
+.guard-step-toggle { margin-left: auto; }
+.guard-steps { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: flex-start; }
+.guard-step-table { flex: 1 1 520px; }
+.guard-step-table td, .guard-step-table th { white-space: nowrap; }
+.guard-step-table .guard-step-label { white-space: normal; max-width: 360px; }
+.guard-step-table tr.on td { background: var(--accent-soft); }
+.guard-pct { color: var(--ink-muted); font-size: 0.92em; }
+.guard-shared { display: flex; flex-direction: column; gap: 6px; }
+.guard-shared-table { border-collapse: collapse; font-size: calc(11.5px * var(--text-scale)); font-family: var(--mono); }
+.guard-shared-table th, .guard-shared-table td { padding: 3px 7px; text-align: center; }
+.guard-shared-table td { border: 1px solid var(--ink-panel); }
+.guard-steps .guard-help { flex-basis: 100%; }
+/* the unsaved-changes question, over the guardrail popup */
+.guard-dialog { position: relative; }
+.guard-confirm-backdrop { position: fixed; inset: 0; z-index: 90; background: rgba(17, 24, 39, 0.3); display: grid; place-items: center; padding: 16px; }
+.guard-confirm { width: min(420px, 100%); background: var(--ink-panel); border-radius: 10px; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25); padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.guard-confirm strong { font-size: calc(14px * var(--text-scale)); }
+.guard-confirm p { margin: 0; color: var(--ink-muted); }
+/* the guardrail builder's dropdowns are the gallery's comboboxes; "is one of" is a MultiCombobox */
+.guard-builder .combobox-trigger { min-width: 0; }
+.guard-builder span.rule-fields .combobox-trigger { min-width: 210px; }
+/* MultiCombobox: a tick box per option */
+.combobox-option.multi { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.combobox-option.multi:focus { outline: none; }
+.multi-tick { width: 14px; height: 14px; border: 1.5px solid var(--ink-border); border-radius: 3px; display: inline-grid; place-items: center; font-size: 10px; line-height: 1; color: #fff; flex: none; }
+.multi-tick.on { background: var(--accent); border-color: var(--accent); }

@@ -8,10 +8,10 @@ import { NativeFilterMeasurements } from '@/components/NativeFilterMeasurements'
 // the baseline colours used on the AIRSpec / VIBES pages
 // the drawer's VIBES is always the completed full-range run
 const COLOR: Record<SpectrumMethod, string> = { AIRSpec: BASELINE_COLOR.AIRSpec, VIBES: BASELINE_COLOR['VIBES-full-r70'] }
-const NAME: Record<SpectrumMethod, string> = { AIRSpec: 'Spline baseline (AIRSpec)', VIBES: 'VIBES baseline' }
-const VIEWS = ['Spline baseline (AIRSpec)', 'VIBES baseline', 'both'] as const
+const NAME: Record<SpectrumMethod, string> = { AIRSpec: 'Spline baseline', VIBES: 'VIBES baseline' }
+const VIEWS = ['Spline baseline', 'VIBES baseline', 'both'] as const
 const METHODS_OF: Record<(typeof VIEWS)[number], SpectrumMethod[]> = {
-  'Spline baseline (AIRSpec)': ['AIRSpec'],
+  'Spline baseline': ['AIRSpec'],
   'VIBES baseline': ['VIBES'],
   both: ['AIRSpec', 'VIBES'],
 }

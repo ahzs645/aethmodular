@@ -55,7 +55,7 @@ function RatioDialog({ meta, presets, count, onPick, onClose }: {
   const options = useMemo(() => meta.field_groups.filter((g) => g.label !== RATIO_GROUP)
     .flatMap((g) => g.fields.filter((f) => meta.fields.includes(f)).map((f) => {
       const u = prettyUnit(meta.field_units?.[f])
-      return { key: f, label: u ? `${f} — ${u}` : f, group: g.label }
+      return { key: f, label: u ? `${f} (${u})` : f, group: g.label }
     })), [meta])
   const has = (f: string) => options.some((o) => o.key === f)
   const [num, setNum] = useState(() => (has('EC (FTIR)') ? 'EC (FTIR)' : options[0]?.key ?? ''))

@@ -493,10 +493,7 @@ export function SubsetBar({
 
           <Row label="">
             {caps.excluded ? (
-              <label className="toggle">
-                <input type="checkbox" checked={s.includeExcluded} onChange={(e) => a.onIncludeExcluded(e.target.checked)} />
-                Include {s.nExcluded} excluded samples
-              </label>
+              <Toggle label={`Include ${s.nExcluded} excluded samples`} checked={s.includeExcluded} onChange={a.onIncludeExcluded} />
             ) : null}
             {caps.note && explain && <span className="row-note">{caps.note}</span>}
             {caps.sites && <span className="method-note">{sitesNote}</span>}

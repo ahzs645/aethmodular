@@ -10,7 +10,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { BASELINE_COLOR, INK, MARGIN, FONT } from '@/lib/theme'
 import type { CalibFile, CalibRow } from '@/lib/types'
 import { METRICS, SPECTRA_COLOR, cohortColor, fmtFit, isInterceptMetric, isSlopeMetric, metricLabel, metricOf, sameConfig, type Config, type Metric } from './common'
-import { COHORT, CV_PROTOCOL, METRIC, PREPROCESSING, SELECTION_SPACE, label as nameOf } from '@/lib/labels'
+import { COHORT, COHORT_SHORT, CV_PROTOCOL, METRIC, PREPROCESSING, SELECTION_SPACE, label as nameOf } from '@/lib/labels'
 import { AxisChoices } from '@/components/AxisChoices'
 
 const ROWSETS = ['Locked cutoffs', 'One cohort, every cutoff'] as const
@@ -56,7 +56,7 @@ export function SpectraDumbbell({ calib, selected, onSelect }: { calib: CalibFil
         .filter((p): p is { sp: string; v: number; r: CalibRow } => p.v !== null && Number.isFinite(p.v))
         .sort((a, b) => Object.keys(SPECTRA_COLOR).indexOf(a.sp) - Object.keys(SPECTRA_COLOR).indexOf(b.sp))
       if (pts.length < 2) continue
-      const label = `${r0.co}${r0.cut !== null ? `-${r0.cut}` : ''}${r0.sel && r0.sel !== 'raw' ? ` · ${nameOf(SELECTION_SPACE, r0.sel)}` : ''}`
+      const label = `${nameOf(COHORT_SHORT, r0.co)}${r0.cut !== null ? ` ${r0.cut}` : ''}${r0.sel && r0.sel !== 'raw' ? ` · ${nameOf(SELECTION_SPACE, r0.sel)}` : ''}`
       out.push({ key, cfg: { co: r0.co, cut: r0.cut, sel: r0.sel }, label, pts })
     }
     const order = ['pool', 'smoke', 'eth_shaped', 'analogs', 'ocec']

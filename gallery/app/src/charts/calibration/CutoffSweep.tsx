@@ -11,7 +11,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { INK, MARGIN, FONT } from '@/lib/theme'
 import type { CalibFile, CalibRow } from '@/lib/types'
 import { METRICS, fmtFit, spectraColor, isInterceptMetric, isSlopeMetric, metricLabel, metricOf, sameConfig, type Config, type Metric } from './common'
-import { COHORT, CV_PROTOCOL, CV_PROTOCOL_SHORT, METRIC, PREPROCESSING, SELECTION_SPACE, label } from '@/lib/labels'
+import { COHORT, COHORT_SHORT, CV_PROTOCOL, CV_PROTOCOL_SHORT, METRIC, PREPROCESSING, SELECTION_SPACE, label } from '@/lib/labels'
 import { calibrationReadout, cutoffPosition, fittingCounts, cutoffConfig, type CalibrationReadout, type CutoffAxis } from '@/lib/cutoffSweep'
 import { AxisChoices } from '@/components/AxisChoices'
 
@@ -133,7 +133,7 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
       defaultCut={defaultCut} axis={axis} selected={selected} dim={dim}
       onEnter={(e, s, p) =>
         tip.show(e, [
-          `${cohort}-${p.r.cut} × ${label(PREPROCESSING, s.sp)}${s.sel !== 'raw' ? ` (${label(SELECTION_SPACE, s.sel)})` : ''}`,
+          `${label(COHORT_SHORT, cohort)} ${p.r.cut} × ${label(PREPROCESSING, s.sp)}${s.sel !== 'raw' ? ` (${label(SELECTION_SPACE, s.sel)})` : ''}`,
           `Selected cohort: ${fmtCount(fittingCounts(p.r).cohort)} · fitted: ${fmtCount(fittingCounts(p.r).fitted)} · held-out: ${fmtCount(fittingCounts(p.r).heldout)} filters`,
           `${METRIC.k}: ${p.r.k ?? '—'} (rule)`,
           `Test set (${siteName}): Deming ${fmtFit(allPairs ? p.r.adm : p.r.dm, allPairs ? p.r.adb : p.r.db)} · R² ${(allPairs ? p.r.ar2 : p.r.r2)?.toFixed(3) ?? '—'}`,
@@ -164,7 +164,7 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
         {axis === 'fitted' && missingFitCounts > 0 && <p className="chart-note">{missingFitCounts} saved rows have no fitting counts and are omitted on this axis. Choose requested cutoff to inspect their available scores.</p>}
         <p style={{ ...cvPanelTitle, marginTop: 0 }}>Test set: {siteName}</p>
         {shown.flatMap((s) => s.pts).length === 0 ? (
-          <Empty>No rows for {label(COHORT, cohort)} · {shortMode} · {siteName}.{mode !== 'site_heldout' ? ' Interleaved CV covers AIRSpec spectra at every site (Colab batch, 2026-09-23); raw and 2nd-derivative spectra only at Addis and Bishoftu, on the 5-point cutoff ladder.' : ''}</Empty>
+          <Empty>No rows for {label(COHORT, cohort)} · {shortMode} · {siteName}.{mode !== 'site_heldout' ? ' Interleaved cross-validation covers spline-baselined spectra at every site (Colab batch, 2026-09-23); raw and 2nd-derivative spectra only at Addis and Bishoftu, on the 5-point cutoff ladder.' : ''}</Empty>
         ) : (
           <AxisChoices {...o.axisChoices({ x: 'axis', y: 'metric' })}>{panel(shown, metric, 340, testLabel(metric))}</AxisChoices>
         )}
@@ -198,7 +198,7 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
           <p className="chart-note">Cutoff {countCut}: actual calibration counts and scores. Click a chart point to inspect another cutoff. Fitted and held-out counts describe the final fit split; internal CV repeatedly holds out folds within the fitted set.</p>
           <div style={{ overflowX: 'auto' }}>
           <table className="census-table" style={{ width: '100%', minWidth: 800, fontSize: 12 }}>
-            <thead><tr><th>Spectra / selection</th><th>Selected cohort</th><th>Fitted</th><th>Held-out</th><th>Site CV R²</th><th>Site CV RMSE (µg/filter)</th><th>Internal CV RMSE (µg/filter)</th></tr></thead>
+            <thead><tr><th>Spectra / selection</th><th>Selected cohort</th><th>Fitted</th><th>Held-out</th><th>Site-grouped cross-validation R²</th><th>Site-grouped cross-validation RMSE (µg/filter)</th><th>Internal cross-validation RMSE (µg/filter)</th></tr></thead>
             <tbody>{countRows.map((r) => {
               const counts = fittingCounts(r)
               return <tr key={`${r.sp}|${r.sel}`}><td>{label(PREPROCESSING, r.sp)}{r.sel && r.sel !== 'raw' ? ` · ${label(SELECTION_SPACE, r.sel)}` : ''}</td><td>{fmtCount(counts.cohort)}</td><td>{fmtCount(counts.fitted)}</td><td>{fmtCount(counts.heldout)}</td><td>{r.ho?.toFixed(3) ?? 'unavailable'}</td><td>{calibrationReadout(r, 'cv_rmse')?.toFixed(3) ?? 'unavailable'}</td><td>{calibrationReadout(r, 'rmsecv')?.toFixed(3) ?? 'unavailable'}</td></tr>

@@ -161,7 +161,7 @@ function SheetMenu({ sheets: sh }: { sheets: SheetActions }) {
       </div>
       {renaming
         ? <form className="dash-rename" onSubmit={(e) => { e.preventDefault(); const v = new FormData(e.currentTarget).get('name'); if (typeof v === 'string' && v.trim()) sh.onRename(v.trim()); setRenaming(false) }}>
-          <input name="name" defaultValue={name} autoFocus aria-label="Sheet name" /><button type="submit" className="btn">Save</button>
+          <input name="name" className="select" defaultValue={name} autoFocus aria-label="Sheet name" /><button type="submit" className="btn">Save</button>
         </form>
         : <div className="dash-sheet-actions">
           <button type="button" className="btn quiet" onClick={sh.onAdd}>+ New</button>

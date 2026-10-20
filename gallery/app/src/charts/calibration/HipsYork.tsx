@@ -1,7 +1,8 @@
 import { useRegressions } from '@/lib/regressionPrefs'
 import { useRef, useState } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { AxisChoices } from '@/components/AxisChoices'
 import { Legend, useLegend } from '@/components/Legend'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -45,14 +46,16 @@ export function HipsYork({ runs }: { runs: CalibRunsFile }) {
       title="HIPS diagnostics — does the offset move with the blank line?"
       subtitle={`Weighted York fits of predicted EC against HIPS Fabs at every SPARTAN site under three blank-line conventions${showCI ? ", with approximate 95% normal intervals (±1.96 SE)" : ""}. Calibration: ${runs.hips.config ? runs.hips.config.replace('AIRSpec', 'Spline baseline').replace(/k=(\d+)/, '$1 PLS factors') : 'see explorer'}. A site whose intercept is the same under all three carries the offset in the aerosol, not in the transmittance processing.`}
       provenance="calibration_explorer /api/hips_york · HIPS tab · OFFSET_ADJUDICATION_2026-08-23.md"
-      controls={<Segmented value={what} options={['intercept', 'slope'] as const} onChange={setWhat} />}
     >
       <div ref={wrapRef} className="chart-wrap">
         {rows.length === 0 ? (
           <Empty>No HIPS York rows exported.</Empty>
         ) : (
+          // the x readout (intercept or slope) is picked from the axis title, as on the other charts
+          <AxisChoices noun="readouts" x={[what, (v) => setWhat(v as 'intercept' | 'slope')]}
+            options={[{ key: 'intercept', label: 'York intercept (µg/m³)', group: 'York fit', roles: ['x'] }, { key: 'slope', label: 'York slope', group: 'York fit', roles: ['x'] }]}>
           <IntervalStrip labelWidth={LEFT} rowHeight={rowH} minPanelWidth={240}
-            panels={[{ label: what === 'intercept' ? 'York intercept (µg/m³)' : 'York slope', reference: what === 'slope' ? 1 : 0, domain: x.domain() as [number, number] }]}
+            panels={[{ label: what === 'intercept' ? 'York intercept (µg/m³)' : 'York slope', reference: what === 'slope' ? 1 : 0, domain: x.domain() as [number, number], pick: true }]}
             blocks={[{ key: 'sites', rows: rows.map((r) => {
               const fits = shown.map((v) => [v, r.fits![v]] as const).filter((e): e is readonly [typeof e[0], YorkFit] => !!e[1] && !('error' in e[1]))
               return { key: r.site, label: runs.targets[r.site]?.site ?? r.site, labelColor: runs.targets[r.site]?.color,
@@ -67,6 +70,7 @@ export function HipsYork({ runs }: { runs: CalibRunsFile }) {
                   return { mid: f[what], lo: ok ? f[what] - 1.96 * se : null, hi: ok ? f[what] + 1.96 * se : null, color: VARIANT_COLOR[v], r: 4, dy: (k - (VARIANTS.length - 1) / 2) * 10 }
                 }).filter((mk): mk is NonNullable<typeof mk> => mk !== null)] }
             }) }]} />
+          </AxisChoices>
         )}
         <Legend items={VARIANTS.map((v) => ({ label: VARIANT_LABEL[v], color: VARIANT_COLOR[v] }))} {...lg.props} note={showCI ? "bars = approximate 95% normal CI (±1.96 SE); missing SE has no bar" : "fit uncertainty hidden"} />
         {runs.hips.blanks && (

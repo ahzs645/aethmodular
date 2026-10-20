@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -83,7 +83,7 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
       controls={
         <>
           <Segmented label="Cell" value={cell} options={CELLS} onChange={setCell} />
-          <Select label="Top N at Addis" value={topN} options={['5', '10', '15', '25', '40']} onChange={setTopN} />
+          <Segmented label="Top N at Addis" value={topN} options={['5', '10', '15', '25', '40']} onChange={setTopN} />
         </>
       }
     >

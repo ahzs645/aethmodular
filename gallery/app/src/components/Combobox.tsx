@@ -21,8 +21,15 @@ export interface ComboOption<T extends string> {
  * scroll, can carry group headings, and open upwards when there is no room below. The list
  * floats on the page (a portal at the trigger's place), so a dialog, sidebar or chart frame
  * that clips its content never cuts it off.
+ *
+ * Long lists (more than SEARCH_FROM options, or `search`) open with a search box: it matches
+ * option names and their headings, arrows and Enter work within the matches, and typing on the
+ * closed trigger opens the list with those letters already in the box.
  */
-export function Combobox<T extends string>({ label, value, options, onChange, title, minWidth }: {
+const SEARCH_FROM = 10
+const fold = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+export function Combobox<T extends string>({ label, value, options, onChange, title, minWidth, search }: {
   label: string
   value: T
   options: readonly ComboOption<T>[]
@@ -30,6 +37,8 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
   title?: string
   /** a floor for the trigger width, so a row of pickers does not jitter as values change */
   minWidth?: number
+  /** a search box at the top of the list (default: lists longer than SEARCH_FROM) */
+  search?: boolean
 }) {
   const id = useId()
   const root = useRef<HTMLDivElement>(null)
@@ -40,6 +49,16 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
   const selected = Math.max(0, found)
   const [active, setActive] = useState(selected)
   const typed = useRef({ text: '', at: 0 })
+  const searchable = search ?? options.length > SEARCH_FROM
+  const [query, setQuery] = useState('')
+  const input = useRef<HTMLInputElement>(null)
+  // the options the search leaves, by their index in `options` (all of them with no search)
+  const visible = options.map((_, i) => i).filter((i) => !query || fold(`${options[i].label} ${options[i].group ?? ''}`).includes(fold(query)))
+  const step = (from: number, by: number) => {
+    if (!visible.length) return from
+    const at = visible.indexOf(from)
+    return visible[at < 0 ? 0 : (at + by + visible.length) % visible.length]
+  }
 
   useEffect(() => {
     if (!open) return
@@ -72,10 +91,20 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
   useEffect(() => {
     if (open) menu.current?.querySelector(`#${CSS.escape(`${id}-option-${active}`)}`)?.scrollIntoView({ block: 'nearest' })
   }, [open, active, id])
+  // a searchable list takes the focus into its box once it is placed; closing clears the search
+  useEffect(() => { if (open && place && searchable) input.current?.focus() }, [open, place, searchable])
+  useEffect(() => { if (!open) setQuery('') }, [open])
 
   const choose = (index: number) => {
     onChange(options[index].key)
     setOpen(false)
+    if (searchable) root.current?.querySelector<HTMLButtonElement>('.combobox-trigger')?.focus()
+  }
+  const onSearchKey = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); setActive(step(active, event.key === 'ArrowDown' ? 1 : -1)) }
+    else if (event.key === 'Enter') { event.preventDefault(); const pick = visible.includes(active) ? active : visible[0]; if (pick !== undefined) choose(pick) }
+    else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setOpen(false); root.current?.querySelector<HTMLButtonElement>('.combobox-trigger')?.focus() }
+    else if (event.key === 'Tab') setOpen(false)
   }
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     switch (event.key) {
@@ -104,7 +133,10 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
         setOpen(false)
         break
       default:
-        if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        if (event.key.length === 1 && searchable && !event.ctrlKey && !event.metaKey && !event.altKey && event.key !== ' ') {
+          // a searchable list opens with the letter in its search box
+          event.preventDefault(); setQuery(event.key); setActive(selected); setOpen(true)
+        } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
           // type-ahead: letters typed within a short pause build one search string
           const now = Date.now()
           typed.current = { text: (now - typed.current.at < 700 ? typed.current.text : '') + event.key.toLowerCase(), at: now }
@@ -115,7 +147,8 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
   }
 
   return <div className="combobox-control" ref={root} title={title} onBlur={(event) => {
-    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false)
+    const to = event.relatedTarget as Node | null
+    if (!event.currentTarget.contains(to) && !menu.current?.contains(to)) setOpen(false)
   }}>
     {label && <span className="combobox-label" id={`${id}-label`}>{label}</span>}
     <div className="combobox">
@@ -130,8 +163,15 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
       {open && createPortal(<div className="combobox-menu floating" role="listbox" id={`${id}-list`} ref={menu}
         style={place ?? { position: 'fixed', visibility: 'hidden' }}
         aria-labelledby={label ? `${id}-label` : undefined} aria-label={label ? undefined : title}>
-        {options.map((option, index) => <div key={option.key} role="presentation">
-          {option.group && option.group !== options[index - 1]?.group && <div className="combobox-group" role="presentation">{option.group}</div>}
+        {searchable && <div className="combobox-search" role="presentation">
+          <input ref={input} type="search" value={query} placeholder="Search…" aria-label={`Search ${label || title || 'the options'}`} aria-controls={`${id}-list`}
+            aria-activedescendant={visible.includes(active) ? `${id}-option-${active}` : undefined}
+            onChange={(e) => { setQuery(e.target.value); const q = fold(e.target.value); const first = options.findIndex((o) => fold(`${o.label} ${o.group ?? ''}`).includes(q)); if (first >= 0) setActive(first) }}
+            onKeyDown={onSearchKey} onBlur={(e) => { const to = e.relatedTarget as Node | null; if (!menu.current?.contains(to) && !root.current?.contains(to)) setOpen(false) }} />
+        </div>}
+        {searchable && !visible.length && <div className="combobox-empty" role="presentation">No matches</div>}
+        {visible.map((index, at) => { const option = options[index]; return <div key={option.key} role="presentation">
+          {option.group && option.group !== options[visible[at - 1]]?.group && <div className="combobox-group" role="presentation">{option.group}</div>}
           <button type="button" role="option" tabIndex={-1}
             id={`${id}-option-${index}`} aria-selected={option.key === value}
             className={`combobox-option${index === active ? ' active' : ''}`}
@@ -140,7 +180,7 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
             <span className="combobox-text" title={option.title}>{chemText(option.label)}</span>
             {option.hint && <span className="combobox-hint">{option.hint}</span>}
           </button>
-        </div>)}
+        </div> })}
       </div>, document.body)}
     </div>
   </div>

@@ -1,6 +1,6 @@
 import * as d3 from 'd3'
 import type { CalibFile, CalibRow, MetaFile, MetricRow, SweepRow } from '@/lib/types'
-import { METRIC, PREPROCESSING, SELECTION_SPACE, label } from '@/lib/labels'
+import { COHORT_SHORT, METRIC, PREPROCESSING, PREPROCESSING_SHORT, SELECTION_SPACE, label } from '@/lib/labels'
 import { BASELINE_COLOR, INK } from '@/lib/theme'
 
 /** A configuration is what the explorer fits: cohort × cutoff × selection space × calibration spectra. */
@@ -21,7 +21,8 @@ export function configLabel(c: Config, calib: CalibFile): string {
   return `${cohort}${cut}${sel} × ${label(PREPROCESSING, c.sp)}`
 }
 
-export const shortConfig = (c: Config) => `${c.co}${c.cut !== null ? '-' + c.cut : ''}${c.sel && c.sel !== 'raw' ? '·' + c.sel : ''} × ${label(PREPROCESSING, c.sp)}`
+/** a configuration in a few words: 'Lowest OC/EC 800 × Spline baseline' (cohort, cutoff, selection spectra if not raw, model spectra) */
+export const shortConfig = (c: Config) => `${label(COHORT_SHORT, c.co)}${c.cut !== null ? ' ' + c.cut : ''}${c.sel && c.sel !== 'raw' ? ` (selected on ${label(PREPROCESSING_SHORT, c.sel).toLowerCase()})` : ''} × ${label(PREPROCESSING, c.sp)}`
 
 /** A preset's exported label with the preprocessing in reader-facing words ("× AIRSpec" → "× Spline baseline"). */
 export const presetName = (p: { label: string; spectra: string }) =>

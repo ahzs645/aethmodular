@@ -3,7 +3,7 @@ import { RefLine } from '@/components/RefLines'
 import { useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, ExplainOnly, Note, Select, Toggle } from '@/components/ChartFrame'
+import { ChartFrame, Empty, ExplainOnly, Note, Segmented, Toggle } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
 import { XAxis } from '@/components/Axes'
 import { SpectrumPlot } from '@/components/SpectrumPlot'
@@ -100,8 +100,8 @@ function AggregateSpectra({ data }: { data: Evidence }) {
   const lo = range === 'Full' ? 500 : 1425
   const ext = d3.extent(visible.flatMap(s => s.q.flatMap(q => q.filter((_, i) => s.wn[i]>=lo))))
   return <ChartFrame id="completed-vibes-spectra" title="Completed correction · paired spectral overlay" controls={<>
-    <Select label="Spectral population" value={population} options={['target','calibration']} optionLabel={v=>v==='target'?'Addis test-set spectra':'IMPROVE source spectra'} onChange={setPopulation} />
-    <Select label="Spectral range" value={range} options={['Full', 'Shared']} onChange={setRange} /></>}>
+    <Segmented label="Spectral population" value={population} options={['target','calibration']} optionLabel={v=>v==='target'?'Addis test-set spectra':'IMPROVE source spectra'} onChange={setPopulation} />
+    <Segmented label="Spectral range" value={range} options={['Full', 'Shared']} onChange={setRange} /></>}>
     <div className="chart-wrap">{!visible.length ? <Empty>Select a baseline in the legend to display spectra.</Empty> :
       <SpectrumPlot height={300} window={[4000, lo]} yDomain={[Math.min(0, ext[0]??0), ext[1]??.01]} yLabel="Corrected absorbance" yFormat={v=>Number(v).toPrecision(2)}
         hover="readout" dim={g=>legend.dim(g)}

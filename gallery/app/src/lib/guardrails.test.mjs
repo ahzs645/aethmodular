@@ -59,7 +59,7 @@ test('a rule survives the URL and reads back in words', () => {
   assert.equal(back.query.rules.length, 5)
   assert.match(encodeGuardrail(rule), /^[A-Za-z0-9_-]+$/)
   assert.equal(decodeGuardrail('not base64!'), null)
-  assert.match(describeGuardrail(TEMPLATES[1].rule, guardFields(tiny)), /\|Addis intercept\|/)
+  assert.match(describeGuardrail(TEMPLATES[1].rule, guardFields(tiny)), /\|Deming intercept\|/)
 })
 
 for (const path of EXPORTS) {
@@ -80,3 +80,22 @@ for (const path of EXPORTS) {
     }
   })
 }
+
+test('conditions apply in order, with what each removes, alone and shared', async () => {
+  const { stepStats, ruleSteps, ruleUpTo } = await import('./guardrails.ts')
+  // 5 configurations; A fails rows 0,1; B fails rows 1,2; C fails row 4 (row 3 passes all)
+  const A = [false, false, true, true, true], B = [true, false, false, true, true], C = [true, true, true, true, false]
+  const s = stepStats([A, B, C], [0, 1, 2, 3, 4])
+  assert.deepEqual(s.fails, [2, 2, 1])
+  assert.deepEqual(s.atStep, [2, 1, 1], 'B only removes row 2 once A has removed row 1')
+  assert.deepEqual(s.left, [3, 2, 1])
+  assert.deepEqual(s.only, [1, 1, 1], 'row 1 fails both A and B, so neither removes it alone')
+  assert.deepEqual(s.shared, [[2, 1, 0], [1, 2, 0], [0, 0, 1]])
+  assert.deepEqual(stepStats([A, B], [1, 3]).left, [1, 1], 'only the rows in scope count')
+  const or = stepStats([A, B], [0, 1, 2, 3, 4], 'or')
+  assert.deepEqual(or.atStep, [3, 1], 'with OR, steps add configurations')
+  assert.deepEqual(or.left, [3, 4])
+  const rule = { formulas: [], query: { combinator: 'and', rules: [{ field: 'a', operator: '>', value: '1' }, { combinator: 'or', rules: [] }, { field: 'b', operator: '<', value: '2' }] } }
+  assert.equal(ruleSteps(rule).length, 3)
+  assert.equal(ruleUpTo(rule, 2).query.rules.length, 2)
+})

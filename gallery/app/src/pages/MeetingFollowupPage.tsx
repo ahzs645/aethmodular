@@ -80,8 +80,8 @@ interface MeetingData {
 const methodName = (m: string) => PREPROCESSING[m] ?? m
 const MODELS = ['all-IMPROVE lot 251', 'all-IMPROVE both lots (frozen Colab)'] as const
 const modelLabel = (value: string) => ({
-  'all-IMPROVE lot 251': 'Calibration pool · lot 251',
-  'all-IMPROVE both lots (frozen Colab)': 'Full calibration pool · both lots',
+  'all-IMPROVE lot 251': 'All-IMPROVE model, lot 251',
+  'all-IMPROVE both lots (frozen Colab)': 'All-IMPROVE model, both lots',
   'seasonal calibration': 'Seasonal calibration',
 }[value] ?? value)
 function ModelSeg({label, value, options, onChange}: {label:string; value:string; options:readonly string[]; onChange:(v:string)=>void}) {
@@ -149,8 +149,8 @@ function MeetingView({ data, galleryRows, galleryMeta, viewRows, viewMeta, versi
       {/* share builds ship only the current rank-70 export (gallery/share/build_share.py) */}
       {/* the version switches sit in the sidebar; what each version is, is explanation (Explain on) */}
       <SidebarControls title="Analysis">
-        {!import.meta.env.VITE_SHARE_TABS && <Select label="VIBES analysis" value={version} options={['current', 'earlier']} onChange={onVersion} optionLabel={v => v === 'current' ? 'Completed · rank 70' : 'Archived · preliminary rank 30'} />}
-        {version === 'earlier' && <Toggle label="Show archived 4000–1425 fit" checked={showArchived} onChange={onShowArchived} />}
+        {!import.meta.env.VITE_SHARE_TABS && <Segmented label="VIBES run" value={version} options={['current', 'earlier']} onChange={onVersion} optionLabel={v => v === 'current' ? 'Completed · rank 70' : 'Archived · preliminary rank 30'} />}
+        {version === 'earlier' && <Toggle label="Show archived VIBES fit (4000–1425)" checked={showArchived} onChange={onShowArchived} />}
       </SidebarControls>
       {!import.meta.env.VITE_SHARE_TABS && <ExplainOnly><ChartFrame title="Analysis version" exportable={false}>
         <p>{version === 'current' ? 'All seasonal, combined-set, calibration and specification-grid VIBES models below use the completed rank-70 correction. Full and shared prediction windows are separate options.' : 'Earlier seasonal and specification results retain their original preliminary rank-30 corrections. These archived models have not been overwritten.'}</p>
@@ -182,7 +182,6 @@ function MeetingView({ data, galleryRows, galleryMeta, viewRows, viewMeta, versi
         src={data.summary.spec_curve_export ?? 'meeting/spec_curve_20260917.json'}
         title={`Specification curve — ${showArchived ? 'active and archived' : 'active'} baselines from the meeting grid`}
         excludePreprocessing={showArchived ? [] : ['vibes']}
-        defaultComparison="all"
         subtitle={(f) => `All ${f ? f.n.toLocaleString() + ' ' : ''}baselined Addis specifications after the 17 Sep levers (spline and VIBES baselines; CO₂ and >3600 cm⁻¹ excluded from selection; site-grouped or interleaved cross-validation; cohort sizes every 5 filters; number of PLS factors by each protocol's rule), sorted by Deming intercept at MAC 10, with the analytic choices underneath: a darker strip means more of the specifications at that position used the choice. Click a choice to keep only specifications that use it; click several to intersect. Red points use the selected highlight criteria; by default they pass every saved guardrail${f ? ': ' + f.guardrails : ''}.`}
         provenance={version === 'current' ? 'Completed rank-70 migration · category_grid.jsonl · original specification guardrails' : 'Archived meeting_followup_20260917/category_grid.jsonl · original specification guardrails'}
       />}</EstimatorViews>
@@ -525,13 +524,10 @@ function BaselineCompare({ data }: { data: MeetingData }) {
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › BaselineCompare"
       title={`Baselines compared — one filter (${key ?? 'example: first Addis filter'}), spline vs VIBES where both exist, and the full-range VIBES`}
       controls={<>
-        <Segmented label="Comparison range" value={range} options={['Shared (4000–1425)', 'Full (4000–500)']} onChange={setRange} />
+        <Segmented label="Spectrum range" value={range} options={['Shared (4000–1425)', 'Full (4000–500)']} onChange={setRange} />
         {/* side by side places the full-range panel beside the comparison: nothing to place without one */}
         {fullLine && <Segmented label="Plot layout" value={layout} options={['Stacked', 'Side by side']} onChange={setLayout} />}
-        {series.map((s2) => <label key={s2.method} className="control">
-          <input type="checkbox" checked={!hidden.has(s2.method)} onChange={() => toggleSeries(s2.method)} />
-          <span style={{ color: s2.color }}>{s2.name}</span>
-        </label>)}
+        {series.map((s2) => <Toggle key={s2.method} label={s2.name} checked={!hidden.has(s2.method)} onChange={() => toggleSeries(s2.method)} />)}
       </>}
       subtitle={`The main panel overlays the selected baselines down to ${lowerBound} cm⁻¹. The archived truncated fit appears only when enabled. A separate full-range VIBES panel appears when that method is selected. Click any point or trace on this page to pin a filter here.`}>
       <div ref={ref}>
@@ -620,8 +616,8 @@ function SpectraPanel({ data, method, group }: { data: MeetingData; method: stri
   return (
     <div style={{ marginTop: 10 }}>
       <div className="frame-controls" style={{ padding: 0 }}>
-        <Segmented label="Spectra" value={mode as any} options={SPEC_MODES} onChange={setMode as any} />
-        <CountPicker label="Most similar analogs" value={topN} presets={TOP_N} max={500} onChange={setTopN} noun="analogs" />
+        <Segmented label="Spectra" value={mode as any} options={SPEC_MODES} optionLabel={(v: string) => v === 'median + IQR' ? 'Median + IQR' : 'Individual filters'} onChange={setMode as any} />
+        <CountPicker label="Most similar" value={topN} presets={TOP_N} max={500} onChange={setTopN} noun="analogs" />
       </div>
       {/* grey: dropped from analog selection; hatched: also dropped by the region agreed 1 Oct (similarity only; PLS still sees them) */}
       <SpectrumPlot series={series} bands={bands} window={[d3.max(wn) ?? 4000, lo]} height={286} includeZero
@@ -953,7 +949,7 @@ function Seasonality({ data }: { data: MeetingData }) {
         <SeasonCrossplot data={data} fitId={fitId} title="Addis, all-IMPROVE model, coloured by season" />
         <ExplainOnly><SeasonTable data={data} rows={[{ label: 'All-IMPROVE model', fitId }, { label: 'Own-season calibration', fitId: `stitched|${method}|season calibrations` }]} /></ExplainOnly>
       </Grid>
-      <ExplainOnly><Note>{fitName} line: all Addis; season-coloured lines: Deming fit within each season (λ* {f2(data.summary.lambda)}). {showCI && 'Bands are pointwise 95% month-block bootstrap intervals where available.'}</Note></ExplainOnly>
+      <ExplainOnly><Note>{fitName} line: all Addis; season-coloured lines: {fitName} fit within each season (λ* {f2(data.summary.lambda)}). {showCI && 'Bands are pointwise 95% month-block bootstrap intervals where available.'}</Note></ExplainOnly>
     </ChartFrame>
   )
 }
@@ -988,7 +984,7 @@ function Stitched({ data }: { data: MeetingData }) {
           <p style={{ margin: 0, color: INK.muted }}>For comparison, one all-IMPROVE model (lot 251): {coef(ref?.deming_slope)}x {coefSigned(ref?.deming_intercept)}. Each season's own slope is low, but the three season calibrations sit at different levels, so putting them back together steepens the combined line and pushes its intercept further from zero.</p>
         </div>
       </Grid>
-      <ExplainOnly><SeasonTable data={data} rows={[{ label: 'Own-season calibrations', fitId }, { label: 'All-IMPROVE lot 251', fitId: `allimprove|${method}|all-IMPROVE lot 251` }, { label: 'Current SPARTAN', fitId: 'deployed|SPARTAN|current SPARTAN calibration' }]} /></ExplainOnly>
+      <ExplainOnly><SeasonTable data={data} rows={[{ label: 'Own-season calibrations', fitId }, { label: 'All-IMPROVE model, lot 251', fitId: `allimprove|${method}|all-IMPROVE lot 251` }, { label: 'Current SPARTAN', fitId: 'deployed|SPARTAN|current SPARTAN calibration' }]} /></ExplainOnly>
     </ChartFrame>
   )
 }
@@ -1044,7 +1040,7 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
       ci: [s.slope_ci_low, s.slope_ci_high, s.intercept_ci_low, s.intercept_ci_high].every(v => typeof v === 'number' && Number.isFinite(v)) ? [s.slope_ci_low, s.slope_ci_high, s.intercept_ci_low, s.intercept_ci_high] : undefined,
       tip: [name, 'all Addis', `${coef(s.deming_slope)}x ${coefSigned(s.deming_intercept)}`] })
   }
-  one(`allimprove|${method}|all-IMPROVE lot 251`, '#111827', 'sq', 'All-IMPROVE model (lot 251)')
+  one(`allimprove|${method}|all-IMPROVE lot 251`, '#111827', 'sq', 'All-IMPROVE model, lot 251')
   one('deployed|SPARTAN|current SPARTAN calibration', '#b91c1c', 'x', 'Current SPARTAN calibration')
 
   const xs = pts.map((p) => p.x).filter(Number.isFinite), ys = pts.map((p) => p.y).filter(Number.isFinite)
@@ -1112,7 +1108,7 @@ function Combined({ data }: { data: MeetingData }) {
   // the page's one baseline (PageChoices at the top of the page)
   const { value: method } = usePageChoice('baseline', methods)
   const cals = [
-    { label: 'All-IMPROVE lot 251', fit: `allimprove|${method}|all-IMPROVE lot 251`, byGroup: true },
+    { label: 'All-IMPROVE model, lot 251', fit: `allimprove|${method}|all-IMPROVE lot 251`, byGroup: true },
     { label: 'All-IMPROVE both lots (frozen)', fit: `allimprove|${method}|all-IMPROVE both lots (frozen Colab)`, byGroup: true },
     { label: 'Analogs of all Addis', fit: `seasonal|${method}|locked|All Addis`, byGroup: false },
     { label: 'Own-season analogs', fit: 'season', byGroup: false },
@@ -1157,6 +1153,8 @@ function Combined({ data }: { data: MeetingData }) {
 // ------------------------------------------------------------------ 10. grid heat map
 const METRICS = ['intercept', 'slope', 'CV R²'] as const
 const READOUTS = ['all', 'dry', 'belg', 'kiremt'] as const
+const READOUT_LABEL: Record<string, string> = { all: 'All Addis', dry: 'Dry season', belg: 'Belg season', kiremt: 'Kiremt season' }
+const METRIC_LABEL: Record<string, string> = { intercept: 'Intercept', slope: 'Slope', 'CV R²': 'Cross-validation R²' }
 function GridStep({ data }: { data: MeetingData }) {
   const methods = useBaselineOptions()
   // the page's one baseline (PageChoices at the top of the page)
@@ -1203,8 +1201,8 @@ function GridStep({ data }: { data: MeetingData }) {
       subtitle={`${data.grid_n} fitted cohorts: category × cutoff (step 5) × baseline × CV. Cells average the fits inside each 25-filter bin. Replaces the intercept continuum plot.`}
       controls={<>
         <Segmented label="Cross-validation protocol" value={CV_PROTOCOL_SHORT[mode] as any} options={[CV_PROTOCOL_SHORT.site_heldout, CV_PROTOCOL_SHORT.app] as any} onChange={(v: string) => setMode(v === CV_PROTOCOL_SHORT.app ? 'app' : 'site_heldout')} />
-        <Segmented label="Cell" value={metric as any} options={METRICS} onChange={setMetric as any} />
-        {metric !== 'CV R²' && <Segmented label="Test set (Addis) readout" value={readout as any} options={READOUTS} onChange={setReadout as any} />}
+        <Segmented label="Cell" value={metric as any} options={METRICS} optionLabel={(v: string) => METRIC_LABEL[v] ?? v} onChange={setMetric as any} />
+        {metric !== 'CV R²' && <Segmented label="Test set (Addis) readout" value={readout as any} options={READOUTS} optionLabel={(v: string) => READOUT_LABEL[v] ?? v} onChange={setReadout as any} />}
         {/* fading by CV R² is moot when the cells are already coloured by it */}
         {mode === 'site_heldout' && metric !== 'CV R²' && <Toggle label="Fade cells failing IMPROVE cross-validation R² ≥ 0.85" checked={gate} onChange={setGate} />}
       </>}>
@@ -1220,7 +1218,7 @@ function GridStep({ data }: { data: MeetingData }) {
                   const v = cell.v / cell.n
                   const faded = gate && mode === 'site_heldout' && metric !== 'CV R²' && cell.pass === 0
                   return <rect key={b} x={c * cw} y={1} width={cw - 0.5} height={chH - 2} fill={color(v)} opacity={faded ? 0.3 : 1} stroke={faded ? 'none' : '#1f2933'} strokeWidth={faded ? 0 : 0.3}
-                    onMouseEnter={(e) => tip.show(e, [`${cat} · cutoff ≈ ${b}`, `${metric}${metric !== 'CV R²' ? ` (${readout})` : ''}: ${f2(v)}`, `${cell.n} fits · k ${d3.min(cell.k)}–${d3.max(cell.k)}`, mode === 'site_heldout' ? `${cell.pass}/${cell.n} pass IMPROVE cross-validation R² ≥ 0.85` : 'interleaved CV holds out no whole site: no cross-validation R² gate'])} onMouseLeave={tip.hide} />
+                    onMouseEnter={(e) => tip.show(e, [`${cat} · cutoff ≈ ${b}`, `${METRIC_LABEL[metric] ?? metric}${metric !== 'CV R²' ? ` (${READOUT_LABEL[readout] ?? readout})` : ''}: ${f2(v)}`, `${cell.n} fits · k ${d3.min(cell.k)}–${d3.max(cell.k)}`, mode === 'site_heldout' ? `${cell.pass}/${cell.n} pass IMPROVE cross-validation R² ≥ 0.85` : 'interleaved CV holds out no whole site: no cross-validation R² gate'])} onMouseLeave={tip.hide} />
                 })}
               </g>
             ))}
@@ -1230,7 +1228,7 @@ function GridStep({ data }: { data: MeetingData }) {
         </svg>
         <Key items={mode === 'site_heldout' && gate && metric !== 'CV R²' ? [{ label: 'no fit in the bin passes IMPROVE cross-validation R² ≥ 0.85', color: '#9aa5b1', kind: 'faded' }] : []}>
           <ColorLegend scale={color} scheme={colours.scheme} width={220}
-            label={metric === 'intercept' ? `Test set (Addis) Deming intercept (µg/m³, ${readout})` : metric === 'slope' ? `Test set (Addis) Deming slope (${readout})` : 'IMPROVE cross-validation R² (calibration set)'}
+            label={metric === 'intercept' ? `Test set (Addis) Deming intercept (µg/m³, ${READOUT_LABEL[readout] ?? readout})` : metric === 'slope' ? `Test set (Addis) Deming slope (${READOUT_LABEL[readout] ?? readout})` : 'IMPROVE cross-validation R² (calibration set)'}
             note={metric === 'intercept' ? 'white = 0' : metric === 'slope' ? 'white = 1' : undefined} />
         </Key>
         {tip.node}

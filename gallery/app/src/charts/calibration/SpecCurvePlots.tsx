@@ -9,9 +9,7 @@ import type { SpecCurveFile, SpecMetricInfo } from './SpecCurve'
 
 export type SpecLayout = 'combined' | 'stacked' | 'overlay'
 const TOP_H = 250, ROW_H = 17, GROUP_H = 18, GAP = 24
-const HEAT = (t: number) => d3.interpolateReds(0.12 + 0.88 * t)
 const COLOURS = ['#2171b5', '#0f766e', '#8856a7', '#d95f0e', '#636363']
-const selectionName = (key: string) => `${label(PREPROCESSING, key)} selection`
 
 interface Props {
   file: SpecCurveFile & { value: number[] }; metric: SpecMetricInfo; shown: number[]; width: number; id: string; layout: SpecLayout
@@ -20,14 +18,24 @@ interface Props {
   selectedIndices: Set<number>; describe: (i: number) => string[]
   showTip: (e: React.MouseEvent, lines: string[]) => void; hideTip: () => void
   select?: (i: number) => void
+  /** strip colour for the share (0–1) of configurations using a choice (the chart's palette) */
+  heat: (t: number) => string
+  /**
+   * what the panels split by: the selection spectra (where a search selects and models on the same
+   * baseline, that baseline) or the model spectra (a search that crosses them, e.g. raw models of
+   * spline-selected cohorts). Default 'sel'.
+   */
+  panelBy?: 'sel' | 'sp'
   /** the curve alone, without the choice strips (the guardrail editor's live preview), at this height */
   curveOnly?: { height: number }
 }
 
 export function SpecCurvePlots(props: Props) {
   const { file, metric, shown, width, layout, id, highlighted, showDots, highlightLabel } = props
-  const panels = useMemo(() => selectionPanels(shown, file.sel, file.categories.sel), [shown, file])
-  const colorOf = (key: string) => COLOURS[file.categories.sel.indexOf(key) % COLOURS.length]
+  const by = props.panelBy ?? 'sel'
+  const panels = useMemo(() => selectionPanels(shown, file[by], file.categories[by]), [shown, file, by])
+  const colorOf = (key: string) => COLOURS[file.categories[by].indexOf(key) % COLOURS.length]
+  const selectionName = (key: string) => by === 'sp' ? `${label(PREPROCESSING, key)} models` : `${label(PREPROCESSING, key)} selection`
   // The baseline is already identified by the panel and selection controls.
   // Keep original choice indices so clicking the remaining rows still filters
   // the matching saved masks, rather than the removed preprocessing masks.
@@ -116,12 +124,12 @@ function SpecPanel(props: Props & {
       for (let b = 0; b < cols; b++) {
         const j0 = Math.floor(b * indices.length / cols), j1 = Math.max(j0 + 1, Math.floor((b + 1) * indices.length / cols))
         let used = 0; for (let j = j0; j < j1; j++) if (mask[indices[j]] === '1') used++
-        const rgb = used === 0 ? d3.rgb(255,255,255) : d3.rgb(HEAT(used / (j1 - j0)))
+        const rgb = used === 0 ? d3.rgb(255,255,255) : d3.rgb(props.heat(used / (j1 - j0)))
         img.data.set([rgb.r, rgb.g, rgb.b, 255], b * 4)
       }
       ctx.putImageData(img,0,0); return canvas.toDataURL()
     })
-  }, [file, indices, plotW, curveOnly])
+  }, [file, indices, plotW, curveOnly, props.heat])
   const locate = (e: React.MouseEvent<SVGRectElement>) => Math.min(n - 1, Math.max(0, Math.floor(x.invert(e.clientX - e.currentTarget.getBoundingClientRect().left))))
   const count = indices.filter(i => highlighted[i]).length
   return <g transform={`translate(${props.xOffset},${props.yOffset})`} data-selection={props.name}>

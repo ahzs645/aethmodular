@@ -5,9 +5,8 @@ import { Marker } from '@/components/RefLines'
 import { useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
-import { ChartFrame, ExplainOnly, Note, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, ExplainOnly, Note, Segmented, Select } from '@/components/ChartFrame'
 import { PageToc } from '@/components/PageToc'
-import { Combobox } from '@/components/Combobox'
 import { SatoshiSpectra } from '@/components/SatoshiSpectra'
 import { BankPicker, BaselinePicker, SeasonPicker } from '@/components/Pickers'
 import { XAxis, YAxis } from '@/components/Axes'
@@ -113,7 +112,7 @@ function SatoshiView({ data }: { data: SatoshiData }) {
       { key: 'baseline', urlKey: 'satbase', label: 'Baseline', default: VIBES, options: BASELINES, legacy: ['svipbase', 'sladbase', 'senvbase', 'satSpecBaseline'],
         render: (v, set) => <BaselinePicker value={v} options={BASELINES} short onChange={set} /> },
       { key: 'season', urlKey: 'satgroup', label: 'Season', default: 'Kiremt (Jun-Sep)', options: data.groups, legacy: ['sovgroup', 'svipgroup', 'sladgroup', 'senvgroup', 'satSpecGroup', 'sgseason'],
-        render: (v, set) => <SeasonPicker as="select" label="Analogs of" value={v} groups={data.groups} onChange={set} /> },
+        render: (v, set) => <SeasonPicker value={v} groups={data.groups} onChange={set} /> },
     ]}>
     <SimilarityRegionSidebar mask={mask} onMask={setMask} />
     <SatAxesCtx.Provider value={{ x: sx[0], y: sy[0] }}>
@@ -141,7 +140,8 @@ function SatoshiView({ data }: { data: SatoshiData }) {
 function SimilarityRegionSidebar({ mask, onMask }: { mask: Mask; onMask: (mask: Mask) => void }) {
   return <SidebarControls title="For every chart on this page">
     <PageChoiceControls />
-    <Combobox label="Similarity region" value={mask} options={MASKS.map(key => ({ key, label: MASK_SHORT[key] }))} onChange={onMask} />
+    {/* two choices, but each a long region definition: a dropdown (the gallery's rule for long labels) */}
+    <Select label="Similarity region" value={mask} options={[...MASKS]} optionLabel={(key) => MASK_SHORT[key as (typeof MASKS)[number]]} onChange={(v) => onMask(v as (typeof MASKS)[number])} />
     <p className="chart-note">{MASK_DESCRIPTION[mask]}</p>
     <ExplainOnly><p className="chart-note">This region chooses the analogs on the charts. The spline baseline only covers 4000–1425 cm⁻¹, so its analogs are identical under both regions; only the VIBES analogs change. Every PLS model is still fitted on each baseline's full predictor grid.</p></ExplainOnly>
   </SidebarControls>
@@ -391,6 +391,9 @@ const metricOf: Record<LadderMetric, (r: Row) => number | null> = {
   'mean bias': (r) => r.bias,
 }
 
+/** a ladder readout's name, the same in the axis picker and on the axis */
+const ladderLabel = (m: string) => m === 'R²' ? 'R²' : m === 'mean bias' ? 'Mean bias, FTIR − reference' : `Deming ${m}`
+
 function Ladder({ data, mask }: { data: SatoshiData; mask: Mask }) {
   // the page's season and baseline (PageChoices, in the Filters sidebar)
   const { value: group } = usePageChoice('season', data.groups)
@@ -426,8 +429,8 @@ function Ladder({ data, mask }: { data: SatoshiData; mask: Mask }) {
       title="Fitting or extrapolation — the same readout at every stage, from calibration fit to Addis"
       subtitle="Calibration fit: in-sample predictions of the calibration set. Cross-validation: site-grouped out-of-fold predictions at the chosen number of factors (the curve that chose k). IMPROVE test sites: sites held out of the calibration. Addis test set: FTIR EC vs HIPS Fabs / MAC 10. IMPROVE stages compare FTIR EC with TOR EC. Intercepts are divided by the median reference so stages at 0.1 and 5 µg/m³ can share an axis.">
       <div style={{ maxWidth: 860 }}>
-        <AxisChoices noun="readouts" y={[metric, (v) => setMetric(v as LadderMetric)]} options={LADDER_METRICS.map((m) => ({ key: m, label: m === 'R²' || m === 'mean bias' ? m : `Deming ${m}`, group: 'Readout', roles: ['y'] }))}>
-        <SweepPlot series={sweep} xScale="point" xLabel="" yLabel={`Deming ${metric}${unit}`.replace('Deming R²', 'R²').replace('Deming mean bias', 'Mean bias, FTIR − reference')}
+        <AxisChoices noun="readouts" y={[metric, (v) => setMetric(v as LadderMetric)]} options={LADDER_METRICS.map((m) => ({ key: m, label: ladderLabel(m), group: 'Readout', roles: ['y'] }))}>
+        <SweepPlot series={sweep} xScale="point" xLabel="" yLabel={`${ladderLabel(metric)}${unit}`}
           yDomain={yDomain} reference={ref0} dividers={['IMPROVE test sites']} pick="y" height={314} yFormat={(v) => String(+v.toFixed(2))} />
         </AxisChoices>
       </div>
@@ -850,7 +853,7 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
       subtitle={`1 Oct: correlate the Addis spectra within each season over the region VIBES newly covers and look for distinct groupings. Raw correlations are ~0.95, so each spectrum is scaled to unit length, the season mean is subtracted, and the shape deviations are clustered (PCA to 90 % variance, Ward, k 2–4 by silhouette, clusters of at least 5). 'Distinct' means a silhouette above the 95th percentile of structureless Gaussian data with the same variances. Region: ${d.group_spectra.regions[region]}.`}
       controls={<>
         {/* a field-blank bank, not the page's spline / VIBES baseline */}
-        <BankPicker label="Background bank" value={baseline} banks={baselines} labels={BANK_SHORT} onChange={setBaseline} />
+        <BankPicker value={baseline} banks={baselines} labels={BANK_SHORT} onChange={setBaseline} />
         <Segmented label="Region" value={region} options={regions} optionLabel={(r) => r === 'fingerprint' ? 'PTFE dropped' : 'PTFE kept'} onChange={setRegion} />
       </>}>
       {seasonNote && <Note>{seasonNote}</Note>}

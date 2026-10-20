@@ -5,7 +5,7 @@ import { ExportState } from '@/components/ExportState'
 import { RegressionLines, RegressionReadout } from '@/components/RegressionOverlay'
 import { useState } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, ExplainOnly, Note, Select } from '@/components/ChartFrame'
+import { ChartFrame, ExplainOnly, Note, Segmented } from '@/components/ChartFrame'
 import { BaselinePicker } from '@/components/Pickers'
 import { Crossplot } from '@/components/Crossplot'
 import type { FitGrouping } from '@/lib/siteRegression'
@@ -116,7 +116,7 @@ export function BaselineExternalPilot({ mac, demingLambda, completed = false }: 
       <p style={{ fontSize: 11, overflowWrap: 'anywhere' }}>Frozen run: <code>{data.frozen_run_signature}</code> · Evidence date {data.evidence_date}</p>
     </ChartFrame></ExplainOnly>
 
-    <ChartFrame title="Adama against quartz thermal EC" subtitle="Five date-candidate PTFE/quartz pairs. Ringed points have a sampler flag." controls={<Select label="Thermal convention" value={reference} options={['ECTR', 'ECTT']} optionLabel={(v) => (v === 'ECTR' ? 'TOR EC' : 'TOT EC')} onChange={(v) => setReference(v as Reference)} />}>
+    <ChartFrame title="Adama against quartz thermal EC" subtitle="Five date-candidate PTFE/quartz pairs. Ringed points have a sampler flag." controls={<Segmented label="Thermal convention" value={reference} options={['ECTR', 'ECTT']} optionLabel={(v) => (v === 'ECTR' ? 'TOR EC' : 'TOT EC')} onChange={(v) => setReference(v as Reference)} />}>
       <div className="chart-wrap" style={{ overflowX: 'auto' }}><svg viewBox="0 0 760 260" width="100%" style={{ minWidth: 620, maxWidth: 760, margin: '0 auto' }} role="img" aria-label={`Adama frozen prediction divided by quartz ${reference} for five candidate dates`}>
         {[0, .5, 1, 1.5, 2].map(v => <g key={v}><line x1={75} x2={720} y1={y(v)} y2={y(v)} stroke={v === 1 ? '#4C5965' : '#E8EBEF'} strokeDasharray={v === 1 ? '4 3' : undefined}/><text x={68} y={y(v) + 4} textAnchor="end" fontSize={11} fill="#5B6470">{v.toFixed(1)}</text></g>)}
         {data.adama.map((r, i) => <g key={r.date}><text x={x(i)} y={215} textAnchor="middle" fontSize={11} fill="#1F2933">{r.date.slice(5)}</text>{r.flag && <text x={x(i)} y={232} textAnchor="middle" fontSize={10} fill="#B2182B">{r.flag}</text>}{METHODS.map((m, j) => <circle key={m} cx={x(i) + (j ? 9 : -9)} cy={y(ratio(r, m))} r={5.5} fill={COLORS[m]} stroke={r.flag ? '#1F2933' : 'white'} strokeWidth={r.flag ? 2 : 1} style={{ cursor: 'pointer' }} onClick={() => hl.openRecord(adamaRecord(r))}><title>{`${r.date} ${m}: ${fmt(ratio(r, m), 3)}× ${reference}; PTFE ${r.FilterId_ptfe}, quartz ${r.FilterId_quartz}${r.flag ? `; ${r.flag}` : ''}`}</title></circle>)}</g>)}
@@ -265,7 +265,7 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
   const siteColor = (site: string) => (site === 'Bishoftu' ? '#C49442' : '#2C6E9E')
   const controls = <>
     <BaselinePicker as="select" label="Correction" value={method} options={METHODS} backgroundRank={rank} onChange={(v) => onMethod(v as Method)} />
-    <Select label="Site" value={site} options={['Both sites', 'Addis', 'Bishoftu']} onChange={onSite} />
+    <Segmented label="Site" value={site} options={['Both sites', 'Addis', 'Bishoftu']} onChange={onSite} />
     <Combobox label="Fit grouping" value={oneSite && fitPreference === 'site' ? 'pooled' : fitPreference} options={[
       { key: 'default', label: `Use gallery setting (${fitGrouping === 'site' ? 'per site' : fitGrouping === 'pooled' ? 'pooled' : 'no lines'})` },
       { key: 'none', label: 'No fitted lines' }, { key: 'pooled', label: oneSite ? `One fit (${site})` : 'One pooled fit' }, ...(oneSite ? [] : [{ key: 'site', label: 'Separate fit per site' }]),

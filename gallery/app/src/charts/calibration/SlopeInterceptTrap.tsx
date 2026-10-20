@@ -11,7 +11,9 @@ import { Legend, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { INK, MARGIN, FONT, RAMP_SEQUENTIAL } from '@/lib/theme'
+import { INK, MARGIN, FONT } from '@/lib/theme'
+import { useColourScheme } from '@/lib/colourSchemes'
+import { ColorLegend } from '@/components/ColorLegend'
 import type { CalibFile, CalibRow } from '@/lib/types'
 import { fmt } from '@/lib/stats'
 import { cohortColor, fmtFit, passes, sameConfig, score, shortConfig, type Config } from './common'
@@ -51,6 +53,7 @@ const MAX_SQUARE = 560
 
 export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: CalibFile; selected: Config; onSelect: (c: Config) => void }) {
   const wrapRef = useRef<HTMLDivElement>(null)
+  const hexColours = useColourScheme('slope-trap-hex', 'sequential')
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const ax = useSearchParam<string>('trapx', 'Slope · fixed set', METRIC_KEYS)
@@ -62,6 +65,8 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
   const [mode, setMode] = useState('site_heldout')
   const [onlyPassing, setOnlyPassing] = useState(false)
   const { hidden, dim, props: legendProps } = useLegend()
+  // the legend names cohorts in words; hiding and dimming go by the same name
+  const cohortName = (c: string) => COHORT[c] ?? calib.cohorts[c] ?? c
 
   const targets = useMemo(() => [...new Set(calib.grid.map((r) => r.tg))].sort(), [calib.grid])
   const modes = useMemo(() => Object.keys(calib.modes).filter((m) => calib.grid.some((r) => r.mo === m)), [calib])
@@ -69,7 +74,7 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
   const rows = useMemo(
     () =>
       calib.grid.filter(
-        (r) => r.tg === target && r.mo === mode && r.lot === 'all' && r.el === 'all' && Number.isFinite(mx.get(r) as number) && Number.isFinite(my.get(r) as number) && !hidden.has(r.co) && (!onlyPassing || passes(r, calib))
+        (r) => r.tg === target && r.mo === mode && r.lot === 'all' && r.el === 'all' && Number.isFinite(mx.get(r) as number) && Number.isFinite(my.get(r) as number) && !hidden.has(cohortName(r.co)) && (!onlyPassing || passes(r, calib))
       ),
     [calib, target, mode, hidden, onlyPassing, mx, my]
   )
@@ -106,7 +111,8 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, rows, innerW, innerH, mx, my, x.domain().join(), y.domain().join()])
   const hexMax = d3.max(hexes, (h) => h.bin.length) ?? 1
-  const hexColor = d3.scaleQuantize<string>().domain([0, hexMax]).range(RAMP_SEQUENTIAL.slice(1))
+  // the palette is picked from the density ramp (lib/colourSchemes), as on the other density charts
+  const hexColor = d3.scaleQuantize<string>().domain([0, hexMax]).range(hexColours.stops.slice(1))
   const best = useMemo(() => rows.filter((r) => passes(r, calib)).sort((a, b) => (score(a) ?? 1e9) - (score(b) ?? 1e9)).slice(0, 5), [rows, calib])
 
   return (
@@ -161,8 +167,8 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
                     cy={y(clampYv(bOf(r)))}
                     r={isSel ? 7 : ok ? 4 : 2.6}
                     fill={isSel ? '#fff' : cohortColor(r.co)}
-                    fillOpacity={(ok ? 0.85 : 0.25) * dim(r.co)}
-                    strokeOpacity={dim(r.co)}
+                    fillOpacity={(ok ? 0.85 : 0.25) * dim(cohortName(r.co))}
+                    strokeOpacity={dim(cohortName(r.co))}
                     stroke={isSel ? INK.text : r.sp === 'raw' ? 'none' : cohortColor(r.co)}
                     strokeWidth={isSel ? 2 : r.sp === 'airspec' ? 1.5 : 0.8}
                     strokeDasharray={r.sp === 'deriv2' ? '1 1' : undefined}
@@ -182,7 +188,7 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
                 )
               })}
               {best.map((r, i) => (
-                <text key={i} x={x(clampX(mOf(r))) + 8} y={y(clampYv(bOf(r))) + 3} fontSize={9.5} fill={INK.text} fillOpacity={dim(r.co)} fontFamily={FONT.mono} pointerEvents="none">
+                <text key={i} x={x(clampX(mOf(r))) + 8} y={y(clampYv(bOf(r))) + 3} fontSize={9.5} fill={INK.text} fillOpacity={dim(cohortName(r.co))} fontFamily={FONT.mono} pointerEvents="none">
                   {i + 1}
                 </text>
               ))}
@@ -191,14 +197,15 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
           </AxisChoices>
         )}
         <Legend
-          items={cohorts.map((c) => ({ label: c, color: cohortColor(c), detail: COHORT[c] ?? calib.cohorts[c] }))}
+          items={cohorts.map((c) => ({ label: cohortName(c), color: cohortColor(c) }))}
           {...legendProps}
           note="filled = Raw spectra · ring = Spline baseline · dotted ring = Second derivative · numbers = top 5 by score among passing"
         />
+        {view === 'Density hex' && hexes.length > 0 && <div className="legend"><ColorLegend scale={hexColor} scheme={hexColours.scheme} label="configurations per hex" width={160} format={(v) => String(Math.round(v))} /></div>}
         {off > 0 && <p className="chart-note">{off} extreme configurations are pinned to the edge of the canvas.</p>}
         {best.length > 0 && (
           <table className="placement">
-            <thead><tr><th>#</th><th>configuration</th><th title={METRIC.k}>PLS factors</th><th>Test set <EstimatorName /></th><th>Test set R²</th><th title={METRIC.cvR2}>IMPROVE CV R²</th><th>score</th></tr></thead>
+            <thead><tr><th>#</th><th>configuration</th><th title={METRIC.k}>PLS factors</th><th>Test set <EstimatorName /></th><th>Test set R²</th><th title={METRIC.cvR2}>IMPROVE cross-validation R²</th><th>score</th></tr></thead>
             <tbody>
               {best.map((r, i) => (
                 <tr key={i} className="link" onClick={() => onSelect({ co: r.co, cut: r.cut, sel: r.sel, sp: r.sp })}>

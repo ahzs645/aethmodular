@@ -38,19 +38,20 @@ type Kind = 'number' | 'category' | 'boolean'
 interface FieldInfo { label: string; unit?: string; group: string; help?: string }
 /** every field a specification export may carry; an export offers the ones it has */
 export const FIELD_INFO: Record<string, FieldInfo> = {
-  intercept: { label: 'Addis intercept', unit: 'µg/m³', group: 'Addis fit', help: 'Deming intercept at MAC 10 (OLS when the page shows OLS)' },
-  absIntercept: { label: '|Addis intercept|', unit: 'µg/m³', group: 'Addis fit', help: 'distance of the intercept from zero' },
-  slope: { label: 'Addis slope', group: 'Addis fit', help: 'Deming slope at MAC 10; 1 = agreement' },
-  slopeOffset: { label: '|Addis slope − 1|', group: 'Addis fit', help: 'distance of the slope from agreement' },
-  r2: { label: 'Addis R²', group: 'Addis fit' },
-  rmse: { label: 'Addis RMSE', unit: 'µg/m³', group: 'Addis fit' },
-  interceptMac6: { label: 'Addis intercept at MAC 6', unit: 'µg/m³', group: 'Addis fit' },
-  predMedian: { label: 'Median Addis prediction', unit: 'µg/m³', group: 'Addis predictions' },
-  neg: { label: 'Negative predictions', unit: '%', group: 'Addis predictions', help: 'share of Addis filters predicted below zero' },
-  above8: { label: 'Predictions above 8 µg/m³', unit: '%', group: 'Addis predictions' },
-  seasonSpan: { label: 'Spread of season medians', unit: 'µg/m³', group: 'Addis predictions' },
-  qres: { label: 'Q-residual out of domain', unit: '%', group: 'Spectral domain', help: 'share of Addis filters with unmodelled spectral variation beyond the calibration set’s 95th percentile' },
-  extrap: { label: 'Score extrapolation', unit: '%', group: 'Spectral domain', help: 'share of Addis filters beyond the calibration set’s 95th percentile in score space' },
+  // named by the fit, not the site: the test set is the page's (Addis), the rule is about the fit
+  intercept: { label: 'Deming intercept', unit: 'µg/m³', group: 'Test-set fit', help: 'Deming intercept at MAC 10 (OLS when the page shows OLS)' },
+  absIntercept: { label: '|Deming intercept|', unit: 'µg/m³', group: 'Test-set fit', help: 'distance of the intercept from zero' },
+  slope: { label: 'Deming slope', group: 'Test-set fit', help: 'Deming slope at MAC 10; 1 = agreement' },
+  slopeOffset: { label: '|Deming slope − 1|', group: 'Test-set fit', help: 'distance of the slope from agreement' },
+  r2: { label: 'R²', group: 'Test-set fit' },
+  rmse: { label: 'RMSE', unit: 'µg/m³', group: 'Test-set fit' },
+  interceptMac6: { label: 'Deming intercept at MAC 6', unit: 'µg/m³', group: 'Test-set fit' },
+  predMedian: { label: 'Median prediction', unit: 'µg/m³', group: 'Test-set predictions' },
+  neg: { label: 'Negative predictions', unit: '%', group: 'Test-set predictions', help: 'share of test-set filters predicted below zero' },
+  above8: { label: 'Predictions above 8 µg/m³', unit: '%', group: 'Test-set predictions' },
+  seasonSpan: { label: 'Spread of season medians', unit: 'µg/m³', group: 'Test-set predictions' },
+  qres: { label: 'Q-residual out of domain', unit: '%', group: 'Spectral domain', help: 'share of test-set filters with unmodelled spectral variation beyond the calibration set’s 95th percentile' },
+  extrap: { label: 'Score extrapolation', unit: '%', group: 'Spectral domain', help: 'share of test-set filters beyond the calibration set’s 95th percentile in score space' },
   heldout: { label: 'IMPROVE cross-validation R²', group: 'Calibration set', help: 'held-out TOR R²; site-grouped cross-validation only' },
   k: { label: 'PLS factors', group: 'Calibration set' },
   cut: { label: 'Cohort size', unit: 'filters', group: 'Calibration set', help: 'requested cutoff; complete cohorts have none' },
@@ -222,4 +223,51 @@ export function decodeGuardrail(token: string): Guardrail | null {
     if (!d.q || !Array.isArray(d.q.rules)) return null
     return { query: d.q, formulas: Array.isArray(d.f) ? d.f : [] }
   } catch { return null }
+}
+
+// ---------------------------------------------------------------- one condition at a time
+/** The rule cut at its first `upTo` top-level conditions (each a rule or a whole group), in order. */
+export function ruleUpTo(rule: Guardrail, upTo: number): Guardrail {
+  return { ...rule, query: { ...rule.query, rules: rule.query.rules.slice(0, upTo) } }
+}
+
+/** Each top-level condition on its own, as a rule of one condition (the root's NOT left aside). */
+export function ruleSteps(rule: Guardrail): Guardrail[] {
+  return rule.query.rules.filter((r) => typeof r === 'object').map((r) => ({ ...rule, query: { combinator: 'and', rules: [r] } }))
+}
+
+export interface StepStats {
+  /** configurations in scope */
+  n: number
+  /** per condition: how many fail it on its own */
+  fails: number[]
+  /** per condition, applied in order: how many it removes from what the earlier ones left (AND), or adds (OR) */
+  atStep: number[]
+  /** configurations passing after each step */
+  left: number[]
+  /** per condition: how many only it removes (they pass every other condition) */
+  only: number[]
+  /** fails[i][j]: how many fail both i and j (the diagonal is `fails`) */
+  shared: number[][]
+}
+
+/**
+ * How much each condition filters, given each one's pass/fail per configuration (`pass[step][row]`)
+ * and the rows in scope. With AND, steps remove; with OR, a configuration passes once any step
+ * passes it, so steps add. "Only" is the removals no other condition would make (AND).
+ */
+export function stepStats(pass: boolean[][], scope: number[], combinator = 'and'): StepStats {
+  const k = pass.length, or = combinator === 'or'
+  const fails = pass.map((p) => scope.reduce((s, i) => s + (p[i] ? 0 : 1), 0))
+  const atStep: number[] = [], left: number[] = []
+  let current = scope.map(() => !or)
+  for (let s = 0; s < k; s++) {
+    const next = scope.map((i, j) => (or ? current[j] || pass[s][i] : current[j] && pass[s][i]))
+    atStep.push(next.reduce((a, v, j) => a + (v !== current[j] ? 1 : 0), 0))
+    current = next
+    left.push(current.filter(Boolean).length)
+  }
+  const only = pass.map((p, s) => scope.reduce((a, i) => a + (!p[i] && pass.every((q, t) => t === s || q[i]) ? 1 : 0), 0))
+  const shared = pass.map((p) => pass.map((q) => scope.reduce((a, i) => a + (!p[i] && !q[i] ? 1 : 0), 0)))
+  return { n: scope.length, fails, atStep, left, only, shared }
 }

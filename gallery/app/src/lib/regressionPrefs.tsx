@@ -64,7 +64,8 @@ export function RegressionControls({ grouping = true }: { grouping?: boolean } =
       <span style={{ color: FIT_STYLE[method].color }}>{FIT_STYLE[method].label}</span>
     </label>)}</div>
     <p>Compare fits or deselect all to hide them. Deming is the default.</p>
-    <label title="Show line confidence bands and coefficient intervals where available. These describe the fit, not individual measurement errors or prediction ranges."><input type="checkbox" checked={showCI} onChange={e => setShowCI(e.target.checked)} /> 95% fit uncertainty <span className="info-dot" aria-hidden="true">ⓘ</span></label>
+    {/* Toggle's markup (ChartFrame imports this module, so Toggle itself would be circular) */}
+    <label className="toggle" title="Show line confidence bands and coefficient intervals where available. These describe the fit, not individual measurement errors or prediction ranges."><input type="checkbox" checked={showCI} onChange={e => setShowCI(e.target.checked)} /> 95% fit uncertainty <span className="info-dot" aria-hidden="true">ⓘ</span></label>
     {methods.includes('york') && <p>York uses point uncertainties when supplied; otherwise it uses constant errors with the Deming error ratio. Constant-error York and Deming coincide.</p>}
     <button className="btn quiet" type="button" onClick={() => { setMethods(['deming']); setShowCI(false); setGrouping('pooled') }}>Reset fits</button>
   </fieldset>

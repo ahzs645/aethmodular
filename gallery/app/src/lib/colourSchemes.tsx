@@ -25,6 +25,7 @@ export const SEQUENTIAL_SCHEMES: Record<string, readonly string[]> = {
   Cividis: sample(d3.interpolateCividis),
   Plasma: sample(d3.interpolatePlasma),
   Magma: sample((t) => d3.interpolateMagma(1 - t * 0.9)).reverse(),
+  Reds: sample((t) => d3.interpolateReds(0.12 + 0.88 * t)),
   Greens: sample((t) => d3.interpolateGreens(0.08 + 0.92 * t)),
   Oranges: sample((t) => d3.interpolateOranges(0.08 + 0.92 * t)),
   Purples: sample((t) => d3.interpolatePurples(0.08 + 0.92 * t)),

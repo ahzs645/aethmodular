@@ -550,7 +550,7 @@
    "file": "pages/BaselineComparisonPage.tsx"
   },
   {
-   "title": "AIRSpec / VIBES comparison",
+   "title": "Spline / VIBES comparison",
    "component": "BaselineComparisonPage",
    "tab": "baseline",
    "file": "pages/BaselineComparisonPage.tsx"

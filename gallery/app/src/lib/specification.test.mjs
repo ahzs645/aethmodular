@@ -56,3 +56,29 @@ for (const source of ['spec_curve.json', 'meeting-r70/spec_curve_20260917.json',
     assert.equal(shown([]).length, file.n)
   })
 }
+
+test('two searches merge into one curve without losing or inventing a configuration', async () => {
+  const { mergeSpecFiles } = await import('./specification.ts')
+  const a = { n: 2, n_pass: 1, guardrails: 'g', choices: ['Raw spectra', 'Lowest OC/EC'], groups: [{ title: 'Spectral preprocessing', start: 0, end: 1 }, { title: 'Calibration cohort', start: 1, end: 2 }],
+    masks: ['10', '01'], ok: '10', intercept: [0.5, -1], slope: [1, 2], heldout: [0.9, null], olsIntercept: [0.4, -0.9], olsSlope: [1, 2], cut: [300, null], k: [5, 9],
+    categories: { co: ['ocec', 'pool'], sp: ['raw', 'airspec'], sel: ['raw'], mo: ['site_heldout'], lot: ['all'] }, co: [1, 0], sp: [0, 1], sel: [0, 0], mo: [0, 0], lot: [0, 0], extra: { rmse: [1, 2] } }
+  const b = { n: 1, n_pass: 0, guardrails: 'g', choices: ['VIBES baseline', 'Lowest OC/EC'], groups: [{ title: 'Spectral preprocessing', start: 0, end: 1 }, { title: 'Calibration cohort', start: 1, end: 2 }],
+    masks: ['1', '1'], ok: '0', intercept: [0], slope: [1.1], heldout: [0.8], cut: [500], k: [7],
+    categories: { co: ['ocec'], sp: ['vibes-full-r70'], sel: ['vibes-full-r70'], mo: ['app'], lot: ['all'] }, co: [0], sp: [0], sel: [0], mo: [0], lot: [0], extra: { qres: [3] } }
+  const m = mergeSpecFiles([{ file: a, name: 'A' }, { file: b, name: 'B' }])
+  assert.equal(m.n, 3)
+  assert.deepEqual(m.intercept, [-1, 0, 0.5], 'back in intercept order')
+  assert.deepEqual(m.slope, [2, 1.1, 1])
+  assert.equal(m.ok, '001')
+  assert.deepEqual(m.categories.sp, ['raw', 'airspec', 'vibes-full-r70'])
+  assert.deepEqual(m.sp.map((c) => m.categories.sp[c]), ['airspec', 'vibes-full-r70', 'raw'])
+  assert.deepEqual(m.co.map((c) => m.categories.co[c]), ['ocec', 'ocec', 'pool'])
+  assert.deepEqual(m.olsIntercept, [-0.9, null, 0.4], 'a column one search lacks is missing, not zero')
+  assert.deepEqual(m.extra.qres, [null, 3, null])
+  const row = (label) => m.masks[m.choices.indexOf(label)]
+  assert.equal(row('Lowest OC/EC'), '110', 'a shared choice is one row')
+  assert.equal(row('VIBES baseline'), '010')
+  assert.equal(row('From the B search'), '010')
+  assert.deepEqual(m.groups.map((g) => g.title), ['Spectral preprocessing', 'Calibration cohort', 'Search'])
+  assert.equal(m.groups.at(-1).end, m.choices.length)
+})

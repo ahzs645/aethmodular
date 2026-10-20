@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CountPicker, clampCount } from '@/components/Pickers'
+import { BaselinePicker, CountPicker, clampCount } from '@/components/Pickers'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, ExplainOnly, Note, Segmented, Select, Toggle } from '@/components/ChartFrame'
 import { PageToc } from '@/components/PageToc'
@@ -16,7 +16,8 @@ import { IntervalStrip } from '@/components/IntervalStrip'
 import { HeatCell } from '@/components/HeatCell'
 import { ColorLegend } from '@/components/ColorLegend'
 import { ANALYSIS_CALENDAR_NOTE } from '@/lib/seasons'
-import { PREPROCESSING } from '@/lib/labels'
+import { baselineName } from '@/lib/labels'
+import { useColourScheme } from '@/lib/colourSchemes'
 import {
   PairMatrix, loadSimilarityMeta, TopLists, Traces, calendarOf, fetchBinary, groupColor, groupIndex, groupKey, groupLabel, siteName, siteWhere,
   type SimilarityMeta,
@@ -164,7 +165,7 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
         ['Filter role', isTarget ? 'Target filter' : rank >= 0 ? 'Most similar filter' : 'Comparison filter'],
         ['Similarity rank (displayed list)', rank >= 0 ? rank + 1 : null],
         ['Mean signed Pearson r', rank >= 0 ? topFilters.rows[rank].r.toFixed(4) : null],
-        ['Spectra', method === 'AIRSpec' ? 'Spline baseline (AIRSpec)' : method],
+        ['Baseline', baselineName(method)],
         ['Selection mask', maskMeta.label],
       ],
       note: 'Similarity scores compare this filter with every target filter over the selected channels. Seasons are fixed calendar month bins. Spectra in the main chart are 8-channel means for display.',
@@ -199,7 +200,7 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
             <strong> mean signed Pearson r</strong> between each of its filters and each target filter, over the channels the selection mask keeps. That is the
             metric the 500-filter analog selections rank by. Individual filters are scored the same way, against every target filter, and ranked across the other sites.
           </p>
-          <Note>Filters from the frozen full-profile AIRSpec / VIBES run: {F.toLocaleString()} filters ({(F - meta.sites[0].n).toLocaleString()} IMPROVE calibration and {meta.sites[0].n} Addis). Blanks and injections are excluded. The masks change only which channels are compared. Nothing is refit and no filter is excluded.</Note>
+          <Note>Filters from the frozen full-profile spline / VIBES run: {F.toLocaleString()} filters ({(F - meta.sites[0].n).toLocaleString()} IMPROVE calibration and {meta.sites[0].n} Addis). Blanks and injections are excluded. The masks change only which channels are compared. Nothing is refit and no filter is excluded.</Note>
         </ChartFrame>
       </ExplainOnly>
 
@@ -219,7 +220,7 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
             optionLabel={(o) => o === 'all' ? `All year (${meta.sites[siteIdx].n})` : `${calendar[Number(o)].name} (${meta.groups[index.get(`${site}:${o}`)!].n})`} />
           <Toggle label="Show archived VIBES fit (4000–1425)" checked={showArchived} onChange={v => setArchiveMode(v ? 'show' : 'hide')} />
 <span className="control">{method.endsWith('-r70') ? `Completed rank 70 · ${grid?.bin_wn.length ? (method.includes('cut') ? 'shared channels' : 'full available range') : ''}` : method === 'VIBES' ? 'Archived truncated correction' : 'Spline baseline'}</span>
-          <Select label="Spectra" value={method} options={methods} onChange={setMethod} optionLabel={v => PREPROCESSING[v] ?? v} />
+          <BaselinePicker value={method} options={methods} onChange={setMethod} short />
           <Select label="Selection mask" value={mask} options={maskKeys} onChange={setMask} optionLabel={(k) => `${activeMeta.masks.find((m) => m.key === k)?.label ?? k} (${activeMeta.masks.find((m) => m.key === k)?.n_channels ?? '?'} ch)`} />
         </>}
       >
@@ -244,7 +245,7 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
       <SeasonMatrix meta={meta} pairs={pairs.value} target={target} columns={ranked.slice(0, 16).map((r) => r.g)} />
 
       <SpectraTraces meta={activeMeta} traces={traces.value} target={target} topFilters={topFilters.rows} compare={compare} mask={mask}
-        hoverFilter={hoverFilter} pinned={pinned} onPin={onPin} method={method}
+        hoverFilter={hoverFilter} pinned={pinned} onPin={onPin} method={baselineName(method)}
         controls={<>
           <CountPicker label="Most similar" value={topN} presets={TOP_N} max={TOP_MAX} onChange={setTopN} noun="most similar filters" />
           <Toggle label="Outer test sites" checked={includeTest} onChange={(v) => setTestParam(v ? 'on' : 'off')} />
@@ -287,7 +288,7 @@ function GroupRanking({ meta, ranked, target, selfR, compare, onCompare, onTarge
   return (
     <ChartFrame
       title="Most similar groups — mean Pearson r between every filter pair"
-      subtitle={`Ranked by mean signed r against ${groupLabel(meta, target)}, ${method}, ${maskLabel}. Click a row to overlay that group's spectra below. The dashed line is the target's own within-group r.`}
+      subtitle={`Ranked by mean signed r against ${groupLabel(meta, target)}, ${baselineName(method)}, ${maskLabel}. Click a row to overlay that group's spectra below. The dashed line is the target's own within-group r.`}
       provenance="export_similarity.py · pairs_{method}_{mask}.bin"
       controls={<>{controls}<button type="button" className="btn quiet" onClick={() => downloadCsv(
         ['rank', 'group', 'site', 'site_name', 'season', 'split', 'n_filters', 'mean_r', 'target', 'method', 'mask'],
@@ -337,7 +338,9 @@ function SeasonMatrix({ meta, pairs, target, columns }: { meta: SimilarityMeta; 
   const cw = columns.length ? Math.max(24, Math.min(64, (width - labelW - 10) / columns.length)) : 0
   const ch = 28
   const vals = cells.map((c) => c.v).filter((v): v is number => v != null)
-  const color = d3.scaleSequential(d3.interpolateBlues).domain([d3.min(vals) ?? 0, d3.max(vals) ?? 1])
+  // the palette is picked from the ramp below (lib/colourSchemes), as on the other heatmaps
+  const colours = useColourScheme('similarity-groups', 'sequential', 'Gallery')
+  const color = d3.scaleSequential(d3.interpolateRgbBasis(colours.stops)).domain([d3.min(vals) ?? 0, d3.max(vals) ?? 1])
   return (
     <ChartFrame
       title="Season by season — is the match year-round or one season only?"
@@ -367,7 +370,7 @@ function SeasonMatrix({ meta, pairs, target, columns }: { meta: SimilarityMeta; 
             </g>
           </svg>
         )}
-        {vals.length > 0 && <div className="legend"><ColorLegend scale={color} label="mean Pearson r between the two groups" width={200} format={(v) => v.toFixed(3)} /></div>}
+        {vals.length > 0 && <div className="legend"><ColorLegend scale={color} scheme={colours.scheme} label="mean Pearson r between the two groups" width={200} format={(v) => v.toFixed(3)} /></div>}
         {vals.length > 0 && <Note>The outlined row is the current target.</Note>}
         {tip.node}
       </div>
@@ -453,7 +456,7 @@ function FilterTable({ meta, rows, targetLabel, maskLabel, method, onHover, pinn
   const title = `Most similar filters to ${targetLabel}`
   return (
     <ChartFrame title="Most similar filters — ranked individual filters from other sites" exportable={false}
-      subtitle={`Each filter's mean signed r against every ${targetLabel} filter (${method}, ${maskLabel}). This is the score the 500-filter analog selections rank by. Selected here from all sites, training and outer test alike, unless the test-site switch is off.`}
+      subtitle={`Each filter's mean signed r against every ${targetLabel} filter (${baselineName(method)}, ${maskLabel}). This is the score the 500-filter analog selections rank by. Selected here from all sites, training and outer test alike, unless the test-site switch is off.`}
       controls={<button type="button" className="btn quiet" onClick={() => downloadCsv(
         ['rank', 'sample_id', 'site', 'site_name', 'latitude', 'longitude', 'split', 'date', 'season', 'mean_r', 'target', 'method', 'mask'],
         rows.map((t, i) => { const s = meta.sites[meta.filters.site[t.filter]]; return [i + 1, meta.filters.sample_id[t.filter], s.site, siteName(s), s.lat, s.lon, s.split, meta.filters.date[t.filter], seasonName(t.filter), t.r.toFixed(4), targetLabel, method, maskLabel] }),

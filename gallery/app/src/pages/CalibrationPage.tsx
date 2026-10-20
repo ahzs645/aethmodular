@@ -41,8 +41,15 @@ import type { FilterRow, CalibFile, CalibRunsFile, MetaFile } from '@/lib/types'
  * This is the reading view; for a new configuration, a new batch, or a k
  * you cannot find here, run `python calibration_explorer/app.py` (port 5058).
  */
+/** both searches, merged into one curve for 'All baselines' (named for the Search strip rows) */
+const SPEC_BOTH = [
+  { src: 'spec_curve.json', name: 'spline, raw and 2nd derivative' },
+  { src: 'meeting-r70/spec_curve_20260917.json', name: 'spline and VIBES' },
+] as const
+
 /** The specification curve's baselines menu: grouped by the search they come from, named by spectra. */
 const SPEC_VIEWS = [
+  { key: 'both:all', label: 'Spline, VIBES, raw and 2nd derivative', group: 'All baselines' },
   { key: 'vibes:full', label: 'Spline + VIBES', group: 'Spline and VIBES' },
   { key: 'vibes:only:airspec', label: 'Spline only', group: 'Spline and VIBES' },
   { key: 'vibes:only:vibes-full-r70', label: 'VIBES only', group: 'Spline and VIBES' },
@@ -77,6 +84,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
   // original search; the value is '<search>:<baselines>' for SpecCurve's `baselines`
   const [specView, setSpecView] = useSearchParam<string>('cbase', 'vibes:full', SPEC_VIEWS.map(v => v.key))
   const specOriginal = specView.startsWith('orig:')
+  const specBoth = specView.startsWith('both:')
   const { explain } = usePrefs()
 
   const presets = runs?.presets ?? []
@@ -160,14 +168,16 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
           <EstimatorViews>{() => <SpecCurve
             defaultLayout="stacked"
             excludePreprocessing={['vibes']}
-            src={specOriginal ? 'spec_curve.json' : 'meeting-r70/spec_curve_20260917.json'}
+            src={specBoth ? SPEC_BOTH : specOriginal ? 'spec_curve.json' : 'meeting-r70/spec_curve_20260917.json'}
             baselines={specView.slice(specView.indexOf(':') + 1)}
             selected={specOriginal ? selected : undefined}
             onSelect={specOriginal ? selectConfig : undefined}
             controls={<Combobox label="Baselines" value={specView} options={SPEC_VIEWS} onChange={setSpecView}
               title="Spline and VIBES come from one search (completed rank-70 VIBES, cohort selection and model on the same baseline); raw and 2nd derivative from another, so spline appears in both" />}
-            subtitle={specOriginal ? undefined : f => `${f ? f.n.toLocaleString() + ' ' : ''}Addis configurations from the spline-vs-VIBES search (completed rank-70 VIBES): every cohort, cutoff, cross-validation protocol and number of PLS factors, with the same baseline for cohort selection and model spectra. The k-sweep and configuration readouts below use the spline, raw and 2nd-derivative search.`}
-            provenance={specOriginal ? undefined : 'Completed rank-70 migration · category_grid.jsonl · shared specification guardrails'}
+            subtitle={specBoth ? f => `${f ? f.n.toLocaleString() + ' ' : ''}Addis configurations from both searches on one curve: the spline, raw and 2nd-derivative search and the spline-vs-VIBES search (completed rank-70 VIBES). The two searches used different cohort designs, so the Search rows in the strips mark where each configuration came from; spline configurations from both share the Spline panel. The k-sweep and configuration readouts below use the spline, raw and 2nd-derivative search.`
+              : specOriginal ? undefined : f => `${f ? f.n.toLocaleString() + ' ' : ''}Addis configurations from the spline-vs-VIBES search (completed rank-70 VIBES): every cohort, cutoff, cross-validation protocol and number of PLS factors, with the same baseline for cohort selection and model spectra. The k-sweep and configuration readouts below use the spline, raw and 2nd-derivative search.`}
+            provenance={specBoth ? 'spec_curve.json + completed rank-70 migration category_grid.jsonl, merged in the browser · shared specification guardrails'
+              : specOriginal ? undefined : 'Completed rank-70 migration · category_grid.jsonl · shared specification guardrails'}
           />}</EstimatorViews>
           <EstimatorViews>{method => <CutoffSweep calib={calibrationViews[method]!} selected={selected} onSelect={selectConfig} />}</EstimatorViews>
           <EstimatorViews>{method => <KSweep calib={calibrationViews[method]!} selected={selected} onSelect={selectConfig} />}</EstimatorViews>

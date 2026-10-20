@@ -4,12 +4,14 @@ import { loadSpartanIndex, loadNativeSite, loadNativeTraces, type NativeSite, ty
 import { SpectrumModal, SpectrumPlot } from '@/components/FilterSpectrumPlot'
 import { useAddisStatus, useFilterSpectrum } from '@/lib/filterSpectrum'
 import { BASELINE_COLOR, INK } from '@/lib/theme'
+import { Toggle } from '@/components/ChartFrame'
+import { Combobox } from '@/components/Combobox'
 
 const TRACE_KEYS = ['raw', 'airspec', 'vibes'] as const
 type TraceKey = (typeof TRACE_KEYS)[number]
-const LABEL: Record<TraceKey, string> = { raw: 'Raw', airspec: 'Spline (AIRSpec)', vibes: 'VIBES' }
+const LABEL: Record<TraceKey, string> = { raw: 'Raw', airspec: 'Spline baseline', vibes: 'VIBES' }
 const COLORS = { raw: INK.text, airspec: BASELINE_COLOR.AIRSpec, vibes: BASELINE_COLOR['VIBES-full-r70'] }
-const NAMES: Record<TraceKey, string> = { raw: 'Raw absorbance', airspec: 'Corrected, spline (AIRSpec)', vibes: 'Corrected, VIBES' }
+const NAMES: Record<TraceKey, string> = { raw: 'Raw absorbance', airspec: 'Corrected, spline baseline', vibes: 'Corrected, VIBES' }
 const fmtDate = (d: string) => (d ? new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '')
 
 /**
@@ -72,17 +74,17 @@ export function NativeFilterMeasurements({ id }: { id: string }) {
   const plot = (large = false) => t && <SpectrumPlot spec={{ series }} shown={shown} names={names} colors={COLORS} expanded={large}
     plotLabel={`${shown.map(k => LABEL[k]).join(' and ')} FTIR spectrum`} roundWindow={false}
     actions={!large && <button type="button" className="btn quiet" aria-haspopup="dialog" title="Open a larger plot" onClick={() => setExpanded(true)}>Expand</button>} />
-  const controls = options.length > 1 && <span className="control" title="Tick any combination. Raw: −log₁₀(sample/background) as measured. Spline (AIRSpec) and VIBES: the same spectrum baseline-corrected.">
-    <span className="seg" role="group" aria-label="Spectra shown">
-      {options.map(k => <button key={k} type="button" aria-pressed={shown.includes(k)} className={shown.includes(k) ? 'active' : ''} onClick={() => toggle(k)}>{LABEL[k]}</button>)}
-    </span>
+  // any combination, so one switch per spectrum (the gallery's Toggle); at least one stays on
+  const controls = options.length > 1 && <span className="control" role="group" aria-label="Spectra shown"
+    title="Tick any combination. Raw: −log₁₀(sample/background) as measured. Spline baseline (AIRSpec) and VIBES: the same spectrum baseline-corrected.">
+    {options.map(k => <Toggle key={k} label={LABEL[k]} checked={shown.includes(k)} onChange={() => toggle(k)} />)}
   </span>
   const legend = <div className="ftir-legend">{shown.map(k => <span key={k}><i style={{ borderColor: COLORS[k] }} />{names[k]}{k === 'vibes' && frozenVibes && !vibes ? ' · loading…' : ''}</span>)}</div>
   const otherSite = code !== 'ETAD'
   // what used to sit behind "About this spectrum", now the analysis line's tooltip
   const about = analysis ? [
     `Raw absorbance = −log₁₀(sample/background) at full native resolution (${analysis.n.toLocaleString()} points)${analysis.invalid_points > 0 ? `, ${analysis.invalid_points} nonpositive single-beam pairs shown as gaps` : ''}; filter ${analysis.filter_id}, sample scan ${analysis.sample_scan_id}, background scan ${analysis.background_scan_id}. QC is the source's code; every analysis, repeats included, is kept.`,
-    has.airspec ? 'Spline (AIRSpec): the APRLssb segmented smoothing spline (df 6 and 4) fitted to this spectrum and subtracted; 1425–4000 cm⁻¹ only, as by design.' : '',
+    has.airspec ? 'Spline baseline (AIRSpec): the APRLssb segmented smoothing spline (df 6 and 4) fitted to this spectrum and subtracted; 1425–4000 cm⁻¹ only, as by design.' : '',
     has.vibes && vibesInfo ? `VIBES: the gallery's saved blank background (${vibesInfo.grid.model_blanks} blanks, rank ${vibesInfo.grid.model_rank}; not refitted), applied after averaging this spectrum onto its ${vibesInfo.grid.n.toLocaleString()}-point grid.${otherSite ? ' That background was learned from IMPROVE and Addis blanks, not this site’s own.' : ''}` : '',
   ].filter(Boolean).join('\n\n') : ''
 
@@ -91,9 +93,8 @@ export function NativeFilterMeasurements({ id }: { id: string }) {
       <h3>FTIR spectrum</h3>
       {analysis && <span className="ftir-meta" title={about}>
         {analyses.length > 1
-          ? <select aria-label="FTIR analysis" value={analysis.analysis_id} onChange={e => setChoice({ base, analysis: e.target.value })}>
-            {analyses.map(a => <option key={a.analysis_id} value={a.analysis_id}>Analysis {a.analysis_id} · {fmtDate(a.analysis_date)}</option>)}
-          </select>
+          ? <Combobox label="" title="FTIR analysis" value={String(analysis.analysis_id)} onChange={(v) => setChoice({ base, analysis: v })}
+            options={analyses.map(a => ({ key: String(a.analysis_id), label: `Analysis ${a.analysis_id} · ${fmtDate(a.analysis_date)}` }))} />
           : <>Analysis {analysis.analysis_id} · {fmtDate(analysis.analysis_date)}</>}
         {' · '}QC {analysis.qc || '—'}</span>}
     </div>

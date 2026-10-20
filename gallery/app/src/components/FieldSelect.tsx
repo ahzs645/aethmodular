@@ -44,7 +44,7 @@ export function FieldSelect({
     ...meta.field_groups.flatMap((g) => g.fields.map((f) => {
       const u = prettyUnit(meta.field_units?.[f])
       const cov = meta.coverage?.[f]
-      return { key: f, label: u ? `${pickerName(f)} — ${u}` : pickerName(f), group: g.label, hint: cov !== undefined ? String(cov) : undefined, title: chemText(fieldHelp(f)) }
+      return { key: f, label: u ? `${pickerName(f)} (${u})` : pickerName(f), group: g.label, hint: cov !== undefined ? String(cov) : undefined, title: chemText(fieldHelp(f)) }
     })).filter((o) => define || o.group !== RATIO_GROUP),
     ...(define ? [{ key: DEFINE_RATIO, label: 'Define a ratio…', group: RATIO_GROUP }] : []),
   ]
