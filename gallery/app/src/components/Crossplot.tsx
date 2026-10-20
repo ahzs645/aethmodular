@@ -98,7 +98,8 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
     <div ref={ref} style={{ position: 'relative' }}>
       {/* its points carry a site but no season, so a per-season grouping would only draw the pooled fit */}
       {multiSite && !groupingOverride && <FitGroupingControl only={['pooled', 'site']} value={grouping === 'season' ? 'pooled' : grouping} />}
-      <svg width={w} height={height} fontFamily={FONT.family}>
+      {/* centred in its panel: a square plot in a wide frame leaves even margins either side */}
+      <svg width={w} height={height} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
         <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>
         <g transform={`translate(${m.left},${m.top})`}>
           <defs><clipPath id={clipId}><rect width={iw} height={ih} /></clipPath></defs>
@@ -131,7 +132,7 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
       </svg>
       {fitting && !siteFits && narrow && <RegressionReadoutText stats={st} />}
       {siteFits && <details><summary>Per-site fit statistics ({fitGroups.length} sites)</summary>
-        <svg width={w} height={regressionGroupReadoutLayout(fitGroups.length, w, methods, showCI).height}>
+        <svg width={w} height={regressionGroupReadoutLayout(fitGroups.length, w, methods, showCI).height} style={{ display: 'block', margin: '0 auto' }}>
           <RegressionGroupReadouts groups={fitGroups} width={w} />
         </svg>
         <p className="chart-note">Fits use each site's paired filters and observed x range. Sites with fewer than three pairs or constant values have no fitted line. Point colours retain the selected grouping.</p>

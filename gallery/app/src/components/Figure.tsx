@@ -14,8 +14,9 @@ import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { coef, f2, f3, fmt, pct } from '@/lib/format'
 import { Markdown } from '@/lib/markdown'
 import { densities, num, rowsOf, summarize, uniq, where, INTERVAL_LABEL, type Interval, type Row, type Table, type Value } from '@/lib/table'
-import { BASELINE_COLOR, FONT, INK, RAMP_DIVERGING, RAMP_SEQUENTIAL, SPECTRAL_REGION } from '@/lib/theme'
+import { BASELINE_COLOR, FONT, INK, SPECTRAL_REGION } from '@/lib/theme'
 import { useChartOptions, type OptionDef } from '@/lib/chartOptions'
+import { useColourScheme } from '@/lib/colourSchemes'
 
 /**
  * A chart from a description: the chart kind and which columns of a long
@@ -290,7 +291,9 @@ function HeatmapFigure({ spec, rows }: { spec: Extract<FigureSpec, { kind: 'heat
   const rs = uniq(rows, spec.row).map(String), cs = uniq(rows, spec.column).map(String)
   const vals = rows.map((r) => num(r[spec.value])).filter((v): v is number => v != null)
   const dom = spec.domain ?? (spec.ramp === 'sequential' ? (d3.extent(vals) as [number, number]) : [-1, 1] as [number, number])
-  const ramp = spec.ramp === 'sequential' ? RAMP_SEQUENTIAL : RAMP_DIVERGING
+  // the palette is picked from the colour ramp below (kept in the URL as <id>.palette), as on every correlation chart
+  const colours = useColourScheme(spec.id ?? 'figure-heatmap', spec.ramp === 'sequential' ? 'sequential' : 'diverging')
+  const ramp = colours.stops
   const scale = d3.scaleLinear<string>().domain(ramp.map((_, i) => dom[0] + (i / (ramp.length - 1)) * (dom[1] - dom[0]))).range(ramp).clamp(true)
   const f = FORMAT[spec.format ?? 'f2']
   const cell = { w: 64, h: 26 }, left = Math.min(200, 8 + 6.6 * Math.max(...rs.map((r) => r.length))), top = 22
@@ -303,7 +306,7 @@ function HeatmapFigure({ spec, rows }: { spec: Extract<FigureSpec, { kind: 'heat
         {cs.map((c, j) => { const v = at(r, c); return <HeatCell key={c} x={left + j * cell.w + 1} y={top + i * cell.h + 1} width={cell.w - 2} height={cell.h - 2} fill={v == null ? null : scale(v)} label={v == null ? null : f(v)} /> })}
       </g>)}
     </svg>
-    <div className="legend"><ColorLegend scale={scale as unknown as { domain(): number[]; (v: number): string }} label={spec.valueLabel ?? spec.value} format={(v) => f(v)} /></div>
+    <div className="legend"><ColorLegend scale={scale as unknown as { domain(): number[]; (v: number): string }} scheme={colours.scheme} label={spec.valueLabel ?? spec.value} format={(v) => f(v)} /></div>
   </div>
 }
 

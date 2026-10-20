@@ -6,7 +6,7 @@ import { EstimatorViews, FIT_STYLE, useEstimator, useRegressions, fitsFor } from
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, ExplainOnly, Note, Select, Segmented, Toggle } from '@/components/ChartFrame'
-import { BaselineOptionsProvider, BaselinePicker, SeasonPicker, useBaselineOptions } from '@/components/Pickers'
+import { BaselineOptionsProvider, BaselinePicker, CountPicker, SeasonPicker, clampCount, useBaselineOptions } from '@/components/Pickers'
 import { PageToc } from '@/components/PageToc'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { Key as SharedKey } from '@/components/Key'
@@ -561,7 +561,9 @@ const TOP_N = ['50', '100', '250', '500'] as const
 function SpectraPanel({ data, method, group }: { data: MeetingData; method: string; group: string }) {
   const hl = useHighlight()
   const [mode, setMode] = useSearchParam<string>('mspec', 'individual filters', SPEC_MODES)
-  const [topN, setTopN] = useSearchParam<string>('mspecn', '100', TOP_N)
+  // any count up to the 500 stored analogs; the presets are the usual ones
+  const [topRaw, setTopN] = useSearchParam<string>('mspecn', '100')
+  const topN = clampCount(topRaw, 500, 100)
   const tr = useTraces(method)
   // one Addis colour per season; the pooled 'All Addis' summary is yellow so it never reads as the grey analogs
   const col = isAllAddis(group) ? ADDIS_ALL : data.season_colors[group]
@@ -619,7 +621,7 @@ function SpectraPanel({ data, method, group }: { data: MeetingData; method: stri
     <div style={{ marginTop: 10 }}>
       <div className="frame-controls" style={{ padding: 0 }}>
         <Segmented label="Spectra" value={mode as any} options={SPEC_MODES} onChange={setMode as any} />
-        <Segmented label="Most similar analogs" value={topN as any} options={TOP_N} onChange={setTopN as any} />
+        <CountPicker label="Most similar analogs" value={topN} presets={TOP_N} max={500} onChange={setTopN} noun="analogs" />
       </div>
       {/* grey: dropped from analog selection; hatched: also dropped by the region agreed 1 Oct (similarity only; PLS still sees them) */}
       <SpectrumPlot series={series} bands={bands} window={[d3.max(wn) ?? 4000, lo]} height={286} includeZero
@@ -717,8 +719,11 @@ function ThreePlots({ data }: { data: MeetingData }) {
   const pop = canPool ? popPick : 'analogs'
   const pooled = pop === 'all held-out IMPROVE'
   const perFilter = units === 'µg per filter' && !!a.vol
-  const opScale = d3.scaleSequential(d3.interpolateViridis).domain([0.1, 0.8])
-  const ocScale = d3.scaleSequentialLog(d3.interpolatePlasma).domain([1.5, 12])
+  // each colouring keeps its own palette, picked from its colour ramp (kept in the URL)
+  const opColours = useColourScheme('mthree-op', 'sequential', 'Viridis')
+  const ocColours = useColourScheme('mthree-oc', 'sequential', 'Plasma')
+  const opScale = d3.scaleSequential(d3.interpolateRgbBasis(opColours.stops)).domain([0.1, 0.8])
+  const ocScale = d3.scaleSequentialLog(d3.interpolateRgbBasis(ocColours.stops)).domain([1.5, 12])
   const col = data.season_colors[season]
   const shade = (op: number | null, ocec: number | null) => colorBy === 'OP fraction' ? (op == null ? INK.neutral : opScale(op))
     : colorBy === 'OC/EC' ? (ocec == null ? INK.neutral : ocScale(Math.max(1.5, ocec))) : IMPROVE_GREY
@@ -743,7 +748,7 @@ function ThreePlots({ data }: { data: MeetingData }) {
         <SeasonPicker value={season} groups={data.groups} onChange={setSeason} />
         {canPool && <Segmented label="IMPROVE filters" value={pop as any} options={POPULATIONS} onChange={setPop as any} />}
         {a.vol && <Segmented label="Units" value={units as any} options={UNITS} onChange={setUnits as any} />}
-        <Segmented label="IMPROVE colour" value={colorBy as any} options={COLOR_BY} onChange={setColorBy as any} />
+        <Select label="IMPROVE colour" value={colorBy} options={[...COLOR_BY]} onChange={setColorBy} optionLabel={(v) => (v === 'grey' ? 'Grey' : v)} />
       </>}>
       <MeetingCalibrationDetails fit={calibrationFit} />
       <div className="plot-groups">
@@ -779,15 +784,15 @@ function ThreePlots({ data }: { data: MeetingData }) {
         { label: fit === FIT_STYLE.deming ? 'Deming fit (λ from measurement uncertainties)' : `${fit.label} fit`, color: fit.color, kind: fit.dash ? 'dash' : 'line' },
         { label: '1:1', color: INK.identity, kind: 'dash' },
       ]}>
-        {colorBy === 'OP fraction' && <ColorLegend scale={opScale} label="IMPROVE: OP fraction = OPTR / (EC + OPTR)" width={200} />}
-        {colorBy === 'OC/EC' && <ColorLegend scale={ocScale} label="IMPROVE: TOR OC/EC" width={200} format={(v) => v.toFixed(0)} />}
+        {colorBy === 'OP fraction' && <ColorLegend scale={opScale} scheme={opColours.scheme} label="IMPROVE: OP fraction = OPTR / (EC + OPTR)" width={200} />}
+        {colorBy === 'OC/EC' && <ColorLegend scale={ocScale} scheme={ocColours.scheme} label="IMPROVE: TOR OC/EC" width={200} format={(v) => v.toFixed(0)} />}
       </Key>
       {perFilter && <Note>Mass per filter = concentration × sampled air volume, filter by filter. IMPROVE samples about 33 m³ per filter, SPARTAN at Addis about 7 m³, so Addis is far less extreme in mass than in concentration: its median HIPS loading is about 9× the IMPROVE median (41× in µg/m³), though still above IMPROVE's 99th percentile. Fit lines are refitted on the converted points with the same error ratio.</Note>}
       <SpectraPanel data={data} method={method} group={season} />
       <ExplainOnly>
         <AcrossSeasons data={data} fitPrefix={seasonal ? `seasonal|${method}|locked` : fitId} seasonal={seasonal} />
       </ExplainOnly>
-      {colorBy !== 'grey' && <ExplainOnly><Note>{colorBy === 'OP fraction' ? 'OP fraction = OPTR / (EC + OPTR), viridis 0.1 (purple) → 0.8 (yellow).' : 'TOR OC/EC, log plasma 1.5 → 12.'} Grey: missing.</Note></ExplainOnly>}
+      {colorBy !== 'grey' && <ExplainOnly><Note>{colorBy === 'OP fraction' ? `OP fraction = OPTR / (EC + OPTR), ${opColours.name}${opColours.reverse ? ' reversed' : ''} 0.1 → 0.8.` : `TOR OC/EC, log ${ocColours.name}${ocColours.reverse ? ' reversed' : ''} 1.5 → 12.`} Grey: missing.</Note></ExplainOnly>}
       {q('tor_vs_fabs') && <ExplainOnly><Note>TOR EC vs Fabs/10 slope {coef(q('tor_vs_fabs')?.deming_slope)} implies MAC ≈ {f2(q('tor_vs_fabs')?.implied_mac_deming)} m²/g (Deming); median Fabs/EC ratio {f2(q('tor_vs_fabs')?.mac_ratio_median)}, at the {f2(q('tor_vs_fabs')?.mac_percentile_median)}th percentile of the IMPROVE pool.</Note></ExplainOnly>}
     </ChartFrame>
   )
@@ -1068,7 +1073,7 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
         <Segmented label="Grid configurations" value={gridSet as any} options={['passing', 'all', 'none'] as const} onChange={setGridSet as any} />
       </>}>
       <div ref={ref}>
-        <svg width={side + m.left + m.right} height={side + m.top + m.bottom} fontFamily={FONT.family}>
+        <svg width={side + m.left + m.right} height={side + m.top + m.bottom} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
           <g transform={`translate(${m.left},${m.top})`}>
             <rect x={x(0.8)} width={x(1.2) - x(0.8)} y={y(1)} height={y(-1) - y(1)} fill={INK.good} fillOpacity={0.1} />
             <YAxis scale={y} x={0} label="Test set Deming intercept (µg/m³)" gridWidth={side} tickCount={6} labelX={-46} />

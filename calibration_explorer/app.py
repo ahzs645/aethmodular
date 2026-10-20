@@ -1720,9 +1720,71 @@ def api_batch_status():
 _ANALOG_LAB_CACHE = {}
 _ANALOG_LAB_UNIVERSE = {}
 
+# ----------------------------------------------------------------------------- #
+# VIBES space (read-only views; no calibration is fitted on it here). Full-range
+# VIBES-corrected spectra, 3998-500 cm-1 on the 2,722-channel model grid:
+#   IMPROVE pool + Addis: the completed rank-70 run (vibes_fullrange/
+#     interpretation_20261002), the same spectra the 17 Sep specification search used;
+#   other SPARTAN targets: the 19 Oct network baselines (same saved rank-70 background,
+#     native spectra area-averaged onto the model grid), joined on the filter id.
+# Rows without a VIBES spectrum drop out of VIBES views.
+# ----------------------------------------------------------------------------- #
+VIBES_DIR = REPO / "research/ftir_hips_chem/output/tables/vibes_fullrange"
+VIBES_FROZEN = VIBES_DIR / "interpretation_20261002"
+VIBES_NETWORK = REPO / "research/ftir_hips_chem/output/tables/network_baselines_20261019"
+VIBES_SPACES = ("vibes",)
+
+
+def _vibes():
+    """Lazily load the VIBES arrays once: {wn, pool: {AnalysisId: row}, X, addis: (rows, X), by_filter}."""
+    if "vibes" in D:
+        return D["vibes"]
+    cases = pd.read_csv(VIBES_FROZEN / "cases.csv", usecols=["kind", "filter_id"])
+    X = np.load(VIBES_FROZEN / "corrected_VIBES_full_recovered.npy", mmap_mode="r")
+    wn = np.load(VIBES_DIR / "rank30/wn.npy").astype(float)
+    if X.shape != (len(cases), len(wn)):
+        raise ValueError("VIBES run and its case table disagree")
+    # IMPROVE: the run keys on FilterId; the explorer keys the pool on AnalysisId
+    catalog = pd.read_csv(PATHS.ftir_dir / "local_db/tables/ftir_catalog.csv",
+                          usecols=["AnalysisId", "FilterId"])
+    catalog = catalog[catalog["AnalysisId"].astype(int).isin(D["pool"].index)]
+    by_fid = {}
+    for aid, fid in zip(catalog["AnalysisId"].astype(int), catalog["FilterId"]):
+        by_fid.setdefault(str(fid), aid)
+    pool = {}
+    for row, (kind, fid) in enumerate(zip(cases["kind"], cases["filter_id"].astype(str))):
+        if kind == "calibration" and fid in by_fid:
+            pool[by_fid[fid]] = row
+    # SPARTAN filters by filter id: the frozen run's Addis rows first, then the network run
+    spartan = {fid: np.asarray(X[row], float) for row, (kind, fid) in
+               enumerate(zip(cases["kind"], cases["filter_id"].astype(str))) if kind == "target"}
+    net = pd.read_csv(VIBES_NETWORK / "vibes_bundle/cases.csv", usecols=["filter_id"])
+    grid = np.load(VIBES_NETWORK / "vibes_bundle/X_model_grid.npy", mmap_mode="r")
+    base = np.load(VIBES_NETWORK / "vibes_baselines_model_grid.npy", mmap_mode="r")
+    for row, fid in enumerate(net["filter_id"].astype(str)):
+        if fid not in spartan and np.isfinite(base[row]).all():
+            spartan[fid] = np.asarray(grid[row], float) - np.asarray(base[row], float)
+    D["vibes"] = {"wn": wn, "X": X, "pool": pool, "spartan": spartan}
+    return D["vibes"]
+
+
+def _vibes_spartan(filter_ids):
+    """VIBES rows for SPARTAN filter ids, and which of them have one."""
+    v = _vibes()
+    have = [f in v["spartan"] for f in filter_ids]
+    rows = [v["spartan"][f] for f in filter_ids if f in v["spartan"]]
+    return (np.vstack(rows) if rows else np.empty((0, len(v["wn"])))), np.asarray(have, bool)
+
+
+def _vibes_addis():
+    return _vibes_spartan([str(f) for f in D["etad_eval"]["ExternalFilterId"]])[0]
+
 
 def _analog_space_rows(space, ids):
     """Spectra matrix for the given AnalysisIds in the lab's spectra space."""
+    if space == "vibes":
+        v = _vibes()
+        return np.asarray(v["X"][[v["pool"][i] for i in ids]], float)
     if space == "airspec":
         return D["corr_pool"][[D["corr_row"][i] for i in ids]].astype(float)
     X = D["pool_raw"].loc[ids, D["wcols"]].to_numpy(float)
@@ -1732,6 +1794,8 @@ def _analog_space_rows(space, ids):
 
 
 def _analog_addis_rows(space):
+    if space == "vibes":
+        return _vibes_addis()
     if space == "airspec":
         return np.asarray(D["X_addis_corr"], float)
     A = np.asarray(D["X_addis_raw"], float)
@@ -1765,7 +1829,11 @@ def _analog_lab_payload(space):
     # Its order IS the committed rank.
     pool_ids = set(int(i) for i in D["pool"].index)
     universe = [int(i) for i in D["analog_ranked"] if int(i) in pool_ids]
-    if space == "airspec":
+    if space == "vibes":
+        universe = [i for i in universe if i in _vibes()["pool"]]
+        X = _analog_space_rows(space, universe)
+        A = _vibes_addis()
+    elif space == "airspec":
         universe = [i for i in universe if i in D["corr_row"]]
         X = D["corr_pool"][[D["corr_row"][i] for i in universe]].astype(float)
         A = np.asarray(D["X_addis_corr"], float)
@@ -1840,7 +1908,7 @@ def api_analog_lab():
         return jsonify({"error": "data still loading"}), 503
     b = request.get_json(force=True) or {}
     space = b.get("space", "raw")
-    if space not in ("raw", "airspec", "deriv2"):
+    if space not in ("raw", "airspec", "deriv2", *VIBES_SPACES):
         return jsonify({"error": f"unknown space '{space}'"}), 400
     with COMPUTE_LOCK:
         try:
@@ -1878,8 +1946,8 @@ def api_site_spectra():
     if not STATE["ready"]:
         return jsonify({"error": "data still loading"}), 503
     b = request.get_json(force=True) or {}
-    space = b.get("space", "raw")           # raw | airspec | neutral
-    if space not in ("raw", "airspec", "neutral"):
+    space = b.get("space", "raw")           # raw | airspec | neutral | vibes
+    if space not in ("raw", "airspec", "neutral", *VIBES_SPACES):
         return jsonify({"error": f"unknown space '{space}'"}), 400
     key = space
     if key in _SITE_SPEC_CACHE:
@@ -1889,7 +1957,16 @@ def api_site_spectra():
             series = []
             for name in list_targets():
                 t = get_target(name)
-                if space == "airspec":
+                if space == "vibes":
+                    fids = ([str(f) for f in D["etad_eval"]["ExternalFilterId"]] if name == "addis"
+                            else t.get("filter_ids"))
+                    if not fids:
+                        continue
+                    X, _ = _vibes_spartan(fids)
+                    wn = _vibes()["wn"]
+                    if len(X) < 3:
+                        continue
+                elif space == "airspec":
                     X = t.get("X_corr")
                     wn = np.asarray(D["corr_wn"], float)
                     if X is None:
@@ -1924,7 +2001,7 @@ def api_analog_lab_spectra():
     space = b.get("space", "raw")
     metric = b.get("metric", "corr_median")
     cutoff = int(b.get("cutoff") or 500)
-    if space not in ("raw", "airspec", "deriv2"):
+    if space not in ("raw", "airspec", "deriv2", *VIBES_SPACES):
         return jsonify({"error": f"unknown space '{space}'"}), 400
     with COMPUTE_LOCK:
         try:
@@ -1935,7 +2012,8 @@ def api_analog_lab_spectra():
             cutoff = min(cutoff, len(universe))
             alt_ids = universe[np.asarray(pay["ranks"][metric]) < cutoff]
             com_ids = universe[:cutoff]        # universe order = committed rank
-            wn = D["corr_wn"] if space == "airspec" else np.asarray(D["wn_raw"], float)
+            wn = (_vibes()["wn"] if space == "vibes" else D["corr_wn"] if space == "airspec"
+                  else np.asarray(D["wn_raw"], float))
             return jsonify({
                 "wn": [round(float(v), 2) for v in wn],
                 "n": int(cutoff),
@@ -2409,10 +2487,30 @@ def api_spectra():
     b = request.get_json(force=True)
     cfg = _config_from(b)
     with COMPUTE_LOCK:
-        wn = D["corr_wn"] if cfg["spectra"] == "airspec" else D["wn_raw"]
+        wn = (_vibes()["wn"] if cfg["spectra"] in VIBES_SPACES
+              else D["corr_wn"] if cfg["spectra"] == "airspec" else D["wn_raw"])
         stride = max(1, len(wn) // 900)
         sl = slice(None, None, stride)
         try:
+            if b.get("compare") and cfg["spectra"] in VIBES_SPACES:
+                # view only: the cohorts as selected (on raw spectra, as the raw/spline views),
+                # drawn in VIBES; a cohort filter without a VIBES spectrum drops out
+                series = []
+                for cohort in ("eth_shaped", "analogs", "ocec"):
+                    ids, label = resolve_cohort(
+                        cohort, None, cfg["selection_space"] if cohort in ("eth_shaped", "analogs") else "raw",
+                        "raw", cfg["lot"])
+                    ids = [int(i) for i in ids if int(i) in _vibes()["pool"]]
+                    series.append({"label": f"{label} (n={len(ids)})",
+                                   **_spectra_bands(_analog_space_rows("vibes", ids), sl)})
+                if cfg["target"] not in (None, "", "addis"):
+                    raise ValueError("VIBES cohort spectra are compared with Addis only")
+                return jsonify({"wn": np.round(np.asarray(wn, float)[sl], 2).tolist(),
+                                "series": series, "reference": _spectra_bands(_vibes_addis(), sl),
+                                "reference_label": get_target("addis")["label"],
+                                "spectra": cfg["spectra"], "compare": True})
+            if cfg["spectra"] in VIBES_SPACES:
+                raise ValueError("VIBES spectra are offered for the cohort comparison view only")
             if b.get("compare"):
                 series = []
                 for cohort in ("eth_shaped", "analogs", "ocec"):

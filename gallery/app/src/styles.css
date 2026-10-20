@@ -1131,3 +1131,46 @@ html.dash-present .container.dash { padding-top: 10px; }
 .export-color-popover .export-colors { border: 0; padding: 0; }
 .export-color-popover .export-colors > legend { display: none; }
 .export-color-popover .export-site-colors { max-height: none; overflow: visible; }
+
+/* ---------- guardrail editor (components/GuardrailEditor; react-querybuilder's layout sheet underneath) ---------- */
+/* a wide popup: the live curve stays pinned at the top while the options below scroll */
+.guard-dialog { width: min(1100px, 100%); overflow-x: hidden; display: flex; flex-direction: column; gap: 12px; outline: none; padding-top: 0; }
+.guard-top { position: sticky; top: 0; z-index: 3; background: var(--ink-panel); padding-top: 14px; border-bottom: 1px solid var(--ink-border); }
+.guard-preview { padding-bottom: 6px; }
+.guard-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.guard-head strong { font-size: calc(15px * var(--text-scale)); margin-right: 10px; }
+.guard-start { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.guard-saved { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-left: 10px; padding-left: 10px; border-left: 1px solid var(--ink-border); }
+.guard-chip { display: inline-flex; border: 1px solid var(--ink-border); border-radius: 6px; }
+.guard-chip .btn { border: 0; }
+.guard-builder .queryBuilder { font-size: calc(12px * var(--text-scale)); }
+.guard-builder .ruleGroup { background: var(--accent-soft); border: 1px solid var(--ink-border); border-radius: 8px; padding: 8px; gap: 6px; }
+.guard-builder .ruleGroup .ruleGroup { background: var(--ink-panel); }
+.guard-builder .ruleGroup-header, .guard-builder .rule { gap: 6px; align-items: center; }
+.guard-builder .rule { background: var(--ink-panel); border-radius: 6px; padding: 4px 6px; }
+/* a single value is an input; a range (between) is a span holding two */
+.guard-builder input.rule-value { width: 90px; }
+.guard-builder span.rule-value { display: inline-flex; gap: 6px; border: 0; padding: 0; background: none; max-width: none; }
+.guard-builder .rule-value-list-item {
+  width: 80px; font-size: calc(12px * var(--text-scale)); padding: 4px 7px; border: 1px solid var(--ink-border); border-radius: 6px;
+  background: #fff; color: var(--ink-text); font-family: var(--font);
+}
+.guard-builder .rule-value[multiple] { width: auto; min-width: 220px; max-width: 380px; height: auto; }
+.guard-builder .rule-fields { max-width: 280px; }
+.guard-builder .toggle { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-muted); }
+.guard-formulas { display: flex; flex-direction: column; gap: 6px; }
+.guard-formulas-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.guard-formula { display: flex; align-items: center; gap: 6px; }
+.guard-formula .guard-formula-text { flex: 1; max-width: none; font-family: var(--mono); }
+.guard-name { color: var(--ink-muted); }
+.guard-help { margin: 0; color: var(--ink-muted); font-size: calc(11.5px * var(--text-scale)); line-height: 1.7; }
+.guard-help code { display: inline-block; margin: 0 3px; padding: 0 3px; border-radius: 3px; background: var(--accent-soft); }
+.guard-foot { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--ink-border); padding-top: 10px; }
+.guard-result { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.guard-words { color: var(--ink-muted); }
+.guard-error { color: var(--danger); }
+.guard-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+@media (max-width: 640px) {
+  .guard-builder .rule { flex-wrap: wrap; }
+  .guard-formula { flex-wrap: wrap; }
+}

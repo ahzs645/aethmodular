@@ -103,6 +103,8 @@ def export_spec_curve(grid_path, out_path):
     import sys
     sys.path.insert(0, str(ROOT / "research/ftir_ec_phase3/scripts"))
     from spec_curve import GUARDRAIL_TEXT, HELDOUT_FLOOR, SLOPE_RANGE, passes_guardrails
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from export_spec_curve import extra_columns
 
     rows = [json.loads(l) for l in grid_path.read_text().splitlines() if l.strip()]
     rows = [r for r in rows if r.get("all_intercept") is not None and "extrap_pct" in r]
@@ -126,7 +128,7 @@ def export_spec_curve(grid_path, out_path):
         "ok": bits(ok),
         "intercept": [r(x["all_intercept"]) for x in rows],
         "slope": [r(x["all_slope"]) for x in rows],
-        "heldout": [r(x.get("heldout_R2"), 3) for x in rows],
+        "heldout": [r(x.get("heldout_R2")) for x in rows],  # 4 dp, as spec_curve.json
         "cut": [x["cutoff"] for x in rows], "k": [x["k"] for x in rows],
         "categories": cats,
         "co": [idx["co"][x["category"]] for x in rows],
@@ -134,6 +136,7 @@ def export_spec_curve(grid_path, out_path):
         "sel": [idx["sel"][x["method"].lower()] for x in rows],
         "mo": [idx["mo"][x["mode"]] for x in rows],
         "lot": [0] * len(rows),
+        "extra": extra_columns(rows),
     }
     out_path.write_text(json.dumps(payload, separators=(",", ":"), ensure_ascii=False))
     print(f"spec curve: {len(rows)} specifications, {sum(ok)} pass every guardrail -> {out_path.name}")

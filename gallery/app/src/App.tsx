@@ -45,7 +45,6 @@ import { BlanksPage } from '@/pages/BlanksPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { dashParams, parseDash, type DashState, type Scope } from '@/lib/dashboard'
 import type { DashFilters } from '@/components/dashboard/DashHeader'
-import { Combobox } from '@/components/Combobox'
 import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
 import { ViewsMenu } from '@/components/ViewsMenu'
 import { currentView, isEmbed, viewUrl } from '@/lib/views'
@@ -1112,9 +1111,6 @@ export default function App() {
         {tab === 'census' && <CensusPage census={census} />}
         {tab === 'similarity' && <SimilarityPage />}
         {tab === 'meeting' && <PresentationProvider mode={presentation} set={setPresentation}>
-          <div className="panel" aria-label="Meeting selection">
-            <Combobox label="Meeting" value={meeting} options={MEETINGS} onChange={setMeeting} />
-          </div>
           <SidebarControls title="Meeting figures">
             <PresentationSwitch ignored={dropIds.size + (keepIds ? 1 : 0)} viewChanged={viewOpts.mac !== exportMac || basis !== 'conc'} />
           </SidebarControls>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { CountPicker, clampCount } from '@/components/Pickers'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, ExplainOnly, Note, Segmented, Select, Toggle } from '@/components/ChartFrame'
 import { PageToc } from '@/components/PageToc'
@@ -22,6 +23,8 @@ import {
 } from '@/lib/similarity'
 
 const TOP_N = ['50', '100', '250', '500'] as const
+/** the stored list holds each target's 500 most similar filters, so any count up to that can be drawn */
+const TOP_MAX = 500
 const MIN_N = ['1', '5', '10', '20'] as const
 const SHOW = ['15', '30', '60'] as const
 const TEST_COLOR = '#9a6b2f'
@@ -85,7 +88,8 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
   const [show, setShow] = useSearchParam<string>('sshow', '30', SHOW)
   const [testParam, setTestParam] = useSearchParam<string>('stest', 'on', ['on', 'off'])
   const [sameParam, setSameParam] = useSearchParam<string>('ssame', 'on', ['on', 'off'])
-  const [topN, setTopN] = useSearchParam<string>('stop', '500', TOP_N)
+  const [topRaw, setTopN] = useSearchParam<string>('stop', '500')
+  const topN = clampCount(topRaw, TOP_MAX, 500)
   const [compareKey, setCompareKey] = useSearchParam<string>('scmp', '')
   const includeTest = testParam === 'on'
   const includeSame = sameParam === 'on'
@@ -242,7 +246,7 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
       <SpectraTraces meta={activeMeta} traces={traces.value} target={target} topFilters={topFilters.rows} compare={compare} mask={mask}
         hoverFilter={hoverFilter} pinned={pinned} onPin={onPin} method={method}
         controls={<>
-          <Segmented label="Most similar" value={topN} options={TOP_N} onChange={setTopN} />
+          <CountPicker label="Most similar" value={topN} presets={TOP_N} max={TOP_MAX} onChange={setTopN} noun="most similar filters" />
           <Toggle label="Outer test sites" checked={includeTest} onChange={(v) => setTestParam(v ? 'on' : 'off')} />
         </>} />
 

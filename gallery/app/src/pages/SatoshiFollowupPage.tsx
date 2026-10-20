@@ -247,7 +247,7 @@ function Overlap({ data, mask }: { data: SatoshiData; mask: Mask }) {
         <tbody>{props.map((p) => <tr key={p.part}><td style={{ color: PART_COLOR[p.part], fontWeight: 600 }}>{p.part}</td><td>{p.n}</td><td>{p.n_sites}</td><td>{f2(p.tor_ec_median)} ({f2(p.tor_ec_p90)})</td><td>{f2(p.loading_median_ug)}</td><td>{f2(p.oc_ec_median)}</td><td>{f2(p.mac_ratio_median)}</td><td>{pct(p.lot251_fraction)}</td><td>{p.top_sites}</td></tr>)}</tbody>
       </table>
       <OverlapScatter data={data} mask={mask} group={group} />
-      <Note>The agreed 1 Oct region changes the VIBES analogs themselves: it keeps {changed.map((c, i) => <span key={c.group}>{i ? ', ' : ''}{c.shared} ({shortSeason(c.group)})</span>)} of the 500 VIBES analogs selected as presented. Ranks of the shared filters barely agree between baselines (Spearman ρ {f2(d3.min(rows, (r) => r.shared_rank_spearman))} to {f2(d3.max(rows, (r) => r.shared_rank_spearman))}).</Note>
+      <ExplainOnly><Note>The agreed 1 Oct region changes the VIBES analogs themselves: it keeps {changed.map((c, i) => <span key={c.group}>{i ? ', ' : ''}{c.shared} ({shortSeason(c.group)})</span>)} of the 500 VIBES analogs selected as presented. Ranks of the shared filters barely agree between baselines (Spearman ρ {f2(d3.min(rows, (r) => r.shared_rank_spearman))} to {f2(d3.max(rows, (r) => r.shared_rank_spearman))}).</Note></ExplainOnly>
     </ChartFrame>
   )
 }
@@ -262,14 +262,15 @@ function OverlapScatter({ data, mask, group }: { data: SatoshiData; mask: Mask; 
   const mb = data.members
   const idx = useMemo(() => mb.mask.map((_, i) => i).filter((i) => mb.mask[i] === mask && mb.group[i] === group && (mb.tor_ec_ugm3[i] as number) > 0 && (mb.tor_oc_ec[i] as number) > 0), [mb, mask, group])
   const m = { top: 12, right: 16, bottom: 46, left: 60 }
-  const iw = Math.max(240, Math.min(width, 760) - m.left - m.right), ih = 300
+  // a square plot (1:1 aspect), centred
+  const iw = Math.max(240, Math.min(width - m.left - m.right, 440)), ih = iw
   const x = d3.scaleLog().domain([0.01, 5]).range([0, iw]).clamp(true)
   const y = d3.scaleLog().domain([0.3, 40]).range([ih, 0]).clamp(true)
   const order = (p: string) => (p === 'shared' ? 2 : 1)
   const sorted = [...idx].sort((a, b) => order(String(mb.part[a])) - order(String(mb.part[b])))
   return (
     <div ref={ref} style={{ position: 'relative', marginTop: 12 }}>
-      <svg width={iw + m.left + m.right} height={ih + m.top + m.bottom} fontFamily={FONT.family}>
+      <svg width={iw + m.left + m.right} height={ih + m.top + m.bottom} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
         <g transform={`translate(${m.left},${m.top})`}>
           <defs><clipPath id={clip}><rect width={iw} height={ih} /></clipPath></defs>
           <YAxis scale={y as any} x={0} label="TOR OC/EC" tickCount={5} gridWidth={iw} labelX={-44} format={logTick} />
@@ -374,7 +375,7 @@ function Vip({ data, mask }: { data: SatoshiData; mask: Mask }) {
         <thead><tr><th>Band (cm⁻¹)</th><th>Channels</th><th>Mean VIP, standard</th><th>Mean VIP, analog</th><th>Share of VIP², standard</th><th>Share of VIP², analog</th></tr></thead>
         <tbody>{bs.map((b) => { const a = ba.find((x) => x.band === b.band); return <tr key={b.band}><td>{b.band}</td><td>{b.n_channels}</td><td>{f2(b.vip_mean)}</td><td>{f2(a?.vip_mean)}</td><td>{pct(b.vip2_share)}</td><td style={{ fontWeight: a && a.vip2_share > b.vip2_share * 1.5 ? 700 : 400 }}>{pct(a?.vip2_share)}</td></tr> })}</tbody>
       </table>
-      {sim && <Note>Agreement between the two profiles: Spearman ρ {f2(sim.spearman_vs_standard)}; {pct(sim.top200_overlap)} of the 200 highest-VIP channels are shared; {sim.vip_ge1_both} channels have VIP ≥ 1 in both ({sim.vip_ge1_standard} standard, {sim.vip_ge1_analog} analog). VIP depends on the number of PLS factors, so compare shapes, not heights. Shares of VIP² also scale with the number of channels in a band; use the mean-VIP columns to compare bands of different width.</Note>}
+      {sim && <ExplainOnly><Note>Agreement between the two profiles: Spearman ρ {f2(sim.spearman_vs_standard)}; {pct(sim.top200_overlap)} of the 200 highest-VIP channels are shared; {sim.vip_ge1_both} channels have VIP ≥ 1 in both ({sim.vip_ge1_standard} standard, {sim.vip_ge1_analog} analog). VIP depends on the number of PLS factors, so compare shapes, not heights. Shares of VIP² also scale with the number of channels in a band; use the mean-VIP columns to compare bands of different width.</Note></ExplainOnly>}
     </ChartFrame>
   )
 }
@@ -438,7 +439,7 @@ function Ladder({ data, mask }: { data: SatoshiData; mask: Mask }) {
         <thead><tr><th>Calibration</th><th>HIPS-implied EC loading, Addis median (µg)</th><th>Calibration-set loading median / 95th (µg)</th><th>Addis above calibration 95th percentile</th><th>Addis beyond score leverage T² 95th</th><th>Addis beyond spectral residual Q 95th</th><th>IMPROVE test sites beyond T² / Q 95th</th></tr></thead>
         <tbody>{[{ label: `${shortSeason(group)} analog model`, r: ex }, { label: 'Standard model', r: exStd }].map(({ label, r }) => r && <tr key={label}><td>{label}</td><td>{f2(r.addis_loading_median_ug)}</td><td>{f2(r.train_loading_median_ug)} / {f2(r.train_loading_p95_ug)}</td><td>{pct(r.loading_beyond_train_p95)}</td><td>{pct(r.t2_beyond_p95)}</td><td>{pct(r.q_beyond_p95)}</td><td>{pct(r.improve_test_t2_beyond_p95)} / {pct(r.improve_test_q_beyond_p95)}</td></tr>)}</tbody>
       </table>
-      <Note>HIPS-implied loading is Fabs / MAC 10 × sampled volume: the EC mass on the filter if MAC were 10. PLS predicts mass on the filter, so this is the range the model must extrapolate over. T² and Q thresholds are the calibration set's own 95th percentiles; the IMPROVE test-site column shows how often genuinely new IMPROVE filters exceed them, as a benchmark.</Note>
+      <ExplainOnly><Note>HIPS-implied loading is Fabs / MAC 10 × sampled volume: the EC mass on the filter if MAC were 10. PLS predicts mass on the filter, so this is the range the model must extrapolate over. T² and Q thresholds are the calibration set's own 95th percentiles; the IMPROVE test-site column shows how often genuinely new IMPROVE filters exceed them, as a benchmark.</Note></ExplainOnly>
     </ChartFrame>
   )
 }
@@ -492,7 +493,7 @@ function LadderCrossplots({ data, analogId, baseline, mask, group }: { data: Sat
         <Cross title={`${shortSeason(group)} analog model (${SHORT[baseline]})`} pts={va} color={data.season_colors[group]} dom={xdom} ydom={ydom} source={`Satoshi 2 Oct · ${analogId}`} />
         <Cross title={`Standard model, same analogs (${SHORT[baseline]})`} pts={vs} color={STANDARD_COLOR} dom={xdom} ydom={ydom} source={`Satoshi 2 Oct · standard|${baseline} · analogs of ${group}`} />
       </div>
-      <Note>Filled points are out-of-fold cross-validation predictions; open points are IMPROVE test sites. Both panels share axes; the top 0.5 % of values is outside the frame. {missing > 0 ? `${missing} analogs are lot 248 and so outside the lot-251 standard model; they are not in the right panel. ` : ''}Similarity region: {MASK_SHORT[mask]}.</Note>
+      <ExplainOnly><Note>Filled points are out-of-fold cross-validation predictions; open points are IMPROVE test sites. Both panels share axes; the top 0.5 % of values is outside the frame. {missing > 0 ? `${missing} analogs are lot 248 and so outside the lot-251 standard model; they are not in the right panel. ` : ''}Similarity region: {MASK_SHORT[mask]}.</Note></ExplainOnly>
     </>
   )
 }
@@ -569,7 +570,7 @@ function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
       title="Lower envelope? — where the analogs sit among the standard model's out-of-sample predictions"
       subtitle="Grey: every lot-251 IMPROVE filter, predicted out of sample by the standard model (site-grouped cross-validation for its calibration sites, direct prediction for its test sites). Coloured: the analogs of one Addis group. Right: each analog's residual (FTIR − TOR) as a percentile among all pool filters in the same TOR EC decile; analogs on the lower envelope would pile up on the left, typical filters spread flat at 10 % per bar."
       >
-      <div ref={ref} style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 24 }}>
+      <div ref={ref} style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 24, justifyContent: 'center' }}>
         <div style={{ width: side + m.left + m.right }}>
           <Crossplot title={`Standard model (${SHORT[baseline]}), out of sample`} fit={false} domain={dom} yDomain={ydom} sameScale={square} maxSide={side} pick
             xLabel={satLabel(ax.x, 'FTIR EC, standard model (µg/m³)')} yLabel={satLabel(ax.y, 'FTIR EC, standard model (µg/m³)')}
@@ -597,7 +598,7 @@ function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
         <thead><tr><th>Analogs of ({SHORT[baseline]})</th><th>Lot-251 analogs</th><th>Median residual percentile</th><th>Below 10th</th><th>Below 25th</th><th>Above 75th</th><th>Median FTIR / TOR</th><th>Median TOR EC (µg/m³)</th></tr></thead>
         <tbody>{env.map((e) => <tr key={e.group}><td style={{ color: data.season_colors[e.group], fontWeight: 600 }}>{e.group}</td><td>{e.n}</td><td>{Math.round(e.pct_median)}</td><td>{pct(e.below_p10)}</td><td>{pct(e.below_p25)}</td><td>{pct(e.above_p75)}</td><td>{f2(e.ratio_median)}</td><td>{f2(e.tor_ec_median)}</td></tr>)}</tbody>
       </table>
-      <Note>A typical filter has median percentile 50, and 10 % / 25 % / 25 % in the three tail columns. Debus et al. (2022, AMT 15, 2685; Fig. 4) calibrated on 2015 IMPROVE filters with second-derivative spectra and separate biomass-burning models. This pool spans {data.summary.improve_dates?.[0]} to {data.summary.improve_dates?.[1]} (lots 248 and 251), so it cannot show whether analog-like samples were present in 2015; the year mix of each analog set is below.</Note>
+      <ExplainOnly><Note>A typical filter has median percentile 50, and 10 % / 25 % / 25 % in the three tail columns. Debus et al. (2022, AMT 15, 2685; Fig. 4) calibrated on 2015 IMPROVE filters with second-derivative spectra and separate biomass-burning models. This pool spans {data.summary.improve_dates?.[0]} to {data.summary.improve_dates?.[1]} (lots 248 and 251), so it cannot show whether analog-like samples were present in 2015; the year mix of each analog set is below.</Note></ExplainOnly>
       <table className="census-table" style={{ marginTop: 6 }}>
         <thead><tr><th>Sampling year</th>{yearList.map((yv) => <th key={yv}>{yv}</th>)}</tr></thead>
         <tbody>{yearSets.map((set) => { const rows = yearsOf(set); const tot = d3.sum(rows, (r) => r.n) || 1; return <tr key={set}><td>{set === 'IMPROVE pool' ? 'IMPROVE pool' : `Analogs of ${set.split('|')[2]}`}</td>{yearList.map((yv) => <td key={yv}>{pct((rows.find((r) => r.year === yv)?.n ?? 0) / tot)}</td>)}</tr> })}</tbody>
@@ -805,7 +806,7 @@ function BlankModels({ d }: { d: Oct1Data }) {
         <thead><tr><th>Analogs shared (of 500)</th>{d.groups.map((g) => <th key={g}>{g}</th>)}</tr></thead>
         <tbody>{[...new Set(d.overlap.map((o) => `${o.a}|${o.b}`))].map((pair) => { const [a, b] = pair.split('|'); return <tr key={pair}><td>{BANK_SHORT[a]} vs {BANK_SHORT[b]}</td>{d.groups.map((g) => <td key={g}>{ov(g).find((o) => o.a === a && o.b === b)?.shared ?? '—'}</td>)}</tr> })}</tbody>
       </table>
-      <Note>Standard model: all-IMPROVE lot 251, frozen site-disjoint split, k by site-grouped cross-validation. Addis: FTIR EC vs Fabs / MAC 10, Deming with the meeting's error ratio. Analog rows: protocol split, so they match the ladder on the 2 Oct sections above for the spline and 87-blank VIBES rows.</Note>
+      <ExplainOnly><Note>Standard model: all-IMPROVE lot 251, frozen site-disjoint split, k by site-grouped cross-validation. Addis: FTIR EC vs Fabs / MAC 10, Deming with the meeting's error ratio. Analog rows: protocol split, so they match the ladder on the 2 Oct sections above for the spline and 87-blank VIBES rows.</Note></ExplainOnly>
     </ChartFrame>
   )
 }
@@ -828,8 +829,9 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
   const t = d.group_tests.find((x) => x.baseline === baseline && x.region === region && x.group === season)
   const summ = d.group_summary.filter((x) => x.baseline === baseline && x.region === region && x.group === season)
   const half = Math.max(260, Math.floor((width - 24) / 2))
-  const m = { top: 24, right: 12, bottom: 44, left: 56 }, h = 280
-  const iw = half - m.left - m.right, ih = h - m.top - m.bottom
+  const m = { top: 24, right: 12, bottom: 44, left: 56 }
+  // a square plot (1:1 aspect), at most as wide as its half of the row
+  const iw = Math.max(180, Math.min(half - m.left - m.right, 340)), ih = iw, h = ih + m.top + m.bottom
   const x = d3.scaleLinear().domain(d3.extent(pts, (p) => p.pc1) as [number, number]).nice().range([0, iw])
   const y = d3.scaleLinear().domain(d3.extent(pts, (p) => p.ec) as [number, number]).nice().range([ih, 0])
   const wn = d.group_spectra.wn[baseline] ?? []
@@ -853,7 +855,7 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
       </>}>
       {seasonNote && <Note>{seasonNote}</Note>}
       <div ref={ref} style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 24 }}>
-        <svg width={half} height={h} fontFamily={FONT.family}>
+        <svg width={iw + m.left + m.right} height={h} fontFamily={FONT.family}>
           <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>Main shape deviation (PC1) vs HIPS EC</text>
           <g transform={`translate(${m.left},${m.top})`}>
             <YAxis scale={y} x={0} label="Fabs / 10 (µg/m³)" tickCount={5} gridWidth={iw} labelX={-42} />

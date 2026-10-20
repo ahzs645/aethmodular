@@ -63,3 +63,25 @@ export function BankPicker({ value, onChange, banks, labels, ranks, label = 'Bac
   return <Select label={label} value={value} options={[...banks]}
     optionLabel={(b) => `${labels[b] ?? b}${ranks?.[b] != null ? ` (rank ${ranks[b]})` : ''}`} onChange={onChange} />
 }
+
+/** A count from a URL value, kept to 1..max (anything unreadable falls back). */
+export const clampCount = (v: string, max: number, fallback: number) => {
+  const n = Math.round(Number(v))
+  return String(Number.isFinite(n) && n >= 1 ? Math.min(max, n) : fallback)
+}
+
+/**
+ * How many of a ranked list to draw: the usual counts as buttons, or any count up to `max`
+ * (what the export stores) typed in. The value is a string, as kept in the URL.
+ */
+export function CountPicker({ label, value, presets, max, onChange, noun = 'items' }: {
+  label: string; value: string; presets: readonly string[]; max: number; onChange: (v: string) => void; noun?: string
+}) {
+  return <>
+    <Segmented label={label} value={value} options={presets} onChange={onChange} />
+    <label className="control" title={`Any number of ${noun}, 1–${max}`}>
+      or<input aria-label={`${label}: number of ${noun}`} className="select" type="number" min={1} max={max} step={1} value={value} style={{ width: 70 }}
+        onChange={(e) => { const n = e.target.valueAsNumber; if (Number.isFinite(n) && n >= 1) onChange(String(Math.min(max, Math.round(n)))) }} />
+    </label>
+  </>
+}

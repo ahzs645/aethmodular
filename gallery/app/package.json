@@ -15,13 +15,16 @@
   },
   "dependencies": {
     "@firstform/json-url": "^4.2.0",
+    "@react-querybuilder/core": "8.24.3",
     "buffer": "^6.0.3",
     "d3": "^7.9.0",
     "d3-hexbin": "^0.2.2",
     "d3-sankey": "^0.12.3",
+    "json-logic-engine": "5.0.7",
     "jspdf": "^4.2.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-querybuilder": "8.24.3",
     "svg2pdf.js": "^2.8.1"
   },
   "devDependencies": {
@@ -34,5 +37,8 @@
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.6.3",
     "vite": "^5.4.11"
+  },
+  "overrides": {
+    "@react-querybuilder/core": "8.24.3"
   }
 }

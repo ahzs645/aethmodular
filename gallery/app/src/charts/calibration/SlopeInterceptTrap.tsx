@@ -78,6 +78,8 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
   // a crossplot is square: slope and intercept read against each other, not against the page width
   const innerW = Math.min(MAX_SQUARE, Math.max(240, width - MARGIN.left - MARGIN.right))
   const innerH = innerW
+  // centred in the frame: the square leaves the rest of a wide frame as even margins either side
+  const left = MARGIN.left + Math.max(0, (width - MARGIN.left - MARGIN.right - innerW) / 2)
   const height = innerH + MARGIN.top + MARGIN.bottom
   const mOf = (r: CalibRow) => mx.get(r) as number
   const bOf = (r: CalibRow) => my.get(r) as number
@@ -129,7 +131,7 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
         ) : (
           <AxisChoices noun="metrics" x={ax} y={ay} options={METRIC_KEYS.map((k) => ({ key: k, group: METRICS[k].kind === 'other' ? 'Quality and size' : 'Test set Deming fit', unit: METRICS[k].unit }))}>
           <svg width={width} height={height} className="animated">
-            <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
+            <g transform={`translate(${left},${MARGIN.top})`}>
               {mx.kind === 'slope' && <rect x={x(calib.slope_box[0])} y={0} width={x(calib.slope_box[1]) - x(calib.slope_box[0])} height={innerH} fill={INK.accent} fillOpacity={0.07} />}
               {my.kind === 'slope' && <rect x={0} y={y(calib.slope_box[1])} width={innerW} height={y(calib.slope_box[0]) - y(calib.slope_box[1])} fill={INK.accent} fillOpacity={0.07} />}
               <YAxis scale={y} x={0} label={`${my.kind !== 'other' ? 'Test set ' : ''}${ay[0]}${my.kind !== 'other' ? ` (${calib.targets[target]?.site ?? target}${my.unit ? `, ${my.unit}` : ''})` : ''}`} gridWidth={innerW} pick="y" />

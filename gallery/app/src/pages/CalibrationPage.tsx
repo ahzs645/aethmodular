@@ -149,13 +149,13 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
             selected={specSearch === 'original' ? selected : undefined}
             onSelect={specSearch === 'original' ? selectConfig : undefined}
             controls={<>
-              <Select label="Specification search" value={specSearch} options={['original', 'baselines']} onChange={setSpecSearch}
-                optionLabel={value => value === 'original' ? 'Original search — spline, raw, derivative' : '17 Sep search — spline and VIBES'} />
-              {specSearch === 'baselines' && <span className="control">Saved configurations pair the same baseline for selection and model spectra.</span>}
-              {specSearch === 'baselines' && <Select label="VIBES analysis" value={version} options={['current', 'earlier']} onChange={setVersion} optionLabel={v => v === 'current' ? 'Completed · rank 70' : 'Archived · preliminary rank 30'} />}
+              {/* one picker for the search and, for the 17 Sep search, which VIBES run it used */}
+              <Select label="Search" value={specSearch === 'original' ? 'original' : version} options={['current', 'earlier', 'original']}
+                onChange={v => { setSpecSearch(v === 'original' ? 'original' : 'baselines'); if (v !== 'original') setVersion(v) }}
+                optionLabel={v => ({ current: '17 Sep: spline + VIBES (rank 70)', earlier: '17 Sep: spline + VIBES (archived rank 30)', original: 'Original: spline, raw, 2nd derivative' }[v] ?? v)} />
               {specSearch === 'baselines' && version === 'earlier' && <Toggle label="Show archived VIBES fit (4000–1425)" checked={showArchived} onChange={v => setArchiveMode(v ? 'show' : 'hide')} />}
             </>}
-            subtitle={specSearch === 'original' ? undefined : f => `${f ? f.n.toLocaleString() + ' ' : ''}Addis configurations from the 17 Sep design, using spline and ${version === 'current' ? 'completed rank-70' : 'archived preliminary rank-30'} VIBES baselines. Filter the calibration cohort and settings below; this search uses the same baseline for cohort selection and model spectra, so different baselines in those two dropdowns have no saved configurations. The k-sweep and configuration readouts below use the original search.`}
+            subtitle={specSearch === 'original' ? undefined : f => `${f ? f.n.toLocaleString() + ' ' : ''}Addis configurations from the 17 Sep design, using spline and ${version === 'current' ? 'completed rank-70' : 'archived preliminary rank-30'} VIBES baselines. This search uses the same baseline for cohort selection and model spectra, so one Baselines control picks both. The k-sweep and configuration readouts below use the original search.`}
             provenance={specSearch === 'original' ? undefined : version === 'current' ? 'Completed rank-70 migration · category_grid.jsonl · shared specification guardrails' : 'Archived meeting_followup_20260917/category_grid.jsonl · shared specification guardrails'}
           />}</EstimatorViews>
           <EstimatorViews>{method => <CutoffSweep calib={calibrationViews[method]!} selected={selected} onSelect={selectConfig} />}</EstimatorViews>

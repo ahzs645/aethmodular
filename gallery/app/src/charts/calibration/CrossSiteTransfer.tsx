@@ -15,7 +15,7 @@ import { fmt } from '@/lib/stats'
 import { INK, FONT } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile } from '@/lib/types'
 import { cohortColor, fmtFit, metricRow, presetName } from './common'
-import { PREPROCESSING, label } from '@/lib/labels'
+import { COHORT, PREPROCESSING, label } from '@/lib/labels'
 import { AxisChoices } from '@/components/AxisChoices'
 
 /** Ethiopian sites first (the calibration's own target, then its neighbour), then the other SPARTAN sites. */
@@ -35,6 +35,11 @@ const TRANSFER_TIP = (
   </>
 )
 
+type Preset = CalibRunsFile['presets'][number]
+const sizeOf = (p: Preset) => (p.cutoff == null ? 'complete' : String(p.cutoff))
+/** a preset's own note, e.g. 'Lowest-OC/EC (800) × AIRSpec (locked)' → 'locked' */
+const noteOf = (p: Preset) => p.label.match(/×[^(]*\(([^)]*)\)\s*$/)?.[1]
+
 /**
  * One IMPROVE-trained calibration read out at every SPARTAN site with FTIR
  * spectra and HIPS Fabs: the explorer's Sites tab. Three views share the
@@ -52,15 +57,25 @@ export function CrossSiteTransfer({ runs }: { runs: CalibRunsFile }) {
   const macs = useMemo(() => [...new Set(runs.runs.flatMap((r) => r.metrics.map((m) => m.MAC)).filter((v): v is number => v !== null))].sort((a, b) => a - b), [runs.runs])
   // the options and when each applies (lib/chartOptions): the MAC converts HIPS Fabs, so it is
   // offered only for a calibration referenced to Fabs (and only with more than one MAC)
+  // the calibration as three pickers (cohort, its size, the spectra); each offers only what the exported
+  // presets have under the choices before it, so every combination drawn is one that was run
+  const start = presets.find((p) => p.key === 'ocec800_airspec') ?? presets[0]
   const o = useChartOptions('cross-site', [
-    { key: 'preset', label: 'Calibration', style: 'select', default: presets.some((p) => p.key === 'ocec800_airspec') ? 'ocec800_airspec' : presets[0]?.key ?? '',
-      choices: presets.map((p) => ({ value: p.key, label: presetName(p) })) },
+    { key: 'cohort', label: 'Cohort', style: 'select', default: start?.cohort ?? '',
+      choices: [...new Set(presets.map((p) => p.cohort))].map((c) => ({ value: c, label: label(COHORT, c) })) },
+    { key: 'size', label: 'Cohort size', style: 'select', default: start ? sizeOf(start) : '',
+      choices: [...new Set(presets.map(sizeOf))].map((z) => ({ value: z, label: z === 'complete' ? 'Complete cohort' : `${z} filters`,
+        when: (c) => presets.some((p) => p.cohort === c.cohort && sizeOf(p) === z) })) },
+    { key: 'spectra', label: 'Spectra', style: 'select', default: start?.spectra ?? '',
+      choices: [...new Set(presets.map((p) => p.spectra))].map((sp) => ({ value: sp,
+        label: (c) => { const q = presets.find((p) => p.cohort === c.cohort && sizeOf(p) === c.size && p.spectra === sp); const n = q && noteOf(q); return label(PREPROCESSING, sp) + (n ? ` (${n})` : '') },
+        when: (c) => presets.some((p) => p.cohort === c.cohort && sizeOf(p) === c.size && p.spectra === sp) })) },
     { key: 'mac', label: 'MAC', choices: macs.map(String), default: String(runs.mac_value), hidden: String(runs.mac_value),
-      when: (c) => runs.runs.some((r) => r.preset === c.preset && r.ref_kind === 'fabs'), title: 'Converts HIPS Fabs to BC for calibrations referenced to Fabs' },
+      when: (c) => runs.runs.some((r) => r.ref_kind === 'fabs' && presets.some((p) => p.key === r.preset && p.cohort === c.cohort && sizeOf(p) === c.size && p.spectra === c.spectra)), title: 'Converts HIPS Fabs to BC for calibrations referenced to Fabs' },
   ])
-  const presetKey = o.values.preset as string
+  const presetKey = presets.find((p) => p.cohort === o.values.cohort && sizeOf(p) === o.values.size && p.spectra === o.values.spectra)?.key ?? start?.key ?? ''
   const mac = Number(o.values.mac)
-  const setPresetKey = (k: string) => o.set('preset', k)
+  const setPresetKey = (k: string) => { const p = presets.find((q) => q.key === k); if (p) { o.set('cohort', p.cohort); o.set('size', sizeOf(p)); o.set('spectra', p.spectra) } }
   const siteRuns = sites.map((s) => runs.runs.find((r) => r.preset === presetKey && r.target === s)).filter((r): r is CalibRun => !!r)
   const preset = presets.find((p) => p.key === presetKey)
 

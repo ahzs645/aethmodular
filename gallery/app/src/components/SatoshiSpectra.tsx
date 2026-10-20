@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChartFrame, Empty, Segmented, Toggle } from '@/components/ChartFrame'
+import { CountPicker, clampCount } from '@/components/Pickers'
+import { ChartFrame, Empty, Toggle } from '@/components/ChartFrame'
 import { SpectraTraces } from '@/components/SimilaritySpectra'
 import { useSearchParam } from '@/lib/url'
 import { usePageChoice } from '@/lib/pageChoices'
@@ -17,7 +18,9 @@ export function SatoshiSpectra({ membership, groups, region }: { membership: Col
   // the page's baseline and season (pages/SatoshiFollowupPage PageChoices)
   const { value: baseline } = usePageChoice('baseline', BASELINES) as { value: AnalogBaseline }
   const { value: group } = usePageChoice('season', groups)
-  const [topN, setTopN] = useSearchParam<string>('satSpecN', '500', TOP_N)
+  // any count up to the 500 stored analogs; the presets are the usual ones
+  const [topRaw, setTopN] = useSearchParam<string>('satSpecN', '500')
+  const topN = clampCount(topRaw, 500, 500)
   const [test, setTest] = useSearchParam<'on' | 'off'>('satSpecTest', 'on', ['on', 'off'])
   const [meta, setMeta] = useState<SimilarityMeta | null>(null)
   const [ids, setIds] = useState<AddisSpectrumIds | null>(null)
@@ -87,7 +90,7 @@ export function SatoshiSpectra({ membership, groups, region }: { membership: Col
     pinInstructions="Hover a trace to identify it; click to pin it and open its filter details. Ranks compare each analog with the median Addis spectrum."
     provenance="Saved Satoshi follow-up membership ranks · export_similarity.py binned per-filter traces · frozen Addis test-set membership"
     controls={<>
-      <Segmented label="Most similar" value={topN} options={TOP_N} onChange={setTopN} />
+      <CountPicker label="Most similar" value={topN} presets={TOP_N} max={500} onChange={setTopN} noun="analogs" />
       <Toggle label="Outer test sites" checked={test === 'on'} onChange={value => setTest(value ? 'on' : 'off')} />
     </>} />
 }

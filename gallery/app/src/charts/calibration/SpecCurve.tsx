@@ -1,15 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { loadJson } from '@/lib/data'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Select, Toggle } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
+import { AxisChoices } from '@/components/AxisChoices'
+import { useChartOptions, type OptionChoice } from '@/lib/chartOptions'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { ColorLegend } from '@/components/ColorLegend'
 import type { Config } from './common'
 import { useEstimator, FIT_STYLE } from '@/lib/regressionPrefs'
-import { COHORT, CV_PROTOCOL, PREPROCESSING, SELECTION_SPACE, label } from '@/lib/labels'
-import { choiceFilterDimensions, choiceFilterSets, matchesChoiceFilters, DEFAULT_HIGHLIGHT_LIMITS, highlightMatches, type HighlightLimits, type HighlightRule } from '@/lib/specification'
+import { COHORT, CV_PROTOCOL, PREPROCESSING, PREPROCESSING_SHORT, SELECTION_SPACE, label } from '@/lib/labels'
+import { choiceFilterDimensions, choiceFilterSets, matchesChoiceFilters } from '@/lib/specification'
+import { TEMPLATES, decodeGuardrail, describeGuardrail, encodeGuardrail, evaluateGuardrail, guardFields, guardRows, type Guardrail } from '@/lib/guardrails'
+// the editor (react-querybuilder) loads only when it is opened
+const GuardrailEditor = lazy(() => import('@/components/GuardrailEditor').then((m) => ({ default: m.GuardrailEditor })))
+import { useSearchParam } from '@/lib/url'
 import { SpecCurvePlots, type SpecLayout } from './SpecCurvePlots'
 
 /** spec_curve.json, written by gallery/data/export_spec_curve.py */
@@ -49,7 +55,11 @@ const METRICS: Record<SpecMetric, { name: string } & SpecMetricInfo> = {
   slope: { name: 'Addis slope', axis: 'Deming slope, MAC 10 (1 = agreement)', rank: 'Configuration rank by slope', ref: 1, band: [0.7, 1.3] },
   heldout: { name: 'IMPROVE cross-validation R²', axis: 'IMPROVE held-out TOR R² (site-grouped CV only)', rank: 'Configuration rank by IMPROVE cross-validation R²', ref: 0.85, band: [0.85, 1] },
 }
-const RULE_LABELS: Record<HighlightRule, string> = { guardrails: 'Saved guardrails', intercept: 'Near-zero intercept', 'cv-slope': 'Slope + cross-validation', custom: 'Intercept + slope + cross-validation' }
+/** the red dots: the saved guardrails (the export's own pass bit), a template rule, the reader's rule, or none */
+const RULE_LABELS: Record<string, string> = { ...Object.fromEntries(TEMPLATES.map((t) => [t.key, t.label])), rule: 'Your rule' }
+type DotRule = 'none' | 'rule' | (typeof TEMPLATES)[number]['key']
+/** the baselines a search compares: a preset pair, every baseline, or one baseline ('only:<key>') */
+type Comparison = 'full' | 'standard' | 'all'
 /** strip heat map: share of specifications using a choice, white (none) to dark red (all) */
 const HEAT = (t: number) => d3.interpolateReds(0.12 + 0.88 * t)
 
@@ -89,28 +99,55 @@ export function SpecCurve({
   const tip = useTooltip(wrapRef, { large: true })
   const [data, setData] = useState<SpecCurveFile | null | 'missing'>(null)
   const [required, setRequired] = useState<Set<number>>(new Set())
-  const [passOnly, setPassOnly] = useState(false)
   const [filters, setFilters] = useState(initialFilters)
-  const [layout, setLayout] = useState<SpecLayout>(defaultLayout)
-  const [activeSelection, setActiveSelection] = useState('airspec')
-  const [comparison, setComparison] = useState<string>(defaultComparison)
-  const [showDots, setShowDots] = useState(true)
-  const [rule, setRule] = useState<HighlightRule>('guardrails')
-  const [chosenMetric, setMetric] = useState<SpecMetric>('intercept')
-  // interleaved cross-validation holds out no IMPROVE site, so no configuration has a held-out R²:
-  // with the protocol filtered to it the held-out readout is not offered (it would draw nothing)
-  const interleavedOnly = filters.mo.startsWith('app')
-  const metricOptions = (Object.keys(METRICS) as SpecMetric[]).filter((k) => k !== 'heldout' || !interleavedOnly)
-  const metric: SpecMetric = metricOptions.includes(chosenMetric) ? chosenMetric : 'intercept'
-  const [limits, setLimits] = useState<HighlightLimits>({ ...DEFAULT_HIGHLIGHT_LIMITS })
+  // the reader's own guardrail, written in the editor; kept in the URL so a link reopens it
+  const [ruleToken, setRuleToken] = useSearchParam<string>(`${id}.rule`, '')
+  const userRule = useMemo(() => decodeGuardrail(ruleToken), [ruleToken])
+  const [editing, setEditing] = useState(false)
+  // the rule being written in the editor, drawn on the chart until it is applied or cancelled
+  const [draft, setDraft] = useState<Guardrail | null>(null)
   const excludedKey = excludePreprocessing.join('|')
+  const loaded = data && data !== 'missing' ? data : null
+  const selections = (loaded?.categories.sel ?? []).filter(s => !excludePreprocessing.includes(s))
+  const hasVibes = selections.some(s => s.startsWith('vibes'))
+  // the 17 Sep searches select and model on the same baseline, so one control picks both
+  const paired = !!loaded && loaded.sel.every((s, i) => loaded.categories.sel[s] === loaded.categories.sp[loaded.sp[i]])
+  const fullVibes = selections.includes('vibes-full-r70') ? 'vibes-full-r70' : 'vibes-full'
+
+  const o = useChartOptions(id, [
+    // the y axis's readout, picked from its title; interleaved cross-validation holds out no IMPROVE
+    // site, so with the protocol filtered to it the held-out R² is not offered (it would draw nothing)
+    { key: 'metric', axis: 'y', label: 'Sort and plot by', default: 'intercept', persist: true,
+      choices: (Object.keys(METRICS) as SpecMetric[]).map(k => ({ value: k, label: METRICS[k].name, when: k === 'heldout' ? (c) => !c.interleavedOnly : undefined })) },
+    { key: 'view', label: 'View', default: defaultLayout, persist: true,
+      title: 'One curve over every configuration shown; one panel per baseline (each sorted on its own, shared vertical scale); or every baseline\'s curve overlaid on a percentile axis.',
+      choices: [{ value: 'combined', label: 'One curve' }, { value: 'stacked', label: (c) => c.paired ? 'Per baseline' : 'Per selection spectra' }, { value: 'overlay', label: 'Overlay' }] },
+    { key: 'baselines', label: 'Baselines', style: 'select', default: defaultComparison, persist: true, when: (c) => !!c.hasVibes,
+      choices: [
+        { value: 'full', label: 'Spline + full-range VIBES', when: () => selections.includes(fullVibes) },
+        { value: 'standard', label: 'Spline + archived VIBES (4000–1425)', when: () => selections.includes('vibes') },
+        // one baseline alone, where selection and model share it (otherwise the spectra filters below do this)
+        ...selections.map((s): OptionChoice => ({ value: `only:${s}`, label: label(PREPROCESSING, s), when: (c) => !!c.paired })),
+        { value: 'all', label: excludePreprocessing.includes('vibes') ? 'All active baselines' : 'All active and archived baselines' },
+      ] },
+    { key: 'dots', label: 'Red dots', style: 'select', default: 'guardrails', persist: true,
+      title: 'Which configurations are drawn as red dots on the curve; Edit guardrails writes your own rule',
+      choices: [{ value: 'none', label: 'None' }, ...TEMPLATES.map(t => ({ value: t.key, label: t.label })), { value: 'rule', label: 'Your rule', when: (c) => !!c.hasRule }] },
+    { key: 'edit', node: () => <button type="button" className="btn quiet" onClick={() => setEditing(true)} title="Write the rule that picks the red dots: conditions on any readout, AND / OR groups, calculated fields">Edit guardrails…</button> },
+    { key: 'only', label: 'Red dots only', toggle: true, default: false, hidden: false, when: (c) => c.dots !== 'none',
+      title: 'Keep only the configurations drawn as red dots' },
+  ], { interleavedOnly: filters.mo.startsWith('app'), hasVibes, paired, hasRule: !!userRule })
+  const metric = o.values.metric as SpecMetric
+  const layout = o.values.view as SpecLayout
+  const comparison = o.values.baselines as Comparison | `only:${string}`
+  const dots = o.values.dots as DotRule
+  const passOnly = o.values.only as boolean
 
   useEffect(() => {
     const excluded = excludedKey.split('|')
     setFilters(current => excluded.includes(current.sp) || excluded.includes(current.sel)
       ? { ...current, sp: excluded.includes(current.sp) ? ALL : current.sp, sel: excluded.includes(current.sel) ? ALL : current.sel }
       : current)
-    if (excluded.includes('vibes')) setComparison(current => current === 'standard' ? 'full' : current)
   }, [excludedKey])
 
   useEffect(() => {
@@ -141,9 +178,18 @@ export function SpecCurve({
       co: pick(data.co), sp: pick(data.sp), sel: pick(data.sel), mo: pick(data.mo), lot: pick(data.lot), masks: data.masks.map(bits), ok: bits(data.ok) }
   }, [data, method, metric])
 
-  const highlighted = useMemo(() => file ? file.intercept.map((intercept, i) => highlightMatches({
-    intercept, slope: file.slope[i], cv: file.heldout[i], guardrails: file.ok[i] === '1',
-  }, rule, limits)) : [], [file, rule, limits])
+  // the rule behind the red dots: the saved guardrails are the export's own pass bit; the
+  // templates and the reader's rule run on the displayed fit (lib/guardrails)
+  const rows = useMemo(() => file ? guardRows(file) : [], [file])
+  const previewing = editing && !!draft
+  const showDots = dots !== 'none' || previewing
+  const activeRule: Guardrail | null = previewing ? draft : dots === 'rule' ? userRule : TEMPLATES.find(t => t.key === dots)?.rule ?? null
+  const evaluated = useMemo(() => {
+    if (!file || (dots === 'none' && !previewing)) return { pass: [] as boolean[], error: null as string | null }
+    if ((dots === 'guardrails' && !previewing) || !activeRule) return { pass: Array.from(file.ok, b => b === '1'), error: null }
+    return evaluateGuardrail(activeRule, rows, guardFields(file).filter(x => x.kind === 'number').map(x => x.name))
+  }, [file, rows, dots, activeRule, previewing])
+  const highlighted = evaluated.pass
 
   const choiceDimensions = useMemo(() => file ? choiceFilterDimensions(file) : [], [file])
   const choiceGroups = useMemo(() => choiceFilterSets(required, choiceDimensions), [required, choiceDimensions])
@@ -154,9 +200,9 @@ export function SpecCurve({
     const out: number[] = []
     for (let i = 0; i < file.n; i++) {
       if (excludePreprocessing.includes(file.categories.sp[file.sp[i]]) || excludePreprocessing.includes(file.categories.sel[file.sel[i]])) continue
-      if (comparison !== 'all' && file.categories.sel.some(s => s.startsWith('vibes'))) {
-        const vibes = comparison === 'full' ? (file.categories.sel.includes('vibes-full-r70') ? 'vibes-full-r70' : 'vibes-full') : 'vibes'
-        if (!['airspec', vibes].includes(file.categories.sel[file.sel[i]])) continue
+      if (hasVibes && comparison !== 'all') {
+        const sel = file.categories.sel[file.sel[i]]
+        if (comparison.startsWith('only:') ? sel !== comparison.slice(5) : !['airspec', comparison === 'full' ? fullVibes : 'vibes'].includes(sel)) continue
       }
       if (passOnly && !highlighted[i]) continue
       if ((['co', 'sp', 'sel', 'mo', 'lot'] as const).some(key => filters[key] !== ALL && file.categories[key][file[key][i]] !== filters[key])) continue
@@ -165,10 +211,11 @@ export function SpecCurve({
       if (matchesChoiceFilters(file.masks, i, choiceGroups)) out.push(i)
     }
     return out
-  }, [file, choiceGroups, passOnly, filters, highlighted, comparison, excludePreprocessing])
+  }, [file, choiceGroups, passOnly, filters, highlighted, comparison, excludePreprocessing, hasVibes, fullVibes])
 
   const setFilter = (key: FilterKey, value: string) => {
-    if ((key === 'sel' || key === 'sp') && (value === 'vibes' || value.startsWith('vibes-'))) setComparison('all')
+    // a spectra filter on one baseline would be emptied by a baseline pair that leaves it out
+    if ((key === 'sel' || key === 'sp') && value !== ALL && hasVibes) o.set('baselines', 'all')
     setFilters(current => ({ ...current, [key]: value }))
     tip.hide()
   }
@@ -181,19 +228,12 @@ export function SpecCurve({
   const selectedIndices = useMemo(() => new Set(shown.filter(i => selected && file
     && file.categories.co[file.co[i]] === selected.co && file.cut[i] === selected.cut
     && file.categories.sel[file.sel[i]] === (selected.sel ?? 'raw') && file.categories.sp[file.sp[i]] === selected.sp)), [file, shown, selected])
-  const availableSelections = file ? file.categories.sel.filter((_, k) => shown.some(i => file.sel[i] === k)) : []
-  const selection = availableSelections.includes(activeSelection) ? activeSelection : availableSelections[0]
-  const displayed = layout === 'single' && file ? shown.filter(i => file.categories.sel[file.sel[i]] === selection) : shown
-  const m = displayed.length
-  const passCount = file ? displayed.filter(i => file.ok[i] === '1').length : 0
-  const matchCount = displayed.filter(i => highlighted[i]).length
+  const m = shown.length
+  const passCount = file ? shown.filter(i => file.ok[i] === '1').length : 0
+  const matchCount = shown.filter(i => highlighted[i]).length
   const availableCount = file ? file.sp.filter((sp, i) => !excludePreprocessing.includes(file.categories.sp[sp]) && !excludePreprocessing.includes(file.categories.sel[file.sel[i]])).length : 0
-  const highlightDescription = rule === 'guardrails' ? 'saved guardrails'
-    : [rule !== 'cv-slope' ? `|intercept| ≤ ${limits.intercept} µg/m³` : '', rule !== 'intercept' ? `slope ${limits.slopeMin}–${limits.slopeMax}; cross-validation R² ≥ ${limits.cvMin}` : ''].filter(Boolean).join('; ')
-  const numberControl = (key: keyof HighlightLimits, name: string, min: number, max?: number) => <label className="control">
-    {name}<input aria-label={name} className="select" type="number" min={min} max={max} step="0.05" value={limits[key]} style={{ width: 78 }}
-      onChange={e => { const value = e.target.valueAsNumber; if (Number.isFinite(value) && value >= min && (max === undefined || value <= max)) setLimits(current => ({ ...current, [key]: value })) }} />
-  </label>
+  const highlightDescription = (dots === 'guardrails' && !previewing) || !activeRule || !file ? 'saved guardrails'
+    : `${previewing ? 'preview, ' : ''}${describeGuardrail(activeRule, guardFields(file, activeRule.formulas))}`
 
   // helpers below run only once the file has loaded (the body is empty until then)
   const f = file as SpecCurveFile & { value: number[] }
@@ -215,6 +255,20 @@ export function SpecCurve({
     tip.hide()
   }
 
+  // what the chart draws, shared by the chart and the guardrail editor's live preview of it
+  const curve = () => ({
+    file: f, metric: METRICS[metric], shown, layout, highlighted, showDots, highlightLabel: highlightDescription,
+    required, toggleChoice, selectedIndices,
+    describe: (i: number) => [describe(i),
+      `${FIT_STYLE[method].label} intercept ${fmt(f.intercept[i], 2)} µg/m³ · slope ${fmt(f.slope[i], 2)}`,
+      `IMPROVE cross-validation R² ${fmt(f.heldout[i], 2)} · ${f.ok[i] === '1' ? 'passes every saved guardrail' : 'fails a saved guardrail'}`,
+      ...(showDots ? [`${highlighted[i] ? 'Matches' : 'Does not match'} ${previewing ? 'the rule being edited' : RULE_LABELS[dots] ?? dots}`] : []), ...(onSelect ? [selectHint] : [])],
+  })
+
+  // anything narrowing the curve beyond the chart's defaults
+  const filtered = required.size > 0 || Object.values(filters).some(value => value !== ALL) || passOnly || (hasVibes && comparison !== defaultComparison)
+  const resetFilters = () => { setRequired(new Set()); setFilters(initialFilters()); o.set('only', false); if (hasVibes) o.set('baselines', defaultComparison); tip.hide() }
+
   return (
     <ChartFrame
       id={id}
@@ -224,44 +278,22 @@ export function SpecCurve({
       controls={
         <>
           {controls}
-          <Select label="Sort and plot by" value={metric} options={metricOptions} onChange={v => { setMetric(v as SpecMetric); tip.hide() }}
-            optionLabel={v => METRICS[v as SpecMetric].name} title="The curve is the chosen measure, sorted; the choice strips and red dots follow the same order." />
-          <Select label="Graph view" value={layout} options={['single', 'separate', 'stacked', 'overlay', 'combined']} onChange={v => setLayout(v as SpecLayout)}
-            optionLabel={v => ({ single: 'One selection at a time', separate: 'Side by side', stacked: 'Stacked selections', overlay: 'Combined overlay', combined: 'Combined ordered curve' }[v] ?? v)} />
-          {layout === 'single' && availableSelections.length > 0 && <Select label="Display selection" value={selection} options={availableSelections} onChange={setActiveSelection} optionLabel={v => label(PREPROCESSING, v)} />}
-          {file?.categories.sel.some(s => s.startsWith('vibes')) && <Select label="Comparison baselines" value={comparison}
-            options={[...(file.categories.sel.some(s => s === 'vibes-full' || s === 'vibes-full-r70') ? ['full'] : []), ...(file.categories.sel.includes('vibes') && !excludePreprocessing.includes('vibes') ? ['standard'] : []), 'all']} onChange={setComparison}
-            optionLabel={v => v === 'full' ? 'Spline + full-range VIBES' : v === 'standard' ? 'Spline + archived VIBES (4000–1425)' : excludePreprocessing.includes('vibes') ? 'All active baseline variants' : 'All active and archived variants'} />}
-          {file && <>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
-              <strong className="control">Calibration cohort</strong>
-              {categorySelect('co', 'Selection method', COHORT)}
-              {categorySelect('sel', 'Selection spectra', SELECTION_SPACE)}
-              <Select label="Cohort cutoff" value={filters.cut} options={[ALL, ...(file.cut.includes(null) ? [NO_CUTOFF] : []), ...numericOptions('cut')]}
-                onChange={value => setFilter('cut', value)} optionLabel={value => value === ALL ? 'All' : value === NO_CUTOFF ? 'Complete cohort (no cutoff)' : `${value} filters`}
-                title="Requested number of filters in the selected calibration cohort; complete cohorts have no cutoff." />
-            </div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
-              <strong className="control">Calibration settings</strong>
-              {categorySelect('sp', 'Model spectra', PREPROCESSING)}
-              {categorySelect('mo', 'Cross-validation', CV_PROTOCOL)}
-              <Select label="PLS factors" value={filters.k} options={[ALL, ...numericOptions('k')]} onChange={value => setFilter('k', value)} optionLabel={value => value === ALL ? 'All' : value} />
-              {file.categories.lot.length > 1 && categorySelect('lot', 'calibration lot', { all: 'All lots' })}
-            </div>
-          </>}
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
-            <Toggle label="Show red dots" checked={showDots} onChange={setShowDots} />
-            {/* the criteria pick the red dots, or the passers kept; with neither on they would only change a count */}
-            {(showDots || passOnly) && <Select label="Red-dot criteria" value={rule} options={Object.keys(RULE_LABELS)} onChange={v => setRule(v as HighlightRule)} optionLabel={v => RULE_LABELS[v as HighlightRule]} />}
-            {(showDots || passOnly) && rule !== 'guardrails' && <>
-              {rule !== 'cv-slope' && numberControl('intercept', '|intercept| ≤ (µg/m³)', 0)}
-              {rule !== 'intercept' && <>{numberControl('slopeMin', 'slope ≥', 0)}{numberControl('slopeMax', 'slope ≤', 0)}{numberControl('cvMin', 'cross-validation R² ≥', 0, 1)}</>}
-              <button type="button" className="btn quiet" onClick={() => setLimits({ ...DEFAULT_HIGHLIGHT_LIMITS })}>Reset criteria</button>
-            </>}
-          </div>
-          <Toggle label={rule === 'guardrails' ? 'Guardrail passers only' : 'Highlight matches only'} checked={passOnly} onChange={setPassOnly} />
-          {(required.size > 0 || Object.values(filters).some(value => value !== ALL) || passOnly || (file?.categories.sel.some(s => s.startsWith('vibes')) && comparison !== 'all')) && <button type="button" className="btn quiet" onClick={() => { setRequired(new Set()); setFilters(initialFilters()); setPassOnly(false); setComparison('all'); tip.hide() }}>Reset filters</button>}
-          {file && <span className="control">{m.toLocaleString()} of {availableCount.toLocaleString()} shown · {passCount.toLocaleString()} saved guardrail passers{rule !== 'guardrails' && ` · ${matchCount.toLocaleString()} highlight matches`}{availableCount < f.n && ` · ${(f.n - availableCount).toLocaleString()} archived configurations hidden`}</span>}
+          {o.controls()}
+          {file && <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
+            <strong className="control">Filters</strong>
+            {categorySelect('co', 'Cohort', COHORT)}
+            <Select label="Cohort size" value={filters.cut} options={[ALL, ...(file.cut.includes(null) ? [NO_CUTOFF] : []), ...numericOptions('cut')]}
+              onChange={value => setFilter('cut', value)} optionLabel={value => value === ALL ? 'All' : value === NO_CUTOFF ? 'Complete cohort (no cutoff)' : `${value} filters`}
+              title="Requested number of filters in the selected calibration cohort; complete cohorts have no cutoff." />
+            {!paired && categorySelect('sel', 'Selection spectra', SELECTION_SPACE)}
+            {!paired && categorySelect('sp', 'Model spectra', PREPROCESSING)}
+            {categorySelect('mo', 'Cross-validation', CV_PROTOCOL)}
+            <Select label="PLS factors" value={filters.k} options={[ALL, ...numericOptions('k')]} onChange={value => setFilter('k', value)} optionLabel={value => value === ALL ? 'All' : value} />
+            {file.categories.lot.length > 1 && categorySelect('lot', 'Calibration lot', { all: 'All lots' })}
+            {filtered && <button type="button" className="btn quiet" onClick={resetFilters}>Reset filters</button>}
+          </div>}
+          {evaluated.error && <span className="control" style={{ color: 'var(--danger)' }}>Red-dot rule: {evaluated.error}</span>}
+          {file && <span className="control">{m.toLocaleString()} of {availableCount.toLocaleString()} shown · {passCount.toLocaleString()} saved guardrail passers{showDots && (dots !== 'guardrails' || previewing) && ` · ${matchCount.toLocaleString()} red dots${previewing ? ' (preview)' : ''}`}{availableCount < f.n && ` · ${(f.n - availableCount).toLocaleString()} archived configurations hidden`}</span>}
           {file && required.size > 0 && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', width: '100%' }} aria-label="Selected choice filters">
             {[...required].map(c => <button key={c} type="button" className="btn quiet" aria-label={`Remove choice filter: ${file.choices[c]}`} onClick={() => toggleChoice(c)}>{file.choices[c]} ×</button>)}
           </div>}
@@ -274,16 +306,10 @@ export function SpecCurve({
         ) : !file ? (
           <Empty>{method === 'ols' && data && data !== 'missing' ? 'OLS coefficients are not available in this saved specification export.' : 'No specification export available.'}</Empty>
         ) : m === 0 ? (
-          <Empty>No saved configuration matches these filters{passOnly ? ' and the highlight criteria' : ''}.</Empty>
+          <Empty>No saved configuration matches these filters{passOnly ? ' and the red-dot rule' : ''}.</Empty>
         ) : (
-          <SpecCurvePlots file={f} metric={METRICS[metric]} shown={shown} width={width} id={id + '-' + method} layout={layout} activeSelection={selection}
-            highlighted={highlighted} showDots={showDots} highlightLabel={highlightDescription}
-            required={required} toggleChoice={toggleChoice} selectedIndices={selectedIndices}
-            showTip={tip.show} hideTip={tip.hide} select={onSelect ? i => onSelect(cfgOf(i)) : undefined}
-            describe={i => [describe(i),
-              `${FIT_STYLE[method].label} intercept ${fmt(f.intercept[i], 2)} µg/m³ · slope ${fmt(f.slope[i], 2)}`,
-              `IMPROVE cross-validation R² ${fmt(f.heldout[i], 2)} · ${f.ok[i] === '1' ? 'passes every saved guardrail' : 'fails a saved guardrail'}`,
-              `${highlighted[i] ? 'Matches' : 'Does not match'} ${RULE_LABELS[rule]}`, ...(onSelect ? [selectHint] : [])]} />
+          <AxisChoices {...o.axisChoices()} noun="measures"><SpecCurvePlots {...curve()} width={width} id={id + '-' + method}
+            showTip={tip.show} hideTip={tip.hide} select={onSelect ? i => onSelect(cfgOf(i)) : undefined} /></AxisChoices>
         )}
         {file && m > 0 && layout !== 'overlay' && (
           <div className="legend">
@@ -291,11 +317,40 @@ export function SpecCurve({
               label="strip colour: % of the specifications at that position that use the choice" format={(v) => `${v.toFixed(0)}%`} />
           </div>
         )}
-        {layout === 'overlay' && <p className="chart-note">Each selection is sorted independently on a percentile axis. Curves compare distributions, not matched configurations. Choice strips are shown in the separate and combined ordered views.</p>}
+        {layout === 'overlay' && <p className="chart-note">Each selection is sorted independently on a percentile axis. Curves compare distributions, not matched configurations. Choice strips are shown in the One curve and Per baseline views.</p>}
         {file && data && data !== 'missing' && data.n > file.n && <p className="chart-note">{(data.n - file.n).toLocaleString()} configurations have no {METRICS[metric].name}{metric === 'heldout' ? ' (interleaved cross-validation holds no whole IMPROVE site out)' : ''} and are left out of this view.</p>}
-        {rule !== 'guardrails' && <p className="chart-note">Custom highlights use the displayed fit's intercept, slope and IMPROVE cross-validation R². They do not apply the saved guardrails' out-of-domain or negative-prediction limits; saved guardrail results stay unchanged.</p>}
+        {showDots && (dots !== 'guardrails' || previewing) && <p className="chart-note">Red dots: {highlightDescription}. Rules run on the displayed fit's intercept and slope; the saved guardrail results (field "Passes the saved guardrails") stay unchanged.</p>}
+        {editing && file && <Suspense fallback={null}><GuardrailEditor title={title ?? 'Specification curve'} src={file}
+          preview={m > 0 ? <PreviewCurve {...curve()} id={`${id}-${method}-preview`} /> : <Empty>No configuration matches the chart's filters.</Empty>}
+          initial={dots === 'rule' && userRule ? userRule : activeRule ?? TEMPLATES[0].rule}
+          onPreview={setDraft} onApply={(r) => { setRuleToken(encodeGuardrail(r)); o.set('dots', 'rule') }}
+          onClose={() => { setEditing(false); setDraft(null) }} /></Suspense>}
         {tip.node}
       </div>
     </ChartFrame>
   )
+}
+
+/**
+ * The curve alone (no choice strips), sized to the guardrail editor, with its own tooltip.
+ * "Show" picks both baselines or one of them, for the preview only: the rule still counts
+ * every configuration the chart's filters keep.
+ */
+function PreviewCurve(props: Omit<React.ComponentProps<typeof SpecCurvePlots>, 'width' | 'showTip' | 'hideTip' | 'curveOnly'>) {
+  const ref = useRef<HTMLDivElement>(null)
+  const { width } = useDimensions(ref)
+  const tip = useTooltip(ref, { large: true })
+  const { file, shown } = props
+  const present = useMemo(() => file.categories.sel.filter((_, k) => shown.some(i => file.sel[i] === k)), [file, shown])
+  const [only, setOnly] = useState('both')
+  const pick = present.includes(only) ? only : 'both'
+  const curve = pick === 'both' ? shown : shown.filter(i => file.categories.sel[file.sel[i]] === pick)
+  return <div ref={ref} className="chart-wrap" style={{ position: 'relative' }}>
+    {present.length > 1 && <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 2 }}>
+      <Segmented label="Show" value={pick} options={['both', ...present]} onChange={setOnly}
+        optionLabel={v => v === 'both' ? (present.length === 2 ? 'Both' : 'All') : PREPROCESSING_SHORT[v] ?? label(PREPROCESSING, v)} />
+    </div>}
+    {width > 0 && <SpecCurvePlots {...props} shown={curve} width={width} showTip={tip.show} hideTip={tip.hide} curveOnly={{ height: 170 }} />}
+    {tip.node}
+  </div>
 }

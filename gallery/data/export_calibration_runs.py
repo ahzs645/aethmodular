@@ -87,8 +87,75 @@ def post(client, path, body):
     return d
 
 
+# the spectra spaces exported; VIBES (rank 70, 3998-500 cm-1) is a view only, no calibration is fitted on it
+SPACES = ("raw", "airspec", "vibes")
+
+
 def decimate(xs, stride):
     return xs[::stride]
+
+
+def export_spectra(client, spaces):
+    """Cohort spectra vs Addis, every site's spectra, and the analog lab, in each space."""
+    cohort_spectra = {}
+    for space in spaces:
+        try:
+            d = post(client, "/api/spectra", {"compare": True, "spectra": space, "selection_space": "raw",
+                                              "cohort": "ocec", "cutoff": 800, "mode": MODE, "target": "addis"})
+            cohort_spectra[space] = d
+            print(f"  cohort spectra {space}: {len(d['wn'])} wavenumbers, {len(d['series'])} cohorts")
+        except Exception as exc:  # noqa: BLE001
+            print(f"  ! spectra {space}: {exc}")
+    site_spectra = {}
+    for space in spaces:
+        try:
+            d = post(client, "/api/site_spectra", {"space": space})
+            series = []
+            for s in d["series"]:
+                stride = max(1, len(s["wn"]) // 700)
+                series.append({"name": s["name"], "label": s["label"], "n": s["n"],
+                               "wn": decimate(s["wn"], stride), "median": decimate(s["median"], stride),
+                               "q25": decimate(s["q25"], stride), "q75": decimate(s["q75"], stride)})
+            site_spectra[space] = {"space": space, "series": series}
+            print(f"  site spectra {space}: {len(series)} sites")
+        except Exception as exc:  # noqa: BLE001
+            print(f"  ! site_spectra {space}: {exc}")
+
+    # ---- analog lab ---------------------------------------------------------
+    analog = {}
+    for space in spaces:
+        try:
+            d = post(client, "/api/analog_lab", {"space": space})
+            n = d["n"]
+            stride = max(1, n // 3000)
+            analog[space] = {
+                "space": space, "n": n, "metrics": d["metrics"], "labels": d["labels"],
+                "agreement": d["agreement"], "explained": d["explained"],
+                "rank_stride": stride,
+                "ranks": {k: v[::stride] for k, v in d["ranks"].items()},
+                "sample_idx": d["sample_idx"], "pool_xy": d["pool_xy"], "addis_xy": d["addis_xy"],
+            }
+            print(f"  analog lab {space}: n={n}")
+        except Exception as exc:  # noqa: BLE001
+            print(f"  ! analog_lab {space}: {exc}")
+    # the gallery labels spaces by its PREPROCESSING keys, where plain 'vibes' is the archived 4000-1425 fit
+    gallery_key = {"vibes": "vibes-full-r70"}
+    rekey = lambda part: {gallery_key.get(k, k): v for k, v in part.items()}  # noqa: E731
+    return rekey(cohort_spectra), rekey(site_spectra), rekey(analog)
+
+
+def patch_vibes():
+    """Add only the VIBES views to the existing export, leaving every frozen number as it is."""
+    wait_ready()
+    payload = json.loads(OUT.read_text())
+    cohort_spectra, site_spectra, analog = export_spectra(explorer.app.test_client(), ("vibes",))
+    for key, part in (("cohort_spectra", cohort_spectra), ("site_spectra", site_spectra), ("analog", analog)):
+        if "vibes-full-r70" not in part:
+            raise SystemExit(f"VIBES {key} failed; {OUT.name} left unchanged")
+        payload[key]["vibes-full-r70"] = part["vibes-full-r70"]
+    payload["vibes_patched_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    OUT.write_text(json.dumps(payload, separators=(",", ":"), default=str))
+    print(f"patched VIBES views into {OUT} ({OUT.stat().st_size / 1e6:.1f} MB) in {time.time() - t0:.0f}s")
 
 
 def main():
@@ -160,48 +227,8 @@ def main():
     overlap = post(client, "/api/overlap", {}).get("rows", [])
     print(f"  overlap: {len(overlap)} pairs")
 
-    # ---- spectra: cohorts vs Addis, and every site ------------------------
-    cohort_spectra = {}
-    for space in ("raw", "airspec"):
-        try:
-            d = post(client, "/api/spectra", {"compare": True, "spectra": space, "selection_space": "raw",
-                                              "cohort": "ocec", "cutoff": 800, "mode": MODE, "target": "addis"})
-            cohort_spectra[space] = d
-            print(f"  cohort spectra {space}: {len(d['wn'])} wavenumbers, {len(d['series'])} cohorts")
-        except Exception as exc:  # noqa: BLE001
-            print(f"  ! spectra {space}: {exc}")
-    site_spectra = {}
-    for space in ("raw", "airspec"):
-        try:
-            d = post(client, "/api/site_spectra", {"space": space})
-            series = []
-            for s in d["series"]:
-                stride = max(1, len(s["wn"]) // 700)
-                series.append({"name": s["name"], "label": s["label"], "n": s["n"],
-                               "wn": decimate(s["wn"], stride), "median": decimate(s["median"], stride),
-                               "q25": decimate(s["q25"], stride), "q75": decimate(s["q75"], stride)})
-            site_spectra[space] = {"space": space, "series": series}
-            print(f"  site spectra {space}: {len(series)} sites")
-        except Exception as exc:  # noqa: BLE001
-            print(f"  ! site_spectra {space}: {exc}")
-
-    # ---- analog lab ---------------------------------------------------------
-    analog = {}
-    for space in ("raw", "airspec"):
-        try:
-            d = post(client, "/api/analog_lab", {"space": space})
-            n = d["n"]
-            stride = max(1, n // 3000)
-            analog[space] = {
-                "space": space, "n": n, "metrics": d["metrics"], "labels": d["labels"],
-                "agreement": d["agreement"], "explained": d["explained"],
-                "rank_stride": stride,
-                "ranks": {k: v[::stride] for k, v in d["ranks"].items()},
-                "sample_idx": d["sample_idx"], "pool_xy": d["pool_xy"], "addis_xy": d["addis_xy"],
-            }
-            print(f"  analog lab {space}: n={n}")
-        except Exception as exc:  # noqa: BLE001
-            print(f"  ! analog_lab {space}: {exc}")
+    # ---- spectra: cohorts vs Addis, every site, the analog lab ------------
+    cohort_spectra, site_spectra, analog = export_spectra(client, SPACES)
 
     # ---- HIPS diagnostics ----------------------------------------------------
     hips = {}
@@ -241,4 +268,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # --vibes-only: add the VIBES spectra views without re-running anything else
+    patch_vibes() if "--vibes-only" in sys.argv else main()
