@@ -1,6 +1,7 @@
 import { EstimatorViews, ESTIMATORS, projectGrid, projectRun, useRegressions } from '@/lib/regressionPrefs'
 import { useMemo, useState } from 'react'
-import { ChartFrame, Select, Toggle } from '@/components/ChartFrame'
+import { ChartFrame, Select } from '@/components/ChartFrame'
+import { Combobox } from '@/components/Combobox'
 import { PageToc } from '@/components/PageToc'
 import { SpecCurve } from '@/charts/calibration/SpecCurve'
 import { CutoffSweep } from '@/charts/calibration/CutoffSweep'
@@ -40,6 +41,19 @@ import type { FilterRow, CalibFile, CalibRunsFile, MetaFile } from '@/lib/types'
  * This is the reading view; for a new configuration, a new batch, or a k
  * you cannot find here, run `python calibration_explorer/app.py` (port 5058).
  */
+/** The specification curve's baselines menu: grouped by the search they come from, named by spectra. */
+const SPEC_VIEWS = [
+  { key: 'vibes:full', label: 'Spline + VIBES', group: 'Spline and VIBES' },
+  { key: 'vibes:only:airspec', label: 'Spline only', group: 'Spline and VIBES' },
+  { key: 'vibes:only:vibes-full-r70', label: 'VIBES only', group: 'Spline and VIBES' },
+  { key: 'vibes:only:vibes-full-cut-r70', label: 'VIBES, predicting on 4000–1425 only', group: 'Spline and VIBES' },
+  { key: 'vibes:all', label: 'All three', group: 'Spline and VIBES' },
+  { key: 'orig:all', label: 'Spline + raw + 2nd derivative', group: 'Spline, raw and 2nd derivative' },
+  { key: 'orig:only:raw', label: 'Raw only', group: 'Spline, raw and 2nd derivative' },
+  { key: 'orig:only:airspec', label: 'Spline only', group: 'Spline, raw and 2nd derivative' },
+  { key: 'orig:only:deriv2', label: '2nd derivative only', group: 'Spline, raw and 2nd derivative' },
+]
+
 export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null, pmfSel = null, pmfLabelOfDate, galleryRows, galleryMeta }: {
   calib: CalibFile | null
   runs: CalibRunsFile | null
@@ -58,10 +72,11 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
   const [selected, setSelected] = useState<Config>({ co: 'ocec', cut: 800, sel: 'raw', sp: 'airspec' })
   const [presetKey, setPresetKey] = useState<string>('ocec800_airspec')
   const [targetId, setTargetId] = useState<string>('addis')
-  const [specSearch, setSpecSearch] = useState('baselines')
-  const [archiveMode, setArchiveMode] = useSearchParam<string>('carchive', 'hide', ['hide', 'show'])
-  const [version, setVersion] = useSearchParam<string>('cversion', 'current', ['current', 'earlier'])
-  const showArchived = version === 'earlier' && archiveMode === 'show'
+  // the specification curve's baselines: one menu, named by the spectra compared. Spline and VIBES
+  // come from the spline-vs-VIBES search (completed rank-70 VIBES), raw and 2nd derivative from the
+  // original search; the value is '<search>:<baselines>' for SpecCurve's `baselines`
+  const [specView, setSpecView] = useSearchParam<string>('cbase', 'vibes:full', SPEC_VIEWS.map(v => v.key))
+  const specOriginal = specView.startsWith('orig:')
   const { explain } = usePrefs()
 
   const presets = runs?.presets ?? []
@@ -144,19 +159,15 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
           </SectionBar>
           <EstimatorViews>{() => <SpecCurve
             defaultLayout="stacked"
-            excludePreprocessing={showArchived ? [] : ['vibes']}
-            src={specSearch === 'original' ? 'spec_curve.json' : version === 'current' ? 'meeting-r70/spec_curve_20260917.json' : 'meeting/spec_curve_20260917.json'}
-            selected={specSearch === 'original' ? selected : undefined}
-            onSelect={specSearch === 'original' ? selectConfig : undefined}
-            controls={<>
-              {/* one picker for the search and, for the 17 Sep search, which VIBES run it used */}
-              <Select label="Search" value={specSearch === 'original' ? 'original' : version} options={['current', 'earlier', 'original']}
-                onChange={v => { setSpecSearch(v === 'original' ? 'original' : 'baselines'); if (v !== 'original') setVersion(v) }}
-                optionLabel={v => ({ current: '17 Sep: spline + VIBES (rank 70)', earlier: '17 Sep: spline + VIBES (archived rank 30)', original: 'Original: spline, raw, 2nd derivative' }[v] ?? v)} />
-              {specSearch === 'baselines' && version === 'earlier' && <Toggle label="Show archived VIBES fit (4000–1425)" checked={showArchived} onChange={v => setArchiveMode(v ? 'show' : 'hide')} />}
-            </>}
-            subtitle={specSearch === 'original' ? undefined : f => `${f ? f.n.toLocaleString() + ' ' : ''}Addis configurations from the 17 Sep design, using spline and ${version === 'current' ? 'completed rank-70' : 'archived preliminary rank-30'} VIBES baselines. This search uses the same baseline for cohort selection and model spectra, so one Baselines control picks both. The k-sweep and configuration readouts below use the original search.`}
-            provenance={specSearch === 'original' ? undefined : version === 'current' ? 'Completed rank-70 migration · category_grid.jsonl · shared specification guardrails' : 'Archived meeting_followup_20260917/category_grid.jsonl · shared specification guardrails'}
+            excludePreprocessing={['vibes']}
+            src={specOriginal ? 'spec_curve.json' : 'meeting-r70/spec_curve_20260917.json'}
+            baselines={specView.slice(specView.indexOf(':') + 1)}
+            selected={specOriginal ? selected : undefined}
+            onSelect={specOriginal ? selectConfig : undefined}
+            controls={<Combobox label="Baselines" value={specView} options={SPEC_VIEWS} onChange={setSpecView}
+              title="Spline and VIBES come from one search (completed rank-70 VIBES, cohort selection and model on the same baseline); raw and 2nd derivative from another, so spline appears in both" />}
+            subtitle={specOriginal ? undefined : f => `${f ? f.n.toLocaleString() + ' ' : ''}Addis configurations from the spline-vs-VIBES search (completed rank-70 VIBES): every cohort, cutoff, cross-validation protocol and number of PLS factors, with the same baseline for cohort selection and model spectra. The k-sweep and configuration readouts below use the spline, raw and 2nd-derivative search.`}
+            provenance={specOriginal ? undefined : 'Completed rank-70 migration · category_grid.jsonl · shared specification guardrails'}
           />}</EstimatorViews>
           <EstimatorViews>{method => <CutoffSweep calib={calibrationViews[method]!} selected={selected} onSelect={selectConfig} />}</EstimatorViews>
           <EstimatorViews>{method => <KSweep calib={calibrationViews[method]!} selected={selected} onSelect={selectConfig} />}</EstimatorViews>

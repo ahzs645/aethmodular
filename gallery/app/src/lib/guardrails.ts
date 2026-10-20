@@ -14,7 +14,7 @@
 import { formatQuery, type Field, type RuleGroupType } from '@react-querybuilder/core'
 import { LogicEngine } from 'json-logic-engine'
 import { evalFormula, parseFormula, type Logic } from './formula.ts'
-import { COHORT, CV_PROTOCOL, PREPROCESSING, SELECTION_SPACE } from './labels.ts'
+import { CALIBRATION_LOT, COHORT, CV_PROTOCOL, PREPROCESSING, SELECTION_SPACE } from './labels.ts'
 
 /** The columns of a specification export a rule can read (spec_curve.json and the meeting exports). */
 export interface GuardrailSource {
@@ -66,7 +66,7 @@ export const FIELD_INFO: Record<string, FieldInfo> = {
   mo: { label: 'Cross-validation', group: 'Choices' },
   lot: { label: 'Calibration lot', group: 'Choices' },
 }
-const CATEGORY_LABELS: Record<string, Record<string, string>> = { co: COHORT, sel: SELECTION_SPACE, sp: PREPROCESSING, mo: CV_PROTOCOL, lot: { all: 'All lots' } }
+const CATEGORY_LABELS: Record<string, Record<string, string>> = { co: COHORT, sel: SELECTION_SPACE, sp: PREPROCESSING, mo: CV_PROTOCOL, lot: CALIBRATION_LOT }
 const CATEGORIES = ['co', 'sel', 'sp', 'mo', 'lot'] as const
 /** the columns every specification export has (the rest come from its `extra`) */
 const ALWAYS = ['intercept', 'absIntercept', 'slope', 'slopeOffset', 'heldout', 'k', 'cut']

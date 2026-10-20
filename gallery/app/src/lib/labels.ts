@@ -95,6 +95,12 @@ export const SELECTION_SPACE: Record<string, string> = {
 }
 
 /** Cross-validation protocol (the `mode` field). */
+/** the IMPROVE filter lots a calibration set was drawn from (the specification search's `lot`) */
+export const CALIBRATION_LOT: Record<string, string> = {
+  all: 'Both lots (248 + 251)',
+  '248': 'Lot 248 only',
+  '251': 'Lot 251 only',
+}
 export const CV_PROTOCOL: Record<string, string> = {
   site_heldout: 'Site-grouped CV (5-fold, whole sites held out)',
   app: 'Interleaved CV (10-fold, every 10th filter)',

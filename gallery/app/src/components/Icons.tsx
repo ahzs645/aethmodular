@@ -9,4 +9,5 @@ export const SidebarIcon = () => <Svg><rect x="2" y="2.5" width="12" height="11"
 export const TextSizeIcon = () => <Svg><path d="M2 12.5 5 4l3 8.5M3.1 9.5h3.8" /><path d="M9.5 12.5 11.6 7l2.1 5.5M10.2 10.7h2.8" /></Svg>
 /** open a panel larger (arrows out to the corners) */
 export const ExpandIcon = () => <Svg><path d="M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9" /></Svg>
+export const PencilIcon = () => <Svg><path d="M10.8 2.7a1.5 1.5 0 0 1 2.1 0l.4.4a1.5 1.5 0 0 1 0 2.1L6 12.5l-3.2.7.7-3.2z" /><path d="m9.6 3.9 2.5 2.5" /></Svg>
 export const ExplainIcon = () => <Svg><circle cx="8" cy="8" r="6" /><path d="M8 7.2v4" /><path d="M8 4.8v.01" /></Svg>
