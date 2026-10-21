@@ -194,7 +194,7 @@ save(fig, "f2_improve_heldout.png")
 fig, axes = plt.subplots(1, 2, figsize=(11.6, 5.3))
 lim = 1.2
 ax = axes[0]
-ax.scatter(pool.fabs_Mm1 / MAC, pool.tor_ec_ugm3, s=7, color=GREY, alpha=.25, lw=0, label="all held-out IMPROVE")
+ax.scatter(pool.fabs_Mm1 / MAC, pool.tor_ec_ugm3, s=7, color=GREY, alpha=.25, lw=0, label="all IMPROVE (2,078)")
 ax.scatter(an.fabs_Mm1 / MAC, an.tor_ec_ugm3, s=26, color=ACCENT, alpha=.9, edgecolor="white", lw=.4,
            label="spectra most correlated\nwith Addis (97)")
 lines(ax, S_AN_REF, lim, ACCENT)
@@ -525,7 +525,7 @@ ROWS = [("Which IMPROVE filters calibrate", [
             ("Site-grouped cross-validation", "Site-grouped cross-validation"),
             ("Interleaved cross-validation", "Interleaved cross-validation"),
             ("9 or fewer PLS factors", "9 or fewer PLS factors"), ("15 or more PLS factors", "15 or more PLS factors"),
-            ("Cohort under 600 filters", "Cohort under 600 filters")])]
+            ("Calibration set under 600 IMPROVE filters", "Cohort under 600 filters")])]
 n_rows = sum(len(r) for _, r in ROWS) + len(ROWS)
 fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(12.6, 6.6), sharex=True,
                                gridspec_kw=dict(height_ratios=[1, 2.4], hspace=.06))

@@ -79,3 +79,9 @@ historical presentation decks remain tracked pending retention review.
   HIPS calibration history, every Warren White paper parameter we have a
   value for, and the parameters that are still open (SPARTAN `H`, `α`,
   HIPS wavelength).
+
+- [`spartan-ftir-ec-recreation.md`](spartan-ftir-ec-recreation.md): what is
+  documented about SPARTAN's FTIR EC calibration (AQRC Shiny app, Anwar 2025,
+  Debus et al. 2022), how our SPARTAN-equivalent recreation was built and
+  frozen, how closely it matches the published values, and what is still
+  unknown. Presented values use SPARTAN's published EC, not the recreation.
