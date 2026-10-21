@@ -429,15 +429,16 @@ text(11.4, 4.25, 21.2, ["¹ MATTER lab, University of Northern British Columbia,
      color=SOFT, h=1.3)
 
 # logos, placed as on the 2025 poster
-# Logos live in the repo (figures/logos/): UNBC, UC Davis AQRC and MAIA were taken from the 2025 AAAR poster; the
+# Logos live in the repo (figures/logos/): UNBC, UC Davis AQRC, NASA/JPL and MAIA were taken from the 2025 AAAR poster; the
 # SPARTAN logo is the cyan compact version from the vector reconstruction package (spartan-compact-cyan.png, 2,400 px,
 # transparent padding trimmed).
 LOGO_DIR = HERE / "figures" / "logos"
-for _name in ("unbc", "ucdavis_aqrc", "maia", "spartan_cyan"):
+for _name in ("unbc", "ucdavis_aqrc", "nasa_jpl", "maia", "spartan_cyan"):
     assert (LOGO_DIR / f"{_name}.png").exists(), f"missing logo figures/logos/{_name}.png"
 picture(1.5, 1.2, 9.4, LOGO_DIR / "unbc.png")
 picture(1.5, 3.6, 9.4, LOGO_DIR / "ucdavis_aqrc.png")
-picture(36.45, 0.8, 2.9, LOGO_DIR / "maia.png")       # NASA MAIA (funds the work), in place of JPL
+picture(33.0, 1.63, 6.6, LOGO_DIR / "nasa_jpl.png")   # NASA/JPL, vertically centred on the MAIA mark beside it
+picture(39.95, 0.8, 2.9, LOGO_DIR / "maia.png")       # NASA MAIA (funds the work)
 picture(34.2, 3.95, 7.4, LOGO_DIR / "spartan_cyan.png")
 
 # ---------------------------------------------------------------- columns
