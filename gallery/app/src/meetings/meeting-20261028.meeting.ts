@@ -105,10 +105,9 @@ export default {
       id: 'highwn',
       title: '5. The 3600–4000 cm⁻¹ residual',
       text: '@highwn',
-      columns: 2,
       figures: [
         {
-          kind: 'heatmap', id: 'm1028-highwn-rho', table: 'highwn_rho', row: 'against', column: 'season', value: 'rho', domain: [-1, 1], format: 'f2',
+          kind: 'heatmap', id: 'm1028-highwn-rho', table: 'highwn_rho', row: 'against', column: 'season', value: 'rho', domain: [-1, 1], format: 'f2', cell: [110, 40],
           valueLabel: 'Spearman ρ', title: '3600–4000 cm⁻¹ band area (per m³) against Addis chemistry and humidity',
         },
         {

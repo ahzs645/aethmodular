@@ -64,7 +64,7 @@ export type FigureSpec =
   | (Base & { kind: 'sweep'; x: string; y: string; series?: string; lo?: string; hi?: string; aggregate?: { stat?: 'median' | 'mean'; interval?: Interval }; xLabel: string; yLabel: string; xScale?: 'linear' | 'log' | 'time' | 'point'; yScale?: 'linear' | 'log'; reference?: number; xMarkers?: { at: number; label?: string }[]; chosen?: { series: string; x: Value }[]; interval?: 'band' | 'whisker'; yClip?: [number, number]; facet?: string; height?: number })
   | (Base & { kind: 'intervals'; row: string; series?: string; block?: string; panels: { value: string; label: string; reference?: number; lo?: string; hi?: string }[]; aggregate?: { stat?: 'median' | 'mean'; interval?: Interval }; labelWidth?: number })
   | (Base & { kind: 'histogram'; value: string; series: string; log?: boolean; bins?: number; xLabel: string; medians?: boolean; height?: number })
-  | (Base & { kind: 'heatmap'; row: string; column: string; value: string; domain?: [number, number]; ramp?: 'diverging' | 'sequential'; format?: FormatName; valueLabel?: string })
+  | (Base & { kind: 'heatmap'; row: string; column: string; value: string; domain?: [number, number]; ramp?: 'diverging' | 'sequential'; format?: FormatName; valueLabel?: string; cell?: [number, number] })
   | (Base & { kind: 'table'; columns?: { key: string; label?: string; format?: FormatName }[] })
   | (Base & { kind: 'custom'; component: string; props?: Record<string, unknown> })
 export type RegionName = 'analog' | 'oct1' | 'ptfe' | 'co2'
@@ -152,7 +152,7 @@ export function Figure(props: FigureSpec & { about?: ReactNode }) {
     : <TableFigure spec={spec} rows={rows} />
   return (
     <ChartFrame id={id} title={spec.title} subtitle={spec.subtitle} tip={spec.tip} controls={controls} about={props.about}
-      exportable={spec.kind !== 'table'} source={bundle ? `gallery/app/src/meetings/${bundle.id}.ts › ${id}` : undefined}>
+      exportable={spec.kind !== 'table'} source={bundle ? `gallery/app/src/meetings/${bundle.id}.meeting.ts › ${id}${spec.table ? `; data: table "${spec.table}" in gallery/app/public/data/meetings/${bundle.id}.json, from ${bundle.generated_from}` : ''}` : undefined}>
       {body}
       {spec.note && <div className="legend-note" style={{ marginTop: 6 }}><Markdown text={spec.note} /></div>}
     </ChartFrame>
@@ -297,17 +297,27 @@ function HeatmapFigure({ spec, rows }: { spec: Extract<FigureSpec, { kind: 'heat
   const ramp = colours.stops
   const scale = d3.scaleLinear<string>().domain(ramp.map((_, i) => dom[0] + (i / (ramp.length - 1)) * (dom[1] - dom[0]))).range(ramp).clamp(true)
   const f = FORMAT[spec.format ?? 'f2']
-  const cell = { w: 64, h: 26 }, left = Math.min(200, 8 + 6.6 * Math.max(...rs.map((r) => r.length))), top = 22
+  // `cell` enlarges the grid; the labels grow with the cell height
+  const cell = { w: spec.cell?.[0] ?? 64, h: spec.cell?.[1] ?? 26 }, k = Math.max(1, cell.h / 26)
+  const left = Math.min(200 * k, 8 + 6.6 * k * Math.max(...rs.map((r) => r.length)))
+  // column titles wider than a cell are set at an angle, with room above and to the right for them
+  const colW = 6.3 * k * Math.max(...cs.map((c) => c.length)), slant = colW > cell.w - 4
+  const top = slant ? Math.round(colW * 0.57 + 12 * k) : Math.round(22 * k), right = slant ? Math.max(8, colW * 0.82 - cell.w / 2) : 8
   const at = (r: string, c: string) => num(rows.find((x) => String(x[spec.row]) === r && String(x[spec.column]) === c)?.[spec.value])
   return <div className="chart-wrap" style={{ overflowX: 'auto' }}>
-    <svg width={left + cs.length * cell.w + 8} height={top + rs.length * cell.h + 6} fontFamily={FONT.family}>
-      {cs.map((c, j) => <text key={c} x={left + j * cell.w + cell.w / 2} y={14} textAnchor="middle" fontSize={11} fontWeight={600} fill={INK.text}>{c}</text>)}
+    <svg width={left + cs.length * cell.w + right} height={top + rs.length * cell.h + 6} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
+      {cs.map((c, j) => {
+        const x = left + j * cell.w + cell.w / 2
+        return slant
+          ? <text key={c} x={x} y={top - 6} transform={`rotate(-35 ${x} ${top - 6})`} textAnchor="start" fontSize={11 * k} fontWeight={600} fill={INK.text}>{c}</text>
+          : <text key={c} x={x} y={14 * k} textAnchor="middle" fontSize={11 * k} fontWeight={600} fill={INK.text}>{c}</text>
+      })}
       {rs.map((r, i) => <g key={r}>
-        <text x={left - 8} y={top + i * cell.h + cell.h / 2} dy="0.35em" textAnchor="end" fontSize={11} fill={INK.text}>{r}</text>
-        {cs.map((c, j) => { const v = at(r, c); return <HeatCell key={c} x={left + j * cell.w + 1} y={top + i * cell.h + 1} width={cell.w - 2} height={cell.h - 2} fill={v == null ? null : scale(v)} label={v == null ? null : f(v)} /> })}
+        <text x={left - 8} y={top + i * cell.h + cell.h / 2} dy="0.35em" textAnchor="end" fontSize={11 * k} fill={INK.text}>{r}</text>
+        {cs.map((c, j) => { const v = at(r, c); return <HeatCell key={c} x={left + j * cell.w + 1} y={top + i * cell.h + 1} width={cell.w - 2} height={cell.h - 2} fill={v == null ? null : scale(v)} label={v == null ? null : f(v)} fontSize={10 * k} /> })}
       </g>)}
     </svg>
-    <div className="legend"><ColorLegend scale={scale as unknown as { domain(): number[]; (v: number): string }} scheme={colours.scheme} label={spec.valueLabel ?? spec.value} format={(v) => f(v)} /></div>
+    <div className="legend" style={{ justifyContent: 'center' }}><ColorLegend scale={scale as unknown as { domain(): number[]; (v: number): string }} scheme={colours.scheme} label={spec.valueLabel ?? spec.value} format={(v) => f(v)} /></div>
   </div>
 }
 
