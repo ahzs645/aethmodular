@@ -303,9 +303,11 @@ function HeatmapFigure({ spec, rows }: { spec: Extract<FigureSpec, { kind: 'heat
   // column titles wider than a cell are set at an angle, with room above and to the right for them
   const colW = 6.3 * k * Math.max(...cs.map((c) => c.length)), slant = colW > cell.w - 4
   const top = slant ? Math.round(colW * 0.57 + 12 * k) : Math.round(22 * k), right = slant ? Math.max(8, colW * 0.82 - cell.w / 2) : 8
+  // the cells (not cells + row labels) sit in the middle of the panel when there is room; left-aligned when not
   const at = (r: string, c: string) => num(rows.find((x) => String(x[spec.row]) === r && String(x[spec.column]) === c)?.[spec.value])
   return <div className="chart-wrap" style={{ overflowX: 'auto' }}>
-    <svg width={left + cs.length * cell.w + right} height={top + rs.length * cell.h + 6} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
+    <svg width={left + cs.length * cell.w + right} height={top + rs.length * cell.h + 6} fontFamily={FONT.family}
+      style={{ display: 'block', marginLeft: `max(0px, calc(50% - ${left + (cs.length * cell.w) / 2}px))` }}>
       {cs.map((c, j) => {
         const x = left + j * cell.w + cell.w / 2
         return slant
