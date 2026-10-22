@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { ExplainOnly } from '@/components/ChartFrame'
 import { ExportState } from '@/components/ExportState'
 import { BundleContext, Figure, type MeetingBundle } from '@/components/Figure'
 import { PageToc } from '@/components/PageToc'
@@ -10,10 +11,10 @@ import type { MeetingSpec } from '@/meetings/types'
  * Draws a declared meeting (src/meetings/*.meeting.ts): each section's text as
  * a panel, then its figures. The bundle is the exporter's tables and text; a
  * paragraph that is just "@key" is replaced by the bundle's text for that key.
- * The page intro and text-only sections (open items, next steps) show as panels.
- * A section with figures shows its title as a heading and puts its text under
- * the first figure's "?" (open on every chart at once with the header's Explain
- * toggle), with that figure's own description.
+ * The page intro and text-only sections (open items, next steps) are explanation:
+ * panels shown only with the header's Explain toggle on. A section with figures
+ * shows its title as a heading and puts its text under the first figure's "?"
+ * (opened on every chart at once by Explain), with that figure's own description.
  */
 export function MeetingSpecPage({ spec }: { spec: MeetingSpec }) {
   const { data, error } = useExport<MeetingBundle>(`meetings/${spec.id}.json`, (b) =>
@@ -45,12 +46,14 @@ export function MeetingSpecPage({ spec }: { spec: MeetingSpec }) {
   )
 }
 
-/** Text with nothing to explain it further: the page intro and sections without figures. */
+/** The page intro and sections without figures: explanation, shown only with Explain on (no "?" of their own). */
 function TextPanel({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
   return (
-    <section className="panel">
-      <header className="frame-head"><div><h2>{title}</h2>{note && <p className="subtitle">{note}</p>}</div></header>
-      {children}
-    </section>
+    <ExplainOnly>
+      <section className="panel">
+        <header className="frame-head"><div><h2>{title}</h2>{note && <p className="subtitle">{note}</p>}</div></header>
+        {children}
+      </section>
+    </ExplainOnly>
   )
 }
