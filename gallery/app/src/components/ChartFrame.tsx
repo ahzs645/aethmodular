@@ -41,6 +41,7 @@ export function ChartFrame({
   id,
   tip,
   source,
+  about,
 }: {
   /** "Short name — longer clause": only the short name shows unless explaining */
   title: string
@@ -57,6 +58,8 @@ export function ChartFrame({
   tip?: ReactNode
   /** where the chart is built, e.g. "gallery/app/src/pages/MeetingFollowupPage.tsx › ThreePlots"; copied by the ref button */
   source?: string
+  /** longer explanation (e.g. a meeting section's findings) shown with the subtitle, behind the "?" */
+  about?: ReactNode
 }) {
   const method = useEstimator()
   const extras = useContext(FrameExtrasContext)
@@ -72,7 +75,7 @@ export function ChartFrame({
   const dash = title.indexOf(' — ')
   const short = dash > 0 ? title.slice(0, dash) : title
   const rest = dash > 0 ? title.slice(dash + 3) : ''
-  const hasInfo = !!(rest || subtitle || provenance)
+  const hasInfo = !!(rest || subtitle || provenance || about)
   const [refCopied, setRefCopied] = useState(false)
   const compact = !!extras?.compact
   const allControls = (controls || extras?.controls) ? <>{extras?.controls}{controls}</> : null
@@ -87,7 +90,7 @@ export function ChartFrame({
   const anchor = id && method !== 'deming' ? `${id}-${method}` : id
   if (compact) return (
     <section className="panel compact" ref={ref} id={anchor}>
-      <TileMenu name={short} extras={extras!} about={hasInfo ? <>{rest && <p>{rest}</p>}{subtitle && <p className="subtitle">{subtitle}</p>}{provenance && <p className="provenance">{provenance}</p>}</> : null}
+      <TileMenu name={short} extras={extras!} about={hasInfo ? <>{rest && <p>{rest}</p>}{about && <div className="frame-about">{about}</div>}{subtitle && <p className="subtitle">{subtitle}</p>}{provenance && <p className="provenance">{provenance}</p>}</> : null}
         tip={tip} controls={allControls} export={exportable ? <ExportButton panelRef={ref} title={short} /> : null} onCopyRef={copyRef} copied={refCopied} />
       {children}
     </section>
@@ -101,6 +104,7 @@ export function ChartFrame({
             {info && rest && <span className="title-rest"> — {rest}</span>}
             {tip && <InfoTip>{tip}</InfoTip>}
           </h2>
+          {info && about && <div className="frame-about">{about}</div>}
           {info && subtitle && <p className="subtitle">{subtitle}</p>}
           {info && provenance && <p className="provenance">{provenance}</p>}
         </div>

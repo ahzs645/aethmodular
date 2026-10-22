@@ -117,8 +117,8 @@ function useColors(spec: Base) {
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
 
-export function Figure(props: FigureSpec) {
-  let spec = props
+export function Figure(props: FigureSpec & { about?: ReactNode }) {
+  let spec: FigureSpec = props
   const bundle = useContext(BundleContext)
   const id = spec.id ?? slug(spec.title)
   const all = useMemo(() => where(rowsOf(spec.data ?? (spec.table ? bundle?.tables[spec.table] : null)), spec.where), [spec.data, spec.table, spec.where, bundle])
@@ -151,7 +151,7 @@ export function Figure(props: FigureSpec) {
     : spec.kind === 'heatmap' ? <HeatmapFigure spec={spec} rows={rows} />
     : <TableFigure spec={spec} rows={rows} />
   return (
-    <ChartFrame id={id} title={spec.title} subtitle={spec.subtitle} tip={spec.tip} controls={controls}
+    <ChartFrame id={id} title={spec.title} subtitle={spec.subtitle} tip={spec.tip} controls={controls} about={props.about}
       exportable={spec.kind !== 'table'} source={bundle ? `gallery/app/src/meetings/${bundle.id}.ts › ${id}` : undefined}>
       {body}
       {spec.note && <div className="legend-note" style={{ marginTop: 6 }}><Markdown text={spec.note} /></div>}
