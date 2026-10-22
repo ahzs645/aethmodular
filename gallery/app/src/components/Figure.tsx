@@ -59,7 +59,7 @@ interface Base {
   note?: string
 }
 export type FigureSpec =
-  | (Base & { kind: 'crossplot'; x: string; y: string; color?: string; idColumn?: string; tipColumns?: string[]; xLabel: string; yLabel: string; fit?: boolean; errorRatio?: number; facet?: string; maxSide?: number })
+  | (Base & { kind: 'crossplot'; x: string; y: string; color?: string; idColumn?: string; tipColumns?: string[]; xLabel: string; yLabel: string; fit?: boolean; errorRatio?: number; facet?: string; maxSide?: number; sameScale?: boolean })
   | (Base & { kind: 'spectrum'; wn: string; y: string; series: string; lo?: string; hi?: string; role?: 'trace' | 'line'; window?: [number, number]; yLabel?: string; yClip?: [number, number]; includeZero?: boolean; zeroLine?: boolean; regions?: RegionName[]; annotations?: SpectrumAnnotation[]; hover?: 'nearest' | 'readout'; facet?: string; height?: number })
   | (Base & { kind: 'sweep'; x: string; y: string; series?: string; lo?: string; hi?: string; aggregate?: { stat?: 'median' | 'mean'; interval?: Interval }; xLabel: string; yLabel: string; xScale?: 'linear' | 'log' | 'time' | 'point'; yScale?: 'linear' | 'log'; reference?: number; xMarkers?: { at: number; label?: string }[]; chosen?: { series: string; x: Value }[]; interval?: 'band' | 'whisker'; yClip?: [number, number]; facet?: string; height?: number })
   | (Base & { kind: 'intervals'; row: string; series?: string; block?: string; panels: { value: string; label: string; reference?: number; lo?: string; hi?: string }[]; aggregate?: { stat?: 'median' | 'mean'; interval?: Interval }; labelWidth?: number })
@@ -174,10 +174,11 @@ function CrossplotFigure({ spec, rows }: { spec: Extract<FigureSpec, { kind: 'cr
   })
   const facets = facetsOf(rows, spec.facet)
   const plot = (f: { key: string; rows: Row[] }, side?: number) => <Crossplot title={f.key || ''} points={toPoints(f.rows)} xLabel={spec.xLabel} yLabel={spec.yLabel}
-    fit={spec.fit ?? true} errorRatio={spec.errorRatio} maxSide={side ?? spec.maxSide ?? 480} />
+    fit={spec.fit ?? true} errorRatio={spec.errorRatio} maxSide={side ?? spec.maxSide ?? 480} sameScale={spec.sameScale ?? true} />
   return <>
     {facets.length > 1 ? <FacetGrid items={facets} minCell={300} maxCols={3} render={(f, w) => plot(f, w - 70)} /> : plot(facets[0])}
-    {groups.length > 0 && <Key items={[...groups.map((g) => ({ label: String(g), color: color(g) })), { label: '1:1', color: INK.identity, kind: 'dash' as const }]} />}
+    {groups.length > 0 && <Key items={[...groups.map((g) => ({ label: String(g), color: color(g) })),
+      ...(spec.sameScale ?? true ? [{ label: '1:1', color: INK.identity, kind: 'dash' as const }] : [])]} />}
   </>
 }
 

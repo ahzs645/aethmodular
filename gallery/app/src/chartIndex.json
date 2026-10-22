@@ -538,6 +538,166 @@
    "file": "meetings/ann-20261009.meeting.ts"
   },
   {
+   "title": "Addis slope and intercept by season, for five ways of choosing the IMPROVE calibration filters",
+   "id": "m1028-cals",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
+   "title": "OC/EC: Addis sits below almost every IMPROVE filter",
+   "id": "m1028-ocec",
+   "component": "histogram",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
+   "title": "The same fits as a table",
+   "id": "m1028-cals-table",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
+   "title": "Error against the C–H band, both with HIPS EC’s effect removed (season-specific calibrations)",
+   "id": "m1028-deficit",
+   "component": "crossplot",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
+   "title": "FTIR EC against the organic index, HIPS EC held fixed",
+   "id": "m1028-deficit-rho",
+   "component": "heatmap",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
+   "title": "SPARTAN dust elements and HIPS EC (medians, µg/m³)",
+   "id": "m1028-dust",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
+   "title": "FTIR EC against Si, HIPS EC held fixed",
+   "id": "m1028-dust-rho",
+   "component": "heatmap",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
+   "title": "The MAC each season would need, and the look-alikes’ own",
+   "id": "m1028-mac",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
+   "title": "3600–4000 cm⁻¹ band area (per m³) against Addis chemistry and humidity",
+   "id": "m1028-highwn-rho",
+   "component": "heatmap",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
+   "title": "The residual follows Si",
+   "id": "m1028-highwn-si",
+   "component": "crossplot",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
+   "title": "FTIR EC / reference EC against EC on the filter",
+   "id": "m1028-loading",
+   "component": "sweep",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
+   "title": "OLS fits in µg per filter",
+   "id": "m1028-loading-fits",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
+   "title": "TOR EC / (HIPS Fabs / 10) against HIPS EC on the filter, IMPROVE library",
+   "id": "m1028-dark",
+   "component": "sweep",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
+   "title": "How often the look-alikes are OP-zero filters",
+   "id": "m1028-dark-share",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
+   "title": "VIP: raw SPARTAN-like calibration vs the all-IMPROVE baseline-corrected one",
+   "id": "m1028-vip-raw",
+   "component": "spectrum",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
+   "title": "VIP of the season-specific look-alike calibrations and the low-OC/EC one",
+   "id": "m1028-vip-seasons",
+   "component": "spectrum",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
+   "title": "Share of VIP² by spectral region",
+   "id": "m1028-vip-regions",
+   "component": "heatmap",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
+   "title": "Composition as a share of PM2.5",
+   "id": "m1028-speciation",
+   "component": "heatmap",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
+   "title": "The same shares, with OC/EC",
+   "id": "m1028-speciation-table",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
+   "title": "Addis by season: concentration, and concentration × boundary-layer height",
+   "id": "m1028-blh",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "meeting-20261028",
+   "file": "meetings/meeting-20261028.meeting.ts"
+  },
+  {
    "title": "Baseline versions",
    "component": "BaselineComparisonPage",
    "tab": "baseline",
