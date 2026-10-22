@@ -8,13 +8,16 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
  * the widths are measured, so it adapts to the labels and the text size. On a phone the header's
  * display toggles (`extra`) move into that menu too.
  */
-export interface NavItem { key: string; label: string; title?: string; tab: string; meeting?: string }
+/** `meeting` picks a meeting page; `sub` picks a page on any other tab with subpages (Experimental) */
+export interface NavItem { key: string; label: string; title?: string; tab: string; meeting?: string; sub?: string }
 export interface NavGroup { label: string; items: NavItem[] }
 
-const isActive = (i: NavItem, tab: string, meeting: string) => i.tab === tab && (i.meeting === undefined || i.meeting === meeting)
+const isActive = (i: NavItem, tab: string, meeting: string, sub?: string) => i.tab === tab && (i.meeting === undefined || i.meeting === meeting) && (i.sub === undefined || i.sub === sub)
 
-export function NavMenu({ groups, tab, meeting, onPick, extra }: {
+export function NavMenu({ groups, tab, meeting, sub, onPick, extra }: {
   groups: NavGroup[]; tab: string; meeting: string; onPick: (i: NavItem) => void
+  /** the open subpage of a tab other than Meeting */
+  sub?: string
   /** controls the header hides on a phone (styles.css), offered at the foot of More / Menu instead */
   extra?: ReactNode
 }) {
@@ -29,7 +32,7 @@ export function NavMenu({ groups, tab, meeting, onPick, extra }: {
     mq.addEventListener('change', on)
     return () => mq.removeEventListener('change', on)
   }, [])
-  const label = (g: NavGroup) => { const a = g.items.find((i) => isActive(i, tab, meeting)); return a ? `${g.label} · ${a.label}` : g.label }
+  const label = (g: NavGroup) => { const a = g.items.find((i) => isActive(i, tab, meeting, sub)); return a ? `${g.label} · ${a.label}` : g.label }
   const labels = groups.map(label).join('|')
 
   // how many groups fit beside the title and tools; the rest go into More
@@ -79,16 +82,16 @@ export function NavMenu({ groups, tab, meeting, onPick, extra }: {
         <span data-measure="more" className="nav-btn nav-group">More ▾</span>
       </div>
       {shown.map((g) => (
-        <Dropdown key={g.label} {...menu(g.label)} label={label(g)} active={g.items.some((i) => isActive(i, tab, meeting))}>
-          {(close) => g.items.map((i) => <Item key={`${i.tab}-${i.meeting ?? ''}`} i={i} on={isActive(i, tab, meeting)} pick={() => { onPick(i); close() }} />)}
+        <Dropdown key={g.label} {...menu(g.label)} label={label(g)} active={g.items.some((i) => isActive(i, tab, meeting, sub))}>
+          {(close) => g.items.map((i) => <Item key={`${i.tab}-${i.meeting ?? i.sub ?? ''}`} i={i} on={isActive(i, tab, meeting, sub)} pick={() => { onPick(i); close() }} />)}
         </Dropdown>
       ))}
       {(folded.length > 0 || (phone && extra)) && (
-        <Dropdown {...menu('__more')} label={fit === 0 ? 'Menu' : 'More'} active={folded.some((g) => g.items.some((i) => isActive(i, tab, meeting)))}>
+        <Dropdown {...menu('__more')} label={fit === 0 ? 'Menu' : 'More'} active={folded.some((g) => g.items.some((i) => isActive(i, tab, meeting, sub)))}>
           {(close) => <>
             {folded.map((g) => <div key={g.label} className="navmenu-section">
               <div className="navmenu-heading">{g.label}</div>
-              {g.items.map((i) => <Item key={`${i.tab}-${i.meeting ?? ''}`} i={i} on={isActive(i, tab, meeting)} pick={() => { onPick(i); close() }} />)}
+              {g.items.map((i) => <Item key={`${i.tab}-${i.meeting ?? i.sub ?? ''}`} i={i} on={isActive(i, tab, meeting, sub)} pick={() => { onPick(i); close() }} />)}
             </div>)}
             {extra && <div className="navmenu-section navmenu-extra"><div className="navmenu-heading">Display</div><div className="navmenu-extra-row">{extra}</div></div>}
           </>}

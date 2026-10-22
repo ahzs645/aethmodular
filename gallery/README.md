@@ -243,6 +243,11 @@ codes), `isites` (IMPROVE codes).
 Builds for outside readers (`publish_pages.py`, `build_share.py`) set
 `VITE_HIDE_EXPLAIN=1`, which removes the header's Explain toggle; local dev keeps it.
 
+The **Experimental** pages (tests from the 22 Oct protocol review, the Adama TOR study) are left out of
+the header menu and the ⌘K search in every build: they open only from a direct link
+(`#tab=experimental`, a page with `&xp=<key>`, keys in `app/src/experiments/index.ts`), and the menu shows
+their group only while one is open. Set `VITE_SHOW_EXPERIMENTAL=1` (e.g. in `app/.env.local`) to list them.
+
 ### Publishing
 
 `python3 gallery/share/publish_pages.py` publishes the public site

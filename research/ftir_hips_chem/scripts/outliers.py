@@ -155,13 +155,19 @@ def apply_exclusion_flags(matched_df, site_name, date_tolerance_days=1):
 
         # Optionally also match by filter_id if provided. Tables pivoted per physical
         # filter carry base_filter_id (ETAD-0248) rather than filter_id (ETAD-0248-1),
-        # so fall back to it: two filters can share a date (ETAD-0241 and ETAD-0248).
+        # and the gallery exporters key rows by 'id' (a column or the index), so fall
+        # back to those: two filters can share a date (ETAD-0241 and ETAD-0248), and
+        # a date-only match would flag both.
         if excl_filter_id and 'filter_id' in matched_df.columns:
             date_mask = date_mask & (matched_df['filter_id'] == excl_filter_id)
-        elif excl_filter_id and 'base_filter_id' in matched_df.columns:
+        elif excl_filter_id:
             parts = str(excl_filter_id).split('-')
             excl_base = '-'.join(parts[:2]) if len(parts) > 2 else str(excl_filter_id)
-            date_mask = date_mask & (matched_df['base_filter_id'].astype(str) == excl_base)
+            ids = next((matched_df[c] for c in ('base_filter_id', 'id') if c in matched_df.columns), None)
+            if ids is None and matched_df.index.name in ('base_filter_id', 'id'):
+                ids = matched_df.index.to_series(index=matched_df.index)
+            if ids is not None:
+                date_mask = date_mask & (ids.astype(str).str.replace(r'^([^-]+-[^-]+)-\d+$', r'\1', regex=True) == excl_base)
 
         # Apply exclusion
         matched_df.loc[date_mask, 'is_excluded'] = True

@@ -42,6 +42,8 @@ import { SatoshiFollowupPage } from '@/pages/SatoshiFollowupPage'
 import { MeetingSpecPage } from '@/pages/MeetingSpecPage'
 import { SPEC_MEETINGS } from '@/meetings'
 import { BlanksPage } from '@/pages/BlanksPage'
+import { ExperimentalPage } from '@/pages/ExperimentalPage'
+import { EXPERIMENTS } from '@/experiments'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { dashParams, parseDash, type DashState, type Scope } from '@/lib/dashboard'
 import type { DashFilters } from '@/components/dashboard/DashHeader'
@@ -99,12 +101,16 @@ const TABS = [
   { key: 'similarity', label: 'Spectral similarity' },
   { key: 'meeting', label: 'Meeting', title: 'Meeting follow-ups and Satoshi’s 2 Oct questions' },
   { key: 'blanks', label: 'Blanks', title: 'PTFE field blanks behind the VIBES background' },
+  { key: 'experimental', label: 'Experimental', hidden: true, title: 'Analyses still being worked out: what the FTIR EC flag sees, and where it is blind' },
 ] as const
 
 type TabKey = (typeof TABS)[number]['key']
 /** A share build (VITE_SHARE_TABS=meeting,map; gallery/share/build_share.py) offers only these tabs, the first as landing tab. */
 const SHARE_TABS: string[] = (import.meta.env.VITE_SHARE_TABS ?? '').split(',').map((t: string) => t.trim()).filter(Boolean)
 const shared = (key: string) => SHARE_TABS.length === 0 || SHARE_TABS.includes(key)
+/** VITE_SHOW_EXPERIMENTAL=1 lists the Experimental pages in the header menu; otherwise they open only from a link
+ *  (#tab=experimental), and the menu shows their group only while one is open. */
+const SHOW_EXPERIMENTAL = import.meta.env.VITE_SHOW_EXPERIMENTAL === '1'
 const isTab = (v: string | null): v is TabKey => !!v && shared(v) && TABS.some((t) => t.key === v)
 const LANDING_TAB = (SHARE_TABS.find((t) => TABS.some((x) => x.key === t)) ?? 'correlation') as TabKey
 
@@ -123,7 +129,10 @@ const NAV_GROUPS: NavGroup[] = [
   { label: 'Sites', items: ['map', 'weather', 'pmf'].flatMap(tabItem) },
   { label: 'Calibration', items: ['calibration', 'baseline', 'similarity', 'blanks'].flatMap(tabItem) },
   { label: 'Meetings', items: shared('meeting') ? MEETINGS.map((m) => ({ key: m.key, label: m.label, tab: 'meeting', meeting: m.key })) : [] },
+  { label: 'Experimental', items: shared('experimental') ? EXPERIMENTS.map((e) => ({ key: `xp-${e.key}`, label: e.label, title: e.title, tab: 'experimental', sub: e.key })) : [] },
 ].filter((g) => g.items.length)
+/** the menu without the Experimental group (see SHOW_EXPERIMENTAL) */
+const NAV_GROUPS_LISTED = NAV_GROUPS.filter((g) => g.label !== 'Experimental')
 
 /** a row of a site without PMF, which the PMF filter passes through */
 const OTHER_SITE = '__other_site'
@@ -133,6 +142,7 @@ const NAV_TABS = TABS.filter((t) => shared(t.key) && !('hidden' in t && t.hidden
 // Keep existing #tab=satoshi links working under the shared Meeting tab.
 const tabFromParams = (p: URLSearchParams): TabKey =>
   p.get('tab') === 'satoshi' && shared('meeting') ? 'meeting' : isTab(p.get('tab')) ? p.get('tab') as TabKey : LANDING_TAB
+const experimentFromParams = (p: URLSearchParams): string => EXPERIMENTS.find((e) => e.key === p.get('xp'))?.key ?? EXPERIMENTS[0].key
 const meetingFromParams = (p: URLSearchParams): MeetingKey =>
   p.get('tab') === 'satoshi' ? 'satoshi' : MEETINGS.find((m) => m.key === p.get('meeting'))?.key ?? 'followup'
 
@@ -168,7 +178,7 @@ const parseSpartanSel = (v: string | null): string[] | 'all' | null =>
 /** tabs whose charts can draw a whole network (Filters sidebar → network) */
 const NETWORK_TABS = ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'weather'] as const
 const FILTERS: SubsetCaps = { seasons: true, sites: true, excluded: true, dates: true, fields: 'single', datasetLabel: 'SPARTAN filters' }
-const CAPS: Record<Exclude<TabKey, 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks'>, SubsetCaps> = {
+const CAPS: Record<Exclude<TabKey, 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks' | 'experimental'>, SubsetCaps> = {
   correlation: { ...FILTERS, fields: 'pair', networks: true, fits: true },
   // each tile picks its own fields
   dashboard: { ...FILTERS, fields: 'none', networks: true, fits: true },
@@ -244,7 +254,8 @@ export default function App() {
   // ---- state, seeded from the URL hash so a pasted link reopens the same view
   const [meeting, setMeeting] = useState<MeetingKey>(() => meetingFromParams(init))
   // the ⌘K search's way to a tab or meeting page (lib/headerNav)
-  const openTab = useCallback((t: string, m?: string) => { if (isTab(t)) setTab(t); if (m) setMeeting(m) }, [])
+  const [experiment, setExperiment] = useState<string>(() => experimentFromParams(init))
+  const openTab = useCallback((t: string, m?: string, x?: string) => { if (isTab(t)) setTab(t); if (m) setMeeting(m); if (x) setExperiment(x) }, [])
   // Mirrors get_clean_data: excluded samples are hidden by default but never
   // deleted, so you can always put them back and see what was removed.
   const [includeExcluded, setIncludeExcluded] = useState(init.get('excl') === '1')
@@ -360,6 +371,7 @@ export default function App() {
     writeParams({
       tab,
       meeting: tab === 'meeting' && meeting !== 'followup' ? meeting : null,
+      xp: tab === 'experimental' && experiment !== EXPERIMENTS[0].key ? experiment : null,
       fits: estimatorParam(estimators),
       ci: showCI ? '1' : null,
       cal: convention,
@@ -396,7 +408,7 @@ export default function App() {
       log: axes.log ? '1' : null,
       pax: axes.panels === 'Own' ? 'own' : null,
     })
-  }, [tab, meeting, estimators, showCI, convention, calVariants, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, dropWhyParam, keepIds, ftirBaseline, customSeasons, rainRule, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, includeExcluded, xField, yField, field, dash, ratios, mac, basis, pinnedId, axes])
+  }, [tab, meeting, experiment, estimators, showCI, convention, calVariants, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, dropWhyParam, keepIds, ftirBaseline, customSeasons, rainRule, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, includeExcluded, xField, yField, field, dash, ratios, mac, basis, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -408,6 +420,7 @@ export default function App() {
       if (isTab(p.get('tab')) || p.get('tab') === 'satoshi') {
         setTab(tabFromParams(p))
         if (tabFromParams(p) === 'meeting') setMeeting(meetingFromParams(p))
+        if (tabFromParams(p) === 'experimental') setExperiment(experimentFromParams(p))
       }
       setConvention(p.get('cal'))
       setCustomSeasons(parseCustomSeasons(p.get('cs')) ?? DEFAULT_CUSTOM)
@@ -855,14 +868,14 @@ export default function App() {
 
   const nav = (
     <nav className="nav" aria-label="Pages">
-      <NavMenu groups={NAV_GROUPS} tab={tab} meeting={meeting} onPick={(i) => openTab(i.tab, i.meeting)} extra={<DisplayToggles />} />
+      <NavMenu groups={SHOW_EXPERIMENTAL || tab === 'experimental' ? NAV_GROUPS : NAV_GROUPS_LISTED} tab={tab} meeting={meeting} sub={experiment} onPick={(i) => openTab(i.tab, i.meeting, i.sub)} extra={<DisplayToggles />} />
     </nav>
   )
 
   // the Dashboard's header draws the common filters from the same state and actions (components/dashboard/DashHeader)
   let dashFilters: DashFilters | null = null
   const subset = (() => {
-    if (tab === 'census' || tab === 'baseline' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks') return null
+    if (tab === 'census' || tab === 'baseline' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental') return null
     const baseCaps = net === 'focus' ? CAPS[tab] : { ...CAPS[tab], datasetLabel: net === 'improve' ? 'IMPROVE samples' : net === 'both' ? 'SPARTAN filters + IMPROVE samples' : 'SPARTAN filters', excluded: sourceRows.some((r) => r.excluded) }
     // the chart tabs offer the PMF section while a site with PMF is picked
     const chartTab = (NETWORK_TABS as readonly string[]).includes(tab)
@@ -1118,9 +1131,9 @@ export default function App() {
         fields={tab === 'correlation' ? [xField, yField] : [field]} onClose={() => setGroup(null)} />}
       {isEmbed() && <a className="embed-open" href="#" onClick={async (e) => { e.preventDefault(); window.open((await viewUrl(currentView())), '_blank', 'noopener') }}>Open in the gallery ↗</a>}
       {(NETWORK_TABS as readonly string[]).includes(tab) && <BrushBar onKeep={keepFilters} onDrop={dropFilters} />}
-      <Shell nav={nav} dash={tab === 'dashboard'} wide={tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks'} editsBadge={!subset}>
+      <Shell nav={nav} dash={tab === 'dashboard'} wide={tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental'} editsBadge={!subset}>
         {/* tabs without the Filters panel: a sidebar for the page's own controls, with the fits where the page fits */}
-        {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting')
+        {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting' || tab === 'experimental')
           && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'} />)}
         {tab === 'census' && <CensusPage census={census} />}
         {tab === 'similarity' && <SimilarityPage />}
@@ -1133,6 +1146,7 @@ export default function App() {
             : <MeetingSpecPage key={meeting} spec={SPEC_MEETINGS.find((m) => m.id === meeting) ?? SPEC_MEETINGS[0]} />}
         </PresentationProvider>}
         {tab === 'blanks' && <BlanksPage />}
+        {tab === 'experimental' && <ExperimentalPage experiment={experiment} onPick={setExperiment} />}
         {tab === 'baseline' && (calibrationLoading ? <p>Loading calibration data…</p> : <BaselineComparisonPage mac={exportMac} demingLambda={data.calibration?.deming_lambda_mac10 ?? 1} />)}
         {tab === 'calibration' && (calibrationLoading ? <p>Loading calibration data…</p> : <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={drawerMeta} galleryRows={paintedSourceRows} sourceRows={rawSourceRows} galleryMeta={meta} axes={axes} onAxes={setAxes} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />)}
         {tab === 'dashboard' && <DashboardPage dash={dash} setDash={setDash} filters={dashFilters} onScope={setDashScope} onPickSite={pickDashSite} display={<DisplayToggles />}
