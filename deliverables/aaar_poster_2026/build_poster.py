@@ -13,6 +13,11 @@ concentration bars (flow rates differ), no per-filter bar chart (the histogram s
 that the SPARTAN network as a whole is predicted reasonably but Addis is not; no "held-out" anywhere. Every poster
 figure is redrawn here at poster scale from build.py's data, so build.py's figures stay as the talk had them.
 
+21 Oct (Ann's comments on Ahmad_aaar_poster_2026_v2_AMD.pptx): her new title and text edits (intro bullet on SPARTAN
+sites vs Addis, figure references, Dillner & Takahama 2015 citation, "QC checks", softer "Why IMPROVE?", key-term
+wording, Figure 4 caption, Figure 5 header, conclusions); the 246-filter sentence dropped; next steps now focus on why
+Dry and Belg fail and on OC/EC rather than EC-to-PM2.5.
+
 Run with anaconda python from the repo root:
     ~/anaconda3/bin/python deliverables/aaar_poster_2026/build_poster.py
 """
@@ -259,7 +264,7 @@ with plt.rc_context(POSTER_RC):
     order, inter, masks, n_spec = g["order"], g["inter"], g["masks"], g["n_spec"]
     ROWS = g["ROWS"]
     n_rows = sum(len(r) for _, r in ROWS) + len(ROWS)
-    fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(8.6, 5.85), sharex=True,
+    fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(8.6, 5.45), sharex=True,
                                    gridspec_kw=dict(height_ratios=[1, 2.6], hspace=.06))
     ax0.plot(np.arange(n_spec), np.sort(inter), color=BLUE_, lw=2.4)
     ax0.axhline(0, color=GREY_, ls=":", lw=1.4)
@@ -298,7 +303,7 @@ with plt.rc_context(POSTER_RC):
 
     # P8: season-specific calibrations
     SEAS, allp, SEAS_FIT, COHORT = g["SEAS"], g["allp"], g["SEAS_FIT"], g["COHORT"]
-    fig, axes = plt.subplots(1, 3, figsize=(12.5, 4.65), sharey=True, gridspec_kw=dict(wspace=.08))
+    fig, axes = plt.subplots(1, 3, figsize=(12.5, 4.25), sharey=True, gridspec_kw=dict(wspace=.08))
     lim = 12
     for ax, k in zip(axes, SEASONS):
         b0 = base[base.season == k]
@@ -414,8 +419,8 @@ rect(0, 0, W, H, BACK)
 rect(0.85, 0.5, W - 1.7, 6.1, PAPER)
 
 # title block (title and affiliations as Ahmad edited them on 19 Oct with Ann)
-TITLE = ("Comparison of FTIR elemental carbon (EC) measurements in Addis Ababa, Ethiopia with rural U.S. IMPROVE EC "
-         "measurements")
+TITLE = ("Challenges of using rural U.S. IMPROVE FTIR elemental carbon (EC) measurements to calibrate FTIR EC in "
+         "Addis Ababa, Ethiopia")
 text(11.4, 0.75, 21.2, [TITLE], size=54, align=PP_ALIGN.CENTER, gap=0, h=1.9)
 for p in s.shapes[-1].text_frame.paragraphs:
     for r in p.runs:
@@ -465,26 +470,26 @@ y += header(x, y, CW, "Why elemental carbon in Addis Ababa?")
 y += 0.2
 y += text(x + PAD, y, IW, [
     "**Elemental carbon (EC)** is the black, soot-like carbon from burning. It warms the climate and harms health.",
-    "**SPARTAN** (Surface PARTiculate mAtter Network, www.spartan-network.org) samples particles onto filters in "
-    "cities around the world, mostly in the Global South. It measures EC by **FTIR** (below).",
+    "**SPARTAN** (Surface PARTiculate mAtter Network, www.spartan-network.org, Fig 1) samples particles onto filters "
+    "in cities around the world, mostly in the Global South. It measures EC by **FTIR** (below).",
+    "FTIR EC compares well to absorption measurements (Fabs) at most SPARTAN sites, but not in Addis Ababa.",
     "**Addis Ababa**, capital of Ethiopia (about 2,400 m elevation, about 5 million people), has some of the highest "
     "EC in SPARTAN. Households cook and heat with wood and charcoal.",
     f"We use {len(g['COHORT'])} Addis filters (Dec 2022 to Sep 2024) across three seasons: **Dry** (Bega, Oct to "
-    "Feb), **Belg** short rains (Mar to May) and **Kiremt** long rains (Jun to Sep). All "
-    f"{ALL_ADDIS[3]} Addis filters in the public SPARTAN release give the same result."], bullet=True)
-y += picture(x + PAD + 1.3, y, IW - 2.6, PRINT / "f0_network_map.png") + 0.05
+    "Feb), **Belg** short rains (Mar to May) and **Kiremt** long rains (Jun to Sep)."], bullet=True)
+y += picture(x + PAD + 2.1, y, IW - 4.2, PRINT / "f0_network_map.png") + 0.05
 y += caption(x + PAD, y, "Where the filters come from. Grey: IMPROVE sites (US), which provide the calibration. "
                          "Blue stars: SPARTAN sites, where the calibration is applied.") + 0.25
 
 y += header(x, y, CW, "How FTIR measures EC: a calibration")
 y += 0.2
 y += text(x + PAD, y, IW, [
-    "**FTIR** (Fourier-transform infrared spectroscopy) passes infrared light through a Teflon filter and records how "
-    "much is absorbed at each wavenumber. That curve is the filter's **spectrum**. FTIR is fast, cheap and does not "
+    "**FTIR** (Fourier-transform infrared spectroscopy) passes infrared light through a Teflon filter and records "
+    "absorption across the wavenumbers. That curve is the filter's **spectrum**. FTIR is fast, cheap and does not "
     "destroy the filter, but a spectrum does not give EC directly: it has to be **calibrated** against a reference.",
-    "Most methods are calibrated with laboratory standards. FTIR EC is calibrated with **ambient samples**: real "
-    "IMPROVE filters on which the same air was collected on a Teflon filter (FTIR spectrum) and on a quartz filter "
-    "(EC measured by **TOR**, the reference method)."])
+    "Most methods are calibrated with laboratory standards. FTIR EC is calibrated with **ambient samples** (Dillner and "
+    "Takahama, 2015): IMPROVE filters on which the same air was collected on a Teflon filter (FTIR spectrum) and on a "
+    "quartz filter (EC measured by **TOR**, the reference method) (Figs 1 and 2)."])
 
 # flow diagram: IMPROVE (Teflon -> spectrum, quartz -> TOR EC) -> PLS calibration, then down to SPARTAN
 y += 0.1
@@ -525,15 +530,15 @@ box(c3, y, pls_w, 2 * BX_H + 0.25, "**PLS calibration**\nlearns which\nspectral 
 y += 2 * BX_H + 0.25
 arrow(c3 + pls_w / 2 - 0.3, y + 0.05, 0.6, 0.5, MSO_SHAPE.DOWN_ARROW)    # from the PLS box (Ann, 19 Oct)
 y += 0.6
-box(bx, y, IW, 1.25, "Applied to **SPARTAN** spectra (Addis Ababa): FTIR EC, checked against **HIPS** light "
-                      "absorption (no TOR at Addis)", TINT)
+box(bx, y, IW, 1.25, "Applied to **SPARTAN** spectra (Addis Ababa): FTIR EC, QC checks against **HIPS** light "
+                      "absorption (Fig 4b; no TOR at Addis)", TINT)
 y += 1.25 + 0.15
 y += caption(x + PAD, y, "The calibration behind every SPARTAN FTIR EC value.") + 0.2
 # why IMPROVE call-out (the question every audience asks; Ann: answer it on the poster)
-why = ["**Why calibrate with IMPROVE filters?** Because it is the only data set that exists: no other library of "
-       "matched Teflon (FTIR) and quartz (TOR) ambient filters exists anywhere, from Addis Ababa or any other city. "
-       "CSN (the US urban network) filters are bigger and thicker and sample at a lower flow, so FTIR calibrations "
-       "built on them predict less well."]
+why = ["**Why calibrate with IMPROVE filters?** Because it is the only data set that exists: no other large library "
+       "of matched Teflon (FTIR) and quartz (TOR) ambient filters exists, and there are no quartz filters from Addis "
+       "Ababa. CSN (the US urban network) filters are bigger and thicker and sample at a lower flow, so FTIR "
+       "calibrations built on CSN filters predict less well."]
 hh = text_h(why, IW - 0.3, 25) + 0.15
 rect(x + PAD, y, IW, hh, TINT, line=AMBER_RGB)
 text(x + PAD + 0.15, y + 0.08, IW - 0.3, why, size=25)
@@ -544,21 +549,21 @@ y += 0.15
 terms = [
     "**IMPROVE**: Interagency Monitoring of PROtected Visual Environments, the US network sampling in national parks "
     "and rural areas (vista.cira.colostate.edu/Improve).",
-    "**TOR**: thermal-optical reflectance. Heats a punch of a quartz filter and measures the carbon released; the "
-    "standard reference for EC.",
+    "**TOR**: thermal-optical reflectance. Heats a quartz filter and measures the carbon that evolves; the standard "
+    "reference for EC.",
     "**HIPS**: hybrid integrating plate/sphere. Measures how much red light (633 nm) a Teflon filter absorbs, called "
     "**Fabs**.",
-    "**MAC**: mass absorption cross-section, the light absorbed per gram of EC (m²/g). EC = Fabs / MAC. We use "
-    "MAC = 10 m²/g, a common default; the true value varies with sources. Changing MAC changes the slope in "
-    "Figure 4, not the intercept, so MAC alone cannot fix Addis.",
-    "**Calibration set**: the IMPROVE filters (with TOR EC) that one calibration is built from.",
+    "**MAC**: mass absorption cross-section, the light absorbed per gram of EC (m²/g). Fabs / MAC is a good "
+    "estimate of EC. We use MAC = 10 m²/g, a common default; the true value varies with sources. Changing MAC "
+    "changes the slope in Figure 4, not the intercept, so MAC alone cannot fix Addis' poor intercept.",
+    "**Calibration set**: the IMPROVE filters (with TOR EC) that a calibration is built from.",
     "**PLS**: partial least squares regression, which turns a whole spectrum into one number (EC).",
     "**Baseline correction of the spectra**: removing the smooth background from the Teflon filter and light "
     "scattering, so only particle absorption remains.",
     "**Deming regression**: a straight-line fit that allows for error in both measurements. Agreement means "
     "slope 1, intercept 0.",
 ]
-y += text(x + PAD, y, IW, terms, size=24, gap=0.22) + 0.1
+y += text(x + PAD, y, IW, terms, size=23, gap=0.18) + 0.1
 # acknowledgments pinned to the column foot. text_h over-reads long 24 pt lists by ~0.7 in (checked on the 20 Oct
 # PowerPoint render: the key terms end about 1.3 in above their estimate), hence the 1.0 in allowance.
 ack = ["**Acknowledgments:** supported by the NASA MAIA mission. Thanks to the SPARTAN team and the UC Davis FTIR group."]
@@ -583,13 +588,13 @@ y += picture(x + PAD, y, IW, PRINT / "fp_problem.png") + 0.05
 y += caption(x + PAD, y,
              f"Each point is one filter; dotted line: 1:1. **IMPROVE:** {int(S_POOL.n):,} filters, FTIR against TOR "
              f"EC: slope near 1, intercept near 0. **SPARTAN:** FTIR against HIPS EC. The other SPARTAN sites together "
-             f"are predicted reasonably (grey line), and Addis sits inside that cloud, but Addis alone is "
+             f"are predicted reasonably (grey data points and grey line); Addis alone is "
              f"well correlated with the wrong slope and intercept ({S_ADDIS.deming_slope:.1f}x "
              f"{S_ADDIS.deming_intercept:.1f}). Every season is off (slopes {min(cur_sl):.1f} to "
              f"{max(cur_sl):.1f}).") + 0.15
 y += 0.1
 
-y += header(x, y, CW, "IMPROVE filters that look like Addis fail too")
+y += header(x, y, CW, "IMPROVE spectra that look like Addis spectra fail too")
 y += 0.2
 y += text(x + PAD, y, IW, [
     f"From the IMPROVE filters we picked the {int(S_AN.n)} whose **spectra most resemble the Addis spectra**. Many are "
@@ -597,7 +602,7 @@ y += text(x + PAD, y, IW, [
 y += picture(x + PAD, y, IW, PRINT / "fp_analogs.png") + 0.05
 y += caption(x + PAD, y,
              f"Grey: all IMPROVE filters; red: the {int(S_AN.n)} most like Addis. TOR and HIPS agree on them, but "
-             f"the same FTIR calibration predicts them poorly, at ordinary IMPROVE concentrations. Same "
+             f"the same FTIR calibration predicts them poorly, at IMPROVE concentrations. Same "
              "calibration; only the samples changed.") + 0.25
 
 y += header(x, y, CW, "Addis filters carry far more EC than IMPROVE filters")
@@ -643,11 +648,13 @@ y += 0.2
 y += text(x + PAD, y, IW, [
     "FTIR EC calibrated on ambient IMPROVE filters predicts IMPROVE, and the SPARTAN network as a whole, reasonably, "
     "but not Addis Ababa.",
-    "Concentration is not the whole story: IMPROVE filters with Addis-like spectra are poorly predicted at ordinary "
-    "IMPROVE levels. Addis burns different fuels (wood, charcoal) from rural US sites, so its EC may differ in "
+    "Concentration is not the whole story: IMPROVE filters with Addis-like spectra are poorly predicted at IMPROVE "
+    "concentrations. Addis burns different fuels (wood, charcoal) from rural US sites, so its EC may differ in "
     "composition.",
-    "Next: choose calibration filters by EC-to-PM2.5 ratio; check TOR on the heaviest smoke-affected IMPROVE "
-    "filters; longer term, collocated Teflon and quartz filters in Addis Ababa."], bullet=True, size=24) + 0.2
+    "Next: find out why the Dry and Belg seasons are poorly predicted (compare IMPROVE and Addis spectra by season); "
+    "try choosing calibration filters by OC/EC ratio; check TOR on the heaviest smoke-affected IMPROVE filters; longer "
+    "term, collect collocated Teflon and quartz filters in Addis Ababa, at least some to check calibrations."],
+    bullet=True, size=24) + 0.2
 
 # references (19 Oct; from memory: check volumes and pages before printing)
 y += header(x, y, CW, "References")
@@ -669,7 +676,7 @@ y += text(x + PAD, y, IW, [
     "984-1002.",
     "Data: SPARTAN public release v3.1.4 (www.spartan-network.org/data); IMPROVE data from the Federal Land Manager "
     "Environmental Database (FED, views.cira.colostate.edu/fed)."],
-    size=17, color=SOFT, gap=0.15)
+    size=17, color=SOFT, gap=0.1)
 col_end[2] = y
 
 for i, e in col_end.items():
