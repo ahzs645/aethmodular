@@ -16,7 +16,8 @@ figure is redrawn here at poster scale from build.py's data, so build.py's figur
 21 Oct (Ann's comments on Ahmad_aaar_poster_2026_v2_AMD.pptx): her new title and text edits (intro bullet on SPARTAN
 sites vs Addis, figure references, Dillner & Takahama 2015 citation, "QC checks", softer "Why IMPROVE?", key-term
 wording, Figure 4 caption, Figure 5 header, conclusions); the 246-filter sentence dropped; next steps now focus on why
-Dry and Belg fail and on OC/EC rather than EC-to-PM2.5.
+Dry and Belg fail and on OC/EC rather than EC-to-PM2.5. Then, from ann_followup_20261021.ipynb: Figure 5's caption says
+which calibration it uses, and the conclusions replace the fuels speculation with the measured per-EC organic deficit.
 
 Run with anaconda python from the repo root:
     ~/anaconda3/bin/python deliverables/aaar_poster_2026/build_poster.py
@@ -219,7 +220,7 @@ with plt.rc_context(POSTER_RC):
     imp_mass, ad_mass, p99 = g["imp_mass"], g["ad_mass"], g["p99"]
     bins = np.logspace(np.log10(min(imp_mass.min(), ad_mass.min()) * .9),
                        np.log10(max(imp_mass.max(), ad_mass.max()) * 1.1), 46)
-    fig, ax = plt.subplots(figsize=(10, 3.9))
+    fig, ax = plt.subplots(figsize=(10, 3.7))
     for vals, color, lab in [(imp_mass, GREY_, f"IMPROVE calibration filters ({len(imp_mass):,})"),
                              (ad_mass, AMBER_, f"Addis Ababa ({len(ad_mass)})")]:
         w = np.full(len(vals), 100 / len(vals))
@@ -264,7 +265,7 @@ with plt.rc_context(POSTER_RC):
     order, inter, masks, n_spec = g["order"], g["inter"], g["masks"], g["n_spec"]
     ROWS = g["ROWS"]
     n_rows = sum(len(r) for _, r in ROWS) + len(ROWS)
-    fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(8.6, 5.45), sharex=True,
+    fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(8.6, 4.95), sharex=True,
                                    gridspec_kw=dict(height_ratios=[1, 2.6], hspace=.06))
     ax0.plot(np.arange(n_spec), np.sort(inter), color=BLUE_, lw=2.4)
     ax0.axhline(0, color=GREY_, ls=":", lw=1.4)
@@ -303,7 +304,7 @@ with plt.rc_context(POSTER_RC):
 
     # P8: season-specific calibrations
     SEAS, allp, SEAS_FIT, COHORT = g["SEAS"], g["allp"], g["SEAS_FIT"], g["COHORT"]
-    fig, axes = plt.subplots(1, 3, figsize=(12.5, 4.25), sharey=True, gridspec_kw=dict(wspace=.08))
+    fig, axes = plt.subplots(1, 3, figsize=(12.5, 4.05), sharey=True, gridspec_kw=dict(wspace=.08))
     lim = 12
     for ax, k in zip(axes, SEASONS):
         b0 = base[base.season == k]
@@ -602,8 +603,8 @@ y += text(x + PAD, y, IW, [
 y += picture(x + PAD, y, IW, PRINT / "fp_analogs.png") + 0.05
 y += caption(x + PAD, y,
              f"Grey: all IMPROVE filters; red: the {int(S_AN.n)} most like Addis. TOR and HIPS agree on them, but "
-             f"the same FTIR calibration predicts them poorly, at IMPROVE concentrations. Same "
-             "calibration; only the samples changed.") + 0.25
+             f"the baseline-corrected FTIR calibration (as in Figure 4, IMPROVE, and Figure 7, right) predicts them "
+             "poorly, at IMPROVE concentrations. Same calibration; only the samples changed.") + 0.25
 
 y += header(x, y, CW, "Addis filters carry far more EC than IMPROVE filters")
 y += 0.2
@@ -641,7 +642,7 @@ y += picture(x + PAD, y, IW, PRINT / "fp_seasons.png") + 0.05
 y += caption(x + PAD, y,
              f"Dashed: current calibration; grey: baseline-corrected (Step 1); colour: season-specific. Kiremt "
              f"improves (slope "
-             f"{K0.deming_slope:.2f} to {K1.deming_slope:.2f}); Dry and Belg do not yet.") + 0.25
+             f"{K0.deming_slope:.2f} to {K1.deming_slope:.2f}); Dry and Belg do not yet.") + 0.15
 
 y += header(x, y, CW, "Conclusions and next steps")
 y += 0.2
@@ -649,12 +650,13 @@ y += text(x + PAD, y, IW, [
     "FTIR EC calibrated on ambient IMPROVE filters predicts IMPROVE, and the SPARTAN network as a whole, reasonably, "
     "but not Addis Ababa.",
     "Concentration is not the whole story: IMPROVE filters with Addis-like spectra are poorly predicted at IMPROVE "
-    "concentrations. Addis burns different fuels (wood, charcoal) from rural US sites, so its EC may differ in "
-    "composition.",
+    "concentrations. Per µg of EC, Addis spectra carry about a tenth of the organic signal of those look-alikes (least "
+    "in Dry, most in Kiremt); calibrations trained on IMPROVE partly read EC through organic bands, so they read "
+    "Addis low.",
     "Next: find out why the Dry and Belg seasons are poorly predicted (compare IMPROVE and Addis spectra by season); "
     "try choosing calibration filters by OC/EC ratio; check TOR on the heaviest smoke-affected IMPROVE filters; longer "
     "term, collect collocated Teflon and quartz filters in Addis Ababa, at least some to check calibrations."],
-    bullet=True, size=24) + 0.2
+    bullet=True, size=24) + 0.1
 
 # references (19 Oct; from memory: check volumes and pages before printing)
 y += header(x, y, CW, "References")
