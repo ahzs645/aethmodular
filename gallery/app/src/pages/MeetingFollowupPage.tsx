@@ -8,7 +8,7 @@ import * as d3 from 'd3'
 import { ChartFrame, Empty, ExplainOnly, Note, Select, Segmented, Toggle } from '@/components/ChartFrame'
 import { BaselineOptionsProvider, BaselinePicker, CountPicker, SeasonPicker, clampCount, useBaselineOptions } from '@/components/Pickers'
 import { PageToc } from '@/components/PageToc'
-import { Crossplot, type CrossPoint } from '@/components/Crossplot'
+import { Crossplot, sharedCrossDomains, type CrossPoint } from '@/components/Crossplot'
 import { Key as SharedKey } from '@/components/Key'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { BandCell, FitCell } from '@/components/TableCells'
@@ -736,6 +736,10 @@ function ThreePlots({ data }: { data: MeetingData }) {
   const hipsLabel = ecAxis('hips', unit)
   const seasonName = isAllAddis(season) ? 'all-Addis' : shortSeason(season)
   const baselineTag = <em className="baseline-tag">{methodName(method)}</em>
+  const torHips = improve('tor', 'fabs'), ftirTor = improve('ftir', 'tor'), ftirHips = improve('ftir', 'fabs')
+  const addis = addisPts(fitId, season, undefined, perFilter)
+  // all four panels on one EC range, always: the IMPROVE and Addis loadings compare by eye
+  const shared = sharedCrossDomains([torHips, ftirTor, ftirHips, addis])
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › ThreePlots" title="Three crossplots per season — TOR EC vs HIPS, FTIR vs TOR and FTIR vs HIPS on held-out IMPROVE filters, beside the Addis test set from the same calibration and the spectra"
       subtitle="Only IMPROVE filters from sites held out of the calibration set are drawn (cross-validation). 'Seasonal calibration' is one model per season from its 500 analogs; the all-IMPROVE models are Ann's reading of the current model (lot 251, or the frozen full-pool model for the selected analysis version). For the all-IMPROVE models, the IMPROVE panels can show either the season's analogs or every held-out IMPROVE filter."
@@ -757,18 +761,17 @@ function ThreePlots({ data }: { data: MeetingData }) {
               : `cross-validation · the ${seasonName} analogs at sites held out of the ${modelLabel(fam).toLowerCase()} calibration set`}</span>
           </h3>
           <div className="plot-group-grid three">
-            <Crossplot title="TOR EC vs HIPS" points={improve('tor', 'fabs')} errorRatio={q('tor_vs_fabs')?.deming_lambda} xLabel={hipsLabel} yLabel={ecAxis('tor', unit)} />
-            <Crossplot title="FTIR EC vs TOR EC" points={improve('ftir', 'tor')} errorRatio={q('ftir_vs_tor')?.deming_lambda} xLabel={ecAxis('tor', unit)} yLabel={ecAxis('ftir', unit)} />
-            <Crossplot title="FTIR EC vs HIPS" points={improve('ftir', 'fabs')} errorRatio={q('ftir_vs_fabs')?.deming_lambda} xLabel={hipsLabel} yLabel={ecAxis('ftir', unit)} />
+            <Crossplot title="TOR EC vs HIPS" points={torHips} errorRatio={q('tor_vs_fabs')?.deming_lambda} xLabel={hipsLabel} yLabel={ecAxis('tor', unit)} domain={shared.domain} />
+            <Crossplot title="FTIR EC vs TOR EC" points={ftirTor} errorRatio={q('ftir_vs_tor')?.deming_lambda} xLabel={ecAxis('tor', unit)} yLabel={ecAxis('ftir', unit)} domain={shared.domain} />
+            <Crossplot title="FTIR EC vs HIPS" points={ftirHips} errorRatio={q('ftir_vs_fabs')?.deming_lambda} xLabel={hipsLabel} yLabel={ecAxis('ftir', unit)} domain={shared.domain} />
           </div>
         </section>
         <section className="plot-group addis">
           <h3>
             Test set: Addis {baselineTag}
-            <span>predicted by the same calibration · HIPS only (no TOR at Addis)</span>
           </h3>
           <div className="plot-group-grid">
-            <Crossplot title={`Addis ${seasonPhrase(season)}: FTIR vs HIPS`} points={addisPts(fitId, season, undefined, perFilter)} errorRatio={sAd?.deming_lambda ?? data.summary.lambda} xLabel={hipsLabel} yLabel={ecAxis('ftir', unit)} />
+            <Crossplot title={`Addis ${seasonPhrase(season)}: FTIR vs HIPS`} points={addis} domain={shared.domain} errorRatio={sAd?.deming_lambda ?? data.summary.lambda} xLabel={hipsLabel} yLabel={ecAxis('ftir', unit)} />
           </div>
         </section>
       </div>
@@ -783,7 +786,7 @@ function ThreePlots({ data }: { data: MeetingData }) {
         {colorBy === 'OP fraction' && <ColorLegend scale={opScale} scheme={opColours.scheme} label="IMPROVE: OP fraction = OPTR / (EC + OPTR)" width={200} />}
         {colorBy === 'OC/EC' && <ColorLegend scale={ocScale} scheme={ocColours.scheme} label="IMPROVE: TOR OC/EC" width={200} format={(v) => v.toFixed(0)} />}
       </Key>
-      {perFilter && <Note>Mass per filter = concentration × sampled air volume, filter by filter. IMPROVE samples about 33 m³ per filter, SPARTAN at Addis about 7 m³, so Addis is far less extreme in mass than in concentration: its median HIPS loading is about 9× the IMPROVE median (41× in µg/m³), though still above IMPROVE's 99th percentile. Fit lines are refitted on the converted points with the same error ratio.</Note>}
+      {perFilter && <ExplainOnly><Note>Mass per filter = concentration × sampled air volume, filter by filter. IMPROVE samples about 33 m³ per filter, SPARTAN at Addis about 7 m³, so Addis is far less extreme in mass than in concentration: its median HIPS loading is about 9× the IMPROVE median (41× in µg/m³), though still above IMPROVE's 99th percentile. Fit lines are refitted on the converted points with the same error ratio.</Note></ExplainOnly>}
       <SpectraPanel data={data} method={method} group={season} />
       <ExplainOnly>
         <AcrossSeasons data={data} fitPrefix={seasonal ? `seasonal|${method}|locked` : fitId} seasonal={seasonal} />

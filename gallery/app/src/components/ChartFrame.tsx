@@ -88,6 +88,11 @@ export function ChartFrame({
   }
 
   const anchor = id && method !== 'deming' ? `${id}-${method}` : id
+  const [side, cycleSide] = useControlsSide(id ?? short)
+  // focus mode: this chart alone, centred over the page with its options; `focus=<key>` in the URL, so a copied link
+  // reopens it exactly as it is (every other setting already lives in the URL)
+  const focusKey = anchor ?? slug(short)
+  const [focused, setFocused] = useFocus(focusKey)
   if (compact) return (
     <section className="panel compact" ref={ref} id={anchor}>
       <TileMenu name={short} extras={extras!} about={hasInfo ? <>{rest && <p>{rest}</p>}{about && <div className="frame-about">{about}</div>}{subtitle && <p className="subtitle">{subtitle}</p>}{provenance && <p className="provenance">{provenance}</p>}</> : null}
@@ -95,8 +100,9 @@ export function ChartFrame({
       {children}
     </section>
   )
-  return (
-    <section className="panel" ref={ref} id={anchor}>
+  return (<>
+    {focused && <div className="focus-scrim" onClick={() => setFocused(false)} />}
+    <section className={`panel${focused ? ' focused' : ''}`} ref={ref} id={anchor}>
       <header className="frame-head">
         <div>
           <h2>
@@ -109,21 +115,149 @@ export function ChartFrame({
           {info && provenance && <p className="provenance">{provenance}</p>}
         </div>
         <div className="frame-actions">
+          {controls && <ControlsSideButton side={side} onClick={cycleSide} />}
           {hasInfo && (
             <button type="button" className={`btn quiet ${info ? 'on' : ''}`} title={info ? 'Hide the explanation' : 'What this chart shows and where it comes from'} aria-pressed={info} onClick={() => setInfo((v) => !v)}>
               ?
             </button>
           )}
-          <button type="button" className="btn quiet" title="Copy a reference to this chart (title, source file, current view URL) for development" onClick={copyRef}>
-            {refCopied ? 'Copied' : 'Ref'}
-          </button>
+          <RefMenu onCopyRef={copyRef} refCopied={refCopied} link={() => focusLink(focusKey)} focused={focused} onFocus={() => setFocused(true)} />
           {/* the whole figure (every facet and the legend), not just the first <svg> */}
           {exportable && <ExportButton panelRef={ref} title={short} />}
+          {focused
+            ? <button type="button" className="btn quiet" title="Back to the page (Esc)" onClick={() => setFocused(false)}>Close ✕</button>
+            : <button type="button" className="btn quiet" title="Focus: this chart alone, centred, with its options" aria-label="Focus on this chart" onClick={() => setFocused(true)}>⤢</button>}
         </div>
       </header>
-      {controls && <div className="frame-controls">{controls}</div>}
-      {children}
+      {/* the same elements whichever side the options are on: a different tree would remount the chart's
+          own wrapper under a chart that is not remounted, and its size observer would keep the old width */}
+      <div className={`frame-body controls-${controls ? side : 'top'}`}>
+        {controls && <div className="frame-controls">{controls}</div>}
+        <div className="frame-chart">{children}</div>
+      </div>
     </section>
+  </>)
+}
+
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48)
+const FOCUS_EVENT = 'gallery-focus'
+
+/** a link that opens the gallery on one chart in focus mode, with every setting as it is now */
+export function focusLink(key: string) {
+  const url = new URL(window.location.href)
+  url.searchParams.set('focus', key)
+  return url.toString()
+}
+
+/** whether this chart is the focused one (`focus` in the query); one at a time, kept in sync across frames */
+function useFocus(key: string): [boolean, (on: boolean) => void] {
+  const read = () => new URL(window.location.href).searchParams.get('focus') === key
+  const [on, setOn] = useState(read)
+  useEffect(() => {
+    const sync = () => setOn(read())
+    sync()
+    window.addEventListener('popstate', sync)
+    window.addEventListener(FOCUS_EVENT, sync)
+    return () => { window.removeEventListener('popstate', sync); window.removeEventListener(FOCUS_EVENT, sync) }
+  }, [key])  // eslint-disable-line react-hooks/exhaustive-deps
+  const set = (v: boolean) => {
+    const url = new URL(window.location.href)
+    if (v) url.searchParams.set('focus', key)
+    else url.searchParams.delete('focus')
+    window.history.replaceState(null, '', url)
+    window.dispatchEvent(new Event(FOCUS_EVENT))
+  }
+  // while focused: Esc leaves (unless a menu inside handled it first) and the page behind does not scroll
+  useEffect(() => {
+    if (!on) return
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('[aria-expanded="true"]')) set(false) }
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', esc)
+    return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', esc) }
+  }, [on])  // eslint-disable-line react-hooks/exhaustive-deps
+  return [on, set]
+}
+
+/** "Ref ▾": share this chart as it is now, open it in focus mode, or copy the development reference */
+function RefMenu({ onCopyRef, refCopied, link, focused, onFocus }: {
+  onCopyRef: () => void; refCopied: boolean; link: () => string; focused: boolean; onFocus: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
+  const root = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const off = (e: PointerEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false) }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); setOpen(false) } }
+    window.addEventListener('pointerdown', off)
+    window.addEventListener('keydown', esc)
+    return () => { window.removeEventListener('pointerdown', off); window.removeEventListener('keydown', esc) }
+  }, [open])
+  const copyLink = () => navigator.clipboard?.writeText(link()).then(() => {
+    setLinkCopied(true)
+    setTimeout(() => { setLinkCopied(false); setOpen(false) }, 1200)
+  })
+  return (
+    <div className="frame-menu-root" ref={root}>
+      <button type="button" className="btn quiet" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}
+        title="Share this chart with its settings, focus on it, or copy a development reference">
+        {refCopied ? 'Copied' : 'Ref'}<svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>
+      </button>
+      {open && <div className="frame-menu" role="menu">
+        <button type="button" role="menuitem" onClick={copyLink}>
+          <strong>{linkCopied ? 'Link copied' : 'Copy link to this chart'}</strong>
+          <span>Opens the gallery on this chart alone, with every setting as it is now</span>
+        </button>
+        {!focused && <button type="button" role="menuitem" onClick={() => { setOpen(false); onFocus() }}>
+          <strong>Focus on this chart</strong><span>Alone and centred, with its options (Esc to leave)</span>
+        </button>}
+        <button type="button" role="menuitem" onClick={() => { onCopyRef(); setOpen(false) }}>
+          <strong>Copy reference</strong><span>Title, source file and view URL, for development</span>
+        </button>
+      </div>}
+    </div>
+  )
+}
+
+/**
+ * Where a chart's options sit: above it (the default), or in a column to its right or left, for a
+ * tall chart on a wide screen. Per chart and per viewer (localStorage), a convenience, not view state:
+ * it stays out of the URL. Under 820px wide the column falls back to the row above (styles.css).
+ */
+type ControlsSide = 'top' | 'right' | 'left'
+const SIDES: ControlsSide[] = ['top', 'right', 'left']
+const SIDE_KEY = 'aeth-gallery:controls-side'
+const readSides = (): Record<string, ControlsSide> => { try { return JSON.parse(localStorage.getItem(SIDE_KEY) ?? '{}') } catch { return {} } }
+
+function useControlsSide(key: string): [ControlsSide, () => void] {
+  const [side, setSide] = useState<ControlsSide>(() => readSides()[key] ?? 'top')
+  const cycle = () => {
+    const next = SIDES[(SIDES.indexOf(side) + 1) % SIDES.length]
+    setSide(next)
+    try {
+      const all = readSides()
+      if (next === 'top') delete all[key]; else all[key] = next
+      localStorage.setItem(SIDE_KEY, JSON.stringify(all))
+    } catch { /* blocked storage: the choice still holds until reload */ }
+  }
+  return [side, cycle]
+}
+
+const SIDE_NEXT: Record<ControlsSide, string> = { top: 'to the right of the chart', right: 'to the left of the chart', left: 'back above the chart' }
+
+/** A card outline with the options' place filled in; a click moves them on (top → right → left). */
+function ControlsSideButton({ side, onClick }: { side: ControlsSide; onClick: () => void }) {
+  const bar = side === 'top' ? { x: 2, y: 2, width: 12, height: 3 } : { x: side === 'right' ? 10 : 2, y: 2, width: 4, height: 12 }
+  return (
+    <button type="button" className={`btn quiet ${side !== 'top' ? 'on' : ''}`} onClick={onClick}
+      title={`Options ${side === 'top' ? 'above' : `to the ${side} of`} the chart; click to put them ${SIDE_NEXT[side]}`}
+      aria-label={`Move the options ${SIDE_NEXT[side]}`}>
+      <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" style={{ display: 'block' }}>
+        <rect x="1" y="1" width="14" height="14" rx="2" fill="none" stroke="currentColor" strokeWidth="1.3" />
+        <rect {...bar} rx="0.8" fill="currentColor" />
+      </svg>
+    </button>
   )
 }
 
@@ -246,13 +380,18 @@ export function Segmented<T extends string>({
   optionLabel?: (o: T) => string
 }) {
   const method = useEstimator()
+  const text = (o: T) => estimatorText(optionLabel ? optionLabel(o) : sentence(o), method)
+  // too long for one row in a column beside the chart: stacked there (styles.css .seg.long); four or more
+  // options wrap into a broken grid well before 28 characters
+  const chars = options.reduce((n, o) => n + text(o).length, 0)
+  const long = chars > 28 || (options.length >= 4 && chars > 20)
   return (
     <span className="control" title={title}>
       {label}
-      <span className="seg" role="radiogroup">
+      <span className={`seg${long ? ' long' : ''}`} role="radiogroup">
         {options.map((o) => (
           <button key={o} type="button" role="radio" aria-checked={o === value} className={o === value ? 'active' : ''} onClick={() => onChange(o)}>
-            {estimatorText(optionLabel ? optionLabel(o) : sentence(o), method)}
+            {text(o)}
           </button>
         ))}
       </span>

@@ -91,7 +91,9 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
         {rows.length === 0 || targets.length === 0 ? (
           <Empty>No cross-site rows in the export.</Empty>
         ) : (
-          <svg width={width} height={innerH + 40}>
+          // the cells (not cells + row labels) sit in the middle of the panel when there is room; left-aligned when not
+          <svg width={labelW + targets.length * cellW + 4} height={innerH + 40}
+            style={{ display: 'block', marginLeft: `max(0px, calc(50% - ${labelW + (targets.length * cellW) / 2}px))` }}>
             <g transform={`translate(${labelW},30)`}>
               {targets.map((t, j) => (
                 <text key={t} x={j * cellW + cellW / 2} y={-10} textAnchor="middle" fontSize={11.5} fontWeight={600} fill={calib.targets[t]?.color ?? INK.text} fontFamily={FONT.family}>

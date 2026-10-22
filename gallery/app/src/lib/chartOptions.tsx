@@ -26,8 +26,8 @@ import type { AxisOption } from '@/components/AxisChoices'
  *   and `hiddenNote` can say why ("one fit per panel").
  * - `when` on a choice: offered only when true. A chosen value that is no longer offered
  *   resolves to the first one that is, so the chart never draws a combination it hides.
- * - `bind`: state the chart does not own (the gallery-wide fit grouping); `persist`: kept in
- *   the URL as `${chartId}.${key}`; otherwise the chart's own state.
+ * - `bind`: state the chart does not own (the gallery-wide fit grouping). Every other option is kept in
+ *   the URL as `${chartId}.${key}` (defaults are not written); `persist: false` keeps one in the chart's state.
  * - `node`: a control the engine does not draw itself (a field picker, a count), placed in order;
  *   drawn when `controls()` is called, so it may use values the chart computes after the hook.
  * - `onChange`: a side effect of the reader's change (clear a brush, reset a legend).
@@ -39,8 +39,8 @@ export type { OptionChoice, OptionContext, OptionDef, OptionValue } from '@/lib/
 /** The resolved values, and `controls()` for the chart's ChartFrame. */
 export function useChartOptions(chartId: string, defs: readonly OptionDef[], facts: OptionContext = {}) {
   // one state per option, in a fixed order: a mounted chart never changes its list of options
-  // inside a Dashboard tile every option is kept in the URL (under the tile's prefix), so a shared
-  // dashboard reopens each tile as it was; elsewhere only the options marked `persist` are
+  // every option is kept in the URL (under a tile's prefix inside a Dashboard tile), so a copied link, or the
+  // Ref menu's "Copy link to this chart", reopens the chart exactly as it was; a default is never written
   const inTile = useParamScope() !== ''
   const stored = defs.map((d) => useStoredOption(chartId, d, inTile)) // eslint-disable-line react-hooks/rules-of-hooks
   const { values, items, ctx } = resolveOptions(defs, stored.map((s) => s[0]), facts)
@@ -86,7 +86,7 @@ function useStoredOption(chartId: string, d: OptionDef, inTile: boolean): [Optio
   // the kind of storage is fixed per option (and a chart never moves in or out of a tile), so the
   // hooks below run in the same order every render
   if (d.bind) return d.bind as [OptionValue, (v: OptionValue) => void]
-  if (d.persist || inTile) {
+  if (d.persist !== false || inTile) {
     const [v, set] = useSearchParam<string>(`${chartId}.${d.key}`, d.toggle ? (d.default ? '1' : '0') : String(d.default ?? '')) // eslint-disable-line react-hooks/rules-of-hooks
     return d.toggle ? [v === '1', (x) => set(x ? '1' : '0')] : [v, (x) => set(String(x))]
   }

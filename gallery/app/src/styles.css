@@ -102,6 +102,61 @@ code { font-family: var(--mono); font-size: 0.92em; }
   display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
   margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--ink-grid);
 }
+/* the options in a column beside the chart (ChartFrame's layout button): stacked one per line, the
+   chart keeps the rest of the width and re-measures itself. Under 821px they stay in the row above */
+.frame-chart { min-width: 0; }
+@media (min-width: 821px) {
+  .frame-body.controls-right, .frame-body.controls-left { display: grid; column-gap: 16px; align-items: start; }
+  .frame-body.controls-right { grid-template-columns: minmax(0, 1fr) minmax(180px, 240px); }
+  .frame-body.controls-left { grid-template-columns: minmax(180px, 240px) minmax(0, 1fr); }
+  .frame-body.controls-right > .frame-chart { grid-column: 1; grid-row: 1; }
+  .frame-body.controls-right > .frame-controls { grid-column: 2; grid-row: 1; padding-left: 14px; border-left: 1px solid var(--ink-grid); }
+  .frame-body.controls-left > .frame-controls { grid-column: 1; grid-row: 1; padding-right: 14px; border-right: 1px solid var(--ink-grid); }
+  .frame-body.controls-left > .frame-chart { grid-column: 2; grid-row: 1; }
+  .frame-body:not(.controls-top) > .frame-controls {
+    flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 12px;
+    margin: 0; padding-top: 10px; padding-bottom: 0; border-bottom: 0; position: sticky; top: 12px;
+  }
+  /* a segmented control or picker gets its own line: label above, choices below */
+  .frame-body:not(.controls-top) > .frame-controls > .control,
+  .frame-body:not(.controls-top) > .frame-controls > .option-node > .control,
+  .frame-body:not(.controls-top) > .frame-controls > .option-node > .combobox-control,
+  .frame-body:not(.controls-top) > .frame-controls > .combobox-control { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .frame-body:not(.controls-top) > .frame-controls .combobox,
+  .frame-body:not(.controls-top) > .frame-controls .combobox-trigger { width: 100%; max-width: 100%; }
+  .frame-body:not(.controls-top) > .frame-controls .combobox-control { width: 100%; min-width: 0; }
+  .frame-body:not(.controls-top) > .frame-controls .grouping-picker { display: flex; flex-direction: column; align-items: stretch; width: 100%; }
+  .frame-body:not(.controls-top) > .frame-controls .grouping-picker .combobox-control { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .frame-body:not(.controls-top) > .frame-controls .seg { flex-wrap: wrap; }
+  .frame-body:not(.controls-top) > .frame-controls > .option-node > .control { display: flex; }   /* not inline: lets a stacked list fill the column */
+  /* long options (Segmented marks them) read one per line in the narrow column, as a list */
+  .frame-body:not(.controls-top) > .frame-controls .seg.long { flex-direction: column; align-self: stretch; }
+  .frame-body:not(.controls-top) > .frame-controls .seg.long button { text-align: left; }
+  .frame-body:not(.controls-top) > .frame-controls .seg.long button + button { border-left: 0; border-top: 1px solid var(--ink-border); }
+}
+/* Ref ▾ menu (ChartFrame RefMenu) */
+.frame-menu-root { position: relative; display: inline-flex; }
+.frame-menu-root > .btn { display: inline-flex; align-items: center; gap: 4px; }
+.frame-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 60; width: 270px; padding: 4px; display: flex; flex-direction: column;
+  background: var(--ink-panel); border: 1px solid var(--ink-border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14); }
+.frame-menu button { display: flex; flex-direction: column; gap: 2px; text-align: left; border: 0; background: transparent; border-radius: 6px;
+  padding: 7px 9px; cursor: pointer; font-family: var(--font); color: var(--ink-text); }
+.frame-menu button:hover, .frame-menu button:focus-visible { background: var(--accent-soft); outline: none; }
+.frame-menu strong { font-size: calc(12.5px * var(--text-scale)); font-weight: 600; }
+.frame-menu span { font-size: calc(11.5px * var(--text-scale)); color: var(--ink-muted); line-height: 1.35; }
+
+/* focus mode: one chart over the page, centred with its options; under the record drawer (z 40) so a clicked
+   point's record still opens on top */
+.focus-scrim { position: fixed; inset: 0; z-index: 37; background: rgba(17, 24, 39, 0.45); }
+.panel.focused { position: fixed; inset: 20px 20px 20px 46px; z-index: 38; margin: 0; overflow: auto; overscroll-behavior: contain;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.3); }
+.panel.focused > .frame-head { max-width: 1500px; margin-left: auto; margin-right: auto; }
+.panel.focused > .frame-body { max-width: 1500px; margin: 0 auto; }
+.panel.focused > .frame-body.controls-top > .frame-controls { justify-content: center; }
+.panel.focused .frame-chart .chart-wrap > svg, .panel.focused .frame-chart > svg { margin-left: auto; margin-right: auto; }
+.panel.focused .frame-chart .facet-grid { justify-items: center; }
+.panel.focused .frame-chart .legend { justify-content: center; }
+@media (max-width: 640px) { .panel.focused { inset: 0; border-radius: 0; } }
 .frame-empty { font-size: calc(13px * var(--text-scale)); color: var(--ink-muted); padding: 24px 0; text-align: center; }
 
 /* ---------- controls ---------- */
@@ -122,7 +177,7 @@ code { font-family: var(--mono); font-size: 0.92em; }
   padding: 4px 8px 4px 9px; border: 1px solid var(--ink-border); border-radius: 6px; line-height: 1.35;
   background: #fff; color: var(--ink-text); font: calc(12px * var(--text-scale)) var(--font); cursor: pointer; text-align: left;
 }
-.combobox-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.combobox-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }   /* min-width: a long value is cut, it does not widen the box */
 .combobox-trigger:hover, .combobox-trigger.open { border-color: var(--accent); }
 .combobox-trigger.open { background: var(--accent-soft); }
 .combobox-trigger:focus-visible { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
@@ -156,6 +211,8 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .combobox-option.active { background: var(--accent-soft); }
 .combobox-option[aria-selected="true"] { color: var(--accent); font-weight: 600; }
 .combobox-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.combobox-text.two-line { display: flex; flex-direction: column; white-space: normal; }
+.combobox-detail { font-size: calc(11px * var(--text-scale)); color: var(--ink-muted); font-weight: 400; line-height: 1.3; }
 .combobox-hint { margin-left: 12px; font-family: var(--mono); font-size: calc(10.5px * var(--text-scale)); color: var(--ink-muted); font-weight: 400; }
 .combobox-check { width: 14px; flex: none; text-align: center; color: var(--accent); }
 .toggle { font-size: calc(12px * var(--text-scale)); color: var(--ink-muted); display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
@@ -173,6 +230,13 @@ code { font-family: var(--mono); font-size: 0.92em; }
 }
 .seg button + button { border-left: 1px solid var(--ink-border); }
 .seg button.active { background: var(--accent); color: #fff; }
+.seg .seg-input {
+  width: 58px; border: 0; border-left: 1px solid var(--ink-border); background: #fff; color: var(--ink-muted); text-align: center;
+  font-size: calc(12px * var(--text-scale)); font-family: var(--font); padding: 4px 4px 4px 8px; -moz-appearance: textfield;
+}
+.seg .seg-input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--accent-soft); }
+.seg .seg-input.active { background: var(--accent); color: #fff; }
+.seg .seg-input::-webkit-inner-spin-button, .seg .seg-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 
 /* ---------- subset bar ---------- */
 
@@ -651,6 +715,9 @@ html[data-embed="1"] .app-header, html[data-embed="1"] .side-dock { display: non
 .season-edit-range { font-size: calc(11px * var(--text-scale)); color: var(--ink-muted); font-family: var(--mono); white-space: nowrap; }
 
 /* ---------- right-click filter menu (lib/filterEdits) ---------- */
+/* the right-click menu opens where the pointer is, which is where the hovered point's tooltip is: hide the
+   tooltips while it is open (lib/filterEdits FilterMenu) */
+html:has(.ctx-menu) .tooltip { visibility: hidden; }
 .ctx-menu {
   position: fixed; z-index: 90; min-width: 210px; max-width: 320px; padding: 4px;
   background: var(--ink-panel); border: 1px solid var(--ink-border); border-radius: 8px;
@@ -753,6 +820,24 @@ html[data-embed="1"] .app-header, html[data-embed="1"] .side-dock { display: non
 .ratio-dialog > header { margin-bottom: 0; }
 .ratio-presets, .ratio-build { display: flex; flex-direction: column; gap: 8px; }
 .ratio-preset-list { display: flex; flex-wrap: wrap; gap: 6px; }
+/* components/GroupingDialog: a measurement split into labelled bands */
+.grouping-dialog { width: min(680px, 100%); }
+/* GroupingPicker: the picker, then New… and Edit… (or Build on this… for a notebook grouping) */
+.grouping-picker { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; }
+.grouping-actions { display: inline-flex; gap: 4px; }
+.grouping-actions .btn { font-size: calc(11.5px * var(--text-scale)); padding: 1px 7px; }
+.grouping-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.grouping-cuts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex-basis: 100%; }
+.grouping-cut { display: inline-flex; align-items: center; }
+.grouping-cut input { width: 90px; }
+.grouping-name { display: inline-flex; align-items: center; gap: 6px; flex: 1 1 240px; }
+.grouping-name input { flex: 1; max-width: none; }
+.grouping-preview { display: block; background: var(--ink-bg, #f7f8fa); border-radius: 8px; }
+.grouping-bands { display: flex; flex-direction: column; gap: 6px; }
+.grouping-band { display: grid; grid-template-columns: 12px minmax(140px, 1fr) minmax(120px, auto) 90px; align-items: center; gap: 10px; }
+.grouping-band input { max-width: none; width: 100%; }
+.grouping-range { color: var(--ink-muted); font-size: calc(11.5px * var(--text-scale)); font-family: var(--mono); }
+.grouping-count { color: var(--ink-muted); font-size: calc(11.5px * var(--text-scale)); text-align: right; }
 .ratio-fraction { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .ratio-over { font-size: calc(18px * var(--text-scale)); color: var(--ink-muted); }
 .ratio-list { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
@@ -1234,6 +1319,20 @@ html.dash-present .container.dash { padding-top: 10px; }
 .multi-tick.on { background: var(--accent); border-color: var(--accent); }
 /* excluded samples: the repo's (with their reason) and the reader's hand exclusions (with a reason box) */
 .excluded-toggle { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* the sidebar's "excluded" row and its dialog (SubsetBar ExclusionLists): the export's exclusions and the reader's,
+   both lists always open; in the sidebar they scroll */
+.exclusions-wrap { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.exclusions-open { align-self: flex-end; font-size: calc(11.5px * var(--text-scale)); padding: 1px 6px; }
+.exclusions { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.exclusions section { min-width: 0; }
+.exclusions-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; font-size: calc(12px * var(--text-scale)); }
+.exclusions-sub { color: var(--ink-muted); font-size: calc(11.5px * var(--text-scale)); margin: 3px 0 2px; }
+.exclusions-list { display: flex; flex-direction: column; max-height: 220px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.exclusions.wide .exclusions-list { max-height: none; overflow: visible; }
+.exclusions.wide .excluded-row { grid-template-columns: 110px 200px minmax(0, 1fr) auto; }
+.exclusions.wide .excluded-row > .excluded-reason, .exclusions.wide .excluded-row > .excluded-why { grid-column: 3; grid-row: 1; }
+.exclusions-dialog { width: min(860px, 100%); }
+.exclusions-dialog-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: calc(15px * var(--text-scale)); }
 .excluded-toggle .dropped-details > summary { list-style: none; cursor: pointer; color: var(--accent); font-size: calc(11.5px * var(--text-scale)); }
 .excluded-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 2px 8px; padding: 5px 0; border-top: 1px solid var(--ink-border); }
 /* id and where on the first line, the reason (or its box) across the row below */

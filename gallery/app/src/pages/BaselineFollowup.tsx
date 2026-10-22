@@ -3,7 +3,7 @@ import { Marker } from '@/components/RefLines'
 import { dataUrl, useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
-import { ChartFrame, ExplainOnly, Note, Select } from '@/components/ChartFrame'
+import { ChartFrame, ExplainOnly, Note, Segmented } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -75,26 +75,32 @@ export function BaselineFollowup({ completed = false }: { completed?: boolean } 
 }
 
 function SelectionChart({data}:{data:FollowupData}) {
-  const [method,setMethod]=useState<BaselineMethod>('AIRSpec')
+  // one correction method, or both side by side in each calibration selection's band
+  const [view,setView]=useState<BaselineMethod|'Both'>('AIRSpec')
+  const methods:BaselineMethod[]=view==='Both'?['AIRSpec','VIBES']:[view]
   const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref);const tip=useTooltip(ref)
   // a model row this export lacks is left out rather than failing the page
-  const rows=MODEL_ORDER.flatMap(model=>data.selection_metrics.filter(r=>r.model===model&&r.method===method).slice(0,1))
+  const rows=methods.flatMap(method=>MODEL_ORDER.flatMap(model=>data.selection_metrics.filter(r=>r.model===model&&r.method===method).slice(0,1)))
   const baseline=data.selection_metrics.find(r=>r.model==='full_pool'&&r.method==='AIRSpec')
-  const w=Math.max(width,620),left=195,right=66,iw=w-left-right,ih=276
+  const w=Math.max(width,620),left=195,right=66,iw=w-left-right,ih=view==='Both'?380:276
   const x=d3.scaleLinear().domain([0,Math.max(...rows.map(r=>r.RMSE))*1.13]).nice().range([0,iw])
   const y=d3.scaleBand().domain(MODEL_ORDER).range([0,ih]).padding(.26)
-  return <ChartFrame title="Common-test calibration selection" tip={<p>The 500-filter analog memberships use AIRSpec spectral similarity to Addis targets, with masks applied to ranking only; every PLS fit retains 2,002 channels. The lowest-OC/EC membership uses historical carbon labels. All intervals are exploratory site-cluster intervals conditional on the fits.</p>} controls={<Select label="Correction method" value={method} options={['AIRSpec','VIBES']} onChange={v=>setMethod(v as BaselineMethod)}/>} subtitle="All fits scored against the same 2,327 IMPROVE TOR-labelled outer-site filters; lower RMSE is better." provenance={data.background_rank === 70 ? 'Rank-70 migration CLI · newly fitted EC models on completed corrections' : 'Executed CLI notebook · EC fits on archived corrections'}>
-    <div ref={ref} className="chart-wrap"><svg width={w} height={ih+100} role="img" aria-label={`${method} calibration selection RMSE on the common test`}><g transform={`translate(${left},23)`} fontFamily={FONT.family}>
+  const sub=d3.scaleBand<BaselineMethod>().domain(methods).range([0,y.bandwidth()]).padding(.08)
+  const colorOf=(m:BaselineMethod)=>methodColor(m, data.background_rank)
+  return <ChartFrame title="Common-test calibration selection" tip={<p>The 500-filter analog memberships use AIRSpec spectral similarity to Addis targets, with masks applied to ranking only; every PLS fit retains 2,002 channels. The lowest-OC/EC membership uses historical carbon labels. All intervals are exploratory site-cluster intervals conditional on the fits.</p>} controls={<Segmented label="Correction method" value={view} options={['AIRSpec','VIBES','Both'] as const} onChange={setView} optionLabel={v=>v}/>} subtitle="All fits scored against the same 2,327 IMPROVE TOR-labelled outer-site filters; lower RMSE is better." provenance={data.background_rank === 70 ? 'Rank-70 migration CLI · newly fitted EC models on completed corrections' : 'Executed CLI notebook · EC fits on archived corrections'}>
+    <div ref={ref} className="chart-wrap"><svg width={w} height={ih+100} role="img" aria-label={`${methods.join(' and ')} calibration selection RMSE on the common test`}><g transform={`translate(${left},23)`} fontFamily={FONT.family}>
       {baseline&&<Marker orient="v" at={x(baseline.RMSE)} from={0} to={ih} />}
-      {rows.map(r=><g key={r.model} transform={`translate(0,${y(r.model)})`}>
-        <text x={-11} y={y.bandwidth()/2+4} textAnchor="end" fontSize={11} fill={INK.text}>{MODEL_NAME[r.model]}</text>
-        <rect y={2} width={x(r.RMSE)} height={Math.max(2,y.bandwidth()-4)} rx={2} fill={methodColor(method, data.background_rank)} fillOpacity={r.model==='full_pool'?1:.77} onMouseEnter={e=>tip.show(e,[`${MODEL_NAME[r.model]} · ${method}`,`RMSE ${f(r.RMSE)}; MAE ${f(r.MAE)} µg/filter`,`${r.n_train} training filters / ${r.n_train_sites} sites; PLS k=${r.components}`,`ΔRMSE vs full-pool AIRSpec ${f(r.delta_RMSE_vs_full_AIRSpec)} [${f(r.delta_RMSE_CI_low)}, ${f(r.delta_RMSE_CI_high)}]`])} onMouseLeave={tip.hide}></rect>
-        <text x={x(r.RMSE)+6} y={y.bandwidth()/2+4} fontSize={10} fill={INK.text}>{f(r.RMSE)}</text>
+      {MODEL_ORDER.filter(model=>rows.some(r=>r.model===model)).map(model=><g key={model} transform={`translate(0,${y(model)})`}>
+        <text x={-11} y={y.bandwidth()/2+4} textAnchor="end" fontSize={11} fill={INK.text}>{MODEL_NAME[model]}</text>
+        {rows.filter(r=>r.model===model).map(r=><g key={r.method} transform={`translate(0,${sub(r.method)})`}>
+          <rect y={2} width={x(r.RMSE)} height={Math.max(2,sub.bandwidth()-4)} rx={2} fill={colorOf(r.method)} fillOpacity={r.model==='full_pool'?1:.77} onMouseEnter={e=>tip.show(e,[`${MODEL_NAME[r.model]} · ${r.method}`,`RMSE ${f(r.RMSE)}; MAE ${f(r.MAE)} µg/filter`,`${r.n_train} training filters / ${r.n_train_sites} sites; PLS k=${r.components}`,`ΔRMSE vs full-pool AIRSpec ${f(r.delta_RMSE_vs_full_AIRSpec)} [${f(r.delta_RMSE_CI_low)}, ${f(r.delta_RMSE_CI_high)}]`])} onMouseLeave={tip.hide}></rect>
+          <text x={x(r.RMSE)+6} y={sub.bandwidth()/2+4} fontSize={10} fill={INK.text}>{f(r.RMSE)}</text>
+        </g>)}
       </g>)}
       <XAxis scale={x} y={ih} label="RMSE vs TOR EC (µg/filter)"/>
       <g transform={`translate(0,${ih+56})`} fontSize={10} fill={INK.text}>
-        <rect width={11} height={11} fill={methodColor(method, data.background_rank)}/><text x={17} y={10}>{`${method} RMSE per calibration selection`}</text>
-        <line x1={230} x2={254} y1={5.5} y2={5.5} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="4 3"/><text x={260} y={10}>{`Full-pool AIRSpec reference, RMSE ${f(baseline?.RMSE ?? NaN)}`}</text>
+        {methods.map((m,i)=><g key={m} transform={`translate(${i*120},0)`}><rect width={11} height={11} fill={colorOf(m)}/><text x={17} y={10}>{view==='Both'?m:`${m} RMSE per calibration selection`}</text></g>)}
+        <g transform={`translate(${view==='Both'?240:230},0)`}><line x1={0} x2={24} y1={5.5} y2={5.5} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="4 3"/><text x={30} y={10}>{`Full-pool AIRSpec reference, RMSE ${f(baseline?.RMSE ?? NaN)}`}</text></g>
       </g>
     </g></svg>{tip.node}</div>
   </ChartFrame>

@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { seasonOnly } from '@/lib/seasons'
 import { SeasonBands, timeSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
-import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { Legend, toggleIn } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -13,9 +13,12 @@ import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
 import { useChartOptions } from '@/lib/chartOptions'
+import { useChartGrouping } from '@/components/GroupingDialog'
+import { useSearchParam } from '@/lib/url'
 import { useChartLabel, useFitHeight } from '@/lib/chartFit'
 
 const LAYOUTS = ['Overlay', 'Per site'] as const
+const SERIES_BY = ['Site', 'Group'] as const
 type Pt = { row: FilterRow; date: Date; value: number }
 
 /**
@@ -44,25 +47,38 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
   const [hover, setHover] = useState<string | null>(null)
   const [cursor, setCursor] = useState<Date | null>(null)
 
+  // series by site, or by the bands of the reader's grouping (components/GroupingDialog), every site pooled
+  const measured = useMemo(() => rows.filter((r) => typeof r[field] === 'number' && Number.isFinite(r[field] as number)), [rows, field])
+  const { grp, picker, missingNote } = useChartGrouping('timeseries', measured, () => setSeriesBy('Group'))
+  const [seriesChoice, setSeriesBy] = useSearchParam<'Site' | 'Group'>('timeseries.series', 'Site', SERIES_BY)
+  // Group is offered only once a grouping is picked
+  const seriesBy = grp ? seriesChoice : 'Site'
+  const byGroup = seriesBy === 'Group'
   const series = useMemo(
     () =>
-      meta.sites
+      (byGroup ? grp!.labels.map((l, i) => ({ name: l, color: grp!.colors[i], keep: (r: FilterRow) => grp!.labelOf(r) === l }))
+        : meta.sites.map((s) => ({ name: s.name, color: s.color, keep: (r: FilterRow) => r.site === s.name })))
         .filter((s) => !hidden.has(s.name))
         .map((s) => {
-          const pts: Pt[] = rows
-            .filter((r) => r.site === s.name && typeof r[field] === 'number' && Number.isFinite(r[field] as number))
+          const pts: Pt[] = measured
+            .filter(s.keep)
             .map((r) => ({ row: r, date: new Date(r.date + 'T00:00:00'), value: r[field] as number }))
             .sort((a, b) => +a.date - +b.date)
           return { name: s.name, color: s.color, pts }
         })
         .filter((s) => s.pts.length > 1),
-    [rows, field, meta.sites, hidden]
+    [measured, field, meta.sites, hidden, byGroup, grp]
   )
 
   // the options and when each applies (lib/chartOptions): with one site, overlay and per-site
   // panels are the same chart; an overlay of sites on their own calendars has nothing to shade
   const o = useChartOptions('timeseries', [
-    { key: 'layout', label: 'Layout', choices: LAYOUTS, default: 'Per site', when: (c) => (c.nSeries as number) > 1, hidden: 'Per site' },
+    { key: 'series', node: () => <>
+      {grp && <Segmented label="Series" value={seriesBy} options={SERIES_BY} onChange={setSeriesBy}
+        title="One series per site, or per band of a grouping (every site pooled in each band)" />}
+      {picker}
+    </> },
+    { key: 'layout', label: 'Layout', choices: LAYOUTS.map((v) => ({ value: v, label: v === 'Per site' && byGroup ? 'Per group' : v })), default: 'Per site', when: (c) => (c.nSeries as number) > 1, hidden: 'Per site' },
     { key: 'smooth', label: 'Rolling median', toggle: true, default: true },
     { key: 'shading', label: 'Season shading', toggle: true, default: true, hidden: false, when: (c) => !(c.mixed && c.layout === 'Overlay') },
     { key: 'cursor', when: () => !!cursor, node: () => <span className="control" style={{ fontFamily: 'var(--mono)' }}>{cursor && d3.timeFormat('%Y-%m-%d')(cursor)}</span> },
@@ -152,7 +168,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
                   >
                     {/* catches pointer moves in the empty parts of the panel */}
                     <rect x={0} y={0} width={innerW} height={innerH} fill="transparent" />
-                    <SeasonBands bands={bandsFor(x, panel.title)} height={innerH} hover={seasonHover} />
+                    <SeasonBands bands={bandsFor(x, byGroup ? null : panel.title)} height={innerH} hover={seasonHover} />
                     <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} tickCount={layout === 'Overlay' ? 6 : 4} pick="field" />
                     <XAxis scale={x as any} y={innerH} format={(d: Date) => d3.timeFormat('%b %Y')(d)} tickCount={Math.max(2, Math.min(7, Math.floor(innerW / 80)))} />
                     {panel.series.map((s) => (
@@ -228,6 +244,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
           highlighted={siteHover ?? seasonHover}
           note="hover any panel: the dashed cursor is the same date on every panel"
         />
+        {byGroup && missingNote('left out of the series')}
         {tip.node}
       </div>
     </ChartFrame>

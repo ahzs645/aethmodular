@@ -2,7 +2,9 @@ import { createContext, useContext, useMemo, type ComponentType, type ReactNode 
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
-import { Crossplot, type CrossPoint } from '@/components/Crossplot'
+import { Crossplot, sharedCrossDomains, type CrossPoint } from '@/components/Crossplot'
+import { PanelAxesControl, usePanelAxes } from '@/lib/panelAxes'
+import { collapsePanelAxes, type PanelDim } from '@/lib/axes'
 import { FacetGrid } from '@/components/FacetGrid'
 import { HeatCell } from '@/components/HeatCell'
 import { IntervalStrip, type IntervalBlock, type IntervalMark, type IntervalPanel } from '@/components/IntervalStrip'
@@ -137,7 +139,10 @@ export function Figure(props: FigureSpec & { about?: ReactNode }) {
     [all, (spec.choose ?? []).map((c) => o.values[c.column]).join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
   // the chosen variants' patches, applied over the spec in the order the variants are declared
   spec = variants.reduce((acc, v) => ({ ...acc, ...(v.choices.find((c) => c.value === o.values[v.key])?.patch ?? {}) }), spec) as FigureSpec
-  const controls = (spec.choose?.length || variants.length) ? o.controls() : undefined
+  // a faceted crossplot offers the gallery's Panel axes (lib/panelAxes) while it draws more than one panel
+  const panelAxes = spec.kind === 'crossplot' && !!spec.facet && uniq(rows, spec.facet).length > 1
+  const facetDim = spec.kind === 'crossplot' ? facetDimOf(spec.facet) : null
+  const controls = (spec.choose?.length || variants.length || panelAxes) ? <>{(spec.choose?.length || variants.length) ? o.controls() : null}{panelAxes && <PanelAxesControl dims={facetDim ? [facetDim] : []} />}</> : undefined
 
   const Custom = spec.kind === 'custom' ? CUSTOM.get(spec.component) : null
   const body = spec.kind === 'custom'
@@ -159,6 +164,9 @@ export function Figure(props: FigureSpec & { about?: ReactNode }) {
   )
 }
 
+/** what a crossplot's facets split by, for Panel axes (a facet on neither site nor season collapses Per site/Per season to Shared) */
+const facetDimOf = (facet?: string): PanelDim | null => (facet === 'season' ? 'season' : facet === 'site' || facet === 'Site' ? 'site' : null)
+
 const facetsOf = (rows: Row[], facet?: string) => (facet ? uniq(rows, facet).map((f) => ({ key: String(f), rows: rows.filter((r) => r[facet] === f) })) : [{ key: '', rows }])
 
 // ------------------------------------------------------------------ crossplot
@@ -173,8 +181,12 @@ function CrossplotFigure({ spec, rows }: { spec: Extract<FigureSpec, { kind: 'cr
       tip: [...(idv ? [idv] : []), ...(spec.tipColumns ?? (spec.color ? [spec.color] : [])).map((c) => `${c}: ${r[c] ?? '—'}`), `${spec.xLabel}: ${f2(x)}`, `${spec.yLabel}: ${f2(y)}`] }]
   })
   const facets = facetsOf(rows, spec.facet)
+  const sameScale = spec.sameScale ?? true
+  // Panel axes Shared: every facet on the range of all of them; Own: each from its own points
+  const [panelAxes] = usePanelAxes()
+  const shared = facets.length > 1 && collapsePanelAxes(panelAxes, facetDimOf(spec.facet)) === 'Shared' ? sharedCrossDomains(facets.map((f) => toPoints(f.rows)), sameScale) : null
   const plot = (f: { key: string; rows: Row[] }, side?: number) => <Crossplot title={f.key || ''} points={toPoints(f.rows)} xLabel={spec.xLabel} yLabel={spec.yLabel}
-    fit={spec.fit ?? true} errorRatio={spec.errorRatio} maxSide={side ?? spec.maxSide ?? 480} sameScale={spec.sameScale ?? true} />
+    fit={spec.fit ?? true} errorRatio={spec.errorRatio} maxSide={side ?? spec.maxSide ?? 480} sameScale={sameScale} domain={shared?.domain} yDomain={shared?.yDomain} />
   return <>
     {facets.length > 1 ? <FacetGrid items={facets} minCell={300} maxCols={3} render={(f, w) => plot(f, w - 70)} /> : plot(facets[0])}
     {groups.length > 0 && <Key items={[...groups.map((g) => ({ label: String(g), color: color(g) })),

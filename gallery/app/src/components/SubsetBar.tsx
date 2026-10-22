@@ -2,6 +2,7 @@ import { RegressionControls } from '@/lib/regressionPrefs'
 import { chemText } from '@/lib/format'
 import { CONVENTION_LABEL, seasonOnly } from '@/lib/seasons'
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 import { DateBrush, type DateRange } from '@/components/DateBrush'
@@ -192,6 +193,9 @@ export function SubsetBar({
   const edits = useFilterEdits()
   // the review panel shows the fields the open tab is drawing
   const reviewFields = caps.fields === 'pair' ? [s.xField, s.yField] : caps.fields === 'single' ? [s.field] : []
+  // both kinds of exclusion in one place: the sidebar's "excluded" row, and the same lists in a dialog
+  const [exclusionsOpen, setExclusionsOpen] = useState(false)
+  const reviewHand = () => edits.openGroup({ title: 'Excluded by hand', ids: (s.droppedList ?? []).map((d) => d.id), fields: reviewFields, live: 'dropped' })
 
   const allSeasons = s.activeSeasons.size === s.seasons.length
   const allSites = s.sitesAtDefault ?? s.activeSites.size === s.sites.length
@@ -231,27 +235,11 @@ export function SubsetBar({
             onClick={() => { a.onDropIds!(hl.selected!); hl.setSelected(null) }}>Exclude these</button>}
         </span>
       )}
-      {(s.dropped ?? 0) > 0 && <details className="dropped-details">
-        <summary title="Excluded from the charts' right-click menu, the side panel or a brush; open to put single filters back">
-          <span className="pill">{s.dropped} excluded by hand ▾
-            <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 4 }} onClick={(e) => { e.preventDefault(); a.onClearDrop?.() }} aria-label="Put every hand-excluded filter back" title="Put them all back">×</button></span>
-        </summary>
-        <div className="dropped-list">
-          <button type="button" className="btn quiet dropped-review" title="List every excluded filter in the side panel: site, date, values; put any or all back"
-            onClick={() => edits.openGroup({ title: 'Excluded by hand', ids: (s.droppedList ?? []).map((d) => d.id), fields: reviewFields, live: 'dropped' })}>Review all {s.dropped} ›</button>
-          <CopyExclusions rows={(s.droppedList ?? []).map((d) => ({ id: d.id, label: d.label, reason: d.reason ?? '', source: 'by hand' }))} />
-          {/* each hand exclusion with a reason the reader writes; the reasons travel in the link with the ids */}
-          {(s.droppedList ?? []).map((d) => <div key={d.id} className="excluded-row">
-            <button type="button" className="pill-link" onClick={() => hl.openSample(d.id)} title={`${d.label} · open this filter's details`}>{d.id}</button>
-            <span className="excluded-where">{d.label}</span>
-            {a.onDropReason
-              ? <input className="select excluded-why" value={d.reason ?? ''} placeholder="Why excluded? (kept in the link)" aria-label={`Reason for excluding ${d.id}`}
-                onChange={(e) => a.onDropReason!(d.id, e.target.value)} />
-              : d.reason ? <span className="excluded-reason">{d.reason}</span> : null}
-            {a.onRestoreIds && <button type="button" className="btn quiet" style={{ padding: '0 4px' }} onClick={() => a.onRestoreIds!(new Set([d.id]))} aria-label={`Put ${d.id} back`} title="Put this filter back">↺</button>}
-          </div>)}
-        </div>
-      </details>}
+      {(s.dropped ?? 0) > 0 && <span className="pill">
+        <button type="button" className="pill-link" onClick={() => setExclusionsOpen(true)}
+          title="Excluded from the charts' right-click menu, the side panel or a brush: open the list (reasons, put back)">{s.dropped} excluded by hand</button>
+        <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 4 }} onClick={a.onClearDrop} aria-label="Put every hand-excluded filter back" title="Put them all back">×</button>
+      </span>}
       {s.kept != null && <span className="pill">keeping {s.kept}
         <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 4 }} title="List the kept filters in the side panel"
           onClick={() => edits.openGroup({ title: 'Kept by hand (every other filter is hidden)', ids: s.keptIds ?? [], fields: reviewFields, live: 'kept' })}>review</button>
@@ -344,7 +332,7 @@ export function SubsetBar({
                 <Toggle label="Log axes" checked={s.axes.log} onChange={(v) => a.onAxes({ ...s.axes, log: v })} />
                 <Segmented label="Panel axes" value={(s.axes.panels ?? 'Shared') as any} options={PANEL_AXES as any}
                   onChange={(v: string) => a.onAxes({ ...s.axes, panels: v as AxesOpts['panels'] })}
-                  title="Per-site panels: Shared gives every site the same range, so slopes and levels compare by eye · Own fits each panel to its site's data. With the 1:1 line on, each panel stays square with equal x and y spans." />
+                  title="Several panels: Shared gives every panel the same range, so slopes and levels compare by eye · Per site (per-season layout): the seasons of one site share a range · Own zooms each panel to its own data. With the 1:1 line on, each panel stays square with equal x and y spans." />
                 {explain && <span className="row-note">applies to the scatterplot, hexbin and connected scatter together</span>}
               </Row>
             </>
@@ -503,24 +491,19 @@ export function SubsetBar({
             </Row>
           )}
 
+          {(caps.excluded || (s.dropped ?? 0) > 0) && (
+            <Row label="excluded">
+              <div className="exclusions-wrap">
+                <button type="button" className="btn quiet exclusions-open" onClick={() => setExclusionsOpen(true)} title="Show both lists in a larger window">Open ⤢</button>
+                <ExclusionLists s={s} a={a} caps={caps} onReview={reviewHand} />
+              </div>
+            </Row>
+          )}
+          {exclusionsOpen && <ExclusionsDialog onClose={() => setExclusionsOpen(false)}>
+            <ExclusionLists s={s} a={a} caps={caps} onReview={reviewHand} wide />
+          </ExclusionsDialog>}
+
           <Row label="">
-            {caps.excluded ? (
-              <span className="excluded-toggle">
-                <Toggle label={`Include ${s.nExcluded} excluded samples`} checked={s.includeExcluded} onChange={a.onIncludeExcluded} />
-                {/* the repo's exclusions and the reason each was set, from the export */}
-                {(s.excludedList ?? []).length > 0 && <details className="dropped-details">
-                  <summary title="Which samples the repo excludes, and why">why? ▾</summary>
-                  <div className="dropped-list">
-                    <CopyExclusions rows={(s.excludedList ?? []).map((d) => ({ ...d, source: 'repo' }))} />
-                    {(s.excludedList ?? []).map((d) => <div key={d.id} className="excluded-row">
-                      <button type="button" className="pill-link" onClick={() => hl.openSample(d.id)} title={`${d.label} · open this filter's details`}>{d.id}</button>
-                      <span className="excluded-where">{d.label}</span>
-                      <span className="excluded-reason">{d.reason || 'no reason recorded'}</span>
-                    </div>)}
-                  </div>
-                </details>}
-              </span>
-            ) : null}
             {caps.note && explain && <span className="row-note">{caps.note}</span>}
             {caps.sites && <span className="method-note">{sitesNote}</span>}
           </Row>
@@ -702,6 +685,80 @@ function RainRuleEditor({ rule, onChange }: { rule: RainRule; onChange: (r: Rain
       </div>
     </div>
   )
+}
+
+/**
+ * Every exclusion in one place: the data export's own (with the recorded reason; the toggle puts them back in) and
+ * the reader's by hand (from the right-click menu, a brush or the side panel; reasons and ids travel in the link).
+ * The lists are always open: in the sidebar they scroll, `wide` is the dialog's roomier version.
+ */
+function ExclusionLists({ s, a, caps, onReview, wide = false }: {
+  s: SubsetState; a: SubsetActions; caps: SubsetCaps; onReview: () => void; wide?: boolean
+}) {
+  const hl = useHighlight()
+  const repo = s.excludedList ?? [], hand = s.droppedList ?? []
+  return (
+    <div className={`exclusions${wide ? ' wide' : ''}`}>
+      {caps.excluded && <section>
+        <div className="exclusions-head">
+          <Toggle label={`Include ${s.nExcluded} excluded samples`} checked={s.includeExcluded} onChange={a.onIncludeExcluded} />
+          {repo.length > 0 && <CopyExclusions rows={repo.map((d) => ({ ...d, source: 'repo' }))} />}
+        </div>
+        <div className="exclusions-sub">Excluded in the data export{repo.length ? ` (${repo.length})` : ''}, with the reason recorded there</div>
+        {repo.length > 0 && <div className="exclusions-list">
+          {repo.map((d) => <div key={d.id} className="excluded-row">
+            <button type="button" className="pill-link" onClick={() => hl.openSample(d.id)} title={`${d.label} · open this filter's details`}>{d.id}</button>
+            <span className="excluded-where">{d.label}</span>
+            <span className="excluded-reason">{d.reason || 'no reason recorded'}</span>
+          </div>)}
+        </div>}
+      </section>}
+      <section>
+        <div className="exclusions-head">
+          <strong>Excluded by hand{hand.length ? ` (${hand.length})` : ''}</strong>
+          {hand.length > 0 && <>
+            <button type="button" className="btn quiet dropped-review" onClick={onReview}
+              title="List every excluded filter in the side panel: site, date, values; put any or all back">Review all ›</button>
+            {a.onClearDrop && <button type="button" className="btn quiet dropped-review" onClick={a.onClearDrop} title="Put every hand-excluded filter back">Put all back</button>}
+            <CopyExclusions rows={hand.map((d) => ({ id: d.id, label: d.label, reason: d.reason ?? '', source: 'by hand' }))} />
+          </>}
+        </div>
+        {hand.length === 0
+          ? <div className="exclusions-sub">None. Right-click a point (Exclude this filter), or brush points and choose Exclude these.</div>
+          : <div className="exclusions-list">
+            {/* each hand exclusion with a reason the reader writes; the reasons travel in the link with the ids */}
+            {hand.map((d) => <div key={d.id} className="excluded-row">
+              <button type="button" className="pill-link" onClick={() => hl.openSample(d.id)} title={`${d.label} · open this filter's details`}>{d.id}</button>
+              <span className="excluded-where">{d.label}</span>
+              {a.onDropReason
+                ? <input className="select excluded-why" value={d.reason ?? ''} placeholder="Why excluded? (kept in the link)" aria-label={`Reason for excluding ${d.id}`}
+                  onChange={(e) => a.onDropReason!(d.id, e.target.value)} />
+                : d.reason ? <span className="excluded-reason">{d.reason}</span> : null}
+              {a.onRestoreIds && <button type="button" className="btn quiet" style={{ padding: '0 4px' }} onClick={() => a.onRestoreIds!(new Set([d.id]))} aria-label={`Put ${d.id} back`} title="Put this filter back">↺</button>}
+            </div>)}
+          </div>}
+      </section>
+    </div>
+  )
+}
+
+/** The exclusions in a dialog over the page (Esc or a click outside closes it). */
+function ExclusionsDialog({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', esc)
+    return () => window.removeEventListener('keydown', esc)
+  }, [onClose])
+  return createPortal(
+    <div className="export-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="export-dialog exclusions-dialog" role="dialog" aria-modal="true" aria-label="Excluded samples">
+        <header className="exclusions-dialog-head">
+          <strong>Excluded samples</strong>
+          <button type="button" className="btn quiet" onClick={onClose} aria-label="Close">✕</button>
+        </header>
+        {children}
+      </div>
+    </div>, document.body)
 }
 
 /** Copy a list of exclusions (id, site · date, reason) as JSON, e.g. to add to the repo's exclusion list. */

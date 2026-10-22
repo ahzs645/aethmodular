@@ -22,13 +22,37 @@ export interface AxesOpts {
   identity: boolean
   mode: AxesMode
   log: boolean
-  /** per-site panels: one range for every panel (slopes compare by eye), or each fitted to its own
-   *  data (shapes within a site); with the 1:1 line on, every panel stays square either way */
+  /** several panels: which share one range (lib/panelAxes); with the 1:1 line on, every panel stays square either way */
   panels?: PanelAxes
 }
 
-export const PANEL_AXES = ['Shared', 'Own'] as const
+/**
+ * Which panels share one axis range: all of them (slopes and levels compare by eye), the panels of one site (a row
+ * of the scatterplot's per-season grid), or none (each fitted to its own data). Per site exists only where panels
+ * split by site and season together. There is no "per season" grouping: every site has its own calendar, so seasons
+ * do not line up across sites.
+ */
+export const PANEL_AXES = ['Shared', 'Per site', 'Own'] as const
 export type PanelAxes = (typeof PANEL_AXES)[number]
+export const BASIC_PANEL_AXES = ['Shared', 'Own'] as const
+export type PanelDim = 'site' | 'season'
+
+/** A panel's range group: panels with the same key share one range. A dimension the panels lack is shared across. */
+export function panelAxesKey(mode: PanelAxes, panel: { key: string; site?: string }): string {
+  if (mode === 'Shared') return ''
+  if (mode === 'Own') return panel.key
+  return panel.site ?? ''
+}
+
+/** What a mode amounts to on a chart whose panels vary in one dimension (or none): Shared or Own. */
+export function collapsePanelAxes(mode: PanelAxes, dim: PanelDim | null): (typeof BASIC_PANEL_AXES)[number] {
+  if (mode === 'Shared' || mode === 'Own') return mode
+  return dim === 'site' ? 'Own' : 'Shared'
+}
+
+/** the URL value (`pax`) of a mode, and back; Shared is the default and is not written */
+export const PAX_PARAM: Record<PanelAxes, string | null> = { Shared: null, 'Per site': 'site', Own: 'own' }
+export const paxFromParam = (v: string | null): PanelAxes => (PANEL_AXES.find((m) => PAX_PARAM[m] === v) ?? 'Shared')
 
 export const DEFAULT_AXES: AxesOpts = { identity: true, mode: 'From 0,0', log: false, panels: 'Shared' }
 

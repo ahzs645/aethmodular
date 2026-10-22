@@ -21,6 +21,8 @@ import { f2, f3, pct, signed, coef, coefSigned } from '@/lib/format'
 import { ALL_ADDIS, ANALYSIS_CALENDAR_NOTE, shortSeason } from '@/lib/seasons'
 import { baselineName, ecAxis } from '@/lib/labels'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
+import { PanelAxesControl, usePanelAxes } from '@/lib/panelAxes'
+import { collapsePanelAxes } from '@/lib/axes'
 import { SpectrumPlot } from '@/components/SpectrumPlot'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { Key } from '@/components/Key'
@@ -426,6 +428,7 @@ function Ladder({ data, mask }: { data: SatoshiData; mask: Mask }) {
   const unit = metric === 'mean bias' ? ' (µg/m³)' : ''
   return (
     <ChartFrame id="satoshi-ladder" source="gallery/app/src/pages/SatoshiFollowupPage.tsx › Ladder"
+      controls={<PanelAxesControl />}
       title="Fitting or extrapolation — the same readout at every stage, from calibration fit to Addis"
       subtitle="Calibration fit: in-sample predictions of the calibration set. Cross-validation: site-grouped out-of-fold predictions at the chosen number of factors (the curve that chose k). IMPROVE test sites: sites held out of the calibration. Addis test set: FTIR EC vs HIPS Fabs / MAC 10. IMPROVE stages compare FTIR EC with TOR EC. Intercepts are divided by the median reference so stages at 0.1 and 5 µg/m³ can share an axis.">
       <div style={{ maxWidth: 860 }}>
@@ -488,22 +491,30 @@ function LadderCrossplots({ data, analogId, baseline, mask, group }: { data: Sat
   const square = satSquare(ax)
   const view = (ps: Pt[]) => square ? ps : ps.map((p) => ({ ...p, tor: p.x, ftir: p.y, x: satValue(ax.x, p.x, p.y), y: satValue(ax.y, p.x, p.y) })).filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y))
   const va = view(a), vs = view(s)
-  const xdom = square ? [lo, hi] as [number, number] : robust([...va, ...vs].map((p) => p.x))
-  const ydom = square ? undefined : robust([...va, ...vs].map((p) => p.y))
+  // Panel axes (lib/panelAxes): Shared, both panels on one range; Own, each on its own points
+  const [panelAxes] = usePanelAxes()
+  const ownDomains = (ps: Pt[]) => {
+    if (!square) return { xdom: robust(ps.map((p) => p.x)), ydom: robust(ps.map((p) => p.y)) }
+    const d = robustDomain(ps.flatMap((p) => [p.x, p.y]).filter(Number.isFinite), 0, 0.995).domain
+    return { xdom: [Math.min(0, d[0]), d[1] * 1.05] as [number, number], ydom: undefined }
+  }
+  const ownPanels = collapsePanelAxes(panelAxes, null) === 'Own'   // two models on the same filters: no site or season split
+  const both = ownPanels ? null : { xdom: square ? [lo, hi] as [number, number] : robust([...va, ...vs].map((p) => p.x)), ydom: square ? undefined : robust([...va, ...vs].map((p) => p.y)) }
+  const da = both ?? ownDomains(va), ds = both ?? ownDomains(vs)
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 14, marginTop: 12 }}>
-        <Cross title={`${shortSeason(group)} analog model (${SHORT[baseline]})`} pts={va} color={data.season_colors[group]} dom={xdom} ydom={ydom} source={`Satoshi 2 Oct · ${analogId}`} />
-        <Cross title={`Standard model, same analogs (${SHORT[baseline]})`} pts={vs} color={STANDARD_COLOR} dom={xdom} ydom={ydom} source={`Satoshi 2 Oct · standard|${baseline} · analogs of ${group}`} />
+        <Cross title={`${shortSeason(group)} analog model (${SHORT[baseline]})`} pts={va} color={data.season_colors[group]} dom={da.xdom} ydom={da.ydom} source={`Satoshi 2 Oct · ${analogId}`} />
+        <Cross title={`Standard model, same analogs (${SHORT[baseline]})`} pts={vs} color={STANDARD_COLOR} dom={ds.xdom} ydom={ds.ydom} source={`Satoshi 2 Oct · standard|${baseline} · analogs of ${group}`} />
       </div>
-      <ExplainOnly><Note>Filled points are out-of-fold cross-validation predictions; open points are IMPROVE test sites. Both panels share axes; the top 0.5 % of values is outside the frame. {missing > 0 ? `${missing} analogs are lot 248 and so outside the lot-251 standard model; they are not in the right panel. ` : ''}Similarity region: {MASK_SHORT[mask]}.</Note></ExplainOnly>
+      <ExplainOnly><Note>Filled points are out-of-fold cross-validation predictions; open points are IMPROVE test sites. {ownPanels ? 'Each panel has its own axes' : 'Both panels share axes'}; the top 0.5 % of values is outside the frame. {missing > 0 ? `${missing} analogs are lot 248 and so outside the lot-251 standard model; they are not in the right panel. ` : ''}Similarity region: {MASK_SHORT[mask]}.</Note></ExplainOnly>
     </>
   )
 }
 
 interface Pt { x: number; y: number; hollow?: boolean; id: string; site: string; note: string; tor?: number; ftir?: number }
 /** A crossplot of saved predictions (nothing is refitted on this page), on axes shared with its neighbour; TOR against FTIR unless the page's axes say otherwise. */
-function Cross({ title, pts, color, dom, ydom, source }: { title: string; pts: Pt[]; color: string; dom: [number, number]; ydom?: [number, number]; source: string }) {
+function Cross({ title, pts, color, dom, ydom, source }: { title: string; pts: Pt[]; color: string; dom?: [number, number]; ydom?: [number, number]; source: string }) {
   const ax = useContext(SatAxesCtx)
   const points: CrossPoint[] = pts.map((p) => {
     const tor = p.tor ?? p.x, ftir = p.ftir ?? p.y

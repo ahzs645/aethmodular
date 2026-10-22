@@ -11,6 +11,8 @@ export interface ComboOption<T extends string> {
   group?: string
   /** muted text at the right edge, e.g. a count */
   hint?: string
+  /** a second, smaller line under the label (what a choice consists of); searched too */
+  detail?: string
 }
 
 /**
@@ -53,7 +55,7 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
   const [query, setQuery] = useState('')
   const input = useRef<HTMLInputElement>(null)
   // the options the search leaves, by their index in `options` (all of them with no search)
-  const visible = options.map((_, i) => i).filter((i) => !query || fold(`${options[i].label} ${options[i].group ?? ''}`).includes(fold(query)))
+  const visible = options.map((_, i) => i).filter((i) => !query || fold(`${options[i].label} ${options[i].group ?? ''} ${options[i].detail ?? ''}`).includes(fold(query)))
   const step = (from: number, by: number) => {
     if (!visible.length) return from
     const at = visible.indexOf(from)
@@ -166,7 +168,7 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
         {searchable && <div className="combobox-search" role="presentation">
           <input ref={input} type="search" value={query} placeholder="Search…" aria-label={`Search ${label || title || 'the options'}`} aria-controls={`${id}-list`}
             aria-activedescendant={visible.includes(active) ? `${id}-option-${active}` : undefined}
-            onChange={(e) => { setQuery(e.target.value); const q = fold(e.target.value); const first = options.findIndex((o) => fold(`${o.label} ${o.group ?? ''}`).includes(q)); if (first >= 0) setActive(first) }}
+            onChange={(e) => { setQuery(e.target.value); const q = fold(e.target.value); const first = options.findIndex((o) => fold(`${o.label} ${o.group ?? ''} ${o.detail ?? ''}`).includes(q)); if (first >= 0) setActive(first) }}
             onKeyDown={onSearchKey} onBlur={(e) => { const to = e.relatedTarget as Node | null; if (!menu.current?.contains(to) && !root.current?.contains(to)) setOpen(false) }} />
         </div>}
         {searchable && !visible.length && <div className="combobox-empty" role="presentation">No matches</div>}
@@ -177,7 +179,8 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
             className={`combobox-option${index === active ? ' active' : ''}`}
             onMouseEnter={() => setActive(index)} onMouseDown={(event) => event.preventDefault()} onClick={() => choose(index)}>
             <span className="combobox-check" aria-hidden="true">{option.key === value ? '✓' : ''}</span>
-            <span className="combobox-text" title={option.title}>{chemText(option.label)}</span>
+            <span className={`combobox-text${option.detail ? ' two-line' : ''}`} title={option.title}>{chemText(option.label)}
+              {option.detail && <span className="combobox-detail">{chemText(option.detail)}</span>}</span>
             {option.hint && <span className="combobox-hint">{option.hint}</span>}
           </button>
         </div> })}

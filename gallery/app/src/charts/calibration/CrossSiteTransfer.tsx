@@ -7,7 +7,7 @@ import { EstimatorName, FIT_STYLE, useEstimator, useRegressions, fitsFor, type E
 import { useChartOptions } from '@/lib/chartOptions'
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { AxisTitle, XAxis, YAxis } from '@/components/Axes'
 import { prettyUnit } from '@/components/FieldSelect'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -19,8 +19,10 @@ import { cohortColor, deployedECFrom, fmtFit, metricRow, presetName, useNetworkR
 import { COHORT, PREPROCESSING, label } from '@/lib/labels'
 import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
 import { useSearchParam } from '@/lib/url'
-import { baseFilterId } from '@/lib/highlight'
-import { PANEL_AXES, type AxesOpts, type PanelAxes } from '@/lib/axes'
+import { baseFilterId, useHighlight, type FilterRecord } from '@/lib/highlight'
+import { fidProps } from '@/lib/filterEdits'
+import { PanelAxesControl, usePanelAxes } from '@/lib/panelAxes'
+import { collapsePanelAxes } from '@/lib/axes'
 
 /** Ethiopian sites first (the calibration's own target, then its neighbour), then the other SPARTAN sites. */
 const SITE_ORDER = ['addis', 'etbi', 'indh', 'chts', 'uspa']
@@ -50,10 +52,8 @@ const noteOf = (p: Preset) => p.label.match(/×[^(]*\(([^)]*)\)\s*$/)?.[1]
  * cross-validation score (calibration set), and whether the site ordering holds across all the
  * exported calibrations.
  */
-export function CrossSiteTransfer({ runs, axes, onAxes, galleryRows, sourceRows, galleryMeta }: {
+export function CrossSiteTransfer({ runs, galleryRows, sourceRows, galleryMeta }: {
   runs: CalibRunsFile
-  /** the gallery's axes options (its Panel axes is the sidebar's, shared with the correlation crossplots) */
-  axes?: AxesOpts; onAxes?: (a: AxesOpts) => void
   galleryRows?: FilterRow[]; galleryMeta?: MetaFile
   /** every filter's row before the view's options, for its deployed SPARTAN EC */
   sourceRows?: FilterRow[]
@@ -94,7 +94,6 @@ export function CrossSiteTransfer({ runs, axes, onAxes, galleryRows, sourceRows,
   return (
     <>
       <SiteMultiples runs={runs} siteRuns={siteRuns} mac={mac} controls={controls} presetLabel={preset ? presetName(preset) : presetKey}
-        panelAxes={axes ? axes.panels ?? 'Shared' : undefined} onPanelAxes={axes && onAxes ? (v) => onAxes({ ...axes, panels: v }) : undefined}
         galleryRows={galleryRows} sourceRows={sourceRows} galleryMeta={galleryMeta} />
       <TransferTable runs={runs} siteRuns={siteRuns} mac={mac} presetLabel={preset ? presetName(preset) : presetKey} />
       <OrderingAcrossCalibrations runs={runs} sites={sites} presetKey={presetKey} mac={mac} onPick={setPresetKey} />
@@ -128,10 +127,8 @@ function statsFor(run: CalibRun, mac: number, method: Estimator) {
 const REF = 'reference', PRED = 'predicted', RESID = 'residual', DEP = 'deployed'
 const EC_KEYS = [REF, PRED, DEP]
 
-function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel, panelAxes, onPanelAxes, galleryRows = [], sourceRows, galleryMeta }: {
+function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel, galleryRows = [], sourceRows, galleryMeta }: {
   runs: CalibRunsFile; siteRuns: CalibRun[]; mac: number; controls: React.ReactNode; presetLabel: string
-  /** the gallery's Panel axes setting (the sidebar's, shared with the correlation crossplots) */
-  panelAxes?: PanelAxes; onPanelAxes?: (v: PanelAxes) => void
   galleryRows?: FilterRow[]; galleryMeta?: MetaFile; sourceRows?: FilterRow[]
 }) {
   const estimator = useEstimator()
@@ -141,11 +138,10 @@ function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel, panelAxes, 
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  // Panel axes is the gallery's one setting (lib/axes, the sidebar's Axes section); a page that does
-  // not pass it keeps its own
-  const [ownAxes, setOwnAxes] = useState<PanelAxes>('Shared')
-  const axes = panelAxes ?? ownAxes
-  const setAxes = onPanelAxes ?? setOwnAxes
+  // Panel axes is the gallery's one setting (lib/panelAxes: the sidebar's, and every multi-panel chart's)
+  const [axes] = usePanelAxes()
+  // a dot is a filter: hover and click work as on every other crossplot (highlight on every chart, pin, open its record)
+  const hl = useHighlight()
 
   // x and y picked from the axis titles (the gallery's axis popover, as on the correlation crossplots):
   // this calibration's readouts, then any gallery measurement these filters carry
@@ -216,7 +212,7 @@ function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel, panelAxes, 
   const m = { l: 42, r: 8, t: 40, b: 44 }
   const S = Math.max(150, Math.min(300, cellW - m.l - m.r))
   const gridH = rows * (S + m.t + m.b) + (rows - 1) * gap
-  const sharedTicks = axes === 'Shared'
+  const sharedTicks = collapsePanelAxes(axes, 'site') === 'Shared'   // one panel per site
   const caret = <tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>
 
   return (
@@ -226,8 +222,7 @@ function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel, panelAxes, 
       subtitle="One panel per SPARTAN site: by default the calibration's predicted FTIR EC against HIPS Fabs ÷ MAC, with the 1:1 line (dashed) and the Deming fit from the explorer's metrics for every filter at that site (each site is a test set the model never saw). Click an axis title for another readout or any gallery measurement these filters carry."
       provenance="calibration_explorer /api/run for each target · test set 'all'"
       tip={TRANSFER_TIP}
-      controls={<>{controls}<Segmented label="Panel axes" value={axes} options={PANEL_AXES} onChange={setAxes}
-        title="Per-site panels: Shared gives every site the same range, so slopes and levels compare by eye · Own fits each panel to its site's data. The same setting as the sidebar's (Axes)" /></>}
+      controls={<>{controls}{siteRuns.length > 1 && <PanelAxesControl dims={['site']} />}</>}
     >
       <div ref={wrapRef} className="chart-wrap">
         {!siteRuns.length ? (
@@ -275,20 +270,35 @@ function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel, panelAxes, 
                     {ecPair && <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />}
                     {yk === RESID && y.domain()[0] < 0 && y.domain()[1] > 0 && <line x1={0} x2={S} y1={y(0)} y2={y(0)} stroke={INK.text} strokeWidth={1.2} />}
                     {pts[k].length === 0 && <text x={S / 2} y={S / 2} textAnchor="middle" fontSize={11} fill={INK.muted}>no filters carry both</text>}
-                    {pts[k].map((p) => (
-                      <circle
-                        key={p.i} cx={x(p.x)} cy={y(p.y)} r={2.6} fill={color} fillOpacity={0.45}
-                        onMouseEnter={(e) => tip.show(e, [
-                          run.eval.id[p.i] ?? `filter #${p.i + 1}`,
-                          `${t?.site ?? run.target} · ${run.eval.date?.[p.i] ?? 'no date'} · ${run.eval.group[p.i]}`,
-                          `${titleOf(xk)}: ${fmt(p.x, 3)}${xk === DEP && deployedOf(run, p.i)?.from === 'public release' ? ' (public SPARTAN release)' : ''}`,
-                          `${titleOf(yk)}: ${fmt(p.y, 3)}${yk === DEP && deployedOf(run, p.i)?.from === 'public release' ? ' (public SPARTAN release)' : ''}`,
-                        ])}
-                        onMouseLeave={tip.hide}
-                      />
-                    ))}
-                    {seg && <svg width={S} height={S} overflow="hidden"><RegressionBand stats={st} method={estimator} color={fitStyle.color} x={x} y={y} domain={x.domain()} /></svg>}
-                    {seg && <line {...seg} stroke={fitStyle.color} strokeWidth={1.8} strokeDasharray={fitStyle.dash} />}
+                    {pts[k].map((p) => {
+                      const id = run.eval.id[p.i] ?? null
+                      const key = id ? baseFilterId(id) : null
+                      const focus = !!key && (key === hl.pinnedId || key === hl.hoverId)
+                      const site = t?.site ?? run.target
+                      const record = (): FilterRecord => ({
+                        id: id ?? `${run.target} filter #${p.i + 1}`, source: `Every site under one calibration (${presetLabel})`, site,
+                        date: run.eval.date?.[p.i] ?? undefined,
+                        fields: [['season / group', run.eval.group[p.i]], [titleOf(xk), p.x], [titleOf(yk), p.y]],
+                      })
+                      return (
+                        <circle
+                          key={p.i} cx={x(p.x)} cy={y(p.y)} r={focus ? 5 : 2.6} fill={color} fillOpacity={focus ? 0.9 : 0.45}
+                          stroke={focus ? INK.text : 'none'} strokeWidth={focus ? 1.5 : 0} style={{ cursor: 'pointer' }}
+                          onMouseEnter={(e) => { tip.show(e, [
+                            id ?? `filter #${p.i + 1}`,
+                            `${site} · ${run.eval.date?.[p.i] ?? 'no date'} · ${run.eval.group[p.i]}`,
+                            `${titleOf(xk)}: ${fmt(p.x, 3)}${xk === DEP && deployedOf(run, p.i)?.from === 'public release' ? ' (public SPARTAN release)' : ''}`,
+                            `${titleOf(yk)}: ${fmt(p.y, 3)}${yk === DEP && deployedOf(run, p.i)?.from === 'public release' ? ' (public SPARTAN release)' : ''}`,
+                            'click to pin it on every chart and open its record',
+                          ]); if (key) hl.setHover(key) }}
+                          onMouseLeave={() => { tip.hide(); hl.setHover(null) }}
+                          {...(key ? fidProps(key) : {})}
+                          onClick={() => { hl.openRecord(record()); if (key) hl.setPinned(key) }}
+                        />
+                      )
+                    })}
+                    {seg && <svg width={S} height={S} overflow="hidden" pointerEvents="none"><RegressionBand stats={st} method={estimator} color={fitStyle.color} x={x} y={y} domain={x.domain()} /></svg>}
+                    {seg && <line {...seg} pointerEvents="none" stroke={fitStyle.color} strokeWidth={1.8} strokeDasharray={fitStyle.dash} />}
                     {savedPair && <text x={S / 2} y={S + 36} textAnchor="middle" fontSize={11} fontFamily={FONT.mono} fill={fitStyle.color}>
                       {`${fitName} ${fmtFit(fit?.slope ?? null, fit?.intercept ?? null)} · R² ${fmt(fit?.m.R2 ?? null, 2)}`}
                       <title>{showCI ? ci ? `${ci.description}; slope [${fmt(ci.slope[0], 3)}, ${fmt(ci.slope[1], 3)}]; intercept [${fmt(ci.intercept[0], 3)}, ${fmt(ci.intercept[1], 3)}]` : '95% CI unavailable: insufficient data or saved fit differs from live pairs' : ''}</title>

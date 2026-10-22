@@ -5,6 +5,7 @@ import { supplementFilter } from '@/lib/filterMerge'
 import { HighlightProvider, baseFilterId, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { NO_PMF, PMF_GROUP, PMF_SOURCE, isPmfField, pmfGroups, pmfKeyByDate, pmfLabel, pmfShareFields, withPmf, type PmfScheme } from '@/lib/pmfGroups'
 import { EXPLAIN_AVAILABLE, PrefsProvider, usePrefs } from '@/lib/prefs'
+import { PanelAxesProvider } from '@/lib/panelAxes'
 import { listParam, listToParam, readParams, writeParams } from '@/lib/url'
 import { useShared } from '@/lib/stable'
 import { PAPER_CALENDAR } from '@/lib/pmfPaper'
@@ -58,7 +59,7 @@ import { SampleDrawer } from '@/components/SampleDrawer'
 import { RecordDrawer } from '@/components/RecordDrawer'
 import type { DateRange } from '@/components/DateBrush'
 import type { FilterRow, SeasonMeta, SiteMeta } from '@/lib/types'
-import { AXES_MODES, DEFAULT_AXES, type AxesMode, type AxesOpts } from '@/lib/axes'
+import { AXES_MODES, DEFAULT_AXES, PAX_PARAM, paxFromParam, type AxesMode, type AxesOpts } from '@/lib/axes'
 import { calendarVariants, hasLocalCalendar, localSeasonsFor, qualifySeason } from '@/siteSeasons'
 import { MAX_IMPROVE_SITES, MONTH_QUARTERS, NETWORK_DEFAULTS, hasImprove, hasSpartan, isNetwork, mergeGroups, networkColor, useNetworkData, type Network } from '@/lib/networks'
 import type { SiteItem } from '@/components/SitePicker'
@@ -69,6 +70,8 @@ import { HIDDEN_DUPLICATES } from '@/fieldLineage'
 import { PageSidebarProvider, PageSidebarSlot, SidebarControls } from '@/lib/pageSidebar'
 import { RATIO_GROUP, RATIO_PRESETS, VOLUME, parseRatios, ratioKey, ratiosParam, viewRows, viewUnits, type Basis, type RatioDef } from '@/lib/viewFields'
 import { RatiosProvider } from '@/components/RatioDialog'
+import { GroupingsProvider } from '@/components/GroupingDialog'
+import { groupingsParam, mergeGroupings, parseGroupings, readSavedGroupings, writeSavedGroupings, type GroupingDef } from '@/lib/groupings'
 import { GlossaryButton } from '@/components/Glossary'
 import { PresentationProvider, PresentationSwitch, type Presentation } from '@/lib/presentation'
 import { useSearchParam } from '@/lib/url'
@@ -302,6 +305,10 @@ export default function App() {
   const [dash, setDash] = useState<DashState>(() => parseDash(init))
   // the reader's view of the measurements (lib/viewFields): own ratios, a MAC for HIPS BC, mass per filter
   const [ratios, setRatios] = useState<RatioDef[]>(() => parseRatios(init.get('ratios')))
+  // the reader's groupings (lib/groupings): a measurement split into labelled bands, for panels or colour
+  // kept in the URL (`grp`, shareable) and in this browser (localStorage), merged on load
+  const [groupings, setGroupings] = useState<GroupingDef[]>(() => mergeGroupings(parseGroupings(init.get('grp')), readSavedGroupings()))
+  useEffect(() => writeSavedGroupings(groupings), [groupings])
   const [mac, setMac] = useState<number | null>(() => parseMac(init.get('mac')))
   const [basis, setBasis] = useState<Basis>(init.get('basis') === 'mass' ? 'mass' : 'conc')
   // meeting pages: as presented (default) or following the gallery (lib/presentation); ?mview=exploring
@@ -314,7 +321,7 @@ export default function App() {
     identity: init.get('eq') !== '0',
     mode: (AXES_MODES as readonly string[]).includes(init.get('ax') ?? '') ? (init.get('ax') as AxesMode) : DEFAULT_AXES.mode,
     log: init.get('log') === '1',
-    panels: init.get('pax') === 'own' ? 'Own' : 'Shared',
+    panels: paxFromParam(init.get('pax')),
   })
   // the sample whose detail drawer is open; opening also pins
   const [openId, setOpenId] = useState<string | null>(null)
@@ -400,15 +407,16 @@ export default function App() {
       f: field !== DEFAULT_FIELD ? field : null,
       ...dashParams(dash),
       ratios: ratiosParam(ratios),
+      grp: groupingsParam(groupings),
       mac: mac !== null ? String(mac) : null,
       basis: basis === 'mass' ? 'mass' : null,
       pin: pinnedId,
       eq: axes.identity ? null : '0',
       ax: axes.mode !== DEFAULT_AXES.mode ? axes.mode : null,
       log: axes.log ? '1' : null,
-      pax: axes.panels === 'Own' ? 'own' : null,
+      pax: PAX_PARAM[axes.panels ?? 'Shared'],
     })
-  }, [tab, meeting, experiment, estimators, showCI, convention, calVariants, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, dropWhyParam, keepIds, ftirBaseline, customSeasons, rainRule, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, includeExcluded, xField, yField, field, dash, ratios, mac, basis, pinnedId, axes])
+  }, [tab, meeting, experiment, estimators, showCI, convention, calVariants, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, dropWhyParam, keepIds, ftirBaseline, customSeasons, rainRule, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, includeExcluded, xField, yField, field, dash, ratios, groupings, mac, basis, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -447,6 +455,7 @@ export default function App() {
       setField(p.get('f') ?? DEFAULT_FIELD)
       setDash(parseDash(p))
       setRatios(parseRatios(p.get('ratios')))
+      setGroupings((cur) => mergeGroupings(parseGroupings(p.get('grp')), cur))
       setMac(parseMac(p.get('mac')))
       setBasis(p.get('basis') === 'mass' ? 'mass' : 'conc')
       setPinnedId(p.get('pin'))
@@ -454,7 +463,7 @@ export default function App() {
         identity: p.get('eq') !== '0',
         mode: (AXES_MODES as readonly string[]).includes(p.get('ax') ?? '') ? (p.get('ax') as AxesMode) : DEFAULT_AXES.mode,
         log: p.get('log') === '1',
-        panels: p.get('pax') === 'own' ? 'Own' : 'Shared',
+        panels: paxFromParam(p.get('pax')),
       })
     }
     window.addEventListener('hashchange', onHash)
@@ -692,6 +701,8 @@ export default function App() {
     inViewRows.filter((r) => typeof r[d.num] === 'number' && typeof r[d.den] === 'number' && r[d.den] !== 0).length, [inViewRows])
   const addRatio = useCallback((d: RatioDef) => setRatios((cur) => (cur.some((x) => ratioKey(x) === ratioKey(d)) || RATIO_PRESETS.some((x) => ratioKey(x) === ratioKey(d)) ? cur : [...cur, d])), [])
   const removeRatio = useCallback((f: string) => setRatios((cur) => cur.filter((x) => ratioKey(x) !== f)), [])
+  const saveGrouping = useCallback((d: GroupingDef) => setGroupings((cur) => cur.some((x) => x.id === d.id) ? cur.map((x) => (x.id === d.id ? d : x)) : [...cur, d]), [])
+  const removeGrouping = useCallback((id: string) => setGroupings((cur) => cur.filter((x) => x.id !== id)), [])
 
   // The season selection, kept only for seasons that exist under the current
   // calendar and sites; a selection that no longer names any season means "all".
@@ -1102,12 +1113,16 @@ export default function App() {
     <HeaderNavProvider tabs={NAV_TABS} meetings={MEETINGS} open={openTab}>
     <RegressionProvider methods={estimators} setMethods={setEstimators} showCI={showCI} setShowCI={setShowCI}>
     <PrefsProvider>
+    {/* Panel axes for every multi-panel crossplot (lib/panelAxes): the sidebar's setting, offered on each chart too */}
+    <PanelAxesProvider value={axes.panels ?? 'Shared'} onChange={(panels) => setAxes((a) => ({ ...a, panels }))}>
     <ExportSitesProvider seasons={meta.seasons} sites={[...new Map([...rawMeta.sites, ...meta.sites].map(s => [s.code, s])).values()]}>
     <HighlightProvider pinnedId={pinnedId} setPinned={setPinnedId} openSample={openSample} openRecord={openRecord} onDismiss={dismissSample}>
     {/* hand edits hold on every tab: each chart that draws a filter leaves the excluded ones out */}
     <PageSidebarProvider>
     {/* "Define a ratio…" in every field picker (components/RatioDialog) */}
     <RatiosProvider meta={meta} presets={ratioView.presets} custom={ratios} onAdd={addRatio} onRemove={removeRatio} count={countRatio}>
+    {/* "New grouping…" in the charts that split or colour by a grouping (components/GroupingDialog) */}
+    <GroupingsProvider meta={meta} rows={rows} list={groupings} onSave={saveGrouping} onRemove={removeGrouping}>
     <FilterEditsProvider enabled dropped={dropIds} kept={keepIds}
       onDrop={dropFilters} onKeep={keepFilters} onRestore={restoreFilters} group={group} onGroup={setGroup}>
       {openRow && (
@@ -1148,7 +1163,7 @@ export default function App() {
         {tab === 'blanks' && <BlanksPage />}
         {tab === 'experimental' && <ExperimentalPage experiment={experiment} onPick={setExperiment} />}
         {tab === 'baseline' && (calibrationLoading ? <p>Loading calibration data…</p> : <BaselineComparisonPage mac={exportMac} demingLambda={data.calibration?.deming_lambda_mac10 ?? 1} />)}
-        {tab === 'calibration' && (calibrationLoading ? <p>Loading calibration data…</p> : <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={drawerMeta} galleryRows={paintedSourceRows} sourceRows={rawSourceRows} galleryMeta={meta} axes={axes} onAxes={setAxes} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />)}
+        {tab === 'calibration' && (calibrationLoading ? <p>Loading calibration data…</p> : <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={drawerMeta} galleryRows={paintedSourceRows} sourceRows={rawSourceRows} galleryMeta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />)}
         {tab === 'dashboard' && <DashboardPage dash={dash} setDash={setDash} filters={dashFilters} onScope={setDashScope} onPickSite={pickDashSite} display={<DisplayToggles />}
           data={{ rows, meta, axes, pmf: pmf ?? null, pmfRows, eff, defaults: { x: xField, y: yField, field }, openSite: openDashSite, pmfLabelOfDate,
             calibration: data.calibrationRuns ? { runs: data.calibrationRuns, lambda10: data.calibration?.deming_lambda_mac10 ?? 2.96, knownIds, galleryRows: paintedSourceRows, sourceRows: rawSourceRows, galleryMeta: meta, meta: drawerMeta } : null }} />}
@@ -1205,10 +1220,12 @@ export default function App() {
           ))}
       </Shell>
     </FilterEditsProvider>
+    </GroupingsProvider>
     </RatiosProvider>
     </PageSidebarProvider>
     </HighlightProvider>
     </ExportSitesProvider>
+    </PanelAxesProvider>
     </PrefsProvider>
     </RegressionProvider>
     </HeaderNavProvider>

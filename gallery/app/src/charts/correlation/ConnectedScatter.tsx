@@ -12,9 +12,14 @@ import { fmt } from '@/lib/stats'
 import { MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
+import { useChartGrouping } from '@/components/GroupingDialog'
+import { useSearchParam } from '@/lib/url'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const STEPS = ['Month of year', 'Year'] as const
+const PATHS_BY = ['Site', 'Group'] as const
+/** an SVG id from a site or band name (band labels carry '<', spaces and dots) */
+const markerId = (name: string) => `arrow-${[...name].map((c) => (/[A-Za-z0-9_-]/.test(c) ? c : `_${c.charCodeAt(0)}`)).join('')}`
 
 /**
  * Connected scatterplot — the census classified 31 figures as this and none
@@ -39,14 +44,24 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
   const minN = 4
   const opts: AxesOpts = { ...axes, log: false, mode: axes.mode === 'Show intercept' ? 'Data' : axes.mode }
 
+  // one path per site, or per band of the reader's grouping (components/GroupingDialog), every site pooled
+  const paired = useMemo(() => rows.filter((r) => typeof r[xField] === 'number' && typeof r[yField] === 'number'), [rows, xField, yField])
+  const { grp, picker, missingNote } = useChartGrouping('connected', paired, () => { setPathsBy('Group'); setHidden(new Set()) })
+  const [pathsChoice, setPathsBy] = useSearchParam<'Site' | 'Group'>('connected.paths', 'Site', PATHS_BY)
+  // Group is offered only once a grouping is picked
+  const pathsBy = grp ? pathsChoice : 'Site'
+  const byGroup = pathsBy === 'Group'
+  const sources = useMemo(() => byGroup
+    ? grp!.labels.map((l, i) => ({ name: l, color: grp!.colors[i], keep: (r: FilterRow) => grp!.labelOf(r) === l }))
+    : meta.sites.map((s) => ({ name: s.name, color: s.color, keep: (r: FilterRow) => r.site === s.name })), [byGroup, grp, meta.sites])
   const series = useMemo(() => {
     const keyOf = (r: FilterRow) => (step === 'Month of year' ? r.month ?? 0 : r.year ?? 0)
-    return meta.sites
+    return sources
       .filter((s) => !hidden.has(s.name))
       .map((s) => {
         const byKey = new Map<number, { xs: number[]; ys: number[] }>()
         for (const r of rows) {
-          if (r.site !== s.name) continue
+          if (!s.keep(r)) continue
           const x = r[xField]
           const y = r[yField]
           if (typeof x !== 'number' || typeof y !== 'number' || !Number.isFinite(x) || !Number.isFinite(y)) continue
@@ -64,7 +79,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
         return { name: s.name, color: s.color, pts }
       })
       .filter((s) => s.pts.length >= 2)
-  }, [rows, meta.sites, xField, yField, step, hidden])
+  }, [rows, sources, xField, yField, step, hidden])
 
   const all = series.flatMap((s) => s.pts)
   // a median outside the axes (negative under "From 0,0") is clipped, not drawn into the margin
@@ -102,6 +117,9 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
       provenance="31 figures classified as connected scatter, none built until now · react-graph-gallery.com/connected-scatter-plot"
       controls={
         <>
+          {grp && <Segmented label="Paths" value={pathsBy} options={PATHS_BY} onChange={(v) => { setPathsBy(v); setHidden(new Set()) }}
+            title="One path per site, or per band of a grouping (every site pooled in each band)" />}
+          {picker}
           <Segmented label="Step" value={step} options={STEPS} onChange={setStep} />
           <Toggle label="Labels" checked={labels} onChange={setLabels} />
         </>
@@ -114,7 +132,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
           <svg width={innerW + MARGIN.left + MARGIN.right} height={height}>
             <defs>
               {series.map((s) => (
-                <marker key={s.name} data-export-site={s.name} data-export-color={s.color} id={`arrow-${s.name.replace(/\s/g, '')}`} viewBox="0 0 10 10" refX={8} refY={5} markerWidth={7} markerHeight={7} orient="auto-start-reverse">
+                <marker key={s.name} data-export-site={s.name} data-export-color={s.color} id={markerId(s.name)} viewBox="0 0 10 10" refX={8} refY={5} markerWidth={7} markerHeight={7} orient="auto-start-reverse">
                   <path d="M 0 0 L 10 5 L 0 10 z" fill={s.color} />
                 </marker>
               ))}
@@ -137,7 +155,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
                     stroke={s.color}
                     strokeWidth={2}
                     strokeOpacity={0.75}
-                    markerEnd={`url(#arrow-${s.name.replace(/\s/g, '')})`}
+                    markerEnd={`url(#${markerId(s.name)})`}
                   />
                   {s.pts.map((p, i) => (
                     <g key={p.key}>
@@ -155,7 +173,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
                             `${yField} median = ${fmt(p.y)}`,
                             `ratio y/x = ${fmt(p.x !== 0 ? p.y / p.x : null, 3)}`,
                             `n = ${p.n}`,
-                            ...(step === 'Month of year' ? [seasonOf(p.key, s.name) ?? ''] : []),
+                            ...(step === 'Month of year' && !byGroup ? [seasonOf(p.key, s.name) ?? ''] : []),
                           ])
                         }
                         onMouseLeave={tip.hide}
@@ -174,13 +192,14 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
           </svg>
         )}
         <Legend
-          items={meta.sites.map((s) => ({ label: s.name, color: s.color, shape: 'line' as const }))}
+          items={sources.map((s) => ({ label: s.name, color: s.color, shape: 'line' as const }))}
           hidden={hidden}
           onToggle={(l) => setHidden((h) => toggleIn(h, l))}
           onHover={setHover}
           highlighted={hover}
           note={`hollow marker = first step · arrow = last · crowded labels thinned, hover for the rest${opts.identity ? ' · grey dashed = 1:1' : ''}`}
         />
+        {byGroup && missingNote('left out of the paths')}
         {tip.node}
       </div>
     </ChartFrame>

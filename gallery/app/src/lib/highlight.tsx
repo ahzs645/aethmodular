@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { INK } from '@/lib/theme'
 
 /**
@@ -31,6 +31,24 @@ export interface FilterRecord {
   note?: string
 }
 
+/**
+ * The hovered filter changes on every mouse move, so it lives in a small store outside React state: a hover
+ * re-renders only the charts that ask for it, and a chart that passes its own ids to useHighlight(keys) only
+ * when the hovered filter is one of them (a Beijing point does not redraw the Addis panels).
+ */
+interface HoverStore { get: () => string | null; set: (id: string | null) => void; subscribe: (f: () => void) => () => void }
+function createHoverStore(): HoverStore {
+  let value: string | null = null
+  const subs = new Set<() => void>()
+  return {
+    get: () => value,
+    set: (id) => { if (id === value) return; value = id; subs.forEach((f) => f()) },
+    subscribe: (f) => { subs.add(f); return () => { subs.delete(f) } },
+  }
+}
+
+interface HighlightContext extends Omit<HighlightState, 'hoverId' | 'focusId'> { store: HoverStore }
+
 interface HighlightState {
   hoverId: string | null
   pinnedId: string | null
@@ -49,17 +67,17 @@ interface HighlightState {
   focusId: string | null
 }
 
-const Ctx = createContext<HighlightState>({
-  hoverId: null,
+const defaultStore = createHoverStore()
+const Ctx = createContext<HighlightContext>({
+  store: defaultStore,
   pinnedId: null,
   selected: null,
-  setHover: () => {},
+  setHover: defaultStore.set,
   setPinned: () => {},
   dismissSample: () => {},
   setSelected: () => {},
   openSample: () => {},
   openRecord: () => {},
-  focusId: null,
 })
 
 export function HighlightProvider({ children, pinnedId, setPinned, openSample, onDismiss, openRecord = () => {} }: {
@@ -70,7 +88,8 @@ export function HighlightProvider({ children, pinnedId, setPinned, openSample, o
   onDismiss: () => void
   openRecord?: (rec: FilterRecord) => void
 }) {
-  const [hoverId, setHover] = useState<string | null>(null)
+  const store = useMemo(createHoverStore, [])
+  const setHover = store.set
   const [selected, setSelectedState] = useState<Set<string> | null>(null)
   const dismissSample = useCallback(() => {
     setHover(null)
@@ -99,15 +118,26 @@ export function HighlightProvider({ children, pinnedId, setPinned, openSample, o
     return () => document.removeEventListener('click', onBackgroundClick)
   }, [dismissSample])
   const setSelected = (ids: Set<string> | null) => setSelectedState(ids && ids.size > 0 ? ids : null)
-  const value = useMemo<HighlightState>(
-    () => ({ hoverId, pinnedId, selected, setHover, setPinned: pin, dismissSample, setSelected, openSample, openRecord, focusId: hoverId ?? pinnedId }),
+  // the value does not change on hover: only pins, brushes and the handlers below change it
+  const value = useMemo<HighlightContext>(
+    () => ({ store, pinnedId, selected, setHover, setPinned: pin, dismissSample, setSelected, openSample, openRecord }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [hoverId, pinnedId, selected, pin, dismissSample, openSample, openRecord]
+    [store, pinnedId, selected, pin, dismissSample, openSample, openRecord]
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
-export const useHighlight = () => useContext(Ctx)
+/**
+ * The page's highlight state. With `keys` (the ids a chart draws, in the form it passes to setHover), `hoverId`
+ * is the hovered filter only when it is one of them, and the chart re-renders only then: hovering elsewhere
+ * leaves it alone. Without `keys` every hover re-renders the caller, as before.
+ */
+export function useHighlight(keys?: ReadonlySet<string> | null): HighlightState {
+  const c = useContext(Ctx)
+  const read = () => { const h = c.store.get(); return !keys || (h !== null && keys.has(h)) ? h : null }
+  const hoverId = useSyncExternalStore(c.store.subscribe, read, read)
+  return useMemo(() => ({ ...c, hoverId, focusId: hoverId ?? c.pinnedId }), [c, hoverId])
+}
 
 /**
  * Mark styling for a point given the current focus and brush selection:

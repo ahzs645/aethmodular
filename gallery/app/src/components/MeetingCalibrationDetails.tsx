@@ -1,3 +1,5 @@
+import { ExplainOnly } from '@/components/ChartFrame'
+
 interface CalibrationFit {
   train_n?: number | null
   test_n?: number | null
@@ -18,6 +20,6 @@ export function MeetingCalibrationDetails({ fit }: { fit?: CalibrationFit }) {
       <thead><tr><th>IMPROVE cohort</th><th>Used in fitting</th><th>Held out</th><th>PLS factors</th><th>Held-out IMPROVE R²</th><th>Held-out IMPROVE RMSE (µg/filter)</th></tr></thead>
       <tbody><tr><td>{count(cohort)}</td><td>{count(fit?.train_n)}</td><td>{count(fit?.test_n)}</td><td>{count(fit?.k)}</td><td>{score(fit?.TOR_test_R2)}</td><td>{score(fit?.TOR_test_RMSE_ug)}</td></tr></tbody>
     </table>
-    <p className="chart-note">Counts describe the selected saved calibration, before the Addis test set is evaluated. These scores compare predicted EC with IMPROVE TOR loading on held-out filters; RMSE is in µg/filter. Factor-selection RMSECV is a separate measure. <a href="#tab=calibration">Explore cohort size, RMSECV and fitting counts in the calibration cutoff sweep.</a></p>
+    <ExplainOnly><p className="chart-note">Counts describe the selected saved calibration, before the Addis test set is evaluated. These scores compare predicted EC with IMPROVE TOR loading on held-out filters; RMSE is in µg/filter. Factor-selection RMSECV is a separate measure. <a href="#tab=calibration">Explore cohort size, RMSECV and fitting counts in the calibration cutoff sweep.</a></p></ExplainOnly>
   </div>
 }

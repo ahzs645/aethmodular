@@ -1,7 +1,7 @@
 import { useId, useMemo, useRef, type ReactNode } from 'react'
 import { IdentityLine } from '@/components/RefLines'
 import * as d3 from 'd3'
-import { RegressionLines, RegressionReadout, RegressionReadoutText, RegressionBand, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
+import { RegressionLines, RegressionReadout, RegressionBand, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -14,6 +14,7 @@ import type { Estimator } from '@/lib/regressionMethods'
 import { baseFilterId, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { FONT, INK } from '@/lib/theme'
 import { useNarrowScreen } from '@/hooks/useMediaQuery'
+import { useFitHeight } from '@/lib/chartFit'
 
 /** One filter on a crossplot. `rec` opens the record drawer; `id` links hover and pin across charts. */
 export interface CrossPoint {
@@ -33,6 +34,21 @@ export interface CrossLine { slope: number; intercept: number; color: string; la
  * With `fit`, the browser refits the drawn points under the chosen estimators
  * (pooled, or one line per site); without it the plot only shows saved results.
  */
+/** a crossplot axis range: 0 always in view, 5 % headroom, nice ends */
+const span = (v: number[]) => d3.scaleLinear().domain([Math.min(0, d3.min(v) ?? 0), (d3.max(v) ?? 1) * 1.05]).nice().domain() as [number, number]
+
+/**
+ * One range for several panels (Panel axes: Shared, lib/panelAxes): pass the result's `domain` and
+ * `yDomain` to every panel. With `sameScale` both axes share one span, as a single panel's would.
+ */
+export function sharedCrossDomains(sets: CrossPoint[][], sameScale = true): { domain: [number, number]; yDomain?: [number, number] } {
+  const pts = sets.flat().filter((p) => p.x != null && p.y != null && Number.isFinite(p.x) && Number.isFinite(p.y))
+  const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y)
+  return sameScale ? { domain: span([...xs, ...ys]) } : { domain: span(xs), yDomain: span(ys) }
+}
+
+const NO_KEYS: ReadonlySet<string> = new Set()
+
 export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain, fit = true, errorRatio, extraLines = [], grouping: groupingOverride, background, pick, sameScale = true, yDomain }: {
   points: CrossPoint[]
   title: string
@@ -60,10 +76,11 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
-  const hl = useHighlight()
+  // pins and handlers without re-rendering on hovers; the hover is read below for this panel's filters only
+  const hl = useHighlight(NO_KEYS)
   const m = { top: 24, right: 14, bottom: 46, left: 56 }
   const side = Math.max(160, Math.min(width - m.left - m.right, maxSide))
-  const iw = side, ih = side, w = side + m.left + m.right, height = side + m.top + m.bottom
+  const iw = side, ih = side, w = side + m.left + m.right
   const clipId = useId()
   // a filter excluded by hand on any page is left out here too, points and refit alike
   const edits = useHandEdits()
@@ -85,7 +102,6 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   }) : [], [valid, grouping, lambda, fitting])
   const st = fitting ? regression(valid.map((p) => p.x), valid.map((p) => p.y), { errorsInVariables: true, lambda, bootstrapGroups: monthBlocks(valid.map((p) => p.rec ?? {})) }) : null
   const xs = valid.map((p) => p.x), ys = valid.map((p) => p.y)
-  const span = (v: number[]) => d3.scaleLinear().domain([Math.min(0, d3.min(v) ?? 0), (d3.max(v) ?? 1) * 1.05]).nice().domain() as [number, number]
   const dom = domain ?? span(sameScale ? [...xs, ...ys] : xs)
   const x = d3.scaleLinear().domain(dom).range([0, iw])
   const y = d3.scaleLinear().domain(sameScale ? dom : yDomain ?? span(ys)).range([ih, 0])
@@ -93,7 +109,15 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   const line = (s: number, b: number) => ({ x1: x(x0), y1: y(s * x0 + b), x2: x(x1), y2: y(s * x1 + b) })
   // a filter hovered or pinned on another chart dims this one only when this one draws it too
   const keys = useMemo(() => new Set(valid.map((p) => (p.id ? baseFilterId(p.id) : ''))), [valid])
-  const active = [hl.pinnedId, hl.hoverId].some((k) => !!k && keys.has(k))
+  const { hoverId } = useHighlight(keys)
+  const active = [hl.pinnedId, hoverId].some((k) => !!k && keys.has(k))
+  // a small panel (or a phone) carries its fit readout above the plot, where it covers no points; the height
+  // reserved is the most lines a readout can have, so neighbouring panels stay level (not in a Dashboard tile)
+  const inTile = useFitHeight() !== null
+  const readoutAbove = fitting && !siteFits && methods.length > 0 && !inTile && (narrow || iw < 300)
+  const aboveLines = 1 + (showCI ? 1 : 0) + methods.length * (showCI ? 3 : 1) + (methods.includes('york') ? 1 : 0)
+  const top = m.top + (readoutAbove ? aboveLines * 15 + 24 : 0)
+  const height = side + top + m.bottom
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       {/* its points carry a site but no season, so a per-season grouping would only draw the pooled fit */}
@@ -101,7 +125,8 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
       {/* centred in its panel: a square plot in a wide frame leaves even margins either side */}
       <svg width={w} height={height} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
         <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>
-        <g transform={`translate(${m.left},${m.top})`}>
+        {readoutAbove && <RegressionReadout stats={st} x={12} y={22} width={w - 24} />}
+        <g transform={`translate(${m.left},${top})`}>
           <defs><clipPath id={clipId}><rect width={iw} height={ih} /></clipPath></defs>
           <YAxis scale={y} x={0} label={yLabel} tickCount={5} gridWidth={iw} labelX={-42} format={(v) => String(+(+v).toFixed(2))} pick={pick === true || pick === 'y' ? 'y' : undefined} />
           <XAxis scale={x} y={ih} label={xLabel} tickCount={5} format={(v) => String(+(+v).toFixed(2))} labelDy={38} pick={pick === true || pick === 'x' ? 'x' : undefined} />
@@ -111,7 +136,7 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
             {sameScale && <IdentityLine {...line(1, 0)} />}
             {valid.map((p, i) => {
               const key = p.id ? baseFilterId(p.id) : null
-              const focus = !!key && (key === hl.pinnedId || key === hl.hoverId)
+              const focus = !!key && (key === hl.pinnedId || key === hoverId)
               const dim = active && !focus
               return (
                 <circle key={i} cx={x(p.x)} cy={y(p.y)} r={focus ? 6 : 3.2} fill={p.hollow ? 'none' : p.color}
@@ -127,10 +152,9 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
               : <RegressionLines stats={st} x={x} y={y} domain={dom} width={iw} height={ih} />)}
             {extraLines.map((l) => <g key={l.label}><RegressionBand stats={l.stats} method={l.method} color={l.color} x={x} y={y} domain={dom} /><line {...line(l.slope, l.intercept)} stroke={l.color} strokeWidth={1.8} strokeDasharray={l.dash} /></g>)}
           </g>
-          {fitting && !siteFits && !narrow && <RegressionReadout stats={st} x={8} y={6} width={Math.min(280, iw - 12)} />}
+          {fitting && !siteFits && !readoutAbove && <RegressionReadout stats={st} x={8} y={6} width={Math.min(280, iw - 12)} />}
         </g>
       </svg>
-      {fitting && !siteFits && narrow && <RegressionReadoutText stats={st} />}
       {siteFits && <details><summary>Per-site fit statistics ({fitGroups.length} sites)</summary>
         <svg width={w} height={regressionGroupReadoutLayout(fitGroups.length, w, methods, showCI).height} style={{ display: 'block', margin: '0 auto' }}>
           <RegressionGroupReadouts groups={fitGroups} width={w} />

@@ -2,7 +2,6 @@ import { EstimatorViews, ESTIMATORS, projectGrid, projectRun, useRegressions } f
 import { useMemo, useState } from 'react'
 import { ChartFrame, Select } from '@/components/ChartFrame'
 import { Combobox } from '@/components/Combobox'
-import type { AxesOpts } from '@/lib/axes'
 import { PageToc } from '@/components/PageToc'
 import { SpecCurve } from '@/charts/calibration/SpecCurve'
 import { CutoffSweep } from '@/charts/calibration/CutoffSweep'
@@ -62,7 +61,7 @@ const SPEC_VIEWS = [
   { key: 'orig:only:deriv2', label: '2nd derivative only', group: 'Spline, raw and 2nd derivative' },
 ]
 
-export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null, pmfSel = null, pmfLabelOfDate, galleryRows, sourceRows, galleryMeta, axes, onAxes }: {
+export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null, pmfSel = null, pmfLabelOfDate, galleryRows, sourceRows, galleryMeta }: {
   calib: CalibFile | null
   runs: CalibRunsFile | null
   meta: MetaFile
@@ -76,9 +75,6 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
   /** PMF-source groups kept in the Filters panel (Addis dates only), and a filter's group from its date */
   pmfSel?: Set<string> | null
   pmfLabelOfDate?: (date: string | null | undefined) => string
-  /** the gallery's axes options (Panel axes is shared with the correlation crossplots) */
-  axes?: AxesOpts
-  onAxes?: (a: AxesOpts) => void
 }) {
   const { methods } = useRegressions()
   const calibrationViews = useMemo(() => Object.fromEntries(ESTIMATORS.map(method => [method, calib ? { ...calib, grid: calib.grid.map(r => projectGrid(r, method)), sweeps: calib.sweeps.map(r => projectGrid(r, method)) } : null])) as Record<typeof ESTIMATORS[number], CalibFile | null>, [calib])
@@ -229,7 +225,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
             <span className="pill">Cross-site transfer</span>
             <span style={{ color: 'var(--ink-muted)' }}>one IMPROVE-trained calibration, applied unchanged to every SPARTAN site</span>
           </SectionBar>
-          <EstimatorViews>{method => <CrossSiteTransfer runs={{ ...runs, runs: runs.runs.map(r => projectRun(r, method)) }} axes={axes} onAxes={onAxes} galleryRows={galleryRows} sourceRows={sourceRows} galleryMeta={galleryMeta} />}</EstimatorViews>
+          <EstimatorViews>{method => <CrossSiteTransfer runs={{ ...runs, runs: runs.runs.map(r => projectRun(r, method)) }} galleryRows={galleryRows} sourceRows={sourceRows} galleryMeta={galleryMeta} />}</EstimatorViews>
 
           <SectionBar>
             <span className="pill">Cohort diagnostics</span>

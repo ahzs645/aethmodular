@@ -2,11 +2,11 @@ import { fitUncertainty } from '@/lib/fitUncertainty'
 import { styleBrush } from '@/lib/brush'
 import { seasonsForSite } from '@/siteSeasons'
 import { IdentityLine, RefLine } from '@/components/RefLines'
-import { RegressionLines, RegressionReadout, RegressionReadoutText, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
+import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
 import { useRegressions, fitsFor } from '@/lib/regressionPrefs'
 import { fitGroupingOption, useChartOptions, type OptionContext } from '@/lib/chartOptions'
 import { groupedRegressions, type FitGrouping, type RegressionGroup } from '@/lib/siteRegression'
-import { useEffect, useId, useMemo, useRef } from 'react'
+import { memo, useCallback, useEffect, useId, useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { ColorLegend, SizeLegend } from '@/components/ColorLegend'
@@ -14,25 +14,30 @@ import { FieldSelect } from '@/components/FieldSelect'
 import { Legend, toggleIn, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
+import { PanelAxesControl } from '@/lib/panelAxes'
 import { useTooltip } from '@/hooks/useTooltip'
 import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
 import { useFilterEdits } from '@/lib/filterEdits'
-import { inDomain, pairDomain, type AxesOpts, type PairDomain, robustDomain } from '@/lib/axes'
+import { inDomain, pairDomain, panelAxesKey, type AxesOpts, type PairDomain, robustDomain } from '@/lib/axes'
 import { regression, fmt, type RegressionStats } from '@/lib/stats'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import { useColourScheme } from '@/lib/colourSchemes'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { NO_PMF, PMF_SOURCE } from '@/lib/pmfGroups'
 import { useChartLabel, useFitHeight } from '@/lib/chartFit'
-import { useTileSetting } from '@/lib/url'
+import { useSearchParam, useTileSetting } from '@/lib/url'
+import { GroupingPicker, useGroupings } from '@/components/GroupingDialog'
+import { NO_BAND_COLOR, applyGrouping, noBandLabel } from '@/lib/groupings'
 import { useNarrowScreen } from '@/hooks/useMediaQuery'
 
 type Point = { row: FilterRow; x: number; y: number; c: number | null; s: number | null }
 type Scale = d3.ScaleLinear<number, number> | d3.ScaleLogarithmic<number, number>
 
 /** Per season: one site's seasons side by side, or each site's seasons grouped under it */
-const LAYOUTS = ['Combined', 'Per site', 'Per season'] as const
-const COLOR_BY = ['Site', 'Season', 'Value'] as const
+const LAYOUTS = ['Combined', 'Per site', 'Per season', 'Per group'] as const
+const COLOR_BY = ['Site', 'Season', 'Value', 'Group'] as const
+/** layouts drawn as one row of panels per site (its seasons, or the bands of a grouping) */
+const ROWED = (layout: unknown) => layout === 'Per season' || layout === 'Per group'
 /** Value's categorical choice where a site in view has PMF: each point by its day's dominant source */
 const PMF_COLOUR = 'PMF source (dominant)'
 const NO_SIZE = 'none'
@@ -81,7 +86,9 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const hl = useHighlight()
+  // the chart's own state (pins, brush, handlers) without re-rendering on hovers; the hover is read below, for this
+  // chart's filters only
+  const hl = useHighlight(NO_KEYS)
   const { methods, grouping: chosenGrouping, setGrouping } = useRegressions()
   const { hidden, setHidden, dim, hover, setHover } = useLegend()
   // the reader's colour field, or Iron, or the first field, among the fields this view has now: the
@@ -96,24 +103,37 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   // the options and when each applies (lib/chartOptions). Fits are per panel, so the grouping
   // offered follows the layout: a fit per site inside a site's panel is the pooled fit, and a
   // per-season panel holds one site in one season, so every grouping is its one fit
+  // the reader's grouping (lib/groupings) for the Per group layout and the Group colour: its id, kept in the URL
+  const groupings = useGroupings()
+  const [groupId, setGroupId] = useSearchParam<string>(`${id}.group`, '')
+  const groupingDef = groupings.find(groupId)
+  const noBand = groupingDef ? noBandLabel(groupingDef) : 'No value'
   const o = useChartOptions('scatter', [
     // one site in view: no per-site grid, and per-season panels colour by season (one site colour says nothing)
-    { key: 'layout', label: 'Layout', choices: LAYOUTS.map((v) => ({ value: v, when: v === 'Per site' ? (c: OptionContext) => (c.sites as number) > 1 : undefined })),
+    { key: 'layout', label: 'Layout', choices: LAYOUTS.map((v) => ({ value: v, when: v === 'Per site' ? (c: OptionContext) => (c.sites as number) > 1 : v === 'Per group' ? (c: OptionContext) => !!c.hasGroup : undefined })),
       default: 'Combined', title: 'PlotConfig.layout: combined overlays sites; per site is the grid' },
-    { key: 'colorBy', label: 'Colour', choices: COLOR_BY.map((v) => ({ value: v, when: v === 'Site' ? (c: OptionContext) => !(c.layout === 'Per season' && (c.sites as number) <= 1) : undefined })), default: 'Site', title: 'Value: a third measurement on a sequential ramp (2–98 % of its range), or, where a site in view has PMF, its day\'s dominant source', onChange: () => setHidden(new Set()) },
+    // per-season panels: each site's seasons in one row that scrolls sideways, or wrapped onto as many lines as fit
+    { key: 'seasonRows', label: 'Panels', choices: [{ value: 'line', label: 'One row' }, { value: 'wrap', label: 'Wrap' }], default: 'line',
+      when: (c) => ROWED(c.layout), title: 'One row: each site\'s seasons side by side, scrolling sideways when they do not fit · Wrap: as many panels per line as fit the chart, the rest on the next line' },
+    { key: 'colorBy', label: 'Colour', choices: COLOR_BY.map((v) => ({ value: v, when: v === 'Site' ? (c: OptionContext) => !(c.layout === 'Per season' && (c.sites as number) <= 1) : v === 'Group' ? (c: OptionContext) => !!c.hasGroup : undefined })), default: 'Site', title: 'Value: a third measurement on a sequential ramp (2–98 % of its range), or, where a site in view has PMF, its day\'s dominant source', onChange: () => setHidden(new Set()) },
+    // the grouping for Per group panels and the Group colour: always offered; those two choices appear once one is picked
+    // the first pick (from none) colours by it at once; Per group stays a choice
+    { key: 'groupBy', node: () => <GroupingPicker value={groupId} rows={drawable} onChange={(id) => { if (!groupingDef && id) o.set('colorBy', 'Group'); setGroupId(id) }} /> },
     // where a site in view has PMF (lib/pmfGroups; Addis so far), its dominant source heads the list, beside the PMF shares
     { key: 'colorField', when: (c) => c.colorBy === 'Value', node: () => <FieldSelect label="by" value={colorField} meta={meta} onChange={(f) => { setColorField(f); setHidden(new Set()) }} extraOptions={hasPmf ? [PMF_COLOUR] : []} /> },
     { key: 'size', node: () => <FieldSelect label="Size" value={sizeField} meta={meta} onChange={setSizeField} extraOptions={[NO_SIZE]} title="Bubble plot: mark area proportional to a fourth measurement" /> },
+    // several panels: the gallery's Panel axes (lib/panelAxes), here as well as in the sidebar
+    { key: 'panelAxes', when: (c) => c.layout !== 'Combined', node: (c) => <PanelAxesControl dims={ROWED(c.layout) ? ['site', 'season'] : ['site']} /> },
     { key: 'fitLines', label: 'Fit lines', toggle: true, default: true },
     fitGroupingOption({ bind: [chosenGrouping, setGrouping as (v: never) => void],
-      when: (c) => !!c.fitLines && (c.estimators as number) > 0 && c.layout !== 'Per season',
-      hiddenNote: (c) => (c.fitLines && (c.estimators as number) > 0 && c.layout === 'Per season' ? 'one fit per panel' : null),
+      when: (c) => !!c.fitLines && (c.estimators as number) > 0 && !ROWED(c.layout),
+      hiddenNote: (c) => (c.fitLines && (c.estimators as number) > 0 && ROWED(c.layout) ? 'one fit per panel' : null),
       offerSite: (c) => c.layout === 'Combined',
       pooledLabel: (c) => (c.layout === 'Per site' ? 'One fit per site' : 'One pooled fit') }),
     { key: 'brushing', label: 'Brush to select', toggle: true, default: false, title: 'Drag a rectangle: the enclosed filters are highlighted on every chart of this tab', onChange: ((v: boolean) => { if (!v) hl.setSelected(null) }) as (v: never) => void },
     { key: 'selected', when: () => !!hl.selected, node: () => <span className="control"><strong>{hl.selected?.size}</strong> selected<button type="button" className="btn quiet" onClick={() => hl.setSelected(null)}>Clear</button></span> },
     { key: 'count', node: () => <span className="control">{points.length} points</span> },
-  ], { estimators: methods.length, sites: nSites })
+  ], { estimators: methods.length, sites: nSites, hasGroup: !!groupingDef })
   const layout = o.values.layout as (typeof LAYOUTS)[number]
   const colorBy = o.values.colorBy as (typeof COLOR_BY)[number]
   const showFit = o.values.fitLines as boolean
@@ -126,8 +146,12 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   const pmfOf = (r: FilterRow) => (typeof r[PMF_SOURCE] === 'string' ? (r[PMF_SOURCE] as string) : NO_PMF)
   // colour by PMF source is categorical: its legend groups (and hides) by source
   const pmfColouring = colorBy === 'Value' && colorField === PMF_COLOUR
-  const groupOf = (r: FilterRow) => (colorBy === 'Season' ? r.season : pmfColouring ? pmfOf(r) : r.site)
+  const groupOf = (r: FilterRow) => (colorBy === 'Season' ? r.season : colorBy === 'Group' ? grp?.labelOf(r) ?? noBand : pmfColouring ? pmfOf(r) : r.site)
   const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+  // the grouping on the filters this chart can draw (both axes measured): its quantiles do not move when a band is
+  // hidden in the legend
+  const drawable = useMemo(() => rows.filter((r) => num(r[xField]) !== null && num(r[yField]) !== null), [rows, xField, yField]) // eslint-disable-line react-hooks/exhaustive-deps
+  const grp = useMemo(() => (groupingDef ? applyGrouping(groupingDef, drawable) : null), [groupingDef, drawable])
 
   const points = useMemo<Point[]>(
     () =>
@@ -141,7 +165,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
             (!logAxes || (p.x > 0 && p.y > 0))
         ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rows, xField, yField, logAxes, hidden, colorBy, colorField, sizeField]
+    [rows, xField, yField, logAxes, hidden, colorBy, colorField, sizeField, grp]
   )
 
   // third variable → colour; fourth → size (sqrt, so area is proportional)
@@ -157,35 +181,46 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   const nNoColor = colorBy === 'Value' ? points.filter((p) => p.c === null).length : 0
   const nNoSize = sScale ? points.filter((p) => p.s === null).length : 0
 
-  const colorOf = (p: Point) =>
+  // stable between renders (they change only with the colouring, the size field or the legend), so a panel whose
+  // own inputs did not change skips re-rendering (ScatterPanel is memoised)
+  const colorOf = useCallback((p: Point) =>
     pmfColouring ? pmfColor.get(pmfOf(p.row)) ?? INK.neutral
       : colorBy === 'Value' ? (p.c === null || !cScale ? INK.neutral : cScale(p.c)) : colorBy === 'Season' ? seasonColor.get(p.row.season) ?? INK.muted
-      : (p.row.color as string)
-  const radiusOf = (p: Point) => (sScale ? (p.s === null ? 1.5 : sScale(p.s)) : 4)
+      : colorBy === 'Group' ? (grp ? grp.colorOf(grp.labelOf(p.row) ?? noBand) : INK.neutral)
+      : (p.row.color as string), [pmfColouring, pmfColor, colorBy, cScale, seasonColor, grp]) // eslint-disable-line react-hooks/exhaustive-deps
+  const radiusOf = useCallback((p: Point) => (sScale ? (p.s === null ? 1.5 : sScale(p.s)) : 4), [sScale])
+  const dimOf = useCallback((p: Point) => dim(groupOf(p.row)), [hidden, hover, colorBy, pmfColouring, grp]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const panels = useMemo(() => {
-    const raw: { key: string; title: string | null; color: string; points: Point[]; group?: string }[] = layout === 'Combined'
+    const raw: { key: string; title: string | null; color: string; points: Point[]; group?: string; site?: string }[] = layout === 'Combined'
       ? [{ key: 'all', title: null as string | null, color: INK.text, points }]
+      : layout === 'Per group' && grp
+        // each site's row: one panel per band of the grouping
+        ? meta.sites.flatMap((s) => grp.labels.map((l, i) => ({
+            key: `${s.code}|g${i}`, group: s.name, site: s.name, color: grp.colors[i], title: l,
+            points: points.filter((p) => p.row.site === s.name && grp.labelOf(p.row) === l),
+          }))).filter((p) => p.points.length > 0)
       : layout === 'Per season'
         // each site's own seasons under the active calendar (local calendars carry the site in the name)
         ? meta.sites.flatMap((s) => seasonsForSite(meta, s.name).map((se) => ({
-            key: `${s.code}|${se.name}`, group: s.name, color: se.color,
+            key: `${s.code}|${se.name}`, group: s.name, color: se.color, site: s.name,
             title: se.site && se.name.startsWith(`${se.site} · `) ? se.name.slice(se.site.length + 3) : se.name,
             points: points.filter((p) => p.row.site === s.name && p.row.season === se.name),
           }))).filter((p) => p.points.length > 0)
         : meta.sites
-          .map((s) => ({ key: s.code, title: s.name, color: s.color, points: points.filter((p) => p.row.site === s.name) }))
+          .map((s) => ({ key: s.code, title: s.name, color: s.color, site: s.name, points: points.filter((p) => p.row.site === s.name) }))
           .filter((p) => p.points.length > 0)
     // Deming lambda: when both axes are the same measured quantity we default to
     // 1.0 (orthogonal), exactly as calculate_regression_stats does.
     return raw.map((p) => ({
       ...p,
+      ids: new Set(p.points.map((q) => q.row.id)),
       stats: regression(p.points.map((q) => q.x), p.points.map((q) => q.y), fitUncertainty(p.points.map(q => q.row), xField, yField, meta)),
       fitGroups: groupedRegressions(p.points, grouping, { x: q => q.x, y: q => q.y, site: q => q.row.site, season: q => q.row.season, seasonColor: q => meta.seasons.find(se => se.name === q.row.season)?.color ?? INK.muted,
         color: q => meta.sites.find(s => s.name === q.row.site)?.color ?? INK.muted,
         options: members => fitUncertainty(members.map(q => q.row), xField, yField, meta) }),
     }))
-  }, [layout, points, meta, xField, yField, grouping])
+  }, [layout, points, meta, xField, yField, grouping, grp])
 
   // Shared domain across every panel by default — a per-site grid with different axes
   // per panel silently hides that one site's slope is twice another's. "Own" panel axes
@@ -194,40 +229,103 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
     const intercepts = panels.flatMap(p => p.fitGroups.flatMap(group => fitsFor(group.stats, methods).map(fit => fit.intercept)))
     return pairDomain(points.map((p) => p.x), points.map((p) => p.y), axes, showFit ? intercepts : [])
   }, [points, panels, axes, showFit, methods])
-  // 'Own' panel axes apply to any split layout (one panel per site, or per site and season)
-  const ownAxes = layout !== 'Combined' && axes.panels === 'Own'
-  const panelDomains = useMemo(() => ownAxes
-    ? new Map(panels.map(p => [p.key, pairDomain(p.points.map(q => q.x), p.points.map(q => q.y), axes,
-      showFit ? p.fitGroups.flatMap(group => fitsFor(group.stats, methods).map(fit => fit.intercept)) : [])]))
-    : null, [ownAxes, panels, axes, showFit, methods])
+  // Panel axes (lib/axes): panels in one group share a range. Per site gives each row of the per-season grid (one
+  // site's seasons) one range; on the per-site grid Per site is Own
+  const panelMode = layout === 'Combined' ? 'Shared' : axes.panels ?? 'Shared'
+  const panelDomains = useMemo(() => {
+    if (panelMode === 'Shared') return null
+    const groups = new Map<string, typeof panels>()
+    for (const p of panels) {
+      const k = panelAxesKey(panelMode, p)
+      groups.set(k, [...(groups.get(k) ?? []), p])
+    }
+    const out = new Map<string, ReturnType<typeof pairDomain>>()
+    for (const ps of groups.values()) {
+      const pts = ps.flatMap(p => p.points)
+      const d = pairDomain(pts.map(q => q.x), pts.map(q => q.y), axes,
+        showFit ? ps.flatMap(p => p.fitGroups.flatMap(group => fitsFor(group.stats, methods).map(fit => fit.intercept))) : [])
+      for (const p of ps) out.set(p.key, d)
+    }
+    return out
+  }, [panelMode, panels, axes, showFit, methods])
 
   const legend = useMemo(
     () =>
-      (colorBy === 'Season' ? meta.seasons : pmfColouring ? (meta.pmf_groups ?? []).map((g) => ({ name: g.name, color: g.color })) : meta.sites).map((s) => ({
+      (colorBy === 'Season' ? meta.seasons : colorBy === 'Group' ? (grp ? [...grp.labels.map((l, i) => ({ name: l, color: grp.colors[i] })),
+        // the filters without the measurement, drawn grey: named in the legend (and hideable) when there are any
+        ...(drawable.some((r) => grp.labelOf(r) === null) ? [{ name: noBand, color: NO_BAND_COLOR }] : [])] : [])
+        : pmfColouring ? (meta.pmf_groups ?? []).map((g) => ({ name: g.name, color: g.color })) : meta.sites).map((s) => ({
         label: s.name,
         color: colorBy === 'Value' && !pmfColouring ? INK.neutral : s.color,
         detail: `n=${rows.filter((r) => groupOf(r) === s.name && typeof r[xField] === 'number' && typeof r[yField] === 'number').length}`,
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [colorBy, pmfColouring, meta, rows, xField, yField]
+    [colorBy, pmfColouring, meta, rows, xField, yField, grp, drawable, noBand]
   )
 
   // PlotConfig.equal_axes: a 1:1 line only reads correctly on a square panel.
   const MAX_SQUARE = 560
   const fit = useFitHeight()
-  const seasonGroups = layout === 'Per season' ? [...new Set(panels.map((p) => p.group ?? ''))] : []
-  const perGroup = layout === 'Per season' ? Math.max(1, ...seasonGroups.map((g) => panels.filter((p) => p.group === g).length)) : 1
-  const cols = layout === 'Per site' && width > 700 ? 2 : layout === 'Per season' ? Math.min(perGroup, width > 1000 ? 4 : width > 640 ? 2 : 1) : 1
-  const panelOuterW = Math.floor((width - (cols - 1) * 12) / cols)
-  const availW = Math.max(200, panelOuterW - MARGIN.left - MARGIN.right)
+  const rowed = layout === 'Per season' || (layout === 'Per group' && !!grp)
+  const seasonGroups = rowed ? [...new Set(panels.map((p) => p.group ?? ''))] : []
+  const perGroup = rowed ? Math.max(1, ...seasonGroups.map((g) => panels.filter((p) => p.group === g).length)) : 1
+  // several panels: a plot never shrinks below a readable size; when a row does not fit, it scrolls sideways
+  // inside the chart (each site's seasons stay in one row, side by side) instead of squeezing every plot.
+  // A Dashboard tile keeps fitting its panels to the tile.
+  const tiled = fit !== null
+  const GAP = tiled ? 12 : 24
+  const MIN_PLOT = tiled ? 200 : rowed ? 240 : 300
+  const wrapSeasons = o.values.seasonRows === 'wrap'
+  // wrapped: as many panels per line as fit at the minimum size
+  const fitCols = Math.max(1, Math.floor((width + GAP) / (MIN_PLOT + MARGIN.left + MARGIN.right + GAP)))
+  const cols = layout === 'Per site' && width > 700 ? 2
+    : rowed ? (tiled ? Math.min(perGroup, width > 1000 ? 4 : width > 640 ? 2 : 1) : wrapSeasons ? Math.min(perGroup, fitCols) : width > 640 ? perGroup : 1)
+    : 1
+  const panelOuterW = Math.floor((width - (cols - 1) * GAP) / cols)
+  const availW = Math.max(MIN_PLOT, panelOuterW - MARGIN.left - MARGIN.right)
   // every crossplot panel is square, with or without the 1:1 line
   const panelRows = Math.max(1, Math.ceil(panels.length / cols))
-  const innerW = Math.min(availW, fit === null ? (layout === 'Per site' ? 420 : layout === 'Per season' ? 320 : MAX_SQUARE) : Math.max(100, fit / panelRows - MARGIN.top - MARGIN.bottom))
+  const innerW = Math.min(availW, fit === null ? (layout === 'Per site' ? 420 : rowed ? 320 : MAX_SQUARE) : Math.max(100, fit / panelRows - MARGIN.top - MARGIN.bottom))
   const innerH = innerW
+  // fixed-width columns (the panel's own width): a grid wider than the chart starts at its left edge and scrolls,
+  // where shrinkable columns would centre each panel in a narrower cell and clip its left side
+  const gridStyle: React.CSSProperties = tiled
+    ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }
+    : { gridTemplateColumns: `repeat(${cols}, ${innerW + MARGIN.left + MARGIN.right}px)`, columnGap: GAP, width: 'max-content', marginLeft: 'auto', marginRight: 'auto' }
+
+  // the hover read for this chart's filters only, and each panel told only of a hover inside it
+  const chartKeys = useMemo(() => new Set(points.map((p) => p.row.id)), [points])
+  const { focusId } = useHighlight(chartKeys)
+  // the handlers read the latest state through a ref, so the panels get the same functions every render
+  const live = useRef({ enter: (_e: React.MouseEvent, _pt: Point) => {}, leave: () => {}, click: (_row: FilterRow) => {}, brush: (_ids: Set<string> | null) => {} })
+  live.current = {
+    enter: (e: React.MouseEvent, pt: Point) => {
+      const row = pt.row
+      hl.setHover(row.id)
+      tip.show(e, [
+        row.id,
+        `${row.site} · ${row.date}`,
+        row.season,
+        `${xField}: ${fmt(row[xField] as number)}`,
+        `${yField}: ${fmt(row[yField] as number)}`,
+        ...(colorBy === 'Value' ? [`${colorField}: ${fmt(pt.c)}`] : []),
+        ...(sScale ? [`${sizeField}: ${fmt(pt.s)}`] : []),
+        row.excluded ? `excluded: ${row.exclusion_reason}` : 'click for details',
+      ])
+    },
+    leave: () => { hl.setHover(null); tip.hide() },
+    click: (row: FilterRow) => hl.openSample(row.id),
+    brush: (ids: Set<string> | null) => hl.setSelected(ids),
+  }
+  const stable = useMemo(() => ({
+    onEnter: (e: React.MouseEvent, pt: Point) => live.current.enter(e, pt), onLeave: () => live.current.leave(),
+    onClick: (row: FilterRow) => live.current.click(row), onBrush: (ids: Set<string> | null) => live.current.brush(ids),
+  }), [])
 
   if (xField === yField) return <ChartFrame title="Scatterplot"><Empty>x and y are the same field — pick two different measurements in the bar above.</Empty></ChartFrame>
 
   const unitOf = (f: string) => withUnit(f, meta.field_units)
+
 
   const renderPanel = (p: (typeof panels)[number]) => (
               <ScatterPanel
@@ -248,28 +346,15 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
                 yLabel={unitOf(yField)}
                 colorOf={colorOf}
                 radiusOf={radiusOf}
-                dimOf={(pt) => dim(groupOf(pt.row))}
+                dimOf={dimOf}
                 fitDim={p.title && colorBy !== 'Season' ? dim(p.title) : 1}
-                focusId={hl.focusId}
+                focusId={focusId && p.ids.has(focusId) ? focusId : null}
                 selected={hl.selected}
                 brushing={brushing}
-                onBrush={(ids) => hl.setSelected(ids)}
-                onEnter={(e, pt) => {
-                  const row = pt.row
-                  hl.setHover(row.id)
-                  tip.show(e, [
-                    row.id,
-                    `${row.site} · ${row.date}`,
-                    row.season,
-                    `${xField}: ${fmt(row[xField] as number)}`,
-                    `${yField}: ${fmt(row[yField] as number)}`,
-                    ...(colorBy === 'Value' ? [`${colorField}: ${fmt(pt.c)}`] : []),
-                    ...(sScale ? [`${sizeField}: ${fmt(pt.s)}`] : []),
-                    row.excluded ? `excluded: ${row.exclusion_reason}` : 'click for details',
-                  ])
-                }}
-                onLeave={() => { hl.setHover(null); tip.hide() }}
-                onClick={(row) => hl.openSample(row.id)}
+                onBrush={stable.onBrush}
+                onEnter={stable.onEnter}
+                onLeave={stable.onLeave}
+                onClick={stable.onClick}
               />
   )
 
@@ -286,17 +371,17 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
         {points.length < 3 ? (
           <Empty>Fewer than 3 filters carry both {xField} and {yField} in this subset.</Empty>
         ) : (
-          layout === 'Per season' && seasonGroups.length > 1
+          rowed && seasonGroups.length > 1
             // several sites: one group per site, its seasons side by side
             ? <div className="season-groups">{seasonGroups.map((g) => (
                 <section key={g} className="season-panel-group">
                   <h4 style={{ color: meta.sites.find((x) => x.name === g)?.color }}>{g}</h4>
-                  <div className="facet-grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+                  <div className="facet-grid" style={gridStyle}>
                     {panels.filter((p) => p.group === g).map(renderPanel)}
                   </div>
                 </section>
               ))}</div>
-            : <div className="facet-grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+            : <div className="facet-grid" style={gridStyle}>
                 {panels.map(renderPanel)}
               </div>
         )}
@@ -312,6 +397,10 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
         {colorBy === 'Value' && !pmfColouring && (
           <Legend items={legend} hidden={hidden} onToggle={(l) => setHidden((h) => toggleIn(h, l))} onHover={setHover} highlighted={hover} note="click a site to drop it; colour is the value above" />
         )}
+        {layout === 'Per group' && grp && (() => {
+          const n = drawable.filter((r) => grp.labelOf(r) === null).length
+          return n > 0 ? <p className="chart-note">No data: {n.toLocaleString()} of {drawable.length.toLocaleString()} filters have no {groupingDef!.field}, so they are in no panel (colour by Group shows them in grey).</p> : null
+        })()}
         {tip.node}
       </div>
     </ChartFrame>
@@ -319,7 +408,11 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
 }
 
 /** One axes: used once for the combined layout, once per site for the grid. */
-function ScatterPanel({
+const NO_KEYS: ReadonlySet<string> = new Set()
+/** space between a readout box above the plot and the panel's edges */
+const READOUT_INSET = 12
+
+const ScatterPanel = memo(function ScatterPanel({
   title, titleColor, points, stats, fitGroups, domain, innerW, innerH, axes, showFit, xLabel, yLabel, colorOf, radiusOf, dimOf, fitDim, focusId, selected, brushing, onBrush, onEnter, onLeave, onClick, grouping, siteColoring, seasonColoring,
 }: {
   /** the grouping the chart draws (lib/regressionPrefs effectiveGrouping), not the raw setting */
@@ -433,6 +526,13 @@ function ScatterPanel({
   const selectedFits = fitGroups.flatMap(group => fitsFor(group.stats, showFit ? methods : []).map(fit => ({ ...fit, color: group.color ?? fit.color, name: group.name })))
   const svgWidth = innerW + MARGIN.left + MARGIN.right
   const readoutHeight = siteFits ? regressionGroupReadoutLayout(fitGroups.length, svgWidth, methods, showCI).height : 0
+  // a small panel (or a phone) carries its fit readout above the plot, where it covers no points; every panel of
+  // the grid reserves the same height (the most lines a readout can have), so the plots stay level across a row
+  // (not in a Dashboard tile: its height is fitted to the tile, so the readout stays inside the plot there)
+  const inTile = useFitHeight() !== null
+  const readoutAbove = grouping === 'pooled' && showFit && methods.length > 0 && !inTile && (narrow || innerW < 320)
+  const aboveLines = 1 + (showCI ? 1 : 0) + methods.length * (showCI ? 3 : 1) + (methods.includes('york') ? 1 : 0)
+  const top = MARGIN.top + (readoutAbove ? aboveLines * 15 + 22 : 0)
 
   return (
     <div>
@@ -442,14 +542,15 @@ function ScatterPanel({
           <span style={{ color: 'var(--ink-muted)', fontWeight: 400, fontFamily: 'var(--mono)', fontSize: 11 }}>n={points.length}</span>
         </p>
       )}
-      <svg width={svgWidth} height={innerH + MARGIN.top + MARGIN.bottom + readoutHeight} className="animated">
+      <svg width={svgWidth} height={innerH + top + MARGIN.bottom + readoutHeight} className="animated">
         <defs>
           {/* fit and identity lines are clipped to the axes: a slope above 1 otherwise leaves through the top margin */}
           <clipPath id={clipId}>
             <rect x={0} y={0} width={innerW} height={innerH} />
           </clipPath>
         </defs>
-        <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
+        {readoutAbove && <RegressionReadout stats={stats} x={READOUT_INSET} y={6} width={svgWidth - 2 * READOUT_INSET} />}
+        <g transform={`translate(${MARGIN.left},${top})`}>
           {/* In 'Show intercept' mode the spines cross at the origin, matplotlib-style, so the
               intercept markers sit on the y axis and the x axis runs through the cloud. */}
           {originAxes ? (
@@ -527,11 +628,10 @@ function ScatterPanel({
             </g>
           )}
 
-          {grouping === 'pooled' && showFit && !narrow && <RegressionReadout stats={stats} />}
+          {grouping === 'pooled' && showFit && !readoutAbove && <RegressionReadout stats={stats} />}
         </g>
-        {siteFits && <RegressionGroupReadouts groups={fitGroups} width={svgWidth} y={innerH + MARGIN.top + MARGIN.bottom} />}
+        {siteFits && <RegressionGroupReadouts groups={fitGroups} width={svgWidth} y={innerH + top + MARGIN.bottom} />}
       </svg>
-      {grouping === 'pooled' && showFit && narrow && <RegressionReadoutText stats={stats} />}
     </div>
   )
-}
+})

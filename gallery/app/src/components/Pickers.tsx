@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { Segmented, Select } from '@/components/ChartFrame'
 import { baselineName } from '@/lib/labels'
 import { shortSeason } from '@/lib/seasons'
@@ -71,17 +71,30 @@ export const clampCount = (v: string, max: number, fallback: number) => {
 }
 
 /**
- * How many of a ranked list to draw: the usual counts as buttons, or any count up to `max`
- * (what the export stores) typed in. The value is a string, as kept in the URL.
+ * How many of a ranked list to draw: the usual counts as buttons, the last of them a number box
+ * that starts at that count and takes any count up to `max` (what the export stores). The value
+ * is a string, as kept in the URL.
  */
 export function CountPicker({ label, value, presets, max, onChange, noun = 'items' }: {
   label: string; value: string; presets: readonly string[]; max: number; onChange: (v: string) => void; noun?: string
 }) {
-  return <>
-    <Segmented label={label} value={value} options={presets} onChange={onChange} />
-    <label className="control" title={`Any number of ${noun}, 1–${max}`}>
-      or<input aria-label={`${label}: number of ${noun}`} className="select" type="number" min={1} max={max} step={1} value={value} style={{ width: 70 }}
-        onChange={(e) => { const n = e.target.valueAsNumber; if (Number.isFinite(n) && n >= 1) onChange(String(Math.min(max, Math.round(n)))) }} />
-    </label>
-  </>
+  const fixed = presets.slice(0, -1)
+  const typed = !fixed.includes(value)
+  // what the box shows: the chosen count when it is not one of the buttons, else the last preset
+  const [draft, setDraft] = useState(typed ? value : presets[presets.length - 1])
+  useEffect(() => { if (typed) setDraft(value) }, [value, typed])
+  const take = (v: string) => { const n = Math.round(Number(v)); if (Number.isFinite(n) && n >= 1) onChange(String(Math.min(max, n))) }
+  return (
+    <span className="control" title={`Any number of ${noun}, 1–${max}: type it in the last box`}>
+      {label}
+      <span className="seg" role="radiogroup">
+        {fixed.map((o) => (
+          <button key={o} type="button" role="radio" aria-checked={o === value} className={o === value ? 'active' : ''} onClick={() => onChange(o)}>{o}</button>
+        ))}
+        <input aria-label={`${label}: number of ${noun}`} className={`seg-input${typed ? ' active' : ''}`} type="number" min={1} max={max} step={1}
+          value={draft} onFocus={() => take(draft)} onChange={(e) => { setDraft(e.target.value); take(e.target.value) }}
+          onBlur={() => { if (typed) setDraft(value) }} />
+      </span>
+    </span>
+  )
 }

@@ -9,9 +9,10 @@ import { boxStats, kde, fmt } from '@/lib/stats'
 import { INK, MARGIN, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
+import { useChartGrouping } from '@/components/GroupingDialog'
 
 const MODES = ['Boxplot', 'Box + points', 'Violin', 'Beeswarm'] as const
-const GROUPS = ['Site', 'Season'] as const
+const GROUPS = ['Site', 'Season', 'Group'] as const
 
 /**
  * Distribution family — 89 figures in the estate, almost all of them
@@ -28,15 +29,21 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
   const hl = useHighlight()
   const height = useFitHeight() ?? 440
 
-  const [groupBy, setGroupBy] = useState<(typeof GROUPS)[number]>('Site')
+  const [groupChoice, setGroupBy] = useState<(typeof GROUPS)[number]>('Site')
   const [mode, setMode] = useState<(typeof MODES)[number]>('Boxplot')
 
+  // Group: the reader's grouping (components/GroupingDialog), its bands in order, on the filters that carry the field
+  const measured = useMemo(() => rows.filter((r) => typeof r[field] === 'number' && Number.isFinite(r[field] as number)), [rows, field])
+  const { grp, picker, missingNote } = useChartGrouping('distribution', measured, () => setGroupBy('Group'))
+  // Group is offered only once a grouping is picked; without one the panel groups by site
+  const groupBy = groupChoice === 'Group' && !grp ? 'Site' : groupChoice
   const seasonColor = useMemo(() => new Map(meta.seasons.map((s) => [s.name, s.color])), [meta.seasons])
   const siteColor = useMemo(() => new Map(meta.sites.map((s) => [s.name, s.color])), [meta.sites])
 
   const groups = useMemo(() => {
-    const key = (r: FilterRow) => (groupBy === 'Site' ? r.site : r.season)
-    const order = groupBy === 'Site' ? meta.sites.map((s) => s.name) : meta.seasons.map((s) => s.name)
+    if (groupBy === 'Group' && !grp) return []
+    const key = (r: FilterRow) => (groupBy === 'Site' ? r.site : groupBy === 'Group' ? grp!.labelOf(r) ?? '' : r.season)
+    const order = groupBy === 'Site' ? meta.sites.map((s) => s.name) : groupBy === 'Group' ? grp!.labels : meta.seasons.map((s) => s.name)
     const m = new Map<string, { v: number; row: FilterRow }[]>()
     for (const r of rows) {
       const v = r[field]
@@ -53,11 +60,11 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
           name,
           items,
           values: items.map((i) => i.v),
-          color: (groupBy === 'Site' ? siteColor.get(name) : seasonColor.get(name)) ?? INK.muted,
+          color: (groupBy === 'Site' ? siteColor.get(name) : groupBy === 'Group' ? grp!.colorOf(name) : seasonColor.get(name)) ?? INK.muted,
           box: boxStats(items.map((i) => i.v))!,
         }
       })
-  }, [rows, field, groupBy, meta, siteColor, seasonColor])
+  }, [rows, field, groupBy, meta, siteColor, seasonColor, grp])
 
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const innerH = height - MARGIN.top - MARGIN.bottom
@@ -80,14 +87,15 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
       provenance="stands in for 50 boxplot + 3 violin figures · plotting/distributions.py · react-graph-gallery.com/boxplot · /boxplot-jitter"
       controls={
         <>
-          <Segmented label="Group by" value={groupBy} options={GROUPS} onChange={setGroupBy} />
+          <Segmented label="Group by" value={groupBy} options={grp ? GROUPS : GROUPS.filter((g) => g !== 'Group')} onChange={setGroupBy} />
+          {picker}
           <Segmented label="Encoding" value={mode} options={MODES} onChange={setMode} />
         </>
       }
     >
       <div ref={wrapRef} className="chart-wrap">
         {groups.length === 0 ? (
-          <Empty>No group has 4 or more filters with {field} in this subset.</Empty>
+          <Empty>{groupBy === 'Group' && !grp ? 'Choose a grouping, or make one with “New grouping…”.' : `No group has 4 or more filters with ${field} in this subset.`}</Empty>
         ) : (
           <svg width={width} height={height} className="animated">
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
@@ -191,6 +199,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
             </g>
           </svg>
         )}
+        {groupBy === 'Group' && missingNote('left out of the groups')}
         {tip.node}
       </div>
     </ChartFrame>

@@ -3,6 +3,7 @@ import { IdentityLine } from '@/components/RefLines'
 import { RegressionLines, RegressionReadout, RegressionReadoutText, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
 import { fitsFor, useRegressions } from '@/lib/regressionPrefs'
 import { fitGroupingOption, useChartOptions } from '@/lib/chartOptions'
+import { useChartGrouping } from '@/components/GroupingDialog'
 import { groupedRegressions, type FitGrouping } from '@/lib/siteRegression'
 import { useId, useMemo, useRef } from 'react'
 import * as d3 from 'd3'
@@ -47,18 +48,30 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   // one panel: every grouping applies, except a fit per site with a single site in view (it is the pooled fit)
   // the bins' colours (lib/colourSchemes): chosen by clicking the ramp under the plot
   const colours = useColourScheme('hexbin', 'sequential')
+  // fits per band of the reader's grouping (components/GroupingDialog) instead of the gallery's fit grouping
+  const { grp, picker, missingNote } = useChartGrouping('hexbin', pairedRows, () => o.set('byGroup', true))
   const o = useChartOptions('hexbin', [
     { key: 'radius', label: 'Hex radius', choices: ['8', '11', '14', '18', '24'], default: '14', style: 'select' },
-    fitGroupingOption({ bind: [chosenGrouping, setGrouping as (v: never) => void], when: (c) => (c.estimators as number) > 0, offerSite: (c) => !c.oneSite }),
-  ], { estimators: methods.length, oneSite })
+    { key: 'groupPicker', node: () => picker },
+    { key: 'byGroup', label: 'Fit per group', toggle: true, default: false, when: (c) => (c.estimators as number) > 0 && !!c.hasGroup,
+      title: 'One fit per band of a grouping (high vs low iron, rain classes …), drawn over the same hexes' },
+    fitGroupingOption({ bind: [chosenGrouping, setGrouping as (v: never) => void], when: (c) => (c.estimators as number) > 0 && !c.byGroup, offerSite: (c) => !c.oneSite,
+      hiddenNote: (c) => ((c.estimators as number) > 0 && c.byGroup ? 'one fit per band' : null) }),
+  ], { estimators: methods.length, oneSite, hasGroup: !!grp })
   const radius = o.values.radius as string
   const grouping = o.values.grouping as FitGrouping
-  const fitGroups = useMemo(() => groupedRegressions(pairedRows, grouping, {
+  const perBand = !!o.values.byGroup && !!grp
+  // several fits drawn: per site or season (the gallery's grouping), or per band of the grouping
+  const split = perBand || grouping !== 'pooled'
+  const fitGroups = useMemo(() => perBand ? groupedRegressions(pairedRows.filter((r) => grp!.labelOf(r) !== null), 'site', {
+    x: r => r[xField] as number, y: r => r[yField] as number, site: r => grp!.labelOf(r)!, color: r => grp!.colorOf(grp!.labelOf(r)!),
+    options: members => fitUncertainty(members, xField, yField, meta),
+  }).sort((a, b) => grp!.labels.indexOf(a.name) - grp!.labels.indexOf(b.name)) : groupedRegressions(pairedRows, grouping, {
     x: r => r[xField] as number, y: r => r[yField] as number, site: r => r.site,
     season: r => r.season, seasonColor: r => meta.seasons.find(se => se.name === r.season)?.color ?? INK.muted,
     color: r => meta.sites.find(s => s.name === r.site)?.color ?? INK.muted,
     options: members => fitUncertainty(members, xField, yField, meta),
-  }), [pairedRows, grouping, xField, yField, meta])
+  }), [pairedRows, grouping, xField, yField, meta, perBand, grp])
 
   // [x, y, filter id]: the id rides along so a hex can list and exclude its filters
   const points = useMemo(
@@ -71,7 +84,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   const innerW = Math.min(availW, fit === null ? MAX_SQUARE : Math.max(100, fit - MARGIN.top - MARGIN.bottom))
   const innerH = innerW
   const svgWidth = innerW + MARGIN.left + MARGIN.right
-  const siteFits = grouping !== 'pooled' && methods.length > 0
+  const siteFits = split && methods.length > 0
   // on a phone the fit readout goes under the plot (in it, the box covers hexes and runs off the panel)
   const narrow = useNarrowScreen()
   const svgHeight = innerH + MARGIN.top + MARGIN.bottom + (siteFits ? regressionGroupReadoutLayout(fitGroups.length, svgWidth, methods, showCI).height : 0)
@@ -177,7 +190,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
                 {opts.identity && <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />}
                 {stats && (
                   <>
-                    {grouping !== 'pooled' ? <RegressionGroupLines groups={fitGroups} x={x} y={y} width={innerW} height={innerH} />
+                    {split ? <RegressionGroupLines groups={fitGroups} x={x} y={y} width={innerW} height={innerH} />
                       : <RegressionLines stats={stats} x={x} y={y} domain={x.domain()} width={innerW} height={innerH} />}
                   </>
                 )}
@@ -191,16 +204,17 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
                 </g>
               )}
 
-              {grouping === 'pooled' && methods.length > 0 && !narrow && <RegressionReadout stats={stats} />}
+              {!split && methods.length > 0 && !narrow && <RegressionReadout stats={stats} />}
             </g>
             {siteFits && <RegressionGroupReadouts groups={fitGroups} width={svgWidth} y={innerH + MARGIN.top + MARGIN.bottom} />}
           </svg>
         )}
-        {grouping === 'pooled' && methods.length > 0 && narrow && <RegressionReadoutText stats={stats} />}
+        {!split && methods.length > 0 && narrow && <RegressionReadoutText stats={stats} />}
         <div className="legend">
           <ColorLegend scale={color} scheme={colours.scheme} label="filters per hex" format={(v) => String(Math.round(v))} />
         </div>
         {domain.dropped > 0 && <Note>{domain.dropped} points below zero are outside the axes and not binned; they are still in the fit.</Note>}
+        {perBand && missingNote('in the hexes but left out of the per-band fits')}
         {tip.node}
       </div>
     </ChartFrame>
