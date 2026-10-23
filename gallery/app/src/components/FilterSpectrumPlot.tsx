@@ -7,7 +7,7 @@ import { INK, BASELINE_COLOR } from '@/lib/theme'
 import { useDimensions } from '@/hooks/useGalleryData'
 import type { SpectrumMethod } from '@/lib/filterSpectrum'
 
-const COLOR: Record<string, string> = { AIRSpec: BASELINE_COLOR.AIRSpec, VIBES: BASELINE_COLOR['VIBES-full-r70'] }
+const COLOR: Record<string, string> = { get AIRSpec() { return BASELINE_COLOR.AIRSpec }, get VIBES() { return BASELINE_COLOR['VIBES-full-r70'] } }
 const NAME: Record<SpectrumMethod, string> = { AIRSpec: 'Spline baseline (AIRSpec)', VIBES: 'VIBES baseline' }
 /** any named traces: the archived AIRSpec / VIBES export, or a native analysis's raw and corrected traces */
 export interface PlotSpec { series: Partial<Record<string, { wn: number[]; y: ArrayLike<number> }>> }

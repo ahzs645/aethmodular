@@ -312,7 +312,7 @@ export function SampleDrawer({
                   <>
                     <line x1={xs(here.x)} x2={xs(here.x)} y1={0} y2={ih} stroke={INK.text} strokeDasharray="3 3" strokeOpacity={0.4} />
                     <line x1={0} x2={iw} y1={ys(here.y)} y2={ys(here.y)} stroke={INK.text} strokeDasharray="3 3" strokeOpacity={0.4} />
-                    <circle cx={xs(here.x)} cy={ys(here.y)} r={7} fill={site?.color ?? INK.text} stroke="#111827" strokeWidth={2} />
+                    <circle cx={xs(here.x)} cy={ys(here.y)} r={7} fill={site?.color ?? INK.text} stroke={INK.fit} strokeWidth={2} />
                   </>
                 )}
               </g>

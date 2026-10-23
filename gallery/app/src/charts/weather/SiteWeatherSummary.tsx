@@ -71,13 +71,13 @@ export function SiteWeatherSummary({ rows, meta, field, current, onSite }: {
               const on = t.code === current
               return (
                 <g key={t.site} transform={`translate(0,${y})`} style={{ cursor: 'pointer' }} onClick={() => onSite(t.code)}>
-                  <rect width={w} height={rowH - 2} fill={on ? '#eef4fb' : 'transparent'} />
+                  <rect width={w} height={rowH - 2} fill={on ? INK.tint : 'transparent'} />
                   <circle cx={10} cy={rowH / 2 - 1} r={5} fill={meta.sites.find((s) => s.name === t.site)?.color ?? INK.muted} />
                   <text x={22} y={rowH / 2} dy="0.1em" fontSize={12} fontWeight={on ? 650 : 400} fill={INK.text}>{t.site}</text>
                   <text x={labelW + 4} y={rowH / 2} dy="0.1em" fontSize={11} fontFamily={FONT.mono} fill={INK.muted}>{t.n}</text>
                   <text x={labelW + numW + 4} y={rowH / 2} dy="0.1em" fontSize={11} fontFamily={FONT.mono} fill={INK.muted}>{fmt(t.median, 2)}</text>
                   {t.cells.map((c, j) => {
-                    const fill = c.rho === null ? '#f3f4f6' : color(c.rho)
+                    const fill = c.rho === null ? INK.empty : color(c.rho)
                     return <g key={c.v.key} transform={`translate(${labelW + numW * 2 + j * cell},0)`}
                       onMouseEnter={(e) => tip.show(e, [`${t.site}: ${field} vs ${c.v.label}`, c.rho === null ? `n = ${c.n} (too few)` : `ρ = ${fmt(c.rho, 2)} · n = ${c.n}`,
                         `site mean ${c.v.label.toLowerCase()}: ${fmt(c.level, 1)}`, 'click to look at this site alone'])} onMouseLeave={tip.hide}>

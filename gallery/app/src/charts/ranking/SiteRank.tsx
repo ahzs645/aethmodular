@@ -65,7 +65,7 @@ export function SiteRank({ rows, meta, field, onOpenSite }: { rows: FilterRow[];
                   <g key={s.site} style={onOpenSite ? { cursor: 'pointer' } : undefined} onClick={onOpenSite ? () => onOpenSite(s.code) : undefined}
                     onMouseEnter={(e) => tip.show(e, [`${s.site} (${s.code})`, `median ${fmt(s.med, 3)} · IQR ${fmt(s.q1, 2)}–${fmt(s.q3, 2)}`, `n = ${s.n}${onOpenSite ? ' · click to open the site' : ''}`])}
                     onMouseLeave={tip.hide}>
-                    <rect x={-margin.left} y={i * rowH} width={width} height={rowH} fill={i % 2 ? '#f7f8fa' : 'transparent'} />
+                    <rect x={-margin.left} y={i * rowH} width={width} height={rowH} fill={i % 2 ? INK.zebra : 'transparent'} />
                     <text x={-8} y={y} dy="0.35em" textAnchor="end" fontSize={font} fill={INK.text}>{s.site}</text>
                     <line x1={x(Math.max(x.domain()[0], s.q1))} x2={x(s.q3)} y1={y} y2={y} stroke={s.color} strokeWidth={Math.max(2, rowH * 0.3)} strokeOpacity={0.4} strokeLinecap="round" />
                     <circle cx={x(Math.max(x.domain()[0], s.med))} cy={y} r={Math.max(2.5, Math.min(5, rowH * 0.28))} fill={s.color} />

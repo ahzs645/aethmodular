@@ -211,9 +211,9 @@ function SiteMap({ items, onToggle }: { items: SiteItem[]; onToggle: (key: strin
         <button type="button" className="btn quiet" onClick={reset}>Reset view</button>
       </div>
       <svg ref={svgRef} width={width} height={height} fontFamily={FONT.family} role="img" aria-label="Map of the sites; click a dot to select or deselect it">
-        <rect width={width} height={height} fill="#f3f6fa" />
+        <rect width={width} height={height} fill={INK.sea} />
         <g transform={zoom.toString()}>
-          {world && <path d={path(world) ?? ''} fill="#e1e6ed" stroke="#ffffff" strokeWidth={0.7 / zoom.k} />}
+          {world && <path d={path(world) ?? ''} fill={INK.land} stroke={INK.panel} strokeWidth={0.7 / zoom.k} />}
         </g>
         {located.map((it) => {
           const p = projection([it.lon as number, it.lat as number])
@@ -226,8 +226,8 @@ function SiteMap({ items, onToggle }: { items: SiteItem[]; onToggle: (key: strin
               onClick={(e) => { e.stopPropagation(); onToggle(it.key) }} onMouseEnter={() => setHover(it)} onMouseLeave={() => setHover(null)}>
               {/* a generous invisible hit area, so small dots are easy to click */}
               <circle r={12} fill="transparent" />
-              <circle r={on ? 7 : hot ? 6.5 : 5} fill={on ? it.color : '#ffffff'} stroke={on || hot ? INK.text : '#7d8796'} strokeWidth={on || hot ? 1.6 : 1.2} />
-              {(on || hot) && <text x={10} y={4} fontSize={12} fontWeight={on ? 600 : 400} fill={INK.text} stroke="#ffffff" strokeWidth={3} paintOrder="stroke">{it.label}</text>}
+              <circle r={on ? 7 : hot ? 6.5 : 5} fill={on ? it.color : INK.panel} stroke={on || hot ? INK.text : '#7d8796'} strokeWidth={on || hot ? 1.6 : 1.2} />
+              {(on || hot) && <text x={10} y={4} fontSize={12} fontWeight={on ? 600 : 400} fill={INK.text} stroke={INK.panel} strokeWidth={3} paintOrder="stroke">{it.label}</text>}
             </g>
           )
         })}

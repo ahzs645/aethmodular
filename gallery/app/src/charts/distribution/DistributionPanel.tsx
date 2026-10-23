@@ -118,7 +118,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                     <g key={g.name} data-export-site={groupBy === 'Site' ? g.name : undefined} data-export-series={g.name} data-export-color={g.color} onMouseEnter={(e) => tip.show(e, [g.name, `n = ${g.box.n}`, `median = ${fmt(g.box.median)}`])} onMouseLeave={tip.hide}>
                       <path d={area(grid) ?? ''} fill={g.color} fillOpacity={0.55} stroke={g.color} strokeWidth={1.2} />
                       <line x1={cx} x2={cx} y1={y(g.box.q1)} y2={y(g.box.q3)} stroke={INK.text} strokeWidth={5} strokeLinecap="round" />
-                      <circle cx={cx} cy={y(g.box.median)} r={3} fill="#fff" stroke={INK.text} strokeWidth={1.4} />
+                      <circle cx={cx} cy={y(g.box.median)} r={3} fill={INK.panel} stroke={INK.text} strokeWidth={1.4} />
                     </g>
                   )
                 }
@@ -165,7 +165,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                       {!withPoints && g.items.filter((it) => b.outliers.includes(it.v)).map((it) => (
                         <circle
                           key={it.row.id} cx={cx} cy={y(it.v)} r={hl.focusId === it.row.id ? 4 : 2.6}
-                          fill={hl.focusId === it.row.id ? g.color : '#fff'} stroke={g.color} strokeWidth={1.2}
+                          fill={hl.focusId === it.row.id ? g.color : INK.panel} stroke={g.color} strokeWidth={1.2}
                           style={{ cursor: 'pointer' }}
                           onMouseEnter={(e) => { e.stopPropagation(); hl.setHover(it.row.id); tip.show(e, [it.row.id, `${it.row.date} · ${it.row.site}`, `${fmt(it.v)} (outside 1.5·IQR)`, 'click for the filter record']) }}
                           onMouseLeave={() => { hl.setHover(null); tip.hide() }}

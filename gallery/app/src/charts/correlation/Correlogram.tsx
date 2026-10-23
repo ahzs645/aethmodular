@@ -167,7 +167,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
                       }
                       onMouseLeave={tip.hide}
                     >
-                      <rect x={cx} y={cy} width={cell} height={cell} fill={encoding === 'Colour' ? color(r) : '#fff'} stroke="#fff" strokeWidth={1} />
+                      <rect x={cx} y={cy} width={cell} height={cell} fill={encoding === 'Colour' ? color(r) : INK.panel} stroke={INK.panel} strokeWidth={1} />
                       {encoding === 'Circle size' && <circle cx={cx + cell / 2} cy={cy + cell / 2} r={Math.max(1, rad)} fill={color(r)} />}
                       {cell > 26 && encoding === 'Colour' && (
                         <text
@@ -257,7 +257,7 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, dimKey, meta,
               const ymax = d3.max(bins, (b) => b.length) ?? 1
               return (
                 <g key={`${i}-${j}`} transform={`translate(${ox},${oy})`}>
-                  <rect width={cellS} height={cellS} fill="#fafbfc" stroke={INK.grid} />
+                  <rect width={cellS} height={cellS} fill={INK.zebra} stroke={INK.grid} />
                   {bins.map((b, k) => (
                     <rect key={k} x={sx(b.x0 ?? 0)} y={cellS - (b.length / ymax) * (cellS - 16)} width={Math.max(0, sx(b.x1 ?? 0) - sx(b.x0 ?? 0) - 0.5)} height={(b.length / ymax) * (cellS - 16)} fill={INK.muted} fillOpacity={0.5} />
                   ))}
@@ -309,7 +309,7 @@ const SplomCell = memo(function SplomCell({ rows, fx, fy, sx, sy, cellS, groupin
   }), [pts, grouping, fx, fy, meta])
   const focusId = hover ?? pinnedId
   return <>
-    <rect width={cellS} height={cellS} fill="#fff" stroke={INK.grid} />
+    <rect width={cellS} height={cellS} fill={INK.panel} stroke={INK.grid} />
     {focusLast(pts, (p) => p.row.id, focusId).map(([p]) => {
       const f = focusStyle(p.row.id, focusId, { r: 2, opacity: 0.55 }, selected)
       const cx = Math.max(0, Math.min(cellS, sx(p.x)))

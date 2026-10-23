@@ -16,7 +16,7 @@ import { useSearchParam } from '@/lib/url'
 import { PageChoiceControls, PageChoices, usePageChoice } from '@/lib/pageChoices'
 import { SidebarControls } from '@/lib/pageSidebar'
 import { useHighlight, type FilterRecord } from '@/lib/highlight'
-import { BANK_COLOR, BASELINE_COLOR, FONT, INK, OCT1_HATCH, SPECTRAL_REGION } from '@/lib/theme'
+import { BANK_COLOR, BASELINE_COLOR, FONT, INK, OCT1_HATCH, SPECTRAL_REGION, themed } from '@/lib/theme'
 import { f2, f3, pct, signed, coef, coefSigned } from '@/lib/format'
 import { ALL_ADDIS, ANALYSIS_CALENDAR_NOTE, shortSeason } from '@/lib/seasons'
 import { baselineName, ecAxis } from '@/lib/labels'
@@ -81,8 +81,8 @@ const MASK_DESCRIPTION: Record<Mask, string> = {
   oct1: 'Use 600–3600 cm⁻¹, excluding CO₂ (1800–2500 cm⁻¹) and PTFE (1050–1250 cm⁻¹).',
   presented: 'Use 500–3600 cm⁻¹, excluding CO₂ (1800–2500 cm⁻¹). The PTFE band remains included.',
 }
-const SHARED_COLOR = '#4b5563'
-const STANDARD_COLOR = '#6b7280'
+const sharedColor = () => themed('#4b5563', '#8f9aa6')
+const standardColor = () => themed('#6b7280', '#a3adb8')
 
 /** Log-axis labels at 1, 2 and 5 of each decade only. */
 const logTick = (v: number) => { const d = +(v / 10 ** Math.floor(Math.log10(v))).toFixed(6); return [1, 2, 5].includes(d) ? String(+(+v).toPrecision(2)) : '' }
@@ -196,7 +196,7 @@ function improveRecord(id: number | string, site: string, source: string, fields
 
 // ------------------------------------------------------------------ 1. overlap
 const PARTS = ['spline only', 'shared', 'VIBES only'] as const
-const PART_COLOR: Record<string, string> = { 'spline only': BASE_COLOR[SPLINE], shared: SHARED_COLOR, 'VIBES only': BASE_COLOR[VIBES] }
+const PART_COLOR: Record<string, string> = { get 'spline only'() { return BASE_COLOR[SPLINE] }, get shared() { return sharedColor() }, get 'VIBES only'() { return BASE_COLOR[VIBES] } }
 
 function Overlap({ data, mask }: { data: SatoshiData; mask: Mask }) {
   // the page's season and baseline (PageChoices, in the Filters sidebar)
@@ -243,7 +243,7 @@ function Overlap({ data, mask }: { data: SatoshiData; mask: Mask }) {
         </svg>
         {tip.node}
       </div>
-      <Key items={[{ label: 'Spline baseline only', color: PART_COLOR['spline only'], kind: 'bar' }, { label: 'Both baselines', color: SHARED_COLOR, kind: 'bar' }, { label: 'VIBES baseline only', color: PART_COLOR['VIBES only'], kind: 'bar' }]} />
+      <Key items={[{ label: 'Spline baseline only', color: PART_COLOR['spline only'], kind: 'bar' }, { label: 'Both baselines', color: sharedColor(), kind: 'bar' }, { label: 'VIBES baseline only', color: PART_COLOR['VIBES only'], kind: 'bar' }]} />
       <table className="census-table" style={{ marginTop: 10 }}>
         <thead><tr><th>{group}</th><th>Filters</th><th>Sites</th><th>TOR EC median (90th) µg/m³</th><th>EC loading median, µg</th><th>TOR OC/EC median</th><th>Fabs / TOR EC median, m²/g</th><th>Lot 251</th><th>Most common sites</th></tr></thead>
         <tbody>{props.map((p) => <tr key={p.part}><td style={{ color: PART_COLOR[p.part], fontWeight: 600 }}>{p.part}</td><td>{p.n}</td><td>{p.n_sites}</td><td>{f2(p.tor_ec_median)} ({f2(p.tor_ec_p90)})</td><td>{f2(p.loading_median_ug)}</td><td>{f2(p.oc_ec_median)}</td><td>{f2(p.mac_ratio_median)}</td><td>{pct(p.lot251_fraction)}</td><td>{p.top_sites}</td></tr>)}</tbody>
@@ -369,10 +369,10 @@ function Vip({ data, mask }: { data: SatoshiData; mask: Mask }) {
       subtitle="Variable importance in projection (Wold VIP, Takahama et al. 2019 Eq. 14) for each calibration, on the baseline's full predictor grid. VIP ≥ 1 marks channels that carry more than their share of the explained TOR EC variance. The standard model is the all-IMPROVE lot-251 calibration (frozen site-disjoint split); the analog model is that season's 500-filter calibration from the meeting tab."
       >
       <SpectrumPlot window={[4000, baseline === SPLINE ? 1400 : 500]} yDomain={[0, yMax * 1.05]} yLabel="VIP" height={340} regions={shades} hover="readout"
-        series={[{ id: 'standard', label: 'standard model VIP', wn, y: std.vip, color: STANDARD_COLOR, width: 1.4 },
+        series={[{ id: 'standard', label: 'standard model VIP', wn, y: std.vip, color: standardColor(), width: 1.4 },
           ...(ana ? [{ id: 'analog', label: `${group} analog model VIP`, wn, y: ana.vip, color: data.season_colors[group], width: 1.6, opacity: 0.9 }] : [])]}
         markers={[{ orient: 'h', at: 1 }]} />
-      <Key items={[{ label: `Standard model (all IMPROVE lot 251, k ${std.k})`, color: STANDARD_COLOR, kind: 'line' }, { label: `${group} analog model (k ${ana?.k ?? '—'})`, color: data.season_colors[group], kind: 'line' }, { label: 'Excluded from similarity, both regions', color: SPECTRAL_REGION.co2.fill, kind: 'bar' }, { label: 'Excluded only in the agreed region', color: OCT1_HATCH.stroke, kind: 'bar' }]} />
+      <Key items={[{ label: `Standard model (all IMPROVE lot 251, k ${std.k})`, color: standardColor(), kind: 'line' }, { label: `${group} analog model (k ${ana?.k ?? '—'})`, color: data.season_colors[group], kind: 'line' }, { label: 'Excluded from similarity, both regions', color: SPECTRAL_REGION.co2.fill, kind: 'bar' }, { label: 'Excluded only in the agreed region', color: OCT1_HATCH.stroke, kind: 'bar' }]} />
       <table className="census-table" style={{ marginTop: 10 }}>
         <thead><tr><th>Band (cm⁻¹)</th><th>Channels</th><th>Mean VIP, standard</th><th>Mean VIP, analog</th><th>Share of VIP², standard</th><th>Share of VIP², analog</th></tr></thead>
         <tbody>{bs.map((b) => { const a = ba.find((x) => x.band === b.band); return <tr key={b.band}><td>{b.band}</td><td>{b.n_channels}</td><td>{f2(b.vip_mean)}</td><td>{f2(a?.vip_mean)}</td><td>{pct(b.vip2_share)}</td><td style={{ fontWeight: a && a.vip2_share > b.vip2_share * 1.5 ? 700 : 400 }}>{pct(a?.vip2_share)}</td></tr> })}</tbody>
@@ -409,7 +409,7 @@ function Ladder({ data, mask }: { data: SatoshiData; mask: Mask }) {
   const series = [
     { key: 'analog', label: `${shortSeason(group)} analog model, on its own analogs`, color: data.season_colors[group], dash: undefined as string | undefined,
       rows: STAGES.map((s) => s === 'Addis test set' ? find({ model_id: analogId, stage: s, eval_group: group }) : find({ model_id: analogId, stage: s, population: 'own' })) },
-    { key: 'std-analogs', label: 'Standard model, on the same analogs', color: STANDARD_COLOR, dash: '5 3',
+    { key: 'std-analogs', label: 'Standard model, on the same analogs', color: standardColor(), dash: '5 3',
       rows: STAGES.map((s) => s === 'Addis test set' ? find({ model_id: stdId, stage: s, eval_group: group }) : find({ model_id: stdId, stage: s, population: 'analogs', mask: mm, group })) },
     { key: 'std-own', label: 'Standard model, on all its lot-251 filters', color: '#b8bfc7', dash: '2 3',
       rows: STAGES.map((s) => s === 'Addis test set' ? undefined : find({ model_id: stdId, stage: s, population: 'own' })) },
@@ -505,7 +505,7 @@ function LadderCrossplots({ data, analogId, baseline, mask, group }: { data: Sat
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 14, marginTop: 12 }}>
         <Cross title={`${shortSeason(group)} analog model (${SHORT[baseline]})`} pts={va} color={data.season_colors[group]} dom={da.xdom} ydom={da.ydom} source={`Satoshi 2 Oct · ${analogId}`} />
-        <Cross title={`Standard model, same analogs (${SHORT[baseline]})`} pts={vs} color={STANDARD_COLOR} dom={ds.xdom} ydom={ds.ydom} source={`Satoshi 2 Oct · standard|${baseline} · analogs of ${group}`} />
+        <Cross title={`Standard model, same analogs (${SHORT[baseline]})`} pts={vs} color={standardColor()} dom={ds.xdom} ydom={ds.ydom} source={`Satoshi 2 Oct · standard|${baseline} · analogs of ${group}`} />
       </div>
       <ExplainOnly><Note>Filled points are out-of-fold cross-validation predictions; open points are IMPROVE test sites. {ownPanels ? 'Each panel has its own axes' : 'Both panels share axes'}; the top 0.5 % of values is outside the frame. {missing > 0 ? `${missing} analogs are lot 248 and so outside the lot-251 standard model; they are not in the right panel. ` : ''}Similarity region: {MASK_SHORT[mask]}.</Note></ExplainOnly>
     </>
@@ -854,7 +854,7 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
   const specs = summ.map((s) => ({ c: s.cluster as number, n: s.n as number, v: d.group_spectra.median[`${baseline}|${region}|${season}|${s.cluster}`] ?? [] }))
   const sDomain = d3.extent(specs.flatMap((s) => idx.map(([, i]) => s.v[i]))) as [number, number]
   // grey: outside the 1500–600 clustering region; PTFE shaded only when it was dropped from the clustering
-  const sRegions = [{ lo: 1500, hi: 1800, fill: '#eef0f3', label: 'outside the clustering region' }, { lo: 500, hi: 600, fill: '#eef0f3', label: 'outside the clustering region' },
+  const sRegions = [{ lo: 1500, hi: 1800, fill: INK.shade, label: 'outside the clustering region' }, { lo: 500, hi: 600, fill: INK.shade, label: 'outside the clustering region' },
     ...(region === 'fingerprint' ? [SPECTRAL_REGION.ptfe] : [])]
   const pfmt = (p: any) => p == null ? '—' : p < 0.001 ? '<0.001' : f3(p)
   const allTests = d.group_tests.filter((x) => x.baseline === baseline && x.region === region)
@@ -883,7 +883,7 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
           series={specs.map((s) => ({ id: `c${s.c}`, label: `cluster ${s.c}`, wn, y: s.v, color: CLUSTER_COLORS[(s.c - 1) % 4], width: 1.8 }))} />
         {tip.node}
       </div>
-      <Key items={[...summ.map((s) => ({ label: `cluster ${s.cluster} (n ${s.n}, median Fabs/10 ${f2(s.ec_fabs10_median)})`, color: CLUSTER_COLORS[(s.cluster - 1) % 4] })), { label: 'outside the clustering region', color: '#eef0f3', kind: 'bar' as const }]} />
+      <Key items={[...summ.map((s) => ({ label: `cluster ${s.cluster} (n ${s.n}, median Fabs/10 ${f2(s.ec_fabs10_median)})`, color: CLUSTER_COLORS[(s.cluster - 1) % 4] })), { label: 'outside the clustering region', color: INK.shade, kind: 'bar' as const }]} />
       {t && <Note>{shortSeason(season)}: {t.k} clusters, silhouette {f2(t.silhouette)} vs {f2(t.silhouette_null_p95)} for structureless data ({t.structure_beyond_null ? 'more distinct than chance' : t.min_cluster < 5 ? `the best split only isolates ${t.min_cluster} outlier filter${t.min_cluster > 1 ? 's' : ''}` : 'no more distinct than chance'}). Clusters differ in HIPS EC p {pfmt(t.kruskal_p_ec)}, in the standard model's error p {pfmt(t.kruskal_p_residual)}, in Al (dust) p {pfmt(t.kruskal_p_Al)}. PC1 vs EC Spearman ρ {f2(t.pc1_spearman_ec)}.</Note>}
       <table className="census-table" style={{ marginTop: 8 }}>
         <thead><tr><th>Cluster ({shortSeason(season)})</th><th>n</th><th>Fabs/10 median</th><th>Percentile in all Addis</th><th>Std. model error</th><th>Nitrate</th><th>Sulfate</th><th>K⁺</th><th>Al (ng/m³)</th><th>PM2.5</th></tr></thead>

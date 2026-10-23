@@ -116,7 +116,7 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
             {rings.map((v) => {
               const half = Math.PI / Math.max(3, species.length) - Math.PI / 2
               return (
-                <text key={`t${v}`} x={cx + radial(v) * Math.cos(half) + 3} y={cy + radial(v) * Math.sin(half)} dy="0.35em" fontSize={9.5} fill={INK.muted} fontFamily={FONT.mono} stroke="#fff" strokeWidth={3} paintOrder="stroke">
+                <text key={`t${v}`} x={cx + radial(v) * Math.cos(half) + 3} y={cy + radial(v) * Math.sin(half)} dy="0.35em" fontSize={9.5} fill={INK.muted} fontFamily={FONT.mono} stroke={INK.panel} strokeWidth={3} paintOrder="stroke">
                   {norm === '÷ pooled median' ? `${v}×` : `${Math.round(v * 100)}%`}
                 </text>
               )
@@ -148,7 +148,7 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
                 return (
                   <circle
                     key={`${s.name}-${f}`} data-export-site={s.name} data-export-color={s.color}
-                    cx={px} cy={py} r={3.5} fill={s.color} stroke="#fff" strokeWidth={1} opacity={dim(s.name)}
+                    cx={px} cy={py} r={3.5} fill={s.color} stroke={INK.panel} strokeWidth={1} opacity={dim(s.name)}
                     onMouseEnter={(e) =>
                       tip.show(e, [
                         `${s.name} · ${f}`,

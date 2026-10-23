@@ -124,7 +124,7 @@ function SpecPanel(props: Props & {
       for (let b = 0; b < cols; b++) {
         const j0 = Math.floor(b * indices.length / cols), j1 = Math.max(j0 + 1, Math.floor((b + 1) * indices.length / cols))
         let used = 0; for (let j = j0; j < j1; j++) if (mask[indices[j]] === '1') used++
-        const rgb = used === 0 ? d3.rgb(255,255,255) : d3.rgb(props.heat(used / (j1 - j0)))
+        const rgb = used === 0 ? d3.rgb(INK.panel) : d3.rgb(props.heat(used / (j1 - j0)))
         img.data.set([rgb.r, rgb.g, rgb.b, 255], b * 4)
       }
       ctx.putImageData(img,0,0); return canvas.toDataURL()

@@ -285,7 +285,7 @@ export function ParallelCoordinates({ rows, meta }: { rows: FilterRow[]; meta: M
                     {a.ticks.map((t) => (
                       <g key={t.v} transform={`translate(0,${a.y(t.v)})`}>
                         <line x1={-4} x2={0} stroke={INK.axis} />
-                        <text x={-6} dy="0.32em" textAnchor="end" fontSize={9.5} fontFamily={FONT.mono} fill={INK.muted} stroke="#fff" strokeWidth={3} paintOrder="stroke">
+                        <text x={-6} dy="0.32em" textAnchor="end" fontSize={9.5} fontFamily={FONT.mono} fill={INK.muted} stroke={INK.panel} strokeWidth={3} paintOrder="stroke">
                           {t.label}
                         </text>
                       </g>

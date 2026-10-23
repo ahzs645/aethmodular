@@ -259,7 +259,7 @@ function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel, galleryRows
               return (
                 <svg key={run.target} width={S + m.l + m.r} height={S + m.t + m.b} fontFamily={FONT.family}>
                   <text x={m.l} y={14} fontSize={12.5} fontWeight={600} fill={color}>{t?.site ?? run.target}<tspan fill={INK.muted} fontWeight={400}>{`  ${t?.code ?? ''} · n = ${pts[k].length}`}</tspan></text>
-                  <text x={m.l} y={29} fontSize={10.5} fill={flagged ? '#b45309' : INK.muted}>
+                  <text x={m.l} y={29} fontSize={10.5} fill={flagged ? INK.warn : INK.muted}>
                     {`score OOD ${fmt(run.extrap_pct, 1)} %${flagged ? ' · partly out of domain' : ''}`}
                   </text>
                   <g transform={`translate(${m.l},${m.t})`}>
@@ -368,7 +368,7 @@ function TransferTable({ runs, siteRuns, mac, presetLabel }: { runs: CalibRunsFi
                   <td style={{ fontWeight: (fit?.intercept ?? 0) < -1 ? 600 : 400 }}>{fmt(fit?.intercept ?? null, 3)}{showCI && <div className="chart-note">{ci ? `95% [${fmt(ci.intercept[0], 3)}, ${fmt(ci.intercept[1], 3)}]` : '95% CI unavailable'}</div>}</td>
                   <td>{fmt(fit?.m.R2 ?? null, 3)}</td>
                   <td>{fmt(fit?.m.RMSE ?? null, 3)}</td>
-                  <td style={{ color: flagged ? '#b45309' : undefined, fontWeight: flagged ? 600 : 400 }}>{`${fmt(run.extrap_pct, 1)} %`}</td>
+                  <td style={{ color: flagged ? INK.warn : undefined, fontWeight: flagged ? 600 : 400 }}>{`${fmt(run.extrap_pct, 1)} %`}</td>
                   <td>{`${fmt(run.q_residual_pct, 1)} %`}</td>
                   <td>{fmt(run.plausibility?.median ?? null, 2)}</td>
                   <td>{run.plausibility?.negative_pct != null ? `${fmt(run.plausibility.negative_pct, 1)} %` : '—'}</td>
@@ -448,7 +448,7 @@ function OrderingAcrossCalibrations({ runs, sites, presetKey, mac, onPick }: {
                 <path
                   key={i} d={path} transform={`translate(${x(r.v)},${cy})`}
                   fill={cohortColor(r.preset.cohort)} fillOpacity={picked ? 1 : 0.7}
-                  stroke={picked ? INK.text : '#fff'} strokeWidth={picked ? 2 : 0.8}
+                  stroke={picked ? INK.text : INK.panel} strokeWidth={picked ? 2 : 0.8}
                   style={{ cursor: 'pointer' }}
                   onClick={() => onPick(r.preset.key)}
                   onMouseEnter={(e) => tip.show(e, [presetName(r.preset), `${runs.targets[r.site]?.site ?? r.site}: ${metric} ${fmt(r.v, 3)}`, picked ? 'picked above' : 'click to pick this calibration'])}

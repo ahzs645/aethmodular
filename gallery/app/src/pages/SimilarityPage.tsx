@@ -467,7 +467,7 @@ function FilterTable({ meta, rows, targetLabel, maskLabel, method, onHover, pinn
           <tbody>{shown.map((t, i) => {
             const s = meta.sites[meta.filters.site[t.filter]]
             return (
-              <tr key={t.filter} onMouseEnter={() => onHover(t.filter)} onClick={() => onPin(pinned === t.filter ? null : t.filter)} style={{ cursor: 'pointer', background: pinned === t.filter ? '#eef4fb' : undefined }}>
+              <tr key={t.filter} onMouseEnter={() => onHover(t.filter)} onClick={() => onPin(pinned === t.filter ? null : t.filter)} style={{ cursor: 'pointer', background: pinned === t.filter ? INK.tint : undefined }}>
                 <td className="mono">{i + 1}</td>
                 <td className="mono">{meta.filters.sample_id[t.filter]}</td>
                 <td title={siteWhere(s)} style={{ color: s.split === 'test' ? TEST_COLOR : undefined }}>{s.site}{s.split === 'test' ? ' †' : ''} <span style={{ color: INK.muted, fontSize: 12 }}>{siteName(s)}</span></td>

@@ -117,7 +117,7 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
                     if (!lg.show(cls(rank))) return null
                     const hot = hoverI === i
                     const pinned = pca.outside(p)
-                    return <circle key={i} cx={pca.cx(p)} cy={pca.cy(p)} r={hot ? 5 : inCohort ? 3 : 2} fill={pinned ? '#fff' : inCohort ? cohortColor('analogs') : INK.muted} fillOpacity={hot ? 1 : (inCohort ? 0.8 : 0.3) * lg.dim(cls(rank))} strokeOpacity={hot ? 1 : lg.dim(cls(rank))} stroke={hot ? INK.text : pinned ? INK.muted : 'none'} strokeWidth={hot ? 1.5 : pinned ? 1 : 0} pointerEvents="none" />
+                    return <circle key={i} cx={pca.cx(p)} cy={pca.cy(p)} r={hot ? 5 : inCohort ? 3 : 2} fill={pinned ? INK.panel : inCohort ? cohortColor('analogs') : INK.muted} fillOpacity={hot ? 1 : (inCohort ? 0.8 : 0.3) * lg.dim(cls(rank))} strokeOpacity={hot ? 1 : lg.dim(cls(rank))} stroke={hot ? INK.text : pinned ? INK.muted : 'none'} strokeWidth={hot ? 1.5 : pinned ? 1 : 0} pointerEvents="none" />
                   })}
                   {lg.show(ADDIS) && lab.addis_xy.map((p, i) => (
                     <text key={`a${i}`} x={pca.cx(p)} y={pca.cy(p)} dy="0.35em" textAnchor="middle" fontSize={11} fill={INK.text} fillOpacity={lg.dim(ADDIS)} fontFamily={FONT.family} pointerEvents="none">★</text>

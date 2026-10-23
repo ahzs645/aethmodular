@@ -20,7 +20,7 @@ const RULES_ALL = ['shape', 'shape + loading', 'loading only', 'shape + HIPS loa
 const RULE_COLOR: Record<string, string> = { shape: '#2171b5', 'shape + loading': '#d94801', 'loading only': '#6a51a3', 'shape + HIPS loading': '#1b7837' }
 /** the rules this run has (older runs lack the HIPS-loading rule) */
 const rulesOf = (d: AnalogsData) => RULES_ALL.filter((r) => d.addis.some((x) => x.model === `local: ${r}`))
-const MODEL_COLOR: Record<string, string> = { 'SPARTAN published': INK.text, 'full calibration (raw)': '#8a8f98', ...Object.fromEntries(RULES_ALL.map((r) => [`local: ${r}`, RULE_COLOR[r]])) }
+const MODEL_COLOR: Record<string, string> = { get 'SPARTAN published'() { return INK.text }, 'full calibration (raw)': '#8a8f98', ...Object.fromEntries(RULES_ALL.map((r) => [`local: ${r}`, RULE_COLOR[r]])) }
 const source = sourceOf('AnalogsStudy')
 
 export function AnalogsStudy() {

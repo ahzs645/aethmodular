@@ -97,7 +97,7 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
             {species.map((f, j) => <text key={f} transform={`translate(${labelW + j * cell + cell / 2},${66}) rotate(-50)`} fontSize={10} fill={INK.muted}>{chemText(f)}</text>)}
             {vars.map((v, i) => <text key={v.field} x={labelW - 6} y={70 + i * cell + cell / 2} dy="0.35em" textAnchor="end" fontSize={10.5} fill={INK.text}>{v.label}</text>)}
             {fc.cells.flatMap((row, i) => row.map((c, j) => {
-              const fill = c.rho === null ? '#f3f4f6' : color(c.rho)
+              const fill = c.rho === null ? INK.empty : color(c.rho)
               return <g key={`${i}-${j}`} transform={`translate(${labelW + j * cell},${70 + i * cell})`}
                 onMouseEnter={(e) => tip.show(e, [`${fc.name}: ${c.v.label} vs ${c.f}`, c.rho === null ? `n = ${c.n} (too few)` : `ρ = ${fmt(c.rho, 2)} · n = ${c.n}`])} onMouseLeave={tip.hide}>
                 <rect width={cell - 1} height={cell - 1} fill={fill} />

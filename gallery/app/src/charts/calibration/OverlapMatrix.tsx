@@ -121,7 +121,7 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
                     const frac = diag ? 1 : v / Math.max(1, Math.min(sizes.get(a) ?? 1, sizes.get(b) ?? 1))
                     return (
                       <g key={b} onMouseEnter={(e) => tip.show(e, diag ? [a, `${v} filters`] : [`${short(a)} ∩ ${short(b)}`, `${v} shared filters`, `${(frac * 100).toFixed(0)} % of the smaller cohort`])} onMouseLeave={tip.hide}>
-                        <rect x={j * size + 1} y={1} width={size - 2} height={size - 2} rx={3} fill={diag ? INK.empty : color(frac)} stroke="#fff" />
+                        <rect x={j * size + 1} y={1} width={size - 2} height={size - 2} rx={3} fill={diag ? INK.empty : color(frac)} stroke={INK.panel} />
                         <text x={j * size + size / 2} y={size / 2} dy="0.32em" textAnchor="middle" fontSize={10.5} fontFamily={FONT.mono} fill={inkOn(diag ? INK.empty : color(frac))} pointerEvents="none">
                           {v}
                         </text>
@@ -166,7 +166,7 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
                     onMouseLeave={() => { setHoverIdx(null); tip.hide() }}
                     style={{ cursor: 'default' }}
                   >
-                    <path d={arc(g) ?? ''} fill={colorForCohort(name)} fillOpacity={hot === null || hot === g.index ? 0.9 : 0.35} stroke="#fff" style={{ transition: 'fill-opacity 0.2s' }} />
+                    <path d={arc(g) ?? ''} fill={colorForCohort(name)} fillOpacity={hot === null || hot === g.index ? 0.9 : 0.35} stroke={INK.panel} style={{ transition: 'fill-opacity 0.2s' }} />
                     <text
                       transform={`rotate(${(mid * 180) / Math.PI - 90}) translate(${R + 20},0) ${flip ? 'rotate(180)' : ''}`}
                       dy="0.35em"

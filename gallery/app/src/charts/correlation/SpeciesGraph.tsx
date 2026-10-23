@@ -389,7 +389,7 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
               <circle
                 key={i}
                 cx={p.x} cy={p.y} r={nodeR(graph.degree[i])}
-                fill={groupColor(groupOf(i))} stroke="#fff" strokeWidth={1.5}
+                fill={groupColor(groupOf(i))} stroke={INK.panel} strokeWidth={1.5}
                 opacity={lit(i) ? 1 : 0.15}
                 style={{ transition: 'opacity 0.2s', cursor: 'default' }}
                 onMouseEnter={(ev) => { setHover(i); tip.show(ev, nodeTip(i)) }}
@@ -410,7 +410,7 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
                   textAnchor={at.anchor}
                   fontSize={10.5} fill={INK.text}
                   fontWeight={hover === i ? 600 : 400}
-                  stroke="#fff" strokeWidth={3} paintOrder="stroke"
+                  stroke={INK.panel} strokeWidth={3} paintOrder="stroke"
                   opacity={lit(i) ? 1 : 0.15}
                   style={{ transition: 'opacity 0.2s' }}
                   pointerEvents="none"
@@ -452,7 +452,7 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
                     onMouseEnter={(ev) => { setHover(i); tip.show(ev, nodeTip(i)) }}
                     onMouseLeave={() => { setHover(null); tip.hide() }}
                   >
-                    <circle cx={dendro.px(l)} cy={l.x} r={4.5} fill={groupColor(groupOf(i))} stroke="#fff" strokeWidth={1} />
+                    <circle cx={dendro.px(l)} cy={l.x} r={4.5} fill={groupColor(groupOf(i))} stroke={INK.panel} strokeWidth={1} />
                     <text x={dendro.px(l) + 8} y={l.x} dy="0.32em" fontSize={10.5} fill={groupOf(i) < 0 ? INK.muted : INK.text} fontWeight={hover === i ? 600 : 400}>
                       {short(f)}
                     </text>

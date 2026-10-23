@@ -149,7 +149,7 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
               {view === 'Density hex' && hexes.map((h, i) => (
                 <path
                   key={i} d={h.path} transform={`translate(${h.bin.x},${h.bin.y})`}
-                  fill={hexColor(h.bin.length)} stroke="#fff" strokeWidth={0.6}
+                  fill={hexColor(h.bin.length)} stroke={INK.panel} strokeWidth={0.6}
                   onMouseEnter={(e) => tip.show(e, [`${h.bin.length} configuration${h.bin.length === 1 ? '' : 's'} in this hex`, `${h.pass} pass the guardrails`, `${ax[0]} ≈ ${x.invert(h.bin.x).toFixed(2)} · ${ay[0]} ≈ ${y.invert(h.bin.y).toFixed(2)}`])}
                   onMouseLeave={tip.hide}
                 />
@@ -166,7 +166,7 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
                     cx={x(clampX(mOf(r)))}
                     cy={y(clampYv(bOf(r)))}
                     r={isSel ? 7 : ok ? 4 : 2.6}
-                    fill={isSel ? '#fff' : cohortColor(r.co)}
+                    fill={isSel ? INK.panel : cohortColor(r.co)}
                     fillOpacity={(ok ? 0.85 : 0.25) * dim(cohortName(r.co))}
                     strokeOpacity={dim(cohortName(r.co))}
                     stroke={isSel ? INK.text : r.sp === 'raw' ? 'none' : cohortColor(r.co)}

@@ -10,7 +10,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { loadJson } from '@/lib/data'
 import { useSearchParam } from '@/lib/url'
-import { ADDIS_ALL, FONT, IMPROVE_GREY, INK } from '@/lib/theme'
+import { ADDIS_ALL, FONT, IMPROVE_GREY, INK, themed } from '@/lib/theme'
 import { f2, pct, signed } from '@/lib/format'
 import { Forest, Scatter, num, placeLabels, rowsOf, runLine, sourceOf, useXp, type Cols, type XpBase } from './shared'
 
@@ -106,7 +106,7 @@ function PilotPosition({ d }: { d: TorData }) {
   const rows = d.target
   const labelW = 190, rowH = 46, statusW = 150, pw = Math.max(260, width - labelW - statusW - 30)
   const verdict = (t: TorData['target'][number]) => t['Adama inside Addis 25-75'] >= 0.6 ? { txt: 'inside Addis\'s middle half', c: INK.good }
-    : t['Adama inside Addis 5-95'] >= 0.6 ? { txt: 'inside Addis\'s range, off-centre', c: '#b45309' } : { txt: 'outside Addis\'s range', c: INK.negative }
+    : t['Adama inside Addis 5-95'] >= 0.6 ? { txt: 'inside Addis\'s range, off-centre', c: INK.warn } : { txt: 'outside Addis\'s range', c: INK.negative }
   return (
     <ChartFrame id="xd-position" source={source('PilotPosition')}
       title="Is the pilot where it needs to be? — Adama against SPARTAN Addis, axis by axis"
@@ -128,7 +128,7 @@ function PilotPosition({ d }: { d: TorData }) {
                 <line x1={x(t['Addis median'])} x2={x(t['Addis median'])} y1={cy - 10} y2={cy + 10} stroke="#7a5c00" strokeWidth={2} />
                 {Number.isFinite(t['IMPROVE median']) && <line x1={x(t['IMPROVE median'])} x2={x(t['IMPROVE median'])} y1={cy - 13} y2={cy + 13} stroke={IMPROVE_GREY} strokeWidth={2} strokeDasharray="2 2" />}
                 {Number.isFinite(t['SPARTAN network median']) && <line x1={x(t['SPARTAN network median'])} x2={x(t['SPARTAN network median'])} y1={cy - 13} y2={cy + 13} stroke={SPARTAN} strokeWidth={2} strokeDasharray="2 2" />}
-                {vals.map((val, j) => <path key={j} d={d3.symbol(d3.symbolDiamond, 80)() ?? ''} transform={`translate(${x(val)},${cy})`} fill={ADAMA} stroke="#fff" strokeWidth={1}
+                {vals.map((val, j) => <path key={j} d={d3.symbol(d3.symbolDiamond, 80)() ?? ''} transform={`translate(${x(val)},${cy})`} fill={ADAMA} stroke={INK.panel} strokeWidth={1}
                   onMouseEnter={(e) => tip.show(e, [`Adama pair ${j + 1}`, `${info.label}: ${f2(val)} ${info.unit}`, `Addis 25–75 %: ${f2(t['Addis p25'])}–${f2(t['Addis p75'])}`])} onMouseLeave={tip.hide} />)}
                 <XAxis scale={x} y={cy + 12} tickCount={5} format={(tv) => f2(+tv)} />
               </g>
@@ -178,7 +178,7 @@ function LoadingPlane({ d }: { d: TorData }) {
             {[1, 3, 10, 30, 100].map((ug) => { const l = line(ug); return <g key={ug}><line {...l} stroke={INK.identity} strokeDasharray="3 3" />
               {/* along its own diagonal, near the top end, so neighbouring labels never collide */}
               <text transform={`translate(${l.x1 + (l.x2 - l.x1) * 0.06},${l.y1 + (l.y2 - l.y1) * 0.06}) rotate(${(Math.atan2(l.y2 - l.y1, l.x2 - l.x1) * 180) / Math.PI})`} dy={-3}
-                fontSize={9.5} fill={INK.muted} stroke="#fff" strokeWidth={3} paintOrder="stroke">{ug} µg/filter</text></g> })}
+                fontSize={9.5} fill={INK.muted} stroke={INK.panel} strokeWidth={3} paintOrder="stroke">{ug} µg/filter</text></g> })}
           </g>
         }}
         over={({ x, y }) => {
@@ -186,7 +186,7 @@ function LoadingPlane({ d }: { d: TorData }) {
           return <g pointerEvents="none">
             <defs><marker id="xd-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill={ADAMA} /></marker></defs>
             <line x1={x0} y1={y0 - 8} x2={x0} y2={y1} stroke={ADAMA} strokeWidth={2} markerEnd="url(#xd-arrow)" />
-            <text x={x0 + 6} y={(y0 + y1) / 2} fontSize={10.5} fontWeight={600} fill={ADAMA} stroke="#fff" strokeWidth={3} paintOrder="stroke">≈ {Math.round(med["volume at Adama's median EC (m³)"])} m³ for Addis's median loading</text>
+            <text x={x0 + 6} y={(y0 + y1) / 2} fontSize={10.5} fontWeight={600} fill={ADAMA} stroke={INK.panel} strokeWidth={3} paintOrder="stroke">≈ {Math.round(med["volume at Adama's median EC (m³)"])} m³ for Addis's median loading</text>
           </g>
         }} />
       <Legend {...lg.props} items={pops.map((p) => ({ label: POP_LABEL[p], color: POP_COLOR[p] }))} />
@@ -224,7 +224,7 @@ function ContractCard({ d }: { d: TorData }) {
     <ChartFrame id="xd-contract" source={source('ContractCard')} exportable={false}
       title="The pass contract — written before the Addis city pairs are read"
       subtitle="What agreement with TOR would count as evidence that the frozen calibration works at Addis. Values are proposals to agree with Ann and Satoshi; once agreed, the file is kept as the record and the pairs are scored against it unchanged.">
-      <div style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, background: '#fff4e5', color: '#b45309', fontSize: 11, fontWeight: 700, marginBottom: 8 }}>{c.status}</div>
+      <div style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, background: themed('#fff4e5', '#3a2a1c'), color: INK.warn, fontSize: 11, fontWeight: 700, marginBottom: 8 }}>{c.status}</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14 }}>
         <div>
           <div className="row-label">Reference</div><p style={{ margin: '2px 0 10px', fontSize: 12.5 }}>{c.reference}</p>
@@ -285,20 +285,20 @@ function NetworkMap({ d }: { d: TorData }) {
         {region === 'World' && <Toggle label="Arcs" checked={arcs} onChange={setArcs} />}</>}>
       <div ref={ref} style={{ position: 'relative' }}>
         <svg width={width} height={h} fontFamily={FONT.family} style={{ display: 'block' }}>
-          {region === 'World' && <path d={path({ type: 'Sphere' }) ?? ''} fill="#f3f7fb" stroke={INK.border} />}
-          {world && <g>{world.features.map((f, i) => <path key={i} d={path(f) ?? ''} fill="#e9ecef" stroke="#fff" strokeWidth={0.5} />)}</g>}
+          {region === 'World' && <path d={path({ type: 'Sphere' }) ?? ''} fill={INK.sea} stroke={INK.border} />}
+          {world && <g>{world.features.map((f, i) => <path key={i} d={path(f) ?? ''} fill={INK.land} stroke={INK.panel} strokeWidth={0.5} />)}</g>}
           {region === 'World' && arcs && top.map((s) => <path key={`a${s.site}`} d={path({ type: 'LineString', coordinates: [origin, [s.lon!, s.lat!]] }) ?? ''}
             fill="none" stroke={colour(s[of])} strokeOpacity={0.75} strokeWidth={0.8 + 6 * s[of] / maxShare} />)}
           {[...sites].sort((a, b) => a[of] - b[of]).map((s) => { const p = proj(s.lon!, s.lat!); if (!p) return null
             const n = net[s.site]
-            return <circle key={s.site} cx={p[0]} cy={p[1]} r={rN(n?.filters ?? 1)} fill={s[of] > 0 ? colour(s[of]) : '#fff'} stroke={s[of] > 0 ? '#7a2d0b' : IMPROVE_GREY} strokeWidth={0.6}
+            return <circle key={s.site} cx={p[0]} cy={p[1]} r={rN(n?.filters ?? 1)} fill={s[of] > 0 ? colour(s[of]) : INK.panel} stroke={s[of] > 0 ? '#7a2d0b' : IMPROVE_GREY} strokeWidth={0.6}
               onMouseEnter={(e) => tip.show(e, [`${s.name} (${s.site})${n?.urban ? ' · urban' : ''}`, `${n?.filters ?? '?'} calibration filters (${pct(s['IMPROVE share of filters'])} of IMPROVE)`,
                 `share of Addis neighbours ${pct(s.Addis)} · of Adama ${pct(s.Adama)}`, `median TOR EC ${f2(n?.ec_ug)} µg/filter, ${f2(n?.ec_ugm3)} µg/m³`])} onMouseLeave={tip.hide} /> })}
           {region === 'World' && [[addis, 'SPARTAN Addis', ADDIS_ALL], [adama, 'Adama pilot', ADAMA]].map(([r, label, c]) => { const row = r as NetRow
             const p = proj(row.lon!, row.lat!); if (!p) return null
             return <g key={label as string} onMouseEnter={(e) => tip.show(e, [label as string, `${row.filters} filters · median EC ${f2(row.ec_ug)} µg/filter`, `median distance percentile ${Math.round(row.distance)}`])} onMouseLeave={tip.hide}>
               <path d={d3.symbol(label === 'Adama pilot' ? d3.symbolDiamond : d3.symbolStar, 160)() ?? ''} transform={`translate(${p[0]},${p[1]})`} fill={c as string} stroke={INK.text} strokeWidth={1} />
-              <text x={p[0] + 9} y={p[1] + (label === 'Adama pilot' ? 12 : -6)} fontSize={10.5} fontWeight={700} fill={INK.text} stroke="#fff" strokeWidth={3} paintOrder="stroke">{label as string}</text>
+              <text x={p[0] + 9} y={p[1] + (label === 'Adama pilot' ? 12 : -6)} fontSize={10.5} fontWeight={700} fill={INK.text} stroke={INK.panel} strokeWidth={3} paintOrder="stroke">{label as string}</text>
             </g> })}
         </svg>
         {tip.node}
@@ -352,8 +352,8 @@ function WhereItSits({ d }: { d: TorData }) {
               <text x={labelW - 10} y={mid} dy="0.32em" textAnchor="end" fontSize={11} fill={INK.text}>{v.label}</text>
               <g transform={`translate(${labelW},0)`}>
                 {iv.length > 0 && <>
-                  <rect x={x(q(iv, 0.05))} y={mid - 9} width={x(q(iv, 0.95)) - x(q(iv, 0.05))} height={18} fill="#e5e7eb" />
-                  <rect x={x(q(iv, 0.25))} y={mid - 9} width={x(q(iv, 0.75)) - x(q(iv, 0.25))} height={18} fill="#cbd2d9" />
+                  <rect x={x(q(iv, 0.05))} y={mid - 9} width={x(q(iv, 0.95)) - x(q(iv, 0.05))} height={18} fill={themed('#e5e7eb', '#2c333c')} />
+                  <rect x={x(q(iv, 0.25))} y={mid - 9} width={x(q(iv, 0.75)) - x(q(iv, 0.25))} height={18} fill={themed('#cbd2d9', '#46505c')} />
                   <line x1={x(q(iv, 0.5))} x2={x(q(iv, 0.5))} y1={mid - 9} y2={mid + 9} stroke={INK.axis} strokeWidth={2} />
                 </>}
                 {nv.length > 0 && <>
@@ -364,7 +364,7 @@ function WhereItSits({ d }: { d: TorData }) {
                 {sites.map((s) => { const val = s[siteVal[v.key]] as number; return Number.isFinite(val) && (!v.log || val > 0) ? <line key={s.site} x1={x(val)} x2={x(val)} y1={mid + 11} y2={mid + 16} stroke={IMPROVE_GREY} strokeWidth={0.8} /> : null })}
                 {add.map((p, i) => { const val = num(p[v.key]); return Number.isFinite(val) && (!v.log || val > 0) ? <circle key={i} cx={x(val)} cy={mid - 6 + jitter(i) * 12} r={2} fill={ADDIS_ALL} fillOpacity={0.55} /> : null })}
                 {ada.map((p, i) => { const val = num(p[v.key]); return Number.isFinite(val) && (!v.log || val > 0)
-                  ? <path key={i} d={d3.symbol(d3.symbolDiamond, 70)() ?? ''} transform={`translate(${x(val)},${mid})`} fill={ADAMA} stroke="#fff" strokeWidth={1}
+                  ? <path key={i} d={d3.symbol(d3.symbolDiamond, 70)() ?? ''} transform={`translate(${x(val)},${mid})`} fill={ADAMA} stroke={INK.panel} strokeWidth={1}
                     onMouseEnter={(e) => tip.show(e, [`Adama ${p.id}`, `${v.label}: ${v.fmt(val)}`])} onMouseLeave={tip.hide} /> : null })}
                 <XAxis scale={x} y={midN + 8} tickCount={6} format={(t) => v.fmt(+t)} />
               </g>
@@ -373,7 +373,7 @@ function WhereItSits({ d }: { d: TorData }) {
         </svg>
         {tip.node}
       </div>
-      <Legend items={[{ label: 'IMPROVE filters (band) and site medians (ticks)', color: '#cbd2d9', shape: 'square' }, { label: 'other SPARTAN sites (band)', color: SPARTAN, shape: 'square' }, { label: 'SPARTAN Addis filters', color: ADDIS_ALL }, { label: 'Adama pilot pairs', color: ADAMA }]} />
+      <Legend items={[{ label: 'IMPROVE filters (band) and site medians (ticks)', color: themed('#cbd2d9', '#46505c'), shape: 'square' }, { label: 'other SPARTAN sites (band)', color: SPARTAN, shape: 'square' }, { label: 'SPARTAN Addis filters', color: ADDIS_ALL }, { label: 'Adama pilot pairs', color: ADAMA }]} />
       <Note>Adama has no weighed PM2.5 in the pair records. EC per filter = concentration × the filter's own sampled volume; SPARTAN Addis EC is the published FTIR value (no TOR exists there).</Note>
     </ChartFrame>
   )
@@ -419,7 +419,7 @@ function NetworkScatter({ d }: { d: TorData }) {
           })
           return <g pointerEvents="none">{placeLabels(items, iw, ih).map((l) => <g key={l.key}>
             {l.leader && <line x1={l.ax} y1={l.ay} x2={l.lx} y2={l.ly} stroke={INK.axis} strokeWidth={0.6} />}
-            <text x={l.tx} y={l.ty} dy="0.32em" textAnchor={l.anchor} fontSize={l.bold ? 11 : 9} fontWeight={l.bold ? 700 : 400} fill={INK.text} stroke="#fff" strokeWidth={3} strokeLinejoin="round" paintOrder="stroke">{l.text}</text>
+            <text x={l.tx} y={l.ty} dy="0.32em" textAnchor={l.anchor} fontSize={l.bold ? 11 : 9} fontWeight={l.bold ? 700 : 400} fill={INK.text} stroke={INK.panel} strokeWidth={3} strokeLinejoin="round" paintOrder="stroke">{l.text}</text>
           </g>)}</g>
         }} />
       <Legend {...lg.props} items={order.map((p) => ({ label: POP_LABEL[p], color: POP_COLOR[p] }))} note="click to show or hide" />
@@ -447,7 +447,7 @@ function NearestSites({ d }: { d: TorData }) {
         <svg width={labelW + pw + 30} height={rows.length * rowH + 44} fontFamily={FONT.family}>
           {rows.map((r, i) => { const cy = i * rowH + rowH / 2
             return <g key={r.site} onMouseEnter={(e) => tip.show(e, [`${r.name} (${r.site})`, `Addis ${pct(r.Addis)} · Adama ${pct(r.Adama)}`, `${pct(r['IMPROVE share of filters'])} of calibration filters`])} onMouseLeave={tip.hide}>
-              <rect x={0} y={cy - rowH / 2} width={labelW + pw} height={rowH} fill={i % 2 ? 'transparent' : '#f8f9fb'} />
+              <rect x={0} y={cy - rowH / 2} width={labelW + pw} height={rowH} fill={i % 2 ? 'transparent' : INK.zebra} />
               <text x={labelW - 8} y={cy} dy="0.32em" textAnchor="end" fontSize={10.5} fill={INK.text}>{r.name.length > 26 ? `${r.name.slice(0, 25)}…` : r.name}</text>
               <rect x={labelW} y={cy - 6} width={x(r.Addis)} height={5} fill={ADDIS_ALL} />
               <rect x={labelW} y={cy + 1} width={x(r.Adama)} height={5} fill={ADAMA} />

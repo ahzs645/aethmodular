@@ -1,5 +1,6 @@
 import { paletteSeason, type ExportSeason, type PaletteSeason } from './exportSeasons'
-import { collectExportPalette, paintColor, type ExportPalette, type ExportSite } from './exportColors'
+import { collectExportPalette, paintColor, replacePaint, type ExportPalette, type ExportSite } from './exportColors'
+import { INK_LIGHT, inkOn, isDark, printColour } from './theme'
 /**
  * Download a chart as PNG, JPEG, SVG or PDF. The decks in this repo are built
  * from figures, so a chart that can only be screenshotted is a chart that will
@@ -177,6 +178,7 @@ export function composeFigure(panel: HTMLElement, sites: readonly ExportSite[] =
     }))
     .filter((l) => l.length)
   if (!chart.length) return null
+  if (isDark()) for (const p of [...chart, ...legends.flat()]) for (const el of p.els) printColours(el)
   return { chart, legends, palette: collectExportPalette([...chart, ...legends.flat()].flatMap(p => p.els), sites, seasons) }
 }
 
@@ -271,6 +273,42 @@ export function layoutFigure(fig: Figure, legend: LegendPlacement = 'shown', con
 export function composePanel(panel: HTMLElement): SVGSVGElement | null {
   const fig = composeFigure(panel)
   return fig ? layoutFigure(fig, 'shown') : null
+}
+
+/** A figure composed on the dark page, redrawn in the light theme's colours (lib/theme printColour). */
+const PAINTS = ['fill', 'stroke', 'stop-color', 'flood-color', 'color']
+const SHAPES = new Set(['rect', 'path', 'circle', 'polygon', 'ellipse'])
+function printColours(root: Element) {
+  const recoloured = new Set<Element>()
+  const swap = (el: Element, paint: string) => {
+    const hex = paintColor(paint)
+    const light = hex && printColour(hex)
+    if (!light) return paint
+    recoloured.add(el)
+    return replacePaint(paint, hex, light)
+  }
+  const all = [root, ...root.querySelectorAll('*')]
+  for (const el of all) {
+    for (const a of PAINTS) {
+      const v = el.getAttribute(a)
+      if (v) el.setAttribute(a, swap(el, v))
+    }
+    const style = (el as SVGElement).style
+    if (style) for (const a of PAINTS) {
+      const v = style.getPropertyValue(a)
+      if (v) style.setProperty(a, swap(el, v))
+    }
+  }
+  // a label on a heat-map cell was given white or dark ink for the dark cell (lib/theme inkOn):
+  // pick it again for the cell's light colour
+  for (const el of all) {
+    const ink = paintColor(el.getAttribute('fill'))
+    if (el.tagName !== 'text' || recoloured.has(el) || (ink !== '#ffffff' && ink !== INK_LIGHT.text)) continue
+    let cell = el.previousElementSibling
+    while (cell && !SHAPES.has(cell.tagName)) cell = cell.previousElementSibling
+    const fill = cell && recoloured.has(cell) ? paintColor(cell.getAttribute('fill')) : null
+    if (fill) el.setAttribute('fill', inkOn(fill))
+  }
 }
 
 function serialise(svg: SVGSVGElement, background: ExportBackground, fontFamily = FONT): { xml: string; width: number; height: number; node: SVGSVGElement } {

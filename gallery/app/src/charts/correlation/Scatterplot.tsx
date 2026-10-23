@@ -622,8 +622,8 @@ const ScatterPanel = memo(function ScatterPanel({
             <g pointerEvents="none" fontFamily={FONT.mono} fontSize={10.5}>
               {!originAxes && <RefLine orient="v" at={xScale(0)} from={0} to={innerH} />}
               {selectedFits.map(fit => <g key={fit.name + fit.method}>
-                <circle cx={xScale(0)} cy={yScale(fit.intercept)} r={4.5} fill="#fff" stroke={fit.color} data-regression-stroke={fit.method} strokeWidth={2} />
-                <text x={xScale(0) + 8} y={yScale(fit.intercept)} dy="0.35em" fill={fit.color} data-regression-color={fit.method} stroke="#fff" strokeWidth={3} paintOrder="stroke">{fit.label} b = {fmt(fit.intercept, 3)}</text>
+                <circle cx={xScale(0)} cy={yScale(fit.intercept)} r={4.5} fill={INK.panel} stroke={fit.color} data-regression-stroke={fit.method} strokeWidth={2} />
+                <text x={xScale(0) + 8} y={yScale(fit.intercept)} dy="0.35em" fill={fit.color} data-regression-color={fit.method} stroke={INK.panel} strokeWidth={3} paintOrder="stroke">{fit.label} b = {fmt(fit.intercept, 3)}</text>
               </g>)}
             </g>
           )}

@@ -12,7 +12,9 @@ import { OCT1_HATCH, SPECTRAL_REGION } from '@/lib/theme'
 export interface Region { lo: number; hi: number; fill?: string; label?: string; hatch?: boolean }
 
 export const ANALOG_SELECTION_EXCLUDED: Region[] = [SPECTRAL_REGION.co2, SPECTRAL_REGION.aboveCH]
-export const OCT1_ALSO_EXCLUDED: Region[] = [{ ...SPECTRAL_REGION.ptfe, hatch: true }, { ...SPECTRAL_REGION.belowOct1, hatch: true }]
+// the fill is read when drawn, so it follows the theme (lib/theme setInkTheme changes SPECTRAL_REGION in place)
+const hatched = (r: Region): Region => ({ lo: r.lo, hi: r.hi, label: r.label, hatch: true, get fill() { return r.fill } })
+export const OCT1_ALSO_EXCLUDED: Region[] = [hatched(SPECTRAL_REGION.ptfe), hatched(SPECTRAL_REGION.belowOct1)]
 
 export function SpectralRegions({ x, height, regions }: { x: ScaleLinear<number, number>; height: number; regions: readonly Region[] }) {
   const hatchId = useId()

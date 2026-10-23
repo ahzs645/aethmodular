@@ -168,7 +168,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
                     d={b.path}
                     transform={`translate(${b.x},${b.y})`}
                     fill={color(b.length)}
-                    stroke={openTitle === title ? INK.fit : '#fff'}
+                    stroke={openTitle === title ? INK.fit : INK.panel}
                     strokeWidth={openTitle === title ? 2 : 0.4}
                     style={{ cursor: 'pointer' }}
                     {...fidsProps(ids, title)}
@@ -198,7 +198,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
               {stats && opts.mode === 'Show intercept' && (
                 <g pointerEvents="none" fontFamily={FONT.mono} fontSize={10.5}>
                   {fitGroups.flatMap(group => fitsFor(group.stats, methods).map(fit => <g key={group.name + fit.method}>
-                    <circle cx={x(0)} cy={y(fit.intercept)} r={4.5} fill="#fff" stroke={group.color ?? fit.color} strokeWidth={2} />
+                    <circle cx={x(0)} cy={y(fit.intercept)} r={4.5} fill={INK.panel} stroke={group.color ?? fit.color} strokeWidth={2} />
                     <title>{fit.label} b = {fmt(fit.intercept, 3)}</title>
                   </g>))}
                 </g>

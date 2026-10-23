@@ -105,9 +105,9 @@ export function IntervalStrip({ blocks, panels, labelWidth = 220, rowHeight = 20
       {selected && cx != null && <circle cx={cx} cy={y0} r={r + 1.5} fill="none" stroke={INK.text} strokeWidth={1} />}
       {finite(mk.lo) && finite(mk.hi) && <line x1={x(mk.lo)} x2={x(mk.hi)} y1={y0} y2={y0} stroke={mk.color} strokeWidth={mk.faint ? 1.4 : 1.8} strokeOpacity={mk.faint ? 0.45 : 0.8} />}
       {cx != null && (mk.shape ?? 'dot') === 'dot' && <circle cx={cx} cy={y0} r={r} fill={mk.color} />}
-      {cx != null && mk.shape === 'hollow' && <circle cx={cx} cy={y0} r={r} fill="white" stroke={mk.color} strokeWidth={1.5} />}
+      {cx != null && mk.shape === 'hollow' && <circle cx={cx} cy={y0} r={r} fill={INK.panel} stroke={mk.color} strokeWidth={1.5} />}
       {cx != null && mk.shape === 'square' && <rect x={cx - r} y={y0 - r} width={2 * r} height={2 * r} fill={mk.color} />}
-      {cx != null && mk.shape === 'diamond' && <path d={`M${cx} ${y0 - r} L${cx + r} ${y0} L${cx} ${y0 + r} L${cx - r} ${y0} Z`} fill="white" stroke={mk.color} strokeWidth={1} />}
+      {cx != null && mk.shape === 'diamond' && <path d={`M${cx} ${y0 - r} L${cx + r} ${y0} L${cx} ${y0 + r} L${cx - r} ${y0} Z`} fill={INK.panel} stroke={mk.color} strokeWidth={1} />}
     </g>
   }
   return (

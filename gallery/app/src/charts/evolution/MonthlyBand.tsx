@@ -107,7 +107,7 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
                       <circle
                         key={p.month}
                         cx={x(p.month) ?? 0} cy={y(p.median!)} r={emphasizeFebruary && p.month === 2 ? 5.5 : 3.6}
-                        fill={emphasizeFebruary && p.month === 2 ? '#fff' : s.color}
+                        fill={emphasizeFebruary && p.month === 2 ? INK.panel : s.color}
                         stroke={p.month === 2 ? INK.text : s.color} strokeWidth={p.month === 2 ? 2 : 1}
                         onMouseEnter={(e) =>
                           tip.show(e, [

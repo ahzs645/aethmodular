@@ -8,12 +8,12 @@ import { IntervalStrip } from '@/components/IntervalStrip'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
-import { MARGIN } from '@/lib/theme'
+import { INK, MARGIN } from '@/lib/theme'
 import type { CalibRunsFile, YorkFit } from '@/lib/types'
 
 const VARIANTS = ['deployed', 'lot_lin', 'lot_quad'] as const
 const VARIANT_LABEL: Record<string, string> = { deployed: 'deployed blank line', lot_lin: 'lot blank, linear', lot_quad: 'lot blank, quadratic' }
-const VARIANT_COLOR: Record<string, string> = { deployed: '#1f2933', lot_lin: '#2b6cb0', lot_quad: '#c026d3' }
+const VARIANT_COLOR: Record<string, string> = { get deployed() { return INK.text }, lot_lin: '#2b6cb0', lot_quad: '#c026d3' }
 
 /**
  * HIPS instrument diagnostics: per-site weighted York (errors-in-variables)

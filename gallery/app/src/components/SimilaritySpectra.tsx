@@ -7,11 +7,11 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
 import { useAddisStatusBySample } from '@/lib/filterSpectrum'
-import { IMPROVE_GREY, INK, MARGIN, TRACE } from '@/lib/theme'
+import { IMPROVE_GREY, INK, MARGIN, TRACE, themed } from '@/lib/theme'
 import { calendarOf, groupColor, groupLabel, members, siteWhere, type SimilarityMeta, type Traces } from '@/lib/similarity'
 
 const TOP_GREY = IMPROVE_GREY
-const GROUP_GREY = '#39404d'
+const groupGrey = () => themed('#39404d', '#b4bcc6')
 
 export function SpectraTraces({ meta, traces, target, topFilters, compare, mask, hoverFilter, pinned, onPin, method, controls,
   targetFilters, targetLabel, regionParam = 'sregion', scoreLabel = 'mean r', provenance, id, source,
@@ -147,13 +147,13 @@ export function SpectraTraces({ meta, traces, target, topFilters, compare, mask,
           <svg width={width} height={height}>
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
               {regions === 'shaded' && ignored.map(([a, b]) => (
-                <rect key={a} x={x(wn[a])} width={Math.max(0, x(wn[b]) - x(wn[a]))} y={0} height={innerH} fill="#efeeea" />
+                <rect key={a} x={x(wn[a])} width={Math.max(0, x(wn[b]) - x(wn[a]))} y={0} height={innerH} fill={themed('#efeeea', '#2a2a27')} />
               ))}
               <YAxis scale={y} x={0} label="Baseline-corrected absorbance" gridWidth={innerW} tickCount={6} />
               <XAxis scale={x} y={innerH} label="Wavenumber (cm⁻¹)" tickCount={8} />
               <clipPath id={clip}><rect width={innerW} height={innerH} /></clipPath>
               <g clipPath={`url(#${clip})`}>
-              {vis!.back.map((t) => <path key={`b${t.f}`} d={line(Array.from(t.v)) ?? ''} fill="none" stroke={useGroup ? GROUP_GREY : TOP_GREY} strokeOpacity={(useGroup ? 0.3 : 0.22) * lg.dim(BACK, 0.2)} strokeWidth={0.7} />)}
+              {vis!.back.map((t) => <path key={`b${t.f}`} d={line(Array.from(t.v)) ?? ''} fill="none" stroke={useGroup ? groupGrey() : TOP_GREY} strokeOpacity={(useGroup ? 0.3 : 0.22) * lg.dim(BACK, 0.2)} strokeWidth={0.7} />)}
               {vis!.tgt.map((t) => <path key={`t${t.f}`} d={line(Array.from(t.v)) ?? ''} fill="none" stroke={tColor(t.f)} strokeOpacity={0.55 * lg.dim(tKey(t.f), 0.12)} strokeWidth={0.8} />)}
               {drawn.pin && <path d={line(Array.from(drawn.pin.v)) ?? ''} fill="none" {...TRACE.pinned} />}
               {drawn.hover && <path d={line(Array.from(drawn.hover.v)) ?? ''} fill="none" {...TRACE.hovered} />}
@@ -165,7 +165,7 @@ export function SpectraTraces({ meta, traces, target, topFilters, compare, mask,
           </svg>
         )}
         <Legend {...lg.props} items={[
-          { label: BACK, color: useGroup ? GROUP_GREY : TOP_GREY, shape: 'line', detail: `n=${drawn?.back.length ?? 0}` },
+          { label: BACK, color: useGroup ? groupGrey() : TOP_GREY, shape: 'line', detail: `n=${drawn?.back.length ?? 0}` },
           ...[...d3.rollup(drawn?.tgt ?? [], (v) => v.length, (t) => tKey(t.f))]
             .sort((p, q) => seasonOrder(p[0]) - seasonOrder(q[0]))
             .map(([label, n]) => ({

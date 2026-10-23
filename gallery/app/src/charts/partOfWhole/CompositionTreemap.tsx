@@ -205,7 +205,7 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
                           const pct = ((leaf.value ?? 0) / total) * 100
                           return (
                             <g key={i} opacity={dimK(leaf.data)} onMouseEnter={(e) => tip.show(e, leafTip(leaf, total))} onMouseLeave={tip.hide}>
-                              <rect x={leaf.x0} y={leaf.y0} width={w} height={h} fill={color(leaf.data.name)} fillOpacity={0.85} stroke="#fff" rx={2} />
+                              <rect x={leaf.x0} y={leaf.y0} width={w} height={h} fill={color(leaf.data.name)} fillOpacity={0.85} stroke={INK.panel} rx={2} />
                               {w > 54 && h > 20 && (
                                 <text x={leaf.x0 + 5} y={leaf.y0 + 14} fontSize={10.5} fill="#fff" fontFamily={FONT.family} pointerEvents="none">{leaf.data.name}</text>
                               )}
@@ -230,7 +230,7 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
                         ))}
                         {root.leaves().map((leaf: any, i) => (
                           <g key={i} opacity={dimK(leaf.data)} onMouseEnter={(e) => tip.show(e, leafTip(leaf, total))} onMouseLeave={tip.hide}>
-                            <circle cx={leaf.x} cy={leaf.y} r={leaf.r} fill={color(leaf.data.name)} fillOpacity={0.85} stroke="#fff" />
+                            <circle cx={leaf.x} cy={leaf.y} r={leaf.r} fill={color(leaf.data.name)} fillOpacity={0.85} stroke={INK.panel} />
                             {leaf.r > 18 && <text x={leaf.x} y={leaf.y} dy="0.35em" textAnchor="middle" fontSize={Math.min(10.5, leaf.r / 2.4)} fill="#fff" fontFamily={FONT.family} pointerEvents="none">{leaf.data.name}</text>}
                           </g>
                         ))}
@@ -248,7 +248,7 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
                       <g transform={`translate(${panelW / 2},${panelH / 2})`}>
                         {arcs.map((a, i) => (
                           <path
-                            key={i} d={arc(a) ?? ''} fill={color(a.data.name)} fillOpacity={0.88 * dimK(a.data)} stroke="#fff" strokeWidth={1}
+                            key={i} d={arc(a) ?? ''} fill={color(a.data.name)} fillOpacity={0.88 * dimK(a.data)} stroke={INK.panel} strokeWidth={1}
                             onMouseEnter={(e) => tip.show(e, [a.data.name, a.data.family, `${fmt(val(a.data), 3)} ${UNITS}`, `${((val(a.data) / total) * 100).toFixed(1)} %`, `n = ${a.data.n}`])}
                             onMouseLeave={tip.hide}
                           />
@@ -353,7 +353,7 @@ function StackedBars({ bars, grouped, pct, families, val, dim, famDim, color, fa
                 const share = total ? (val(k) / total) * 100 : 0
                 return (
                   <g key={k.name} opacity={dim(k)} onMouseEnter={(e) => tip.show(e, [k.name, `${where} · ${k.family}`, `${fmt(val(k), 3)} ${units}`, `${share.toFixed(1)} % of the speciated ${fmt(total, 1)} ${units}`, `PM2.5 ${fmt(bar.pm25_mean, 1)} ${units} · n = ${k.n} of ${bar.nRows} filters`])} onMouseLeave={tip.hide}>
-                    <rect x={bx} y={y(y1)} width={bw} height={Math.max(0, h)} fill={color(k.name)} fillOpacity={0.88} stroke="#fff" strokeWidth={0.6} />
+                    <rect x={bx} y={y(y1)} width={bw} height={Math.max(0, h)} fill={color(k.name)} fillOpacity={0.88} stroke={INK.panel} strokeWidth={0.6} />
                     {h > 13 && bw > 70 && <text x={bx + bw / 2} y={y(y1) + h / 2} dy="0.35em" textAnchor="middle" fontSize={9.5} fill="#fff" fontFamily={FONT.family} pointerEvents="none">{k.name} {pct ? `${share.toFixed(0)}%` : fmt(val(k), 1)}</text>}
                   </g>
                 )

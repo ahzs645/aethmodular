@@ -180,7 +180,7 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
                   d={area(layer) ?? ''}
                   fill={colorOf.get(String(layer.key)) ?? INK.muted}
                   fillOpacity={0.88 * dim(String(layer.key))}
-                  stroke="#fff"
+                  stroke={INK.panel}
                   strokeWidth={0.4}
                   style={{ transition: 'd 0.35s', cursor: 'pointer' }}
                   onClick={(e) => recordOf(nearestTo(e))}

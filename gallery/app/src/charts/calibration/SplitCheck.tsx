@@ -13,7 +13,7 @@ import type { CalibRun, CalibRunsFile } from '@/lib/types'
 import { metricRow } from './common'
 
 const SPLIT_LABEL: Record<string, string> = { all: 'all filters', early: 'early half', late: 'late half', odd: 'odd half', even: 'even half' }
-const SPLIT_COLOR: Record<string, string> = { all: '#1f2933', early: '#E67E22', late: '#3498DB', odd: '#27AE60', even: '#8e44ad' }
+const SPLIT_COLOR: Record<string, string> = { get all() { return INK.text }, early: '#E67E22', late: '#3498DB', odd: '#27AE60', even: '#8e44ad' }
 
 /**
  * Blind-half check (Ann, 2026-08-27): the same fitted model scored on the two

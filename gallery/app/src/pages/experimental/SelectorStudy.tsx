@@ -18,7 +18,7 @@ interface SelectorData extends XpBase {
 const source = sourceOf('SelectorStudy')
 const COLOR: Record<string, string> = {
   'full spline': '#2171b5', 'full raw': '#525252', 'local raw': '#d94801', 'average of three': '#8a8f98', 'winner classifier': '#6a51a3',
-  'error-predicting selector': INK.good, 'selector, abstain on riskiest tenth': INK.good, 'oracle (best per filter)': INK.fit,
+  get 'error-predicting selector'() { return INK.good }, get 'selector, abstain on riskiest tenth'() { return INK.good }, get 'oracle (best per filter)'() { return INK.fit },
 }
 
 export function SelectorStudy() {

@@ -7,7 +7,7 @@ import { INK } from '@/lib/theme'
  * Call it right after `selection.call(brush)`; the svg's `animated` transition
  * is switched off on the brush so the rectangle does not trail the pointer.
  */
-export const BRUSH_STYLE = { fill: INK.accent, fillOpacity: 0.14, handleOpacity: 0.6 } as const
+export const BRUSH_STYLE = { get fill() { return INK.accent }, fillOpacity: 0.14, handleOpacity: 0.6 } as const
 
 export function styleBrush(sel: Selection<SVGGElement, unknown, null, undefined>) {
   sel.selectAll('rect').style('transition', 'none')

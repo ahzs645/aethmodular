@@ -66,7 +66,7 @@ export function RegressionReadout({ stats, x = 10, y = 10, width = 280, title, c
   const fontSize = Math.max(8, Math.min(10.5, (width - 16) / (0.61 * Math.max(...lines.map(l => l.text.length)))))
   const step = Math.round(fontSize * 1.43)
   return <g transform={`translate(${x},${y})`} fontFamily={FONT.mono} fontSize={fontSize} pointerEvents="none">
-    <rect width={width} height={lines.length * step + 12} rx={5} fill="#fff" fillOpacity={0.94} stroke={INK.border}/>
+    <rect width={width} height={lines.length * step + 12} rx={5} fill={INK.panel} fillOpacity={0.94} stroke={INK.border}/>
     {lines.map((l, i) => <text key={i} x={8} y={step + 3 + i * step} fill={l.color} data-regression-color={l.method}>{l.text}</text>)}
     <title>{note}</title>
   </g>

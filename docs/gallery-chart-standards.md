@@ -185,3 +185,13 @@ de-duplication it carries), `selectedStyle`, `monthlyStats` /
 - **Research-page crossplots** keep showing every point ("Data" axes); the
   shared `Crossplot` takes the axes mode as a prop.
 - **Export** saves the whole panel: every facet plus the legend in one SVG.
+- **Dark theme (23 Oct 2026)**: header button cycles light → dark → auto (follow
+  the system); light stays the default. Chart colours come from `INK` (and
+  `BASELINE_COLOR`, `SPECTRAL_REGION`, …) in `lib/theme.ts`, which
+  `setInkTheme` swaps in place before the app remounts. So read `INK.x` while
+  rendering: never copy it into a module-level constant (use a getter, or
+  `themed(light, dark)` for a one-off colour), and use `INK.panel` rather than
+  `#fff` for halos, hollow markers and separators. Site and season colours stay
+  the same in both themes. Exports are always light: `lib/export` maps each
+  dark-theme colour back to its light step, including colours interpolated on a
+  colour scheme's ramp.

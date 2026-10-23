@@ -33,7 +33,7 @@ export const presetName = (p: { label: string; spectra: string }) =>
 
 /** Fixed cohort colours — not in config.py, so declared once here. */
 export const COHORT_COLOR: Record<string, string> = {
-  pool: INK.muted,
+  get pool() { return INK.muted },
   smoke: '#8d5524',
   eth_shaped: '#E67E22',
   analogs: '#8e44ad',
@@ -44,7 +44,7 @@ export const cohortColor = (co: string) => COHORT_COLOR[co] ?? INK.axis
 /** Colour per calibration spectra space, shared by every chart that puts the preprocessings side by side. */
 // the calibration grid's four spectra spaces (their order is the legend order); the spline baseline takes
 // its tab-wide colour (lib/theme BASELINE_COLOR) since #2171b5 is reserved for the accent and OLS
-export const SPECTRA_COLOR: Record<string, string> = { raw: INK.text, airspec: BASELINE_COLOR.airspec, deriv2: '#c026d3', neutral: INK.good }
+export const SPECTRA_COLOR: Record<string, string> = { get raw() { return INK.text }, get airspec() { return BASELINE_COLOR.airspec }, deriv2: '#c026d3', get neutral() { return INK.good } }
 export const spectraColor = (sp: string) => SPECTRA_COLOR[sp] ?? BASELINE_COLOR[sp] ?? INK.axis
 
 

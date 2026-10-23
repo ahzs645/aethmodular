@@ -162,10 +162,10 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
         <svg ref={svgRef} width={width} height={height} role="img" aria-label={`Bubble map: ${scope}, ${stat.toLowerCase()}`} style={{ cursor: 'grab', touchAction: 'none' }}>
           <defs><clipPath id={clipId}><rect width={width} height={height} /></clipPath></defs>
           <g clipPath={`url(#${clipId})`}>
-          <rect width={width} height={height} fill="#f2f6fa" />
+          <rect width={width} height={height} fill={INK.sea} />
           <g transform={zoom.toString()}>
-          <path d={path({ type: 'Sphere' }) ?? ''} fill="#f2f6fa" stroke={INK.border} />
-          {world?.features.map((f, i) => <path key={i} d={path(f) ?? ''} fill="#e4e9ef" stroke="#fff" strokeWidth={0.5} vectorEffect="non-scaling-stroke" />)}
+          <path d={path({ type: 'Sphere' }) ?? ''} fill={INK.sea} stroke={INK.border} />
+          {world?.features.map((f, i) => <path key={i} d={path(f) ?? ''} fill={INK.land} stroke={INK.panel} strokeWidth={0.5} vectorEffect="non-scaling-stroke" />)}
           </g>
           {sites.map(s => {
             const projected = projection([s.lon, s.lat])
@@ -181,7 +181,7 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
                 `n with ${metric} = ${s.summary.n.toLocaleString()}`,
               ]),
             ])} onMouseLeave={tip.hide}>
-              <circle cx={p[0]} cy={p[1]} r={r} fill={available ? s.color : '#fff'} fillOpacity={available ? 0.55 : 1} stroke={s.color} strokeWidth={1.6} />
+              <circle cx={p[0]} cy={p[1]} r={r} fill={available ? s.color : INK.panel} fillOpacity={available ? 0.55 : 1} stroke={s.color} strokeWidth={1.6} />
               {available && <circle cx={p[0]} cy={p[1]} r={2} fill={s.color} />}
               {/* every name while few sites are drawn; with many, the hovered one (the rest crowd into each other) */}
               {((!isNetwork && sites.length <= 8) || lg.hover === s.label || (isSpartan && meta.sites.some(f => f.code === s.code))) && <text x={p[0]} y={p[1] - r - 6} textAnchor="middle" fontSize={11} fontWeight={600} fill={INK.text} fontFamily={FONT.family}>{isSpartan ? meta.sites.find(f => f.code === s.code)?.name ?? s.label : s.label}</text>}

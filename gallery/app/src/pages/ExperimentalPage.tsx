@@ -56,7 +56,7 @@ const PLAN: { key: string; n: string; question: string; method: string }[] = [
     method: 'Axis-by-axis position in SPARTAN Addis\'s range; loading = concentration × volume; season; nearest TOR sites; precision by number of pairs; a draft pass contract for the Addis city pairs.' },
 ]
 const STATUS: Record<string, { label: string; color: string }> = {
-  done: { label: 'run', color: INK.good }, partial: { label: 'partly run', color: '#b45309' }, waiting: { label: 'waits for data', color: INK.muted },
+  done: { label: 'run', get color() { return INK.good } }, partial: { label: 'partly run', color: INK.warn }, waiting: { label: 'waits for data', get color() { return INK.muted } },
 }
 
 function TestPlan({ onPick }: { onPick: (key: string) => void }) {
@@ -69,7 +69,7 @@ function TestPlan({ onPick }: { onPick: (key: string) => void }) {
           const it = data?.items?.[p.key], st = it ? STATUS[it.status] : null
           return (
             <button key={p.key} type="button" onClick={() => onPick(p.key)}
-              style={{ textAlign: 'left', border: `1px solid ${INK.border}`, borderRadius: 8, padding: '10px 12px', background: '#fff', cursor: 'pointer', font: 'inherit', color: INK.text }}>
+              style={{ textAlign: 'left', border: `1px solid ${INK.border}`, borderRadius: 8, padding: '10px 12px', background: INK.panel, cursor: 'pointer', font: 'inherit', color: INK.text }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
                 <strong style={{ fontSize: 13 }}>{p.n !== '–' ? `${p.n} · ` : ''}{EXPERIMENTS.find((e) => e.key === p.key)?.label.replace(/^[\d–]+ · /, '')}</strong>
                 {st && <span style={{ fontSize: 11, color: st.color, whiteSpace: 'nowrap' }}>● {st.label}</span>}

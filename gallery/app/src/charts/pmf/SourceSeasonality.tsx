@@ -109,7 +109,7 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
                         <rect
                           key={l}
                           x={x(g.name) ?? 0} y={y1} width={x.bandwidth()} height={Math.max(0, y0 - y1)}
-                          fill={colorOf.get(l) ?? INK.muted} fillOpacity={0.88 * lg.dim(l)} stroke="#fff" strokeWidth={0.8}
+                          fill={colorOf.get(l) ?? INK.muted} fillOpacity={0.88 * lg.dim(l)} stroke={INK.panel} strokeWidth={0.8}
                           onMouseEnter={(e) => tip.show(e, [`${l} · ${seasonOnly(g.name)}`, relative ? `mean share ${(v * 100).toFixed(1)} %` : `mean ${fmt(v, 2)} µg/m³`, `dominant on ${dominant} of ${g.n} filters`, `above ${threshold} % on ${g.rows.filter((r) => (r.fraction[l] ?? 0) >= thr).length} of ${g.n}`])}
                           onMouseLeave={tip.hide}
                         />

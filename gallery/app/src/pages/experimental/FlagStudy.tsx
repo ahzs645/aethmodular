@@ -13,7 +13,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { useSearchParam } from '@/lib/url'
-import { ADDIS_ALL, FONT, IMPROVE_GREY, INK } from '@/lib/theme'
+import { ADDIS_ALL, FONT, IMPROVE_GREY, INK, themed } from '@/lib/theme'
 import { f2, f3, pct, signed } from '@/lib/format'
 import { placeLabels } from './shared'
 
@@ -73,7 +73,7 @@ const LOADING = 'Loading: weighed PM2.5'
 /** cells with fewer IMPROVE filters than this are left uncoloured on the map (a rate from a dozen filters is noise) */
 const MIN_CELL = 30
 const DISTANCE = 'Distance: T² + Q'
-const CAT_COLOR: Record<string, string> = { fine: '#d5d9de', 'false alarm': '#6baed6', 'caught failure': INK.good, 'missed failure': INK.negative }
+const CAT_COLOR: Record<string, string> = { get fine() { return themed('#d5d9de', '#4b545f') }, 'false alarm': '#6baed6', get 'caught failure'() { return INK.good }, get 'missed failure'() { return INK.negative } }
 const rungColor = (i: number, n: number) => d3.interpolateViridis(0.08 + 0.8 * (i / Math.max(1, n - 1)))
 const col = <T,>(c: Cols, k: string) => c[k] as T[]
 const pct100 = (v: unknown) => v == null || !Number.isFinite(+v) ? '—' : String(Math.round(+v))
@@ -200,7 +200,7 @@ function BlindSpotMap({ d }: { d: FlagData }) {
               return <g key={`t${g['loading bin']}-${g['distance bin']}`} pointerEvents="none">
                 <text x={cx} y={cy + 13} textAnchor="middle" fontSize={9} fill={INK.muted}>{v == null ? (g['IMPROVE filters'] ? `${g['IMPROVE filters']} filters` : '') : pct(v)}</text>
                 {counts && overlay === 'Addis filters' && g['Addis filters'] > 0 &&
-                  <text x={cx} y={cy + step - 6} textAnchor="middle" fontSize={10} fontWeight={600} fill={ADDIS_ALL} stroke="#fff" strokeWidth={2.5} paintOrder="stroke">{g['Addis filters']} Addis</text>}
+                  <text x={cx} y={cy + step - 6} textAnchor="middle" fontSize={10} fontWeight={600} fill={ADDIS_ALL} stroke={INK.panel} strokeWidth={2.5} paintOrder="stroke">{g['Addis filters']} Addis</text>}
               </g>
             })}
             <rect x={size} y={0} width={beyondW} height={size} fill={INK.empty} />
@@ -223,13 +223,13 @@ function BlindSpotMap({ d }: { d: FlagData }) {
             ))}
             {sitesDrawn.map((s) => (
               <circle key={s.code} cx={x(s.load)} cy={y(s.dist)} r={rSite(s.n)} fill={flagColour(s.flagged)} fillOpacity={0.95}
-                stroke={s.code === 'ETAD' ? INK.text : '#fff'} strokeWidth={s.code === 'ETAD' ? 2.5 : 1.5}
+                stroke={s.code === 'ETAD' ? INK.text : INK.panel} strokeWidth={s.code === 'ETAD' ? 2.5 : 1.5}
                 onMouseEnter={(e) => tip.show(e, [`${s.site} (${s.code})`, `${s.n} filters · median loading pct ${f2(s.load)}, distance pct ${f2(s.dist)}`, `${pct(s.flagged)} flagged · ${pct(s.beyond)} heavier than any IMPROVE filter`])} onMouseLeave={tip.hide} />
             ))}
             {labels.map((l) => <g key={l.key} pointerEvents="none">
               {l.leader && <line x1={l.ax} y1={l.ay} x2={l.lx} y2={l.ly} stroke={INK.axis} strokeWidth={0.6} />}
               <text x={l.tx} y={l.ty} dy="0.32em" textAnchor={l.anchor} fontSize={l.bold ? 11 : 9.5} fontWeight={l.bold ? 700 : 500}
-                fill={INK.text} stroke="#fff" strokeWidth={3} strokeLinejoin="round" paintOrder="stroke">{l.text}</text>
+                fill={INK.text} stroke={INK.panel} strokeWidth={3} strokeLinejoin="round" paintOrder="stroke">{l.text}</text>
             </g>)}
           </g>
         </svg>
@@ -272,7 +272,7 @@ function Ladder({ d }: { d: FlagData }) {
         <svg width={labelW + 2 * panelW + gap + 30} height={h} fontFamily={FONT.family}>
           <g transform="translate(0,0)">
             {rows.map((r, i) => <g key={r.rung}>
-              {i % 2 === 0 && <rect x={0} y={yb(i) - rowH / 2} width={labelW + 2 * panelW + gap + 20} height={rowH} fill="#f8f9fb" />}
+              {i % 2 === 0 && <rect x={0} y={yb(i) - rowH / 2} width={labelW + 2 * panelW + gap + 20} height={rowH} fill={INK.zebra} />}
               <text x={labelW - 10} y={yb(i)} dy="0.32em" textAnchor="end" fontSize={11} fill={r['at SPARTAN'] ? INK.text : INK.muted} fontWeight={r.rung === d.settings.BEST ? 700 : 400}>{r.rung}{r.rung === d.settings.BEST ? ' ★' : ''}</text>
             </g>)}
           </g>
@@ -288,7 +288,7 @@ function Ladder({ d }: { d: FlagData }) {
                 return <g key={r.rung} onMouseEnter={(e) => show(e, r)} onMouseLeave={tip.hide}>
                   <rect x={0} y={yb(i) - rowH / 2} width={panelW} height={rowH} fill="transparent" />
                   <line x1={p.sc(lo)} x2={p.sc(hi)} y1={yb(i)} y2={yb(i)} stroke={c} strokeWidth={2} strokeOpacity={0.6} />
-                  <circle cx={p.sc(v)} cy={yb(i)} r={5.5} fill={r['at SPARTAN'] ? c : '#fff'} stroke={c} strokeWidth={2} />
+                  <circle cx={p.sc(v)} cy={yb(i)} r={5.5} fill={r['at SPARTAN'] ? c : INK.panel} stroke={c} strokeWidth={2} />
                   {p.key !== 'AUC' && i > 0 && <text x={p.sc(hi) + 6} y={yb(i)} dy="0.32em" fontSize={9.5} fill={clears ? INK.good : INK.muted}>{clears ? 'adds' : 'n.s.'}</text>}
                   {p.key === 'AUC' && <text x={panelW + 4} y={yb(i)} dy="0.32em" fontSize={9.5} fill={INK.muted}>{f2(v)}</text>}
                 </g>
@@ -435,7 +435,7 @@ function SiteKeepChart({ d }: { d: FlagData }) {
               const cy = i * rowH + rowH / 2, kept = r['RMSE kept']
               return <g key={r.site} onMouseEnter={(e) => tip.show(e, [`${r.site}${r.urban ? ' (urban)' : ''}`, `${r.filters} filters, ${pct(r['impacted share'])} impacted`, `kept ${pct(r['kept share'])}`,
                 `RMSE ${f2(r['RMSE all'])} → ${f2(kept)} µg`, `${r['missed failures']} missed failures`])} onMouseLeave={tip.hide}>
-                <rect x={-m.left} y={cy - rowH / 2} width={iw + m.left + m.right} height={rowH} fill={i % 2 ? 'transparent' : '#f8f9fb'} />
+                <rect x={-m.left} y={cy - rowH / 2} width={iw + m.left + m.right} height={rowH} fill={i % 2 ? 'transparent' : INK.zebra} />
                 <text x={-6} y={cy} dy="0.32em" textAnchor="end" fontSize={10} fill={r.urban ? INK.negative : INK.text}>{r.site}</text>
                 {kept != null && <line x1={x(r['RMSE all'])} x2={x(kept)} y1={cy} y2={cy} stroke={INK.axis} strokeWidth={1} />}
                 <circle cx={x(r['RMSE all'])} cy={cy} r={3.5} fill={IMPROVE_GREY} />
@@ -485,7 +485,7 @@ function SpartanSites({ d }: { d: FlagData }) {
               const cy = i * rowH + rowH / 2, addis = s.code === 'ETAD*' || s.code === 'ETAD'
               return <g key={s.code} onMouseEnter={(e) => tip.show(e, [`${s.site} (${s.code.replace('*', '')})`, `${s.n} filters · ${pct(s.flagged)} flagged · median risk ${f2(s.risk)}`,
                 `median loading pct ${f2(s.load)} · ${pct(s.beyond)} heavier than any IMPROVE filter`, `median distance pct ${f2(s.dist)}`])} onMouseLeave={tip.hide}>
-                <rect x={0} y={cy - rowH / 2} width={m.left + 3 * colW} height={rowH} fill={i % 2 ? 'transparent' : '#f8f9fb'} />
+                <rect x={0} y={cy - rowH / 2} width={m.left + 3 * colW} height={rowH} fill={i % 2 ? 'transparent' : INK.zebra} />
                 <text x={m.left - 8} y={cy} dy="0.32em" textAnchor="end" fontSize={10.5} fontWeight={addis ? 700 : 400} fill={addis ? ADDIS_ALL : INK.text}>{s.site.length > 26 ? `${s.site.slice(0, 25)}…` : s.site}</text>
                 {cols.map((c, ci) => {
                   const v = s[c.key] as number | null, sc = d3.scaleLinear().domain(c.dom).range([0, colW - 46])

@@ -190,7 +190,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
                           const last = roll[roll.length - 1]
                           if (!last) return null
                           return (
-                            <text x={x(last.date) - 4} y={y(last.value) - 8} textAnchor="end" fontSize={11} fontWeight={600} fill={s.color} stroke="#fff" strokeWidth={3} paintOrder="stroke" fontFamily={FONT.family} pointerEvents="none">
+                            <text x={x(last.date) - 4} y={y(last.value) - 8} textAnchor="end" fontSize={11} fontWeight={600} fill={s.color} stroke={INK.panel} strokeWidth={3} paintOrder="stroke" fontFamily={FONT.family} pointerEvents="none">
                               {s.name}
                             </text>
                           )
@@ -218,8 +218,8 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
                           const right = px < innerW - 90
                           return (
                             <g key={s.name} opacity={dim(s.name)} data-export-site={s.name} data-export-color={s.color}>
-                              <circle cx={px} cy={py} r={5} fill="#fff" stroke={s.color} strokeWidth={2} />
-                              <text x={right ? px + 9 : px - 9} y={py} dy="0.35em" textAnchor={right ? 'start' : 'end'} fill={s.color} stroke="#fff" strokeWidth={3} paintOrder="stroke" fontWeight={600}>
+                              <circle cx={px} cy={py} r={5} fill={INK.panel} stroke={s.color} strokeWidth={2} />
+                              <text x={right ? px + 9 : px - 9} y={py} dy="0.35em" textAnchor={right ? 'start' : 'end'} fill={s.color} stroke={INK.panel} strokeWidth={3} paintOrder="stroke" fontWeight={600}>
                                 {fmt(p.value, 2)} · {d3.timeFormat('%d %b %y')(p.date)}
                               </text>
                             </g>

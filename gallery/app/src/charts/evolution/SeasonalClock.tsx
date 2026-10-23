@@ -228,7 +228,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
                     <circle key={t} r={rOf(i, t)} fill="none" stroke={INK.axis} strokeOpacity={0.28} strokeWidth={0.8} strokeDasharray="2 3" />
                   ))}
                   {layout === 'Rings' && (
-                    <text x={0} y={-(ringInner(i) + (ringOuter(i) - ringInner(i)) / 2)} dy="0.35em" textAnchor="middle" fontSize={10.5} fontWeight={600} fill={s.color} opacity={dim(s.name)} stroke="#fff" strokeWidth={3} paintOrder="stroke">
+                    <text x={0} y={-(ringInner(i) + (ringOuter(i) - ringInner(i)) / 2)} dy="0.35em" textAnchor="middle" fontSize={10.5} fontWeight={600} fill={s.color} opacity={dim(s.name)} stroke={INK.panel} strokeWidth={3} paintOrder="stroke">
                       {s.name}
                     </text>
                   )}
@@ -239,7 +239,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
                   // labels go on the outermost ring only; every ring shares the scale
                   const i = layout === 'Rings' ? series.length - 1 : 0
                   return (
-                    <text key={t} x={4} y={-rOf(i, t)} dy="0.35em" textAnchor="start" fontSize={9.5} fontFamily={FONT.mono} fill={INK.muted} stroke="#fff" strokeWidth={3} paintOrder="stroke" pointerEvents="none">
+                    <text key={t} x={4} y={-rOf(i, t)} dy="0.35em" textAnchor="start" fontSize={9.5} fontFamily={FONT.mono} fill={INK.muted} stroke={INK.panel} strokeWidth={3} paintOrder="stroke" pointerEvents="none">
                       {fmt(t, Math.abs(t) >= 10 ? 0 : 1)}
                     </text>
                   )
@@ -275,7 +275,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
                       <path
                         key={c.month}
                         d={arc({ r0: Math.min(base, tipR), r1: Math.max(base, tipR), a0, a1 }) ?? ''}
-                        fill={s.color} fillOpacity={0.88} stroke="#fff" strokeWidth={0.6}
+                        fill={s.color} fillOpacity={0.88} stroke={INK.panel} strokeWidth={0.6}
                         style={{ cursor: 'default' }}
                         onMouseEnter={(e) =>
                           tip.show(e, [

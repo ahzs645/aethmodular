@@ -10,7 +10,7 @@ import { Combobox } from '@/components/Combobox'
 const TRACE_KEYS = ['raw', 'airspec', 'vibes'] as const
 type TraceKey = (typeof TRACE_KEYS)[number]
 const LABEL: Record<TraceKey, string> = { raw: 'Raw', airspec: 'Spline baseline', vibes: 'VIBES' }
-const COLORS = { raw: INK.text, airspec: BASELINE_COLOR.AIRSpec, vibes: BASELINE_COLOR['VIBES-full-r70'] }
+const COLORS = { get raw() { return INK.text }, get airspec() { return BASELINE_COLOR.AIRSpec }, get vibes() { return BASELINE_COLOR['VIBES-full-r70'] } }
 const NAMES: Record<TraceKey, string> = { raw: 'Raw absorbance', airspec: 'Corrected, spline baseline', vibes: 'Corrected, VIBES' }
 const fmtDate = (d: string) => (d ? new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '')
 

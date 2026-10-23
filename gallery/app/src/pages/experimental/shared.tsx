@@ -48,7 +48,7 @@ export function Forest({ rows, panels, labelWidth = 200, rowHeight = 28 }: { row
     <div ref={ref} style={{ position: 'relative', overflowX: 'auto' }}>
       <svg width={labelWidth + panels.length * panelW + (panels.length - 1) * gap + 40} height={h} fontFamily={FONT.family}>
         {rows.map((r, i) => <g key={r.key}>
-          {i % 2 === 0 && <rect x={0} y={yb(i) - rowHeight / 2} width={labelWidth + panels.length * (panelW + gap)} height={rowHeight} fill="#f8f9fb" />}
+          {i % 2 === 0 && <rect x={0} y={yb(i) - rowHeight / 2} width={labelWidth + panels.length * (panelW + gap)} height={rowHeight} fill={INK.zebra} />}
           <text x={labelWidth - 10} y={yb(i)} dy="0.32em" textAnchor="end" fontSize={11} fontWeight={r.bold ? 700 : 400} fill={INK.text}>{r.label}</text>
         </g>)}
         {panels.map((p, pi) => {
@@ -67,7 +67,7 @@ export function Forest({ rows, panels, labelWidth = 200, rowHeight = 28 }: { row
               return <g key={r.key} onMouseEnter={(ev) => tip.show(ev, r.tip ?? [r.label, `${p.label}: ${fmt(e.v)}${e.lo != null && e.hi != null ? ` (${fmt(e.lo)} to ${fmt(e.hi)})` : ''}`])} onMouseLeave={tip.hide}>
                 <rect x={0} y={yb(i) - rowHeight / 2} width={panelW} height={rowHeight} fill="transparent" />
                 {e.lo != null && e.hi != null && <line x1={x(e.lo)} x2={x(e.hi)} y1={yb(i)} y2={yb(i)} stroke={c} strokeWidth={2} strokeOpacity={0.6} />}
-                <circle cx={x(e.v)} cy={yb(i)} r={5.5} fill={r.hollow ? '#fff' : c} stroke={c} strokeWidth={2} />
+                <circle cx={x(e.v)} cy={yb(i)} r={5.5} fill={r.hollow ? INK.panel : c} stroke={c} strokeWidth={2} />
                 <text x={panelW + 4} y={yb(i)} dy="0.32em" fontSize={9.5} fill={INK.muted}>{fmt(e.v)}</text>
               </g>
             })}
@@ -120,7 +120,7 @@ export function Scatter({ points, xLabel, yLabel, height = 340, xLog = false, yL
           <XAxis scale={x} y={ih} label={xLabel} tickCount={Math.max(3, Math.floor(iw / 80))} labelDy={38} format={fmt(xLog)} />
           {identity && (() => { const [a, b] = x.domain(); return <line x1={x(a)} y1={y(a)} x2={x(b)} y2={y(b)} stroke={INK.identity} strokeDasharray="4 3" /> })()}
           {under?.({ x, y, iw, ih })}
-          {ok.map((p, i) => <circle key={p.key ?? i} cx={x(p.x)} cy={y(p.y)} r={p.r ?? 3.5} fill={p.hollow ? 'none' : p.color} fillOpacity={0.8} stroke={p.hollow ? p.color : '#fff'} strokeWidth={p.hollow ? 1.5 : 0.6}
+          {ok.map((p, i) => <circle key={p.key ?? i} cx={x(p.x)} cy={y(p.y)} r={p.r ?? 3.5} fill={p.hollow ? 'none' : p.color} fillOpacity={0.8} stroke={p.hollow ? p.color : INK.panel} strokeWidth={p.hollow ? 1.5 : 0.6}
             onMouseEnter={(e) => p.tip && tip.show(e, p.tip)} onMouseLeave={tip.hide} />)}
           {over?.({ x, y, iw, ih })}
         </g>

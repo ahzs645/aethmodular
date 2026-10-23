@@ -78,7 +78,8 @@ import { useSearchParam } from '@/lib/url'
 import { CommandPaletteButton } from '@/components/CommandPalette'
 import { HeaderNavProvider, useHeaderNav } from '@/lib/headerNav'
 import { NavMenu, type NavGroup, type NavItem } from '@/components/NavMenu'
-import { ExplainIcon, SidebarIcon, TextSizeIcon } from '@/components/Icons'
+import { AutoThemeIcon, ExplainIcon, MoonIcon, SidebarIcon, SunIcon, TextSizeIcon } from '@/components/Icons'
+import { setThemePref, useThemePref } from '@/lib/colorTheme'
 import { WEATHER_GROUP, useWeather } from '@/lib/weather'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 
@@ -1282,9 +1283,25 @@ function DisplayToggles() {
         title={explain ? 'Explain is on: every chart shows its explanation and provenance (click to hide)' : "Explain: show every chart's explanation and provenance, and the sidebar's captions"}>
         <ExplainIcon />
       </button>}
+      <ThemeToggle />
       <TocToggle />
     </>
   )
+}
+
+/** Light → dark → auto (follow the system). Remembered in this browser; exports stay light. */
+const THEME_NEXT = { light: 'dark', dark: 'auto', auto: 'light' } as const
+const THEME_TITLE = {
+  light: 'Light theme (click for dark)',
+  dark: 'Dark theme (click to follow the system setting)',
+  auto: 'Following the system light/dark setting (click for light)',
+}
+function ThemeToggle() {
+  const pref = useThemePref()
+  return <button type="button" className={`btn quiet icon-btn${pref !== 'light' ? ' on' : ''}`} aria-label={`Theme: ${pref}`}
+    onClick={() => setThemePref(THEME_NEXT[pref])} title={`${THEME_TITLE[pref]}; exported figures are always drawn light`}>
+    {pref === 'dark' ? <MoonIcon /> : pref === 'auto' ? <AutoThemeIcon /> : <SunIcon />}
+  </button>
 }
 
 /** Show or hide the "On this tab" contents sidebar (components/PageToc), on tabs that have one. */

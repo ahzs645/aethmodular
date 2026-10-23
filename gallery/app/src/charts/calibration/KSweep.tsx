@@ -13,9 +13,9 @@ import { COHORT, CV_PROTOCOL, METRIC, PREPROCESSING, SELECTION_SPACE, label } fr
 
 // Saved coefficient fields are projected to the active estimator by CalibrationPage.
 const PANELS: { id: 'intercept' | 'slope' | 'r2'; title: string; keys: { key: 'db' | 'dm' | 'r2' | 'ho'; label: string; color: string; dash?: string }[]; ref?: number }[] = [
-  { id: 'intercept', title: METRIC.testIntercept, keys: [{ key: 'db', label: 'Deming', color: INK.deming }], ref: 0 },
-  { id: 'slope', title: METRIC.testSlope, keys: [{ key: 'dm', label: 'Deming', color: INK.deming }], ref: 1 },
-  { id: 'r2', title: 'R²', keys: [{ key: 'r2', label: METRIC.testR2, color: INK.accent }, { key: 'ho', label: METRIC.cvR2, color: INK.good, dash: '5 3' }] },
+  { id: 'intercept', title: METRIC.testIntercept, keys: [{ key: 'db', label: 'Deming', get color() { return INK.deming } }], ref: 0 },
+  { id: 'slope', title: METRIC.testSlope, keys: [{ key: 'dm', label: 'Deming', get color() { return INK.deming } }], ref: 1 },
+  { id: 'r2', title: 'R²', keys: [{ key: 'r2', label: METRIC.testR2, get color() { return INK.accent } }, { key: 'ho', label: METRIC.cvR2, get color() { return INK.good }, dash: '5 3' }] },
 ]
 
 /**

@@ -662,7 +662,7 @@ function RepeatStrip({ data }: { data: MeetingData }) {
     rows.push({ g, m: ms.base, label: ms.label, vals: vals.sort((a, b) => a - b) })
   }
   const ref0 = isSlope ? 1 : 0
-  const colors: Record<string, string> = { addis: '#111827', ftir_vs_fabs: '#c026d3', tor_vs_fabs: '#0f766e', ftir_vs_tor: '#2171b5' }
+  const colors: Record<string, string> = { addis: INK.fit, ftir_vs_fabs: '#c026d3', tor_vs_fabs: '#0f766e', ftir_vs_tor: '#2171b5' }
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › RepeatStrip" title={`One separate calibration per season, built from that season's IMPROVE spectral analogs: are the analogs mispredicted the way Addis is? Deming ${metric}, median and 10–90 % over 100 splits`}
       subtitle={`Each block is its own calibration set: the 500 IMPROVE filters whose spectra correlate best with that season's median Addis spectrum ("All Addis" uses the all-season median). Each split holds about 20 % of those analogs out by whole site (cross-validation), picks the number of PLS factors on the rest, and predicts both the held-out IMPROVE filters and the season's Addis filters (the test set) with the same calibration.${isSlope ? '' : ' Intercepts are in µg/m³ of EC.'}`}>
@@ -1043,7 +1043,7 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
       ci: [s.slope_ci_low, s.slope_ci_high, s.intercept_ci_low, s.intercept_ci_high].every(v => typeof v === 'number' && Number.isFinite(v)) ? [s.slope_ci_low, s.slope_ci_high, s.intercept_ci_low, s.intercept_ci_high] : undefined,
       tip: [name, 'all Addis', `${coef(s.deming_slope)}x ${coefSigned(s.deming_intercept)}`] })
   }
-  one(`allimprove|${method}|all-IMPROVE lot 251`, '#111827', 'sq', 'All-IMPROVE model, lot 251')
+  one(`allimprove|${method}|all-IMPROVE lot 251`, INK.fit, 'sq', 'All-IMPROVE model, lot 251')
   one('deployed|SPARTAN|current SPARTAN calibration', '#b91c1c', 'x', 'Current SPARTAN calibration')
 
   const xs = pts.map((p) => p.x).filter(Number.isFinite), ys = pts.map((p) => p.y).filter(Number.isFinite)
@@ -1059,10 +1059,10 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
     const X = cx(p.x), Y = cy(p.y), r = p.r
     const ev = { onMouseEnter: (e: React.MouseEvent) => tip.show(e, p.tip), onMouseLeave: tip.hide }
     if (p.shape === 'dot') return <circle key={key} cx={X} cy={Y} r={r} fill={p.color} fillOpacity={p.op} {...ev} />
-    if (p.shape === 'sq') return <rect key={key} x={X - r * 0.8} y={Y - r * 0.8} width={r * 1.6} height={r * 1.6} fill={p.color} stroke="white" {...ev} />
+    if (p.shape === 'sq') return <rect key={key} x={X - r * 0.8} y={Y - r * 0.8} width={r * 1.6} height={r * 1.6} fill={p.color} stroke={INK.panel} {...ev} />
     if (p.shape === 'x') return <g key={key} {...ev}><line x1={X - r} x2={X + r} y1={Y - r} y2={Y + r} stroke={p.color} strokeWidth={3} /><line x1={X - r} x2={X + r} y1={Y + r} y2={Y - r} stroke={p.color} strokeWidth={3} /></g>
-    if (p.shape === 'tri') return <path key={key} d={`M${X},${Y - r} L${X + r},${Y + r * 0.8} L${X - r},${Y + r * 0.8} Z`} fill={p.color} stroke="#111827" strokeWidth={1} {...ev} />
-    return <path key={key} d={d3.symbol(d3.symbolStar, r * r * 3)() ?? ''} transform={`translate(${X},${Y})`} fill={p.color} stroke="white" {...ev} />
+    if (p.shape === 'tri') return <path key={key} d={`M${X},${Y - r} L${X + r},${Y + r * 0.8} L${X - r},${Y + r * 0.8} Z`} fill={p.color} stroke={INK.fit} strokeWidth={1} {...ev} />
+    return <path key={key} d={d3.symbol(d3.symbolStar, r * r * 3)() ?? ''} transform={`translate(${X},${Y})`} fill={p.color} stroke={INK.panel} {...ev} />
   }
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › SlopeInterceptMap"
@@ -1092,7 +1092,7 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
           ...(gridSet !== 'none' ? [{ label: `grid configurations (${gridSet === 'passing' ? 'site-grouped, IMPROVE cross-validation R² ≥ 0.85' : 'all'}), coloured by cohort`, color: '#9aa5b1' }] : []),
           ...data.seasons.map((g2) => ({ label: `${g2} calibration, own season (▲ median, dots = splits)`, color: data.season_colors[g2] })),
           { label: 'seasons stitched, all Addis (★ median, dots = splits)', color: '#6d28d9' },
-          { label: 'all-IMPROVE model (■)', color: '#111827', kind: 'bar' as const },
+          { label: 'all-IMPROVE model (■)', color: INK.fit, kind: 'bar' as const },
           { label: 'current SPARTAN (✕)', color: '#b91c1c', kind: 'bar' as const },
           ...(showCI ? [{ label: 'saved 95% marginal intervals; endpoints clipped at axes', color: INK.muted, kind: 'bar' as const }] : []),
           { label: 'target box: slope 0.8–1.2, |intercept| < 1', color: INK.good, kind: 'faded' as const },
@@ -1126,7 +1126,7 @@ function Combined({ data }: { data: MeetingData }) {
   }
   const slopeDomain: [number, number] = [0, Math.max(1.5, d3.max(rows, (r) => (showCI ? r.s.slope_ci_high : null) ?? r.s.deming_slope) ?? 1.5)]
   const interceptDomain: [number, number] = [Math.min(-2, d3.min(rows, (r) => (showCI ? r.s.intercept_ci_low : null) ?? r.s.deming_intercept) ?? -2), Math.max(0.5, d3.max(rows, (r) => (showCI ? r.s.intercept_ci_high : null) ?? r.s.deming_intercept) ?? 0.5)]
-  const calColor = d3.scaleOrdinal<string>().domain(cals.map((c) => c.label)).range(['#111827', '#6b7280', '#2171b5', '#c026d3', '#0f766e', '#d97706'])
+  const calColor = d3.scaleOrdinal<string>().domain(cals.map((c) => c.label)).range([INK.fit, '#6b7280', '#2171b5', '#c026d3', '#0f766e', '#d97706'])
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › Combined" title="Calibrations compared — Addis Deming slope and intercept by season for every calibration"
       subtitle="Ann: combine the three seasonal analog sets into one calibration and compare against the VIP/Euclidean analogs and the seasonally calibrated results."
@@ -1220,7 +1220,7 @@ function GridStep({ data }: { data: MeetingData }) {
                   if (!cell) return null
                   const v = cell.v / cell.n
                   const faded = gate && mode === 'site_heldout' && metric !== 'CV R²' && cell.pass === 0
-                  return <rect key={b} x={c * cw} y={1} width={cw - 0.5} height={chH - 2} fill={color(v)} opacity={faded ? 0.3 : 1} stroke={faded ? 'none' : '#1f2933'} strokeWidth={faded ? 0 : 0.3}
+                  return <rect key={b} x={c * cw} y={1} width={cw - 0.5} height={chH - 2} fill={color(v)} opacity={faded ? 0.3 : 1} stroke={faded ? 'none' : INK.text} strokeWidth={faded ? 0 : 0.3}
                     onMouseEnter={(e) => tip.show(e, [`${cat} · cutoff ≈ ${b}`, `${METRIC_LABEL[metric] ?? metric}${metric !== 'CV R²' ? ` (${READOUT_LABEL[readout] ?? readout})` : ''}: ${f2(v)}`, `${cell.n} fits · k ${d3.min(cell.k)}–${d3.max(cell.k)}`, mode === 'site_heldout' ? `${cell.pass}/${cell.n} pass IMPROVE cross-validation R² ≥ 0.85` : 'interleaved CV holds out no whole site: no cross-validation R² gate'])} onMouseLeave={tip.hide} />
                 })}
               </g>

@@ -276,7 +276,7 @@ function SweepPanel({ series, metric, height, width, innerW, x, calib, yLabel, d
                   <circle
                     key={p.r.cut}
                     cx={x(p.x)} cy={y(clampY(p.y))} r={isSel ? 6 : isClamped(p.y) ? 2.5 : 3}
-                    fill={isSel || isClamped(p.y) ? '#fff' : s.color} stroke={isSel ? INK.text : s.color} strokeWidth={isSel ? 2 : 1}
+                    fill={isSel || isClamped(p.y) ? INK.panel : s.color} stroke={isSel ? INK.text : s.color} strokeWidth={isSel ? 2 : 1}
                     style={{ cursor: 'pointer' }}
                     onMouseEnter={(e) => onEnter(e, s, p)}
                     onMouseLeave={onLeave}

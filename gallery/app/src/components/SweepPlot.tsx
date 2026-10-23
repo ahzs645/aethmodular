@@ -181,7 +181,7 @@ export function SweepPlot({
                   const out = clamped(p.y as number), ch = isChosen(s, p)
                   if (!marks && !out && !ch) return null
                   return <circle key={i} cx={px(p.x)} cy={py(p.y as number)} r={ch ? (s.r ?? 3) + 2 : s.r ?? 3}
-                    fill={out || ch ? '#fff' : s.color} stroke={s.color} strokeWidth={out || ch ? 1.6 : 0} />
+                    fill={out || ch ? INK.panel : s.color} stroke={s.color} strokeWidth={out || ch ? 1.6 : 0} />
                 })}
               </g>
             })}

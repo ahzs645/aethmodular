@@ -7,7 +7,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { robustDomain } from '@/lib/axes'
 import { nearestIndex } from '@/lib/spectra'
-import { FONT, INK, TRACE } from '@/lib/theme'
+import { FONT, INK, TRACE, themed } from '@/lib/theme'
 
 /**
  * The gallery's one spectrum chart: a reversed wavenumber axis, region
@@ -196,7 +196,7 @@ export function SpectrumPlot({
             const x0 = x(Math.min(a.hi, hiWn)), x1 = x(Math.max(a.lo, loWn))
             if (x1 <= x0) return null
             return <g key={a.label} pointerEvents="none">
-              <rect x={x0} width={x1 - x0} height={ih} fill={a.fill ?? '#e8eef6'} />
+              <rect x={x0} width={x1 - x0} height={ih} fill={a.fill ?? themed('#e8eef6', '#1f2b3a')} />
               <text x={(x0 + x1) / 2} y={11} textAnchor="middle" fontSize={10} fill={INK.muted}>{a.label}</text>
             </g>
           })}

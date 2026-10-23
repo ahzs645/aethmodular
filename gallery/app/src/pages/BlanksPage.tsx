@@ -58,7 +58,7 @@ const ALL_BANKS = ['VIBES-full-r70', 'VIBES-lot251', 'VIBES-allblanks', 'VIBES-l
 const banksOf = (d: BlanksData): string[] => ALL_BANKS.filter((b) => d.banks[b])
 type BankKey = string
 const GROUP_COLOR: Record<string, string> = { 'IMPROVE lot 251': '#2C6E9E', 'IMPROVE lot 248': '#7fb3d5', 'ETAD lot 251': '#c0392b', 'ETAD lot 248': '#f1948a', 'ETAD lot ?': '#999999' }
-const ROLE_COLOR: Record<string, string> = { 'trains this background': '#1f2933', 'held out, evaluated': '#0f766e', 'not used': '#c7ccd1' }
+const ROLE_COLOR: Record<string, string> = { get 'trains this background'() { return INK.text }, get 'held out, evaluated'() { return INK.good }, get 'not used'() { return INK.neutral } }
 /** Regions shaded on every spectrum: CO₂ (never used for similarity) and the PTFE C–F band. */
 const SHADES = [SPECTRAL_REGION.ptfe, SPECTRAL_REGION.co2]
 const RANGES = ['4000–500', '4000–1500', '1500–500'] as const
@@ -492,7 +492,7 @@ function AfterCorrection({ d }: { d: BlanksData }) {
 
 // ------------------------------------------------------------------ 10. capture
 const POPS = ['held-out blanks', 'IMPROVE samples', 'Addis samples'] as const
-const POP_COLOR: Record<string, string> = { 'held-out blanks': INK.axis, 'IMPROVE samples': '#2C6E9E', 'Addis samples': '#c0392b' }
+const POP_COLOR: Record<string, string> = { get 'held-out blanks'() { return INK.axis }, 'IMPROVE samples': '#2C6E9E', 'Addis samples': '#c0392b' }
 function Capture({ d }: { d: BlanksData }) {
   // the page's background bank (PageChoices at the top of the page)
   const { value: bank } = usePageChoice('bank', banksOf(d))

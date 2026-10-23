@@ -140,7 +140,7 @@ export function SpectraDumbbell({ calib, selected, onSelect }: { calib: CalibFil
                         <circle
                           key={p.sp}
                           cx={x(clamp(p.v))} cy={cy} r={isSel ? 7 : rowset === 'Locked cutoffs' ? 5.5 : 4}
-                          fill={pinned ? '#fff' : spectraColor(p.sp)} stroke={isSel ? INK.text : spectraColor(p.sp)} strokeWidth={isSel ? 2.2 : 1.2}
+                          fill={pinned ? INK.panel : spectraColor(p.sp)} stroke={isSel ? INK.text : spectraColor(p.sp)} strokeWidth={isSel ? 2.2 : 1.2}
                           opacity={hoverSp ? lg.dim(spLabel(p.sp)) : 1}
                           style={{ cursor: 'pointer' }}
                           onMouseEnter={(e) =>

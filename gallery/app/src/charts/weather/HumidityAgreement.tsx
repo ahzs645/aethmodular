@@ -85,7 +85,7 @@ export function HumidityAgreement({ rows, meta, xField, yField, rhField }: { row
               })}
               {fitLine(fd, DRY)}{fitLine(fh, HUMID)}
               <g fontFamily={FONT.mono} fontSize={10.5}>
-                <rect x={6} y={4} width={210} height={36} rx={4} fill="#fff" fillOpacity={0.85} stroke={INK.grid} />
+                <rect x={6} y={4} width={210} height={36} rx={4} fill={INK.panel} fillOpacity={0.85} stroke={INK.grid} />
                 <text x={12} y={18} fill={DRY}>dry  n={dry.length}  slope {fmt(fd?.slope, 3)}  R² {fmt(fd?.r2, 2)}</text>
                 <text x={12} y={33} fill={HUMID}>humid n={humid.length}  slope {fmt(fh?.slope, 3)}  R² {fmt(fh?.r2, 2)}</text>
               </g>

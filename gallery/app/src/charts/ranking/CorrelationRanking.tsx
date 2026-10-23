@@ -16,11 +16,9 @@ import { INK, MARGIN, FONT } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
 
-const POS = INK.positive
-const NEG = INK.negative
 const SAME = 'same product (unit conversion or public FTIR report)'
 const kindOf = (d: { r: number; trivial: boolean }) => (d.trivial ? SAME : d.r >= 0 ? 'positive r' : 'negative r')
-const colourOf = (d: { r: number; trivial: boolean }) => (d.trivial ? INK.identity : d.r >= 0 ? POS : NEG)
+const colourOf = (d: { r: number; trivial: boolean }) => (d.trivial ? INK.identity : d.r >= 0 ? INK.positive : INK.negative)
 const POOLED = 'All sites (pooled)'
 const VIEWS = ['One site', 'Side by side'] as const
 /** side by side draws one column per site, readable up to this many */
@@ -185,7 +183,7 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
             return (
               <g key={d.field} opacity={lg.dim(kindOf(d), 0.2)} onMouseEnter={(e) => tip.show(e, tipLines(d, site))} onMouseLeave={tip.hide}>
                 <line x1={0} x2={x(d.r2)} y1={cy} y2={cy} stroke={col} strokeWidth={2} strokeOpacity={0.55} strokeDasharray={d.trivial ? '3 3' : undefined} />
-                <circle cx={x(d.r2)} cy={cy} r={5} fill={d.trivial ? '#fff' : col} stroke={col} strokeWidth={d.trivial ? 1.5 : 0} />
+                <circle cx={x(d.r2)} cy={cy} r={5} fill={d.trivial ? INK.panel : col} stroke={col} strokeWidth={d.trivial ? 1.5 : 0} />
                 {fieldLabel(d.field, labelW, cy, d.trivial)}
                 <text x={x(d.r2) + 10} y={cy} dy="0.32em" fontSize={10.5} fill={INK.muted} fontFamily={FONT.mono}>
                   {d.r2.toFixed(3)} · n={d.n}
@@ -248,10 +246,10 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
                     <g key={f} opacity={lg.show(kindOf(d)) ? lg.dim(kindOf(d), 0.2) : 0.08} {...hover} onMouseMove={(e) => tip.show(e, tipLines(d, s.name))}>
                       <rect x={0} y={cy - rowH / 2} width={colW - GAP} height={rowH} fill="transparent" />
                       <line x1={0} x2={x(d.r2)} y1={cy} y2={cy} stroke={col} strokeWidth={2} strokeOpacity={0.55} strokeDasharray={d.trivial ? '3 3' : undefined} />
-                      <circle cx={x(d.r2)} cy={cy} r={Math.min(5, rowH / 2.6)} fill={d.trivial ? '#fff' : col} stroke={col} strokeWidth={d.trivial ? 1.5 : 0} />
+                      <circle cx={x(d.r2)} cy={cy} r={Math.min(5, rowH / 2.6)} fill={d.trivial ? INK.panel : col} stroke={col} strokeWidth={d.trivial ? 1.5 : 0} />
                       {withValues && (
                         <text x={x(d.r2) + (right ? -9 : 9)} y={cy} dy="0.32em" textAnchor={right ? 'end' : 'start'} fontSize={10} fill={INK.muted}
-                          fontFamily={FONT.mono} stroke="#fff" strokeWidth={3} paintOrder="stroke">
+                          fontFamily={FONT.mono} stroke={INK.panel} strokeWidth={3} paintOrder="stroke">
                           {d.r2.toFixed(2)}
                         </text>
                       )}
@@ -286,8 +284,8 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
         {plot}
         <Legend
           items={[
-            { label: 'positive r', color: POS },
-            { label: 'negative r', color: NEG },
+            { label: 'positive r', color: INK.positive },
+            { label: 'negative r', color: INK.negative },
             { label: SAME, color: INK.identity },
           ]}
           {...lg.props}

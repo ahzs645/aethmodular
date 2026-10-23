@@ -161,12 +161,12 @@ export function focusLast<T>(items: readonly T[], idOf: (t: T) => string | undef
 
 export function focusStyle(id: string, focusId: string | null, base = { r: 4, opacity: 0.72 }, selected: Set<string> | null = null) {
   if (focusId === id) return { r: base.r * 1.9, opacity: 1, stroke: INK.fit, strokeWidth: 2 }
-  if (focusId) return { r: base.r, opacity: Math.min(base.opacity, 0.25), stroke: '#fff', strokeWidth: 0.6 }
+  if (focusId) return { r: base.r, opacity: Math.min(base.opacity, 0.25), stroke: INK.panel, strokeWidth: 0.6 }
   if (selected) {
     if (selected.has(id)) return { r: base.r, opacity: Math.max(base.opacity, 0.9), stroke: INK.fit, strokeWidth: 0.8 }
-    return { r: base.r, opacity: Math.min(base.opacity, 0.1), stroke: '#fff', strokeWidth: 0.4 }
+    return { r: base.r, opacity: Math.min(base.opacity, 0.1), stroke: INK.panel, strokeWidth: 0.4 }
   }
-  return { r: base.r, opacity: base.opacity, stroke: '#fff', strokeWidth: 0.8 }
+  return { r: base.r, opacity: base.opacity, stroke: INK.panel, strokeWidth: 0.8 }
 }
 
 /** SPARTAN ids carry a replicate suffix outside filters.json (ETAD-0144-8); the export keys on ETAD-0144. */

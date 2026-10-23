@@ -9,8 +9,8 @@ import { FONT, INK } from '@/lib/theme'
  *   <RefLine orient="v" at={x(1)} from={0} to={ih} />               agreement: slope 1, intercept 0, zero
  *   <Marker orient="h" at={y(0.85)} from={0} to={iw} label="0.85" />  a data value to compare against
  */
-const identity = { stroke: INK.identity, strokeWidth: 1.5, strokeDasharray: '5 4' }
-const agreement = { stroke: INK.axis, strokeOpacity: 0.7, strokeWidth: 1 }
+const identity = { get stroke() { return INK.identity }, strokeWidth: 1.5, strokeDasharray: '5 4' }
+const agreement = { get stroke() { return INK.axis }, strokeOpacity: 0.7, strokeWidth: 1 }
 const marker = { strokeWidth: 1, strokeDasharray: '3 3' }
 
 export function IdentityLine({ x1, y1, x2, y2 }: { x1: number; y1: number; x2: number; y2: number }) {

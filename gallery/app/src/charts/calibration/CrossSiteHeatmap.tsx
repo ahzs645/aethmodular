@@ -112,7 +112,7 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
                       const v = valueOf(r)
                       return (
                         <g key={t}>
-                          <rect x={j * cellW} y={1} width={cellW - 2} height={rowH - 2} rx={2} fill={v === null ? INK.empty : color(v)} stroke={isSel ? INK.text : '#fff'} strokeWidth={isSel ? 1.2 : 1}
+                          <rect x={j * cellW} y={1} width={cellW - 2} height={rowH - 2} rx={2} fill={v === null ? INK.empty : color(v)} stroke={isSel ? INK.text : INK.panel} strokeWidth={isSel ? 1.2 : 1}
                             onMouseEnter={(e) => r && tip.show(e, [
                               `${shortConfig(cfg)} @ ${calib.targets[t]?.site ?? t}`,
                               `${METRIC.k}: ${r.k}`,

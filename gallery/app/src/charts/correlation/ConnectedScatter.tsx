@@ -9,7 +9,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { pairDomain, type AxesOpts } from '@/lib/axes'
 import { fmt } from '@/lib/stats'
-import { MARGIN, FONT, withUnit } from '@/lib/theme'
+import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
 import { useChartGrouping } from '@/components/GroupingDialog'
@@ -163,7 +163,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
                         cx={x(p.x)}
                         cy={y(p.y)}
                         r={i === 0 ? 5.5 : 4}
-                        fill={i === 0 ? '#fff' : s.color}
+                        fill={i === 0 ? INK.panel : s.color}
                         stroke={s.color}
                         strokeWidth={i === 0 ? 2.2 : 1}
                         onMouseEnter={(e) =>
@@ -179,7 +179,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
                         onMouseLeave={tip.hide}
                       />
                       {labels && labelOk(x(p.x) + 7, y(p.y) - 6, i === 0 || i === s.pts.length - 1) && (
-                        <text x={x(p.x) + 7} y={y(p.y) - 6} fontSize={10} fill={s.color} fontFamily={FONT.mono} pointerEvents="none" stroke="#fff" strokeWidth={3} paintOrder="stroke">
+                        <text x={x(p.x) + 7} y={y(p.y) - 6} fontSize={10} fill={s.color} fontFamily={FONT.mono} pointerEvents="none" stroke={INK.panel} strokeWidth={3} paintOrder="stroke">
                           {label(p.key)}
                         </text>
                       )}
