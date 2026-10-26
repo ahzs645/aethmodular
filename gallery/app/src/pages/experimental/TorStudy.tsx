@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import type { FeatureCollection } from 'geojson'
-import { ChartFrame, ExplainOnly, Note, Segmented, Select, Toggle } from '@/components/ChartFrame'
+import { ChartFrame, ExplainOnly, Note, Segmented, Toggle } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
 import { Legend, useLegend } from '@/components/Legend'
 import { XAxis } from '@/components/Axes'
@@ -13,6 +13,7 @@ import { useSearchParam } from '@/lib/url'
 import { ADDIS_ALL, FONT, IMPROVE_GREY, INK, themed } from '@/lib/theme'
 import { coef, coefSigned, f2, pct, signed } from '@/lib/format'
 import { Crossplot } from '@/components/Crossplot'
+import { AxisChoices } from '@/components/AxisChoices'
 import { Forest, Scatter, num, placeLabels, rowsOf, runLine, sourceOf, useXp, type Cols, type XpBase } from './shared'
 
 /**
@@ -41,6 +42,7 @@ const source = sourceOf('TorStudy')
 const ADAMA = '#1b7837'
 const SPARTAN = '#7c3aed'
 /** "12th", "1st"; below 1 reads "below the 1st" */
+const PLANE_FIELDS = ['EC µg/m³', 'volume m³', 'EC µg/filter', 'PM2.5 µg/filter', 'OC/EC', 'distance percentile']
 const nth = (v: number | undefined) => { if (v == null || !Number.isFinite(v)) return '—'; if (v < 1) return 'below the 1st'; const n = Math.round(v), t = n % 100
   return `${n}${t >= 11 && t <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}` }
 const POP_COLOR: Record<string, string> = { 'IMPROVE (TOR)': IMPROVE_GREY, 'SPARTAN network': SPARTAN, 'SPARTAN Addis': ADDIS_ALL, 'Adama pilot (TOR)': ADAMA }
@@ -151,13 +153,25 @@ function LoadingPlane({ d }: { d: TorData }) {
   const lg = useLegend()
   const [improveParam, setImproveDots] = useSearchParam<'on' | 'off'>('xd-plane.improve', 'off', ['on', 'off'])
   const improveDots = improveParam === 'on'
+  const [arrowParam, setArrow] = useSearchParam<'on' | 'off'>('xd-plane.arrow', 'off', ['on', 'off'])
+  const arrow = arrowParam === 'on'
+  const [level, setLevel] = useSearchParam<'filter' | 'site'>('xd-plane.level', 'filter', ['filter', 'site'])
   const pops = ['IMPROVE (TOR)', 'SPARTAN network', 'SPARTAN Addis', 'Adama pilot (TOR)']
   const rng = d3.randomLcg(7)
   const sample = (rows: Record<string, any>[], n: number) => rows.length <= n ? rows : rows.filter(() => rng() < n / rows.length)
   const shown = pops.filter((p) => lg.show(p) && (p !== 'IMPROVE (TOR)' || improveDots))
-  const plot = shown.flatMap((pop) => sample(pts.filter((p) => p.population === pop), pop === 'Adama pilot (TOR)' ? 10 : 1500).map((p, i) => ({
-    x: num(p['EC µg/m³']), y: num(p['volume m³']), color: POP_COLOR[pop], r: pop === 'Adama pilot (TOR)' ? 7 : pop === 'SPARTAN Addis' ? 3 : 2, key: `${pop}${i}`,
-    tip: [`${POP_LABEL[pop]} · ${p.site} ${p.id}`, `EC ${f2(p['EC µg/m³'])} µg/m³ × ${f2(p['volume m³'])} m³ = ${f2(p['EC µg/filter'])} µg per filter`] })))
+  // one point per site: its median EC concentration and median volume (the same medians as "Sites compared")
+  const sitePlot = d.network.filter((r) => shown.includes(r.population)).sort((a, b) => pops.indexOf(a.population) - pops.indexOf(b.population)).map((r) => ({
+    x: r.ec_ugm3, y: r.volume, color: POP_COLOR[r.population], key: `${r.population}${r.site}`, hollow: r.population === 'IMPROVE (TOR)' && r.urban,
+    r: r.population === 'SPARTAN Addis' || r.population === 'Adama pilot (TOR)' ? 8 : r.population === 'IMPROVE (TOR)' ? 2.5 + Math.sqrt(r.filters) / 4 : 4.5,
+    tip: [`${r.name} (${r.site})`, POP_LABEL[r.population], `${r.filters} filters, medians:`, `EC ${f2(r.ec_ugm3)} µg/m³ · volume ${f2(r.volume)} m³ · ${f2(r.ec_ug)} µg per filter`] }))
+  const filterPlot = shown.flatMap((pop) => sample(pts.filter((p) => p.population === pop), pop === 'Adama pilot (TOR)' ? 10 : 1500).map((p, i) => {
+    const id = pop === 'IMPROVE (TOR)' ? `improve:${p.id}` : String(p.id)
+    return { x: num(p['EC µg/m³']), y: num(p['volume m³']), color: POP_COLOR[pop], r: pop === 'Adama pilot (TOR)' ? 7 : pop === 'SPARTAN Addis' ? 3 : 2, key: `${pop}${i}`, id,
+      tip: [`${POP_LABEL[pop]} · ${p.site} ${p.id}`, `EC ${f2(p['EC µg/m³'])} µg/m³ × ${f2(p['volume m³'])} m³ = ${f2(p['EC µg/filter'])} µg per filter`],
+      rec: { id, source: 'Adama TOR study · loading plane', site: String(p.site), fields: [['population', POP_LABEL[pop]] as [string, string], ...PLANE_FIELDS.map((k) => [k, p[k]] as [string, number | null])] } }
+  }))
+  const plot = level === 'site' ? sitePlot : filterPlot
   const T = d.target.find((t) => t.axis === 'EC µg/filter')!
   const med = d.volume.find((v) => v.target === 'Addis median')!
   const adama = d.network.find((r) => r.population === 'Adama pilot (TOR)')!
@@ -165,8 +179,12 @@ function LoadingPlane({ d }: { d: TorData }) {
   return (
     <ChartFrame id="xd-plane" source={source('LoadingPlane')} provenance={runLine(d)}
       title="Loading = concentration × volume — why the pilot filters are light, and what would fix it"
-      subtitle="Each filter by EC concentration (across) and sampled volume (up); grey diagonals are equal EC per filter. The orange band is SPARTAN Addis's middle half of EC per filter: a pilot filter must land in it to load the spectrum as SPARTAN Addis does. The arrow shows how much more air the Adama sampler would need at Adama's own EC concentration."
-      controls={<Toggle label="IMPROVE filters" checked={improveDots} onChange={(v) => setImproveDots(v ? 'on' : 'off')} title="Draw a sample of IMPROVE filters (EC from TOR)" />}>
+      subtitle="Each filter by EC concentration (across) and sampled volume (up); grey diagonals are equal EC per filter. The orange band is SPARTAN Addis's middle half of EC per filter: a pilot filter must land in it to load the spectrum as SPARTAN Addis does. Points: Site medians shows one point per site instead (its median concentration and volume). Volume needed draws an arrow an arrow for how much more air the Adama sampler would need at Adama's own EC concentration. Click a filter to open its record; right-click to exclude it."
+      controls={<>
+        <Segmented label="Points" value={level} options={['filter', 'site'] as const} onChange={setLevel} optionLabel={(o) => (o === 'filter' ? 'Each filter' : 'Site medians')} />
+        <Toggle label={level === 'site' ? 'IMPROVE sites' : 'IMPROVE filters'} checked={improveDots} onChange={(v) => setImproveDots(v ? 'on' : 'off')} title={level === 'site' ? 'Draw every IMPROVE site (EC from TOR; hollow = urban)' : 'Draw a sample of IMPROVE filters (EC from TOR)'} />
+        <Toggle label="Volume needed" checked={arrow} onChange={(v) => setArrow(v ? 'on' : 'off')} title="Arrow from the Adama pilot up to the volume that would load a filter like SPARTAN Addis's median, at Adama's own EC concentration" />
+      </>}>
       <Scatter points={plot} xLabel="EC concentration (µg/m³)" yLabel="sampled volume (m³)" xLog yLog maxSide={420} xDomain={xD} yDomain={yD}
         under={({ x, y }) => {
           // the drawn (niced) axis ranges, so the diagonals run corner to corner and their labels spread out
@@ -183,12 +201,12 @@ function LoadingPlane({ d }: { d: TorData }) {
                 fontSize={9.5} fill={INK.muted} stroke={INK.panel} strokeWidth={3} paintOrder="stroke">{ug} µg/filter</text></g> })}
           </g>
         }}
-        over={({ x, y }) => {
+        over={!arrow ? undefined : ({ x, y }) => {
           const x0 = x(adama.ec_ugm3), y0 = y(adama.volume), y1 = y(Math.min(yD[1], med["volume at Adama's median EC (m³)"]))
           return <g pointerEvents="none">
             <defs><marker id="xd-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill={ADAMA} /></marker></defs>
             <line x1={x0} y1={y0 - 8} x2={x0} y2={y1} stroke={ADAMA} strokeWidth={2} markerEnd="url(#xd-arrow)" />
-            <text x={x0 + 6} y={(y0 + y1) / 2} fontSize={10.5} fontWeight={600} fill={ADAMA} stroke={INK.panel} strokeWidth={3} paintOrder="stroke">≈ {Math.round(med["volume at Adama's median EC (m³)"])} m³ for Addis's median loading</text>
+            <text x={x0 + 6} y={(y0 + y1) / 2} fontSize={10.5} fontWeight={600} fill={ADAMA} stroke={INK.panel} strokeWidth={3} paintOrder="stroke">≈ {Math.round(med["volume at Adama's median EC (m³)"])} m³ needed ({f2(med["volume at Adama's median EC (m³)"] / adama.volume)}× today)</text>
           </g>
         }} />
       <Legend {...lg.props} items={pops.map((p) => ({ label: POP_LABEL[p], color: POP_COLOR[p] }))} />
@@ -197,7 +215,7 @@ function LoadingPlane({ d }: { d: TorData }) {
         <tbody>{d.volume.map((v) => <tr key={v.target}><td>{v.target}</td><td>{f2(v['EC µg/filter'])}</td><td>{f2(v["volume at Adama's median EC (m³)"])} m³</td>
           <td>{f2(v["volume at Adama's median EC (m³)"] / v['Adama volume now (m³)'])}×</td><td>{Math.round(v['hours at the Adama flow rate'])} h</td><td>{f2(v['volume at SPARTAN Addis median EC (m³)'])} m³</td></tr>)}</tbody>
       </table>
-      <Note>At SPARTAN Addis's own median EC concentration (if the Addis city site resembles it), the volumes in the last column apply. Longer sampling at the same flow reaches the same loading; a 24 h sample at the Adama flow is about {f2(adama.volume)} m³.</Note>
+      <ExplainOnly><Note>At SPARTAN Addis's own median EC concentration (if the Addis city site resembles it), the volumes in the last column apply. Longer sampling at the same flow reaches the same loading; a 24 h sample at the Adama flow is about {f2(adama.volume)} m³.</Note></ExplainOnly>
     </ChartFrame>
   )
 }
@@ -223,7 +241,7 @@ function ContractCard({ d }: { d: TorData }) {
   const pilotFor = (model: string) => d.pilot.find((p) => p.model === model && p.reference === 'ECTR' && p.pairs === 'three unflagged')
   const models = [...new Set(d.pilot.map((p) => p.model))]
   return (
-    <ChartFrame id="xd-contract" source={source('ContractCard')} exportable={false} provenance={runLine(d)}
+    <ExplainOnly><ChartFrame id="xd-contract" source={source('ContractCard')} exportable={false} provenance={runLine(d)}
       title="The pass contract — written before the Addis city pairs are read"
       subtitle="What agreement with TOR would count as evidence that the frozen calibration works at Addis. Values are proposals to agree with Ann and Satoshi; once agreed, the file is kept as the record and the pairs are scored against it unchanged.">
       <div style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, background: themed('#fff4e5', '#3a2a1c'), color: INK.warn, fontSize: 11, fontWeight: 700, marginBottom: 8 }}>{c.status}</div>
@@ -251,7 +269,7 @@ function ContractCard({ d }: { d: TorData }) {
           <div className="row-label">Before scoring</div><p style={{ margin: '2px 0 0', fontSize: 12.5 }}>{c['representativeness check']}. {c.precision}.</p>
         </div>
       </div>
-    </ChartFrame>
+    </ChartFrame></ExplainOnly>
   )
 }
 
@@ -383,6 +401,7 @@ function WhereItSits({ d }: { d: TorData }) {
 }
 
 const SITE_AXES = ['EC µg/filter', 'EC µg/m³', 'OC/EC', 'PM2.5 µg/filter', 'distance percentile', 'volume m³'] as const
+const SITE_GROUP: Record<string, string> = { 'EC µg/filter': 'On the filter', 'PM2.5 µg/filter': 'On the filter', 'volume m³': 'On the filter', 'EC µg/m³': 'In the air', 'OC/EC': 'In the air', 'distance percentile': 'Spectrum' }
 const SITE_KEY: Record<string, keyof NetRow> = { 'EC µg/filter': 'ec_ug', 'EC µg/m³': 'ec_ugm3', 'OC/EC': 'ocec', 'PM2.5 µg/filter': 'pm_ug', 'distance percentile': 'distance', 'volume m³': 'volume' }
 
 function NetworkScatter({ d }: { d: TorData }) {
@@ -402,16 +421,14 @@ function NetworkScatter({ d }: { d: TorData }) {
   })
   const named = rows.filter((r) => r.population !== 'IMPROVE (TOR)')
   const opt = (k: string) => `${AXIS_INFO[k].label} (${AXIS_INFO[k].unit})`
+  const choices = useMemo(() => SITE_AXES.map((k) => ({ key: k, label: AXIS_INFO[k].label, unit: AXIS_INFO[k].unit, group: SITE_GROUP[k] })), [])
   return (
     <ChartFrame id="xd-net" source={source('NetworkScatter')} provenance={runLine(d)}
       title="Sites compared — every IMPROVE and SPARTAN site, SPARTAN Addis and Adama, on two chosen axes"
-      subtitle="One point per site: its median over all its filters. Pick what goes across and up. Grey = IMPROVE calibration sites (size = filters; hollow = Ann's six urban sites), purple = other SPARTAN sites, orange = SPARTAN Addis, green = the Adama pilot."
-      controls={<>
-        <Select label="Across" value={xk} options={[...SITE_AXES]} onChange={(v) => setXk(v as typeof xk)} optionLabel={opt} />
-        <Select label="Up" value={yk} options={[...SITE_AXES]} onChange={(v) => setYk(v as typeof yk)} optionLabel={opt} />
-        <Toggle label="Name SPARTAN sites" checked={labels} onChange={(v) => setLabels(v ? 'on' : 'off')} />
-      </>}>
-      <Scatter points={pts} xLabel={opt(xk)} yLabel={opt(yk)} xLog={X.log} yLog={Y.log} maxSide={440} yDomain={yk === 'distance percentile' ? [0, 100] : undefined} xDomain={xk === 'distance percentile' ? [0, 100] : undefined}
+      subtitle="One point per site: its median over all its filters. Click either axis title to pick what goes across and up. Grey = IMPROVE calibration sites (size = filters; hollow = Ann's six urban sites), purple = other SPARTAN sites, orange = SPARTAN Addis, green = the Adama pilot."
+      controls={<Toggle label="Name SPARTAN sites" checked={labels} onChange={(v) => setLabels(v ? 'on' : 'off')} />}>
+      <AxisChoices noun="site medians" options={choices} x={[xk, (v) => setXk(v as typeof xk)]} y={[yk, (v) => setYk(v as typeof yk)]}>
+      <Scatter points={pts} pick xLabel={opt(xk)} yLabel={opt(yk)} xLog={X.log} yLog={Y.log} maxSide={440} yDomain={yk === 'distance percentile' ? [0, 100] : undefined} xDomain={xk === 'distance percentile' ? [0, 100] : undefined}
         over={({ x, y, iw, ih }) => {
           if (!labels) return null
           // Addis and Adama first so they get the best spots; every label placed where it overlaps nothing
@@ -426,6 +443,7 @@ function NetworkScatter({ d }: { d: TorData }) {
             <text x={l.tx} y={l.ty} dy="0.32em" textAnchor={l.anchor} fontSize={l.bold ? 11 : 9} fontWeight={l.bold ? 700 : 400} fill={INK.text} stroke={INK.panel} strokeWidth={3} strokeLinejoin="round" paintOrder="stroke">{l.text}</text>
           </g>)}</g>
         }} />
+      </AxisChoices>
       <Legend {...lg.props} items={order.map((p) => ({ label: POP_LABEL[p], color: POP_COLOR[p] }))} note="click to show or hide" />
       <div style={{ fontSize: 11.5, color: INK.muted, display: 'grid', gap: 2, marginTop: 4 }}>
         <div><strong style={{ color: INK.text }}>Across · {X.label}:</strong> {X.about}.</div>

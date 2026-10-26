@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from 'react'
+import { useMemo, useRef, type ReactNode } from 'react'
 import * as d3 from 'd3'
 import { useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
@@ -8,6 +8,8 @@ import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { FONT, INK } from '@/lib/theme'
+import { fidProps, useHandEdits } from '@/lib/filterEdits'
+import { baseFilterId, useHighlight, type FilterRecord } from '@/lib/highlight'
 
 /** Helpers shared by the Experimental subpages (gallery/data/export_experiments.py exports). */
 
@@ -52,15 +54,19 @@ export function Forest({ rows, panels, labelWidth = 200, rowHeight = 24, noteWid
     panels={panels.map((p) => ({ label: p.label, reference: p.ref, domain: p.domain, format: p.tick }))} />
 }
 
-export interface ScatterPoint { x: number; y: number; color: string; r?: number; hollow?: boolean; tip?: string[]; key?: string }
+/** `id` links hover and pin across charts and honours hand exclusions; `rec` opens the filter's record on click. */
+export interface ScatterPoint { x: number; y: number; color: string; r?: number; hollow?: boolean; tip?: string[]; key?: string; id?: string; rec?: FilterRecord }
+const NO_KEYS: ReadonlySet<string> = new Set()
 
 /**
  * A plain scatter for two different quantities (log axes, extra layers under and over the points). The plot
  * area is square and centred, sized like the shared Crossplot (`maxSide` caps the side); a 1:1 comparison of
- * two measurements of the same thing uses components/Crossplot instead, for its fits and filter records.
+ * two measurements of the same thing uses components/Crossplot instead, for its fits. Points with an `id` behave
+ * like the Crossplot's filters (hover, pin, record, right-click exclusion); `pick` makes the axis titles open the
+ * nearest axis picker (components/AxisChoices).
  */
-export function Scatter({ points, xLabel, yLabel, maxSide = 420, xLog = false, yLog = false, identity = false, xDomain, yDomain, under, over }: {
-  points: ScatterPoint[]; xLabel: string; yLabel: string; maxSide?: number; xLog?: boolean; yLog?: boolean; identity?: boolean
+export function Scatter({ points, xLabel, yLabel, maxSide = 420, xLog = false, yLog = false, identity = false, xDomain, yDomain, under, over, pick = false }: {
+  points: ScatterPoint[]; xLabel: string; yLabel: string; maxSide?: number; xLog?: boolean; yLog?: boolean; identity?: boolean; pick?: boolean
   xDomain?: [number, number]; yDomain?: [number, number]
   under?: (s: { x: d3.ScaleContinuousNumeric<number, number>; y: d3.ScaleContinuousNumeric<number, number>; iw: number; ih: number }) => ReactNode
   over?: (s: { x: d3.ScaleContinuousNumeric<number, number>; y: d3.ScaleContinuousNumeric<number, number>; iw: number; ih: number }) => ReactNode
@@ -68,11 +74,18 @@ export function Scatter({ points, xLabel, yLabel, maxSide = 420, xLog = false, y
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
+  const hl = useHighlight(NO_KEYS)
+  const edits = useHandEdits()
   const m = { top: 14, right: 18, bottom: 46, left: 62 }
   const side = Math.max(200, Math.min((width || maxSide + m.left + m.right) - m.left - m.right, maxSide))
   const iw = side, ih = side
   const w = iw + m.left + m.right, h = ih + m.top + m.bottom
-  const ok = points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && (!xLog || p.x > 0) && (!yLog || p.y > 0))
+  const drawable = points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && (!xLog || p.x > 0) && (!yLog || p.y > 0))
+  const ok = drawable.filter((p) => !edits.isOut(p.id))
+  const keys = useMemo(() => new Set(ok.flatMap((p) => (p.id ? [baseFilterId(p.id)] : []))), [ok])
+  const { hoverId } = useHighlight(keys)
+  const active = [hl.pinnedId, hoverId].some((k) => !!k && keys.has(k))
+  const handNote = edits.note(drawable.length - ok.length)
   const xd = xDomain ?? (d3.extent(ok, (p) => p.x) as [number, number])
   const yd = yDomain ?? (d3.extent(ok, (p) => p.y) as [number, number])
   const lo = Math.min(xd[0], yd[0]), hi = Math.max(xd[1], yd[1])
@@ -88,16 +101,27 @@ export function Scatter({ points, xLabel, yLabel, maxSide = 420, xLog = false, y
     <div ref={ref} style={{ position: 'relative' }}>
       <svg width={w} height={h} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
         <g transform={`translate(${m.left},${m.top})`}>
-          <YAxis scale={y} x={0} label={yLabel} tickCount={5} gridWidth={iw} labelX={-48} format={fmt(yLog)} />
-          <XAxis scale={x} y={ih} label={xLabel} tickCount={Math.max(3, Math.floor(iw / 80))} labelDy={38} format={fmt(xLog)} />
+          <YAxis scale={y} x={0} label={yLabel} tickCount={5} gridWidth={iw} labelX={-48} format={fmt(yLog)} pick={pick ? 'y' : undefined} />
+          <XAxis scale={x} y={ih} label={xLabel} tickCount={Math.max(3, Math.floor(iw / 80))} labelDy={38} format={fmt(xLog)} pick={pick ? 'x' : undefined} />
+          {keys.size > 0 && <rect width={iw} height={ih} fill="transparent" onClick={() => hl.setPinned(null)} />}
           {identity && (() => { const [a, b] = x.domain(); return <IdentityLine x1={x(a)} y1={y(a)} x2={x(b)} y2={y(b)} /> })()}
           {under?.({ x, y, iw, ih })}
-          {ok.map((p, i) => <circle key={p.key ?? i} cx={x(p.x)} cy={y(p.y)} r={p.r ?? 3.5} fill={p.hollow ? 'none' : p.color} fillOpacity={0.8} stroke={p.hollow ? p.color : INK.panel} strokeWidth={p.hollow ? 1.5 : 0.6}
-            onMouseEnter={(e) => p.tip && tip.show(e, p.tip)} onMouseLeave={tip.hide} />)}
+          {ok.map((p, i) => {
+            const key = p.id ? baseFilterId(p.id) : null
+            const focus = !!key && (key === hl.pinnedId || key === hoverId)
+            const r = p.r ?? 3.5
+            return <circle key={p.key ?? i} cx={x(p.x)} cy={y(p.y)} r={focus ? Math.max(r, 6) : r} fill={p.hollow ? 'none' : p.color}
+              fillOpacity={active && !focus ? 0.25 : 0.8} stroke={focus ? INK.text : p.hollow ? p.color : INK.panel} strokeWidth={focus ? 2 : p.hollow ? 1.5 : 0.6} style={{ cursor: p.rec ? 'pointer' : 'default' }}
+              onMouseEnter={(e) => { if (p.tip) tip.show(e, p.rec ? [...p.tip, 'click to pin it on every chart and open its record'] : p.tip); if (key) hl.setHover(key) }}
+              onMouseLeave={() => { tip.hide(); if (key) hl.setHover(null) }}
+              {...(key ? fidProps(key) : {})}
+              onClick={key ? () => { if (p.rec) hl.openRecord(p.rec); hl.setPinned(key) } : undefined} />
+          })}
           {over?.({ x, y, iw, ih })}
         </g>
       </svg>
       {tip.node}
+      {handNote && <p className="chart-note">{handNote}</p>}
     </div>
   )
 }
