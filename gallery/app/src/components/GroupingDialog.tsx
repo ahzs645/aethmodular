@@ -186,10 +186,12 @@ export function GroupingPicker({ value, onChange, field, rows }: { value: string
   const current = find(value)
   const fromNotebook = !!current && builtIn.some((d) => d.id === current.id)
   // None first: a chart offers its group choices (Per group, colour by Group …) only once a grouping is picked
+  const available = (d: GroupingDef) => rows ? rows.filter(r => typeof r[d.field] === 'number' && Number.isFinite(r[d.field])).length : undefined
+  const availability = (d: GroupingDef) => ({ hint: available(d) === undefined ? undefined : `${available(d)} filters`, disabled: available(d) === 0 && d.id !== value })
   const options = [
     { key: '', label: current ? 'None' : 'Select a grouping', detail: current ? 'clear the grouping' : 'pick one to split or colour by its bands' },
-    ...list.map((d) => ({ key: d.id, label: d.name, detail: describeGrouping(d), group: 'Your groupings' })),
-    ...builtIn.map((d) => ({ key: d.id, label: d.name, detail: describeGrouping(d), group: 'From the notebooks', title: `${d.source}${d.note ? ` · ${d.note}` : ''}` })),
+    ...list.map((d) => ({ key: d.id, label: d.name, detail: describeGrouping(d), ...availability(d), group: 'Your groupings' })),
+    ...builtIn.map((d) => ({ key: d.id, label: d.name, detail: describeGrouping(d), ...availability(d), group: 'From the notebooks', title: `${d.source}${d.note ? ` · ${d.note}` : ''}` })),
   ]
   return (
     <span className="grouping-picker">

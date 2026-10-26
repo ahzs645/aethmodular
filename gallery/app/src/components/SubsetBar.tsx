@@ -297,7 +297,7 @@ export function SubsetBar({
           {/* the sites belong to the network picked above, so they sit right under it */}
           {caps.sites && (
             <Row label="sites">
-              <SitePicker items={s.siteItems} onToggle={a.onToggleSite}
+              <SitePicker orderSession={open} items={s.siteItems} onToggle={a.onToggleSite}
                 onAll={s.network === 'improve' ? undefined : a.onAllSites} allSelected={!!s.allSitesSelected}
                 onClear={s.network === 'focus' ? undefined : a.onClearSites}
                 chipsOnly={s.network === 'focus'} limitNote={s.siteLimitNote}

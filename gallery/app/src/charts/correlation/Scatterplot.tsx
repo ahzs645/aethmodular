@@ -2,7 +2,7 @@ import { fitUncertainty } from '@/lib/fitUncertainty'
 import { styleBrush } from '@/lib/brush'
 import { seasonsForSite } from '@/siteSeasons'
 import { IdentityLine, RefLine } from '@/components/RefLines'
-import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
+import { RegressionLines, RegressionGroupLines, useRegressionSummary } from '@/components/RegressionOverlay'
 import { useRegressions, fitsFor } from '@/lib/regressionPrefs'
 import { fitGroupingOption, useChartOptions, type OptionContext } from '@/lib/chartOptions'
 import { groupedRegressions, type FitGrouping, type RegressionGroup } from '@/lib/siteRegression'
@@ -28,7 +28,6 @@ import { useChartLabel, useFitHeight } from '@/lib/chartFit'
 import { useSearchParam, useTileSetting } from '@/lib/url'
 import { GroupingPicker, useGroupings } from '@/components/GroupingDialog'
 import { NO_BAND_COLOR, applyGrouping, noBandLabel } from '@/lib/groupings'
-import { useNarrowScreen } from '@/hooks/useMediaQuery'
 
 type Point = { row: FilterRow; x: number; y: number; c: number | null; s: number | null }
 type Scale = d3.ScaleLinear<number, number> | d3.ScaleLogarithmic<number, number>
@@ -274,7 +273,8 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   // A Dashboard tile keeps fitting its panels to the tile.
   const tiled = fit !== null
   const GAP = tiled ? 12 : 24
-  const MIN_PLOT = tiled ? 200 : rowed ? 240 : 300
+  // One phone panel fits the card; wide multi-panel rows can still scroll.
+  const MIN_PLOT = Math.min(tiled ? 200 : rowed ? 240 : 300, Math.max(120, width - MARGIN.left - MARGIN.right))
   const wrapSeasons = o.values.seasonRows === 'wrap'
   // wrapped: as many panels per line as fit at the minimum size
   const fitCols = Math.max(1, Math.floor((width + GAP) / (MIN_PLOT + MARGIN.left + MARGIN.right + GAP)))
@@ -519,20 +519,12 @@ const ScatterPanel = memo(function ScatterPanel({
   }
   const markIntercepts = axes.mode === 'Show intercept' && showFit && !axes.log && stats
   const originAxes = axes.mode === 'Show intercept' && !axes.log && xScale.domain()[0] < 0 && yScale.domain()[0] < 0
-  const { methods, showCI } = useRegressions()
-  // on a phone the fit readout goes under the plot: inside it the box covers points and runs off the panel
-  const narrow = useNarrowScreen()
+  const { methods } = useRegressions()
   const siteFits = grouping !== 'pooled' && showFit && methods.length > 0
   const selectedFits = fitGroups.flatMap(group => fitsFor(group.stats, showFit ? methods : []).map(fit => ({ ...fit, color: group.color ?? fit.color, name: group.name })))
   const svgWidth = innerW + MARGIN.left + MARGIN.right
-  const readoutHeight = siteFits ? regressionGroupReadoutLayout(fitGroups.length, svgWidth, methods, showCI).height : 0
-  // a small panel (or a phone) carries its fit readout above the plot, where it covers no points; every panel of
-  // the grid reserves the same height (the most lines a readout can have), so the plots stay level across a row
-  // (not in a Dashboard tile: its height is fitted to the tile, so the readout stays inside the plot there)
-  const inTile = useFitHeight() !== null
-  const readoutAbove = grouping === 'pooled' && showFit && methods.length > 0 && !inTile && (narrow || innerW < 320)
-  const aboveLines = 1 + (showCI ? 1 : 0) + methods.length * (showCI ? 3 : 1) + (methods.includes('york') ? 1 : 0)
-  const top = MARGIN.top + (readoutAbove ? aboveLines * 15 + 22 : 0)
+  const summary = useRegressionSummary({ stats, groups: siteFits ? fitGroups : undefined, width: svgWidth - 2 * READOUT_INSET, enabled: showFit })
+  const top = MARGIN.top + summary.height
 
   return (
     <div>
@@ -542,15 +534,15 @@ const ScatterPanel = memo(function ScatterPanel({
           <span style={{ color: 'var(--ink-muted)', fontWeight: 400, fontFamily: 'var(--mono)', fontSize: 11 }}>n={points.length}</span>
         </p>
       )}
-      <svg width={svgWidth} height={innerH + top + MARGIN.bottom + readoutHeight} className="animated">
+      <svg width={svgWidth} height={innerH + top + MARGIN.bottom} className="animated">
         <defs>
           {/* fit and identity lines are clipped to the axes: a slope above 1 otherwise leaves through the top margin */}
           <clipPath id={clipId}>
             <rect x={0} y={0} width={innerW} height={innerH} />
           </clipPath>
         </defs>
-        {readoutAbove && <RegressionReadout stats={stats} x={READOUT_INSET} y={6} width={svgWidth - 2 * READOUT_INSET} />}
-        <g transform={`translate(${MARGIN.left},${top})`}>
+        <g transform={`translate(${READOUT_INSET},6)`}>{summary.node}</g>
+        <g className="regression-plot" transform={`translate(${MARGIN.left},${top})`}>
           {/* In 'Show intercept' mode the spines cross at the origin, matplotlib-style, so the
               intercept markers sit on the y axis and the x axis runs through the cloud. */}
           {originAxes ? (
@@ -628,9 +620,7 @@ const ScatterPanel = memo(function ScatterPanel({
             </g>
           )}
 
-          {grouping === 'pooled' && showFit && !readoutAbove && <RegressionReadout stats={stats} />}
         </g>
-        {siteFits && <RegressionGroupReadouts groups={fitGroups} width={svgWidth} y={innerH + top + MARGIN.bottom} />}
       </svg>
     </div>
   )

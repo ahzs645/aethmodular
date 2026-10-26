@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
 from common.spartan_io import RAW_DIR, build_datetime, normalize_fid, read_spartan_csv, site_from_path  # noqa: E402
 from aethmodular_cli.env import display_path  # noqa: E402
+from site_labels import display_site_name  # noqa: E402
 
 FIELDS = {
     'PM2.5 mass': 'Filter PM2.5 mass',
@@ -80,6 +81,7 @@ def main():
                 values = values[np.isfinite(values)]
                 stats[label] = dict(n=len(values), median=float(values.median()) if len(values) else None,
                                     mean=float(values.mean()) if len(values) else None)
+        name = display_site_name(code, name)
         sites.append(dict(code=code, name=name, location=name, lat=float(lat) if pd.notna(lat) else None,
                           lon=float(lon) if pd.notna(lon) else None, n_filters=n,
                           date_min=date_min, date_max=date_max, stats=stats))

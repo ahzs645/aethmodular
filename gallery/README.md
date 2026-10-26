@@ -69,6 +69,15 @@ gallery/
 
 ## Running it
 
+**Sites → Data availability** incorporates the existing SPARTAN product and
+HIPS coverage notebooks, four-site FTIR/HIPS/aethalometer day overlaps,
+sampling cadence and gaps, the filter inventory, and the historical
+SPARTAN–IMPROVE comparison. Repackage its sources with
+`uv run python gallery/data/export_availability.py` after `uv run aeth doctor`.
+This reuses saved network tables and recomputes study coverage through the
+shared loaders; it does not download or refresh remote observations.
+See [the source and counting notes](../docs/gallery-data-availability.md).
+
 The bubble map offers **Four focus sites** (Beijing, Delhi, JPL and Addis Ababa),
 **Single focus site** (with a picker limited to those four), **All SPARTAN sites**,
 and **All IMPROVE sites**. Focus-site maps retain the season, date and exclusion
@@ -1114,6 +1123,13 @@ assets are git-ignored. See [migration audit](../docs/vibes-gallery-rank70-migra
 for source provenance and coverage.
 
 ### Native SPARTAN network data and loading
+
+A preview workspace without the native source bundles can restore the existing
+published export with `uv run python gallery/data/restore_spartan_assets.py`.
+The command verifies every asset against its content-addressed filename and
+records source/asset hashes in `spartan_network/restoration.json`. It copies
+existing measurements and corrections without refitting. Include the complete
+`spartan_network/` directory when packaging a Site; its index alone is not enough.
 
 The chart site picker uses `public/data/spartan_network/index.json`, a small
 site/coverage directory. Only the selected sites' compressed filter tables load.

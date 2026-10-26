@@ -39,8 +39,10 @@ function afterPaint(fn: () => void) {
  * sites first), quick buttons (focus sites, all, none) and **Map…**, a large map dialog for
  * picking by clicking. All edit one selection. With only the four focus sites, plain chips.
  */
-export function SitePicker({ items: itemsIn, onToggle: toggleIn, onAll, onClear, onFocus, allSelected = false, chipsOnly = false, limitNote, noun = 'sites', allLabel = 'Select all', mapPicker = true }: {
+export function SitePicker({ items: itemsIn, onToggle: toggleIn, onAll, onClear, onFocus, allSelected = false, chipsOnly = false, limitNote, noun = 'sites', allLabel = 'Select all', mapPicker = true, orderSession }: {
   items: SiteItem[]
+  /** Sidebar open state: snapshot selected-first order when reopened; undefined preserves input order. */
+  orderSession?: boolean
   onToggle: (key: string) => void
   /** select every site (absent where sites load one by one, e.g. IMPROVE) */
   onAll?: () => void
@@ -85,11 +87,12 @@ export function SitePicker({ items: itemsIn, onToggle: toggleIn, onAll, onClear,
   const mixed = new Set(items.map((it) => it.group)).size > 1
   const mapButton = mapPicker && <button type="button" className="btn quiet" onClick={() => setMapOpen(true)} title="Pick sites on a large map">Map…</button>
   const q = query.trim().toLowerCase()
+  const order = useMemo(() => new Map((orderSession === undefined ? itemsIn : [...itemsIn.filter(it => it.selected), ...itemsIn.filter(it => !it.selected)]).map((it, i) => [it.key, i])), [orderSession, itemsIn.map(it => it.key).join('|')])
   const shown = useMemo(() => {
     const hit = q ? items.filter((it) => `${it.label} ${it.sub ?? ''} ${it.key}`.toLowerCase().includes(q)) : items
-    // picked sites first, each block in its own order, so the selection is visible without scrolling
-    return [...hit.filter((it) => it.selected), ...hit.filter((it) => !it.selected)]
-  }, [items, q])
+    // Keep a checkbox at its original position while the reader edits the current selection.
+    return [...hit].sort((a, b) => (order.get(a.key) ?? Infinity) - (order.get(b.key) ?? Infinity))
+  }, [items, q, order])
   return (
     <div className="site-picker">
       {chipsOnly ? (

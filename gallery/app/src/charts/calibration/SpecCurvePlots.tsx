@@ -31,7 +31,7 @@ interface Props {
 }
 
 export function SpecCurvePlots(props: Props) {
-  const { file, metric, shown, width, layout, id, highlighted, showDots, highlightLabel } = props
+  const { file, metric, shown, width, layout, id, highlighted, showDots } = props
   const by = props.panelBy ?? 'sel'
   const panels = useMemo(() => selectionPanels(shown, file[by], file.categories[by]), [shown, file, by])
   const colorOf = (key: string) => COLOURS[file.categories[by].indexOf(key) % COLOURS.length]
@@ -95,9 +95,7 @@ export function SpecCurvePlots(props: Props) {
       yOffset={Math.floor(k / columns) * panelH + 42} plotW={plotW} y={y} labelPad={labelPad} labels={k % columns === 0} topH={topH}
       rowY={rowY} stripH={stripH} choiceIndices={choiceIndices} groups={groups} clipId={`${id}-panel-${k}`} />)}
     {/* the editor's preview states its rule in words below the curve, so it drops this footnote */}
-    {!props.curveOnly && <text x={20} y={height - 6} fontSize={10.5} fill={INK.muted}>
-      {showDots ? `Red dots: ${highlightLabel}` : 'Red dots hidden'}{layout === 'stacked' && ' · shared vertical scale; each panel sorted independently'}
-    </text>}
+
   </svg>
 }
 

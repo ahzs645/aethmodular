@@ -35,6 +35,7 @@ from config import SITES  # noqa: E402
 from data_matching import base_filter_id  # noqa: E402
 from outliers import apply_exclusion_flags  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from site_labels import display_site_name  # noqa: E402
 from spectrum_codec import DEFAULT_STEP, encode  # noqa: E402
 
 BASELINES = ROOT / 'research/ftir_hips_chem/output/tables/network_baselines_20261019'
@@ -197,7 +198,7 @@ def build(ftir, hips, data, baselines_dir=BASELINES, step=DEFAULT_STEP):
     sites = []
     for code in sorted(set(map_sites) | set(native_by_code) | set(public)):
         m, ns = map_sites.get(code, {}), native_by_code.get(code, {})
-        name = focus.get(code, m.get('name') or ns.get('Description') or code).replace('_', ' ')
+        name = display_site_name(code, focus.get(code), m.get('name'), ns.get('Description')).replace('_', ' ')
         spectra = defaultdict(list)
         src = ftir / code
         if src.is_dir():
@@ -268,7 +269,7 @@ def build(ftir, hips, data, baselines_dir=BASELINES, step=DEFAULT_STEP):
         records = sorted(rows.values(), key=lambda r: (r['date'], r['id']))
         file = write_asset(out, f'sites/{code}', json_bytes(dict(schema_version=1, code=code, rows=records)))
         dates = sorted(r['date'] for r in records if r['date'])
-        sites.append(dict(code=code, name=name, location=m.get('name') or ns.get('Description') or name,
+        sites.append(dict(code=code, name=name, location=display_site_name(code, m.get('name'), ns.get('Description'), name),
             lat=m.get('lat') if m.get('lat') is not None else number(ns.get('Latitude')),
             lon=m.get('lon') if m.get('lon') is not None else number(ns.get('Longitude')),
             n_filters=len(records), date_min=dates[0] if dates else '', date_max=dates[-1] if dates else '',

@@ -8,6 +8,7 @@ const TILE_LIMIT = 8
 
 export interface LegendItem {
   label: string
+  parent?: string
   color: string
   shape?: 'dot' | 'ring' | 'square' | 'band' | 'line' | 'dashed'
   /** shown after the label in muted mono, e.g. "n=190" */
@@ -56,12 +57,12 @@ export function Legend({
   const parts = shown.map((it) => {
     const text = label(it.label)
     const k = text.indexOf(PREFIX)
-    return { it, group: k > 0 ? text.slice(0, k) : null, text: k > 0 ? text.slice(k + PREFIX.length) : text }
+    return { it, group: it.parent ?? (k > 0 ? text.slice(0, k) : null), text: k > 0 ? text.slice(k + PREFIX.length) : text }
   })
   const groups = [...new Set(parts.map((p) => p.group).filter((g): g is string => !!g))]
-  const grouped = groups.length > 1
+  const grouped = groups.length > 0
   const item = ({ it, group, text }: (typeof parts)[number]) => {
-    const off = hidden?.has(it.label) ?? false
+    const off = !!(hidden?.has(it.label) || (group && hidden?.has(group)))
     const dim = !!highlighted && highlighted !== it.label && !off
     const cls = ['legend-item', onToggle ? 'clickable' : '', onHover ? 'hoverable' : '', off ? 'off' : '', dim ? 'dim' : ''].filter(Boolean).join(' ')
     return (
@@ -92,9 +93,9 @@ export function Legend({
   }
   return (
     <div className={`legend${grouped ? ' grouped' : ''}`}>
-      {parts.filter((p) => !grouped || !p.group).map(item)}
+      {parts.filter((p) => !grouped || (!p.group && !groups.includes(p.it.label))).map(item)}
       {grouped && groups.map((g) => <div key={g} className="legend-group">
-        <span className="legend-group-name">{g}</span>
+        <span className="legend-group-name">{parts.some(p => p.it.label === g) ? item(parts.find(p => p.it.label === g)!) : g}</span>
         {parts.filter((p) => p.group === g).map(item)}
       </div>)}
       {long && <button type="button" className="legend-more" onClick={() => setAll(!all)} aria-expanded={all}

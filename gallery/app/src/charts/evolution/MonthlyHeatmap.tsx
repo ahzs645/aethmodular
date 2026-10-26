@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import { seasonOnly } from '@/lib/seasons'
 import { SEASON_SHADE } from '@/components/SeasonBands'
 import { robustDomain } from '@/lib/axes'
@@ -14,6 +14,9 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { useFitHeight } from '@/lib/chartFit'
+
+import { MeasurementControl } from '@/components/AxisFieldPopover'
+import { useTileSetting } from '@/lib/url'
 
 const STATS = ['Median', 'Mean', 'Count'] as const
 type Stat = (typeof STATS)[number]
@@ -57,8 +60,13 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
 
-  const [stat, setStat] = useState<Stat>('Median')
-  const [seasonStrip, setSeasonStrip] = useState(true)
+  const [stat, setStat] = useTileSetting<Stat>('monthly-heatmap.stat', 'Median')
+  const [stripSetting, setStripSetting] = useTileSetting<string>('monthly-heatmap.seasons', '1')
+  const seasonStrip = stripSetting === '1'
+  const setSeasonStrip = (value: boolean) => setStripSetting(value ? '1' : '0')
+  const [periodMode, setPeriodMode] = useTileSetting<'All time' | 'Month'>('monthly-heatmap.period', 'All time')
+  const pooled = periodMode === 'Month'
+  const periodOf = (date: string) => pooled ? date.slice(5, 7) : date.slice(0, 7)
 
   const { sites, periods, cells, filled } = useMemo(() => {
     const present = new Set(rows.map((r) => r.site))
@@ -70,14 +78,14 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
       .map((r) => r.date)
       .filter((d) => typeof d === 'string' && d.length >= 7)
       .sort()
-    const periods = dates.length ? monthRange(dates[0].slice(0, 7), dates[dates.length - 1].slice(0, 7)) : []
+    const periods = dates.length ? pooled ? d3.range(1, 13).map(m => String(m).padStart(2, '0')) : monthRange(dates[0].slice(0, 7), dates[dates.length - 1].slice(0, 7)) : []
     // values per site-month; only filters that actually carry the field count
     const vals = new Map<string, number[]>()
     const ids = new Map<string, string[]>()
     for (const r of rows) {
       const v = r[field]
       if (typeof v !== 'number' || !Number.isFinite(v)) continue
-      const k = `${r.site}|${r.date.slice(0, 7)}`
+      const k = `${r.site}|${periodOf(r.date)}`
       const arr = vals.get(k)
       if (arr) arr.push(v)
       else vals.set(k, [v])
@@ -94,7 +102,7 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
     }
     const filled = cells.filter((c): c is Cell & { value: number } => c.value !== null)
     return { sites, periods, cells, filled }
-  }, [rows, field, stat, meta.sites])
+  }, [rows, field, stat, meta.sites, pooled])
   const nEmpty = cells.length - filled.length
 
   const colours = useColourScheme('monthly-heatmap', 'sequential')
@@ -118,14 +126,14 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
   const fit = useFitHeight()
   const rowH = fit === null ? 34 : Math.max(10, Math.min(34, (fit - margin.top - margin.bottom) / Math.max(1, sites.length)))
   const innerH = sites.length * rowH
-  const innerW = Math.max(320, width - margin.left - margin.right)
+  const innerW = Math.max(periods.length * (pooled ? 28 : 8), 160, width - margin.left - margin.right)
   // the svg grows with the content rather than letting cells escape a narrow box
   const svgW = Math.max(width, margin.left + innerW + margin.right)
   const cellW = innerW / Math.max(1, periods.length)
 
   // one strip over the columns needs one calendar; per-site calendars get a thin strip under each site's row instead
   const mixed = mixedCalendars(meta)
-  const seasonOf = (period: string, site?: string) => seasonsForSite(meta, site ?? meta.seasons[0]?.site).find((s) => s.months.includes(+period.slice(5, 7)))
+  const seasonOf = (period: string, site?: string) => seasonsForSite(meta, site ?? meta.seasons[0]?.site).find((s) => s.months.includes(+(pooled ? period : period.slice(5, 7))))
   const topStrip = seasonStrip && !mixed
   const unit = withUnit(field, meta.field_units)
   const statLabel = stat === 'Count' ? 'filters' : `${stat.toLowerCase()} ${unit}`
@@ -137,6 +145,7 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
     const out: { x: number; year: string }[] = []
     let lastX = -Infinity
     periods.forEach((p, i) => {
+      if (pooled) { out.push({ x: i * cellW, year: d3.timeFormat('%b')(new Date(2000, +p - 1, 1)) }); return }
       const jan = p.endsWith('-01')
       if (!jan && i !== 0) return
       const x = i * cellW
@@ -145,7 +154,7 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
       lastX = x
     })
     return out
-  }, [periods, cellW])
+  }, [periods, cellW, pooled])
 
   return (
     <ChartFrame
@@ -155,18 +164,21 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
       provenance="react-graph-gallery.com/heatmap · stands in for the site×month pivot tables in the notebooks"
       controls={
         <>
+          <MeasurementControl />
+          <Segmented label="Period" value={periodMode} options={['All time', 'Month'] as const} onChange={setPeriodMode} title="All time: consecutive year-months. Month: pool each calendar month across all years." />
           <Segmented label="Cell" value={stat} options={STATS} onChange={setStat} title="Statistic across the month's filters at that site" />
           <Toggle label="Season strip" checked={seasonStrip} onChange={setSeasonStrip} title="A strip above the columns coloured by the selected season calendar" />
         </>
       }
     >
+      <p className="facet-title">{statLabel}{pooled ? " · calendar months pooled across years" : " · consecutive year-months"}</p>
       <div ref={wrapRef} className="chart-wrap">
         {sites.length === 0 || periods.length === 0 ? (
-          <Empty>No filters in this subset.</Empty>
+          <Empty>No filters with {field} in this subset. Choose another measurement or edit the filters.</Empty>
         ) : filled.length === 0 ? (
           <Empty>No site has {field} in this subset.</Empty>
         ) : (
-          <svg width={svgW} height={innerH + margin.top + margin.bottom} className="animated">
+          <div className="chart-scroll" tabIndex={0} role="region" aria-label="Monthly heatmap, scroll for all months"><svg width={svgW} height={innerH + margin.top + margin.bottom} className="animated">
             <g transform={`translate(${margin.left},${margin.top})`} fontFamily={FONT.family}>
               {topStrip &&
                 periods.map((p, i) => {
@@ -227,7 +239,7 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
                 </text>
               ))}
             </g>
-          </svg>
+          </svg></div>
         )}
         {filled.length > 0 && (
           <div className="legend">

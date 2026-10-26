@@ -31,6 +31,18 @@ test('failed requests are retryable, including malformed compressed data', async
   } finally { globalThis.fetch = original }
 })
 
+test('an HTML fallback for missing JSON or spectra is reported as an unavailable export and remains retryable', async () => {
+  const original = globalThis.fetch
+  globalThis.fetch = async () => new Response('<!doctype html><html>Gallery</html>', { headers: { 'content-type': 'text/html; charset=utf-8' } })
+  try {
+    await assert.rejects(loadJson('missing-index.json'), /data export is not available/)
+    await assert.rejects(loadJson('missing-native.json.gz'), /data export is not available/)
+    await assert.rejects(loadBinary('missing-spectrum.bin.gz'), /data export is not available/)
+    globalThis.fetch = async () => new Response('{"restored":true}', { headers: { 'content-type': 'application/json' } })
+    assert.deepEqual(await loadJson('missing-index.json'), { restored: true })
+  } finally { globalThis.fetch = original }
+})
+
 test('native spectra keep analysis offsets, descending grids, negative absorbance and gaps', () => {
   const values = new Float32Array([99, 98, .25, -.5, NaN])
   const a = { first: 4000, last: 500, n: 3, offset: 2 }

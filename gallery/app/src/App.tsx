@@ -24,6 +24,7 @@ import { Ridgeline } from '@/charts/distribution/Ridgeline'
 import { Timeseries } from '@/charts/evolution/Timeseries'
 import { MonthlyBand } from '@/charts/evolution/MonthlyBand'
 import { SeasonalClock } from '@/charts/evolution/SeasonalClock'
+import { DataAvailabilityPage } from '@/pages/DataAvailabilityPage'
 import { MonthlyHeatmap } from '@/charts/evolution/MonthlyHeatmap'
 import { Barplot } from '@/charts/ranking/Barplot'
 import { CorrelationRanking } from '@/charts/ranking/CorrelationRanking'
@@ -97,6 +98,7 @@ const TABS = [
   { key: 'ranking', label: 'Ranking' },
   { key: 'partOfWhole', label: 'Part of a whole' },
   { key: 'map', label: 'Map' },
+  { key: 'availability', label: 'Data availability', title: 'Notebook coverage analyses, product inventory, sample-day overlap and filter history' },
   { key: 'weather', label: 'Weather', title: 'Weather over each filter’s sampling window: ERA5 at every SPARTAN site, the airport station at Addis' },
   { key: 'flow', label: 'Flow' },
   { key: 'pmf', label: 'PMF sources' },
@@ -130,7 +132,7 @@ const tabItem = (key: string): NavItem[] => TABS.filter((t) => t.key === key && 
   .map((t) => ({ key: t.key, label: t.label, title: 'title' in t ? t.title : undefined, tab: t.key }))
 const NAV_GROUPS: NavGroup[] = [
   { label: 'Charts', items: ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'flow'].flatMap(tabItem) },
-  { label: 'Sites', items: ['map', 'weather', 'pmf'].flatMap(tabItem) },
+  { label: 'Sites', items: ['map', 'availability', 'weather', 'pmf'].flatMap(tabItem) },
   { label: 'Calibration', items: ['calibration', 'baseline', 'similarity', 'blanks'].flatMap(tabItem) },
   { label: 'Meetings', items: shared('meeting') ? MEETINGS.map((m) => ({ key: m.key, label: m.label, tab: 'meeting', meeting: m.key })) : [] },
   { label: 'Experimental', items: shared('experimental') ? EXPERIMENTS.map((e) => ({ key: `xp-${e.key}`, label: e.label, title: e.title, tab: 'experimental', sub: e.key })) : [] },
@@ -182,7 +184,7 @@ const parseSpartanSel = (v: string | null): string[] | 'all' | null =>
 /** tabs whose charts can draw a whole network (Filters sidebar → network) */
 const NETWORK_TABS = ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'weather'] as const
 const FILTERS: SubsetCaps = { seasons: true, sites: true, excluded: true, dates: true, fields: 'single', datasetLabel: 'SPARTAN filters' }
-const CAPS: Record<Exclude<TabKey, 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks' | 'experimental'>, SubsetCaps> = {
+const CAPS: Record<Exclude<TabKey, 'availability' | 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks' | 'experimental'>, SubsetCaps> = {
   correlation: { ...FILTERS, fields: 'pair', networks: true, fits: true },
   // each tile picks its own fields
   dashboard: { ...FILTERS, fields: 'none', networks: true, fits: true },
@@ -868,7 +870,7 @@ export default function App() {
   meta.fields = [...meta.fields, ...ratioFields.filter((f) => !meta.fields.includes(f))]
   meta.field_groups = [...meta.field_groups.filter((g) => g.label !== RATIO_GROUP), ...(ratioFields.length ? [{ label: RATIO_GROUP, fields: ratioFields }] : [])]
   meta.field_units = viewUnits({ ...viewOpts, units: meta.field_units })
-  meta.coverage = { ...meta.coverage, ...ratioCoverage }
+  meta.coverage = { ...meta.coverage, ...ratioCoverage, ...Object.fromEntries(meta.fields.map(f => [f, rows.filter(r => typeof r[f] === 'number' && Number.isFinite(r[f])).length])) }
   meta.mac_value = viewOpts.mac
   meta.basis = basis
   meta = stable('meta', meta)
@@ -887,7 +889,7 @@ export default function App() {
   // the Dashboard's header draws the common filters from the same state and actions (components/dashboard/DashHeader)
   let dashFilters: DashFilters | null = null
   const subset = (() => {
-    if (tab === 'census' || tab === 'baseline' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental') return null
+    if (tab === 'availability' || tab === 'census' || tab === 'baseline' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental') return null
     const baseCaps = net === 'focus' ? CAPS[tab] : { ...CAPS[tab], datasetLabel: net === 'improve' ? 'IMPROVE samples' : net === 'both' ? 'SPARTAN filters + IMPROVE samples' : 'SPARTAN filters', excluded: sourceRows.some((r) => r.excluded) }
     // the chart tabs offer the PMF section while a site with PMF is picked
     const chartTab = (NETWORK_TABS as readonly string[]).includes(tab)
@@ -1151,6 +1153,7 @@ export default function App() {
         {/* tabs without the Filters panel: a sidebar for the page's own controls, with the fits where the page fits */}
         {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting' || tab === 'experimental')
           && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'} />)}
+        {tab === 'availability' && <DataAvailabilityPage />}
         {tab === 'census' && <CensusPage census={census} />}
         {tab === 'similarity' && <SimilarityPage />}
         {tab === 'meeting' && <PresentationProvider mode={presentation} set={setPresentation}>

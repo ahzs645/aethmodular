@@ -1,10 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react'
 import { fieldHelp } from '@/lib/glossary'
 import { pickerName } from '@/lib/pmfGroups'
 import { createPortal } from 'react-dom'
 import { chemText } from '@/lib/format'
 import { prettyUnit } from '@/components/FieldSelect'
 import type { MetaFile } from '@/lib/types'
+import { useFloatingMenu } from '@/hooks/useFloatingMenu'
 
 /**
  * Several fields at once (a correlogram's species, a matrix's rows): a button that says how many
@@ -32,44 +33,47 @@ export function FieldMultiSelect({ label = 'Fields', meta, available, value, pre
 }) {
   const [open, setOpen] = useState(false)
   const btn = useRef<HTMLButtonElement>(null)
+  const autoFocusSearch = useRef(false)
+  const id = useId()
+  const close = useCallback((restoreFocus = true) => {
+    setOpen(false)
+    if (restoreFocus) btn.current?.focus({ preventScroll: true })
+  }, [])
   const name = preset ? presets.find((p) => p.key === preset)?.label : null
   return (
     <span className="control">
-      <span className="combobox-label">{label}</span>
-      <button ref={btn} type="button" className={`combobox-trigger${open ? ' open' : ''}`} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(!open)}
+      <span className="combobox-label" id={`${id}-label`}>{label}</span>
+      <button ref={btn} type="button" className={`combobox-trigger${open ? ' open' : ''}`} aria-haspopup="dialog" aria-expanded={open} aria-controls={id} aria-labelledby={`${id}-label`}
+        onPointerDown={e => { autoFocusSearch.current = e.pointerType === 'mouse' }}
+        onKeyDown={e => { if (e.key === 'ArrowDown') { e.preventDefault(); autoFocusSearch.current = true; setOpen(true) } }}
+        onClick={e => { if (e.detail === 0) autoFocusSearch.current = true; setOpen(!open) }}
         title="Choose the fields: a preset, or tick them one by one">
         <span className="combobox-value">{name ?? 'Custom'} · {value.length}</span>
         <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
-      {open && btn.current && <Popover anchor={btn.current} meta={meta} available={available} value={value} preset={preset} presets={presets} onChange={onChange} max={max} onClose={() => setOpen(false)} />}
+      {open && <Popover id={id} label={label} anchor={btn} autoFocusSearch={autoFocusSearch.current} meta={meta} available={available} value={value} preset={preset} presets={presets} onChange={onChange} max={max} onClose={close} />}
     </span>
   )
 }
 
-function Popover({ anchor, meta, available, value, preset, presets, onChange, max, onClose }: {
-  anchor: HTMLElement; meta: MetaFile; available: string[]; value: string[]; preset: string | null
-  presets: FieldPreset[]; onChange: (fields: string[], preset: string | null) => void; max?: number; onClose: () => void
+function Popover({ id, label, anchor, autoFocusSearch, meta, available, value, preset, presets, onChange, max, onClose }: {
+  id: string; label: string; anchor: RefObject<HTMLElement>; autoFocusSearch: boolean; meta: MetaFile; available: string[]; value: string[]; preset: string | null
+  presets: FieldPreset[]; onChange: (fields: string[], preset: string | null) => void; max?: number; onClose: (restoreFocus?: boolean) => void
 }) {
   const box = useRef<HTMLDivElement>(null)
+  const search = useRef<HTMLInputElement>(null)
   const [q, setQ] = useState('')
-  const [place, setPlace] = useState<{ left: number; top: number; maxH: number } | null>(null)
-  useLayoutEffect(() => {
-    const update = () => {
-      const r = anchor.getBoundingClientRect(), W = 340
-      setPlace({ left: Math.max(8, Math.min(r.left, window.innerWidth - W - 8)), top: r.bottom + 4, maxH: Math.max(220, window.innerHeight - r.bottom - 16) })
-    }
-    update()
-    window.addEventListener('resize', update)
-    return () => window.removeEventListener('resize', update)
-  }, [anchor])
+  const place = useFloatingMenu(true, anchor, box, 500)
+  const positioned = place !== null
   useEffect(() => {
-    const onDown = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node) && !anchor.contains(e.target as Node)) onClose() }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    const onScroll = (e: Event) => { if (!box.current?.contains(e.target as Node)) onClose() }
+    if (positioned) (autoFocusSearch ? search.current : box.current)?.focus({ preventScroll: true })
+  }, [positioned, autoFocusSearch])
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node) && !anchor.current?.contains(e.target as Node)) onClose(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); onClose() } }
     document.addEventListener('pointerdown', onDown)
     window.addEventListener('keydown', onKey)
-    window.addEventListener('scroll', onScroll, { passive: true, capture: true })
-    return () => { document.removeEventListener('pointerdown', onDown); window.removeEventListener('keydown', onKey); window.removeEventListener('scroll', onScroll, { capture: true }) }
+    return () => { document.removeEventListener('pointerdown', onDown); window.removeEventListener('keydown', onKey) }
   }, [anchor, onClose])
   const chosen = new Set(value)
   const s = q.trim().toLowerCase()
@@ -78,9 +82,9 @@ function Popover({ anchor, meta, available, value, preset, presets, onChange, ma
     .filter((g) => g.fields.length), [meta.field_groups, available, s])
   const toggle = (f: string) => onChange(chosen.has(f) ? value.filter((x) => x !== f) : [...value, f], null)
   const setGroup = (fs: string[], on: boolean) => onChange(on ? [...value, ...fs.filter((f) => !chosen.has(f))] : value.filter((f) => !fs.includes(f)), null)
-  if (!place) return null
   return createPortal(
-    <div ref={box} className="field-multi" role="dialog" aria-label="Choose fields" style={{ left: place.left, top: place.top, maxHeight: place.maxH }}>
+    <div ref={box} id={id} tabIndex={-1} className="field-multi" role="dialog" aria-label="Choose fields" style={place ?? { position: 'fixed', visibility: 'hidden' }}>
+      <div className="field-multi-title"><strong>{label}</strong><button type="button" className="btn" aria-label="Done choosing fields" onClick={() => onClose()}>Done</button></div>
       <div className="field-multi-presets">
         {presets.map((p) => {
           const n = p.fields(available).length
@@ -89,7 +93,7 @@ function Popover({ anchor, meta, available, value, preset, presets, onChange, ma
         })}
       </div>
       <div className="field-multi-head">
-        <input className="select" type="search" placeholder="Search fields…" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+        <input ref={search} className="select" type="search" aria-label="Search fields" placeholder="Search fields…" value={q} onChange={(e) => setQ(e.target.value)} />
         <span className="field-multi-count">{value.length} chosen{max && value.length > max ? ` · the first ${max} are drawn` : ''}</span>
         <button type="button" className="btn quiet" onClick={() => onChange([], null)} disabled={!value.length}>Clear</button>
       </div>

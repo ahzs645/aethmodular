@@ -12,6 +12,7 @@ import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useChartLabel, useFitHeight } from '@/lib/chartFit'
+import { MeasurementControl } from '@/components/AxisFieldPopover'
 import { useTileSetting } from '@/lib/url'
 
 const LAYOUTS = ['Overlay', 'Density', 'Small multiples', 'Mirror'] as const
@@ -90,7 +91,7 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
     { key: 'bins', when: (c) => c.layout !== 'Density', node: () => <label className="control" title="Number of bins across the displayed range">
       Bins
       <input type="range" min={8} max={80} step={1} value={bins} onChange={(e) => setBins(Number(e.target.value))} style={{ width: 110 }} />
-      <span style={{ fontFamily: 'var(--mono)', width: 20 }}>{bins}</span>
+      <input type="number" aria-label="Number of bins" min={8} max={80} step={1} value={bins} onChange={e => { if (e.target.value) setBins(Math.round(Number(e.target.value))) }} className="range-value" />
     </label> },
     { key: 'normalise', label: 'Normalise to fraction', toggle: true, default: true },
     { key: 'density', label: 'Density curve', toggle: true, default: true, hidden: true, when: (c) => c.layout !== 'Density' },
@@ -139,7 +140,7 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
         return kde(s.values, grid).map((d) => d * factor)
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [binned.map((s) => s.name + s.values.length).join(), grid, normalise, dLo, dHi, bins]
+    [rows, field, hidden, mirror.hidden, aName, bName, layout, grid, normalise, dLo, dHi, bins]
   )
 
   // The y axis must cover the density curve too — a tightly peaked group (JPL)
@@ -156,6 +157,7 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   const drawSeries = (s: (typeof binned)[number], si: number, sign: 1 | -1) => {
     const dens = scaledDensities[si] ?? []
     const line = d3.line<number>().x((_, i) => x(grid[i])).y((_, i) => y(sign * (dens[i] ?? 0))).curve(d3.curveBasis)
+    const area = d3.area<number>().x((_, i) => x(grid[i])).y0(y0).y1((_, i) => y(sign * (dens[i] ?? 0))).curve(d3.curveBasis)
     return (
       <g key={s.name} opacity={dimOf(s.name)} data-export-site={s.name} data-export-series={s.name} data-export-color={s.color}>
         {showBars && s.bins.map((b, i) => {
@@ -180,7 +182,7 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
           )
         })}
         {showDensity && (
-          <path d={line(grid) ?? ''} fill={densityOnly ? s.color : 'none'} fillOpacity={densityOnly ? 0.18 : 0} stroke={s.color} strokeWidth={2.2} pointerEvents={densityOnly ? 'visiblePainted' : 'none'}
+          <path d={(densityOnly ? area(grid) : line(grid)) ?? ''} fill={densityOnly ? s.color : 'none'} fillOpacity={densityOnly ? 0.18 : 0} stroke={s.color} strokeWidth={2.2} pointerEvents={densityOnly ? 'visiblePainted' : 'none'}
             onMouseEnter={densityOnly ? (e) => tip.show(e, [s.name, `n = ${s.values.length}`, `median ${fmt(d3.median(s.values), 2)}`]) : undefined} onMouseLeave={densityOnly ? tip.hide : undefined} />
         )}
       </g>
@@ -201,7 +203,7 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
       title="Histogram + density — overlaid, panelled, or mirrored"
       subtitle="Counts per bin with an optional kernel density curve. Normalising to a fraction lets Delhi (n≈97) and Beijing (n≈375) be compared directly instead of the larger site simply looking taller. Mirror puts any two groups (a site or a season) back to back. Drag the bin slider to see how much the shape depends on it."
       provenance="stands in for 36 histogram figures · react-graph-gallery.com/histogram · /histogram-mirror · /histogram-small-multiple"
-      controls={o.controls()}
+      controls={<><MeasurementControl />{o.controls()}</>}
     >
       <div ref={wrapRef} className="chart-wrap">
         {(layout === 'Mirror' ? mirrorPair.length < 2 : series.length === 0) ? (

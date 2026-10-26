@@ -1,9 +1,10 @@
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import { chemText } from '@/lib/format'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { AxisFieldPopover, useAxisFields, type AxisRole } from '@/components/AxisFieldPopover'
 import type { ScaleLinear, ScaleTime, ScaleBand } from 'd3'
 import { INK, FONT } from '@/lib/theme'
+import { wrapCategory } from '@/components/CategoryAxis'
 import { fieldHelp } from '@/lib/glossary'
 
 type AnyScale =
@@ -50,11 +51,13 @@ export function XAxis({
   format,
   rotate = 0,
   labelDy,
+  wrapLabel = false,
   pick,
 }: {
   scale: AnyScale
   y: number
   label?: string
+  wrapLabel?: boolean
   /** the shared field this axis shows; its title then opens a field picker (AxisFieldPopover) */
   pick?: AxisRole
   tickCount?: number
@@ -96,7 +99,7 @@ export function XAxis({
             fontWeight={600}
             fill={INK.text}
           >
-            {chemText(estimatorText(label, method))}{pick && <tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>}
+            {wrapLabel ? wrapCategory(chemText(estimatorText(label, method)), Math.max(100, x1 - x0 - 8)).map((line, i) => <tspan key={i} x={(x0 + x1) / 2} dy={i ? 14 : 0}>{line}</tspan>) : chemText(estimatorText(label, method))}{pick && <tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>}
           </text>
         </AxisTitle>
       )}
@@ -113,11 +116,13 @@ export function YAxis({
   gridWidth,
   gridFrom,
   labelX,
+  wrapLabel = false,
   pick,
 }: {
   scale: AnyScale
   x: number
   label?: string
+  wrapLabel?: boolean
   /** the shared field this axis shows; its title then opens a field picker (AxisFieldPopover) */
   pick?: AxisRole
   tickCount?: number
@@ -133,6 +138,7 @@ export function YAxis({
   const range = scale.range() as [number, number]
   const y0 = Math.min(...range)
   const y1 = Math.max(...range)
+  const titleLines = wrapLabel && label ? wrapCategory(chemText(estimatorText(label, method)), Math.max(100, y1 - y0 - 8)) : []
   return (
     <g fontFamily={FONT.family}>
       <line x1={x} x2={x} y1={y0} y2={y1} stroke={INK.axis} strokeWidth={1} />
@@ -156,7 +162,7 @@ export function YAxis({
             fontWeight={600}
             fill={INK.text}
           >
-            {chemText(estimatorText(label, method))}{pick && <tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>}
+            {wrapLabel ? titleLines.map((line, i) => <tspan key={i} x={0} y={(i - (titleLines.length - 1) / 2) * 14}>{line}</tspan>) : chemText(estimatorText(label, method))}{pick && <tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>}
           </text>
         </AxisTitle>
       )}
@@ -167,17 +173,21 @@ export function YAxis({
 /** An axis title that, when the axis shows a shared field, opens the field picker on click or Enter. */
 export function AxisTitle({ pick, children }: { pick?: AxisRole; children: ReactNode }) {
   const ctx = useAxisFields()
-  const [anchor, setAnchor] = useState<DOMRect | null>(null)
+  const [anchor, setAnchor] = useState<Element | null>(null)
+  const close = useCallback((restoreFocus = true) => {
+    setAnchor(null)
+    if (restoreFocus) (anchor as HTMLElement | SVGElement | null)?.focus({ preventScroll: true })
+  }, [anchor])
   if (!pick || !ctx) return <>{children}</>
-  const open = (el: Element) => setAnchor(el.getBoundingClientRect())
+  const open = (el: Element) => setAnchor(el)
   return (
     <>
-      <g className="axis-pick" role="button" tabIndex={0} aria-haspopup="dialog" aria-label={`Change the ${pick === 'field' ? 'measurement' : `${pick} axis`}: ${ctx.value[pick]}`}
+      <g className="axis-pick" role="button" tabIndex={0} aria-haspopup="dialog" aria-expanded={!!anchor} aria-label={`Change the ${pick === 'field' ? 'measurement' : `${pick} axis`}: ${ctx.value[pick]}`}
         onClick={(e) => open(e.currentTarget)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e.currentTarget) } }}>
         <title>{chemText(fieldHelp(ctx.value[pick], ctx.labelOf?.(ctx.value[pick]) ?? ctx.value[pick]))}{'\n'}Click to choose what this axis shows</title>
         {children}
       </g>
-      {anchor && <AxisFieldPopover role={pick} anchor={anchor} onClose={() => setAnchor(null)} />}
+      {anchor && <AxisFieldPopover role={pick} anchor={anchor} onClose={close} />}
     </>
   )
 }

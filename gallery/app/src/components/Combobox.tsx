@@ -1,10 +1,12 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { chemText } from '@/lib/format'
+import { useFloatingMenu } from '@/hooks/useFloatingMenu'
 
 export interface ComboOption<T extends string> {
   /** hover text for this option (a field's description and origin) */
   title?: string
+  disabled?: boolean
   key: T
   label: string
   /** heading the option sits under (consecutive options share one heading) */
@@ -45,8 +47,10 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
   const id = useId()
   const root = useRef<HTMLDivElement>(null)
   const menu = useRef<HTMLDivElement>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const autoFocusSearch = useRef(false)
   const [open, setOpen] = useState(false)
-  const [place, setPlace] = useState<CSSProperties | null>(null)
+  const place = useFloatingMenu(open, trigger, menu)
   const found = options.findIndex((option) => option.key === value)
   const selected = Math.max(0, found)
   const [active, setActive] = useState(selected)
@@ -56,10 +60,11 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
   const input = useRef<HTMLInputElement>(null)
   // the options the search leaves, by their index in `options` (all of them with no search)
   const visible = options.map((_, i) => i).filter((i) => !query || fold(`${options[i].label} ${options[i].group ?? ''} ${options[i].detail ?? ''}`).includes(fold(query)))
+  const navigable = visible.filter(i => !options[i].disabled)
   const step = (from: number, by: number) => {
-    if (!visible.length) return from
-    const at = visible.indexOf(from)
-    return visible[at < 0 ? 0 : (at + by + visible.length) % visible.length]
+    if (!navigable.length) return from
+    const at = navigable.indexOf(from)
+    return navigable[at < 0 ? 0 : (at + by + navigable.length) % navigable.length]
   }
 
   useEffect(() => {
@@ -71,55 +76,39 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
     document.addEventListener('pointerdown', dismiss)
     return () => document.removeEventListener('pointerdown', dismiss)
   }, [open])
-  // the list sits under the trigger (above it when the window has no room below), inside the
-  // window's edges, and follows the trigger while the page or a panel scrolls
-  useLayoutEffect(() => {
-    if (!open) { setPlace(null); return }
-    const trigger = root.current?.querySelector('.combobox-trigger')
-    if (!trigger) return
-    const update = () => {
-      const r = trigger.getBoundingClientRect()
-      const up = window.innerHeight - r.bottom < 260 && r.top > window.innerHeight - r.bottom
-      const w = menu.current?.offsetWidth ?? r.width
-      const left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8))
-      setPlace({ position: 'fixed', left, minWidth: r.width, ...(up ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }) })
-    }
-    update()
-    const onScroll = (e: Event) => { if (!menu.current?.contains(e.target as Node)) update() }
-    window.addEventListener('scroll', onScroll, true)
-    window.addEventListener('resize', update)
-    return () => { window.removeEventListener('scroll', onScroll, true); window.removeEventListener('resize', update) }
-  }, [open])
   useEffect(() => {
     if (open) menu.current?.querySelector(`#${CSS.escape(`${id}-option-${active}`)}`)?.scrollIntoView({ block: 'nearest' })
   }, [open, active, id])
-  // a searchable list takes the focus into its box once it is placed; closing clears the search
-  useEffect(() => { if (open && place && searchable) input.current?.focus() }, [open, place, searchable])
+  // Touch opens the options without a keyboard. Search remains available on an
+  // explicit tap; mouse and keyboard opening retain the desktop search behavior.
+  useEffect(() => { if (open && place && searchable && autoFocusSearch.current && document.activeElement !== input.current) input.current?.focus({ preventScroll: true }) }, [open, place, searchable, query])
   useEffect(() => { if (!open) setQuery('') }, [open])
 
   const choose = (index: number) => {
+    if (!options[index] || options[index].disabled) return
     onChange(options[index].key)
     setOpen(false)
-    if (searchable) root.current?.querySelector<HTMLButtonElement>('.combobox-trigger')?.focus()
+    if (searchable) trigger.current?.focus({ preventScroll: true })
   }
   const onSearchKey = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); setActive(step(active, event.key === 'ArrowDown' ? 1 : -1)) }
     else if (event.key === 'Enter') { event.preventDefault(); const pick = visible.includes(active) ? active : visible[0]; if (pick !== undefined) choose(pick) }
-    else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setOpen(false); root.current?.querySelector<HTMLButtonElement>('.combobox-trigger')?.focus() }
+    else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setOpen(false); trigger.current?.focus({ preventScroll: true }) }
     else if (event.key === 'Tab') setOpen(false)
   }
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    autoFocusSearch.current = true
     switch (event.key) {
       case 'ArrowDown':
       case 'ArrowUp':
         event.preventDefault()
-        setActive(open ? (active + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length : selected)
+        setActive(open ? step(active, event.key === 'ArrowDown' ? 1 : -1) : selected)
         setOpen(true)
         break
       case 'Home':
       case 'End':
         event.preventDefault()
-        setActive(event.key === 'Home' ? 0 : options.length - 1)
+        setActive(event.key === 'Home' ? navigable[0] ?? 0 : navigable[navigable.length - 1] ?? 0)
         setOpen(true)
         break
       case 'Enter':
@@ -154,11 +143,12 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
   }}>
     {label && <span className="combobox-label" id={`${id}-label`}>{label}</span>}
     <div className="combobox">
-      <button type="button" role="combobox" className={`combobox-trigger${open ? ' open' : ''}`} style={minWidth ? { minWidth } : undefined}
+      <button ref={trigger} type="button" role="combobox" className={`combobox-trigger${open ? ' open' : ''}`} style={minWidth ? { minWidth } : undefined}
         aria-labelledby={label ? `${id}-label` : undefined} aria-label={label ? undefined : title}
         aria-expanded={open} aria-haspopup="listbox"
         aria-controls={`${id}-list`} aria-activedescendant={open ? `${id}-option-${active}` : undefined}
-        onKeyDown={onKeyDown} onClick={() => { setActive(selected); setOpen(!open) }}>
+        onPointerDown={e => { autoFocusSearch.current = e.pointerType === 'mouse' }}
+        onKeyDown={onKeyDown} onClick={e => { if (e.detail === 0) autoFocusSearch.current = true; setActive(selected); setOpen(!open) }}>
         <span className="combobox-value">{chemText(found >= 0 ? options[found].label : value)}</span>
         <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
@@ -175,7 +165,7 @@ export function Combobox<T extends string>({ label, value, options, onChange, ti
         {visible.map((index, at) => { const option = options[index]; return <div key={option.key} role="presentation">
           {option.group && option.group !== options[visible[at - 1]]?.group && <div className="combobox-group" role="presentation">{option.group}</div>}
           <button type="button" role="option" tabIndex={-1}
-            id={`${id}-option-${index}`} aria-selected={option.key === value}
+            id={`${id}-option-${index}`} aria-selected={option.key === value} disabled={option.disabled} aria-disabled={option.disabled}
             className={`combobox-option${index === active ? ' active' : ''}`}
             onMouseEnter={() => setActive(index)} onMouseDown={(event) => event.preventDefault()} onClick={() => choose(index)}>
             <span className="combobox-check" aria-hidden="true">{option.key === value ? '✓' : ''}</span>

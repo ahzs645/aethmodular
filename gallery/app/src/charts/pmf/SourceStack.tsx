@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useId, useMemo, useRef } from 'react'
 import { calendarShortName, seasonOnly } from '@/lib/seasons'
 import { timeSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
@@ -35,6 +35,7 @@ const DAY = 86_400_000
  * the right trade when the question is "when does charcoal swell".
  */
 export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; rows: PmfRow[]; meta: MetaFile }) {
+  const clipId = useId().replace(/:/g, '')
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
@@ -148,6 +149,7 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
           <Empty>No PMF filters in this subset.</Empty>
         ) : (
           <svg width={width} height={height} className="animated">
+            <defs><clipPath id={clipId}><rect width={innerW} height={innerH} /></clipPath></defs>
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
               {/* the season strip, solid as in the paper's figure, named where a band has room */}
               <g pointerEvents="none">
@@ -168,6 +170,7 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
               />
               <XAxis scale={x as any} y={innerH} format={(d: Date) => d3.timeFormat('%b %Y')(d)} tickCount={7} />
 
+              <g clipPath={`url(#${clipId})`}>
               {bars && stacked.map((layer) => (
                 <g key={String(layer.key)} fill={colorOf.get(String(layer.key)) ?? INK.muted} fillOpacity={dim(String(layer.key))}>
                   {layer.map((d) => <rect key={d.data.id} x={x(d.data.d) - barW / 2} width={barW} y={y(d[1])} height={Math.max(0, y(d[0]) - y(d[1]))}
@@ -188,6 +191,7 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
                   onMouseLeave={tip.hide}
                 />
               ))}
+              </g>
             </g>
           </svg>
         )}

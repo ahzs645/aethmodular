@@ -191,8 +191,8 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
 
       {runs && (
         <>
-          <SectionBar>
-            <span className="pill">One configuration, every filter</span>
+          <section className="configuration-section" aria-label="Selected configuration and its diagnostics"><SectionBar>
+            <span className="pill">Configuration for the charts below</span>
             <Select label="Configuration" value={preset?.key ?? ''} options={presets.map((p) => p.key)} onChange={setPresetKey} optionLabel={(k) => { const p = presets.find((q) => q.key === k); return p ? presetName(p) : k }} title={presets.map((p) => `${p.key}: ${presetName(p)}`).join('\n')} />
             <Select label="Test set" value={target ?? ''} options={targetIds} onChange={setTargetId} optionLabel={(t) => runs.targets[t]?.label ?? t} />
             <span style={{ color: 'var(--ink-muted)' }}>{preset ? presetName(preset) : null}</span>
@@ -221,7 +221,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
             <ChartFrame title="No run" exportable={false}><p className="frame-empty">No exported run for this configuration at this site.</p></ChartFrame>
           )}
 
-          <SectionBar>
+          </section><SectionBar>
             <span className="pill">Cross-site transfer</span>
             <span style={{ color: 'var(--ink-muted)' }}>one IMPROVE-trained calibration, applied unchanged to every SPARTAN site</span>
           </SectionBar>

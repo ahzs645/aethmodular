@@ -186,6 +186,7 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .frame-menu-root > .btn { display: inline-flex; align-items: center; gap: 4px; }
 .frame-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 60; width: 270px; padding: 4px; display: flex; flex-direction: column;
   background: var(--ink-panel); border: 1px solid var(--ink-border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14); }
+.frame-menu.floating { position: fixed; right: auto; z-index: 1000; overflow-y: auto; overscroll-behavior: contain; max-width: calc(100vw - 16px); }
 .frame-menu button { display: flex; flex-direction: column; gap: 2px; text-align: left; border: 0; background: transparent; border-radius: 6px;
   padding: 7px 9px; cursor: pointer; font-family: var(--font); color: var(--ink-text); }
 .frame-menu button:hover, .frame-menu button:focus-visible { background: var(--accent-soft); outline: none; }
@@ -507,13 +508,34 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 .chart-wrap.centered > svg { margin-left: auto; margin-right: auto; }
 .chart-wrap.centered .facet-grid { justify-items: center; }
 .chart-wrap.centered > .legend { justify-content: center; }
+/* Bottom keys use the chart's visible width and stay put as the plot pans. */
+.chart-wrap > .legend { position: sticky; left: 0; width: 100%; max-width: 100%; box-sizing: border-box; }
+.chart-wrap > .legend .legend-item { min-width: 0; max-width: 100%; }
+.chart-wrap > .legend .legend-item:has(.legend-ramp) { flex-wrap: wrap; }
+.legend-ramp { min-width: 0; max-width: 100%; }
 .chart-wrap.centered > .chart-note { text-align: center; }
 .chart-note { margin: 0 0 8px; font-size: calc(11.5px * var(--text-scale)); color: var(--ink-muted); }
+.connected-guide { max-width: 652px; margin: 0 auto 10px; line-height: 1.45; text-align: left !important; }
+.connected-inspector { max-width: 652px; margin: 8px auto 0; }
+.connected-step-controls { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 10px; }
+.connected-step-controls > .btn { min-width: 44px; min-height: 44px; font-size: 18px; }
+.connected-step-controls > .btn:disabled { opacity: .35; cursor: default; }
+.connected-readout { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--ink-border); border-radius: 6px; font-size: calc(12px * var(--text-scale)); }
+.connected-readout > span { color: var(--ink-muted); }
+.connected-readout strong { display: inline-flex; align-items: center; gap: 6px; }
+.connected-readout dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%; margin: 6px 0 0; }
+.connected-readout dt { color: var(--ink-muted); overflow-wrap: anywhere; }
+.connected-readout dd { font-family: var(--mono); margin: 3px 0 0; font-size: calc(15px * var(--text-scale)); }
+.connected-hit { cursor: pointer; }
+#connected [role=button]:focus-visible { outline: none; }
+#connected [role=button]:focus-visible .connected-hit { stroke: var(--accent); stroke-width: 2; }
 .facet-grid { display: grid; gap: 12px; }
 .facet-title { font-size: calc(12.5px * var(--text-scale)); font-weight: 600; margin: 0 0 2px; display: flex; gap: 6px; align-items: center; }
 
 /* SVG marks that should animate when the data behind them changes */
 .animated rect, .animated circle, .animated line, .animated path { transition: all 0.35s cubic-bezier(0.2, 0.7, 0.3, 1); }
+/* Summary text and its box reflow together when the chart width changes. */
+.animated .regression-summary rect { transition: none; }
 
 /* ---------- census table ---------- */
 
@@ -537,7 +559,7 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 .drawer {
   position: fixed; top: 0; right: 0; height: 100vh; width: min(480px, 100vw);
   background: var(--ink-panel); border-left: 1px solid var(--ink-border);
-  box-shadow: -8px 0 28px rgba(0, 0, 0, 0.12); z-index: 40; overflow-y: auto;
+  box-shadow: -8px 0 28px rgba(0, 0, 0, 0.12); z-index: 40; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
   padding: 16px 18px 40px; font-size: calc(12.5px * var(--text-scale));
   animation: drawer-in 0.18s ease-out;
 }
@@ -581,7 +603,18 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 .drawer-actions .btn:disabled { opacity: 0.4; cursor: default; }
 .drawer-section { padding: 10px 0 6px; border-bottom: 1px solid var(--ink-grid); }
 .drawer-section:last-child { border-bottom: 0; }
+.drawer-section { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.drawer-scroll { width: 100%; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+.drawer-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.drawer-scroll > .placement { min-width: 440px; }
 .drawer-section h3 { margin: 0 0 4px; font-size: calc(13px * var(--text-scale)); }
+
+/* iOS zooms focused text controls below 16px. Keep browser pinch zoom enabled. */
+@media (max-width: 640px), (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select, textarea {
+    font-size: max(16px, 1em) !important;
+  }
+}
 
 .spectrum-modal {
   width: min(1100px, calc(100vw - 32px)); max-height: calc(100dvh - 32px);
@@ -708,12 +741,13 @@ html:not([data-explain="1"]) .reference-guide { display: none; }
 .axis-pick text { text-decoration: underline dotted; text-decoration-color: var(--ink-muted); text-underline-offset: 3px; }
 .axis-pick:hover text, .axis-pick:focus-visible text { fill: var(--accent); text-decoration-color: var(--accent); }
 .axis-pick-caret { fill: var(--accent); font-size: calc(10px * var(--text-scale)); }
-.axis-popover { position: fixed; z-index: 75; display: flex; flex-direction: column; gap: 6px; padding: 8px; background: var(--ink-panel);
+.axis-popover { position: fixed; z-index: 1000; width: 300px; max-width: calc(100vw - 16px); overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 6px; padding: 8px; background: var(--ink-panel);
   border: 1px solid var(--ink-border); border-radius: 10px; box-shadow: 0 12px 32px rgba(31, 41, 51, 0.18); font-size: calc(12px * var(--text-scale)); }
 .axis-popover-head { display: flex; align-items: center; gap: 8px; font-size: calc(12.5px * var(--text-scale)); }
 .axis-popover-head .btn { margin-left: auto; }
 .axis-popover input { width: 100%; box-sizing: border-box; }
-.axis-popover-list { max-height: var(--list-max, 300px); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; }
+.axis-popover-head, .axis-popover > input { flex-shrink: 0; }
+.axis-popover-list { flex: 1 1 auto; min-height: 60px; max-height: 300px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; }
 
 /* actions for a brushed selection, floating above the charts */
 .brush-bar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 44; display: flex; align-items: center; gap: 8px;
@@ -871,8 +905,9 @@ html:has(.ctx-menu) .tooltip { visibility: hidden; }
 .grouping-dialog { width: min(680px, 100%); }
 /* GroupingPicker: the picker, then New… and Edit… (or Build on this… for a notebook grouping) */
 .grouping-picker { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; }
-.grouping-actions { display: inline-flex; gap: 4px; }
-.grouping-actions .btn { font-size: calc(11.5px * var(--text-scale)); padding: 1px 7px; }
+.grouping-actions { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.grouping-picker .combobox-trigger, .grouping-actions .btn { font-size: calc(12px * var(--text-scale)); line-height: 1.35; padding-top: 4px; padding-bottom: 4px; min-height: calc(1.35em + 10px); box-sizing: border-box; }
+.grouping-actions .btn { padding-left: 8px; padding-right: 8px; white-space: nowrap; }
 .grouping-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
 .grouping-cuts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex-basis: 100%; }
 .grouping-cut { display: inline-flex; align-items: center; }
@@ -987,23 +1022,26 @@ html[data-density="readable"] svg [font-size="16"] { font-size: calc(16px * var(
 
 /* ---------- several fields at once (components/FieldMultiSelect) ---------- */
 .field-multi { position: fixed; z-index: 1000; width: 340px; display: flex; flex-direction: column; background: var(--ink-panel);
-  border: 1px solid var(--ink-border); border-radius: 10px; box-shadow: 0 10px 30px rgba(31, 41, 51, 0.18); overflow: hidden; }
+  max-width: calc(100vw - 16px); border: 1px solid var(--ink-border); border-radius: 10px; box-shadow: 0 10px 30px rgba(31, 41, 51, 0.18); overflow-y: auto; overscroll-behavior: contain; }
+.field-multi-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; flex-shrink: 0; font-size: calc(13px * var(--text-scale)); }
 .field-multi-presets { display: flex; flex-wrap: wrap; gap: 5px; padding: 10px 10px 6px; border-bottom: 1px solid var(--ink-grid); }
 .field-multi-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--ink-grid); }
+.field-multi-presets, .field-multi-head { flex-shrink: 0; }
 .field-multi-head input { flex: 1; min-width: 0; }
 .field-multi-count { font-size: calc(11px * var(--text-scale)); color: var(--ink-muted); white-space: nowrap; }
-.field-multi-list { overflow-y: auto; padding: 4px 6px 8px; }
+.field-multi-list { flex: 1 1 auto; min-height: 80px; overflow-y: auto; overscroll-behavior: contain; padding: 4px 6px 8px; }
 .field-multi-group { padding: 4px 0; }
 .field-multi-grouphead { display: flex; align-items: center; gap: 6px; padding: 4px 4px 2px; font-size: calc(10.5px * var(--text-scale)); font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; color: var(--ink-muted); cursor: pointer; }
 .field-multi-item { display: flex; align-items: center; gap: 6px; padding: 3px 4px 3px 20px; font-size: calc(12.5px * var(--text-scale)); color: var(--ink-text); cursor: pointer; border-radius: 5px; }
 .field-multi-item:hover { background: var(--accent-soft); }
+@media (pointer: coarse) { .field-multi-item, .field-multi-grouphead { min-height: 36px; box-sizing: border-box; } }
 .field-multi-n { margin-left: auto; font-size: calc(11px * var(--text-scale)); color: var(--ink-muted); font-family: var(--mono); font-weight: 400; text-transform: none; letter-spacing: 0; }
 
 /* ---------- colour schemes (components/ColourSchemePicker) ---------- */
 .scheme-swatch { display: inline-block; width: 46px; height: 10px; border-radius: 3px; border: 1px solid rgba(0, 0, 0, 0.08); }
 .scheme-swatch.wide { width: 90px; height: 12px; }
 .scheme-pop { position: fixed; z-index: 1000; width: 250px; background: var(--ink-panel); border: 1px solid var(--ink-border); border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(31, 41, 51, 0.18); padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+  max-width: calc(100vw - 16px); overflow-y: auto; overscroll-behavior: contain; box-shadow: 0 10px 30px rgba(31, 41, 51, 0.18); padding: 6px; display: flex; flex-direction: column; gap: 4px; }
 .scheme-list { display: flex; flex-direction: column; }
 .scheme-item { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 2px 8px; border: 0; background: none; padding: 5px 6px; border-radius: 6px; cursor: pointer; text-align: left; font: calc(12.5px * var(--text-scale)) var(--font); color: var(--ink-text); }
 .scheme-item:hover { background: var(--accent-soft); }
@@ -1115,7 +1153,7 @@ html.dash-mode .app-title-row > .nav { flex: 0 0 auto; width: 84px; }
 .dash-tile.legend-right .chart-wrap:has(> .legend) { display: grid; grid-template-columns: minmax(0, 1fr) var(--legend-w); column-gap: 8px; align-items: start; }
 .dash-tile.legend-right .chart-wrap:has(> .legend) > :not(.legend) { grid-column: 1; }
 .dash-tile.legend-right .chart-wrap > .legend { grid-column: 2; grid-row: 1 / span 40; flex-direction: column; flex-wrap: nowrap; align-items: flex-start;
-  gap: 3px; max-height: 100%; overflow-y: auto; padding-top: 4px; }
+  position: static; width: auto; gap: 3px; max-height: 100%; overflow-y: auto; padding-top: 4px; }
 .dash-tile.legend-right .chart-wrap.centered:has(> .legend) { justify-items: center; }
 .tile-legend-mode { flex-basis: 100%; padding-top: 4px; }
 .legend-more { border: 1px solid var(--ink-border); background: var(--ink-panel); border-radius: 10px; padding: 0 7px; font: inherit; font-size: 0.92em;
@@ -1196,11 +1234,6 @@ html.dash-present .container.dash { padding-top: 10px; }
   .dash-pop-panel { max-width: 92vw; }
   .dash-empty { inset: 40px 12px auto; }
 }
-
-/* a fit's readout as text under the plot (components/RegressionOverlay, phones) */
-.fit-readout { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: 6px 0 0; padding: 6px 8px; border: 1px solid var(--ink-border); border-radius: 6px;
-  font-family: var(--mono); font-size: calc(11px * var(--text-scale)); background: var(--ink-panel); }
-
 
 /* ---------- phones: nothing wider than the window ---------- */
 @media (max-width: 640px) {
@@ -1389,3 +1422,64 @@ html.dash-present .container.dash { padding-top: 10px; }
 .excluded-reason { font-size: calc(11.5px * var(--text-scale)); color: var(--ink-text); }
 .excluded-why { max-width: none; width: 100%; min-width: 160px; }
 .excluded-copy { justify-self: start; }
+
+/* Dense categorical charts keep readable labels and scroll within their own frame. */
+.chart-scroll { width: 100%; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; }
+.chart-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.range-value { width: 4.5em; min-height: 30px; font: 12px var(--mono); border: 1px solid var(--ink-border); border-radius: 5px; padding: 3px 5px; color: var(--ink-text); background: var(--ink-panel); }
+.frame-actions button[aria-label="Focus on this chart"] { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; padding: 6px; }
+.combobox-option:disabled { opacity: .45; cursor: default; }
+.legend-group { align-items: flex-start; }
+.legend-group-name { flex: 0 0 9em; min-width: 0; }
+.legend-group > .legend-item { max-width: 100%; white-space: normal; }
+.legend-item .swatch { flex-shrink: 0; }
+.configuration-section { padding: 12px; border: 2px solid var(--accent-soft); border-radius: 12px; margin-bottom: 22px; }
+.configuration-section > .panel:first-child { background: var(--accent-soft); }
+@media (max-width: 640px) {
+  .panel { padding: 14px 10px 10px; }
+  .frame-controls, .grouping-picker, .control { max-width: 100%; }
+  .frame-controls .control, .frame-controls .grouping-picker { flex-wrap: wrap; }
+  .frame-controls .seg { flex-wrap: wrap; max-width: 100%; }
+  .frame-controls .combobox-control { min-width: 0; max-width: 100%; flex-wrap: wrap; }
+  .legend-group-name { flex-basis: 100%; }
+  .configuration-section { padding: 4px; }
+}
+
+.availability-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 12px 0 18px; }
+.availability-summary > span { padding: 12px; background: var(--accent-soft); border-radius: 7px; font-size: 12px; line-height: 1.6; }
+.availability-summary strong { display: block; font-size: 22px; color: var(--ink-text); }
+.availability-inventory { max-height: 420px; overflow-y: auto; margin-top: 14px; }
+.availability-table { min-width: 700px; width: 100%; }
+.availability-table th { position: sticky; top: 0; background: var(--ink-panel); z-index: 1; }
+.availability-table tr.active { background: var(--accent-soft); }
+.availability-spans { max-height: 480px; overflow-y: auto; }
+.availability-context { font-size: 12px; line-height: 1.7; padding: 10px 12px; background: var(--accent-soft); border-radius: 6px; overflow-wrap: anywhere; }
+.availability-matrix, .availability-month-matrix { max-height: 660px; overflow-y: auto; }
+.availability-product-table { width: 100%; min-width: 1500px; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
+.availability-product-table th { min-width: 110px; max-width: 155px; white-space: normal; }
+.availability-product-table small { display: block; font-size: 10px; color: var(--ink-muted); font-weight: normal; line-height: 1.5; }
+.availability-product-table th:first-child { min-width: 170px; max-width: 190px; position: sticky; left: 0; z-index: 1; background: var(--ink-panel); }
+.availability-product-table thead th { position: sticky; top: 0; background: var(--ink-panel); z-index: 2; }
+.availability-product-table thead th:first-child { z-index: 3; }
+.availability-product-table .available, .availability-product-table .active { background: var(--accent-soft); }
+.availability-product-table td { text-align: right; }
+.availability-reading { padding-left: 20px; font-size: 12px; line-height: 1.8; }
+.availability-sources { padding: 12px; font-size: 12px; line-height: 1.6; }
+.availability-sources summary { cursor: pointer; color: var(--accent); }
+.availability-sources code { display: block; overflow-wrap: anywhere; font-size: 10px; }
+.availability-sources li { margin-bottom: 8px; }
+@media (max-width: 480px) { .availability-product-table th:first-child { min-width: 110px; max-width: 120px; width: 120px; } }
+.availability-diagnostics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 18px; font-size: 12px; line-height: 1.6; }
+.availability-diagnostics ul { max-height: 180px; overflow-y: auto; padding-left: 20px; }
+.availability-coverage > div { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(80px, 1fr) 100px; align-items: center; gap: 12px; padding: 6px 0; font-size: 12px; }
+.availability-coverage meter { width: 100%; }
+@media (max-width: 640px) { .availability-coverage > div { grid-template-columns: minmax(0, 1fr) 80px; } .availability-coverage meter { grid-column: 1; } .availability-coverage > div > span:last-child { grid-column: 2; grid-row: auto; } }
+@media (max-width: 640px) {
+  .app-title-row { flex-wrap: wrap; }
+  .app-title-row > .hand-edits-badge { order: 4; flex-basis: 100%; max-width: 100%; margin: 0; }
+}
+@media (max-width: 480px) {
+  .frame-head { flex-wrap: wrap; gap: 8px; }
+  .frame-head > div:first-child { flex-basis: 100%; }
+  .frame-actions { margin-left: auto; }
+}

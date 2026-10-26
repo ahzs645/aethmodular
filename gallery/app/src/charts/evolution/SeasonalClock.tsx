@@ -11,6 +11,7 @@ import { INK, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile, SeasonMeta } from '@/lib/types'
 import { useChartOptions } from '@/lib/chartOptions'
 import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
+import { MeasurementControl } from '@/components/AxisFieldPopover'
 import { useFitHeight } from '@/lib/chartFit'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -107,10 +108,11 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
         .filter((s) => s.cells.some((c) => c.n > 0)),
     [rows, field, meta.sites]
   )
-  const series = allSeries.filter((s) => !hidden.has(s.name))
+  const series = allSeries.filter(s => !hidden.has(s.name)).map(s => ({ ...s, cells: s.cells.filter(c => !hidden.has(seasonsForSite(meta, s.name).find(season => season.months.includes(c.month))?.name ?? '')) }))
   // the options and when each applies (lib/chartOptions): a ring per site needs at least two
   // sites to compare and room for each ring, 8 at most
   const o = useChartOptions('clock', [
+    { key: 'seasons', label: 'Season overlay', toggle: true, default: false },
     { key: 'stat', label: 'Bar', choices: STATS, default: 'Median', title: "Statistic of the measurement across the month's filters" },
     { key: 'layout', label: 'Layout', choices: LAYOUTS, default: 'Grouped', hidden: 'Grouped',
       when: (c) => (c.nSeries as number) >= 2 && (c.nSeries as number) <= MAX_RINGS,
@@ -166,7 +168,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
 
   // the shared wedges need one calendar; with several sites' calendars in force the clock is left unshaded
   const mixed = mixedCalendars(meta)
-  const wedgeSeasons = mixed ? [] : meta.seasons
+  const wedgeSeasons = mixed || !o.values.seasons ? [] : meta.seasons.filter(s => !hidden.has(s.name))
   const seasonOf = (m: number, site?: string): SeasonMeta | undefined =>
     (site ? seasonsForSite(meta, site) : wedgeSeasons).find((s) => s.months.includes(m))
   const emphasizeFebruary = meta.season_convention !== 'local'
@@ -192,8 +194,9 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
       title="Seasonal clock — the year as a circle"
       subtitle={`Monthly statistic of the measurement, laid around a circle so December and January sit next to each other. ${mixed ? 'Each site keeps its own calendar, so the sectors are left unshaded; hover a bar for its local season, or pick one site to see its seasons.' : `Shaded sectors use the ${calendarLabel(meta)}.`}`}
       provenance="react-graph-gallery.com/circular-barplot · not in the estate"
-      controls={o.controls()}
+      controls={<><MeasurementControl />{o.controls()}</>}
     >
+      <p className="facet-title">{stat} {unit}</p>
       <div ref={wrapRef} className={`chart-wrap centered${fit === null ? '' : ' fit-square'}`} style={fit === null ? undefined : { minHeight: fit }}>
         {allSeries.length === 0 ? (
           <Empty>No site has {field} in this subset.</Empty>
@@ -210,9 +213,16 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
               {/* season sectors behind everything, from just inside the hole to just past the rim */}
               {d3.range(1, 13).map((m) => {
                 const s = seasonOf(m)
-                if (!s) return null
+                if (!s || hidden.has(s.name)) return null
                 return <path key={m} data-export-season={s.name} data-export-color={s.color} d={arc({ r0: Math.max(0, hole - 6), r1: outerR + 4, a0: monthStart(m), a1: monthStart(m + 1) }) ?? ''} fill={s.color} fillOpacity={seasonShade(s.name, seasonHover)} pointerEvents="none" />
               })}
+              {mixed && o.values.seasons && series.flatMap((site, i) => d3.range(1, 13).map(m => {
+                const season = seasonOf(m, site.name)
+                const start = monthStart(m)
+                const a0 = layout === 'Rings' ? start : start + (subBand(site.name) ?? 0)
+                const a1 = layout === 'Rings' ? monthStart(m + 1) : a0 + subBand.bandwidth()
+                return <path key={`${site.name}-${m}`} data-export-season={season?.name} data-export-color={season?.color} d={arc({ r0: ringInner(i), r1: ringOuter(i), a0, a1 }) ?? ''} fill={season?.color ?? INK.empty} fillOpacity={season && hidden.has(season.name) ? 0 : 0.2} pointerEvents="none" />
+              }))}
               {/* month spokes */}
               {d3.range(1, 13).map((m) => {
                 const [x0, y0] = polar(Math.max(0, hole - 6), monthStart(m))
@@ -227,11 +237,6 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
                   {ticks.map((t) => (
                     <circle key={t} r={rOf(i, t)} fill="none" stroke={INK.axis} strokeOpacity={0.28} strokeWidth={0.8} strokeDasharray="2 3" />
                   ))}
-                  {layout === 'Rings' && (
-                    <text x={0} y={-(ringInner(i) + (ringOuter(i) - ringInner(i)) / 2)} dy="0.35em" textAnchor="middle" fontSize={10.5} fontWeight={600} fill={s.color} opacity={dim(s.name)} stroke={INK.panel} strokeWidth={3} paintOrder="stroke">
-                      {s.name}
-                    </text>
-                  )}
                 </g>
               ))}
               {series.length > 0 &&
@@ -303,6 +308,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
                 )
               })}
 
+              {layout === 'Rings' && series.map((s, i) => <text key={`label-${s.name}`} x={-6} y={-(ringInner(i) + ringOuter(i)) / 2} dy="0.35em" textAnchor="end" fontSize={10.5} fontWeight={600} fill={s.color} opacity={dim(s.name)} stroke={INK.panel} strokeWidth={4} paintOrder="stroke" pointerEvents="none">{s.name}</text>)}
               {/* season names curved along the outside of their wedge */}
               {seasonNames && wedgeSeasons.flatMap((s) =>
                 circularRuns(s.months).map((_, i) => (
@@ -324,10 +330,10 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
         <Legend
           items={[
             ...allSeries.map((s) => ({ label: s.name, color: s.color })),
-            ...wedgeSeasons.map((s) => ({ label: s.name, color: s.color, shape: 'band' as const })),
+            ...(o.values.seasons ? meta.seasons : []).map((s) => ({ label: s.name, color: s.color, shape: 'band' as const })),
           ]}
           hidden={hidden}
-          onToggle={(l) => { if (allSeries.some((s) => s.name === l)) setHidden((h) => toggleIn(h, l)) }}
+          onToggle={l => setHidden(h => toggleIn(h, l))}
           onHover={setHover}
           highlighted={siteHover ?? seasonHover}
           note={emphasizeFebruary ? `bars share one value scale · February changes bins across Ethiopian conventions` : `bars share one value scale · ${calendarLabel(meta)}`}

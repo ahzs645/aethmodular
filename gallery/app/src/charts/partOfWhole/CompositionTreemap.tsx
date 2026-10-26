@@ -3,6 +3,7 @@ import * as d3 from 'd3'
 import { HIDDEN_DUPLICATES, RESTATES } from '@/fieldLineage'
 import { useChartOptions } from '@/lib/chartOptions'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { wrapCategory } from '@/components/CategoryAxis'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -47,8 +48,8 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
   // bars, the family level to the hierarchy views; bars by season need more than one season in view
   const o = useChartOptions(id, [
     { key: 'mode', label: 'Encoding', choices: MODES, default: 'Stacked bars', hidden: 'Stacked bars', when: () => !stackedOnly },
-    { key: 'bars', label: 'Bars', choices: GROUPINGS, default: initialGrouping, hidden: 'per site', title: 'One bar per site, or one per season within each site',
-      when: (c) => c.mode === 'Stacked bars' && (c.nSeasons as number) > 1 },
+    { key: 'bars', label: 'Group by', choices: GROUPINGS, default: initialGrouping, hidden: 'per site', title: 'One panel or bar per site, or one per season within each site',
+      when: (c) => (c.nSeasons as number) > 1 },
     { key: 'units', label: 'Units', choices: UNIT_MODES, default: 'concentration (µg/m³)', hidden: 'concentration (µg/m³)', when: (c) => c.mode === 'Stacked bars' },
     { key: 'stat', label: 'Statistic', choices: STATS, default: 'Mean' },
     { key: 'twoLevel', label: 'Group by family', toggle: true, default: true, hidden: true, when: (c) => c.mode !== 'Stacked bars', title: 'Two levels of hierarchy: family → species' },
@@ -174,7 +175,7 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
             <StackedBars bars={bars} grouped={bySeason} pct={pct} families={families} val={val} dim={dimK} famDim={fam.dim} color={color} familyColor={familyColor} width={width} tip={tip} units={UNITS} statistic={stat.toLowerCase()} />
           </div>
         ) : (
-          shownSites.map((site) => {
+          (bySeason ? composition.seasonBars.map(b => ({ code: b.key, name: `${b.site} · ${b.label}`, color: b.siteColor, pm25_mean: b.pm25_mean, children: b.children.filter(vis) })) : shownSites).map((site) => {
             const kids = site.children.filter((c) => val(c) > 0)
             const total = d3.sum(kids, val)
             const root = rootFor(site.name, kids)
@@ -267,8 +268,10 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
         )}
         {tip.node}
       </div>
-      {famOn && <Legend items={families.map((f) => ({ label: f, color: familyColor(f), shape: 'band' as const }))} {...fam.props} />}
-      <Legend items={speciesFields.map((f) => ({ label: f, color: color(f), shape: 'square' as const }))} {...lg.props} />
+      <Legend items={[
+        ...(famOn ? families.map(f => ({ label: f, color: familyColor(f), shape: 'band' as const })) : []),
+        ...speciesFields.map(f => ({ label: f, parent: famOn ? familyOf(f) : undefined, color: color(f), shape: 'square' as const })),
+      ]} hidden={new Set([...fam.hidden, ...lg.hidden])} onToggle={label => families.includes(label) ? fam.toggle(label) : lg.toggle(label)} onHover={label => { fam.setHover(label && families.includes(label) ? label : null); lg.setHover(label && !families.includes(label) ? label : null) }} highlighted={fam.hover ?? lg.hover} />
       {notes}
     </ChartFrame>
   )
@@ -296,8 +299,9 @@ function StackedBars({ bars, grouped, pct, families, val, dim, famDim, color, fa
   statistic: string
 }) {
   const chartLabel = useChartLabel()
-  const margin = { top: 16, right: 20, bottom: grouped ? 72 : 40, left: 60 }
-  const innerW = Math.max(240, width - margin.left - margin.right)
+  const margin = { top: 16, right: 20, bottom: grouped ? 100 : 64, left: 60 }
+  const plotWidth = Math.max(width, (bars.length + new Set(bars.map(b => b.site)).size - 1) * 112 + margin.left + margin.right)
+  const innerW = plotWidth - margin.left - margin.right
   const fit = useFitHeight()
   const innerH = fit === null ? 320 : Math.max(100, fit - margin.top - margin.bottom)
   // a spacer slot between site clusters so the seasons of one site read as a group
@@ -316,7 +320,7 @@ function StackedBars({ bars, grouped, pct, families, val, dim, famDim, color, fa
   const yLabel = pct ? 'share of visible species total (%)' : `${statistic} concentration (${units})`
   const famText = (v: number, total: number) => (pct ? `${Math.round((v / total) * 100)}%` : fmt(v, 1))
   return (
-    <svg width={width} height={innerH + margin.top + margin.bottom} className="animated">
+    <div className="chart-scroll" tabIndex={0} role="region" aria-label="Stacked bars, scroll horizontally for all seasons"><svg width={plotWidth} height={innerH + margin.top + margin.bottom} className="animated">
       <g transform={`translate(${margin.left},${margin.top})`}>
         {y.ticks(5).map((t) => (
           <g key={t} transform={`translate(0,${y(t)})`}>
@@ -367,9 +371,9 @@ function StackedBars({ bars, grouped, pct, families, val, dim, famDim, color, fa
               {grouped ? (
                 <>
                   <rect x={bx} y={innerH + 3} width={bw} height={3} fill={bar.barColor} rx={1}><title>{bar.label}</title></rect>
-                  <text x={bx + bw / 2} y={innerH + 17} textAnchor="middle" fontSize={10.5} fontWeight={600} fill={INK.text} fontFamily={FONT.family}>{seasonName}</text>
-                  {seasonMonths && <text x={bx + bw / 2} y={innerH + 29} textAnchor="middle" fontSize={9} fill={INK.muted} fontFamily={FONT.family}>{seasonMonths}</text>}
-                  <text x={bx + bw / 2} y={innerH + 41} textAnchor="middle" fontSize={9} fill={INK.muted} fontFamily={FONT.mono}>{pct ? `n=${bar.nRows}` : fmt(total, 1)}</text>
+                  <text x={bx + bw / 2} y={innerH + 17} textAnchor="middle" fontSize={10.5} fontWeight={600} fill={INK.text} fontFamily={FONT.family}>{wrapCategory(seasonName, x.step() - 10).map((line, i) => <tspan x={bx + bw / 2} dy={i ? 13 : 0} key={i}>{line}</tspan>)}</text>
+                  {seasonMonths && <text x={bx + bw / 2} y={innerH + 47} textAnchor="middle" fontSize={9} fill={INK.muted} fontFamily={FONT.family}>{seasonMonths}</text>}
+                  <text x={bx + bw / 2} y={innerH + 60} textAnchor="middle" fontSize={9} fill={INK.muted} fontFamily={FONT.mono}>{pct ? `n=${bar.nRows}` : fmt(total, 1)}</text>
                 </>
               ) : (
                 <>
@@ -395,12 +399,12 @@ function StackedBars({ bars, grouped, pct, families, val, dim, famDim, color, fa
           const x1 = (x(mine[mine.length - 1].key) ?? 0) + bw
           return (
             <g key={site} pointerEvents="none">
-              <line x1={x0} x2={x1} y1={innerH + 50} y2={innerH + 50} stroke={mine[0].siteColor} strokeWidth={1.5} />
-              <text x={(x0 + x1) / 2} y={innerH + 64} textAnchor="middle" fontSize={11.5} fontWeight={600} fill={mine[0].siteColor} fontFamily={FONT.family}>{chartLabel(site)}</text>
+              <line x1={x0} x2={x1} y1={innerH + 71} y2={innerH + 71} stroke={mine[0].siteColor} strokeWidth={1.5} />
+              <text x={(x0 + x1) / 2} y={innerH + 88} textAnchor="middle" fontSize={11.5} fontWeight={600} fill={mine[0].siteColor} fontFamily={FONT.family}>{chartLabel(site)}</text>
             </g>
           )
         })}
       </g>
-    </svg>
+    </svg></div>
   )
 }

@@ -38,9 +38,8 @@ export function RegressionLines({ stats, x, y, domain, width, height, color, lab
   </g></g>
 }
 
-/** the readout's lines (title, n and R², each fit's equation, CIs) and its hover note, shared by the SVG box and the text form */
-function useReadout(stats: RegressionStats | null, title?: string, color?: string) {
-  const { methods, showCI } = useRegressions()
+/** Shared content for the summary and specialised SVG legends. */
+function readout(stats: RegressionStats | null, methods: Estimator[], showCI: boolean, title?: string, color?: string) {
   if (!stats) return null
   const fits = fitsFor(stats, methods)
   const missingYork = methods.includes('york') && !fits.some(f => f.method === 'york')
@@ -59,7 +58,8 @@ function useReadout(stats: RegressionStats | null, title?: string, color?: strin
 }
 
 export function RegressionReadout({ stats, x = 10, y = 10, width = 280, title, color }: { stats: RegressionStats | null; x?: number; y?: number; width?: number; title?: string; color?: string }) {
-  const r = useReadout(stats, title, color)
+  const { methods, showCI } = useRegressions()
+  const r = readout(stats, methods, showCI, title, color)
   if (!r) return null
   const { lines, note } = r
   // a narrow panel shrinks the monospace text to fit its box instead of letting the SVG edge clip it
@@ -72,37 +72,69 @@ export function RegressionReadout({ stats, x = 10, y = 10, width = 280, title, c
   </g>
 }
 
+const SUMMARY_FONT = 11
+const SUMMARY_STEP = 16
+const SUMMARY_GAP = 12
+
+/** Wrap SVG text at a readable size, including long group names and CI notes. */
+function wrapSummary(text: string, width: number) {
+  const limit = Math.max(1, Math.floor((width - 16) / (SUMMARY_FONT * 0.62)))
+  const lines: string[] = []
+  let line = ''
+  for (const word of text.split(/\s+/)) {
+    if (line && line.length + word.length + 1 > limit) { lines.push(line); line = '' }
+    // IDs and other unbroken labels must also fit the box.
+    let rest = word
+    while (rest.length > limit) { lines.push(rest.slice(0, limit)); rest = rest.slice(limit) }
+    line = line ? `${line} ${rest}` : rest
+  }
+  if (line) lines.push(line)
+  return lines
+}
+
 /**
- * The same readout as text under the chart, for a phone: inside the plot the box covers points
- * and runs off a narrow panel. Charts draw this instead of RegressionReadout when
- * useNarrowScreen() holds (export keeps it: it is legend-row text).
+ * A single placement rule for paired-data charts: reserve a summary above the
+ * axes at every width. n / R² precede one equation per line. Multiple fits use
+ * the same boxes, stacked on phones and up to two columns on wide panels.
+ * The returned height is part of the SVG, so exports keep the exact layout.
  */
-export function RegressionReadoutText({ stats, title, color }: { stats: RegressionStats | null; title?: string; color?: string }) {
-  const r = useReadout(stats, title, color)
-  if (!r) return null
-  return <p className="fit-readout legend" data-export="text" title={r.note || undefined}>
-    {r.lines.map((l, i) => <span key={i} style={{ color: l.color }} data-regression-color={l.method}>{l.text}</span>)}
-  </p>
+export function useRegressionSummary({ stats, groups, width, enabled = true }: {
+  stats: RegressionStats | null; groups?: RegressionGroup[]; width: number; enabled?: boolean
+}) {
+  const { methods, showCI } = useRegressions()
+  const items = !enabled || !methods.length ? [] : groups ?? [{ stats, name: undefined, color: undefined }]
+  const columns = Math.max(1, Math.min(2, items.length, Math.floor(width / 290)))
+  const cellWidth = (width - (columns - 1) * SUMMARY_GAP) / columns
+  const boxes = items.flatMap(group => {
+    const r = readout(group.stats, methods, showCI, group.name, group.color)
+    if (!r) return []
+    const lines = r.lines.flatMap(line => wrapSummary(line.text, cellWidth).map(text => ({ ...line, text })))
+    // Reserve the same minimum height in adjacent pooled panels even when a
+    // selected method or its CI is unavailable in one panel.
+    const minLines = (group.name ? 1 : 0) + 1 + methods.length * (showCI ? 3 : 1) + (showCI ? 2 : 0)
+    return [{ ...r, lines, name: group.name, color: group.color, height: Math.max(minLines, lines.length) * SUMMARY_STEP + 12 }]
+  })
+  let height = 0
+  let rowY = 0
+  const positions = boxes.map((_, i) => {
+    if (i % columns === 0) {
+      rowY = height + (i ? SUMMARY_GAP : 0)
+      const rowHeight = Math.max(...boxes.slice(i, i + columns).map(b => b.height))
+      height = rowY + rowHeight
+    }
+    return { x: (i % columns) * (cellWidth + SUMMARY_GAP), y: rowY }
+  })
+  return { height, node: boxes.length ? <g className="regression-summary" role="group" aria-label="Regression statistics" fontFamily={FONT.mono} fontSize={SUMMARY_FONT} pointerEvents="none">
+    {boxes.map((box, i) => <g key={box.name ?? 'pooled'} transform={`translate(${positions[i].x},${positions[i].y})`} data-fit-site={box.name} data-export-color={box.color}>
+      <rect width={cellWidth} height={box.height} rx={5} fill={INK.panel} stroke={INK.border} />
+      {box.lines.map((line, j) => <text key={j} x={8} y={SUMMARY_STEP + 3 + j * SUMMARY_STEP} fill={line.color} data-regression-color={line.method}>{line.text}</text>)}
+      {box.note && <title>{box.note}</title>}
+    </g>)}
+  </g> : null }
 }
 
 export function RegressionGroupLines({ groups, ...props }: Omit<Parameters<typeof RegressionLines>[0], 'stats' | 'color' | 'domain'> & { groups: RegressionGroup[] }) {
   return <>{groups.map(group => <g key={group.name} data-fit-site={group.name} data-export-color={group.color}>
     <RegressionLines {...props} stats={group.stats} color={group.color} label={group.name} domain={group.domain} />
   </g>)}</>
-}
-
-/** Readouts below the axes stay legible and are retained in SVG / PNG exports. */
-export function regressionGroupReadoutLayout(count: number, width: number, methods: readonly Estimator[], showCI: boolean) {
-  const columns = Math.max(1, Math.min(2, Math.floor(width / 290)))
-  const cellWidth = (width - (columns - 1) * 12) / columns
-  const rowHeight = 70 + methods.length * (showCI ? 45 : 15)
-  return { columns, cellWidth, rowHeight, height: Math.ceil(count / columns) * rowHeight }
-}
-
-export function RegressionGroupReadouts({ groups, width, x = 0, y = 0 }: { groups: RegressionGroup[]; width: number; x?: number; y?: number }) {
-  const { methods, showCI } = useRegressions()
-  const layout = regressionGroupReadoutLayout(groups.length, width, methods, showCI)
-  return <g transform={`translate(${x},${y})`}>{groups.map((group, i) => <g key={group.name} data-fit-site={group.name} data-export-color={group.color}><RegressionReadout
-    stats={group.stats} title={group.name} color={group.color} width={layout.cellWidth}
-    x={(i % layout.columns) * (layout.cellWidth + 12)} y={Math.floor(i / layout.columns) * layout.rowHeight} /></g>)}</g>
 }

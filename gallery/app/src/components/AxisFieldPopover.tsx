@@ -2,11 +2,12 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import { fieldHelp } from '@/lib/glossary'
 import { pickerName } from '@/lib/pmfGroups'
 import { createPortal } from 'react-dom'
-import { prettyUnit } from '@/components/FieldSelect'
+import { FieldSelect, prettyUnit } from '@/components/FieldSelect'
 import { DEFINE_RATIO, useRatios } from '@/components/RatioDialog'
 import { RATIO_GROUP } from '@/lib/viewFields'
 import { chemText } from '@/lib/format'
 import type { MetaFile } from '@/lib/types'
+import { useFloatingMenu } from '@/hooks/useFloatingMenu'
 
 /** Which shared choice an axis shows: the crossplot pair, or the one measurement of the single-field tabs. */
 export type AxisRole = 'x' | 'y' | 'field'
@@ -42,7 +43,7 @@ export const useAxisFields = () => useContext(Ctx)
 const ROLE_TITLE: Record<AxisRole, string> = { x: 'x axis', y: 'y axis', field: 'Measurement' }
 
 /** A searchable, grouped field list anchored to the clicked axis title. */
-export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; anchor: DOMRect; onClose: () => void }) {
+export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; anchor: Element; onClose: (restoreFocus?: boolean) => void }) {
   const ctx = useAxisFields()
   const ratioCtx = useRatios()
   const ratio = ctx?.ratios === false ? null : ratioCtx
@@ -50,30 +51,34 @@ export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; an
   const input = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
+  const trigger = useMemo(() => ({ current: anchor }), [anchor])
+  const place = useFloatingMenu(true, trigger, box, 400)
+  const positioned = place !== null
   useEffect(() => {
-    input.current?.focus()
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    const onDown = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) onClose() }
-    // the page scrolling away from the title closes it; scrolling the popover's own list must not
-    const onScroll = (e: Event) => { if (!box.current?.contains(e.target as Node)) onClose() }
+    if (!positioned) return
+    if (window.matchMedia('(hover: none), (pointer: coarse)').matches) box.current?.focus({ preventScroll: true })
+    else input.current?.focus({ preventScroll: true })
+  }, [positioned])
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); onClose() } }
+    const onDown = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node) && !anchor.contains(e.target as Node)) onClose(false) }
     window.addEventListener('keydown', onKey)
     document.addEventListener('pointerdown', onDown)
-    window.addEventListener('scroll', onScroll, { passive: true, capture: true })
     return () => {
       window.removeEventListener('keydown', onKey)
       document.removeEventListener('pointerdown', onDown)
-      window.removeEventListener('scroll', onScroll, { capture: true })
     }
   }, [onClose])
   // open at the current choice, centred in the list, so stepping through nearby fields needs no scrolling
   useLayoutEffect(() => {
+    if (!positioned) return
     const list = box.current?.querySelector<HTMLElement>('.axis-popover-list')
     const cur = list?.querySelector<HTMLElement>('[aria-selected="true"]')
     if (!list || !cur) return
     const top = cur.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop
     list.scrollTop = Math.max(0, top - list.clientHeight / 2 + cur.offsetHeight / 2)
     setActive(Number(cur.dataset.i ?? 0))
-  }, [])
+  }, [positioned])
   // arrow keys keep their choice in view; opening and hovering never move the list
   const keyTo = (i: number) => {
     setActive(i)
@@ -88,27 +93,19 @@ export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; an
   // the ratio dialog (components/RatioDialog), always last
   if (ratio) rows.push({ f: DEFINE_RATIO, group: RATIO_GROUP })
   const pick = (f: string | undefined) => {
-    if (!f) return
+    if (!f || (f !== DEFINE_RATIO && meta.coverage?.[f] === 0 && f !== value[role] && meta.fields.some(key => (meta.coverage?.[key] ?? 0) > 0))) return
     onClose()
     if (f === DEFINE_RATIO) ratio?.open((field) => set(role, field))
     else set(role, f)
   }
-  // below the title, kept inside the window
-  const W = 300
-  const left = Math.max(8, Math.min(window.innerWidth - W - 8, anchor.left + anchor.width / 2 - W / 2))
-  // open on the side with more room, and fit the list into it, so the search box never leaves the window
-  const roomBelow = window.innerHeight - anchor.bottom - 14, roomAbove = anchor.top - 14
-  const below = roomBelow >= Math.min(320, roomAbove)
-  const listMax = Math.max(120, Math.min(300, (below ? roomBelow : roomAbove) - 80))
-  const style = { left, ...(below ? { top: anchor.bottom + 6 } : { bottom: window.innerHeight - anchor.top + 6 }), ['--list-max' as string]: `${listMax}px` }
   return createPortal(
-    <div className="axis-popover" ref={box} style={{ ...style, width: W }} role="dialog" aria-label={`Choose the ${ROLE_TITLE[role].toLowerCase()} field`}>
+    <div className="axis-popover" ref={box} tabIndex={-1} style={place ?? { position: 'fixed', visibility: 'hidden' }} role="dialog" aria-label={`Choose the ${ROLE_TITLE[role].toLowerCase()} field`}>
       <div className="axis-popover-head">
         <strong>{ROLE_TITLE[role]}</strong>
         {role !== 'field' && value.x && value.y && (!ctx.rolesOf || ctx.rolesOf(value[role === 'x' ? 'y' : 'x']).includes(role)) && <button type="button" className="btn quiet" title="Swap x and y"
           onClick={() => { set('x', value.y); onClose() }}>⇅ swap</button>}
       </div>
-      <input ref={input} className="select" type="text" placeholder={`Search ${ctx.noun ?? 'measurements'}…`} value={query}
+      <input ref={input} className="select" type="text" aria-label={`Search ${ctx.noun ?? 'measurements'}`} placeholder={`Search ${ctx.noun ?? 'measurements'}…`} value={query}
         onChange={(e) => { setQuery(e.target.value); setActive(0) }}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown') { e.preventDefault(); keyTo(Math.min(rows.length - 1, active + 1)) }
@@ -119,7 +116,7 @@ export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; an
         {rows.map((r, i) => (
           <div key={r.f} role="presentation">
             {r.group !== rows[i - 1]?.group && <div className="combobox-group">{r.group}</div>}
-            <button type="button" role="option" aria-selected={r.f === value[role]} data-i={i}
+            <button type="button" role="option" aria-selected={r.f === value[role]} data-i={i} disabled={meta.coverage?.[r.f] === 0 && r.f !== value[role] && meta.fields.some(key => (meta.coverage?.[key] ?? 0) > 0)}
               className={`combobox-option${i === active ? ' active' : ''}`}
               onMouseEnter={() => setActive(i)} onClick={() => pick(r.f)}>
               <span className="combobox-check" aria-hidden="true">{r.f === value[role] ? '✓' : ''}</span>
@@ -134,4 +131,10 @@ export function AxisFieldPopover({ role, anchor, onClose }: { role: AxisRole; an
     </div>,
     document.body,
   )
+}
+
+/** Keep measurement recovery available even when a chart has no axes to click. */
+export function MeasurementControl() {
+  const ctx = useAxisFields()
+  return ctx ? <FieldSelect label="Measurement" value={ctx.value.field} meta={ctx.meta} onChange={(f) => ctx.set('field', f)} /> : null
 }

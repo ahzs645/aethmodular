@@ -3,7 +3,7 @@ import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
 import { IdentityLine } from '@/components/RefLines'
-import { RegressionLines, RegressionReadout } from '@/components/RegressionOverlay'
+import { RegressionLines, useRegressionSummary } from '@/components/RegressionOverlay'
 import { SpectrumModal } from '@/components/FilterSpectrumPlot'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -71,20 +71,22 @@ function StationPanel({ v, data, side, tip, onOpen }: {
   const tot = v.k === 'p' ? [d3.sum(pairs, (p) => p.s), d3.sum(pairs, (p) => p.e)] : null
   const [d0, d1] = x.domain()
   const r = side > 300 ? 3.2 : 2.6
+  const summary = useRegressionSummary({ stats, width: side + M.left + M.right - 24 })
+  const top = M.top + summary.height + (summary.height ? 12 : 0)
   return (
     <div className="expandable-panel">
     {onOpen && <button type="button" className="btn quiet panel-expand" style={{ right: M.right }} onClick={onOpen} aria-label={`Open ${v.label} larger`} title="Open larger"><ExpandIcon /></button>}
-    <svg width={side + M.left + M.right} height={side + M.top + M.bottom} fontFamily={FONT.family}>
+    <svg width={side + M.left + M.right} height={side + top + M.bottom} fontFamily={FONT.family}>
       <text x={M.left} y={13} fontSize={12} fontWeight={600} fill={INK.text}>{v.label}
         <tspan fontWeight={400} fill={INK.muted} fontSize={10.5}> · bias {bias !== undefined && bias >= 0 ? '+' : ''}{fmt(bias, 2)} {v.unit}{tot ? ` · totals ${fmt(tot[0], 0)} / ${fmt(tot[1], 0)} mm` : ''}</tspan></text>
-      <g transform={`translate(${M.left},${M.top})`}>
+      <g transform="translate(12,24)">{summary.node}</g>
+      <g className="regression-plot" transform={`translate(${M.left},${top})`}>
         <YAxis scale={y} x={0} label={`ERA5 (${v.unit})`} gridWidth={side} tickCount={4} labelX={-40} />
         <XAxis scale={x} y={side} label={`station (${v.unit})`} tickCount={4} labelDy={36} />
         <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />
         <RegressionLines stats={stats} x={x} y={y} domain={x.domain()} width={side} height={side} />
         {pairs.map((p) => <circle key={p.d} cx={x(p.s)} cy={y(p.e)} r={r} fill={DOT} fillOpacity={0.55} stroke={INK.panel} strokeWidth={0.6}
           onMouseEnter={(e) => tip.show(e, [p.d, `station ${fmt(p.s, 1)} · ERA5 ${fmt(p.e, 1)} ${v.unit}`])} onMouseLeave={tip.hide} />)}
-        <RegressionReadout stats={stats} width={Math.min(250, side - 16)} x={6} y={6} />
       </g>
     </svg>
     </div>

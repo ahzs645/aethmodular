@@ -29,6 +29,11 @@ function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
 async function get(path: string): Promise<Response> {
   const r = await fetch(dataUrl(path))
   if (!r.ok) throw new Error(`${path}: HTTP ${r.status}`)
+  // Static hosts may answer a missing data URL with the app's HTML page and
+  // status 200. Report a missing export before JSON/gzip decoding obscures it.
+  if (r.headers.get('content-type')?.toLowerCase().includes('text/html')) {
+    throw new Error(`${path}: the data export is not available on this host`)
+  }
   return r
 }
 

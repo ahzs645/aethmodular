@@ -349,7 +349,7 @@ export function SpecCurve({
         )}
         {layout === 'overlay' && <p className="chart-note">Each baseline is sorted independently on a percentile axis. Curves compare distributions, not matched configurations. Choice strips are shown in the One curve and Per baseline views.</p>}
         {file && data && data !== 'missing' && data.n > file.n && <p className="chart-note">{(data.n - file.n).toLocaleString()} configurations have no {METRICS[metric].name}{metric === 'heldout' ? ' (interleaved cross-validation holds no whole IMPROVE site out)' : ''} and are left out of this view.</p>}
-        {showDots && (dots !== 'guardrails' || previewing) && <p className="chart-note">Red dots: {highlightDescription}. Rules run on the displayed fit's intercept and slope; the saved guardrail results (field "Passes the saved guardrails") stay unchanged.</p>}
+        {showDots && <p className="chart-note">Red dots: {highlightDescription}.{layout === 'stacked' ? ' Shared vertical scale; each panel is sorted independently.' : ''} Rules run on the displayed fit's intercept and slope; the saved guardrail results (field "Passes the saved guardrails") stay unchanged.</p>}
         {editing && file && <Suspense fallback={null}><GuardrailEditor title={title ?? 'Specification curve'} src={file} scope={inView}
           preview={inView.length > 0 ? <PreviewCurve {...curve()} shown={inView} id={`${id}-${method}-preview`} /> : <Empty>No configuration matches the chart's filters.</Empty>}
           initial={userRule && dots === 'rule' ? userRule : TEMPLATES.find(t => t.key === lastPreset.current)?.rule ?? TEMPLATES[0].rule}

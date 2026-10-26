@@ -1,7 +1,7 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
-import { XAxis, YAxis } from '@/components/Axes'
+import { YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
@@ -10,6 +10,10 @@ import { INK, MARGIN, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
 import { useChartGrouping } from '@/components/GroupingDialog'
+
+import { MeasurementControl } from '@/components/AxisFieldPopover'
+import { CategoryAxis, categoryLines } from '@/components/CategoryAxis'
+import { useTileSetting } from '@/lib/url'
 
 const MODES = ['Boxplot', 'Box + points', 'Violin', 'Beeswarm'] as const
 const GROUPS = ['Site', 'Season', 'Group'] as const
@@ -29,8 +33,9 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
   const hl = useHighlight()
   const height = useFitHeight() ?? 440
 
-  const [groupChoice, setGroupBy] = useState<(typeof GROUPS)[number]>('Site')
-  const [mode, setMode] = useState<(typeof MODES)[number]>('Boxplot')
+  const [groupChoice, setGroupBy] = useTileSetting<(typeof GROUPS)[number]>('distribution.by', 'Site')
+  const [mode, setMode] = useTileSetting<(typeof MODES)[number]>('distribution.encoding', 'Boxplot')
+  const [comparison, setComparison] = useTileSetting<'Pooled' | 'Compare sites'>('distribution.compare', 'Compare sites')
 
   // Group: the reader's grouping (components/GroupingDialog), its bands in order, on the filters that carry the field
   const measured = useMemo(() => rows.filter((r) => typeof r[field] === 'number' && Number.isFinite(r[field] as number)), [rows, field])
@@ -42,35 +47,31 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
 
   const groups = useMemo(() => {
     if (groupBy === 'Group' && !grp) return []
-    const key = (r: FilterRow) => (groupBy === 'Site' ? r.site : groupBy === 'Group' ? grp!.labelOf(r) ?? '' : r.season)
-    const order = groupBy === 'Site' ? meta.sites.map((s) => s.name) : groupBy === 'Group' ? grp!.labels : meta.seasons.map((s) => s.name)
+    const split = groupBy === 'Group' && comparison === 'Compare sites'
+    const key = (r: FilterRow) => groupBy === 'Site' ? r.site : groupBy === 'Group' ? (grp!.labelOf(r) === null ? '' : split ? `${grp!.labelOf(r)}|${r.site}` : grp!.labelOf(r)!) : r.season
+    const order = groupBy === 'Site' ? meta.sites.map(s => s.name) : groupBy === 'Group' ? split ? grp!.labels.flatMap(label => meta.sites.map(s => `${label}|${s.name}`)) : grp!.labels : meta.seasons.map(s => s.name)
     const m = new Map<string, { v: number; row: FilterRow }[]>()
-    for (const r of rows) {
-      const v = r[field]
-      if (typeof v !== 'number' || !Number.isFinite(v)) continue
+    for (const r of measured) {
       const k = key(r)
+      if (!k) continue
       if (!m.has(k)) m.set(k, [])
-      m.get(k)!.push({ v, row: r })
+      m.get(k)!.push({ v: r[field] as number, row: r })
     }
-    return order
-      .filter((o) => (m.get(o)?.length ?? 0) >= 4)
-      .map((name) => {
-        const items = m.get(name)!
-        return {
-          name,
-          items,
-          values: items.map((i) => i.v),
-          color: (groupBy === 'Site' ? siteColor.get(name) : groupBy === 'Group' ? grp!.colorOf(name) : seasonColor.get(name)) ?? INK.muted,
-          box: boxStats(items.map((i) => i.v))!,
-        }
-      })
-  }, [rows, field, groupBy, meta, siteColor, seasonColor, grp])
+    return order.filter(name => (m.get(name)?.length ?? 0) >= 4).map(name => {
+      const items = m.get(name)!, site = items[0].row.site
+      const parent = groupBy === 'Season' && name.startsWith(`${site} · `) ? site : split ? grp!.labelOf(items[0].row)! : undefined
+      const label = groupBy === 'Season' && parent ? name.slice(site.length + 3) : split ? site : name
+      const color = (groupBy === 'Site' || split ? siteColor.get(site) : groupBy === 'Group' ? grp!.colorOf(name) : seasonColor.get(name)) ?? INK.muted
+      return { name, key: name, label, parent, parentColor: groupBy === 'Season' ? siteColor.get(site) : undefined, site: groupBy === 'Site' || groupBy === 'Season' || split ? site : undefined, items, values: items.map(i => i.v), color, box: boxStats(items.map(i => i.v))! }
+    })
+  }, [measured, field, groupBy, comparison, meta, siteColor, seasonColor, grp])
 
-  const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
-  const innerH = height - MARGIN.top - MARGIN.bottom
-
-  const x = d3.scaleBand<string>().domain(groups.map((g) => g.name)).range([0, innerW]).padding(0.34)
-  const allVals = groups.flatMap((g) => g.values)
+  const plotWidth = Math.max(width, groups.length * 112 + MARGIN.left + MARGIN.right)
+  const innerW = Math.max(160, plotWidth - MARGIN.left - MARGIN.right)
+  const bottom = 34 + Math.max(1, ...groups.map(g => categoryLines(g.label).length)) * 14 + (groups.some(g => g.parent) ? 34 : 0)
+  const innerH = Math.max(140, height - MARGIN.top - bottom)
+  const x = d3.scaleBand<string>().domain(groups.map(g => g.name)).range([0, innerW]).padding(0.34)
+  const allVals = groups.flatMap(g => g.values)
   const y = d3.scaleLinear().domain([Math.min(0, d3.min(allVals) ?? 0), (d3.max(allVals) ?? 1) * 1.05]).range([innerH, 0]).nice()
 
   // deterministic jitter so the beeswarm doesn't dance on every re-render
@@ -87,20 +88,23 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
       provenance="stands in for 50 boxplot + 3 violin figures · plotting/distributions.py · react-graph-gallery.com/boxplot · /boxplot-jitter"
       controls={
         <>
+          <MeasurementControl />
           <Segmented label="Group by" value={groupBy} options={grp ? GROUPS : GROUPS.filter((g) => g !== 'Group')} onChange={setGroupBy} />
           {picker}
+          {groupBy === 'Group' && <Segmented label="Sites" value={comparison} options={['Pooled', 'Compare sites'] as const} onChange={setComparison} title="Apply shared grouping cutoffs to all filters; compare sites side by side within each band" />}
           <Segmented label="Encoding" value={mode} options={MODES} onChange={setMode} />
         </>
       }
     >
       <div ref={wrapRef} className="chart-wrap">
+        {plotWidth > width + 1 && <p className="chart-note">Scroll horizontally to compare all {groups.length} groups.</p>}
         {groups.length === 0 ? (
           <Empty>{groupBy === 'Group' && !grp ? 'Choose a grouping, or make one with “New grouping…”.' : `No group has 4 or more filters with ${field} in this subset.`}</Empty>
         ) : (
-          <svg width={width} height={height} className="animated">
+          <div className="chart-scroll" tabIndex={0} role="region" aria-label="Distribution chart, scroll horizontally for all groups"><svg width={plotWidth} height={innerH + MARGIN.top + bottom} className="animated">
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
               <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} pick="field" />
-              <XAxis scale={x} y={innerH} />
+              <CategoryAxis items={groups} scale={x} y={innerH} />
 
               {groups.map((g, gi) => {
                 const cx = (x(g.name) ?? 0) + x.bandwidth() / 2
@@ -115,7 +119,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                   const wScale = d3.scaleLinear().domain([0, maxD]).range([0, bw / 2])
                   const area = d3.area<number>().x0((_, i) => cx - wScale(dens[i])).x1((_, i) => cx + wScale(dens[i])).y((d) => y(d)).curve(d3.curveCatmullRom)
                   return (
-                    <g key={g.name} data-export-site={groupBy === 'Site' ? g.name : undefined} data-export-series={g.name} data-export-color={g.color} onMouseEnter={(e) => tip.show(e, [g.name, `n = ${g.box.n}`, `median = ${fmt(g.box.median)}`])} onMouseLeave={tip.hide}>
+                    <g key={g.name} data-export-site={g.site} data-export-series={g.name} data-export-color={g.color} onMouseEnter={(e) => tip.show(e, [g.name, `n = ${g.box.n}`, `median = ${fmt(g.box.median)}`])} onMouseLeave={tip.hide}>
                       <path d={area(grid) ?? ''} fill={g.color} fillOpacity={0.55} stroke={g.color} strokeWidth={1.2} />
                       <line x1={cx} x2={cx} y1={y(g.box.q1)} y2={y(g.box.q3)} stroke={INK.text} strokeWidth={5} strokeLinecap="round" />
                       <circle cx={cx} cy={y(g.box.median)} r={3} fill={INK.panel} stroke={INK.text} strokeWidth={1.4} />
@@ -125,7 +129,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
 
                 if (mode === 'Beeswarm') {
                   return (
-                    <g key={g.name} data-export-site={groupBy === 'Site' ? g.name : undefined} data-export-series={g.name} data-export-color={g.color}>
+                    <g key={g.name} data-export-site={g.site} data-export-series={g.name} data-export-color={g.color}>
                       {focusLast(g.items, (it) => it.row.id, hl.focusId).map(([it, i]) => {
                         const st = focusStyle(it.row.id, hl.focusId, { r: 3, opacity: 0.6 }, hl.selected)
                         return (
@@ -153,7 +157,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                 const b = g.box
                 const withPoints = mode === 'Box + points'
                 return (
-                  <g key={g.name} data-export-site={groupBy === 'Site' ? g.name : undefined} data-export-series={g.name} data-export-color={g.color}>
+                  <g key={g.name} data-export-site={g.site} data-export-series={g.name} data-export-color={g.color}>
                     <g onMouseEnter={(e) => tip.show(e, [g.name, `n = ${b.n}`, `median = ${fmt(b.median)}`, `IQR = ${fmt(b.q1)} – ${fmt(b.q3)}`, `${b.outliers.length} outside 1.5·IQR`])} onMouseLeave={tip.hide}>
                       <line x1={cx} x2={cx} y1={y(b.max)} y2={y(b.q3)} stroke={INK.text} strokeWidth={1.2} />
                       <line x1={cx} x2={cx} y1={y(b.q1)} y2={y(b.min)} stroke={INK.text} strokeWidth={1.2} />
@@ -197,7 +201,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                 )
               })}
             </g>
-          </svg>
+          </svg></div>
         )}
         {groupBy === 'Group' && missingNote('left out of the groups')}
         {tip.node}

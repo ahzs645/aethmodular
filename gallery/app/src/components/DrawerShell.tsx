@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 
 /** How far (px) a sheet has to be pulled down before letting go closes it. */
 const DISMISS = 90
@@ -11,6 +11,9 @@ const DISMISS = 90
 export function DrawerShell({ label, onClose, children }: { label: string; onClose: () => void; children: React.ReactNode }) {
   const ref = useRef<HTMLElement>(null)
   const start = useRef<number | null>(null)
+  useEffect(() => {
+    window.dispatchEvent(new Event('gallery:dismiss-tooltips'))
+  }, [label])
   const pull = (dy: number) => {
     const el = ref.current
     if (!el) return
@@ -28,4 +31,9 @@ export function DrawerShell({ label, onClose, children }: { label: string; onClo
       {children}
     </aside>
   </>
+}
+
+/** A wide table or plot scrolls independently of the drawer and its header. */
+export function DrawerScroll({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div className="drawer-scroll" tabIndex={0} role="region" aria-label={label}>{children}</div>
 }

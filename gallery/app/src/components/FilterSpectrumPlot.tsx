@@ -146,7 +146,8 @@ export function SpectrumPlot({ spec, shown, expanded = false, names = NAME, colo
         {Math.round(high)}–{Math.round(low)} cm⁻¹{transform.k > 1 ? ` · ${transform.k.toFixed(1)}×` : ''}</span>
       {actions && <span className="spectrum-actions">{actions}</span>}
     </div>
-    <svg aria-label={plotLabel} viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block', maxWidth: W }}>
+    <div className="chart-scroll" role="region" aria-label="FTIR spectrum plot, scroll horizontally" tabIndex={0}>
+    <svg aria-label={plotLabel} viewBox={`0 0 ${W} ${H}`} width={W} style={{ display: 'block' }}>
       <defs><clipPath id={clipId}><rect width={iw} height={ih} /></clipPath></defs>
       <g transform={`translate(${m.left},${m.top})`}>
         <YAxis scale={ys} x={0} label="absorbance" gridWidth={iw} tickCount={4} labelX={-50} format={(v: number) => d3.format('~g')(v)} />
@@ -158,7 +159,7 @@ export function SpectrumPlot({ spec, shown, expanded = false, names = NAME, colo
         </g>
         <rect ref={hitRef} width={iw} height={ih} fill="transparent" style={{ cursor: transform.k > 1 ? 'grab' : undefined, touchAction: transform.k > 1 ? 'none' : 'auto' }} />
       </g>
-    </svg>
+    </svg></div>
     {absent.map(k => <p key={k} style={{ fontSize: 11, color: INK.muted }}>{names[k] ?? k} has no measurements in this window.</p>)}
   </div>
 }

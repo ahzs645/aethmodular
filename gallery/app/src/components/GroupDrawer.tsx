@@ -6,7 +6,7 @@ import { fmt } from '@/lib/stats'
 import { chemText } from '@/lib/format'
 import { prettyUnit } from '@/components/FieldSelect'
 import type { FilterRow, MetaFile } from '@/lib/types'
-import { DrawerShell } from '@/components/DrawerShell'
+import { DrawerShell, DrawerScroll } from '@/components/DrawerShell'
 
 /**
  * The side panel for a bin of filters (a hex, a histogram bar): every filter in it,
@@ -70,7 +70,7 @@ export function GroupDrawer({ group, byId, meta, fields, onClose }: {
         <div className="group-sites">
           {sites.map(([s, n]) => <span key={s} className="group-site"><span className="swatch" style={{ background: colorOf(s) }} />{s} <span className="u">{n}</span></span>)}
         </div>
-        {cols.length > 0 && <table className="placement group-summary">
+        {cols.length > 0 && <DrawerScroll label="Selected filters summary"><table className="placement group-summary">
           <thead><tr><th>Field</th><th>Median</th><th>Range</th></tr></thead>
           <tbody>
             {cols.map((f) => {
@@ -80,7 +80,7 @@ export function GroupDrawer({ group, byId, meta, fields, onClose }: {
                 <td className="mono">{vs.length ? `${fmt(d3.min(vs)!, 3)} – ${fmt(d3.max(vs)!, 3)}` : '–'}</td></tr>
             })}
           </tbody>
-        </table>}
+        </table></DrawerScroll>}
       </div>
 
       <div className="drawer-section">
@@ -92,7 +92,7 @@ export function GroupDrawer({ group, byId, meta, fields, onClose }: {
             <button type="button" className="btn quiet" onClick={() => { ed.keep(tickedLive); setTicked(new Set()) }}>Keep only ticked</button>
           </>}
         </div>}
-        <table className="placement group-rows">
+        <DrawerScroll label="Selected filter records"><table className="placement group-rows">
           <thead><tr>{ed.enabled && <th />}<th>Filter</th><th>Date</th>{cols.map((f) => <th key={f} className="num">{chemText(f)}</th>)}{ed.enabled && <th />}</tr></thead>
           <tbody>
             {rows.map((r) => {
@@ -111,7 +111,7 @@ export function GroupDrawer({ group, byId, meta, fields, onClose }: {
               )
             })}
           </tbody>
-        </table>
+        </table></DrawerScroll>
         {rows.length < group.ids.length && <p className="u">{group.ids.length - rows.length} filters in the bin are not in the current data.</p>}
       </div>
     </DrawerShell>

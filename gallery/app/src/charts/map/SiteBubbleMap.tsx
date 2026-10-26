@@ -141,7 +141,7 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
     <ChartFrame id="map" source="gallery/app/src/charts/map/SiteBubbleMap.tsx"
       title={`Bubble map — ${drawnSites.length === 1 ? drawnSites[0].name : scope.toLowerCase()}`}
       subtitle={`${stat === 'Sample count' ? 'Sample counts' : `${stat} ${withUnit(metric, units)}`} at ${isNetwork ? `the available ${isImprove ? 'IMPROVE' : 'SPARTAN'} sites` : 'the four focus sites: Beijing, Delhi, JPL and Addis Ababa'}; pick or search sites in the list beside the map. Drag to pan; scroll or use +/− to zoom. Bubble sizes stay fixed while zooming. The four-focus-site views retain sidebar season, date and exclusion choices.`}
-      provenance="notebooks/analysis/meteorology/map.ipynb · Natural Earth 110m basemap"
+      provenance={isNetwork && network ? `${network.sites.length} sites in the inventory.${unlocated.length ? ` Missing coordinates: ${unlocated.map(s => s.code).join(', ')}.` : ''} ${network.note}` : 'Local site inventory'}
       controls={<>
         <Segmented label="Sites" value={scope} options={SCOPES} onChange={setScope} />
         {isNetwork && network && stat !== 'Sample count' && <Select label={`${isImprove ? 'IMPROVE' : 'SPARTAN'} measurement`} value={metric} options={Object.keys(network.field_units)} onChange={isImprove ? setImproveField : setSpartanField} />}
@@ -195,7 +195,7 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
         </div>}
         {!sites.length && <Empty>No samples with coordinates{stat === 'Sample count' ? '' : ` and ${metric}`} in this selection.</Empty>}
         <Note>Drag to pan · scroll or use +/− to zoom · Fit sites frames the ticked sites.{isImprove && ' IMPROVE opens on the US mainland; Fit sites also takes in Alaska, Hawaii and overseas sites.'}</Note>
-        {isNetwork && network && <Note>{sites.length} sites mapped.{unlocated.length > 0 && ` Missing coordinates: ${unlocated.map(s => s.code).join(', ')}.`} {network.note}</Note>}
+
         {!world && <Note>Basemap unavailable; bubbles remain positioned by site coordinates.</Note>}
       </>}
         {tip.node}

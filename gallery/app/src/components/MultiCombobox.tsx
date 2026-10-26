@@ -1,7 +1,8 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { chemText } from '@/lib/format'
 import type { ComboOption } from '@/components/Combobox'
+import { useFloatingMenu } from '@/hooks/useFloatingMenu'
 
 /**
  * Combobox's several-at-once twin: the same trigger, and a list of ticks floating on the page
@@ -24,8 +25,10 @@ export function MultiCombobox<T extends string>({ label, value, options, onChang
   const root = useRef<HTMLDivElement>(null)
   const menu = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
+  const searchInput = useRef<HTMLInputElement>(null)
+  const autoFocusSearch = useRef(false)
   const [open, setOpen] = useState(false)
-  const [place, setPlace] = useState<CSSProperties | null>(null)
+  const place = useFloatingMenu(open, trigger, menu)
   const [active, setActive] = useState(0)
   const [query, setQuery] = useState('')
   const searchable = options.length > SEARCH_FROM
@@ -37,30 +40,16 @@ export function MultiCombobox<T extends string>({ label, value, options, onChang
     document.addEventListener('pointerdown', dismiss)
     return () => document.removeEventListener('pointerdown', dismiss)
   }, [open])
-  useLayoutEffect(() => {
-    if (!open) { setPlace(null); return }
-    const update = () => {
-      const r = trigger.current?.getBoundingClientRect()
-      if (!r) return
-      const up = window.innerHeight - r.bottom < 260 && r.top > window.innerHeight - r.bottom
-      const w = menu.current?.offsetWidth ?? r.width
-      setPlace({ position: 'fixed', left: Math.max(8, Math.min(r.left, window.innerWidth - w - 8)), minWidth: r.width, ...(up ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }) })
-    }
-    update()
-    const onScroll = (e: Event) => { if (!menu.current?.contains(e.target as Node)) update() }
-    window.addEventListener('scroll', onScroll, true)
-    window.addEventListener('resize', update)
-    return () => { window.removeEventListener('scroll', onScroll, true); window.removeEventListener('resize', update) }
-  }, [open])
   // the focus follows the active row (or the search box, while typing)
   useEffect(() => {
     if (!open || !place) return
     if (searchable && document.activeElement === menu.current?.querySelector('input[type=search]')) return
-    menu.current?.querySelector<HTMLElement>(`#${CSS.escape(`${id}-option-${active}`)}`)?.focus()
+    if (searchable && autoFocusSearch.current) { searchInput.current?.focus({ preventScroll: true }); return }
+    menu.current?.querySelector<HTMLElement>(`#${CSS.escape(`${id}-option-${active}`)}`)?.focus({ preventScroll: true })
   }, [open, place, active, id, searchable])
 
   const toggle = (key: T) => onChange(value.includes(key) ? value.filter((k) => k !== key) : [...value, key])
-  const close = () => { setOpen(false); trigger.current?.focus() }
+  const close = () => { setOpen(false); trigger.current?.focus({ preventScroll: true }) }
   const move = (by: number) => {
     if (!visible.length) return
     const at = visible.indexOf(active)
@@ -79,8 +68,9 @@ export function MultiCombobox<T extends string>({ label, value, options, onChang
     <div className="combobox">
       <button ref={trigger} type="button" className={`combobox-trigger${open ? ' open' : ''}`} aria-haspopup="listbox" aria-expanded={open} aria-controls={`${id}-list`}
         aria-labelledby={label ? `${id}-label` : undefined} aria-label={label ? undefined : title}
-        onClick={() => { setActive(Math.max(0, options.findIndex((o) => value.includes(o.key)))); setOpen(!open) }}
-        onKeyDown={(e) => { if (!open && (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setActive(0); setOpen(true) } }}>
+        onPointerDown={e => { autoFocusSearch.current = e.pointerType === 'mouse' }}
+        onClick={e => { if (e.detail === 0) autoFocusSearch.current = true; setActive(Math.max(0, options.findIndex((o) => value.includes(o.key)))); setOpen(!open) }}
+        onKeyDown={(e) => { autoFocusSearch.current = true; if (!open && (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setActive(0); setOpen(true) } }}>
         <span className="combobox-value">{chemText(names.length === 0 ? placeholder : names.length <= 2 ? names.join(', ') : `${names.length} chosen`)}</span>
         <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
@@ -88,7 +78,7 @@ export function MultiCombobox<T extends string>({ label, value, options, onChang
         style={place ?? { position: 'fixed', visibility: 'hidden' }} onKeyDown={onListKey}
         aria-labelledby={label ? `${id}-label` : undefined} aria-label={label ? undefined : title}>
         {searchable && <div className="combobox-search" role="presentation">
-          <input type="search" value={query} placeholder="Search…" aria-label={`Search ${label || title || 'the options'}`} autoFocus
+          <input ref={searchInput} type="search" value={query} placeholder="Search…" aria-label={`Search ${label || title || 'the options'}`}
             onChange={(e) => { setQuery(e.target.value); const q = fold(e.target.value); const first = options.findIndex((o) => fold(`${o.label} ${o.group ?? ''}`).includes(q)); if (first >= 0) setActive(first) }} />
         </div>}
         {searchable && !visible.length && <div className="combobox-empty" role="presentation">No matches</div>}

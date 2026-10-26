@@ -1,6 +1,6 @@
 import { fitUncertainty } from '@/lib/fitUncertainty'
 import { IdentityLine } from '@/components/RefLines'
-import { RegressionLines, RegressionReadout, RegressionReadoutText, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
+import { RegressionLines, RegressionGroupLines, useRegressionSummary } from '@/components/RegressionOverlay'
 import { fitsFor, useRegressions } from '@/lib/regressionPrefs'
 import { fitGroupingOption, useChartOptions } from '@/lib/chartOptions'
 import { useChartGrouping } from '@/components/GroupingDialog'
@@ -20,7 +20,6 @@ import { useColourScheme } from '@/lib/colourSchemes'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { useFitHeight } from '@/lib/chartFit'
-import { useNarrowScreen } from '@/hooks/useMediaQuery'
 
 type Pt = [number, number, string]
 
@@ -38,7 +37,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   const tip = useTooltip(wrapRef)
   const edits = useFilterEdits()
   const clipId = useId()
-  const { methods, grouping: chosenGrouping, setGrouping, showCI } = useRegressions()
+  const { methods, grouping: chosenGrouping, setGrouping } = useRegressions()
   const MAX_SQUARE = 520
 
   const opts: AxesOpts = { ...axes, log: false }
@@ -80,14 +79,11 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   )
 
   const fit = useFitHeight()
-  const availW = Math.max(200, width - MARGIN.left - MARGIN.right)
+  const availW = Math.max(120, width - MARGIN.left - MARGIN.right)
   const innerW = Math.min(availW, fit === null ? MAX_SQUARE : Math.max(100, fit - MARGIN.top - MARGIN.bottom))
   const innerH = innerW
   const svgWidth = innerW + MARGIN.left + MARGIN.right
   const siteFits = split && methods.length > 0
-  // on a phone the fit readout goes under the plot (in it, the box covers hexes and runs off the panel)
-  const narrow = useNarrowScreen()
-  const svgHeight = innerH + MARGIN.top + MARGIN.bottom + (siteFits ? regressionGroupReadoutLayout(fitGroups.length, svgWidth, methods, showCI).height : 0)
 
   const { x, y, stats, domain } = useMemo(() => {
     const xs = points.map((p) => p[0])
@@ -108,6 +104,10 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [points, rows, xField, yField, meta, methods, fitGroups, innerW, innerH, opts.identity, opts.mode])
+
+  const summary = useRegressionSummary({ stats, groups: siteFits ? fitGroups : undefined, width: svgWidth - 24 })
+  const top = MARGIN.top + summary.height
+  const svgHeight = innerH + top + MARGIN.bottom
 
   const bins = useMemo(() => {
     const hb = d3Hexbin<Pt>()
@@ -144,7 +144,8 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
                 <rect x={0} y={0} width={innerW} height={innerH} />
               </clipPath>
             </defs>
-            <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
+            <g transform="translate(12,6)">{summary.node}</g>
+            <g className="regression-plot" transform={`translate(${MARGIN.left},${top})`}>
               {originAxes ? (
                 <>
                   <YAxis scale={y} x={x(0)} label={withUnit(yField, meta.field_units)} gridWidth={innerW} gridFrom={0} labelX={-50} pick="y" />
@@ -204,12 +205,9 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
                 </g>
               )}
 
-              {!split && methods.length > 0 && !narrow && <RegressionReadout stats={stats} />}
             </g>
-            {siteFits && <RegressionGroupReadouts groups={fitGroups} width={svgWidth} y={innerH + MARGIN.top + MARGIN.bottom} />}
           </svg>
         )}
-        {!split && methods.length > 0 && narrow && <RegressionReadoutText stats={stats} />}
         <div className="legend">
           <ColorLegend scale={color} scheme={colours.scheme} label="filters per hex" format={(v) => String(Math.round(v))} />
         </div>

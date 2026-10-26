@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState } from 'react'
+import { useId, useMemo, useRef } from 'react'
 import { IdentityLine } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { seasonsForSite } from '@/siteSeasons'
@@ -14,6 +14,8 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
 import { useChartGrouping } from '@/components/GroupingDialog'
 import { useSearchParam } from '@/lib/url'
+import { Combobox } from '@/components/Combobox'
+import { useNarrowScreen } from '@/hooks/useMediaQuery'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const STEPS = ['Month of year', 'Year'] as const
@@ -26,8 +28,7 @@ const markerId = (name: string) => `arrow-${[...name].map((c) => (/[A-Za-z0-9_-]
  * were built. The pair from the bar is aggregated to a median per step
  * (calendar month or year) and the steps are joined in order, so the path
  * traces how the *relationship* moves through the seasons rather than how
- * each variable moves on its own. A loop means hysteresis: the same x in
- * Belg and Kiremt sits at different y.
+ * each variable moves on its own.
  *
  * Follows the bar's axes policy: with the 1:1 line on, the panel is square
  * and both axes share a domain, so a path that runs along the diagonal is
@@ -38,8 +39,12 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
 
-  const [step, setStep] = useState<(typeof STEPS)[number]>('Month of year')
-  const [labels, setLabels] = useState(true)
+  const [step, setStep] = useSearchParam<(typeof STEPS)[number]>('connected.step', 'Month of year', STEPS)
+  const [labelSetting, setLabels] = useSearchParam<string>('connected.labels', '1', ['0', '1'])
+  const labels = labelSetting === '1'
+  const [pathChoice, setPathChoice] = useSearchParam<string>('connected.path', 'auto')
+  const [pointChoice, setPointChoice] = useSearchParam<string>('connected.point', '')
+  const narrow = useNarrowScreen()
   const { hidden, setHidden, dim, hover, setHover } = useLegend()
   const minN = 4
   const opts: AxesOpts = { ...axes, log: false, mode: axes.mode === 'Show intercept' ? 'Data' : axes.mode }
@@ -81,11 +86,18 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
       .filter((s) => s.pts.length >= 2)
   }, [rows, sources, xField, yField, step, hidden])
 
-  const all = series.flatMap((s) => s.pts)
+  // On phones start with one readable path and its own axes. An explicit
+  // selection is shared in the URL; Compare all preserves the combined view.
+  const compareAll = pathChoice === 'all' || (pathChoice === 'auto' && !narrow)
+  const selectedPath = series.find(s => s.name === pathChoice) ?? series[0]
+  const shown = compareAll ? series : selectedPath ? [selectedPath] : []
+  const selectedIndex = Math.max(0, selectedPath?.pts.findIndex(p => String(p.key) === pointChoice) ?? 0)
+  const selectedPoint = selectedPath?.pts[selectedIndex]
+  const all = shown.flatMap((s) => s.pts)
   // a median outside the axes (negative under "From 0,0") is clipped, not drawn into the margin
   const clipId = useId()
   const MAX_SQUARE = 560
-  const availW = Math.max(200, width - MARGIN.left - MARGIN.right)
+  const availW = Math.max(120, width - MARGIN.left - MARGIN.right)
   const fit = useFitHeight()
   const innerW = Math.min(availW, fit === null ? MAX_SQUARE : Math.max(100, fit - MARGIN.top - MARGIN.bottom))
   const innerH = innerW
@@ -95,12 +107,12 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
   const x = d3.scaleLinear().domain(domain.x).range([0, innerW]).nice()
   const y = d3.scaleLinear().domain(domain.y).range([innerH, 0]).nice()
   const [d0, d1] = x.domain() as [number, number]
-  const line = d3.line<{ x: number; y: number }>().x((p) => x(p.x)).y((p) => y(p.y)).curve(d3.curveCatmullRom.alpha(0.6))
+  const line = d3.line<{ x: number; y: number }>().x((p) => x(p.x)).y((p) => y(p.y))
   const label = (k: number) => (step === 'Month of year' ? MONTHS[k - 1] : String(k))
+  const choosePoint = (name: string, key: number) => { tip.hide(); setPathChoice(name); setPointChoice(String(key)) }
 
-  // Greedy label thinning: a label is drawn only if it is at least 14 px from
-  // every label already placed, across all series. First and last steps of a
-  // series always get theirs, so the direction of travel stays readable.
+  // Thin labels across overlaid paths while retaining their first/last steps.
+  // The single-path view labels only the inspected step.
   const placed: [number, number][] = []
   const labelOk = (px: number, py: number, force: boolean) => {
     if (!force && placed.some(([qx, qy]) => Math.abs(qx - px) < 34 && Math.abs(qy - py) < 14)) return false
@@ -113,26 +125,34 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
     <ChartFrame
       id="connected"
       title="Connected scatter — the pair's path through the year"
-      subtitle="Median x and median y per step, joined in time order, one path per site. A closed loop is hysteresis: the same loading in the dry season sits at a different y than in the rains. With the 1:1 line on, a path hugging the diagonal is a site where the two methods agree all year. Steps with fewer than 4 filters are skipped."
+      subtitle="Each point is the median of both measurements for a calendar month (pooling the selected years), or for a year. Straight segments join the available steps in time order. Inspect one path with the month/year controls, or compare all paths on shared axes. Steps with fewer than 4 paired filters are skipped."
       provenance="31 figures classified as connected scatter, none built until now · react-graph-gallery.com/connected-scatter-plot"
       controls={
         <>
           {grp && <Segmented label="Paths" value={pathsBy} options={PATHS_BY} onChange={(v) => { setPathsBy(v); setHidden(new Set()) }}
             title="One path per site, or per band of a grouping (every site pooled in each band)" />}
           {picker}
-          <Segmented label="Step" value={step} options={STEPS} onChange={setStep} />
-          <Toggle label="Labels" checked={labels} onChange={setLabels} />
+          <Combobox label="Show" value={compareAll ? 'all' : selectedPath?.name ?? 'all'}
+            options={[{ key: 'all', label: 'Compare all' }, ...series.map(s => ({ key: s.name, label: s.name }))]}
+            onChange={setPathChoice} />
+          <Segmented label="Step" value={step} options={STEPS} onChange={v => { setStep(v); setPointChoice('') }} />
+          <Toggle label="Labels" checked={labels} onChange={v => setLabels(v ? '1' : '0')} />
         </>
       }
     >
       <div ref={wrapRef} className={`chart-wrap centered${fit === null ? '' : ' fit-square'}`} style={fit === null ? undefined : { minHeight: fit }}>
+        <p className="chart-note connected-guide" data-export="text">
+          {step === 'Month of year' ? 'Monthly medians · selected years pooled · Jan → Dec.' : 'Yearly medians · earliest → latest.'}
+          {' '}{compareAll ? 'Tap a point to inspect its path on its own.' : 'Tap a point or use the step controls below.'}
+          {' '}{opts.identity && 'Grey dashed line = equal measurements.'}
+        </p>
         {all.length < 2 ? (
           <Empty>Not enough steps with ≥{minN} filters carrying both fields.</Empty>
         ) : (
           <svg width={innerW + MARGIN.left + MARGIN.right} height={height}>
             <defs>
-              {series.map((s) => (
-                <marker key={s.name} data-export-site={s.name} data-export-color={s.color} id={markerId(s.name)} viewBox="0 0 10 10" refX={8} refY={5} markerWidth={7} markerHeight={7} orient="auto-start-reverse">
+              {shown.map((s) => (
+                <marker key={s.name} data-export-site={s.name} data-export-color={s.color} id={`${clipId}-${markerId(s.name)}`} viewBox="0 0 10 10" refX={8} refY={5} markerWidth={5} markerHeight={5} orient="auto-start-reverse">
                   <path d="M 0 0 L 10 5 L 0 10 z" fill={s.color} />
                 </marker>
               ))}
@@ -147,7 +167,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
               {opts.identity && (
                 <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />
               )}
-              {series.map((s) => (
+              {shown.map((s) => (
                 <g key={s.name} opacity={dim(s.name)} data-export-site={s.name} data-export-color={s.color}>
                   <path
                     d={line(s.pts) ?? ''}
@@ -155,10 +175,16 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
                     stroke={s.color}
                     strokeWidth={2}
                     strokeOpacity={0.75}
-                    markerEnd={`url(#${markerId(s.name)})`}
+                    markerEnd={`url(#${clipId}-${markerId(s.name)})`}
                   />
                   {s.pts.map((p, i) => (
-                    <g key={p.key}>
+                    <g key={p.key} role="button" tabIndex={0}
+                      aria-label={`${s.name}, ${label(p.key)}, ${p.n} filters; inspect medians`}
+                      aria-pressed={!compareAll && selectedPoint?.key === p.key}
+                      onClick={() => choosePoint(s.name, p.key)}
+                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choosePoint(s.name, p.key) } }}>
+                      <circle cx={x(p.x)} cy={y(p.y)} r={13} fill="transparent" className="connected-hit" />
+                      {!compareAll && selectedPoint?.key === p.key && <circle cx={x(p.x)} cy={y(p.y)} r={9} fill="none" stroke={s.color} strokeWidth={2} pointerEvents="none" />}
                       <circle
                         cx={x(p.x)}
                         cy={y(p.y)}
@@ -178,8 +204,8 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
                         }
                         onMouseLeave={tip.hide}
                       />
-                      {labels && labelOk(x(p.x) + 7, y(p.y) - 6, i === 0 || i === s.pts.length - 1) && (
-                        <text x={x(p.x) + 7} y={y(p.y) - 6} fontSize={10} fill={s.color} fontFamily={FONT.mono} pointerEvents="none" stroke={INK.panel} strokeWidth={3} paintOrder="stroke">
+                      {labels && (compareAll ? labelOk(x(p.x) + 7, y(p.y) - 6, i === 0 || i === s.pts.length - 1) : selectedPoint?.key === p.key) && (
+                        <text x={Math.max(4, Math.min(innerW - 25, x(p.x) + 10))} y={Math.max(12, y(p.y) - 9)} fontSize={11} fill={s.color} fontFamily={FONT.mono} pointerEvents="none" stroke={INK.panel} strokeWidth={3} paintOrder="stroke">
                           {label(p.key)}
                         </text>
                       )}
@@ -191,14 +217,31 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
             </g>
           </svg>
         )}
-        <Legend
+        {!compareAll && selectedPoint && selectedPath && <div className="connected-inspector">
+          <div className="connected-step-controls">
+            <button type="button" className="btn" aria-label="Previous step" disabled={selectedIndex === 0}
+              onClick={() => setPointChoice(String(selectedPath.pts[selectedIndex - 1].key))}>←</button>
+            <Combobox label={step === 'Month of year' ? 'Month' : 'Year'} value={String(selectedPoint.key)}
+              options={selectedPath.pts.map(p => ({ key: String(p.key), label: label(p.key), hint: `${p.n} filters` }))} onChange={setPointChoice} />
+            <button type="button" className="btn" aria-label="Next step" disabled={selectedIndex === selectedPath.pts.length - 1}
+              onClick={() => setPointChoice(String(selectedPath.pts[selectedIndex + 1].key))}>→</button>
+          </div>
+          <div className="connected-readout" role="region" aria-label="Selected step medians" aria-live="polite" data-export="text">
+            <strong><span className="swatch" style={{ background: selectedPath.color }} />{selectedPath.name} · {label(selectedPoint.key)}</strong>
+            <span>{selectedPoint.n} paired filters</span>
+            <dl><div><dt>{withUnit(xField, meta.field_units)}</dt><dd>{fmt(selectedPoint.x, 3)}</dd></div>
+              <div><dt>{withUnit(yField, meta.field_units)}</dt><dd>{fmt(selectedPoint.y, 3)}</dd></div></dl>
+          </div>
+          <p className="chart-note connected-guide" data-export="text">Hollow point = {label(selectedPath.pts[0].key)} (start); arrow = {label(selectedPath.pts[selectedPath.pts.length - 1].key)} (end). Axes fit this path; choose Compare all for shared axes.</p>
+        </div>}
+        {compareAll && <Legend
           items={sources.map((s) => ({ label: s.name, color: s.color, shape: 'line' as const }))}
           hidden={hidden}
           onToggle={(l) => setHidden((h) => toggleIn(h, l))}
           onHover={setHover}
           highlighted={hover}
-          note={`hollow marker = first step · arrow = last · crowded labels thinned, hover for the rest${opts.identity ? ' · grey dashed = 1:1' : ''}`}
-        />
+          note="hollow marker = first step · arrow = last · choose a path for its step-by-step medians"
+        />}
         {byGroup && missingNote('left out of the paths')}
         {tip.node}
       </div>

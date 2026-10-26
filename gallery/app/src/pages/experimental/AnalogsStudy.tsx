@@ -6,7 +6,10 @@ import { SweepPlot } from '@/components/SweepPlot'
 import { useSearchParam } from '@/lib/url'
 import { ADDIS_ALL, INK } from '@/lib/theme'
 import { f2, signed } from '@/lib/format'
-import { Forest, Scatter, num, rowsOf, runLine, sourceOf, useXp, type Cols, type XpBase } from './shared'
+import { AxisChoices } from '@/components/AxisChoices'
+import { Crossplot } from '@/components/Crossplot'
+import { Select } from '@/components/ChartFrame'
+import { Forest, num, rowsOf, runLine, sourceOf, useXp, type Cols, type XpBase } from './shared'
 
 /** Test 3: calibration neighbours chosen by deposited mass as well as spectral shape (experiments_20261022.ipynb §3). */
 
@@ -125,15 +128,22 @@ function AddisScatter({ d }: { d: AnalogsData }) {
   const [model, setModel] = useSearchParam<string>('xa-scatter.model', 'local shape + loading', models)
   const f = useMemo(() => rowsOf(d.addis_filters), [d])
   const fit = d.addis.find((r) => (r.model as string).replace('local: ', 'local ') === model || (model === 'published' && r.model === 'SPARTAN published') || (model === 'full raw' && r.model === 'full calibration (raw)'))
-  const pts = f.map((r) => ({ x: num(r.hips_bc), y: num(r[model]), color: ADDIS_ALL, key: String(r.filter_id), tip: [String(r.filter_id), String(r.season), `HIPS BC ${f2(r.hips_bc)}`, `${model} ${f2(r[model])} µg/m³`] }))
-  return (
-    <ChartFrame id="xa-scatter" source={source('AddisScatter')}
-      title="Addis filters — FTIR EC against HIPS BC, one model at a time"
-      subtitle="Each Addis evaluation filter with HIPS; dashed = 1:1, solid = the Deming fit in the forest plot above."
-      controls={<Segmented label="Model" value={model} options={models} onChange={setModel} />}>
-      <Scatter points={pts} xLabel="HIPS BC (µg/m³, MAC 10)" yLabel={`FTIR EC, ${model} (µg/m³)`} identity height={360}
-        over={({ x, y }) => fit ? (() => { const [a, b] = x.domain(); return <line x1={x(a)} y1={y(fit.intercept + fit.slope * a)} x2={x(b)} y2={y(fit.intercept + fit.slope * b)} stroke={INK.deming} strokeWidth={1.5} /> })() : null} />
-      {fit && <Note>Deming: slope {f2(fit.slope)}, intercept {signed(fit.intercept)} µg/m³, n {fit.n}.</Note>}
-    </ChartFrame>
-  )
+  const choices = ['hips_bc', ...models]
+  const [xField, setX] = useSearchParam<string>('xa-scatter.x', 'hips_bc', choices)
+  const [yField, setY] = useSearchParam<string>('xa-scatter.y', model, choices)
+  const standard = xField === 'hips_bc' && yField === model
+  const pickModel = (value: string) => { setModel(value); setX('hips_bc'); setY(value) }
+  const labelOf = (key: string) => key === 'hips_bc' ? 'HIPS BC (µg/m³, MAC 10)' : `FTIR EC, ${key} (µg/m³)`
+  const pts = f.map(r => ({ x: num(r[xField]), y: num(r[yField]), color: ADDIS_ALL, id: String(r.filter_id), tip: [String(r.filter_id), String(r.season), `${labelOf(xField)}: ${f2(r[xField])}`, `${labelOf(yField)}: ${f2(r[yField])}`], rec: {
+    id: String(r.filter_id), source: 'Loading-matched analogs', site: 'Addis Ababa', date: r.date == null ? undefined : String(r.date), season: String(r.season ?? ''), fields: choices.map(k => [labelOf(k), Number.isFinite(num(r[k])) ? String(r[k]) : null] as [string, string | null]),
+  } }))
+  return <ChartFrame id="xa-scatter" source={source('AddisScatter')}
+    title="Addis filters — FTIR EC against HIPS BC, one model at a time"
+    subtitle="Pick a model to restore HIPS BC versus that prediction. Click either axis title for custom measurements. Points use the shared selection, exclusion, record and regression controls."
+    controls={<><Select label="Model preset" value={standard ? model : 'Custom'} options={[...models, ...(!standard ? ['Custom'] : [])]} onChange={v => { if (v !== 'Custom') pickModel(v) }} /><span className="control">{standard ? 'HIPS BC × model prediction' : 'Custom axes'}</span></>}>
+    <AxisChoices noun="measurements" x={[xField, setX]} y={[yField, setY]} options={choices.map(key => ({ key, label: key === 'hips_bc' ? 'HIPS BC, MAC 10' : `FTIR EC, ${key}`, group: key === 'hips_bc' ? 'Optical measurement' : 'Model predictions', unit: 'µg/m³' }))}>
+      <Crossplot points={pts} title={standard ? model : 'Custom axes'} xLabel={labelOf(xField)} yLabel={labelOf(yField)} pick brushable maxSide={480} errorRatio={typeof d.settings?.deming_lambda_mac10 === 'number' ? d.settings.deming_lambda_mac10 : 2.96} />
+    </AxisChoices>
+    {standard && fit && <Note>Saved Deming: slope {f2(fit.slope)}, intercept {signed(fit.intercept)} µg/m³, n {fit.n}. Live fits above use the selected estimators and visible filters.</Note>}
+  </ChartFrame>
 }

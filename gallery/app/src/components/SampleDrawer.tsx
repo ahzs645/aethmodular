@@ -5,7 +5,7 @@ import { seasonOnly } from '@/lib/seasons'
 import { chemText } from '@/lib/format'
 import { useFilterReference } from '@/hooks/useFilterReference'
 import { SitePicker } from '@/components/SitePicker'
-import { RegressionLines, RegressionReadout, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
+import { RegressionLines, RegressionGroupLines, useRegressionSummary } from '@/components/RegressionOverlay'
 import { useRegressions, FitGroupingControl } from '@/lib/regressionPrefs'
 import { groupedRegressions } from '@/lib/siteRegression'
 import { Fragment, useEffect, useMemo, useState } from 'react'
@@ -24,7 +24,7 @@ import { FilterSpectrum } from '@/components/FilterSpectrum'
 import { HipsReadings } from '@/components/NativeFilterMeasurements'
 import { NO_PMF, PMF_SOURCE, pmfShareField } from '@/lib/pmfGroups'
 import { placements, stripPosition, ratioPlacement, ratioReference, isFiniteNumber, type Placement, type ReferenceRow } from '@/lib/referencePopulation'
-import { DrawerShell } from '@/components/DrawerShell'
+import { DrawerShell, DrawerScroll } from '@/components/DrawerShell'
 
 
 /** English ordinal suffix: 1st, 2nd, 3rd, 11th, 51st. */
@@ -75,7 +75,7 @@ export function SampleDrawer({
   onOpen: (id: string) => void
   onClose: () => void
 }) {
-  const { methods, grouping, showCI } = useRegressions()
+  const { methods, grouping } = useRegressions()
   const [cx, setCx] = useState(xField)
   const [cy, setCy] = useState(yField)
   const crossMeta = useMemo(() => ({ ...meta, field_groups: meta.field_groups.filter(g => g.label !== RATIO_GROUP) }), [meta])
@@ -173,7 +173,9 @@ export function SampleDrawer({
   // square plot area, like every crossplot in the gallery
   const ih = iw
   const siteFits = grouping !== 'pooled' && methods.length > 0
-  const H = ih + m.top + m.bottom + (siteFits ? regressionGroupReadoutLayout(cross.fitGroups.length, W, methods, showCI).height : 0)
+  const summary = useRegressionSummary({ stats: cross.stats, groups: siteFits ? cross.fitGroups : undefined, width: W - 24 })
+  const top = m.top + summary.height + 12
+  const H = ih + top + m.bottom
   const here = isNum(row[cx]) && isNum(row[cy]) ? { x: row[cx] as number, y: row[cy] as number } : null
   const axisPoints = here ? [...cross.pool, here] : cross.pool
   const xs = d3.scaleLinear().domain([Math.min(0, d3.min(axisPoints, p => p.x) ?? 0), Math.max(0, d3.max(axisPoints, p => p.x) ?? 1) * 1.05 || 1]).range([0, iw]).nice()
@@ -248,7 +250,7 @@ export function SampleDrawer({
           if (!fields.length) return hipsHere ? <HipsReadings key={g.label} id={row.id} /> : null
           return (
             <Fragment key={g.label}>
-            <table className="placement">
+            <DrawerScroll label={`${g.label} measurements`}><table className="placement">
               <thead>
                 <tr><th colSpan={4}>{g.label}</th></tr>
               </thead>
@@ -263,17 +265,17 @@ export function SampleDrawer({
                   return placeRow(f, chemText(f), p, prettyUnit(meta.field_units[f]), f === xField || f === yField || f === focusField, chemText(fieldHelp(f)))
                 })}
               </tbody>
-            </table>
+            </table></DrawerScroll>
             {hipsHere && <HipsReadings id={row.id} />}
             </Fragment>
           )
         })}
         {!hipsGroup && <HipsReadings id={row.id} />}
-        {!ref.loading && !ref.error && ratios.length > 0 && <table className="placement">
+        {!ref.loading && !ref.error && ratios.length > 0 && <DrawerScroll label="Measurement ratios"><table className="placement">
           <thead><tr><th colSpan={4}>Ratios</th></tr></thead>
           <tbody>{ratios.map((r) => r.place ? placeRow(r.label, chemText(r.label), r.place, '', false, r.why)
             : <tr key={r.label}><td className="f" title={r.why}>{chemText(r.label)}</td><td className="v">{fmt(r.value, 3)}</td><td className="u" colSpan={2}>Reference unavailable · n={r.reference.n}</td></tr>)}</tbody>
-        </table>}
+        </table></DrawerScroll>}
         {unavailableFields.length > 0 && <details className="reference-unavailable"><summary>{unavailableFields.length} measurements without a reference percentile</summary><p>{unavailableFields.join(', ')}. A percentile needs at least four finite reference values for that measurement.</p></details>}
       </section>
 
@@ -297,8 +299,9 @@ export function SampleDrawer({
               <p className="frame-empty">Fewer than 3 filters in {referenceLabel} carry both {cx} and {cy}. Choose another pair or reference population.</p>
             </>
           ) : (
-            <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', maxWidth: '100%', height: 'auto' }}>
-              <g transform={`translate(${m.left},${m.top})`}>
+            <DrawerScroll label="Filter reference crossplot"><svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', height: 'auto' }}>
+              <g transform="translate(12,6)">{summary.node}</g>
+              <g className="regression-plot" transform={`translate(${m.left},${top})`}>
                 <YAxis scale={ys} x={0} label={withUnit(cy, meta.field_units)} gridWidth={iw} tickCount={5} labelX={-48} pick="y" />
                 <XAxis scale={xs} y={ih} label={withUnit(cx, meta.field_units)} tickCount={5} pick="x" />
                 {cross.pool.map((p) => (
@@ -307,7 +310,7 @@ export function SampleDrawer({
                   </circle>
                 ))}
                 {grouping !== 'pooled' ? <RegressionGroupLines groups={cross.fitGroups} x={xs} y={ys} width={iw} height={ih} />
-                  : <><RegressionLines stats={cross.stats} x={xs} y={ys} domain={xs.domain()} width={iw} height={ih} /><RegressionReadout stats={cross.stats} width={260} /></>}
+                  : <RegressionLines stats={cross.stats} x={xs} y={ys} domain={xs.domain()} width={iw} height={ih} />}
                 {here && (
                   <>
                     <line x1={xs(here.x)} x2={xs(here.x)} y1={0} y2={ih} stroke={INK.text} strokeDasharray="3 3" strokeOpacity={0.4} />
@@ -316,8 +319,7 @@ export function SampleDrawer({
                   </>
                 )}
               </g>
-              {siteFits && <RegressionGroupReadouts groups={cross.fitGroups} width={W} y={ih + m.top + m.bottom} />}
-            </svg>
+            </svg></DrawerScroll>
           )}
           {!here && <p className="chart-note">This filter does not carry both {cx} and {cy}.</p>}
         </section>
@@ -326,7 +328,7 @@ export function SampleDrawer({
       {neighbours.length > 1 && (
         <section className="drawer-section">
           <h3>Neighbours in time at {row.site}</h3>
-          <table className="placement">
+          <DrawerScroll label="Neighbouring filters"><table className="placement">
             <thead>
               <tr><th>filter</th><th>date</th><th>{focusField}</th><th>{focusField === xField ? yField : xField}</th></tr>
             </thead>
@@ -340,7 +342,7 @@ export function SampleDrawer({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></DrawerScroll>
         </section>
       )}
     </DrawerShell>

@@ -6,6 +6,7 @@ import { fmt } from '@/lib/stats'
 import { INK } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile } from '@/lib/types'
 import { CV_PROTOCOL, METRIC, label } from '@/lib/labels'
+import { presetName } from './common'
 import { useFitHeight } from '@/lib/chartFit'
 
 /**
@@ -43,6 +44,7 @@ export function CVCurve({ run, runs }: { run: CalibRun; runs: CalibRunsFile }) {
         </span>
       }
     >
+      <p className="facet-title">{runs.presets.find(p => p.key === run.preset) ? presetName(runs.presets.find(p => p.key === run.preset)!) : run.preset} · {run.n_cohort} calibration filters</p>
       <div className="chart-wrap">
         {pts.length < 2 ? (
           <Empty>No curve saved for this configuration at {target?.site ?? run.target}.</Empty>

@@ -1,20 +1,21 @@
-import { useId, useMemo, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useRef, type ReactNode } from 'react'
 import { IdentityLine } from '@/components/RefLines'
 import * as d3 from 'd3'
-import { RegressionLines, RegressionReadout, RegressionBand, RegressionGroupLines, RegressionGroupReadouts, regressionGroupReadoutLayout } from '@/components/RegressionOverlay'
+import { RegressionLines, RegressionBand, RegressionGroupLines, useRegressionSummary } from '@/components/RegressionOverlay'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { groupedRegressions, type FitGrouping } from '@/lib/siteRegression'
-import { fidProps, useHandEdits } from '@/lib/filterEdits'
+import { fidProps, useFilterEdits, useHandEdits } from '@/lib/filterEdits'
 import { monthBlocks } from '@/lib/regressionCI'
 import { regression, type RegressionStats } from '@/lib/stats'
 import { useRegressions, FitGroupingControl } from '@/lib/regressionPrefs'
 import type { Estimator } from '@/lib/regressionMethods'
 import { baseFilterId, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { FONT, INK } from '@/lib/theme'
-import { useNarrowScreen } from '@/hooks/useMediaQuery'
-import { useFitHeight } from '@/lib/chartFit'
+import { Toggle } from '@/components/ChartFrame'
+import { styleBrush } from '@/lib/brush'
+import { useTileSetting } from '@/lib/url'
 
 /** One filter on a crossplot. `rec` opens the record drawer; `id` links hover and pin across charts. */
 export interface CrossPoint {
@@ -49,8 +50,10 @@ export function sharedCrossDomains(sets: CrossPoint[][], sameScale = true): { do
 
 const NO_KEYS: ReadonlySet<string> = new Set()
 
-export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain, fit = true, errorRatio, extraLines = [], grouping: groupingOverride, background, pick, sameScale = true, yDomain }: {
+export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain, fit = true, errorRatio, extraLines = [], grouping: groupingOverride, background, pick, sameScale = true, yDomain, brushable = false }: {
   points: CrossPoint[]
+  /** Offer rectangular selection with the shared filter review and hand-edit actions. */
+  brushable?: boolean
   title: string
   xLabel: string
   yLabel: string
@@ -78,24 +81,26 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   const tip = useTooltip(ref)
   // pins and handlers without re-rendering on hovers; the hover is read below for this panel's filters only
   const hl = useHighlight(NO_KEYS)
-  const m = { top: 24, right: 14, bottom: 46, left: 56 }
+  const m = { top: 24, right: 14, bottom: brushable ? 62 : 46, left: 56 }
   const side = Math.max(160, Math.min(width - m.left - m.right, maxSide))
   const iw = side, ih = side, w = side + m.left + m.right
   const clipId = useId()
   // a filter excluded by hand on any page is left out here too, points and refit alike
   const edits = useHandEdits()
-  const drawable = points.filter((p) => p.x != null && p.y != null && Number.isFinite(p.x) && Number.isFinite(p.y))
-  const valid = drawable.filter((p) => !edits.isOut(p.id ?? p.rec?.id))
+  const filterEdits = useFilterEdits()
+  const [brushSetting, setBrushSetting] = useTileSetting<string>('crossplot.brush', '0')
+  const brushing = brushable && brushSetting === '1'
+  const brushRef = useRef<SVGGElement>(null)
+  const drawable = useMemo(() => points.filter(p => p.x != null && p.y != null && Number.isFinite(p.x) && Number.isFinite(p.y)), [points])
+  const valid = useMemo(() => drawable.filter(p => !edits.isOut(p.id ?? p.rec?.id)), [drawable, edits])
   const handNote = edits.note(drawable.length - valid.length, { refit: fit && groupingOverride !== 'none', saved: extraLines.length > 0 })
   const lambda = errorRatio ?? 1
   const prefs = useRegressions()
-  const { methods, showCI } = prefs
+  const { methods } = prefs
   const fitting = fit && groupingOverride !== 'none'
   const grouping: FitGrouping = groupingOverride && groupingOverride !== 'none' ? groupingOverride : prefs.grouping
   const multiSite = fitting && new Set(valid.map((p) => p.rec?.site)).size > 1
   const siteFits = multiSite && grouping === 'site' && methods.length > 0   // its points carry no season
-  // on a phone the fit readout goes under the plot (in it, the box covers points and runs off the panel)
-  const narrow = useNarrowScreen()
   const fitGroups = useMemo(() => fitting ? groupedRegressions(valid, grouping, {
     x: (p) => p.x, y: (p) => p.y, site: (p) => p.rec?.site ?? 'Unknown site', color: (p) => p.color,
     options: (members) => ({ errorsInVariables: true, lambda, bootstrapGroups: monthBlocks(members.map((p) => p.rec ?? {})) }),
@@ -111,25 +116,48 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   const keys = useMemo(() => new Set(valid.map((p) => (p.id ? baseFilterId(p.id) : ''))), [valid])
   const { hoverId } = useHighlight(keys)
   const active = [hl.pinnedId, hoverId].some((k) => !!k && keys.has(k))
-  // a small panel (or a phone) carries its fit readout above the plot, where it covers no points; the height
-  // reserved is the most lines a readout can have, so neighbouring panels stay level (not in a Dashboard tile)
-  const inTile = useFitHeight() !== null
-  const readoutAbove = fitting && !siteFits && methods.length > 0 && !inTile && (narrow || iw < 300)
-  const aboveLines = 1 + (showCI ? 1 : 0) + methods.length * (showCI ? 3 : 1) + (methods.includes('york') ? 1 : 0)
-  const top = m.top + (readoutAbove ? aboveLines * 15 + 24 : 0)
+  const summary = useRegressionSummary({ stats: st, groups: siteFits ? fitGroups : undefined, width: w - 24, enabled: fitting })
+  const top = m.top + (summary.height ? summary.height + 14 : 0)
   const height = side + top + m.bottom
+  useEffect(() => {
+    const node = brushRef.current
+    if (!node) return
+    const selection = d3.select(node)
+    if (!brushing) { selection.selectAll('*').remove(); selection.on('.brush', null); return }
+    const brush = d3.brush<unknown>().extent([[0, 0], [iw, ih]]).on('end', (event: d3.D3BrushEvent<unknown>) => {
+      if (!event.sourceEvent) return
+      if (!event.selection) { hl.setSelected(null); return }
+      const [[x0, y0], [x1, y1]] = event.selection as [[number, number], [number, number]]
+      const ids = new Set(valid.flatMap(p => p.id && x(p.x) >= x0 && x(p.x) <= x1 && y(p.y) >= y0 && y(p.y) <= y1 ? [baseFilterId(p.id)] : []))
+      hl.setSelected(ids.size ? ids : null)
+      selection.call(brush.move, null)
+    })
+    selection.call(brush)
+    styleBrush(selection)
+    return () => { selection.on('.brush', null); selection.selectAll('*').remove() }
+    // Scales are recreated from these domains on each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brushing, valid, iw, ih, x.domain().join(), y.domain().join()])
   return (
     <div ref={ref} style={{ position: 'relative' }}>
+      {brushable && <div className="frame-controls">
+        <Toggle label="Brush select" checked={brushing} onChange={value => setBrushSetting(value ? '1' : '0')} title="Drag a rectangle to select several filters; turn off to open individual records" />
+        {hl.selected && <><span className="control">{hl.selected.size} selected</span>
+          <button type="button" className="btn" onClick={() => filterEdits.openGroup({ title: 'Selected crossplot filters', ids: [...hl.selected!], fields: [] })}>Review selected</button>
+          <button type="button" className="btn" onClick={() => { filterEdits.keep(hl.selected!); hl.setSelected(null) }}>Keep selected</button>
+          <button type="button" className="btn" onClick={() => { filterEdits.drop(hl.selected!); hl.setSelected(null) }}>Exclude selected</button>
+          <button type="button" className="btn quiet" onClick={() => hl.setSelected(null)}>Clear selection</button></>}
+      </div>}
       {/* its points carry a site but no season, so a per-season grouping would only draw the pooled fit */}
       {multiSite && !groupingOverride && <FitGroupingControl only={['pooled', 'site']} value={grouping === 'season' ? 'pooled' : grouping} />}
       {/* centred in its panel: a square plot in a wide frame leaves even margins either side */}
       <svg width={w} height={height} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
         <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>
-        {readoutAbove && <RegressionReadout stats={st} x={12} y={22} width={w - 24} />}
-        <g transform={`translate(${m.left},${top})`}>
+        <g transform="translate(12,22)">{summary.node}</g>
+        <g className="regression-plot" transform={`translate(${m.left},${top})`}>
           <defs><clipPath id={clipId}><rect width={iw} height={ih} /></clipPath></defs>
-          <YAxis scale={y} x={0} label={yLabel} tickCount={5} gridWidth={iw} labelX={-42} format={(v) => String(+(+v).toFixed(2))} pick={pick === true || pick === 'y' ? 'y' : undefined} />
-          <XAxis scale={x} y={ih} label={xLabel} tickCount={5} format={(v) => String(+(+v).toFixed(2))} labelDy={38} pick={pick === true || pick === 'x' ? 'x' : undefined} />
+          <YAxis scale={y} x={0} label={yLabel} wrapLabel={brushable} tickCount={5} gridWidth={iw} labelX={-42} format={(v) => String(+(+v).toFixed(2))} pick={pick === true || pick === 'y' ? 'y' : undefined} />
+          <XAxis scale={x} y={ih} label={xLabel} wrapLabel={brushable} tickCount={5} format={(v) => String(+(+v).toFixed(2))} labelDy={38} pick={pick === true || pick === 'x' ? 'x' : undefined} />
           <g clipPath={`url(#${clipId})`}>
             <rect width={iw} height={ih} fill="transparent" onClick={() => hl.setPinned(null)} />
             {background?.(x, y)}
@@ -137,7 +165,7 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
             {valid.map((p, i) => {
               const key = p.id ? baseFilterId(p.id) : null
               const focus = !!key && (key === hl.pinnedId || key === hoverId)
-              const dim = active && !focus
+              const dim = (active && !focus) || (!!hl.selected && !!key && !hl.selected.has(key))
               return (
                 <circle key={i} cx={x(p.x)} cy={y(p.y)} r={focus ? 6 : 3.2} fill={p.hollow ? 'none' : p.color}
                   stroke={focus ? INK.text : p.color} strokeWidth={focus ? 2 : p.hollow ? 1 : 0.4}
@@ -152,15 +180,10 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
               : <RegressionLines stats={st} x={x} y={y} domain={dom} width={iw} height={ih} />)}
             {extraLines.map((l) => <g key={l.label}><RegressionBand stats={l.stats} method={l.method} color={l.color} x={x} y={y} domain={dom} /><line {...line(l.slope, l.intercept)} stroke={l.color} strokeWidth={1.8} strokeDasharray={l.dash} /></g>)}
           </g>
-          {fitting && !siteFits && !readoutAbove && <RegressionReadout stats={st} x={8} y={6} width={Math.min(280, iw - 12)} />}
+          <g ref={brushRef} className="brush-layer" />
         </g>
       </svg>
-      {siteFits && <details><summary>Per-site fit statistics ({fitGroups.length} sites)</summary>
-        <svg width={w} height={regressionGroupReadoutLayout(fitGroups.length, w, methods, showCI).height} style={{ display: 'block', margin: '0 auto' }}>
-          <RegressionGroupReadouts groups={fitGroups} width={w} />
-        </svg>
-        <p className="chart-note">Fits use each site's paired filters and observed x range. Sites with fewer than three pairs or constant values have no fitted line. Point colours retain the selected grouping.</p>
-      </details>}
+      {siteFits && <p className="chart-note">Fits use each site's paired filters and observed x range. Sites with fewer than three pairs or constant values have no fitted line. Point colours retain the selected grouping.</p>}
       {handNote && <p className="chart-note">{handNote}</p>}
       {tip.node}
     </div>

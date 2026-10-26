@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useMemo, useRef, useState } from 'react'
 import { AxisChoices } from '@/components/AxisChoices'
 import { useSearchParam } from '@/lib/url'
 import { robustDomain } from '@/lib/axes'
@@ -16,7 +16,7 @@ import { useColourScheme } from '@/lib/colourSchemes'
 import { ColorLegend } from '@/components/ColorLegend'
 import type { CalibFile, CalibRow } from '@/lib/types'
 import { fmt } from '@/lib/stats'
-import { cohortColor, fmtFit, passes, sameConfig, score, shortConfig, type Config } from './common'
+import { cohortColor, fmtFit, passes as savedPasses, sameConfig, score, shortConfig, type Config } from './common'
 import { COHORT, CV_PROTOCOL, METRIC, label } from '@/lib/labels'
 
 /**
@@ -35,6 +35,9 @@ import { COHORT, CV_PROTOCOL, METRIC, label } from '@/lib/labels'
  * slope (x) against intercept (y); the slope box and the reference lines follow slope and intercept
  * wherever they sit.
  */
+import { TEMPLATES, decodeGuardrail, describeGuardrail, encodeGuardrail, evaluateGuardrail, guardFields, guardRows, type Guardrail, type GuardrailSource } from '@/lib/guardrails'
+const GuardrailEditor = lazy(() => import('@/components/GuardrailEditor').then(m => ({ default: m.GuardrailEditor })))
+
 type Kind = 'slope' | 'intercept' | 'other'
 const METRICS: Record<string, { get: (r: CalibRow) => number | null; kind: Kind; unit?: string }> = {
   'Slope · fixed set': { get: (r) => r.dm, kind: 'slope' },
@@ -68,15 +71,36 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
   // the legend names cohorts in words; hiding and dimming go by the same name
   const cohortName = (c: string) => COHORT[c] ?? calib.cohorts[c] ?? c
 
+  const [ruleToken, setRuleToken] = useSearchParam<string>('spec-curve.rule', '')
+  const [dots, setDots] = useSearchParam<string>('spec-curve.dots', 'guardrails')
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState<Guardrail | null>(null)
+  const userRule = useMemo(() => decodeGuardrail(ruleToken), [ruleToken])
+  const rule = draft ?? (dots === 'rule' ? userRule : TEMPLATES.find(t => t.key === dots)?.rule)
+  const src = useMemo<GuardrailSource>(() => {
+    const grid = calib.grid
+    const categories = { co: [...new Set(grid.map(r => r.co))], sp: [...new Set(grid.map(r => r.sp))], sel: [...new Set(grid.map(r => r.sel ?? 'raw'))], mo: [...new Set(grid.map(r => r.mo))], lot: [...new Set(grid.map(r => r.lot))] }
+    return { n: grid.length, categories, ok: grid.map(r => savedPasses(r, calib) ? '1' : '0').join(''),
+      intercept: grid.map(r => r.db), slope: grid.map(r => r.dm), heldout: grid.map(r => r.ho), cut: grid.map(r => r.cut), k: grid.map(r => r.k),
+      co: grid.map(r => categories.co.indexOf(r.co)), sp: grid.map(r => categories.sp.indexOf(r.sp)), sel: grid.map(r => categories.sel.indexOf(r.sel ?? 'raw')), mo: grid.map(r => categories.mo.indexOf(r.mo)), lot: grid.map(r => categories.lot.indexOf(r.lot)),
+      extra: { r2: grid.map(r => r.r2), rmse: grid.map(r => r.rmse) },
+    }
+  }, [calib])
+  const ruleFields = useMemo(() => guardFields(src), [src])
+  const evaluated = useMemo(() => rule && (dots !== 'guardrails' || draft) ? evaluateGuardrail(rule, guardRows(src), ruleFields.filter(f => f.kind === 'number').map(f => f.name)) : { pass: Array.from(src.ok, b => b === '1'), error: null }, [src, rule, ruleFields, dots, draft])
+  const passMap = useMemo(() => new Map(calib.grid.map((r, i) => [r, evaluated.pass[i]])), [calib.grid, evaluated])
+  const passes = (r: CalibRow) => dots === 'none' || !!passMap.get(r)
+  const ruleDescription = dots === 'guardrails' ? 'Saved slope box and cross-validation floor' : rule ? describeGuardrail(rule, ruleFields) : 'No guardrail filter'
+
   const targets = useMemo(() => [...new Set(calib.grid.map((r) => r.tg))].sort(), [calib.grid])
   const modes = useMemo(() => Object.keys(calib.modes).filter((m) => calib.grid.some((r) => r.mo === m)), [calib])
 
   const rows = useMemo(
     () =>
       calib.grid.filter(
-        (r) => r.tg === target && r.mo === mode && r.lot === 'all' && r.el === 'all' && Number.isFinite(mx.get(r) as number) && Number.isFinite(my.get(r) as number) && !hidden.has(cohortName(r.co)) && (!onlyPassing || passes(r, calib))
+        (r) => r.tg === target && r.mo === mode && r.lot === 'all' && r.el === 'all' && Number.isFinite(mx.get(r) as number) && Number.isFinite(my.get(r) as number) && !hidden.has(cohortName(r.co)) && (!onlyPassing || passes(r))
       ),
-    [calib, target, mode, hidden, onlyPassing, mx, my]
+    [calib, target, mode, hidden, onlyPassing, mx, my, passMap, dots]
   )
   const cohorts = useMemo(() => [...new Set(calib.grid.filter((r) => r.tg === target && r.mo === mode).map((r) => r.co))], [calib.grid, target, mode])
 
@@ -107,30 +131,35 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
   const hexes = useMemo(() => {
     if (view !== 'Density hex') return []
     const hb = d3Hexbin<CalibRow>().x((r) => x(clampX(mOf(r)))).y((r) => y(clampYv(bOf(r)))).radius(12).extent([[0, 0], [innerW, innerH]])
-    return hb(rows).map((bin) => ({ bin, path: hb.hexagon(), pass: bin.filter((r) => passes(r, calib)).length }))
+    return hb(rows).map((bin) => ({ bin, path: hb.hexagon(), pass: bin.filter((r) => passes(r)).length }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, rows, innerW, innerH, mx, my, x.domain().join(), y.domain().join()])
+  }, [view, rows, innerW, innerH, mx, my, x.domain().join(), y.domain().join(), passMap, dots])
   const hexMax = d3.max(hexes, (h) => h.bin.length) ?? 1
   // the palette is picked from the density ramp (lib/colourSchemes), as on the other density charts
   const hexColor = d3.scaleQuantize<string>().domain([0, hexMax]).range(hexColours.stops.slice(1))
-  const best = useMemo(() => rows.filter((r) => passes(r, calib)).sort((a, b) => (score(a) ?? 1e9) - (score(b) ?? 1e9)).slice(0, 5), [rows, calib])
+  const best = useMemo(() => rows.filter((r) => passes(r)).sort((a, b) => (score(a) ?? 1e9) - (score(b) ?? 1e9)).slice(0, 5), [rows, calib, passMap, dots])
 
   return (
     <ChartFrame
       id="slope-trap"
       title="Slope vs intercept — the full-scale slope trap"
-      subtitle={`Every fitted configuration at its rule number of PLS factors, test-set Deming at MAC 10; by default slope against intercept (click an axis title for another metric). A flat line always has a small intercept, so ranking by intercept alone rewards slope-0.4 fits; the shaded column is the slope box the explorer enforces first, and dimmed points fail it or the IMPROVE cross-validation R² floor. Click a point to load it into the PLS-factor sweep. Density hex bins the same points to show where the grid is crowded. The guardrails (slope box, cross-validation R² floor) stay the explorer rule on the fixed-set Deming fit, whichever intercept is plotted.`}
+      subtitle={`Every fitted configuration at its rule number of PLS factors, test-set Deming at MAC 10; by default slope against intercept (click an axis title for another metric). A flat line always has a small intercept, so ranking by intercept alone rewards slope-0.4 fits; the shaded column is the slope box the explorer enforces first, and dimmed points fail it or the IMPROVE cross-validation R² floor. Click a point to load it into the PLS-factor sweep. Density hex bins the same points to show where the grid is crowded. The selected guardrail templates and custom rules are shared with Specification curve and evaluated on the displayed fixed-set fit. The shaded slope range remains a reference to the saved explorer settings.`}
       provenance="FIVE_SITE_GRID_2026-08-23.md “scoring lesson first” · ftir_17"
       controls={
         <>
           <Select label="Test set" value={target} options={targets} onChange={setTarget} optionLabel={(t) => calib.targets[t]?.label ?? t} />
           <Select label="Cross-validation protocol" value={mode} options={modes} onChange={setMode} optionLabel={(m) => label(CV_PROTOCOL, m)} />
           <Segmented value={view} options={VIEWS} onChange={setView} />
+          <Select label="Guardrails" value={dots} options={['guardrails', 'intercept', 'cv-slope', 'custom', 'rule', 'none']} optionLabel={key => key === 'guardrails' ? 'Saved slope + cross-validation' : key === 'rule' ? 'Custom rule…' : key === 'none' ? 'None' : TEMPLATES.find(t => t.key === key)?.label ?? key} onChange={key => { if (key === 'rule') setEditing(true); else setDots(key) }} />
+          <button type="button" className="btn" onClick={() => setEditing(true)}>Edit guardrails…</button>
           <Toggle label="Only configurations that pass the guardrails" checked={onlyPassing} onChange={setOnlyPassing} />
           <span className="control">{rows.length} configurations</span>
         </>
       }
     >
+      <p className="chart-note">Guardrails shared with Specification curve: {ruleDescription}. The shaded band is the saved slope range.</p>
+      {evaluated.error && <p role="alert">{evaluated.error}</p>}
+      {editing && <Suspense fallback={null}><GuardrailEditor title="Slope vs intercept" src={src} scope={calib.grid.flatMap((r, i) => r.tg === target && r.mo === mode && r.lot === 'all' && r.el === 'all' ? [i] : [])} initial={userRule ?? TEMPLATES.find(t => t.key === dots)?.rule ?? TEMPLATES.find(t => t.key === 'cv-slope')!.rule} onPreview={setDraft} onApply={r => { setRuleToken(encodeGuardrail(r)); setDots('rule') }} onClose={() => { setEditing(false); setDraft(null) }} /></Suspense>}
       <div ref={wrapRef} className="chart-wrap">
         {rows.length === 0 ? (
           <Empty>No rows for {calib.targets[target]?.label ?? target} · {label(CV_PROTOCOL, mode)}.</Empty>
@@ -155,7 +184,7 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
                 />
               ))}
               {rows.map((r, i) => {
-                const ok = passes(r, calib)
+                const ok = passes(r)
                 // in the density view only the selected configuration keeps its own mark
                 if (view === 'Density hex' && !sameConfig({ co: r.co, cut: r.cut, sel: r.sel, sp: r.sp }, selected)) return null
                 const cfg: Config = { co: r.co, cut: r.cut, sel: r.sel, sp: r.sp }
@@ -179,7 +208,7 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
                         `${METRIC.k}: ${r.k}`,
                         `Test set Deming ${fmtFit(r.dm, r.db)} (fixed) · ${fmtFit(r.adm, r.adb)} (all pairs) · R² ${r.r2?.toFixed(3) ?? '—'}`,
                         `${METRIC.cvR2}: ${r.ho?.toFixed(3) ?? '—'} · score ${score(r)?.toFixed(2) ?? '—'}`,
-                        ok ? 'passes slope box + cross-validation R² floor' : 'fails the guardrails',
+                        ok ? 'passes the selected guardrails' : 'fails the guardrails',
                       ])
                     }
                     onMouseLeave={tip.hide}

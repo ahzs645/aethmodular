@@ -6,6 +6,7 @@ import { useAddisStatus, useFilterSpectrum } from '@/lib/filterSpectrum'
 import { BASELINE_COLOR, INK } from '@/lib/theme'
 import { Toggle } from '@/components/ChartFrame'
 import { Combobox } from '@/components/Combobox'
+import { DrawerScroll } from '@/components/DrawerShell'
 
 const TRACE_KEYS = ['raw', 'airspec', 'vibes'] as const
 type TraceKey = (typeof TRACE_KEYS)[number]
@@ -133,7 +134,7 @@ export function HipsReadings({ id }: { id: string }) {
   }, [code])
   const hips = (state?.code === code ? state.data?.hips[base] : null)?.filter(r => r.filter_type === 'PM2.5') ?? []
   if (!hips.length) return null
-  return <table className="placement hips-readings">
+  return <DrawerScroll label="HIPS instrument readings"><table className="placement hips-readings">
     <thead>
       <tr><th colSpan={8} title="Instrument transmittance and reflectance readouts from the native archive. They are not the delivered Fabs or BC and never replace them.">HIPS instrument readings</th></tr>
       <tr className="sub"><th>Analysis</th><th>Date</th><th>QC</th><th>nm</th><th>T</th><th>R</th><th>Raw T</th><th>Raw R</th></tr>
@@ -141,5 +142,5 @@ export function HipsReadings({ id }: { id: string }) {
     <tbody>{hips.map((r, i) => <tr key={`${r.analysis_id}-${i}`}><td>{r.analysis_id}</td><td>{r.timestamp.slice(0, 10)}</td><td>{r.qc || '—'}</td>
       {[r.Wavelength, r.Transmittance, r.Reflectance, r.TransmittanceRaw, r.ReflectanceRaw].map((v, j) => <td key={j}>{v ?? '—'}</td>)}
     </tr>)}</tbody>
-  </table>
+  </table></DrawerScroll>
 }

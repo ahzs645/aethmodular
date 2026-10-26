@@ -1,6 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { SCHEMES, SCHEME_NOTES, schemeStops, type SchemeKind } from '@/lib/colourSchemes'
+import { useFloatingMenu } from '@/hooks/useFloatingMenu'
 
 /** a palette as a small gradient bar */
 const Swatch = ({ stops, wide = false }: { stops: string[]; wide?: boolean }) => (
@@ -39,21 +40,14 @@ export function SchemePopover({ anchor, kind, value, reverse, onChange, onClose 
   anchor: HTMLElement; kind: SchemeKind; value: string; reverse: boolean; onChange: (name: string, reverse: boolean) => void; onClose: () => void
 }) {
   const box = useRef<HTMLDivElement>(null)
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
-  // under the anchor, or above it when there is no room below (a ramp at the foot of the window)
-  useLayoutEffect(() => {
-    const r = anchor.getBoundingClientRect(), W = 250, h = box.current?.offsetHeight ?? 0
-    const below = r.bottom + 4, above = r.top - 4 - h
-    setPos({ left: Math.max(8, Math.min(r.left, window.innerWidth - W - 8)), top: below + h > window.innerHeight - 8 && above >= 8 ? above : below })
-  }, [anchor])
+  const trigger = useMemo(() => ({ current: anchor }), [anchor])
+  const pos = useFloatingMenu(true, trigger, box, 450)
   useEffect(() => {
     const onDown = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node) && !anchor.contains(e.target as Node)) onClose() }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    const onScroll = (e: Event) => { if (!box.current?.contains(e.target as Node)) onClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); onClose(); anchor.focus({ preventScroll: true }) } }
     document.addEventListener('pointerdown', onDown)
     window.addEventListener('keydown', onKey)
-    window.addEventListener('scroll', onScroll, { passive: true, capture: true })
-    return () => { document.removeEventListener('pointerdown', onDown); window.removeEventListener('keydown', onKey); window.removeEventListener('scroll', onScroll, { capture: true }) }
+    return () => { document.removeEventListener('pointerdown', onDown); window.removeEventListener('keydown', onKey) }
   }, [anchor, onClose])
   return createPortal(
     <div ref={box} className="scheme-pop" role="dialog" aria-label="Colour scheme" style={pos ?? { left: 0, top: 0, visibility: 'hidden' }}

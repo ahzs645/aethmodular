@@ -53,7 +53,7 @@ export function ColorLegend({
   // room for the end tick labels, which are centred on the ramp's edges
   const PAD = 18
   const svg = (
-    <svg width={width + 2 * PAD} height={svgH} fontFamily={FONT.family}>
+    <svg width={width + 2 * PAD} height={svgH} viewBox={`0 0 ${width + 2 * PAD} ${svgH}`} fontFamily={FONT.family} style={{ maxWidth: '100%', height: 'auto' }}>
       <g transform={`translate(${PAD},0)`}>
         {stops.map((c, i) => (
           <rect key={i} x={(i * width) / (n + 1)} y={0} width={width / (n + 1) + 0.5} height={h} fill={c} />

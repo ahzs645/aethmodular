@@ -117,7 +117,8 @@ export function useSearchParam<T extends string>(key: string, fallback: T, allow
   useEffect(() => {
     const sync = () => setValue(read())
     window.addEventListener('popstate', sync)
-    return () => window.removeEventListener('popstate', sync)
+    window.addEventListener('gallery:querychange', sync)
+    return () => { window.removeEventListener('popstate', sync); window.removeEventListener('gallery:querychange', sync) }
   }, [name, fallback])
   const update = (v: T) => {
     setValue(v)
@@ -125,6 +126,7 @@ export function useSearchParam<T extends string>(key: string, fallback: T, allow
     if (v === fallback) url.searchParams.delete(name)
     else url.searchParams.set(name, v)
     window.history.replaceState(null, '', url)
+    window.dispatchEvent(new Event('gallery:querychange'))
   }
   // checked on every render, not only on mount: the options can change (another export, a
   // version switch) and a fallback the data does not have (a missing bank or season) must not

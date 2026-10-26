@@ -5,6 +5,7 @@ import { createContext, useId, useContext, useEffect, useRef, useState, type Rea
 import { ExportButton } from '@/components/ExportDialog'
 import { usePrefs } from '@/lib/prefs'
 import { useParamScope } from '@/lib/url'
+import { useFloatingMenu } from '@/hooks/useFloatingMenu'
 
 /**
  * What a frame's host adds to it. A Dashboard tile draws the frame compact: no header
@@ -126,7 +127,7 @@ export function ChartFrame({
           {exportable && <ExportButton panelRef={ref} title={short} />}
           {focused
             ? <button type="button" className="btn quiet" title="Back to the page (Esc)" onClick={() => setFocused(false)}>Close ✕</button>
-            : <button type="button" className="btn quiet" title="Focus: this chart alone, centred, with its options" aria-label="Focus on this chart" onClick={() => setFocused(true)}>⤢</button>}
+            : <button type="button" className="btn quiet" title="Focus: this chart alone, centred, with its options" aria-label="Focus on this chart" onClick={() => setFocused(true)}><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg></button>}
         </div>
       </header>
       {/* the same elements whichever side the options are on: a different tree would remount the chart's
@@ -186,10 +187,19 @@ function RefMenu({ onCopyRef, refCopied, link, focused, onFocus }: {
   const [open, setOpen] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const root = useRef<HTMLDivElement>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const menu = useRef<HTMLDivElement>(null)
+  const menuId = useId()
+  const place = useFloatingMenu(open, trigger, menu)
+  const positioned = place !== null
+  const close = () => { setOpen(false); trigger.current?.focus({ preventScroll: true }) }
+  useEffect(() => {
+    if (open && positioned) menu.current?.querySelector<HTMLButtonElement>('[role=menuitem]')?.focus({ preventScroll: true })
+  }, [open, positioned])
   useEffect(() => {
     if (!open) return
-    const off = (e: PointerEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false) }
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); setOpen(false) } }
+    const off = (e: PointerEvent) => { if (!root.current?.contains(e.target as Node) && !menu.current?.contains(e.target as Node)) setOpen(false) }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); setOpen(false); trigger.current?.focus({ preventScroll: true }) } }
     window.addEventListener('pointerdown', off)
     window.addEventListener('keydown', esc)
     return () => { window.removeEventListener('pointerdown', off); window.removeEventListener('keydown', esc) }
@@ -200,11 +210,21 @@ function RefMenu({ onCopyRef, refCopied, link, focused, onFocus }: {
   })
   return (
     <div className="frame-menu-root" ref={root}>
-      <button type="button" className="btn quiet" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}
+      <button ref={trigger} type="button" className="btn quiet" aria-haspopup="menu" aria-controls={menuId} aria-expanded={open} onClick={() => setOpen((v) => !v)}
         title="Share this chart with its settings, focus on it, or copy a development reference">
         {refCopied ? 'Copied' : 'Ref'}<svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>
       </button>
-      {open && <div className="frame-menu" role="menu">
+      {open && createPortal(<div ref={menu} id={menuId} className="frame-menu floating" role="menu" aria-label="Chart reference actions"
+        style={place ?? { position: 'fixed', visibility: 'hidden' }}
+        onKeyDown={e => {
+          const items = [...menu.current!.querySelectorAll<HTMLButtonElement>('[role=menuitem]')]
+          const at = items.indexOf(document.activeElement as HTMLButtonElement)
+          if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
+            e.preventDefault()
+            const next = e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : (at + (e.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length
+            items[next]?.focus({ preventScroll: true })
+          } else if (e.key === 'Tab') close()
+        }}>
         <button type="button" role="menuitem" onClick={copyLink}>
           <strong>{linkCopied ? 'Link copied' : 'Copy link to this chart'}</strong>
           <span>Opens the gallery on this chart alone, with every setting as it is now</span>
@@ -215,7 +235,7 @@ function RefMenu({ onCopyRef, refCopied, link, focused, onFocus }: {
         <button type="button" role="menuitem" onClick={() => { onCopyRef(); setOpen(false) }}>
           <strong>Copy reference</strong><span>Title, source file and view URL, for development</span>
         </button>
-      </div>}
+      </div>, document.body)}
     </div>
   )
 }

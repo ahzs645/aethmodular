@@ -24,6 +24,13 @@ export function useTooltip(wrapRef: RefObject<HTMLElement>, { large = false }: {
   const show = useCallback(
     (e: React.MouseEvent, body: TipBody) => {
       if (!wrapRef.current) return
+      // Touch browsers synthesize mouseenter on a tap and may never send
+      // mouseleave. Details belong in the tapped record, rather than a sticky tip.
+      const source = e.nativeEvent as MouseEvent & { sourceCapabilities?: { firesTouchEvents?: boolean } }
+      if (source.sourceCapabilities?.firesTouchEvents || window.matchMedia('(hover: none)').matches) return
+      // A non-modal record drawer keeps its charts live, but background plot
+      // readouts must not float over the open record.
+      if (document.querySelector('.drawer') && !wrapRef.current.closest('.drawer, [role="dialog"]')) return
       setTip({ x: e.clientX, y: e.clientY, body: Array.isArray(body) ? body.map(l => estimatorText(l, method)) : body })
     },
     [wrapRef, method]
@@ -34,7 +41,17 @@ export function useTooltip(wrapRef: RefObject<HTMLElement>, { large = false }: {
   useEffect(() => {
     if (!tip) return
     window.addEventListener('scroll', hide, { passive: true, capture: true })
-    return () => window.removeEventListener('scroll', hide, { capture: true })
+    window.addEventListener('blur', hide)
+    window.addEventListener('gallery:dismiss-tooltips', hide)
+    document.addEventListener('pointerdown', hide, true)
+    document.addEventListener('click', hide, true)
+    return () => {
+      window.removeEventListener('scroll', hide, { capture: true })
+      window.removeEventListener('blur', hide)
+      window.removeEventListener('gallery:dismiss-tooltips', hide)
+      document.removeEventListener('pointerdown', hide, true)
+      document.removeEventListener('click', hide, true)
+    }
   }, [tip, hide])
 
   // open towards whichever side has room, so a point near the right or bottom edge keeps its label on screen.
