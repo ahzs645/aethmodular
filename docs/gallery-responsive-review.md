@@ -132,3 +132,28 @@ check also passes for regression summaries, the Fields picker, connected scatter
 and seasonal labels, with no browser exceptions. The native-export Python tests
 pass (5/5). The full JavaScript suite reports 123 passes and the same eight known
 failures involving missing or incompatible scientific export fixtures.
+
+## Public gallery publication, 26 October 2026
+
+The public gallery at https://projects.ahmadjalil.com/aethmodular-gallery/ now
+serves the updated application and all 4,750 data assets. The application build
+identifies source commit `366a571` in `build-info.json`; later source commits
+change publication helpers and documentation only. Gallery repository commit
+`2f4b735` deployed successfully in
+[Actions run 40391159632](https://github.com/ahzs645/aethmodular-gallery/actions/runs/40391159632).
+
+Release uploads returned HTTP 401 and changing Pages settings returned HTTP
+403 for the connected integration. Publication therefore uses the prebuilt
+Actions workflow while preserving the existing Pages workflow mode. The source
+workflow remains available. The publisher includes linked data directories,
+records build provenance, and accepts generic build-service logins in browser
+identifiers while retaining personal-path checks. Its five publication tests
+pass. The unused draft from the failed release attempt was removed.
+
+All 224 layout cases were repeated against the public URL at the 14 widths
+from 320 to 2560px: no layout failures or browser exceptions. Live touch checks
+also pass for Fields, the floating Ref menu, connected-scatter inspection,
+ETAD-0090 spectrum loading and local drawer scrolling. HTTP checks verify the
+availability export, corrected site labels, native index and content hashes of
+the ETAD-0075 and ETAD-0090 spectrum assets. These browser checks use Chromium
+touch simulation; physical iPhone Safari remains a separate device check.
