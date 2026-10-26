@@ -64,8 +64,18 @@ for (const [code, cal] of Object.entries(networkCalendars as Record<string, Netw
   }
 }
 
+/**
+ * Addis Ababa's two Ethiopian calendars, which differ only in where February goes: the Ethiopian
+ * Meteorological Institute's (the default) and the one every frozen calibration export was binned with.
+ */
+const ADDIS_VARIANTS = [
+  { key: 'belg_feb', label: 'Feb in Belg', note: 'Ethiopian Meteorological Institute: Bega Oct–Jan, Belg Feb–May, Kiremt Jun–Sep' },
+  { key: 'dry_feb', label: 'Feb in Dry', note: 'As in the calibration analyses: Dry Oct–Feb, Belg Mar–May, Kiremt Jun–Sep' },
+]
+
 /** The calendars a site can be binned by, when it has more than one (else null). */
 export function calendarVariants(site: string, code?: string) {
+  if (site === 'Addis Ababa') return ADDIS_VARIANTS
   const v = NETWORK_VARIANTS.get(site) ?? (code ? NETWORK_VARIANTS.get(code) : undefined)
   return v ? v.map(({ key, label, note }) => ({ key, label, note })) : null
 }
@@ -76,7 +86,7 @@ export function calendarVariants(site: string, code?: string) {
  */
 export function localSeasonsFor(site: string | null, meta: MetaFile | undefined, code?: string, variant?: string): SeasonMeta[] | null {
   if (!site || !meta) return null
-  if (site === 'Addis Ababa') return meta.season_conventions.belg_feb ?? null
+  if (site === 'Addis Ababa') return (variant === 'dry_feb' ? meta.season_conventions.dry_feb : meta.season_conventions.belg_feb) ?? null
   if (LOCAL_SEASONS[site]) return LOCAL_SEASONS[site]
   const alt = variant ? (NETWORK_VARIANTS.get(site) ?? (code ? NETWORK_VARIANTS.get(code) : undefined))?.find((v) => v.key === variant) : undefined
   return alt?.seasons ?? NETWORK_SEASONS.get(site) ?? (code ? NETWORK_SEASONS.get(code) : undefined) ?? null

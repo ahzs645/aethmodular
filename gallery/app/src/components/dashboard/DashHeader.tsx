@@ -3,7 +3,7 @@ import { Combobox } from '@/components/Combobox'
 import { DateBrush } from '@/components/DateBrush'
 import { SitePicker } from '@/components/SitePicker'
 import type { SubsetActions, SubsetState } from '@/components/SubsetBar'
-import { useSidePanelOpen } from '@/hooks/useSidePanel'
+import { useSidePanelOpen, useSidePanelView } from '@/hooks/useSidePanel'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { ROWS, SCOPES, SCOPE_LABEL, type Layout, type Scope } from '@/lib/dashboard'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -51,6 +51,7 @@ export function DashHeader({ meta, filters, scope, onScope, onPickSite, layout, 
   onPresent?: () => void
 }) {
   const [, setFiltersOpen] = useSidePanelOpen()
+  const [, setPanelView] = useSidePanelView()
   const narrow = useMediaQuery(`(max-width: ${NARROW}px)`)
   if (!filters) return null
   const { state: s, actions: a } = filters
@@ -95,7 +96,7 @@ export function DashHeader({ meta, filters, scope, onScope, onPickSite, layout, 
     <DateBrush rows={filters.brushRows} meta={meta} range={s.dateRange} onChange={a.onDateRange} width={narrow ? 300 : 560} />
     {s.dateRange && <button type="button" className="btn quiet" onClick={() => a.onDateRange(null)}>Every date</button>}
   </HeaderPopover>
-  const allFilters = <button type="button" className={`btn${others ? ' on' : ''}`} onClick={() => setFiltersOpen(true)}
+  const allFilters = <button type="button" className={`btn${others ? ' on' : ''}`} onClick={() => { setPanelView('filters'); setFiltersOpen(true) }}
     title={`${s.shown} of ${s.total} filters in view. Every filter: network, calendar, exclusions, PMF source, hand edits, units, fits`}>
     Filters <span className="dash-count">{s.shown.toLocaleString()}</span>{others ? <span className="dash-badge">{others}</span> : null}
   </button>

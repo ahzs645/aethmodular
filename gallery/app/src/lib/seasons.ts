@@ -16,13 +16,13 @@ export type SeasonConvention = 'local' | 'dry_feb' | 'belg_feb'
 
 /** Names for the calendar picker and for calendar notes. */
 export const CONVENTION_LABEL: Record<string, string> = {
-  local: 'Per site · each site’s local calendar',
-  dry_feb: 'Shared Ethiopian month bins · Feb in dry',
-  belg_feb: 'Shared Ethiopian month bins · Feb in Belg',
-  quarters: 'Shared month bins · Dec–Feb, Mar–May, Jun–Aug, Sep–Nov',
-  custom: 'Custom bins · your own, shared by every site',
-  pmf_paper: 'PMF paper dates · First Dry, Less Rainy, More Rainy, Second Dry, its 2023 cut points every year',
-  rain_rule: 'Rain rule · each site and year from its own rain (ERA5): First Dry, Less Rainy, More Rainy, Second Dry',
+  local: 'Local seasons · per site',
+  dry_feb: 'Ethiopian seasons at every site · February in Dry',
+  belg_feb: 'Ethiopian seasons at every site · February in Belg',
+  quarters: 'Quarters at every site · Dec–Feb, Mar–May, Jun–Aug, Sep–Nov',
+  custom: 'Custom · your own months at every site',
+  pmf_paper: 'PMF paper dates · its 2023 season dates, reused every year',
+  rain_rule: 'Rain rule · each site and year from its own daily rain (ERA5)',
 }
 
 /** a calendar's short name for a picker ('Rain rule', 'Per site', 'Shared Ethiopian month bins'): its label up to the ' · ' */

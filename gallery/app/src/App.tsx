@@ -163,6 +163,25 @@ const DEFAULT_CUSTOM = [{ name: 'Winter', months: [12, 1, 2] }, { name: 'Spring'
 const parseVariants = (v: string | null): Record<string, string> =>
   Object.fromEntries((v ?? '').split(',').map((x) => x.split(':')).filter((x) => x.length === 2 && x[0] && x[1]))
 
+/**
+ * A site's own seasons, edited by the reader (the ✎ in a site's season section): code -> bins. In the
+ * URL as sse={"ETAD":[["Bega",[10,11,12,1]],…]} and saved in this browser, so they come back
+ * without the link; a link that carries its own wins.
+ */
+type SiteSeasons = Record<string, { name: string; months: number[] }[]>
+const SITE_SEASONS_KEY = 'gallery.siteSeasons'
+const parseSiteSeasons = (v: string | null): SiteSeasons | null => {
+  try {
+    const o = v ? JSON.parse(v) : null
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return null
+    return Object.fromEntries(Object.entries(o).flatMap(([c, bins]) => { const b = parseCustomSeasons(JSON.stringify(bins)); return b ? [[c, b]] : [] }))
+  } catch { return null }
+}
+const siteSeasonsParam = (v: SiteSeasons) => (Object.keys(v).length ? JSON.stringify(Object.fromEntries(Object.entries(v).map(([c, b]) => [c, JSON.parse(customSeasonsParam(b)!)]))) : null)
+const readSavedSiteSeasons = (): SiteSeasons => { try { return parseSiteSeasons(localStorage.getItem(SITE_SEASONS_KEY)) ?? {} } catch { return {} } }
+/** "Bega (Oct-Jan, dry)" -> "Bega": the editor adds the month range back from the months */
+const bareSeasonName = (name: string) => name.replace(/\s*\([^)]*\)\s*$/, '') || name
+
 /** FTIR EC under each spectral baseline: none is the SPARTAN product in filters.json */
 type FtirBaseline = 'none' | 'spline' | 'vibes'
 const FTIR_VARIANT = { spline: 'EC (FTIR, spline)', vibes: 'EC (FTIR, VIBES)' } as const
@@ -272,6 +291,9 @@ export default function App() {
   const [rainRule, setRainRule] = useState<RainRule>(() => parseRainRule(init.get('rr')) ?? DEFAULT_RAIN_RULE)
   // a site's alternative calendar where the sources disagree (CODC Bogotá / Palmira, Taiwan review / outlook); in the URL as cv=CODC:palmira,…
   const [calVariants, setCalVariants] = useState<Record<string, string>>(() => parseVariants(init.get('cv')))
+  const [siteSeasons, setSiteSeasons] = useState<SiteSeasons>(() => parseSiteSeasons(init.get('sse')) ?? readSavedSiteSeasons())
+  // saved in the link's own form, so one parser reads both
+  useEffect(() => { try { localStorage.setItem(SITE_SEASONS_KEY, siteSeasonsParam(siteSeasons) ?? '{}') } catch { /* private window */ } }, [siteSeasons])
   const [activeSeasons, setActiveSeasons] = useState<Set<string> | null>(listParam(init.get('seasons')))
   const [activeSites, setActiveSites] = useState<Set<string> | null>(listParam(init.get('sites')))
   // which filters the chart tabs draw (lib/networks): SPARTAN by default, starting on the four focus
@@ -388,6 +410,7 @@ export default function App() {
       cs: convention === 'custom' ? customSeasonsParam(customSeasons) : null,
       rr: convention === 'rain_rule' && rainRuleParam(rainRule) !== rainRuleParam(DEFAULT_RAIN_RULE) ? rainRuleParam(rainRule) : null,
       cv: Object.keys(calVariants).length ? Object.entries(calVariants).map(([c, k]) => `${c}:${k}`).join(',') : null,
+      sse: siteSeasonsParam(siteSeasons),
       seasons: listToParam(activeSeasons),
       sites: listToParam(activeSites),
       net: network !== 'spartan' ? network : null,
@@ -419,7 +442,7 @@ export default function App() {
       log: axes.log ? '1' : null,
       pax: PAX_PARAM[axes.panels ?? 'Shared'],
     })
-  }, [tab, meeting, experiment, estimators, showCI, convention, calVariants, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, dropWhyParam, keepIds, ftirBaseline, customSeasons, rainRule, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, includeExcluded, xField, yField, field, dash, ratios, groupings, mac, basis, pinnedId, axes])
+  }, [tab, meeting, experiment, estimators, showCI, convention, calVariants, siteSeasons, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, dropWhyParam, keepIds, ftirBaseline, customSeasons, rainRule, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, includeExcluded, xField, yField, field, dash, ratios, groupings, mac, basis, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -437,6 +460,7 @@ export default function App() {
       setCustomSeasons(parseCustomSeasons(p.get('cs')) ?? DEFAULT_CUSTOM)
       setRainRule(parseRainRule(p.get('rr')) ?? DEFAULT_RAIN_RULE)
       setCalVariants(parseVariants(p.get('cv')))
+      setSiteSeasons(parseSiteSeasons(p.get('sse')) ?? readSavedSiteSeasons())
       setActiveSeasons(listParam(p.get('seasons')))
       setActiveSites(listParam(p.get('sites')))
       setNetwork(isNetwork(p.get('net')) ? p.get('net') as Network : 'spartan')
@@ -627,10 +651,13 @@ export default function App() {
     (site: string) => {
       if (rainOn) return rainCals.get(codeOfSite(site) ?? '') ?? RAIN_PLACEHOLDER
       if (!isLocal) return sharedSeasons
-      const code = siteCode.get(site)
+      const code = codeOfSite(site)
+      // the reader's own bins for this site win over its published calendar
+      const own = code ? siteSeasons[code] : undefined
+      if (own) return customSeasonMeta(own)
       return localSeasonsFor(site, data?.meta, code, code ? calVariants[code] : undefined) ?? MONTH_QUARTERS
     },
-    [isLocal, data, sharedSeasons, siteCode, calVariants, rainOn, rainCals, codeOfSite]
+    [isLocal, data, sharedSeasons, calVariants, rainOn, rainCals, codeOfSite, siteSeasons]
   )
   const seasons = useMemo(
     () => isLocal
@@ -983,14 +1010,24 @@ export default function App() {
       siteItems,
       siteLimitNote: net === 'improve' ? `${improveSites.length} of ${MAX_IMPROVE_SITES} IMPROVE sites`
         : net === 'both' && netView ? `${netView.chosen.length - improveSites.length} SPARTAN · ${improveSites.length}/${MAX_IMPROVE_SITES} IMPROVE` : undefined,
-      calendarOptions: ['local', ...Object.keys(conventions)],
+      // Addis's two Ethiopian calendars are its own switch and custom bins are each site's ✎, so the
+      // picker leaves them out unless a link chose one
+      calendarOptions: ['local', ...Object.keys(conventions)].filter((k) => !['dry_feb', 'belg_feb', 'custom'].includes(k) || k === activeConvention),
       customSeasons,
       rainRule,
       // sites in view whose sources disagree, with the calendar each is binned by
       calendarVariants: isLocal && !rainOn ? calendarSites.flatMap((site) => {
-        const code = siteCode.get(site)
+        const code = codeOfSite(site)
         const options = calendarVariants(site, code)
-        return options && code ? [{ site, code, options, value: calVariants[code] ?? options[0].key }] : []
+        return options && code && !siteSeasons[code] ? [{ site, code, options, value: calVariants[code] ?? options[0].key }] : []
+      }) : [],
+      // every site's seasons, editable under the per-site calendar: the reader's, or its published ones to start from
+      siteCalendars: isLocal && !rainOn ? calendarSites.flatMap((site) => {
+        const code = codeOfSite(site)
+        if (!code) return []
+        const own = siteSeasons[code]
+        const base = localSeasonsFor(site, data?.meta, code, calVariants[code]) ?? MONTH_QUARTERS
+        return [{ site, code, edited: !!own, seasons: own ?? base.map((se) => ({ name: bareSeasonName(se.name), months: se.months })) }]
       }) : [],
       sitesAtDefault: net === 'spartan' ? spartanSel === null : net === 'improve' ? improveSites.length > 0 : net === 'both' ? spartanSel === null && improveSites.length === 0 : !activeSites,
       allSitesSelected: hasSpartan(net) ? !!netView && netView.chosen.length - (net === 'both' ? improveSites.length : 0) === netView.nSpartan : !activeSites,
@@ -1060,6 +1097,10 @@ export default function App() {
       onCustomSeasons: (v) => { setCustomSeasons(v); setActiveSeasons(null) },
       onRainRule: (v) => { setRainRule(v); setActiveSeasons(null) },
       // the default calendar is left out of the link
+      onSiteSeasons: (code, bins) => {
+        setSiteSeasons((cur) => { const next = { ...cur }; if (bins) next[code] = bins; else delete next[code]; return next })
+        setActiveSeasons(null)
+      },
       onCalendarVariant: (code, key, isDefault) => {
         setCalVariants((cur) => { const next = { ...cur }; if (isDefault) delete next[code]; else next[code] = key; return next })
         setActiveSeasons(null)

@@ -310,6 +310,8 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .side-dock-body { height: 100%; }
 .side-dock:not(.open) .side-dock-body { visibility: hidden; transition: visibility 0s linear 0.2s; }
 .side-dock-tab { position: absolute; left: 100%; }
+/* Filters and Plot stacked on the edge; the open one is marked */
+.side-dock-tabs { display: flex; flex-direction: column; gap: 6px; }
 @media (prefers-reduced-motion: reduce) { .side-dock { transition: none; } }
 .subset-tab {
   position: relative; z-index: 36;
@@ -319,6 +321,7 @@ code { font-family: var(--mono); font-size: 0.92em; }
   box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.08); cursor: pointer; font-family: var(--font);
 }
 .subset-tab:hover { color: var(--accent); border-color: var(--accent); }
+.subset-tab.active { color: var(--accent); border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent), 2px 2px 10px rgba(0, 0, 0, 0.08); }
 .subset-tab-label { writing-mode: vertical-rl; transform: rotate(180deg); font-size: calc(12.5px * var(--text-scale)); font-weight: 600; letter-spacing: 0.3px; }
 .subset-tab-count { writing-mode: vertical-rl; transform: rotate(180deg); font-family: var(--mono); font-size: calc(10.5px * var(--text-scale)); color: var(--ink-muted); }
 .subset-tab-badge { background: var(--accent); color: #fff; border-radius: 9px; min-width: 17px; height: 17px; font-size: calc(10.5px * var(--text-scale)); line-height: 17px; text-align: center; font-weight: 600; }
@@ -389,7 +392,11 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .subset-panel .subset-summary:empty { display: none; }
 .brush-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .season-group { display: flex; flex-direction: column; gap: 5px; padding-left: 2px; }
-.season-site { display: inline-flex; align-items: center; gap: 6px; font-size: calc(11.5px * var(--text-scale)); font-weight: 600; color: var(--ink-text); }
+.season-site { display: flex; align-items: center; gap: 6px; font-size: calc(11.5px * var(--text-scale)); font-weight: 600; color: var(--ink-text); }
+.season-site-tools { margin-left: auto; display: inline-flex; gap: 2px; }
+.season-site-tools .btn { font-weight: 400; padding: 1px 6px; }
+.season-edit-btn.on { color: var(--accent); }
+.season-edited { font-weight: 400; font-size: calc(10.5px * var(--text-scale)); color: var(--accent); background: var(--accent-soft); border-radius: 8px; padding: 0 6px; }
 .season-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 /* a filter dimension in the side panel, with an on/off switch in its header */
 .filter-section { display: flex; flex-direction: column; gap: 8px; padding: 10px 0 4px; border-top: 1px solid var(--ink-grid); }
@@ -587,6 +594,7 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
   .subset-panel { border-radius: 16px 16px 0 0; border: 0; border-top: 1px solid var(--ink-border); box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.16); }
   .side-dock-tab { top: auto !important; left: 50%; bottom: calc(100% + 18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); transition: opacity 0.15s; }
   .side-dock.open .side-dock-tab { opacity: 0; pointer-events: none; }
+  .side-dock-tabs { flex-direction: row; gap: 8px; }
   .subset-tab { flex-direction: row; padding: 9px 16px; border: 1px solid var(--ink-border); border-radius: 22px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16); }
   .subset-tab-label, .subset-tab-count { writing-mode: horizontal-tb; transform: none; }
 }
