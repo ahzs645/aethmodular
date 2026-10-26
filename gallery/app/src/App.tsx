@@ -62,6 +62,8 @@ import type { DateRange } from '@/components/DateBrush'
 import type { FilterRow, SeasonMeta, SiteMeta } from '@/lib/types'
 import { AXES_MODES, DEFAULT_AXES, PAX_PARAM, paxFromParam, type AxesMode, type AxesOpts } from '@/lib/axes'
 import { calendarVariants, hasLocalCalendar, localSeasonsFor, qualifySeason } from '@/siteSeasons'
+import { dynamicPlaceholder, parseSiteRules, siteRulesParam, type SiteRules } from '@/lib/dynamicSeasons'
+import { useDynamicCalendars } from '@/hooks/useDynamicCalendars'
 import { MAX_IMPROVE_SITES, MONTH_QUARTERS, NETWORK_DEFAULTS, hasImprove, hasSpartan, isNetwork, mergeGroups, networkColor, useNetworkData, type Network } from '@/lib/networks'
 import type { SiteItem } from '@/components/SitePicker'
 import { FilterEditsProvider, HandEditsBadge, type FilterGroup } from '@/lib/filterEdits'
@@ -179,6 +181,9 @@ const parseSiteSeasons = (v: string | null): SiteSeasons | null => {
 }
 const siteSeasonsParam = (v: SiteSeasons) => (Object.keys(v).length ? JSON.stringify(Object.fromEntries(Object.entries(v).map(([c, b]) => [c, JSON.parse(customSeasonsParam(b)!)]))) : null)
 const readSavedSiteSeasons = (): SiteSeasons => { try { return parseSiteSeasons(localStorage.getItem(SITE_SEASONS_KEY)) ?? {} } catch { return {} } }
+/** a site's dynamic seasons (lib/dynamicSeasons), in the link as dyn= and saved in this browser like sse */
+const SITE_RULES_KEY = 'gallery.siteRules'
+const readSavedSiteRules = (): SiteRules => { try { return parseSiteRules(localStorage.getItem(SITE_RULES_KEY)) ?? {} } catch { return {} } }
 /** "Bega (Oct-Jan, dry)" -> "Bega": the editor adds the month range back from the months */
 const bareSeasonName = (name: string) => name.replace(/\s*\([^)]*\)\s*$/, '') || name
 
@@ -298,6 +303,8 @@ export default function App() {
   const [siteSeasons, setSiteSeasons] = useState<SiteSeasons>(() => parseSiteSeasons(init.get('sse')) ?? readSavedSiteSeasons())
   // saved in the link's own form, so one parser reads both
   useEffect(() => { try { localStorage.setItem(SITE_SEASONS_KEY, siteSeasonsParam(siteSeasons) ?? '{}') } catch { /* private window */ } }, [siteSeasons])
+  const [siteRules, setSiteRules] = useState<SiteRules>(() => parseSiteRules(init.get('dyn')) ?? readSavedSiteRules())
+  useEffect(() => { try { localStorage.setItem(SITE_RULES_KEY, siteRulesParam(siteRules) ?? '{}') } catch { /* private window */ } }, [siteRules])
   const [activeSeasons, setActiveSeasons] = useState<Set<string> | null>(listParam(init.get('seasons')))
   const [activeSites, setActiveSites] = useState<Set<string> | null>(listParam(init.get('sites')))
   // which filters the chart tabs draw (lib/networks): SPARTAN by default, starting on the four focus
@@ -415,6 +422,7 @@ export default function App() {
       rr: convention === 'rain_rule' && rainRuleParam(rainRule) !== rainRuleParam(DEFAULT_RAIN_RULE) ? rainRuleParam(rainRule) : null,
       cv: Object.keys(calVariants).length ? Object.entries(calVariants).map(([c, k]) => `${c}:${k}`).join(',') : null,
       sse: siteSeasonsParam(siteSeasons),
+      dyn: siteRulesParam(siteRules),
       seasons: listToParam(activeSeasons),
       sites: listToParam(activeSites),
       net: network !== 'spartan' ? network : null,
@@ -447,7 +455,7 @@ export default function App() {
       log: axes.log ? '1' : null,
       pax: PAX_PARAM[axes.panels ?? 'Shared'],
     })
-  }, [tab, meeting, experiment, estimators, showCI, convention, calVariants, siteSeasons, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, dropWhyParam, keepIds, ftirBaseline, customSeasons, rainRule, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, includeExcluded, inclIds, xField, yField, field, dash, ratios, groupings, mac, basis, pinnedId, axes])
+  }, [tab, meeting, experiment, estimators, showCI, convention, calVariants, siteSeasons, siteRules, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, dropWhyParam, keepIds, ftirBaseline, customSeasons, rainRule, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, includeExcluded, inclIds, xField, yField, field, dash, ratios, groupings, mac, basis, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -466,6 +474,7 @@ export default function App() {
       setRainRule(parseRainRule(p.get('rr')) ?? DEFAULT_RAIN_RULE)
       setCalVariants(parseVariants(p.get('cv')))
       setSiteSeasons(parseSiteSeasons(p.get('sse')) ?? readSavedSiteSeasons())
+      setSiteRules(parseSiteRules(p.get('dyn')) ?? readSavedSiteRules())
       setActiveSeasons(listParam(p.get('seasons')))
       setActiveSites(listParam(p.get('sites')))
       setNetwork(isNetwork(p.get('net')) ? p.get('net') as Network : 'spartan')
@@ -652,18 +661,21 @@ export default function App() {
   )
   const codeOfSite = useCallback((site: string) => siteCode.get(site) ?? data?.meta.sites.find((x) => x.name === site)?.code, [siteCode, data])
   const rainCals = useRainCalendars(rainOn ? calendarSites.map(codeOfSite).filter((c): c is string => !!c) : [], rainRule)
+  const dynCals = useDynamicCalendars(siteRules)
   const calendarOf = useCallback(
     // sites without a local calendar fall back to the shared quarters, not the Ethiopian bins
     (site: string) => {
       if (rainOn) return rainCals.get(codeOfSite(site) ?? '') ?? RAIN_PLACEHOLDER
       if (!isLocal) return sharedSeasons
       const code = codeOfSite(site)
-      // the reader's own bins for this site win over its published calendar
+      // a site's weather rule, then its own month bins, win over its published calendar
+      const rule = code ? siteRules[code] : undefined
+      if (rule) return dynCals.get(code!) ?? dynamicPlaceholder(rule)
       const own = code ? siteSeasons[code] : undefined
       if (own) return customSeasonMeta(own)
       return localSeasonsFor(site, data?.meta, code, code ? calVariants[code] : undefined) ?? MONTH_QUARTERS
     },
-    [isLocal, data, sharedSeasons, calVariants, rainOn, rainCals, codeOfSite, siteSeasons]
+    [isLocal, data, sharedSeasons, calVariants, rainOn, rainCals, codeOfSite, siteSeasons, siteRules, dynCals]
   )
   const seasons = useMemo(
     () => isLocal
@@ -1029,14 +1041,14 @@ export default function App() {
         : net === 'both' && netView ? `${netView.chosen.length - improveSites.length} SPARTAN · ${improveSites.length}/${MAX_IMPROVE_SITES} IMPROVE` : undefined,
       // Addis's two Ethiopian calendars are its own switch and custom bins are each site's ✎, so the
       // picker leaves them out unless a link chose one
-      calendarOptions: ['local', ...Object.keys(conventions)].filter((k) => !['dry_feb', 'belg_feb', 'custom'].includes(k) || k === activeConvention),
+      calendarOptions: ['local', ...Object.keys(conventions)].filter((k) => !['dry_feb', 'belg_feb', 'custom', 'rain_rule'].includes(k) || k === activeConvention),
       customSeasons,
       rainRule,
       // sites in view whose sources disagree, with the calendar each is binned by
       calendarVariants: isLocal && !rainOn ? calendarSites.flatMap((site) => {
         const code = codeOfSite(site)
         const options = calendarVariants(site, code)
-        return options && code && !siteSeasons[code] ? [{ site, code, options, value: calVariants[code] ?? options[0].key }] : []
+        return options && code && !siteSeasons[code] && !siteRules[code] ? [{ site, code, options, value: calVariants[code] ?? options[0].key }] : []
       }) : [],
       // every site's seasons, editable under the per-site calendar: the reader's, or its published ones to start from
       siteCalendars: isLocal && !rainOn ? calendarSites.flatMap((site) => {
@@ -1044,7 +1056,7 @@ export default function App() {
         if (!code) return []
         const own = siteSeasons[code]
         const base = localSeasonsFor(site, data?.meta, code, calVariants[code]) ?? MONTH_QUARTERS
-        return [{ site, code, edited: !!own, seasons: own ?? base.map((se) => ({ name: bareSeasonName(se.name), months: se.months })) }]
+        return [{ site, code, edited: !!own, rule: siteRules[code], seasons: own ?? base.map((se) => ({ name: bareSeasonName(se.name), months: se.months })) }]
       }) : [],
       sitesAtDefault: net === 'spartan' ? spartanSel === null : net === 'improve' ? improveSites.length > 0 : net === 'both' ? spartanSel === null && improveSites.length === 0 : !activeSites,
       allSitesSelected: hasSpartan(net) ? !!netView && netView.chosen.length - (net === 'both' ? improveSites.length : 0) === netView.nSpartan : !activeSites,
@@ -1114,6 +1126,10 @@ export default function App() {
       onCustomSeasons: (v) => { setCustomSeasons(v); setActiveSeasons(null) },
       onRainRule: (v) => { setRainRule(v); setActiveSeasons(null) },
       // the default calendar is left out of the link
+      onSiteRule: (code, rule) => {
+        setSiteRules((cur) => { const next = { ...cur }; if (rule) next[code] = rule; else delete next[code]; return next })
+        setActiveSeasons(null)
+      },
       onSiteSeasons: (code, bins) => {
         setSiteSeasons((cur) => { const next = { ...cur }; if (bins) next[code] = bins; else delete next[code]; return next })
         setActiveSeasons(null)

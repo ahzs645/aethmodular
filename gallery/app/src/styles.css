@@ -396,6 +396,20 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .season-site-tools { margin-left: auto; display: inline-flex; gap: 2px; }
 .season-site-tools .btn { font-weight: 400; padding: 1px 6px; }
 .season-edit-btn.on { color: var(--accent); }
+/* a site's dynamic seasons (components/DynamicSeasonEditor) */
+.dyn-editor { display: flex; flex-direction: column; gap: 8px; padding: 8px; border: 1px solid var(--ink-border); border-radius: 8px; font-size: calc(11.5px * var(--text-scale)); }
+.dyn-preset, .dyn-onset, .dyn-cond, .dyn-season-head { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; }
+.dyn-onset { flex-direction: column; align-items: flex-start; }
+.dyn-label { color: var(--ink-muted); }
+.dyn-num { padding: 2px 4px; }
+.dyn-editor select.select { padding: 2px 4px; max-width: 128px; }
+.dyn-seasons { display: flex; flex-direction: column; gap: 8px; }
+.dyn-season { display: flex; flex-direction: column; gap: 4px; padding-bottom: 6px; border-bottom: 1px solid var(--ink-grid); }
+.dyn-season-head input.select { flex: 1; min-width: 0; }
+.dyn-cond { padding-left: 20px; }
+.dyn-otherwise { color: var(--ink-muted); font-style: italic; }
+.dyn-add { align-self: flex-start; margin-left: 16px; font-size: calc(11px * var(--text-scale)); padding: 1px 6px; }
+.dyn-minrun { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-muted); }
 .season-edited { font-weight: 400; font-size: calc(10.5px * var(--text-scale)); color: var(--accent); background: var(--accent-soft); border-radius: 8px; padding: 0 6px; }
 .season-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 /* a filter dimension in the side panel, with an on/off switch in its header */

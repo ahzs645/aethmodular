@@ -21,6 +21,8 @@ import { Combobox } from '@/components/Combobox'
 import { useRatios } from '@/components/RatioDialog'
 import { MAC_CHOICES, type Basis } from '@/lib/viewFields'
 import { SeasonEditor } from '@/components/SeasonEditor'
+import { DynamicSeasonEditor } from '@/components/DynamicSeasonEditor'
+import { defaultRuleFor, type DynRule } from '@/lib/dynamicSeasons'
 import { DEFAULT_RAIN_RULE, type RainRule } from '@/lib/rainSeasons'
 
 export interface SubsetCaps {
@@ -93,7 +95,7 @@ export interface SubsetState {
   /** sites in view with more than one defensible calendar, and the one each is binned by */
   calendarVariants?: { site: string; code: string; options: { key: string; label: string; note?: string }[]; value: string }[]
   /** under the per-site calendar, each site's seasons: the reader's own (edited) or its published ones */
-  siteCalendars?: { site: string; code: string; edited: boolean; seasons: { name: string; months: number[] }[] }[]
+  siteCalendars?: { site: string; code: string; edited: boolean; rule?: DynRule; seasons: { name: string; months: number[] }[] }[]
   /** filters dropped by hand from a brush, and the size of a "keep only" set (null: none) */
   dropped?: number
   /** the hand-excluded filters, each with a "site · date" label */
@@ -139,6 +141,8 @@ export interface SubsetActions {
   onCustomSeasons?: (v: { name: string; months: number[] }[]) => void
   /** a site's own seasons (by site code); null puts back its published calendar */
   onSiteSeasons?: (code: string, seasons: { name: string; months: number[] }[] | null) => void
+  /** a site's dynamic seasons from its own weather (lib/dynamicSeasons); null drops the rule */
+  onSiteRule?: (code: string, rule: DynRule | null) => void
   onRainRule?: (v: RainRule) => void
   onCalendarVariant?: (code: string, key: string, isDefault: boolean) => void
   onKeepIds?: (ids: Set<string>) => void
@@ -426,15 +430,9 @@ export function SubsetBar({
                     <Row label="calendar">
                       <Combobox label="" title="Season calendar" value={s.convention} onChange={a.onConvention}
                         options={s.calendarOptions.map((k) => ({ key: k, label: `${CALENDAR_LABEL[k] ?? k}${k === s.defaultConvention ? ' (default)' : ''}` }))} />
-                      {s.convention !== 'local' && <span className="row-note" style={{ display: 'block' }}>
+                      {!['local', 'rain_rule', 'pmf_paper', 'quarters'].includes(s.convention) && <span className="row-note" style={{ display: 'block' }}>
                         {s.convention === 'custom'
                           ? 'Your own seasons, the same at every site. Pick a season, click months to move them into it, rename freely; they travel in the link.'
-                          : s.convention === 'quarters'
-                          ? 'The same three-month seasons at every site, so sites compare month for month. Dec–Feb is winter in the north and summer in the south.'
-                          : s.convention === 'rain_rule'
-                          ? 'Each site and year gets its own season dates from its daily ERA5 rain: First Dry until the rains begin, Less Rainy, More Rainy once rain is heavy, then Second Dry after the heavy rains end. The thresholds are below.'
-                          : s.convention === 'pmf_paper'
-                          ? 'The four seasons of the Addis PMF paper, cut at its 2023 dates and reused for every year and every site.'
                           : <>Ethiopia’s seasons applied to every site by month, so sites compare month for month; outside Ethiopia the names only mark the months (“Belg” at Beijing is just those months). February sits in <strong style={{ color: 'var(--ink-text)' }}>{s.seasons.find((x) => x.months.includes(2))?.name ?? '—'}</strong>.</>}
                       </span>}
                     </Row>
@@ -450,22 +448,34 @@ export function SubsetBar({
                           const editable = !!cal && !!a.onSiteSeasons
                           // the site heading helps when several calendars are listed, and carries the ✎
                           if (!g.site || (seasonGroups.length < 2 && !editable)) return null
-                          const editing = editable && editingSite === cal!.code
+                          const editing = editable && editingSite === `${cal!.code}:months`
+                          const ruling = editable && !!a.onSiteRule && editingSite === `${cal!.code}:rule`
+                          const rule = cal?.rule
                           return <>
                             <span className="season-site">
                               <span className="swatch" style={{ background: meta.sites.find((x) => x.name === g.site)?.color ?? 'var(--ink-muted)' }} />
                               {g.site}
-                              {cal?.edited && <span className="season-edited" title="Your own seasons for this site: saved in this browser and in the link">edited</span>}
+                              {rule ? <span className="season-edited" title="Seasons from this site's own daily weather: saved in this browser and in the link">dynamic</span>
+                                : cal?.edited && <span className="season-edited" title="Your own seasons for this site: saved in this browser and in the link">edited</span>}
                               {editable && <span className="season-site-tools">
-                                {cal!.edited && <button type="button" className="btn quiet" onClick={() => { a.onSiteSeasons!(cal!.code, null); setEditingSite(null) }}
+                                {(cal!.edited || rule) && <button type="button" className="btn quiet"
+                                  onClick={() => { a.onSiteSeasons!(cal!.code, null); a.onSiteRule?.(cal!.code, null); setEditingSite(null) }}
                                   title={`Put back ${g.site}'s published seasons`}>Reset</button>}
-                                <button type="button" className={`btn quiet season-edit-btn${editing ? ' on' : ''}`} aria-pressed={editing}
+                                {a.onSiteRule && (rule || !editing) && <button type="button" className={`btn quiet season-edit-btn${ruling ? ' on' : ''}`} aria-pressed={ruling}
+                                  title={ruling ? 'Done' : rule ? `Edit ${g.site}'s weather rules` : `Set ${g.site}'s seasons from its own daily weather: rain, temperature, humidity, wind`}
+                                  onClick={() => {
+                                    if (ruling) return setEditingSite(null)
+                                    if (!rule) a.onSiteRule!(cal!.code, defaultRuleFor(cal!.code))
+                                    setEditingSite(`${cal!.code}:rule`)
+                                  }}>{ruling ? 'Done' : rule ? 'Rules' : 'Dynamic'}</button>}
+                                {!rule && !ruling && <button type="button" className={`btn quiet season-edit-btn${editing ? ' on' : ''}`} aria-pressed={editing}
                                   aria-label={editing ? `Done editing ${g.site}'s seasons` : `Edit ${g.site}'s seasons`}
                                   title={editing ? 'Done' : `Edit ${g.site}'s seasons: rename them and move months between them`}
-                                  onClick={() => setEditingSite(editing ? null : cal!.code)}>{editing ? 'Done' : '✎'}</button>
+                                  onClick={() => setEditingSite(editing ? null : `${cal!.code}:months`)}>{editing ? 'Done' : '✎'}</button>}
                               </span>}
                             </span>
-                            {editing && <SeasonEditor seasons={cal!.seasons} onChange={(v) => a.onSiteSeasons!(cal!.code, v)} />}
+                            {editing && !rule && <SeasonEditor seasons={cal!.seasons} onChange={(v) => a.onSiteSeasons!(cal!.code, v)} />}
+                            {ruling && rule && <DynamicSeasonEditor code={cal!.code} rule={rule} onChange={(r) => a.onSiteRule!(cal!.code, r)} />}
                           </>
                         })()}
                         {(() => {
@@ -737,7 +747,6 @@ function RainRuleEditor({ rule, onChange }: { rule: RainRule; onChange: (r: Rain
   const isDefault = rule.window === DEFAULT_RAIN_RULE.window && rule.onset === DEFAULT_RAIN_RULE.onset && rule.heavy === DEFAULT_RAIN_RULE.heavy
   return (
     <div className="rain-rule">
-      <p className="method-note" style={{ display: 'block', margin: '4px 0' }}>Each site and year from its own daily rain (ERA5), {rule.window}-day mean: rains begin above {rule.onset} mm/day (First Dry → Less Rainy), heavy rains above {rule.heavy} (More Rainy) until the last such day (Second Dry). Fitted to the PMF paper's 2023 Addis dates.</p>
       <div className="rain-rule-fields">
         {num('window', 'Window (days)', 1, 'Days in the centred rolling mean of daily rain')}
         {num('onset', 'Rains begin (mm/day)', 0.5, 'Mean rain above which the dry season ends')}
