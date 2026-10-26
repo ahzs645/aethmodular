@@ -119,6 +119,10 @@ README_RELEASE = """# Aethmodular graph gallery
 GitHub Pages site for the interactive gallery in [ahzs645/aethmodular](https://github.com/ahzs645/aethmodular)
 (`gallery/`). **Live page:** https://projects.ahmadjalil.com/aethmodular-gallery/
 
+Latest successful publication: [aethmodular `{sha}`](https://github.com/ahzs645/aethmodular/commit/{sha})
+with [data snapshot `{tag}`](https://github.com/ahzs645/aethmodular-gallery/releases/tag/{tag}).
+[Deployment run](https://github.com/ahzs645/aethmodular-gallery/actions/runs/{run_id}).
+
 Published with `gallery/share/publish_pages.py`: the data (`gallery/app/public/data`, machine paths
 scrubbed) is a release of this repo (`data-<hash>`, asset `gallery-data.tar.gz`), and
 `.github/workflows/deploy.yml` builds the site from the source repo at a pushed commit and deploys it.
@@ -141,11 +145,30 @@ def run(*cmd, cwd=None, check=True) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, cwd=cwd or ROOT, capture_output=True, text=True, check=check)
 
 
+def data_files(root: Path):
+    """Include linked export folders; reject broken links and directory cycles."""
+    def walk(folder, ancestors):
+        resolved = folder.resolve()
+        if resolved in ancestors:
+            raise SystemExit(f"refusing to publish: directory cycle at {folder.relative_to(root)}")
+        for path in sorted(folder.iterdir()):
+            if path.name == '.DS_Store':
+                continue
+            if path.is_symlink() and not path.exists():
+                raise SystemExit(f"refusing to publish: broken data link at {path.relative_to(root)}")
+            if path.is_dir():
+                yield from walk(path, ancestors | {resolved})
+            elif path.is_file():
+                yield path
+
+    yield from walk(root, set())
+
+
 def pack_data(dest: Path) -> tuple[str, int, int]:
     """public/data as a deterministic, scrubbed tar.gz (same data, same bytes); sha256, files, scrubbed."""
-    files = sorted(p for p in DATA.rglob("*") if p.is_file() and p.name != ".DS_Store")
+    files = sorted(data_files(DATA))
     left, scrubbed = [], 0
-    with dest.open("wb") as raw, gzip.GzipFile(fileobj=raw, mode="wb", mtime=0, compresslevel=6) as gz, \
+    with dest.open("wb") as raw, gzip.GzipFile(filename="", fileobj=raw, mode="wb", mtime=0, compresslevel=6) as gz, \
             tarfile.open(fileobj=gz, mode="w", format=tarfile.PAX_FORMAT) as tar:
         for path in files:
             rel = path.relative_to(DATA).as_posix()
@@ -211,7 +234,6 @@ def publish_release(dry_run: bool) -> None:
     if put_file(WORKFLOW_PATH, WORKFLOW.read_text(), "Deploy workflow from aethmodular gallery/share/pages-deploy.yml"):
         print(f"installed {WORKFLOW_PATH}")
         time.sleep(5)  # let GitHub register the workflow before it is started
-    put_file("README.md", README_RELEASE, "README: published by the deploy workflow")
     pages = json.loads(run("gh", "api", f"repos/{REPO}/pages").stdout)
     switched = pages.get("build_type") != "workflow"
     if switched:
@@ -239,6 +261,8 @@ def publish_release(dry_run: bool) -> None:
             run("gh", "api", "-X", "PUT", f"repos/{REPO}/pages", "-f", "build_type=legacy", "-f", "source[branch]=main", "-f", "source[path]=/")
             print("deploy failed: Pages is back on the main branch")
         raise SystemExit(f"deploy failed: https://github.com/{REPO}/actions/runs/{run_id}")
+    put_file("README.md", README_RELEASE.format(sha=sha, tag=tag, run_id=run_id),
+             f"Record successful gallery deployment from aethmodular {sha[:7]}")
     url = run("gh", "api", f"repos/{REPO}/pages", "-q", ".html_url").stdout.strip()
     print(f"deployed {sha[:7]} with {tag}: {url}")
 

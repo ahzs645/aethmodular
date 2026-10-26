@@ -270,6 +270,10 @@ their group only while one is open. Set `VITE_SHOW_EXPERIMENTAL=1` (e.g. in `app
    `.github/workflows/deploy.yml`). GitHub then checks out `gallery/app` at the pushed commit,
    unpacks the data, builds, re-checks and deploys. This takes about a minute.
 
+Linked export folders are included in the snapshot; broken links and directory cycles stop
+publication. After deployment succeeds, the gallery repo's README records the exact source
+commit, data release and Actions run.
+
 Commit and push the gallery source first: the script refuses uncommitted changes under
 `gallery/app` (exports in `public/data` excepted), because GitHub builds the pushed commit.
 `--dry-run` packs and checks only. `--branch` is the earlier way (build here, push the built
