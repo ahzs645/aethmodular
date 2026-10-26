@@ -8,8 +8,8 @@ skipped when that exact data is already there), installs the deploy workflow
 the pushed commit, unpacks the data, builds and deploys Pages. The gallery source must be
 committed and pushed first, since GitHub builds from GitHub.
 
---branch (the earlier way, kept as a fallback): build here, copy into a local clone of the
-gallery repo (CLONE) and push the built files; Pages then serves its main branch.
+--branch (prebuilt fallback): build here, copy into a local clone of the gallery repo
+(CLONE) and push the built files; its prebuilt workflow deploys them to Pages.
 
 Run from the repo root:
     python3 gallery/share/publish_pages.py                  # data release + GitHub build and deploy
@@ -82,6 +82,9 @@ Static build of the interactive gallery in [ahzs645/aethmodular](https://github.
 (`gallery/`), published with `gallery/share/publish_pages.py`. This repo holds only the built
 site; change the source repo, not these files.
 
+The prebuilt workflow deploys these files from `main` to Pages. The source-build workflow
+remains available for release-based publication.
+
 **Live page:** https://projects.ahmadjalil.com/aethmodular-gallery/
 
 Built {built} from aethmodular `{sha}`.
@@ -100,6 +103,7 @@ work in progress on FTIR elemental-carbon calibration for Addis Ababa; numbers t
 
 # ---------------------------------------------------------------- release (default)
 WORKFLOW = Path(__file__).with_name("pages-deploy.yml")
+STATIC_WORKFLOW = Path(__file__).with_name("pages-static-deploy.yml")
 WORKFLOW_PATH = ".github/workflows/deploy.yml"
 DATA_ASSET = "gallery-data.tar.gz"
 DATA = APP / "public/data"
@@ -145,7 +149,10 @@ calibration for Addis Ababa; numbers there are preliminary.
 
 
 def run(*cmd, cwd=None, check=True) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, cwd=cwd or ROOT, capture_output=True, text=True, check=check)
+    result = subprocess.run(cmd, cwd=cwd or ROOT, capture_output=True, text=True)
+    if check and result.returncode:
+        raise SystemExit(f"{' '.join(cmd[:2])} failed:\n{result.stderr or result.stdout}")
+    return result
 
 
 def data_files(root: Path):
@@ -324,6 +331,9 @@ def publish():
         if item.name not in {".git", ".github"}:
             shutil.rmtree(item) if item.is_dir() else item.unlink()
     shutil.copytree(BUILD, CLONE, dirs_exist_ok=True)
+    static_workflow = CLONE / ".github/workflows/deploy-static.yml"
+    static_workflow.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(STATIC_WORKFLOW, static_workflow)
     built = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     (CLONE / "README.md").write_text(README.format(built=built, sha=sha + (" + uncommitted gallery changes" if dirty else "")))
     subprocess.run(["git", "add", "-A"], cwd=CLONE, check=True)
@@ -335,11 +345,6 @@ def publish():
     pages = subprocess.run(["gh", "api", f"repos/{REPO}/pages"], capture_output=True)
     if pages.returncode != 0:
         subprocess.run(["gh", "api", "-X", "POST", f"repos/{REPO}/pages", "-f", "source[branch]=main", "-f", "source[path]=/"], check=True)
-    else:
-        settings = json.loads(pages.stdout)
-        if settings.get("build_type") != "legacy" or settings.get("source") != {"branch": "main", "path": "/"}:
-            run("gh", "api", "-X", "PUT", f"repos/{REPO}/pages", "-f", "build_type=legacy",
-                "-f", "source[branch]=main", "-f", "source[path]=/")
     # an account-level custom domain (projects.ahmadjalil.com) replaces github.io; ask Pages for the real address
     url = subprocess.run(["gh", "api", f"repos/{REPO}/pages", "-q", ".html_url"], capture_output=True, text=True).stdout.strip()
     print(f"pushed; page: {url or 'https://ahzs645.github.io/aethmodular-gallery/'} (rebuilds in about a minute)")
@@ -348,7 +353,7 @@ def publish():
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dry-run", action="store_true", help="pack (or with --branch, build) and check; do not upload or push")
-    ap.add_argument("--branch", action="store_true", help="the earlier way: build here and push the built files to the gallery repo")
+    ap.add_argument("--branch", action="store_true", help="build here and deploy the prebuilt gallery through its own repo")
     args = ap.parse_args()
     if not args.branch:
         publish_release(args.dry_run)
