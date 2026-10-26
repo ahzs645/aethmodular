@@ -1,5 +1,6 @@
 """Publication must retain linked data assets and their relative URLs."""
 import gzip
+import getpass
 import importlib.util
 import json
 from pathlib import Path
@@ -61,3 +62,15 @@ def test_release_readme_identifies_the_successful_build():
     assert '/aethmodular/commit/abc123' in text
     assert '/releases/tag/data-example' in text
     assert '/actions/runs/123' in text
+
+
+def test_privacy_check_accepts_browser_identifiers_and_retains_personal_path_checks(monkeypatch):
+    monkeypatch.setattr(getpass, 'getuser', lambda: 'agent')
+    monkeypatch.setattr(publication.subprocess, 'run', lambda *a, **kw:
+                        publication.subprocess.CompletedProcess(a, 0, stdout='person@example.test\n'))
+    pattern = publication.forbidden_pattern()
+    assert not pattern.search('navigator.userAgent; personalization; user-agent')
+    assert pattern.search('/Users/example/file.json')
+    assert pattern.search('GoogleDrive-example')
+    assert pattern.search('person@example.test')
+    assert pattern.search('/person/input.csv')

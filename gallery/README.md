@@ -277,8 +277,10 @@ commit, data release and Actions run.
 Commit and push the gallery source first: the script refuses uncommitted changes under
 `gallery/app` (exports in `public/data` excepted), because GitHub builds the pushed commit.
 `--dry-run` packs and checks only. `--branch` is the earlier way (build here, push the built
-files to the repo's `main`). Pages no longer serves `main`, so `--branch` needs the Pages
-source switched back to the branch.
+files to the repo's `main`). It preserves the deploy workflow, switches Pages to serve that
+branch, and publishes `build-info.json` with the exact source commit. This fallback also
+works when release-asset uploads are unavailable. The default publisher switches Pages
+back to workflow deployments when used again.
 
 ### Views, sharing and embeds
 

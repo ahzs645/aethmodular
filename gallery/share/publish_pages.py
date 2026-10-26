@@ -63,12 +63,15 @@ def forbidden_pattern() -> re.Pattern:
     the bundle (e.g. lzma's author address) legitimately contain one.
     """
     import getpass
-    terms = {getpass.getuser()}
+    login = getpass.getuser()
+    # Build-service logins also occur in ordinary browser/library identifiers.
+    terms = set() if login in {"agent", "root", "runner", "ubuntu", "codex"} else {login}
     email = subprocess.run(["git", "config", "user.email"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
     if email:
         terms |= {email, email.split("@")[0]}
     names = "|".join(re.escape(t) for t in sorted(terms) if len(t) >= 4)
-    return re.compile(r"/Users/|GoogleDrive-|gh[op]_[A-Za-z0-9]{20,}" + (f"|{names}" if names else ""), re.IGNORECASE)
+    return re.compile(r"/Users/|GoogleDrive-|gh[op]_[A-Za-z0-9]{20,}" +
+                      (rf"|(?<!\w)(?:{names})(?!\w)" if names else ""), re.IGNORECASE)
 
 
 FORBIDDEN = forbidden_pattern()
@@ -286,6 +289,11 @@ def build():
     if left:
         raise SystemExit(f"refusing to publish: machine paths or account names remain in {left}")
     (BUILD / ".nojekyll").write_text("")
+    (BUILD / "build-info.json").write_text(json.dumps({
+        "source_repository": "ahzs645/aethmodular",
+        "source_sha": run("git", "rev-parse", "HEAD").stdout.strip(),
+        "publication": "static branch",
+    }, indent=2) + "\n")
     size = sum(p.stat().st_size for p in BUILD.rglob("*") if p.is_file())
     biggest = max((p for p in BUILD.rglob("*") if p.is_file()), key=lambda p: p.stat().st_size)
     if biggest.stat().st_size > 95e6:
@@ -306,8 +314,14 @@ def publish():
         subprocess.run(["git", "remote", "add", "origin", f"https://github.com/{REPO}.git"], cwd=CLONE, check=True)
         if exists:
             subprocess.run(["git", "pull", "origin", "main"], cwd=CLONE)
+    else:
+        dirty_clone = run("git", "status", "--porcelain", cwd=CLONE).stdout.strip()
+        if dirty_clone:
+            raise SystemExit(f"gallery clone has uncommitted changes:\n{dirty_clone}")
+        run("git", "fetch", "origin", "main", cwd=CLONE)
+        run("git", "merge", "--ff-only", "origin/main", cwd=CLONE)
     for item in CLONE.iterdir():
-        if item.name != ".git":
+        if item.name not in {".git", ".github"}:
             shutil.rmtree(item) if item.is_dir() else item.unlink()
     shutil.copytree(BUILD, CLONE, dirs_exist_ok=True)
     built = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -317,10 +331,15 @@ def publish():
         print("nothing changed since the last publish")
         return
     subprocess.run(["git", "commit", "-q", "-m", f"Build from aethmodular {sha}"], cwd=CLONE, check=True)
-    subprocess.run(["git", "push", "-u", "origin", "main"], cwd=CLONE, check=True)
+    subprocess.run(["git", "push", "-u", "origin", "HEAD:main"], cwd=CLONE, check=True)
     pages = subprocess.run(["gh", "api", f"repos/{REPO}/pages"], capture_output=True)
     if pages.returncode != 0:
         subprocess.run(["gh", "api", "-X", "POST", f"repos/{REPO}/pages", "-f", "source[branch]=main", "-f", "source[path]=/"], check=True)
+    else:
+        settings = json.loads(pages.stdout)
+        if settings.get("build_type") != "legacy" or settings.get("source") != {"branch": "main", "path": "/"}:
+            run("gh", "api", "-X", "PUT", f"repos/{REPO}/pages", "-f", "build_type=legacy",
+                "-f", "source[branch]=main", "-f", "source[path]=/")
     # an account-level custom domain (projects.ahmadjalil.com) replaces github.io; ask Pages for the real address
     url = subprocess.run(["gh", "api", f"repos/{REPO}/pages", "-q", ".html_url"], capture_output=True, text=True).stdout.strip()
     print(f"pushed; page: {url or 'https://ahzs645.github.io/aethmodular-gallery/'} (rebuilds in about a minute)")
