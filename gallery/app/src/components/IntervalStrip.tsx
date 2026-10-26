@@ -32,6 +32,8 @@ export interface IntervalRow {
   /** right-hand annotation, e.g. "n=42" */
   note?: string
   selected?: boolean
+  /** a bold label for the row a chart is about (not a selection) */
+  strong?: boolean
   onClick?: () => void
 }
 export interface IntervalBlock { key: string; title?: string; color?: string; rows: IntervalRow[] }
@@ -135,7 +137,7 @@ export function IntervalStrip({ blocks, panels, labelWidth = 220, rowHeight = 20
             return <g key={`${b.key}|${r.key}`} onMouseEnter={(e) => r.tip && tip.show(e, r.tip)} onMouseLeave={tip.hide}
               onClick={r.onClick} style={r.onClick ? { cursor: 'pointer' } : undefined}>
               {r.selected && <rect x={-m.left + 4} y={cy - rowHeight / 2} width={w - 8} height={rowHeight} fill={INK.accent} fillOpacity={0.08} />}
-              <text x={-10} y={cy} dy="0.32em" textAnchor="end" fontSize={11} fill={r.labelColor ?? INK.text} fontWeight={r.selected ? 600 : 400}>{r.label}</text>
+              <text x={-10} y={cy} dy="0.32em" textAnchor="end" fontSize={11} fill={r.labelColor ?? INK.text} fontWeight={r.selected || r.strong ? 600 : 400}>{r.label}</text>
               {panels.map((p, k) => <g key={k} transform={`translate(${k * (pw + panelGap)},0)`}>{(r.marks[k] ?? []).map((mk, i) => mark(mk, scales[k], cy, i, p.stems, r.selected))}</g>)}
               {r.note && <text x={w - m.left - m.right + 8} y={cy} dy="0.32em" fontSize={10.5} fontFamily={FONT.mono} fill={INK.muted}>{r.note}</text>}
               <rect x={-m.left + 4} y={cy - rowHeight / 2} width={w - 8} height={rowHeight} fill="transparent" />

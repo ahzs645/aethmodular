@@ -11,7 +11,8 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { loadJson } from '@/lib/data'
 import { useSearchParam } from '@/lib/url'
 import { ADDIS_ALL, FONT, IMPROVE_GREY, INK, themed } from '@/lib/theme'
-import { f2, pct, signed } from '@/lib/format'
+import { coef, coefSigned, f2, pct, signed } from '@/lib/format'
+import { Crossplot } from '@/components/Crossplot'
 import { Forest, Scatter, num, placeLabels, rowsOf, runLine, sourceOf, useXp, type Cols, type XpBase } from './shared'
 
 /**
@@ -108,7 +109,7 @@ function PilotPosition({ d }: { d: TorData }) {
   const verdict = (t: TorData['target'][number]) => t['Adama inside Addis 25-75'] >= 0.6 ? { txt: 'inside Addis\'s middle half', c: INK.good }
     : t['Adama inside Addis 5-95'] >= 0.6 ? { txt: 'inside Addis\'s range, off-centre', c: INK.warn } : { txt: 'outside Addis\'s range', c: INK.negative }
   return (
-    <ChartFrame id="xd-position" source={source('PilotPosition')}
+    <ChartFrame id="xd-position" source={source('PilotPosition')} provenance={runLine(d)}
       title="Is the pilot where it needs to be? — Adama against SPARTAN Addis, axis by axis"
       subtitle="To test the Addis problem, a pilot must sit where SPARTAN Addis sits. Orange bar: SPARTAN Addis's filters (5–95 % light, 25–75 % dark, median tick); green diamonds: the five Adama pairs; grey and purple ticks: the IMPROVE and SPARTAN-network medians. The verdict on the right counts the Adama pairs inside Addis's middle half or its 5–95 % range.">
       <div ref={ref} style={{ position: 'relative' }}>
@@ -148,7 +149,8 @@ function PilotPosition({ d }: { d: TorData }) {
 function LoadingPlane({ d }: { d: TorData }) {
   const pts = useMemo(() => rowsOf(d.points), [d])
   const lg = useLegend()
-  const [improveDots, setImproveDots] = useState(false)
+  const [improveParam, setImproveDots] = useSearchParam<'on' | 'off'>('xd-plane.improve', 'off', ['on', 'off'])
+  const improveDots = improveParam === 'on'
   const pops = ['IMPROVE (TOR)', 'SPARTAN network', 'SPARTAN Addis', 'Adama pilot (TOR)']
   const rng = d3.randomLcg(7)
   const sample = (rows: Record<string, any>[], n: number) => rows.length <= n ? rows : rows.filter(() => rng() < n / rows.length)
@@ -161,11 +163,11 @@ function LoadingPlane({ d }: { d: TorData }) {
   const adama = d.network.find((r) => r.population === 'Adama pilot (TOR)')!
   const xD: [number, number] = [0.02, 50], yD: [number, number] = [0.5, 60]
   return (
-    <ChartFrame id="xd-plane" source={source('LoadingPlane')}
+    <ChartFrame id="xd-plane" source={source('LoadingPlane')} provenance={runLine(d)}
       title="Loading = concentration × volume — why the pilot filters are light, and what would fix it"
       subtitle="Each filter by EC concentration (across) and sampled volume (up); grey diagonals are equal EC per filter. The orange band is SPARTAN Addis's middle half of EC per filter: a pilot filter must land in it to load the spectrum as SPARTAN Addis does. The arrow shows how much more air the Adama sampler would need at Adama's own EC concentration."
-      controls={<Toggle label="IMPROVE filters" checked={improveDots} onChange={setImproveDots} title="Draw a sample of IMPROVE filters (EC from TOR)" />}>
-      <Scatter points={plot} xLabel="EC concentration (µg/m³)" yLabel="sampled volume (m³)" xLog yLog height={440} xDomain={xD} yDomain={yD}
+      controls={<Toggle label="IMPROVE filters" checked={improveDots} onChange={(v) => setImproveDots(v ? 'on' : 'off')} title="Draw a sample of IMPROVE filters (EC from TOR)" />}>
+      <Scatter points={plot} xLabel="EC concentration (µg/m³)" yLabel="sampled volume (m³)" xLog yLog maxSide={420} xDomain={xD} yDomain={yD}
         under={({ x, y }) => {
           // the drawn (niced) axis ranges, so the diagonals run corner to corner and their labels spread out
           const [x0, x1] = x.domain(), [y0, y1] = y.domain()
@@ -204,13 +206,13 @@ function SeasonPanel({ d }: { d: TorData }) {
   const rows = d.seasons.map((s) => ({
     key: s.season, label: `${s.season}${s['Adama pairs'] ? `  ← all ${s['Adama pairs']} Adama pairs` : ''}`, color: s['Adama pairs'] ? ADAMA : ADDIS_ALL, bold: s['Adama pairs'] > 0,
     values: { ratio: { v: s['published ÷ HIPS (median)'], lo: s['published ÷ HIPS p25'], hi: s['published ÷ HIPS p75'] }, slope: { v: s['Deming slope'] }, intercept: { v: s['Deming intercept'] } },
-    tip: [s.season, `${s['Addis filters']} Addis filters`, `published FTIR ÷ HIPS: median ${f2(s['published ÷ HIPS (median)'])} (25–75 % ${f2(s['published ÷ HIPS p25'])}–${f2(s['published ÷ HIPS p75'])})`, `Deming slope ${f2(s['Deming slope'])}, intercept ${signed(s['Deming intercept'])}`, `${s['Adama pairs']} Adama pairs`],
+    tip: [s.season, `${s['Addis filters']} Addis filters`, `published FTIR ÷ HIPS: median ${f2(s['published ÷ HIPS (median)'])} (25–75 % ${f2(s['published ÷ HIPS p25'])}–${f2(s['published ÷ HIPS p75'])})`, `Deming slope ${coef(s['Deming slope'])}, intercept ${coefSigned(s['Deming intercept'])} µg/m³`, `${s['Adama pairs']} Adama pairs`],
   }))
   return (
-    <ChartFrame id="xd-season" source={source('SeasonPanel')}
+    <ChartFrame id="xd-season" source={source('SeasonPanel')} provenance={runLine(d)}
       title="Season — when the Addis disagreement happens, and when the pilot was sampled"
       subtitle="SPARTAN Addis by season (site calendar, February in Belg): published FTIR EC ÷ HIPS BC (median with 25–75 %), and the Deming fit against HIPS. The seasons differ, and the Adama pilot was sampled entirely in one of them (green). Pairs meant to test the calibration at Addis need to cover every season, or at least the one the question is about.">
-      <Forest rows={rows} labelWidth={230} panels={[{ key: 'ratio', label: 'published FTIR ÷ HIPS BC', ref: 1, fmt: f2 }, { key: 'slope', label: 'Deming slope vs HIPS', ref: 1, fmt: f2 }, { key: 'intercept', label: 'Deming intercept (µg/m³)', ref: 0, fmt: (v) => signed(v) }]} />
+      <Forest rows={rows} labelWidth={230} panels={[{ key: 'ratio', label: 'published FTIR ÷ HIPS BC', ref: 1, fmt: f2 }, { key: 'slope', label: 'Deming slope vs HIPS', ref: 1, fmt: coef }, { key: 'intercept', label: 'Deming intercept (µg/m³)', ref: 0, fmt: coefSigned }]} />
     </ChartFrame>
   )
 }
@@ -221,7 +223,7 @@ function ContractCard({ d }: { d: TorData }) {
   const pilotFor = (model: string) => d.pilot.find((p) => p.model === model && p.reference === 'ECTR' && p.pairs === 'three unflagged')
   const models = [...new Set(d.pilot.map((p) => p.model))]
   return (
-    <ChartFrame id="xd-contract" source={source('ContractCard')} exportable={false}
+    <ChartFrame id="xd-contract" source={source('ContractCard')} exportable={false} provenance={runLine(d)}
       title="The pass contract — written before the Addis city pairs are read"
       subtitle="What agreement with TOR would count as evidence that the frozen calibration works at Addis. Values are proposals to agree with Ann and Satoshi; once agreed, the file is kept as the record and the pairs are scored against it unchanged.">
       <div style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, background: themed('#fff4e5', '#3a2a1c'), color: INK.warn, fontSize: 11, fontWeight: 700, marginBottom: 8 }}>{c.status}</div>
@@ -261,7 +263,8 @@ function NetworkMap({ d }: { d: TorData }) {
   useEffect(() => { let live = true; loadJson<FeatureCollection>('world.geojson').then((w) => { if (live) setWorld(w) }).catch(() => {}); return () => { live = false } }, [])
   const [of, setOf] = useSearchParam<'Addis' | 'Adama'>('xd-map.of', 'Addis', ['Addis', 'Adama'])
   const [region, setRegion] = useSearchParam<'World' | 'United States'>('xd-map.region', 'World', ['World', 'United States'])
-  const [arcs, setArcs] = useState(true)
+  const [arcsParam, setArcs] = useSearchParam<'on' | 'off'>('xd-map.arcs', 'on', ['on', 'off'])
+  const arcs = arcsParam === 'on'
   const sites = d.neighbour_sites.filter((s) => s.lat != null && s.lon != null)
   const net = Object.fromEntries(d.network.map((r) => [r.site, r]))
   const addis = net.ETAD, adama = net.ADAMA
@@ -278,11 +281,11 @@ function NetworkMap({ d }: { d: TorData }) {
   const top = [...sites].sort((a, b) => b[of] - a[of]).slice(0, 12)
   const proj = (lon: number, lat: number) => projection([lon, lat])
   return (
-    <ChartFrame id="xd-map" source={source('NetworkMap')}
+    <ChartFrame id="xd-map" source={source('NetworkMap')} provenance={runLine(d)}
       title="The TOR network the calibration learned from — and where Addis borrows from"
       subtitle={`Every IMPROVE site in the calibration set (size = filters), coloured by its share of ${of}'s nearest spectral neighbours (the 500 most similar IMPROVE spectra per filter, averaged over ${of === 'Addis' ? 'the Addis evaluation filters' : 'the five Adama pilot filters'}). Arcs join ${of} to its twelve most-borrowed TOR sites. SPARTAN Addis and the Adama pilot are marked in Ethiopia.`}
       controls={<><Segmented label="Neighbours of" value={of} options={['Addis', 'Adama'] as const} onChange={setOf} /><Segmented label="Region" value={region} options={['World', 'United States'] as const} onChange={setRegion} />
-        {region === 'World' && <Toggle label="Arcs" checked={arcs} onChange={setArcs} />}</>}>
+        {region === 'World' && <Toggle label="Arcs" checked={arcs} onChange={(v) => setArcs(v ? 'on' : 'off')} />}</>}>
       <div ref={ref} style={{ position: 'relative' }}>
         <svg width={width} height={h} fontFamily={FONT.family} style={{ display: 'block' }}>
           {region === 'World' && <path d={path({ type: 'Sphere' }) ?? ''} fill={INK.sea} stroke={INK.border} />}
@@ -333,7 +336,7 @@ function WhereItSits({ d }: { d: TorData }) {
   const labelW = 210, rowH = 74, pw = Math.max(300, width - labelW - 30)
   const jitter = (i: number) => ((Math.sin(i * 12.9898) * 43758.5453) % 1 + 1) % 1
   return (
-    <ChartFrame id="xd-where" source={source('WhereItSits')}
+    <ChartFrame id="xd-where" source={source('WhereItSits')} provenance={runLine(d)}
       title="Every population on the same axes — IMPROVE, the SPARTAN network, SPARTAN Addis and Adama"
       subtitle="Grey band: IMPROVE calibration filters (5–95 % light, 25–75 % dark, median line; axes cover IMPROVE's 1st–99th percentiles), grey ticks each IMPROVE site's median. Purple band below it: the other SPARTAN sites' filters. Orange dots: SPARTAN Addis filters (EC from FTIR). Green diamonds: the five Adama pilot pairs (EC and OC from TOR). A pilot that is to test the calibration at Addis should overlap the orange, not only the grey.">
       <div ref={ref} style={{ position: 'relative' }}>
@@ -385,7 +388,8 @@ const SITE_KEY: Record<string, keyof NetRow> = { 'EC µg/filter': 'ec_ug', 'EC �
 function NetworkScatter({ d }: { d: TorData }) {
   const [xk, setXk] = useSearchParam<typeof SITE_AXES[number]>('xd-net.x', 'EC µg/filter', SITE_AXES)
   const [yk, setYk] = useSearchParam<typeof SITE_AXES[number]>('xd-net.y', 'distance percentile', SITE_AXES)
-  const [labels, setLabels] = useState(true)
+  const [labelsParam, setLabels] = useSearchParam<'on' | 'off'>('xd-net.labels', 'on', ['on', 'off'])
+  const labels = labelsParam === 'on'
   const lg = useLegend()
   const order = ['IMPROVE (TOR)', 'SPARTAN network', 'SPARTAN Addis', 'Adama pilot (TOR)']
   const X = AXIS_INFO[xk], Y = AXIS_INFO[yk]
@@ -399,15 +403,15 @@ function NetworkScatter({ d }: { d: TorData }) {
   const named = rows.filter((r) => r.population !== 'IMPROVE (TOR)')
   const opt = (k: string) => `${AXIS_INFO[k].label} (${AXIS_INFO[k].unit})`
   return (
-    <ChartFrame id="xd-net" source={source('NetworkScatter')}
+    <ChartFrame id="xd-net" source={source('NetworkScatter')} provenance={runLine(d)}
       title="Sites compared — every IMPROVE and SPARTAN site, SPARTAN Addis and Adama, on two chosen axes"
       subtitle="One point per site: its median over all its filters. Pick what goes across and up. Grey = IMPROVE calibration sites (size = filters; hollow = Ann's six urban sites), purple = other SPARTAN sites, orange = SPARTAN Addis, green = the Adama pilot."
       controls={<>
         <Select label="Across" value={xk} options={[...SITE_AXES]} onChange={(v) => setXk(v as typeof xk)} optionLabel={opt} />
         <Select label="Up" value={yk} options={[...SITE_AXES]} onChange={(v) => setYk(v as typeof yk)} optionLabel={opt} />
-        <Toggle label="Name SPARTAN sites" checked={labels} onChange={setLabels} />
+        <Toggle label="Name SPARTAN sites" checked={labels} onChange={(v) => setLabels(v ? 'on' : 'off')} />
       </>}>
-      <Scatter points={pts} xLabel={opt(xk)} yLabel={opt(yk)} xLog={X.log} yLog={Y.log} height={460} yDomain={yk === 'distance percentile' ? [0, 100] : undefined} xDomain={xk === 'distance percentile' ? [0, 100] : undefined}
+      <Scatter points={pts} xLabel={opt(xk)} yLabel={opt(yk)} xLog={X.log} yLog={Y.log} maxSide={440} yDomain={yk === 'distance percentile' ? [0, 100] : undefined} xDomain={xk === 'distance percentile' ? [0, 100] : undefined}
         over={({ x, y, iw, ih }) => {
           if (!labels) return null
           // Addis and Adama first so they get the best spots; every label placed where it overlaps nothing
@@ -440,7 +444,7 @@ function NearestSites({ d }: { d: TorData }) {
   const labelW = 190, rowH = 20, pw = Math.max(260, width - labelW - 40)
   const x = d3.scaleLinear().domain([0, d3.max(rows, (r) => Math.max(r.Addis, r.Adama, r['IMPROVE share of filters'])) ?? 0.1]).nice().range([0, pw])
   return (
-    <ChartFrame id="xd-nearest" source={source('NearestSites')}
+    <ChartFrame id="xd-nearest" source={source('NearestSites')} provenance={runLine(d)}
       title="Nearest TOR sites — which IMPROVE sites Addis and Adama borrow their calibration from"
       subtitle="Share of the 500 nearest IMPROVE spectra per filter that come from each site, for Addis (orange) and Adama (green), beside the site's share of all calibration filters (grey tick). A site far right of its tick is over-represented among the neighbours.">
       <div ref={ref} style={{ position: 'relative' }}>
@@ -467,7 +471,7 @@ function Precision({ d }: { d: TorData }) {
   const color: Record<string, string> = { [pops[0]]: ADDIS_ALL, [pops[1]]: IMPROVE_GREY }
   const series = pops.map((p) => ({ id: p, label: p, color: color[p], points: d.precision.filter((r) => r.population === p).map((r) => ({ x: r.pairs, y: r['half width (relative bias)'], tip: [p, `${r.pairs} pairs: mean bias known to ± ${pct(r['half width (relative bias)'])}`, `resampled from ${r['pool size'].toLocaleString()} filters`] })) }))
   return (
-    <ChartFrame id="xd-precision" source={source('Precision')}
+    <ChartFrame id="xd-precision" source={source('Precision')} provenance={runLine(d)}
       title="How many pairs? — how precisely a mean bias can be known"
       subtitle="Half-width of the 95 % interval of a mean relative bias (FTIR − TOR) ÷ TOR, resampling IMPROVE's own out-of-site errors: on Addis-like filters (heavy and spectrally distant, both above IMPROVE's 60th percentile) and on all filters. The dashed line is the draft ±20 % pass rule; markers: the 5 Adama pairs, the ~10 Addis city pairs, the freeze's 36-pair seasonal design.">
       <SweepPlot series={series} xLabel="number of pairs" yLabel="± half width of the 95 % interval" height={300} yFormat={(v) => pct(v)} xScale="log"
@@ -485,16 +489,15 @@ function PilotPairs({ d }: { d: TorData }) {
   const [model, setModel] = useSearchParam<string>('xd-pilot.model', 'frozen AIRSpec', models)
   const [refk, setRefk] = useSearchParam<'ECTR' | 'ECTT'>('xd-pilot.ref', 'ECTR', ['ECTR', 'ECTT'])
   const key = model === 'this notebook' ? thisCol : col[model]
-  const pts = d.adama_pairs.map((p) => ({ x: num(p[refk === 'ECTR' ? 'ec_tr_ugm3' : 'ec_tt_ugm3']), y: num(p[key]), color: ADAMA, r: 6, hollow: !!p.flag, key: String(p.ptfe_id),
+  const pts = d.adama_pairs.map((p) => ({ x: num(p[refk === 'ECTR' ? 'ec_tr_ugm3' : 'ec_tt_ugm3']), y: num(p[key]), color: ADAMA, hollow: !!p.flag,
     tip: [`Adama ${p.ptfe_id} / quartz ${p.quartz_id}`, String(p.date), `${refk} ${f2(p[refk === 'ECTR' ? 'ec_tr_ugm3' : 'ec_tt_ugm3'])} µg/m³ · FTIR ${f2(p[key])} µg/m³`, `distance percentile ${Math.round(num(p['distance percentile']))}`, p.flag ? `flag: ${p.flag}` : 'unflagged'] }))
-  const hi = Math.max(1, ...pts.flatMap((p) => [p.x, p.y]).filter(Number.isFinite)) * 1.15
   return (
-    <ChartFrame id="xd-pilot" source={source('PilotPairs')}
+    <ChartFrame id="xd-pilot" source={source('PilotPairs')} provenance={runLine(d)}
       title="The Adama pilot pairs — FTIR against TOR, with the draft tolerance"
-      subtitle="The five Adama quartz/PTFE date-candidate pairs (hollow: flagged for a start offset or a volume mismatch). Shaded: the draft per-pair tolerance |FTIR − TOR| ≤ max(0.5 µg/m³, 30 % of TOR). A pilot, not the test: identities and sampler equivalence are unconfirmed."
+      subtitle="The five Adama quartz/PTFE date-candidate pairs (hollow: flagged for a start offset or a volume mismatch). Shaded: the draft per-pair tolerance |FTIR − TOR| ≤ max(0.5 µg/m³, 30 % of TOR). No line is fitted to five pairs; the table scores them. A pilot, not the test: identities and sampler equivalence are unconfirmed."
       controls={<><Segmented label="FTIR" value={model} options={models} onChange={setModel} /><Segmented label="TOR" value={refk} options={['ECTR', 'ECTT'] as const} onChange={setRefk} /></>}>
-      <Scatter points={pts} xLabel={`TOR EC, ${refk} (µg/m³)`} yLabel={`FTIR EC, ${model} (µg/m³)`} identity height={340} xDomain={[0, hi]} yDomain={[0, hi]}
-        under={({ x, y }) => { const xs = d3.range(0, hi + 0.01, hi / 60)
+      <Crossplot points={pts} title="" xLabel={`TOR EC, ${refk} (µg/m³)`} yLabel={`FTIR EC, ${model} (µg/m³)`} fit={false} maxSide={400}
+        background={(x, y) => { const [lo, hi] = x.domain(), xs = d3.range(lo, hi + (hi - lo) / 120, (hi - lo) / 60)
           const area = d3.area<number>().x((v) => x(v)).y0((v) => y(Math.max(0, v - Math.max(0.5, 0.3 * v)))).y1((v) => y(v + Math.max(0.5, 0.3 * v)))(xs)
           return <path d={area ?? ''} fill={INK.good} fillOpacity={0.1} /> }} />
       <table className="census-table" style={{ marginTop: 8 }}>

@@ -3,7 +3,8 @@ import * as d3 from 'd3'
 import { useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
 import { XAxis, YAxis } from '@/components/Axes'
-import { RefLine } from '@/components/RefLines'
+import { IdentityLine } from '@/components/RefLines'
+import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { FONT, INK } from '@/lib/theme'
@@ -29,76 +30,47 @@ export const runLine = (d: XpBase) => `experiments_20261022.ipynb run ${d.source
 export const sourceOf = (file: string) => (fn: string) => `gallery/app/src/pages/experimental/${file}.tsx › ${fn}`
 export const num = (v: unknown) => (v == null || v === '' ? NaN : +v)
 
-export interface ForestRow { key: string; label: string; color?: string; hollow?: boolean; bold?: boolean; values: Record<string, { v: number; lo?: number; hi?: number } | undefined>; tip?: string[] }
-export interface ForestPanel { key: string; label: string; ref?: number; fmt?: (v: number) => string; domain?: [number, number] }
+export interface ForestRow { key: string; label: string; color?: string; hollow?: boolean; bold?: boolean; values: Record<string, { v: number; lo?: number; hi?: number } | undefined>; tip?: string[]; note?: string }
+/** `fmt` writes the values in tooltips; `tick` the axis ticks (default: the strip's short numbers) */
+export interface ForestPanel { key: string; label: string; ref?: number; fmt?: (v: number) => string; tick?: (v: number) => string; domain?: [number, number] }
 
 /**
  * Rows of estimates, one panel per measure, side by side (a forest plot): a dot per row, an optional
- * interval, a reference line per panel. Used for model-by-model comparisons on each subpage.
+ * interval, a reference line per panel. Drawn by the gallery's IntervalStrip, so it looks like every other
+ * dot-interval chart and stacks its panels on a phone instead of scrolling sideways.
  */
-export function Forest({ rows, panels, labelWidth = 200, rowHeight = 28 }: { rows: ForestRow[]; panels: ForestPanel[]; labelWidth?: number; rowHeight?: number }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
-  const gap = 36
-  const panelW = Math.max(150, (Math.max(520, width) - labelWidth - gap * (panels.length - 1) - 40) / panels.length)
-  const h = rows.length * rowHeight + 52
-  const yb = (i: number) => 10 + i * rowHeight + rowHeight / 2
-  return (
-    <div ref={ref} style={{ position: 'relative', overflowX: 'auto' }}>
-      <svg width={labelWidth + panels.length * panelW + (panels.length - 1) * gap + 40} height={h} fontFamily={FONT.family}>
-        {rows.map((r, i) => <g key={r.key}>
-          {i % 2 === 0 && <rect x={0} y={yb(i) - rowHeight / 2} width={labelWidth + panels.length * (panelW + gap)} height={rowHeight} fill={INK.zebra} />}
-          <text x={labelWidth - 10} y={yb(i)} dy="0.32em" textAnchor="end" fontSize={11} fontWeight={r.bold ? 700 : 400} fill={INK.text}>{r.label}</text>
-        </g>)}
-        {panels.map((p, pi) => {
-          const vals = rows.flatMap((r) => { const x = r.values[p.key]; return x ? [x.v, x.lo ?? x.v, x.hi ?? x.v] : [] }).filter(Number.isFinite)
-          const dom = p.domain ?? (d3.extent([...vals, ...(p.ref != null ? [p.ref] : [])]) as [number, number])
-          const pad = (dom[1] - dom[0]) * 0.08 || 0.1
-          const x = d3.scaleLinear().domain([dom[0] - pad, dom[1] + pad]).nice().range([0, panelW])
-          const fmt = p.fmt ?? ((v: number) => String(+v.toPrecision(3)))
-          return <g key={p.key} transform={`translate(${labelWidth + pi * (panelW + gap)},0)`}>
-            <XAxis scale={x} y={rows.length * rowHeight + 10} label={p.label} tickCount={5} labelDy={32} format={(v) => fmt(+v)} />
-            {p.ref != null && <RefLine orient="v" at={x(p.ref)} from={4} to={rows.length * rowHeight + 10} />}
-            {rows.map((r, i) => {
-              const e = r.values[p.key]
-              if (!e || !Number.isFinite(e.v)) return null
-              const c = r.color ?? INK.accent
-              return <g key={r.key} onMouseEnter={(ev) => tip.show(ev, r.tip ?? [r.label, `${p.label}: ${fmt(e.v)}${e.lo != null && e.hi != null ? ` (${fmt(e.lo)} to ${fmt(e.hi)})` : ''}`])} onMouseLeave={tip.hide}>
-                <rect x={0} y={yb(i) - rowHeight / 2} width={panelW} height={rowHeight} fill="transparent" />
-                {e.lo != null && e.hi != null && <line x1={x(e.lo)} x2={x(e.hi)} y1={yb(i)} y2={yb(i)} stroke={c} strokeWidth={2} strokeOpacity={0.6} />}
-                <circle cx={x(e.v)} cy={yb(i)} r={5.5} fill={r.hollow ? INK.panel : c} stroke={c} strokeWidth={2} />
-                <text x={panelW + 4} y={yb(i)} dy="0.32em" fontSize={9.5} fill={INK.muted}>{fmt(e.v)}</text>
-              </g>
-            })}
-          </g>
-        })}
-      </svg>
-      {tip.node}
-    </div>
-  )
+export function Forest({ rows, panels, labelWidth = 200, rowHeight = 24, noteWidth = 0 }: { rows: ForestRow[]; panels: ForestPanel[]; labelWidth?: number; rowHeight?: number; noteWidth?: number }) {
+  const fmt = (p: ForestPanel) => p.fmt ?? ((v: number) => String(+v.toPrecision(3)))
+  const line = (p: ForestPanel, e: { v: number; lo?: number; hi?: number }) => `${p.label}: ${fmt(p)(e.v)}${e.lo != null && e.hi != null ? ` (${fmt(p)(e.lo)} to ${fmt(p)(e.hi)})` : ''}`
+  const blocks: IntervalBlock[] = [{ key: 'rows', rows: rows.map((r) => ({
+    key: r.key, label: r.label, strong: r.bold, note: r.note,
+    tip: r.tip ?? [r.label, ...panels.flatMap((p) => { const e = r.values[p.key]; return e && Number.isFinite(e.v) ? [line(p, e)] : [] })],
+    marks: panels.map((p) => { const e = r.values[p.key]
+      return e && Number.isFinite(e.v) ? [{ mid: e.v, lo: e.lo, hi: e.hi, color: r.color ?? INK.accent, shape: r.hollow ? 'hollow' as const : 'dot' as const }] : [] }),
+  })) }]
+  return <IntervalStrip blocks={blocks} labelWidth={labelWidth} rowHeight={rowHeight} minPanelWidth={200} noteWidth={noteWidth}
+    panels={panels.map((p) => ({ label: p.label, reference: p.ref, domain: p.domain, format: p.tick }))} />
 }
 
 export interface ScatterPoint { x: number; y: number; color: string; r?: number; hollow?: boolean; tip?: string[]; key?: string }
 
 /**
- * A plain scatter (cross plot) with optional log axes, identity line and extra layers drawn under the points.
- * The plot area is square by default (the gallery's preference for cross plots): `height` caps its size and
- * the figure is centred in the panel; `square={false}` stretches it to the panel's width instead.
+ * A plain scatter for two different quantities (log axes, extra layers under and over the points). The plot
+ * area is square and centred, sized like the shared Crossplot (`maxSide` caps the side); a 1:1 comparison of
+ * two measurements of the same thing uses components/Crossplot instead, for its fits and filter records.
  */
-export function Scatter({ points, xLabel, yLabel, height = 340, xLog = false, yLog = false, identity = false, xDomain, yDomain, under, over, fixedWidth, square = true }: {
-  points: ScatterPoint[]; xLabel: string; yLabel: string; height?: number; xLog?: boolean; yLog?: boolean; identity?: boolean
-  xDomain?: [number, number]; yDomain?: [number, number]; fixedWidth?: number; square?: boolean
+export function Scatter({ points, xLabel, yLabel, maxSide = 420, xLog = false, yLog = false, identity = false, xDomain, yDomain, under, over }: {
+  points: ScatterPoint[]; xLabel: string; yLabel: string; maxSide?: number; xLog?: boolean; yLog?: boolean; identity?: boolean
+  xDomain?: [number, number]; yDomain?: [number, number]
   under?: (s: { x: d3.ScaleContinuousNumeric<number, number>; y: d3.ScaleContinuousNumeric<number, number>; iw: number; ih: number }) => ReactNode
   over?: (s: { x: d3.ScaleContinuousNumeric<number, number>; y: d3.ScaleContinuousNumeric<number, number>; iw: number; ih: number }) => ReactNode
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
-  const m = { top: 12, right: 18, bottom: 46, left: 62 }
-  const avail = fixedWidth ?? Math.max(300, width)
-  const side = Math.max(200, Math.min(avail - m.left - m.right, height - m.top - m.bottom))
-  const iw = square ? side : avail - m.left - m.right, ih = square ? side : height - m.top - m.bottom
+  const m = { top: 14, right: 18, bottom: 46, left: 62 }
+  const side = Math.max(200, Math.min((width || maxSide + m.left + m.right) - m.left - m.right, maxSide))
+  const iw = side, ih = side
   const w = iw + m.left + m.right, h = ih + m.top + m.bottom
   const ok = points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && (!xLog || p.x > 0) && (!yLog || p.y > 0))
   const xd = xDomain ?? (d3.extent(ok, (p) => p.x) as [number, number])
@@ -118,7 +90,7 @@ export function Scatter({ points, xLabel, yLabel, height = 340, xLog = false, yL
         <g transform={`translate(${m.left},${m.top})`}>
           <YAxis scale={y} x={0} label={yLabel} tickCount={5} gridWidth={iw} labelX={-48} format={fmt(yLog)} />
           <XAxis scale={x} y={ih} label={xLabel} tickCount={Math.max(3, Math.floor(iw / 80))} labelDy={38} format={fmt(xLog)} />
-          {identity && (() => { const [a, b] = x.domain(); return <line x1={x(a)} y1={y(a)} x2={x(b)} y2={y(b)} stroke={INK.identity} strokeDasharray="4 3" /> })()}
+          {identity && (() => { const [a, b] = x.domain(); return <IdentityLine x1={x(a)} y1={y(a)} x2={x(b)} y2={y(b)} /> })()}
           {under?.({ x, y, iw, ih })}
           {ok.map((p, i) => <circle key={p.key ?? i} cx={x(p.x)} cy={y(p.y)} r={p.r ?? 3.5} fill={p.hollow ? 'none' : p.color} fillOpacity={0.8} stroke={p.hollow ? p.color : INK.panel} strokeWidth={p.hollow ? 1.5 : 0.6}
             onMouseEnter={(e) => p.tip && tip.show(e, p.tip)} onMouseLeave={tip.hide} />)}

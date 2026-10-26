@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
@@ -7,15 +7,14 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { Legend, useLegend } from '@/components/Legend'
 import { ColorLegend } from '@/components/ColorLegend'
 import { HeatCell } from '@/components/HeatCell'
-import { RefLine } from '@/components/RefLines'
 import { SweepPlot } from '@/components/SweepPlot'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { useSearchParam } from '@/lib/url'
-import { ADDIS_ALL, FONT, IMPROVE_GREY, INK, themed } from '@/lib/theme'
+import { ADDIS_ALL, FONT, IMPROVE_GREY, INK, inkOn, isDark, themed } from '@/lib/theme'
 import { f2, f3, pct, signed } from '@/lib/format'
-import { placeLabels } from './shared'
+import { Forest, placeLabels } from './shared'
 
 /**
  * Experimental · tests 1–2: what the decision workbook's "impacted" flag actually sees
@@ -74,7 +73,8 @@ const LOADING = 'Loading: weighed PM2.5'
 const MIN_CELL = 30
 const DISTANCE = 'Distance: T² + Q'
 const CAT_COLOR: Record<string, string> = { get fine() { return themed('#d5d9de', '#4b545f') }, 'false alarm': '#6baed6', get 'caught failure'() { return INK.good }, get 'missed failure'() { return INK.negative } }
-const rungColor = (i: number, n: number) => d3.interpolateViridis(0.08 + 0.8 * (i / Math.max(1, n - 1)))
+/** viridis from dark to light rungs; in the dark theme its darkest purples would vanish, so the ramp starts later */
+const rungColor = (i: number, n: number) => { const t0 = isDark() ? 0.3 : 0.08; return d3.interpolateViridis(t0 + (0.88 - t0) * (i / Math.max(1, n - 1))) }
 const col = <T,>(c: Cols, k: string) => c[k] as T[]
 const pct100 = (v: unknown) => v == null || !Number.isFinite(+v) ? '—' : String(Math.round(+v))
 const median = (v: (number | null)[]) => d3.median(v.filter((x): x is number => x != null && Number.isFinite(x)))
@@ -135,13 +135,15 @@ function BlindSpotMap({ d }: { d: FlagData }) {
   const spartan = useMemo(() => spartanRows(d), [d])
   const codes = useMemo(() => [...new Set(spartan.filter((r) => r.population === 'network').map((r) => r.code))].sort(), [spartan])
   const [site, setSite] = useSearchParam<string>('xflag-map.site', codes[0] ?? '', codes)
-  const [counts, setCounts] = useState(true)
+  const [countsParam, setCounts] = useSearchParam<'on' | 'off'>('xflag-map.counts', 'on', ['on', 'off'])
+  const counts = countsParam === 'on'
   const colours = useColourScheme('xflag-map', 'sequential')
   const lg = useLegend()
 
-  const size = Math.max(300, Math.min(width - 90, 620))
-  const m = { top: 14, right: 70, bottom: 50, left: 62 }
+  const m = { top: 14, right: 16, bottom: 50, left: 62 }
   const beyondW = 34
+  // the square fits the card (a phone included), beside the 'heavier than any IMPROVE filter' strip
+  const size = Math.max(200, Math.min(width - m.left - m.right - beyondW, 620))
   const x = d3.scaleLinear().domain([0, 100]).range([0, size])
   const y = d3.scaleLinear().domain([0, 100]).range([size, 0])
   const metricKey = cellMetric === 'Failure rate' ? 'impacted share' : 'caught share'
@@ -173,7 +175,7 @@ function BlindSpotMap({ d }: { d: FlagData }) {
   const labels = placeLabels(sitesDrawn.map((s) => ({ key: s.code, x: x(s.load), y: y(s.dist), r: rSite(s.n), text: s.code === 'ETAD' ? 'Addis (ETAD)' : s.code, bold: s.code === 'ETAD' })), size + beyondW, size)
 
   return (
-    <ChartFrame id="xflag-map" source={source('BlindSpotMap')}
+    <ChartFrame id="xflag-map" source={source('BlindSpotMap')} provenance={runNote(d)}
       title="Blind-spot map — where the flag looks and where failures hide"
       subtitle={`Every held-out IMPROVE filter placed by its loading (weighed PM2.5 µg, percentile in IMPROVE) and its spectral distance from the calibration (the larger of its T² and Q percentiles). Cells: share of filters there that are impacted, or share of those failures that the "${d.settings.BEST}" flag catches at a ${pct(d.settings.FLAG_RATE)} flag rate. Red dots are the failures it lets through. Rings are SPARTAN filters on the same scales; the strip on the right holds filters heavier than any IMPROVE filter.`}
       tip={<>Distances for SPARTAN come from the PLS fitted on all of IMPROVE, compared with the held-out-site distances of IMPROVE filters (the yardstick for a new site). A spectrum-only flag cannot see a failure that sits where most filters are fine; if SPARTAN rings fall among red dots in pale-green cells, a spectral warning will stay quiet there.</>}
@@ -182,7 +184,7 @@ function BlindSpotMap({ d }: { d: FlagData }) {
         <Segmented label="IMPROVE dots" value={show} options={['Failures', 'Failures + alarms', 'All', 'None'] as const} onChange={setShow} />
         <Select label="SPARTAN" value={overlay} options={['Addis filters', 'SPARTAN sites', 'One SPARTAN site', 'None']} onChange={(v) => setOverlay(v as Overlay)} />
         {overlay === 'One SPARTAN site' && <Select label="Site" value={site} options={codes} onChange={setSite} optionLabel={(c) => `${spartan.find((r) => r.code === c)?.site ?? c} (${c})`} />}
-        {overlay === 'Addis filters' && <Toggle label="Count Addis filters per cell" checked={counts} onChange={setCounts}
+        {overlay === 'Addis filters' && <Toggle label="Count Addis filters per cell" checked={counts} onChange={(v) => setCounts(v ? 'on' : 'off')}
           title="Print in each cell how many of the 233 frozen Addis filters fall there" />}
       </>}>
       <div ref={ref} style={{ position: 'relative' }}>
@@ -198,14 +200,14 @@ function BlindSpotMap({ d }: { d: FlagData }) {
             {d.grid.map((g) => {
               const v = g['IMPROVE filters'] >= MIN_CELL ? g[metricKey] : null, cx = g['loading bin'] * step + step / 2, cy = (4 - g['distance bin']) * step
               return <g key={`t${g['loading bin']}-${g['distance bin']}`} pointerEvents="none">
-                <text x={cx} y={cy + 13} textAnchor="middle" fontSize={9} fill={INK.muted}>{v == null ? (g['IMPROVE filters'] ? `${g['IMPROVE filters']} filters` : '') : pct(v)}</text>
+                <text x={cx} y={cy + 13} textAnchor="middle" fontSize={9} fill={v == null ? INK.muted : inkOn(colour(v))} fillOpacity={v == null ? 1 : 0.75}>{v == null ? (g['IMPROVE filters'] ? `${g['IMPROVE filters']} filters` : '') : pct(v)}</text>
                 {counts && overlay === 'Addis filters' && g['Addis filters'] > 0 &&
                   <text x={cx} y={cy + step - 6} textAnchor="middle" fontSize={10} fontWeight={600} fill={ADDIS_ALL} stroke={INK.panel} strokeWidth={2.5} paintOrder="stroke">{g['Addis filters']} Addis</text>}
               </g>
             })}
             <rect x={size} y={0} width={beyondW} height={size} fill={INK.empty} />
             <text transform={`translate(${size + beyondW / 2},${size / 2}) rotate(-90)`} textAnchor="middle" fontSize={10} fill={INK.muted}>heavier than any IMPROVE filter</text>
-            <XAxis scale={x} y={size} label="Loading: weighed PM2.5 µg per filter, percentile in IMPROVE" labelDy={38} tickCount={6} />
+            <XAxis scale={x} y={size} label="Loading percentile in IMPROVE (weighed PM2.5 per filter)" labelDy={38} tickCount={6} />
             <YAxis scale={y} x={0} label="Spectral distance percentile (max of T², Q)" tickCount={6} labelX={-46} />
             <g>
               {pts.map((i) => {
@@ -242,63 +244,30 @@ function BlindSpotMap({ d }: { d: FlagData }) {
         <Legend {...lg.props} items={[...cats.filter((c) => visibleCats.includes(c)).map((c) => ({ label: c, color: CAT_COLOR[c], detail: (col<number>(mi, 'category').filter((v) => cats[v] === c).length).toLocaleString() })),
           ...(overlay === 'None' || overlay === 'SPARTAN sites' ? [] : [{ label: overlay === 'Addis filters' ? 'Addis (frozen set)' : `${site} filters`, color: overlay === 'Addis filters' ? ADDIS_ALL : '#7c3aed' }])]} />
       </div>
-      <Note>{runNote(d)}.</Note>
     </ChartFrame>
   )
 }
 
 // ------------------------------------------------------------------ 2. ablation ladder
 function Ladder({ d }: { d: FlagData }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
-  const rows = d.ladder
-  const rowH = 30, labelW = 190, gap = 40
-  const panelW = Math.max(160, (Math.max(560, width) - labelW - gap - 30) / 2)
-  const h = rows.length * rowH + 50
-  const yb = (i: number) => 14 + i * rowH + rowH / 2
-  const xa = d3.scaleLinear().domain([Math.min(0.5, d3.min(rows, (r) => r['AUC lo'])!), Math.max(...rows.map((r) => r['AUC hi'])) + 0.01]).nice().range([0, panelW])
-  const gmax = Math.max(0.02, ...rows.map((r) => Math.max(Math.abs(r['gain lo']), Math.abs(r['gain hi']))))
-  const xg = d3.scaleLinear().domain([-gmax, gmax]).nice().range([0, panelW])
-  const base = rows[0]
-  const show = (e: React.MouseEvent, r: Rung) => tip.show(e, [r.rung, `inputs: ${r.inputs}`, `AUC ${f3(r.AUC)} (95 % ${f3(r['AUC lo'])} to ${f3(r['AUC hi'])})`,
-    `gain over loading ${signed(r['gain over loading'], 3)} (${signed(r['gain lo'], 3)} to ${signed(r['gain hi'], 3)})`, `average precision ${f3(r['average precision'])}`, r['at SPARTAN'] ? 'usable at SPARTAN' : 'needs HIPS: circular at SPARTAN'])
+  const rows = d.ladder.map((r, i) => {
+    const c = rungColor(i, d.ladder.length), best = r.rung === d.settings.BEST
+    return {
+      key: r.rung, label: `${r.rung}${best ? ' ★' : ''}`, color: c, hollow: !r['at SPARTAN'], bold: best,
+      note: i === 0 ? 'baseline' : r['gain lo'] > 0 ? 'adds' : 'n.s.',
+      values: { auc: { v: r.AUC, lo: r['AUC lo'], hi: r['AUC hi'] }, gain: { v: r['gain over loading'], lo: r['gain lo'], hi: r['gain hi'] } },
+      tip: [r.rung, `inputs: ${r.inputs}`, `AUC ${f3(r.AUC)} (95 % ${f3(r['AUC lo'])} to ${f3(r['AUC hi'])})`,
+        `gain over loading ${signed(r['gain over loading'], 3)} (${signed(r['gain lo'], 3)} to ${signed(r['gain hi'], 3)})`, `average precision ${f3(r['average precision'])}`, r['at SPARTAN'] ? 'usable at SPARTAN' : 'needs HIPS: circular at SPARTAN'],
+    }
+  })
   return (
-    <ChartFrame id="xflag-ladder" source={source('Ladder')}
+    <ChartFrame id="xflag-ladder" source={source('Ladder')} provenance={runNote(d)}
       title="Ablation ladder — what each input adds to the flag"
-      subtitle="The flag (gradient boosting, held-out IMPROVE sites) refitted on growing sets of inputs. Left: how well it separates impacted filters (AUC, 0.5 = coin toss). Right: the gain over measured loading alone on the same filters. Whiskers are 95 % intervals from resampling held-out sites; a rung earns its inputs only if its gain interval clears zero."
+      subtitle={`The flag (gradient boosting, held-out IMPROVE sites) refitted on growing sets of inputs. Left: how well it separates impacted filters (AUC, 0.5 = coin toss; the line is loading alone). Right: the gain over measured loading alone on the same filters. Whiskers are 95 % intervals from resampling held-out sites; a rung earns its inputs only if its gain interval clears zero, marked "adds" on the right.`}
       tip={<>Hollow marks need HIPS, which is half of the FTIR–HIPS disagreement at SPARTAN. "Spectrum size" is the mean raw absorbance above 1425 cm⁻¹ and the C–H band area: a loading proxy read off the spectrum itself. Band features are the Section 5 set (Si–O, PTFE residue, carbonyl, C–H, O–H/N–H and their ratios).</>}>
-      <div ref={ref} style={{ position: 'relative' }}>
-        <svg width={labelW + 2 * panelW + gap + 30} height={h} fontFamily={FONT.family}>
-          <g transform="translate(0,0)">
-            {rows.map((r, i) => <g key={r.rung}>
-              {i % 2 === 0 && <rect x={0} y={yb(i) - rowH / 2} width={labelW + 2 * panelW + gap + 20} height={rowH} fill={INK.zebra} />}
-              <text x={labelW - 10} y={yb(i)} dy="0.32em" textAnchor="end" fontSize={11} fill={r['at SPARTAN'] ? INK.text : INK.muted} fontWeight={r.rung === d.settings.BEST ? 700 : 400}>{r.rung}{r.rung === d.settings.BEST ? ' ★' : ''}</text>
-            </g>)}
-          </g>
-          {[{ sc: xa, x0: labelW, key: 'AUC', lo: 'AUC lo', hi: 'AUC hi', ref: base.AUC, label: 'AUC, held-out sites', refLabel: 'loading alone' },
-            { sc: xg, x0: labelW + panelW + gap, key: 'gain over loading', lo: 'gain lo', hi: 'gain hi', ref: 0, label: 'AUC gain over loading alone', refLabel: '' }].map((p) => (
-            <g key={p.key} transform={`translate(${p.x0},0)`}>
-              <XAxis scale={p.sc} y={rows.length * rowH + 14} label={p.label} tickCount={5} labelDy={32} format={(v) => p.key === 'AUC' ? f2(+v) : signed(+v)} />
-              <RefLine orient="v" at={p.sc(p.ref)} from={6} to={rows.length * rowH + 14} />
-              {rows.map((r, i) => {
-                const v = r[p.key as keyof Rung] as number, lo = r[p.lo as keyof Rung] as number, hi = r[p.hi as keyof Rung] as number
-                const clears = p.key === 'AUC' ? true : lo > 0
-                const c = rungColor(i, rows.length)
-                return <g key={r.rung} onMouseEnter={(e) => show(e, r)} onMouseLeave={tip.hide}>
-                  <rect x={0} y={yb(i) - rowH / 2} width={panelW} height={rowH} fill="transparent" />
-                  <line x1={p.sc(lo)} x2={p.sc(hi)} y1={yb(i)} y2={yb(i)} stroke={c} strokeWidth={2} strokeOpacity={0.6} />
-                  <circle cx={p.sc(v)} cy={yb(i)} r={5.5} fill={r['at SPARTAN'] ? c : INK.panel} stroke={c} strokeWidth={2} />
-                  {p.key !== 'AUC' && i > 0 && <text x={p.sc(hi) + 6} y={yb(i)} dy="0.32em" fontSize={9.5} fill={clears ? INK.good : INK.muted}>{clears ? 'adds' : 'n.s.'}</text>}
-                  {p.key === 'AUC' && <text x={panelW + 4} y={yb(i)} dy="0.32em" fontSize={9.5} fill={INK.muted}>{f2(v)}</text>}
-                </g>
-              })}
-            </g>
-          ))}
-        </svg>
-        {tip.node}
-      </div>
-      <Note>★ = the best rung usable at SPARTAN, used for the blind-spot map and the missed-failure tables. {runNote(d)}.</Note>
+      <Forest rows={rows} labelWidth={200} noteWidth={56}
+        panels={[{ key: 'auc', label: 'AUC, held-out sites', ref: d.ladder[0]?.AUC, fmt: f2 }, { key: 'gain', label: 'AUC gain over loading alone', ref: 0, fmt: (v) => signed(v) }]} />
+      <Note>★ = the best rung usable at SPARTAN, used for the blind-spot map and the missed-failure tables.</Note>
     </ChartFrame>
   )
 }
@@ -315,7 +284,7 @@ function WithinLoading({ d }: { d: FlagData }) {
   }))
   const deciles = d.within.filter((w) => w.score === scores[0])
   return (
-    <ChartFrame id="xflag-within" source={source('WithinLoading')}
+    <ChartFrame id="xflag-within" source={source('WithinLoading')} provenance={runNote(d)}
       title="Distance at fixed loading — does T²/Q rank errors among filters of similar loading?"
       subtitle="IMPROVE split into ten loading deciles (weighed PM2.5 µg per filter). Inside each decile, the AUC of each score for telling impacted from fine filters. A score that only tracks loading falls to 0.5 here (dashed line); one that sees something else stays above it."
       tip={<>Loading alone still varies a little within a decile, so its AUC is not exactly 0.5. The table below the chart shows how the base rate of impacted filters changes with loading.</>}>
@@ -353,7 +322,7 @@ function Coverage({ d }: { d: FlagData }) {
   })
   const fmt = metric === 'RMSE kept' || metric === 'bias kept' ? (v: number) => f2(v) : (v: number) => pct(v)
   return (
-    <ChartFrame id="xflag-coverage" source={source('Coverage')}
+    <ChartFrame id="xflag-coverage" source={source('Coverage')} provenance={runNote(d)}
       title="Error against coverage — what is left after setting flagged filters aside"
       subtitle="Each score ranks the held-out IMPROVE filters from least to most risky; keep the lowest-risk share and read the error left among them. Reading right to left, a useful flag bends toward the oracle (keeps by the true error, the best any flag could do); one that tracks the random line only throws data away."
       tip={<>Lower error among kept filters is selective retention, not a better EC estimator: flagged filters still need an answer. "Missed failures" is the share of impacted filters still kept at that coverage. RMSE is in µg per filter, so it rewards setting heavy filters aside: on RMSE, loading alone looks best even though it is the weakest at finding impacted filters.</>}
@@ -377,7 +346,8 @@ const PROFILE: { key: string; label: string; kind: 'pct100' | 'share' | 'ug' }[]
   { key: '|error| µg (median)', label: '|error| µg', kind: 'ug' },
 ]
 function WhoGetsThrough({ d }: { d: FlagData }) {
-  const [open, setOpen] = useState(false)
+  const [list, setList] = useSearchParam<'on' | 'off'>('xflag-missed.list', 'off', ['on', 'off'])
+  const open = list === 'on'
   const ugMax = Object.fromEntries(PROFILE.filter((p) => p.kind === 'ug').map((p) => [p.key, d3.max(d.missed_summary, (r) => r[p.key] as number) ?? 1]))
   const bar = (p: typeof PROFILE[number], v: number, color: string) => {
     const frac = p.kind === 'pct100' ? v / 100 : p.kind === 'share' ? v : v / ugMax[p.key]
@@ -389,10 +359,11 @@ function WhoGetsThrough({ d }: { d: FlagData }) {
   }
   const top = d.missed_top
   return (
-    <ChartFrame id="xflag-missed" source={source('WhoGetsThrough')}
+    <ChartFrame id="xflag-missed" source={source('WhoGetsThrough')} provenance={runNote(d)}
       title="Who gets through — the failures the flag misses, beside those it catches"
       subtitle={`Held-out IMPROVE filters split by the "${d.settings.BEST}" flag at a ${pct(d.settings.FLAG_RATE)} flag rate: impacted and flagged (caught), impacted but kept (missed), flagged but fine (false alarm), and the rest. Percentiles are within IMPROVE (50 = typical).`}
-      tip={<>OC/BC here is TOR OC over HIPS BC, as Addis is measured; smoke = non-soil potassium (K − 0.6 Fe) in IMPROVE's top 5 %. Urban = Ann's six urban IMPROVE sites.</>}>
+      tip={<>OC/BC here is TOR OC over HIPS BC, as Addis is measured; smoke = non-soil potassium (K − 0.6 Fe) in IMPROVE's top 5 %. Urban = Ann's six urban IMPROVE sites.</>}
+      controls={<Toggle label={`List the ${top.length} largest missed failures`} checked={open} onChange={(v) => setList(v ? 'on' : 'off')} />}>
       <div style={{ overflowX: 'auto' }}>
         <table className="census-table">
           <thead><tr><th>Group</th><th>Filters</th>{PROFILE.map((p) => <th key={p.key}>{p.label}</th>)}</tr></thead>
@@ -401,8 +372,7 @@ function WhoGetsThrough({ d }: { d: FlagData }) {
               {PROFILE.map((p) => <td key={p.key}>{bar(p, r[p.key] as number, c === CAT_COLOR.fine ? IMPROVE_GREY : c)}</td>)}</tr> })}</tbody>
         </table>
       </div>
-      <p style={{ margin: '10px 0 4px' }}><button type="button" onClick={() => setOpen(!open)} style={{ background: "none", border: 0, padding: 0, color: INK.accent, cursor: "pointer", font: "inherit" }}>{open ? 'Hide' : 'Show'} the {top.length} largest missed failures</button></p>
-      {open && <div style={{ overflowX: 'auto' }}><table className="census-table">
+      {open && <div style={{ overflowX: 'auto', marginTop: 10 }}><table className="census-table">
         <thead><tr><th>Site</th><th>Filter</th><th>Date</th><th>TOR EC µg</th><th>FTIR EC µg</th><th>Error µg</th><th>Loading pct</th><th>Distance pct</th><th>Flag risk</th></tr></thead>
         <tbody>{top.map((r) => <tr key={String(r.filter_id)}><td>{r.site}{r.urban ? ' (urban)' : ''}</td><td>{r.filter_id}</td><td>{r.date}</td><td>{f2(r['TOR EC µg'])}</td><td>{f2(r['FTIR EC µg'])}</td>
           <td style={{ color: (r['error µg'] as number) < 0 ? INK.positive : INK.negative }}>{signed(r['error µg'] as number)}</td><td>{Math.round(r['loading percentile'] as number)}</td><td>{Math.round(r['distance percentile'] as number)}</td><td>{f2(r.risk)}</td></tr>)}</tbody>
@@ -423,7 +393,7 @@ function SiteKeepChart({ d }: { d: FlagData }) {
   const iw = Math.max(260, width - m.left - m.right), ih = rows.length * rowH
   const x = d3.scaleLinear().domain([0, d3.max(rows, (r) => Math.max(r['RMSE all'], r['RMSE kept'] ?? 0)) ?? 1]).nice().range([0, iw])
   return (
-    <ChartFrame id="xflag-sites" source={source('SiteKeepChart')}
+    <ChartFrame id="xflag-sites" source={source('SiteKeepChart')} provenance={runNote(d)}
       title="Per held-out site — how much each site loses to the flag, and what it buys"
       subtitle={`Each IMPROVE site (held out when its filters were predicted): RMSE against TOR over all its filters (grey) and over the filters the flag keeps (coloured), with the share kept on the right. A flag that empties a few sites can look good overall while telling those sites nothing.`}
       controls={<Segmented label="Sites" value={which} options={['Most flagged', 'Most missed', 'All sites'] as const} onChange={setWhich} />}>
@@ -473,7 +443,7 @@ function SpartanSites({ d }: { d: FlagData }) {
     { key: 'dist', label: 'median distance pct', dom: [0, 100], fmt: (v) => String(Math.round(v)) },
   ]
   return (
-    <ChartFrame id="xflag-spartan" source={source('SpartanSites')}
+    <ChartFrame id="xflag-spartan" source={source('SpartanSites')} provenance={runNote(d)}
       title="SPARTAN sites through the same flag — which ones it would mark"
       subtitle={`The best SPARTAN-usable flag ("${d.settings.BEST}"), refitted on all of IMPROVE, applied to every SPARTAN PM2.5 filter (sites with at least 10). Flagged share uses the risk cut that flags ${pct(d.settings.FLAG_RATE)} of IMPROVE; loading and distance are percentiles in IMPROVE, as on the map. There is no TOR here: a high share means "looks like IMPROVE's failures", not "is wrong".`}
       controls={<Segmented label="Sort by" value={sortBy} options={['Flagged', 'Loading', 'Distance'] as const} onChange={setSortBy} />}>
@@ -503,7 +473,7 @@ function SpartanSites({ d }: { d: FlagData }) {
         </svg>
         {tip.node}
       </div>
-      <Note>Addis appears once, from the frozen evaluation set (its network copy is left out). Sites without weighed PM2.5 on most filters have no loading percentile; the flag still scores them (gradient boosting treats a missing input as its own branch).</Note>
+      <Note>Addis is listed once. The workbook holds its filters twice: as the {d.counts.addis} frozen Addis evaluation filters that every other Addis result on these pages uses, and again in the SPARTAN network set, where the same filters (and later ones) were reprocessed with every other site. The row here is the evaluation set, so it matches the Addis marks on the map above; the network copy is left out so Addis is not counted twice. A dash under loading means the site has no weighed PM2.5 for most filters: the flag still scores those filters, it just cannot use their mass.</Note>
     </ChartFrame>
   )
 }

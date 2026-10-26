@@ -56,7 +56,7 @@ const PLAN: { key: string; n: string; question: string; method: string }[] = [
     method: 'Axis-by-axis position in SPARTAN Addis\'s range; loading = concentration × volume; season; nearest TOR sites; precision by number of pairs; a draft pass contract for the Addis city pairs.' },
 ]
 const STATUS: Record<string, { label: string; color: string }> = {
-  done: { label: 'run', get color() { return INK.good } }, partial: { label: 'partly run', color: INK.warn }, waiting: { label: 'waits for data', get color() { return INK.muted } },
+  done: { label: 'run', get color() { return INK.good } }, partial: { label: 'partly run', get color() { return INK.warn } }, waiting: { label: 'waits for data', get color() { return INK.muted } },
 }
 
 function TestPlan({ onPick }: { onPick: (key: string) => void }) {

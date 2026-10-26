@@ -10,8 +10,8 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { useSearchParam } from '@/lib/url'
-import { FONT, INK, inkOn } from '@/lib/theme'
-import { f2, signed } from '@/lib/format'
+import { FONT, INK, inkOn, themed } from '@/lib/theme'
+import { coef, coefSigned, f2, signed } from '@/lib/format'
 import { Scatter, runLine, sourceOf, useXp, type XpBase } from './shared'
 
 /** Test 4: preprocessing × window × pool × k on the same filters (experiments_20261022.ipynb §4). */
@@ -23,7 +23,7 @@ interface AttributionData extends XpBase { grid: Cell[]; effects: Effect[]; publ
 const source = sourceOf('AttributionStudy')
 const OUTCOMES = ['Addis intercept', 'Addis slope', 'IMPROVE RMSE', 'IMPROVE RMSE heaviest tenth', 'IMPROVE bias'] as const
 type Outcome = typeof OUTCOMES[number]
-const PREP_COLOR: Record<string, string> = { raw: '#525252', spline: '#2171b5', vibes: '#e6550d' }
+const PREP_COLOR: Record<string, string> = { get raw() { return themed('#525252', '#9aa3ad') }, spline: '#2171b5', vibes: '#e6550d' }
 const rowKey = (c: Cell) => `${c.preprocessing} · ${c.window === 'full' ? '4000–500' : '4000–1425'}`
 const colKey = (c: Cell) => `${c.pool} · ${c['k rule']}`
 
@@ -46,8 +46,8 @@ function Findings({ d }: { d: AttributionData }) {
     <ExplainOnly>
       <ChartFrame id="xt-findings" title="Attribution grid — short answers" exportable={false}>
         <ol style={{ margin: '4px 0 0 18px', lineHeight: 1.55 }}>
-          {e.slice(0, 3).map((x) => <li key={x.grid + x.term}><strong>{x.term}</strong> ({x.grid}; {x.contrast}): Addis intercept {signed(x['Addis intercept'])} µg/m³, IMPROVE RMSE {signed(x['IMPROVE RMSE'])} µg.</li>)}
-          <li><strong>Lowest IMPROVE error:</strong> {rowKey(best)}, {colKey(best)} (RMSE {f2(best['IMPROVE RMSE'])} µg; Addis intercept {signed(best['Addis intercept'])}). <strong>Addis closest to HIPS:</strong> {rowKey(closest)}, {colKey(closest)} (intercept {signed(closest['Addis intercept'])}; IMPROVE RMSE {f2(closest['IMPROVE RMSE'])}).</li>
+          {e.slice(0, 3).map((x) => <li key={x.grid + x.term}><strong>{x.term}</strong> ({x.grid}; {x.contrast}): Addis intercept {coefSigned(x['Addis intercept'])} µg/m³, IMPROVE RMSE {signed(x['IMPROVE RMSE'])} µg.</li>)}
+          <li><strong>Lowest IMPROVE error:</strong> {rowKey(best)}, {colKey(best)} (RMSE {f2(best['IMPROVE RMSE'])} µg; Addis intercept {coefSigned(best['Addis intercept'])}). <strong>Addis closest to HIPS:</strong> {rowKey(closest)}, {colKey(closest)} (intercept {coefSigned(closest['Addis intercept'])}; IMPROVE RMSE {f2(closest['IMPROVE RMSE'])}).</li>
         </ol>
         <Note>{runLine(d)}. Effects are differences between factor levels averaged over the other two factors of a complete 2 × 2 × 2 sub-grid; an interaction is half the change of one factor's effect across the other's levels.</Note>
       </ChartFrame>
@@ -72,9 +72,9 @@ function GridHeat({ d }: { d: AttributionData }) {
     : d3.scaleSequential(d3.interpolateRgbBasis(seq.stops)).domain(d3.extent(vals) as [number, number])
   const labelW = 150, cw = Math.max(90, Math.min(150, (width - labelW - 20) / cols.length)), ch = 40
   return (
-    <ChartFrame id="xt-grid" source={source('GridHeat')}
+    <ChartFrame id="xt-grid" source={source('GridHeat')} provenance={runLine(d)}
       title="The grid — every combination on the same filters"
-      subtitle={`Rows: preprocessing and spectral window (spline exists only above 1425 cm⁻¹, so its full-range cell is missing). Columns: calibration pool (all IMPROVE, or the 500 lowest TOR OC/EC filters) and k (fixed 8, as on the poster, or the one-SE choice; the cell shows the k used). SPARTAN published on the same Addis filters: slope ${f2(d.published.slope)}, intercept ${signed(d.published.intercept)} µg/m³.`}
+      subtitle={`Rows: preprocessing and spectral window (spline exists only above 1425 cm⁻¹, so its full-range cell is missing). Columns: calibration pool (all IMPROVE, or the 500 lowest TOR OC/EC filters) and k (fixed 8, as on the poster, or the one-SE choice; the cell shows the k used). SPARTAN published on the same Addis filters: slope ${coef(d.published.slope)}, intercept ${coefSigned(d.published.intercept)} µg/m³.`}
       controls={<Segmented label="Colour" value={out} options={OUTCOMES} onChange={setOut} />}>
       <div ref={ref} style={{ position: 'relative', overflowX: 'auto' }}>
         <svg width={labelW + cols.length * cw + 10} height={rows.length * ch + 60} fontFamily={FONT.family}>
@@ -86,16 +86,16 @@ function GridHeat({ d }: { d: AttributionData }) {
             return <g key={`${i}-${j}`}>
               <HeatCell x={labelW + j * cw + 1} y={36 + i * ch + 1} width={cw - 2} height={ch - 2} fill={fill}
                 onEnter={(e) => tip.show(e, [`${rowKey(c)} · ${colKey(c)} (k ${c.k})`, `IMPROVE out-of-site RMSE ${f2(c['IMPROVE RMSE'])} µg (heaviest tenth ${f2(c['IMPROVE RMSE heaviest tenth'])}), bias ${signed(c['IMPROVE bias'])}, R² ${f2(c['IMPROVE R²'])}`,
-                  `Addis vs HIPS: slope ${f2(c['Addis slope'])}, intercept ${signed(c['Addis intercept'])} µg/m³ (n ${c['Addis n']})`])} onLeave={tip.hide} />
-              <text x={labelW + j * cw + cw / 2} y={36 + i * ch + ch / 2 - 4} textAnchor="middle" fontSize={11} fontWeight={600} fill={inkOn(fill)} pointerEvents="none">{out.includes('RMSE') ? f2(v) : signed(v)}</text>
+                  `Addis vs HIPS: slope ${coef(c['Addis slope'])}, intercept ${coefSigned(c['Addis intercept'])} µg/m³ (n ${c['Addis n']})`])} onLeave={tip.hide} />
+              <text x={labelW + j * cw + cw / 2} y={36 + i * ch + ch / 2 - 4} textAnchor="middle" fontSize={11} fontWeight={600} fill={inkOn(fill)} pointerEvents="none">{out.includes('RMSE') ? f2(v) : out === 'IMPROVE bias' ? signed(v) : out === 'Addis slope' ? coef(v) : coefSigned(v)}</text>
               <text x={labelW + j * cw + cw / 2} y={36 + i * ch + ch / 2 + 10} textAnchor="middle" fontSize={9} fill={inkOn(fill)} opacity={0.8} pointerEvents="none">k {c.k}</text>
             </g>
           })}
         </svg>
         {tip.node}
       </div>
-      <div className="legend"><ColorLegend scale={colour} label={out} format={(v) => out.includes('RMSE') ? f2(v) : signed(v)} scheme={diverging ? div.scheme : seq.scheme} /></div>
-      <Note>{runLine(d)}. IMPROVE: every filter predicted by a model trained without its site fold (the common test set); Addis: models fitted on all of IMPROVE, against HIPS BC (MAC 10).</Note>
+      <div className="legend"><ColorLegend scale={colour} label={out} format={(v) => out.includes('RMSE') ? f2(v) : out === 'Addis slope' ? coef(v) : signed(v)} scheme={diverging ? div.scheme : seq.scheme} /></div>
+      <Note>IMPROVE: every filter predicted by a model trained without its site fold (the common test set); Addis: models fitted on all of IMPROVE, against HIPS BC (MAC 10).</Note>
     </ChartFrame>
   )
 }
@@ -113,7 +113,7 @@ function Effects({ d }: { d: AttributionData }) {
   let yy = 0
   const blocks = grids.map((g) => { const es = d.effects.filter((e) => e.grid === g); const top = yy; yy += es.length * rowH + 34; return { g, es, top } })
   return (
-    <ChartFrame id="xt-effects" source={source('Effects')}
+    <ChartFrame id="xt-effects" source={source('Effects')} provenance={runLine(d)}
       title="Effects and interactions — which choice moves the result, alone and together"
       subtitle="Bars: the average change in the chosen outcome when a factor moves from its first level to its second (main effects), and how much one factor's effect depends on another (interactions, marked ×). Two complete 2 × 2 × 2 sub-grids: raw vs spline at 1425–4000, and full vs 1425 window on raw spectra."
       controls={<Segmented label="Outcome" value={out} options={OUTCOMES.filter((o) => o !== 'IMPROVE RMSE heaviest tenth')} onChange={setOut} />}>
@@ -142,12 +142,12 @@ function Effects({ d }: { d: AttributionData }) {
 
 function TradeOff({ d }: { d: AttributionData }) {
   const pts = d.grid.map((c) => ({ x: c['IMPROVE RMSE'], y: c['Addis intercept'], color: PREP_COLOR[c.preprocessing], r: c.pool === 'all IMPROVE' ? 6 : 4, hollow: c['k rule'] !== 'k = 8',
-    key: `${rowKey(c)}${colKey(c)}`, tip: [`${rowKey(c)} · ${colKey(c)} (k ${c.k})`, `IMPROVE RMSE ${f2(c['IMPROVE RMSE'])} µg`, `Addis intercept ${signed(c['Addis intercept'])} µg/m³, slope ${f2(c['Addis slope'])}`] }))
+    key: `${rowKey(c)}${colKey(c)}`, tip: [`${rowKey(c)} · ${colKey(c)} (k ${c.k})`, `IMPROVE RMSE ${f2(c['IMPROVE RMSE'])} µg`, `Addis intercept ${coefSigned(c['Addis intercept'])} µg/m³, slope ${coef(c['Addis slope'])}`] }))
   return (
-    <ChartFrame id="xt-tradeoff" source={source('TradeOff')}
+    <ChartFrame id="xt-tradeoff" source={source('TradeOff')} provenance={runLine(d)}
       title="Trade-off — IMPROVE error against the Addis intercept, every cell"
       subtitle="A cell that is good on both sits low-left with an intercept near 0. If the cells line up, what helps Addis costs IMPROVE accuracy, and IMPROVE cannot choose the setting for Addis.">
-      <Scatter points={pts} xLabel="IMPROVE out-of-site RMSE against TOR (µg/filter)" yLabel="Addis Deming intercept vs HIPS (µg/m³)" height={340}
+      <Scatter points={pts} xLabel="IMPROVE out-of-site RMSE against TOR (µg/filter)" yLabel="Addis Deming intercept vs HIPS (µg/m³)" maxSide={400}
         under={({ y, iw }) => <><RefLine orient="h" at={y(0)} from={0} to={iw} /><RefLine orient="h" at={y(d.published.intercept)} from={0} to={iw} /><text x={iw - 4} y={y(d.published.intercept) - 4} textAnchor="end" fontSize={10} fill={INK.muted}>SPARTAN published</text></>} />
       <Legend items={[...Object.entries(PREP_COLOR).map(([k, c]) => ({ label: k, color: c })), { label: 'large = all IMPROVE, small = 500 lowest OC/EC', color: INK.muted }, { label: 'hollow = one-SE k', color: INK.muted, shape: 'ring' as const }]} />
     </ChartFrame>

@@ -49,7 +49,7 @@ function SummaryForest({ d }: { d: ForwardData }) {
     tip: [s.split, `${Math.round(s.n_test).toLocaleString()} test filters`, `RMSE ${f2(s.RMSE)}${s.RMSE_sd != null ? ` ± ${f2(s.RMSE_sd)}` : ''} µg, bias ${signed(s.bias)} µg, R² ${f2(s.R2)}`],
   }))
   return (
-    <ChartFrame id="xf-summary" source={source('SummaryForest')}
+    <ChartFrame id="xf-summary" source={source('SummaryForest')} provenance={runLine(d)}
       title="Time against space — the same calibration, four ways to hold out"
       subtitle={`At the one-SE k for ${prep}. Whiskers: ± 1 SD over five repeats (new-site and random splits); the later-year split is a single fixed split. If the later year is as hard as new sites, time transfer is no worse than site transfer.`}
       controls={<Segmented label="Preprocessing" value={prep} options={['spline', 'raw'] as const} onChange={setPrep} />}>
@@ -71,7 +71,7 @@ function Curves({ d }: { d: ForwardData }) {
   })
   const kSel = d.settings?.k_selected?.[prep]
   return (
-    <ChartFrame id="xf-curves" source={source('Curves')}
+    <ChartFrame id="xf-curves" source={source('Curves')} provenance={runLine(d)}
       title="By number of components — does time transfer need a different k?"
       subtitle="Mean over repeats (band: range over the five repeats). The dotted line is the one-SE k chosen by site-grouped CV in the decision workbook."
       controls={<><Segmented label="Preprocessing" value={prep} options={['spline', 'raw'] as const} onChange={setPrep} /><Segmented label="Read" value={metric} options={['RMSE', 'bias', 'R²'] as const} onChange={setMetric} /></>}>
