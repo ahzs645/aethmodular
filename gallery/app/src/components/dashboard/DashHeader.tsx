@@ -58,7 +58,7 @@ export function DashHeader({ meta, filters, scope, onScope, onPickSite, layout, 
   const spartan = s.siteItems.filter((x) => x.group !== 'IMPROVE')
   const picked = s.siteItems.filter((x) => x.selected)
   const allSeasons = s.activeSeasons.size === s.seasons.length
-  const others = (s.includeExcluded ? 1 : 0) + (s.pmfOn ? 1 : 0) + ((s.dropped ?? 0) > 0 || s.kept != null ? 1 : 0) + (s.convention !== s.defaultConvention ? 1 : 0)
+  const others = (s.includedIds?.length ? 1 : 0) + (s.pmfOn ? 1 : 0) + ((s.dropped ?? 0) > 0 || s.kept != null ? 1 : 0) + (s.convention !== s.defaultConvention ? 1 : 0)
 
   const scopeSeg = <span className="seg dash-scope" role="radiogroup" aria-label="Scope">
     {SCOPES.map((k) => <button key={k} type="button" role="radio" aria-checked={scope === k} className={scope === k ? 'active' : ''}

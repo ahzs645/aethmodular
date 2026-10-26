@@ -1417,14 +1417,20 @@ html.dash-present .container.dash { padding-top: 10px; }
 .exclusions-sub { color: var(--ink-muted); font-size: calc(11.5px * var(--text-scale)); margin: 3px 0 2px; }
 .exclusions-list { display: flex; flex-direction: column; max-height: 220px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .exclusions.wide .exclusions-list { max-height: none; overflow: visible; }
-.exclusions.wide .excluded-row { grid-template-columns: 110px 200px minmax(0, 1fr) auto; }
-.exclusions.wide .excluded-row > .excluded-reason, .exclusions.wide .excluded-row > .excluded-why { grid-column: 3; grid-row: 1; }
+.exclusions.wide .excluded-row { grid-template-columns: auto 100px 190px auto minmax(0, 1fr); }
+.exclusions.wide .excluded-row > .excluded-reason, .exclusions.wide .excluded-row > .excluded-why { grid-column: 5; grid-row: 1; }
 .exclusions-dialog { width: min(860px, 100%); }
 .exclusions-dialog-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: calc(15px * var(--text-scale)); }
 .excluded-toggle .dropped-details > summary { list-style: none; cursor: pointer; color: var(--accent); font-size: calc(11.5px * var(--text-scale)); }
-.excluded-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 2px 8px; padding: 5px 0; border-top: 1px solid var(--ink-border); }
+.excluded-row { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: 2px 8px; padding: 5px 0; border-top: 1px solid var(--ink-border); }
+.excluded-row input[type=checkbox] { margin: 0; accent-color: var(--accent); }
+/* put back in view: still listed, so it can be left out again */
+.excluded-row.back > :not(input) { opacity: 0.5; }
+.excluded-row.back .excluded-reason { text-decoration: line-through; }
+.excluded-source { font-size: calc(10.5px * var(--text-scale)); color: var(--ink-muted); border: 1px solid var(--ink-border); border-radius: 8px; padding: 0 6px; white-space: nowrap; }
+.excluded-source.hand { color: var(--accent); border-color: var(--accent); }
 /* id and where on the first line, the reason (or its box) across the row below */
-.excluded-row > .excluded-reason, .excluded-row > .excluded-why { grid-column: 1 / -1; grid-row: 2; }
+.excluded-row > .excluded-reason, .excluded-row > .excluded-why { grid-column: 2 / -1; grid-row: 2; }
 .excluded-row .pill-link { font-family: var(--mono); font-size: calc(11.5px * var(--text-scale)); }
 .excluded-where { color: var(--ink-muted); font-size: calc(11.5px * var(--text-scale)); white-space: nowrap; }
 .excluded-reason { font-size: calc(11.5px * var(--text-scale)); color: var(--ink-text); }

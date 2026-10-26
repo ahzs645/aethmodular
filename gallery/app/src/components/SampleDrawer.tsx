@@ -38,6 +38,15 @@ const RATIOS: { label: string; num: string; den: string; why: string }[] = [
   { label: 'EC (ChemSpec FTIR) / PM2.5', num: 'EC (ChemSpec FTIR)', den: 'PM2.5 mass', why: 'FTIR-derived EC share of mass' },
 ]
 
+/** the drawer's include/exclude button, by where the filter stands now */
+const EXCLUSION_ACTION = { 'export-out': 'Include in charts', 'export-in': 'Exclude again', hand: 'Put back', in: 'Exclude' } as const
+const EXCLUSION_TITLE = {
+  'export-out': 'The data export excludes this filter: put it back in every chart (kept in the link)',
+  'export-in': 'Put back from the data export\'s exclusions: leave it out of the charts again',
+  hand: 'Excluded by hand: put it back in every chart',
+  in: 'Leave this filter out of every chart (excluded by hand, kept in the link; the reason can be added in Filters › excluded)',
+} as const
+
 /**
  * The drawer that opens when a sample is clicked. Charts only ever show two
  * or three numbers per filter; this shows all of them, and *where each sits*
@@ -59,7 +68,10 @@ export function SampleDrawer({
   onOpen,
   onClose,
   context,
+  exclusion,
 }: {
+  /** whether the charts draw this filter: left out by the data export (or put back), excluded by hand, or in */
+  exclusion?: { state: 'export-out' | 'export-in' | 'hand' | 'in'; toggle: () => void }
   /** what the clicked chart knows about this filter (e.g. an AIRSpec prediction); shown first */
   context?: FilterRecord | null
   row: FilterRow
@@ -112,8 +124,9 @@ export function SampleDrawer({
 
   // Navigation remains within the selected filter's actual site.
   const siteRows = useMemo(
-    () => allRows.filter((r) => r.site === row.site && !r.excluded).sort((a, b) => (a.date < b.date ? -1 : 1)),
-    [allRows, row.site]
+    // an excluded filter steps through its site's others from its own place
+    () => allRows.filter((r) => r.site === row.site && (!r.excluded || r.id === row.id)).sort((a, b) => (a.date < b.date ? -1 : 1)),
+    [allRows, row.site, row.id]
   )
   const idx = siteRows.findIndex((r) => r.id === row.id)
   const prev = idx > 0 ? siteRows[idx - 1] : null
@@ -199,7 +212,9 @@ export function SampleDrawer({
           <div className="drawer-id">
             <span className="swatch" style={{ background: site?.color ?? INK.muted }} />
             {row.id}
-            {row.excluded && <span className="badge danger">excluded</span>}
+            {exclusion?.state === 'export-in' ? <span className="badge" title="Excluded in the data export, put back in the charts">excluded · put back</span>
+              : exclusion?.state === 'hand' ? <span className="badge danger" title="Excluded by hand">excluded by hand</span>
+              : row.excluded && <span className="badge danger">excluded</span>}
             {pinned && <span className="badge">pinned</span>}
           </div>
           <div className="drawer-sub">
@@ -215,6 +230,7 @@ export function SampleDrawer({
         <button type="button" className="btn" disabled={!prev} onClick={() => prev && onOpen(prev.id)} title="Previous filter at this site (←)">← {prev?.date ?? '—'}</button>
         <button type="button" className="btn" disabled={!next} onClick={() => next && onOpen(next.id)} title="Next filter at this site (→)">{next?.date ?? '—'} →</button>
         <span style={{ flex: 1 }} />
+        {exclusion && <button type="button" className="btn" onClick={exclusion.toggle} title={EXCLUSION_TITLE[exclusion.state]}>{EXCLUSION_ACTION[exclusion.state]}</button>}
         <button type="button" className="btn" onClick={() => onPin(pinned ? null : row.id)}>{pinned ? 'Unpin' : 'Pin'}</button>
         <button type="button" className="btn" onClick={link}>{copied ? 'Copied' : 'Copy link'}</button>
       </div>
@@ -322,6 +338,7 @@ export function SampleDrawer({
             </svg></DrawerScroll>
           )}
           {!here && <p className="chart-note">This filter does not carry both {cx} and {cy}.</p>}
+          {here && (exclusion?.state === 'export-out' || exclusion?.state === 'hand') && <p className="chart-note">Drawn here for reference only: the gallery's charts leave this filter out until you put it back.</p>}
         </section>
       </AxisFieldsProvider>
 

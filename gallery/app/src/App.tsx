@@ -284,6 +284,10 @@ export default function App() {
   // Mirrors get_clean_data: excluded samples are hidden by default but never
   // deleted, so you can always put them back and see what was removed.
   const [includeExcluded, setIncludeExcluded] = useState(init.get('excl') === '1')
+  // or only some of them, put back one at a time from the side panel (incl=ID,ID)
+  const [inclIds, setInclIds] = useState<Set<string>>(() => idSet(init.get('incl')) ?? new Set())
+  /** is a row in view as far as the export's exclusions go */
+  const exclIn = useCallback((r: FilterRow) => !r.excluded || includeExcluded || inclIds.has(r.id), [includeExcluded, inclIds])
   const [convention, setConvention] = useState<string | null>(init.get('cal'))
   // the reader's own month bins (calendar "custom"), shared by every site; in the URL as cs
   const [customSeasons, setCustomSeasons] = useState(() => parseCustomSeasons(init.get('cs')) ?? DEFAULT_CUSTOM)
@@ -424,6 +428,7 @@ export default function App() {
       from: dateRange?.[0],
       to: dateRange?.[1],
       excl: includeExcluded ? '1' : null,
+      incl: !includeExcluded && inclIds.size ? [...inclIds].join(',') : null,
       drop: dropIds.size ? [...dropIds].join(',') : null,
       dropwhy: dropWhyParam,
       fb: ftirBaseline !== 'none' ? ftirBaseline : null,
@@ -442,7 +447,7 @@ export default function App() {
       log: axes.log ? '1' : null,
       pax: PAX_PARAM[axes.panels ?? 'Shared'],
     })
-  }, [tab, meeting, experiment, estimators, showCI, convention, calVariants, siteSeasons, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, dropWhyParam, keepIds, ftirBaseline, customSeasons, rainRule, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, includeExcluded, xField, yField, field, dash, ratios, groupings, mac, basis, pinnedId, axes])
+  }, [tab, meeting, experiment, estimators, showCI, convention, calVariants, siteSeasons, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, dropWhyParam, keepIds, ftirBaseline, customSeasons, rainRule, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, includeExcluded, inclIds, xField, yField, field, dash, ratios, groupings, mac, basis, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -473,6 +478,7 @@ export default function App() {
       setPmfOnly(p.get('pmfonly') === '1')
       setDateRange(p.get('from') && p.get('to') ? [p.get('from')!, p.get('to')!] : null)
       setIncludeExcluded(p.get('excl') === '1')
+      setInclIds(idSet(p.get('incl')) ?? new Set())
       setDropIds(idSet(p.get('drop')) ?? new Set())
       setDropWhy(parseWhy(p.get('dropwhy')))
       setFtirBaseline((['spline', 'vibes'] as string[]).includes(p.get('fb') ?? '') ? p.get('fb') as FtirBaseline : 'none')
@@ -546,10 +552,10 @@ export default function App() {
     const all = sites.map((x) => ({ ...x, color: paint(x.name) ?? '#9aa5b1' }))
     const chosenNames = new Set(all.filter((x) => chosenCodes.has(x.code)).map((x) => x.name))
     // counts in the field pickers follow the exclusion toggle, like every chart (Addis: 189, not 190)
-    const inChosen = rows.filter((r) => chosenNames.has(r.site) && (includeExcluded || !r.excluded))
+    const inChosen = rows.filter((r) => chosenNames.has(r.site) && exclIn(r))
     const coverage = Object.fromEntries(fields.map((f) => [f, inChosen.filter((r) => typeof r[f] === 'number').length]))
     return { ...netBase, all, chosen: all.filter((x) => chosenCodes.has(x.code)), chosenCodes, chosenNames, nSpartan: spartanCodes.length, paint, coverage }
-  }, [netBase, net, data, improveSites, spartanSel, includeExcluded])
+  }, [netBase, net, data, improveSites, spartanSel, exclIn])
   // the ChemSpec restatements of the FTIR carbon are never offered; a link naming one falls back
   const activeFields = (netView ? netView.fields : data?.meta.fields ?? []).filter((f) => !HIDDEN_DUPLICATES.includes(f))
   // ratios whose two fields this view has: the presets, then the reader's own (lib/viewFields)
@@ -708,6 +714,15 @@ export default function App() {
   // lookups, counts and drawers (colours from meta.sites) take the rows unpainted
   const paint = netView?.paint
   const sourceRows = plainSourceRows
+  // one or more of the export's exclusions in or out of view; all of them in is the same as excl=1
+  const includeIds = useCallback((ids: string[], on: boolean) => {
+    const all = (netView ? sourceRows : rawSourceRows).filter((r) => r.excluded).map((r) => r.id)
+    const cur = new Set(includeExcluded ? all : inclIds)
+    for (const id of ids) { if (on) cur.add(id); else cur.delete(id) }
+    const allIn = all.length > 0 && all.every((id) => cur.has(id))
+    setIncludeExcluded(allIn)
+    setInclIds(allIn ? new Set() : cur)
+  }, [netView, sourceRows, rawSourceRows, includeExcluded, inclIds])
   const paintedSourceRows = useMemo(() => (tab === 'meeting' || tab === 'calibration' || tab === 'dashboard' ? paintRows(sourceRows, paint) : sourceRows), [tab, sourceRows, paint])
   // a meeting page as presented: the reader's ratios, but MAC as exported and µg/m³
   const presentOpts = useMemo(() => ({ ...viewOpts, mac: exportMac, basis: 'conc' as const }), [viewOpts, exportMac])
@@ -717,12 +732,12 @@ export default function App() {
   const plainBaseRows = useMemo(() => {
     if (!data) return []
     return plainSourceRows
-      .filter((r) => includeExcluded || !r.excluded)
+      .filter(exclIn)
       .map((r) => {
         const s = seasonForFilter(r)
         return s !== r.season ? { ...r, season: s } : r
       })
-  }, [data, plainSourceRows, includeExcluded, seasonForFilter])
+  }, [data, plainSourceRows, exclIn, seasonForFilter])
   const baseRows = useMemo(() => paintRows(plainBaseRows, paint), [plainBaseRows, paint])
   // how many filters in view carry each ratio, for the pickers' counts and the dialog
   const inViewRows = useMemo(() => (netView ? baseRows.filter((r) => netView.chosenNames.has(r.site)) : baseRows), [baseRows, netView])
@@ -974,6 +989,8 @@ export default function App() {
       activeSites: activeSites ?? new Set(siteNames),
       siteCounts,
       includeExcluded,
+      // the export's exclusions currently put back in view, all of them or picked one by one
+      includedIds: (netView ? sourceRows : rawSourceRows).filter((r) => r.excluded && exclIn(r)).map((r) => r.id),
       // counted from the same rows the list under it shows (the export's count misses rows the app marks itself)
       nExcluded: (netView ? sourceRows : rawSourceRows).filter((r) => r.excluded).length,
       dateRange,
@@ -1126,7 +1143,8 @@ export default function App() {
         setConvention(null)
         setPinnedId(null)
       },
-      onIncludeExcluded: setIncludeExcluded,
+      onIncludeExcluded: (v) => { setIncludeExcluded(v); setInclIds(new Set()) },
+      onIncludeIds: includeIds,
       onDateRange: setDateRange,
       onXField: chooseX,
       onYField: chooseY,
@@ -1146,6 +1164,7 @@ export default function App() {
         setPmfOn(false)
         setDateRange(null)
         setIncludeExcluded(false)
+        setInclIds(new Set())
         setConvention(null)
       },
     }
@@ -1183,6 +1202,16 @@ export default function App() {
           onOpen={openSample}
           onClose={dismissSample}
           context={openRec}
+          // whether the charts draw this filter, and the one action that flips it
+          exclusion={(() => {
+            const id = openRow.id
+            if (openRow.excluded) return exclIn(openRow)
+              ? { state: 'export-in' as const, toggle: () => includeIds([id], false) }
+              : { state: 'export-out' as const, toggle: () => includeIds([id], true) }
+            return dropIds.has(id)
+              ? { state: 'hand' as const, toggle: () => restoreFilters(new Set([id])) }
+              : { state: 'in' as const, toggle: () => dropFilters(new Set([id])) }
+          })()}
         />
       )}
       {!openRow && openRec && <RecordDrawer rec={openRec} onClose={dismissSample} />}

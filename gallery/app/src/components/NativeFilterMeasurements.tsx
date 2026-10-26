@@ -42,9 +42,13 @@ export function NativeFilterMeasurements({ id }: { id: string }) {
   }, [code])
   const native = state?.code === code ? state.data : null
   const vibesInfo = state?.index?.baselines?.vibes ?? null
-  // PM10 and blanks are retained in the archive but never substituted for a PM2.5 drawer.
+  // An archive entry is one physical filter (no entry mixes PM2.5, PM10 and blanks), so a PM2.5
+  // filter shows its PM2.5 scans; a filter held only as PM10 (ETAD-0248) shows its own PM10 scan,
+  // labelled. Blanks are never drawn here.
   const entry = native?.spectra[base]
-  const analyses = entry?.analyses.filter(a => a.filter_type === 'PM2.5') ?? []
+  const pm25 = entry?.analyses.filter(a => a.filter_type === 'PM2.5') ?? []
+  const analyses = pm25.length ? pm25 : entry?.analyses.filter(a => a.filter_type === 'PM10') ?? []
+  const pm10 = !pm25.length && analyses.length > 0
   const analysis = analyses.find(a => choice?.base === base && a.analysis_id === choice.analysis) ?? analyses[0]
   const key = `${base}:${analysis?.analysis_id ?? ''}:${entry?.file ?? ''}`
   useEffect(() => {
@@ -97,12 +101,15 @@ export function NativeFilterMeasurements({ id }: { id: string }) {
           ? <Combobox label="" title="FTIR analysis" value={String(analysis.analysis_id)} onChange={(v) => setChoice({ base, analysis: v })}
             options={analyses.map(a => ({ key: String(a.analysis_id), label: `Analysis ${a.analysis_id} · ${fmtDate(a.analysis_date)}` }))} />
           : <>Analysis {analysis.analysis_id} · {fmtDate(analysis.analysis_date)}</>}
-        {' · '}QC {analysis.qc || '—'}</span>}
+        {' · '}QC {analysis.qc || '—'}{pm10 && <> · <strong>PM10 filter</strong></>}</span>}
     </div>
     {error ? <p role="alert">The spectrum could not be loaded: {error}</p>
       : !native ? <p className="ftir-meta">{state?.code === code ? 'No native spectrum for this site in this export.' : 'Loading…'}</p>
-      : !analysis ? <p className="ftir-meta">No FTIR analysis of this PM2.5 filter in the native archive; public measurements may still be available.</p>
+      : !analysis ? <p className="ftir-meta">{entry
+        ? 'The native FTIR archive holds this filter only as a blank scan, so there is no sample spectrum to draw.'
+        : 'This filter is not in the native FTIR archive, so there is no spectrum to draw; its measurements come from the public data.'}</p>
       : <>
+        {pm10 && <p className="ftir-meta">The archive holds this filter as PM10, not PM2.5: its own spectrum is shown, but it sits outside every PM2.5 comparison.</p>}
         {controls}
         {current?.error ? <p role="alert">Spectrum could not be loaded: {current.error}</p> : t ? <>{plot()}{legend}</> : <p className="ftir-meta">Loading this filter’s spectrum…</p>}
         {otherSite && shown.includes('vibes') && <p className="ftir-meta">VIBES here uses a background learned from IMPROVE and Addis blanks, not this site’s own.</p>}

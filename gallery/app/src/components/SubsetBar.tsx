@@ -57,6 +57,8 @@ export interface SubsetState {
   siteCounts: Record<string, number>
   includeExcluded: boolean
   nExcluded: number
+  /** the export's exclusions currently put back in view (all of them under includeExcluded, else the ones picked) */
+  includedIds?: string[]
   dateRange: DateRange | null
   xField: string
   yField: string
@@ -148,6 +150,8 @@ export interface SubsetActions {
   onClearKeep?: () => void
   onNetwork: (n: Network) => void
   onIncludeExcluded: (v: boolean) => void
+  /** put some of the export's exclusions back (on) or leave them out again */
+  onIncludeIds?: (ids: string[], on: boolean) => void
   onDateRange: (r: DateRange | null) => void
   onXField: (v: string) => void
   onYField: (v: string) => void
@@ -218,8 +222,8 @@ export function SubsetBar({
   const allPmf = !pmfOn || !s.pmfGroups || (s.activePmf?.size ?? 0) === s.pmfGroups.length
   const handEdits = (s.dropped ?? 0) > 0 || s.kept != null
   const isDefault =
-    allSeasons && allSites && !pmfOn && seasonsOn && !s.includeExcluded && !s.dateRange && s.convention === s.defaultConvention && !handEdits
-  const nActive = (caps.seasons && seasonsOn && !allSeasons ? 1 : 0) + (caps.sites && !allSites ? 1 : 0) + (pmfOn ? 1 : 0) + (s.dateRange ? 1 : 0) + (s.includeExcluded && caps.excluded ? 1 : 0) + (handEdits ? 1 : 0)
+    allSeasons && allSites && !pmfOn && seasonsOn && !s.includedIds?.length && !s.dateRange && s.convention === s.defaultConvention && !handEdits
+  const nActive = (caps.seasons && seasonsOn && !allSeasons ? 1 : 0) + (caps.sites && !allSites ? 1 : 0) + (pmfOn ? 1 : 0) + (s.dateRange ? 1 : 0) + (s.includedIds?.length && caps.excluded ? 1 : 0) + (handEdits ? 1 : 0)
 
   // seasons grouped by the site whose calendar they belong to (one group under the shared bins)
   const seasonGroups: { site: string | null; seasons: SeasonMeta[] }[] = []
@@ -236,7 +240,7 @@ export function SubsetBar({
       {caps.seasons && seasonsOn && !allSeasons && <span>seasons: {[...s.activeSeasons].join(', ')}</span>}
       {pmfOn && <span>PMF: {allPmf ? 'every source (PMF days only)' : [...(s.activePmf ?? [])].join(', ')}</span>}
       {s.dateRange && <span>{s.dateRange[0]} → {s.dateRange[1]}</span>}
-      {s.includeExcluded && caps.excluded && <span>+{s.nExcluded} excluded</span>}
+      {!!s.includedIds?.length && caps.excluded && <span>+{s.includedIds.length} excluded put back</span>}
       {hl.selected && (
         <span className="brush-actions">
           <span className="pill" title="Filters picked by a brush; every chart dims the rest. A highlight until you keep or exclude them.">
@@ -753,47 +757,62 @@ function ExclusionLists({ s, a, caps, onReview, wide = false }: {
   s: SubsetState; a: SubsetActions; caps: SubsetCaps; onReview: () => void; wide?: boolean
 }) {
   const hl = useHighlight()
-  const repo = s.excludedList ?? [], hand = s.droppedList ?? []
+  // one list: the data export's exclusions (where this tab can show them), then the reader's own
+  const repo = caps.excluded ? s.excludedList ?? [] : [], hand = s.droppedList ?? []
+  const back = new Set(s.includedIds ?? [])
+  const repoOut = repo.filter((d) => !back.has(d.id)).length
+  const nOut = repoOut + hand.length
   return (
     <div className={`exclusions${wide ? ' wide' : ''}`}>
-      {caps.excluded && <section>
-        <div className="exclusions-head">
-          <Toggle label={`Include ${s.nExcluded} excluded samples`} checked={s.includeExcluded} onChange={a.onIncludeExcluded} />
-          {repo.length > 0 && <CopyExclusions rows={repo.map((d) => ({ ...d, source: 'repo' }))} />}
-        </div>
-        <div className="exclusions-sub">Excluded in the data export{repo.length ? ` (${repo.length})` : ''}, with the reason recorded there</div>
-        {repo.length > 0 && <div className="exclusions-list">
-          {repo.map((d) => <div key={d.id} className="excluded-row">
-            <button type="button" className="pill-link" onClick={() => hl.openSample(d.id)} title={`${d.label} · open this filter's details`}>{d.id}</button>
-            <span className="excluded-where">{d.label}</span>
-            <span className="excluded-reason">{d.reason || 'no reason recorded'}</span>
-          </div>)}
-        </div>}
-      </section>}
       <section>
         <div className="exclusions-head">
-          <strong>Excluded by hand{hand.length ? ` (${hand.length})` : ''}</strong>
+          <strong>Excluded{repo.length + hand.length ? ` (${nOut} of ${repo.length + hand.length})` : ''}</strong>
+          {repo.length > 0 && (repoOut > 0
+            ? <button type="button" className="btn quiet dropped-review" onClick={() => a.onIncludeExcluded(true)}
+              title="Put every sample the data export excludes back in every chart">Include the export's</button>
+            : <button type="button" className="btn quiet dropped-review" onClick={() => a.onIncludeExcluded(false)}
+              title="Leave out every sample the data export excludes again (the default)">Exclude the export's</button>)}
           {hand.length > 0 && <>
+            {a.onClearDrop && <button type="button" className="btn quiet dropped-review" onClick={a.onClearDrop} title="Put every hand-excluded filter back">Put back all by hand</button>}
             <button type="button" className="btn quiet dropped-review" onClick={onReview}
-              title="List every excluded filter in the side panel: site, date, values; put any or all back">Review all ›</button>
-            {a.onClearDrop && <button type="button" className="btn quiet dropped-review" onClick={a.onClearDrop} title="Put every hand-excluded filter back">Put all back</button>}
-            <CopyExclusions rows={hand.map((d) => ({ id: d.id, label: d.label, reason: d.reason ?? '', source: 'by hand' }))} />
+              title="List the hand-excluded filters in the side panel: site, date, values; put any or all back">Review ›</button>
           </>}
+          {repo.length + hand.length > 0 && <CopyExclusions rows={[
+            ...repo.filter((d) => !back.has(d.id)).map((d) => ({ ...d, source: 'repo' })),
+            ...hand.map((d) => ({ id: d.id, label: d.label, reason: d.reason ?? '', source: 'by hand' })),
+          ]} />}
         </div>
-        {hand.length === 0
-          ? <div className="exclusions-sub">None. Right-click a point (Exclude this filter), or brush points and choose Exclude these.</div>
-          : <div className="exclusions-list">
-            {/* each hand exclusion with a reason the reader writes; the reasons travel in the link with the ids */}
-            {hand.map((d) => <div key={d.id} className="excluded-row">
+        <div className="exclusions-sub">
+          {repo.length + hand.length === 0
+            ? 'None. Right-click a point (Exclude this filter), or brush points and choose Exclude these.'
+            : 'Untick a sample to put it back in every chart. Add your own by right-clicking a point (Exclude this filter) or brushing points (Exclude these).'}
+        </div>
+        {repo.length + hand.length > 0 && <div className="exclusions-list">
+          {repo.map((d) => {
+            const out = !back.has(d.id)
+            return <div key={d.id} className={`excluded-row${out ? '' : ' back'}`}>
+              <input type="checkbox" checked={out} disabled={!a.onIncludeIds} aria-label={`${out ? 'Put back' : 'Exclude'} ${d.id}`}
+                title={out ? 'Excluded by the data export: untick to put it back' : 'Put back: tick to leave it out again'}
+                onChange={(e) => a.onIncludeIds?.([d.id], !e.target.checked)} />
               <button type="button" className="pill-link" onClick={() => hl.openSample(d.id)} title={`${d.label} · open this filter's details`}>{d.id}</button>
               <span className="excluded-where">{d.label}</span>
-              {a.onDropReason
-                ? <input className="select excluded-why" value={d.reason ?? ''} placeholder="Why excluded? (kept in the link)" aria-label={`Reason for excluding ${d.id}`}
-                  onChange={(e) => a.onDropReason!(d.id, e.target.value)} />
-                : d.reason ? <span className="excluded-reason">{d.reason}</span> : null}
-              {a.onRestoreIds && <button type="button" className="btn quiet" style={{ padding: '0 4px' }} onClick={() => a.onRestoreIds!(new Set([d.id]))} aria-label={`Put ${d.id} back`} title="Put this filter back">↺</button>}
-            </div>)}
-          </div>}
+              <span className="excluded-source" title="Excluded in the data export, with the reason recorded there">export</span>
+              <span className="excluded-reason">{d.reason || 'no reason recorded'}</span>
+            </div>
+          })}
+          {/* each hand exclusion with a reason the reader writes; the reasons travel in the link with the ids */}
+          {hand.map((d) => <div key={d.id} className="excluded-row">
+            <input type="checkbox" checked disabled={!a.onRestoreIds} aria-label={`Put ${d.id} back`} title="Excluded by hand: untick to put it back"
+              onChange={() => a.onRestoreIds?.(new Set([d.id]))} />
+            <button type="button" className="pill-link" onClick={() => hl.openSample(d.id)} title={`${d.label} · open this filter's details`}>{d.id}</button>
+            <span className="excluded-where">{d.label}</span>
+            <span className="excluded-source hand" title="Excluded by you, from a chart or this panel; kept in the link">by hand</span>
+            {a.onDropReason
+              ? <input className="select excluded-why" value={d.reason ?? ''} placeholder="Why excluded? (kept in the link)" aria-label={`Reason for excluding ${d.id}`}
+                onChange={(e) => a.onDropReason!(d.id, e.target.value)} />
+              : d.reason ? <span className="excluded-reason">{d.reason}</span> : null}
+          </div>)}
+        </div>}
       </section>
     </div>
   )
