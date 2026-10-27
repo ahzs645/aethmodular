@@ -119,7 +119,8 @@ function useColors(spec: Base) {
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
 
-export function Figure(props: FigureSpec & { about?: ReactNode }) {
+// research-spectra: `provenance` (which notebook a figure stands in for) passes through to its ChartFrame
+export function Figure(props: FigureSpec & { about?: ReactNode; provenance?: ReactNode }) {
   let spec: FigureSpec = props
   const bundle = useContext(BundleContext)
   const id = spec.id ?? slug(spec.title)
@@ -156,7 +157,7 @@ export function Figure(props: FigureSpec & { about?: ReactNode }) {
     : spec.kind === 'heatmap' ? <HeatmapFigure spec={spec} rows={rows} />
     : <TableFigure spec={spec} rows={rows} />
   return (
-    <ChartFrame id={id} title={spec.title} subtitle={spec.subtitle} tip={spec.tip} controls={controls} about={props.about}
+    <ChartFrame id={id} title={spec.title} subtitle={spec.subtitle} tip={spec.tip} controls={controls} about={props.about} provenance={props.provenance}
       exportable={spec.kind !== 'table'} source={bundle ? `gallery/app/src/meetings/${bundle.id}.meeting.ts › ${id}${spec.table ? `; data: table "${spec.table}" in gallery/app/public/data/meetings/${bundle.id}.json, from ${bundle.generated_from}` : ''}` : undefined}>
       {body}
       {spec.note && <div className="legend-note" style={{ marginTop: 6 }}><Markdown text={spec.note} /></div>}
