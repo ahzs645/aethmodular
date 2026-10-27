@@ -10,9 +10,9 @@ import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 
 import type { SectionPageProps } from '../../types'
-import { envelopeOf, useOptics, windowOf, OPTICS_COMMAND, type Envelope, type Optics } from '../lib/optics'
-import { ols, originFit, quantile, spearman, theilSen } from '../lib/stats'
-import { Bars, DataTable, Grid, SitePick, line, ofSite, point, seasonsOf, shortSeason, sitesOf, useSite } from '../lib/ui'
+import { envelopeOf, useOptics, windowOf, OPTICS_COMMAND, type Envelope, type Optics } from '../common/optics'
+import { ols, originFit, quantile, spearman, theilSen } from '../common/stats'
+import { Bars, DataTable, Grid, SitePick, line, ofSite, point, seasonsOf, shortSeason, sitesOf, useSite } from '../common/ui'
 
 const ENVELOPE_NB = 'research/ftir_hips_chem/addis_06_hips_ptfe_operating_envelope.ipynb'
 const RT_NB = 'research/improve_hips_offset/improve_fed_rt_proxy_figure2.ipynb (SPARTAN R1/T1 analog)'

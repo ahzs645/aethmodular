@@ -1,7 +1,7 @@
-// The Research diagnostics tab's fits and screens (src/sections/research/lib/stats.ts), against scipy / numpy values
+// The Research diagnostics tab's fits and screens (src/sections/research/common/stats.ts), against scipy / numpy values
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { bestLowThreshold, correlationP, deming, influence, multiOls, normalCdf, ols, originFit, quadratic, quantile, slidingWindow, spearman, splitScan, splitSweep, steiger, theilSen } from '../sections/research/lib/stats.ts'
+import { bestLowThreshold, correlationP, deming, influence, multiOls, normalCdf, ols, originFit, quadratic, quantile, slidingWindow, spearman, splitScan, splitSweep, steiger, theilSen } from '../sections/research/common/stats.ts'
 
 const near = (a, b, tol = 1e-6) => assert.ok(Math.abs(a - b) <= tol, `${a} vs ${b}`)
 const x = [1, 2, 3, 4, 5, 6, 7, 8.5, 9, 11]

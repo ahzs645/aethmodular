@@ -7,8 +7,8 @@ import { fmt } from '@/lib/format'
 import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
-import { bestLowThreshold, quantile, splitSweep, type SplitFit } from '../lib/stats'
-import { DataTable, Grid, HIGH, LOW, SitePick, num, ofSite, seasonsOf, shortSeason, useSite } from '../lib/ui'
+import { bestLowThreshold, quantile, splitSweep, type SplitFit } from '../common/stats'
+import { DataTable, Grid, HIGH, LOW, SitePick, num, ofSite, seasonsOf, shortSeason, useSite } from '../common/ui'
 
 const PROVENANCE = 'notebooks/analysis/meteorology/rh_sweep_seasonal.ipynb · hips_ftir_intercept_rh_recursive_diagnostics.ipynb (RH threshold sweep)'
 
