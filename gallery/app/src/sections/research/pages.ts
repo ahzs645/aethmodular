@@ -12,6 +12,7 @@ import { TwoProblem } from './pages/TwoProblem'
 import { OffsetShift } from './pages/OffsetShift'
 import { MoistureMac } from './pages/MoistureMac'
 import { HipsEnvelope } from './pages/HipsEnvelope'
+import { ImproveEnvelope } from './pages/ImproveEnvelope'
 
 export const RESEARCH_PAGES: (SectionPage & { Page: ComponentType<SectionPageProps> })[] = [
   { key: 'index', label: 'Index', title: 'What each page here reproduces', Page: Index },
@@ -22,4 +23,5 @@ export const RESEARCH_PAGES: (SectionPage & { Page: ComponentType<SectionPagePro
   { key: 'offset-shift', label: 'EC shift and the offset', title: 'Deming against the error ratio, the EC shift that zeros the intercept, and the implied missing EC by season', Page: OffsetShift },
   { key: 'moisture-mac', label: 'Moisture and MAC', title: 'Effective MAC against precipitable water and humidity; does moisture move the slope or the intercept?', Page: MoistureMac },
   { key: 'hips-envelope', label: 'HIPS operating envelope', title: 'Raw HIPS optics, mass per area, lot screen, blank domain and the Addis windows', Page: HipsEnvelope },
+  { key: 'improve-envelope', label: 'Addis vs IMPROVE loading', title: 'The IMPROVE network in loading space: Addis windows, matched subsets, the fAbs sweep, smoke and R/T proxies', Page: ImproveEnvelope },
 ]
