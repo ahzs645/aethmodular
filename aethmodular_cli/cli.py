@@ -42,6 +42,11 @@ SPARTAN_COMMANDS = {
     "extras": "scripts/pipelines/spartan_extras.py",
 }
 
+MAIA_COMMANDS = {
+    "catalog": "scripts/pipelines/maia_catalog.py",
+    "pull": "scripts/pipelines/maia_catalog.py",
+}
+
 BUILD_GROUPS = {
     "ftir-calibration": "research/ftir_ec_calibration_2026_06_25",
     "spartan-ec": "research/spartan_ec_2026_06_16",
@@ -292,6 +297,10 @@ def command_spartan(args: argparse.Namespace) -> int:
     return _run_script(SPARTAN_COMMANDS[args.workflow], args.script_args)
 
 
+def command_maia(args: argparse.Namespace) -> int:
+    return _run_script(MAIA_COMMANDS[args.workflow], [args.workflow, *args.script_args])
+
+
 def _build_targets(group: str) -> dict[str, Path]:
     directory = _repo_path(BUILD_GROUPS[group])
     targets = {}
@@ -434,6 +443,11 @@ def build_parser() -> argparse.ArgumentParser:
     spartan.add_argument("workflow", choices=sorted(SPARTAN_COMMANDS))
     spartan.add_argument("script_args", nargs=argparse.REMAINDER, help="Arguments passed to the workflow.")
     spartan.set_defaults(func=command_spartan)
+
+    maia = subparsers.add_parser("maia", help="Catalogue and pull NASA MAIA data.")
+    maia.add_argument("workflow", choices=sorted(MAIA_COMMANDS))
+    maia.add_argument("script_args", nargs=argparse.REMAINDER, help="Arguments passed to the workflow.")
+    maia.set_defaults(func=command_maia)
 
     build = subparsers.add_parser("build", help="Discover and run research artifact builders.")
     build_sub = build.add_subparsers(dest="build_command", required=True)

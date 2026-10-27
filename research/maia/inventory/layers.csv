@@ -1,0 +1,361 @@
+target,layer,resolution,date,kind,url
+AUS-Sydney,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/AUS-Sydney_AVGELV_1km_v5/{z}/{x}/{y}.png
+AUS-Sydney,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-08-29,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/AUS-Sydney_NDVI_20210829_250m_v5/{z}/{x}/{y}.png
+AUS-Sydney,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/AUS-Sydney_URBDEN_1km_v5/{z}/{x}/{y}.png
+AUS-Sydney,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/AUS-Sydney_HBASE_1km_v5/{z}/{x}/{y}.png
+AUS-Sydney,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/AUS-Sydney_GMIS_1km_v5/{z}/{x}/{y}.png
+AUS-Sydney,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/AUS-Sydney_POPDEN_1km_v5/{z}/{x}/{y}.png
+AUS-Sydney,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/AUS-Sydney_LWI_1km_v5/{z}/{x}/{y}.png
+AUS-Sydney,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/AUS-Sydney_LANDCOV_1km_v5/{z}/{x}/{y}.png
+AUS-Sydney,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/AUS-Sydney_PARTIC_1km_v5/{z}/{x}/{y}.png
+BGD-Dhaka,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/BGD-Dhaka_AVGELV_1km_v5/{z}/{x}/{y}.png
+BGD-Dhaka,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-09-30,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/BGD-Dhaka_NDVI_20210930_250m_v5/{z}/{x}/{y}.png
+BGD-Dhaka,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/BGD-Dhaka_URBDEN_1km_v5/{z}/{x}/{y}.png
+BGD-Dhaka,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/BGD-Dhaka_HBASE_1km_v5/{z}/{x}/{y}.png
+BGD-Dhaka,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/BGD-Dhaka_GMIS_1km_v5/{z}/{x}/{y}.png
+BGD-Dhaka,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/BGD-Dhaka_POPDEN_1km_v5/{z}/{x}/{y}.png
+BGD-Dhaka,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/BGD-Dhaka_LWI_1km_v5/{z}/{x}/{y}.png
+BGD-Dhaka,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/BGD-Dhaka_LANDCOV_1km_v5/{z}/{x}/{y}.png
+BGD-Dhaka,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/BGD-Dhaka_PARTIC_1km_v5/{z}/{x}/{y}.png
+BRA-SaoPaulo,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/BRA-SaoPaulo_AVGELV_1km_v5/{z}/{x}/{y}.png
+BRA-SaoPaulo,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-02-18,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/BRA-SaoPaulo_NDVI_20210218_250m_v5/{z}/{x}/{y}.png
+BRA-SaoPaulo,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/BRA-SaoPaulo_URBDEN_1km_v5/{z}/{x}/{y}.png
+BRA-SaoPaulo,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/BRA-SaoPaulo_HBASE_1km_v5/{z}/{x}/{y}.png
+BRA-SaoPaulo,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/BRA-SaoPaulo_GMIS_1km_v5/{z}/{x}/{y}.png
+BRA-SaoPaulo,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/BRA-SaoPaulo_POPDEN_1km_v5/{z}/{x}/{y}.png
+BRA-SaoPaulo,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/BRA-SaoPaulo_LWI_1km_v5/{z}/{x}/{y}.png
+BRA-SaoPaulo,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/BRA-SaoPaulo_LANDCOV_1km_v5/{z}/{x}/{y}.png
+BRA-SaoPaulo,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/BRA-SaoPaulo_PARTIC_1km_v5/{z}/{x}/{y}.png
+CHL-Santiago,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/CHL-Santiago_AVGELV_1km_v5/{z}/{x}/{y}.png
+CHL-Santiago,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-03-06,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/CHL-Santiago_NDVI_20210306_250m_v5/{z}/{x}/{y}.png
+CHL-Santiago,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/CHL-Santiago_URBDEN_1km_v5/{z}/{x}/{y}.png
+CHL-Santiago,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/CHL-Santiago_HBASE_1km_v5/{z}/{x}/{y}.png
+CHL-Santiago,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/CHL-Santiago_GMIS_1km_v5/{z}/{x}/{y}.png
+CHL-Santiago,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/CHL-Santiago_POPDEN_1km_v5/{z}/{x}/{y}.png
+CHL-Santiago,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/CHL-Santiago_LWI_1km_v5/{z}/{x}/{y}.png
+CHL-Santiago,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/CHL-Santiago_LANDCOV_1km_v5/{z}/{x}/{y}.png
+CHL-Santiago,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/CHL-Santiago_PARTIC_1km_v5/{z}/{x}/{y}.png
+CHN-Beijing,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/CHN-Beijing_AVGELV_1km_v5/{z}/{x}/{y}.png
+CHN-Beijing,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-07-28,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/CHN-Beijing_NDVI_20210728_250m_v5/{z}/{x}/{y}.png
+CHN-Beijing,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/CHN-Beijing_URBDEN_1km_v5/{z}/{x}/{y}.png
+CHN-Beijing,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/CHN-Beijing_HBASE_1km_v5/{z}/{x}/{y}.png
+CHN-Beijing,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/CHN-Beijing_GMIS_1km_v5/{z}/{x}/{y}.png
+CHN-Beijing,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/CHN-Beijing_POPDEN_1km_v5/{z}/{x}/{y}.png
+CHN-Beijing,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/CHN-Beijing_LWI_1km_v5/{z}/{x}/{y}.png
+CHN-Beijing,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/CHN-Beijing_LANDCOV_1km_v5/{z}/{x}/{y}.png
+CHN-Beijing,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/CHN-Beijing_PARTIC_1km_v5/{z}/{x}/{y}.png
+ESP-Barcelona,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ESP-Barcelona_AVGELV_1km_v5/{z}/{x}/{y}.png
+ESP-Barcelona,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-06-10,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ESP-Barcelona_NDVI_20230610_250m_v5/{z}/{x}/{y}.png
+ESP-Barcelona,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ESP-Barcelona_URBDEN_1km_v5/{z}/{x}/{y}.png
+ESP-Barcelona,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ESP-Barcelona_HBASE_1km_v5/{z}/{x}/{y}.png
+ESP-Barcelona,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ESP-Barcelona_GMIS_1km_v5/{z}/{x}/{y}.png
+ESP-Barcelona,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ESP-Barcelona_POPDEN_1km_v5/{z}/{x}/{y}.png
+ESP-Barcelona,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ESP-Barcelona_LWI_1km_v5/{z}/{x}/{y}.png
+ESP-Barcelona,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ESP-Barcelona_LANDCOV_1km_v5/{z}/{x}/{y}.png
+ESP-Barcelona,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ESP-Barcelona_PARTIC_1km_v5/{z}/{x}/{y}.png
+ETH-AddisAbaba,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ETH-AddisAbaba_AVGELV_1km_v5/{z}/{x}/{y}.png
+ETH-AddisAbaba,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-11-17,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ETH-AddisAbaba_NDVI_20231117_250m_v5/{z}/{x}/{y}.png
+ETH-AddisAbaba,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ETH-AddisAbaba_URBDEN_1km_v5/{z}/{x}/{y}.png
+ETH-AddisAbaba,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ETH-AddisAbaba_HBASE_1km_v5/{z}/{x}/{y}.png
+ETH-AddisAbaba,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ETH-AddisAbaba_GMIS_1km_v5/{z}/{x}/{y}.png
+ETH-AddisAbaba,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ETH-AddisAbaba_POPDEN_1km_v5/{z}/{x}/{y}.png
+ETH-AddisAbaba,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ETH-AddisAbaba_LWI_1km_v5/{z}/{x}/{y}.png
+ETH-AddisAbaba,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ETH-AddisAbaba_LANDCOV_1km_v5/{z}/{x}/{y}.png
+ETH-AddisAbaba,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ETH-AddisAbaba_PARTIC_1km_v5/{z}/{x}/{y}.png
+GHA-Accra,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/GHA-Accra_AVGELV_1km_v5/{z}/{x}/{y}.png
+GHA-Accra,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-11-01,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/GHA-Accra_NDVI_20211101_250m_v5/{z}/{x}/{y}.png
+GHA-Accra,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/GHA-Accra_URBDEN_1km_v5/{z}/{x}/{y}.png
+GHA-Accra,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/GHA-Accra_HBASE_1km_v5/{z}/{x}/{y}.png
+GHA-Accra,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/GHA-Accra_GMIS_1km_v5/{z}/{x}/{y}.png
+GHA-Accra,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/GHA-Accra_POPDEN_1km_v5/{z}/{x}/{y}.png
+GHA-Accra,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/GHA-Accra_LWI_1km_v5/{z}/{x}/{y}.png
+GHA-Accra,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/GHA-Accra_LANDCOV_1km_v5/{z}/{x}/{y}.png
+GHA-Accra,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/GHA-Accra_PARTIC_1km_v5/{z}/{x}/{y}.png
+IND-Delhi,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/IND-Delhi_AVGELV_1km_v5/{z}/{x}/{y}.png
+IND-Delhi,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-08-29,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/IND-Delhi_NDVI_20230829_250m_v5/{z}/{x}/{y}.png
+IND-Delhi,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/IND-Delhi_URBDEN_1km_v5/{z}/{x}/{y}.png
+IND-Delhi,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/IND-Delhi_HBASE_1km_v5/{z}/{x}/{y}.png
+IND-Delhi,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/IND-Delhi_GMIS_1km_v5/{z}/{x}/{y}.png
+IND-Delhi,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/IND-Delhi_POPDEN_1km_v5/{z}/{x}/{y}.png
+IND-Delhi,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/IND-Delhi_LWI_1km_v5/{z}/{x}/{y}.png
+IND-Delhi,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/IND-Delhi_LANDCOV_1km_v5/{z}/{x}/{y}.png
+IND-Delhi,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/IND-Delhi_PARTIC_1km_v5/{z}/{x}/{y}.png
+ISR-TelAviv,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ISR-TelAviv_AVGELV_1km_v5/{z}/{x}/{y}.png
+ISR-TelAviv,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-03-22,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ISR-TelAviv_NDVI_20230322_250m_v5/{z}/{x}/{y}.png
+ISR-TelAviv,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ISR-TelAviv_LWI_1km_v5/{z}/{x}/{y}.png
+ISR-TelAviv,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ISR-TelAviv_LANDCOV_1km_v5/{z}/{x}/{y}.png
+ISR-TelAviv,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ISR-TelAviv_URBDEN_1km_v5/{z}/{x}/{y}.png
+ISR-TelAviv,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ISR-TelAviv_HBASE_1km_v5/{z}/{x}/{y}.png
+ISR-TelAviv,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ISR-TelAviv_GMIS_1km_v5/{z}/{x}/{y}.png
+ISR-TelAviv,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ISR-TelAviv_POPDEN_1km_v5/{z}/{x}/{y}.png
+ISR-TelAviv,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ISR-TelAviv_PARTIC_1km_v5/{z}/{x}/{y}.png
+ITA-Milan,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Milan_AVGELV_1km_v5/{z}/{x}/{y}.png
+ITA-Milan,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-06-10,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Milan_NDVI_20210610_250m_v5/{z}/{x}/{y}.png
+ITA-Milan,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Milan_URBDEN_1km_v5/{z}/{x}/{y}.png
+ITA-Milan,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Milan_HBASE_1km_v5/{z}/{x}/{y}.png
+ITA-Milan,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Milan_GMIS_1km_v5/{z}/{x}/{y}.png
+ITA-Milan,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Milan_POPDEN_1km_v5/{z}/{x}/{y}.png
+ITA-Milan,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Milan_LWI_1km_v5/{z}/{x}/{y}.png
+ITA-Milan,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Milan_LANDCOV_1km_v5/{z}/{x}/{y}.png
+ITA-Milan,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Milan_PARTIC_1km_v5/{z}/{x}/{y}.png
+ITA-Rome,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Rome_AVGELV_1km_v5/{z}/{x}/{y}.png
+ITA-Rome,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-06-26,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Rome_NDVI_20230626_250m_v5/{z}/{x}/{y}.png
+ITA-Rome,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Rome_URBDEN_1km_v5/{z}/{x}/{y}.png
+ITA-Rome,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Rome_HBASE_1km_v5/{z}/{x}/{y}.png
+ITA-Rome,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Rome_GMIS_1km_v5/{z}/{x}/{y}.png
+ITA-Rome,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Rome_POPDEN_1km_v5/{z}/{x}/{y}.png
+ITA-Rome,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Rome_LWI_1km_v5/{z}/{x}/{y}.png
+ITA-Rome,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Rome_LANDCOV_1km_v5/{z}/{x}/{y}.png
+ITA-Rome,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Rome_PARTIC_1km_v5/{z}/{x}/{y}.png
+ITA-Taranto,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Taranto_AVGELV_1km_v5/{z}/{x}/{y}.png
+ITA-Taranto,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-05-09,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Taranto_NDVI_20210509_250m_v5/{z}/{x}/{y}.png
+ITA-Taranto,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Taranto_URBDEN_1km_v5/{z}/{x}/{y}.png
+ITA-Taranto,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Taranto_HBASE_1km_v5/{z}/{x}/{y}.png
+ITA-Taranto,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Taranto_GMIS_1km_v5/{z}/{x}/{y}.png
+ITA-Taranto,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Taranto_POPDEN_1km_v5/{z}/{x}/{y}.png
+ITA-Taranto,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Taranto_LWI_1km_v5/{z}/{x}/{y}.png
+ITA-Taranto,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Taranto_LANDCOV_1km_v5/{z}/{x}/{y}.png
+ITA-Taranto,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ITA-Taranto_PARTIC_1km_v5/{z}/{x}/{y}.png
+KOR-Seoul,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/KOR-Seoul_AVGELV_1km_v5/{z}/{x}/{y}.png
+KOR-Seoul,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-08-29,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/KOR-Seoul_NDVI_20230829_250m_v5/{z}/{x}/{y}.png
+KOR-Seoul,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/KOR-Seoul_URBDEN_1km_v5/{z}/{x}/{y}.png
+KOR-Seoul,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/KOR-Seoul_HBASE_1km_v5/{z}/{x}/{y}.png
+KOR-Seoul,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/KOR-Seoul_GMIS_1km_v5/{z}/{x}/{y}.png
+KOR-Seoul,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/KOR-Seoul_POPDEN_1km_v5/{z}/{x}/{y}.png
+KOR-Seoul,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/KOR-Seoul_LWI_1km_v5/{z}/{x}/{y}.png
+KOR-Seoul,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/KOR-Seoul_LANDCOV_1km_v5/{z}/{x}/{y}.png
+KOR-Seoul,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/KOR-Seoul_PARTIC_1km_v5/{z}/{x}/{y}.png
+KWT-Kuwait,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/KWT-Kuwait_AVGELV_1km_v5/{z}/{x}/{y}.png
+KWT-Kuwait,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-03-06,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/KWT-Kuwait_NDVI_20230306_250m_v5/{z}/{x}/{y}.png
+KWT-Kuwait,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/KWT-Kuwait_URBDEN_1km_v5/{z}/{x}/{y}.png
+KWT-Kuwait,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/KWT-Kuwait_HBASE_1km_v5/{z}/{x}/{y}.png
+KWT-Kuwait,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/KWT-Kuwait_GMIS_1km_v5/{z}/{x}/{y}.png
+KWT-Kuwait,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/KWT-Kuwait_POPDEN_1km_v5/{z}/{x}/{y}.png
+KWT-Kuwait,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/KWT-Kuwait_LWI_1km_v5/{z}/{x}/{y}.png
+KWT-Kuwait,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/KWT-Kuwait_LANDCOV_1km_v5/{z}/{x}/{y}.png
+KWT-Kuwait,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/KWT-Kuwait_PARTIC_1km_v5/{z}/{x}/{y}.png
+LBY-Libya4,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/LBY-Libya4_AVGELV_1km_v5/{z}/{x}/{y}.png
+LBY-Libya4,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-02-02,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/LBY-Libya4_NDVI_20210202_250m_v5/{z}/{x}/{y}.png
+LBY-Libya4,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/LBY-Libya4_URBDEN_1km_v5/{z}/{x}/{y}.png
+LBY-Libya4,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/LBY-Libya4_HBASE_1km_v5/{z}/{x}/{y}.png
+LBY-Libya4,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/LBY-Libya4_GMIS_1km_v5/{z}/{x}/{y}.png
+LBY-Libya4,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/LBY-Libya4_POPDEN_1km_v5/{z}/{x}/{y}.png
+LBY-Libya4,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/LBY-Libya4_LWI_1km_v5/{z}/{x}/{y}.png
+LBY-Libya4,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/LBY-Libya4_LANDCOV_1km_v5/{z}/{x}/{y}.png
+LBY-Libya4,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/LBY-Libya4_PARTIC_1km_v5/{z}/{x}/{y}.png
+MEX-MexicoCity,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MEX-MexicoCity_AVGELV_1km_v5/{z}/{x}/{y}.png
+MEX-MexicoCity,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-09-14,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MEX-MexicoCity_NDVI_20210914_250m_v5/{z}/{x}/{y}.png
+MEX-MexicoCity,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MEX-MexicoCity_URBDEN_1km_v5/{z}/{x}/{y}.png
+MEX-MexicoCity,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MEX-MexicoCity_HBASE_1km_v5/{z}/{x}/{y}.png
+MEX-MexicoCity,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MEX-MexicoCity_GMIS_1km_v5/{z}/{x}/{y}.png
+MEX-MexicoCity,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MEX-MexicoCity_POPDEN_1km_v5/{z}/{x}/{y}.png
+MEX-MexicoCity,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MEX-MexicoCity_LWI_1km_v5/{z}/{x}/{y}.png
+MEX-MexicoCity,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MEX-MexicoCity_LANDCOV_1km_v5/{z}/{x}/{y}.png
+MEX-MexicoCity,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MEX-MexicoCity_PARTIC_1km_v5/{z}/{x}/{y}.png
+MNG-Ulaanbaatar,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MNG-Ulaanbaatar_AVGELV_1km_v5/{z}/{x}/{y}.png
+MNG-Ulaanbaatar,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-07-28,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MNG-Ulaanbaatar_NDVI_20210728_250m_v5/{z}/{x}/{y}.png
+MNG-Ulaanbaatar,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MNG-Ulaanbaatar_URBDEN_1km_v5/{z}/{x}/{y}.png
+MNG-Ulaanbaatar,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MNG-Ulaanbaatar_HBASE_1km_v5/{z}/{x}/{y}.png
+MNG-Ulaanbaatar,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MNG-Ulaanbaatar_GMIS_1km_v5/{z}/{x}/{y}.png
+MNG-Ulaanbaatar,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MNG-Ulaanbaatar_POPDEN_1km_v5/{z}/{x}/{y}.png
+MNG-Ulaanbaatar,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MNG-Ulaanbaatar_LWI_1km_v5/{z}/{x}/{y}.png
+MNG-Ulaanbaatar,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MNG-Ulaanbaatar_LANDCOV_1km_v5/{z}/{x}/{y}.png
+MNG-Ulaanbaatar,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MNG-Ulaanbaatar_PARTIC_1km_v5/{z}/{x}/{y}.png
+MRT-Mauritania1,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MRT-Mauritania1_AVGELV_1km_v5/{z}/{x}/{y}.png
+MRT-Mauritania1,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-08-29,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MRT-Mauritania1_NDVI_20210829_250m_v5/{z}/{x}/{y}.png
+MRT-Mauritania1,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MRT-Mauritania1_URBDEN_1km_v5/{z}/{x}/{y}.png
+MRT-Mauritania1,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MRT-Mauritania1_HBASE_1km_v5/{z}/{x}/{y}.png
+MRT-Mauritania1,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MRT-Mauritania1_GMIS_1km_v5/{z}/{x}/{y}.png
+MRT-Mauritania1,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MRT-Mauritania1_POPDEN_1km_v5/{z}/{x}/{y}.png
+MRT-Mauritania1,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MRT-Mauritania1_LWI_1km_v5/{z}/{x}/{y}.png
+MRT-Mauritania1,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MRT-Mauritania1_LANDCOV_1km_v5/{z}/{x}/{y}.png
+MRT-Mauritania1,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/MRT-Mauritania1_PARTIC_1km_v5/{z}/{x}/{y}.png
+NAM-Gobabeb,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/NAM-Gobabeb_AVGELV_1km_v5/{z}/{x}/{y}.png
+NAM-Gobabeb,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-02-02,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/NAM-Gobabeb_NDVI_20210202_250m_v5/{z}/{x}/{y}.png
+NAM-Gobabeb,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/NAM-Gobabeb_URBDEN_1km_v5/{z}/{x}/{y}.png
+NAM-Gobabeb,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/NAM-Gobabeb_HBASE_1km_v5/{z}/{x}/{y}.png
+NAM-Gobabeb,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/NAM-Gobabeb_GMIS_1km_v5/{z}/{x}/{y}.png
+NAM-Gobabeb,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/NAM-Gobabeb_POPDEN_1km_v5/{z}/{x}/{y}.png
+NAM-Gobabeb,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/NAM-Gobabeb_LWI_1km_v5/{z}/{x}/{y}.png
+NAM-Gobabeb,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/NAM-Gobabeb_LANDCOV_1km_v5/{z}/{x}/{y}.png
+NAM-Gobabeb,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/NAM-Gobabeb_PARTIC_1km_v5/{z}/{x}/{y}.png
+NGA-Lagos,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/NGA-Lagos_AVGELV_1km_v5/{z}/{x}/{y}.png
+NGA-Lagos,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-09-30,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/NGA-Lagos_NDVI_20210930_250m_v5/{z}/{x}/{y}.png
+NGA-Lagos,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/NGA-Lagos_URBDEN_1km_v5/{z}/{x}/{y}.png
+NGA-Lagos,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/NGA-Lagos_HBASE_1km_v5/{z}/{x}/{y}.png
+NGA-Lagos,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/NGA-Lagos_GMIS_1km_v5/{z}/{x}/{y}.png
+NGA-Lagos,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/NGA-Lagos_POPDEN_1km_v5/{z}/{x}/{y}.png
+NGA-Lagos,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/NGA-Lagos_LWI_1km_v5/{z}/{x}/{y}.png
+NGA-Lagos,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/NGA-Lagos_LANDCOV_1km_v5/{z}/{x}/{y}.png
+NGA-Lagos,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/NGA-Lagos_PARTIC_1km_v5/{z}/{x}/{y}.png
+PAK-Karachi,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PAK-Karachi_AVGELV_1km_v5/{z}/{x}/{y}.png
+PAK-Karachi,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-09-30,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PAK-Karachi_NDVI_20230930_250m_v5/{z}/{x}/{y}.png
+PAK-Karachi,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PAK-Karachi_URBDEN_1km_v5/{z}/{x}/{y}.png
+PAK-Karachi,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PAK-Karachi_HBASE_1km_v5/{z}/{x}/{y}.png
+PAK-Karachi,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PAK-Karachi_GMIS_1km_v5/{z}/{x}/{y}.png
+PAK-Karachi,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PAK-Karachi_POPDEN_1km_v5/{z}/{x}/{y}.png
+PAK-Karachi,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PAK-Karachi_LWI_1km_v5/{z}/{x}/{y}.png
+PAK-Karachi,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PAK-Karachi_LANDCOV_1km_v5/{z}/{x}/{y}.png
+PAK-Karachi,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PAK-Karachi_PARTIC_1km_v5/{z}/{x}/{y}.png
+PER-Lima,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PER-Lima_AVGELV_1km_v5/{z}/{x}/{y}.png
+PER-Lima,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-04-07,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PER-Lima_NDVI_20230407_250m_v5/{z}/{x}/{y}.png
+PER-Lima,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PER-Lima_URBDEN_1km_v5/{z}/{x}/{y}.png
+PER-Lima,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PER-Lima_HBASE_1km_v5/{z}/{x}/{y}.png
+PER-Lima,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PER-Lima_GMIS_1km_v5/{z}/{x}/{y}.png
+PER-Lima,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PER-Lima_POPDEN_1km_v5/{z}/{x}/{y}.png
+PER-Lima,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PER-Lima_LWI_1km_v5/{z}/{x}/{y}.png
+PER-Lima,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PER-Lima_LANDCOV_1km_v5/{z}/{x}/{y}.png
+PER-Lima,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PER-Lima_PARTIC_1km_v5/{z}/{x}/{y}.png
+PRI-SanJuan,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PRI-SanJuan_AVGELV_1km_v5/{z}/{x}/{y}.png
+PRI-SanJuan,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-11-01,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PRI-SanJuan_NDVI_20231101_250m_v5/{z}/{x}/{y}.png
+PRI-SanJuan,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PRI-SanJuan_URBDEN_1km_v5/{z}/{x}/{y}.png
+PRI-SanJuan,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PRI-SanJuan_HBASE_1km_v5/{z}/{x}/{y}.png
+PRI-SanJuan,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PRI-SanJuan_GMIS_1km_v5/{z}/{x}/{y}.png
+PRI-SanJuan,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PRI-SanJuan_POPDEN_1km_v5/{z}/{x}/{y}.png
+PRI-SanJuan,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PRI-SanJuan_LWI_1km_v5/{z}/{x}/{y}.png
+PRI-SanJuan,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PRI-SanJuan_LANDCOV_1km_v5/{z}/{x}/{y}.png
+PRI-SanJuan,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/PRI-SanJuan_PARTIC_1km_v5/{z}/{x}/{y}.png
+RUS-Yakutsk,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/RUS-Yakutsk_AVGELV_1km_v5/{z}/{x}/{y}.png
+RUS-Yakutsk,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-07-12,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/RUS-Yakutsk_NDVI_20210712_250m_v5/{z}/{x}/{y}.png
+RUS-Yakutsk,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/RUS-Yakutsk_URBDEN_1km_v5/{z}/{x}/{y}.png
+RUS-Yakutsk,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/RUS-Yakutsk_HBASE_1km_v5/{z}/{x}/{y}.png
+RUS-Yakutsk,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/RUS-Yakutsk_GMIS_1km_v5/{z}/{x}/{y}.png
+RUS-Yakutsk,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/RUS-Yakutsk_POPDEN_1km_v5/{z}/{x}/{y}.png
+RUS-Yakutsk,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/RUS-Yakutsk_LWI_1km_v5/{z}/{x}/{y}.png
+RUS-Yakutsk,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/RUS-Yakutsk_LANDCOV_1km_v5/{z}/{x}/{y}.png
+RUS-Yakutsk,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/RUS-Yakutsk_PARTIC_1km_v5/{z}/{x}/{y}.png
+SEN-Dakar,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/SEN-Dakar_AVGELV_1km_v5/{z}/{x}/{y}.png
+SEN-Dakar,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-09-14,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/SEN-Dakar_NDVI_20230914_250m_v5/{z}/{x}/{y}.png
+SEN-Dakar,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/SEN-Dakar_URBDEN_1km_v5/{z}/{x}/{y}.png
+SEN-Dakar,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/SEN-Dakar_HBASE_1km_v5/{z}/{x}/{y}.png
+SEN-Dakar,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/SEN-Dakar_GMIS_1km_v5/{z}/{x}/{y}.png
+SEN-Dakar,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/SEN-Dakar_POPDEN_1km_v5/{z}/{x}/{y}.png
+SEN-Dakar,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/SEN-Dakar_LWI_1km_v5/{z}/{x}/{y}.png
+SEN-Dakar,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/SEN-Dakar_LANDCOV_1km_v5/{z}/{x}/{y}.png
+SEN-Dakar,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/SEN-Dakar_PARTIC_1km_v5/{z}/{x}/{y}.png
+SRB-Belgrade,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/SRB-Belgrade_AVGELV_1km_v5/{z}/{x}/{y}.png
+SRB-Belgrade,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-06-10,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/SRB-Belgrade_NDVI_20210610_250m_v5/{z}/{x}/{y}.png
+SRB-Belgrade,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/SRB-Belgrade_URBDEN_1km_v5/{z}/{x}/{y}.png
+SRB-Belgrade,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/SRB-Belgrade_HBASE_1km_v5/{z}/{x}/{y}.png
+SRB-Belgrade,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/SRB-Belgrade_GMIS_1km_v5/{z}/{x}/{y}.png
+SRB-Belgrade,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/SRB-Belgrade_POPDEN_1km_v5/{z}/{x}/{y}.png
+SRB-Belgrade,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/SRB-Belgrade_LWI_1km_v5/{z}/{x}/{y}.png
+SRB-Belgrade,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/SRB-Belgrade_LANDCOV_1km_v5/{z}/{x}/{y}.png
+SRB-Belgrade,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/SRB-Belgrade_PARTIC_1km_v5/{z}/{x}/{y}.png
+THA-Bangkok,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/THA-Bangkok_AVGELV_1km_v5/{z}/{x}/{y}.png
+THA-Bangkok,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-10-16,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/THA-Bangkok_NDVI_20231016_250m_v5/{z}/{x}/{y}.png
+THA-Bangkok,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/THA-Bangkok_URBDEN_1km_v5/{z}/{x}/{y}.png
+THA-Bangkok,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/THA-Bangkok_HBASE_1km_v5/{z}/{x}/{y}.png
+THA-Bangkok,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/THA-Bangkok_GMIS_1km_v5/{z}/{x}/{y}.png
+THA-Bangkok,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/THA-Bangkok_POPDEN_1km_v5/{z}/{x}/{y}.png
+THA-Bangkok,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/THA-Bangkok_LWI_1km_v5/{z}/{x}/{y}.png
+THA-Bangkok,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/THA-Bangkok_LANDCOV_1km_v5/{z}/{x}/{y}.png
+THA-Bangkok,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/THA-Bangkok_PARTIC_1km_v5/{z}/{x}/{y}.png
+TWN-Taipei,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/TWN-Taipei_AVGELV_1km_v5/{z}/{x}/{y}.png
+TWN-Taipei,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-10-16,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/TWN-Taipei_NDVI_20231016_250m_v5/{z}/{x}/{y}.png
+TWN-Taipei,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/TWN-Taipei_URBDEN_1km_v5/{z}/{x}/{y}.png
+TWN-Taipei,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/TWN-Taipei_HBASE_1km_v5/{z}/{x}/{y}.png
+TWN-Taipei,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/TWN-Taipei_GMIS_1km_v5/{z}/{x}/{y}.png
+TWN-Taipei,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/TWN-Taipei_POPDEN_1km_v5/{z}/{x}/{y}.png
+TWN-Taipei,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/TWN-Taipei_LWI_1km_v5/{z}/{x}/{y}.png
+TWN-Taipei,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/TWN-Taipei_LANDCOV_1km_v5/{z}/{x}/{y}.png
+TWN-Taipei,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/TWN-Taipei_PARTIC_1km_v5/{z}/{x}/{y}.png
+USA-Atlanta,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Atlanta_AVGELV_1km_v5/{z}/{x}/{y}.png
+USA-Atlanta,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-07-28,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Atlanta_NDVI_20230728_250m_v5/{z}/{x}/{y}.png
+USA-Atlanta,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Atlanta_URBDEN_1km_v5/{z}/{x}/{y}.png
+USA-Atlanta,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Atlanta_HBASE_1km_v5/{z}/{x}/{y}.png
+USA-Atlanta,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Atlanta_GMIS_1km_v5/{z}/{x}/{y}.png
+USA-Atlanta,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Atlanta_POPDEN_1km_v5/{z}/{x}/{y}.png
+USA-Atlanta,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Atlanta_LWI_1km_v5/{z}/{x}/{y}.png
+USA-Atlanta,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Atlanta_LANDCOV_1km_v5/{z}/{x}/{y}.png
+USA-Atlanta,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Atlanta_PARTIC_1km_v5/{z}/{x}/{y}.png
+USA-Boston,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Boston_AVGELV_1km_v5/{z}/{x}/{y}.png
+USA-Boston,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-07-28,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Boston_NDVI_20210728_250m_v5/{z}/{x}/{y}.png
+USA-Boston,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Boston_URBDEN_1km_v5/{z}/{x}/{y}.png
+USA-Boston,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Boston_HBASE_1km_v5/{z}/{x}/{y}.png
+USA-Boston,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Boston_GMIS_1km_v5/{z}/{x}/{y}.png
+USA-Boston,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Boston_POPDEN_1km_v5/{z}/{x}/{y}.png
+USA-Boston,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Boston_LWI_1km_v5/{z}/{x}/{y}.png
+USA-Boston,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Boston_LANDCOV_1km_v5/{z}/{x}/{y}.png
+USA-Boston,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Boston_PARTIC_1km_v5/{z}/{x}/{y}.png
+USA-Denver,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Denver_AVGELV_1km_v5/{z}/{x}/{y}.png
+USA-Denver,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-06-26,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Denver_NDVI_20230626_250m_v5/{z}/{x}/{y}.png
+USA-Denver,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Denver_URBDEN_1km_v5/{z}/{x}/{y}.png
+USA-Denver,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Denver_HBASE_1km_v5/{z}/{x}/{y}.png
+USA-Denver,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Denver_GMIS_1km_v5/{z}/{x}/{y}.png
+USA-Denver,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Denver_POPDEN_1km_v5/{z}/{x}/{y}.png
+USA-Denver,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Denver_LWI_1km_v5/{z}/{x}/{y}.png
+USA-Denver,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Denver_LANDCOV_1km_v5/{z}/{x}/{y}.png
+USA-Denver,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Denver_PARTIC_1km_v5/{z}/{x}/{y}.png
+USA-Hilo,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Hilo_AVGELV_1km_v5/{z}/{x}/{y}.png
+USA-Hilo,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-01-01,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Hilo_NDVI_20230101_250m_v5/{z}/{x}/{y}.png
+USA-Hilo,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Hilo_URBDEN_1km_v5/{z}/{x}/{y}.png
+USA-Hilo,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Hilo_HBASE_1km_v5/{z}/{x}/{y}.png
+USA-Hilo,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Hilo_GMIS_1km_v5/{z}/{x}/{y}.png
+USA-Hilo,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Hilo_POPDEN_1km_v5/{z}/{x}/{y}.png
+USA-Hilo,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Hilo_LWI_1km_v5/{z}/{x}/{y}.png
+USA-Hilo,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Hilo_LANDCOV_1km_v5/{z}/{x}/{y}.png
+USA-Hilo,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Hilo_PARTIC_1km_v5/{z}/{x}/{y}.png
+USA-LosAngeles,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-LosAngeles_AVGELV_1km_v5/{z}/{x}/{y}.png
+USA-LosAngeles,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-12-03,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-LosAngeles_NDVI_20211203_250m_v5/{z}/{x}/{y}.png
+USA-LosAngeles,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-LosAngeles_URBDEN_1km_v5/{z}/{x}/{y}.png
+USA-LosAngeles,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-LosAngeles_HBASE_1km_v5/{z}/{x}/{y}.png
+USA-LosAngeles,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-LosAngeles_GMIS_1km_v5/{z}/{x}/{y}.png
+USA-LosAngeles,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-LosAngeles_POPDEN_1km_v5/{z}/{x}/{y}.png
+USA-LosAngeles,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-LosAngeles_LWI_1km_v5/{z}/{x}/{y}.png
+USA-LosAngeles,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-LosAngeles_LANDCOV_1km_v5/{z}/{x}/{y}.png
+USA-LosAngeles,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-LosAngeles_PARTIC_1km_v5/{z}/{x}/{y}.png
+USA-Phoenix,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Phoenix_AVGELV_1km_v5/{z}/{x}/{y}.png
+USA-Phoenix,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-08-29,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Phoenix_NDVI_20210829_250m_v5/{z}/{x}/{y}.png
+USA-Phoenix,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Phoenix_URBDEN_1km_v5/{z}/{x}/{y}.png
+USA-Phoenix,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Phoenix_HBASE_1km_v5/{z}/{x}/{y}.png
+USA-Phoenix,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Phoenix_GMIS_1km_v5/{z}/{x}/{y}.png
+USA-Phoenix,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Phoenix_POPDEN_1km_v5/{z}/{x}/{y}.png
+USA-Phoenix,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Phoenix_LWI_1km_v5/{z}/{x}/{y}.png
+USA-Phoenix,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Phoenix_LANDCOV_1km_v5/{z}/{x}/{y}.png
+USA-Phoenix,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-Phoenix_PARTIC_1km_v5/{z}/{x}/{y}.png
+USA-RailroadValley,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-RailroadValley_AVGELV_1km_v5/{z}/{x}/{y}.png
+USA-RailroadValley,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-06-10,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-RailroadValley_NDVI_20230610_250m_v5/{z}/{x}/{y}.png
+USA-RailroadValley,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-RailroadValley_URBDEN_1km_v5/{z}/{x}/{y}.png
+USA-RailroadValley,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-RailroadValley_HBASE_1km_v5/{z}/{x}/{y}.png
+USA-RailroadValley,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-RailroadValley_GMIS_1km_v5/{z}/{x}/{y}.png
+USA-RailroadValley,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-RailroadValley_POPDEN_1km_v5/{z}/{x}/{y}.png
+USA-RailroadValley,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-RailroadValley_LWI_1km_v5/{z}/{x}/{y}.png
+USA-RailroadValley,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-RailroadValley_LANDCOV_1km_v5/{z}/{x}/{y}.png
+USA-RailroadValley,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-RailroadValley_PARTIC_1km_v5/{z}/{x}/{y}.png
+USA-SanFrancisco,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-SanFrancisco_AVGELV_1km_v5/{z}/{x}/{y}.png
+USA-SanFrancisco,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-06-10,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-SanFrancisco_NDVI_20230610_250m_v5/{z}/{x}/{y}.png
+USA-SanFrancisco,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-SanFrancisco_URBDEN_1km_v5/{z}/{x}/{y}.png
+USA-SanFrancisco,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-SanFrancisco_HBASE_1km_v5/{z}/{x}/{y}.png
+USA-SanFrancisco,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-SanFrancisco_GMIS_1km_v5/{z}/{x}/{y}.png
+USA-SanFrancisco,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-SanFrancisco_POPDEN_1km_v5/{z}/{x}/{y}.png
+USA-SanFrancisco,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-SanFrancisco_LWI_1km_v5/{z}/{x}/{y}.png
+USA-SanFrancisco,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-SanFrancisco_LANDCOV_1km_v5/{z}/{x}/{y}.png
+USA-SanFrancisco,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/USA-SanFrancisco_PARTIC_1km_v5/{z}/{x}/{y}.png
+VNM-Hanoi,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/VNM-Hanoi_AVGELV_1km_v5/{z}/{x}/{y}.png
+VNM-Hanoi,Normalized Difference Vegetation Index at Peak Greenness 2021,250m,2021-09-14,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/VNM-Hanoi_NDVI_20210914_250m_v5/{z}/{x}/{y}.png
+VNM-Hanoi,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/VNM-Hanoi_URBDEN_1km_v5/{z}/{x}/{y}.png
+VNM-Hanoi,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/VNM-Hanoi_HBASE_1km_v5/{z}/{x}/{y}.png
+VNM-Hanoi,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/VNM-Hanoi_GMIS_1km_v5/{z}/{x}/{y}.png
+VNM-Hanoi,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/VNM-Hanoi_POPDEN_1km_v5/{z}/{x}/{y}.png
+VNM-Hanoi,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/VNM-Hanoi_LWI_1km_v5/{z}/{x}/{y}.png
+VNM-Hanoi,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/VNM-Hanoi_LANDCOV_1km_v5/{z}/{x}/{y}.png
+VNM-Hanoi,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/VNM-Hanoi_PARTIC_1km_v5/{z}/{x}/{y}.png
+ZAF-CapeTown,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ZAF-CapeTown_AVGELV_1km_v5/{z}/{x}/{y}.png
+ZAF-CapeTown,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-06-26,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ZAF-CapeTown_NDVI_20230626_250m_v5/{z}/{x}/{y}.png
+ZAF-CapeTown,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ZAF-CapeTown_URBDEN_1km_v5/{z}/{x}/{y}.png
+ZAF-CapeTown,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ZAF-CapeTown_HBASE_1km_v5/{z}/{x}/{y}.png
+ZAF-CapeTown,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ZAF-CapeTown_GMIS_1km_v5/{z}/{x}/{y}.png
+ZAF-CapeTown,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ZAF-CapeTown_POPDEN_1km_v5/{z}/{x}/{y}.png
+ZAF-CapeTown,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ZAF-CapeTown_LWI_1km_v5/{z}/{x}/{y}.png
+ZAF-CapeTown,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ZAF-CapeTown_LANDCOV_1km_v5/{z}/{x}/{y}.png
+ZAF-CapeTown,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ZAF-CapeTown_PARTIC_1km_v5/{z}/{x}/{y}.png
+ZAF-Johannesburg,Surface Elevation,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ZAF-Johannesburg_AVGELV_1km_v5/{z}/{x}/{y}.png
+ZAF-Johannesburg,Normalized Difference Vegetation Index at Peak Greenness 2023,250m,2023-02-18,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ZAF-Johannesburg_NDVI_20230218_250m_v5/{z}/{x}/{y}.png
+ZAF-Johannesburg,Roadway Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ZAF-Johannesburg_URBDEN_1km_v5/{z}/{x}/{y}.png
+ZAF-Johannesburg,Human Built-up And Settlement Extent,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ZAF-Johannesburg_HBASE_1km_v5/{z}/{x}/{y}.png
+ZAF-Johannesburg,Global Man-made Impervious Surface,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ZAF-Johannesburg_GMIS_1km_v5/{z}/{x}/{y}.png
+ZAF-Johannesburg,Population Density,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ZAF-Johannesburg_POPDEN_1km_v5/{z}/{x}/{y}.png
+ZAF-Johannesburg,Land Water Identifiers,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ZAF-Johannesburg_LWI_1km_v5/{z}/{x}/{y}.png
+ZAF-Johannesburg,Land Cover,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ZAF-Johannesburg_LANDCOV_1km_v5/{z}/{x}/{y}.png
+ZAF-Johannesburg,Historical Annual Average Ground Level PM2 5 2019,1km,,tile,https://maia-mmgis.jpl.nasa.gov/Missions/MAIA/Layers/ZAF-Johannesburg_PARTIC_1km_v5/{z}/{x}/{y}.png

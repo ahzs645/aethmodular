@@ -197,6 +197,16 @@ Notes:
 - A filter is matched only on its start date. Recent ETAD and ETBI filters are
   single 24-h days, so that works for them. Older SPARTAN filters integrated
   over several days, so a one-day match is only approximate there.
+- **Size as a gallery dataset.** A prototype was built like the Weather export,
+  with daily values per site plus one row per filter on matching days. Fields:
+  AOD 440/500/675/870, AE 440–870, precipitable water, fine-mode AOD and
+  fraction at 500, AAOD 440/675/870, AAE 440–870, and SSA 440/675. It came to
+  **3.9 MB** (1.2 MB gzipped): 3.4 MB of daily series (35 sites, 32,093 days)
+  and 0.6 MB for 2,636 matched filters. Weather is 4.6 MB. The raw daily
+  downloads it is built from are 53 MB (direct-sun 14 MB, SDA 8 MB,
+  inversion 32 MB). That cache belongs in a gitignored `output/` folder, as the
+  ERA5 parquet does. The all-points (per-retrieval) files are 1.8 GB and are
+  not needed for daily or filter-day values.
 - Made with `research/ftir_ec_phase3/scripts/aeronet_spartan_overlap.py`, using
   `https://aeronet.gsfc.nasa.gov/aeronet_locations_v3.txt` and
   `cgi-bin/print_web_data_v3` (`AOD15=1`) and `print_web_data_inv_v3`
@@ -351,12 +361,28 @@ The partial items in G that are also about the spectra could join this
 section: the 1600/1617 cm⁻¹ band (`ftir_12`, `ftir_38`), T²/Q and hubness
 (`ftir_50`), and the Ward clusters over the network (`ftir_52`).
 
-## I. MAIA (maia-mmgis.jpl.nasa.gov): not catalogued in the repo
+## I. MAIA (maia-mmgis.jpl.nasa.gov)
 
-The repo's only use of "MAIA" is the name of the Drive data folder
-(`AETHMODULAR_MAIA_DATA_ROOT`, `pls_transfer.MAIA_DATA_CANDIDATES` →
-`.../NASA MAIA/Data`). Nothing in the repo lists or downloads anything from
-the MMGIS portal.
+**Now catalogued**: `uv run aeth maia catalog` writes
+[`research/maia/inventory/CATALOG.md`](../research/maia/inventory/CATALOG.md)
+and CSVs: target areas, portal layers, monitors, the ASDC collections, and
+day-by-day granule coverage per target. `aeth maia pull` downloads granules
+(see [commands.md](commands.md#maia-catalogue)). Before this, the repo's only
+use of "MAIA" was the name of the Drive data folder
+(`AETHMODULAR_MAIA_DATA_ROOT`).
+
+The archived products are at NASA's ASDC (found through CMR). On 27 Oct 2026 there were three:
+
+- `MAIA_ANC_SURFACEMONITOR_PM_TOTAL` and `MAIA_ANC_SURFACEMONITOR_PM_2.5_SPECIES`:
+  daily surface-monitor PM per target area, 2021 onward, still updating.
+  At ETH-AddisAbaba, total-PM granules exist on all 247 ETAD filter days and
+  speciated ones on 227. At IND-Delhi, the counts are 232 and 147 of 247 INDH days.
+  At USA-LosAngeles, they are 264 and 258 of 266 USPA days.
+- `MAIA_L4_GFPM` (VSIM001): a simulated Level 4 PM product, 2018 only, Boston only.
+
+The catalogue finds no satellite retrieval products yet. It will list them
+when they appear, because it discovers every `MAIA*` collection.
+CHN-Beijing, a secondary target, has no surface-monitor granules.
 
 On 27 Oct 2026 the portal's configuration (`/api/configure/get?mission=MAIA`)
 held these layers:

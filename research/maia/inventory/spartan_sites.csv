@@ -1,0 +1,41 @@
+code,name,lat,lon,target,target_type,filter_days,filter_first,filter_last,listed_as_maia_monitor,nearest_other_monitor_km,nearest_other_monitor_source,monitors_in_target,MAIA_ANC_SURFACEMONITOR_PM_2.5_SPECIES_filter_days,MAIA_ANC_SURFACEMONITOR_PM_TOTAL_filter_days,MAIA_L4_GFPM_filter_days
+AEAZ,"Abu Dhabi, UAE",24.4416,54.6166,,,171,2019-04-26,2024-12-02,True,18.6,AirNow,0,0,0,0
+ARCB,"Buenos Aires, Argentina",-34.55542,-58.50641,,,43,2014-10-02,2016-10-13,False,1033.5,AirNow,0,0,0,0
+AUMN,"Melbourne, Australia",-37.7968,144.96291,,,110,2022-08-09,2026-06-20,False,5207.5,AirNow,0,0,0,0
+BDDU,"Dhaka, Bangladesh",23.72839,90.39819,BGD-Dhaka,STA,108,2013-10-24,2024-05-25,True,8.0,AirNow,3,0,0,0
+BIBU,"Bujumbura, Burundi",-3.38,29.384,,,57,2022-12-09,2025-01-11,False,178.1,AirNow,0,0,0,0
+CADO,"Downsview, Canada",43.79,-79.47,,,70,2017-07-12,2019-08-04,False,1.1,AirNow,0,0,0,0
+CAHA,"Halifax, Canada",44.638,-63.594,,,173,2017-06-28,2024-03-09,True,1.9,AirNow,0,0,0,0
+CAKE,"Kelowna, Canada",49.94129,-119.40011,,,18,2017-11-02,2019-02-26,False,10.0,AirNow,0,0,0,0
+CALE,"Lethbridge, Canada",49.68167,-112.8687,,,31,2017-08-26,2019-08-23,False,6.2,AirNow,0,0,0,0
+CASH,"Sherbrooke, Canada",45.37975,-71.93133,,,155,2017-06-28,2024-10-26,True,5.4,AirNow,0,0,0,0
+CHTS,"Beijing, China",40.004,116.326,CHN-Beijing,STA,402,2013-06-28,2024-12-08,True,13.2,AirNow,2,0,0,0
+CLST,"Santiago, Chile",-33.458014,-70.664828,CHL-Santiago,PTA,211,2020-12-18,2026-05-23,True,0.8,SINCA Chile,39,0,141,0
+CLTA,"Talca, Chile",-35.4315,-71.621444,CHL-Santiago,PTA,98,2025-07-25,2026-04-21,True,0.5,SINCA Chile,39,0,94,0
+CODC,"Palmira, Colombia",4.6369,-74.0808,,,0,,,True,1.6,AirNow,0,0,0,0
+ETAD,"Addis Ababa, Ethiopia",9.0106,38.8207,ETH-AddisAbaba,PTA,247,2022-12-07,2026-03-01,True,0.1,PurpleAir,19,227,247,0
+ETBI,"Bishoftu, Ethiopia",8.75961,39.000743,ETH-AddisAbaba,PTA,60,2025-10-20,2026-05-19,True,34.3,PurpleAir,19,33,60,0
+IDBD,"Bandung, Indonesia",-6.88842,107.61,,,161,2014-01-10,2026-08-07,True,115.7,AirNow,0,0,0,0
+ILHA,"Haifa, Israel",32.77587,35.0249,ISR-TelAviv,PTA,191,2022-02-16,2025-12-23,True,1.3,Israel Ministry of Environmental Protection,144,174,191,0
+ILNZ,"Rehovot, Israel",31.90724,34.81053,ISR-TelAviv,PTA,296,2015-02-13,2025-02-10,True,1.0,Israel Ministry of Environmental Protection,144,197,204,0
+INDH,"Delhi, India",28.545,77.1926,IND-Delhi,PTA,247,2022-06-28,2026-07-19,True,1.5,CAAQM,69,147,232,0
+INJA,"Jaipur, India",26.90582,75.80622,IND-Delhi,PTA,106,2025-04-13,2026-05-25,True,107.5,CAAQM,69,58,106,0
+INKA,"Kanpur, India",26.51278,80.23164,,,43,2013-12-16,2022-05-16,True,315.6,CAAQM,0,0,0,0
+KRSE,"Seoul, Korea",37.56443,126.93479,KOR-Seoul,PTA,99,2019-05-02,2024-03-23,True,1.0,Air Korea,359,0,76,0
+KRUL,"Ulsan, Korea",35.582,129.19,KOR-Seoul,PTA,170,2021-09-04,2026-06-20,False,6.9,Air Korea,359,0,163,0
+MXMC,"Mexico City, Mexico",19.334,-99.182,MEX-MexicoCity,STA,101,2021-02-26,2026-02-23,False,2.5,AirNow,21,0,0,0
+NGIL,"Ilorin, Nigeria",8.4841,4.6745,NGA-Lagos,STA,81,2014-06-20,2026-04-28,True,266.8,AirNow,2,0,0,0
+PHMO,"Manila, Philippines",14.63525,121.07784,,,12,2014-05-01,2015-10-13,True,12.6,AirNow,0,0,0,0
+PRFJ,"Fajardo, Puerto Rico",18.3845,-65.6199,PRI-SanJuan,STA,103,2021-03-18,2025-09-26,False,55.3,AirNow,6,0,0,0
+SGSU,"Singapore, Singapore",1.29767,103.78038,,,50,2016-04-05,2019-12-09,True,308.3,AirNow,0,0,0,0
+TWKA,"Kaohsiung, Taiwan",22.647196,120.309791,TWN-Taipei,PTA,175,2022-08-20,2026-03-15,True,2.8,Taiwan EPA,112,155,175,0
+TWTA,"Taipei, Taiwan",25.0416354,121.503398,TWN-Taipei,PTA,295,2022-01-27,2026-04-14,True,0.7,Taiwan EPA,112,257,290,0
+USBA,"Baltimore, United States",39.255,-76.709,,,0,,,False,13.8,AirNow,0,0,0,0
+USBO,"Bondville, United States",40.05333,-88.37194,,,11,2015-08-11,2016-03-27,False,0.1,United States EPA,0,0,0,0
+USMC,"Mammoth Cave, United States",37.1318,-86.1479,,,19,2014-06-07,2014-08-12,False,0.0,AirNow,0,0,0,0
+USNO,"Norman, United States",35.182,-97.44,,,51,2023-02-21,2025-12-11,False,16.0,AirNow,0,0,0,0
+USPA,"Pasadena, United States",34.199433,-118.17317,USA-LosAngeles,PTA,266,2021-11-09,2026-07-08,True,15.6,United States EPA,116,258,264,0
+USSL,"St Louis, United States",38.648997,-90.305961,,,42,2025-08-02,2025-12-03,False,2.9,United States EPA,0,0,0,0
+VNHN,"Hanoi, Vietnam",21.04778,105.79964,VNM-Hanoi,STA,27,2015-05-22,2020-11-10,True,3.5,AirNow,2,0,0,0
+ZAJB,"Johannesburg, South Africa",-26.18466,27.999458,ZAF-Johannesburg,PTA,214,2022-04-07,2025-11-11,True,8.5,South African Weather Service,107,203,214,0
+ZAPR,"Pretoria, South Africa",-25.75661,28.27972,ZAF-Johannesburg,PTA,309,2015-10-18,2026-06-01,True,7.2,South African Weather Service,107,266,287,0

@@ -1,0 +1,58 @@
+{
+ "generated": "2026-10-27T19:19:21Z",
+ "sources": {
+  "mmgis": "https://maia-mmgis.jpl.nasa.gov/?mission=MAIA",
+  "cmr": "https://cmr.earthdata.nasa.gov/search"
+ },
+ "targets": {
+  "STA": 26,
+  "PTA": 12,
+  "CVTA": 8
+ },
+ "layers": 360,
+ "monitors": 4976,
+ "monitors_by_source": {
+  "AirNow": 1791,
+  "European Environmental Agency": 1605,
+  "United States EPA": 391,
+  "Air Korea": 373,
+  "South African Weather Service": 168,
+  "Israel Ministry of Environmental Protection": 144,
+  "Taiwan EPA": 113,
+  "SINCA Chile": 104,
+  "CAAQM": 66,
+  "ARPA Emilia-Romagna": 58,
+  "ARPA Lazio": 56,
+  "Generalitat de Catalunya": 44,
+  "SPARTAN Network": 26,
+  "PurpleAir": 13,
+  "Agenzia Spaziale Italiana": 11,
+  "National Institute of Environmental Research - \uad6d\ub9bd\ud658\uacbd\uacfc\ud559\uc6d0": 9,
+  "Instituto de Diagn\u00f3stico Ambiental y Estudios del Agua": 2,
+  "AethLabs, 1640 Valencia St #2c, San Francisco, CA 94110": 2
+ },
+ "collections": [
+  {
+   "short_name": "MAIA_ANC_SURFACEMONITOR_PM_2.5_SPECIES",
+   "version": "C01",
+   "granules": 14286,
+   "time_start": "2021-01-01",
+   "time_end": "ongoing"
+  },
+  {
+   "short_name": "MAIA_ANC_SURFACEMONITOR_PM_TOTAL",
+   "version": "C01",
+   "granules": 32984,
+   "time_start": "2021-01-01",
+   "time_end": "ongoing"
+  },
+  {
+   "short_name": "MAIA_L4_GFPM",
+   "version": "VSIM001",
+   "granules": 365,
+   "time_start": "2018-01-01",
+   "time_end": "2019-01-01"
+  }
+ ],
+ "spartan_sites_in_targets": 21
+}

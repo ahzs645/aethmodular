@@ -83,6 +83,24 @@ atomically and regenerates the inventory only after every transfer succeeds.
 Both network modes require the public SPARTAN host to be reachable;
 `--skip-download` is offline and needs a populated raw cache.
 
+## MAIA catalogue
+
+```bash
+aeth maia catalog                 # refresh research/maia/inventory/ from the portal and CMR
+aeth maia catalog --offline       # rebuild the tables from the cached responses in data/maia/meta/
+aeth maia pull --collection MAIA_ANC_SURFACEMONITOR_PM_TOTAL --target ETH-AddisAbaba \
+    --start 2023-01-01 --end 2023-03-31 --dry-run
+```
+
+`catalog` reads two public sources with no login: the MAIA MMGIS portal
+(target areas, map layers, surface-monitor lists) and NASA CMR (every MAIA
+collection at the ASDC and every granule's target, day, version and size). It
+writes `CATALOG.md` and CSVs, and matches each SPARTAN site to its
+target area and filter days. It takes about two minutes. `pull` downloads one
+collection's granules into `data/maia/raw/<collection>/<target>/`, keeping the
+newest version of each target-day unless `--all-versions` is given. Downloads
+need `EARTHDATA_TOKEN` (see `.env.example`); `--dry-run` lists URLs without it.
+
 ## Research builders
 
 ```bash
