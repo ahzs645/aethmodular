@@ -39,13 +39,17 @@ from site_labels import display_site_name  # noqa: E402
 from spectrum_codec import DEFAULT_STEP, encode  # noqa: E402
 
 BASELINES = ROOT / 'research/ftir_hips_chem/output/tables/network_baselines_20261019'
+# lot 241/241a re-corrected with their own lot's blanks (research/ftir_hips_chem/workflows/vibes_lot241_20261026.py apply)
+VIBES_OVERRIDES = ROOT / 'research/ftir_hips_chem/output/tables/vibes_lot241_20261026/apply'
 
 
-def load_baselines(folder):
+def load_baselines(folder, overrides=VIBES_OVERRIDES):
     """Precomputed baselines by analysis id (research/ftir_hips_chem/workflows/network_baselines_20261019.py).
 
     airspec: (start index on the native grid, baseline values) over the spline's 1425-4000 cm-1 span.
-    vibes: the corrected spectrum on the VIBES background's own grid (resampled input minus baseline).
+    vibes: the corrected spectrum on the VIBES background's own grid (resampled input minus baseline),
+    with vibes_model naming the background; `overrides` replaces the lot 241/241a analyses (the 87-blank
+    background has no blank of those lots) and adds the backgrounds' lots and the held-out blank check.
     Returns ({}, None) when the run is absent; the export then carries raw spectra only.
     """
     folder = Path(folder)
@@ -67,11 +71,24 @@ def load_baselines(folder):
         for c in cases.itertuples():
             if c.case_row in ok and np.isfinite(base[c.case_row]).all():
                 out[c.analysis_id]['vibes'] = X[c.case_row] - base[c.case_row]
+                out[c.analysis_id]['vibes_model'] = 'b87'
         wn = np.load(bundle / 'background_model.npz')['wn']
         manifest = json.loads((bundle / 'MANIFEST.json').read_text())
         grid = dict(first=float(wn[0]), last=float(wn[-1]), n=int(len(wn)), model=manifest['model'],
                     model_rank=manifest['model_rank'], model_blanks=manifest['model_blanks'], resampling=manifest['resampling'],
                     fits_failed=int(len(diag) - len(ok)))
+        if overrides and (Path(overrides) / 'MANIFEST.json').exists():
+            om = json.loads((Path(overrides) / 'MANIFEST.json').read_text())
+            oc = pd.read_csv(Path(overrides) / 'cases.csv', dtype={'analysis_id': str})
+            corrected = np.load(Path(overrides) / 'corrected_model_grid.npy').astype(float)
+            if corrected.shape[1] != len(wn):
+                raise ValueError('VIBES overrides are on another grid')
+            for i, c in enumerate(oc.itertuples()):
+                if c.success:
+                    out[c.analysis_id]['vibes'] = corrected[i]
+                    out[c.analysis_id]['vibes_model'] = om['override_model']
+            grid.update(models=om['models'], lot_check=om['lot_check'], overrides=str(Path(overrides).relative_to(ROOT)),
+                        n_overridden=int(oc.success.sum()))
     return out, grid
 
 
@@ -215,7 +232,7 @@ def build(ftir, hips, data, baselines_dir=BASELINES, step=DEFAULT_STEP):
                 spectra[key].append((dict(analysis_id=a['Id'], media_id=a['MediaId'],
                     filter_id=f['ExternalFilterId'], filter_type=f['ExternalFilterType'],
                     date=date(f['SamplingStartDate']), analysis_date=date(a['AnalysisDate']),
-                    qc=a['AnalysisQcCode'], sample_scan_id=a['SampleScanId'], background_scan_id=a['BackgroundScanId'],
+                    qc=a['AnalysisQcCode'], lot=f.get('ExternalLotId') or None, sample_scan_id=a['SampleScanId'], background_scan_id=a['BackgroundScanId'],
                     first=float(wn[0]), last=float(wn[-1]), n=len(y), invalid_points=invalid), y))
         smeta = {}
         for key, entries in sorted(spectra.items()):
@@ -242,7 +259,8 @@ def build(ftir, hips, data, baselines_dir=BASELINES, step=DEFAULT_STEP):
                     series['airspec_baseline'] = {**add(base), 'start': start}
                 if 'vibes' in b:
                     series['vibes_corrected'] = add(b['vibes'])
-                descriptors.append({**descriptor, 'series': series})
+                extra = {'vibes_model': b['vibes_model']} if 'vibes' in b else {}
+                descriptors.append({**descriptor, **extra, 'series': series})
             file = write_asset(out, f'spectra/{code}/{key}', b''.join(blocks), 'bin')
             smeta[key] = dict(file=file, analyses=descriptors)
         native = dict(schema_version=2, code=code, spectra=smeta, hips=dict(raw_hips[code]))
@@ -294,7 +312,9 @@ def build(ftir, hips, data, baselines_dir=BASELINES, step=DEFAULT_STEP):
         spectrum_encoding=dict(step=step, note='integer steps of `step`, differences, four byte planes per trace (gallery/data/spectrum_codec.py)'),
         baselines=dict(
             airspec=dict(method='AIRSpec/APRLssb segmented smoothing spline, DF1=6, DF2=4, on each native grid; 1425-4000 cm-1') if any('airspec' in b for b in baselines.values()) else None,
-            vibes=dict(method='VIBES with the saved gallery background (no refit), ELBO + MAP, tau 0.1, PB loss', grid=vibes_grid) if vibes_grid else None,
+            vibes=dict(method='VIBES, ELBO + MAP, tau 0.1, PB loss: the saved 87-blank gallery background (no refit), '
+                       'except lot 241/241a filters, corrected with that background plus their lots\' SPARTAN field blanks '
+                       '(each analysis\'s vibes_model; models and the held-out blank check per lot in grid)', grid=vibes_grid) if vibes_grid else None,
             source=str(Path(baselines_dir).relative_to(ROOT)) if baselines else None))
     # Publish the index last: every content-addressed asset is complete before readers see it.
     temp = out / 'index.tmp'

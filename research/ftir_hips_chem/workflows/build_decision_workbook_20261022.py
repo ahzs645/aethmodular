@@ -880,19 +880,14 @@ def spartan_features(Xmain, Xraw, meta):
     return F
 
 
-am_x = am.merge(nm[["filter_id", "fe_ugm3", "k_xrf_ugm3"]], on="filter_id", how="left", validate="many_to_one")
-FA, FN = spartan_features(XA[MAIN], XA["raw"], am_x), spartan_features(XN[MAIN], XN["raw"], nm)
-rows = []
-for name, F, meta, keep_rows in (("Addis", FA, am, ADDIS), ("network", FN, nm, ~nm.excluded.to_numpy())):
-    r = clf_best.predict_proba(F[cols_best])[:, 1]
-    d = pd.DataFrame({"filter_id": meta.filter_id, "code": meta.get("code", pd.Series("ETAD", index=meta.index)),
-                      "date": meta.date.dt.date, "season": meta.get("season"),
-                      "loading percentile": pct_of(REF_PM, F.pm_ug), "distance percentile": dist_pct(F.t2, F.q),
-                      "PM2.5 µg": F.pm_ug, "risk": r, "flagged": r >= np.quantile(risk, 1 - FLAG_RATE),
-                      "beyond IMPROVE loading": F.pm_ug > np.nanmax(REF_PM)})[keep_rows]
-    rows.append(d.assign(population=name))
-MAP_SPARTAN = pd.concat(rows, ignore_index=True)
-MAP_SPARTAN = MAP_SPARTAN[~((MAP_SPARTAN.population == "network") & (MAP_SPARTAN.code == "ETAD"))]   # Addis is drawn from its frozen set
+# Addis is every network ETAD filter (the frozen evaluation set plus the filters sampled after it), not only the frozen set
+FN = spartan_features(XN[MAIN], XN["raw"], nm)
+r = clf_best.predict_proba(FN[cols_best])[:, 1]
+MAP_SPARTAN = pd.DataFrame({"population": np.where(nm.code == "ETAD", "Addis", "network"), "filter_id": nm.filter_id, "code": nm.code,
+                            "date": nm.date.dt.date, "season": nm.season,
+                            "loading percentile": pct_of(REF_PM, FN.pm_ug), "distance percentile": dist_pct(FN.t2, FN.q),
+                            "PM2.5 µg": FN.pm_ug, "risk": r, "flagged": r >= np.quantile(risk, 1 - FLAG_RATE),
+                            "beyond IMPROVE loading": FN.pm_ug > np.nanmax(REF_PM)})[~nm.excluded.to_numpy()].reset_index(drop=True)
 MAP_IMPROVE = pd.DataFrame({"filter_id": im.filter_id, "site": im.site, "loading percentile": im_load_pct, "distance percentile": im_dist_pct,
                             "category": CATEGORY, "error µg": ERR, "risk": risk})
 

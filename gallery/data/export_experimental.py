@@ -12,7 +12,7 @@ the newest run by default, and writes ``gallery/app/public/data/experimental/fla
   site_keep       per held-out IMPROVE site: share kept at the 10 % flag rate, RMSE before and after
   missed          who the best SPARTAN-usable flag lets through (summary and the 30 largest misses)
   map_improve     every IMPROVE filter on the loading × distance plane, with its flag outcome
-  map_spartan     Addis (frozen set) and the SPARTAN network on the same plane
+  map_spartan     every SPARTAN filter on the same plane, Addis (ETAD) marked as its own population
   grid            5 × 5 loading × distance cells: IMPROVE failure and catch rates, Addis counts
 
 Nothing is refitted here; every number is the workbook's.

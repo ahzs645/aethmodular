@@ -13,6 +13,7 @@ export const EXPERIMENTS: Experiment[] = [
   { key: 'selector', label: '5 · Error-predicting selector', title: 'Pick the model with the smallest predicted error, or abstain' },
   { key: 'forward', label: '6 · Earlier → later years', title: 'Train on 2020–22, test on 2023, against new-site and random splits' },
   { key: 'fixes', label: 'Quick fixes', title: 'ETAD-0241/0248 identity and the February season calendar' },
+  { key: 'lots', label: 'Lot-aware VIBES blanks', title: 'Filter lots in the VIBES blank background: held-out blanks by lot, added peaks, and the lot 241/241a fix (26 Oct)' },
   { key: 'tor', label: 'Adama TOR study', title: 'The Adama TOR pilot against IMPROVE and SPARTAN: where it sits, where it would need to sit, and what counts as a pass' },
 ]
 export const EXPERIMENT_KEYS = EXPERIMENTS.map((e) => e.key)

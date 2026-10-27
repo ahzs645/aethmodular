@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { baseFilterId } from '@/lib/highlight'
-import { loadSpartanIndex, loadNativeSite, loadNativeTraces, type NativeSite, type NativeTraces, type SpartanIndex } from '@/lib/spartan'
+import { loadSpartanIndex, loadNativeSite, loadNativeTraces, vibesProvenance, type NativeSite, type NativeTraces, type SpartanIndex } from '@/lib/spartan'
 import { SpectrumModal, SpectrumPlot } from '@/components/FilterSpectrumPlot'
 import { useAddisStatus, useFilterSpectrum } from '@/lib/filterSpectrum'
 import { BASELINE_COLOR, INK } from '@/lib/theme'
@@ -85,12 +85,13 @@ export function NativeFilterMeasurements({ id }: { id: string }) {
     {options.map(k => <Toggle key={k} label={LABEL[k]} checked={shown.includes(k)} onChange={() => toggle(k)} />)}
   </span>
   const legend = <div className="ftir-legend">{shown.map(k => <span key={k}><i style={{ borderColor: COLORS[k] }} />{names[k]}{k === 'vibes' && frozenVibes && !vibes ? ' · loading…' : ''}</span>)}</div>
-  const otherSite = code !== 'ETAD'
+  // which blanks trained this trace's VIBES background, and whether the filter's lot is among them
+  const provenance = t?.vibes && analysis ? vibesProvenance(analysis, vibesInfo?.grid) : null
   // what used to sit behind "About this spectrum", now the analysis line's tooltip
   const about = analysis ? [
     `Raw absorbance = −log₁₀(sample/background) at full native resolution (${analysis.n.toLocaleString()} points)${analysis.invalid_points > 0 ? `, ${analysis.invalid_points} nonpositive single-beam pairs shown as gaps` : ''}; filter ${analysis.filter_id}, sample scan ${analysis.sample_scan_id}, background scan ${analysis.background_scan_id}. QC is the source's code; every analysis, repeats included, is kept.`,
     has.airspec ? 'Spline baseline (AIRSpec): the APRLssb segmented smoothing spline (df 6 and 4) fitted to this spectrum and subtracted; 1425–4000 cm⁻¹ only, as by design.' : '',
-    has.vibes && vibesInfo ? `VIBES: the gallery's saved blank background (${vibesInfo.grid.model_blanks} blanks, rank ${vibesInfo.grid.model_rank}; not refitted), applied after averaging this spectrum onto its ${vibesInfo.grid.n.toLocaleString()}-point grid.${otherSite ? ' That background was learned from IMPROVE and Addis blanks, not this site’s own.' : ''}` : '',
+    has.vibes && vibesInfo ? `VIBES: a saved blank background (not refitted per filter), applied after averaging this spectrum onto its ${vibesInfo.grid.n.toLocaleString()}-point grid.${provenance ? ` ${provenance.line} ${provenance.detail}` : ''}` : '',
   ].filter(Boolean).join('\n\n') : ''
 
   return <section className="drawer-section">
@@ -112,7 +113,7 @@ export function NativeFilterMeasurements({ id }: { id: string }) {
         {pm10 && <p className="ftir-meta">The archive holds this filter as PM10, not PM2.5: its own spectrum is shown, but it sits outside every PM2.5 comparison.</p>}
         {controls}
         {current?.error ? <p role="alert">Spectrum could not be loaded: {current.error}</p> : t ? <>{plot()}{legend}</> : <p className="ftir-meta">Loading this filter’s spectrum…</p>}
-        {otherSite && shown.includes('vibes') && <p className="ftir-meta">VIBES here uses a background learned from IMPROVE and Addis blanks, not this site’s own.</p>}
+        {provenance && shown.includes('vibes') && <p className="ftir-meta" title={provenance.detail}>{provenance.line}</p>}
         {expanded && t && <SpectrumModal id={id} title="FTIR spectrum" onClose={() => setExpanded(false)}>
           <div className="frame-controls" style={{ marginBottom: 8 }}>{controls}</div>
           {plot(true)}{legend}

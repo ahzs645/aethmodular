@@ -118,3 +118,26 @@ test('site selection fetches only selected filter shards, keeps the whole site i
     assert.ok(calls.every(url => !url.includes('/native/') && !url.includes('/spectra/')))
   } finally { globalThis.fetch = original }
 })
+
+test('VIBES provenance names the background lots, whether the filter lot is among them, and the held-out check', async () => {
+  const { vibesProvenance } = await import('./spartan.ts')
+  const grid = { first: 4000, last: 500, n: 3, model: 'm', model_rank: 70, model_blanks: 87, resampling: '',
+    models: {
+      b87: { label: '87-blank background', rank: 70, n_blanks: 87, lots: ['248', '251', '253'], blanks: '59 IMPROVE + 28 Addis', source: 's1' },
+      lot241_r70: { label: '87 + lot 241/241a blanks', rank: 70, n_blanks: 96, lots: ['241', '241a', '248', '251', '253'], blanks: 'b87 + 9', note: 'LOBO for blanks.', source: 's2' },
+    },
+    lot_check: {
+      '250': { heldout_blanks: 60, model: 'b87', ptfe_rms_b87: 0.000089, ptfe_rms: 0.000089, rms_b87: 0.000034, rms: 0.000034 },
+      '241': { heldout_blanks: 4, model: 'lot241_r70', ptfe_rms_b87: 0.00116, ptfe_rms: 0.000047, rms_b87: 0.00033, rms: 0.000018 },
+    } }
+  assert.equal(vibesProvenance({ lot: '251' }, grid), null)                       // no VIBES trace
+  assert.match(vibesProvenance({ lot: '251', vibes_model: 'b87' }, grid).line, /lots 248, 251, 253.*lot 251 is among them/)
+  const out = vibesProvenance({ lot: '250', vibes_model: 'b87' }, grid)
+  assert.match(out.line, /lot 250 is not among them; held-out lot-250 field blanks still correct as cleanly \(median PTFE-band residue 0\.00009\)/)
+  const lot = vibesProvenance({ lot: '241', vibes_model: 'lot241_r70' }, grid)
+  assert.match(lot.line, /87 \+ lot 241\/241a blanks .*lot 241, which the 87-blank background has no blank of/)
+  assert.match(lot.detail, /with the 87-blank background they kept 0\.0003 and 0\.001/)
+  assert.match(vibesProvenance({ lot: null, vibes_model: 'b87' }, grid).line, /no lot on record/)
+  // an export from before the lot test: the old one-line description, no claim about lots
+  assert.equal(vibesProvenance({ vibes_model: 'b87' }, { ...grid, models: undefined }).line, 'VIBES background: 87 blanks (IMPROVE and Addis), rank 70.')
+})

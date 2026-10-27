@@ -12,7 +12,7 @@ import { useFitHeight } from '@/lib/chartFit'
 import { useChartGrouping } from '@/components/GroupingDialog'
 
 import { MeasurementControl } from '@/components/AxisFieldPopover'
-import { CategoryAxis, categoryLines } from '@/components/CategoryAxis'
+import { CategoryAxis, categoryAxisHeight } from '@/components/CategoryAxis'
 import { useTileSetting } from '@/lib/url'
 
 const MODES = ['Boxplot', 'Box + points', 'Violin', 'Beeswarm'] as const
@@ -68,9 +68,9 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
 
   const plotWidth = Math.max(width, groups.length * 112 + MARGIN.left + MARGIN.right)
   const innerW = Math.max(160, plotWidth - MARGIN.left - MARGIN.right)
-  const bottom = 34 + Math.max(1, ...groups.map(g => categoryLines(g.label).length)) * 14 + (groups.some(g => g.parent) ? 34 : 0)
-  const innerH = Math.max(140, height - MARGIN.top - bottom)
   const x = d3.scaleBand<string>().domain(groups.map(g => g.name)).range([0, innerW]).padding(0.34)
+  const bottom = 14 + categoryAxisHeight(groups, x)
+  const innerH = Math.max(140, height - MARGIN.top - bottom)
   const allVals = groups.flatMap(g => g.values)
   const y = d3.scaleLinear().domain([Math.min(0, d3.min(allVals) ?? 0), (d3.max(allVals) ?? 1) * 1.05]).range([innerH, 0]).nice()
 

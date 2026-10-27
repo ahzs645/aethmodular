@@ -14,8 +14,17 @@ export interface SpartanIndex {
   /** schema 2: precomputed baselines (research/ftir_hips_chem/workflows/network_baselines_20261019.py) */
   baselines?: {
     airspec: { method: string } | null
-    vibes: { method: string; grid: Grid & { model: string; model_rank: number; model_blanks: number; resampling: string } } | null
+    vibes: { method: string; grid: VibesGrid } | null
   }
+}
+/** one VIBES blank background: which blanks (and so which filter lots) trained it */
+export interface VibesModel { label: string; rank: number; n_blanks: number; lots: string[]; blanks: string; note?: string; source: string }
+/** the 26 Oct held-out field-blank test for one lot: median residue under the 87-blank background and under the one used */
+export interface LotCheck { heldout_blanks: number; model: string; ptfe_rms_b87: number; ptfe_rms: number; rms_b87: number; rms: number }
+export interface VibesGrid extends Grid {
+  model: string; model_rank: number; model_blanks: number; resampling: string
+  /** since 26 Oct: every background in use by key (NativeAnalysis.vibes_model), and the held-out check by filter lot */
+  models?: Record<string, VibesModel>; lot_check?: Record<string, LotCheck>
 }
 /** one stored trace (gallery/data/spectrum_codec.py): integer steps, differences, byte planes; offset in bytes */
 export interface EncodedTrace { offset: number; n: number; step: number; nan?: [number, number][]; start?: number }
@@ -23,6 +32,8 @@ export interface NativeAnalysis {
   analysis_id: string; media_id: string; filter_id: string; filter_type: string
   date: string; analysis_date: string; qc: string; sample_scan_id: string; background_scan_id: string
   first: number; last: number; n: number; invalid_points: number
+  /** the filter's manufacturing lot (spartan.Filters.ExternalLotId), and the VIBES background behind its trace */
+  lot?: string | null; vibes_model?: string
   /** schema 1: float32 raw absorbance at this offset (in values) */
   offset?: number
   /** schema 2: raw absorbance, and the baselines where the run has them */
@@ -97,6 +108,30 @@ export function nativeTraces(buffer: ArrayBuffer, a: NativeAnalysis, vibesGrid?:
   if (a.series.vibes_corrected && vibesGrid) out.vibes = { wn: gridOf(vibesGrid), y: decodeTrace(buffer, a.series.vibes_corrected) }
   return out
 }
+const residue = (v: number) => String(+v.toPrecision(1))
+/**
+ * Where an analysis's VIBES trace comes from, for the drawer: a short visible line and a longer
+ * tooltip. Says which blanks trained the background, whether this filter's lot is among them, and how
+ * held-out field blanks of the lot corrected in the 26 Oct test. Null without a VIBES trace.
+ */
+export function vibesProvenance(a: Pick<NativeAnalysis, 'lot' | 'vibes_model'>, grid: VibesGrid | null | undefined): { line: string; detail: string } | null {
+  if (!grid || !a.vibes_model) return null
+  const model = grid.models?.[a.vibes_model]
+  if (!model) return { line: `VIBES background: ${grid.model_blanks} blanks (IMPROVE and Addis), rank ${grid.model_rank}.`, detail: '' }
+  const lot = a.lot ?? null
+  const check = lot ? grid.lot_check?.[lot] : undefined
+  const among = !!lot && model.lots.includes(lot)
+  const lots = model.lots.join(', ')
+  const head = `VIBES background: ${model.label} (lots ${lots}; rank ${model.rank}).`
+  const tail = !lot ? 'This filter has no lot on record.'
+    : a.vibes_model !== 'b87' ? `This filter is lot ${lot}, which the 87-blank background has no blank of, so it is corrected with its lot's own field blanks.`
+    : among ? `This filter's lot ${lot} is among them.`
+    : check ? `This filter's lot ${lot} is not among them; held-out lot-${lot} field blanks still correct as cleanly (median PTFE-band residue ${residue(check.ptfe_rms)}).`
+    : `This filter's lot ${lot} is not among them and was not checked.`
+  const checked = check ? `Held-out field blanks of lot ${lot} (${check.heldout_blanks}), median RMS left after correction: ${residue(check.rms)} over 4000–500 cm⁻¹, ${residue(check.ptfe_rms)} in the PTFE band (1050–1250)${a.vibes_model !== 'b87' ? `; with the 87-blank background they kept ${residue(check.rms_b87)} and ${residue(check.ptfe_rms_b87)}` : ''}.` : ''
+  return { line: `${head} ${tail}`, detail: [`Blanks: ${model.blanks}.`, model.note ?? '', checked, `Source: ${model.source}.`].filter(Boolean).join(' ') }
+}
+
 export async function loadNativeTraces(file: string, a: NativeAnalysis, vibesGrid?: Grid | null) {
   return nativeTraces(await loadBinary(file), a, vibesGrid)
 }

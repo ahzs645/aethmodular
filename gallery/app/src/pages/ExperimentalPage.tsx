@@ -11,6 +11,7 @@ import { SelectorStudy } from '@/pages/experimental/SelectorStudy'
 import { ForwardStudy } from '@/pages/experimental/ForwardStudy'
 import { FixesStudy } from '@/pages/experimental/FixesStudy'
 import { TorStudy } from '@/pages/experimental/TorStudy'
+import { LotStudy } from '@/pages/experimental/LotStudy'
 
 /**
  * Experimental: analyses still being worked out, one subpage per test of the 22 Oct
@@ -32,6 +33,7 @@ export function ExperimentalPage({ experiment, onPick }: { experiment: string; o
       {experiment === 'selector' && <SelectorStudy />}
       {experiment === 'forward' && <ForwardStudy />}
       {experiment === 'fixes' && <FixesStudy />}
+      {experiment === 'lots' && <LotStudy />}
       {experiment === 'tor' && <TorStudy />}
     </PageToc>
   )

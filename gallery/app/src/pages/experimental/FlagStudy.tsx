@@ -165,8 +165,8 @@ function BlindSpotMap({ d }: { d: FlagData }) {
   let over: typeof spartan = []
   if (overlay === 'Addis filters') over = spartan.filter((r) => r.population === 'Addis')
   if (overlay === 'One SPARTAN site') over = spartan.filter((r) => r.population === 'network' && r.code === site)
-  const siteMedians = overlay !== 'SPARTAN sites' ? [] : d3.groups(spartan.filter((r) => r.load != null && r.dist != null), (r) => r.population === 'Addis' ? 'ETAD' : r.code)
-    .map(([code, rs]) => ({ code, site: rs[0].population === 'Addis' ? 'Addis Ababa (frozen set)' : rs[0].site, n: rs.length, load: d3.median(rs, (r) => r.load!)!, dist: d3.median(rs, (r) => r.dist!)!,
+  const siteMedians = overlay !== 'SPARTAN sites' ? [] : d3.groups(spartan.filter((r) => r.load != null && r.dist != null), (r) => r.code)
+    .map(([code, rs]) => ({ code, site: rs[0].site, n: rs.length, load: d3.median(rs, (r) => r.load!)!, dist: d3.median(rs, (r) => r.dist!)!,
       flagged: d3.mean(rs, (r) => +r.flagged)!, beyond: d3.mean(rs, (r) => +r.beyond)! }))
   const rSite = d3.scaleSqrt().domain([0, d3.max(siteMedians, (s) => s.n) ?? 1]).range([3, 13])
   const flagColour = d3.scaleSequential((t: number) => d3.interpolateYlOrRd(0.2 + 0.8 * t)).domain([0, Math.max(0.2, d3.max(siteMedians, (s) => s.flagged) ?? 1)])
@@ -185,7 +185,7 @@ function BlindSpotMap({ d }: { d: FlagData }) {
         <Select label="SPARTAN" value={overlay} options={['Addis filters', 'SPARTAN sites', 'One SPARTAN site', 'None']} onChange={(v) => setOverlay(v as Overlay)} />
         {overlay === 'One SPARTAN site' && <Select label="Site" value={site} options={codes} onChange={setSite} optionLabel={(c) => `${spartan.find((r) => r.code === c)?.site ?? c} (${c})`} />}
         {overlay === 'Addis filters' && <Toggle label="Count Addis filters per cell" checked={counts} onChange={(v) => setCounts(v ? 'on' : 'off')}
-          title="Print in each cell how many of the 233 frozen Addis filters fall there" />}
+          title={`Print in each cell how many of the ${d.counts.addis} Addis filters fall there`} />}
       </>}>
       <div ref={ref} style={{ position: 'relative' }}>
         <svg width={size + beyondW + m.left + m.right} height={size + m.top + m.bottom} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
@@ -242,7 +242,7 @@ function BlindSpotMap({ d }: { d: FlagData }) {
         <ColorLegend scale={colour} label={cellMetric === 'Failure rate' ? 'cells: share of IMPROVE filters impacted' : 'cells: share of failures the flag catches'} format={(v) => pct(v)} scheme={colours.scheme} />
         {overlay === 'SPARTAN sites' && <ColorLegend scale={flagColour} label="sites: share of filters flagged (size = filters, black ring = Addis)" format={(v) => pct(v)} />}
         <Legend {...lg.props} items={[...cats.filter((c) => visibleCats.includes(c)).map((c) => ({ label: c, color: CAT_COLOR[c], detail: (col<number>(mi, 'category').filter((v) => cats[v] === c).length).toLocaleString() })),
-          ...(overlay === 'None' || overlay === 'SPARTAN sites' ? [] : [{ label: overlay === 'Addis filters' ? 'Addis (frozen set)' : `${site} filters`, color: overlay === 'Addis filters' ? ADDIS_ALL : '#7c3aed' }])]} />
+          ...(overlay === 'None' || overlay === 'SPARTAN sites' ? [] : [{ label: overlay === 'Addis filters' ? 'Addis filters' : `${site} filters`, color: overlay === 'Addis filters' ? ADDIS_ALL : '#7c3aed' }])]} />
       </div>
     </ChartFrame>
   )
@@ -428,8 +428,8 @@ function SpartanSites({ d }: { d: FlagData }) {
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
   const [sortBy, setSortBy] = useSearchParam<'Flagged' | 'Loading' | 'Distance'>('xflag-spartan.sort', 'Flagged', ['Flagged', 'Loading', 'Distance'])
-  const sites = useMemo(() => d3.groups(spartanRows(d), (r) => r.population === 'Addis' ? 'ETAD*' : r.code).map(([code, rs]) => ({
-    code, site: code === 'ETAD*' ? 'Addis Ababa (frozen set)' : rs[0].site, n: rs.length, flagged: d3.mean(rs, (r) => +r.flagged)!, beyond: d3.mean(rs, (r) => +r.beyond)!,
+  const sites = useMemo(() => d3.groups(spartanRows(d), (r) => r.code).map(([code, rs]) => ({
+    code, site: rs[0].site, n: rs.length, flagged: d3.mean(rs, (r) => +r.flagged)!, beyond: d3.mean(rs, (r) => +r.beyond)!,
     load: d3.median(rs.filter((r) => r.load != null), (r) => r.load!) ?? null, dist: d3.median(rs.filter((r) => r.dist != null), (r) => r.dist!) ?? null,
     risk: d3.median(rs, (r) => r.risk)!,
   })).filter((s) => s.n >= 10), [d])
@@ -452,7 +452,7 @@ function SpartanSites({ d }: { d: FlagData }) {
           {cols.map((c, ci) => <text key={c.key} x={m.left + ci * colW} y={14} fontSize={10} fill={INK.muted}>{c.label}</text>)}
           <g transform={`translate(0,${m.top})`}>
             {rows.map((s, i) => {
-              const cy = i * rowH + rowH / 2, addis = s.code === 'ETAD*' || s.code === 'ETAD'
+              const cy = i * rowH + rowH / 2, addis = s.code === 'ETAD'
               return <g key={s.code} onMouseEnter={(e) => tip.show(e, [`${s.site} (${s.code.replace('*', '')})`, `${s.n} filters · ${pct(s.flagged)} flagged · median risk ${f2(s.risk)}`,
                 `median loading pct ${f2(s.load)} · ${pct(s.beyond)} heavier than any IMPROVE filter`, `median distance pct ${f2(s.dist)}`])} onMouseLeave={tip.hide}>
                 <rect x={0} y={cy - rowH / 2} width={m.left + 3 * colW} height={rowH} fill={i % 2 ? 'transparent' : INK.zebra} />
@@ -473,7 +473,7 @@ function SpartanSites({ d }: { d: FlagData }) {
         </svg>
         {tip.node}
       </div>
-      <Note>Addis is listed once. The workbook holds its filters twice: as the {d.counts.addis} frozen Addis evaluation filters that every other Addis result on these pages uses, and again in the SPARTAN network set, where the same filters (and later ones) were reprocessed with every other site. The row here is the evaluation set, so it matches the Addis marks on the map above; the network copy is left out so Addis is not counted twice. A dash under loading means the site has no weighed PM2.5 for most filters: the flag still scores those filters, it just cannot use their mass.</Note>
+      <Note>A dash under loading means the site has no weighed PM2.5 for most filters: the flag still scores those filters, it just cannot use their mass.</Note>
     </ChartFrame>
   )
 }
