@@ -4,6 +4,7 @@ import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover
 import { Scatterplot } from '@/charts/correlation/Scatterplot'
 import { AeronetTimeline } from '@/charts/aeronet/AeronetTimeline'
 import { AeronetSiteTable, ScaleHeightStrip } from '@/charts/aeronet/AeronetSites'
+import { EtaBySite } from '@/charts/aeronet/EtaBySite' // aeronet-sites
 import { useExport } from '@/lib/data'
 import { AAOD675, hasAod, type AeronetStations } from '@/lib/aeronet'
 import type { AxesOpts } from '@/lib/axes'
@@ -89,6 +90,8 @@ export function AeronetPage({ rows, picked, onPick, meta, field, axes, setField 
         <AeronetTimeline rows={axRows} meta={meta} field={field} site={one} station={station?.station.replace(/_/g, ' ')} />
         {scatter(`${one.name} · ${field} against the column`, 'aeronet-site-scatter')}
         <ScaleHeightStrip rows={axRows} meta={meta} by="season" />
+        {/* aeronet-sites: PM2.5 / AOD (η) by season (charts/aeronet/EtaBySite.tsx) */}
+        <EtaBySite rows={axRows} meta={meta} />
       </>
     )
   }
@@ -107,6 +110,8 @@ export function AeronetPage({ rows, picked, onPick, meta, field, axes, setField 
       <AeronetSiteTable rows={axRows} meta={meta} stations={stations} current={null} onSite={onPick ? openSite : undefined} />
       <ScaleHeightStrip rows={axRows} meta={meta} onSite={onPick ? openSite : undefined} />
       {scatter(`${field} against the column — the picked sites`, 'aeronet-compare-scatter')}
+      {/* aeronet-sites: PM2.5 / AOD (η) by site and season (charts/aeronet/EtaBySite.tsx) */}
+      <EtaBySite rows={axRows} meta={meta} />
     </>
   )
 }
