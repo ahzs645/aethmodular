@@ -15,6 +15,7 @@ import { HipsEnvelope } from './pages/HipsEnvelope'
 import { ImproveEnvelope } from './pages/ImproveEnvelope'
 import { ImproveOrigin } from './pages/ImproveOrigin'
 import { SpartanImprove } from './pages/SpartanImprove'
+import { SourceWeather } from './pages/SourceWeather'
 
 export const RESEARCH_PAGES: (SectionPage & { Page: ComponentType<SectionPageProps> })[] = [
   { key: 'index', label: 'Index', title: 'What each page here reproduces', Page: Index },
@@ -28,4 +29,5 @@ export const RESEARCH_PAGES: (SectionPage & { Page: ComponentType<SectionPagePro
   { key: 'improve-envelope', label: 'Addis vs IMPROVE loading', title: 'The IMPROVE network in loading space: Addis windows, matched subsets, the fAbs sweep, smoke and R/T proxies', Page: ImproveEnvelope },
   { key: 'improve-origin', label: 'IMPROVE HIPS at EC = 0', title: 'Does IMPROVE HIPS read a nonzero Fabs at zero EC, and is its response curved? (ftir_26, ftir_37)', Page: ImproveOrigin },
   { key: 'spartan-improve', label: 'SPARTAN vs IMPROVE', title: 'The shared parameters as one set: distributions, ratios, fits and Addis-like IMPROVE sites', Page: SpartanImprove },
+  { key: 'pmf-weather', label: 'PMF sources and weather', title: 'Factor × meteorology, rain washout, temperature range, and method agreement by dominant source (Addis)', Page: SourceWeather },
 ]
