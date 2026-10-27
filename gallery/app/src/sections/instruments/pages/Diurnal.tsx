@@ -82,6 +82,10 @@ export function Diurnal({ rows, meta }: SectionPageProps) {
             <ColumnCoupling file={surfFile} site={site} seasons={seasons} split={splitOn} shade={shade} />
             <SurfaceVsColumnAae file={surfFile} site={site} seasons={seasons} shade={shade} />
             <IntradayCv file={surfFile} site={site} seasons={seasons} />
+            {surfFile.resolution === 'hourly' && <div className="panel"><p className="subtitle" style={{ margin: 0 }}>
+              {site.name}'s MA350 is exported from hourly means ({surfFile.file}), so the charts that pair single AERONET retrievals with the ±15 min around them
+              (surface against column by hour, surface AAE against the Ångström exponent, within-day variability) need its minute record and are left out.
+            </p></div>}
           </>
         : !surface.loading && <SurfaceMissing site={site.name} code={code} exported={surfaceSites} searched={surface.data?.searched ?? {}} />)}
 
@@ -113,11 +117,6 @@ function SurfaceMissing({ site, code, exported, searched }: { site: string; code
         <p>Once it has run, this page adds, for the site: BCc at the five wavelengths by local hour and season, and each over IR; AAE(UV, IR) and AAE(Blue, IR) by hour from absorption;
           Red BCc's 24 h mean against its mean over AERONET's hours, day by day; the share of a 24 h filter's black carbon from 06–10 and the other parts of the day;
           surface BC, AOD and BC/AOD at the photometer's moments by hour; surface AAE against the column's Ångström exponent; and each day's within-day variability of BC against AOD.</p>
-        {(code === 'ETAD' || code === 'USPA') && <p style={{ marginBottom: 0 }}>
-          Recorded when the coverage script was last run by hand (research/ftir_ec_phase3/AERONET_SPARTAN_2026-08-22.md, not recomputed here):
-          the median per-day ratio of 24 h to AERONET-hours Red BCc was <b>1.05</b> from daily means and 0.92 from daily medians at Addis (hours 07–10 and 14–17, 751 days),
-          and 1.09 and 1.07 at Pasadena (06–18, 327 days); hourly mean Red BCc at Addis ran from 3,987 ng/m³ at 00:00 to 19,096 at 04:00.
-        </p>}
       </div>
     </ChartFrame>
   )
