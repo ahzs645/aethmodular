@@ -14,6 +14,57 @@ Status key:
 - **Not in gallery**: the gallery has none of the data the notebook uses.
 - **n/a**: launchers and infrastructure, with nothing to port.
 
+## Update, 27 Oct 2026 (later): what the agent batch added
+
+The sections below describe the gallery as it was at the start of the day. Since then:
+
+**Private sections, left out of public builds.** `gallery/app/src/sections/sections.json` marks
+the two new sections private. A build with `VITE_PUBLIC_BUILD=1` swaps their code for an empty
+stub, and the publish scripts leave their `public/data` folders out. That covers the Pages deploy,
+`build_share.py` and `publish_pages.py --branch`. Set `"public": true` in the manifest to publish one.
+
+**Instruments → Aethalometer** (section B; private). Five sub-pages: Overview, Against the
+filters, Sources (AAE), Data quality and Diurnal. Together they cover the Multi_Site_Analysis
+set, `addis_02*`, HIPS_vs_Aethalometer, AAARpos, ETAD_Aug13, ETAD_comprehensive,
+iron_correction_test, the `dominant_source_*` / threshold / source-regression notebooks,
+`addis_01*`, FlowFix, flow_fix_explorer, flow_qc, the smoothing notebooks, Raw_ATN,
+plotting_gaps, `ftir_28`, `ftir_49`, `addis_05`, the multisite diurnal and publication notebooks,
+and `ma350_diurnal_coverage`.
+
+- **Data.** The daily `processed_sites` pickles, matched to each filter's window by overlap
+  hours. The minute and hourly MA350 files come from the Drive mirror: raw Jacros and Pasadena,
+  and the hourly Beijing, Delhi and JPL files.
+- **Every MA350 field is a per-filter field** in all the chart tabs, as the group
+  "Aethalometer (sampling window)".
+- **Correction found on the way.** The raw MA350 CSVs' "Time local" column is UTC, so the
+  August diurnal-coverage check compared the wrong hours. It was rerun on local time; see
+  `research/ftir_ec_phase3/AERONET_SPARTAN_2026-08-22.md`.
+
+**Research diagnostics** (the "Partial" rows of A, C, D, F and G; private). 18 sub-pages.
+
+- HIPS and meteorology (10): RH threshold sweep, what tracks the offset, two-problem
+  decomposition, EC shift and the offset, moisture and MAC, HIPS operating envelope, Addis vs
+  IMPROVE loading, IMPROVE HIPS at EC = 0, SPARTAN vs IMPROVE, PMF sources and weather.
+- Spectra and calibration (7): the 1617 cm⁻¹ band, MAC 6 vs 10, the provisional Addis EC,
+  applicability domain (T²/Q, hubness, di-PLS), the network spectral map (Ward), the June 2026
+  Ethiopia calibrations, and does it generalise.
+- What remains partial is listed on each page with the command that would complete it: `ftir_38`'s
+  dust tests, `ftir_39`'s per-filter table, `ftir_52`'s site matrix (multi-notebook reruns), and
+  the SPARTAN network panels.
+
+**AERONET** (section E). Now includes:
+
+- 26 fields per filter, and a Level 1.5 / 2.0 toggle.
+- The SSA spectrum, the Ångström typing planes, the Eom et al. tests and the non-absorbing
+  fraction.
+- Scale height through time by lot, and a site × month climatology.
+- PM2.5/AOD by site and season, also on the Map, with MAIA target rings.
+- An AERONET view on Data availability, and precipitable water against ERA5 on the Weather page.
+- 12 saved views of the notebooks' AERONET figures, and aerosol-type groupings.
+
+**Still not in the gallery** (section H): the charcoal reference archive (`char_01`–`char_11`),
+the target-definition and pyrolysis notebooks, the residual learner, and the robustness studies.
+
 ## The main finding
 
 The chart tabs (Correlation, Distribution, Evolution, Ranking, Part of a whole)
