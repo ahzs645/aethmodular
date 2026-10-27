@@ -122,3 +122,27 @@ def test_bundle_runs_end_to_end_without_rt_fields():
     assert [s['threshold'] for s in payload['sweep']] == envelope.SWEEP
     assert {m['group'] for m in payload['matched']} >= {'ETAD (Addis)'}
     assert any(r['group'] == 'IMPROVE' and r['quantity'] == 'fAbs × V / A' for r in payload['mass_space'])
+
+
+origin = load('export_research_improve_origin')
+
+
+def test_site_sufficient_statistics_refit_ols_exactly():
+    rng = np.random.default_rng(3)
+    frame = pd.DataFrame({'Site': np.repeat(['A', 'B', 'C'], 50), 'EC_ugm3': rng.uniform(0, 2, 150)})
+    frame['Fabs'] = 9 * frame['EC_ugm3'] + 0.4 + rng.normal(0, 0.1, 150)
+    slope, intercept = origin.ols_from_stats(origin.site_stats(frame))
+    ref = np.polyfit(frame['EC_ugm3'], frame['Fabs'], 1)
+    assert slope == pytest.approx(ref[0]) and intercept == pytest.approx(ref[1])
+    lo, hi = origin.cluster_ci(frame, reps=200)
+    assert lo <= intercept <= hi
+
+
+def test_deming_intercept_rises_monotonically_to_the_ols_value():
+    rng = np.random.default_rng(4)
+    x = rng.uniform(0, 3, 400)
+    y = 10 * x + 1 + rng.normal(0, 1, 400)
+    x_obs = x + rng.normal(0, 0.2, 400)
+    ints = [origin.deming(x_obs, y, lam)[1] for lam in origin.LAMBDAS]
+    assert all(b >= a - 1e-9 for a, b in zip(ints, ints[1:]))
+    assert ints[-1] == pytest.approx(np.polyfit(x_obs, y, 1)[1], abs=1e-3)
