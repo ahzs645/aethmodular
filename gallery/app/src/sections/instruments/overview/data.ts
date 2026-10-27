@@ -7,7 +7,9 @@ import * as d3 from 'd3'
 import { themed } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
+import { loadJson, useExport } from '@/lib/data'
 import { loadAethDaily, useAethSites, type AethDaily, type AethSite } from '../lib'
+import type { EpisodeColumns, HourlyFile } from './hourly'
 import { CHANNELS, toDays, type Channel, type Day, type Screen, type ScreenCount } from './stats'
 
 export { CHANNELS, type Channel, type Day, type Screen }
@@ -35,7 +37,7 @@ export const FILTER_METHODS = [
 ] as const
 
 export interface Instrument {
-  /** the daily file's code: a site code, or ETAD-JACROS for the second Addis instrument */
+  /** the daily file's code: a site code, or ETAD-JACROS for the longer Addis file of the same MA350-0238 (the Jacros file) */
   code: string
   /** the SPARTAN site it stands at, and its gallery name */
   siteCode: string
@@ -54,7 +56,7 @@ export function useInstruments(meta: MetaFile): Instrument[] | null {
       const site = meta.sites.find((s) => s.code === siteCode)?.name
       if (!site) return []
       const second = code !== siteCode
-      return [{ code, siteCode, site, info, label: second ? `${info.site} (second ${site} instrument)` : `${site} (at the filter sampler)` }]
+      return [{ code, siteCode, site, info, label: second ? `${site}, longer record (${info.site} file, same instrument)` : `${site} (${info.file})` }]
     })
   }, [sites, meta.sites])
 }
@@ -86,21 +88,26 @@ export interface Series {
   dropped: Record<Channel, ScreenCount>
   /** the site's filters in view (all rows at the site, with or without aethalometer values) */
   rows: FilterRow[]
+  /** the dates the span keeps (null: no limit) */
+  span: [string | null, string | null]
 }
 
 const shift = (date: string, days: number) => new Date(Date.parse(`${date}T00:00:00Z`) + days * 864e5).toISOString().slice(0, 10)
+
+/** The dates [lo, hi] a span keeps at a site: its filters' first and last sample date ±1 day, or no limit. */
+export function spanDates(siteRows: readonly FilterRow[], span: Span): [string | null, string | null] {
+  if (span !== 'filters' || !siteRows.length) return [null, null]
+  const dates = siteRows.map((r) => r.date).sort()
+  return [shift(dates[0], -1), shift(dates[dates.length - 1], 1)]
+}
 
 /** One instrument's days, dated, seasoned on the site's own calendar, screened and clipped. */
 export function buildSeries(inst: Instrument, file: AethDaily, meta: MetaFile, rows: readonly FilterRow[], screen: Screen, span: Span): Series {
   const siteRows = rows.filter((r) => r.site === inst.site)
   const { days, dropped } = toDays(file, seasonsForSite(meta, inst.site), screen)
-  let kept = days
-  if (span === 'filters' && siteRows.length) {
-    const dates = siteRows.map((r) => r.date).sort()
-    const lo = shift(dates[0], -1), hi = shift(dates[dates.length - 1], 1)
-    kept = days.filter((d) => d.date >= lo && d.date <= hi)
-  }
-  return { inst, days: kept, bins: days.length, dropped, rows: siteRows }
+  const [lo, hi] = spanDates(siteRows, span)
+  const kept = days.filter((d) => (!lo || d.date >= lo) && (!hi || d.date <= hi))
+  return { inst, days: kept, bins: days.length, dropped, rows: siteRows, span: [lo, hi] }
 }
 
 /** the series for these instruments, once their files are in (missing files are left out) */
@@ -129,7 +136,7 @@ export const SCREEN_TEXT: Record<Screen, string> = {
 
 /** a site's colour from meta, as on every tab */
 export const siteColor = (meta: MetaFile, site: string) => meta.sites.find((s) => s.name === site)?.color ?? '#7b8794'
-/** an instrument's colour: its site's, a step darker for a second instrument at the site (Jacros) */
+/** an instrument's colour: its site's, a step darker for a site's second daily file (the longer Jacros record) */
 export const instColor = (meta: MetaFile, inst: Instrument) =>
   inst.code === inst.siteCode ? siteColor(meta, inst.site) : d3.color(siteColor(meta, inst.site))?.darker(0.9).formatHex() ?? siteColor(meta, inst.site)
 
@@ -142,3 +149,41 @@ export const logTick = (v: number) => {
 export const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 export const MONTH_LETTER = 'JFMAMJJASOND'.split('')
 export const MONTH_NAME = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** overview/index.json (gallery/data/export_aeth_overview.py) */
+export interface OverviewSite {
+  site: string; resolution: 'minute' | 'hourly'; hourly_file: string; minute_file: string | null; offset: number
+  first: string; last: string; hours: number; valid_hours: number
+  /** the record's 95th-percentile hour, ng/m³: the episode threshold */
+  threshold: number; traced: number
+  episodes: EpisodeColumns
+}
+export interface Exclusion { date: string; filter_id: string | null; reason: string }
+export interface OverviewIndex {
+  generated: string; source: string; note: string
+  rules: { min_minutes: number; episode_quantile: number; episode_min_hours: number; trace_pad_hours: number }
+  sites: Record<string, OverviewSite>
+  /** outliers.EXCLUDED_SAMPLES by site code */
+  exclusions: Record<string, Exclusion[]>
+}
+/** overview/traces/<CODE>.json: minute IR (ng/m³) around the top episodes, from t0 (local standard) */
+export interface TraceFile { site: string; unit: string; pad_hours: number; traces: { episode: number; t0: string; IR: (number | null)[] }[] }
+
+export const useOverviewIndex = () => useExport<OverviewIndex>('aethalometer/overview/index.json')
+export const loadHourly = (code: string) => loadJson<HourlyFile>(`aethalometer/overview/hourly/${code}.json`)
+export const loadTraces = (code: string) => loadJson<TraceFile>(`aethalometer/overview/traces/${code}.json`)
+
+/** one exported file per site code, loaded as asked for (null: failed) */
+export function useSiteFiles<T>(codes: readonly string[], load: (code: string) => Promise<T>): Record<string, T | null> {
+  const [files, setFiles] = useState<Record<string, T | null>>({})
+  const key = [...new Set(codes)].sort().join(',')
+  useEffect(() => {
+    let live = true
+    for (const code of key ? key.split(',') : []) {
+      load(code).then((d) => { if (live) setFiles((f) => (f[code] === d ? f : { ...f, [code]: d })) })
+        .catch(() => { if (live) setFiles((f) => ({ ...f, [code]: null })) })
+    }
+    return () => { live = false }
+  }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
+  return files
+}

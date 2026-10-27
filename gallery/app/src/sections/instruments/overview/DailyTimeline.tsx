@@ -16,7 +16,7 @@ import { seasonOnly } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
 import type { MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
-import { CHANNELS, FILTER_METHODS, SCREEN_TEXT, channelColor, channelName, logTick, type Channel, type Screen, type Series } from './data'
+import { CHANNELS, FILTER_METHODS, SCREEN_TEXT, channelColor, channelName, logTick, type Channel, type Exclusion, type Screen, type Series } from './data'
 import { movingMean, splitRuns } from './stats'
 
 const M = { top: 10, right: 20, bottom: 30, left: 68 }
@@ -31,7 +31,7 @@ const t0 = (date: string) => new Date(`${date}T00:00:00Z`)
  * filters measured three ways (addis_02.5 Task 4) and, where the file has it, each day's minute
  * coverage (Multi_Site_Analysis §4).
  */
-export function DailyTimeline({ s, meta, screen }: { s: Series; meta: MetaFile; screen: Screen }) {
+export function DailyTimeline({ s, meta, screen, excluded = [] }: { s: Series; meta: MetaFile; screen: Screen; excluded?: Exclusion[] }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
@@ -116,6 +116,7 @@ export function DailyTimeline({ s, meta, screen }: { s: Series; meta: MetaFile; 
                       {avg !== 'daily' && smoothRuns.map((idx, i) => <path key={`m${i}`} d={path(smooth[c], idx)} fill="none" stroke={channelColor(c)} strokeWidth={2.2} />)}
                     </g>)}
                     {s.rows.map((r) => inX(t0(r.date)) && <line key={r.id} x1={x(t0(r.date))} x2={x(t0(r.date))} y1={H.bc - 5} y2={H.bc} stroke={INK.muted} strokeWidth={0.8} />)}
+                    {excluded.map((xd) => inX(t0(xd.date)) && <line key={xd.date} x1={x(t0(xd.date)) + 0.5} x2={x(t0(xd.date)) + 0.5} y1={0} y2={H.bc} stroke={INK.negative} strokeWidth={1.4} strokeDasharray="4 3" pointerEvents="none" />)}
                     <rect width={innerW} height={H.bc} fill="transparent"
                       onMouseMove={(e) => {
                         const mx = d3.pointer(e)[0]
@@ -123,7 +124,8 @@ export function DailyTimeline({ s, meta, screen }: { s: Series; meta: MetaFile; 
                         const d = days[d3.bisector((q: { t: Date }) => q.t).center(days, new Date(x.invert(mx).getTime() - 864e5 / 2))]
                         if (!d) return
                         const i = days.indexOf(d)
-                        tip.show(e, [`${d.date} (bin from ${d.start})`, ...(d.season ? [seasonOnly(d.season.name)] : []),
+                        const ex = excluded.filter((xd) => xd.date === d.date)
+                        tip.show(e, [`${d.date} (bin from ${d.start})`, ...(d.season ? [seasonOnly(d.season.name)] : []), ...ex.map((xd) => `excluded sample${xd.filter_id ? ` ${xd.filter_id}` : ''}: ${xd.reason}`),
                           ...CHANNELS.map((c) => `${channelName(c, meta)}: ${fmt(d.bc[c], 2)} µg/m³ · 30-day ${fmt(smooth[c][i], 2)}`),
                           ...(d.coverage !== null ? [`minute coverage ${fmt(d.coverage, 0)} %`] : []), ...(d.flow ? [`flow period: ${d.flow}`] : [])])
                       }} />
@@ -153,7 +155,7 @@ export function DailyTimeline({ s, meta, screen }: { s: Series; meta: MetaFile; 
         )}
         {offTop > 0 && <Note>{offTop} plotted values above {fmt(yBc.domain()[1], 1)} µg/m³ run off the top (largest {fmt(d3.max(yVals), 1)}); tick Full range to see them.</Note>}
         <Legend items={legendItems} {...leg.props} />
-        <Key items={seasons.map((se) => ({ label: seasonOnly(se.name), color: se.color, kind: 'faded' as const }))} />
+        <Key items={[...seasons.map((se) => ({ label: seasonOnly(se.name), color: se.color, kind: 'faded' as const })), ...(excluded.length ? [{ label: 'excluded sample (outliers.py)', color: INK.negative, kind: 'dash' as const }] : [])]} />
         {tip.node}
       </div>
     </ChartFrame>
