@@ -648,7 +648,7 @@ hollow.
 
 ```bash
 uv run python research/ftir_hips_chem/workflows/fetch_aeronet_spartan.py   # ~15 min, resumable
-uv run --with timezonefinder python gallery/data/export_aeronet.py          # ~10 s -> public/data/aeronet/ (3.3 MB, committed)
+uv run --with timezonefinder python gallery/data/export_aeronet.py          # ~1 min -> public/data/aeronet/ (both levels, 5.9 MB, committed)
 ```
 
 The fetch picks, for each site, the station within 50 km whose daily AOD covers
@@ -659,6 +659,41 @@ under `research/ftir_hips_chem/output/tables/aeronet_spartan/` (gitignored).
 `--sites`, `--level 20`, `--refresh` and `--parse-only` narrow or redo a pull.
 The export reads each filter's window from `weather/filters.json`, so run the
 weather export first when filters change.
+
+Since 27 Oct 2026 there are 26 fields per filter. The new ones are SSA 870 and
+1020, the two-band AAEs 440–675 and 675–870, the scattering exponent SAE
+440–675 (from AOD × SSA), the inversion's extinction AE, dAOD and dSSA
+(440 − 870), sphericity, and an aerosol-type class. Every derived quantity is
+computed per retrieval and then averaged over the window. The class follows
+Giles et al. (2012): fine-mode fraction ≤ 0.33 or ≤ 0.66, then SSA 440 at
+0.90 and 0.95 (`aerosol_type()`). The built-in grouping `nb-aeronet-type`
+names it.
+
+Level 2.0 is pulled with `--level 20`, which reuses the Level 1.5 stations. It
+is exported to `public/data/aeronet/lev20/`, and the tab's **Level** toggle
+(`?aerlev=20`) switches to it; every other tab stays on Level 1.5. Level 2.0
+keeps absorption only at AOD 440 ≥ 0.4, so absorption is scarce: 9 of 169 Addis
+windows have it, 26 of 48 at Delhi and none at Pasadena. The page says so. The
+whole export is 5.9 MB.
+
+The tab also draws the surface–column notebooks' figures:
+
+- the scale height through time, by HIPS lot period (Addis: the dates in
+  `SPARTAN_LOT_INVENTORY_2026-08-23.md`), year or season
+- the monthly climatology, site × month
+- the SSA spectral shape by season or site
+- AAE against SAE on the Cazorla et al. (2013) Ångström matrix, and against
+  EAE in the Russell (2010) / Giles (2012) frame
+- Eom et al. (2025): w against SSA by wavelength, dAOD and dSSA against
+  BC − fine soil, and the BC/AOD exclusion curve
+
+The saved views prefixed "Addis ·" and "Focus sites ·" with "AERONET" in
+`lib/views.ts` reproduce the notebooks' crossplots:
+
+- MAC against precipitable water
+- the PW and AOD tertile fits
+- HIPS/FTIR against AOD and against coarse AOD
+- BC/AOD and PM2.5/AOD distributions
 
 ## PMF source apportionment
 

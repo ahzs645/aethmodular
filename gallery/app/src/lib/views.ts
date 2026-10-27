@@ -43,7 +43,48 @@ export const PRESETS: ViewPreset[] = [
     view: v({ tab: 'correlation', net: 'improve', isites: 'ANTU1,LCON1', y: 'EC (TOR)', f: 'EC (TOR)' }) },
   { key: 'spartan-pm', label: 'All SPARTAN sites · PM₂.₅ by site', note: 'Every SPARTAN site, ranked and compared',
     view: v({ tab: 'ranking', ssites: '*', f: 'PM2.5 mass' }) },
+  // aeronet: the notebooks' AERONET figures on the window-mean AERONET fields (gallery/data/export_aeronet.py).
+  // Ratios travel as `ratios` (lib/viewFields; HIPS BC / EC (FTIR) is a built-in ratio and needs none), groupings as the
+  // built-in `nb-aeronet-*` ids (lib/groupings), and the crossplot's layout, colour and grouping as its `scatter.*` keys.
+  ...AERONET_PRESETS(),
 ]
+
+function AERONET_PRESETS(): ViewPreset[] {
+  // one `ratios` pair, written as lib/viewFields ratiosParam writes it (each part URI-encoded, joined by ':')
+  const ratio = (num: string, den: string) => `${encodeURIComponent(num)}:${encodeURIComponent(den)}`
+  const MAC = ratio('HIPS Fabs', 'EC (FTIR)')
+  const BC_AOD = ratio('HIPS BC', 'AOD 500 nm (AERONET)')
+  const PM_AOD = ratio('PM2.5 mass', 'AOD 500 nm (AERONET)')
+  const PW = 'Precipitable water (AERONET)', AOD = 'AOD 500 nm (AERONET)', RATIO = 'HIPS BC / EC (FTIR)'
+  const addis = (h: Record<string, string>, q: Record<string, string> = {}) => v({ tab: 'correlation', ssites: 'ETAD', ...h }, q)
+  const byGroup = (group: string) => ({ 'scatter.layout': 'Per group', 'scatter.colorBy': 'Group', 'scatter.group': group })
+  return [
+    { key: 'aeronet-mac-pw', label: 'Addis · effective MAC vs precipitable water', view: addis({ ratios: MAC, x: PW, y: 'HIPS Fabs / EC (FTIR)', f: 'HIPS Fabs / EC (FTIR)', eq: '0' }, { 'scatter.colorBy': 'Season' }),
+      note: 'HIPS Fabs / FTIR EC (m²/g) against AERONET precipitable water over each window: the "money plot" of notebooks/analysis/meteorology/pw_mac_calibration.ipynb, and MAC_HIPS vs PW in aeronet_method_agreement.ipynb (A)' },
+    { key: 'aeronet-pw-tertiles', label: 'Addis · HIPS Fabs vs FTIR EC by precipitable-water tertile', view: addis({ x: 'EC (FTIR)', y: 'HIPS Fabs', f: 'HIPS Fabs' }, byGroup('nb-aeronet-pw-tertiles')),
+      note: 'One panel and one fit per PW third (slope = effective MAC): pw_mac_calibration.ipynb "PW tercile analysis" and aeronet_method_agreement.ipynb section 1' },
+    { key: 'aeronet-aod-tertiles', label: 'Addis · HIPS Fabs vs FTIR EC by AOD tertile', view: addis({ x: 'EC (FTIR)', y: 'HIPS Fabs', f: 'HIPS Fabs' }, byGroup('nb-aeronet-aod-tertiles')),
+      note: 'The compression test, one fit per AOD third: notebooks/analysis/meteorology/aeronet_method_agreement.ipynb section 3' },
+    { key: 'aeronet-hips-ftir-aod', label: 'Addis · HIPS BC vs FTIR EC coloured by AOD 500', view: addis({}, { 'scatter.colorBy': 'Group', 'scatter.group': 'nb-aeronet-aod-quintiles' }),
+      note: 'HIPS vs FTIR with each filter coloured by its window\'s AOD 500 (quintiles): notebooks/analysis/surface_columnar_linkage.ipynb section 7 (a)' },
+    { key: 'aeronet-ratio-aod', label: 'Addis · HIPS BC / FTIR EC vs AOD 500', view: addis({ x: AOD, y: RATIO, f: RATIO, eq: '0' }, { 'scatter.colorBy': 'Season' }),
+      note: 'Does the HIPS–FTIR gap follow the column load? notebooks/analysis/meteorology/aeronet_addis_deep_dive.ipynb section 4 and surface_columnar_linkage.ipynb section 7 (b)' },
+    { key: 'aeronet-ratio-coarse', label: 'Addis · HIPS BC / FTIR EC vs coarse-mode AOD (dust test)', view: addis({ x: 'Coarse-mode AOD 500 nm (AERONET)', y: RATIO, f: RATIO, eq: '0' }, { 'scatter.colorBy': 'Season' }),
+      note: 'The dust-interference test (the notebook found r ≈ −0.33: dust not the driver): aeronet_addis_deep_dive.ipynb section 4, aeronet_addis_diagnostics.ipynb, aeronet_method_agreement.ipynb section 2' },
+    { key: 'aeronet-fine-coarse', label: 'Addis · fine vs coarse AOD by season', view: addis({ x: 'Coarse-mode AOD 500 nm (AERONET)', y: 'Fine-mode AOD 500 nm (AERONET)', f: 'Fine-mode AOD 500 nm (AERONET)' }, { 'scatter.colorBy': 'Season' }),
+      note: 'The SDA split over each window; the Kiremt coarse-mode anomaly of aeronet_addis_deep_dive.ipynb section 5' },
+    { key: 'aeronet-bc-fmf', label: 'Addis · HIPS BC vs fine-mode fraction, per season', view: addis({ x: 'Fine-mode fraction 500 nm (AERONET)', y: 'HIPS BC', f: 'HIPS BC', eq: '0' }, { 'scatter.layout': 'Per season' }),
+      note: 'Surface BC against the column\'s fine fraction, one panel per season: notebooks/analysis/surface_columnar_linkage.ipynb section 5 (the notebook used aethalometer BC)' },
+    { key: 'aeronet-bc-aod', label: 'Focus sites · BC/AOD ratio by season', view: v({ tab: 'distribution', ratios: BC_AOD, f: 'HIPS BC / AOD 500 nm (AERONET)' }),
+      note: 'HIPS BC / AOD 500, the surface-representativeness proxy of Eom et al. (2025): notebooks/analysis/surface_columnar_linkage.ipynb section 1 and aeronet_addis_deep_dive.ipynb section 2' },
+    { key: 'aeronet-pm-aod', label: 'Focus sites · PM₂.₅/AOD ratio by season', view: v({ tab: 'distribution', ratios: PM_AOD, f: 'PM2.5 mass / AOD 500 nm (AERONET)' }),
+      note: 'η = PM2.5 / AOD, the quantity Snider et al. (2015) decompose: notebooks/analysis/surface_columnar_linkage.ipynb section 6' },
+    { key: 'aeronet-type-hips-ftir', label: 'Focus sites · HIPS BC vs FTIR EC by aerosol type', view: v({ tab: 'correlation' }, byGroup('nb-aeronet-type')),
+      note: 'One panel and fit per AERONET aerosol type of the window (after Giles et al. 2012; lib/groupings nb-aeronet-type)' },
+    { key: 'aeronet-addis-l2', label: 'Addis Ababa · the AERONET column at Level 2.0', view: v({ tab: 'aeronet', ssites: 'ETAD' }, { aerlev: '20' }),
+      note: 'The AERONET tab on final-calibrated Level 2.0: AOD as at Level 1.5, but absorption only at AOD 440 ≥ 0.4, which leaves 9 of 169 Addis windows' },
+  ]
+}
 
 const canonical = (view: ViewState) => JSON.stringify([Object.entries(view.h ?? {}).sort(), Object.entries(view.q ?? {}).sort()])
 export const sameView = (a: ViewState, b: ViewState) => canonical(a) === canonical(b)

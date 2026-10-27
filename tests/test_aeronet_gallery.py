@@ -60,3 +60,34 @@ def test_window_means_average_only_the_retrievals_inside_each_window():
     assert np.allclose(means[0], [0.2, 0.01])     # 06:00 is before the window, the next day's 10:00 after it
     assert np.isnan(means[1]).all()               # nothing retrieved in the second window
     assert (hi - lo).tolist() == [2, 0]
+
+
+def test_two_band_exponent_recovers_a_power_law_and_skips_non_positive_pairs():
+    # AAOD ∝ λ^-1.4 between 440 and 675 nm gives AAE 1.4; a zero, missing or negative AAOD gives none
+    a440 = np.array([0.1, 0.0, np.nan, 0.05])
+    a675 = np.array([0.1 * (675 / 440) ** -1.4, 0.02, 0.02, -0.01])
+    out = export.two_band_exponent(a440, a675, 440, 675)
+    assert np.isclose(out[0], 1.4)
+    assert np.isnan(out[1:]).all()
+
+
+def test_derive_adds_two_band_absorption_and_scattering_exponents_per_retrieval():
+    a675 = 0.08 * (675 / 440) ** -2.0
+    inv = pd.DataFrame({
+        'aaod440': [0.08], 'aaod675': [a675], 'aaod870': [a675 * (870 / 675) ** -1.0],
+        'inv_aod440': [0.5], 'inv_aod675': [0.5 * (675 / 440) ** -1.5], 'ssa440': [0.9], 'ssa675': [0.9], 'ssa870': [0.85],
+    })
+    out = export.derive('inv', inv)
+    assert np.isclose(out['aae440_675'].iloc[0], 2.0) and np.isclose(out['aae675_870'].iloc[0], 1.0)
+    assert np.isclose(out['sae440_675'].iloc[0], 1.5)        # equal SSA: scattering follows extinction
+    assert np.isclose(out['dssa'].iloc[0], 0.05)
+    aod = export.derive('aod', pd.DataFrame({'aod440': [0.6], 'aod870': [0.2]}))
+    assert np.isclose(aod['daod'].iloc[0], 0.4)
+
+
+def test_aerosol_type_follows_the_giles_fine_fraction_and_ssa_bands():
+    fmf = [0.2, 0.33, 0.5, 0.8, 0.8, 0.8, 0.8, np.nan]
+    ssa = [0.85, 0.99, 0.99, 0.97, 0.93, 0.88, np.nan, 0.9]
+    # coarse at FMF ≤ 0.33 and mixed to 0.66 whatever the SSA; fine split at SSA 0.95 and 0.90; no FMF, no type
+    assert export.aerosol_type(fmf, ssa).tolist() == [1, 1, 2, 3, 4, 5, 6, 0]
+    assert set(export.AEROSOL_TYPES) == {1, 2, 3, 4, 5, 6}

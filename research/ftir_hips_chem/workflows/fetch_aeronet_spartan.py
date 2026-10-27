@@ -26,7 +26,9 @@ Writes research/ftir_hips_chem/output/tables/aeronet_spartan/ (gitignored):
     manifest.json         every request: URL, bytes, rows, when
 
 Level 1.5 (default) is cloud-screened and quality-controlled but not final-calibrated; Level 2.0
-is final but lags by months and drops low-AOD inversions. Data: NASA AERONET (aeronet.gsfc.nasa.gov);
+is final but lags by months and drops low-AOD inversions. A Level 2.0 pull uses the stations the
+Level 1.5 pull chose (stations_lev15.csv, copied to stations_lev20.csv), so the two levels describe
+the same photometer; without a Level 1.5 table it ranks the stations on Level 2.0 itself. Data: NASA AERONET (aeronet.gsfc.nasa.gov);
 cite the station PIs as AERONET asks.
 """
 
@@ -69,11 +71,13 @@ PRODUCTS = {
         "Coarse_Mode_AOD_500nm[tau_c]": "coarse_aod500", "FineModeFraction_500nm[eta]": "fmf500",
     }),
     "inv": ("print_web_data_inv_v3?product=ALL&ALM{L}=1", {
-        "AOD_Coincident_Input[440nm]": "inv_aod440",
+        "AOD_Coincident_Input[440nm]": "inv_aod440", "AOD_Coincident_Input[675nm]": "inv_aod675",
+        "AOD_Coincident_Input[870nm]": "inv_aod870",
         "Absorption_AOD[440nm]": "aaod440", "Absorption_AOD[675nm]": "aaod675", "Absorption_AOD[870nm]": "aaod870",
         "Absorption_AOD[1020nm]": "aaod1020", "Absorption_Angstrom_Exponent_440-870nm": "aae440_870",
         "Single_Scattering_Albedo[440nm]": "ssa440", "Single_Scattering_Albedo[675nm]": "ssa675",
-        "Single_Scattering_Albedo[870nm]": "ssa870",
+        "Single_Scattering_Albedo[870nm]": "ssa870", "Single_Scattering_Albedo[1020nm]": "ssa1020",
+        "Extinction_Angstrom_Exponent_440-870nm-Total": "eae440_870", "Sphericity_Factor(%)": "sphericity",
         "If_Retrieval_is_L2(without_L2_0.4_AOD_440_threshold)": "l2_checks",
     }),
 }
@@ -252,6 +256,14 @@ def main() -> int:
         stations = pd.read_csv(station_file)
         if args.sites:
             stations = stations[stations.code.isin(args.sites)]
+    elif args.level == "20" and (CACHE / "stations_lev15.csv").exists():
+        # the same photometer at both levels: Level 2.0 only re-reads the stations Level 1.5 chose
+        stations = pd.read_csv(CACHE / "stations_lev15.csv")
+        stations.to_csv(station_file, index=False)
+        log = pull(stations if not args.sites else stations[stations.code.isin(args.sites)], args.level, args.refresh)
+        manifest_path = CACHE / "manifest.json"
+        manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else []
+        manifest_path.write_text(json.dumps(manifest + log, indent=1))
     else:
         loc_path = CACHE / "raw/aeronet_locations_v3.txt"
         loc_path.parent.mkdir(parents=True, exist_ok=True)
