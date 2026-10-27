@@ -7,6 +7,7 @@ import { fmt } from '@/lib/format'
 import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
+import { useAddisMet } from '../common/met'
 import { bestLowThreshold, quantile, splitSweep, type SplitFit } from '../common/stats'
 import { DataTable, Grid, HIGH, LOW, SitePick, num, ofSite, seasonsOf, shortSeason, useSite } from '../common/ui'
 
@@ -29,13 +30,14 @@ export function thresholdsFor(values: number[], unit: string | undefined): numbe
 }
 
 export const defaultRh = (fields: string[], rows: Record<string, unknown>[]) =>
-  ['Relative humidity (station)', 'Relative humidity (ERA5)'].find((f) => fields.includes(f) && rows.some((r) => num(r, f) !== null)) ?? fields[0] ?? ''
+  ['RH (station, sample day)', 'Relative humidity (station)', 'Relative humidity (ERA5)'].find((f) => fields.includes(f) && rows.some((r) => num(r, f) !== null)) ?? fields[0] ?? ''
 
 /**
  * The season-stratified RH threshold sweep: at each threshold, a separate OLS for the filters at or below it
  * and above it; slope, distance from the ideal slope of 1, intercept, and how many filters each side holds.
  */
-export function RhSweep({ rows, meta }: SectionPageProps) {
+export function RhSweep({ rows: viewRows, meta: viewMeta }: SectionPageProps) {
+  const { rows, meta } = useAddisMet(viewRows, viewMeta)
   const [site, setSite, sites] = useSite(rows, 'rhs')
   const siteRows = useMemo(() => ofSite(rows, site), [rows, site])
   const pairs = PAIRS.filter((p) => meta.fields.includes(p.x) && meta.fields.includes(p.y))
@@ -88,7 +90,7 @@ export function RhSweep({ rows, meta }: SectionPageProps) {
   return (
     <>
       <ChartFrame id="rhs-sweep" title={`Threshold sweep — ${pair?.label ?? 'no pair'} split by ${split}, ${site}`}
-        subtitle={`At each threshold, an OLS fit (${pair?.y} on ${pair?.x}) for the filters with ${split} at or below it (solid) and above it (dashed), each only with at least ${minN} filters. Ringed: the threshold whose low side comes closest to slope 1. The green band is slope 0.9–1.1. Values are means over each filter's sampling window, not the notebooks' daily station means.`}
+        subtitle={`At each threshold, an OLS fit (${pair?.y} on ${pair?.x}) for the filters with ${split} at or below it (solid) and above it (dashed), each only with at least ${minN} filters. Ringed: the threshold whose low side comes closest to slope 1. The green band is slope 0.9–1.1. ${split.includes('sample day') ? 'The split is the Addis station\'s day on the sample date, as the notebooks join it.' : 'The split is a mean over each filter\'s sampling window, not the notebooks\' sample-day station value.'}`}
         provenance={PROVENANCE} controls={controls}>
         {!pair ? <Empty>This view has none of the pairs (FTIR EC, HIPS BC, aethalometer IR BCc).</Empty>
           : n < minN * 2 || !thresholds.length ? <Empty>Fewer than {minN * 2} filters at {site} carry {pair.x}, {pair.y} and {split}.</Empty> : <>

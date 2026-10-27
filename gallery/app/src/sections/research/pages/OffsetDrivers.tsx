@@ -9,6 +9,7 @@ import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow } from '@/lib/types'
 import type { SectionPageProps } from '../../types'
+import { useAddisMet } from '../common/met'
 import { correlationP, influence, multiOls, ols, originFit, pearsonR, spearman, splitScan, type ScanRow } from '../common/stats'
 import { Bars, DataTable, Grid, HIGH, LOW, SitePick, fitText, line, num, ofSite, point, seasonsOf, shortSeason, useSite } from '../common/ui'
 import { defaultRh } from './RhSweep'
@@ -24,7 +25,8 @@ type Residual = 'fit' | 'relative'
  * against humidity, nested models with a covariate, the recursive split scan over every measurement in view,
  * a residual correlation screen, Bland–Altman, and the influential filters with what they are made of.
  */
-export function OffsetDrivers({ rows, meta }: SectionPageProps) {
+export function OffsetDrivers({ rows: viewRows, meta: viewMeta }: SectionPageProps) {
+  const { rows, meta } = useAddisMet(viewRows, viewMeta)
   const [site, setSite, sites] = useSite(rows, 'od')
   const siteRows = useMemo(() => ofSite(rows, site), [rows, site])
   const pick = (key: string, fallback: string) => (meta.fields.includes(key) ? key : fallback)

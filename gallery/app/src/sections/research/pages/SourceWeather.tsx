@@ -13,6 +13,7 @@ import { FONT, INK, RAMP_DIVERGING } from '@/lib/theme'
 import type { FilterRow, PmfFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
+import { useAddisMet } from '../common/met'
 import { ols, quantile, spearman } from '../common/stats'
 import { DataTable, Grid, num, point } from '../common/ui'
 import { PAIRS } from './RhSweep'
@@ -21,7 +22,8 @@ const MET_NB = 'notebooks/analysis/meteorology/meteorology_source_interaction.ip
 const DT_NB = 'notebooks/analysis/meteorology/temperature_gradient_analysis.ipynb'
 const FRIDAY_NB = 'notebooks/analysis/meteorology/friday_summary_consolidated.ipynb'
 const RAIN = 'Precipitation (station)', RAIN_ERA5 = 'Precipitation (ERA5)'
-const DT = 'Temperature range (station)', T = 'Temperature (station)'
+const DT_WINDOW = 'Temperature range (station)', T_WINDOW = 'Temperature (station)'
+const DT_DAY = 'Temperature range (station, sample day)', TMIN_DAY = 'Minimum temperature (station, sample day)', TAVG_DAY = 'Mean temperature (station, sample day)'
 const GROUPS: Record<string, string[]> = { 'Biomass burning': ['Charcoal', 'Wood Burning'], 'Fossil fuel combustion': ['Fossil Fuel Combustion', 'Polluted Marine'], 'Sea salt': ['Sea Salt Mixed'] }
 const DOMINANCE = [0.3, 0.4, 0.5, 0.6]
 
@@ -58,7 +60,8 @@ function Matrix({ rows, cols, cell }: { rows: string[]; cols: string[]; cell: (r
  * aethalometer slopes by dominant source and by dominance threshold, with factors as concentrations (K_F),
  * not the GF fractions the meeting set aside.
  */
-export function SourceWeather({ rows, meta }: SectionPageProps) {
+export function SourceWeather({ rows: viewRows, meta: viewMeta }: SectionPageProps) {
+  const { rows, meta } = useAddisMet(viewRows, viewMeta)
   const pmf = useExport<PmfFile>('pmf.json').data
   const [basis, setBasis] = useSearchParam<'conc' | 'share'>('sw.basis', 'conc', ['conc', 'share'])
   const [factorParam, setFactor] = useSearchParam<string>('sw.factor', 'Charcoal')
@@ -79,7 +82,7 @@ export function SourceWeather({ rows, meta }: SectionPageProps) {
   }, [rows, pmf])
   const value = (j: Joined, f: string) => { const v = j.ug[f]; return Number.isFinite(v) ? (basis === 'conc' ? v : j.total > 0 ? v / j.total : NaN) : NaN }
   const unit = basis === 'conc' ? 'µg/m³' : 'share of the PMF total'
-  const weather = useMemo(() => meta.fields.filter((f) => /\((station|ERA5)\)$|Precipitable water/.test(f) && joined.some((j) => num(j.r, f) !== null)), [meta.fields, joined])
+  const weather = useMemo(() => meta.fields.filter((f) => /\((station|ERA5)(, sample day)?\)$|Precipitable water/.test(f) && joined.some((j) => num(j.r, f) !== null)), [meta.fields, joined])
 
   if (!pmf) return <ChartFrame id="sw-load" title="PMF sources and the weather" provenance={MET_NB}><Empty>Loading the PMF factors…</Empty></ChartFrame>
   if (joined.length < 10) return <ChartFrame id="sw-empty" title="PMF sources and the weather" provenance={MET_NB}><Empty>The PMF solution covers {pmf.site_name} only; pick it in the Filters panel ({joined.length} of its filters in view).</Empty></ChartFrame>
@@ -92,11 +95,14 @@ export function SourceWeather({ rows, meta }: SectionPageProps) {
     return { key: c.k, label: c.k, note: `n=${g.length}`, marks: factors.map((f) => { const v = g.map((j) => value(j, f)).filter(Number.isFinite)
       return v.length ? [{ mid: quantile(v, 0.5), lo: quantile(v, 0.25), hi: quantile(v, 0.75), color: factorColor(f) }] : [] }) }
   })
-  // ΔT against the chosen factor, coloured by the mean temperature
+  // ΔT against the chosen factor, coloured by the coldest hour: the notebooks' sample-day station values where the export has them
+  const sampleDay = joined.some((j) => num(j.r, DT_DAY) !== null)
+  const DT = sampleDay ? DT_DAY : DT_WINDOW, T = sampleDay ? TMIN_DAY : T_WINDOW
   const dtPts = joined.flatMap((j) => { const x = num(j.r, DT), t = num(j.r, T), y = value(j, factor); return x !== null && Number.isFinite(y) ? [{ j, x, y, t }] : [] })
   const tExtent = d3.extent(dtPts.map((p) => p.t).filter((v): v is number => v !== null)) as [number, number]
   const tColor = d3.scaleSequential((t: number) => d3.interpolateRdYlBu(1 - t)).domain([tExtent[0] ?? 0, tExtent[1] ?? 1])
-  const rhoDt = factors.map((f) => ({ f, dt: spearman(joined.map((j) => num(j.r, DT) ?? NaN), joined.map((j) => value(j, f))), t: spearman(joined.map((j) => num(j.r, T) ?? NaN), joined.map((j) => value(j, f))) }))
+  const rhoDt = factors.map((f) => ({ f, dt: spearman(joined.map((j) => num(j.r, DT) ?? NaN), joined.map((j) => value(j, f))), t: spearman(joined.map((j) => num(j.r, sampleDay ? TAVG_DAY : T_WINDOW) ?? NaN), joined.map((j) => value(j, f))),
+    tmin: sampleDay ? spearman(joined.map((j) => num(j.r, TMIN_DAY) ?? NaN), joined.map((j) => value(j, f))) : null }))
   // slopes by source: the dominant factor (or group) of each day, by K_F concentration
   const dominant = (j: Joined) => {
     if (grouping === 'separate') return factors.reduce((a, f) => ((j.ug[f] ?? -1) > (j.ug[a] ?? -1) ? f : a), factors[0])
@@ -130,7 +136,7 @@ export function SourceWeather({ rows, meta }: SectionPageProps) {
       </ChartFrame>
 
       <ChartFrame id="sw-dt" title={`Diurnal temperature range against ${factor} — coloured by the mean temperature`}
-        subtitle="A narrow temperature range suggests a stable, poorly mixed boundary layer; cold mornings suggest heating with charcoal and wood. Points coloured from cold (blue) to warm (red). The notebook used the daily minimum temperature, which the gallery does not carry: the window mean stands in."
+        subtitle={`A narrow temperature range suggests a stable, poorly mixed boundary layer; cold mornings suggest heating with charcoal and wood. Points coloured from cold (blue) to warm (red) by ${T}. ${sampleDay ? 'Temperatures are the Addis station\'s day on the sample date, as the notebooks join them (T_max − T_min, T_min).' : 'The notebooks used the station day on the sample date; without that export the window means stand in.'}`}
         provenance={`${DT_NB} (§1–3) · ${MET_NB} (§3 temperature range)`}
         controls={<Select label="Factor" value={factor} options={factors} onChange={setFactor} />}>
         <Grid>
@@ -138,7 +144,8 @@ export function SourceWeather({ rows, meta }: SectionPageProps) {
             title={`${factor} vs ΔT`} xLabel={`${DT} (°C)`} yLabel={`${factor} (${unit})`} fit={false} /> : <Empty>Too few filters with {DT}.</Empty>}
           <DataTable rows={rhoDt} rowKey={(r) => r.f} columns={[
             { key: 'f', label: 'Factor', value: (r) => <span style={{ color: factorColor(r.f), fontWeight: 600 }}>{r.f}</span> },
-            { key: 'dt', label: 'ρ with ΔT', num: true, value: (r) => fmt(r.dt, 2) }, { key: 't', label: 'ρ with mean T', num: true, value: (r) => fmt(r.t, 2) }]} />
+            { key: 'dt', label: 'ρ with ΔT', num: true, value: (r) => fmt(r.dt, 2) }, { key: 't', label: 'ρ with mean T', num: true, value: (r) => fmt(r.t, 2) },
+            ...(sampleDay ? [{ key: 'tmin', label: 'ρ with T_min', num: true, value: (r: (typeof rhoDt)[number]) => fmt(r.tmin, 2) }] : [])]} />
         </Grid>
         {dtPts.length >= 5 && <ColorLegend scale={tColor as unknown as { domain(): number[]; (v: number): string }} label={`${T} (°C)`} format={(v) => fmt(v, 0)} />}
       </ChartFrame>

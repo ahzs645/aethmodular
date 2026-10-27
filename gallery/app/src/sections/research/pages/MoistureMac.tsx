@@ -8,13 +8,14 @@ import { fmt } from '@/lib/format'
 import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
+import { useAddisMet } from '../common/met'
 import { correlationP, ols, pearsonR, quantile, steiger, type Fit } from '../common/stats'
 import { DataTable, Grid, HIGH, LOW, MID, SitePick, initials, line, num, pText, ofSite, point, seasonsOf, shortSeason, useSite } from '../common/ui'
 
 const NB = 'notebooks/analysis/meteorology/pw_mac_calibration.ipynb'
 const EC = 'EC (FTIR)', FABS = 'HIPS Fabs', HIPS_BC = 'HIPS BC'
 const PW = 'Precipitable water (AERONET)', AOD = 'AOD 500 nm (AERONET)'
-const MOISTURE = [PW, 'Relative humidity (station)', 'Relative humidity (ERA5)', 'Dew point (ERA5)']
+const MOISTURE = [PW, 'RH (station, sample day)', 'Relative humidity (station)', 'Relative humidity (ERA5)', 'Dew point (ERA5)']
 
 /**
  * Effective MAC against column and surface moisture (pw_mac_calibration): the "money plot" with its OLS and a
@@ -22,7 +23,8 @@ const MOISTURE = [PW, 'Relative humidity (station)', 'Relative humidity (ERA5)',
  * slope (MAC) or the intercept (a baseline), and the Steiger test of whether FTIR EC tracks AOD better
  * than HIPS does.
  */
-export function MoistureMac({ rows, meta }: SectionPageProps) {
+export function MoistureMac({ rows: viewRows, meta: viewMeta }: SectionPageProps) {
+  const { rows, meta } = useAddisMet(viewRows, viewMeta)
   const [site, setSite, sites] = useSite(rows, 'mm')
   const siteRows = useMemo(() => ofSite(rows, site), [rows, site])
   const [mParam, setM] = useSearchParam<string>('mm.by', PW)

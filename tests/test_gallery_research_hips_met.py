@@ -146,3 +146,19 @@ def test_deming_intercept_rises_monotonically_to_the_ols_value():
     ints = [origin.deming(x_obs, y, lam)[1] for lam in origin.LAMBDAS]
     assert all(b >= a - 1e-9 for a, b in zip(ints, ints[1:]))
     assert ints[-1] == pytest.approx(np.polyfit(x_obs, y, 1)[1], abs=1e-3)
+
+
+met = load('export_research_addis_met')
+
+
+def test_sample_day_met_joins_the_station_day_and_means_the_hours():
+    daily = pd.DataFrame({'date': ['12/6/2022 0:00', '12/7/2022 0:00'], 'tavg': [17.3, 20.0], 'tmin': [8.6, 10.0], 'tmax': [24.2, 26.0], 'prcp': [0, 1.5]})
+    hourly = pd.DataFrame({'time': ['12/6/2022 0:00', '12/6/2022 1:00', '12/7/2022 0:00'], 'temp': [10, 11, 12], 'dwpt': [1, 'NA', 3],
+                           'rhum': [50, 60, 'NA'], 'wspd': [10, 20, 30]})
+    m = met.daily_met(daily, hourly)
+    day = m.loc[pd.Timestamp('2022-12-06')]
+    assert day['rhum_mean'] == pytest.approx(55) and day['dwpt_mean'] == pytest.approx(1) and day['trange'] == pytest.approx(15.6)
+    rows = met.per_filter([{'id': 'ETAD-0001', 'code': 'ETAD', 'date': '2022-12-06'}, {'id': 'CHTS-0001', 'code': 'CHTS', 'date': '2022-12-06'},
+                           {'id': 'ETAD-0002', 'code': 'ETAD', 'date': '2023-01-01'}], m)
+    assert list(rows) == ['ETAD-0001']
+    assert rows['ETAD-0001'][list(met.FIELDS).index('Minimum temperature (station, sample day)')] == 8.6
