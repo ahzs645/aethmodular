@@ -73,11 +73,18 @@ export function EthiopiaCalibrations(_props: SectionPageProps) {
       subtitle={`Fit at k = 20, drop every filter whose |residual| exceeds 3 × the residual spread, refit, repeat. ${rows(data, 'cleaning_fit').map((r) => `${r.stage}: n = ${r.n}, R² ${Number(r.R2).toFixed(3)}, RMSE ${r['RMSE (µg)']} µg`).join('; ')}. (Notebook 07's CAL-1 stops after three rounds, at 862 filters.)`}
       provenance={provenance(data, ['cleaning_rounds', 'cleaning_fit'])} />
 
-    <Figure kind="crossplot" id="ethiopia-removed" data={rows(data, 'removed')} x="measured" y="predicted" color="reason" idColumn="FilterId" tipColumns={['Site', 'date', 'round', 'reason']}
-      xLabel="Measured TOR EC (µg per filter)" yLabel="Predicted EC, full 906 fit (µg)" fit={false} maxSide={440}
-      title="The removed filters — mostly heavily loaded, far off the line"
-      subtitle="The 61 IMPROVE filters the cleaning drops, at their full-fit predictions. The 845 kept filters are not tracked in the repo (see the intro for what the scatter of all 906 needs)."
-      provenance={provenance(data, ['removed'])} />
+    {rows(data, 'calibration_all').length > 0
+      ? <Figure kind="crossplot" id="ethiopia-removed" data={rows(data, 'calibration_all')} x="measured" y="predicted" color="status" idColumn="AnalysisId" tipColumns={['Site', 'round', 'status']}
+          colors={{ kept: '#9ecae1', 'removed by 3σ cleaning': '#e45756' }}
+          xLabel="Measured TOR EC (µg per filter)" yLabel="Predicted EC, full 906-filter fit at k = 20 (µg)" fit={false} maxSide={480}
+          title="All 906 calibration filters, before cleaning — the removed ones are mostly heavily loaded and far off the line"
+          subtitle="Recomputed from the Drive's 906-filter EC set (pls_transfer.load_current_pls_model) with notebook 08's rule; the export is refused unless the nine rounds and the 61 removed filters (measured, predicted, site, round) equal 08's printed rounds and tracked list. Hover a point for its AnalysisId and round."
+          provenance={provenance(data, ['calibration_all', 'removed'])} />
+      : <Figure kind="crossplot" id="ethiopia-removed" data={rows(data, 'removed')} x="measured" y="predicted" color="reason" idColumn="FilterId" tipColumns={['Site', 'date', 'round', 'reason']}
+          xLabel="Measured TOR EC (µg per filter)" yLabel="Predicted EC, full 906 fit (µg)" fit={false} maxSide={440}
+          title="The removed filters — mostly heavily loaded, far off the line"
+          subtitle="The 61 IMPROVE filters the cleaning drops, at their full-fit predictions. The 845 kept filters need the Drive (see the intro)."
+          provenance={provenance(data, ['removed'])} />}
 
     <Figure kind="table" id="ethiopia-removed-list" data={rows(data, 'removed')}
       columns={[{ key: 'FilterId', label: 'Filter' }, { key: 'Site', label: 'Site' }, { key: 'date', label: 'Date' }, { key: 'measured', label: 'Measured (µg)', format: 'f2' },

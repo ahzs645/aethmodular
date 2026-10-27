@@ -20,6 +20,10 @@ Nothing is refitted. Each table is read from, in order of preference:
 3. tracked CSVs (``ftir_ec_calibration_2026_06_25/tables``,
    ``spartan_ec_2026_06_16/tables``).
 
+Where the Drive's "Davis Data" FTIR folder resolves (pls_transfer.FTIRTransferPaths,
+which honours AETHMODULAR_DRIVE_ROOT), spartan_ec 08's cleaning is recomputed on all
+906 calibration filters and gated on reproducing 08's tracked removals.
+
 Every table records which of these it came from. Per-filter tables that only a
 re-run can produce are listed under ``missing`` with the command that makes
 them, and the page shows that list. Whatever the gallery already exports
@@ -55,6 +59,21 @@ RELABEL = {"Pasadena": "JPL"}
 
 def rel(path: Path) -> str:
     return str(path.resolve().relative_to(ROOT))
+
+
+# What a phase-3 re-run needs first (checked against the Davis Data mirror, 27 Oct 2026).
+PREREQUISITES = {
+    "12": "ftir_11's output/tables/ftir11 (ftir_11 needs the phase-2 ftir_09/ftir_10 tables in research/ftir_hips_chem/output/tables; "
+          "ftir_09 also reads Downloads Backup/HIPS_all_SPARTAN_batches.csv, which is not in the Davis Data folder)",
+    "19": "ftir_11 and ftir_13 outputs and the phase-2 ftir_10 predictions (same chain as ftir_12)",
+    "38": "output/tables/variation_closure (ftir_35) and calibration_explorer/targets (built from the SPARTAN FTIR and HIPS pulls)",
+    "39": "ftir_36's output/tables/ftir36, output/corrected/*_corrected_df6.npz (spline baseline over the pool) and calibration_explorer/targets",
+    "52": "output/corrected/*_corrected_df6.npz and calibration_explorer/targets",
+}
+
+
+def prerequisite(notebook: str) -> str | None:
+    return PREREQUISITES.get(re.match(r"(?:ftir|char)_(\d+)", notebook).group(1))
 
 
 def rebuild_command(folder: Path, notebook: str) -> str:
@@ -134,7 +153,7 @@ class Page:
         if path.exists():
             frame = pd.read_csv(path)
             return self.add(name, transform(frame) if transform else frame, notebook=notebook, read="csv", path=rel(path))
-        self.missing.append({"table": name, "what": what, "needs": rel(path), "run": rebuild_command(folder, notebook)})
+        self.missing.append({"table": name, "what": what, "needs": rel(path), "run": rebuild_command(folder, notebook), "after": prerequisite(notebook)})
         return None
 
     def write(self) -> Path:
@@ -189,7 +208,7 @@ def band_1617() -> Page:
     cov = p.shown("covariation", PHASE3, nb12, "covariation.to_csv", csv="output/tables/ftir12/band1600_covariation.csv")
     if set(cov["group"]) == {"Addis"}:
         p.missing.append({"table": "covariation", "what": "companion-band covariation for the three IMPROVE groups (the notebook displayed Addis only)",
-                          "needs": rel(PHASE3 / "output/tables/ftir12/band1600_covariation.csv"), "run": rebuild_command(PHASE3, nb12)})
+                          "needs": rel(PHASE3 / "output/tables/ftir12/band1600_covariation.csv"), "run": rebuild_command(PHASE3, nb12), "after": prerequisite(nb12)})
     p.shown("ratios", PHASE3, nb12, "ratios.to_csv", csv="output/tables/ftir12/band1600_ratio_context.csv")
     p.shown("tracking", PHASE3, nb12, "tracking.to_csv", csv="output/tables/ftir12/addis_band_vs_absorption.csv")
     sites = p.shown("site_bands", PHASE3, nb38, "neutral_band_and_pmf()", nth=0, csv="output/tables/ftir38/neutral_band_cross_site_summary.csv")
@@ -449,10 +468,14 @@ def ethiopia_calibrations() -> Page:
     removed = pd.read_csv(JUNE16 / "tables/ec_removed_filters.csv")
     p.add("removed", removed.assign(FilterId=removed.FilterId.astype(str)), notebook="08_outlier_removal_explainer",
           read="tracked csv", path=rel(JUNE16 / "tables/ec_removed_filters.csv"))
-    if not (JUNE16 / "data/rds_EC_X.csv").exists():
+    cleaned = cleaning_all(removed, p.tables["cleaning_rounds"])
+    if cleaned is not None:
+        p.add("calibration_all", cleaned, notebook="08_outlier_removal_explainer", read="recomputed from the Drive (FTIR/apps, FTIR/notebook/extracted)",
+              path="pls_transfer.load_current_pls_model(ftir_dir, 'EC'), checked against tables/ec_removed_filters.csv")
+    else:
         p.missing.append({"table": "calibration_all", "what": "measured vs predicted for all 906 calibration filters (08's before/after scatter); only the 61 removed are tracked",
-                          "needs": rel(JUNE16 / "data/rds_EC_X.csv") + " (+ rds_EC_Ymeasured.csv, rds_EC_metadata.csv)",
-                          "run": f"cd {rel(JUNE16)} && uv run python _build_08_removal_explainer.py"})
+                          "needs": "<Davis Data>/FTIR/apps/apps_data.npz and FTIR/notebook/extracted/EC_*.csv",
+                          "run": "AETHMODULAR_DRIVE_ROOT=<your My Drive> uv run --locked --no-sync python gallery/data/export_research_spectral.py"})
 
     old, new = (rec.EC_ugm3_old.median(), rec.EC_ugm3_new.median())
     p.text["finding"] = (
@@ -460,6 +483,54 @@ def ethiopia_calibrations() -> Page:
         f"and takes the HIPS crossplot from 2.27x − 5.25 toward ~1.2x − 2.3 (notebooks 12 and 15). Which samples train the model swings the median "
         f"about 2× (07); the component count alone swings it up to 5× (09); adding 29 lot-248 filters moves it 3 % (10).")
     return p
+
+
+CLEANING_K = 20  # spartan_ec 08: "component count fixed at K=20"
+
+
+def cleaning_all(removed: pd.DataFrame, rounds: pd.DataFrame) -> pd.DataFrame | None:
+    """spartan_ec 08's cleaning on all 906 calibration filters, where the Drive's FTIR folder resolves.
+
+    The 906-filter EC set is rebuilt by pls_transfer.load_current_pls_model (the same set as 08's
+    rds_EC export); 08's rule is then run as it is written (fit at K = 20, drop |residual| > 3 × the
+    kept residuals' spread, refit, at most nine rounds). Nothing is published unless the rounds equal
+    the ones 08 printed and the removed filters equal its tracked list in measured, predicted and site.
+    08 labels filters by MatchedFilterId and pls_transfer by another FilterId, so rows are keyed by
+    AnalysisId and the check is on values.
+    """
+    sys.path.insert(0, str(ROOT / "research/ftir_hips_chem/scripts"))
+    from pls_transfer import FTIRTransferPaths, load_current_pls_model
+    from sklearn.cross_decomposition import PLSRegression
+
+    ftir_dir = FTIRTransferPaths.defaults().ftir_dir
+    if not (ftir_dir / "apps/apps_data.npz").exists():
+        return None
+    model = load_current_pls_model(ftir_dir, "EC")
+    X, y = model.X, model.y
+
+    def fitted(mask: np.ndarray) -> np.ndarray:
+        return PLSRegression(n_components=CLEANING_K, scale=False).fit(X[mask], y[mask]).predict(X[mask]).ravel()
+
+    keep, round_of, seen = np.ones(len(y), bool), np.zeros(len(y), int), []
+    for number in range(1, 10):
+        residual = y[keep] - fitted(keep)
+        threshold = 3 * residual.std()
+        drop = np.abs(residual) > threshold
+        seen.append((number, int(keep.sum()), round(float(threshold), 1), int(drop.sum())))
+        if not drop.any():
+            break
+        index = np.where(keep)[0][drop]
+        round_of[index], keep[index] = number, False
+    if seen != [tuple(r) for r in rounds[["round", "n before", "3σ threshold (µg)", "dropped"]].itertuples(index=False)]:
+        raise ValueError("the 906-filter set does not reproduce spartan_ec 08's printed cleaning rounds")
+    full = fitted(np.ones(len(y), bool))
+    out = pd.DataFrame({"AnalysisId": model.analysis_ids, "Site": model.sites, "measured": y, "predicted": full,
+                        "round": round_of, "status": np.where(keep, "kept", "removed by 3σ cleaning")})
+    gone = out[~keep].assign(m=lambda d: d.measured.round(1), q=lambda d: d.predicted.round(1))
+    check = removed.merge(gone, left_on=["measured", "predicted", "Site", "round"], right_on=["m", "q", "Site", "round"])
+    if len(check) != len(removed) or len(gone) != len(removed):
+        raise ValueError("the recomputed removals do not match spartan_ec 08's tracked ec_removed_filters.csv")
+    return out
 
 
 # ---------------------------------------------------------------- committee backup figures (ftir_53)

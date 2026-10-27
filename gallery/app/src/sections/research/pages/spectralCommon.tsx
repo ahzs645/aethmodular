@@ -13,7 +13,7 @@ import { rowsOf, type Row, type Table } from '@/lib/table'
 import type { CalibRunsFile } from '@/lib/types'
 
 export interface SpectralSource { table: string; rows: number; notebook: string; read: string; path: string; cell?: string }
-export interface SpectralMissing { table: string; what: string; needs: string; run: string }
+export interface SpectralMissing { table: string; what: string; needs: string; run: string; after?: string | null }
 export interface SpectralExport {
   schema_version: number
   id: string
@@ -83,7 +83,7 @@ export function PageIntro({ id, title, notebooks, data, children }: {
         {data.missing.length > 0 && <>
           <p style={{ marginBottom: 4 }}><strong>Not on this page yet</strong> — these need the notebooks' gitignored outputs (spectra on the Drive). Run, then re-export:</p>
           <ul style={{ marginTop: 0 }}>
-            {data.missing.map((m) => <li key={m.table}>{m.what}: <code>{m.run}</code> (writes <code>{m.needs}</code>), then <code>uv run --locked --no-sync python {EXPORTER}</code></li>)}
+            {data.missing.map((m) => <li key={m.table}>{m.what}: <code>{m.run}</code> (writes <code>{m.needs}</code>), then <code>uv run --locked --no-sync python {EXPORTER}</code>.{m.after && <> First it needs {m.after}.</>}</li>)}
           </ul>
         </>}
       </div>
