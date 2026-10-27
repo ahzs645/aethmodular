@@ -56,6 +56,29 @@ carries a real BrC/dust-like component. That is a modest point for reading (b),
 and the first evidence Addis differs **compositionally** in its absorption, not
 only in magnitude.
 
+## Correction, 2026-10-27 — the diurnal check used UTC hours as local
+
+The raw MA350 minute files' "Time local" column is UTC ("Timezone offset (mins)" is 0 on every row
+and the column equals "Time (UTC)"). `scripts/ma350_diurnal_coverage.py` read it as local time, so
+the 2026-08-23 section below compared hours 3 h off at Addis and 7–8 h off at Pasadena. Re-run on
+local time (the script now converts "Time (UTC)" to Africa/Addis_Ababa and America/Los_Angeles):
+
+| site | days | ratio, daily means (IQR) | daily medians | H | **H corrected** |
+|---|---|---|---|---|---|
+| **Addis** | 748 | **0.88** (0.78–1.04) | 0.88 | 190 | **168 m** |
+| **Pasadena** | 326 | **0.98** (0.89–1.09) | 0.97 | 544 | **526–532 m** |
+
+- The Addis Red BCc peak is the **06–07 local** morning (19,096 ng/m³ at 07:00), not "04:00"
+  (04 UTC is 07 local), with a second, broader peak at 19–20 local. AERONET's morning hours (07–10)
+  catch the peak, so the photometer over-samples Addis's 24 h load (ratio < 1) and H falls further.
+- Pasadena's ratio is close to 1: its midday window under-samples the evening rise only slightly.
+- The Addis/Pasadena separation goes from 2.9× uncorrected to about **3.1–3.2×** corrected. The
+  conclusion below stands, on corrected hours: the Addis H outlier survives the diurnal confound.
+- Beijing and Delhi, from the hourly MA350 means on Drive (Kyan Data/MAIA data, local time):
+  ratios 1.16 and 1.21 (daily means), so their corrected H would rise — the gap widens again.
+- The deck figure `f_aeronet_diurnal.png` (deliverables 2026-08-25/27) was drawn on the shifted
+  hours and should be redrawn; the gallery's Aethalometer → Diurnal page draws the corrected cycle.
+
 ## The 24-h / daytime confound — **CLOSED 2026-08-23**
 
 Filters integrate 24 h; AERONET retrieves only when solar zenith angle ≥ 50°.
