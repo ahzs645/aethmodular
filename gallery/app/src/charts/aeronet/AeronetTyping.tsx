@@ -78,7 +78,7 @@ export function AeronetTyping({ rows, meta }: { rows: FilterRow[]; meta: MetaFil
                     const rx = clampX(x0), rw = clampX(x1) - rx, ry = clampY(y1), rh = clampY(y0) - ry
                     return <g key={c}>
                       <rect x={rx} y={ry} width={rw} height={rh} fill={REGION_FILL[c]} fillOpacity={0.16} />
-                      <text x={rx + rw / 2} y={ry + rh / 2} textAnchor="middle" dy="0.32em" fontSize={side < 400 ? 8.5 : 10.5} fill={INK.muted} fontWeight={600} pointerEvents="none">{c}</text>
+                      <text x={rx + rw / 2} y={ry + rh / 2 + 10} textAnchor="middle" dy="0.32em" fontSize={side < 400 ? 8.5 : 10.5} fill={INK.muted} fontWeight={600} pointerEvents="none">{c}</text>
                     </g>
                   })}
                   {cazorla && <line x1={x(1)} y1={y(1)} x2={x(1.5)} y2={y(1.5)} stroke={INK.muted} strokeDasharray="3 3" />}
