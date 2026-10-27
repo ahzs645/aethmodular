@@ -9,7 +9,7 @@ import { fidProps } from '@/lib/filterEdits'
 import { fmt } from '@/lib/stats'
 import { INK, withUnit } from '@/lib/theme'
 import { seasonOnly } from '@/lib/seasons'
-import { loadDailyAeronet, L2_AOD440, type DailyAeronet } from '@/lib/aeronet'
+import { loadDailyAeronet, L2_AOD440, type AeronetLevel, type DailyAeronet } from '@/lib/aeronet'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
 import { useFitHeight } from '@/lib/chartFit'
@@ -25,8 +25,8 @@ const TITLES: Record<Exclude<Panel, 'field'>, string> = { aod: 'AOD 500', fmf: '
  * where the inversion's AOD 440 is under 0.4, AERONET's Level 2 threshold for absorption), above
  * the chosen measurement for each filter on the same axis, with the site's seasons shaded.
  */
-export function AeronetTimeline({ rows, meta, field, site, station }: {
-  rows: FilterRow[]; meta: MetaFile; field: string; site: { name: string; code: string } | null; station?: string
+export function AeronetTimeline({ rows, meta, field, site, station, level = '15' }: {
+  rows: FilterRow[]; meta: MetaFile; field: string; site: { name: string; code: string } | null; station?: string; level?: AeronetLevel
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
@@ -40,9 +40,9 @@ export function AeronetTimeline({ rows, meta, field, site, station }: {
     if (!site) return
     let live = true
     setDaily(null); setError('')
-    loadDailyAeronet(site.code).then((d) => { if (live) setDaily(d) }).catch(() => { if (live) setError(`No daily AERONET exported for ${site.name}.`) })
+    loadDailyAeronet(site.code, level).then((d) => { if (live) setDaily(d) }).catch(() => { if (live) setError(`No daily AERONET exported for ${site.name}.`) })
     return () => { live = false }
-  }, [site])
+  }, [site, level])
 
   const pts = useMemo(() => rows.filter((r) => r.site === site?.name && typeof r[field] === 'number')
     .map((r) => ({ row: r, t: new Date(r.date), v: r[field] as number })), [rows, site, field])
@@ -93,7 +93,7 @@ export function AeronetTimeline({ rows, meta, field, site, station }: {
 
   return (
     <ChartFrame id="aeronet-timeline" title={`${site ? `${site.name} · ` : ''}AERONET timeline`}
-      subtitle={`AERONET's daily means${station ? ` at ${station}` : ''}: AOD at 500 nm and its fine-mode fraction (direct sun and SDA), absorption AOD at 675 nm and single-scattering albedo at 440 nm (almucantar inversions; open circles on days with AOD 440 under ${L2_AOD440}, where absorption is uncertain), above the chosen measurement for each filter. Seasons are the site's local calendar.`}
+      subtitle={`AERONET's ${level === '20' ? 'Level 2.0' : 'Level 1.5'} daily means${station ? ` at ${station}` : ''}: AOD at 500 nm and its fine-mode fraction (direct sun and SDA), absorption AOD at 675 nm and single-scattering albedo at 440 nm (almucantar inversions; open circles on days with AOD 440 under ${L2_AOD440}, where absorption is uncertain), above the chosen measurement for each filter. Seasons are the site's local calendar.`}
       provenance="addis_04_aeronet and aeronet_addis_diagnostics generalised to every SPARTAN site · NASA AERONET Version 3">
       <div ref={wrapRef} className="chart-wrap">
         {error ? <Empty>{error}</Empty> : !site || !domain ? <Empty>No filters at this site in the current subset.</Empty> : !daily ? <Empty>Loading the daily AERONET…</Empty> : (
