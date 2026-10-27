@@ -26,11 +26,15 @@ notebooks are built on are missing from the gallery:
    only the coverage counts on Data availability. This is the largest gap,
    about 30 notebooks.
 2. **AERONET and columnar data**: AOD, AAOD, SSA and the surface–columnar
-   linkage. About 9 notebooks.
-3. **The charcoal and biochar reference spectra** (`research/ftir_etad_char`).
-   All 12 notebooks.
-4. **TOR sub-fractions beyond EC/OC** (char-EC/soot-EC, TOT, pyrolysis): only
-   the Adama TOR study and the 28 Oct item 7 touch them.
+   linkage. About 9 notebooks. Unlike the aethalometer, AERONET is not limited
+   to a few sites. 35 of the 38 SPARTAN sites with filters have AERONET data on
+   at least one filter day, and 30 of them on more than ten (section E).
+3. **The FTIR spectra learning studies** (section H): the charcoal and biochar
+   reference spectra (`research/ftir_etad_char`), and the phase-3 side studies
+   on target definition, the residual learner and robustness.
+
+Section I covers what the MAIA portal holds, and section J recommends where
+each new data type should go in the gallery.
 
 The FTIR EC calibration-transfer work is the best covered part of the repo.
 Calibration, Baselines, Similarity, Blanks, Meetings and Experimental cover
@@ -117,6 +121,87 @@ as the source of its bins.
 `surface_columnar_figures`. Boundary-layer height does appear, as a grouping and
 as 28 Oct item 11. AOD, AAOD and SSA do not.
 
+### What AERONET data the repo has
+
+- **Addis**: `AAU_Jackros_ET`, Level 1.5 almucantar inversion, daily, 2022–2025, on
+  the Drive (`aeronet.aeronet_dir()`). Every Addis notebook reads it from there.
+- **Beijing, Delhi, Pasadena**: `research/ftir_ec_phase3/scripts/run_aeronet_spartan.py --pull`
+  downloads them from the AERONET service into `output/tables/aeronet/`, which is
+  gitignored. They were used once, in `AERONET_SPARTAN_2026-08-22.md`, and are not
+  in this checkout.
+- The committed `notebooks/analysis/data/aeronet_aod_{beijing,delhi,jpl}.csv` each
+  hold **one day** (2026-05-13), so they cannot be matched to filters. The archived
+  `research/archive/catch_up/04_aeronet_multisite_availability_overlap.ipynb`
+  found 0 matched filter days with them for that reason.
+- No AERONET data is in the repo for any other SPARTAN site.
+
+### Does AERONET overlap the SPARTAN sites?
+
+Yes, at nearly all of them. SPARTAN sites were placed beside AERONET
+photometers, so the nearest station is usually 0–5 km away. On 27 Oct 2026
+each SPARTAN site was matched to the AERONET V3 site list and the AERONET web
+service was asked for daily Level 1.5 values over the site's filter period. The
+first column counts direct-sun AOD; the second counts the almucantar inversion,
+which gives absorption AOD and SSA. A filter day counts as matched when AERONET
+has a daily value on that calendar day (the filter's start date). Bold rows are
+the four focus sites.
+
+| Site | Nearest useful AERONET station | km | Filter days | Days with daily AOD | Days with AAOD (inversion) |
+|---|---|---:|---:|---:|---:|
+| CHTS **Beijing** | Beijing | 5.6 | 402 | 212 (53 %) | 152 (38 %) |
+| ETAD **Addis Ababa** | AAU_Jackros_ET | 0.1 | 247 | 192 (78 %) | 126 (51 %) |
+| USPA **Pasadena** | CalTech (MISR-JPL is 0.1 km but has fewer days) | 8.2 | 266 | 184 (69 %) | 144 (54 %) |
+| INDH **Delhi** | IIT_Delhi | 0.0 | 247 | 131 (53 %) | 107 (43 %) |
+| ILNZ Rehovot | Weizmann_Institute | 0.0 | 296 | 220 (74 %) | 202 (68 %) |
+| ZAPR Pretoria | Pretoria_CSIR-EC | 0.7 | 309 | 139 (45 %) | 118 (38 %) |
+| CLST Santiago | Santiago_Beauchef | 0.3 | 211 | 123 (58 %) | 68 (32 %) |
+| ILHA Haifa | Technion_Haifa_IL | 0.0 | 191 | 123 (64 %) | 108 (57 %) |
+| KRUL Ulsan | KORUS_UNIST_Ulsan | 0.0 | 170 | 122 (72 %) | 96 (56 %) |
+| CAHA Halifax | Halifax | 0.0 | 173 | 99 (57 %) | 76 (44 %) |
+| TWKA Kaohsiung | Kaohsiung | 3.6 | 175 | 99 (57 %) | 76 (43 %) |
+| INJA Jaipur | Jaipur | 0.0 | 106 | 97 (92 %) | 87 (82 %) |
+| CASH Sherbrooke | CARTEL | 0.0 | 155 | 91 (59 %) | 48 (31 %) |
+| KRSE Seoul | Yonsei_University | 0.0 | 99 | 73 (74 %) | 58 (59 %) |
+| IDBD Bandung | Bandung | 0.0 | 161 | 68 (42 %) | 34 (21 %) |
+| MXMC Mexico City | Mexico_City | 0.1 | 101 | 68 (67 %) | 38 (38 %) |
+| PRFJ Fajardo | Cape_San_Juan | 0.0 | 103 | 61 (59 %) | 43 (42 %) |
+| BDDU Dhaka | Dhaka_University | 0.0 | 108 | 49 (45 %) | 31 (29 %) |
+| NGIL Ilorin | Ilorin | 0.0 | 81 | 49 (60 %) | 35 (43 %) |
+| AEAZ Abu Dhabi | Masdar_Institute | 0.0 | 171 | 45 (26 %) | 37 (22 %) |
+| CADO Downsview | Toronto | 0.0 | 70 | 43 (61 %) | 27 (39 %) |
+| TWTA Taipei | Taipei_CWB | 4.6 | 295 | 41 (14 %) | 25 (8 %) |
+| AUMN Melbourne | Aspendale_Mel_AU | 28.1 | 110 | 37 (34 %) | 26 (24 %) |
+| ETBI Bishoftu | AAU_Jackros_ET (the Addis station) | 34.3 | 60 | 36 (60 %) | 24 (40 %) |
+| USNO Norman | OU_NWC | 0.0 | 51 | 34 (67 %) | 25 (49 %) |
+| SGSU Singapore | Singapore | 0.0 | 50 | 33 (66 %) | 14 (28 %) |
+| INKA Kanpur | Kanpur | 0.0 | 43 | 28 (65 %) | 21 (49 %) |
+| ARCB Buenos Aires | CEILAP-BA | 0.0 | 43 | 23 (53 %) | 17 (40 %) |
+| USMC Mammoth Cave | IMPROVE-MammothCave | 0.0 | 19 | 17 (89 %) | 11 (58 %) |
+| CALE Lethbridge | Univ_of_Lethbridge | 0.0 | 31 | 11 (35 %) | 8 (26 %) |
+| PHMO Manila | Manila_Observatory | 0.0 | 12 | 9 (75 %) | 6 (50 %) |
+| USBO Bondville | BONDVILLE | 0.0 | 11 | 7 (64 %) | 4 (36 %) |
+| BIBU Bujumbura | Bujumbura | 0.0 | 57 | 4 (7 %) | 0 |
+| VNHN Hanoi | NGHIA_DO | 0.0 | 27 | 4 (15 %) | 0 |
+| CAKE Kelowna | Kelowna_UAS | 0.0 | 18 | 3 (17 %) | 0 |
+| USSL St Louis | St_Louis_WashU: no data in the window | 0.4 | 42 | 0 | 0 |
+| ZAJB Johannesburg | Joberg, Wits_University: no data in the window | 3.0 | 214 | 0 | 0 |
+
+There is no station within 50 km of CLTA Talca. CODC Palmira and USBA Baltimore
+have no filters in the gallery export.
+
+Notes:
+
+- Level 1.5 is cloud-screened but not final-calibrated. The repo's own audit
+  (`DATA_OPPORTUNITY_AUDIT_2026-08-24.md`) notes that no Level 2 set is in hand.
+  Level 1.5 AAOD at low AOD is uncertain.
+- A filter is matched only on its start date. Recent ETAD and ETBI filters are
+  single 24-h days, so that works for them. Older SPARTAN filters integrated
+  over several days, so a one-day match is only approximate there.
+- Made with `research/ftir_ec_phase3/scripts/aeronet_spartan_overlap.py`, using
+  `https://aeronet.gsfc.nasa.gov/aeronet_locations_v3.txt` and
+  `cgi-bin/print_web_data_v3` (`AOD15=1`) and `print_web_data_inv_v3`
+  (`product=TAB`, `ALM15=1`), with `AVG=20` (daily).
+
 ## F. HIPS offset, and SPARTAN against IMPROVE
 
 Gallery: the Map (SPARTAN and IMPROVE), the IMPROVE network in the chart tabs
@@ -198,26 +283,159 @@ fixes, lot-aware VIBES, Adama TOR study).
 | `spartan_ec_2026_06_16/08_outlier_removal_explainer` | Exclusion toggle and reasons | The explainer itself |
 | `ftir_31`, `ftir_51`, `ftir_53` (deck, priority and committee figures) | Most panels individually | The committee "does the diagnosis generalise" figures |
 
-**Not in gallery**
+**Not in gallery**: the notebooks in section H, plus
+`ftir_34_offset_adjudication_checks`, `ftir_35_variation_closure`,
+`ftir_ec_calibration_2026_06_25/13_chase_origin_and_biomass` (home-grown biomass classifier)
+and `matched_sample_audit_figures`.
 
-- Charcoal reference archive: `ftir_etad_char/char_01` … `char_11` (survey, Addis vs charcoal,
-  burned vs unburned, typology, unburned feedstock, dry-season anomaly, fire vs furnace,
-  seasonal spectra, normalisation alternatives)
-- Char-EC / soot-EC (Han et al.): `ftir_ec_calibration_2026_06_25/03_adama_char_soot`,
-  `spartan_ec_2026_06_16/03_adama_han_char_soot`, `01_carbon_methods_audit`
-- Target definition and pyrolysis: `ftir_42_target_definition_experiment`, `ftir_48_pyrolysis_split_target`
-- Residual learner: `ftir_43_residual_learner_null_control`, `ftir_45_residual_increment_attribution`,
-  `ftir_46_paired_increment_and_mass`
-- Robustness: `ftir_15_uncertainty_and_hybrid`, `ftir_32_cv_scheme_ablation`, `ftir_54_model_form_robustness`
-- `ftir_27_chemspec_circularity`
-- `ftir_34_offset_adjudication_checks`, `ftir_35_variation_closure`
-- `ftir_40_quartz_tor_campaign_design`
-- `ftir_ec_calibration_2026_06_25/13_chase_origin_and_biomass` (home-grown biomass classifier)
-- `addis_public246_20261020` (FTIR EC on all 246 public SPARTAN filters)
-- `filter_only_diagnostics`, `filter_proportionality`, `filter_relationship_stability`,
-  `deliverables/filter_only_scientific_release_2026-09-11/notebooks/filter_only_results` (site-dependent
-  proportionality and temporal transfer)
-- `matched_sample_audit_figures`
+## H. FTIR spectra learning: not in gallery
+
+These studies ask what the spectra and the PLS model learn, rather than which
+calibration to use. None of them is in the gallery.
+
+### The charcoal and biochar reference archive (`research/ftir_etad_char`)
+
+The gallery has no reference spectra. Its spectra are SPARTAN and IMPROVE filters only.
+
+| Notebook | Question |
+|---|---|
+| `char_01_reference_spectra_survey` | What is in the charcoal/biochar archive, collection by collection |
+| `char_02_addis_vs_charcoal` | Addis filter spectra against the archive |
+| `char_03_burned_vs_unburned` | Burned versus unburned, and where Addis falls between them |
+| `char_04_spectral_typology` | What types of spectra there are |
+| `char_05_addis_vs_unburned_feedstock` | Addis against unburned feedstock |
+| `char_06_dry_season_anomaly` | Isolating the dry-season anomaly |
+| `char_07_char05_without_dry_season` | char_05 with the dry season excluded |
+| `char_08_fire_vs_furnace_char` | Fire vs furnace char, woody vs herbaceous |
+| `char_09_char08_dry_vs_nondry` | char_08 with the dry season split out |
+| `char_10_seasonal_spectra` | The three Ethiopian seasons, spectrum by spectrum |
+| `char_11_normalization_alternatives` | Alternatives to SNV for overlaying spectra |
+
+(`char_12_weakley_transferability` is partly covered by Cross-site transfer; see G.)
+
+### What counts as EC: the reference and target definition
+
+| Notebook | Question |
+|---|---|
+| `ftir_ec_calibration_2026_06_25/03_adama_char_soot`, `spartan_ec_2026_06_16/03_adama_han_char_soot` | Char-EC vs soot-EC (Han et al.) at Adama, OPR and OPT |
+| `spartan_ec_2026_06_16/01_carbon_methods_audit` | What "thermal" EC is in SPARTAN |
+| `ftir_42_target_definition_experiment` | Calibrating to TOR EC, TOT EC, OC and total carbon |
+| `ftir_48_pyrolysis_split_target` | Predicting the pyrolysis split itself |
+| `ftir_27_chemspec_circularity` | The ChemSpec carbon columns are circular with both axes |
+| `ftir_40_quartz_tor_campaign_design` | Design of a seasonal paired quartz/TOR campaign |
+
+### What the model learns beyond PLS
+
+| Notebook | Question |
+|---|---|
+| `ftir_43_residual_learner_null_control` | What a residual learner learns (the f(X)-preserving null) |
+| `ftir_45_residual_increment_attribution` | Where its increment lives: season, char anomaly or bands |
+| `ftir_46_paired_increment_and_mass` | The paired increment test, and the mass lead |
+
+### Robustness
+
+| Notebook | Question |
+|---|---|
+| `ftir_15_uncertainty_and_hybrid` | How solid the −1.6 intercept is; the hybrid model |
+| `ftir_32_cv_scheme_ablation` | Site grouping or fold count: the CV-scheme 2 × 2 |
+| `ftir_54_model_form_robustness` | Whether the Addis result depends on PLS |
+
+### Applying the calibration, and the filter-only release
+
+| Notebook | Question |
+|---|---|
+| `addis_public246_20261020` | FTIR EC on all 246 public SPARTAN Addis filters |
+| `filter_only_diagnostics`, `filter_proportionality`, `filter_relationship_stability`, `deliverables/filter_only_scientific_release_2026-09-11/notebooks/filter_only_results` | Site-dependent proportionality and the limits of temporal transfer |
+
+The partial items in G that are also about the spectra could join this
+section: the 1600/1617 cm⁻¹ band (`ftir_12`, `ftir_38`), T²/Q and hubness
+(`ftir_50`), and the Ward clusters over the network (`ftir_52`).
+
+## I. MAIA (maia-mmgis.jpl.nasa.gov): not catalogued in the repo
+
+The repo's only use of "MAIA" is the name of the Drive data folder
+(`AETHMODULAR_MAIA_DATA_ROOT`, `pls_transfer.MAIA_DATA_CANDIDATES` →
+`.../NASA MAIA/Data`). Nothing in the repo lists or downloads anything from
+the MMGIS portal.
+
+On 27 Oct 2026 the portal's configuration (`/api/configure/get?mission=MAIA`)
+held these layers:
+
+- **Target-area outlines**: 12 primary target areas (PTA), 26 secondary (STA)
+  and 8 calibration/validation areas (CVTA), plus target centres.
+- **Static context grids for 40 targets**, as map tiles: surface elevation, land
+  cover, land/water, population density, road density, built-up extent and
+  impervious surface (all 1 km), NDVI at peak greenness (250 m, 2021 or 2023),
+  and the 2019 annual mean ground-level PM2.5 (1 km).
+- **Surface monitor inventories**: 7,938 PM monitors from EEA, AirNow, AirKorea,
+  EPA AQS, SPARTAN and others. 470 of them are speciated, including 26 SPARTAN
+  sites. There is also an AERONET site list dated 2023-01-29.
+- No time-dependent layers (the time slider is off) and no MAIA retrieval
+  products. The portal is a map of where MAIA looks and what is on the ground.
+  Its PM and speciation retrievals are distributed elsewhere; that was not
+  checked here.
+
+The grids are PNG map tiles rather than values, so values at a site would have
+to come from the underlying datasets.
+
+21 of the 40 SPARTAN sites fall inside a MAIA target outline, including all
+four focus sites:
+
+| Target (type) | SPARTAN sites inside |
+|---|---|
+| ETH-AddisAbaba (PTA) | ETAD Addis Ababa, ETBI Bishoftu |
+| IND-Delhi (PTA) | INDH Delhi, INJA Jaipur |
+| USA-LosAngeles (PTA) | USPA Pasadena |
+| CHN-Beijing (STA) | CHTS Beijing |
+| CHL-Santiago (PTA) | CLST Santiago, CLTA Talca |
+| ISR-TelAviv (PTA) | ILNZ Rehovot, ILHA Haifa |
+| KOR-Seoul (PTA) | KRSE Seoul, KRUL Ulsan |
+| TWN-Taipei (PTA) | TWTA Taipei, TWKA Kaohsiung |
+| ZAF-Johannesburg (PTA) | ZAJB Johannesburg, ZAPR Pretoria |
+| BGD-Dhaka, MEX-MexicoCity, NGA-Lagos, PRI-SanJuan, VNM-Hanoi (STA) | BDDU, MXMC, NGIL Ilorin, PRFJ Fajardo, VNHN |
+
+The primary target outlines are large: Jaipur, Ulsan, Kaohsiung and Talca are
+150–300 km from the target city. Four primary target areas have no SPARTAN site:
+Barcelona, Rome, Atlanta and Boston.
+
+## J. Where new data types should go in the gallery
+
+The coverage of each data type decides where it goes:
+
+| Data | Sites | Time base | Where it fits |
+|---|---|---|---|
+| Filter chemistry, HIPS, FTIR | 40 SPARTAN + IMPROVE | per filter | The existing chart tabs |
+| AERONET AOD/AAOD/AAE/SSA | 30 SPARTAN sites with >10 matched days | daily, matched to filter days | New fields in the existing tabs, plus a column-vs-surface page |
+| Aethalometer (MA350) | 4 sites + Jacros (`processed_sites/`) | minute → hourly → 9am-day | Filter-matched values as fields; a dedicated page for the rest |
+| Charcoal reference spectra | no site; a library | none | A spectra page next to Similarity |
+| MAIA target areas and context grids | 21 SPARTAN sites in targets | static | Map layers |
+
+Recommendation: a new menu group with subpages for the **instrument** data,
+and new fields for the **filter-matched** values. Either alone falls short.
+
+- **A new group, "Co-located instruments"**, beside Charts, Sites and
+  Calibration, with subpages:
+  - Aethalometer: BCc time series, diurnal cycles, AAE and source class,
+    flow-fix and smoothing QC, HIPS vs aethalometer.
+  - Column vs surface (AERONET): AOD/AAOD over time, the scale height
+    `H = AAOD / Fabs`, AAE by site.
+
+  These pages need hourly data and their own controls. They fail on most of the
+  network, so they should show only the sites that have data, as Weather and
+  PMF already do.
+- **Filter-matched fields in the existing tabs.** Put the 9am-day aethalometer
+  BCc, AAE and MAC, and the filter-day AERONET AOD/AAOD/AAE, into
+  `filters.json` / `spartan_reference.json` as new field groups. Then
+  "HIPS Fabs vs aethalometer BCc" or "AAOD vs Fabs" is a dropdown in Correlation,
+  like every other pair. The sidebar already handles fields that exist at only
+  some sites (hollow markers, coverage counts). AERONET would fill most of the
+  network there. The aethalometer would fill four sites.
+- **The FTIR spectra learning group** (section H) belongs under Calibration,
+  for example as a "Spectra" page with subpages: reference library (charcoal),
+  band attribution, and model diagnostics (residual learner, robustness). Each
+  would need an exporter like the existing `export_similarity.py`.
+- **MAIA** is most useful as optional layers on the existing Map: target
+  outlines, plus a marker for each site saying which target it falls in.
 
 ## n/a
 
