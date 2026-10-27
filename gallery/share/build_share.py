@@ -20,8 +20,11 @@ import argparse
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
+# sections.py sits beside this script; put its folder on the path so an importer (tests) finds it too
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sections import PUBLIC_BUILD_ENV, private_tabs
 
 ROOT = Path(__file__).resolve().parents[2]
