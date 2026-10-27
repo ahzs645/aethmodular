@@ -9,7 +9,7 @@
    "file": "charts/aeronet/AeronetSites.tsx"
   },
   {
-   "title": "Column against surface — the absorption scale height by site",
+   "title": "Column against surface — the absorption scale height by …",
    "id": "aeronet-scale-height",
    "component": "ScaleHeightStrip",
    "tab": "aeronet",
