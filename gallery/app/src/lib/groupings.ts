@@ -235,6 +235,14 @@ export const BUILT_IN_GROUPINGS: BuiltInGrouping[] = [
   nb('fabs-deciles', 'HIPS Fabs deciles', 'HIPS Fabs', 'deciles', [], [], 'research/ftir_hips_chem/improve_high_fabs_comparison.ipynb (fit per Fabs decile)'),
   nb('pm-deciles', 'PM2.5 mass deciles', 'PM2.5 mass', 'deciles', [], [], 'research/ftir_hips_chem/decision_workbook_20261022.ipynb (loading deciles)',
     'the workbook used µg per filter; here µg/m³ (switch Filters → units to mass per filter)'),
+  // aethalometer sources
+  nb('aae-class', 'AAE source class (aethalometer)', 'AAE UV-IR (aethalometer)', 'cutoffs', [0.9, 1.5],
+    ['Fossil fuel (AAE < 0.9)', 'Mixed (0.9 to 1.5)', 'Biomass (AAE ≥ 1.5)'],
+    'research/ftir_hips_chem/addis_01_source_apportionment.ipynb; cut points config.AAE_REGIONS via optics.classify_aae',
+    'AAE from absorption (BCc × MA350 cross-section), about 1 above the notebooks\' BCc AAE; a value of exactly 0.9 falls in Mixed here (bands are half-open), in Fossil in optics.classify_aae'),
+  nb('aae-class-blue', 'AAE source class, Blue-IR (aethalometer)', 'AAE Blue-IR (aethalometer)', 'cutoffs', [0.9, 1.5],
+    ['Fossil fuel (AAE < 0.9)', 'Mixed (0.9 to 1.5)', 'Biomass (AAE ≥ 1.5)'],
+    'research/ftir_hips_chem/scripts/optics.py (classify_aae, config.AAE_REGIONS)', 'the same classes on the Blue-IR pair, from absorption'),
 ]
 export const isBuiltIn = (id: string) => BUILT_IN_GROUPINGS.some((d) => d.id === id)
 
