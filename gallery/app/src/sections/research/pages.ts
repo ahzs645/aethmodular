@@ -13,6 +13,7 @@ import { OffsetShift } from './pages/OffsetShift'
 import { MoistureMac } from './pages/MoistureMac'
 import { HipsEnvelope } from './pages/HipsEnvelope'
 import { ImproveEnvelope } from './pages/ImproveEnvelope'
+import { ImproveOrigin } from './pages/ImproveOrigin'
 
 export const RESEARCH_PAGES: (SectionPage & { Page: ComponentType<SectionPageProps> })[] = [
   { key: 'index', label: 'Index', title: 'What each page here reproduces', Page: Index },
@@ -24,4 +25,5 @@ export const RESEARCH_PAGES: (SectionPage & { Page: ComponentType<SectionPagePro
   { key: 'moisture-mac', label: 'Moisture and MAC', title: 'Effective MAC against precipitable water and humidity; does moisture move the slope or the intercept?', Page: MoistureMac },
   { key: 'hips-envelope', label: 'HIPS operating envelope', title: 'Raw HIPS optics, mass per area, lot screen, blank domain and the Addis windows', Page: HipsEnvelope },
   { key: 'improve-envelope', label: 'Addis vs IMPROVE loading', title: 'The IMPROVE network in loading space: Addis windows, matched subsets, the fAbs sweep, smoke and R/T proxies', Page: ImproveEnvelope },
+  { key: 'improve-origin', label: 'IMPROVE HIPS at EC = 0', title: 'Does IMPROVE HIPS read a nonzero Fabs at zero EC, and is its response curved? (ftir_26, ftir_37)', Page: ImproveOrigin },
 ]
