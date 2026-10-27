@@ -8,7 +8,7 @@ Inputs (in the repo):
   src/data/qc/pkl_cleaning.py                                         the QC bounds the minute cleaning applied
 
 The daily pickles carry the MA350's diagnostic columns that export_aethalometer.py leaves out: flows, attenuation
-on both spots, the attenuation rate, the dual-spot ratios, the roughness metric and the instrument-smoothed BCc;
+on both spots, the attenuation rate, the dual-spot ratios, the roughness metric and the smoothed BCc (the cleaning pipeline's DEMA, src/data/qc/pkl_cleaning.py);
 at Jacros also the raw spot concentrations and the loading factor K. They are daily means of minute values (the
 same legacy bins, labelled at their start; docs/matched-sample-audit-2026-09-10.md), so a ratio here is the daily
 mean of a minute ratio as the cleaning computed it, not a ratio of daily means. Bins are matched to
@@ -89,11 +89,11 @@ SERIES_NOTES = {
     "dATN1": "Per-minute change in spot-1 attenuation, rolling mean, daily mean",
     "dATN2": "Per-minute change in spot-2 attenuation, rolling mean, daily mean",
     "leak": "Leak ratio (dATN1/Flow1)/(dATN2/Flow2), daily mean of the minute ratio (src/data/qc/pkl_cleaning.py clean_leak_ratio)",
-    "BCc/BC1": "Instrument-smoothed BCc over smoothed BC1: the loading compensation factor",
+    "BCc/BC1": "Smoothed BCc over smoothed BC1: the loading compensation factor",
     "BC1/BC2": "Smoothed BC1 over smoothed BC2: the two spots' uncompensated concentrations",
     "rough1": "Roughness of spot-1 attenuation: the 60-minute mean of |dATN − its rolling mean| (pkl_cleaning.add_roughness_columns)",
     "rough2": "Roughness of spot-2 attenuation",
-    "smoothed": "Instrument-smoothed BCc (µg/m³), daily mean",
+    "smoothed": "Smoothed BCc (µg/m³; the cleaning pipeline's 10-min DEMA per tape spot), daily mean",
     "K": "The instrument's loading-compensation parameter K, daily mean (Jacros raw MA350 export)",
     "BC1": "Spot-1 BC before loading compensation (µg/m³), daily mean",
     "BC2": "Spot-2 BC before loading compensation (µg/m³), daily mean",

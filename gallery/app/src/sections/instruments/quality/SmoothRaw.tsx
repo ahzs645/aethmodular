@@ -26,7 +26,7 @@ export const smoothRawPct = (raw: number | null | undefined, smooth: number | nu
 const rowPct = (r: FilterRow) => smoothRawPct(r[AETH_IR] as number, r[AETH_IR_SMOOTH] as number)
 const COLORS = { raw: '#9aa5b1', smooth: '#111827' }
 
-/** How far the instrument's smoothing moves each filter's IR BCc: one histogram per site with the thresholds. */
+/** How far the pipeline's smoothing moves each filter's IR BCc: one histogram per site with the thresholds. */
 function PctHistogram({ values, color, width, thresholds, title }: { values: number[]; color: string; width: number; thresholds: number[]; title: string }) {
   const ref = useRef<HTMLDivElement>(null)
   const tip = useTooltip(ref)
@@ -55,12 +55,12 @@ function PctHistogram({ values, color, width, thresholds, title }: { values: num
 }
 
 /**
- * Raw against the instrument's own smoothing, and what that does to the comparison with HIPS
+ * Raw against the smoothed BCc of the daily pickles (the cleaning pipeline's DEMA, src/data/qc/pkl_cleaning.py, which the notebooks call instrument-smoothed), and what that does to the comparison with HIPS
  * (HIPS_Aeth_SmoothRaw_Analysis, smoothing_comparison at daily resolution):
  *  - how far smoothing moves each filter's IR BCc, per site, with config.SMOOTH_RAW_THRESHOLDS;
  *  - the HIPS (or FTIR EC) fit as filters above each threshold are set aside;
  *  - one site's crossplot at a chosen threshold, the set-aside filters drawn as grey crosses;
- *  - raw and smoothed BCc day by day, and which channels the instrument smoothed at all.
+ *  - raw and smoothed BCc day by day, and which channels were smoothed at all.
  */
 export function SmoothRaw({ rows, meta, index }: { rows: FilterRow[]; meta: MetaFile; index: QualityIndex }) {
   const method = useEstimator()
@@ -99,7 +99,7 @@ export function SmoothRaw({ rows, meta, index }: { rows: FilterRow[]; meta: Meta
 
   return (<>
     <ChartFrame id="aq-smooth-hist" title="How far smoothing moves each filter — |smoothed − raw| / raw of IR BCc, per site"
-      subtitle={`For every filter with both values: the instrument-smoothed IR BCc against the raw IR BCc over the filter's sampling window, as an absolute percentage. The dashed lines are config.SMOOTH_RAW_THRESHOLDS (${thresholds.join(', ')} %), with the share of filters at or under each listed below the panel. The axis stops at 20 %; larger differences sit in the last bar.`}
+      subtitle={`For every filter with both values: the smoothed IR BCc (the cleaning pipeline's DEMA, src/data/qc/pkl_cleaning.py, which the notebooks call instrument-smoothed) against the raw IR BCc over the filter's sampling window, as an absolute percentage. The dashed lines are config.SMOOTH_RAW_THRESHOLDS (${thresholds.join(', ')} %), with the share of filters at or under each listed below the panel. The axis stops at 20 %; larger differences sit in the last bar.`}
       provenance="HIPS_Aeth_SmoothRaw_Analysis §4 · plotting/distributions.smooth_raw_histogram · config.SMOOTH_RAW_THRESHOLDS">
       {sites.length ? <FacetGrid items={sites} minCell={280} maxCols={4}
         render={(code, cell) => {
@@ -137,30 +137,30 @@ export function SmoothRaw({ rows, meta, index }: { rows: FilterRow[]; meta: Meta
   </>)
 }
 
-/** raw and instrument-smoothed BCc for one instrument, day by day, and their difference */
+/** raw and pipeline-smoothed BCc for one instrument, day by day, and their difference */
 export function SmoothTimeline({ code, all, meta, index }: { code: string; all: Record<string, Day[]>; meta: MetaFile; index: QualityIndex }) {
   const days = all[code] ?? []
   const has = (ch: string) => index.sites[code]?.series.includes(`${ch}.smoothed`)
   const channels = CHANNELS.filter(has)
   const panels: PanelSpec[] = channels.filter((c) => c === 'IR' || c === 'Blue').map((c) => ({
     key: c, title: `${c} BCc (µg/m³)`,
-    lines: [qLine(`${c}.smoothed`, 'Instrument-smoothed BCc', COLORS.raw), { key: `${c}raw`, label: 'Raw BCc', color: COLORS.smooth, value: (d: Day) => d.bc[c], digits: 3, dash: '3 2' }],
+    lines: [qLine(`${c}.smoothed`, 'Smoothed BCc (DEMA)', COLORS.raw), { key: `${c}raw`, label: 'Raw BCc', color: COLORS.smooth, value: (d: Day) => d.bc[c], digits: 3, dash: '3 2' }],
   }))
   panels.push({ key: 'pct', title: 'IR smoothed − raw (%)', refs: [{ at: 0, label: '0' }],
     lines: [{ key: 'pct', label: 'IR (smoothed − raw) / raw', color: '#c026d3', value: (d) => (finite(d.bc.IR) && finite(d.q('IR.smoothed')) && d.bc.IR !== 0 ? (100 * (d.q('IR.smoothed')! - d.bc.IR!)) / d.bc.IR! : null), digits: 2 }] })
-  // the instrument's smoothing per channel and site: the share of IR days that also have a smoothed value
+  // the smoothing per channel and site: the share of IR days that also have a smoothed value
   const table = Object.entries(all).map(([c, ds]) => {
     const ir = ds.filter((d) => finite(d.bc.IR))
     const listed = index.sites[c]?.series ?? []
     return { c, n: ir.length, cells: CHANNELS.map((ch) => (listed.includes(`${ch}.smoothed`) ? ir.filter((d) => finite(d.q(`${ch}.smoothed`))).length / Math.max(1, ir.length) : null)) }
   })
   return (
-    <ChartFrame id="aq-smooth-timeline" title={`${instrumentName(code, meta)} · raw and instrument-smoothed BCc, day by day`}
-      subtitle={`Daily means of the raw BCc and of the MA350's own smoothed BCc (${channels.length ? channels.join(', ') : 'none'} at this instrument), and the IR difference in percent. The comparison notebook's own smoothing (5–30 minute rolling medians), its diurnal profiles and IQR widths need the minute record, which is not in the repo (Google Drive, not mounted here); at daily resolution only the instrument's smoothing can be shown.`}
-      provenance="smoothing_comparison (raw vs instrument-smoothed; availability table) · HIPS_Aeth_SmoothRaw_Analysis · processed_sites/*.pkl">
+    <ChartFrame id="aq-smooth-timeline" title={`${instrumentName(code, meta)} · raw and smoothed BCc, day by day`}
+      subtitle={`Daily means of the raw BCc and of the pickles' smoothed BCc (${channels.length ? channels.join(', ') : 'none'} at this instrument), and the IR difference in percent. The smoothed column is the cleaning pipeline's DEMA, src/data/qc/pkl_cleaning.py, which the notebooks call instrument-smoothed (a 10-minute DEMA per tape spot, so its daily mean sits on the raw one). The notebook's own rolling medians, diurnal profiles and IQR widths are in the minute-level charts below, for Jacros and Pasadena.`}
+      provenance="smoothing_comparison (raw vs smoothed; availability table) · HIPS_Aeth_SmoothRaw_Analysis · processed_sites/*.pkl">
       {panels.length > 1 ? <DailyPanels days={days} panels={panels} periods={index.flow_periods[code]} panelHeight={100} /> : <Empty>This instrument has no smoothed BCc.</Empty>}
       <div style={{ overflowX: 'auto' }}><table className="census-table">
-        <caption className="chart-note" style={{ captionSide: 'top', textAlign: 'left' }}>Instrument smoothing by channel: the share of each instrument's days with IR BCc that also have a smoothed value</caption>
+        <caption className="chart-note" style={{ captionSide: 'top', textAlign: 'left' }}>Smoothing by channel: the share of each instrument's days with IR BCc that also have a smoothed value</caption>
         <thead><tr><th>Instrument</th><th>Days with IR BCc</th>{CHANNELS.map((ch) => <th key={ch}>{ch}</th>)}</tr></thead>
         <tbody>{table.map((t) => <tr key={t.c} className={t.c === code ? 'selected' : undefined}><td>{instrumentName(t.c, meta)}</td><td>{t.n}</td>
           {t.cells.map((v, i) => <td key={i}>{v === null ? '—' : `${Math.round(100 * v)} %`}</td>)}</tr>)}</tbody>
