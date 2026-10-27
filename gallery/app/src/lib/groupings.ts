@@ -235,6 +235,19 @@ export const BUILT_IN_GROUPINGS: BuiltInGrouping[] = [
   nb('fabs-deciles', 'HIPS Fabs deciles', 'HIPS Fabs', 'deciles', [], [], 'research/ftir_hips_chem/improve_high_fabs_comparison.ipynb (fit per Fabs decile)'),
   nb('pm-deciles', 'PM2.5 mass deciles', 'PM2.5 mass', 'deciles', [], [], 'research/ftir_hips_chem/decision_workbook_20261022.ipynb (loading deciles)',
     'the workbook used µg per filter; here µg/m³ (switch Filters → units to mass per filter)'),
+  // research-hips-met: the HIPS offset and meteorology notebooks' splits
+  nb('pw-median', 'Dry vs moist column (median PW)', 'Precipitable water (AERONET)', 'median', [], ['Low PW', 'High PW'],
+    'notebooks/analysis/meteorology/pw_mac_calibration.ipynb (pw_group, the PW median split)', 'the notebook used daily AERONET PW on the start day; here the mean over the filter window'),
+  nb('pw-tertiles', 'Precipitable water thirds', 'Precipitable water (AERONET)', 'tertiles', [], ['Low PW', 'Mid PW', 'High PW'],
+    'notebooks/analysis/meteorology/pw_mac_calibration.ipynb (pw_tercile)', 'the notebook cut at the 33rd and 67th percentiles; here thirds'),
+  nb('rh-45', 'Dry vs humid days (RH 45 %)', 'Relative humidity (station)', 'cutoffs', [45], ['Dry (RH < 45 %)', 'Humid (RH ≥ 45 %)'],
+    'notebooks/analysis/meteorology/hips_ftir_intercept_rh_recursive_diagnostics.ipynb (best low-RH threshold, slope 0.84)', 'the notebook put RH = 45 on the low side; here it goes up'),
+  nb('rh-40-60', 'RH below 40, 40 to 60, above 60 %', 'Relative humidity (station)', 'cutoffs', [40, 60], ['RH < 40 %', '40 to 60 %', 'RH ≥ 60 %'],
+    'notebooks/analysis/meteorology/hips_ftir_intercept_rh_recursive_diagnostics.ipynb (next steps: stricter RH bins)'),
+  nb('fabs-addis-baseline', 'Below the Addis HIPS baseline', 'HIPS Fabs', 'cutoffs', [28.4], ['Below the baseline (< 28.4 Mm⁻¹)', 'Above the baseline'],
+    'notebooks/analysis/meteorology/addis_hips_two_problem_decomposition.ipynb (OLS Fabs intercept)', 'filters under the Addis Fabs-on-EC intercept go negative once it is subtracted'),
+  nb('fabs-addis-window', 'Addis fAbs window (p05–p95)', 'HIPS Fabs', 'cutoffs', [34.68, 68.04], ['Below the Addis p05', 'Addis p05–p95', 'Above the Addis p95'],
+    'research/improve_hips_offset/improve_first_order_loading_range_analysis.ipynb (ETAD p05–p95 screen)', 'set on the Addis filters (gallery/data/export_research_improve_envelope.py); for screening IMPROVE'),
 ]
 export const isBuiltIn = (id: string) => BUILT_IN_GROUPINGS.some((d) => d.id === id)
 

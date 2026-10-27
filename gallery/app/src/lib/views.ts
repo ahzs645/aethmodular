@@ -43,6 +43,19 @@ export const PRESETS: ViewPreset[] = [
     view: v({ tab: 'correlation', net: 'improve', isites: 'ANTU1,LCON1', y: 'EC (TOR)', f: 'EC (TOR)' }) },
   { key: 'spartan-pm', label: 'All SPARTAN sites · PM₂.₅ by site', note: 'Every SPARTAN site, ranked and compared',
     view: v({ tab: 'ranking', ssites: '*', f: 'PM2.5 mass' }) },
+  // research-hips-met: the HIPS offset and meteorology notebooks, on the focus-site data in the repo
+  { key: 'addis-mac-pw', label: 'Addis Ababa · effective MAC vs precipitable water', note: 'HIPS Fabs / FTIR EC against AERONET column water, by season (pw_mac_calibration, the money plot)',
+    view: v({ tab: 'correlation', net: 'focus', sites: 'Addis Ababa', fits: 'ols', ratios: 'HIPS%20Fabs:EC%20(FTIR)', x: 'Precipitable water (AERONET)', y: 'HIPS Fabs / EC (FTIR)', f: 'HIPS Fabs / EC (FTIR)', eq: '0' }, { 'scatter.colorBy': 'Season' }) },
+  { key: 'addis-fabs-ec-pw-split', label: 'Addis Ababa · Fabs vs FTIR EC, dry vs moist column', note: 'Slope (MAC) and intercept per PW half (pw_mac_calibration §4)',
+    view: v({ tab: 'correlation', net: 'focus', sites: 'Addis Ababa', fits: 'ols', x: 'EC (FTIR)', y: 'HIPS Fabs' }, { 'scatter.layout': 'Per group', 'scatter.group': 'nb-pw-median' }) },
+  { key: 'addis-hips-ftir-rh45', label: 'Addis Ababa · HIPS vs FTIR EC, dry vs humid (RH 45 %)', note: 'The recursive diagnostic\'s best low-RH split (hips_ftir_intercept_rh_recursive_diagnostics)',
+    view: v({ tab: 'correlation', net: 'focus', sites: 'Addis Ababa', fits: 'ols', x: 'EC (FTIR)', y: 'HIPS BC' }, { 'scatter.layout': 'Per group', 'scatter.group': 'nb-rh-45' }) },
+  { key: 'focus-fabs-ec-site-fits', label: 'Focus sites · Fabs vs FTIR EC, a fit per site', note: 'Baseline (intercept) and effective MAC (slope) by site (hips_two_problem_decomposition §1)',
+    view: v({ tab: 'correlation', net: 'focus', fits: 'ols', x: 'EC (FTIR)', y: 'HIPS Fabs' }, { fitgroup: 'site' }) },
+  { key: 'addis-warren-ratio-hips', label: 'Addis Ababa · Warren ratio: Fabs/EC vs Fe/EC', note: 'Iron-associated absorption in HIPS; the intercept is absorption per EC at zero iron (warren_ratio_diagnostics). The aethalometer half needs the Instruments fields, which a link cannot pick before they load',
+    view: v({ tab: 'correlation', net: 'focus', sites: 'Addis Ababa', fits: 'ols|deming', ratios: 'HIPS%20Fabs:EC%20(FTIR),Iron:EC%20(FTIR)', x: 'Iron / EC (FTIR)', y: 'HIPS Fabs / EC (FTIR)', f: 'HIPS Fabs / EC (FTIR)', eq: '0' }) },
+  { key: 'addis-trange-charcoal', label: 'Addis Ababa · charcoal share vs temperature range', note: 'Cold, stable days and heating (temperature_gradient_analysis, meteorology_source_interaction §3)',
+    view: v({ tab: 'correlation', net: 'focus', sites: 'Addis Ababa', fits: 'ols', x: 'Temperature range (station)', y: 'Charcoal share (PMF)', f: 'Charcoal share (PMF)', eq: '0' }, { 'scatter.colorBy': 'Season' }) },
 ]
 
 const canonical = (view: ViewState) => JSON.stringify([Object.entries(view.h ?? {}).sort(), Object.entries(view.q ?? {}).sort()])
