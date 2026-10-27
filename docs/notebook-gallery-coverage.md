@@ -131,8 +131,19 @@ as the source of its bins.
 Sixteen AERONET fields, averaged over each filter's sampling window, join every
 chart tab's pickers as the group "AERONET (sampling window)".
 
-Partial still: the notebooks' boundary-layer decoupling and the
-surface–columnar regressions, and Level 2.0 data (`--level 20` pulls it).
+Since 27 Oct 2026 the tab also draws these figures:
+
+- `surface_columnar_linkage` / `_figures`: the SSA spectrum, w against SSA,
+  dAOD and dSSA against BC − fine soil, the BC/AOD exclusion curve, and
+  Ångström typing (Cazorla, Russell, Giles)
+- the scale height through time, by HIPS lot period
+- the monthly climatology
+
+It has a Level 1.5 / 2.0 toggle. The MAC–PW, tertile and dust-test crossplots
+are saved views (`lib/views.ts`, keys `aeronet-*`).
+
+Still partial: the notebooks' boundary-layer decoupling, which needs the
+aethalometer's diurnal cycle.
 
 The pipeline:
 
