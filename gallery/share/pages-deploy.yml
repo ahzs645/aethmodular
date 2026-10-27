@@ -56,6 +56,8 @@ jobs:
         working-directory: gallery/app
         env:
           VITE_HIDE_EXPLAIN: '1'
+          # leaves out the sections gallery/app/src/sections/sections.json marks private
+          VITE_PUBLIC_BUILD: '1'
         run: npx vite build --base ./ --outDir "$RUNNER_TEMP/site" --emptyOutDir
       - name: Check
         run: |

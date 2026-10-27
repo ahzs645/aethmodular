@@ -41,6 +41,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from sections import PUBLIC_BUILD_ENV, is_private, private_data_dirs
+
 ROOT = Path(__file__).resolve().parents[2]
 APP = ROOT / "gallery/app"
 BUILD = ROOT / "gallery/share/pages-dist"
@@ -176,7 +178,9 @@ def data_files(root: Path):
 
 def pack_data(dest: Path) -> tuple[str, int, int]:
     """public/data as a deterministic, scrubbed tar.gz (same data, same bytes); sha256, files, scrubbed."""
-    files = sorted(data_files(DATA))
+    # a section marked private (gallery/app/src/sections/sections.json) keeps its data out of the release
+    private = private_data_dirs()
+    files = sorted(p for p in data_files(DATA) if not is_private(p.relative_to(DATA), private))
     left, scrubbed = [], 0
     with dest.open("wb") as raw, gzip.GzipFile(filename="", fileobj=raw, mode="wb", mtime=0, compresslevel=6) as gz, \
             tarfile.open(fileobj=gz, mode="w", format=tarfile.PAX_FORMAT) as tar:
@@ -280,7 +284,10 @@ def publish_release(dry_run: bool) -> None:
 # ---------------------------------------------------------------- branch (fallback)
 def build():
     subprocess.run(["npx", "vite", "build", "--base", "./", "--outDir", str(BUILD), "--emptyOutDir"],
-                   cwd=APP, env={**{k: v for k, v in os.environ.items() if k != "VITE_SHARE_TABS"}, "VITE_HIDE_EXPLAIN": "1"}, check=True)
+                   cwd=APP, env={**{k: v for k, v in os.environ.items() if k != "VITE_SHARE_TABS"}, "VITE_HIDE_EXPLAIN": "1", **PUBLIC_BUILD_ENV}, check=True)
+    # vite copies all of public/: drop the private sections' data, whose code the public build already left out
+    for rel in private_data_dirs():
+        shutil.rmtree(BUILD / "data" / rel, ignore_errors=True)
     changed = 0
     for path in BUILD.rglob("*"):
         if path.is_file() and is_text_asset(path):

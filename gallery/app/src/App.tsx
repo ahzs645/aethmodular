@@ -88,6 +88,9 @@ import { DisplayControls } from '@/components/DisplayControls'
 import { SingleFit, SingleViewProvider, SingleViewToggle, useSingleViewPref } from '@/lib/singleView'
 import { WEATHER_GROUP, useWeather } from '@/lib/weather'
 import { AERONET_GROUP, useAeronet } from '@/lib/aeronet'
+// flagged sections (src/sections/sections.json): a public build resolves a private one to sections/omitted.ts
+import SECTIONS_MANIFEST from '@/sections/sections.json'
+import instruments from '@/sections/instruments'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 
 /**
@@ -106,6 +109,7 @@ const TABS = [
   { key: 'map', label: 'Map' },
   { key: 'availability', label: 'Data availability', title: 'Notebook coverage analyses, product inventory, sample-day overlap and filter history' },
   { key: 'weather', label: 'Weather', title: 'Weather over each filter’s sampling window: ERA5 at every SPARTAN site, the airport station at Addis' },
+  { key: 'aethalometer', label: 'Aethalometer', title: 'MA350 aethalometers at the focus sites (Instruments section; private in public builds)' },
   { key: 'aeronet', label: 'AERONET', title: 'The sun photometer column over each filter’s sampling window: AOD, absorption AOD and SSA at every SPARTAN site with a station' },
   { key: 'flow', label: 'Flow' },
   { key: 'pmf', label: 'PMF sources' },
@@ -120,7 +124,11 @@ const TABS = [
 type TabKey = (typeof TABS)[number]['key']
 /** A share build (VITE_SHARE_TABS=meeting,map; gallery/share/build_share.py) offers only these tabs, the first as landing tab. */
 const SHARE_TABS: string[] = (import.meta.env.VITE_SHARE_TABS ?? '').split(',').map((t: string) => t.trim()).filter(Boolean)
-const shared = (key: string) => SHARE_TABS.length === 0 || SHARE_TABS.includes(key)
+/** the flagged sections compiled into this build, their tabs, and every tab a section owns (compiled or not) */
+const SECTIONS = [instruments].filter((s) => s.tabs.length)
+const SECTION_TABS = new Map(SECTIONS.flatMap((s) => s.tabs.map((t) => [t.key, t] as const)))
+const SECTION_OWNED = new Set<string>(Object.values(SECTIONS_MANIFEST.sections).flatMap((s) => s.tabs))
+const shared = (key: string) => (!SECTION_OWNED.has(key) || SECTION_TABS.has(key)) && (SHARE_TABS.length === 0 || SHARE_TABS.includes(key))
 /** VITE_SHOW_EXPERIMENTAL=1 lists the Experimental pages in the header menu; otherwise they open only from a link
  *  (#tab=experimental), and the menu shows their group only while one is open. */
 const SHOW_EXPERIMENTAL = import.meta.env.VITE_SHOW_EXPERIMENTAL === '1'
@@ -141,6 +149,9 @@ const NAV_GROUPS: NavGroup[] = [
   { label: 'Charts', items: ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'flow'].flatMap(tabItem) },
   { label: 'Sites', items: ['map', 'availability', 'weather', 'aeronet', 'pmf'].flatMap(tabItem) },
   { label: 'Calibration', items: ['calibration', 'baseline', 'similarity', 'blanks'].flatMap(tabItem) },
+  // each compiled section: its tabs' sub-pages, under the section's label
+  ...SECTIONS.map((s) => ({ label: s.label, items: s.tabs.filter((t) => shared(t.key))
+    .flatMap((t) => t.pages.map((p) => ({ key: `${t.key}-${p.key}`, label: p.label, title: p.title, tab: t.key, sub: p.key }))) })),
   { label: 'Meetings', items: shared('meeting') ? MEETINGS.map((m) => ({ key: m.key, label: m.label, tab: 'meeting', meeting: m.key })) : [] },
   { label: 'Experimental', items: shared('experimental') ? EXPERIMENTS.map((e) => ({ key: `xp-${e.key}`, label: e.label, title: e.title, tab: 'experimental', sub: e.key })) : [] },
 ].filter((g) => g.items.length)
@@ -211,7 +222,7 @@ const parseSpartanSel = (v: string | null): string[] | 'all' | null =>
   v == null || v === '' ? null : v === '*' ? 'all' : v === '-' ? [] : v.split(',').filter(Boolean)
 
 /** tabs whose charts can draw a whole network (Filters sidebar → network) */
-const NETWORK_TABS = ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'weather', 'aeronet'] as const
+const NETWORK_TABS = ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'weather', 'aeronet', 'aethalometer'] as const
 const FILTERS: SubsetCaps = { seasons: true, sites: true, excluded: true, dates: true, fields: 'single', datasetLabel: 'SPARTAN filters' }
 const CAPS: Record<Exclude<TabKey, 'availability' | 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks' | 'experimental'>, SubsetCaps> = {
   correlation: { ...FILTERS, fields: 'pair', networks: true, fits: true },
@@ -223,6 +234,7 @@ const CAPS: Record<Exclude<TabKey, 'availability' | 'census' | 'baseline' | 'sim
   partOfWhole: { ...FILTERS, fields: 'none', networks: true },
   weather: { ...FILTERS, networks: true, fits: true },
   aeronet: { ...FILTERS, networks: true, fits: true },
+  aethalometer: { ...FILTERS, networks: true, fits: true },
   map: FILTERS,
   flow: { ...FILTERS, fields: 'none' },
   pmf: {
@@ -291,7 +303,13 @@ export default function App() {
   const [meeting, setMeeting] = useState<MeetingKey>(() => meetingFromParams(init))
   // the ⌘K search's way to a tab or meeting page (lib/headerNav)
   const [experiment, setExperiment] = useState<string>(() => experimentFromParams(init))
-  const openTab = useCallback((t: string, m?: string, x?: string) => { if (isTab(t)) setTab(t); if (m) setMeeting(m); if (x) setExperiment(x) }, [])
+  // a flagged section's sub-page (URL `aep`; empty = its first page)
+  const [sectionPage, setSectionPage] = useState<string>(() => init.get('aep') ?? '')
+  const openTab = useCallback((t: string, m?: string, x?: string) => {
+    if (isTab(t)) setTab(t)
+    if (m) setMeeting(m)
+    if (x) (SECTION_TABS.has(t) ? setSectionPage : setExperiment)(x)
+  }, [])
   // Mirrors get_clean_data: excluded samples are hidden by default but never
   // deleted, so you can always put them back and see what was removed.
   const [includeExcluded, setIncludeExcluded] = useState(init.get('excl') === '1')
@@ -423,6 +441,7 @@ export default function App() {
       tab,
       meeting: tab === 'meeting' && meeting !== 'followup' ? meeting : null,
       xp: tab === 'experimental' && experiment !== EXPERIMENTS[0].key ? experiment : null,
+      aep: SECTION_TABS.has(tab) && sectionPage && sectionPage !== SECTION_TABS.get(tab)!.pages[0].key ? sectionPage : null,
       fits: estimatorParam(estimators),
       ci: showCI ? '1' : null,
       cal: convention,
@@ -463,7 +482,7 @@ export default function App() {
       log: axes.log ? '1' : null,
       pax: PAX_PARAM[axes.panels ?? 'Shared'],
     })
-  }, [tab, meeting, experiment, estimators, showCI, convention, calVariants, siteSeasons, siteRules, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, dropWhyParam, keepIds, ftirBaseline, customSeasons, rainRule, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, includeExcluded, inclIds, xField, yField, field, dash, ratios, groupings, mac, basis, pinnedId, axes])
+  }, [tab, meeting, experiment, sectionPage, estimators, showCI, convention, calVariants, siteSeasons, siteRules, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, dropWhyParam, keepIds, ftirBaseline, customSeasons, rainRule, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, includeExcluded, inclIds, xField, yField, field, dash, ratios, groupings, mac, basis, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -476,6 +495,7 @@ export default function App() {
         setTab(tabFromParams(p))
         if (tabFromParams(p) === 'meeting') setMeeting(meetingFromParams(p))
         if (tabFromParams(p) === 'experimental') setExperiment(experimentFromParams(p))
+        if (SECTION_TABS.has(tabFromParams(p))) setSectionPage(p.get('aep') ?? '')
       }
       setConvention(p.get('cal'))
       setCustomSeasons(parseCustomSeasons(p.get('cs')) ?? DEFAULT_CUSTOM)
@@ -555,6 +575,8 @@ export default function App() {
   const weather = useWeather(weatherCodes)
   // the sun photometer over the same windows (export_aeronet.py, lib/aeronet), loaded the same way
   const aeronet = useAeronet(weatherCodes)
+  // and the compiled sections' own per-filter fields (the aethalometer); none in a build that omits them
+  const instrumentFields = instruments.useFields(weatherCodes)
   // the pick on top: the chosen sites, coloured in selection order (`paint` gives a row its site's colour)
   const netView = useMemo(() => {
     if (!netBase) return null
@@ -580,12 +602,12 @@ export default function App() {
   // ratios whose two fields this view has: the presets, then the reader's own (lib/viewFields)
   const activeKey = activeFields.join('|')
   const ratioView = useMemo(() => {
-    const has = new Set([...activeFields, ...(weather?.fields ?? []), ...(aeronet?.fields ?? []), ...pmfShareFields(data?.pmf ?? null)])
+    const has = new Set([...activeFields, ...(weather?.fields ?? []), ...(aeronet?.fields ?? []), ...(instrumentFields?.fields ?? []), ...pmfShareFields(data?.pmf ?? null)])
     const fits = (d: RatioDef) => has.has(d.num) && has.has(d.den)
     const presets = RATIO_PRESETS.filter(fits)
     const own = ratios.filter((d) => fits(d) && !presets.some((x) => ratioKey(x) === ratioKey(d)))
     return { presets, all: [...presets, ...own] }
-  }, [activeKey, weather, aeronet, ratios, data]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeKey, weather, aeronet, instrumentFields, ratios, data]) // eslint-disable-line react-hooks/exhaustive-deps
   const ratioFields = useMemo(() => ratioView.all.map(ratioKey), [ratioView])
 
   // Fields that vanished from the export, or that the chosen network does not measure,
@@ -593,7 +615,7 @@ export default function App() {
   useEffect(() => {
     if (!data || (netView && !netView.fields.length)) return
     // weather and AERONET fields (lib/weather, lib/aeronet) load on their own, after this first check, so they are known by name
-    const ok = (f: string) => activeFields.includes(f) || ratioFields.includes(f) || isPmfField(f) || /\((ERA5|station|AERONET)\)$/.test(f)
+    const ok = (f: string) => activeFields.includes(f) || ratioFields.includes(f) || isPmfField(f) || /\((ERA5|station|AERONET|aethalometer)\)$/.test(f)
     const d = NETWORK_DEFAULTS[net]
     if (!ok(xField)) setXField(ok(d.x) ? d.x : activeFields[0])
     if (!ok(yField)) setYField(ok(d.y) ? d.y : activeFields[1] ?? activeFields[0])
@@ -728,14 +750,18 @@ export default function App() {
       return a ? { ...r, ...Object.fromEntries(aeronet.fields.map((f, i) => [f, a[i]])) } : r
     })
     // so do the PMF source shares and dominant source, at the site the PMF solution covers (lib/pmfGroups)
-    return withPmf(withAeronet, data?.pmf ?? null, pmfScheme)
-  }, [netBase, focusRows, weather, aeronet, data, pmfScheme, baselines])
+    const withSections = !instrumentFields ? withAeronet : withAeronet.map((r) => {
+      const a = instrumentFields.rows[r.id]
+      return a ? { ...r, ...Object.fromEntries(instrumentFields.fields.map((f, i) => [f, a[i]])) } : r
+    })
+    return withPmf(withSections, data?.pmf ?? null, pmfScheme)
+  }, [netBase, focusRows, weather, aeronet, instrumentFields, data, pmfScheme, baselines])
   // the reader's view (lib/viewFields): MAC, mass per filter, ratios; the drawer keeps the exported values
   const exportMac = data?.meta.mac_value ?? 10
   const viewOpts = useMemo(() => ({
     mac: mac ?? exportMac, exportMac, basis, ratios: ratioView.all,
-    units: { ...(netBase ? netBase.field_units : data?.meta.field_units ?? {}), ...(weather?.field_units ?? {}), ...(aeronet?.field_units ?? {}), [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3' },
-  }), [mac, exportMac, basis, ratioView, netBase, data, weather, aeronet])
+    units: { ...(netBase ? netBase.field_units : data?.meta.field_units ?? {}), ...(weather?.field_units ?? {}), ...(aeronet?.field_units ?? {}), ...(instrumentFields?.field_units ?? {}), [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3' },
+  }), [mac, exportMac, basis, ratioView, netBase, data, weather, aeronet, instrumentFields])
   const plainSourceRows = useMemo(() => viewRows(rawSourceRows, viewOpts), [rawSourceRows, viewOpts])
   // the site colours go on last, so a site pick repaints the rows without rebuilding them; the
   // lookups, counts and drawers (colours from meta.sites) take the rows unpainted
@@ -929,6 +955,14 @@ export default function App() {
     meta.field_units = { ...meta.field_units, ...aeronet.field_units }
     meta.field_groups = [...(meta.field_groups ?? []).filter((g) => g.label !== AERONET_GROUP), ...(present.length ? [{ label: AERONET_GROUP, fields: present }] : [])]
   }
+  // and each compiled section's fields
+  for (const extra of [instrumentFields]) {
+    if (!extra) continue
+    const present = extra.fields.filter((f) => sourceRows.some((r) => typeof r[f] === 'number'))
+    meta.fields = [...meta.fields, ...present.filter((f) => !meta.fields.includes(f))]
+    meta.field_units = { ...meta.field_units, ...extra.field_units }
+    meta.field_groups = [...(meta.field_groups ?? []).filter((g) => g.label !== extra.group), ...(present.length ? [{ label: extra.group, fields: present }] : [])]
+  }
   // the PMF source shares join the pickers as their own group where a site in view has PMF (lib/pmfGroups)
   const pmfPresent = pmfShareFields(pmf ?? null).filter((f) => sourceRows.some((r) => typeof r[f] === 'number'))
   if (pmfPresent.length) {
@@ -958,7 +992,7 @@ export default function App() {
 
   const nav = (
     <nav className="nav" aria-label="Pages">
-      <NavMenu groups={SHOW_EXPERIMENTAL || tab === 'experimental' ? NAV_GROUPS : NAV_GROUPS_LISTED} tab={tab} meeting={meeting} sub={experiment} onPick={(i) => openTab(i.tab, i.meeting, i.sub)} />
+      <NavMenu groups={SHOW_EXPERIMENTAL || tab === 'experimental' ? NAV_GROUPS : NAV_GROUPS_LISTED} tab={tab} meeting={meeting} sub={SECTION_TABS.has(tab) ? sectionPage || SECTION_TABS.get(tab)!.pages[0].key : experiment} onPick={(i) => openTab(i.tab, i.meeting, i.sub)} />
     </nav>
   )
 
@@ -1318,6 +1352,12 @@ export default function App() {
         {tab === 'partOfWhole' && <CompositionTreemap rows={rows} meta={meta} />}
         {tab === 'weather' && <WeatherPage rows={rows} picked={netView?.chosenCodes ?? new Set()} onPick={hasSpartan(net) ? setSpartanPick : undefined}
           meta={meta} field={fieldEff} xField={xEff} yField={yEff} axes={axes} setField={setField} pmfLabelOfDate={pmfLabelOfDate} />}
+        {SECTION_TABS.has(tab) && (() => {
+          const T = SECTION_TABS.get(tab)!
+          return <T.Page rows={rows} meta={meta} field={fieldEff} xField={xEff} yField={yEff} axes={axes} setField={setField}
+            picked={netView?.chosenCodes ?? new Set()} onPick={hasSpartan(net) ? setSpartanPick : undefined}
+            page={T.pages.some((p) => p.key === sectionPage) ? sectionPage : T.pages[0].key} onPage={setSectionPage} />
+        })()}
         {tab === 'aeronet' && <AeronetPage rows={rows} picked={netView?.chosenCodes ?? new Set()} onPick={hasSpartan(net) ? setSpartanPick : undefined}
           meta={meta} field={fieldEff} axes={axes} setField={setField} />}
         </AxisFieldsProvider>

@@ -62,6 +62,7 @@ export function describeField(f: string): string {
   const i = f.indexOf(' / ')
   if (i > 0) return `${f}: ${f.slice(0, i)} divided by ${f.slice(i + 3)} on the same filter.`
   if (/\((ERA5|station)\)$/.test(f)) return `${f}: weather averaged over the filter's sampling window.`
+  if (/\(aethalometer\)$/.test(f)) return `${f}: the MA350 aethalometer's daily bins averaged over the filter's sampling window, weighted by overlap.`
   if (/\(AERONET\)$/.test(f)) return `${f}: the sun photometer's retrievals averaged over the filter's sampling window (column, daylight and clear sky only).`
   if (/^(EC[123]|OC[1-4])$/.test(f)) return `${f}: a TOR thermal fraction (carbon evolved at one temperature step).`
   if (f.endsWith('(element)')) return `${f}: the element by XRF/ICP-MS, distinct from the ion of the same name.`
@@ -83,6 +84,7 @@ export function fieldOrigin(f: string): string {
   if (f.includes(' / ')) return 'Derived: the ratio of two measurements on the same filter, computed in the gallery.'
   if (/\(ERA5\)$/.test(f)) return 'Reanalysis: ECMWF ERA5 hourly fields, via the Open-Meteo archive.'
   if (/\(station\)$/.test(f)) return 'Measured: Bole airport weather station (Meteostat, WMO 63450). Addis only.'
+  if (/\(aethalometer\)$/.test(f)) return 'Measured: MA350 aethalometer at the site (legacy daily aggregates, research/ftir_hips_chem/processed_sites); AAE from absorption, BCc × the MA350 cross-section.'
   if (/^(AAOD|AAE|SSA|Inversion AOD) .*\(AERONET\)$/.test(f)) return 'Retrieved: AERONET almucantar sky-radiance inversions (Version 3, Level 1.5) at the site\'s station; uncertain when AOD 440 is under 0.4.'
   if (/\(AERONET\)$/.test(f)) return 'Measured: AERONET direct-sun photometer (Version 3, Level 1.5) at the site\'s station; fine/coarse split by spectral deconvolution (SDA).'
   if (/^(EC|OC) \(FTIR\)$/.test(f) || /^EC \(FTIR, (spline|VIBES)/.test(f)) return 'Derived: the filter\'s FTIR spectrum (UC Davis) put through a PLS calibration trained on IMPROVE filters with TOR values. Not measured by combustion. Focus sites: the gallery\'s export; other SPARTAN sites: SPARTAN\'s public product.'

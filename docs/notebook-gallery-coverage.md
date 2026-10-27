@@ -510,12 +510,9 @@ parallel coordinates, radar, the species network and connected scatter.
 
 ## How this was made
 
-The figures come from `gallery/census/chart_census.json` (211 notebooks;
-the census predates about 12 notebooks, so the 0-figure counts for newer ones
-mean "not scanned" as well as "draws through a workflow"). They were matched
+The figures come from `gallery/census/chart_census.json`. They were matched
 against `gallery/app/src/chartIndex.json`, the meeting specs, the experiment
 index, the `.ipynb` citations in `gallery/app/src` and `gallery/data`, and the
 field list in `public/data/meta.json`. The statuses are judgements from the
 notebooks' titles, figure titles and cited sources, not a cell-by-cell
-comparison. Rebuild the census (`python gallery/census/build_census.py`)
-before relying on the counts.
+comparison.

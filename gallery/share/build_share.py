@@ -22,6 +22,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from sections import PUBLIC_BUILD_ENV, private_tabs
+
 ROOT = Path(__file__).resolve().parents[2]
 APP = ROOT / "gallery/app"
 OUT = ROOT / "gallery/share/dist"
@@ -48,6 +50,9 @@ def main():
     ap.add_argument("--tabs", default="meeting,map", help="comma-separated tab keys; the first is the landing tab")
     args = ap.parse_args()
     tabs = [t.strip() for t in args.tabs.split(",") if t.strip()]
+    private = [t for t in tabs if t in private_tabs()]
+    if private:
+        raise SystemExit(f"tab(s) {private} belong to a section marked private in gallery/app/src/sections/sections.json")
     unknown = [t for t in tabs if t not in BY_TAB]
     if unknown:
         raise SystemExit(f"no data list for tab(s) {unknown}; add them to BY_TAB first")
@@ -61,7 +66,7 @@ def main():
     if missing:
         raise SystemExit(f"missing exports (run the gallery/data exporters first): {missing}")
 
-    env = {**os.environ, "VITE_SHARE_TABS": ",".join(tabs), "VITE_HIDE_EXPLAIN": "1"}   # no Explain toggle for outside readers
+    env = {**os.environ, "VITE_SHARE_TABS": ",".join(tabs), "VITE_HIDE_EXPLAIN": "1", **PUBLIC_BUILD_ENV}   # no Explain toggle for outside readers
     subprocess.run(["npx", "vite", "build", "--base", "./", "--outDir", str(OUT), "--emptyOutDir"],
                    cwd=APP, env=env, check=True)
 
