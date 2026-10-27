@@ -187,6 +187,83 @@ def build_study():
     return sites
 
 
+AERONET = REPO / "gallery/app/public/data/aeronet"
+
+
+def filter_dates() -> dict[str, tuple[str, str]]:
+    """Filter id -> (site code, local start date), as export_aeronet.py windows them.
+
+    The weather export's sampling window where it has one, else the gallery date (focus filters
+    first, then the public reference), so the counts reconcile with aeronet/stations.json.
+    """
+    data = REPO / "gallery/app/public/data"
+    windows = json.loads((data / "weather/filters.json").read_text())["windows"]
+    out = {fid: (fid.split("-")[0], v[0][:10]) for fid, v in windows.items()}
+    for name in ("spartan_reference.json", "filters.json"):
+        for row in json.loads((data / name).read_text())["rows"]:
+            if row.get("date") and row.get("code") and row["id"] not in out:
+                out[row["id"]] = (row["code"], row["date"][:10])
+    return out
+
+
+def photometer_days(daily: dict) -> tuple[list[str], list[str]]:
+    """Days with a daily direct-sun AOD (any wavelength), and days with a daily inversion."""
+    aod = [d for i, d in enumerate(daily["date"]) if any(daily[k][i] is not None for k in ("aod440", "aod500", "aod675"))]
+    inv = [d for i, d in enumerate(daily["date"]) if any(daily[k][i] is not None for k in ("aaod675", "ssa440", "aaod440"))]
+    return aod, inv
+
+
+def monthly_counts(filters: list[tuple[str, bool, bool]], aod_days: list[str], inv_days: list[str]) -> list[dict]:
+    """Per calendar month: filters started, those with an AOD and with an inversion in their window,
+    and the photometer's days with a daily AOD and with an inversion."""
+    months: dict[str, dict] = {}
+
+    def month(key: str) -> dict:
+        return months.setdefault(key[:7], {"month": key[:7], "filters": 0, "filters_aod": 0, "filters_inv": 0, "aod_days": 0, "inv_days": 0})
+    for day, has_aod, has_inv in filters:
+        m = month(day)
+        m["filters"] += 1
+        m["filters_aod"] += int(has_aod)
+        m["filters_inv"] += int(has_inv)
+    for day in aod_days:
+        month(day)["aod_days"] += 1
+    for day in inv_days:
+        month(day)["inv_days"] += 1
+    return [months[k] for k in sorted(months)]
+
+
+def build_aeronet():
+    """Per SPARTAN site with an AERONET station: the station and its distance, the photometer's days
+    with a daily AOD and an inversion, against the filters and how many have each in their window."""
+    stations_path, filters_path = AERONET / "stations.json", AERONET / "filters.json"
+    source(stations_path, "AERONET station per site (export_aeronet.py)")
+    source(filters_path, "AERONET retrieval counts per filter window (export_aeronet.py)")
+    stations = json.loads(stations_path.read_text())
+    counts = json.loads(filters_path.read_text())["counts"]
+    map_path = OUT.with_name("spartan_map.json")
+    names = {s["code"]: s["name"] for s in json.loads(map_path.read_text())["sites"]}
+    by_site: dict[str, list[tuple[str, bool, bool]]] = {}
+    for fid, (code, day) in filter_dates().items():
+        c = counts.get(fid, [0, 0, 0])
+        by_site.setdefault(code, []).append((day, c[0] > 0, c[2] > 0))
+    sites, monthly = [], []
+    for code, st in sorted(stations["sites"].items()):
+        daily_path = AERONET / "daily" / f"{code}.json"
+        source(daily_path, "AERONET daily means at the site's station (export_aeronet.py)")
+        aod_days, inv_days = photometer_days(json.loads(daily_path.read_text()))
+        filters = sorted(by_site.get(code, []))
+        n_aod, n_inv = sum(f[1] for f in filters), sum(f[2] for f in filters)
+        # the same filters export_aeronet.py counted, or this view and the AERONET tab disagree
+        assert (len(filters), n_aod, n_inv) == (st["filters"], st["with_aod"], st["with_inversion"]), (code, "differs from stations.json")
+        sites.append({"code": code, "name": display_site_name(code, names.get(code)), "station": st["station"], "km": st["km"],
+                      "candidates": len(st["candidates"]), "filters": len(filters), "filters_aod": n_aod, "filters_inv": n_inv,
+                      "filter_first": filters[0][0] if filters else None, "filter_last": filters[-1][0] if filters else None,
+                      "aod_days": len(aod_days), "inv_days": len(inv_days),
+                      "daily_first": aod_days[0] if aod_days else None, "daily_last": aod_days[-1] if aod_days else None})
+        monthly += [{"code": code, **m} for m in monthly_counts(filters, aod_days, inv_days)]
+    return {"level": stations["level"], "source": stations["source"], "sites": sites, "monthly": monthly}
+
+
 def main():
     source(Path(__file__), "Coverage exporter")
     source(Path(__file__).with_name("site_labels.py"), "Readable site-name formatting")
@@ -202,14 +279,16 @@ def main():
         source(REPO / path, "Notebook informing the view and counting rules")
     network = build_network()
     study = build_study()
+    aeronet = build_aeronet()
     orientation = table(REPO / "research/spartan/orientation/tables/shared_coverage_summary.csv")
     for r in orientation:
         r["n"] = int(r["n"])
         r["n_sites"] = int(r["n_sites"])
     result = {"schema_version": 1, "generated": datetime.now(timezone.utc).isoformat(),
-              "network": network, "study": study, "orientation": orientation, "sources": list(SOURCES.values())}
+              "network": network, "study": study, "aeronet": aeronet, "orientation": orientation, "sources": list(SOURCES.values())}
     OUT.write_text(json.dumps(result, ensure_ascii=False, separators=(",", ":"), allow_nan=False) + "\n")
-    print(f"Wrote {OUT.relative_to(REPO)}: {len(network['sites'])} inventory sites, {len(study)} study sites")
+    print(f"Wrote {OUT.relative_to(REPO)}: {len(network['sites'])} inventory sites, {len(study)} study sites, "
+          f"{len(aeronet['sites'])} sites with an AERONET station")
 
 
 if __name__ == "__main__":

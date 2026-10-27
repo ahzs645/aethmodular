@@ -23,6 +23,13 @@
    "file": "charts/aeronet/AeronetTimeline.tsx"
   },
   {
+   "title": "PM2.5 / AOD by … — η, the conversion from column AOD to surface PM2.5",
+   "id": "aeronet-eta",
+   "component": "EtaBySite",
+   "tab": "aeronet",
+   "file": "charts/aeronet/EtaBySite.tsx"
+  },
+  {
    "title": "Analog lab — does the committed spectral-analog ranking survive other metrics?",
    "id": "analog-lab",
    "component": "AnalogLab",
@@ -324,6 +331,13 @@
    "component": "MonthlyClimate",
    "tab": "weather",
    "file": "charts/weather/MonthlyClimate.tsx"
+  },
+  {
+   "title": "Column water against surface moisture — AERONET precipitable water against …",
+   "id": "weather-pw-moisture",
+   "component": "PwMoisture",
+   "tab": "weather",
+   "file": "charts/weather/PwMoisture.tsx"
   },
   {
    "title": "Rain washout — the measurement by how wet each filter's window was",

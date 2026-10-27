@@ -11,6 +11,7 @@ import { WindRoses } from '@/charts/weather/WindRoses'
 import { WeatherCorrelations } from '@/charts/weather/WeatherCorrelations'
 import { StationCheck } from '@/charts/weather/StationCheck'
 import { SiteWeatherSummary } from '@/charts/weather/SiteWeatherSummary'
+import { PwMoisture } from '@/charts/weather/PwMoisture'
 import { useExport } from '@/lib/data'
 import { useSearchParam } from '@/lib/url'
 import { WEATHER_VARS, weatherField, type RoseFile, type StationCompare, type WeatherSource } from '@/lib/weather'
@@ -115,6 +116,7 @@ export function WeatherPage({ rows, picked, onPick, meta, field, xField, yField,
         <RainWashout rows={wxRows} meta={meta} field={field} prcpField={wx('prcp')} id="weather-site-washout" title={`${one.name} · rain washout`} />
         {scatter(`${one.name} · ${field} against the weather`, 'weather-site-scatter')}
         <HumidityAgreement rows={wxRows} meta={meta} xField={xField} yField={yField} rhField={wx('rh')} />
+        <PwMoisture rows={wxRows} meta={meta} onePick />
         <WindRoses rows={wxRows} meta={meta} roses={roses} source={source} site={one} pmfLabelOfDate={pmfLabelOfDate}
           splits={isAddis ? ['Season', 'PMF source'] : ['Season']} id="weather-site-roses" title={`${one.name} · wind roses`} />
         <WeatherCorrelations rows={wxRows} meta={meta} source={source} site={one} />
@@ -138,6 +140,7 @@ export function WeatherPage({ rows, picked, onPick, meta, field, xField, yField,
       {scatter(`${field} against the weather — the picked sites`, 'weather-compare-scatter')}
       <MonthlyClimate meta={meta} sites={sites} id="weather-compare-climate" title="Monthly climate and the season calendar — the picked sites" />
       <RainWashout rows={wxRows} meta={meta} field={field} prcpField={weatherField('prcp', 'ERA5')!} id="weather-compare-washout" title="Rain washout — the picked sites" />
+      <PwMoisture rows={wxRows} meta={meta} onePick={false} />
       <WindRoses rows={wxRows} meta={meta} roses={roses} source="ERA5" site={null} pmfLabelOfDate={pmfLabelOfDate}
         splits={['Site']} id="weather-compare-roses" title="Wind roses — the picked sites" />
     </>

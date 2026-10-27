@@ -11,20 +11,21 @@ import { useSearchParam } from '@/lib/url'
 import { INK, FONT } from '@/lib/theme'
 import { HIDDEN_DUPLICATES } from '@/fieldLineage'
 import type { NotebookAvailability } from '@/lib/notebookAvailability'
-import { AvailabilitySources, NetworkAvailability, PriorCoverage, StudyAvailability } from './NotebookAvailability'
+import { AeronetAvailability, AvailabilitySources, NetworkAvailability, PriorCoverage, StudyAvailability } from './NotebookAvailability'
 
 interface InventorySite { code: string; name: string; location?: string; n_filters: number; date_min: string; date_max: string; coverage?: Record<string, number>; filters?: string }
 interface Inventory { generated?: string; note?: string; fields?: string[]; field_units: Record<string, string>; field_groups?: MetaFile['field_groups']; sites: InventorySite[] }
+const VIEWS = ['Network coverage', 'Study overlap', 'Filter explorer', 'AERONET photometer', 'Prior comparison']
 const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Vancouver', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 
 export function DataAvailabilityPage() {
-  const [view, setView] = useSearchParam<string>('availability.view', 'Network coverage', ['Network coverage', 'Study overlap', 'Filter explorer', 'Prior comparison'])
+  const [view, setView] = useSearchParam<string>('availability.view', 'Network coverage', VIEWS)
   const { data, error } = useExport<NotebookAvailability>('availability.json', d => d.schema_version === 1 ? null : 'Unsupported availability data version')
   return <>
-    <ChartFrame id="data-availability" title="Data availability" exportable={false} controls={<Select label="View" value={view} options={['Network coverage', 'Study overlap', 'Filter explorer', 'Prior comparison']} onChange={setView} />}>
-      <p className="chart-note">Explore the existing network analyses, four-site sample-day overlaps, and exported filter records. Each view identifies its own source population and counting unit.</p>
+    <ChartFrame id="data-availability" title="Data availability" exportable={false} controls={<Select label="View" value={view} options={VIEWS} onChange={setView} />}>
+      <p className="chart-note">Explore the existing network analyses, four-site sample-day overlaps, exported filter records, and the AERONET sun photometer against the filters. Each view identifies its own source population and counting unit.</p>
     </ChartFrame>
-    {view === 'Filter explorer' ? <FilterAvailabilityExplorer /> : error ? <Empty>{error}</Empty> : !data ? <Empty>Loading notebook coverage analyses…</Empty> : view === 'Study overlap' ? <StudyAvailability data={data} /> : view === 'Prior comparison' ? <PriorCoverage data={data} /> : <NetworkAvailability data={data} />}
+    {view === 'Filter explorer' ? <FilterAvailabilityExplorer /> : error ? <Empty>{error}</Empty> : !data ? <Empty>Loading notebook coverage analyses…</Empty> : view === 'Study overlap' ? <StudyAvailability data={data} /> : view === 'Prior comparison' ? <PriorCoverage data={data} /> : view === 'AERONET photometer' ? <AeronetAvailability data={data.aeronet} /> : <NetworkAvailability data={data} />}
     {data && <AvailabilitySources data={data} />}
   </>
 }

@@ -13,6 +13,7 @@ import { INK, FONT, withUnit } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
+import { maiaLine, useAeronetSites, type AeronetSitesFile } from '@/lib/aeronetSites'
 
 const STATS = ['Median', 'Mean', 'Sample count'] as const
 const SCOPES = ['Four focus sites', 'All SPARTAN sites', 'All IMPROVE sites'] as const
@@ -24,6 +25,25 @@ interface NetworkMap {
   field_units: Record<string, string>
   sites: { code: string; name: string; location: string; lat: number | null; lon: number | null;
     n_filters: number; date_min: string; date_max: string; stats: Record<string, Summary> }[]
+}
+
+/**
+ * The SPARTAN inventory with the AERONET quantities joined on (aeronet/sites_summary.json,
+ * export_aeronet_sites.py): each one's median, mean and n over the site's filter windows, so the
+ * SPARTAN measurement picker offers them beside the public chemistry. Sites without a station stay
+ * on the map as hollow markers.
+ */
+function withAeronet(map: NetworkMap, aeronet: AeronetSitesFile | null): NetworkMap {
+  if (!aeronet) return map
+  const units = Object.fromEntries(aeronet.quantities.map((q) => [q.label, q.unit]))
+  return {
+    ...map,
+    field_units: { ...map.field_units, ...units },
+    sites: map.sites.map((s) => ({ ...s, stats: { ...s.stats, ...Object.fromEntries(aeronet.quantities.map((q) => {
+      const v = aeronet.sites[s.code]?.all[q.key]
+      return [q.label, { n: v?.n ?? 0, median: v?.median ?? null, mean: v?.mean ?? null }]
+    })) } })),
+  }
 }
 
 /** Offline bubble map with independent study-site and IMPROVE scopes. */
@@ -47,7 +67,10 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
   const [improveField, setImproveField] = useSearchParam<string>('mapfield', 'EC (TOR)')
   const [world, setWorld] = useState<FeatureCollection | null>(null)
   const [improve, setImprove] = useState<NetworkMap | null>(null)
-  const [spartan, setSpartan] = useState<NetworkMap | null>(null)
+  const [spartanBase, setSpartan] = useState<NetworkMap | null>(null)
+  // the AERONET column quantities per site, and the MAIA target areas (both optional)
+  const aeronet = useAeronetSites().data
+  const spartan = useMemo(() => (spartanBase ? withAeronet(spartanBase, aeronet) : null), [spartanBase, aeronet])
   const [spartanField, setSpartanField] = useSearchParam<string>('mapspartanfield', 'PM2.5 mass')
   const [error, setError] = useState('')
   const lg = useLegend()
@@ -56,8 +79,11 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
   const isNetwork = isImprove || isSpartan
   const network = isImprove ? improve : isSpartan ? spartan : null
   const selectedField = isImprove ? improveField : spartanField
-  const metric = isNetwork ? (network?.field_units[selectedField] ? selectedField : isImprove ? 'EC (TOR)' : 'PM2.5 mass') : field
+  const metric = isNetwork ? (network && selectedField in network.field_units ? selectedField : isImprove ? 'EC (TOR)' : 'PM2.5 mass') : field
   const units = isNetwork ? network?.field_units ?? {} : meta.field_units
+  // an AERONET quantity picked in the SPARTAN scope: its tooltip adds the station, ρ and the seasons
+  const aeronetQ = isSpartan ? aeronet?.quantities.find((q) => q.label === metric) : undefined
+  const fmtQ = (v: number | null | undefined) => fmt(v, aeronetQ?.digits)
   const unlocated = network?.sites.filter(s => s.lat == null || s.lon == null) ?? []
 
   useEffect(() => {
@@ -112,7 +138,9 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
     return d3.geoNaturalEarth1().fitExtent([[10, 10], [Math.max(60, width - 10), height - 10]], frame ?? { type: 'Sphere' })
   }, [width, height, frame])
   const path = useMemo(() => d3.geoPath(projection), [projection])
-  const rScale = d3.scaleSqrt().domain([0, Math.max(1, d3.max(sites, s => s.value) ?? 1)]).range([0, isNetwork ? 16 : 26])
+  // sized to the largest value in view, however small (AAOD tops out near 0.05), not to at least 1
+  const vmax = d3.max(sites, s => s.value) ?? 0
+  const rScale = d3.scaleSqrt().domain([0, vmax > 0 ? vmax : 1]).range([0, isNetwork ? 16 : 26])
 
   const fit = (coords: number[][]) => {
     const points = coords.map(p => projection([p[0], p[1]])).filter((p): p is [number, number] => p != null)
@@ -141,7 +169,7 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
     <ChartFrame id="map" source="gallery/app/src/charts/map/SiteBubbleMap.tsx"
       title={`Bubble map — ${drawnSites.length === 1 ? drawnSites[0].name : scope.toLowerCase()}`}
       subtitle={`${stat === 'Sample count' ? 'Sample counts' : `${stat} ${withUnit(metric, units)}`} at ${isNetwork ? `the available ${isImprove ? 'IMPROVE' : 'SPARTAN'} sites` : 'the four focus sites: Beijing, Delhi, JPL and Addis Ababa'}; pick or search sites in the list beside the map. Drag to pan; scroll or use +/− to zoom. Bubble sizes stay fixed while zooming. The four-focus-site views retain sidebar season, date and exclusion choices.`}
-      provenance={isNetwork && network ? `${network.sites.length} sites in the inventory.${unlocated.length ? ` Missing coordinates: ${unlocated.map(s => s.code).join(', ')}.` : ''} ${network.note}` : 'Local site inventory'}
+      provenance={isNetwork && network ? `${network.sites.length} sites in the inventory.${unlocated.length ? ` Missing coordinates: ${unlocated.map(s => s.code).join(', ')}.` : ''} ${aeronetQ && aeronet ? `${aeronet.source}, Level ${aeronet.level}: ${aeronet.note} (aeronet/sites_summary.json, export_aeronet_sites.py)` : network.note}${isSpartan ? ' MAIA target areas: research/maia/inventory/spartan_sites.csv.' : ''}` : `Local site inventory${aeronet ? '. MAIA target areas: research/maia/inventory/spartan_sites.csv' : ''}`}
       controls={<>
         <Segmented label="Sites" value={scope} options={SCOPES} onChange={setScope} />
         {isNetwork && network && stat !== 'Sample count' && <Select label={`${isImprove ? 'IMPROVE' : 'SPARTAN'} measurement`} value={metric} options={Object.keys(network.field_units)} onChange={isImprove ? setImproveField : setSpartanField} />}
@@ -173,14 +201,25 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
             const p = zoom.apply(projected)
             const available = s.value != null && s.n_filters > 0
             const r = available ? Math.max(4, rScale(Math.max(0, s.value!))) : 4
+            const maia = aeronet?.maia[s.code]
+            const col = aeronetQ ? aeronet?.sites[s.code] : undefined
             return <g key={s.code} data-export-site={s.name} data-export-color={s.color} opacity={lg.dim(s.label, 0.2)} onClick={onSite ? () => onSite(s.code) : undefined} style={onSite ? { cursor: 'pointer' } : undefined} onMouseEnter={e => tip.show(e, [
               `${s.name} (${s.code})`, s.location,
               `${s.n_filters.toLocaleString()} samples · ${s.date_min} → ${s.date_max}`,
               ...(stat === 'Sample count' ? [] : [
-                `${withUnit(metric, units)}: median ${fmt(s.summary.median)}, mean ${fmt(s.summary.mean)}`,
-                `n with ${metric} = ${s.summary.n.toLocaleString()}`,
+                `${withUnit(metric, units)}: median ${fmtQ(s.summary.median)}, mean ${fmtQ(s.summary.mean)}`,
+                aeronetQ ? `${s.summary.n.toLocaleString()} filter windows with a value` : `n with ${metric} = ${s.summary.n.toLocaleString()}`,
               ]),
+              ...(aeronetQ && stat !== 'Sample count' ? col ? [
+                `AERONET station ${col.station.replace(/_/g, ' ')}, ${fmt(col.km, 1)} km away`,
+                ...(aeronet!.seasons[s.code] ?? []).filter((n) => col.seasons[n]?.[aeronetQ.key]).map((n) =>
+                  `  ${n}: median ${fmtQ(col.seasons[n][aeronetQ.key]!.median)} (n=${col.seasons[n][aeronetQ.key]!.n})`),
+                ...(aeronetQ.key === 'eta' ? [`PM2.5 against AOD 500: Spearman ρ ${fmt(col.rho_pm_aod, 2)}`] : []),
+              ] : ['No AERONET station within 50 km with retrievals in its filter windows'] : []),
+              ...(maia ? [maiaLine(maia)!] : []),
             ])} onMouseLeave={tip.hide}>
+              {/* a dashed ring: the site sits in a MAIA target area */}
+              {maia && <circle cx={p[0]} cy={p[1]} r={r + 3.5} fill="none" stroke={INK.text} strokeWidth={1.1} strokeDasharray="2.5 2" />}
               <circle cx={p[0]} cy={p[1]} r={r} fill={available ? s.color : INK.panel} fillOpacity={available ? 0.55 : 1} stroke={s.color} strokeWidth={1.6} />
               {available && <circle cx={p[0]} cy={p[1]} r={2} fill={s.color} />}
               {/* every name while few sites are drawn; with many, the hovered one (the rest crowd into each other) */}
@@ -189,12 +228,14 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
           })}
           </g>
         </svg>
-        <div className="legend"><SizeLegend scale={rScale} label={stat === 'Sample count' ? 'sample count' : `${stat.toLowerCase()} ${withUnit(metric, units)}`} format={v => stat === 'Sample count' ? String(Math.round(v)) : fmt(v, 1)} /></div>
+        <div className="legend"><SizeLegend scale={rScale} label={stat === 'Sample count' ? 'sample count' : `${stat.toLowerCase()} ${withUnit(metric, units)}`} format={v => stat === 'Sample count' ? String(Math.round(v)) : fmt(v, aeronetQ ? Math.min(aeronetQ.digits, 3) : 1)} /></div>
         {!sidePanel && <div style={isNetwork ? { maxHeight: 140, overflowY: 'auto' } : undefined}>
-          <Legend items={sites.map(s => ({ label: s.label, color: s.color, detail: stat === 'Sample count' ? String(s.n_filters) : fmt(s.value, 2) }))} {...lg.props} />
+          <Legend items={sites.map(s => ({ label: s.label, color: s.color, detail: stat === 'Sample count' ? String(s.n_filters) : fmt(s.value, aeronetQ?.digits ?? 2) }))} {...lg.props} />
         </div>}
         {!sites.length && <Empty>No samples with coordinates{stat === 'Sample count' ? '' : ` and ${metric}`} in this selection.</Empty>}
         <Note>Drag to pan · scroll or use +/− to zoom · Fit sites frames the ticked sites.{isImprove && ' IMPROVE opens on the US mainland; Fit sites also takes in Alaska, Hawaii and overseas sites.'}</Note>
+        {!isImprove && aeronet && sites.some((s) => aeronet.maia[s.code]) && <Note>Dashed ring: a SPARTAN site inside a MAIA target area ({sites.filter((s) => aeronet.maia[s.code]).length} here; hover for the area). MAIA turns its AOD into surface PM2.5 there, so the AERONET η = PM2.5 / AOD 500 is the quantity it has to get right.</Note>}
+        {aeronetQ && <Note>{aeronetQ.label}: {aeronetQ.about}. Median over each site's non-excluded filters of the AERONET means inside the filter's sampling window (all dates; the sidebar's dates and seasons do not apply here; hover a site for its seasons). Hollow: no station within 50 km with retrievals in the windows.{aeronetQ.key === 'ssa440' ? ' SSA varies over a narrow range, so bubble sizes differ little: read the values in the list or the tooltip.' : ''}</Note>}
 
         {!world && <Note>Basemap unavailable; bubbles remain positioned by site coordinates.</Note>}
       </>}

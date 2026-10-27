@@ -5,7 +5,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { dataUrl } from '@/lib/data'
 import { useSearchParam } from '@/lib/url'
 import { FONT, INK } from '@/lib/theme'
-import { calendarMonths, studyOverlap, type AvailabilitySite, type CompletenessRule, type NotebookAvailability } from '@/lib/notebookAvailability'
+import { calendarMonths, daysInMonth, studyOverlap, type AeronetAvailability as AeronetData, type AeronetAvailabilitySite, type AvailabilitySite, type CompletenessRule, type NotebookAvailability } from '@/lib/notebookAvailability'
 
 const fmt = (n: number | null | undefined) => n == null ? '—' : n.toLocaleString(undefined, { maximumFractionDigits: 1 })
 const siteLabel = (s: AvailabilitySite) => s.name === s.code ? s.code : `${s.code} · ${s.name}`
@@ -131,6 +131,98 @@ export function StudyAvailability({ data }: { data: NotebookAvailability }) {
       </ul>
     </ChartFrame>
   </>
+}
+
+// the three lanes per site: the filters, the photometer's daily AOD, its inversions (StudyAvailability's colours)
+const AERONET_LANES = [
+  { key: 'filters', label: 'Filters', color: '#7755a2', unit: 'filters started' },
+  { key: 'aod_days', label: 'Daily AOD', color: '#277bb5', unit: 'days with a daily AOD' },
+  { key: 'inv_days', label: 'Inversions', color: '#d28032', unit: 'days with an inversion' },
+] as const
+
+/**
+ * AERONET against the filters, per SPARTAN site with a station: by month, how many filters were
+ * started, and on how many days the station has a daily AOD and an almucantar inversion; below, the
+ * station used, its distance and how many filters have a retrieval inside their own sampling window.
+ */
+export function AeronetAvailability({ data }: { data: AeronetData | undefined }) {
+  const [query, setQuery] = useSearchParam<string>('availability.aeronetSearch', '')
+  const [year, setYear] = useSearchParam<string>('availability.aeronetYear', 'All years')
+  if (!data) return <Empty>This availability export predates the AERONET section. Run <code>uv run python gallery/data/export_availability.py</code> (after <code>export_aeronet.py</code>).</Empty>
+  const sites = data.sites.filter(s => `${s.code} ${s.name} ${s.station}`.toLowerCase().includes(query.toLowerCase()))
+  const years = [...new Set(data.monthly.map(m => m.month.slice(0, 4)))].sort()
+  const currentYear = years.includes(year) ? year : 'All years'
+  const total = (k: 'filters' | 'filters_aod' | 'filters_inv') => data.sites.reduce((sum, s) => sum + s[k], 0)
+  return <>
+    <ChartFrame id="availability-aeronet" title="AERONET against the filters — photometer days and filter months by site" subtitle={`Per SPARTAN site, the AERONET station within 50 km whose daily AOD covers the most filter days (Level ${data.level}). Each site has three lanes by calendar month: filters started, days with a daily direct-sun AOD, and days with an almucantar inversion (darker = more; photometer lanes as a share of the month's days). The photometer was pulled only over each site's filter span. Sun photometers retrieve in daylight and clear sky, so a cloudy or rainy month is short of AOD days even with the instrument running.`}
+      provenance={`${data.source}; aeronet/stations.json, aeronet/daily/<CODE>.json and the per-filter retrieval counts from gallery/data/export_aeronet.py, packaged by export_availability.py`}
+      controls={<>
+        <label className="control">Search sites <input className="select" aria-label="Search AERONET sites" type="search" value={query} onChange={e => setQuery(e.target.value)} /></label>
+        <Select label="Year" value={currentYear} options={['All years', ...years]} onChange={setYear} />
+      </>}>
+      <div className="availability-summary">
+        <span><strong>{data.sites.length}</strong> SPARTAN sites with an AERONET station</span>
+        <span><strong>{fmt(total('filters'))}</strong> filters at those sites</span>
+        <span><strong>{fmt(total('filters_aod'))}</strong> with an AOD inside their sampling window</span>
+        <span><strong>{fmt(total('filters_inv'))}</strong> with an inversion</span>
+      </div>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: INK.muted, margin: '4px 0 8px' }}>
+        {AERONET_LANES.map(l => <span key={l.key}><svg width={12} height={10} aria-hidden="true"><rect width={12} height={10} rx={2} fill={l.color} /></svg> {l.label} · {l.unit}</span>)}
+        <span><svg width={12} height={10} aria-hidden="true"><rect width={12} height={10} rx={2} fill={INK.empty} stroke={INK.border} /></svg> none that month, inside the site's span</span>
+      </div>
+      <AeronetLanes sites={sites} rows={data.monthly} year={currentYear} />
+      {!sites.length && <Empty>No site matches this search.</Empty>}
+    </ChartFrame>
+    <ChartFrame id="availability-aeronet-stations" title="AERONET stations and coverage — the station behind each site" subtitle="The station used, its distance from the SPARTAN site, and how many of the site's filters have a retrieval inside their own sampling window (any AOD wavelength; an inversion separately), against the photometer's own days over the pulled span. Filters spread over about 8 days (older intermittent sampling) can catch an AOD on any of them." exportable={false}>
+      <div className="chart-scroll" tabIndex={0} role="region" aria-label="AERONET station and coverage table"><table className="census-table availability-table"><thead><tr><th>Site</th><th>AERONET station</th><th>Distance · km</th><th>Filters</th><th>With AOD in window</th><th>With inversion</th><th>Filter span</th><th>Photometer days · AOD</th><th>Photometer days · inversion</th><th>Photometer span</th></tr></thead><tbody>
+        {sites.map(s => <tr key={s.code}><th scope="row"><strong>{s.code}</strong> <small>{s.name}</small></th><td title={s.candidates > 1 ? `${s.candidates} stations within 50 km were ranked` : undefined}>{s.station.replace(/_/g, ' ')}{s.candidates > 1 ? <small> best of {s.candidates}</small> : null}</td><td>{fmt(s.km)}</td><td>{fmt(s.filters)}</td><td>{fmt(s.filters_aod)} <small>{pctOf(s.filters_aod, s.filters)}</small></td><td>{fmt(s.filters_inv)} <small>{pctOf(s.filters_inv, s.filters)}</small></td><td title={`${s.filter_first} to ${s.filter_last}`} style={{ whiteSpace: 'nowrap' }}>{span(s.filter_first, s.filter_last)}</td><td>{fmt(s.aod_days)}</td><td>{fmt(s.inv_days)}</td><td title={`${s.daily_first} to ${s.daily_last}`} style={{ whiteSpace: 'nowrap' }}>{span(s.daily_first, s.daily_last)}</td></tr>)}
+      </tbody></table></div>
+      <Note>A filter counts as covered when at least one retrieval falls inside its local sampling window; the AERONET tab averages those retrievals. Distances are from the SPARTAN site to the station; Bishoftu (ETBI) shares the Addis Ababa station, 34 km away.</Note>
+    </ChartFrame>
+  </>
+}
+const span = (a: string | null, b: string | null) => (a && b ? `${a.slice(0, 7)} → ${b.slice(0, 7)}` : '—')
+const pctOf = (n: number, of: number) => (of ? `${Math.round((100 * n) / of)} %` : '')
+
+function AeronetLanes({ sites, rows, year }: { sites: AeronetAvailabilitySite[]; rows: AeronetData['monthly']; year: string }) {
+  const byKey = useMemo(() => new Map(rows.map(r => [`${r.code}|${r.month}`, r])), [rows])
+  const months = useMemo(() => {
+    const ordered = rows.map(r => r.month).sort()
+    return ordered.length ? calendarMonths(ordered[0], ordered[ordered.length - 1]).filter(m => year === 'All years' || m.startsWith(year)) : []
+  }, [rows, year])
+  const maxFilters = Math.max(1, ...rows.map(r => r.filters))
+  const ref = useRef<HTMLDivElement>(null), { width } = useDimensions(ref)
+  const labelW = 210, lane = 7, gap = 1, block = AERONET_LANES.length * (lane + gap) + 9
+  const cell = Math.max(3, Math.min(30, (width - labelW - 10) / Math.max(1, months.length)))
+  const w = Math.max(width, labelW + months.length * cell + 10), h = 40 + sites.length * block
+  if (!months.length) return <Empty>No months in this selection.</Empty>
+  return <div className="chart-scroll availability-month-matrix" ref={ref} tabIndex={0} role="region" aria-label="AERONET and filter months by site, scroll for all months"><svg width={w} height={h} fontFamily={FONT.family} role="img" aria-label={`${sites.length} sites by ${months.length} months: filters, daily AOD and inversion days`}>
+    {months.map((month, j) => <g key={month}>
+      {(j === 0 || month.endsWith('-01')) && <><line x1={labelW + j * cell} x2={labelW + j * cell} y1={18} y2={h} stroke={INK.grid} /><text x={labelW + j * cell + 2} y={13} fontSize={11} fill={INK.text}>{cell * 12 >= 30 || j === 0 ? month.slice(0, 4) : ''}</text></>}
+      {cell > 25 && <text x={labelW + j * cell + cell / 2} y={32} textAnchor="middle" fontSize={9} fill={INK.muted}>{month.slice(5)}</text>}
+    </g>)}
+    {sites.map((s, i) => {
+      const y0 = 40 + i * block
+      const first = [s.filter_first, s.daily_first].filter(Boolean).sort()[0]?.slice(0, 7) ?? ''
+      const last = [s.filter_last, s.daily_last].filter(Boolean).sort().reverse()[0]?.slice(0, 7) ?? ''
+      return <g key={s.code}>
+        <text x={labelW - 62} y={y0 + 13} textAnchor="end" fontSize={11} fill={INK.text}><title>{s.code} · {s.name} · {s.station.replace(/_/g, ' ')}, {fmt(s.km)} km</title>{s.code} · {s.name.length > 15 ? `${s.name.slice(0, 14)}…` : s.name}</text>
+        {AERONET_LANES.map((l, k) => <text key={l.key} x={labelW - 6} y={y0 + k * (lane + gap) + lane - 0.5} textAnchor="end" fontSize={7.5} fill={INK.muted}>{l.label}</text>)}
+        {months.map((month, j) => {
+          const r = byKey.get(`${s.code}|${month}`), inside = month >= first && month <= last
+          if (!r && !inside) return null
+          return AERONET_LANES.map((l, k) => {
+            const n = r?.[l.key] ?? 0
+            const share = l.key === 'filters' ? Math.sqrt(n / maxFilters) : n / daysInMonth(month)
+            const extra = l.key === 'filters' && r ? ` (${r.filters_aod} with an AOD in the window, ${r.filters_inv} with an inversion)` : ''
+            return <rect key={`${month}|${l.key}`} x={labelW + j * cell} y={y0 + k * (lane + gap)} width={Math.max(1, cell - 0.6)} height={lane}
+              fill={n ? l.color : INK.empty} fillOpacity={n ? 0.25 + 0.75 * Math.min(1, share) : 1}>
+              <title>{s.code} · {month} · {n} {l.unit}{extra}</title></rect>
+          })
+        })}
+      </g>
+    })}
+  </svg></div>
 }
 
 export function PriorCoverage({ data }: { data: NotebookAvailability }) {
