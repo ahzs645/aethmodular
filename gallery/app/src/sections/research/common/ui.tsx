@@ -82,7 +82,7 @@ export interface Column<T> { key: string; label: ReactNode; value: (row: T) => R
 export function DataTable<T>({ rows, columns, rowKey, highlight }: { rows: T[]; columns: Column<T>[]; rowKey: (r: T, i: number) => string; highlight?: (r: T) => boolean }) {
   return (
     <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
-      <table className="census-table">
+      <table className="census-table" style={{ minWidth: Math.min(880, columns.length * 88) }}>
         <thead><tr>{columns.map((c) => <th key={c.key} title={c.title} style={{ textTransform: 'none', letterSpacing: 0, textAlign: c.num ? 'right' : 'left' }}>{c.label}</th>)}</tr></thead>
         <tbody>{rows.map((r, i) => <tr key={rowKey(r, i)} style={highlight?.(r) ? { background: 'var(--accent-soft)' } : undefined}>
           {columns.map((c) => <td key={c.key} style={c.num ? { fontFamily: FONT.mono, textAlign: 'right', whiteSpace: 'nowrap' } : undefined}>{c.value(r)}</td>)}
@@ -103,6 +103,8 @@ export function Bars({ bars, label, max, format = (v) => fmt(v, 2) }: { bars: Ba
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
   const labelW = Math.min(240, Math.max(120, width * 0.34)), noteW = 70
+  // labels end at the bars: cut what would run off the left edge (about 6 px a character at 11.5 px)
+  const maxChars = Math.max(10, Math.floor((labelW - 8) / 6.2))
   const w = Math.max(120, width - labelW - noteW - 8)
   const shown = bars.filter((b) => b.value !== null)
   const x = d3.scaleLinear().domain([0, max ?? (d3.max(shown, (b) => b.value!) || 1)]).range([0, w]).nice()
@@ -113,7 +115,7 @@ export function Bars({ bars, label, max, format = (v) => fmt(v, 2) }: { bars: Ba
         {shown.map((b, i) => {
           const c = b.signed == null ? INK.accent : b.signed >= 0 ? INK.positive : INK.negative
           return <g key={b.key} transform={`translate(0,${i * rowH})`} onMouseMove={(e) => b.tip && tip.show(e, b.tip)} onMouseLeave={tip.hide}>
-            <text x={labelW - 6} y={rowH / 2} dy="0.35em" textAnchor="end" fontSize={11.5} fill={INK.text}>{b.label.length > 38 ? `${b.label.slice(0, 37)}…` : b.label}</text>
+            <text x={labelW - 6} y={rowH / 2} dy="0.35em" textAnchor="end" fontSize={11.5} fill={INK.text}>{b.label.length > maxChars ? `${b.label.slice(0, maxChars - 1)}…` : b.label}</text>
             <rect x={labelW} y={3} width={Math.max(1, x(b.value!))} height={rowH - 6} fill={c} fillOpacity={0.75} />
             <text x={labelW + x(b.value!) + 4} y={rowH / 2} dy="0.35em" fontSize={10.5} fontFamily={FONT.mono} fill={INK.muted}>{format(b.value!)}{b.note ? `  ${b.note}` : ''}</text>
           </g>

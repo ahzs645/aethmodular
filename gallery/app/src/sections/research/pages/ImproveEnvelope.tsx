@@ -116,7 +116,7 @@ export function ImproveEnvelope({ rows, meta }: SectionPageProps) {
         subtitle="IMPROVE filters inside the Addis p05–p95 of EC mass on the filter, or of EC concentration, against Addis itself: median and interquartile range of fAbs, fAbs / EC, EC concentration and EC mass. The same EC can carry much less absorption."
         provenance={NB.matched}>
         <IntervalStrip blocks={[{ key: 'm', rows: matchedRows }]} panels={[{ label: 'fAbs (Mm⁻¹)' }, { label: 'fAbs / EC (m²/g)', reference: meta.mac_value }, { label: 'EC (µg/m³)' }, { label: 'EC mass (µg)' }]}
-          labelWidth={220} noteWidth={60} minPanelWidth={170} />
+          labelWidth={150} noteWidth={56} minPanelWidth={140} />
         <DataTable rows={data.matched} rowKey={(r) => r.group} columns={[
           { key: 'g', label: 'Group', value: (r) => r.group }, { key: 'n', label: 'n', num: true, value: (r) => r.fit.n.toLocaleString() },
           { key: 's', label: 'OLS slope, fAbs ~ EC', num: true, value: (r) => fmt(r.fit.slope, 2) }, { key: 'i', label: 'Intercept (Mm⁻¹)', num: true, value: (r) => fmt(r.fit.intercept, 2) },
