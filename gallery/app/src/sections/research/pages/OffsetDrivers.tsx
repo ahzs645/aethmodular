@@ -11,7 +11,7 @@ import type { FilterRow } from '@/lib/types'
 import type { SectionPageProps } from '../../types'
 import { useAddisMet } from '../common/met'
 import { correlationP, influence, multiOls, ols, originFit, pearsonR, spearman, splitScan, type ScanRow } from '../common/stats'
-import { Bars, DataTable, Grid, HIGH, LOW, SitePick, fitText, line, num, ofSite, point, seasonsOf, shortSeason, useSite } from '../common/ui'
+import { Bars, DataTable, Grid, HIGH, LOW, SitePick, fitText, line, num, ofSite, pText, point, seasonsOf, shortSeason, useSite } from '../common/ui'
 import { defaultRh } from './RhSweep'
 
 const RECURSIVE = 'notebooks/analysis/meteorology/hips_ftir_intercept_rh_recursive_diagnostics.ipynb'
@@ -169,7 +169,7 @@ export function OffsetDrivers({ rows: viewRows, meta: viewMeta }: SectionPagePro
         provenance={<>{INVESTIGATION} (§2 residual decomposition) · {ENVELOPE}</>}
         controls={<Segmented label="Residual" value={resid} options={['fit', 'relative'] as const} onChange={setResid} optionLabel={(o) => (o === 'fit' ? 'From the OLS line' : `(${yF} − ${xF}) / ${xF}`)} />}>
         <Bars label="Spearman ρ²" max={Math.max(0.1, ...screen.slice(0, 20).map((s) => s.rho! ** 2))} bars={screen.slice(0, 20).map((s) => ({ key: s.f, label: s.f, value: s.rho! ** 2, signed: s.rho,
-          note: `ρ ${fmt(s.rho, 2)}`, tip: [s.f, `Spearman ρ ${fmt(s.rho, 3)} · Pearson r ${fmt(s.r, 3)} (p ${fmt(correlationP(s.r ?? NaN, s.n), 4)})`, `n ${s.n}`] }))} />
+          note: `ρ ${fmt(s.rho, 2)}`, tip: [s.f, `Spearman ρ ${fmt(s.rho, 3)} · Pearson r ${fmt(s.r, 3)} (p ${pText(correlationP(s.r ?? NaN, s.n))})`, `n ${s.n}`] }))} />
       </ChartFrame>
 
       <ChartFrame id="od-ba" title={`Bland–Altman — is the bias fixed or proportional?`}

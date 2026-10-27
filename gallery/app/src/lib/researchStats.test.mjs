@@ -39,10 +39,8 @@ test('Deming spans OLS (λ → ∞) to inverse OLS (λ → 0)', () => {
 
 test('Spearman with ties, Pearson p and the normal CDF', () => {
   near(spearman([1, 2, 2, 3, 5], [2, 1, 4, 4, 6]), 0.7631578947368421)
-  const yy = [2.1 + 0.5, 3.9 - 1, 6.2 + 2, 8.1 - 0.3, 9.8 + 1, 12.5 - 2]
   near(correlationP(0.9322050434932286, 6), 0.006738436089242768, 1e-6)
   near(normalCdf(1.96), 0.9750021048517795, 2e-7); near(normalCdf(-0.5), 0.3085375387259869, 2e-7)
-  assert.ok(yy.length === 6)
 })
 
 test('Steiger: equal correlations give z = 0; a stronger one gives a positive z', () => {
