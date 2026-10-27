@@ -69,6 +69,10 @@ historical presentation decks remain tracked pending retention review.
 - [`commands.md`](commands.md): stable diagnostics, notebook, pipeline,
   SPARTAN, and research-builder commands.
 
+- [`gallery-data-pipeline.md`](gallery-data-pipeline.md): how the gallery's
+  `public/data/` is rebuilt (`aeth gallery rebuild`), the Drive mirror, which
+  sections are private, and the publishing checklist.
+
 - [`spartan-network-data-pulls.md`](spartan-network-data-pulls.md): Davis FTIR
   and HIPS exports, public ChemSpec refresh, coverage reconciliation, and
   archive verification.

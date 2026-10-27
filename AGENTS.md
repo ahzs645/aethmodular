@@ -389,6 +389,22 @@ family genuinely needs a different value.
 When creating a new notebook, follow the `Example_Modular_Analysis.ipynb` or
 `addis_01_source_apportionment.ipynb` pattern.
 
+## Gallery data (rebuild, don't hand-edit)
+
+`gallery/app/public/data/` is generated. `gallery/data/rebuild.py` lists every
+step that makes it (script, inputs, outputs, order); run it through
+`uv run aeth gallery plan | rebuild | check`. When you add an exporter, add a
+step there and run `uv run aeth gallery markdown --write`, or
+`tests/test_gallery_rebuild.py` fails. Before publishing, run
+`uv run aeth gallery check`: it includes the check that the private sections
+(`instruments`, `research` in `gallery/app/src/sections/sections.json`) leave
+no data paths in the public build. Without Drive for Desktop, run
+`uv run aeth drive mirror` to copy the raw data down. Keep the folder id in
+`.env` as `DAVIS_DRIVE_FOLDER_ID` and never commit the share link. Treat the
+mirror as data and never run its scripts. The full guide, and the matching
+rules (filter windows, MA350 "Time local" is UTC, AAE from absorption, AERONET
+absorption trusted only where AOD 440 ≥ 0.4), is in [docs/gallery-data-pipeline.md](docs/gallery-data-pipeline.md).
+
 ## Data join quirks (easy to get wrong)
 
 - **PMF GF fractions need normalization.** Raw `GF1`–`GF5` values in

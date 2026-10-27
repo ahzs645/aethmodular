@@ -47,6 +47,14 @@ MAIA_COMMANDS = {
     "pull": "scripts/pipelines/maia_catalog.py",
 }
 
+GALLERY_COMMANDS = {
+    name: "gallery/data/rebuild.py" for name in ("plan", "rebuild", "check", "check-public", "sizes", "markdown")
+}
+
+DRIVE_COMMANDS = {
+    "mirror": "scripts/pipelines/mirror_davis_drive.py",
+}
+
 BUILD_GROUPS = {
     "ftir-calibration": "research/ftir_ec_calibration_2026_06_25",
     "spartan-ec": "research/spartan_ec_2026_06_16",
@@ -301,6 +309,14 @@ def command_maia(args: argparse.Namespace) -> int:
     return _run_script(MAIA_COMMANDS[args.workflow], [args.workflow, *args.script_args])
 
 
+def command_gallery(args: argparse.Namespace) -> int:
+    return _run_script(GALLERY_COMMANDS[args.workflow], [args.workflow, *args.script_args])
+
+
+def command_drive(args: argparse.Namespace) -> int:
+    return _run_script(DRIVE_COMMANDS[args.workflow], args.script_args)
+
+
 def _build_targets(group: str) -> dict[str, Path]:
     directory = _repo_path(BUILD_GROUPS[group])
     targets = {}
@@ -448,6 +464,16 @@ def build_parser() -> argparse.ArgumentParser:
     maia.add_argument("workflow", choices=sorted(MAIA_COMMANDS))
     maia.add_argument("script_args", nargs=argparse.REMAINDER, help="Arguments passed to the workflow.")
     maia.set_defaults(func=command_maia)
+
+    gallery = subparsers.add_parser("gallery", help="Rebuild and check the gallery data (docs/gallery-data-pipeline.md).")
+    gallery.add_argument("workflow", choices=sorted(GALLERY_COMMANDS))
+    gallery.add_argument("script_args", nargs=argparse.REMAINDER, help="Arguments passed to gallery/data/rebuild.py.")
+    gallery.set_defaults(func=command_gallery)
+
+    drive = subparsers.add_parser("drive", help="Mirror the shared Davis Data Drive folder locally.")
+    drive.add_argument("workflow", choices=sorted(DRIVE_COMMANDS))
+    drive.add_argument("script_args", nargs=argparse.REMAINDER, help="Arguments passed to the workflow.")
+    drive.set_defaults(func=command_drive)
 
     build = subparsers.add_parser("build", help="Discover and run research artifact builders.")
     build_sub = build.add_subparsers(dest="build_command", required=True)

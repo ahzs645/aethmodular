@@ -69,6 +69,14 @@ gallery/
 
 ## Running it
 
+**Rebuilding the data.** Every committed file under `public/data/` comes from
+a script listed in `gallery/data/rebuild.py`. Run `uv run aeth gallery plan` to
+see the steps and which inputs this machine has, `uv run aeth gallery rebuild`
+to regenerate them in order, and `uv run aeth gallery check` before publishing.
+[docs/gallery-data-pipeline.md](../docs/gallery-data-pipeline.md) covers the
+steps, the Drive mirror for machines without Drive, and which sections stay
+out of the public build.
+
 **Sites → Data availability** incorporates the existing SPARTAN product and
 HIPS coverage notebooks, four-site FTIR/HIPS/aethalometer day overlaps,
 sampling cadence and gaps, the filter inventory, and the historical

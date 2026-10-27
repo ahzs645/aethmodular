@@ -101,6 +101,28 @@ collection's granules into `data/maia/raw/<collection>/<target>/`, keeping the
 newest version of each target-day unless `--all-versions` is given. Downloads
 need `EARTHDATA_TOKEN` (see `.env.example`); `--dry-run` lists URLs without it.
 
+## Gallery data
+
+```bash
+aeth gallery plan                 # every step, what it reads and writes, and whether its inputs are here
+aeth gallery rebuild              # run the export steps in order (add --fetch to refresh AERONET/MAIA first)
+aeth gallery rebuild --only aeronet,aeronet-sites   # or --from <step>, --skip <step>, --dry-run
+aeth gallery check                # chart index, typecheck, tests, the public-build leak check, sizes
+aeth gallery check-public         # only the check that private sections stay out of the public build
+aeth gallery sizes                # bytes per data folder, public and private
+aeth gallery markdown --write     # refresh the step table in docs/gallery-data-pipeline.md
+aeth drive mirror --dest <dir> --link-root <dir>    # copy the "Davis Data" Drive folder down
+```
+
+`gallery/data/rebuild.py` is the one list of how `gallery/app/public/data/`
+is made: each step names its script, inputs and outputs, and a step whose
+inputs are missing is skipped with the reason rather than failing the run.
+Each run writes
+`research/ftir_hips_chem/output/tables/gallery_rebuild/last_run.json`. A
+rebuild on unchanged inputs should change only the `generated` stamps. See
+[`gallery-data-pipeline.md`](gallery-data-pipeline.md) for the steps, the
+Drive mirror, the public flag and the rules the exporters keep.
+
 ## Research builders
 
 ```bash
