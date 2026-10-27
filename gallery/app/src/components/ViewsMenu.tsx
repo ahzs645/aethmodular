@@ -8,9 +8,6 @@ import { PRESETS, applyView, currentView, encodeView, sameView, savedViews, save
  */
 export function ViewsMenu() {
   const [open, setOpen] = useState(false)
-  const [saved, setSaved] = useState<SavedView[]>(savedViews)
-  const [name, setName] = useState('')
-  const [note, setNote] = useState('')
   const box = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!open) return
@@ -20,7 +17,21 @@ export function ViewsMenu() {
     window.addEventListener('keydown', onKey)
     return () => { document.removeEventListener('pointerdown', onDown); window.removeEventListener('keydown', onKey) }
   }, [open])
-  useEffect(() => { if (!open) setNote('') }, [open])
+
+  return (
+    <div className="views-menu" ref={box}>
+      <button type="button" className={`btn quiet icon-btn${open ? ' on' : ''}`} aria-haspopup="dialog" aria-expanded={open} aria-label="Views"
+        title="Views: presets, saved views, copy link, embed" onClick={() => setOpen(!open)}><ViewsIcon /></button>
+      {open && <div className="views-pop" role="dialog" aria-label="Views"><ViewsPanel onClose={() => setOpen(false)} /></div>}
+    </div>
+  )
+}
+
+/** the menu's contents, also shown from the phone's ⋯ menu (components/HeaderMore); `onClose` after a view is applied */
+export function ViewsPanel({ onClose }: { onClose: () => void }) {
+  const [saved, setSaved] = useState<SavedView[]>(savedViews)
+  const [name, setName] = useState('')
+  const [note, setNote] = useState('')
 
   const copy = async (text: string, done: string) => {
     try { await navigator.clipboard.writeText(text); setNote(done) } catch { setNote('Could not copy; select the address bar instead') }
@@ -43,15 +54,11 @@ export function ViewsMenu() {
   const here = currentView()
 
   return (
-    <div className="views-menu" ref={box}>
-      <button type="button" className={`btn quiet icon-btn${open ? ' on' : ''}`} aria-haspopup="dialog" aria-expanded={open} aria-label="Views"
-        title="Views: presets, saved views, copy link, embed" onClick={() => setOpen(!open)}><ViewsIcon /></button>
-      {open && (
-        <div className="views-pop" role="dialog" aria-label="Views">
+        <>
           <div className="views-section">Presets</div>
           {PRESETS.map((p) => (
             <button key={p.key} type="button" className={`views-item ${sameView(p.view, here) ? 'on' : ''}`} title={p.note}
-              onClick={() => { applyView(p.view); setOpen(false) }}>
+              onClick={() => { applyView(p.view); onClose() }}>
               <span>{p.label}</span><span className="views-note">{p.note}</span>
             </button>
           ))}
@@ -59,7 +66,7 @@ export function ViewsMenu() {
           {saved.length === 0 && <div className="views-note views-pad">None yet: name the current view below.</div>}
           {saved.map((x) => (
             <div key={x.name} className="views-row">
-              <button type="button" className={`views-item ${sameView(x.view, here) ? 'on' : ''}`} onClick={() => { applyView(x.view); setOpen(false) }}><span>{x.name}</span></button>
+              <button type="button" className={`views-item ${sameView(x.view, here) ? 'on' : ''}`} onClick={() => { applyView(x.view); onClose() }}><span>{x.name}</span></button>
               <button type="button" className="btn quiet" aria-label={`Delete ${x.name}`} onClick={() => remove(x.name)}>×</button>
             </div>
           ))}
@@ -73,8 +80,6 @@ export function ViewsMenu() {
             <button type="button" className="btn" onClick={shareEmbed} title="An iframe snippet for a page or slide; opens without the header and the filter panel">Copy embed code</button>
           </div>
           {note && <div className="views-note views-pad" role="status">{note}</div>}
-        </div>
-      )}
-    </div>
+        </>
   )
 }

@@ -87,11 +87,11 @@ export function RainWashout({ rows, meta, field, prcpField, id = 'weather-washou
                       </g>}
                       {focusLast(c.members, (r) => r.id, hl.focusId).map(([r, i]) => {
                         const v = Math.min(r[field] as number, y.domain()[1])
-                        const st = focusStyle(r.id, hl.focusId, { r: 2.2, opacity: 0.7 }, hl.selected)
+                        const st = focusStyle(r.id, hl.focusId, { r: 2.2 }, hl.selected)
                         // deterministic jitter so a re-render does not shuffle the dots
                         const jx = ((i * 0.6180339) % 1 - 0.5) * bw * 0.8
                         return <circle key={r.id} cx={cx + jx} cy={y(v)} r={st.r} fill={meta.seasons.find((s) => s.name === r.season)?.color ?? INK.muted}
-                          fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} style={{ cursor: 'pointer' }} {...fidProps(r.id)}
+                          fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={st.dot} style={{ cursor: 'pointer' }} {...fidProps(r.id)}
                           onMouseEnter={(e) => { hl.setHover(r.id); tip.show(e, [r.id, `${r.date} · ${seasonOnly(String(r.season ?? ''))}`, `${field}: ${fmt(r[field])}`, `rain ${fmt(r[prcpField], 2)} mm/day`]) }}
                           onMouseLeave={() => { hl.setHover(null); tip.hide() }} onClick={(e) => { e.stopPropagation(); hl.openSample(r.id) }} />
                       })}

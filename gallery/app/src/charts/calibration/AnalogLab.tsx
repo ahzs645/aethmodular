@@ -9,6 +9,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { INK, MARGIN, FONT } from '@/lib/theme'
+import { dotFill } from '@/lib/highlight'
 import { PREPROCESSING, label } from '@/lib/labels'
 import type { AnalogLab as AnalogLabData } from '@/lib/types'
 import { cohortColor } from './common'
@@ -117,7 +118,7 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
                     if (!lg.show(cls(rank))) return null
                     const hot = hoverI === i
                     const pinned = pca.outside(p)
-                    return <circle key={i} cx={pca.cx(p)} cy={pca.cy(p)} r={hot ? 5 : inCohort ? 3 : 2} fill={pinned ? INK.panel : inCohort ? cohortColor('analogs') : INK.muted} fillOpacity={hot ? 1 : (inCohort ? 0.8 : 0.3) * lg.dim(cls(rank))} strokeOpacity={hot ? 1 : lg.dim(cls(rank))} stroke={hot ? INK.text : pinned ? INK.muted : 'none'} strokeWidth={hot ? 1.5 : pinned ? 1 : 0} pointerEvents="none" />
+                    return <circle key={i} cx={pca.cx(p)} cy={pca.cy(p)} r={hot ? 5 : inCohort ? 3 : 2} fill={pinned ? INK.panel : inCohort ? cohortColor('analogs') : INK.muted} {...(hot ? { fillOpacity: 1 } : dotFill(inCohort ? 'sparse' : 'dimmed', lg.dim(cls(rank))))} strokeOpacity={hot ? 1 : lg.dim(cls(rank))} stroke={hot ? INK.text : pinned ? INK.muted : 'none'} strokeWidth={hot ? 1.5 : pinned ? 1 : 0} pointerEvents="none" />
                   })}
                   {lg.show(ADDIS) && lab.addis_xy.map((p, i) => (
                     <text key={`a${i}`} x={pca.cx(p)} y={pca.cy(p)} dy="0.35em" textAnchor="middle" fontSize={11} fill={INK.text} fillOpacity={lg.dim(ADDIS)} fontFamily={FONT.family} pointerEvents="none">★</text>
@@ -136,7 +137,7 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
                   <IdentityLine x1={rx(0)} y1={ry(0)} x2={rx(lab.n)} y2={ry(lab.n)} />
                   <rect x={0} y={ry(cutoff)} width={rx(cutoff)} height={S - ry(cutoff)} fill={cohortColor('analogs')} fillOpacity={0.08} />
                   {rankPts.map((p, i) => lg.show(cls(p.c)) && (
-                    <circle key={i} cx={rx(p.c)} cy={ry(p.a)} r={1.6} fill={p.c < cutoff ? cohortColor('analogs') : INK.muted} fillOpacity={(p.c < cutoff ? 0.8 : 0.3) * lg.dim(cls(p.c))} pointerEvents="none" />
+                    <circle key={i} cx={rx(p.c)} cy={ry(p.a)} r={1.6} fill={p.c < cutoff ? cohortColor('analogs') : INK.muted} {...dotFill(p.c < cutoff ? 'sparse' : 'dimmed', lg.dim(cls(p.c)))} pointerEvents="none" />
                   ))}
                 </g>
               </svg>

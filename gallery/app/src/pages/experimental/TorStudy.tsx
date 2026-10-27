@@ -11,6 +11,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { loadJson } from '@/lib/data'
 import { useSearchParam } from '@/lib/url'
 import { ADDIS_ALL, FONT, IMPROVE_GREY, INK, themed } from '@/lib/theme'
+import { dotFill } from '@/lib/highlight'
 import { coef, coefSigned, f2, pct, signed } from '@/lib/format'
 import { Crossplot } from '@/components/Crossplot'
 import { AxisChoices } from '@/components/AxisChoices'
@@ -383,7 +384,7 @@ function WhereItSits({ d }: { d: TorData }) {
                   <line x1={x(q(nv, 0.5))} x2={x(q(nv, 0.5))} y1={midN - 5} y2={midN + 5} stroke={SPARTAN} strokeWidth={2} />
                 </>}
                 {sites.map((s) => { const val = s[siteVal[v.key]] as number; return Number.isFinite(val) && (!v.log || val > 0) ? <line key={s.site} x1={x(val)} x2={x(val)} y1={mid + 11} y2={mid + 16} stroke={IMPROVE_GREY} strokeWidth={0.8} /> : null })}
-                {add.map((p, i) => { const val = num(p[v.key]); return Number.isFinite(val) && (!v.log || val > 0) ? <circle key={i} cx={x(val)} cy={mid - 6 + jitter(i) * 12} r={2} fill={ADDIS_ALL} fillOpacity={0.55} /> : null })}
+                {add.map((p, i) => { const val = num(p[v.key]); return Number.isFinite(val) && (!v.log || val > 0) ? <circle key={i} cx={x(val)} cy={mid - 6 + jitter(i) * 12} r={2} fill={ADDIS_ALL} {...dotFill('dense')} /> : null })}
                 {ada.map((p, i) => { const val = num(p[v.key]); return Number.isFinite(val) && (!v.log || val > 0)
                   ? <path key={i} d={d3.symbol(d3.symbolDiamond, 70)() ?? ''} transform={`translate(${x(val)},${mid})`} fill={ADAMA} stroke={INK.panel} strokeWidth={1}
                     onMouseEnter={(e) => tip.show(e, [`Adama ${p.id}`, `${v.label}: ${v.fmt(val)}`])} onMouseLeave={tip.hide} /> : null })}

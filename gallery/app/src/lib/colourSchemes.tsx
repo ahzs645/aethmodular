@@ -1,6 +1,7 @@
 import * as d3 from 'd3'
 import { DIVERGING_SCHEMES, RAMP_SEQUENTIAL, isDark, registerPrintColours, registerPrintResolver } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
+import { useTheme } from '@/lib/colorTheme'
 import { ColourSchemePicker, type SchemeChoice } from '@/components/ColourSchemePicker'
 
 /**
@@ -103,6 +104,8 @@ export function schemeStops(kind: SchemeKind, name: string, reverse = false): st
 }
 
 export function useColourScheme(chartId: string, kind: SchemeKind, fallback = 'Gallery') {
+  // ramps have their own dark steps, which CSS cannot map (a cell's colour is interpolated): redraw on a switch
+  useTheme()
   const names = Object.keys(SCHEMES[kind])
   const [name, setName] = useSearchParam<string>(`${chartId}.palette`, fallback, names)
   const [rev, setRev] = useSearchParam<string>(`${chartId}.reverse`, '0', ['0', '1'])

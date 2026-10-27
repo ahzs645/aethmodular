@@ -102,9 +102,9 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
                 <circle key={`d${p.i}`} cx={x(p.d)} cy={y(p.dep as number)} r={3} fill="none" stroke={INK.axis} strokeWidth={1} strokeOpacity={dim(DEPLOYED_LABEL)} />
               ))}
               {focusLast(shown, (p) => p.id ?? `#${p.i}`, hl.focusId).map(([p]) => {
-                const st = focusStyle(p.id ?? `#${p.i}`, hl.focusId, { r: 3.2, opacity: showRoll ? 0.55 : 0.8 })
+                const st = focusStyle(p.id ?? `#${p.i}`, hl.focusId, { r: 3.2, level: showRoll ? 'dense' : 'sparse' })
                 return (
-                  <circle key={p.i} cx={x(p.d)} cy={y(p.v)} r={st.r} fill={color(p.g)} fillOpacity={st.opacity * dim(p.g)} stroke={st.stroke} strokeWidth={st.strokeWidth}
+                  <circle key={p.i} cx={x(p.d)} cy={y(p.v)} r={st.r} fill={color(p.g)} fillOpacity={st.opacity * dim(p.g)} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={dim(p.g) === 1 ? st.dot : undefined}
                     style={{ cursor: 'pointer' }}
                     onMouseEnter={(e) => { if (p.id) hl.setHover(p.id); tip.show(e, [p.id ?? `filter #${p.i + 1}`, `${run.eval.date?.[p.i]} · ${p.g}`, `predicted EC ${fmt(p.v, 3)} µg/m³`, ...(p.dep !== null ? [`deployed EC ${fmt(p.dep, 3)}`] : []), p.id && knownIds.has(baseFilterId(p.id)) ? 'click for the full filter record' : 'click for this filter\'s values']) }}
                     onMouseLeave={() => { hl.setHover(null); tip.hide() }}

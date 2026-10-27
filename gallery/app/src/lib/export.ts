@@ -1,6 +1,6 @@
 import { paletteSeason, type ExportSeason, type PaletteSeason } from './exportSeasons'
-import { collectExportPalette, paintColor, replacePaint, type ExportPalette, type ExportSite } from './exportColors'
-import { INK_LIGHT, inkOn, isDark, printColour } from './theme'
+import { collectExportPalette, fixedColours, paintColor, printPaint, replacePaint, type ExportPalette, type ExportSite } from './exportColors'
+import { CELL_INK, INK_LIGHT, inkOnFill, isDark } from './theme'
 /**
  * Download a chart as PNG, JPEG, SVG or PDF. The decks in this repo are built
  * from figures, so a chart that can only be screenshotted is a chart that will
@@ -9,13 +9,26 @@ import { INK_LIGHT, inkOn, isDark, printColour } from './theme'
  * Three steps, so the export dialog (components/ExportDialog) can preview and
  * size every option before anything is saved:
  *   composeFigure  clone the panel's figure once: chart parts and legend items, at page positions
- *   layoutFigure   place the legend (as on screen, right, top, bottom, or none) into one <svg>
- *   renderFigure   serialise that <svg> to the chosen format and scale
+ *   layoutFigure   place the legend (as on screen, right, top, bottom, inside the plot, or none) into one <svg>,
+ *                  and for a publication figure the fit statistics inside the plot too (PubLayout)
+ *   renderFigure   serialise that <svg> to the chosen format and scale, or to a physical width (a journal column)
  *
  * The SVG is serialised with an explicit background and the app font declared
  * inline, because a bare <svg> opened outside the page has neither.
  */
 const FONT = 'ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif'
+/**
+ * Typefaces for a publication figure. Journals ask for Arial or Helvetica (Elsevier, ACS, IEEE artwork
+ * guides); some house styles are serif. SVG and PNG use the font installed here; the PDF can embed only
+ * Inter (the one font file the app ships), whichever is chosen.
+ */
+export const PUB_FONTS: { key: string; label: string; css: string }[] = [
+  { key: 'arial', label: 'Arial', css: 'Arial, Helvetica, sans-serif' },
+  { key: 'helvetica', label: 'Helvetica', css: 'Helvetica, Arial, sans-serif' },
+  { key: 'times', label: 'Times New Roman', css: '"Times New Roman", Times, serif' },
+  { key: 'calibri', label: 'Calibri', css: 'Calibri, Carlito, Arial, sans-serif' },
+  { key: 'screen', label: 'As on screen', css: FONT },
+]
 const NS = 'http://www.w3.org/2000/svg'
 /** parts of a panel that are UI, not figure */
 const SKIP = '.frame-head, .frame-controls, .tooltip, button, select, input, [data-export="skip"]'
@@ -23,18 +36,27 @@ const SKIP = '.frame-head, .frame-controls, .tooltip, button, select, input, [da
 const HTML_TEXT = '.legend, .facet-title, [data-export="text"]'
 
 export type ExportFormat = 'png' | 'jpeg' | 'svg' | 'pdf'
-export type LegendPlacement = 'shown' | 'right' | 'bottom' | 'top' | 'none'
+export type LegendPlacement = 'shown' | 'right' | 'bottom' | 'top' | 'inside' | 'none'
 export type ExportBackground = 'white' | 'transparent'
 
 interface Box { left: number; top: number; right: number; bottom: number }
 /** a piece of the figure, already built at its page position */
-interface Piece { els: Element[]; box: Box; season?: PaletteSeason; detail?: string; off?: boolean }
+interface Piece { els: Element[]; box: Box; season?: PaletteSeason; detail?: string; off?: boolean
+  /** a legend's reading hint (Explain mode), not a key: a publication figure leaves it out */
+  note?: boolean }
+/** a line of a fit's statistics, handed over by components/RegressionOverlay when the export sets them inside the plot */
+interface StatsLine { text: string; color: string; method?: string; name?: boolean }
+/** a plot area (a chart's clipped axes box) and where its marks are, to find its emptiest corners */
+interface Plot { box: Box; points: [number, number][]; stats: { site?: string; color?: string; lines: StatsLine[] }[] }
 export interface Figure {
   /** axes, marks, facet titles: everything that stays where it is */
   chart: Piece[]
   /** each HTML legend on the panel, split into its items so they can be re-flowed */
   legends: Piece[][]
   palette: ExportPalette
+  plots: Plot[]
+  /** the figure's text sizes in px: the usual one (tick labels) and the smallest */
+  text: { median: number; min: number }
 }
 
 const visible = (el: Element) => {
@@ -102,9 +124,21 @@ export function composeFigure(panel: HTMLElement, sites: readonly ExportSite[] =
     }
   }
 
+  const plots: Plot[] = []
+  const sizes: number[] = []
   for (const svg of svgs) {
     const r = svg.getBoundingClientRect()
+    const areas = plotAreas(svg)
+    plots.push(...areas)
+    const stats = [...svg.querySelectorAll('[data-export-stats] > g')].map((g) => ({
+      site: g.getAttribute('data-fit-site') ?? undefined, color: g.getAttribute('data-export-color') ?? undefined,
+      lines: [...g.querySelectorAll('text')].map((t) => ({ text: t.textContent ?? '', color: t.getAttribute('fill') ?? '#000', method: t.getAttribute('data-regression-color') ?? undefined, name: t.getAttribute('data-line') === 'name' })),
+    }))
+    // the svg's own fits go with its largest plot area (a facet's summary with its facet)
+    if (stats.length && areas.length) areas.reduce((a, b) => (area(b.box) > area(a.box) ? b : a)).stats.push(...stats)
+    for (const t of svg.querySelectorAll('text')) if (!t.closest('[data-export-stats], [data-export="skip"]') && t.getClientRects().length) sizes.push(parseFloat(getComputedStyle(t).fontSize))
     const clone = svg.cloneNode(true) as SVGSVGElement
+    for (const el of clone.querySelectorAll('[data-export-stats]')) el.remove()
     clone.removeAttribute('style')
     clone.removeAttribute('class')
     clone.setAttribute('x', String(r.left))
@@ -153,6 +187,7 @@ export function composeFigure(panel: HTMLElement, sites: readonly ExportSite[] =
       el.setAttribute('y', String(rect.top + rect.height / 2))
       el.setAttribute('dominant-baseline', 'central')
       el.setAttribute('font-size', cs.fontSize)
+      sizes.push(parseFloat(cs.fontSize))
       el.setAttribute('fill', cs.color)
       if (cs.fontWeight !== '400' && cs.fontWeight !== 'normal') el.setAttribute('font-weight', cs.fontWeight)
       const item = parent.closest('.legend-item')
@@ -163,7 +198,7 @@ export function composeFigure(panel: HTMLElement, sites: readonly ExportSite[] =
       // its width on screen: the PDF draws it in Inter, which runs wider, and shrinks it to fit
       el.setAttribute('data-w', rect.width.toFixed(1))
       annotate(parent, el)
-      place(parent, { els: [el], box: boxOf(rect) })
+      place(parent, { els: [el], box: boxOf(rect), note: !!parent.closest('.legend-note') })
     }
   }
 
@@ -173,13 +208,66 @@ export function composeFigure(panel: HTMLElement, sites: readonly ExportSite[] =
       const name = els.find(el => el.hasAttribute('data-export-season'))?.getAttribute('data-export-season')
       const season = seasons.find(s => s.name === name)
       const detail = els.filter(el => el.tagName === 'text').map(el => el.textContent ?? '').find(t => /^n=\d+$/.test(t))
-      return { els, box: union(ps.map(p => p.box)), season: season ? paletteSeason(season) : undefined, detail,
+      return { els, box: union(ps.map(p => p.box)), season: season ? paletteSeason(season) : undefined, detail, note: ps.every((p) => p.note),
         off: els.some(el => el.getAttribute('text-decoration') === 'line-through') }
     }))
     .filter((l) => l.length)
   if (!chart.length) return null
-  if (isDark()) for (const p of [...chart, ...legends.flat()]) for (const el of p.els) printColours(el)
-  return { chart, legends, palette: collectExportPalette([...chart, ...legends.flat()].flatMap(p => p.els), sites, seasons) }
+  const dark = isDark() || panel.dataset.chartTheme === 'dark'
+  const fixed = fixedColours(sites, seasons)
+  if (dark) for (const p of [...chart, ...legends.flat()]) for (const el of p.els) printColours(el, fixed)
+  if (dark) for (const pl of plots) for (const st of pl.stats) for (const l of st.lines) { const light = printPaint(l.color, fixed); if (light) l.color = light }
+  for (const p of chart) for (const el of p.els) for (const d of [el, ...el.querySelectorAll('[data-dot]')]) d.removeAttribute('data-dot')
+  const sorted = sizes.filter((v) => v > 0).sort((a, b) => a - b)
+  const text = { median: sorted[Math.floor(sorted.length / 2)] ?? 11, min: sorted[0] ?? 11 }
+  return { chart, legends, plots, text, palette: collectExportPalette([...chart, ...legends.flat()].flatMap(p => p.els), sites, seasons) }
+}
+
+const area = (b: Box) => (b.right - b.left) * (b.bottom - b.top)
+
+/**
+ * A chart's plot areas: the boxes its marks are clipped to (every crossplot, time series and bar chart clips
+ * its marks to the axes), at page positions, with sample points along everything drawn inside them, so an
+ * inset legend or fit readout can take the emptiest corner. Gridlines and axes run along the edges or across
+ * the whole box, so they are left out of the count.
+ */
+function plotAreas(svg: SVGSVGElement): Plot[] {
+  const boxes: Box[] = []
+  for (const user of svg.querySelectorAll<SVGGraphicsElement>('[clip-path]')) {
+    const id = /url\(\s*['"]?#([^'")]+)/.exec(user.getAttribute('clip-path') ?? '')?.[1]
+    const rect = id ? document.getElementById(id)?.querySelector('rect') : null
+    const ctm = user.getScreenCTM()
+    if (!rect || !ctm) continue
+    const x = Number(rect.getAttribute('x') ?? 0), y = Number(rect.getAttribute('y') ?? 0)
+    const w = Number(rect.getAttribute('width')), h = Number(rect.getAttribute('height'))
+    if (!(w > 60 && h > 60)) continue
+    const a = new DOMPoint(x, y).matrixTransform(ctm), b = new DOMPoint(x + w, y + h).matrixTransform(ctm)
+    const box = { left: Math.min(a.x, b.x), top: Math.min(a.y, b.y), right: Math.max(a.x, b.x), bottom: Math.max(a.y, b.y) }
+    if (!boxes.some((o) => Math.abs(o.left - box.left) < 2 && Math.abs(o.top - box.top) < 2 && Math.abs(o.right - box.right) < 2 && Math.abs(o.bottom - box.bottom) < 2)) boxes.push(box)
+  }
+  // nested clips (a fit band inside the marks' clip) are the same plot
+  const plots = boxes.filter((b) => !boxes.some((o) => o !== b && area(o) > area(b) && o.left <= b.left + 1 && o.top <= b.top + 1 && o.right >= b.right - 1 && o.bottom >= b.bottom - 1))
+  if (!plots.length) return []
+  const inside = (b: Box, x: number, y: number) => x > b.left + 2 && x < b.right - 2 && y > b.top + 2 && y < b.bottom - 2
+  const points: [number, number][] = []
+  const marks = [...svg.querySelectorAll<SVGGraphicsElement>('circle, ellipse, rect, path, polygon, polyline')]
+    .filter((el) => !el.closest('defs, clipPath, [data-export-stats], .regression-summary, [data-export="skip"]') && el.getClientRects().length)
+  const perPath = Math.max(6, Math.min(40, Math.floor(6000 / Math.max(1, marks.length))))
+  for (const el of marks) {
+    const ctm = el.getScreenCTM()
+    if (!ctm) continue
+    if (el instanceof SVGGeometryElement && !(el instanceof SVGCircleElement) && !(el instanceof SVGEllipseElement)) {
+      let len = 0
+      try { len = el.getTotalLength() } catch { /* no geometry */ }
+      if (len > 0) {
+        for (let i = 0; i <= perPath; i++) { const p = el.getPointAtLength((len * i) / perPath).matrixTransform(ctm); points.push([p.x, p.y]) }
+        continue
+      }
+    }
+    const r = el.getBoundingClientRect()
+    points.push([(r.left + r.right) / 2, (r.top + r.bottom) / 2])
+  }
+  return plots.map((box) => ({ box, points: points.filter(([x, y]) => inside(box, x, y)), stats: [] }))
 }
 
 /** Consolidate legend keys only; chart marks and regression populations stay intact. */
@@ -209,16 +297,110 @@ function consolidateSeasonLegend(items: Piece[]): Piece[] {
   })
 }
 
-/** One <svg> from a composed figure, with the legend where it was asked for. */
-export function layoutFigure(fig: Figure, legend: LegendPlacement = 'shown', consolidateSeasons = false): SVGSVGElement {
+/**
+ * What a publication figure shows. The fit statistics' lines are only there when the chart draws them
+ * (the 95 % intervals need the gallery's fit uncertainty on); these choose among them.
+ */
+export interface PubShow {
+  n: boolean; r2: boolean; equation: boolean; method: boolean; slopeCI: boolean; interceptCI: boolean; ciNote: boolean
+  counts: boolean; fitLine: boolean; band: boolean; identity: boolean
+}
+export const PUB_SHOW: PubShow = { n: true, r2: true, equation: true, method: true, slopeCI: true, interceptCI: true, ciNote: false,
+  counts: true, fitLine: true, band: true, identity: true }
+
+/**
+ * A publication figure: the fit statistics inside the plot (or above it, as on screen, or left out),
+ * gridlines optional, one typeface (`font`, CSS) for every text, an optional panel letter, "(a)", and
+ * the pieces of information chosen in `show`.
+ */
+export interface PubLayout { stats: 'inside' | 'above' | 'off'; grid: boolean; label: string; font: string; show: PubShow }
+
+/** a legend item or facet title without its "n=…" count, its box narrowed to what is left */
+function withoutCount(it: Piece): Piece {
+  const els = it.els.filter((el) => !(el.tagName === 'text' && /^n=\d+$/.test(el.textContent ?? '')))
+  if (els.length === it.els.length) return it
+  const right = Math.max(it.box.left, ...els.map((el) => Number(el.getAttribute('x') ?? it.box.left) + Number(el.getAttribute(el.tagName === 'text' ? 'data-w' : 'width') ?? 0)))
+  return { ...it, els, box: { ...it.box, right } }
+}
+
+/** a legend item drawn k times its size, from its top left */
+function scaled(it: Piece, k: number): Piece {
+  const { left: L, top: T } = it.box
+  const g = document.createElementNS(NS, 'g')
+  g.setAttribute('transform', `translate(${L},${T}) scale(${+k.toFixed(3)}) translate(${-L},${-T})`)
+  for (const el of it.els) g.appendChild(el.cloneNode(true))
+  return { ...it, els: [g], box: { left: L, top: T, right: L + (it.box.right - L) * k, bottom: T + (it.box.bottom - T) * k } }
+}
+
+/**
+ * One <svg> from a composed figure, with the legend where it was asked for. `legendScale` sizes a moved
+ * legend (inside, right, top, bottom): 1 is its size on the page, or in a publication figure the figure's
+ * own text size. A legend left as on screen keeps its size, since the chart sits around it.
+ */
+export function layoutFigure(fig: Figure, legend: LegendPlacement = 'shown', consolidateSeasons = false, pub?: PubLayout, legendScale = 1): SVGSVGElement {
   if (consolidateSeasons && fig.palette.seasons.length) {
     fig = { ...fig, legends: fig.legends.map(consolidateSeasonLegend) }
     if (legend === 'shown') legend = 'bottom'
+  }
+  if (pub) {
+    // the legend's reading hints go, and the counts if asked
+    const keep = (it: Piece) => (pub.show.counts ? it : withoutCount(it))
+    fig = { ...fig,
+      chart: pub.show.counts ? fig.chart : fig.chart.map(withoutCount).filter((p) => p.els.length),
+      legends: fig.legends.map((items) => items.filter((it) => !it.note).map(keep)).filter((items) => items.length) }
+  }
+  if (legend !== 'shown') {
+    // a publication legend starts at the figure's text size (the page's legend is set a little larger than the ticks)
+    const sizes = fig.legends.flat().flatMap((it) => it.els.filter((el) => el.tagName === 'text').map((el) => parseFloat(el.getAttribute('font-size') ?? '0'))).filter((v) => v > 0)
+    const k = (pub && sizes.length ? fig.text.median / Math.max(...sizes) : 1) * legendScale
+    if (Math.abs(k - 1) > 0.01) fig = { ...fig, legends: fig.legends.map((items) => items.map((it) => scaled(it, k))) }
   }
   const out = document.createElementNS(NS, 'svg') as SVGSVGElement
   const placed: { piece: Piece; dx: number; dy: number }[] = fig.chart.map((piece) => ({ piece, dx: 0, dy: 0 }))
   const chartBox = union(fig.chart.map((p) => p.box))
   const legendPieces = fig.legends.flat()
+
+  // insets: the fit statistics first (one per plot that has them), then the legend, each in the emptiest corner left
+  const taken: Box[] = []
+  if (pub?.stats === 'inside') for (const plot of fig.plots) {
+    if (!plot.stats.length) continue
+    const inset = statsInset(plot, fig.text.median, pub.font, pub.show)
+    if (!inset) continue
+    const at = corner(plot, inset.w, inset.h, ['tl', 'tr', 'bl', 'br'], taken)
+    // too big for the plot: above it, where the summary sits on screen
+    const box = at ?? { left: plot.box.left, top: plot.box.top - inset.h - 6, right: plot.box.left + inset.w, bottom: plot.box.top - 6 }
+    taken.push(box)
+    placed.push({ piece: { els: inset.draw(box.left, box.top), box }, dx: 0, dy: 0 })
+  }
+  if (legend === 'inside') {
+    // one plot to put it in; a figure of several facets keeps its legend at the right
+    const plot = fig.plots.length === 1 ? fig.plots[0] : null
+    const itemsW = Math.max(0, ...legendPieces.map((it) => it.box.right - it.box.left))
+    const itemsH = legendPieces.reduce((h, it) => h + it.box.bottom - it.box.top + 3, 0) - 3 + 4 * (fig.legends.length - 1)
+    const pad = 5
+    const at = plot && legendPieces.length ? corner(plot, itemsW + 2 * pad, itemsH + 2 * pad, ['br', 'tl', 'tr', 'bl'], taken) : null
+    if (at) {
+      taken.push(at)
+      placed.push({ piece: { els: [insetBackground(at)], box: at }, dx: 0, dy: 0 })
+      let y = at.top + pad
+      for (const items of fig.legends) {
+        for (const it of items) {
+          placed.push({ piece: it, dx: at.left + pad - it.box.left, dy: y - it.box.top })
+          y += it.box.bottom - it.box.top + 3
+        }
+        y += 4
+      }
+    } else legend = plot ? 'bottom' : 'right'
+  }
+  if (pub?.label.trim()) {
+    const size = Math.round(fig.text.median * 1.3)
+    const t = document.createElementNS(NS, 'text')
+    const top = chartBox.top - size - 4
+    t.setAttribute('x', String(chartBox.left)); t.setAttribute('y', String(top + size / 2))
+    t.setAttribute('dominant-baseline', 'central'); t.setAttribute('font-size', String(size)); t.setAttribute('font-weight', 'bold'); t.setAttribute('fill', '#000')
+    t.textContent = pub.label.trim()
+    placed.push({ piece: { els: [t], box: { left: chartBox.left, top, right: chartBox.left + textWidth(t.textContent, size, pub.font, 'bold'), bottom: top + size } }, dx: 0, dy: 0 })
+  }
 
   if (legend === 'shown') {
     for (const piece of legendPieces) placed.push({ piece, dx: 0, dy: 0 })
@@ -266,7 +448,105 @@ export function layoutFigure(fig: Figure, legend: LegendPlacement = 'shown', con
     for (const el of piece.els) g.appendChild(el.cloneNode(true))
     out.appendChild(g)
   }
+  if (pub) {
+    // gridlines: every chart draws them as lines in the grid colour (light, as composed)
+    const grid = paintColor(INK_LIGHT.grid)
+    if (!pub.grid) for (const el of out.querySelectorAll('line')) if (paintColor(el.getAttribute('stroke')) === grid) el.remove()
+    if (!pub.show.fitLine) for (const el of out.querySelectorAll('[data-regression]')) el.remove()
+    if (!pub.show.band) for (const el of out.querySelectorAll('[data-fit-uncertainty]')) el.remove()
+    if (!pub.show.identity) for (const el of out.querySelectorAll('[data-identity]')) el.remove()
+    // one typeface for the whole figure (the summary and counts are monospace on screen)
+    for (const el of out.querySelectorAll('[font-family]')) el.removeAttribute('font-family')
+    for (const el of out.querySelectorAll<SVGElement>('[style*="font-family"]')) el.style.removeProperty('font-family')
+    out.setAttribute('data-font', pub.font)
+  }
   return out
+}
+
+const measure = document.createElement('canvas').getContext('2d')
+const textWidth = (text: string, size: number, font: string, weight = 'normal') => {
+  if (!measure) return text.length * size * 0.55
+  measure.font = `${weight} ${size}px ${font}`
+  return measure.measureText(text).width
+}
+
+function insetBackground(b: Box) {
+  const r = document.createElementNS(NS, 'rect')
+  r.setAttribute('x', String(b.left)); r.setAttribute('y', String(b.top))
+  r.setAttribute('width', String(b.right - b.left)); r.setAttribute('height', String(b.bottom - b.top))
+  r.setAttribute('rx', '2'); r.setAttribute('fill', '#ffffff'); r.setAttribute('fill-opacity', '0.88')
+  r.setAttribute('stroke', '#c8c8c8'); r.setAttribute('stroke-width', '0.6')
+  return r
+}
+
+/**
+ * A plot's fit statistics as a compact readout in the figure's own text size and typeface: the site,
+ * n and R², each fit's equation and its 95 % intervals, as `show` asks. The resampling note (which CI)
+ * is off by default: a journal wants methods in the caption. Null when nothing is left to show.
+ */
+function statsLine(text: string, show: PubShow): string | null {
+  if (/^n = /.test(text)) {
+    const parts = text.split(' · ').filter((p) => (/^n = /.test(p) ? show.n : /^R²/.test(p) ? show.r2 : true))
+    return parts.length ? parts.join(', ') : null
+  }
+  if (/^95% CI ·|^CI unavailable/.test(text)) return show.ciNote ? text.replace(' · ', ': ') : null
+  if (/^95% slope/.test(text)) return show.slopeCI ? text : null
+  if (/^95% intercept/.test(text)) return show.interceptCI ? text : null
+  if (/\by = /.test(text)) return show.equation ? (show.method ? text : text.slice(text.indexOf('y = '))) : null
+  return text
+}
+
+function statsInset(plot: Plot, size: number, font: string, show: PubShow) {
+  const fs = Math.max(8, Math.round(size * 0.95))
+  const step = Math.round(fs * 1.25)
+  const lines = plot.stats.flatMap((st) => st.lines
+    .map((l) => ({ ...l, text: l.name ? l.text : statsLine(l.text, show), site: st.site, siteColor: st.color }))
+    .filter((l): l is typeof l & { text: string } => l.text !== null))
+  // a site's name alone says nothing
+  if (!lines.some((l) => !l.name)) return null
+  const padX = 5, padY = 4
+  const w = Math.ceil(Math.max(...lines.map((l) => textWidth(l.text, fs, font, l.name ? 'bold' : 'normal')))) + 2 * padX
+  const h = lines.length * step + 2 * padY - (step - fs)
+  const draw = (x: number, y: number) => {
+    const els: Element[] = [insetBackground({ left: x, top: y, right: x + w, bottom: y + h })]
+    lines.forEach((l, i) => {
+      const t = document.createElementNS(NS, 'text')
+      t.setAttribute('x', String(x + padX)); t.setAttribute('y', String(y + padY + i * step + fs / 2))
+      t.setAttribute('dominant-baseline', 'central'); t.setAttribute('font-size', String(fs)); t.setAttribute('fill', l.color)
+      if (l.name) t.setAttribute('font-weight', 'bold')
+      if (l.method) t.setAttribute('data-regression-color', l.method)
+      if (l.site) { t.setAttribute('data-export-site', l.site); if (l.siteColor) t.setAttribute('data-export-color', l.siteColor) }
+      t.textContent = l.text
+      els.push(t)
+    })
+    return els
+  }
+  return { w, h, draw }
+}
+
+/**
+ * The emptiest corner of a plot for a w × h box, clear of boxes already placed. Null when it does not fit,
+ * or when every corner would cover data (a few samples of a line, or about 1 % of the marks): an inset
+ * that hides points is worse than one outside the axes.
+ */
+function corner(plot: Plot, w: number, h: number, order: ('tl' | 'tr' | 'bl' | 'br')[], taken: Box[]): Box | null {
+  const m = 6, b = plot.box
+  if (w > b.right - b.left - 2 * m || h > b.bottom - b.top - 2 * m) return null
+  const at = (c: string): Box => {
+    const left = c[1] === 'l' ? b.left + m : b.right - m - w
+    const top = c[0] === 't' ? b.top + m : b.bottom - m - h
+    return { left, top, right: left + w, bottom: top + h }
+  }
+  const overlaps = (p: Box, q: Box) => p.left < q.right && q.left < p.right && p.top < q.bottom && q.top < p.bottom
+  let best: Box | null = null, bestScore = Infinity
+  for (const c of order) {
+    const box = at(c)
+    if (taken.some((t) => overlaps(t, box))) continue
+    const near = { left: box.left - 3, top: box.top - 3, right: box.right + 3, bottom: box.bottom + 3 }
+    const score = plot.points.reduce((n, [x, y]) => n + (x >= near.left && x <= near.right && y >= near.top && y <= near.bottom ? 1 : 0), 0)
+    if (score < bestScore) { best = box; bestScore = score }
+  }
+  return bestScore <= Math.max(2, plot.points.length * 0.01) ? best : null
 }
 
 /** The figure exactly as it sits on screen (the old single-button export). */
@@ -275,17 +555,16 @@ export function composePanel(panel: HTMLElement): SVGSVGElement | null {
   return fig ? layoutFigure(fig, 'shown') : null
 }
 
-/** A figure composed on the dark page, redrawn in the light theme's colours (lib/theme printColour). */
+/** A figure composed on the dark page, redrawn in the light theme's colours (lib/theme printColour); site and season colours stay. */
 const PAINTS = ['fill', 'stroke', 'stop-color', 'flood-color', 'color']
 const SHAPES = new Set(['rect', 'path', 'circle', 'polygon', 'ellipse'])
-function printColours(root: Element) {
+function printColours(root: Element, fixed: ReadonlySet<string>) {
   const recoloured = new Set<Element>()
   const swap = (el: Element, paint: string) => {
-    const hex = paintColor(paint)
-    const light = hex && printColour(hex)
+    const light = printPaint(paint, fixed)
     if (!light) return paint
     recoloured.add(el)
-    return replacePaint(paint, hex, light)
+    return replacePaint(paint, paintColor(paint)!, light)
   }
   const all = [root, ...root.querySelectorAll('*')]
   for (const el of all) {
@@ -299,28 +578,31 @@ function printColours(root: Element) {
       if (v) style.setProperty(a, swap(el, v))
     }
   }
-  // a label on a heat-map cell was given white or dark ink for the dark cell (lib/theme inkOn):
-  // pick it again for the cell's light colour
+  // a label on a heat-map cell was given white or dark ink for the cell as the dark page showed it
+  // (lib/theme inkOn): pick it again for the cell's light colour
   for (const el of all) {
     const ink = paintColor(el.getAttribute('fill'))
-    if (el.tagName !== 'text' || recoloured.has(el) || (ink !== '#ffffff' && ink !== INK_LIGHT.text)) continue
+    if (el.tagName !== 'text' || recoloured.has(el) || (ink !== '#ffffff' && ink !== CELL_INK)) continue
     let cell = el.previousElementSibling
     while (cell && !SHAPES.has(cell.tagName)) cell = cell.previousElementSibling
-    const fill = cell && recoloured.has(cell) ? paintColor(cell.getAttribute('fill')) : null
-    if (fill) el.setAttribute('fill', inkOn(fill))
+    const fill = cell ? paintColor(cell.getAttribute('fill')) : null
+    if (fill) el.setAttribute('fill', inkOnFill(fill))
   }
 }
 
-function serialise(svg: SVGSVGElement, background: ExportBackground, fontFamily = FONT): { xml: string; width: number; height: number; node: SVGSVGElement } {
+function serialise(svg: SVGSVGElement, background: ExportBackground, fontFamily = svg.getAttribute('data-font') ?? FONT, widthMm?: number): { xml: string; width: number; height: number; node: SVGSVGElement } {
   const clone = svg.cloneNode(true) as SVGSVGElement
   // a composed figure is not in the DOM, so its client size is 0 and the attributes carry it
   const width = svg.clientWidth || Number(svg.getAttribute('width')) || 800
   const height = svg.clientHeight || Number(svg.getAttribute('height')) || 500
   clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
-  clone.setAttribute('width', String(width))
-  clone.setAttribute('height', String(height))
+  clone.setAttribute('width', widthMm ? `${widthMm}mm` : String(width))
+  clone.setAttribute('height', widthMm ? `${+(widthMm * height / width).toFixed(2)}mm` : String(height))
+  // a physical size keeps the drawing's px as its coordinates
+  if (widthMm) clone.setAttribute('viewBox', `0 0 ${width} ${height}`)
+  clone.removeAttribute('data-font')
   clone.setAttribute('font-family', fontFamily)
-  if (fontFamily === FONT) for (const el of clone.querySelectorAll('[data-w]')) el.removeAttribute('data-w')
+  if (fontFamily !== 'Inter') for (const el of clone.querySelectorAll('[data-w]')) el.removeAttribute('data-w')
   if (background === 'white') {
     const bg = document.createElementNS(NS, 'rect')
     bg.setAttribute('width', '100%')
@@ -331,7 +613,12 @@ function serialise(svg: SVGSVGElement, background: ExportBackground, fontFamily 
   return { xml: new XMLSerializer().serializeToString(clone), width, height, node: clone }
 }
 
-export interface RenderOpts { format: ExportFormat; scale: number; background: ExportBackground }
+/** `widthMm` (a journal column): the file is that wide on paper; a raster is then drawn at `dpi` instead of `scale` */
+export interface RenderOpts { format: ExportFormat; scale: number; background: ExportBackground; widthMm?: number; dpi?: number }
+
+/** pixels per figure px for a raster at a physical width and dpi, or the plain scale */
+export const rasterScale = (widthPx: number, opts: Pick<RenderOpts, 'scale' | 'widthMm' | 'dpi'>) =>
+  opts.widthMm && opts.dpi ? (opts.dpi * opts.widthMm / 25.4) / widthPx : opts.scale
 export const MIME: Record<ExportFormat, string> = { png: 'image/png', jpeg: 'image/jpeg', svg: 'image/svg+xml', pdf: 'application/pdf' }
 /** browsers cap a canvas side near 16k px (Safari lower), so very large scales are refused */
 export const MAX_CANVAS_SIDE = 16000
@@ -340,19 +627,20 @@ export const MAX_CANVAS_SIDE = 16000
 export async function renderFigure(svg: SVGSVGElement, opts: RenderOpts): Promise<Blob> {
   // JPEG has no alpha: a transparent background would turn black
   const background = opts.format === 'jpeg' ? 'white' : opts.background
-  if (opts.format === 'svg') return new Blob([serialise(svg, background).xml], { type: 'image/svg+xml;charset=utf-8' })
-  if (opts.format === 'pdf') return renderPdf(svg, background)
+  if (opts.format === 'svg') return new Blob([serialise(svg, background, undefined, opts.widthMm).xml], { type: 'image/svg+xml;charset=utf-8' })
+  if (opts.format === 'pdf') return renderPdf(svg, background, opts.widthMm)
   const { xml, width, height } = serialise(svg, background)
+  const scale = rasterScale(width, opts)
   const url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }))
   try {
     const img = new Image()
     await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = () => reject(new Error('could not draw the figure')); img.src = url })
     const canvas = document.createElement('canvas')
-    canvas.width = Math.round(width * opts.scale)
-    canvas.height = Math.round(height * opts.scale)
+    canvas.width = Math.round(width * scale)
+    canvas.height = Math.round(height * scale)
     if (Math.max(canvas.width, canvas.height) > MAX_CANVAS_SIDE) throw new Error('too large for the browser to draw')
     const ctx = canvas.getContext('2d')!
-    ctx.scale(opts.scale, opts.scale)
+    ctx.scale(scale, scale)
     ctx.drawImage(img, 0, 0)
     return await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('the browser could not encode the image'))), MIME[opts.format], 0.92))
   } finally {
@@ -362,11 +650,12 @@ export async function renderFigure(svg: SVGSVGElement, opts: RenderOpts): Promis
 
 /**
  * A vector PDF (jsPDF + svg2pdf.js, loaded only when asked for). The page is the
- * figure's size at 96 px to the inch, so it prints at the size it shows on screen.
+ * figure's size at 96 px to the inch, so it prints at the size it shows on screen,
+ * or `widthMm` wide (a journal column) with everything scaled to it.
  * PDF's built-in fonts cannot draw ₂, −, ≈ or λ, so Inter (OFL) is embedded and
  * every text uses it.
  */
-async function renderPdf(svg: SVGSVGElement, background: ExportBackground): Promise<Blob> {
+async function renderPdf(svg: SVGSVGElement, background: ExportBackground, widthMm?: number): Promise<Blob> {
   const [{ jsPDF }, { svg2pdf }, fonts] = await Promise.all([import('jspdf'), import('svg2pdf.js'), pdfFonts()])
   const copy = serialise(svg, background, 'Inter')
   const { node, height } = copy
@@ -386,7 +675,7 @@ async function renderPdf(svg: SVGSVGElement, background: ExportBackground): Prom
     node.setAttribute('width', String(width))
     node.setAttribute('viewBox', `0 0 ${width} ${height}`)
   }
-  const pt = 0.75
+  const pt = widthMm ? (widthMm / 25.4 * 72) / width : 0.75
   const doc = new jsPDF({ unit: 'pt', format: [width * pt, height * pt], orientation: width > height ? 'landscape' : 'portrait', compress: true })
   doc.addFileToVFS('Inter-Regular.ttf', fonts.regular)
   doc.addFont('Inter-Regular.ttf', 'Inter', 'normal')
@@ -396,6 +685,8 @@ async function renderPdf(svg: SVGSVGElement, background: ExportBackground): Prom
   // svg2pdf measures text and reads computed styles, so the copy has to be in the document while it converts
   const host = document.createElement('div')
   host.style.cssText = 'position:fixed;left:-100000px;top:0;visibility:hidden;pointer-events:none'
+  // lib/themeCss leaves a [data-print] copy alone, so the dark page's CSS does not recolour the PDF
+  host.dataset.print = ''
   host.appendChild(node)
   document.body.appendChild(host)
   try {

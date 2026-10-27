@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { CHART_DISPLAY_CSS } from './chartDisplayStyles'
 
 /**
  * Viewer preferences. `explain` is the one that matters: off by default, the
@@ -47,7 +48,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(DENSITY_KEY, density) } catch { /* the choice still holds for the session */ }
   }, [density])
   const value = useMemo(() => ({ explain: EXPLAIN_AVAILABLE && explain, setExplain: setExplainState, density, setDensity }), [explain, density])
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={value}><style>{CHART_DISPLAY_CSS}</style>{children}</Ctx.Provider>
 }
 
 export const usePrefs = () => useContext(Ctx)

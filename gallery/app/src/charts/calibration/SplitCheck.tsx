@@ -9,6 +9,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { INK, MARGIN, FONT } from '@/lib/theme'
+import { dotRim } from '@/lib/highlight'
 import type { CalibRun, CalibRunsFile } from '@/lib/types'
 import { metricRow } from './common'
 
@@ -77,7 +78,7 @@ export function SplitCheck({ run, runs }: { run: CalibRun; runs: CalibRunsFile }
                 <g key={r.split} onMouseEnter={(e) => tip.show(e, [`${SPLIT_LABEL[r.split] ?? r.split} (n=${r.n})`, `Deming slope ${fmt(slopeOf(r), 3)} · intercept ${fmt(icOf(r), 3)} µg/m³`, `R² ${fmt(r.m!.R2 ?? null, 3)}`])} onMouseLeave={tip.hide}>
                   {r.split === 'all'
                     ? <rect x={x(fx(r)) - 6} y={y(fy(r)) - 6} width={12} height={12} transform={`rotate(45 ${x(fx(r))} ${y(fy(r))})`} fill={SPLIT_COLOR.all} />
-                    : <circle cx={x(fx(r))} cy={y(fy(r))} r={6} fill={SPLIT_COLOR[r.split] ?? INK.muted} />}
+                    : <circle cx={x(fx(r))} cy={y(fy(r))} r={6} fill={SPLIT_COLOR[r.split] ?? INK.muted} {...dotRim()} />}
                   <text x={x(fx(r))} y={y(fy(r)) + (i % 2 ? 18 : -11)} textAnchor="middle" fontSize={10} fill={INK.text} fontFamily={FONT.mono}>{r.split}</text>
                 </g>
               ))}

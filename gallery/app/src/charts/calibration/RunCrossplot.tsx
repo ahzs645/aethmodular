@@ -200,8 +200,8 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96, galle
                   <XAxis scale={ex} y={S} label={axisLabel(rx)} pick="x" />
                   {rY === RESID && <line x1={0} x2={S} y1={ey(0)} y2={ey(0)} stroke={INK.text} strokeWidth={1.4} />}
                   {focusLast(explore, (p) => p.id ?? `#${p.i}`, hl.focusId).map(([p]) => {
-                    const st = focusStyle(p.id ?? `#${p.i}`, hl.focusId, { r: 3.2, opacity: 0.7 })
-                    return <circle key={p.i} cx={ex(p.ex)} cy={ey(p.ey)} r={st.r} fill={color(p.g)} fillOpacity={st.opacity * dim(p.g)} stroke={st.stroke} strokeWidth={st.strokeWidth} onMouseEnter={(e) => enter(e, p)} onMouseLeave={leave} onClick={() => click(p)} style={{ cursor: 'pointer' }} />
+                    const st = focusStyle(p.id ?? `#${p.i}`, hl.focusId, { r: 3.2 })
+                    return <circle key={p.i} cx={ex(p.ex)} cy={ey(p.ey)} r={st.r} fill={color(p.g)} fillOpacity={st.opacity * dim(p.g)} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={dim(p.g) === 1 ? st.dot : undefined} onMouseEnter={(e) => enter(e, p)} onMouseLeave={leave} onClick={() => click(p)} style={{ cursor: 'pointer' }} />
                   })}
                 </g>
               </svg>

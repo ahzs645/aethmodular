@@ -13,6 +13,8 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { useSearchParam } from '@/lib/url'
 import { ADDIS_ALL, FONT, IMPROVE_GREY, INK, inkOn, isDark, themed } from '@/lib/theme'
+import { dotFill, dotRim } from '@/lib/highlight'
+import { useTheme } from '@/lib/colorTheme'
 import { f2, f3, pct, signed } from '@/lib/format'
 import { Forest, placeLabels } from './shared'
 
@@ -213,13 +215,13 @@ function BlindSpotMap({ d }: { d: FlagData }) {
               {pts.map((i) => {
                 const cat = cats[mi.category[i] as number]
                 return <circle key={i} cx={x(mi['loading percentile'][i] as number)} cy={y(mi['distance percentile'][i] as number)} r={cat === 'fine' ? 1.6 : 2.4}
-                  fill={CAT_COLOR[cat]} fillOpacity={cat === 'fine' ? 0.5 : 0.85} opacity={lg.dim(cat)}
+                  fill={CAT_COLOR[cat]} {...dotFill(cat === 'fine' ? 'dense' : 'sparse')} opacity={lg.dim(cat)}
                   onMouseEnter={(e) => tip.show(e, [`IMPROVE ${mi.site[i]} · ${mi.filter_id[i]}`, cat, `FTIR − TOR ${signed(mi['error µg'][i] as number)} µg`, `flag risk ${f2(mi.risk[i] as number)}`])} onMouseLeave={tip.hide} />
               })}
             </g>
             {over.filter((r) => r.dist != null && (r.load != null || r.beyond)).map((r) => (
-              <circle key={r.id} cx={lx(r)} cy={y(r.dist!)} r={4} fill={r.population === 'Addis' ? ADDIS_ALL : '#7c3aed'} fillOpacity={0.55}
-                stroke={r.population === 'Addis' ? '#7a5c00' : '#4c1d95'} strokeWidth={1} strokeOpacity={0.9}
+              <circle key={r.id} cx={lx(r)} cy={y(r.dist!)} r={4} fill={r.population === 'Addis' ? ADDIS_ALL : '#7c3aed'} {...dotFill('dense')}
+                {...dotRim()}
                 onMouseEnter={(e) => tip.show(e, [`${r.site} · ${r.id}`, `${r.date}${r.season ? ` · ${r.season}` : ''}`, `PM2.5 ${f2(r.pm)} µg per filter${r.beyond ? ' (beyond IMPROVE)' : ''}`,
                   `loading pct ${f2(r.load)}, distance pct ${f2(r.dist)}`, `flag risk ${f2(r.risk)}${r.flagged ? ' · flagged' : ''}`])} onMouseLeave={tip.hide} />
             ))}
@@ -250,6 +252,7 @@ function BlindSpotMap({ d }: { d: FlagData }) {
 
 // ------------------------------------------------------------------ 2. ablation ladder
 function Ladder({ d }: { d: FlagData }) {
+  useTheme() // rungColor starts the ramp higher on the dark page
   const rows = d.ladder.map((r, i) => {
     const c = rungColor(i, d.ladder.length), best = r.rung === d.settings.BEST
     return {
@@ -307,6 +310,7 @@ const METRICS = ['RMSE kept', 'impacted let through', 'impacted among kept', 'bi
 type Metric = typeof METRICS[number]
 const METRIC_LABEL: Record<Metric, string> = { 'RMSE kept': 'RMSE among kept filters (µg)', 'impacted let through': 'share of impacted filters kept', 'impacted among kept': 'impacted share among kept', 'bias kept': 'mean error among kept (µg)' }
 function Coverage({ d }: { d: FlagData }) {
+  useTheme()
   const scores = Object.keys(d.coverage)
   const rungs = d.ladder.map((r) => r.rung)
   const keepShown = new Set([LOADING, DISTANCE, d.settings.BEST, 'oracle (true error)', 'random'])

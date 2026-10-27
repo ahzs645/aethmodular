@@ -4,7 +4,7 @@ import { RegressionLines, RegressionGroupLines, useRegressionSummary } from '@/c
 import { fitsFor, useRegressions } from '@/lib/regressionPrefs'
 import { fitGroupingOption, useChartOptions } from '@/lib/chartOptions'
 import { useChartGrouping } from '@/components/GroupingDialog'
-import { groupedRegressions, type FitGrouping } from '@/lib/siteRegression'
+import { bandRegressions, groupedRegressions, type FitGrouping } from '@/lib/siteRegression'
 import { useId, useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { hexbin as d3Hexbin } from 'd3-hexbin'
@@ -62,10 +62,9 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   const perBand = !!o.values.byGroup && !!grp
   // several fits drawn: per site or season (the gallery's grouping), or per band of the grouping
   const split = perBand || grouping !== 'pooled'
-  const fitGroups = useMemo(() => perBand ? groupedRegressions(pairedRows.filter((r) => grp!.labelOf(r) !== null), 'site', {
-    x: r => r[xField] as number, y: r => r[yField] as number, site: r => grp!.labelOf(r)!, color: r => grp!.colorOf(grp!.labelOf(r)!),
-    options: members => fitUncertainty(members, xField, yField, meta),
-  }).sort((a, b) => grp!.labels.indexOf(a.name) - grp!.labels.indexOf(b.name)) : groupedRegressions(pairedRows, grouping, {
+  const fitGroups = useMemo(() => perBand ? bandRegressions(pairedRows, grp!, {
+    x: r => r[xField] as number, y: r => r[yField] as number, options: members => fitUncertainty(members, xField, yField, meta),
+  }) : groupedRegressions(pairedRows, grouping, {
     x: r => r[xField] as number, y: r => r[yField] as number, site: r => r.site,
     season: r => r.season, seasonColor: r => meta.seasons.find(se => se.name === r.season)?.color ?? INK.muted,
     color: r => meta.sites.find(s => s.name === r.site)?.color ?? INK.muted,

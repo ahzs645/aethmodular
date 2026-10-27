@@ -174,11 +174,11 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
                     {panel.series.map((s) => (
                       <g key={s.name} opacity={dim(s.name)} data-export-site={s.name} data-export-color={s.color}>
                         {focusLast(s.pts, (p) => p.row.id, hl.focusId).map(([p]) => {
-                          const st = focusStyle(p.row.id, hl.focusId, { r: 2.6, opacity: smooth ? 0.32 : 0.75 }, hl.selected)
+                          const st = focusStyle(p.row.id, hl.focusId, { r: 2.6, level: smooth ? 'dimmed' : 'standard' }, hl.selected)
                           return (
                             <circle
                               key={p.row.id} cx={x(p.date)} cy={y(p.value)} r={st.r}
-                              fill={s.color} fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={hl.focusId === p.row.id ? 2 : 0}
+                              fill={s.color} fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={st.dot}
                               pointerEvents="none"
                             />
                           )

@@ -30,3 +30,18 @@ export function groupedRegressions<T>(points: readonly T[], grouping: FitGroupin
       domain: [Math.min(...xs), Math.max(...xs)] as [number, number] }] : []
   })
 }
+
+/**
+ * One fit per band of a grouping (lib/groupings applyGrouping): points in no band are left out, the
+ * fits come in the bands' order and colours. Shared by the charts that offer "Fit per group" (hexbin,
+ * the filter drawer's crossplot).
+ */
+export function bandRegressions<T>(points: readonly T[], band: { labels: string[]; labelOf: (p: T) => string | null; colorOf: (label: string) => string }, access: {
+  x: (p: T) => number | null | undefined
+  y: (p: T) => number | null | undefined
+  options: (members: T[]) => RegressionOptions
+}): RegressionGroup[] {
+  return groupedRegressions(points.filter((p) => band.labelOf(p) !== null), 'site', {
+    ...access, site: (p) => band.labelOf(p)!, color: (p) => band.colorOf(band.labelOf(p)!),
+  }).sort((a, b) => band.labels.indexOf(a.name) - band.labels.indexOf(b.name))
+}

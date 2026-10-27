@@ -15,23 +15,27 @@ export type TipBody = ReactNode | string[]
  * A string[] body renders one line each with the first line bold, which is
  * the convention the charts already follow.
  */
-export function useTooltip(wrapRef: RefObject<HTMLElement>, { large = false }: { large?: boolean } = {}) {
+export function useTooltip(wrapRef: RefObject<Element>, { large = false, id }: { large?: boolean; id?: string } = {}) {
   // Viewport coordinates: the tooltip is portalled to <body> with position:fixed,
   // so a chart inside a scrolling box (overflow-x: auto) can no longer clip it.
   const method = useEstimator()
   const [tip, setTip] = useState<{ x: number; y: number; body: TipBody } | null>(null)
 
   const show = useCallback(
-    (e: React.MouseEvent, body: TipBody) => {
+    (e: React.MouseEvent | React.FocusEvent, body: TipBody) => {
       if (!wrapRef.current) return
       // Touch browsers synthesize mouseenter on a tap and may never send
       // mouseleave. Details belong in the tapped record, rather than a sticky tip.
       const source = e.nativeEvent as MouseEvent & { sourceCapabilities?: { firesTouchEvents?: boolean } }
-      if (source.sourceCapabilities?.firesTouchEvents || window.matchMedia('(hover: none)').matches) return
+      if ('clientX' in e && (source.sourceCapabilities?.firesTouchEvents || window.matchMedia('(hover: none)').matches)) return
       // A non-modal record drawer keeps its charts live, but background plot
       // readouts must not float over the open record.
       if (document.querySelector('.drawer') && !wrapRef.current.closest('.drawer, [role="dialog"]')) return
-      setTip({ x: e.clientX, y: e.clientY, body: Array.isArray(body) ? body.map(l => estimatorText(l, method)) : body })
+      const point = 'clientX' in e ? { x: e.clientX, y: e.clientY } : (() => {
+        const rect = e.currentTarget.getBoundingClientRect()
+        return { x: rect.left + rect.width / 2, y: rect.bottom }
+      })()
+      setTip({ ...point, body: Array.isArray(body) ? body.map(l => estimatorText(l, method)) : body })
     },
     [wrapRef, method]
   )
@@ -83,6 +87,8 @@ export function useTooltip(wrapRef: RefObject<HTMLElement>, { large = false }: {
     ? createPortal(
         <div
           ref={boxRef}
+          id={id}
+          role="tooltip"
           className={large ? 'tooltip large' : 'tooltip'}
           style={{
             position: 'fixed',

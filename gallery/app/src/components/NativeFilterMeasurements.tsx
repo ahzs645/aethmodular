@@ -4,7 +4,6 @@ import { loadSpartanIndex, loadNativeSite, loadNativeTraces, vibesProvenance, ty
 import { SpectrumModal, SpectrumPlot } from '@/components/FilterSpectrumPlot'
 import { useAddisStatus, useFilterSpectrum } from '@/lib/filterSpectrum'
 import { BASELINE_COLOR, INK } from '@/lib/theme'
-import { Toggle } from '@/components/ChartFrame'
 import { Combobox } from '@/components/Combobox'
 import { DrawerScroll } from '@/components/DrawerShell'
 
@@ -79,12 +78,19 @@ export function NativeFilterMeasurements({ id }: { id: string }) {
   const plot = (large = false) => t && <SpectrumPlot spec={{ series }} shown={shown} names={names} colors={COLORS} expanded={large}
     plotLabel={`${shown.map(k => LABEL[k]).join(' and ')} FTIR spectrum`} roundWindow={false}
     actions={!large && <button type="button" className="btn quiet" aria-haspopup="dialog" title="Open a larger plot" onClick={() => setExpanded(true)}>Expand</button>} />
-  // any combination, so one switch per spectrum (the gallery's Toggle); at least one stays on
-  const controls = options.length > 1 && <span className="control" role="group" aria-label="Spectra shown"
-    title="Tick any combination. Raw: −log₁₀(sample/background) as measured. Spline baseline (AIRSpec) and VIBES: the same spectrum baseline-corrected.">
-    {options.map(k => <Toggle key={k} label={LABEL[k]} checked={shown.includes(k)} onChange={() => toggle(k)} />)}
-  </span>
-  const legend = <div className="ftir-legend">{shown.map(k => <span key={k}><i style={{ borderColor: COLORS[k] }} />{names[k]}{k === 'vibes' && frozenVibes && !vibes ? ' · loading…' : ''}</span>)}</div>
+  // one chip per spectrum, coloured as its trace, so the picker is also the legend: any
+  // combination, at least one stays on (the last one on is locked). The full name is the tooltip
+  const traces = <div className="trace-chips" role="group" aria-label="Spectra shown">
+    {options.map(k => {
+      const on = shown.includes(k)
+      const locked = on && shown.length === 1
+      return <button key={k} type="button" className={`chip trace${on ? ' active' : ''}${locked ? ' locked' : ''}`}
+        style={{ ['--chip' as string]: COLORS[k] }} aria-pressed={on} aria-disabled={locked || undefined}
+        title={`${names[k]}${locked ? ' (at least one spectrum stays shown)' : ''}`} onClick={() => { if (!locked) toggle(k) }}>
+        <i aria-hidden="true" />{LABEL[k]}{k === 'vibes' && on && frozenVibes && !vibes ? ' · loading…' : ''}
+      </button>
+    })}
+  </div>
   // which blanks trained this trace's VIBES background, and whether the filter's lot is among them
   const provenance = t?.vibes && analysis ? vibesProvenance(analysis, vibesInfo?.grid) : null
   // what used to sit behind "About this spectrum", now the analysis line's tooltip
@@ -111,12 +117,10 @@ export function NativeFilterMeasurements({ id }: { id: string }) {
         : 'This filter is not in the native FTIR archive, so there is no spectrum to draw; its measurements come from the public data.'}</p>
       : <>
         {pm10 && <p className="ftir-meta">The archive holds this filter as PM10, not PM2.5: its own spectrum is shown, but it sits outside every PM2.5 comparison.</p>}
-        {controls}
-        {current?.error ? <p role="alert">Spectrum could not be loaded: {current.error}</p> : t ? <>{plot()}{legend}</> : <p className="ftir-meta">Loading this filter’s spectrum…</p>}
+        {current?.error ? <p role="alert">Spectrum could not be loaded: {current.error}</p> : t ? <>{traces}{plot()}</> : <p className="ftir-meta">Loading this filter’s spectrum…</p>}
         {provenance && shown.includes('vibes') && <p className="ftir-meta" title={provenance.detail}>{provenance.line}</p>}
         {expanded && t && <SpectrumModal id={id} title="FTIR spectrum" onClose={() => setExpanded(false)}>
-          <div className="frame-controls" style={{ marginBottom: 8 }}>{controls}</div>
-          {plot(true)}{legend}
+          {traces}{plot(true)}
         </SpectrumModal>}
       </>}
   </section>

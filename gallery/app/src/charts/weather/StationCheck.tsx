@@ -9,6 +9,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt, regression } from '@/lib/stats'
 import { FONT, INK } from '@/lib/theme'
+import { dotFill, dotRim } from '@/lib/highlight'
 import { ExpandIcon } from '@/components/Icons'
 import type { StationCompare } from '@/lib/weather'
 
@@ -85,7 +86,7 @@ function StationPanel({ v, data, side, tip, onOpen }: {
         <XAxis scale={x} y={side} label={`station (${v.unit})`} tickCount={4} labelDy={36} />
         <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />
         <RegressionLines stats={stats} x={x} y={y} domain={x.domain()} width={side} height={side} />
-        {pairs.map((p) => <circle key={p.d} cx={x(p.s)} cy={y(p.e)} r={r} fill={DOT} fillOpacity={0.55} stroke={INK.panel} strokeWidth={0.6}
+        {pairs.map((p) => <circle key={p.d} cx={x(p.s)} cy={y(p.e)} r={r} fill={DOT} {...dotFill('dense')} {...dotRim()}
           onMouseEnter={(e) => tip.show(e, [p.d, `station ${fmt(p.s, 1)} · ERA5 ${fmt(p.e, 1)} ${v.unit}`])} onMouseLeave={tip.hide} />)}
       </g>
     </svg>

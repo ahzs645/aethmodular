@@ -79,9 +79,9 @@ export const INK_DARK: Ink = {
 }
 
 /**
- * The chart ink, read at render time. lib/colorTheme swaps its values when the theme changes and
- * remounts the app, so a chart that reads INK.text while it renders draws in the right theme.
- * Never copy a value out of INK into a module-level constant: it would keep the first theme.
+ * The chart ink. It always holds the light values: marks are drawn in light colours and lib/themeCss
+ * maps each one to its dark twin in CSS (SVG attributes and inline HTML colours alike), so switching
+ * the theme recolours the page without redrawing a chart, and an export is light as drawn.
  */
 export const INK: Ink = { ...INK_LIGHT }
 export type ThemeName = 'light' | 'dark'
@@ -104,8 +104,34 @@ function initialTheme(): ThemeName {
 }
 export const currentTheme = () => current
 export const isDark = () => current === 'dark'
-/** a colour that has its own step in the dark theme; in light it is `light` */
-export const themed = (light: string, dark: string) => (current === 'dark' ? dark : light)
+/**
+ * A colour that has its own step in the dark theme. It returns `light`, the colour the mark is drawn
+ * in, and registers the pair so lib/themeCss shows `dark` on the dark page.
+ */
+export const themed = (light: string, dark: string) => paintPair(light, dark)
+/** an INK colour as it shows in the current theme, for what CSS cannot recolour (a canvas raster) */
+export const inkNow = (key: keyof Ink) => (current === 'dark' ? INK_DARK : INK_LIGHT)[key]
+
+/**
+ * Fill opacity for a filled scatter dot, by how crowded the chart is (docs/gallery-chart-standards.md §5).
+ * On the dark panel a pale dot mixes toward the background and loses its hue, so site and season colours
+ * blur together; the dark steps are lifted to keep them apart. `dimmed` (context and dots pushed back
+ * by a focus) recedes the same in both themes. Dots are drawn at the light step and tagged data-dot;
+ * lib/themeCss applies the dark step, so an export keeps the light one.
+ */
+export const DOT_OPACITY = {
+  /** a few dozen dots, or dots that carry the point of the chart */
+  sparse: { light: 0.85, dark: 0.92 },
+  /** the default: a few hundred dots that overlap a little */
+  standard: { light: 0.7, dark: 0.82 },
+  /** crowded charts, where overlap should build up into darker areas */
+  dense: { light: 0.45, dark: 0.6 },
+  /** context behind other marks, and everything but the focused dot */
+  dimmed: { light: 0.25, dark: 0.25 },
+} as const
+export type DotLevel = keyof typeof DOT_OPACITY
+/** the opacity a dot is drawn at (the light step; the dark page lifts it in CSS) */
+export const dotOpacity = (level: DotLevel) => DOT_OPACITY[level].light
 
 /**
  * One colour per baseline correction on every tab (docs/gallery-chart-standards.md §5):
@@ -180,22 +206,13 @@ export const TRACE = {
 }
 
 /**
- * Switch every colour constant above to a theme (lib/colorTheme calls it, then remounts the app).
- * The objects are changed in place so the modules that imported them see the new values.
+ * Record the page theme (lib/colorTheme calls it). The colour constants above stay light: their dark
+ * twins are paint pairs (below) that lib/themeCss applies in CSS. Only what CSS cannot reach (colour
+ * ramps, inkOn labels, canvas rasters) reads the theme, and those charts re-render via useTheme().
  */
 export function setInkTheme(theme: ThemeName) {
   current = theme
-  const dark = theme === 'dark'
-  Object.assign(INK, dark ? INK_DARK : INK_LIGHT)
-  Object.assign(BASELINE_COLOR, BASELINE_LIGHT, dark ? BASELINE_DARK : {})
-  BANK_COLOR.AIRSpec = BASELINE_COLOR.AIRSpec
-  BANK_COLOR['VIBES-allblanks'] = BASELINE_COLOR.VIBES
-  SPECTRAL_REGION.co2.fill = SPECTRAL_REGION.aboveCH.fill = INK.shade
-  SPECTRAL_REGION.ptfe.fill = SPECTRAL_REGION.belowOct1.fill = INK.shadeWarm
-  Object.assign(OCT1_HATCH, dark ? { fill: '#2a2720', stroke: '#6b5d3d' } : { fill: '#f6f1e7', stroke: '#d9c9a3' })
-  TRACE.pinned.stroke = TRACE.hovered.stroke = INK.text
 }
-const BASELINE_LIGHT = { ...BASELINE_COLOR }
 setInkTheme(initialTheme())
 
 /**
@@ -213,9 +230,31 @@ let resolver: (hex: string) => string | null = () => null
 export const registerPrintResolver = (fn: (hex: string) => string | null) => { resolver = fn }
 /** the light theme's colour for a hex the dark theme drew (null: not a dark-theme colour) */
 export const printColour = (hex: string) => PRINT.get(norm(hex)) ?? resolver(norm(hex))
-registerPrintColours(Object.values(INK_DARK), Object.values(INK_LIGHT))
-registerPrintColours(Object.values(BASELINE_DARK), Object.keys(BASELINE_DARK).map((k) => BASELINE_LIGHT[k]))
-registerPrintColours(['#2a2720', '#6b5d3d'], ['#f6f1e7', '#d9c9a3'])
+
+/**
+ * Paint pairs: every light colour that has a dark twin. lib/themeCss turns each into CSS (an SVG mark
+ * whose fill or stroke is the light hex, or an inline HTML colour of it, shows the twin on the dark
+ * page or in a chart set to dark), and lib/export reads them to print a dark-page colour back to light.
+ */
+const PAIRS = new Map<string, string>()
+const pairListeners = new Set<(light: string, dark: string) => void>()
+export function paintPair(light: string, dark: string): string {
+  const l = norm(light), d = norm(dark)
+  if (l !== d && !PAIRS.has(l)) {
+    PAIRS.set(l, d)
+    registerPrintColours([d], [l])
+    pairListeners.forEach((f) => f(l, d))
+  }
+  return light
+}
+export const paintPairs = (): ReadonlyMap<string, string> => PAIRS
+export const onPaintPair = (f: (light: string, dark: string) => void) => { pairListeners.add(f); return () => { pairListeners.delete(f) } }
+/** the dark twin of a light colour (null: it looks the same in both themes) */
+export const darkTwin = (hex: string) => PAIRS.get(norm(hex)) ?? null
+;(Object.keys(INK_LIGHT) as (keyof Ink)[]).forEach((k) => paintPair(INK_LIGHT[k], INK_DARK[k]))
+Object.entries(BASELINE_DARK).forEach(([k, dark]) => paintPair(BASELINE_COLOR[k], dark))
+paintPair(OCT1_HATCH.fill, '#2a2720')
+paintPair(OCT1_HATCH.stroke, '#6b5d3d')
 
 /**
  * Text colour for a label drawn on a coloured cell: white on dark fills, the
@@ -223,19 +262,29 @@ registerPrintColours(['#2a2720', '#6b5d3d'], ['#f6f1e7', '#d9c9a3'])
  * heat map stays readable whatever its ramp (no per-chart value thresholds).
  */
 export function inkOn(fill: string): string {
+  // a light ink cell shows its dark twin on the dark page: pick the label for what is seen
+  return inkOnFill(current === 'dark' ? darkTwin(fill) ?? fill : fill)
+}
+/**
+ * Dark label ink on a light cell: INK.text one step off, so lib/themeCss (which maps INK.text to the
+ * light dark-theme text) leaves it dark on a light cell of a dark-page heat map.
+ */
+export const CELL_INK = '#1f2934'
+/** inkOn for a fill as given, whatever the page theme (lib/export uses it for the light figure) */
+export function inkOnFill(fill: string): string {
   const hex = fill.trim().replace('#', '')
   const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex
   const m = /^[0-9a-f]{6}$/i.test(full) ? full : null
   const rgb = m ? [0, 2, 4].map((i) => parseInt(m.slice(i, i + 2), 16))
     : (fill.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map(Number)
-  if (rgb.length < 3) return INK_LIGHT.text
+  if (rgb.length < 3) return CELL_INK
   const luminance = (c: number[]) => {
     const lin = c.map((v) => { const x = v / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4 })
     return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
   }
   // whichever of white and the page ink contrasts more with the fill
   const L = luminance(rgb), ink = luminance([0x1f, 0x29, 0x33])
-  return (1.05 / (L + 0.05)) > ((L + 0.05) / (ink + 0.05)) ? '#fff' : INK_LIGHT.text
+  return (1.05 / (L + 0.05)) > ((L + 0.05) / (ink + 0.05)) ? '#fff' : CELL_INK
 }
 
 /** Sequential + diverging ramps used by the heatmap and correlogram. */

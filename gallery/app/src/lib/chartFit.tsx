@@ -43,3 +43,16 @@ const LegendCtx = createContext<{ mode: LegendMode; reserve: number } | null>(nu
 export const TileLegend = ({ mode, reserve, children }: { mode: LegendMode; reserve: number; children: ReactNode }) =>
   <LegendCtx.Provider value={{ mode, reserve }}>{children}</LegendCtx.Provider>
 export const useTileLegend = () => useContext(LegendCtx)
+
+/**
+ * A ChartFrame's chart in single-chart view (lib/singleView): `height` to fill the window and every
+ * legend item, as in a tile with its legend at the bottom. Null leaves the host's fit and legend
+ * as they are; the providers are always there, so switching does not remount the chart.
+ */
+export function FrameFit({ height, children }: { height: number | null; children: ReactNode }) {
+  const fit = useContext(FitCtx)
+  const legend = useContext(LegendCtx)
+  return <FitCtx.Provider value={height ?? fit}>
+    <LegendCtx.Provider value={height === null ? legend : { mode: 'bottom', reserve: 0 }}>{children}</LegendCtx.Provider>
+  </FitCtx.Provider>
+}

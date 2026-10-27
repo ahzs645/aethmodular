@@ -19,7 +19,7 @@ import { cohortColor, deployedECFrom, fmtFit, metricRow, presetName, useNetworkR
 import { COHORT, PREPROCESSING, label } from '@/lib/labels'
 import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
 import { useSearchParam } from '@/lib/url'
-import { baseFilterId, useHighlight, type FilterRecord } from '@/lib/highlight'
+import { baseFilterId, dotFill, dotRim, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { fidProps } from '@/lib/filterEdits'
 import { PanelAxesControl, usePanelAxes } from '@/lib/panelAxes'
 import { collapsePanelAxes } from '@/lib/axes'
@@ -282,8 +282,8 @@ function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel, galleryRows
                       })
                       return (
                         <circle
-                          key={p.i} cx={x(p.x)} cy={y(p.y)} r={focus ? 5 : 2.6} fill={color} fillOpacity={focus ? 0.9 : 0.45}
-                          stroke={focus ? INK.text : 'none'} strokeWidth={focus ? 1.5 : 0} style={{ cursor: 'pointer' }}
+                          key={p.i} cx={x(p.x)} cy={y(p.y)} r={focus ? 5 : 2.6} fill={color} {...(focus ? { fillOpacity: 0.9 } : dotFill('dense'))}
+                          stroke={focus ? INK.text : dotRim().stroke} strokeWidth={focus ? 1.5 : dotRim().strokeWidth} style={{ cursor: 'pointer' }}
                           onMouseEnter={(e) => { tip.show(e, [
                             id ?? `filter #${p.i + 1}`,
                             `${site} · ${run.eval.date?.[p.i] ?? 'no date'} · ${run.eval.group[p.i]}`,

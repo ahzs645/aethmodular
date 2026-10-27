@@ -15,7 +15,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
 import { PageChoiceControls, PageChoices, usePageChoice } from '@/lib/pageChoices'
 import { SidebarControls } from '@/lib/pageSidebar'
-import { useHighlight, type FilterRecord } from '@/lib/highlight'
+import { dotFill, dotRim, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { BANK_COLOR, BASELINE_COLOR, FONT, INK, OCT1_HATCH, SPECTRAL_REGION, themed } from '@/lib/theme'
 import { f2, f3, pct, signed, coef, coefSigned } from '@/lib/format'
 import { ALL_ADDIS, ANALYSIS_CALENDAR_NOTE, shortSeason } from '@/lib/seasons'
@@ -282,8 +282,8 @@ function OverlapScatter({ data, mask, group }: { data: SatoshiData; mask: Mask; 
             {sorted.map((i) => {
               const part = String(mb.part[i]), id = `improve:${mb.filter_id[i]}`
               const focus = id === hl.pinnedId || id === hl.hoverId
-              return <circle key={i} cx={x(mb.tor_ec_ugm3[i] as number)} cy={y(mb.tor_oc_ec[i] as number)} r={focus ? 6 : 3} fill={PART_COLOR[part]} fillOpacity={0.6}
-                stroke={focus ? INK.text : 'none'} strokeWidth={2} style={{ cursor: 'pointer' }}
+              return <circle key={i} cx={x(mb.tor_ec_ugm3[i] as number)} cy={y(mb.tor_oc_ec[i] as number)} r={focus ? 6 : 3} fill={PART_COLOR[part]} {...dotFill('standard')}
+                stroke={focus ? INK.text : dotRim().stroke} strokeWidth={focus ? 2 : dotRim().strokeWidth} style={{ cursor: 'pointer' }}
                 onMouseEnter={(e) => { tip.show(e, [`IMPROVE ${mb.Site[i]} · filter ${mb.filter_id[i]}`, part, `TOR EC ${f2(mb.tor_ec_ugm3[i])} µg/m³ · OC/EC ${f2(mb.tor_oc_ec[i])}`, `rank spline ${mb.rank_spline[i] ?? '—'} · rank VIBES ${mb.rank_vibes[i] ?? '—'}`, 'click to pin and open its record']); hl.setHover(id) }}
                 onMouseLeave={() => { tip.hide(); hl.setHover(null) }}
                 onClick={() => { hl.setPinned(id); hl.openRecord(improveRecord(mb.filter_id[i] as number, String(mb.Site[i]), `Satoshi 2 Oct · analogs of ${group} · ${part}`, [
@@ -874,7 +874,7 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
           <g transform={`translate(${m.left},${m.top})`}>
             <YAxis scale={y} x={0} label="Fabs / 10 (µg/m³)" tickCount={5} gridWidth={iw} labelX={-42} />
             <XAxis scale={x} y={ih} label="PC1 score of the shape deviation" tickCount={5} labelDy={36} format={(v) => String(+(+v).toFixed(3))} />
-            {pts.map((p) => <circle key={p.id} cx={x(p.pc1)} cy={y(p.ec)} r={4} fill={CLUSTER_COLORS[(p.c - 1) % 4]} fillOpacity={0.8}
+            {pts.map((p) => <circle key={p.id} cx={x(p.pc1)} cy={y(p.ec)} r={4} fill={CLUSTER_COLORS[(p.c - 1) % 4]} {...dotFill('sparse')} {...dotRim()}
               onMouseEnter={(e) => tip.show(e, [p.id, `cluster ${p.c}`, `Fabs/10 ${f2(p.ec)} µg/m³`, `standard spline model error ${signed(p.res)} µg/m³`])} onMouseLeave={tip.hide} />)}
           </g>
         </svg>

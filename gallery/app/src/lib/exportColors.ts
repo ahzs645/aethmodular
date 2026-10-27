@@ -1,6 +1,7 @@
 import { paletteSeason, seasonExportColor, seasonColorRows, type ExportSeason, type PaletteSeason } from './exportSeasons.ts'
 import { color, hcl, lab, schemeDark2, schemeTableau10 } from 'd3'
 import { ESTIMATORS, FIT_STYLE, type Estimator } from './regressionMethods.ts'
+import { printColour } from './theme.ts'
 
 export interface ExportSite { code: string; name: string; color: string }
 export interface PaletteSite { key: string; label: string; color: string }
@@ -28,6 +29,20 @@ export function effectiveExportColors(prefs: ExportColors): ExportColors {
 }
 
 export const siteExportColor = (site: PaletteSite, prefs: ExportColors) => prefs.sameSites ? prefs.shared : prefs.sites[site.key] ?? site.color
+
+/**
+ * Site and season colours, which are the same in both themes (lib/theme): a figure composed on the
+ * dark page keeps them as drawn, even when a dark colour-scheme step happens to share the hex (a
+ * dark ramp stop is exactly Beijing's #e74c3c, which used to print as the light ramp's #df4532).
+ */
+export const fixedColours = (sites: readonly { color: string }[], seasons: readonly { color: string }[] = []): Set<string> =>
+  new Set([...sites, ...seasons].flatMap((s) => paintColor(s.color) ?? []))
+
+/** The light theme's colour for a paint the dark page drew (null: leave it as drawn). */
+export function printPaint(paint: string, fixed: ReadonlySet<string> = new Set()): string | null {
+  const hex = paintColor(paint)
+  return hex && !fixed.has(hex) ? printColour(hex) : null
+}
 
 /** Preserve alpha in a paint value; opacity attributes remain untouched too. */
 export function replacePaint(paint: string, from: string, to: string): string {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { SCHEMES, SCHEME_NOTES, schemeStops, type SchemeKind } from '@/lib/colourSchemes'
 import { useFloatingMenu } from '@/hooks/useFloatingMenu'
+import { useTheme } from '@/lib/colorTheme'
 
 /** a palette as a small gradient bar */
 const Swatch = ({ stops, wide = false }: { stops: string[]; wide?: boolean }) => (
@@ -20,6 +21,7 @@ export interface SchemeChoice { kind: SchemeKind; value: string; reverse: boolea
 export function ColourSchemePicker({ kind, value, reverse, onChange }: {
   kind: SchemeKind; value: string; reverse: boolean; onChange: (name: string, reverse: boolean) => void
 }) {
+  useTheme() // the swatch shows the ramp of the current theme
   const [open, setOpen] = useState(false)
   const btn = useRef<HTMLButtonElement>(null)
   return (
@@ -39,6 +41,7 @@ export function ColourSchemePicker({ kind, value, reverse, onChange }: {
 export function SchemePopover({ anchor, kind, value, reverse, onChange, onClose }: {
   anchor: HTMLElement; kind: SchemeKind; value: string; reverse: boolean; onChange: (name: string, reverse: boolean) => void; onClose: () => void
 }) {
+  useTheme()
   const box = useRef<HTMLDivElement>(null)
   const trigger = useMemo(() => ({ current: anchor }), [anchor])
   const pos = useFloatingMenu(true, trigger, box, 450)

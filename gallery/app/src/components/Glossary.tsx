@@ -12,7 +12,8 @@ export function GlossaryButton() {
   </>
 }
 
-function GlossaryDialog({ onClose }: { onClose: () => void }) {
+/** the glossary itself; components/HeaderMore opens it from the phone's ⋯ menu */
+export function GlossaryDialog({ onClose }: { onClose: () => void }) {
   const [q, setQ] = useState('')
   const input = useRef<HTMLInputElement>(null)
   useEffect(() => {

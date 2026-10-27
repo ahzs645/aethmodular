@@ -570,7 +570,7 @@ const ScatterPanel = memo(function ScatterPanel({
           </g>
 
           {focusLast(drawn, (p) => p.row.id, focusId).map(([p]) => {
-            const st = focusStyle(p.row.id, focusId, { r: radiusOf(p), opacity: 0.72 }, selected)
+            const st = focusStyle(p.row.id, focusId, { r: radiusOf(p) }, selected)
             const k = dimOf(p)
             return (
               <circle
@@ -584,6 +584,7 @@ const ScatterPanel = memo(function ScatterPanel({
                 stroke={st.stroke}
                 strokeOpacity={k}
                 strokeWidth={st.strokeWidth}
+                data-dot={k === 1 ? st.dot : undefined}
                 pointerEvents="none"
               />
             )

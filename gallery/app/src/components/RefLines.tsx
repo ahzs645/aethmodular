@@ -14,7 +14,7 @@ const agreement = { get stroke() { return INK.axis }, strokeOpacity: 0.7, stroke
 const marker = { strokeWidth: 1, strokeDasharray: '3 3' }
 
 export function IdentityLine({ x1, y1, x2, y2 }: { x1: number; y1: number; x2: number; y2: number }) {
-  return <line x1={x1} y1={y1} x2={x2} y2={y2} {...identity} pointerEvents="none" />
+  return <line x1={x1} y1={y1} x2={x2} y2={y2} {...identity} pointerEvents="none" data-identity="" />
 }
 
 type Span = { orient: 'v' | 'h'; at: number; from: number; to: number }

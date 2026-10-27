@@ -1,5 +1,6 @@
 import type { MouseEvent, ReactNode } from 'react'
 import { FONT, INK, inkOn } from '@/lib/theme'
+import { useTheme } from '@/lib/colorTheme'
 
 /**
  * One heat-map cell: the coloured rect and, when there is room, its value in
@@ -21,6 +22,7 @@ export function HeatCell({ x, y, width, height, fill, label, outline, onEnter, o
   /** size of the printed value */
   fontSize?: number
 }) {
+  useTheme() // inkOn picks the label for the cell as the current theme shows it
   const bg = fill ?? INK.empty
   return <g onMouseMove={onEnter} onMouseLeave={onLeave} onClick={onClick} style={onClick ? { cursor: 'pointer' } : undefined}>
     <rect x={x} y={y} width={Math.max(0, width)} height={Math.max(0, height)} fill={bg} stroke={outline ? INK.text : 'none'} strokeWidth={outline ? 1 : 0} />

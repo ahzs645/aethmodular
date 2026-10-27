@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import fs from 'node:fs'
-import { cleanReference, mergeReferenceRows, placements, stripPosition, ratioReference } from './referencePopulation.ts'
+import { cleanReference, mergeReferenceRows, placements, quantilePlacements, sampleRows, stripPosition, ratioReference } from './referencePopulation.ts'
 
 const rows = [1, 2, 3, 4].map((v, i) => ({ id: `A-${i}`, site: 'A', code: 'AAAA', date: '2020-01-01', excluded: false, x: v, y: 2 * v }))
 rows.push({ ...rows[0], id: 'bad', x: 1000, excluded: true })
@@ -88,4 +88,31 @@ test('remote references preserve physical filters, local precision, joined field
   assert.equal(JSON.stringify([exported, known]), before)
   assert.equal(mergeReferenceRows(exported, [known[0]])[0].x, 1.234567)
   assert.throws(() => mergeReferenceRows(exported, [{ ...known[0], code: 'WRONG' }]), /different site/)
+})
+
+test('a quantile table places a filter as the rows would, to one step', () => {
+  // 401 values with ties (a run of zeros, as IMPROVE's OP has) and the table the exporter writes (linear quantiles)
+  const values = [...Array(40).fill(0), ...Array.from({ length: 361 }, (_, i) => (i + 1) ** 1.3 / 10)]
+  const sorted = [...values].sort((a, b) => a - b), steps = 1000
+  const q = Array.from({ length: steps + 1 }, (_, k) => {
+    const i = (sorted.length - 1) * k / steps, lo = Math.floor(i), hi = Math.ceil(i)
+    return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo)
+  })
+  const ref = { quantiles: { x: { n: values.length, q } } }
+  const asRows = values.map((x, i) => ({ id: `r${i}`, site: 'S', code: 'S', date: '', excluded: false, x }))
+  for (const v of [0, 0.05, 3, 17.2, sorted[200], sorted[400], 1e6, -1]) {
+    const exact = placements({ ...selected, x: v }, ['x'], asRows).x, fromTable = quantilePlacements({ ...selected, x: v }, ['x'], ref).x
+    // one step, plus the 1 / (n - 1) between counting values below (of n) and quantile positions (on n - 1
+    // intervals): 0.25 % here, nothing on the network's 388,000 values
+    assert.ok(Math.abs(exact.pct - fromTable.pct) <= 100 / steps + 100 / (values.length - 1), `percentile of ${v}: ${exact.pct} vs ${fromTable.pct}`)
+    for (const k of ['min', 'q1', 'med', 'q3', 'max', 'n']) assert.equal(fromTable[k], exact[k], k)
+  }
+  assert.deepEqual(quantilePlacements({ ...selected, x: null }, ['x', 'missing'], ref), {})
+})
+test('the network sample expands to reference rows with the gallery\'s IMPROVE ids', () => {
+  const ref = { fields: ['EC (TOR)', 'HIPS BC'], site_names: { ACAD1: 'Acadia NP' },
+    sample: { code: ['ACAD1', 'ACAD1'], date: ['2010-01-03', '2010-01-06'], poc: [1, 2], 'EC (TOR)': [0.1, null], 'HIPS BC': [0.2, 0.3] } }
+  assert.deepEqual(sampleRows(ref), [
+    { id: 'ACAD1-2010-01-03', code: 'ACAD1', site: 'Acadia NP', date: '2010-01-03', excluded: false, 'EC (TOR)': 0.1, 'HIPS BC': 0.2 },
+    { id: 'ACAD1-2010-01-06-2', code: 'ACAD1', site: 'Acadia NP', date: '2010-01-06', excluded: false, 'HIPS BC': 0.3 }])
 })

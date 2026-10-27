@@ -11,7 +11,7 @@ import { monthBlocks } from '@/lib/regressionCI'
 import { regression, type RegressionStats } from '@/lib/stats'
 import { useRegressions, FitGroupingControl } from '@/lib/regressionPrefs'
 import type { Estimator } from '@/lib/regressionMethods'
-import { baseFilterId, useHighlight, type FilterRecord } from '@/lib/highlight'
+import { baseFilterId, dotFill, dotRim, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { FONT, INK } from '@/lib/theme'
 import { Toggle } from '@/components/ChartFrame'
 import { styleBrush } from '@/lib/brush'
@@ -168,8 +168,8 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
               const dim = (active && !focus) || (!!hl.selected && !!key && !hl.selected.has(key))
               return (
                 <circle key={i} cx={x(p.x)} cy={y(p.y)} r={focus ? 6 : 3.2} fill={p.hollow ? 'none' : p.color}
-                  stroke={focus ? INK.text : p.color} strokeWidth={focus ? 2 : p.hollow ? 1 : 0.4}
-                  fillOpacity={(dim ? 0.25 : 0.7) * (p.opacity ?? 1)} strokeOpacity={(dim ? 0.3 : 1) * (p.opacity ?? 1)} style={{ cursor: p.rec ? 'pointer' : 'default' }}
+                  stroke={focus ? INK.text : p.hollow ? p.color : dotRim().stroke} strokeWidth={focus ? 2 : p.hollow ? 1 : dotRim().strokeWidth}
+                  {...dotFill(dim ? 'dimmed' : 'standard', p.opacity ?? 1)} strokeOpacity={(dim ? 0.3 : 1) * (p.opacity ?? 1)} style={{ cursor: p.rec ? 'pointer' : 'default' }}
                   onMouseEnter={(e) => { tip.show(e, p.rec ? [...p.tip, 'click to pin it on every chart and open its record'] : p.tip); if (key) hl.setHover(key) }}
                   onMouseLeave={() => { tip.hide(); hl.setHover(null) }}
                   {...(key ? fidProps(key) : {})}

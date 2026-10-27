@@ -14,7 +14,7 @@ import { useBaselineStyle } from '@/lib/baselineRank'
 import { INK, baselineColor } from '@/lib/theme'
 import { fixed as fmt } from '@/lib/format'
 import { regression } from '@/lib/stats'
-import { useHighlight, type FilterRecord } from '@/lib/highlight'
+import { dotFill, dotRim, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { useHandEdits } from '@/lib/filterEdits'
 import { useSearchParam } from '@/lib/url'
 import { useRegressions } from '@/lib/regressionPrefs'
@@ -292,7 +292,7 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
       <line x1={plot.l} x2={plot.r} y1={plot.b} y2={plot.b} stroke={INK.axis}/>
       {optical && <line x1={plot.l} x2={plot.l} y1={plot.t} y2={plot.b} stroke={INK.axis}/>}
       {optical && <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />}
-      {points.map(r => <circle key={r.site + r.id} cx={x(r.xv)} cy={y(r.yv)} r={r.site === 'Bishoftu' ? 5 : 3.4} fill={r.site === 'Bishoftu' ? '#C49442' : '#2C6E9E'} fillOpacity={r.site === 'Bishoftu' ? .9 : .45} stroke={r.site === 'Bishoftu' ? '#755A24' : 'none'} strokeWidth={.7} style={{ cursor: 'pointer' }} onClick={() => hl.openRecord(siteRecord(r, title, mac))}><title>{`${r.site} ${r.id} · ${r.date} · lot ${r.lot ?? 'unknown'} · ${optical ? `Fabs ${fmt(r.Fabs!, 2)} Mm⁻¹ (÷ MAC ${mac} = ${fmt(r.xv, 3)} µg/m³); ${method} FTIR EC ${fmt(r.yv, 3)} µg/m³` : `${method} local 2920 ${fmt(r.xv, 5)}, local 1617 ${fmt(r.yv, 5)} absorbance`}`}</title></circle>)}
+      {points.map(r => <circle key={r.site + r.id} cx={x(r.xv)} cy={y(r.yv)} r={r.site === 'Bishoftu' ? 5 : 3.4} fill={r.site === 'Bishoftu' ? '#C49442' : '#2C6E9E'} {...dotFill(r.site === 'Bishoftu' ? 'sparse' : 'dense')} {...dotRim()} style={{ cursor: 'pointer' }} onClick={() => hl.openRecord(siteRecord(r, title, mac))}><title>{`${r.site} ${r.id} · ${r.date} · lot ${r.lot ?? 'unknown'} · ${optical ? `Fabs ${fmt(r.Fabs!, 2)} Mm⁻¹ (÷ MAC ${mac} = ${fmt(r.xv, 3)} µg/m³); ${method} FTIR EC ${fmt(r.yv, 3)} µg/m³` : `${method} local 2920 ${fmt(r.xv, 5)}, local 1617 ${fmt(r.yv, 5)} absorbance`}`}</title></circle>)}
       <g transform={`translate(${plot.l},${plot.t})`}>{fitGroups.map(group => <g key={group.name} data-fit-site={group.name}>
         <RegressionLines stats={group.stats} color={group.color} x={v => x(v) - plot.l} y={v => y(v) - plot.t} domain={group.domain} width={plot.r - plot.l} height={plot.b - plot.t}/>
       </g>)}</g>

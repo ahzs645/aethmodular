@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { INK } from '@/lib/theme'
+import { INK, dotOpacity, type DotLevel } from '@/lib/theme'
 
 /**
  * Cross-chart linking. Hovering a filter in one chart lights the same filter
@@ -159,15 +159,33 @@ export function focusLast<T>(items: readonly T[], idOf: (t: T) => string | undef
   return out
 }
 
-export function focusStyle(id: string, focusId: string | null, base = { r: 4, opacity: 0.72 }, selected: Set<string> | null = null) {
-  if (focusId === id) return { r: base.r * 1.9, opacity: 1, stroke: INK.fit, strokeWidth: 2 }
-  if (focusId) return { r: base.r, opacity: Math.min(base.opacity, 0.25), stroke: INK.panel, strokeWidth: 0.6 }
+type DotStyle = { r: number; opacity: number; stroke: string; strokeWidth: number; dot?: DotLevel }
+export function focusStyle(id: string, focusId: string | null, { r, level = 'standard' }: { r: number; level?: DotLevel } = { r: 4 }, selected: Set<string> | null = null): DotStyle {
+  const opacity = dotOpacity(level)
+  if (focusId === id) return { r: r * 1.9, opacity: 1, stroke: INK.fit, strokeWidth: 2 }
+  if (focusId) return { r, opacity: Math.min(opacity, 0.25), stroke: INK.panel, strokeWidth: 0.6 }
   if (selected) {
-    if (selected.has(id)) return { r: base.r, opacity: Math.max(base.opacity, 0.9), stroke: INK.fit, strokeWidth: 0.8 }
-    return { r: base.r, opacity: Math.min(base.opacity, 0.1), stroke: INK.panel, strokeWidth: 0.4 }
+    if (selected.has(id)) return { r, opacity: Math.max(opacity, 0.9), stroke: INK.fit, strokeWidth: 0.8 }
+    return { r, opacity: Math.min(opacity, 0.1), stroke: INK.panel, strokeWidth: 0.4 }
   }
-  return { r: base.r, opacity: base.opacity, stroke: INK.panel, strokeWidth: 0.8 }
+  // `dot` is the data-dot tag lib/themeCss lifts on the dark page; leave it off a mark scaled by a dim
+  return { r, opacity, ...dotRim(), dot: level }
 }
+
+/**
+ * The rim a filled scatter dot wears when it is not focused (docs/gallery-chart-standards.md §5):
+ * the panel colour, so overlapping dots stay apart and look the same in both themes. A rim in the
+ * dot's own colour or a dark hex reads as a bright ring or vanishes on the dark panel. Hollow dots,
+ * rims that encode something, and dots under ~2.5 px in dense clouds keep their own stroke.
+ */
+export const dotRim = () => ({ stroke: INK.panel, strokeWidth: 0.8 })
+
+/**
+ * The fill of a dot at an opacity level (lib/theme DOT_OPACITY), times `scale` (a legend's dim): the
+ * light step, tagged data-dot so lib/themeCss lifts it on the dark page. A dimmed dot (scale < 1) is
+ * left untagged, or the CSS step would undo the dim.
+ */
+export const dotFill = (level: DotLevel, scale = 1) => ({ fillOpacity: dotOpacity(level) * scale, 'data-dot': scale === 1 ? level : undefined })
 
 /** SPARTAN ids carry a replicate suffix outside filters.json (ETAD-0144-8); the export keys on ETAD-0144. */
 export const baseFilterId = (id: string) => id.replace(/^([A-Z]{4}-\d{4})-\d+$/, '$1')

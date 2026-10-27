@@ -3,15 +3,18 @@ import { PAPER_COLORS, PAPER_ORDER, paperSeasonOf } from '@/lib/pmfPaper'
 import { fieldHelp } from '@/lib/glossary'
 import { seasonOnly } from '@/lib/seasons'
 import { chemText } from '@/lib/format'
-import { useFilterReference } from '@/hooks/useFilterReference'
-import { SitePicker } from '@/components/SitePicker'
+import { useFilterReference, type SeasonOf } from '@/hooks/useFilterReference'
+import { useChartGrouping } from '@/components/GroupingDialog'
+import { Legend } from '@/components/Legend'
+import { useSearchParam } from '@/lib/url'
+import { MultiCombobox } from '@/components/MultiCombobox'
 import { RegressionLines, RegressionGroupLines, useRegressionSummary } from '@/components/RegressionOverlay'
 import { useRegressions, FitGroupingControl } from '@/lib/regressionPrefs'
-import { groupedRegressions } from '@/lib/siteRegression'
+import { bandRegressions, groupedRegressions } from '@/lib/siteRegression'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import * as d3 from 'd3'
 import { FieldSelect, prettyUnit } from '@/components/FieldSelect'
-import { Select } from '@/components/ChartFrame'
+import { Select, Toggle } from '@/components/ChartFrame'
 import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
 import { RATIO_GROUP } from '@/lib/viewFields'
 import { XAxis, YAxis } from '@/components/Axes'
@@ -23,7 +26,7 @@ import { RecordSection } from '@/components/RecordDrawer'
 import { FilterSpectrum } from '@/components/FilterSpectrum'
 import { HipsReadings } from '@/components/NativeFilterMeasurements'
 import { NO_PMF, PMF_SOURCE, pmfShareField } from '@/lib/pmfGroups'
-import { placements, stripPosition, ratioPlacement, ratioReference, isFiniteNumber, type Placement, type ReferenceRow } from '@/lib/referencePopulation'
+import { placements, quantilePlacements, stripPosition, ratioPlacement, ratioReference, isFiniteNumber, type Placement, type ReferenceRow } from '@/lib/referencePopulation'
 import { DrawerShell, DrawerScroll } from '@/components/DrawerShell'
 
 
@@ -69,7 +72,10 @@ export function SampleDrawer({
   onClose,
   context,
   exclusion,
+  seasonOf,
 }: {
+  /** the gallery's season of a filter (App seasonOf), so the reference's filters are grouped as the charts' are */
+  seasonOf?: SeasonOf
   /** whether the charts draw this filter: left out by the data export (or put back), excluded by hand, or in */
   exclusion?: { state: 'export-out' | 'export-in' | 'hand' | 'in'; toggle: () => void }
   /** what the clicked chart knows about this filter (e.g. an AIRSpec prediction); shown first */
@@ -97,7 +103,7 @@ export function SampleDrawer({
     else { if (field === cy) setCy(cx); setCx(field) }
   }
   const swapCrossFields = () => { setCx(cy); setCy(cx) }
-  const ref = useFilterReference(row, meta, allRows, studyRows)
+  const ref = useFilterReference(row, meta, allRows, studyRows, seasonOf)
   const { mode: reference, rows: referenceRows, label: referenceLabel } = ref
   const [copied, setCopied] = useState(false)
 
@@ -136,9 +142,12 @@ export function SampleDrawer({
     return siteRows.slice(Math.max(0, idx - 3), idx + 4)
   }, [siteRows, idx])
 
-  const placement = useMemo(() => placements(row, meta.fields, referenceRows), [row, referenceRows, meta.fields])
-  const referenceCoverage = useMemo(() => Object.fromEntries(meta.fields.map(f => [f, referenceRows.filter(r => isNum(r[f])).length])), [meta.fields, referenceRows])
-  const unavailableFields = meta.fields.filter(f => isNum(row[f]) && !(f in placement))
+  // the whole IMPROVE network comes as quantiles (its rows are only a sample, for the crossplot)
+  const network = ref.summary
+  const placement = useMemo(() => network ? quantilePlacements(row, meta.fields, network) : placements(row, meta.fields, referenceRows), [row, referenceRows, meta.fields, network])
+  const referenceCoverage = useMemo(() => Object.fromEntries(meta.fields.map(f => [f, network ? network.quantiles[f]?.n ?? 0 : referenceRows.filter(r => isNum(r[f])).length])), [meta.fields, referenceRows, network])
+  const referenceCount = network?.n ?? referenceRows.length
+  const unavailableFields = meta.fields.filter(f => isNum(row[f]) && !(f in placement) && !ref.partial.has(f))
   // the group the raw HIPS readouts sit under (Optical (HIPS)); without one they close the section
   const hipsGroup = meta.field_groups.find((g) => /HIPS/i.test(g.label))?.label ?? null
 
@@ -148,7 +157,10 @@ export function SampleDrawer({
     const ok = isNum(a) && isNum(b) && b !== 0
     const value = ok ? (a as number) / (b as number) : null
     return { ...r, value, reference: ratioReference(referenceRows, r.num, r.den), place: value === null ? null : ratioPlacement(value, referenceRows, r.num, r.den) }
-  }).filter((r) => r.value !== null)
+  // no ratio has network quantiles: against the IMPROVE summary they are left out rather than read from its sample
+  }).filter((r) => r.value !== null && !network && !ref.partial.has(r.num) && !ref.partial.has(r.den))
+  // several reference sites: a measurement that some of them never measured is left out (useFilterReference)
+  const partialHere = [...ref.partial].filter(([f]) => isNum(row[f]))
 
   // one measurement (or ratio) against the reference: value, range strip with IQR and median, percentile
   const placeRow = (key: string, label: string, p: Placement, unit: string, hot = false, title?: string) => {
@@ -170,22 +182,38 @@ export function SampleDrawer({
   }
 
   // ---- mini crossplot
+  // the crossplot's grouping, as on the gallery's crossplots (components/GroupingDialog): bands of a measurement,
+  // its own fits ("Fit per group") and colours; the first pick turns the per-group fits on
+  const paired = useMemo(() => referenceRows.filter((r) => isNum(r[cx]) && isNum(r[cy])) as unknown as FilterRow[], [referenceRows, cx, cy])
+  const [fitPerGroup, setFitPerGroup] = useSearchParam<string>('sampleFitGroup', '0')
+  const { grp, picker: groupPicker, missingNote } = useChartGrouping('sample', paired, () => setFitPerGroup('1'))
+  const perBand = !!grp && fitPerGroup === '1'
+  const seasonColor = (season: unknown) => meta.seasons.find(se => se.name === season)?.color ?? INK.muted
+  const siteColor = (code: unknown) => ref.sites.find(s => s.code === code)?.color ?? INK.muted
   const cross = useMemo(() => {
     const pool = referenceRows
       .map((r) => ({ r, x: r[cx], y: r[cy] }))
       .filter((p): p is { r: ReferenceRow; x: number; y: number } => isNum(p.x) && isNum(p.y))
     const stats = regression(pool.map((p) => p.x), pool.map((p) => p.y), fitUncertainty(pool.map(p => p.r), cx, cy, meta))
-    const fitGroups = groupedRegressions(pool, grouping, { x: p => p.x, y: p => p.y, site: p => p.r.site, season: p => String(p.r.season ?? ""), seasonColor: p => meta.seasons.find(se => se.name === p.r.season)?.color ?? INK.muted,
-      color: p => ref.sites.find(s => s.code === p.r.code)?.color ?? INK.muted,
-      options: members => fitUncertainty(members.map(p => p.r), cx, cy, meta) })
+    const options = (members: typeof pool) => fitUncertainty(members.map(p => p.r), cx, cy, meta)
+    const fitGroups = perBand && grp
+      ? bandRegressions(pool, { labels: grp.labels, labelOf: p => grp.labelOf(p.r as unknown as FilterRow), colorOf: grp.colorOf }, { x: p => p.x, y: p => p.y, options })
+      : groupedRegressions(pool, grouping, { x: p => p.x, y: p => p.y, site: p => p.r.site, season: p => String(p.r.season ?? ''), seasonColor: p => seasonColor(p.r.season),
+        color: p => siteColor(p.r.code), options })
     return { pool, stats, fitGroups }
-  }, [referenceRows, cx, cy, meta, grouping, ref.sites])
+  }, [referenceRows, cx, cy, meta, grouping, ref.sites, perBand, grp]) // eslint-disable-line react-hooks/exhaustive-deps
+  // the points take the colours of what splits them: a grouping's bands, else the seasons when fitting per season, else the sites
+  const colourBy: 'band' | 'season' | 'site' = grp ? 'band' : grouping === 'season' ? 'season' : 'site'
+  const pointColor = (r: ReferenceRow) => colourBy === 'band' ? grp!.colorOf(grp!.labelOf(r as unknown as FilterRow) ?? '') : colourBy === 'season' ? seasonColor(r.season) : siteColor(r.code)
+  const crossLegend = colourBy === 'band' && grp
+    ? grp.labels.map((l, i) => ({ label: l, color: grp.colors[i] }))
+    : colourBy === 'season' ? ref.season.options.filter(se => cross.pool.some(p => p.r.season === se)).map(se => ({ label: se, color: seasonColor(se) })) : []
   const W = 400
   const m = { top: 12, right: 14, bottom: 46, left: 62 }
   const iw = W - m.left - m.right
   // square plot area, like every crossplot in the gallery
   const ih = iw
-  const siteFits = grouping !== 'pooled' && methods.length > 0
+  const siteFits = (perBand || grouping !== 'pooled') && methods.length > 0
   const summary = useRegressionSummary({ stats: cross.stats, groups: siteFits ? cross.fitGroups : undefined, width: W - 24 })
   const top = m.top + summary.height + 12
   const H = ih + top + m.bottom
@@ -245,22 +273,26 @@ export function SampleDrawer({
 
       <section className="drawer-section">
         <h3>Where this filter sits {referenceLabel === row.site ? `at ${row.site}` : `against ${referenceLabel}`}</h3>
-        <div className="frame-controls" style={{ margin: '8px 0' }} title={`${referenceLabel} · ${ref.loading ? '…' : referenceRows.length.toLocaleString()} filters after known exclusions${referenceDates.length > 0 ? ` · ${referenceDates[0]} to ${referenceDates[referenceDates.length - 1]}` : ''}. Coverage varies by measurement; hover a bar for n. Uses all dates, independently of the main graph filters.`}>
+        <div className="frame-controls" style={{ margin: '8px 0' }} title={`${referenceLabel} · ${ref.loading ? '…' : referenceCount.toLocaleString()} filters after known exclusions${network ? ` · ${network.date_min} to ${network.date_max}` : referenceDates.length > 0 ? ` · ${referenceDates[0]} to ${referenceDates[referenceDates.length - 1]}` : ''}. Coverage varies by measurement; hover a bar for n. Uses all dates, independently of the main graph filters.`}>
           <Select label="Reference population" value={reference} options={ref.options}
-            optionLabel={v => v === 'same' ? `Filter's site (${row.site})` : v === 'study' ? 'Four gallery sites' : v === 'network' ? 'All SPARTAN sites' : v === 'sites' ? 'Choose multiple sites…' : v}
+            optionLabel={v => v === 'same' ? `Filter's site (${row.site})` : v === 'study' ? 'Four gallery sites' : v === 'network' ? 'All SPARTAN sites' : v === 'improve' ? 'All IMPROVE sites' : v === 'sites' ? 'Choose multiple sites…' : v}
             onChange={ref.setMode} />
+          {ref.season.available && ref.season.options.length > 1 && <Select label="Season" value={ref.season.value}
+            options={['all', ...(ref.season.own ? ['same'] : []), ...ref.season.options]}
+            optionLabel={v => v === 'all' ? 'All seasons' : v === 'same' ? `This filter's season (${seasonOnly(ref.season.own ?? '')})` : v}
+            onChange={ref.season.set} title="Compare against the reference in every season, in this filter's own season, or in one season (each filter's season under the gallery's calendar for its site)" />}
+          {/* the gallery's several-at-once dropdown, the networks as its headings */}
+          {reference === 'sites' && <MultiCombobox label="Sites" value={ref.codes} onChange={ref.setSites} placeholder="Choose sites…"
+            title={`Reference sites, SPARTAN and IMPROVE${ref.improveNote ? ` (${ref.improveNote})` : ''}. With several sites, only what every chosen site measures is placed.`}
+            options={ref.sites.map(s => ({ key: s.code, label: s.name, group: s.network, hint: s.n_filters.toLocaleString(), title: `${s.code} · ${s.n_filters.toLocaleString()} filters` }))} />}
         </div>
-        {reference === 'sites' && <details className="reference-sites" open>
-          <summary>Reference sites · {ref.codes.length} selected</summary>
-          <SitePicker items={ref.sites.map(s => ({ key: s.code, label: s.name, sub: s.code, lat: s.lat, lon: s.lon, color: s.color, n: s.n_filters, selected: ref.codes.includes(s.code) }))}
-            onToggle={ref.toggleSite} onAll={() => ref.setMode('network')} allLabel="Use all SPARTAN sites" onClear={ref.clearSites} noun="reference sites" />
-        </details>}
+        {network && <p className="reference-summary">{network.n_sites} IMPROVE sites, {network.n.toLocaleString()} filters ({network.date_min.slice(0, 4)}–{network.date_max.slice(0, 4)}). Percentiles and ranges use every filter; the crossplot below shows an even sample of {network.sample_per_site} per site.</p>}
         {reference === 'network' && <p className="reference-summary">{ref.loading ? '…' : ref.networkSize} SPARTAN sites with filter data, weighted by physical filter count. Each measurement uses its own available coverage; missing measurements are not filled with zero.</p>}
         {ref.loading && <p className="frame-empty">Loading reference filters…</p>}
         {ref.error && <p className="frame-empty" role="alert">Could not load the reference: {ref.error}</p>}
-        <p className="chart-note reference-guide">Bars show the reference range; the darker band is its interquartile range and the tick is its median. The dot retains this filter's value. Percentile is the percentage of measured reference values strictly below it. Values outside the range are marked at the nearest edge.</p>
+        <p className="chart-note reference-guide">Bars show the reference range; the thicker band is its interquartile range and the tick is its median. The dot retains this filter's value. Percentile is the percentage of measured reference values strictly below it. Values outside the range are marked at the nearest edge.</p>
         {!ref.loading && !ref.error && meta.field_groups.map((g) => {
-          const fields = g.fields.filter(f => isNum(row[f]))
+          const fields = g.fields.filter(f => isNum(row[f]) && !ref.partial.has(f))
           // the raw HIPS readouts follow the delivered HIPS values
           const hipsHere = g.label === hipsGroup
           if (!fields.length) return hipsHere ? <HipsReadings key={g.label} id={row.id} /> : null
@@ -292,20 +324,31 @@ export function SampleDrawer({
           <tbody>{ratios.map((r) => r.place ? placeRow(r.label, chemText(r.label), r.place, '', false, r.why)
             : <tr key={r.label}><td className="f" title={r.why}>{chemText(r.label)}</td><td className="v">{fmt(r.value, 3)}</td><td className="u" colSpan={2}>Reference unavailable · n={r.reference.n}</td></tr>)}</tbody>
         </table></DrawerScroll>}
+        {!ref.loading && partialHere.length > 0 && (network
+          ? <details className="reference-unavailable"><summary>{partialHere.length} measurement{partialHere.length === 1 ? '' : 's'} IMPROVE does not make</summary>
+            <p>{partialHere.map(([f]) => chemText(f)).join(', ')}. IMPROVE measures EC and OC by TOR (not FTIR), and no ions or most elements, so these have no IMPROVE reference.</p></details>
+          : <details className="reference-unavailable"><summary>{partialHere.length} measurement{partialHere.length === 1 ? '' : 's'} not measured at every reference site</summary>
+            <ul>{partialHere.map(([f, lacking]) => <li key={f}>{chemText(f)}: not at {lacking.length <= 3 ? lacking.join(', ') : `${lacking.slice(0, 3).join(', ')} and ${lacking.length - 3} more`}</li>)}</ul>
+            <p>A percentile against sites that never measured it would really be against the others only, so these are left out. Choose sites that all measure them to see them.</p></details>)}
         {unavailableFields.length > 0 && <details className="reference-unavailable"><summary>{unavailableFields.length} measurements without a reference percentile</summary><p>{unavailableFields.join(', ')}. A percentile needs at least four finite reference values for that measurement.</p></details>}
       </section>
 
       <AxisFieldsProvider meta={crossMeta} value={{ x: cx, y: cy, field: cx }} set={chooseCrossField} ratios={false}>
         <section className="drawer-section drawer-crossplot">
           <div className="drawer-crossplot-head">
-            <h3 title={`Reference: ${referenceLabel} · ${ref.loading ? '…' : cross.pool.length.toLocaleString()} paired filters; the highlighted filter is ${row.id} from ${row.site}.`}>This filter on any crossplot</h3>
+            <h3 title={`Reference: ${referenceLabel} · ${ref.loading ? '…' : cross.pool.length.toLocaleString()} paired filters${network ? ` (an even sample of ${network.sample_per_site} per site from ${network.n.toLocaleString()})` : ''}; the highlighted filter is ${row.id} from ${row.site}.`}>This filter on any crossplot</h3>
             <button type="button" className="btn quiet drawer-swap" onClick={swapCrossFields} title="Swap x and y" aria-label="Swap x and y">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M21 3v6h-6" /><path d="M21 9l-2.7-2.7A9 9 0 1 0 21 12" />
               </svg>
             </button>
           </div>
-          <div className="frame-controls" style={{ marginBottom: 6 }}><FitGroupingControl /></div>
+          <div className="frame-controls" style={{ marginBottom: 6 }}>
+            {!perBand && <FitGroupingControl />}
+            {groupPicker}
+            {grp && <Toggle label="Fit per group" checked={perBand} onChange={v => setFitPerGroup(v ? '1' : '0')} title="One fit per band of the grouping instead of the fit grouping" />}
+          </div>
+          {missingNote('so they are not coloured or fitted by band')}
           {ref.loading ? <p className="frame-empty">Loading reference crossplot…</p> : cross.pool.length < 3 ? (
             <>
               <div className="frame-controls">
@@ -321,11 +364,11 @@ export function SampleDrawer({
                 <YAxis scale={ys} x={0} label={withUnit(cy, meta.field_units)} gridWidth={iw} tickCount={5} labelX={-48} pick="y" />
                 <XAxis scale={xs} y={ih} label={withUnit(cx, meta.field_units)} tickCount={5} pick="x" />
                 {cross.pool.map((p) => (
-                  <circle key={p.r.id} cx={xs(p.x)} cy={ys(p.y)} r={2.4} fill={ref.sites.find(s => s.code === p.r.code)?.color ?? INK.muted} fillOpacity={0.35} style={{ cursor: knownIds.has(p.r.id) ? 'pointer' : 'default' }} onClick={() => { if (knownIds.has(p.r.id)) onOpen(p.r.id) }}>
+                  <circle key={p.r.id} cx={xs(p.x)} cy={ys(p.y)} r={2.4} fill={pointColor(p.r)} fillOpacity={0.35} style={{ cursor: knownIds.has(p.r.id) ? 'pointer' : 'default' }} onClick={() => { if (knownIds.has(p.r.id)) onOpen(p.r.id) }}>
                     <title>{p.r.id} · {p.r.site} · {p.r.date} · {cx}: {fmt(p.x, 3)} · {cy}: {fmt(p.y, 3)}</title>
                   </circle>
                 ))}
-                {grouping !== 'pooled' ? <RegressionGroupLines groups={cross.fitGroups} x={xs} y={ys} width={iw} height={ih} />
+                {perBand || grouping !== 'pooled' ? <RegressionGroupLines groups={cross.fitGroups} x={xs} y={ys} width={iw} height={ih} />
                   : <RegressionLines stats={cross.stats} x={xs} y={ys} domain={xs.domain()} width={iw} height={ih} />}
                 {here && (
                   <>
@@ -337,6 +380,7 @@ export function SampleDrawer({
               </g>
             </svg></DrawerScroll>
           )}
+          {!ref.loading && cross.pool.length >= 3 && crossLegend.length > 0 && <Legend items={crossLegend} />}
           {!here && <p className="chart-note">This filter does not carry both {cx} and {cy}.</p>}
           {here && (exclusion?.state === 'export-out' || exclusion?.state === 'hand') && <p className="chart-note">Drawn here for reference only: the gallery's charts leave this filter out until you put it back.</p>}
         </section>

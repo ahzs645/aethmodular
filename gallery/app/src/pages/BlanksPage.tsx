@@ -20,6 +20,7 @@ import { SpectrumPlot } from '@/components/SpectrumPlot'
 import { SweepPlot } from '@/components/SweepPlot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { BANK_COLOR, FONT, INK, SPECTRAL_REGION } from '@/lib/theme'
+import { dotFill, dotRim } from '@/lib/highlight'
 import { f2, pct, sci } from '@/lib/format'
 
 /**
@@ -168,7 +169,7 @@ function Inventory({ d }: { d: BlanksData }) {
               const gi = groups.indexOf(r.group)
               const cx = r.date ? x(r.date) : ux(r.i)!
               const role = roleIn(d, bank, r.i)
-              return <circle key={r.id} cx={cx} cy={gi * rowH + 5 + jitter(r.i) * (rowH - 10)} r={3.2} fill={ROLE_COLOR[role]} fillOpacity={role === 'not used' ? 0.7 : 0.9}
+              return <circle key={r.id} cx={cx} cy={gi * rowH + 5 + jitter(r.i) * (rowH - 10)} r={3.2} fill={ROLE_COLOR[role]} {...dotFill(role === 'not used' ? 'standard' : 'sparse')}
                 stroke={r.split === 'test' ? INK.negative : 'none'} strokeWidth={1}
                 onMouseEnter={(e) => tip.show(e, [r.id, `${r.site}${r.date ? ' · ' + d3.timeFormat('%Y-%m-%d')(r.date) : ''}`, r.group, `split: ${r.split}`, role])} onMouseLeave={tip.hide} />
             })}
@@ -285,8 +286,8 @@ function PcaMap({ d }: { d: BlanksData }) {
             <XAxis scale={x} y={side} label={`${px} score`} tickCount={6} labelDy={36} pick="x" />
             {d3.range(n).map((i) => {
               const id = inv(d, 'sample_id')[i] as string
-              return <circle key={id} cx={x(sx[i])} cy={y(sy[i])} r={id === worst ? 6 : 3.4} fill={color(i)} fillOpacity={0.85}
-                stroke={id === worst ? INK.negative : pin === i ? INK.text : 'none'} strokeWidth={id === worst || pin === i ? 2 : 0} style={{ cursor: 'pointer' }}
+              return <circle key={id} cx={x(sx[i])} cy={y(sy[i])} r={id === worst ? 6 : 3.4} fill={color(i)} {...dotFill('sparse')}
+                stroke={id === worst ? INK.negative : pin === i ? INK.text : dotRim().stroke} strokeWidth={id === worst || pin === i ? 2 : dotRim().strokeWidth} style={{ cursor: 'pointer' }}
                 onClick={() => setPin(pin === i ? null : i)}
                 onMouseEnter={(e) => tip.show(e, [id, `${inv(d, 'site')[i]} · ${inv(d, 'date')[i] ?? 'undated'}`, inv(d, 'group')[i], `${px} ${f2(sx[i])} · ${py} ${f2(sy[i])}`, 'click to compare with the average blank'])} onMouseLeave={tip.hide} />
             })}
@@ -336,7 +337,7 @@ function Drift({ d }: { d: BlanksData }) {
           <g transform={`translate(${m.left},${m.top})`}>
             <YAxis scale={y} x={0} label={`${pc} score`} tickCount={5} gridWidth={iw} labelX={-46} pick="y" />
             <XAxis scale={x} y={ih} label="Sampling date" tickCount={8} labelDy={36} format={(v) => d3.timeFormat('%b %Y')(v as Date)} />
-            {pts.map((p) => <circle key={p.i} cx={x(p.t)} cy={y(p.v)} r={2.8} fill={GROUP_COLOR[p.g]} fillOpacity={0.55}
+            {pts.map((p) => <circle key={p.i} cx={x(p.t)} cy={y(p.v)} r={2.8} fill={GROUP_COLOR[p.g]} {...dotFill('dense')} {...dotRim()}
               onMouseEnter={(e) => tip.show(e, [inv(d, 'sample_id')[p.i], `${inv(d, 'site')[p.i]} · ${inv(d, 'date')[p.i]}`, `${pc} ${f2(p.v)}`])} onMouseLeave={tip.hide} />)}
             {[...new Set(months.map((mm) => mm.g))].map((g) => <path key={g} d={d3.line<{ t: Date; v: number }>().x((p) => x(p.t)).y((p) => y(p.v))(months.filter((mm) => mm.g === g)) ?? ''} fill="none" stroke={GROUP_COLOR[g]} strokeWidth={2} />)}
           </g>
@@ -415,7 +416,7 @@ function PerBlankError({ d }: { d: BlanksData }) {
             {groups.map((g) => <text key={g} x={-6} y={(yb(g) ?? 0) + yb.bandwidth() / 2} dy="0.32em" textAnchor="end" fontSize={10} fill={GROUP_COLOR[g]}>{g.replace('IMPROVE ', 'IMP ')}</text>)}
             <XAxis scale={x} y={ih} label={`LOO squared error at rank ${rk} (log)`} tickCount={6} labelDy={36} format={(v) => (+v).toExponential(0)} />
             <Marker orient="v" at={x(med)} from={0} to={ih} />
-            {rows.map((r) => { const g = inv(d, 'group')[r.i]; return <circle key={r.id} cx={x(r.e)} cy={(yb(g) ?? 0) + jitter(r.i) * yb.bandwidth()} r={r.id === B.worst.id ? 6 : 3} fill={GROUP_COLOR[g]} fillOpacity={0.8} stroke={r.id === B.worst.id ? INK.negative : 'none'} strokeWidth={2}
+            {rows.map((r) => { const g = inv(d, 'group')[r.i]; return <circle key={r.id} cx={x(r.e)} cy={(yb(g) ?? 0) + jitter(r.i) * yb.bandwidth()} r={r.id === B.worst.id ? 6 : 3} fill={GROUP_COLOR[g]} {...dotFill('sparse')} stroke={r.id === B.worst.id ? INK.negative : dotRim().stroke} strokeWidth={r.id === B.worst.id ? 2 : dotRim().strokeWidth}
               onMouseEnter={(ev) => tip.show(ev, [r.id, `${inv(d, 'site')[r.i]} · ${inv(d, 'date')[r.i] ?? 'undated'}`, `error ${sci(r.e)} (${Math.round(r.e / med).toLocaleString()}× median)`])} onMouseLeave={tip.hide} />})}
           </g>
         </svg>

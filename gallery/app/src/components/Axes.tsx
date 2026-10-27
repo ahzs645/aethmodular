@@ -1,11 +1,12 @@
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import { chemText } from '@/lib/format'
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AxisFieldPopover, useAxisFields, type AxisRole } from '@/components/AxisFieldPopover'
 import type { ScaleLinear, ScaleTime, ScaleBand } from 'd3'
 import { INK, FONT } from '@/lib/theme'
 import { wrapCategory } from '@/components/CategoryAxis'
 import { fieldHelp } from '@/lib/glossary'
+import { useTooltip } from '@/hooks/useTooltip'
 
 type AnyScale =
   | ScaleLinear<number, number>
@@ -130,7 +131,7 @@ export function YAxis({
   gridWidth?: number
   /** where grid lines start; defaults to the axis position. Set when the axis is drawn at x=0 inside the plot. */
   gridFrom?: number
-  /** where to put the rotated axis title; defaults to 50px left of the axis */
+  /** where to put the rotated axis title; defaults to just past the widest tick label (at most 50px left of the axis) */
   labelX?: number
 }) {
   const method = useEstimator()
@@ -139,9 +140,22 @@ export function YAxis({
   const y0 = Math.min(...range)
   const y1 = Math.max(...range)
   const titleLines = wrapLabel && label ? wrapCategory(chemText(estimatorText(label, method)), Math.max(100, y1 - y0 - 8)) : []
+  // the title sits the same distance from the tick labels as the x axis's title does from its own (about 13 px):
+  // measured as drawn, so short labels ("0–30") do not leave it stranded and the readable text size is counted
+  const tickBox = useRef<SVGGElement>(null)
+  const [tickW, setTickW] = useState<number | null>(null)
+  useLayoutEffect(() => {
+    let w = 0
+    try { for (const t of tickBox.current?.querySelectorAll('text') ?? []) w = Math.max(w, t.getBBox().width) } catch { /* not drawn (a hidden chart) */ }
+    if (w > 0 && (tickW === null || Math.abs(w - tickW) > 0.5)) setTickW(w)
+  })
+  const spread = titleLines.length > 1 ? ((titleLines.length - 1) / 2) * 14 : 0
+  // never further out than the 50 px the charts' left margins allow for
+  const titleX = labelX ?? (tickW === null ? x - 50 : Math.max(x - 50, x - 9 - tickW - 15 - spread))
   return (
     <g fontFamily={FONT.family}>
       <line x1={x} x2={x} y1={y0} y2={y1} stroke={INK.axis} strokeWidth={1} />
+      <g ref={tickBox}>
       {ticks.map(({ v, pos }, i) => (
         <g key={i} transform={`translate(0,${pos})`}>
           {gridWidth ? (
@@ -153,10 +167,11 @@ export function YAxis({
           </text>
         </g>
       ))}
+      </g>
       {label && (
         <AxisTitle pick={pick}>
           <text
-            transform={`translate(${labelX ?? x - 50},${(y0 + y1) / 2}) rotate(-90)`}
+            transform={`translate(${titleX},${(y0 + y1) / 2}) rotate(-90)`}
             textAnchor="middle"
             fontSize={12}
             fontWeight={600}
@@ -173,20 +188,35 @@ export function YAxis({
 /** An axis title that, when the axis shows a shared field, opens the field picker on click or Enter. */
 export function AxisTitle({ pick, children }: { pick?: AxisRole; children: ReactNode }) {
   const ctx = useAxisFields()
+  const titleRef = useRef<SVGGElement>(null)
+  const tipId = useId()
+  const tip = useTooltip(titleRef, { id: tipId })
   const [anchor, setAnchor] = useState<Element | null>(null)
   const close = useCallback((restoreFocus = true) => {
     setAnchor(null)
     if (restoreFocus) (anchor as HTMLElement | SVGElement | null)?.focus({ preventScroll: true })
   }, [anchor])
   if (!pick || !ctx) return <>{children}</>
-  const open = (el: Element) => setAnchor(el)
+  const field = ctx.value[pick]
+  const help = [
+    ...(field === 'HIPS BC'
+      ? [`MAC used: ${ctx.meta.mac_value} m²/g`]
+      : chemText(fieldHelp(field, ctx.labelOf?.(field) ?? field)).split('\n')),
+    'Click to choose what this axis shows',
+  ]
+  const open = (el: Element) => { tip.hide(); setAnchor(el) }
   return (
     <>
-      <g className="axis-pick" role="button" tabIndex={0} aria-haspopup="dialog" aria-expanded={!!anchor} aria-label={`Change the ${pick === 'field' ? 'measurement' : `${pick} axis`}: ${ctx.value[pick]}`}
-        onClick={(e) => open(e.currentTarget)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e.currentTarget) } }}>
-        <title>{chemText(fieldHelp(ctx.value[pick], ctx.labelOf?.(ctx.value[pick]) ?? ctx.value[pick]))}{'\n'}Click to choose what this axis shows</title>
+      <g ref={titleRef} className="axis-pick" role="button" tabIndex={0} aria-haspopup="dialog" aria-expanded={!!anchor} aria-label={`Change the ${pick === 'field' ? 'measurement' : `${pick} axis`}: ${field}`} aria-describedby={tip.active ? tipId : undefined}
+        onMouseEnter={e => { if (!anchor) tip.show(e, help) }} onMouseLeave={tip.hide}
+        onFocus={e => { if (!anchor && e.currentTarget.matches(':focus-visible')) tip.show(e, help) }} onBlur={tip.hide}
+        onClick={(e) => open(e.currentTarget)} onKeyDown={(e) => {
+          if (e.key === 'Escape') tip.hide()
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e.currentTarget) }
+        }}>
         {children}
       </g>
+      {tip.node}
       {anchor && <AxisFieldPopover role={pick} anchor={anchor} onClose={close} />}
     </>
   )

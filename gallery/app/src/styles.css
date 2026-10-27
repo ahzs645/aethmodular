@@ -220,6 +220,13 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .combobox-label { font-size: calc(12px * var(--text-scale)); color: var(--ink-muted); white-space: nowrap; }
 .combobox { position: relative; display: inline-block; max-width: 100%; }
 /* one dropdown look everywhere: the height of a native select, styled */
+/* components/StepButton: ‹ › as tall as a Combobox trigger beside it (the same font size, line height,
+   padding and border), and square */
+.step-btn { display: inline-flex; align-items: center; justify-content: center; flex: none; box-sizing: border-box;
+  font-size: calc(12px * var(--text-scale)); line-height: 1.35; padding: 4px; border-width: 1px;
+  width: calc(1.35em + 10px); height: calc(1.35em + 10px); }
+.step-btn > svg { width: 1.2em; height: 1.2em; }
+.step-btn:disabled { opacity: 0.4; cursor: default; }
 .combobox-trigger {
   display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; max-width: 280px; min-width: 64px;
   padding: 4px 8px 4px 9px; border: 1px solid var(--ink-border); border-radius: 6px; line-height: 1.35;
@@ -539,8 +546,6 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 .connected-guide { max-width: 652px; margin: 0 auto 10px; line-height: 1.45; text-align: left !important; }
 .connected-inspector { max-width: 652px; margin: 8px auto 0; }
 .connected-step-controls { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 10px; }
-.connected-step-controls > .btn { min-width: 44px; min-height: 44px; font-size: 18px; }
-.connected-step-controls > .btn:disabled { opacity: .35; cursor: default; }
 .connected-readout { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--ink-border); border-radius: 6px; font-size: calc(12px * var(--text-scale)); }
 .connected-readout > span { color: var(--ink-muted); }
 .connected-readout strong { display: inline-flex; align-items: center; gap: 6px; }
@@ -655,9 +660,14 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 .ftir-meta { font-size: calc(11.5px * var(--text-scale)); color: var(--ink-muted); }
 .ftir-head .ftir-meta { cursor: help; }
 .ftir-meta select { font: inherit; color: inherit; background: transparent; border: 1px solid var(--ink-border); border-radius: 4px; padding: 0 2px; }
-.ftir-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: calc(11.5px * var(--text-scale)); color: var(--ink-text); margin: 2px 0 4px; }
-.ftir-legend i { display: inline-block; width: 16px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 5px; }
-.ftir-legend i.dashed { border-top-style: dashed; }
+/* spectrum picker that is also the legend: a chip per trace, its line swatch in the trace colour */
+.trace-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 6px; }
+.chip.trace { display: inline-flex; align-items: center; gap: 6px; }
+.chip.trace i { width: 16px; height: 0; border-top: 2px solid var(--ink-faint); }
+.chip.trace.active { color: var(--ink-text); border-color: var(--chip);
+  background: color-mix(in srgb, var(--chip) 12%, var(--ink-panel)); }
+.chip.trace.active i { border-color: var(--chip); }
+.chip.trace.locked { cursor: default; }
 .spectrum-modal::backdrop { background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(2px); }
 .spectrum-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 14px; }
 .spectrum-modal-head h2 { margin: 0; font-size: calc(18px * var(--text-scale)); }
@@ -688,6 +698,10 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 .placement .med { width: 1.5px; height: 11px; margin-top: -5.5px; background: var(--ink-axis); }
 .placement .dot { width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 5px; border: 1.5px solid var(--ink-strong); box-sizing: border-box; }
 .placement .dot.outside { border-width: 2px; border-radius: 1px; }
+/* Range strips are data marks: give them stronger ink than table dividers on dark panels. */
+:root[data-theme="dark"] .placement .track { background: var(--ink-axis); opacity: 0.7; }
+:root[data-theme="dark"] .placement .iqr { background: var(--ink-muted); }
+:root[data-theme="dark"] .placement .med { background: var(--ink-strong); }
 .reference-summary, .reference-unavailable { font-size: calc(11px * var(--text-scale)); color: var(--ink-muted); line-height: 1.5; margin: 6px 0; }
 .reference-unavailable summary { cursor: pointer; }
 html:not([data-explain="1"]) .reference-guide { display: none; }
@@ -703,15 +717,13 @@ html:not([data-explain="1"]) .reference-guide { display: none; }
 }
 .info-tip:hover .info-tip-icon, .info-tip:focus-visible .info-tip-icon { color: var(--accent); border-color: var(--accent); }
 .info-tip-body {
-  display: none; position: absolute; left: -8px; top: 100%; z-index: 25;
-  width: min(420px, 80vw); padding: 10px 12px; margin-top: 6px;
+  /* always floating (ChartFrame useFloatingTip: portalled, fixed, kept inside the window); never positioned
+     inside a panel, where a scrolling box or the window edge would cut it off */
+  box-sizing: border-box; padding: 10px 12px;
   background: var(--ink-panel); color: var(--ink-text); border: 1px solid var(--ink-border); border-radius: 8px;
   box-shadow: 0 8px 24px rgba(17, 24, 39, 0.14);
   font-size: calc(12.5px * var(--text-scale)); font-weight: 400; line-height: 1.5; letter-spacing: 0;
 }
-/* an invisible bridge over the 6px gap so moving onto the body does not close it */
-.info-tip-body::before { content: ''; position: absolute; left: 0; right: 0; top: -8px; height: 8px; }
-.info-tip:hover .info-tip-body, .info-tip:focus-within .info-tip-body { display: block; }
 .info-tip-body p { margin: 0 0 6px; }
 .info-tip-body p:last-child { margin-bottom: 0; }
 
@@ -977,21 +989,21 @@ html:has(.ctx-menu) .tooltip { visibility: hidden; }
    text), so each size the charts use is scaled here by attribute, without touching the charts. */
 html[data-density="readable"] { --text-scale: 1.15; --chart-text-scale: 1.12; }
 html[data-density="readable"] .chart-note, html[data-density="readable"] .glossary-list dd { line-height: 1.55; }
-html[data-density="readable"] svg [font-size="8"] { font-size: calc(8px * var(--chart-text-scale)); }
-html[data-density="readable"] svg [font-size="8.5"] { font-size: calc(8.5px * var(--chart-text-scale)); }
-html[data-density="readable"] svg [font-size="9"] { font-size: calc(9px * var(--chart-text-scale)); }
-html[data-density="readable"] svg [font-size="9.5"] { font-size: calc(9.5px * var(--chart-text-scale)); }
-html[data-density="readable"] svg [font-size="10"] { font-size: calc(10px * var(--chart-text-scale)); }
-html[data-density="readable"] svg [font-size="10.5"] { font-size: calc(10.5px * var(--chart-text-scale)); }
-html[data-density="readable"] svg [font-size="11"] { font-size: calc(11px * var(--chart-text-scale)); }
-html[data-density="readable"] svg [font-size="11.5"] { font-size: calc(11.5px * var(--chart-text-scale)); }
-html[data-density="readable"] svg [font-size="12"] { font-size: calc(12px * var(--chart-text-scale)); }
-html[data-density="readable"] svg [font-size="12.5"] { font-size: calc(12.5px * var(--chart-text-scale)); }
-html[data-density="readable"] svg [font-size="13"] { font-size: calc(13px * var(--chart-text-scale)); }
-html[data-density="readable"] svg [font-size="13.5"] { font-size: calc(13.5px * var(--chart-text-scale)); }
-html[data-density="readable"] svg [font-size="14"] { font-size: calc(14px * var(--chart-text-scale)); }
-html[data-density="readable"] svg [font-size="15"] { font-size: calc(15px * var(--chart-text-scale)); }
-html[data-density="readable"] svg [font-size="16"] { font-size: calc(16px * var(--chart-text-scale)); }
+svg [font-size="8"] { font-size: calc(8px * var(--chart-text-scale)); }
+svg [font-size="8.5"] { font-size: calc(8.5px * var(--chart-text-scale)); }
+svg [font-size="9"] { font-size: calc(9px * var(--chart-text-scale)); }
+svg [font-size="9.5"] { font-size: calc(9.5px * var(--chart-text-scale)); }
+svg [font-size="10"] { font-size: calc(10px * var(--chart-text-scale)); }
+svg [font-size="10.5"] { font-size: calc(10.5px * var(--chart-text-scale)); }
+svg [font-size="11"] { font-size: calc(11px * var(--chart-text-scale)); }
+svg [font-size="11.5"] { font-size: calc(11.5px * var(--chart-text-scale)); }
+svg [font-size="12"] { font-size: calc(12px * var(--chart-text-scale)); }
+svg [font-size="12.5"] { font-size: calc(12.5px * var(--chart-text-scale)); }
+svg [font-size="13"] { font-size: calc(13px * var(--chart-text-scale)); }
+svg [font-size="13.5"] { font-size: calc(13.5px * var(--chart-text-scale)); }
+svg [font-size="14"] { font-size: calc(14px * var(--chart-text-scale)); }
+svg [font-size="15"] { font-size: calc(15px * var(--chart-text-scale)); }
+svg [font-size="16"] { font-size: calc(16px * var(--chart-text-scale)); }
 
 /* ---------- header page menu (components/NavMenu) ---------- */
 .app-title-row { flex-wrap: nowrap; align-items: center; margin-bottom: 0; }
@@ -1020,6 +1032,27 @@ html[data-density="readable"] svg [font-size="16"] { font-size: calc(16px * var(
 .icon-btn svg { display: block; }
 .app-title-row > .nav { min-width: 72px; }
 .header-display { display: inline-flex; gap: 6px; }
+.display-controls { display: inline-flex; align-items: center; gap: 4px; }
+.display-menu-trigger { font-size: 18px; line-height: 1; min-height: 28px; }
+.display-menu { position: fixed; z-index: 1100; width: 324px; padding: 12px; overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 12px; background: var(--ink-panel); color: var(--ink-text);
+  border: 1px solid var(--ink-border); border-radius: 10px; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.22); }
+.display-menu > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.display-menu > header strong { font-size: calc(14px * var(--text-scale)); }
+.display-menu fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.display-menu legend { padding: 0; margin-bottom: 5px; font-size: calc(12px * var(--text-scale)); font-weight: 600; }
+.display-menu .seg { display: flex; width: 100%; }
+.display-menu .seg button { flex: 1; }
+.display-menu button:disabled { opacity: 0.45; cursor: default; }
+.display-menu p { margin: 6px 0 0; color: var(--ink-muted); font-size: calc(11.5px * var(--text-scale)); line-height: 1.4; }
+.display-menu .display-target { color: var(--ink-text); }
+.display-menu .display-footnote { margin-top: 0; }
+.panel[data-chart-key] { color: var(--ink-text); }
+.panel[data-chart-explain="0"] .legend-note, .panel[data-chart-explain="0"] .row-note { display: none; }
+.panel[data-chart-explain="1"] .legend-note, .panel[data-chart-explain="1"] .row-note { display: revert; }
+.panel[data-chart-theme="light"] .seg button.active { background: var(--accent); border-color: var(--accent); }
+.panel[data-chart-theme="dark"] .seg button.active, .panel[data-chart-theme="dark"] .btn.primary { background: #2c6fae; border-color: #2c6fae; }
+.compact-explanation { padding: 12px; }
 .navmenu-extra { display: none; }
 .navmenu-extra-row { display: flex; gap: 6px; padding: 4px 8px 6px; }
 /* a phone: the display toggles leave the header for the page menu */
@@ -1287,8 +1320,6 @@ html.dash-present .container.dash { padding-top: 10px; }
 .drawer-crossplot-head h3 { margin: 0; }
 .drawer-swap { display: inline-flex; align-items: center; justify-content: center; flex: none; padding: 5px; }
 
-.reference-sites { margin: 6px 0 10px; }
-.reference-sites > summary { cursor: pointer; margin-bottom: 6px; font-weight: 600; }
 
 .export-colors { border: 0; border-top: 1px solid var(--ink-border); padding: 10px 0 0; margin: 0; min-width: 0; }
 .export-colors legend { color: var(--ink-muted); padding: 0 6px 0 0; font-size: 12px; }
@@ -1510,4 +1541,80 @@ html.dash-present .container.dash { padding-top: 10px; }
   .frame-head { flex-wrap: wrap; gap: 8px; }
   .frame-head > div:first-child { flex-basis: 100%; }
   .frame-actions { margin-left: auto; }
+}
+
+/* ---------- single-chart view (lib/singleView) ---------- */
+/* everything beside the chart in view is hidden; the wrappers that hold it stack it full width */
+[data-single-hidden] { display: none !important; }
+html[data-single='1'] [data-single-path] { display: block !important; max-width: none !important; width: auto !important; margin-left: 0; margin-right: 0; }
+html[data-single='1'] [data-single-root] { max-width: none; padding-top: 12px; padding-bottom: 0; }
+html[data-single='1'] [data-single-active] { margin: 0; }
+html[data-single='1'] [data-single-active] .frame-chart .chart-wrap > svg,
+html[data-single='1'] [data-single-active] .frame-chart > svg { margin-left: auto; margin-right: auto; }
+html[data-single='1'] [data-single-active] .frame-chart .legend { justify-content: center; }
+/* beside an open dock on a wide screen, not under it */
+@media (min-width: 901px) {
+  html[data-single='1'][data-dock='open'] [data-single-root] { padding-left: calc(min(380px, 100vw - 36px) + 22px); }
+}
+.frame-head h2.single-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.single-steps { display: inline-flex; align-items: center; gap: 4px; }
+.single-count { font-family: var(--mono); font-size: calc(12px * var(--text-scale)); font-weight: 400; color: var(--ink-muted); min-width: 48px; text-align: center; }
+/* the picker reads as the chart's title */
+.single-title { min-width: 0; max-width: min(520px, 100%); }
+.single-title .combobox-trigger { font-size: inherit; font-weight: inherit; color: var(--ink-text); max-width: 100%; }
+.single-title .combobox-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the fit statistics, directly above the chart's options; empty, it takes no room */
+.single-stats { max-width: 520px; margin: 0 0 10px; }
+.single-stats:empty { display: none; }
+/* the legend beside the plot when the chart in view leaves room for it (SingleFit): stacked, one item a line;
+   anything else under the plot (notes) stays in the plot's column */
+[data-legend-beside] { display: grid; grid-template-columns: auto auto; justify-content: center; align-items: center; column-gap: 32px; }
+[data-legend-beside] > :not(.legend) { grid-column: 1; width: auto; }
+[data-legend-beside] > .legend { grid-column: 2; grid-row: 1 / span var(--legend-rows, 1); align-self: center; }
+[data-legend-beside] > .legend, [data-legend-beside] > .legend .legend { flex-direction: column; flex-wrap: nowrap; align-items: flex-start; gap: 8px; padding: 0; }
+[data-legend-beside] > .legend .legend-group { flex-direction: column; align-items: flex-start; width: auto; }
+/* at the head of an options column: the column's width, no gap of its own (the column spaces its items) */
+.frame-controls > .single-stats { margin: 0; max-width: none; flex: none; }
+/* the title bar at the head of the options column (single-chart view): the arrows and picker, then the chart's actions */
+.frame-controls > .frame-head { flex: 1 1 100%; margin: 0; }
+@media (min-width: 821px) {
+  .frame-body:not(.controls-top) > .frame-controls > .frame-head { flex-direction: column; align-items: stretch; gap: 8px; }
+  .frame-body:not(.controls-top) > .frame-controls > .frame-head .frame-actions { flex-wrap: wrap; }
+  .frame-body:not(.controls-top) > .frame-controls > .frame-head .single-title { flex: 1 1 100%; max-width: 100%; }
+}
+/* the chart in view: an options column longer than the window scrolls on its own, beside a plot fitted to the window */
+@media (min-width: 821px) {
+  html[data-single='1'] [data-single-active] > .frame-body:not(.controls-top) > .frame-controls {
+    max-height: var(--single-room, none); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+}
+.single-stats > svg { display: block; max-width: 100%; height: auto; }
+
+/* export dialog, publication style (components/ExportDialog) */
+.export-label-field { display: inline-flex; align-items: center; gap: 8px; }
+.export-label-field input { width: 72px; height: 28px; padding: 0 8px; border: 1px solid var(--ink-border); border-radius: 6px; background: var(--ink-panel); color: var(--ink-text); font: inherit; font-size: calc(12.5px * var(--text-scale)); }
+.export-warn { color: var(--warn, #b45309); }
+.export-show { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 0; padding: 0; border: 0; }
+.export-show > legend { width: 100%; padding: 0 0 2px; font-size: calc(11.5px * var(--text-scale)); color: var(--ink-muted); }
+.export-check { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 4px; border: 1px solid var(--ink-border); border-radius: 12px;
+  font-size: calc(12px * var(--text-scale)); color: var(--ink-muted); cursor: pointer; user-select: none; }
+.export-check.on { border-color: var(--accent); color: var(--ink-text); background: var(--accent-soft); }
+.export-check input { margin: 0; }
+.export-range { display: inline-flex; align-items: center; gap: 8px; }
+.export-range input[type=range] { width: 140px; }
+.export-range input:disabled { opacity: 0.45; }
+.export-range-value { font-family: var(--mono); font-size: calc(11.5px * var(--text-scale)); min-width: 42px; }
+
+/* the header's Glossary and Views: separate buttons, folded into a ⋯ menu on a phone (components/HeaderMore) */
+.header-wide { display: inline-flex; gap: inherit; align-items: center; }
+.header-more { display: none; }
+.header-more > .icon-btn { font-size: 18px; line-height: 1; }
+.header-more-pop { width: 260px; padding: 6px; }
+.header-more-name { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; }
+.header-more-display { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 2px 4px 4px; }
+.header-more-display .display-controls { display: inline-flex; gap: 4px; }
+.header-more-rule { height: 1px; margin: 4px 2px; background: var(--ink-border); }
+@media (max-width: 560px) {
+  .header-wide { display: none; }
+  .header-more { display: block; }
+  .views-pop { width: min(340px, calc(100vw - 24px)); }
 }

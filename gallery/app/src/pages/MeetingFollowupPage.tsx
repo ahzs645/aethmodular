@@ -27,8 +27,8 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
 import { PageChoiceControls, PageChoices, usePageChoice } from '@/lib/pageChoices'
 import { SidebarControls } from '@/lib/pageSidebar'
-import { baseFilterId, useHighlight } from '@/lib/highlight'
-import { ADDIS_ALL, BASELINE_COLOR, FONT, IMPROVE_GREY, INK, OCT1_HATCH, SPECTRAL_REGION } from '@/lib/theme'
+import { baseFilterId, dotRim, useHighlight } from '@/lib/highlight'
+import { ADDIS_ALL, BASELINE_COLOR, FONT, IMPROVE_GREY, INK, OCT1_HATCH, SPECTRAL_REGION, dotOpacity } from '@/lib/theme'
 import { ANALOG_SELECTION_EXCLUDED, OCT1_ALSO_EXCLUDED } from '@/components/SpectralRegions'
 import { coef, coefSigned, f2, fmt, signed } from '@/lib/format'
 import { ALL_ADDIS, ANALYSIS_CALENDAR_NOTE, inSeasonGroup, isAllAddis, seasonPhrase, shortSeason } from '@/lib/seasons'
@@ -1016,7 +1016,7 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
       if (g.method[i] !== method) continue
       const pass = g.mode[i] === 'site_heldout' && ((g.heldout_R2[i] as number | null) ?? 0) >= 0.85
       if (gridSet === 'passing' && !pass) continue
-      pts.push({ x: g.all_slope[i] as number, y: g.all_intercept[i] as number, color: catColor(String(g.label[i])), r: 2.2, shape: 'dot', op: 0.35,
+      pts.push({ x: g.all_slope[i] as number, y: g.all_intercept[i] as number, color: catColor(String(g.label[i])), r: 2.2, shape: 'dot', op: dotOpacity('dimmed'),
         tip: [String(g.label[i]), `cohort ${g.cutoff[i]} filters · ${CV_PROTOCOL_SHORT[String(g.mode[i])] ?? g.mode[i]} · ${g.k[i]} PLS factors`, `test set ${coef(g.all_slope[i])}x ${coefSigned(g.all_intercept[i])}`] })
     }
   }
@@ -1025,7 +1025,7 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
     const sl: number[] = [], ic: number[] = []
     for (let i = 0; i < rp.method.length; i++) if (rp.method[i] === method && rp.group[i] === season) {
       sl.push(rp.addis_slope[i] as number); ic.push(rp.addis_intercept[i] as number)
-      pts.push({ x: rp.addis_slope[i] as number, y: rp.addis_intercept[i] as number, color: data.season_colors[season], r: 2.4, shape: 'dot', op: 0.3,
+      pts.push({ x: rp.addis_slope[i] as number, y: rp.addis_intercept[i] as number, color: data.season_colors[season], r: 2.4, shape: 'dot', op: dotOpacity('dimmed'),
         tip: [`${season} calibration, split ${rp.repeat[i]}`, 'read out on its own season only', `${coef(rp.addis_slope[i])}x ${coefSigned(rp.addis_intercept[i])}`] })
     }
     pts.push({ x: q3(sl)[0], y: q3(ic)[0], color: data.season_colors[season], r: 8, shape: 'tri', op: 1,
@@ -1033,7 +1033,7 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
   }
   const st = data.stitched_repeats
   for (let i = 0; i < st.method.length; i++) if (st.method[i] === method)
-    pts.push({ x: st.addis_slope[i] as number, y: st.addis_intercept[i] as number, color: '#6d28d9', r: 2.4, shape: 'dot', op: 0.35,
+    pts.push({ x: st.addis_slope[i] as number, y: st.addis_intercept[i] as number, color: '#6d28d9', r: 2.4, shape: 'dot', op: dotOpacity('dimmed'),
       tip: [`Seasons stitched, split ${st.repeat[i]}`, 'all Addis', `${coef(st.addis_slope[i])}x ${coefSigned(st.addis_intercept[i])}`] })
   const sp = stitchedSpread(data, method)
   pts.push({ x: sp.slope[0], y: sp.intercept[0], color: '#6d28d9', r: 10, shape: 'star', op: 1, tip: ['Seasons stitched: median of 100 splits', 'all Addis', `${coef(sp.slope[0])}x ${coefSigned(sp.intercept[0])}`] })
@@ -1058,7 +1058,7 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
   const mark = (p: P, key: number) => {
     const X = cx(p.x), Y = cy(p.y), r = p.r
     const ev = { onMouseEnter: (e: React.MouseEvent) => tip.show(e, p.tip), onMouseLeave: tip.hide }
-    if (p.shape === 'dot') return <circle key={key} cx={X} cy={Y} r={r} fill={p.color} fillOpacity={p.op} {...ev} />
+    if (p.shape === 'dot') return <circle key={key} cx={X} cy={Y} r={r} fill={p.color} fillOpacity={p.op} {...dotRim()} {...ev} />
     if (p.shape === 'sq') return <rect key={key} x={X - r * 0.8} y={Y - r * 0.8} width={r * 1.6} height={r * 1.6} fill={p.color} stroke={INK.panel} {...ev} />
     if (p.shape === 'x') return <g key={key} {...ev}><line x1={X - r} x2={X + r} y1={Y - r} y2={Y + r} stroke={p.color} strokeWidth={3} /><line x1={X - r} x2={X + r} y1={Y + r} y2={Y - r} stroke={p.color} strokeWidth={3} /></g>
     if (p.shape === 'tri') return <path key={key} d={`M${X},${Y - r} L${X + r},${Y + r * 0.8} L${X - r},${Y + r * 0.8} Z`} fill={p.color} stroke={INK.fit} strokeWidth={1} {...ev} />

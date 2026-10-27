@@ -4,7 +4,7 @@ import { useGalleryData } from '@/hooks/useGalleryData'
 import { supplementFilter } from '@/lib/filterMerge'
 import { HighlightProvider, baseFilterId, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { NO_PMF, PMF_GROUP, PMF_SOURCE, isPmfField, pmfGroups, pmfKeyByDate, pmfLabel, pmfShareFields, withPmf, type PmfScheme } from '@/lib/pmfGroups'
-import { EXPLAIN_AVAILABLE, PrefsProvider, usePrefs } from '@/lib/prefs'
+import { PrefsProvider } from '@/lib/prefs'
 import { PanelAxesProvider } from '@/lib/panelAxes'
 import { listParam, listToParam, readParams, writeParams } from '@/lib/url'
 import { useShared } from '@/lib/stable'
@@ -51,6 +51,7 @@ import { dashParams, parseDash, type DashState, type Scope } from '@/lib/dashboa
 import type { DashFilters } from '@/components/dashboard/DashHeader'
 import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
 import { ViewsMenu } from '@/components/ViewsMenu'
+import { HeaderMore } from '@/components/HeaderMore'
 import { currentView, isEmbed, viewUrl } from '@/lib/views'
 import { useExport } from '@/lib/data'
 import { customSeasonMeta, customSeasonsParam, parseCustomSeasons } from '@/components/SeasonEditor'
@@ -81,8 +82,9 @@ import { useSearchParam } from '@/lib/url'
 import { CommandPaletteButton } from '@/components/CommandPalette'
 import { HeaderNavProvider, useHeaderNav } from '@/lib/headerNav'
 import { NavMenu, type NavGroup, type NavItem } from '@/components/NavMenu'
-import { AutoThemeIcon, ExplainIcon, MoonIcon, SidebarIcon, SunIcon, TextSizeIcon } from '@/components/Icons'
-import { setThemePref, useThemePref } from '@/lib/colorTheme'
+import { SidebarIcon, SingleChartIcon } from '@/components/Icons'
+import { DisplayControls } from '@/components/DisplayControls'
+import { SingleFit, SingleViewProvider, SingleViewToggle, useSingleViewPref } from '@/lib/singleView'
 import { WEATHER_GROUP, useWeather } from '@/lib/weather'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 
@@ -349,6 +351,8 @@ export default function App() {
   const [basis, setBasis] = useState<Basis>(init.get('basis') === 'mass' ? 'mass' : 'conc')
   // meeting pages: as presented (default) or following the gallery (lib/presentation); ?mview=exploring
   const [presentation, setPresentation] = useSearchParam<Presentation>('mview', 'presented', ['presented', 'exploring'])
+  // one chart at a time (lib/singleView); the Dashboard presents its own way
+  const [singleOn, setSingleOn] = useSingleViewPref()
   const [estimators, setEstimators] = useState<Estimator[]>(() => parseEstimators(init.get('fits')))
   const [showCI, setShowCI] = useState(init.get('ci') === '1')
   const [pinnedId, setPinnedId] = useState<string | null>(init.get('pin'))
@@ -936,7 +940,7 @@ export default function App() {
 
   const nav = (
     <nav className="nav" aria-label="Pages">
-      <NavMenu groups={SHOW_EXPERIMENTAL || tab === 'experimental' ? NAV_GROUPS : NAV_GROUPS_LISTED} tab={tab} meeting={meeting} sub={experiment} onPick={(i) => openTab(i.tab, i.meeting, i.sub)} extra={<DisplayToggles />} />
+      <NavMenu groups={SHOW_EXPERIMENTAL || tab === 'experimental' ? NAV_GROUPS : NAV_GROUPS_LISTED} tab={tab} meeting={meeting} sub={experiment} onPick={(i) => openTab(i.tab, i.meeting, i.sub)} />
     </nav>
   )
 
@@ -1192,6 +1196,7 @@ export default function App() {
     <HeaderNavProvider tabs={NAV_TABS} meetings={MEETINGS} open={openTab}>
     <RegressionProvider methods={estimators} setMethods={setEstimators} showCI={showCI} setShowCI={setShowCI}>
     <PrefsProvider>
+    <SingleViewProvider on={singleOn} setOn={setSingleOn} available={tab !== 'dashboard'} page={`${tab}/${meeting}/${experiment}`}>
     {/* Panel axes for every multi-panel crossplot (lib/panelAxes): the sidebar's setting, offered on each chart too */}
     <PanelAxesProvider value={axes.panels ?? 'Shared'} onChange={(panels) => setAxes((a) => ({ ...a, panels }))}>
     <ExportSitesProvider seasons={meta.seasons} sites={[...new Map([...rawMeta.sites, ...meta.sites].map(s => [s.code, s])).values()]}>
@@ -1207,6 +1212,7 @@ export default function App() {
       {openRow && (
         <SampleDrawer
           row={openRow}
+          seasonOf={seasonOf}
           allRows={rawSourceRows.some((r) => r.id === openRow.id) ? rawSourceRows : filters.rows}
           meta={drawerMeta}
           studyRows={filters.rows}
@@ -1316,6 +1322,7 @@ export default function App() {
     </HighlightProvider>
     </ExportSitesProvider>
     </PanelAxesProvider>
+    </SingleViewProvider>
     </PrefsProvider>
     </RegressionProvider>
     </HeaderNavProvider>
@@ -1340,7 +1347,7 @@ function Shell({ children, nav, wide = false, editsBadge = false, dash = false }
           </div>
         </div>
       </header>
-      <div className={container}>{children}</div>
+      <div className={container} data-single-root><SingleFit>{children}</SingleFit></div>
     </>
   )
 }
@@ -1351,46 +1358,22 @@ function HeaderTools() {
     <span className="header-tools">
       <span className="header-display"><DisplayToggles /></span>
       <CommandPaletteButton />
-      <GlossaryButton />
-      <ViewsMenu />
+      {/* on a phone these two fold into the ⋯ menu, with the display toggles */}
+      <span className="header-wide"><GlossaryButton /><ViewsMenu /></span>
+      <HeaderMore display={<DisplayToggles />} />
     </span>
   )
 }
 
-/** Readable text, Explain, the sections list: in the header, or in the page menu on a phone */
+/** Readable text, Explain, the sections list: in the header, or in its ⋯ menu on a phone (components/HeaderMore) */
 function DisplayToggles() {
-  const { explain, setExplain, density, setDensity } = usePrefs()
   return (
     <>
-      <button type="button" className={`btn quiet icon-btn${density === 'readable' ? ' on' : ''}`} aria-pressed={density === 'readable'}
-        aria-label="Readable text" onClick={() => setDensity(density === 'readable' ? 'compact' : 'readable')}
-        title={density === 'readable' ? 'Readable: larger text everywhere (click for compact)' : 'Compact text (click for readable: larger text in every chart, control and table); remembered in this browser'}>
-        <TextSizeIcon />
-      </button>
-      {EXPLAIN_AVAILABLE && <button type="button" className={`btn quiet icon-btn${explain ? ' on' : ''}`} aria-pressed={explain} aria-label="Explain"
-        onClick={() => setExplain(!explain)}
-        title={explain ? 'Explain is on: every chart shows its explanation and provenance (click to hide)' : "Explain: show every chart's explanation and provenance, and the sidebar's captions"}>
-        <ExplainIcon />
-      </button>}
-      <ThemeToggle />
+      <DisplayControls />
+      <SingleViewToggle icon={<SingleChartIcon />} />
       <TocToggle />
     </>
   )
-}
-
-/** Light → dark → auto (follow the system). Remembered in this browser; exports stay light. */
-const THEME_NEXT = { light: 'dark', dark: 'auto', auto: 'light' } as const
-const THEME_TITLE = {
-  light: 'Light theme (click for dark)',
-  dark: 'Dark theme (click to follow the system setting)',
-  auto: 'Following the system light/dark setting (click for light)',
-}
-function ThemeToggle() {
-  const pref = useThemePref()
-  return <button type="button" className={`btn quiet icon-btn${pref !== 'light' ? ' on' : ''}`} aria-label={`Theme: ${pref}`}
-    onClick={() => setThemePref(THEME_NEXT[pref])} title={`${THEME_TITLE[pref]}; exported figures are always drawn light`}>
-    {pref === 'dark' ? <MoonIcon /> : pref === 'auto' ? <AutoThemeIcon /> : <SunIcon />}
-  </button>
 }
 
 /** Show or hide the "On this tab" contents sidebar (components/PageToc), on tabs that have one. */

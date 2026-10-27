@@ -9,7 +9,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { FONT, INK } from '@/lib/theme'
 import { fidProps, useHandEdits } from '@/lib/filterEdits'
-import { baseFilterId, useHighlight, type FilterRecord } from '@/lib/highlight'
+import { baseFilterId, dotFill, dotRim, useHighlight, type FilterRecord } from '@/lib/highlight'
 
 /** Helpers shared by the Experimental subpages (gallery/data/export_experiments.py exports). */
 
@@ -111,7 +111,7 @@ export function Scatter({ points, xLabel, yLabel, maxSide = 420, xLog = false, y
             const focus = !!key && (key === hl.pinnedId || key === hoverId)
             const r = p.r ?? 3.5
             return <circle key={p.key ?? i} cx={x(p.x)} cy={y(p.y)} r={focus ? Math.max(r, 6) : r} fill={p.hollow ? 'none' : p.color}
-              fillOpacity={active && !focus ? 0.25 : 0.8} stroke={focus ? INK.text : p.hollow ? p.color : INK.panel} strokeWidth={focus ? 2 : p.hollow ? 1.5 : 0.6} style={{ cursor: p.rec ? 'pointer' : 'default' }}
+              {...dotFill(active && !focus ? 'dimmed' : 'sparse')} stroke={focus ? INK.text : p.hollow ? p.color : dotRim().stroke} strokeWidth={focus ? 2 : p.hollow ? 1.5 : dotRim().strokeWidth} style={{ cursor: p.rec ? 'pointer' : 'default' }}
               onMouseEnter={(e) => { if (p.tip) tip.show(e, p.rec ? [...p.tip, 'click to pin it on every chart and open its record'] : p.tip); if (key) hl.setHover(key) }}
               onMouseLeave={() => { tip.hide(); if (key) hl.setHover(null) }}
               {...(key ? fidProps(key) : {})}

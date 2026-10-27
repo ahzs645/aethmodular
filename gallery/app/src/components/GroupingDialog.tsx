@@ -178,7 +178,7 @@ function Preview({ values, cuts, colors, unit }: { values: number[]; cuts: numbe
 
 /**
  * A chart's grouping picker: None, the reader's groupings and the notebooks', each with what it consists of on a
- * second line, then New… and Edit… (Build on this… for a notebook grouping, which saves a new one). `value` is the
+ * second line, then an add (+) button and Edit… (Build on this… for a notebook grouping, which saves a new one). `value` is the
  * id ('' for none). Charts show it always and their group choices only once a grouping is picked.
  */
 export function GroupingPicker({ value, onChange, field, rows }: { value: string; onChange: (id: string) => void; field?: string; rows?: FilterRow[] }) {
@@ -198,7 +198,11 @@ export function GroupingPicker({ value, onChange, field, rows }: { value: string
       <Combobox label="Grouping" value={current ? value : ''} options={options} minWidth={160} onChange={onChange}
         title="A measurement split into labelled bands (high vs low iron, rain classes, tertiles …), defined once for every chart" />
       <span className="grouping-actions">
-        <button type="button" className="btn" onClick={() => edit({ field, onSaved: onChange, rows })} title="Make a grouping from scratch">New…</button>
+        <button type="button" className="btn icon-btn" onClick={() => edit({ field, onSaved: onChange, rows })} title="Make a grouping from scratch" aria-label="New grouping">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+            <path d="M8 3v10M3 8h10" />
+          </svg>
+        </button>
         {current && (fromNotebook
           // a notebook grouping is not changed in place: building on it saves the reader's own copy
           ? <button type="button" className="btn" title="Open this notebook grouping in the editor; saving makes a new grouping of yours"

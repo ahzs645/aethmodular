@@ -1,4 +1,7 @@
-import { useId } from 'react'
+import { useId, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useSingleView } from '@/lib/singleView'
+import { useExportRender } from '@/lib/exportRender'
 import { equation, fitsFor, useRegressions } from '@/lib/regressionPrefs'
 import { fmt, type RegressionStats } from '@/lib/stats'
 import { FONT, INK } from '@/lib/theme'
@@ -102,6 +105,22 @@ export function useRegressionSummary({ stats, groups, width, enabled = true }: {
   stats: RegressionStats | null; groups?: RegressionGroup[]; width: number; enabled?: boolean
 }) {
   const { methods, showCI } = useRegressions()
+  // Where the summary goes, found from the DOM by a probe left in the chart:
+  //   chart  above the axes (everywhere, and in an export as on screen)
+  //   side   the chart in single-chart view (lib/singleView): the sidebar card, at its width; the plot keeps the height
+  //   data   an export setting it inside the plot (lib/exportRender): hidden here, read by lib/export
+  const single = useSingleView()
+  const render = useExportRender()
+  const probe = useRef<SVGGElement>(null)
+  const [place, setPlace] = useState<'chart' | 'side' | 'data'>('chart')
+  useLayoutEffect(() => {
+    const el = probe.current
+    const now = el && render?.panel.contains(el) ? (render.statsInside ? 'data' : 'chart')
+      : el && single.active && single.slot && el.closest('[data-single-active]') ? 'side' : 'chart'
+    if (now !== place) setPlace(now)
+  })
+  const slot = place === 'side' ? single.slot : null
+  if (slot) width = Math.max(200, slot.clientWidth || 320)
   const items = !enabled || !methods.length ? [] : groups ?? [{ stats, name: undefined, color: undefined }]
   const columns = Math.max(1, Math.min(2, items.length, Math.floor(width / 290)))
   const cellWidth = (width - (columns - 1) * SUMMARY_GAP) / columns
@@ -110,9 +129,10 @@ export function useRegressionSummary({ stats, groups, width, enabled = true }: {
     if (!r) return []
     const lines = r.lines.flatMap(line => wrapSummary(line.text, cellWidth).map(text => ({ ...line, text })))
     // Reserve the same minimum height in adjacent pooled panels even when a
-    // selected method or its CI is unavailable in one panel.
-    const minLines = (group.name ? 1 : 0) + 1 + methods.length * (showCI ? 3 : 1) + (showCI ? 2 : 0)
-    return [{ ...r, lines, name: group.name, color: group.color, height: Math.max(minLines, lines.length) * SUMMARY_STEP + 12 }]
+    // selected method or its CI is unavailable in one panel. CI adds one
+    // shared resampling description, plus two interval lines per method.
+    const minLines = (group.name ? 1 : 0) + 1 + methods.length * (showCI ? 3 : 1) + (showCI ? 1 : 0)
+    return [{ ...r, raw: r.lines, lines, name: group.name, color: group.color, height: Math.max(minLines, lines.length) * SUMMARY_STEP + 12 }]
   })
   let height = 0
   let rowY = 0
@@ -124,13 +144,21 @@ export function useRegressionSummary({ stats, groups, width, enabled = true }: {
     }
     return { x: (i % columns) * (cellWidth + SUMMARY_GAP), y: rowY }
   })
-  return { height, node: boxes.length ? <g className="regression-summary" role="group" aria-label="Regression statistics" fontFamily={FONT.mono} fontSize={SUMMARY_FONT} pointerEvents="none">
+  const node = boxes.length ? <g className="regression-summary" role="group" aria-label="Regression statistics" fontFamily={FONT.mono} fontSize={SUMMARY_FONT} pointerEvents="none">
     {boxes.map((box, i) => <g key={box.name ?? 'pooled'} transform={`translate(${positions[i].x},${positions[i].y})`} data-fit-site={box.name} data-export-color={box.color}>
       <rect width={cellWidth} height={box.height} rx={5} fill={INK.panel} stroke={INK.border} />
       {box.lines.map((line, j) => <text key={j} x={8} y={SUMMARY_STEP + 3 + j * SUMMARY_STEP} fill={line.color} data-regression-color={line.method}>{line.text}</text>)}
       {box.note && <title>{box.note}</title>}
     </g>)}
-  </g> : null }
+  </g> : null
+  if (!node) return { height, node }
+  if (place === 'data') return { height: 0, node: <><g ref={probe} /><g data-export-stats="" display="none">
+    {boxes.map((box) => <g key={box.name ?? 'pooled'} data-fit-site={box.name} data-export-color={box.color}>
+      {box.raw.map((line, j) => <text key={j} fill={line.color} data-regression-color={line.method} data-line={line.text === box.name ? 'name' : undefined}>{line.text}</text>)}
+    </g>)}
+  </g></> }
+  if (slot) return { height: 0, node: <><g ref={probe} />{createPortal(<svg className="regression-summary-side" width={width} height={height} viewBox={`0 0 ${width} ${height}`}>{node}</svg>, slot)}</> }
+  return { height, node: <><g ref={probe} />{node}</> }
 }
 
 export function RegressionGroupLines({ groups, ...props }: Omit<Parameters<typeof RegressionLines>[0], 'stats' | 'color' | 'domain'> & { groups: RegressionGroup[] }) {

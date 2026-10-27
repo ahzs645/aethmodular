@@ -1,4 +1,5 @@
 import { useId, useMemo, useRef } from 'react'
+import { StepButton } from '@/components/StepButton'
 import { IdentityLine } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { seasonsForSite } from '@/siteSeasons'
@@ -127,6 +128,10 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
       title="Connected scatter — the pair's path through the year"
       subtitle="Each point is the median of both measurements for a calendar month (pooling the selected years), or for a year. Straight segments join the available steps in time order. Inspect one path with the month/year controls, or compare all paths on shared axes. Steps with fewer than 4 paired filters are skipped."
       provenance="31 figures classified as connected scatter, none built until now · react-graph-gallery.com/connected-scatter-plot"
+      // how to read it, behind the ⓘ rather than a line above the plot
+      tip={<>{step === 'Month of year' ? 'Monthly medians · selected years pooled · Jan → Dec.' : 'Yearly medians · earliest → latest.'}
+        {' '}{compareAll ? 'Tap a point to inspect its path on its own.' : 'Tap a point or use the step controls below.'}
+        {opts.identity && ' Grey dashed line = equal measurements.'}</>}
       controls={
         <>
           {grp && <Segmented label="Paths" value={pathsBy} options={PATHS_BY} onChange={(v) => { setPathsBy(v); setHidden(new Set()) }}
@@ -141,11 +146,6 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
       }
     >
       <div ref={wrapRef} className={`chart-wrap centered${fit === null ? '' : ' fit-square'}`} style={fit === null ? undefined : { minHeight: fit }}>
-        <p className="chart-note connected-guide" data-export="text">
-          {step === 'Month of year' ? 'Monthly medians · selected years pooled · Jan → Dec.' : 'Yearly medians · earliest → latest.'}
-          {' '}{compareAll ? 'Tap a point to inspect its path on its own.' : 'Tap a point or use the step controls below.'}
-          {' '}{opts.identity && 'Grey dashed line = equal measurements.'}
-        </p>
         {all.length < 2 ? (
           <Empty>Not enough steps with ≥{minN} filters carrying both fields.</Empty>
         ) : (
@@ -219,12 +219,12 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
         )}
         {!compareAll && selectedPoint && selectedPath && <div className="connected-inspector">
           <div className="connected-step-controls">
-            <button type="button" className="btn" aria-label="Previous step" disabled={selectedIndex === 0}
-              onClick={() => setPointChoice(String(selectedPath.pts[selectedIndex - 1].key))}>←</button>
+            <StepButton dir="prev" label={step === 'Month of year' ? 'Previous month' : 'Previous year'} disabled={selectedIndex === 0}
+              onClick={() => setPointChoice(String(selectedPath.pts[selectedIndex - 1].key))} />
             <Combobox label={step === 'Month of year' ? 'Month' : 'Year'} value={String(selectedPoint.key)}
               options={selectedPath.pts.map(p => ({ key: String(p.key), label: label(p.key), hint: `${p.n} filters` }))} onChange={setPointChoice} />
-            <button type="button" className="btn" aria-label="Next step" disabled={selectedIndex === selectedPath.pts.length - 1}
-              onClick={() => setPointChoice(String(selectedPath.pts[selectedIndex + 1].key))}>→</button>
+            <StepButton dir="next" label={step === 'Month of year' ? 'Next month' : 'Next year'} disabled={selectedIndex === selectedPath.pts.length - 1}
+              onClick={() => setPointChoice(String(selectedPath.pts[selectedIndex + 1].key))} />
           </div>
           <div className="connected-readout" role="region" aria-label="Selected step medians" aria-live="polite" data-export="text">
             <strong><span className="swatch" style={{ background: selectedPath.color }} />{selectedPath.name} · {label(selectedPoint.key)}</strong>

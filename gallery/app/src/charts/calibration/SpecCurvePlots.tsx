@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { robustDomain } from '@/lib/axes'
 import * as d3 from 'd3'
 import { XAxis, YAxis } from '@/components/Axes'
-import { FONT, INK } from '@/lib/theme'
+import { FONT, INK, inkNow } from '@/lib/theme'
+import { useTheme } from '@/lib/colorTheme'
 import { PREPROCESSING, label } from '@/lib/labels'
 import { selectionPanels } from '@/lib/specification'
 import type { SpecCurveFile, SpecMetricInfo } from './SpecCurve'
@@ -107,6 +108,8 @@ function SpecPanel(props: Props & {
   const { file, indices, plotW, y, labelPad, labels, rowY, stripH, highlighted, showDots, topH } = props
   const curveOnly = !!props.curveOnly
   const [cursor, setCursor] = useState<number | null>(null)
+  // the strips are canvas rasters, which CSS cannot recolour: drawn again on a theme switch
+  const theme = useTheme()
   const n = indices.length, x = d3.scaleLinear().domain([0, Math.max(1, n)]).range([0, plotW])
   const yLo = y.domain()[0], clamp = (i: number) => y(Math.max(yLo, file.value[i]))
   const samples = indices.map((i, j) => ({ i, j })).filter((_, j) => j % Math.max(1, Math.floor(n / (plotW * 2))) === 0 || j === n - 1)
@@ -122,12 +125,12 @@ function SpecPanel(props: Props & {
       for (let b = 0; b < cols; b++) {
         const j0 = Math.floor(b * indices.length / cols), j1 = Math.max(j0 + 1, Math.floor((b + 1) * indices.length / cols))
         let used = 0; for (let j = j0; j < j1; j++) if (mask[indices[j]] === '1') used++
-        const rgb = used === 0 ? d3.rgb(INK.panel) : d3.rgb(props.heat(used / (j1 - j0)))
+        const rgb = used === 0 ? d3.rgb(inkNow('panel')) : d3.rgb(props.heat(used / (j1 - j0)))
         img.data.set([rgb.r, rgb.g, rgb.b, 255], b * 4)
       }
       ctx.putImageData(img,0,0); return canvas.toDataURL()
     })
-  }, [file, indices, plotW, curveOnly, props.heat])
+  }, [file, indices, plotW, curveOnly, props.heat, theme])
   const locate = (e: React.MouseEvent<SVGRectElement>) => Math.min(n - 1, Math.max(0, Math.floor(x.invert(e.clientX - e.currentTarget.getBoundingClientRect().left))))
   const count = indices.filter(i => highlighted[i]).length
   return <g transform={`translate(${props.xOffset},${props.yOffset})`} data-selection={props.name}>

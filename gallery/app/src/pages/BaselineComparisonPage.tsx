@@ -17,7 +17,7 @@ import { BASELINE_COLOR, FONT, INK } from '@/lib/theme'
 import { fmt as f } from '@/lib/format'
 import { baselineName } from '@/lib/labels'
 import { BaselineRankProvider, useBaselineColors } from '@/lib/baselineRank'
-import { useHighlight, type FilterRecord } from '@/lib/highlight'
+import { dotFill, dotRim, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { baselineMetrics, pairedAbsoluteErrorDifference, retainedWavenumber } from '@/lib/baselineComparison'
 import { BaselineResearchDiagnostics, RegionContribution, SiteBandPattern, BlankSpread, svgLegendItem, type SvgLegendState } from '@/pages/BaselineResearchDiagnostics'
 import { useLegend } from '@/components/Legend'
@@ -172,7 +172,7 @@ function ResidualPlot({ rows, available, onInspect, cohort }: { rows: BaselinePa
         <text y={-10} fontSize={12} fontWeight={600} fill={COLOR[method]} fontFamily={FONT.family}>{baselineName(method, { short: true })}<tspan fill={INK.muted} fontWeight={400}>{`  ·  MAE ${f(mae)} µg/filter`}</tspan></text>
         <YAxis scale={y} x={0} gridWidth={pw} label={k === 0 || !side ? 'Prediction − TOR (µg/filter)' : undefined}/><XAxis scale={x} y={ih} label="Measured TOR EC (µg/filter)"/>
         <RefLine orient="h" at={y(0)} from={0} to={pw} />
-        {rows.map(r => <circle key={r.sample_id} cx={x(r.y)} cy={y(r[method]-r.y)} r={available.has(r.sample_id)?4:2.5} fill={COLOR[method]} fillOpacity={0.45} stroke={available.has(r.sample_id)?INK.text:'none'} style={{cursor:'pointer'}} onClick={()=>{ hl.openRecord(pairRecord(r, 'the AIRSpec / VIBES error plot')); if (available.has(r.sample_id)) onInspect(r.sample_id) }} onMouseEnter={e=>tip.show(e,[`${r.Site} / ${r.sample_id}`,`${r.date} · ${r.loading_band}`,`TOR ${f(r.y)}, AIRSpec ${f(r.AIRSpec)}, VIBES ${f(r.VIBES)} µg/filter`,`${method} error ${f(r[method]-r.y)}`,available.has(r.sample_id)?'Click for details and the stored spectrum':'Click for details (spectrum not in the 12-case inspection)'])} onMouseLeave={tip.hide}/>)}
+        {rows.map(r => <circle key={r.sample_id} cx={x(r.y)} cy={y(r[method]-r.y)} r={available.has(r.sample_id)?4:2.5} fill={COLOR[method]} {...dotFill('dense')} stroke={available.has(r.sample_id)?INK.text:dotRim().stroke} strokeWidth={available.has(r.sample_id)?1:dotRim().strokeWidth} style={{cursor:'pointer'}} onClick={()=>{ hl.openRecord(pairRecord(r, 'the AIRSpec / VIBES error plot')); if (available.has(r.sample_id)) onInspect(r.sample_id) }} onMouseEnter={e=>tip.show(e,[`${r.Site} / ${r.sample_id}`,`${r.date} · ${r.loading_band}`,`TOR ${f(r.y)}, AIRSpec ${f(r.AIRSpec)}, VIBES ${f(r.VIBES)} µg/filter`,`${method} error ${f(r[method]-r.y)}`,available.has(r.sample_id)?'Click for details and the stored spectrum':'Click for details (spectrum not in the 12-case inspection)'])} onMouseLeave={tip.hide}/>)}
       </g>
     })}</svg>}{tip.node}</div>
   </ChartFrame>

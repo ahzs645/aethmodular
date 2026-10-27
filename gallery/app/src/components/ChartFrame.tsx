@@ -1,11 +1,15 @@
 import { Combobox } from '@/components/Combobox'
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import { createPortal } from 'react-dom'
-import { createContext, useId, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useId, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ExportButton } from '@/components/ExportDialog'
-import { usePrefs } from '@/lib/prefs'
+import { EXPLAIN_AVAILABLE, usePrefs } from '@/lib/prefs'
+import { setSingleChartDisplay, useChartDisplayPrefs } from '@/lib/chartDisplayPrefs'
+import { chartInkStyle } from '@/lib/chartDisplayStyles'
+import { useSystemDark } from '@/lib/colorTheme'
 import { useParamScope } from '@/lib/url'
 import { useFloatingMenu } from '@/hooks/useFloatingMenu'
+import { SingleViewNav, SingleViewStats, useSingleView } from '@/lib/singleView'
 
 /**
  * What a frame's host adds to it. A Dashboard tile draws the frame compact: no header
@@ -70,9 +74,7 @@ export function ChartFrame({
   title = estimatorText(title, method)
   subtitle = subtitle ? estimatorText(subtitle, method) : subtitle
   const ref = useRef<HTMLElement>(null)
-  const { explain } = usePrefs()
-  const [info, setInfo] = useState(explain)
-  useEffect(() => setInfo(explain), [explain])
+  const { explain, density } = usePrefs()
   const dash = title.indexOf(' — ')
   const short = dash > 0 ? title.slice(0, dash) : title
   const rest = dash > 0 ? title.slice(dash + 3) : ''
@@ -89,51 +91,82 @@ export function ChartFrame({
   }
 
   const anchor = id && method !== 'deming' ? `${id}-${method}` : id
-  const [side, cycleSide] = useControlsSide(id ?? short)
+  const chartKey = id ?? `${scope}${slug(short)}`
+  const display = useChartDisplayPrefs()
+  const own = display.charts[chartKey]
+  // single-chart view (lib/singleView): the chart in view carries the arrows, the picker and its fit statistics,
+  // and its options default to a column on the right, so the plot keeps the height under the title
+  const single = useSingleView()
+  const inView = !compact && single.on && single.active !== null && single.active === ref.current
+  const side = own?.controlsSide ?? (inView ? 'right' : display.controlsSide)
+  const info = EXPLAIN_AVAILABLE && (own?.explain ?? explain)
+  const readable = (own?.density ?? density) === 'readable'
+  const systemDark = useSystemDark()
+  const theme = own?.theme === 'auto' ? systemDark ? 'dark' : 'light' : own?.theme
+  const appearance = {
+    ...(theme ? chartInkStyle(theme) : {}),
+    '--text-scale': readable ? 1.15 : 1,
+    '--chart-text-scale': readable ? 1.12 : 1,
+  } as CSSProperties
+  const displayAttrs = { 'data-chart-key': chartKey, 'data-chart-title': short, 'data-chart-theme': theme, 'data-chart-explain': info ? '1' : '0', style: appearance }
   // focus mode: this chart alone, centred over the page with its options; `focus=<key>` in the URL, so a copied link
   // reopens it exactly as it is (every other setting already lives in the URL)
   const focusKey = anchor ?? slug(short)
   const [focused, setFocused] = useFocus(focusKey)
   if (compact) return (
-    <section className="panel compact" ref={ref} id={anchor}>
+    <section className="panel compact" ref={ref} id={anchor} {...displayAttrs}>
       <TileMenu name={short} extras={extras!} about={hasInfo ? <>{rest && <p>{rest}</p>}{about && <div className="frame-about">{about}</div>}{subtitle && <p className="subtitle">{subtitle}</p>}{provenance && <p className="provenance">{provenance}</p>}</> : null}
-        tip={tip} controls={allControls} export={exportable ? <ExportButton panelRef={ref} title={short} /> : null} onCopyRef={copyRef} copied={refCopied} />
-      {children}
+        tip={tip} controls={side === 'top' ? allControls : null} export={exportable ? <ExportButton panelRef={ref} title={short} /> : null} onCopyRef={copyRef} copied={refCopied} />
+      {info && hasInfo && <div className="compact-explanation"><strong>{short}</strong>{about}{subtitle && <p className="subtitle">{subtitle}</p>}{provenance && <p className="provenance">{provenance}</p>}</div>}
+      <div className={`frame-body controls-${side}`}>
+        {side !== 'top' && allControls && <div className="frame-controls">{allControls}</div>}
+        <div className="frame-chart">{children}</div>
+      </div>
     </section>
   )
-  return (<>
-    {focused && <div className="focus-scrim" onClick={() => setFocused(false)} />}
-    <section className={`panel${focused ? ' focused' : ''}`} ref={ref} id={anchor}>
-      <header className="frame-head">
-        <div>
-          <h2>
+  // single-chart view with its options in a column: the title bar heads that column, so the plot takes the panel's full height
+  const headInColumn = inView && !!controls && side !== 'top' && !focused
+  const head = (
+    <header className="frame-head">
+      <div>
+        {/* in the single-chart view the title is the way through the page: ‹ n / N ›, then a picker named for this chart */}
+        {inView
+          ? <h2 className="single-head"><SingleViewNav>{tip && <InfoTip>{tip}</InfoTip>}</SingleViewNav></h2>
+          : <h2>
             {short}
             {info && rest && <span className="title-rest"> — {rest}</span>}
             {tip && <InfoTip>{tip}</InfoTip>}
-          </h2>
-          {info && about && <div className="frame-about">{about}</div>}
-          {info && subtitle && <p className="subtitle">{subtitle}</p>}
-          {info && provenance && <p className="provenance">{provenance}</p>}
-        </div>
-        <div className="frame-actions">
-          {controls && <ControlsSideButton side={side} onClick={cycleSide} />}
-          {hasInfo && (
-            <button type="button" className={`btn quiet ${info ? 'on' : ''}`} title={info ? 'Hide the explanation' : 'What this chart shows and where it comes from'} aria-pressed={info} onClick={() => setInfo((v) => !v)}>
-              ?
-            </button>
-          )}
-          <RefMenu onCopyRef={copyRef} refCopied={refCopied} link={() => focusLink(focusKey)} focused={focused} onFocus={() => setFocused(true)} />
-          {/* the whole figure (every facet and the legend), not just the first <svg> */}
-          {exportable && <ExportButton panelRef={ref} title={short} />}
-          {focused
-            ? <button type="button" className="btn quiet" title="Back to the page (Esc)" onClick={() => setFocused(false)}>Close ✕</button>
-            : <button type="button" className="btn quiet" title="Focus: this chart alone, centred, with its options" aria-label="Focus on this chart" onClick={() => setFocused(true)}><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg></button>}
-        </div>
-      </header>
+          </h2>}
+        {inView && info && rest && <p className="title-rest">{rest}</p>}
+        {info && about && <div className="frame-about">{about}</div>}
+        {info && subtitle && <p className="subtitle">{subtitle}</p>}
+        {info && provenance && <p className="provenance">{provenance}</p>}
+      </div>
+      <div className="frame-actions">
+        {hasInfo && EXPLAIN_AVAILABLE && (
+          <button type="button" className={`btn quiet ${info ? 'on' : ''}`} title={info ? 'Hide the explanation' : 'What this chart shows and where it comes from'} aria-pressed={info} onClick={() => setSingleChartDisplay(chartKey, { explain: !info })}>
+            ?
+          </button>
+        )}
+        <RefMenu onCopyRef={copyRef} refCopied={refCopied} link={() => focusLink(focusKey)} focused={focused} onFocus={() => setFocused(true)} />
+        {/* the whole figure (every facet and the legend), not just the first <svg> */}
+        {exportable && <ExportButton panelRef={ref} title={short} />}
+        {focused
+          ? <button type="button" className="btn quiet" title="Back to the page (Esc)" onClick={() => setFocused(false)}>Close ✕</button>
+          : <button type="button" className="btn quiet" title="Focus: this chart alone, centred, with its options" aria-label="Focus on this chart" onClick={() => setFocused(true)}><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg></button>}
+      </div>
+    </header>
+  )
+  return (<>
+    {focused && <div className="focus-scrim" onClick={() => setFocused(false)} />}
+    <section className={`panel${focused ? ' focused' : ''}`} ref={ref} id={anchor} data-frame data-frame-title={short} {...displayAttrs}>{/* data-frame: a chart the single-chart view steps through (lib/singleView) */}
+      {!headInColumn && head}
+      {/* the fit statistics in single-chart view: at the head of an options column, else above the options row */}
+      {inView && (!controls || side === 'top') && <SingleViewStats />}
       {/* the same elements whichever side the options are on: a different tree would remount the chart's
           own wrapper under a chart that is not remounted, and its size observer would keep the old width */}
       <div className={`frame-body controls-${controls ? side : 'top'}`}>
-        {controls && <div className="frame-controls">{controls}</div>}
+        {controls && <div className="frame-controls">{headInColumn && head}{inView && side !== 'top' && <SingleViewStats />}{controls}</div>}
         <div className="frame-chart">{children}</div>
       </div>
     </section>
@@ -237,47 +270,6 @@ function RefMenu({ onCopyRef, refCopied, link, focused, onFocus }: {
         </button>
       </div>, document.body)}
     </div>
-  )
-}
-
-/**
- * Where a chart's options sit: above it (the default), or in a column to its right or left, for a
- * tall chart on a wide screen. Per chart and per viewer (localStorage), a convenience, not view state:
- * it stays out of the URL. Under 820px wide the column falls back to the row above (styles.css).
- */
-type ControlsSide = 'top' | 'right' | 'left'
-const SIDES: ControlsSide[] = ['top', 'right', 'left']
-const SIDE_KEY = 'aeth-gallery:controls-side'
-const readSides = (): Record<string, ControlsSide> => { try { return JSON.parse(localStorage.getItem(SIDE_KEY) ?? '{}') } catch { return {} } }
-
-function useControlsSide(key: string): [ControlsSide, () => void] {
-  const [side, setSide] = useState<ControlsSide>(() => readSides()[key] ?? 'top')
-  const cycle = () => {
-    const next = SIDES[(SIDES.indexOf(side) + 1) % SIDES.length]
-    setSide(next)
-    try {
-      const all = readSides()
-      if (next === 'top') delete all[key]; else all[key] = next
-      localStorage.setItem(SIDE_KEY, JSON.stringify(all))
-    } catch { /* blocked storage: the choice still holds until reload */ }
-  }
-  return [side, cycle]
-}
-
-const SIDE_NEXT: Record<ControlsSide, string> = { top: 'to the right of the chart', right: 'to the left of the chart', left: 'back above the chart' }
-
-/** A card outline with the options' place filled in; a click moves them on (top → right → left). */
-function ControlsSideButton({ side, onClick }: { side: ControlsSide; onClick: () => void }) {
-  const bar = side === 'top' ? { x: 2, y: 2, width: 12, height: 3 } : { x: side === 'right' ? 10 : 2, y: 2, width: 4, height: 12 }
-  return (
-    <button type="button" className={`btn quiet ${side !== 'top' ? 'on' : ''}`} onClick={onClick}
-      title={`Options ${side === 'top' ? 'above' : `to the ${side} of`} the chart; click to put them ${SIDE_NEXT[side]}`}
-      aria-label={`Move the options ${SIDE_NEXT[side]}`}>
-      <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" style={{ display: 'block' }}>
-        <rect x="1" y="1" width="14" height="14" rx="2" fill="none" stroke="currentColor" strokeWidth="1.3" />
-        <rect {...bar} rx="0.8" fill="currentColor" />
-      </svg>
-    </button>
   )
 }
 
@@ -474,42 +466,60 @@ export function SwapButton({ onClick, title }: { onClick: () => void; title?: st
  * while the pointer is over it, so links inside remain clickable.
  */
 export function InfoTip({ children, label = 'Notes on this chart' }: { children: ReactNode; label?: string }) {
+  const tip = useFloatingTip('start')
   return (
-    <span className="info-tip" tabIndex={0} aria-label={label}>
+    <span className="info-tip" tabIndex={0} aria-label={label} aria-describedby={tip.place ? tip.id : undefined}
+      onMouseEnter={e => tip.show(e.currentTarget)} onMouseLeave={tip.closeSoon}
+      onFocus={e => tip.show(e.currentTarget)} onBlur={tip.closeSoon}
+      onClick={e => tip.show(e.currentTarget)} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); tip.close() } }}>
       <span className="info-tip-icon" aria-hidden="true">i</span>
-      <span className="info-tip-body" role="tooltip">{children}</span>
+      {tip.body(children)}
     </span>
   )
 }
 
-/** A corner note is portalled outside the scrolling tile, so it cannot be clipped. */
-function FloatingInfoTip({ children }: { children: ReactNode }) {
+/**
+ * A note's body floats on the page (portalled to <body>, position: fixed) and is kept inside the window:
+ * a panel, a scrolling tile, a drawer or the window edge can never cut it off, the way a body positioned
+ * inside the panel was cut off at a phone's edge. `align`: the body starts at the icon, or ends at it.
+ */
+function useFloatingTip(align: 'start' | 'end') {
   const id = useId()
   const [place, setPlace] = useState<React.CSSProperties | null>(null)
   const closeTimer = useRef<ReturnType<typeof setTimeout>>()
   const cancelClose = () => clearTimeout(closeTimer.current)
+  const close = () => { cancelClose(); setPlace(null) }
   const closeSoon = () => { cancelClose(); closeTimer.current = setTimeout(() => setPlace(null), 120) }
   useEffect(() => {
-    const close = () => setPlace(null)
-    window.addEventListener('resize', close)
-    window.addEventListener('scroll', close, true)
-    return () => { cancelClose(); window.removeEventListener('resize', close); window.removeEventListener('scroll', close, true) }
+    const shut = () => setPlace(null)
+    window.addEventListener('resize', shut)
+    window.addEventListener('scroll', shut, true)
+    return () => { cancelClose(); window.removeEventListener('resize', shut); window.removeEventListener('scroll', shut, true) }
   }, [])
   const show = (el: HTMLElement) => {
     cancelClose()
     const r = el.getBoundingClientRect()
-    const width = Math.min(360, window.innerWidth - 24)
+    const width = Math.min(align === 'start' ? 420 : 360, window.innerWidth - 24)
+    const want = align === 'start' ? r.left - 8 : r.right - width
     const below = window.innerHeight - r.bottom > 160
-    setPlace({ position: 'fixed', width, left: Math.max(12, Math.min(r.right - width, window.innerWidth - width - 12)),
-      ...(below ? { top: r.bottom + 6, maxHeight: window.innerHeight - r.bottom - 18 } : { bottom: window.innerHeight - r.top + 6, maxHeight: r.top - 18 }) })
+    setPlace({ position: 'fixed', width, left: Math.max(12, Math.min(want, window.innerWidth - width - 12)),
+      ...(below ? { top: r.bottom + 6, bottom: 'auto', maxHeight: window.innerHeight - r.bottom - 18 }
+        : { top: 'auto', bottom: window.innerHeight - r.top + 6, maxHeight: r.top - 18 }) })
   }
+  const body = (children: ReactNode) => place && createPortal(<div id={id} role="tooltip" className="info-tip-body floating" style={place}
+    onMouseEnter={cancelClose} onMouseLeave={closeSoon}>{children}</div>, document.body)
+  return { id, place, show, close, closeSoon, body }
+}
+
+/** A tile's corner note: the same floating body as InfoTip, from a button in the tile's corner. */
+function FloatingInfoTip({ children }: { children: ReactNode }) {
+  const tip = useFloatingTip('end')
   return <>
-    <button type="button" className="tile-info-btn info-tip-icon" aria-label="Notes on this chart" aria-describedby={place ? id : undefined}
-      onMouseEnter={e => show(e.currentTarget)} onMouseLeave={closeSoon}
-      onFocus={e => show(e.currentTarget)} onBlur={closeSoon}
-      onClick={e => show(e.currentTarget)} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); cancelClose(); setPlace(null) } }}>i</button>
-    {place && createPortal(<div id={id} role="tooltip" className="info-tip-body floating" style={place}
-      onMouseEnter={cancelClose} onMouseLeave={closeSoon}>{children}</div>, document.body)}
+    <button type="button" className="tile-info-btn info-tip-icon" aria-label="Notes on this chart" aria-describedby={tip.place ? tip.id : undefined}
+      onMouseEnter={e => tip.show(e.currentTarget)} onMouseLeave={tip.closeSoon}
+      onFocus={e => tip.show(e.currentTarget)} onBlur={tip.closeSoon}
+      onClick={e => tip.show(e.currentTarget)} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); tip.close() } }}>i</button>
+    {tip.body(children)}
   </>
 }
 

@@ -52,7 +52,9 @@ test('a VIBES run is coloured and named by its rank', () => {
 })
 
 test('cell labels pick readable ink from the fill', async () => {
-  const { inkOn, INK } = await import('./theme.ts')
+  // dark labels use CELL_INK, the page ink one step off, so the dark theme's CSS leaves it dark
+  const { inkOn, CELL_INK } = await import('./theme.ts')
+  const INK = { text: CELL_INK }
   assert.equal(inkOn('#ffffff'), INK.text)
   assert.equal(inkOn('#f7f7f7'), INK.text)
   assert.equal(inkOn('#2166ac'), '#fff')
@@ -60,4 +62,31 @@ test('cell labels pick readable ink from the fill', async () => {
   assert.equal(inkOn('rgb(8, 48, 107)'), '#fff')
   assert.equal(inkOn('rgb(222, 235, 247)'), INK.text)
   assert.equal(inkOn('not a colour'), INK.text)
+})
+
+test('the dark theme is CSS over light marks: paint pairs, inline colours, dot steps', async () => {
+  const { DOT_OPACITY, INK, INK_LIGHT, INK_DARK, CELL_INK, darkTwin, dotOpacity, inkOn, inkOnFill, paintPair, setInkTheme, themed } = await import('./theme.ts')
+  const { pairRules, themeCss } = await import('./themeCss.ts')
+  setInkTheme('dark')
+  try {
+    // marks keep the light colours and opacities whatever the theme
+    assert.deepEqual({ ...INK }, INK_LIGHT)
+    assert.equal(dotOpacity('dense'), DOT_OPACITY.dense.light)
+    assert.equal(themed('#123456', '#abcdef'), '#123456')
+    assert.equal(darkTwin('#123456'), '#abcdef')
+    assert.equal(darkTwin(INK_LIGHT.text), INK_DARK.text)
+    // an empty cell shows dark on the dark page, so its label is white there and dark ink in the light figure
+    assert.equal(inkOn(INK_LIGHT.empty), '#fff')
+    assert.equal(inkOnFill(INK_LIGHT.empty), CELL_INK)
+    assert.equal(darkTwin(CELL_INK), null, 'cell label ink is never remapped')
+  } finally { setInkTheme('light') }
+  const css = themeCss()
+  assert.match(css, /:root\[data-theme="dark"\],\.panel\[data-chart-theme="dark"\]\{--p-1f2933:#e3e7ec\}/)
+  assert.match(css, /:where\(svg \[fill="#1f2933" i\]:not\(\[data-print\] \*\)\)\{fill:var\(--p-1f2933, #1f2933\)\}/)
+  assert.ok(css.includes('[style^="color: rgb(31, 41, 51)"]'), 'inline HTML colour as the browser serialises it')
+  assert.match(css, /\[data-dot="dense"\]:not\(\[data-print\] \*\)\{fill-opacity:0\.6\}/)
+  assert.ok(!css.includes('[data-dot="dimmed"]'), 'dimmed is the same in both themes')
+  assert.deepEqual(pairRules('red', '#000000'), [], 'only hex pairs become rules')
+  paintPair('#0a0b0c', '#0a0b0c')
+  assert.equal(darkTwin('#0a0b0c'), null, 'a colour that does not change is not a pair')
 })

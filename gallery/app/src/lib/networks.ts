@@ -109,7 +109,7 @@ async function loadSpartan(picked: string[] | 'all'): Promise<NetworkData> {
       .map(g => ({ ...g, fields: g.fields.filter(f => index.fields.includes(f)) })).filter(g => g.fields.length) }
 }
 
-async function loadImprove(picked: string[]): Promise<NetworkData> {
+export async function loadImprove(picked: string[]): Promise<NetworkData> {
   const index = await loadJson<ImproveIndex>('improve_samples/index.json')
   // US sites read by state; the overseas ones by country
   const place = (x: ImproveIndex['sites'][number]) => x.country === 'US' || !x.country ? x.state ?? '' : COUNTRY[x.country] ?? x.country

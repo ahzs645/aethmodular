@@ -311,12 +311,12 @@ const SplomCell = memo(function SplomCell({ rows, fx, fy, sx, sy, cellS, groupin
   return <>
     <rect width={cellS} height={cellS} fill={INK.panel} stroke={INK.grid} />
     {focusLast(pts, (p) => p.row.id, focusId).map(([p]) => {
-      const f = focusStyle(p.row.id, focusId, { r: 2, opacity: 0.55 }, selected)
+      const f = focusStyle(p.row.id, focusId, { r: 2, level: 'dense' }, selected)
       const cx = Math.max(0, Math.min(cellS, sx(p.x)))
       const cy = Math.max(0, Math.min(cellS, cellS - sy(p.y)))
       return (
         <circle
-          key={p.row.id} cx={cx} cy={cy} r={f.r} fill={p.row.color as string} fillOpacity={f.opacity * dim(p.row.site)} stroke={f.stroke} strokeWidth={f.strokeWidth}
+          key={p.row.id} cx={cx} cy={cy} r={f.r} fill={p.row.color as string} fillOpacity={f.opacity * dim(p.row.site)} stroke={f.stroke} strokeWidth={f.strokeWidth} data-dot={dim(p.row.site) === 1 ? f.dot : undefined}
           style={{ cursor: 'pointer' }}
           onMouseEnter={(e) => { setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.site} · ${p.row.date}`, `${fx}: ${fmt(p.x)}`, `${fy}: ${fmt(p.y)}`, 'click to pin it on every chart']) }}
           onMouseLeave={() => { setHover(null); tip.hide() }}

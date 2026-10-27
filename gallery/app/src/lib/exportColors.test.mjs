@@ -56,3 +56,17 @@ test('standard colors bypass saved custom colors without losing them, including 
   assert.deepEqual(effectiveExportColors({...standard,mode:'custom'}),custom)
   assert.equal(readExportColors({mode:'unknown'}).mode,'standard')
 })
+
+test('a dark-page export keeps site and season colours, even when a dark ramp step shares the hex', async () => {
+  const { registerPrintColours } = await import('./theme.ts')
+  const { fixedColours, printPaint } = await import('./exportColors.ts')
+  // a dark colour-scheme stop that is exactly Beijing's red, as lib/colourSchemes registers one
+  registerPrintColours(['#e74c3c'], ['#df4532'])
+  const fixed = fixedColours([{ code: 'CHTS', name: 'Beijing', color: '#E74C3C' }], [{ color: 'rgb(52, 152, 219)' }])
+  assert.deepEqual([...fixed], ['#e74c3c', '#3498db'])
+  assert.equal(printPaint('#E74C3C', fixed), null)
+  assert.equal(printPaint('rgb(231, 76, 60)', fixed), null, 'a computed HTML swatch colour too')
+  assert.equal(printPaint('#e74c3c'), '#df4532', 'the same hex on a heat-map cell still prints light')
+  assert.equal(printPaint('#e3e7ec', fixed), '#1f2933', 'INK dark text still prints light')
+  assert.equal(printPaint('none', fixed), null)
+})

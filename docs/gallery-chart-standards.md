@@ -51,6 +51,8 @@ many places currently deviate. **New** marks a primitive that does not exist yet
 | Height in a tile | The chart's height (or row height, or square side) from `useFitHeight() ?? its own`; legends through `Legend` so a tile can compact, move or hide them | `lib/chartFit`, `components/Legend` | Wind roses (fixed-size roses) and multi-panel layouts (per-site grids) keep their size and scroll inside the tile |
 | Dashboard tile | One `ChartFrame` per chart; registered in the Add chart menu; settings in `useChartOptions` / `useTileSetting` so a shared dashboard reopens them | `components/dashboard/registry`, `lib/url` | The Weather and Calibration charts join through adapters (`components/dashboard/extraTiles`) |
 | Small constants | `MONTHS`, heat ramps defined once | `lib/theme` | `MONTHS` ×3, `HEAT` ×2 |
+| Floating layers (popovers, notes, menus) | Portalled to `<body>`, `position: fixed`, placed from the trigger and kept inside the window; never `position: absolute` inside a panel, where a scrolling box, a tile or a phone's edge cuts it off | `hooks/useFloatingMenu` (menus, pickers), `ChartFrame` `InfoTip` / `useFloatingTip` (notes), `hooks/useTooltip` (hover readouts) | Header-only popovers (Views, nav menus, Dashboard header panels) still sit in the header; `src/lib/floating.test.mjs` fails on any new in-place popover |
+| Stepping (previous / next) | One chevron button, square and as tall as the `Combobox` beside it; no text arrows, no taller touch buttons beside a picker | `components/StepButton` | 0 (single-chart view, Connected scatter) |
 
 ## 2. Composite charts that exist in many copies
 
@@ -186,13 +188,32 @@ de-duplication it carries), `selectedStyle`, `monthlyStats` /
 - **Research-page crossplots** keep showing every point ("Data" axes); the
   shared `Crossplot` takes the axes mode as a prop.
 - **Export** saves the whole panel: every facet plus the legend in one SVG.
-- **Dark theme (23 Oct 2026)**: header button cycles light → dark → auto (follow
-  the system); light stays the default. Chart colours come from `INK` (and
-  `BASELINE_COLOR`, `SPECTRAL_REGION`, …) in `lib/theme.ts`, which
-  `setInkTheme` swaps in place before the app remounts. So read `INK.x` while
-  rendering: never copy it into a module-level constant (use a getter, or
-  `themed(light, dark)` for a one-off colour), and use `INK.panel` rather than
-  `#fff` for halos, hollow markers and separators. Site and season colours stay
-  the same in both themes. Exports are always light: `lib/export` maps each
-  dark-theme colour back to its light step, including colours interpolated on a
-  colour scheme's ramp.
+- **Dark theme (23 Oct 2026; CSS since 27 Oct)**: header button cycles light →
+  dark → auto (follow the system); light stays the default. Marks are always
+  drawn in the light colours (`INK`, `BASELINE_COLOR`, `SPECTRAL_REGION`, … in
+  `lib/theme.ts` never change), and `lib/themeCss` maps each light colour that
+  has a dark twin (a paint pair) in CSS: SVG `fill`/`stroke`/`stop-color`
+  attributes of that hex, and inline HTML `color`/`background` of it, show the
+  twin on `html[data-theme="dark"]` or in a `.panel[data-chart-theme="dark"]`.
+  So a switch recolours the page in place, with no remount. Give a one-off
+  colour its dark step with `themed(light, dark)` (it returns `light` and
+  registers the pair). Only what CSS cannot map reads the theme and re-renders
+  through `useTheme()` (lib/colorTheme): colour-scheme ramps (`useColourScheme`
+  does it for you), `inkOn` labels on cells (`HeatCell` does it), canvas
+  rasters (use `inkNow(key)`) and colours computed from the theme. Use
+  `INK.panel` rather than `#fff` for halos, hollow markers and separators, and
+  `inkOn` for cell labels (its dark ink is `CELL_INK`, which the CSS leaves
+  alone). A filled scatter dot that is
+  not focused wears `dotRim()` from `lib/highlight` (the panel colour at 0.8 px,
+  as `focusStyle` does), never a rim in its own colour or a dark hex, which shows
+  as a bright ring or disappears on the dark panel (27 Oct 2026). Hollow dots,
+  rims that encode something, and sub-2.5 px dots in dense clouds keep their own
+  stroke. Its fill opacity is a level, not a number: `dotFill(level)` or
+  `focusStyle(..., { r, level })` with `sparse` 0.85, `standard` 0.7, `dense`
+  0.45 or `dimmed` 0.25 (`DOT_OPACITY` in `lib/theme`). The dark page lifts the
+  first three (0.92 / 0.82 / 0.6) in CSS through the mark's `data-dot` tag, so
+  hues stay apart; leave the tag off a dot scaled by a dim. Site and season
+  colours stay the same in both themes. Exports are always light: SVG and PNG
+  carry no stylesheet, the PDF's off-screen copy sits in `[data-print]`, which
+  the CSS skips, and `lib/export` still maps colours read from the page (HTML
+  legend text, dark ramp cells) back to their light step.

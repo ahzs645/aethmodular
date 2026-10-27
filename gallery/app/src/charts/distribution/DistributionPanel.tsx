@@ -131,7 +131,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                   return (
                     <g key={g.name} data-export-site={g.site} data-export-series={g.name} data-export-color={g.color}>
                       {focusLast(g.items, (it) => it.row.id, hl.focusId).map(([it, i]) => {
-                        const st = focusStyle(it.row.id, hl.focusId, { r: 3, opacity: 0.6 }, hl.selected)
+                        const st = focusStyle(it.row.id, hl.focusId, { r: 3 }, hl.selected)
                         return (
                           <circle
                             key={it.row.id}
@@ -142,6 +142,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                             fillOpacity={st.opacity}
                             stroke={st.stroke}
                             strokeWidth={st.strokeWidth}
+                            data-dot={st.dot}
                             style={{ cursor: 'pointer' }}
                             onMouseEnter={(e) => { hl.setHover(it.row.id); tip.show(e, [it.row.id, `${it.row.site} · ${it.row.date}`, `${field} = ${fmt(it.v)}`, 'click for details']) }}
                             onMouseLeave={() => { hl.setHover(null); tip.hide() }}
@@ -179,7 +180,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                     </g>
                     {/* boxplot-with-jitter: every filter over its own summary, so the box can be read against the n it summarises */}
                     {withPoints && focusLast(g.items, (it) => it.row.id, hl.focusId).map(([it, i]) => {
-                      const st = focusStyle(it.row.id, hl.focusId, { r: 2.4, opacity: 0.55 }, hl.selected)
+                      const st = focusStyle(it.row.id, hl.focusId, { r: 2.4, level: 'dense' }, hl.selected)
                       return (
                         <circle
                           key={it.row.id}
@@ -190,6 +191,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                           fillOpacity={st.opacity}
                           stroke={st.stroke}
                           strokeWidth={st.strokeWidth}
+                          data-dot={st.dot}
                           style={{ cursor: 'pointer' }}
                           onMouseEnter={(e) => { hl.setHover(it.row.id); tip.show(e, [it.row.id, `${it.row.site} · ${it.row.date}`, `${field} = ${fmt(it.v)}`, 'click for details']) }}
                           onMouseLeave={() => { hl.setHover(null); tip.hide() }}

@@ -5,8 +5,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
  * button that opens its list on hover (or click / Enter, for touch and keyboard). The group
  * holding the open page shows that page's name. When the header is too narrow for every
  * group, the ones that do not fit fold into "More" (all of them into "Menu" on a phone);
- * the widths are measured, so it adapts to the labels and the text size. On a phone the header's
- * display toggles (`extra`) move into that menu too.
+ * the widths are measured, so it adapts to the labels and the text size. `extra` adds a section
+ * to the phone's menu (the header's display toggles go to its ⋯ menu instead, components/HeaderMore).
  */
 /** `meeting` picks a meeting page; `sub` picks a page on any other tab with subpages (Experimental) */
 export interface NavItem { key: string; label: string; title?: string; tab: string; meeting?: string; sub?: string }

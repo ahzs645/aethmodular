@@ -77,9 +77,9 @@ export function HumidityAgreement({ rows, meta, xField, yField, rhField }: { row
               <XAxis scale={x} y={sq} label={withUnit(xField, meta.field_units)} pick="x" />
               <line x1={0} y1={sq} x2={sq} y2={0} stroke={INK.muted} strokeDasharray="4 4" />
               {focusLast(pts, (p) => p.row.id, hl.focusId).map(([p]) => {
-                const st = focusStyle(p.row.id, hl.focusId, { r: 3, opacity: 0.7 }, hl.selected)
+                const st = focusStyle(p.row.id, hl.focusId, { r: 3 }, hl.selected)
                 return <circle key={p.row.id} cx={x(Math.min(p.x, hi))} cy={y(Math.min(p.y, hi))} r={st.r} fill={p.rh < thr ? DRY : HUMID} fillOpacity={st.opacity}
-                  stroke={st.stroke} strokeWidth={st.strokeWidth} style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
+                  stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={st.dot} style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
                   onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.site} · ${p.row.date}`, `${xField} ${fmt(p.x)} · ${yField} ${fmt(p.y)}`, `RH ${fmt(p.rh, 0)} %`]) }}
                   onMouseLeave={() => { hl.setHover(null); tip.hide() }} onClick={(e) => { e.stopPropagation(); hl.openSample(p.row.id) }} />
               })}

@@ -12,6 +12,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { INK, MARGIN, FONT } from '@/lib/theme'
+import { dotFill } from '@/lib/highlight'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { ColorLegend } from '@/components/ColorLegend'
 import type { CalibFile, CalibRow } from '@/lib/types'
@@ -196,7 +197,7 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
                     cy={y(clampYv(bOf(r)))}
                     r={isSel ? 7 : ok ? 4 : 2.6}
                     fill={isSel ? INK.panel : cohortColor(r.co)}
-                    fillOpacity={(ok ? 0.85 : 0.25) * dim(cohortName(r.co))}
+                    {...dotFill(ok ? 'sparse' : 'dimmed', dim(cohortName(r.co)))}
                     strokeOpacity={dim(cohortName(r.co))}
                     stroke={isSel ? INK.text : r.sp === 'raw' ? 'none' : cohortColor(r.co)}
                     strokeWidth={isSel ? 2 : r.sp === 'airspec' ? 1.5 : 0.8}

@@ -595,6 +595,11 @@ export function SubsetBar({
  */
 export function SideDock({ open, top, tab, onClose, children }: { open: boolean; top: number; tab: React.ReactNode; onClose?: () => void; children: React.ReactNode }) {
   const body = useRef<HTMLDivElement>(null)
+  // the single-chart view moves the page over to sit beside an open dock (styles.css)
+  useEffect(() => {
+    document.documentElement.dataset.dock = open ? 'open' : 'closed'
+    return () => { delete document.documentElement.dataset.dock }
+  }, [open])
   // closed: out of the tab order and hidden from assistive tech, though still painted for the slide
   useEffect(() => { body.current?.toggleAttribute('inert', !open) }, [open])
   // open, the panel runs the full window height over the app header (like the sample drawer);

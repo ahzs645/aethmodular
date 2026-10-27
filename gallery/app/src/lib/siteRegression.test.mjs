@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { groupedRegressions } from './siteRegression.ts'
+import { bandRegressions, groupedRegressions } from './siteRegression.ts'
 import { regression, regressionSamples } from './stats.ts'
 
 const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-9, `${a} != ${b}`)
@@ -56,4 +56,13 @@ test('sparse or constant sites cannot create misleading fitted lines', () => {
   const constant = rows.filter(p => p.site === 'B').map(p => ({ ...p, x: 1 }))
   assert.deepEqual(groupedRegressions([...sparse, ...constant], 'site', access), [])
   assert.deepEqual(groupedRegressions([], 'site', access), [])
+})
+
+test('one fit per band: in the bands\' order and colours, points in no band left out', () => {
+  // two bands with exact lines (y = 2x and y = 3x + 1) and a point in no band
+  const pts = [...[1, 2, 3, 4].map(x => ({ x, y: 2 * x, band: 'low' })), ...[5, 6, 7, 8].map(x => ({ x, y: 3 * x + 1, band: 'high' })), { x: 9, y: 0, band: null }]
+  const band = { labels: ['low', 'high'], labelOf: p => p.band, colorOf: l => (l === 'low' ? '#111111' : '#222222') }
+  const fits = bandRegressions([...pts].reverse(), band, { x: p => p.x, y: p => p.y, options: () => ({}) })
+  assert.deepEqual(fits.map(f => [f.name, f.color, f.stats.n]), [['low', '#111111', 4], ['high', '#222222', 4]])
+  near(fits[0].stats.slope, 2); near(fits[1].stats.slope, 3); near(fits[1].stats.intercept, 1)
 })
