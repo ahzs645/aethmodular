@@ -9,7 +9,7 @@
    "file": "charts/aeronet/AeronetSites.tsx"
   },
   {
-   "title": "Column against surface — the absorption scale height by site",
+   "title": "Column against surface — the absorption scale height by …",
    "id": "aeronet-scale-height",
    "component": "ScaleHeightStrip",
    "tab": "aeronet",
@@ -21,6 +21,13 @@
    "component": "AeronetTimeline",
    "tab": "aeronet",
    "file": "charts/aeronet/AeronetTimeline.tsx"
+  },
+  {
+   "title": "PM2.5 / AOD by … — η, the conversion from column AOD to surface PM2.5",
+   "id": "aeronet-eta",
+   "component": "EtaBySite",
+   "tab": "aeronet",
+   "file": "charts/aeronet/EtaBySite.tsx"
   },
   {
    "title": "Analog lab — does the committed spectral-analog ranking survive other metrics?",
@@ -324,6 +331,13 @@
    "component": "MonthlyClimate",
    "tab": "weather",
    "file": "charts/weather/MonthlyClimate.tsx"
+  },
+  {
+   "title": "Column water against surface moisture — AERONET precipitable water against …",
+   "id": "weather-pw-moisture",
+   "component": "PwMoisture",
+   "tab": "weather",
+   "file": "charts/weather/PwMoisture.tsx"
   },
   {
    "title": "Rain washout — the measurement by how wet each filter's window was",
