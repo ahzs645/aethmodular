@@ -35,6 +35,8 @@ export const PRESETS: ViewPreset[] = [
   { key: 'addis-seasons', label: 'Addis Ababa · FTIR EC by season', note: 'Distributions under the local Bega / Belg / Kiremt calendar', view: v({ tab: 'distribution', ssites: 'ETAD' }) },
   { key: 'addis-weather', label: 'Addis Ababa · weather and the filters', note: 'Rain washout, humidity, wind roses and seasonal correlations, on ERA5 and the airport station',
     view: v({ tab: 'weather', ssites: 'ETAD' }) },
+  { key: 'focus-aeronet', label: 'Focus sites · the AERONET column', note: 'AOD, absorption AOD and the column-to-surface scale height at Beijing, Delhi, JPL and Addis Ababa',
+    view: v({ tab: 'aeronet' }) },
   { key: 'chile', label: 'Chile · SPARTAN + IMPROVE, PM₂.₅ over time', note: 'Santiago and Talca (SPARTAN) with Antumapu and Las Condes (IMPROVE)',
     view: v({ tab: 'evolution', net: 'both', ssites: 'CLST,CLTA', isites: 'ANTU1,LCON1', y: 'PM2.5 mass', f: 'PM2.5 mass' }) },
   { key: 'chile-improve-tor', label: 'Chile IMPROVE · TOR EC vs HIPS BC', note: 'Thermal EC against absorption at the two new IMPROVE sites',

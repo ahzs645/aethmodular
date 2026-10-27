@@ -626,6 +626,40 @@ white background and the app font so the file looks the same outside the page.
 The decks in this repo are built from figures, so a chart that could only be
 screenshotted was a chart that would be redrawn in matplotlib.
 
+## AERONET tab
+
+**Sites → AERONET** puts the AERONET sun photometer over the SPARTAN filters,
+laid out like Weather and driven by the Filters panel's site pick:
+
+- **One site**: AERONET's daily AOD 500, fine-mode fraction, AAOD 675 and SSA 440
+  above the chosen measurement, the measurement against any AERONET quantity,
+  and the absorption scale height by season.
+- **Several sites**: which station stands for each site and how much of its
+  record it covers, the scale height `H = AAOD 675 / (Fabs × 10⁻⁶)` by site,
+  and the same scatter.
+
+Every filter also carries sixteen AERONET fields: AOD, Ångström exponent,
+precipitable water, fine/coarse AOD, AAOD, AAE, SSA and the inversion's own
+AOD 440. Each is the mean of the individual retrievals inside the filter's
+sampling window, and they appear in every picker as "AERONET (sampling
+window)". Photometers retrieve only in daylight and clear sky. Level 1.5
+absorption is uncertain below AOD 440 = 0.4, so the timeline draws those days
+hollow.
+
+```bash
+uv run python research/ftir_hips_chem/workflows/fetch_aeronet_spartan.py   # ~15 min, resumable
+uv run --with timezonefinder python gallery/data/export_aeronet.py          # ~10 s -> public/data/aeronet/ (3.3 MB, committed)
+```
+
+The fetch picks, for each site, the station within 50 km whose daily AOD covers
+the most filter days (`stations_lev15.csv`). It downloads six products by year:
+direct-sun AOD, SDA and almucantar inversions, each as every retrieval and as
+daily means. It keeps the raw text (gzipped, ~400 MB) and parses it to parquet
+under `research/ftir_hips_chem/output/tables/aeronet_spartan/` (gitignored).
+`--sites`, `--level 20`, `--refresh` and `--parse-only` narrow or redo a pull.
+The export reads each filter's window from `weather/filters.json`, so run the
+weather export first when filters change.
+
 ## PMF source apportionment
 
 The **PMF sources** tab reads the ETAD factor solution (102 filters,

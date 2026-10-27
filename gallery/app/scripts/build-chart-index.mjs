@@ -17,8 +17,9 @@ const OUT = path.join(SRC, 'chartIndex.json')
 
 /** where a file is drawn: a tab, or 'meeting:<key>' for a meeting page; first match wins */
 const FILE_TABS = [
-  [/^charts\/(correlation|distribution|evolution|ranking|partOfWhole|map|flow|pmf|calibration|weather)\//, (m) => m[1]],
+  [/^charts\/(correlation|distribution|evolution|ranking|partOfWhole|map|flow|pmf|calibration|weather|aeronet)\//, (m) => m[1]],
   [/^pages\/WeatherPage/, () => 'weather'],
+  [/^pages\/AeronetPage/, () => 'aeronet'],
   [/^pages\/CalibrationPage/, () => 'calibration'],
   [/^pages\/Baseline|^components\/FullRangeVibes/, () => 'baseline'],
   [/^pages\/SimilarityPage|^components\/SimilaritySpectra/, () => 'similarity'],

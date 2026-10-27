@@ -26,9 +26,9 @@ notebooks are built on are missing from the gallery:
    only the coverage counts on Data availability. This is the largest gap,
    about 30 notebooks.
 2. **AERONET and columnar data**: AOD, AAOD, SSA and the surface–columnar
-   linkage. About 9 notebooks. Unlike the aethalometer, AERONET is not limited
-   to a few sites. 35 of the 38 SPARTAN sites with filters have AERONET data on
-   at least one filter day, and 30 of them on more than ten (section E).
+   linkage. About 9 notebooks. **Now in the gallery** (Sites → AERONET, and
+   AERONET fields in every chart tab) for the 35 SPARTAN sites with a station:
+   see section E.
 3. **The FTIR spectra learning studies** (section H): the charcoal and biochar
    reference spectra (`research/ftir_etad_char`), and the phase-3 side studies
    on target definition, the residual learner and robustness.
@@ -114,14 +114,47 @@ as the source of its bins.
 | `.../friday_summary_consolidated` | Partial | |
 | `.../pw_mac_calibration` | Not in gallery | Precipitable water against MAC |
 
-## E. AERONET and columnar: not in gallery
+## E. AERONET and columnar: in the gallery since 27 Oct 2026
 
 `addis_04_aeronet`, `addis_04_aeronet_daily`, `notebooks/analysis/meteorology/aeronet_addis_deep_dive`,
 `aeronet_addis_diagnostics`, `aeronet_method_agreement`, `notebooks/analysis/surface_columnar_linkage`,
-`surface_columnar_figures`. Boundary-layer height does appear, as a grouping and
-as 28 Oct item 11. AOD, AAOD and SSA do not.
+`surface_columnar_figures`.
 
-### What AERONET data the repo has
+**Sites → AERONET** now carries these, laid out like Weather. It has two views:
+
+- **One site**: the daily AOD, fine-mode fraction, AAOD and SSA above the
+  measurement, then the measurement against any AERONET quantity, then the
+  scale height by season.
+- **Several sites**: a station table, the absorption scale height
+  `H = AAOD 675 / Fabs` by site, and the same scatter.
+
+Sixteen AERONET fields, averaged over each filter's sampling window, join every
+chart tab's pickers as the group "AERONET (sampling window)".
+
+Partial still: the notebooks' boundary-layer decoupling and the
+surface–columnar regressions, and Level 2.0 data (`--level 20` pulls it).
+
+The pipeline:
+
+1. `research/ftir_hips_chem/workflows/fetch_aeronet_spartan.py` ranks the
+   stations within 50 km of each site by filter days covered. It downloads the
+   best one by year: direct-sun AOD, SDA and almucantar inversions, each as
+   every retrieval and as daily means. It keeps the raw text and parses it to
+   parquet. On 27 Oct 2026 that was 35 stations: 2.8 GB downloaded, 397 MB
+   gzipped on disk. The rows were 1.51 M AOD retrievals, 1.47 M SDA retrievals
+   and 101 k inversions, plus the daily means.
+2. `gallery/data/export_aeronet.py` averages the individual retrievals inside
+   each filter's sampling window. It uses the windows from the weather export,
+   in local standard time. That gave 3,094 filters with a value, against 2,636
+   from matching on the start date alone. Plus daily series per site: 3.3 MB in
+   `public/data/aeronet/`.
+
+Over all filters in the export, the median `H` is 256 m at Addis, 515 m at
+Delhi, 591 m at Pasadena, 623 m at Bishoftu and 1,081 m at Beijing. That
+matches the August finding (`AERONET_SPARTAN_2026-08-22.md`: Addis is the
+low outlier).
+
+### What AERONET data the repo had before
 
 - **Addis**: `AAU_Jackros_ET`, Level 1.5 almucantar inversion, daily, 2022–2025, on
   the Drive (`aeronet.aeronet_dir()`). Every Addis notebook reads it from there.
@@ -197,7 +230,7 @@ Notes:
 - A filter is matched only on its start date. Recent ETAD and ETBI filters are
   single 24-h days, so that works for them. Older SPARTAN filters integrated
   over several days, so a one-day match is only approximate there.
-- **Size as a gallery dataset.** A prototype was built like the Weather export,
+- **Size as a gallery dataset** (the first estimate; the built export is above). A prototype was built like the Weather export,
   with daily values per site plus one row per filter on matching days. Fields:
   AOD 440/500/675/870, AE 440–870, precipitable water, fine-mode AOD and
   fraction at 500, AAOD 440/675/870, AAE 440–870, and SSA 440/675. It came to

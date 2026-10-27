@@ -70,6 +70,7 @@ import type { SiteItem } from '@/components/SitePicker'
 import { FilterEditsProvider, HandEditsBadge, type FilterGroup } from '@/lib/filterEdits'
 import { GroupDrawer } from '@/components/GroupDrawer'
 import { WeatherPage } from '@/pages/WeatherPage'
+import { AeronetPage } from '@/pages/AeronetPage'
 import { HIDDEN_DUPLICATES } from '@/fieldLineage'
 import { PageSidebarProvider, PageSidebarSlot, SidebarControls } from '@/lib/pageSidebar'
 import { RATIO_GROUP, RATIO_PRESETS, VOLUME, parseRatios, ratioKey, ratiosParam, viewRows, viewUnits, type Basis, type RatioDef } from '@/lib/viewFields'
@@ -86,6 +87,7 @@ import { SidebarIcon, SingleChartIcon, XIcon } from '@/components/Icons'
 import { DisplayControls } from '@/components/DisplayControls'
 import { SingleFit, SingleViewProvider, SingleViewToggle, useSingleViewPref } from '@/lib/singleView'
 import { WEATHER_GROUP, useWeather } from '@/lib/weather'
+import { AERONET_GROUP, useAeronet } from '@/lib/aeronet'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 
 /**
@@ -104,6 +106,7 @@ const TABS = [
   { key: 'map', label: 'Map' },
   { key: 'availability', label: 'Data availability', title: 'Notebook coverage analyses, product inventory, sample-day overlap and filter history' },
   { key: 'weather', label: 'Weather', title: 'Weather over each filter’s sampling window: ERA5 at every SPARTAN site, the airport station at Addis' },
+  { key: 'aeronet', label: 'AERONET', title: 'The sun photometer column over each filter’s sampling window: AOD, absorption AOD and SSA at every SPARTAN site with a station' },
   { key: 'flow', label: 'Flow' },
   { key: 'pmf', label: 'PMF sources' },
   { key: 'calibration', label: 'Calibration' },
@@ -136,7 +139,7 @@ const tabItem = (key: string): NavItem[] => TABS.filter((t) => t.key === key && 
   .map((t) => ({ key: t.key, label: t.label, title: 'title' in t ? t.title : undefined, tab: t.key }))
 const NAV_GROUPS: NavGroup[] = [
   { label: 'Charts', items: ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'flow'].flatMap(tabItem) },
-  { label: 'Sites', items: ['map', 'availability', 'weather', 'pmf'].flatMap(tabItem) },
+  { label: 'Sites', items: ['map', 'availability', 'weather', 'aeronet', 'pmf'].flatMap(tabItem) },
   { label: 'Calibration', items: ['calibration', 'baseline', 'similarity', 'blanks'].flatMap(tabItem) },
   { label: 'Meetings', items: shared('meeting') ? MEETINGS.map((m) => ({ key: m.key, label: m.label, tab: 'meeting', meeting: m.key })) : [] },
   { label: 'Experimental', items: shared('experimental') ? EXPERIMENTS.map((e) => ({ key: `xp-${e.key}`, label: e.label, title: e.title, tab: 'experimental', sub: e.key })) : [] },
@@ -208,7 +211,7 @@ const parseSpartanSel = (v: string | null): string[] | 'all' | null =>
   v == null || v === '' ? null : v === '*' ? 'all' : v === '-' ? [] : v.split(',').filter(Boolean)
 
 /** tabs whose charts can draw a whole network (Filters sidebar → network) */
-const NETWORK_TABS = ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'weather'] as const
+const NETWORK_TABS = ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'weather', 'aeronet'] as const
 const FILTERS: SubsetCaps = { seasons: true, sites: true, excluded: true, dates: true, fields: 'single', datasetLabel: 'SPARTAN filters' }
 const CAPS: Record<Exclude<TabKey, 'availability' | 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks' | 'experimental'>, SubsetCaps> = {
   correlation: { ...FILTERS, fields: 'pair', networks: true, fits: true },
@@ -219,6 +222,7 @@ const CAPS: Record<Exclude<TabKey, 'availability' | 'census' | 'baseline' | 'sim
   ranking: { ...FILTERS, networks: true },
   partOfWhole: { ...FILTERS, fields: 'none', networks: true },
   weather: { ...FILTERS, networks: true, fits: true },
+  aeronet: { ...FILTERS, networks: true, fits: true },
   map: FILTERS,
   flow: { ...FILTERS, fields: 'none' },
   pmf: {
@@ -549,6 +553,8 @@ export default function App() {
   // whose rows are in view: one small file per site, loaded as sites are picked
   const weatherCodes = useMemo(() => [...new Set((netBase ? netBase.rows : focusRows).map((r) => r.code))], [netBase, focusRows])
   const weather = useWeather(weatherCodes)
+  // the sun photometer over the same windows (export_aeronet.py, lib/aeronet), loaded the same way
+  const aeronet = useAeronet(weatherCodes)
   // the pick on top: the chosen sites, coloured in selection order (`paint` gives a row its site's colour)
   const netView = useMemo(() => {
     if (!netBase) return null
@@ -574,20 +580,20 @@ export default function App() {
   // ratios whose two fields this view has: the presets, then the reader's own (lib/viewFields)
   const activeKey = activeFields.join('|')
   const ratioView = useMemo(() => {
-    const has = new Set([...activeFields, ...(weather?.fields ?? []), ...pmfShareFields(data?.pmf ?? null)])
+    const has = new Set([...activeFields, ...(weather?.fields ?? []), ...(aeronet?.fields ?? []), ...pmfShareFields(data?.pmf ?? null)])
     const fits = (d: RatioDef) => has.has(d.num) && has.has(d.den)
     const presets = RATIO_PRESETS.filter(fits)
     const own = ratios.filter((d) => fits(d) && !presets.some((x) => ratioKey(x) === ratioKey(d)))
     return { presets, all: [...presets, ...own] }
-  }, [activeKey, weather, ratios, data]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeKey, weather, aeronet, ratios, data]) // eslint-disable-line react-hooks/exhaustive-deps
   const ratioFields = useMemo(() => ratioView.all.map(ratioKey), [ratioView])
 
   // Fields that vanished from the export, or that the chosen network does not measure,
   // fall back to that network's defaults instead of leaving a chart empty.
   useEffect(() => {
     if (!data || (netView && !netView.fields.length)) return
-    // weather fields (lib/weather) load on their own, after this first check, so they are known by name
-    const ok = (f: string) => activeFields.includes(f) || ratioFields.includes(f) || isPmfField(f) || /\((ERA5|station)\)$/.test(f)
+    // weather and AERONET fields (lib/weather, lib/aeronet) load on their own, after this first check, so they are known by name
+    const ok = (f: string) => activeFields.includes(f) || ratioFields.includes(f) || isPmfField(f) || /\((ERA5|station|AERONET)\)$/.test(f)
     const d = NETWORK_DEFAULTS[net]
     if (!ok(xField)) setXField(ok(d.x) ? d.x : activeFields[0])
     if (!ok(yField)) setYField(ok(d.y) ? d.y : activeFields[1] ?? activeFields[0])
@@ -716,15 +722,20 @@ export default function App() {
       const w = weather.rows[r.id]
       return w ? { ...r, ...Object.fromEntries(weather.fields.map((f, i) => [f, w[i]])) } : r
     })
+    // and the AERONET column over the same window
+    const withAeronet = !aeronet ? withWeather : withWeather.map((r) => {
+      const a = aeronet.rows[r.id]
+      return a ? { ...r, ...Object.fromEntries(aeronet.fields.map((f, i) => [f, a[i]])) } : r
+    })
     // so do the PMF source shares and dominant source, at the site the PMF solution covers (lib/pmfGroups)
-    return withPmf(withWeather, data?.pmf ?? null, pmfScheme)
-  }, [netBase, focusRows, weather, data, pmfScheme, baselines])
+    return withPmf(withAeronet, data?.pmf ?? null, pmfScheme)
+  }, [netBase, focusRows, weather, aeronet, data, pmfScheme, baselines])
   // the reader's view (lib/viewFields): MAC, mass per filter, ratios; the drawer keeps the exported values
   const exportMac = data?.meta.mac_value ?? 10
   const viewOpts = useMemo(() => ({
     mac: mac ?? exportMac, exportMac, basis, ratios: ratioView.all,
-    units: { ...(netBase ? netBase.field_units : data?.meta.field_units ?? {}), ...(weather?.field_units ?? {}), [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3' },
-  }), [mac, exportMac, basis, ratioView, netBase, data, weather])
+    units: { ...(netBase ? netBase.field_units : data?.meta.field_units ?? {}), ...(weather?.field_units ?? {}), ...(aeronet?.field_units ?? {}), [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3' },
+  }), [mac, exportMac, basis, ratioView, netBase, data, weather, aeronet])
   const plainSourceRows = useMemo(() => viewRows(rawSourceRows, viewOpts), [rawSourceRows, viewOpts])
   // the site colours go on last, so a site pick repaints the rows without rebuilding them; the
   // lookups, counts and drawers (colours from meta.sites) take the rows unpainted
@@ -910,6 +921,13 @@ export default function App() {
     meta.fields = [...meta.fields, ...present.filter((f) => !meta.fields.includes(f))]
     meta.field_units = { ...meta.field_units, ...weather.field_units }
     meta.field_groups = [...(meta.field_groups ?? []).filter((g) => g.label !== WEATHER_GROUP), ...(present.length ? [{ label: WEATHER_GROUP, fields: present }] : [])]
+  }
+  // so do the AERONET fields, as a group of their own
+  if (aeronet) {
+    const present = aeronet.fields.filter((f) => sourceRows.some((r) => typeof r[f] === 'number'))
+    meta.fields = [...meta.fields, ...present.filter((f) => !meta.fields.includes(f))]
+    meta.field_units = { ...meta.field_units, ...aeronet.field_units }
+    meta.field_groups = [...(meta.field_groups ?? []).filter((g) => g.label !== AERONET_GROUP), ...(present.length ? [{ label: AERONET_GROUP, fields: present }] : [])]
   }
   // the PMF source shares join the pickers as their own group where a site in view has PMF (lib/pmfGroups)
   const pmfPresent = pmfShareFields(pmf ?? null).filter((f) => sourceRows.some((r) => typeof r[f] === 'number'))
@@ -1300,6 +1318,8 @@ export default function App() {
         {tab === 'partOfWhole' && <CompositionTreemap rows={rows} meta={meta} />}
         {tab === 'weather' && <WeatherPage rows={rows} picked={netView?.chosenCodes ?? new Set()} onPick={hasSpartan(net) ? setSpartanPick : undefined}
           meta={meta} field={fieldEff} xField={xEff} yField={yEff} axes={axes} setField={setField} pmfLabelOfDate={pmfLabelOfDate} />}
+        {tab === 'aeronet' && <AeronetPage rows={rows} picked={netView?.chosenCodes ?? new Set()} onPick={hasSpartan(net) ? setSpartanPick : undefined}
+          meta={meta} field={fieldEff} axes={axes} setField={setField} />}
         </AxisFieldsProvider>
         {tab === 'map' && <SiteBubbleMap rows={mapRows} meta={meta} field={fieldEff} focusSite={activeSites?.size === 1 ? [...activeSites][0] : undefined} />}
         {tab === 'flow' && <MethodSankey rows={rows} meta={meta} />}

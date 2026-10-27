@@ -34,6 +34,7 @@ export const TERMS: Term[] = [
   { term: 'XRF, ICP-MS, IC', text: 'How SPARTAN measures elements and ions: X-ray fluorescence and inductively coupled plasma mass spectrometry for elements, ion chromatography for ions (sulfate, nitrate …). Fields marked "(element)" are the XRF element where an ion of the same name also exists.' },
   { term: 'MDL', long: 'method detection limit', text: 'The smallest value the method can tell apart from zero.' },
   { term: 'PMF', long: 'positive matrix factorization', text: 'A statistical split of each filter\'s chemistry into source factors (sea salt, wood, charcoal, fossil fuel …). Available for Addis.' },
+  { term: 'AERONET', text: 'NASA\'s global sun-photometer network; the gallery averages the retrievals inside each filter\'s sampling window at the nearest station.' },
   { term: 'ERA5', text: 'A global weather reanalysis; the gallery averages it over each filter\'s sampling window.' },
 ]
 
@@ -61,6 +62,7 @@ export function describeField(f: string): string {
   const i = f.indexOf(' / ')
   if (i > 0) return `${f}: ${f.slice(0, i)} divided by ${f.slice(i + 3)} on the same filter.`
   if (/\((ERA5|station)\)$/.test(f)) return `${f}: weather averaged over the filter's sampling window.`
+  if (/\(AERONET\)$/.test(f)) return `${f}: the sun photometer's retrievals averaged over the filter's sampling window (column, daylight and clear sky only).`
   if (/^(EC[123]|OC[1-4])$/.test(f)) return `${f}: a TOR thermal fraction (carbon evolved at one temperature step).`
   if (f.endsWith('(element)')) return `${f}: the element by XRF/ICP-MS, distinct from the ion of the same name.`
   if (/uncertainty|MDL/.test(f)) return `${f}: bookkeeping for the measurement it names.`
@@ -81,6 +83,8 @@ export function fieldOrigin(f: string): string {
   if (f.includes(' / ')) return 'Derived: the ratio of two measurements on the same filter, computed in the gallery.'
   if (/\(ERA5\)$/.test(f)) return 'Reanalysis: ECMWF ERA5 hourly fields, via the Open-Meteo archive.'
   if (/\(station\)$/.test(f)) return 'Measured: Bole airport weather station (Meteostat, WMO 63450). Addis only.'
+  if (/^(AAOD|AAE|SSA|Inversion AOD) .*\(AERONET\)$/.test(f)) return 'Retrieved: AERONET almucantar sky-radiance inversions (Version 3, Level 1.5) at the site\'s station; uncertain when AOD 440 is under 0.4.'
+  if (/\(AERONET\)$/.test(f)) return 'Measured: AERONET direct-sun photometer (Version 3, Level 1.5) at the site\'s station; fine/coarse split by spectral deconvolution (SDA).'
   if (/^(EC|OC) \(FTIR\)$/.test(f) || /^EC \(FTIR, (spline|VIBES)/.test(f)) return 'Derived: the filter\'s FTIR spectrum (UC Davis) put through a PLS calibration trained on IMPROVE filters with TOR values. Not measured by combustion. Focus sites: the gallery\'s export; other SPARTAN sites: SPARTAN\'s public product.'
   if (/\(ChemSpec FTIR\)$/.test(f)) return 'Derived: the same FTIR-calibrated value as published in SPARTAN\'s public ChemSpec files (a restatement, kept for comparison).'
   if (f === 'OM (FTIR)') return 'Derived: the sum of the FTIR functional-group masses (alkane, alcohol, carboxylic, non-acid carbonyl).'
