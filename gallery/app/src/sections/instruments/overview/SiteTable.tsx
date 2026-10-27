@@ -50,7 +50,7 @@ export function SiteTable({ series, meta, screen, onSite }: { series: Series[]; 
                 onMouseLeave={tip.hide}>
                 <rect width={w} height={rowH - 2} fill={i % 2 ? INK.zebra : 'transparent'} />
                 <circle cx={10} cy={rowH / 2 - 1} r={5} fill={instColor(meta, t.s.inst)} />
-                <text x={22} y={rowH / 2} dy="0.1em" fontSize={12} fill={INK.text}>{t.s.inst.code === t.s.inst.siteCode ? t.s.inst.site : `${t.s.inst.info.site} (Addis, 2nd)`}</text>
+                <text x={22} y={rowH / 2} dy="0.1em" fontSize={12} fill={INK.text}>{t.s.inst.code === t.s.inst.siteCode ? t.s.inst.site : `${t.s.inst.site} (${t.s.inst.info.site} file)`}</text>
                 {t.cells.map((v, k) => <text key={k} x={colX[k] + 4} y={rowH / 2} dy="0.1em" fontSize={11} fontFamily={FONT.mono} fill={INK.muted}>{v}</text>)}
               </g>
             ))}

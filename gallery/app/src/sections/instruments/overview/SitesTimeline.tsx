@@ -45,7 +45,7 @@ export function SitesTimeline({ series, meta, screen, channel, setChannel }: {
     .x((i) => x(new Date(l.s.days[i].t.getTime() + 864e5 / 2))).y((i) => y(l.vals[i]!))(idx) ?? ''
   return (
     <ChartFrame id="aeth-overview-sites-timeline" title={`Black carbon at every instrument — daily ${channel} BCc on one time axis`}
-      subtitle={`${avg === '30d' ? 'A centred 30-day mean (at least 7 days with data) of each instrument\'s' : 'Each instrument\'s'} daily ${channelName(channel, meta)} BCc, broken where days are missing${log ? ', on a log axis' : ''}. Bins are labelled at their start (Beijing, Delhi, JPL 15:00; Addis 09:00). Dashed: Jacros, the second Addis instrument. Screen: ${SCREEN_TEXT[screen]}.`}
+      subtitle={`${avg === '30d' ? 'A centred 30-day mean (at least 7 days with data) of each instrument\'s' : 'Each instrument\'s'} daily ${channelName(channel, meta)} BCc, broken where days are missing${log ? ', on a log axis' : ''}. Bins are labelled at their start (Beijing, Delhi, JPL 15:00; Addis 09:00). Dashed: a site's longer daily file of the same instrument (Addis: the Jacros file). Screen: ${SCREEN_TEXT[screen]}.`}
       provenance="Multi_Site_Analysis.ipynb §1 (combined IR time series); Multi_Site_Analysis_Fixed.ipynb §3 · gallery/data/export_aethalometer.py"
       controls={<>
         <Segmented label="Wavelength" value={channel} options={CHANNELS} onChange={setChannel} />

@@ -13,6 +13,11 @@ import { FilterMethods } from '../overview/FilterMethods'
 import { Completeness } from '../overview/Completeness'
 import { SitesTimeline } from '../overview/SitesTimeline'
 import { SiteTable } from '../overview/SiteTable'
+import { WeekHour } from '../overview/WeekHour'
+import { PeakTiming } from '../overview/PeakTiming'
+import { EpisodesBySite, HighEpisodes } from '../overview/HighEpisodes'
+import { Excluded } from '../overview/Excluded'
+import { useHourlySeries } from '../overview/useHourly'
 
 const SCREENS: Screen[] = ['none', 'neg', '3sd']
 const SPANS: Span[] = ['filters', 'record']
@@ -29,9 +34,14 @@ const SPANS: Span[] = ['filters', 'record']
  * Several sites: the instruments side by side: a summary table, one time axis, completeness, the
  * year on each site's own calendar, seasonal spread, spectral shape and the weekend effect.
  *
- * Every chart reads the daily files of gallery/data/export_aethalometer.py (legacy aggregates, bins
- * labelled at their start: docs/matched-sample-audit-2026-09-10.md); the page's screen and span
- * apply to all of them.
+ * Below the daily charts, where the site has an hourly record (gallery/data/export_aeth_overview.py:
+ * the Jacros minute file for Addis, the MAIA hourly means elsewhere), what addis_02_temporal_patterns
+ * did with minutes: the week by the hour, when the day peaks, and the high-BC episodes minute by
+ * minute; and _FollowUp 7b, the excluded samples at five wavelengths.
+ *
+ * The daily charts read the daily files of gallery/data/export_aethalometer.py (legacy aggregates, bins
+ * labelled at their start: docs/matched-sample-audit-2026-09-10.md); the page's screen and span apply
+ * to them, the span also to the hourly ones.
  */
 export function Overview({ rows, meta, picked, onPick }: SectionPageProps) {
   const instruments = useInstruments(meta)
@@ -49,8 +59,11 @@ export function Overview({ rows, meta, picked, onPick }: SectionPageProps) {
   const atSite = useMemo(() => (instruments ?? []).filter((i) => sites.some((s) => s.name === i.site)), [instruments, sites])
   const inst = one ? atSite.find((i) => i.code === instPick) ?? atSite.find((i) => i.code === one.code) ?? atSite[0] : null
   const { series, loading, failed } = useSeries(one ? (inst ? [inst] : []) : atSite, meta, rows, screen, span)
-  // completeness at one site compares its instruments (Addis has two)
+  // completeness at one site compares its daily files (Addis has two of one instrument)
   const { series: siteSeries } = useSeries(one ? atSite : [], meta, rows, screen, span)
+  // the hourly records belong to the sites (at Addis, MA350-0238 whichever daily file is picked)
+  const hourly = useHourlySeries(sites.map((x) => x.code), meta, rows, span)
+  const exclusions = hourly.index?.exclusions ?? {}
 
   // narrowing the pick from the comparison table remembers the pick to go back to
   const [previous, setPrevious] = useState<string[] | null>(null)
@@ -72,7 +85,7 @@ export function Overview({ rows, meta, picked, onPick }: SectionPageProps) {
   const controls = (
     <div className="weather-head-controls">
       {one && atSite.length > 1 && <Select label="Instrument" value={inst?.code ?? ''} options={atSite.map((i) => i.code)} onChange={setInstPick}
-        optionLabel={(c) => atSite.find((i) => i.code === c)?.label ?? c} title="The Addis filter site's MA350, or the second instrument at AAU (Jacros)" />}
+        optionLabel={(c) => atSite.find((i) => i.code === c)?.label ?? c} title="Addis has two daily files of the same MA350-0238: the filter-era file, or the longer Jacros record" />}
       <Segmented label="Days" value={span} options={SPANS} onChange={setSpan} optionLabel={(o) => (o === 'filters' ? "Filters' span" : 'Whole record')}
         title="The days inside the span of the site's filters in view (±1 day; the date brush narrows it), or the instrument's whole daily file" />
       <Segmented label="Screen" value={screen} options={SCREENS} onChange={setScreen} optionLabel={(o) => SCREEN_LABEL[o]}
@@ -87,7 +100,24 @@ export function Overview({ rows, meta, picked, onPick }: SectionPageProps) {
     {dropped > 0 && <Note>The screen dropped {dropped} daily channel values in this view (negative{screen === '3sd' ? ' or above mean + 3 SD' : ''}).{series.some((x) => x.inst.siteCode === 'ETAD') ? " At Addis the legacy files' UV channel goes negative on many days and spikes to hundreds of µg/m³ on others: read UV there with care (the addis_02 screen removes the worst)." : ''}</Note>}
   </>
 
+  // the hourly part: a heading, then what the record allows
+  const hourlyHead = (n: number) => (
+    <div className="panel weather-head">
+      <div>
+        <h2 style={{ margin: 0 }}>Inside the day · the hourly record</h2>
+        <p className="subtitle" style={{ margin: '4px 0 0' }}>
+          {hourly.error ? `The hourly export is not available (${hourly.error}); run gallery/data/export_aeth_overview.py where the Drive is mounted.`
+            : hourly.loading ? 'Loading the hourly records…'
+              : n ? <>IR BCc per local standard hour: {hourly.series.map((h) => `${h.site} from ${h.info.resolution === 'minute' ? `the minute file ${h.info.minute_file?.split('/').pop()}` : `the hourly means file ${h.info.hourly_file.split('/').pop()}`}`).join('; ')}. {hourly.index?.note} The Diurnal page draws the hour-of-day cycles; these charts are the rest of addis_02_temporal_patterns.</>
+                : 'No hourly record for the sites in view.'}
+        </p>
+      </div>
+    </div>
+  )
+  const primary = series.filter((x) => x.inst.code === x.inst.siteCode)
+
   if (one && inst) {
+    const hs = hourly.series[0]
     return (
       <>
         <div className="panel weather-head">
@@ -104,7 +134,7 @@ export function Overview({ rows, meta, picked, onPick }: SectionPageProps) {
         </div>
         {status}
         {s && <>
-          <DailyTimeline s={s} meta={meta} screen={screen} />
+          <DailyTimeline s={s} meta={meta} screen={screen} excluded={exclusions[inst.siteCode] ?? []} />
           <MonthlyPattern s={s} meta={meta} screen={screen} />
           <SeasonalSpread s={s} meta={meta} screen={screen} />
           <SpectralShape series={[s]} meta={meta} screen={screen} by="season" />
@@ -113,6 +143,13 @@ export function Overview({ rows, meta, picked, onPick }: SectionPageProps) {
           <FilterMethods s={s} meta={meta} />
           <Completeness series={siteSeries} meta={meta} />
         </>}
+        {hourlyHead(hourly.series.length)}
+        {hs && <>
+          <WeekHour hs={hs} meta={meta} />
+          <PeakTiming series={[hs]} meta={meta} by="one" />
+          <HighEpisodes hs={hs} meta={meta} />
+        </>}
+        {s && (exclusions[inst.siteCode]?.length ?? 0) > 0 && <Excluded series={siteSeries.filter((x) => x.inst.code === x.inst.siteCode)} meta={meta} exclusions={exclusions} />}
       </>
     )
   }
@@ -123,9 +160,9 @@ export function Overview({ rows, meta, picked, onPick }: SectionPageProps) {
         <div>
           <h2 style={{ margin: 0 }}>The aethalometers · {sites.length} sites compared</h2>
           <p className="subtitle" style={{ margin: '4px 0 0' }}>
-            The MA350 daily records at the sites in view ({atSite.length} instruments: at Addis also Jacros, the second instrument at AAU), each on its own
+            The MA350 daily records at the sites in view ({atSite.length} daily files: at Addis also the Jacros file, a longer record of the same MA350-0238), each on its own
             season calendar. {openSite ? 'Click a site in the table (or pick just one in the Filters panel)' : 'Pick just one site in the Filters panel'} for its
-            wavelengths, months, weekdays and filters.
+            wavelengths, months, weekdays, filters and hours. The analysis charts use each site's filter-era file.
           </p>
         </div>
         {controls}
@@ -134,10 +171,16 @@ export function Overview({ rows, meta, picked, onPick }: SectionPageProps) {
       <SiteTable series={series} meta={meta} screen={screen} onSite={openSite} />
       <SitesTimeline series={series} meta={meta} screen={screen} channel={channel} setChannel={setChannel} />
       <Completeness series={series} meta={meta} />
-      <MonthlyBySite series={series} meta={meta} screen={screen} channel={channel} setChannel={setChannel} />
-      <SeasonalSpreadBySite series={series} meta={meta} screen={screen} channel={channel} setChannel={setChannel} />
-      <SpectralShape series={series} meta={meta} screen={screen} by="site" />
-      <WeeklyBySite series={series} meta={meta} screen={screen} channel={channel} setChannel={setChannel} />
+      <MonthlyBySite series={primary} meta={meta} screen={screen} channel={channel} setChannel={setChannel} />
+      <SeasonalSpreadBySite series={primary} meta={meta} screen={screen} channel={channel} setChannel={setChannel} />
+      <SpectralShape series={primary} meta={meta} screen={screen} by="site" />
+      <WeeklyBySite series={primary} meta={meta} screen={screen} channel={channel} setChannel={setChannel} />
+      <Excluded series={primary} meta={meta} exclusions={exclusions} />
+      {hourlyHead(hourly.series.length)}
+      {hourly.series.length > 0 && <>
+        <PeakTiming series={hourly.series} meta={meta} by="site" />
+        <EpisodesBySite series={hourly.series} meta={meta} />
+      </>}
     </>
   )
 }
