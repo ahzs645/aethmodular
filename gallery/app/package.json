@@ -10,7 +10,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "node --test src/lib/*.test.mjs",
+    "test": "node --test 'src/lib/*.test.mjs' 'src/sections/**/*.test.mjs'",
     "index:charts": "node scripts/build-chart-index.mjs"
   },
   "dependencies": {
