@@ -91,6 +91,7 @@ import { AERONET_GROUP, useAeronet } from '@/lib/aeronet'
 // flagged sections (src/sections/sections.json): a public build resolves a private one to sections/omitted.ts
 import SECTIONS_MANIFEST from '@/sections/sections.json'
 import instruments from '@/sections/instruments'
+import research from '@/sections/research'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 
 /**
@@ -110,6 +111,7 @@ const TABS = [
   { key: 'availability', label: 'Data availability', title: 'Notebook coverage analyses, product inventory, sample-day overlap and filter history' },
   { key: 'weather', label: 'Weather', title: 'Weather over each filter’s sampling window: ERA5 at every SPARTAN site, the airport station at Addis' },
   { key: 'aethalometer', label: 'Aethalometer', title: 'MA350 aethalometers at the focus sites (Instruments section; private in public builds)' },
+  { key: 'research', label: 'Research diagnostics', title: 'Notebook analyses brought into the gallery (Research section; private in public builds)' },
   { key: 'aeronet', label: 'AERONET', title: 'The sun photometer column over each filter’s sampling window: AOD, absorption AOD and SSA at every SPARTAN site with a station' },
   { key: 'flow', label: 'Flow' },
   { key: 'pmf', label: 'PMF sources' },
@@ -125,7 +127,7 @@ type TabKey = (typeof TABS)[number]['key']
 /** A share build (VITE_SHARE_TABS=meeting,map; gallery/share/build_share.py) offers only these tabs, the first as landing tab. */
 const SHARE_TABS: string[] = (import.meta.env.VITE_SHARE_TABS ?? '').split(',').map((t: string) => t.trim()).filter(Boolean)
 /** the flagged sections compiled into this build, their tabs, and every tab a section owns (compiled or not) */
-const SECTIONS = [instruments].filter((s) => s.tabs.length)
+const SECTIONS = [instruments, research].filter((s) => s.tabs.length)
 const SECTION_TABS = new Map(SECTIONS.flatMap((s) => s.tabs.map((t) => [t.key, t] as const)))
 const SECTION_OWNED = new Set<string>(Object.values(SECTIONS_MANIFEST.sections).flatMap((s) => s.tabs))
 const shared = (key: string) => (!SECTION_OWNED.has(key) || SECTION_TABS.has(key)) && (SHARE_TABS.length === 0 || SHARE_TABS.includes(key))
@@ -222,7 +224,7 @@ const parseSpartanSel = (v: string | null): string[] | 'all' | null =>
   v == null || v === '' ? null : v === '*' ? 'all' : v === '-' ? [] : v.split(',').filter(Boolean)
 
 /** tabs whose charts can draw a whole network (Filters sidebar → network) */
-const NETWORK_TABS = ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'weather', 'aeronet', 'aethalometer'] as const
+const NETWORK_TABS = ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'weather', 'aeronet', 'aethalometer', 'research'] as const
 const FILTERS: SubsetCaps = { seasons: true, sites: true, excluded: true, dates: true, fields: 'single', datasetLabel: 'SPARTAN filters' }
 const CAPS: Record<Exclude<TabKey, 'availability' | 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks' | 'experimental'>, SubsetCaps> = {
   correlation: { ...FILTERS, fields: 'pair', networks: true, fits: true },
@@ -235,6 +237,7 @@ const CAPS: Record<Exclude<TabKey, 'availability' | 'census' | 'baseline' | 'sim
   weather: { ...FILTERS, networks: true, fits: true },
   aeronet: { ...FILTERS, networks: true, fits: true },
   aethalometer: { ...FILTERS, networks: true, fits: true },
+  research: { ...FILTERS, networks: true, fits: true },
   map: FILTERS,
   flow: { ...FILTERS, fields: 'none' },
   pmf: {

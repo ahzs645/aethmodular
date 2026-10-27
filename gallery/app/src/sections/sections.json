@@ -4,9 +4,24 @@
     "instruments": {
       "label": "Instruments",
       "public": false,
-      "tabs": ["aethalometer"],
-      "data": ["aethalometer"],
+      "tabs": [
+        "aethalometer"
+      ],
+      "data": [
+        "aethalometer"
+      ],
       "about": "Aethalometer (MA350) data at the focus sites: the notebooks of the Multi_Site_Analysis set, flow fix, smoothing, HIPS vs aethalometer, AAE source classes, MAC and iron, diurnal cycles."
+    },
+    "research": {
+      "label": "Research",
+      "public": false,
+      "tabs": [
+        "research"
+      ],
+      "data": [
+        "research"
+      ],
+      "about": "Notebook analyses the gallery had the data for but not the method: HIPS and meteorology diagnostics, spectral and calibration diagnostics."
     }
   }
 }
