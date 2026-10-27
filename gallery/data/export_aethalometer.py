@@ -47,7 +47,8 @@ CHANNELS = ["UV", "Blue", "Green", "Red", "IR"]
 # MA350 attenuation cross-sections (m²/g), src/external/calibration.py
 SIGMA = {"UV": 24.069, "Blue": 19.070, "Green": 17.028, "Red": 14.091, "IR": 10.120}
 MIN_OVERLAP_H = 12.0
-# the gallery's site codes; Jacros is the second Addis instrument (AAU Jackros, beside the AERONET station)
+# the gallery's site codes. Jacros is the Addis instrument's longer record (same MA350-0238, Apr 2022 to Jun 2025;
+# identical BCc to the Addis file on all 515 shared bins), not a second instrument
 SITE_FILES = {cfg["code"]: (name, cfg["file"]) for name, cfg in SITES.items()}
 SITE_FILES["ETAD-JACROS"] = ("Jacros", "df_Jacros_9am_resampled.pkl")
 
@@ -128,7 +129,7 @@ def main() -> None:
         hours = daily["start"].dt.hour.value_counts()
         filter_code = code.split("-")[0]
         n = 0
-        if code == filter_code:   # Jacros is a second instrument at Addis; its values stay in its daily file
+        if code == filter_code:   # Jacros's longer Addis record stays in its daily file; the filters match the Addis file
             for fid, w in windows.items():
                 if not fid.startswith(filter_code + "-"):
                     continue
