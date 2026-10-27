@@ -40,9 +40,33 @@ export interface NotebookAvailability {
     future_inventory_endpoints: { code: string; product: string; advertised_date: string }[]
   }
   study: StudySite[]
+  /** AERONET at each SPARTAN site with a station (export_availability.build_aeronet); absent from older exports */
+  aeronet?: AeronetAvailability
   orientation: { network: string; quantity: string; units: string; n: number; n_sites: number; date_min: string; date_max: string }[]
   sources: { path: string; sha256: string; role: string }[]
 }
+export interface AeronetAvailabilitySite {
+  code: string
+  name: string
+  station: string
+  km: number
+  /** stations within 50 km that were ranked */
+  candidates: number
+  filters: number
+  /** filters with at least one direct-sun AOD retrieval inside their sampling window */
+  filters_aod: number
+  /** filters with at least one almucantar inversion inside their window */
+  filters_inv: number
+  filter_first: string | null
+  filter_last: string | null
+  /** days with a daily AOD, and with a daily inversion, at the station over the pulled span */
+  aod_days: number
+  inv_days: number
+  daily_first: string | null
+  daily_last: string | null
+}
+export interface AeronetAvailabilityMonth { code: string; month: string; filters: number; filters_aod: number; filters_inv: number; aod_days: number; inv_days: number }
+export interface AeronetAvailability { level: string; source: string; sites: AeronetAvailabilitySite[]; monthly: AeronetAvailabilityMonth[] }
 export type CompletenessRule = 'Any finite IR' | 'At least 50%' | 'At least 80%'
 
 export function intersectDays(a: string[], b: string[]): string[] {
@@ -67,4 +91,10 @@ export function calendarMonths(first: string, last: string): string[] {
     date.setUTCMonth(date.getUTCMonth() + 1)
   }
   return months
+}
+/** Calendar days in a 'YYYY-MM' month (0 for anything else), for a monthly share of photometer days. */
+export function daysInMonth(month: string): number {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return 0
+  const [y, m] = month.split('-').map(Number)
+  return new Date(Date.UTC(y, m, 0)).getUTCDate()
 }

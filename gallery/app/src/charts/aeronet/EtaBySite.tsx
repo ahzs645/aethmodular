@@ -7,6 +7,7 @@ import { INK } from '@/lib/theme'
 import { seasonOnly } from '@/lib/seasons'
 import { spearman } from '@/lib/weather'
 import { useSearchParam } from '@/lib/url'
+import { useNarrowScreen } from '@/hooks/useMediaQuery'
 import { eta, maiaLine, useAeronetSites } from '@/lib/aeronetSites'
 import type { FilterRow, MetaFile } from '@/lib/types'
 
@@ -28,6 +29,8 @@ export function EtaBySite({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
   const nSites = useMemo(() => new Set(rows.map((r) => r.site)).size, [rows])
   const [viewParam, setView] = useSearchParam<(typeof VIEWS)[number]>('etaview', nSites <= 6 ? 'Site × season' : 'Site', VIEWS)
   const view = nSites === 1 ? 'Site × season' : viewParam
+  // a phone: shorter labels' room and narrower panels, so both panels fit without clipping
+  const narrow = useNarrowScreen()
 
   const blocks = useMemo<IntervalBlock[]>(() => {
     const order = meta.seasons.map((s) => s.name)
@@ -75,7 +78,7 @@ export function EtaBySite({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
       subtitle={`η = filter PM2.5 ÷ AOD 500 (the mean of the AERONET retrievals inside the filter's sampling window), µg/m³ per unit AOD: median and interquartile range, at least ${MIN_N} filters each. Satellite PM2.5 retrievals, MAIA's included, turn AOD into surface PM2.5 through this ratio, so a site or season where it moves is where they have to model it. Right: how closely PM2.5 follows AOD (Spearman ρ; hollow below 0.3, where η says little). AOD is a daylight, clear-sky mean; PM2.5 covers the whole window.`}
       provenance={`AERONET Version 3 ${summary ? `Level ${summary.level}` : ''} (export_aeronet.py) over SPARTAN filter PM2.5; the same ratio per site and season, all filters, in aeronet/sites_summary.json (export_aeronet_sites.py). ◎: a SPARTAN site inside a MAIA target area (research/maia/inventory/spartan_sites.csv).`}
       controls={nSites > 1 ? <Segmented label="Rows" value={view} options={VIEWS} onChange={setView} /> : undefined}>
-      {any ? <IntervalStrip blocks={blocks} labelWidth={view === 'Site' ? 190 : 210} noteWidth={50} rowHeight={view === 'Site' ? 22 : 20}
+      {any ? <IntervalStrip blocks={blocks} labelWidth={narrow ? 130 : view === 'Site' ? 190 : 210} minPanelWidth={narrow ? 150 : 260} noteWidth={narrow ? 42 : 50} rowHeight={view === 'Site' ? 22 : 20}
         panels={[
           { label: 'η = PM2.5 / AOD 500 (µg/m³ per unit AOD)', heading: 'Conversion η', format: (v) => fmt(v, 0) },
           { label: 'Spearman ρ, PM2.5 against AOD 500', heading: 'Does PM2.5 follow AOD?', reference: 0, domain: [-1, 1], stems: false, format: (v) => fmt(v, 1) },

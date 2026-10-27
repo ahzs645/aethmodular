@@ -11,6 +11,7 @@ gaps, count jumps and measurement coverage from the initial implementation.
 | Network coverage | `research/spartan/spartan_all_sites_hips_overview.ipynb`; saved `coverage.csv`, `monthly_samples.csv`, HIPS bridge, HIPS inventory and all-site inventory tables. Site × product matrix, monthly sampling heatmap, cadence and longest-gap table. |
 | Study overlap | `notebooks/analysis/data_availability/filter_data_availability_strip_chart.ipynb` and `research/ftir_hips_chem/Multi_Site_Analysis.ipynb`. Day strips, exact calendar-day intersections, physical-filter overlap, completeness thresholds and sample-date audit. |
 | Filter explorer | Current gallery SPARTAN/IMPROVE exports: searchable site inventory, editable reference date, inactivity threshold, sampling spans, per-site monthly counts, gaps, jumps and finite field coverage. |
+| AERONET photometer | The AERONET exports (`gallery/data/export_aeronet.py`: `aeronet/stations.json`, `aeronet/daily/<CODE>.json`, per-filter retrieval counts). Per SPARTAN site with a station: filters started, days with a daily AOD and days with an inversion, by month, and a table of the station used, its distance, and the filters with an AOD or an inversion inside their own sampling window. |
 | Prior comparison | `research/spartan/spartan_improve_orientation.ipynb` and its saved shared-coverage table. Explicitly identifies the four-site SPARTAN study and historical cleaned IMPROVE population. |
 
 The first three views answer different questions: product presence across the
@@ -44,6 +45,36 @@ Mexico City). Site codes stay unchanged.
   It does not use ±1-day matching. Multiple filters can share a calendar day.
 - Nominal sampling ratios use the existing pipeline's schedule assumptions.
   Values above 100% are preserved; they are not instrument uptime percentages.
+
+## AERONET photometer
+
+`export_availability.build_aeronet()` packages the AERONET export rather than
+the gitignored parquet cache, so it reruns from committed files. The fetch
+(`research/ftir_hips_chem/workflows/fetch_aeronet_spartan.py`) picks, per site,
+the station within 50 km whose daily AOD covers the most filter days, and pulls
+it only over the site's filter span (first to last window ± 1 day). Photometer
+days outside that span were never downloaded, so they are absent, not zero.
+
+- **Filters** are dated by the local start of their sampling window (the
+  weather export's windows; the gallery date where a filter has none), the
+  same population `export_aeronet.py` averages over. Exclusions are included.
+- **With AOD / with inversion** means at least one direct-sun AOD retrieval
+  (any wavelength) or almucantar inversion inside the filter's own window. The
+  exporter asserts these totals equal `aeronet/stations.json` for every site,
+  so this view and the AERONET tab cannot disagree.
+- **Photometer days** are days with a daily-mean AOD (440, 500 or 675 nm) and,
+  separately, days with a daily inversion (AAOD or SSA). A sun photometer
+  retrieves in daylight and clear sky only: a cloudy month has few AOD days with
+  the instrument running.
+- Monthly lanes keep every calendar month in a site's span; an empty month
+  inside it is pale.
+
+On 27 Oct 2026: 35 SPARTAN sites have a station; of their 4,747 filters, 3,085
+have an AOD inside their window and 2,485 an inversion. Coverage is lowest at
+Bujumbura (6 of 57 with an AOD, none with an inversion; the station's record
+is sparse) and Taipei (44 of 295; the Taipei_CWB record ends January 2023).
+At Abu Dhabi the station's AOD starts in March 2020, about ten months after the
+first filter. Bishoftu (ETBI) uses the Addis Ababa station, 34 km away.
 
 ## Reconciled differences
 
@@ -84,7 +115,8 @@ remains FTIR-derived; IMPROVE EC is thermal-optical.
 
 ```bash
 uv run aeth doctor
-uv run python gallery/data/export_availability.py
+uv run python gallery/data/export_availability.py   # after export_aeronet.py: it packages the AERONET export too
+uv run --with pytest pytest tests/test_availability_aeronet.py
 cd gallery/app
 node --test src/lib/availability.test.mjs src/lib/notebookAvailability.test.mjs
 python scripts/check-responsive.py

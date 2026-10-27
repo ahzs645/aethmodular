@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { calendarMonths, intersectDays, studyOverlap } from './notebookAvailability.ts'
+import { calendarMonths, daysInMonth, intersectDays, studyOverlap } from './notebookAvailability.ts'
 
 test('day intersections deduplicate days without joining adjacent dates', () => {
   assert.deepEqual(intersectDays(['2024-01-01', '2024-01-01', '2024-01-02'], ['2024-01-02', '2024-01-03']), ['2024-01-02'])
@@ -67,4 +67,21 @@ test('study exports preserve sample dates, physical filters and missing complete
   assert.ok(jpl.ftir.analysis_last > '2023-12-31')
   const addis = exported.study.find(s => s.code === 'ETAD')
   assert.equal(studyOverlap(addis, 'At least 80%').aeth, null)
+})
+
+test('AERONET availability: monthly counts add up to each site, and photometer days fit their month', () => {
+  assert.equal(daysInMonth('2024-02'), 29)
+  assert.equal(daysInMonth('2023-02'), 28)
+  assert.equal(daysInMonth('2024-13'), 0)
+  const { sites, monthly } = exported.aeronet
+  for (const site of sites) {
+    const rows = monthly.filter(m => m.code === site.code)
+    for (const key of ['filters', 'filters_aod', 'filters_inv', 'aod_days', 'inv_days']) {
+      assert.equal(rows.reduce((sum, m) => sum + m[key], 0), site[key], `${site.code} · ${key}`)
+    }
+    for (const m of rows) {
+      assert.ok(m.aod_days <= daysInMonth(m.month) && m.inv_days <= daysInMonth(m.month), `${site.code} · ${m.month}`)
+      assert.ok(m.filters_inv <= m.filters && m.filters_aod <= m.filters)
+    }
+  }
 })
