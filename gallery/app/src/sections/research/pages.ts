@@ -5,7 +5,21 @@
 import type { ComponentType } from 'react'
 import type { SectionPage, SectionPageProps } from '../types'
 import { Index } from './pages/Index'
+// research-hips-met: the HIPS offset and meteorology pages
+import { RhSweep } from './pages/RhSweep'
+import { OffsetDrivers } from './pages/OffsetDrivers'
+import { TwoProblem } from './pages/TwoProblem'
+import { OffsetShift } from './pages/OffsetShift'
+import { MoistureMac } from './pages/MoistureMac'
+import { HipsEnvelope } from './pages/HipsEnvelope'
 
 export const RESEARCH_PAGES: (SectionPage & { Page: ComponentType<SectionPageProps> })[] = [
   { key: 'index', label: 'Index', title: 'What each page here reproduces', Page: Index },
+  // research-hips-met
+  { key: 'rh-sweep', label: 'RH threshold sweep', title: 'Method agreement split at every humidity threshold, by season', Page: RhSweep },
+  { key: 'offset-drivers', label: 'What tracks the offset', title: 'Residuals, nested models, the recursive split scan, Bland–Altman and influential filters', Page: OffsetDrivers },
+  { key: 'two-problem', label: 'Two-problem decomposition', title: 'The HIPS offset as a baseline plus a compressed sensitivity, by site', Page: TwoProblem },
+  { key: 'offset-shift', label: 'EC shift and the offset', title: 'Deming against the error ratio, the EC shift that zeros the intercept, and the implied missing EC by season', Page: OffsetShift },
+  { key: 'moisture-mac', label: 'Moisture and MAC', title: 'Effective MAC against precipitable water and humidity; does moisture move the slope or the intercept?', Page: MoistureMac },
+  { key: 'hips-envelope', label: 'HIPS operating envelope', title: 'Raw HIPS optics, mass per area, lot screen, blank domain and the Addis windows', Page: HipsEnvelope },
 ]
