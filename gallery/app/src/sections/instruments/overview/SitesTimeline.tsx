@@ -39,7 +39,8 @@ export function SitesTimeline({ series, meta, screen, channel, setChannel }: {
   const iw = Math.max(240, width - M.left - M.right)
   const x = d3.scaleUtc().domain(all.length ? (d3.extent(all) as [Date, Date]) : [new Date(0), new Date(1)]).range([0, iw])
   const vs = shown.flatMap((l) => l.vals).filter((v): v is number => v !== null && (!log || v > 0))
-  const y = log ? d3.scaleLog().domain([Math.max(1e-3, (d3.min(vs) ?? 0.1) * 0.9), (d3.max(vs) ?? 1) * 1.1]).range([H, 0]).nice()
+  // log: no nice(), which would round out to whole decades (0.38–20 drawn as 0.1–100)
+  const y = log ? d3.scaleLog().domain([Math.max(1e-3, (d3.min(vs) ?? 0.1) * 0.9), (d3.max(vs) ?? 1) * 1.1]).range([H, 0])
     : d3.scaleLinear().domain([Math.min(0, d3.min(vs) ?? 0), (d3.max(vs) ?? 1) * 1.04]).range([H, 0]).nice()
   const path = (l: (typeof lines)[number], idx: number[]) => d3.line<number>().defined((i) => l.vals[i] !== null && (!log || l.vals[i]! > 0))
     .x((i) => x(new Date(l.s.days[i].t.getTime() + 864e5 / 2))).y((i) => y(l.vals[i]!))(idx) ?? ''

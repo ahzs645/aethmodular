@@ -11,7 +11,7 @@ import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { SeasonMeta, SiteMeta } from '@/lib/types'
 import { bcc, CHANNEL_COLOUR, CHANNELS, dates, HOURS, hourRuns, MIN_MINUTES, seasonsOf, type Channel, type SurfaceFile } from './data'
-import { allYear, cycleSeries, dayGroups, HourPlot, inGroup, type DayGroup } from './HourCycle'
+import { allYear, cycleSeries, dayGroups, hourDomain, HourPlot, inGroup, type DayGroup } from './HourCycle'
 
 const WAVELENGTH_NB = 'research/ftir_hips_chem/addis_05_diurnal_wavelength_analysis.ipynb, multisite_diurnal_wavelength_analysis.ipynb, notebooks/analysis/diurnal_pub_figures.ipynb'
 const AERONET_NB = 'notebooks/analysis/meteorology/aeronet_addis_diagnostics.ipynb and aeronet_addis_deep_dive.ipynb'
@@ -81,12 +81,14 @@ export function AaeCycle({ file, site, seasons, split, shade }: Props) {
   const pairs = [['aae_uv_ir', 'AAE UV/IR', CHANNEL_COLOUR.UV], ['aae_blue_ir', 'AAE Blue/IR', CHANNEL_COLOUR.Blue]] as const
   const series = (g: DayGroup) => pairs.filter(([k]) => t[k]).flatMap(([k, label, color]) =>
     cycleSeries({ id: k, label, hours: t.h, values: t[k]!, seasons: season, groups: [g], keep: full, color, digits: 2 }))
+  // the smoke reference stretches the axis to 2 for nothing when every band stays well below it
+  const reachesSmoke = groups.some((g) => series(g).some((s) => s.points.some((p) => (p.hi ?? p.y ?? 0) >= 1.6)))
   return (
     <ChartFrame id="diurnal-aae" title={`${site.name} · absorption Ångström exponent by local hour — UV/IR and Blue/IR`}
-      subtitle="AAE of each day-hour's mean absorption, b = BCc × σ_ATN (UV 24.069, Blue 19.070, IR 10.120 m²/g), so the firmware's wavelength-dependent cross-section is undone (optics.aae; a BCc ratio reads about 1 lower). Median over days and interquartile band; 1 is the black-carbon reference, 2 a biomass-smoke one. At Addis the UV channel is out of range on a third of days (the brown-carbon test below)."
+      subtitle="AAE of each day-hour's mean absorption, b = BCc × σ_ATN (UV 24.069, Blue 19.070, IR 10.120 m²/g), so the firmware's wavelength-dependent cross-section is undone (optics.aae; a BCc ratio reads about 1 lower). Median over days and interquartile band; 1 is the black-carbon reference, 2 a biomass-smoke one (drawn when the bands come near it). At Addis the UV channel is out of range on a third of days (the brown-carbon test below)."
       provenance={`${WAVELENGTH_NB}; research/ftir_hips_chem/scripts/optics.py`}>
       {facetBy(groups, (g, w) => <HourPlot key={g.name} title={groups.length > 1 ? g.name : undefined} width={w} series={series(g)} offset={file.offset} shade={shade}
-        yLabel="AAE (absorption)" yMarkers={[{ at: 1, label: 'BC ≈ 1', color: INK.identity }, { at: 2, label: 'smoke ≈ 2', color: INK.warn }]} />)}
+        yLabel="AAE (absorption)" yMarkers={[{ at: 1, label: 'BC ≈ 1', color: INK.identity }, ...(reachesSmoke ? [{ at: 2, label: 'smoke ≈ 2', color: INK.warn }] : [])]} />)}
       <Key items={pairs.map(([, label, color]) => ({ label, color, kind: 'line' as const }))} />
     </ChartFrame>
   )
@@ -197,12 +199,15 @@ export function ColumnCoupling({ file, site, seasons, split, shade }: Props) {
     { key: 'aod500', title: 'Column AOD 500', axis: 'AOD 500 nm', values: m.aod500, digits: 3 },
     { key: 'bc_aod', title: 'BC / AOD', axis: `IR BCc / AOD 500 (${UG})`, values: m.bc_aod, digits: 1 },
   ]
+  const drawn = panels.map((p) => ({ ...p, series: cycleSeries({ id: p.key, label: p.title, hours: m.h, values: p.values, seasons: season, groups, digits: p.digits }) }))
+  // one hour range for the three panels, so they line up
+  const hours = hourDomain(drawn.flatMap((p) => p.series), shade)
   return (
     <ChartFrame id="diurnal-coupling" title={`${site.name} · surface against column through the day — BC, AOD and BC/AOD at the photometer's moments`}
       subtitle={`Each AERONET direct-sun retrieval paired with the mean IR BCc of the ±15 min around it (at least 5 valid minutes); retrievals averaged per day-hour, then the median by hour and interquartile band. A shallow morning boundary layer shows as BC high and AOD flat, so BC/AOD (how much of the column sits at the surface) falls through the morning.`}
       provenance={AERONET_NB}>
-      <FacetGrid items={panels} minCell={300} maxCols={3} render={(p, w) => <HourPlot title={p.title} width={w} height={230} offset={file.offset} shade={shade} yLabel={p.axis} digits={p.digits}
-        series={cycleSeries({ id: p.key, label: p.title, hours: m.h, values: p.values, seasons: season, groups, digits: p.digits })} />} />
+      <FacetGrid items={drawn} minCell={300} maxCols={3} render={(p, w) => <HourPlot title={p.title} width={w} height={230} offset={file.offset} shade={shade} yLabel={p.axis} digits={p.digits}
+        series={p.series} hours={hours} />} />
       {split && <Key items={groups.map((g) => ({ label: g.name, color: g.color, kind: 'line' as const }))} />}
     </ChartFrame>
   )

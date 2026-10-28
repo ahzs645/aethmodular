@@ -38,21 +38,34 @@ export function cycleSeries({ id, label, hours, values, seasons, groups, keep, d
   })
 }
 
+/**
+ * The hours a plot needs: those where any series has a value, and the shaded ones, an hour of margin either side.
+ * A full-day record keeps 0–23; one drawn only at the photometer's hours (AERONET is daylight only) is not padded
+ * out to midnight.
+ */
+export function hourDomain(series: readonly SweepSeries[], shade: readonly number[] = []): [number, number] {
+  const hs = [...series.flatMap((s) => s.points.filter((p) => p.y != null && Number.isFinite(p.y)).map((p) => +p.x)), ...shade]
+  return hs.length ? [Math.max(0, Math.min(...hs) - 1), Math.min(23, Math.max(...hs) + 1)] : [0, 23]
+}
+
 /** a quantity against the hour of day, with the photometer's hours shaded */
-export function HourPlot({ series, yLabel, offset, shade = [], height = 260, width, title, include, yMarkers, children, digits = 2 }: {
+export function HourPlot({ series, yLabel, offset, shade = [], height = 260, width, title, include, yMarkers, children, digits = 2, hours }: {
   series: SweepSeries[]; yLabel: string; offset: number
   /** hours to shade (AERONET's inversion hours) */
   shade?: readonly number[]
+  /** the hour range (several panels share one); else hourDomain of this plot's series */
+  hours?: [number, number]
   height?: number; width?: number; title?: ReactNode; include?: number[]
   yMarkers?: { at: number; label?: string; color?: string }[]
   children?: Parameters<typeof SweepPlot>[0]['children']
   digits?: number
 }) {
-  return <SweepPlot series={series} xScale="linear" xDomain={[0, 23]} xLabel={`Hour of day (local standard time, ${utcLabel(offset)})`} yLabel={yLabel}
+  const [h0, h1] = hours ?? hourDomain(series, shade)
+  return <SweepPlot series={series} xScale="linear" xDomain={[h0, h1]} xLabel={`Hour of day (local standard time, ${utcLabel(offset)})`} yLabel={yLabel}
     xFormat={(v) => hourLabel(+v)} yFormat={(v) => fmt(v, digits)} height={height} width={width} title={title} include={include} yMarkers={yMarkers}
     minWidth={width != null ? undefined : 300}
     background={({ x, ih }) => hourSpans(shade).map(([a, b]) => {
-      const sx = x as (v: number) => number, x0 = sx(Math.max(0, a - 0.5)), x1 = sx(Math.min(23, b + 0.5))
+      const sx = x as (v: number) => number, x0 = sx(Math.max(h0, a - 0.5)), x1 = sx(Math.min(h1, b + 0.5))
       return <rect key={a} x={x0} width={x1 - x0} y={0} height={ih} fill={INK.shadeWarm} fillOpacity={0.85} />
     })}>
     {children}
