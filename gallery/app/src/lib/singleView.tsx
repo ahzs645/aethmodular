@@ -5,6 +5,7 @@ import { StepButton } from '@/components/StepButton'
 import { FrameFit } from '@/lib/chartFit'
 import { useExportRender } from '@/lib/exportRender'
 import { useSearchParam } from '@/lib/url'
+import { SHOW_CHART_EVENT, findChart, flashChart, type ChartTarget } from '@/lib/headerNav'
 import type { ControlsSide } from '@/lib/chartDisplay'
 
 /**
@@ -81,6 +82,11 @@ function sectionsOf(root: Element, frames: HTMLElement[]) {
   })
 }
 
+/** `page` is App's `${tab}/${meeting}/${experiment}`: the chart the search asked for is looked for on its own page only */
+const onPage = (t: ChartTarget, page: string) => { const [tab, meeting] = page.split('/'); return tab === t.tab && (!t.meeting || meeting === t.meeting) }
+/** how long a chart the search asked for is waited for (and held in view while the page above it loads) */
+const SEEK_MS = 8000
+
 function clearMarks() {
   for (const el of document.querySelectorAll(MARKS.map((m) => `[${m}]`).join(','))) for (const m of MARKS) el.removeAttribute(m)
 }
@@ -108,12 +114,22 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
   const shown = useRef<string | null>(null)
   // read once, as the link arrived: the chart in view is written back to `chart=` as soon as one shows
   const [linked] = useState(() => { const q = new URL(window.location.href).searchParams; return q.get('chart') ?? q.get('focus') })
+  // a chart picked in the ⌘K search (lib/headerNav SHOW_CHART_EVENT): asked for before its tab opens, shown once it
+  // has drawn, and kept in view for a while as the charts around it load and re-key, unless the reader steps away
+  const sought = useRef<{ t: ChartTarget; until: number; shown?: boolean } | null>(null)
+  const kick = useRef<() => void>(() => {})
+  useEffect(() => {
+    const ask = (e: Event) => { sought.current = { t: (e as CustomEvent<ChartTarget>).detail, until: Date.now() + SEEK_MS }; kick.current() }
+    window.addEventListener(SHOW_CHART_EVENT, ask)
+    return () => window.removeEventListener(SHOW_CHART_EVENT, ask)
+  }, [])
   useEffect(() => {
     // the link's chart on the page the link opened (a re-run for the same page keeps it); a new tab or meeting
     // starts at its first chart
     if (shown.current === null || shown.current === page) asked.current = linked
     else asked.current = null
     shown.current = page
+    if (sought.current && !onPage(sought.current.t, page)) sought.current = null
     want.current = null; at.current = 0; setIndex(0)
   }, [page])
 
@@ -131,6 +147,15 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
         const found = list.find((f) => f.dataset.frameKey === asked.current)
         if (found) { want.current = found; asked.current = null }
       }
+      let picked: HTMLElement | null = null
+      const s = sought.current
+      if (s && Date.now() > s.until) sought.current = null
+      else if (s && onPage(s.t, page)) {
+        // the frame that holds it (a chart's id can sit on a frame inside another)
+        const hit = findChart(s.t)
+        const frame = hit ? list.find((f) => f === hit || f.contains(hit)) : undefined
+        if (frame && frame !== want.current) { want.current = frame; picked = frame; asked.current = null }
+      }
       let i = want.current ? list.indexOf(want.current) : -1
       if (i < 0) i = Math.max(0, Math.min(at.current, list.length - 1))
       const el = list[i] ?? null
@@ -143,12 +168,19 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
       at.current = i
       setIndex(i)
       setFrames((prev) => prev.length === list.length && prev.every((f, k) => f === list[k]) ? prev : list)
+      if (picked && picked === el) {
+        if (new URL(window.location.href).searchParams.has('focus')) { setQuery('focus', null); window.dispatchEvent(new Event('gallery-focus')) }
+        window.scrollTo({ top: 0 })
+        // once: the same chart re-keyed as its data arrives is not news
+        if (sought.current && !sought.current.shown) { sought.current.shown = true; flashChart(picked) }
+      }
     }
+    kick.current = () => { if (!raf) raf = requestAnimationFrame(apply) }
     apply()
     // charts mount, load and re-key as the page fills in
     const mo = new MutationObserver(() => { if (!raf) raf = requestAnimationFrame(apply) })
     mo.observe(document.body, { childList: true, subtree: true })
-    return () => { mo.disconnect(); if (raf) cancelAnimationFrame(raf) }
+    return () => { mo.disconnect(); if (raf) cancelAnimationFrame(raf); kick.current = () => {} }
   }, [on, page])
   useEffect(() => () => { clearMarks(); delete document.documentElement.dataset.single }, [])
 
@@ -160,6 +192,8 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
     const i = (to + list.length) % list.length
     // a focus link's overlay belongs to the chart it opened on, not the next one
     if (new URL(window.location.href).searchParams.has('focus')) { setQuery('focus', null); window.dispatchEvent(new Event('gallery-focus')) }
+    // the reader's own step wins over a chart the search is still holding in view
+    sought.current = null
     clearMarks()
     mark(root, list[i])
     want.current = list[i]

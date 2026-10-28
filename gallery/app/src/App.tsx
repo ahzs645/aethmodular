@@ -216,7 +216,8 @@ const AVAILABILITY_KEYS = AVAILABILITY_VIEWS.map((v) => v.key)
 const OTHER_SITE = '__other_site'
 
 /** what the ⌘K search offers: the tabs this build shows (lib/headerNav) */
-const NAV_TABS = TABS.filter((t) => shared(t.key) && !('hidden' in t && t.hidden) && !UNLISTED_TABS.has(t.key)).map((t) => ({ key: t.key as string, label: t.label as string, title: 'title' in t ? t.title as string : undefined }))
+const NAV_TABS = TABS.filter((t) => shared(t.key) && !('hidden' in t && t.hidden) && !UNLISTED_TABS.has(t.key)).map((t) => ({ key: t.key as string, label: t.label as string, title: 'title' in t ? t.title as string : undefined,
+  group: NAV_GROUPS.find((g) => g.items.some((i) => i.tab === t.key))?.label ?? 'Investigations' }))
 // Keep existing #tab=satoshi links working under the shared Meeting tab.
 const tabFromParams = (p: URLSearchParams): TabKey =>
   p.get('tab') === 'satoshi' && shared('meeting') ? 'meeting' : isTab(p.get('tab')) ? p.get('tab') as TabKey : LANDING_TAB
@@ -1506,8 +1507,8 @@ function HeaderTools() {
     <span className="header-tools">
       <span className="header-display"><DisplayToggles /></span>
       <CommandPaletteButton />
-      {/* on a phone these two fold into the ⋯ menu, with the display toggles */}
       <UndoToast />
+      {/* on a phone these two fold into the ⋯ menu, with the display toggles */}
       <span className="header-wide"><GlossaryButton /><ViewsMenu /></span>
       <HeaderMore display={<DisplayToggles />} />
     </span>
