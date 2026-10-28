@@ -391,3 +391,35 @@ is where the functional-group deliveries should be requested or looked for.
 exports those calibrations, the Adama `csu_amod` filters (gravimetric mass
 difference and volume), the batch tables, `frm.*` and a parameter check on
 `Improve_2.1`, with a manifest and a verified ZIP like the exports above.
+
+## October 28 reference export: what it settled
+
+`aqrc_reference_exports/20261028_105305_0098a639` (13 exports, 0 errors, every
+manifest SHA256 re-verified) answered four questions:
+
+- **IMPROVE stores no FTIR products.** The 137 parameters observed in
+  `Improve_2.1` `analysis.Results` include TOR fractions, seven-wavelength
+  thermal-optical carbon (`EC405TR` … `OC980TT`), HIPS raw intensities and
+  `fAbs`, but no FTIR OC/EC and no functional groups.
+- **The deployed SPARTAN calibrations are complete and usable.** All 20
+  `ftir.Calibrations` sets have 2,723 rows: row 1 (wavenumber 0) is the
+  intercept, then 2,722 coefficients on 3998.42 → 500.12 cm⁻¹, the explorer's
+  app grid. Lot 245's rejected sets (QC 0) are identical to lot 241's and its
+  accepted sets equal lot 241a's. Preprocessing (raw or baselined absorbance,
+  units) still has to be confirmed against a public OC/EC value before predicting.
+- **Functional groups stop at shipment `Shipment_2023.05.08`.** The database
+  batches are shipment labels, not the lab's numbered delivery batches. Every
+  shipment from `Shipment_2023.06.14` to `Shipment_2026.08.07` (filters sampled
+  Nov 2022 → Jul 2026) has public OM and no functional groups: 2,082 filters,
+  plus 291 older filters with public OM that are not in `spartan.Filters`
+  (CAHA, AEAZ, CASH, CADO, NGIL …). That 2,373-filter list is the request to
+  the lab.
+- **Adama is covered.** All five quartz TOR filters (J1675, J1679, J1693, J1701,
+  J1703) and their PTFE partners (J1285, J1270, J1269, J1266, J1233) are in
+  `csu_amod.Filters`. The PTFE partners carry weighed mass: 31.3, 41.3, 38.0, 34.4
+  and 26.8 µg/m³ (1000 × `MassDifference_micrograms` / `SampleVolume_liters`;
+  J1270's volume is 1,161 L against ~2,880 L for the others, so check it).
+  `csu_amod` holds 669 filters at about ten locations, including **101 quartz
+  filters** (Kaohsiung 66, Delhi 14, Pretoria/Johannesburg 12, Adama 6). Their
+  TOR results are not in SQL; if CSU analysed them as it did Batch 54, they are a
+  thermal EC/OC reference at SPARTAN sites.
