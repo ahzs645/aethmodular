@@ -327,7 +327,7 @@
    "file": "charts/pmf/SourceStack.tsx"
   },
   {
-   "title": "Barplot — site by season, with the spread shown",
+   "title": "Barplot — …, with the spread shown",
    "id": "barplot",
    "component": "Barplot",
    "tab": "ranking",
