@@ -307,6 +307,13 @@
    "file": "charts/map/SiteBubbleMap.tsx"
   },
   {
+   "title": "SPARTAN PM2.5 composition — every site's mean reconstructed mass, as in SPARTAN's network figure",
+   "id": "spartan-composition-map",
+   "component": "SpartanCompositionMap",
+   "tab": "map",
+   "file": "charts/map/SpartanCompositionMap.tsx"
+  },
+  {
    "title": "Stacked bars — what the PM2.5 is made of, per site and season",
    "component": "CompositionTreemap",
    "tab": "partOfWhole",
