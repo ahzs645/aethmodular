@@ -15,6 +15,14 @@ Usage:
     uv run aeth spartan pull                  # synchronize + summarize
     uv run aeth spartan pull --check-updates  # read-only remote comparison
     uv run aeth spartan pull --skip-download  # offline re-summarize
+    uv run aeth spartan pull --as-published   # install SPARTAN's files exactly as served
+
+A pull reconciles each changed file with the copy on disk (spartan_sync): SPARTAN's rows are
+taken, rows only the local copy has are kept, a file with no rows never replaces one with rows,
+rows that start after the file was updated are set aside in <file>.quarantined, and rows that
+end before they start are installed and flagged. SPARTAN's own bytes
+are kept as <file>.remote (what the next pull compares against). What was kept or set aside is
+listed in research/spartan/inventory/sync_log.csv.
 """
 
 from __future__ import annotations
@@ -34,6 +42,7 @@ import requests
 # scripts/ is not an installed package and the CLI runs this file by path, so
 # put scripts/ on sys.path to make `common` importable. See scripts/common/.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from pipelines.spartan_sync import Result, as_bytes, read_text, reconcile  # noqa: E402
 from common.spartan_io import (  # noqa: E402
     OUT_DIR as SUMMARY_DIR,
     RAW_DIR,
@@ -60,6 +69,18 @@ class FileSpec:
     remote_etag: str = ""
     remote_last_modified: str = ""
     remote_size_bytes: int | None = None
+    # what the last pull did with the file beyond installing it (spartan_sync.reconcile)
+    sync: Result | None = None
+
+
+def remote_copy(path: Path) -> Path:
+    """SPARTAN's bytes as last served, beside the installed (possibly reconciled) file."""
+    return path.with_name(path.name + ".remote")
+
+
+def quarantine_copy(path: Path) -> Path:
+    """Rows set aside from the last pull of this file (start after end)."""
+    return path.with_name(path.name + ".quarantined")
 
 
 def crawl() -> list[FileSpec]:
@@ -145,13 +166,20 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def download_one(spec: FileSpec, *, check_only: bool = False) -> tuple[FileSpec, int, str]:
+def download_one(spec: FileSpec, *, check_only: bool = False,
+                 as_published: bool = False) -> tuple[FileSpec, int, str]:
     """Compare remote bytes with the cache; atomically install new/changed files.
 
     Hashing the response is deliberate: the public index does not give us a
-    version manifest, and size/Last-Modified alone cannot prove equality.
+    version manifest, and size/Last-Modified alone cannot prove equality. The
+    comparison is with SPARTAN's last-served bytes (<file>.remote) where they
+    are kept, since the installed file may hold rows reconciled from before.
+    A changed file is reconciled with the local copy (spartan_sync) unless
+    `as_published`; "held" means the local file was kept as it was.
     """
     local_exists = spec.local_path.is_file() and spec.local_path.stat().st_size > 0
+    served = remote_copy(spec.local_path)
+    baseline = served if served.is_file() else spec.local_path
     if check_only and not local_exists:
         # The S3 listing proves the key exists, but provides no local content
         # baseline; downloading it would not make a revision check possible.
@@ -177,13 +205,27 @@ def download_one(spec: FileSpec, *, check_only: bool = False) -> tuple[FileSpec,
                         f.write(chunk)
                         remote_hash.update(chunk)
                         n += len(chunk)
-        if local_exists and remote_hash.hexdigest() == sha256_file(spec.local_path):
+        if local_exists and baseline.is_file() and remote_hash.hexdigest() == sha256_file(baseline):
             if not check_only:
                 tmp.unlink(missing_ok=True)
             return spec, n, "unchanged"
         if check_only:
             return spec, n, "changed" if local_exists else "new"
-        tmp.replace(spec.local_path)
+        raw = tmp.read_bytes()
+        tmp.replace(served)
+        result = None if as_published else reconcile(
+            read_text(raw), read_text(spec.local_path.read_bytes()) if local_exists else None)
+        spec.sync = result
+        if result is not None and result.text is None:
+            return spec, n, "held"
+        out = spec.local_path.with_suffix(spec.local_path.suffix + ".new")
+        out.write_bytes(raw if result is None or result.text == read_text(raw) else as_bytes(result.text))
+        out.replace(spec.local_path)
+        quarantined = quarantine_copy(spec.local_path)
+        if result is not None and result.quarantine_text:
+            quarantined.write_bytes(as_bytes(result.quarantine_text))
+        else:
+            quarantined.unlink(missing_ok=True)
         return spec, n, "updated" if local_exists else "downloaded"
     except Exception as e:  # noqa: BLE001
         return spec, 0, f"error: {e}"
@@ -193,13 +235,13 @@ def download_one(spec: FileSpec, *, check_only: bool = False) -> tuple[FileSpec,
 
 
 def download_all(specs: list[FileSpec], workers: int = 8,
-                 *, check_only: bool = False) -> list[tuple[FileSpec, int, str]]:
+                 *, check_only: bool = False, as_published: bool = False) -> list[tuple[FileSpec, int, str]]:
     print(f"{'Checking' if check_only else 'Synchronizing'} {len(specs)} files with {workers} workers...")
     total_bytes = 0
     done = 0
     results: list[tuple[FileSpec, int, str]] = []
     with cf.ThreadPoolExecutor(max_workers=workers) as ex:
-        for spec, n, status in ex.map(lambda s: download_one(s, check_only=check_only), specs):
+        for spec, n, status in ex.map(lambda s: download_one(s, check_only=check_only, as_published=as_published), specs):
             results.append((spec, n, status))
             done += 1
             total_bytes += n
@@ -273,6 +315,49 @@ def print_update_check(specs: list[FileSpec],
     if metadata_unchanged:
         print("An unchanged ETag is a bucket metadata comparison, not a local content-hash check.")
     return 1 if errors else 0
+
+
+def write_sync_log(results: list[tuple[FileSpec, int, str]]) -> pd.DataFrame:
+    """Every file the pull held, completed with local rows, or set rows aside from (sync_log.csv).
+
+    Rewritten by each pull that downloads: it is the state of the last sync, not a history.
+    """
+    rows = []
+    for spec, _, status in results:
+        r = spec.sync
+        if r is None or not (status == "held" or r.retained_rows or r.quarantined_rows or r.flagged_rows or r.note):
+            continue
+        rows.append({
+            "product": spec.product, "subproduct": spec.subproduct, "filename": spec.filename,
+            "site": spec.site, "status": status, "remote_rows": r.remote_rows, "local_rows": r.local_rows,
+            "installed_rows": r.installed_rows, "retained_rows": r.retained_rows,
+            "retained": " ".join(r.retained), "quarantined_rows": r.quarantined_rows,
+            "quarantined": " ".join(r.quarantined), "flagged_rows": r.flagged_rows,
+            "flagged": " ".join(r.flagged), "note": r.note,
+        })
+    log = pd.DataFrame(rows, columns=["product", "subproduct", "filename", "site", "status", "remote_rows", "local_rows",
+                                      "installed_rows", "retained_rows", "retained", "quarantined_rows", "quarantined",
+                                      "flagged_rows", "flagged", "note"])
+    log.to_csv(SUMMARY_DIR / "sync_log.csv", index=False)
+    return log
+
+
+def print_sync_log(log: pd.DataFrame) -> None:
+    if log.empty:
+        print("Sync: every changed file installed as SPARTAN serves it.")
+        return
+    print("\nSync: files not installed exactly as served")
+    for r in log.to_dict("records"):
+        parts = [r["status"]]
+        if r["retained_rows"]:
+            parts.append(f"kept {r['retained_rows']} local rows ({r['retained'][:120]})")
+        if r["quarantined_rows"]:
+            parts.append(f"set aside {r['quarantined_rows']} rows starting after the file's update ({r['quarantined'][:120]})")
+        if r["flagged_rows"]:
+            parts.append(f"flagged {r['flagged_rows']} rows ending before they start ({r['flagged'][:120]})")
+        if r["note"]:
+            parts.append(r["note"])
+        print(f"  {r['product']}/{r['subproduct']}/{r['filename']}: " + "; ".join(parts))
 
 
 # ---------------------------------------------------------------------------
@@ -495,6 +580,8 @@ def main() -> int:
     mode.add_argument("--check-updates", action="store_true",
                       help="Read-only index and content comparison; do not change local data or reports.")
     ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--as-published", action="store_true",
+                    help="Install SPARTAN's files exactly as served: no rows kept from the local copy, none set aside.")
     args = ap.parse_args()
     if args.workers < 1:
         ap.error("--workers must be at least 1")
@@ -531,7 +618,8 @@ def main() -> int:
           f"{len({s.site for s in specs})} sites.")
 
     if not args.skip_download:
-        results = download_all(specs, workers=args.workers, check_only=args.check_updates)
+        results = download_all(specs, workers=args.workers, check_only=args.check_updates,
+                               as_published=args.as_published)
         if args.check_updates:
             return print_update_check(specs, results)
         failures = [(s, status) for s, _, status in results if status.startswith("error:")]
@@ -540,6 +628,7 @@ def main() -> int:
                 print(f"ERROR: {spec.url}: {status}", file=sys.stderr)
             print("Inventory was not rewritten because downloads failed.", file=sys.stderr)
             return 1
+        print_sync_log(write_sync_log(results))
 
     print("\nSummarizing each file...")
     summaries: list[FileSummary] = []

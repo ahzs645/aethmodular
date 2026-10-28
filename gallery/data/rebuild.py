@@ -139,6 +139,10 @@ STEPS: tuple[Step, ...] = (
          note="resumable; add --refresh to re-download reprocessed years"),
     Step("aeronet-fetch-l20", "fetch", ("research/ftir_hips_chem/workflows/fetch_aeronet_spartan.py", "--level", "20"),
          "AERONET Level 2.0 for the same stations", "aeronet_spartan/*_lev20.parquet", (WINDOWS,), ("aeronet-fetch",)),
+    Step("spartan-pull", "fetch", ("scripts/pipelines/spartan_pull_and_summarize.py",),
+         "SPARTAN's public files (spartan-cloud S3), reconciled with the local copy: rows SPARTAN drops are kept, a file with no rows is not installed, rows starting after the file's update are set aside",
+         "data/spartan/raw/ (gitignored); research/spartan/inventory/ incl. sync_log.csv",
+         note="--as-published takes the bucket as served; sync_log.csv lists what was kept, set aside or flagged"),
     Step("maia-catalog", "fetch", ("scripts/pipelines/maia_catalog.py", "catalog"),
          "MAIA portal and NASA CMR: target areas, layers, monitors, granule coverage", "research/maia/inventory/"),
     # --- gallery exports ----------------------------------------------------------------------------
@@ -146,11 +150,11 @@ STEPS: tuple[Step, ...] = (
          "ERA5 (and the Addis station) over each filter's sampling window; the filter windows every later step uses",
          "gallery/app/public/data/weather/",
          (repo("research/ftir_hips_chem/output/tables/weather_era5/spartan_hourly.parquet"), repo("data/spartan/raw/FilterBased/ChemSpecPM25")),
-         tz=True, note="its ERA5 cache and the public ChemSpec files are local only; the committed weather/ is kept otherwise"),
+         ("spartan-pull",), tz=True, note="its ERA5 cache and the public ChemSpec files are local only; the committed weather/ is kept otherwise"),
     Step("spartan-composition", "export", ("gallery/data/export_spartan_composition.py",),
          "SPARTAN's PM2.5 mass reconstruction per filter, for the composition donut map",
          "gallery/app/public/data/spartan_composition.json",
-         (repo("data/spartan/raw/FilterBased/ReconstrPM25"), repo("data/spartan/raw/FilterBased/ChemSpecPM25")),
+         (repo("data/spartan/raw/FilterBased/ReconstrPM25"), repo("data/spartan/raw/FilterBased/ChemSpecPM25")), ("spartan-pull",),
          note="the public ReconstrPM25 and ChemSpecPM25 files are local only (`uv run aeth spartan pull`); the committed json is kept otherwise"),
     Step("aeronet", "export", ("gallery/data/export_aeronet.py",),
          "AERONET means over each filter's window (both levels whose parquet exists), daily series, stations",
@@ -207,7 +211,8 @@ STEPS: tuple[Step, ...] = (
                                    "tests/test_aeronet_gallery.py", "tests/test_aeronet_sites_export.py", "tests/test_availability_aeronet.py",
                                    "tests/test_aeth_quality_export.py", "tests/test_aeth_quality_minute.py", "tests/test_aeth_sources_export.py",
                                    "tests/test_aeth_diurnal_export.py", "tests/test_aeth_overview_export.py", "tests/test_gallery_research_hips_met.py",
-                                   "tests/test_gallery_research_spectral.py", "tests/test_maia_catalog.py", "tests/test_gallery_publication.py"),
+                                   "tests/test_gallery_research_spectral.py", "tests/test_maia_catalog.py", "tests/test_gallery_publication.py",
+                                   "tests/test_spartan_update_check.py"),
          "The pipeline's pytest files", "-", tz=True),
 )
 STEPS = tuple(Step(**{**s.__dict__, "order": i}) for i, s in enumerate(STEPS))
@@ -438,7 +443,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = ap.add_subparsers(dest="cmd")
     for name in ("plan", "rebuild"):
         p = sub.add_parser(name)
-        p.add_argument("--fetch", action="store_true", help="include the network steps (AERONET pulls, MAIA catalogue)")
+        p.add_argument("--fetch", action="store_true", help="include the network steps (SPARTAN and AERONET pulls, MAIA catalogue)")
         p.add_argument("--checks", action="store_true", help="finish with the check steps (chart index, typecheck, tests)")
         p.add_argument("--only", nargs="+", metavar="STEP", help="run just these steps")
         p.add_argument("--from", dest="from_step", choices=sorted(BY_KEY), help="start at this step")
