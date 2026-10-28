@@ -55,10 +55,12 @@ export function sharedCrossDomains(sets: CrossPoint[][], sameScale = true): { do
 
 const NO_KEYS: ReadonlySet<string> = new Set()
 
-export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain, fit = true, errorRatio, extraLines = [], grouping: groupingOverride, background, pick, sameScale = true, yDomain, brushable = false }: {
+export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain, fit = true, errorRatio, extraLines = [], grouping: groupingOverride, groupNoun, background, pick, sameScale = true, yDomain, brushable = false, brush }: {
   points: CrossPoint[]
   /** Offer rectangular selection with the shared filter review and hand-edit actions. */
   brushable?: boolean
+  /** the brush toggle held by the chart (useCrossplotBrush), whose <CrossplotBrushControls> sit in its options row; else the plot draws its own above it */
+  brush?: boolean
   title: string
   xLabel: string
   yLabel: string
@@ -72,6 +74,8 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   extraLines?: CrossLine[]
   /** the chart's own fit grouping (with its own control), instead of the gallery-wide setting; 'none' draws no fits */
   grouping?: FitGrouping | 'none'
+  /** what one fitted population is called in the note under a per-group fit (default its site or season) */
+  groupNoun?: string
   /** drawn under the points on the same scales, e.g. a density of the wider population */
   background?: (x: d3.ScaleLinear<number, number>, y: d3.ScaleLinear<number, number>) => ReactNode
   /** axis titles open the nearest axis picker (components/AxisFieldPopover: the page's or the gallery's); 'x' or 'y' for one */
@@ -92,9 +96,8 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   const clipId = useId()
   // a filter excluded by hand on any page is left out here too, points and refit alike
   const edits = useHandEdits()
-  const filterEdits = useFilterEdits()
-  const [brushSetting, setBrushSetting] = useTileSetting<string>('crossplot.brush', '0')
-  const brushing = brushable && brushSetting === '1'
+  const [ownBrush, setOwnBrush] = useCrossplotBrush()
+  const brushing = brushable && (brush ?? ownBrush)
   const brushRef = useRef<SVGGElement>(null)
   const drawable = useMemo(() => points.filter(p => p.x != null && p.y != null && Number.isFinite(p.x) && Number.isFinite(p.y)), [points])
   const valid = useMemo(() => drawable.filter(p => !edits.isOut(p.id ?? p.rec?.id)), [drawable, edits])
@@ -108,6 +111,7 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   const multiSite = fitting && new Set(valid.map(siteOf)).size > 1
   // a fit per season only where the points say their season
   const seasons = fitting && valid.some((p) => p.season)
+  const noun = groupNoun ?? (grouping === 'season' ? 'season' : 'site')
   const siteFits = methods.length > 0 && ((grouping === 'site' && multiSite) || (grouping === 'season' && seasons))
   const fitGroups = useMemo(() => fitting ? groupedRegressions(valid, grouping, {
     x: (p) => p.x, y: (p) => p.y, site: siteOf, color: (p) => p.color,
@@ -149,14 +153,7 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   }, [brushing, valid, iw, ih, x.domain().join(), y.domain().join()])
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      {brushable && <div className="frame-controls">
-        <Toggle label="Brush select" checked={brushing} onChange={value => setBrushSetting(value ? '1' : '0')} title="Drag a rectangle to select several filters; turn off to open individual records" />
-        {hl.selected && <><span className="control">{hl.selected.size} selected</span>
-          <button type="button" className="btn" onClick={() => filterEdits.openGroup({ title: 'Selected crossplot filters', ids: [...hl.selected!], fields: [] })}>Review selected</button>
-          <button type="button" className="btn" onClick={() => { filterEdits.keep(hl.selected!); hl.setSelected(null) }}>Keep selected</button>
-          <button type="button" className="btn" onClick={() => { filterEdits.drop(hl.selected!); hl.setSelected(null) }}>Exclude selected</button>
-          <button type="button" className="btn quiet" onClick={() => hl.setSelected(null)}>Clear selection</button></>}
-      </div>}
+      {brushable && brush === undefined && <div className="frame-controls"><CrossplotBrushControls brush={[ownBrush, setOwnBrush]} /></div>}
       {/* its points carry a site but no season, so a per-season grouping would only draw the pooled fit */}
       {(multiSite || seasons) && !groupingOverride && <FitGroupingControl only={['pooled', ...(multiSite ? ['site' as const] : []), ...(seasons ? ['season' as const] : [])]}
         value={grouping === 'season' && !seasons ? 'pooled' : grouping} />}
@@ -193,9 +190,29 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
           <g ref={brushRef} className="brush-layer" />
         </g>
       </svg>
-      {siteFits && <ChartAside><p className="chart-note">Fits use each {grouping === 'season' ? 'season' : 'site'}'s paired filters and observed x range. {grouping === 'season' ? 'Seasons' : 'Sites'} with fewer than three pairs or constant values have no fitted line. Point colours retain the selected grouping.</p></ChartAside>}
+      {siteFits && <ChartAside><p className="chart-note">Fits use each {noun}'s paired filters and observed x range. {noun[0].toUpperCase() + noun.slice(1)}s with fewer than three pairs or constant values have no fitted line. Point colours retain the selected grouping.</p></ChartAside>}
       {handNote && <ChartAside><p className="chart-note">{handNote}</p></ChartAside>}
       {tip.node}
     </div>
   )
+}
+
+/** the crossplot brush on/off, per tile; a chart drawing several crossplots holds one for all of them */
+export function useCrossplotBrush(): [boolean, (on: boolean) => void] {
+  const [setting, set] = useTileSetting<string>('crossplot.brush', '0')
+  return [setting === '1', (on) => set(on ? '1' : '0')]
+}
+
+/** the brush toggle and, while filters are selected, what to do with them; in the chart's options row or above the plot */
+export function CrossplotBrushControls({ brush: [on, setOn] }: { brush: [boolean, (on: boolean) => void] }) {
+  const hl = useHighlight(NO_KEYS)
+  const filterEdits = useFilterEdits()
+  return <>
+    <Toggle label="Brush select" checked={on} onChange={setOn} title="Drag a rectangle to select several filters; turn off to open individual records" />
+    {hl.selected && <><span className="control">{hl.selected.size} selected</span>
+      <button type="button" className="btn" onClick={() => filterEdits.openGroup({ title: 'Selected crossplot filters', ids: [...hl.selected!], fields: [] })}>Review selected</button>
+      <button type="button" className="btn" onClick={() => { filterEdits.keep(hl.selected!); hl.setSelected(null) }}>Keep selected</button>
+      <button type="button" className="btn" onClick={() => { filterEdits.drop(hl.selected!); hl.setSelected(null) }}>Exclude selected</button>
+      <button type="button" className="btn quiet" onClick={() => hl.setSelected(null)}>Clear selection</button></>}
+  </>
 }

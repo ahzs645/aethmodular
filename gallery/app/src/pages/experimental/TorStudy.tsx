@@ -149,54 +149,85 @@ function PilotPosition({ d }: { d: TorData }) {
   )
 }
 
+/**
+ * What the loading plane measures. EC is the study's axis (TOR at IMPROVE and Adama, published FTIR at SPARTAN); HIPS BC
+ * and weighed PM2.5 put the same filters on the plane by absorption and by mass. Neither is measured on the Adama pilot.
+ */
+type PlaneMeasure = 'EC' | 'HIPS' | 'PM2.5'
+const HIPS_COL = 'HIPS BC µg/m³'
+const PLANE_MEASURE: Record<PlaneMeasure, { label: string; short: string; conc: (p: Record<string, any>) => number; ug: (p: Record<string, any>) => number; xD: [number, number]; diagonals: number[] }> = {
+  EC: { label: 'EC', short: 'EC', conc: (p) => num(p['EC µg/m³']), ug: (p) => num(p['EC µg/filter']), xD: [0.02, 50], diagonals: [1, 3, 10, 30, 100] },
+  HIPS: { label: 'HIPS BC (MAC 10)', short: 'HIPS BC', conc: (p) => num(p[HIPS_COL]), ug: (p) => num(p[HIPS_COL]) * num(p['volume m³']), xD: [0.02, 50], diagonals: [1, 3, 10, 30, 100] },
+  'PM2.5': { label: 'weighed PM2.5', short: 'PM2.5', conc: (p) => num(p['PM2.5 µg/filter']) / num(p['volume m³']), ug: (p) => num(p['PM2.5 µg/filter']), xD: [0.5, 500], diagonals: [10, 30, 100, 300, 1000, 3000] },
+}
+
 function LoadingPlane({ d }: { d: TorData }) {
   const pts = useMemo(() => rowsOf(d.points), [d])
   const lg = useLegend()
   const [improveParam, setImproveDots] = useSearchParam<'on' | 'off'>('xd-plane.improve', 'off', ['on', 'off'])
   const improveDots = improveParam === 'on'
   const [arrowParam, setArrow] = useSearchParam<'on' | 'off'>('xd-plane.arrow', 'off', ['on', 'off'])
-  const arrow = arrowParam === 'on'
   const [level, setLevel] = useSearchParam<'filter' | 'site'>('xd-plane.level', 'filter', ['filter', 'site'])
+  // HIPS only where the run exported it (runs before 2026-10-28 did not)
+  const hipsPops = useMemo(() => new Set(pts.filter((p) => Number.isFinite(num(p[HIPS_COL]))).map((p) => p.population as string)), [pts])
+  const measures: PlaneMeasure[] = hipsPops.size ? ['EC', 'HIPS', 'PM2.5'] : ['EC', 'PM2.5']
+  const [measureParam, setMeasure] = useSearchParam<PlaneMeasure>('xd-plane.measure', 'EC', ['EC', 'HIPS', 'PM2.5'])
+  const measure = measures.includes(measureParam) ? measureParam : 'EC'
+  const M = PLANE_MEASURE[measure]
+  const ec = measure === 'EC'
+  const arrow = ec && arrowParam === 'on'
   const pops = ['IMPROVE (TOR)', 'SPARTAN network', 'SPARTAN Addis', 'Adama pilot (TOR)']
   const rng = d3.randomLcg(7)
   const sample = (rows: Record<string, any>[], n: number) => rows.length <= n ? rows : rows.filter(() => rng() < n / rows.length)
   const shown = pops.filter((p) => lg.show(p) && (p !== 'IMPROVE (TOR)' || improveDots))
-  // one point per site: its median EC concentration and median volume (the same medians as "Sites compared")
-  const sitePlot = d.network.filter((r) => shown.includes(r.population)).sort((a, b) => pops.indexOf(a.population) - pops.indexOf(b.population)).map((r) => ({
+  const has = (p: Record<string, any>) => Number.isFinite(M.conc(p)) && Number.isFinite(M.ug(p))
+  // where each population has the measure at all (Adama has no HIPS or weighed PM2.5)
+  const missing = pops.filter((pop) => !pts.some((p) => p.population === pop && has(p)))
+  const netOf = new Map(d.network.map((r) => [`${r.population}${r.site}`, r]))
+  // one point per site: its median concentration and median volume (EC: the same medians as "Sites compared"; else from its filters here)
+  const siteRows = ec ? d.network : d3.groups(pts.filter(has), (p) => p.population as string, (p) => p.site as string).flatMap(([population, sites]) => sites.map(([site, rows]) => {
+    const r = netOf.get(`${population}${site}`)
+    return { population, site, name: r?.name ?? site, urban: r?.urban ?? false, filters: rows.length, ec_ugm3: d3.median(rows, M.conc)!, volume: d3.median(rows, (p) => num(p['volume m³']))!, ec_ug: d3.median(rows, M.ug)! }
+  }))
+  const sitePlot = siteRows.filter((r) => shown.includes(r.population)).sort((a, b) => pops.indexOf(a.population) - pops.indexOf(b.population)).map((r) => ({
     x: r.ec_ugm3, y: r.volume, color: POP_COLOR[r.population], key: `${r.population}${r.site}`, hollow: r.population === 'IMPROVE (TOR)' && r.urban,
     r: r.population === 'SPARTAN Addis' || r.population === 'Adama pilot (TOR)' ? 8 : r.population === 'IMPROVE (TOR)' ? 2.5 + Math.sqrt(r.filters) / 4 : 4.5,
-    tip: [`${r.name} (${r.site})`, POP_LABEL[r.population], `${r.filters} filters, medians:`, `EC ${f2(r.ec_ugm3)} µg/m³ · volume ${f2(r.volume)} m³ · ${f2(r.ec_ug)} µg per filter`] }))
-  const filterPlot = shown.flatMap((pop) => sample(pts.filter((p) => p.population === pop), pop === 'Adama pilot (TOR)' ? 10 : 1500).map((p, i) => {
+    tip: [`${r.name} (${r.site})`, POP_LABEL[r.population], `${r.filters} filters, medians:`, `${M.short} ${f2(r.ec_ugm3)} µg/m³ · volume ${f2(r.volume)} m³ · ${f2(r.ec_ug)} µg per filter`] }))
+  const filterPlot = shown.flatMap((pop) => sample(pts.filter((p) => p.population === pop && (ec || has(p))), pop === 'Adama pilot (TOR)' ? 10 : 1500).map((p, i) => {
     const id = pop === 'IMPROVE (TOR)' ? `improve:${p.id}` : String(p.id)
-    return { x: num(p['EC µg/m³']), y: num(p['volume m³']), color: POP_COLOR[pop], r: pop === 'Adama pilot (TOR)' ? 7 : pop === 'SPARTAN Addis' ? 3 : 2, key: `${pop}${i}`, id,
-      tip: [`${POP_LABEL[pop]} · ${p.site} ${p.id}`, `EC ${f2(p['EC µg/m³'])} µg/m³ × ${f2(p['volume m³'])} m³ = ${f2(p['EC µg/filter'])} µg per filter`],
-      rec: { id, source: 'Adama TOR study · loading plane', site: String(p.site), fields: [['population', POP_LABEL[pop]] as [string, string], ...PLANE_FIELDS.map((k) => [k, p[k]] as [string, number | null])] } }
+    return { x: M.conc(p), y: num(p['volume m³']), color: POP_COLOR[pop], r: pop === 'Adama pilot (TOR)' ? 7 : pop === 'SPARTAN Addis' ? 3 : 2, key: `${pop}${i}`, id,
+      tip: [`${POP_LABEL[pop]} · ${p.site} ${p.id}`, `${M.short} ${f2(M.conc(p))} µg/m³ × ${f2(p['volume m³'])} m³ = ${f2(M.ug(p))} µg per filter`],
+      rec: { id, source: 'Adama TOR study · loading plane', site: String(p.site), fields: [['population', POP_LABEL[pop]] as [string, string], ...[...PLANE_FIELDS, ...(hipsPops.size ? [HIPS_COL] : [])].map((k) => [k, p[k]] as [string, number | null])] } }
   }))
   const plot = level === 'site' ? sitePlot : filterPlot
+  // the target band: SPARTAN Addis's middle half per filter (EC: the notebook's own percentiles)
   const T = d.target.find((t) => t.axis === 'EC µg/filter')!
+  const addisUg = pts.filter((p) => p.population === 'SPARTAN Addis').map(M.ug).filter(Number.isFinite).sort(d3.ascending)
+  const band: [number, number] = ec ? [T['Addis p25'], T['Addis p75']] : [d3.quantileSorted(addisUg, 0.25) ?? NaN, d3.quantileSorted(addisUg, 0.75) ?? NaN]
   const med = d.volume.find((v) => v.target === 'Addis median')!
   const adama = d.network.find((r) => r.population === 'Adama pilot (TOR)')!
-  const xD: [number, number] = [0.02, 50], yD: [number, number] = [0.5, 60]
+  const xD = M.xD, yD: [number, number] = [0.5, 60]
   return (
     <ChartFrame id="xd-plane" source={source('LoadingPlane')} provenance={runLine(d)}
-      title="Loading = concentration × volume — why the pilot filters are light, and what would fix it"
-      subtitle="Each filter by EC concentration (across) and sampled volume (up); grey diagonals are equal EC per filter. The orange band is SPARTAN Addis's middle half of EC per filter: a pilot filter must land in it to load the spectrum as SPARTAN Addis does. Points: Site medians shows one point per site instead (its median concentration and volume). Volume needed draws an arrow an arrow for how much more air the Adama sampler would need at Adama's own EC concentration. Click a filter to open its record; right-click to exclude it."
+      title={`Loading = concentration × volume — ${ec ? 'why the pilot filters are light, and what would fix it' : `the same plane by ${M.label}`}`}
+      subtitle={`Each filter by ${M.label} concentration (across) and sampled volume (up); grey diagonals are equal ${M.short} per filter. The orange band is SPARTAN Addis's middle half of ${M.short} per filter${ec ? ': a pilot filter must land in it to load the spectrum as SPARTAN Addis does' : ''}. Measure puts the same filters on the plane by EC, by HIPS absorption (BC at MAC 10) or by weighed PM2.5 mass. Points: Site medians shows one point per site instead (its median concentration and volume). Volume needed (EC only) draws an arrow for how much more air the Adama sampler would need at Adama's own EC concentration. Click a filter to open its record; right-click to exclude it.`}
       controls={<>
+        <Segmented label="Measure" value={measure} options={measures} onChange={setMeasure} optionLabel={(o) => ({ EC: 'EC', HIPS: 'HIPS BC', 'PM2.5': 'PM2.5' }[o])} />
         <Segmented label="Points" value={level} options={['filter', 'site'] as const} onChange={setLevel} optionLabel={(o) => (o === 'filter' ? 'Each filter' : 'Site medians')} />
-        <Toggle label={level === 'site' ? 'IMPROVE sites' : 'IMPROVE filters'} checked={improveDots} onChange={(v) => setImproveDots(v ? 'on' : 'off')} title={level === 'site' ? 'Draw every IMPROVE site (EC from TOR; hollow = urban)' : 'Draw a sample of IMPROVE filters (EC from TOR)'} />
-        <Toggle label="Volume needed" checked={arrow} onChange={(v) => setArrow(v ? 'on' : 'off')} title="Arrow from the Adama pilot up to the volume that would load a filter like SPARTAN Addis's median, at Adama's own EC concentration" />
+        <Toggle label={level === 'site' ? 'IMPROVE sites' : 'IMPROVE filters'} checked={improveDots} onChange={(v) => setImproveDots(v ? 'on' : 'off')} title={level === 'site' ? `Draw every IMPROVE site (${ec ? 'EC from TOR; ' : ''}hollow = urban)` : `Draw a sample of IMPROVE filters${ec ? ' (EC from TOR)' : ''}`} />
+        {ec && <Toggle label="Volume needed" checked={arrow} onChange={(v) => setArrow(v ? 'on' : 'off')} title="Arrow from the Adama pilot up to the volume that would load a filter like SPARTAN Addis's median, at Adama's own EC concentration" />}
       </>}>
-      <Scatter points={plot} xLabel="EC concentration (µg/m³)" yLabel="sampled volume (m³)" xLog yLog maxSide={420} xDomain={xD} yDomain={yD}
+      <Scatter points={plot} xLabel={`${M.label} concentration (µg/m³)`} yLabel="sampled volume (m³)" xLog yLog maxSide={420} xDomain={xD} yDomain={yD}
         under={({ x, y }) => {
           // the drawn (niced) axis ranges, so the diagonals run corner to corner and their labels spread out
           const [x0, x1] = x.domain(), [y0, y1] = y.domain()
           const line = (ug: number) => { const a = Math.max(x0, ug / y1), b = Math.min(x1, ug / y0); return { x1: x(a), y1: y(ug / a), x2: x(b), y2: y(ug / b) } }
-          const band = (lo: number, hi: number) => { const xs = d3.range(0, 61).map((i) => x0 * (x1 / x0) ** (i / 60))
+          const area = (lo: number, hi: number) => { const xs = d3.range(0, 61).map((i) => x0 * (x1 / x0) ** (i / 60))
             const up = xs.map((cx) => [x(cx), y(Math.min(y1, Math.max(y0, hi / cx)))]), dn = xs.map((cx) => [x(cx), y(Math.min(y1, Math.max(y0, lo / cx)))]).reverse()
             return `M${[...up, ...dn].map((pt) => pt.join(',')).join('L')}Z` }
           return <g>
-            <path d={band(T['Addis p25'], T['Addis p75'])} fill={ADDIS_ALL} fillOpacity={0.14} />
-            {[1, 3, 10, 30, 100].map((ug) => { const l = line(ug); return <g key={ug}><line {...l} stroke={INK.identity} strokeDasharray="3 3" />
+            {Number.isFinite(band[0]) && Number.isFinite(band[1]) && <path d={area(band[0], band[1])} fill={ADDIS_ALL} fillOpacity={0.14} />}
+            {M.diagonals.map((ug) => { const l = line(ug); return <g key={ug}><line {...l} stroke={INK.identity} strokeDasharray="3 3" />
               {/* along its own diagonal, near the top end, so neighbouring labels never collide */}
               <text transform={`translate(${l.x1 + (l.x2 - l.x1) * 0.06},${l.y1 + (l.y2 - l.y1) * 0.06}) rotate(${(Math.atan2(l.y2 - l.y1, l.x2 - l.x1) * 180) / Math.PI})`} dy={-3}
                 fontSize={9.5} fill={INK.muted} stroke={INK.panel} strokeWidth={3} paintOrder="stroke">{ug} µg/filter</text></g> })}
@@ -211,6 +242,7 @@ function LoadingPlane({ d }: { d: TorData }) {
           </g>
         }} />
       <Legend {...lg.props} items={pops.map((p) => ({ label: POP_LABEL[p], color: POP_COLOR[p] }))} />
+      {!ec && missing.length > 0 && <Note>No {M.label} in this run for {missing.map((p) => POP_LABEL[p]).join(', ')}, so {missing.length > 1 ? 'they are' : 'it is'} not on this plane; the table below is EC per filter.</Note>}
       <table className="census-table" style={{ marginTop: 6 }}>
         <thead><tr><th>Target EC per filter</th><th>µg</th><th>Volume at Adama's EC</th><th>× today's Adama volume</th><th>Hours at the Adama flow</th><th>Volume at SPARTAN Addis's EC</th></tr></thead>
         <tbody>{d.volume.map((v) => <tr key={v.target}><td>{v.target}</td><td>{f2(v['EC µg/filter'])}</td><td>{f2(v["volume at Adama's median EC (m³)"])} m³</td>
