@@ -235,6 +235,19 @@ export function SingleFit({ children }: { children: ReactNode }) {
     for (const el of above) ro.observe(el)
     return () => ro.disconnect()
   }, [active])
+  // the chart itself changing size once fitted (its data arriving, a panel added) starts the fitting over
+  useEffect(() => {
+    const chart = active?.querySelector('.frame-chart')
+    if (!chart || exporting) return
+    let last = chart.getBoundingClientRect().height
+    const ro = new ResizeObserver(() => {
+      const h = chart.getBoundingClientRect().height
+      if (settled.current && Math.abs(h - last) > 4) { tries.current = 0; refit((n) => n + 1) }
+      last = h
+    })
+    ro.observe(chart)
+    return () => ro.disconnect()
+  }, [active, exporting])
   // a legend under a plot that leaves room beside it goes beside, stacked (styles.css [data-legend-beside]);
   // otherwise it stays under. Moving it frees height, so the plot grows into the room it left: it only goes
   // back under once there is clearly no room, and only comes beside with room to spare, so it never flips
@@ -295,9 +308,12 @@ export function SingleFit({ children }: { children: ReactNode }) {
     // measured unscaled: the zoom below scales a chart that cannot fit, and must not feed back into its height
     const rect = chart.getBoundingClientRect()
     const bottom = rect.top + rect.height / (Number((chart as HTMLElement).style.zoom) || 1)
-    const next = Math.max(240, Math.round(guess
+    // never more than the room below the chart's top: a chart that does not follow the fit yet (its data still
+    // loading) would otherwise be handed more room on every try, and draw at that once its data arrives
+    const room = size - BOTTOM - pad - (rect.top + window.scrollY)
+    const next = Math.max(240, Math.round(Math.min(room, guess
       ? size - rect.top - window.scrollY - BOTTOM - 40
-      : fit + size - BOTTOM - pad - (bottom + window.scrollY)))
+      : fit + size - BOTTOM - pad - (bottom + window.scrollY))))
     if (!guess && Math.abs(next - fit) <= 2) { settled.current = true; return }
     settled.current = false
     tries.current += 1
