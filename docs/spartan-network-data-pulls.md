@@ -7,6 +7,11 @@ the user to place in the archive. Nothing was published or added to the gallery.
 
 ## Which source answers which question?
 
+For a catalog of **all accessible SQL databases**, including columns, declared
+joins and optional range/missingness profiles, use the
+[general SQL discovery guide](sql-data-discovery.md). The procedure below is
+the SPARTAN-specific export workflow.
+
 | Source | Grain and purpose | Important limitation |
 |---|---|---|
 | Public `ChemSpecPM25` / `ChemSpecPM10` | Filter × parameter × method; concentrations, units, MDLs, uncertainty, flags | Public products, not the raw spectra or HIPS instrument observations |
@@ -128,6 +133,21 @@ locale-dependent dates. Empty strings represent SQL NULL in these CSVs, so
 consult the saved SQL schema when restoring types.
 
 ## Inventory before exporting
+
+For a fresh search for FTIR functional-group products, use
+[`find_ftir_fg_tables.ps1`](../research/ftir_ec_phase3/scripts/find_ftir_fg_tables.ps1).
+Set the session connection variable as above, load the script, then run
+`Find-FtirFgTables`. Its SQL reads metadata only; it writes a new timestamped
+folder under `Downloads\ftir_fg_discovery` with all visible tables/views/synonyms,
+all visible columns, keyword candidates, database permission context, query text
+and file hashes. CSV row counts are checked after export. Table row counts are
+metadata estimates; views and synonyms need separate inspection.
+
+A keyword candidate is not a confirmed functional-group product. Review generic
+parameter/species/result tables as well as obvious group names. No match only
+describes objects visible to the current account in `Networks_1_0`; it does not
+rule out hidden objects, other databases or lab CSV deliveries. In particular,
+an absent `VIEW DEFINITION` permission limits any database-wide absence claim.
 
 Save `INFORMATION_SCHEMA.COLUMNS` for `spartan`, `ftir` and `hips`, including
 column order and types. Discover tables before assuming an old schema still
@@ -282,6 +302,12 @@ raw spectra, machine paths or account-specific Drive locations.
 
 ## Windows App input lessons
 
+If Davis is visible but computer-use clicks return `noWindowsAvailable`, open
+Windows App's **Window > Connection Center**, then double-click the saved Davis
+device to reactivate the existing session. This restored input in the October 27
+session after merely raising the window did not. Remote screen updates can lag
+behind completed input calls; verify the full command and resulting prompt.
+
 The remote terminal was usable through Windows App with Unicode keyboard input.
 Scancode input dropped Shift on this session (`$` became `4`, parentheses became
 digits); stop immediately if a harmless test command is corrupted. Clipboard
@@ -374,6 +400,51 @@ that a public measurement did not happen because this database lacks its raw row
 `hips.AnalysisFlags`, `hips.CalibrationSetFilters`, `hips.QcSamples` and
 `hips.QcSampleTypes` were empty in this source; an export cannot supply absent
 calibration-filter membership or QC history.
+
+## October 27 functional-group discovery
+
+Read-only discovery ran successfully on Davis against `Networks_1_0`. The
+starting script came from commit `4d761ed6b0f52a97be90e3daecc2e2605d9171de`
+on `claude/eloquent-clarke-2e11yo`; its downloaded SHA256 matched
+`8325278c60a801af94fe93c1b0394c6b92fd35d9899b6a670404cefa42be056d`.
+Before loading its helpers, the older certificate-validation override was
+removed, connection timeout was set to 60 seconds, and the output directory was
+changed to a fresh timestamped folder. Supplementary SELECTs saved the complete
+column and table/view inventories, parameter lookup, calibration descriptions,
+effective permissions and a direct count of the generic carbon-processing table.
+
+Observed results:
+
+- **75 visible base tables, 570 visible columns, no visible views or synonyms.**
+- No functional-group result table or group-named column was found by the
+  discovery search. The broad keyword candidates included instrument-parameter
+  metadata and raw HIPS readings; a keyword match is not a final product.
+- All **20 `ftir.CalibrationSets` records** were labelled for `EC_ftir` or
+  `OC_ftir`. `ftir.Calibrations` had **54,460 coefficient records** with
+  `CalibrationSetId`, `RowNumber`, `Wavenumber` and `b`, rather than per-filter
+  functional-group results.
+- The **91-row `analysis.Parameters` lookup** contained `EC_ftir`, `OC_ftir`
+  and the composite `OMC` (Organic Mass by Carbon) entry. Searches of its names
+  and codes found no functional-group entries. A lookup entry does not establish
+  populated results or identify the public FTIR OM product.
+- A direct `COUNT_BIG(*)` confirmed **zero rows** in
+  `qcarbon.ProcessedData`.
+- Effective database permissions included `SELECT` and `CONNECT`, but not
+  `VIEW DEFINITION`. These findings describe the current account's visible
+  objects in this database; they do not rule out hidden objects, other databases,
+  network-drive files or separate lab deliveries.
+
+The evidence was left in Davis Downloads in
+`ftir_fg_discovery_20261027_230608`. It contains the original `tables.csv` and
+candidate `columns.csv`, plus `all_columns.csv`, `objects.csv`,
+`calibration_labels.csv`, `parameter_lookup.csv`, `permissions.csv`,
+`context.csv` and `qcarbon_count.csv`. All nine CSVs were re-imported; row counts
+were 75 tables, 129 keyword-candidate columns, 570 full columns, 75 objects,
+20 calibration labels, 91 lookup entries, four permissions, one database-context
+row and one carbon-table count row. `manifest.csv` records each file's relative
+name, re-imported row count and SHA256. The database connections were closed after
+inspection. The next source to request is the lab's official functional-group
+deliveries, including the corrected batch 4; this search did not recover them.
 
 ## October 28 survey: no functional-group results in SQL
 
@@ -485,3 +556,15 @@ batch 2–3 values and every volume are unchanged, and five lab-only filters gai
 rows. Twelve Dhaka filters in V2 (BDDU-0401 … 0414) have no sample date anywhere
 and stay out. `availability.json` and `aeronet/stations.json` still count the
 filters without those five until the AERONET export reruns with its cache.
+
+## Reference exports after the access survey
+
+`research/ftir_ec_phase3/scripts/export_aqrc_reference_data.ps1` exports the
+SPARTAN calibration coefficients and descriptions, AMOD filter metadata, batch
+lookups and a physical-filter-to-batch map. It also exports the IMPROVE parameter
+dictionary and checks the distinct parameter names actually present in
+`Improve_2.1.analysis.Results`. The large results table is queried only for names.
+
+See [Davis reference exports](aqrc-reference-exports.md) for setup, output files,
+timeouts and interpretation. This exporter has offline fixture coverage; writing
+it does not establish that its new queries have run successfully on Davis.
