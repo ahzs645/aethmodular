@@ -5,9 +5,11 @@ import { SweepPlot, type SweepMarker, type SweepSeries } from '@/components/Swee
 import { fmt } from '@/lib/format'
 import { pearson, splitAtGaps } from '@/lib/stats'
 import { INK } from '@/lib/theme'
+import { useHighlightActions } from '@/lib/highlight'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { finite, instrumentName, localDate, PERIOD_COLOR, PERIOD_LABEL, periodOf, ratio, type Period, type QualityIndex } from './data'
 import { AETH_IR } from './FlowFixCompare'
+
 
 const HIPS = 'HIPS BC', FTIR = 'EC (FTIR)'
 const DAY = 864e5
@@ -34,6 +36,7 @@ const lines = (id: string, label: string, color: string, pts: { t: Date; v: numb
  * time series).
  */
 export function AgreementOverTime({ code, rows, meta, index }: { code: string; rows: FilterRow[]; meta: MetaFile; index: QualityIndex }) {
+  const hl = useHighlightActions()
   const periods = index.flow_periods[code]
   const site = useMemo(() => rows.filter((r) => r.code === code).sort((a, b) => a.date.localeCompare(b.date)), [rows, code])
   const markers: SweepMarker[] = [
@@ -73,7 +76,7 @@ export function AgreementOverTime({ code, rows, meta, index }: { code: string; r
       subtitle="Per filter: the aethalometer's IR BCc over HIPS BC (HIPS Fabs / MAC), over FTIR EC, and HIPS over FTIR EC, coloured by flow period, with a trailing 30-day mean (at least 3 filters); and the trailing 60-day correlation of IR BCc with HIPS (at least 5 filters). Denominators under 0.01 µg/m³ are left out, as in the explorer. The dashed verticals are the flow-fix boundaries; the y range is the bulk of the ratios, so a few extreme ones sit hollow at the edge."
       provenance="flow_fix_explorer (plot_stacked_timeseries, plot_rolling_correlation, plot_ratio_timeseries) · FTIR EC is a spectral prediction">
       {!site.length ? <Empty>No filters from {instrumentName(code, meta)} in the current subset.</Empty> : <>
-        {shown.map((p) => <SweepPlot key={p.key} series={p.series} xScale="time" xDomain={xDomain} yLabel={p.y} reference={p.reference} yDomain={p.yDomain}
+        {shown.map((p) => <SweepPlot key={p.key} series={p.series} onPoint={(_, pt) => pt.id && hl.openSample(pt.id)} xScale="time" xDomain={xDomain} yLabel={p.y} reference={p.reference} yDomain={p.yDomain}
           yClip={p.yDomain ? undefined : [0.02, 0.98]} xMarkers={markers} yMarkers={p.markers} height={170} />)}
         <Key items={[...new Set(site.map((r) => periodOf(r.date, periods)))].map((k): KeyItem => ({ label: PERIOD_LABEL[k], color: PERIOD_COLOR[k] }))
           .concat([{ label: '30-day rolling mean', color: INK.text, kind: 'line' as const }, { label: '60-day rolling r', color: '#2ca02c', kind: 'line' as const }])} />

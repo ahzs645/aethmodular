@@ -2,14 +2,15 @@ import { useMemo } from 'react'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { fmt } from '@/lib/format'
+import { INK, themed } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { DailyPanels, qLine, type PanelSpec } from './DailyPanels'
-import { CHANNELS, finite, instrumentColor, instrumentName, quantile, ratio, type Channel, type Day, type QualityIndex } from './data'
+import { BROWN, CHANNELS, finite, instrumentColor, instrumentName, PURPLE, quantile, ratio, type Channel, type Day, type QualityIndex } from './data'
 
 const SPOT = { one: '#2c7fb8', two: '#d95f0e' }
 /** ftir_49's channel colours */
-export const CHANNEL_COLOR: Record<Channel, string> = { UV: '#7D3C98', Blue: '#2E86C1', Green: '#28B463', Red: '#C0392B', IR: '#34495E' }
+export const CHANNEL_COLOR: Record<Channel, string> = { get UV() { return themed('#7D3C98', '#b48ccf') }, Blue: '#2E86C1', Green: '#28B463', Red: '#C0392B', get IR() { return themed('#34495E', '#a9bdd2') } }
 
 /**
  * The dual-spot chain day by day for one instrument and channel: attenuation on both spots (a sawtooth that
@@ -28,10 +29,10 @@ export function DualSpotTimeline({ code, days, meta, index }: { code: string; da
   const panels: PanelSpec[] = [
     { key: 'atn', title: 'Attenuation', lines: [qLine(`${c}.ATN1`, 'Spot 1', SPOT.one, { digits: 1 }), qLine(`${c}.ATN2`, 'Spot 2', SPOT.two, { digits: 1 })] },
     { key: 'datn', title: 'dATN per minute', lines: [qLine(`${c}.dATN1`, 'Spot 1', SPOT.one, { digits: 4 }), qLine(`${c}.dATN2`, 'Spot 2', SPOT.two, { digits: 4 })] },
-    ...(has('leak') ? [{ key: 'leak', title: 'Leak ratio', refs: [{ at: 1, label: '1' }], lines: [qLine(`${c}.leak`, '(dATN1/F1)/(dATN2/F2)', '#6a51a3')] }] : []),
-    ...(has('BCc/BC1') ? [{ key: 'ratios', title: 'Spot ratios', refs: [{ at: 1, label: '1' }], lines: [qLine(`${c}.BCc/BC1`, 'BCc / BC1 (smoothed)', '#8c2d04'), qLine(`${c}.BC1/BC2`, 'BC1 / BC2 (smoothed)', '#41ab5d')] }] : []),
+    ...(has('leak') ? [{ key: 'leak', title: 'Leak ratio', refs: [{ at: 1, label: '1' }], lines: [qLine(`${c}.leak`, '(dATN1/F1)/(dATN2/F2)', PURPLE())] }] : []),
+    ...(has('BCc/BC1') ? [{ key: 'ratios', title: 'Spot ratios', refs: [{ at: 1, label: '1' }], lines: [qLine(`${c}.BCc/BC1`, 'BCc / BC1 (smoothed)', BROWN()), qLine(`${c}.BC1/BC2`, 'BC1 / BC2 (smoothed)', '#41ab5d')] }] : []),
     ...(has('rough1') ? [{ key: 'rough', title: 'Roughness', lines: [qLine(`${c}.rough1`, 'Spot 1', SPOT.one, { digits: 5 }), qLine(`${c}.rough2`, 'Spot 2', SPOT.two, { dash: '4 3', digits: 5 })] }] : []),
-    ...(has('K') ? [{ key: 'k', title: 'Instrument K', refs: [{ at: 0, label: '0' }], lines: [qLine(`${c}.K`, 'K (loading compensation)', '#111827', { digits: 4 })] }] : []),
+    ...(has('K') ? [{ key: 'k', title: 'Instrument K', refs: [{ at: 0, label: '0' }], lines: [qLine(`${c}.K`, 'K (loading compensation)', INK.text, { digits: 4 })] }] : []),
   ]
   return (
     <ChartFrame id="aq-dualspot" title={`${instrumentName(code, meta)} · the dual-spot chain — attenuation, its rate, the spot ratios and roughness`}

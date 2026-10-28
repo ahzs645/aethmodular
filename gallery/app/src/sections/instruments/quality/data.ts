@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react'
 import * as d3 from 'd3'
 import { loadJson, useExport } from '@/lib/data'
 import type { MetaFile } from '@/lib/types'
+import { themed } from '@/lib/theme'
 import { loadAethDaily, type AethDaily } from '../lib'
 
 export const CHANNELS = ['UV', 'Blue', 'Green', 'Red', 'IR'] as const
@@ -119,6 +120,10 @@ export function periodOf(date: string, p: FlowPeriods | undefined): Period {
   if (p.after_start && d >= p.after_start) return 'after'
   return 'gap'
 }
+/** two QC series colours too dark for the dark page as they are: each gets a lighter step there */
+export const PURPLE = () => themed('#6a51a3', '#a493d6')
+export const BROWN = () => themed('#8c2d04', '#e08a55')
+
 /** the period colours of plotting/comparisons.py flow_periods (before red, after green, gap grey) */
 export const PERIOD_COLOR: Record<Period, string> = { before: '#E74C3C', gap: '#95A5A6', after: '#2ECC71', no_fix: '#3498DB' }
 export const PERIOD_LABEL: Record<Period, string> = { before: 'Before the fix', gap: 'Between (gap)', after: 'After the fix', no_fix: 'No fix defined' }

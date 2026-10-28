@@ -5,7 +5,7 @@ import { fmt } from '@/lib/format'
 import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { DailyPanels, qLine, type PanelSpec } from './DailyPanels'
-import { finite, instrumentColor, instrumentName, PERIOD_COLOR, PERIOD_LABEL, quantile, ratio, type Day, type Period, type QualityIndex } from './data'
+import { BROWN, finite, instrumentColor, instrumentName, PERIOD_COLOR, PERIOD_LABEL, PURPLE, quantile, ratio, type Day, type Period, type QualityIndex } from './data'
 
 /** Flow1/Flow2 lines drawn by research/ftir_hips_chem/scripts/plotting/timeseries.flow_ratio */
 const FLOW_RATIO_LINES = [{ at: 1, label: 'ideal 1.0' }, { at: 2, label: 'degraded 2.0' }]
@@ -27,8 +27,8 @@ export function FlowTimeline({ code, days, meta, index }: { code: string; days: 
     { key: 'spots', title: 'Spot flow (mL/min)', lines: [qLine('flow1', 'Flow1', '#2c7fb8', { digits: 1 }), qLine('flow2', 'Flow2', '#d95f0e', { digits: 1 })] },
     { key: 'total', title: 'Total / setpoint', refs: [{ at: 1 - band, label: `−${Math.round(band * 100)} %` }, { at: 1 + band, label: `+${Math.round(band * 100)} %` }],
       lines: [{ key: 'total', label: 'Total flow / setpoint', color: '#41ab5d', value: setpointRatio, digits: 4 }] },
-    { key: 'rh', title: 'Sample RH (%)', lines: [qLine('rhSample', 'Sample RH', '#6a51a3', { digits: 1 })] },
-    { key: 'temp', title: 'Temperature (°C)', lines: [qLine('tInternal', 'Internal temperature', '#8c2d04', { digits: 2 }), qLine('tSample', 'Sample temperature', '#8c2d04', { dash: '4 3', digits: 2 })] },
+    { key: 'rh', title: 'Sample RH (%)', lines: [qLine('rhSample', 'Sample RH', PURPLE(), { digits: 1 })] },
+    { key: 'temp', title: 'Temperature (°C)', lines: [qLine('tInternal', 'Internal temperature', BROWN(), { digits: 2 }), qLine('tSample', 'Sample temperature', BROWN(), { dash: '4 3', digits: 2 })] },
   ]
   const shown = days.filter((d) => finite(flowRatio(d)))
   return (
