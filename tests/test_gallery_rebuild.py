@@ -50,8 +50,8 @@ def test_the_pipeline_doc_carries_the_generated_step_table():
     assert rebuild.doc_table(text) == rebuild.markdown(), 'run `uv run aeth gallery markdown --write`'
 
 
-def test_each_private_section_has_data_paths_to_check():
-    markers = rebuild.private_markers()
+def test_each_private_or_unlisted_section_has_data_paths_to_check():
+    markers = {**rebuild.section_markers(), **rebuild.section_markers(rebuild.unlisted_sections())}
     assert markers and all(markers.values()), markers
 
 

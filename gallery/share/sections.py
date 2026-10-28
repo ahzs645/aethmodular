@@ -2,7 +2,8 @@
 
 A section with "public": false is left out of every public build: Vite swaps its code for
 src/sections/omitted.ts when VITE_PUBLIC_BUILD=1, and the publish scripts use this module to keep its
-data folders (under gallery/app/public/data) out of what they publish.
+data folders (under gallery/app/public/data) out of what they publish. A section with
+"public": "unlisted" is published like a public one; only the app's menu leaves its tabs out.
 """
 from __future__ import annotations
 
@@ -24,6 +25,11 @@ def private_data_dirs(manifest: Path = MANIFEST) -> list[str]:
 
 def private_tabs(manifest: Path = MANIFEST) -> list[str]:
     return sorted({t for s in load(manifest).values() if not s.get("public") for t in s.get("tabs", [])})
+
+
+def unlisted_sections(manifest: Path = MANIFEST) -> list[str]:
+    """Sections published but left out of the public build's menu (reachable from a link)."""
+    return sorted(k for k, s in load(manifest).items() if s.get("public") == "unlisted")
 
 
 def is_private(rel: str | Path, dirs: list[str] | None = None) -> bool:

@@ -18,12 +18,14 @@ Status key:
 
 The sections below describe the gallery as it was at the start of the day. Since then:
 
-**Private sections, left out of public builds.** `gallery/app/src/sections/sections.json` marks
-the two new sections private. A build with `VITE_PUBLIC_BUILD=1` swaps their code for an empty
-stub, and the publish scripts leave their `public/data` folders out. That covers the Pages deploy,
-`build_share.py` and `publish_pages.py --branch`. Set `"public": true` in the manifest to publish one.
+**Unlisted and private sections in public builds.** `gallery/app/src/sections/sections.json`
+marks Instruments unlisted and Research private. A build with `VITE_PUBLIC_BUILD=1` swaps a
+private section's code for an empty stub, and the publish scripts leave its `public/data` folders
+out. An unlisted one is published but left out of the menu: it opens from `#tab=aethalometer`,
+like Experimental. That covers the Pages deploy, `build_share.py` and `publish_pages.py --branch`.
+Set `"public": true` in the manifest to list one.
 
-**Instruments → Aethalometer** (section B; private). Five sub-pages: Overview, Against the
+**Instruments → Aethalometer** (section B; unlisted). Five sub-pages: Overview, Against the
 filters, Sources (AAE), Data quality and Diurnal. Together they cover the Multi_Site_Analysis
 set, `addis_02*`, HIPS_vs_Aethalometer, AAARpos, ETAD_Aug13, ETAD_comprehensive,
 iron_correction_test, the `dominant_source_*` / threshold / source-regression notebooks,

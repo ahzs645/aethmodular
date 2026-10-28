@@ -119,13 +119,13 @@ The Drive files the exporters read, relative to the root:
 
 ## 3. What the data folders hold, and the public flag
 
-`gallery/app/src/sections/sections.json` marks each **section** public or private. Both new
-sections are private:
+`gallery/app/src/sections/sections.json` marks each **section** public, unlisted or private.
+Instruments is unlisted and Research is private:
 
 | Section | Tab | Data folder | Size (27 Oct 2026) |
 |---|---|---|---|
-| `instruments` | Aethalometer (Overview, Against the filters, Sources, Data quality, Diurnal) | `public/data/aethalometer/` | 9.4 MB (2.7 MB gzipped) |
-| `research` | Research diagnostics (18 pages) | `public/data/research/` | 0.5 MB (0.1 MB gzipped) |
+| `instruments` (unlisted) | Aethalometer (Overview, Against the filters, Sources, Data quality, Diurnal) | `public/data/aethalometer/` | 9.4 MB (2.7 MB gzipped) |
+| `research` (private) | Research diagnostics (18 pages) | `public/data/research/` | 0.5 MB (0.1 MB gzipped) |
 
 AERONET (`public/data/aeronet/`, 5.9 MB) is public.
 
@@ -141,9 +141,16 @@ The publish scripts also leave the section's data folders out of the archive
 (`gallery/share/sections.py`), and `build_share.py` refuses a private tab. A local
 `npm run dev` or `npm run build` includes everything.
 
+`"public": "unlisted"` works like the Experimental tab. A public build compiles the section and
+publishes its data, but the header menu and the search leave its tabs out. They open from a link
+(`#tab=aethalometer`, `&aep=<page>` for a sub-page), and the menu shows the section's group while
+one is open. Its per-filter fields (the aethalometer's BCc and AAE columns) join the other tabs'
+field pickers only in a full build. Unlisted is not private: the data is in the public release.
+
 `aeth gallery check-public` proves it on the current tree. It builds with the flag, checks that
-none of a private section's data paths are in the bundle, and checks that the publish packer's
-archive carries none of their files. To publish a section, set `"public": true` and run the check.
+none of a private section's data paths are in the bundle (and that every unlisted section's are),
+and checks that the publish packer's archive carries none of a private section's files. To publish
+a section, set `"public": true` or `"unlisted"` and run the check.
 
 `aeth gallery sizes` prints data per folder, with and without the private sections. On
 27 Oct 2026 in a fresh clone that was 41.2 MB in all and 31.4 MB public. The private sections

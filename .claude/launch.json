@@ -48,6 +48,16 @@
       "port": 5181
     },
     {
+      "name": "gallery-public-dev",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "VITE_PUBLIC_BUILD=1 exec npm run dev -- --no-open --port 5184 --strictPort"
+      ],
+      "cwd": "gallery/app",
+      "port": 5184
+    },
+    {
       "name": "gallery-dev-b",
       "runtimeExecutable": "npm",
       "runtimeArgs": [

@@ -311,11 +311,16 @@ def private_sections() -> dict[str, dict]:
     return {k: s for k, s in json.loads(SECTIONS.read_text())["sections"].items() if not s.get("public")}
 
 
-def private_markers() -> dict[str, set[str]]:
-    """Per private section: the data paths its own code fetches (string literals under its data folders).
-    None of them may appear in a public build."""
+def unlisted_sections() -> dict[str, dict]:
+    """Sections a public build compiles and publishes but leaves out of its menu (sections.json "unlisted")."""
+    return {k: s for k, s in json.loads(SECTIONS.read_text())["sections"].items() if s.get("public") == "unlisted"}
+
+
+def section_markers(sections: dict[str, dict] | None = None) -> dict[str, set[str]]:
+    """Per section (the private ones by default): the data paths its own code fetches (string literals
+    under its data folders). None of a private section's may appear in a public build."""
     out: dict[str, set[str]] = {}
-    for key, s in private_sections().items():
+    for key, s in (private_sections() if sections is None else sections).items():
         folders = [d.strip("/") for d in s.get("data", [])]
         pat = re.compile(r"""['"`]((?:%s)/[A-Za-z0-9_./${}-]+?\.json)['"`]""" % "|".join(map(re.escape, folders)))
         found = set()
@@ -327,9 +332,11 @@ def private_markers() -> dict[str, set[str]]:
 
 def check_public() -> int:
     """Build with VITE_PUBLIC_BUILD=1 and confirm no private section's data paths are in the bundle, then
-    confirm the publish packer leaves the private data folders out of the archive."""
-    markers = private_markers()
-    problems = [f"section {k} has no data-path literals to check" for k, m in markers.items() if not m]
+    confirm the publish packer leaves the private data folders out of the archive. An unlisted section
+    must be the other way round: its data paths in the bundle and its data in the archive."""
+    markers = section_markers()
+    shown = section_markers(unlisted_sections())
+    problems = [f"section {k} has no data-path literals to check" for k, m in {**markers, **shown}.items() if not m]
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "site"
         env = {**os.environ, "VITE_PUBLIC_BUILD": "1"}
@@ -342,6 +349,10 @@ def check_public() -> int:
             leaked = sorted(m for m in ms if m in bundle)
             print(f"section {key}: {len(ms)} data paths checked, {len(leaked)} in the public bundle")
             problems += [f"{key}: {m} is in the public bundle" for m in leaked]
+        for key, ms in shown.items():
+            missing = sorted(m for m in ms if m not in bundle)
+            print(f"unlisted section {key}: {len(ms)} data paths checked, {len(missing)} missing from the public bundle")
+            problems += [f"{key}: {m} is not in the public bundle" for m in missing]
         sys.path.insert(0, str(ROOT / "gallery/share"))
         import publish_pages  # noqa: E402
         import tarfile
@@ -353,6 +364,11 @@ def check_public() -> int:
         leaked = [n for n in names if any(n == d or n.startswith(d + "/") for d in dirs)]
         print(f"publish archive: {len(names)} files, {len(leaked)} from private sections")
         problems += [f"archive carries {n}" for n in leaked[:10]]
+        for key, s in unlisted_sections().items():
+            n = sum(any(x.startswith(d.strip("/") + "/") for d in s.get("data", [])) for x in names)
+            print(f"publish archive: {n} files from unlisted section {key}")
+            if not n:
+                problems.append(f"archive carries no data for unlisted section {key}")
     for p in problems:
         print("PROBLEM:", p)
     print("public build: OK" if not problems else "public build: NOT OK")

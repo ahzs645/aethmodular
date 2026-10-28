@@ -1,9 +1,9 @@
 {
-  "note": "Sections that a public build can leave out. A build with VITE_PUBLIC_BUILD=1 (gallery/share/publish_pages.py's GitHub deploy, build_share.py) swaps every section with \"public\": false for src/sections/omitted.ts, so none of its code is compiled, and the publish scripts leave its data folders (under public/data) out of the archive. Set \"public\": true to publish a section. A local `npm run dev` or `npm run build` always includes every section.",
+  "note": "Sections that a public build can leave out or hide. A build with VITE_PUBLIC_BUILD=1 (gallery/share/publish_pages.py's GitHub deploy, build_share.py) swaps every section with \"public\": false for src/sections/omitted.ts, so none of its code is compiled, and the publish scripts leave its data folders (under public/data) out of the archive. \"public\": \"unlisted\" publishes the section's code and data, but the header menu and search leave its tabs out: they open from a link (#tab=aethalometer), like Experimental, and its fields join the other tabs' pickers only in a full build. Set \"public\": true to list it. A local `npm run dev` or `npm run build` always includes and lists every section.",
   "sections": {
     "instruments": {
       "label": "Instruments",
-      "public": false,
+      "public": "unlisted",
       "tabs": [
         "aethalometer"
       ],

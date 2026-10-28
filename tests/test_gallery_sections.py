@@ -15,7 +15,7 @@ def test_manifest_lists_tabs_and_data_for_every_section():
     manifest = sections.load()
     assert manifest, 'no sections declared'
     for key, s in manifest.items():
-        assert isinstance(s['public'], bool), key
+        assert isinstance(s['public'], bool) or s['public'] == 'unlisted', key
         assert s['tabs'] and all(isinstance(t, str) for t in s['tabs']), key
         assert (ROOT / 'gallery/app/src/sections' / key).is_dir(), f'no module for section {key}'
 
@@ -33,9 +33,11 @@ def test_private_lists_follow_the_flag(tmp_path):
     manifest.write_text(json.dumps({'sections': {
         'a': {'public': False, 'tabs': ['t1'], 'data': ['d1/']},
         'b': {'public': True, 'tabs': ['t2'], 'data': ['d2']},
+        'c': {'public': 'unlisted', 'tabs': ['t3'], 'data': ['d3']},
     }}))
     assert sections.private_data_dirs(manifest) == ['d1']
     assert sections.private_tabs(manifest) == ['t1']
+    assert sections.unlisted_sections(manifest) == ['c']
 
 
 def test_publish_packer_skips_private_data(tmp_path, monkeypatch):

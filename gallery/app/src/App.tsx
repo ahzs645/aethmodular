@@ -110,7 +110,7 @@ const TABS = [
   { key: 'map', label: 'Map' },
   { key: 'availability', label: 'Data availability', title: 'Notebook coverage analyses, product inventory, sample-day overlap and filter history' },
   { key: 'weather', label: 'Weather', title: 'Weather over each filter’s sampling window: ERA5 at every SPARTAN site, the airport station at Addis' },
-  { key: 'aethalometer', label: 'Aethalometer', title: 'MA350 aethalometers at the focus sites (Instruments section; private in public builds)' },
+  { key: 'aethalometer', label: 'Aethalometer', title: 'MA350 aethalometers at the focus sites (Instruments section; unlisted in public builds)' },
   { key: 'research', label: 'Research diagnostics', title: 'Notebook analyses brought into the gallery (Research section; private in public builds)' },
   { key: 'aeronet', label: 'AERONET', title: 'The sun photometer column over each filter’s sampling window: AOD, absorption AOD and SSA at every SPARTAN site with a station' },
   { key: 'flow', label: 'Flow' },
@@ -134,6 +134,12 @@ const shared = (key: string) => (!SECTION_OWNED.has(key) || SECTION_TABS.has(key
 /** VITE_SHOW_EXPERIMENTAL=1 lists the Experimental pages in the header menu; otherwise they open only from a link
  *  (#tab=experimental), and the menu shows their group only while one is open. */
 const SHOW_EXPERIMENTAL = import.meta.env.VITE_SHOW_EXPERIMENTAL === '1'
+/** a public build's tabs of sections marked "unlisted": compiled, but like Experimental they open from a link
+ *  (#tab=aethalometer), and the menu shows their group only while one is open. Any other build lists them. */
+const UNLISTED = new Set<string>(import.meta.env.VITE_PUBLIC_BUILD === '1'
+  ? Object.values(SECTIONS_MANIFEST.sections).filter((s) => s.public === 'unlisted').flatMap((s) => s.tabs) : [])
+/** tabs the menu leaves out unless one is open */
+const UNLISTED_TABS = new Set<string>([...UNLISTED, ...(SHOW_EXPERIMENTAL ? [] : ['experimental'])])
 const isTab = (v: string | null): v is TabKey => !!v && shared(v) && TABS.some((t) => t.key === v)
 const LANDING_TAB = (SHARE_TABS.find((t) => TABS.some((x) => x.key === t)) ?? 'correlation') as TabKey
 
@@ -157,14 +163,14 @@ const NAV_GROUPS: NavGroup[] = [
   { label: 'Meetings', items: shared('meeting') ? MEETINGS.map((m) => ({ key: m.key, label: m.label, tab: 'meeting', meeting: m.key })) : [] },
   { label: 'Experimental', items: shared('experimental') ? EXPERIMENTS.map((e) => ({ key: `xp-${e.key}`, label: e.label, title: e.title, tab: 'experimental', sub: e.key })) : [] },
 ].filter((g) => g.items.length)
-/** the menu without the Experimental group (see SHOW_EXPERIMENTAL) */
-const NAV_GROUPS_LISTED = NAV_GROUPS.filter((g) => g.label !== 'Experimental')
+/** the menu for the open tab: a group of unlisted tabs (UNLISTED_TABS) only while one of them is open */
+const navGroups = (tab: string) => NAV_GROUPS.filter((g) => g.items.some((i) => i.tab === tab || !UNLISTED_TABS.has(i.tab)))
 
 /** a row of a site without PMF, which the PMF filter passes through */
 const OTHER_SITE = '__other_site'
 
 /** what the ⌘K search offers: the tabs this build shows (lib/headerNav) */
-const NAV_TABS = TABS.filter((t) => shared(t.key) && !('hidden' in t && t.hidden)).map((t) => ({ key: t.key as string, label: t.label as string, title: 'title' in t ? t.title as string : undefined }))
+const NAV_TABS = TABS.filter((t) => shared(t.key) && !('hidden' in t && t.hidden) && !UNLISTED.has(t.key)).map((t) => ({ key: t.key as string, label: t.label as string, title: 'title' in t ? t.title as string : undefined }))
 // Keep existing #tab=satoshi links working under the shared Meeting tab.
 const tabFromParams = (p: URLSearchParams): TabKey =>
   p.get('tab') === 'satoshi' && shared('meeting') ? 'meeting' : isTab(p.get('tab')) ? p.get('tab') as TabKey : LANDING_TAB
@@ -578,8 +584,9 @@ export default function App() {
   const weather = useWeather(weatherCodes)
   // the sun photometer over the same windows (export_aeronet.py, lib/aeronet), loaded the same way
   const aeronet = useAeronet(weatherCodes)
-  // and the compiled sections' own per-filter fields (the aethalometer); none in a build that omits them
-  const instrumentFields = instruments.useFields(weatherCodes)
+  // and the compiled sections' own per-filter fields (the aethalometer); none in a build that omits them,
+  // and an unlisted section's only on its own tab, so the other tabs' pickers don't show its group
+  const instrumentFields = instruments.useFields(instruments.tabs.some((t) => UNLISTED.has(t.key)) && !instruments.tabs.some((t) => t.key === tab) ? [] : weatherCodes)
   // the pick on top: the chosen sites, coloured in selection order (`paint` gives a row its site's colour)
   const netView = useMemo(() => {
     if (!netBase) return null
@@ -995,7 +1002,7 @@ export default function App() {
 
   const nav = (
     <nav className="nav" aria-label="Pages">
-      <NavMenu groups={SHOW_EXPERIMENTAL || tab === 'experimental' ? NAV_GROUPS : NAV_GROUPS_LISTED} tab={tab} meeting={meeting} sub={SECTION_TABS.has(tab) ? sectionPage || SECTION_TABS.get(tab)!.pages[0].key : experiment} onPick={(i) => openTab(i.tab, i.meeting, i.sub)} />
+      <NavMenu groups={navGroups(tab)} tab={tab} meeting={meeting} sub={SECTION_TABS.has(tab) ? sectionPage || SECTION_TABS.get(tab)!.pages[0].key : experiment} onPick={(i) => openTab(i.tab, i.meeting, i.sub)} />
     </nav>
   )
 
