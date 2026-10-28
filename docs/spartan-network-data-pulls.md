@@ -474,3 +474,14 @@ functional-group gap and the AMOD quartz question:
   the AMOD quartz ECTR is not a usable EC reference without a lab explanation;
   OCTR may be. `MAIA/MAIA batch4/FTIR by diff. cal vs. TOR data/` holds the
   lab's own FTIR-by-calibration vs TOR comparison for those filters.
+
+**In the gallery (2026-10-28).** `export_spartan_reference.py` reads all three
+deliveries (`FG_DELIVERIES`); the two new files sit beside the batch 2–3 CSV in
+Davis Data `EC-HIPS-Aeth Comparison/Data/Lab deliverables/FTIR EC/`. Rebuilt with
+the Drive inputs, the previous exporter reproduced the committed JSON exactly
+(0 field differences) before the change; after it, functional groups cover
+2,780 filters at 26 sites (was 1,473 at 24; Addis 21 → 162, Delhi 15 → 49), the
+batch 2–3 values and every volume are unchanged, and five lab-only filters gain
+rows. Twelve Dhaka filters in V2 (BDDU-0401 … 0414) have no sample date anywhere
+and stay out. `availability.json` and `aeronet/stations.json` still count the
+filters without those five until the AERONET export reruns with its cache.

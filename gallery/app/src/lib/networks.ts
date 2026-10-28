@@ -3,8 +3,8 @@
  * the default), or a whole network chosen in the Filters sidebar.
  *
  * - SPARTAN: one compressed filter file per chosen site (spartan_network/index.json). EC/OC are FTIR-derived. HIPS (Fabs, uncertainty, MDL, BC = Fabs / MAC) at
- *   the 27 sites in HIPS batches 1–51 and FTIR functional groups (lab batch 2–3, 2020–Mar 2023) at
- *   24 sites, under the focus sites' field names; the public BC ('BC (public HIPS)') stays its own field.
+ *   the 27 sites in HIPS batches 1–51 and FTIR functional groups (lab batches 2–3, 4 V2 and 5, 2020–Oct 2024) at
+ *   26 sites, under the focus sites' field names; the public BC ('BC (public HIPS)') stays its own field.
  * - IMPROVE: one file per site (improve_samples/, gallery/data/export_improve_samples.py),
  *   fetched only when picked, because ~388,000 samples cannot be drawn at once.
  *
