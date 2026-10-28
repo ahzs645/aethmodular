@@ -580,6 +580,10 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 .animated rect, .animated circle, .animated line, .animated path { transition: all 0.35s cubic-bezier(0.2, 0.7, 0.3, 1); }
 /* Summary text and its box reflow together when the chart width changes. */
 .animated .regression-summary rect { transition: none; }
+/* Scatterplot: a focused filter dims the others with one class, at once. Animating the opacity of
+   every dot on each hover was most of the hover's cost on a dense chart. */
+.animated .scatter-dots circle { transition-property: cx, cy, r, fill, fill-opacity; }
+.scatter-dots.has-focus > circle { opacity: 0.35; }
 
 /* ---------- census table ---------- */
 

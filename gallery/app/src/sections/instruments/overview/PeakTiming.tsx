@@ -1,13 +1,11 @@
 import { useMemo, useRef } from 'react'
-import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
-import { XAxis, YAxis } from '@/components/Axes'
 import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { Legend, useLegend } from '@/components/Legend'
+import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
 import { fmt, pct } from '@/lib/format'
-import { FONT, INK } from '@/lib/theme'
+import { INK } from '@/lib/theme'
 import { seasonOnly } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
 import type { MetaFile } from '@/lib/types'
@@ -20,33 +18,19 @@ import type { HourlySeries } from './useHourly'
 type What = 'peak' | 'above'
 type Split = 'season' | 'week'
 interface Group { key: string; label: string; color: string; days: DayShape[]; hours: Hour[]; threshold: number }
-const M = { top: 12, right: 16, bottom: 44, left: 56 }
-
 /** The share of each group's days peaking at, or hours above the threshold falling in, each local hour. */
 function HourLines({ groups, what, width, leg }: { groups: Group[]; what: What; width: number; leg: ReturnType<typeof useLegend> }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const tip = useTooltip(ref)
-  const lines = groups.map((g) => ({ g, s: hourShares(what === 'peak' ? g.days.map((d) => d.peakHour) : g.hours.filter((h) => h.v > g.threshold).map((h) => h.hour)) }))
-  const ih = 220, iw = Math.max(200, width - M.left - M.right)
-  const x = d3.scaleLinear().domain([0, 23]).range([0, iw])
-  const y = d3.scaleLinear().domain([0, d3.max(lines.flatMap((l) => l.s), (v) => v ?? 0) || 0.1]).range([ih, 0]).nice()
-  const line = d3.line<number | null>().defined((v) => v !== null).x((_, h) => x(h)).y((v) => y(v!))
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <svg width={width} height={ih + M.top + M.bottom} fontFamily={FONT.family}>
-        <g transform={`translate(${M.left},${M.top})`}>
-          <YAxis scale={y} x={0} gridWidth={iw} tickCount={4} label={what === 'peak' ? 'Share of days' : 'Share of high hours'} labelX={-44} format={(v) => pct(v)} />
-          {lines.filter((l) => leg.show(l.g.key)).map((l) => <path key={l.g.key} d={line(l.s) ?? ''} fill="none" stroke={l.g.color} strokeWidth={2} opacity={leg.dim(l.g.key)} />)}
-          {d3.range(24).map((h) => <rect key={h} x={x(h) - iw / 48} width={iw / 24} height={ih} fill="transparent"
-            onMouseEnter={(e) => tip.show(e, [`${String(h).padStart(2, '0')}:00 local standard time`, ...lines.filter((l) => leg.show(l.g.key)).map((l) =>
-              `${l.g.label}: ${pct(l.s[h])} of ${what === 'peak' ? `${l.g.days.length} days` : `${l.g.hours.filter((q) => q.v > l.g.threshold).length} high hours`}`)])} onMouseLeave={tip.hide} />)}
-          <XAxis scale={x} y={ih} tickCount={8} label="Local hour (standard time)" format={(v) => String(v).padStart(2, '0')} />
-        </g>
-      </svg>
-      {tip.node}
-    </div>
-  )
+  const series: SweepSeries[] = groups.filter((g) => leg.show(g.key)).map((g) => {
+    const counted = what === 'peak' ? g.days.map((d) => d.peakHour) : g.hours.filter((h) => h.v > g.threshold).map((h) => h.hour)
+    const of = what === 'peak' ? `${g.days.length} days` : `${counted.length} high hours`
+    return { id: g.key, label: g.label, group: g.key, color: g.color, width: 2, marks: false, gaps: true, interval: 'none' as const,
+      points: hourShares(counted).map((v, h) => ({ x: h, y: v, tip: [`${hour(h)}:00 local standard time`, `${g.label}: ${pct(v)} of ${of}`] })) }
+  })
+  return <SweepPlot series={series} xScale="linear" xDomain={[0, 23]} xLabel="Local hour (standard time)" xFormat={(v) => hour(+v)}
+    yLabel={what === 'peak' ? 'Share of days' : 'Share of high hours'} yFormat={(v) => pct(v)} include={[0]} width={width} height={278} dim={leg.dim} />
 }
+
+const hour = (h: number) => String(h).padStart(2, '0')
 
 /**
  * When the day peaks and how far above its mean (addis_02_temporal_patterns Tasks 3 and 4 from

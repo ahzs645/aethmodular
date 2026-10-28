@@ -14,7 +14,7 @@ import { useBaselineStyle } from '@/lib/baselineRank'
 import { INK, baselineColor } from '@/lib/theme'
 import { fixed as fmt } from '@/lib/format'
 import { regression } from '@/lib/stats'
-import { dotFill, dotRim, useHighlight, type FilterRecord } from '@/lib/highlight'
+import { dotFill, dotRim, type FilterRecord, useHighlightActions } from '@/lib/highlight'
 import { useHandEdits } from '@/lib/filterEdits'
 import { useSearchParam } from '@/lib/url'
 import { useRegressions } from '@/lib/regressionPrefs'
@@ -84,7 +84,7 @@ const colorsFor = (completed: boolean): Record<Method, string> => ({ AIRSpec: ba
  */
 export function BaselineExternalPilot({ mac, demingLambda, completed = false }: { mac: number; demingLambda: number; completed?: boolean }) {
   const COLORS = colorsFor(completed)
-  const hl = useHighlight()
+  const hl = useHighlightActions()
   const { data, error } = useExport<Pilot>(completed ? 'rank70/baseline_external_pilot.json' : 'baseline_external_pilot.json', (d) =>
     d.schema_version !== 1 || (completed && d.background_rank !== 70) || d.adama.length !== 5 || d.bishoftu.length !== 26 || d.addis.length !== 253 || d.matched.length !== 5 ? 'unexpected pilot dataset' : null)
   const [reference, setReference] = useState<Reference>('ECTR')
@@ -211,7 +211,7 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
   demingLambda: number
 }) {
   const { rank } = useBaselineStyle()
-  const hl = useHighlight()
+  const hl = useHighlightActions()
   const optical = mode === 'optical'
   const { methods, showCI, grouping } = useRegressions()
   const [fitPreference, setFitPreference] = useSearchParam<string>(optical ? 'bopticalfits' : 'bspectralfits', 'default', ['default', 'none', 'pooled', 'site'])

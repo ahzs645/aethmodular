@@ -146,7 +146,8 @@ def main():
     net.loc[sp, "lon"] = [spartan.get(c, {}).get("lon") for c in net.site[sp]]
     net.loc[sp, "name"] = [spartan.get(c, {}).get("name", c) for c in net.site[sp]]
     pts = t["e8_points"]
-    keep = ["population", "site", "id", "EC µg/filter", "EC µg/m³", "PM2.5 µg/filter", "OC/EC", "distance percentile", "volume m³", "month"]
+    # HIPS BC per filter where the run has it (runs before 2026-10-28 carried it for Addis only, and it was not exported)
+    keep = ["population", "site", "id", "EC µg/filter", "EC µg/m³", "PM2.5 µg/filter", "OC/EC", "distance percentile", "volume m³", "month"] + [c for c in ["HIPS BC µg/m³"] if c in pts]
     tor = write("tor", dict(settings=settings, contract=contract, network=records(net), points=columns(pts[keep]),
                             neighbour_sites=records(t["e8_neighbour_sites"].assign(name=lambda d: d.site.map(lambda s: smap.get(s, {}).get("name", s)),
                                                                                    lat=lambda d: d.site.map(lambda s: smap.get(s, {}).get("lat")),

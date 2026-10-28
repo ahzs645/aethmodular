@@ -17,7 +17,7 @@ import { BASELINE_COLOR, FONT, INK } from '@/lib/theme'
 import { fmt as f } from '@/lib/format'
 import { baselineName } from '@/lib/labels'
 import { BaselineRankProvider, useBaselineColors } from '@/lib/baselineRank'
-import { dotFill, dotRim, useHighlight, type FilterRecord } from '@/lib/highlight'
+import { dotFill, dotRim, type FilterRecord, useHighlightActions } from '@/lib/highlight'
 import { baselineMetrics, pairedAbsoluteErrorDifference, retainedWavenumber } from '@/lib/baselineComparison'
 import { BaselineResearchDiagnostics, RegionContribution, SiteBandPattern, BlankSpread, svgLegendItem, type SvgLegendState } from '@/pages/BaselineResearchDiagnostics'
 import { useLegend } from '@/components/Legend'
@@ -154,7 +154,7 @@ function MethodLegend({ width, y, items, lg }: { width: number; y: number; items
 
 function ResidualPlot({ rows, available, onInspect, cohort }: { rows: BaselinePair[]; available: Set<string>; onInspect: (s: string) => void; cohort: BaselineCohort }) {
   const COLOR = useBaselineColors()
-  const ref = useRef<HTMLDivElement>(null); const { width } = useDimensions(ref); const tip = useTooltip(ref); const hl = useHighlight()
+  const ref = useRef<HTMLDivElement>(null); const { width } = useDimensions(ref); const tip = useTooltip(ref); const hl = useHighlightActions()
   // One panel per method on shared axes: overlaid at this density the two purples/blues merge into one cloud.
   const w = Math.max(300, width), side = w >= 760, gap = 36
   // each method panel is square, like every crossplot in the gallery

@@ -3,23 +3,24 @@ import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
-import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
+import { histogramSeries, SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { fmt, signed } from '@/lib/format'
 import { FONT, INK } from '@/lib/theme'
+import { useHighlightActions } from '@/lib/highlight'
 import type { FilterRow } from '@/lib/types'
 import type { BrcFile } from './data'
+
 
 const NB = 'research/ftir_ec_phase3/ftir_28_ma350_brc_falsification.ipynb'
 const BC880 = 'IR BCc (aethalometer)'
 const EC_FTIR = 'EC (FTIR)'
 
-/** a histogram as a step outline: counts in equal bins over [lo, hi] */
-function stepSeries(id: string, values: number[], lo: number, hi: number, bins: number, color: string, unit: string): SweepSeries {
-  const bin = d3.bin().domain([lo, hi]).thresholds(d3.range(bins + 1).map((i) => lo + (i * (hi - lo)) / bins))
-  const b = bin(values.filter((v) => v >= lo && v <= hi))
-  return { id, label: id, color, curve: 'step', marks: false, interval: 'none', width: 1.6,
-    points: [...b.map((x) => ({ x: x.x0!, y: x.length, tip: [`${fmt(x.x0!, 2)} to ${fmt(x.x1!, 2)}${unit}`, `${x.length} filter-days`] })),
-      { x: b[b.length - 1].x1!, y: b[b.length - 1].length }] }
+/** a histogram of filter-days in equal bins over [lo, hi] (values outside are left out) */
+function filterDayHistogram(id: string, values: number[], lo: number, hi: number, bins: number, color: string, unit: string): SweepSeries {
+  const b = d3.bin().domain([lo, hi]).thresholds(d3.range(bins + 1).map((i) => lo + (i * (hi - lo)) / bins))(values.filter((v) => v >= lo && v <= hi))
+  const edges = [...b.map((x) => x.x0!), b[b.length - 1].x1!]
+  return histogramSeries({ id, label: id, color, edges, counts: b.map((x) => x.length), fill: 0.25, width: 1.6,
+    tip: (i, n) => [`${fmt(edges[i], 2)} to ${fmt(edges[i + 1], 2)}${unit}`, `${n} filter-days`] })
 }
 
 /**
@@ -35,11 +36,11 @@ export function BrcTest({ brc }: { brc: BrcFile }) {
   const closingLo = d3.min(s.closing_aae.per_setup)!, closingHi = d3.max(s.closing_aae.per_setup)!
   const panels = [
     { key: 'aae', title: 'AAE(625, 880) from b_ATN, per filter-day', xLabel: 'AAE(625, 880)',
-      series: [stepSeries('AAE(625, 880)', aae, 0.1, 1.3, 48, INK.accent, '')],
+      series: [filterDayHistogram('AAE(625, 880)', aae, 0.1, 1.3, 48, INK.accent, '')],
       markers: [{ at: 1, label: 'anchor AAE_BC = 1', color: INK.text, labelSide: 'left' as const }, { at: s.closing_aae.mean_target, label: `needed ${fmt(s.closing_aae.mean_target, 2)}`, color: INK.warn, labelSide: 'right' as const }],
       shade: [closingLo, closingHi] as [number, number] },
     { key: 'brc', title: 'Implied Babs_BrC(625), per filter-day', xLabel: 'Babs_BrC (Mm⁻¹, b_ATN scale)',
-      series: [stepSeries('Babs_BrC', babs, -10, 28, 48, INK.accent, ' Mm⁻¹')],
+      series: [filterDayHistogram('Babs_BrC', babs, -10, 28, 48, INK.accent, ' Mm⁻¹')],
       markers: [{ at: 0, label: '0', color: INK.text }, { at: s.target.mean, label: `target ${fmt(s.target.mean, 1)}`, color: INK.warn, labelSide: 'left' as const }],
       shade: [s.target.min, s.target.max] as [number, number] },
   ]
@@ -88,10 +89,12 @@ export function ChannelHealth({ brc }: { brc: BrcFile }) {
  * intercept near zero puts the HIPS intercept's offset on the 633 nm optics, not the FTIR side.
  */
 export function EcAgainstBc880({ rows }: { rows: FilterRow[] }) {
+  const { openSample } = useHighlightActions()
+  // gallery filters: a click opens the filter's own record, as on the gallery's charts
   const points = useMemo<CrossPoint[]>(() => rows.flatMap((r) => {
     const x = r[BC880], y = r[EC_FTIR]
-    return typeof x === 'number' && typeof y === 'number' ? [{ x, y, color: r.color, id: r.id, tip: [r.id, r.date, `${BC880}: ${fmt(x, 2)}`, `${EC_FTIR}: ${fmt(y, 2)}`] }] : []
-  }), [rows])
+    return typeof x === 'number' && typeof y === 'number' ? [{ x, y, color: r.color, id: r.id, open: () => openSample(r.id), tip: [r.id, r.date, `${BC880}: ${fmt(x, 2)}`, `${EC_FTIR}: ${fmt(y, 2)}`] }] : []
+  }), [rows, openSample])
   return (
     <ChartFrame id="diurnal-ec-bc880" title="Addis · FTIR EC against MA350 BC at 880 nm — the FTIR axis is not where the offset lives"
       subtitle={`Each Addis filter in view with both: FTIR EC, and the MA350 IR BCc averaged over the filter's sampling window. ftir_28 found intercept +0.32 µg/m³ (95 % CI +0.01 to +0.63), R² 0.868, n = 173 on exact 9 am days, about 13× smaller than the −4.17 against HIPS and of the opposite sign. The fit here is the gallery's live refit of the points drawn, so dates, seasons and hand edits apply.`}

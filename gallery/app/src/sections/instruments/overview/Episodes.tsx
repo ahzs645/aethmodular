@@ -3,6 +3,7 @@ import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
 import { FacetGrid } from '@/components/FacetGrid'
+import { histogramSeries, SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt, signed } from '@/lib/format'
 import { FONT, INK } from '@/lib/theme'
@@ -12,19 +13,15 @@ import { seasonsForSite } from '@/siteSeasons'
 import { CHANNELS, DOW, MONTH_NAME, SCREEN_TEXT, channelName, type Channel, type Screen, type Series } from './data'
 import { dayToDay, quantileSorted, summarize } from './stats'
 
-interface Bar { key: string; label: string; value: number; color: string; tip: string[]; x0?: number; x1?: number }
+interface Bar { key: string; label: string; value: number; color: string; tip: string[] }
 const M = { top: 24, right: 12, bottom: 44, left: 52 }
 
-/** A small bar panel, bars up or down from zero: on a category axis, or on a number line when every bar has x0–x1 (a histogram). */
-function BarPanel({ bars, width, height = 220, title, yLabel, xLabel }: { bars: Bar[]; width: number; height?: number; title: string; yLabel: string; xLabel?: string }) {
+/** A small bar panel on a category axis, bars up or down from zero (the histogram panel is a SweepPlot). */
+function BarPanel({ bars, width, height = 220, title, yLabel }: { bars: Bar[]; width: number; height?: number; title: string; yLabel: string }) {
   const ref = useRef<HTMLDivElement>(null)
   const tip = useTooltip(ref)
   const iw = Math.max(120, width - M.left - M.right), ih = height - M.top - M.bottom
-  const numeric = bars.length > 0 && bars.every((b) => b.x0 !== undefined && b.x1 !== undefined)
   const band = d3.scaleBand<string>().domain(bars.map((b) => b.key)).range([0, iw]).padding(0.18)
-  const lin = d3.scaleLinear().domain(numeric ? [bars[0].x0!, bars[bars.length - 1].x1!] : [0, 1]).range([0, iw])
-  const left = (b: Bar) => (numeric ? lin(b.x0!) + 0.5 : band(b.key) ?? 0)
-  const bw = (b: Bar) => (numeric ? Math.max(1, lin(b.x1!) - lin(b.x0!) - 1) : band.bandwidth())
   const vs = bars.map((b) => b.value)
   const y = d3.scaleLinear().domain([Math.min(0, d3.min(vs) ?? 0), Math.max(0, d3.max(vs) ?? 1) || 1]).range([ih, 0]).nice()
   const labelOf = new Map(bars.map((b) => [b.key, b.label]))
@@ -34,10 +31,10 @@ function BarPanel({ bars, width, height = 220, title, yLabel, xLabel }: { bars: 
         <text x={M.left} y={14} fontSize={12} fontWeight={600} fill={INK.text}>{title}</text>
         <g transform={`translate(${M.left},${M.top})`}>
           <YAxis scale={y} x={0} gridWidth={iw} tickCount={4} label={yLabel} labelX={-38} />
-          {bars.map((b) => <rect key={b.key} x={left(b)} width={bw(b)} y={y(Math.max(0, b.value))} height={Math.abs(y(b.value) - y(0))} fill={b.color} fillOpacity={0.8}
+          {bars.map((b) => <rect key={b.key} x={band(b.key) ?? 0} width={band.bandwidth()} y={y(Math.max(0, b.value))} height={Math.abs(y(b.value) - y(0))} fill={b.color} fillOpacity={0.8}
             onMouseEnter={(e) => tip.show(e, b.tip)} onMouseLeave={tip.hide} />)}
           <line x1={0} x2={iw} y1={y(0)} y2={y(0)} stroke={INK.axis} />
-          {numeric ? <XAxis scale={lin} y={ih} tickCount={5} label={xLabel} labelDy={34} /> : <XAxis scale={band} y={ih} format={(k: string) => labelOf.get(k) ?? k} />}
+          <XAxis scale={band} y={ih} format={(k: string) => labelOf.get(k) ?? k} />
         </g>
       </svg>
       {tip.node}
@@ -45,18 +42,25 @@ function BarPanel({ bars, width, height = 220, title, yLabel, xLabel }: { bars: 
   )
 }
 
-/** Days per value bin, the outer bins collecting everything beyond ±3 SD (as the notebook clipped). */
-function histogram(values: number[], bins = 24): Bar[] {
+/** Day pairs per change bin, the outer bins collecting everything beyond ±3 SD (as the notebook clipped): falls blue, rises red. */
+function changeHistogram(values: number[], bins = 24): SweepSeries[] {
   const s = summarize(values)
   if (!s || s.sd === null || s.sd === 0) return []
-  const lim = 3 * s.sd, w = (2 * lim) / bins
+  const lim = 3 * s.sd, w = (2 * lim) / bins, half = bins / 2
   const counts = new Array(bins).fill(0)
   for (const v of values) counts[Math.min(bins - 1, Math.max(0, Math.floor((v + lim) / w)))]++
-  return counts.map((n, i) => {
-    const a = -lim + i * w
-    return { key: String(i), label: fmt(a + w / 2, 1), value: n, x0: a, x1: a + w, color: a + w / 2 >= 0 ? INK.negative : INK.positive,
-      tip: [`${signed(a, 2)} to ${signed(a + w, 2)} µg/m³ a day${i === 0 || i === bins - 1 ? ' (and beyond)' : ''}`, `${n} days`] }
-  })
+  const edges = d3.range(bins + 1).map((i) => -lim + i * w)
+  const tip = (i: number, n: number) => [`${signed(edges[i], 2)} to ${signed(edges[i + 1], 2)} µg/m³ a day${i === 0 || i === bins - 1 ? ' (and beyond)' : ''}`, `${n} days`]
+  return [
+    histogramSeries({ id: 'fall', label: 'falls', color: INK.positive, edges: edges.slice(0, half + 1), counts: counts.slice(0, half), fill: 0.8, width: 1, tip }),
+    histogramSeries({ id: 'rise', label: 'rises', color: INK.negative, edges: edges.slice(half), counts: counts.slice(half), fill: 0.8, width: 1, tip: (i, n) => tip(i + half, n) }),
+  ]
+}
+
+/** the histogram's own edges, so the axis is not rounded out past the ±3 SD bins */
+const xRange = (h: SweepSeries[]): [number, number] | undefined => {
+  const xs = h.flatMap((s) => s.points.map((p) => +p.x))
+  return xs.length ? [Math.min(...xs), Math.max(...xs)] : undefined
 }
 
 /**
@@ -87,7 +91,7 @@ export function Episodes({ s, meta, screen, channel, setChannel }: {
       return { key: name, label: name.slice(0, 1), value: st?.mean ?? 0, color: (st?.mean ?? 0) >= 0 ? INK.negative : INK.positive,
         tip: [name, st ? `mean change ${signed(st.mean, 3)} µg/m³ a day` : 'no consecutive days', st ? `${st.n} day pairs, SD ${fmt(st.sd, 2)}` : ''] }
     })
-    return { p95, nHigh: high.length, n: vals.length, bySeason, byDow, byMonth, hist: histogram(changes.map((c) => c.dv)), nPairs: changes.length }
+    return { p95, nHigh: high.length, n: vals.length, bySeason, byDow, byMonth, hist: changeHistogram(changes.map((c) => c.dv)), nPairs: changes.length }
   }, [s, meta, channel])
   return (
     <ChartFrame id="aeth-overview-episodes" title={`${s.inst.site} · high days and day-to-day change — ${channel} BCc`}
@@ -97,11 +101,13 @@ export function Episodes({ s, meta, screen, channel, setChannel }: {
       <div className="chart-wrap">
         {!panels ? <Empty>Too few days with {channel} BCc in this span.</Empty> : (
           <FacetGrid items={[
-            { title: 'High days by season', bars: panels.bySeason, y: 'Days', x: undefined },
+            { title: 'High days by season', bars: panels.bySeason, y: 'Days' },
             { title: 'High days by weekday', bars: panels.byDow, y: 'Days' },
             { title: 'Mean day-to-day change by month', bars: panels.byMonth, y: 'µg/m³ per day' },
-            { title: 'Day-to-day change', bars: panels.hist, y: 'Day pairs', x: 'Change (µg/m³ per day)' },
-          ]} minCell={250} maxCols={2} render={(p, w) => <BarPanel bars={p.bars} width={w} title={p.title} yLabel={p.y} xLabel={p.x} />} />
+            { title: 'Day-to-day change', hist: panels.hist, y: 'Day pairs' },
+          ]} minCell={250} maxCols={2} render={(p, w) => p.hist
+            ? <SweepPlot series={p.hist} xScale="linear" xDomain={xRange(p.hist)} title={p.title} width={w} height={200} xLabel="Change (µg/m³ per day)" yLabel={p.y} include={[0]} yFormat={(v) => (Number.isInteger(v) ? fmt(v, 0) : '')} xFormat={(v) => fmt(+v, 1)} />
+            : <BarPanel bars={p.bars!} width={w} title={p.title} yLabel={p.y} />} />
         )}
       </div>
     </ChartFrame>

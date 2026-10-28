@@ -3,7 +3,7 @@ import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { Key } from '@/components/Key'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { fmt } from '@/lib/format'
-import { useHighlight } from '@/lib/highlight'
+import { useHighlightActions } from '@/lib/highlight'
 import { seasonOnly } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
 import { FONT, INK } from '@/lib/theme'
@@ -22,7 +22,7 @@ const GAP_DAYS = 60, MIN_RUN = 5
 export function MacTimeline({ pairs, meta, sites, ch, sigma }: { pairs: Pair[]; meta: MetaFile; sites: PairSite[]; ch: Channel; sigma: number | null }) {
   const [key, setKey] = useSearchParam<MacKey>('af.mac', 'hipsOverEc', MAC_DEFS.map((d) => d.key))
   const def = MAC_DEFS.find((d) => d.key === key)!
-  const hl = useHighlight()
+  const hl = useHighlightActions()
   const per = useMemo(() => sites.map((s) => {
     const pts = pairs.filter((p) => p.site === s.name).flatMap((p) => { const v = macOf(def, p); return v === null ? [] : [{ p, v }] })
     const fences = iqrFences(pts.map((q) => q.v))

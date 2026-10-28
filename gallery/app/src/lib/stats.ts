@@ -150,6 +150,26 @@ export function pearson(xs: number[], ys: number[]): number | null {
   return sxx === 0 || syy === 0 ? null : sxy / Math.sqrt(sxx * syy)
 }
 
+/** ranks from 1, ties sharing their average rank */
+function ranks(v: number[]): number[] {
+  const order = v.map((x, i) => [x, i] as const).sort((a, b) => a[0] - b[0])
+  const out = new Array<number>(v.length)
+  for (let i = 0; i < order.length;) {
+    let j = i
+    while (j + 1 < order.length && order[j + 1][0] === order[i][0]) j++
+    for (let k = i; k <= j; k++) out[order[k][1]] = (i + j) / 2 + 1
+    i = j + 1
+  }
+  return out
+}
+
+/** Spearman's rank correlation: Pearson on the ranks of the finite pairs (null as pearson's) */
+export function spearman(xs: number[], ys: number[]): number | null {
+  if (xs.length !== ys.length) return null
+  const keep = xs.flatMap((x, i) => (Number.isFinite(x) && Number.isFinite(ys[i]) ? [i] : []))
+  return pearson(ranks(keep.map((i) => xs[i])), ranks(keep.map((i) => ys[i])))
+}
+
 /**
  * The correlogram's matrix: r for every pair of fields over the rows where both are numbers,
  * null on the diagonal's restatements (`skip`) or where r is undefined. r is symmetric, so each

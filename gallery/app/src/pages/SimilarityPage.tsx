@@ -9,7 +9,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { downloadCsv } from '@/lib/export'
 import { useSearchParam } from '@/lib/url'
-import { baseFilterId, useHighlight, type FilterRecord } from '@/lib/highlight'
+import { baseFilterId, type FilterRecord, useHighlightActions } from '@/lib/highlight'
 import { FONT, INK } from '@/lib/theme'
 import { f3 } from '@/lib/format'
 import { IntervalStrip } from '@/components/IntervalStrip'
@@ -133,7 +133,7 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
   }, [tops.value, target, includeTest, topN, meta])
 
   const [hoverFilter, setHoverFilter] = useState<number | null>(null)
-  const { pinnedId, setPinned, openRecord, dismissSample } = useHighlight()
+  const { pinnedId, setPinned, openRecord, dismissSample } = useHighlightActions()
   const filterIndex = useMemo(() => new Map(meta.filters.sample_id.map((id, f) => [baseFilterId(id), f])), [meta])
   const pinned = pinnedId == null ? null : filterIndex.get(baseFilterId(pinnedId)) ?? null
   const targetLabel = groupLabel(meta, target)

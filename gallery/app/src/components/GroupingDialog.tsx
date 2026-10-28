@@ -212,7 +212,13 @@ export function GroupingPicker({ value, onChange, field, rows }: { value: string
   const current = find(value)
   const fromNotebook = !!current && builtIn.some((d) => d.id === current.id)
   // None first: a chart offers its group choices (Per group, colour by Group …) only once a grouping is picked
-  const available = (d: GroupingDef) => rows ? rows.filter(r => typeof r[d.field] === 'number' && Number.isFinite(r[d.field])).length : undefined
+  // filters with each grouping's field, counted once per field and set of rows (not on every render)
+  const counts = useMemo(() => {
+    if (!rows) return null
+    const fields = new Set([...list, ...builtIn].map((d) => d.field))
+    return new Map([...fields].map((f) => [f, rows.filter(r => typeof r[f] === 'number' && Number.isFinite(r[f])).length]))
+  }, [rows, list, builtIn])
+  const available = (d: GroupingDef) => counts?.get(d.field)
   const availability = (d: GroupingDef) => ({ hint: available(d) === undefined ? undefined : `${available(d)} filters`, disabled: available(d) === 0 && d.id !== value })
   const options = [
     { key: '', label: current ? 'None' : 'Select a grouping', detail: current ? 'clear the grouping' : 'pick one to split or colour by its bands' },

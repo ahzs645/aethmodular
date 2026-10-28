@@ -2,19 +2,20 @@ import { useMemo } from 'react'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { fmt } from '@/lib/format'
+import { INK, themed } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { DailyPanels, qLine, type PanelSpec } from './DailyPanels'
-import { CHANNELS, finite, instrumentColor, instrumentName, JACROS, quantile, ratio, type Channel, type Day, type QualityIndex } from './data'
+import { BROWN, CHANNELS, finite, instrumentColor, instrumentName, PURPLE, quantile, ratio, type Channel, type Day, type QualityIndex } from './data'
 
 const SPOT = { one: '#2c7fb8', two: '#d95f0e' }
 /** ftir_49's channel colours */
-export const CHANNEL_COLOR: Record<Channel, string> = { UV: '#7D3C98', Blue: '#2E86C1', Green: '#28B463', Red: '#C0392B', IR: '#34495E' }
+export const CHANNEL_COLOR: Record<Channel, string> = { get UV() { return themed('#7D3C98', '#b48ccf') }, Blue: '#2E86C1', Green: '#28B463', Red: '#C0392B', get IR() { return themed('#34495E', '#a9bdd2') } }
 
 /**
  * The dual-spot chain day by day for one instrument and channel: attenuation on both spots (a sawtooth that
  * resets at each tape advance), their rates, the leak ratio, the loading compensation BCc/BC1 and the spot ratio
- * BC1/BC2, and the roughness metric the minute cleaning flags high-noise periods with; at Jacros, where the raw
+ * BC1/BC2, and the roughness metric the minute cleaning flags high-noise periods with; at Addis, where the raw
  * MA350 export kept it, the instrument's K. All are daily means of the minute values the cleaning computed
  * (src/data/qc/pkl_cleaning.py), so a ratio is a mean of minute ratios.
  */
@@ -28,10 +29,10 @@ export function DualSpotTimeline({ code, days, meta, index }: { code: string; da
   const panels: PanelSpec[] = [
     { key: 'atn', title: 'Attenuation', lines: [qLine(`${c}.ATN1`, 'Spot 1', SPOT.one, { digits: 1 }), qLine(`${c}.ATN2`, 'Spot 2', SPOT.two, { digits: 1 })] },
     { key: 'datn', title: 'dATN per minute', lines: [qLine(`${c}.dATN1`, 'Spot 1', SPOT.one, { digits: 4 }), qLine(`${c}.dATN2`, 'Spot 2', SPOT.two, { digits: 4 })] },
-    ...(has('leak') ? [{ key: 'leak', title: 'Leak ratio', refs: [{ at: 1, label: '1' }], lines: [qLine(`${c}.leak`, '(dATN1/F1)/(dATN2/F2)', '#6a51a3')] }] : []),
-    ...(has('BCc/BC1') ? [{ key: 'ratios', title: 'Spot ratios', refs: [{ at: 1, label: '1' }], lines: [qLine(`${c}.BCc/BC1`, 'BCc / BC1 (smoothed)', '#8c2d04'), qLine(`${c}.BC1/BC2`, 'BC1 / BC2 (smoothed)', '#41ab5d')] }] : []),
+    ...(has('leak') ? [{ key: 'leak', title: 'Leak ratio', refs: [{ at: 1, label: '1' }], lines: [qLine(`${c}.leak`, '(dATN1/F1)/(dATN2/F2)', PURPLE())] }] : []),
+    ...(has('BCc/BC1') ? [{ key: 'ratios', title: 'Spot ratios', refs: [{ at: 1, label: '1' }], lines: [qLine(`${c}.BCc/BC1`, 'BCc / BC1 (smoothed)', BROWN()), qLine(`${c}.BC1/BC2`, 'BC1 / BC2 (smoothed)', '#41ab5d')] }] : []),
     ...(has('rough1') ? [{ key: 'rough', title: 'Roughness', lines: [qLine(`${c}.rough1`, 'Spot 1', SPOT.one, { digits: 5 }), qLine(`${c}.rough2`, 'Spot 2', SPOT.two, { dash: '4 3', digits: 5 })] }] : []),
-    ...(has('K') ? [{ key: 'k', title: 'Instrument K', refs: [{ at: 0, label: '0' }], lines: [qLine(`${c}.K`, 'K (loading compensation)', '#111827', { digits: 4 })] }] : []),
+    ...(has('K') ? [{ key: 'k', title: 'Instrument K', refs: [{ at: 0, label: '0' }], lines: [qLine(`${c}.K`, 'K (loading compensation)', INK.text, { digits: 4 })] }] : []),
   ]
   return (
     <ChartFrame id="aq-dualspot" title={`${instrumentName(code, meta)} · the dual-spot chain — attenuation, its rate, the spot ratios and roughness`}
@@ -78,13 +79,13 @@ export function JacrosChain({ days }: { days: Day[] }) {
     return [{ key: 'jacros', rows }]
   }, [days])
   return (
-    <ChartFrame id="aq-jacros-chain" title="Jacros · how much of BCc is the loading compensation — K, BCc/BC1 and the spot-2 check per channel"
-      subtitle="The raw MA350 export at Jacros (1,047 daily means): the loading factor BCc/BC1 and the compensation share 1 − BC1/BCc (median, interquartile range of days); the instrument's K (filled, 5–95 %) beside K* = (BC1 − BC2)/(BC1·ATN2 − BC2·ATN1), the K that would make the two spots agree on daily means (hollow, IQR); and spot 2 compensated with the instrument's K over the reported BCc (IQR), 1 if the spots agreed. ftir_49 reads these as: the compensation is 37–48 % of BCc at the channels that matter, so it is not a small correction."
+    <ChartFrame id="aq-jacros-chain" title="Addis · how much of BCc is the loading compensation — K, BCc/BC1 and the spot-2 check per channel"
+      subtitle="The raw MA350 export at Addis (MA350-0238, its Jacros file: 1,047 daily means): the loading factor BCc/BC1 and the compensation share 1 − BC1/BCc (median, interquartile range of days); the instrument's K (filled, 5–95 %) beside K* = (BC1 − BC2)/(BC1·ATN2 − BC2·ATN1), the K that would make the two spots agree on daily means (hollow, IQR); and spot 2 compensated with the instrument's K over the reported BCc (IQR), 1 if the spots agreed. ftir_49 reads these as: the compensation is 37–48 % of BCc at the channels that matter, so it is not a small correction."
       provenance="ftir_49_ma350_raw_chain_diagnostics (A1 daily fallback: k_distribution_daily_fallback, k_sensitivity_daily_fallback) · processed_sites/df_Jacros_9am_resampled.pkl">
       {days.length ? <IntervalStrip blocks={blocks} labelWidth={70} noteWidth={56} minPanelWidth={170}
         panels={[{ label: 'BCc / BC1', reference: 1, format: (v) => v.toFixed(1) }, { label: '1 − BC1 / BCc', reference: 0, format: (v) => v.toFixed(1) },
           { label: 'K (filled), K* (hollow)', reference: 0, format: (v) => v.toFixed(3) }, { label: 'BC2/(1−K·ATN2) ÷ BCc', reference: 1, format: (v) => v.toFixed(2) }]} />
-        : <Empty>Jacros's daily bins did not load.</Empty>}
+        : <Empty>Addis's daily bins did not load.</Empty>}
     </ChartFrame>
   )
 }
@@ -97,7 +98,7 @@ export function JacrosChain({ days }: { days: Day[] }) {
 export function WindowEffect({ all, rows, meta }: { all: Record<string, Day[]>; rows: FilterRow[]; meta: MetaFile }) {
   const blocks = useMemo<IntervalBlock[]>(() => {
     const rowsOut = Object.entries(all).flatMap(([code, days]) => {
-      const dates = [...new Set(rows.filter((r) => r.code === (code === JACROS ? 'ETAD' : code)).map((r) => r.date.slice(0, 10)))]
+      const dates = [...new Set(rows.filter((r) => r.code === code).map((r) => r.date.slice(0, 10)))]
       const ir = new Map(days.map((d) => [d.start.slice(0, 10), d.bc.IR]))
       const shift = (d: string, k: number) => new Date(Date.parse(`${d}T00:00:00Z`) + k * 864e5).toISOString().slice(0, 10)
       const diffs = dates.flatMap((d) => {
@@ -112,7 +113,7 @@ export function WindowEffect({ all, rows, meta }: { all: Record<string, Day[]>; 
         key: code, label: instrumentName(code, meta), labelColor: color, note: `n=${diffs.length}`,
         marks: [[{ mid: quantile(diffs, 0.5), lo: quantile(diffs, 0.025), hi: quantile(diffs, 0.975), color, faint: true, r: 0 },
           { mid: quantile(diffs, 0.5), lo: quantile(diffs, 0.25), hi: quantile(diffs, 0.75), color }]],
-        tip: [`${instrumentName(code, meta)} · ${diffs.length} filter dates${code === JACROS ? ' (Addis filters)' : ''}`,
+        tip: [`${instrumentName(code, meta)} · ${diffs.length} filter dates`,
           `median ${fmt(quantile(diffs, 0.5), 1)} % · IQR ${fmt(quantile(diffs, 0.25), 1)} to ${fmt(quantile(diffs, 0.75), 1)} %`,
           `|Δ| > 10 %: ${over(10)} dates · > 25 %: ${over(25)}`],
       }]
@@ -121,7 +122,7 @@ export function WindowEffect({ all, rows, meta }: { all: Record<string, Day[]>; 
   }, [all, rows, meta])
   return (
     <ChartFrame id="aq-window-effect" title="The ±1-day matching window — how far it moves a filter day's IR BCc"
-      subtitle="On every filter date in the current subset (Jacros on the Addis filters' dates): the mean of the bins labelled the day before, the day and the day after (data_matching's legacy ±1-day match) against the single bin labelled on the date, in percent of the single bin. Thick: interquartile range; thin: 2.5–97.5 %. The gallery's own per-filter values use the overlap of the bins with each filter's sampling window instead (export_aethalometer.py)."
+      subtitle="On every filter date in the current subset the mean of the bins labelled the day before, the day and the day after (data_matching's legacy ±1-day match) against the single bin labelled on the date, in percent of the single bin. Thick: interquartile range; thin: 2.5–97.5 %. The gallery's own per-filter values use the overlap of the bins with each filter's sampling window instead (export_aethalometer.py)."
       provenance="ftir_49_ma350_raw_chain_diagnostics B6 (daily fallback), generalised to every instrument · data_matching.match_aeth_filter_data">
       {blocks[0].rows.length ? <IntervalStrip blocks={blocks} labelWidth={130} noteWidth={56} minPanelWidth={260}
         panels={[{ label: '±1-day mean − single bin (% of the single bin)', reference: 0, format: (v) => v.toFixed(0) }]} />

@@ -2,7 +2,7 @@ import { RegressionProvider, RegressionControls, parseEstimators, estimatorParam
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useGalleryData } from '@/hooks/useGalleryData'
 import { supplementFilter } from '@/lib/filterMerge'
-import { HighlightProvider, baseFilterId, useHighlight, type FilterRecord } from '@/lib/highlight'
+import { HighlightProvider, baseFilterId, type FilterRecord, useHighlightActions } from '@/lib/highlight'
 import { NO_PMF, PMF_GROUP, PMF_SOURCE, isPmfField, pmfGroups, pmfKeyByDate, pmfLabel, pmfShareFields, withPmf, type PmfScheme } from '@/lib/pmfGroups'
 import { PrefsProvider } from '@/lib/prefs'
 import { PanelAxesProvider } from '@/lib/panelAxes'
@@ -1477,7 +1477,7 @@ function PageSidebar({ fits }: { fits: boolean }) {
 
 /** While a brush is active, a bar at the bottom offers to keep only the brushed filters or exclude them (both go in the link). */
 function BrushBar({ onKeep, onDrop }: { onKeep: (ids: Set<string>) => void; onDrop: (ids: Set<string>) => void }) {
-  const hl = useHighlight()
+  const hl = useHighlightActions()
   if (!hl.selected) return null
   const ids = hl.selected
   return (

@@ -7,12 +7,12 @@ import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { Key, type KeyItem } from '@/components/Key'
-import { IdentityLine, Marker } from '@/components/RefLines'
-import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
+import { IdentityLine } from '@/components/RefLines'
+import { histogramSeries, SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { fmt, pct } from '@/lib/format'
-import { FONT, INK } from '@/lib/theme'
+import { FONT, INK, themed } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { finite, localDate, quantile } from './data'
@@ -20,12 +20,13 @@ import { CHANNEL_COLOR } from './DualSpot'
 import type { Hist, Hist2d, MinuteSite } from './minute'
 
 const SOURCE = 'gallery/data/export_aeth_quality_minute.py · Drive "Aethalometry Data/Raw" MA350 1-min CSVs (Time (UTC) → local)'
-const WINDOW_COLOR: Record<string, string> = { raw: '#9aa5b1', dema: '#111827', rm5: '#1f77b4', rm10: '#ff7f0e', rm15: '#2ca02c', rm30: '#d62728' }
+/** the raw series pale, the pipeline's DEMA in ink (both theme colours), the rolling medians in category colours */
+const WINDOW_COLOR: Record<string, string> = { get raw() { return INK.identity }, get dema() { return INK.text }, rm5: '#1f77b4', rm10: '#ff7f0e', rm15: '#2ca02c', rm30: '#d62728' }
 const VARIANT_LABEL = (k: string) => (k === 'raw' ? 'Raw BCc' : k === 'dema' ? 'DEMA (pipeline smoothing)' : `${k.slice(2)}-min rolling median`)
 
 // ------------------------------------------------------------------------------------------ primitives
 
-/** Pre-binned histograms on one axis: the first series as bars, the others as outlines (a fraction of each series when `share`). */
+/** Pre-binned histograms on one axis: the first series as filled bars, the others as outlines (a fraction of each series when `share`). */
 export function BinHist({ series, width, height = 200, xLabel, share = false, markers = [], bands = [], title }: {
   series: { label: string; color: string; hist: Hist }[]
   width: number; height?: number; xLabel: string; share?: boolean
@@ -33,38 +34,20 @@ export function BinHist({ series, width, height = 200, xLabel, share = false, ma
   bands?: { lo: number; hi: number; color: string }[]
   title?: string
 }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const tip = useTooltip(ref)
-  const m = { top: title ? 22 : 8, right: 12, bottom: 40, left: 48 }
-  const iw = Math.max(140, width - m.left - m.right), ih = height - m.top - m.bottom
-  const h0 = series[0]?.hist
-  if (!h0) return null
+  if (!series[0]?.hist) return null
   const lo = d3.min(series, (s) => s.hist.lo)!, hi = d3.max(series, (s) => s.hist.hi)!
-  const x = d3.scaleLinear().domain([lo, hi]).range([0, iw])
-  const val = (s: { hist: Hist }, c: number) => (share ? c / Math.max(1, d3.sum(s.hist.counts) + s.hist.below + s.hist.above) : c)
-  const y = d3.scaleLinear().domain([0, d3.max(series, (s) => d3.max(s.hist.counts, (c) => val(s, c))) ?? 1]).nice().range([ih, 0])
-  const edges = (h: Hist) => h.counts.map((_, i) => [h.lo + ((h.hi - h.lo) * i) / h.counts.length, h.lo + ((h.hi - h.lo) * (i + 1)) / h.counts.length])
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <svg width={iw + m.left + m.right} height={height} fontFamily={FONT.family}>
-        {title && <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>}
-        <g transform={`translate(${m.left},${m.top})`}>
-          {bands.map((b, i) => <rect key={i} x={x(b.lo)} width={Math.max(0, x(b.hi) - x(b.lo))} height={ih} fill={b.color} fillOpacity={0.14} />)}
-          <YAxis scale={y} x={0} gridWidth={iw} tickCount={3} label={share ? 'Share' : 'Count'} labelX={-36} format={(v) => (share ? `${Math.round(100 * +v)}%` : d3.format('~s')(+v))} />
-          {series.map((s, k) => {
-            const e = edges(s.hist)
-            if (k === 0) return <g key={s.label}>{s.hist.counts.map((c, i) => <rect key={i} x={x(e[i][0]) + 0.3} width={Math.max(0, x(e[i][1]) - x(e[i][0]) - 0.6)} y={y(val(s, c))} height={ih - y(val(s, c))} fill={s.color} fillOpacity={0.55}
-              onMouseMove={(ev) => tip.show(ev, [s.label, `${fmt(e[i][0], 2)} to ${fmt(e[i][1], 2)}${i === 0 && s.hist.below ? ' (and below)' : i === e.length - 1 && s.hist.above ? ' (and above)' : ''}`, share ? pct(val(s, c)) : `${c}`])} onMouseLeave={tip.hide} />)}</g>
-            const path = d3.line<number>().curve(d3.curveStepAfter)(s.hist.counts.flatMap((c, i) => [[x(e[i][0]), y(val(s, c))], ...(i === e.length - 1 ? [[x(e[i][1]), y(val(s, c))]] : [])]) as never) ?? ''
-            return <path key={s.label} d={path} fill="none" stroke={s.color} strokeWidth={1.5} pointerEvents="none" />
-          })}
-          {markers.map((mk, i) => <Marker key={i} orient="v" at={x(mk.at)} from={0} to={ih} label={mk.label} color={mk.color ?? INK.text} labelDy={i * 11} />)}
-          <XAxis scale={x} y={ih} tickCount={5} label={xLabel} labelDy={32} />
-        </g>
-      </svg>
-      {tip.node}
-    </div>
-  )
+  const sweep = series.map(({ label, color, hist: h }, k) => {
+    const edges = d3.range(h.counts.length + 1).map((i) => h.lo + ((h.hi - h.lo) * i) / h.counts.length)
+    const last = h.counts.length - 1
+    return histogramSeries({ id: label, label, color, edges, counts: h.counts, total: share ? d3.sum(h.counts) + h.below + h.above : undefined,
+      fill: k === 0 ? 0.55 : 0, width: k === 0 ? 1 : 1.5,
+      tip: (i, v) => [label, `${fmt(edges[i], 2)} to ${fmt(edges[i + 1], 2)}${i === 0 && h.below ? ' (and below)' : i === last && h.above ? ' (and above)' : ''}`, share ? pct(v) : `${v}`] })
+  })
+  return <SweepPlot series={sweep} xScale="linear" xDomain={[lo, hi]} width={width} height={height} title={title} xLabel={xLabel} yLabel={share ? 'Share' : 'Count'}
+    include={[0]} yFormat={(v) => (share ? `${Math.round(100 * v)}%` : Number.isInteger(v) ? d3.format('~s')(v) : '')}
+    xMarkers={markers.map((mk) => ({ ...mk, color: mk.color ?? INK.text }))}
+    background={({ x, ih }) => bands.map((b, i) => { const sx = x as (v: number) => number
+      return <rect key={i} x={sx(b.lo)} width={Math.max(0, sx(b.hi) - sx(b.lo))} height={ih} fill={b.color} fillOpacity={0.14} /> })} />
 }
 
 /** A 2-D histogram (counts on a log colour scale) with reference lines through the origin. */
@@ -114,7 +97,7 @@ function Table({ head, rows, caption }: { head: string[]; rows: ReactNode[][]; c
   </table></div>
 }
 
-const NoMinute = ({ name }: { name: string }) => <Empty>No minute record for {name} in the repo's Drive mirror: only Jacros (Addis, MA350-0238) and Pasadena (JPL, MA350-0229) have one.</Empty>
+const NoMinute = ({ name }: { name: string }) => <Empty>No minute record for {name} in the repo's Drive mirror: only Addis (MA350-0238, filed as Jacros) and Pasadena (JPL, MA350-0229) have one.</Empty>
 
 // ------------------------------------------------------------------------------------------ flow QC
 
@@ -317,7 +300,8 @@ export function MinuteMissing({ sites, names }: { sites: Record<string, MinuteSi
   const [code, setCode] = useSearchParam<string>('aq.minmiss', 'ETAD-JACROS', [])
   const c = codes.includes(code) ? code : codes[0]
   const m = c ? sites[c].missing : null
-  const LOSS_COLOR: Record<number, string> = { 10: '#9ecae1', 20: '#4292c6', 40: '#08306b' }
+  // the heaviest loss in the darkest blue; on the dark page it turns to the palest, so it stays the strongest mark
+  const LOSS_COLOR: Record<number, string> = { 10: '#9ecae1', 20: '#4292c6', 40: themed('#08306b', '#c6dbef') }
   const blocks: IntervalBlock[] = m ? ['random', 'contiguous', 'rush-hour', 'high-pollution', 'low-pollution'].map((kind) => ({
     key: kind, title: kind,
     rows: [10, 20, 40].map((loss) => {
@@ -373,7 +357,7 @@ export function MinuteWindows({ sites, names, meta, rows }: { sites: Record<stri
   }))
   return (
     <ChartFrame id="aq-min-windows" title="Which day is the filter's day? — the 9am day against the calendar day, the ±1-day mean and the sampling window"
-      subtitle={`On every filter of the current subset that falls inside a minute record (Addis filters on Jacros, JPL filters on Pasadena): ${ch} BCc over the 9am day starting on the filter's start date, the calendar day, the mean of the 9am days either side (data_matching's legacy ±1-day match), and the filter's own sampling window (gallery weather export; at least half its minutes). Day means need 720 minutes. Where a filter's window runs 09:00 to 09:00 (most Addis filters) it is the 9am day itself. The strip is each alternative against the 9am day in percent (thick IQR, thin 2.5–97.5 %); the crossplot draws one alternative against it.`}
+      subtitle={`On every filter of the current subset that falls inside a minute record (Addis filters on the Addis record, JPL filters on Pasadena): ${ch} BCc over the 9am day starting on the filter's start date, the calendar day, the mean of the 9am days either side (data_matching's legacy ±1-day match), and the filter's own sampling window (gallery weather export; at least half its minutes). Day means need 720 minutes. Where a filter's window runs 09:00 to 09:00 (most Addis filters) it is the 9am day itself. The strip is each alternative against the 9am day in percent (thick IQR, thin 2.5–97.5 %); the crossplot draws one alternative against it.`}
       provenance={`research/ftir_ec_phase3/ftir_49_ma350_raw_chain_diagnostics B6 (filter_day_window_comparison), with the sampling window added · ${SOURCE}`}
       controls={<>
         <Segmented label="Channel" value={ch} options={['IR', 'Red']} onChange={setCh} />

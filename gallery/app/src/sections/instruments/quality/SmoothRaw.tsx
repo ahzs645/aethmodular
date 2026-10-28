@@ -1,17 +1,14 @@
-import { useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
-import { XAxis, YAxis } from '@/components/Axes'
 import { Crossplot } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { Key } from '@/components/Key'
-import { Marker } from '@/components/RefLines'
-import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
-import { useTooltip } from '@/hooks/useTooltip'
+import { histogramSeries, SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { coef, fmt } from '@/lib/format'
 import { useEstimator } from '@/lib/regressionPrefs'
 import { regression } from '@/lib/stats'
-import { FONT, INK, withUnit } from '@/lib/theme'
+import { INK, withUnit } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { DailyPanels, qLine, type PanelSpec } from './DailyPanels'
@@ -24,34 +21,20 @@ const REF_LABEL: Record<string, string> = { 'HIPS BC': 'HIPS', 'EC (FTIR)': 'FTI
 export const smoothRawPct = (raw: number | null | undefined, smooth: number | null | undefined) =>
   finite(raw) && finite(smooth) && raw !== 0 ? (100 * Math.abs(smooth - raw)) / Math.abs(raw) : null
 const rowPct = (r: FilterRow) => smoothRawPct(r[AETH_IR] as number, r[AETH_IR_SMOOTH] as number)
-const COLORS = { raw: '#9aa5b1', smooth: '#111827' }
+const COLORS = { get raw() { return INK.identity }, get smooth() { return INK.text } }
 
 /** How far the pipeline's smoothing moves each filter's IR BCc: one histogram per site with the thresholds. */
 function PctHistogram({ values, color, width, thresholds, title }: { values: number[]; color: string; width: number; thresholds: number[]; title: string }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const tip = useTooltip(ref)
-  const m = { top: 22, right: 12, bottom: 40, left: 44 }, h = 180
-  const iw = Math.max(120, width - m.left - m.right), ih = h - m.top - m.bottom
   const top = Math.min(20, Math.max(thresholds[thresholds.length - 1] + 1, d3.max(values) ?? 1))
   const bins = d3.bin().domain([0, top]).thresholds(d3.range(0, top, 0.5))(values.map((v) => Math.min(v, top - 1e-9)))
-  const x = d3.scaleLinear().domain([0, top]).range([0, iw])
-  const y = d3.scaleLinear().domain([0, d3.max(bins, (b) => b.length) ?? 1]).nice().range([ih, 0])
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <svg width={iw + m.left + m.right} height={h} fontFamily={FONT.family}>
-        <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>
-        <g transform={`translate(${m.left},${m.top})`}>
-          <YAxis scale={y} x={0} gridWidth={iw} tickCount={3} label="Filters" labelX={-32} />
-          {bins.map((b, i) => <rect key={i} x={x(b.x0!) + 0.5} width={Math.max(0, x(b.x1!) - x(b.x0!) - 1)} y={y(b.length)} height={ih - y(b.length)} fill={color} fillOpacity={0.75}
-            onMouseMove={(e) => tip.show(e, [`${b.x0}–${b.x1} %${b.x1 === top ? ' and above' : ''}`, `${b.length} filters`])} onMouseLeave={tip.hide} />)}
-          {thresholds.map((t) => <Marker key={t} orient="v" at={x(t)} from={0} to={ih} color={INK.text} opacity={0.6} label={`${t}`} />)}
-          <XAxis scale={x} y={ih} tickCount={5} label="|smoothed − raw| / raw (%)" labelDy={32} />
-        </g>
-      </svg>
-      <p className="chart-note" style={{ marginTop: 0 }}>kept: {thresholds.map((t) => `≤${t} % ${Math.round((100 * values.filter((v) => v <= t).length) / Math.max(1, values.length))} %`).join(' · ')}</p>
-      {tip.node}
-    </div>
-  )
+  const edges = [...bins.map((b) => b.x0!), bins[bins.length - 1].x1!]
+  const series = histogramSeries({ id: 'filters', label: 'filters', color, edges, counts: bins.map((b) => b.length), fill: 0.75, width: 1,
+    tip: (i, n) => [`${edges[i]}–${edges[i + 1]} %${edges[i + 1] === top ? ' and above' : ''}`, `${n} filters`] })
+  return <div>
+    <SweepPlot series={[series]} xScale="linear" xDomain={[0, top]} width={width} height={180} title={title} xLabel="|smoothed − raw| / raw (%)" yLabel="Filters"
+      include={[0]} yFormat={(v) => (Number.isInteger(v) ? fmt(v, 0) : '')} xMarkers={thresholds.map((t) => ({ at: t, label: `${t}`, color: INK.text }))} />
+    <p className="chart-note" style={{ marginTop: 0 }}>kept: {thresholds.map((t) => `≤${t} % ${Math.round((100 * values.filter((v) => v <= t).length) / Math.max(1, values.length))} %`).join(' · ')}</p>
+  </div>
 }
 
 /**
@@ -147,7 +130,7 @@ export function SmoothTimeline({ code, all, meta, index }: { code: string; all: 
     lines: [qLine(`${c}.smoothed`, 'Smoothed BCc (DEMA)', COLORS.raw), { key: `${c}raw`, label: 'Raw BCc', color: COLORS.smooth, value: (d: Day) => d.bc[c], digits: 3, dash: '3 2' }],
   }))
   panels.push({ key: 'pct', title: 'IR smoothed − raw (%)', refs: [{ at: 0, label: '0' }],
-    lines: [{ key: 'pct', label: 'IR (smoothed − raw) / raw', color: '#c026d3', value: (d) => (finite(d.bc.IR) && finite(d.q('IR.smoothed')) && d.bc.IR !== 0 ? (100 * (d.q('IR.smoothed')! - d.bc.IR!)) / d.bc.IR! : null), digits: 2 }] })
+    lines: [{ key: 'pct', label: 'IR (smoothed − raw) / raw', color: INK.deming, value: (d) => (finite(d.bc.IR) && finite(d.q('IR.smoothed')) && d.bc.IR !== 0 ? (100 * (d.q('IR.smoothed')! - d.bc.IR!)) / d.bc.IR! : null), digits: 2 }] })
   // the smoothing per channel and site: the share of IR days that also have a smoothed value
   const table = Object.entries(all).map(([c, ds]) => {
     const ir = ds.filter((d) => finite(d.bc.IR))
@@ -156,7 +139,7 @@ export function SmoothTimeline({ code, all, meta, index }: { code: string; all: 
   })
   return (
     <ChartFrame id="aq-smooth-timeline" title={`${instrumentName(code, meta)} · raw and smoothed BCc, day by day`}
-      subtitle={`Daily means of the raw BCc and of the pickles' smoothed BCc (${channels.length ? channels.join(', ') : 'none'} at this instrument), and the IR difference in percent. The smoothed column is the cleaning pipeline's DEMA, src/data/qc/pkl_cleaning.py, which the notebooks call instrument-smoothed (a 10-minute DEMA per tape spot, so its daily mean sits on the raw one). The notebook's own rolling medians, diurnal profiles and IQR widths are in the minute-level charts below, for Jacros and Pasadena.`}
+      subtitle={`Daily means of the raw BCc and of the pickles' smoothed BCc (${channels.length ? channels.join(', ') : 'none'} at this instrument), and the IR difference in percent. The smoothed column is the cleaning pipeline's DEMA, src/data/qc/pkl_cleaning.py, which the notebooks call instrument-smoothed (a 10-minute DEMA per tape spot, so its daily mean sits on the raw one). The notebook's own rolling medians, diurnal profiles and IQR widths are in the minute-level charts below, for Addis and Pasadena.`}
       provenance="smoothing_comparison (raw vs smoothed; availability table) · HIPS_Aeth_SmoothRaw_Analysis · processed_sites/*.pkl">
       {panels.length > 1 ? <DailyPanels days={days} panels={panels} periods={index.flow_periods[code]} panelHeight={100} /> : <Empty>This instrument has no smoothed BCc.</Empty>}
       <div style={{ overflowX: 'auto' }}><table className="census-table">

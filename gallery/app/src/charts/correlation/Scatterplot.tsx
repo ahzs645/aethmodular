@@ -16,7 +16,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { PanelAxesControl } from '@/lib/panelAxes'
 import { useTooltip } from '@/hooks/useTooltip'
-import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
+import { FocusLayer, focusStyle, useHighlight } from '@/lib/highlight'
 import { useFilterEdits } from '@/lib/filterEdits'
 import { inDomain, pairDomain, panelAxesKey, type AxesOpts, type PairDomain, robustDomain } from '@/lib/axes'
 import { regression, fmt, type RegressionStats } from '@/lib/stats'
@@ -307,8 +307,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
     : { gridTemplateColumns: `repeat(${cols}, ${innerW + MARGIN.left + MARGIN.right}px)`, columnGap: GAP, width: 'max-content', marginLeft: 'auto', marginRight: 'auto' }
 
   // the hover read for this chart's filters only, and each panel told only of a hover inside it
-  const chartKeys = useMemo(() => new Set(points.map((p) => p.row.id)), [points])
-  const { focusId } = useHighlight(chartKeys)
+  // the hover is read inside each panel (FocusLayer), so a hover never re-renders the chart, its controls or its fits
   // the handlers read the latest state through a ref, so the panels get the same functions every render
   const live = useRef({ enter: (_e: React.MouseEvent, _pt: Point) => {}, leave: () => {}, click: (_row: FilterRow) => {}, brush: (_ids: Set<string> | null) => {} })
   live.current = {
@@ -366,7 +365,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
                 radiusOf={radiusOf}
                 dimOf={dimOf}
                 fitDim={p.title && colorBy !== 'Season' ? dim(p.title) : 1}
-                focusId={focusId && p.ids.has(focusId) ? focusId : null}
+                keys={p.ids}
                 selected={hl.selected}
                 brushing={brushing}
                 onBrush={stable.onBrush}
@@ -431,7 +430,7 @@ const NO_KEYS: ReadonlySet<string> = new Set()
 const READOUT_INSET = 12
 
 const ScatterPanel = memo(function ScatterPanel({
-  title, titleColor, legend, hidden, hover, onToggle, onHover, points, stats, fitGroups, domain, innerW, innerH, axes, showFit, xLabel, yLabel, colorOf, radiusOf, dimOf, fitDim, focusId, selected, brushing, onBrush, onEnter, onLeave, onClick, grouping, siteColoring, seasonColoring,
+  title, titleColor, legend, hidden, hover, onToggle, onHover, points, stats, fitGroups, domain, innerW, innerH, axes, showFit, xLabel, yLabel, colorOf, radiusOf, dimOf, fitDim, keys, selected, brushing, onBrush, onEnter, onLeave, onClick, grouping, siteColoring, seasonColoring,
 }: {
   /** the grouping the chart draws (lib/regressionPrefs effectiveGrouping), not the raw setting */
   grouping: FitGrouping
@@ -459,7 +458,8 @@ const ScatterPanel = memo(function ScatterPanel({
   radiusOf: (p: Point) => number
   dimOf: (p: Point) => number
   fitDim: number
-  focusId: string | null
+  /** the panel's filter ids: its FocusLayer listens to a hover or pin of these only */
+  keys: ReadonlySet<string>
   selected: Set<string> | null
   brushing: boolean
   onBrush: (ids: Set<string> | null) => void
@@ -475,8 +475,9 @@ const ScatterPanel = memo(function ScatterPanel({
     // Keep the compact intercept margins and equal spans from pairDomain.
     return axes.mode === 'Show intercept' ? scale : scale.nice()
   }
-  const xScale = mk(domain.x, [0, innerW])
-  const yScale = mk(domain.y, [innerH, 0])
+  // the same scales until the axes change, so a hover (which re-renders the panel) keeps the Delaunay index below
+  const { xScale, yScale } = useMemo(() => ({ xScale: mk(domain.x, [0, innerW]), yScale: mk(domain.y, [innerH, 0]) }),
+    [domain, innerW, innerH, axes.log, axes.mode]) // eslint-disable-line react-hooks/exhaustive-deps
   const [d0, d1] = xScale.domain() as [number, number]
   // On log axes a fitted line goes negative somewhere left of the data, and a
   // log scale maps that to NaN (React then drops the attribute). Clamp the
@@ -484,9 +485,30 @@ const ScatterPanel = memo(function ScatterPanel({
   const yFloor = yScale.domain()[0] as number
   const yv = (v: number) => (axes.log ? Math.max(yFloor, v) : v)
   const drawn = useMemo(() => points.filter((p) => inDomain(domain, p.x, p.y)), [points, domain])
+  const dots = useMemo(() => drawn.map((p) => {
+    const st = focusStyle(p.row.id, null, { r: radiusOf(p) }, selected)
+    const k = dimOf(p)
+    return (
+      <circle
+        key={p.row.id}
+        data-export-season={seasonColoring ? p.row.season : undefined} data-export-site={siteColoring ? p.row.site : undefined} data-export-color={siteColoring || seasonColoring ? colorOf(p) : undefined}
+        cx={xScale(p.x)}
+        cy={yScale(p.y)}
+        r={st.r}
+        fill={colorOf(p)}
+        fillOpacity={st.opacity * k}
+        stroke={st.stroke}
+        strokeOpacity={k}
+        strokeWidth={st.strokeWidth}
+        data-dot={k === 1 ? st.dot : undefined}
+        pointerEvents="none"
+      />
+    )
+  }), [drawn, xScale, yScale, selected, colorOf, radiusOf, dimOf, siteColoring, seasonColoring])
   // closest-point detection: one Delaunay over the drawn points, one hit rect
   const delaunay = useMemo(() => d3.Delaunay.from(drawn, (p) => xScale(p.x), (p) => yScale(p.y)), [drawn, xScale, yScale])
   const hoverRef = useRef<Point | null>(null)
+  const dotsRef = useRef<SVGGElement>(null)
   const HIT = 18
   // d3.brush owns its own DOM, so it is attached imperatively to an empty <g>
   const brushRef = useRef<SVGGElement>(null)
@@ -602,26 +624,14 @@ const ScatterPanel = memo(function ScatterPanel({
             )}
           </g>
 
-          {focusLast(drawn, (p) => p.row.id, focusId).map(([p]) => {
-            const st = focusStyle(p.row.id, focusId, { r: radiusOf(p) }, selected)
-            const k = dimOf(p)
-            return (
-              <circle
-                key={p.row.id}
-                data-export-season={seasonColoring ? p.row.season : undefined} data-export-site={siteColoring ? p.row.site : undefined} data-export-color={siteColoring || seasonColoring ? colorOf(p) : undefined}
-                cx={xScale(p.x)}
-                cy={yScale(p.y)}
-                r={st.r}
-                fill={colorOf(p)}
-                fillOpacity={st.opacity * k}
-                stroke={st.stroke}
-                strokeOpacity={k}
-                strokeWidth={st.strokeWidth}
-                data-dot={k === 1 ? st.dot : undefined}
-                pointerEvents="none"
-              />
-            )
-          })}
+          {/* the dots do not depend on the hover: a focus dims them all with one class (styles.css .scatter-dots)
+              and draws the focused filter again on top, so a hover re-renders two circles, not every dot */}
+          <g ref={dotsRef} className="scatter-dots">{dots}</g>
+          <FocusLayer keys={keys} items={drawn} idOf={(p) => p.row.id} groupRef={dotsRef} render={(p) => {
+            const st = focusStyle(p.row.id, p.row.id, { r: radiusOf(p) })
+            return <circle cx={xScale(p.x)} cy={yScale(p.y)} r={st.r} fill={colorOf(p)} fillOpacity={st.opacity * dimOf(p)}
+              stroke={st.stroke} strokeWidth={st.strokeWidth} pointerEvents="none" />
+          }} />
 
           {/* the hit layer: closest point wins, within HIT px of the pointer; the brush replaces it while selecting */}
           {!brushing && (
@@ -659,3 +669,4 @@ const ScatterPanel = memo(function ScatterPanel({
     </div>
   )
 })
+
