@@ -48,13 +48,13 @@ const nth = (v: number | undefined) => { if (v == null || !Number.isFinite(v)) r
   return `${n}${t >= 11 && t <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}` }
 const POP_COLOR: Record<string, string> = { 'IMPROVE (TOR)': IMPROVE_GREY, 'SPARTAN network': SPARTAN, 'SPARTAN Addis': ADDIS_ALL, 'Adama pilot (TOR)': ADAMA }
 const POP_LABEL: Record<string, string> = { 'IMPROVE (TOR)': 'IMPROVE sites (TOR)', 'SPARTAN network': 'other SPARTAN sites (FTIR)', 'SPARTAN Addis': 'SPARTAN Addis (FTIR)', 'Adama pilot (TOR)': 'Adama pilot (TOR)' }
-const AXIS_INFO: Record<string, { label: string; short: string; unit: string; log: boolean; about: string }> = {
-  'EC µg/filter': { label: 'EC per filter', short: 'EC / filter', unit: 'µg', log: true, about: 'EC mass on the filter (concentration × sampled volume): what the spectrum actually sees' },
-  'EC µg/m³': { label: 'EC concentration', short: 'EC / m³', unit: 'µg/m³', log: true, about: 'EC in the air sampled' },
-  'PM2.5 µg/filter': { label: 'Weighed PM2.5 per filter', short: 'PM2.5 / filter', unit: 'µg', log: true, about: 'gravimetric mass on the filter (none for Adama)' },
-  'OC/EC': { label: 'OC/EC', short: 'OC/EC', unit: 'ratio', log: true, about: 'organic over elemental carbon: composition, independent of loading' },
-  'distance percentile': { label: 'Spectral distance', short: 'Distance', unit: 'percentile in IMPROVE', log: false, about: 'how unlike the calibration set the spectrum is (larger of T² and Q, percentile among held-out IMPROVE filters)' },
-  'volume m³': { label: 'Sampled volume', short: 'Volume', unit: 'm³', log: true, about: 'air drawn through the filter (the Adama sampler runs at a low flow)' },
+const AXIS_INFO: Record<string, { label: string; short: string; unit: string; log: boolean }> = {
+  'EC µg/filter': { label: 'EC per filter', short: 'EC / filter', unit: 'µg', log: true },
+  'EC µg/m³': { label: 'EC concentration', short: 'EC / m³', unit: 'µg/m³', log: true },
+  'PM2.5 µg/filter': { label: 'Weighed PM2.5 per filter', short: 'PM2.5 / filter', unit: 'µg', log: true },
+  'OC/EC': { label: 'OC/EC', short: 'OC/EC', unit: 'ratio', log: true },
+  'distance percentile': { label: 'Spectral distance', short: 'Distance', unit: 'percentile in IMPROVE', log: false },
+  'volume m³': { label: 'Sampled volume', short: 'Volume', unit: 'm³', log: true },
 }
 
 export function TorStudy() {
@@ -478,11 +478,6 @@ function NetworkScatter({ d }: { d: TorData }) {
         }} />
       </AxisChoices>
       <Legend {...lg.props} items={order.map((p) => ({ label: POP_LABEL[p], color: POP_COLOR[p] }))} note="click to show or hide" />
-      <div style={{ fontSize: 11.5, color: INK.muted, display: 'grid', gap: 2, marginTop: 4 }}>
-        <div><strong style={{ color: INK.text }}>Across · {X.label}:</strong> {X.about}.</div>
-        <div><strong style={{ color: INK.text }}>Up · {Y.label}:</strong> {Y.about}.</div>
-        <div>EC and OC are TOR for IMPROVE and Adama, the published FTIR product for SPARTAN sites.</div>
-      </div>
     </ChartFrame>
   )
 }
