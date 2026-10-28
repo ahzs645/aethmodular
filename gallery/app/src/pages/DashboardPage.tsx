@@ -51,12 +51,26 @@ export function DashboardPage({ data, dash, setDash, filters, onScope, onPickSit
   const tiles = sheet.tiles
   const setSheets = (next: Sheet[] | null, sheetIdx = active) => setDash({ ...dash, sheet: sheetIdx, sheets: { ...dash.sheets, [scope]: next } })
   const setTiles = (next: Tile[]) => setSheets(sheets.map((s, i) => (i === active ? { ...s, tiles: next } : s)))
-  const [edit, setEdit] = useState(false)
+  // arranging, the chart Focus shows large and a maximised tile are in the URL too, so a reload or a shared
+  // link reopens the dashboard as it was being set up (the add dialog and presenting are moments, not states)
+  const [editParam, setEditParam] = useSearchParam<string>('dedit', '0', ['0', '1'])
+  const edit = editParam === '1'
+  const setEdit = (on: boolean) => setEditParam(on ? '1' : '0')
   const [adding, setAdding] = useState(false)
-  const [maxId, setMaxId] = useState<string | null>(null)
-  const [focusId, setFocusId] = useState<string | null>(null)
+  const [maxParam, setMaxParam] = useSearchParam<string>('dmax', '')
+  const [focusParam, setFocusParam] = useSearchParam<string>('dfocus', '')
+  const maxId = maxParam || null, focusId = focusParam || null
+  const setMaxId = (id: string | null) => setMaxParam(id ?? '')
+  const setFocusId = (id: string | null) => setFocusParam(id ?? '')
   const phone = usePhone()
-  useEffect(() => { setMaxId(null); setFocusId(null) }, [scope, active])
+  // another scope or sheet has other tiles: its maximised and focused tile start over (not on the first render,
+  // which would clear the ones a link opened with)
+  const openSheet = useRef(`${scope}/${active}`)
+  useEffect(() => {
+    if (openSheet.current === `${scope}/${active}`) return
+    openSheet.current = `${scope}/${active}`
+    setMaxId(null); setFocusId(null)
+  }, [scope, active]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // presenting: no header and no tile chrome, the window (full screen where the browser allows);
   // → / ← (or Page Down / Up, space) step through the scope's sheets, Esc ends it
