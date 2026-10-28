@@ -1,8 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Combobox } from '@/components/Combobox'
 import { StepButton } from '@/components/StepButton'
 import { FrameFit } from '@/lib/chartFit'
 import { useExportRender } from '@/lib/exportRender'
+import { useSearchParam } from '@/lib/url'
+import type { ControlsSide } from '@/lib/chartDisplay'
 
 /**
  * Single-chart view: the page shows one chart at a time, filling the window, and ‹ › (in the chart's
@@ -33,19 +36,31 @@ interface SingleView {
   /** the stats box above the chart's options, where the active chart's regression summary goes */
   slot: HTMLElement | null
   setSlot: (n: HTMLElement | null) => void
+  /** where the chart in view has its options (a chart's own placement still wins) */
+  side: ControlsSide
+  setSide: (v: ControlsSide) => void
 }
 
-const Ctx = createContext<SingleView>({ on: false, setOn: () => {}, available: false, active: null, index: 0, count: 0, title: '', charts: [], go: () => {}, jump: () => {}, slot: null, setSlot: () => {} })
+const Ctx = createContext<SingleView>({ on: false, setOn: () => {}, available: false, active: null, index: 0, count: 0, title: '', charts: [], go: () => {}, jump: () => {}, slot: null, setSlot: () => {}, side: 'right', setSide: () => {} })
 
-const KEY = 'aeth-gallery:single'
-/** the on/off switch, kept in App so the provider can turn it off on the Dashboard */
+/**
+ * The on/off switch, kept in App so the provider can turn it off on the Dashboard. In the link (`view=single`),
+ * with the chart in view (`chart=`, its frame key) and where its options sit (`side=`), so a shared link opens
+ * on the same chart laid out the same way.
+ */
 export function useSingleViewPref(): [boolean, (v: boolean) => void] {
-  const [on, setOnState] = useState(() => { try { return localStorage.getItem(KEY) === '1' } catch { return false } })
-  const setOn = useCallback((v: boolean) => {
-    setOnState(v)
-    try { localStorage.setItem(KEY, v ? '1' : '0') } catch { /* the choice still holds for the session */ }
-  }, [])
-  return [on, setOn]
+  const [view, setView] = useSearchParam<'page' | 'single'>('view', 'page', ['page', 'single'])
+  return [view === 'single', useCallback((v: boolean) => setView(v ? 'single' : 'page'), [setView])]
+}
+
+/** a query parameter written beside the ones useSearchParam keeps (null removes it) */
+function setQuery(name: string, value: string | null) {
+  const url = new URL(window.location.href)
+  if ((url.searchParams.get(name) ?? null) === value) return
+  if (value === null) url.searchParams.delete(name)
+  else url.searchParams.set(name, value)
+  window.history.replaceState(null, '', url)
+  window.dispatchEvent(new Event('gallery:querychange'))
 }
 
 /** left in view beside the chart: the sidebar, its scrim, drawers and the brush bar */
@@ -87,12 +102,24 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
   const [slot, setSlot] = useState<HTMLElement | null>(null)
   const want = useRef<HTMLElement | null>(null)
   const at = useRef(0)
-  // a new tab or meeting starts at its first chart
-  useEffect(() => { want.current = null; at.current = 0; setIndex(0) }, [page])
+  const [side, setSide] = useSearchParam<ControlsSide>('side', 'right', ['right', 'left', 'top'])
+  // the link's chart (`chart=`, or a `focus=` link's): opened once its frame has drawn
+  const asked = useRef<string | null>(null)
+  const shown = useRef<string | null>(null)
+  // read once, as the link arrived: the chart in view is written back to `chart=` as soon as one shows
+  const [linked] = useState(() => { const q = new URL(window.location.href).searchParams; return q.get('chart') ?? q.get('focus') })
+  useEffect(() => {
+    // the link's chart on the page the link opened (a re-run for the same page keeps it); a new tab or meeting
+    // starts at its first chart
+    if (shown.current === null || shown.current === page) asked.current = linked
+    else asked.current = null
+    shown.current = page
+    want.current = null; at.current = 0; setIndex(0)
+  }, [page])
 
   useEffect(() => {
     document.documentElement.dataset.single = on ? '1' : '0'
-    if (!on) { clearMarks(); setFrames([]); return }
+    if (!on) { clearMarks(); setFrames([]); setQuery('chart', null); return }
     let raf = 0
     const apply = () => {
       raf = 0
@@ -100,6 +127,10 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
       const root = document.querySelector('[data-single-root]')
       if (!root) return
       const list = framesIn(root)
+      if (asked.current) {
+        const found = list.find((f) => f.dataset.frameKey === asked.current)
+        if (found) { want.current = found; asked.current = null }
+      }
       let i = want.current ? list.indexOf(want.current) : -1
       if (i < 0) i = Math.max(0, Math.min(at.current, list.length - 1))
       const el = list[i] ?? null
@@ -127,6 +158,8 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
     const list = framesIn(root)
     if (!list.length) return
     const i = (to + list.length) % list.length
+    // a focus link's overlay belongs to the chart it opened on, not the next one
+    if (new URL(window.location.href).searchParams.has('focus')) { setQuery('focus', null); window.dispatchEvent(new Event('gallery-focus')) }
     clearMarks()
     mark(root, list[i])
     want.current = list[i]
@@ -151,6 +184,8 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
   }, [on, go])
 
   const active = on ? frames[index] ?? null : null
+  // the chart in view, in the link
+  useEffect(() => { if (active?.dataset.frameKey) setQuery('chart', active.dataset.frameKey) }, [active])
   const charts = useMemo(() => {
     const root = document.querySelector('[data-single-root]')
     const groups = root ? sectionsOf(root, frames) : []
@@ -158,8 +193,8 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
   }, [frames])
   const value = useMemo<SingleView>(() => ({
     on, setOn, available, active, index, count: on ? frames.length : 0,
-    title: active?.dataset.frameTitle ?? '', charts, go, jump, slot, setSlot,
-  }), [on, setOn, available, active, index, frames.length, charts, go, jump, slot])
+    title: active?.dataset.frameTitle ?? '', charts, go, jump, slot, setSlot, side, setSide,
+  }), [on, setOn, available, active, index, frames.length, charts, go, jump, slot, side, setSide])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
@@ -180,6 +215,8 @@ export function SingleFit({ children }: { children: ReactNode }) {
   const exporting = !!render && render.panel === active
   const [fit, setFit] = useState<number | null>(null)
   const tries = useRef(0)
+  // the fitting has found its height (or given up): the zoom below waits for it, or it would scale a chart still growing
+  const settled = useRef(false)
   const [size, setSize] = useState(() => window.innerHeight)
   useEffect(() => {
     if (!active) return
@@ -215,8 +252,14 @@ export function SingleFit({ children }: { children: ReactNode }) {
         if (!plots.length) continue
         const rects = plots.map((p) => p.getBoundingClientRect())
         const span = Math.max(...rects.map((r) => r.right)) - Math.min(...rects.map((r) => r.left))
-        // stacked, the legend is as wide as its widest item (a Legend can hold its items in an inner .legend)
-        const stacked = Math.max(0, ...[...legend.querySelectorAll('.legend-item, .legend-group-name, .legend-note')].map((c) => c.getBoundingClientRect().width))
+        // stacked, the legend is as wide as its widest item (a Legend can hold its items in an inner .legend); a colour
+        // ramp's item stacks too, its label over the ramp, which stands up beside the plot (components/ColorLegend .ramp-v)
+        const width = (c: Element) => {
+          const upright = c.querySelector('.ramp-v')
+          if (!upright) return c.getBoundingClientRect().width
+          return Math.max(Number(upright.getAttribute('width')) || 0, ...[...c.children].filter((k) => !k.querySelector('.ramp-v') && !k.classList.contains('ramp-v')).map((k) => k.getBoundingClientRect().width))
+        }
+        const stacked = Math.max(0, ...[...legend.querySelectorAll('.legend-item, .legend-group-name, .legend-note')].map(width))
         const beside = wrap.hasAttribute('data-legend-beside')
         const want = wrap.clientWidth - span >= stacked + 32 + (beside ? 0 : 56)
         if (want !== beside) { wrap.toggleAttribute('data-legend-beside', want); moved = true }
@@ -238,7 +281,8 @@ export function SingleFit({ children }: { children: ReactNode }) {
   }, [active, exporting])
   useLayoutEffect(() => {
     // while an export copies the chart, its size holds (the summary back above the axes makes it taller)
-    if (!active || exporting || tries.current >= 6) return
+    if (!active || exporting) return
+    if (tries.current >= 6) { settled.current = true; return }
     const chart = active.querySelector('.frame-chart')
     if (!chart) return
     const BOTTOM = 18
@@ -248,15 +292,62 @@ export function SingleFit({ children }: { children: ReactNode }) {
     const guess = fit === null
     // first a guess from where the chart starts, then the chart's own overflow or room left (the chart, not the
     // panel: an options column longer than the window must not shrink the plot)
+    // measured unscaled: the zoom below scales a chart that cannot fit, and must not feed back into its height
+    const rect = chart.getBoundingClientRect()
+    const bottom = rect.top + rect.height / (Number((chart as HTMLElement).style.zoom) || 1)
     const next = Math.max(240, Math.round(guess
-      ? size - chart.getBoundingClientRect().top - window.scrollY - BOTTOM - 40
-      : fit + size - BOTTOM - pad - (chart.getBoundingClientRect().bottom + window.scrollY)))
-    if (!guess && Math.abs(next - fit) <= 2) return
+      ? size - rect.top - window.scrollY - BOTTOM - 40
+      : fit + size - BOTTOM - pad - (bottom + window.scrollY)))
+    if (!guess && Math.abs(next - fit) <= 2) { settled.current = true; return }
+    settled.current = false
     tries.current += 1
     setFit(next)
   })
+  // A chart that draws at its own size (a fixed height, a capped side) is scaled up to the room once the fitting
+  // has settled, up to ZOOM_MAX, when it leaves both height and width spare. A chart that follows the fitted height
+  // already fills it and stays at 1. Never down: a chart that lays itself out from its room (rows that fit, a width
+  // it fills) would redraw against the scale. CSS zoom reflows the layout and keeps pointer positions true; it is
+  // off while the chart is exported, so the file is drawn at its size.
+  useEffect(() => {
+    const chart = active?.querySelector<HTMLElement>('.frame-chart')
+    if (!chart || exporting) return
+    let timer = 0, steps = 0
+    // the chart's slot, measured at zoom 1 where the chart fills it (its own width is set once it is scaled)
+    let slot = 0
+    const scale = () => {
+      timer = 0
+      if (!settled.current) { later(); return }
+      const k0 = Number(chart.style.zoom) || 1
+      // what the chart draws (plots and legends), as laid out now: its natural size is that at zoom 1
+      const drawn = [...chart.querySelectorAll<Element>('svg, canvas, img, .legend')]
+        .filter((m) => !m.parentElement?.closest('svg, .legend') && m.getClientRects().length)
+      if (!drawn.some((m) => m.tagName !== 'DIV') || chart.querySelector('table')) return
+      const rects = drawn.map((m) => m.getBoundingClientRect())
+      const box = chart.getBoundingClientRect()
+      const natW = (Math.max(...rects.map((r) => r.right)) - Math.min(...rects.map((r) => r.left))) / k0
+      const natH = box.height / k0
+      const roomH = size - 18 - (parseFloat(getComputedStyle(active!).paddingBottom) || 0) - (box.top + window.scrollY)
+      if (k0 === 1 && !chart.style.width) slot = box.width
+      const roomW = slot || box.width
+      const want = Math.max(1, Math.min(ZOOM_MAX, roomH / natH, roomW / natW))
+      const k = Math.abs(want - 1) < 0.04 ? 1 : +want.toFixed(3)
+      if (Math.abs(k - k0) <= 0.01 || steps++ >= 4) return
+      // scaled up, the chart's own width shrinks by the scale, so it still spans the room
+      if (k === 1) { chart.style.zoom = ''; chart.style.width = ''; return }
+      chart.style.width = `${Math.round(roomW / k)}px`
+      chart.style.zoom = String(k)
+    }
+    const later = () => { if (timer) clearTimeout(timer); timer = window.setTimeout(scale, 450) }
+    later()
+    const ro = new ResizeObserver(later)
+    ro.observe(chart)
+    return () => { ro.disconnect(); if (timer) clearTimeout(timer); chart.style.zoom = ''; chart.style.width = '' }
+  }, [active, exporting, size])
   return <FrameFit height={active && !exporting ? fit : null}>{children}</FrameFit>
 }
+
+/** how far the single-chart view scales up a chart that draws at its own size (SingleFit) */
+const ZOOM_MAX = 1.6
 
 /** The header button: on, the page shows one chart at a time. */
 export function SingleViewToggle({ icon }: { icon: ReactNode }) {
@@ -300,10 +391,24 @@ export function SingleViewNav({ children }: { children?: ReactNode }) {
 }
 
 /**
- * Directly above the chart's options: its fit statistics, drawn here instead of above the axes. Left
- * out of exports (data-export="skip"); an open export draws them back in the chart.
+ * Directly above the chart's options: its fit statistics, drawn here instead of above the axes, and its
+ * notes and readouts (ChartAside). Left out of exports (data-export="skip"); an open export draws them
+ * back in the chart.
  */
 export function SingleViewStats() {
   const { setSlot } = useSingleView()
   return <div ref={setSlot} className="single-stats" data-export="skip" />
+}
+
+/** ChartFrame's stats box while its chart is the one in view (and not being exported), else null */
+export const AsideSlotCtx = createContext<HTMLElement | null>(null)
+
+/**
+ * A chart's notes and readouts (what the reader is told about the plot, under or beside it): in place,
+ * or in the stats box beside the chart's options when the chart is the one in single-chart view, so the
+ * plot has the room. components/ChartFrame Note uses it; a chart with its own note markup wraps it.
+ */
+export function ChartAside({ children }: { children: ReactNode }) {
+  const slot = useContext(AsideSlotCtx)
+  return slot ? createPortal(children, slot) : <>{children}</>
 }

@@ -1,5 +1,6 @@
 import { Combobox } from '@/components/Combobox'
 import { DYN_COLORS, DYN_VARS, presetsFor, type DynCond, type DynRule, type DynSeason } from '@/lib/dynamicSeasons'
+import { XIcon } from '@/components/Icons'
 
 const CUSTOM = 'custom'
 
@@ -56,8 +57,8 @@ function RuleSeasons({ rule, onChange, num }: { rule: Extract<DynRule, { kind: '
           <div className="dyn-season-head">
             <span className="season-swatch" style={{ background: DYN_COLORS[i % DYN_COLORS.length] }} />
             <input className="select" value={s.name} maxLength={40} aria-label={`Season ${i + 1} name`} onChange={(e) => setSeason(i, { ...s, name: e.target.value })} />
-            {rule.seasons.length > 2 && <button type="button" className="btn quiet" aria-label={`Remove ${s.name}`} title="Remove this season"
-              onClick={() => setSeasons(rule.seasons.filter((_, j) => j !== i))}>×</button>}
+            {rule.seasons.length > 2 && <button type="button" className="btn quiet x-btn" aria-label={`Remove ${s.name}`} title="Remove this season"
+              onClick={() => setSeasons(rule.seasons.filter((_, j) => j !== i))}><XIcon /></button>}
           </div>
           {i === last ? <div className="dyn-cond dyn-otherwise">every other day</div> : <>
             {s.when.map((c, k) => {
@@ -78,7 +79,7 @@ function RuleSeasons({ rule, onChange, num }: { rule: Extract<DynRule, { kind: '
                   onChange={(e) => setCond(i, k, { ...c, pct: e.target.value === 'pct' })}>
                   <option value="abs">{unit}</option><option value="pct">th pct (site)</option>
                 </select>
-                <button type="button" className="btn quiet" aria-label="Remove this condition" onClick={() => setSeason(i, { ...s, when: s.when.filter((_, j) => j !== k) })}>×</button>
+                <button type="button" className="btn quiet x-btn" aria-label="Remove this condition" onClick={() => setSeason(i, { ...s, when: s.when.filter((_, j) => j !== k) })}><XIcon /></button>
               </div>
             })}
             <button type="button" className="btn quiet dyn-add" onClick={() => addCond(i)}>+ condition</button>

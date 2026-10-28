@@ -12,6 +12,7 @@ import { fmt, splitAtGaps } from '@/lib/stats'
 import { INK, MARGIN } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile, MetaFile } from '@/lib/types'
 import { groupColorFn, presetName } from './common'
+import { ChartAside } from '@/lib/singleView'
 
 const ROLL_LABEL = '45-day rolling median'
 const DEPLOYED_LABEL = 'deployed SPARTAN EC (hollow)'
@@ -153,7 +154,7 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
             </tbody>
           </table>
         )}
-        {handNote && <p className="chart-note">{handNote}</p>}
+        {handNote && <ChartAside><p className="chart-note">{handNote}</p></ChartAside>}
         {tip.node}
       </div>
     </ChartFrame>

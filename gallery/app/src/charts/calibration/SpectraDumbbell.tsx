@@ -12,6 +12,7 @@ import type { CalibFile, CalibRow } from '@/lib/types'
 import { METRICS, SPECTRA_COLOR, cohortColor, fmtFit, isInterceptMetric, isSlopeMetric, metricLabel, metricOf, sameConfig, type Config, type Metric } from './common'
 import { COHORT, COHORT_SHORT, CV_PROTOCOL, METRIC, PREPROCESSING, SELECTION_SPACE, label as nameOf } from '@/lib/labels'
 import { AxisChoices } from '@/components/AxisChoices'
+import { ChartAside } from '@/lib/singleView'
 
 const ROWSETS = ['Locked cutoffs', 'One cohort, every cutoff'] as const
 const spectraColor = (sp: string) => SPECTRA_COLOR[sp] ?? BASELINE_COLOR[sp] ?? INK.muted
@@ -173,7 +174,7 @@ export function SpectraDumbbell({ calib, selected, onSelect }: { calib: CalibFil
           {...lg.props}
           note={isSlopeMetric(metric) ? `shaded = slope box ${calib.slope_box[0]}–${calib.slope_box[1]}` : metric === 'held-out TOR R²' ? `dashed = floor ${calib.heldout_floor}` : 'the joining line is the cohort colour; the dots are the preprocessing'}
         />
-        {nClamped > 0 && <p className="chart-note">{nClamped} extreme readouts (tiny cohorts) are drawn hollow at the edge of the axis.</p>}
+        {nClamped > 0 && <ChartAside><p className="chart-note">{nClamped} extreme readouts (tiny cohorts) are drawn hollow at the edge of the axis.</p></ChartAside>}
         {tip.node}
       </div>
     </ChartFrame>

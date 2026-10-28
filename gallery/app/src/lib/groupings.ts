@@ -4,7 +4,8 @@
  * No rain / Light / Moderate / Heavy or FTIR EC in 2 µg/m³ steps; pd.qcut on quantiles, e.g. low / mid / high OP
  * tertiles, OC/EC deciles); here it is one definition, kept in the URL (`grp`) so a shared link carries it.
  *
- * Bands are half-open, [lower, upper), like pd.cut(right=False): a value equal to a cutoff goes to the band above.
+ * Bands are half-open, [lower, upper), like pd.cut(right=False): a value equal to a cutoff goes to the band above,
+ * unless the grouping says `equal: 'below'` ((lower, upper], like pd.cut(right=True)).
  * Quantile cutoffs are computed from the values in view (every site pooled), so they follow the subset.
  */
 export type SplitKind = 'cutoffs' | 'median' | 'tertiles' | 'quartiles' | 'quintiles' | 'deciles'
@@ -19,6 +20,10 @@ export interface GroupingDef {
   cuts: number[]
   /** one per band; empty or blank entries fall back to an automatic label */
   labels: string[]
+  /** which band a value equal to a cutoff joins: the one above (the default) or the one below */
+  equal?: 'above' | 'below'
+  /** one per band; empty entries fall back to the ordered palette (colorsFor) */
+  colors?: string[]
 }
 
 export const SPLITS: { kind: SplitKind; label: string; bands?: number }[] = [
@@ -51,29 +56,42 @@ export function cutsFor(def: GroupingDef, values: number[]): number[] {
   return Array.from({ length: bands - 1 }, (_, i) => quantileSorted(sorted, (i + 1) / bands))
 }
 
-/** the band of a value: 0 below the first cutoff, …, cuts.length at or above the last; null when there is no value */
-export function bandOf(cuts: number[], v: unknown): number | null {
+/**
+ * The band of a value: 0 below the first cutoff, …, cuts.length past the last; null when there is no value.
+ * A value equal to a cutoff goes up (`equal` 'above', the default) or stays in the band below ('below').
+ */
+export function bandOf(cuts: number[], v: unknown, equal: 'above' | 'below' = 'above'): number | null {
   if (typeof v !== 'number' || !Number.isFinite(v)) return null
   let i = 0
-  while (i < cuts.length && v >= cuts[i]) i++
+  while (i < cuts.length && (equal === 'below' ? v > cuts[i] : v >= cuts[i])) i++
   return i
 }
 
 const short = (v: number) => (Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(1) : Math.abs(v) >= 1 ? v.toFixed(2) : v.toPrecision(2))
+/** a cutoff as the reader typed it (0.371 stays 0.371), without float noise */
+const typed = (v: number) => String(+v.toPrecision(6))
 
-/** "< 2", "2 to 4", "≥ 4": what a band covers, for the editor and tooltips */
-export function rangeText(cuts: number[], i: number): string {
+/**
+ * "< 2", "2 to < 4", "≥ 4" (or "≤ 2", "> 2 to ≤ 4", "> 4" when equal values stay below): what a band covers, for
+ * the editor and tooltips. `exact`: the cutoffs as typed; otherwise rounded (quantiles computed from the data).
+ */
+export function rangeText(cuts: number[], i: number, { equal = 'above', exact = false }: { equal?: 'above' | 'below'; exact?: boolean } = {}): string {
   if (!cuts.length) return 'all values'
-  if (i === 0) return `< ${short(cuts[0])}`
-  if (i === cuts.length) return `≥ ${short(cuts[cuts.length - 1])}`
-  return `${short(cuts[i - 1])} to < ${short(cuts[i])}`
+  const f = exact ? typed : short
+  const [lo, hi] = equal === 'below' ? ['>', '≤'] : ['≥', '<']
+  if (i === 0) return `${hi} ${f(cuts[0])}`
+  if (i === cuts.length) return `${lo} ${f(cuts[cuts.length - 1])}`
+  return `${equal === 'below' ? '> ' : ''}${f(cuts[i - 1])} to ${hi} ${f(cuts[i])}`
 }
+
+/** a grouping's range texts: its own cutoffs as typed, quantiles rounded, equal values on its chosen side */
+export const rangeOptions = (def: GroupingDef) => ({ equal: def.equal ?? 'above', exact: def.kind === 'cutoffs' })
 
 /** each band's label: the reader's, else Low / Mid / High for quantiles, else its range */
 export function labelsFor(def: GroupingDef, cuts: number[]): string[] {
   const n = cuts.length + 1
   const auto = def.kind === 'cutoffs' ? null : QUANTILE_NAMES[n]
-  return Array.from({ length: n }, (_, i) => def.labels[i]?.trim() || auto?.[i] || rangeText(cuts, i))
+  return Array.from({ length: n }, (_, i) => def.labels[i]?.trim() || auto?.[i] || rangeText(cuts, i, rangeOptions(def)))
 }
 
 /** Ordered bands get an ordered palette: blue (low) to red (high), through amber for three or more. */
@@ -101,8 +119,9 @@ export function applyGrouping<R extends Record<string, unknown>>(def: GroupingDe
   const values = rows.map((r) => r[def.field]).filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
   const cuts = cutsFor(def, values)
   const labels = labelsFor(def, cuts)
-  const colors = colorsFor(labels.length)
-  const labelOf = (r: R) => { const b = bandOf(cuts, r[def.field]); return b === null ? null : labels[b] }
+  // the reader's colour for a band, else the ordered palette's
+  const colors = colorsFor(labels.length).map((c, i) => def.colors?.[i] || c)
+  const labelOf = (r: R) => { const b = bandOf(cuts, r[def.field], def.equal); return b === null ? null : labels[b] }
   return { cuts, labels, colors, labelOf, colorOf: (label: string) => colors[labels.indexOf(label)] ?? NO_BAND_COLOR }
 }
 
@@ -112,7 +131,14 @@ const fromB64 = (t: string) => new TextDecoder().decode(Uint8Array.from(atob(t.r
 
 export function groupingsParam(defs: GroupingDef[]): string | null {
   if (!defs.length) return null
-  return toB64(JSON.stringify(defs.map((d) => [d.id, d.name, d.field, d.kind, d.cuts, d.labels])))
+  // the side equal values join and the band colours only when set, so older links read the same
+  return toB64(JSON.stringify(defs.map((d) => {
+    const row: unknown[] = [d.id, d.name, d.field, d.kind, d.cuts, d.labels]
+    const colors = d.colors?.some(Boolean) ? d.colors : null
+    if (d.equal === 'below' || colors) row.push(d.equal ?? 'above')
+    if (colors) row.push(colors)
+    return row
+  })))
 }
 
 export function parseGroupings(param: string | null): GroupingDef[] {
@@ -121,9 +147,11 @@ export function parseGroupings(param: string | null): GroupingDef[] {
     const raw = JSON.parse(fromB64(param)) as unknown[]
     return raw.flatMap((x) => {
       if (!Array.isArray(x) || x.length < 6) return []
-      const [id, name, field, kind, cuts, labels] = x as [string, string, string, SplitKind, number[], string[]]
+      const [id, name, field, kind, cuts, labels, equal, colors] = x as [string, string, string, SplitKind, number[], string[], unknown, unknown]
       if (typeof id !== 'string' || typeof field !== 'string' || !SPLITS.some((s) => s.kind === kind)) return []
-      return [{ id, name: String(name ?? ''), field, kind, cuts: (cuts ?? []).filter((v) => typeof v === 'number'), labels: (labels ?? []).map(String) }]
+      return [{ id, name: String(name ?? ''), field, kind, cuts: (cuts ?? []).filter((v) => typeof v === 'number'), labels: (labels ?? []).map(String),
+        ...(equal === 'below' ? { equal: 'below' as const } : {}),
+        ...(Array.isArray(colors) ? { colors: colors.map((c) => (typeof c === 'string' && /^#[\da-f]{6}$/i.test(c) ? c : '')) } : {}) }]
     })
   } catch {
     return []

@@ -4,6 +4,7 @@ import { Combobox } from '@/components/Combobox'
 import { prettyUnit } from '@/components/FieldSelect'
 import { RATIO_GROUP, ratioKey, ratioUnit, type RatioDef } from '@/lib/viewFields'
 import type { MetaFile } from '@/lib/types'
+import { XIcon } from '@/components/Icons'
 
 /**
  * "Define a ratio…" in any field picker (FieldSelect, the axis-title popover, the sidebar): opens
@@ -75,7 +76,7 @@ function RatioDialog({ meta, presets, count, onPick, onClose }: {
       <div ref={ref} className="export-dialog ratio-dialog" role="dialog" aria-modal="true" aria-label="Define a ratio">
         <header>
           <div><strong>Define a ratio</strong><span className="export-title">one value per filter, usable in every chart</span></div>
-          <button type="button" className="btn quiet" onClick={onClose} aria-label="Close" title="Close (Esc)">✕</button>
+          <button type="button" className="btn quiet x-btn" onClick={onClose} aria-label="Close" title="Close (Esc)"><XIcon /></button>
         </header>
         {presets.length > 0 && (
           <section className="ratio-presets">

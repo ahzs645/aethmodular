@@ -52,8 +52,8 @@ export function ColorLegend({
   const svgH = h + 20
   // room for the end tick labels, which are centred on the ramp's edges
   const PAD = 18
-  const svg = (
-    <svg width={width + 2 * PAD} height={svgH} viewBox={`0 0 ${width + 2 * PAD} ${svgH}`} fontFamily={FONT.family} style={{ maxWidth: '100%', height: 'auto' }}>
+  const horizontal = (
+    <svg className="ramp-h" width={width + 2 * PAD} height={svgH} viewBox={`0 0 ${width + 2 * PAD} ${svgH}`} fontFamily={FONT.family} style={{ maxWidth: '100%', height: 'auto' }}>
       <g transform={`translate(${PAD},0)`}>
         {stops.map((c, i) => (
           <rect key={i} x={(i * width) / (n + 1)} y={0} width={width / (n + 1) + 0.5} height={h} fill={c} />
@@ -68,6 +68,30 @@ export function ColorLegend({
       </g>
     </svg>
   )
+  // the same ramp standing up, high values at the top and the ticks down its right side: what shows when the
+  // legend sits beside the plot (lib/singleView, styles.css [data-legend-beside]); everywhere else, and in
+  // every export, the ramp lies under the plot
+  const y = d3.scaleLinear().domain([lo, hi]).range([width, 0])
+  const VPAD = 7
+  const tickW = Math.max(...tickVals.map((t) => fmtV(t).length), 1) * 6.2
+  const vW = h + 7 + tickW + 2
+  const vertical = (
+    <svg className="ramp-v" width={vW} height={width + 2 * VPAD} viewBox={`0 0 ${vW} ${width + 2 * VPAD}`} fontFamily={FONT.family}>
+      <g transform={`translate(0,${VPAD})`}>
+        {stops.map((c, i) => (
+          <rect key={i} x={0} y={width - ((i + 1) * width) / (n + 1)} width={h} height={width / (n + 1) + 0.5} fill={c} />
+        ))}
+        <rect x={0} y={0} width={h} height={width} fill="none" stroke={INK.border} />
+        {tickVals.map((t) => (
+          <g key={t} transform={`translate(${h},${y(t)})`}>
+            <line x2={3} stroke={INK.axis} />
+            <text x={6} dy="0.32em" fontSize={10} fill={INK.muted}>{fmtV(t)}</text>
+          </g>
+        ))}
+      </g>
+    </svg>
+  )
+  const svg = <>{horizontal}{vertical}</>
   return (
     <span className="legend-item" style={{ gap: 8 }}>
       {label && <span>{label ? estimatorText(label, method) : label}</span>}

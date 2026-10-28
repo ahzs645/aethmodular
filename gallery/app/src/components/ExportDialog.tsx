@@ -10,6 +10,7 @@ import {
   composeFigure, downloadBlob, layoutFigure, rasterScale, renderFigure, slug, MAX_CANVAS_SIDE,
   PUB_FONTS, PUB_SHOW, type ExportBackground, type ExportFormat, type Figure, type LegendPlacement, type PubLayout, type PubShow,
 } from '@/lib/export'
+import { XIcon } from '@/components/Icons'
 
 /**
  * One export control per chart: the button names the format it will save (PNG by
@@ -111,7 +112,8 @@ function saveSettings(s: Settings) {
 
 export const fileSize = (n: number) => (n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${(n / 1024).toFixed(n < 10240 ? 1 : 0)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`)
 
-export function ExportButton({ panelRef, title }: { panelRef: RefObject<HTMLElement>; title: string }) {
+/** `ask`: a count another control bumps to open the dialog (the phone's ⋯ menu, components/ChartFrame FrameMoreMenu) */
+export function ExportButton({ panelRef, title, ask = 0 }: { panelRef: RefObject<HTMLElement>; title: string; ask?: number }) {
   const [open, setOpen] = useState(false)
   const [format, setFormat] = useState<ExportFormat>(() => loadSettings().format)
   // while the dialog is open the chart is drawn for the file (lib/exportRender): the dialog sets how, and
@@ -124,6 +126,7 @@ export function ExportButton({ panelRef, title }: { panelRef: RefObject<HTMLElem
   }
   useEffect(() => () => { if (held.current) setExportRender(null) }, [])
   const start = () => { held.current = true; setOpen(true) }
+  useEffect(() => { if (ask > 0) start() }, [ask]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <>
       <button type="button" className="btn quiet export-btn" aria-haspopup="dialog" aria-expanded={open}
@@ -259,7 +262,7 @@ function ExportDialog({ panel, title, onClose }: { panel: HTMLElement; title: st
             <strong>Export</strong>
             <span className="export-title">{title}</span>
           </div>
-          <button type="button" className="btn quiet" onClick={() => onClose()} aria-label="Close" title="Close (Esc)">✕</button>
+          <button type="button" className="btn quiet x-btn" onClick={() => onClose()} aria-label="Close" title="Close (Esc)"><XIcon /></button>
         </header>
         {fig === undefined ? <p className="frame-empty">Drawing the figure…</p> : !fig ? <p className="frame-empty">This panel has no figure to export.</p> : (
           <div className="export-body">

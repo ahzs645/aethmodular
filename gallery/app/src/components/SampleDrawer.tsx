@@ -28,6 +28,7 @@ import { HipsReadings } from '@/components/NativeFilterMeasurements'
 import { NO_PMF, PMF_SOURCE, pmfShareField } from '@/lib/pmfGroups'
 import { placements, quantilePlacements, stripPosition, ratioPlacement, ratioReference, isFiniteNumber, type Placement, type ReferenceRow } from '@/lib/referencePopulation'
 import { DrawerShell, DrawerScroll } from '@/components/DrawerShell'
+import { XIcon } from '@/components/Icons'
 
 
 /** English ordinal suffix: 1st, 2nd, 3rd, 11th, 51st. */
@@ -251,7 +252,7 @@ export function SampleDrawer({
           </div>
           {row.excluded && <div className="drawer-reason">{row.exclusion_reason}</div>}
         </div>
-        <button type="button" className="btn quiet" onClick={onClose} aria-label="Close" title="Close (Esc)">✕</button>
+        <button type="button" className="btn quiet x-btn" onClick={onClose} aria-label="Close" title="Close (Esc)"><XIcon /></button>
       </header>
 
       <div className="drawer-actions">
@@ -428,7 +429,7 @@ function PmfDay({ row, meta }: { row: FilterRow; meta: MetaFile }) {
   const season = paperSeasonOf(row.date)
   return (
     <section className="drawer-section">
-      <h3>PMF sources on this day{season && <span className="pmf-season" title="The PMF paper's season for this date"><span className="pmf-dot" style={{ background: season.color }} />{season.name}</span>}</h3>
+      <h3>PMF sources on this day{season && <span className="pmf-season" title="The PMF paper's season for this date"><span className="pmf-dot" style={{ background: season.color }} aria-hidden />{season.name}</span>}</h3>
       <p className="pmf-dominant">
         Dominant: <span className="pmf-dot" style={{ background: colour(label, INK.neutral) }} /> <strong>{label}</strong> · {fmt(shares[0].v * 100, 0)} % of the PMF factors' total
       </p>

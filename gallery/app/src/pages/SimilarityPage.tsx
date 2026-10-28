@@ -219,12 +219,14 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
             onChange={(v) => { setSeason(v); setCompareKey('') }}
             optionLabel={(o) => o === 'all' ? `All year (${meta.sites[siteIdx].n})` : `${calendar[Number(o)].name} (${meta.groups[index.get(`${site}:${o}`)!].n})`} />
           <Toggle label="Show archived VIBES fit (4000–1425)" checked={showArchived} onChange={v => setArchiveMode(v ? 'show' : 'hide')} />
-<span className="control">{method.endsWith('-r70') ? `Completed rank 70 · ${grid?.bin_wn.length ? (method.includes('cut') ? 'shared channels' : 'full available range') : ''}` : method === 'VIBES' ? 'Archived truncated correction' : 'Spline baseline'}</span>
-          <BaselinePicker value={method} options={methods} onChange={setMethod} short />
+          {/* what the chosen baseline is, on hover rather than as a line of its own */}
+          <BaselinePicker value={method} options={methods} onChange={setMethod} short
+            title={method.endsWith('-r70') ? `Completed rank 70${grid?.bin_wn.length ? (method.includes('cut') ? ' · shared channels' : ' · full available range') : ''}` : method === 'VIBES' ? 'Archived truncated correction' : 'Spline baseline'} />
           <Select label="Selection mask" value={mask} options={maskKeys} onChange={setMask} optionLabel={(k) => `${activeMeta.masks.find((m) => m.key === k)?.label ?? k} (${activeMeta.masks.find((m) => m.key === k)?.n_channels ?? '?'} ch)`} />
         </>}
       >
-        <p style={{ fontSize: 13, margin: '2px 0', color: INK.muted }}>
+        {/* the target in words: the controls above already say it, so the single-chart view leaves it out */}
+        <p data-single-hide="" style={{ fontSize: 13, margin: '2px 0', color: INK.muted }}>
           <strong style={{ color: groupColor(meta, target, INK.text) }}>{targetLabel}</strong> · <span title={siteWhere(meta.sites[tg.site])}>{siteName(meta.sites[tg.site])}</span> · {tg.n} filters · {splitName(meta.sites[tg.site].split)} · within-group r <strong style={{ color: INK.text }}>{f3(selfR)}</strong>
         </p>
         {loadError && <Note>Could not load part of the export: {loadError}</Note>}
@@ -308,7 +310,7 @@ function GroupRanking({ meta, ranked, target, selfR, compare, onCompare, onTarge
                 marks: [[{ mid: r.r, color: groupColor(meta, r.g, INK.accent), r: 4.5 }]] }
             }) }]} />
         )}
-        <Note>{ranked.length} groups pass these filters, of which the top {rows.length} are shown. † marks an outer test site. Small groups score noisily, so raise "Min filters" before reading much into the top rows.</Note>
+        <ExplainOnly><Note>{ranked.length} groups pass these filters, of which the top {rows.length} are shown. † marks an outer test site. Small groups score noisily, so raise "Min filters" before reading much into the top rows.</Note></ExplainOnly>
         {compare != null && (
           <p style={{ fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             Overlaying <strong style={{ color: groupColor(meta, compare, INK.accent) }}>{groupLabel(meta, compare)}</strong> below.
@@ -438,7 +440,7 @@ function TopComposition({ meta, rows, available, targetLabel }: { meta: Similari
           </svg>
         )}
         <Legend {...lg.props} items={[...seasonsSeen.entries()].map(([label, color]) => ({ label, color, shape: 'square' as const }))} />
-        {total > 0 && <Note>{total} filters from {bySite.length} sites{rest ? `, of which ${bySite.length - 20} smaller contributors (${rest} filters) are not drawn` : ''}. The top 5 sites supply {Math.round(top5 * 100)}%, and the effective number of sites (1/Σp²) is {effective.toFixed(1)}: a lower number means the list is more concentrated. † marks an outer test site.</Note>}
+        {total > 0 && <ExplainOnly><Note>{total} filters from {bySite.length} sites{rest ? `, of which ${bySite.length - 20} smaller contributors (${rest} filters) are not drawn` : ''}. The top 5 sites supply {Math.round(top5 * 100)}%, and the effective number of sites (1/Σp²) is {effective.toFixed(1)}: a lower number means the list is more concentrated. † marks an outer test site.</Note></ExplainOnly>}
         {available < meta.top_k && <Note>Outer test sites are hidden, so {available} of the {meta.top_k} stored most-similar filters remain.</Note>}
         {tip.node}
       </div>

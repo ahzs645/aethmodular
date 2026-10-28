@@ -52,10 +52,9 @@ export function siteName(s: SiteInfo): string {
 }
 
 /** "Puget Sound, WA · 47.57°, −122.31° · 12 m" for tooltips. */
+/** where a site is, for a hover: its name and setting (coordinates and elevation are on the map, not in every tooltip) */
 export function siteWhere(s: SiteInfo): string {
-  const coords = s.lat != null && s.lon != null ? `${s.lat.toFixed(2)}°, ${s.lon.toFixed(2)}°` : null
-  const elev = s.elevation != null ? `${s.elevation} m` : null
-  return [siteName(s), coords, elev, s.land_use, s.setting].filter(Boolean).join(' · ')
+  return [siteName(s), s.land_use, s.setting].filter(Boolean).join(' · ')
 }
 
 const UNDEFINED = -32768

@@ -6,6 +6,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { INK, BASELINE_COLOR } from '@/lib/theme'
 import { useDimensions } from '@/hooks/useGalleryData'
 import type { SpectrumMethod } from '@/lib/filterSpectrum'
+import { UndoIcon, XIcon } from '@/components/Icons'
 
 const COLOR: Record<string, string> = { get AIRSpec() { return BASELINE_COLOR.AIRSpec }, get VIBES() { return BASELINE_COLOR['VIBES-full-r70'] } }
 const NAME: Record<SpectrumMethod, string> = { AIRSpec: 'Spline baseline (AIRSpec)', VIBES: 'VIBES baseline' }
@@ -51,7 +52,7 @@ export function SpectrumModal({ id, onClose, children, title = 'Baseline-correct
     }}>
     <header className="spectrum-modal-head">
       <div><h2 id={titleId}>{title}</h2><p>{id}</p></div>
-      <button ref={closeRef} type="button" className="btn quiet" aria-label="Close spectrum modal" onClick={onClose}>✕</button>
+      <button ref={closeRef} type="button" className="btn quiet x-btn" aria-label="Close spectrum modal" onClick={onClose}><XIcon /></button>
     </header>
     {children}
   </dialog>, document.body)
@@ -140,7 +141,7 @@ export function SpectrumPlot({ spec, shown, expanded = false, names = NAME, colo
       <span className="spectrum-zoom" role="group" aria-label="Zoom">
         <button type="button" className="btn quiet" aria-label="Zoom spectrum out" title="Zoom out" disabled={transform.k <= 1} onClick={() => scaleBy(0.5)}>−</button>
         <button type="button" className="btn quiet" aria-label="Zoom spectrum in" title="Zoom in (or pinch on the plot); drag to pan once zoomed" disabled={transform.k >= 32} onClick={() => scaleBy(2)}>+</button>
-        {transform.k > 1 && <button type="button" className="btn quiet" aria-label="Reset zoom" title="Show the whole spectrum" onClick={reset}>↺</button>}
+        {transform.k > 1 && <button type="button" className="btn quiet x-btn" aria-label="Reset zoom" title="Show the whole spectrum" onClick={reset}><UndoIcon /></button>}
       </span>
       <span className="spectrum-window" title="Zoom with − / +, or pinch (⌘/Ctrl + scroll) on the plot; drag to pan once zoomed. Absorbance follows the visible range.">
         {Math.round(high)}–{Math.round(low)} cm⁻¹{transform.k > 1 ? ` · ${transform.k.toFixed(1)}×` : ''}</span>

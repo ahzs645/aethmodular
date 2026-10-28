@@ -37,6 +37,7 @@ import { COHORT, CV_PROTOCOL, METRIC, label } from '@/lib/labels'
  * wherever they sit.
  */
 import { TEMPLATES, decodeGuardrail, describeGuardrail, encodeGuardrail, evaluateGuardrail, guardFields, guardRows, type Guardrail, type GuardrailSource } from '@/lib/guardrails'
+import { ChartAside } from '@/lib/singleView'
 const GuardrailEditor = lazy(() => import('@/components/GuardrailEditor').then(m => ({ default: m.GuardrailEditor })))
 
 type Kind = 'slope' | 'intercept' | 'other'
@@ -158,7 +159,7 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
         </>
       }
     >
-      <p className="chart-note">Guardrails shared with Specification curve: {ruleDescription}. The shaded band is the saved slope range.</p>
+      <ChartAside><p className="chart-note">Guardrails shared with Specification curve: {ruleDescription}. The shaded band is the saved slope range.</p></ChartAside>
       {evaluated.error && <p role="alert">{evaluated.error}</p>}
       {editing && <Suspense fallback={null}><GuardrailEditor title="Slope vs intercept" src={src} scope={calib.grid.flatMap((r, i) => r.tg === target && r.mo === mode && r.lot === 'all' && r.el === 'all' ? [i] : [])} initial={userRule ?? TEMPLATES.find(t => t.key === dots)?.rule ?? TEMPLATES.find(t => t.key === 'cv-slope')!.rule} onPreview={setDraft} onApply={r => { setRuleToken(encodeGuardrail(r)); setDots('rule') }} onClose={() => { setEditing(false); setDraft(null) }} /></Suspense>}
       <div ref={wrapRef} className="chart-wrap">
@@ -232,7 +233,7 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
           note="filled = Raw spectra · ring = Spline baseline · dotted ring = Second derivative · numbers = top 5 by score among passing"
         />
         {view === 'Density hex' && hexes.length > 0 && <div className="legend"><ColorLegend scale={hexColor} scheme={hexColours.scheme} label="configurations per hex" width={160} format={(v) => String(Math.round(v))} /></div>}
-        {off > 0 && <p className="chart-note">{off} extreme configurations are pinned to the edge of the canvas.</p>}
+        {off > 0 && <ChartAside><p className="chart-note">{off} extreme configurations are pinned to the edge of the canvas.</p></ChartAside>}
         {best.length > 0 && (
           <table className="placement">
             <thead><tr><th>#</th><th>configuration</th><th title={METRIC.k}>PLS factors</th><th>Test set <EstimatorName /></th><th>Test set R²</th><th title={METRIC.cvR2}>IMPROVE cross-validation R²</th><th>score</th></tr></thead>

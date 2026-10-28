@@ -14,6 +14,7 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import { useChartLabel, useFitHeight } from '@/lib/chartFit'
 import { MeasurementControl } from '@/components/AxisFieldPopover'
 import { useTileSetting } from '@/lib/url'
+import { ChartAside } from '@/lib/singleView'
 
 const LAYOUTS = ['Overlay', 'Density', 'Small multiples', 'Mirror'] as const
 type Layout = (typeof LAYOUTS)[number]
@@ -238,10 +239,10 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
           <>
             <Legend items={mirrorPair.map((s) => ({ label: s.name, color: s.color, shape: 'square' as const, detail: `n=${s.values.length}` }))} {...mirror.props} />
             {mirrorStats && (
-              <p className="chart-note" style={{ fontFamily: 'var(--mono)' }}>
+              <ChartAside><p className="chart-note" style={{ fontFamily: 'var(--mono)' }}>
                 median {aName} {fmt(mirrorStats.medianA, 2)} vs {bName} {fmt(mirrorStats.medianB, 2)} (Δ {fmt(mirrorStats.medianDiff, 2)}) · Welch t = {fmt(mirrorStats.t, 2)}, p {mirrorStats.p < 0.001 ? '< 0.001' : `= ${fmt(mirrorStats.p, 3)}`} · Cohen's d = {fmt(mirrorStats.d, 2)} · Mann–Whitney AUC = {fmt(mirrorStats.auc, 2)}
                 <span style={{ fontFamily: 'var(--font)' }}> — the effect sizes are the finding; p only says the n was large enough to see it.</span>
-              </p>
+              </p></ChartAside>
             )}
           </>
         ) : (

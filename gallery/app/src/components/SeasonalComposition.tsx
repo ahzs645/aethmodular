@@ -5,6 +5,7 @@ import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { seasonalComposition, type CompositionCalendar } from '@/lib/seasonalComposition'
 import { fmt } from '@/lib/stats'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { ChartAside } from '@/lib/singleView'
 
 const CALENDARS = ['Addis local (Belg Feb–May)', 'Meeting bins (Dry Oct–Feb)'] as const
 
@@ -23,9 +24,9 @@ export function SeasonalComposition({ rows, meta }: { rows: FilterRow[]; meta?: 
     <CompositionTreemap rows={composition.rows} meta={composition.meta} species={species}
       stackedOnly initialGrouping="by season" id="meeting-seasonal-composition" title="Addis seasonal chemistry — concentrations and percentages"
       notes={<>
-        <p className="chart-note"><strong>{calendar === 'local' ? 'Addis local calendar (belg_feb): Bega Oct–Jan, Belg Feb–May, Kiremt Jun–Sep.' : 'Meeting month bins (dry_feb): Dry Oct–Feb, Belg Mar–May, Kiremt Jun–Sep.'}</strong> The frozen calibration charts elsewhere on this page retain dry_feb. February changes groups when you change this control; these month bins do not measure weather conditions.</p>
-        <p className="chart-note">These are existing SPARTAN filter chemistry records after exclusions, not the new-prediction test set. Carbon uses EC and OC from the existing FTIR product once. Duplicate ChemSpec carbon, optical HIPS BC, organic matter and functional groups are not extra slices.</p>
-        <p className="chart-note">Start with concentration to compare absolute seasonal amounts, then switch to composition (%) to compare relative shares. Percentages sum the positive visible species means (or medians), not measured PM2.5; hiding a legend item recalculates that total. Available species can use different filters, so these stacks are descriptive rather than matched-filter mass closure. Missing species are absent, not zero. Signed observations remain in the statistics; non-positive aggregate values have no positive slice.</p>
+        <ChartAside><p className="chart-note"><strong>{calendar === 'local' ? 'Addis local calendar (belg_feb): Bega Oct–Jan, Belg Feb–May, Kiremt Jun–Sep.' : 'Meeting month bins (dry_feb): Dry Oct–Feb, Belg Mar–May, Kiremt Jun–Sep.'}</strong> The frozen calibration charts elsewhere on this page retain dry_feb. February changes groups when you change this control; these month bins do not measure weather conditions.</p></ChartAside>
+        <ChartAside><p className="chart-note">These are existing SPARTAN filter chemistry records after exclusions, not the new-prediction test set. Carbon uses EC and OC from the existing FTIR product once. Duplicate ChemSpec carbon, optical HIPS BC, organic matter and functional groups are not extra slices.</p></ChartAside>
+        <ChartAside><p className="chart-note">Start with concentration to compare absolute seasonal amounts, then switch to composition (%) to compare relative shares. Percentages sum the positive visible species means (or medians), not measured PM2.5; hiding a legend item recalculates that total. Available species can use different filters, so these stacks are descriptive rather than matched-filter mass closure. Missing species are absent, not zero. Signed observations remain in the statistics; non-positive aggregate values have no positive slice.</p></ChartAside>
         <table className="census-table">
           <thead><tr><th>Season / chemistry filters</th><th>Sampling window</th><th>Mean measured PM₂.₅ (µg/m³)</th></tr></thead>
           <tbody>{stats.map(s => {
@@ -33,7 +34,7 @@ export function SeasonalComposition({ rows, meta }: { rows: FilterRow[]; meta?: 
             return <tr key={s.season.name}><td>{s.season.name} · n={s.n}</td><td>{s.start && s.end ? `${s.start} to ${s.end}` : 'No dated filters'}</td><td>{fmt(pm.mean, 2)} · n={pm.n}</td></tr>
           })}</tbody>
         </table>
-        {composition.unknownMonths > 0 && <p className="chart-note">{composition.unknownMonths} filters have unknown months; they cannot enter a named seasonal bar.</p>}
+        {composition.unknownMonths > 0 && <ChartAside><p className="chart-note">{composition.unknownMonths} filters have unknown months; they cannot enter a named seasonal bar.</p></ChartAside>}
         <details><summary>Species coverage by season (available / seasonal filters; negative observations)</summary>
           <div style={{ overflowX: 'auto' }}><table className="census-table">
             <thead><tr><th>Species</th>{stats.map(s => <th key={s.season.name}>{s.season.name}</th>)}</tr></thead>

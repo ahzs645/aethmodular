@@ -11,7 +11,7 @@ import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { ColorLegend, SizeLegend } from '@/components/ColorLegend'
 import { FieldSelect } from '@/components/FieldSelect'
-import { Legend, toggleIn, useLegend } from '@/components/Legend'
+import { Legend, toggleIn, useLegend, type LegendItem } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { PanelAxesControl } from '@/lib/panelAxes'
@@ -24,10 +24,11 @@ import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import { useColourScheme } from '@/lib/colourSchemes'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { NO_PMF, PMF_SOURCE } from '@/lib/pmfGroups'
-import { useChartLabel, useFitHeight } from '@/lib/chartFit'
+import { ChartSite, useChartLabel, useFitHeight } from '@/lib/chartFit'
 import { useSearchParam, useTileSetting } from '@/lib/url'
 import { GroupingPicker, useGroupings } from '@/components/GroupingDialog'
 import { NO_BAND_COLOR, applyGrouping, noBandLabel } from '@/lib/groupings'
+import { ChartAside } from '@/lib/singleView'
 
 type Point = { row: FilterRow; x: number; y: number; c: number | null; s: number | null }
 type Scale = d3.ScaleLinear<number, number> | d3.ScaleLogarithmic<number, number>
@@ -110,7 +111,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   const o = useChartOptions('scatter', [
     // one site in view: no per-site grid, and per-season panels colour by season (one site colour says nothing)
     { key: 'layout', label: 'Layout', choices: LAYOUTS.map((v) => ({ value: v, when: v === 'Per site' ? (c: OptionContext) => (c.sites as number) > 1 : v === 'Per group' ? (c: OptionContext) => !!c.hasGroup : undefined })),
-      default: 'Combined', title: 'PlotConfig.layout: combined overlays sites; per site is the grid' },
+      default: 'Combined', title: 'PlotConfig.layout: combined overlays sites; per site is the grid', onChange: () => setHidden(new Set()) },
     // per-season panels: each site's seasons in one row that scrolls sideways, or wrapped onto as many lines as fit
     { key: 'seasonRows', label: 'Panels', choices: [{ value: 'line', label: 'One row' }, { value: 'wrap', label: 'Wrap' }], default: 'line',
       when: (c) => ROWED(c.layout), title: 'One row: each site\'s seasons side by side, scrolling sideways when they do not fit · Wrap: as many panels per line as fit the chart, the rest on the next line' },
@@ -261,6 +262,18 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [colorBy, pmfColouring, meta, rows, xField, yField, grp, drawable, noBand]
   )
+  // Per site: the facet titles already name each site. Coloured by site the legend would list them
+  // again, so it goes; coloured by local season calendars each site's seasons sit under its own title.
+  const facetLegends = useMemo(() => {
+    if (layout !== 'Per site' || colorBy !== 'Season' || !meta.seasons.some((s) => s.site)) return null
+    return new Map(meta.sites.map((s) => {
+      const own = new Set(seasonsForSite(meta, s.name).map((se) => se.name))
+      return [s.name, legend.filter((it) => own.has(it.label))]
+    }))
+  }, [layout, colorBy, meta, legend])
+  const mainLegend = layout === 'Per site' && colorBy === 'Site' ? []
+    : facetLegends ? legend.filter((it) => ![...facetLegends.values()].some((items) => items.includes(it))) : legend
+  const toggleLegend = useCallback((l: string) => setHidden((h) => toggleIn(h, l)), [setHidden])
 
   // PlotConfig.equal_axes: a 1:1 line only reads correctly on a square panel.
   const MAX_SQUARE = 560
@@ -334,6 +347,11 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
                 siteColoring={colorBy === 'Site'} seasonColoring={colorBy === 'Season'}
                 title={p.title ? chartLabel(p.title) || null : null}
                 titleColor={p.color}
+                legend={facetLegends?.get(p.title ?? '') ?? null}
+                hidden={hidden}
+                hover={hover}
+                onToggle={toggleLegend}
+                onHover={setHover}
                 points={p.points}
                 stats={p.stats}
                 fitGroups={p.fitGroups}
@@ -389,7 +407,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
           {colorBy === 'Value' && cScale && !pmfColouring ? (
             <ColorLegend scale={cScale} scheme={colours.scheme} label={unitOf(colorField)} note={nNoColor > 0 ? `${nNoColor} points without ${colorField} in grey` : undefined} />
           ) : (
-            <Legend items={legend} hidden={hidden} onToggle={(l) => setHidden((h) => toggleIn(h, l))} onHover={setHover} highlighted={hover} note={showFit ? 'fit selection and line styles: sidebar' : undefined} />
+            <Legend items={mainLegend} hidden={hidden} onToggle={toggleLegend} onHover={setHover} highlighted={hover} note={showFit ? 'fit selection and line styles: sidebar' : undefined} />
           )}
           {sScale && <SizeLegend scale={sScale} label={unitOf(sizeField)} />}
           {sScale && nNoSize > 0 && <span className="legend-note">{nNoSize} points without {sizeField} drawn smallest</span>}
@@ -399,7 +417,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
         )}
         {layout === 'Per group' && grp && (() => {
           const n = drawable.filter((r) => grp.labelOf(r) === null).length
-          return n > 0 ? <p className="chart-note">No data: {n.toLocaleString()} of {drawable.length.toLocaleString()} filters have no {groupingDef!.field}, so they are in no panel (colour by Group shows them in grey).</p> : null
+          return n > 0 ? <ChartAside><p className="chart-note">No data: {n.toLocaleString()} of {drawable.length.toLocaleString()} filters have no {groupingDef!.field}, so they are in no panel (colour by Group shows them in grey).</p></ChartAside> : null
         })()}
         {tip.node}
       </div>
@@ -413,7 +431,7 @@ const NO_KEYS: ReadonlySet<string> = new Set()
 const READOUT_INSET = 12
 
 const ScatterPanel = memo(function ScatterPanel({
-  title, titleColor, points, stats, fitGroups, domain, innerW, innerH, axes, showFit, xLabel, yLabel, colorOf, radiusOf, dimOf, fitDim, focusId, selected, brushing, onBrush, onEnter, onLeave, onClick, grouping, siteColoring, seasonColoring,
+  title, titleColor, legend, hidden, hover, onToggle, onHover, points, stats, fitGroups, domain, innerW, innerH, axes, showFit, xLabel, yLabel, colorOf, radiusOf, dimOf, fitDim, focusId, selected, brushing, onBrush, onEnter, onLeave, onClick, grouping, siteColoring, seasonColoring,
 }: {
   /** the grouping the chart draws (lib/regressionPrefs effectiveGrouping), not the raw setting */
   grouping: FitGrouping
@@ -421,6 +439,12 @@ const ScatterPanel = memo(function ScatterPanel({
   siteColoring: boolean
   title: string | null
   titleColor: string
+  /** this panel's own key (its site's seasons), under the title; null when the chart's legend covers it */
+  legend: LegendItem[] | null
+  hidden: Set<string>
+  hover: string | null
+  onToggle: (label: string) => void
+  onHover: (label: string | null) => void
   points: Point[]
   stats: RegressionStats | null
   fitGroups: RegressionGroup[]
@@ -523,16 +547,25 @@ const ScatterPanel = memo(function ScatterPanel({
   const siteFits = grouping !== 'pooled' && showFit && methods.length > 0
   const selectedFits = fitGroups.flatMap(group => fitsFor(group.stats, showFit ? methods : []).map(fit => ({ ...fit, color: group.color ?? fit.color, name: group.name })))
   const svgWidth = innerW + MARGIN.left + MARGIN.right
-  const summary = useRegressionSummary({ stats, groups: siteFits ? fitGroups : undefined, width: svgWidth - 2 * READOUT_INSET, enabled: showFit })
+  const summary = useRegressionSummary({ stats, groups: siteFits ? fitGroups : undefined, width: svgWidth - 2 * READOUT_INSET, enabled: showFit,
+    panel: title ? { title, color: siteColoring ? titleColor : undefined } : null })
   const top = MARGIN.top + summary.height
 
   return (
     <div>
       {title && (
         <p className="facet-title" data-export-site={title ?? undefined} data-export-color={titleColor}>
-          <span className="swatch" style={{ background: titleColor }} /> {title}
+          {/* the site's colour only means something when the points carry it */}
+          {siteColoring && <span className="swatch" style={{ background: titleColor }} />} {title}
           <span style={{ color: 'var(--ink-muted)', fontWeight: 400, fontFamily: 'var(--mono)', fontSize: 11 }}>n={points.length}</span>
         </p>
+      )}
+      {legend && legend.length > 0 && (
+        <ChartSite name={title}>
+          <div className="facet-legend">
+            <Legend items={legend} hidden={hidden} onToggle={onToggle} onHover={onHover} highlighted={hover} />
+          </div>
+        </ChartSite>
       )}
       <svg width={svgWidth} height={innerH + top + MARGIN.bottom} className="animated">
         <defs>

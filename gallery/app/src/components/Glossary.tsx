@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { TERMS } from '@/lib/glossary'
-import { BookIcon } from '@/components/Icons'
+import { BookIcon, XIcon } from '@/components/Icons'
 
 /** The header's Glossary button and its dialog: every term the gallery uses, searchable. */
 export function GlossaryButton() {
@@ -31,7 +31,7 @@ export function GlossaryDialog({ onClose }: { onClose: () => void }) {
       <div className="export-dialog glossary-dialog" role="dialog" aria-modal="true" aria-label="Glossary">
         <header>
           <div><strong>Glossary</strong><span className="export-title">the terms behind the charts</span></div>
-          <button type="button" className="btn quiet" onClick={onClose} aria-label="Close" title="Close (Esc)">✕</button>
+          <button type="button" className="btn quiet x-btn" onClick={onClose} aria-label="Close" title="Close (Esc)"><XIcon /></button>
         </header>
         <input ref={input} className="select" type="search" placeholder="Search terms…" value={q} onChange={(e) => setQ(e.target.value)} />
         <dl className="glossary-list">

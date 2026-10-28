@@ -77,6 +77,12 @@
 * { box-sizing: border-box; }
 
 html, body { margin: 0; padding: 0; }
+/* no rubber-band past the top (or bottom) of the page: the sticky header stays put and nothing shows behind it.
+   Panels, drawers and menus keep their own overscroll containment. */
+html, body { overscroll-behavior-y: none; }
+/* A click or tap focuses a chart's mark, an axis title or a card without the browser's focus ring (it would
+   frame the point just clicked); keyboard focus keeps the ring, and the rules below that style :focus-visible. */
+:focus:not(:focus-visible) { outline: none; }
 
 body {
   background: var(--ink-page);
@@ -162,7 +168,10 @@ code { font-family: var(--mono); font-size: 0.92em; }
   .frame-body.controls-left > .frame-chart { grid-column: 2; grid-row: 1; }
   .frame-body:not(.controls-top) > .frame-controls {
     flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 12px;
-    margin: 0; padding-top: 10px; padding-bottom: 0; border-bottom: 0; position: sticky; top: 12px;
+    margin: 0; padding-top: 10px; padding-bottom: 0; border-bottom: 0;
+    /* stuck just under the app's sticky header, never taller than the window under it: a long column scrolls inside */
+    position: sticky; top: calc(var(--header-h, 0px) + 12px);
+    max-height: calc(100vh - var(--header-h, 0px) - 24px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
   }
   /* a segmented control or picker gets its own line: label above, choices below */
   .frame-body:not(.controls-top) > .frame-controls > .control,
@@ -278,6 +287,12 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .btn:hover { border-color: var(--accent); color: var(--accent); }
 .btn.quiet { border-color: transparent; color: var(--ink-muted); }
 .btn.quiet:hover { color: var(--accent); border-color: var(--ink-border); }
+/* layers: hover notes and tooltips (1200) over open menus and pickers (1000, display settings 1100), over dialogs (80) */
+/* close and remove: a square button with the drawn × centred in it (components/Icons XIcon) */
+.btn.x-btn { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 26px; height: 26px; padding: 0; line-height: 0; }
+.btn.x-btn > svg { display: block; }
+/* inside a pill or a table row, a smaller square */
+.pill .btn.x-btn, td .btn.x-btn, .chip .btn.x-btn { width: 20px; height: 20px; }
 .btn.danger { color: var(--danger); }
 .seg { display: inline-flex; border: 1px solid var(--ink-border); border-radius: 6px; overflow: hidden; }
 .seg button {
@@ -466,7 +481,9 @@ code { font-family: var(--mono); font-size: 0.92em; }
 /* the drawer's PMF day: the day's stacked bar (the PMF paper's order and colours) and its paper season */
 .pmf-daybar { display: flex; height: 14px; border-radius: 3px; overflow: hidden; margin: 4px 0 8px; }
 .pmf-daybar > span { display: block; height: 100%; }
-.pmf-season { margin-left: 8px; font-weight: 400; font-size: calc(11.5px * var(--text-scale)); color: var(--ink-muted); }
+.pmf-season { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; padding: 2px 9px 2px 7px; vertical-align: middle;
+  border: 1px solid var(--ink-border); border-radius: 999px; background: var(--ink-panel);
+  font-weight: 400; font-size: calc(11.5px * var(--text-scale)); line-height: 1.3; color: var(--ink-muted); }
 .pmf-share-name .pmf-dot { margin-right: 5px; }
 /* a small panel in a grid (station check, correlation matrices) with its own ⤢ to open it larger */
 .expandable-panel { position: relative; }
@@ -557,6 +574,7 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 #connected [role=button]:focus-visible .connected-hit { stroke: var(--accent); stroke-width: 2; }
 .facet-grid { display: grid; gap: 12px; }
 .facet-title { font-size: calc(12.5px * var(--text-scale)); font-weight: 600; margin: 0 0 2px; display: flex; gap: 6px; align-items: center; }
+.facet-legend .legend { padding: 0 0 4px; gap: 4px 12px; }
 
 /* SVG marks that should animate when the data behind them changes */
 .animated rect, .animated circle, .animated line, .animated path { transition: all 0.35s cubic-bezier(0.2, 0.7, 0.3, 1); }
@@ -636,11 +654,14 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 .drawer-scroll > .placement { min-width: 440px; }
 .drawer-section h3 { margin: 0 0 4px; font-size: calc(13px * var(--text-scale)); }
 
-/* iOS zooms focused text controls below 16px. Keep browser pinch zoom enabled. */
-@media (max-width: 640px), (pointer: coarse) {
+/* iOS zooms focused text controls below 16px, so on a touch screen they are 16px (browser pinch zoom stays on).
+   The dropdowns beside them (buttons, which do not zoom) take the same size, so a text field and a picker in one
+   row are the same height; a narrow desktop window keeps the compact sizes everywhere. */
+@media (pointer: coarse) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select, textarea {
     font-size: max(16px, 1em) !important;
   }
+  .combobox-trigger { font-size: max(16px, 1em); }
 }
 
 .spectrum-modal {
@@ -950,8 +971,18 @@ html:has(.ctx-menu) .tooltip { visibility: hidden; }
 .grouping-name input { flex: 1; max-width: none; }
 .grouping-preview { display: block; background: var(--ink-zebra); border-radius: 8px; }
 .grouping-bands { display: flex; flex-direction: column; gap: 6px; }
-.grouping-band { display: grid; grid-template-columns: 12px minmax(140px, 1fr) minmax(120px, auto) 90px; align-items: center; gap: 10px; }
+.grouping-band { display: grid; grid-template-columns: 14px minmax(140px, 1fr) minmax(120px, auto) 90px; align-items: center; gap: 10px; }
 .grouping-band input { max-width: none; width: 100%; }
+/* a band's colour, a button that opens the colour chooser (components/GroupingDialog BandColor) */
+.grouping-swatch { width: 14px; height: 14px; padding: 0; border: 1px solid rgba(0, 0, 0, 0.18); border-radius: 3px; cursor: pointer; }
+.grouping-swatch:hover, .grouping-swatch[aria-expanded="true"] { outline: 2px solid var(--accent-soft); outline-offset: 1px; }
+/* a phone: each band on two lines, its label across the dialog, then its range and count (no sideways scroll) */
+@media (max-width: 560px) {
+  .grouping-band { grid-template-columns: 14px minmax(0, 1fr) auto; row-gap: 2px; }
+  .grouping-band > input { grid-column: 2 / 4; }
+  .grouping-band > .grouping-range { grid-column: 2; }
+  .grouping-band > .grouping-count { grid-column: 3; }
+}
 .grouping-range { color: var(--ink-muted); font-size: calc(11.5px * var(--text-scale)); font-family: var(--mono); }
 .grouping-count { color: var(--ink-muted); font-size: calc(11.5px * var(--text-scale)); text-align: right; }
 .ratio-fraction { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -1018,7 +1049,7 @@ svg [font-size="16"] { font-size: calc(16px * var(--chart-text-scale)); }
 .navmenu-group { position: relative; }
 .nav-group { white-space: nowrap; }
 .nav-caret { font-size: calc(10px * var(--text-scale)); opacity: 0.7; }
-.navmenu-list { position: absolute; left: 0; top: 100%; z-index: 40; min-width: 200px; padding: 4px; margin-top: 4px;
+.navmenu-list { position: absolute; left: 0; top: 100%; z-index: 40; min-width: 140px; width: max-content; padding: 4px; margin-top: 4px;
   background: var(--ink-panel); border: 1px solid var(--ink-border); border-radius: 8px; box-shadow: 0 8px 24px rgba(31, 41, 51, 0.14);
   display: flex; flex-direction: column; max-height: 70vh; overflow-y: auto; }
 /* a bridge over the gap, so moving the pointer from the button to its list keeps it open */
@@ -1308,7 +1339,7 @@ html.dash-present .container.dash { padding-top: 10px; }
 /* Corner notes stay visible; their body lives outside the tile's scroll container. */
 .tile-info-btn { flex: none; padding: 0; width: 20px; height: 20px; }
 .tile-info-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.info-tip-body.floating { display: block; z-index: 100; margin: 0; overflow-y: auto; }
+.info-tip-body.floating { display: block; z-index: 1200; margin: 0; overflow-y: auto; }
 .site-summary-group:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 
 /* Width can limit a square plot: balance its remaining space without stretching its axes. */
@@ -1544,6 +1575,8 @@ html.dash-present .container.dash { padding-top: 10px; }
 }
 
 /* ---------- single-chart view (lib/singleView) ---------- */
+/* a detail a chart can leave out of the single-chart view: mark it data-single-hide (lib/singleView) */
+html[data-single='1'] [data-single-active] [data-single-hide] { display: none !important; }
 /* everything beside the chart in view is hidden; the wrappers that hold it stack it full width */
 [data-single-hidden] { display: none !important; }
 html[data-single='1'] [data-single-path] { display: block !important; max-width: none !important; width: auto !important; margin-left: 0; margin-right: 0; }
@@ -1551,20 +1584,30 @@ html[data-single='1'] [data-single-root] { max-width: none; padding-top: 12px; p
 html[data-single='1'] [data-single-active] { margin: 0; }
 html[data-single='1'] [data-single-active] .frame-chart .chart-wrap > svg,
 html[data-single='1'] [data-single-active] .frame-chart > svg { margin-left: auto; margin-right: auto; }
-html[data-single='1'] [data-single-active] .frame-chart .legend { justify-content: center; }
+html[data-single='1'] [data-single-active] .frame-chart .legend:not(.facet-legend .legend) { justify-content: center; }
 /* beside an open dock on a wide screen, not under it */
 @media (min-width: 901px) {
   html[data-single='1'][data-dock='open'] [data-single-root] { padding-left: calc(min(380px, 100vw - 36px) + 22px); }
 }
 .frame-head h2.single-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
 .single-steps { display: inline-flex; align-items: center; gap: 4px; }
+.single-head > .info-tip { flex: none; }
 .single-count { font-family: var(--mono); font-size: calc(12px * var(--text-scale)); font-weight: 400; color: var(--ink-muted); min-width: 48px; text-align: center; }
 /* the picker reads as the chart's title */
 .single-title { min-width: 0; max-width: min(520px, 100%); }
 .single-title .combobox-trigger { font-size: inherit; font-weight: inherit; color: var(--ink-text); max-width: 100%; }
 .single-title .combobox-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* the fit statistics, directly above the chart's options; empty, it takes no room */
-.single-stats { max-width: 520px; margin: 0 0 10px; }
+.single-stats { max-width: 520px; margin: 0 0 10px; display: flex; flex-direction: column; gap: 8px; }
+/* the fit statistics first, then the chart's notes and readouts (ChartAside), whichever arrived first */
+.single-stats > .regression-summary-side { order: -1; }
+.regression-summary-side > svg { display: block; }
+.side-fit-title { margin: 0 0 3px; font-size: calc(12px * var(--text-scale)); font-weight: 600; color: var(--ink-text); display: flex; gap: 6px; align-items: center; }
+.fit-pointed { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 6px; }
+.single-stats > .chart-note, .single-stats .chart-note { margin: 0; display: block; }
+.single-stats .connected-inspector { margin: 0; max-width: none; }
+.single-stats .connected-readout { margin-bottom: 6px; }
+.single-stats .species-groups { padding: 0; }
 .single-stats:empty { display: none; }
 /* the legend beside the plot when the chart in view leaves room for it (SingleFit): stacked, one item a line;
    anything else under the plot (notes) stays in the plot's column */
@@ -1573,6 +1616,14 @@ html[data-single='1'] [data-single-active] .frame-chart .legend { justify-conten
 [data-legend-beside] > .legend { grid-column: 2; grid-row: 1 / span var(--legend-rows, 1); align-self: center; }
 [data-legend-beside] > .legend, [data-legend-beside] > .legend .legend { flex-direction: column; flex-wrap: nowrap; align-items: flex-start; gap: 8px; padding: 0; }
 [data-legend-beside] > .legend .legend-group { flex-direction: column; align-items: flex-start; width: auto; }
+/* the group's name heads its column: no fixed basis (that is the name's width in a row, and its height here) */
+[data-legend-beside] > .legend .legend-group-name { flex: none; }
+/* a colour ramp beside the plot: its label over the bar */
+[data-legend-beside] .legend-item:has(> .legend-ramp) { flex-direction: column; align-items: flex-start; gap: 4px !important; }
+/* the colour ramp stands up beside the plot (components/ColorLegend); lying under it everywhere else */
+.legend-ramp .ramp-v, .legend-item > .ramp-v { display: none; }
+[data-legend-beside] .ramp-v { display: block !important; }
+[data-legend-beside] .ramp-h { display: none; }
 /* at the head of an options column: the column's width, no gap of its own (the column spaces its items) */
 .frame-controls > .single-stats { margin: 0; max-width: none; flex: none; }
 /* the title bar at the head of the options column (single-chart view): the arrows and picker, then the chart's actions */
@@ -1580,12 +1631,13 @@ html[data-single='1'] [data-single-active] .frame-chart .legend { justify-conten
 @media (min-width: 821px) {
   .frame-body:not(.controls-top) > .frame-controls > .frame-head { flex-direction: column; align-items: stretch; gap: 8px; }
   .frame-body:not(.controls-top) > .frame-controls > .frame-head .frame-actions { flex-wrap: wrap; }
-  .frame-body:not(.controls-top) > .frame-controls > .frame-head .single-title { flex: 1 1 100%; max-width: 100%; }
+  /* the picker fills its line but leaves room for the notes ⓘ beside it (the arrows take the line above) */
+  .frame-body:not(.controls-top) > .frame-controls > .frame-head .single-title { flex: 1 1 calc(100% - 32px); max-width: calc(100% - 32px); }
 }
 /* the chart in view: an options column longer than the window scrolls on its own, beside a plot fitted to the window */
 @media (min-width: 821px) {
   html[data-single='1'] [data-single-active] > .frame-body:not(.controls-top) > .frame-controls {
-    max-height: var(--single-room, none); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+    max-height: min(var(--single-room, 100vh), calc(100vh - var(--header-h, 0px) - 24px)); }
 }
 .single-stats > svg { display: block; max-width: 100%; height: auto; }
 
@@ -1608,7 +1660,8 @@ html[data-single='1'] [data-single-active] .frame-chart .legend { justify-conten
 .header-wide { display: inline-flex; gap: inherit; align-items: center; }
 .header-more { display: none; }
 .header-more > .icon-btn { font-size: 18px; line-height: 1; }
-.header-more-pop { width: 260px; padding: 6px; }
+/* as wide as its widest line (the display row, a note), never wider than the phone (two classes: above .views-pop's phone width) */
+.views-pop.header-more-pop { width: max-content; max-width: min(320px, calc(100vw - 24px)); padding: 6px; }
 .header-more-name { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; }
 .header-more-display { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 2px 4px 4px; }
 .header-more-display .display-controls { display: inline-flex; gap: 4px; }
@@ -1617,4 +1670,22 @@ html[data-single='1'] [data-single-active] .frame-chart .legend { justify-conten
   .header-wide { display: none; }
   .header-more { display: block; }
   .views-pop { width: min(340px, calc(100vw - 24px)); }
+}
+/* a scatter-matrix cell opened as a crossplot (charts/correlation/Correlogram PairFocus) */
+/* under the record drawer (z 40), as the focus mode is, so a clicked point's record opens on top */
+.export-backdrop.pair-backdrop { z-index: 36; }
+.export-dialog.pair-focus { width: auto; max-width: min(980px, 96vw); }
+.pair-focus .chart-wrap { margin: 0 auto; }
+
+/* a chart's header on a phone: name, ⓘ, then ⋯ (explanation, link, export, reference) and Focus on the same line
+   (components/ChartFrame FrameMoreMenu); wider, the separate ?, Ref and export buttons */
+.frame-wide { display: contents; }
+.frame-more { display: none; }
+.frame-more-btn { min-width: 32px; min-height: 32px; padding: 4px 8px; font-size: 16px; line-height: 1; }
+@media (max-width: 560px) {
+  .frame-wide { display: none; }
+  .frame-more { display: inline-flex; }
+  .frame-head { flex-wrap: nowrap; gap: 8px; }
+  .frame-head > div:first-child { flex: 1 1 auto; flex-basis: auto; min-width: 0; }
+  .frame-actions { margin-left: 0; align-items: center; }
 }

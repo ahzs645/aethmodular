@@ -134,8 +134,10 @@ export function IntervalStrip({ blocks, panels, labelWidth = 220, rowHeight = 20
           })}
           {layout.map(({ b, rowsTop }) => b.rows.map((r, j) => {
             const cy = rowsTop + j * rowHeight + rowHeight / 2
-            return <g key={`${b.key}|${r.key}`} onMouseEnter={(e) => r.tip && tip.show(e, r.tip)} onMouseLeave={tip.hide}
+            return <g key={`${b.key}|${r.key}`} onMouseMove={(e) => r.tip && tip.show(e, r.tip)} onMouseLeave={tip.hide}
               onClick={r.onClick} style={r.onClick ? { cursor: 'pointer' } : undefined}>
+              {/* the whole row answers the pointer, so its note follows along the line and not only over the marks */}
+              {r.tip && <rect x={-m.left + 4} y={cy - rowHeight / 2} width={w - 8} height={rowHeight} fill="transparent" />}
               {r.selected && <rect x={-m.left + 4} y={cy - rowHeight / 2} width={w - 8} height={rowHeight} fill={INK.accent} fillOpacity={0.08} />}
               <text x={-10} y={cy} dy="0.32em" textAnchor="end" fontSize={11} fill={r.labelColor ?? INK.text} fontWeight={r.selected || r.strong ? 600 : 400}>{r.label}</text>
               {panels.map((p, k) => <g key={k} transform={`translate(${k * (pw + panelGap)},0)`}>{(r.marks[k] ?? []).map((mk, i) => mark(mk, scales[k], cy, i, p.stems, r.selected))}</g>)}

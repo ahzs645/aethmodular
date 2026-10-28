@@ -24,6 +24,7 @@ import { SeasonEditor } from '@/components/SeasonEditor'
 import { DynamicSeasonEditor } from '@/components/DynamicSeasonEditor'
 import { defaultRuleFor, type DynRule } from '@/lib/dynamicSeasons'
 import { DEFAULT_RAIN_RULE, type RainRule } from '@/lib/rainSeasons'
+import { XIcon } from '@/components/Icons'
 
 export interface SubsetCaps {
   /** the tab's charts respond to the season filter */
@@ -249,7 +250,7 @@ export function SubsetBar({
         <span className="brush-actions">
           <span className="pill" title="Filters picked by a brush; every chart dims the rest. A highlight until you keep or exclude them.">
             {hl.selected.size} brushed
-            <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 4 }} onClick={() => hl.setSelected(null)} aria-label="Clear the brush">×</button>
+            <button type="button" className="btn quiet x-btn" style={{ marginLeft: 4 }} onClick={() => hl.setSelected(null)} aria-label="Clear the brush"><XIcon /></button>
           </span>
           {a.onKeepIds && <button type="button" className="btn quiet" title="Filter every chart to the brushed filters"
             onClick={() => { a.onKeepIds!(hl.selected!); hl.setSelected(null) }}>Keep only these</button>}
@@ -260,12 +261,12 @@ export function SubsetBar({
       {(s.dropped ?? 0) > 0 && <span className="pill">
         <button type="button" className="pill-link" onClick={() => setExclusionsOpen(true)}
           title="Excluded from the charts' right-click menu, the side panel or a brush: open the list (reasons, put back)">{s.dropped} excluded by hand</button>
-        <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 4 }} onClick={a.onClearDrop} aria-label="Put every hand-excluded filter back" title="Put them all back">×</button>
+        <button type="button" className="btn quiet x-btn" style={{ marginLeft: 4 }} onClick={a.onClearDrop} aria-label="Put every hand-excluded filter back" title="Put them all back"><XIcon /></button>
       </span>}
       {s.kept != null && <span className="pill">keeping {s.kept}
         <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 4 }} title="List the kept filters in the side panel"
           onClick={() => edits.openGroup({ title: 'Kept by hand (every other filter is hidden)', ids: s.keptIds ?? [], fields: reviewFields, live: 'kept' })}>review</button>
-        <button type="button" className="btn quiet" style={{ padding: '0 4px', marginLeft: 2 }} onClick={a.onClearKeep} aria-label="Stop keeping only the brushed filters">×</button></span>}
+        <button type="button" className="btn quiet x-btn" style={{ marginLeft: 2 }} onClick={a.onClearKeep} aria-label="Stop keeping only the brushed filters"><XIcon /></button></span>}
     </div>
   )
 
@@ -384,7 +385,7 @@ export function SubsetBar({
             {view === 'filters' && <span className="pill" title={`${s.shown} of ${s.total} ${caps.datasetLabel} in view`}>{s.shown} of {s.total}</span>}
             <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 4 }}>
               {view === 'filters' && !isDefault && <button type="button" className="btn quiet" onClick={a.onReset} title="Clear every filter">Reset</button>}
-              <button type="button" className="btn quiet" onClick={() => setOpen(false)} aria-label={view === 'plot' ? 'Close plot options' : 'Close filters'} title="Close">✕</button>
+              <button type="button" className="btn quiet x-btn" onClick={() => setOpen(false)} aria-label={view === 'plot' ? 'Close plot options' : 'Close filters'} title="Close"><XIcon /></button>
             </span>
           </header>
           {view === 'plot' && plotOptions}
@@ -692,7 +693,7 @@ function RatioRow({ explain }: { explain: boolean }) {
       <span className="ratio-list">
         {r.custom.map((d) => {
           const f = `${d.num} / ${d.den}`
-          return <span key={f} className="chip active">{f}<button type="button" className="btn quiet" aria-label={`Remove ${f}`} title="Remove this ratio" onClick={() => r.remove(f)}>✕</button></span>
+          return <span key={f} className="chip active">{f}<button type="button" className="btn quiet x-btn" aria-label={`Remove ${f}`} title="Remove this ratio" onClick={() => r.remove(f)}><XIcon /></button></span>
         })}
         <button type="button" className="btn quiet" onClick={() => r.open(() => {})}>+ Define a ratio</button>
       </span>
@@ -844,7 +845,7 @@ function ExclusionsDialog({ onClose, children }: { onClose: () => void; children
       <div className="export-dialog exclusions-dialog" role="dialog" aria-modal="true" aria-label="Excluded samples">
         <header className="exclusions-dialog-head">
           <strong>Excluded samples</strong>
-          <button type="button" className="btn quiet" onClick={onClose} aria-label="Close">✕</button>
+          <button type="button" className="btn quiet x-btn" onClick={onClose} aria-label="Close"><XIcon /></button>
         </header>
         {children}
       </div>

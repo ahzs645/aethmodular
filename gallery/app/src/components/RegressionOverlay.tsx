@@ -101,8 +101,10 @@ function wrapSummary(text: string, width: number) {
  * the same boxes, stacked on phones and up to two columns on wide panels.
  * The returned height is part of the SVG, so exports keep the exact layout.
  */
-export function useRegressionSummary({ stats, groups, width, enabled = true }: {
+export function useRegressionSummary({ stats, groups, width, enabled = true, panel }: {
   stats: RegressionStats | null; groups?: RegressionGroup[]; width: number; enabled?: boolean
+  /** a faceted chart's panel title: in the sidebar card it names whose fit this is, and pointing at it outlines that panel */
+  panel?: { title: string; color?: string } | null
 }) {
   const { methods, showCI } = useRegressions()
   // Where the summary goes, found from the DOM by a probe left in the chart:
@@ -157,7 +159,16 @@ export function useRegressionSummary({ stats, groups, width, enabled = true }: {
       {box.raw.map((line, j) => <text key={j} fill={line.color} data-regression-color={line.method} data-line={line.text === box.name ? 'name' : undefined}>{line.text}</text>)}
     </g>)}
   </g></> }
-  if (slot) return { height: 0, node: <><g ref={probe} />{createPortal(<svg className="regression-summary-side" width={width} height={height} viewBox={`0 0 ${width} ${height}`}>{node}</svg>, slot)}</> }
+  if (slot) {
+    const outline = (on: boolean) => probe.current?.closest('svg')?.parentElement?.classList.toggle('fit-pointed', on)
+    const side = <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>{node}</svg>
+    return { height: 0, node: <><g ref={probe} />{createPortal(panel
+      ? <div className="regression-summary-side" onMouseEnter={() => outline(true)} onMouseLeave={() => outline(false)}>
+          <p className="side-fit-title">{panel.color && <span className="swatch" style={{ background: panel.color }} />}{panel.title}</p>
+          {side}
+        </div>
+      : <div className="regression-summary-side">{side}</div>, slot)}</> }
+  }
   return { height, node: <><g ref={probe} />{node}</> }
 }
 

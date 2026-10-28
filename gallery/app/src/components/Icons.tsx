@@ -5,6 +5,10 @@ const Svg = ({ children }: { children: React.ReactNode }) => (
 export const SearchIcon = () => <Svg><circle cx="7" cy="7" r="4.5" /><path d="m10.4 10.4 3.6 3.6" /></Svg>
 export const BookIcon = () => <Svg><path d="M2.5 3.2C4.3 2.4 6.2 2.5 8 3.6c1.8-1.1 3.7-1.2 5.5-.4v9.6c-1.8-.8-3.7-.7-5.5.4-1.8-1.1-3.7-1.2-5.5-.4z" /><path d="M8 3.6v9.6" /></Svg>
 export const ViewsIcon = () => <Svg><path d="M4.5 2.5h7v11l-3.5-2.6-3.5 2.6z" /></Svg>
+/** close and remove: a drawn ×, centred in its square button (styles.css .x-btn) where a typed one sits on the text baseline */
+export const XIcon = () => <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" /></svg>
+/** put back, undo: a drawn ↺, in the same square button as XIcon (styles.css .x-btn) */
+export const UndoIcon = () => <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3.2 4.4A4.3 4.3 0 1 1 2.4 8" /><path d="M2.6 1.8v2.8h2.8" /></svg>
 export const SidebarIcon = () => <Svg><rect x="2" y="2.5" width="12" height="11" rx="1.5" /><path d="M10 2.5v11" /></Svg>
 /** one chart framed, with the arrows to the next and previous */
 export const SingleChartIcon = () => <Svg><rect x="4" y="3" width="8" height="10" rx="1.2" /><path d="M2 6.2.8 8 2 9.8M14 6.2 15.2 8 14 9.8" /></Svg>

@@ -19,6 +19,7 @@ import { TEMPLATES, decodeGuardrail, describeGuardrail, encodeGuardrail, evaluat
 const GuardrailEditor = lazy(() => import('@/components/GuardrailEditor').then((m) => ({ default: m.GuardrailEditor })))
 import { useSearchParam } from '@/lib/url'
 import { SpecCurvePlots, type SpecLayout } from './SpecCurvePlots'
+import { ChartAside } from '@/lib/singleView'
 
 /** spec_curve.json, written by gallery/data/export_spec_curve.py */
 export interface SpecCurveFile {
@@ -347,9 +348,9 @@ export function SpecCurve({
               label="strip colour: % of the specifications at that position that use the choice" format={(v) => `${v.toFixed(0)}%`} />
           </div>
         )}
-        {layout === 'overlay' && <p className="chart-note">Each baseline is sorted independently on a percentile axis. Curves compare distributions, not matched configurations. Choice strips are shown in the One curve and Per baseline views.</p>}
-        {file && data && data !== 'missing' && data.n > file.n && <p className="chart-note">{(data.n - file.n).toLocaleString()} configurations have no {METRICS[metric].name}{metric === 'heldout' ? ' (interleaved cross-validation holds no whole IMPROVE site out)' : ''} and are left out of this view.</p>}
-        {showDots && <p className="chart-note">Red dots: {highlightDescription}.{layout === 'stacked' ? ' Shared vertical scale; each panel is sorted independently.' : ''} Rules run on the displayed fit's intercept and slope; the saved guardrail results (field "Passes the saved guardrails") stay unchanged.</p>}
+        {layout === 'overlay' && <ChartAside><p className="chart-note">Each baseline is sorted independently on a percentile axis. Curves compare distributions, not matched configurations. Choice strips are shown in the One curve and Per baseline views.</p></ChartAside>}
+        {file && data && data !== 'missing' && data.n > file.n && <ChartAside><p className="chart-note">{(data.n - file.n).toLocaleString()} configurations have no {METRICS[metric].name}{metric === 'heldout' ? ' (interleaved cross-validation holds no whole IMPROVE site out)' : ''} and are left out of this view.</p></ChartAside>}
+        {showDots && <ChartAside><p className="chart-note">Red dots: {highlightDescription}.{layout === 'stacked' ? ' Shared vertical scale; each panel is sorted independently.' : ''} Rules run on the displayed fit's intercept and slope; the saved guardrail results (field "Passes the saved guardrails") stay unchanged.</p></ChartAside>}
         {editing && file && <Suspense fallback={null}><GuardrailEditor title={title ?? 'Specification curve'} src={file} scope={inView}
           preview={inView.length > 0 ? <PreviewCurve {...curve()} shown={inView} id={`${id}-${method}-preview`} /> : <Empty>No configuration matches the chart's filters.</Empty>}
           initial={userRule && dots === 'rule' ? userRule : TEMPLATES.find(t => t.key === lastPreset.current)?.rule ?? TEMPLATES[0].rule}

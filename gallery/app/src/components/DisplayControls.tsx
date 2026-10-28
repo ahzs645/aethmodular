@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { AutoThemeIcon, ExplainIcon, MoonIcon, SunIcon, TextSizeIcon } from '@/components/Icons'
+import { AutoThemeIcon, ExplainIcon, MoonIcon, SunIcon, TextSizeIcon, XIcon } from '@/components/Icons'
 import { useFloatingMenu } from '@/hooks/useFloatingMenu'
 import { EXPLAIN_AVAILABLE, usePrefs } from '@/lib/prefs'
 import { setThemePref, useThemePref } from '@/lib/colorTheme'
 import { DISPLAY_SIDES, mostVisibleChart, type ChartDisplay, type VisibleChart } from '@/lib/chartDisplay'
 import { resetChartDisplay, setSharedChartDisplay, setSingleChartDisplay, useChartDisplayPrefs } from '@/lib/chartDisplayPrefs'
+import { useSingleView } from '@/lib/singleView'
 
 const SIDE_LABEL = { top: 'Above', right: 'Right', left: 'Left' }
 const THEME_NEXT = { light: 'dark', dark: 'auto', auto: 'light' } as const
@@ -31,6 +32,8 @@ export function DisplayControls() {
   const { density, setDensity, explain, setExplain } = usePrefs()
   const theme = useThemePref()
   const prefs = useChartDisplayPrefs()
+  const single = useSingleView()
+  const placement = single.on ? single.side : prefs.controlsSide
   const [open, setOpen] = useState(false)
   const [target, setTarget] = useState<VisibleChart | null>(null)
   const [scope, setScope] = useState<'all' | 'chart'>('all')
@@ -84,10 +87,11 @@ export function DisplayControls() {
   return <span className="display-controls" ref={root}
     onContextMenu={event => { event.preventDefault(); showMenu(event.target instanceof HTMLElement ? event.target.closest('button') ?? trigger.current! : trigger.current!) }}
     onKeyDown={event => { if (event.key === 'ContextMenu' || event.shiftKey && event.key === 'F10') { event.preventDefault(); showMenu(document.activeElement as HTMLElement) } }}>
-    <button type="button" className={`btn quiet icon-btn${prefs.controlsSide !== 'top' ? ' on' : ''}`} aria-label="Options placement"
-      onClick={() => apply({ controlsSide: DISPLAY_SIDES[(DISPLAY_SIDES.indexOf(prefs.controlsSide) + 1) % DISPLAY_SIDES.length] })}
-      title={`Options: ${SIDE_LABEL[prefs.controlsSide].toLowerCase()} for all charts. Click to cycle; right-click for settings and this chart only.`}>
-      <OptionsPlacementIcon side={prefs.controlsSide} />
+    {/* in the single-chart view the placement is the view's own (side= in the link), so a shared link keeps it */}
+    <button type="button" className={`btn quiet icon-btn${placement !== 'top' ? ' on' : ''}`} aria-label="Options placement"
+      onClick={() => { const next = DISPLAY_SIDES[(DISPLAY_SIDES.indexOf(placement) + 1) % DISPLAY_SIDES.length]; if (single.on) single.setSide(next); else apply({ controlsSide: next }) }}
+      title={single.on ? `Options: ${SIDE_LABEL[placement].toLowerCase()} in the one-chart view (kept in the link). Click to cycle.` : `Options: ${SIDE_LABEL[placement].toLowerCase()} for all charts. Click to cycle; right-click for settings and this chart only.`}>
+      <OptionsPlacementIcon side={placement} />
     </button>
     <button type="button" className={`btn quiet icon-btn${density === 'readable' ? ' on' : ''}`} aria-pressed={density === 'readable'} aria-label="Readable text"
       onClick={() => apply({ density: density === 'readable' ? 'compact' : 'readable' })} title="Text size for all charts. Click to toggle; right-click for settings and this chart only."><TextSizeIcon /></button>
@@ -101,7 +105,7 @@ export function DisplayControls() {
       title="Chart display settings: all charts or just the most-visible chart" onClick={event => open ? close() : showMenu(event.currentTarget)}>⋯</button>
     {open && createPortal(<div ref={menu} id={menuId} className="display-menu" role="dialog" aria-label="Chart display settings" onKeyDown={trapFocus}
       style={place ?? { position: 'fixed', visibility: 'hidden' }}>
-      <header><strong>Chart display</strong><button type="button" className="btn quiet" aria-label="Close display settings" onClick={close}>×</button></header>
+      <header><strong>Chart display</strong><button type="button" className="btn quiet x-btn" aria-label="Close display settings" onClick={close}><XIcon /></button></header>
       <fieldset className="display-scope"><legend>Apply changes to</legend>
         <div className="seg"><button type="button" className={scope === 'all' ? 'active' : ''} aria-pressed={scope === 'all'} onClick={() => setScope('all')}>All charts</button>
           <button type="button" className={scope === 'chart' ? 'active' : ''} aria-pressed={scope === 'chart'} disabled={!target} onClick={() => setScope('chart')}>This chart only</button></div>

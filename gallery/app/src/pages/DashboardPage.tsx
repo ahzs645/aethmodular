@@ -10,6 +10,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { ChartSite, ChartFit, LEGEND_MODES, TileLegend, type LegendMode } from '@/lib/chartFit'
 import { addTile, arrange, COLS, nextId, nextTileId, placeTile, removeTile, stepTile, ROWS, rowsUsed, tileKeyPrefix, updateTile, type DashState, type Scope, type Sheet, type Tile } from '@/lib/dashboard'
 import { clearScopedParams, copyScopedParams, ParamScope, useSearchParam } from '@/lib/url'
+import { XIcon } from '@/components/Icons'
 
 const GAP = 10
 /** at or below this width the dashboard is one column and the page scrolls (Grafana and Observable do the same) */
@@ -250,7 +251,7 @@ export function DashboardPage({ data, dash, setDash, filters, onScope, onPickSit
         <button type="button" className="btn quiet" onClick={() => goSheet(-1)} disabled={sheets.length < 2} aria-label="Previous sheet">‹</button>
         <span>{sheet.name} <span className="dash-count">{active + 1}/{sheets.length}</span></span>
         <button type="button" className="btn quiet" onClick={() => goSheet(1)} disabled={sheets.length < 2} aria-label="Next sheet">›</button>
-        <button type="button" className="btn quiet" onClick={stopPresent} title="Stop presenting (Esc)">✕</button>
+        <button type="button" className="btn quiet x-btn" onClick={stopPresent} title="Stop presenting (Esc)"><XIcon /></button>
       </div>}
     </>
   )
@@ -299,7 +300,7 @@ function ChartCatalog({ data, onPick, onClose }: { data: DashboardData; onPick: 
       <div className="panel dash-catalog" role="dialog" aria-label="Add a chart">
         <header className="frame-head">
           <div><h2>Add a chart</h2><p className="subtitle">It goes in the first free space, smaller if that is all there is, or takes half of the largest tile when the sheet is full. Drag it anywhere in Edit; change its fields from its ⋯ menu.</p></div>
-          <div className="frame-actions"><button type="button" className="btn quiet" onClick={onClose} aria-label="Close">✕</button></div>
+          <div className="frame-actions"><button type="button" className="btn quiet x-btn" onClick={onClose} aria-label="Close"><XIcon /></button></div>
         </header>
         <div className="dash-catalog-groups">
           {groups.map(([group, charts]) => (

@@ -1,6 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { baseFilterId, useHighlight } from '@/lib/highlight'
 import { usePresentation } from '@/lib/presentation'
+import { useExportSites } from '@/lib/exportSites'
+import type { ExportSite } from '@/lib/exportColors'
+import { UndoIcon } from '@/components/Icons'
 
 /**
  * Hand edits from inside the charts: right-click a filter (or a bin of filters) to
@@ -25,6 +28,37 @@ export interface FilterGroup {
 
 interface MenuTarget { ids: string[]; title: string; group?: FilterGroup }
 
+/**
+ * A chart's own item in this menu: an element marked data-menu-action="Label" (and data-menu-detail, any
+ * string) adds "Label" to the menu when right-clicked; choosing it dispatches MENU_ACTION on the element, with
+ * the detail, for the chart to handle (charts/correlation/Correlogram opens a matrix cell as a crossplot).
+ */
+export const MENU_ACTION = 'gallery:menu-action'
+interface MenuAction { el: Element; label: string; detail: string }
+const menuActionOf = (t: Element): MenuAction | null => {
+  const el = t.closest('[data-menu-action]')
+  return el ? { el, label: el.getAttribute('data-menu-action')!, detail: el.getAttribute('data-menu-detail') ?? '' } : null
+}
+
+/** a filter id's site: its code, the part before the last dash (ETAD-0052 → ETAD) */
+const siteOf = (id: string) => id.replace(/-[^-]*$/, '')
+
+/**
+ * The sites a chart draws, from its panel: the filter ids on its marks (data-fid, data-fids) and the sites its
+ * marks are tagged with (data-export-site, by code or name). The right-click menu offers to put back only the
+ * filters excluded by hand from these sites: one excluded at Addis has nothing to do with a chart of Delhi.
+ */
+function panelSites(el: Element | null, sites: readonly ExportSite[], ids: string[] = []): Set<string> {
+  const out = new Set(ids.map(siteOf))
+  const panel = el?.closest('.panel')
+  if (!panel) return out
+  for (const m of panel.querySelectorAll('[data-fid]')) out.add(siteOf(m.getAttribute('data-fid')!))
+  for (const m of panel.querySelectorAll('[data-fids]')) for (const id of (m.getAttribute('data-fids') ?? '').split(',')) if (id) out.add(siteOf(id))
+  const byName = new Map(sites.flatMap((x) => [[x.code, x.code], [x.name, x.code]] as [string, string][]))
+  for (const m of panel.querySelectorAll('[data-export-site]')) { const code = byName.get(m.getAttribute('data-export-site')!); if (code) out.add(code) }
+  return out
+}
+
 interface FilterEdits {
   /** whether the open tab honours drop / keep (the network tabs) */
   enabled: boolean
@@ -35,7 +69,8 @@ interface FilterEdits {
   restore: (ids: Iterable<string>) => void
   group: FilterGroup | null
   openGroup: (g: FilterGroup | null) => void
-  openMenu: (e: { clientX: number; clientY: number; preventDefault: () => void; stopPropagation?: () => void }, target: MenuTarget) => void
+  /** `e.target`: the clicked mark, whose chart says which sites' hand exclusions the menu offers to put back */
+  openMenu: (e: { clientX: number; clientY: number; target?: EventTarget | null; preventDefault: () => void; stopPropagation?: () => void }, target: MenuTarget) => void
 }
 
 const Ctx = createContext<FilterEdits>({
@@ -86,7 +121,8 @@ export function FilterEditsProvider({ children, enabled, dropped, kept, onDrop, 
   onGroup: (g: FilterGroup | null) => void
 }) {
   const hl = useHighlight()
-  const [menu, setMenu] = useState<{ x: number; y: number; target: MenuTarget | null } | null>(null)
+  const [menu, setMenu] = useState<{ x: number; y: number; target: MenuTarget | null; scope: Set<string>; action: MenuAction | null } | null>(null)
+  const sites = useExportSites()
 
   const drop = useCallback((ids: Iterable<string>) => onDrop(new Set(ids)), [onDrop])
   const keep = useCallback((ids: Iterable<string>) => onKeep(new Set(ids)), [onKeep])
@@ -95,8 +131,9 @@ export function FilterEditsProvider({ children, enabled, dropped, kept, onDrop, 
     if (!enabled) return
     e.preventDefault()
     e.stopPropagation?.()
-    setMenu({ x: e.clientX, y: e.clientY, target })
-  }, [enabled])
+    const el = e.target instanceof Element ? e.target : null
+    setMenu({ x: e.clientX, y: e.clientY, target, scope: panelSites(el, sites, target?.ids), action: el ? menuActionOf(el) : null })
+  }, [enabled, sites])
 
   // marks that carry data-fid / data-fids, and the empty plot area (brush and undo only)
   useEffect(() => {
@@ -114,14 +151,17 @@ export function FilterEditsProvider({ children, enabled, dropped, kept, onDrop, 
         const title = many.getAttribute('data-ftitle') ?? `${ids.length} filters`
         if (ids.length) target = { ids, title, group: { title, ids } }
       }
-      // on the empty plot only the brush and the undo are on offer; elsewhere keep the browser's menu
-      if (!target && !(t.closest('svg') && (hl.selected || dropped.size))) return
+      // on the empty plot only the brush and the undo (for this chart's sites) are on offer; elsewhere keep the browser's menu
+      const scope = panelSites(t, sites, target?.ids)
+      const undo = [...dropped].some((id) => scope.has(siteOf(id)))
+      const action = menuActionOf(t)
+      if (!target && !action && !(t.closest('svg') && (hl.selected || undo))) return
       e.preventDefault()
-      setMenu({ x: e.clientX, y: e.clientY, target })
+      setMenu({ x: e.clientX, y: e.clientY, target, scope, action })
     }
     document.addEventListener('contextmenu', onContext)
     return () => document.removeEventListener('contextmenu', onContext)
-  }, [enabled, hl.selected, dropped])
+  }, [enabled, hl.selected, dropped, sites])
 
   const value = useMemo<FilterEdits>(() => ({ enabled, dropped, kept, drop, keep, restore, group, openGroup: onGroup, openMenu }),
     [enabled, dropped, kept, drop, keep, restore, group, onGroup, openMenu])
@@ -133,7 +173,7 @@ export function FilterEditsProvider({ children, enabled, dropped, kept, onDrop, 
   )
 }
 
-function FilterMenu({ x, y, target, onClose }: { x: number; y: number; target: MenuTarget | null; onClose: () => void }) {
+function FilterMenu({ x, y, target, scope, action, onClose }: { x: number; y: number; target: MenuTarget | null; scope: Set<string>; action: MenuAction | null; onClose: () => void }) {
   const ed = useFilterEdits()
   const hl = useHighlight()
   const ref = useRef<HTMLDivElement>(null)
@@ -175,9 +215,13 @@ function FilterMenu({ x, y, target, onClose }: { x: number; y: number; target: M
   const brushed = hl.selected && !(target && n === hl.selected.size && target.ids.every((id) => hl.selected!.has(id))) ? hl.selected : null
   const alreadyOut = target ? target.ids.filter((id) => ed.dropped.has(id)) : []
   const plural = (k: number) => `${k} filter${k === 1 ? '' : 's'}`
+  // the hand exclusions this chart could show again: from the sites it draws
+  const here = [...ed.dropped].filter((id) => scope.has(siteOf(id)))
 
   return (
     <div ref={ref} className="ctx-menu" role="menu" style={pos} onContextMenu={(e) => e.preventDefault()}>
+      {action && <button type="button" role="menuitem" onClick={act(() => action.el.dispatchEvent(new CustomEvent(MENU_ACTION, { bubbles: true, detail: action.detail })))}>{action.label}</button>}
+      {action && target && <div className="ctx-sep" />}
       {target && <div className="ctx-head">{single ?? target.title}{!single && <span> · {plural(n)}</span>}</div>}
       {single && <button type="button" role="menuitem" onClick={act(() => hl.openSample(single))}>Open details</button>}
       {target?.group && <button type="button" role="menuitem" onClick={act(() => ed.openGroup(target.group!))}>List these {plural(n)} in the side panel</button>}
@@ -186,14 +230,16 @@ function FilterMenu({ x, y, target, onClose }: { x: number; y: number; target: M
       {target && <button type="button" role="menuitem" onClick={act(() => ed.keep(target.ids))}>Keep only {single ? 'this filter' : `these ${n}`}</button>}
       {single && <button type="button" role="menuitem" onClick={act(() => { navigator.clipboard?.writeText(single) })}>Copy ID</button>}
       {brushed && <>
-        <div className="ctx-sep" />
+        {(target || action) && <div className="ctx-sep" />}
         <div className="ctx-head">Brushed · {plural(brushed.size)}</div>
         <button type="button" role="menuitem" onClick={act(() => { ed.drop(brushed); hl.setSelected(null) })}>Exclude the brushed filters</button>
         <button type="button" role="menuitem" onClick={act(() => { ed.keep(brushed); hl.setSelected(null) })}>Keep only the brushed filters</button>
       </>}
-      {ed.dropped.size > 0 && <>
-        <div className="ctx-sep" />
-        <button type="button" role="menuitem" onClick={act(() => ed.restore(ed.dropped))}>Put back all {plural(ed.dropped.size)} excluded by hand</button>
+      {here.length > 0 && <>
+        {(target || brushed || action) && <div className="ctx-sep" />}
+        <button type="button" role="menuitem" onClick={act(() => ed.restore(here))}>
+          {here.length === ed.dropped.size ? `Put back all ${plural(here.length)} excluded by hand` : `Put back the ${plural(here.length)} excluded by hand at these sites`}
+        </button>
       </>}
     </div>
   )
@@ -211,7 +257,7 @@ export function HandEditsBadge() {
     <span className="hand-edits-badge" title="Filters excluded (or kept) by hand on any page; every chart that draws them follows">
       {ed.dropped.size > 0 && <>
         <button type="button" className="pill-link" onClick={() => ed.openGroup({ title: 'Excluded by hand', ids: [...ed.dropped], live: 'dropped' })}>{ed.dropped.size} excluded by hand</button>
-        <button type="button" className="btn quiet" onClick={() => ed.restore(ed.dropped)} title="Put every hand-excluded filter back" aria-label="Put every hand-excluded filter back">↺</button>
+        <button type="button" className="btn quiet x-btn" onClick={() => ed.restore(ed.dropped)} title="Put every hand-excluded filter back" aria-label="Put every hand-excluded filter back"><UndoIcon /></button>
       </>}
       {ed.kept && <button type="button" className="pill-link" onClick={() => ed.openGroup({ title: 'Kept by hand (every other filter is hidden)', ids: [...ed.kept!], live: 'kept' })}>keeping {ed.kept.size}</button>}
     </span>

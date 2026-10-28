@@ -14,6 +14,7 @@ import { PREPROCESSING, label } from '@/lib/labels'
 import type { AnalogLab as AnalogLabData } from '@/lib/types'
 import { cohortColor } from './common'
 import { AxisChoices } from '@/components/AxisChoices'
+import { ChartAside } from '@/lib/singleView'
 
 /**
  * The analog lab: does the committed spectral-analog ranking agree with
@@ -146,7 +147,7 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
           </div>
         )}
         <Legend items={[{ label: TOP, color: cohortColor('analogs') }, { label: REST, color: INK.muted }, { label: ADDIS, color: INK.text }]} {...lg.props} note={lab ? `pool subsample ${lab.pool_xy.length} of ${lab.n.toLocaleString()} · ranks every ${lab.rank_stride}th` : undefined} />
-        {pca && pca.nOutside > 0 && <p className="chart-note">{pca.nOutside} extreme spectra fall outside the 0.5–99.5 % PCA range and are pinned hollow at the edge of the axes.</p>}
+        {pca && pca.nOutside > 0 && <ChartAside><p className="chart-note">{pca.nOutside} extreme spectra fall outside the 0.5–99.5 % PCA range and are pinned hollow at the edge of the axes.</p></ChartAside>}
         {lab && (
           <table className="placement" style={{ maxWidth: 560 }}>
             <thead><tr><th>metric</th><th>Spearman ρ with committed</th></tr></thead>

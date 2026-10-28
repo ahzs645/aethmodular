@@ -11,6 +11,7 @@ import {
   describeGuardrail, evaluateGuardrail, formulaName, guardFields, guardRows, ruleSteps, ruleUpTo, stepStats, templatesFor,
   type Formula, type Guardrail, type GuardField, type GuardrailSource,
 } from '@/lib/guardrails'
+import { XIcon } from '@/components/Icons'
 
 /**
  * The guardrail editor: a popup where a reader writes the rule that picks a specification
@@ -63,7 +64,7 @@ function builderFields(fields: GuardField[]): OptionGroup<Field>[] {
 
 const CLASSES = {
   combinators: 'select', fields: 'select', operators: 'select', value: 'select', valueSource: 'select',
-  addRule: 'btn quiet', addGroup: 'btn quiet', removeRule: 'btn quiet', removeGroup: 'btn quiet', notToggle: 'toggle',
+  addRule: 'btn quiet', addGroup: 'btn quiet', removeRule: 'btn quiet x-btn', removeGroup: 'btn quiet x-btn', notToggle: 'toggle',
 }
 
 /**
@@ -179,7 +180,7 @@ export function GuardrailEditor({ title, src, scope, initial, onApply, onPreview
         <div className="guard-top">
           <header className="guard-head">
             <div><strong>Guardrails</strong><span className="export-title">{title}</span></div>
-            <button type="button" className="btn quiet" onClick={requestClose} aria-label="Cancel" title="Cancel (Esc): put the red dots back">✕</button>
+            <button type="button" className="btn quiet x-btn" onClick={requestClose} aria-label="Cancel" title="Cancel (Esc): put the red dots back"><XIcon /></button>
           </header>
           {preview && <div className="guard-preview">{preview}</div>}
         </div>
@@ -192,7 +193,7 @@ export function GuardrailEditor({ title, src, scope, initial, onApply, onPreview
             <span className="control">Saved</span>
             {saved.map((s) => <span key={s.name} className="guard-chip">
               <button type="button" className="btn quiet" onClick={() => load(s.rule)} title="Load this rule set">{s.name}</button>
-              <button type="button" className="btn quiet" onClick={() => removeSet(s.name)} aria-label={`Delete ${s.name}`} title="Delete">×</button>
+              <button type="button" className="btn quiet x-btn" onClick={() => removeSet(s.name)} aria-label={`Delete ${s.name}`} title="Delete"><XIcon /></button>
             </span>)}
           </span>}
         </div>
@@ -201,7 +202,7 @@ export function GuardrailEditor({ title, src, scope, initial, onApply, onPreview
           <QueryBuilder fields={groups} query={query} onQueryChange={setQuery} controlClassnames={CLASSES} controlElements={{ ...SELECTORS, valueEditor: RangeValueEditor }}
             showNotToggle resetOnFieldChange addRuleToNewGroups
             translations={{ addRule: { label: '+ Condition', title: 'Add a condition' }, addGroup: { label: '+ Group', title: 'Add a group of conditions' },
-              removeRule: { label: '×', title: 'Remove this condition' }, removeGroup: { label: '×', title: 'Remove this group' }, notToggle: { label: 'Not', title: 'Pass when this group does NOT hold' } }}
+              removeRule: { label: <XIcon />, title: 'Remove this condition' }, removeGroup: { label: <XIcon />, title: 'Remove this group' }, notToggle: { label: 'Not', title: 'Pass when this group does NOT hold' } }}
             combinators={[{ name: 'and', value: 'and', label: 'All of' }, { name: 'or', value: 'or', label: 'Any of' }]} />
         </section>
 
@@ -217,7 +218,7 @@ export function GuardrailEditor({ title, src, scope, initial, onApply, onPreview
             <input className="select guard-formula-text" aria-label={`Formula for ${f.label}`} value={f.formula} placeholder="e.g. abs(slope - 1) * 10"
               onChange={(e) => editFormula(i, { formula: e.target.value })} spellCheck={false} />
             <code className="guard-name" title="Its name in other formulas">{f.name}</code>
-            <button type="button" className="btn quiet" onClick={() => setFormulas((fs) => fs.filter((_, j) => j !== i))} aria-label={`Remove ${f.label}`}>×</button>
+            <button type="button" className="btn quiet x-btn" onClick={() => setFormulas((fs) => fs.filter((_, j) => j !== i))} aria-label={`Remove ${f.label}`}><XIcon /></button>
           </div>)}
           {(formulas.length > 0) && <p className="guard-help">
             Fields: {baseFields.filter((f) => f.kind === 'number').map((f) => <code key={f.name} title={f.label}>{f.name}</code>)}

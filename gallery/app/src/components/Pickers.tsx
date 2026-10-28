@@ -17,7 +17,7 @@ export function BaselineOptionsProvider({ methods, children }: { methods: readon
 }
 export const useBaselineOptions = () => useContext(BaselineOptions)
 
-export function BaselinePicker({ value, onChange, options, label = 'Baseline', short = false, as = 'segmented', backgroundRank }: {
+export function BaselinePicker({ value, onChange, options, label = 'Baseline', short = false, as = 'segmented', backgroundRank, title }: {
   value: string
   onChange: (method: string) => void
   /** defaults to the page's baselines (BaselineOptionsProvider) */
@@ -27,13 +27,15 @@ export function BaselinePicker({ value, onChange, options, label = 'Baseline', s
   as?: 'segmented' | 'select'
   /** for exports that call every VIBES run "VIBES" */
   backgroundRank?: number | null
+  /** hover text: what the chosen baseline is (a run's rank, its channels) */
+  title?: string
 }) {
   const pageOptions = useBaselineOptions()
   const list = options ?? pageOptions
   const name = (m: string) => baselineName(m, { short, backgroundRank })
   return as === 'select'
-    ? <Select label={label} value={value} options={[...list]} optionLabel={name} onChange={onChange} />
-    : <Segmented label={label} value={value} options={list} optionLabel={name} onChange={onChange} />
+    ? <Select label={label} value={value} options={[...list]} optionLabel={name} onChange={onChange} title={title} />
+    : <Segmented label={label} value={value} options={list} optionLabel={name} onChange={onChange} title={title} />
 }
 
 /** A season group (e.g. "All Addis", "Kiremt (Jun-Sep)"), full or short names. */

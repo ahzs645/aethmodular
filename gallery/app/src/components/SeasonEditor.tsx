@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { SeasonMeta } from '@/lib/types'
+import { XIcon } from '@/components/Icons'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 /** colours for custom seasons, in order of creation */
@@ -79,7 +80,7 @@ export function SeasonEditor({ seasons, onChange }: { seasons: { name: string; m
             style={{ background: CUSTOM_SEASON_COLORS[i % CUSTOM_SEASON_COLORS.length] }} onClick={() => setActive(i)} />
           <input className="select" value={s.name} maxLength={40} aria-label={`Season ${i + 1} name`} onFocus={() => setActive(i)} onChange={(e) => rename(i, e.target.value)} />
           <span className="season-edit-range">{customSeasonLabel('', s.months).replace(/^ \(|\)$/g, '')}</span>
-          {seasons.length > 1 && <button type="button" className="btn quiet" aria-label={`Remove ${s.name}`} onClick={() => remove(i)}>×</button>}
+          {seasons.length > 1 && <button type="button" className="btn quiet x-btn" aria-label={`Remove ${s.name}`} onClick={() => remove(i)}><XIcon /></button>}
         </div>
       ))}
       <div className="site-picker-bar">

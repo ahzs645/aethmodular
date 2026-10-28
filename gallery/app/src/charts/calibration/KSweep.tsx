@@ -10,6 +10,7 @@ import { INK } from '@/lib/theme'
 import type { CalibFile } from '@/lib/types'
 import { configKey, configLabel, sameConfig, type Config } from './common'
 import { COHORT, CV_PROTOCOL, METRIC, PREPROCESSING, SELECTION_SPACE, label } from '@/lib/labels'
+import { ChartAside } from '@/lib/singleView'
 
 // Saved coefficient fields are projected to the active estimator by CalibrationPage.
 const PANELS: { id: 'intercept' | 'slope' | 'r2'; title: string; keys: { key: 'db' | 'dm' | 'r2' | 'ho'; label: string; color: string; dash?: string }[]; ref?: number }[] = [
@@ -111,7 +112,7 @@ export function KSweep({ calib, selected, onSelect }: { calib: CalibFile; select
             </>
           }} />
         )}
-        <p className="chart-note">{configLabel(selected, calib)}</p>
+        <ChartAside><p className="chart-note">{configLabel(selected, calib)}</p></ChartAside>
       </div>
     </ChartFrame>
   )

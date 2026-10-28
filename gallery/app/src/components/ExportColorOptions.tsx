@@ -4,6 +4,7 @@ import { seasonColorRows, seasonExportColor } from '@/lib/exportSeasons'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { DEFAULT_EXPORT_COLORS, effectiveExportColors, hexColor, recommendExportColors, siteExportColor, type ExportColors, type ExportPalette } from '@/lib/exportColors'
 import { FIT_STYLE } from '@/lib/regressionMethods'
+import { XIcon } from '@/components/Icons'
 
 const STANDARD_SWATCHES = [
   ['Black', '#000000'], ['Gray', '#777777'], ['White', '#ffffff'], ['Red', '#d62728'],
@@ -11,7 +12,9 @@ const STANDARD_SWATCHES = [
   ['Blue', '#1f77b4'], ['Navy', '#17365d'], ['Purple', '#9467bd'], ['Pink', '#e377c2'],
 ] as const
 
-function ColorChoice({ label, value, standard, onChange, onStandard, icon, note }: { label: string; value: string; standard: string; onChange: (color: string) => void; onStandard?: () => void; icon?: ReactNode; note?: string }) {
+/** one colour: the standard swatches, a custom colour and its hex, and the chart's own colour to go back to (used by
+ *  the export's colours and the grouping editor's bands, components/GroupingDialog) */
+export function ColorChoice({ label, value, standard, onChange, onStandard, icon, note }: { label: string; value: string; standard: string; onChange: (color: string) => void; onStandard?: () => void; icon?: ReactNode; note?: string }) {
   const [draft, setDraft] = useState(value)
   const [swatches, setSwatches] = useState(false)
   useEffect(() => setDraft(value), [value])
@@ -98,13 +101,14 @@ export function ExportColorPicker({ palette, value, onChange }: { palette: Expor
       {value.mode === 'standard' ? 'Standard' : 'Custom'}
       <span aria-hidden="true">▾</span>
     </button>
-    {open && anchor.current && <ExportColorPopover anchor={anchor.current} onClose={() => setOpen(false)}>
+    {open && anchor.current && <ColorPopover anchor={anchor.current} onClose={() => setOpen(false)}>
       <ExportColorOptions palette={palette} value={value} onChange={onChange} />
-    </ExportColorPopover>}
+    </ColorPopover>}
   </div>
 }
 
-function ExportColorPopover({ anchor, onClose, children }: { anchor: HTMLButtonElement; onClose: () => void; children: ReactNode }) {
+/** the colour popover beside its button, inside the dialog it opens from (its modal keeps focus there) */
+export function ColorPopover({ anchor, onClose, children, title = 'Colors', label = 'Export color options' }: { anchor: HTMLButtonElement; onClose: () => void; children: ReactNode; title?: string; label?: string }) {
   const box = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   useLayoutEffect(() => {
@@ -149,10 +153,10 @@ function ExportColorPopover({ anchor, onClose, children }: { anchor: HTMLButtonE
     }
   }, [anchor, onClose])
   // Keep the popover inside the export dialog's accessible modal, outside its scrolling settings.
-  return createPortal(<div ref={box} className="export-color-popover" role="dialog" aria-label="Export color options"
+  return createPortal(<div ref={box} className="export-color-popover" role="dialog" aria-label={label}
     style={pos ?? { left: 0, top: 0, visibility: 'hidden' }}>
-    <header><strong>Colors</strong><button type="button" className="btn quiet" aria-label="Close color options" title="Close colors (Esc)"
-      onClick={() => { onClose(); anchor.focus() }}>✕</button></header>
+    <header><strong>{title}</strong><button type="button" className="btn quiet x-btn" aria-label="Close color options" title="Close colors (Esc)"
+      onClick={() => { onClose(); anchor.focus() }}><XIcon /></button></header>
     <div className="export-color-popover-body">{children}</div>
     <footer><button type="button" className="btn" onClick={() => { onClose(); anchor.focus() }}>Done</button></footer>
   </div>, anchor.closest('.export-dialog') ?? document.body)

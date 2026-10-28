@@ -82,7 +82,7 @@ import { useSearchParam } from '@/lib/url'
 import { CommandPaletteButton } from '@/components/CommandPalette'
 import { HeaderNavProvider, useHeaderNav } from '@/lib/headerNav'
 import { NavMenu, type NavGroup, type NavItem } from '@/components/NavMenu'
-import { SidebarIcon, SingleChartIcon } from '@/components/Icons'
+import { SidebarIcon, SingleChartIcon, XIcon } from '@/components/Icons'
 import { DisplayControls } from '@/components/DisplayControls'
 import { SingleFit, SingleViewProvider, SingleViewToggle, useSingleViewPref } from '@/lib/singleView'
 import { WEATHER_GROUP, useWeather } from '@/lib/weather'
@@ -1334,6 +1334,9 @@ export default function App() {
 /** `dash`: the Dashboard, full width, its options in the header (pages/DashboardPage portals them into #dash-bar) */
 function Shell({ children, nav, wide = false, editsBadge = false, dash = false }: { children: React.ReactNode; nav?: React.ReactNode; wide?: boolean; editsBadge?: boolean; dash?: boolean }) {
   const container = dash ? 'container dash' : wide ? 'container wide' : 'container'
+  // the sticky header's height, for what sticks under it (a chart's options column, styles.css --header-h)
+  const headerH = useHeaderHeight()
+  useEffect(() => { document.documentElement.style.setProperty('--header-h', `${headerH}px`) }, [headerH])
   return (
     <>
       <header className="app-header">
@@ -1394,7 +1397,7 @@ function PageSidebar({ fits }: { fits: boolean }) {
   return <>
     <SideDock open={open} top={top} onClose={() => setOpen(false)} tab={<button className="subset-tab" type="button" aria-expanded={open} onClick={() => setOpen(!open)} title={open ? 'Hide the filters' : 'Show the filters'}><span className="subset-tab-label">Filters</span></button>}>
       <aside className="panel subset subset-panel" aria-label="Filters">
-        <header className="subset-head"><strong>Filters</strong><span style={{ marginLeft: 'auto' }}><button type="button" className="btn quiet" onClick={() => setOpen(false)} aria-label="Close filters" title="Close">✕</button></span></header>
+        <header className="subset-head"><strong>Filters</strong><span style={{ marginLeft: 'auto' }}><button type="button" className="btn quiet x-btn" onClick={() => setOpen(false)} aria-label="Close filters" title="Close"><XIcon /></button></span></header>
         <PageSidebarSlot />
         {fits && <RegressionControls />}
       </aside>
@@ -1412,7 +1415,7 @@ function BrushBar({ onKeep, onDrop }: { onKeep: (ids: Set<string>) => void; onDr
       <strong>{ids.size} brushed</strong>
       <button type="button" className="btn" onClick={() => { onKeep(ids); hl.setSelected(null) }} title="Filter every chart to these filters">Keep only these</button>
       <button type="button" className="btn" onClick={() => { onDrop(ids); hl.setSelected(null) }} title="Remove these filters from every chart; the Filters panel can put them back">Exclude these</button>
-      <button type="button" className="btn quiet" onClick={() => hl.setSelected(null)} aria-label="Clear the brush">×</button>
+      <button type="button" className="btn quiet x-btn" onClick={() => hl.setSelected(null)} aria-label="Clear the brush"><XIcon /></button>
     </div>
   )
 }

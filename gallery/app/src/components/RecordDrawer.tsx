@@ -3,6 +3,7 @@ import { fmt } from '@/lib/stats'
 import type { FilterRecord } from '@/lib/highlight'
 import { FilterSpectrum } from '@/components/FilterSpectrum'
 import { DrawerShell } from '@/components/DrawerShell'
+import { XIcon } from '@/components/Icons'
 
 /** A value as a drawer cell: numbers to 3 decimals, missing as an em dash. */
 const cell = (v: FilterRecord['fields'][number][1]) =>
@@ -50,7 +51,7 @@ export function RecordDrawer({ rec, onClose }: { rec: FilterRecord; onClose: () 
           <div className="drawer-id">{rec.id}</div>
           <div className="drawer-sub">{[rec.site, rec.date].filter(Boolean).join(' · ')}</div>
         </div>
-        <button type="button" className="btn quiet" onClick={onClose} aria-label="Close" title="Close (Esc)">✕</button>
+        <button type="button" className="btn quiet x-btn" onClick={onClose} aria-label="Close" title="Close (Esc)"><XIcon /></button>
       </header>
       <div className="drawer-actions">
         <span className="u">Not in the SPARTAN filter export, so only this chart's values are shown.</span>

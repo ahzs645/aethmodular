@@ -12,6 +12,7 @@ import { INK, MARGIN, FONT } from '@/lib/theme'
 import { dotRim } from '@/lib/highlight'
 import type { CalibRun, CalibRunsFile } from '@/lib/types'
 import { metricRow } from './common'
+import { ChartAside } from '@/lib/singleView'
 
 const SPLIT_LABEL: Record<string, string> = { all: 'all filters', early: 'early half', late: 'late half', odd: 'odd half', even: 'even half' }
 const SPLIT_COLOR: Record<string, string> = { get all() { return INK.text }, early: '#E67E22', late: '#3498DB', odd: '#27AE60', even: '#8e44ad' }
@@ -86,10 +87,10 @@ export function SplitCheck({ run, runs }: { run: CalibRun; runs: CalibRunsFile }
           </svg>
           </AxisChoices>
         )}
-        <p className="chart-note">
+        <ChartAside><p className="chart-note">
           {[gap('early', 'late'), gap('odd', 'even')].filter(Boolean).map((t, i) => <span key={i} style={{ display: 'block' }}>{t}</span>)}
           <span style={{ display: 'block' }}>A gap early/late shows but odd/even does not is a time trend; one both show is sampling scatter.</span>
-        </p>
+        </p></ChartAside>
         {tip.node}
       </div>
     </ChartFrame>

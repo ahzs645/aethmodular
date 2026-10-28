@@ -16,12 +16,17 @@ import { FONT, INK } from '@/lib/theme'
 import { Toggle } from '@/components/ChartFrame'
 import { styleBrush } from '@/lib/brush'
 import { useTileSetting } from '@/lib/url'
+import { ChartAside } from '@/lib/singleView'
 
 /** One filter on a crossplot. `rec` opens the record drawer; `id` links hover and pin across charts. */
 export interface CrossPoint {
   x: number; y: number; color: string; hollow?: boolean; tip: string[]; id?: string; rec?: FilterRecord
   /** opacity multiplier, e.g. a legend dimming every series but the hovered one */
   opacity?: number
+  /** for a fit per site or per season (else the record's site; no season, no per-season fit) */
+  site?: string; season?: string; seasonColor?: string
+  /** what a click opens (a gallery filter's record in the sample drawer); else `rec` in the record drawer */
+  open?: () => void
 }
 
 /** A fixed line drawn over the points (a saved fit, a season's line) with its confidence band. */
@@ -99,12 +104,16 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   const { methods } = prefs
   const fitting = fit && groupingOverride !== 'none'
   const grouping: FitGrouping = groupingOverride && groupingOverride !== 'none' ? groupingOverride : prefs.grouping
-  const multiSite = fitting && new Set(valid.map((p) => p.rec?.site)).size > 1
-  const siteFits = multiSite && grouping === 'site' && methods.length > 0   // its points carry no season
+  const siteOf = (p: CrossPoint) => p.site ?? p.rec?.site ?? 'Unknown site'
+  const multiSite = fitting && new Set(valid.map(siteOf)).size > 1
+  // a fit per season only where the points say their season
+  const seasons = fitting && valid.some((p) => p.season)
+  const siteFits = methods.length > 0 && ((grouping === 'site' && multiSite) || (grouping === 'season' && seasons))
   const fitGroups = useMemo(() => fitting ? groupedRegressions(valid, grouping, {
-    x: (p) => p.x, y: (p) => p.y, site: (p) => p.rec?.site ?? 'Unknown site', color: (p) => p.color,
+    x: (p) => p.x, y: (p) => p.y, site: siteOf, color: (p) => p.color,
+    season: (p) => p.season ?? 'Unknown season', seasonColor: (p) => p.seasonColor ?? INK.muted,
     options: (members) => ({ errorsInVariables: true, lambda, bootstrapGroups: monthBlocks(members.map((p) => p.rec ?? {})) }),
-  }) : [], [valid, grouping, lambda, fitting])
+  }) : [], [valid, grouping, lambda, fitting]) // eslint-disable-line react-hooks/exhaustive-deps
   const st = fitting ? regression(valid.map((p) => p.x), valid.map((p) => p.y), { errorsInVariables: true, lambda, bootstrapGroups: monthBlocks(valid.map((p) => p.rec ?? {})) }) : null
   const xs = valid.map((p) => p.x), ys = valid.map((p) => p.y)
   const dom = domain ?? span(sameScale ? [...xs, ...ys] : xs)
@@ -149,10 +158,11 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
           <button type="button" className="btn quiet" onClick={() => hl.setSelected(null)}>Clear selection</button></>}
       </div>}
       {/* its points carry a site but no season, so a per-season grouping would only draw the pooled fit */}
-      {multiSite && !groupingOverride && <FitGroupingControl only={['pooled', 'site']} value={grouping === 'season' ? 'pooled' : grouping} />}
+      {(multiSite || seasons) && !groupingOverride && <FitGroupingControl only={['pooled', ...(multiSite ? ['site' as const] : []), ...(seasons ? ['season' as const] : [])]}
+        value={grouping === 'season' && !seasons ? 'pooled' : grouping} />}
       {/* centred in its panel: a square plot in a wide frame leaves even margins either side */}
       <svg width={w} height={height} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
-        <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>
+        {title && <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>}
         <g transform="translate(12,22)">{summary.node}</g>
         <g className="regression-plot" transform={`translate(${m.left},${top})`}>
           <defs><clipPath id={clipId}><rect width={iw} height={ih} /></clipPath></defs>
@@ -169,11 +179,11 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
               return (
                 <circle key={i} cx={x(p.x)} cy={y(p.y)} r={focus ? 6 : 3.2} fill={p.hollow ? 'none' : p.color}
                   stroke={focus ? INK.text : p.hollow ? p.color : dotRim().stroke} strokeWidth={focus ? 2 : p.hollow ? 1 : dotRim().strokeWidth}
-                  {...dotFill(dim ? 'dimmed' : 'standard', p.opacity ?? 1)} strokeOpacity={(dim ? 0.3 : 1) * (p.opacity ?? 1)} style={{ cursor: p.rec ? 'pointer' : 'default' }}
-                  onMouseEnter={(e) => { tip.show(e, p.rec ? [...p.tip, 'click to pin it on every chart and open its record'] : p.tip); if (key) hl.setHover(key) }}
+                  {...dotFill(dim ? 'dimmed' : 'standard', p.opacity ?? 1)} strokeOpacity={(dim ? 0.3 : 1) * (p.opacity ?? 1)} style={{ cursor: p.rec || p.open ? 'pointer' : 'default' }}
+                  onMouseEnter={(e) => { tip.show(e, p.rec || p.open ? [...p.tip, 'click to pin it on every chart and open its record'] : p.tip); if (key) hl.setHover(key) }}
                   onMouseLeave={() => { tip.hide(); hl.setHover(null) }}
                   {...(key ? fidProps(key) : {})}
-                  onClick={() => { if (p.rec) hl.openRecord(p.rec); if (key) hl.setPinned(key) }} />
+                  onClick={() => { if (p.open) p.open(); else if (p.rec) hl.openRecord(p.rec); if (key) hl.setPinned(key) }} />
               )
             })}
             {fitting && (siteFits ? <RegressionGroupLines groups={fitGroups} x={x} y={y} width={iw} height={ih} />
@@ -183,8 +193,8 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
           <g ref={brushRef} className="brush-layer" />
         </g>
       </svg>
-      {siteFits && <p className="chart-note">Fits use each site's paired filters and observed x range. Sites with fewer than three pairs or constant values have no fitted line. Point colours retain the selected grouping.</p>}
-      {handNote && <p className="chart-note">{handNote}</p>}
+      {siteFits && <ChartAside><p className="chart-note">Fits use each {grouping === 'season' ? 'season' : 'site'}'s paired filters and observed x range. {grouping === 'season' ? 'Seasons' : 'Sites'} with fewer than three pairs or constant values have no fitted line. Point colours retain the selected grouping.</p></ChartAside>}
+      {handNote && <ChartAside><p className="chart-note">{handNote}</p></ChartAside>}
       {tip.node}
     </div>
   )

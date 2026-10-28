@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ViewsIcon } from '@/components/Icons'
+import { ViewsIcon, XIcon } from '@/components/Icons'
 import { PRESETS, applyView, currentView, encodeView, sameView, savedViews, saveViews, viewUrl, type SavedView } from '@/lib/views'
 
 /**
@@ -67,7 +67,7 @@ export function ViewsPanel({ onClose }: { onClose: () => void }) {
           {saved.map((x) => (
             <div key={x.name} className="views-row">
               <button type="button" className={`views-item ${sameView(x.view, here) ? 'on' : ''}`} onClick={() => { applyView(x.view); onClose() }}><span>{x.name}</span></button>
-              <button type="button" className="btn quiet" aria-label={`Delete ${x.name}`} onClick={() => remove(x.name)}>×</button>
+              <button type="button" className="btn quiet x-btn" aria-label={`Delete ${x.name}`} onClick={() => remove(x.name)}><XIcon /></button>
             </div>
           ))}
           <form className="views-save" onSubmit={(e) => { e.preventDefault(); save() }}>

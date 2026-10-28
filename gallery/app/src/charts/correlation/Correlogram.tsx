@@ -4,7 +4,7 @@ import { RegressionLines, RegressionGroupLines } from '@/components/RegressionOv
 import { useRegressions } from '@/lib/regressionPrefs'
 import { fitGroupingOption, useChartOptions } from '@/lib/chartOptions'
 import { groupedRegressions, type FitGrouping } from '@/lib/siteRegression'
-import { memo, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { FieldMultiSelect, type FieldPreset } from '@/components/FieldMultiSelect'
@@ -21,6 +21,12 @@ import { INK, FONT, inkOn } from '@/lib/theme'
 import { useColourScheme } from '@/lib/colourSchemes'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
+import { wrapCategory } from '@/components/CategoryAxis'
+import { Crossplot, type CrossPoint } from '@/components/Crossplot'
+import { MENU_ACTION } from '@/lib/filterEdits'
+import { XIcon } from '@/components/Icons'
+import { createPortal } from 'react-dom'
+import { chemText } from '@/lib/format'
 
 const ENCODINGS = ['Colour', 'Circle size', 'Scatter matrix'] as const
 const MIN_N = 20
@@ -120,11 +126,21 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
   const hiddenKey = meta.sites.filter((x) => !lg.show(x.name)).map((x) => x.name).join('|')
   const splomRows = useMemo(() => sub.filter((r) => lg.show(r.site)), [sub, hiddenKey]) // eslint-disable-line react-hooks/exhaustive-deps
   const dimKey = `${hiddenKey}#${lg.hover ?? ''}`
+  // a matrix cell opened as a crossplot (right-click a cell: lib/filterEdits MENU_ACTION, detail "x|y")
+  const [pair, setPair] = useState<[string, string] | null>(null)
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const open = (e: Event) => { const [x, y] = String((e as CustomEvent).detail).split('|'); if (x && y) setPair([x, y]) }
+    el.addEventListener(MENU_ACTION, open)
+    return () => el.removeEventListener(MENU_ACTION, open)
+  }, [])
 
   const labelPad = 128
   const fit = useFitHeight()
+  // a readable size on the page; fitted (a tile, the single-chart view) as large as the room allows
   const size = fit === null ? Math.min(Math.max(320, width - labelPad - 40), 660)
-    : Math.max(120, Math.min(width - labelPad - 40, 660, fit - labelPad - 20))
+    : Math.max(120, Math.min(width - labelPad - 40, fit - labelPad - 20))
   const cell = size / Math.max(1, block.fields.length)
 
   const color = useMemo(
@@ -147,7 +163,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
           splomFields.length < 2 ? (
             <Empty>Choose at least two fields (Fields ▾).</Empty>
           ) : (
-            <ScatterMatrix grouping={matrixGrouping} meta={meta} rows={splomRows} fields={splomFields} width={Math.min(width, 760)} tip={tip} hl={hl} units={meta.field_units} dim={lg.dim} dimKey={dimKey} />
+            <ScatterMatrix grouping={matrixGrouping} meta={meta} rows={splomRows} fields={splomFields} width={fit === null ? Math.min(width, 760) : width} tip={tip} hl={hl} units={meta.field_units} dim={lg.dim} dimKey={dimKey} />
           )
         ) : (
           <svg width={size + labelPad + 30} height={size + labelPad + 20} className="animated">
@@ -195,9 +211,15 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
             </g>
           </svg>
         )}
+        {encoding === 'Scatter matrix' && pair && <PairFocus pair={pair} rows={splomRows} meta={meta} site={block.name} onClose={() => setPair(null)} />}
         <div className="legend">
           {encoding === 'Scatter matrix' ? (
-            <Legend items={meta.sites.filter((s) => sub.some((r) => r.site === s.name)).map((s) => ({ label: s.name, color: s.color }))} {...lg.props} note="diagonal: histogram of the species · off-diagonal: the pair, selected regression fits, r" />
+            <>
+              <Legend items={meta.sites.filter((s) => sub.some((r) => r.site === s.name)).map((s) => ({ label: s.name, color: s.color }))} {...lg.props} note="diagonal: histogram of the species · off-diagonal: the pair, selected regression fits, r" />
+              {/* a fit per season: the lines' colours, one entry per season drawn */}
+              {matrixGrouping === 'season' && methods.length > 0 && <Legend items={meta.seasons.filter((se) => splomRows.some((r) => r.season === se.name))
+                .map((se) => ({ label: se.name, color: se.color, shape: 'line' as const, parent: 'Fit per season' }))} />}
+            </>
           ) : (
             <ColorLegend scale={color} scheme={colours.scheme} label="Pearson r" width={180} ticks={5} format={(v) => (v > 0 ? `+${v}` : String(v))} note="Repeated fields omitted: HIPS BC is Fabs ÷ MAC; ChemSpec EC/OC repeat the FTIR products" />
           )}
@@ -205,6 +227,57 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
         {tip.node}
       </div>
     </ChartFrame>
+  )
+}
+
+/**
+ * A field name in at most `max` lines of `room` px (wrapCategory's 6 px a character, at the matrix's 10.5 px
+ * text): word breaks first, then an ellipsis for what still does not fit, so no name runs into its neighbour.
+ */
+export function wrapName(name: string, room: number, max = 3): string[] {
+  const chars = Math.max(2, Math.floor(room / 6))
+  const lines = wrapCategory(name, room)
+  const out = lines.slice(0, max)
+  if (lines.length > max) out[max - 1] = `${out[max - 1]}…`
+  return out.map((l) => (l.length > chars ? `${l.slice(0, chars - 1)}…` : l))
+}
+const LINE = 13
+
+/**
+ * One cell of the scatter matrix, large: the shared Crossplot with the gallery's selected fits, their statistics
+ * and the gallery's fit grouping (its control here is the matrix's: the same setting), each axis on its own range.
+ * Hover links the filter as everywhere; a click opens its record in the sample drawer, over this dialog.
+ */
+function PairFocus({ pair: [fx, fy], rows, meta, site, onClose }: {
+  pair: [string, string]; rows: FilterRow[]; meta: MetaFile; site: string; onClose: () => void
+}) {
+  const hl = useHighlight()
+  const points = useMemo<CrossPoint[]>(() => rows
+    .filter((r) => typeof r[fx] === 'number' && typeof r[fy] === 'number' && Number.isFinite(r[fx] as number) && Number.isFinite(r[fy] as number))
+    .map((r) => ({ x: r[fx] as number, y: r[fy] as number, color: r.color as string, id: r.id,
+      site: r.site, season: r.season ? String(r.season) : undefined, seasonColor: meta.seasons.find((se) => se.name === r.season)?.color,
+      open: () => hl.openSample(r.id),
+      tip: [r.id, `${r.site} · ${r.date}`, `${chemText(fx)}: ${fmt(r[fx] as number)}`, `${chemText(fy)}: ${fmt(r[fy] as number)}`] })), [rows, fx, fy, meta.seasons]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // a record opened from a point is closed first, by its own Esc
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.drawer')) onClose() }
+    window.addEventListener('keydown', esc)
+    return () => window.removeEventListener('keydown', esc)
+  }, [onClose])
+  const unit = (f: string) => meta.field_units?.[f] ? ` (${meta.field_units[f].replace('ug/m3', 'µg/m³').replace('Mm-1', 'Mm⁻¹')})` : ''
+  return createPortal(
+    <div className="export-backdrop pair-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="export-dialog pair-focus" role="dialog" aria-label={`${chemText(fy)} vs ${chemText(fx)}`}>
+        <header>
+          <div><strong>{chemText(fy)} vs {chemText(fx)}</strong><span className="export-title">{site} · {points.length} filters</span></div>
+          <button type="button" className="btn quiet x-btn" onClick={onClose} aria-label="Close" title="Close (Esc)"><XIcon /></button>
+        </header>
+        {/* the title is the dialog's; the fit grouping control is Crossplot's own, on the gallery-wide setting */}
+        <Crossplot points={points} title="" xLabel={`${fx}${unit(fx)}`} yLabel={`${fy}${unit(fy)}`}
+          maxSide={Math.max(320, Math.min(640, window.innerHeight - 300))} sameScale={false} />
+      </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -225,9 +298,18 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, dimKey, meta,
 }) {
   const n = fields.length
   const pad = 6
-  // the row labels sit in the left gutter: size it from the longest name
-  const labelW = Math.max(60, Math.ceil(Math.max(...fields.map((f) => f.length)) * 6.4) + 12)
-  const cellS = Math.max(70, Math.floor((width - labelW - 20 - pad * (n - 1)) / n))
+  // the row labels sit in the left gutter, as wide as the longest name up to ROW_ROOM; longer names wrap
+  const ROW_ROOM = 132
+  const rowRoom = Math.min(ROW_ROOM, Math.max(48, ...fields.map((f) => f.length * 6)))
+  const labelW = rowRoom + 12
+  // as wide as the panel allows, and no taller than a fitted height (a Dashboard tile, the single-chart view);
+  // the column labels under the matrix take up to three lines
+  const fit = useFitHeight()
+  const byWidth = Math.floor((width - labelW - 20 - pad * (n - 1)) / n)
+  const cellS = Math.max(70, fit === null ? byWidth : Math.min(byWidth, Math.floor((fit - (10 + 3 * LINE) - pad * (n - 1)) / n)))
+  const colLines = fields.map((f) => wrapName(chemText(f), cellS - 4))
+  const rowLines = fields.map((f) => wrapName(chemText(f), rowRoom))
+  const bottomH = 10 + Math.max(1, ...colLines.map((l) => l.length)) * LINE
   const scales = useMemo(
     () =>
       fields.map((f) => {
@@ -239,7 +321,7 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, dimKey, meta,
     [rows, fields, cellS]
   )
   const W = labelW + n * cellS + (n - 1) * pad + 10
-  const H = n * cellS + (n - 1) * pad + labelW
+  const H = n * cellS + (n - 1) * pad + bottomH
   const unitOf = (f: string) => (units[f] ? units[f].replace('ug/m3', 'µg/m³').replace('Mm-1', 'Mm⁻¹') : '')
 
   return (
@@ -255,14 +337,19 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, dimKey, meta,
               const vals = rows.map((r) => r[fx]).filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
               const bins = d3.bin().domain(sx.domain() as [number, number]).thresholds(18)(vals)
               const ymax = d3.max(bins, (b) => b.length) ?? 1
+              // the title (up to two lines) and its unit line sit over the bars
+              const title = wrapName(chemText(fx), cellS - 8, 2)
+              const top = title.length * 11 + 16
               return (
                 <g key={`${i}-${j}`} transform={`translate(${ox},${oy})`}>
                   <rect width={cellS} height={cellS} fill={INK.zebra} stroke={INK.grid} />
                   {bins.map((b, k) => (
-                    <rect key={k} x={sx(b.x0 ?? 0)} y={cellS - (b.length / ymax) * (cellS - 16)} width={Math.max(0, sx(b.x1 ?? 0) - sx(b.x0 ?? 0) - 0.5)} height={(b.length / ymax) * (cellS - 16)} fill={INK.muted} fillOpacity={0.5} />
+                    <rect key={k} x={sx(b.x0 ?? 0)} y={cellS - (b.length / ymax) * (cellS - top)} width={Math.max(0, sx(b.x1 ?? 0) - sx(b.x0 ?? 0) - 0.5)} height={(b.length / ymax) * (cellS - top)} fill={INK.muted} fillOpacity={0.5} />
                   ))}
-                  <text x={cellS / 2} y={11} textAnchor="middle" fontSize={10.5} fontWeight={600} fill={INK.text} fontFamily={FONT.family}>{fx}</text>
-                  <text x={cellS / 2} y={22} textAnchor="middle" fontSize={9} fill={INK.muted} fontFamily={FONT.family}>{unitOf(fx)} · n={vals.length}</text>
+                  <text textAnchor="middle" fontSize={10.5} fontWeight={600} fill={INK.text} fontFamily={FONT.family}>
+                    {title.map((l, k) => <tspan key={k} x={cellS / 2} y={11 + k * 11}>{l}</tspan>)}<title>{fx}</title>
+                  </text>
+                  <text x={cellS / 2} y={title.length * 11 + 11} textAnchor="middle" fontSize={9} fill={INK.muted} fontFamily={FONT.family}>{unitOf(fx)} · n={vals.length}</text>
                 </g>
               )
             }
@@ -272,11 +359,16 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, dimKey, meta,
             </g>
           })
         )}
+        {/* every name wrapped to its room (wrapName): the rows to the gutter, the columns to their cell */}
         {fields.map((f, i) => (
-          <text key={`l${i}`} x={-8} y={i * (cellS + pad) + cellS / 2} dy="0.32em" textAnchor="end" fontSize={10.5} fill={INK.text} fontFamily={FONT.family}>{f}</text>
+          <text key={`l${i}`} textAnchor="end" fontSize={10.5} fill={INK.text} fontFamily={FONT.family}>
+            {rowLines[i].map((l, k) => <tspan key={k} x={-8} y={i * (cellS + pad) + cellS / 2 + (k - (rowLines[i].length - 1) / 2) * LINE} dy="0.32em">{l}</tspan>)}<title>{f}</title>
+          </text>
         ))}
         {fields.map((f, j) => (
-          <text key={`b${j}`} x={j * (cellS + pad) + cellS / 2} y={n * (cellS + pad) - pad + 16} textAnchor="middle" fontSize={10.5} fill={INK.text} fontFamily={FONT.family}>{f}</text>
+          <text key={`b${j}`} textAnchor="middle" fontSize={10.5} fill={INK.text} fontFamily={FONT.family}>
+            {colLines[j].map((l, k) => <tspan key={k} x={j * (cellS + pad) + cellS / 2} y={n * (cellS + pad) - pad + 16 + k * LINE}>{l}</tspan>)}<title>{f}</title>
+          </text>
         ))}
       </g>
     </svg>
@@ -308,7 +400,11 @@ const SplomCell = memo(function SplomCell({ rows, fx, fy, sx, sy, cellS, groupin
       options: members => fitUncertainty(members.map(p => p.row), fx, fy, meta) }),
   }), [pts, grouping, fx, fy, meta])
   const focusId = hover ?? pinnedId
-  return <>
+  // the hovered dot is drawn last (on top), which moves it in the DOM, so a fast pointer can leave it without a
+  // mouseleave: the cell clears the hover itself whenever the pointer is over it but off a dot, or leaves it
+  const clear = () => { if (hover !== null) { setHover(null); tip.hide() } }
+  return <g onMouseMove={(e) => { if (!(e.target instanceof SVGCircleElement)) clear() }} onMouseLeave={clear}
+    data-menu-action={`Open ${chemText(fy)} vs ${chemText(fx)} as a crossplot`} data-menu-detail={`${fx}|${fy}`}>
     <rect width={cellS} height={cellS} fill={INK.panel} stroke={INK.grid} />
     {focusLast(pts, (p) => p.row.id, focusId).map(([p]) => {
       const f = focusStyle(p.row.id, focusId, { r: 2, level: 'dense' }, selected)
@@ -318,7 +414,7 @@ const SplomCell = memo(function SplomCell({ rows, fx, fy, sx, sy, cellS, groupin
         <circle
           key={p.row.id} cx={cx} cy={cy} r={f.r} fill={p.row.color as string} fillOpacity={f.opacity * dim(p.row.site)} stroke={f.stroke} strokeWidth={f.strokeWidth} data-dot={dim(p.row.site) === 1 ? f.dot : undefined}
           style={{ cursor: 'pointer' }}
-          onMouseEnter={(e) => { setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.site} · ${p.row.date}`, `${fx}: ${fmt(p.x)}`, `${fy}: ${fmt(p.y)}`, 'click to pin it on every chart']) }}
+          onMouseEnter={(e) => { setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.site} · ${p.row.date}`, `${chemText(fx)}: ${fmt(p.x)}`, `${chemText(fy)}: ${fmt(p.y)}`, 'click to pin it on every chart']) }}
           onMouseLeave={() => { setHover(null); tip.hide() }}
           data-fid={p.row.id} onClick={() => open(p.row.id)}
         />
@@ -327,6 +423,6 @@ const SplomCell = memo(function SplomCell({ rows, fx, fy, sx, sy, cellS, groupin
     {grouping !== 'pooled' ? <RegressionGroupLines groups={fitGroups} x={sx} y={v => cellS - sy(v)} width={cellS} height={cellS} />
       : <RegressionLines stats={st} x={sx} y={v => cellS - sy(v)} domain={sx.domain() as number[]} width={cellS} height={cellS} />}
     {st && <text x={cellS - 4} y={11} textAnchor="end" fontSize={9.5} fill={INK.text} fontFamily={FONT.mono} pointerEvents="none">r={st.r.toFixed(2)}</text>}
-  </>
+  </g>
 }, (a, b) => a.rows === b.rows && a.fx === b.fx && a.fy === b.fy && a.sx === b.sx && a.sy === b.sy && a.cellS === b.cellS
   && a.grouping === b.grouping && a.meta === b.meta && a.pinnedId === b.pinnedId && a.selected === b.selected && a.dimKey === b.dimKey)

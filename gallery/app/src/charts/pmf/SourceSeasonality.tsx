@@ -11,6 +11,7 @@ import { INK, MARGIN, FONT } from '@/lib/theme'
 import type { MetaFile, PmfFile, PmfRow } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
 import { PAPER_COLORS, PAPER_ORDER, PAPER_SEASONS, paperSeasonOf } from '@/lib/pmfPaper'
+import { ChartAside } from '@/lib/singleView'
 
 const MODES = ['Relative (%)', 'Absolute (µg/m³)'] as const
 
@@ -128,7 +129,7 @@ export function SourceSeasonality({ pmf, rows: subsetRows, meta }: { pmf: PmfFil
           </svg>
         )}
         <Legend items={ordered.map((s) => ({ label: s.label, color: colorOf.get(s.label) ?? s.color, shape: 'square' as const }))} {...lg.props} />
-        <p className="chart-note" style={{ display: 'block' }}>{crossing} of {subsetRows.length} filters have one source above {threshold} % of the day's PMF total (the count under each bar is that season's).</p>
+        <ChartAside><p className="chart-note" style={{ display: 'block' }}>{crossing} of {subsetRows.length} filters have one source above {threshold} % of the day's PMF total (the count under each bar is that season's).</p></ChartAside>
         {tip.node}
       </div>
     </ChartFrame>

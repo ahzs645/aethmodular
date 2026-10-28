@@ -9,7 +9,8 @@ import { chartInkStyle } from '@/lib/chartDisplayStyles'
 import { useSystemDark } from '@/lib/colorTheme'
 import { useParamScope } from '@/lib/url'
 import { useFloatingMenu } from '@/hooks/useFloatingMenu'
-import { SingleViewNav, SingleViewStats, useSingleView } from '@/lib/singleView'
+import { AsideSlotCtx, ChartAside, SingleViewNav, SingleViewStats, useSingleView } from '@/lib/singleView'
+import { useExportRender } from '@/lib/exportRender'
 
 /**
  * What a frame's host adds to it. A Dashboard tile draws the frame compact: no header
@@ -98,7 +99,10 @@ export function ChartFrame({
   // and its options default to a column on the right, so the plot keeps the height under the title
   const single = useSingleView()
   const inView = !compact && single.on && single.active !== null && single.active === ref.current
-  const side = own?.controlsSide ?? (inView ? 'right' : display.controlsSide)
+  // its notes and readouts go to the stats box too, except while an export copies the chart (they belong in the file)
+  const exportRender = useExportRender()
+  const asideSlot = inView && !(exportRender && exportRender.panel === ref.current) ? single.slot : null
+  const side = own?.controlsSide ?? (inView ? single.side : display.controlsSide)
   const info = EXPLAIN_AVAILABLE && (own?.explain ?? explain)
   const readable = (own?.density ?? density) === 'readable'
   const systemDark = useSystemDark()
@@ -113,6 +117,7 @@ export function ChartFrame({
   // reopens it exactly as it is (every other setting already lives in the URL)
   const focusKey = anchor ?? slug(short)
   const [focused, setFocused] = useFocus(focusKey)
+  const [exportAsk, setExportAsk] = useState(0)
   if (compact) return (
     <section className="panel compact" ref={ref} id={anchor} {...displayAttrs}>
       <TileMenu name={short} extras={extras!} about={hasInfo ? <>{rest && <p>{rest}</p>}{about && <div className="frame-about">{about}</div>}{subtitle && <p className="subtitle">{subtitle}</p>}{provenance && <p className="provenance">{provenance}</p>}</> : null}
@@ -143,14 +148,20 @@ export function ChartFrame({
         {info && provenance && <p className="provenance">{provenance}</p>}
       </div>
       <div className="frame-actions">
-        {hasInfo && EXPLAIN_AVAILABLE && (
-          <button type="button" className={`btn quiet ${info ? 'on' : ''}`} title={info ? 'Hide the explanation' : 'What this chart shows and where it comes from'} aria-pressed={info} onClick={() => setSingleChartDisplay(chartKey, { explain: !info })}>
-            ?
-          </button>
-        )}
-        <RefMenu onCopyRef={copyRef} refCopied={refCopied} link={() => focusLink(focusKey)} focused={focused} onFocus={() => setFocused(true)} />
-        {/* the whole figure (every facet and the legend), not just the first <svg> */}
-        {exportable && <ExportButton panelRef={ref} title={short} />}
+        {/* on a phone these three fold into the ⋯ menu (FrameMoreMenu); the export dialog still opens from here */}
+        <span className="frame-wide">
+          {hasInfo && EXPLAIN_AVAILABLE && (
+            <button type="button" className={`btn quiet ${info ? 'on' : ''}`} title={info ? 'Hide the explanation' : 'What this chart shows and where it comes from'} aria-pressed={info} onClick={() => setSingleChartDisplay(chartKey, { explain: !info })}>
+              ?
+            </button>
+          )}
+          <RefMenu onCopyRef={copyRef} refCopied={refCopied} link={() => focusLink(focusKey)} />
+          {/* the whole figure (every facet and the legend), not just the first <svg> */}
+          {exportable && <ExportButton panelRef={ref} title={short} ask={exportAsk} />}
+        </span>
+        <FrameMoreMenu link={() => focusLink(focusKey)} onCopyRef={copyRef}
+          explain={hasInfo && EXPLAIN_AVAILABLE ? { on: info, toggle: () => setSingleChartDisplay(chartKey, { explain: !info }) } : null}
+          onExport={exportable ? () => setExportAsk((n) => n + 1) : null} />
         {focused
           ? <button type="button" className="btn quiet" title="Back to the page (Esc)" onClick={() => setFocused(false)}>Close ✕</button>
           : <button type="button" className="btn quiet" title="Focus: this chart alone, centred, with its options" aria-label="Focus on this chart" onClick={() => setFocused(true)}><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg></button>}
@@ -159,7 +170,7 @@ export function ChartFrame({
   )
   return (<>
     {focused && <div className="focus-scrim" onClick={() => setFocused(false)} />}
-    <section className={`panel${focused ? ' focused' : ''}`} ref={ref} id={anchor} data-frame data-frame-title={short} {...displayAttrs}>{/* data-frame: a chart the single-chart view steps through (lib/singleView) */}
+    <section className={`panel${focused ? ' focused' : ''}`} ref={ref} id={anchor} data-frame data-frame-title={short} data-frame-key={focusKey} {...displayAttrs}>{/* data-frame: a chart the single-chart view steps through (lib/singleView) */}
       {!headInColumn && head}
       {/* the fit statistics in single-chart view: at the head of an options column, else above the options row */}
       {inView && (!controls || side === 'top') && <SingleViewStats />}
@@ -167,7 +178,7 @@ export function ChartFrame({
           own wrapper under a chart that is not remounted, and its size observer would keep the old width */}
       <div className={`frame-body controls-${controls ? side : 'top'}`}>
         {controls && <div className="frame-controls">{headInColumn && head}{inView && side !== 'top' && <SingleViewStats />}{controls}</div>}
-        <div className="frame-chart">{children}</div>
+        <div className="frame-chart"><AsideSlotCtx.Provider value={asideSlot}>{children}</AsideSlotCtx.Provider></div>
       </div>
     </section>
   </>)
@@ -213,10 +224,64 @@ function useFocus(key: string): [boolean, (on: boolean) => void] {
   return [on, set]
 }
 
-/** "Ref ▾": share this chart as it is now, open it in focus mode, or copy the development reference */
-function RefMenu({ onCopyRef, refCopied, link, focused, onFocus }: {
-  onCopyRef: () => void; refCopied: boolean; link: () => string; focused: boolean; onFocus: () => void
+/**
+ * A phone's ⋯ beside Focus: the explanation, the chart's link and reference, and export, which the header lays out
+ * as separate buttons on a wider screen (styles.css shows one or the other). The same menu style as Ref's.
+ */
+function FrameMoreMenu({ link, onCopyRef, explain, onExport }: {
+  link: () => string; onCopyRef: () => void; explain: { on: boolean; toggle: () => void } | null; onExport: (() => void) | null
 }) {
+  const [open, setOpen] = useState(false)
+  const [copied, setCopied] = useState<'link' | 'ref' | null>(null)
+  const root = useRef<HTMLDivElement>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const menu = useRef<HTMLDivElement>(null)
+  const menuId = useId()
+  const place = useFloatingMenu(open, trigger, menu)
+  const positioned = place !== null
+  useEffect(() => {
+    if (open && positioned) menu.current?.querySelector<HTMLButtonElement>('[role=menuitem]')?.focus({ preventScroll: true })
+  }, [open, positioned])
+  useEffect(() => {
+    if (!open) return
+    const off = (e: PointerEvent) => { if (!root.current?.contains(e.target as Node) && !menu.current?.contains(e.target as Node)) setOpen(false) }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); setOpen(false); trigger.current?.focus({ preventScroll: true }) } }
+    window.addEventListener('pointerdown', off)
+    window.addEventListener('keydown', esc)
+    return () => { window.removeEventListener('pointerdown', off); window.removeEventListener('keydown', esc) }
+  }, [open])
+  const done = (what: 'link' | 'ref') => { setCopied(what); setTimeout(() => { setCopied(null); setOpen(false) }, 1000) }
+  return (
+    <div className="frame-menu-root frame-more" ref={root}>
+      <button ref={trigger} type="button" className="btn quiet frame-more-btn" aria-haspopup="menu" aria-controls={menuId} aria-expanded={open}
+        aria-label="More for this chart" title="Explanation, link, reference and export" onClick={() => setOpen((v) => !v)}>⋯</button>
+      {open && createPortal(<div ref={menu} id={menuId} className="frame-menu floating" role="menu" aria-label="More for this chart"
+        style={place ?? { position: 'fixed', visibility: 'hidden' }}
+        onKeyDown={e => {
+          const items = [...menu.current!.querySelectorAll<HTMLButtonElement>('[role=menuitem]')]
+          const at = items.indexOf(document.activeElement as HTMLButtonElement)
+          if (['ArrowDown', 'ArrowUp'].includes(e.key)) { e.preventDefault(); items[(at + (e.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length]?.focus({ preventScroll: true }) }
+          else if (e.key === 'Tab') setOpen(false)
+        }}>
+        {explain && <button type="button" role="menuitem" onClick={() => { explain.toggle(); setOpen(false) }}>
+          <strong>{explain.on ? 'Hide the explanation' : 'Explain this chart'}</strong><span>What it shows and where it comes from</span>
+        </button>}
+        <button type="button" role="menuitem" onClick={() => navigator.clipboard?.writeText(link()).then(() => done('link'))}>
+          <strong>{copied === 'link' ? 'Link copied' : 'Copy link to this chart'}</strong><span>Opens the gallery on this chart, with every setting as it is now</span>
+        </button>
+        {onExport && <button type="button" role="menuitem" onClick={() => { setOpen(false); onExport() }}>
+          <strong>Export…</strong><span>PNG, JPEG, SVG or PDF, with a preview</span>
+        </button>}
+        <button type="button" role="menuitem" onClick={() => { onCopyRef(); done('ref') }}>
+          <strong>{copied === 'ref' ? 'Reference copied' : 'Copy reference'}</strong><span>Title, source file and view URL, for development</span>
+        </button>
+      </div>, document.body)}
+    </div>
+  )
+}
+
+/** "Ref ▾": share this chart as it is now, or copy the development reference (focus is its own button beside) */
+function RefMenu({ onCopyRef, refCopied, link }: { onCopyRef: () => void; refCopied: boolean; link: () => string }) {
   const [open, setOpen] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const root = useRef<HTMLDivElement>(null)
@@ -262,9 +327,6 @@ function RefMenu({ onCopyRef, refCopied, link, focused, onFocus }: {
           <strong>{linkCopied ? 'Link copied' : 'Copy link to this chart'}</strong>
           <span>Opens the gallery on this chart alone, with every setting as it is now</span>
         </button>
-        {!focused && <button type="button" role="menuitem" onClick={() => { setOpen(false); onFocus() }}>
-          <strong>Focus on this chart</strong><span>Alone and centred, with its options (Esc to leave)</span>
-        </button>}
         <button type="button" role="menuitem" onClick={() => { onCopyRef(); setOpen(false) }}>
           <strong>Copy reference</strong><span>Title, source file and view URL, for development</span>
         </button>
@@ -431,8 +493,9 @@ export function Toggle({
 }
 
 /** A data caveat under a chart (values not drawn, rows pinned to an edge). Always shown: it is about the data, not the reader. */
+/** a note on the chart: under it, or beside its options when it is the chart in single-chart view (ChartAside) */
 export function Note({ children }: { children: ReactNode }) {
-  return <p className="chart-note">{children}</p>
+  return <ChartAside><p className="chart-note">{children}</p></ChartAside>
 }
 
 /** A hint for the reader; shown only when explanations are on. */

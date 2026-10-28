@@ -14,6 +14,7 @@ import { METRICS, fmtFit, spectraColor, isInterceptMetric, isSlopeMetric, metric
 import { COHORT, COHORT_SHORT, CV_PROTOCOL, CV_PROTOCOL_SHORT, METRIC, PREPROCESSING, SELECTION_SPACE, label } from '@/lib/labels'
 import { calibrationReadout, cutoffPosition, fittingCounts, cutoffConfig, type CalibrationReadout, type CutoffAxis } from '@/lib/cutoffSweep'
 import { AxisChoices } from '@/components/AxisChoices'
+import { ChartAside } from '@/lib/singleView'
 
 /**
  * Cutoff sweep — the "try somewhat more and somewhat less" experiment from
@@ -160,8 +161,8 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
       controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap">
-        {!hasFitCounts && <p className="chart-note">Actual fitting counts are unavailable for these saved rows; the axis shows requested cutoffs. No test-set pair count or cutoff is substituted for a fit count.</p>}
-        {axis === 'fitted' && missingFitCounts > 0 && <p className="chart-note">{missingFitCounts} saved rows have no fitting counts and are omitted on this axis. Choose requested cutoff to inspect their available scores.</p>}
+        {!hasFitCounts && <ChartAside><p className="chart-note">Actual fitting counts are unavailable for these saved rows; the axis shows requested cutoffs. No test-set pair count or cutoff is substituted for a fit count.</p></ChartAside>}
+        {axis === 'fitted' && missingFitCounts > 0 && <ChartAside><p className="chart-note">{missingFitCounts} saved rows have no fitting counts and are omitted on this axis. Choose requested cutoff to inspect their available scores.</p></ChartAside>}
         <p style={{ ...cvPanelTitle, marginTop: 0 }}>Test set: {siteName}</p>
         {shown.flatMap((s) => s.pts).length === 0 ? (
           <Empty>No rows for {label(COHORT, cohort)} · {shortMode} · {siteName}.{mode !== 'site_heldout' ? ' Interleaved cross-validation covers spline-baselined spectra at every site (Colab batch, 2026-09-23); raw and 2nd-derivative spectra only at Addis and Bishoftu, on the 5-point cutoff ladder.' : ''}</Empty>
@@ -172,9 +173,9 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
           Calibration set: IMPROVE cross-validation
           <span style={{ fontWeight: 400, color: 'var(--ink-muted)' }}> · scored on IMPROVE filters only, not on {siteName}</span>
         </p>
-        <p className="chart-note">{cvMetric === 'rmsecv'
+        <ChartAside><p className="chart-note">{cvMetric === 'rmsecv'
           ? 'Internal cross-validation: fold predictions within the fitted IMPROVE set, at the selected number of PLS factors. RMSECV scores TOR loading in µg/filter.'
-          : 'Held-out-site cross-validation: predictions for IMPROVE sites excluded from the final fit. RMSE scores TOR loading in µg/filter; it is distinct from test-set concentration error.'}</p>
+          : 'Held-out-site cross-validation: predictions for IMPROVE sites excluded from the final fit. RMSE scores TOR loading in µg/filter; it is distinct from test-set concentration error.'}</p></ChartAside>
         {cvShown.flatMap((s) => s.pts).length === 0 ? (
           <Empty>
             {mode !== 'site_heldout' && cvMetric !== 'rmsecv'
@@ -195,7 +196,7 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
           ].filter(Boolean).join(' · ')}
         />
         {countRows.length > 0 && <div style={{ overflowX: 'auto', marginTop: 12 }}>
-          <p className="chart-note">Cutoff {countCut}: actual calibration counts and scores. Click a chart point to inspect another cutoff. Fitted and held-out counts describe the final fit split; internal CV repeatedly holds out folds within the fitted set.</p>
+          <ChartAside><p className="chart-note">Cutoff {countCut}: actual calibration counts and scores. Click a chart point to inspect another cutoff. Fitted and held-out counts describe the final fit split; internal CV repeatedly holds out folds within the fitted set.</p></ChartAside>
           <div style={{ overflowX: 'auto' }}>
           <table className="census-table" style={{ width: '100%', minWidth: 800, fontSize: 12 }}>
             <thead><tr><th>Spectra / selection</th><th>Selected cohort</th><th>Fitted</th><th>Held-out</th><th>Site-grouped cross-validation R²</th><th>Site-grouped cross-validation RMSE (µg/filter)</th><th>Internal cross-validation RMSE (µg/filter)</th></tr></thead>
@@ -288,7 +289,7 @@ function SweepPanel({ series, metric, height, width, innerW, x, calib, yLabel, d
           ))}
         </g>
       </svg>
-      {nClamped > 0 && <p className="chart-note">{nClamped} extreme readouts (tiny cohorts) are drawn hollow at the edge of the axis and left out of the line.</p>}
+      {nClamped > 0 && <ChartAside><p className="chart-note">{nClamped} extreme readouts (tiny cohorts) are drawn hollow at the edge of the axis and left out of the line.</p></ChartAside>}
     </>
   )
 }

@@ -12,6 +12,7 @@ import { INK, MARGIN, FONT } from '@/lib/theme'
 import type { CalibFile, CalibRunsFile } from '@/lib/types'
 import { cohortColor } from './common'
 import { COHORT, SELECTION_SPACE, label } from '@/lib/labels'
+import { ChartAside } from '@/lib/singleView'
 
 const VIEWS = ['metric vs rank', 'distribution'] as const
 
@@ -111,7 +112,7 @@ export function SelectionRanking({ runs, calib }: { runs: CalibRunsFile; calib: 
           {...lg.props}
         />
         {view === 'metric vs rank' && nClipped > 0 && (
-          <p className="chart-note">Axis clipped at p99: {nClipped.toLocaleString()} tail values (up to {fmt(sortedMetric[sortedMetric.length - 1], 3)}) run along the top edge.</p>
+          <ChartAside><p className="chart-note">Axis clipped at p99: {nClipped.toLocaleString()} tail values (up to {fmt(sortedMetric[sortedMetric.length - 1], 3)}) run along the top edge.</p></ChartAside>
         )}
         {tip.node}
       </div>

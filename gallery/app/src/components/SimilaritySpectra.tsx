@@ -8,7 +8,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
 import { useAddisStatusBySample } from '@/lib/filterSpectrum'
 import { IMPROVE_GREY, INK, MARGIN, TRACE, themed } from '@/lib/theme'
-import { calendarOf, groupColor, groupLabel, members, siteWhere, type SimilarityMeta, type Traces } from '@/lib/similarity'
+import { calendarOf, groupColor, groupLabel, members, siteName, siteWhere, type SimilarityMeta, type Traces } from '@/lib/similarity'
 
 const TOP_GREY = IMPROVE_GREY
 const groupGrey = () => themed('#39404d', '#b4bcc6')
@@ -44,10 +44,12 @@ export function SpectraTraces({ meta, traces, target, topFilters, compare, mask,
   const BACK = useGroup ? groupLabel(meta, compare!) : 'most similar filters, other sites'
   const wholeSite = meta.groups[target].season == null
   const cal = calendarOf(meta, meta.groups[target].site)
-  // calendar order, "undated" last
+  // calendar order, "no date" last
   const seasonOrder = (label: string) => { const i = cal.findIndex((c) => label.endsWith(c.name)); return i < 0 ? cal.length : i }
   const tKey = (f: number) => !wholeSite ? groupLabel(meta, target)
-    : `${meta.sites[meta.groups[target].site].site} · ${meta.filters.season[f] >= 0 ? cal[meta.filters.season[f]].name : 'undated'}`
+    // grouped under the site's name, as the gallery's other legends are; filters the frozen ledger has no date for
+    // fall in no season and are listed as "no date"
+    : `${siteName(meta.sites[meta.groups[target].site])} · ${meta.filters.season[f] >= 0 ? cal[meta.filters.season[f]].name : 'no date'}`
 
   const drawn = useMemo(() => {
     if (!traces) return null
@@ -112,7 +114,7 @@ export function SpectraTraces({ meta, traces, target, topFilters, compare, mask,
     return [
       meta.filters.sample_id[f],
       `${s.site} · ${siteWhere(s)}`,
-      `${meta.filters.date[f] ?? 'undated'} · ${k < 0 ? 'no season' : calendarOf(meta, meta.filters.site[f])[k].name}`,
+      `${meta.filters.date[f] ?? 'no date'} · ${k < 0 ? 'no season' : calendarOf(meta, meta.filters.site[f])[k].name}`,
       targetSet.has(f) ? 'target filter' : hit ? `#${hit.rank} most similar · ${scoreLabel} ${hit.r.toFixed(4)}` : `member of ${groupLabel(meta, compare ?? target)}`,
       ...(addisStatus.get(meta.filters.sample_id[f]) && !addisStatus.get(meta.filters.sample_id[f])!.in_test_set
         ? [`not in the Addis test set: ${addisStatus.get(meta.filters.sample_id[f])!.note.replace(/^in the spectra run but not in the Addis test set: /, '')}`] : []),

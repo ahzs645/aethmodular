@@ -23,6 +23,7 @@ import { baseFilterId, dotFill, dotRim, useHighlight, type FilterRecord } from '
 import { fidProps } from '@/lib/filterEdits'
 import { PanelAxesControl, usePanelAxes } from '@/lib/panelAxes'
 import { collapsePanelAxes } from '@/lib/axes'
+import { ChartAside } from '@/lib/singleView'
 
 /** Ethiopian sites first (the calibration's own target, then its neighbour), then the other SPARTAN sites. */
 const SITE_ORDER = ['addis', 'etbi', 'indh', 'chts', 'uspa']
@@ -378,7 +379,7 @@ function TransferTable({ runs, siteRuns, mac, presetLabel }: { runs: CalibRunsFi
           </tbody>
         </table>
       </div>
-      <p className="chart-note">Intercept and RMSE are in the reference's units: µg/filter for the IMPROVE row, µg/m³ at the SPARTAN sites. Bold intercepts are below −1 µg/m³; an amber score OOD is above {EXTRAP_FLAG} %.</p>
+      <ChartAside><p className="chart-note">Intercept and RMSE are in the reference's units: µg/filter for the IMPROVE row, µg/m³ at the SPARTAN sites. Bold intercepts are below −1 µg/m³; an amber score OOD is above {EXTRAP_FLAG} %.</p></ChartAside>
     </ChartFrame>
   )
 }

@@ -7,6 +7,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { INK, FONT } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
+import { ChartAside } from '@/lib/singleView'
 
 const STAGE3 = ['HIPS coverage', 'Season'] as const
 const FEED_BOTH = 'FTIR EC: both exports'
@@ -134,11 +135,11 @@ export function MethodSankey({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
       controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap">
-        <p className="chart-note" style={{ marginTop: 0 }}>
+        <ChartAside><p className="chart-note" style={{ marginTop: 0 }}>
           Filters in the current subset: <strong>{counts.subset}</strong> · with an FTIR EC value (in-house or ChemSpec export): <strong>{counts.ftir}</strong>
           {' '}(without: {counts.noFtir}) · with HIPS Fabs: <strong>{counts.hips}</strong> · with both FTIR EC and HIPS Fabs: <strong>{counts.both}</strong>
           {' '}· drawn below: <strong>{total}</strong>{bothOnly ? ' (the both set)' : ' (the whole subset)'}. Node and link numbers are filter counts within what is drawn.
-        </p>
+        </p></ChartAside>
         {!layout ? (
           <Empty>{bothOnly ? 'No filter in this subset has both FTIR EC and HIPS Fabs.' : 'No filters in this subset.'}</Empty>
         ) : (

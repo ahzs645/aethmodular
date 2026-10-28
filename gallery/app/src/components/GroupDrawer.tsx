@@ -7,6 +7,7 @@ import { chemText } from '@/lib/format'
 import { prettyUnit } from '@/components/FieldSelect'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { DrawerShell, DrawerScroll } from '@/components/DrawerShell'
+import { UndoIcon, XIcon } from '@/components/Icons'
 
 /**
  * The side panel for a bin of filters (a hex, a histogram bar): every filter in it,
@@ -54,7 +55,7 @@ export function GroupDrawer({ group, byId, meta, fields, onClose }: {
           <div className="drawer-id">{rows.length} filter{rows.length === 1 ? '' : 's'}</div>
           <div className="drawer-sub">{chemText(group.title)}</div>
         </div>
-        <button type="button" className="btn quiet" onClick={onClose} aria-label="Close" title="Close (Esc)">✕</button>
+        <button type="button" className="btn quiet x-btn" onClick={onClose} aria-label="Close" title="Close (Esc)"><XIcon /></button>
       </header>
 
       <div className="drawer-actions">
@@ -105,8 +106,8 @@ export function GroupDrawer({ group, byId, meta, fields, onClose }: {
                   <td className="mono">{r.date}</td>
                   {cols.map((f) => <td key={f} className="mono num">{typeof r[f] === 'number' ? fmt(r[f] as number, 3) : '–'}</td>)}
                   {ed.enabled && <td>{gone
-                    ? <button type="button" className="btn quiet" title="Put this filter back" onClick={() => ed.restore([r.id])}>↺</button>
-                    : <button type="button" className="btn quiet" title="Exclude this filter" aria-label={`Exclude ${r.id}`} onClick={() => ed.drop([r.id])}>×</button>}</td>}
+                    ? <button type="button" className="btn quiet x-btn" title="Put this filter back" aria-label={`Put ${r.id} back`} onClick={() => ed.restore([r.id])}><UndoIcon /></button>
+                    : <button type="button" className="btn quiet x-btn" title="Exclude this filter" aria-label={`Exclude ${r.id}`} onClick={() => ed.drop([r.id])}><XIcon /></button>}</td>}
                 </tr>
               )
             })}

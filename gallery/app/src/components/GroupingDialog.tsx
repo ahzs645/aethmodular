@@ -3,10 +3,13 @@ import { createPortal } from 'react-dom'
 import * as d3 from 'd3'
 import { Combobox } from '@/components/Combobox'
 import { FieldSelect, prettyUnit } from '@/components/FieldSelect'
-import { applyGrouping, BUILT_IN_GROUPINGS, describeGrouping, newGroupingId, rangeText, SPLITS, type BuiltInGrouping, type GroupingDef, type SplitKind } from '@/lib/groupings'
+import { applyGrouping, bandOf, BUILT_IN_GROUPINGS, colorsFor, describeGrouping, newGroupingId, rangeOptions, rangeText, SPLITS, type BuiltInGrouping, type GroupingDef, type SplitKind } from '@/lib/groupings'
+import { Segmented } from '@/components/ChartFrame'
+import { ColorChoice, ColorPopover } from '@/components/ExportColorOptions'
 import { FONT, INK } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
+import { XIcon } from '@/components/Icons'
 
 /**
  * The reader's groupings (lib/groupings) for every chart: App owns the list and the URL (`grp`), this provider
@@ -80,6 +83,8 @@ function GroupingDialog({ meta, rows, start, copy = false, field: startField, on
   const values = useMemo(() => rows.map((r) => r[def.field]).filter((v): v is number => typeof v === 'number' && Number.isFinite(v)), [rows, def.field])
   const g = applyGrouping(def, rows)
   const counts = g.labels.map((l) => rows.filter((r) => g.labelOf(r) === l).length)
+  // each band's colour from the ordered palette, what a band without its own colour shows
+  const auto = colorsFor(g.labels.length)
   const unit = prettyUnit(meta.field_units?.[def.field])
   const median = values.length ? d3.median(values)! : NaN
   const splitName = SPLITS.find((s) => s.kind === def.kind)?.label ?? ''
@@ -100,7 +105,7 @@ function GroupingDialog({ meta, rows, start, copy = false, field: startField, on
       <div ref={ref} className="export-dialog ratio-dialog grouping-dialog" role="dialog" aria-modal="true" aria-label={start && !copy ? 'Edit a grouping' : 'New grouping'}>
         <header>
           <div><strong>{copy ? 'Your copy of a notebook grouping' : start ? 'Edit grouping' : 'New grouping'}</strong><span className="export-title">one measurement split into labelled bands, for panels or colour in every chart</span></div>
-          <button type="button" className="btn quiet" onClick={onClose} aria-label="Close" title="Close (Esc)">✕</button>
+          <button type="button" className="btn quiet x-btn" onClick={onClose} aria-label="Close" title="Close (Esc)"><XIcon /></button>
         </header>
         {!start && <section className="ratio-presets">
           <div className="row-label">Start from</div>
@@ -113,30 +118,35 @@ function GroupingDialog({ meta, rows, start, copy = false, field: startField, on
         <section className="grouping-form">
           <FieldSelect label="Measurement" value={def.field} meta={meta} onChange={(f) => set({ field: f })} />
           <Combobox label="Split" value={def.kind} options={SPLITS.map((x) => ({ key: x.kind, label: x.label }))} onChange={setKind}
-            title="Cutoffs: your own values (a value equal to a cutoff goes to the band above) · Median split to deciles: computed from the filters the chart draws, every site pooled" />
+            title="Cutoffs: your own values · Median split to deciles: computed from the filters the chart draws, every site pooled. Which band a value equal to a cutoff joins is chosen below" />
           {def.kind === 'cutoffs' && <div className="grouping-cuts">
             <span className="combobox-label">Cutoffs{unit ? ` (${unit})` : ''}</span>
             {cutText.map((t, i) => (
               <span key={i} className="grouping-cut">
                 <input className="select" type="number" step="any" value={t} aria-label={`Cutoff ${i + 1}`}
                   onChange={(e) => setCutText((c) => c.map((x, j) => (j === i ? e.target.value : x)))} />
-                <button type="button" className="btn quiet" aria-label={`Remove cutoff ${i + 1}`} onClick={() => setCutText((c) => c.filter((_, j) => j !== i))}>×</button>
+                <button type="button" className="btn quiet x-btn" aria-label={`Remove cutoff ${i + 1}`} onClick={() => setCutText((c) => c.filter((_, j) => j !== i))}><XIcon /></button>
               </span>
             ))}
             <button type="button" className="btn quiet" onClick={() => setCutText((c) => [...c, Number.isFinite(median) ? String(+median.toPrecision(3)) : ''])}>+ cutoff</button>
           </div>}
+          {g.cuts.length > 0 && <Segmented label="Equal to a cutoff" value={draft.equal ?? 'above'} options={['above', 'below'] as const}
+            optionLabel={(o) => (o === 'above' ? 'Upper band (≥)' : 'Lower band (≤)')} onChange={(v) => set({ equal: v === 'below' ? 'below' : undefined })}
+            title="Which band a value exactly on a cutoff joins: the upper one (bands are [lower, upper), as pandas cut with right=False) or the lower one ((lower, upper], right=True)" />}
           <label className="grouping-name"><span className="combobox-label">Name</span>
             <input className="select" value={draft.name} placeholder={name} onChange={(e) => set({ name: e.target.value })} />
           </label>
         </section>
-        <Preview values={values} cuts={g.cuts} colors={g.colors} unit={unit} />
+        <Preview values={values} cuts={g.cuts} colors={g.colors} unit={unit} equal={def.equal} exact={def.kind === 'cutoffs'} />
         <section className="grouping-bands">
           {g.labels.map((l, i) => (
             <div key={i} className="grouping-band">
-              <span className="swatch" style={{ background: g.colors[i] }} />
+              <BandColor label={l} color={g.colors[i]} standard={auto[i]}
+                onChange={(c) => set({ colors: Array.from({ length: g.labels.length }, (_, j) => (j === i ? c : draft.colors?.[j] ?? '')) })}
+                onStandard={() => set({ colors: Array.from({ length: g.labels.length }, (_, j) => (j === i ? '' : draft.colors?.[j] ?? '')) })} />
               <input className="select" value={draft.labels[i] ?? ''} placeholder={l} aria-label={`Label of band ${i + 1}`}
                 onChange={(e) => set({ labels: Array.from({ length: g.labels.length }, (_, j) => (j === i ? e.target.value : draft.labels[j] ?? '')) })} />
-              <span className="grouping-range">{rangeText(g.cuts, i)}{unit ? ` ${unit}` : ''}</span>
+              <span className="grouping-range">{rangeText(g.cuts, i, rangeOptions(def))}{unit ? ` ${unit}` : ''}</span>
               <span className="grouping-count">{counts[i].toLocaleString()} filters</span>
             </div>
           ))}
@@ -153,8 +163,24 @@ function GroupingDialog({ meta, rows, start, copy = false, field: startField, on
   )
 }
 
+/**
+ * A band's colour: its swatch is a button that opens the gallery's colour chooser (the export's, ColorChoice),
+ * with the palette's colour for the band as its standard.
+ */
+function BandColor({ label, color, standard, onChange, onStandard }: { label: string; color: string; standard: string; onChange: (c: string) => void; onStandard: () => void }) {
+  const [open, setOpen] = useState(false)
+  const anchor = useRef<HTMLButtonElement>(null)
+  return <>
+    <button ref={anchor} type="button" className="grouping-swatch" style={{ background: color }} aria-haspopup="dialog" aria-expanded={open}
+      aria-label={`Colour of ${label}: ${color}`} title={`${label}: ${color} · click to change`} onClick={() => setOpen(!open)} />
+    {open && anchor.current && <ColorPopover anchor={anchor.current} onClose={() => setOpen(false)} title={`Colour of ${label}`} label={`Colour of ${label}`}>
+      <ColorChoice label={label} value={color} standard={standard} onChange={onChange} onStandard={onStandard} />
+    </ColorPopover>}
+  </>
+}
+
 /** the distribution of the measurement in view, the cutoffs on it and each band's colour */
-function Preview({ values, cuts, colors, unit }: { values: number[]; cuts: number[]; colors: string[]; unit: string }) {
+function Preview({ values, cuts, colors, unit, equal, exact }: { values: number[]; cuts: number[]; colors: string[]; unit: string; equal?: 'above' | 'below'; exact: boolean }) {
   const W = 560, H = 120, m = { l: 8, r: 8, t: 8, b: 22 }
   if (values.length < 2) return <p className="chart-note">No filters in view carry this measurement.</p>
   const sorted = [...values].sort((a, b) => a - b)
@@ -162,13 +188,13 @@ function Preview({ values, cuts, colors, unit }: { values: number[]; cuts: numbe
   const x = d3.scaleLinear().domain([Math.min(lo, ...cuts), Math.max(hi, ...cuts)]).nice().range([m.l, W - m.r])
   const bins = d3.bin().domain(x.domain() as [number, number]).thresholds(40)(sorted.filter((v) => v >= x.domain()[0] && v <= x.domain()[1]))
   const y = d3.scaleLinear().domain([0, d3.max(bins, (b) => b.length) ?? 1]).range([H - m.b, m.t])
-  const band = (v: number) => { let i = 0; while (i < cuts.length && v >= cuts[i]) i++; return i }
+  const band = (v: number) => bandOf(cuts, v, equal) ?? 0
   return (
     <svg className="grouping-preview" viewBox={`0 0 ${W} ${H}`} width="100%" fontFamily={FONT.family} role="img" aria-label="Distribution of the measurement with the cutoffs">
       {bins.map((b, i) => <rect key={i} x={x(b.x0!) + 0.5} width={Math.max(0, x(b.x1!) - x(b.x0!) - 1)} y={y(b.length)} height={H - m.b - y(b.length)}
         fill={colors[band(((b.x0 ?? 0) + (b.x1 ?? 0)) / 2)]} fillOpacity={0.75} />)}
       {cuts.map((c, i) => <g key={i}><line x1={x(c)} x2={x(c)} y1={m.t - 4} y2={H - m.b} stroke={INK.text} strokeWidth={1.5} strokeDasharray="4 3" />
-        <text x={x(c) + 3} y={m.t + 6} fontSize={10} fill={INK.text}>{+c.toPrecision(3)}</text></g>)}
+        <text x={x(c) + 3} y={m.t + 6} fontSize={10} fill={INK.text}>{exact ? +c.toPrecision(6) : +c.toPrecision(3)}</text></g>)}
       <line x1={m.l} x2={W - m.r} y1={H - m.b} y2={H - m.b} stroke={INK.axis} />
       {x.ticks(6).map((t) => <text key={t} x={x(t)} y={H - 6} fontSize={10} textAnchor="middle" fill={INK.muted}>{t}</text>)}
       <text x={W - m.r} y={m.t + 6} fontSize={10} textAnchor="end" fill={INK.muted}>{unit}</text>

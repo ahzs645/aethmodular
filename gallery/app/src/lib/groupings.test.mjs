@@ -63,3 +63,34 @@ test('deciles get ten labels and ten distinct colours; merging keeps the first c
   const a = { ...d, name: 'link' }, b = { ...d, name: 'saved' }, c = { ...d, id: 'y' }
   assert.deepEqual(mergeGroupings([a], [b, c]).map((g) => g.name + g.id), ['linkx', 'y'])
 })
+
+test('equal values can join the band below, and the ranges say so', () => {
+  const cuts = [2, 4]
+  assert.deepEqual([1.99, 2, 2.01, 4, 4.01].map((v) => bandOf(cuts, v, 'below')), [0, 0, 1, 1, 2])
+  assert.equal(rangeText(cuts, 0, { equal: 'below' }), '≤ 2.00')
+  assert.equal(rangeText(cuts, 1, { equal: 'below' }), '> 2.00 to ≤ 4.00')
+  assert.equal(rangeText(cuts, 2, { equal: 'below' }), '> 4.00')
+  const rows = [{ id: 'a', Iron: 2 }, { id: 'b', Iron: 3 }]
+  assert.equal(applyGrouping(def({ cuts: [2], equal: 'below' }), rows).labelOf(rows[0]), '≤ 2')
+  assert.equal(applyGrouping(def({ cuts: [2] }), rows).labelOf(rows[0]), '≥ 2')
+})
+
+test('typed cutoffs read as typed; quantile cutoffs stay rounded', () => {
+  assert.equal(rangeText([0.371], 0, { exact: true }), '< 0.371')
+  assert.equal(rangeText([0.1 + 0.2], 1, { exact: true }), '≥ 0.3')
+  assert.deepEqual(labelsFor(def({ cuts: [0.371] }), [0.371]), ['< 0.371', '≥ 0.371'])
+  assert.equal(rangeText([0.37132], 0), '< 0.37')
+})
+
+test('band colours and the equal side round-trip through the URL; older links read the same', () => {
+  const d = def({ cuts: [2], equal: 'below', colors: ['#123456', ''] })
+  const [back] = parseGroupings(groupingsParam([d]))
+  assert.equal(back.equal, 'below')
+  assert.deepEqual(back.colors, ['#123456', ''])
+  const g = applyGrouping(back, [])
+  assert.equal(g.colors[0], '#123456')
+  assert.equal(g.colors[1], colorsFor(2)[1])
+  const [plain] = parseGroupings(groupingsParam([def({ cuts: [2] })]))
+  assert.equal(plain.equal, undefined)
+  assert.equal(plain.colors, undefined)
+})

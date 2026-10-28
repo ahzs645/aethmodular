@@ -17,6 +17,7 @@ import { useChartGrouping } from '@/components/GroupingDialog'
 import { useSearchParam } from '@/lib/url'
 import { Combobox } from '@/components/Combobox'
 import { useNarrowScreen } from '@/hooks/useMediaQuery'
+import { ChartAside } from '@/lib/singleView'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const STEPS = ['Month of year', 'Year'] as const
@@ -217,7 +218,8 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
             </g>
           </svg>
         )}
-        {!compareAll && selectedPoint && selectedPath && <div className="connected-inspector">
+        {/* the step's readout and its stepper: under the plot, or beside the options in single-chart view */}
+        {!compareAll && selectedPoint && selectedPath && <ChartAside><div className="connected-inspector">
           <div className="connected-step-controls">
             <StepButton dir="prev" label={step === 'Month of year' ? 'Previous month' : 'Previous year'} disabled={selectedIndex === 0}
               onClick={() => setPointChoice(String(selectedPath.pts[selectedIndex - 1].key))} />
@@ -233,7 +235,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
               <div><dt>{withUnit(yField, meta.field_units)}</dt><dd>{fmt(selectedPoint.y, 3)}</dd></div></dl>
           </div>
           <p className="chart-note connected-guide" data-export="text">Hollow point = {label(selectedPath.pts[0].key)} (start); arrow = {label(selectedPath.pts[selectedPath.pts.length - 1].key)} (end). Axes fit this path; choose Compare all for shared axes.</p>
-        </div>}
+        </div></ChartAside>}
         {compareAll && <Legend
           items={sources.map((s) => ({ label: s.name, color: s.color, shape: 'line' as const }))}
           hidden={hidden}
