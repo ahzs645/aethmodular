@@ -374,3 +374,114 @@ that a public measurement did not happen because this database lacks its raw row
 `hips.AnalysisFlags`, `hips.CalibrationSetFilters`, `hips.QcSamples` and
 `hips.QcSampleTypes` were empty in this source; an export cannot supply absent
 calibration-filter membership or QC history.
+
+## October 28 survey: no functional-group results in SQL
+
+A read-only metadata survey of every database the login can open (`Networks_1_0`
+and `Improve_2.1`; 324 objects, 2,955 columns) found **no stored FTIR results** for
+SPARTAN: no functional-group parameters (aCH, aCOH, COOH, naCO, FTIR OM) in
+`analysis.Parameters` or any column, and no results table in `Networks_1_0`
+(`qcarbon` is empty). `ftir.Calibrations` (54,460 rows) holds coefficients, not
+results: one `(Wavenumber, b)` vector per `ftir.CalibrationSets` row, all 20 of them
+OC/EC by lot (234, 241/241a, 245, 248, 250, 251, 253, a dust-site set). Their
+comments point at the lab share (`U:/FTIR_spectra/Chelsey_SPARTAN_MAIA/…`), which
+is where the functional-group deliveries should be requested or looked for.
+
+[`get_networks_extras.ps1`](../research/ftir_ec_phase3/scripts/get_networks_extras.ps1)
+exports those calibrations, the Adama `csu_amod` filters (gravimetric mass
+difference and volume), the batch tables, `frm.*` and a parameter check on
+`Improve_2.1`, with a manifest and a verified ZIP like the exports above.
+
+## October 28 reference export: what it settled
+
+`aqrc_reference_exports/20261028_105305_0098a639` (13 exports, 0 errors, every
+manifest SHA256 re-verified) answered four questions:
+
+- **IMPROVE stores no FTIR products.** The 137 parameters observed in
+  `Improve_2.1` `analysis.Results` include TOR fractions, seven-wavelength
+  thermal-optical carbon (`EC405TR` … `OC980TT`), HIPS raw intensities and
+  `fAbs`, but no FTIR OC/EC and no functional groups.
+- **The deployed SPARTAN calibrations are complete and usable.** All 20
+  `ftir.Calibrations` sets have 2,723 rows: row 1 (wavenumber 0) is the
+  intercept, then 2,722 coefficients on 3998.42 → 500.12 cm⁻¹, the explorer's
+  app grid. Lot 245's rejected sets (QC 0) are identical to lot 241's and its
+  accepted sets equal lot 241a's. Preprocessing (raw or baselined absorbance,
+  units) still has to be confirmed against a public OC/EC value before predicting.
+- **Functional groups stop at shipment `Shipment_2023.05.08`.** The database
+  batches are shipment labels, not the lab's numbered delivery batches. Every
+  shipment from `Shipment_2023.06.14` to `Shipment_2026.08.07` (filters sampled
+  Nov 2022 → Jul 2026) has public OM and no functional groups: 2,082 filters,
+  plus 291 older filters with public OM that are not in `spartan.Filters`
+  (CAHA, AEAZ, CASH, CADO, NGIL …). That 2,373-filter list is the request to
+  the lab.
+- **Adama is covered.** All five quartz TOR filters (J1675, J1679, J1693, J1701,
+  J1703) and their PTFE partners (J1285, J1270, J1269, J1266, J1233) are in
+  `csu_amod.Filters`. The PTFE partners carry weighed mass: 31.3, 41.3, 38.0, 34.4
+  and 26.8 µg/m³ (1000 × `MassDifference_micrograms` / `SampleVolume_liters`;
+  J1270's volume is 1,161 L against ~2,880 L for the others, so check it).
+  `csu_amod` holds 669 filters at about ten locations, including **101 quartz
+  filters** (Kaohsiung 66, Delhi 14, Pretoria/Johannesburg 12, Adama 6). Their
+  TOR results are not in SQL; if CSU analysed them as it did Batch 54, they are a
+  thermal EC/OC reference at SPARTAN sites.
+
+## October 28 follow-up: AMOD spectra and the calibration convention
+
+`aqrc_followup_exports/20261028_112459_ba004525` (0 errors, hashes verified) holds
+580 FTIR analyses on 556 CSU AMOD filters with all 652 referenced scans. AMOD
+quartz filters have no FTIR analyses; the five Adama PTFE filters have two each.
+
+**The deployed calibrations are reproducible.** Prediction = row-1 intercept +
+Σ b × raw absorbance (−log10 sample/background, each scan interpolated onto the
+2,722-point app grid, no baseline), which gives µg per filter; ÷ sampled volume
+(m³) gives µg/m³. Applied with lot 245's accepted EC set (= lot 241a) to the five
+Adama PTFE spectra, it reproduces the lab's Batch 54 FTIR EC
+(`research/ftir_ec_calibration_2026_06_25/tables/adama_new_ec_by_variant.csv`)
+to 0.974–0.996 of the delivered values. With the 2026-10-19 spectra this can
+regenerate SPARTAN FTIR OC/EC under any of the 20 lot calibrations.
+
+The same export searched `U:\FTIR_spectra\Chelsey_SPARTAN_MAIA` (7,309 files,
+names and CSV headers only). Leads: a batch 4 report **V2**
+(`Spartan batch4\report\…Nov2022 to March2024 V2.xlsx`, 2025-02-03, possibly the
+corrected organics), `Spartan batch4\FG and BLC\`, `Spartan batch5\`, and
+`MAIA\MAIA batch4\FTIR by diff. cal vs. TOR data\` (likely the AMOD quartz TOR).
+[`get_chelsey_share_files.ps1`](../research/ftir_ec_phase3/scripts/get_chelsey_share_files.ps1)
+copies the small files from those folders with a full listing and a verified ZIP.
+
+## October 28 lab share: corrected batch 4, batch 5 and the AMOD TOR
+
+A copy of `U:\FTIR_spectra\Chelsey_SPARTAN_MAIA` shared on Drive (7,677 files;
+fetched selectively with the `mirror_davis_drive.py` helpers) settles the
+functional-group gap and the AMOD quartz question:
+
+- **Batch 4 V2 is the corrected delivery.**
+  `Spartan batch4/report/SPARTAN_FTIR data_batch 4_ Nov2022 to March2024 V2.xlsx`
+  (1,060 filters, sampled 2022-11 → 2024-03): OM / public OM median 0.948 (p5–p95
+  0.78–1.05), where the submitted V1 runs 1.936. OC and EC equal the public values
+  (ratio 1.000) in both. Two header rows; filter IDs are in `sample`.
+- **Batch 5 exists.** `Spartan batch5/spartan5_OCEC_V_F_OM.csv` (373 filters,
+  2023-05 → 2024-10): the four groups as `OM_aCOH`, `OM_aCH`, `OM_naCO`, `OM_COOH`
+  plus `OM_total` (µg/m³; OM / public OM median 0.954), OC and EC equal to public.
+  The raw group outputs per spectrum are in `Spartan batch{4,5}/FG/OM_FG.csv`.
+- Together they cover 1,163 of the 2,373 filters with public OM and no groups.
+  Left: 1,210, mostly filters sampled after 2024-10 (2024: 150, 2025: 481, 2026:
+  254; CLST, INDH, CLTA, ETAD, INJA, ETBI) and 291 from 2018–2020 that predate
+  `Networks_1_0`.
+- **AMOD quartz TOR** is in `MAIA/MAIA batch3/TOR for batch3 and 4.xlsx`
+  (OCTR/ECTR per quartz filter with volume) and `MAIA/MAIA batch4/Quartz_FilterId_OCEC.csv`:
+  9 Pretoria filters (batch 3) and 22 Tainan filters (batch 4). Batch 3 ECTR is
+  ≈ 0 on all nine (median −0.001 µg/m³) and batch 4 on 5 of 22, with OC 8–9 µg/m³.
+  The paired PTFE filters read FTIR EC 1–5 µg/m³ and Fabs/10 0.5–1.7, so
+  the AMOD quartz ECTR is not a usable EC reference without a lab explanation;
+  OCTR may be. `MAIA/MAIA batch4/FTIR by diff. cal vs. TOR data/` holds the
+  lab's own FTIR-by-calibration vs TOR comparison for those filters.
+
+**In the gallery (2026-10-28).** `export_spartan_reference.py` reads all three
+deliveries (`FG_DELIVERIES`); the two new files sit beside the batch 2–3 CSV in
+Davis Data `EC-HIPS-Aeth Comparison/Data/Lab deliverables/FTIR EC/`. Rebuilt with
+the Drive inputs, the previous exporter reproduced the committed JSON exactly
+(0 field differences) before the change; after it, functional groups cover
+2,780 filters at 26 sites (was 1,473 at 24; Addis 21 → 162, Delhi 15 → 49), the
+batch 2–3 values and every volume are unchanged, and five lab-only filters gain
+rows. Twelve Dhaka filters in V2 (BDDU-0401 … 0414) have no sample date anywhere
+and stay out. `availability.json` and `aeronet/stations.json` still count the
+filters without those five until the AERONET export reruns with its cache.

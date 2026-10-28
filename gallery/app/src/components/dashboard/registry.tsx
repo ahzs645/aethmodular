@@ -26,6 +26,7 @@ import { SiteRadar } from '@/charts/ranking/SiteRadar'
 import { ParallelCoordinates } from '@/charts/ranking/ParallelCoordinates'
 import { CompositionTreemap } from '@/charts/partOfWhole/CompositionTreemap'
 import { SiteBubbleMap } from '@/charts/map/SiteBubbleMap'
+import { SpartanCompositionMap } from '@/charts/map/SpartanCompositionMap'
 import { MethodSankey } from '@/charts/flow/MethodSankey'
 import { SourceStack } from '@/charts/pmf/SourceStack'
 import { SourceSeasonality } from '@/charts/pmf/SourceSeasonality'
@@ -119,6 +120,8 @@ const CHARTS: DashboardChart[] = [
     render: (d) => <CompositionTreemap rows={d.rows} meta={d.meta} /> },
   { kind: 'map', label: 'Site map', group: 'Map', blurb: 'one field per site on the map', fields: 'single', size: [6, 5],
     render: (d, [f]) => <SiteBubbleMap rows={d.rows} meta={d.meta} field={f} onSite={d.openSite} /> },
+  { kind: 'spartancomposition', label: 'SPARTAN composition map', group: 'Map', blurb: "a donut of SPARTAN's PM2.5 reconstruction per site", fields: 'none', size: [10, 7],
+    render: () => <SpartanCompositionMap /> },
   { kind: 'sankey', label: 'Method flow', group: 'Flow', blurb: 'site → EC method → HIPS / season', fields: 'none', size: [6, 5],
     render: (d) => <MethodSankey rows={d.rows} meta={d.meta} /> },
 

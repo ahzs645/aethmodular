@@ -419,6 +419,9 @@ export function SingleViewStats() {
 /** ChartFrame's stats box while its chart is the one in view (and not being exported), else null */
 export const AsideSlotCtx = createContext<HTMLElement | null>(null)
 
+/** true when the chart keeps its fit statistics above the plot in this view too (lib/chartDisplay StatsPlace) */
+export const StatsInPlotCtx = createContext(false)
+
 /**
  * A chart's notes and readouts (what the reader is told about the plot, under or beside it): in place,
  * or in the stats box beside the chart's options when the chart is the one in single-chart view, so the

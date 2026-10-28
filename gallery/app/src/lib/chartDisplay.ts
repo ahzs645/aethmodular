@@ -1,13 +1,22 @@
 /** Viewer display settings, shared by default, with optional settings for a single chart. */
 export type ControlsSide = 'top' | 'right' | 'left'
+/**
+ * Where a crossplot's fit statistics sit in the single-chart view: in the stats box with the options
+ * (`options`, the default, so the plot keeps the height) or above the plot as on the page (`plot`).
+ */
+export type StatsPlace = 'options' | 'plot'
+export const STATS_PLACES: StatsPlace[] = ['options', 'plot']
 export interface ChartDisplay {
   controlsSide: ControlsSide
+  statsPlace: StatsPlace
   density: 'compact' | 'readable'
   explain: boolean
   theme: 'light' | 'dark' | 'auto'
 }
 export interface ChartDisplayState {
   controlsSide: ControlsSide
+  /** absent: `options` */
+  statsPlace?: StatsPlace
   charts: Record<string, Partial<ChartDisplay>>
 }
 export const DEFAULT_CHART_DISPLAY: ChartDisplayState = { controlsSide: 'top', charts: {} }
@@ -21,13 +30,14 @@ export function readChartDisplay(value: unknown): ChartDisplayState {
       if (!entry || typeof entry !== 'object') continue
       const clean: Partial<ChartDisplay> = {}
       if (DISPLAY_SIDES.includes(entry.controlsSide!)) clean.controlsSide = entry.controlsSide
+      if (STATS_PLACES.includes(entry.statsPlace!)) clean.statsPlace = entry.statsPlace
       if (entry.density === 'compact' || entry.density === 'readable') clean.density = entry.density
       if (typeof entry.explain === 'boolean') clean.explain = entry.explain
       if (['light', 'dark', 'auto'].includes(entry.theme!)) clean.theme = entry.theme
       if (Object.keys(clean).length) Object.defineProperty(charts, id, { value: clean, enumerable: true, configurable: true, writable: true })
     }
   }
-  return { controlsSide: DISPLAY_SIDES.includes(raw.controlsSide!) ? raw.controlsSide! : 'top', charts }
+  return { controlsSide: DISPLAY_SIDES.includes(raw.controlsSide!) ? raw.controlsSide! : 'top', ...(STATS_PLACES.includes(raw.statsPlace!) ? { statsPlace: raw.statsPlace } : {}), charts }
 }
 
 /** A shared change also clears that setting's exceptions, so “all charts” always means all. */
@@ -38,7 +48,8 @@ export function sharedChartDisplay(state: ChartDisplayState, patch: Partial<Char
     for (const key of Object.keys(patch) as (keyof ChartDisplay)[]) delete next[key]
     if (Object.keys(next).length) Object.defineProperty(charts, id, { value: next, enumerable: true, configurable: true, writable: true })
   }
-  return { controlsSide: patch.controlsSide ?? state.controlsSide, charts }
+  const statsPlace = patch.statsPlace ?? state.statsPlace
+  return { controlsSide: patch.controlsSide ?? state.controlsSide, ...(statsPlace ? { statsPlace } : {}), charts }
 }
 
 export interface VisibleChart {

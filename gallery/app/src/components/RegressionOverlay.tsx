@@ -1,6 +1,6 @@
-import { useId, useLayoutEffect, useRef, useState } from 'react'
+import { useContext, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useSingleView } from '@/lib/singleView'
+import { StatsInPlotCtx, useSingleView } from '@/lib/singleView'
 import { useExportRender } from '@/lib/exportRender'
 import { equation, fitsFor, useRegressions } from '@/lib/regressionPrefs'
 import { fmt, type RegressionStats } from '@/lib/stats'
@@ -110,15 +110,17 @@ export function useRegressionSummary({ stats, groups, width, enabled = true, pan
   // Where the summary goes, found from the DOM by a probe left in the chart:
   //   chart  above the axes (everywhere, and in an export as on screen)
   //   side   the chart in single-chart view (lib/singleView): the sidebar card, at its width; the plot keeps the height
+  //          (unless the chart, or the viewer, keeps its statistics above the plot: StatsInPlotCtx)
   //   data   an export setting it inside the plot (lib/exportRender): hidden here, read by lib/export
   const single = useSingleView()
   const render = useExportRender()
+  const inPlot = useContext(StatsInPlotCtx)
   const probe = useRef<SVGGElement>(null)
   const [place, setPlace] = useState<'chart' | 'side' | 'data'>('chart')
   useLayoutEffect(() => {
     const el = probe.current
     const now = el && render?.panel.contains(el) ? (render.statsInside ? 'data' : 'chart')
-      : el && single.active && single.slot && el.closest('[data-single-active]') ? 'side' : 'chart'
+      : el && !inPlot && single.active && single.slot && el.closest('[data-single-active]') ? 'side' : 'chart'
     if (now !== place) setPlace(now)
   })
   const slot = place === 'side' ? single.slot : null

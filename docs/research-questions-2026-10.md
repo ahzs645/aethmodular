@@ -81,7 +81,7 @@ block the code base stay in [open-items.md](open-items.md). The settled claims a
 
 | What | Why | Where it would come from |
 |---|---|---|
-| Corrected FTIR functional groups, batch 4 (Nov 2022–Mar 2024) | The lab deliverable's groups and OM run about 2× the public OM and the four-site file (OC and EC agree), so the gallery stops at Mar 2023 | AQRC lab: the correction already applied to the four-site file |
+| FTIR functional groups after Oct 2024 (about 885 filters with public OM) | The gallery has batches 2–3, 4 V2 (the corrected batch 4, Feb 2025) and 5: 2,780 filters through Oct 2024. Later lab batches have not been delivered; the per-filter list is in the 2026-10-28 request | AQRC lab (Chelsey Li / Mona) |
 | FTIR spectra for SPARTAN sites other than Addis | Spectral comparisons beyond Addis | AQRC query (template `etad_lots_query.sql` on Drive) |
 | HIPS uncertainty and MDL for 756 older filters (mostly 2019–2022) | Public BC (Fabs / 10) covers them, but uncertainty-weighted fits need the errors | An older HIPS export from AQRC |
 | Fabs for 256 filters in the raw HIPS pull (lots 241–253) | They have only raw transmittance and reflectance | The HIPS instrument calibration |

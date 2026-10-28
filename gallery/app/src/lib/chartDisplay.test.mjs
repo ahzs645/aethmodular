@@ -31,3 +31,13 @@ test('focused charts win over the page behind them and stable order breaks equal
   assert.equal(mostVisibleChart([chart('first', 200, 400), chart('second', 200, 400)], viewport)?.key, 'first')
   assert.equal(mostVisibleChart([chart('clipped', 200, 100)], viewport), null)
 })
+
+test('fit-statistics placement is stored only when set, per chart or shared', () => {
+  assert.deepEqual(readChartDisplay({ statsPlace: 'plot', charts: { station: { statsPlace: 'options' }, bad: { statsPlace: 'below' } } }), {
+    controlsSide: 'top', statsPlace: 'plot', charts: { station: { statsPlace: 'options' } },
+  })
+  assert.equal('statsPlace' in readChartDisplay({ statsPlace: 'below' }), false)
+  const before = { controlsSide: 'top', charts: { station: { statsPlace: 'plot', density: 'readable' } } }
+  assert.deepEqual(sharedChartDisplay(before, { statsPlace: 'options' }), { controlsSide: 'top', statsPlace: 'options', charts: { station: { density: 'readable' } } })
+  assert.equal('statsPlace' in sharedChartDisplay(before, { density: 'compact' }), false)
+})

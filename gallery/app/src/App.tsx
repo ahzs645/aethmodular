@@ -32,6 +32,7 @@ import { SiteRadar } from '@/charts/ranking/SiteRadar'
 import { ParallelCoordinates } from '@/charts/ranking/ParallelCoordinates'
 import { CompositionTreemap } from '@/charts/partOfWhole/CompositionTreemap'
 import { SiteBubbleMap } from '@/charts/map/SiteBubbleMap'
+import { SpartanCompositionMap } from '@/charts/map/SpartanCompositionMap'
 import { MethodSankey } from '@/charts/flow/MethodSankey'
 import { SourceStack } from '@/charts/pmf/SourceStack'
 import { SourceSeasonality } from '@/charts/pmf/SourceSeasonality'
@@ -1372,6 +1373,7 @@ export default function App() {
           meta={meta} field={fieldEff} axes={axes} setField={setField} />}
         </AxisFieldsProvider>
         {tab === 'map' && <SiteBubbleMap rows={mapRows} meta={meta} field={fieldEff} focusSite={activeSites?.size === 1 ? [...activeSites][0] : undefined} />}
+        {tab === 'map' && <SpartanCompositionMap />}
         {tab === 'flow' && <MethodSankey rows={rows} meta={meta} />}
         {tab === 'pmf' &&
           (pmf ? (
