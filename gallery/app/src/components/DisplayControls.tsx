@@ -4,7 +4,7 @@ import { AutoThemeIcon, ExplainIcon, MoonIcon, SunIcon, TextSizeIcon, XIcon } fr
 import { useFloatingMenu } from '@/hooks/useFloatingMenu'
 import { EXPLAIN_AVAILABLE, usePrefs } from '@/lib/prefs'
 import { setThemePref, useThemePref } from '@/lib/colorTheme'
-import { DISPLAY_SIDES, mostVisibleChart, type ChartDisplay, type VisibleChart } from '@/lib/chartDisplay'
+import { DISPLAY_SIDES, mostVisibleChart, type ChartDisplay, type StatsPlace, type VisibleChart } from '@/lib/chartDisplay'
 import { resetChartDisplay, setSharedChartDisplay, setSingleChartDisplay, useChartDisplayPrefs } from '@/lib/chartDisplayPrefs'
 import { useSingleView } from '@/lib/singleView'
 
@@ -43,9 +43,11 @@ export function DisplayControls() {
   const returnFocus = useRef<HTMLElement | null>(null)
   const menuId = useId()
   const place = useFloatingMenu(open, root, menu, 560)
-  const shared: ChartDisplay = { controlsSide: prefs.controlsSide, density, explain, theme }
+  const shared: ChartDisplay = { controlsSide: prefs.controlsSide, statsPlace: prefs.statsPlace ?? 'options', density, explain, theme }
   const override = target ? prefs.charts[target.key] : undefined
-  const settings = scope === 'chart' ? { ...shared, ...override } : shared
+  // a chart can keep its statistics above the plot by default (ChartFrame statsPlace): the frame says what it uses
+  const chartStats = target ? document.querySelector<HTMLElement>(`[data-chart-key="${CSS.escape(target.key)}"]`)?.dataset.statsPlace as StatsPlace | undefined : undefined
+  const settings = scope === 'chart' ? { ...shared, ...(chartStats ? { statsPlace: chartStats } : {}), ...override } : shared
   const showMenu = (from: HTMLElement) => {
     returnFocus.current = from
     setTarget(visibleChart())
@@ -114,6 +116,8 @@ export function DisplayControls() {
       </fieldset>
       <DisplayChoice label="Options placement" value={settings.controlsSide} choices={DISPLAY_SIDES.map(value => ({ value, label: SIDE_LABEL[value] }))}
         onChange={controlsSide => apply({ controlsSide }, scope === 'chart')} />
+      <DisplayChoice label="Fit statistics, one-chart view" value={settings.statsPlace} choices={[{ value: 'options', label: 'With the options' }, { value: 'plot', label: 'Above the plot' }]}
+        onChange={statsPlace => apply({ statsPlace }, scope === 'chart')} />
       <DisplayChoice label="Text size" value={settings.density} choices={[{ value: 'compact', label: 'Compact' }, { value: 'readable', label: 'Readable' }]}
         onChange={density => apply({ density }, scope === 'chart')} />
       {EXPLAIN_AVAILABLE && <DisplayChoice label="Explanations" value={settings.explain ? 'show' : 'hide'} choices={[{ value: 'hide', label: 'Hide' }, { value: 'show', label: 'Show' }]}

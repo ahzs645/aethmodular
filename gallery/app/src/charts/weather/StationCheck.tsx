@@ -42,7 +42,9 @@ export function StationCheck({ data }: { data: StationCompare | null }) {
   return (
     <ChartFrame id="weather-station" title="ERA5 against the Addis Ababa airport station — day by day"
       subtitle="Each dot is one local day with at least 18 station hours. Dashed: 1:1; the fit lines and readout follow the sidebar's fit choice; ⤢ opens a panel larger. ERA5 is a 0.25° grid-box average, so it smooths the station's extremes; precipitation is the weakest match (ERA5 is known to over-rain the Ethiopian highlands), so rain-washout results from ERA5 at Addis deserve the station check."
-      provenance="Meteostat hourly, WMO 63450 (the station behind addis_03_meteorology and the meteorology notebooks) · ERA5 via Open-Meteo">
+      provenance="Meteostat hourly, WMO 63450 (the station behind addis_03_meteorology and the meteorology notebooks) · ERA5 via Open-Meteo"
+      // six small crossplots: each keeps its readout above it in the one-chart view too (the display menu can move them to the options)
+      statsPlace="plot">
       <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
         {!data ? <Empty>Loading the station comparison…</Empty> : VARS.map((v) => (
           <StationPanel key={v.k} v={v} data={data} side={side} tip={tip} onOpen={() => setOpen(v)} />
@@ -72,7 +74,7 @@ function StationPanel({ v, data, side, tip, onOpen }: {
   const tot = v.k === 'p' ? [d3.sum(pairs, (p) => p.s), d3.sum(pairs, (p) => p.e)] : null
   const [d0, d1] = x.domain()
   const r = side > 300 ? 3.2 : 2.6
-  const summary = useRegressionSummary({ stats, width: side + M.left + M.right - 24 })
+  const summary = useRegressionSummary({ stats, width: side + M.left + M.right - 24, panel: { title: v.label } })
   const top = M.top + summary.height + (summary.height ? 12 : 0)
   return (
     <div className="expandable-panel">

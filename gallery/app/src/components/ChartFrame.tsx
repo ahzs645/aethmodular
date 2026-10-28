@@ -9,7 +9,8 @@ import { chartInkStyle } from '@/lib/chartDisplayStyles'
 import { useSystemDark } from '@/lib/colorTheme'
 import { useParamScope } from '@/lib/url'
 import { useFloatingMenu } from '@/hooks/useFloatingMenu'
-import { AsideSlotCtx, ChartAside, SingleViewNav, SingleViewStats, useSingleView } from '@/lib/singleView'
+import { AsideSlotCtx, ChartAside, SingleViewNav, SingleViewStats, StatsInPlotCtx, useSingleView } from '@/lib/singleView'
+import type { StatsPlace } from '@/lib/chartDisplay'
 import { useExportRender } from '@/lib/exportRender'
 
 /**
@@ -48,6 +49,7 @@ export function ChartFrame({
   tip,
   source,
   about,
+  statsPlace,
 }: {
   /** "Short name — longer clause": only the short name shows unless explaining */
   title: string
@@ -66,6 +68,8 @@ export function ChartFrame({
   source?: string
   /** longer explanation (e.g. a meeting section's findings) shown with the subtitle, behind the "?" */
   about?: ReactNode
+  /** where this chart's fit statistics go in the single-chart view unless the viewer set it for this chart; else the shared setting */
+  statsPlace?: StatsPlace
 }) {
   const method = useEstimator()
   const extras = useContext(FrameExtrasContext)
@@ -103,6 +107,7 @@ export function ChartFrame({
   const exportRender = useExportRender()
   const asideSlot = inView && !(exportRender && exportRender.panel === ref.current) ? single.slot : null
   const side = own?.controlsSide ?? (inView ? single.side : display.controlsSide)
+  const stats = own?.statsPlace ?? statsPlace ?? display.statsPlace ?? 'options'
   const info = EXPLAIN_AVAILABLE && (own?.explain ?? explain)
   const readable = (own?.density ?? density) === 'readable'
   const systemDark = useSystemDark()
@@ -112,7 +117,7 @@ export function ChartFrame({
     '--text-scale': readable ? 1.15 : 1,
     '--chart-text-scale': readable ? 1.12 : 1,
   } as CSSProperties
-  const displayAttrs = { 'data-chart-key': chartKey, 'data-chart-title': short, 'data-chart-theme': theme, 'data-chart-explain': info ? '1' : '0', style: appearance }
+  const displayAttrs = { 'data-chart-key': chartKey, 'data-chart-title': short, 'data-stats-place': stats, 'data-chart-theme': theme, 'data-chart-explain': info ? '1' : '0', style: appearance }
   // focus mode: this chart alone, centred over the page with its options; `focus=<key>` in the URL, so a copied link
   // reopens it exactly as it is (every other setting already lives in the URL)
   const focusKey = anchor ?? slug(short)
@@ -178,7 +183,7 @@ export function ChartFrame({
           own wrapper under a chart that is not remounted, and its size observer would keep the old width */}
       <div className={`frame-body controls-${controls ? side : 'top'}`}>
         {controls && <div className="frame-controls">{headInColumn && head}{inView && side !== 'top' && <SingleViewStats />}{controls}</div>}
-        <div className="frame-chart"><AsideSlotCtx.Provider value={asideSlot}>{children}</AsideSlotCtx.Provider></div>
+        <div className="frame-chart"><AsideSlotCtx.Provider value={asideSlot}><StatsInPlotCtx.Provider value={stats === 'plot'}>{children}</StatsInPlotCtx.Provider></AsideSlotCtx.Provider></div>
       </div>
     </section>
   </>)
