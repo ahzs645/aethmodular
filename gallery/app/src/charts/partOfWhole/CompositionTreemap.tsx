@@ -83,6 +83,10 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
   }, [meta, speciesOverride])
   const familyOf = (f: string) => (f.startsWith('OC') || f.startsWith('EC') ? 'Carbon' : meta.field_groups.find((g) => g.fields.includes(f))?.label ?? 'Other')
   const families = useMemo(() => [...new Set(speciesFields.map(familyOf))], [speciesFields]) // eslint-disable-line react-hooks/exhaustive-deps
+  // the legend keys only species with a value in view: a site that never measured FTIR carbon (Buenos Aires,
+  // before SPARTAN's stretched-Teflon filters) does not list it. Colours still follow speciesFields, so they stay put
+  const shownSpecies = useMemo(() => speciesFields.filter((f) => rows.some((r) => typeof r[f] === 'number' && Number.isFinite(r[f] as number))), [rows, speciesFields])
+  const shownFamilies = useMemo(() => families.filter((fm) => shownSpecies.some((f) => familyOf(f) === fm)), [families, shownSpecies]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Built from the live subset so the season/site filters above apply here too.
   const composition = useMemo(() => {
@@ -272,8 +276,8 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
         {tip.node}
       </div>
       <Legend items={[
-        ...(famOn ? families.map(f => ({ label: f, color: familyColor(f), shape: 'band' as const })) : []),
-        ...speciesFields.map(f => ({ label: f, parent: famOn ? familyOf(f) : undefined, color: color(f), shape: 'square' as const })),
+        ...(famOn ? shownFamilies.map(f => ({ label: f, color: familyColor(f), shape: 'band' as const })) : []),
+        ...shownSpecies.map(f => ({ label: f, parent: famOn ? familyOf(f) : undefined, color: color(f), shape: 'square' as const })),
       ]} hidden={new Set([...fam.hidden, ...lg.hidden])} onToggle={label => families.includes(label) ? fam.toggle(label) : lg.toggle(label)} onHover={label => { fam.setHover(label && families.includes(label) ? label : null); lg.setHover(label && !families.includes(label) ? label : null) }} highlighted={fam.hover ?? lg.hover} />
       {notes}
     </ChartFrame>

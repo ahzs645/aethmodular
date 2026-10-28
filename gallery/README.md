@@ -285,6 +285,15 @@ A meeting page needs no TSX:
 
 ### Networks in the Filters sidebar
 
+**A site that never measured a field.** Older SPARTAN sites have no FTIR
+carbon or HIPS (those exist only for SS5i stretched-Teflon filters), only the
+smoke-stain reflectometer's BC. The dashboard, site cards and sidebar move
+such a field to SPARTAN's documented stand-in (HIPS BC → public HIPS → SSR
+estimate → SSR eBC; FTIR carbon → public FTIR → TOR), labelled on the tile, and
+say why with the source where there is none. Rules and sources:
+[docs/spartan-field-availability.md](../docs/spartan-field-availability.md)
+(`app/src/lib/fieldEquivalents.ts`).
+
 The chart tabs (Correlation, Distribution, Evolution, Ranking, Part of a whole) draw a
 network chosen at the top of the Filters sidebar. **SPARTAN** is the default and starts on
 the four focus sites, which keep their `filters.json` rows (HIPS, FTIR groups, exclusions,

@@ -30,7 +30,7 @@ export function SiteMapPicker({ items, onToggle }: { items: SiteItem[]; onToggle
         {located.map((it) => {
           const on = it.selected, hot = hover?.key === it.key
           return (
-            <MapMarker key={it.key} longitude={it.lon as number} latitude={it.lat as number} onClick={() => onToggle(it.key)}>
+            <MapMarker key={it.key} longitude={it.lon as number} latitude={it.lat as number} onClick={it.disabled ? undefined : () => onToggle(it.key)}>
               <MarkerContent className="site-map-dot">
                 {/* a generous hit area, so small dots are easy to click */}
                 <svg width={24} height={24} viewBox="-12 -12 24 24" onMouseEnter={() => setHover(it)} onMouseLeave={() => setHover(null)}

@@ -80,7 +80,11 @@ const COUNTRY: Record<string, string> = { CL: 'Chile', KR: 'South Korea', CA: 'C
 
 const SPARTAN_GROUPS = [
   // HIPS batches 1–51 (the focus sites' source too), then the public BC where HIPS measured it (fAbs / 10)
-  { label: 'Optical (HIPS)', fields: ['HIPS BC', 'HIPS Fabs', 'HIPS Fabs uncertainty', 'HIPS MDL', 'BC (public HIPS)', 'BC (public SSR estimate)', 'Equivalent BC (SSR)'] },
+  { label: 'Optical (HIPS)', fields: ['HIPS BC', 'HIPS Fabs', 'HIPS Fabs uncertainty', 'HIPS MDL', 'BC (public HIPS)'] },
+  // the smoke-stain reflectometer: SPARTAN's BC on every sampler, the older mesh-Teflon ones too (Sampling
+  // Parameters & Methods v2.3, methods 212–216), and SPARTAN's estimate of HIPS BC from it (method 220). A
+  // group of its own, so a site with only these reads "Optical (HIPS) not measured" (lib/fieldEquivalents)
+  { label: 'Optical (SSR)', fields: ['Equivalent BC (SSR)', 'BC (public SSR estimate)'] },
   { label: 'Carbon', fields: ['EC (FTIR)', 'OC (FTIR)', 'OM (FTIR)', 'EC (ChemSpec FTIR)', 'OC (ChemSpec FTIR)'] },
   { label: 'FTIR functional groups', fields: ['Alkane CH', 'Alcohol COH', 'Carboxylic COOH', 'Non-acid CO'] },
   { label: 'Mass', fields: ['PM2.5 mass'] },

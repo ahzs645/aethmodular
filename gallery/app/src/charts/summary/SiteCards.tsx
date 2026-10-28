@@ -6,6 +6,7 @@ import { useChartOptions } from '@/lib/chartOptions'
 import { useFitHeight } from '@/lib/chartFit'
 import { fmt } from '@/lib/format'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { resolveField, whyMissing, type Equivalent } from '@/lib/fieldEquivalents'
 
 const SORTS = ['Name', 'First field ↓', 'Filters ↓'] as const
 
@@ -16,7 +17,8 @@ interface Card {
   n: number
   from: string
   to: string
-  stats: { field: string; median: number | null; n: number; spark: { t: Date; v: number }[] }[]
+  /** `standIn`: the documented stand-in a site's card shows for a field it never measured (lib/fieldEquivalents) */
+  stats: { field: string; median: number | null; n: number; spark: { t: Date; v: number }[]; standIn?: Equivalent }[]
 }
 
 /**
@@ -35,11 +37,14 @@ export function SiteCards({ rows, meta, fields, onOpenSite }: { rows: FilterRow[
     return [...bySite].map(([site, rs]) => ({
       site, code: rs[0].code, color: rs[0].color, n: rs.length,
       from: d3.min(rs, (r) => r.date) ?? '', to: d3.max(rs, (r) => r.date) ?? '',
-      stats: fields.map((f) => {
-        const ok = rs.filter((r) => typeof r[f] === 'number' && Number.isFinite(r[f] as number))
+      stats: fields.map((asked) => {
+        const num = (r: FilterRow, f: string) => typeof r[f] === 'number' && Number.isFinite(r[f] as number)
+        // a site that never measured the field shows SPARTAN's documented stand-in (reflectometer BC for HIPS BC)
+        const { field: f, equivalent } = resolveField(asked, (x) => rs.some((r) => num(r, x)))
+        const ok = rs.filter((r) => num(r, f))
         const spark = d3.rollups(ok, (g) => d3.median(g, (r) => r[f] as number) ?? 0, (r) => r.date.slice(0, 7))
           .map(([m, v]) => ({ t: new Date(`${m}-15`), v })).sort((a, b) => +a.t - +b.t)
-        return { field: f, median: d3.median(ok, (r) => r[f] as number) ?? null, n: ok.length, spark }
+        return { field: asked, median: d3.median(ok, (r) => r[f] as number) ?? null, n: ok.length, spark, standIn: equivalent }
       }),
     }))
   }, [rows, fields])
@@ -64,8 +69,9 @@ export function SiteCards({ rows, meta, fields, onOpenSite }: { rows: FilterRow[
               <span key={s.field} className="site-card-row">
                 <span className="site-card-field" title={s.field}>{s.field}</span>
                 {s.median === null
-                  ? <span className="site-card-value none" title={`${s.field} was not measured at ${c.site} in this subset`}>not measured</span>
-                  : <span className="site-card-value">{fmt(s.median, 3)}<small> {prettyUnit(meta.field_units?.[s.field])}</small></span>}
+                  ? <span className="site-card-value none" title={(() => { const w = whyMissing(s.field, { name: c.site, date_min: c.from, date_max: c.to }, rows.some((r) => r.site === c.site && typeof r['EC (TOR)'] === 'number') ? 'improve' : 'spartan', (f) => rows.some((r) => r.site === c.site && typeof r[f] === 'number')); return w.source ? `${w.text} Source: ${w.source.label}` : w.text })()}>not measured</span>
+                  : <span className="site-card-value" title={s.standIn ? `${s.standIn.field} in place of ${s.field}: ${s.standIn.basis}. Source: ${s.standIn.source.label}` : undefined}>
+                    {fmt(s.median, 3)}<small> {prettyUnit(meta.field_units?.[s.standIn?.field ?? s.field])}</small>{s.standIn && <small className="site-card-standin"> {s.standIn.field.match(/\((.*)\)$/)?.[1] ?? s.standIn.field}</small>}</span>}
                 <span className="site-card-bar"><span style={{ width: `${s.median === null || !maxOf[i] ? 0 : Math.max(2, (100 * Math.max(0, s.median)) / maxOf[i])}%` }} /></span>
                 <Spark pts={s.spark} color={c.color} />
               </span>

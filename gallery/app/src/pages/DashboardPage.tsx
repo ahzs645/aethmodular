@@ -4,7 +4,8 @@ import { FrameExtrasContext, Segmented, type FrameExtras } from '@/components/Ch
 import { FieldSelect } from '@/components/FieldSelect'
 import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
 import { DashHeader, type DashFilters, type SheetActions } from '@/components/dashboard/DashHeader'
-import { dashboardChart, dashboardCharts, startFields, STARTER, type DashboardChart, type DashboardData } from '@/components/dashboard/registry'
+import { dashboardChart, dashboardCharts, fieldsPresent, resolveStarter, startFields, STARTER, type DashboardChart, type DashboardData } from '@/components/dashboard/registry'
+import { EQUIVALENTS, whyMissing } from '@/lib/fieldEquivalents'
 import { useHeaderHeight } from '@/hooks/useSidePanel'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { ChartSite, ChartFit, LEGEND_MODES, TileLegend, type LegendMode } from '@/lib/chartFit'
@@ -276,9 +277,11 @@ const starterSheets = (scope: Scope, data: DashboardData): Sheet[] => STARTER[sc
   name: s.name,
   tiles: arrange(s.tiles.reduce<Tile[]>((acc, t) => {
     const chart = dashboardChart(t.kind)
-    // a starter's fields where this network has them all, else the chart's own start fields
-    const known = !t.fields || data.meta.fields.length === 0 || t.fields.every((f) => data.meta.fields.includes(f))
-    return chart ? addTile(acc, { kind: t.kind, w: t.w, h: t.h, fields: (known && t.fields) || startFields(chart, data) }) : acc
+    // each field as the sites in view measured it (its documented stand-in where they did not); a field this
+    // network lacks entirely, with no stand-in, falls back to the chart's own start fields
+    const fields = t.fields?.map((f) => resolveStarter(f, data))
+    const known = !fields || data.meta.fields.length === 0 || fields.every((f) => data.meta.fields.includes(f) || data.meta.fields.includes(data.eff(f)))
+    return chart ? addTile(acc, { kind: t.kind, w: t.w, h: t.h, fields: (known && fields) || startFields(chart, data) }) : acc
   }, [])),
 }))
 
@@ -468,6 +471,17 @@ function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, 
   </div> : undefined
   const extras: FrameExtras = { compact: true, menu, controls: pickers, subtitle, editBar }
 
+  // fields none of the rows in view has (a site that never measured them): the tile says why rather than
+  // drawing an empty chart; and a field standing in for one the sites lack says so in a chip
+  const present = fieldsPresent(data.rows)
+  const measured = fieldsPresent(data.measured?.length ? data.measured : data.rows)
+  const unmeasured = data.rows.length ? fields.filter((f) => !present.has(data.eff(f))) : []
+  const standIn = fields.flatMap((f) => {
+    const hit = Object.entries(EQUIVALENTS).find(([of, alts]) => !measured.has(data.eff(of)) && alts.some((a) => a.field === f))
+    const alt = hit?.[1].find((a) => a.field === f)
+    return hit && alt ? [{ ...alt, for: hit[0] }] : []
+  })
+
   // on a phone (one long column) a tile draws once it comes near the screen, and then stays
   const near = useNear(ref, role === 'phone')
 
@@ -482,7 +496,9 @@ function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, 
         <FrameExtrasContext.Provider value={extras}>
           <AxisFieldsProvider meta={data.meta} value={axisValue} set={axisSet}>
             <ChartSite name={siteName}><TileLegend mode={legend} reserve={legendReserve}><ChartFit height={fit}>
-              {near ? chart.render(data, fields.map(data.eff)) : <section className="panel compact"><p className="frame-empty">{chart.label}</p></section>}
+              {!near ? <section className="panel compact"><p className="frame-empty">{chart.label}</p></section>
+                : unmeasured.length ? <NotMeasured chart={chart} fields={unmeasured} data={data} pickers={pickers} onUse={(from, to) => setField(fields.indexOf(from), to)} />
+                : chart.render(data, fields.map(data.eff))}
             </ChartFit></TileLegend></ChartSite>
           </AxisFieldsProvider>
         </FrameExtrasContext.Provider>
@@ -493,7 +509,42 @@ function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, 
         <div className="tile-menu-actions">{menu(() => {})}</div>
         {pickers && <div className="frame-controls">{pickers}</div>}
       </section>}
+      {!unmeasured.length && standIn.map((e) => <a key={e.field} className="tile-standin" href={e.source.url} target="_blank" rel="noreferrer"
+        title={`${e.field} in place of ${e.for}: ${e.basis}. Source: ${e.source.label}`}>{e.field} in place of {e.for}</a>)}
       {edit && <span className="dash-resize" onPointerDown={onResizeStart} title="Drag to resize" aria-hidden />}
     </div>
+  )
+}
+
+/**
+ * A tile whose field the sites in view never measured: why (lib/fieldEquivalents, citing SPARTAN's documentation),
+ * and the measured fields it could show instead: a documented stand-in first, then PM2.5 mass.
+ */
+function NotMeasured({ chart, fields, data, pickers, onUse }: {
+  chart: DashboardChart; fields: string[]; data: DashboardData; pickers: ReactNode; onUse: (from: string, to: string) => void
+}) {
+  const names = [...new Set(data.rows.map((r) => r.site))]
+  const meta = names.length === 1 ? data.meta.sites.find((s) => s.name === names[0]) : undefined
+  const site = meta ?? { name: names.length === 1 ? names[0] : `any of the ${names.length} sites in view` }
+  const network = data.rows.some((r) => typeof r['EC (TOR)'] === 'number') ? 'improve' as const : 'spartan' as const
+  const present = fieldsPresent(data.rows)
+  const measuredHere = fieldsPresent(data.measured?.length ? data.measured : data.rows)
+  const count = (f: string) => data.rows.filter((r) => typeof r[data.eff(f)] === 'number').length
+  return (
+    <section className="panel compact not-measured">
+      <h3>{chart.kind === 'stat' ? fields.join(', ') : chart.label}</h3>
+      {fields.map((f) => {
+        const inSite = (data.measured ?? []).filter((r) => typeof r[data.eff(f)] === 'number').length
+        // measured at the site, just not in this view: the date, season or exclusion filters leave it out
+        const why = inSite ? { text: `No ${f} in this view: the date, season or exclusion filters leave out all ${inSite} filters ${names.length === 1 ? `${site.name} has` : 'the sites in view have'} with it.`, source: undefined }
+          : whyMissing(f, site, network, (x) => measuredHere.has(x))
+        const alts = [...(EQUIVALENTS[f] ?? []).map((e) => e.field), 'PM2.5 mass'].filter((a, i, all) => a !== f && present.has(data.eff(a)) && all.indexOf(a) === i).slice(0, 2)
+        return <div key={f}>
+          <p>{why.text}{why.source && <> <a href={why.source.url} target="_blank" rel="noreferrer">{why.source.label}</a>.</>}</p>
+          {alts.length > 0 && <p className="not-measured-alts">{alts.map((a) => <button key={a} type="button" className="btn quiet" onClick={() => onUse(f, a)}>Show {a} ({count(a)} filters)</button>)}</p>}
+        </div>
+      })}
+      {pickers && <div className="frame-controls">{pickers}</div>}
+    </section>
   )
 }

@@ -99,6 +99,7 @@ import instruments from '@/sections/instruments'
 import research from '@/sections/research'
 import { defaultPage } from '@/sections/types'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
+import { EQUIVALENTS } from '@/lib/fieldEquivalents'
 
 /**
  * Tabs mirror the react-graph-gallery categories, plus the census. `hidden` tabs
@@ -322,8 +323,6 @@ const CAPS: Record<Exclude<TabKey, 'investigations' | 'availability' | 'census' 
 // 1.898 / Deming 2.379 at ETAD), so the app opens agreeing with the repo's
 // published numbers.
 const DEFAULT_X = 'HIPS BC'
-/** public SPARTAN BC where HIPS measured it (gallery/data/export_spartan_reference.py) */
-const PUBLIC_BC = 'BC (public HIPS)'
 const DEFAULT_Y = 'EC (FTIR)'
 const DEFAULT_FIELD = 'EC (FTIR)'
 /** the Dashboard's One site scope opens on Addis Ababa */
@@ -693,35 +692,37 @@ export default function App() {
     if (!ok(field)) setField(ok(d.field) ? d.field : activeFields[0])
   }, [data, netView, activeFields, ratioFields, net, xField, yField, field])
 
-  // Three SPARTAN sites (Kanpur, Ilorin, Singapore) have the public HIPS BC but nothing in HIPS
-  // batches 1–51. When a newly chosen site would drop out of an axis for that reason, the axis moves
-  // to the public field instead of leaving that site's panels empty. Only when the choice of sites
-  // changes, and not over a field the link named, so HIPS BC can still be picked by hand.
+  // Some SPARTAN sites never had HIPS: Kanpur, Ilorin and Singapore have SPARTAN's public HIPS BC but nothing in
+  // HIPS batches 1–51, and the older mesh-Teflon sites (Buenos Aires, Dalhousie, Kelowna, Lethbridge, Hanoi …)
+  // have only the smoke-stain reflectometer's BC (lib/fieldEquivalents cites SPARTAN's methods). When a newly
+  // chosen site would drop out of an axis for that reason, the axis moves to the first documented stand-in a
+  // chosen site has, instead of leaving that site's panels empty. Only when the choice of sites changes, and
+  // not over a field the link named, so HIPS BC can still be picked by hand.
   const seenSites = useRef<string | null>(null)
   const linkNamedField = useRef(!!(init.get('x') || init.get('y') || init.get('f')))
-  // the axes this moved to public BC: when no chosen site needs it any more they go back to HIPS BC,
-  // so a pick of every site and then the focus sites again does not leave public BC behind
-  const fellBack = useRef(new Set<'x' | 'y' | 'f'>())
+  // the axes this moved to a stand-in, and to which: when no chosen site needs it any more they go back to
+  // HIPS BC, so a pick of every site and then the focus sites again does not leave a stand-in behind
+  const fellBack = useRef(new Map<'x' | 'y' | 'f', string>())
   useEffect(() => {
     if (!netView || !hasSpartan(net) || !netView.rows.length) return
     const key = [...netView.chosenCodes].sort().join(',')
     if (key === seenSites.current) return
     seenSites.current = key
     if (linkNamedField.current) { linkNamedField.current = false; return }
-    const missing = netView.fields.includes(PUBLIC_BC) && netView.chosen.some((x) => {
-      const own = netView.rows.filter((r) => r.site === x.name)
-      return own.length && !own.some((r) => typeof r['HIPS BC'] === 'number') && own.some((r) => typeof r[PUBLIC_BC] === 'number')
-    })
-    if (!missing) {
-      if (fellBack.current.has('x') && xField === PUBLIC_BC) setXField('HIPS BC')
-      if (fellBack.current.has('y') && yField === PUBLIC_BC) setYField('HIPS BC')
-      if (fellBack.current.has('f') && field === PUBLIC_BC) setField('HIPS BC')
+    const num = (r: FilterRow, f: string) => typeof r[f] === 'number'
+    const lacking = netView.chosen.map((x) => netView.rows.filter((r) => r.site === x.name)).filter((own) => own.length && !own.some((r) => num(r, 'HIPS BC')))
+    const target = lacking.length ? EQUIVALENTS['HIPS BC'].map((e) => e.field)
+      .find((f) => netView.fields.includes(f) && lacking.some((own) => own.some((r) => num(r, f)))) : undefined
+    const back = (axis: 'x' | 'y' | 'f', cur: string, set: (f: string) => void) => { if (fellBack.current.get(axis) === cur) set('HIPS BC') }
+    if (!target) {
+      back('x', xField, setXField); back('y', yField, setYField); back('f', field, setField)
       fellBack.current.clear()
       return
     }
-    if (xField === 'HIPS BC') { setXField(PUBLIC_BC); fellBack.current.add('x') }
-    if (yField === 'HIPS BC') { setYField(PUBLIC_BC); fellBack.current.add('y') }
-    if (field === 'HIPS BC') { setField(PUBLIC_BC); fellBack.current.add('f') }
+    const move = (axis: 'x' | 'y' | 'f', cur: string, set: (f: string) => void) => {
+      if (cur === 'HIPS BC' || fellBack.current.get(axis) === cur) { set(target); fellBack.current.set(axis, target) }
+    }
+    move('x', xField, setXField); move('y', yField, setYField); move('f', field, setField)
   }, [netView, net, xField, yField, field])
 
   const siteNames = useMemo(
@@ -927,6 +928,11 @@ export default function App() {
     [baseRows, inRange, seasonSel, activeSites, netView, dropIds, keepIds, inChartPmf]
   )
 
+  // every filter of the sites in view, before the date, season and exclusion filters: what a site measured at
+  // all, so the dashboard can tell a field the site never measured from one this view's filters leave out
+  const measuredRows = useMemo(() => (tab !== 'dashboard' ? [] : paintedSourceRows.filter((r) => (netView ? netView.chosenNames.has(r.site) : !activeSites || activeSites.has(r.site)))),
+    [tab, paintedSourceRows, netView, activeSites])
+
   // the Weather tab's site table can narrow the Filters panel's pick to one site (and put it back)
   const setSpartanPick = useCallback((codes: string[]) => setSpartanSel(codes), [])
 
@@ -1111,8 +1117,11 @@ export default function App() {
       ? rawMeta.sites.map((x) => ({ key: x.name, label: x.name, sub: x.location, lat: x.lat, lon: x.lon, color: x.color, n: siteCounts[x.name] ?? 0, selected: !activeSites || activeSites.has(x.name) }))
       : (netView?.all ?? []).map((x) => {
         const on = netView!.chosenCodes.has(x.code)
-        return { key: x.code, label: x.name, group: netView!.improveCodes.has(x.code) ? 'IMPROVE' : 'SPARTAN', sub: net === 'improve' ? x.location : x.code, lat: x.lat, lon: x.lon,
-          color: on ? x.color : '#9aa5b1', n: net === 'improve' && !on ? x.n_filters : siteCounts[x.name] ?? 0, selected: on }
+        // a site in SPARTAN's index with no filters in the public release (Dhaka's CODC, Baltimore's USBA): listed,
+        // greyed and last, rather than offered as if picking it would draw something
+        const none = x.n_filters === 0 && !netView!.improveCodes.has(x.code)
+        return { key: x.code, label: x.name, group: netView!.improveCodes.has(x.code) ? 'IMPROVE' : 'SPARTAN', sub: none ? `${x.code} · no public filters` : net === 'improve' ? x.location : x.code, lat: x.lat, lon: x.lon,
+          color: on ? x.color : '#9aa5b1', n: net === 'improve' && !on ? x.n_filters : siteCounts[x.name] ?? 0, selected: on, disabled: none && !on }
       })
 
     const state: SubsetState = {
@@ -1397,7 +1406,7 @@ export default function App() {
         {tab === 'baseline' && (calibrationLoading ? <p>Loading calibration data…</p> : <BaselineComparisonPage mac={exportMac} demingLambda={data.calibration?.deming_lambda_mac10 ?? 1} />)}
         {tab === 'calibration' && (calibrationLoading ? <p>Loading calibration data…</p> : <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={drawerMeta} galleryRows={paintedSourceRows} sourceRows={rawSourceRows} galleryMeta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />)}
         {tab === 'dashboard' && <DashboardPage dash={dash} setDash={setDash} filters={dashFilters} onScope={setDashScope} onPickSite={pickDashSite} display={<DisplayToggles />}
-          data={{ rows, meta, axes, pmf: pmf ?? null, pmfRows, eff, defaults: { x: xField, y: yField, field }, openSite: openDashSite, pmfLabelOfDate,
+          data={{ rows, measured: measuredRows, meta, axes, pmf: pmf ?? null, pmfRows, eff, defaults: { x: xField, y: yField, field }, openSite: openDashSite, pmfLabelOfDate,
             calibration: data.calibrationRuns ? { runs: data.calibrationRuns, lambda10: data.calibration?.deming_lambda_mac10 ?? 2.96, knownIds, galleryRows: paintedSourceRows, sourceRows: rawSourceRows, galleryMeta: meta, meta: drawerMeta } : null }} />}
         <AxisFieldsProvider meta={meta} value={axisValues} set={setAxisField}>
         {tab === 'correlation' && (

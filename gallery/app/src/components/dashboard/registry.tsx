@@ -29,10 +29,13 @@ import { SiteBubbleMap, SpartanCompositionMap } from '@/charts/map/lazy'
 import { MethodSankey } from '@/charts/flow/MethodSankey'
 import { SourceStack } from '@/charts/pmf/SourceStack'
 import { SourceSeasonality } from '@/charts/pmf/SourceSeasonality'
+import { resolveField } from '@/lib/fieldEquivalents'
 
 /** What App hands every tile: the Filters panel's rows and meta, and what a few charts need besides. */
 export interface DashboardData {
   rows: FilterRow[]
+  /** every filter of the sites in view before the date, season and exclusion filters (what each site measured at all) */
+  measured?: FilterRow[]
   meta: MetaFile
   axes: AxesOpts
   pmf: PmfFile | null
@@ -168,10 +171,32 @@ export function registerDashboardChart(chart: DashboardChart) {
 export const dashboardCharts = (): readonly DashboardChart[] => CHARTS
 export const dashboardChart = (kind: string) => CHARTS.find((c) => c.kind === kind)
 
+const presence = new WeakMap<FilterRow[], Set<string>>()
+/** the fields with at least one value among these rows (cached per rows array) */
+export function fieldsPresent(rows: FilterRow[]): Set<string> {
+  let out = presence.get(rows)
+  if (!out) {
+    out = new Set()
+    for (const r of rows) for (const k in r) if (!out.has(k) && typeof r[k] === 'number' && Number.isFinite(r[k] as number)) out.add(k)
+    presence.set(rows, out)
+  }
+  return out
+}
+
+/**
+ * A starter field as the rows in view have it (lib/fieldEquivalents): itself where measured, else SPARTAN's
+ * documented stand-in (public HIPS or reflectometer BC for HIPS BC, public FTIR or TOR carbon for FTIR carbon),
+ * else itself, so the tile can say why it is empty. Measured means under the chosen baseline (`eff`).
+ */
+export function resolveStarter(field: string, d: DashboardData): string {
+  const has = fieldsPresent(d.measured?.length ? d.measured : d.rows)
+  return resolveField(field, (f) => has.has(d.eff(f))).field
+}
+
 /** a new tile's fields, from the sidebar's choices */
 export const startFields = (chart: DashboardChart, d: DashboardData): string[] =>
-  chart.fields === 'pair' ? [d.defaults.x, d.defaults.y] : chart.fields === 'single' ? [d.defaults.field]
-    : chart.fields === 'trio' ? ['PM2.5 mass', 'EC (FTIR)', 'HIPS BC'] : []
+  chart.fields === 'pair' ? [resolveStarter(d.defaults.x, d), resolveStarter(d.defaults.y, d)] : chart.fields === 'single' ? [resolveStarter(d.defaults.field, d)]
+    : chart.fields === 'trio' ? ['PM2.5 mass', 'EC (FTIR)', 'HIPS BC'].map((f) => resolveStarter(f, d)) : []
 
 type Start = { kind: string; w: number; h: number; fields?: string[] }
 const KPIS: Start[] = ['PM2.5 mass', 'EC (FTIR)', 'HIPS BC', 'OC (FTIR)'].map((f) => ({ kind: 'stat', w: 3, h: 2, fields: [f] }))
@@ -186,8 +211,9 @@ const EC = ['EC (FTIR)']
  * calibration question; OC, mass, potassium and dust say what kind of carbon it is), then what
  * tracks EC and BC with a column per site (a Compare ranking opens side by side), then the
  * same numbers per site (cards), then the charts that set sites side by side. Network: map
- * first (a click opens a site), then the network's charts. A pair of fields this network
- * lacks falls back to the chart's own start fields.
+ * first (a click opens a site), then the network's charts. A field the sites in view never measured moves
+ * to its documented stand-in (resolveStarter); one this network does not have at all, with no stand-in,
+ * falls back to the chart's own start fields.
  */
 export const STARTER: Record<Scope, { name: string; tiles: Start[] }[]> = {
   site: [

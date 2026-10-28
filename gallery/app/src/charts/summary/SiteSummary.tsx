@@ -6,6 +6,7 @@ import { useTileSetting } from '@/lib/url'
 import { chemText } from '@/lib/format'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { RATIO_GROUP } from '@/lib/viewFields'
+import { whyMissing } from '@/lib/fieldEquivalents'
 
 const SKIP = new Set([RATIO_GROUP, 'Sampling'])
 /** Full: every group with its filter count. Compact: the measured groups as a share, the rest on one line. Ticker: one scrolling line. */
@@ -31,9 +32,11 @@ export function SiteSummary({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
     const groups = meta.field_groups.filter((g) => !SKIP.has(g.label)).map((g) => {
       const counts = g.fields.map((f) => ({ f, n: has(f) }))
       const measured = counts.filter((c) => c.n > 0)
-      return { label: g.label, of: g.fields.length, measured, filters: rs.filter(r => g.fields.some(f => typeof r[f] === 'number' && Number.isFinite(r[f]))).length }
+      return { label: g.label, of: g.fields.length, fields: g.fields, measured, filters: rs.filter(r => g.fields.some(f => typeof r[f] === 'number' && Number.isFinite(r[f]))).length }
     })
-    return { site, code: rs[0].code, color: rs[0].color, location: m?.location, lat: m?.lat, lon: m?.lon, n: rs.length,
+    const network = rs.some((r) => typeof r['EC (TOR)'] === 'number') ? 'improve' as const : 'spartan' as const
+    const present = new Set(meta.fields.filter((f) => has(f) > 0))
+    return { site, code: rs[0].code, color: rs[0].color, location: m?.location, lat: m?.lat, lon: m?.lon, n: rs.length, network, present, dateMin: m?.date_min, dateMax: m?.date_max,
       from: d3.min(rs, (r) => r.date) ?? '', to: d3.max(rs, (r) => r.date) ?? '', months: new Set(rs.map((r) => r.date.slice(0, 7))).size, groups }
   }), [rows, meta])
 
@@ -82,12 +85,17 @@ export function SiteSummary({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
   )
 }
 
-type Site = { site: string; code: string; color: string; n: number; from: string; to: string; groups: { label: string; of: number; measured: { f: string; n: number }[]; filters: number }[] }
+type Site = { site: string; code: string; color: string; n: number; from: string; to: string; network: 'spartan' | 'improve'; present: Set<string>; dateMin?: string; dateMax?: string
+  groups: { label: string; of: number; fields?: string[]; measured: { f: string; n: number }[]; filters: number }[] }
 
 /** a group's coverage, field by field (every view's tooltip) */
 const groupTitle = (g: Site['groups'][number], s: Site) => g.measured.length
   ? `${g.filters} of ${s.n} filters have at least one measurement in this group. ${g.measured.length} of ${g.of} measurement types are available.\n` + g.measured.map((c) => `${c.f}: ${c.n} of ${s.n} filters`).join('\n')
-  : `${g.label}: not measured at ${s.site}`
+  : (() => {
+    // why, from SPARTAN's documentation where the method explains it (lib/fieldEquivalents), via the group's first field
+    const w = whyMissing(g.fields?.[0] ?? g.label, { name: s.site, date_min: s.dateMin ?? s.from, date_max: s.dateMax ?? s.to }, s.network, (f) => s.present.has(f))
+    return `${g.label}: not measured at ${s.site}.\n${w.text}${w.source ? `\nSource: ${w.source.label}` : ''}`
+  })()
 
 /**
  * One line that scrolls: each site, its filters and dates, then its measured groups as a share of its filters.

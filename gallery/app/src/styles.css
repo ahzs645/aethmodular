@@ -384,6 +384,8 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .site-row { position: relative; display: flex; align-items: center; gap: 8px; padding: 4px 9px; font-size: calc(12px * var(--text-scale)); cursor: pointer; color: var(--ink-text); }
 .site-row:hover { background: var(--accent-soft); }
 .site-row input { position: absolute; opacity: 0; pointer-events: none; }
+.site-row.disabled { cursor: not-allowed; opacity: 0.5; }
+.site-row.disabled:hover { background: none; }
 .site-row:has(input:focus-visible) { outline: 2px solid var(--accent-soft); outline-offset: -2px; }
 .site-picker-bar .btn:disabled { opacity: 0.45; cursor: default; }
 .site-check { width: 11px; height: 11px; border-radius: 3px; border: 1.5px solid var(--chip, #8a94a3); flex: none; }
@@ -1262,6 +1264,19 @@ html.dash-mode .app-title-row > .nav { flex: 0 0 auto; width: 84px; }
 .dash-fold { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed var(--accent); pointer-events: none; z-index: 1; }
 .dash-fold span { position: absolute; right: 0; top: -9px; font-size: 10px; font-family: var(--mono); color: var(--accent); background: var(--ink-page); padding: 0 4px; }
 .dash-tile { position: relative; min-width: 0; min-height: 0; border-radius: var(--radius); }
+/* a tile whose field the sites in view never measured (lib/fieldEquivalents): why, the source, what it could show */
+.dash-tile .not-measured { height: 100%; overflow: auto; font-size: calc(12.5px * var(--text-scale)); color: var(--ink-muted); line-height: 1.45; }
+.dash-tile .not-measured h3 { margin: 0 0 6px; font-size: calc(13px * var(--text-scale)); color: var(--ink-text); }
+.dash-tile .not-measured p { margin: 0 0 6px; }
+.dash-tile .not-measured a { color: var(--accent); }
+.not-measured-alts { display: flex; flex-wrap: wrap; gap: 6px; }
+/* a field standing in for one the sites never measured (HIPS BC → reflectometer BC): what and why, linked to the source */
+.tile-standin {
+  position: absolute; right: 8px; bottom: 6px; z-index: 2; max-width: calc(100% - 16px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: calc(10.5px * var(--text-scale)); color: var(--ink-muted); background: var(--ink-hover); border: 1px solid var(--ink-border);
+  border-radius: 999px; padding: 1px 8px; text-decoration: none;
+}
+.tile-standin:hover { color: var(--ink-text); border-color: var(--ink-axis); }
 .dash-tile > .panel { margin: 0; height: 100%; overflow: auto; padding: 8px 12px 6px; display: flow-root; }
 .dash-tile.editing > .panel { padding-top: 30px; outline: 1px dashed var(--ink-border); outline-offset: -1px; }
 .dash-tile.dragging { z-index: 8; }

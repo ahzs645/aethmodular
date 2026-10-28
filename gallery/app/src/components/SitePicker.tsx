@@ -19,6 +19,8 @@ export interface SiteItem {
   /** filters in the current subset (or in the site file before it is loaded) */
   n: number
   selected: boolean
+  /** nothing to draw (no filters in the network's public release): greyed, listed last, not pickable */
+  disabled?: boolean
 }
 
 /**
@@ -90,7 +92,7 @@ export function SitePicker({ items: itemsIn, onToggle: toggleIn, onAll, onClear,
   const shown = useMemo(() => {
     const hit = q ? items.filter((it) => `${it.label} ${it.sub ?? ''} ${it.key}`.toLowerCase().includes(q)) : items
     // Keep a checkbox at its original position while the reader edits the current selection.
-    return [...hit].sort((a, b) => (order.get(a.key) ?? Infinity) - (order.get(b.key) ?? Infinity))
+    return [...hit].sort((a, b) => Number(!!a.disabled) - Number(!!b.disabled) || (order.get(a.key) ?? Infinity) - (order.get(b.key) ?? Infinity))
   }, [items, q, order])
   return (
     <div className="site-picker">
@@ -121,8 +123,8 @@ export function SitePicker({ items: itemsIn, onToggle: toggleIn, onAll, onClear,
           <ul className="site-list" aria-label={noun}>
             {shown.map((it) => (
               <li key={it.key}>
-                <label className={`site-row ${it.selected ? 'on' : ''}`}>
-                  <input type="checkbox" checked={it.selected} onChange={() => onToggle(it.key)} />
+                <label className={`site-row ${it.selected ? 'on' : ''}${it.disabled ? ' disabled' : ''}`} title={it.disabled ? `${it.label}: no filters in the public release yet` : undefined}>
+                  <input type="checkbox" checked={it.selected} disabled={it.disabled} onChange={() => onToggle(it.key)} />
                   <span className="site-check" style={{ ['--chip' as string]: it.color }} aria-hidden="true" />
                   <span className="site-name">{it.label}{it.sub && <span className="site-sub"> · {it.sub}</span>}</span>
                   {it.group && mixed && <span className={`site-net ${it.group.toLowerCase()}`}>{it.group}</span>}
