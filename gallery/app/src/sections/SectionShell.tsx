@@ -1,6 +1,9 @@
 import type { ComponentType } from 'react'
 import { Segmented } from '@/components/ChartFrame'
+import { Combobox } from '@/components/Combobox'
 import type { SectionPage, SectionPageProps } from './types'
+
+const SEGMENTED_MAX = 5
 
 /** A flagged section's tab: a heading, the sub-page picker (URL `aep`), and the open sub-page. */
 export function SectionShell({ name, pages, props }: {
@@ -18,8 +21,12 @@ export function SectionShell({ name, pages, props }: {
           {current.title && <p className="subtitle" style={{ margin: '4px 0 0' }}>{current.title}</p>}
         </div>
         {pages.length > 1 && <div className="weather-head-controls">
-          <Segmented label="Page" value={current.key} options={pages.map((p) => p.key)} onChange={props.onPage}
-            optionLabel={(k) => pages.find((p) => p.key === k)?.label ?? k} />
+          {/* a row of buttons while it fits; a searchable dropdown once there are more pages than fit */}
+          {pages.length <= SEGMENTED_MAX
+            ? <Segmented label="Page" value={current.key} options={pages.map((p) => p.key)} onChange={props.onPage}
+              optionLabel={(k) => pages.find((p) => p.key === k)?.label ?? k} />
+            : <Combobox label="Page" value={current.key} onChange={props.onPage} minWidth={220}
+              options={pages.map((p) => ({ key: p.key, label: p.label, title: p.title }))} />}
         </div>}
       </div>
       <Page {...props} />
