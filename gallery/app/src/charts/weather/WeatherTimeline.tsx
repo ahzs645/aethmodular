@@ -3,6 +3,7 @@ import { seasonOnly } from '@/lib/seasons'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
+import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
 import { FieldSelect } from '@/components/FieldSelect'
 import { XIcon } from '@/components/Icons'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -63,6 +64,18 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
   const fieldOf = (k: string) => (k === 'field' ? field : k.slice(2))
   const isField = (k: string) => k === 'field' || k.startsWith('f:')
   const panelLabel = (k: string) => (k in WEATHER ? WEATHER[k].label : fieldOf(k))
+  // every panel's axis title swaps it for another weather variable or measurement (components/AxisChoices);
+  // the page's own measurement panel keeps the shared picker, which also sets the sidebar's measurement
+  const choices = useMemo<AxisOption[]>(() => [
+    ...Object.keys(WEATHER).map((k) => ({ key: k, group: 'Daily weather (ERA5)', label: WEATHER[k].label })),
+    ...meta.field_groups.flatMap((g) => g.fields.filter((f) => meta.fields.includes(f))
+      .map((f) => ({ key: `f:${f}`, group: g.label, label: f, unit: meta.field_units[f] }))),
+  ], [meta])
+  // a panel already shown elsewhere trades places with the one being changed
+  const replacePanel = (k: string, v: string) => {
+    if (v === k) return
+    setPanels(panels.map((q) => (q === k ? v : q === v ? k : q)))
+  }
   const addPanel = (v: string) => {
     const w = Object.keys(WEATHER).find((k) => weatherOption(k) === v)
     const k = w ?? (v === field ? 'field' : `f:${v}`)
@@ -125,7 +138,7 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
 
   return (
     <ChartFrame id="weather-timeline" title={`${site ? `${site.name} · ` : ''}weather timeline`}
-      subtitle="Daily ERA5 at the site (local standard day): temperature range and mean, precipitation, relative humidity and boundary-layer height, above the chosen measurement for each filter. Add a panel for wind or any other measurement the filters have; remove one with its ×. Seasons are the site's local calendar."
+      subtitle="Daily ERA5 at the site (local standard day): temperature range and mean, precipitation, relative humidity and boundary-layer height, above the chosen measurement for each filter. Add a panel for wind or any other measurement the filters have; remove one with its ×, or click a panel's axis title to swap it for another. Seasons are the site's local calendar."
       provenance="addis_03_meteorology (station data) generalised to every SPARTAN site · ERA5 via Open-Meteo, Copernicus Climate Change Service"
       controls={<>
         <span className="control" style={{ flexWrap: 'wrap', gap: 4 }}>Panels
@@ -144,8 +157,12 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
               {panels.map((k) => (
                 <g key={k} transform={`translate(0,${top(k)})`}>
                   {runs.map((r, i) => <rect key={i} x={x(r.a)} width={Math.max(1, x(r.b) - x(r.a) + innerW / Math.max(1, days.length))} height={panelH} fill={r.color} opacity={0.1} />)}
-                  <YAxis scale={yOf(k)} x={0} gridWidth={innerW} tickCount={3}
-                    label={title(k)} labelX={-50} pick={k === 'field' ? 'field' : undefined} />
+                  {/* long titles wrap to the panel's height, like the Aethalometer daily panels (DailyPanels) */}
+                  {k === 'field'
+                    ? <YAxis scale={yOf(k)} x={0} gridWidth={innerW} tickCount={3} label={title(k)} labelX={-54} wrapLabel pick="field" />
+                    : <AxisChoices options={choices} y={[k, (v) => replacePanel(k, v)]} noun="panels">
+                      <YAxis scale={yOf(k)} x={0} gridWidth={innerW} tickCount={3} label={title(k)} labelX={-54} wrapLabel pick="y" />
+                    </AxisChoices>}
                   {k === 'temp' && <>
                     <path d={band(days) ?? ''} fill={INK.fit} opacity={0.12} />
                     <path d={line(daily.t, yT)} fill="none" stroke="#c0392b" strokeWidth={1.2} />

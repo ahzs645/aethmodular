@@ -7,7 +7,12 @@ import type { ComponentType } from 'react'
 import type { AxesOpts } from '@/lib/axes'
 import type { FilterRow, MetaFile } from '@/lib/types'
 
-export interface SectionPage { key: string; label: string; title?: string }
+export interface SectionPage { key: string; label: string; title?: string
+  /** left out of the header menu, the Investigations card and the page picker; opens only from a link (`aep=<key>`) */
+  hidden?: boolean }
+
+/** the page a section's tab opens on: its first page that is not hidden */
+export const defaultPage = (pages: readonly SectionPage[]): string => (pages.find((p) => !p.hidden) ?? pages[0]).key
 
 export interface SectionPageProps {
   rows: FilterRow[]

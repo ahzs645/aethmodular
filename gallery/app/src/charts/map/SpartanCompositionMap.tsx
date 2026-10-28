@@ -10,6 +10,8 @@ import { useFitHeight } from '@/lib/chartFit'
 import { assignRing, ringSlots } from '@/lib/donutRing'
 import { fmt } from '@/lib/stats'
 import { FONT, INK } from '@/lib/theme'
+import { useColourScheme } from '@/lib/colourSchemes'
+import { categoricalScale } from '@/lib/categoricalColours'
 
 /** gallery/data/export_spartan_composition.py */
 interface CompositionFile {
@@ -23,14 +25,6 @@ interface CompositionFile {
   filters: (string | number)[][]
 }
 
-/**
- * The colours of SPARTAN's network composition figure (spartan-network.org), matched by eye from the
- * October 2026 figure; legend order as there. Fixed in both themes, as in the figure.
- */
-const SLICE_COLOR: Record<string, string> = {
-  bc: '#1a1a1a', teo: '#8c8c8c', dust: '#f9e81b', na: '#2f4ea0', cl: '#2aa198', k: '#b48ad8',
-  no3: '#f47c20', nh4: '#ee5fa7', so4: '#ec2227', water: '#6dd0f5', oc: '#2e6b3c', rm: '#4cb847',
-}
 /** "active" here is data recency, not SPARTAN's operating status: a public sample within this many days of the newest */
 const RECENT_DAYS = 730
 const ACTIVE = '#1f2e86', RETIRED = '#8a8a8a'
@@ -51,6 +45,8 @@ export function SpartanCompositionMap() {
   const [world, setWorld] = useState<FeatureCollection | null>(null)
   const [error, setError] = useState('')
   const [hover, setHover] = useState<string | null>(null)
+  const colours = useColourScheme('spartan-composition-map', 'categorical', 'SPARTAN composition')
+  const sliceColour = useMemo(() => categoricalScale(colours.name, data?.slices.map(s => s.key) ?? [], colours.reverse), [data, colours.name, colours.reverse])
   useEffect(() => {
     let live = true
     loadJson<CompositionFile>('spartan_composition.json').then((d) => { if (live) setData(d) }).catch((e) => { if (live) setError(String(e)) })
@@ -70,9 +66,9 @@ export function SpartanCompositionMap() {
       if (!rows?.length || s.lat == null || s.lon == null) return []
       const mean = (k: string) => d3.mean(rows, (r) => r[col[k]] as number) ?? 0
       return [{ ...s, lat: s.lat, lon: s.lon, pm: mean('pm'), recent: (s.last ?? '') >= cutoff,
-        slices: data.slices.map((sl) => ({ ...sl, value: mean(sl.key), color: SLICE_COLOR[sl.key] ?? INK.neutral })) }]
+        slices: data.slices.map((sl) => ({ ...sl, value: mean(sl.key), color: sliceColour(sl.key) })) }]
     })
-  }, [data])
+  }, [data, sliceColour])
 
   const layout = useMemo(() => {
     const W = Math.max(320, width || 900)
@@ -107,8 +103,9 @@ export function SpartanCompositionMap() {
       title="SPARTAN PM2.5 composition — every site's mean reconstructed mass, as in SPARTAN's network figure"
       subtitle="Each donut is one site: the centre is its mean PM2.5 (µg/m³ at 35% RH) over the filters with SPARTAN's mass balance, the slices are SPARTAN's reconstruction of that mass (counter-clockwise from the top in the legend's order), and the line runs to the site. Hover a donut for the values; point at a legend entry to pick out that component everywhere."
       provenance={data ? `${data.source}. ${data.note} (spartan_composition.json, gallery/data/export_spartan_composition.py)` : undefined}
+      controls={colours.picker}
       tip={<>Water is not published by SPARTAN: it is what remains of SPARTAN's &lsquo;Residual Matter with OC&rsquo; balance once the other slices are taken out (median 2% of PM2.5). Sodium and chloride split SPARTAN&rsquo;s sea salt (2.54 × sea-salt sodium). Older filters without FTIR OC keep that mass in the residual, as in SPARTAN&rsquo;s balance. Blue and grey dots mark data recency here, not SPARTAN&rsquo;s operating status.</>}>
-      <div ref={wrapRef} className="chart-wrap">
+      <div ref={wrapRef} className="chart-wrap" data-export-fixed-colours={sliceColour.range().join(' ')}>
         {error ? <Empty>Could not load the composition ({error}). Run <code>uv run python gallery/data/export_spartan_composition.py</code>.</Empty>
           : !layout ? <Empty>Loading SPARTAN composition…</Empty> : <>
           <svg width="100%" height={fitted ?? layout.H} viewBox={`0 0 ${layout.W} ${layout.H}`} role="img" fontFamily={FONT.family}
@@ -159,7 +156,7 @@ export function SpartanCompositionMap() {
             })}
           </svg>
           <Legend items={[
-            ...(data?.slices ?? []).map((sl) => ({ label: sl.label, color: SLICE_COLOR[sl.key], shape: 'square' as const })),
+            ...(data?.slices ?? []).map((sl) => ({ label: sl.label, color: sliceColour(sl.key), shape: 'square' as const })),
             { label: 'Public sample in the last 2 years', color: ACTIVE, shape: 'dot' as const },
             { label: 'No public sample in 2 years', color: RETIRED, shape: 'dot' as const },
           ]} onHover={setHover} highlighted={hover} />

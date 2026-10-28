@@ -25,11 +25,11 @@ export function HeaderMore({ display }: { display?: ReactNode }) {
   return (
     <div className="views-menu header-more" ref={box}>
       <button type="button" className={`btn quiet icon-btn${open ? ' on' : ''}`} aria-haspopup="menu" aria-expanded={!!open} aria-label="More"
-        title="Display, glossary and views" onClick={() => setOpen(open ? null : 'menu')}>⋯</button>
+        title="Display, data, glossary and views" onClick={() => setOpen(open ? null : 'menu')}>⋯</button>
       {open === 'menu' && (
         <div className="views-pop header-more-pop" role="menu" aria-label="More">
           {display && <>
-            <div className="views-section">Display</div>
+            <div className="views-section">Display and data</div>
             <div className="header-more-display">{display}</div>
             <div className="header-more-rule" />
           </>}

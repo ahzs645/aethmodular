@@ -10,7 +10,7 @@ import type { ControlsSide } from '@/lib/chartDisplay'
 /**
  * Single-chart view: the page shows one chart at a time, filling the window, and ‹ › (in the chart's
  * title line, or ← → on the keyboard) step through the page's charts in order. The title itself becomes
- * a searchable picker of every chart on the page, and the regression summary is drawn just above the
+ * a searchable picker when the page has multiple charts, and the regression summary is drawn just above the
  * chart's options instead of above its axes. The sidebar stays as it was: when
  * it is open, the page sits beside it.
  *
@@ -172,7 +172,7 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
 
   // ← → and Page Up / Down step, unless a control has the keys
   useEffect(() => {
-    if (!on) return
+    if (!on || frames.length < 2) return
     const key = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return
       if ((e.target as Element)?.closest?.('input, textarea, select, [contenteditable], [role="listbox"], [role="combobox"], [role="slider"], [role="menu"], [role="dialog"], .drawer')) return
@@ -181,7 +181,7 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
     }
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
-  }, [on, go])
+  }, [on, go, frames.length])
 
   const active = on ? frames[index] ?? null : null
   // the chart in view, in the link
@@ -378,11 +378,11 @@ export function SingleViewToggle({ icon }: { icon: ReactNode }) {
 
 function Steps() {
   const { index, count, go } = useSingleView()
-  const many = count > 1
+  if (count < 2) return null
   return <span className="single-steps">
-    <StepButton dir="prev" label="Previous chart" title="Previous chart (←)" disabled={!many} onClick={() => go(-1)} />
-    <span className="single-count" aria-live="polite">{count ? `${index + 1} / ${count}` : 'no charts'}</span>
-    <StepButton dir="next" label="Next chart" title="Next chart (→)" disabled={!many} onClick={() => go(1)} />
+    <StepButton dir="prev" label="Previous chart" title="Previous chart (←)" onClick={() => go(-1)} />
+    <span className="single-count" aria-live="polite">{index + 1} / {count}</span>
+    <StepButton dir="next" label="Next chart" title="Next chart (→)" onClick={() => go(1)} />
   </span>
 }
 
@@ -390,6 +390,7 @@ function Steps() {
 function ChartPicker() {
   const { index, charts, jump } = useSingleView()
   if (!charts.length) return null
+  if (charts.length === 1) return <>{charts[0].title}</>
   const options = charts.map((c, i) => ({ key: String(i), label: c.title, group: c.group, hint: String(i + 1) }))
   return <Combobox label="" title="Jump to a chart on this page" value={String(index)} options={options} search onChange={(k) => jump(Number(k))} />
 }

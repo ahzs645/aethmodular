@@ -8,7 +8,9 @@ import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
-import { INK, FONT } from '@/lib/theme'
+import { INK, FONT, inkOnFill } from '@/lib/theme'
+import { useColourScheme } from '@/lib/colourSchemes'
+import { categoricalScale } from '@/lib/categoricalColours'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { calendarLabel, seasonsForSite } from '@/siteSeasons'
 import { useChartLabel, useFitHeight } from '@/lib/chartFit'
@@ -59,6 +61,7 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
   const grouping = o.values.bars as (typeof GROUPINGS)[number]
   const unitMode = o.values.units as (typeof UNIT_MODES)[number]
   const twoLevel = o.values.twoLevel as boolean
+  const colours = useColourScheme(id, 'categorical', 'SPARTAN composition')
   const lg = useLegend()
   const fam = useLegend()
 
@@ -125,8 +128,8 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
     return { units: UNITS, sites, seasonBars }
   }, [rows, meta, speciesFields]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const color = useMemo(() => d3.scaleOrdinal<string>().domain(speciesFields).range(d3.schemeTableau10.concat(d3.schemeSet3 as any)), [speciesFields])
-  const familyColor = useMemo(() => d3.scaleOrdinal<string>().domain(families).range(['#5b6470', '#2171b5', '#b2182b', '#0f766e']), [families])
+  const color = useMemo(() => categoricalScale(colours.name, speciesFields, colours.reverse), [speciesFields, colours.name, colours.reverse])
+  const familyColor = useMemo(() => categoricalScale(colours.name, families, colours.reverse, 'family'), [families, colours.name, colours.reverse])
   const val = (c: { value: number; median: number }) => (stat === 'Mean' ? c.value : c.median)
   // the family legend is live wherever families are drawn; hiding a family or a species drops it from every total
   const famOn = twoLevel || mode === 'Stacked bars'
@@ -161,9 +164,9 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
       title={title}
       subtitle="Available species grouped by measurement family (carbon, ions, metals & crustal). Concentration stacks the selected mean or median in µg/m³. Composition (%) divides each positive, visible species statistic by the sum of those statistics; it is not a percentage of measured PM2.5 or an average of individual-filter percentages. Coverage can differ by species. Missing values are omitted, never filled with zero. Negative or zero aggregate species values have no positive slice. Hiding a species or family changes the percentage denominator. PM2.5 mass is a separate measurement: the difference is not a measured residual or full mass closure."
       provenance="1 stackplot + 2 pie calls in the estate · react-graph-gallery.com/barplot (stacked) · /treemap · /circular-packing · /donut"
-      controls={o.controls()}
+      controls={<>{o.controls()}{colours.picker}</>}
     >
-      <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
+      <div ref={wrapRef} className="chart-wrap" data-export-fixed-colours={[...color.range(), ...familyColor.range()].join(' ')} style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
         {composition.sites.length === 0 && <Empty>No sites in this subset.</Empty>}
         {mode === 'Stacked bars' ? (
           <div style={{ width: '100%' }}>
@@ -208,10 +211,10 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
                             <g key={i} opacity={dimK(leaf.data)} onMouseEnter={(e) => tip.show(e, leafTip(leaf, total))} onMouseLeave={tip.hide}>
                               <rect x={leaf.x0} y={leaf.y0} width={w} height={h} fill={color(leaf.data.name)} fillOpacity={0.85} stroke={INK.panel} rx={2} />
                               {w > 54 && h > 20 && (
-                                <text x={leaf.x0 + 5} y={leaf.y0 + 14} fontSize={10.5} fill="#fff" fontFamily={FONT.family} pointerEvents="none">{leaf.data.name}</text>
+                                <text x={leaf.x0 + 5} y={leaf.y0 + 14} fontSize={10.5} fill={inkOnFill(color(leaf.data.name))} fontFamily={FONT.family} pointerEvents="none">{leaf.data.name}</text>
                               )}
                               {w > 54 && h > 33 && (
-                                <text x={leaf.x0 + 5} y={leaf.y0 + 27} fontSize={9.5} fill="#fff" fillOpacity={0.85} fontFamily={FONT.mono} pointerEvents="none">{pct.toFixed(1)}%</text>
+                                <text x={leaf.x0 + 5} y={leaf.y0 + 27} fontSize={9.5} fill={inkOnFill(color(leaf.data.name))} fillOpacity={0.85} fontFamily={FONT.mono} pointerEvents="none">{pct.toFixed(1)}%</text>
                               )}
                             </g>
                           )
@@ -232,7 +235,7 @@ export function CompositionTreemap({ rows, meta, initialGrouping = 'per site', i
                         {root.leaves().map((leaf: any, i) => (
                           <g key={i} opacity={dimK(leaf.data)} onMouseEnter={(e) => tip.show(e, leafTip(leaf, total))} onMouseLeave={tip.hide}>
                             <circle cx={leaf.x} cy={leaf.y} r={leaf.r} fill={color(leaf.data.name)} fillOpacity={0.85} stroke={INK.panel} />
-                            {leaf.r > 18 && <text x={leaf.x} y={leaf.y} dy="0.35em" textAnchor="middle" fontSize={Math.min(10.5, leaf.r / 2.4)} fill="#fff" fontFamily={FONT.family} pointerEvents="none">{leaf.data.name}</text>}
+                            {leaf.r > 18 && <text x={leaf.x} y={leaf.y} dy="0.35em" textAnchor="middle" fontSize={Math.min(10.5, leaf.r / 2.4)} fill={inkOnFill(color(leaf.data.name))} fontFamily={FONT.family} pointerEvents="none">{leaf.data.name}</text>}
                           </g>
                         ))}
                       </g>
@@ -358,7 +361,7 @@ function StackedBars({ bars, grouped, pct, families, val, dim, famDim, color, fa
                 return (
                   <g key={k.name} opacity={dim(k)} onMouseEnter={(e) => tip.show(e, [k.name, `${where} · ${k.family}`, `${fmt(val(k), 3)} ${units}`, `${share.toFixed(1)} % of the speciated ${fmt(total, 1)} ${units}`, `PM2.5 ${fmt(bar.pm25_mean, 1)} ${units} · n = ${k.n} of ${bar.nRows} filters`])} onMouseLeave={tip.hide}>
                     <rect x={bx} y={y(y1)} width={bw} height={Math.max(0, h)} fill={color(k.name)} fillOpacity={0.88} stroke={INK.panel} strokeWidth={0.6} />
-                    {h > 13 && bw > 70 && <text x={bx + bw / 2} y={y(y1) + h / 2} dy="0.35em" textAnchor="middle" fontSize={9.5} fill="#fff" fontFamily={FONT.family} pointerEvents="none">{k.name} {pct ? `${share.toFixed(0)}%` : fmt(val(k), 1)}</text>}
+                    {h > 13 && bw > 70 && <text x={bx + bw / 2} y={y(y1) + h / 2} dy="0.35em" textAnchor="middle" fontSize={9.5} fill={inkOnFill(color(k.name))} fontFamily={FONT.family} pointerEvents="none">{k.name} {pct ? `${share.toFixed(0)}%` : fmt(val(k), 1)}</text>}
                   </g>
                 )
               })}

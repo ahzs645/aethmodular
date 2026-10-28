@@ -18,6 +18,21 @@ hemisphere seasons with no specific source; no site needed it. Counts:
 through a quoted copy or search excerpt; re-check them in a browser before
 formal citation.
 
+**Papers (28 Oct 2026):** every site also has `papers` in the JSON: peer-reviewed
+articles that state its months, each with DOI, a `months_match` note and the quoted
+sentence. Calendar variants have their own under `variant_papers` (CODC `palmira`,
+Taiwan `outlook`, Addis `dry_feb`). Every DOI was checked against Crossref (title,
+first author, year, journal); quotes were read in the full text or abstract, except
+Patlakas et al. 2019 (AEAZ) and González et al. 2026 (ARCB), seen only in search
+excerpts. The gallery's Filters panel shows these as numbered references, "(1)", next to
+each site's season heading; hover for the paper, click for the DOI. The `sources`
+(agency pages) stay as provenance and are shown only if a site loses its papers.
+Weak spots, see each `months_match`: Jaipur and Kanpur cite a Delhi paper stating
+the national IMD bins; Abu Dhabi, Canada (except Downsview), Halifax and the US
+sites cite regional or network-wide papers; the Palmira variant's only source is
+a 1966 Acta Agronómica land-tenure study; Addis `dry_feb` rests on a public-health
+paper and an AOD paper that implies, but does not state, a dry Oct–Feb.
+
 ## Sites with two calendars
 
 Where the sources support two different bins, both are kept and the gallery's Filters

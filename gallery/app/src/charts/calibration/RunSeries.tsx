@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from 'react'
 import { Marker } from '@/components/RefLines'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Toggle } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { useRolling } from '@/components/RollingControls'
 import { Legend, toggleIn } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -9,17 +10,18 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { baseFilterId, focusLast, focusStyle, useHighlight } from '@/lib/highlight'
 import { fidProps, useHandEdits } from '@/lib/filterEdits'
 import { fmt, splitAtGaps } from '@/lib/stats'
+import { rollingByTime } from '@/lib/rolling'
 import { INK, MARGIN } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile, MetaFile } from '@/lib/types'
 import { groupColorFn, presetName } from './common'
 import { ChartAside } from '@/lib/singleView'
 
-const ROLL_LABEL = '45-day rolling median'
 const DEPLOYED_LABEL = 'deployed SPARTAN EC (hollow)'
 
 /**
  * The explorer's Series tab: predicted EC by sampling date under one
- * configuration, with the 45-day rolling median from ftir_29, the deployed
+ * configuration, with a rolling statistic (ftir_29's trailing 45-day median by default; the window,
+ * median or mean and alignment are the reader's, lib/rolling), the deployed
  * SPARTAN EC on the same filters where it exists, and the plausibility card
  * (negative days, days above 8 µg/m³, group medians) that decides whether a
  * calibration produces a believable record, not just a good crossplot.
@@ -31,8 +33,11 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
   const hl = useHighlight()
   const height = 400
 
+  // the rolling line and the deployed EC are switched from the legend, like the seasons
   const [showDeployed, setShowDeployed] = useState(true)
   const [showRoll, setShowRoll] = useState(true)
+  const rolling = useRolling('run-series')
+  const ROLL_LABEL = rolling.label
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [hover, setHover] = useState<string | null>(null)
   const legendHidden = new Set([...hidden, ...(showRoll ? [] : [ROLL_LABEL]), ...(showDeployed ? [] : [DEPLOYED_LABEL])])
@@ -56,11 +61,8 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
   const shown = kept.filter((p) => !hidden.has(p.g))
   const hasDeployed = dated.some((p) => p.dep !== null)
 
-  const roll = useMemo(() =>
-    shown.map((p) => {
-      const win = shown.filter((q) => Math.abs(+q.d - +p.d) <= 45 * 864e5).map((q) => q.v).sort(d3.ascending)
-      return { d: p.d, v: win[Math.floor(win.length / 2)] }
-    }), [shown])
+  const roll = useMemo(() => rollingByTime(shown, (p) => p.d, (p) => p.v, rolling.spec).filter((r): r is { d: Date; v: number } => r.v !== null),
+    [shown, rolling.spec.days, rolling.spec.stat, rolling.spec.align, rolling.spec.minN]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const innerH = height - MARGIN.top - MARGIN.bottom
@@ -79,12 +81,11 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
     <ChartFrame
       id="run-series"
       title={`Dated series — predicted EC at ${target?.site ?? run.target} under this configuration`}
-      subtitle="Every dated test-set filter as a point, with the 45-day rolling median (broken where filters are more than 45 days apart). Negative days and days above 8 µg/m³ are the plausibility checks from ftir_29; the deployed SPARTAN EC (hollow) is the record this calibration would replace."
+      subtitle={`Every dated test-set filter as a point, with the ${rolling.label} (at least ${rolling.spec.minN} filters in the window; broken where filters are more than ${rolling.spec.days} days apart). The default is ftir_29's: pandas rolling('45D', min_periods=5).median(), a trailing window; set any number of days, mean or median, trailing or centred. Negative days and days above 8 µg/m³ are the plausibility checks from ftir_29; the deployed SPARTAN EC (hollow) is the record this calibration would replace. The legend shows and hides the seasons, the rolling line and the deployed EC.`}
       provenance="calibration_explorer Series tab · /api/run eval.date / eval.deployed"
       controls={
         <>
-          <Toggle label={ROLL_LABEL} checked={showRoll} onChange={setShowRoll} />
-          {hasDeployed && <Toggle label="Deployed SPARTAN EC" checked={showDeployed} onChange={setShowDeployed} />}
+          {rolling.controls}
           <span className="control">{shown.length} dated filters</span>
         </>
       }
@@ -124,7 +125,7 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
                     })} />
                 )
               })}
-              {showRoll && <path d={splitAtGaps(roll, (p) => p.d).map((seg) => line(seg) ?? '').join('')} fill="none" stroke={INK.text} strokeWidth={2} strokeOpacity={dim(ROLL_LABEL)} pointerEvents="none" />}
+              {showRoll && <path d={splitAtGaps(roll, (p) => p.d, rolling.spec.days).map((seg) => line(seg) ?? '').join('')} fill="none" stroke={INK.text} strokeWidth={2} strokeOpacity={dim(ROLL_LABEL)} pointerEvents="none" />}
             </g>
           </svg>
         )}

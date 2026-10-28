@@ -35,8 +35,8 @@ export const siteExportColor = (site: PaletteSite, prefs: ExportColors) => prefs
  * dark page keeps them as drawn, even when a dark colour-scheme step happens to share the hex (a
  * dark ramp stop is exactly Beijing's #e74c3c, which used to print as the light ramp's #df4532).
  */
-export const fixedColours = (sites: readonly { color: string }[], seasons: readonly { color: string }[] = []): Set<string> =>
-  new Set([...sites, ...seasons].flatMap((s) => paintColor(s.color) ?? []))
+export const fixedColours = (sites: readonly { color: string }[], seasons: readonly { color: string }[] = [], categories: readonly { color: string }[] = []): Set<string> =>
+  new Set([...sites, ...seasons, ...categories].flatMap((s) => paintColor(s.color) ?? []))
 
 /** The light theme's colour for a paint the dark page drew (null: leave it as drawn). */
 export function printPaint(paint: string, fixed: ReadonlySet<string> = new Set()): string | null {

@@ -69,6 +69,33 @@ gallery/
 
 ## Running it
 
+**Header settings.** The **Aa** button opens display and data settings: text size,
+theme, options placement and the SPARTAN source. Text size still supports all
+charts or the most-visible chart; the SPARTAN source applies to the selected
+SPARTAN sites on chart tabs, independently of that display scope.
+
+**Live SPARTAN chemistry.** Choose sites in **Filters**, then **Aa → SPARTAN
+data → Live from SPARTAN**. The browser downloads each chosen site's
+current `ChemSpecPM25` CSV directly from the public SPARTAN S3 bucket. **Refresh
+selected sites** rechecks those files; selecting another site loads that site,
+and reloading the page also fetches fresh data. The source choice is remembered
+in this browser. The header indicates live/loading status, and **Source and
+update dates** lists each file's update date, retrieval time and any fallback.
+This is an on-demand refresh, without background polling.
+
+Live mode uses the public file as served, including its missing/withdrawn
+measurements. Duplicate reports of a parameter are averaged per physical filter,
+nanograms are converted to micrograms, and public BC stays split by its HIPS or
+HIPS–SSR-estimate method. Public carbon must identify FTIR. Lab HIPS, functional
+groups, native spectra, saved predictions and exclusion flags stay bundled.
+Existing bundled physical filters are retained when no longer in the public
+file, with their public fields cleared in live mode. Unavailable, empty or
+unrecognized public files use the bundled data for that site and show the
+reason. **Bundled** restores the saved data. Live mode updates selected-site
+chart data; static maps, independent reference populations and frozen analysis
+pages keep their exported sources. It does not rewrite exports or the local
+raw-data mirror, and does not fetch hourly products or PM10.
+
 **Rebuilding the data.** Every committed file under `public/data/` comes from
 a script listed in `gallery/data/rebuild.py`. Run `uv run aeth gallery plan` to
 see the steps and which inputs this machine has, `uv run aeth gallery rebuild`
@@ -260,10 +287,21 @@ codes), `isites` (IMPROVE codes).
 Builds for outside readers (`publish_pages.py`, `build_share.py`) set
 `VITE_HIDE_EXPLAIN=1`, which removes the header's Explain toggle; local dev keeps it.
 
-The **Experimental** pages (tests from the 22 Oct protocol review, the Adama TOR study) are left out of
-the header menu and the ⌘K search in every build: they open only from a direct link
-(`#tab=experimental`, a page with `&xp=<key>`, keys in `app/src/experiments/index.ts`), and the menu shows
-their group only while one is open. Set `VITE_SHOW_EXPERIMENTAL=1` (e.g. in `app/.env.local`) to list them.
+The **Investigations** tab (`#tab=investigations`) is one card per area of work beyond the chart tabs:
+Meetings, Experimental, Research diagnostics, Aethalometer, Data availability and Census (`AREA_TABS` in `app/src/App.tsx`;
+every compiled section's tab joins on its own). The header menu's Investigations group lists the areas, or,
+while one is open, that area's own pages (plus a link back to the cards). Each area opens with the same heading (`app/src/components/AreaHeader.tsx`): a way
+back to the cards, "Area · Page", and one Page dropdown, shown only with Explain on (the header menu
+already names the page). The old links still work (`#tab=research&aep=…`,
+`#tab=aethalometer&aep=…`, `#tab=experimental&xp=…`, `?availability.view=…#tab=availability`).
+
+In a public build (`VITE_PUBLIC_BUILD=1`) the **Census** is link-only: it is left out of the menu, the ⌘K
+search and the Investigations cards, and `#tab=census` still opens it (`PUBLIC_UNLISTED` in `app/src/App.tsx`).
+
+The **Experimental** pages (tests from the 22 Oct protocol review, the Adama TOR study) are listed in the
+menu, the ⌘K search and the Investigations cards of a local build. A public build leaves them out of all three: they open only from a direct link (`#tab=experimental`, a page with `&xp=<key>`, keys in
+`app/src/experiments/index.ts`), and the menu lists them only while one is open. Set
+`VITE_SHOW_EXPERIMENTAL=1` to list them there too; a local build always lists them.
 
 ### Publishing
 
@@ -563,6 +601,24 @@ react-graph-gallery "inline legend" pattern). Anything coloured by a number
 `Value` mode) draws its ramp through one `ColorLegend` component that samples
 the chart's own scale, so the legend cannot disagree with the marks; the
 bubble map and the scatterplot's size channel use the matching `SizeLegend`.
+
+The existing **Colours** picker also supports categorical colour sets. **Stacked
+bars** (and its treemap, circle-pack and donut views) and **SPARTAN PM2.5
+composition** default to **SPARTAN composition**: matching components keep the
+map's fixed colours across legends, charts and themes. Extra species use Gallery
+colours; selecting a set changes colour only, not the measurements or mass
+reconstruction. **Gallery** retains the original Stacked bars colours; **Tableau
+10**, **Dark 2** and **Set 3** are also available. Generic sets can reverse;
+the SPARTAN set keeps colours attached to named components. Choices travel in
+the chart's `.palette` / `.reverse` URL parameters and dashboard tile settings.
+
+Other categorical charts can reuse `useColourScheme(id, 'categorical', defaultSet)`
+from `lib/colourSchemes`, put its `picker` in their controls, and build their
+category scale with `categoricalScale(name, fields, reverse)` from
+`lib/categoricalColours`. The map and Stacked bars share this registry. A chart
+that keeps colours fixed across themes declares the scale's colours on its
+wrapper with `data-export-fixed-colours={scale.range().join(' ')}`, preserving
+those colours in exports as well.
 
 ## Patterns lifted from react-graph-gallery.com
 

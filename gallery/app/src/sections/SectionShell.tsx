@@ -1,34 +1,19 @@
 import type { ComponentType } from 'react'
-import { Segmented } from '@/components/ChartFrame'
-import { Combobox } from '@/components/Combobox'
-import type { SectionPage, SectionPageProps } from './types'
+import { AreaHeader } from '@/components/AreaHeader'
+import { defaultPage, type SectionPage, type SectionPageProps } from './types'
 
-const SEGMENTED_MAX = 5
-
-/** A flagged section's tab: a heading, the sub-page picker (URL `aep`), and the open sub-page. */
+/** A flagged section's tab: the shared area heading with its sub-page picker (URL `aep`), and the open sub-page. */
 export function SectionShell({ name, pages, props }: {
   name: string
   pages: (SectionPage & { Page: ComponentType<SectionPageProps> })[]
   props: SectionPageProps
 }) {
-  const current = pages.find((p) => p.key === props.page) ?? pages[0]
+  const current = pages.find((p) => p.key === props.page) ?? pages.find((p) => p.key === defaultPage(pages))!
   const Page = current.Page
   return (
     <>
-      <div className="panel weather-head">
-        <div>
-          <h2 style={{ margin: 0 }}>{name} · {current.label}</h2>
-          {current.title && <p className="subtitle" style={{ margin: '4px 0 0' }}>{current.title}</p>}
-        </div>
-        {pages.length > 1 && <div className="weather-head-controls">
-          {/* a row of buttons while it fits; a searchable dropdown once there are more pages than fit */}
-          {pages.length <= SEGMENTED_MAX
-            ? <Segmented label="Page" value={current.key} options={pages.map((p) => p.key)} onChange={props.onPage}
-              optionLabel={(k) => pages.find((p) => p.key === k)?.label ?? k} />
-            : <Combobox label="Page" value={current.key} onChange={props.onPage} minWidth={220}
-              options={pages.map((p) => ({ key: p.key, label: p.label, title: p.title }))} />}
-        </div>}
-      </div>
+      {/* a hidden page (an index) joins the picker only while it is open */}
+      <AreaHeader area={name} pages={pages.filter((p) => !p.hidden || p.key === current.key)} value={current.key} onPage={props.onPage} />
       <Page {...props} />
     </>
   )

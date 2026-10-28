@@ -3,10 +3,13 @@ import { createPortal } from 'react-dom'
 import { SCHEMES, SCHEME_NOTES, schemeStops, type SchemeKind } from '@/lib/colourSchemes'
 import { useFloatingMenu } from '@/hooks/useFloatingMenu'
 import { useTheme } from '@/lib/colorTheme'
+import { hasNamedColours } from '@/lib/categoricalColours'
 
 /** a palette as a small gradient bar */
-const Swatch = ({ stops, wide = false }: { stops: string[]; wide?: boolean }) => (
-  <span className={`scheme-swatch${wide ? ' wide' : ''}`} style={{ background: `linear-gradient(90deg, ${stops.join(', ')})` }} aria-hidden />
+const Swatch = ({ stops, wide = false, discrete = false }: { stops: string[]; wide?: boolean; discrete?: boolean }) => (
+  <span className={`scheme-swatch${wide ? ' wide' : ''}`} style={{ background: `linear-gradient(90deg, ${discrete
+    ? stops.map((c, i) => `${c} ${i * 100 / stops.length}% ${(i + 1) * 100 / stops.length}%`).join(', ')
+    : stops.join(', ')})` }} aria-hidden />
 )
 
 /** what a colour control needs: the scheme's kind, the current palette and direction, and how to change them */
@@ -28,8 +31,9 @@ export function ColourSchemePicker({ kind, value, reverse, onChange }: {
     <span className="control">
       <span className="combobox-label">Colours</span>
       <button ref={btn} type="button" className={`combobox-trigger${open ? ' open' : ''}`} aria-haspopup="dialog" aria-expanded={open}
+        aria-label={`Colours: ${value}${reverse ? ', reversed' : ''}`}
         title={`${value}${reverse ? ', reversed' : ''}: click for other palettes`} onClick={() => setOpen(!open)}>
-        <Swatch stops={schemeStops(kind, value, reverse)} />
+        <Swatch stops={schemeStops(kind, value, reverse)} discrete={kind === 'categorical'} />
         <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
       {open && btn.current && <SchemePopover anchor={btn.current} kind={kind} value={value} reverse={reverse} onChange={onChange} onClose={() => setOpen(false)} />}
@@ -59,16 +63,16 @@ export function SchemePopover({ anchor, kind, value, reverse, onChange, onClose 
       <div className="scheme-list" role="listbox">
         {Object.keys(SCHEMES[kind]).map((n) => (
           <button key={n} type="button" role="option" aria-selected={n === value} className={`scheme-item${n === value ? ' on' : ''}`} onClick={() => onChange(n, reverse)}>
-            <Swatch stops={schemeStops(kind, n, reverse)} wide />
+            <Swatch stops={schemeStops(kind, n, reverse)} discrete={kind === 'categorical'} wide />
             <span className="scheme-name">{n}</span>
             {SCHEME_NOTES[n] && <span className="scheme-note">{SCHEME_NOTES[n]}</span>}
           </button>
         ))}
       </div>
-      <label className="scheme-reverse" title={kind === 'diverging' ? 'Swap the colours of negative and positive values' : 'Swap the colours of the low and high ends'}>
+      {!(kind === 'categorical' && hasNamedColours(value)) && <label className="scheme-reverse" title={kind === 'categorical' ? 'Reverse the order of the category colours' : kind === 'diverging' ? 'Swap the colours of negative and positive values' : 'Swap the colours of the low and high ends'}>
         <input type="checkbox" checked={reverse} onChange={(e) => onChange(value, e.target.checked)} />
         Reverse
-      </label>
+      </label>}
     </div>,
     document.body,
   )

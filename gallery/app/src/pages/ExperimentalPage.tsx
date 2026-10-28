@@ -1,6 +1,6 @@
 import { PageToc } from '@/components/PageToc'
-import { ChartFrame, Note, Select } from '@/components/ChartFrame'
-import { SidebarControls } from '@/lib/pageSidebar'
+import { ChartFrame, Note } from '@/components/ChartFrame'
+import { AreaHeader } from '@/components/AreaHeader'
 import { useExport } from '@/lib/data'
 import { EXPERIMENTS } from '@/experiments'
 import { INK } from '@/lib/theme'
@@ -22,10 +22,8 @@ import { LotStudy } from '@/pages/experimental/LotStudy'
 export function ExperimentalPage({ experiment, onPick }: { experiment: string; onPick: (key: string) => void }) {
   return (
     <PageToc>
-      <SidebarControls title="Experiment">
-        <Select label="" value={experiment} options={EXPERIMENTS.map((e) => e.key)} onChange={onPick}
-          optionLabel={(k) => EXPERIMENTS.find((e) => e.key === k)?.label ?? k} />
-      </SidebarControls>
+      {/* a hidden page (the test plan) joins the picker only while it is open */}
+      <AreaHeader area="Experimental" pages={EXPERIMENTS.filter((e) => !e.hidden || e.key === experiment)} value={experiment} onPage={onPick} />
       {experiment === 'plan' && <TestPlan onPick={onPick} />}
       {experiment === 'flag' && <FlagStudy />}
       {experiment === 'analogs' && <AnalogsStudy />}

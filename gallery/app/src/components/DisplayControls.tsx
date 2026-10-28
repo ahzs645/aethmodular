@@ -7,6 +7,7 @@ import { setThemePref, useThemePref } from '@/lib/colorTheme'
 import { DISPLAY_SIDES, mostVisibleChart, type ChartDisplay, type StatsPlace, type VisibleChart } from '@/lib/chartDisplay'
 import { resetChartDisplay, setSharedChartDisplay, setSingleChartDisplay, useChartDisplayPrefs } from '@/lib/chartDisplayPrefs'
 import { useSingleView } from '@/lib/singleView'
+import { SpartanDataSettings, useSpartanSourceLabel } from '@/components/SpartanDataSettings'
 
 const SIDE_LABEL = { top: 'Above', right: 'Right', left: 'Left' }
 const THEME_NEXT = { light: 'dark', dark: 'auto', auto: 'light' } as const
@@ -33,8 +34,10 @@ export function DisplayControls() {
   const theme = useThemePref()
   const prefs = useChartDisplayPrefs()
   const single = useSingleView()
+  const sourceLabel = useSpartanSourceLabel()
   const placement = single.on ? single.side : prefs.controlsSide
   const [open, setOpen] = useState(false)
+  const [panel, setPanel] = useState<'display' | 'data'>('display')
   const [target, setTarget] = useState<VisibleChart | null>(null)
   const [scope, setScope] = useState<'all' | 'chart'>('all')
   const root = useRef<HTMLSpanElement>(null)
@@ -80,8 +83,8 @@ export function DisplayControls() {
   }
   const trapFocus = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'Tab') return
-    const items = [...menu.current!.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')]
-    const at = items.indexOf(document.activeElement as HTMLButtonElement)
+    const items = [...menu.current!.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], summary')].filter(el => el.getClientRects().length)
+    const at = items.indexOf(document.activeElement as HTMLElement)
     if (event.shiftKey && at === 0 || !event.shiftKey && at === items.length - 1) {
       event.preventDefault(); items[event.shiftKey ? items.length - 1 : 0]?.focus()
     }
@@ -95,19 +98,25 @@ export function DisplayControls() {
       title={single.on ? `Options: ${SIDE_LABEL[placement].toLowerCase()} in the one-chart view (kept in the link). Click to cycle.` : `Options: ${SIDE_LABEL[placement].toLowerCase()} for all charts. Click to cycle; right-click for settings and this chart only.`}>
       <OptionsPlacementIcon side={placement} />
     </button>
-    <button type="button" className={`btn quiet icon-btn${density === 'readable' ? ' on' : ''}`} aria-pressed={density === 'readable'} aria-label="Readable text"
-      onClick={() => apply({ density: density === 'readable' ? 'compact' : 'readable' })} title="Text size for all charts. Click to toggle; right-click for settings and this chart only."><TextSizeIcon /></button>
+    <button type="button" ref={trigger} className={`btn quiet icon-btn display-menu-trigger${open ? ' on' : ''}`} aria-label="Display and data settings"
+      aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? menuId : undefined}
+      title="Display and data settings: text size, theme and SPARTAN live data" onClick={event => open ? close() : showMenu(event.currentTarget)}>
+      <TextSizeIcon />{sourceLabel && <span className="spartan-source-label">{sourceLabel}</span>}
+    </button>
     {EXPLAIN_AVAILABLE && <button type="button" className={`btn quiet icon-btn${explain ? ' on' : ''}`} aria-pressed={explain} aria-label="Explain"
       onClick={() => apply({ explain: !explain })} title="Explanations for all charts. Click to toggle; right-click for settings and this chart only."><ExplainIcon /></button>}
     <button type="button" className={`btn quiet icon-btn${theme !== 'light' ? ' on' : ''}`} aria-label={`Theme: ${theme}`}
       onClick={() => apply({ theme: THEME_NEXT[theme] })} title="Theme for all charts: light, dark, or system. Right-click for settings and this chart only. Exports stay light.">
       {theme === 'dark' ? <MoonIcon /> : theme === 'auto' ? <AutoThemeIcon /> : <SunIcon />}
     </button>
-    <button type="button" ref={trigger} className="btn quiet icon-btn display-menu-trigger" aria-label="Chart display settings" aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? menuId : undefined}
-      title="Chart display settings: all charts or just the most-visible chart" onClick={event => open ? close() : showMenu(event.currentTarget)}>⋯</button>
-    {open && createPortal(<div ref={menu} id={menuId} className="display-menu" role="dialog" aria-label="Chart display settings" onKeyDown={trapFocus}
+    {open && createPortal(<div ref={menu} id={menuId} className="display-menu" role="dialog" aria-modal="true" aria-label="Display and data settings" onKeyDown={trapFocus}
       style={place ?? { position: 'fixed', visibility: 'hidden' }}>
-      <header><strong>Chart display</strong><button type="button" className="btn quiet x-btn" aria-label="Close display settings" onClick={close}><XIcon /></button></header>
+      <header><strong>Display and data</strong><button type="button" className="btn quiet x-btn" aria-label="Close display settings" onClick={close}><XIcon /></button></header>
+      <div className="seg" role="group" aria-label="Settings section">
+        <button type="button" className={panel === 'display' ? 'active' : ''} aria-pressed={panel === 'display'} onClick={() => setPanel('display')}>Display</button>
+        <button type="button" className={panel === 'data' ? 'active' : ''} aria-pressed={panel === 'data'} onClick={() => setPanel('data')}>SPARTAN data</button>
+      </div>
+      {panel === 'data' ? <SpartanDataSettings /> : <>
       <fieldset className="display-scope"><legend>Apply changes to</legend>
         <div className="seg"><button type="button" className={scope === 'all' ? 'active' : ''} aria-pressed={scope === 'all'} onClick={() => setScope('all')}>All charts</button>
           <button type="button" className={scope === 'chart' ? 'active' : ''} aria-pressed={scope === 'chart'} disabled={!target} onClick={() => setScope('chart')}>This chart only</button></div>
@@ -126,6 +135,7 @@ export function DisplayControls() {
         onChange={theme => apply({ theme }, scope === 'chart')} />
       {scope === 'chart' && target && <button type="button" className="btn" disabled={!override} onClick={() => resetChartDisplay(target.key)}>Use shared settings for this chart</button>}
       <p className="display-footnote">Remembered in this browser. Exported figures stay light.</p>
+      </>}
     </div>, document.body)}
   </span>
 }

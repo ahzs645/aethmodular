@@ -8,8 +8,10 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
  * the widths are measured, so it adapts to the labels and the text size. `extra` adds a section
  * to the phone's menu (the header's display toggles go to its ⋯ menu instead, components/HeaderMore).
  */
-/** `meeting` picks a meeting page; `sub` picks a page on any other tab with subpages (Experimental) */
-export interface NavItem { key: string; label: string; title?: string; tab: string; meeting?: string; sub?: string }
+/** `meeting` picks a meeting page; `sub` picks a page on any other tab with subpages (Experimental);
+ *  `heading` puts a group's items under a sub-heading (Investigations: the open area's name);
+ *  `home` is the group's own landing page, which leaves the group's name as it is */
+export interface NavItem { key: string; label: string; title?: string; tab: string; meeting?: string; sub?: string; heading?: string; home?: boolean }
 export interface NavGroup { label: string; items: NavItem[] }
 
 const isActive = (i: NavItem, tab: string, meeting: string, sub?: string) => i.tab === tab && (i.meeting === undefined || i.meeting === meeting) && (i.sub === undefined || i.sub === sub)
@@ -32,7 +34,8 @@ export function NavMenu({ groups, tab, meeting, sub, onPick, extra }: {
     mq.addEventListener('change', on)
     return () => mq.removeEventListener('change', on)
   }, [])
-  const label = (g: NavGroup) => { const a = g.items.find((i) => isActive(i, tab, meeting, sub)); return a ? `${g.label} · ${a.label}` : g.label }
+  // the group shows the open page's name, or its area's where the group has sub-headings
+  const label = (g: NavGroup) => { const a = g.items.find((i) => isActive(i, tab, meeting, sub)); return a && !a.home ? `${g.label} · ${a.heading ?? a.label}` : g.label }
   const labels = groups.map(label).join('|')
 
   // how many groups fit beside the title and tools; the rest go into More
@@ -83,7 +86,7 @@ export function NavMenu({ groups, tab, meeting, sub, onPick, extra }: {
       </div>
       {shown.map((g) => (
         <Dropdown key={g.label} {...menu(g.label)} label={label(g)} active={g.items.some((i) => isActive(i, tab, meeting, sub))}>
-          {(close) => g.items.map((i) => <Item key={`${i.tab}-${i.meeting ?? i.sub ?? ''}`} i={i} on={isActive(i, tab, meeting, sub)} pick={() => { onPick(i); close() }} />)}
+          {(close) => <Items items={g.items} tab={tab} meeting={meeting} sub={sub} pick={(i) => { onPick(i); close() }} />}
         </Dropdown>
       ))}
       {(folded.length > 0 || (phone && extra)) && (
@@ -91,7 +94,7 @@ export function NavMenu({ groups, tab, meeting, sub, onPick, extra }: {
           {(close) => <>
             {folded.map((g) => <div key={g.label} className="navmenu-section">
               <div className="navmenu-heading">{g.label}</div>
-              {g.items.map((i) => <Item key={`${i.tab}-${i.meeting ?? i.sub ?? ''}`} i={i} on={isActive(i, tab, meeting, sub)} pick={() => { onPick(i); close() }} />)}
+              <Items items={g.items} tab={tab} meeting={meeting} sub={sub} pick={(i) => { onPick(i); close() }} />
             </div>)}
             {extra && <div className="navmenu-section navmenu-extra"><div className="navmenu-heading">Display</div><div className="navmenu-extra-row">{extra}</div></div>}
           </>}
@@ -99,6 +102,23 @@ export function NavMenu({ groups, tab, meeting, sub, onPick, extra }: {
       )}
     </div>
   )
+}
+
+/** a group's items, those with a `heading` under it; one list, as wide as its longest label */
+function Items({ items, tab, meeting, sub, pick }: {
+  items: NavItem[]; tab: string; meeting: string; sub?: string; pick: (i: NavItem) => void
+}) {
+  const item = (i: NavItem) => <Item key={`${i.tab}-${i.meeting ?? i.sub ?? ''}`} i={i} on={isActive(i, tab, meeting, sub)} pick={() => pick(i)} />
+  if (!items.some((i) => i.heading)) return <>{items.map(item)}</>
+  const loose = items.filter((i) => !i.heading)
+  const headed = [...new Set(items.flatMap((i) => i.heading ? [i.heading] : []))].map((h) => [h, items.filter((i) => i.heading === h)] as const)
+  return <>
+    {loose.length > 0 && <div className="navmenu-section">{loose.map(item)}</div>}
+    {headed.map(([h, list]) => <div key={h} className="navmenu-section">
+      <div className="navmenu-heading">{h}</div>
+      {list.map(item)}
+    </div>)}
+  </>
 }
 
 function Item({ i, on, pick }: { i: NavItem; on: boolean; pick: () => void }) {
@@ -122,12 +142,21 @@ function Dropdown({ label, active, open, show, hide, toggle, close, children }: 
     window.addEventListener('keydown', onKey)
     return () => { document.removeEventListener('pointerdown', onDown); window.removeEventListener('keydown', onKey) }
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+  // a list opened near the right edge moves left to stay in the window
+  const list = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = list.current
+    if (!open || !el) return
+    el.style.left = ''
+    const over = el.getBoundingClientRect().right - (document.documentElement.clientWidth - 8)
+    if (over > 0) el.style.left = `${-Math.min(over, el.getBoundingClientRect().left - 8)}px`
+  }, [open])
   return (
     <div className="navmenu-group" ref={root} onMouseEnter={show} onMouseLeave={hide}>
       <button type="button" className={`nav-btn nav-group${active ? ' active' : ''}`} aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
         {label} <span className="nav-caret" aria-hidden>▾</span>
       </button>
-      {open && <div className="navmenu-list" role="menu">{children(close)}</div>}
+      {open && <div ref={list} className="navmenu-list" role="menu">{children(close)}</div>}
     </div>
   )
 }

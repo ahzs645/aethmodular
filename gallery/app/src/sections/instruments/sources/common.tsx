@@ -3,6 +3,8 @@
  * for, the fossil / mixed / biomass shading behind an AAE axis, and the counts matrix.
  */
 import { useRef, type ReactNode } from 'react'
+import { useColourScheme } from '@/lib/colourSchemes'
+import { ColorLegend } from '@/components/ColorLegend'
 import * as d3 from 'd3'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -63,7 +65,9 @@ export function RegionBands({ scale, length, depth, regions, orient = 'x' }: {
  * Counts of one labelling against another (an agreement matrix): each cell the count and its share of
  * the row, shaded by that share; the diagonal-like cells a reader should look at can be outlined.
  */
-export function CountMatrix({ rows, cols, count, rowLabel, colLabel, rowColor, colColor, outline, cellWidth = 92 }: {
+export function CountMatrix({ id, rows, cols, count, rowLabel, colLabel, rowColor, colColor, outline, cellWidth = 92 }: {
+  /** the chart's id: the shading's palette is kept in the link under it (lib/colourSchemes) */
+  id: string
   rows: string[]; cols: string[]; count: (r: string, c: string) => number
   rowLabel: string; colLabel: string
   rowColor?: (r: string) => string; colColor?: (c: string) => string
@@ -78,7 +82,11 @@ export function CountMatrix({ rows, cols, count, rowLabel, colLabel, rowColor, c
   const ch = 28, top = cols.some((c) => c.length * 6.4 > cw - 6) ? 52 : 40
   const totals = new Map(rows.map((r) => [r, cols.reduce((a, c) => a + count(r, c), 0)]))
   const w = left + cols.length * cw + 60
-  const shade = d3.interpolateRgb(INK.panel, INK.accent)
+  const colours = useColourScheme(id, 'sequential')
+  const ramp = d3.interpolateRgbBasis(colours.stops)
+  // cells use 10–85 % of the palette, so an empty-looking share still shows and a full row's label stays readable
+  const shade = (t: number) => ramp(t)
+  const key = d3.scaleSequential((v: number) => ramp(0.1 + 0.75 * v)).domain([0, 1])
   return <div ref={ref} style={{ position: 'relative', overflowX: 'auto' }}>
     <svg width={w} height={top + rows.length * ch + 10} fontFamily={FONT.family} style={{ display: 'block' }}>
       <text x={left + (cols.length * cw) / 2} y={12} textAnchor="middle" fontSize={11} fill={INK.muted}>{colLabel}</text>
@@ -102,6 +110,7 @@ export function CountMatrix({ rows, cols, count, rowLabel, colLabel, rowColor, c
         </g>
       })}
     </svg>
+    <div className="legend"><ColorLegend scale={key} scheme={colours.scheme} width={140} label="share of the row" format={(v) => `${Math.round(100 * v)} %`} /></div>
     {tip.node}
   </div>
 }

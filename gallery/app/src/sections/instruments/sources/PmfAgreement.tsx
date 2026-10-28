@@ -61,7 +61,7 @@ export function PmfVsAae({ rows, meta, pmf, pair, regions }: { rows: FilterRow[]
       provenance={provenance([NOTEBOOK.addis01, NOTEBOOK.dominantComparison, NOTEBOOK.regression], `PMF from pmf.json (normalised GF fractions and K_F µg/m³), joined by filter id, else sampling date (lib/pmfGroups); AAE from "${AAE_PAIRS[pair].field}".`)}
       controls={<Segmented label="Dominant by" value={rule} options={DOMINANCES} onChange={setRule} optionLabel={(o) => (o === 'GF' ? 'GF fraction' : 'K_F µg/m³')} />}>
       {!withAae.length ? <Empty>No {site} filter in view has both a PMF day and an aethalometer AAE (the PMF covers {pmf.n} days in {pmf.rows[0]?.year}).</Empty> : <>
-        <CountMatrix rows={labels} cols={[...CLASSES]} count={(r, c) => cell(tab, r, c)} rowLabel="PMF dominant source" colLabel={`AAE ${pair} class`}
+        <CountMatrix id="aeth-sources-pmf-vs-aae" rows={labels} cols={[...CLASSES]} count={(r, c) => cell(tab, r, c)} rowLabel="PMF dominant source" colLabel={`AAE ${pair} class`}
           rowColor={(r) => color.get(r) ?? ''} colColor={(c) => d3.color(CLASS_COLOR[c as AaeClass])!.darker(0.7).formatHex()} outline={(r, c) => expected(keyOf.get(r) ?? '') === c} />
         <p className="chart-note">{withAae.length} of {joined.length} PMF filters in view have an AAE. Of the {matched.length} whose dominant factor is a fuel (wood, charcoal or fossil), {agree} ({pct(matched.length ? agree / matched.length : null)}) fall in the matching AAE class.</p>
         <IntervalStrip blocks={[{ key: 'pmf', rows: strip }]} labelWidth={150} noteWidth={44} minPanelWidth={150}
@@ -85,7 +85,7 @@ export function DominanceRules({ pmf }: { pmf: PmfFile }) {
       title="Two rules for the dominant source — by normalised GF fraction (rows) and by K_F contribution in µg/m³ (columns), every PMF day"
       subtitle={`The notebooks split the regressions by either rule. They agree on ${agree} of ${pmf.rows.length} days (${pct(agree / Math.max(1, pmf.rows.length))}); of the ${pmf.rows.length - agree} that differ, ${toBurning} are days a burning factor (wood or charcoal) leads by µg/m³ but not by fraction. So "charcoal-dominated" filters are not the same set under the two rules, and a split regression changes with the rule.`}
       provenance={provenance([NOTEBOOK.dominantComparison, NOTEBOOK.dominantThreshold], 'pmf.json: GF normalised with etad_factors.normalize_gf_fractions (raw GF are PM2.5 mass fractions); K_F as exported.')}>
-      <CountMatrix rows={labels} cols={labels} count={(r, c) => cell(tab, r, c)} rowLabel="by GF fraction" colLabel="by K_F µg/m³"
+      <CountMatrix id="aeth-sources-dominance-rules" rows={labels} cols={labels} count={(r, c) => cell(tab, r, c)} rowLabel="by GF fraction" colLabel="by K_F µg/m³"
         rowColor={(r) => color.get(r) ?? ''} colColor={(c) => color.get(c) ?? ''} outline={(r, c) => r === c} cellWidth={96} />
     </ChartFrame>
   )

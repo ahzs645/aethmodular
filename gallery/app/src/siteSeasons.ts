@@ -29,7 +29,13 @@ const LOCAL_SEASONS: Record<string, SeasonMeta[]> = {
 interface RawSeason { name: string; months: number[] }
 /** a second defensible calendar for a site (CODC: Bogotá or Palmira; Taiwan: review or outlook bins); the first is the default */
 interface CalendarVariant { key: string; label: string; seasons: RawSeason[]; note?: string }
-interface NetworkCalendar { site: string; seasons: RawSeason[]; confidence: string; note?: string; variants?: CalendarVariant[] }
+interface RawSource { title: string; url: string }
+/** a peer-reviewed paper that states a site's month bins (checked against Crossref and the paper's own text) */
+interface RawPaper { cite: string; title: string; journal?: string; url: string; doi?: string | null; months_match?: string; quote?: string }
+interface NetworkCalendar {
+  site: string; seasons: RawSeason[]; confidence: string; note?: string; variants?: CalendarVariant[]
+  sources?: RawSource[]; papers?: RawPaper[]; variant_papers?: Record<string, RawPaper[]>
+}
 // colour by what the season is, so "winter" reads the same at every site
 const KEYWORD_COLORS: [RegExp, string][] = [
   [/post-monsoon|autumn|fall/i, '#AA6B78'],
@@ -52,11 +58,13 @@ function colourSeasons(seasons: { name: string; months: number[] }[]): SeasonMet
   })
 }
 const NETWORK_SEASONS = new Map<string, SeasonMeta[]>()
+const NETWORK_CALENDARS = new Map<string, NetworkCalendar>()
 const NETWORK_VARIANTS = new Map<string, { key: string; label: string; note?: string; seasons: SeasonMeta[] }[]>()
 for (const [code, cal] of Object.entries(networkCalendars as Record<string, NetworkCalendar>)) {
   const seasons = colourSeasons(cal.seasons)
   NETWORK_SEASONS.set(code, seasons)
   NETWORK_SEASONS.set(cal.site, seasons)
+  NETWORK_CALENDARS.set(code, cal)
   if (cal.variants?.length) {
     const variants = cal.variants.map((v) => ({ key: v.key, label: v.label, note: v.note, seasons: colourSeasons(v.seasons) }))
     NETWORK_VARIANTS.set(code, variants)
@@ -90,6 +98,22 @@ export function localSeasonsFor(site: string | null, meta: MetaFile | undefined,
   if (LOCAL_SEASONS[site]) return LOCAL_SEASONS[site]
   const alt = variant ? (NETWORK_VARIANTS.get(site) ?? (code ? NETWORK_VARIANTS.get(code) : undefined))?.find((v) => v.key === variant) : undefined
   return alt?.seasons ?? NETWORK_SEASONS.get(site) ?? (code ? NETWORK_SEASONS.get(code) : undefined) ?? null
+}
+
+/** One reference behind a site's calendar; `paper` is false for an agency page kept until a paper is found. */
+export interface SeasonSource { cite: string; title: string; url: string; journal?: string; quote?: string; paper: boolean }
+
+/**
+ * What a site's published calendar rests on: the papers for the calendar variant in use (else the
+ * site's), falling back to the agency sources where no paper states the months. Codes, not names:
+ * the focus sites' gallery names ("Beijing") differ from the network table's ("Beijing, China").
+ */
+export function seasonSources(code: string | undefined, variant?: string): SeasonSource[] {
+  const cal = code ? NETWORK_CALENDARS.get(code) : undefined
+  if (!cal) return []
+  const papers = (variant && cal.variant_papers?.[variant]) || cal.papers
+  if (papers?.length) return papers.map((p) => ({ cite: p.cite, title: p.title, url: p.url, journal: p.journal, quote: p.quote, paper: true }))
+  return (cal.sources ?? []).map((x) => ({ cite: x.title.split(',')[0], title: x.title, url: x.url, paper: false }))
 }
 
 /** Whether a site has a calendar of its own (otherwise the local view bins it by quarters). */

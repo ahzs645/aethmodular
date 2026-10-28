@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useColourScheme } from '@/lib/colourSchemes'
 import * as d3 from 'd3'
 import type { FeatureCollection } from 'geojson'
 import { ChartFrame, ExplainOnly, Note, Segmented, Toggle } from '@/components/ChartFrame'
@@ -14,6 +15,7 @@ import { ADDIS_ALL, FONT, IMPROVE_GREY, INK, themed } from '@/lib/theme'
 import { dotFill } from '@/lib/highlight'
 import { coef, coefSigned, f2, pct, signed } from '@/lib/format'
 import { Crossplot } from '@/components/Crossplot'
+import { RangeRows, type RangeRow, type RangeSeries } from '@/components/RangeRows'
 import { AxisChoices } from '@/components/AxisChoices'
 import { Forest, Scatter, num, placeLabels, rowsOf, runLine, sourceOf, useXp, type Cols, type XpBase } from './shared'
 
@@ -102,49 +104,36 @@ function Findings({ d }: { d: TorData }) {
 }
 
 function PilotPosition({ d }: { d: TorData }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const pts = useMemo(() => rowsOf(d.points), [d])
   const ada = pts.filter((p) => p.population === 'Adama pilot (TOR)')
-  const rows = d.target
-  const labelW = 190, rowH = 46, statusW = 150, pw = Math.max(260, width - labelW - statusW - 30)
-  const verdict = (t: TorData['target'][number]) => t['Adama inside Addis 25-75'] >= 0.6 ? { txt: 'inside Addis\'s middle half', c: INK.good }
-    : t['Adama inside Addis 5-95'] >= 0.6 ? { txt: 'inside Addis\'s range, off-centre', c: INK.warn } : { txt: 'outside Addis\'s range', c: INK.negative }
+  const verdict = (t: TorData['target'][number]) => t['Adama inside Addis 25-75'] >= 0.6 ? { text: 'inside Addis\'s middle half', color: INK.good }
+    : t['Adama inside Addis 5-95'] >= 0.6 ? { text: 'inside Addis\'s range, off-centre', color: INK.warn } : { text: 'outside Addis\'s range', color: INK.negative }
+  const series: RangeSeries[] = [
+    { key: 'addis', label: 'SPARTAN Addis filters (5–95 %, 25–75 %, median)', color: ADDIS_ALL, kind: 'band' },
+    { key: 'adama', label: 'Adama pilot pairs', color: ADAMA, kind: 'points', symbol: 'diamond' },
+    { key: 'improve', label: 'IMPROVE median', color: IMPROVE_GREY, kind: 'tick' },
+    { key: 'network', label: 'SPARTAN-network median', color: SPARTAN, kind: 'tick' },
+  ]
+  const rows: RangeRow[] = d.target.map((t) => {
+    const info = AXIS_INFO[t.axis]
+    return {
+      key: t.axis, label: info.label, unit: info.unit, log: info.log,
+      band: { lo: t['Addis p5'], q1: t['Addis p25'], mid: t['Addis median'], q3: t['Addis p75'], hi: t['Addis p95'] },
+      ticks: { improve: t['IMPROVE median'], network: t['SPARTAN network median'] },
+      points: { adama: ada.map((p) => num(p[t.axis])) },
+      verdict: { ...verdict(t), detail: `Adama at Addis's ${nth(t['Adama percentile in Addis'])} pct` },
+    }
+  })
   return (
     <ChartFrame id="xd-position" source={source('PilotPosition')} provenance={runLine(d)}
       title="Is the pilot where it needs to be? — Adama against SPARTAN Addis, axis by axis"
-      subtitle="To test the Addis problem, a pilot must sit where SPARTAN Addis sits. Orange bar: SPARTAN Addis's filters (5–95 % light, 25–75 % dark, median tick); green diamonds: the five Adama pairs; grey and purple ticks: the IMPROVE and SPARTAN-network medians. The verdict on the right counts the Adama pairs inside Addis's middle half or its 5–95 % range.">
-      <div ref={ref} style={{ position: 'relative' }}>
-        <svg width={labelW + pw + statusW + 20} height={rows.length * rowH + 8} fontFamily={FONT.family}>
-          {rows.map((t, i) => {
-            const info = AXIS_INFO[t.axis], cy = i * rowH + 20
-            const vals = ada.map((p) => num(p[t.axis])).filter((v) => Number.isFinite(v) && (!info.log || v > 0))
-            const ext = [t['Addis p5'], t['Addis p95'], t['IMPROVE median'], t['SPARTAN network median'], ...vals].filter((v) => Number.isFinite(v) && (!info.log || v > 0))
-            const x = (info.log ? d3.scaleLog() : d3.scaleLinear()).domain(d3.extent(ext) as [number, number]).range([0, pw]).nice()
-            const v = verdict(t)
-            return <g key={t.axis}>
-              <text x={labelW - 10} y={cy} dy="0.32em" textAnchor="end" fontSize={11.5} fontWeight={600} fill={INK.text}>{info.label}</text>
-              <text x={labelW - 10} y={cy + 13} dy="0.32em" textAnchor="end" fontSize={9.5} fill={INK.muted}>{info.unit}</text>
-              <g transform={`translate(${labelW},0)`}>
-                <rect x={x(t['Addis p5'])} y={cy - 8} width={x(t['Addis p95']) - x(t['Addis p5'])} height={16} fill={ADDIS_ALL} fillOpacity={0.25} />
-                <rect x={x(t['Addis p25'])} y={cy - 8} width={x(t['Addis p75']) - x(t['Addis p25'])} height={16} fill={ADDIS_ALL} fillOpacity={0.6} />
-                <line x1={x(t['Addis median'])} x2={x(t['Addis median'])} y1={cy - 10} y2={cy + 10} stroke="#7a5c00" strokeWidth={2} />
-                {Number.isFinite(t['IMPROVE median']) && <line x1={x(t['IMPROVE median'])} x2={x(t['IMPROVE median'])} y1={cy - 13} y2={cy + 13} stroke={IMPROVE_GREY} strokeWidth={2} strokeDasharray="2 2" />}
-                {Number.isFinite(t['SPARTAN network median']) && <line x1={x(t['SPARTAN network median'])} x2={x(t['SPARTAN network median'])} y1={cy - 13} y2={cy + 13} stroke={SPARTAN} strokeWidth={2} strokeDasharray="2 2" />}
-                {vals.map((val, j) => <path key={j} d={d3.symbol(d3.symbolDiamond, 80)() ?? ''} transform={`translate(${x(val)},${cy})`} fill={ADAMA} stroke={INK.panel} strokeWidth={1}
-                  onMouseEnter={(e) => tip.show(e, [`Adama pair ${j + 1}`, `${info.label}: ${f2(val)} ${info.unit}`, `Addis 25–75 %: ${f2(t['Addis p25'])}–${f2(t['Addis p75'])}`])} onMouseLeave={tip.hide} />)}
-                <XAxis scale={x} y={cy + 12} tickCount={5} format={(tv) => f2(+tv)} />
-              </g>
-              <text x={labelW + pw + 14} y={cy} dy="0.32em" fontSize={10.5} fontWeight={600} fill={v.c}>{v.txt}</text>
-              <text x={labelW + pw + 14} y={cy + 13} dy="0.32em" fontSize={9.5} fill={INK.muted}>Adama at Addis's {nth(t['Adama percentile in Addis'])} pct</text>
-            </g>
-          })}
-        </svg>
-        {tip.node}
-      </div>
-      <Legend items={[{ label: 'SPARTAN Addis filters (5–95 %, 25–75 %)', color: ADDIS_ALL, shape: 'band' }, { label: 'Adama pilot pairs', color: ADAMA }, { label: 'IMPROVE median', color: IMPROVE_GREY, shape: 'dashed' }, { label: 'SPARTAN-network median', color: SPARTAN, shape: 'dashed' }]} />
-      <Note>Season is the axis this chart cannot show: see "Season" below. Adama EC is TOR, SPARTAN EC is the published FTIR product, so EC and OC/EC compare two methods; spectral distance compares like with like.</Note>
+      subtitle="To test the Addis problem, a pilot must sit where SPARTAN Addis sits. Each row is one axis on its own scale: SPARTAN Addis's filters as a band (5–95 % light, 25–75 % dark, median tick), the five Adama pairs as diamonds, and the IMPROVE and SPARTAN-network medians as dashed ticks. The verdict on the right counts the Adama pairs inside Addis's middle half or its 5–95 % range. Click a legend item to hide it; each axis rescales."
+      tip={<>Season is the one axis this chart cannot show: see "Season" below. Adama EC is TOR and SPARTAN EC is the published FTIR product, so the EC and OC/EC rows compare two methods; spectral distance compares like with like.</>}>
+      <RangeRows rows={rows} series={series}
+        pointTip={(r, _s, v, j) => {
+          const t = d.target.find((x) => x.axis === r.key)!
+          return [`Adama pair ${j + 1}`, `${r.label}: ${f2(v)} ${r.unit ?? ''}`, `Addis 25–75 %: ${f2(t['Addis p25'])}–${f2(t['Addis p75'])}`]
+        }} />
     </ChartFrame>
   )
 }
@@ -164,8 +153,6 @@ const PLANE_MEASURE: Record<PlaneMeasure, { label: string; short: string; conc: 
 function LoadingPlane({ d }: { d: TorData }) {
   const pts = useMemo(() => rowsOf(d.points), [d])
   const lg = useLegend()
-  const [improveParam, setImproveDots] = useSearchParam<'on' | 'off'>('xd-plane.improve', 'off', ['on', 'off'])
-  const improveDots = improveParam === 'on'
   const [arrowParam, setArrow] = useSearchParam<'on' | 'off'>('xd-plane.arrow', 'off', ['on', 'off'])
   const [level, setLevel] = useSearchParam<'filter' | 'site'>('xd-plane.level', 'filter', ['filter', 'site'])
   // HIPS only where the run exported it (runs before 2026-10-28 did not)
@@ -179,7 +166,9 @@ function LoadingPlane({ d }: { d: TorData }) {
   const pops = ['IMPROVE (TOR)', 'SPARTAN network', 'SPARTAN Addis', 'Adama pilot (TOR)']
   const rng = d3.randomLcg(7)
   const sample = (rows: Record<string, any>[], n: number) => rows.length <= n ? rows : rows.filter(() => rng() < n / rows.length)
-  const shown = pops.filter((p) => lg.show(p) && (p !== 'IMPROVE (TOR)' || improveDots))
+  // the legend names each population by its label (POP_LABEL): hide and dim by that, not the population key
+  const shown = pops.filter((p) => lg.show(POP_LABEL[p]))
+  const dim = (pop: string) => lg.dim(POP_LABEL[pop])
   const has = (p: Record<string, any>) => Number.isFinite(M.conc(p)) && Number.isFinite(M.ug(p))
   // where each population has the measure at all (Adama has no HIPS or weighed PM2.5)
   const missing = pops.filter((pop) => !pts.some((p) => p.population === pop && has(p)))
@@ -190,12 +179,12 @@ function LoadingPlane({ d }: { d: TorData }) {
     return { population, site, name: r?.name ?? site, urban: r?.urban ?? false, filters: rows.length, ec_ugm3: d3.median(rows, M.conc)!, volume: d3.median(rows, (p) => num(p['volume m³']))!, ec_ug: d3.median(rows, M.ug)! }
   }))
   const sitePlot = siteRows.filter((r) => shown.includes(r.population)).sort((a, b) => pops.indexOf(a.population) - pops.indexOf(b.population)).map((r) => ({
-    x: r.ec_ugm3, y: r.volume, color: POP_COLOR[r.population], key: `${r.population}${r.site}`, hollow: r.population === 'IMPROVE (TOR)' && r.urban,
+    x: r.ec_ugm3, y: r.volume, color: POP_COLOR[r.population], key: `${r.population}${r.site}`, hollow: r.population === 'IMPROVE (TOR)' && r.urban, dim: dim(r.population),
     r: r.population === 'SPARTAN Addis' || r.population === 'Adama pilot (TOR)' ? 8 : r.population === 'IMPROVE (TOR)' ? 2.5 + Math.sqrt(r.filters) / 4 : 4.5,
     tip: [`${r.name} (${r.site})`, POP_LABEL[r.population], `${r.filters} filters, medians:`, `${M.short} ${f2(r.ec_ugm3)} µg/m³ · volume ${f2(r.volume)} m³ · ${f2(r.ec_ug)} µg per filter`] }))
   const filterPlot = shown.flatMap((pop) => sample(pts.filter((p) => p.population === pop && (ec || has(p))), pop === 'Adama pilot (TOR)' ? 10 : 1500).map((p, i) => {
     const id = pop === 'IMPROVE (TOR)' ? `improve:${p.id}` : String(p.id)
-    return { x: M.conc(p), y: num(p['volume m³']), color: POP_COLOR[pop], r: pop === 'Adama pilot (TOR)' ? 7 : pop === 'SPARTAN Addis' ? 3 : 2, key: `${pop}${i}`, id,
+    return { x: M.conc(p), y: num(p['volume m³']), color: POP_COLOR[pop], dim: dim(pop), r: pop === 'Adama pilot (TOR)' ? 7 : pop === 'SPARTAN Addis' ? 3 : 2, key: `${pop}${i}`, id,
       tip: [`${POP_LABEL[pop]} · ${p.site} ${p.id}`, `${M.short} ${f2(M.conc(p))} µg/m³ × ${f2(p['volume m³'])} m³ = ${f2(M.ug(p))} µg per filter`],
       rec: { id, source: 'Adama TOR study · loading plane', site: String(p.site), fields: [['population', POP_LABEL[pop]] as [string, string], ...[...PLANE_FIELDS, ...(hipsPops.size ? [HIPS_COL] : [])].map((k) => [k, p[k]] as [string, number | null])] } }
   }))
@@ -210,11 +199,10 @@ function LoadingPlane({ d }: { d: TorData }) {
   return (
     <ChartFrame id="xd-plane" source={source('LoadingPlane')} provenance={runLine(d)}
       title={`Loading = concentration × volume — ${ec ? 'why the pilot filters are light, and what would fix it' : `the same plane by ${M.label}`}`}
-      subtitle={`Each filter by ${M.label} concentration (across) and sampled volume (up); grey diagonals are equal ${M.short} per filter. The orange band is SPARTAN Addis's middle half of ${M.short} per filter${ec ? ': a pilot filter must land in it to load the spectrum as SPARTAN Addis does' : ''}. Measure puts the same filters on the plane by EC, by HIPS absorption (BC at MAC 10) or by weighed PM2.5 mass. Points: Site medians shows one point per site instead (its median concentration and volume). Volume needed (EC only) draws an arrow for how much more air the Adama sampler would need at Adama's own EC concentration. Click a filter to open its record; right-click to exclude it.`}
+      subtitle={`Each filter by ${M.label} concentration (across) and sampled volume (up); grey diagonals are equal ${M.short} per filter. The orange band is SPARTAN Addis's middle half of ${M.short} per filter${ec ? ': a pilot filter must land in it to load the spectrum as SPARTAN Addis does' : ''}. Measure puts the same filters on the plane by EC, by HIPS absorption (BC at MAC 10) or by weighed PM2.5 mass. Points: Site medians shows one point per site instead (its median concentration and volume; hollow IMPROVE circles are urban sites). Click a legend item to hide that population, or point at one to fade the others. Volume needed (EC only) draws an arrow for how much more air the Adama sampler would need at Adama's own EC concentration. Click a filter to open its record; right-click to exclude it.`}
       controls={<>
         <Segmented label="Measure" value={measure} options={measures} onChange={setMeasure} optionLabel={(o) => ({ EC: 'EC', HIPS: 'HIPS BC', 'PM2.5': 'PM2.5' }[o])} />
         <Segmented label="Points" value={level} options={['filter', 'site'] as const} onChange={setLevel} optionLabel={(o) => (o === 'filter' ? 'Each filter' : 'Site medians')} />
-        <Toggle label={level === 'site' ? 'IMPROVE sites' : 'IMPROVE filters'} checked={improveDots} onChange={(v) => setImproveDots(v ? 'on' : 'off')} title={level === 'site' ? `Draw every IMPROVE site (${ec ? 'EC from TOR; ' : ''}hollow = urban)` : `Draw a sample of IMPROVE filters${ec ? ' (EC from TOR)' : ''}`} />
         {ec && <Toggle label="Volume needed" checked={arrow} onChange={(v) => setArrow(v ? 'on' : 'off')} title="Arrow from the Adama pilot up to the volume that would load a filter like SPARTAN Addis's median, at Adama's own EC concentration" />}
       </>}>
       <Scatter points={plot} xLabel={`${M.label} concentration (µg/m³)`} yLabel="sampled volume (m³)" xLog yLog maxSide={420} xDomain={xD} yDomain={yD}
@@ -327,7 +315,9 @@ function NetworkMap({ d }: { d: TorData }) {
     : d3.geoAlbersUsa().fitExtent([[20, 20], [Math.max(80, width - 20), h - 20]], us)
   const path = d3.geoPath(projection)
   const maxShare = d3.max(sites, (s) => s[of]) ?? 0.01
-  const colour = d3.scaleSequential((t: number) => d3.interpolateYlOrRd(0.15 + 0.85 * t)).domain([0, maxShare])
+  const colours = useColourScheme('xd-map', 'sequential', 'Reds')
+  const ramp = d3.interpolateRgbBasis(colours.stops)
+  const colour = d3.scaleSequential((t: number) => ramp(0.15 + 0.85 * t)).domain([0, maxShare])
   const rN = d3.scaleSqrt().domain([0, d3.max(d.network, (r) => r.filters) ?? 1]).range([1.5, 9])
   const top = [...sites].sort((a, b) => b[of] - a[of]).slice(0, 12)
   const proj = (lon: number, lat: number) => projection([lon, lat])
@@ -358,7 +348,7 @@ function NetworkMap({ d }: { d: TorData }) {
         {tip.node}
       </div>
       <div className="legend" style={{ justifyContent: 'center' }}>
-        <ColorLegend scale={colour} label={`share of ${of}'s nearest neighbours`} format={(v) => pct(v)} />
+        <ColorLegend scale={colour} scheme={colours.scheme} label={`share of ${of}'s nearest neighbours`} format={(v) => pct(v)} />
         <Legend items={[{ label: 'SPARTAN Addis', color: ADDIS_ALL }, { label: 'Adama pilot (TOR)', color: ADAMA }, { label: 'IMPROVE site never chosen', color: IMPROVE_GREY, shape: 'ring' }]} />
       </div>
       <Note>Adama is placed at the pilot sampler's recorded position. Neighbours use the spline spectra and the 600–3600 cm⁻¹ similarity region without CO₂ and PTFE bands.</Note>

@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react'
+import { useColourScheme } from '@/lib/colourSchemes'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Segmented, Select } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
@@ -9,7 +10,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useExport } from '@/lib/data'
 import { fmt } from '@/lib/format'
-import { FONT, INK, RAMP_DIVERGING } from '@/lib/theme'
+import { FONT, INK } from '@/lib/theme'
 import type { FilterRow, PmfFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
@@ -36,7 +37,8 @@ function Matrix({ rows, cols, cell }: { rows: string[]; cols: string[]; cell: (r
   const tip = useTooltip(ref)
   const labelW = 170, top = 120
   const cw = Math.max(34, Math.min(70, (width - labelW - 10) / Math.max(1, cols.length))), ch = 26
-  const color = d3.scaleQuantize<string>().domain([-1, 1]).range(RAMP_DIVERGING)
+  const colours = useColourScheme('sw-matrix', 'diverging')
+  const color = d3.scaleQuantize<string>().domain([-1, 1]).range(colours.stops)
   return (
     <div ref={ref} style={{ position: 'relative', overflowX: 'auto' }}>
       <svg width={labelW + cols.length * cw + 90} height={top + rows.length * ch + 6} fontFamily={FONT.family}>
@@ -48,7 +50,7 @@ function Matrix({ rows, cols, cell }: { rows: string[]; cols: string[]; cell: (r
               onEnter={(e) => tip.show(e, [`${r} × ${c}`, `Spearman ρ ${fmt(v.rho, 3)}`, `n ${v.n}`])} onLeave={tip.hide} /> })}
         </g>)}
       </svg>
-      <ColorLegend scale={color} label="Spearman ρ" format={(v) => fmt(v, 1)} />
+      <ColorLegend scale={color} scheme={colours.scheme} label="Spearman ρ" format={(v) => fmt(v, 1)} />
       {tip.node}
     </div>
   )
@@ -84,6 +86,8 @@ export function SourceWeather({ rows: viewRows, meta: viewMeta }: SectionPagePro
   const unit = basis === 'conc' ? 'µg/m³' : 'share of the PMF total'
   const weather = useMemo(() => meta.fields.filter((f) => /\((station|ERA5)(, sample day)?\)$|Precipitable water/.test(f) && joined.some((j) => num(j.r, f) !== null)), [meta.fields, joined])
 
+  // before the early returns below: a hook must run on every render
+  const tColours = useColourScheme('sw-dt', 'diverging', 'Red–yellow–blue')
   if (!pmf) return <ChartFrame id="sw-load" title="PMF sources and the weather" provenance={MET_NB}><Empty>Loading the PMF factors…</Empty></ChartFrame>
   if (joined.length < 10) return <ChartFrame id="sw-empty" title="PMF sources and the weather" provenance={MET_NB}><Empty>The PMF solution covers {pmf.site_name} only; pick it in the Filters panel ({joined.length} of its filters in view).</Empty></ChartFrame>
 
@@ -100,7 +104,7 @@ export function SourceWeather({ rows: viewRows, meta: viewMeta }: SectionPagePro
   const DT = sampleDay ? DT_DAY : DT_WINDOW, T = sampleDay ? TMIN_DAY : T_WINDOW
   const dtPts = joined.flatMap((j) => { const x = num(j.r, DT), t = num(j.r, T), y = value(j, factor); return x !== null && Number.isFinite(y) ? [{ j, x, y, t }] : [] })
   const tExtent = d3.extent(dtPts.map((p) => p.t).filter((v): v is number => v !== null)) as [number, number]
-  const tColor = d3.scaleSequential((t: number) => d3.interpolateRdYlBu(1 - t)).domain([tExtent[0] ?? 0, tExtent[1] ?? 1])
+  const tColor = d3.scaleSequential(d3.interpolateRgbBasis(tColours.stops)).domain([tExtent[0] ?? 0, tExtent[1] ?? 1])
   const rhoDt = factors.map((f) => ({ f, dt: spearman(joined.map((j) => num(j.r, DT) ?? NaN), joined.map((j) => value(j, f))), t: spearman(joined.map((j) => num(j.r, sampleDay ? TAVG_DAY : T_WINDOW) ?? NaN), joined.map((j) => value(j, f))),
     tmin: sampleDay ? spearman(joined.map((j) => num(j.r, TMIN_DAY) ?? NaN), joined.map((j) => value(j, f))) : null }))
   // slopes by source: the dominant factor (or group) of each day, by K_F concentration
@@ -147,7 +151,7 @@ export function SourceWeather({ rows: viewRows, meta: viewMeta }: SectionPagePro
             { key: 'dt', label: 'ρ with ΔT', num: true, value: (r) => fmt(r.dt, 2) }, { key: 't', label: 'ρ with mean T', num: true, value: (r) => fmt(r.t, 2) },
             ...(sampleDay ? [{ key: 'tmin', label: 'ρ with T_min', num: true, value: (r: (typeof rhoDt)[number]) => fmt(r.tmin, 2) }] : [])]} />
         </Grid>
-        {dtPts.length >= 5 && <ColorLegend scale={tColor as unknown as { domain(): number[]; (v: number): string }} label={`${T} (°C)`} format={(v) => fmt(v, 0)} />}
+        {dtPts.length >= 5 && <ColorLegend scale={tColor as unknown as { domain(): number[]; (v: number): string }} scheme={tColours.scheme} label={`${T} (°C)`} format={(v) => fmt(v, 0)} />}
       </ChartFrame>
 
       <ChartFrame id="sw-slopes" title="Method agreement by source — OLS slopes on the days each source dominates"

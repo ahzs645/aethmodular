@@ -108,7 +108,7 @@ export function ImproveEnvelope({ rows, meta }: SectionPageProps) {
         subtitle={`Every post-2003 IMPROVE filter with a volume, binned (${d.n.toLocaleString()} filters; ${d.beyond.toLocaleString()} beyond the axes), with the focus-site filters in view on top and the Addis p05–p95 window dashed. Linear axes from zero, as the loading-envelope notebook pins them.`}
         provenance={<>{NB.anne} · {NB.fed} · {NB.may} §3</>}
         controls={<Segmented label="x" value={space} options={['mass', 'surface'] as const} onChange={setSpace} optionLabel={(o) => (o === 'mass' ? 'EC mass (µg)' : 'EC per area (µg/cm²)')} />}>
-        <DensityPlot cells={d.cells} bins={d.bins} x={[0, d.x_max]} y={[0, d.y_max]} xLabel={xLabel} yLabel="fAbs (Mm⁻¹)" points={spartan} box={box} maxSide={520} />
+        <DensityPlot id="ie-density" cells={d.cells} bins={d.bins} x={[0, d.x_max]} y={[0, d.y_max]} xLabel={xLabel} yLabel="fAbs (Mm⁻¹)" points={spartan} box={box} maxSide={520} />
         <Key items={sites.map((s) => ({ label: s, color: colorOf(s) }))} />
       </ChartFrame>
 
@@ -158,7 +158,7 @@ export function ImproveEnvelope({ rows, meta }: SectionPageProps) {
         provenance={<>{NB.rt} · {NB.white}</>}
         controls={<Segmented label="Readings" value={pair} options={Object.keys(data.rt.pairs)} onChange={setPair} />}>
         <Grid>
-          {rt ? <DensityPlot cells={rt.cells} bins={rt.bins} x={rt.x} y={rt.y} xLabel={`${rt.ref.replace('_Val', '')} (ratio)`} yLabel={`${rt.trans.replace('_Val', '')} (ratio)`} mode="value" valueLabel="median fAbs (Mm⁻¹)" maxSide={420}
+          {rt ? <DensityPlot id="ie-rt" cells={rt.cells} bins={rt.bins} x={rt.x} y={rt.y} xLabel={`${rt.ref.replace('_Val', '')} (ratio)`} yLabel={`${rt.trans.replace('_Val', '')} (ratio)`} mode="value" valueLabel="median fAbs (Mm⁻¹)" maxSide={420}
             points={rt.comparable.map(([x, y, f]) => ({ x, y, color: INK.warn, hollow: true, tip: ['Addis-comparable IMPROVE filter', `fAbs ${fmt(f, 1)} Mm⁻¹`] }))}>
             {pair === 'initial' && data.rt.initial_line?.slope != null ? ({ x, y }) => <line x1={x(rt.x[0])} x2={x(rt.x[1])} y1={y(data.rt!.initial_line!.intercept! + data.rt!.initial_line!.slope! * rt.x[0])} y2={y(data.rt!.initial_line!.intercept! + data.rt!.initial_line!.slope! * rt.x[1])} stroke={INK.fit} strokeWidth={1.6} strokeDasharray="6 3" /> : undefined}
           </DensityPlot> : <Empty>No {pair} readings in the export.</Empty>}

@@ -1,3 +1,4 @@
+import { PageSidebarSlot } from '@/lib/pageSidebar'
 import { RegressionControls } from '@/lib/regressionPrefs'
 import { chemText } from '@/lib/format'
 import { CONVENTION_LABEL, seasonOnly } from '@/lib/seasons'
@@ -14,6 +15,7 @@ import { usePrefs } from '@/lib/prefs'
 import { useHighlightActions } from '@/lib/highlight'
 import { useFilterEdits } from '@/lib/filterEdits'
 import type { FilterRow, MetaFile, SeasonMeta } from '@/lib/types'
+import type { SeasonSource } from '@/siteSeasons'
 import { PMF_SCHEMES, type PmfGroup, type PmfScheme } from '@/lib/pmfGroups'
 import { NETWORKS, hasImprove, hasSpartan, networkOf, type Network } from '@/lib/networks'
 import { SitePicker, type SiteItem } from '@/components/SitePicker'
@@ -25,6 +27,7 @@ import { DynamicSeasonEditor } from '@/components/DynamicSeasonEditor'
 import { defaultRuleFor, type DynRule } from '@/lib/dynamicSeasons'
 import { DEFAULT_RAIN_RULE, type RainRule } from '@/lib/rainSeasons'
 import { XIcon } from '@/components/Icons'
+import { CiteRef } from '@/components/CiteRef'
 
 export interface SubsetCaps {
   /** the tab's charts respond to the season filter */
@@ -96,7 +99,7 @@ export interface SubsetState {
   /** sites in view with more than one defensible calendar, and the one each is binned by */
   calendarVariants?: { site: string; code: string; options: { key: string; label: string; note?: string }[]; value: string }[]
   /** under the per-site calendar, each site's seasons: the reader's own (edited) or its published ones */
-  siteCalendars?: { site: string; code: string; edited: boolean; rule?: DynRule; seasons: { name: string; months: number[] }[] }[]
+  siteCalendars?: { site: string; code: string; edited: boolean; rule?: DynRule; sources?: SeasonSource[]; seasons: { name: string; months: number[] }[] }[]
   /** filters dropped by hand from a brush, and the size of a "keep only" set (null: none) */
   dropped?: number
   /** the hand-excluded filters, each with a "site · date" label */
@@ -127,6 +130,8 @@ export interface SubsetState {
 export interface SubsetActions {
   onConvention: (v: string) => void
   onToggleSeason: (name: string) => void
+  /** one site's seasons at once: drop them all if every one is on, else switch them all on */
+  onToggleSeasons?: (names: string[]) => void
   onAllSeasons: () => void
   onPmfScheme?: (v: PmfScheme) => void
   onTogglePmf?: (name: string) => void
@@ -236,6 +241,11 @@ export function SubsetBar({
     const g = seasonGroups.find((x) => x.site === (se.site ?? null))
     if (g) g.seasons.push(se)
     else seasonGroups.push({ site: se.site ?? null, seasons: [se] })
+  }
+  // one reference list for the sites in view: a paper shared by several sites keeps one number
+  const citeNo = new Map<string, number>()
+  for (const g of seasonGroups) for (const src of s.siteCalendars?.find((x) => x.site === g.site)?.sources ?? []) {
+    if (!citeNo.has(src.url)) citeNo.set(src.url, citeNo.size + 1)
   }
   // the chip sits under its site's heading, so drop the site prefix from the label
   const shortSeason = (se: SeasonMeta) => (se.site && se.name.startsWith(`${se.site} · `) ? se.name.slice(se.site.length + 3) : se.name)
@@ -455,7 +465,17 @@ export function SubsetBar({
                           return <>
                             <span className="season-site">
                               <span className="swatch" style={{ background: meta.sites.find((x) => x.name === g.site)?.color ?? 'var(--ink-muted)' }} />
-                              {g.site}
+                              {a.onToggleSeasons ? (() => {
+                                const names = g.seasons.filter((se) => (s.seasonCounts[se.name] ?? 0) > 0).map((se) => se.name)
+                                const on = names.some((n) => s.activeSeasons.has(n))
+                                const flip = () => names.length && a.onToggleSeasons!(on ? names.filter((n) => s.activeSeasons.has(n)) : names)
+                                return <span className={`season-site-name${on ? '' : ' off'}`} role="button" tabIndex={0} aria-pressed={on}
+                                  title={on ? `Hide every ${g.site} season` : `Show every ${g.site} season`}
+                                  onClick={flip} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip() } }}>{g.site}</span>
+                              })() : g.site}
+                              {cal?.sources?.length ? <span className="cite-refs">
+                                {cal.sources.map((src) => <CiteRef key={src.url} n={citeNo.get(src.url)!} source={src} />)}
+                              </span> : null}
                               {rule ? <span className="season-edited" title="Seasons from this site's own daily weather: saved in this browser and in the link">dynamic</span>
                                 : cal?.edited && <span className="season-edited" title="Your own seasons for this site: saved in this browser and in the link">edited</span>}
                               {editable && <span className="season-site-tools">
@@ -578,6 +598,9 @@ export function SubsetBar({
               {caps.note && explain && <span className="row-note">{caps.note}</span>}
               {caps.sites && <span className="method-note">{sitesNote}</span>}
             </Row>
+
+            {/* a page's own filters (lib/pageSidebar SidebarControls), as on the tabs without this panel */}
+            <PageSidebarSlot />
 
             {s.pinned && (
               <PinnedCard row={s.pinned} meta={meta} fields={[s.xField, s.yField, s.field]} inSubset={s.pinnedInSubset} onUnpin={a.onUnpin} onOpen={a.onOpenPinned} />

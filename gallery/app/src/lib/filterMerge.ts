@@ -21,3 +21,12 @@ export function supplementFilter(primary: FilterRow, extra: FilterRow | undefine
   return { ...primary, ...additions, excluded, exclusion_reason: reason,
     ...(filled.length ? { network_filled_fields: filled.join('; ') } : {}) }
 }
+
+/** An explicitly chosen live public release replaces its public fields, including
+ * missing values. Lab measurements, predictions and exclusion flags stay intact. */
+export function replacePublicFilter(primary: FilterRow, extra: FilterRow, fields: readonly string[]): FilterRow {
+  const merged = supplementFilter(primary, extra, fields)
+  const values = Object.fromEntries(fields.map(f => [f, typeof extra[f] === 'number' && Number.isFinite(extra[f]) ? extra[f] : null]))
+  const provenance = Object.fromEntries(Object.entries(extra).filter(([key]) => key.startsWith('public_')))
+  return { ...merged, ...values, ...provenance, date: extra.date, year: extra.year, month: extra.month }
+}

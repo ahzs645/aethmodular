@@ -1,3 +1,4 @@
+import { useFitHeight } from '@/lib/chartFit'
 import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { useExport } from '@/lib/data'
@@ -12,7 +13,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { useSearchParam } from '@/lib/url'
-import { ADDIS_ALL, FONT, IMPROVE_GREY, INK, inkOn, isDark, themed } from '@/lib/theme'
+import { ADDIS_ALL, FONT, IMPROVE_GREY, INK, inkOn, themed } from '@/lib/theme'
 import { dotFill, dotRim } from '@/lib/highlight'
 import { useTheme } from '@/lib/colorTheme'
 import { f2, f3, pct, signed } from '@/lib/format'
@@ -76,7 +77,13 @@ const MIN_CELL = 30
 const DISTANCE = 'Distance: T² + Q'
 const CAT_COLOR: Record<string, string> = { get fine() { return themed('#d5d9de', '#4b545f') }, 'false alarm': '#6baed6', get 'caught failure'() { return INK.good }, get 'missed failure'() { return INK.negative } }
 /** viridis from dark to light rungs; in the dark theme its darkest purples would vanish, so the ramp starts later */
-const rungColor = (i: number, n: number) => { const t0 = isDark() ? 0.3 : 0.08; return d3.interpolateViridis(t0 + (0.88 - t0) * (i / Math.max(1, n - 1))) }
+/** the ladder's rungs in order, from one palette (Viridis by default) that the ladder and the coverage curves share
+ *  (`xflag-rungs`, changed from either chart's options); the dark theme's palette steps are its own (lib/colourSchemes) */
+const useRungColours = () => {
+  const colours = useColourScheme('xflag-rungs', 'sequential', 'Viridis')
+  const ramp = d3.interpolateRgbBasis(colours.stops)
+  return { picker: colours.picker, color: (i: number, n: number) => ramp(0.08 + 0.8 * (i / Math.max(1, n - 1))) }
+}
 const col = <T,>(c: Cols, k: string) => c[k] as T[]
 const pct100 = (v: unknown) => v == null || !Number.isFinite(+v) ? '—' : String(Math.round(+v))
 const median = (v: (number | null)[]) => d3.median(v.filter((x): x is number => x != null && Number.isFinite(x)))
@@ -144,8 +151,10 @@ function BlindSpotMap({ d }: { d: FlagData }) {
 
   const m = { top: 14, right: 16, bottom: 50, left: 62 }
   const beyondW = 34
-  // the square fits the card (a phone included), beside the 'heavier than any IMPROVE filter' strip
-  const size = Math.max(200, Math.min(width - m.left - m.right - beyondW, 620))
+  // the square fits the card (a phone included), beside the 'heavier than any IMPROVE filter' strip; in the
+  // single-chart view or a tile it also fits the height it is given (lib/chartFit), or the page scrolls
+  const fit = useFitHeight()
+  const size = Math.max(200, Math.min(width - m.left - m.right - beyondW, fit === null ? 620 : fit - m.top - m.bottom))
   const x = d3.scaleLinear().domain([0, 100]).range([0, size])
   const y = d3.scaleLinear().domain([0, 100]).range([size, 0])
   const metricKey = cellMetric === 'Failure rate' ? 'impacted share' : 'caught share'
@@ -171,7 +180,9 @@ function BlindSpotMap({ d }: { d: FlagData }) {
     .map(([code, rs]) => ({ code, site: rs[0].site, n: rs.length, load: d3.median(rs, (r) => r.load!)!, dist: d3.median(rs, (r) => r.dist!)!,
       flagged: d3.mean(rs, (r) => +r.flagged)!, beyond: d3.mean(rs, (r) => +r.beyond)! }))
   const rSite = d3.scaleSqrt().domain([0, d3.max(siteMedians, (s) => s.n) ?? 1]).range([3, 13])
-  const flagColour = d3.scaleSequential((t: number) => d3.interpolateYlOrRd(0.2 + 0.8 * t)).domain([0, Math.max(0.2, d3.max(siteMedians, (s) => s.flagged) ?? 1)])
+  const siteColours = useColourScheme('xflag-map.sites', 'sequential', 'Reds')
+  const siteRamp = d3.interpolateRgbBasis(siteColours.stops)
+  const flagColour = d3.scaleSequential((t: number) => siteRamp(0.2 + 0.8 * t)).domain([0, Math.max(0.2, d3.max(siteMedians, (s) => s.flagged) ?? 1)])
   // biggest first, so small sites are drawn on top; labels placed around each circle where they collide with nothing
   const sitesDrawn = [...siteMedians].sort((a, b) => b.n - a.n)
   const labels = placeLabels(sitesDrawn.map((s) => ({ key: s.code, x: x(s.load), y: y(s.dist), r: rSite(s.n), text: s.code === 'ETAD' ? 'Addis (ETAD)' : s.code, bold: s.code === 'ETAD' })), size + beyondW, size)
@@ -242,7 +253,7 @@ function BlindSpotMap({ d }: { d: FlagData }) {
       {/* .legend: the PNG/SVG/PDF export redraws its labels and can move it (lib/export HTML_TEXT) */}
       <div className="legend" style={{ gap: 24, justifyContent: 'center' }}>
         <ColorLegend scale={colour} label={cellMetric === 'Failure rate' ? 'cells: share of IMPROVE filters impacted' : 'cells: share of failures the flag catches'} format={(v) => pct(v)} scheme={colours.scheme} />
-        {overlay === 'SPARTAN sites' && <ColorLegend scale={flagColour} label="sites: share of filters flagged (size = filters, black ring = Addis)" format={(v) => pct(v)} />}
+        {overlay === 'SPARTAN sites' && <ColorLegend scale={flagColour} scheme={siteColours.scheme} label="sites: share of filters flagged (size = filters, black ring = Addis)" format={(v) => pct(v)} />}
         <Legend {...lg.props} items={[...cats.filter((c) => visibleCats.includes(c)).map((c) => ({ label: c, color: CAT_COLOR[c], detail: (col<number>(mi, 'category').filter((v) => cats[v] === c).length).toLocaleString() })),
           ...(overlay === 'None' || overlay === 'SPARTAN sites' ? [] : [{ label: overlay === 'Addis filters' ? 'Addis filters' : `${site} filters`, color: overlay === 'Addis filters' ? ADDIS_ALL : '#7c3aed' }])]} />
       </div>
@@ -252,9 +263,9 @@ function BlindSpotMap({ d }: { d: FlagData }) {
 
 // ------------------------------------------------------------------ 2. ablation ladder
 function Ladder({ d }: { d: FlagData }) {
-  useTheme() // rungColor starts the ramp higher on the dark page
+  const rungs = useRungColours()
   const rows = d.ladder.map((r, i) => {
-    const c = rungColor(i, d.ladder.length), best = r.rung === d.settings.BEST
+    const c = rungs.color(i, d.ladder.length), best = r.rung === d.settings.BEST
     return {
       key: r.rung, label: `${r.rung}${best ? ' ★' : ''}`, color: c, hollow: !r['at SPARTAN'], bold: best,
       note: i === 0 ? 'baseline' : r['gain lo'] > 0 ? 'adds' : 'n.s.',
@@ -267,6 +278,7 @@ function Ladder({ d }: { d: FlagData }) {
     <ChartFrame id="xflag-ladder" source={source('Ladder')} provenance={runNote(d)}
       title="Ablation ladder — what each input adds to the flag"
       subtitle={`The flag (gradient boosting, held-out IMPROVE sites) refitted on growing sets of inputs. Left: how well it separates impacted filters (AUC, 0.5 = coin toss; the line is loading alone). Right: the gain over measured loading alone on the same filters. Whiskers are 95 % intervals from resampling held-out sites; a rung earns its inputs only if its gain interval clears zero, marked "adds" on the right.`}
+      controls={rungs.picker}
       tip={<>Hollow marks need HIPS, which is half of the FTIR–HIPS disagreement at SPARTAN. "Spectrum size" is the mean raw absorbance above 1425 cm⁻¹ and the C–H band area: a loading proxy read off the spectrum itself. Band features are the Section 5 set (Si–O, PTFE residue, carbonyl, C–H, O–H/N–H and their ratios).</>}>
       <Forest rows={rows} labelWidth={200} noteWidth={56}
         panels={[{ key: 'auc', label: 'AUC, held-out sites', ref: d.ladder[0]?.AUC, fmt: f2 }, { key: 'gain', label: 'AUC gain over loading alone', ref: 0, fmt: (v) => signed(v) }]} />
@@ -316,7 +328,8 @@ function Coverage({ d }: { d: FlagData }) {
   const keepShown = new Set([LOADING, DISTANCE, d.settings.BEST, 'oracle (true error)', 'random'])
   const lg = useLegend(scores.filter((s) => !keepShown.has(s)))
   const [metric, setMetric] = useSearchParam<Metric>('xflag-cover.metric', 'impacted let through', METRICS)
-  const colorOf = (s: string) => s === 'oracle (true error)' ? INK.fit : s === 'random' ? INK.identity : rungColor(rungs.indexOf(s), rungs.length)
+  const rungColours = useRungColours()
+  const colorOf = (s: string) => s === 'oracle (true error)' ? INK.fit : s === 'random' ? INK.identity : rungColours.color(rungs.indexOf(s), rungs.length)
   const series = scores.filter((s) => lg.show(s)).map((s) => {
     const c = d.coverage[s]
     return { id: s, label: s, group: s, color: colorOf(s), dash: s === 'oracle (true error)' || s === 'random' ? '5 4' : undefined, marks: false,
@@ -330,7 +343,7 @@ function Coverage({ d }: { d: FlagData }) {
       title="Error against coverage — what is left after setting flagged filters aside"
       subtitle="Each score ranks the held-out IMPROVE filters from least to most risky; keep the lowest-risk share and read the error left among them. Reading right to left, a useful flag bends toward the oracle (keeps by the true error, the best any flag could do); one that tracks the random line only throws data away."
       tip={<>Lower error among kept filters is selective retention, not a better EC estimator: flagged filters still need an answer. "Missed failures" is the share of impacted filters still kept at that coverage. RMSE is in µg per filter, so it rewards setting heavy filters aside: on RMSE, loading alone looks best even though it is the weakest at finding impacted filters.</>}
-      controls={<Segmented label="Read" value={metric} options={METRICS} onChange={setMetric} optionLabel={(m) => ({ 'RMSE kept': 'RMSE', 'impacted let through': 'Missed failures', 'impacted among kept': 'Failure rate kept', 'bias kept': 'Bias' }[m])} />}>
+      controls={<>{rungColours.picker}<Segmented label="Read" value={metric} options={METRICS} onChange={setMetric} optionLabel={(m) => ({ 'RMSE kept': 'RMSE', 'impacted let through': 'Missed failures', 'impacted among kept': 'Failure rate kept', 'bias kept': 'Bias' }[m])} /></>}>
       <SweepPlot series={series} xDomain={[1, 0.3]} yLabel={METRIC_LABEL[metric]} xLabel="Share of filters kept" height={340} dim={lg.dim} yFormat={fmt} xFormat={(v) => pct(+v)}
         xMarkers={[{ at: 1 - d.settings.FLAG_RATE, label: `flag ${pct(d.settings.FLAG_RATE)}` }]} reference={metric === 'bias kept' ? 0 : undefined} />
       <Legend {...lg.props} items={scores.map((s) => ({ label: s, color: colorOf(s), shape: s === 'oracle (true error)' || s === 'random' ? 'dashed' as const : 'line' as const }))} note="click to show or hide" />

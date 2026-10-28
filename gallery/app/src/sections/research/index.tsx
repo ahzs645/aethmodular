@@ -18,7 +18,7 @@ const research: Section = {
     key: 'research',
     label: 'Research diagnostics',
     title: 'Notebook analyses brought into the gallery: HIPS, meteorology, spectral and calibration diagnostics',
-    pages: RESEARCH_PAGES.map(({ key, label, title }) => ({ key, label, title })),
+    pages: RESEARCH_PAGES.map(({ key, label, title, hidden }) => ({ key, label, title, hidden })),
     Page: ResearchPage,
   }],
   useFields: () => null,

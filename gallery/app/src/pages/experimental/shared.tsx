@@ -55,7 +55,9 @@ export function Forest({ rows, panels, labelWidth = 200, rowHeight = 24, noteWid
 }
 
 /** `id` links hover and pin across charts and honours hand exclusions; `rec` opens the filter's record on click. */
-export interface ScatterPoint { x: number; y: number; color: string; r?: number; hollow?: boolean; tip?: string[]; key?: string; id?: string; rec?: FilterRecord }
+export interface ScatterPoint { x: number; y: number; color: string; r?: number; hollow?: boolean; tip?: string[]; key?: string; id?: string; rec?: FilterRecord
+  /** opacity factor, e.g. a legend's `dim(label)` while another series is pointed at */
+  dim?: number }
 const NO_KEYS: ReadonlySet<string> = new Set()
 
 /**
@@ -110,7 +112,7 @@ export function Scatter({ points, xLabel, yLabel, maxSide = 420, xLog = false, y
             const key = p.id ? baseFilterId(p.id) : null
             const focus = !!key && (key === hl.pinnedId || key === hoverId)
             const r = p.r ?? 3.5
-            return <circle key={p.key ?? i} cx={x(p.x)} cy={y(p.y)} r={focus ? Math.max(r, 6) : r} fill={p.hollow ? 'none' : p.color}
+            return <circle key={p.key ?? i} cx={x(p.x)} cy={y(p.y)} r={focus ? Math.max(r, 6) : r} fill={p.hollow ? 'none' : p.color} opacity={p.dim}
               {...dotFill(active && !focus ? 'dimmed' : 'sparse')} stroke={focus ? INK.text : p.hollow ? p.color : dotRim().stroke} strokeWidth={focus ? 2 : p.hollow ? 1.5 : dotRim().strokeWidth} style={{ cursor: p.rec ? 'pointer' : 'default' }}
               onMouseEnter={(e) => { if (p.tip) tip.show(e, p.rec ? [...p.tip, 'click to pin it on every chart and open its record'] : p.tip); if (key) hl.setHover(key) }}
               onMouseLeave={() => { tip.hide(); if (key) hl.setHover(null) }}

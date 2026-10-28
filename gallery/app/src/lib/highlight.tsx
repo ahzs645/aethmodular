@@ -195,7 +195,7 @@ export const dotRim = () => ({ stroke: INK.panel, strokeWidth: 0.8 })
 export const dotFill = (level: DotLevel, scale = 1) => ({ fillOpacity: dotOpacity(level) * scale, 'data-dot': scale === 1 ? level : undefined })
 
 /** SPARTAN ids carry a replicate suffix outside filters.json (ETAD-0144-8); the export keys on ETAD-0144. */
-export const baseFilterId = (id: string) => id.replace(/^([A-Z]{4}-\d{4})-\d+$/, '$1')
+export { baseFilterId } from './filterId'
 
 /**
  * The focused mark (hovered here or on another chart, or pinned) drawn over a chart's dots, which it dims with

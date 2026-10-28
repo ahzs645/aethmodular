@@ -159,6 +159,15 @@ export function composeFigure(panel: HTMLElement, sites: readonly ExportSite[] =
       const cs = getComputedStyle(sw)
       const el = document.createElementNS(NS, 'rect')
       const dashed = sw.classList.contains('dashed'), ring = sw.classList.contains('ring')
+      // a diamond swatch is a rotated square: draw the diamond, not its bounding box
+      if (sw.classList.contains('diamond')) {
+        const d = document.createElementNS(NS, 'path'), cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2
+        d.setAttribute('d', `M${cx},${rect.top}L${rect.right},${cy}L${cx},${rect.bottom}L${rect.left},${cy}Z`)
+        d.setAttribute('fill', cs.backgroundColor)
+        annotate(sw, d)
+        place(sw, { els: [d], box: boxOf(rect) })
+        continue
+      }
       const h = dashed ? 2 : rect.height
       el.setAttribute('x', String(rect.left)); el.setAttribute('y', String(dashed ? rect.top - 1 : rect.top))
       el.setAttribute('width', String(rect.width)); el.setAttribute('height', String(h))
@@ -214,7 +223,9 @@ export function composeFigure(panel: HTMLElement, sites: readonly ExportSite[] =
     .filter((l) => l.length)
   if (!chart.length) return null
   const dark = isDark() || panel.dataset.chartTheme === 'dark'
-  const fixed = fixedColours(sites, seasons)
+  const categories = [...panel.querySelectorAll('[data-export-fixed-colours]')].flatMap(el =>
+    (el.getAttribute('data-export-fixed-colours') ?? '').split(/\s+/).map(color => ({ color })))
+  const fixed = fixedColours(sites, seasons, categories)
   if (dark) for (const p of [...chart, ...legends.flat()]) for (const el of p.els) printColours(el, fixed)
   if (dark) for (const pl of plots) for (const st of pl.stats) for (const l of st.lines) { const light = printPaint(l.color, fixed); if (light) l.color = light }
   for (const p of chart) for (const el of p.els) for (const d of [el, ...el.querySelectorAll('[data-dot]')]) d.removeAttribute('data-dot')

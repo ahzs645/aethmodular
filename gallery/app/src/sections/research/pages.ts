@@ -27,7 +27,7 @@ import { SpartanImprove } from './pages/SpartanImprove'
 import { SourceWeather } from './pages/SourceWeather'
 
 export const RESEARCH_PAGES: (SectionPage & { Page: ComponentType<SectionPageProps> })[] = [
-  { key: 'index', label: 'Index', title: 'What each page here reproduces', Page: Index },
+  { key: 'index', label: 'Index', title: 'What each page here reproduces', Page: Index, hidden: true },
   // research-spectra
   { key: 'band-1617', label: '1617 cm⁻¹ band', title: 'ftir_12, ftir_38: what the Addis ~1600 cm⁻¹ band is, by peak position, companion bands and PMF', Page: Band1617 },
   { key: 'mac-choice', label: 'MAC 6 vs 10', title: 'ftir_16, ftir_19: MAC 6 and 10 applied across every calibration, and the IMPROVE implied-MAC bridge', Page: MacChoice },

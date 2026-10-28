@@ -3,10 +3,12 @@
  * Each page reads its own export under public/data/experimental/ (gallery/data/export_experimental.py
  * for the flag study, gallery/data/export_experiments.py for the rest).
  */
-export interface Experiment { key: string; label: string; title: string }
+export interface Experiment { key: string; label: string; title: string
+  /** left out of the header menu, the Investigations card and the page picker; opens only from a link (#tab=experimental&xp=<key>) */
+  hidden?: boolean }
 
 export const EXPERIMENTS: Experiment[] = [
-  { key: 'plan', label: 'Test plan', title: 'The 22 Oct protocol review: every test, what it asks and where it stands' },
+  { key: 'plan', label: 'Test plan', title: 'The 22 Oct protocol review: every test, what it asks and where it stands', hidden: true },
   { key: 'flag', label: '1–2 · What the flag sees', title: 'Ablation ladder, coverage curves and missed failures for the "impacted" flag' },
   { key: 'analogs', label: '3 · Loading-matched analogs', title: 'Calibration neighbours chosen by deposited mass as well as spectral shape' },
   { key: 'attribution', label: '4 · Attribution grid', title: 'Preprocessing × window × pool × k on the same filters, with interactions' },
@@ -17,3 +19,7 @@ export const EXPERIMENTS: Experiment[] = [
   { key: 'tor', label: 'Adama TOR study', title: 'The Adama TOR pilot against IMPROVE and SPARTAN: where it sits, where it would need to sit, and what counts as a pass' },
 ]
 export const EXPERIMENT_KEYS = EXPERIMENTS.map((e) => e.key)
+/** the pages the menu, the Investigations card and the page picker list */
+export const LISTED_EXPERIMENTS = EXPERIMENTS.filter((e) => !e.hidden)
+/** the page #tab=experimental opens on */
+export const DEFAULT_EXPERIMENT = LISTED_EXPERIMENTS[0].key

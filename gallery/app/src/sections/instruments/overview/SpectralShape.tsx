@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react'
+import { useColourScheme } from '@/lib/colourSchemes'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
@@ -8,7 +9,7 @@ import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/format'
-import { FONT, INK, RAMP_SEQUENTIAL } from '@/lib/theme'
+import { FONT, INK } from '@/lib/theme'
 import { seasonOnly } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
 import type { MetaFile } from '@/lib/types'
@@ -68,7 +69,8 @@ export function SpectralShape({ series, meta, screen, by }: { series: Series[]; 
   const line = d3.line()
   const band = (c: Curve) => d3.area<number>().x((i) => x(lambda[i])).y0((i) => y(c.spec[i].q25)).y1((i) => y(c.spec[i].q75))(d3.range(CHANNELS.length)) ?? ''
   const what = kind === 'absorption' ? 'b_abs(λ) / b_abs(880 nm)' : 'BCc(λ) / BCc(IR)'
-  const color = d3.scaleSequential(d3.interpolateRgbBasis(RAMP_SEQUENTIAL)).domain([0.5, 1]).clamp(true)
+  const colours = useColourScheme(`aeth-overview-spectrum-${by}`, 'sequential')
+  const color = d3.scaleSequential(d3.interpolateRgbBasis(colours.stops)).domain([0.5, 1]).clamp(true)
 
   const site = series[0]?.inst.site
   return (
@@ -113,7 +115,7 @@ export function SpectralShape({ series, meta, screen, by }: { series: Series[]; 
                     </g>)}
                   </g>
                 </svg>
-                <div className="legend"><ColorLegend scale={color} width={150} label="r" format={(v) => fmt(v, 2)} note="below 0.5 drawn as 0.5" /></div>
+                <div className="legend"><ColorLegend scale={color} scheme={colours.scheme} width={150} label="r" format={(v) => fmt(v, 2)} note="below 0.5 drawn as 0.5" /></div>
               </div>
             )}
           </div>

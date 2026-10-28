@@ -14,6 +14,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { loadJson } from './data'
 import { loadSpartanFilters } from './spartan'
+import type { PublicSiteStatus } from './spartanPublic'
+import type { SpartanSource } from './spartanSource'
 import type { FilterRow, SeasonMeta, SiteMeta } from './types'
 
 /** 'both' draws SPARTAN and IMPROVE sites together (the two network toggles are a multi-select) */
@@ -63,6 +65,9 @@ interface NetworkData {
   fields: string[]
   field_units: Record<string, string>
   field_groups: { label: string; fields: string[] }[]
+  /** Only successful live sites replace public fields in the focus-site merge. */
+  publicFields?: string[]
+  publicStatus?: PublicSiteStatus[]
 }
 
 interface ImproveIndex {
@@ -98,15 +103,42 @@ function row(id: string, s: SiteMeta, date: string, excluded: boolean, reason: s
     lon: Number.isFinite(s.lon) ? s.lon : null, excluded, exclusion_reason: reason, ...values }
 }
 
-async function loadSpartan(picked: string[] | 'all'): Promise<NetworkData> {
+async function loadSpartan(picked: string[] | 'all', source: SpartanSource, revision: number): Promise<NetworkData> {
   const { index, rows: records } = await loadSpartanFilters(picked)
-  const sites = index.sites.map(s => site(s.code, s.name, s.location, s.lat, s.lon, s.n_filters, s.date_min, s.date_max))
+  let sites = index.sites.map(s => site(s.code, s.name, s.location, s.lat, s.lon, s.n_filters, s.date_min, s.date_max))
+  let activeRecords = records
+  let publicFields: string[] | undefined, publicStatus: PublicSiteStatus[] | undefined
+  if (source === 'live') {
+    const { loadPublicSpartan, mergePublicSpartan, PUBLIC_SPARTAN_FIELDS, publicSpartanUrl } = await import('./spartanPublic')
+    publicFields = PUBLIC_SPARTAN_FIELDS
+    const selected = sites.filter(s => picked === 'all' || picked.includes(s.code))
+    const results = await Promise.all(selected.map(async s => {
+      const bundled = records.filter(r => r.code === s.code)
+      try {
+        const live = await loadPublicSpartan(s, revision)
+        return { rows: mergePublicSpartan(bundled, live), status: live.status }
+      } catch (e) {
+        return { rows: bundled, status: { code: s.code, url: publicSpartanUrl(s.code), state: 'bundled' as const,
+          checked: new Date().toISOString(), message: e instanceof Error ? e.message : String(e) } }
+      }
+    }))
+    publicStatus = results.map(r => r.status)
+    activeRecords = results.flatMap(r => r.rows)
+    const bySite = new Map(results.map((r, i) => [selected[i].code, r.rows]))
+    sites = sites.map(s => {
+      const own = bySite.get(s.code)
+      if (!own?.length) return s
+      const dates = own.map(r => r.date).filter(Boolean).sort()
+      return { ...s, n_filters: own.length, date_min: dates[0] ?? '', date_max: dates[dates.length - 1] ?? '' }
+    })
+  }
   const byCode = new Map(sites.map(s => [s.code, s]))
-  const rows = records.map(r => ({ ...r, ...row(r.id, byCode.get(r.code)!, r.date, r.excluded, r.exclusion_reason,
-    Object.fromEntries(index.fields.map(field => [field, typeof r[field] === 'number' ? r[field] as number : null]))) }))
-  return { sites, improveCodes: new Set(), rows, fields: index.fields, field_units: index.field_units,
+  const fields = [...new Set([...index.fields, ...(publicFields ?? [])])]
+  const rows = activeRecords.map(r => ({ ...r, ...row(r.id, byCode.get(r.code)!, r.date, r.excluded, r.exclusion_reason,
+    Object.fromEntries(fields.map(field => [field, typeof r[field] === 'number' ? r[field] as number : null]))) }))
+  return { sites, improveCodes: new Set(), rows, fields, field_units: { ...Object.fromEntries((publicFields ?? []).map(f => [f, 'µg/m³'])), ...index.field_units }, publicFields, publicStatus,
     field_groups: SPARTAN_GROUPS
-      .map(g => ({ ...g, fields: g.fields.filter(f => index.fields.includes(f)) })).filter(g => g.fields.length) }
+      .map(g => ({ ...g, fields: g.fields.filter(f => fields.includes(f)) })).filter(g => g.fields.length) }
 }
 
 export async function loadImprove(picked: string[]): Promise<NetworkData> {
@@ -139,22 +171,22 @@ export function mergeGroups(a: NetworkData['field_groups'], b: NetworkData['fiel
   return out
 }
 
-async function loadBoth(picked: string[], spartanSites: string[] | 'all'): Promise<NetworkData> {
-  const [sp, im] = await Promise.all([loadSpartan(spartanSites), loadImprove(picked)])
+async function loadBoth(picked: string[], spartanSites: string[] | 'all', source: SpartanSource, revision: number): Promise<NetworkData> {
+  const [sp, im] = await Promise.all([loadSpartan(spartanSites, source, revision), loadImprove(picked)])
   return { sites: [...sp.sites, ...im.sites], improveCodes: im.improveCodes, rows: [...sp.rows, ...im.rows],
     fields: [...new Set([...sp.fields, ...im.fields])], field_units: { ...im.field_units, ...sp.field_units },
-    field_groups: mergeGroups(sp.field_groups, im.field_groups) }
+    field_groups: mergeGroups(sp.field_groups, im.field_groups), publicFields: sp.publicFields, publicStatus: sp.publicStatus }
 }
 
 /** The chosen network's sites and rows; null while loading, and for the focus sites (App uses filters.json). */
-export function useNetworkData(network: Network, improveSites: string[], spartanSites: string[] | 'all') {
+export function useNetworkData(network: Network, improveSites: string[], spartanSites: string[] | 'all', source: SpartanSource = 'bundled', revision = 0) {
   const skey = spartanSites === 'all' ? '*' : [...spartanSites].sort().join(',')
-  const key = `${network}:${hasSpartan(network) ? skey : ''}:${hasImprove(network) ? [...improveSites].sort().join(',') : ''}`
+  const key = `${network}:${hasSpartan(network) ? `${skey}:${source}:${source === 'live' ? revision : ''}` : ''}:${hasImprove(network) ? [...improveSites].sort().join(',') : ''}`
   const [state, setState] = useState<{ key: string; data: NetworkData | null; error: string } | null>(null)
   useEffect(() => {
     if (network === 'focus') return
     let live = true
-    ;(network === 'both' ? loadBoth(improveSites, spartanSites) : network === 'spartan' ? loadSpartan(spartanSites) : loadImprove(improveSites))
+    ;(network === 'both' ? loadBoth(improveSites, spartanSites, source, revision) : network === 'spartan' ? loadSpartan(spartanSites, source, revision) : loadImprove(improveSites))
       .then((data) => { if (live) setState({ key, data, error: '' }) })
       .catch((e) => { if (live) setState({ key, data: null, error: String(e instanceof Error ? e.message : e) }) })
     return () => { live = false }
@@ -169,5 +201,5 @@ export function useNetworkData(network: Network, improveSites: string[], spartan
     data: current ?? (last?.network === network ? last.data : null),
     loading: network !== 'focus' && state?.key !== key,
     error: state?.key === key ? state.error : '',
-  }), [current, last, network, state, key])
+  }), [current, last, network, source, state, key])
 }

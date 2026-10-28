@@ -1,7 +1,9 @@
 import { RegressionProvider, RegressionControls, parseEstimators, estimatorParam, type Estimator } from '@/lib/regressionPrefs'
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useGalleryData } from '@/hooks/useGalleryData'
-import { supplementFilter } from '@/lib/filterMerge'
+import { replacePublicFilter, supplementFilter } from '@/lib/filterMerge'
+import { useSpartanSource } from '@/lib/spartanSource'
+import { SpartanDataProvider } from '@/components/SpartanDataSettings'
 import { HighlightProvider, baseFilterId, type FilterRecord, useHighlightActions } from '@/lib/highlight'
 import { NO_PMF, PMF_GROUP, PMF_SOURCE, isPmfField, pmfGroups, pmfKeyByDate, pmfLabel, pmfShareFields, withPmf, type PmfScheme } from '@/lib/pmfGroups'
 import { PrefsProvider } from '@/lib/prefs'
@@ -24,7 +26,9 @@ import { Ridgeline } from '@/charts/distribution/Ridgeline'
 import { Timeseries } from '@/charts/evolution/Timeseries'
 import { MonthlyBand } from '@/charts/evolution/MonthlyBand'
 import { SeasonalClock } from '@/charts/evolution/SeasonalClock'
-import { DataAvailabilityPage } from '@/pages/DataAvailabilityPage'
+import { AVAILABILITY_VIEWS, AVAILABILITY_VIEW_PARAM, DataAvailabilityPage } from '@/pages/DataAvailabilityPage'
+import { InvestigationsPage, type InvestigationArea } from '@/pages/InvestigationsPage'
+import { AreaHeader, HUB_TAB, type AreaPage } from '@/components/AreaHeader'
 import { MonthlyHeatmap } from '@/charts/evolution/MonthlyHeatmap'
 import { Barplot } from '@/charts/ranking/Barplot'
 import { CorrelationRanking } from '@/charts/ranking/CorrelationRanking'
@@ -46,7 +50,7 @@ import { MeetingSpecPage } from '@/pages/MeetingSpecPage'
 import { SPEC_MEETINGS } from '@/meetings'
 import { BlanksPage } from '@/pages/BlanksPage'
 import { ExperimentalPage } from '@/pages/ExperimentalPage'
-import { EXPERIMENTS } from '@/experiments'
+import { DEFAULT_EXPERIMENT, EXPERIMENTS, LISTED_EXPERIMENTS } from '@/experiments'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { dashParams, parseDash, type DashState, type Scope } from '@/lib/dashboard'
 import type { DashFilters } from '@/components/dashboard/DashHeader'
@@ -63,7 +67,7 @@ import { RecordDrawer } from '@/components/RecordDrawer'
 import type { DateRange } from '@/components/DateBrush'
 import type { FilterRow, SeasonMeta, SiteMeta } from '@/lib/types'
 import { AXES_MODES, DEFAULT_AXES, PAX_PARAM, paxFromParam, type AxesMode, type AxesOpts } from '@/lib/axes'
-import { calendarVariants, hasLocalCalendar, localSeasonsFor, qualifySeason } from '@/siteSeasons'
+import { calendarVariants, hasLocalCalendar, localSeasonsFor, qualifySeason, seasonSources } from '@/siteSeasons'
 import { dynamicPlaceholder, parseSiteRules, siteRulesParam, type SiteRules } from '@/lib/dynamicSeasons'
 import { useDynamicCalendars } from '@/hooks/useDynamicCalendars'
 import { MAX_IMPROVE_SITES, MONTH_QUARTERS, NETWORK_DEFAULTS, hasImprove, hasSpartan, isNetwork, mergeGroups, networkColor, useNetworkData, type Network } from '@/lib/networks'
@@ -93,6 +97,7 @@ import { AERONET_GROUP, useAeronet } from '@/lib/aeronet'
 import SECTIONS_MANIFEST from '@/sections/sections.json'
 import instruments from '@/sections/instruments'
 import research from '@/sections/research'
+import { defaultPage } from '@/sections/types'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 
 /**
@@ -101,7 +106,7 @@ import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
  * one while it is the open tab.
  */
 const TABS = [
-  { key: 'census', label: 'Census', hidden: true },
+  { key: 'census', label: 'Census', title: 'What the notebooks already draw, mapped onto the gallery’s chart types' },
   { key: 'dashboard', label: 'Dashboard', title: 'Your own page of gallery charts: add, arrange and size tiles' },
   { key: 'correlation', label: 'Correlation' },
   { key: 'distribution', label: 'Distribution' },
@@ -109,6 +114,7 @@ const TABS = [
   { key: 'ranking', label: 'Ranking' },
   { key: 'partOfWhole', label: 'Part of a whole' },
   { key: 'map', label: 'Map' },
+  { key: 'investigations', label: 'Investigations', title: 'Cards for the work beyond the chart tabs: Meetings, Experimental, Research diagnostics, Aethalometer and Data availability' },
   { key: 'availability', label: 'Data availability', title: 'Notebook coverage analyses, product inventory, sample-day overlap and filter history' },
   { key: 'weather', label: 'Weather', title: 'Weather over each filter’s sampling window: ERA5 at every SPARTAN site, the airport station at Addis' },
   { key: 'aethalometer', label: 'Aethalometer', title: 'MA350 aethalometers at the focus sites (Instruments section; unlisted in public builds)' },
@@ -121,7 +127,7 @@ const TABS = [
   { key: 'similarity', label: 'Spectral similarity' },
   { key: 'meeting', label: 'Meeting', title: 'Meeting follow-ups and Satoshi’s 2 Oct questions' },
   { key: 'blanks', label: 'Blanks', title: 'PTFE field blanks behind the VIBES background' },
-  { key: 'experimental', label: 'Experimental', hidden: true, title: 'Analyses still being worked out: what the FTIR EC flag sees, and where it is blind' },
+  { key: 'experimental', label: 'Experimental', title: 'Analyses still being worked out: what the FTIR EC flag sees, and where it is blind' },
 ] as const
 
 type TabKey = (typeof TABS)[number]['key']
@@ -132,50 +138,89 @@ const SECTIONS = [instruments, research].filter((s) => s.tabs.length)
 const SECTION_TABS = new Map(SECTIONS.flatMap((s) => s.tabs.map((t) => [t.key, t] as const)))
 const SECTION_OWNED = new Set<string>(Object.values(SECTIONS_MANIFEST.sections).flatMap((s) => s.tabs))
 const shared = (key: string) => (!SECTION_OWNED.has(key) || SECTION_TABS.has(key)) && (SHARE_TABS.length === 0 || SHARE_TABS.includes(key))
-/** VITE_SHOW_EXPERIMENTAL=1 lists the Experimental pages in the header menu; otherwise they open only from a link
- *  (#tab=experimental), and the menu shows their group only while one is open. */
-const SHOW_EXPERIMENTAL = import.meta.env.VITE_SHOW_EXPERIMENTAL === '1'
+/** a public build (VITE_PUBLIC_BUILD=1) leaves the Experimental pages out of the menu and the Investigations cards:
+ *  they open only from a link (#tab=experimental), and the menu lists them only while one is open.
+ *  VITE_SHOW_EXPERIMENTAL=1 lists them there too; any other build always lists them. */
+const SHOW_EXPERIMENTAL = import.meta.env.VITE_PUBLIC_BUILD !== '1' || import.meta.env.VITE_SHOW_EXPERIMENTAL === '1'
 /** a public build's tabs of sections marked "unlisted": compiled, but like Experimental they open from a link
  *  (#tab=aethalometer), and the menu shows their group only while one is open. Any other build lists them. */
 const UNLISTED = new Set<string>(import.meta.env.VITE_PUBLIC_BUILD === '1'
   ? Object.values(SECTIONS_MANIFEST.sections).filter((s) => s.public === 'unlisted').flatMap((s) => s.tabs) : [])
-/** tabs the menu leaves out unless one is open */
-const UNLISTED_TABS = new Set<string>([...UNLISTED, ...(SHOW_EXPERIMENTAL ? [] : ['experimental'])])
+/** a public build also leaves the Census out of the menu, the search and the Investigations cards (#tab=census still opens it) */
+const PUBLIC_UNLISTED = import.meta.env.VITE_PUBLIC_BUILD === '1' ? ['census'] : []
+/** tabs the menu, the ⌘K search and the Investigations cards leave out unless one is open */
+const UNLISTED_TABS = new Set<string>([...UNLISTED, ...PUBLIC_UNLISTED, ...(SHOW_EXPERIMENTAL ? [] : ['experimental'])])
 const isTab = (v: string | null): v is TabKey => !!v && shared(v) && TABS.some((t) => t.key === v)
 const LANDING_TAB = (SHARE_TABS.find((t) => TABS.some((x) => x.key === t)) ?? 'correlation') as TabKey
 
 // hand-built meeting pages, then every declared one (src/meetings/*.meeting.ts), newest first
-const MEETINGS: { key: string; label: string }[] = [
-  { key: 'followup', label: 'Follow up meeting' },
-  { key: 'satoshi', label: 'Satoshi 2 Oct' },
-  ...SPEC_MEETINGS.map((m) => ({ key: m.id, label: m.label })),
+const MEETINGS: { key: string; label: string; title?: string }[] = [
+  { key: 'followup', label: 'Follow up meeting', title: 'The 17 Sep meeting’s follow-ups: the analog bias check and the figures behind it' },
+  { key: 'satoshi', label: 'Satoshi 2 Oct', title: 'Satoshi’s 2 Oct questions: analog overlap, the swap test, VIP, the fit ladder and the envelope' },
+  ...SPEC_MEETINGS.map((m) => ({ key: m.id, label: m.label, title: m.title })),
 ]
 type MeetingKey = string
 /** the header's page menu (components/NavMenu): tabs in groups, the meeting pages under Meetings */
 const tabItem = (key: string): NavItem[] => TABS.filter((t) => t.key === key && shared(t.key))
   .map((t) => ({ key: t.key, label: t.label, title: 'title' in t ? t.title : undefined, tab: t.key }))
+/**
+ * The Investigations tab's areas, in card and menu order: tabs with pages of their own (each drawn under
+ * components/AreaHeader). Every compiled section's tab is one, so a new section joins without a change here.
+ */
+const AREA_TABS = [...new Set(['meeting', 'experimental', 'research', 'aethalometer', ...SECTION_TABS.keys(), 'availability', 'census'])].filter(shared)
+const areaPages = (t: string): readonly AreaPage[] =>
+  t === 'meeting' ? MEETINGS : t === 'experimental' ? LISTED_EXPERIMENTS : t === 'availability' ? AVAILABILITY_VIEWS : t === 'census' ? CENSUS_PAGES
+    : (SECTION_TABS.get(t)?.pages ?? []).filter((p) => !p.hidden)
+/** the Census is one page */
+const CENSUS_PAGES: AreaPage[] = [{ key: 'census', label: 'Notebook chart census', title: 'Every figure-producing notebook cell, classified by chart type, against what the gallery already draws' }]
+const tabTitle = (t: string) => { const x = TABS.find((y) => y.key === t); return x && 'title' in x ? x.title : '' }
+const AREA_NAMES: Record<string, { label: string; about: string }> = {
+  census: { label: 'Census', about: 'The notebook estate’s figures classified by chart type and mapped onto the react-graph-gallery taxonomy: what the gallery already has, and what it adds' },
+  meeting: { label: 'Meetings', about: 'A page for each meeting: the figures shown, the questions asked and their follow-ups' },
+}
+const AREAS: InvestigationArea[] = AREA_TABS.flatMap((t) => areaPages(t).length ? [{
+  tab: t, label: AREA_NAMES[t]?.label ?? SECTION_TABS.get(t)?.label ?? TABS.find((x) => x.key === t)?.label ?? t,
+  about: AREA_NAMES[t]?.about ?? SECTION_TABS.get(t)?.title ?? tabTitle(t), pages: areaPages(t),
+}] : [])
+/** a page of an area in the menu: Meetings picks its page as `meeting`, every other area as `sub` */
+const areaItem = (a: InvestigationArea, p: AreaPage, heading?: string): NavItem => ({
+  key: `${a.tab}-${p.key}`, label: heading ? p.label : a.label, title: heading ? p.title : a.about, tab: a.tab, heading,
+  // a one-page area (Census) has no sub-page to match
+  ...(a.tab === 'meeting' ? { meeting: p.key } : a.pages.length > 1 ? { sub: p.key } : {}),
+})
 const NAV_GROUPS: NavGroup[] = [
   { label: 'Charts', items: ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'flow'].flatMap(tabItem) },
-  { label: 'Sites', items: ['map', 'availability', 'weather', 'aeronet', 'pmf'].flatMap(tabItem) },
+  { label: 'Sites', items: ['map', 'weather', 'aeronet', 'pmf'].flatMap(tabItem) },
   { label: 'Calibration', items: ['calibration', 'baseline', 'similarity', 'blanks'].flatMap(tabItem) },
-  // each compiled section: its tabs' sub-pages, under the section's label
-  ...SECTIONS.map((s) => ({ label: s.label, items: s.tabs.filter((t) => shared(t.key))
-    .flatMap((t) => t.pages.map((p) => ({ key: `${t.key}-${p.key}`, label: p.label, title: p.title, tab: t.key, sub: p.key }))) })),
-  { label: 'Meetings', items: shared('meeting') ? MEETINGS.map((m) => ({ key: m.key, label: m.label, tab: 'meeting', meeting: m.key })) : [] },
-  { label: 'Experimental', items: shared('experimental') ? EXPERIMENTS.map((e) => ({ key: `xp-${e.key}`, label: e.label, title: e.title, tab: 'experimental', sub: e.key })) : [] },
 ].filter((g) => g.items.length)
-/** the menu for the open tab: a group of unlisted tabs (UNLISTED_TABS) only while one of them is open */
-const navGroups = (tab: string) => NAV_GROUPS.filter((g) => g.items.some((i) => i.tab === tab || !UNLISTED_TABS.has(i.tab)))
+/** the Investigations cards: the areas this build lists */
+const HUB_AREAS = AREAS.filter((a) => !UNLISTED_TABS.has(a.tab))
+const HUB_ITEM: NavItem[] = tabItem(HUB_TAB).map((i) => ({ ...i, label: 'All investigations', home: true }))
+/**
+ * The Investigations group, which depends on where the reader is: inside an area, the cards and that
+ * area's own pages (under its name); anywhere else, the cards and the areas, each opening on its first page.
+ */
+const investigationsGroup = (tab: string): NavGroup => {
+  const open = AREAS.find((a) => a.tab === tab)
+  return { label: 'Investigations', items: open
+    ? [...HUB_ITEM, ...open.pages.map((p) => areaItem(open, p, open.label))]
+    : [...HUB_ITEM, ...HUB_AREAS.map((a) => areaItem(a, a.pages[0]))] }
+}
+/** the menu for the open tab: unlisted tabs (UNLISTED_TABS) only while one of them is open */
+const navGroups = (tab: string) => [...NAV_GROUPS, investigationsGroup(tab)]
+  .map((g) => ({ ...g, items: g.items.filter((i) => i.tab === tab || !UNLISTED_TABS.has(i.tab)) }))
+  .filter((g) => g.items.length)
+const AVAILABILITY_KEYS = AVAILABILITY_VIEWS.map((v) => v.key)
 
 /** a row of a site without PMF, which the PMF filter passes through */
 const OTHER_SITE = '__other_site'
 
 /** what the ⌘K search offers: the tabs this build shows (lib/headerNav) */
-const NAV_TABS = TABS.filter((t) => shared(t.key) && !('hidden' in t && t.hidden) && !UNLISTED.has(t.key)).map((t) => ({ key: t.key as string, label: t.label as string, title: 'title' in t ? t.title as string : undefined }))
+const NAV_TABS = TABS.filter((t) => shared(t.key) && !('hidden' in t && t.hidden) && !UNLISTED_TABS.has(t.key)).map((t) => ({ key: t.key as string, label: t.label as string, title: 'title' in t ? t.title as string : undefined }))
 // Keep existing #tab=satoshi links working under the shared Meeting tab.
 const tabFromParams = (p: URLSearchParams): TabKey =>
   p.get('tab') === 'satoshi' && shared('meeting') ? 'meeting' : isTab(p.get('tab')) ? p.get('tab') as TabKey : LANDING_TAB
-const experimentFromParams = (p: URLSearchParams): string => EXPERIMENTS.find((e) => e.key === p.get('xp'))?.key ?? EXPERIMENTS[0].key
+const experimentFromParams = (p: URLSearchParams): string => EXPERIMENTS.find((e) => e.key === p.get('xp'))?.key ?? DEFAULT_EXPERIMENT
 const meetingFromParams = (p: URLSearchParams): MeetingKey =>
   p.get('tab') === 'satoshi' ? 'satoshi' : MEETINGS.find((m) => m.key === p.get('meeting'))?.key ?? 'followup'
 
@@ -233,7 +278,7 @@ const parseSpartanSel = (v: string | null): string[] | 'all' | null =>
 /** tabs whose charts can draw a whole network (Filters sidebar → network) */
 const NETWORK_TABS = ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'weather', 'aeronet', 'aethalometer', 'research'] as const
 const FILTERS: SubsetCaps = { seasons: true, sites: true, excluded: true, dates: true, fields: 'single', datasetLabel: 'SPARTAN filters' }
-const CAPS: Record<Exclude<TabKey, 'availability' | 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks' | 'experimental'>, SubsetCaps> = {
+const CAPS: Record<Exclude<TabKey, 'investigations' | 'availability' | 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks' | 'experimental'>, SubsetCaps> = {
   correlation: { ...FILTERS, fields: 'pair', networks: true, fits: true },
   // each tile picks its own fields
   dashboard: { ...FILTERS, fields: 'none', networks: true, fits: true },
@@ -315,10 +360,18 @@ export default function App() {
   const [experiment, setExperiment] = useState<string>(() => experimentFromParams(init))
   // a flagged section's sub-page (URL `aep`; empty = its first page)
   const [sectionPage, setSectionPage] = useState<string>(() => init.get('aep') ?? '')
+  // the Data availability view (pages/DataAvailabilityPage keeps it in the query; this is the same key, for the menu)
+  const [availView, setAvailView] = useSearchParam<string>(AVAILABILITY_VIEW_PARAM, AVAILABILITY_KEYS[0], AVAILABILITY_KEYS)
+  const setAvailRef = useRef(setAvailView)
+  setAvailRef.current = setAvailView
   const openTab = useCallback((t: string, m?: string, x?: string) => {
     if (isTab(t)) setTab(t)
     if (m) setMeeting(m)
-    if (x) (SECTION_TABS.has(t) ? setSectionPage : setExperiment)(x)
+    if (!x) return
+    if (t === 'meeting') setMeeting(x)
+    else if (SECTION_TABS.has(t)) setSectionPage(x)
+    else if (t === 'availability') setAvailRef.current(x)
+    else if (t === 'experimental') setExperiment(x)
   }, [])
   // Mirrors get_clean_data: excluded samples are hidden by default but never
   // deleted, so you can always put them back and see what was removed.
@@ -450,8 +503,8 @@ export default function App() {
     writeParams({
       tab,
       meeting: tab === 'meeting' && meeting !== 'followup' ? meeting : null,
-      xp: tab === 'experimental' && experiment !== EXPERIMENTS[0].key ? experiment : null,
-      aep: SECTION_TABS.has(tab) && sectionPage && sectionPage !== SECTION_TABS.get(tab)!.pages[0].key ? sectionPage : null,
+      xp: tab === 'experimental' && experiment !== DEFAULT_EXPERIMENT ? experiment : null,
+      aep: SECTION_TABS.has(tab) && sectionPage && sectionPage !== defaultPage(SECTION_TABS.get(tab)!.pages) ? sectionPage : null,
       fits: estimatorParam(estimators),
       ci: showCI ? '1' : null,
       cal: convention,
@@ -552,7 +605,8 @@ export default function App() {
 
   // The network only applies on the chart tabs; everything else always shows the focus sites.
   const net: Network = (NETWORK_TABS as readonly string[]).includes(tab) ? network : 'focus'
-  const netData = useNetworkData(net, improveSites, spartanSel ?? data?.meta.sites.map(s => s.code) ?? [])
+  const spartanSource = useSpartanSource()
+  const netData = useNetworkData(net, improveSites, spartanSel ?? data?.meta.sites.map(s => s.code) ?? [], spartanSource.source, spartanSource.revision)
   // the chosen network's sites, rows and fields: independent of which sites are picked, so a site
   // pick does not rebuild (and re-join weather, PMF, units and seasons onto) every row
   const netBase = useMemo(() => {
@@ -572,7 +626,12 @@ export default function App() {
     const loadedFocus = new Set(d.rows.filter(r => focus.has(r.code)).map(r => r.code))
     const focusIds = new Set(focusRows.map(r => r.id))
     const focusWithPub = focusRows.filter(r => loadedFocus.has(r.code))
-      .map(r => supplementFilter(r, pub.get(r.id), d.fields))
+      .map(r => {
+        const extra = pub.get(r.id)
+        return extra?.public_live_status && d.publicFields
+          ? replacePublicFilter(supplementFilter(r, extra, d.fields), extra, d.publicFields)
+          : supplementFilter(r, extra, d.fields)
+      })
     const rows: FilterRow[] = [...(sp ? focusWithPub : []), ...d.rows.filter((r) => !focus.has(r.code) || !focusIds.has(r.id)).map(r => focus.has(r.code) ? { ...r, site: focus.get(r.code)!.name } : r)]
     const fields = sp ? [...new Set([...data.meta.fields, ...d.fields])] : d.fields
     const groups = sp ? mergeGroups(data.meta.field_groups, d.field_groups) : d.field_groups
@@ -1003,14 +1062,15 @@ export default function App() {
 
   const nav = (
     <nav className="nav" aria-label="Pages">
-      <NavMenu groups={navGroups(tab)} tab={tab} meeting={meeting} sub={SECTION_TABS.has(tab) ? sectionPage || SECTION_TABS.get(tab)!.pages[0].key : experiment} onPick={(i) => openTab(i.tab, i.meeting, i.sub)} />
+      <NavMenu groups={navGroups(tab)} tab={tab} meeting={meeting} onPick={(i) => openTab(i.tab, i.meeting, i.sub)}
+        sub={SECTION_TABS.has(tab) ? sectionPage || defaultPage(SECTION_TABS.get(tab)!.pages) : tab === 'availability' ? availView : experiment} />
     </nav>
   )
 
   // the Dashboard's header draws the common filters from the same state and actions (components/dashboard/DashHeader)
   let dashFilters: DashFilters | null = null
   const subset = (() => {
-    if (tab === 'availability' || tab === 'census' || tab === 'baseline' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental') return null
+    if (tab === HUB_TAB || tab === 'availability' || tab === 'census' || tab === 'baseline' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental') return null
     const baseCaps = net === 'focus' ? CAPS[tab] : { ...CAPS[tab], datasetLabel: net === 'improve' ? 'IMPROVE samples' : net === 'both' ? 'SPARTAN filters + IMPROVE samples' : 'SPARTAN filters', excluded: sourceRows.some((r) => r.excluded) }
     // the chart tabs offer the PMF section while a site with PMF is picked
     const chartTab = (NETWORK_TABS as readonly string[]).includes(tab)
@@ -1123,7 +1183,9 @@ export default function App() {
         if (!code) return []
         const own = siteSeasons[code]
         const base = localSeasonsFor(site, data?.meta, code, calVariants[code]) ?? MONTH_QUARTERS
-        return [{ site, code, edited: !!own, rule: siteRules[code], seasons: own ?? base.map((se) => ({ name: bareSeasonName(se.name), months: se.months })) }]
+        // the references hold for the published calendar only, not the reader's own bins or rules
+        const sources = own || siteRules[code] ? [] : seasonSources(code, calVariants[code])
+        return [{ site, code, edited: !!own, rule: siteRules[code], sources, seasons: own ?? base.map((se) => ({ name: bareSeasonName(se.name), months: se.months })) }]
       }) : [],
       sitesAtDefault: net === 'spartan' ? spartanSel === null : net === 'improve' ? improveSites.length > 0 : net === 'both' ? spartanSel === null && improveSites.length === 0 : !activeSites,
       allSitesSelected: hasSpartan(net) ? !!netView && netView.chosen.length - (net === 'both' ? improveSites.length : 0) === netView.nSpartan : !activeSites,
@@ -1140,6 +1202,12 @@ export default function App() {
         const cur = new Set(seasonSel ?? seasons.map((s) => s.name))
         if (cur.has(name)) cur.delete(name)
         else cur.add(name)
+        setActiveSeasons(cur.size === 0 || cur.size === seasons.length ? null : cur)
+      },
+      onToggleSeasons: (names) => {
+        const cur = new Set(seasonSel ?? seasons.map((s) => s.name))
+        const allOn = names.every((n) => cur.has(n))
+        for (const n of names) if (allOn) cur.delete(n); else cur.add(n)
         setActiveSeasons(cur.size === 0 || cur.size === seasons.length ? null : cur)
       },
       onAllSeasons: () => setActiveSeasons(null),
@@ -1256,6 +1324,8 @@ export default function App() {
   })()
 
   return (
+    <SpartanDataProvider value={{ active: hasSpartan(net), codes: netView?.chosen.filter(s => !netView.improveCodes.has(s.code)).map(s => s.code) ?? [],
+      loading: netData.loading, error: netData.error, sites: netData.data?.publicStatus ?? [] }}>
     <HeaderNavProvider tabs={NAV_TABS} meetings={MEETINGS} open={openTab}>
     <RegressionProvider methods={estimators} setMethods={setEstimators} showCI={showCI} setShowCI={setShowCI}>
     <PrefsProvider>
@@ -1308,10 +1378,12 @@ export default function App() {
         {/* tabs without the Filters panel: a sidebar for the page's own controls, with the fits where the page fits */}
         {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting' || tab === 'experimental')
           && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'} />)}
+        {tab === HUB_TAB && <InvestigationsPage areas={HUB_AREAS} onOpen={(t, p) => openTab(t, undefined, p ?? AREAS.find((a) => a.tab === t)?.pages[0]?.key)} />}
         {tab === 'availability' && <DataAvailabilityPage />}
-        {tab === 'census' && <CensusPage census={census} />}
+        {tab === 'census' && <><AreaHeader area="Census" pages={CENSUS_PAGES} value="census" onPage={() => {}} /><CensusPage census={census} /></>}
         {tab === 'similarity' && <SimilarityPage />}
         {tab === 'meeting' && <PresentationProvider mode={presentation} set={setPresentation}>
+          <AreaHeader area="Meetings" pages={MEETINGS} value={meeting} onPage={setMeeting} />
           <SidebarControls title="Meeting figures">
             <PresentationSwitch ignored={dropIds.size + (keepIds ? 1 : 0)} viewChanged={viewOpts.mac !== exportMac || basis !== 'conc'} />
           </SidebarControls>
@@ -1367,7 +1439,7 @@ export default function App() {
           const T = SECTION_TABS.get(tab)!
           return <T.Page rows={rows} meta={meta} field={fieldEff} xField={xEff} yField={yEff} axes={axes} setField={setField}
             picked={netView?.chosenCodes ?? new Set()} onPick={hasSpartan(net) ? setSpartanPick : undefined}
-            page={T.pages.some((p) => p.key === sectionPage) ? sectionPage : T.pages[0].key} onPage={setSectionPage} />
+            page={T.pages.some((p) => p.key === sectionPage) ? sectionPage : defaultPage(T.pages)} onPage={setSectionPage} />
         })()}
         {tab === 'aeronet' && <AeronetPage rows={rows} picked={netView?.chosenCodes ?? new Set()} onPick={hasSpartan(net) ? setSpartanPick : undefined}
           meta={meta} field={fieldEff} axes={axes} setField={setField} />}
@@ -1398,6 +1470,7 @@ export default function App() {
     </PrefsProvider>
     </RegressionProvider>
     </HeaderNavProvider>
+    </SpartanDataProvider>
   )
 }
 

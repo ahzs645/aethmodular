@@ -1,4 +1,6 @@
 import { useMemo, useRef } from 'react'
+import { useColourScheme } from '@/lib/colourSchemes'
+import { Legend } from '@/components/Legend'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { XAxis } from '@/components/Axes'
@@ -49,7 +51,9 @@ export function AeronetScaleHeightTime({ rows, meta }: { rows: FilterRow[]; meta
     if (by === 'Lot period') return [...(HIPS_LOT_PERIODS[codes[0]] ?? []).map((p) => p.label), 'No documented lot'].filter((k) => keys.includes(k))
     return keys.sort()
   }, [pts, by]) // eslint-disable-line react-hooks/exhaustive-deps
-  const yearRamp = d3.scaleSequential(d3.interpolateViridis).domain([0, Math.max(1, groups.length - 1)])
+  // years are ordered: a sequential palette (Viridis by default), changed from the options when colouring by year
+  const yearColours = useColourScheme('aeronet-scale-height-time', 'sequential', 'Viridis')
+  const yearRamp = d3.scaleSequential(d3.interpolateRgbBasis(yearColours.stops)).domain([0, Math.max(1, groups.length - 1)])
   const colorOf = (g: string) => by === 'Site' ? meta.sites.find((s) => s.name === g)?.color ?? INK.muted
     : by === 'Season' ? meta.seasons.find((s) => s.name === g)?.color ?? INK.muted
       : by === 'Lot period' ? (g === 'No documented lot' ? INK.neutral : LOT_COLOURS[groups.indexOf(g) % LOT_COLOURS.length])
@@ -73,7 +77,7 @@ export function AeronetScaleHeightTime({ rows, meta }: { rows: FilterRow[]; meta
     <ChartFrame id="aeronet-scale-height-time" title={`Absorption scale height through time — by ${by.toLowerCase()}`}
       subtitle={`H = AAOD 675 (window-mean inversion) ÷ surface Fabs (HIPS at 633 nm; public BC × 10 where HIPS Fabs is absent), one dot per filter, log axis; lines are each ${by === 'Site' || by === 'Season' ? `${by.toLowerCase()}'s median per calendar year` : `${by.toLowerCase()}'s median`} (3 filters or more). ${hasLots ? 'Lot periods are the sampling-date ranges in research/ftir_ec_phase3/SPARTAN_LOT_INVENTORY_2026-08-23.md (to the month; the gallery has no per-filter lot). ' : one ? 'No HIPS lot periods are documented for this site, so the colours are years or seasons. ' : ''}A step at a lot change and not at a season change points at the measurement, not the air.`}
       provenance="research/ftir_ec_phase3/AERONET_SPARTAN_2026-08-22.md (scale height); research/ftir_ec_phase3/SPARTAN_LOT_INVENTORY_2026-08-23.md (HIPS lots)"
-      controls={one ? <Segmented label="Colour" value={by as By} options={options} onChange={setBy} optionLabel={(o) => o} /> : undefined}>
+      controls={one ? <><Segmented label="Colour" value={by as By} options={options} onChange={setBy} optionLabel={(o) => o} />{by === 'Year' && yearColours.picker}</> : undefined}>
       <div ref={wrapRef} className="chart-wrap">
         {pts.length < 3 ? <Empty>Fewer than 3 filters in view have both an AERONET AAOD 675 and a surface Fabs.</Empty> : (
           <svg width={iw + M.left + M.right} height={ih + M.top + M.bottom} fontFamily={FONT.family}>
@@ -98,9 +102,7 @@ export function AeronetScaleHeightTime({ rows, meta }: { rows: FilterRow[]; meta
             </g>
           </svg>
         )}
-        <div className="legend">
-          {groups.map((g) => <span key={g} className="legend-item"><span className="swatch" style={{ background: colorOf(g) }} />{label(g)}</span>)}
-        </div>
+        <Legend items={groups.map((g) => ({ label: label(g), color: colorOf(g) }))} />
         {tip.node}
       </div>
     </ChartFrame>

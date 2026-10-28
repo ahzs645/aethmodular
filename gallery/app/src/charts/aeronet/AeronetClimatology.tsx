@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useColourScheme } from '@/lib/colourSchemes'
+import { ColorLegend } from '@/components/ColorLegend'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -48,7 +50,8 @@ export function AeronetClimatology({ sites, level }: { sites: { name: string; co
   }).filter((g) => g.months && g.months.some((m) => m.mean !== null)), [data, sites, q])
   const values = grid.flatMap((g) => g.months!.map((m) => m.mean)).filter((v): v is number => v !== null)
   const [lo, hi] = d3.extent(values) as [number, number]
-  const color = d3.scaleSequential(d3.interpolateYlOrBr).domain(q.reverse ? [hi, lo] : [lo, hi])
+  const colours = useColourScheme('aeronet-climatology', 'sequential', 'Oranges')
+  const color = d3.scaleSequential(d3.interpolateRgbBasis(colours.stops)).domain(q.reverse ? [hi, lo] : [lo, hi])
 
   const labelW = Math.min(150, Math.max(90, width * 0.22)), cellH = 22, head = 22
   const cellW = Math.max(18, Math.min(56, (width - labelW - 8) / 12))
@@ -80,9 +83,8 @@ export function AeronetClimatology({ sites, level }: { sites: { name: string; co
           </svg>
         )}
         {values.length > 0 && <div className="legend">
-          <span className="legend-item">{fmt(q.reverse ? hi : lo, q.digits)}</span>
-          <span className="legend-item" style={{ width: 120, height: 10, background: `linear-gradient(to right, ${d3.range(0, 1.01, 0.25).map((t) => d3.interpolateYlOrBr(t)).join(',')})` }} />
-          <span className="legend-item">{fmt(q.reverse ? lo : hi, q.digits)}</span>
+          <ColorLegend scale={d3.scaleSequential(d3.interpolateRgbBasis(colours.stops)).domain([lo, hi])} scheme={colours.scheme}
+            label={`${q.label}, monthly mean${q.reverse ? ' (darker = lower)' : ''}`} format={(v) => fmt(v, q.digits)} />
         </div>}
         {tip.node}
       </div>

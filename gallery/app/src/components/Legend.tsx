@@ -10,7 +10,7 @@ export interface LegendItem {
   label: string
   parent?: string
   color: string
-  shape?: 'dot' | 'ring' | 'square' | 'band' | 'line' | 'dashed'
+  shape?: 'dot' | 'ring' | 'square' | 'band' | 'line' | 'dashed' | 'diamond'
   /** shown after the label in muted mono, e.g. "n=190" */
   detail?: string
 }
@@ -91,11 +91,25 @@ export function Legend({
       </span>
     )
   }
+  // a group's name with no item of its own toggles its whole group: hides every shown member,
+  // or shows them all again once all are hidden (one onToggle per member, so each chart's own
+  // toggle rule still decides what may hide)
+  const groupName = (g: string) => {
+    const kids = parts.filter((p) => p.group === g)
+    if (!onToggle || !kids.length) return g
+    const anyOn = kids.some((p) => !hidden?.has(p.it.label))
+    const flip = () => kids.filter((p) => !anyOn || !hidden?.has(p.it.label)).forEach((p) => onToggle(p.it.label))
+    return (
+      <span className={`legend-group-toggle${anyOn ? '' : ' off'}`} role="button" tabIndex={0} aria-pressed={anyOn}
+        title={`${g} — click to ${anyOn ? 'hide' : 'show'} all ${kids.length}`}
+        onClick={flip} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip() } }}>{g}</span>
+    )
+  }
   return (
     <div className={`legend${grouped ? ' grouped' : ''}`}>
       {parts.filter((p) => !grouped || (!p.group && !groups.includes(p.it.label))).map(item)}
       {grouped && groups.map((g) => <div key={g} className="legend-group">
-        <span className="legend-group-name">{parts.some(p => p.it.label === g) ? item(parts.find(p => p.it.label === g)!) : g}</span>
+        <span className="legend-group-name">{parts.some(p => p.it.label === g) ? item(parts.find(p => p.it.label === g)!) : groupName(g)}</span>
         {parts.filter((p) => p.group === g).map(item)}
       </div>)}
       {long && <button type="button" className="legend-more" onClick={() => setAll(!all)} aria-expanded={all}

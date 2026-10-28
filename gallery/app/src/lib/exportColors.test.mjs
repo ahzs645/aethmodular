@@ -70,3 +70,13 @@ test('a dark-page export keeps site and season colours, even when a dark ramp st
   assert.equal(printPaint('#e3e7ec', fixed), '#1f2933', 'INK dark text still prints light')
   assert.equal(printPaint('none', fixed), null)
 })
+
+test('categorical set colours remain fixed in an export even when a ramp registers the same paint', async () => {
+  const { registerPrintColours } = await import('./theme.ts')
+  const { fixedColours, printPaint } = await import('./exportColors.ts')
+  registerPrintColours(['#ec2227'], ['#f0aaaa'])
+  const fixed = fixedColours([], [], [{ color: '#ec2227' }, { color: '#2e6b3c' }])
+  assert.equal(printPaint('rgb(236, 34, 39)', fixed), null)
+  assert.equal(printPaint('#2e6b3c', fixed), null)
+  assert.equal(printPaint('#ec2227'), '#f0aaaa')
+})

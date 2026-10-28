@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react'
+import { useColourScheme } from '@/lib/colourSchemes'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
@@ -6,7 +7,7 @@ import { FacetGrid } from '@/components/FacetGrid'
 import { HeatCell } from '@/components/HeatCell'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/format'
-import { FONT, INK, RAMP_DIVERGING, RAMP_SEQUENTIAL } from '@/lib/theme'
+import { FONT, INK } from '@/lib/theme'
 import { seasonOnly } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
 import type { MetaFile } from '@/lib/types'
@@ -55,8 +56,10 @@ export function WeekHour({ hs, meta }: { hs: HourlySeries; meta: MetaFile }) {
     { key: 'all', title: 'All hours', color: undefined, grid: weekHourGrid(hs.hours) },
   ].filter((p) => p.grid.overall !== null), [hs, meta])
   const max = d3.max(panels.flatMap((p) => p.grid.mean.flat()), (v) => v ?? undefined) ?? 1
-  const rel = d3.scaleDiverging<string>(d3.interpolateRgbBasis(RAMP_DIVERGING)).domain([-1, 0, 1]).clamp(true)
-  const abs = d3.scaleSequential(d3.interpolateRgbBasis(RAMP_SEQUENTIAL)).domain([0, max])
+  const relColours = useColourScheme('aeth-overview-weekhour.rel', 'diverging')
+  const absColours = useColourScheme('aeth-overview-weekhour.abs', 'sequential')
+  const rel = d3.scaleDiverging<string>(d3.interpolateRgbBasis(relColours.stops)).domain([-1, 0, 1]).clamp(true)
+  const abs = d3.scaleSequential(d3.interpolateRgbBasis(absColours.stops)).domain([0, max])
   const fill = (v: number | null, overall: number | null) => (v === null ? null : scale === 'abs' ? abs(v) : overall ? rel(Math.log2(v / overall)) : null)
   const res = hs.info.resolution === 'minute' ? `hourly means of every minute (${hs.info.minute_file?.split('/').pop()})` : `the hourly means file (${hs.info.hourly_file.split('/').pop()})`
   return (
@@ -68,8 +71,8 @@ export function WeekHour({ hs, meta }: { hs: HourlySeries; meta: MetaFile }) {
         {!panels.length ? <Empty>No hourly data in this span.</Empty>
           : <FacetGrid items={panels} minCell={300} maxCols={2} render={(p, w) => <WeekGrid title={p.title} color={p.color} grid={p.grid} width={w} fill={fill} tip={tip} />} />}
         <div className="legend">
-          {scale === 'rel' ? <ColorLegend scale={rel} width={160} label="× the season's mean hour" format={(v) => `${fmt(2 ** v, v === 0 ? 0 : 1)}×`} />
-            : <ColorLegend scale={abs} width={160} label="IR BCc (µg/m³)" format={(v) => fmt(v, 0)} />}
+          {scale === 'rel' ? <ColorLegend scale={rel} scheme={relColours.scheme} width={160} label="× the season's mean hour" format={(v) => `${fmt(2 ** v, v === 0 ? 0 : 1)}×`} />
+            : <ColorLegend scale={abs} scheme={absColours.scheme} width={160} label="IR BCc (µg/m³)" format={(v) => fmt(v, 0)} />}
         </div>
         {tip.node}
       </div>

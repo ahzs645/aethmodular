@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react'
+import { useColourScheme } from '@/lib/colourSchemes'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { XAxis } from '@/components/Axes'
@@ -7,7 +8,7 @@ import { HeatCell } from '@/components/HeatCell'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/format'
-import { FONT, INK, RAMP_SEQUENTIAL } from '@/lib/theme'
+import { FONT, INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { MetaFile } from '@/lib/types'
 import { instColor, type Series } from './data'
@@ -55,7 +56,8 @@ export function Completeness({ series, meta }: { series: Series[]; meta: MetaFil
     metric === 'ir' ? (100 * c.ir) / c.days : metric === 'bins' ? (100 * c.bins) / c.days : c.cov
   const iw = Math.max(200, width - M.left - M.right)
   const x = d3.scaleUtc().domain(months.length ? [new Date(`${months[0]}-01T00:00:00Z`), new Date(Date.UTC(+months[months.length - 1].slice(0, 4), +months[months.length - 1].slice(5, 7), 1))] : [new Date(0), new Date(1)]).range([0, iw])
-  const color = d3.scaleSequential(d3.interpolateRgbBasis(RAMP_SEQUENTIAL)).domain([0, 100]).clamp(true)
+  const colours = useColourScheme('aeth-overview-completeness', 'sequential')
+  const color = d3.scaleSequential(d3.interpolateRgbBasis(colours.stops)).domain([0, 100]).clamp(true)
   const h = M.top + cells.length * ROW + M.bottom
 
   return (
@@ -83,7 +85,7 @@ export function Completeness({ series, meta }: { series: Series[]; meta: MetaFil
             </g>
           </svg>
         )}
-        <div className="legend"><ColorLegend scale={color} width={160} label={`${METRIC_LABEL[metric]} (%)`} format={(v) => fmt(v, 0)} /></div>
+        <div className="legend"><ColorLegend scale={color} scheme={colours.scheme} width={160} label={`${METRIC_LABEL[metric]} (%)`} format={(v) => fmt(v, 0)} /></div>
         {tip.node}
       </div>
     </ChartFrame>

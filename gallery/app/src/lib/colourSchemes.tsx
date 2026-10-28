@@ -3,6 +3,7 @@ import { DIVERGING_SCHEMES, RAMP_SEQUENTIAL, isDark, registerPrintColours, regis
 import { useSearchParam } from '@/lib/url'
 import { useTheme } from '@/lib/colorTheme'
 import { ColourSchemePicker, type SchemeChoice } from '@/components/ColourSchemePicker'
+import { CATEGORICAL_COLOUR_SETS, categoricalStops, hasNamedColours } from './categoricalColours'
 
 /**
  * The colour schemes a chart can offer, and one picker for them (components/ColourSchemePicker):
@@ -17,7 +18,7 @@ import { ColourSchemePicker, type SchemeChoice } from '@/components/ColourScheme
  * A chart without a ramp puts `colours.picker` (a button with the same list) in its controls.
  * The choice is kept in the URL as `<chart>.palette` / `<chart>.reverse`.
  */
-export type SchemeKind = 'diverging' | 'sequential'
+export type SchemeKind = 'diverging' | 'sequential' | 'categorical'
 const STOPS = 8
 const sample = (f: (t: number) => string) => d3.quantize(f, STOPS)
 export const SEQUENTIAL_SCHEMES: Record<string, readonly string[]> = {
@@ -32,11 +33,13 @@ export const SEQUENTIAL_SCHEMES: Record<string, readonly string[]> = {
   Purples: sample((t) => d3.interpolatePurples(0.08 + 0.92 * t)),
   Greys: sample((t) => d3.interpolateGreys(0.05 + 0.9 * t)),
 }
-export const SCHEMES: Record<SchemeKind, Record<string, readonly string[]>> = { diverging: DIVERGING_SCHEMES, sequential: SEQUENTIAL_SCHEMES }
+const CATEGORICAL_SCHEMES = Object.fromEntries(Object.entries(CATEGORICAL_COLOUR_SETS).map(([name, set]) => [name, set.colours]))
+export const SCHEMES: Record<SchemeKind, Record<string, readonly string[]>> = { diverging: DIVERGING_SCHEMES, sequential: SEQUENTIAL_SCHEMES, categorical: CATEGORICAL_SCHEMES }
 /** a line under the picker: which schemes hold up for colour-vision deficiencies or in print */
 export const SCHEME_NOTES: Record<string, string> = {
   'Purple–orange': 'colour-vision safe', 'Brown–teal': 'colour-vision safe', Cividis: 'colour-vision safe', Viridis: 'colour-vision safe',
   Greys: 'prints in black and white',
+  'SPARTAN composition': 'fixed component colours; additional species use Gallery colours',
 }
 
 /**
@@ -64,6 +67,7 @@ function darkStops(kind: SchemeKind, stops: readonly string[]): string[] {
 const DARK_SCHEMES: Record<SchemeKind, Record<string, string[]>> = {
   diverging: Object.fromEntries(Object.entries(DIVERGING_SCHEMES).map(([k, v]) => [k, darkStops('diverging', v)])),
   sequential: Object.fromEntries(Object.entries(SEQUENTIAL_SCHEMES).map(([k, v]) => [k, darkStops('sequential', v)])),
+  categorical: Object.fromEntries(Object.entries(CATEGORICAL_SCHEMES).map(([k, v]) => [k, [...v]])),
 }
 // an exported heat map is drawn light (lib/export): each dark stop maps back to its light one, and a
 // colour a chart interpolated between stops (d3 scaleLinear, interpolateRgbBasis) to the light colour
@@ -98,6 +102,7 @@ registerPrintResolver((hex) => {
 })
 
 export function schemeStops(kind: SchemeKind, name: string, reverse = false): string[] {
+  if (kind === 'categorical') return categoricalStops(name, reverse)
   const set = isDark() ? DARK_SCHEMES[kind] : SCHEMES[kind]
   const stops = [...(set[name] ?? Object.values(set)[0])]
   return reverse ? stops.reverse() : stops
@@ -109,9 +114,9 @@ export function useColourScheme(chartId: string, kind: SchemeKind, fallback = 'G
   const names = Object.keys(SCHEMES[kind])
   const [name, setName] = useSearchParam<string>(`${chartId}.palette`, fallback, names)
   const [rev, setRev] = useSearchParam<string>(`${chartId}.reverse`, '0', ['0', '1'])
-  const reverse = rev === '1'
+  const reverse = rev === '1' && !(kind === 'categorical' && hasNamedColours(name))
   const stops = schemeStops(kind, name, reverse)
-  const scheme: SchemeChoice = { kind, value: name, reverse, onChange: (n, r) => { setName(n); setRev(r ? '1' : '0') } }
+  const scheme: SchemeChoice = { kind, value: name, reverse, onChange: (n, r) => { setName(n); setRev(kind === 'categorical' && hasNamedColours(n) ? '0' : r ? '1' : '0') } }
   const picker = <ColourSchemePicker {...scheme} />
   return { name, reverse, stops, scheme, picker }
 }

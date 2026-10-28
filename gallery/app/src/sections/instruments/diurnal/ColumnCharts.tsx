@@ -1,4 +1,6 @@
 import { useMemo, useRef } from 'react'
+import { useColourScheme } from '@/lib/colourSchemes'
+import { ColorLegend } from '@/components/ColorLegend'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { HeatCell } from '@/components/HeatCell'
@@ -6,7 +8,7 @@ import { Key } from '@/components/Key'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/format'
-import { FONT, INK, RAMP_SEQUENTIAL } from '@/lib/theme'
+import { FONT, INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { SeasonMeta, SiteMeta } from '@/lib/types'
 import { dates, HOURS, hourLabel, hourRuns, seasonsOf, unscale, utcLabel, type ColumnFile, type ColumnIndex } from './data'
@@ -33,7 +35,8 @@ export function DaylightWindow({ index, sites, focus, onFocus }: {
   const w = labelW + 24 * cell + noteW
   const shares = rows.map((s) => { const c = index.sites[s.code].hour_counts.aod, t = d3.sum(c) || 1; return c.map((n) => n / t) })
   const max = d3.max(shares.flat()) ?? 1
-  const colour = d3.scaleSequential(d3.interpolateRgbBasis(RAMP_SEQUENTIAL.slice(1))).domain([0, max])
+  const colours = useColourScheme('diurnal-daylight', 'sequential')
+  const colour = d3.scaleSequential(d3.interpolateRgbBasis(colours.name === 'Gallery' && !colours.reverse ? colours.stops.slice(1) : colours.stops)).domain([0, max])
   const y = (i: number) => head + (i + 1) * rowH
   return (
     <ChartFrame id="diurnal-daylight" title="What the photometer sees of a 24 h filter — retrieval hours by site"
@@ -71,8 +74,9 @@ export function DaylightWindow({ index, sites, focus, onFocus }: {
         )}
         {tip.node}
       </div>
-      {rows.length > 0 && <Key items={[{ label: 'share of retrievals in the hour (deeper = more)', color: colour(max * 0.7), kind: 'square' },
-        { label: 'inversion hour', color: INK.text, kind: 'dot' }]} />}
+      {rows.length > 0 && <Key items={[{ label: 'inversion hour', color: INK.text, kind: 'dot' }]}>
+        <ColorLegend scale={colour} scheme={colours.scheme} label="share of the site's retrievals in the hour" format={(v) => `${fmt(100 * v, 0)} %`} />
+      </Key>}
     </ChartFrame>
   )
 }
