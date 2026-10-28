@@ -133,8 +133,8 @@ export function DailyTimeline({ s, meta, screen, excluded = [] }: { s: Series; m
                   {k === 'filters' && <>
                     <YAxis scale={yF} x={0} gridWidth={innerW} tickCount={3} label="Filters (µg/m³)" labelX={-50} />
                     {focusLast(filterPts.filter((p) => leg.show(p.m.label) && inX(p.t)), (p) => p.row.id, hl.focusId).map(([p]) => {
-                      const st = focusStyle(p.row.id, hl.focusId, { r: 2.8, opacity: 0.8 }, hl.selected)
-                      return <circle key={`${p.row.id}|${p.m.key}`} cx={x(p.t)} cy={yF(p.v!)} r={st.r} fill={p.m.color} fillOpacity={st.opacity * leg.dim(p.m.label)}
+                      const st = focusStyle(p.row.id, hl.focusId, { r: 2.8, level: 'sparse' }, hl.selected)
+                      return <circle key={`${p.row.id}|${p.m.key}`} cx={x(p.t)} cy={yF(p.v!)} r={st.r} fill={p.m.color} fillOpacity={st.opacity * leg.dim(p.m.label)} data-dot={leg.dim(p.m.label) === 1 ? st.dot : undefined}
                         stroke={st.stroke} strokeWidth={st.strokeWidth} style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
                         onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.site} · ${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`,
                           ...FILTER_METHODS.map((m) => `${m.label}: ${fmt(p.row[m.field], 2)} µg/m³`), 'click for details · right-click to exclude']) }}

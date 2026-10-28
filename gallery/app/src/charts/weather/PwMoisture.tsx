@@ -119,9 +119,9 @@ export function PwMoisture({ rows, meta, onePick }: { rows: FilterRow[]; meta: M
               <XAxis scale={x} y={sq} label={xLabel} />
               {series.map((s) => <g key={s.key}>
                 {s.pts.map((p) => {
-                  const st = focusStyle(p.row.id, hl.focusId, { r: 3, opacity: 0.65 }, hl.selected)
+                  const st = focusStyle(p.row.id, hl.focusId, { r: 3 }, hl.selected)
                   return <circle key={p.row.id} cx={x(p.x)} cy={y(p.y)} r={st.r} fill={s.hollow ? 'none' : s.color} fillOpacity={st.opacity}
-                    stroke={s.hollow ? s.color : st.stroke} strokeWidth={s.hollow ? 1.2 : st.strokeWidth} strokeOpacity={s.hollow ? 0.8 : 1}
+                    stroke={s.hollow ? s.color : st.stroke} strokeWidth={s.hollow ? 1.2 : st.strokeWidth} strokeOpacity={s.hollow ? 0.8 : 1} data-dot={s.hollow ? undefined : st.dot}
                     style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
                     onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${s.label} · ${p.row.date}`, `PW ${fmt(p.y, 2)} cm`, `${measure} ${fmt(p.x, 1)} ${isDew ? '°C' : '%'}`]) }}
                     onMouseLeave={() => { hl.setHover(null); tip.hide() }} onClick={(e) => { e.stopPropagation(); hl.openSample(p.row.id) }} />

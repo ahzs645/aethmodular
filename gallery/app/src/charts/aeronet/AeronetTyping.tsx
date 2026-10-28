@@ -99,10 +99,10 @@ export function AeronetTyping({ rows, meta }: { rows: FilterRow[]; meta: MetaFil
                   <line x1={x(v)} x2={x(v)} y1={0} y2={v === 1 ? y(1) : side} stroke={INK.muted} strokeDasharray="3 3" />
                 </g>)}
                 {focusLast(pts, (p) => p.row.id, hl.focusId).map(([p]) => {
-                  const st = focusStyle(p.row.id, hl.focusId, { r: 3.4, opacity: 0.75 }, hl.selected)
+                  const st = focusStyle(p.row.id, hl.focusId, { r: 3.4 }, hl.selected)
                   const c = col.color(col.key(p.row))
                   return <circle key={p.row.id} cx={clampX(p.x)} cy={clampY(p.y)} r={st.r} fill={p.weak ? 'none' : c} fillOpacity={st.opacity}
-                    stroke={p.weak || !st.stroke ? c : st.stroke} strokeWidth={st.strokeWidth ?? 1} style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
+                    stroke={p.weak || !st.stroke ? c : st.stroke} strokeWidth={st.strokeWidth ?? 1} data-dot={p.weak ? undefined : st.dot} style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
                     onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.site} · ${p.row.date}`, `${cazorla ? 'SAE 440–675' : 'EAE 440–870'} ${fmt(p.x, 2)} · ${cazorla ? 'AAE 440–675' : 'AAE 440–870'} ${fmt(p.y, 2)}`,
                       ...(cazorla ? [`Ångström matrix: ${cazorlaClass(p.x, p.y)}`] : []), `inversion AOD 440 ${fmt(p.row[INV_AOD440] as number | null, 2)}`, 'click for details']) }}
                     onMouseLeave={() => { hl.setHover(null); tip.hide() }} onClick={() => hl.openSample(p.row.id)} />

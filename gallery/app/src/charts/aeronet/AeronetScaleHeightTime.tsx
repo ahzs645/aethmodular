@@ -85,9 +85,9 @@ export function AeronetScaleHeightTime({ rows, meta }: { rows: FilterRow[]; meta
               <text transform={`translate(-48,${ih / 2}) rotate(-90)`} textAnchor="middle" fontSize={12} fill={INK.text}>Scale height H (m, log)</text>
               <XAxis scale={x} y={ih} tickCount={8} format={d3.utcFormat('%b %Y')} />
               {focusLast(pts, (p) => p.row.id, hl.focusId).map(([p]) => {
-                const st = focusStyle(p.row.id, hl.focusId, { r: 3, opacity: 0.7 }, hl.selected)
+                const st = focusStyle(p.row.id, hl.focusId, { r: 3 }, hl.selected)
                 const c = colorOf(groupOf(p.row))
-                return <circle key={p.row.id} cx={x(p.t)} cy={y(p.h)} r={st.r} fill={c} fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth}
+                return <circle key={p.row.id} cx={x(p.t)} cy={y(p.h)} r={st.r} fill={c} fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={st.dot}
                   style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
                   onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.site} · ${p.row.date}`, `H ${fmt(p.h, 0)} m`,
                     `AAOD 675 ${fmt(p.row[AAOD675] as number, 4)} · Fabs ${fmt(surfaceFabs(p.row), 1)} Mm⁻¹`, label(groupOf(p.row)), 'click for details']) }}

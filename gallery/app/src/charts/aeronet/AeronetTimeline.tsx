@@ -113,9 +113,9 @@ export function AeronetTimeline({ rows, meta, field, site, station, level = '15'
                     return <circle key={i} cx={x(t)} cy={y[k](v)} r={2.2} fill={weak(i) ? 'none' : c} stroke={c} strokeWidth={0.8} opacity={0.8} />
                   })}
                   {k === 'field' && focusLast(pts, (p) => p.row.id, hl.focusId).map(([p]) => {
-                    const st = focusStyle(p.row.id, hl.focusId, { r: 3, opacity: 0.8 }, hl.selected)
+                    const st = focusStyle(p.row.id, hl.focusId, { r: 3, level: 'sparse' }, hl.selected)
                     return <circle key={p.row.id} cx={x(p.t)} cy={yF(p.v)} r={st.r} fill={meta.seasons.find((s) => s.name === p.row.season)?.color ?? INK.text}
-                      fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
+                      fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={st.dot} style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
                       onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`, `${field}: ${fmt(p.v)}`, 'click for details · right-click to exclude']) }}
                       onMouseLeave={() => { hl.setHover(null); tip.hide() }} onClick={() => hl.openSample(p.row.id)} />
                   })}
