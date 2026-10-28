@@ -6,8 +6,11 @@ import { FacetGrid } from '@/components/FacetGrid'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { fmt, signed } from '@/lib/format'
 import { FONT, INK } from '@/lib/theme'
+import { useHighlight } from '@/lib/highlight'
 import type { FilterRow } from '@/lib/types'
 import type { BrcFile } from './data'
+
+const NO_KEYS: ReadonlySet<string> = new Set()
 
 const NB = 'research/ftir_ec_phase3/ftir_28_ma350_brc_falsification.ipynb'
 const BC880 = 'IR BCc (aethalometer)'
@@ -88,10 +91,12 @@ export function ChannelHealth({ brc }: { brc: BrcFile }) {
  * intercept near zero puts the HIPS intercept's offset on the 633 nm optics, not the FTIR side.
  */
 export function EcAgainstBc880({ rows }: { rows: FilterRow[] }) {
+  const { openSample } = useHighlight(NO_KEYS)
+  // gallery filters: a click opens the filter's own record, as on the gallery's charts
   const points = useMemo<CrossPoint[]>(() => rows.flatMap((r) => {
     const x = r[BC880], y = r[EC_FTIR]
-    return typeof x === 'number' && typeof y === 'number' ? [{ x, y, color: r.color, id: r.id, tip: [r.id, r.date, `${BC880}: ${fmt(x, 2)}`, `${EC_FTIR}: ${fmt(y, 2)}`] }] : []
-  }), [rows])
+    return typeof x === 'number' && typeof y === 'number' ? [{ x, y, color: r.color, id: r.id, open: () => openSample(r.id), tip: [r.id, r.date, `${BC880}: ${fmt(x, 2)}`, `${EC_FTIR}: ${fmt(y, 2)}`] }] : []
+  }), [rows, openSample])
   return (
     <ChartFrame id="diurnal-ec-bc880" title="Addis · FTIR EC against MA350 BC at 880 nm — the FTIR axis is not where the offset lives"
       subtitle={`Each Addis filter in view with both: FTIR EC, and the MA350 IR BCc averaged over the filter's sampling window. ftir_28 found intercept +0.32 µg/m³ (95 % CI +0.01 to +0.63), R² 0.868, n = 173 on exact 9 am days, about 13× smaller than the −4.17 against HIPS and of the opposite sign. The fit here is the gallery's live refit of the points drawn, so dates, seasons and hand edits apply.`}

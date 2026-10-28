@@ -43,9 +43,34 @@ export interface SweepSeries {
   width?: number
   /** dot radius (default 3) */
   r?: number
-  curve?: 'linear' | 'monotone' | 'step'
+  /** 'step' steps at each point; 'mid-step' steps halfway between points (bins given at their centres, see histogramSeries) */
+  curve?: 'linear' | 'monotone' | 'step' | 'mid-step'
+  /** a missing y breaks the line and band instead of joining its neighbours (a daily record with gaps) */
+  gaps?: boolean
+  /** opacity of the lo/hi band (default 0.15) */
+  fill?: number
   /** legend key, for `dim` */
   group?: string
+}
+
+/**
+ * A histogram as a SweepPlot series: filled bars as one step outline, counts (or the share of `total`) per bin.
+ * `edges` are the bin edges (counts.length + 1); `tip` names a bin. Each bin is a point at its centre, so hover
+ * finds bins, plus a point at either outer edge so the outline closes on the axis range.
+ */
+export function histogramSeries({ id, label, color, edges, counts, total, fill = 0.45, tip, ...rest }: {
+  id: string; label: string; color: string; edges: number[]; counts: number[]
+  /** divide each count by this (a share); else counts */
+  total?: number
+  /** band opacity: 0 for an outline only */
+  fill?: number
+  tip?: (i: number, value: number) => string[]
+} & Partial<Omit<SweepSeries, 'id' | 'label' | 'color' | 'points'>>): SweepSeries {
+  const v = (c: number) => (total ? c / Math.max(1, total) : c)
+  const n = counts.length
+  const at = (i: number) => ({ y: v(counts[i]), lo: fill ? 0 : null, hi: fill ? v(counts[i]) : null, tip: tip?.(i, v(counts[i])) })
+  const points: SweepPoint[] = n ? [{ x: edges[0], ...at(0) }, ...counts.map((_, i) => ({ x: (edges[i] + edges[i + 1]) / 2, ...at(i) })), { x: edges[n], ...at(n - 1) }] : []
+  return { id, label, color, points, curve: 'mid-step', marks: false, width: 1.4, fill, interval: fill ? 'band' : 'none', ...rest }
 }
 export interface SweepMarker { at: number | Date; label?: string; color?: string; labelSide?: 'left' | 'right' }
 type XScale = d3.ScaleLinear<number, number> | d3.ScaleLogarithmic<number, number> | d3.ScaleTime<number, number> | d3.ScalePoint<string>
@@ -120,7 +145,7 @@ export function SweepPlot({
   const [y0, y1] = y.domain()
   const clamped = (v: number) => v < Math.min(y0, y1) || v > Math.max(y0, y1)
   const py = (v: number) => y(Math.max(Math.min(y0, y1), Math.min(Math.max(y0, y1), v)))
-  const curve = (c?: SweepSeries['curve']) => (c === 'monotone' ? d3.curveMonotoneX : c === 'step' ? d3.curveStepAfter : d3.curveLinear)
+  const curve = (c?: SweepSeries['curve']) => (c === 'monotone' ? d3.curveMonotoneX : c === 'step' ? d3.curveStepAfter : c === 'mid-step' ? d3.curveStep : d3.curveLinear)
   const ok = (v: number | null | undefined): v is number => v != null && Number.isFinite(v) && (yScale !== 'log' || v > 0)
   const nClamped = all.filter((p) => ok(p.y) && clamped(p.y)).length
   const fmtY = yFormat ?? ((v: number) => String(+v.toPrecision(3)))
@@ -166,15 +191,17 @@ export function SweepPlot({
           <g pointerEvents="none">
             {series.map((s) => {
               // lines run in x order whatever order the points came in (categories keep theirs)
-              const pts = s.points.filter((p) => ok(p.y) && !clamped(p.y as number))
+              // with gaps, a missing or clamped y breaks the line where it falls; else the line joins the drawable points
+              const drawn = (p: SweepPoint) => ok(p.y) && !clamped(p.y as number)
+              const pts = s.gaps ? [...s.points] : s.points.filter(drawn)
               if (k !== 'point') pts.sort((a, b) => +(a.x as number) - +(b.x as number))
               const band = (s.interval ?? 'band') === 'band' && pts.some((p) => ok(p.lo) && ok(p.hi))
               const marks = s.marks ?? s.points.length <= 60
               return <g key={s.id} opacity={op(s.group)}>
-                {band && <path fill={s.color} fillOpacity={0.15} d={d3.area<SweepPoint>().defined((p) => ok(p.lo) && ok(p.hi)).curve(curve(s.curve))
+                {band && <path fill={s.color} fillOpacity={s.fill ?? 0.15} d={d3.area<SweepPoint>().defined((p) => ok(p.lo) && ok(p.hi)).curve(curve(s.curve))
                   .x((p) => px(p.x)).y0((p) => py(p.lo as number)).y1((p) => py(p.hi as number))(pts) ?? ''} />}
                 <path fill="none" stroke={s.color} strokeWidth={s.width ?? 1.8} strokeDasharray={s.dash}
-                  d={d3.line<SweepPoint>().curve(curve(s.curve)).x((p) => px(p.x)).y((p) => y(p.y as number))(pts) ?? ''} />
+                  d={d3.line<SweepPoint>().defined(drawn).curve(curve(s.curve)).x((p) => px(p.x)).y((p) => y(p.y as number))(pts) ?? ''} />
                 {s.interval === 'whisker' && s.points.filter((p) => ok(p.lo) && ok(p.hi)).map((p, i) =>
                   <line key={`w${i}`} x1={px(p.x)} x2={px(p.x)} y1={py(p.lo as number)} y2={py(p.hi as number)} stroke={s.color} strokeWidth={1.2} strokeOpacity={0.7} />)}
                 {s.points.filter((p) => ok(p.y)).map((p, i) => {
