@@ -1345,6 +1345,21 @@ html.dash-present .container.dash { padding-top: 10px; }
 .tile-info-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .info-tip-body.floating { display: block; z-index: 1200; margin: 0; overflow-y: auto; }
 .site-summary-group:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+.site-summary-row.compact { display: flex; flex-direction: column; gap: 2px; }
+/* the Site tile's Ticker view: one line scrolling left, twice over so the loop has no seam */
+.site-ticker { overflow: hidden; white-space: nowrap; font-size: calc(11px * var(--text-scale)); padding: 2px 0;
+  mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent); }
+.site-ticker-track { display: inline-flex; animation: site-ticker linear infinite; }
+.site-ticker:hover .site-ticker-track, .site-ticker:focus-within .site-ticker-track { animation-play-state: paused; }
+.site-ticker-run { display: inline-flex; align-items: center; gap: 18px; padding-right: 18px; }
+.site-ticker-site { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-muted); font-size: calc(11px * var(--text-scale)); }
+.site-ticker-site strong { color: var(--ink-text); }
+@keyframes site-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) {
+  .site-ticker { overflow-x: auto; mask-image: none; }
+  .site-ticker-track { animation: none; }
+  .site-ticker-run[aria-hidden] { display: none; }
+}
 
 /* Width can limit a square plot: balance its remaining space without stretching its axes. */
 .dash-tile:not(.legend-right) .fit-square { display: flex; flex-direction: column; align-items: center; justify-content: center; }
