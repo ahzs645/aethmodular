@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { baseFilterId, useHighlight } from '@/lib/highlight'
+import { baseFilterId, useHighlightActions } from '@/lib/highlight'
 import { usePresentation } from '@/lib/presentation'
 import { useExportSites } from '@/lib/exportSites'
 import type { ExportSite } from '@/lib/exportColors'
@@ -120,7 +120,7 @@ export function FilterEditsProvider({ children, enabled, dropped, kept, onDrop, 
   group: FilterGroup | null
   onGroup: (g: FilterGroup | null) => void
 }) {
-  const hl = useHighlight()
+  const hl = useHighlightActions()
   const [menu, setMenu] = useState<{ x: number; y: number; target: MenuTarget | null; scope: Set<string>; action: MenuAction | null } | null>(null)
   const sites = useExportSites()
 
@@ -175,7 +175,7 @@ export function FilterEditsProvider({ children, enabled, dropped, kept, onDrop, 
 
 function FilterMenu({ x, y, target, scope, action, onClose }: { x: number; y: number; target: MenuTarget | null; scope: Set<string>; action: MenuAction | null; onClose: () => void }) {
   const ed = useFilterEdits()
-  const hl = useHighlight()
+  const hl = useHighlightActions()
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState({ left: x, top: y })
 

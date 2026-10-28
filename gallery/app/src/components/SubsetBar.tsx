@@ -11,7 +11,7 @@ import { Segmented, SwapButton, Toggle } from '@/components/ChartFrame'
 import { AXES_MODES, PANEL_AXES, type AxesOpts } from '@/lib/axes'
 import { fmt } from '@/lib/stats'
 import { usePrefs } from '@/lib/prefs'
-import { useHighlight } from '@/lib/highlight'
+import { useHighlightActions } from '@/lib/highlight'
 import { useFilterEdits } from '@/lib/filterEdits'
 import type { FilterRow, MetaFile, SeasonMeta } from '@/lib/types'
 import { PMF_SCHEMES, type PmfGroup, type PmfScheme } from '@/lib/pmfGroups'
@@ -210,7 +210,7 @@ export function SubsetBar({
   const view: SidePanelView = hasPlot ? chosenView : 'filters'
   // a tab opens the panel on its half; the showing half's tab closes it
   const toggle = (v: SidePanelView) => { if (open && view === v) setOpen(false); else { setView(v); setOpen(true) } }
-  const hl = useHighlight()
+  const hl = useHighlightActions()
   const edits = useFilterEdits()
   // the review panel shows the fields the open tab is drawing
   const reviewFields = caps.fields === 'pair' ? [s.xField, s.yField] : caps.fields === 'single' ? [s.field] : []
@@ -771,7 +771,7 @@ function RainRuleEditor({ rule, onChange }: { rule: RainRule; onChange: (r: Rain
 function ExclusionLists({ s, a, caps, onReview, wide = false }: {
   s: SubsetState; a: SubsetActions; caps: SubsetCaps; onReview: () => void; wide?: boolean
 }) {
-  const hl = useHighlight()
+  const hl = useHighlightActions()
   // one list: the data export's exclusions (where this tab can show them), then the reader's own
   const repo = caps.excluded ? s.excludedList ?? [] : [], hand = s.droppedList ?? []
   const back = new Set(s.includedIds ?? [])

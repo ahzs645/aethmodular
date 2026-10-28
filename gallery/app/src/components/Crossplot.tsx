@@ -11,7 +11,7 @@ import { monthBlocks } from '@/lib/regressionCI'
 import { regression, type RegressionStats } from '@/lib/stats'
 import { useRegressions, FitGroupingControl } from '@/lib/regressionPrefs'
 import type { Estimator } from '@/lib/regressionMethods'
-import { baseFilterId, dotFill, dotRim, useHighlight, type FilterRecord } from '@/lib/highlight'
+import { baseFilterId, dotFill, dotRim, FocusLayer, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { FONT, INK } from '@/lib/theme'
 import { Toggle } from '@/components/ChartFrame'
 import { styleBrush } from '@/lib/brush'
@@ -118,17 +118,18 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
     season: (p) => p.season ?? 'Unknown season', seasonColor: (p) => p.seasonColor ?? INK.muted,
     options: (members) => ({ errorsInVariables: true, lambda, bootstrapGroups: monthBlocks(members.map((p) => p.rec ?? {})) }),
   }) : [], [valid, grouping, lambda, fitting]) // eslint-disable-line react-hooks/exhaustive-deps
-  const st = fitting ? regression(valid.map((p) => p.x), valid.map((p) => p.y), { errorsInVariables: true, lambda, bootstrapGroups: monthBlocks(valid.map((p) => p.rec ?? {})) }) : null
+  const st = useMemo(() => fitting ? regression(valid.map((p) => p.x), valid.map((p) => p.y), { errorsInVariables: true, lambda, bootstrapGroups: monthBlocks(valid.map((p) => p.rec ?? {})) }) : null,
+    [valid, lambda, fitting])
   const xs = valid.map((p) => p.x), ys = valid.map((p) => p.y)
   const dom = domain ?? span(sameScale ? [...xs, ...ys] : xs)
   const x = d3.scaleLinear().domain(dom).range([0, iw])
   const y = d3.scaleLinear().domain(sameScale ? dom : yDomain ?? span(ys)).range([ih, 0])
   const [x0, x1] = dom
   const line = (s: number, b: number) => ({ x1: x(x0), y1: y(s * x0 + b), x2: x(x1), y2: y(s * x1 + b) })
-  // a filter hovered or pinned on another chart dims this one only when this one draws it too
+  // a filter hovered or pinned on another chart dims this one only when this one draws it too (FocusLayer below:
+  // the hover is read there, so it re-renders the one focused dot, not the plot and its fits)
   const keys = useMemo(() => new Set(valid.map((p) => (p.id ? baseFilterId(p.id) : ''))), [valid])
-  const { hoverId } = useHighlight(keys)
-  const active = [hl.pinnedId, hoverId].some((k) => !!k && keys.has(k))
+  const dotsRef = useRef<SVGGElement>(null)
   const summary = useRegressionSummary({ stats: st, groups: siteFits ? fitGroups : undefined, width: w - 24, enabled: fitting })
   const top = m.top + (summary.height ? summary.height + 14 : 0)
   const height = side + top + m.bottom
@@ -169,20 +170,22 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
             <rect width={iw} height={ih} fill="transparent" onClick={() => hl.setPinned(null)} />
             {background?.(x, y)}
             {sameScale && <IdentityLine {...line(1, 0)} />}
-            {valid.map((p, i) => {
+            <g ref={dotsRef} className="scatter-dots">{valid.map((p, i) => {
               const key = p.id ? baseFilterId(p.id) : null
-              const focus = !!key && (key === hl.pinnedId || key === hoverId)
-              const dim = (active && !focus) || (!!hl.selected && !!key && !hl.selected.has(key))
+              const dim = !!hl.selected && !!key && !hl.selected.has(key)
               return (
-                <circle key={i} cx={x(p.x)} cy={y(p.y)} r={focus ? 6 : 3.2} fill={p.hollow ? 'none' : p.color}
-                  stroke={focus ? INK.text : p.hollow ? p.color : dotRim().stroke} strokeWidth={focus ? 2 : p.hollow ? 1 : dotRim().strokeWidth}
+                <circle key={i} cx={x(p.x)} cy={y(p.y)} r={3.2} fill={p.hollow ? 'none' : p.color}
+                  stroke={p.hollow ? p.color : dotRim().stroke} strokeWidth={p.hollow ? 1 : dotRim().strokeWidth}
                   {...dotFill(dim ? 'dimmed' : 'standard', p.opacity ?? 1)} strokeOpacity={(dim ? 0.3 : 1) * (p.opacity ?? 1)} style={{ cursor: p.rec || p.open ? 'pointer' : 'default' }}
                   onMouseEnter={(e) => { tip.show(e, p.rec || p.open ? [...p.tip, 'click to pin it on every chart and open its record'] : p.tip); if (key) hl.setHover(key) }}
                   onMouseLeave={() => { tip.hide(); hl.setHover(null) }}
                   {...(key ? fidProps(key) : {})}
                   onClick={() => { if (p.open) p.open(); else if (p.rec) hl.openRecord(p.rec); if (key) hl.setPinned(key) }} />
               )
-            })}
+            })}</g>
+            <FocusLayer keys={keys} items={valid} idOf={(p) => (p.id ? baseFilterId(p.id) : undefined)} groupRef={dotsRef}
+              render={(p) => <circle cx={x(p.x)} cy={y(p.y)} r={6} fill={p.hollow ? 'none' : p.color} stroke={INK.text} strokeWidth={2}
+                {...dotFill('standard', p.opacity ?? 1)} pointerEvents="none" />} />
             {fitting && (siteFits ? <RegressionGroupLines groups={fitGroups} x={x} y={y} width={iw} height={ih} />
               : <RegressionLines stats={st} x={x} y={y} domain={dom} width={iw} height={ih} />)}
             {extraLines.map((l) => <g key={l.label}><RegressionBand stats={l.stats} method={l.method} color={l.color} x={x} y={y} domain={dom} /><line {...line(l.slope, l.intercept)} stroke={l.color} strokeWidth={1.8} strokeDasharray={l.dash} /></g>)}

@@ -4,7 +4,7 @@ import { ChartFrame, Empty, Toggle } from '@/components/ChartFrame'
 import { SpectraTraces } from '@/components/SimilaritySpectra'
 import { useSearchParam } from '@/lib/url'
 import { usePageChoice } from '@/lib/pageChoices'
-import { useHighlight } from '@/lib/highlight'
+import { useHighlightActions } from '@/lib/highlight'
 import { baselineName } from '@/lib/labels'
 import { Traces, fetchBinary, loadEtadIds, loadSimilarityMeta, siteName, type SimilarityMeta } from '@/lib/similarity'
 import { addisTargetSpectra, rankedAnalogSpectra, type AddisSpectrumIds, type AnalogBaseline, type AnalogRegion } from '@/lib/satoshiSpectra'
@@ -26,7 +26,7 @@ export function SatoshiSpectra({ membership, groups, region }: { membership: Col
   const [ids, setIds] = useState<AddisSpectrumIds | null>(null)
   const [error, setError] = useState('')
   const [loaded, setLoaded] = useState<{ baseline: AnalogBaseline; traces: Traces } | null>(null)
-  const hl = useHighlight()
+  const hl = useHighlightActions()
 
   useEffect(() => {
     let live = true

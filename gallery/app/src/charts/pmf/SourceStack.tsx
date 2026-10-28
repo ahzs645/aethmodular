@@ -10,7 +10,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
-import { useHighlight } from '@/lib/highlight'
+import { useHighlightActions } from '@/lib/highlight'
 import { INK, MARGIN } from '@/lib/theme'
 import type { MetaFile, PmfFile, PmfRow } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
@@ -39,7 +39,7 @@ export function SourceStack({ pmf, rows: subsetRows, meta }: { pmf: PmfFile; row
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const hl = useHighlight()
+  const hl = useHighlightActions()
   const height = useFitHeight() ?? 440
 
   // the options and when each applies (lib/chartOptions): relative shares sum to 100 % every

@@ -144,11 +144,13 @@ export function YAxis({
   // measured as drawn, so short labels ("0–30") do not leave it stranded and the readable text size is counted
   const tickBox = useRef<SVGGElement>(null)
   const [tickW, setTickW] = useState<number | null>(null)
+  // measured again only when the tick text changes: getBBox forces a layout, and a chart re-renders on every hover
+  const tickText = ticks.map(({ v }) => (format ? format(v) : String(v))).join('|')
   useLayoutEffect(() => {
     let w = 0
     try { for (const t of tickBox.current?.querySelectorAll('text') ?? []) w = Math.max(w, t.getBBox().width) } catch { /* not drawn (a hidden chart) */ }
     if (w > 0 && (tickW === null || Math.abs(w - tickW) > 0.5)) setTickW(w)
-  })
+  }, [tickText]) // eslint-disable-line react-hooks/exhaustive-deps
   const spread = titleLines.length > 1 ? ((titleLines.length - 1) / 2) * 14 : 0
   // never further out than the 50 px the charts' left margins allow for
   const titleX = labelX ?? (tickW === null ? x - 50 : Math.max(x - 50, x - 9 - tickW - 15 - spread))

@@ -4,7 +4,7 @@ import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { Key } from '@/components/Key'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { fmt } from '@/lib/format'
-import { useHighlight } from '@/lib/highlight'
+import { useHighlightActions } from '@/lib/highlight'
 import { networkColor } from '@/lib/networks'
 import { splitAtGaps } from '@/lib/stats'
 import { useSearchParam } from '@/lib/url'
@@ -24,7 +24,7 @@ const MEASURES = (ch: Channel) => [
  */
 export function AgreementTimeline({ pairs, sites, ch }: { pairs: Pair[]; sites: PairSite[]; ch: Channel }) {
   const [scale, setScale] = useSearchParam<(typeof SCALES)[number]>('af.norm', 'absolute', SCALES)
-  const hl = useHighlight()
+  const hl = useHighlightActions()
   const measures = MEASURES(ch)
   const per = useMemo(() => sites.map((s) => {
     const own = pairs.filter((p) => p.site === s.name).sort((a, b) => a.date.localeCompare(b.date))

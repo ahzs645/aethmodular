@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import * as d3 from 'd3'
 import { useFilterEdits, type FilterGroup } from '@/lib/filterEdits'
-import { useHighlight } from '@/lib/highlight'
+import { useHighlightActions } from '@/lib/highlight'
 import { fmt } from '@/lib/stats'
 import { chemText } from '@/lib/format'
 import { prettyUnit } from '@/components/FieldSelect'
@@ -27,7 +27,7 @@ export function GroupDrawer({ group, byId, meta, fields, onClose }: {
   onClose: () => void
 }) {
   const ed = useFilterEdits()
-  const hl = useHighlight()
+  const hl = useHighlightActions()
   const [ticked, setTicked] = useState<Set<string>>(new Set())
   useEffect(() => setTicked(new Set()), [group])
   useEffect(() => {

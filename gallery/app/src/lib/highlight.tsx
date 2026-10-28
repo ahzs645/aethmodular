@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { INK, dotOpacity, type DotLevel } from '@/lib/theme'
 
 /**
@@ -132,6 +132,13 @@ export function HighlightProvider({ children, pinnedId, setPinned, openSample, o
  * is the hovered filter only when it is one of them, and the chart re-renders only then: hovering elsewhere
  * leaves it alone. Without `keys` every hover re-renders the caller, as before.
  */
+const NO_HOVER: ReadonlySet<string> = new Set()
+/**
+ * The pin, selection and handlers without the hover: a component that only acts (pins, opens, brushes) uses this,
+ * so a hover anywhere in the gallery does not re-render it. `useHighlight()` with no keys re-renders on every hover.
+ */
+export const useHighlightActions = (): HighlightState => useHighlight(NO_HOVER)
+
 export function useHighlight(keys?: ReadonlySet<string> | null): HighlightState {
   const c = useContext(Ctx)
   const read = () => { const h = c.store.get(); return !keys || (h !== null && keys.has(h)) ? h : null }
@@ -189,3 +196,18 @@ export const dotFill = (level: DotLevel, scale = 1) => ({ fillOpacity: dotOpacit
 
 /** SPARTAN ids carry a replicate suffix outside filters.json (ETAD-0144-8); the export keys on ETAD-0144. */
 export const baseFilterId = (id: string) => id.replace(/^([A-Z]{4}-\d{4})-\d+$/, '$1')
+
+/**
+ * The focused mark (hovered here or on another chart, or pinned) drawn over a chart's dots, which it dims with
+ * one class on their group (styles.css .has-focus). The only part of the chart that follows the hover: a hover
+ * then re-renders this one mark, not every dot, the axes or the fits. `keys` are the ids the chart draws.
+ */
+export function FocusLayer<T>({ keys, items, idOf, groupRef, render }: {
+  keys: ReadonlySet<string>; items: readonly T[]; idOf: (t: T) => string | undefined
+  groupRef: React.RefObject<SVGGElement | null>; render: (t: T) => ReactNode
+}) {
+  const { focusId } = useHighlight(keys)
+  const focused = focusId ? items.find((t) => idOf(t) === focusId) ?? null : null
+  useLayoutEffect(() => { groupRef.current?.classList.toggle('has-focus', focused !== null) }, [focused, groupRef])
+  return focused === null ? null : <>{render(focused)}</>
+}

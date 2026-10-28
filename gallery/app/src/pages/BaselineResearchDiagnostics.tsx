@@ -10,7 +10,7 @@ import { FONT, INK, baselineColor } from '@/lib/theme'
 import { fixed as f } from '@/lib/format'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { useBaselineColors } from '@/lib/baselineRank'
-import { useHighlight } from '@/lib/highlight'
+import { useHighlightActions } from '@/lib/highlight'
 import { useLegend } from '@/components/Legend'
 import { BaselineFollowup } from '@/pages/BaselineFollowup'
 import type { ApplicabilityData, ApplicabilityRow, BaselineCohort, BaselineContribution, BaselineData, BaselineMethod, BaselinePair } from '@/lib/baselineComparison'
@@ -132,7 +132,7 @@ export function BlankSpread({data}:{data:BaselineData}) {
   const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref)
   const [source,setSource]=useState('ETAD')
   const points=data.blank_details.filter(r=>r.source===source.toLowerCase())
-  const hl=useHighlight()
+  const hl=useHighlightActions()
   // one blank, every correction: the drawer shows all methods side by side, not just the dot clicked
   const openBlank=(id:string)=>hl.openRecord({id,source:'the held-out blank spread',site:source,fields:data.blank_details.filter(r=>r.sample_id===id).map(r=>[`${r.method} residual RMS (10⁻⁴ absorbance)`,r.rms_from_zero*1e4]),note:'A field blank: residual after baseline correction, where smaller is closer to zero absorbance. It tests background removal, not EC accuracy.'})
   const w=Math.max(300,width),iw=w-105,ih=215
