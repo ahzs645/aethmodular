@@ -156,7 +156,7 @@ export function SmoothTimeline({ code, all, meta, index }: { code: string; all: 
   })
   return (
     <ChartFrame id="aq-smooth-timeline" title={`${instrumentName(code, meta)} · raw and smoothed BCc, day by day`}
-      subtitle={`Daily means of the raw BCc and of the pickles' smoothed BCc (${channels.length ? channels.join(', ') : 'none'} at this instrument), and the IR difference in percent. The smoothed column is the cleaning pipeline's DEMA, src/data/qc/pkl_cleaning.py, which the notebooks call instrument-smoothed (a 10-minute DEMA per tape spot, so its daily mean sits on the raw one). The notebook's own rolling medians, diurnal profiles and IQR widths are in the minute-level charts below, for Jacros and Pasadena.`}
+      subtitle={`Daily means of the raw BCc and of the pickles' smoothed BCc (${channels.length ? channels.join(', ') : 'none'} at this instrument), and the IR difference in percent. The smoothed column is the cleaning pipeline's DEMA, src/data/qc/pkl_cleaning.py, which the notebooks call instrument-smoothed (a 10-minute DEMA per tape spot, so its daily mean sits on the raw one). The notebook's own rolling medians, diurnal profiles and IQR widths are in the minute-level charts below, for Addis and Pasadena.`}
       provenance="smoothing_comparison (raw vs smoothed; availability table) · HIPS_Aeth_SmoothRaw_Analysis · processed_sites/*.pkl">
       {panels.length > 1 ? <DailyPanels days={days} panels={panels} periods={index.flow_periods[code]} panelHeight={100} /> : <Empty>This instrument has no smoothed BCc.</Empty>}
       <div style={{ overflowX: 'auto' }}><table className="census-table">

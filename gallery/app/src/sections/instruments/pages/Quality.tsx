@@ -19,7 +19,7 @@ const TOPIC_NOTE: Record<string, string> = {
   coverage: 'Which days each instrument has black carbon on, and what the legacy ±1-day matching window does to a filter day.',
   flow: 'The spot flows day by day, the flow-fix periods, and the aethalometer against HIPS and FTIR EC before and after the fix.',
   smoothing: 'Raw BCc against the smoothed BCc of the pickles (the cleaning pipeline\'s DEMA) and the notebook\'s rolling medians, and how the HIPS comparison changes as filters the smoothing moved are set aside.',
-  spots: 'The dual-spot chain: attenuation on both spots, its rate, the spot ratios, roughness, the instrument K at Jacros, and raw attenuation against BCc.',
+  spots: 'The dual-spot chain: attenuation on both spots, its rate, the spot ratios, roughness, the instrument K at Addis, and raw attenuation against BCc.',
 }
 
 /**
@@ -41,14 +41,14 @@ export function Quality({ rows, meta, picked }: SectionPageProps) {
   const minuteIndex = useMinuteIndex().data
   const minute = useMinuteSites(minuteIndex)
   const mc = minuteCode(code)
-  const minuteNames = Object.fromEntries(Object.entries(minuteIndex?.sites ?? {}).map(([k, v]) => [k, v.name]))
-  const mName = minuteIndex?.sites[mc]?.name ?? instrumentName(code, meta)
+  const minuteNames = Object.fromEntries(Object.entries(minuteIndex?.sites ?? {}).map(([k, v]) => [k, k === JACROS ? instrumentName(k, meta) : v.name]))
+  const mName = minuteNames[mc] ?? instrumentName(code, meta)
   const mSite = minute[mc] ?? null
 
   const head = (
     <div className="panel weather-head">
       <div>
-        <p className="subtitle" style={{ margin: 0 }}>{TOPIC_NOTE[topic]} The daily charts use the legacy daily aggregates (24 h bins labelled at their start, coverage recorded but not verified; docs/matched-sample-audit-2026-09-10.md); the minute-level charts use the raw MA350 records at Jacros (Addis) and Pasadena (JPL), the only two in the Drive mirror.</p>
+        <p className="subtitle" style={{ margin: 0 }}>{TOPIC_NOTE[topic]} The daily charts use the legacy daily aggregates (24 h bins labelled at their start, coverage recorded but not verified; docs/matched-sample-audit-2026-09-10.md); the minute-level charts use the raw MA350 records at Addis and Pasadena (JPL), the only two in the Drive mirror. Addis is one instrument (MA350-0238): its Jacros file is the full record and holds every day of the Addis file, so the page reads Addis from it.</p>
       </div>
       <div className="weather-head-controls">
         <Segmented label="Topic" value={topic} options={TOPICS} onChange={setTopic} optionLabel={(t) => TOPIC_LABEL[t]} />
@@ -75,7 +75,7 @@ export function Quality({ rows, meta, picked }: SectionPageProps) {
           <FlowTimeline code={code} days={days} meta={meta} index={q} />
           <MinuteFlowQC site={mSite} name={mName} />
           <FlowFixCompare rows={rows} meta={meta} index={q} />
-          <AgreementOverTime code={code === JACROS ? 'ETAD' : code} rows={rows} meta={meta} index={q} />
+          <AgreementOverTime code={code} rows={rows} meta={meta} index={q} />
         </>}
         {topic === 'smoothing' && <>
           <SmoothRaw rows={rows} meta={meta} index={q} />
@@ -84,7 +84,7 @@ export function Quality({ rows, meta, picked }: SectionPageProps) {
         </>}
         {topic === 'spots' && <>
           <DualSpotTimeline code={code} days={days} meta={meta} index={q} />
-          {all[JACROS] && <JacrosChain days={all[JACROS]} />}
+          {all.ETAD && <JacrosChain days={all.ETAD} />}
           <AtnCorrelation all={all} meta={meta} />
           <MinuteKstar site={mSite} name={mName} />
           <MinuteTape site={mSite} name={mName} />

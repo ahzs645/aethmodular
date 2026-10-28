@@ -81,7 +81,7 @@ export function FlowSummary({ all, meta }: { all: Record<string, Day[]>; meta: M
   }), [all, meta])
   return (
     <ChartFrame id="aq-flow-summary" title="Flow by site and period — spot-flow ratio, total flow and UV/IR before and after the fix"
-      subtitle="Median and 10–90 % of the daily values per instrument and flow period (config.FLOW_FIX_PERIODS; Addis has none defined and Jacros is not classified). The flow ratio is Flow1/Flow2 of daily mean flows; the reference line is the plotting module's 1.0 and the dashed marker its 2.0 'degraded'. UV/IR is the BCc ratio the flow-fix notebook compared before and after (above 1: stronger UV absorption)."
+      subtitle="Median and 10–90 % of the daily values per instrument and flow period (config.FLOW_FIX_PERIODS; Addis has none defined). The flow ratio is Flow1/Flow2 of daily mean flows; the reference line is the plotting module's 1.0 and the dashed marker its 2.0 'degraded'. UV/IR is the BCc ratio the flow-fix notebook compared before and after (above 1: stronger UV absorption)."
       provenance="FlowFix_BeforeAfter_Analysis §11 (UV/IR before vs after) and its flow-ratio notes · flow_qc_analysis (R, T) · processed_sites/*.pkl">
       <IntervalStrip blocks={blocks} labelWidth={150} noteWidth={48} minPanelWidth={200}
         panels={[

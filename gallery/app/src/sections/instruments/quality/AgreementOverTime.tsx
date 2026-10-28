@@ -72,7 +72,7 @@ export function AgreementOverTime({ code, rows, meta, index }: { code: string; r
     <ChartFrame id="aq-agreement-time" title={`${instrumentName(code, meta)} · agreement over time — when did the relationship change?`}
       subtitle="Per filter: the aethalometer's IR BCc over HIPS BC (HIPS Fabs / MAC), over FTIR EC, and HIPS over FTIR EC, coloured by flow period, with a trailing 30-day mean (at least 3 filters); and the trailing 60-day correlation of IR BCc with HIPS (at least 5 filters). Denominators under 0.01 µg/m³ are left out, as in the explorer. The dashed verticals are the flow-fix boundaries; the y range is the bulk of the ratios, so a few extreme ones sit hollow at the edge."
       provenance="flow_fix_explorer (plot_stacked_timeseries, plot_rolling_correlation, plot_ratio_timeseries) · FTIR EC is a spectral prediction">
-      {!site.length ? <Empty>No filters from {instrumentName(code, meta)} in the current subset (Jacros has no filters of its own; its site is Addis Ababa).</Empty> : <>
+      {!site.length ? <Empty>No filters from {instrumentName(code, meta)} in the current subset.</Empty> : <>
         {shown.map((p) => <SweepPlot key={p.key} series={p.series} xScale="time" xDomain={xDomain} yLabel={p.y} reference={p.reference} yDomain={p.yDomain}
           yClip={p.yDomain ? undefined : [0.02, 0.98]} xMarkers={markers} yMarkers={p.markers} height={170} />)}
         <Key items={[...new Set(site.map((r) => periodOf(r.date, periods)))].map((k): KeyItem => ({ label: PERIOD_LABEL[k], color: PERIOD_COLOR[k] }))

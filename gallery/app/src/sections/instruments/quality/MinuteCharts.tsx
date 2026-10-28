@@ -114,7 +114,7 @@ function Table({ head, rows, caption }: { head: string[]; rows: ReactNode[][]; c
   </table></div>
 }
 
-const NoMinute = ({ name }: { name: string }) => <Empty>No minute record for {name} in the repo's Drive mirror: only Jacros (Addis, MA350-0238) and Pasadena (JPL, MA350-0229) have one.</Empty>
+const NoMinute = ({ name }: { name: string }) => <Empty>No minute record for {name} in the repo's Drive mirror: only Addis (MA350-0238, filed as Jacros) and Pasadena (JPL, MA350-0229) have one.</Empty>
 
 // ------------------------------------------------------------------------------------------ flow QC
 
@@ -373,7 +373,7 @@ export function MinuteWindows({ sites, names, meta, rows }: { sites: Record<stri
   }))
   return (
     <ChartFrame id="aq-min-windows" title="Which day is the filter's day? — the 9am day against the calendar day, the ±1-day mean and the sampling window"
-      subtitle={`On every filter of the current subset that falls inside a minute record (Addis filters on Jacros, JPL filters on Pasadena): ${ch} BCc over the 9am day starting on the filter's start date, the calendar day, the mean of the 9am days either side (data_matching's legacy ±1-day match), and the filter's own sampling window (gallery weather export; at least half its minutes). Day means need 720 minutes. Where a filter's window runs 09:00 to 09:00 (most Addis filters) it is the 9am day itself. The strip is each alternative against the 9am day in percent (thick IQR, thin 2.5–97.5 %); the crossplot draws one alternative against it.`}
+      subtitle={`On every filter of the current subset that falls inside a minute record (Addis filters on the Addis record, JPL filters on Pasadena): ${ch} BCc over the 9am day starting on the filter's start date, the calendar day, the mean of the 9am days either side (data_matching's legacy ±1-day match), and the filter's own sampling window (gallery weather export; at least half its minutes). Day means need 720 minutes. Where a filter's window runs 09:00 to 09:00 (most Addis filters) it is the 9am day itself. The strip is each alternative against the 9am day in percent (thick IQR, thin 2.5–97.5 %); the crossplot draws one alternative against it.`}
       provenance={`research/ftir_ec_phase3/ftir_49_ma350_raw_chain_diagnostics B6 (filter_day_window_comparison), with the sampling window added · ${SOURCE}`}
       controls={<>
         <Segmented label="Channel" value={ch} options={['IR', 'Red']} onChange={setCh} />
