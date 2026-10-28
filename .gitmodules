@@ -1,3 +1,4 @@
 [submodule "gallery/packages/geo-toolkit"]
 	path = gallery/packages/geo-toolkit
 	url = https://github.com/ahzs645/geo-toolkit.git
+	branch = main
