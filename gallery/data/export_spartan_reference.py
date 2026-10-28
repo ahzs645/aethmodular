@@ -16,8 +16,12 @@ which matches HIPS's volume to a median ratio of 1.00 (5-95 %: 0.95-1.03) on 2,5
 Older SS4i filters have no validated flow and get no volume.
 
 FTIR functional groups (alkane CH, alcohol COH, carboxylic COOH, non-acid CO) come from the lab's
-batch 2-3 deliverable. Its OM equals the public OM; the batch 4 deliverable's organic groups run
-about 2x the public OM and the four-site file (its OC and EC agree), so batch 4 is not used.
+deliveries in FG_DELIVERIES: batch 2-3 (2020-01 to 2023-03), batch 4 V2 (2022-11 to 2024-03) and
+batch 5 (2023-05 to 2024-10). Their OC and EC equal the public values and their OM is 0.95-1.0x the
+public OM. Batch 4 V2 (February 2025) replaces the first batch 4 delivery, whose organic groups ran
+about 2x the public OM. A filter is in one delivery only (checked); rows without a group value are
+dropped, and a filter analysed twice within a delivery (batch 5 scanned some on both instruments)
+takes the mean of its analyses, as repeated public values do.
 
 HIPS (Fabs, its uncertainty and MDL, and BC = Fabs / MAC) comes from SPARTAN_HIPS_Batch1-51.v2.csv,
 the same table behind the four focus sites' HIPS in filters.json (identical values there), for every
@@ -73,11 +77,20 @@ VOLUME = 'Sampled volume'
 SS5I_M3_PER_HOUR = 0.3  # 5 L/min
 HIPS_UNITS = {'HIPS Fabs': 'Mm⁻¹', 'HIPS Fabs uncertainty': 'Mm⁻¹', 'HIPS MDL': 'Mm⁻¹', 'HIPS BC': 'µg/m³'}
 HIPS_CSV = ('Spartan', 'SPARTAN_HIPS_Batch1-51.v2.csv')
-# FTIR functional groups, lab batch 2-3 (gallery field names, as in filters.json)
+# FTIR functional groups (gallery field names, as in filters.json), one delivery per lab batch, all in
+# µg/m³. Each: label, file in FG_DIR, the header row, and the delivery's column for each field.
 FG_COLUMNS = {'Alkane CH': 'aCH', 'Alcohol COH': 'aCOH', 'Carboxylic COOH': 'COOH', 'Non-acid CO': 'naCO'}
 FG_FIELDS = list(FG_COLUMNS)
-FG_CSV = ('EC-HIPS-Aeth Comparison', 'Data', 'Lab deliverables', 'FTIR EC',
-          'SPARTAN_FTIR data batch 2 and 3 resubmitted with MDLs.csv')
+FG_DIR = ('EC-HIPS-Aeth Comparison', 'Data', 'Lab deliverables', 'FTIR EC')
+FG_DELIVERIES = [
+    ('batch 2-3', 'SPARTAN_FTIR data batch 2 and 3 resubmitted with MDLs.csv', 0, FG_COLUMNS),
+    ('batch 4 V2', 'SPARTAN_FTIR data_batch 4_ Nov2022 to March2024 V2.xlsx', 1, FG_COLUMNS),
+    ('batch 5', 'spartan5_OCEC_V_F_OM.csv', 0,
+     {'Alkane CH': 'OM_aCH', 'Alcohol COH': 'OM_aCOH', 'Carboxylic COOH': 'OM_COOH', 'Non-acid CO': 'OM_naCO'}),
+]
+# the sample name carries site, number and type: 'Tensor II_SN151_S_AEAZ_0089_1_PM25_10_08_2020_0_csv',
+# 'TENSOR 27_SN2837_SS_AEAZ_0193_1_PM2_5_02_03_2023_0_csv', 'Tensor II_SN151_SM_CHTS-0836-3_PM2.5_01-15-2024_2.0.csv'
+FG_SAMPLE = r'_([A-Z]{4})[-_](\d{4})[-_]\d+[-_](PM2[._]?5)[-_]'
 LAB_FIELDS = [*HIPS_FIELDS, *FG_FIELDS]
 
 
@@ -97,21 +110,38 @@ def load_hips() -> tuple[Path, pd.DataFrame]:
     return path, out[['code', 'date', *HIPS_FIELDS, 'hips_volume']].replace([np.inf, -np.inf], np.nan)
 
 
-def load_functional_groups() -> tuple[Path, pd.DataFrame]:
-    """PM2.5 functional groups per physical filter; the sample name carries site, number and type."""
-    path = maia_data_root().joinpath(*FG_CSV)
-    raw = pd.read_csv(path)
-    # e.g. 'Tensor II_SN151_S_AEAZ_0089_1_PM25_10_08_2020_0_csv'
-    parts = raw['sample'].astype(str).str.extract(r'_([A-Z]{4})_(\d{4})_\d+_(PM2_?5)_')
+def load_delivery(path: Path, header: int, columns: dict[str, str]) -> pd.DataFrame:
+    """One functional-group delivery: PM2.5 rows with a group value, repeat analyses of a filter averaged."""
+    raw = pd.read_excel(path, header=header) if path.suffix == '.xlsx' else pd.read_csv(path, header=header)
+    parts = raw['sample'].astype(str).str.extract(FG_SAMPLE)
     raw = raw[parts[2].notna()].assign(code=parts[0], id=parts[0] + '-' + parts[1])
-    if raw.id.duplicated().any():
-        raise ValueError(f'Repeated PM2.5 filters in {path.name}')
-    out = raw.set_index('id')
-    out['date'] = pd.to_datetime(out.date, errors='coerce')
-    for field, column in FG_COLUMNS.items():
-        out[field] = pd.to_numeric(out[column], errors='coerce')
-    out['lab_volume'] = pd.to_numeric(out.volume, errors='coerce')
-    return path, out[['code', 'date', *FG_FIELDS, 'lab_volume']].replace([np.inf, -np.inf], np.nan)
+    raw['date'] = pd.to_datetime(raw.date, errors='coerce')
+    for field, column in columns.items():
+        raw[field] = pd.to_numeric(raw[column], errors='coerce')
+    raw['lab_volume'] = pd.to_numeric(raw.volume, errors='coerce')
+    raw = raw[raw[FG_FIELDS].notna().any(axis=1)]
+    out = raw.groupby('id').agg(code=('code', 'first'), date=('date', 'first'),
+                                **{f: (f, 'mean') for f in [*FG_FIELDS, 'lab_volume']})
+    repeated = raw.id.value_counts()
+    if repeated.gt(1).any():
+        print(f'  {path.name}: {int(repeated.gt(1).sum())} filters analysed more than once, averaged: {sorted(repeated[repeated.gt(1)].index)}')
+    return out.replace([np.inf, -np.inf], np.nan)
+
+
+def load_functional_groups() -> tuple[list[Path], pd.DataFrame]:
+    """PM2.5 functional groups per physical filter from every lab delivery."""
+    paths, parts = [], []
+    for label, name, header, columns in FG_DELIVERIES:
+        path = maia_data_root().joinpath(*FG_DIR, name)
+        paths.append(path)
+        parts.append(load_delivery(path, header, columns))
+    out = pd.concat(parts)
+    twice = out.index[out.index.duplicated()]
+    if len(twice):
+        raise ValueError(f'Filters in more than one functional-group delivery: {sorted(set(twice))}')
+    for label, part in zip([d[0] for d in FG_DELIVERIES], parts):
+        print(f'  functional groups, {label}: {len(part):,} filters, {part.date.min():%Y-%m} to {part.date.max():%Y-%m}')
+    return paths, out[['code', 'date', *FG_FIELDS, 'lab_volume']]
 
 
 def build_site(path: Path | None, site_name: str, labs: list[tuple[pd.DataFrame, list[str]]]) -> pd.DataFrame:
@@ -176,11 +206,11 @@ def main():
     if not paths:
         raise FileNotFoundError('No local public SPARTAN PM2.5 chemistry files')
     hips_path, hips = load_hips()
-    fg_path, fg = load_functional_groups()
+    fg_paths, fg = load_functional_groups()
     focus = {cfg['code']: name for name, cfg in SITES.items()}
     fields = [*PARAMETERS, *LAB_FIELDS]
     rows, sources = [], {}
-    for path in [*paths.values(), hips_path, fg_path]:
+    for path in [*paths.values(), hips_path, *fg_paths]:
         with path.open('rb') as stream:
             sources[display_path(path)] = hashlib.file_digest(stream, 'sha256').hexdigest()
     # every site with public chemistry, and any HIPS site without it
@@ -208,13 +238,13 @@ def main():
     out = ROOT / 'gallery/app/public/data/spartan_reference.json'
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(dict(schema_version=1, generated=datetime.now(timezone.utc).isoformat(),
-        source='Local mirror of public SPARTAN ChemSpecPM25; SPARTAN_HIPS_Batch1-51.v2.csv (HIPS); SPARTAN FTIR batch 2-3 lab deliverable (functional groups)', source_sha256=sources,
-        note='Public PM2.5 chemistry, one row per physical filter over all available dates. EC/OC/OM are FTIR-derived public reports; the two EC and OC labels refer to the same product. BC (public HIPS) is the public BC where HIPS measured it (fAbs / 10), kept separate from the in-house HIPS BC; BC (public SSR estimate) is the public BC estimated from the HIPS-SSR curve, and Equivalent BC (SSR) the smoke-stain reflectometer value. Elements sharing a name with an ion field are labelled (element). HIPS Fabs, its uncertainty and MDL, and HIPS BC (Fabs / MAC 10) come from HIPS batches 1–51 (PM2.5 filters; blanks and PM10 left out) wherever that table covers a site, including filters without public chemistry. FTIR functional groups come from the lab batch 2-3 deliverable (2020-01 to 2023-03; the batch 4 groups are about 2x the public OM and are not used). Known study exclusions are flagged; other sites retain public reporting quality decisions. No sidebar season/date subset is applied.',
+        source='Local mirror of public SPARTAN ChemSpecPM25; SPARTAN_HIPS_Batch1-51.v2.csv (HIPS); SPARTAN FTIR lab deliveries batch 2-3, batch 4 V2 and batch 5 (functional groups)', source_sha256=sources,
+        note='Public PM2.5 chemistry, one row per physical filter over all available dates. EC/OC/OM are FTIR-derived public reports; the two EC and OC labels refer to the same product. BC (public HIPS) is the public BC where HIPS measured it (fAbs / 10), kept separate from the in-house HIPS BC; BC (public SSR estimate) is the public BC estimated from the HIPS-SSR curve, and Equivalent BC (SSR) the smoke-stain reflectometer value. Elements sharing a name with an ion field are labelled (element). HIPS Fabs, its uncertainty and MDL, and HIPS BC (Fabs / MAC 10) come from HIPS batches 1–51 (PM2.5 filters; blanks and PM10 left out) wherever that table covers a site, including filters without public chemistry. FTIR functional groups come from the lab deliveries batch 2-3 (2020-01 to 2023-03), batch 4 V2 (2022-11 to 2024-03; it replaces the first batch 4 delivery, whose groups ran about 2x the public OM) and batch 5 (2023-05 to 2024-10); a filter analysed twice within a delivery takes the mean. Known study exclusions are flagged; other sites retain public reporting quality decisions. No sidebar season/date subset is applied.',
         fields=[*fields, VOLUME], field_units={**{f: 'µg/m³' for f in [*PARAMETERS, *FG_FIELDS]}, **HIPS_UNITS, VOLUME: 'm³'},
         field_sources={**{f: p + (f' ({METHOD[f].lower()})' if f in METHOD else '') for f, p in PARAMETERS.items()},
                        **{f: f'{HIPS_CSV[1]}: {HIPS_COLUMNS.get(f, "Fabs / MAC")}' for f in HIPS_FIELDS},
-                       **{f: f'{FG_CSV[-1]}: {c}' for f, c in FG_COLUMNS.items()},
-                       VOLUME: f'{HIPS_CSV[1]}: Volume, else {FG_CSV[-1]}: volume, else public Hours_sampled × {SS5I_M3_PER_HOUR} m³/h (SS5i)'},
+                       **{f: '; '.join(f'{name}: {cols[f]}' for _, name, _, cols in FG_DELIVERIES) for f in FG_FIELDS},
+                       VOLUME: f'{HIPS_CSV[1]}: Volume, else the functional-group delivery\'s volume, else public Hours_sampled × {SS5I_M3_PER_HOUR} m³/h (SS5i)'},
         n=len(rows), n_sites=len(codes), rows=rows),
         separators=(',', ':'), allow_nan=False))
     with_hips = sum('HIPS Fabs' in r for r in rows)
