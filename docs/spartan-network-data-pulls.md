@@ -423,3 +423,26 @@ manifest SHA256 re-verified) answered four questions:
   filters** (Kaohsiung 66, Delhi 14, Pretoria/Johannesburg 12, Adama 6). Their
   TOR results are not in SQL; if CSU analysed them as it did Batch 54, they are a
   thermal EC/OC reference at SPARTAN sites.
+
+## October 28 follow-up: AMOD spectra and the calibration convention
+
+`aqrc_followup_exports/20261028_112459_ba004525` (0 errors, hashes verified) holds
+580 FTIR analyses on 556 CSU AMOD filters with all 652 referenced scans. AMOD
+quartz filters have no FTIR analyses; the five Adama PTFE filters have two each.
+
+**The deployed calibrations are reproducible.** Prediction = row-1 intercept +
+Σ b × raw absorbance (−log10 sample/background, each scan interpolated onto the
+2,722-point app grid, no baseline), which gives µg per filter; ÷ sampled volume
+(m³) gives µg/m³. Applied with lot 245's accepted EC set (= lot 241a) to the five
+Adama PTFE spectra, it reproduces the lab's Batch 54 FTIR EC
+(`research/ftir_ec_calibration_2026_06_25/tables/adama_new_ec_by_variant.csv`)
+to 0.974–0.996 of the delivered values. With the 2026-10-19 spectra this can
+regenerate SPARTAN FTIR OC/EC under any of the 20 lot calibrations.
+
+The same export searched `U:\FTIR_spectra\Chelsey_SPARTAN_MAIA` (7,309 files,
+names and CSV headers only). Leads: a batch 4 report **V2**
+(`Spartan batch4\report\…Nov2022 to March2024 V2.xlsx`, 2025-02-03, possibly the
+corrected organics), `Spartan batch4\FG and BLC\`, `Spartan batch5\`, and
+`MAIA\MAIA batch4\FTIR by diff. cal vs. TOR data\` (likely the AMOD quartz TOR).
+[`get_chelsey_share_files.ps1`](../research/ftir_ec_phase3/scripts/get_chelsey_share_files.ps1)
+copies the small files from those folders with a full listing and a verified ZIP.
