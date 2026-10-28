@@ -4,8 +4,12 @@
 # The site is built from the public source repo at a pushed commit, with the data from a
 # release of this repo (gallery-data.tar.gz: gallery/app/public/data, machine paths scrubbed
 # before upload). Nothing built is committed anywhere.
+#
+# Two ways to start it: workflow_dispatch with the two inputs (publish_pages.py), or a push to
+# main that changes deploy-request.json ({"source_sha": "...", "data_tag": "..."}), for a client
+# that can push but not dispatch workflows.
 name: Deploy gallery
-run-name: Deploy gallery · ${{ inputs.source_sha }} · ${{ inputs.data_tag }}
+run-name: Deploy gallery · ${{ inputs.source_sha || 'deploy-request.json' }} · ${{ inputs.data_tag || github.sha }}
 
 on:
   workflow_dispatch:
@@ -16,6 +20,9 @@ on:
       data_tag:
         description: release of this repo holding gallery-data.tar.gz
         required: true
+  push:
+    branches: [main]
+    paths: [deploy-request.json]
 
 permissions:
   contents: read
@@ -30,10 +37,32 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Request
+        if: github.event_name == 'push'
+        uses: actions/checkout@v4
+        with:
+          path: request
+          sparse-checkout: deploy-request.json
+          sparse-checkout-cone-mode: false
+      - name: Inputs
+        id: req
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          DATA_TAG: ${{ inputs.data_tag }}
+        run: |
+          if [ -f request/deploy-request.json ]; then
+            SOURCE_SHA=$(jq -r .source_sha request/deploy-request.json)
+            DATA_TAG=$(jq -r .data_tag request/deploy-request.json)
+          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::source_sha must be a full commit SHA"; exit 1; }
+          [[ "$DATA_TAG" =~ ^data-[0-9a-f]+$ ]] || { echo "::error::data_tag must look like data-<hash>"; exit 1; }
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "data_tag=$DATA_TAG" >> "$GITHUB_OUTPUT"
+          rm -rf request
       - uses: actions/checkout@v4
         with:
           repository: ahzs645/aethmodular
-          ref: ${{ inputs.source_sha }}
+          ref: ${{ steps.req.outputs.source_sha }}
           # the maps and number fields come from @pgmaps/geo-toolkit, the submodule gallery/packages/geo-toolkit
           sparse-checkout: |
             gallery/app
@@ -55,7 +84,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download "${{ inputs.data_tag }}" --repo "${{ github.repository }}" --pattern gallery-data.tar.gz --dir "$RUNNER_TEMP"
+          gh release download "${{ steps.req.outputs.data_tag }}" --repo "${{ github.repository }}" --pattern gallery-data.tar.gz --dir "$RUNNER_TEMP"
           rm -rf gallery/app/public/data && mkdir -p gallery/app/public/data
           tar -xzf "$RUNNER_TEMP/gallery-data.tar.gz" -C gallery/app/public/data
           du -sh gallery/app/public/data
