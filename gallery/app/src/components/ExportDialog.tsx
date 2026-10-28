@@ -11,6 +11,7 @@ import {
   PUB_FONTS, PUB_SHOW, type ExportBackground, type ExportFormat, type Figure, type LegendPlacement, type PubLayout, type PubShow,
 } from '@/lib/export'
 import { XIcon } from '@/components/Icons'
+import { ScrubField } from '@/components/ScrubField'
 
 /**
  * One export control per chart: the button names the format it will save (PNG by
@@ -343,13 +344,12 @@ function ExportDialog({ panel, title, onClose }: { panel: HTMLElement; title: st
                     onChange={(v) => set({ legend: v })} title={hasLegend ? 'Where the legend sits in the file; the chart on the page is not changed' : 'This chart has no legend'} />
                 </div>
                 {hasLegend && <div className="export-row">
-                  <label className="export-range" title={legend === 'shown' ? 'Move the legend (Inside, Right, Bottom, Top) to size it; as on screen the chart is laid out around it' : pub ? "The legend's size; 100 % is the figure's own text size" : "The legend's size; 100 % is its size on the page"}>
+                  <div className="export-range" title={legend === 'shown' ? 'Move the legend (Inside, Right, Bottom, Top) to size it; as on screen the chart is laid out around it' : pub ? "The legend's size; 100 % is the figure's own text size" : "The legend's size; 100 % is its size on the page"}>
                     <span className="combobox-label">Legend size</span>
-                    <input type="range" min={60} max={160} step={5} value={s.legendSize} disabled={legend === 'shown'}
-                      onChange={(e) => set({ legendSize: Number(e.target.value) })} />
-                    <span className="export-range-value">{s.legendSize} %</span>
+                    <ScrubField label="Legend size" value={s.legendSize} min={60} max={160} step={5} unit="%" width={110} disabled={legend === 'shown'}
+                      onChange={(v) => set({ legendSize: v })} />
                     {s.legendSize !== 100 && legend !== 'shown' && <button type="button" className="btn quiet" onClick={() => set({ legendSize: 100 })}>Reset</button>}
-                  </label>
+                  </div>
                 </div>}
                 <div className="export-row">
                   <Segmented label="Background" value={s.format === 'jpeg' ? 'white' : s.background} options={['white', 'transparent'] as ExportBackground[]}

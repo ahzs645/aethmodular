@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import { useColourScheme } from '@/lib/colourSchemes'
 import * as d3 from 'd3'
-import type { FeatureCollection } from 'geojson'
+import { MapLineLayer, MapMarker, MarkerContent, type LngLatPoint } from '@pgmaps/geo-toolkit/map'
+import { greatCircleArc } from '@pgmaps/geo-toolkit/calculations'
+import { GeoMap, type GeoMapHandle } from '@/components/GeoMap'
 import { ChartFrame, ExplainOnly, Note, Segmented, Toggle } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
 import { Legend, useLegend } from '@/components/Legend'
@@ -9,7 +11,6 @@ import { XAxis } from '@/components/Axes'
 import { SweepPlot } from '@/components/SweepPlot'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { loadJson } from '@/lib/data'
 import { useSearchParam } from '@/lib/url'
 import { ADDIS_ALL, FONT, IMPROVE_GREY, INK, themed } from '@/lib/theme'
 import { dotFill } from '@/lib/highlight'
@@ -298,60 +299,78 @@ function NetworkMap({ d }: { d: TorData }) {
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
-  const [world, setWorld] = useState<FeatureCollection | null>(null)
-  useEffect(() => { let live = true; loadJson<FeatureCollection>('world.geojson').then((w) => { if (live) setWorld(w) }).catch(() => {}); return () => { live = false } }, [])
+  const geo = useRef<GeoMapHandle>(null)
   const [of, setOf] = useSearchParam<'Addis' | 'Adama'>('xd-map.of', 'Addis', ['Addis', 'Adama'])
   const [region, setRegion] = useSearchParam<'World' | 'United States'>('xd-map.region', 'World', ['World', 'United States'])
   const [arcsParam, setArcs] = useSearchParam<'on' | 'off'>('xd-map.arcs', 'on', ['on', 'off'])
+  const [projection, setProjection] = useSearchParam<'Flat' | 'Globe'>('xd-map.proj', 'Flat', ['Flat', 'Globe'])
   const arcs = arcsParam === 'on'
   const sites = d.neighbour_sites.filter((s) => s.lat != null && s.lon != null)
   const net = Object.fromEntries(d.network.map((r) => [r.site, r]))
   const addis = net.ETAD, adama = net.ADAMA
   const origin: [number, number] = of === 'Addis' ? [addis.lon!, addis.lat!] : [d.adama_latlon[1], d.adama_latlon[0]]
   const h = Math.max(320, Math.min(520, width * 0.5))
-  const us: GeoJSON.Feature = { type: 'Feature', properties: {}, geometry: { type: 'MultiPoint', coordinates: sites.map((s) => [s.lon!, s.lat!]) } }
-  const projection = region === 'World'
-    ? d3.geoNaturalEarth1().fitExtent([[10, 10], [Math.max(60, width - 10), h - 10]], { type: 'Sphere' })
-    : d3.geoAlbersUsa().fitExtent([[20, 20], [Math.max(80, width - 20), h - 20]], us)
-  const path = d3.geoPath(projection)
   const maxShare = d3.max(sites, (s) => s[of]) ?? 0.01
   const colours = useColourScheme('xd-map', 'sequential', 'Reds')
   const ramp = d3.interpolateRgbBasis(colours.stops)
   const colour = d3.scaleSequential((t: number) => ramp(0.15 + 0.85 * t)).domain([0, maxShare])
   const rN = d3.scaleSqrt().domain([0, d3.max(d.network, (r) => r.filters) ?? 1]).range([1.5, 9])
   const top = [...sites].sort((a, b) => b[of] - a[of]).slice(0, 12)
-  const proj = (lon: number, lat: number) => projection([lon, lat])
+  // the world frames Ethiopia and the IMPROVE network together; the US view the contiguous states
+  // (Fit sites takes in Alaska, Hawaii and the Virgin Islands)
+  const frame = useMemo<LngLatPoint[]>(() => region === 'World' ? [...sites.map((s) => [s.lon!, s.lat!] as const), origin] : [[-125, 24], [-66, 50]],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [region, sites.length])
+  // great-circle arcs (geo-toolkit), coloured and weighted by the share; drawn as a MapLibre line layer
+  const arcLines = useMemo<GeoJSON.FeatureCollection>(() => ({ type: 'FeatureCollection', features: top.map((s) => ({
+    type: 'Feature', properties: { id: s.site, c: colour(s[of]), w: 0.8 + 6 * s[of] / maxShare },
+    geometry: { type: 'LineString', coordinates: greatCircleArc(origin, [s.lon!, s.lat!], { steps: 48 }) },
+  })) }),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [of, colours.stops.join(), sites.length])
   return (
     <ChartFrame id="xd-map" source={source('NetworkMap')} provenance={runLine(d)}
       title="The TOR network the calibration learned from — and where Addis borrows from"
-      subtitle={`Every IMPROVE site in the calibration set (size = filters), coloured by its share of ${of}'s nearest spectral neighbours (the 500 most similar IMPROVE spectra per filter, averaged over ${of === 'Addis' ? 'the Addis evaluation filters' : 'the five Adama pilot filters'}). Arcs join ${of} to its twelve most-borrowed TOR sites. SPARTAN Addis and the Adama pilot are marked in Ethiopia.`}
+      subtitle={`Every IMPROVE site in the calibration set (size = filters), coloured by its share of ${of}'s nearest spectral neighbours (the 500 most similar IMPROVE spectra per filter, averaged over ${of === 'Addis' ? 'the Addis evaluation filters' : 'the five Adama pilot filters'}). Great-circle arcs join ${of} to its twelve most-borrowed TOR sites. SPARTAN Addis and the Adama pilot are marked in Ethiopia.`}
       controls={<><Segmented label="Neighbours of" value={of} options={['Addis', 'Adama'] as const} onChange={setOf} /><Segmented label="Region" value={region} options={['World', 'United States'] as const} onChange={setRegion} />
-        {region === 'World' && <Toggle label="Arcs" checked={arcs} onChange={(v) => setArcs(v ? 'on' : 'off')} />}</>}>
+        <Segmented label="Projection" value={projection} options={['Flat', 'Globe'] as const} onChange={setProjection} />
+        <Toggle label="Arcs" checked={arcs} onChange={(v) => setArcs(v ? 'on' : 'off')} />
+        <button type="button" className="btn quiet" onClick={() => geo.current?.fit(sites.map((s) => [s.lon!, s.lat!]), { pad: 0.08 })}>Fit sites</button></>}>
       <div ref={ref} style={{ position: 'relative' }}>
-        <svg width={width} height={h} fontFamily={FONT.family} style={{ display: 'block' }}>
-          {region === 'World' && <path d={path({ type: 'Sphere' }) ?? ''} fill={INK.sea} stroke={INK.border} />}
-          {world && <g>{world.features.map((f, i) => <path key={i} d={path(f) ?? ''} fill={INK.land} stroke={INK.panel} strokeWidth={0.5} />)}</g>}
-          {region === 'World' && arcs && top.map((s) => <path key={`a${s.site}`} d={path({ type: 'LineString', coordinates: [origin, [s.lon!, s.lat!]] }) ?? ''}
-            fill="none" stroke={colour(s[of])} strokeOpacity={0.75} strokeWidth={0.8 + 6 * s[of] / maxShare} />)}
-          {[...sites].sort((a, b) => a[of] - b[of]).map((s) => { const p = proj(s.lon!, s.lat!); if (!p) return null
-            const n = net[s.site]
-            return <circle key={s.site} cx={p[0]} cy={p[1]} r={rN(n?.filters ?? 1)} fill={s[of] > 0 ? colour(s[of]) : INK.panel} stroke={s[of] > 0 ? '#7a2d0b' : IMPROVE_GREY} strokeWidth={0.6}
-              onMouseEnter={(e) => tip.show(e, [`${s.name} (${s.site})${n?.urban ? ' · urban' : ''}`, `${n?.filters ?? '?'} calibration filters (${pct(s['IMPROVE share of filters'])} of IMPROVE)`,
-                `share of Addis neighbours ${pct(s.Addis)} · of Adama ${pct(s.Adama)}`, `median TOR EC ${f2(n?.ec_ug)} µg/filter, ${f2(n?.ec_ugm3)} µg/m³`])} onMouseLeave={tip.hide} /> })}
-          {region === 'World' && [[addis, 'SPARTAN Addis', ADDIS_ALL], [adama, 'Adama pilot', ADAMA]].map(([r, label, c]) => { const row = r as NetRow
-            const p = proj(row.lon!, row.lat!); if (!p) return null
-            return <g key={label as string} onMouseEnter={(e) => tip.show(e, [label as string, `${row.filters} filters · median EC ${f2(row.ec_ug)} µg/filter`, `median distance percentile ${Math.round(row.distance)}`])} onMouseLeave={tip.hide}>
-              <path d={d3.symbol(label === 'Adama pilot' ? d3.symbolDiamond : d3.symbolStar, 160)() ?? ''} transform={`translate(${p[0]},${p[1]})`} fill={c as string} stroke={INK.text} strokeWidth={1} />
-              <text x={p[0] + 9} y={p[1] + (label === 'Adama pilot' ? 12 : -6)} fontSize={10.5} fontWeight={700} fill={INK.text} stroke={INK.panel} strokeWidth={3} paintOrder="stroke">{label as string}</text>
-            </g> })}
-        </svg>
+        <GeoMap ref={geo} height={h} globe={projection === 'Globe'} frame={frame} frameKey={region} frameOptions={{ pad: 0.05, maxZoom: 5 }}
+          label={`IMPROVE calibration sites coloured by their share of ${of}'s nearest neighbours`}>
+          <MapLineLayer data={arcLines} visible={arcs} interactive={false} color={['get', 'c']} width={['get', 'w']} opacity={0.75} />
+          {[...sites].sort((a, b) => a[of] - b[of]).map((s) => {
+            const n = net[s.site], r = rN(n?.filters ?? 1)
+            return <MapMarker key={s.site} longitude={s.lon!} latitude={s.lat!}>
+              <MarkerContent className="bubble-marker" style={{ cursor: 'default' }}>
+                <svg width={2 * r + 4} height={2 * r + 4} viewBox={`${-r - 2} ${-r - 2} ${2 * r + 4} ${2 * r + 4}`}
+                  onMouseEnter={(e) => tip.show(e, [`${s.name} (${s.site})${n?.urban ? ' · urban' : ''}`, `${n?.filters ?? '?'} calibration filters (${pct(s['IMPROVE share of filters'])} of IMPROVE)`,
+                    `share of Addis neighbours ${pct(s.Addis)} · of Adama ${pct(s.Adama)}`, `median TOR EC ${f2(n?.ec_ug)} µg/filter, ${f2(n?.ec_ugm3)} µg/m³`])} onMouseLeave={tip.hide}>
+                  <circle r={r} fill={s[of] > 0 ? colour(s[of]) : INK.panel} stroke={s[of] > 0 ? '#7a2d0b' : IMPROVE_GREY} strokeWidth={0.6} />
+                </svg>
+              </MarkerContent>
+            </MapMarker>
+          })}
+          {([[addis, 'SPARTAN Addis', ADDIS_ALL], [adama, 'Adama pilot', ADAMA]] as const).map(([row, label, c]) => {
+            const lon = label === 'Adama pilot' ? d.adama_latlon[1] : row.lon!, lat = label === 'Adama pilot' ? d.adama_latlon[0] : row.lat!
+            return <MapMarker key={label} longitude={lon} latitude={lat}>
+              <MarkerContent className="bubble-marker" style={{ cursor: 'default' }}>
+                <svg width={22} height={22} viewBox="-11 -11 22 22" onMouseEnter={(e) => tip.show(e, [label, `${row.filters} filters · median EC ${f2(row.ec_ug)} µg/filter`, `median distance percentile ${Math.round(row.distance)}`])} onMouseLeave={tip.hide}>
+                  <path d={d3.symbol(label === 'Adama pilot' ? d3.symbolDiamond : d3.symbolStar, 160)() ?? ''} fill={c} stroke={INK.text} strokeWidth={1} />
+                </svg>
+                <span data-export="text" className="map-marker-label" style={label === 'Adama pilot' ? { top: 'calc(50% + 9px)' } : { bottom: 'calc(50% + 9px)' }}>{label}</span>
+              </MarkerContent>
+            </MapMarker>
+          })}
+        </GeoMap>
         {tip.node}
       </div>
       <div className="legend" style={{ justifyContent: 'center' }}>
         <ColorLegend scale={colour} scheme={colours.scheme} label={`share of ${of}'s nearest neighbours`} format={(v) => pct(v)} />
         <Legend items={[{ label: 'SPARTAN Addis', color: ADDIS_ALL }, { label: 'Adama pilot (TOR)', color: ADAMA }, { label: 'IMPROVE site never chosen', color: IMPROVE_GREY, shape: 'ring' }]} />
       </div>
-      <Note>Adama is placed at the pilot sampler's recorded position. Neighbours use the spline spectra and the 600–3600 cm⁻¹ similarity region without CO₂ and PTFE bands.</Note>
+      <Note>Adama is placed at the pilot sampler's recorded position. Neighbours use the spline spectra and the 600–3600 cm⁻¹ similarity region without CO₂ and PTFE bands. Drag to pan, scroll to zoom; Globe shows the arcs as the routes they are.</Note>
     </ChartFrame>
   )
 }

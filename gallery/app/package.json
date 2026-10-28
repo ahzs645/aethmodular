@@ -11,10 +11,13 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "node --test 'src/lib/*.test.mjs' 'src/sections/**/*.test.mjs'",
-    "index:charts": "node scripts/build-chart-index.mjs"
+    "index:charts": "node scripts/build-chart-index.mjs",
+    "postinstall": "node scripts/ensure-toolkit.mjs",
+    "toolkit": "node scripts/ensure-toolkit.mjs --force"
   },
   "dependencies": {
     "@firstform/json-url": "^4.2.0",
+    "@pgmaps/geo-toolkit": "file:../packages/geo-toolkit",
     "@react-querybuilder/core": "8.24.3",
     "buffer": "^6.0.3",
     "d3": "^7.9.0",
@@ -22,6 +25,7 @@
     "d3-sankey": "^0.12.3",
     "json-logic-engine": "5.0.7",
     "jspdf": "^4.2.1",
+    "maplibre-gl": "^5.24.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-querybuilder": "8.24.3",

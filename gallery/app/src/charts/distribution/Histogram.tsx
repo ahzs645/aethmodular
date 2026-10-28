@@ -15,6 +15,7 @@ import { useChartLabel, useFitHeight } from '@/lib/chartFit'
 import { MeasurementControl } from '@/components/AxisFieldPopover'
 import { useTileSetting } from '@/lib/url'
 import { ChartAside } from '@/lib/singleView'
+import { ScrubField } from '@/components/ScrubField'
 
 const LAYOUTS = ['Overlay', 'Density', 'Small multiples', 'Mirror'] as const
 type Layout = (typeof LAYOUTS)[number]
@@ -89,11 +90,10 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
       <Select label="Top" value={aName} options={groupNames} onChange={setMirrorA} />
       <Select label="Bottom" value={bName} options={groupNames.filter((n) => n !== aName)} onChange={setMirrorB} />
     </> },
-    { key: 'bins', when: (c) => c.layout !== 'Density', node: () => <label className="control" title="Number of bins across the displayed range">
+    { key: 'bins', when: (c) => c.layout !== 'Density', node: () => <span className="control" title="Number of bins across the displayed range">
       Bins
-      <input type="range" min={8} max={80} step={1} value={bins} onChange={(e) => setBins(Number(e.target.value))} style={{ width: 110 }} />
-      <input type="number" aria-label="Number of bins" min={8} max={80} step={1} value={bins} onChange={e => { if (e.target.value) setBins(Math.round(Number(e.target.value))) }} className="range-value" />
-    </label> },
+      <ScrubField label="Number of bins" value={bins} onChange={setBins} min={8} max={80} step={1} width={90} />
+    </span> },
     { key: 'normalise', label: 'Normalise to fraction', toggle: true, default: true },
     { key: 'density', label: 'Density curve', toggle: true, default: true, hidden: true, when: (c) => c.layout !== 'Density' },
   ], { nSeries: allSeries.length, nGroups: groupNames.length })

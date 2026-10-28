@@ -389,6 +389,17 @@ family genuinely needs a different value.
 When creating a new notebook, follow the `Example_Modular_Analysis.ipynb` or
 `addis_01_source_apportionment.ipynb` pattern.
 
+## Gallery maps and controls (geo-toolkit submodule)
+
+The gallery's maps and drag-or-type number fields come from
+[`@pgmaps/geo-toolkit`](https://github.com/ahzs645/geo-toolkit), the git
+submodule `gallery/packages/geo-toolkit` (run `git submodule update --init`).
+Build new map features on it: `gallery/app/src/components/GeoMap.tsx` (offline
+MapLibre basemap) and `components/ScrubField.tsx` (number fields; use it, not
+`<input type="range">`). What the toolkit lacks goes into the toolkit repo
+first (its AGENTS.md lists the checks), then the submodule pointer moves here.
+`npm install` in `gallery/app` builds it (`scripts/ensure-toolkit.mjs`).
+
 ## Gallery data (rebuild, don't hand-edit)
 
 `gallery/app/public/data/` is generated. `gallery/data/rebuild.py` lists every

@@ -123,7 +123,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
     { key: 'colorField', when: (c) => c.colorBy === 'Value', node: () => <FieldSelect label="by" value={colorField} meta={meta} onChange={(f) => { setColorField(f); setHidden(new Set()) }} extraOptions={hasPmf ? [PMF_COLOUR] : []} /> },
     { key: 'size', node: () => <FieldSelect label="Size" value={sizeField} meta={meta} onChange={setSizeField} extraOptions={[NO_SIZE]} title="Bubble plot: mark area proportional to a fourth measurement" /> },
     // several panels: the gallery's Panel axes (lib/panelAxes), here as well as in the sidebar
-    { key: 'panelAxes', when: (c) => c.layout !== 'Combined', node: (c) => <PanelAxesControl dims={ROWED(c.layout) ? ['site', 'season'] : ['site']} /> },
+    { key: 'panelAxes', when: (c) => c.layout !== 'Combined', node: (c) => <PanelAxesControl dims={ROWED(c.layout) ? ((c.sites as number) > 1 ? ['site', 'season'] : ['season']) : ['site']} /> },
     { key: 'fitLines', label: 'Fit lines', toggle: true, default: true },
     fitGroupingOption({ bind: [chosenGrouping, setGrouping as (v: never) => void],
       when: (c) => !!c.fitLines && (c.estimators as number) > 0 && !ROWED(c.layout),

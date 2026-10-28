@@ -9,6 +9,7 @@ import { fidProps } from '@/lib/filterEdits'
 import { fmt, regression, type RegressionStats } from '@/lib/stats'
 import { FONT, INK, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { ScrubField } from '@/components/ScrubField'
 
 const DRY = '#d08c2c', HUMID = '#2c7fb8'
 const SWEEP = d3.range(30, 85, 2.5)
@@ -65,9 +66,8 @@ export function HumidityAgreement({ rows, meta, xField, yField, rhField }: { row
       subtitle={`${yField} against ${xField}, split at ${thr} % relative humidity over each filter's window; OLS fit per half. The sweep shows both slopes at every threshold, with the count of filters on each side (thin lines). With several sites picked the halves mix sites, so pick one for the notebook's question.`}
       provenance="meteorology_source_interaction §4 · meteorology_revisions R2, R2C (threshold sweep)"
       controls={<>
-        <label className="control">RH threshold
-          <input type="range" min={30} max={82.5} step={2.5} value={thr} onChange={(e) => setThr(Number(e.target.value))} style={{ width: 110 }} />
-          <span style={{ fontFamily: 'var(--mono)' }}>{thr} %</span></label>
+        <span className="control">RH threshold
+          <ScrubField label="RH threshold" value={thr} onChange={setThr} min={30} max={82.5} step={2.5} unit="%" width={110} /></span>
       </>}>
       <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
         {pts.length < MIN_N * 2 ? <Empty>Fewer than {MIN_N * 2} filters carry {xField}, {yField} and {rhField} in this subset.</Empty> : <>

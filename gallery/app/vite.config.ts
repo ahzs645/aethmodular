@@ -27,6 +27,9 @@ export default defineConfig(({ mode }) => {
         ...omitted.map((key) => ({ find: new RegExp(`^@/sections/${key}$`), replacement: src('sections/omitted.ts') })),
         { find: '@', replacement: src('') },
       ],
+      // the toolkit is linked from gallery/packages/geo-toolkit, whose own node_modules hold dev copies
+      // of these: one React and one MapLibre for the whole page
+      dedupe: ['react', 'react-dom', 'maplibre-gl'],
     },
     server: { port: 5178, open: true },
     build: { outDir: 'dist' },

@@ -127,7 +127,8 @@ export function buildIndex() {
   const files = walk(SRC).map(rel)
   const importers = new Map()
   for (const f of files) {
-    for (const m of read(f).matchAll(/from\s+'(@\/|\.\.?\/)([^']+)'/g)) {
+    // static imports and lazy ones (import('@/…')), so a chart split out of the main bundle keeps its tab
+    for (const m of read(f).matchAll(/(?:from\s+|import\()'(@\/|\.\.?\/)([^']+)'/g)) {
       const target = m[1] === '@/' ? m[2] : path.posix.normalize(path.posix.join(path.posix.dirname(f), m[1] + m[2]))
       const hit = files.find((x) => x === target || x === `${target}.tsx` || x === `${target}.ts`)
       if (hit) importers.set(hit, [...(importers.get(hit) ?? []), f])

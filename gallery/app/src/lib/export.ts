@@ -126,6 +126,20 @@ export function composeFigure(panel: HTMLElement, sites: readonly ExportSite[] =
 
   const plots: Plot[] = []
   const sizes: number[] = []
+  // a map's WebGL basemap (components/GeoMap keeps its drawing buffer): its pixels as an <image>, first so
+  // the markers' SVGs sit on top. It is a raster in the theme on screen; lib/themeCss cannot relight it.
+  for (const canvas of panel.querySelectorAll<HTMLCanvasElement>('canvas.maplibregl-canvas')) {
+    if (canvas.closest(SKIP) || !visible(canvas)) continue
+    let href: string
+    try { href = canvas.toDataURL('image/png') } catch { continue }
+    const r = canvas.getBoundingClientRect()
+    const img = document.createElementNS(NS, 'image')
+    img.setAttribute('x', String(r.left)); img.setAttribute('y', String(r.top))
+    img.setAttribute('width', String(r.width)); img.setAttribute('height', String(r.height))
+    img.setAttribute('preserveAspectRatio', 'none')
+    img.setAttribute('href', href)
+    chart.push({ els: [img], box: boxOf(r) })
+  }
   for (const svg of svgs) {
     const r = svg.getBoundingClientRect()
     const areas = plotAreas(svg)

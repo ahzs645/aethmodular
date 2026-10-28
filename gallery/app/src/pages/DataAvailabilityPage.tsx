@@ -16,6 +16,7 @@ import { INK, FONT } from '@/lib/theme'
 import { HIDDEN_DUPLICATES } from '@/fieldLineage'
 import type { NotebookAvailability } from '@/lib/notebookAvailability'
 import { AVAIL_COLOR, AeronetAvailability, AvailabilitySources, NetworkAvailability, PriorCoverage, StudyAvailability } from './NotebookAvailability'
+import { ScrubField } from '@/components/ScrubField'
 
 interface InventorySite { code: string; name: string; location?: string; n_filters: number; date_min: string; date_max: string; coverage?: Record<string, number>; filters?: string }
 interface Inventory { generated?: string; note?: string; fields?: string[]; field_units: Record<string, string>; field_groups?: MetaFile['field_groups']; sites: InventorySite[] }
@@ -71,7 +72,7 @@ function FilterAvailabilityExplorer() {
     <ChartFrame id="availability-filter-inventory" title="Filter inventory — sites, measurements and sampling history" subtitle="Coverage of the locally exported records. A site with no recent samples may have stopped sampling or its export may be incomplete. EC/OC at SPARTAN are FTIR-derived; IMPROVE carbon is thermal-optical. Inventory spans are sample dates, not continuous measurement coverage. Counts include exported exclusions so availability is independent of chart filters."
       about={<p>{network === 'IMPROVE' ? 'Validated IMPROVE cleaned population: retained samples have positive, available EC and absorption. This is a paired analysis population, not every historical sample. Sites without map coordinates are included.' : 'SPARTAN gallery filter inventory. The fallback inventory describes public PM2.5 chemistry; its filter histories can additionally include HIPS-only records. Network product coverage is shown in the separate coverage view.'}</p>} controls={<>
       <Select label="Network" value={network} options={['SPARTAN', 'IMPROVE']} onChange={v => { setNetwork(v); setSite(''); setField('') }} />
-      <label className="control">No samples in past <input className="range-value" aria-label="Inactivity threshold in years" type="number" min={0} max={100} step={1} value={years} onChange={e => { if (e.target.value !== '') setYears(String(Math.max(0, Math.min(100, +e.target.value)))) }} /> years</label>
+      <span className="control">No samples in past <ScrubField label="Inactivity threshold in years" value={years} onChange={v => setYears(String(v))} min={0} max={100} step={1} unit="yr" width={78} /></span>
       <label className="control">As of <input className="select" aria-label="Availability reference date" type="date" value={asOf} onChange={e => { if (e.target.value) setAsOf(e.target.value) }} /></label>
       <Select label="Sampling" value={status} options={['All', 'Recent samples', 'No recent samples', 'No samples']} onChange={setStatus} />
       <label className="control">Search sites <input className="select" type="search" value={query} onChange={e => setQuery(e.target.value)} /></label>

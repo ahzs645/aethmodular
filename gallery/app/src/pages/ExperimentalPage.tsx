@@ -1,5 +1,6 @@
+import { lazy, Suspense } from 'react'
 import { PageToc } from '@/components/PageToc'
-import { ChartFrame, Note } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { AreaHeader } from '@/components/AreaHeader'
 import { useExport } from '@/lib/data'
 import { EXPERIMENTS } from '@/experiments'
@@ -10,8 +11,9 @@ import { AttributionStudy } from '@/pages/experimental/AttributionStudy'
 import { SelectorStudy } from '@/pages/experimental/SelectorStudy'
 import { ForwardStudy } from '@/pages/experimental/ForwardStudy'
 import { FixesStudy } from '@/pages/experimental/FixesStudy'
-import { TorStudy } from '@/pages/experimental/TorStudy'
 import { LotStudy } from '@/pages/experimental/LotStudy'
+// the TOR study draws its network on a MapLibre map, so it (and MapLibre) loads when it is opened
+const TorStudy = lazy(() => import('@/pages/experimental/TorStudy').then((m) => ({ default: m.TorStudy })))
 
 /**
  * Experimental: analyses still being worked out, one subpage per test of the 22 Oct
@@ -32,7 +34,7 @@ export function ExperimentalPage({ experiment, onPick }: { experiment: string; o
       {experiment === 'forward' && <ForwardStudy />}
       {experiment === 'fixes' && <FixesStudy />}
       {experiment === 'lots' && <LotStudy />}
-      {experiment === 'tor' && <TorStudy />}
+      {experiment === 'tor' && <Suspense fallback={<Empty>Loading the TOR study…</Empty>}><TorStudy /></Suspense>}
     </PageToc>
   )
 }

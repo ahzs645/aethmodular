@@ -34,15 +34,22 @@ jobs:
         with:
           repository: ahzs645/aethmodular
           ref: ${{ inputs.source_sha }}
-          sparse-checkout: gallery/app
+          # the maps and number fields come from @pgmaps/geo-toolkit, the submodule gallery/packages/geo-toolkit
+          sparse-checkout: |
+            gallery/app
+            gallery/packages
+          submodules: true
           fetch-depth: 1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: gallery/app/package-lock.json
+          cache-dependency-path: |
+            gallery/app/package-lock.json
+            gallery/packages/geo-toolkit/package-lock.json
       - name: Install
         working-directory: gallery/app
+        # postinstall (scripts/ensure-toolkit.mjs) installs and builds the toolkit submodule
         run: npm ci --no-audit --no-fund
       - name: Data snapshot
         env:

@@ -35,8 +35,7 @@ import { CorrelationRanking } from '@/charts/ranking/CorrelationRanking'
 import { SiteRadar } from '@/charts/ranking/SiteRadar'
 import { ParallelCoordinates } from '@/charts/ranking/ParallelCoordinates'
 import { CompositionTreemap } from '@/charts/partOfWhole/CompositionTreemap'
-import { SiteBubbleMap } from '@/charts/map/SiteBubbleMap'
-import { SpartanCompositionMap } from '@/charts/map/SpartanCompositionMap'
+import { SiteBubbleMap, SpartanCompositionMap } from '@/charts/map/lazy'
 import { MethodSankey } from '@/charts/flow/MethodSankey'
 import { SourceStack } from '@/charts/pmf/SourceStack'
 import { SourceSeasonality } from '@/charts/pmf/SourceSeasonality'
@@ -86,6 +85,7 @@ import { GlossaryButton } from '@/components/Glossary'
 import { PresentationProvider, PresentationSwitch, type Presentation } from '@/lib/presentation'
 import { useSearchParam } from '@/lib/url'
 import { CommandPaletteButton } from '@/components/CommandPalette'
+import { UndoToast } from '@/components/UndoToast'
 import { HeaderNavProvider, useHeaderNav } from '@/lib/headerNav'
 import { NavMenu, type NavGroup, type NavItem } from '@/components/NavMenu'
 import { SidebarIcon, SingleChartIcon, XIcon } from '@/components/Icons'
@@ -1507,6 +1507,7 @@ function HeaderTools() {
       <span className="header-display"><DisplayToggles /></span>
       <CommandPaletteButton />
       {/* on a phone these two fold into the ⋯ menu, with the display toggles */}
+      <UndoToast />
       <span className="header-wide"><GlossaryButton /><ViewsMenu /></span>
       <HeaderMore display={<DisplayToggles />} />
     </span>

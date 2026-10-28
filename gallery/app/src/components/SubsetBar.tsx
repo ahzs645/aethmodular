@@ -28,6 +28,7 @@ import { defaultRuleFor, type DynRule } from '@/lib/dynamicSeasons'
 import { DEFAULT_RAIN_RULE, type RainRule } from '@/lib/rainSeasons'
 import { XIcon } from '@/components/Icons'
 import { CiteRef } from '@/components/CiteRef'
+import { ScrubField } from '@/components/ScrubField'
 
 export interface SubsetCaps {
   /** the tab's charts respond to the season filter */
@@ -308,9 +309,10 @@ export function SubsetBar({
               title="Data: 0 always visible, negatives kept · From 0,0: both axes start at zero (default) · Show intercept: keep all points and mark fitted intercepts with compact margins"
             />
             <Toggle label="Log axes" checked={s.axes.log} onChange={(v) => a.onAxes({ ...s.axes, log: v })} />
-            <Segmented label="Panel axes" value={(s.axes.panels ?? 'Shared') as any} options={PANEL_AXES as any}
+            {/* one site: Per site is Shared, and the only multi-panel view left (its seasons) offers Shared / Own on the chart */}
+            {s.siteItems.filter((it) => it.selected).length > 1 && <Segmented label="Panel axes" value={(s.axes.panels ?? 'Shared') as any} options={PANEL_AXES as any}
               onChange={(v: string) => a.onAxes({ ...s.axes, panels: v as AxesOpts['panels'] })}
-              title="Several panels: Shared gives every panel the same range, so slopes and levels compare by eye · Per site (per-season layout): the seasons of one site share a range · Own zooms each panel to its own data. With the 1:1 line on, each panel stays square with equal x and y spans." />
+              title="Several panels: Shared gives every panel the same range, so slopes and levels compare by eye · Per site (per-season layout): the seasons of one site share a range · Own zooms each panel to its own data. With the 1:1 line on, each panel stays square with equal x and y spans." />}
             {explain && <span className="row-note">applies to the scatterplot, hexbin and connected scatter together</span>}
           </Row>
         </>
@@ -332,10 +334,15 @@ export function SubsetBar({
           <Segmented value={s.basis === 'mass' ? 'Mass per filter' : 'Concentration'} options={['Concentration', 'Mass per filter'] as any}
             onChange={(v: string) => a.onBasis!(v === 'Mass per filter' ? 'mass' : 'conc')}
             title="Concentration: µg/m³ in the air. Mass per filter: µg on the filter (concentration × sampled volume), what FTIR sees. IMPROVE samples about 33 m³ a day, SPARTAN about 7." />
-          <Combobox label="MAC" value={String(s.mac ?? s.exportMac ?? 10)} minWidth={70}
-            title="Mass absorption cross-section (m²/g) turning HIPS absorption into BC: HIPS BC = Fabs / MAC. It multiplies the absorption axis, so it scales a fit's slope; the intercept stays put for OLS and moves only slightly for Deming (fixed error ratio)."
-            options={MAC_CHOICES.map((m) => ({ key: String(m), label: m === s.exportMac ? `${m} (export)` : String(m) }))}
-            onChange={(v) => a.onMac!(Number(v) === s.exportMac ? null : Number(v))} />
+          <span className="control"
+            title="Mass absorption cross-section (m²/g) turning HIPS absorption into BC: HIPS BC = Fabs / MAC. It multiplies the absorption axis, so it scales a fit's slope; the intercept stays put for OLS and moves only slightly for Deming (fixed error ratio). Drag sideways or click to type.">
+            MAC
+            <ScrubField label="MAC (m²/g)" value={s.mac ?? s.exportMac ?? 10} min={MAC_CHOICES[0]} max={MAC_CHOICES[MAC_CHOICES.length - 1]} step={0.1}
+              format={(m) => String(Number(m.toFixed(1)))} unit="m²/g" width={96}
+              onChange={(m) => a.onMac!(m === s.exportMac ? null : m)} />
+            {s.mac != null && s.mac !== s.exportMac && <button type="button" className="btn quiet" title="Back to the MAC the data was exported with"
+              onClick={() => a.onMac!(null)}>Export ({s.exportMac ?? 10})</button>}
+          </span>
           {s.basis === 'mass' && s.withVolume && <span className="method-note" style={{ display: 'block' }}>
             {s.withVolume[0].toLocaleString()} of {s.withVolume[1].toLocaleString()} filters in view have a sampled volume; the rest drop out
           </span>}

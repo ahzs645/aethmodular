@@ -158,10 +158,26 @@ view. Regenerate its compact summaries with
 `uv run python gallery/data/export_spartan_map.py`.
 
 ```bash
+git submodule update --init gallery/packages/geo-toolkit
 cd gallery/app
-npm install
+npm install          # postinstall installs and builds the toolkit (scripts/ensure-toolkit.mjs)
 npm run dev          # http://localhost:5178
 ```
+
+**Maps and number fields come from geo-toolkit.** The maps (bubble map, SPARTAN
+composition, the site picker's Map… dialog, the TOR study's network map) and the
+drag-or-type number fields are built on
+[`@pgmaps/geo-toolkit`](https://github.com/ahzs645/geo-toolkit), pinned as the
+git submodule `gallery/packages/geo-toolkit` and linked from `package.json`
+(`file:../packages/geo-toolkit`). `components/GeoMap` wraps its MapLibre `Map`
+over the offline `world.geojson` (no tile server), with a Flat / Globe toggle;
+`components/ScrubField` wraps its `ScrubNumberField` (drag sideways, click to
+type, arrow keys). The SPARTAN composition's Figure view is the toolkit's
+`DonutRingMap`, its Map view `MapDonutMarker`s. Toolkit changes go to that
+repository first: commit and push there, then move the submodule pointer here
+and run `node scripts/ensure-toolkit.mjs` (or `npm run toolkit` to force a
+rebuild). The maps load lazily (`charts/map/lazy.tsx`), so MapLibre is fetched
+only when a map is first shown.
 
 (From the Claude desktop app the same server is registered as `gallery` in
 `.claude/launch.json`.)
@@ -553,6 +569,13 @@ pinned filter are all in the hash:
 
 Copy the link into a message or a notebook and it reopens exactly that view.
 The back button and a pasted link both apply.
+
+Because every setting is in the URL, **⌘Z / Ctrl+Z undoes** the last change to
+the view (sites, exclusions, dates, seasons, fields, chart options, dashboard
+tiles) and **⇧⌘Z / Ctrl+Y redoes** it (`lib/undo`, `lib/undoHistory`). Writes
+within half a second are one step (a drag on a number field is one undo), only
+changes that follow your own click, key or edit are recorded, and text fields
+keep the browser's own undo. A note at the bottom says what came back.
 
 ## Linked views: hover, click, and the sample drawer
 
