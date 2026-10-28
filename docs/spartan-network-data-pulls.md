@@ -374,3 +374,20 @@ that a public measurement did not happen because this database lacks its raw row
 `hips.AnalysisFlags`, `hips.CalibrationSetFilters`, `hips.QcSamples` and
 `hips.QcSampleTypes` were empty in this source; an export cannot supply absent
 calibration-filter membership or QC history.
+
+## October 28 survey: no functional-group results in SQL
+
+A read-only metadata survey of every database the login can open (`Networks_1_0`
+and `Improve_2.1`; 324 objects, 2,955 columns) found **no stored FTIR results** for
+SPARTAN: no functional-group parameters (aCH, aCOH, COOH, naCO, FTIR OM) in
+`analysis.Parameters` or any column, and no results table in `Networks_1_0`
+(`qcarbon` is empty). `ftir.Calibrations` (54,460 rows) holds coefficients, not
+results: one `(Wavenumber, b)` vector per `ftir.CalibrationSets` row, all 20 of them
+OC/EC by lot (234, 241/241a, 245, 248, 250, 251, 253, a dust-site set). Their
+comments point at the lab share (`U:/FTIR_spectra/Chelsey_SPARTAN_MAIA/…`), which
+is where the functional-group deliveries should be requested or looked for.
+
+[`get_networks_extras.ps1`](../research/ftir_ec_phase3/scripts/get_networks_extras.ps1)
+exports those calibrations, the Adama `csu_amod` filters (gravimetric mass
+difference and volume), the batch tables, `frm.*` and a parameter check on
+`Improve_2.1`, with a manifest and a verified ZIP like the exports above.
