@@ -83,7 +83,7 @@ export function PollutionRose({ rows, meta, field, source, site, splits = SPLITS
       return { name, color, filters }
     }).filter((g) => g.filters.length > 0).sort((a, b) => b.filters.length - a.filters.length)
   }, [wind, rows, f, split, site, meta])
-  const shown = groups.slice(0, MAX_PANELS)
+  const shown = useMemo(() => groups.slice(0, MAX_PANELS), [groups])
   // one set of concentration classes for every panel, so a colour means one range everywhere
   const edges = useMemo(() => concentrationEdges(shown.flatMap((g) => g.filters.map((x) => x.value))), [shown])
   const roses = useMemo(() => shown.map((g) => ({ ...g, rose: pollutionRose(g.filters, nSectors, {
@@ -97,7 +97,7 @@ export function PollutionRose({ rows, meta, field, source, site, splits = SPLITS
   const rMax = freq
     ? d3.max(roses, (g) => d3.max(g.rose.sectors, (s) => pctOf(s.hours, g.rose))) ?? 10
     : d3.max(roses, (g) => d3.max(g.rose.sectors, (s) => s.value ?? 0)) ?? 1
-  const r = (freq ? d3.scaleSqrt() : d3.scaleLinear()).domain([0, rMax || 1]).range([16, R]).nice(3)
+  const r = (freq ? d3.scaleSqrt() : d3.scaleLinear()).domain([0, rMax || 1]).range([16, R]).nice()
   const half = Math.PI / nSectors
   const arc = d3.arc<{ a: number; r0: number; r1: number }>().startAngle((d) => d.a - half + 0.02).endAngle((d) => d.a + half - 0.02).innerRadius((d) => d.r0).outerRadius((d) => d.r1)
   const ramp = d3.interpolateRgbBasis(colours.stops)

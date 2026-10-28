@@ -80,17 +80,17 @@ export function PolarPlot({ rows, meta, field, source, site, splits = SPLITS, pi
         calm: calmH, calmValue: calmH >= minHours ? d3.sum(filters, (x) => x.calm * x.value) / calmH : null }
     }).filter((g) => g.filters.length > 0).sort((a, b) => b.filters.length - a.filters.length)
   }, [wind, fine, rows, f, split, site, meta, nSectors, nSpeed, smooth, minHours])
-  const shown = panels.slice(0, MAX_PANELS)
+  const shown = useMemo(() => panels.slice(0, MAX_PANELS), [panels])
 
   // one colour scale and one speed axis for every panel; the colours clipped at the 2nd and 98th percentiles
-  const values = shown.flatMap((g) => g.cells.flatMap((c) => (c.value === null ? [] : [c.value]))).sort(d3.ascending)
+  const values = useMemo(() => shown.flatMap((g) => g.cells.flatMap((c) => (c.value === null ? [] : [c.value]))).sort(d3.ascending), [shown])
   const lo = d3.quantile(values, 0.02) ?? 0, hi = d3.quantile(values, 0.98) ?? 1
   const color = d3.scaleSequential(d3.interpolateRgbBasis(colours.stops)).domain([lo, hi > lo ? hi : lo + 1]).clamp(true)
   const upper = (k: number) => edges[k + 1] ?? edges[k] + 1
   const topBin = d3.max(shown, (g) => d3.max(g.cells, (c) => (c.value === null ? -1 : c.speed))) ?? -1
   const size = roseSize(shown.length, width, fit)
   const R = roseRadius(size)
-  const rs = d3.scaleLinear().domain([0, topBin >= 0 ? upper(topBin) : 4]).range([0, R]).nice(3)
+  const rs = d3.scaleLinear().domain([0, topBin >= 0 ? upper(topBin) : 4]).range([0, R]).nice()
   const half = Math.PI / nSectors
   const arc = d3.arc<{ a: number; r0: number; r1: number }>().startAngle((d) => d.a - half).endAngle((d) => d.a + half).innerRadius((d) => d.r0).outerRadius((d) => d.r1)
   const label = (name: string) => name.replace(`${site?.name} · `, '')

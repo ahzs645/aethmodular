@@ -65,7 +65,7 @@ export function WindRoses({ rows, meta, roses, source, site, pmfLabelOfDate, spl
   // in a fitted tile the roses share it; on a page they grow to share the row (roseParts)
   const size = roseSize(shown.length, width, fit)
   const R = roseRadius(size)
-  const r = d3.scaleSqrt().domain([0, rMax]).range([16, R]).nice(3)
+  const r = d3.scaleSqrt().domain([0, rMax]).range([16, R]).nice()
   const arc = d3.arc<{ a: number; r0: number; r1: number }>().startAngle((d) => d.a - Math.PI / 8 + 0.03).endAngle((d) => d.a + Math.PI / 8 - 0.03).innerRadius((d) => d.r0).outerRadius((d) => d.r1)
   const label = (name: string) => name.replace(`${site?.name} · `, '')
 
