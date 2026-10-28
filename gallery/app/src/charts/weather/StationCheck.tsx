@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
@@ -63,13 +63,15 @@ export function StationCheck({ data }: { data: StationCompare | null }) {
 function StationPanel({ v, data, side, tip, onOpen }: {
   v: Var; data: StationCompare; side: number; tip: ReturnType<typeof useTooltip>; onOpen?: () => void
 }) {
-  const pairs = data.date.map((d, i) => ({ d, s: data.station[v.k][i], e: data.era5[v.k][i] }))
-    .filter((p): p is { d: string; s: number; e: number } => p.s !== null && p.e !== null)
+  // memoised: the fit's confidence band is cached per stats object (lib/regressionCI), so a fresh fit on
+  // every hover would bootstrap it again in all six panels
+  const pairs = useMemo(() => data.date.map((d, i) => ({ d, s: data.station[v.k][i], e: data.era5[v.k][i] }))
+    .filter((p): p is { d: string; s: number; e: number } => p.s !== null && p.e !== null), [data, v.k])
   const hi = d3.max(pairs, (p) => Math.max(p.s, p.e)) ?? 1, lo = Math.min(0, d3.min(pairs, (p) => Math.min(p.s, p.e)) ?? 0)
   // station and ERA5 share one scale, so the panel is square and the 1:1 line is the diagonal
   const x = d3.scaleLinear().domain([lo, hi]).range([0, side]).nice()
   const y = d3.scaleLinear().domain(x.domain()).range([side, 0])
-  const stats = regression(pairs.map((p) => p.s), pairs.map((p) => p.e), { errorsInVariables: true })
+  const stats = useMemo(() => regression(pairs.map((p) => p.s), pairs.map((p) => p.e), { errorsInVariables: true }), [pairs])
   const bias = d3.mean(pairs, (p) => p.e - p.s)
   const tot = v.k === 'p' ? [d3.sum(pairs, (p) => p.s), d3.sum(pairs, (p) => p.e)] : null
   const [d0, d1] = x.domain()

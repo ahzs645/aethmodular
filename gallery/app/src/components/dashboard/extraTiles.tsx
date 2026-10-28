@@ -6,6 +6,9 @@ import { WeatherTimeline } from '@/charts/weather/WeatherTimeline'
 import { MonthlyClimate } from '@/charts/weather/MonthlyClimate'
 import { RainWashout } from '@/charts/weather/RainWashout'
 import { WindRoses } from '@/charts/weather/WindRoses'
+import { PollutionRose } from '@/charts/weather/PollutionRose'
+import { PolarPlot } from '@/charts/weather/PolarPlot'
+import { WindSpeedConcentration } from '@/charts/weather/WindSpeedConcentration'
 import { WeatherCorrelations } from '@/charts/weather/WeatherCorrelations'
 import { SiteWeatherSummary } from '@/charts/weather/SiteWeatherSummary'
 import { RunCrossplot } from '@/charts/calibration/RunCrossplot'
@@ -77,6 +80,29 @@ export function WindRosesTile({ rows, meta, pmfLabelOfDate }: { rows: FilterRow[
   return <WithControls controls={w.sourcePicker}>
     <WindRoses rows={w.wxRows} meta={meta} roses={roses} source={w.one ? w.source : 'ERA5'} site={w.one} pmfLabelOfDate={pmfLabelOfDate ?? (() => null)} />
   </WithControls>
+}
+
+// the measurement by wind: one site splits by season, several by site; the tile's picker sets the field
+export function PollutionRoseTile({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFile; field: string }) {
+  const w = useWeather(rows, meta)
+  if (!w.sites.length) return noWeather
+  return <WithControls controls={w.sourcePicker}>
+    <PollutionRose rows={w.wxRows} meta={meta} field={field} pickField={false} source={w.source} site={w.one} splits={w.one ? ['Season'] : ['Site']} />
+  </WithControls>
+}
+
+export function PolarPlotTile({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFile; field: string }) {
+  const w = useWeather(rows, meta)
+  if (!w.sites.length) return noWeather
+  return <WithControls controls={w.sourcePicker}>
+    <PolarPlot rows={w.wxRows} meta={meta} field={field} pickField={false} source={w.source} site={w.one} splits={w.one ? ['Season'] : ['Site']} />
+  </WithControls>
+}
+
+export function WindSpeedTile({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFile; field: string }) {
+  const w = useWeather(rows, meta)
+  if (!w.sites.length) return noWeather
+  return <WithControls controls={w.sourcePicker}><WindSpeedConcentration rows={w.wxRows} meta={meta} field={field} pickField={false} wspdField={w.wx('wspd')} /></WithControls>
 }
 
 export function WeatherCorrelationsTile({ rows, meta }: { rows: FilterRow[]; meta: MetaFile }) {

@@ -2,15 +2,19 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { seasonOnly } from '@/lib/seasons'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
-import { XAxis, YAxis } from '@/components/Axes'
+import { AxisTitle, XAxis, YAxis } from '@/components/Axes'
+import type { AxisRole } from '@/components/AxisFieldPopover'
 import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
 import { FieldSelect } from '@/components/FieldSelect'
+import { Legend } from '@/components/Legend'
 import { XIcon } from '@/components/Icons'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
 import { fidProps } from '@/lib/filterEdits'
 import { fmt } from '@/lib/stats'
+import { chemText } from '@/lib/format'
+import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import { INK, withUnit } from '@/lib/theme'
 import { loadDaily, type DailyWeather } from '@/lib/weather'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -18,8 +22,11 @@ import { seasonsForSite } from '@/siteSeasons'
 import { useFitHeight } from '@/lib/chartFit'
 import { useSearchParam } from '@/lib/url'
 
-const M = { top: 8, right: 20, bottom: 30, left: 68 }
-const PANEL = 92, GAP = 14
+// each panel's title sits on its own line above it (TITLE_H), not rotated beside it: a short panel
+// cannot hold "Precip. (mm/day)" or a two-line measurement name along its height
+const TITLE_H = 16
+const M = { top: 8 + TITLE_H, right: 20, bottom: 30, left: 52 }
+const PANEL = 92, GAP = 14 + TITLE_H
 
 /** the daily weather a panel can show (lib/weather DailyWeather), by panel key */
 const WEATHER: Record<string, { label: string; axis: string }> = {
@@ -157,12 +164,10 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
               {panels.map((k) => (
                 <g key={k} transform={`translate(0,${top(k)})`}>
                   {runs.map((r, i) => <rect key={i} x={x(r.a)} width={Math.max(1, x(r.b) - x(r.a) + innerW / Math.max(1, days.length))} height={panelH} fill={r.color} opacity={0.1} />)}
-                  {/* long titles wrap to the panel's height, like the Aethalometer daily panels (DailyPanels) */}
+                  <YAxis scale={yOf(k)} x={0} gridWidth={innerW} tickCount={3} />
                   {k === 'field'
-                    ? <YAxis scale={yOf(k)} x={0} gridWidth={innerW} tickCount={3} label={title(k)} labelX={-54} wrapLabel pick="field" />
-                    : <AxisChoices options={choices} y={[k, (v) => replacePanel(k, v)]} noun="panels">
-                      <YAxis scale={yOf(k)} x={0} gridWidth={innerW} tickCount={3} label={title(k)} labelX={-54} wrapLabel pick="y" />
-                    </AxisChoices>}
+                    ? <PanelTitle text={title(k)} pick="field" />
+                    : <AxisChoices options={choices} y={[k, (v) => replacePanel(k, v)]} noun="panels"><PanelTitle text={title(k)} pick="y" /></AxisChoices>}
                   {k === 'temp' && <>
                     <path d={band(days) ?? ''} fill={INK.fit} opacity={0.12} />
                     <path d={line(daily.t, yT)} fill="none" stroke="#c0392b" strokeWidth={1.2} />
@@ -193,13 +198,22 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
             </g>
           </svg>
         )}
-        <div className="legend">
-          {seasons.map((s) => <span key={s.name} className="legend-item"><span className="swatch band" style={{ background: s.color }} />{s.name.replace(`${site?.name} · `, '')}</span>)}
-          <span className="legend-item"><span className="swatch line" style={{ background: '#c0392b' }} />daily mean temperature</span>
-          <span className="legend-item"><span className="swatch band" style={{ background: INK.fit }} />daily min–max</span>
-        </div>
+        <Legend items={[...seasons.map((s) => ({ label: s.name.replace(`${site?.name} · `, ''), color: s.color, shape: 'band' as const })),
+          { label: 'daily mean temperature', color: '#c0392b', shape: 'line' }, { label: 'daily min–max', color: INK.fit, shape: 'band' }]} />
         {tip.node}
       </div>
     </ChartFrame>
+  )
+}
+
+/** a panel's title, above its top-left corner; clicking it opens the panel's picker as an axis title does */
+function PanelTitle({ text, pick }: { text: string; pick: AxisRole }) {
+  const method = useEstimator()
+  return (
+    <AxisTitle pick={pick}>
+      <text x={-M.left + 8} y={-6} fontSize={11.5} fontWeight={600} fill={INK.text}>
+        {chemText(estimatorText(text, method))}<tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>
+      </text>
+    </AxisTitle>
   )
 }

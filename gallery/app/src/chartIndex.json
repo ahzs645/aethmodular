@@ -382,6 +382,18 @@
    "file": "charts/weather/MonthlyClimate.tsx"
   },
   {
+   "title": "Polar plot — the measurement by wind direction and speed",
+   "component": "PolarPlot",
+   "tab": "weather",
+   "file": "charts/weather/PolarPlot.tsx"
+  },
+  {
+   "title": "Pollution rose — the measurement by where the air came from",
+   "component": "PollutionRose",
+   "tab": "weather",
+   "file": "charts/weather/PollutionRose.tsx"
+  },
+  {
    "title": "Column water against surface moisture — AERONET precipitable water against …",
    "id": "weather-pw-moisture",
    "component": "PwMoisture",
@@ -427,6 +439,12 @@
    "component": "WindRoses",
    "tab": "weather",
    "file": "charts/weather/WindRoses.tsx"
+  },
+  {
+   "title": "The measurement by wind speed — dilution or transport",
+   "component": "WindSpeedConcentration",
+   "tab": "weather",
+   "file": "charts/weather/WindSpeedConcentration.tsx"
   },
   {
    "title": "Completed VIBES · EC prediction benchmark",

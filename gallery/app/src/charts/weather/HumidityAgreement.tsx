@@ -2,11 +2,12 @@ import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
+import { Crossplot, type CrossPoint } from '@/components/Crossplot'
+import { Legend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
-import { fidProps } from '@/lib/filterEdits'
-import { fmt, regression, type RegressionStats } from '@/lib/stats'
+import { useHighlight } from '@/lib/highlight'
+import { fmt, regression } from '@/lib/stats'
 import { FONT, INK, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { ScrubField } from '@/components/ScrubField'
@@ -23,7 +24,8 @@ const BEST_N = 15
  * threshold that separates them most marked (meteorology_source_interaction §4,
  * meteorology_revisions R2 / R2C, which did this with the Addis airport station).
  * The pair is the gallery's shared x and y: click an axis title (or use the Correlation tab's
- * sidebar) to change it, and every crossplot follows.
+ * sidebar) to change it, and every crossplot follows. The crossplot is the shared one
+ * (components/Crossplot), each half a fitted group under the page's estimators.
  */
 export function HumidityAgreement({ rows, meta, xField, yField, rhField }: { rows: FilterRow[]; meta: MetaFile; xField: string; yField: string; rhField: string }) {
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -35,8 +37,14 @@ export function HumidityAgreement({ rows, meta, xField, yField, rhField }: { row
   const pts = useMemo(() => rows.filter((r) => [xField, yField, rhField].every((f) => typeof r[f] === 'number' && Number.isFinite(r[f])))
     .map((r) => ({ row: r, x: r[xField] as number, y: r[yField] as number, rh: r[rhField] as number })), [rows, xField, yField, rhField])
   const fit = (ps: typeof pts) => regression(ps.map((p) => p.x), ps.map((p) => p.y), { errorsInVariables: true })
-  const dry = pts.filter((p) => p.rh < thr), humid = pts.filter((p) => p.rh >= thr)
-  const fd = dry.length >= MIN_N ? fit(dry) : null, fh = humid.length >= MIN_N ? fit(humid) : null
+  const nDry = pts.filter((p) => p.rh < thr).length, nHumid = pts.length - nDry
+  // each half a fit group of the shared crossplot; memoised, so a hover does not refit (or re-bootstrap) the halves
+  const points = useMemo<CrossPoint[]>(() => pts.map((p) => {
+    const isDry = p.rh < thr
+    return { x: p.x, y: p.y, id: p.row.id, color: isDry ? DRY : HUMID, site: isDry ? `Dry (RH < ${thr} %)` : `Humid (RH ≥ ${thr} %)`,
+      tip: [p.row.id, `${p.row.site} · ${p.row.date}`, `${xField} ${fmt(p.x)} · ${yField} ${fmt(p.y)}`, `RH ${fmt(p.rh, 0)} %`],
+      open: () => hl.openSample(p.row.id) }
+  }), [pts, thr, xField, yField]) // eslint-disable-line react-hooks/exhaustive-deps
   const sweep = useMemo(() => SWEEP.map((t) => {
     const a = pts.filter((p) => p.rh < t), b = pts.filter((p) => p.rh >= t)
     const sa = a.length >= MIN_N ? fit(a) : null, sb = b.length >= MIN_N ? fit(b) : null
@@ -48,22 +56,17 @@ export function HumidityAgreement({ rows, meta, xField, yField, rhField }: { row
   // scatter and sweep side by side when there is room, stacked on a narrow screen
   const sq = Math.min(420, Math.max(240, (width - 24) / 2 - 82))
   const sideW = Math.max(220, width - sq - 82 - 24 - 80)
-  const M = { top: 16, left: 62, bottom: 46 }
-  const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y)
-  const hi = Math.max(d3.quantile(xs.slice().sort(d3.ascending), 0.995) ?? 1, d3.quantile(ys.slice().sort(d3.ascending), 0.995) ?? 1) * 1.05
-  const x = d3.scaleLinear().domain([0, hi]).range([0, sq]).nice(), y = d3.scaleLinear().domain([0, hi]).range([sq, 0]).nice()
   const sh = 200
   const sx = d3.scaleLinear().domain([SWEEP[0], SWEEP[SWEEP.length - 1]]).range([0, sideW])
   const slopes = sweep.flatMap((s) => [s.sd, s.sh]).filter((v): v is number => v !== null)
   const sy = d3.scaleLinear().domain([Math.min(0, d3.min(slopes) ?? 0), (d3.max(slopes) ?? 1) * 1.1]).range([sh, 0]).nice()
   const nMax = d3.max(sweep, (s) => Math.max(s.nd, s.nh)) ?? 1
   const sn = d3.scaleLinear().domain([0, nMax]).range([sh, sh * 0.55])
-  const fitLine = (f: RegressionStats | null, c: string) => f && <line x1={x(0)} y1={y(f.intercept)} x2={x(hi)} y2={y(f.intercept + f.slope * hi)} stroke={c} strokeWidth={2} />
   const sline = (k: 'sd' | 'sh') => d3.line<(typeof sweep)[number]>().defined((s) => s[k] !== null).x((s) => sx(s.t)).y((s) => sy(s[k]!))(sweep) ?? ''
 
   return (
     <ChartFrame id="weather-humidity" title="Humidity and method agreement — dry vs humid filters"
-      subtitle={`${yField} against ${xField}, split at ${thr} % relative humidity over each filter's window; OLS fit per half. The sweep shows both slopes at every threshold, with the count of filters on each side (thin lines). With several sites picked the halves mix sites, so pick one for the notebook's question.`}
+      subtitle={`${yField} against ${xField}, split at ${thr} % relative humidity over each filter's window (${nDry} dry, ${nHumid} humid); a fit per half under the page's estimators. The sweep shows both slopes at every threshold, with the count of filters on each side (thin lines). With several sites picked the halves mix sites, so pick one for the notebook's question.`}
       provenance="meteorology_source_interaction §4 · meteorology_revisions R2, R2C (threshold sweep)"
       controls={<>
         <span className="control">RH threshold
@@ -71,26 +74,10 @@ export function HumidityAgreement({ rows, meta, xField, yField, rhField }: { row
       </>}>
       <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
         {pts.length < MIN_N * 2 ? <Empty>Fewer than {MIN_N * 2} filters carry {xField}, {yField} and {rhField} in this subset.</Empty> : <>
-          <svg width={sq + M.left + 20} height={sq + M.top + M.bottom} fontFamily={FONT.family}>
-            <g transform={`translate(${M.left},${M.top})`}>
-              <YAxis scale={y} x={0} label={withUnit(yField, meta.field_units)} gridWidth={sq} labelX={-46} pick="y" />
-              <XAxis scale={x} y={sq} label={withUnit(xField, meta.field_units)} pick="x" />
-              <line x1={0} y1={sq} x2={sq} y2={0} stroke={INK.muted} strokeDasharray="4 4" />
-              {focusLast(pts, (p) => p.row.id, hl.focusId).map(([p]) => {
-                const st = focusStyle(p.row.id, hl.focusId, { r: 3 }, hl.selected)
-                return <circle key={p.row.id} cx={x(Math.min(p.x, hi))} cy={y(Math.min(p.y, hi))} r={st.r} fill={p.rh < thr ? DRY : HUMID} fillOpacity={st.opacity}
-                  stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={st.dot} style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
-                  onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.site} · ${p.row.date}`, `${xField} ${fmt(p.x)} · ${yField} ${fmt(p.y)}`, `RH ${fmt(p.rh, 0)} %`]) }}
-                  onMouseLeave={() => { hl.setHover(null); tip.hide() }} onClick={(e) => { e.stopPropagation(); hl.openSample(p.row.id) }} />
-              })}
-              {fitLine(fd, DRY)}{fitLine(fh, HUMID)}
-              <g fontFamily={FONT.mono} fontSize={10.5}>
-                <rect x={6} y={4} width={210} height={36} rx={4} fill={INK.panel} fillOpacity={0.85} stroke={INK.grid} />
-                <text x={12} y={18} fill={DRY}>dry  n={dry.length}  slope {fmt(fd?.slope, 3)}  R² {fmt(fd?.r2, 2)}</text>
-                <text x={12} y={33} fill={HUMID}>humid n={humid.length}  slope {fmt(fh?.slope, 3)}  R² {fmt(fh?.r2, 2)}</text>
-              </g>
-            </g>
-          </svg>
+          <div style={{ flex: `0 1 ${sq + 70}px`, minWidth: 240 }}>
+            <Crossplot points={points} title="" xLabel={withUnit(xField, meta.field_units)} yLabel={withUnit(yField, meta.field_units)} maxSide={sq}
+              grouping="site" groupNoun="humidity group" pick />
+          </div>
           <svg width={sideW + 80} height={sh + 70} fontFamily={FONT.family}>
             <text x={52} y={12} fontSize={12} fontWeight={600} fill={INK.text}>Threshold sweep</text>
             <g transform={`translate(52,24)`}>
@@ -111,11 +98,8 @@ export function HumidityAgreement({ rows, meta, xField, yField, rhField }: { row
         </>}
         {tip.node}
       </div>
-      <div className="legend">
-        <span className="legend-item"><span className="swatch" style={{ background: DRY }} />dry (RH below the threshold)</span>
-        <span className="legend-item"><span className="swatch" style={{ background: HUMID }} />humid</span>
-        <span className="legend-item"><span className="swatch dashed" style={{ color: INK.muted }} />1:1 · dotted = filters per side</span>
-      </div>
+      <Legend items={[{ label: 'dry (RH below the threshold)', color: DRY }, { label: 'humid', color: HUMID },
+        { label: '1:1', color: INK.identity, shape: 'dashed' }]} note="sweep: dotted = filters per side" />
       {best && <Note>Where both halves have at least {BEST_N} filters, the slopes differ most at {best.t} % ({best.nd} dry, {best.nh} humid). A gap at one threshold is not a test.</Note>}
     </ChartFrame>
   )

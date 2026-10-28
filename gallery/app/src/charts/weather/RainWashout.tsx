@@ -9,6 +9,7 @@ import { fidProps, fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { boxStats, fmt } from '@/lib/stats'
 import { FONT, INK, withUnit } from '@/lib/theme'
 import { AxisTitle } from '@/components/Axes'
+import { Legend } from '@/components/Legend'
 import { useAxisFields } from '@/components/AxisFieldPopover'
 import { RAIN_CLASSES, rainClass, spearman } from '@/lib/weather'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -106,9 +107,7 @@ export function RainWashout({ rows, meta, field, prcpField, id = 'weather-washou
         })}
         {tip.node}
       </div>
-      <div className="legend">
-        {RAIN_CLASSES.map((c) => <span key={c.key} className="legend-item"><span className="swatch square" style={{ background: c.color }} />{c.key}</span>)}
-      </div>
+      <Legend items={RAIN_CLASSES.map((c) => ({ label: c.key, color: c.color, shape: 'square' as const }))} />
       {panels.length > MAX_SITES && <Note>Showing the {MAX_SITES} sites with the most filters of {panels.length}.</Note>}
     </ChartFrame>
   )

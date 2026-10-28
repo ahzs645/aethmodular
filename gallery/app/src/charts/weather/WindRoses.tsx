@@ -10,11 +10,12 @@ import { FONT, INK } from '@/lib/theme'
 import type { RoseFile, WeatherSource } from '@/lib/weather'
 import { NO_PMF } from '@/lib/pmfGroups'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { Legend } from '@/components/Legend'
+import { RosePanel, roseRadius, roseSize } from './roseParts'
 
 const SPEED_COLORS = ['#c6dbef', '#6baed6', '#08519c']
 const SPLITS = ['Site', 'Season', 'PMF source'] as const
 const MAX_PANELS = 16
-const SIZE = 210
 
 /**
  * Wind roses over the filters' sampling hours: 8 sectors, stacked by speed class, calm hours
@@ -61,14 +62,10 @@ export function WindRoses({ rows, meta, roses, source, site, pmfLabelOfDate, spl
   }, [table, rows, split, site, meta, pmfLabelOfDate])
   const shown = groups.slice(0, MAX_PANELS)
   const rMax = d3.max(shown, (g) => d3.max(d3.range(8), (s) => g.pct[s * 3] + g.pct[s * 3 + 1] + g.pct[s * 3 + 2])) ?? 10
-  // in a fitted tile the roses share it: the column count that gives the largest rose fitting both
-  // the width and the height (a title line under each, 10 px gaps); elsewhere a fixed 210 px
-  // on a page, roses grow to share the row (210 to 300 px each) rather than staying small
-  const size = !shown.length ? SIZE : fit === null
-    ? Math.round(Math.max(SIZE, Math.min(300, (width - (shown.length - 1) * 10) / shown.length)))
-    : Math.round(Math.max(110, Math.min(280, largestRose(shown.length, width, fit))))
-  const R = size / 2 - 26
-  const r = d3.scaleSqrt().domain([0, rMax]).range([16, R]).nice()
+  // in a fitted tile the roses share it; on a page they grow to share the row (roseParts)
+  const size = roseSize(shown.length, width, fit)
+  const R = roseRadius(size)
+  const r = d3.scaleSqrt().domain([0, rMax]).range([16, R]).nice(3)
   const arc = d3.arc<{ a: number; r0: number; r1: number }>().startAngle((d) => d.a - Math.PI / 8 + 0.03).endAngle((d) => d.a + Math.PI / 8 - 0.03).innerRadius((d) => d.r0).outerRadius((d) => d.r1)
   const label = (name: string) => name.replace(`${site?.name} · `, '')
 
@@ -77,13 +74,11 @@ export function WindRoses({ rows, meta, roses, source, site, pmfLabelOfDate, spl
       subtitle={`Hours inside the filters' sampling windows, by direction (8 sectors) and speed; the number in the middle is calm (${roses?.calm ?? '< 0.5 m/s'}). ${source === 'station' ? 'Airport station winds (10 m, open site).' : 'ERA5 10 m winds are a 0.25° grid-box average and run lower than an airport mast.'} Every panel shares one radial scale.`}
       provenance="meteorology_source_interaction §2 · meteorology_revisions R1"
       controls={o.controls()}>
-      <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
-        {!roses ? <Empty>Loading the wind roses…</Empty> : shown.length === 0 ? <Empty>{split === 'PMF source' ? 'No filter here falls on a PMF day (ETAD 2023 only).' : 'No filters with wind data in this subset.'}</Empty> : shown.map((g) => (
-          <svg key={g.name} width={size} height={size + 18} fontFamily={FONT.family}>
-            <text x={size / 2} y={13} textAnchor="middle" fontSize={11.5} fontWeight={600} fill={g.color === INK.muted ? INK.text : g.color}>{label(g.name)}</text>
-            <g transform={`translate(${size / 2},${size / 2 + 14})`}>
-              {r.ticks(3).filter((t) => t > 0).map((t) => <g key={t}><circle r={r(t)} fill="none" stroke={INK.grid} /><text x={2} y={-r(t) - 2} fontSize={8.5} fill={INK.muted}>{t}%</text></g>)}
-              {['N', 'E', 'S', 'W'].map((d, i) => <text key={d} x={Math.sin((i * Math.PI) / 2) * (R + 10)} y={-Math.cos((i * Math.PI) / 2) * (R + 10)} dy="0.35em" textAnchor="middle" fontSize={10} fill={INK.muted}>{d}</text>)}
+      <div ref={wrapRef} className="chart-wrap">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+          {!roses ? <Empty>Loading the wind roses…</Empty> : shown.length === 0 ? <Empty>{split === 'PMF source' ? 'No filter here falls on a PMF day (ETAD 2023 only).' : 'No filters with wind data in this subset.'}</Empty> : shown.map((g) => (
+            <RosePanel key={g.name} size={size} title={label(g.name)} titleColor={g.color === INK.muted ? INK.text : g.color} nSectors={8}
+              rings={r.ticks(3).filter((t) => t > 0).map((t) => ({ r: r(t), label: `${t}%` }))} foot={`${g.n} filters · ${g.hours} h`}>
               {d3.range(8).map((s) => {
                 let acc = 0
                 return [0, 1, 2].map((k) => {
@@ -98,27 +93,13 @@ export function WindRoses({ rows, meta, roses, source, site, pmfLabelOfDate, spl
               })}
               <circle r={14} fill={INK.panel} stroke={INK.grid} />
               <text dy="0.35em" textAnchor="middle" fontSize={9} fill={INK.muted} fontFamily={FONT.mono}>{fmt(g.pct[24], 0)}%</text>
-              <text y={size / 2 - 4} textAnchor="middle" fontSize={9} fill={INK.muted}>{g.n} filters · {g.hours} h</text>
-            </g>
-          </svg>
-        ))}
+            </RosePanel>
+          ))}
+        </div>
+        <Legend items={(roses?.speed_classes ?? []).map((c, i) => ({ label: c, color: SPEED_COLORS[i], shape: 'square' as const }))} note="the number in the middle: calm hours" />
         {tip.node}
-      </div>
-      <div className="legend">
-        {(roses?.speed_classes ?? []).map((c, i) => <span key={c} className="legend-item"><span className="swatch square" style={{ background: SPEED_COLORS[i] }} />{c}</span>)}
-        <span className="legend-item">centre: calm hours</span>
       </div>
       {groups.length > MAX_PANELS && <Note>Showing the {MAX_PANELS} groups with the most filters of {groups.length}.</Note>}
     </ChartFrame>
   )
-}
-
-/** the largest rose side that lays n roses out in width × height (10 px gaps, 18 px title per rose) */
-function largestRose(n: number, width: number, height: number) {
-  let best = 0
-  for (let cols = 1; cols <= n; cols++) {
-    const rows = Math.ceil(n / cols)
-    best = Math.max(best, Math.min((width - (cols - 1) * 10) / cols, (height - (rows - 1) * 10) / rows - 18))
-  }
-  return best
 }

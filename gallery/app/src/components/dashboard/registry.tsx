@@ -6,7 +6,7 @@ import { StatTile } from '@/charts/summary/StatTile'
 import { SiteCards } from '@/charts/summary/SiteCards'
 import { SiteSummary } from '@/charts/summary/SiteSummary'
 import { SiteRank } from '@/charts/ranking/SiteRank'
-import { CVCurveTile, MonthlyClimateTile, RainWashoutTile, RunCrossplotTile, WeatherCorrelationsTile, WeatherSummaryTile, WeatherTimelineTile, WindRosesTile, type CalibrationData } from '@/components/dashboard/extraTiles'
+import { CVCurveTile, MonthlyClimateTile, PolarPlotTile, PollutionRoseTile, RainWashoutTile, RunCrossplotTile, WeatherCorrelationsTile, WeatherSummaryTile, WeatherTimelineTile, WindRosesTile, WindSpeedTile, type CalibrationData } from '@/components/dashboard/extraTiles'
 import { Scatterplot } from '@/charts/correlation/Scatterplot'
 import { Correlogram } from '@/charts/correlation/Correlogram'
 import { AvailabilityHeatmap } from '@/charts/correlation/AvailabilityHeatmap'
@@ -132,6 +132,12 @@ const CHARTS: DashboardChart[] = [
     render: (d, [f]) => <RainWashoutTile rows={d.rows} meta={d.meta} field={f} /> },
   { kind: 'wxroses', label: 'Wind roses', group: 'Weather', blurb: 'where the air came from while the filters sampled', fields: 'none', size: [4, 6],
     render: (d) => <WindRosesTile rows={d.rows} meta={d.meta} pmfLabelOfDate={d.pmfLabelOfDate} /> },
+  { kind: 'wxpollrose', label: 'Pollution rose', group: 'Weather', blurb: 'the measurement by the direction the air came from', fields: 'single', size: [4, 6],
+    render: (d, [f]) => <PollutionRoseTile rows={d.rows} meta={d.meta} field={f} /> },
+  { kind: 'wxpolar', label: 'Polar plot', group: 'Weather', blurb: 'the measurement by wind direction and speed', fields: 'single', size: [4, 6],
+    render: (d, [f]) => <PolarPlotTile rows={d.rows} meta={d.meta} field={f} /> },
+  { kind: 'wxspeed', label: 'By wind speed', group: 'Weather', blurb: 'median and IQR of the measurement by wind speed, per site', fields: 'single', size: [4, 5],
+    render: (d, [f]) => <WindSpeedTile rows={d.rows} meta={d.meta} field={f} /> },
   { kind: 'wxcorr', label: 'Weather correlations', group: 'Weather', blurb: 'which weather goes with each measurement, by season', fields: 'none', size: [6, 6],
     render: (d) => <WeatherCorrelationsTile rows={d.rows} meta={d.meta} /> },
   { kind: 'wxsummary', label: 'Weather by site', group: 'Weather', blurb: 'per site: which weather goes with the measurement; click to open a site', fields: 'single', size: [8, 6],

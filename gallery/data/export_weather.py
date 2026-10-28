@@ -20,6 +20,8 @@ Writes to gallery/app/public/data/weather/:
   index.json + filters/<CODE>.json   the same split by site: the gallery loads only the sites in view
                       (``--split-only`` rewrites these from an existing filters.json)
   roses.json          per filter: hours by wind sector (8) and speed class (3), plus calm hours
+  wind.json           per filter: calm hours, then hours by wind sector (16) and 0.5 m/s speed bin, sparse
+                      (the Weather tab's pollution rose and polar plot)
   daily/<CODE>.json   per site: daily ERA5 (local standard day) for the timeline and climatology
   station_ETAD.json   daily station values beside ERA5 at Addis, for the comparison chart
 
@@ -65,6 +67,10 @@ STATION_FIELDS = {("Sea-level pressure (station)" if k.startswith("Surface press
 SECTORS = 8
 SPEED_EDGES = (1.0, 3.0)   # m/s: light < 1, moderate 1-3, fresh >= 3 (ERA5 10 m winds run low in cities)
 CALM = 0.5                 # m/s
+# the finer grid of wind.json: 16 sectors, and speed bins from calm up (the last bin is open)
+WIND_SECTORS = 16
+WIND_EDGES = (CALM, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0)
+WIND_NAMES = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
 
 
 def std_offset_hours(lat: float, lon: float) -> float:
@@ -127,6 +133,20 @@ def rose(h: pd.DataFrame, wspd: str, wdir: str) -> list[int]:
     return [*counts.ravel().tolist(), int(calm.sum())]
 
 
+def wind_cells(h: pd.DataFrame, wspd: str, wdir: str) -> list[int]:
+    """Calm hours, then (cell, hours) pairs for every cell with hours: cell = sector * bins + speed bin."""
+    s, d = h[wspd].to_numpy(), h[wdir].to_numpy()
+    ok = np.isfinite(s) & np.isfinite(d)
+    s, d = s[ok], d[ok]
+    calm = s < CALM
+    sector = ((d[~calm] + 360 / WIND_SECTORS / 2) % 360 // (360 / WIND_SECTORS)).astype(int)
+    speed = np.digitize(s[~calm], WIND_EDGES) - 1
+    counts = np.zeros((WIND_SECTORS, len(WIND_EDGES)), dtype=int)
+    np.add.at(counts, (sector, speed), 1)
+    flat = counts.ravel()
+    return [int(calm.sum()), *[int(v) for i in np.flatnonzero(flat) for v in (i, flat[i])]]
+
+
 def r(v, nd=2):
     return None if v is None or not np.isfinite(v) else round(float(v), nd)
 
@@ -169,7 +189,7 @@ def main():
 
     offsets = {c: std_offset_hours(s["lat"], s["lon"]) for c, s in smap.items() if s.get("lat") is not None}
     era5_keys = ["temp", "range", "prcp", "rh", "dew", "wspd", "pres", "blh"]
-    rows, roses, wins = {}, {}, {}
+    rows, roses, winds, wins = {}, {}, {}, {}
     for code, part in w.groupby("code"):
         site_h = hourly[hourly.site == code].set_index("time_utc").sort_index()
         if site_h.empty or code not in offsets:
@@ -189,6 +209,7 @@ def main():
                               "wind_direction_10m", "surface_pressure", dew="dew_point_2m", blh=bl)
             rows[fid] = [r(st.get(k), 1 if k in ("blh", "pres") else 2) for k in era5_keys]
             roses[fid] = rose(h, "wind_speed_10m", "wind_direction_10m")
+            winds[fid] = wind_cells(h, "wind_speed_10m", "wind_direction_10m")
             wins[fid] = [x.start.strftime("%Y-%m-%d %H:%M"), x.end.strftime("%Y-%m-%d %H:%M"), r(x.hours, 1), bool(x.assumed)]
         print(f"{code}: {sum(1 for i in part.index if i in rows)} filters")
 
@@ -196,7 +217,7 @@ def main():
     st = pd.read_csv(STATION, parse_dates=["time"], date_format="%m/%d/%Y %H:%M").set_index("time").sort_index()
     st["wspd"] = st["wspd"] / 3.6
     station_keys = ["temp", "range", "prcp", "rh", "wspd", "pres"]
-    srows, sroses = {}, {}
+    srows, sroses, swinds = {}, {}, {}
     off = pd.Timedelta(hours=offsets["ETAD"])
     for fid, x in w[w.code == "ETAD"].iterrows():
         a, b = x.start - off, x.end - off
@@ -206,6 +227,7 @@ def main():
         s = window_stats(h.reset_index(), "temp", "rhum", "prcp", "wspd", "wdir", "pres")
         srows[fid] = [r(s.get(k), 1 if k == "pres" else 2) for k in station_keys]
         sroses[fid] = rose(h, "wspd", "wdir")
+        swinds[fid] = wind_cells(h, "wspd", "wdir")
 
     era5_names, station_names = list(ERA5_FIELDS), list(STATION_FIELDS)
     meta = dict(generated=datetime.now(timezone.utc).isoformat(),
@@ -220,6 +242,9 @@ def main():
     (OUT / "roses.json").write_text(json.dumps(dict(**meta, sectors=["N", "NE", "E", "SE", "S", "SW", "W", "NW"],
         speed_classes=[f"< {SPEED_EDGES[0]:g} m/s", f"{SPEED_EDGES[0]:g}–{SPEED_EDGES[1]:g} m/s", f"≥ {SPEED_EDGES[1]:g} m/s"], calm=f"< {CALM:g} m/s",
         era5=roses, station=sroses), separators=(",", ":")))
+    (OUT / "wind.json").write_text(json.dumps(dict(**meta, sectors=WIND_NAMES, speed_edges=list(WIND_EDGES), calm=f"< {CALM:g} m/s",
+        note_cells="per filter: calm hours, then (cell, hours) pairs; cell = sector * len(speed_edges) + speed bin, bin k from speed_edges[k] (the last open)",
+        era5=winds, station=swinds), separators=(",", ":")))
 
     # daily per site, for the timeline and the monthly climatology
     daily = pd.read_parquet(HOURLY.with_name("spartan_daily.parquet"))

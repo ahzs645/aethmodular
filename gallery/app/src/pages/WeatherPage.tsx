@@ -8,6 +8,9 @@ import { MonthlyClimate } from '@/charts/weather/MonthlyClimate'
 import { RainWashout } from '@/charts/weather/RainWashout'
 import { HumidityAgreement } from '@/charts/weather/HumidityAgreement'
 import { WindRoses } from '@/charts/weather/WindRoses'
+import { PollutionRose } from '@/charts/weather/PollutionRose'
+import { PolarPlot } from '@/charts/weather/PolarPlot'
+import { WindSpeedConcentration } from '@/charts/weather/WindSpeedConcentration'
 import { WeatherCorrelations } from '@/charts/weather/WeatherCorrelations'
 import { StationCheck } from '@/charts/weather/StationCheck'
 import { SiteWeatherSummary } from '@/charts/weather/SiteWeatherSummary'
@@ -27,10 +30,11 @@ const ADDIS = 'ETAD'
  * (addis_03_meteorology, notebooks/analysis/meteorology/*) for that site: the daily timeline
  * under the filters, its climate against its season calendar, rain washout, the measurement
  * against any weather variable, humidity and method agreement, wind roses by season or PMF
- * source, seasonal correlations, and at Addis the check against the station.
+ * source, the measurement by wind (pollution rose, polar plot, wind speed), seasonal
+ * correlations, and at Addis the check against the station.
  *
  * Several sites picked: the comparison: which weather goes with the measurement at each site,
- * then climate, washout and wind roses side by side. A site in the comparison table narrows
+ * then climate, washout, wind roses and the measurement by wind side by side. A site in the comparison table narrows
  * the pick to that site, and the one-site view offers the way back.
  *
  * Every filter carries the weather averaged over its own sampling window
@@ -80,10 +84,12 @@ export function WeatherPage({ rows, picked, onPick, meta, field, xField, yField,
   }), [source])
   const axisValue = useMemo(() => ({ x: wxX, y: field, field }), [wxX, field])
   const setAxis = useCallback((role: AxisRole, f: string) => (role === 'x' ? setWxX(f) : setField(f)), [setField])
+  // stable between renders: a new rows array or axes object would refit the scatter and bootstrap its bands again
+  const scatterRows = useMemo(() => wxRows.filter((r) => typeof r[wxX] === 'number'), [wxRows, wxX])
+  const scatterAxes = useMemo<AxesOpts>(() => ({ ...axes, identity: false, mode: 'Data' }), [axes])
   const scatter = (title: string, id: string) => (
     <AxisFieldsProvider meta={meta} value={axisValue} set={setAxis}>
-      <Scatterplot rows={wxRows.filter((r) => typeof r[wxX] === 'number')} meta={meta} xField={wxX} yField={field}
-        axes={{ ...axes, identity: false, mode: 'Data' }} id={id} title={title} />
+      <Scatterplot rows={scatterRows} meta={meta} xField={wxX} yField={field} axes={scatterAxes} id={id} title={title} />
     </AxisFieldsProvider>
   )
 
@@ -119,6 +125,12 @@ export function WeatherPage({ rows, picked, onPick, meta, field, xField, yField,
         <PwMoisture rows={wxRows} meta={meta} onePick />
         <WindRoses rows={wxRows} meta={meta} roses={roses} source={source} site={one} pmfLabelOfDate={pmfLabelOfDate}
           splits={isAddis ? ['Season', 'PMF source'] : ['Season']} id="weather-site-roses" title={`${one.name} · wind roses`} />
+        <PollutionRose rows={wxRows} meta={meta} field={field} source={source} site={one} splits={['Season']}
+          id="weather-site-pollution-rose" title={`${one.name} · pollution rose`} />
+        <PolarPlot rows={wxRows} meta={meta} field={field} source={source} site={one} splits={['Season']}
+          id="weather-site-polar" title={`${one.name} · polar plot by wind direction and speed`} />
+        <WindSpeedConcentration rows={wxRows} meta={meta} field={field} wspdField={wx('wspd')}
+          id="weather-site-wind-speed" title={`${one.name} · the measurement by wind speed`} />
         <WeatherCorrelations rows={wxRows} meta={meta} source={source} site={one} />
         {isAddis && <StationCheck data={station} />}
       </>
@@ -143,6 +155,12 @@ export function WeatherPage({ rows, picked, onPick, meta, field, xField, yField,
       <PwMoisture rows={wxRows} meta={meta} onePick={false} />
       <WindRoses rows={wxRows} meta={meta} roses={roses} source="ERA5" site={null} pmfLabelOfDate={pmfLabelOfDate}
         splits={['Site']} id="weather-compare-roses" title="Wind roses — the picked sites" />
+      <PollutionRose rows={wxRows} meta={meta} field={field} source="ERA5" site={null} splits={['Site']}
+        id="weather-compare-pollution-rose" title="Pollution roses — the picked sites" />
+      <PolarPlot rows={wxRows} meta={meta} field={field} source="ERA5" site={null} splits={['Site']}
+        id="weather-compare-polar" title="Polar plots by wind direction and speed — the picked sites" />
+      <WindSpeedConcentration rows={wxRows} meta={meta} field={field} wspdField={weatherField('wspd', 'ERA5')!}
+        id="weather-compare-wind-speed" title="The measurement by wind speed — the picked sites" />
     </>
   )
 }
