@@ -81,6 +81,24 @@ Remaining here: the semantics confirmation from SPARTAN above, and porting
 the York estimator into `calculate_regression_stats` / the explorer readout
 so the app's Deming rows stop assuming a pooled lambda.
 
+### Confirm CODC's station identity before using its calendar
+
+`spartan_map.json` names CODC "Palmira, Colombia" but places it at 4.6369 N, 74.0808 W,
+which is Bogotá. The two cities have different season calendars (the gallery offers both,
+Bogotá by default). Someone with access to the SPARTAN Site Details Sheet must confirm the
+code, coordinates, sampling dates and any relocation, and then keep only the right calendar.
+CODC has no filters in the current export, so nothing is affected yet. See
+[site-seasonality-network.md](site-seasonality-network.md#sites-with-two-calendars).
+
+### Decide whether season-specific Addis calibrations move to `belg_feb`
+
+The gallery and new reporting use the Ethiopian Meteorological Institute calendar
+(`belg_feb`), while every frozen calibration result is on `dry_feb`. Moving February
+changes Figure 9's Belg calibration from slope 0.32 to 0.67, and it removes the within-Belg
+organic-signal correlation. Pooled calibrations are unaffected. Decide which calendar the
+AAAR poster and paper quote for season-specific results, and say so in Methods. See
+[site-seasonality.md](site-seasonality.md#addis-february-sensitivity-28-oct-2026).
+
 ## Unfinished migrations
 
 ### Migrate stored-output notebooks to the canonical site palette

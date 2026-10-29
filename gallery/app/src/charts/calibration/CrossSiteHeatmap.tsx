@@ -79,7 +79,7 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
       id="cross-site"
       title="Cross-site heatmap — does the calibration travel?"
       subtitle="The best Addis configurations (by the explorer's score, inside the slope box and above the IMPROVE cross-validation R² floor) read out at every SPARTAN site with FTIR spectra and HIPS Fabs; each site is a test set the model never saw. A row that is blue at Addis and Delhi but white at Beijing and JPL is the compositional-offset signature. The first row is whatever is selected above."
-      provenance="CROSS_SITE_EVALUATION_2026-08-22.md · FIVE_SITE_GRID_2026-08-23.md · site-grouped CV · MAC 10 · fixed set"
+      provenance={`CROSS_SITE_EVALUATION_2026-08-22.md · FIVE_SITE_GRID_2026-08-23.md · site-grouped CV · MAC ${calib.mac_value} · fixed set`}
       controls={
         <>
           <Segmented label="Cell" value={cell} options={CELLS} onChange={setCell} />

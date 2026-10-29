@@ -1,6 +1,15 @@
 import { useMemo } from 'react'
+import * as d3 from 'd3'
+import { ChartFrame } from '@/components/ChartFrame'
+import { Crossplot, type CrossPoint } from '@/components/Crossplot'
+import { FacetGrid } from '@/components/FacetGrid'
 import { Figure } from '@/components/Figure'
+import { Key } from '@/components/Key'
+import { Marker } from '@/components/RefLines'
+import { useChartOptions } from '@/lib/chartOptions'
+import { f2 } from '@/lib/format'
 import { num, type Row } from '@/lib/table'
+import { INK } from '@/lib/theme'
 import type { SectionPageProps } from '../../types'
 import { PageIntro, presetName, provenance, rows, useCalibRuns, useSpectral, Waiting } from './spectralCommon'
 
@@ -64,6 +73,8 @@ export function Applicability(_props: SectionPageProps) {
       subtitle="Leakage-safe audit: a scaler and PCA fitted on source training spectra only, T² and Q thresholds from untouched IMPROVE sites, target labels joined afterwards. Reference: |PLS − HIPS/10|. Derivative-space candidates put 38–64 % of their targets outside and need an explicit flag; the winner puts none outside and keeps a large response bias — conditional shift, not covariate shift."
       provenance={provenance(data, ['domain_summary'])} />
 
+    <DomainFilters data={rows(data, 'domain_filters')} summary={rows(data, 'domain_summary')} provenance={provenance(data, ['domain_filters', 'domain_summary'])} />
+
     <Figure kind="intervals" id="applicability-dipls" data={change} row="pair" choose={[{ column: 'centering', label: 'Centering', default: 'source-centred' }]}
       panels={[{ value: 'RMSE_change_pct', lo: 'RMSE_change_ci_low', hi: 'RMSE_change_ci_high', label: 'RMSE change vs ordinary PLS on the locked holdout (%; paired-bootstrap 95 %)', reference: 0 }]} labelWidth={360}
       title="ftir_36 — domain-invariant PLS does not rescue a universal calibration"
@@ -119,4 +130,59 @@ export function Applicability(_props: SectionPageProps) {
       subtitle="Median raw absorbance: the PTFE C–F peak matches (same filter material) while the featureless 2000 cm⁻¹ background is twice as high at Addis."
       provenance={provenance(data, ['raw_scale'])} />
   </>
+}
+
+const DISTANCE = [
+  { value: 'max', label: 'T² or Q (larger)' }, { value: 'T2', label: 'T²' }, { value: 'Q', label: 'Q' },
+] as const
+const CONFIG_COLOUR: Record<string, string> = { addis_winner: d3.schemeTableau10[0], common_candidate: d3.schemeTableau10[1], delhi_winner: d3.schemeTableau10[2] }
+
+/**
+ * ftir_39 per filter: each locked holdout filter's source-domain percentile against its error, one panel per
+ * target, a colour per configuration. In-domain filters (left of 0.95) still carry large errors at Addis.
+ */
+function DomainFilters({ data, summary, provenance }: { data: Row[]; summary: Row[]; provenance: React.ReactNode }) {
+  const o = useChartOptions('applicability-domain-filters', [
+    { key: 'distance', label: 'Distance', default: 'max', choices: [...DISTANCE] },
+    { key: 'error', label: 'Error', default: 'abs', choices: [{ value: 'abs', label: '|PLS − HIPS/10|' }, { value: 'signed', label: 'PLS − HIPS/10' }] },
+  ])
+  const signed = o.values.error === 'signed'
+  const xOf = (r: Row) => {
+    const t = num(r.T2_source_percentile), q = num(r.Q_source_percentile)
+    return o.values.distance === 'T2' ? t : o.values.distance === 'Q' ? q : t == null || q == null ? null : Math.max(t, q)
+  }
+  const configs = [...new Set(data.map((r) => String(r.config)))]
+  const panels = [...new Set(data.map((r) => String(r.target)))].map((t) => {
+    const points: CrossPoint[] = data.filter((r) => r.target === t).flatMap((r) => {
+      const x = xOf(r), y = num(signed ? r.residual_ugm3 : r.abs_error_ugm3)
+      if (x == null || y == null) return []
+      const cfg = at(CONFIG, r.config)
+      return [{ x, y, color: CONFIG_COLOUR[String(r.config)] ?? d3.schemeTableau10[3], hollow: r.outside_source_95 === true,
+        tip: [`filter ${r.ExternalFilterId}`, cfg, `T² percentile ${f2(r.T2_source_percentile)}, Q percentile ${f2(r.Q_source_percentile)}`, `PLS − HIPS/10 ${f2(r.residual_ugm3)} µg/m³`,
+          r.outside_source_95 === true ? 'outside the source 95 %' : 'inside the source 95 %'] }]
+    })
+    const rho = summary.filter((r) => r.target === t).map((r) => `${at(CONFIG, r.config).split(' (')[0]} ρ ${f2(r.rho_domain_percentile_vs_abs_error)} (p ${f2(r.rho_p)})`)
+    return { t, points, rho }
+  })
+  const ys = panels.flatMap((p) => p.points.map((q) => q.y))
+  const yDomain: [number, number] = [Math.min(0, ...ys) - (signed ? 0.3 : 0), Math.max(...ys) * 1.05]
+  return (
+    <ChartFrame id="applicability-domain-filters" title="ftir_39 per filter — being in the domain does not make a holdout filter right"
+      subtitle={`Each locked holdout filter (${panels.map((p) => `${at(TARGET, p.t)}`).join(', ')}) under each locked configuration: its source-domain percentile against its error at MAC 10. Hollow points fall outside the source 95 % (dotted line) on T² or Q. Distance picks T², Q or the larger of the two (the notebook's plot); Error switches between the size of the miss and its sign. Spearman ρ of percentile against |error| is in each panel's title: weak or absent for the Addis winner, so an in-domain flag is no promise of accuracy.`}
+      provenance={provenance} controls={o.controls()}>
+      <FacetGrid items={panels} minCell={320} maxCols={2} render={(p, w) => <div>
+        <p className="facet-title">{at(TARGET, p.t)}</p>
+        <Crossplot title="" points={p.points} xLabel={`Source-domain percentile (${DISTANCE.find((d) => d.value === o.values.distance)?.label})`}
+          yLabel={signed ? 'PLS − HIPS/10 (µg/m³)' : '|PLS − HIPS/10| (µg/m³)'} fit={false} grouping="none" sameScale={false}
+          domain={[0, 1]} yDomain={yDomain} maxSide={Math.min(460, w - 70)}
+          background={(x, y) => <>
+            <Marker orient="v" at={x(0.95)} from={y(yDomain[0])} to={y(yDomain[1])} label="95 %" labelSide="left" />
+            {signed && <Marker orient="h" at={y(0)} from={x(0)} to={x(1)} />}
+          </>} />
+        <p className="legend-note">{p.rho.join(' · ')}</p>
+      </div>} />
+      <Key items={[...configs.map((c) => ({ label: at(CONFIG, c), color: CONFIG_COLOUR[c] ?? d3.schemeTableau10[3] })),
+        { label: 'outside the source 95 %', color: INK.muted, kind: 'hollow' as const }]} />
+    </ChartFrame>
+  )
 }

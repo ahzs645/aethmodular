@@ -1,6 +1,7 @@
 import { Figure } from '@/components/Figure'
 import { type Row } from '@/lib/table'
 import type { SectionPageProps } from '../../types'
+import { SiteSimilarityMatrix } from './SiteSimilarityMatrix'
 import { PageIntro, provenance, rows, useSpectral, Waiting } from './spectralCommon'
 
 const tag = (list: string, rs: Row[]) => rs.map((r): Row => ({ list, ...r }))
@@ -8,8 +9,8 @@ const tag = (list: string, rs: Row[]) => rs.map((r): Row => ({ list, ...r }))
 /**
  * ftir_52: the IMPROVE network as a spectral map. Ward classes over the 13,634-spectrum library with
  * the five SPARTAN targets, site similarity, a validated match threshold, and which IMPROVE spectra
- * each Ethiopian season draws. All tables are the executed notebook's; the site × site matrix for a
- * dendrogram needs the notebook re-run (listed in the intro).
+ * each Ethiopian season draws. All tables are the executed notebook's; the site × site matrix is
+ * clustered here (lib/cluster) for the dendrogram.
  */
 export function NetworkMap(_props: SectionPageProps) {
   const { data, error } = useSpectral('network_map')
@@ -53,6 +54,8 @@ export function NetworkMap(_props: SectionPageProps) {
       title="Which IMPROVE sites look like each SPARTAN site"
       subtitle="Per-site median spline-baseline spectra (IMPROVE sites with ≥ 20 spectra), Pearson r; and, as a check, the Jensen–Shannon distance between sites' Ward-class mixes. Every target's least-like site is TOOL1 (Arctic Alaska). The notebook displayed the first entries only."
       provenance={provenance(data, ['nearest_sites'])} />
+
+    <SiteSimilarityMatrix table={data.tables.site_correlation} provenance={provenance(data, ['site_correlation'], 'Ordering and tree: average linkage on 1 − r, lib/cluster.ts.')} />
 
     <Figure kind="table" id="network-threshold" data={rows(data, 'threshold_precision')}
       columns={[{ key: 'criterion', label: 'A leave-one-out nearest neighbour…' }, { key: 'base rate', label: 'at any r', format: 'pct' }, { key: 'strictest cutoff', label: 'at the strictest r cutoff', format: 'pct' }]}

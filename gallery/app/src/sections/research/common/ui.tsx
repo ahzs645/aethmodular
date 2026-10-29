@@ -14,6 +14,7 @@ import { FONT, INK } from '@/lib/theme'
 import { seasonOnly } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { VOLUME } from '@/lib/viewFields'
 import type { Fit } from './stats'
 
 export const num = (r: Record<string, unknown> | undefined, f: string): number | null => {
@@ -21,6 +22,26 @@ export const num = (r: Record<string, unknown> | undefined, f: string): number |
   return typeof v === 'number' && Number.isFinite(v) ? v : null
 }
 export const has = (r: Record<string, unknown>, ...fs: string[]) => fs.every((f) => num(r, f) !== null)
+
+/**
+ * The rows in µg/m³ whatever the reader's basis. Under mass per filter (Filters → units, lib/viewFields) every
+ * µg/m³ field arrives × the filter's sampled volume but HIPS Fabs (Mm⁻¹) does not, so a page that sets Fabs or
+ * Fabs/MAC against EC, or works out loadings itself, would mix the two. Those pages are notebook reproductions
+ * in µg/m³; they take their rows through this and say so (BASIS_NOTE).
+ */
+export function useConcRows(rows: FilterRow[], meta: MetaFile): FilterRow[] {
+  return useMemo(() => {
+    if (meta.basis !== 'mass') return rows
+    const perFilter = Object.entries(meta.field_units).filter(([, u]) => u === 'µg/filter').map(([f]) => f)
+    return rows.map((r) => {
+      const v = num(r, VOLUME)
+      const out: Record<string, unknown> = { ...r }
+      for (const f of perFilter) if (f in r) out[f] = v && v > 0 && num(r, f) !== null ? (r[f] as number) / v : null
+      return out as FilterRow
+    })
+  }, [rows, meta])
+}
+export const BASIS_NOTE = 'This page works in µg/m³ (the notebooks\' units), so it ignores mass per filter under Filters → units.'
 
 export const ADDIS = 'Addis Ababa'
 export const LOW = '#d08c2c', HIGH = '#2c7fb8', MID = '#4f9d69'

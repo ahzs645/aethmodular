@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, ExplainOnly, Note, Segmented } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
@@ -12,6 +12,7 @@ import { useColourScheme } from '@/lib/colourSchemes'
 import { useSearchParam } from '@/lib/url'
 import { FONT, INK, inkOn, themed } from '@/lib/theme'
 import { coef, coefSigned, f2, signed } from '@/lib/format'
+import { useMac, type MacView } from '@/lib/mac'
 import { Scatter, runLine, sourceOf, useXp, type XpBase } from './shared'
 
 /** Test 4: preprocessing × window × pool × k on the same filters (experiments_20261022.ipynb §4). */
@@ -27,8 +28,21 @@ const PREP_COLOR: Record<string, string> = { get raw() { return themed('#525252'
 const rowKey = (c: Cell) => `${c.preprocessing} · ${c.window === 'full' ? '4000–500' : '4000–1425'}`
 const colKey = (c: Cell) => `${c.pool} · ${c['k rule']}`
 
+/**
+ * The run's Addis fits are against HIPS BC at MAC 10. At the reader's MAC (lib/mac) every Addis slope, and so every
+ * slope effect (a difference of slopes), scales by MAC/10; intercepts and the IMPROVE outcomes do not move.
+ */
+function atMac(d: AttributionData, mac: MacView): AttributionData {
+  if (!mac.changed) return d
+  const k = (v: number) => mac.slope(v) as number
+  return { ...d, grid: d.grid.map((c) => ({ ...c, 'Addis slope': k(c['Addis slope']) })), effects: d.effects.map((e) => ({ ...e, 'Addis slope': k(e['Addis slope']) })),
+    published: { ...d.published, slope: k(d.published.slope) } }
+}
+
 export function AttributionStudy() {
-  const { data, state } = useXp<AttributionData>('attribution', 'Attribution grid')
+  const { data: raw, state } = useXp<AttributionData>('attribution', 'Attribution grid')
+  const mac = useMac()
+  const data = useMemo(() => (raw ? atMac(raw, mac) : null), [raw, mac])
   if (!data) return <>{state}</>
   return <>
     <Findings d={data} />
@@ -56,6 +70,7 @@ function Findings({ d }: { d: AttributionData }) {
 }
 
 function GridHeat({ d }: { d: AttributionData }) {
+  const { label } = useMac()
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
@@ -95,7 +110,7 @@ function GridHeat({ d }: { d: AttributionData }) {
         {tip.node}
       </div>
       <div className="legend"><ColorLegend scale={colour} label={out} format={(v) => out.includes('RMSE') ? f2(v) : out === 'Addis slope' ? coef(v) : signed(v)} scheme={diverging ? div.scheme : seq.scheme} /></div>
-      <Note>IMPROVE: every filter predicted by a model trained without its site fold (the common test set); Addis: models fitted on all of IMPROVE, against HIPS BC (MAC 10).</Note>
+      <Note>IMPROVE: every filter predicted by a model trained without its site fold (the common test set); Addis: models fitted on all of IMPROVE, against HIPS BC; slopes at {label} (set under Filters; the run used MAC 10, and the MAC moves only the slopes).</Note>
     </ChartFrame>
   )
 }

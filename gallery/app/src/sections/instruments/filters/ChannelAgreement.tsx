@@ -4,6 +4,7 @@ import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { IntervalStrip, type IntervalBlock, type IntervalPanel } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { fmt } from '@/lib/format'
+import { useMac } from '@/lib/mac'
 import { pearson } from '@/lib/stats'
 import { INK } from '@/lib/theme'
 import type { FilterRow } from '@/lib/types'
@@ -23,13 +24,14 @@ function r2(xs: (number | null)[], ys: (number | null)[]) {
 /**
  * Which channel agrees best with the filters? For every site and MA350 channel: r² of the channel's
  * BCc against HIPS Fabs (and of its spot attenuation, ATN, which HIPS_vs_Aethalometer asked about),
- * r² against FTIR EC, and the ratio of the channel's BCc to HIPS BC (Fabs ÷ 10). Clicking a channel
+ * r² against FTIR EC, and the ratio of the channel's BCc to HIPS BC (Fabs ÷ the reader's MAC). Clicking a channel
  * makes it the page's channel.
  */
 export function ChannelAgreement({ rows, sites, extra, wavelengths, ch, onChannel }: {
   rows: FilterRow[]; sites: PairSite[]; extra: Map<string, Record<string, number | null>>
   wavelengths: Record<string, number>; ch: Channel; onChannel: (c: Channel) => void
 }) {
+  const { mac } = useMac()
   const one = sites.length === 1
   const hasAtn = extra.size > 0
   const blocks = useMemo<IntervalBlock[]>(() => sites.map((s) => {
@@ -70,7 +72,7 @@ export function ChannelAgreement({ rows, sites, extra, wavelengths, ch, onChanne
   const any = blocks.some((b) => b.rows.some((r) => r.marks.some((m) => m.length)))
   return (
     <ChartFrame id="aeth-filters-channels" title="Agreement by channel — which aethalometer wavelength tracks the filters"
-      subtitle={`For each MA350 channel, over the filters with both values: r² of its BCc against HIPS Fabs (filled)${hasAtn ? ' and of its spot attenuation ATN1 (hollow)' : ''}, r² against FTIR EC, and its BCc ÷ HIPS BC (Fabs ÷ 10; median and IQR, 1 = agreement). HIPS reads at ${HIPS_NM} nm, so the nearest channel is ${NEAREST_TO_HIPS} (625 nm), not the UV the notebook expected. At least ${MIN_N} filters per value. Click a channel to use it everywhere on this page.`}
+      subtitle={`For each MA350 channel, over the filters with both values: r² of its BCc against HIPS Fabs (filled)${hasAtn ? ' and of its spot attenuation ATN1 (hollow)' : ''}, r² against FTIR EC, and its BCc ÷ HIPS BC (Fabs ÷ ${mac}, the MAC set under Filters → units; median and IQR, 1 = agreement). HIPS reads at ${HIPS_NM} nm, so the nearest channel is ${NEAREST_TO_HIPS} (625 nm), not the UV the notebook expected. At least ${MIN_N} filters per value. Click a channel to use it everywhere on this page.`}
       provenance="HIPS_vs_Aethalometer_Optical_Comparison.ipynb §6–9 (ATN vs BCc against HIPS, R² by wavelength) · ETAD_Aug13.ipynb §12 (Red 625 nm vs IR 880 nm against HIPS)">
       {any ? <>
         <IntervalStrip blocks={blocks} panels={panels} labelWidth={130} noteWidth={44} minPanelWidth={160} />

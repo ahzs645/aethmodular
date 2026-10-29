@@ -38,11 +38,15 @@
     "confidence": "regional",
     "sources": [
       {
+        "title": "United Arab Emirates, Fourth National Communication to the UNFCCC (2017), climate section: winter Dec–Mar, summer Jun–Sep, transitions Apr–May and Oct–Nov",
+        "url": "https://unfccc.int/sites/default/files/resource/United%20Arab%20Emirates%20Fourth%20National%20Communication%20Report.pdf"
+      },
+      {
         "title": "World Bank Climate Change Knowledge Portal, United Arab Emirates: Current Climate (blocks automated fetch; months seen in search excerpt)",
         "url": "https://climateknowledgeportal.worldbank.org/node/4318"
       }
     ],
-    "note": "National two-season-plus-transitions description, not an NCM page; dust is highest roughly Mar–Jun, so dust-season work may prefer different bins. Re-check this source in a browser before formal citation.",
+    "note": "Arabian Peninsula circulation seasons (northeast monsoon, transitions, southwest monsoon), the same months as the UAE's Fourth National Communication. Dust is highest roughly Mar–Jun, and Beegum et al. (2016) put March in spring for Abu Dhabi aerosol work, so dust-season comparisons may need different bins.",
     "papers": [
       {
         "cite": "Alcibahy et al. (2025)",
@@ -50,8 +54,11 @@
         "journal": "Scientific Reports 15:766",
         "doi": "10.1038/s41598-024-84593-9",
         "url": "https://doi.org/10.1038/s41598-024-84593-9",
-        "months_match": "exact months; Arabian Peninsula, named as monsoons and transitions",
-        "quote": "There are 4 distinctive seasons characterizing the climatological regimes: (1) the northeast monsoon from December to March, (2) the spring transition from April to May, (3) the southwest monsoon from June to September, and (4) the fall transition from October to November."
+        "months_match": "exact months; Arabian Peninsula, named as monsoons and transitions; repeats Patlakas et al. (2019), not independent",
+        "quote": "There are 4 distinctive seasons characterizing the climatological regimes: (1) the northeast monsoon from December to March, (2) the spring transition from April to May, (3) the southwest monsoon from June to September, and (4) the fall transition from October to November.",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       },
       {
         "cite": "Patlakas et al. (2019)",
@@ -59,8 +66,11 @@
         "journal": "Atmosphere 10:220",
         "doi": "10.3390/atmos10040220",
         "url": "https://doi.org/10.3390/atmos10040220",
-        "months_match": "exact; Arabian Peninsula (seen in a search excerpt)",
-        "quote": "Four climatological seasons can be distinguished, representing different climatological regimes, the northeast monsoon (December–March), the spring transition (April–May), the southwest monsoon (June–September), and the fall transition"
+        "months_match": "exact; Arabian Peninsula (Introduction, publisher full text)",
+        "quote": "Four climatological seasons can be distinguished, representing different climatological regimes, the northeast monsoon (December–March), the spring transition (April–May), the southwest monsoon (June–September), and the fall transition",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       }
     ]
   },
@@ -115,8 +125,11 @@
         "journal": "Earth Syst. Environ. 10:8285–8302",
         "doi": "10.1007/s41748-026-01068-9",
         "url": "https://doi.org/10.1007/s41748-026-01068-9",
-        "months_match": "exact months for Buenos Aires (seen in a search excerpt)",
-        "quote": "The seasonal comparison of pollutants was conducted by evaluating four distinct periods: December–February, March–May, June–August, and September–November. ... for Buenos Aires, Montevideo, Santiago de Chile, and São Paulo, they were analyzed as seasonal intervals."
+        "months_match": "exact; §2.3, seasonal comparison including Buenos Aires (publisher full text); its observations are PM10 and NO2",
+        "quote": "The seasonal comparison of pollutants was conducted by evaluating four distinct periods: December–February, March–May, June–August, and September–November. ... for Buenos Aires, Montevideo, Santiago de Chile, and São Paulo, they were analyzed as seasonal intervals.",
+        "match": "exact",
+        "scope": "local",
+        "checked": "full text"
       }
     ]
   },
@@ -159,12 +172,8 @@
     "confidence": "regional",
     "sources": [
       {
-        "title": "Bureau of Meteorology, Climate glossary: Seasons (blocks automated fetch)",
-        "url": "http://www.bom.gov.au/climate/glossary/seasons.shtml"
-      },
-      {
-        "title": "Copy of the BoM glossary definition quoted on the ANU Link mailing list (2009)",
-        "url": "https://mailman.anu.edu.au/pipermail/link/2009-June/016410.html"
+        "title": "Bureau of Meteorology, Solstices, equinoxes and the seasons",
+        "url": "https://www.bom.gov.au/news-and-media/solstices-equinoxes-and-the-seasons"
       }
     ],
     "note": "BoM's national definition (summer = December, January, February); Melbourne's winter wood-heater PM2.5 peak and autumn planned burns fall within these bins.",
@@ -176,7 +185,10 @@
         "doi": "10.5194/acp-17-10269-2017",
         "url": "https://doi.org/10.5194/acp-17-10269-2017",
         "months_match": "exact (DJF/MAM/JJA/SON); Melbourne ozonesondes",
-        "quote": "The effect of local pollution over Melbourne during austral summer (DJF) can be seen from the increased mean mixing ratios and enhanced variance near the surface."
+        "quote": "The effect of local pollution over Melbourne during austral summer (DJF) can be seen from the increased mean mixing ratios and enhanced variance near the surface.",
+        "match": "exact",
+        "scope": "local",
+        "checked": "full text"
       },
       {
         "cite": "Di Virgilio et al. (2018)",
@@ -185,7 +197,10 @@
         "doi": "10.5194/acp-18-6585-2018",
         "url": "https://doi.org/10.5194/acp-18-6585-2018",
         "months_match": "exact; Australian PM2.5 (Sydney)",
-        "quote": "Southern Hemisphere seasons are summer (DJF), autumn (MAM), winter (JJA) and spring (SON)."
+        "quote": "Southern Hemisphere seasons are summer (DJF), autumn (MAM), winter (JJA) and spring (SON).",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       }
     ]
   },
@@ -241,7 +256,10 @@
         "doi": "10.1016/j.heliyon.2024.e25420",
         "url": "https://doi.org/10.1016/j.heliyon.2024.e25420",
         "months_match": "exact",
-        "quote": "...the climate of Bangladesh has four seasons a year, including pre-monsoon (March–May), monsoon (June–September), post-monsoon (October–November), and winter (December–February)."
+        "quote": "...the climate of Bangladesh has four seasons a year, including pre-monsoon (March–May), monsoon (June–September), post-monsoon (October–November), and winter (December–February).",
+        "match": "exact",
+        "scope": "local",
+        "checked": "indexed passage"
       },
       {
         "cite": "Pal and Masum (2021)",
@@ -250,7 +268,10 @@
         "doi": "10.1016/j.uclim.2021.100952",
         "url": "https://doi.org/10.1016/j.uclim.2021.100952",
         "months_match": "exact; Bangladesh-wide",
-        "quote": "...the major four seasons are identified as pre-monsoon (March to May), monsoon (June to September), post-Monsoon (October to November) and winter (December to February)."
+        "quote": "...the major four seasons are identified as pre-monsoon (March to May), monsoon (June to September), post-Monsoon (October to November) and winter (December to February).",
+        "match": "exact",
+        "scope": "local",
+        "checked": "indexed passage"
       }
     ]
   },
@@ -293,15 +314,15 @@
     "confidence": "source",
     "sources": [
       {
-        "title": "Ndamuzi et al. (2023), arXiv:2312.12003, Modelling and characterization of fine particulate matter dynamics in Bujumbura using low cost sensors",
-        "url": "https://arxiv.org/pdf/2312.12003"
+        "title": "Ndamuzi et al. (2024), J. Appl. Math. Phys. 12:256 (preprint arXiv:2312.12003), short dry season mid-January to mid-February",
+        "url": "https://doi.org/10.4236/jamp.2024.121020"
       },
       {
         "title": "MSF (2025), Aperçus saisonniers – Afrique centrale",
         "url": "https://www.msf.org/sites/default/files/2025-03/Apercus%20saisonniers%20-%20Afrique%20centrale.pdf"
       }
     ],
-    "note": "The Bujumbura paper (a preprint) gives the short dry season as mid-January to mid-February, assigned here to January only; fold January into the long rains if samples are thin. No IGEBU definition was found.",
+    "note": "Ndamuzi et al. give the short dry season as mid-January to mid-February, overlapping their February–May long rains; binning it as January alone is this calendar's approximation, not the paper's months. Nkunzimana et al. (2020) give whole months (semidry Jan–Feb, long rains Mar–May, dry Jun–Aug, short rains Sep–Dec), offered as the alternative; it moves February. No IGEBU definition was found.",
     "papers": [
       {
         "cite": "Ndamuzi et al. (2024)",
@@ -310,9 +331,107 @@
         "doi": "10.4236/jamp.2024.121020",
         "url": "https://doi.org/10.4236/jamp.2024.121020",
         "months_match": "close; short dry season is mid Jan–mid Feb, binned as January",
-        "quote": "Four seasons characterize Bujumbura city: the long dry season (June-August), Short wet season (September-December), Short dry season (mid January-mid February), and long wet season (February-May)."
+        "quote": "Four seasons characterize Bujumbura city: the long dry season (June-August), Short wet season (September-December), Short dry season (mid January-mid February), and long wet season (February-May).",
+        "match": "rounded",
+        "scope": "local",
+        "checked": "full text"
       }
-    ]
+    ],
+    "variants": [
+      {
+        "key": "ndamuzi",
+        "label": "Short dry Jan",
+        "seasons": [
+          {
+            "name": "Short dry season (Jan)",
+            "months": [
+              1
+            ]
+          },
+          {
+            "name": "Long rains (Feb–May)",
+            "months": [
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          {
+            "name": "Long dry season (Jun–Aug)",
+            "months": [
+              6,
+              7,
+              8
+            ]
+          },
+          {
+            "name": "Short rains (Sep–Dec)",
+            "months": [
+              9,
+              10,
+              11,
+              12
+            ]
+          }
+        ],
+        "note": "Ndamuzi et al. (2024), short dry mid-Jan to mid-Feb binned as January"
+      },
+      {
+        "key": "nkunzimana",
+        "label": "Semidry Jan–Feb",
+        "seasons": [
+          {
+            "name": "Semidry (Jan–Feb)",
+            "months": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "Long rains (Mar–May)",
+            "months": [
+              3,
+              4,
+              5
+            ]
+          },
+          {
+            "name": "Dry (Jun–Aug)",
+            "months": [
+              6,
+              7,
+              8
+            ]
+          },
+          {
+            "name": "Short rains (Sep–Dec)",
+            "months": [
+              9,
+              10,
+              11,
+              12
+            ]
+          }
+        ],
+        "note": "Nkunzimana et al. (2020), Burundi rainfall stations including Bujumbura: semidry Jan–Feb, long rains Mar–May, dry Jun–Aug, short rains Sep–Dec"
+      }
+    ],
+    "variant_papers": {
+      "nkunzimana": [
+        {
+          "cite": "Nkunzimana et al. (2020)",
+          "title": "Comparative Analysis of the Performance of Satellite-Based Rainfall Products Over Various Topographical Unities in Central East Africa: Case of Burundi",
+          "journal": "Earth Space Sci. 7:e2019EA000834",
+          "doi": "10.1029/2019EA000834",
+          "url": "https://doi.org/10.1029/2019EA000834",
+          "months_match": "whole months, Burundi stations including Bujumbura (§2.1/§3.1, per the 28 Oct audit)",
+          "match": "exact",
+          "scope": "national",
+          "checked": "full text"
+        }
+      ]
+    }
   },
   "CADO": {
     "site": "Downsview, Canada",
@@ -378,7 +497,10 @@
         "doi": "10.5194/acp-15-12487-2015",
         "url": "https://doi.org/10.5194/acp-15-12487-2015",
         "months_match": "exact; uses Egbert, Ontario (EGB), north of Toronto",
-        "quote": "...for winter (DJF), spring (MAM), summer (JJA), and fall (SON) at APP, BND, EGB, and SGP over the 2010–2013 period."
+        "quote": "...for winter (DJF), spring (MAM), summer (JJA), and fall (SON) at APP, BND, EGB, and SGP over the 2010–2013 period.",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       },
       {
         "cite": "van Donkelaar et al. (2024)",
@@ -387,7 +509,10 @@
         "doi": "10.1021/acsestair.4c00151",
         "url": "https://doi.org/10.1021/acsestair.4c00151",
         "months_match": "exact; US and Canada by region",
-        "quote": "NO3− increases PM2.5 in winter (December–February) over Eastern and Western Canada, as well as Northeastern, Midwestern, and Southwestern United States. [Table columns: Winter (DJF) Spring (MAM) Summer (JJA) Fall (SON)]"
+        "quote": "NO3− increases PM2.5 in winter (December–February) over Eastern and Western Canada, as well as Northeastern, Midwestern, and Southwestern United States. [Table columns: Winter (DJF) Spring (MAM) Summer (JJA) Fall (SON)]",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       }
     ]
   },
@@ -455,7 +580,10 @@
         "doi": "10.1021/acsestair.4c00151",
         "url": "https://doi.org/10.1021/acsestair.4c00151",
         "months_match": "exact; US and Canada by region",
-        "quote": "NO3− increases PM2.5 in winter (December–February) over Eastern and Western Canada, as well as Northeastern, Midwestern, and Southwestern United States. [Table columns: Winter (DJF) Spring (MAM) Summer (JJA) Fall (SON)]"
+        "quote": "NO3− increases PM2.5 in winter (December–February) over Eastern and Western Canada, as well as Northeastern, Midwestern, and Southwestern United States. [Table columns: Winter (DJF) Spring (MAM) Summer (JJA) Fall (SON)]",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       }
     ]
   },
@@ -523,7 +651,10 @@
         "doi": "10.1021/acsestair.4c00151",
         "url": "https://doi.org/10.1021/acsestair.4c00151",
         "months_match": "exact; US and Canada by region",
-        "quote": "NO3− increases PM2.5 in winter (December–February) over Eastern and Western Canada, as well as Northeastern, Midwestern, and Southwestern United States. [Table columns: Winter (DJF) Spring (MAM) Summer (JJA) Fall (SON)]"
+        "quote": "NO3− increases PM2.5 in winter (December–February) over Eastern and Western Canada, as well as Northeastern, Midwestern, and Southwestern United States. [Table columns: Winter (DJF) Spring (MAM) Summer (JJA) Fall (SON)]",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       }
     ]
   },
@@ -591,7 +722,10 @@
         "doi": "10.1021/acsestair.4c00151",
         "url": "https://doi.org/10.1021/acsestair.4c00151",
         "months_match": "exact; US and Canada by region",
-        "quote": "NO3− increases PM2.5 in winter (December–February) over Eastern and Western Canada, as well as Northeastern, Midwestern, and Southwestern United States. [Table columns: Winter (DJF) Spring (MAM) Summer (JJA) Fall (SON)]"
+        "quote": "NO3− increases PM2.5 in winter (December–February) over Eastern and Western Canada, as well as Northeastern, Midwestern, and Southwestern United States. [Table columns: Winter (DJF) Spring (MAM) Summer (JJA) Fall (SON)]",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       }
     ]
   },
@@ -659,7 +793,10 @@
         "doi": "10.1021/acsestair.4c00151",
         "url": "https://doi.org/10.1021/acsestair.4c00151",
         "months_match": "exact; US and Canada by region",
-        "quote": "NO3− increases PM2.5 in winter (December–February) over Eastern and Western Canada, as well as Northeastern, Midwestern, and Southwestern United States. [Table columns: Winter (DJF) Spring (MAM) Summer (JJA) Fall (SON)]"
+        "quote": "NO3− increases PM2.5 in winter (December–February) over Eastern and Western Canada, as well as Northeastern, Midwestern, and Southwestern United States. [Table columns: Winter (DJF) Spring (MAM) Summer (JJA) Fall (SON)]",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       }
     ]
   },
@@ -719,7 +856,10 @@
         "doi": "10.1371/journal.pone.0141642",
         "url": "https://doi.org/10.1371/journal.pone.0141642",
         "months_match": "exact",
-        "quote": "Furthermore, 12 months were stratified into four seasons, spring (March, April and May), summer (June, July and August), autumn (September, October and November) and winter (December, January and February)."
+        "quote": "Furthermore, 12 months were stratified into four seasons, spring (March, April and May), summer (June, July and August), autumn (September, October and November) and winter (December, January and February).",
+        "match": "exact",
+        "scope": "local",
+        "checked": "indexed passage"
       },
       {
         "cite": "Wang et al. (2019)",
@@ -728,7 +868,10 @@
         "doi": "10.3390/ijerph16214276",
         "url": "https://doi.org/10.3390/ijerph16214276",
         "months_match": "exact",
-        "quote": "In this study, March, April and May of each year were defined as spring, June, July and August as summer, September, October and November as autumn, and December and the following year's January and February as winter."
+        "quote": "In this study, March, April and May of each year were defined as spring, June, July and August as summer, September, October and November as autumn, and December and the following year's January and February as winter.",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "indexed passage"
       }
     ]
   },
@@ -778,7 +921,10 @@
         "doi": "10.1080/10473289.2005.10464627",
         "url": "https://doi.org/10.1080/10473289.2005.10464627",
         "months_match": "exact; Santiago",
-        "quote": "Mean PM2.5 levels during the cold season (April through September) were more than twice as high as those observed in the warm season (October through March)"
+        "quote": "Mean PM2.5 levels during the cold season (April through September) were more than twice as high as those observed in the warm season (October through March)",
+        "match": "exact",
+        "scope": "local",
+        "checked": "abstract"
       },
       {
         "cite": "Sax et al. (2007)",
@@ -787,7 +933,10 @@
         "doi": "10.3155/1047-3289.57.7.845",
         "url": "https://doi.org/10.3155/1047-3289.57.7.845",
         "months_match": "exact; Santiago",
-        "quote": "Mean PM(2.5) levels measured during the cold season (April through September) were three times higher than those measured in the warm season (October through March)."
+        "quote": "Mean PM(2.5) levels measured during the cold season (April through September) were three times higher than those measured in the warm season (October through March).",
+        "match": "exact",
+        "scope": "local",
+        "checked": "abstract"
       }
     ]
   },
@@ -828,7 +977,7 @@
         "url": "https://pubmed.ncbi.nlm.nih.gov/15828676"
       }
     ],
-    "note": "Talca's critical-episode management period is exactly April–September, matching the Santiago cold/warm split; no Dirección Meteorológica de Chile month definition was found.",
+    "note": "Santiago cold/warm split applied to Talca: the cited papers are Santiago and Chillán studies. Talca's own critical-episode management period (GEC) is exactly April–September, which is regulatory, not meteorological, evidence. No Dirección Meteorológica de Chile month definition was found.",
     "papers": [
       {
         "cite": "Celis et al. (2006)",
@@ -837,7 +986,10 @@
         "doi": "10.1080/10473289.2006.10464445",
         "url": "https://doi.org/10.1080/10473289.2006.10464445",
         "months_match": "exact months; Chillán, south of Talca",
-        "quote": "Mean PM10 levels during the cold season (April through September) were more than twice as high as those observed in the warm season (October through March)."
+        "quote": "Mean PM10 levels during the cold season (April through September) were more than twice as high as those observed in the warm season (October through March).",
+        "match": "exact",
+        "scope": "transferred",
+        "checked": "abstract"
       },
       {
         "cite": "Koutrakis et al. (2005)",
@@ -846,7 +998,10 @@
         "doi": "10.1080/10473289.2005.10464627",
         "url": "https://doi.org/10.1080/10473289.2005.10464627",
         "months_match": "exact; Santiago",
-        "quote": "Mean PM2.5 levels during the cold season (April through September) were more than twice as high as those observed in the warm season (October through March)"
+        "quote": "Mean PM2.5 levels during the cold season (April through September) were more than twice as high as those observed in the warm season (October through March)",
+        "match": "exact",
+        "scope": "transferred",
+        "checked": "abstract"
       }
     ]
   },
@@ -897,7 +1052,7 @@
         "url": "https://revistas.unal.edu.co/index.php/acta_agronomica/article/download/48912/49987"
       }
     ],
-    "note": "Bins follow the site coordinates (4.64 N, 74.08 W, which is Bogotá), not the name Palmira; Palmira's own bimodal regime is shifted (very dry Jun–Sep, rainy Oct–Nov), and Bogotá PM2.5 peaks Feb–Mar rather than tracking the dry periods. Both calendars are offered in the gallery (Bogotá by default) until the site location is confirmed.",
+    "note": "Site identity unresolved: spartan_map.json names CODC Palmira but places it at 4.64 N, 74.08 W, which is Bogotá. The two cities have different calendars (they differ in September), so confirm the station against the SPARTAN Site Details Sheet (code, coordinates, dates, any relocation) before using either in a result. CODC has no filters in the current export. Bogotá is the default because it matches the coordinates.",
     "variants": [
       {
         "key": "bogota",
@@ -949,7 +1104,7 @@
         "label": "Palmira",
         "seasons": [
           {
-            "name": "Semi-dry (Dec–Feb)",
+            "name": "First drier (Dec–Feb)",
             "months": [
               12,
               1,
@@ -957,7 +1112,7 @@
             ]
           },
           {
-            "name": "First rains (Mar–May)",
+            "name": "First wetter (Mar–May)",
             "months": [
               3,
               4,
@@ -965,7 +1120,7 @@
             ]
           },
           {
-            "name": "Very dry (Jun–Sep)",
+            "name": "Second drier (Jun–Sep)",
             "months": [
               6,
               7,
@@ -974,7 +1129,7 @@
             ]
           },
           {
-            "name": "Second rains (Oct–Nov)",
+            "name": "Second wetter (Oct–Nov)",
             "months": [
               10,
               11
@@ -983,11 +1138,15 @@
         ],
         "sources": [
           {
+            "title": "Universidad del Valle–OSSO / Municipio de Palmira (2022), Estudio 6: amenaza por inundación, §9.1.2: 26 CVC/IDEAM rain stations, wetter Mar–May and Oct–Nov, drier Dec–Feb and Jun–Sep (seen as an indexed passage; the PDF refuses automated fetch)",
+            "url": "https://palmira.gov.co/planeacion/wp-content/uploads/pot/potmoderno/Anexo%202.4.%20Est%20basicos%20amenaza%20inundaciones%20suelo%20ubano%20y%20exp%20urb%205k.pdf"
+          },
+          {
             "title": "Acta Agronómica (UNAL), Palmira climate (semi-dry Dec–Feb, rainy Mar–May, very dry Jun–Sep, rainy Oct–Nov)",
             "url": "https://revistas.unal.edu.co/index.php/acta_agronomica/article/download/48912/49987"
           }
         ],
-        "note": "Bins for Palmira (Valle del Cauca), the site's name: semi-dry Dec–Feb, rains Mar–May, very dry Jun–Sep, rains Oct–Nov."
+        "note": "Bins for Palmira (Valle del Cauca), the site's name: drier Dec–Feb and Jun–Sep, wetter Mar–May and Oct–Nov (Universidad del Valle–OSSO 2022)."
       }
     ],
     "papers": [
@@ -998,7 +1157,10 @@
         "doi": "10.19053/01211129.v28.n51.2019.9123",
         "url": "https://doi.org/10.19053/01211129.v28.n51.2019.9123",
         "months_match": "exact; Bogotá",
-        "quote": "La ciudad de Bogotá posee un régimen de lluvia bimodal con dos periodos húmedos; el primero representado por los meses de marzo, abril, mayo (MAM) y el segundo correspondiente a los meses de septiembre, octubre y noviembre (SON). Por otra parte, cuenta con dos periodos secos; el primero corresponde a los meses de diciembre, enero, febrero (DEF) y el segundo representado por los meses de junio, julio, agosto (JJA)"
+        "quote": "La ciudad de Bogotá posee un régimen de lluvia bimodal con dos periodos húmedos; el primero representado por los meses de marzo, abril, mayo (MAM) y el segundo correspondiente a los meses de septiembre, octubre y noviembre (SON). Por otra parte, cuenta con dos periodos secos; el primero corresponde a los meses de diciembre, enero, febrero (DEF) y el segundo representado por los meses de junio, julio, agosto (JJA)",
+        "match": "exact",
+        "scope": "local",
+        "checked": "full text"
       },
       {
         "cite": "Velásquez-García et al. (2024)",
@@ -1007,7 +1169,10 @@
         "doi": "10.5194/acp-24-11497-2024",
         "url": "https://doi.org/10.5194/acp-24-11497-2024",
         "months_match": "same bins in a Colombian PM2.5 paper (Medellín, not Bogotá)",
-        "quote": "...for the two dry periods (June–August and December–February) and two rainy periods (March–May and September–November)."
+        "quote": "...for the two dry periods (June–August and December–February) and two rainy periods (March–May and September–November).",
+        "match": "exact",
+        "scope": "transferred",
+        "checked": "full text"
       }
     ],
     "variant_papers": {
@@ -1018,7 +1183,10 @@
           "journal": "Acta Agronómica 16(1-2):32–98",
           "url": "https://revistas.unal.edu.co/index.php/acta_agronomica/article/view/48912",
           "months_match": "exact; a land-tenure study citing the Ministerio de Agricultura, not an atmospheric paper",
-          "quote": "Según la distribución de las lluvias, Palmira presenta las siguientes \"estaciones\": Clima \"semi-seco\" de diciembre a febrero; Lluvioso de marzo a mayo; \"Muy seco\" de junio a septiembre; \"Lluvioso\" de octubre a noviembre."
+          "quote": "Según la distribución de las lluvias, Palmira presenta las siguientes \"estaciones\": Clima \"semi-seco\" de diciembre a febrero; Lluvioso de marzo a mayo; \"Muy seco\" de junio a septiembre; \"Lluvioso\" de octubre a noviembre.",
+          "match": "unverified",
+          "scope": "local",
+          "checked": "not read"
         }
       ]
     }
@@ -1061,7 +1229,7 @@
         "url": "https://www.ethiomet.gov.et/documents/108/Annual_bull_for_2023.pdf"
       }
     ],
-    "note": "Existing calendar from docs/site-seasonality.md, unchanged (the gallery's belg_feb bins); the legacy dry_feb option places February in dry instead.",
+    "note": "Ethiopian Meteorological Institute bins (the gallery's belg_feb), as used by Shlipak et al. (2026) for Addis PM2.5 and BC. The dry_feb option (Dry Oct–Feb) is the calendar every frozen calibration result was binned with; LaPolt et al. (2025) state it exactly, Yirga et al. (2024) only imply its dry season. Tefera et al. (2020) use yet another Addis split (light rains Feb–Apr, dry Oct–Jan plus May).",
     "papers": [
       {
         "cite": "Shlipak et al. (2026)",
@@ -1070,7 +1238,10 @@
         "doi": "10.1021/acsestair.6c00140",
         "url": "https://doi.org/10.1021/acsestair.6c00140",
         "months_match": "exact; Addis Ababa, NMA definition",
-        "quote": "The NMA uses three season definitions to describe precipitation: Bega (October-January), the driest season; Belg (February-May), a transitional season with moderate precipitation; and Kiremt (June-September), the main rainy season with the highest amount of precipitation."
+        "quote": "The NMA uses three season definitions to describe precipitation: Bega (October-January), the driest season; Belg (February-May), a transitional season with moderate precipitation; and Kiremt (June-September), the main rainy season with the highest amount of precipitation.",
+        "match": "exact",
+        "scope": "local",
+        "checked": "full text"
       },
       {
         "cite": "Gashaw et al. (2023)",
@@ -1079,7 +1250,10 @@
         "doi": "10.1016/j.envc.2023.100794",
         "url": "https://doi.org/10.1016/j.envc.2023.100794",
         "months_match": "exact; Ethiopia-wide",
-        "quote": "In Ethiopia, there are three main seasons, such as Kiremt (main rainy season), Bega (dry season), and Belg (small rainy season), which spans from June to September (JJAS), October to January (ONDJ), and February to May (FMAM), respectively."
+        "quote": "In Ethiopia, there are three main seasons, such as Kiremt (main rainy season), Bega (dry season), and Belg (small rainy season), which spans from June to September (JJAS), October to January (ONDJ), and February to May (FMAM), respectively.",
+        "match": "exact",
+        "scope": "national",
+        "checked": "full text"
       }
     ],
     "variant_papers": {
@@ -1091,7 +1265,10 @@
           "doi": "10.1371/journal.pgph.0005021",
           "url": "https://doi.org/10.1371/journal.pgph.0005021",
           "months_match": "exact; Addis Ababa, public-health paper",
-          "quote": "In Addis Ababa, stool sample submissions were generally lower during the short (March - May) and long rains (June - September) seasons compared to the dry season (October - February)"
+          "quote": "In Addis Ababa, stool sample submissions were generally lower during the short (March - May) and long rains (June - September) seasons compared to the dry season (October - February)",
+          "match": "exact",
+          "scope": "local",
+          "checked": "full text"
         },
         {
           "cite": "Yirga et al. (2024)",
@@ -1100,7 +1277,10 @@
           "doi": "10.3389/feart.2024.1452075",
           "url": "https://doi.org/10.3389/feart.2024.1452075",
           "months_match": "rainy seasons Mar–May and Jun–Sep stated; dry Oct–Feb implied",
-          "quote": "The city has two distinct rainy seasons: a shorter period from March to May and a longer one from June to September."
+          "quote": "The city has two distinct rainy seasons: a shorter period from March to May and a longer one from June to September.",
+          "match": "inferred",
+          "scope": "local",
+          "checked": "full text"
         }
       ]
     }
@@ -1143,11 +1323,11 @@
         "url": "https://www.ethiomet.gov.et/documents/108/Annual_bull_for_2023.pdf"
       },
       {
-        "title": "Yemenu and Chemeda (2010), HESSD 7:3733, Climate resources analysis for use of planning in crop production and rainfall water management in the central highlands of Ethiopia: the case of Bishoftu district",
+        "title": "Yemenu and Chemeda (2010), HESSD 7:3733, Climate resources analysis for use of planning in crop production and rainfall water management in the central highlands of Ethiopia: the case of Bishoftu district (HESS Discussions paper; review stopped, no final revision)",
         "url": "https://hess.copernicus.org/preprints/7/3733/2010/hessd-7-3733-2010.pdf"
       }
     ],
-    "note": "Same Ethiopian Meteorological Institute bins as Addis Ababa (45 km away); the Bishoftu study puts Belg rains mid-March to mid-May and the long rains mid-June to late September.",
+    "note": "Ethiopian national bins applied to Bishoftu; Shlipak et al. is Addis Ababa evidence (45 km away). The Bishoftu discussion paper (Yemenu and Chemeda 2010, never published in final form) puts Belg rains mid-March to mid-May and the long rains mid-June to late September, so Feb–May is not a local observed onset window.",
     "papers": [
       {
         "cite": "Shlipak et al. (2026)",
@@ -1156,7 +1336,10 @@
         "doi": "10.1021/acsestair.6c00140",
         "url": "https://doi.org/10.1021/acsestair.6c00140",
         "months_match": "exact; Addis Ababa, NMA definition",
-        "quote": "The NMA uses three season definitions to describe precipitation: Bega (October-January), the driest season; Belg (February-May), a transitional season with moderate precipitation; and Kiremt (June-September), the main rainy season with the highest amount of precipitation."
+        "quote": "The NMA uses three season definitions to describe precipitation: Bega (October-January), the driest season; Belg (February-May), a transitional season with moderate precipitation; and Kiremt (June-September), the main rainy season with the highest amount of precipitation.",
+        "match": "exact",
+        "scope": "transferred",
+        "checked": "full text"
       },
       {
         "cite": "Gashaw et al. (2023)",
@@ -1165,7 +1348,10 @@
         "doi": "10.1016/j.envc.2023.100794",
         "url": "https://doi.org/10.1016/j.envc.2023.100794",
         "months_match": "exact; Ethiopia-wide",
-        "quote": "In Ethiopia, there are three main seasons, such as Kiremt (main rainy season), Bega (dry season), and Belg (small rainy season), which spans from June to September (JJAS), October to January (ONDJ), and February to May (FMAM), respectively."
+        "quote": "In Ethiopia, there are three main seasons, such as Kiremt (main rainy season), Bega (dry season), and Belg (small rainy season), which spans from June to September (JJAS), October to January (ONDJ), and February to May (FMAM), respectively.",
+        "match": "exact",
+        "scope": "national",
+        "checked": "full text"
       }
     ]
   },
@@ -1216,7 +1402,7 @@
         "url": "https://www2.atmos.umd.edu/~dwi/papers/aldrian_susanto_ijc.pdf"
       }
     ],
-    "note": "Java-wide DJF rainy / JJA dry convention from peer-reviewed papers; BMKG declares season onset each year per zone from dekadal rainfall rather than fixed months, and no Bandung-specific bins were found.",
+    "note": "Java-wide seasonal cores (rainy DJF, dry JJA) and the transitions between them, not the full observed rainy and dry seasons; BMKG declares onset each year per zone from dekadal rainfall, and no Bandung-specific bins were found.",
     "papers": [
       {
         "cite": "Aldrian and Susanto (2003)",
@@ -1225,7 +1411,10 @@
         "doi": "10.1002/joc.950",
         "url": "https://doi.org/10.1002/joc.950",
         "months_match": "exact (DJF/MAM/JJA/SON)",
-        "quote": "...on a seasonal basis, i.e. for DJF, MAM, June–August (JJA) and September–November (SON). DJF represents the peak of the northwest Australia–Asia monsoon, and JJA represents the peak of the southeast Australia–Asia monsoon. Both MAM and SON represent monsoon transitions."
+        "quote": "...on a seasonal basis, i.e. for DJF, MAM, June–August (JJA) and September–November (SON). DJF represents the peak of the northwest Australia–Asia monsoon, and JJA represents the peak of the southeast Australia–Asia monsoon. Both MAM and SON represent monsoon transitions.",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       },
       {
         "cite": "Shubri et al. (2023)",
@@ -1234,7 +1423,10 @@
         "doi": "10.29303/jppipa.v9i11.4784",
         "url": "https://doi.org/10.29303/jppipa.v9i11.4784",
         "months_match": "exact; Java-wide aerosol",
-        "quote": "Monthly data is divided into December-January-February (DJF), March-April-May (MAM), June-July-August (JJA), and September-October-November (SON)."
+        "quote": "Monthly data is divided into December-January-February (DJF), March-April-May (MAM), June-July-August (JJA), and September-October-November (SON).",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       }
     ]
   },
@@ -1281,7 +1473,7 @@
         "url": "https://www.tau.ac.il/~pinhas/papers/2004/Alpert_et_al_IJC_2004b.pdf"
       }
     ],
-    "note": "Synoptic season definition for the Eastern Mediterranean (Israel data) rounded to whole months, applied to Haifa; spring is the Sharav-low/dust-storm season, and no Israel Meteorological Service month definition was found.",
+    "note": "Alpert et al. (2004) define Eastern Mediterranean seasons by day: winter 7 Dec–30 Mar, spring 31 Mar–30 May, summer 31 May–22 Sep, autumn 23 Sep–6 Dec. These bins round them to whole months, so they are a rounded regional convention, not an exact copy; Ganor et al.'s dust data are from Jerusalem and Tel Aviv. No Israel Meteorological Service month definition was found.",
     "papers": [
       {
         "cite": "Alpert et al. (2004)",
@@ -1290,7 +1482,10 @@
         "doi": "10.1002/joc.1037",
         "url": "https://doi.org/10.1002/joc.1037",
         "months_match": "day-level boundaries that round to these bins",
-        "quote": "New definition of seasons in the EM: Summer 31 May–22 Sep, Autumn 23 Sep–6 Dec, Winter 7 Dec–30 Mar, Spring 31 Mar–30 May."
+        "quote": "New definition of seasons in the EM: Summer 31 May–22 Sep, Autumn 23 Sep–6 Dec, Winter 7 Dec–30 Mar, Spring 31 Mar–30 May.",
+        "match": "rounded",
+        "scope": "regional",
+        "checked": "full text"
       },
       {
         "cite": "Ganor et al. (2010)",
@@ -1299,7 +1494,10 @@
         "doi": "10.1029/2009JD012638",
         "url": "https://doi.org/10.1029/2009JD012638",
         "months_match": "Alpert bins applied to dust in Israel (Jerusalem, Tel Aviv)",
-        "quote": "The seasons were defined according to the EM synoptic classification [Alpert et al., 2004c]: winter from 7 December to 30 March, summer from 31 May to 22 September, and spring and fall in between."
+        "quote": "The seasons were defined according to the EM synoptic classification [Alpert et al., 2004c]: winter from 7 December to 30 March, summer from 31 May to 22 September, and spring and fall in between.",
+        "match": "rounded",
+        "scope": "regional",
+        "checked": "full text"
       }
     ]
   },
@@ -1346,7 +1544,7 @@
         "url": "https://www.tau.ac.il/~pinhas/papers/2004/Alpert_et_al_IJC_2004b.pdf"
       }
     ],
-    "note": "Synoptic season definition for the Eastern Mediterranean (Israel data) rounded to whole months, applied to Rehovot; spring is the Sharav-low/dust-storm season, and no Israel Meteorological Service month definition was found.",
+    "note": "Alpert et al. (2004) define Eastern Mediterranean seasons by day: winter 7 Dec–30 Mar, spring 31 Mar–30 May, summer 31 May–22 Sep, autumn 23 Sep–6 Dec. These bins round them to whole months, so they are a rounded regional convention, not an exact copy; Ganor et al.'s dust data are from Jerusalem and Tel Aviv. No Israel Meteorological Service month definition was found.",
     "papers": [
       {
         "cite": "Alpert et al. (2004)",
@@ -1355,7 +1553,10 @@
         "doi": "10.1002/joc.1037",
         "url": "https://doi.org/10.1002/joc.1037",
         "months_match": "day-level boundaries that round to these bins",
-        "quote": "New definition of seasons in the EM: Summer 31 May–22 Sep, Autumn 23 Sep–6 Dec, Winter 7 Dec–30 Mar, Spring 31 Mar–30 May."
+        "quote": "New definition of seasons in the EM: Summer 31 May–22 Sep, Autumn 23 Sep–6 Dec, Winter 7 Dec–30 Mar, Spring 31 Mar–30 May.",
+        "match": "rounded",
+        "scope": "regional",
+        "checked": "full text"
       },
       {
         "cite": "Ganor et al. (2010)",
@@ -1364,7 +1565,10 @@
         "doi": "10.1029/2009JD012638",
         "url": "https://doi.org/10.1029/2009JD012638",
         "months_match": "Alpert bins applied to dust in Israel (Jerusalem, Tel Aviv)",
-        "quote": "The seasons were defined according to the EM synoptic classification [Alpert et al., 2004c]: winter from 7 December to 30 March, summer from 31 May to 22 September, and spring and fall in between."
+        "quote": "The seasons were defined according to the EM synoptic classification [Alpert et al., 2004c]: winter from 7 December to 30 March, summer from 31 May to 22 September, and spring and fall in between.",
+        "match": "rounded",
+        "scope": "regional",
+        "checked": "full text"
       }
     ]
   },
@@ -1415,7 +1619,7 @@
         "url": "https://mausam.imd.gov.in/newdelhi/mcdata/seasonal_report.pdf"
       }
     ],
-    "note": "Existing calendar from docs/site-seasonality.md, unchanged; IMD national seasons, and monsoon onset and withdrawal vary by year.",
+    "note": "IMD national reporting seasons; monsoon onset and withdrawal vary by year. The Python research calendar research_2026_04 (src/config/multi_site_seasons.py) used a provisional Nov–Feb / Mar–Jun / Jul–Sep / Oct split for Delhi; local_2026_10 matches these bins. The current export has no September Delhi filters.",
     "papers": [
       {
         "cite": "Sharma et al. (2022)",
@@ -1424,7 +1628,10 @@
         "doi": "10.1007/s00128-022-03506-6",
         "url": "https://doi.org/10.1007/s00128-022-03506-6",
         "months_match": "exact",
-        "quote": "The meteorology of Delhi is divided into four different seasons: winter (January–February), summer (March–May), monsoon (June–September) and post-monsoon (October–December)."
+        "quote": "The meteorology of Delhi is divided into four different seasons: winter (January–February), summer (March–May), monsoon (June–September) and post-monsoon (October–December).",
+        "match": "exact",
+        "scope": "local",
+        "checked": "indexed passage"
       },
       {
         "cite": "Sharma et al. (2023)",
@@ -1433,7 +1640,10 @@
         "doi": "10.1007/s00128-023-03707-7",
         "url": "https://doi.org/10.1007/s00128-023-03707-7",
         "months_match": "exact",
-        "quote": "...during summer (March–May) followed by monsoon (June–September...), winter (January–February...) and post-monsoon (October–December...) seasons."
+        "quote": "...during summer (March–May) followed by monsoon (June–September...), winter (January–February...) and post-monsoon (October–December...) seasons.",
+        "match": "exact",
+        "scope": "local",
+        "checked": "indexed passage"
       }
     ]
   },
@@ -1484,7 +1694,7 @@
         "url": "https://mausamjournal.imd.gov.in/index.php/MAUSAM/article/view/7411"
       }
     ],
-    "note": "IMD national seasons applied to Jaipur, same as Delhi; many Indo-Gangetic aerosol papers instead put December in winter (Dec–Feb) and use Oct–Nov as post-monsoon, so state the convention when comparing with literature.",
+    "note": "IMD national reporting seasons applied to Jaipur (the default, same as Delhi, for like-for-like Indian comparisons). IMD's own Climate of Jaipur puts December in winter (Dec–Feb) with post-monsoon Oct–Nov; that is the alternative, and the one to use for Jaipur climatology. Pandey et al. state the national bins for Delhi.",
     "papers": [
       {
         "cite": "Pandey et al. (2021)",
@@ -1493,7 +1703,96 @@
         "doi": "10.1016/j.uclim.2021.100945",
         "url": "https://doi.org/10.1016/j.uclim.2021.100945",
         "months_match": "same bins, stated as the national IMD classification (paper is about Delhi)",
-        "quote": "The Indian Meteorological Department divides a year into winter (January–February), pre-monsoon (March to May), summer-monsoon (June–September) and post-monsoon (October–December) seasons (Ghosh et al., 2016)."
+        "quote": "The Indian Meteorological Department divides a year into winter (January–February), pre-monsoon (March to May), summer-monsoon (June–September) and post-monsoon (October–December) seasons (Ghosh et al., 2016).",
+        "match": "exact",
+        "scope": "transferred",
+        "checked": "indexed passage"
+      }
+    ],
+    "variants": [
+      {
+        "key": "imd_national",
+        "label": "IMD national",
+        "seasons": [
+          {
+            "name": "Winter (Jan–Feb)",
+            "months": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "Pre-monsoon (Mar–May)",
+            "months": [
+              3,
+              4,
+              5
+            ]
+          },
+          {
+            "name": "Southwest monsoon (Jun–Sep)",
+            "months": [
+              6,
+              7,
+              8,
+              9
+            ]
+          },
+          {
+            "name": "Post-monsoon (Oct–Dec)",
+            "months": [
+              10,
+              11,
+              12
+            ]
+          }
+        ],
+        "note": "IMD national reporting seasons: winter Jan–Feb, post-monsoon Oct–Dec"
+      },
+      {
+        "key": "imd_jaipur",
+        "label": "IMD Jaipur",
+        "seasons": [
+          {
+            "name": "Winter (Dec–Feb)",
+            "months": [
+              12,
+              1,
+              2
+            ]
+          },
+          {
+            "name": "Pre-monsoon (Mar–May)",
+            "months": [
+              3,
+              4,
+              5
+            ]
+          },
+          {
+            "name": "Southwest monsoon (Jun–Sep)",
+            "months": [
+              6,
+              7,
+              8,
+              9
+            ]
+          },
+          {
+            "name": "Post-monsoon (Oct–Nov)",
+            "months": [
+              10,
+              11
+            ]
+          }
+        ],
+        "note": "IMD Climate of Jaipur: winter Dec–Feb, summer Mar–May, monsoon Jun–Sep, post-monsoon Oct–Nov",
+        "sources": [
+          {
+            "title": "India Meteorological Department, Climate of Jaipur (winter Dec–Feb, summer Mar–May, monsoon Jun–Sep, post-monsoon Oct–Nov)",
+            "url": "https://mausam.imd.gov.in/jaipur/docs/climate.pdf"
+          }
+        ]
       }
     ]
   },
@@ -1544,8 +1843,20 @@
         "url": "https://mausamjournal.imd.gov.in/index.php/MAUSAM/article/view/7411"
       }
     ],
-    "note": "IMD national seasons applied to Kanpur, same as Delhi; many Indo-Gangetic aerosol papers instead put December in winter (Dec–Feb) and use Oct–Nov as post-monsoon, so state the convention when comparing with literature.",
+    "note": "IMD national reporting seasons applied to Kanpur (the default, same as Delhi); Mogno et al. (2021) use them for the Indo-Gangetic Plain. Kanpur aerosol studies such as Kaskaoutis et al. (2012) instead put December in winter, offered as the alternative; check December when comparing with that literature.",
     "papers": [
+      {
+        "cite": "Mogno et al. (2021)",
+        "title": "Seasonal distribution and drivers of surface fine particulate matter and organic aerosol over the Indo-Gangetic Plain",
+        "journal": "Atmos. Chem. Phys. 21:10881–10909",
+        "doi": "10.5194/acp-21-10881-2021",
+        "url": "https://doi.org/10.5194/acp-21-10881-2021",
+        "months_match": "exact; Indo-Gangetic Plain, Kanpur named",
+        "quote": "the pre-monsoon season runs from March to May, the monsoon season is from June to September, the post-monsoon season is from October to December, and winter occurs in January and February",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
+      },
       {
         "cite": "Pandey et al. (2021)",
         "title": "Impact of COVID-19 induced lockdown and unlock down phases on the ambient air quality of Delhi, capital city of India",
@@ -1553,9 +1864,108 @@
         "doi": "10.1016/j.uclim.2021.100945",
         "url": "https://doi.org/10.1016/j.uclim.2021.100945",
         "months_match": "same bins, stated as the national IMD classification (paper is about Delhi)",
-        "quote": "The Indian Meteorological Department divides a year into winter (January–February), pre-monsoon (March to May), summer-monsoon (June–September) and post-monsoon (October–December) seasons (Ghosh et al., 2016)."
+        "quote": "The Indian Meteorological Department divides a year into winter (January–February), pre-monsoon (March to May), summer-monsoon (June–September) and post-monsoon (October–December) seasons (Ghosh et al., 2016).",
+        "match": "exact",
+        "scope": "transferred",
+        "checked": "indexed passage"
       }
-    ]
+    ],
+    "variants": [
+      {
+        "key": "imd_national",
+        "label": "IMD national",
+        "seasons": [
+          {
+            "name": "Winter (Jan–Feb)",
+            "months": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "Pre-monsoon (Mar–May)",
+            "months": [
+              3,
+              4,
+              5
+            ]
+          },
+          {
+            "name": "Southwest monsoon (Jun–Sep)",
+            "months": [
+              6,
+              7,
+              8,
+              9
+            ]
+          },
+          {
+            "name": "Post-monsoon (Oct–Dec)",
+            "months": [
+              10,
+              11,
+              12
+            ]
+          }
+        ],
+        "note": "IMD national reporting seasons: winter Jan–Feb, post-monsoon Oct–Dec"
+      },
+      {
+        "key": "dec_winter",
+        "label": "Winter Dec–Feb",
+        "seasons": [
+          {
+            "name": "Winter (Dec–Feb)",
+            "months": [
+              12,
+              1,
+              2
+            ]
+          },
+          {
+            "name": "Pre-monsoon (Mar–May)",
+            "months": [
+              3,
+              4,
+              5
+            ]
+          },
+          {
+            "name": "Southwest monsoon (Jun–Sep)",
+            "months": [
+              6,
+              7,
+              8,
+              9
+            ]
+          },
+          {
+            "name": "Post-monsoon (Oct–Nov)",
+            "months": [
+              10,
+              11
+            ]
+          }
+        ],
+        "note": "Kanpur AERONET literature: winter Dec–Feb, post-monsoon Oct–Nov"
+      }
+    ],
+    "variant_papers": {
+      "dec_winter": [
+        {
+          "cite": "Kaskaoutis et al. (2012)",
+          "title": "Variability and trends of aerosol properties over Kanpur, northern India using AERONET data (2001–10)",
+          "journal": "Environ. Res. Lett. 7:024003",
+          "doi": "10.1088/1748-9326/7/2/024003",
+          "url": "https://doi.org/10.1088/1748-9326/7/2/024003",
+          "months_match": "winter Dec–Feb and post-monsoon Oct–Nov in the abstract; the Introduction once gives pre-monsoon as April–June",
+          "quote": "winter (Dec–Feb) and post-monsoon (Oct–Nov) seasons",
+          "match": "exact",
+          "scope": "local",
+          "checked": "abstract"
+        }
+      ]
+    }
   },
   "KRSE": {
     "site": "Seoul, Korea",
@@ -1613,7 +2023,10 @@
         "doi": "10.3390/app112210755",
         "url": "https://doi.org/10.3390/app112210755",
         "months_match": "exact",
-        "quote": "MAM means March–April–May (spring), JJA means June–July–August (summer), SON means September–October–November (autumn), and DJF means December–January–February (winter)."
+        "quote": "MAM means March–April–May (spring), JJA means June–July–August (summer), SON means September–October–November (autumn), and DJF means December–January–February (winter).",
+        "match": "exact",
+        "scope": "local",
+        "checked": "indexed passage"
       },
       {
         "cite": "Kwon et al. (2025)",
@@ -1622,7 +2035,10 @@
         "doi": "10.1038/s41598-025-32878-y",
         "url": "https://doi.org/10.1038/s41598-025-32878-y",
         "months_match": "exact",
-        "quote": "The seasonal variables were categorized into four periods: spring (March to May), summer (June to August), autumn (September to November), and winter (December to February)."
+        "quote": "The seasonal variables were categorized into four periods: spring (March to May), summer (June to August), autumn (September to November), and winter (December to February).",
+        "match": "exact",
+        "scope": "local",
+        "checked": "full text"
       }
     ]
   },
@@ -1682,7 +2098,10 @@
         "doi": "10.3390/atmos17111042",
         "url": "https://doi.org/10.3390/atmos17111042",
         "months_match": "exact",
-        "quote": "Seasons were defined as spring (March–May), summer (June–August), autumn (September–November), and winter (December–February)."
+        "quote": "Seasons were defined as spring (March–May), summer (June–August), autumn (September–November), and winter (December–February).",
+        "match": "exact",
+        "scope": "local",
+        "checked": "indexed passage"
       }
     ]
   },
@@ -1732,7 +2151,7 @@
         "url": "https://acp.copernicus.org/articles/15/9693/2015/"
       }
     ],
-    "note": "Megalopolis environmental commission seasons; Retama et al. instead use cold-dry Nov–Mar and warm-dry Apr–May, and the ozone season runs mid-February to early June.",
+    "note": "Megalopolis environmental commission seasons; Retama et al. instead use cold-dry Nov–Mar and warm-dry Apr–May, and the ozone season runs mid-February to early June. Retama et al.'s 2013 rainy subset was chosen by date and rainfall over 2 mm, not by month.",
     "papers": [
       {
         "cite": "Wöhrnschimmel et al. (2010)",
@@ -1741,7 +2160,10 @@
         "doi": "10.5194/acp-10-9027-2010",
         "url": "https://doi.org/10.5194/acp-10-9027-2010",
         "months_match": "exact",
-        "quote": "highest concentrations occur between November and February, which in Mexico City corresponds to the dry-cold season... During the dry-warm season (March to May) and the rainy season (June to October), concentrations are lower."
+        "quote": "highest concentrations occur between November and February, which in Mexico City corresponds to the dry-cold season... During the dry-warm season (March to May) and the rainy season (June to October), concentrations are lower.",
+        "match": "exact",
+        "scope": "local",
+        "checked": "full text"
       },
       {
         "cite": "Herrera et al. (2022)",
@@ -1750,7 +2172,10 @@
         "doi": "10.5194/acp-22-14119-2022",
         "url": "https://doi.org/10.5194/acp-22-14119-2022",
         "months_match": "exact",
-        "quote": "...over Mexico City, averaged over 2008–2018 for (a) the cold–dry season (November–February), (b) the warm–dry season (March–May), and (c) the wet season (June–October)."
+        "quote": "...over Mexico City, averaged over 2008–2018 for (a) the cold–dry season (November–February), (b) the warm–dry season (March–May), and (c) the wet season (June–October).",
+        "match": "exact",
+        "scope": "local",
+        "checked": "full text"
       }
     ]
   },
@@ -1800,7 +2225,10 @@
         "doi": "10.4236/acs.2016.61002",
         "url": "https://doi.org/10.4236/acs.2016.61002",
         "months_match": "exact; Ilorin AERONET site",
-        "quote": "The dataset was divided into two groups based on the seasonal variations...: 1) November to March (Dry/Harmattan season); 2) April to October (Rainy/Summer season)."
+        "quote": "The dataset was divided into two groups based on the seasonal variations...: 1) November to March (Dry/Harmattan season); 2) April to October (Rainy/Summer season).",
+        "match": "exact",
+        "scope": "local",
+        "checked": "full text"
       },
       {
         "cite": "Orosun et al. (2023)",
@@ -1809,7 +2237,10 @@
         "doi": "10.1038/s41598-023-48489-4",
         "url": "https://doi.org/10.1038/s41598-023-48489-4",
         "months_match": "exact; Ilorin, not an atmospheric paper",
-        "quote": "Ilorin is located in the south-western region of Nigeria with the rainy and dry months from April to October and November till March, respectively."
+        "quote": "Ilorin is located in the south-western region of Nigeria with the rainy and dry months from April to October and November till March, respectively.",
+        "match": "exact",
+        "scope": "local",
+        "checked": "full text"
       }
     ]
   },
@@ -1860,7 +2291,10 @@
         "doi": "10.1038/s41467-020-15218-8",
         "url": "https://doi.org/10.1038/s41467-020-15218-8",
         "months_match": "exact; Philippine cities incl. Metro Manila; climate paper",
-        "quote": "...a rainy season during June–November and a dry season during December–May. The dry season can be subdivided further into a cool dry season (December–February) and a hot dry season (March–May)."
+        "quote": "...a rainy season during June–November and a dry season during December–May. The dry season can be subdivided further into a cool dry season (December–February) and a hot dry season (March–May).",
+        "match": "exact",
+        "scope": "national",
+        "checked": "full text"
       }
     ]
   },
@@ -1906,7 +2340,7 @@
         "url": "https://www.weather.gov/sju/2009_review"
       }
     ],
-    "note": "The thesis defines the early (Apr–Jul) and late (Aug–Nov) rainfall seasons and the dry season is the remaining months (NWS San Juan starts it in January); African dust peaks June–August, across the two rainfall seasons.",
+    "note": "Hernández Ayala and Méndez Tejeda (2023) give all three: dry Dec–Mar, early rainfall Apr–Jul, late rainfall Aug–Nov (NWS San Juan's 2009 review starts the dry season in January instead). African dust peaks June–August, across the two rainfall seasons.",
     "papers": [
       {
         "cite": "Hernández Ayala and Méndez Tejeda (2023)",
@@ -1915,7 +2349,10 @@
         "doi": "10.3390/cli11110225",
         "url": "https://doi.org/10.3390/cli11110225",
         "months_match": "exact",
-        "quote": "...three seasonal series—the dry season (December–March), the early wet season (April–July), and the late wet season (August–November)."
+        "quote": "...three seasonal series—the dry season (December–March), the early wet season (April–July), and the late wet season (August–November).",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "indexed passage"
       }
     ]
   },
@@ -1962,7 +2399,7 @@
         "url": "https://www.weather.gov.sg/climate-climate-of-singapore/"
       }
     ],
-    "note": "MSS gives Northeast monsoon as December to early March and the inter-monsoon months as April, May, October and November; transboundary haze from Sumatra/Kalimantan usually falls late in the southwest monsoon (Aug–Oct).",
+    "note": "MSS gives the northeast monsoon as December to early March and the first inter-monsoon as late March to May; these whole-month bins put all of March in the northeast monsoon. Transboundary haze from Sumatra/Kalimantan usually falls late in the southwest monsoon (Aug–Oct).",
     "papers": [
       {
         "cite": "Wang et al. (2022)",
@@ -1971,7 +2408,10 @@
         "doi": "10.3390/atmos13091420",
         "url": "https://doi.org/10.3390/atmos13091420",
         "months_match": "exact",
-        "quote": "In general, the NE lasts from December to March while the SW ranges from June to September. The PSW extends from April to May and the PNE occurs between October and November."
+        "quote": "In general, the NE lasts from December to March while the SW ranges from June to September. The PSW extends from April to May and the PNE occurs between October and November.",
+        "match": "exact",
+        "scope": "local",
+        "checked": "full text"
       },
       {
         "cite": "Toh et al. (2025)",
@@ -1980,7 +2420,10 @@
         "doi": "10.1136/bmjopen-2025-108426",
         "url": "https://doi.org/10.1136/bmjopen-2025-108426",
         "months_match": "exact",
-        "quote": "Monsoon periods are defined as follows: Northeast monsoon (December–March), inter-monsoon I (April–May), Southwest monsoon (June–September) and inter-monsoon II (October–November)."
+        "quote": "Monsoon periods are defined as follows: Northeast monsoon (December–March), inter-monsoon I (April–May), Southwest monsoon (June–September) and inter-monsoon II (October–November).",
+        "match": "exact",
+        "scope": "local",
+        "checked": "indexed passage"
       }
     ]
   },
@@ -2047,7 +2490,7 @@
         "url": "https://news.ltn.com.tw/news/life/breakingnews/4691165"
       }
     ],
-    "note": "The Central Weather Administration's climate reviews use these bins, but its seasonal outlooks use Dec–Feb/Mar–May/Jun–Aug/Sep–Nov; chosen here because Nov–Jan keeps the northeast-monsoon PM2.5 peak together (the Oct–Mar poor-dispersion season straddles autumn and winter). Both calendars are offered in the gallery (climate reviews by default).",
+    "note": "Two quarter systems. The default shifted quarters (Feb–Apr ... Nov–Jan) follow Hwang et al. (2016) and Pan et al. (2014) and keep the northeast-monsoon PM2.5 peak in one season; news reports attribute them to Central Weather Administration climate reviews, not confirmed in an official CWA source. Standard quarters (Dec–Feb ...) are what Chou et al. (2010) use for Taiwan EC/OC, so prefer them when comparing with carbonaceous-aerosol literature.",
     "variants": [
       {
         "key": "review",
@@ -2104,7 +2547,7 @@
             "url": "https://news.pts.org.tw/article/665252"
           }
         ],
-        "note": "Central Weather Administration climate-review bins (Feb–Apr, May–Jul, Aug–Oct, Nov–Jan); keeps the northeast-monsoon PM2.5 peak in one season."
+        "note": "Shifted quarters (Feb–Apr, May–Jul, Aug–Oct, Nov–Jan), as in Hwang et al. (2016) and Pan et al. (2014); keeps the northeast-monsoon PM2.5 peak in one season."
       },
       {
         "key": "outlook",
@@ -2153,7 +2596,7 @@
             "url": "https://news.ltn.com.tw/news/life/breakingnews/4691165"
           }
         ],
-        "note": "Central Weather Administration seasonal-outlook bins (Dec–Feb, Mar–May, Jun–Aug, Sep–Nov); the meteorological seasons used at most other northern sites."
+        "note": "Standard quarters (Dec–Feb, Mar–May, Jun–Aug, Sep–Nov), as in Chou et al. (2010) for Taiwan EC/OC and in CWA seasonal outlooks."
       }
     ],
     "papers": [
@@ -2164,7 +2607,10 @@
         "doi": "10.3390/ijerph13040366",
         "url": "https://doi.org/10.3390/ijerph13040366",
         "months_match": "exact in Methods; abstract says winter Oct–Jan; study area Chiayi/Tainan",
-        "quote": "The inpatient visits were further analyzed by four seasons (spring as February, March and April; summer as May, June and July; autumn as August, September and October; winter as November, December and January)."
+        "quote": "The inpatient visits were further analyzed by four seasons (spring as February, March and April; summer as May, June and July; autumn as August, September and October; winter as November, December and January).",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "indexed passage"
       },
       {
         "cite": "Pan et al. (2014)",
@@ -2173,7 +2619,10 @@
         "doi": "10.1371/journal.pone.0096190",
         "url": "https://doi.org/10.1371/journal.pone.0096190",
         "months_match": "exact, Taiwan-wide",
-        "quote": "The outpatient and inpatient visits were further analyzed by seasons (spring as February, March and April; summer as May, June and July; autumn as August, September and October; winter as November, December and January)."
+        "quote": "The outpatient and inpatient visits were further analyzed by seasons (spring as February, March and April; summer as May, June and July; autumn as August, September and October; winter as November, December and January).",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "indexed passage"
       }
     ],
     "variant_papers": {
@@ -2185,7 +2634,10 @@
           "doi": "10.5194/acp-10-9563-2010",
           "url": "https://doi.org/10.5194/acp-10-9563-2010",
           "months_match": "exact, Taiwan-wide network",
-          "quote": "The periods of spring, summer, and autumn start from the 1 March, June, and September, respectively; winter is from December to the February of next year."
+          "quote": "The periods of spring, summer, and autumn start from the 1 March, June, and September, respectively; winter is from December to the February of next year.",
+          "match": "exact",
+          "scope": "regional",
+          "checked": "full text"
         },
         {
           "cite": "Chen et al. (2021)",
@@ -2194,7 +2646,10 @@
           "doi": "10.1038/s41598-021-83155-7",
           "url": "https://doi.org/10.1038/s41598-021-83155-7",
           "months_match": "Kaohsiung; fall, winter, spring exact; no summer sampled",
-          "quote": "(fall, winter, and spring correspond to the months of September–November, December–February, and March–May, respectively)"
+          "quote": "(fall, winter, and spring correspond to the months of September–November, December–February, and March–May, respectively)",
+          "match": "partial",
+          "scope": "local",
+          "checked": "full text"
         }
       ]
     }
@@ -2258,7 +2713,7 @@
         "url": "https://news.ltn.com.tw/news/life/breakingnews/4691165"
       }
     ],
-    "note": "The Central Weather Administration's climate reviews use these bins, but its seasonal outlooks use Dec–Feb/Mar–May/Jun–Aug/Sep–Nov; chosen here because Nov–Jan keeps the northeast-monsoon PM2.5 peak together. Both calendars are offered in the gallery (climate reviews by default).",
+    "note": "Two quarter systems. The default shifted quarters (Feb–Apr ... Nov–Jan) follow Hwang et al. (2016) and Pan et al. (2014) and keep the northeast-monsoon PM2.5 peak in one season; news reports attribute them to Central Weather Administration climate reviews, not confirmed in an official CWA source. Standard quarters (Dec–Feb ...) are what Chou et al. (2010) use for Taiwan EC/OC, so prefer them when comparing with carbonaceous-aerosol literature.",
     "variants": [
       {
         "key": "review",
@@ -2311,7 +2766,7 @@
             "url": "https://news.ltn.com.tw/news/life/breakingnews/4476915"
           }
         ],
-        "note": "Central Weather Administration climate-review bins (Feb–Apr, May–Jul, Aug–Oct, Nov–Jan); keeps the northeast-monsoon PM2.5 peak in one season."
+        "note": "Shifted quarters (Feb–Apr, May–Jul, Aug–Oct, Nov–Jan), as in Hwang et al. (2016) and Pan et al. (2014); keeps the northeast-monsoon PM2.5 peak in one season."
       },
       {
         "key": "outlook",
@@ -2360,7 +2815,7 @@
             "url": "https://news.ltn.com.tw/news/life/breakingnews/4691165"
           }
         ],
-        "note": "Central Weather Administration seasonal-outlook bins (Dec–Feb, Mar–May, Jun–Aug, Sep–Nov); the meteorological seasons used at most other northern sites."
+        "note": "Standard quarters (Dec–Feb, Mar–May, Jun–Aug, Sep–Nov), as in Chou et al. (2010) for Taiwan EC/OC and in CWA seasonal outlooks."
       }
     ],
     "papers": [
@@ -2371,7 +2826,10 @@
         "doi": "10.1371/journal.pone.0096190",
         "url": "https://doi.org/10.1371/journal.pone.0096190",
         "months_match": "exact, Taiwan-wide",
-        "quote": "The outpatient and inpatient visits were further analyzed by seasons (spring as February, March and April; summer as May, June and July; autumn as August, September and October; winter as November, December and January)."
+        "quote": "The outpatient and inpatient visits were further analyzed by seasons (spring as February, March and April; summer as May, June and July; autumn as August, September and October; winter as November, December and January).",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "indexed passage"
       },
       {
         "cite": "Hwang et al. (2016)",
@@ -2380,7 +2838,10 @@
         "doi": "10.3390/ijerph13040366",
         "url": "https://doi.org/10.3390/ijerph13040366",
         "months_match": "exact in Methods; southwestern Taiwan",
-        "quote": "The inpatient visits were further analyzed by four seasons (spring as February, March and April; summer as May, June and July; autumn as August, September and October; winter as November, December and January)."
+        "quote": "The inpatient visits were further analyzed by four seasons (spring as February, March and April; summer as May, June and July; autumn as August, September and October; winter as November, December and January).",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "indexed passage"
       }
     ],
     "variant_papers": {
@@ -2392,7 +2853,10 @@
           "doi": "10.5194/acp-10-9563-2010",
           "url": "https://doi.org/10.5194/acp-10-9563-2010",
           "months_match": "exact; network includes a Taipei station",
-          "quote": "The periods of spring, summer, and autumn start from the 1 March, June, and September, respectively; winter is from December to the February of next year."
+          "quote": "The periods of spring, summer, and autumn start from the 1 March, June, and September, respectively; winter is from December to the February of next year.",
+          "match": "exact",
+          "scope": "regional",
+          "checked": "full text"
         }
       ]
     }
@@ -2449,7 +2913,10 @@
         "doi": "10.1029/2024JD042579",
         "url": "https://doi.org/10.1029/2024JD042579",
         "months_match": "exact; US-wide IMPROVE and CSN by region",
-        "quote": "...with seasons defined as winter (December, January, February), spring (March, April, May), summer (June, July, August), and fall (September, October, November)."
+        "quote": "...with seasons defined as winter (December, January, February), spring (March, April, May), summer (June, July, August), and fall (September, October, November).",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       },
       {
         "cite": "van Donkelaar et al. (2024)",
@@ -2458,7 +2925,10 @@
         "doi": "10.1021/acsestair.4c00151",
         "url": "https://doi.org/10.1021/acsestair.4c00151",
         "months_match": "exact; US and Canada by region",
-        "quote": "NO3− increases PM2.5 in winter (December–February) over Eastern and Western Canada, as well as Northeastern, Midwestern, and Southwestern United States. [Table columns: Winter (DJF) Spring (MAM) Summer (JJA) Fall (SON)]"
+        "quote": "NO3− increases PM2.5 in winter (December–February) over Eastern and Western Canada, as well as Northeastern, Midwestern, and Southwestern United States. [Table columns: Winter (DJF) Spring (MAM) Summer (JJA) Fall (SON)]",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       }
     ]
   },
@@ -2514,7 +2984,10 @@
         "doi": "10.5194/acp-15-12487-2015",
         "url": "https://doi.org/10.5194/acp-15-12487-2015",
         "months_match": "exact; uses the Bondville, IL (BND) aerosol site",
-        "quote": "...for winter (DJF), spring (MAM), summer (JJA), and fall (SON) at APP, BND, EGB, and SGP over the 2010–2013 period."
+        "quote": "...for winter (DJF), spring (MAM), summer (JJA), and fall (SON) at APP, BND, EGB, and SGP over the 2010–2013 period.",
+        "match": "exact",
+        "scope": "local",
+        "checked": "full text"
       },
       {
         "cite": "Hand et al. (2024)",
@@ -2523,7 +2996,10 @@
         "doi": "10.1029/2024JD042579",
         "url": "https://doi.org/10.1029/2024JD042579",
         "months_match": "exact; US-wide IMPROVE and CSN by region",
-        "quote": "...with seasons defined as winter (December, January, February), spring (March, April, May), summer (June, July, August), and fall (September, October, November)."
+        "quote": "...with seasons defined as winter (December, January, February), spring (March, April, May), summer (June, July, August), and fall (September, October, November).",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       }
     ]
   },
@@ -2579,7 +3055,10 @@
         "doi": "10.1029/2024JD042579",
         "url": "https://doi.org/10.1029/2024JD042579",
         "months_match": "exact; US-wide IMPROVE and CSN by region",
-        "quote": "...with seasons defined as winter (December, January, February), spring (March, April, May), summer (June, July, August), and fall (September, October, November)."
+        "quote": "...with seasons defined as winter (December, January, February), spring (March, April, May), summer (June, July, August), and fall (September, October, November).",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       },
       {
         "cite": "van Donkelaar et al. (2024)",
@@ -2588,7 +3067,10 @@
         "doi": "10.1021/acsestair.4c00151",
         "url": "https://doi.org/10.1021/acsestair.4c00151",
         "months_match": "exact; US and Canada by region",
-        "quote": "NO3− increases PM2.5 in winter (December–February) over Eastern and Western Canada, as well as Northeastern, Midwestern, and Southwestern United States. [Table columns: Winter (DJF) Spring (MAM) Summer (JJA) Fall (SON)]"
+        "quote": "NO3− increases PM2.5 in winter (December–February) over Eastern and Western Canada, as well as Northeastern, Midwestern, and Southwestern United States. [Table columns: Winter (DJF) Spring (MAM) Summer (JJA) Fall (SON)]",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       }
     ]
   },
@@ -2644,7 +3126,10 @@
         "doi": "10.5194/acp-15-12487-2015",
         "url": "https://doi.org/10.5194/acp-15-12487-2015",
         "months_match": "exact; uses the Southern Great Plains site near Lamont, OK (SGP)",
-        "quote": "...for winter (DJF), spring (MAM), summer (JJA), and fall (SON) at APP, BND, EGB, and SGP over the 2010–2013 period."
+        "quote": "...for winter (DJF), spring (MAM), summer (JJA), and fall (SON) at APP, BND, EGB, and SGP over the 2010–2013 period.",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       },
       {
         "cite": "Hand et al. (2024)",
@@ -2653,7 +3138,10 @@
         "doi": "10.1029/2024JD042579",
         "url": "https://doi.org/10.1029/2024JD042579",
         "months_match": "exact; US-wide IMPROVE and CSN by region",
-        "quote": "...with seasons defined as winter (December, January, February), spring (March, April, May), summer (June, July, August), and fall (September, October, November)."
+        "quote": "...with seasons defined as winter (December, January, February), spring (March, April, May), summer (June, July, August), and fall (September, October, November).",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       }
     ]
   },
@@ -2703,7 +3191,10 @@
         "doi": "10.3390/hydrology5020025",
         "url": "https://doi.org/10.3390/hydrology5020025",
         "months_match": "exact for the Oct–Apr wet window; Pasadena itself",
-        "quote": "The City of Pasadena is located in southern California, a region which has a Mediterranean climate and where the vast majority of rainfall occurs between October and April, with the period between January and March being the most intense."
+        "quote": "The City of Pasadena is located in southern California, a region which has a Mediterranean climate and where the vast majority of rainfall occurs between October and April, with the period between January and March being the most intense.",
+        "match": "inferred",
+        "scope": "local",
+        "checked": "full text"
       },
       {
         "cite": "Stowell et al. (2020)",
@@ -2712,7 +3203,10 @@
         "doi": "10.1088/1748-9326/ab9334",
         "url": "https://doi.org/10.1088/1748-9326/ab9334",
         "months_match": "exact (approximate, '∼ October-April'); Southern California PM2.5",
-        "quote": "Precipitation during California's rainy season (∼ October-April) can contribute to low PM2.5 concentrations, as seen in the first and second quarter mean results."
+        "quote": "Precipitation during California's rainy season (∼ October-April) can contribute to low PM2.5 concentrations, as seen in the first and second quarter mean results.",
+        "match": "rounded",
+        "scope": "regional",
+        "checked": "full text"
       }
     ]
   },
@@ -2768,7 +3262,10 @@
         "doi": "10.1029/2024JD042579",
         "url": "https://doi.org/10.1029/2024JD042579",
         "months_match": "exact; US-wide IMPROVE and CSN by region",
-        "quote": "...with seasons defined as winter (December, January, February), spring (March, April, May), summer (June, July, August), and fall (September, October, November)."
+        "quote": "...with seasons defined as winter (December, January, February), spring (March, April, May), summer (June, July, August), and fall (September, October, November).",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       },
       {
         "cite": "van Donkelaar et al. (2024)",
@@ -2777,7 +3274,10 @@
         "doi": "10.1021/acsestair.4c00151",
         "url": "https://doi.org/10.1021/acsestair.4c00151",
         "months_match": "exact; US and Canada by region",
-        "quote": "NO3− increases PM2.5 in winter (December–February) over Eastern and Western Canada, as well as Northeastern, Midwestern, and Southwestern United States. [Table columns: Winter (DJF) Spring (MAM) Summer (JJA) Fall (SON)]"
+        "quote": "NO3− increases PM2.5 in winter (December–February) over Eastern and Western Canada, as well as Northeastern, Midwestern, and Southwestern United States. [Table columns: Winter (DJF) Spring (MAM) Summer (JJA) Fall (SON)]",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       }
     ]
   },
@@ -2833,7 +3333,10 @@
         "doi": "10.30852/sb.2022.1849",
         "url": "https://doi.org/10.30852/sb.2022.1849",
         "months_match": "exact",
-        "quote": "Hanoi features a subtropical climate ... with four distinct seasons including spring (from March to May), summer (from June to August), fall (from September to November) and winter (from December to February)."
+        "quote": "Hanoi features a subtropical climate ... with four distinct seasons including spring (from March to May), summer (from June to August), fall (from September to November) and winter (from December to February).",
+        "match": "exact",
+        "scope": "local",
+        "checked": "full text"
       }
     ]
   },
@@ -2893,7 +3396,10 @@
         "doi": "10.5194/acp-15-4259-2015",
         "url": "https://doi.org/10.5194/acp-15-4259-2015",
         "months_match": "exact; covers Gauteng",
-        "quote": "When seasonal characteristics are described, southern hemisphere summer is defined as December–February (DJF), fall is March–May (MAM), winter is June–August (JJA), and spring is September–November (SON)."
+        "quote": "When seasonal characteristics are described, southern hemisphere summer is defined as December–February (DJF), fall is March–May (MAM), winter is June–August (JJA), and spring is September–November (SON).",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       },
       {
         "cite": "Matandirotya et al. (2022)",
@@ -2902,7 +3408,10 @@
         "doi": "10.1016/j.sciaf.2022.e01201",
         "url": "https://doi.org/10.1016/j.sciaf.2022.e01201",
         "months_match": "exact; Soweto, Johannesburg",
-        "quote": "...the data were arranged into 4 seasonal compartments for example summer (DJF), autumn (MAM), winter (JJA), and spring (SON) according to seasons on the South Africa Highveld."
+        "quote": "...the data were arranged into 4 seasonal compartments for example summer (DJF), autumn (MAM), winter (JJA), and spring (SON) according to seasons on the South Africa Highveld.",
+        "match": "exact",
+        "scope": "local",
+        "checked": "full text"
       }
     ]
   },
@@ -2962,7 +3471,10 @@
         "doi": "10.5194/acp-15-4259-2015",
         "url": "https://doi.org/10.5194/acp-15-4259-2015",
         "months_match": "exact; covers Gauteng",
-        "quote": "When seasonal characteristics are described, southern hemisphere summer is defined as December–February (DJF), fall is March–May (MAM), winter is June–August (JJA), and spring is September–November (SON)."
+        "quote": "When seasonal characteristics are described, southern hemisphere summer is defined as December–February (DJF), fall is March–May (MAM), winter is June–August (JJA), and spring is September–November (SON).",
+        "match": "exact",
+        "scope": "regional",
+        "checked": "full text"
       },
       {
         "cite": "du Preez et al. (2021)",
@@ -2971,7 +3483,10 @@
         "doi": "10.3390/atmos12020132",
         "url": "https://doi.org/10.3390/atmos12020132",
         "months_match": "Pretoria; summer DJF and spring SON stated",
-        "quote": "The two annual AOD maxima (in February and September) coincided with summer (December, January, and February) and spring (September, October, and November), respectively."
+        "quote": "The two annual AOD maxima (in February and September) coincided with summer (December, January, and February) and spring (September, October, and November), respectively.",
+        "match": "partial",
+        "scope": "local",
+        "checked": "indexed passage"
       }
     ]
   },
@@ -3021,7 +3536,10 @@
         "doi": "10.1080/10473289.2005.10464627",
         "url": "https://doi.org/10.1080/10473289.2005.10464627",
         "months_match": "exact; Santiago",
-        "quote": "Mean PM2.5 levels during the cold season (April through September) were more than twice as high as those observed in the warm season (October through March)"
+        "quote": "Mean PM2.5 levels during the cold season (April through September) were more than twice as high as those observed in the warm season (October through March)",
+        "match": "exact",
+        "scope": "local",
+        "checked": "abstract"
       },
       {
         "cite": "Sax et al. (2007)",
@@ -3030,7 +3548,10 @@
         "doi": "10.3155/1047-3289.57.7.845",
         "url": "https://doi.org/10.3155/1047-3289.57.7.845",
         "months_match": "exact; Santiago",
-        "quote": "Mean PM(2.5) levels measured during the cold season (April through September) were three times higher than those measured in the warm season (October through March)."
+        "quote": "Mean PM(2.5) levels measured during the cold season (April through September) were three times higher than those measured in the warm season (October through March).",
+        "match": "exact",
+        "scope": "local",
+        "checked": "abstract"
       }
     ]
   },
@@ -3080,7 +3601,10 @@
         "doi": "10.1080/10473289.2005.10464627",
         "url": "https://doi.org/10.1080/10473289.2005.10464627",
         "months_match": "exact; Santiago",
-        "quote": "Mean PM2.5 levels during the cold season (April through September) were more than twice as high as those observed in the warm season (October through March)"
+        "quote": "Mean PM2.5 levels during the cold season (April through September) were more than twice as high as those observed in the warm season (October through March)",
+        "match": "exact",
+        "scope": "local",
+        "checked": "abstract"
       },
       {
         "cite": "Sax et al. (2007)",
@@ -3089,7 +3613,10 @@
         "doi": "10.3155/1047-3289.57.7.845",
         "url": "https://doi.org/10.3155/1047-3289.57.7.845",
         "months_match": "exact; Santiago",
-        "quote": "Mean PM(2.5) levels measured during the cold season (April through September) were three times higher than those measured in the warm season (October through March)."
+        "quote": "Mean PM(2.5) levels measured during the cold season (April through September) were three times higher than those measured in the warm season (October through March).",
+        "match": "exact",
+        "scope": "local",
+        "checked": "abstract"
       }
     ]
   }

@@ -31,7 +31,7 @@ export function crossPoint(r: FilterRow, x: string, y: string, color: string, so
 
 /**
  * Before and after the flow fix against the filters: the aethalometer's IR BCc over each filter's sampling window
- * against HIPS absorption (as BC, over MAC 10) or FTIR EC, one crossplot per flow period at one site
+ * against HIPS absorption (as BC, over the MAC set under Filters → units) or FTIR EC, one crossplot per flow period at one site
  * (FlowFix_BeforeAfter_Analysis §6–7, plotting/comparisons.flow_periods), and every site's slope and r² by period
  * on one strip (§8–9, the summary bars). Filters are classified by their sample date with
  * flow_periods.classify_flow_period's rule; the dates, seasons and exclusions of the Filters panel apply.

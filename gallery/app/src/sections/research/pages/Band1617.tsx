@@ -13,6 +13,9 @@ const PARTNER: Record<string, string> = {
 const BAND: Record<string, string> = { band1600_height: '1600 band', carbonyl_peak: 'C=O carbonyl', CH_peak: 'aliphatic C–H' }
 const TARGET: Record<string, string> = { HIPS_tau: 'HIPS τ (per filter)', Fabs: 'HIPS Fabs', EC_deployed_ugm3: 'deployed FTIR EC' }
 const WINDOW_NAME: Record<string, string> = { whole_spectrum: 'whole spectrum', OH_broad: 'O–H broad', aliphatic_CH: 'aliphatic C–H', carbonyl: 'C=O carbonyl', band_1617: '1560–1680 (1617)' }
+const DUST_PREDICTOR: Record<string, string> = { log_soil: 'canonical IMPROVE soil (log)', dust_index: 'dust index', log_Kion: 'potassium K⁺ (log)' }
+const DUST_TARGET: Record<string, string> = { addis_augmented: 'Addis (188 filters)', indh_augmented: 'Delhi (27 filters)' }
+const DUST_CONFIG = (c: unknown) => String(c).replace(/_k(\d+)$/, ' · k $1').replace(/_/g, ' ')
 const WINDOWS = [
   { value: 'band', label: '1450–1800 cm⁻¹', patch: { window: [1800, 1450] } },
   { value: 'ch', label: '2600–3600 cm⁻¹ (C–H, N–H/O–H)', patch: { window: [3600, 2600] } },
@@ -63,6 +66,11 @@ export function Band1617(_props: SectionPageProps) {
   const covariation = rows(data, 'covariation').map((r): Row => ({ ...r, partner: PARTNER[String(r.partner_band)] ?? r.partner_band }))
   const tracking = rows(data, 'tracking').map((r): Row => ({ ...r, band: BAND[String(r.band)] ?? r.band, target: TARGET[String(r.target)] ?? r.target }))
   const pmf = rows(data, 'pmf_tests').map((r): Row => ({ ...r, predictor: `${String(r.predictor).replace('_frac', '')} · q = ${num(r.fdr_q)?.toFixed(3)}` }))
+  const dust = rows(data, 'dust_tests').map((r): Row => ({ ...r, predictor: DUST_PREDICTOR[String(r.predictor)] ?? r.predictor,
+    target: DUST_TARGET[String(r.target)] ?? r.target, config: DUST_CONFIG(r.config) }))
+  const dustAddis = dust.filter((r) => String(r.target).startsWith('Addis'))
+  const kAddis = dustAddis.filter((r) => String(r.predictor).startsWith('potassium')).map((r) => num(r.partial_r)).filter((v): v is number => v != null)
+  const soilQ = dustAddis.filter((r) => String(r.predictor).startsWith('canonical')).map((r) => num(r.fdr_q)).filter((v): v is number => v != null)
   const nh = covariation.find((r) => r.group === 'Addis' && r.partner_band === 'NH_OH_3100_3400')
   const trackR = (target: string) => rows(data, 'tracking').find((r) => r.target === target && r.band === 'band1600_height')
   const ec = trackR('EC_deployed_ugm3'), tau = trackR('HIPS_tau')
@@ -117,6 +125,13 @@ export function Band1617(_props: SectionPageProps) {
       title="PMF attribution — no charcoal or wood signal in the band's strength"
       subtitle="102 dated Addis filters joined to the normalised PMF factors; 5,000-permutation tests with within-family BH-FDR (q). The band is a regional Ethiopian marker; the PMF has no eucalyptus-resolved factor, so do not call it that."
       provenance={provenance(data, ['pmf_tests'])} />
+
+    {dust.length > 0 && <Figure kind="intervals" id="band-1617-dust" data={dust} row="predictor" series="config" block="target"
+      panels={[{ value: 'partial_r', label: 'Partial r with the residual, given HIPS BC and month', reference: 0 }, { value: 'spearman_r', label: 'Spearman ρ (unadjusted)', reference: 0 }]}
+      aggregate={{ stat: 'median', interval: 'none' }} labelWidth={220}
+      title={`Dust or potassium? — the locked calibrations' Addis residual follows K⁺ (partial r ${f2(Math.min(...kAddis))}–${f2(Math.max(...kAddis))}), soil only weakly`}
+      subtitle={`ftir_38: each locked PLS configuration's residual (prediction − HIPS Fabs/10, µg/m³) against the canonical IMPROVE soil (2.20 Al + 2.49 Si + 1.63 Ca + 2.42 Fe + 1.94 Ti), a dust index and soluble potassium, adjusted for HIPS BC and month (sin/cos); 5,000-permutation tests with BH-FDR. Soil has the absorption-consistent negative sign at Addis but its significance depends on the configuration (q ${f2(Math.min(...soilQ))}–${f2(Math.max(...soilQ))}); potassium is strong under every one (q < 0.001). Delhi's 27 filters cannot settle either. The residual is at MAC 10, as the notebook ran it.`}
+      provenance={provenance(data, ['dust_tests'])} />}
 
     <Figure kind="heatmap" id="band-1617-bandr" data={rows(data, 'band_r').map((r): Row => ({ ...r, band: WINDOW_NAME[String(r.band)] ?? r.band }))} row="target" column="band" value="r" ramp="sequential" domain={[0.6, 1]} format="f3" valueLabel="median r vs library median"
       title="Band-resolved similarity — Addis separates from the library in aliphatic C–H and at 1617, not overall"

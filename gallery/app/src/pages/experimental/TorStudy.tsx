@@ -12,6 +12,8 @@ import { SweepPlot } from '@/components/SweepPlot'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
+import { useExport } from '@/lib/data'
+import { useMac } from '@/lib/mac'
 import { ADDIS_ALL, FONT, IMPROVE_GREY, INK, themed } from '@/lib/theme'
 import { dotFill } from '@/lib/highlight'
 import { coef, coefSigned, f2, pct, signed } from '@/lib/format'
@@ -87,6 +89,7 @@ function Findings({ d }: { d: TorData }) {
   const med = d.volume.find((v) => v.target === 'Addis median')
   const worst = [...d.seasons].sort((a, b) => b['published ÷ HIPS (median)'] - a['published ÷ HIPS (median)'])
   const adamaSeason = d.seasons.find((s) => s['Adama pairs'] > 0)?.season
+  const mac = useMac()
   return (
     <ExplainOnly>
       <ChartFrame id="xd-findings" title="Adama TOR study — short answers" exportable={false}>
@@ -94,7 +97,7 @@ function Findings({ d }: { d: TorData }) {
           <li><strong>Lighter than SPARTAN Addis.</strong> Median EC per filter {f2(adama?.ec_ug)} µg for Adama (TOR) against {f2(addis?.ec_ug)} µg at SPARTAN Addis (FTIR): Adama sits at Addis's {nth(T['EC µg/filter']?.['Adama percentile in Addis'])} percentile and IMPROVE's {nth(T['EC µg/filter']?.['Adama percentile in IMPROVE'])}. Most of that is volume: {f2(adama?.volume)} m³ per filter against {f2(addis?.volume)}.</li>
           <li><strong>A different aerosol.</strong> Adama's TOR OC/EC is {f2(T['OC/EC']?.['Adama median'])} against {f2(T['OC/EC']?.['Addis median'])} at SPARTAN Addis (FTIR) and {f2(T['OC/EC']?.['IMPROVE median'])} in IMPROVE (TOR): above every SPARTAN Addis filter ({nth(T['OC/EC']?.['Adama percentile in Addis'])} percentile).</li>
           <li><strong>Similar spectral distance.</strong> Median distance percentile {Math.round(adama?.distance ?? NaN)} for Adama and {Math.round(addis?.distance ?? NaN)} for SPARTAN Addis, so similar novelty does not mean similar conditions.</li>
-          <li><strong>One season only.</strong> All five pairs are from {adamaSeason}. At SPARTAN Addis the seasons behave differently (published FTIR ÷ HIPS {d.seasons.map((s) => `${s.season} ${f2(s['published ÷ HIPS (median)'])}`).join(', ')}; highest in {worst[0].season}), so a one-season pilot cannot speak for the others.</li>
+          <li><strong>One season only.</strong> All five pairs are from {adamaSeason}. At SPARTAN Addis the seasons behave differently (published FTIR ÷ HIPS at {mac.label} {d.seasons.map((s) => `${s.season} ${f2(mac.slope(s['published ÷ HIPS (median)']))}`).join(', ')}; highest in {worst[0].season}), so a one-season pilot cannot speak for the others.</li>
           <li><strong>Where it would need to be:</strong> at Adama's EC concentration, reaching SPARTAN Addis's median EC per filter takes about {Math.round(med?.["volume at Adama's median EC (m³)"] ?? NaN)} m³, {f2((med?.["volume at Adama's median EC (m³)"] ?? NaN) / (med?.['Adama volume now (m³)'] ?? NaN))}× today's volume; plus Dry or Belg sampling and lower OC/EC.</li>
           <li><strong>Precision:</strong> with 10 pairs a mean bias on Addis-like filters is known to about ±{pct(hw(10))} (±{pct(hw(36))} with 36). Addis's nearest TOR sites: {topA.map((s) => `${s.name} (${pct(s.Addis)})`).join(', ')}.</li>
         </ol>
@@ -142,26 +145,38 @@ function PilotPosition({ d }: { d: TorData }) {
 /**
  * What the loading plane measures. EC is the study's axis (TOR at IMPROVE and Adama, published FTIR at SPARTAN); HIPS BC
  * and weighed PM2.5 put the same filters on the plane by absorption and by mass. Neither is measured on the Adama pilot.
+ * HIPS BC is at the MAC set under Filters (lib/mac): the run's own column (Fabs / 10) rescaled, or, for runs that did not
+ * export it, the SPARTAN filters' HIPS Fabs from spartan_reference.json ÷ MAC.
  */
 type PlaneMeasure = 'EC' | 'HIPS' | 'PM2.5'
 const HIPS_COL = 'HIPS BC µg/m³'
 const PLANE_MEASURE: Record<PlaneMeasure, { label: string; short: string; conc: (p: Record<string, any>) => number; ug: (p: Record<string, any>) => number; xD: [number, number]; diagonals: number[] }> = {
   EC: { label: 'EC', short: 'EC', conc: (p) => num(p['EC µg/m³']), ug: (p) => num(p['EC µg/filter']), xD: [0.02, 50], diagonals: [1, 3, 10, 30, 100] },
-  HIPS: { label: 'HIPS BC (MAC 10)', short: 'HIPS BC', conc: (p) => num(p[HIPS_COL]), ug: (p) => num(p[HIPS_COL]) * num(p['volume m³']), xD: [0.02, 50], diagonals: [1, 3, 10, 30, 100] },
+  HIPS: { label: 'HIPS BC', short: 'HIPS BC', conc: (p) => num(p[HIPS_COL]), ug: (p) => num(p[HIPS_COL]) * num(p['volume m³']), xD: [0.02, 50], diagonals: [1, 3, 10, 30, 100] },
   'PM2.5': { label: 'weighed PM2.5', short: 'PM2.5', conc: (p) => num(p['PM2.5 µg/filter']) / num(p['volume m³']), ug: (p) => num(p['PM2.5 µg/filter']), xD: [0.5, 500], diagonals: [10, 30, 100, 300, 1000, 3000] },
 }
 
 function LoadingPlane({ d }: { d: TorData }) {
-  const pts = useMemo(() => rowsOf(d.points), [d])
+  const raw = useMemo(() => rowsOf(d.points), [d])
   const lg = useLegend()
+  const mac = useMac()
   const [arrowParam, setArrow] = useSearchParam<'on' | 'off'>('xd-plane.arrow', 'off', ['on', 'off'])
   const [level, setLevel] = useSearchParam<'filter' | 'site'>('xd-plane.level', 'filter', ['filter', 'site'])
-  // HIPS only where the run exported it (runs before 2026-10-28 did not)
+  const measures: PlaneMeasure[] = ['EC', 'HIPS', 'PM2.5']
+  const [measure, setMeasure] = useSearchParam<PlaneMeasure>('xd-plane.measure', 'EC', measures)
+  // HIPS BC: the run's column where it exported one (runs before 2026-10-28 did not), else the SPARTAN filters' HIPS Fabs
+  // joined by filter id, loaded only when the measure is picked; either way at the reader's MAC
+  const exported = useMemo(() => raw.some((p) => Number.isFinite(num(p[HIPS_COL]))), [raw])
+  const ref = useExport<{ rows: { id: string; 'HIPS Fabs'?: number }[] }>(measure === 'HIPS' && !exported ? 'spartan_reference.json' : null)
+  const pts = useMemo((): Record<string, any>[] => {
+    if (measure !== 'HIPS') return raw
+    if (exported) return raw.map((p) => ({ ...p, [HIPS_COL]: mac.bc(num(p[HIPS_COL])) }))
+    if (!ref.data) return raw
+    const fabs = new Map(ref.data.rows.flatMap((r) => (typeof r['HIPS Fabs'] === 'number' ? [[r.id, r['HIPS Fabs']] as const] : [])))
+    return raw.map((p) => ({ ...p, [HIPS_COL]: String(p.population).startsWith('SPARTAN') ? mac.fromFabs(fabs.get(String(p.id))) : null }))
+  }, [raw, measure, exported, ref.data, mac])
   const hipsPops = useMemo(() => new Set(pts.filter((p) => Number.isFinite(num(p[HIPS_COL]))).map((p) => p.population as string)), [pts])
-  const measures: PlaneMeasure[] = hipsPops.size ? ['EC', 'HIPS', 'PM2.5'] : ['EC', 'PM2.5']
-  const [measureParam, setMeasure] = useSearchParam<PlaneMeasure>('xd-plane.measure', 'EC', ['EC', 'HIPS', 'PM2.5'])
-  const measure = measures.includes(measureParam) ? measureParam : 'EC'
-  const M = PLANE_MEASURE[measure]
+  const M = measure === 'HIPS' ? { ...PLANE_MEASURE.HIPS, label: `HIPS BC (${mac.label})` } : PLANE_MEASURE[measure]
   const ec = measure === 'EC'
   const arrow = ec && arrowParam === 'on'
   const pops = ['IMPROVE (TOR)', 'SPARTAN network', 'SPARTAN Addis', 'Adama pilot (TOR)']
@@ -200,7 +215,7 @@ function LoadingPlane({ d }: { d: TorData }) {
   return (
     <ChartFrame id="xd-plane" source={source('LoadingPlane')} provenance={runLine(d)}
       title={`Loading = concentration × volume — ${ec ? 'why the pilot filters are light, and what would fix it' : `the same plane by ${M.label}`}`}
-      subtitle={`Each filter by ${M.label} concentration (across) and sampled volume (up); grey diagonals are equal ${M.short} per filter. The orange band is SPARTAN Addis's middle half of ${M.short} per filter${ec ? ': a pilot filter must land in it to load the spectrum as SPARTAN Addis does' : ''}. Measure puts the same filters on the plane by EC, by HIPS absorption (BC at MAC 10) or by weighed PM2.5 mass. Points: Site medians shows one point per site instead (its median concentration and volume; hollow IMPROVE circles are urban sites). Click a legend item to hide that population, or point at one to fade the others. Volume needed (EC only) draws an arrow for how much more air the Adama sampler would need at Adama's own EC concentration. Click a filter to open its record; right-click to exclude it.`}
+      subtitle={`Each filter by ${M.label} concentration (across) and sampled volume (up); grey diagonals are equal ${M.short} per filter. The orange band is SPARTAN Addis's middle half of ${M.short} per filter${ec ? ': a pilot filter must land in it to load the spectrum as SPARTAN Addis does' : ''}. Measure puts the same filters on the plane by EC, by HIPS absorption (BC at the MAC set under Filters, now ${mac.mac}; SPARTAN filters only, ${exported ? 'from this run' : 'their HIPS Fabs joined by filter id'}) or by weighed PM2.5 mass. Points: Site medians shows one point per site instead (its median concentration and volume; hollow IMPROVE circles are urban sites). Click a legend item to hide that population, or point at one to fade the others. Volume needed (EC only) draws an arrow for how much more air the Adama sampler would need at Adama's own EC concentration. Click a filter to open its record; right-click to exclude it.`}
       controls={<>
         <Segmented label="Measure" value={measure} options={measures} onChange={setMeasure} optionLabel={(o) => ({ EC: 'EC', HIPS: 'HIPS BC', 'PM2.5': 'PM2.5' }[o])} />
         <Segmented label="Points" value={level} options={['filter', 'site'] as const} onChange={setLevel} optionLabel={(o) => (o === 'filter' ? 'Each filter' : 'Site medians')} />
@@ -231,7 +246,8 @@ function LoadingPlane({ d }: { d: TorData }) {
           </g>
         }} />
       <Legend {...lg.props} items={pops.map((p) => ({ label: POP_LABEL[p], color: POP_COLOR[p] }))} />
-      {!ec && missing.length > 0 && <Note>No {M.label} in this run for {missing.map((p) => POP_LABEL[p]).join(', ')}, so {missing.length > 1 ? 'they are' : 'it is'} not on this plane; the table below is EC per filter.</Note>}
+      {measure === 'HIPS' && !exported && ref.loading && <Note>Loading the SPARTAN filters' HIPS Fabs…</Note>}
+      {!ec && missing.length > 0 && !(measure === 'HIPS' && !exported && ref.loading) && <Note>No {M.label} {measure === 'HIPS' ? 'for' : 'in this run for'} {missing.map((p) => POP_LABEL[p]).join(', ')}, so {missing.length > 1 ? 'they are' : 'it is'} not on this plane{measure === 'HIPS' ? ' (the Adama pilot has no HIPS, and this run did not export the IMPROVE filters\' HIPS Fabs)' : ''}; the table below is EC per filter.</Note>}
       <table className="census-table" style={{ marginTop: 6 }}>
         <thead><tr><th>Target EC per filter</th><th>µg</th><th>Volume at Adama's EC</th><th>× today's Adama volume</th><th>Hours at the Adama flow</th><th>Volume at SPARTAN Addis's EC</th></tr></thead>
         <tbody>{d.volume.map((v) => <tr key={v.target}><td>{v.target}</td><td>{f2(v['EC µg/filter'])}</td><td>{f2(v["volume at Adama's median EC (m³)"])} m³</td>
@@ -243,15 +259,19 @@ function LoadingPlane({ d }: { d: TorData }) {
 }
 
 function SeasonPanel({ d }: { d: TorData }) {
+  // the run's ratios and Deming fit are against HIPS BC at MAC 10: at the reader's MAC the ratio and the slope
+  // scale by MAC/10 and the intercept stays (lib/mac)
+  const mac = useMac()
+  const k = (v: number) => mac.slope(v) as number
   const rows = d.seasons.map((s) => ({
     key: s.season, label: `${s.season}${s['Adama pairs'] ? `  ← all ${s['Adama pairs']} Adama pairs` : ''}`, color: s['Adama pairs'] ? ADAMA : ADDIS_ALL, bold: s['Adama pairs'] > 0,
-    values: { ratio: { v: s['published ÷ HIPS (median)'], lo: s['published ÷ HIPS p25'], hi: s['published ÷ HIPS p75'] }, slope: { v: s['Deming slope'] }, intercept: { v: s['Deming intercept'] } },
-    tip: [s.season, `${s['Addis filters']} Addis filters`, `published FTIR ÷ HIPS: median ${f2(s['published ÷ HIPS (median)'])} (25–75 % ${f2(s['published ÷ HIPS p25'])}–${f2(s['published ÷ HIPS p75'])})`, `Deming slope ${coef(s['Deming slope'])}, intercept ${coefSigned(s['Deming intercept'])} µg/m³`, `${s['Adama pairs']} Adama pairs`],
+    values: { ratio: { v: k(s['published ÷ HIPS (median)']), lo: k(s['published ÷ HIPS p25']), hi: k(s['published ÷ HIPS p75']) }, slope: { v: k(s['Deming slope']) }, intercept: { v: s['Deming intercept'] } },
+    tip: [s.season, `${s['Addis filters']} Addis filters`, `published FTIR ÷ HIPS (${mac.label}): median ${f2(k(s['published ÷ HIPS (median)']))} (25–75 % ${f2(k(s['published ÷ HIPS p25']))}–${f2(k(s['published ÷ HIPS p75']))})`, `Deming slope ${coef(k(s['Deming slope']))}, intercept ${coefSigned(s['Deming intercept'])} µg/m³`, `${s['Adama pairs']} Adama pairs`],
   }))
   return (
     <ChartFrame id="xd-season" source={source('SeasonPanel')} provenance={runLine(d)}
       title="Season — when the Addis disagreement happens, and when the pilot was sampled"
-      subtitle="SPARTAN Addis by season (site calendar, February in Belg): published FTIR EC ÷ HIPS BC (median with 25–75 %), and the Deming fit against HIPS. The seasons differ, and the Adama pilot was sampled entirely in one of them (green). Pairs meant to test the calibration at Addis need to cover every season, or at least the one the question is about.">
+      subtitle={`SPARTAN Addis by season (site calendar, February in Belg): published FTIR EC ÷ HIPS BC at ${mac.label} (set under Filters; median with 25–75 %), and the Deming fit against HIPS. The run used MAC 10; another MAC scales the ratio and slope by MAC/10 and leaves the intercept. The seasons differ, and the Adama pilot was sampled entirely in one of them (green). Pairs meant to test the calibration at Addis need to cover every season, or at least the one the question is about.`}>
       <Forest rows={rows} labelWidth={230} panels={[{ key: 'ratio', label: 'published FTIR ÷ HIPS BC', ref: 1, fmt: f2 }, { key: 'slope', label: 'Deming slope vs HIPS', ref: 1, fmt: coef }, { key: 'intercept', label: 'Deming intercept (µg/m³)', ref: 0, fmt: coefSigned }]} />
     </ChartFrame>
   )

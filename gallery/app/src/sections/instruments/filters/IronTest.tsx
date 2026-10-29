@@ -7,6 +7,7 @@ import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { SweepPlot } from '@/components/SweepPlot'
 import { fitLine, fmt } from '@/lib/format'
+import { useMac } from '@/lib/mac'
 import { spearman } from '@/lib/weather'
 import { seasonOnly, shortSeason } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
@@ -30,7 +31,9 @@ export function IronTest({ pairs, meta, sites, ch, sigma }: { pairs: Pair[]; met
   const [abs, setAbs] = useSearchParam<(typeof ABS)[number]>('af.fe.abs', 'HIPS', ABS)
   const yOf = (p: Pair) => (abs === 'HIPS' ? p.fabs : p.batn)
   const yName = abs === 'HIPS' ? 'HIPS Fabs' : `b_ATN ${ch}`
-  const target = abs === 'HIPS' ? 10 : sigma ?? NaN
+  // the slope the iron-corrected fit should reach: the MAC set under Filters → units (the notebook's 10), or σ_ATN
+  const { mac } = useMac()
+  const target = abs === 'HIPS' ? mac : sigma ?? NaN
   const eligible = useMemo(() => sites.filter((s) => pairs.filter((p) => p.site === s.name && p.iron !== null && p.ec !== null && yOf(p) !== null).length >= MIN_N),
     [pairs, sites, abs]) // eslint-disable-line react-hooks/exhaustive-deps
   const preferred = eligible.find((s) => s.code === 'ETAD') ?? eligible[0]
@@ -80,7 +83,7 @@ export function IronTest({ pairs, meta, sites, ch, sigma }: { pairs: Pair[]; met
   </>
   const frame = (body: React.ReactNode) => (
     <ChartFrame id="aeth-filters-iron" title="Iron test — does subtracting iron absorption recover the expected MAC?"
-      subtitle={`${yName} = MAC_BC × FTIR EC + MAC_Fe × Iron + c, fitted by least squares over one site's filters with all three (iron_correction_test.ipynb). Then ${yName} − k × Iron is refitted against EC for k from 0 to three times the fitted MAC_Fe, and the k whose slope comes closest to ${abs === 'HIPS' ? '10 m²/g (SPARTAN\'s MAC at 633 nm)' : `σ_ATN at ${ch} (where the aethalometer's BC would equal EC)`} is marked. Iron in µg/m³, so k is in Mm⁻¹ per µg/m³ (the notebook's per ng/m³ × 1000). Seasons follow the gallery's calendar. OLS throughout, as in the notebook.`}
+      subtitle={`${yName} = MAC_BC × FTIR EC + MAC_Fe × Iron + c, fitted by least squares over one site's filters with all three (iron_correction_test.ipynb). Then ${yName} − k × Iron is refitted against EC for k from 0 to three times the fitted MAC_Fe, and the k whose slope comes closest to ${abs === 'HIPS' ? `${mac} m²/g (the MAC set under Filters → units; SPARTAN uses 10 at 633 nm)` : `σ_ATN at ${ch} (where the aethalometer's BC would equal EC)`} is marked. Iron in µg/m³, so k is in Mm⁻¹ per µg/m³ (the notebook's per ng/m³ × 1000). Seasons follow the gallery's calendar. OLS throughout, as in the notebook.`}
       provenance="notebooks/analysis/iron_correction_test.ipynb (Tests 1–7) · ETAD_Aug13.ipynb §6–8.5 (BCc, HIPS and EC against iron)"
       controls={controls}>{body}</ChartFrame>
   )

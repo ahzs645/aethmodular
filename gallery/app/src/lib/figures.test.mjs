@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { rowsOf, where, uniq, summarize, densities } from './table.ts'
 import { nearestIndex, channelQuantiles, iqrRows } from './spectra.ts'
-import { facetGrid } from './facets.ts'
+import { facetGrid, panelRow, panelLetter, fitColumns } from './facets.ts'
 
 test('rowsOf accepts column and row tables', () => {
   const cols = { a: [1, 2], b: ['x', 'y'] }
@@ -57,4 +57,34 @@ test('facetGrid fits columns to the width', () => {
   assert.equal(facetGrid(600, 8).cols, 2)
   assert.equal(facetGrid(200, 3).cols, 1)
   assert.equal(facetGrid(2000, 2).cols, 2)
+})
+
+test('facetGrid caps a cell at maxCell', () => {
+  assert.equal(facetGrid(1200, 2, { maxCell: 360 }).cell, 360)
+})
+
+test('panelRow puts panels side by side when their mins fit, else stacks them', () => {
+  // a fixed square beside a growing sweep: the sweep takes the spare room
+  assert.deepEqual(panelRow(1000, [{ min: 300, basis: 420, max: 420, grow: 0 }, { min: 260, basis: 360 }], 24), { stacked: false, widths: [420, 556] })
+  // too narrow for both mins: stacked, each as wide as the container up to its max
+  assert.deepEqual(panelRow(500, [{ min: 300, max: 420, grow: 0 }, { min: 260 }], 24), { stacked: true, widths: [420, 500] })
+  // bases too wide: each shrinks toward its min in proportion to its slack
+  const r = panelRow(700, [{ min: 300, basis: 500 }, { min: 300, basis: 500 }], 20)
+  assert.equal(r.stacked, false)
+  assert.deepEqual(r.widths, [340, 340])
+  // spare room spills over once a panel reaches its max
+  assert.deepEqual(panelRow(1000, [{ min: 200, basis: 200, max: 300 }, { min: 200, basis: 200 }], 0).widths, [300, 700])
+  // one panel never counts as stacked
+  assert.deepEqual(panelRow(400, [{ min: 240, max: 360 }]), { stacked: false, widths: [360] })
+})
+
+test('panelLetter runs a..z then aa', () => {
+  assert.deepEqual([0, 1, 25, 26, 27].map(panelLetter), ['a', 'b', 'z', 'aa', 'ab'])
+})
+
+test('fitColumns puts boxes side by side when their text fits', () => {
+  assert.equal(fitColumns(466, 190, 2), 2)   // two short readouts in a 466 px strip
+  assert.equal(fitColumns(300, 190, 2), 1)   // too narrow: stacked
+  assert.equal(fitColumns(1200, 190, 9), 4)  // many groups: rows of at most four
+  assert.equal(fitColumns(1200, 190, 1), 1)
 })

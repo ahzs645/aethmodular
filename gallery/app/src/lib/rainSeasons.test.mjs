@@ -31,3 +31,29 @@ test('a year without rains is all First Dry; settings round-trip through the URL
   assert.equal(parseRainRule('30,9,1.5'), null)   // heavy must exceed onset
   assert.deepEqual(parseRainRule(rainRuleParam(DEFAULT_RAIN_RULE)), DEFAULT_RAIN_RULE)
 })
+
+const days = (from, n) => Array.from({ length: n }, (_, i) => new Date(Date.parse(`${from}T00:00:00Z`) + i * 86400000).toISOString().slice(0, 10))
+
+test('missing rain is no season, not a dry one', () => {
+  const date = days('2021-01-01', 365)
+  const cal = rainRuleCalendar({ date, p: date.map(() => null) })
+  assert.ok(cal.every((s) => s.spans.length === 0))
+  // a filter in that year has no rain-rule season, not the month's usual one
+  assert.equal(seasonOfDate('2021-07-15', 7, cal), null)
+})
+
+test('the seasons stop where the rain record does, and skip a long gap', () => {
+  // dry record from 1 Jul to 30 Sep only: Second Dry over those days, not the whole year
+  const date = days('2021-07-01', 92)
+  const cal = rainRuleCalendar({ date, p: date.map(() => 0) })
+  assert.deepEqual(cal[3].spans, [['2021-07-01', '2021-10-01']])
+  assert.equal(seasonOfDate('2021-12-15', 12, cal), null)
+  assert.equal(seasonOfDate('2021-08-15', 8, cal).name, 'Second Dry')
+  // a 60-day hole in a dry year: the rolling mean is missing there, so so is the season
+  const year = days('2022-01-01', 365)
+  const p = year.map((d) => (d >= '2022-05-01' && d < '2022-06-30' ? null : 0))
+  const gap = rainRuleCalendar({ date: year, p })
+  assert.equal(seasonOfDate('2022-05-31', 5, gap), null)
+  assert.equal(seasonOfDate('2022-03-01', 3, gap).name, 'First Dry')
+  assert.equal(seasonOfDate('2022-09-01', 9, gap).name, 'First Dry')
+})

@@ -2,7 +2,7 @@ import { RegressionBand } from '@/components/RegressionOverlay'
 import { IdentityLine, RefLine } from '@/components/RefLines'
 import { confidence, monthBlocks } from '@/lib/regressionCI'
 import { regression } from '@/lib/stats'
-import { demingLambda } from './seasonView'
+import { demingLambda, useMac } from '@/lib/mac'
 import { EstimatorName, FIT_STYLE, useEstimator, useRegressions, fitsFor, type Estimator } from '@/lib/regressionPrefs'
 import { useChartOptions } from '@/lib/chartOptions'
 import { useMemo, useRef, useState } from 'react'
@@ -15,7 +15,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { INK, FONT } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile, FilterRow, MetaFile } from '@/lib/types'
-import { cohortColor, deployedECFrom, fmtFit, metricRow, presetName, useNetworkRows } from './common'
+import { cohortColor, deployedECFrom, fmtFit, metricRowAt, presetName, useNetworkRows } from './common'
 import { COHORT, PREPROCESSING, label } from '@/lib/labels'
 import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
 import { useSearchParam } from '@/lib/url'
@@ -65,6 +65,8 @@ export function CrossSiteTransfer({ runs, galleryRows, sourceRows, galleryMeta }
     const present = [...new Set(runs.runs.map((r) => r.target))]
     return [...SITE_ORDER.filter((s) => present.includes(s)), ...present.filter((s) => !SITE_ORDER.includes(s)).sort()]
   }, [runs.runs])
+  // the MAC: the one set under Filters (lib/mac) by default, or one the explorer saved fits at
+  const gallery = useMac()
   const macs = useMemo(() => [...new Set(runs.runs.flatMap((r) => r.metrics.map((m) => m.MAC)).filter((v): v is number => v !== null))].sort((a, b) => a - b), [runs.runs])
   // the options and when each applies (lib/chartOptions): the MAC converts HIPS Fabs, so it is
   // offered only for a calibration referenced to Fabs (and only with more than one MAC)
@@ -81,11 +83,13 @@ export function CrossSiteTransfer({ runs, galleryRows, sourceRows, galleryMeta }
       choices: [...new Set(presets.map((p) => p.spectra))].map((sp) => ({ value: sp,
         label: (c) => { const q = presets.find((p) => p.cohort === c.cohort && sizeOf(p) === c.size && p.spectra === sp); const n = q && noteOf(q); return label(PREPROCESSING, sp) + (n ? ` (${n})` : '') },
         when: (c) => presets.some((p) => p.cohort === c.cohort && sizeOf(p) === c.size && p.spectra === sp) })) },
-    { key: 'mac', label: 'MAC', choices: macs.map(String), default: String(runs.mac_value), hidden: String(runs.mac_value),
-      when: (c) => runs.runs.some((r) => r.ref_kind === 'fabs' && presets.some((p) => p.key === r.preset && p.cohort === c.cohort && sizeOf(p) === c.size && p.spectra === c.spectra)), title: 'Converts HIPS Fabs to BC for calibrations referenced to Fabs' },
+    { key: 'mac', label: 'MAC', choices: [{ value: 'gallery', label: `Filters (${gallery.mac})` }, ...macs.map((m) => ({ value: String(m), label: String(m) }))], default: 'gallery', hidden: 'gallery',
+      when: (c) => runs.runs.some((r) => r.ref_kind === 'fabs' && presets.some((p) => p.key === r.preset && p.cohort === c.cohort && sizeOf(p) === c.size && p.spectra === c.spectra)), title: 'Converts HIPS Fabs to BC for calibrations referenced to Fabs. Filters: the MAC set under Filters → units; or one the explorer saved fits at' },
   ])
   const presetKey = presets.find((p) => p.cohort === o.values.cohort && sizeOf(p) === o.values.size && p.spectra === o.values.spectra)?.key ?? start?.key ?? ''
-  const mac = Number(o.values.mac)
+  const mac = o.values.mac === 'gallery' ? gallery.mac : Number(o.values.mac)
+  // the fits' MAC context: the saved row at this MAC, or the export's re-expressed (lib/mac); λ ∝ MAC²
+  const at: MacAt = { mac, exportMac: runs.mac_value, lambda10: gallery.lambda10 }
   const setPresetKey = (k: string) => { const p = presets.find((q) => q.key === k); if (p) { o.set('cohort', p.cohort); o.set('size', sizeOf(p)); o.set('spectra', p.spectra) } }
   const siteRuns = sites.map((s) => runs.runs.find((r) => r.preset === presetKey && r.target === s)).filter((r): r is CalibRun => !!r)
   const preset = presets.find((p) => p.key === presetKey)
@@ -94,32 +98,36 @@ export function CrossSiteTransfer({ runs, galleryRows, sourceRows, galleryMeta }
   const controls = o.controls()
   return (
     <>
-      <SiteMultiples runs={runs} siteRuns={siteRuns} mac={mac} controls={controls} presetLabel={preset ? presetName(preset) : presetKey}
+      <SiteMultiples runs={runs} siteRuns={siteRuns} mac={mac} at={at} controls={controls} presetLabel={preset ? presetName(preset) : presetKey}
         galleryRows={galleryRows} sourceRows={sourceRows} galleryMeta={galleryMeta} />
-      <TransferTable runs={runs} siteRuns={siteRuns} mac={mac} presetLabel={preset ? presetName(preset) : presetKey} />
-      <OrderingAcrossCalibrations runs={runs} sites={sites} presetKey={presetKey} mac={mac} onPick={setPresetKey} />
+      <TransferTable runs={runs} siteRuns={siteRuns} mac={mac} at={at} presetLabel={preset ? presetName(preset) : presetKey} />
+      <OrderingAcrossCalibrations runs={runs} sites={sites} presetKey={presetKey} mac={mac} at={at} onPick={setPresetKey} />
     </>
   )
 }
 
-/** The Deming fit (agreed with Ann, 23 Sep 2026: no y-on-x least squares in reader-facing views). */
-function lineOf(run: CalibRun, mac: number) {
-  const m = metricRow(run.metrics, 'all', run.ref_kind === 'fabs' ? mac : null)
+/** where the fits are read: the chart's MAC, the export's, and λ at MAC 10 */
+interface MacAt { mac: number; exportMac: number; lambda10: number }
+
+/** The Deming fit (agreed with Ann, 23 Sep 2026: no y-on-x least squares in reader-facing views), at the chart's MAC. */
+function lineOf(run: CalibRun, at: MacAt) {
+  const m = metricRowAt(run.metrics, 'all', run.ref_kind === 'fabs' ? at.mac : null, at.exportMac, run.eval)
   if (!m) return null
   return { m, slope: m.deming_slope, intercept: m.deming_intercept }
 }
 
 /** Intervals must describe the same fit and pairs as the saved point estimate. */
-function statsFor(run: CalibRun, mac: number, method: Estimator) {
+function statsFor(run: CalibRun, at: MacAt, method: Estimator) {
+  const mac = at.mac
   const pairs = run.eval.pred.flatMap((y, i) => {
     const x = run.ref_kind === 'fabs' ? run.eval.ref[i] / mac : run.eval.ref[i]
     return Number.isFinite(x) && Number.isFinite(y) ? [{ x, y, i }] : []
   })
   const st = regression(pairs.map(p => p.x), pairs.map(p => p.y), { errorsInVariables: true,
-    lambda: demingLambda(run.ref_kind === 'fabs' ? mac : null, 2.96),
+    lambda: demingLambda(run.ref_kind === 'fabs' ? mac : null, at.lambda10),
     bootstrapGroups: monthBlocks(pairs.map(p => ({ site: run.target, date: run.eval.date?.[p.i] }))),
   })
-  const live = fitsFor(st, [method])[0], saved = lineOf(run, mac)
+  const live = fitsFor(st, [method])[0], saved = lineOf(run, at)
   return live && saved && saved.slope != null && saved.intercept != null &&
     Math.abs(live.slope - saved.slope) < 1e-4 && Math.abs(live.intercept - saved.intercept) < 1e-4 ? st : null
 }
@@ -128,8 +136,8 @@ function statsFor(run: CalibRun, mac: number, method: Estimator) {
 const REF = 'reference', PRED = 'predicted', RESID = 'residual', DEP = 'deployed'
 const EC_KEYS = [REF, PRED, DEP]
 
-function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel, galleryRows = [], sourceRows, galleryMeta }: {
-  runs: CalibRunsFile; siteRuns: CalibRun[]; mac: number; controls: React.ReactNode; presetLabel: string
+function SiteMultiples({ runs, siteRuns, mac, at, controls, presetLabel, galleryRows = [], sourceRows, galleryMeta }: {
+  runs: CalibRunsFile; siteRuns: CalibRun[]; mac: number; at: MacAt; controls: React.ReactNode; presetLabel: string
   galleryRows?: FilterRow[]; galleryMeta?: MetaFile; sourceRows?: FilterRow[]
 }) {
   const estimator = useEstimator()
@@ -220,7 +228,7 @@ function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel, galleryRows
     <ChartFrame
       id="cross-site-multiples"
       title={`Every site under one calibration — ${presetLabel}`}
-      subtitle="One panel per SPARTAN site: by default the calibration's predicted FTIR EC against HIPS Fabs ÷ MAC, with the 1:1 line (dashed) and the Deming fit from the explorer's metrics for every filter at that site (each site is a test set the model never saw). Click an axis title for another readout or any gallery measurement these filters carry."
+      subtitle="One panel per SPARTAN site: by default the calibration's predicted FTIR EC against HIPS Fabs ÷ MAC, with the 1:1 line (dashed) and the Deming fit from the explorer's metrics for every filter at that site (each site is a test set the model never saw). MAC Filters follows the MAC set under Filters → units; at a MAC the explorer did not save, the line is its MAC 10 fit with the slope re-expressed (slope × MAC/10, an exact rescaling since λ scales with MAC²). Click an axis title for another readout or any gallery measurement these filters carry."
       provenance="calibration_explorer /api/run for each target · test set 'all'"
       tip={TRANSFER_TIP}
       controls={<>{controls}{siteRuns.length > 1 && <PanelAxesControl dims={['site']} />}</>}
@@ -244,8 +252,8 @@ function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel, galleryRows
               const y = ecPair ? d3.scaleLinear().domain(x.domain()).range([S, 0])
                 : d3.scaleLinear().domain(sharedTicks ? sharedY : ext(pts[k].map((p) => p.y))).range([S, 0]).nice()
               const [d0, d1] = x.domain()
-              const fit = savedPair ? lineOf(run, mac) : null
-              const st = savedPair && showCI ? statsFor(run, mac, estimator) : null
+              const fit = savedPair ? lineOf(run, at) : null
+              const st = savedPair && showCI ? statsFor(run, at, estimator) : null
               const ci = savedPair && showCI ? confidence(st, estimator) : null
               // clip the fitted line to the square
               const seg = fit && fit.slope !== null && fit.intercept !== null ? (() => {
@@ -323,7 +331,7 @@ function SiteMultiples({ runs, siteRuns, mac, controls, presetLabel, galleryRows
   )
 }
 
-function TransferTable({ runs, siteRuns, mac, presetLabel }: { runs: CalibRunsFile; siteRuns: CalibRun[]; mac: number; presetLabel: string }) {
+function TransferTable({ runs, siteRuns, mac, at, presetLabel }: { runs: CalibRunsFile; siteRuns: CalibRun[]; mac: number; at: MacAt; presetLabel: string }) {
   const { showCI } = useRegressions()
   const estimator = useEstimator()
   const held = siteRuns.find((r) => r.heldout)?.heldout ?? null
@@ -357,8 +365,8 @@ function TransferTable({ runs, siteRuns, mac, presetLabel }: { runs: CalibRunsFi
             )}
             {siteRuns.map((run) => {
               const t = runs.targets[run.target]
-              const fit = lineOf(run, mac)
-              const ci = showCI ? confidence(statsFor(run, mac, estimator), estimator) : null
+              const fit = lineOf(run, at)
+              const ci = showCI ? confidence(statsFor(run, at, estimator), estimator) : null
               const flagged = (run.extrap_pct ?? 0) > EXTRAP_FLAG
               return (
                 <tr key={run.target}>
@@ -384,8 +392,8 @@ function TransferTable({ runs, siteRuns, mac, presetLabel }: { runs: CalibRunsFi
   )
 }
 
-function OrderingAcrossCalibrations({ runs, sites, presetKey, mac, onPick }: {
-  runs: CalibRunsFile; sites: string[]; presetKey: string; mac: number; onPick: (k: string) => void
+function OrderingAcrossCalibrations({ runs, sites, presetKey, mac, at, onPick }: {
+  runs: CalibRunsFile; sites: string[]; presetKey: string; mac: number; at: MacAt; onPick: (k: string) => void
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
@@ -396,9 +404,9 @@ function OrderingAcrossCalibrations({ runs, sites, presetKey, mac, onPick }: {
 
   const rows = runs.presets.flatMap((p) => sites.map((s) => {
     const run = runs.runs.find((r) => r.preset === p.key && r.target === s)
-    const fit = run ? lineOf(run, mac) : null
+    const fit = run ? lineOf(run, at) : null
     const v = !fit ? null : metric === 'intercept' ? fit.intercept : metric === 'slope' ? fit.slope : fit.m.R2
-    const ci = showCI && run && metric !== 'R²' ? confidence(statsFor(run, mac, estimator), estimator) : null
+    const ci = showCI && run && metric !== 'R²' ? confidence(statsFor(run, at, estimator), estimator) : null
     return { preset: p, site: s, v, interval: ci && metric !== 'R²' ? ci[metric] : null }
   })).filter((r): r is typeof r & { v: number } => r.v !== null && Number.isFinite(r.v))
 

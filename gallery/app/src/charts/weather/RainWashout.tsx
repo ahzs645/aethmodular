@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react'
 import { seasonOnly } from '@/lib/seasons'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
-import { useDimensions } from '@/hooks/useGalleryData'
+import { FacetGrid } from '@/components/FacetGrid'
 import { useTooltip } from '@/hooks/useTooltip'
 import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
 import { fidProps, fidsProps, useFilterEdits } from '@/lib/filterEdits'
@@ -13,10 +13,10 @@ import { Legend } from '@/components/Legend'
 import { useAxisFields } from '@/components/AxisFieldPopover'
 import { RAIN_CLASSES, rainClass, spearman } from '@/lib/weather'
 import type { FilterRow, MetaFile } from '@/lib/types'
-import { useFitHeight } from '@/lib/chartFit'
 
 const MAX_SITES = 12
-const H = 260, M = { top: 26, right: 12, bottom: 44, left: 52 }
+// the site, ρ and n are the facet's title row, above the svg
+const H = 240, M = { top: 8, right: 12, bottom: 44, left: 52 }
 
 /**
  * Rain washout: the measurement by how wet each filter's window was (mean mm/day: none,
@@ -29,7 +29,6 @@ export function RainWashout({ rows, meta, field, prcpField, id = 'weather-washou
   rows: FilterRow[]; meta: MetaFile; field: string; prcpField: string; id?: string; title?: string
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(wrapRef)
   const axisPicker = !!useAxisFields()
   const tip = useTooltip(wrapRef)
   const hl = useHighlight()
@@ -49,25 +48,22 @@ export function RainWashout({ rows, meta, field, prcpField, id = 'weather-washou
   }, [rows, field, prcpField, meta.sites])
   const shown = panels.slice(0, MAX_SITES)
 
-  const cols = Math.max(1, Math.min(shown.length, Math.floor((width + 12) / 300)))
-  const pw = (width - (cols - 1) * 12) / cols
-  const fit = useFitHeight()
-  const h = fit === null ? H : Math.max(140, fit)
-  const iw = pw - M.left - M.right, ih = h - M.top - M.bottom
-  const x = d3.scaleBand<string>().domain(RAIN_CLASSES.map((c) => c.key)).range([0, iw]).padding(0.25)
 
   return (
     <ChartFrame id={id} title={title}
       subtitle={`Each filter sorted by its window's mean precipitation (${prcpField}); boxes are the median and IQR, dots are filters coloured by season. ρ is Spearman's rank correlation between rain rate and ${field} at that site.`}
       provenance="addis_03_meteorology Tasks 2 and 5, meteorology_source_interaction §1">
-      <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-        {shown.length === 0 ? <Empty>No filters carry both {field} and {prcpField} in this subset.</Empty> : shown.map((p) => {
+      <div ref={wrapRef} className="chart-wrap">
+        {shown.length === 0 ? <Empty>No filters carry both {field} and {prcpField} in this subset.</Empty> : <FacetGrid items={shown} minCell={288} maxCols={4} gap={12} expandable
+          title={(p) => p.site} note={(p) => `ρ = ${fmt(p.rho, 2)} · n = ${p.n}`} label={(p) => `${p.site}: ${field} by rain`}
+          render={(p, pw, _, cell) => {
+          const h = cell.expanded ? 380 : cell.height ?? H
+          const iw = pw - M.left - M.right, ih = h - M.top - M.bottom
+          const x = d3.scaleBand<string>().domain(RAIN_CLASSES.map((c) => c.key)).range([0, iw]).padding(0.25)
           const vals = p.classes.flatMap((c) => c.members.map((r) => r[field] as number))
           const y = d3.scaleLinear().domain([Math.min(0, d3.min(vals) ?? 0), d3.quantile(vals.slice().sort(d3.ascending), 0.99)! * 1.1 || 1]).range([ih, 0]).nice()
           return (
-            <svg key={p.site} width={pw} height={h} fontFamily={FONT.family}>
-              <text x={M.left} y={15} fontSize={12} fontWeight={600} fill={INK.text}>{p.site}</text>
-              <text x={pw - M.right} y={15} fontSize={11} textAnchor="end" fill={INK.muted} fontFamily={FONT.mono}>ρ = {fmt(p.rho, 2)} · n = {p.n}</text>
+            <svg width={pw} height={h} fontFamily={FONT.family}>
               <g transform={`translate(${M.left},${M.top})`}>
                 {y.ticks(4).map((t) => <g key={t}><line x1={0} x2={iw} y1={y(t)} y2={y(t)} stroke={INK.grid} /><text x={-5} y={y(t)} dy="0.32em" textAnchor="end" fontSize={10} fill={INK.muted}>{t}</text></g>)}
                 {/* the measurement is the page's: its title opens the same field picker as the crossplots */}
@@ -104,7 +100,7 @@ export function RainWashout({ rows, meta, field, prcpField, id = 'weather-washou
               </g>
             </svg>
           )
-        })}
+        }} />}
         {tip.node}
       </div>
       <Legend items={RAIN_CLASSES.map((c) => ({ label: c.key, color: c.color, shape: 'square' as const }))} />

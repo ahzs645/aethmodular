@@ -7,6 +7,7 @@ import { IntervalStrip } from '@/components/IntervalStrip'
 import { useSearchParam } from '@/lib/url'
 import { ADDIS_ALL, INK } from '@/lib/theme'
 import { coef, coefSigned, f2, signed } from '@/lib/format'
+import { demingLambda, useMac } from '@/lib/mac'
 import { AxisChoices } from '@/components/AxisChoices'
 import { Crossplot, CrossplotBrushControls, sharedCrossDomains, useCrossplotBrush, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
@@ -26,7 +27,7 @@ const RULE_COLOR: Record<string, string> = { shape: '#2171b5', 'shape + loading'
 const rulesOf = (d: AnalogsData) => RULES_ALL.filter((r) => d.addis.some((x) => x.model === `local: ${r}`))
 const MODEL_COLOR: Record<string, string> = { get 'SPARTAN published'() { return INK.text }, 'full calibration (raw)': '#8a8f98', ...Object.fromEntries(RULES_ALL.map((r) => [`local: ${r}`, RULE_COLOR[r]])) }
 const source = sourceOf('AnalogsStudy')
-/** the notebook's Deming error ratio for Addis against HIPS (σ from the HIPS uncertainty); older exports lack it */
+/** the notebook's Deming error ratio for Addis against HIPS at MAC 10 (σ from the HIPS uncertainty); older exports lack it */
 const lambdaOf = (d: AnalogsData) => Number.isFinite(num(d.settings?.LAMBDA_ADDIS)) ? num(d.settings.LAMBDA_ADDIS) : 2.96
 
 export function AnalogsStudy() {
@@ -42,6 +43,7 @@ export function AnalogsStudy() {
 }
 
 function Findings({ d }: { d: AnalogsData }) {
+  const { label } = useMac()
   const A = Object.fromEntries(d.addis.map((r) => [r.model, r]))
   const I = (model: string, g: string) => d.improve.find((r) => r.model === model && r.group === g)
   const full = I('full calibration (raw)', 'heaviest tenth'), sl = I('local: shape + loading', 'heaviest tenth'), sh = I('local: shape', 'heaviest tenth')
@@ -55,23 +57,26 @@ function Findings({ d }: { d: AnalogsData }) {
           {A['local: shape + HIPS loading'] && <li><strong>Matching on absorption instead</strong> (shape + HIPS loading): Addis is still {f2(A['local: shape + HIPS loading']['HIPS ÷ neighbours (median)'])}× more absorbing than its neighbours (IMPROVE has no heavier absorbers of that shape), and the intercept is {coefSigned(A['local: shape + HIPS loading'].intercept)} µg/m³.</li>}
           <li><strong>IMPROVE's heaviest tenth against TOR:</strong> RMSE {f2(full?.rmse)} µg (full), {f2(sh?.rmse)} (shape), {f2(sl?.rmse)} (shape + loading){I('local: shape + HIPS loading', 'heaviest tenth') ? `, ${f2(I('local: shape + HIPS loading', 'heaviest tenth')?.rmse)} (shape + HIPS loading)` : ''}.</li>
         </ol>
-        <Note>{runLine(d)}. Addis is read against HIPS BC (MAC 10), a cross-check, not the truth.</Note>
+        <Note>{runLine(d)}. Addis is read against HIPS BC ({label}, set under Filters), a cross-check, not the truth. The intercepts do not depend on the MAC.</Note>
       </ChartFrame>
     </ExplainOnly>
   )
 }
 
 function AddisForest({ d }: { d: AnalogsData }) {
+  // the export's fits are against HIPS BC at MAC 10 (λ at MAC 10): at the reader's MAC the slope and the
+  // FTIR ÷ HIPS ratio scale by MAC/10 and the intercept stays (lib/mac)
+  const m = useMac()
   const rows = d.addis.map((r) => ({
     key: r.model, label: r.model.replace('local: ', 'local · '), color: MODEL_COLOR[r.model], bold: r.model === 'local: shape + loading',
-    values: { intercept: { v: r.intercept }, slope: { v: r.slope }, ratio: { v: r['ratio (median)'] } },
-    tip: [r.model, `Deming slope ${coef(r.slope)}, intercept ${coefSigned(r.intercept)} µg/m³`, `median FTIR ÷ HIPS ${f2(r['ratio (median)'])}`, `n ${r.n}`,
+    values: { intercept: { v: r.intercept }, slope: { v: m.slope(r.slope) as number }, ratio: { v: m.slope(r['ratio (median)']) as number } },
+    tip: [r.model, `Deming slope ${coef(m.slope(r.slope))}, intercept ${coefSigned(r.intercept)} µg/m³`, `median FTIR ÷ HIPS ${f2(m.slope(r['ratio (median)']))}`, `n ${r.n}`,
       ...(r['PM ÷ neighbours (median)'] != null ? [`PM ÷ neighbours ${f2(r['PM ÷ neighbours (median)'])}×, HIPS ÷ neighbours ${f2(r['HIPS ÷ neighbours (median)'])}×`] : [])],
   }))
   return (
     <ChartFrame id="xa-addis" source={source('AddisForest')} provenance={runLine(d)}
       title="Addis against HIPS — does matching on loading close the gap?"
-      subtitle={`Deming fit (λ ${f2(lambdaOf(d))}) of each model's Addis FTIR EC against HIPS BC (MAC 10) on the same filters. The local models are refitted per filter on 500 IMPROVE neighbours chosen by shape, by shape and weighed PM2.5, by PM2.5 alone, or by shape and HIPS absorption loading. A model on the HIPS line has intercept 0 and slope 1. The published n (189) is smaller: SPARTAN's EC covers fewer of the filters.`}>
+      subtitle={`Deming fit (λ ${f2(demingLambda(m.mac, lambdaOf(d)))}) of each model's Addis FTIR EC against HIPS BC (${m.label}, set under Filters) on the same filters; the export fitted at MAC 10, and another MAC scales the slope and ratio by MAC/10 and leaves the intercept. The local models are refitted per filter on 500 IMPROVE neighbours chosen by shape, by shape and weighed PM2.5, by PM2.5 alone, or by shape and HIPS absorption loading. A model on the HIPS line has intercept 0 and slope 1. The published n (189) is smaller: SPARTAN's EC covers fewer of the filters.`}>
       <Forest rows={rows} panels={[{ key: 'intercept', label: 'Deming intercept (µg/m³)', ref: 0, fmt: coefSigned }, { key: 'slope', label: 'Deming slope', ref: 1, fmt: coef }, { key: 'ratio', label: 'median FTIR ÷ HIPS', ref: 1, fmt: f2 }]} />
     </ChartFrame>
   )
@@ -140,21 +145,23 @@ function AddisScatter({ d }: { d: AnalogsData }) {
   const [model, setModel] = useSearchParam<string>('xa-scatter.model', 'local shape + loading', models)
   const [brush, setBrush] = useCrossplotBrush()
   const lg = useLegend()
-  const f = useMemo(() => rowsOf(d.addis_filters), [d])
+  // HIPS BC at the reader's MAC (the export's is Fabs / 10)
+  const mac = useMac()
+  const f = useMemo(() => rowsOf(d.addis_filters).map((r): Record<string, any> => ({ ...r, hips_bc: mac.bc(num(r.hips_bc)) })), [d, mac])
   const fit = d.addis.find((r) => r.model === exportName(model))
   const choices = ['hips_bc', ...models]
   const [xField, setX] = useSearchParam<string>('xa-scatter.x', 'hips_bc', choices)
   const [yField, setY] = useSearchParam<string>('xa-scatter.y', model, choices)
   const standard = xField === 'hips_bc' && yField === model
   const pickModel = (value: string) => { setModel(value); setX('hips_bc'); setY(value) }
-  const labelOf = (key: string) => key === 'hips_bc' ? 'HIPS BC (µg/m³, MAC 10)' : `FTIR EC, ${key} (µg/m³)`
+  const labelOf = (key: string) => key === 'hips_bc' ? `HIPS BC (µg/m³, ${mac.label})` : `FTIR EC, ${key} (µg/m³)`
   const record = (r: Record<string, any>) => ({
     id: String(r.filter_id), source: 'Loading-matched analogs', site: 'Addis Ababa', date: r.date == null ? undefined : String(r.date), season: String(r.season ?? ''), fields: choices.map(k => [labelOf(k), Number.isFinite(num(r[k])) ? String(r[k]) : null] as [string, string | null]),
   })
   const pointsOf = (xKey: string, yKey: string, color = ADDIS_ALL, extra: Partial<CrossPoint> = {}): CrossPoint[] => f.map(r => ({ x: num(r[xKey]), y: num(r[yKey]), color, id: String(r.filter_id),
     tip: [String(r.filter_id), String(r.season), `${labelOf(xKey)}: ${f2(r[xKey])}`, `${labelOf(yKey)}: ${f2(r[yKey])}`], rec: record(r), ...extra }))
   const colorOf = (key: string) => MODEL_COLOR[exportName(key)] ?? ADDIS_ALL
-  const lambda = lambdaOf(d)
+  const lambda = demingLambda(mac.mac, lambdaOf(d))
   // every model on one range, so the panels compare directly
   const panels = useMemo(() => view === 'panels' ? models.map((m) => ({ key: m, points: pointsOf('hips_bc', m) })) : [], [view, f, models.join()]) // eslint-disable-line react-hooks/exhaustive-deps
   const shared = sharedCrossDomains(panels.map((p) => p.points))
@@ -170,7 +177,7 @@ function AddisScatter({ d }: { d: AnalogsData }) {
       {view === 'one' && <Select label="Model" value={standard ? model : 'Custom'} options={[...models, ...(!standard ? ['Custom'] : [])]} onChange={v => { if (v !== 'Custom') pickModel(v) }} />}
       {brushControls}
     </>}>
-    {view === 'one' && <AxisChoices noun="measurements" x={[xField, setX]} y={[yField, setY]} options={choices.map(key => ({ key, label: key === 'hips_bc' ? 'HIPS BC, MAC 10' : `FTIR EC, ${key}`, group: key === 'hips_bc' ? 'Optical measurement' : 'Model predictions', unit: 'µg/m³' }))}>
+    {view === 'one' && <AxisChoices noun="measurements" x={[xField, setX]} y={[yField, setY]} options={choices.map(key => ({ key, label: key === 'hips_bc' ? `HIPS BC, ${mac.label}` : `FTIR EC, ${key}`, group: key === 'hips_bc' ? 'Optical measurement' : 'Model predictions', unit: 'µg/m³' }))}>
       <Crossplot points={pointsOf(xField, yField)} title={standard ? model : 'Custom axes'} xLabel={labelOf(xField)} yLabel={labelOf(yField)} pick brushable brush={brush} maxSide={480} errorRatio={lambda} />
     </AxisChoices>}
     {view === 'panels' && <FacetGrid items={panels} minCell={300} maxCols={3} render={(p, w) =>
@@ -179,7 +186,7 @@ function AddisScatter({ d }: { d: AnalogsData }) {
       <Crossplot points={overlay} title="Every model" xLabel={labelOf('hips_bc')} yLabel="FTIR EC (µg/m³)" brushable brush={brush} maxSide={520} errorRatio={lambda} grouping="site" groupNoun="model" />
       <Legend {...lg.props} items={models.map((m) => ({ label: m, color: colorOf(m) }))} />
     </>}
-    {view === 'one' && standard && fit && <Note>With every filter shown, the Deming line here is the one in "Addis against HIPS" above (slope {coef(fit.slope)}, intercept {coefSigned(fit.intercept)} µg/m³, n {fit.n}, λ {f2(lambda)}). Excluding filters or choosing another estimator changes it here only.</Note>}
+    {view === 'one' && standard && fit && <Note>With every filter shown, the Deming line here is the one in "Addis against HIPS" above (slope {coef(mac.slope(fit.slope))}, intercept {coefSigned(fit.intercept)} µg/m³, n {fit.n}, λ {f2(lambda)}). Excluding filters or choosing another estimator changes it here only.</Note>}
     {view !== 'one' && <Note>With every filter shown, each model's Deming line is the one in "Addis against HIPS" above (λ {f2(lambda)}). Excluding filters or choosing another estimator changes them here only.</Note>}
   </ChartFrame>
 }

@@ -5,7 +5,8 @@ import { Segmented } from '@/components/ChartFrame'
  * Meeting pages communicate a result, so by default they show it as presented: the exported
  * figures at MAC 10 in µg/m³, the saved fits, and none of the exclusions made elsewhere in the
  * gallery. Exploring lets the page follow the gallery (hand exclusions, the MAC and units under
- * Filters → units, ratios). Either way the page's own controls (baseline, axes, fit method,
+ * Filters → units, ratios) wherever a chart draws the gallery's filters; a figure read from the meeting's
+ * own export (spec meetings, saved fits and tables) has nothing to follow and stays at MAC 10. Either way the page's own controls (baseline, axes, fit method,
  * hover and pin) keep working. Outside a meeting page there is no provider: everything explores.
  *
  * Read by the shared pieces, not by each chart: lib/filterEdits useHandEdits ignores the
@@ -29,8 +30,8 @@ export function PresentationSwitch({ ignored = 0, viewChanged = false }: { ignor
   return <>
     <Segmented label="Show" value={presented ? 'As presented' : 'Exploring'} options={['As presented', 'Exploring'] as const}
       onChange={(v) => c.set(v === 'As presented' ? 'presented' : 'exploring')}
-      title="As presented: the figures as exported (MAC 10, µg/m³, saved fits), untouched by exclusions or units chosen elsewhere in the gallery. Exploring: the page follows them. The page's own controls work either way." />
+      title="As presented: the figures as exported (MAC 10, µg/m³, saved fits), untouched by exclusions or units chosen elsewhere in the gallery. Exploring: charts drawn from the gallery's filters follow them; figures read from the meeting's export stay as exported. The page's own controls work either way." />
     {presented && held.length > 0 && <p className="chart-note" style={{ margin: 0 }}>Not applied here: {held.join(' and ')}. Switch to Exploring to include them.</p>}
-    {!presented && <p className="chart-note" style={{ margin: 0 }}>Following the gallery's exclusions, MAC and units.</p>}
+    {!presented && <p className="chart-note" style={{ margin: 0 }}>Following the gallery's exclusions, MAC and units in the charts drawn from the gallery's filters; figures read from the meeting's export (its saved fits and tables) stay at the export's MAC 10.</p>}
   </>
 }

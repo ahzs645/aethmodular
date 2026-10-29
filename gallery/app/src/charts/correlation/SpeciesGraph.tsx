@@ -7,6 +7,7 @@ import { useChartOptions } from '@/lib/chartOptions'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { RESTATES, isBookkeeping, sameProduct } from '@/fieldLineage'
+import { averageLinkage, type Clade } from '@/lib/cluster'
 import { corrMatrix, fmt } from '@/lib/stats'
 import { useStableRows } from '@/lib/stable'
 import { INK, FONT } from '@/lib/theme'
@@ -35,13 +36,6 @@ interface Edge {
   r: number
 }
 
-/** A node of the merge tree; leaves carry the species index, internal nodes the merge height. */
-interface Clade {
-  idx?: number
-  height: number
-  children?: Clade[]
-}
-
 interface SimNode extends d3.SimulationNodeDatum {
   i: number
 }
@@ -51,40 +45,6 @@ interface SimLink extends d3.SimulationLinkDatum<SimNode> {
 
 /** Rough pixel width of a label at 10.5 px sans: sizes gutters and keeps labels off each other. */
 const labelW = (s: string) => s.length * 6.2
-
-/**
- * Agglomerative clustering with average linkage on a distance matrix.
- * Start with singletons; repeatedly merge the two clusters whose mean
- * pairwise distance is smallest; record that mean as the merge height.
- * n ≤ ~60 species, so the O(n³) scan is nothing.
- */
-function averageLinkage(dist: number[][]): Clade {
-  let clusters: { members: number[]; node: Clade }[] = dist.map((_, i) => ({ members: [i], node: { idx: i, height: 0 } }))
-  while (clusters.length > 1) {
-    let best = Infinity
-    let bi = 0
-    let bj = 1
-    for (let i = 0; i < clusters.length; i++) {
-      for (let j = i + 1; j < clusters.length; j++) {
-        let sum = 0
-        for (const a of clusters[i].members) for (const b of clusters[j].members) sum += dist[a][b]
-        const avg = sum / (clusters[i].members.length * clusters[j].members.length)
-        if (avg < best) {
-          best = avg
-          bi = i
-          bj = j
-        }
-      }
-    }
-    const merged = {
-      members: [...clusters[bi].members, ...clusters[bj].members],
-      node: { height: best, children: [clusters[bi].node, clusters[bj].node] },
-    }
-    // keep the merged cluster where the first partner sat, so leaf order stays stable
-    clusters = clusters.flatMap((c, k) => (k === bi ? [merged] : k === bj ? [] : [c]))
-  }
-  return clusters[0].node
-}
 
 /**
  * Which measurements move together, as groups. The correlogram shows every pair as a cell;

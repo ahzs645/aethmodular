@@ -245,7 +245,11 @@ through `highlight={useHighlight()}`), `SweepPlot` (a metric against k, a
 cutoff, a rank, a stage or a date: bands or whiskers, the agreement line,
 labelled markers, the chosen setting ringed, clipped points drawn hollow at
 the edge) and `IntervalStrip` (dot-interval rows). `FacetGrid` lays out small
-multiples. Each takes a `children` render prop for the odd extra mark, so a
+multiples (one panel per site or season); `Panels` lays out a composite
+(different charts in one frame, e.g. a crossplot beside its threshold sweep).
+Both share the panel chrome: a title row with a/b letters and a readout, ⤢ to
+open a panel larger, and in a Dashboard tile each panel's share of the height.
+Do not wrap panels in a hand-made `flexWrap` div with width arithmetic. Each takes a `children` render prop for the odd extra mark, so a
 chart that needs one more line does not have to be rebuilt from scratch.
 
 ### Declaring a figure or a whole meeting

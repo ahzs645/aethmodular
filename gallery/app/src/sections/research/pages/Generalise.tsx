@@ -1,4 +1,5 @@
 import { Figure } from '@/components/Figure'
+import { useMac } from '@/lib/mac'
 import { num, type Row } from '@/lib/table'
 import type { SectionPageProps } from '../../types'
 import { PageIntro, provenance, rows, useSpectral, Waiting } from './spectralCommon'
@@ -11,30 +12,37 @@ const ci = (r: Row, v: string, se: string): Row => {
 /**
  * ftir_53, the committee backup figures: does the Addis diagnosis generalise? The same locked
  * calibrations applied unchanged to five SPARTAN sites, Bishoftu's replication, and the two
- * deck lessons restated precisely. Every number is the executed notebook's table.
+ * deck lessons restated precisely. Every number is the executed notebook's table, at HIPS Fabs/10;
+ * slopes (and their SEs) follow the MAC set under Filters → units. That is exact for OLS, and for York
+ * too, since σx = σFabs/MAC rescales with x (lib/mac); intercepts do not move.
  */
 export function Generalise(_props: SectionPageProps) {
   const { data, error } = useSpectral('committee')
+  const m = useMac()
   if (!data) return <Waiting error={error} />
-  const five = rows(data, 'five_site').map((r): Row => ({ ...r, ...ci(r, 'intercept', 'intercept_se'), ...ci(r, 'slope', 'slope_se'), site: `${r.site} (n = ${r.n_used})` }))
+  const five = rows(data, 'five_site').map((r): Row => {
+    const at = { ...r, slope: m.slope(num(r.slope), 10), slope_se: m.slope(num(r.slope_se), 10) }
+    return { ...at, ...ci(at, 'intercept', 'intercept_se'), ...ci(at, 'slope', 'slope_se'), site: `${r.site} (n = ${r.n_used})` }
+  })
+  const bishoftu = rows(data, 'bishoftu').map((r): Row => ({ ...r, ols_slope: m.slope(num(r.ols_slope), 10) }))
 
   return <>
     <PageIntro id="generalise-intro" title="Does the diagnosis generalise? — one calibration, five sites, and the deck's lessons stated precisely" data={data}
       notebooks="research/ftir_ec_phase3/ftir_53_committee_backup_figures (from ftir_47, ftir_51, ftir_46 and the locked reconstruction confirmation); ftir_31 and ftir_51 for the deck panels the gallery already draws">
-      <p>The deck's Addis slides argue from one site. These are its backup: the calibrations applied unchanged to five SPARTAN sites fail in a site-specific way, so the work is diagnosis, not tuning. Reference axis HIPS Fabs/10 throughout. The other deck figures (ftir_31, ftir_51: setup crossplots, k sweep, analog distributions, lot crossplots) are already on the Calibration tab and the meeting pages.</p>
+      <p>The deck's Addis slides argue from one site. These are its backup: the calibrations applied unchanged to five SPARTAN sites fail in a site-specific way, so the work is diagnosis, not tuning. Reference axis HIPS Fabs/10 in the notebook; the slopes here are re-expressed at the MAC set under Filters → units (now {m.mac}). The other deck figures (ftir_31, ftir_51: setup crossplots, k sweep, analog distributions, lot crossplots) are already on the Calibration tab and the meeting pages.</p>
     </PageIntro>
 
     <Figure kind="intervals" id="generalise-five" data={five} row="site" series="config"
       panels={[{ value: 'intercept', lo: 'intercept_lo', hi: 'intercept_hi', label: 'Intercept (µg/m³; ±1.96 SE)', reference: 0 },
-        { value: 'slope', lo: 'slope_lo', hi: 'slope_hi', label: 'Slope vs Fabs/10 (±1.96 SE)', reference: 1 }]} labelWidth={170}
+        { value: 'slope', lo: 'slope_lo', hi: 'slope_hi', label: `Slope vs Fabs/${m.mac} (±1.96 SE)`, reference: 1 }]} labelWidth={170}
       title="Five sites, one calibration — the intercept anomaly is Addis (and Delhi), the slope anomalies are Delhi and JPL"
       subtitle="York (errors-in-variables) fits of each locked configuration's predictions against HIPS with the per-deployed-line quadratic blank line (ftir_47), all matched filters per site. Near-zero intercepts at Bishoftu, Beijing and JPL; Delhi's intercept is poorly determined, so do not call it Addis-sized without its SE."
       provenance={provenance(data, ['five_site'])} />
 
-    <Figure kind="table" id="generalise-bishoftu" data={rows(data, 'bishoftu')}
-      columns={[{ key: 'group', label: 'Filters' }, { key: 'n', label: 'n', format: 'int' }, { key: 'ols_slope', label: 'OLS slope', format: 'f2' }, { key: 'ols_intercept', label: 'OLS intercept', format: 'f2' }, { key: 'mean_residual', label: 'Mean residual (µg/m³)', format: 'f2' }]}
+    <Figure kind="table" id="generalise-bishoftu" data={bishoftu}
+      columns={[{ key: 'group', label: 'Filters' }, { key: 'n', label: 'n', format: 'int' }, { key: 'ols_slope', label: `OLS slope (MAC ${m.mac})`, format: 'f2' }, { key: 'ols_intercept', label: 'OLS intercept', format: 'f2' }, { key: 'mean_residual', label: 'Mean residual (µg/m³, MAC 10)', format: 'f2' }]}
       title="Bishoftu, 45 km away — the offset is gone, on filters the calibration had never seen"
-      subtitle="The 26 accepted filters and 14 January–February filters scored after the configurations were locked (their Fabs reconstructed from raw HIPS with the dated-schedule blank line). Read the holdout as “near-zero intercept replicates”, not as a slope estimate."
+      subtitle="The 26 accepted filters and 14 January–February filters scored after the configurations were locked (their Fabs reconstructed from raw HIPS with the dated-schedule blank line). Read the holdout as “near-zero intercept replicates”, not as a slope estimate. The mean residual is the notebook's at MAC 10: it needs each filter's Fabs to move with the MAC, which the export does not carry."
       provenance={provenance(data, ['bishoftu'])} />
 
     <Figure kind="intervals" id="generalise-swing" data={rows(data, 'protocol_swing').map((r): Row => ({ ...r, variant: `${r.variant}${r.corrected ? ' (baseline-corrected)' : ''}` }))} row="variant"

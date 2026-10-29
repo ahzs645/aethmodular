@@ -4,13 +4,16 @@ import { Figure } from '@/components/Figure'
 import { RunSeries } from '@/charts/calibration/RunSeries'
 import { groupColorFn } from '@/charts/calibration/common'
 import { f2, fmt } from '@/lib/format'
+import { useMac } from '@/lib/mac'
 import { num, type Row } from '@/lib/table'
 import type { CalibRun, CalibRunsFile } from '@/lib/types'
 import type { SectionPageProps } from '../../types'
 import { PageIntro, presetName, provenance, rows, useCalibRuns, useSpectral, Waiting } from './spectralCommon'
 
 const PROVISIONAL = 'ocec800_airspec', RAW = 'ocec800_raw'
-const SERIES = { prov: 'provisional (Lowest-OC/EC 800 × spline baseline)', raw: 'raw-spectra model (MAC 6 branch)', dep: 'deployed SPARTAN EC', hips: 'HIPS Fabs / 10' }
+const SERIES = { prov: 'provisional (Lowest-OC/EC 800 × spline baseline)', raw: 'raw-spectra model (MAC 6 branch)', dep: 'deployed SPARTAN EC' }
+/** the HIPS series at the MAC set under Filters → units */
+const hipsSeries = (mac: number) => `HIPS Fabs / ${mac}`
 const finite = (v: number | null | undefined): v is number => v != null && Number.isFinite(v)
 const runAt = (runs: CalibRunsFile, preset: string): CalibRun | undefined => runs.runs.find((r) => r.preset === preset && r.target === 'addis')
 const seasonOf = (g: string) => g.split(' (')[0]
@@ -24,6 +27,7 @@ export function ProvisionalSeries(props: SectionPageProps) {
   const { data, error } = useSpectral('provisional_series')
   const { runs, error: runsError } = useCalibRuns()
   const knownIds = useMemo(() => new Set(props.rows.map((r) => r.id)), [props.rows])
+  const { mac } = useMac()
 
   const view = useMemo(() => {
     if (!runs) return null
@@ -34,7 +38,7 @@ export function ProvisionalSeries(props: SectionPageProps) {
     prov.eval.pred.forEach((p, i) => {
       if (!prov.eval.date?.[i]) return
       const id = prov.eval.id[i], season = seasonOf(prov.eval.group[i]), dep = prov.eval.deployed?.[i], r = byId.get(id)
-      perFilter.push({ season, series: SERIES.prov, value: p }, { season, series: SERIES.hips, value: prov.eval.ref[i] / 10 })
+      perFilter.push({ season, series: SERIES.prov, value: p }, { season, series: hipsSeries(mac), value: prov.eval.ref[i] / mac })
       if (finite(r)) { perFilter.push({ season, series: SERIES.raw, value: r }); pairs.push({ against: SERIES.raw, x: r, y: p, id, season }) }
       if (finite(dep)) { perFilter.push({ season, series: SERIES.dep, value: dep }); pairs.push({ against: SERIES.dep, x: dep, y: p, id, season }) }
     })
@@ -50,14 +54,17 @@ export function ProvisionalSeries(props: SectionPageProps) {
         median: r.plausibility?.median ?? null, negative: r.plausibility?.negative_pct ?? null, above8: r.plausibility?.above_8_pct ?? null }] : []
     })
     return { prov, raw, perFilter, pairs, ratios, readout, n: values.length, median: d3.quantile(values, 0.5)!, q1: d3.quantile(values, 0.25)!, q3: d3.quantile(values, 0.75)!, max: values[values.length - 1] }
-  }, [runs])
+  }, [runs, mac])
 
   if (!data || !runs) return <Waiting error={error || runsError} />
   if (!view) return <Waiting error="calibration_runs.json has no Addis run for the locked Lowest-OC/EC 800 presets" />
   const committed = rows(data, 'summary')[0]
   const ratios = [...view.ratios, ...rows(data, 'kiremt_dry_ftir51').map((r): Row => ({ block: 'ftir_51 variants (Option A, site-grouped 5-fold CV)', row: `${r.variant} (k = ${r.k})`, ratio: num(r['Kiremt/Dry']) }))]
   const seasons = view.prov.plausibility?.group_medians ?? {}
-  const offset = rows(data, 'offset_ci').find((r) => String(r.model).startsWith('AIRSpec'))
+  // the offset c is an x-intercept on the HIPS axis: fixed in Fabs (Mm⁻¹), so in µg/m³ it is c(Mm⁻¹) / MAC
+  const offsets = rows(data, 'offset_ci').map((r): Row => ({ ...r, c_median: num(r['c_median_Mm-1_MAC10']) != null ? num(r['c_median_Mm-1_MAC10'])! / mac : null,
+    c_lo: num(r['c_lo95_Mm-1']) != null ? num(r['c_lo95_Mm-1'])! / mac : null, c_hi: num(r['c_hi95_Mm-1']) != null ? num(r['c_hi95_Mm-1'])! / mac : null }))
+  const offset = offsets.find((r) => String(r.model).startsWith('AIRSpec'))
   // the Ethiopian season colours from config (meta), keyed by the short season name these figures use
   const seasonColor = groupColorFn(props.meta, view.prov.eval.group)
   const colors = Object.fromEntries([...new Set(view.prov.eval.group)].map((g) => [seasonOf(g), seasonColor(g)]))
@@ -77,7 +84,7 @@ export function ProvisionalSeries(props: SectionPageProps) {
     <Figure kind="intervals" id="provisional-seasons" data={view.perFilter} row="season" series="series"
       panels={[{ value: 'value', label: 'µg/m³ (median and IQR over dated filters)', reference: 0 }]} labelWidth={110}
       title="Season by season — the provisional series, the raw-model envelope, deployed EC and HIPS"
-      subtitle="Dry (Oct–Feb), Belg (Mar–May), Kiremt (Jun–Sep). The provisional series keeps the Kiremt ≈ 2 × Dry ordering at about half the deployed level; the raw-spectra model is the upper envelope (the unresolved MAC-6 branch). HIPS Fabs/10 is the optical axis the calibration disagrees with by a near-constant offset."
+      subtitle={`Dry (Oct–Feb), Belg (Mar–May), Kiremt (Jun–Sep): the explorer's Ethiopian calendar, February in Dry. The provisional series keeps the Kiremt ≈ 2 × Dry ordering at about half the deployed level; the raw-spectra model is the upper envelope (the unresolved MAC-6 branch). HIPS Fabs / ${mac} (the MAC set under Filters → units) is the optical axis the calibration disagrees with by a near-constant offset.`}
       provenance={<>Stands in for ftir_29 §3 and Figure 3. Per filter: <code>calibration_runs.json</code> (explorer eval of the two locked Lowest-OC/EC 800 presets at Addis).</>} />
 
     <Figure kind="crossplot" id="provisional-vs" data={view.pairs} x="x" y="y" color="season" colors={colors} idColumn="id" choose={[{ column: 'against', label: 'Against' }]}
@@ -86,10 +93,10 @@ export function ProvisionalSeries(props: SectionPageProps) {
       subtitle="Same filters. ftir_29 quotes OLS: provisional = 0.45 × deployed + 0.29 (R² 0.85) and slope 0.55 against the raw model; the fit drawn here is the gallery's estimator. The ordering of days survives; the absolute scale is the conditional part."
       provenance={<>Stands in for ftir_29 Figure 2. Per filter: <code>calibration_runs.json</code>.</>} />
 
-    <Figure kind="intervals" id="provisional-offset" data={rows(data, 'offset_ci')} row="model"
-      panels={[{ value: 'c_median_ugm3', lo: 'c_lo95', hi: 'c_hi95', label: 'HIPS-axis offset c = −intercept/slope (µg/m³; median and 95 % interval)', reference: 0 }]} labelWidth={170}
-      title={`The offset is a number with an interval — ${f2(offset?.c_median_ugm3)} µg/m³ for the corrected model`}
-      subtitle={`Site-cluster bootstrap draws from ftir_15 (B = 200 per model), no refitting. In Fabs units at MAC 10 the corrected model's offset is ${f2(offset?.['c_lo95_Mm-1'])}–${f2(offset?.['c_hi95_Mm-1'])} Mm⁻¹ (95 %); an interval that excludes zero is an offset, not noise.`}
+    <Figure kind="intervals" id="provisional-offset" data={offsets} row="model"
+      panels={[{ value: 'c_median', lo: 'c_lo', hi: 'c_hi', label: `HIPS-axis offset c = −intercept/slope (µg/m³ at MAC ${mac}; median and 95 % interval)`, reference: 0 }]} labelWidth={170}
+      title={`The offset is a number with an interval — ${f2(offset?.c_median)} µg/m³ for the corrected model at MAC ${mac}`}
+      subtitle={`Site-cluster bootstrap draws from ftir_15 (B = 200 per model), no refitting. The offset is where the fit meets the HIPS axis, so it is fixed in Fabs units: ${f2(offset?.['c_lo95_Mm-1'])}–${f2(offset?.['c_hi95_Mm-1'])} Mm⁻¹ (95 %) for the corrected model, divided here by the MAC set under Filters → units (the notebook quoted µg/m³ at MAC 10). An interval that excludes zero is an offset, not noise.`}
       provenance={provenance(data, ['offset_ci'])} />
 
     <Figure kind="intervals" id="provisional-kiremt" data={ratios} row="row" block="block"

@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react'
+import { useMac } from '@/lib/mac'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { Legend } from '@/components/Legend'
 import * as d3 from 'd3'
@@ -31,10 +32,12 @@ export function AeronetScaleHeightTime({ rows, meta }: { rows: FilterRow[]; meta
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const hl = useHighlight()
+  // the rows' public BC is at the reader's MAC: surfaceFabs needs it to get back to Fabs
+  const { mac } = useMac()
   const pts = useMemo(() => rows.flatMap((r) => {
-    const h = scaleHeight(r)
+    const h = scaleHeight(r, mac)
     return h !== null && h > 0 ? [{ row: r, t: new Date(r.date), h }] : []
-  }), [rows])
+  }), [rows, mac])
   const codes = [...new Set(pts.map((p) => p.row.code))]
   const one = codes.length === 1
   const hasLots = one && !!HIPS_LOT_PERIODS[codes[0]]
@@ -94,7 +97,7 @@ export function AeronetScaleHeightTime({ rows, meta }: { rows: FilterRow[]; meta
                 return <circle key={p.row.id} cx={x(p.t)} cy={y(p.h)} r={st.r} fill={c} fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={st.dot}
                   style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
                   onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.site} · ${p.row.date}`, `H ${fmt(p.h, 0)} m`,
-                    `AAOD 675 ${fmt(p.row[AAOD675] as number, 4)} · Fabs ${fmt(surfaceFabs(p.row), 1)} Mm⁻¹`, label(groupOf(p.row)), 'click for details']) }}
+                    `AAOD 675 ${fmt(p.row[AAOD675] as number, 4)} · Fabs ${fmt(surfaceFabs(p.row, mac), 1)} Mm⁻¹`, label(groupOf(p.row)), 'click for details']) }}
                   onMouseLeave={() => { hl.setHover(null); tip.hide() }} onClick={() => hl.openSample(p.row.id)} />
               })}
               {steps.map((s, i) => <line key={i} x1={x(s.a)} x2={Math.max(x(s.b), x(s.a) + 4)} y1={y(s.med)} y2={y(s.med)} stroke={colorOf(s.g)} strokeWidth={3} strokeLinecap="round"

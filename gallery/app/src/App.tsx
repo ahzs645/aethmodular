@@ -11,7 +11,7 @@ import { PanelAxesProvider } from '@/lib/panelAxes'
 import { listParam, listToParam, readParams, writeParams } from '@/lib/url'
 import { useShared } from '@/lib/stable'
 import { PAPER_CALENDAR } from '@/lib/pmfPaper'
-import { seasonOfDate } from '@/lib/seasons'
+import { NO_WEATHER, isDatedCalendar, seasonOfDate } from '@/lib/seasons'
 import { DEFAULT_RAIN_RULE, RAIN_SEASONS, parseRainRule, rainRuleParam, type RainRule } from '@/lib/rainSeasons'
 import { useRainCalendars } from '@/hooks/useRainCalendars'
 import { Scatterplot } from '@/charts/correlation/Scatterplot'
@@ -66,7 +66,7 @@ import { RecordDrawer } from '@/components/RecordDrawer'
 import type { DateRange } from '@/components/DateBrush'
 import type { FilterRow, SeasonMeta, SiteMeta } from '@/lib/types'
 import { AXES_MODES, DEFAULT_AXES, PAX_PARAM, paxFromParam, type AxesMode, type AxesOpts } from '@/lib/axes'
-import { calendarVariants, hasLocalCalendar, localSeasonsFor, qualifySeason, seasonSources } from '@/siteSeasons'
+import { calendarNote, calendarVariants, hasLocalCalendar, localSeasonsFor, qualifySeason, seasonSources } from '@/siteSeasons'
 import { dynamicPlaceholder, parseSiteRules, siteRulesParam, type SiteRules } from '@/lib/dynamicSeasons'
 import { useDynamicCalendars } from '@/hooks/useDynamicCalendars'
 import { MAX_IMPROVE_SITES, MONTH_QUARTERS, NETWORK_DEFAULTS, hasImprove, hasSpartan, isNetwork, mergeGroups, networkColor, useNetworkData, type Network } from '@/lib/networks'
@@ -83,6 +83,7 @@ import { GroupingsProvider } from '@/components/GroupingDialog'
 import { groupingsParam, mergeGroupings, parseGroupings, readSavedGroupings, writeSavedGroupings, type GroupingDef } from '@/lib/groupings'
 import { GlossaryButton } from '@/components/Glossary'
 import { PresentationProvider, PresentationSwitch, type Presentation } from '@/lib/presentation'
+import { LAMBDA_10, MacProvider, demingLambda } from '@/lib/mac'
 import { useSearchParam } from '@/lib/url'
 import { CommandPaletteButton } from '@/components/CommandPalette'
 import { UndoToast } from '@/components/UndoToast'
@@ -337,6 +338,11 @@ function paintRows(rows: FilterRow[], paint: ((site: string) => string | undefin
 
 /** the rain rule's seasons before a site's rain has loaded (or where it has none): its usual Addis months */
 const RAIN_PLACEHOLDER: SeasonMeta[] = RAIN_SEASONS.map((s) => ({ name: s.name, color: s.color, months: [...s.months] }))
+// a weather calendar before (or without) its weather: the names, no dated spans, so nothing is classified yet
+const RAIN_PENDING: SeasonMeta[] = RAIN_SEASONS.map((s) => ({ name: s.name, color: s.color, months: [...s.months], spans: [] }))
+// where a weather calendar cannot place a filter (no weather loaded, none in the record, or a long gap)
+const NO_WEATHER_SEASON: SeasonMeta = { name: NO_WEATHER, color: '#9aa5b1', months: [], spans: [] }
+const withNoWeather = (cal: SeasonMeta[]) => [...cal, NO_WEATHER_SEASON]
 
 export default function App() {
   const init = useMemo(() => readParams(), [])
@@ -769,12 +775,12 @@ export default function App() {
   const calendarOf = useCallback(
     // sites without a local calendar fall back to the shared quarters, not the Ethiopian bins
     (site: string) => {
-      if (rainOn) return rainCals.get(codeOfSite(site) ?? '') ?? RAIN_PLACEHOLDER
+      if (rainOn) return withNoWeather(rainCals.cals.get(codeOfSite(site) ?? '') ?? RAIN_PENDING)
       if (!isLocal) return sharedSeasons
       const code = codeOfSite(site)
       // a site's weather rule, then its own month bins, win over its published calendar
       const rule = code ? siteRules[code] : undefined
-      if (rule) return dynCals.get(code!) ?? dynamicPlaceholder(rule)
+      if (rule) return withNoWeather(dynCals.cals.get(code!) ?? dynamicPlaceholder(rule))
       const own = code ? siteSeasons[code] : undefined
       if (own) return customSeasonMeta(own)
       return localSeasonsFor(site, data?.meta, code, code ? calVariants[code] : undefined) ?? MONTH_QUARTERS
@@ -793,8 +799,11 @@ export default function App() {
   // a calendar with day boundaries goes by the sampling date (lib/seasons seasonOfDate)
   const seasonOf = useCallback((site: string, month: number | null | undefined, fallback: string, date?: string | null) => {
     if (!month && !date) return fallback
-    const se = seasonOfDate(date, month, calendarOf(site))
-    return se ? (isLocal ? qualifySeason(site, se.name, qualify) : se.name) : fallback
+    const cal = calendarOf(site)
+    const se = seasonOfDate(date, month, cal)
+    // a weather calendar that cannot place the filter says so, rather than keeping the exported season
+    const name = se?.name ?? (isDatedCalendar(cal) ? NO_WEATHER : null)
+    return name ? (isLocal ? qualifySeason(site, name, qualify) : name) : fallback
   }, [calendarOf, isLocal, qualify])
   const seasonForFilter = useCallback((r: FilterRow) => seasonOf(r.site, r.month, r.season, r.date), [seasonOf])
 
@@ -1194,8 +1203,10 @@ export default function App() {
         const own = siteSeasons[code]
         const base = localSeasonsFor(site, data?.meta, code, calVariants[code]) ?? MONTH_QUARTERS
         // the references hold for the published calendar only, not the reader's own bins or rules
-        const sources = own || siteRules[code] ? [] : seasonSources(code, calVariants[code])
-        return [{ site, code, edited: !!own, rule: siteRules[code], sources, seasons: own ?? base.map((se) => ({ name: bareSeasonName(se.name), months: se.months })) }]
+        const published = !own && !siteRules[code]
+        const sources = published ? seasonSources(code, calVariants[code]) : []
+        const weather = !siteRules[code] || dynCals.cals.has(code) ? undefined : dynCals.failed.has(code) ? 'unavailable' as const : 'loading' as const
+        return [{ site, code, edited: !!own, rule: siteRules[code], weather, sources, note: published ? calendarNote(code) : undefined, seasons: own ?? base.map((se) => ({ name: bareSeasonName(se.name), months: se.months })) }]
       }) : [],
       sitesAtDefault: net === 'spartan' ? spartanSel === null : net === 'improve' ? improveSites.length > 0 : net === 'both' ? spartanSel === null && improveSites.length === 0 : !activeSites,
       allSitesSelected: hasSpartan(net) ? !!netView && netView.chosen.length - (net === 'both' ? improveSites.length : 0) === netView.nSpartan : !activeSites,
@@ -1350,6 +1361,8 @@ export default function App() {
     <RatiosProvider meta={meta} presets={ratioView.presets} custom={ratios} onAdd={addRatio} onRemove={removeRatio} count={countRatio}>
     {/* "New grouping…" in the charts that split or colour by a grouping (components/GroupingDialog) */}
     <GroupingsProvider meta={meta} rows={rows} list={groupings} onSave={saveGrouping} onRemove={removeGrouping}>
+    {/* the MAC every chart reads (lib/mac useMac): the reader's, or the export's on a meeting page as presented */}
+    <MacProvider mac={tab === 'meeting' && presentation === 'presented' ? exportMac : viewOpts.mac} exportMac={exportMac} lambda10={data?.calibration?.deming_lambda_mac10 ?? LAMBDA_10}>
     <FilterEditsProvider enabled dropped={dropIds} kept={keepIds}
       onDrop={dropFilters} onKeep={keepFilters} onRestore={restoreFilters} group={group} onGroup={setGroup}>
       {openRow && (
@@ -1403,11 +1416,11 @@ export default function App() {
         </PresentationProvider>}
         {tab === 'blanks' && <BlanksPage />}
         {tab === 'experimental' && <ExperimentalPage experiment={experiment} onPick={setExperiment} />}
-        {tab === 'baseline' && (calibrationLoading ? <p>Loading calibration data…</p> : <BaselineComparisonPage mac={exportMac} demingLambda={data.calibration?.deming_lambda_mac10 ?? 1} />)}
+        {tab === 'baseline' && (calibrationLoading ? <p>Loading calibration data…</p> : <BaselineComparisonPage mac={viewOpts.mac} demingLambda={demingLambda(viewOpts.mac, data.calibration?.deming_lambda_mac10 ?? LAMBDA_10)} />)}
         {tab === 'calibration' && (calibrationLoading ? <p>Loading calibration data…</p> : <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={drawerMeta} galleryRows={paintedSourceRows} sourceRows={rawSourceRows} galleryMeta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />)}
         {tab === 'dashboard' && <DashboardPage dash={dash} setDash={setDash} filters={dashFilters} onScope={setDashScope} onPickSite={pickDashSite} display={<DisplayToggles />}
           data={{ rows, measured: measuredRows, meta, axes, pmf: pmf ?? null, pmfRows, eff, defaults: { x: xField, y: yField, field }, openSite: openDashSite, pmfLabelOfDate,
-            calibration: data.calibrationRuns ? { runs: data.calibrationRuns, lambda10: data.calibration?.deming_lambda_mac10 ?? 2.96, knownIds, galleryRows: paintedSourceRows, sourceRows: rawSourceRows, galleryMeta: meta, meta: drawerMeta } : null }} />}
+            calibration: data.calibrationRuns ? { runs: data.calibrationRuns, lambda10: data.calibration?.deming_lambda_mac10 ?? LAMBDA_10, knownIds, galleryRows: paintedSourceRows, sourceRows: rawSourceRows, galleryMeta: meta, meta: drawerMeta } : null }} />}
         <AxisFieldsProvider meta={meta} value={axisValues} set={setAxisField}>
         {tab === 'correlation' && (
           <>
@@ -1470,6 +1483,7 @@ export default function App() {
           ))}
       </Shell>
     </FilterEditsProvider>
+    </MacProvider>
     </GroupingsProvider>
     </RatiosProvider>
     </PageSidebarProvider>

@@ -68,9 +68,6 @@ function sweepSeries(rows: CalibRow[], metric: SweepMetric, allPairs: boolean, a
     .sort((a, b) => a.label.localeCompare(b.label))
 }
 
-// readouts with no all-pairs version: the toggle would change nothing
-const NO_ALL_PAIRS = new Set<Metric>(['Deming intercept @ MAC 6'])
-
 export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; selected: Config; onSelect: (c: Config) => void }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
@@ -86,7 +83,7 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
     && r.co === c.cohort && (!('mode' in c) || r.mo === c.mode) && (!('target' in c) || r.tg === c.target))
   // the options and when each applies (lib/chartOptions): protocols and test sets are offered only
   // where the batch swept them for the chosen cohort; the fitted-count axis only where the rows carry
-  // fitted counts; "all pairs" only for a readout that has an all-pairs version
+  // fitted counts
   const o = useChartOptions('cutoff-sweep', [
     { key: 'cohort', label: 'Cohort', style: 'select', default: rankedCohorts.includes('ocec') ? 'ocec' : rankedCohorts[0], choices: rankedCohorts.map((c) => ({ value: c, label: label(COHORT, c) })) },
     { key: 'mode', label: 'Cross-validation protocol', style: 'select', default: 'site_heldout',
@@ -97,7 +94,7 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
     { key: 'cvMetric', axis: 'y', label: 'Calibration cross-validation readout', style: 'select', default: 'cv_rmse', choices: (['cv_rmse', 'ho', 'rmsecv'] as const).map((m) => ({ value: m, label: CV_LABELS[m] })) },
     { key: 'axis', axis: 'x', label: 'Horizontal axis', style: 'select', default: 'fitted',
       choices: (['fitted', 'cutoff'] as const).map((a) => ({ value: a, label: X_LABELS[a], when: a === 'fitted' ? (c: Record<string, unknown>) => swept(c).some((r) => cutoffPosition(r, 'fitted') !== null) : undefined })) },
-    { key: 'allPairs', label: 'All pairs (not the fixed set)', toggle: true, default: false, hidden: false, when: (c) => !NO_ALL_PAIRS.has(c.metric as Metric) },
+    { key: 'allPairs', label: 'All pairs (not the fixed set)', toggle: true, default: false },
   ])
   const cohort = o.values.cohort as string
   const mode = o.values.mode as string

@@ -61,7 +61,7 @@ export function PollutionRose({ rows, meta, field, source, site, splits = SPLITS
     { key: 'stat', label: 'Wedges', default: 'Mean', choices: STATS.map((v) => ({ value: v })),
       title: "Mean, median or a percentile of the concentration over the hours from each sector; or Frequency: each sector's share of the hours, stacked by concentration class (openair pollutionRose)" },
     { key: 'p', when: (c) => c.stat === 'Percentile', node: () => <span className="control" title="Which percentile of the hours from each sector">Percentile
-      <ScrubField label="Percentile" value={p} onChange={(v) => setP(String(Math.round(v)))} min={50} max={99} step={1} width={80} /></span> },
+      <ScrubField label="Percentile" value={p} onChange={(v) => setP(String(Math.round(v)))} min={50} max={99} step={1} unit="%" width={90} /></span> },
     { key: 'colours', when: (c) => c.stat === 'Frequency', node: () => colours.picker },
   ])
   const split = o.values.split as (typeof SPLITS)[number]

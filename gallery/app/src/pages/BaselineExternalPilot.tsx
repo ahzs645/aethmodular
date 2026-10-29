@@ -79,8 +79,8 @@ const METHODS: Method[] = ['AIRSpec', 'VIBES']
 const colorsFor = (completed: boolean): Record<Method, string> => ({ AIRSpec: baselineColor('AIRSpec'), VIBES: baselineColor('VIBES', completed ? 70 : null) })
 
 /**
- * `mac` is config.MAC_VALUE (via meta.json) and `demingLambda` the explorer's
- * lambda* at that MAC (via calibration.json): passed in, not restated here.
+ * `mac` is the reader's MAC (Filters → units; config.MAC_VALUE until changed) and `demingLambda` the
+ * explorer's lambda* (calibration.json, at MAC 10) scaled to it by MAC² (lib/mac): passed in, not restated here.
  */
 export function BaselineExternalPilot({ mac, demingLambda, completed = false }: { mac: number; demingLambda: number; completed?: boolean }) {
   const COLORS = colorsFor(completed)
@@ -111,7 +111,7 @@ export function BaselineExternalPilot({ mac, demingLambda, completed = false }: 
     {completed && <ExplainOnly><ChartFrame title="Rank-70 external application" exportable={false}><p>All 31 external spectra were corrected over 4000–500 cm⁻¹ with the same frozen rank-70 background. Predictions use the shared-window EC model. Date pairing, the provisional Adama ID map, exclusions and optical matching remain unchanged.</p></ChartFrame></ExplainOnly>}
     <ExplainOnly><ChartFrame title={completed ? "Completed rank-70 external pilot: Adama and Bishoftu" : "Archived external pilot: Adama and Bishoftu"} exportable={false}>
       <p style={{ fontSize: 14, lineHeight: 1.6 }}>{completed ? 'The completed rank-70 VIBES shared-input and spline models were applied' : 'The earlier frozen full-pool AIRSpec and VIBES models were applied'} to five Adama and 26 Bishoftu spectra without refitting. All 31 external baseline corrections converged. The Adama panel uses measured quartz EC on date-candidate co-samples; the Bishoftu panel compares spectra at matched optical loading because Bishoftu has no thermal EC measurement.</p>
-      <Note>Adama's spectrum-to-PTFE ID map and sampler equivalence await confirmation. Bishoftu's HIPS/MAC-10 is an optical equivalent, not a thermal EC reference. These panels are diagnostic observations, not site accuracy rankings.</Note>
+      <Note>Adama's spectrum-to-PTFE ID map and sampler equivalence await confirmation. Bishoftu's HIPS Fabs ÷ MAC {mac} is an optical equivalent, not a thermal EC reference. These panels are diagnostic observations, not site accuracy rankings.</Note>
       <a href={BASE + (completed ? 'rank70/baseline_external_pilot.json' : 'baseline_external_pilot.json')} download>Download pilot rows and mapping ranges</a>
       <p style={{ fontSize: 11, overflowWrap: 'anywhere' }}>Frozen run: <code>{data.frozen_run_signature}</code> · Evidence date {data.evidence_date}</p>
     </ChartFrame></ExplainOnly>

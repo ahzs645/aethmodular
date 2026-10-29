@@ -1,8 +1,8 @@
 import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
+import { Panels } from '@/components/Panels'
 import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
-import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { focusStyle, useHighlight } from '@/lib/highlight'
 import { fidProps } from '@/lib/filterEdits'
@@ -53,7 +53,6 @@ function logFit(pts: Point[]): { a: number; b: number } | null {
  */
 export function PwMoisture({ rows, meta, onePick }: { rows: FilterRow[]; meta: MetaFile; onePick: boolean }) {
   const wrapRef = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const hl = useHighlight()
   const [measure, setMeasure] = useSearchParam<Measure>('pwmoist', 'Dew point', MEASURES)
@@ -94,11 +93,9 @@ export function PwMoisture({ rows, meta, onePick }: { rows: FilterRow[]; meta: M
   }, [rows])
 
   const all = series.flatMap((s) => s.pts)
-  const sq = Math.max(240, Math.min(440, width - 80))
   const M = { top: 12, left: 56, bottom: 44, right: 14 }
-  const x = d3.scaleLinear().domain(d3.extent(all, (p) => p.x) as [number, number]).nice().range([0, sq])
-  const y = d3.scaleLinear().domain([0, (d3.max(all, (p) => p.y) ?? 1) * 1.05]).nice().range([sq, 0])
-  const curve = (s: Series) => {
+  const xDom = d3.extent(all, (p) => p.x) as [number, number], yMax = (d3.max(all, (p) => p.y) ?? 1) * 1.05
+  const curve = (s: Series, x: d3.ScaleLinear<number, number>, y: d3.ScaleLinear<number, number>) => {
     if (!s.fit) return ''
     const [lo, hi] = d3.extent(s.pts, (p) => p.x) as [number, number]
     return d3.line<number>().x((v) => x(v)).y((v) => y(Math.exp(s.fit!.a + s.fit!.b * v)))(d3.range(lo, hi, (hi - lo) / 40).concat(hi)) ?? ''
@@ -111,38 +108,48 @@ export function PwMoisture({ rows, meta, onePick }: { rows: FilterRow[]; meta: M
       subtitle={`Each filter: the mean AERONET precipitable water inside its sampling window against the ${measure.toLowerCase()} averaged over the same window, from ERA5 at every site and, at Addis Ababa, from the Bole airport station (hollow${isDew ? '; its dew point computed from the window-mean temperature and humidity' : ''}). Spearman ρ per series${isDew ? '; the curves fit ln PW = a + b·Td, the near-exponential rise of column water with surface dew point' : ''}. The photometer averages only clear daylight retrievals while ERA5 and the station cover every hour, so the cross-check also shows how representative the clear-sky PW is of the whole window. This is the moisture behind the MAC–PW comparison.`}
       provenance="AERONET Version 3 precipitable water (export_aeronet.py); ERA5 and Bole airport (Meteostat, WMO 63450) over the same windows (export_weather.py); notebooks/analysis/meteorology/pw_mac_calibration"
       controls={<Segmented label="Surface moisture" value={measure} options={MEASURES} onChange={setMeasure} />}>
-      <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'flex-start' }}>
+      <div ref={wrapRef} className="chart-wrap">
         {series.length === 0 ? <Empty>No site in view has {MIN_N} filters with an AERONET precipitable water and ERA5 moisture over the window.</Empty> : <>
-          <svg width={sq + M.left + M.right} height={sq + M.top + M.bottom} fontFamily={FONT.family} role="img" aria-label={`Precipitable water against ${measure.toLowerCase()}`}>
-            <g transform={`translate(${M.left},${M.top})`}>
-              <YAxis scale={y} x={0} label="Precipitable water, AERONET (cm)" gridWidth={sq} labelX={-42} />
-              <XAxis scale={x} y={sq} label={xLabel} />
-              {series.map((s) => <g key={s.key}>
-                {s.pts.map((p) => {
-                  const st = focusStyle(p.row.id, hl.focusId, { r: 3 }, hl.selected)
-                  return <circle key={p.row.id} cx={x(p.x)} cy={y(p.y)} r={st.r} fill={s.hollow ? 'none' : s.color} fillOpacity={st.opacity}
-                    stroke={s.hollow ? s.color : st.stroke} strokeWidth={s.hollow ? 1.2 : st.strokeWidth} strokeOpacity={s.hollow ? 0.8 : 1} data-dot={s.hollow ? undefined : st.dot}
-                    style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
-                    onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${s.label} · ${p.row.date}`, `PW ${fmt(p.y, 2)} cm`, `${measure} ${fmt(p.x, 1)} ${isDew ? '°C' : '%'}`]) }}
-                    onMouseLeave={() => { hl.setHover(null); tip.hide() }} onClick={(e) => { e.stopPropagation(); hl.openSample(p.row.id) }} />
-                })}
-              </g>)}
-              {series.map((s) => s.fit && <path key={`${s.key}-fit`} d={curve(s)} fill="none" stroke={s.color} strokeWidth={2} strokeDasharray={s.hollow ? '5 3' : undefined} />)}
-            </g>
-          </svg>
-          <div style={{ minWidth: 0, flex: '1 1 260px' }}>
-            <div className="chart-scroll" tabIndex={0} role="region" aria-label="Precipitable water against surface moisture, per series">
-            <table className="census-table">
-              <thead><tr><th>Series</th><th>n</th><th style={{ textTransform: 'none' }}>Spearman ρ</th>{isDew && <th>PW per °C</th>}</tr></thead>
-              <tbody>{series.map((s) => <tr key={s.key}>
-                <td><span aria-hidden="true" style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', marginRight: 6, background: s.hollow ? 'transparent' : s.color, border: `1.5px solid ${s.color}` }} />{s.label}</td>
-                <td style={{ whiteSpace: 'nowrap' }}>{s.pts.length}</td><td style={{ whiteSpace: 'nowrap' }}>{fmt(s.rho, 2)}</td>
-                {isDew && <td style={{ whiteSpace: 'nowrap' }}>{s.fit ? `${s.fit.b >= 0 ? '+' : '−'}${fmt(Math.abs(Math.expm1(s.fit.b) * 100), 1)} %` : '—'}</td>}
-              </tr>)}</tbody>
-            </table>
-            </div>
-            {isDew && <p className="chart-note">PW per °C: the fitted growth of column water per degree of surface dew point (Reitan’s 1963 empirical relation gives about 6 % per °C).</p>}
-          </div>
+          <Panels label="Precipitable water against surface moisture" panels={[
+            { key: 'scatter', title: `Precipitable water against ${measure.toLowerCase()}`, min: 300, basis: 510, max: 510, grow: 0, render: ({ width, height }) => {
+              // square: as wide as the panel allows, and in a tile no taller than its share
+              const sq = Math.max(200, Math.min(440, width - M.left - M.right, height === null ? Infinity : height - M.top - M.bottom))
+              const x = d3.scaleLinear().domain(xDom).nice().range([0, sq])
+              const y = d3.scaleLinear().domain([0, yMax]).nice().range([sq, 0])
+              return (
+                <svg width={sq + M.left + M.right} height={sq + M.top + M.bottom} fontFamily={FONT.family} role="img" aria-label={`Precipitable water against ${measure.toLowerCase()}`}>
+                  <g transform={`translate(${M.left},${M.top})`}>
+                    <YAxis scale={y} x={0} label="Precipitable water, AERONET (cm)" gridWidth={sq} labelX={-42} />
+                    <XAxis scale={x} y={sq} label={xLabel} />
+                    {series.map((s) => <g key={s.key}>
+                      {s.pts.map((p) => {
+                        const st = focusStyle(p.row.id, hl.focusId, { r: 3 }, hl.selected)
+                        return <circle key={p.row.id} cx={x(p.x)} cy={y(p.y)} r={st.r} fill={s.hollow ? 'none' : s.color} fillOpacity={st.opacity}
+                          stroke={s.hollow ? s.color : st.stroke} strokeWidth={s.hollow ? 1.2 : st.strokeWidth} strokeOpacity={s.hollow ? 0.8 : 1} data-dot={s.hollow ? undefined : st.dot}
+                          style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
+                          onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${s.label} · ${p.row.date}`, `PW ${fmt(p.y, 2)} cm`, `${measure} ${fmt(p.x, 1)} ${isDew ? '°C' : '%'}`]) }}
+                          onMouseLeave={() => { hl.setHover(null); tip.hide() }} onClick={(e) => { e.stopPropagation(); hl.openSample(p.row.id) }} />
+                      })}
+                    </g>)}
+                    {series.map((s) => s.fit && <path key={`${s.key}-fit`} d={curve(s, x, y)} fill="none" stroke={s.color} strokeWidth={2} strokeDasharray={s.hollow ? '5 3' : undefined} />)}
+                  </g>
+                </svg>
+              )
+            } },
+            { key: 'table', title: 'Per series', min: 260, basis: 360, expandable: false, render: () => <>
+                <div className="chart-scroll" tabIndex={0} role="region" aria-label="Precipitable water against surface moisture, per series">
+                <table className="census-table">
+                  <thead><tr><th>Series</th><th>n</th><th style={{ textTransform: 'none' }}>Spearman ρ</th>{isDew && <th>PW per °C</th>}</tr></thead>
+                  <tbody>{series.map((s) => <tr key={s.key}>
+                    <td><span aria-hidden="true" style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', marginRight: 6, background: s.hollow ? 'transparent' : s.color, border: `1.5px solid ${s.color}` }} />{s.label}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{s.pts.length}</td><td style={{ whiteSpace: 'nowrap' }}>{fmt(s.rho, 2)}</td>
+                    {isDew && <td style={{ whiteSpace: 'nowrap' }}>{s.fit ? `${s.fit.b >= 0 ? '+' : '−'}${fmt(Math.abs(Math.expm1(s.fit.b) * 100), 1)} %` : '—'}</td>}
+                  </tr>)}</tbody>
+                </table>
+                </div>
+                {isDew && <p className="chart-note">PW per °C: the fitted growth of column water per degree of surface dew point (Reitan’s 1963 empirical relation gives about 6 % per °C).</p>}
+            </> },
+          ]} />
         </>}
         {tip.node}
       </div>

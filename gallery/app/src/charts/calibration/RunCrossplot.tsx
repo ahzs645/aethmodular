@@ -1,4 +1,4 @@
-import { demingLambda } from './seasonView'
+import { demingLambda, useMac } from '@/lib/mac'
 import { useMemo, useRef } from 'react'
 import { useChartOptions } from '@/lib/chartOptions'
 import * as d3 from 'd3'
@@ -39,7 +39,7 @@ const REF = 'Crossplot x (reference)', PRED = 'Predicted FTIR EC', RESID = 'Resi
  * weather field of the same filter (residual against iron, against EC / PM2.5 …), from
  * `galleryRows` under the gallery's view.
  */
-export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96, galleryRows = [], sourceRows, galleryMeta }: {
+export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, galleryRows = [], sourceRows, galleryMeta }: {
   run: CalibRun; runs: CalibRunsFile; meta: MetaFile; knownIds: Set<string>; lambda10?: number
   galleryRows?: FilterRow[]; galleryMeta?: MetaFile
   /** every filter's row before the view's options, for its deployed SPARTAN EC (default: galleryRows) */
@@ -53,6 +53,9 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96, galle
 
   const { hidden, dim, props: legendProps } = useLegend()
 
+  // the MAC: the one set under Filters (lib/mac) by default, or one the explorer saved fits at
+  const gallery = useMac()
+  const lambda10 = lambdaProp ?? gallery.lambda10
   const macs = useMemo(() => [...new Set(run.metrics.map((m) => m.MAC).filter((v): v is number => v !== null))].sort((a, b) => a - b), [run.metrics])
   const isFabs = run.ref_kind === 'fabs'
   // the deployed SPARTAN EC: the run's own column (Addis fixed set) or the gallery's EC (FTIR) for the filter
@@ -69,12 +72,13 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10 = 2.96, galle
     { key: 'x', axis: 'x', label: 'Crossplot x', choices: XMODES.map((v) => ({ value: v, label: v === 'reference' ? 'HIPS reference (Fabs ÷ MAC)' : 'Deployed SPARTAN EC' })), default: 'reference', hidden: 'reference', when: (c) => !!c.hasDeployed },
     { key: 'set', label: 'Test set', choices: SETS, default: 'fixed', hidden: 'fixed', when: (c) => !!c.hasFixed && c.x !== 'deployed EC',
       title: 'fixed = the filters with a deployed EC (Addis fixed-190); all = every filter with a reference' },
-    { key: 'mac', label: 'MAC', choices: macs.map(String), default: String(runs.mac_value), hidden: String(runs.mac_value), when: (c) => !!c.isFabs && c.x !== 'deployed EC' },
+    { key: 'mac', label: 'MAC', choices: [{ value: 'gallery', label: `Filters (${gallery.mac})` }, ...macs.map((m) => ({ value: String(m), label: String(m) }))], default: 'gallery', hidden: 'gallery',
+      when: (c) => !!c.isFabs && c.x !== 'deployed EC', title: 'Filters: the MAC set under Filters → units; or one the explorer saved fits at' },
     { key: 'n', node: () => <span className="control">n = {pts.length}{run.extrap_pct !== null ? ` · score OOD ${run.extrap_pct}%` : ''}{run.q_residual_pct !== null ? ` · Q OOD ${run.q_residual_pct}%` : ''}</span> },
   ], { hasDeployed, hasFixed, isFabs })
   const xmode = o.values.x as (typeof XMODES)[number]
   const evalSet = o.values.set as (typeof SETS)[number]
-  const mac = Number(o.values.mac)
+  const mac = o.values.mac === 'gallery' ? gallery.mac : Number(o.values.mac)
   const useDeployed = xmode === 'deployed EC' && hasDeployed
   const color = useMemo(() => groupColorFn(meta, run.eval.group), [meta, run.eval.group])
 

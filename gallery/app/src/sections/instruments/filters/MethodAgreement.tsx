@@ -8,6 +8,7 @@ import { Key } from '@/components/Key'
 import { robustDomain } from '@/lib/axes'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { fmt } from '@/lib/format'
+import { useMac } from '@/lib/mac'
 import { useSearchParam } from '@/lib/url'
 import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
@@ -28,13 +29,15 @@ interface Pairing { key: string; title: string; x: (p: Pair) => number | null; y
  * cross-plots of Multi_Site_Analysis_Fixed §9 and _FollowUp §3–3b).
  */
 export function MethodAgreement({ pairs, meta, sites, ch }: { pairs: Pair[]; meta: MetaFile; sites: PairSite[]; ch: Channel }) {
+  const { mac } = useMac()
+  const hipsLabel = `HIPS BC = Fabs ÷ ${mac} (µg/m³)`
   const [colour, setColour] = useSearchParam<Colour>('af.col', 'Site', COLOURS)
   const ramp = useColourScheme('af-agree', 'sequential')
   const pairings: Pairing[] = [
     { key: 'ec', title: `${ch} BCc against FTIR EC`, x: (p) => p.bc, y: (p) => p.ec, xLabel: `Aethalometer ${ch} BCc (µg/m³)`, yLabel: 'FTIR EC (µg/m³)' },
-    { key: 'hips', title: `${ch} BCc against HIPS BC`, x: (p) => p.bc, y: (p) => p.hipsBc, xLabel: `Aethalometer ${ch} BCc (µg/m³)`, yLabel: 'HIPS BC = Fabs ÷ 10 (µg/m³)' },
+    { key: 'hips', title: `${ch} BCc against HIPS BC`, x: (p) => p.bc, y: (p) => p.hipsBc, xLabel: `Aethalometer ${ch} BCc (µg/m³)`, yLabel: hipsLabel },
     { key: 'abs', title: `b_ATN ${ch} against HIPS Fabs`, x: (p) => p.batn, y: (p) => p.fabs, xLabel: `b_ATN ${ch} = BCc × σ_ATN (Mm⁻¹)`, yLabel: 'HIPS Fabs (Mm⁻¹)' },
-    { key: 'filters', title: 'HIPS BC against FTIR EC', x: (p) => p.hipsBc, y: (p) => p.ec, xLabel: 'HIPS BC = Fabs ÷ 10 (µg/m³)', yLabel: 'FTIR EC (µg/m³)' },
+    { key: 'filters', title: 'HIPS BC against FTIR EC', x: (p) => p.hipsBc, y: (p) => p.ec, xLabel: hipsLabel, yLabel: 'FTIR EC (µg/m³)' },
   ]
   const third = (p: Pair): number | null => colour === 'Iron' ? p.iron
     : colour === 'Fe/EC' ? (p.iron !== null && p.ec !== null && p.ec > 0 ? p.iron / p.ec : null)
@@ -72,7 +75,7 @@ export function MethodAgreement({ pairs, meta, sites, ch }: { pairs: Pair[]; met
   const panels = pairings.map((g) => ({ g, pts: pointsOf(g) })).filter((x) => x.pts.length >= 3)
   return (
     <ChartFrame id="aeth-filters-agreement" title="Method agreement — the aethalometer, HIPS and FTIR EC filter by filter"
-      subtitle={`Each point is one filter: the aethalometer's ${ch} channel averaged over the filter's sampling window (daily bins weighted by their hours inside it) against the same filter's HIPS and FTIR EC. HIPS BC is Fabs ÷ 10, SPARTAN's public BC. b_ATN = BCc × σ_ATN is an attenuation coefficient that still carries the tape's multiple-scattering enhancement, so its slope against HIPS Fabs is not expected to be 1. Dashed: 1:1. Fits follow the sidebar's estimators${multi ? ', one per site when coloured by site, pooled otherwise' : ''}. Colour by site, season, iron, Fe/EC or Fe/BC (2–98 % of the range; grey: no iron).`}
+      subtitle={`Each point is one filter: the aethalometer's ${ch} channel averaged over the filter's sampling window (daily bins weighted by their hours inside it) against the same filter's HIPS and FTIR EC. HIPS BC is Fabs ÷ ${mac}, the MAC set under Filters → units (at 10, SPARTAN's public BC). b_ATN = BCc × σ_ATN is an attenuation coefficient that still carries the tape's multiple-scattering enhancement, so its slope against HIPS Fabs is not expected to be 1. Dashed: 1:1. Fits follow the sidebar's estimators${multi ? ', one per site when coloured by site, pooled otherwise' : ''}. Colour by site, season, iron, Fe/EC or Fe/BC (2–98 % of the range; grey: no iron).`}
       provenance="ETAD_Aug13.ipynb §4, §5, §9.5, §11 · ETAD_comprehensive_absorption_analysis.ipynb §4–5 · Multi_Site_Analysis.ipynb §5–6 · Multi_Site_Analysis_Fixed.ipynb §4, §7, §9–10 · Multi_Site_Analysis_FollowUp.ipynb §3–4 · AAARpos.ipynb (method agreement)"
       controls={<Segmented label="Colour" value={colour} options={COLOURS} onChange={setColour} />}>
       {panels.length === 0 ? <Empty>No filter in view has the aethalometer at {ch} with HIPS or FTIR EC.</Empty> : <>

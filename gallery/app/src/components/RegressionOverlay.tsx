@@ -1,4 +1,5 @@
 import { useContext, useId, useLayoutEffect, useRef, useState } from 'react'
+import { fitColumns } from '@/lib/facets'
 import { createPortal } from 'react-dom'
 import { StatsInPlotCtx, useSingleView } from '@/lib/singleView'
 import { useExportRender } from '@/lib/exportRender'
@@ -126,10 +127,12 @@ export function useRegressionSummary({ stats, groups, width, enabled = true, pan
   const slot = place === 'side' ? single.slot : null
   if (slot) width = Math.max(200, slot.clientWidth || 320)
   const items = !enabled || !methods.length ? [] : groups ?? [{ stats, name: undefined, color: undefined }]
-  const columns = Math.max(1, Math.min(2, items.length, Math.floor(width / 290)))
+  const readouts = items.map(group => ({ group, r: readout(group.stats, methods, showCI, group.name, group.color) }))
+  // as many columns as the longest readout line allows (lib/facets fitColumns): short group readouts sit side by side
+  const longest = Math.max(0, ...readouts.flatMap(({ r }) => r ? r.lines.map(line => line.text.length) : []))
+  const columns = fitColumns(width, Math.ceil(longest * SUMMARY_FONT * 0.62) + 16, readouts.filter(({ r }) => r).length, { gap: SUMMARY_GAP })
   const cellWidth = (width - (columns - 1) * SUMMARY_GAP) / columns
-  const boxes = items.flatMap(group => {
-    const r = readout(group.stats, methods, showCI, group.name, group.color)
+  const boxes = readouts.flatMap(({ group, r }) => {
     if (!r) return []
     const lines = r.lines.flatMap(line => wrapSummary(line.text, cellWidth).map(text => ({ ...line, text })))
     // Reserve the same minimum height in adjacent pooled panels even when a

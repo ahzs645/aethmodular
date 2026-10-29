@@ -10,7 +10,7 @@ import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
 import { useAddisMet } from '../common/met'
 import { correlationP, ols, pearsonR, quantile, steiger, type Fit } from '../common/stats'
-import { DataTable, Grid, HIGH, LOW, MID, SitePick, initials, line, num, pText, ofSite, point, seasonsOf, shortSeason, useSite } from '../common/ui'
+import { BASIS_NOTE, DataTable, Grid, HIGH, LOW, MID, SitePick, initials, line, num, pText, ofSite, point, seasonsOf, shortSeason, useConcRows, useSite } from '../common/ui'
 
 const NB = 'notebooks/analysis/meteorology/pw_mac_calibration.ipynb'
 const EC = 'EC (FTIR)', FABS = 'HIPS Fabs', HIPS_BC = 'HIPS BC'
@@ -24,7 +24,8 @@ const MOISTURE = [PW, 'RH (station, sample day)', 'Relative humidity (station)',
  * than HIPS does.
  */
 export function MoistureMac({ rows: viewRows, meta: viewMeta }: SectionPageProps) {
-  const { rows, meta } = useAddisMet(viewRows, viewMeta)
+  // Fabs / EC per filter: EC in µg/m³ whatever the basis (common/ui useConcRows)
+  const { rows, meta } = useAddisMet(useConcRows(viewRows, viewMeta), viewMeta)
   const [site, setSite, sites] = useSite(rows, 'mm')
   const siteRows = useMemo(() => ofSite(rows, site), [rows, site])
   const [mParam, setM] = useSearchParam<string>('mm.by', PW)
@@ -79,7 +80,7 @@ export function MoistureMac({ rows: viewRows, meta: viewMeta }: SectionPageProps
   return (
     <>
       <ChartFrame id="mm-money" title={`Effective MAC against ${moisture} — ${site}`}
-        subtitle={`Effective MAC = HIPS Fabs / FTIR EC per filter (m²/g), against ${moisture} over the same sampling window; trimmed to its 1st–99th percentile as the notebook does. OLS line; the dashed pair is the slope ± 1.96 SE through the same intercept; the grey line is the export's MAC of ${meta.mac_value}.`}
+        subtitle={`Effective MAC = HIPS Fabs / FTIR EC per filter (m²/g), against ${moisture} over the same sampling window; trimmed to its 1st–99th percentile as the notebook does. OLS line; the dashed pair is the slope ± 1.96 SE through the same intercept; the grey line is the MAC set under Filters → units, ${meta.mac_value}.${meta.basis === 'mass' ? ` ${BASIS_NOTE}` : ''}`}
         provenance={`${NB} (§1 the money plot)`} controls={controls}>
         <Grid>
           <Crossplot points={trimmed.map((p) => point(p.r, p.m, p.mac, colorOf(p.r.season), moisture, 'effective MAC', 'Research · moisture and MAC'))} sameScale={false}
@@ -98,7 +99,7 @@ export function MoistureMac({ rows: viewRows, meta: viewMeta }: SectionPageProps
       </ChartFrame>
 
       <ChartFrame id="mm-split" title={`Does moisture move the slope (MAC) or the intercept (a baseline)? — ${site}`}
-        subtitle={`Filters split at the ${splitParam === 'median' ? 'median' : '33rd and 67th percentiles'} of ${moisture}; HIPS Fabs on FTIR EC per group. In Fabs the slope is the effective MAC (m²/g) and the intercept a baseline in Mm⁻¹; the grey dashed line is the export's MAC of ${meta.mac_value} through zero.`}
+        subtitle={`Filters split at the ${splitParam === 'median' ? 'median' : '33rd and 67th percentiles'} of ${moisture}; HIPS Fabs on FTIR EC per group. In Fabs the slope is the effective MAC (m²/g) and the intercept a baseline in Mm⁻¹; the grey dashed line is the MAC set under Filters → units, ${meta.mac_value}, through zero.`}
         provenance={`${NB} (§4 PW as predictor of slope vs intercept)`} controls={<Segmented label="Split" value={splitParam} options={['median', 'terciles'] as const} onChange={setSplit} />}>
         <Grid>
           <Crossplot points={groups.flatMap((g) => g.g.map((p) => point(p.r, p.ec, p.fabs, g.color, 'FTIR EC', 'Fabs', 'Research · moisture and MAC', [`${moisture} ${fmt(p.m, 2)}`])))} sameScale={false}

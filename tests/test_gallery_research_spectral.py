@@ -96,7 +96,8 @@ def test_headline_numbers_match_what_the_notebooks_print():
     assert addis["center_median"] == pytest.approx(1618.654282, abs=1e-4)
     mac = exporter.mac_choice()
     like = mac.tables["bridge_summary"].set_index("population").loc["Addis-like OC/EC ≤ 2.27"]
-    assert (like["n"], like["median"]) == (6503, 10.05)
+    # the CSV (when present locally) is unrounded; the notebook prints 2 dp
+    assert like["n"] == 6503 and like["median"] == pytest.approx(10.05, abs=0.005)
     setups = mac.tables["setups"].set_index("setup")
     # ftir_19's structural result: the slope at MAC 6 is 0.6 × the slope at MAC 10
     assert np.allclose(setups["slope @ MAC 6"], 0.6 * setups["slope @ MAC 10"], atol=0.006)

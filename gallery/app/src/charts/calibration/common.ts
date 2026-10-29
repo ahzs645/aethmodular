@@ -1,9 +1,10 @@
 import * as d3 from 'd3'
-import type { CalibFile, CalibRow, CalibRun, FilterRow, MetaFile, MetricRow, SweepRow } from '@/lib/types'
+import type { CalibFile, CalibRow, CalibRun, FilterRow, MetaFile, MetricRow, RunEval, SweepRow } from '@/lib/types'
 import { baseFilterId } from '@/lib/highlight'
 import { useEffect, useState } from 'react'
 import { loadSpartanFilters } from '@/lib/spartan'
 import { COHORT_SHORT, METRIC, PREPROCESSING, PREPROCESSING_SHORT, SELECTION_SPACE, label } from '@/lib/labels'
+import { slopeAt } from '@/lib/macMath'
 import { BASELINE_COLOR, INK } from '@/lib/theme'
 
 /** A configuration is what the explorer fits: cohort × cutoff × selection space × calibration spectra. */
@@ -53,7 +54,8 @@ export const METRICS = [
   'Deming slope',
   'R²',
   'held-out TOR R²',
-  'Deming intercept @ MAC 6',
+  // 'Deming intercept @ MAC 6' is gone: the intercept does not depend on the MAC (db6 == db on every row);
+  // an old link asking for it falls back to the default, 'Deming intercept'
 ] as const
 export type Metric = (typeof METRICS)[number]
 
@@ -63,7 +65,6 @@ export const METRIC_LABEL: Record<Metric, string> = {
   'Deming slope': METRIC.testSlope,
   'R²': METRIC.testR2,
   'held-out TOR R²': METRIC.cvR2,
-  'Deming intercept @ MAC 6': 'Test set Deming intercept at MAC 6 (Addis, µg/m³)',
 }
 export const metricLabel = (m: string) => METRIC_LABEL[m as Metric] ?? m
 
@@ -74,7 +75,6 @@ export function metricOf(r: CalibRow, m: Metric, allPairs: boolean): number | nu
     case 'Deming slope': return allPairs ? r.adm : r.dm
     case 'R²': return allPairs ? r.ar2 : r.r2
     case 'held-out TOR R²': return r.ho
-    case 'Deming intercept @ MAC 6': return r.db6
   }
 }
 
@@ -128,6 +128,52 @@ export function metricRow(rows: MetricRow[] | undefined, set: 'fixed' | 'all', m
     rows.find((r) => r.evaluation_set === set) ??
     rows[0]
   )
+}
+
+/**
+ * The metrics row at any MAC (lib/mac): the row saved at that MAC if there is one, else the export's
+ * row with its slopes re-expressed (slope × MAC / the row's MAC; intercepts, n and R² do not move).
+ * RMSE against Fabs/MAC does move: given the run's per-filter readouts it is recomputed (the explorer's
+ * definition, which reproduces every saved row), otherwise left out.
+ */
+export function metricRowAt(rows: MetricRow[] | undefined, set: 'fixed' | 'all', mac: number | null, exportMac = 10, ev?: RunEval): MetricRow | null {
+  if (mac === null) return metricRow(rows, set, null)
+  const exact = rows?.find((r) => r.evaluation_set === set && r.MAC === mac)
+  if (exact) return exact
+  const base = metricRow(rows, set, exportMac)
+  if (!base || base.MAC == null) return base
+  return { ...base, MAC: mac, ols_slope: slopeAt(base.ols_slope, mac, base.MAC), deming_slope: slopeAt(base.deming_slope, mac, base.MAC),
+    RMSE: ev ? rmseAt(ev, base.evaluation_set === 'fixed', mac) : null }
+}
+
+/** RMSE of the predictions against Fabs/MAC (the 1:1 line), over the fixed set or every pair: the explorer's RMSE. */
+export function rmseAt(ev: RunEval, fixedOnly: boolean, mac: number): number | null {
+  let sum = 0, n = 0
+  ev.pred.forEach((y, i) => {
+    const x = ev.ref[i] / mac
+    if ((fixedOnly && !ev.fixed[i]) || !Number.isFinite(x) || !Number.isFinite(y)) return
+    sum += (y - x) ** 2; n++
+  })
+  return n ? Math.sqrt(sum / n) : null
+}
+
+/**
+ * The grid and the k-sweeps re-expressed at the reader's MAC (lib/mac): every test-set slope (OLS and
+ * Deming, fixed set and all pairs) × MAC / the export's MAC, so the slope box, the score and the
+ * guardrails judge the slope the reader would see. Intercepts, R², held-out R² and counts do not move;
+ * RMSE against Fabs/MAC (`rmse`) stays at the export's MAC. Every grid target is referenced to HIPS Fabs.
+ * `mac_value` becomes the reader's MAC; `rmse_mac` keeps the export's.
+ */
+export type CalibAtMac = CalibFile & { rmse_mac?: number }
+export function calibAtMac(calib: CalibFile, mac: number): CalibAtMac {
+  if (mac === calib.mac_value) return calib
+  const k = mac / calib.mac_value
+  const sc = (v: number | null | undefined) => (v == null ? v ?? null : v * k)
+  return {
+    ...calib, mac_value: mac, rmse_mac: calib.mac_value,
+    grid: calib.grid.map((r) => ({ ...r, om: sc(r.om), dm: sc(r.dm), aom: sc(r.aom), adm: sc(r.adm) })),
+    sweeps: calib.sweeps.map((r) => ({ ...r, om: sc(r.om), dm: sc(r.dm) })),
+  }
 }
 
 export const PRESET_COLOR: Record<string, string> = {}

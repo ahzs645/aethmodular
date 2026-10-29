@@ -5,6 +5,7 @@ import { FacetGrid } from '@/components/FacetGrid'
 import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { fmt } from '@/lib/format'
+import { useMac } from '@/lib/mac'
 import { networkColor } from '@/lib/networks'
 import { useSearchParam } from '@/lib/url'
 import { INK } from '@/lib/theme'
@@ -31,6 +32,9 @@ export function ConstraintCheck({ pairs, sites, ch, sigma }: { pairs: Pair[]; si
   const yOf = (p: Pair) => (abs === 'HIPS' ? p.fabs : p.batn)
   const yLabel = abs === 'HIPS' ? 'HIPS Fabs (Mm⁻¹)' : `b_ATN ${ch} (Mm⁻¹)`
   const reference = abs === 'HIPS' ? 10 : sigma
+  // the MAC set under Filters → units, beside SPARTAN's 10 when it differs
+  const { mac } = useMac()
+  const readerMac = abs === 'HIPS' && mac !== 10 ? mac : null
   const per = useMemo(() => sites.map((s) => {
     const own = pairs.filter((p) => p.site === s.name && p.ec !== null && yOf(p) !== null)
     const m = macMethods(own.map((p) => p.ec!), own.map((p) => yOf(p)!))
@@ -40,6 +44,7 @@ export function ConstraintCheck({ pairs, sites, ch, sigma }: { pairs: Pair[]; si
   const lines = (m: MacMethods): CrossLine[] => [
     ...METHODS.map((d, i) => ({ slope: d.slope(m), intercept: d.intercept(m), color: colourOf(i), label: d.label, dash: d.dash, method: 'ols' as const, stats: null })),
     ...(reference ? [{ slope: reference, intercept: 0, color: INK.muted, label: 'reference', dash: '2 3', method: 'ols' as const, stats: null }] : []),
+    ...(readerMac ? [{ slope: readerMac, intercept: 0, color: INK.accent, label: `MAC ${readerMac} (Filters)`, dash: '6 3', method: 'ols' as const, stats: null }] : []),
   ]
   const points = (own: Pair[], color: string): CrossPoint[] => own.map((p) => ({
     x: p.ec!, y: yOf(p)!, color, id: p.id,
@@ -59,13 +64,14 @@ export function ConstraintCheck({ pairs, sites, ch, sigma }: { pairs: Pair[]; si
       provenance="AAARpos.ipynb (physical constraint check, four MAC methods) · ETAD_comprehensive_absorption_analysis.ipynb §12–12.1 (the same four methods on IR Babs / FTIR EC)"
       controls={<Segmented label="Absorption" value={abs} options={ABS} onChange={setAbs} optionLabel={(k) => (k === 'HIPS' ? 'HIPS Fabs' : `b_ATN ${ch}`)} />}>
       {per.length === 0 ? <Empty>No site in view has three filters with FTIR EC and {yLabel}.</Empty> : <>
-        <IntervalStrip blocks={blocks} panels={[{ label: 'MAC (m²/g)', reference: reference ?? undefined, format: (v) => fmt(v, 1) }]} labelWidth={110} noteWidth={44} minPanelWidth={170} />
+        <IntervalStrip blocks={blocks} panels={[{ label: 'MAC (m²/g)', reference: reference ?? undefined, marker: readerMac ? { value: readerMac, label: `MAC ${readerMac}` } : undefined, format: (v) => fmt(v, 1) }]} labelWidth={110} noteWidth={44} minPanelWidth={170} />
         <FacetGrid items={per} minCell={280} maxCols={per.length > 1 ? 2 : 1} render={({ s, own, m }, w) => (
           <Crossplot points={points(own, INK.muted)} title={`${s.name} · M3 intercept ${fmt(m.ols.intercept, 1)} Mm⁻¹`} xLabel="FTIR EC (µg/m³)" yLabel={yLabel}
             maxSide={Math.min(420, Math.max(180, w - 80))} fit={false} sameScale={false} extraLines={lines(m)} />
         )} />
         <Key items={[...METHODS.map((d, i) => ({ label: d.label, color: colourOf(i), kind: d.dash ? 'dash' as const : 'line' as const })),
-          ...(reference ? [{ label: abs === 'HIPS' ? 'MAC 10 m²/g' : `σ_ATN ${ch} = ${fmt(reference, 2)} m²/g`, color: INK.muted, kind: 'dash' as const }] : [])]} />
+          ...(reference ? [{ label: abs === 'HIPS' ? 'MAC 10 m²/g' : `σ_ATN ${ch} = ${fmt(reference, 2)} m²/g`, color: INK.muted, kind: 'dash' as const }] : []),
+          ...(readerMac ? [{ label: `MAC ${readerMac} m²/g (Filters → units)`, color: INK.accent, kind: 'dash' as const }] : [])]} />
         <Note>The notebook's verdict is about the intercept, not the fit: a positive M3 intercept is absorption that does not scale with EC
           (dust, brown carbon, a filter or loading artefact). M1 is pulled up by low-EC filters, whose ratios are the noisiest.</Note>
       </>}

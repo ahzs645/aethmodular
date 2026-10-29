@@ -162,21 +162,22 @@ export const AERONET_SUMMARY = [
 
 /**
  * The filter's surface absorption at the HIPS wavelength (Mm⁻¹): HIPS Fabs where the filter has it,
- * else SPARTAN's public BC × 10 (that product is Fabs / 10).
+ * else SPARTAN's public BC × MAC. That product is Fabs / 10, and the gallery's rows carry it rescaled to
+ * the reader's MAC (lib/viewFields), so `mac` is the MAC the rows were viewed at (lib/mac useMac).
  */
-export function surfaceFabs(r: FilterRow): number | null {
+export function surfaceFabs(r: FilterRow, mac = 10): number | null {
   const f = r['HIPS Fabs']
   if (typeof f === 'number') return f
   const bc = r['BC (public HIPS)']
-  return typeof bc === 'number' ? bc * 10 : null
+  return typeof bc === 'number' ? bc * mac : null
 }
 
 /**
  * Effective absorption scale height (m): column AAOD at 675 nm over surface Fabs at 633 nm.
- * Not a boundary-layer height; it compares sites measured the same way (research/ftir_ec_phase3/
+ * `mac`: as for surfaceFabs. Not a boundary-layer height; it compares sites measured the same way (research/ftir_ec_phase3/
  * AERONET_SPARTAN_2026-08-22.md). Null without both, or with a non-positive Fabs.
  */
-export function scaleHeight(r: FilterRow): number | null {
-  const aaod = r[AAOD675], fabs = surfaceFabs(r)
+export function scaleHeight(r: FilterRow, mac = 10): number | null {
+  const aaod = r[AAOD675], fabs = surfaceFabs(r, mac)
   return typeof aaod === 'number' && fabs !== null && fabs > 0 ? aaod / (fabs * 1e-6) : null
 }

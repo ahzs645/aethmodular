@@ -7,7 +7,7 @@ import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
 import { deming, ols, quantile, spearman } from '../common/stats'
-import { DataTable, Grid, SitePick, line, num, ofSite, point, seasonsOf, shortSeason, useSite } from '../common/ui'
+import { BASIS_NOTE, DataTable, Grid, SitePick, line, num, ofSite, point, seasonsOf, shortSeason, useConcRows, useSite } from '../common/ui'
 
 const DEMING_NB = 'research/addis_fabs_ec_deming/addis_fabs_ec_deming.ipynb'
 const OFFSET_NB = 'research/addis_fabs_ec_deming/addis_fabs_ec_offset_correction.ipynb'
@@ -22,7 +22,9 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
  * assumed error ratio (Deming), the additive Δ and the multiplier k, the three re-fits side by side, and whether
  * the "missing EC" this implies is constant or follows the seasons.
  */
-export function OffsetShift({ rows, meta }: SectionPageProps) {
+export function OffsetShift({ rows: viewRows, meta }: SectionPageProps) {
+  // fAbs (Mm⁻¹) against EC in µg/m³ whatever the basis (common/ui useConcRows)
+  const rows = useConcRows(viewRows, meta)
   const [site, setSite, sites] = useSite(rows, 'os')
   const siteRows = useMemo(() => ofSite(rows, site), [rows, site])
   const [sEcParam, setSEc] = useSearchParam<string>('os.sec', '0.2', ['0.1', '0.2', '0.5'])
@@ -64,7 +66,7 @@ export function OffsetShift({ rows, meta }: SectionPageProps) {
   return (
     <>
       <ChartFrame id="os-lambda" title={`Errors in both variables — the Deming line against the assumed error ratio, ${site}`}
-        subtitle={`Deming regression of fAbs on FTIR EC with λ = (σ_fAbs / σ_EC)². Large ratios approach OLS (all error in fAbs), small ones the inverse OLS (all error in EC); 1 is orthogonal regression. The marker is the assumed σ_fAbs / σ_EC = ${sFabsParam} / ${sEcParam}.`}
+        subtitle={`Deming regression of fAbs on FTIR EC with λ = (σ_fAbs / σ_EC)². Large ratios approach OLS (all error in fAbs), small ones the inverse OLS (all error in EC); 1 is orthogonal regression. The marker is the assumed σ_fAbs / σ_EC = ${sFabsParam} / ${sEcParam}.${meta.basis === 'mass' ? ` ${BASIS_NOTE}` : ''}`}
         provenance={`${DEMING_NB} (steps 1–2)`} controls={controls}>
         <Grid>
           <SweepPlot series={[{ id: 's', label: 'Deming slope', color: INK.good, marks: false, points: sweep.map((s) => ({ x: s.q, y: s.d?.slope })) }]} xScale="log" xLabel="σ_fAbs / σ_EC" yLabel="Slope (Mm⁻¹ per µg/m³)"

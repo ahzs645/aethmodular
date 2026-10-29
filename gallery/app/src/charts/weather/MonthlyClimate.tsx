@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
-import { useDimensions } from '@/hooks/useGalleryData'
+import { FacetGrid } from '@/components/FacetGrid'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { FONT, INK } from '@/lib/theme'
@@ -11,7 +11,9 @@ import { seasonsForSite } from '@/siteSeasons'
 
 const MONTHS = 'JFMAMJJASOND'.split('')
 const MAX_SITES = 16
-const M = { top: 22, right: 30, bottom: 34, left: 34 }
+// the site name is the facet's title row, above the svg
+const M = { top: 8, right: 30, bottom: 34, left: 34 }
+const TITLE_IN_SVG = 14
 
 /**
  * Does each site's season calendar match its weather? Mean monthly precipitation (bars)
@@ -26,7 +28,6 @@ export function MonthlyClimate({ meta, sites, id = 'weather-climate', title = 'M
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const W = large ? 620 : 250, H = large ? 240 : 150
-  const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const [data, setData] = useState<Record<string, DailyWeather | null>>({})
   const shown = sites.slice(0, MAX_SITES)
@@ -54,19 +55,20 @@ export function MonthlyClimate({ meta, sites, id = 'weather-climate', title = 'M
     return { site: s, months }
   }), [data, key]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const cols = Math.max(1, Math.floor((width + 12) / (W + 12)))
-  const pw = Math.min(W + 60, (width - (cols - 1) * 12) / cols)
-  const iw = pw - M.left - M.right, ih = H - M.top - M.bottom
-  const x = d3.scaleBand<number>().domain(d3.range(1, 13)).range([0, iw]).padding(0.15)
 
   return (
     <ChartFrame id={id} title={title}
       subtitle="Mean monthly precipitation (bars, mm) and temperature (line, °C) from daily ERA5 over each site's sampling span; the strip under the months is the site's local season calendar. Wet bars under a 'dry' season are where a calendar and the weather disagree."
       provenance="addis_03_meteorology Task 3 (dynamic, rain-based seasons) for every site · ERA5 via Open-Meteo">
-      <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
+      <div ref={wrapRef} className="chart-wrap">
         {shown.length === 0 && <Empty>No SPARTAN sites in the current pick.</Empty>}
-        {climate.map(({ site, months }) => {
-          if (!months) return <div key={site.code} style={{ width: pw, height: H }} className="u">{data[site.code] === null ? `${site.name}: no daily weather` : `${site.name}: loading…`}</div>
+        <FacetGrid items={climate} minCell={large ? 300 : W} maxCell={W + 60} maxCols={large ? 1 : 4} gap={12} center expandable={!large}
+          title={({ site }) => site.name} label={({ site }) => `${site.name} monthly climate`}
+          render={({ site, months }, pw, _, cell) => {
+          const h = cell.expanded ? 300 : cell.height ?? H - TITLE_IN_SVG
+          if (!months) return <div style={{ width: pw, height: h }} className="u">{data[site.code] === null ? 'no daily weather' : 'loading…'}</div>
+          const iw = pw - M.left - M.right, ih = h - M.top - M.bottom
+          const x = d3.scaleBand<number>().domain(d3.range(1, 13)).range([0, iw]).padding(0.15)
           const pMax = d3.max(months, (m) => m.p ?? 0) || 1
           const yP = d3.scaleLinear().domain([0, pMax]).range([ih, 0]).nice()
           const tv = months.map((m) => m.t).filter((v): v is number => v !== null)
@@ -74,8 +76,7 @@ export function MonthlyClimate({ meta, sites, id = 'weather-climate', title = 'M
           const seasons = seasonsForSite(meta, site.name)
           const line = d3.line<(typeof months)[number]>().defined((m) => m.t !== null).x((m) => (x(m.m) ?? 0) + x.bandwidth() / 2).y((m) => yT(m.t!))
           return (
-            <svg key={site.code} width={pw} height={H} fontFamily={FONT.family}>
-              <text x={M.left} y={13} fontSize={12} fontWeight={600} fill={INK.text}>{site.name}</text>
+            <svg width={pw} height={h} fontFamily={FONT.family}>
               <g transform={`translate(${M.left},${M.top})`}>
                 {yP.ticks(3).map((t) => <g key={t}><line x1={0} x2={iw} y1={yP(t)} y2={yP(t)} stroke={INK.grid} /><text x={-4} y={yP(t)} dy="0.32em" textAnchor="end" fontSize={9.5} fill="#4292c6">{t}</text></g>)}
                 {yT.ticks(3).map((t) => <text key={t} x={iw + 4} y={yT(t)} dy="0.32em" fontSize={9.5} fill="#c0392b">{t}°</text>)}
@@ -100,7 +101,7 @@ export function MonthlyClimate({ meta, sites, id = 'weather-climate', title = 'M
               </g>
             </svg>
           )
-        })}
+        }} />
         {tip.node}
       </div>
       {sites.length > MAX_SITES && <Note>Showing the first {MAX_SITES} of {sites.length} sites; narrow the site pick to see the others.</Note>}

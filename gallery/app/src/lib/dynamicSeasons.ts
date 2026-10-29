@@ -10,11 +10,13 @@
  *   (30-day rain against two thresholds), generalised to any variable and any number of seasons.
  * - `onset`: the PMF paper's rain rule (lib/rainSeasons), seasons in order through each year.
  *
- * Days without weather take the nearest classified day's season, so every filter gets one.
+ * A day without weather takes the nearest classified day's season if one is within `MAX_FILL_DAYS`;
+ * longer gaps, and dates outside the weather record, stay unclassified (App shows them as "No weather")
+ * rather than borrowing a season the weather never showed.
  */
 import type { DailyWeather } from '@/lib/weather'
 import type { SeasonMeta } from '@/lib/types'
-import { DEFAULT_RAIN_RULE, rainRuleCalendar, type RainRule } from '@/lib/rainSeasons'
+import { DEFAULT_RAIN_RULE, rainRuleCalendar, type RainRule } from './rainSeasons.ts'
 
 export type DynVar = 'p' | 't' | 'tmin' | 'tmax' | 'rh' | 'ws' | 'blh'
 export const DYN_VARS: { key: DynVar; label: string; unit: string }[] = [
@@ -67,6 +69,8 @@ export const defaultRuleFor = (code: string): DynRule => structuredClone({ ...pr
 
 const iso = (t: number) => new Date(t).toISOString().slice(0, 10)
 const DAY = 86_400_000
+/** the longest run of days without weather filled from a neighbouring day's season */
+export const MAX_FILL_DAYS = 7
 
 /** centred `w`-day mean, needing half the window present */
 function rolling(x: (number | null)[], w: number): (number | null)[] {
@@ -122,41 +126,52 @@ export function dynamicCalendar(daily: DailyWeather, rule: DynRule): SeasonMeta[
     }
     return last
   })
-  // fill days without weather from the nearest classified day (before, else after)
-  let prev: number | null = null
-  for (let i = 0; i < n; i++) { if (day[i] == null) day[i] = prev; else prev = day[i] }
-  let next: number | null = null
-  for (let i = n - 1; i >= 0; i--) { if (day[i] == null) day[i] = next; else next = day[i] }
-  // runs shorter than minRun days join the season before them
+  const t = daily.date.map((d) => Date.parse(`${d}T00:00:00Z`))
+  // fill a day without weather from the nearest classified day, at most MAX_FILL_DAYS away (ties: the day before)
+  const known = day.map((v, i) => (v == null ? -1 : i)).filter((i) => i >= 0)
+  const filled = day.slice()
+  for (let i = 0, j = 0; i < n; i++) {
+    if (day[i] != null) continue
+    while (j < known.length && known[j] < i) j++
+    const before = j > 0 ? known[j - 1] : -1, after = j < known.length ? known[j] : -1
+    const db = before >= 0 ? (t[i] - t[before]) / DAY : Infinity, da = after >= 0 ? (t[after] - t[i]) / DAY : Infinity
+    const near = db <= da ? before : after
+    if (Math.min(db, da) <= MAX_FILL_DAYS) filled[i] = day[near]
+  }
+  // a run is consecutive dates in one season; a missing date or an unclassified day ends it
+  const runs = (xs: (number | null)[]) => {
+    const out: { s: number | null; i: number; j: number }[] = []
+    for (let i = 0; i < n;) {
+      let j = i + 1
+      while (j < n && xs[j] === xs[i] && t[j] - t[j - 1] === DAY) j++
+      out.push({ s: xs[i], i, j })
+      i = j
+    }
+    return out
+  }
+  // runs shorter than minRun days join the season before them, where it directly precedes
   const min = Math.max(1, Math.round(rule.minRun))
   if (min > 1) {
-    for (let i = 0; i < n;) {
-      let j = i
-      while (j < n && day[j] === day[i]) j++
-      if (j - i < min && i > 0) for (let k = i; k < j; k++) day[k] = day[i - 1]
-      i = j
+    let prevS: number | null = null, prevJ = -1
+    for (const r of runs(filled)) {
+      const joined = r.s != null && r.j - r.i < min && prevS != null && prevJ === r.i && t[r.i] - t[r.i - 1] === DAY
+      if (joined) for (let k = r.i; k < r.j; k++) filled[k] = prevS
+      else prevS = r.s
+      prevJ = r.j
     }
   }
   const spans: [string, string][][] = rule.seasons.map(() => [])
-  for (let i = 0; i < n;) {
-    let j = i
-    while (j < n && day[j] === day[i]) j++
-    const s = day[i]
-    if (s != null) spans[s].push([daily.date[i], iso(Date.parse(`${daily.date[j - 1]}T00:00:00Z`) + DAY)])
-    i = j
-  }
-  // the record's own ends stretch to the open past and future, so no filter falls outside
-  const first = spans.find((sp) => sp.some(([a]) => a === daily.date[0]))
-  if (first) first[0][0] = '0000-01-01'
-  const end = spans.flat().find(([, b]) => b === iso(Date.parse(`${daily.date[n - 1]}T00:00:00Z`) + DAY))
-  if (end) end[1] = '9999-12-31'
+  for (const r of runs(filled)) if (r.s != null) spans[r.s].push([daily.date[r.i], iso(t[r.j - 1] + DAY)])
   return rule.seasons.map((s, i) => ({ name: s.name, color: DYN_COLORS[i % DYN_COLORS.length], months: [], spans: spans[i] }))
 }
 
-/** the rule's seasons before the weather has loaded (names and colours only) */
+/**
+ * The rule's seasons while the weather loads, or where there is none: names and colours, and empty `spans`,
+ * so no filter is classified until its weather is (lib/seasons seasonOfDate).
+ */
 export const dynamicPlaceholder = (rule: DynRule): SeasonMeta[] => rule.kind === 'onset'
   ? rainRuleCalendar({ date: [], p: [] }, rule)
-  : rule.seasons.map((s, i) => ({ name: s.name, color: DYN_COLORS[i % DYN_COLORS.length], months: [] }))
+  : rule.seasons.map((s, i) => ({ name: s.name, color: DYN_COLORS[i % DYN_COLORS.length], months: [], spans: [] }))
 
 /** per-site rules in the link (dyn=) and in this browser: code -> rule */
 export type SiteRules = Record<string, DynRule>

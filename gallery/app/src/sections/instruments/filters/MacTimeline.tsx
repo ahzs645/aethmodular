@@ -3,12 +3,13 @@ import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { Key } from '@/components/Key'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { fmt } from '@/lib/format'
+import { useMac } from '@/lib/mac'
 import { useHighlightActions } from '@/lib/highlight'
 import { seasonOnly } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
 import { FONT, INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
-import { MAC_DEFS, dateDomain, dateTicks, macOf, seasonColor, seasonsIn, type Channel, type MacKey, type Pair, type PairSite } from './data'
+import { MAC_DEFS, macMarker, dateDomain, dateTicks, macOf, seasonColor, seasonsIn, type Channel, type MacKey, type Pair, type PairSite } from './data'
 import { iqrFences, seasonRuns } from './mac'
 
 const GAP_DAYS = 60, MIN_RUN = 5
@@ -39,15 +40,18 @@ export function MacTimeline({ pairs, meta, sites, ch, sigma }: { pairs: Pair[]; 
   }).filter((x) => x.n > 0), [pairs, meta, sites, def])
 
   const reference = def.reference(sigma ?? NaN)
+  const { mac } = useMac()
+  const readerMac = macMarker(def, mac)
   return (
     <ChartFrame id="aeth-filters-mac-time" title="MAC through time — each filter, and the average of each season's run"
-      subtitle={`${def.label} per filter (m²/g), coloured by season under the gallery's calendar. Diamonds: the mean of each run of one season (filters no more than ${GAP_DAYS} days apart, at least ${MIN_RUN}), at the run's middle filter, as in the notebooks. Filters outside 1.5 × IQR of the site's values (the notebooks' remove_outliers_iqr) are drawn hollow and left out of the averages. The line is ${Number.isFinite(reference) ? `${fmt(reference, 1)} m²/g, ${def.refLabel}` : 'absent until σ_ATN is loaded'}.`}
+      subtitle={`${def.label} per filter (m²/g), coloured by season under the gallery's calendar. Diamonds: the mean of each run of one season (filters no more than ${GAP_DAYS} days apart, at least ${MIN_RUN}), at the run's middle filter, as in the notebooks. Filters outside 1.5 × IQR of the site's values (the notebooks' remove_outliers_iqr) are drawn hollow and left out of the averages. The line is ${Number.isFinite(reference) ? `${fmt(reference, 1)} m²/g, ${def.refLabel}` : 'absent until σ_ATN is loaded'}${readerMac ? `; dashed, the MAC set under Filters → units (${mac})` : ''}.`}
       provenance="AAARpos.ipynb (MAC time series by season, instance averages) · ETAD_Aug13.ipynb §9.6 · ETAD_comprehensive_absorption_analysis.ipynb §10.5–11 (aethalometer MAC with seasonal instance averages)"
       controls={<Segmented label="MAC" value={key} options={MAC_DEFS.map((d) => d.key)} onChange={setKey}
         optionLabel={(k) => { const d = MAC_DEFS.find((x) => x.key === k)!; return k === 'hipsOverEc' ? d.short : k === 'hipsOverBc' ? `HIPS ÷ ${ch} BC` : `b_ATN ${ch} ÷ EC` }} />}>
       {per.length === 0 ? <Empty>No filter in view has both members of {def.label}.</Empty> : per.map(({ s, series, runs, outliers, ticks, xDomain }) => (
         <div key={s.code}>
           <SweepPlot series={series} xScale="time" xDomain={xDomain} xFormat={ticks} yLabel={`${def.short} (m²/g)`} height={260} reference={Number.isFinite(reference) ? reference : undefined}
+            yMarkers={readerMac ? [{ at: readerMac.value, label: readerMac.label, color: INK.accent }] : undefined}
             title={sites.length > 1 ? s.name : undefined}
             onPoint={(_, pt) => pt.id && hl.openSample(pt.id)}
             children={({ x, y }) => <g>

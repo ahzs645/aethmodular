@@ -33,8 +33,9 @@ export function mergeBands(bands: SeasonBand[]): SeasonBand[] {
 
 function seasonBandsRaw(x: ScaleTime<number, number>, seasons: readonly Pick<SeasonMeta, 'name' | 'months' | 'color' | 'from' | 'spans'>[], width: number): SeasonBand[] {
   const [d0, d1] = x.domain() as [Date, Date]
-  // a data-computed calendar (lib/rainSeasons): its exact date ranges
-  if (seasons.some((s) => s.spans?.length)) {
+  // a data-computed calendar (lib/rainSeasons, lib/dynamicSeasons): its exact date ranges, and nothing where
+  // it has none (weather still loading, or outside the record), not the months' usual seasons
+  if (seasons.some((s) => Array.isArray(s.spans))) {
     const out: SeasonBand[] = []
     for (const s of seasons) for (const [a0, b0] of s.spans ?? []) {
       const a = Math.max(0, x(new Date(`${a0}T00:00:00`))), b = Math.min(width, x(new Date(`${b0}T00:00:00`)))

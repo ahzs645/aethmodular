@@ -63,10 +63,12 @@ export const seasonPhrase = (group: string) => (isAllAddis(group) ? 'all seasons
  * (`from` on its seasons), otherwise by month. One rule for every chart and filter.
  */
 export function seasonOfDate(date: string | null | undefined, month: number | null | undefined, seasons: readonly SeasonMeta[]): SeasonMeta | null {
-  if (date && seasons.some((s) => s.spans?.length)) {
+  // a calendar computed from weather (`spans`) classifies only the dates it covers: a date outside them
+  // has no season, never the month's usual one (the months are for month axes)
+  if (isDatedCalendar(seasons)) {
+    if (!date) return null
     const d = date.slice(0, 10)
-    const hit = seasons.find((s) => s.spans?.some(([a, b]) => d >= a && d < b))
-    if (hit) return hit
+    return seasons.find((s) => s.spans?.some(([a, b]) => d >= a && d < b)) ?? null
   }
   if (date && seasons.some((s) => s.from)) {
     const md = date.slice(5, 10)
@@ -76,6 +78,12 @@ export function seasonOfDate(date: string | null | undefined, month: number | nu
   }
   return seasonOfMonth(month, seasons)
 }
+
+/** A calendar computed from weather (lib/rainSeasons, lib/dynamicSeasons): its seasons carry dated `spans`. */
+export const isDatedCalendar = (seasons: readonly SeasonMeta[]) => seasons.some((s) => Array.isArray(s.spans))
+
+/** The label for a filter a weather calendar cannot classify: no weather loaded, none in the record, or a gap. */
+export const NO_WEATHER = 'No weather'
 
 export const seasonOfMonth = (month: number | null | undefined, seasons: readonly SeasonMeta[]) =>
   month ? seasons.find((s) => s.months.includes(month)) ?? null : null

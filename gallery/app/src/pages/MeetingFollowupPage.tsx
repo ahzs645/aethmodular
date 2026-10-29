@@ -1,4 +1,5 @@
 import { monthBlocks } from '@/lib/regressionCI'
+import { demingLambda } from '@/lib/macMath'
 import { robustDomain } from '@/lib/axes'
 import { RefLine } from '@/components/RefLines'
 import { regression } from '@/lib/stats'
@@ -88,6 +89,8 @@ function ModelSeg({label, value, options, onChange}: {label:string; value:string
   return <Segmented label={label} value={modelLabel(value)} options={options.map(modelLabel)} onChange={v=>onChange(options.find(o=>modelLabel(o)===v)??options[0])} />
 }
 const MAC_LABEL = ecAxis('hips')
+/** the Addis points carry Fabs / 10 (`fabs10`): the MAC the meeting exports used */
+const FABS10_MAC = 10
 
 
 export function MeetingFollowupPage({ galleryRows = [], galleryMeta, viewRows = [], viewMeta }: {
@@ -852,12 +855,13 @@ function OpStep({ data }: { data: MeetingData }) {
 function SeasonCrossplot({ data, fitId, title }: { data: MeetingData; fitId: string; title: string }) {
   const { methods } = useRegressions()
   const addisPts = useAddisPoints(data)
-  // the page's season axes (useSeasonAxes); the saved fits describe only the default axes at MAC 10
+  // the page's season axes (useSeasonAxes); the saved fits describe only the default axes at the export's
+  // MAC (the points carry Fabs / 10, so that is MAC 10)
   const ax = useContext(SeasonAxesCtx)
-  const custom = !!ax && (ax.x !== HIPS || ax.y !== PRED || ax.mac !== 10 || ax.mass)
+  const custom = !!ax && (ax.x !== HIPS || ax.y !== PRED || ax.mac !== FABS10_MAC || ax.mass)
   const valueOf = (k: string, p: AddisPt) => {
     if (!ax) return k === HIPS ? p.fabs10 : p.pred
-    const per = ax.mass ? p.vol : 1, bc = (p.fabs10 * 10) / ax.mac
+    const per = ax.mass ? p.vol : 1, bc = (p.fabs10 * FABS10_MAC) / ax.mac
     if (k === HIPS) return bc * per
     if (k === PRED) return p.pred * per
     if (k === RESID) return (p.pred - bc) * per
@@ -870,8 +874,13 @@ function SeasonCrossplot({ data, fitId, title }: { data: MeetingData; fitId: str
     return Number.isFinite(x) && Number.isFinite(y) ? [{ ...p, x, y }] : []
   })
   const all = statRow(data.stats, { fit_id: fitId, population: 'addis', eval_group: ALL_ADDIS })
-  // the saved error ratio belongs to FTIR EC vs Fabs / MAC 10; other axes are fitted with λ = 1
-  const lambdaOf = (s?: Row) => (custom ? 1 : s?.deming_lambda ?? data.summary.lambda)
+  // the saved error ratio belongs to FTIR EC vs Fabs / MAC 10. The same axes at another MAC keep it, scaled by
+  // MAC² (lib/macMath demingLambda; per filter multiplies both axes by the volume, so λ holds); other axes use λ = 1
+  const hipsOnEc = !!ax && ax.x === HIPS && ax.y === PRED
+  const lambdaOf = (s?: Row) => {
+    const saved = s?.deming_lambda ?? data.summary.lambda
+    return !custom ? saved : hipsOnEc ? demingLambda(ax!.mac, saved) : 1
+  }
   const seasonFits = data.seasons.map((g) => {
     const s = statRow(data.stats, { fit_id: fitId, population: 'addis', eval_group: g })
     const points = pts(g)

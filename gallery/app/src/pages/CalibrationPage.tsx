@@ -20,8 +20,9 @@ import { SpectraOverlay, type SpectrumSeries } from '@/charts/calibration/Spectr
 import { AnalogLab } from '@/charts/calibration/AnalogLab'
 import { HipsYork } from '@/charts/calibration/HipsYork'
 import { CrossSiteTransfer } from '@/charts/calibration/CrossSiteTransfer'
-import { cohortColor, configLabel, presetName, type Config } from '@/charts/calibration/common'
+import { calibAtMac, cohortColor, configLabel, presetName, type Config } from '@/charts/calibration/common'
 import { runCalendar, seasonalRun } from '@/charts/calibration/seasonView'
+import { useMac } from '@/lib/mac'
 import { INK } from '@/lib/theme'
 import { usePrefs } from '@/lib/prefs'
 import { useSearchParam } from '@/lib/url'
@@ -77,7 +78,11 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
   pmfLabelOfDate?: (date: string | null | undefined) => string
 }) {
   const { methods } = useRegressions()
-  const calibrationViews = useMemo(() => Object.fromEntries(ESTIMATORS.map(method => [method, calib ? { ...calib, grid: calib.grid.map(r => projectGrid(r, method)), sweeps: calib.sweeps.map(r => projectGrid(r, method)) } : null])) as Record<typeof ESTIMATORS[number], CalibFile | null>, [calib])
+  // the grid at the MAC set under Filters (lib/mac): slopes re-expressed before the estimator projection,
+  // so the slope box and the guardrails judge the slope the reader sees
+  const gallery = useMac()
+  const atMac = useMemo(() => (calib ? calibAtMac(calib, gallery.mac) : null), [calib, gallery.mac])
+  const calibrationViews = useMemo(() => Object.fromEntries(ESTIMATORS.map(method => [method, atMac ? { ...atMac, grid: atMac.grid.map(r => projectGrid(r, method)), sweeps: atMac.sweeps.map(r => projectGrid(r, method)) } : null])) as Record<typeof ESTIMATORS[number], CalibFile | null>, [atMac])
   const [selected, setSelected] = useState<Config>({ co: 'ocec', cut: 800, sel: 'raw', sp: 'airspec' })
   const [presetKey, setPresetKey] = useState<string>('ocec800_airspec')
   const [targetId, setTargetId] = useState<string>('addis')
@@ -114,9 +119,9 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
   // the PMF solution is Addis's, joined by date, so it filters only an Addis target
   const runPmf = runSite === 'Addis Ababa' && pmfSel && pmfLabelOfDate ? { labelOf: pmfLabelOfDate, keep: pmfSel } : undefined
   const runView = useMemo(
-    () => (run ? seasonalRun(run, runSeasons, runKeep, calib?.deming_lambda_mac10 ?? 2.96, runPmf) : null),
+    () => (run ? seasonalRun(run, runSeasons, runKeep, calib?.deming_lambda_mac10 ?? gallery.lambda10, runPmf) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [run, runSeasons, runKeep, calib, pmfSel, pmfLabelOfDate, runSite]
+    [run, runSeasons, runKeep, calib, pmfSel, pmfLabelOfDate, runSite, gallery.lambda10]
   )
 
   // Clicking a point in the grid charts also moves the per-filter section to
@@ -165,7 +170,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
           <SectionBar>
             <span className="pill">The grid · {calib.grid.length.toLocaleString()} configuration × site readouts</span>
             <span style={{ color: 'var(--ink-muted)' }}>selected: <strong style={{ color: 'var(--ink-text)' }}>{configLabel(selected, calib)}</strong></span>
-            {explain && <span style={{ color: 'var(--ink-muted)' }}>MAC {calib.mac_value} · Deming λ* {calib.deming_lambda_mac10} · slope box {calib.slope_box.join('–')} · IMPROVE cross-validation R² floor {calib.heldout_floor}</span>}
+            {explain && <span style={{ color: 'var(--ink-muted)' }}>MAC {gallery.mac}{gallery.mac !== calib.mac_value ? ` (slopes re-expressed from the export's ${calib.mac_value}; RMSE stays at ${calib.mac_value})` : ''} · Deming λ* {calib.deming_lambda_mac10} at MAC 10{gallery.mac !== 10 ? `, ${+gallery.lambda.toFixed(3)} at MAC ${gallery.mac}` : ''} · slope box {calib.slope_box.join('–')} · IMPROVE cross-validation R² floor {calib.heldout_floor}</span>}
           </SectionBar>
           <EstimatorViews>{() => <SpecCurve
             defaultLayout="stacked"
@@ -212,7 +217,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
           {run ? (
             <>
               <CVCurve run={run} runs={runs} />
-              <RunCrossplot lambda10={calib?.deming_lambda_mac10 ?? 2.96} run={runView ?? run} runs={runs} meta={meta} knownIds={knownIds} galleryRows={galleryRows} sourceRows={sourceRows} galleryMeta={galleryMeta} />
+              <RunCrossplot lambda10={calib?.deming_lambda_mac10} run={runView ?? run} runs={runs} meta={meta} knownIds={knownIds} galleryRows={galleryRows} sourceRows={sourceRows} galleryMeta={galleryMeta} />
               <RunSeries run={runView ?? run} runs={runs} meta={meta} knownIds={knownIds} />
               {/* the blind-half readouts are the explorer's own, on every season */}
               <EstimatorViews>{method => <SplitCheck run={projectRun(run, method)} runs={runs} />}</EstimatorViews>

@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
-import { useDimensions } from '@/hooks/useGalleryData'
+import { Panels } from '@/components/Panels'
 import { useTooltip } from '@/hooks/useTooltip'
 import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
 import { fidProps } from '@/lib/filterEdits'
@@ -32,7 +32,6 @@ const REGION_FILL: Record<CazorlaClass, string> = {
  */
 export function AeronetTyping({ rows, meta }: { rows: FilterRow[]; meta: MetaFile }) {
   const wrapRef = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const hl = useHighlight()
   const [pair, setPair] = useSearchParam<Pair>('aeronet.typing', PAIRS[0], PAIRS)
@@ -52,11 +51,8 @@ export function AeronetTyping({ rows, meta }: { rows: FilterRow[]; meta: MetaFil
     })
   }, [pts, col, cazorla])
 
-  const side = Math.max(260, Math.min(width - M.left - M.right - 10, 520))
-  const x = d3.scaleLinear().domain([Math.min(-0.2, d3.min(pts, (p) => p.x) ?? 0), Math.max(2.6, d3.max(pts, (p) => p.x) ?? 2.5)]).range([0, side]).nice()
-  const y = d3.scaleLinear().domain([Math.min(0, d3.min(pts, (p) => p.y) ?? 0), Math.max(3, d3.max(pts, (p) => p.y) ?? 3)]).range([side, 0]).nice()
-  const clampX = (v: number) => x(Math.max(x.domain()[0], Math.min(x.domain()[1], v)))
-  const clampY = (v: number) => y(Math.max(y.domain()[0], Math.min(y.domain()[1], v)))
+  const xDom: [number, number] = [Math.min(-0.2, d3.min(pts, (p) => p.x) ?? 0), Math.max(2.6, d3.max(pts, (p) => p.x) ?? 2.5)]
+  const yDom: [number, number] = [Math.min(0, d3.min(pts, (p) => p.y) ?? 0), Math.max(3, d3.max(pts, (p) => p.y) ?? 3)]
 
   const legendKeys = col.order(pts.map((p) => p.row))
   return (
@@ -68,64 +64,75 @@ export function AeronetTyping({ rows, meta }: { rows: FilterRow[]; meta: MetaFil
       controls={<Segmented label="Frame" value={pair} options={PAIRS} onChange={setPair} optionLabel={(o) => o} />}>
       <div ref={wrapRef} className="chart-wrap aeronet-typing">
         {pts.length === 0 ? <Empty>No filter in view has an inversion with both exponents in its window.</Empty> : (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
-            <svg width={side + M.left + M.right} height={side + M.top + M.bottom} fontFamily={FONT.family}>
-              <defs><clipPath id="aeronet-typing-clip"><rect width={side} height={side} /></clipPath></defs>
-              <g transform={`translate(${M.left},${M.top})`}>
-                <g clipPath="url(#aeronet-typing-clip)">
-                  {cazorla && CAZORLA_CLASSES.map((c) => {
-                    const [x0, x1, y0, y1] = CAZORLA_REGIONS[c]
-                    const rx = clampX(x0), rw = clampX(x1) - rx, ry = clampY(y1), rh = clampY(y0) - ry
-                    return <g key={c}>
-                      <rect x={rx} y={ry} width={rw} height={rh} fill={REGION_FILL[c]} fillOpacity={0.16} />
-                      <text x={rx + rw / 2} y={ry + rh / 2 + 10} textAnchor="middle" dy="0.32em" fontSize={side < 400 ? 8.5 : 10.5} fill={INK.muted} fontWeight={600} pointerEvents="none">{c}</text>
+          <Panels label="Aerosol typing" panels={[
+            { key: 'plane', title: cazorla ? 'Ångström matrix, 440–675 nm' : 'AAE against extinction AE, 440–870 nm', min: 320, basis: 594, max: 594, grow: 0, render: ({ width, height, expanded }) => {
+              // square: as wide as the panel allows, and in a tile no taller than its share
+              const side = Math.max(240, Math.min(expanded ? 760 : 520, width - M.left - M.right, height === null ? Infinity : height - M.top - M.bottom))
+              const x = d3.scaleLinear().domain(xDom).range([0, side]).nice()
+              const y = d3.scaleLinear().domain(yDom).range([side, 0]).nice()
+              const clampX = (v: number) => x(Math.max(x.domain()[0], Math.min(x.domain()[1], v)))
+              const clampY = (v: number) => y(Math.max(y.domain()[0], Math.min(y.domain()[1], v)))
+              const clip = `aeronet-typing-clip-${expanded ? 'big' : 'page'}`
+              return (
+                <svg width={side + M.left + M.right} height={side + M.top + M.bottom} fontFamily={FONT.family}>
+                  <defs><clipPath id={clip}><rect width={side} height={side} /></clipPath></defs>
+                  <g transform={`translate(${M.left},${M.top})`}>
+                    <g clipPath={`url(#${clip})`}>
+                      {cazorla && CAZORLA_CLASSES.map((c) => {
+                        const [x0, x1, y0, y1] = CAZORLA_REGIONS[c]
+                        const rx = clampX(x0), rw = clampX(x1) - rx, ry = clampY(y1), rh = clampY(y0) - ry
+                        return <g key={c}>
+                          <rect x={rx} y={ry} width={rw} height={rh} fill={REGION_FILL[c]} fillOpacity={0.16} />
+                          <text x={rx + rw / 2} y={ry + rh / 2 + 10} textAnchor="middle" dy="0.32em" fontSize={side < 400 ? 8.5 : 10.5} fill={INK.muted} fontWeight={600} pointerEvents="none">{c}</text>
+                        </g>
+                      })}
+                      {cazorla && <line x1={x(1)} y1={y(1)} x2={x(1.5)} y2={y(1.5)} stroke={INK.muted} strokeDasharray="3 3" />}
+                      {!cazorla && <>
+                        <rect x={clampX(-10)} width={clampX(0.8) - clampX(-10)} y={y(2.3)} height={y(1.5) - y(2.3)} fill="#e6a05a" fillOpacity={0.18} />
+                        <text x={clampX(-10) + 6} y={y(2.3) + 14} fontSize={10.5} fill={INK.muted} fontWeight={600}>Giles dust cluster</text>
+                        <line x1={0} x2={side} y1={y(1)} y2={y(1)} stroke={INK.muted} strokeDasharray="4 3" />
+                        <text x={side - 4} y={y(1) - 5} textAnchor="end" fontSize={10.5} fill={INK.muted}>AAE 1: black carbon (λ⁻¹)</text>
+                        <line x1={x(0.8)} x2={x(0.8)} y1={0} y2={side} stroke={INK.muted} strokeDasharray="4 3" />
+                        <text x={x(0.8) + 4} y={side - 6} fontSize={10.5} fill={INK.muted}>EAE 0.8: large | small</text>
+                      </>}
                     </g>
-                  })}
-                  {cazorla && <line x1={x(1)} y1={y(1)} x2={x(1.5)} y2={y(1.5)} stroke={INK.muted} strokeDasharray="3 3" />}
-                  {!cazorla && <>
-                    <rect x={clampX(-10)} width={clampX(0.8) - clampX(-10)} y={y(2.3)} height={y(1.5) - y(2.3)} fill="#e6a05a" fillOpacity={0.18} />
-                    <text x={clampX(-10) + 6} y={y(2.3) + 14} fontSize={10.5} fill={INK.muted} fontWeight={600}>Giles dust cluster</text>
-                    <line x1={0} x2={side} y1={y(1)} y2={y(1)} stroke={INK.muted} strokeDasharray="4 3" />
-                    <text x={side - 4} y={y(1) - 5} textAnchor="end" fontSize={10.5} fill={INK.muted}>AAE 1: black carbon (λ⁻¹)</text>
-                    <line x1={x(0.8)} x2={x(0.8)} y1={0} y2={side} stroke={INK.muted} strokeDasharray="4 3" />
-                    <text x={x(0.8) + 4} y={side - 6} fontSize={10.5} fill={INK.muted}>EAE 0.8: large | small</text>
-                  </>}
-                </g>
-                <YAxis scale={y} x={0} gridWidth={side} tickCount={6} label={cazorla ? 'AAE 440–675' : 'AAE 440–870'} labelX={-40} />
-                <XAxis scale={x} y={side} tickCount={6} label={cazorla ? 'Scattering Ångström exponent 440–675' : 'Extinction Ångström exponent 440–870 (inversion)'} labelDy={38} />
-                {cazorla && [1, 1.5].map((v) => <g key={v}>
-                  <line x1={0} x2={side} y1={y(v)} y2={y(v)} stroke={INK.muted} strokeDasharray="3 3" />
-                  {/* SAE 1.0 bounds only the cells above AAE 1 (coated large particles span SAE < 1.5) */}
-                  <line x1={x(v)} x2={x(v)} y1={0} y2={v === 1 ? y(1) : side} stroke={INK.muted} strokeDasharray="3 3" />
-                </g>)}
-                {focusLast(pts, (p) => p.row.id, hl.focusId).map(([p]) => {
-                  const st = focusStyle(p.row.id, hl.focusId, { r: 3.4 }, hl.selected)
-                  const c = col.color(col.key(p.row))
-                  return <circle key={p.row.id} cx={clampX(p.x)} cy={clampY(p.y)} r={st.r} fill={p.weak ? 'none' : c} fillOpacity={st.opacity}
-                    stroke={p.weak || !st.stroke ? c : st.stroke} strokeWidth={st.strokeWidth ?? 1} data-dot={p.weak ? undefined : st.dot} style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
-                    onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.site} · ${p.row.date}`, `${cazorla ? 'SAE 440–675' : 'EAE 440–870'} ${fmt(p.x, 2)} · ${cazorla ? 'AAE 440–675' : 'AAE 440–870'} ${fmt(p.y, 2)}`,
-                      ...(cazorla ? [`Ångström matrix: ${cazorlaClass(p.x, p.y)}`] : []), `inversion AOD 440 ${fmt(p.row[INV_AOD440] as number | null, 2)}`, 'click for details']) }}
-                    onMouseLeave={() => { hl.setHover(null); tip.hide() }} onClick={() => hl.openSample(p.row.id)} />
-                })}
-              </g>
-            </svg>
-            {cazorla && shares.length > 0 && (
-              <div style={{ overflowX: 'auto', maxWidth: '100%' }}><table className="aeronet-share-table" style={{ width: 'max-content', fontSize: 11.5, borderCollapse: 'collapse', fontFamily: FONT.family, color: INK.text }}>
-                <thead><tr><th style={{ textAlign: 'left', padding: '2px 6px' }}>{col.by === 'site' ? 'Site' : 'Season'}</th><th style={{ padding: '2px 6px' }}>n</th>
-                  {CAZORLA_CLASSES.map((c) => <th key={c} style={{ padding: '2px 4px', fontWeight: 500, color: INK.muted, maxWidth: 64 }}>{c}</th>)}</tr></thead>
-                <tbody>{shares.map((s) => (
-                  <tr key={s.k}>
-                    <td style={{ padding: '2px 6px', whiteSpace: 'nowrap' }}><span className="swatch" style={{ background: col.color(s.k), display: 'inline-block', width: 9, height: 9, borderRadius: 5, marginRight: 5 }} />{col.label(s.k)}</td>
-                    <td style={{ padding: '2px 6px', fontFamily: FONT.mono, textAlign: 'right' }}>{s.n}</td>
-                    {CAZORLA_CLASSES.map((c) => {
-                      const share = (s.counts.get(c) ?? 0) / s.n
-                      return <td key={c} style={{ padding: '2px 4px', textAlign: 'right', fontFamily: FONT.mono, background: share ? `rgba(33,113,181,${0.08 + share * 0.6})` : undefined }}>{share ? `${Math.round(share * 100)}%` : '·'}</td>
+                    <YAxis scale={y} x={0} gridWidth={side} tickCount={6} label={cazorla ? 'AAE 440–675' : 'AAE 440–870'} labelX={-40} />
+                    <XAxis scale={x} y={side} tickCount={6} label={cazorla ? 'Scattering Ångström exponent 440–675' : 'Extinction Ångström exponent 440–870 (inversion)'} labelDy={38} />
+                    {cazorla && [1, 1.5].map((v) => <g key={v}>
+                      <line x1={0} x2={side} y1={y(v)} y2={y(v)} stroke={INK.muted} strokeDasharray="3 3" />
+                      {/* SAE 1.0 bounds only the cells above AAE 1 (coated large particles span SAE < 1.5) */}
+                      <line x1={x(v)} x2={x(v)} y1={0} y2={v === 1 ? y(1) : side} stroke={INK.muted} strokeDasharray="3 3" />
+                    </g>)}
+                    {focusLast(pts, (p) => p.row.id, hl.focusId).map(([p]) => {
+                      const st = focusStyle(p.row.id, hl.focusId, { r: 3.4 }, hl.selected)
+                      const c = col.color(col.key(p.row))
+                      return <circle key={p.row.id} cx={clampX(p.x)} cy={clampY(p.y)} r={st.r} fill={p.weak ? 'none' : c} fillOpacity={st.opacity}
+                        stroke={p.weak || !st.stroke ? c : st.stroke} strokeWidth={st.strokeWidth ?? 1} data-dot={p.weak ? undefined : st.dot} style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
+                        onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.site} · ${p.row.date}`, `${cazorla ? 'SAE 440–675' : 'EAE 440–870'} ${fmt(p.x, 2)} · ${cazorla ? 'AAE 440–675' : 'AAE 440–870'} ${fmt(p.y, 2)}`,
+                          ...(cazorla ? [`Ångström matrix: ${cazorlaClass(p.x, p.y)}`] : []), `inversion AOD 440 ${fmt(p.row[INV_AOD440] as number | null, 2)}`, 'click for details']) }}
+                        onMouseLeave={() => { hl.setHover(null); tip.hide() }} onClick={() => hl.openSample(p.row.id)} />
                     })}
-                  </tr>
-                ))}</tbody>
-              </table></div>
-            )}
-          </div>
+                  </g>
+                </svg>
+              )
+            } },
+            ...(cazorla && shares.length > 0 ? [{ key: 'shares', title: `Class shares by ${col.by === 'site' ? 'site' : 'season'}`, min: 300, basis: 420, expandable: false, render: () => (
+                  <div style={{ overflowX: 'auto', maxWidth: '100%' }}><table className="aeronet-share-table" style={{ width: 'max-content', fontSize: 11.5, borderCollapse: 'collapse', fontFamily: FONT.family, color: INK.text }}>
+                    <thead><tr><th style={{ textAlign: 'left', padding: '2px 6px' }}>{col.by === 'site' ? 'Site' : 'Season'}</th><th style={{ padding: '2px 6px' }}>n</th>
+                      {CAZORLA_CLASSES.map((c) => <th key={c} style={{ padding: '2px 4px', fontWeight: 500, color: INK.muted, maxWidth: 64 }}>{c}</th>)}</tr></thead>
+                    <tbody>{shares.map((s) => (
+                      <tr key={s.k}>
+                        <td style={{ padding: '2px 6px', whiteSpace: 'nowrap' }}><span className="swatch" style={{ background: col.color(s.k), display: 'inline-block', width: 9, height: 9, borderRadius: 5, marginRight: 5 }} />{col.label(s.k)}</td>
+                        <td style={{ padding: '2px 6px', fontFamily: FONT.mono, textAlign: 'right' }}>{s.n}</td>
+                        {CAZORLA_CLASSES.map((c) => {
+                          const share = (s.counts.get(c) ?? 0) / s.n
+                          return <td key={c} style={{ padding: '2px 4px', textAlign: 'right', fontFamily: FONT.mono, background: share ? `rgba(33,113,181,${0.08 + share * 0.6})` : undefined }}>{share ? `${Math.round(share * 100)}%` : '·'}</td>
+                        })}
+                      </tr>
+                    ))}</tbody>
+                  </table></div>
+            ) }] : []),
+          ]} />
         )}
         <div className="legend">
           {legendKeys.map((k) => <span key={k} className="legend-item"><span className="swatch" style={{ background: col.color(k) }} />{col.label(k)}</span>)}

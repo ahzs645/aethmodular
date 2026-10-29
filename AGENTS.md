@@ -293,6 +293,10 @@ Current inline patterns used across notebooks:
    statistics; `season_convention_name()` returns `'custom'` for an unregistered
    mapping so a report can never imply a non-standard calendar was canonical.
    `ETAD_Factor_Analysis.ipynb` is the one notebook on `'belg_feb'`.
+   Moving February is not cosmetic for season-specific calibrations: see
+   `addis_feb_season_sensitivity_20261028.ipynb` and docs/site-seasonality.md.
+   The four-site calendars in `src/config/multi_site_seasons.py` are versioned the same way:
+   `research_2026_04` (default, legacy outputs) and `local_2026_10` (the gallery's bins). Pass the id.
 
 2. **Reference / threshold lines** — `ax.axhline`, `ax.axvline` for flow ratio
    ideals (1.0, 2.0), smooth/raw thresholds (1, 2.5, 4, 5 %), AAE source-region

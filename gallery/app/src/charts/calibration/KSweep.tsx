@@ -81,7 +81,7 @@ export function KSweep({ calib, selected, onSelect }: { calib: CalibFile; select
       id="k-sweep"
       title="PLS-factor sweep — choosing the number of PLS factors for one configuration"
       subtitle={`Every number of PLS factors the batch tried for the configuration chosen here (or clicked in the cutoff sweep above), read out on the Addis test set, with the calibration cohort cross-validated by ${CV_PROTOCOL.site_heldout}. The dashed vertical line is the number the explorer's rule would choose on its own.`}
-      provenance="calibration_explorer batch results · Addis test set · site-grouped CV · MAC 10 · fixed set"
+      provenance={`calibration_explorer batch results · Addis test set · site-grouped CV · MAC ${calib.mac_value} · fixed set`}
       controls={o.controls()}
     >
       <div className="chart-wrap">

@@ -4,6 +4,7 @@ import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { useSearchParam } from '@/lib/url'
 import { INK } from '@/lib/theme'
 import { coef, coefSigned } from '@/lib/format'
+import { useMac } from '@/lib/mac'
 import { runLine, sourceOf, useXp, type XpBase } from './shared'
 
 /** Quick fixes: the ETAD-0241/0248 exclusion and the February season calendar (experiments_20261022.ipynb §7). */
@@ -44,20 +45,24 @@ function SeasonSlopes({ d }: { d: FixesData }) {
   const models = [...new Set(d.seasons.map((s) => s.model))]
   const [what, setWhat] = useSearchParam<'slope' | 'intercept'>('xq-season.what', 'slope', ['slope', 'intercept'])
   const cals = Object.keys(CAL_COLOR)
+  // the run fitted against HIPS BC at MAC 10: at the reader's MAC each slope and its bootstrap interval scale by MAC/10
+  // (every resample's slope does), the intercept stays (lib/mac)
+  const mac = useMac()
+  const k = (v: number) => mac.slope(v) as number
   // a block per model, a row per season, the two calendars stacked in the row
   const blocks: IntervalBlock[] = models.map((m) => ({ key: m, title: m, rows: SEASONS.map((s) => {
     const rs = cals.map((c) => d.seasons.find((z) => z.model === m && z.season === s && z.calendar === c))
     return {
       key: s, label: s, note: rs.map((r) => r ? `n ${r.n}` : '—').join(' → '),
-      tip: [`${m} · ${s}`, ...rs.flatMap((r, ci) => r ? [`${cals[ci]}: n ${r.n}, slope ${coef(r.slope)} (95 % ${coef(r['slope lo'])} to ${coef(r['slope hi'])}), intercept ${coefSigned(r.intercept)} µg/m³`] : [])],
-      marks: [rs.flatMap((r, ci) => r ? [{ mid: what === 'slope' ? r.slope : r.intercept, lo: what === 'slope' ? r['slope lo'] : undefined, hi: what === 'slope' ? r['slope hi'] : undefined,
+      tip: [`${m} · ${s}`, ...rs.flatMap((r, ci) => r ? [`${cals[ci]}: n ${r.n}, slope ${coef(k(r.slope))} (95 % ${coef(k(r['slope lo']))} to ${coef(k(r['slope hi']))}), intercept ${coefSigned(r.intercept)} µg/m³`] : [])],
+      marks: [rs.flatMap((r, ci) => r ? [{ mid: what === 'slope' ? k(r.slope) : r.intercept, lo: what === 'slope' ? k(r['slope lo']) : undefined, hi: what === 'slope' ? k(r['slope hi']) : undefined,
         color: CAL_COLOR[cals[ci]], dy: (ci - 0.5) * 8, r: 4 }] : [])],
     }
   }) }))
   return (
     <ChartFrame id="xq-season" source={source('SeasonSlopes')} provenance={runLine(d)}
       title="February: Dry or Belg? — the Addis seasonal slopes under both calendars"
-      subtitle="Deming fits of FTIR EC against HIPS BC (MAC 10) per season, for SPARTAN's published EC and the full spline and raw calibrations, with 95 % bootstrap intervals for the slope. The question is whether Dry and Belg stay low against Kiremt when February moves. On the right: filters per season, historical → site calendar."
+      subtitle={`Deming fits of FTIR EC against HIPS BC per season, for SPARTAN's published EC and the full spline and raw calibrations, with 95 % bootstrap intervals for the slope. Slopes are at ${mac.label} (set under Filters; the run fitted at MAC 10, and another MAC scales the slope by MAC/10 and leaves the intercept). The question is whether Dry and Belg stay low against Kiremt when February moves. On the right: filters per season, historical → site calendar.`}
       controls={<Segmented label="Read" value={what} options={['slope', 'intercept'] as const} onChange={setWhat} />}>
       <IntervalStrip blocks={blocks} labelWidth={120} rowHeight={26} noteWidth={78}
         panels={[{ label: what === 'slope' ? 'Deming slope vs HIPS BC' : 'Deming intercept (µg/m³)', reference: what === 'slope' ? 1 : 0 }]} />

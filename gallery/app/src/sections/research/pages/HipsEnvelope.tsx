@@ -6,13 +6,14 @@ import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { SweepPlot } from '@/components/SweepPlot'
 import { fmt } from '@/lib/format'
+import { useMac } from '@/lib/mac'
 import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 
 import type { SectionPageProps } from '../../types'
 import { envelopeOf, useOptics, windowOf, OPTICS_COMMAND, type Envelope, type Optics } from '../common/optics'
 import { ols, originFit, quantile, spearman, theilSen } from '../common/stats'
-import { Bars, DataTable, Grid, SitePick, line, ofSite, point, seasonsOf, shortSeason, sitesOf, useSite } from '../common/ui'
+import { BASIS_NOTE, Bars, DataTable, Grid, SitePick, line, ofSite, point, seasonsOf, shortSeason, sitesOf, useConcRows, useSite } from '../common/ui'
 
 const ENVELOPE_NB = 'research/ftir_hips_chem/addis_06_hips_ptfe_operating_envelope.ipynb'
 const RT_NB = 'research/improve_hips_offset/improve_fed_rt_proxy_figure2.ipynb (SPARTAN R1/T1 analog)'
@@ -59,8 +60,10 @@ function blankDomain(samples: Optics[], blanks: Optics[]) {
  * SPARTAN R1/T1 "Figure 2" analog with its blank line, where loaded samples sit against the blank R1 domain,
  * and the Addis windows the IMPROVE comparisons screen with.
  */
-export function HipsEnvelope({ rows, meta }: SectionPageProps) {
-  const mac = meta.mac_value || 10
+export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
+  // envelopeOf works out loadings from concentrations itself, so it takes µg/m³ rows whatever the basis
+  const rows = useConcRows(viewRows, meta)
+  const { mac } = useMac()
   const { rows: optics, error } = useOptics()
   const [site, setSite, sites] = useSite(rows, 'he')
   const [resid, setResid] = useSearchParam<'relative' | 'absolute'>('he.resid', 'relative', ['relative', 'absolute'])
@@ -145,7 +148,7 @@ export function HipsEnvelope({ rows, meta }: SectionPageProps) {
   return (
     <>
       <ChartFrame id="he-optics" title="Raw HIPS optical coordinates — samples against field blanks"
-        subtitle="Left: the HIPS transmittance (t) and reflectance (r) proxies of every sample (filled) and field blank (hollow), coloured by site. Right: HIPS optical depth tau, samples and blanks, median with p05–p95. If Addis is a boundary case it should separate here, not only in Fabs / MAC."
+        subtitle={`Left: the HIPS transmittance (t) and reflectance (r) proxies of every sample (filled) and field blank (hollow), coloured by site. Right: HIPS optical depth tau, samples and blanks, median with p05–p95. If Addis is a boundary case it should separate here, not only in Fabs / MAC.${meta.basis === 'mass' ? ` ${BASIS_NOTE}` : ''}`}
         provenance={`${ENVELOPE_NB} (§1 optical regime)`}>
         <Grid>
           <Crossplot points={[...opt.map((p) => point(p.r, p.o.t!, p.o.r!, p.r.color, 't', 'r', 'Research · HIPS optics', [`tau ${fmt(p.o.tau, 3)}`])),

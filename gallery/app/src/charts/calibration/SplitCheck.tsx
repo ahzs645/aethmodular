@@ -11,7 +11,8 @@ import { fmt } from '@/lib/stats'
 import { INK, MARGIN, FONT } from '@/lib/theme'
 import { dotRim } from '@/lib/highlight'
 import type { CalibRun, CalibRunsFile } from '@/lib/types'
-import { metricRow } from './common'
+import { metricRowAt } from './common'
+import { useMac } from '@/lib/mac'
 import { ChartAside } from '@/lib/singleView'
 
 const SPLIT_LABEL: Record<string, string> = { all: 'all filters', early: 'early half', late: 'late half', odd: 'odd half', even: 'even half' }
@@ -31,10 +32,12 @@ export function SplitCheck({ run, runs }: { run: CalibRun; runs: CalibRunsFile }
   const tip = useTooltip(wrapRef)
   const height = 300
 
+  const gallery = useMac()
   const isFabs = run.ref_kind === 'fabs'
   const hasFixed = run.eval.fixed.some(Boolean)
   const rows = run.split_check
-    .map((s) => ({ ...s, m: metricRow(s.metrics, hasFixed ? 'fixed' : 'all', isFabs ? runs.mac_value : null) }))
+    // each half's saved fit at the MAC set under Filters (lib/mac): slopes re-expressed, intercepts unchanged
+    .map((s) => ({ ...s, m: metricRowAt(s.metrics, hasFixed ? 'fixed' : 'all', isFabs ? gallery.mac : null, runs.mac_value) }))
     .filter((s) => s.m && s.m.deming_slope !== null)
   const slopeOf = (r: (typeof rows)[number]) => r.m!.deming_slope as number
   const icOf = (r: (typeof rows)[number]) => r.m!.deming_intercept as number
@@ -61,7 +64,7 @@ export function SplitCheck({ run, runs }: { run: CalibRun; runs: CalibRunsFile }
     <ChartFrame
       id="split-check"
       title={`Blind-half check — does the readout move between halves at ${target?.site ?? run.target}?`}
-      subtitle="One fitted model, scored on the early and late halves of the test set and on the odd and even (interleaved) halves, all with the same n. The axes follow the points: the distance between them is the finding. Dotted lines mark slope 1 and intercept 0 when they are in range."
+      subtitle={`One fitted model, scored on the early and late halves of the test set and on the odd and even (interleaved) halves, all with the same n. The axes follow the points: the distance between them is the finding. Dotted lines mark slope 1 and intercept 0 when they are in range.${isFabs ? ` Against HIPS Fabs ÷ ${gallery.label} (Filters → units).` : ''}`}
       provenance="calibration_explorer /api/run split_check · Target readout tab"
     >
       <div ref={wrapRef} className="chart-wrap">

@@ -63,7 +63,7 @@ export interface Pair {
   /** spot attenuation over the window (tape loading, not a concentration) */
   atn: number | null
   fabs: number | null
-  /** HIPS Fabs ÷ MAC 10 (µg/m³), the public BC */
+  /** HIPS Fabs ÷ the MAC set under Filters → units (µg/m³); at 10 it is SPARTAN's public BC */
   hipsBc: number | null
   ec: number | null
   iron: number | null
@@ -74,15 +74,19 @@ export function buildPairs(rows: FilterRow[], meta: MetaFile, extra: Map<string,
   const mac = meta.mac_value || 10
   return rows.flatMap((r) => {
     const x = extra.get(r.id)
-    const bc = smoothed ? (ch === 'IR' ? num(r[bccField('IR', true)]) : num(x?.[bccField(ch, true)])) : num(r[bccField(ch)])
+    // every pair value in µg/m³: under mass per filter (Filters → units) the µg/m³ fields arrive × the sampled
+    // volume, but HIPS Fabs (Mm⁻¹) and the extra smoothed channels do not, so the ratios and MACs would mix units
+    const vol = num(r['Sampled volume'])
+    const conc = (f: string) => { const v = num(r[f]); return v === null || meta.field_units[f] !== 'µg/filter' ? v : vol && vol > 0 ? v / vol : null }
+    const bc = smoothed ? (ch === 'IR' ? conc(bccField('IR', true)) : num(x?.[bccField(ch, true)])) : conc(bccField(ch))
     if (bc === null && num(r[bccField('IR')]) === null) return []   // no aethalometer over this filter
     const fabs = num(r[HIPS_FABS])
-    const soil = SOIL.map(([f, w]) => (num(r[f]) === null ? null : (num(r[f]) as number) * w))
+    const soil = SOIL.map(([f, w]) => (conc(f) === null ? null : (conc(f) as number) * w))
     return [{
       row: r, id: r.id, site: r.site, code: r.code, date: r.date, season: r.season,
       siteColor: meta.sites.find((s) => s.name === r.site)?.color ?? (r.color as string),
       bc, batn: bc !== null && sigma ? bc * sigma[ch] : null, atn: num(x?.[atnField(ch)]),
-      fabs, hipsBc: num(r[HIPS_BC]) ?? (fabs === null ? null : fabs / mac), ec: num(r[FTIR_EC]), iron: num(r[IRON]),
+      fabs, hipsBc: conc(HIPS_BC) ?? (fabs === null ? null : fabs / mac), ec: conc(FTIR_EC), iron: conc(IRON),
       fineSoil: soil.every((v) => v !== null) ? soil.reduce((a, b) => a! + b!, 0) : null,
     }]
   })
@@ -127,7 +131,7 @@ export const usePairs = (rows: FilterRow[], meta: MetaFile, extra: ReturnType<ty
 
 /**
  * The MAC definitions the notebooks used, each a ratio of a pair's fields, with the value it is
- * compared against. `aethOverEc`'s reference is σ_ATN at the channel: b_ATN / EC equals σ_ATN exactly
+ * compared against (10 m²/g for HIPS, as the notebooks; the charts add the reader's MAC beside it, macMarker). `aethOverEc`'s reference is σ_ATN at the channel: b_ATN / EC equals σ_ATN exactly
  * when the aethalometer's BC equals FTIR EC.
  */
 export type MacKey = 'hipsOverEc' | 'hipsOverBc' | 'aethOverEc'
@@ -137,6 +141,9 @@ export const MAC_DEFS: MacDef[] = [
   { key: 'hipsOverBc', label: 'HIPS Fabs ÷ aethalometer BCc', short: 'HIPS ÷ aeth BC', num: (p) => p.fabs, den: (p) => p.bc, reference: () => 10, refLabel: 'MAC 10 m²/g' },
   { key: 'aethOverEc', label: 'aethalometer b_ATN ÷ FTIR EC', short: 'b_ATN ÷ EC', num: (p) => p.batn, den: (p) => p.ec, reference: (s) => s, refLabel: 'σ_ATN of the channel (BCc = EC)' },
 ]
+/** the MAC set under Filters → units, as a second line beside a HIPS definition's 10 (none while it is 10) */
+export const macMarker = (d: MacDef, mac: number): { value: number; label: string } | undefined =>
+  d.key !== 'aethOverEc' && mac !== 10 ? { value: mac, label: `MAC ${mac} (Filters)` } : undefined
 export const macOf = (d: MacDef, p: Pair): number | null => {
   const a = d.num(p), b = d.den(p)
   return a === null || b === null || b <= 0 ? null : a / b

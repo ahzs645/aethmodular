@@ -27,7 +27,7 @@ import { DynamicSeasonEditor } from '@/components/DynamicSeasonEditor'
 import { defaultRuleFor, type DynRule } from '@/lib/dynamicSeasons'
 import { DEFAULT_RAIN_RULE, type RainRule } from '@/lib/rainSeasons'
 import { XIcon } from '@/components/Icons'
-import { CiteRef } from '@/components/CiteRef'
+import { CalendarNoteRef, CiteRef } from '@/components/CiteRef'
 import { ScrubField } from '@/components/ScrubField'
 
 export interface SubsetCaps {
@@ -100,7 +100,7 @@ export interface SubsetState {
   /** sites in view with more than one defensible calendar, and the one each is binned by */
   calendarVariants?: { site: string; code: string; options: { key: string; label: string; note?: string }[]; value: string }[]
   /** under the per-site calendar, each site's seasons: the reader's own (edited) or its published ones */
-  siteCalendars?: { site: string; code: string; edited: boolean; rule?: DynRule; sources?: SeasonSource[]; seasons: { name: string; months: number[] }[] }[]
+  siteCalendars?: { site: string; code: string; edited: boolean; rule?: DynRule; sources?: SeasonSource[]; note?: string; weather?: 'loading' | 'unavailable'; seasons: { name: string; months: number[] }[] }[]
   /** filters dropped by hand from a brush, and the size of a "keep only" set (null: none) */
   dropped?: number
   /** the hand-excluded filters, each with a "site · date" label */
@@ -482,8 +482,12 @@ export function SubsetBar({
                               })() : g.site}
                               {cal?.sources?.length ? <span className="cite-refs">
                                 {cal.sources.map((src) => <CiteRef key={src.url} n={citeNo.get(src.url)!} source={src} />)}
+                                {cal.note && <CalendarNoteRef note={cal.note} site={g.site ?? ''} />}
                               </span> : null}
-                              {rule ? <span className="season-edited" title="Seasons from this site's own daily weather: saved in this browser and in the link">dynamic</span>
+                              {rule ? <span className="season-edited" title={cal?.weather === 'unavailable'
+                                ? "This site has no daily weather, so no filter has a dynamic season: they are all under No weather"
+                                : cal?.weather === 'loading' ? 'Loading this site\'s daily weather' : "Seasons from this site's own daily weather: saved in this browser and in the link"}>
+                                {cal?.weather === 'unavailable' ? 'dynamic · no weather' : cal?.weather === 'loading' ? 'dynamic · loading' : 'dynamic'}</span>
                                 : cal?.edited && <span className="season-edited" title="Your own seasons for this site: saved in this browser and in the link">edited</span>}
                               {editable && <span className="season-site-tools">
                                 {(cal!.edited || rule) && <button type="button" className="btn quiet"

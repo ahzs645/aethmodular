@@ -5,12 +5,13 @@ import { Crossplot } from '@/components/Crossplot'
 import { Key } from '@/components/Key'
 import { SweepPlot } from '@/components/SweepPlot'
 import { fmt } from '@/lib/format'
+import { useMac } from '@/lib/mac'
 import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow } from '@/lib/types'
 import type { SectionPageProps } from '../../types'
 import { ols, pearsonR, quadratic, quantile, slidingWindow, median, type Fit } from '../common/stats'
-import { DataTable, Grid, SitePick, fitText, line, num, ofSite, point, sitesOf, useSite } from '../common/ui'
+import { BASIS_NOTE, DataTable, Grid, SitePick, fitText, line, num, ofSite, point, sitesOf, useConcRows, useSite } from '../common/ui'
 
 const ADDIS_NB = 'notebooks/analysis/meteorology/addis_hips_two_problem_decomposition.ipynb'
 const MULTI_NB = 'notebooks/analysis/meteorology/hips_two_problem_decomposition.ipynb'
@@ -46,8 +47,10 @@ const fitRow = (name: string, xs: number[], ys: number[], extra: Record<string, 
  * how to handle the negatives it makes, whether the slope changes with loading, and whether the corrected
  * HIPS agrees better with the aethalometer.
  */
-export function TwoProblem({ rows, meta }: SectionPageProps) {
-  const mac = meta.mac_value || 10
+export function TwoProblem({ rows: viewRows, meta }: SectionPageProps) {
+  // Fabs against EC: both in µg/m³ whatever the basis (common/ui useConcRows), at the MAC set under Filters → units
+  const rows = useConcRows(viewRows, meta)
+  const { mac } = useMac()
   const [site, setSite, sites] = useSite(rows, 'tp')
   const siteRows = useMemo(() => ofSite(rows, site), [rows, site])
   const all = useMemo(() => sitesOf(rows).map((s) => ({ site: s, color: rows.find((r) => r.site === s)?.color ?? INK.text, d: decompose(pairsOf(ofSite(rows, s), mac), mac) })), [rows, mac])
@@ -110,7 +113,7 @@ export function TwoProblem({ rows, meta }: SectionPageProps) {
   return (
     <>
       <ChartFrame id="tp-sites" title="Two problems by site — baseline (intercept) and sensitivity (slope)"
-        subtitle={`OLS of HIPS Fabs on FTIR EC per site: the intercept is the Fabs baseline, the slope the effective MAC. In BC units (Fabs / ${mac}) the slope is MAC_eff / ${mac}. Negatives: filters whose corrected EC, (Fabs − baseline) / MAC_eff, falls below zero. Filters with both values positive.`}
+        subtitle={`OLS of HIPS Fabs on FTIR EC per site: the intercept is the Fabs baseline, the slope the effective MAC. In BC units (Fabs / ${mac}) the slope is MAC_eff / ${mac}. Negatives: filters whose corrected EC, (Fabs − baseline) / MAC_eff, falls below zero. Filters with both values positive.${meta.basis === 'mass' ? ` ${BASIS_NOTE}` : ''}`}
         provenance={`${MULTI_NB} (§1, §4 correction parameters)`} exportable={false}>
         <DataTable rows={all} rowKey={(r) => r.site} highlight={(r) => r.site === site} columns={[
           { key: 's', label: 'Site', value: (r) => <span style={{ color: r.color, fontWeight: 600 }}>{r.site}</span> },

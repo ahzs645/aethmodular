@@ -34,7 +34,12 @@ from config import SITES  # noqa: E402
 from data_matching import load_aethalometer_data, load_filter_data, match_all_parameters  # noqa: E402
 from outliers import apply_exclusion_flags, apply_threshold_flags  # noqa: E402
 from plotting.utils import calculate_regression_stats  # noqa: E402
-from src.config.multi_site_seasons import SITE_SEASONS  # noqa: E402
+from src.config.multi_site_seasons import resolve_calendar  # noqa: E402
+
+# The calendar these April 2026 assets were made with (src/config/multi_site_seasons.py): Addis
+# February in Dry, Delhi provisional, JPL quarters. Pinned by name so a rerun reproduces them.
+SEASON_CALENDAR = "research_2026_04"
+SITE_SEASONS = resolve_calendar(SEASON_CALENDAR)
 
 
 OUTPUT_DIR = REPO_ROOT / "research/ftir_hips_chem" / "output" / "group_talk_apr2026"
@@ -319,6 +324,7 @@ def save_seasonal_split_figure(data: dict[str, pd.DataFrame], comparison_key: st
     plt.close(fig)
 
     summary_df = pd.DataFrame(summary_rows)
+    summary_df["season_calendar"] = SEASON_CALENDAR
     summary_df.to_csv(OUTPUT_DIR / f"seasonal_split_all_sites_{comparison_key}_summary.csv", index=False)
     return summary_df
 
@@ -371,12 +377,12 @@ def main() -> None:
         {
             "asset": "seasonal_split_all_sites_hips_vs_ftir_summary.csv",
             "intended_slide": "Speaker notes / bullet writing",
-            "notes": f"{len(seasonal_hips_ftir)} rows of per-site seasonal regressions.",
+            "notes": f"{len(seasonal_hips_ftir)} rows of per-site seasonal regressions (season calendar {SEASON_CALENDAR}).",
         },
         {
             "asset": "seasonal_split_all_sites_hips_vs_aeth_summary.csv",
             "intended_slide": "Speaker notes / bullet writing",
-            "notes": f"{len(seasonal_hips_aeth)} rows of per-site seasonal regressions.",
+            "notes": f"{len(seasonal_hips_aeth)} rows of per-site seasonal regressions (season calendar {SEASON_CALENDAR}).",
         },
     ]
     save_board_manifest(artifacts)

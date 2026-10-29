@@ -7,6 +7,7 @@ import { Legend, useLegend } from '@/components/Legend'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
+import { useMac } from '@/lib/mac'
 import { fmt } from '@/lib/stats'
 import { INK, MARGIN } from '@/lib/theme'
 import type { CalibRunsFile, YorkFit } from '@/lib/types'
@@ -21,6 +22,10 @@ const VARIANT_COLOR: Record<string, string> = { get deployed() { return INK.text
  * the HIPS transmittance. If a site's intercept moves with the blank line, the
  * offset is partly an instrument-processing artefact; if it does not, it is
  * in the aerosol. OFFSET_ADJUDICATION_2026-08-23 is the write-up to cite.
+ *
+ * The fits are against Fabs / MAC at the export's MAC (hips.york.mac). Rescaling x and its errors by
+ * one factor rescales the York slope and its SE by the inverse and leaves the intercept, so the slope
+ * follows the MAC set under Filters (lib/mac) without a refit.
  */
 export function HipsYork({ runs }: { runs: CalibRunsFile }) {
   const { showCI } = useRegressions()
@@ -31,7 +36,11 @@ export function HipsYork({ runs }: { runs: CalibRunsFile }) {
   const lg = useLegend()
   const shown = VARIANTS.filter((v) => lg.show(VARIANT_LABEL[v]))
 
-  const rows = (runs.hips.york?.rows ?? []).filter((r) => r.fits && !r.error)
+  const gallery = useMac()
+  const k = gallery.mac / (runs.hips.york?.mac ?? gallery.exportMac)
+  // the slope (and its SE) at the reader's MAC; the intercept does not move
+  const rows = (runs.hips.york?.rows ?? []).filter((r) => r.fits && !r.error).map((r) => k === 1 ? r : {
+    ...r, fits: Object.fromEntries(Object.entries(r.fits!).map(([v, f]) => [v, !f || 'error' in f ? f : { ...f, slope: f.slope * k, slope_se: f.slope_se * k }])) as typeof r.fits })
   const LEFT = 104
   const innerW = Math.max(240, width - LEFT - MARGIN.right)
   const rowH = 44
@@ -44,7 +53,7 @@ export function HipsYork({ runs }: { runs: CalibRunsFile }) {
     <ChartFrame
       id="hips-york"
       title="HIPS diagnostics — does the offset move with the blank line?"
-      subtitle={`Weighted York fits of predicted EC against HIPS Fabs at every SPARTAN site under three blank-line conventions${showCI ? ", with approximate 95% normal intervals (±1.96 SE)" : ""}. Calibration: ${runs.hips.config ? runs.hips.config.replace('AIRSpec', 'Spline baseline').replace(/k=(\d+)/, '$1 PLS factors') : 'see explorer'}. A site whose intercept is the same under all three carries the offset in the aerosol, not in the transmittance processing.`}
+      subtitle={`Weighted York fits of predicted EC against HIPS Fabs ÷ ${gallery.label} at every SPARTAN site under three blank-line conventions${showCI ? ", with approximate 95% normal intervals (±1.96 SE)" : ""}. Calibration: ${runs.hips.config ? runs.hips.config.replace('AIRSpec', 'Spline baseline').replace(/k=(\d+)/, '$1 PLS factors') : 'see explorer'}. A site whose intercept is the same under all three carries the offset in the aerosol, not in the transmittance processing.`}
       provenance="calibration_explorer /api/hips_york · HIPS tab · OFFSET_ADJUDICATION_2026-08-23.md"
     >
       <div ref={wrapRef} className="chart-wrap">

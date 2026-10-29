@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react'
+import { useMac } from '@/lib/mac'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
@@ -24,6 +25,8 @@ export function AeronetSiteTable({ rows, meta, stations, current, onSite }: {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
+  // the rows' public BC is at the reader's MAC: surfaceFabs needs it to get back to Fabs
+  const { mac } = useMac()
   const table = useMemo(() => d3.groups(rows, (r) => r.site).map(([site, rs]) => {
     const code = rs[0]?.code ?? ''
     const st = stations?.sites[code]
@@ -32,9 +35,9 @@ export function AeronetSiteTable({ rows, meta, stations, current, onSite }: {
       site, code, st, n: rs.length, nAod: withAod.length,
       nInv: rs.filter((r) => typeof r[AERONET_SUMMARY[2].field] === 'number').length,
       cells: AERONET_SUMMARY.map((q) => d3.median(rs, (r) => (typeof r[q.field] === 'number' ? (r[q.field] as number) : undefined)) ?? null),
-      h: d3.median(rs, (r) => scaleHeight(r) ?? undefined) ?? null,
+      h: d3.median(rs, (r) => scaleHeight(r, mac) ?? undefined) ?? null,
     }
-  }).filter((t) => t.nAod > 0).sort((a, b) => a.site.localeCompare(b.site)), [rows, stations])
+  }).filter((t) => t.nAod > 0).sort((a, b) => a.site.localeCompare(b.site)), [rows, stations, mac])
 
   const cols = ['station', 'km', 'filters', 'AOD', 'inversion', ...AERONET_SUMMARY.map((q) => q.label), 'H (m)']
   const labelW = 190, stationW = 150, numW = Math.max(62, Math.min(90, (width - labelW - stationW) / (cols.length - 1)))

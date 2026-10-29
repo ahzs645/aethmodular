@@ -27,11 +27,22 @@ const LOCAL_SEASONS: Record<string, SeasonMeta[]> = {
  * in docs/site-seasonality-network.md). Keyed by code and by the gallery's site name.
  */
 interface RawSeason { name: string; months: number[] }
-/** a second defensible calendar for a site (CODC: Bogotá or Palmira; Taiwan: review or outlook bins); the first is the default */
-interface CalendarVariant { key: string; label: string; seasons: RawSeason[]; note?: string }
+/** a second defensible calendar for a site (CODC Bogotá or Palmira, Taiwan shifted or standard quarters, Jaipur and Kanpur
+ * December in winter, Bujumbura's two dry-season readings); the first is the default */
+interface CalendarVariant { key: string; label: string; seasons: RawSeason[]; note?: string; sources?: RawSource[] }
 interface RawSource { title: string; url: string }
+/**
+ * How far a paper's evidence carries for this site (seasonality audit, 28 Oct 2026; docs/site-seasonality-network.md):
+ * `match`, do its months equal the bins; `scope`, is it about this city; `checked`, what of it was read.
+ */
+export type SourceMatch = 'exact' | 'rounded' | 'partial' | 'inferred' | 'unverified'
+export type SourceScope = 'local' | 'regional' | 'national' | 'transferred'
+export type SourceChecked = 'full text' | 'indexed passage' | 'abstract' | 'not read'
 /** a peer-reviewed paper that states a site's month bins (checked against Crossref and the paper's own text) */
-interface RawPaper { cite: string; title: string; journal?: string; url: string; doi?: string | null; months_match?: string; quote?: string }
+interface RawPaper {
+  cite: string; title: string; journal?: string; url: string; doi?: string | null; months_match?: string; quote?: string
+  match?: SourceMatch; scope?: SourceScope; checked?: SourceChecked
+}
 interface NetworkCalendar {
   site: string; seasons: RawSeason[]; confidence: string; note?: string; variants?: CalendarVariant[]
   sources?: RawSource[]; papers?: RawPaper[]; variant_papers?: Record<string, RawPaper[]>
@@ -100,20 +111,44 @@ export function localSeasonsFor(site: string | null, meta: MetaFile | undefined,
   return alt?.seasons ?? NETWORK_SEASONS.get(site) ?? (code ? NETWORK_SEASONS.get(code) : undefined) ?? null
 }
 
-/** One reference behind a site's calendar; `paper` is false for an agency page kept until a paper is found. */
-export interface SeasonSource { cite: string; title: string; url: string; journal?: string; quote?: string; paper: boolean }
+/**
+ * One reference behind a site's calendar: a paper (`paper`), or an agency or other source, shown beside the papers.
+ * Papers carry the audit's qualifications, so a regional, rounded or abstract-only source does not read as exact.
+ */
+export interface SeasonSource {
+  cite: string; title: string; url: string; journal?: string; quote?: string; paper: boolean
+  monthsMatch?: string; match?: SourceMatch; scope?: SourceScope; checked?: SourceChecked
+}
+
+// the same work listed as a paper and as a source ("Hwang et al. (2016)" / "Hwang et al. (2016), IJERPH, ..."):
+// first surname and year
+const workKey = (s: string) => `${s.match(/^[^\s,]+/)?.[0] ?? ''}|${s.match(/\((\d{4})\)/)?.[1] ?? s}`
 
 /**
- * What a site's published calendar rests on: the papers for the calendar variant in use (else the
- * site's), falling back to the agency sources where no paper states the months. Codes, not names:
- * the focus sites' gallery names ("Beijing") differ from the network table's ("Beijing, China").
+ * What a site's calendar rests on, for the calendar variant in use: its papers, then the agency and other
+ * sources. A variant with its own papers or sources (CODC `palmira`, Taiwan `outlook`, Jaipur `imd_jaipur`,
+ * Addis `dry_feb`) shows only those; the default shows the site's. Codes, not names: the focus sites' gallery
+ * names ("Beijing") differ from the network table's ("Beijing, China").
  */
 export function seasonSources(code: string | undefined, variant?: string): SeasonSource[] {
   const cal = code ? NETWORK_CALENDARS.get(code) : undefined
   if (!cal) return []
-  const papers = (variant && cal.variant_papers?.[variant]) || cal.papers
-  if (papers?.length) return papers.map((p) => ({ cite: p.cite, title: p.title, url: p.url, journal: p.journal, quote: p.quote, paper: true }))
-  return (cal.sources ?? []).map((x) => ({ cite: x.title.split(',')[0], title: x.title, url: x.url, paper: false }))
+  const keys = code === 'ETAD' ? ADDIS_VARIANTS.map((v) => v.key) : (cal.variants ?? []).map((v) => v.key)
+  const alt = !!variant && keys.includes(variant) && variant !== keys[0]
+  const papers = (variant && cal.variant_papers?.[variant]) || (alt ? [] : cal.papers ?? [])
+  const own = variant ? cal.variants?.find((v) => v.key === variant)?.sources : undefined
+  const sources = own ?? (alt ? [] : cal.sources ?? [])
+  const seen = new Set(papers.map((p) => workKey(p.cite)))
+  return [
+    ...papers.map((p) => ({ cite: p.cite, title: p.title, url: p.url, journal: p.journal, quote: p.quote, paper: true,
+      monthsMatch: p.months_match, match: p.match, scope: p.scope, checked: p.checked })),
+    ...sources.filter((x) => !seen.has(workKey(x.title))).map((x) => ({ cite: x.title.split(',')[0], title: x.title, url: x.url, paper: false })),
+  ]
+}
+
+/** The caveats on a site's calendar (siteSeasons.network.json `note`): where its months come from and what they leave out. */
+export function calendarNote(code: string | undefined): string | undefined {
+  return code ? NETWORK_CALENDARS.get(code)?.note : undefined
 }
 
 /** Whether a site has a calendar of its own (otherwise the local view bins it by quarters). */

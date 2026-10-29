@@ -1,3 +1,4 @@
+import { demingLambda } from '@/lib/macMath'
 import { regression } from '@/lib/stats'
 import { localSeasonsFor } from '@/siteSeasons'
 import type { CalibRun, MetaFile, MetricRow, RunEval, SeasonMeta } from '@/lib/types'
@@ -13,8 +14,8 @@ import type { CalibRun, MetaFile, MetricRow, RunEval, SeasonMeta } from '@/lib/t
 export const RUN_CALENDARS = ['Site local calendar', 'Ethiopian · Feb in dry (explorer)'] as const
 export type RunCalendar = (typeof RUN_CALENDARS)[number]
 
-/** Deming λ for an Fabs/MAC x-axis; mirrors calibration_modes.deming_lambda (λ ∝ MAC², 2.96 at MAC 10). */
-export const demingLambda = (mac: number | null, lambda10: number) => (mac ? lambda10 * (mac / 10) ** 2 : 1)
+/** Deming λ for an Fabs/MAC x-axis (λ ∝ MAC²): defined once in lib/macMath. */
+export { demingLambda } from '@/lib/macMath'
 
 export function runCalendar(site: string | undefined, meta: MetaFile, cal: RunCalendar): SeasonMeta[] {
   if (cal !== 'Site local calendar') return meta.season_conventions.dry_feb ?? []

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { ExpandIcon } from '@/components/Icons'
+import { PanelCell } from '@/components/Panels'
 import { SpectrumModal } from '@/components/FilterSpectrumPlot'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
@@ -88,24 +88,23 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
   )
 
   function matrix(fc: (typeof facets)[number], cell: number, labelW: number, onOpen?: () => void) {
-    const fw = labelW + species.length * cell + 10, fh = 70 + vars.length * cell + 10
+    // the season and its n are the panel's title row (components/Panels PanelCell), so the svg starts at the column labels
+    const fw = labelW + species.length * cell + 10, fh = 50 + vars.length * cell + 10
     return (
-          <div key={fc.name} className="expandable-panel">
-          {onOpen && <button type="button" className="btn quiet panel-expand" style={{ right: 10 }} onClick={onOpen} aria-label={`Open ${fc.name} larger`} title="Open larger"><ExpandIcon /></button>}
+          <PanelCell key={fc.name} width={fw} title={<span style={{ color: fc.color }}>{fc.name}</span>} note={`n=${fc.n}`} label={fc.name} onExpand={onOpen}>
           <svg width={fw} height={fh} fontFamily={FONT.family}>
-            <text x={labelW} y={14} fontSize={12} fontWeight={600} fill={fc.color}>{fc.name} <tspan fill={INK.muted} fontWeight={400} fontSize={10.5}>n={fc.n}</tspan></text>
-            {species.map((f, j) => <text key={f} transform={`translate(${labelW + j * cell + cell / 2},${66}) rotate(-50)`} fontSize={10} fill={INK.muted}>{chemText(f)}</text>)}
-            {vars.map((v, i) => <text key={v.field} x={labelW - 6} y={70 + i * cell + cell / 2} dy="0.35em" textAnchor="end" fontSize={10.5} fill={INK.text}>{v.label}</text>)}
+            {species.map((f, j) => <text key={f} transform={`translate(${labelW + j * cell + cell / 2},${46}) rotate(-50)`} fontSize={10} fill={INK.muted}>{chemText(f)}</text>)}
+            {vars.map((v, i) => <text key={v.field} x={labelW - 6} y={50 + i * cell + cell / 2} dy="0.35em" textAnchor="end" fontSize={10.5} fill={INK.text}>{v.label}</text>)}
             {fc.cells.flatMap((row, i) => row.map((c, j) => {
               const fill = c.rho === null ? INK.empty : color(c.rho)
-              return <g key={`${i}-${j}`} transform={`translate(${labelW + j * cell},${70 + i * cell})`}
+              return <g key={`${i}-${j}`} transform={`translate(${labelW + j * cell},${50 + i * cell})`}
                 onMouseEnter={(e) => tip.show(e, [`${fc.name}: ${c.v.label} vs ${c.f}`, c.rho === null ? `n = ${c.n} (too few)` : `ρ = ${fmt(c.rho, 2)} · n = ${c.n}`])} onMouseLeave={tip.hide}>
                 <rect width={cell - 1} height={cell - 1} fill={fill} />
                 {c.rho !== null && Math.abs(c.rho) >= 0.3 && cell >= 18 && <text x={cell / 2} y={cell / 2} dy="0.35em" textAnchor="middle" fontSize={9} fill={inkOn(fill)} fontFamily={FONT.mono}>{fmt(c.rho, 1)}</text>}
               </g>
             }))}
           </svg>
-          </div>
+          </PanelCell>
     )
   }
 }

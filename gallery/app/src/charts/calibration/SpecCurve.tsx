@@ -14,7 +14,8 @@ import type { Config } from './common'
 import { useEstimator, FIT_STYLE } from '@/lib/regressionPrefs'
 import { CALIBRATION_LOT as LOT_LABELS, COHORT, CV_PROTOCOL, PREPROCESSING, PREPROCESSING_SHORT, SELECTION_SPACE, label } from '@/lib/labels'
 import { choiceFilterDimensions, choiceFilterSets, matchesChoiceFilters, mergeSpecFiles } from '@/lib/specification'
-import { TEMPLATES, decodeGuardrail, describeGuardrail, encodeGuardrail, evaluateGuardrail, guardFields, guardRows, type Guardrail } from '@/lib/guardrails'
+import { TEMPLATES, decodeGuardrail, describeGuardrail, encodeGuardrail, evaluateGuardrail, guardFields, guardRows, templatesFor, type Guardrail } from '@/lib/guardrails'
+import { useMac } from '@/lib/mac'
 // the editor (react-querybuilder) loads only when it is opened
 const GuardrailEditor = lazy(() => import('@/components/GuardrailEditor').then((m) => ({ default: m.GuardrailEditor })))
 import { useSearchParam } from '@/lib/url'
@@ -39,6 +40,8 @@ export interface SpecCurveFile {
   cut: (number | null)[]
   k: (number | null)[]
   categories: { co: string[]; sp: string[]; sel: string[]; mo: string[]; lot: string[] }
+  /** extra readouts (export_spec_curve.py EXTRA_FIELDS), in the export's row order */
+  extra?: Record<string, (number | null)[]>
   co: number[]
   sp: number[]
   sel: number[]
@@ -177,7 +180,29 @@ export function SpecCurve({
     return () => { cancelled = true }
   }, [srcKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // the search at the MAC set under Filters (lib/mac): the export's slopes are against Fabs/10, so each is
+  // re-expressed (× MAC/10; intercepts, R² and held-out R² do not move), and the saved pass bit, which
+  // judged the slope at MAC 10, is rebuilt from the saved guardrails' own rule where the export carries
+  // its inputs (lib/guardrails: that rule reproduces the bit exactly). RMSE against HIPS stays at MAC 10.
+  const gallery = useMac()
+  const atMac = useMemo(() => {
+    if (!data || data === 'missing' || gallery.mac === gallery.exportMac) return { spec: data, okRebuilt: null as boolean | null }
+    const k = gallery.mac / gallery.exportMac
+    const sc = (a: (number | null)[] | undefined) => a?.map((v) => (v == null ? v : v * k))
+    const extra = data.extra && Object.fromEntries(Object.entries(data.extra).map(([key, col]) => [key, /Slope$/.test(key) ? sc(col)! : col]))
+    const spec: SpecCurveFile = { ...data, slope: sc(data.slope)!, olsSlope: sc(data.olsSlope), extra }
+    if (!templatesFor(spec).some((t) => t.key === 'guardrails')) return { spec, okRebuilt: false }
+    const names = guardFields(spec).filter((x) => x.kind === 'number').map((x) => x.name)
+    const pass = evaluateGuardrail(TEMPLATES[0].rule, guardRows(spec), names).pass
+    return { spec: { ...spec, ok: pass.map((p) => (p ? '1' : '0')).join(''), n_pass: pass.filter(Boolean).length }, okRebuilt: true }
+  }, [data, gallery.mac, gallery.exportMac])
+
+  const macNote = atMac.okRebuilt === null ? '' : ` Slopes are re-expressed at ${gallery.label} (Filters → units; slope × MAC/10, intercepts unchanged)${atMac.okRebuilt
+    ? ', and the saved guardrails are re-judged on them; RMSE against HIPS stays at MAC 10.'
+    : '; this export lacks the inputs to re-judge the saved guardrails, so their pass bit still judges the slope at MAC 10.'}`
+
   const file = useMemo(() => {
+    const data = atMac.spec
     if (!data || data === 'missing') return null
     if (method === 'ols' && (!data.olsIntercept || !data.olsSlope)) return null
     const intercept = method === 'ols' ? data.olsIntercept! : data.intercept
@@ -191,8 +216,9 @@ export function SpecCurve({
     const bits = (s: string) => order.map(i => s[i]).join('')
     return { ...data, n: order.length, n_pass: order.filter(i => data.ok[i] === '1').length, value: pick(value) as number[],
       intercept: pick(intercept) as number[], slope: pick(slope), heldout: pick(data.heldout), cut: pick(data.cut), k: pick(data.k),
-      co: pick(data.co), sp: pick(data.sp), sel: pick(data.sel), mo: pick(data.mo), lot: pick(data.lot), masks: data.masks.map(bits), ok: bits(data.ok) }
-  }, [data, method, metric])
+      co: pick(data.co), sp: pick(data.sp), sel: pick(data.sel), mo: pick(data.mo), lot: pick(data.lot), masks: data.masks.map(bits), ok: bits(data.ok),
+      extra: data.extra && Object.fromEntries(Object.entries(data.extra).map(([key, col]) => [key, pick(col)])) }
+  }, [atMac, method, metric])
 
   // the rule behind the red dots: the saved guardrails are the export's own pass bit; the
   // templates and the reader's rule run on the displayed fit (lib/guardrails)
@@ -286,7 +312,7 @@ export function SpecCurve({
   // what the chart draws, shared by the chart and the guardrail editor's live preview of it
   const curve = () => ({
     heat,
-    file: f, metric: METRICS[metric], shown, layout, highlighted, showDots, highlightLabel: highlightDescription,
+    file: f, metric: { ...METRICS[metric], axis: METRICS[metric].axis.replace('MAC 10', gallery.label) }, shown, layout, highlighted, showDots, highlightLabel: highlightDescription,
     // panels per baseline: the shared one where selection and model are paired, else the model spectra
     panelBy: (paired ? 'sel' : 'sp') as 'sel' | 'sp',
     required, toggleChoice, selectedIndices,
@@ -304,7 +330,7 @@ export function SpecCurve({
     <ChartFrame
       id={id}
       title={title ?? 'Specification curve — every Addis configuration, sorted by the intercept it produces'}
-      subtitle={subtitle ? subtitle(file) : `All ${file ? f.n.toLocaleString() + ' ' : ''}scored Addis specifications (every cohort, cutoff, baseline, protocol and k), sorted by Deming intercept at MAC 10, with the analytic choices underneath: a darker strip means more of the specifications at that position used the choice. Click choices to filter: alternatives within the same setting are combined, while different settings must all match. Red points use the selected highlight rule; the default is every saved guardrail${file ? ': ' + f.guardrails : ''}.`}
+      subtitle={(subtitle ? subtitle(file) : `All ${file ? f.n.toLocaleString() + ' ' : ''}scored Addis specifications (every cohort, cutoff, baseline, protocol and k), sorted by Deming intercept at ${gallery.label}, with the analytic choices underneath: a darker strip means more of the specifications at that position used the choice. Click choices to filter: alternatives within the same setting are combined, while different settings must all match. Red points use the selected highlight rule; the default is every saved guardrail${file ? ': ' + f.guardrails : ''}.`) + macNote}
       provenance={provenance ?? 'calibration_explorer batch results via research/ftir_ec_phase3/scripts/spec_curve.py · figure twin: pathways/01_specification_curve.png'}
       controls={
         <>

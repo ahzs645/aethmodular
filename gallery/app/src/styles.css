@@ -431,6 +431,8 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .cite-pop em { color: var(--ink-muted); }
 .cite-pop q { color: var(--ink-muted); font-size: 11.5px; }
 .cite-pop-note { color: var(--ink-muted); font-size: 11px; }
+.cite-pop-tags { font-size: 11px; color: var(--ink); }
+.cite-pop-tags.warn { color: var(--warn, #9a5b00); }
 .season-site-tools { margin-left: auto; display: inline-flex; gap: 2px; }
 .season-site-tools .btn { font-weight: 400; padding: 1px 6px; }
 .season-edit-btn.on { color: var(--accent); }
@@ -502,9 +504,6 @@ code { font-family: var(--mono); font-size: 0.92em; }
   font-weight: 400; font-size: calc(11.5px * var(--text-scale)); line-height: 1.3; color: var(--ink-muted); }
 .pmf-share-name .pmf-dot { margin-right: 5px; }
 /* a small panel in a grid (station check, correlation matrices) with its own ⤢ to open it larger */
-.expandable-panel { position: relative; }
-.panel-expand { position: absolute; top: 0; padding: 2px 4px; line-height: 0; color: var(--ink-muted); }
-.panel-expand:hover { color: var(--ink-text); }
 /* the bubble map with its site list beside it; stacked on narrow screens */
 /* maps on @pgmaps/geo-toolkit (components/GeoMap): the canvas, and the HTML markers MapLibre places over it */
 .geo-map { position: relative; border-radius: 8px; overflow: hidden; background: var(--ink-sea); }
@@ -522,6 +521,13 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .geo-map[data-zoom="far"] .map-marker-label.when-near { display: none; }
 .geo-map .maplibregl-marker:hover .map-marker-label.when-near { display: block; }
 .map-marker-label .status-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; vertical-align: 1px; }
+/* SpartanCompositionMap: a donut standing for several sites that overlap at this zoom; click to zoom them apart */
+.donut-group { cursor: pointer; }
+.donut-group-count {
+  position: absolute; top: -3px; right: -3px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
+  color: #fff; font-size: calc(10px * var(--text-scale)); font-weight: 700; line-height: 16px; text-align: center;
+  box-shadow: 0 0 0 1.5px var(--ink-panel); pointer-events: none;
+}
 
 .map-with-sites { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 14px; align-items: start; }
 .map-with-sites .map-sites .site-list { max-height: 330px; }
@@ -612,6 +618,13 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 #connected [role=button]:focus-visible .connected-hit { stroke: var(--accent); stroke-width: 2; }
 .facet-grid { display: grid; gap: 12px; }
 .facet-title { font-size: calc(12.5px * var(--text-scale)); font-weight: 600; margin: 0 0 2px; display: flex; gap: 6px; align-items: center; }
+.panel-head { min-height: 20px; flex-wrap: wrap; row-gap: 0; }
+.panel-letter { font-weight: 700; color: var(--ink-text); }
+.panel-title { min-width: 0; }
+.panel-tools { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; }
+.panel-note { font-family: var(--mono); font-weight: 400; font-size: calc(11px * var(--text-scale)); color: var(--ink-muted); white-space: nowrap; }
+.panel-expand-inline { padding: 2px 4px; line-height: 0; color: var(--ink-muted); }
+.panel-expand-inline:hover { color: var(--ink-text); }
 .facet-legend .legend { padding: 0 0 4px; gap: 4px 12px; }
 
 /* SVG marks that should animate when the data behind them changes */
@@ -1617,13 +1630,20 @@ html.dash-present .container.dash { padding-top: 10px; }
 /* Dense categorical charts keep readable labels and scroll within their own frame. */
 .chart-scroll { width: 100%; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; }
 .chart-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-/* components/ScrubField: geo-toolkit's drag-or-type number in the gallery's ink */
+/* components/ScrubField: geo-toolkit's drag-or-type number in the gallery's ink, dressed as a
+   .combobox-trigger (same panel, border, radius, font and height) so the two sit as a pair; the number is bold */
 .gt-scrub-field.scrub-field {
-  --gt-scrub-accent: var(--accent); --gt-scrub-bg: var(--ink-hover); --gt-scrub-border: var(--ink-border);
-  --gt-scrub-border-hover: var(--ink-axis); --gt-scrub-text: var(--ink-text); --gt-scrub-muted: var(--ink-muted);
-  --gt-scrub-h: 28px; --gt-scrub-radius: 6px; --gt-scrub-font: calc(12.5px * var(--text-scale));
-  vertical-align: middle; margin-left: 4px;
+  --gt-scrub-accent: var(--accent); --gt-scrub-bg: var(--ink-panel); --gt-scrub-border: var(--ink-border);
+  --gt-scrub-border-hover: var(--accent); --gt-scrub-text: var(--ink-text); --gt-scrub-muted: var(--ink-text);
+  --gt-scrub-h: calc(1.35em + 10px); --gt-scrub-radius: 6px; --gt-scrub-font: calc(12px * var(--text-scale));
+  font-family: var(--font); vertical-align: middle; margin-left: 4px;
 }
+.gt-scrub-field.scrub-field:focus-visible { outline: 2px solid var(--accent-soft); outline-offset: 0; border-color: var(--accent); }
+.gt-scrub-field.scrub-field[data-editing] { background: var(--accent-soft); }
+.gt-scrub-field.scrub-field .gt-scrub-fill { opacity: 0.12; }
+.gt-scrub-field.scrub-field:hover .gt-scrub-fill, .gt-scrub-field.scrub-field[data-scrubbing] .gt-scrub-fill { opacity: 0.22; }
+.gt-scrub-field.scrub-field .gt-scrub-value, .gt-scrub-field.scrub-field .gt-scrub-input { font-weight: 650; }
+.gt-scrub-field.scrub-field .gt-scrub-unit { color: var(--ink-muted); }
 .frame-actions button[aria-label="Focus on this chart"] { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; padding: 6px; }
 .combobox-option:disabled { opacity: .45; cursor: default; }
 .legend-group { align-items: flex-start; }
