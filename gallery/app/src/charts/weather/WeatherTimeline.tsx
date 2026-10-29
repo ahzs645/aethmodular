@@ -20,13 +20,15 @@ import { loadDaily, type DailyWeather } from '@/lib/weather'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
 import { useFitHeight } from '@/lib/chartFit'
+import { wrapCategory } from '@/components/CategoryAxis'
 import { useSearchParam } from '@/lib/url'
 
-// each panel's title sits on its own line above it (TITLE_H), not rotated beside it: a short panel
-// cannot hold "Precip. (mm/day)" or a two-line measurement name along its height
-const TITLE_H = 16
-const M = { top: 8 + TITLE_H, right: 20, bottom: 30, left: 52 }
-const PANEL = 92, GAP = 14 + TITLE_H
+// each panel's title stands up beside its y axis, as on any plot: the unit on a line of its own
+// ("Precip." over "(mm/day)"), and a name too long for the panel's height wrapped onto more lines.
+// The left margin grows with the most lines any panel needs (TITLE_LINE each), past the tick labels (TICK_ROOM)
+const M = { top: 10, right: 20, bottom: 30 }
+const PANEL = 92, GAP = 16
+const TITLE_FONT = 11.5, TITLE_LINE = 13, TICK_ROOM = 44
 
 /** the daily weather a panel can show (lib/weather DailyWeather), by panel key */
 const WEATHER: Record<string, { label: string; axis: string }> = {
@@ -103,10 +105,14 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
     return daily.date.map((d, i) => ({ t: new Date(d), i })).filter((x) => x.t >= domain[0] && x.t <= domain[1])
   }, [daily, domain])
 
-  const innerW = Math.max(240, width - M.left - M.right)
   // in a fitted dashboard tile the panels share its height
   const fit = useFitHeight()
   const panelH = fit === null ? PANEL : Math.max(40, (fit - M.top - M.bottom - (panels.length - 1) * GAP) / Math.max(1, panels.length))
+  const title = (k: string) => (k in WEATHER ? WEATHER[k].axis : withUnit(fieldOf(k), meta.field_units))
+  // each panel's title as the lines it stands up in: the name wrapped to the panel's height, then its unit
+  const titleLines = new Map(panels.map((k) => [k, axisLines(title(k), panelH - 4)]))
+  const left = TICK_ROOM + 8 + TITLE_LINE * Math.max(1, ...[...titleLines.values()].map((l) => l.length))
+  const innerW = Math.max(240, width - left - M.right)
   const height = M.top + M.bottom + panels.length * panelH + (panels.length - 1) * GAP
   const x = d3.scaleTime().domain(domain ?? [new Date(), new Date()]).range([0, innerW])
   const top = (k: string) => M.top + panels.indexOf(k as never) * (panelH + GAP)
@@ -140,7 +146,6 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
   }, [days, seasons])
 
   const at = cursor === null ? null : days[d3.bisector((d: { t: Date }) => d.t).center(days, x.invert(cursor))]
-  const title = (k: string) => (k in WEATHER ? WEATHER[k].axis : withUnit(fieldOf(k), meta.field_units))
   const shownWeather = new Set(panels.filter((k) => k in WEATHER))
 
   return (
@@ -160,14 +165,14 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
       <div ref={wrapRef} className="chart-wrap">
         {error ? <Empty>{error}</Empty> : !site || !domain ? <Empty>No filters at this site in the current subset.</Empty> : !daily ? <Empty>Loading the daily weather…</Empty> : !panels.length ? <Empty>No panels: add one from the options.</Empty> : (
           <svg width={width} height={height} onMouseLeave={() => { setCursor(null); tip.hide() }}>
-            <g transform={`translate(${M.left},0)`}>
+            <g transform={`translate(${left},0)`}>
               {panels.map((k) => (
                 <g key={k} transform={`translate(0,${top(k)})`}>
                   {runs.map((r, i) => <rect key={i} x={x(r.a)} width={Math.max(1, x(r.b) - x(r.a) + innerW / Math.max(1, days.length))} height={panelH} fill={r.color} opacity={0.1} />)}
                   <YAxis scale={yOf(k)} x={0} gridWidth={innerW} tickCount={3} />
                   {k === 'field'
-                    ? <PanelTitle text={title(k)} pick="field" />
-                    : <AxisChoices options={choices} y={[k, (v) => replacePanel(k, v)]} noun="panels"><PanelTitle text={title(k)} pick="y" /></AxisChoices>}
+                    ? <PanelTitle lines={titleLines.get(k)!} left={left} height={panelH} pick="field" />
+                    : <AxisChoices options={choices} y={[k, (v) => replacePanel(k, v)]} noun="panels"><PanelTitle lines={titleLines.get(k)!} left={left} height={panelH} pick="y" /></AxisChoices>}
                   {k === 'temp' && <>
                     <path d={band(days) ?? ''} fill={INK.fit} opacity={0.12} />
                     <path d={line(daily.t, yT)} fill="none" stroke="#c0392b" strokeWidth={1.2} />
@@ -206,14 +211,26 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
   )
 }
 
-/** a panel's title, above its top-left corner; clicking it opens the panel's picker as an axis title does */
-function PanelTitle({ text, pick }: { text: string; pick: AxisRole }) {
+/** a title split for standing up beside a panel `room` px tall: the name wrapped to fit, then the unit "(…)" on its own line */
+function axisLines(text: string, room: number): string[] {
+  const unit = text.endsWith(')') ? text.lastIndexOf(' (') : -1
+  // wrapCategory counts 6 px a character at 11 px; the title is a little larger
+  const wrap = (t: string) => wrapCategory(t, room * 11 / TITLE_FONT)
+  return unit > 0 ? [...wrap(text.slice(0, unit)), text.slice(unit + 1)] : wrap(text)
+}
+
+/** a panel's title, standing up beside its y axis, its lines left to right; clicking it opens the panel's picker as an axis title does */
+function PanelTitle({ lines, left, height, pick }: { lines: string[]; left: number; height: number; pick: AxisRole }) {
   const method = useEstimator()
+  // the lines fill the margin from its left edge, so the last ends just short of the tick labels
+  const baseline = (i: number) => -left + 4 + TITLE_LINE * (i + 1) - 2
   return (
     <AxisTitle pick={pick}>
-      <text x={-M.left + 8} y={-6} fontSize={11.5} fontWeight={600} fill={INK.text}>
-        {chemText(estimatorText(text, method))}<tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>
-      </text>
+      <g fontSize={TITLE_FONT} fontWeight={600} fill={INK.text}>
+        {lines.map((line, i) => <text key={i} transform={`translate(${baseline(i)},${height / 2}) rotate(-90)`} textAnchor="middle">
+          {chemText(estimatorText(line, method))}{i === lines.length - 1 && <tspan className="axis-pick-caret" dx={3} data-export="skip">▾</tspan>}
+        </text>)}
+      </g>
     </AxisTitle>
   )
 }
