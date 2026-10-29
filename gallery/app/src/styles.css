@@ -1728,7 +1728,19 @@ html[data-single='1'] [data-single-active] .frame-chart .legend:not(.facet-legen
 .single-stats { max-width: 520px; margin: 0 0 10px; display: flex; flex-direction: column; gap: 8px; }
 /* the fit statistics first, then the chart's notes and readouts (ChartAside), whichever arrived first */
 .single-stats > .regression-summary-side { order: -1; }
-.regression-summary-side > svg { display: block; }
+.regression-summary-side > svg { display: block; max-width: 100%; height: auto; }
+/* the heading that folds the fit cards away (lib/singleView SingleViewStats): only while the box holds cards */
+.single-stats-toggle { display: none; align-items: center; gap: 6px; align-self: flex-start; margin: 0 0 -4px; padding: 2px 4px 2px 0; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: calc(12px * var(--text-scale)); font-weight: 600; color: var(--ink-muted); }
+.single-stats-toggle:hover { color: var(--ink-text); }
+.single-stats-toggle:has(+ .single-stats > .regression-summary-side) { display: inline-flex; }
+.single-stats-toggle > svg { transition: transform 0.15s; }
+.single-stats-toggle[aria-expanded='false'] > svg { transform: rotate(-90deg); }
+.single-stats.fits-folded > .regression-summary-side { display: none; }
+.single-stats.fits-folded:not(:has(> :not(.regression-summary-side))) { display: none; }
+/* the scatterplot's panel size (charts/correlation/Scatterplot): ↺ back to Auto, then the size to drag or type */
+.panel-size-row { display: inline-flex; align-items: center; gap: 4px; }
+.panel-size-reset:disabled { opacity: 0.35; cursor: default; }
 .side-fit-title { margin: 0 0 3px; font-size: calc(12px * var(--text-scale)); font-weight: 600; color: var(--ink-text); display: flex; gap: 6px; align-items: center; }
 .fit-pointed { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 6px; }
 .single-stats > .chart-note, .single-stats .chart-note { margin: 0; display: block; }

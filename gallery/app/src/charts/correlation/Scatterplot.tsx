@@ -29,6 +29,8 @@ import { useSearchParam, useTileSetting } from '@/lib/url'
 import { GroupingPicker, useGroupings } from '@/components/GroupingDialog'
 import { NO_BAND_COLOR, applyGrouping, noBandLabel } from '@/lib/groupings'
 import { ChartAside } from '@/lib/singleView'
+import { ScrubField } from '@/components/ScrubField'
+import { UndoIcon } from '@/components/Icons'
 
 type Point = { row: FilterRow; x: number; y: number; c: number | null; s: number | null }
 type Scale = d3.ScaleLinear<number, number> | d3.ScaleLogarithmic<number, number>
@@ -41,6 +43,9 @@ const ROWED = (layout: unknown) => layout === 'Per season' || layout === 'Per gr
 /** Value's categorical choice where a site in view has PMF: each point by its day's dominant source */
 const PMF_COLOUR = 'PMF source (dominant)'
 const NO_SIZE = 'none'
+/** several panels drawn at a fixed plot side (px), dragged or typed, instead of fitted to the chart or the window */
+const PANEL_MIN = 120
+const PANEL_MAX = 900
 
 /**
  * Sequential ramp over the 2–98 % bulk of a third variable, so one outlier does not wash the rest to the first colour.
@@ -106,6 +111,8 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   // the reader's grouping (lib/groupings) for the Per group layout and the Group colour: its id, kept in the URL
   const groupings = useGroupings()
   const [groupId, setGroupId] = useSearchParam<string>(`${id}.group`, '')
+  // the panel size in px, '' for Auto
+  const [panelParam, setPanelParam] = useSearchParam<string>(`${id}.panel`, '')
   const groupingDef = groupings.find(groupId)
   const noBand = groupingDef ? noBandLabel(groupingDef) : 'No value'
   const o = useChartOptions('scatter', [
@@ -115,6 +122,18 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
     // per-season panels: each site's seasons in one row that scrolls sideways, or wrapped onto as many lines as fit
     { key: 'seasonRows', label: 'Panels', choices: [{ value: 'line', label: 'One row' }, { value: 'wrap', label: 'Wrap' }], default: 'line',
       when: (c) => ROWED(c.layout), title: 'One row: each site\'s seasons side by side, scrolling sideways when they do not fit · Wrap: as many panels per line as fit the chart, the rest on the next line' },
+    // several panels bigger than they fit: a fixed side per plot, the chart scrolls sideways and the page down
+    // the field shows the fitted size while on Auto, so a drag starts from what is drawn; ↺ goes back to Auto
+    { key: 'panelSize', when: (c) => c.layout !== 'Combined', node: () => <span className="control panel-size"
+      title="Every plot's side in px: drag sideways or click to type. Panels that do not fit scroll sideways inside the chart and down the page. ↺ goes back to Auto, the panels fitted to the chart (in the one-chart view, the window)">
+      Panel size
+      <span className="panel-size-row">
+        <button type="button" className="btn quiet icon-btn panel-size-reset" aria-label="Panel size: back to Auto" title={sized ? 'Back to Auto: the panels fit the chart' : 'Auto: the panels fit the chart'}
+          disabled={!sized} onClick={() => setPanelParam('')}><UndoIcon /></button>
+        <ScrubField label="Panel size" value={sized || Math.round(innerW)} min={PANEL_MIN} max={PANEL_MAX} step={10} unit={sized ? 'px' : 'auto'} width={110}
+          onChange={(v) => setPanelParam(String(Math.round(v)))} />
+      </span>
+    </span> },
     { key: 'colorBy', label: 'Colour', choices: COLOR_BY.map((v) => ({ value: v, when: v === 'Site' ? (c: OptionContext) => !(c.layout === 'Per season' && (c.sites as number) <= 1) : v === 'Group' ? (c: OptionContext) => !!c.hasGroup : undefined })), default: 'Site', title: 'Value: a third measurement on a sequential ramp (2–98 % of its range), or, where a site in view has PMF, its day\'s dominant source', onChange: () => setHidden(new Set()) },
     // the grouping for Per group panels and the Group colour: always offered; those two choices appear once one is picked
     // the first pick (from none) colours by it at once; Per group stays a choice
@@ -284,21 +303,24 @@ export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', 
   // several panels: a plot never shrinks below a readable size; when a row does not fit, it scrolls sideways
   // inside the chart (each site's seasons stay in one row, side by side) instead of squeezing every plot.
   // A Dashboard tile keeps fitting its panels to the tile.
-  const tiled = fit !== null
+  // a panel size picked (not Auto): every plot at that side, whatever the chart's or the window's room
+  const panelPx = Math.round(Number(panelParam))
+  const sized = layout !== 'Combined' && panelParam && Number.isFinite(panelPx) ? Math.min(PANEL_MAX, Math.max(PANEL_MIN, panelPx)) : 0
+  const tiled = fit !== null && !sized
   const GAP = tiled ? 12 : 24
   // One phone panel fits the card; wide multi-panel rows can still scroll.
-  const MIN_PLOT = Math.min(tiled ? 200 : rowed ? 240 : 300, Math.max(120, width - MARGIN.left - MARGIN.right))
+  const MIN_PLOT = sized || Math.min(tiled ? 200 : rowed ? 240 : 300, Math.max(120, width - MARGIN.left - MARGIN.right))
   const wrapSeasons = o.values.seasonRows === 'wrap'
   // wrapped: as many panels per line as fit at the minimum size
   const fitCols = Math.max(1, Math.floor((width + GAP) / (MIN_PLOT + MARGIN.left + MARGIN.right + GAP)))
-  const cols = layout === 'Per site' && width > 700 ? 2
-    : rowed ? (tiled ? Math.min(perGroup, width > 1000 ? 4 : width > 640 ? 2 : 1) : wrapSeasons ? Math.min(perGroup, fitCols) : width > 640 ? perGroup : 1)
+  const cols = layout === 'Per site' ? (sized ? Math.min(panels.length, fitCols) : width > 700 ? 2 : 1)
+    : rowed ? (tiled ? Math.min(perGroup, width > 1000 ? 4 : width > 640 ? 2 : 1) : wrapSeasons ? Math.min(perGroup, fitCols) : sized || width > 640 ? perGroup : 1)
     : 1
   const panelOuterW = Math.floor((width - (cols - 1) * GAP) / cols)
   const availW = Math.max(MIN_PLOT, panelOuterW - MARGIN.left - MARGIN.right)
   // every crossplot panel is square, with or without the 1:1 line
   const panelRows = Math.max(1, Math.ceil(panels.length / cols))
-  const innerW = Math.min(availW, fit === null ? (layout === 'Per site' ? 420 : rowed ? 320 : MAX_SQUARE) : Math.max(100, fit / panelRows - MARGIN.top - MARGIN.bottom))
+  const innerW = sized || Math.min(availW, fit === null ? (layout === 'Per site' ? 420 : rowed ? 320 : MAX_SQUARE) : Math.max(100, fit / panelRows - MARGIN.top - MARGIN.bottom))
   const innerH = innerW
   // fixed-width columns (the panel's own width): a grid wider than the chart starts at its left edge and scrolls,
   // where shrinkable columns would centre each panel in a narrower cell and clip its left side

@@ -37,12 +37,15 @@ interface SingleView {
   /** the stats box above the chart's options, where the active chart's regression summary goes */
   slot: HTMLElement | null
   setSlot: (n: HTMLElement | null) => void
+  /** the stats box's width, measured even while it is empty (and so not drawn): the summary cards draw at it */
+  slotWidth: number
+  setSlotWidth: (w: number) => void
   /** where the chart in view has its options (a chart's own placement still wins) */
   side: ControlsSide
   setSide: (v: ControlsSide) => void
 }
 
-const Ctx = createContext<SingleView>({ on: false, setOn: () => {}, available: false, active: null, index: 0, count: 0, title: '', charts: [], go: () => {}, jump: () => {}, slot: null, setSlot: () => {}, side: 'right', setSide: () => {} })
+const Ctx = createContext<SingleView>({ on: false, setOn: () => {}, available: false, active: null, index: 0, count: 0, title: '', charts: [], go: () => {}, jump: () => {}, slot: null, setSlot: () => {}, slotWidth: 0, setSlotWidth: () => {}, side: 'right', setSide: () => {} })
 
 /**
  * The on/off switch, kept in App so the provider can turn it off on the Dashboard. In the link (`view=single`),
@@ -106,6 +109,7 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
   const [frames, setFrames] = useState<HTMLElement[]>([])
   const [index, setIndex] = useState(0)
   const [slot, setSlot] = useState<HTMLElement | null>(null)
+  const [slotWidth, setSlotWidth] = useState(0)
   const want = useRef<HTMLElement | null>(null)
   const at = useRef(0)
   const [side, setSide] = useSearchParam<ControlsSide>('side', 'right', ['right', 'left', 'top'])
@@ -227,8 +231,8 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
   }, [frames])
   const value = useMemo<SingleView>(() => ({
     on, setOn, available, active, index, count: on ? frames.length : 0,
-    title: active?.dataset.frameTitle ?? '', charts, go, jump, slot, setSlot, side, setSide,
-  }), [on, setOn, available, active, index, frames.length, charts, go, jump, slot, side, setSide])
+    title: active?.dataset.frameTitle ?? '', charts, go, jump, slot, setSlot, slotWidth, setSlotWidth, side, setSide,
+  }), [on, setOn, available, active, index, frames.length, charts, go, jump, slot, slotWidth, side, setSide])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
@@ -441,14 +445,44 @@ export function SingleViewNav({ children }: { children?: ReactNode }) {
   </>
 }
 
+const STATS_FOLDED_KEY = 'aeth-gallery:single-stats-folded'
+
 /**
  * Directly above the chart's options: its fit statistics, drawn here instead of above the axes, and its
  * notes and readouts (ChartAside). Left out of exports (data-export="skip"); an open export draws them
- * back in the chart.
+ * back in the chart. The box's width is measured from the column that holds it (an empty box is not drawn,
+ * so it has none of its own) and follows that column, so the cards never run past it. A heading over the
+ * fit cards folds them away (remembered in this browser); it shows only while there are cards to fold.
  */
 export function SingleViewStats() {
-  const { setSlot } = useSingleView()
-  return <div ref={setSlot} className="single-stats" data-export="skip" />
+  const { slot, setSlot, setSlotWidth } = useSingleView()
+  const [folded, setFolded] = useState(() => { try { return localStorage.getItem(STATS_FOLDED_KEY) === '1' } catch { return false } })
+  const fold = () => setFolded((f) => {
+    try { localStorage.setItem(STATS_FOLDED_KEY, f ? '0' : '1') } catch { /* the choice still holds for this session */ }
+    return !f
+  })
+  useLayoutEffect(() => {
+    const holder = slot?.parentElement
+    if (!slot || !holder) return
+    const measure = () => {
+      const cs = getComputedStyle(holder)
+      const inner = holder.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0)
+      const cap = parseFloat(getComputedStyle(slot).maxWidth)
+      setSlotWidth(Math.max(0, Math.floor(Number.isFinite(cap) ? Math.min(cap, inner) : inner)))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(holder)
+    return () => ro.disconnect()
+  }, [slot, setSlotWidth])
+  return <>
+    <button type="button" className="single-stats-toggle" data-export="skip" aria-expanded={!folded} onClick={fold}
+      title={folded ? 'Show the fit statistics' : 'Fold the fit statistics away'}>
+      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>
+      Fit statistics
+    </button>
+    <div ref={setSlot} className={`single-stats${folded ? ' fits-folded' : ''}`} data-export="skip" />
+  </>
 }
 
 /** ChartFrame's stats box while its chart is the one in view (and not being exported), else null */

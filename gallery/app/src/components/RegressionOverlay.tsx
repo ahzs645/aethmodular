@@ -125,7 +125,8 @@ export function useRegressionSummary({ stats, groups, width, enabled = true, pan
     if (now !== place) setPlace(now)
   })
   const slot = place === 'side' ? single.slot : null
-  if (slot) width = Math.max(200, slot.clientWidth || 320)
+  // the stats box's width (lib/singleView measures it, empty or not), never wider than its column
+  if (slot) width = Math.max(140, single.slotWidth || slot.clientWidth || 240)
   const items = !enabled || !methods.length ? [] : groups ?? [{ stats, name: undefined, color: undefined }]
   const readouts = items.map(group => ({ group, r: readout(group.stats, methods, showCI, group.name, group.color) }))
   // as many columns as the longest readout line allows (lib/facets fitColumns): short group readouts sit side by side
