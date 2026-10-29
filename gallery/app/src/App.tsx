@@ -76,7 +76,7 @@ import { GroupDrawer } from '@/components/GroupDrawer'
 import { WeatherPage } from '@/pages/WeatherPage'
 import { AeronetPage } from '@/pages/AeronetPage'
 import { HIDDEN_DUPLICATES } from '@/fieldLineage'
-import { PageSidebarProvider, PageSidebarSlot, SidebarControls } from '@/lib/pageSidebar'
+import { PageSidebarProvider, PageSidebarSlot, SidebarControls, usePageSidebarNote } from '@/lib/pageSidebar'
 import { RATIO_GROUP, RATIO_PRESETS, VOLUME, parseRatios, ratioKey, ratiosParam, viewRows, viewUnits, type Basis, type RatioDef } from '@/lib/viewFields'
 import { RatiosProvider } from '@/components/RatioDialog'
 import { GroupingsProvider } from '@/components/GroupingDialog'
@@ -1399,8 +1399,8 @@ export default function App() {
       {(NETWORK_TABS as readonly string[]).includes(tab) && <BrushBar onKeep={keepFilters} onDrop={dropFilters} />}
       <Shell nav={nav} dash={tab === 'dashboard'} wide={tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental'} editsBadge={!subset}>
         {/* tabs without the Filters panel: a sidebar for the page's own controls, with the fits where the page fits */}
-        {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting' || tab === 'experimental')
-          && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'} />)}
+        {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting' || tab === 'experimental' || tab === 'similarity')
+          && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'} label={tab === 'similarity' ? 'Target' : 'Filters'} />)}
         {tab === HUB_TAB && <InvestigationsPage areas={HUB_AREAS} onOpen={(t, p) => openTab(t, undefined, p ?? AREAS.find((a) => a.tab === t)?.pages[0]?.key)} />}
         {tab === 'availability' && <DataAvailabilityPage />}
         {tab === 'census' && <><AreaHeader area="Census" pages={CENSUS_PAGES} value="census" onPage={() => {}} /><CensusPage census={census} /></>}
@@ -1560,14 +1560,24 @@ function TocToggle() {
   </button>
 }
 
-/** The sidebar of a tab without the Filters panel: the page's own controls (lib/pageSidebar), and the fits where it draws them. */
-function PageSidebar({ fits }: { fits: boolean }) {
+/**
+ * The sidebar of a tab without the Filters panel: the page's own controls (lib/pageSidebar), and the fits where it draws them.
+ * `label` names it for what it holds (the Similarity tab's is its Target); the page's tab note (SidebarControls `tabNote`)
+ * sits under the name on the edge tab.
+ */
+function PageSidebar({ fits, label = 'Filters' }: { fits: boolean; label?: string }) {
   const [open, setOpen] = useSidePanelOpen()
   const top = useHeaderHeight()
+  const note = usePageSidebarNote()
+  const noun = label.toLowerCase()
   return <>
-    <SideDock open={open} top={top} onClose={() => setOpen(false)} tab={<button className="subset-tab" type="button" aria-expanded={open} onClick={() => setOpen(!open)} title={open ? 'Hide the filters' : 'Show the filters'}><span className="subset-tab-label">Filters</span></button>}>
-      <aside className="panel subset subset-panel" aria-label="Filters">
-        <header className="subset-head"><strong>Filters</strong><span style={{ marginLeft: 'auto' }}><button type="button" className="btn quiet x-btn" onClick={() => setOpen(false)} aria-label="Close filters" title="Close"><XIcon /></button></span></header>
+    <SideDock open={open} top={top} onClose={() => setOpen(false)} tab={<button className="subset-tab" type="button" aria-expanded={open} onClick={() => setOpen(!open)}
+      title={`${open ? 'Hide' : 'Show'} the ${noun}${note ? ` (${note})` : ''}`}>
+      <span className="subset-tab-label">{label}</span>
+      {note && <span className="subset-tab-count">{note}</span>}
+    </button>}>
+      <aside className="panel subset subset-panel" aria-label={label}>
+        <header className="subset-head"><strong>{label}</strong><span style={{ marginLeft: 'auto' }}><button type="button" className="btn quiet x-btn" onClick={() => setOpen(false)} aria-label={`Close ${noun}`} title="Close"><XIcon /></button></span></header>
         <PageSidebarSlot />
         {fits && <RegressionControls />}
       </aside>

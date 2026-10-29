@@ -50,6 +50,7 @@ export function ChartFrame({
   source,
   about,
   statsPlace,
+  pageOnly = false,
 }: {
   /** "Short name — longer clause": only the short name shows unless explaining */
   title: string
@@ -70,6 +71,8 @@ export function ChartFrame({
   about?: ReactNode
   /** where this chart's fit statistics go in the single-chart view unless the viewer set it for this chart; else the shared setting */
   statsPlace?: StatsPlace
+  /** a summary of the page's settings rather than a chart: the single-chart view does not step to it, and hides it */
+  pageOnly?: boolean
 }) {
   const method = useEstimator()
   const extras = useContext(FrameExtrasContext)
@@ -175,7 +178,7 @@ export function ChartFrame({
   )
   return (<>
     {focused && <div className="focus-scrim" onClick={() => setFocused(false)} />}
-    <section className={`panel${focused ? ' focused' : ''}`} ref={ref} id={anchor} data-frame data-frame-title={short} data-frame-key={focusKey} {...displayAttrs}>{/* data-frame: a chart the single-chart view steps through (lib/singleView) */}
+    <section className={`panel${focused ? ' focused' : ''}`} ref={ref} id={anchor} {...(pageOnly ? {} : { 'data-frame': '', 'data-frame-title': short, 'data-frame-key': focusKey })} {...displayAttrs}>{/* data-frame: a chart the single-chart view steps through (lib/singleView) */}
       {!headInColumn && head}
       {/* the fit statistics in single-chart view: at the head of an options column, else above the options row */}
       {inView && (!controls || side === 'top') && <SingleViewStats />}

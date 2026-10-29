@@ -3,6 +3,8 @@ import { BaselinePicker, CountPicker, clampCount } from '@/components/Pickers'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, ExplainOnly, Note, Segmented, Select, Toggle } from '@/components/ChartFrame'
 import { PageToc } from '@/components/PageToc'
+import { SidebarControls } from '@/lib/pageSidebar'
+import { useSidePanelOpen } from '@/hooks/useSidePanel'
 import { SpectraTraces } from '@/components/SimilaritySpectra'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -94,6 +96,8 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
   const [compareKey, setCompareKey] = useSearchParam<string>('scmp', '')
   const includeTest = testParam === 'on'
   const includeSame = sameParam === 'on'
+  // the target's settings are in the left sidebar (App's PageSidebar, "Target"): the summary panel opens it
+  const [, setSidebarOpen] = useSidePanelOpen()
 
   const siteIdx = siteCodes.indexOf(site)
   const calendar = calendarOf(meta, siteIdx)
@@ -204,33 +208,40 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
         </ChartFrame>
       </ExplainOnly>
 
+      {/* the target drives every chart on the page, so its settings sit in the sidebar (lib/pageSidebar), not on one chart:
+          in the single-chart view each chart keeps only its own options on the right, and the edge tab names the target */}
+      <SidebarControls title="Target" tabNote={`${site} · ${seasonOptions.includes(season) && season !== 'all' ? calendar[Number(season)].name : 'All year'}`}>
+        <Select label="Site" value={site} options={siteCodes} onChange={(v) => { setSite(v); setSeason('all'); setCompareKey('') }}
+          optionLabel={(o) => { const s = meta.sites[siteCodes.indexOf(o)]; return `${s.site} · ${siteName(s)} (${s.n}${s.split === 'test' ? ', outer test' : ''})` }} />
+        <Select label="Season" value={seasonOptions.includes(season) ? season : 'all'} options={seasonOptions}
+          onChange={(v) => { setSeason(v); setCompareKey('') }}
+          optionLabel={(o) => o === 'all' ? `All year (${meta.sites[siteIdx].n})` : `${calendar[Number(o)].name} (${meta.groups[index.get(`${site}:${o}`)!].n})`} />
+        <Toggle label="Show archived VIBES fit (4000–1425)" checked={showArchived} onChange={v => setArchiveMode(v ? 'show' : 'hide')} />
+        {/* what the chosen baseline is, on hover rather than as a line of its own */}
+        <BaselinePicker value={method} options={methods} onChange={setMethod} short
+          title={method.endsWith('-r70') ? `Completed rank 70${grid?.bin_wn.length ? (method.includes('cut') ? ' · shared channels' : ' · full available range') : ''}` : method === 'VIBES' ? 'Archived truncated correction' : 'Spline baseline'} />
+        <Select label="Selection mask" value={mask} options={maskKeys} onChange={setMask} optionLabel={(k) => `${activeMeta.masks.find((m) => m.key === k)?.label ?? k} (${activeMeta.masks.find((m) => m.key === k)?.n_channels ?? '?'} ch)`} />
+        {method === 'VIBES' && <Note>Archived VIBES fit (4000–1425 cm⁻¹): these similarity scores and traces use the earlier truncated fit. Current full-range VIBES comparisons are on <a href="#tab=meeting">Follow up meeting</a>.</Note>}
+        {loadError && <Note>Could not load part of the export: {loadError}</Note>}
+      </SidebarControls>
+
       <ChartFrame
         title="Target — the site or season everything else is compared with"
         exportable={false}
+        pageOnly
         tip={<>
           <p><strong>Within-group r</strong> is the mean r between the target's own filters. It is the dashed line in the ranking below: a group scoring above it is as close to the target as the target's own filters are to each other.</p>
           {site === 'ETAD' && <p>{ANALYSIS_CALENDAR_NOTE}</p>}
           {site === 'ETAD' && meta.undated.length > 0 && <p>{meta.undated.length} Addis filters have no date in the frozen ledger ({meta.undated.join(', ')}). They count toward all-year Addis but toward no season.</p>}
         </>}
-        controls={<>
-          <Select label="Site" value={site} options={siteCodes} onChange={(v) => { setSite(v); setSeason('all'); setCompareKey('') }}
-            optionLabel={(o) => { const s = meta.sites[siteCodes.indexOf(o)]; return `${s.site} · ${siteName(s)} (${s.n}${s.split === 'test' ? ', outer test' : ''})` }} />
-          <Select label="Season" value={seasonOptions.includes(season) ? season : 'all'} options={seasonOptions}
-            onChange={(v) => { setSeason(v); setCompareKey('') }}
-            optionLabel={(o) => o === 'all' ? `All year (${meta.sites[siteIdx].n})` : `${calendar[Number(o)].name} (${meta.groups[index.get(`${site}:${o}`)!].n})`} />
-          <Toggle label="Show archived VIBES fit (4000–1425)" checked={showArchived} onChange={v => setArchiveMode(v ? 'show' : 'hide')} />
-          {/* what the chosen baseline is, on hover rather than as a line of its own */}
-          <BaselinePicker value={method} options={methods} onChange={setMethod} short
-            title={method.endsWith('-r70') ? `Completed rank 70${grid?.bin_wn.length ? (method.includes('cut') ? ' · shared channels' : ' · full available range') : ''}` : method === 'VIBES' ? 'Archived truncated correction' : 'Spline baseline'} />
-          <Select label="Selection mask" value={mask} options={maskKeys} onChange={setMask} optionLabel={(k) => `${activeMeta.masks.find((m) => m.key === k)?.label ?? k} (${activeMeta.masks.find((m) => m.key === k)?.n_channels ?? '?'} ch)`} />
-        </>}
       >
-        {/* the target in words: the controls above already say it, so the single-chart view leaves it out */}
-        <p data-single-hide="" style={{ fontSize: 13, margin: '2px 0', color: INK.muted }}>
+        {/* the target in words, on the whole page only (the single-chart view steps past it: the edge tab names the target) */}
+        <p style={{ fontSize: 13, margin: '2px 0', color: INK.muted }}>
           <strong style={{ color: groupColor(meta, target, INK.text) }}>{targetLabel}</strong> · <span title={siteWhere(meta.sites[tg.site])}>{siteName(meta.sites[tg.site])}</span> · {tg.n} filters · {splitName(meta.sites[tg.site].split)} · within-group r <strong style={{ color: INK.text }}>{f3(selfR)}</strong>
+          {' '}<button type="button" className="btn quiet" onClick={() => setSidebarOpen(true)} title="Site, season, baseline and selection mask are in the Target sidebar on the left">Change target</button>
         </p>
         {loadError && <Note>Could not load part of the export: {loadError}</Note>}
-        {method === 'VIBES' && <Note>Archived VIBES fit (4000–1425 cm⁻¹): these similarity scores and traces use the earlier truncated fit. Current full-range VIBES comparisons are on <a href="#tab=meeting">Follow up meeting</a>.</Note>}
+        {method === 'VIBES' && <Note>Archived VIBES fit (4000–1425 cm⁻¹): these similarity scores and traces use the earlier truncated fit.</Note>}
       </ChartFrame>
 
       <GroupRanking meta={meta} ranked={ranked} target={target} selfR={selfR} compare={compare} onCompare={(g) => setCompareKey(g == null ? '' : groupKey(meta, g))}
