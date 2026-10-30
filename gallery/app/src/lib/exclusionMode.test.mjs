@@ -72,3 +72,17 @@ test('a fit on the counted rows is the same under Hide and Mark, and moves under
 test('the × path is two strokes centred on the point', () => {
   assert.equal(crossPath(10, 20, 2), 'M8,18L12,22M8,22L12,18')
 })
+
+test('splitById: a page\u2019s own items follow the gallery exclusions by id, under every mode', async () => {
+  const { splitById, exclStatus } = await import('./exclusionMode.ts')
+  const reasons = { 'ETAD-0001': 'flagged', 'ETAD-0002': 'by hand' }
+  const reasonOf = (id) => reasons[id.replace(/-\d$/, '')] ?? null
+  const items = [{ id: 'ETAD-0001-1' }, { id: 'ETAD-0002' }, { id: 'ETAD-0003-2' }, { id: null }]
+  const s = (mode) => splitById(items, (t) => t.id, reasonOf, mode)
+  assert.deepEqual(s('hide').counted.map((t) => t.id), ['ETAD-0003-2', null])
+  assert.equal(s('hide').marked.length, 0)
+  assert.deepEqual(s('mark').marked.map((t) => t.id), ['ETAD-0001-1', 'ETAD-0002'])
+  assert.deepEqual(s('mark').counted, s('hide').counted)
+  assert.equal(exclStatus(null, 'mark'), 'counted')
+  assert.equal(exclStatus('x', 'include'), 'hidden')
+})

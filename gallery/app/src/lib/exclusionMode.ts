@@ -72,3 +72,25 @@ export function crossPath(x: number, y: number, s = 3.2): string {
   const f = (v: number) => +v.toFixed(2)
   return `M${f(x - s)},${f(y - s)}L${f(x + s)},${f(y + s)}M${f(x - s)},${f(y + s)}L${f(x + s)},${f(y - s)}`
 }
+
+/** where a filter stands under the current mode: counted in every statistic, drawn as × only, or not shown */
+export type ExclStatus = 'counted' | 'marked' | 'hidden'
+export function exclStatus(reason: string | null, mode: ExclMode): ExclStatus {
+  return reason === null ? 'counted' : mode === 'mark' ? 'marked' : 'hidden'
+}
+
+/**
+ * Any page's own per-filter items (explorer predictions, holdout filters, spectra, scores …) split by the gallery's
+ * exclusions, joined by filter id: `counted` feed every statistic, `marked` are drawn as × under Mark, the rest are
+ * hidden. An item without an id, or one the gallery does not know, counts. `reasonOf` is lib/markedRows useMarkReason.
+ */
+export function splitById<T>(items: readonly T[], idOf: (t: T) => string | null | undefined,
+  reasonOf: (id: string) => string | null, mode: ExclMode): { counted: T[]; marked: T[]; hidden: T[] } {
+  const counted: T[] = [], marked: T[] = [], hidden: T[] = []
+  for (const t of items) {
+    const id = idOf(t)
+    const status = id ? exclStatus(reasonOf(id), mode) : 'counted'
+    ;(status === 'counted' ? counted : status === 'marked' ? marked : hidden).push(t)
+  }
+  return { counted, marked, hidden }
+}

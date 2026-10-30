@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { ChartAside } from '@/lib/singleView'
-import { markTip, type ExclMode } from '@/lib/exclusionMode'
+import { exclStatus, markTip, splitById, type ExclMode, type ExclStatus } from '@/lib/exclusionMode'
 import type { FilterRow } from '@/lib/types'
 
 /**
@@ -27,6 +27,25 @@ export const useExclMode = () => useContext(Ctx).mode
 export const useMarkedRows = () => useContext(Ctx).rows
 /** why a filter is excluded (null: it counts); a crossplot fed outside the rows uses it for hand exclusions */
 export const useMarkReason = () => useContext(Ctx).reasonOf
+
+/** where any filter id stands under the current mode (lib/exclusionMode exclStatus), for pages with their own rows */
+export function useExclStatus(): (id: string | null | undefined) => ExclStatus {
+  const { mode, reasonOf } = useContext(Ctx)
+  return useMemo(() => (id) => (id ? exclStatus(reasonOf(id), mode) : 'counted'), [mode, reasonOf])
+}
+
+/**
+ * The one way a page with its own per-filter items (not the gallery rows: explorer predictions, holdout filters,
+ * spectra, scores) follows Filters → excluded: `counted` feed every fit, median and count; `marked` are drawn as ×
+ * (components/Crossplot `marked`, ScatterLayer `marks`) under Mark; the hidden ones are left out. Memoised on `items`.
+ */
+export function useExclusionSplit<T>(items: readonly T[], idOf: (t: T) => string | null | undefined): { counted: T[]; marked: T[]; nOut: number } {
+  const { mode, reasonOf } = useContext(Ctx)
+  return useMemo(() => {
+    const s = splitById(items, idOf, reasonOf, mode)
+    return { counted: s.counted, marked: s.marked, nOut: s.marked.length + s.hidden.length }
+  }, [items, mode, reasonOf]) // eslint-disable-line react-hooks/exhaustive-deps
+}
 
 /** one excluded filter drawn as a × at plot pixels `at` (components/ScatterLayer); `tip` is its hover */
 export interface MarkPoint { id: string; at: readonly [number, number]; tip: string[] }
@@ -59,10 +78,16 @@ export function useMarkedPoints<T>(build: (rows: FilterRow[]) => T[], deps: unkn
  * Under Mark, the note on a chart that counts filters: how many excluded filters with its measurement(s) are in
  * view and left out. `drawn`: the chart draws them as × (the point charts); else it only says they are not counted.
  */
-export function ExcludedNote({ fields = [], drawn = false, of }: { fields?: string[]; drawn?: boolean; of?: (r: FilterRow) => boolean }) {
+export function ExcludedNote({ fields = [], drawn = false, of, count }: {
+  fields?: string[]; drawn?: boolean; of?: (r: FilterRow) => boolean
+  /** a page with its own items (useExclusionSplit): how many it marks, instead of counting the gallery rows */
+  count?: number
+}) {
   const rows = useMarkedRows()
-  const n = useMemo(() => rows.filter((r) => fields.every((f) => typeof r[f] === 'number' && Number.isFinite(r[f] as number)) && (!of || of(r))).length,
-    [rows, fields.join('|'), of]) // eslint-disable-line react-hooks/exhaustive-deps
+  const mode = useExclMode()
+  const n = useMemo(() => (count !== undefined ? (mode === 'mark' ? count : 0)
+    : rows.filter((r) => fields.every((f) => typeof r[f] === 'number' && Number.isFinite(r[f] as number)) && (!of || of(r))).length),
+    [count, mode, rows, fields.join('|'), of]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!n) return null
   const what = `${n} excluded filter${n === 1 ? '' : 's'}`
   return <ChartAside><p className="chart-note excluded-note">{drawn
