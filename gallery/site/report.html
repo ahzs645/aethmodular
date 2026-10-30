@@ -1,0 +1,195 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aethmodular — Verification report</title><link rel="stylesheet" href="/site.css"></head><body><header><div class="wrap"><nav><a class="brand" href="/"><span class="brand-mark">a</span>Aethmodular <span style="font-weight:400;color:#7890a6">/ Dashboard lab</span></a><div class="links"><a href="/review/">Screenshots</a><a href="/review/report.html">Test report</a><a class="button" href="/dashboard/#tab=dashboard&amp;net=focus">Open dashboard →</a></div></nav></div></header><main class="wrap"><article class="report"><h1>Dashboard implementation and verification</h1>
+<p>The Superset-inspired improvements are implemented in the Aethmodular gallery. The dashboard was implemented and tested locally before this Site was created. Its source was based on <code>bf706c294b76bba84bfd9ae0035f8aa9bf3822ca</code>; the changes remain available for review in the workspace.</p>
+<p><a href="index.html">Open the screenshot gallery</a>. It contains <strong>63 screenshots</strong>, including every one of the <strong>40 registered chart kinds</strong>, desktop/mobile workflows, deliberate failure states and snapshot replay.</p>
+<h2>Implemented</h2>
+<table>
+<thead>
+<tr>
+<th>Review recommendation</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Scoped filtering</td>
+<td>Independent site/season/date narrowing per tile; retained physical-ID reference cohorts; clear reset to page filters; URL persistence and duplication support. Reference membership survives page filtering, while source values/methods/units remain explicit.</td>
+</tr>
+<tr>
+<td>Contributing-sample drill-down</td>
+<td>Exact KPI contributors, calendar-month markers with keyboard activation, existing distribution-group contributors and scatter fit observations; paginated/searchable tables, sample drawer and spreadsheet-safe CSV. Generic View data is explicitly labeled as finite inputs rather than pretending to reproduce every chart&#39;s later processing.</td>
+</tr>
+<tr>
+<td>Filter/method/source indicators</td>
+<td>Tile strip shows cohort scope and physical-filter count. The information dialog explains finite measurement counts, sites, dates, calendars, methods, MAC/baseline/source mode and available live-source update/retrieval dates.</td>
+</tr>
+<tr>
+<td>Stronger registration contract</td>
+<td>Lazy chart families; declared calibration dependencies and auxiliary-file resources; searchable metadata; schematic previews and explanations for unavailable optional PMF data.</td>
+</tr>
+<tr>
+<td>Shared scientific definitions</td>
+<td>Common method identity and finite/paired physical-filter selectors for information, tables and CSV. FTIR duplicate-product and optical-versus-TOR distinctions remain explicit. Existing scientific fit calculations are retained.</td>
+</tr>
+<tr>
+<td>Loading and failure handling</td>
+<td>Ordinary sheets load no calibration files. Adding a calibration tile requests runs only, with an explicit error/retry flow. React render failures stay inside a tile. Missing local network data offers explicit recovery to bundled focus sites.</td>
+</tr>
+<tr>
+<td>Reproducible sharing</td>
+<td>Existing saved views now support named checkpoints. Versioned, checksummed snapshots contain the resolved active sheet, effective rows/fields, metadata, source settings, source-code fingerprint and available auxiliary files. Replays are isolated from the current-source cache; corrupt files and unsupported versions are rejected.</td>
+</tr>
+<tr>
+<td>Discovery and explanation</td>
+<td>Search by chart name/group/description, schematic previews, plain-text research notes retained in the view, and Add chart access on mobile.</td>
+</tr>
+<tr>
+<td>Interaction/render performance</td>
+<td>Drag previews coalesce to animation frames and skip unchanged grid cells; chart content and cohort inputs are memoized; fit measurements have explicit dependencies; viewport deferral also covers desktop overflow and rails. Loaded charts stay mounted to preserve their state.</td>
+</tr>
+</tbody></table>
+<h2>Test results</h2>
+<ul>
+<li><strong>53 Playwright browser tests passed</strong>, covering the workflows and all 40 registered chart kinds. The test suite runs against the production build with Chromium at desktop and mobile widths.</li>
+<li><strong>33 focused tests passed</strong> for dashboard layout/state, cohort filtering, finite-row selection, CSV escaping, identity normalization, snapshot validation, undo, field substitutions, shared point layers and floating layers.</li>
+<li><strong>Production TypeScript/Vite build passed.</strong> Vite still reports large chunks; the optimization reduces their size rather than claiming the bundle is fully minimized.</li>
+<li><strong>Public-build isolation check passed:</strong> private research paths stay out of the public bundle and publish archive; the existing unlisted instruments policy remains intact.</li>
+<li><strong>Broad unit suite:</strong> 249 passed, 10 skipped, 7 failed because research export fixtures are absent. The same seven failures were reproduced against an archived copy of the untouched original source. They are not hidden or relabeled as passing. Details are in <a href="full-unit-tests.txt">full-unit-tests.txt</a> and <a href="original-fixture-failures.txt">original-fixture-failures.txt</a>.</li>
+</ul>
+<p>The browser checks verify rendering and interaction, not the scientific validity of every upstream dataset. The unchanged default HIPS/FTIR crossplot was checked at n=544 with Deming slope 1.258; new contributors are selected from the inputs actually used by their corresponding aggregation or fit.</p>
+<h2>Measured production-load comparison</h2>
+<p>Three interleaved cold-context Chromium runs per build used the same real bundled focus-site dashboard, 1440×1000 viewport, disabled browser network cache, and 2.5 seconds of settling after a chart appeared. The original build came from a separate archive of the original Git revision. Raw evidence is in <a href="performance.json">performance.json</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Measure</th>
+<th align="right">Original</th>
+<th align="right">Updated</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Calibration JSON requested by an ordinary sheet</td>
+<td align="right">11,242,165 bytes</td>
+<td align="right">0 bytes</td>
+</tr>
+<tr>
+<td>Main JavaScript file (Vite output)</td>
+<td align="right">2,611.72 kB</td>
+<td align="right">1,616.86 kB</td>
+</tr>
+<tr>
+<td>Main JavaScript gzip estimate (Vite)</td>
+<td align="right">863.17 kB</td>
+<td align="right">536.81 kB</td>
+</tr>
+<tr>
+<td>Total decoded resource bytes, median</td>
+<td align="right">15,277,433</td>
+<td align="right">3,049,144</td>
+</tr>
+<tr>
+<td>Scripting time, median</td>
+<td align="right">1.841 s</td>
+<td align="right">1.074 s</td>
+</tr>
+<tr>
+<td>Style recalculation, median</td>
+<td align="right">0.818 s</td>
+<td align="right">0.315 s</td>
+</tr>
+<tr>
+<td>Layout time, median</td>
+<td align="right">0.173 s</td>
+<td align="right">0.174 s</td>
+</tr>
+<tr>
+<td>JS heap sampled at settlement, median</td>
+<td align="right">72.1 MiB</td>
+<td align="right">34.8 MiB</td>
+</tr>
+</tbody></table>
+<p>Decoded bytes are not compressed wire transfer. These are local measurements on one machine, with possible background activity and GC variation, not a production latency or frame-rate guarantee. Layout time was essentially unchanged. The stable improvements are avoiding unused calibration payloads and reducing initial code; heap and timing samples describe this test only.</p>
+<h2>Trying the features</h2>
+<ol>
+<li>Open Dashboard. Use <strong>Edit → + Add</strong> to search charts or add a research note; on mobile use the dashboard overflow menu.</li>
+<li>Open a tile&#39;s <strong>⋯ → Filters for this tile</strong>. Narrow it, retain its current cohort, or reconnect it with <strong>Use page filters</strong>. Use the information strip to inspect scope/method/source.</li>
+<li>Click a headline number or monthly aggregate, or use the distribution-group/scatter-fit action, to inspect exact contributors. View data exposes the general finite inputs; download CSV or open an individual record.</li>
+<li>Open <strong>Aa → Save this sheet</strong> for checkpoints or snapshot download/import. Import displays a saved-data banner; <strong>Return to current data</strong> ends replay.</li>
+</ol>
+<p>Snapshots need the app/build assets, retain available data rather than magically recovering missing exports, and have a 25 MiB import/export limit. Imported files are not stored in view links or retained across page reloads. Reference cohorts retain membership, not historical values. The snapshot checksum detects accidental changes rather than proving authorship. The original repository&#39;s public build rules continue to control what is published.</p>
+<p>The initial default SPARTAN network index is absent from this checkout, so the source-error screenshot shows recovery into the real 942-row bundled focus population (938 after its existing exclusions). No generated data files were hand-edited to disguise missing sources. Tests deliberately inject 503 and chart-module failures; those screenshots are test evidence, not unreported spontaneous failures.</p>
+<p>SQL Lab, Redis/Celery, server-side authentication and scheduled delivery remain deferred as in the original review. They require requirements/infrastructure beyond this static-dashboard work. No alerts or messages were scheduled or sent.</p>
+<h2>Reproducing checks</h2>
+<pre><code class="language-sh">cd gallery/app
+npm ci
+npm run build
+npm run test:dashboard
+node --test src/lib/dashboard.test.mjs src/lib/dashboardCohort.test.mjs src/lib/undoHistory.test.mjs src/lib/fieldEquivalents.test.mjs src/lib/pointLayers.test.mjs src/lib/floating.test.mjs
+python ../data/rebuild.py check-public
+</code></pre>
+<p>Use <code>CHROMIUM_PATH</code> or install Chromium with <code>npx playwright install chromium</code> where needed. <code>npm test</code> also runs the existing research-fixture checks and will report the missing exports described above until those source artifacts are restored.</p>
+<h2>Screenshot index</h2>
+<ul>
+<li><a href="screenshots/00-before-desktop.png">Original dashboard</a></li>
+<li><a href="screenshots/01-after-desktop.png">Updated desktop dashboard</a></li>
+<li><a href="screenshots/02-source-error.png">Source failure and bundled-data recovery</a></li>
+<li><a href="screenshots/03-scoped-filter-controls.png">Independent tile and reference-cohort controls</a></li>
+<li><a href="screenshots/04-reference-versus-filtered.png">Reference cohort beside changing page filters</a></li>
+<li><a href="screenshots/05-contributing-filter-table.png">Exact contributors, searchable table and CSV</a></li>
+<li><a href="screenshots/06-sample-drawer.png">Opening a physical sample from the table</a></li>
+<li><a href="screenshots/07-monthly-drilldown.png">Calendar-month contributors</a></li>
+<li><a href="screenshots/08-chart-catalog.png">Searchable chart catalog with schematic previews</a></li>
+<li><a href="screenshots/09-note-tile.png">Persisted research notes</a></li>
+<li><a href="screenshots/10-calibration-load-error.png">Injected calibration request failure</a></li>
+<li><a href="screenshots/11-calibration-loaded.png">Successful calibration retry</a></li>
+<li><a href="screenshots/12-chart-error-boundary.png">Injected chart-render failure isolated from its sibling</a></li>
+<li><a href="screenshots/13-snapshot-checkpoints.png">Snapshot export and named checkpoints</a></li>
+<li><a href="screenshots/14-snapshot-replay.png">Replaying saved populations</a></li>
+<li><a href="screenshots/15-mobile-dashboard.png">Mobile dashboard after scrolling each lazy tile into view</a></li>
+<li><a href="screenshots/16-mobile-data-table.png">Mobile contributing-row inspection</a></li>
+<li><a href="screenshots/17-presentation.png">Presentation mode</a></li>
+<li><a href="screenshots/18-figure-export.png">Figure export preview</a></li>
+<li><a href="screenshots/19-methods-and-provenance.png">Effective filters, methods and source provenance</a></li>
+<li><a href="screenshots/chart-availability.png">Availability</a></li>
+<li><a href="screenshots/chart-barplot.png">Barplot</a></li>
+<li><a href="screenshots/chart-calcross.png">Calibration crossplot</a></li>
+<li><a href="screenshots/chart-calcv.png">Cross-validation curve</a></li>
+<li><a href="screenshots/chart-clock.png">Seasonal clock</a></li>
+<li><a href="screenshots/chart-composition.png">Composition</a></li>
+<li><a href="screenshots/chart-connected.png">Connected scatter</a></li>
+<li><a href="screenshots/chart-correlogram.png">Correlogram</a></li>
+<li><a href="screenshots/chart-corrrank.png">Correlation ranking</a></li>
+<li><a href="screenshots/chart-distribution.png">Box / violin</a></li>
+<li><a href="screenshots/chart-fgroups.png">Functional groups</a></li>
+<li><a href="screenshots/chart-hexbin.png">Density hexbin</a></li>
+<li><a href="screenshots/chart-histogram.png">Histogram</a></li>
+<li><a href="screenshots/chart-map.png">Site map</a></li>
+<li><a href="screenshots/chart-monthlyband.png">Monthly band</a></li>
+<li><a href="screenshots/chart-monthlyheatmap.png">Monthly heatmap</a></li>
+<li><a href="screenshots/chart-note.png">Research note</a></li>
+<li><a href="screenshots/chart-parallel.png">Parallel coordinates</a></li>
+<li><a href="screenshots/chart-radar.png">Site radar</a></li>
+<li><a href="screenshots/chart-ridgeline.png">Ridgeline</a></li>
+<li><a href="screenshots/chart-sankey.png">Method flow</a></li>
+<li><a href="screenshots/chart-scatter.png">Scatterplot</a></li>
+<li><a href="screenshots/chart-sitecards.png">Site cards</a></li>
+<li><a href="screenshots/chart-siterank.png">Sites ranked</a></li>
+<li><a href="screenshots/chart-sitesummary.png">Site summary</a></li>
+<li><a href="screenshots/chart-sourceseason.png">PMF sources by season</a></li>
+<li><a href="screenshots/chart-sourcestack.png">PMF sources over time</a></li>
+<li><a href="screenshots/chart-spartancomposition.png">SPARTAN composition map</a></li>
+<li><a href="screenshots/chart-species.png">Species graph</a></li>
+<li><a href="screenshots/chart-stat.png">Headline number</a></li>
+<li><a href="screenshots/chart-timeseries.png">Time series</a></li>
+<li><a href="screenshots/chart-wxclimate.png">Monthly climate</a></li>
+<li><a href="screenshots/chart-wxcorr.png">Weather correlations</a></li>
+<li><a href="screenshots/chart-wxpolar.png">Polar plot</a></li>
+<li><a href="screenshots/chart-wxpollrose.png">Pollution rose</a></li>
+<li><a href="screenshots/chart-wxroses.png">Wind roses</a></li>
+<li><a href="screenshots/chart-wxspeed.png">By wind speed</a></li>
+<li><a href="screenshots/chart-wxsummary.png">Weather by site</a></li>
+<li><a href="screenshots/chart-wxtimeline.png">Weather timeline</a></li>
+<li><a href="screenshots/chart-wxwashout.png">Rain washout</a></li>
+<li><a href="screenshots/snapshot-calcross.png">Calibration snapshot replay</a></li>
+<li><a href="screenshots/snapshot-map.png">Map snapshot replay</a></li>
+<li><a href="screenshots/snapshot-wxtimeline.png">Weather snapshot replay</a></li>
+</ul>
+</article></main></body></html>
