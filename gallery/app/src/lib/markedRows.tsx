@@ -94,3 +94,14 @@ export function ExcludedNote({ fields = [], drawn = false, of, count }: {
     ? `${what} drawn as × where they fall inside the axes (Filters → excluded: Mark); not counted in any fit, R² or summary.`
     : `${what} not counted (Filters → excluded: Mark draws them only on the point charts).`}</p></ChartAside>
 }
+
+/**
+ * The one note for a chart that draws a fixed filter set (a notebook's locked holdout, an explorer evaluation set, a
+ * saved table) on which Filters → excluded does not act: shown under Include or Mark, so the reader knows the
+ * switch is not ignored by accident. `what` names the set.
+ */
+export function FixedSetNote({ what }: { what: string }) {
+  const mode = useExclMode()
+  if (mode === 'hide') return null
+  return <ChartAside><p className="chart-note excluded-note">Filters → excluded ({mode === 'mark' ? 'Mark' : 'Include'}) does not act here: this chart draws {what}, as the notebook fixed it.</p></ChartAside>
+}
