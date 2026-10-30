@@ -9,15 +9,18 @@ import { AgreementOverTime } from '../quality/AgreementOverTime'
 import { SmoothRaw, SmoothTimeline } from '../quality/SmoothRaw'
 import { AtnCorrelation } from '../quality/AtnCorrelation'
 import { DualSpotTimeline, JacrosChain, WindowEffect } from '../quality/DualSpot'
-import { INSTRUMENTS, instrumentName, JACROS, useAllDays, useQualityIndex } from '../quality/data'
-import { minuteCode, useMinuteIndex, useMinuteSites } from '../quality/minute'
+import { INSTRUMENTS, instrumentName, JACROS, useAllDays, useQualityIndex, type Day } from '../quality/data'
+import { minuteCode, useMinuteFlow, useMinuteIndex, useMinuteSites } from '../quality/minute'
+import { FlowRatioSite, FlowRatioSites, MinuteFlowClasses, MinuteFlowDiffs, MinuteFlowFractions, MinuteFlowHourly, MinuteRDistribution, useFlowRecords } from '../quality/FlowQcCharts'
 import { MinuteAaeOrder, MinuteClean, MinuteFlowQC, MinuteKstar, MinuteMissing, MinuteSmoothing, MinuteTape, MinuteWindows } from '../quality/MinuteCharts'
 
+/** a stable empty record set while the daily bins load */
+const NO_DAYS: Record<string, Day[]> = {}
 const TOPICS = ['coverage', 'flow', 'smoothing', 'spots'] as const
 const TOPIC_LABEL: Record<string, string> = { coverage: 'Coverage', flow: 'Flow fix', smoothing: 'Smoothing', spots: 'Dual spot' }
 const TOPIC_NOTE: Record<string, string> = {
   coverage: 'Which days each instrument has black carbon on, and what the legacy ±1-day matching window does to a filter day.',
-  flow: 'The spot flows day by day, the flow-fix periods, and the aethalometer against HIPS and FTIR EC before and after the fix.',
+  flow: 'The spot flows day by day, the flow-fix periods, the flow ratio at every instrument and, on the two minute records, flow_qc_analysis\'s hourly ratio, flow fractions, flow differences and ratio distribution, and the aethalometer against HIPS and FTIR EC before and after the fix.',
   smoothing: 'Raw BCc against the smoothed BCc of the pickles (the cleaning pipeline\'s DEMA) and the notebook\'s rolling medians, and how the HIPS comparison changes as filters the smoothing moved are set aside.',
   spots: 'The dual-spot chain: attenuation on both spots, its rate, the spot ratios, roughness, the instrument K at Addis, and raw attenuation against BCc.',
 }
@@ -44,6 +47,9 @@ export function Quality({ rows, meta, picked }: SectionPageProps) {
   const minuteNames = Object.fromEntries(Object.entries(minuteIndex?.sites ?? {}).map(([k, v]) => [k, k === JACROS ? instrumentName(k, meta) : v.name]))
   const mName = minuteNames[mc] ?? instrumentName(code, meta)
   const mSite = minute[mc] ?? null
+  const mFlow = useMinuteFlow(topic === 'flow' ? mc : null, minuteIndex ?? null).data
+  const uspaFlow = useMinuteFlow(topic === 'flow' ? 'USPA' : null, minuteIndex ?? null).data
+  const flowRecords = useFlowRecords(all ?? NO_DAYS, meta, uspaFlow)
 
   const head = (
     <div className="panel weather-head">
@@ -73,7 +79,14 @@ export function Quality({ rows, meta, picked }: SectionPageProps) {
         {topic === 'flow' && <>
           <FlowSummary all={all} meta={meta} />
           <FlowTimeline code={code} days={days} meta={meta} index={q} />
+          <FlowRatioSites records={flowRecords} />
+          <FlowRatioSite code={code} records={flowRecords.instrument} meta={meta} />
           <MinuteFlowQC site={mSite} name={mName} />
+          <MinuteFlowHourly flow={mFlow} name={mName} />
+          <MinuteFlowFractions flow={mFlow} name={mName} />
+          <MinuteFlowDiffs site={mSite} flow={mFlow} name={mName} />
+          <MinuteRDistribution site={mSite} flow={mFlow} name={mName} />
+          <MinuteFlowClasses site={mSite} name={mName} />
           <FlowFixCompare rows={rows} meta={meta} index={q} />
           <AgreementOverTime code={code} rows={rows} meta={meta} index={q} />
         </>}

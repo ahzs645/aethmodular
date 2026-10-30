@@ -32,8 +32,11 @@ What is computed (all from the same minute rows, sorted, duplicate stamps droppe
   windows      ftir_49 B6 on every filter: the 9am day, the calendar day, the +-1-day tolerant mean and the
                filter's own sampling window, IR and Red BCc.
 
-Writes gallery/app/public/data/aethalometer/quality/minute/<CODE>.json and index.json (private with the rest of
-aethalometer/). Concentrations leave in ug/m3.
+  flow_detail  the rest of flow_qc_analysis's figures (hourly R, f1 and pass share; daily flow-difference envelopes;
+               the R box plot; daily median R per 9am day), in <CODE>.flow.json so the site files stay as they were.
+
+Writes gallery/app/public/data/aethalometer/quality/minute/<CODE>.json, <CODE>.flow.json and index.json (private with
+the rest of aethalometer/). Concentrations leave in ug/m3. --flow-only writes the <CODE>.flow.json files alone.
 """
 
 from __future__ import annotations
@@ -185,6 +188,54 @@ def flow_qc(df: pd.DataFrame) -> dict:
         "flows_2d": hist2d(f["F2"], f["F1"], pad(x1, x2), pad(y1, y2), 40),
         "corr_F1_F2": r(f[["F1", "F2"]].corr().iloc[0, 1], 4),
     }
+
+
+def flow_detail(df: pd.DataFrame) -> dict:
+    """The rest of flow_qc_analysis's figures, written to <CODE>.flow.json beside the site file (flow_qc is unchanged):
+      hourly   the notebook's create_hourly_average on the local clock: per hour the median R and f1 and the share
+               of minutes whose R passes. Hours are stored as runs of consecutive hours from `start` ([offset, length],
+               offsets in hours) with the values of every hour in order. f2 is not stored: S = (F1 + F2)/total is 1 on
+               every minute of both records (flow_qc.stats.S), so the hourly f2 is 1 − f1.
+      diffs    plot_flow_differences per local day: the 0.5/50/99.5 % quantiles, minimum and maximum of
+               (F1 + F2) − total and total − setpoint (mL/min), and the share of minutes beyond ±2 mL/min.
+      R_box    plot_ratio_distribution's box plot of every minute's R: quartiles, Tukey whiskers (the furthest minute
+               within 1.5 IQR of the box), the minutes beyond them, the range and the mean.
+      daily9   the daily median R per 9am day (local 09:00 to 09:00, labelled at its start), the day the daily
+               pickles bin by, so the minute record can stand beside them in the all-sites flow-ratio figure."""
+    f = flow_flags(df)
+    hour = f["t"].dt.floor("h")
+    g = f.groupby(hour)
+    h = pd.DataFrame({"R": g["R"].median(), "pass": g["R_pass"].mean(), "f1": g["f1"].median()}).dropna(subset=["R"])
+    start = h.index.min()
+    offset = ((h.index - start) / pd.Timedelta(hours=1)).astype(int).to_numpy()
+    breaks = np.flatnonzero(np.diff(offset) != 1) + 1
+    runs = [[int(offset[a]), int(b - a)] for a, b in zip(np.r_[0, breaks], np.r_[breaks, len(offset)])]
+    hourly = {"start": start.strftime("%Y-%m-%d %H:%M"), "runs": runs, "R": col(h["R"], 3),
+              "pass": [None if not np.isfinite(v) else int(round(100 * v)) for v in h["pass"].to_numpy(dtype=float)], "f1": col(h["f1"], 4)}
+
+    day = f["t"].dt.strftime("%Y-%m-%d")
+    diffs: dict = {}
+    for key in ("sum_diff", "set_diff"):
+        gd = f[key].groupby(day)
+        tab = pd.DataFrame({"p0_5": gd.quantile(.005), "p50": gd.median(), "p99_5": gd.quantile(.995), "min": gd.min(), "max": gd.max(),
+                            "over2": (f[key].abs() > 2).groupby(day).mean()})
+        diffs["day"] = tab.index.tolist()
+        diffs[key] = {k: col(tab[k], 3 if k != "over2" else 4) for k in tab.columns}
+
+    R = f["R"].dropna().to_numpy(dtype=float)
+    q25, q75 = np.quantile(R, [.25, .75]) if len(R) else (np.nan, np.nan)
+    lo_f, hi_f = q25 - 1.5 * (q75 - q25), q75 + 1.5 * (q75 - q25)
+    inside = R[(R >= lo_f) & (R <= hi_f)]
+    R_box = {"q25": r(q25, 4), "median": r(np.median(R) if len(R) else np.nan, 4), "q75": r(q75, 4),
+             "whisker_lo": r(inside.min() if len(inside) else np.nan, 4), "whisker_hi": r(inside.max() if len(inside) else np.nan, 4),
+             "below": int((R < lo_f).sum()), "above": int((R > hi_f).sum()), "min": r(R.min() if len(R) else np.nan, 4),
+             "max": r(R.max() if len(R) else np.nan, 4), "mean": r(R.mean() if len(R) else np.nan, 4), "n": int(len(R))}
+
+    day9 = (f["t"] - pd.Timedelta(hours=9)).dt.strftime("%Y-%m-%d")
+    g9 = f.groupby(day9)["R"]
+    d9 = pd.DataFrame({"R_med": g9.median(), "n": g9.count()}).dropna()
+    return {"R_target": r(f.attrs["R_target"], 4), "hourly": hourly, "diffs": diffs, "R_box": R_box,
+            "daily9": {"day": d9.index.tolist(), "R_med": col(d9["R_med"], 4), "n": d9["n"].astype(int).tolist()}}
 
 
 # ------------------------------------------------------------------------------------------- smoothing
@@ -502,6 +553,7 @@ def site_payload(df: pd.DataFrame, windows: dict, filter_site: str, zone: str) -
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--minute", action="append", default=[], metavar="CODE=PATH", help="a minute CSV for a site code, instead of the Drive file")
+    ap.add_argument("--flow-only", action="store_true", help="write only <CODE>.flow.json (flow_detail), leaving the site files and index.json as they are")
     args = ap.parse_args()
     override = dict(a.split("=", 1) for a in args.minute)
     from data_paths import aethalometry_dir
@@ -515,12 +567,18 @@ def main() -> None:
             continue
         print(f"{code}: reading {path.name}", flush=True)
         df = read_minutes(path, zone)
+        (OUT / f"{code}.flow.json").write_text(json.dumps(flow_detail(df), separators=(",", ":"), allow_nan=False))
+        print(f"{code}: flow detail {(OUT / f'{code}.flow.json').stat().st_size / 1e3:.0f} kB", flush=True)
+        if args.flow_only:
+            del df
+            continue
         payload = site_payload(df, windows, filter_site, zone)
         (OUT / f"{code}.json").write_text(json.dumps(payload, separators=(",", ":"), allow_nan=False))
         index["sites"][code] = {"name": name, "file": rel, "zone": zone, "minutes": payload["minutes"], "span": payload["span"], "filter_site": filter_site}
         print(f"{code}: {payload['minutes']} minutes, {(OUT / f'{code}.json').stat().st_size / 1e3:.0f} kB")
         del df
-    (OUT / "index.json").write_text(json.dumps(index, separators=(",", ":"), allow_nan=False))
+    if not args.flow_only:
+        (OUT / "index.json").write_text(json.dumps(index, separators=(",", ":"), allow_nan=False))
     size = sum(p.stat().st_size for p in OUT.glob("*.json"))
     print(f"{size / 1e6:.2f} MB in {OUT.relative_to(ROOT)}")
 

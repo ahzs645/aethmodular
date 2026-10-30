@@ -66,3 +66,20 @@ export function useMinute(code: string, index: MinuteIndex | null) {
   const c = minuteCode(code)
   return { code: c, ...useExport<MinuteSite>(index?.sites[c] ? `aethalometer/quality/minute/${c}.json` : null) }
 }
+
+/** the rest of flow_qc_analysis's figures (export_aeth_quality_minute.flow_detail → minute/<CODE>.flow.json) */
+type DiffStats = Record<'p0_5' | 'p50' | 'p99_5' | 'min' | 'max' | 'over2', (number | null)[]>
+export interface MinuteFlow {
+  R_target: number
+  /** the hourly rows (local clock) as runs of consecutive hours; pass is the % of the hour's minutes whose R passes */
+  hourly: { start: string; runs: [number, number][]; R: (number | null)[]; pass: (number | null)[]; f1: (number | null)[] }
+  /** per local day (the days of flow_qc.daily): (F1 + F2) − total and total − setpoint, mL/min */
+  diffs: { day: string[]; sum_diff: DiffStats; set_diff: DiffStats }
+  R_box: { q25: number; median: number; q75: number; whisker_lo: number; whisker_hi: number; below: number; above: number; min: number; max: number; mean: number; n: number }
+  /** the daily median R per 9am day (labelled at its start), the day the daily pickles bin by */
+  daily9: { day: string[]; R_med: (number | null)[]; n: number[] }
+}
+/** one instrument's flow detail, if its minute record is exported (null while loading or when absent) */
+export function useMinuteFlow(code: string | null, index: MinuteIndex | null) {
+  return useExport<MinuteFlow>(code && index?.sites[code] ? `aethalometer/quality/minute/${code}.flow.json` : null)
+}

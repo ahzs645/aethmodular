@@ -170,7 +170,7 @@ STEPS: tuple[Step, ...] = (
     Step("aeth-quality", "export", ("gallery/data/export_aeth_quality.py",),
          "Daily QC series (flow, ATN, dual spot, smoothing) for the Data quality page", "aethalometer/quality/", (PICKLES,), ("aethalometer",)),
     Step("aeth-quality-minute", "export", ("gallery/data/export_aeth_quality_minute.py",),
-         "Minute-level flow QC, rolling medians, tape advances, clean mask (Jacros, Pasadena)", "aethalometer/quality/minute/",
+         "Minute-level flow QC, rolling medians, tape advances, clean mask, and the flow_qc notebook's hourly flow ratio, fractions and checks (Jacros, Pasadena)", "aethalometer/quality/minute/",
          (MINUTE,), ("aeth-quality",)),
     Step("aeth-sources", "export", ("gallery/data/export_aeth_sources.py",),
          "The instruments' own AAE and source split against the gallery's, for the Sources page", "aethalometer/sources/instrument.json",

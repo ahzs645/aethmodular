@@ -89,7 +89,7 @@ export function Heat2d({ h, width, xLabel, yLabel, lines = [], identity = false,
   )
 }
 
-function Table({ head, rows, caption }: { head: string[]; rows: ReactNode[][]; caption?: string }) {
+export function Table({ head, rows, caption }: { head: string[]; rows: ReactNode[][]; caption?: string }) {
   return <div style={{ overflowX: 'auto' }}><table className="census-table">
     {caption && <caption className="chart-note" style={{ captionSide: 'top', textAlign: 'left' }}>{caption}</caption>}
     <thead><tr>{head.map((h) => <th key={h}>{h}</th>)}</tr></thead>
@@ -97,7 +97,7 @@ function Table({ head, rows, caption }: { head: string[]; rows: ReactNode[][]; c
   </table></div>
 }
 
-const NoMinute = ({ name }: { name: string }) => <Empty>No minute record for {name} in the repo's Drive mirror: only Addis (MA350-0238, filed as Jacros) and Pasadena (JPL, MA350-0229) have one.</Empty>
+export const NoMinute = ({ name }: { name: string }) => <Empty>No minute record for {name} in the repo's Drive mirror: only Addis (MA350-0238, filed as Jacros) and Pasadena (JPL, MA350-0229) have one.</Empty>
 
 // ------------------------------------------------------------------------------------------ flow QC
 
