@@ -11,6 +11,7 @@ import { useChartOptions } from '@/lib/chartOptions'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { f2, fmt, signed } from '@/lib/format'
 import { slopeAt, useMac } from '@/lib/mac'
+import { ExcludedNote, FixedSetNote } from '@/lib/markedRows'
 import { SidebarControls } from '@/lib/pageSidebar'
 import { categoricalScale } from '@/lib/palettes'
 import { FIT_STYLE, useRegressions } from '@/lib/regressionPrefs'
@@ -65,6 +66,7 @@ export function MacChoice({ picked, rows: viewRows, meta }: SectionPageProps) {
     <PageIntro id="mac-intro" title="MAC 6 or 10 — the choice moves every slope and no intercept" data={data}
       notebooks="research/ftir_ec_phase3/ftir_16_mac_decision_prep, ftir_19_mac_effect_on_calibrations; ftir_31 §1.11 (the pivot with Deming)">
       <p>The 28 Oct meeting page §4 has the MAC by season. This page applies MAC 6 and 10 to every calibration the explorer exported, and sets them against the IMPROVE evidence.</p>
+      <FixedSetNote what="ftir_16's saved tables (the Adama scenarios, ChemSpec and power figures on this page)" />
     </PageIntro>
 
     <MacOneToOne runs={runs} view={view} />
@@ -180,6 +182,7 @@ function MacOneToOne({ runs, view }: { runs: CalibRunsFile; view: MacView }) {
         <Crossplot title="" points={pn.points} xLabel={`HIPS Fabs / ${mac} (µg/m³)`} yLabel="FTIR EC (µg/m³)" fit={false} grouping="none" extraLines={pn.lines} domain={pn.domain} maxSide={460} />
       </div>} />
       <Legend {...lg.props} items={presets.map((p) => ({ label: presetName(p), color: colour.get(p.key)!, shape: 'line' }))} />
+      <FixedSetNote what="the explorer's evaluation filters and its saved fits (calibration_runs.json)" />
       {viewNote(view, allOnly.length ? `The explorer has a fixed cohort for Addis only: ${allOnly.join(', ')} ${allOnly.length > 1 ? 'are' : 'is'} drawn on all pairs.` : '')}
     </ChartFrame>
   )
@@ -225,6 +228,7 @@ function MacPivot({ runs, view }: { runs: CalibRunsFile; view: MacView }) {
         <Key items={[{ label: 'Fabs/10 (filled), fit at MAC 10', color: MAC10 }, { label: `Fabs/${alt} (hollow), fit at MAC ${alt}`, color: MAC6, kind: 'hollow' }, { label: '1:1', color: INK.identity, kind: 'dash' }]} />
         {lines.length > 0 && <p className="legend-note">{lines.map((l) => l.label).join(' · ')}; R² {f2(m10?.R2)} at both.</p>}
       </> : <Empty>No {siteName(runs, target)} run for this calibration.</Empty>}
+      <FixedSetNote what="the explorer's evaluation filters and its saved fits (calibration_runs.json)" />
       {viewNote(view, [view.targets.length > 1 ? `With several sites picked, this shows the first: ${siteName(runs, target)}.` : '',
         set !== view.set ? `${siteName(runs, target)} has no fixed cohort in the explorer, so it is drawn on all pairs.` : ''].filter(Boolean).join(' '))}
     </ChartFrame>
@@ -300,6 +304,7 @@ function SetupsAtMac({ rows: filters, saved, provenance: prov }: { rows: Row[]; 
             include={[0]} reference={o.values.view === 'slope' ? 1 : undefined} height={300}
             xMarkers={[{ at: 6, label: 'MAC 6', color: MAC6 }, { at: 10, label: 'MAC 10', color: MAC10 }, ...(mac !== 6 && mac !== 10 ? [{ at: mac, label: `Filters: ${mac}`, color: INK.text }] : [])]} />}
       {o.values.view !== 'table' && <Key items={setups.map((s) => ({ label: s.name, color: s.color, kind: 'line' as const }))} />}
+      <FixedSetNote what="ftir_19's per-filter table (its fixed 190-filter cohort, or every filter in it with Fabs)" />
     </ChartFrame>
   )
 }
@@ -350,6 +355,7 @@ function ImpliedMac({ rows: all, scenarios, provenance: prov }: { rows: FilterRo
         xLabel={`Implied MAC (m²/g) under Adama OC/EC ${f2(chosen.ratio)}`} yLabel="Addis filters" include={[0]} height={280}
         xMarkers={[{ at: 6, label: 'MAC 6', color: MAC6 }, { at: 10, label: 'MAC 10', color: MAC10 }, ...reader]} />
       <Note>{BASIS_NOTE} {plural(over)} above 80 m²/g {over === 1 ? 'sits' : 'sit'} in the last bin.</Note>
+      <ExcludedNote fields={set === 'ftir16' ? ['OC (FTIR)', 'HIPS Fabs', 'EC (ChemSpec FTIR)'] : ['OC (FTIR)', 'HIPS Fabs']} of={(r) => r.code === 'ETAD' && (rowNum(r, 'OC (FTIR)') ?? 0) > 0} />
     </ChartFrame>
   )
 }

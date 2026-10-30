@@ -28,6 +28,36 @@ export interface MassFilter {
   lot: string | null
 }
 
+/** the parts of an explorer run (calibration_runs.json runs[].eval) the join reads */
+export interface EvalLike { id: (string | null)[]; ref: number[]; pred: number[]; group: string[]; date?: (string | null)[] | null }
+/** a gallery row as the join reads it: its PM2.5 (µg/m³, null when it has none) and date */
+export interface RowLike { mass: number | null; date?: string | null }
+export interface OpticsLike { volume_m3: number | null; area_cm2: number | null; lot: string | null }
+
+/**
+ * The explorer's filters of one run that are among the gallery rows `rowOf` knows, in the run's order: nView of them
+ * are in view, nMass of those carry PM2.5, and `filters` are those with a finite prediction and Fabs too. The page
+ * joins the counted rows this way for every fit, and the excluded rows in view (Filters → excluded: Mark) the same
+ * way, for the × only.
+ */
+export function evalFilters(ev: EvalLike | null | undefined, rowOf: (id: string) => RowLike | undefined, opticsOf: (id: string) => OpticsLike | undefined): { filters: MassFilter[]; nView: number; nMass: number } {
+  const filters: MassFilter[] = []
+  let nView = 0, nMass = 0
+  ev?.id.forEach((id, i) => {
+    const r = id ? rowOf(id) : undefined
+    if (!id || !r) return
+    nView++
+    const fabs = ev.ref[i], fx = ev.pred[i]
+    if (r.mass === null) return
+    nMass++
+    if (!Number.isFinite(fabs) || !Number.isFinite(fx)) return
+    const o = opticsOf(id), date = ev.date?.[i] ?? r.date
+    filters.push({ id, group: ev.group[i], month: date ? Number(date.slice(5, 7)) : null, fabs, fx, mass: r.mass,
+      volume: o?.volume_m3 ?? null, area: o?.area_cm2 ?? null, lot: o?.lot ?? null })
+  })
+  return { filters, nView, nMass }
+}
+
 export type Framing = 'volume' | 'deposit'
 
 /** the columns a framing fits, at one MAC: y is the Fabs side, r the residual f(X) − Fabs/MAC, both in the framing's units */

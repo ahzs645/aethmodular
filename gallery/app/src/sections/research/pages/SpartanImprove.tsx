@@ -3,6 +3,7 @@ import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { useExport } from '@/lib/data'
 import { fmt } from '@/lib/format'
+import { FixedSetNote } from '@/lib/markedRows'
 import { IMPROVE_GREY } from '@/lib/theme'
 import type { SectionPageProps } from '../../types'
 import { DataTable } from '../common/ui'
@@ -42,6 +43,7 @@ export function SpartanImprove(_props: SectionPageProps) {
         provenance={`${NB} (fig 01–03)`}>
         <IntervalStrip blocks={[{ key: 'd', rows: distRows }]} panels={quantities.map((q) => ({ label: `${q} (${unitOf(q)})` }))} labelWidth={80} minPanelWidth={150} />
         <Key items={[{ label: 'IMPROVE', color: IMPROVE_GREY }, { label: 'SPARTAN (four focus sites)', color: SPARTAN }]} />
+        <FixedSetNote what="the notebook's saved SPARTAN and IMPROVE summaries" />
       </ChartFrame>
 
       <ChartFrame id="si-ratios" title="Volume-free ratios — OC/EC, fAbs/EC (≈ MAC) and Fe/PM2.5"
@@ -52,6 +54,7 @@ export function SpartanImprove(_props: SectionPageProps) {
           { key: 'n', label: 'Network', value: (r) => <span style={{ color: color(r.network), fontWeight: 600 }}>{String(r.network)}</span> }, { key: 'r', label: 'Ratio', value: (r) => String(r.ratio) },
           { key: 'u', label: 'Unit', value: (r) => String(r.unit) }, { key: 'c', label: 'n', num: true, value: (r) => n(r.n)?.toLocaleString() ?? '—' },
           { key: 'm', label: 'Median', num: true, value: (r) => fmt(r.median, 3) }, { key: 'i', label: 'IQR', num: true, value: (r) => `${fmt(r.p25, 3)}–${fmt(r.p75, 3)}` }]} />
+        <FixedSetNote what="the notebook's saved SPARTAN and IMPROVE ratios" />
       </ChartFrame>
 
       <ChartFrame id="si-fits" title="The bridging relationships, fitted per network — fAbs ~ EC, OC ~ EC, Fe ~ PM2.5"
@@ -71,6 +74,7 @@ export function SpartanImprove(_props: SectionPageProps) {
         <DataTable rows={t.parameter_map} rowKey={(r) => String(r.harmonized_col)} columns={[
           { key: 'q', label: 'Quantity', value: (r) => String(r.quantity) }, { key: 's', label: 'SPARTAN parameter', value: (r) => <code>{String(r.spartan_param)}</code> },
           { key: 'i', label: 'IMPROVE column', value: (r) => <code>{String(r.improve_col)}</code> }, { key: 'n', label: 'Note', value: (r) => String(r.note) }]} />
+        <FixedSetNote what="the notebook's saved per-network fits and coverage" />
       </ChartFrame>
 
       <ChartFrame id="si-analogs" title="IMPROVE sites that look like Addis — fAbs/EC and OC/EC by site, nearest first"

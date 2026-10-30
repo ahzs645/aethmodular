@@ -6,6 +6,9 @@ import { SweepPlot } from '@/components/SweepPlot'
 import { useExport } from '@/lib/data'
 import { useMac } from '@/lib/mac'
 import { fmt } from '@/lib/format'
+import { crossPath, markTip } from '@/lib/exclusionMode'
+import { ExcludedNote, FixedSetNote, useMarkedRows, useMarkReason } from '@/lib/markedRows'
+import type { FilterRow } from '@/lib/types'
 import { IMPROVE_GREY, INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
@@ -65,13 +68,18 @@ export function ImproveEnvelope({ rows }: SectionPageProps) {
   const byId = useMemo(() => new Map((optics ?? []).filter((o) => o.type !== 'FB').map((o) => [o.id, o])), [optics])
   const sites = useMemo(() => [...new Set(rows.map((r) => r.site))], [rows])
   const colorOf = (s: string) => rows.find((r) => r.site === s)?.color ?? INK.text
-  // the focus-site filters in view, in the same coordinates (FTIR's EC mass on the filter, HIPS Fabs)
-  const spartan: DensityPoint[] = useMemo(() => rows.flatMap((r) => {
+  // the focus-site filters in view, in the same coordinates (FTIR's EC mass on the filter, HIPS Fabs): the gallery's
+  // counted rows, and under Filters → excluded: Mark the excluded ones in view, drawn as × (lib/markedRows)
+  const densityOf = useMemo(() => (rs: FilterRow[]): (DensityPoint & { id: string })[] => rs.flatMap((r) => {
     const o = byId.get(r.id)
-    if (!o || o.fabs === null || o.ec_ug === null || r.excluded) return []
+    if (!o || o.fabs === null || o.ec_ug === null) return []
     const x = space === 'mass' ? o.ec_ug : o.area_cm2 ? o.ec_ug / o.area_cm2 : null
-    return x === null ? [] : [{ x, y: o.fabs, color: r.color, tip: [r.id, `${r.site} · ${r.date}`, `EC ${fmt(o.ec_ug, 1)} µg on the filter (${fmt(o.area_cm2 ? o.ec_ug / o.area_cm2 : null, 2)} µg/cm²)`, `fAbs ${fmt(o.fabs, 1)} Mm⁻¹`] }]
-  }), [rows, byId, space])
+    return x === null ? [] : [{ id: r.id, x, y: o.fabs, color: r.color, tip: [r.id, `${r.site} · ${r.date}`, `EC ${fmt(o.ec_ug, 1)} µg on the filter (${fmt(o.area_cm2 ? o.ec_ug / o.area_cm2 : null, 2)} µg/cm²)`, `fAbs ${fmt(o.fabs, 1)} Mm⁻¹`] }]
+  }), [byId, space])
+  const spartan = useMemo(() => densityOf(rows), [densityOf, rows])
+  const markedRows = useMarkedRows()
+  const marked = useMemo(() => densityOf(markedRows), [densityOf, markedRows])
+  const reasonOf = useMarkReason()
 
   if (error || !data) return (
     <ChartFrame id="ie-missing" title="Addis against IMPROVE in loading space" provenance={NB.first}>
@@ -105,14 +113,21 @@ export function ImproveEnvelope({ rows }: SectionPageProps) {
         <Bars label="IMPROVE filters (log scale)" format={(v) => (10 ** v >= 1000 ? `${fmt(10 ** v / 1000, 0)}k` : fmt(10 ** v, 0))}
           bars={data.screens.map((s) => ({ key: s.step, label: s.step, value: Math.log10(Math.max(1, s.n)), note: `${s.n.toLocaleString()} · ${s.sites} sites`, tip: [s.step, `${s.n.toLocaleString()} filters at ${s.sites} sites`, s.kind === 'alone' ? 'this bound on its own' : s.kind === 'sequence' ? 'bounds combined' : 'baseline'] }))} />
         <Note>Matching on EC alone finds thousands of IMPROVE filters; adding Addis's fAbs leaves {data.screens[data.screens.length - 1]?.n ?? '—'}. EC-loading-matched IMPROVE filters do not reach Addis's absorption.</Note>
+        <FixedSetNote what="the Addis p05–p95 windows of the focus-site export (its exclusions applied)" />
       </ChartFrame>
 
       <ChartFrame id="ie-density" title="The IMPROVE cloud and the four SPARTAN sites — fAbs against EC on the filter"
         subtitle={`Every post-2003 IMPROVE filter with a volume, binned (${d.n.toLocaleString()} filters; ${d.beyond.toLocaleString()} beyond the axes), with the focus-site filters in view on top and the Addis p05–p95 window dashed. Linear axes from zero, as the loading-envelope notebook pins them.`}
         provenance={<>{NB.anne} · {NB.fed} · {NB.may} §3</>}
         controls={<Segmented label="x" value={space} options={['mass', 'surface'] as const} onChange={setSpace} optionLabel={(o) => (o === 'mass' ? 'EC mass (µg)' : 'EC per area (µg/cm²)')} />}>
-        <DensityPlot id="ie-density" cells={d.cells} bins={d.bins} x={[0, d.x_max]} y={[0, d.y_max]} xLabel={xLabel} yLabel="fAbs (Mm⁻¹)" points={spartan} box={box} maxSide={520} />
+        <DensityPlot id="ie-density" cells={d.cells} bins={d.bins} x={[0, d.x_max]} y={[0, d.y_max]} xLabel={xLabel} yLabel="fAbs (Mm⁻¹)" points={spartan} box={box} maxSide={520}>
+          {marked.length ? ({ x, y }) => <g fill="none" stroke={INK.muted} strokeWidth={1.3} strokeOpacity={0.85} strokeLinecap="round">
+            {marked.filter((p) => p.x <= d.x_max && p.y <= d.y_max).map((p) => <path key={p.id} d={crossPath(x(p.x), y(p.y))}>
+              <title>{markTip({ id: p.id }, reasonOf(p.id) ?? 'excluded', p.tip.slice(1)).join('\n')}</title></path>)}
+          </g> : undefined}
+        </DensityPlot>
         <Key items={sites.map((s) => ({ label: s, color: colorOf(s) }))} />
+        <ExcludedNote count={marked.length} drawn />
       </ChartFrame>
 
       <ChartFrame id="ie-matched" title="Matched on EC, do IMPROVE filters absorb like Addis? — EC-mass and EC-concentration matches"
@@ -125,6 +140,7 @@ export function ImproveEnvelope({ rows }: SectionPageProps) {
           { key: 's', label: 'OLS slope, fAbs ~ EC', num: true, value: (r) => fmt(r.fit.slope, 2) }, { key: 'i', label: 'Intercept (Mm⁻¹)', num: true, value: (r) => fmt(r.fit.intercept, 2) },
           { key: 'r2', label: 'R²', num: true, value: (r) => fmt(r.fit.r2, 3) }]} />
         <Note>These subsets are selected on EC, so their slopes are descriptions of the window, not calibrations.</Note>
+        <FixedSetNote what="the Addis group of the focus-site export (its exclusions applied) beside the IMPROVE subsets" />
       </ChartFrame>
 
       <ChartFrame id="ie-sweep" title="Selecting on fAbs manufactures an intercept — OLS of fAbs on EC above each fAbs threshold"
@@ -175,6 +191,7 @@ export function ImproveEnvelope({ rows }: SectionPageProps) {
         subtitle={`Median and p05–p95 of EC, OC, iron and PM2.5 mass on the filter (µg) and of fAbs × volume / area, a volume-free optical depth (IMPROVE ≈ 33 m³ a filter, SPARTAN ≈ 7). SPARTAN EC and OC are FTIR's own mass on the filter.`}
         provenance={NB.mass}>
         <IntervalStrip blocks={[{ key: 'mass', rows: massRows }]} panels={quantities.map((q) => ({ label: q }))} labelWidth={150} minPanelWidth={160} />
+        <FixedSetNote what="per-site summaries of the focus-site export (its exclusions applied)" />
       </ChartFrame>
     </>
   )

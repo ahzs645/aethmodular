@@ -1,10 +1,12 @@
 import { useMemo } from 'react'
+import type { FilterRow } from '@/lib/types'
 import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { Crossplot } from '@/components/Crossplot'
 import { FieldSelect } from '@/components/FieldSelect'
 import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { fmt } from '@/lib/format'
+import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
@@ -15,6 +17,11 @@ import { BASIS_NOTE, DataTable, Grid, HIGH, LOW, MID, SitePick, initials, line, 
 const NB = 'notebooks/analysis/meteorology/pw_mac_calibration.ipynb'
 const EC = 'EC (FTIR)', FABS = 'HIPS Fabs', HIPS_BC = 'HIPS BC'
 const PW = 'Precipitable water (AERONET)', AOD = 'AOD 500 nm (AERONET)'
+/** effective MAC = HIPS Fabs / FTIR EC per filter (EC > 0), with the moisture over the same window */
+const macPts = (rs: FilterRow[], moisture: string) => rs.flatMap((r) => {
+  const ec = num(r, EC), fabs = num(r, FABS), m = num(r, moisture)
+  return ec !== null && fabs !== null && m !== null && ec > 0 ? [{ r, ec, fabs, m, mac: fabs / ec }] : []
+})
 const MOISTURE = [PW, 'RH (station, sample day)', 'Relative humidity (station)', 'Relative humidity (ERA5)', 'Dew point (ERA5)']
 
 /**
@@ -36,11 +43,11 @@ export function MoistureMac({ rows: viewRows, meta: viewMeta }: SectionPageProps
   const unit = meta.field_units[moisture] ?? ''
   const mLabel = `${moisture}${unit ? ` (${unit})` : ''}`
 
-  // effective MAC = HIPS Fabs / FTIR EC per filter (EC > 0), with the moisture over the same window
-  const all = useMemo(() => siteRows.flatMap((r) => {
-    const ec = num(r, EC), fabs = num(r, FABS), m = num(r, moisture)
-    return ec !== null && fabs !== null && m !== null && ec > 0 ? [{ r, ec, fabs, m, mac: fabs / ec }] : []
-  }), [siteRows, moisture])
+  const all = useMemo(() => macPts(siteRows, moisture), [siteRows, moisture])
+  // Filters → excluded: Mark (lib/markedRows): the site's excluded filters, joined like the rows; × on the crossplots only
+  const markedMet = useAddisMet(useConcRows(useMarkedRows(), viewMeta), viewMeta).rows
+  const markedSite = useMemo(() => ofSite(markedMet, site), [markedMet, site])
+  const marked = useMemo(() => macPts(markedSite, moisture), [markedSite, moisture])
   // the notebook trims effective MAC to its 1st–99th percentile before fitting
   const lo = quantile(all.map((p) => p.mac), 0.01), hi = quantile(all.map((p) => p.mac), 0.99)
   const trimmed = all.filter((p) => p.mac >= lo && p.mac <= hi)
@@ -67,7 +74,8 @@ export function MoistureMac({ rows: viewRows, meta: viewMeta }: SectionPageProps
   }, [all, splitParam, moisture])
 
   // Steiger: does FTIR EC correlate with AOD better than HIPS does?
-  const trio = siteRows.flatMap((r) => { const e = num(r, EC), h = num(r, HIPS_BC), a = num(r, AOD); return e !== null && h !== null && a !== null && e > 0 ? [{ e, h, a }] : [] })
+  const trioOf = (rs: FilterRow[]) => rs.flatMap((r) => { const e = num(r, EC), h = num(r, HIPS_BC), a = num(r, AOD); return e !== null && h !== null && a !== null && e > 0 ? [{ e, h, a }] : [] })
+  const trio = trioOf(siteRows), nTrioOut = trioOf(markedSite).length
   const rE = pearsonR(trio.map((t) => t.a), trio.map((t) => t.e)), rH = pearsonR(trio.map((t) => t.a), trio.map((t) => t.h)), rEH = pearsonR(trio.map((t) => t.e), trio.map((t) => t.h))
   const st = rE !== null && rH !== null && rEH !== null && trio.length > 10 ? steiger(rE, rH, rEH, trio.length) : null
 
@@ -84,6 +92,7 @@ export function MoistureMac({ rows: viewRows, meta: viewMeta }: SectionPageProps
         provenance={`${NB} (§1 the money plot)`} controls={controls}>
         <Grid>
           <Crossplot points={trimmed.map((p) => point(p.r, p.m, p.mac, colorOf(p.r.season), moisture, 'effective MAC', 'Research · moisture and MAC'))} sameScale={false}
+            marked={marked.map((p) => point(p.r, p.m, p.mac, colorOf(p.r.season), moisture, 'effective MAC', 'Research · moisture and MAC'))}
             title="Effective MAC vs moisture" xLabel={mLabel} yLabel="Effective MAC (m²/g)" fit={false}
             extraLines={[...line(money, INK.fit, 'OLS'), ...line({ slope: money.slope + 1.96 * money.seSlope, intercept: money.intercept }, INK.muted, '+1.96 SE', '4 3'),
               ...line({ slope: money.slope - 1.96 * money.seSlope, intercept: money.intercept }, INK.muted, '−1.96 SE', '4 3'), ...line({ slope: 0, intercept: meta.mac_value }, INK.identity, `MAC ${meta.mac_value}`, '2 3')]} />
@@ -95,6 +104,7 @@ export function MoistureMac({ rows: viewRows, meta: viewMeta }: SectionPageProps
           </div>
         </Grid>
         <Key items={seasons.map((s) => ({ label: shortSeason(s.name), color: s.color }))} />
+        <ExcludedNote count={marked.length} drawn />
         <Note>MAC = {macLine(money)}; r {fmt(money.r, 3)} (p {pText(pMoney)}), R² {fmt(money.r2, 3)}, n {money.n}. The notebook used daily AERONET precipitable water on the filter's start day; here it is the mean of the retrievals inside each filter's window.</Note>
       </ChartFrame>
 
@@ -103,6 +113,7 @@ export function MoistureMac({ rows: viewRows, meta: viewMeta }: SectionPageProps
         provenance={`${NB} (§4 PW as predictor of slope vs intercept)`} controls={<Segmented label="Split" value={splitParam} options={['median', 'terciles'] as const} onChange={setSplit} />}>
         <Grid>
           <Crossplot points={groups.flatMap((g) => g.g.map((p) => point(p.r, p.ec, p.fabs, g.color, 'FTIR EC', 'Fabs', 'Research · moisture and MAC', [`${moisture} ${fmt(p.m, 2)}`])))} sameScale={false}
+            marked={marked.map((p) => point(p.r, p.ec, p.fabs, INK.muted, 'FTIR EC', 'Fabs', 'Research · moisture and MAC', [`${moisture} ${fmt(p.m, 2)}`]))}
             title="HIPS Fabs vs FTIR EC" xLabel="FTIR EC (µg/m³)" yLabel="HIPS Fabs (Mm⁻¹)" fit={false}
             extraLines={[...groups.flatMap((g) => line(g.fabsFit, g.color, g.name)), ...line({ slope: meta.mac_value, intercept: 0 }, INK.identity, `MAC ${meta.mac_value}`, '5 4')]} />
           <DataTable rows={groups} rowKey={(r) => r.name} columns={[
@@ -116,6 +127,7 @@ export function MoistureMac({ rows: viewRows, meta: viewMeta }: SectionPageProps
             { key: 'mm', label: 'Median MAC', num: true, value: (r) => fmt(r.medianMac, 2) },
           ]} />
         </Grid>
+        <ExcludedNote count={marked.length} drawn />
         {groups.length >= 2 && groups[0].fabsFit && groups[groups.length - 1].fabsFit && <Note>From the driest to the wettest group the slope changes by {fmt(groups[groups.length - 1].fabsFit!.slope - groups[0].fabsFit!.slope, 2)} m²/g ({fmt((100 * (groups[groups.length - 1].fabsFit!.slope - groups[0].fabsFit!.slope)) / groups[0].fabsFit!.slope, 0)} %) and the intercept by {fmt(groups[groups.length - 1].fabsFit!.intercept - groups[0].fabsFit!.intercept, 2)} Mm⁻¹. The notebook's reading: a slope change means moisture alters absorption per unit mass; an intercept change, a baseline artefact on the filter.</Note>}
       </ChartFrame>
 
@@ -126,6 +138,7 @@ export function MoistureMac({ rows: viewRows, meta: viewMeta }: SectionPageProps
           <DataTable rows={[{ k: 'FTIR EC vs AOD', v: fmt(rE, 3) }, { k: 'HIPS BC vs AOD', v: fmt(rH, 3) }, { k: 'FTIR EC vs HIPS BC', v: fmt(rEH, 3) }, { k: 'Δr (FTIR − HIPS)', v: fmt((rE ?? NaN) - (rH ?? NaN), 3) },
             { k: 'Steiger z', v: fmt(st.z, 3) }, { k: 'two-sided p', v: pText(st.p) }, { k: 'n', v: String(trio.length) }]} rowKey={(r) => r.k}
             columns={[{ key: 'k', label: 'Quantity', value: (r) => r.k }, { key: 'v', label: 'Value', num: true, value: (r) => r.v }]} />
+          <ExcludedNote count={nTrioOut} />
           <Note>{st.p < 0.05 ? `FTIR EC correlates significantly better with AOD than HIPS BC does (p ${pText(st.p)}).` : `The difference is not significant at p < 0.05 (p ${pText(st.p)}).`} The notebook's §3 (how much of a 24 h filter's mass lands in 6–10 am) needs minute aethalometer data, which the gallery does not hold.</Note>
         </>}
       </ChartFrame>

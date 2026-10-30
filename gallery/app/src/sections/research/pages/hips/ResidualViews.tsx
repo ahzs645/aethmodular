@@ -1,16 +1,18 @@
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
 import { Crossplot } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { Key } from '@/components/Key'
 import { SSA_BY_WAVELENGTH } from '@/lib/aeronet'
 import { fmt } from '@/lib/format'
+import { ExcludedNote } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 
-import type { Envelope } from '../../common/optics'
+import { envelopeOf, type Envelope } from '../../common/optics'
 import { ols } from '../../common/stats'
 import { line, point, shortSeason } from '../../common/ui'
+import { useMarkedPairs } from './marked'
 
 const ENVELOPE_NB = 'research/ftir_hips_chem/addis_06_hips_ptfe_operating_envelope.ipynb'
 
@@ -35,12 +37,20 @@ const residOf = (e: Envelope, relative: boolean) => (relative ? e.relResid : e.r
 const residLabel = (relative: boolean) => (relative ? '(HIPS BC − FTIR EC) / FTIR EC' : 'HIPS BC − FTIR EC (µg/m³)')
 const finite = (v: number | null | undefined): v is number => v !== null && v !== undefined && Number.isFinite(v)
 
+/** Filters → excluded: Mark: the site's excluded filters as envelopes at the page's MAC, for the × only */
+function useMarkedEnv(site: string, mac: number): Envelope[] {
+  const marked = useMarkedPairs()
+  return useMemo(() => marked.flatMap((p) => { const e = p.r.site === site ? envelopeOf(p.r, p.o, mac) : null; return e ? [e] : [] }), [marked, site, mac])
+}
+
 /** addis_06 c14: the residual against loading, composition and optical depth, one panel each with its OLS line */
 export function ResidualCrossplots({ env, site, relative, mac, seasons, controls }: Common) {
   const colorOf = (e: Envelope) => seasons.find((s) => s.name === e.row.season)?.color ?? INK.muted
+  const markedEnv = useMarkedEnv(site, mac)
+  const xy = (es: Envelope[], p: (typeof PANELS)[number]) => es.flatMap((e) => { const x = p.value(e), y = residOf(e, relative); return finite(x) && finite(y) ? [{ e, x, y }] : [] })
   const panels = PANELS.map((p) => {
-    const pts = env.flatMap((e) => { const x = p.value(e), y = residOf(e, relative); return finite(x) && finite(y) ? [{ e, x, y }] : [] })
-    return { ...p, pts, fit: pts.length >= 5 ? ols(pts.map((q) => q.x), pts.map((q) => q.y)) : null }
+    const pts = xy(env, p)
+    return { ...p, pts, marked: xy(markedEnv, p), fit: pts.length >= 5 ? ols(pts.map((q) => q.x), pts.map((q) => q.y)) : null }
   })
   return (
     <ChartFrame id="he-resid-cross" title={`The residual against loading, composition and optical depth — ${site}`}
@@ -51,10 +61,12 @@ export function ResidualCrossplots({ env, site, relative, mac, seasons, controls
           <Crossplot sameScale={false} fit={false} maxSide={w - 72} xLabel={p.label} yLabel={relative ? 'Relative residual' : 'Residual (µg/m³)'}
             title={p.fit ? `n ${p.fit.n} · r ${fmt(p.fit.r, 2)}` : `n ${p.pts.length}`}
             extraLines={line(p.fit, INK.text, `${p.key} OLS`)}
-            points={p.pts.map((q) => point(q.e.row, q.x, q.y, colorOf(q.e), p.label, 'residual', 'Research · HIPS envelope', [`tau ${fmt(q.e.o.tau, 3)}`]))} />
+            points={p.pts.map((q) => point(q.e.row, q.x, q.y, colorOf(q.e), p.label, 'residual', 'Research · HIPS envelope', [`tau ${fmt(q.e.o.tau, 3)}`]))}
+            marked={p.marked.map((q) => point(q.e.row, q.x, q.y, colorOf(q.e), p.label, 'residual', 'Research · HIPS envelope', [`tau ${fmt(q.e.o.tau, 3)}`]))} />
         </div>
       )} />}
       <Key items={[...seasons.map((s) => ({ label: shortSeason(s.name), color: s.color })), { label: 'OLS', color: INK.text, kind: 'line' }]} />
+      <ExcludedNote count={markedEnv.length} drawn />
     </ChartFrame>
   )
 }
@@ -64,7 +76,9 @@ export function ResidualSsa({ env, site, relative, mac, seasons, controls }: Com
   const [wl, setWl] = useSearchParam<string>('he.ssa', '675', SSA_BY_WAVELENGTH.map(([w]) => String(w)))
   const field = SSA_BY_WAVELENGTH.find(([w]) => String(w) === wl)?.[1] ?? SSA_BY_WAVELENGTH[1][1]
   const colorOf = (e: Envelope) => seasons.find((s) => s.name === e.row.season)?.color ?? INK.muted
-  const pts = env.flatMap((e) => { const x = e.row[field], y = residOf(e, relative); return typeof x === 'number' && finite(x) && finite(y) ? [{ e, x, y }] : [] })
+  const ssaOf = (es: Envelope[]) => es.flatMap((e) => { const x = e.row[field], y = residOf(e, relative); return typeof x === 'number' && finite(x) && finite(y) ? [{ e, x, y }] : [] })
+  const pts = ssaOf(env)
+  const marked = ssaOf(useMarkedEnv(site, mac))
   const fit = pts.length >= 5 ? ols(pts.map((q) => q.x), pts.map((q) => q.y)) : null
   // SSA sits near 1: the x range from just below the lowest value to 1, not from 0
   const lo = pts.length ? Math.floor((Math.min(...pts.map((q) => q.x)) - 0.01) * 20) / 20 : 0
@@ -77,8 +91,10 @@ export function ResidualSsa({ env, site, relative, mac, seasons, controls }: Com
         <Crossplot sameScale={false} fit={false} maxSide={420} domain={[lo, Math.max(1, ...pts.map((q) => q.x))]} xLabel={`SSA ${wl} nm (AERONET)`} yLabel={relative ? 'Relative residual' : 'Residual (µg/m³)'}
           title={fit ? `n ${fit.n} · r ${fmt(fit.r, 2)} · slope ${fmt(fit.slope, 2)} per unit SSA` : `n ${pts.length}`}
           extraLines={line(fit, INK.text, 'SSA OLS')}
-          points={pts.map((q) => point(q.e.row, q.x, q.y, colorOf(q.e), `SSA ${wl}`, 'residual', 'Research · HIPS envelope', [`tau ${fmt(q.e.o.tau, 3)}`, `OC / EC ${fmt(q.e.ocEc, 2)}`]))} />
+          points={pts.map((q) => point(q.e.row, q.x, q.y, colorOf(q.e), `SSA ${wl}`, 'residual', 'Research · HIPS envelope', [`tau ${fmt(q.e.o.tau, 3)}`, `OC / EC ${fmt(q.e.ocEc, 2)}`]))}
+          marked={marked.map((q) => point(q.e.row, q.x, q.y, colorOf(q.e), `SSA ${wl}`, 'residual', 'Research · HIPS envelope', [`tau ${fmt(q.e.o.tau, 3)}`, `OC / EC ${fmt(q.e.ocEc, 2)}`]))} />
         <Key items={[...seasons.map((s) => ({ label: shortSeason(s.name), color: s.color })), { label: 'OLS', color: INK.text, kind: 'line' }]} />
+        <ExcludedNote count={marked.length} drawn />
       </>}
     </ChartFrame>
   )

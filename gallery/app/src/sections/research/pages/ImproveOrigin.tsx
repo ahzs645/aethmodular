@@ -5,6 +5,7 @@ import { Key } from '@/components/Key'
 import { SweepPlot } from '@/components/SweepPlot'
 import { useExport } from '@/lib/data'
 import { fmt } from '@/lib/format'
+import { ExcludedNote, FixedSetNote } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
 import type { SectionPageProps } from '../../types'
 import { quantile } from '../common/stats'
@@ -102,6 +103,7 @@ export function ImproveOrigin({ rows: viewRows, meta }: SectionPageProps) {
           { id: 'o', label: 'outside it', color: INK.muted, dash: '5 4', points: data.blank_domain.bins.map((b) => ({ x: n(b.Fabs_median) ?? 0, y: n(b.outside_blank_pct) })) }]}
           xLabel="Median HIPS Fabs of the quintile (Mm⁻¹)" yLabel="Samples (%)" include={[0]} />
         <Key items={[{ label: 'below the blank R1 range', color: INK.negative, kind: 'line' }, { label: 'outside it, either side', color: INK.muted, kind: 'dash' }]} />
+        <FixedSetNote what="every sample of the shipped SPARTAN HIPS batch" />
       </ChartFrame>
     </>
   )
@@ -171,6 +173,7 @@ function FabsSurvival({ origin, rows }: { origin: Origin; rows: FilterRow[] }) {
       ]} xScale="log" yScale="log" xDomain={[X_MIN, Math.max(q[steps - 1], fabs[fabs.length - 1] ?? 0) * 1.15]} yDomain={[0.01, 100]} yFormat={decade}
         xLabel="Total HIPS Fabs on the filter (Mm⁻¹, log)" yLabel="% of filters at or above (log)" height={320} xMarkers={markers} />
       <Key items={[{ label: 'IMPROVE, every filter (quantiles)', color: INK.muted, kind: 'line' }, { label: 'Addis filters in view', color: ADDIS_COLOR, kind: 'line' }, { label: 'ftir_26 bridge (160,023 filters): counts', color: INK.text, kind: 'dot' }]} />
+      <ExcludedNote fields={['HIPS Fabs']} of={(r) => r.code === 'ETAD'} />
     </ChartFrame>
   )
 }

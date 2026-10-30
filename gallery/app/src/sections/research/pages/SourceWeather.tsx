@@ -10,6 +10,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useExport } from '@/lib/data'
 import { fmt } from '@/lib/format'
+import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
 import { FONT, INK } from '@/lib/theme'
 import type { FilterRow, PmfFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
@@ -29,6 +30,19 @@ const GROUPS: Record<string, string[]> = { 'Biomass burning': ['Charcoal', 'Wood
 const DOMINANCE = [0.3, 0.4, 0.5, 0.6]
 
 interface Joined { r: FilterRow; ug: Record<string, number>; total: number }
+
+/** the PMF site's filters with a PMF day (by filter id, else by date), each factor as K_F in µg/m³ */
+function joinPmf(rows: FilterRow[], pmf: PmfFile | null): Joined[] {
+  if (!pmf) return []
+  const byId = new Map(pmf.rows.map((p) => [p.id, p])), byDate = new Map(pmf.rows.map((p) => [p.date, p]))
+  return rows.filter((r) => r.code === pmf.site).flatMap((r) => {
+    const p = byId.get(r.id) ?? byDate.get(r.date?.slice(0, 10))
+    if (!p) return []
+    const ug = Object.fromEntries(pmf.sources.map((s) => [s.label, p.ugm3?.[s.label] ?? NaN]))
+    const total = Object.values(ug).filter(Number.isFinite).reduce((a, b) => a + b, 0)
+    return [{ r, ug, total }]
+  })
+}
 
 /** a factor × weather Spearman matrix, drawn as heat cells */
 function Matrix({ rows, cols, cell }: { rows: string[]; cols: string[]; cell: (r: string, c: string) => { rho: number | null; n: number } }) {
@@ -71,17 +85,11 @@ export function SourceWeather({ rows: viewRows, meta: viewMeta }: SectionPagePro
   const factors = useMemo(() => pmf?.sources.map((s) => s.label) ?? [], [pmf])
   const factorColor = (f: string) => pmf?.sources.find((s) => s.label === f)?.color ?? INK.muted
   const factor = factors.includes(factorParam) ? factorParam : factors[0] ?? ''
-  const joined: Joined[] = useMemo(() => {
-    if (!pmf) return []
-    const byId = new Map(pmf.rows.map((p) => [p.id, p])), byDate = new Map(pmf.rows.map((p) => [p.date, p]))
-    return rows.filter((r) => r.code === pmf.site).flatMap((r) => {
-      const p = byId.get(r.id) ?? byDate.get(r.date?.slice(0, 10))
-      if (!p) return []
-      const ug = Object.fromEntries(pmf.sources.map((s) => [s.label, p.ugm3?.[s.label] ?? NaN]))
-      const total = Object.values(ug).filter(Number.isFinite).reduce((a, b) => a + b, 0)
-      return [{ r, ug, total }]
-    })
-  }, [rows, pmf])
+  const joined: Joined[] = useMemo(() => joinPmf(rows, pmf), [rows, pmf])
+  // Filters → excluded: Mark (lib/markedRows): the excluded filters in view with a PMF day, joined the same way; × on
+  // the crossplot, a count under the summaries
+  const markedMet = useAddisMet(useMarkedRows(), viewMeta).rows
+  const markedJoined: Joined[] = useMemo(() => joinPmf(markedMet, pmf), [markedMet, pmf])
   const value = (j: Joined, f: string) => { const v = j.ug[f]; return Number.isFinite(v) ? (basis === 'conc' ? v : j.total > 0 ? v / j.total : NaN) : NaN }
   const unit = basis === 'conc' ? 'µg/m³' : 'share of the PMF total'
   const weather = useMemo(() => meta.fields.filter((f) => /\((station|ERA5)(, sample day)?\)$|Precipitable water/.test(f) && joined.some((j) => num(j.r, f) !== null)), [meta.fields, joined])
@@ -102,7 +110,8 @@ export function SourceWeather({ rows: viewRows, meta: viewMeta }: SectionPagePro
   // ΔT against the chosen factor, coloured by the coldest hour: the notebooks' sample-day station values where the export has them
   const sampleDay = joined.some((j) => num(j.r, DT_DAY) !== null)
   const DT = sampleDay ? DT_DAY : DT_WINDOW, T = sampleDay ? TMIN_DAY : T_WINDOW
-  const dtPts = joined.flatMap((j) => { const x = num(j.r, DT), t = num(j.r, T), y = value(j, factor); return x !== null && Number.isFinite(y) ? [{ j, x, y, t }] : [] })
+  const dtOf = (js: Joined[]) => js.flatMap((j) => { const x = num(j.r, DT), t = num(j.r, T), y = value(j, factor); return x !== null && Number.isFinite(y) ? [{ j, x, y, t }] : [] })
+  const dtPts = dtOf(joined), dtMarked = dtOf(markedJoined)
   const tExtent = d3.extent(dtPts.map((p) => p.t).filter((v): v is number => v !== null)) as [number, number]
   const tColor = d3.scaleSequential(d3.interpolateRgbBasis(tColours.stops)).domain([tExtent[0] ?? 0, tExtent[1] ?? 1])
   const rhoDt = factors.map((f) => ({ f, dt: spearman(joined.map((j) => num(j.r, DT) ?? NaN), joined.map((j) => value(j, f))), t: spearman(joined.map((j) => num(j.r, sampleDay ? TAVG_DAY : T_WINDOW) ?? NaN), joined.map((j) => value(j, f))),
@@ -119,6 +128,7 @@ export function SourceWeather({ rows: viewRows, meta: viewMeta }: SectionPagePro
   }
   const keys = grouping === 'separate' ? factors : Object.keys(GROUPS)
   const pairs = PAIRS.filter((p) => meta.fields.includes(p.x) && meta.fields.includes(p.y))
+  const nPairsOut = markedJoined.filter((j) => pairs.some((p) => num(j.r, p.x) !== null && num(j.r, p.y) !== null)).length
   const fitOf = (js: Joined[], p: (typeof PAIRS)[number]) => ols(js.map((j) => num(j.r, p.x) ?? NaN), js.map((j) => num(j.r, p.y) ?? NaN))
   const bySource = keys.flatMap((k) => pairs.map((p) => ({ k, p, f: fitOf(joined.filter((j) => dominant(j) === k), p) })))
   const byDominance = keys.flatMap((k) => DOMINANCE.map((t) => { const js = joined.filter((j) => shareOf(j, k) >= t); return { k, t, n: js.length, f: pairs[0] ? fitOf(js, pairs[0]) : null } }))
@@ -131,12 +141,14 @@ export function SourceWeather({ rows: viewRows, meta: viewMeta }: SectionPagePro
         controls={<Segmented label="Factor as" value={basis} options={['conc', 'share'] as const} onChange={setBasis} optionLabel={(o) => (o === 'conc' ? 'µg/m³' : 'Share')} />}>
         <Matrix rows={factors} cols={weather} cell={(f, w) => { const ok = joined.filter((j) => num(j.r, w) !== null && Number.isFinite(value(j, f)))
           return { rho: ok.length >= 10 ? spearman(ok.map((j) => num(j.r, w)!), ok.map((j) => value(j, f))) : null, n: ok.length } }} />
+        <ExcludedNote count={markedJoined.length} />
       </ChartFrame>
 
       <ChartFrame id="sw-rain" title="Rain washout by source — factor levels in dry to heavy-rain windows"
         subtitle={`Median and interquartile range of each factor (${unit}) by rain class on ${rainField}. The notebook binned daily station totals (0.1, 2, 10 mm); here the class is the window's mean rain in mm/day, so heavy single days are diluted over a multi-day filter.`}
         provenance={`${MET_NB} (§1 precipitation washout by source)`}>
         <IntervalStrip blocks={[{ key: 'rain', rows: rainRows }]} panels={factors.map((f) => ({ label: f, heading: f }))} labelWidth={120} noteWidth={50} minPanelWidth={150} />
+        <ExcludedNote count={markedJoined.filter((j) => num(j.r, rainField) !== null).length} />
       </ChartFrame>
 
       <ChartFrame id="sw-dt" title={`Diurnal temperature range against ${factor} — coloured by the mean temperature`}
@@ -145,12 +157,14 @@ export function SourceWeather({ rows: viewRows, meta: viewMeta }: SectionPagePro
         controls={<Select label="Factor" value={factor} options={factors} onChange={setFactor} />}>
         <Grid>
           {dtPts.length >= 5 ? <Crossplot points={dtPts.map((p) => point(p.j.r, p.x, p.y, p.t === null ? INK.muted : tColor(p.t), 'ΔT', factor, 'Research · PMF and weather', [`T ${fmt(p.t, 1)} °C`]))} sameScale={false}
+            marked={dtMarked.map((p) => point(p.j.r, p.x, p.y, INK.muted, 'ΔT', factor, 'Research · PMF and weather', [`T ${fmt(p.t, 1)} °C`]))}
             title={`${factor} vs ΔT`} xLabel={`${DT} (°C)`} yLabel={`${factor} (${unit})`} fit={false} /> : <Empty>Too few filters with {DT}.</Empty>}
           <DataTable rows={rhoDt} rowKey={(r) => r.f} columns={[
             { key: 'f', label: 'Factor', value: (r) => <span style={{ color: factorColor(r.f), fontWeight: 600 }}>{r.f}</span> },
             { key: 'dt', label: 'ρ with ΔT', num: true, value: (r) => fmt(r.dt, 2) }, { key: 't', label: 'ρ with mean T', num: true, value: (r) => fmt(r.t, 2) },
             ...(sampleDay ? [{ key: 'tmin', label: 'ρ with T_min', num: true, value: (r: (typeof rhoDt)[number]) => fmt(r.tmin, 2) }] : [])]} />
         </Grid>
+        <ExcludedNote count={dtMarked.length} drawn />
         {dtPts.length >= 5 && <ColorLegend scale={tColor as unknown as { domain(): number[]; (v: number): string }} scheme={tColours.scheme} label={`${T} (°C)`} format={(v) => fmt(v, 0)} />}
       </ChartFrame>
 
@@ -166,6 +180,7 @@ export function SourceWeather({ rows: viewRows, meta: viewMeta }: SectionPagePro
         <DataTable rows={byDominance} rowKey={(r) => `${r.k}-${r.t}`} columns={[
           { key: 'k', label: 'Source', value: (r) => r.k }, { key: 't', label: 'Share ≥', num: true, value: (r) => `${r.t * 100} %` }, { key: 'n', label: 'n', num: true, value: (r) => r.n },
           { key: 's', label: 'Slope', num: true, value: (r) => fmt(r.f?.slope, 3) }, { key: 'i', label: 'Intercept', num: true, value: (r) => fmt(r.f?.intercept, 3) }, { key: 'r2', label: 'R²', num: true, value: (r) => fmt(r.f?.r2, 3) }]} />
+        <ExcludedNote count={nPairsOut} />
         <Note>Fits with a handful of filters are shown as they come out; read the n before the slope.</Note>
       </ChartFrame>
     </>

@@ -69,3 +69,26 @@ test('lstsq: a dummy column no resampled filter carries is skipped, not singular
   near(some[0], 2, 1e-9, 'slope without the dummy'); assert.ok(Number.isNaN(some[1]))
   assert.equal(coefBoot([x, lot], y, 0, { draws: 20 }).est.toFixed(6), '2.000000')
 })
+
+// the page joins the explorer's filters to the counted rows for every fit and to the excluded rows (Filters → excluded:
+// Mark) for the × only: the same join, so a filter lands on one side or the other and the counted side is unchanged
+test('evalFilters joins a run to the rows it is given, counted and marked apart', async () => {
+  const { evalFilters } = await import('./massLead.ts')
+  const ev = { id: ['a', 'b', 'c', null, 'd', 'e'], ref: [10, 20, NaN, 5, 30, 40], pred: [1, 2, 3, 4, 5, 6], group: ['Dry', 'Dry', 'Belg', 'Belg', 'Kiremt', 'Kiremt'],
+    date: ['2023-01-05', null, '2023-04-01', '2023-04-02', '2023-07-01', '2023-08-01'] }
+  const counted = new Map([['a', { mass: 50, date: '2023-01-05' }], ['b', { mass: 60, date: '2023-02-10' }], ['c', { mass: 70 }], ['d', { mass: null }]])
+  const marked = new Map([['e', { mass: 80 }]])
+  const optics = new Map([['a', { volume_m3: 7, area_cm2: 3.5, lot: '251' }]])
+  const c = evalFilters(ev, (id) => counted.get(id), (id) => optics.get(id))
+  // in view: a, b, c, d; with mass: a, b, c; finite prediction and Fabs: a, b
+  assert.equal(c.nView, 4)
+  assert.equal(c.nMass, 3)
+  assert.deepEqual(c.filters.map((f) => f.id), ['a', 'b'])
+  assert.deepEqual(c.filters[0], { id: 'a', group: 'Dry', month: 1, fabs: 10, fx: 1, mass: 50, volume: 7, area: 3.5, lot: '251' })
+  // the run has no date for b: the row's date gives the month
+  assert.equal(c.filters[1].month, 2)
+  const m = evalFilters(ev, (id) => marked.get(id), (id) => optics.get(id))
+  assert.deepEqual(m.filters.map((f) => f.id), ['e'])
+  assert.equal(m.filters[0].volume, null)
+  assert.deepEqual(evalFilters(null, () => undefined, () => undefined), { filters: [], nView: 0, nMass: 0 })
+})

@@ -3,7 +3,9 @@ import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { Crossplot } from '@/components/Crossplot'
 import { SweepPlot } from '@/components/SweepPlot'
 import { fmt } from '@/lib/format'
+import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
+import type { FilterRow } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
 import { deming, ols, quantile, spearman } from '../common/stats'
@@ -15,6 +17,8 @@ const STORY_NB = 'research/spartan/presentation_offset_story.ipynb'
 const EC = 'EC (FTIR)', FABS = 'HIPS Fabs'
 const CHARCOAL = 'Charcoal share (PMF)'
 const RATIOS = Array.from({ length: 80 }, (_, i) => 10 ** (-1 + (3.5 * i) / 79))   // σ_fAbs / σ_EC, 0.1 … ~316 (np.logspace(-1, 2.5, 80))
+/** the filters with both measurements */
+const pairsOf = (rs: FilterRow[]) => rs.flatMap((r) => { const x = num(r, EC), y = num(r, FABS); return x !== null && y !== null ? [{ r, x, y }] : [] })
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 /**
@@ -30,7 +34,10 @@ export function OffsetShift({ rows: viewRows, meta }: SectionPageProps) {
   const [sEcParam, setSEc] = useSearchParam<string>('os.sec', '0.2', ['0.1', '0.2', '0.5'])
   const [sFabsParam, setSFabs] = useSearchParam<string>('os.sfabs', '1', ['0.5', '1', '2'])
   const ratio = Number(sFabsParam) / Number(sEcParam)
-  const pts = useMemo(() => siteRows.flatMap((r) => { const x = num(r, EC), y = num(r, FABS); return x !== null && y !== null ? [{ r, x, y }] : [] }), [siteRows])
+  const pts = useMemo(() => pairsOf(siteRows), [siteRows])
+  // Filters → excluded: Mark (lib/markedRows): the site's excluded filters, as × on the re-fit crossplots; in no fit
+  const markedConc = useConcRows(useMarkedRows(), meta)
+  const marked = useMemo(() => pairsOf(ofSite(markedConc, site)), [markedConc, site])
   const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y)
   const fit = useMemo(() => ols(xs, ys), [pts]) // eslint-disable-line react-hooks/exhaustive-deps
   const dem = useMemo(() => deming(xs, ys, ratio * ratio), [pts, ratio]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -43,9 +50,9 @@ export function OffsetShift({ rows: viewRows, meta }: SectionPageProps) {
     ? { name, slope: f.slope, intercept: f.intercept, delta: f.intercept / f.slope, k: ybar / (f.slope * xbar) } : { name, slope: NaN, intercept: NaN, delta: NaN, k: NaN })
   const delta = shifts[0].delta, k = shifts[0].k
   const refits = [
-    { name: 'Raw', transform: 'EC', f: ols(xs, ys), x: xs },
-    { name: 'Additive', transform: `EC + ${fmt(delta, 2)}`, f: ols(xs.map((v) => v + delta), ys), x: xs.map((v) => v + delta) },
-    { name: 'Multiplicative', transform: `EC × ${fmt(k, 2)}`, f: ols(xs.map((v) => v * k), ys), x: xs.map((v) => v * k) },
+    { name: 'Raw', transform: 'EC', f: ols(xs, ys), x: xs, at: (v: number) => v },
+    { name: 'Additive', transform: `EC + ${fmt(delta, 2)}`, f: ols(xs.map((v) => v + delta), ys), x: xs.map((v) => v + delta), at: (v: number) => v + delta },
+    { name: 'Multiplicative', transform: `EC × ${fmt(k, 2)}`, f: ols(xs.map((v) => v * k), ys), x: xs.map((v) => v * k), at: (v: number) => v * k },
   ]
 
   // the implied missing EC per filter: fAbs / slope − EC (presentation_offset_story P3)
@@ -74,6 +81,7 @@ export function OffsetShift({ rows: viewRows, meta }: SectionPageProps) {
           <SweepPlot series={[{ id: 'i', label: 'Deming intercept', color: INK.good, marks: false, points: sweep.map((s) => ({ x: s.q, y: s.d?.intercept })) }]} xScale="log" xLabel="σ_fAbs / σ_EC" yLabel="Intercept (Mm⁻¹)" reference={0}
             xMarkers={[{ at: ratio, label: 'assumed', color: INK.negative }]} yMarkers={[{ at: fit.intercept, label: `OLS ${fmt(fit.intercept, 1)}`, color: INK.muted }]} title="Intercept" />
         </Grid>
+        <ExcludedNote count={marked.length} />
         <Note>OLS: slope {fmt(fit.slope, 3)}, intercept {fmt(fit.intercept, 2)} Mm⁻¹, R² {fmt(fit.r2, 3)}, n {fit.n}. Deming at the assumed ratio: slope {fmt(dem?.slope, 3)}, intercept {fmt(dem?.intercept, 2)}. Orthogonal (λ = 1): slope {fmt(deming(xs, ys, 1)?.slope, 3)}, intercept {fmt(deming(xs, ys, 1)?.intercept, 2)}. Inverse OLS slope {fmt(1 / (ols(ys, xs)?.slope ?? NaN), 3)}.</Note>
       </ChartFrame>
 
@@ -90,6 +98,7 @@ export function OffsetShift({ rows: viewRows, meta }: SectionPageProps) {
         ]} />
         <Grid min={280}>
           {refits.map((r) => <Crossplot key={r.name} points={pts.map((p, i) => point(p.r, r.x[i], p.y, color, r.transform, 'fAbs', 'Research · EC shift'))} sameScale={false}
+            marked={marked.map((p) => point(p.r, r.at(p.x), p.y, color, r.transform, 'fAbs', 'Research · EC shift'))}
             title={`${r.name}: ${r.transform}`} xLabel={r.name === 'Raw' ? ecLabel : `${r.transform} (µg/m³)`} yLabel={fabsLabel} fit={false} maxSide={300} extraLines={line(r.f, INK.fit, 'OLS re-fit')} />)}
         </Grid>
         <DataTable rows={refits} rowKey={(r) => r.name} columns={[
@@ -99,6 +108,7 @@ export function OffsetShift({ rows: viewRows, meta }: SectionPageProps) {
           { key: 'i', label: 'Re-fit intercept (Mm⁻¹)', num: true, value: (r) => fmt(r.f?.intercept, 2) },
           { key: 'r2', label: 'R²', num: true, value: (r) => fmt(r.f?.r2, 3) },
         ]} />
+        <ExcludedNote count={marked.length} drawn />
         <Note>Removing the offset takes a constant {fmt(delta, 2)} µg/m³ on every filter, {fmt(delta / xbar, 2)} × the mean FTIR EC ({fmt(xbar, 2)}); the data cannot tell that from subtracting {fmt(fit.intercept, 1)} Mm⁻¹ from every fAbs (same line through zero, same R²).</Note>
       </ChartFrame>
 
@@ -117,6 +127,7 @@ export function OffsetShift({ rows: viewRows, meta }: SectionPageProps) {
             { key: 'm', label: 'Missing EC (µg/m³)', num: true, value: (r) => fmt(r.missing, 2) },
           ]} />
         </Grid>
+        <ExcludedNote count={marked.length} />
         {rhoCharcoal !== null && <Note>Missing EC against the PMF charcoal share (n {charcoal.length} filters with a PMF day): Spearman ρ {fmt(rhoCharcoal, 2)}.</Note>}
       </ChartFrame>
     </>

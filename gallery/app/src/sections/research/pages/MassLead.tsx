@@ -6,6 +6,7 @@ import { IntervalStrip, type IntervalMark, type IntervalRow } from '@/components
 import { Key } from '@/components/Key'
 import { fmt, signed } from '@/lib/format'
 import { useMac } from '@/lib/mac'
+import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
 import { SidebarControls } from '@/lib/pageSidebar'
 import { num as cell, type Row } from '@/lib/table'
 import { seasonOnly } from '@/lib/seasons'
@@ -14,7 +15,7 @@ import type { CalibRunsFile, FilterRow, MetaFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
 import {
-  CONDITIONING, addedVariable, framed, lstsq, massPerArea, partialSlopes, seasonCols, seedOf, siteFit,
+  CONDITIONING, addedVariable, evalFilters, framed, lstsq, massPerArea, partialSlopes, seasonCols, seedOf, siteFit,
   type Estimate, type Framing, type MassFilter, type PartialRow, type SiteFit,
 } from '../common/massLead'
 import { OPTICS_COMMAND, useOptics } from '../common/optics'
@@ -34,7 +35,9 @@ const GROUP_COLOR: Record<string, string> = { DJF: SERIES[0], MAM: SERIES[2], JJ
 const FRAMING_LABEL: Record<Framing, string> = { volume: 'per volume (µg/m³)', deposit: 'per deposit (µg/cm²)' }
 const NB_FRAMING: Record<Framing, string> = { volume: 'per volume', deposit: 'per deposit' }
 
-interface SiteData { target: string; code: string; site: string; color: string; nEval: number; nView: number; nMass: number; filters: MassFilter[] }
+interface SiteData { target: string; code: string; site: string; color: string; nEval: number; nView: number; nMass: number; filters: MassFilter[]
+  /** Filters → excluded: Mark: the site's excluded filters in view, joined the same way; drawn as ×, in no fit or count */
+  marked: MassFilter[] }
 interface SiteResult extends SiteData { fit: Record<Framing, SiteFit | null> }
 
 const ci = (e: Estimate | null | undefined, d = 3) => (e ? `${fmt(e.est, d)} [${fmt(e.lo, d)}, ${fmt(e.hi, d)}]` : '—')
@@ -67,6 +70,9 @@ export function MassLead({ rows: viewRows, meta }: SectionPageProps) {
   const [presetParam, setPreset] = useSearchParam<string>('mass.preset', LOCKED)
   const preset = presets.some((p) => p.key === presetParam) ? presetParam : LOCKED
   const byId = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows])
+  // Filters → excluded: Mark (lib/markedRows): the excluded rows in view, in µg/m³ like the rows
+  const markedRows = useConcRows(useMarkedRows(), meta)
+  const markedById = useMemo(() => new Map(markedRows.map((r) => [r.id, r])), [markedRows])
 
   const sites = useMemo((): SiteData[] | null => {
     if (!runs || !optics) return null
@@ -75,23 +81,12 @@ export function MassLead({ rows: viewRows, meta }: SectionPageProps) {
       const run = runs.runs.find((r) => r.preset === preset && r.target === target)
       const site = meta.sites.find((s) => s.code === code)?.name ?? runs.targets[target]?.site ?? code
       const color = meta.sites.find((s) => s.code === code)?.color ?? runs.targets[target]?.color ?? INK.muted
-      const filters: MassFilter[] = []
-      let nView = 0, nMass = 0
-      run?.eval.id.forEach((id, i) => {
-        const r = id ? byId.get(id) : undefined
-        if (!id || !r) return
-        nView++
-        const mass = num(r, 'PM2.5 mass'), fabs = run.eval.ref[i], fx = run.eval.pred[i]
-        if (mass === null) return
-        nMass++
-        if (!Number.isFinite(fabs) || !Number.isFinite(fx)) return
-        const o = opt.get(id), date = run.eval.date?.[i] ?? r.date
-        filters.push({ id, group: run.eval.group[i], month: date ? Number(date.slice(5, 7)) : null, fabs, fx, mass,
-          volume: o?.volume_m3 ?? null, area: o?.area_cm2 ?? null, lot: o?.lot ?? null })
-      })
-      return { target, code, site, color, nEval: run?.eval.id.length ?? 0, nView, nMass, filters }
+      const rowOf = (m: Map<string, FilterRow>) => (id: string) => { const r = m.get(id); return r ? { mass: num(r, 'PM2.5 mass'), date: r.date } : undefined }
+      const { filters, nView, nMass } = evalFilters(run?.eval, rowOf(byId), (id) => opt.get(id))
+      const marked = markedById.size ? evalFilters(run?.eval, rowOf(markedById), (id) => opt.get(id)).filters : []
+      return { target, code, site, color, nEval: run?.eval.id.length ?? 0, nView, nMass, filters, marked }
     })
-  }, [runs, optics, preset, byId, meta.sites])
+  }, [runs, optics, preset, byId, markedById, meta.sites])
 
   // ftir_46's Addis deposit-loading range: the Addis filters' own mass per area, here those in view
   const range = useMemo((): [number, number] | null => {
@@ -101,7 +96,7 @@ export function MassLead({ rows: viewRows, meta }: SectionPageProps) {
   const results = useMemo((): SiteResult[] | null => {
     if (!sites) return null
     const pooled: SiteData = { target: 'pooled', code: '', site: POOLED, color: INK.text, nEval: d(sites.slice(1), 'nEval'), nView: d(sites.slice(1), 'nView'), nMass: d(sites.slice(1), 'nMass'),
-      filters: sites.slice(1).flatMap((s) => s.filters) }
+      filters: sites.slice(1).flatMap((s) => s.filters), marked: sites.slice(1).flatMap((s) => s.marked) }
     return [...sites, pooled].map((s) => ({ ...s, fit: {
       volume: siteFit(s.filters, 'volume', mac, range, { seed: seedOf(`${s.site}|volume`) }),
       deposit: siteFit(s.filters, 'deposit', mac, range, { seed: seedOf(`${s.site}|deposit`) }),
@@ -121,9 +116,9 @@ export function MassLead({ rows: viewRows, meta }: SectionPageProps) {
       <Select label="Calibration" value={preset} options={presets.map((x) => x.key)} onChange={setPreset}
         optionLabel={(k) => { const x = presets.find((q) => q.key === k); return x ? presetName(x) : k }} />
     </SidebarControls>
-    <AddisResidual addis={results[0]} byId={byId} meta={meta} mac={mac} nb={locked ? nb : null} presetLabel={p ? presetName(p) : preset} />
+    <AddisResidual addis={results[0]} byId={byId} markedById={markedById} meta={meta} mac={mac} nb={locked ? nb : null} presetLabel={p ? presetName(p) : preset} />
     <SiteCoefficients results={results} mac={mac} nb={locked ? nb : null} range={range} presetLabel={p ? presetName(p) : preset} runs={runs} />
-    <ResidualGrid results={results.slice(0, 5)} byId={byId} meta={meta} mac={mac} presetLabel={p ? presetName(p) : preset} />
+    <ResidualGrid results={results.slice(0, 5)} byId={byId} markedById={markedById} meta={meta} mac={mac} presetLabel={p ? presetName(p) : preset} />
   </>
 }
 const d = (s: SiteData[], k: 'nEval' | 'nView' | 'nMass') => s.reduce((a, x) => a + x[k], 0)
@@ -137,7 +132,7 @@ const groupsOf = (filters: MassFilter[]) => [...new Set(filters.map((f) => f.gro
  * ftir_46 §5 (cell 13): the Addis residual against mass, raw and added-variable, per volume or per deposit, and the
  * partial-slope table under the notebook's three conditionings.
  */
-function AddisResidual({ addis, byId, meta, mac, nb, presetLabel }: { addis: SiteResult; byId: Map<string, FilterRow>; meta: MetaFile; mac: number; nb: SpectralExport | null; presetLabel: string }) {
+function AddisResidual({ addis, byId, markedById, meta, mac, nb, presetLabel }: { addis: SiteResult; byId: Map<string, FilterRow>; markedById: Map<string, FilterRow>; meta: MetaFile; mac: number; nb: SpectralExport | null; presetLabel: string }) {
   const [framing, setFraming] = useSearchParam<Framing>('mass-addis.framing', 'volume', ['volume', 'deposit'])
   const table = useMemo(() => [...partialSlopes(addis.filters, 'volume', mac, { seed: 3 }), ...partialSlopes(addis.filters, 'deposit', mac, { seed: 5 })], [addis.filters, mac])
   const view = useMemo(() => {
@@ -146,21 +141,24 @@ function AddisResidual({ addis, byId, meta, mac, nb, presetLabel }: { addis: Sit
     const unit = framing === 'volume' ? 'µg/m³' : 'µg/cm²'
     const raw = lstsq([F.m], F.r)
     const av = addedVariable([F.fx, ...seasonCols(F.use.map((f) => f.month!))], F.m, F.r)
-    const pts = (xs: number[], ys: number[], xl: string, yl: string): CrossPoint[] => F.use.flatMap((f, i) => {
-      const r = byId.get(f.id)
+    const pts = (xs: number[], ys: number[], xl: string, yl: string, use = F.use, rowOf = byId): CrossPoint[] => use.flatMap((f, i) => {
+      const r = rowOf.get(f.id)
       return r ? [point(r, xs[i], ys[i], groupColor(meta, f.group), xl, yl, 'Research · the mass lead', [`f(X) ${fmt(f.fx, 2)} µg/m³ · Fabs ${fmt(f.fabs, 1)} Mm⁻¹`, `PM2.5 ${fmt(f.mass, 1)} µg/m³`])] : []
     })
+    // the excluded filters on the raw panel only: the added-variable axes are residuals of the counted filters' fit
+    const M = framed(addis.marked.filter((f) => f.month !== null), framing, mac)
     const meanM = F.m.reduce((a, b) => a + b, 0) / F.m.length, meanR = F.r.reduce((a, b) => a + b, 0) / F.r.length
     const rawLine: CrossLine[] = raw ? [{ slope: raw[0], intercept: meanR - raw[0] * meanM, color: INK.muted, label: `raw slope ${signed(raw[0], 4)}`, method: 'ols', stats: null }] : []
     const part = table.find((t) => t.framing === framing && t.conditioning === 'season')?.slope
     const avLine: CrossLine[] = part ? [{ slope: part.est, intercept: 0, color: INK.negative, label: `partial slope ${signed(part.est, 4)}`, method: 'ols', stats: null }] : []
     return { unit, raw, part, panels: [
       { key: 'raw', title: `Raw residual vs mass, ${FRAMING_LABEL[framing]}`, points: pts(F.m, F.r, `mass (${unit})`, `residual (${unit})`), lines: rawLine,
+        marked: pts(M.m, M.r, `mass (${unit})`, `residual (${unit})`, M.use, markedById),
         xLabel: `Gravimetric PM2.5, ${FRAMING_LABEL[framing]}`, yLabel: `f(X) − HIPS EC-equivalent (${unit}, MAC ${mac})` },
-      ...(av ? [{ key: 'av', title: `Added-variable: residual ~ mass | f(X), season`, points: pts(av.rx, av.ry, `mass | f(X), season`, `residual | f(X), season`), lines: avLine,
+      ...(av ? [{ key: 'av', title: `Added-variable: residual ~ mass | f(X), season`, points: pts(av.rx, av.ry, `mass | f(X), season`, `residual | f(X), season`), lines: avLine, marked: [],
         xLabel: `mass | f(X), season (${unit})`, yLabel: `residual | f(X), season (${unit})` }] : []),
     ] }
-  }, [addis.filters, framing, mac, byId, meta, table])
+  }, [addis.filters, addis.marked, framing, mac, byId, markedById, meta, table])
 
   const nbRows = tableRows(nb, 'addis_residual_vs_mass_partial_slopes')
   const nbOf = (r: PartialRow) => nbRows.find((x) => String(x.framing) === FRAMING_LABEL[r.framing] && String(x.conditioning) === CONDITIONING[r.conditioning])
@@ -181,8 +179,9 @@ function AddisResidual({ addis, byId, meta, mac, nb, presetLabel }: { addis: Sit
       controls={<Segmented label="Framing" value={framing} options={['volume', 'deposit'] as const} onChange={setFraming} optionLabel={(o) => (o === 'volume' ? 'Per volume' : 'Per deposit')} />}>
       {view ? <>
         <FacetGrid items={view.panels} minCell={300} maxCols={2} title={(pn) => pn.title} render={(pn) =>
-          <Crossplot title="" points={pn.points} xLabel={pn.xLabel} yLabel={pn.yLabel} fit={false} grouping="none" extraLines={pn.lines} sameScale={false} maxSide={420} />} />
+          <Crossplot title="" points={pn.points} marked={pn.marked} xLabel={pn.xLabel} yLabel={pn.yLabel} fit={false} grouping="none" extraLines={pn.lines} sameScale={false} maxSide={420} />} />
         <Key items={[...groups.map((g) => ({ label: g, color: groupColor(meta, g) })), { label: 'raw OLS', color: INK.muted, kind: 'line' as const }, { label: 'partial slope | f(X), season', color: INK.negative, kind: 'line' as const }]} />
+        <ExcludedNote count={addis.marked.length} drawn />
       </> : <Empty>Fewer than 10 Addis filters in view carry PM2.5 mass and a date.</Empty>}
       <DataTable rows={table} rowKey={(r) => `${r.framing}|${r.conditioning}`} columns={[
         { key: 'f', label: 'Framing', value: (r) => FRAMING_LABEL[r.framing] },
@@ -253,12 +252,13 @@ function SiteCoefficients({ results, mac, nb, range, presetLabel, runs }: { resu
         ...(nb ? [{ key: 'nb', label: 'ftir_46 n (with mass)', num: true, value: (s: SiteResult) => cell(nbOf(s.site, 'volume')?.n) ?? '—' }] : []),
       ]} />
       {noMass.length > 0 && <Note>No fit (fewer than 6 filters with mass): {noMass.join('; ')}.</Note>}
+      <ExcludedNote count={results.slice(0, 5).reduce((a, s) => a + s.marked.length, 0)} />
     </ChartFrame>
   )
 }
 
 /** ftir_46 [19b]: the residual against mass concentration at each site, coloured by group, with its partial slope at fixed f(X) */
-function ResidualGrid({ results, byId, meta, mac, presetLabel }: { results: SiteResult[]; byId: Map<string, FilterRow>; meta: MetaFile; mac: number; presetLabel: string }) {
+function ResidualGrid({ results, byId, markedById, meta, mac, presetLabel }: { results: SiteResult[]; byId: Map<string, FilterRow>; markedById: Map<string, FilterRow>; meta: MetaFile; mac: number; presetLabel: string }) {
   const shown = results.filter((s) => s.filters.length >= 6 && s.fit.volume)
   const frames = shown.map((s) => framed(s.filters, 'volume', mac))
   const xHi = quantile(frames.flatMap((F) => F.m), 0.99)
@@ -266,11 +266,12 @@ function ResidualGrid({ results, byId, meta, mac, presetLabel }: { results: Site
   const panels = shown.map((s, k) => {
     const F = frames[k], fit = s.fit.volume!
     const mm = F.m.reduce((a, b) => a + b, 0) / F.m.length, mr = F.r.reduce((a, b) => a + b, 0) / F.r.length
-    const points: CrossPoint[] = F.use.flatMap((f, i) => { const r = byId.get(f.id); return r ? [point(r, F.m[i], F.r[i], groupColor(meta, f.group), 'PM2.5', 'residual', 'Research · the mass lead', [`group ${f.group}`])] : [] })
+    const at = (G: typeof F, rowOf: Map<string, FilterRow>): CrossPoint[] => G.use.flatMap((f, i) => { const r = rowOf.get(f.id); return r ? [point(r, G.m[i], G.r[i], groupColor(meta, f.group), 'PM2.5', 'residual', 'Research · the mass lead', [`group ${f.group}`])] : [] })
+    const points = at(F, byId), marked = at(framed(s.marked, 'volume', mac), markedById)
     const slope = fit.rPartial?.est
     const lines: CrossLine[] = slope != null ? [{ slope, intercept: mr - slope * mm, color: INK.negative, label: `partial slope | f(X) ${signed(slope, 3)}`, method: 'ols', stats: null }] : []
     const beyond = F.m.filter((m) => m > xHi).length + F.r.filter((r) => r < yLo || r > yHi).length
-    return { s, points, lines, fit, beyond, groups: groupsOf(s.filters) }
+    return { s, points, marked, lines, fit, beyond, groups: groupsOf(s.filters) }
   })
   return (
     <ChartFrame id="mass-lead-grid" title="The residual against mass at each site — the slope at fixed prediction, drawn through the cloud"
@@ -279,9 +280,10 @@ function ResidualGrid({ results, byId, meta, mac, presetLabel }: { results: Site
       {panels.length ? <FacetGrid items={panels} minCell={240} maxCols={5}
         title={(pn) => `${pn.s.site} (n=${pn.fit.n}${pn.beyond ? `, ${pn.beyond} beyond frame` : ''})`}
         note={(pn) => `β ${ci(pn.fit.massCoef, 2)}`}
-        render={(pn) => <Crossplot title="" points={pn.points} xLabel="PM2.5 (µg/m³)" yLabel={`f(X) − Fabs/${mac} (µg/m³)`} fit={false} grouping="none" extraLines={pn.lines} sameScale={false}
+        render={(pn) => <Crossplot title="" points={pn.points} marked={pn.marked} xLabel="PM2.5 (µg/m³)" yLabel={`f(X) − Fabs/${mac} (µg/m³)`} fit={false} grouping="none" extraLines={pn.lines} sameScale={false}
           domain={[0, xHi * 1.02]} yDomain={[yLo, yHi]} maxSide={300} />} /> : <Empty>No explorer site in view has 6 or more filters with PM2.5 mass.</Empty>}
       <Key items={[...new Set(panels.flatMap((pn) => pn.groups))].map((g) => ({ label: g, color: groupColor(meta, g) }))} />
+      <ExcludedNote count={panels.reduce((a, pn) => a + pn.marked.length, 0)} drawn />
     </ChartFrame>
   )
 }

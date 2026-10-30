@@ -4,6 +4,7 @@ import { FieldSelect } from '@/components/FieldSelect'
 import { Key } from '@/components/Key'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { fmt } from '@/lib/format'
+import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
@@ -79,6 +80,14 @@ export function RhSweep({ rows: viewRows, meta: viewMeta }: SectionPageProps) {
     return { pair: p.label, season: s.name, n: pts.length, b }
   })), [pairs, mode, seasons, siteRows, split, thresholds, minN])
 
+  // Filters → excluded: Mark (lib/markedRows): the site's excluded filters these fits leave out, counted in a note
+  const markedMet = useAddisMet(useMarkedRows(), viewMeta).rows
+  const nOut = useMemo(() => {
+    const out = ofSite(markedMet, site).filter((r) => num(r, split) !== null)
+    const has = (p: (typeof PAIRS)[number]) => (r: (typeof out)[number]) => num(r, p.x) !== null && num(r, p.y) !== null
+    return { pair: pair ? out.filter(has(pair)).length : 0, any: out.filter((r) => pairs.some((p) => has(p)(r))).length }
+  }, [markedMet, site, split, pair, pairs])
+
   const controls = <>
     <SitePick value={site} options={sites} onChange={setSite} />
     {pairs.length > 1 && <Segmented label="Pair" value={pair?.key ?? ''} options={pairs.map((p) => p.key)} onChange={setPairKey} optionLabel={(k) => PAIRS.find((p) => p.key === k)!.label.replace(' vs ', ' ~ ')} />}
@@ -102,6 +111,7 @@ export function RhSweep({ rows: viewRows, meta: viewMeta }: SectionPageProps) {
             </Grid>
             <Key items={[...(mode === 'Pooled' ? [{ label: `${split} ≤ threshold`, color: LOW, kind: 'line' as const }, { label: 'above the threshold', color: HIGH, kind: 'dash' as const }]
               : [...groups.map((g) => ({ label: shortSeason(g.name), color: g.color, kind: 'line' as const })), { label: 'dashed: above the threshold', color: INK.muted, kind: 'dash' as const }])]} />
+            <ExcludedNote count={nOut.pair} />
             {best.some(({ b }) => b) && <Note>Closest to slope 1 on the low side: {best.filter(({ b }) => b).map(({ g, b }) => `${shortSeason(g.name)} ${split} ≤ ${b!.threshold} (slope ${fmt(b!.low!.slope, 2)}, n ${b!.nLow})`).join('; ')}. A best threshold picked from a sweep is not a test; with a handful of filters on one side the slope swings widely.</Note>}
           </>}
       </ChartFrame>
@@ -119,6 +129,7 @@ export function RhSweep({ rows: viewRows, meta: viewMeta }: SectionPageProps) {
           { key: 'r2', label: 'R² (low)', num: true, value: (r) => fmt(r.b?.low?.r2, 3) },
           { key: 'nl', label: 'n low / high', num: true, value: (r) => (r.b ? `${r.b.nLow} / ${r.b.nHigh}` : '—') },
         ]} />
+        <ExcludedNote count={nOut.any} />
       </ChartFrame>
     </>
   )

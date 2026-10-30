@@ -5,6 +5,7 @@ import { FacetGrid } from '@/components/FacetGrid'
 import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { fmt } from '@/lib/format'
+import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 
@@ -13,13 +14,20 @@ import {
   CONSTRUCTION_LABEL, exposeSamples, fitBlankLines, lineBreakdown, lineKey, lineLabel, networkLines, polyval, poolLots, recomputeCheck, siteExposure,
   type BlankLine, type BlankPoint, type Construction, type NetworkBlankLine, type SamplePoint,
 } from '../common/blankLines'
-import { useOptics, OPTICS_COMMAND } from '../common/optics'
+import { useOptics, OPTICS_COMMAND, type Optics } from '../common/optics'
 import { DataTable, SitePick, useSite } from '../common/ui'
 import { curvePath, linePalette, refOf } from './hips/lines'
 import { useCalibRuns } from './spectralCommon'
 
 const NB47 = 'research/ftir_ec_phase3/ftir_47_blank_lines_per_deployed_line.ipynb'
 const NB53 = 'research/ftir_ec_phase3/ftir_53_committee_backup_figures.ipynb'
+
+/** the samples among `ids` with a shipped Fabs, a deployed line and a volume (dv = 100·A/V) */
+const samplesOf = (optics: Optics[] | null, ids: ReadonlySet<string>): SamplePoint[] => (ids.size ? (optics ?? []) : []).flatMap((o) => {
+  const ref = refOf(o)
+  return o.type !== 'FB' && ids.has(o.id) && ref && o.R1 !== null && o.T1 !== null && o.fabs !== null && o.volume_m3 && o.area_cm2
+    ? [{ ...ref, id: o.id, code: o.code, R1: o.R1, T1: o.T1, fabs: o.fabs, dv: (100 * o.area_cm2) / o.volume_m3 }] : []
+})
 
 /** ftir_47 §2's displayed site table for the four focus sites (whole SPARTAN batch, FB + LB blanks of every site) */
 const FTIR47_SITES: Record<string, { n: number; below: number; above: number; lineQuad: number; lineQuadP90: number; lotQuad: number }> = {
@@ -49,6 +57,10 @@ export function BlankLines({ rows }: SectionPageProps) {
   const [site, setSite, sites] = useSite(rows, 'bl')
 
   const ids = useMemo(() => new Set(rows.map((r) => r.id)), [rows])
+  // Filters → excluded: Mark (lib/markedRows): the excluded samples in view, drawn as × on the R1 crossplots and
+  // counted in a note under the summaries; never in a refit, share or median
+  const markedRows = useMarkedRows()
+  const markedIds = useMemo(() => new Set(markedRows.map((r) => r.id)), [markedRows])
   const siteOfCode = useMemo(() => new Map(rows.map((r) => [r.code, { site: r.site, color: r.color }])), [rows])
   // a line's blanks do not depend on which samples are in view: every focus-site field blank on a deployed line
   const blanks: BlankPoint[] = useMemo(() => (optics ?? []).flatMap((o) => {
@@ -56,11 +68,8 @@ export function BlankLines({ rows }: SectionPageProps) {
     return o.type === 'FB' && ref && o.R1 !== null && o.T1 !== null && o.T1 > 0 ? [{ ...ref, R1: o.R1, T1: o.T1, date: o.analysis_date }] : []
   }), [optics])
   // the samples in view with a shipped Fabs, a line and a volume (dv = 100·A/V)
-  const samples: SamplePoint[] = useMemo(() => (optics ?? []).flatMap((o) => {
-    const ref = refOf(o)
-    return o.type !== 'FB' && ids.has(o.id) && ref && o.R1 !== null && o.T1 !== null && o.fabs !== null && o.volume_m3 && o.area_cm2
-      ? [{ ...ref, id: o.id, code: o.code, R1: o.R1, T1: o.T1, fabs: o.fabs, dv: (100 * o.area_cm2) / o.volume_m3 }] : []
-  }), [optics, ids])
+  const samples: SamplePoint[] = useMemo(() => samplesOf(optics, ids), [optics, ids])
+  const markedSamples: SamplePoint[] = useMemo(() => samplesOf(optics, markedIds), [optics, markedIds])
 
   const network = useMemo(() => networkLines(runs?.hips?.blanks as Record<string, NetworkBlankLine> | null | undefined), [runs])
   const focus = useMemo(() => fitBlankLines(blanks), [blanks])
@@ -68,6 +77,7 @@ export function BlankLines({ rows }: SectionPageProps) {
   const lines = useNet ? network : focus
   const lots = useMemo(() => poolLots(blanks, focus), [blanks, focus])
   const exps = useMemo(() => exposeSamples(samples, lines, lots), [samples, lines, lots])
+  const markedExps = useMemo(() => exposeSamples(markedSamples, lines, lots), [markedSamples, lines, lots])
   const palette = useMemo(() => linePalette(optics ?? [], network), [optics, network])
 
   if (error || !optics) return (
@@ -87,15 +97,17 @@ export function BlankLines({ rows }: SectionPageProps) {
   const facets = lotNames.map((lot) => {
     const bl = blanks.filter((b) => b.lot === lot), keys = [...new Set(bl.map(lineKey))].sort((a, b) => palette.keys.indexOf(a) - palette.keys.indexOf(b))
     const sm = withSamples === '1' ? samples.filter((s) => s.lot === lot) : []
+    const sampleAt = (s: SamplePoint): CrossPoint => ({ x: s.R1, y: s.T1, color: palette.color(lineKey(s)), hollow: true, opacity: 0.5, id: s.id, tip: [s.id, `sample · line ${palette.label(lineKey(s))}`, `R1 ${fmt(s.R1, 0)} · T1 ${fmt(s.T1, 0)} · Fabs ${fmt(s.fabs, 1)} Mm⁻¹`] })
+    const marked = withSamples === '1' ? markedSamples.filter((s) => s.lot === lot).map(sampleAt) : []
     const pts: CrossPoint[] = [
-      ...sm.map((s) => ({ x: s.R1, y: s.T1, color: palette.color(lineKey(s)), hollow: true, opacity: 0.5, id: s.id, tip: [s.id, `sample · line ${palette.label(lineKey(s))}`, `R1 ${fmt(s.R1, 0)} · T1 ${fmt(s.T1, 0)} · Fabs ${fmt(s.fabs, 1)} Mm⁻¹`] })),
+      ...sm.map(sampleAt),
       ...bl.map((b) => ({ x: b.R1, y: b.T1, color: palette.color(lineKey(b)), tip: [`field blank · ${b.date ?? 'no analysis date'}`, `line ${palette.label(lineKey(b))}`, `R1 ${fmt(b.R1, 0)} · T1 ${fmt(b.T1, 0)}`] })),
     ]
     const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y)
     const fits = keys.map((k) => byKey.get(k)).filter((l): l is BlankLine => !!l)
     const lo = Math.min(...xs, ...fits.map((l) => l.r1Min)), hi = Math.max(...xs, ...fits.map((l) => l.r1Max))
     const pool = lots.find((p) => p.lot === lot)
-    return { lot, bl, keys, pts, fits, pool, x: [Math.floor((lo - 8) / 10) * 10, Math.ceil((hi + 8) / 10) * 10] as [number, number],
+    return { lot, bl, keys, pts, marked, fits, pool, x: [Math.floor((lo - 8) / 10) * 10, Math.ceil((hi + 8) / 10) * 10] as [number, number],
       y: [Math.floor((Math.min(...ys) - 30) / 50) * 50, Math.ceil((Math.max(...ys) + 30) / 50) * 50] as [number, number] }
   })
 
@@ -124,11 +136,14 @@ export function BlankLines({ rows }: SectionPageProps) {
   const breakdown = lineBreakdown(siteExps)
   const check = recomputeCheck(exps)
   // ΔFabs against the sample's R1: where it leaves its line's blank R1 range the refit extrapolates
-  const fabsPts: CrossPoint[] = siteExps.flatMap((e) => {
+  const dfabsAt = (e: (typeof exps)[number]): CrossPoint[] => {
     const d = e.dfabs[cons], k = lineKey(e.s)
     return d !== null ? [{ x: e.s.R1, y: d, color: palette.color(k), id: e.s.id,
       tip: [e.s.id, `line ${palette.label(k)}`, `Fabs deployed ${fmt(e.fabs.deployed, 2)} · ${CONSTRUCTION_LABEL[cons]} ${fmt(e.fabs[cons], 2)} Mm⁻¹ (Δ ${fmt(d, 2)})`, `R1 ${fmt(e.s.R1, 0)}${e.line ? ` (blank range ${fmt(e.line.r1Min, 0)}–${fmt(e.line.r1Max, 0)})` : ''}`] }] : []
-  })
+  }
+  const fabsPts: CrossPoint[] = siteExps.flatMap(dfabsAt)
+  const markedSite = markedExps.filter((e) => e.s.code === siteCode)
+  const markedFabs: CrossPoint[] = markedSite.flatMap(dfabsAt)
   const bands = breakdown.filter((b) => b.line)
   const r1Lo = Math.min(...fabsPts.map((p) => p.x), ...bands.map((b) => b.line!.r1Min)), r1Hi = Math.max(...fabsPts.map((p) => p.x), ...bands.map((b) => b.line!.r1Max))
   const dMax = Math.max(0.5, ...fabsPts.map((p) => Math.abs(p.y))) * 1.1
@@ -151,12 +166,13 @@ export function BlankLines({ rows }: SectionPageProps) {
                 {f.pool?.quad && <path d={curvePath((r) => polyval(f.pool!.quad!, r), f.pool.r1Min, f.pool.r1Max, x, y)} stroke={INK.text} strokeWidth={2} strokeDasharray="2 3" />}
                 {f.pool?.lin && <path d={curvePath((r) => polyval(f.pool!.lin!, r), f.pool.r1Min, f.pool.r1Max, x, y)} stroke={INK.muted} strokeWidth={1.2} strokeDasharray="8 3 2 3" />}
               </g>}
-              points={f.pts} />
+              points={f.pts} marked={f.marked} />
           </div>
         )} />}
         <Key items={[...[...new Set(facets.flatMap((f) => f.keys))].map((k) => ({ label: palette.label(k), color: palette.color(k) })),
           { label: 'shipped line', color: INK.muted, kind: 'dash' as const }, { label: 'per-line quadratic', color: INK.muted, kind: 'line' as const },
           { label: 'lot-pooled quadratic (dotted)', color: INK.text, kind: 'dash' as const }, { label: 'lot-pooled linear (dash-dot)', color: INK.muted, kind: 'dash' as const }]} />
+        {withSamples === '1' && <ExcludedNote count={facets.reduce((a, f) => a + f.marked.length, 0)} drawn />}
       </ChartFrame>
 
       <ChartFrame id="bl-ledger" title="The blank ledger — per deployed line, then per lot"
@@ -186,6 +202,7 @@ export function BlankLines({ rows }: SectionPageProps) {
           { key: 'rq', label: 'Pooled rms quad', num: true, value: (r) => fmt(r.rmsQuad, 1) },
           { key: 'o', label: 'Fitted lines share an R1 interval', value: (r) => (r.shareInterval === null ? '—' : r.shareInterval ? 'yes' : 'no') },
         ]} />
+        <ExcludedNote count={markedSamples.length} />
         <Note>ftir_47 on the whole batch: lot 251's 373 blanks pooled scatter 43 / 32 counts (linear / quadratic) against 5–10 per line, and lot 248's 40 / 40 against 4–8; its three fitted lines share no R1 interval. Here only the field blanks of Beijing, Delhi, JPL and Addis are exported (lot 251's 2423.6 line has 4 of its 63, lot 248's 2262.0 line 4 of 16), so those two lines get no focus-site refit and the pooled scatter is smaller.</Note>
       </ChartFrame>
 
@@ -197,6 +214,7 @@ export function BlankLines({ rows }: SectionPageProps) {
             { label: 'Samples outside own line\'s blank R1 range (%)', domain: [0, Math.max(10, ...sitesHere.map((s) => 100 * Math.max(s.below, s.above))) * 1.1] }]} />}
         <Key items={[{ label: 'per-line linear', color: '#2c7fb8', kind: 'hollow' }, { label: 'per-line quadratic', color: '#2c7fb8' }, { label: 'lot-pooled quadratic', color: INK.negative, kind: 'square' },
           { label: 'R1 below blank range', color: '#6a51a3' }, { label: 'R1 above blank range', color: '#d08c2c', kind: 'square' }]} />
+        <ExcludedNote count={markedExps.filter((e) => e.line).length} />
         {agree.length > 0 && <>
           <p className="subtitle" style={{ margin: '12px 0 4px' }}>Against ftir_47's displayed site table (whole SPARTAN batch, blank lines fitted on every site's FB and LB blanks)</p>
           <DataTable rows={agree} rowKey={(s) => s.code} columns={[
@@ -224,7 +242,7 @@ export function BlankLines({ rows }: SectionPageProps) {
                 <line x1={x.range()[0]} x2={x.range()[1]} y1={y(0)} y2={y(0)} stroke={INK.axis} />
                 {bands.map((b, i) => <rect key={b.key} x={x(b.line!.r1Min)} width={Math.max(1, x(b.line!.r1Max) - x(b.line!.r1Min))} y={4 + 7 * i} height={5} fill={palette.color(b.key)} opacity={0.75} />)}
               </g>}
-              points={fabsPts} />}
+              points={fabsPts} marked={markedFabs} />}
           <DataTable rows={breakdown} rowKey={(b) => b.key} columns={[
             { key: 'l', label: 'Deployed line', value: (b) => <span style={{ color: palette.color(b.key), fontWeight: 600 }}>{lineLabel(b.ref)}</span> },
             { key: 'n', label: 'n', num: true, value: (b) => b.n },
@@ -238,6 +256,7 @@ export function BlankLines({ rows }: SectionPageProps) {
           ]} />
         </>}
         <Key items={breakdown.map((b) => ({ label: lineLabel(b.ref), color: palette.color(b.key) }))} />
+        <ExcludedNote count={markedSite.length} drawn />
         <Note>The deployed line reproduces the shipped Fabs to {fmt(check.maxDiff, 3)} Mm⁻¹ at most over {check.n} samples in view (ftir_47: 0.0000 over 3,047; the export rounds the deposit area). For JPL on the network fits, ftir_47's own table has the 2423.6 line's 56 filters at a median 4.84 Mm⁻¹ deployed, 5.23 per-line quadratic and 8.72 lot-pooled; the export carries 28 of them with a HIPS reading (28 more JPL rows from late 2022 have none).</Note>
       </ChartFrame>
 

@@ -8,6 +8,7 @@ import { useChartOptions } from '@/lib/chartOptions'
 import { averageLinkage, corrDistance, leafOrder, type Clade } from '@/lib/cluster'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { f2, fmt } from '@/lib/format'
+import { FixedSetNote } from '@/lib/markedRows'
 import { num, type Table } from '@/lib/table'
 import { FONT, INK } from '@/lib/theme'
 
@@ -136,6 +137,7 @@ export function SiteSimilarityMatrix({ table, provenance }: { table: Table | und
         <ColorLegend scale={scale as unknown as { domain(): number[]; (v: number): string }} scheme={colours.scheme} label="r of median spectra" format={(v) => fmt(v, 3)} />
         <span className="legend-note">{n} sites</span>
       </div>
+      <FixedSetNote what="ftir_52's saved site × site matrix of median spectra" />
     </ChartFrame>
   )
 }

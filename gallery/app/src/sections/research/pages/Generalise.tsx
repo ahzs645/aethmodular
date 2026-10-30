@@ -1,5 +1,6 @@
 import { Figure } from '@/components/Figure'
 import { meanBcFromResidual, meanResidualAtMac, useMac } from '@/lib/mac'
+import { FixedSetNote } from '@/lib/markedRows'
 import { num, type Row } from '@/lib/table'
 import type { SectionPageProps } from '../../types'
 import { PageIntro, provenance, rows, useSpectral, Waiting } from './spectralCommon'
@@ -33,6 +34,7 @@ export function Generalise(_props: SectionPageProps) {
     <PageIntro id="generalise-intro" title="Does the diagnosis generalise? — one calibration, five sites, and the deck's lessons stated precisely" data={data}
       notebooks="research/ftir_ec_phase3/ftir_53_committee_backup_figures (from ftir_47, ftir_51, ftir_46 and the locked reconstruction confirmation); ftir_31 and ftir_51 for the deck panels the gallery already draws">
       <p>The deck's Addis slides argue from one site. These are its backup: the calibrations applied unchanged to five SPARTAN sites fail in a site-specific way, so the work is diagnosis, not tuning. Reference axis HIPS Fabs/10 in the notebook; the slopes here are re-expressed at the MAC set under Filters → units (now {m.mac}). The other deck figures (ftir_31, ftir_51: setup crossplots, k sweep, analog distributions, lot crossplots) are already on the Calibration tab and the meeting pages.</p>
+      <FixedSetNote what="ftir_53's saved tables (every figure on this page)" />
     </PageIntro>
 
     <Figure kind="intervals" id="generalise-five" data={five} row="site" series="config"
