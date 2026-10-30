@@ -1,0 +1,271 @@
+{
+  "errors": [],
+  "resources": [
+    {
+      "name": "http://127.0.0.1:4173/assets/index-Dt7z2AAK.js",
+      "duration": 200.5999999998603,
+      "bytes": 1622706
+    },
+    {
+      "name": "http://127.0.0.1:4173/assets/index-dpgKTbt_.css",
+      "duration": 29.899999999906868,
+      "bytes": 197391
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/filters.json",
+      "duration": 56.800000000046566,
+      "bytes": 768787
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/meta.json",
+      "duration": 22.800000000046566,
+      "bytes": 5071
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/census.json",
+      "duration": 30.5,
+      "bytes": 31329
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/pmf.json",
+      "duration": 32.300000000046566,
+      "bytes": 52083
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/baseline_ftir_ec.json",
+      "duration": 31.399999999906868,
+      "bytes": 1016
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/weather/index.json",
+      "duration": 28.600000000093132,
+      "bytes": 1989
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/aeronet/index.json",
+      "duration": 28.799999999813735,
+      "bytes": 2604
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/aethalometer/index.json",
+      "duration": 29.199999999953434,
+      "bytes": 1079
+    },
+    {
+      "name": "http://127.0.0.1:4173/favicon.ico",
+      "duration": 21.600000000093132,
+      "bytes": 0
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/weather/filters/CHTS.json",
+      "duration": 8.100000000093132,
+      "bytes": 58307
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/weather/filters/ETAD.json",
+      "duration": 17.4000000001397,
+      "bytes": 37738
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/weather/filters/INDH.json",
+      "duration": 17,
+      "bytes": 30652
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/weather/filters/USPA.json",
+      "duration": 16.100000000093132,
+      "bytes": 43859
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/aeronet/filters/CHTS.json",
+      "duration": 17.300000000046566,
+      "bytes": 45036
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/aeronet/filters/ETAD.json",
+      "duration": 16.9000000001397,
+      "bytes": 35971
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/aeronet/filters/INDH.json",
+      "duration": 16.600000000093132,
+      "bytes": 24561
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/aeronet/filters/USPA.json",
+      "duration": 31.5999999998603,
+      "bytes": 39134
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/aethalometer/filters/CHTS.json",
+      "duration": 29.699999999953434,
+      "bytes": 6400
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/aethalometer/filters/ETAD.json",
+      "duration": 30.5,
+      "bytes": 15158
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/aethalometer/filters/INDH.json",
+      "duration": 29.800000000046566,
+      "bytes": 3321
+    },
+    {
+      "name": "http://127.0.0.1:4173/data/aethalometer/filters/USPA.json",
+      "duration": 30.699999999953434,
+      "bytes": 15816
+    },
+    {
+      "name": "http://127.0.0.1:4173/assets/CorrelationRanking-BjffOUwb.js",
+      "duration": 5.100000000093132,
+      "bytes": 9728
+    }
+  ],
+  "metrics": [
+    {
+      "name": "Timestamp",
+      "value": 1916.04395
+    },
+    {
+      "name": "AudioHandlers",
+      "value": 0
+    },
+    {
+      "name": "AudioWorkletProcessors",
+      "value": 0
+    },
+    {
+      "name": "Documents",
+      "value": 1
+    },
+    {
+      "name": "Frames",
+      "value": 1
+    },
+    {
+      "name": "JSEventListeners",
+      "value": 780
+    },
+    {
+      "name": "LayoutObjects",
+      "value": 5224
+    },
+    {
+      "name": "MediaKeySessions",
+      "value": 0
+    },
+    {
+      "name": "MediaKeys",
+      "value": 0
+    },
+    {
+      "name": "Nodes",
+      "value": 46687
+    },
+    {
+      "name": "Resources",
+      "value": 24
+    },
+    {
+      "name": "ContextLifecycleStateObservers",
+      "value": 14
+    },
+    {
+      "name": "V8PerContextDatas",
+      "value": 2
+    },
+    {
+      "name": "WorkerGlobalScopes",
+      "value": 0
+    },
+    {
+      "name": "UACSSResources",
+      "value": 0
+    },
+    {
+      "name": "RTCPeerConnections",
+      "value": 0
+    },
+    {
+      "name": "ResourceFetchers",
+      "value": 1
+    },
+    {
+      "name": "AdSubframes",
+      "value": 0
+    },
+    {
+      "name": "DetachedScriptStates",
+      "value": 2
+    },
+    {
+      "name": "ArrayBufferContents",
+      "value": 171
+    },
+    {
+      "name": "LayoutCount",
+      "value": 31
+    },
+    {
+      "name": "RecalcStyleCount",
+      "value": 41
+    },
+    {
+      "name": "LayoutDuration",
+      "value": 0.21467
+    },
+    {
+      "name": "RecalcStyleDuration",
+      "value": 0.27267
+    },
+    {
+      "name": "DevToolsCommandDuration",
+      "value": 0.372727
+    },
+    {
+      "name": "ScriptDuration",
+      "value": 1.053536
+    },
+    {
+      "name": "V8CompileDuration",
+      "value": 0.000109
+    },
+    {
+      "name": "TaskDuration",
+      "value": 2.233869
+    },
+    {
+      "name": "TaskOtherDuration",
+      "value": 0.320157
+    },
+    {
+      "name": "ThreadTime",
+      "value": 1.518558
+    },
+    {
+      "name": "ProcessTime",
+      "value": 2.76
+    },
+    {
+      "name": "JSHeapUsedSize",
+      "value": 52281472
+    },
+    {
+      "name": "JSHeapTotalSize",
+      "value": 100909056
+    },
+    {
+      "name": "FirstMeaningfulPaint",
+      "value": 0
+    },
+    {
+      "name": "DomContentLoaded",
+      "value": 1913.675852
+    },
+    {
+      "name": "NavigationStart",
+      "value": 1913.158402
+    }
+  ]
+}

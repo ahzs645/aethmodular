@@ -1,0 +1,807 @@
+[
+  {
+    "name": "before",
+    "run": 0,
+    "errors": [],
+    "metrics": {
+      "Nodes": 5120,
+      "LayoutDuration": 0.188378,
+      "RecalcStyleDuration": 0.884204,
+      "ScriptDuration": 1.488287,
+      "TaskDuration": 3.26049,
+      "JSHeapUsedSize": 76105940
+    },
+    "resources": [
+      {
+        "name": "/assets/index-DC4WiSv2.js",
+        "bytes": 2621066,
+        "duration": 222
+      },
+      {
+        "name": "/assets/index-C7iIlyXq.css",
+        "bytes": 194291,
+        "duration": 25.800000000046566
+      },
+      {
+        "name": "/data/filters.json",
+        "bytes": 768787,
+        "duration": 54.199999999953434
+      },
+      {
+        "name": "/data/meta.json",
+        "bytes": 5071,
+        "duration": 32
+      },
+      {
+        "name": "/data/census.json",
+        "bytes": 31329,
+        "duration": 41.300000000046566
+      },
+      {
+        "name": "/data/pmf.json",
+        "bytes": 52083,
+        "duration": 42.800000000046566
+      },
+      {
+        "name": "/data/baseline_ftir_ec.json",
+        "bytes": 1016,
+        "duration": 39.699999999953434
+      },
+      {
+        "name": "/data/weather/index.json",
+        "bytes": 1989,
+        "duration": 30.300000000046566
+      },
+      {
+        "name": "/data/aeronet/index.json",
+        "bytes": 2604,
+        "duration": 46.9000000001397
+      },
+      {
+        "name": "/data/aethalometer/index.json",
+        "bytes": 1079,
+        "duration": 46.800000000046566
+      },
+      {
+        "name": "/favicon.ico",
+        "bytes": 0,
+        "duration": 38.89999999990687
+      },
+      {
+        "name": "/data/calibration.json",
+        "bytes": 8596517,
+        "duration": 1791.5
+      },
+      {
+        "name": "/data/calibration_runs.json",
+        "bytes": 2645648,
+        "duration": 1098
+      },
+      {
+        "name": "/data/weather/filters/CHTS.json",
+        "bytes": 58307,
+        "duration": 23
+      },
+      {
+        "name": "/data/weather/filters/ETAD.json",
+        "bytes": 37738,
+        "duration": 16.9000000001397
+      },
+      {
+        "name": "/data/weather/filters/INDH.json",
+        "bytes": 30652,
+        "duration": 20.5
+      },
+      {
+        "name": "/data/weather/filters/USPA.json",
+        "bytes": 43859,
+        "duration": 20
+      },
+      {
+        "name": "/data/aeronet/filters/CHTS.json",
+        "bytes": 45036,
+        "duration": 19.399999999906868
+      },
+      {
+        "name": "/data/aeronet/filters/ETAD.json",
+        "bytes": 35971,
+        "duration": 16.5
+      },
+      {
+        "name": "/data/aeronet/filters/INDH.json",
+        "bytes": 24561,
+        "duration": 14.899999999906868
+      },
+      {
+        "name": "/data/aeronet/filters/USPA.json",
+        "bytes": 39134,
+        "duration": 20.0999999998603
+      },
+      {
+        "name": "/data/aethalometer/filters/CHTS.json",
+        "bytes": 6400,
+        "duration": 15.799999999813735
+      },
+      {
+        "name": "/data/aethalometer/filters/ETAD.json",
+        "bytes": 15158,
+        "duration": 7
+      },
+      {
+        "name": "/data/aethalometer/filters/INDH.json",
+        "bytes": 3321,
+        "duration": 5.899999999906868
+      },
+      {
+        "name": "/data/aethalometer/filters/USPA.json",
+        "bytes": 15816,
+        "duration": 10.100000000093132
+      }
+    ]
+  },
+  {
+    "name": "after",
+    "run": 0,
+    "errors": [],
+    "metrics": {
+      "Nodes": 5357,
+      "LayoutDuration": 0.173759,
+      "RecalcStyleDuration": 0.315304,
+      "ScriptDuration": 1.073975,
+      "TaskDuration": 1.91009,
+      "JSHeapUsedSize": 36487472
+    },
+    "resources": [
+      {
+        "name": "/assets/index-rgvhLhzX.js",
+        "bytes": 1622114,
+        "duration": 127.39999999990687
+      },
+      {
+        "name": "/assets/index-dpgKTbt_.css",
+        "bytes": 197391,
+        "duration": 22.5999999998603
+      },
+      {
+        "name": "/data/filters.json",
+        "bytes": 768787,
+        "duration": 46.89999999990687
+      },
+      {
+        "name": "/data/meta.json",
+        "bytes": 5071,
+        "duration": 18
+      },
+      {
+        "name": "/data/census.json",
+        "bytes": 31329,
+        "duration": 17.799999999813735
+      },
+      {
+        "name": "/data/pmf.json",
+        "bytes": 52083,
+        "duration": 30.600000000093132
+      },
+      {
+        "name": "/data/baseline_ftir_ec.json",
+        "bytes": 1016,
+        "duration": 29.800000000046566
+      },
+      {
+        "name": "/data/weather/index.json",
+        "bytes": 1989,
+        "duration": 27.4000000001397
+      },
+      {
+        "name": "/data/aeronet/index.json",
+        "bytes": 2604,
+        "duration": 30.100000000093132
+      },
+      {
+        "name": "/data/aethalometer/index.json",
+        "bytes": 1079,
+        "duration": 29.699999999953434
+      },
+      {
+        "name": "/favicon.ico",
+        "bytes": 0,
+        "duration": 25.399999999906868
+      },
+      {
+        "name": "/data/weather/filters/CHTS.json",
+        "bytes": 58307,
+        "duration": 9.5
+      },
+      {
+        "name": "/data/weather/filters/INDH.json",
+        "bytes": 30652,
+        "duration": 15.5
+      },
+      {
+        "name": "/data/weather/filters/ETAD.json",
+        "bytes": 37738,
+        "duration": 16
+      },
+      {
+        "name": "/data/weather/filters/USPA.json",
+        "bytes": 43859,
+        "duration": 18
+      },
+      {
+        "name": "/data/aeronet/filters/CHTS.json",
+        "bytes": 45036,
+        "duration": 24
+      },
+      {
+        "name": "/data/aeronet/filters/ETAD.json",
+        "bytes": 35971,
+        "duration": 20.100000000093132
+      },
+      {
+        "name": "/data/aeronet/filters/INDH.json",
+        "bytes": 24561,
+        "duration": 20
+      },
+      {
+        "name": "/data/aeronet/filters/USPA.json",
+        "bytes": 39134,
+        "duration": 24.9000000001397
+      },
+      {
+        "name": "/data/aethalometer/filters/CHTS.json",
+        "bytes": 6400,
+        "duration": 24.5999999998603
+      },
+      {
+        "name": "/data/aethalometer/filters/ETAD.json",
+        "bytes": 15158,
+        "duration": 25.9000000001397
+      },
+      {
+        "name": "/data/aethalometer/filters/INDH.json",
+        "bytes": 3321,
+        "duration": 24.9000000001397
+      },
+      {
+        "name": "/data/aethalometer/filters/USPA.json",
+        "bytes": 15816,
+        "duration": 26.100000000093132
+      },
+      {
+        "name": "/assets/CorrelationRanking-Oc6Ohl4U.js",
+        "bytes": 9728,
+        "duration": 3.800000000046566
+      }
+    ]
+  },
+  {
+    "name": "before",
+    "run": 1,
+    "errors": [],
+    "metrics": {
+      "Nodes": 4846,
+      "LayoutDuration": 0.130536,
+      "RecalcStyleDuration": 0.762572,
+      "ScriptDuration": 1.843701,
+      "TaskDuration": 3.595109,
+      "JSHeapUsedSize": 63991548
+    },
+    "resources": [
+      {
+        "name": "/assets/index-DC4WiSv2.js",
+        "bytes": 2621066,
+        "duration": 252.19999999995343
+      },
+      {
+        "name": "/assets/index-C7iIlyXq.css",
+        "bytes": 194291,
+        "duration": 37.4000000001397
+      },
+      {
+        "name": "/data/filters.json",
+        "bytes": 768787,
+        "duration": 85.29999999981374
+      },
+      {
+        "name": "/data/meta.json",
+        "bytes": 5071,
+        "duration": 31.700000000186265
+      },
+      {
+        "name": "/data/census.json",
+        "bytes": 31329,
+        "duration": 32.5
+      },
+      {
+        "name": "/data/pmf.json",
+        "bytes": 52083,
+        "duration": 32.300000000046566
+      },
+      {
+        "name": "/data/baseline_ftir_ec.json",
+        "bytes": 1016,
+        "duration": 31.700000000186265
+      },
+      {
+        "name": "/data/weather/index.json",
+        "bytes": 1989,
+        "duration": 29.5999999998603
+      },
+      {
+        "name": "/data/aeronet/index.json",
+        "bytes": 2604,
+        "duration": 58.9000000001397
+      },
+      {
+        "name": "/data/aethalometer/index.json",
+        "bytes": 1079,
+        "duration": 59.4000000001397
+      },
+      {
+        "name": "/data/calibration.json",
+        "bytes": 8596517,
+        "duration": 852.8999999999069
+      },
+      {
+        "name": "/data/calibration_runs.json",
+        "bytes": 2645648,
+        "duration": 811.5
+      },
+      {
+        "name": "/data/weather/filters/CHTS.json",
+        "bytes": 58307,
+        "duration": 31.5999999998603
+      },
+      {
+        "name": "/data/weather/filters/ETAD.json",
+        "bytes": 37738,
+        "duration": 26.100000000093132
+      },
+      {
+        "name": "/data/weather/filters/INDH.json",
+        "bytes": 30652,
+        "duration": 30.5999999998603
+      },
+      {
+        "name": "/data/weather/filters/USPA.json",
+        "bytes": 43859,
+        "duration": 30.800000000046566
+      },
+      {
+        "name": "/data/aeronet/filters/CHTS.json",
+        "bytes": 45036,
+        "duration": 41.89999999990687
+      },
+      {
+        "name": "/data/aeronet/filters/ETAD.json",
+        "bytes": 35971,
+        "duration": 44
+      },
+      {
+        "name": "/data/aeronet/filters/INDH.json",
+        "bytes": 24561,
+        "duration": 40.5999999998603
+      },
+      {
+        "name": "/data/aeronet/filters/USPA.json",
+        "bytes": 39134,
+        "duration": 46
+      },
+      {
+        "name": "/data/aethalometer/filters/CHTS.json",
+        "bytes": 6400,
+        "duration": 47.5999999998603
+      },
+      {
+        "name": "/data/aethalometer/filters/ETAD.json",
+        "bytes": 15158,
+        "duration": 47.300000000046566
+      },
+      {
+        "name": "/data/aethalometer/filters/INDH.json",
+        "bytes": 3321,
+        "duration": 49.299999999813735
+      },
+      {
+        "name": "/data/aethalometer/filters/USPA.json",
+        "bytes": 15816,
+        "duration": 52.5
+      }
+    ]
+  },
+  {
+    "name": "after",
+    "run": 1,
+    "errors": [],
+    "metrics": {
+      "Nodes": 5353,
+      "LayoutDuration": 0.174016,
+      "RecalcStyleDuration": 0.34199,
+      "ScriptDuration": 1.306922,
+      "TaskDuration": 2.127434,
+      "JSHeapUsedSize": 45738524
+    },
+    "resources": [
+      {
+        "name": "/assets/index-rgvhLhzX.js",
+        "bytes": 1622114,
+        "duration": 188
+      },
+      {
+        "name": "/assets/index-dpgKTbt_.css",
+        "bytes": 197391,
+        "duration": 39.5
+      },
+      {
+        "name": "/data/filters.json",
+        "bytes": 768787,
+        "duration": 48.5
+      },
+      {
+        "name": "/data/meta.json",
+        "bytes": 5071,
+        "duration": 19.4000000001397
+      },
+      {
+        "name": "/data/census.json",
+        "bytes": 31329,
+        "duration": 20.699999999953434
+      },
+      {
+        "name": "/data/pmf.json",
+        "bytes": 52083,
+        "duration": 20.300000000046566
+      },
+      {
+        "name": "/data/baseline_ftir_ec.json",
+        "bytes": 1016,
+        "duration": 19.100000000093132
+      },
+      {
+        "name": "/data/weather/index.json",
+        "bytes": 1989,
+        "duration": 16.800000000046566
+      },
+      {
+        "name": "/data/aeronet/index.json",
+        "bytes": 2604,
+        "duration": 21.600000000093132
+      },
+      {
+        "name": "/data/aethalometer/index.json",
+        "bytes": 1079,
+        "duration": 21.100000000093132
+      },
+      {
+        "name": "/data/weather/filters/CHTS.json",
+        "bytes": 58307,
+        "duration": 13.299999999813735
+      },
+      {
+        "name": "/data/weather/filters/ETAD.json",
+        "bytes": 37738,
+        "duration": 13.600000000093132
+      },
+      {
+        "name": "/data/weather/filters/INDH.json",
+        "bytes": 30652,
+        "duration": 13.5
+      },
+      {
+        "name": "/data/weather/filters/USPA.json",
+        "bytes": 43859,
+        "duration": 24.5
+      },
+      {
+        "name": "/data/aeronet/filters/CHTS.json",
+        "bytes": 45036,
+        "duration": 25.199999999953434
+      },
+      {
+        "name": "/data/aeronet/filters/ETAD.json",
+        "bytes": 35971,
+        "duration": 24.5
+      },
+      {
+        "name": "/data/aeronet/filters/INDH.json",
+        "bytes": 24561,
+        "duration": 21.699999999953434
+      },
+      {
+        "name": "/data/aeronet/filters/USPA.json",
+        "bytes": 39134,
+        "duration": 24.899999999906868
+      },
+      {
+        "name": "/data/aethalometer/filters/CHTS.json",
+        "bytes": 6400,
+        "duration": 23
+      },
+      {
+        "name": "/data/aethalometer/filters/ETAD.json",
+        "bytes": 15158,
+        "duration": 27.300000000046566
+      },
+      {
+        "name": "/data/aethalometer/filters/INDH.json",
+        "bytes": 3321,
+        "duration": 32.60000000009313
+      },
+      {
+        "name": "/data/aethalometer/filters/USPA.json",
+        "bytes": 15816,
+        "duration": 32.60000000009313
+      },
+      {
+        "name": "/assets/CorrelationRanking-Oc6Ohl4U.js",
+        "bytes": 9728,
+        "duration": 8.800000000046566
+      }
+    ]
+  },
+  {
+    "name": "before",
+    "run": 2,
+    "errors": [],
+    "metrics": {
+      "Nodes": 4846,
+      "LayoutDuration": 0.17311,
+      "RecalcStyleDuration": 0.818007,
+      "ScriptDuration": 1.841427,
+      "TaskDuration": 3.810299,
+      "JSHeapUsedSize": 75610216
+    },
+    "resources": [
+      {
+        "name": "/assets/index-DC4WiSv2.js",
+        "bytes": 2621066,
+        "duration": 214.4000000001397
+      },
+      {
+        "name": "/assets/index-C7iIlyXq.css",
+        "bytes": 194291,
+        "duration": 17.399999999906868
+      },
+      {
+        "name": "/data/filters.json",
+        "bytes": 768787,
+        "duration": 75.19999999995343
+      },
+      {
+        "name": "/data/meta.json",
+        "bytes": 5071,
+        "duration": 15.300000000046566
+      },
+      {
+        "name": "/data/census.json",
+        "bytes": 31329,
+        "duration": 14.899999999906868
+      },
+      {
+        "name": "/data/pmf.json",
+        "bytes": 52083,
+        "duration": 12.699999999953434
+      },
+      {
+        "name": "/data/baseline_ftir_ec.json",
+        "bytes": 1016,
+        "duration": 9.800000000046566
+      },
+      {
+        "name": "/data/weather/index.json",
+        "bytes": 1989,
+        "duration": 6.7000000001862645
+      },
+      {
+        "name": "/data/aeronet/index.json",
+        "bytes": 2604,
+        "duration": 25.5
+      },
+      {
+        "name": "/data/aethalometer/index.json",
+        "bytes": 1079,
+        "duration": 24.899999999906868
+      },
+      {
+        "name": "/data/calibration.json",
+        "bytes": 8596517,
+        "duration": 1254.1000000000931
+      },
+      {
+        "name": "/data/calibration_runs.json",
+        "bytes": 2645648,
+        "duration": 824.3999999999069
+      },
+      {
+        "name": "/data/weather/filters/CHTS.json",
+        "bytes": 58307,
+        "duration": 9.799999999813735
+      },
+      {
+        "name": "/data/weather/filters/ETAD.json",
+        "bytes": 37738,
+        "duration": 9.199999999953434
+      },
+      {
+        "name": "/data/weather/filters/INDH.json",
+        "bytes": 30652,
+        "duration": 8.599999999860302
+      },
+      {
+        "name": "/data/weather/filters/USPA.json",
+        "bytes": 43859,
+        "duration": 20.100000000093132
+      },
+      {
+        "name": "/data/aeronet/filters/CHTS.json",
+        "bytes": 45036,
+        "duration": 17.200000000186265
+      },
+      {
+        "name": "/data/aeronet/filters/ETAD.json",
+        "bytes": 35971,
+        "duration": 17
+      },
+      {
+        "name": "/data/aeronet/filters/INDH.json",
+        "bytes": 24561,
+        "duration": 26.300000000046566
+      },
+      {
+        "name": "/data/aeronet/filters/USPA.json",
+        "bytes": 39134,
+        "duration": 30
+      },
+      {
+        "name": "/data/aethalometer/filters/CHTS.json",
+        "bytes": 6400,
+        "duration": 24.5
+      },
+      {
+        "name": "/data/aethalometer/filters/ETAD.json",
+        "bytes": 15158,
+        "duration": 33.800000000046566
+      },
+      {
+        "name": "/data/aethalometer/filters/INDH.json",
+        "bytes": 3321,
+        "duration": 32.5999999998603
+      },
+      {
+        "name": "/data/aethalometer/filters/USPA.json",
+        "bytes": 15816,
+        "duration": 31.699999999953434
+      }
+    ]
+  },
+  {
+    "name": "after",
+    "run": 2,
+    "errors": [],
+    "metrics": {
+      "Nodes": 5353,
+      "LayoutDuration": 0.101282,
+      "RecalcStyleDuration": 0.264062,
+      "ScriptDuration": 0.88633,
+      "TaskDuration": 1.558006,
+      "JSHeapUsedSize": 29695956
+    },
+    "resources": [
+      {
+        "name": "/assets/index-rgvhLhzX.js",
+        "bytes": 1622114,
+        "duration": 156.29999999981374
+      },
+      {
+        "name": "/assets/index-dpgKTbt_.css",
+        "bytes": 197391,
+        "duration": 42.200000000186265
+      },
+      {
+        "name": "/data/filters.json",
+        "bytes": 768787,
+        "duration": 43.200000000186265
+      },
+      {
+        "name": "/data/meta.json",
+        "bytes": 5071,
+        "duration": 14
+      },
+      {
+        "name": "/data/census.json",
+        "bytes": 31329,
+        "duration": 16.600000000093132
+      },
+      {
+        "name": "/data/pmf.json",
+        "bytes": 52083,
+        "duration": 14.100000000093132
+      },
+      {
+        "name": "/data/baseline_ftir_ec.json",
+        "bytes": 1016,
+        "duration": 13.599999999860302
+      },
+      {
+        "name": "/data/weather/index.json",
+        "bytes": 1989,
+        "duration": 9.300000000046566
+      },
+      {
+        "name": "/data/aeronet/index.json",
+        "bytes": 2604,
+        "duration": 11.399999999906868
+      },
+      {
+        "name": "/data/aethalometer/index.json",
+        "bytes": 1079,
+        "duration": 11.100000000093132
+      },
+      {
+        "name": "/data/weather/filters/CHTS.json",
+        "bytes": 58307,
+        "duration": 10.100000000093132
+      },
+      {
+        "name": "/data/weather/filters/ETAD.json",
+        "bytes": 37738,
+        "duration": 10
+      },
+      {
+        "name": "/data/weather/filters/INDH.json",
+        "bytes": 30652,
+        "duration": 9.300000000046566
+      },
+      {
+        "name": "/data/weather/filters/USPA.json",
+        "bytes": 43859,
+        "duration": 12.399999999906868
+      },
+      {
+        "name": "/data/aeronet/filters/CHTS.json",
+        "bytes": 45036,
+        "duration": 17.899999999906868
+      },
+      {
+        "name": "/data/aeronet/filters/ETAD.json",
+        "bytes": 35971,
+        "duration": 16.200000000186265
+      },
+      {
+        "name": "/data/aeronet/filters/INDH.json",
+        "bytes": 24561,
+        "duration": 15.399999999906868
+      },
+      {
+        "name": "/data/aeronet/filters/USPA.json",
+        "bytes": 39134,
+        "duration": 20.800000000046566
+      },
+      {
+        "name": "/data/aethalometer/filters/CHTS.json",
+        "bytes": 6400,
+        "duration": 15.399999999906868
+      },
+      {
+        "name": "/data/aethalometer/filters/ETAD.json",
+        "bytes": 15158,
+        "duration": 15.600000000093132
+      },
+      {
+        "name": "/data/aethalometer/filters/INDH.json",
+        "bytes": 3321,
+        "duration": 17.899999999906868
+      },
+      {
+        "name": "/data/aethalometer/filters/USPA.json",
+        "bytes": 15816,
+        "duration": 18.899999999906868
+      },
+      {
+        "name": "/assets/CorrelationRanking-Oc6Ohl4U.js",
+        "bytes": 9728,
+        "duration": 3.0999999998603016
+      }
+    ]
+  }
+]

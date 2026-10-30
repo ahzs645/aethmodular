@@ -1,0 +1,5 @@
+section research: 5 data paths checked, 0 in the public bundle
+unlisted section instruments: 8 data paths checked, 0 missing from the public bundle
+publish archive: 317 files, 0 from private sections
+publish archive: 77 files from unlisted section instruments
+public build: OK

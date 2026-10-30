@@ -1,0 +1,411 @@
+
+> aeth-graph-gallery@0.1.0 test
+> node --test 'src/lib/*.test.mjs' 'src/sections/**/*.test.mjs'
+
+✔ fine soil is Malm 1994 on the five elements, preferring elemental calcium (1.938257ms)
+✔ w is ammonium sulfate and nitrate over themselves plus BC (0.302022ms)
+✔ pearson and the numpy-style quantile (0.349299ms)
+✔ the exclusion curve drops the lowest BC/AOD and recomputes r (0.503838ms)
+✔ Cazorla matrix classes (0.292349ms)
+✔ monthly means and mean ± SE (2.327866ms)
+✔ columnar IMPROVE histories preserve distinct POCs, zeros and missing fields (9.880514ms)
+✔ recency uses inclusive dates and clamps leap-day thresholds (0.332149ms)
+✔ sampling keeps zero months, distinguishes missing fields, and counts physical filters once (0.307477ms)
+✔ jumps require consecutive observed months and a meaningful count difference (0.361561ms)
+✔ default origin axes hide negative points only from display and count them (1.418329ms)
+✔ intercept view retains negative observations without borrowing their y extent for x (0.226244ms)
+✔ intercept view includes every selected intercept, including those outside the observed range (0.15375ms)
+✔ robustDomain clips to quantiles, keeps required values and counts what it leaves out (24.794568ms)
+✔ panel axes: per site groups the per-season grid by row; one-dimension charts collapse to Shared or Own (0.566651ms)
+✔ a pair in different units drops the 1:1 line and floats each axis to its own range (1.097864ms)
+✔ a peak on a sloping baseline is found at its centre, above the continuum (2.669708ms)
+✔ a neighbouring band leaking in at the window edge is flagged, not reported as a peak (0.498603ms)
+✔ missing anchor windows give no answer rather than a wrong one (2.074657ms)
+node:fs:484
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/workspace/aethmodular/gallery/app/public/data/baseline_comparison.json'
+    at Object.readFileSync (node:fs:484:20)
+    at file:///workspace/aethmodular/gallery/app/src/lib/baselineComparison.test.mjs:5:28
+    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+    at async node:internal/modules/esm/loader:643:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/aethmodular/gallery/app/public/data/baseline_comparison.json'
+}
+
+Node.js v24.19.0
+✖ src/lib/baselineComparison.test.mjs (501.627968ms)
+✔ shared changes remove only the corresponding per-chart exceptions (2.55847ms)
+✔ stored settings validate values and retain explicit false and compact overrides (0.681768ms)
+✔ target follows the largest visible area, excluding the sticky header and offscreen charts (0.46236ms)
+✔ focused charts win over the page behind them and stable order breaks equal-area ties (0.283509ms)
+✔ fit-statistics placement is stored only when set, per chart or shared (0.462899ms)
+✔ the ⌘K chart index matches the source (run npm run index:charts after adding a chart) (206.079248ms)
+✔ average linkage matches the member-pair definition (10.778515ms)
+✔ two tight groups come out as neighbours, and corrDistance treats a gap as unrelated (0.43873ms)
+✔ IMPROVE RMSE is distinct from target RMSE and internal CV RMSE (0.787176ms)
+✔ fitted-count axis preserves cutoff selection and uses explicit fit counts only (1.026401ms)
+✔ cohort and holdout counts cannot be inferred from cutoff or test pairs (0.224885ms)
+✔ tiles and sheets round-trip through the URL, names and fields with separators included (3.628803ms)
+✔ a mangled or duplicate tile is dropped; sizes and places are clamped (0.559684ms)
+✔ the dashboard state leaves its defaults out of the URL and reads back (0.658397ms)
+✔ arrange: overlaps are pushed down, then everything floats up (0.672499ms)
+✔ firstFit fills the first gap; add, remove and ids (2.707401ms)
+✔ placeTile: onto a tile of the same size the two swap; otherwise the others make room (0.695568ms)
+✔ stepTile: an arrow trades places with the neighbour on that side, else moves a cell (1.104209ms)
+✔ placeNew: a free gap, else shrunk into the largest gap, else half of the largest tile; never below the window (1.727045ms)
+✔ tile filters narrow the page; retained IDs use source membership, including explicit empty membership (1.573914ms)
+✔ cohort URL input rejects malformed structures and keeps deduplicated reference IDs (0.378302ms)
+✔ contributing rows require finite pairs, preserve zero, and count physical IDs once (0.229647ms)
+✔ CSV keeps absent values blank, escapes delimiters and neutralizes spreadsheet formulas (0.376418ms)
+✔ normalization preserves unchanged branches and does not mutate the source (0.352705ms)
+✔ metric identity distinguishes FTIR, optical and TOR methods (0.280305ms)
+✔ snapshot versions and checksums are validated before any view can be restored (15.543456ms)
+✔ seasons cover the weather record only, not the open past and future (4.143786ms)
+✔ a short gap takes the nearest day, a long one stays unclassified (1.362944ms)
+✔ while the weather loads nothing is classified (1.188127ms)
+✔ saved colors reject malformed values and accept valid hex without letting CSS through (1.97124ms)
+✔ site overrides, shared mode and reset resolve independently of fit colors (0.20866ms)
+✔ paint substitution preserves opacity, transparent marks and unrelated colors (1.708356ms)
+✔ recommendations give 40 unique site colors and separate readable colors for all enabled fits (39.545717ms)
+✔ standard colors bypass saved custom colors without losing them, including after storage reload (0.502608ms)
+✔ a dark-page export keeps site and season colours, even when a dark ramp step shares the hex (0.765851ms)
+✔ categorical set colours remain fixed in an export even when a ramp registers the same paint (0.346709ms)
+✔ only equal season names and month memberships consolidate across sites (1.868272ms)
+✔ consolidated colors share an override while independent choices survive toggling (0.740824ms)
+✔ recommended season colors follow consolidation and remain separate from enabled fits (4.846479ms)
+✔ a measured field stays itself (2.327293ms)
+✔ HIPS BC moves to the same instrument first, then the reflectometer (0.435404ms)
+✔ FTIR carbon moves to the public FTIR product, another baseline, then IMPROVE TOR (0.382247ms)
+✔ no documented stand-in keeps the field, so the tile can say why it is empty (0.513814ms)
+✔ the reason cites the method that explains the gap, and claims dates only from the record (1.244381ms)
+✔ rowsOf accepts column and row tables (3.007289ms)
+✔ where filters on values and value lists; uniq keeps first-seen order (0.681453ms)
+✔ summarize gives median and interval per group, skipping missing values (1.133166ms)
+✔ densities share edges and each integrates to one (0.958187ms)
+✔ nearestIndex works on ascending and descending grids (2.213384ms)
+✔ channelQuantiles and iqrRows (0.883338ms)
+✔ facetGrid fits columns to the width (0.383786ms)
+✔ facetGrid caps a cell at maxCell (0.219799ms)
+✔ panelRow puts panels side by side when their mins fit, else stacks them (0.942063ms)
+✔ panelLetter runs a..z then aa (0.40647ms)
+✔ fitColumns puts boxes side by side when their text fits (0.272802ms)
+✔ network values fill missing measurements without replacing precision, zeros or frozen predictions (0.895965ms)
+✔ neither source can erase an exclusion, and different physical filters cannot merge (0.578122ms)
+✔ popovers float instead of sitting in place under their trigger (9.541578ms)
+✔ the chart notes (ⓘ) are never positioned inside a panel (0.720215ms)
+node:fs:484
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/workspace/aethmodular/gallery/app/public/data/vibes_fullrange_results.json'
+    at Object.readFileSync (node:fs:484:20)
+    at read (file:///workspace/aethmodular/gallery/app/src/lib/fullRangeVibes.test.mjs:6:36)
+    at file:///workspace/aethmodular/gallery/app/src/lib/fullRangeVibes.test.mjs:7:14
+    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+    at async node:internal/modules/esm/loader:643:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/aethmodular/gallery/app/public/data/vibes_fullrange_results.json'
+}
+
+Node.js v24.19.0
+✖ src/lib/fullRangeVibes.test.mjs (219.942189ms)
+✔ bands are half-open like pd.cut(right=False): a value on a cutoff goes up (3.142816ms)
+✔ quantile splits follow the values; labels default to Low / Mid / High (1.764922ms)
+✔ applyGrouping labels rows and leaves rows without the field out (0.652369ms)
+✔ groupings round-trip through the URL; junk is ignored (2.847667ms)
+✔ the notebook groupings are well formed (0.584389ms)
+✔ deciles get ten labels and ten distinct colours; merging keeps the first copy of an id (0.651845ms)
+✔ equal values can join the band below, and the ranges say so (0.680161ms)
+✔ typed cutoffs read as typed; quantile cutoffs stay rounded (0.267392ms)
+✔ band colours and the equal side round-trip through the URL; older links read the same (0.804457ms)
+✔ formulas parse to arithmetic over known fields only (4.492106ms)
+✔ calculated field names are identifiers that do not collide (0.662487ms)
+✔ a missing value fails a comparison instead of reading as zero (10.198275ms)
+✔ calculated fields are worked out per row before the rule runs (1.030018ms)
+✔ a rule survives the URL and reads back in words (16.67369ms)
+﹣ templates reproduce the saved checks on public/data/spec_curve.json (0.222233ms) # export not generated
+﹣ templates reproduce the saved checks on public/data/meeting/spec_curve_20260917.json (0.179207ms) # export not generated
+﹣ templates reproduce the saved checks on public/data/meeting-r70/spec_curve_20260917.json (0.16113ms) # export not generated
+✔ conditions apply in order, with what each removes, alone and shared (1.262559ms)
+✔ λ scales with MAC², 1 off an Fabs axis (0.793826ms)
+✔ a fit against Fabs/MAC: slope scales by MAC/10, intercept stays (OLS and Deming with λ ∝ MAC²) (2.572879ms)
+✔ HIPS BC and the view object (0.263598ms)
+✔ worldPixel and fromWorldPixel round-trip (2.211541ms)
+✔ groupOverlapping merges overlapping discs and splits them when zoomed in (0.892674ms)
+✔ a group that grows can take in a further neighbour (0.600588ms)
+﹣ meeting complete-pair counts and selectable Deming fits reproduce the saved analysis (0.658261ms) # SKIP
+✔ day intersections deduplicate days without joining adjacent dates (4.766744ms)
+✔ unavailable completeness differs from a measured zero overlap; filter IDs differ from days (1.683177ms)
+✔ packaged monthly counts reconcile with each product population, including zero months (14.664095ms)
+✔ study exports preserve sample dates, physical filters and missing completeness (1.885584ms)
+✔ AERONET availability: monthly counts add up to each site, and photometer days fit their month (12.415483ms)
+✔ combined offers every grouping and keeps the reader's choice (2.839423ms)
+✔ per site drops "per site" (it is the pooled fit) and relabels pooled (0.923023ms)
+✔ per season hides grouping with a note, fit lines off hides it silently (0.648873ms)
+✔ no estimator ticked hides grouping (0.509207ms)
+✔ an unknown stored value falls back to the default (0.454844ms)
+✔ every palette is well formed: unique names, hex colours, a source, a Gallery default (4.835169ms)
+✔ sequential ramps run one way in lightness, so more always reads as further along (1.502943ms)
+✔ the published sets keep their published colours (1.695529ms)
+✔ notes come from the flags, and categorical sets say how many colours they have (0.451833ms)
+✔ an unknown name falls back to the Gallery palette of its kind (2.523695ms)
+✔ SPARTAN component colours stay attached to their names across charts, order and subsets (3.337887ms)
+✔ Gallery retains the original composition range and every set builds a scale (0.595582ms)
+✔ semantic sets keep their component mapping; generic sets can reverse without mutating the registry (0.464768ms)
+✔ additional species use categorical colours without being assigned an unrelated reconstructed component (10.057691ms)
+✔ the FTIR functional groups keep the IMPROVE figure colours by default and in their own set, in its stack order (1.01069ms)
+✔ nearest-point hit testing lives in components/HitLayer only (36.912642ms)
+✔ no chart reorders its marks to put the focused one on top (28.329391ms)
+✔ marks do not set the gallery hover from their own mouse handlers (35.607368ms)
+✔ charts read the gallery hover only for their own filters (31.093653ms)
+✔ no :has() on the page root (6.156903ms)
+✔ the rain rule on Addis ERA5 reproduces the PMF paper 2023 boundaries within a week (12.846148ms)
+✔ a year without rains is all First Dry; settings round-trip through the URL (6.615821ms)
+✔ missing rain is no season, not a dry one (3.982279ms)
+✔ the seasons stop where the rain record does, and skip a long gap (3.723389ms)
+✔ switching reference recomputes percentile and quartiles without changing the filter or the source rows (5.7866ms)
+✔ coverage is per field; missing, infinite, and absent sample measurements cannot fabricate a percentile (0.404007ms)
+✔ out-of-range dots stay inside the strip, including constant reference ranges (0.331578ms)
+✔ reference ratio medians use per-filter pairs, not ratios of marginal medians (0.398994ms)
+✔ public network export counts unique physical filters and does not substitute optical or functional-group fields (149.258072ms)
+✔ remote references preserve physical filters, local precision, joined fields, and exclusions (1.462468ms)
+✔ a quantile table places a filter as the rows would, to one step (3.728538ms)
+✔ the network sample expands to reference rows with the gallery's IMPROVE ids (0.860256ms)
+✔ Deming is the default; every subset including no fits survives a copied URL (2.16787ms)
+✔ OLS, Deming and York recover an exact line (2.595066ms)
+✔ constant-error York equals Deming for positive and negative associations and unequal error ratios (0.814615ms)
+✔ heteroscedastic York matches the existing Python York implementation (0.27884ms)
+✔ missing paired values are removed together, including uncertainty entries (0.216695ms)
+✔ York refuses invalid uncertainties and degenerate inputs (0.128972ms)
+✔ HIPS York weights use paired per-filter uncertainty and the displayed MAC (0.581199ms)
+✔ pearson and corrMatrix give regression()’s r, with the same nulls (5.375136ms)
+✔ bootstrap is deterministic, cached, finite, and leaves point fits unchanged (82.49987ms)
+✔ line bounds retain slope/intercept covariance rather than combining marginal extremes (0.523555ms)
+✔ exact lines have zero-width intervals for every estimator (7.131529ms)
+✔ month blocks are site-qualified and sparse site strata do not get fabricated intervals (35.720035ms)
+✔ unavailable sources, few pairs, invalid York errors, and unstable resampling give no CI (5.866081ms)
+✔ missing x/y observations remove matching block and uncertainty entries together (45.423254ms)
+✔ OLS matches scipy.stats.linregress, standard errors included (3.345464ms)
+✔ Theil–Sen, quadratic and quantiles match scipy / numpy (1.519114ms)
+✔ through-origin slope and uncentred R² (0.470266ms)
+✔ Deming spans OLS (λ → ∞) to inverse OLS (λ → 0) (0.828742ms)
+✔ Spearman with ties, Pearson p and the normal CDF (1.026035ms)
+✔ Steiger: equal correlations give z = 0; a stronger one gives a positive z (0.389888ms)
+✔ multiple OLS recovers known coefficients (0.338697ms)
+✔ split sweep: low side is s ≤ t, both sides need minN, best threshold is the low slope nearest 1 (2.345319ms)
+✔ split scan scores divergence × coverage at quantiles 0.2 … 0.8 (2.890025ms)
+✔ sliding window and influence (1.106078ms)
+✔ trailing is pandas rolling("ND"): the window (t − N days, t] (2.786418ms)
+✔ min_periods: fewer finite values than minN give null (0.657216ms)
+✔ median averages the two middle values of an even window, as pandas does (0.271376ms)
+✔ centred puts the same width around each point (0.300352ms)
+✔ the default reproduces ftir_29: a trailing 45-day median from the 5th filter on (0.26904ms)
+✔ labels and typed day counts (0.271623ms)
+﹣ spectral overlay joins all 500 saved analogs, in saved rank order, under both regions and baselines (1.59784ms) # SKIP
+﹣ overlay targets the 233 frozen evaluation filters, with February in Dry, rather than all 253 available spectra (0.225218ms) # SKIP
+✔ a calendar with day boundaries assigns by sampling date; month calendars are unchanged (20.955461ms)
+✔ Addis seasonal chemistry uses the canonical local calendar and once-only carbon (3.052438ms)
+✔ switching to meeting bins moves February without changing measurements or source labels (12.685079ms)
+✔ exclusions, missing species, zero and negative concentrations keep distinct meanings (0.556214ms)
+✔ formatters print a dash for missing values and keep their digit defaults (1.507033ms)
+✔ season helpers agree on names, the all-Addis group and month bins (0.52438ms)
+✔ a VIBES run is coloured and named by its rank (15.14054ms)
+✔ cell labels pick readable ink from the fill (0.926131ms)
+✔ the dark theme is CSS over light marks: paint pairs, inline colours, dot steps (12.2975ms)
+✔ separate site fits recover different lines and their own observed ranges (2.211953ms)
+✔ pair filtering preserves per-site uncertainty and bootstrap alignment (5.005707ms)
+✔ pooled mode reproduces the original regression of all paired filters (1.577499ms)
+✔ sparse or constant sites cannot create misleading fitted lines (0.203559ms)
+✔ one fit per band: in the bands' order and colours, points in no band left out (0.439493ms)
+✔ papers carry the audit qualifications and agencies are listed beside them (2.922ms)
+✔ a calendar variant shows only its own references (0.533291ms)
+✔ the new alternatives are offered and partition the year (0.515076ms)
+✔ gzip data works on plain static hosts and hosts that already decoded it; concurrent reads share a fetch (42.309064ms)
+✔ failed requests are retryable, including malformed compressed data (7.176779ms)
+✔ an HTML fallback for missing JSON or spectra is reported as an unavailable export and remains retryable (1.546722ms)
+✔ native spectra keep analysis offsets, descending grids, negative absorbance and gaps (4.590045ms)
+✔ encoded traces decode to steps, keep negatives and gaps, and check their length (0.443545ms)
+✔ schema 2 analyses give raw, AIRSpec (raw minus its baseline over its span) and VIBES on its own grid (0.383279ms)
+✔ site selection fetches only selected filter shards, keeps the whole site index and never requests spectra (29.644573ms)
+✔ VIBES provenance names the background lots, whether the filter lot is among them, and the held-out check (0.730915ms)
+✔ live chemistry handles metadata, quoted CSV, units, repeat reports, zeros, negatives and missing values (4.806434ms)
+✔ direct HIPS, the HIPS–SSR estimate and SSR retain separate fields and source flags (1.14407ms)
+✔ a changed schema, wrong site, ambiguous dates or unrecognized methods/units cannot masquerade as live chemistry (3.636778ms)
+✔ live merge updates public values, removes withdrawn values, adds filters and preserves lab results, predictions and flags (14.146714ms)
+✔ live fetches are anonymous, shared per site, refreshed explicitly, and retryable after failure (43.154949ms)
+﹣ the parser accepts every locally available public site file with the exporter parameter mapping (0.50262ms) # Public mirror not present
+✔ highlight rules distinguish saved guardrails from partial criteria (1.209317ms)
+✔ separate selection curves partition the filtered population without reordering or duplicating it (1.475783ms)
+﹣ spec_curve.json: three cohort choices remain visible, while CV and factor choices narrow their union (0.387714ms) # SKIP
+﹣ meeting-r70/spec_curve_20260917.json: three cohort choices remain visible, while CV and factor choices narrow their union (0.166754ms) # SKIP
+﹣ meeting/spec_curve_20260917.json: three cohort choices remain visible, while CV and factor choices narrow their union (0.174687ms) # SKIP
+✔ two searches merge into one curve without losing or inventing a configuration (4.551491ms)
+✔ a burst of writes is one step, undone and redone as a whole (2.916058ms)
+✔ a burst that ends where it began records nothing (0.287142ms)
+✔ a new change after an undo drops the redo stack (0.190367ms)
+✔ undo during an open burst settles it first, so the change in flight is what is undone (0.191989ms)
+✔ the stack keeps the most recent steps (0.205913ms)
+✔ changedKeys names the settings that differ, in the query and the hash (2.95979ms)
+✖ current seasonal and specification exports cover every completed fit and both windows (0.983526ms)
+✖ current paired plots reproduce benchmark scores and every closed decomposition (0.421009ms)
+✖ selection, routing and PCA use the completed source and unchanged paired populations (0.3463ms)
+✖ similarity binaries have independent full and shared channel grids (0.216655ms)
+✖ all 31 external corrections converged at rank 70 and the five physical-filter matches remain (0.20479ms)
+✔ ratios round-trip through the URL, names with commas and slashes included (1.540852ms)
+✔ an unchanged view returns the same rows (0.393245ms)
+✔ MAC rescales HIPS BC and the public HIPS BC, nothing else (0.218338ms)
+✔ mass per filter multiplies concentrations by the volume; no volume, no value (0.25995ms)
+✔ ratios use the values after MAC and basis, and skip a zero or missing denominator (0.419676ms)
+✔ spearman is 1 for any monotone relation and -1 reversed (1.103577ms)
+✔ spearman averages tied ranks and skips non-finite pairs (1.528007ms)
+✔ rain classes follow the addis_03 daily bins (0.180366ms)
+✔ mean direction wraps through north (0.184904ms)
+✔ weather fields map per source, with no station boundary-layer height (0.141843ms)
+✔ roses.json counts decode to cells: 8 sectors × 3 speed classes, then calm (1.988389ms)
+✔ wind.json sparse cells decode: calm first, then cell = sector × bins + bin (0.281698ms)
+✔ weighted quantile: equal weights give the ordinary median; weights pull it (0.511674ms)
+✔ class edges follow the quantiles, rounded, and only rise (0.291312ms)
+✔ pollution rose: a sector is the hour-weighted statistic of the filters whose air came from it (0.855665ms)
+✔ polar grid: raw cells are hour-weighted means; smoothing spreads into neighbours and wraps north (0.864064ms)
+✔ speed bins: median and IQR (from 4) of the filters in each bin (0.580247ms)
+✔ ring labels sit in a gap between sectors, off the north axis (0.207178ms)
+✔ the four MAC methods agree on a line through the origin (1.320402ms)
+✔ an offset separates the methods as AAARpos describes (0.332415ms)
+✔ two-predictor least squares recovers exact coefficients (0.411592ms)
+✔ subtracting the true iron term restores the EC slope; closestTo picks it (2.099944ms)
+✔ IQR fences use linear quantiles (0.279575ms)
+✔ season runs split at long gaps and drop short runs (13.298057ms)
+✔ hours run on from the first, skip nulls, and clip by date (3.737411ms)
+✔ a day needs enough hours; its peak, peak hour and peak-to-mean (0.422892ms)
+✔ hour shares and the hourly quantile (0.337667ms)
+✔ the weekday-by-hour grid averages each cell (0.269746ms)
+✔ episodes are dated, seasoned and rated per 30 days of data (0.505281ms)
+✔ a bin counts for the day its middle falls on (3.921602ms)
+✔ the addis_02 screen drops negatives, then values above mean + 3 SD (1.136537ms)
+✔ quantiles interpolate like pandas (0.269456ms)
+✔ the moving mean counts calendar days, not rows, and needs enough of them (0.357154ms)
+✔ day-to-day change only across bins 24 h apart (0.331085ms)
+✔ weekend effect: change relative to the weekday mean (3.580453ms)
+✔ a λ⁻¹ absorption spectrum has exponent 1, and BCc ratios divide σ out (0.907509ms)
+✔ classify follows optics.classify_aae: both cut points are inclusive at their own end (1.616896ms)
+✔ classShares are fractions of the finite values, with the median (0.423887ms)
+✔ aae is positive when the short wavelength absorbs more, and matches optics.aae (0.146025ms)
+✔ the BCc offset is the optics.py identity: -1.016 for UV/IR, -0.967 for Red/IR (0.195392ms)
+✔ rollingMean is pandas rolling(7, min_periods=3).mean() over entries (0.349001ms)
+✔ dominantOf picks the largest value and its share of the total (0.209201ms)
+✔ crosstab counts pairs and skips missing ones (0.155659ms)
+✔ thresholdSweep splits at or below the threshold vs above and fits each side (1.038689ms)
+ℹ tests 266
+ℹ suites 0
+ℹ pass 249
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 10
+ℹ todo 0
+ℹ duration_ms 4695.984683
+
+✖ failing tests:
+
+test at src/lib/baselineComparison.test.mjs:1:1
+✖ src/lib/baselineComparison.test.mjs (501.627968ms)
+  'test failed'
+
+test at src/lib/fullRangeVibes.test.mjs:1:1
+✖ src/lib/fullRangeVibes.test.mjs (219.942189ms)
+  'test failed'
+
+test at src/lib/vibesMigration.test.mjs:12:1
+✖ current seasonal and specification exports cover every completed fit and both windows (0.983526ms)
+  Error: ENOENT: no such file or directory, open '/workspace/aethmodular/gallery/app/public/data/meeting-r70/followup_20260917.json'
+      at Object.readFileSync (node:fs:484:20)
+      at read (file:///workspace/aethmodular/gallery/app/src/lib/vibesMigration.test.mjs:7:36)
+      at TestContext.<anonymous> (file:///workspace/aethmodular/gallery/app/src/lib/vibesMigration.test.mjs:13:11)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/workspace/aethmodular/gallery/app/public/data/meeting-r70/followup_20260917.json'
+  }
+
+test at src/lib/vibesMigration.test.mjs:28:1
+✖ current paired plots reproduce benchmark scores and every closed decomposition (0.421009ms)
+  Error: ENOENT: no such file or directory, open '/workspace/aethmodular/gallery/app/public/data/baseline_paired_r70.json'
+      at Object.readFileSync (node:fs:484:20)
+      at read (file:///workspace/aethmodular/gallery/app/src/lib/vibesMigration.test.mjs:7:36)
+      at TestContext.<anonymous> (file:///workspace/aethmodular/gallery/app/src/lib/vibesMigration.test.mjs:29:11)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/workspace/aethmodular/gallery/app/public/data/baseline_paired_r70.json'
+  }
+
+test at src/lib/vibesMigration.test.mjs:52:1
+✖ selection, routing and PCA use the completed source and unchanged paired populations (0.3463ms)
+  Error: ENOENT: no such file or directory, open '/workspace/aethmodular/gallery/app/public/data/baseline_followup_r70.json'
+      at Object.readFileSync (node:fs:484:20)
+      at read (file:///workspace/aethmodular/gallery/app/src/lib/vibesMigration.test.mjs:7:36)
+      at TestContext.<anonymous> (file:///workspace/aethmodular/gallery/app/src/lib/vibesMigration.test.mjs:53:11)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/workspace/aethmodular/gallery/app/public/data/baseline_followup_r70.json'
+  }
+
+test at src/lib/vibesMigration.test.mjs:70:1
+✖ similarity binaries have independent full and shared channel grids (0.216655ms)
+  Error: ENOENT: no such file or directory, open '/workspace/aethmodular/gallery/app/public/data/similarity/similarity.json'
+      at Object.readFileSync (node:fs:484:20)
+      at read (file:///workspace/aethmodular/gallery/app/src/lib/vibesMigration.test.mjs:7:36)
+      at TestContext.<anonymous> (file:///workspace/aethmodular/gallery/app/src/lib/vibesMigration.test.mjs:71:11)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/workspace/aethmodular/gallery/app/public/data/similarity/similarity.json'
+  }
+
+test at src/lib/vibesMigration.test.mjs:80:1
+✖ all 31 external corrections converged at rank 70 and the five physical-filter matches remain (0.20479ms)
+  Error: ENOENT: no such file or directory, open '/workspace/aethmodular/gallery/app/public/data/rank70/baseline_external_pilot.json'
+      at Object.readFileSync (node:fs:484:20)
+      at read (file:///workspace/aethmodular/gallery/app/src/lib/vibesMigration.test.mjs:7:36)
+      at TestContext.<anonymous> (file:///workspace/aethmodular/gallery/app/src/lib/vibesMigration.test.mjs:81:11)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/workspace/aethmodular/gallery/app/public/data/rank70/baseline_external_pilot.json'
+  }
