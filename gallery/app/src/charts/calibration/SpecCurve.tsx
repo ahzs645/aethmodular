@@ -13,7 +13,7 @@ import { ColorLegend } from '@/components/ColorLegend'
 import type { Config } from './common'
 import { useEstimator, FIT_STYLE } from '@/lib/regressionPrefs'
 import { CALIBRATION_LOT as LOT_LABELS, COHORT, CV_PROTOCOL, PREPROCESSING, PREPROCESSING_SHORT, SELECTION_SPACE, label } from '@/lib/labels'
-import { choiceFilterDimensions, choiceFilterSets, matchesChoiceFilters, mergeSpecFiles } from '@/lib/specification'
+import { choiceFilterDimensions, choiceFilterSets, matchesChoiceFilters, mergeSpecFiles, specRmseAtMac } from '@/lib/specification'
 import { TEMPLATES, decodeGuardrail, describeGuardrail, encodeGuardrail, evaluateGuardrail, guardFields, guardRows, templatesFor, type Guardrail } from '@/lib/guardrails'
 import { useMac } from '@/lib/mac'
 // the editor (react-querybuilder) loads only when it is opened
@@ -112,6 +112,8 @@ export function SpecCurve({
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef, { large: true })
   const [data, setData] = useState<SpecCurveFile | null | 'missing'>(null)
+  // the searches as loaded, before merging: RMSE moves with the MAC per search (each has its own evaluation set)
+  const [parts, setParts] = useState<{ file: SpecCurveFile; name: string }[]>([])
   const [required, setRequired] = useState<Set<number>>(new Set())
   const [filters, setFilters] = useState(initialFilters)
   // the reader's own guardrail, written in the editor; kept in the URL so a link reopens it
@@ -171,11 +173,12 @@ export function SpecCurve({
   useEffect(() => {
     let cancelled = false
     setData(null)
+    setParts([])
     setRequired(new Set())
     setFilters(initialFilters())
     const parts = typeof src === 'string' ? [{ src, name: src }] : src
     Promise.all(parts.map(p => loadJson<SpecCurveFile>(p.src).then(file => ({ file, name: p.name }))))
-      .then((files) => !cancelled && setData(mergeSpecFiles(files)))
+      .then((files) => { if (!cancelled) { setParts(files); setData(mergeSpecFiles(files)) } })
       .catch(() => !cancelled && setData('missing'))
     return () => { cancelled = true }
   }, [srcKey]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -183,23 +186,31 @@ export function SpecCurve({
   // the search at the MAC set under Filters (lib/mac): the export's slopes are against Fabs/10, so each is
   // re-expressed (× MAC/10; intercepts, R² and held-out R² do not move), and the saved pass bit, which
   // judged the slope at MAC 10, is rebuilt from the saved guardrails' own rule where the export carries
-  // its inputs (lib/guardrails: that rule reproduces the bit exactly). RMSE against HIPS stays at MAC 10.
+  // its inputs (lib/guardrails: that rule reproduces the bit exactly). RMSE against HIPS is rebuilt per search
+  // from its evaluation set's HIPS BC mean and variance, solved from the search's own fits (lib/specification
+  // specRmseAtMac); a search that cannot be solved loses the column rather than keep MAC 10's.
   const gallery = useMac()
   const atMac = useMemo(() => {
-    if (!data || data === 'missing' || gallery.mac === gallery.exportMac) return { spec: data, okRebuilt: null as boolean | null }
+    if (!data || data === 'missing' || gallery.mac === gallery.exportMac) return { spec: data, okRebuilt: null as boolean | null, rmseMoved: true }
+    const moved = parts.map((p) => ({ ...specRmseAtMac(p.file, gallery.mac, gallery.exportMac), name: p.name }))
+    const base = moved.length === 1 ? moved[0].file : moved.length ? mergeSpecFiles(moved) : data
+    const rmseMoved = moved.every((p) => p.moved)
     const k = gallery.mac / gallery.exportMac
     const sc = (a: (number | null)[] | undefined) => a?.map((v) => (v == null ? v : v * k))
-    const extra = data.extra && Object.fromEntries(Object.entries(data.extra).map(([key, col]) => [key, /Slope$/.test(key) ? sc(col)! : col]))
-    const spec: SpecCurveFile = { ...data, slope: sc(data.slope)!, olsSlope: sc(data.olsSlope), extra }
-    if (!templatesFor(spec).some((t) => t.key === 'guardrails')) return { spec, okRebuilt: false }
+    const extra = base.extra && Object.fromEntries(Object.entries(base.extra).map(([key, col]) => [key, /Slope$/.test(key) ? sc(col)! : col]))
+    const spec: SpecCurveFile = { ...base, slope: sc(base.slope)!, olsSlope: sc(base.olsSlope), extra }
+    if (!templatesFor(spec).some((t) => t.key === 'guardrails')) return { spec, okRebuilt: false, rmseMoved }
     const names = guardFields(spec).filter((x) => x.kind === 'number').map((x) => x.name)
     const pass = evaluateGuardrail(TEMPLATES[0].rule, guardRows(spec), names).pass
-    return { spec: { ...spec, ok: pass.map((p) => (p ? '1' : '0')).join(''), n_pass: pass.filter(Boolean).length }, okRebuilt: true }
-  }, [data, gallery.mac, gallery.exportMac])
+    return { spec: { ...spec, ok: pass.map((p) => (p ? '1' : '0')).join(''), n_pass: pass.filter(Boolean).length }, okRebuilt: true, rmseMoved }
+  }, [data, parts, gallery.mac, gallery.exportMac])
 
+  const hasRmse = !!(atMac.spec && atMac.spec !== 'missing' && parts.some((p) => p.file.extra?.rmse))
+  const rmseNote = !hasRmse ? '' : atMac.rmseMoved ? ' RMSE against HIPS is recomputed at this MAC from the test set\'s HIPS BC mean and variance, solved from the saved fits.'
+    : ' RMSE against HIPS is left out where a search lacks the fits to solve its test set\'s HIPS BC mean and variance.'
   const macNote = atMac.okRebuilt === null ? '' : ` Slopes are re-expressed at ${gallery.label} (Filters → units; slope × MAC/10, intercepts unchanged)${atMac.okRebuilt
-    ? ', and the saved guardrails are re-judged on them; RMSE against HIPS stays at MAC 10.'
-    : '; this export lacks the inputs to re-judge the saved guardrails, so their pass bit still judges the slope at MAC 10.'}`
+    ? ', and the saved guardrails are re-judged on them.'
+    : '; this export lacks the inputs to re-judge the saved guardrails, so their pass bit still judges the slope at MAC 10.'}${rmseNote}`
 
   const file = useMemo(() => {
     const data = atMac.spec

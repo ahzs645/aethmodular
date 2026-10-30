@@ -129,6 +129,20 @@ for regression, season, and root-discovery behavior. See the
 [import replacements and migration recipe](library-usage.md#scripts--what-to-import-instead-of-redefining)
 and [historical inventory](cleanup-history.md#current-automated-cleanup-inventory).
 
+### Write each holdout filter's Fabs into ftir_39's per-filter table
+
+The gallery's MAC setting (Filters → units) now moves RMSE and mean residual against Fabs/MAC
+as well as slopes: each evaluation set's HIPS BC mean and variance are solved in the browser
+from the saved fits that share it (`gallery/app/src/lib/macMath.ts` `solveHipsMoments`,
+checked against the explorer's MAC 6 and 17 readouts in `lib/mac.test.mjs`). That covers the
+calibration grid, the spec curve, ftir_36's tables and Bishoftu's mean residual. ftir_39's
+per-filter panel and its in/out-of-domain RMSE split still read at MAC 10, because they split a
+holdout filter by filter and `locked_target_domain_per_filter.csv` carries only the residual.
+Have `ftir_39_pls_applicability_domain` write `hips_fabs_Mm1` (the reconstructed Fabs it scored
+against) beside `residual_ugm3`; the gallery can then move every per-filter residual
+(residual + Fabs/10 − Fabs/MAC). The paired-bootstrap intervals in ftir_36 likewise need a re-run
+at another MAC.
+
 ## Explicitly declined—not open
 
 ### Do not merge `src/analysis/quality` and `src/data/qc`

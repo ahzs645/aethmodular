@@ -11,6 +11,7 @@ import { f2 } from '@/lib/format'
 import { num, type Row } from '@/lib/table'
 import { categoricalScale } from '@/lib/palettes'
 import { INK } from '@/lib/theme'
+import { useMac, rmseAtMac, solveHipsMoments, type HipsMoments } from '@/lib/mac'
 import type { SectionPageProps } from '../../types'
 import { PageIntro, presetName, provenance, rows, useCalibRuns, useSpectral, Waiting } from './spectralCommon'
 
@@ -35,6 +36,7 @@ const at = (map: Record<string, string>, v: unknown) => map[String(v)] ?? String
 export function Applicability(_props: SectionPageProps) {
   const { data, error } = useSpectral('applicability')
   const { runs } = useCalibRuns()
+  const mac = useMac()
 
   const flags = useMemo(() => {
     if (!runs) return []
@@ -47,10 +49,30 @@ export function Applicability(_props: SectionPageProps) {
 
   if (!data) return <Waiting error={error} />
   const pair = (r: Row) => `${at(CONFIG, r.config)} → ${at(TARGET, r.target)}`
-  const domain = rows(data, 'domain_summary').map((r): Row => ({ ...r, pair: pair(r) }))
-  const change = rows(data, 'dipls_vs_pls').map((r): Row => ({ ...r, pair: pair(r), centering: `${r.centering}-centred` }))
+  // ftir_36/39 score each holdout against HIPS/10. At the reader's MAC (lib/mac) RMSE against the 1:1 line moves
+  // through the holdout's HIPS BC mean and variance, solved per holdout from target_summary's 18 fits; each variant's
+  // RMSE, the di-PLS change and an all-in-domain row's in-domain RMSE (it is the whole holdout's) follow. The
+  // bootstrap intervals and the split RMSEs need the per-filter Fabs, so they are left out off MAC 10.
+  const summary = rows(data, 'target_summary')
+  const moments = new Map<string, HipsMoments | null>([...new Set(summary.map((r) => String(r.target)))].map((t) => [t,
+    solveHipsMoments(summary.filter((r) => r.target === t).map((r) => ({ slope: num(r.slope), intercept: num(r.intercept), r2: num(r.R2), rmse: num(r.RMSE_1to1) })))]))
+  const rmseOf = (r: Row) => !mac.changed ? num(r.RMSE_1to1)
+    : rmseAtMac({ slope: num(r.slope), intercept: num(r.intercept), rmse: num(r.RMSE_1to1) }, moments.get(String(r.target)), mac.mac, mac.exportMac)
+  const summaryRmse = (config: unknown, target: unknown, variant: string) => {
+    const r = summary.find((s) => s.config === config && s.target === target && s.variant === variant)
+    return r ? rmseOf(r) : null
+  }
+  const domain = rows(data, 'domain_summary').map((r): Row => !mac.changed ? { ...r, pair: pair(r) } : {
+    ...r, pair: pair(r), RMSE_outside: null,
+    RMSE_inside: num(r.outside_source_95_pct) === 0 ? summaryRmse(r.config, r.target, 'ordinary_pls') : null })
+  const change = rows(data, 'dipls_vs_pls').map((r): Row => {
+    const base = { ...r, pair: pair(r), centering: `${r.centering}-centred` }
+    if (!mac.changed) return base
+    const ord = summaryRmse(r.config, r.target, 'ordinary_pls'), di = summaryRmse(r.config, r.target, `dipls_${r.centering}_centered_selected`)
+    return { ...base, RMSE_change_pct: ord && di != null ? 100 * (di / ord - 1) : null, RMSE_change_ci_low: null, RMSE_change_ci_high: null }
+  })
   const variants = [
-    ...rows(data, 'target_summary').map((r): Row => ({ evaluation: at(TARGET, r.target), config: at(CONFIG, r.config), variant: at(VARIANT, r.variant), RMSE: num(r.RMSE_1to1) })),
+    ...summary.map((r): Row => ({ evaluation: at(TARGET, r.target), config: at(CONFIG, r.config), variant: at(VARIANT, r.variant), RMSE: rmseOf(r) })),
     ...rows(data, 'source_validation').map((r): Row => ({ evaluation: 'untouched IMPROVE sites (outer 20 %)', config: at(CONFIG, r.config), variant: at(VARIANT, r.variant), RMSE: num(r.RMSE_1to1) })),
   ]
 
@@ -68,24 +90,25 @@ export function Applicability(_props: SectionPageProps) {
 
     <Figure kind="intervals" id="applicability-ftir39" data={domain} row="pair"
       panels={[{ value: 'outside_source_95_pct', label: 'Outside source 95 % (T² or Q), %', reference: 0 },
-        { value: 'RMSE_inside', label: 'RMSE, in-domain filters (µg/m³)' }, { value: 'RMSE_outside', label: 'RMSE, out-of-domain filters (µg/m³)' }]}
+        { value: 'RMSE_inside', label: mac.changed ? `RMSE, in-domain filters (µg/m³, ${mac.label})` : 'RMSE, in-domain filters (µg/m³)' },
+        ...(mac.changed ? [] : [{ value: 'RMSE_outside', label: 'RMSE, out-of-domain filters (µg/m³)' }])]}
       aggregate={{ stat: 'median', interval: 'none' }} labelWidth={360}
       title="ftir_39 — the Addis winner is fully in-domain and still misses Addis"
-      subtitle="Leakage-safe audit: a scaler and PCA fitted on source training spectra only, T² and Q thresholds from untouched IMPROVE sites, target labels joined afterwards. Reference: |PLS − HIPS/10|. Derivative-space candidates put 38–64 % of their targets outside and need an explicit flag; the winner puts none outside and keeps a large response bias — conditional shift, not covariate shift."
+      subtitle={`Leakage-safe audit: a scaler and PCA fitted on source training spectra only, T² and Q thresholds from untouched IMPROVE sites, target labels joined afterwards. Reference: |PLS − HIPS/10|${mac.changed ? `; at ${mac.label} only a holdout with every filter in-domain keeps its RMSE (the whole holdout's, recomputed); splitting a holdout in and out needs each filter's Fabs, so the out-of-domain panel is left out` : ''}. Derivative-space candidates put 38–64 % of their targets outside and need an explicit flag; the winner puts none outside and keeps a large response bias — conditional shift, not covariate shift.`}
       provenance={provenance(data, ['domain_summary'])} />
 
     <DomainFilters data={rows(data, 'domain_filters')} summary={rows(data, 'domain_summary')} provenance={provenance(data, ['domain_filters', 'domain_summary'])} />
 
     <Figure kind="intervals" id="applicability-dipls" data={change} row="pair" choose={[{ column: 'centering', label: 'Centering', default: 'source-centred' }]}
-      panels={[{ value: 'RMSE_change_pct', lo: 'RMSE_change_ci_low', hi: 'RMSE_change_ci_high', label: 'RMSE change vs ordinary PLS on the locked holdout (%; paired-bootstrap 95 %)', reference: 0 }]} labelWidth={360}
+      panels={[{ value: 'RMSE_change_pct', lo: 'RMSE_change_ci_low', hi: 'RMSE_change_ci_high', label: mac.changed ? `RMSE change vs ordinary PLS on the locked holdout (%, ${mac.label})` : 'RMSE change vs ordinary PLS on the locked holdout (%; paired-bootstrap 95 %)', reference: 0 }]} labelWidth={360}
       title="ftir_36 — domain-invariant PLS does not rescue a universal calibration"
-      subtitle="Components and the penalty were chosen within IMPROVE before any target label was read. Target-centring (the published default) forces the target's mean predicted loading to the IMPROVE mean: switch Centering to see Delhi RMSE inflate by 940–2190 %. Source-centred, the one gain (common candidate at Delhi, −9 %) barely excludes zero, and the same model stays flat at Addis."
+      subtitle={`Components and the penalty were chosen within IMPROVE before any target label was read. Target-centring (the published default) forces the target's mean predicted loading to the IMPROVE mean: switch Centering to see Delhi RMSE inflate by 940–2190 %. Source-centred, the one gain (common candidate at Delhi, −9 %) barely excludes zero, and the same model stays flat at Addis (the notebook's figures, at MAC 10).${mac.changed ? ` Here at ${mac.label}: both RMSEs recomputed from the holdout's HIPS BC mean and variance; the paired-bootstrap interval needs the per-filter Fabs and is left out.` : ''}`}
       provenance={provenance(data, ['dipls_vs_pls'])} />
 
     <Figure kind="heatmap" id="applicability-dipls-rmse" data={variants} row="config" column="variant" value="RMSE" ramp="sequential" format="f2" valueLabel="RMSE (µg/m³ on targets, µg/filter on IMPROVE)"
       choose={[{ column: 'evaluation', label: 'Evaluated on' }]} cell={[96, 28]}
       title="ftir_36 — RMSE of every variant, on unseen IMPROVE sites and on the two locked holdouts"
-      subtitle="On untouched IMPROVE sites every variant is within a few per cent of ordinary PLS; the failure appears only at the SPARTAN targets, where the site difference includes a real loading and response change."
+      subtitle={`On untouched IMPROVE sites every variant is within a few per cent of ordinary PLS; the failure appears only at the SPARTAN targets, where the site difference includes a real loading and response change.${mac.changed ? ` Holdout RMSEs against HIPS at ${mac.label}, recomputed from each holdout's HIPS BC mean and variance; IMPROVE is scored against TOR and does not move.` : ''}`}
       provenance={provenance(data, ['target_summary', 'source_validation'])} />
 
     <Figure kind="intervals" id="applicability-t2q" data={rows(data, 't2q')} row="target"

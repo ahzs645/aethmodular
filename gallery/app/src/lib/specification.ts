@@ -1,3 +1,5 @@
+import { EXPORT_MAC, rmseAtMac, solveHipsMoments } from './macMath.ts'
+
 export type HighlightRule = 'guardrails' | 'intercept' | 'cv-slope' | 'custom'
 export interface HighlightLimits { intercept: number; slopeMin: number; slopeMax: number; cvMin: number }
 export const DEFAULT_HIGHLIGHT_LIMITS: HighlightLimits = { intercept: 0.5, slopeMin: 0.7, slopeMax: 1.3, cvMin: 0.85 }
@@ -118,4 +120,20 @@ export function mergeSpecFiles<T extends SpecColumns>(files: { file: T; name: st
     co: pick(merged.co), sp: pick(merged.sp), sel: pick(merged.sel), mo: pick(merged.mo), lot: pick(merged.lot),
     extra: Object.fromEntries(Object.entries(merged.extra!).map(([k, v]) => [k, pick(v)])),
   }
+}
+
+/**
+ * One search's RMSE against HIPS (`extra.rmse`, the test set's RMSE against Fabs/10) at another MAC: its
+ * evaluation set's HIPS BC mean and variance are solved from the search's own saved fits (OLS slope and
+ * intercept, R², RMSE; lib/macMath solveHipsMoments) and each row's RMSE rebuilt at `mac` (rmseAtMac). Run it
+ * per search, before mergeSpecFiles: two searches need not share an evaluation set. Without the inputs, or when
+ * the fits do not agree on one set, the column is emptied rather than left at the export's MAC (`moved` false).
+ */
+export function specRmseAtMac<T extends SpecColumns>(file: T, mac: number, from = EXPORT_MAC): { file: T; moved: boolean } {
+  const rmse = file.extra?.rmse
+  if (!rmse || mac === from) return { file, moved: true }
+  const r2 = file.extra?.r2, slope = file.olsSlope, intercept = file.olsIntercept
+  const m = r2 && slope && intercept ? solveHipsMoments(rmse.map((v, i) => ({ slope: slope[i], intercept: intercept[i], r2: r2[i], rmse: v }))) : null
+  const col = m ? rmse.map((v, i) => rmseAtMac({ slope: slope![i], intercept: intercept![i], rmse: v }, m, mac, from)) : rmse.map(() => null)
+  return { file: { ...file, extra: { ...file.extra, rmse: col } }, moved: !!m }
 }

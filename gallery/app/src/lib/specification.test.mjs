@@ -82,3 +82,33 @@ test('two searches merge into one curve without losing or inventing a configurat
   assert.deepEqual(m.groups.map((g) => g.title), ['Spectral preprocessing', 'Calibration cohort', 'Search'])
   assert.equal(m.groups.at(-1).end, m.choices.length)
 })
+
+test('specRmseAtMac: each search solves its own evaluation set, and one that cannot loses the column', async () => {
+  const fs = await import('node:fs')
+  const { specRmseAtMac } = await import('./specification.ts')
+  const { rmseAtMac, solveHipsMoments } = await import('./macMath.ts')
+  const grid = JSON.parse(fs.readFileSync(new URL('../../public/data/calibration.json', import.meta.url), 'utf8')).grid
+  // a search as export_spec_curve.py writes one, from the grid's rows on one evaluation set
+  const search = (el) => {
+    const rows = grid.filter((r) => r.tg === 'addis' && r.el === el && r.rmse != null)
+    return { rows, file: { n: rows.length, olsSlope: rows.map((r) => r.om), olsIntercept: rows.map((r) => r.ob), extra: { r2: rows.map((r) => r.r2), rmse: rows.map((r) => r.rmse) } } }
+  }
+  for (const el of ['all', '251']) {
+    const { rows, file } = search(el)
+    const m = solveHipsMoments(rows.map((r) => ({ slope: r.om, intercept: r.ob, r2: r.r2, rmse: r.rmse })))
+    const { file: at6, moved } = specRmseAtMac(file, 6)
+    assert.ok(moved)
+    at6.extra.rmse.forEach((v, i) => assert.ok(Math.abs(v - rmseAtMac({ slope: rows[i].om, intercept: rows[i].ob, rmse: rows[i].rmse }, m, 6)) < 1e-12))
+    assert.equal(specRmseAtMac(file, 10).file, file)
+  }
+  // the lot-251 set is not the all-lots set: solved separately, the same fit reads differently at MAC 6
+  const all = search('all'), lot = search('251')
+  const mAll = solveHipsMoments(all.rows.map((r) => ({ slope: r.om, intercept: r.ob, r2: r.r2, rmse: r.rmse })))
+  const wrong = rmseAtMac({ slope: lot.rows[0].om, intercept: lot.rows[0].ob, rmse: lot.rows[0].rmse }, mAll, 6)
+  assert.ok(Math.abs(specRmseAtMac(lot.file, 6).file.extra.rmse[0] - wrong) > 1e-3)
+  // no OLS fits: nothing to solve from, so no RMSE at MAC 6 rather than MAC 10's under a MAC 6 label
+  const bare = { ...all.file, olsSlope: undefined }
+  const r = specRmseAtMac(bare, 6)
+  assert.equal(r.moved, false)
+  assert.ok(r.file.extra.rmse.every((v) => v === null))
+})

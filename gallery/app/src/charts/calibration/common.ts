@@ -3,7 +3,7 @@ import { baseFilterId } from '@/lib/highlight'
 import { useEffect, useState } from 'react'
 import { loadSpartanFilters } from '@/lib/spartan'
 import { COHORT_SHORT, METRIC, PREPROCESSING, PREPROCESSING_SHORT, SELECTION_SPACE, label } from '@/lib/labels'
-import { slopeAt } from '@/lib/macMath'
+import { rmseAtMac, slopeAt, solveHipsMoments, type HipsMoments } from '@/lib/macMath'
 import { categoricalScale } from '@/lib/palettes'
 import { BASELINE_COLOR, INK } from '@/lib/theme'
 
@@ -164,18 +164,39 @@ export function rmseAt(ev: RunEval, fixedOnly: boolean, mac: number): number | n
 /**
  * The grid and the k-sweeps re-expressed at the reader's MAC (lib/mac): every test-set slope (OLS and
  * Deming, fixed set and all pairs) × MAC / the export's MAC, so the slope box, the score and the
- * guardrails judge the slope the reader would see. Intercepts, R², held-out R² and counts do not move;
- * RMSE against Fabs/MAC (`rmse`) stays at the export's MAC. Every grid target is referenced to HIPS Fabs.
- * `mac_value` becomes the reader's MAC; `rmse_mac` keeps the export's.
+ * guardrails judge the slope the reader would see. Intercepts, R², held-out R² and counts do not move.
+ * RMSE against Fabs/MAC (`rmse`) moves through each evaluation set's HIPS BC mean and variance, solved
+ * from the saved fits that share it (lib/macMath solveHipsMoments, rmseAtMac); a row whose set cannot be
+ * solved gets no RMSE, counted in `rmse_unmoved`. Every grid target is referenced to HIPS Fabs.
+ * `mac_value` becomes the reader's MAC.
  */
-export type CalibAtMac = CalibFile & { rmse_mac?: number }
+export type CalibAtMac = CalibFile & { rmse_unmoved?: number }
+/** the evaluation set a grid row is scored on: its target and evaluation lot */
+const evalSet = (r: CalibRow) => `${r.tg}|${r.el}`
+const momentCache = new WeakMap<CalibFile, Map<string, HipsMoments | null>>()
+/** each evaluation set's HIPS BC moments at the export's MAC, solved once per export */
+export function gridHipsMoments(calib: CalibFile): Map<string, HipsMoments | null> {
+  const cached = momentCache.get(calib)
+  if (cached) return cached
+  const sets = new Map<string, CalibRow[]>()
+  for (const r of calib.grid) (sets.get(evalSet(r)) ?? sets.set(evalSet(r), []).get(evalSet(r))!).push(r)
+  const out = new Map([...sets].map(([k, rows]) => [k, solveHipsMoments(rows.map((r) => ({ slope: r.om, intercept: r.ob, r2: r.r2, rmse: r.rmse })))]))
+  momentCache.set(calib, out)
+  return out
+}
 export function calibAtMac(calib: CalibFile, mac: number): CalibAtMac {
   if (mac === calib.mac_value) return calib
   const k = mac / calib.mac_value
   const sc = (v: number | null | undefined) => (v == null ? v ?? null : v * k)
+  const moments = gridHipsMoments(calib)
+  let unmoved = 0
+  const grid = calib.grid.map((r) => {
+    const rmse = rmseAtMac({ slope: r.om, intercept: r.ob, rmse: r.rmse }, moments.get(evalSet(r)), mac, calib.mac_value)
+    if (rmse == null && r.rmse != null) unmoved++
+    return { ...r, om: sc(r.om), dm: sc(r.dm), aom: sc(r.aom), adm: sc(r.adm), rmse }
+  })
   return {
-    ...calib, mac_value: mac, rmse_mac: calib.mac_value,
-    grid: calib.grid.map((r) => ({ ...r, om: sc(r.om), dm: sc(r.dm), aom: sc(r.aom), adm: sc(r.adm) })),
+    ...calib, mac_value: mac, rmse_unmoved: unmoved, grid,
     sweeps: calib.sweeps.map((r) => ({ ...r, om: sc(r.om), dm: sc(r.dm) })),
   }
 }

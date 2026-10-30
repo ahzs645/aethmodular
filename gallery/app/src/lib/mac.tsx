@@ -14,7 +14,9 @@ export * from './macMath'
  * calibration_modes.deming_lambda), which every exporter follows: checked on calibration_runs.json,
  * whose fits at MAC 6, 10 and 17 obey it to the stored digits. So a statistic exported at MAC 10 can
  * follow the reader's MAC in the browser: slopes through `slope`, λ through `lambda`, HIPS BC through `bc`.
- * The pure helpers live in lib/macMath.ts (node-tested in mac.test.mjs).
+ * RMSE and mean residual against the 1:1 line move too, but through the evaluation set's HIPS BC mean and
+ * variance, which every fit on that set shares, so they are solved from the saved fits (solveHipsMoments,
+ * rmseAtMac, meanResidualAtMac). The pure helpers live in lib/macMath.ts (node-tested in mac.test.mjs).
  */
 
 const Ctx = createContext<MacView>(macView(EXPORT_MAC))

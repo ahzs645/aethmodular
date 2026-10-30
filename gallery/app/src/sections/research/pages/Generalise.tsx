@@ -1,5 +1,5 @@
 import { Figure } from '@/components/Figure'
-import { useMac } from '@/lib/mac'
+import { meanBcFromResidual, meanResidualAtMac, useMac } from '@/lib/mac'
 import { num, type Row } from '@/lib/table'
 import type { SectionPageProps } from '../../types'
 import { PageIntro, provenance, rows, useSpectral, Waiting } from './spectralCommon'
@@ -24,7 +24,10 @@ export function Generalise(_props: SectionPageProps) {
     const at = { ...r, slope: m.slope(num(r.slope), 10), slope_se: m.slope(num(r.slope_se), 10) }
     return { ...at, ...ci(at, 'intercept', 'intercept_se'), ...ci(at, 'slope', 'slope_se'), site: `${r.site} (n = ${r.n_used})` }
   })
-  const bishoftu = rows(data, 'bishoftu').map((r): Row => ({ ...r, ols_slope: m.slope(num(r.ols_slope), 10) }))
+  // the mean residual (prediction − Fabs/MAC) moves through each group's mean HIPS BC, which OLS pins down: it passes
+  // through the means, so the notebook's residual = a + (b − 1)·x̄ at MAC 10 (lib/macMath meanBcFromResidual)
+  const bishoftu = rows(data, 'bishoftu').map((r): Row => ({ ...r, ols_slope: m.slope(num(r.ols_slope), 10),
+    mean_residual: m.changed ? meanResidualAtMac(num(r.ols_slope), num(r.ols_intercept), meanBcFromResidual(num(r.ols_slope), num(r.ols_intercept), num(r.mean_residual)), m.mac, 10) : num(r.mean_residual) }))
 
   return <>
     <PageIntro id="generalise-intro" title="Does the diagnosis generalise? — one calibration, five sites, and the deck's lessons stated precisely" data={data}
@@ -40,9 +43,9 @@ export function Generalise(_props: SectionPageProps) {
       provenance={provenance(data, ['five_site'])} />
 
     <Figure kind="table" id="generalise-bishoftu" data={bishoftu}
-      columns={[{ key: 'group', label: 'Filters' }, { key: 'n', label: 'n', format: 'int' }, { key: 'ols_slope', label: `OLS slope (MAC ${m.mac})`, format: 'f2' }, { key: 'ols_intercept', label: 'OLS intercept', format: 'f2' }, { key: 'mean_residual', label: 'Mean residual (µg/m³, MAC 10)', format: 'f2' }]}
+      columns={[{ key: 'group', label: 'Filters' }, { key: 'n', label: 'n', format: 'int' }, { key: 'ols_slope', label: `OLS slope (MAC ${m.mac})`, format: 'f2' }, { key: 'ols_intercept', label: 'OLS intercept', format: 'f2' }, { key: 'mean_residual', label: `Mean residual (µg/m³, MAC ${m.mac})`, format: 'f2' }]}
       title="Bishoftu, 45 km away — the offset is gone, on filters the calibration had never seen"
-      subtitle="The 26 accepted filters and 14 January–February filters scored after the configurations were locked (their Fabs reconstructed from raw HIPS with the dated-schedule blank line). Read the holdout as “near-zero intercept replicates”, not as a slope estimate. The mean residual is the notebook's at MAC 10: it needs each filter's Fabs to move with the MAC, which the export does not carry."
+      subtitle={`The 26 accepted filters and 14 January–February filters scored after the configurations were locked (their Fabs reconstructed from raw HIPS with the dated-schedule blank line). Read the holdout as “near-zero intercept replicates”, not as a slope estimate. The mean residual is prediction − Fabs/${m.mac}: at another MAC than the notebook's 10 it is rebuilt from each group's mean HIPS BC, which the OLS fit and its MAC-10 residual fix (OLS passes through the means).`}
       provenance={provenance(data, ['bishoftu'])} />
 
     <Figure kind="intervals" id="generalise-swing" data={rows(data, 'protocol_swing').map((r): Row => ({ ...r, variant: `${r.variant}${r.corrected ? ' (baseline-corrected)' : ''}` }))} row="variant"

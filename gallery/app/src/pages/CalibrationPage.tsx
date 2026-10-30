@@ -170,7 +170,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
           <SectionBar>
             <span className="pill">The grid · {calib.grid.length.toLocaleString()} configuration × site readouts</span>
             <span style={{ color: 'var(--ink-muted)' }}>selected: <strong style={{ color: 'var(--ink-text)' }}>{configLabel(selected, calib)}</strong></span>
-            {explain && <span style={{ color: 'var(--ink-muted)' }}>MAC {gallery.mac}{gallery.mac !== calib.mac_value ? ` (slopes re-expressed from the export's ${calib.mac_value}; RMSE stays at ${calib.mac_value})` : ''} · Deming λ* {calib.deming_lambda_mac10} at MAC 10{gallery.mac !== 10 ? `, ${+gallery.lambda.toFixed(3)} at MAC ${gallery.mac}` : ''} · slope box {calib.slope_box.join('–')} · IMPROVE cross-validation R² floor {calib.heldout_floor}</span>}
+            {explain && <span style={{ color: 'var(--ink-muted)' }}>MAC {gallery.mac}{gallery.mac !== calib.mac_value ? ` (slopes re-expressed from the export's ${calib.mac_value}; RMSE recomputed from each evaluation set's HIPS BC mean and variance, solved from its saved fits${atMac?.rmse_unmoved ? `, unavailable for ${atMac.rmse_unmoved.toLocaleString()} rows whose set could not be solved` : ''})` : ''} · Deming λ* {calib.deming_lambda_mac10} at MAC 10{gallery.mac !== 10 ? `, ${+gallery.lambda.toFixed(3)} at MAC ${gallery.mac}` : ''} · slope box {calib.slope_box.join('–')} · IMPROVE cross-validation R² floor {calib.heldout_floor}</span>}
           </SectionBar>
           <EstimatorViews>{() => <SpecCurve
             defaultLayout="stacked"
