@@ -590,7 +590,7 @@ def smoke_tables(p: Page) -> None:
     if not np.allclose(lot.EC_biomass, placeholder):
         raise ValueError("biomass_vs_general_ec.csv no longer holds 02's placeholder: export its EC_biomass")
     p.add("lot251_set", lot[["FilterId", "LotId", "SampleDate", "EC_general", "OC_ftir", "HIPS_Fabs"]].assign(LotId=lot.LotId.astype(int)),
-          notebook="02_biomass_calibration_comparison", read="tracked csv (placeholder biomass columns left out)",
+          notebook="02_biomass_calibration_comparison", read="tracked csv", note="placeholder biomass columns left out",
           path=rel(JUNE16 / "tables/biomass_vs_general_ec.csv"))
 
 

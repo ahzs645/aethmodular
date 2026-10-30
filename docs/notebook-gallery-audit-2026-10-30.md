@@ -49,8 +49,20 @@ model fitting and stay static; the rest are static for size or source reasons.
   Distribution → ECDF; groupings → iron split at each site's own median; PMF → coverage, dominance and residual vs
   biomass by season.
 
-Still waiting on data that is not in the repo or the shared Davis Data folder: the decision workbook's §3/§4/§6,
-the ksweep tables, ftir_08's HIPS-target PLS, the charcoal archive, and the per-filter outputs each ML page lists.
+From the user's shared copy of their local outputs and the decision workbook's Drive folder (30 Oct, later still):
+
+- **Machine learning → k sweep vs IMPROVE** (ksweep_20261014 [3], [5], [7], [9], [11]; all 590 displayed numbers
+  match). The notebook's dashed TOR-vs-HIPS references were divided by mean TOR while its curves were divided by
+  mean HIPS; the page draws them on the curves' scale by default.
+- **Machine learning → Decision workbook** (§2/§7 RMSE over k, §3 failure groups, §4 specialists, §6 the flag on
+  SPARTAN live at the reader's MAC, §7 option A, §8).
+- **Machine learning → Model form and VIP**: ftir_08's VIP spectra, CV curves and Addis transfer crossplot.
+- **Machine learning → Charcoal archive** and **Research → Charcoal similarity** (char_02/03/05–09/11; the
+  per-filter scores live by season, lot and loading).
+
+Still not exported anywhere: ftir_07's EC/OC VIP profile CSV, the charcoal PCA scores, per-filter Mahalanobis,
+Ward linkage and AIRSpec traces (never saved), char_12's per-filter escape and envelopes, the decision workbook's
+§2 mean-over-folds curve (PNG only), and the per-filter outputs each ML page lists under `missing`.
 
 ## Fixed while auditing
 
