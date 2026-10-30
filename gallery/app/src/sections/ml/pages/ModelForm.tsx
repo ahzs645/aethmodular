@@ -1,12 +1,16 @@
 import { useMemo } from 'react'
-import { ChartFrame } from '@/components/ChartFrame'
 import { Figure } from '@/components/Figure'
 import { f2 } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { num, type Row } from '@/lib/table'
+import { themed } from '@/lib/theme'
+import { useCalibRuns } from '../../research/pages/spectralCommon'
 import type { SectionPageProps } from '../../types'
 import { MlWaiting, PageIntro, provenance, rows, useMl } from '../common'
 import { FoldedPlane } from './model-form/FoldedPlane'
+import { chosenK } from './model-form/hips'
+import { HipsTransfer } from './model-form/HipsTransfer'
+import { VipSpectra, type VipSet } from './model-form/VipSpectra'
 import { bestScoreCells, GUARDS, protocolRows, useCalib, W, type GuardKey } from './model-form/search'
 
 const FORMS = ['PLS', 'HGB', 'RF', 'MLP', 'PLS→HGB']
@@ -16,19 +20,26 @@ const FORM_NAME: Record<string, string> = {
 const FAMILY_COLOR: Record<string, string> = {
   'lowest-OC/EC 800 · corrected': '#2b6cb0', 'lowest-OC/EC 800 · deriv2': '#c026d3', 'full pool · corrected': '#7b8794',
 }
-const VIP_COLOR: Record<string, string> = { EC: '#2b6cb0', OC: '#e67e22', 'IMPROVE HIPS': '#34495e', 'Addis HIPS': '#c0392b' }
+const VIP_COLOR: Record<string, string> = { EC: '#2b6cb0', OC: '#e67e22', 'IMPROVE HIPS': themed('#34495e', '#9fb3c8'), 'Addis HIPS': '#c0392b' }
+/** ftir_08's two component curves (RMSE of HIPS optical depth τ by k) */
+const CURVES = [
+  { table: 'hips_cv_improve', name: 'IMPROVE HIPS · whole sites held out', model: 'IMPROVE HIPS → Addis external test' },
+  { table: 'hips_cv_addis', name: 'Addis HIPS · random 5-fold', model: 'Addis-only HIPS' },
+]
 const byForm = (a: Row, b: Row) => FORMS.indexOf(String(a.model)) - FORMS.indexOf(String(b.model))
 const range = (v: (number | null)[]) => { const x = v.filter((n): n is number => n != null); return `${f2(Math.min(...x))}–${f2(Math.max(...x))}` }
 
 /**
- * ftir_54 (model form), ftir_55 and ftir_51 05/06 (every combination tried) and ftir_07/ftir_08 (VIP). The ftir_54
- * and VIP numbers are the executed notebooks' tables (gallery/data/ml_pages/model_form.py); the combination search
- * is redrawn from calibration.json. Slopes against HIPS Fabs/10 follow the reader's MAC (× MAC/10, intercepts
+ * ftir_54 (model form), ftir_55 and ftir_51 05/06 (every combination tried), ftir_07/ftir_08 (VIP) and ftir_08 (HIPS
+ * as the PLS target). The ftir_54 and VIP numbers are the executed notebooks' tables or the CSVs they wrote
+ * (gallery/data/ml_pages/model_form.py); the combination search is redrawn from calibration.json, and ftir_08's
+ * transfer crossplot and metrics from its per-filter predictions. Slopes against HIPS Fabs/10 follow the reader's MAC (× MAC/10, intercepts
  * unchanged); what cannot (an Addis RMSE or a residual rank against Fabs/10) is labelled MAC 10.
  */
 export function ModelForm(_props: SectionPageProps) {
   const { data, error } = useMl('model-form')
   const { calib, error: calibError } = useCalib()
+  const { runs } = useCalibRuns()
   const mac = useMac()
 
   const cells = useMemo(() => calib ? (Object.keys(GUARDS) as GuardKey[]).flatMap((g) =>
@@ -67,16 +78,33 @@ export function ModelForm(_props: SectionPageProps) {
   const bands = rows(data, 'vip_bands')
   const share = (m: string, band: string) => num(bands.find((r) => r.model === m && r.band === band)?.vip2_share)
   const pct = (v: number | null) => (v == null ? '—' : `${(100 * v).toFixed(0)} %`)
-  const vipProfiles = [...rows(data, 'vip_ec_oc').map((r): Row => ({ ...r, set: 'ftir_07 · EC vs OC' })), ...rows(data, 'vip_hips').map((r): Row => ({ ...r, set: 'ftir_08 · IMPROVE vs Addis HIPS' }))]
+  const hipsMetrics = rows(data, 'hips_transfer')
+  const kOf = (model: string) => num(hipsMetrics.find((r) => r.model === model)?.components)
+  const vipSets: VipSet[] = [
+    { key: 'hips', label: 'IMPROVE vs Addis HIPS', table: 'vip_hips', models: ['IMPROVE HIPS', 'Addis HIPS'],
+      k: [kOf('IMPROVE HIPS → Addis external test'), kOf('Addis-only HIPS')], cite: 'ftir_08 [12]' },
+    { key: 'ec-oc', label: 'EC vs OC', table: 'vip_ec_oc', models: ['EC', 'OC'], k: [31, 53], cite: 'ftir_07 [5]' },
+  ]
+
+  // ftir_08 [7]/[9]: the component curves, mean ± 1 SD over the folds, and the k each one picks (lowest mean)
+  const curves = CURVES.flatMap((c) => rows(data, c.table).map((r): Row => {
+    const m = num(r.rmse_mean), sd = num(r.rmse_sd)
+    return { curve: c.name, k: r.n_components, rmse: m, lo: m != null && sd != null ? m - sd : null, hi: m != null && sd != null ? m + sd : null }
+  }))
+  const picks = CURVES.map((c) => ({ ...c, k: chosenK(rows(data, c.table).map((r) => ({ k: num(r.n_components) ?? NaN, rmse: num(r.rmse_mean) ?? NaN }))), shown: kOf(c.model) }))
+  const nested = rows(data, 'hips_nested_k').map((r) => num(r.chosen_n_components))
+  const audit = (start: string) => num(rows(data, 'hips_audit').find((r) => String(r.cohort).startsWith(start))?.n)
 
   return <>
     <PageIntro id="ml-model-form-intro" title="Model form, every combination tried, and feature importance" data={data}
       notebooks="research/ftir_ec_phase3/ftir_54_model_form_robustness, ftir_55_every_combination_tried, ftir_51_priority_figure_export §5–6; research/ftir_hips_chem/ftir_07_current_pls_vip_diagnostics, ftir_08_hips_transfer_and_vip">
       <p>Three questions about the calibration's form rather than its cohort: would another learner do better on the
         same spectra (ftir_54), what did the search over every cohort, cutoff, spectra, protocol, lot and k actually
-        find (ftir_55, ftir_51), and which wavenumbers do the models lean on (ftir_07, ftir_08)? The ftir_54 and VIP
-        numbers are the executed notebooks' tables; the search is redrawn from <code>calibration.json</code>, which
-        the Calibration tab already loads. Slopes against HIPS Fabs/10 are re-expressed at the MAC set under
+        find (ftir_55, ftir_51), which wavenumbers do the models lean on (ftir_07, ftir_08), and does a PLS model
+        trained on HIPS rather than TOR EC carry from IMPROVE to Addis (ftir_08)? The ftir_54 and VIP numbers are the
+        executed notebooks' tables or the CSVs they wrote; the search is redrawn from <code>calibration.json</code>,
+        which the Calibration tab already loads, and ftir_08's transfer crossplot and its metrics from the
+        notebook's per-filter predictions. Slopes against HIPS Fabs/10 are re-expressed at the MAC set under
         Filters → units (now {mac.label}); an Addis RMSE or a residual rank against Fabs/10 cannot be, and says MAC 10.</p>
       <p>Already drawn elsewhere: the full specification curve and the slope–intercept trap on the{' '}
         <a href="#tab=calibration">Calibration tab</a> (Specification curve; Slope vs intercept), and VIP profiles of the gallery's own calibrations on the{' '}
@@ -159,6 +187,11 @@ export function ModelForm(_props: SectionPageProps) {
       subtitle={`VIP (Takahama et al. 2019, Eq. 14) on the 2,722-point raw grid. ftir_07: the July 7 IMPROVE EC (k 31) and OC (k 53) models, reconstructed in Python to within 1×10⁻⁴ (EC) and 0.003 (OC) of the R fitted values; ${pct(num(ecOc?.a_vip_mass_on_b_important))} of EC's squared-VIP mass sits where OC's VIP ≥ 1. ftir_08: an IMPROVE HIPS model (k 1, site-held-out) and an Addis-only HIPS model (k 14, nested CV), both on filter optical depth: broadly correlated (r ${f2(hips?.spearman_r)}) yet with no top-200 wavenumber in common. VIP is a post hoc importance; it names no unique molecule.`}
       provenance={provenance(data, ['vip_overlap', 'vip_reconstruction'])} />
 
+    <VipSpectra data={data} sets={vipSets} colors={VIP_COLOR} provenance={provenance(data, ['vip_hips', 'vip_ec_oc', 'vip_band_edges', 'vip_overlap'])}
+      missing={<p className="subtitle">ftir_07's and ftir_08's per-wavenumber VIP profiles are local CSVs (see the list at the top for the commands that write them). The
+        gallery's own VIP charts draw the same quantity for its calibrations: the <a href="#tab=meeting&meeting=meeting-20261028">28 Oct meeting page</a> §8 and{' '}
+        <a href="#tab=meeting&meeting=satoshi">Satoshi's 2 Oct questions</a>.</p>} />
+
     <Figure kind="intervals" id="ml-model-form-vip-bands" data={bands} row="band" series="model" block="comparison" colors={VIP_COLOR}
       panels={[{ value: 'vip2_share', label: 'Share of squared-VIP mass in the band' }]}
       aggregate={{ stat: 'median', interval: 'none' }} labelWidth={230}
@@ -172,22 +205,27 @@ export function ModelForm(_props: SectionPageProps) {
       subtitle="Spaced peaks of EC VIP × OC VIP (the notebook displayed the top 12 of 20). These are where an OC/EC composition shift would move an EC prediction; they are candidates for targeted transfer tests, not band assignments."
       provenance={provenance(data, ['shared_peaks'])} />
 
-    <Figure kind="table" id="ml-model-form-hips-transfer" data={rows(data, 'hips_transfer')}
+    {/* ------------------------------------------------------------ 4. ftir_08: HIPS as the PLS target */}
+    {curves.length > 0 && <Figure kind="sweep" id="ml-model-form-hips-k" data={curves} x="k" y="rmse" lo="lo" hi="hi" series="curve" interval="whisker"
+      choose={[{ column: 'curve', label: 'Model', default: CURVES[0].name }]}
+      colors={{ [CURVES[0].name]: VIP_COLOR['IMPROVE HIPS'], [CURVES[1].name]: VIP_COLOR['Addis HIPS'] }}
+      chosen={picks.flatMap((p) => (p.k != null ? [{ series: p.name, x: p.k }] : []))}
+      xLabel="PLS components (k)" yLabel="CV RMSE of HIPS optical depth τ"
+      title={`On held-out IMPROVE sites the HIPS model is best with ${picks[0].k === 1 ? 'a single component' : `k = ${picks[0].k}`}; Addis alone keeps improving to k = ${picks[1].k ?? '—'} — ftir_08 [7], HIPS as the PLS target`}
+      subtitle={`PLS on the raw 2,722-point spectra with HIPS filter optical depth τ = Fabs × sampled volume / (100 × deposit area) as the response (MAC-free). IMPROVE: ${audit('IMPROVE matched') ?? '—'} of ${audit('IMPROVE spectra') ?? '—'} filters matched to HIPS Fabs, volume and area, 5-fold CV holding out whole sites, k 1–25 (the notebook's figure). Addis: the ${audit('Addis spectra + HIPS') ?? '—'} filters with spectra, HIPS and a positive volume, random 5-fold, k 1–15 (written, not drawn, by the notebook). Point: mean over folds; whisker: ±1 SD; the ringed point is the k with the lowest mean, which the notebook carried forward (${picks.map((p) => `${p.name.split(' · ')[0]} ${p.k ?? '—'}${p.shown != null ? `, table ${p.shown}` : ''}`).join('; ')}). Between IMPROVE sites the spread swamps the curve: one component is as good as any.${nested.length ? ` Inside the nested CV that produced the Addis predictions below, every outer fold's inner search chose k = ${[...new Set(nested)].join(', ')}.` : ''}`}
+      provenance={provenance(data, ['hips_cv_improve', 'hips_cv_addis', 'hips_nested_k', 'hips_audit'])} />}
+
+    <Figure kind="table" id="ml-model-form-hips-transfer" data={hipsMetrics}
       columns={[{ key: 'model', label: 'Model' }, { key: 'validation', label: 'Validation' }, { key: 'components', label: 'k', format: 'int' }, { key: 'n', label: 'n', format: 'int' },
         { key: 'slope', label: 'Slope', format: 'f2' }, { key: 'intercept', label: 'Intercept (Fabs)', format: 'f2' }, { key: 'R2', label: 'R²', format: 'f3' }, { key: 'RMSE', label: 'RMSE (Fabs)', format: 'f2' }, { key: 'bias', label: 'Bias (Fabs)', format: 'f2' }]}
-      title="Why ftir_08 compares the two VIP profiles: the IMPROVE HIPS model does not transfer to Addis, an Addis-only one fits — ftir_08 [9]"
-      subtitle="Predicted against observed HIPS Fabs on the 239 Addis filters (Fabs itself, so no MAC). The IMPROVE model, trained on optical depth and converted back, predicts a median Addis Fabs about a third of the observed; the Addis-only model is a mechanism probe, not an EC calibration."
+      title="The IMPROVE HIPS model does not transfer to Addis; an Addis-only one fits — ftir_08 [9], transfer metrics"
+      subtitle="Predicted against observed HIPS Fabs on the 239 Addis filters (Fabs itself, so no MAC), as the notebook tabulated them; the crossplot below redraws them per filter. The IMPROVE model, trained on optical depth and converted back, predicts a median Addis Fabs about a third of the observed; the Addis-only model is a mechanism probe, not an EC calibration."
       provenance={provenance(data, ['hips_transfer'])} />
 
-    {vipProfiles.length > 0 ? <Figure kind="spectrum" id="ml-model-form-vip-profiles" data={vipProfiles} wn="wn" y="vip" series="model" colors={VIP_COLOR}
-      choose={[{ column: 'set', label: 'Models' }]} yLabel="VIP" window={[4000, 500]} hover="readout" zeroLine={false}
-      title="VIP profiles of the four models — ftir_07 [5], ftir_08 [12]"
-      subtitle="VIP ≥ 1 marks wavenumbers carrying more than their share of the explained variance. VIP depends on the number of PLS factors (EC 31, OC 53, IMPROVE HIPS 1, Addis HIPS 14): compare shapes, not heights."
-      provenance={provenance(data, ['vip_ec_oc', 'vip_hips'])} />
-      : <ChartFrame id="ml-model-form-vip-profiles" title="VIP profiles — written only on the machine with the Drive" exportable={false}>
-        <p className="subtitle">ftir_07's and ftir_08's per-wavenumber VIP profiles are local CSVs (see the list at the top for the commands that write them). The
-          gallery's own VIP charts draw the same quantity for its calibrations: the <a href="#tab=meeting&meeting=meeting-20261028">28 Oct meeting page</a> §8 and{' '}
-          <a href="#tab=meeting&meeting=satoshi">Satoshi's 2 Oct questions</a>.</p>
-      </ChartFrame>}
+    {rows(data, 'hips_addis_filters').length > 0
+      ? <HipsTransfer filters={rows(data, 'hips_addis_filters')} shown={hipsMetrics} runs={runs}
+        provenance={<>{provenance(data, ['hips_addis_filters', 'hips_transfer'])} The fixed-190 flag, season and date come from <code>gallery/app/public/data/calibration_runs.json</code> (Addis evaluation set).</>} />
+      : null}
+
   </>
 }
