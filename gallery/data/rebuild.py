@@ -195,6 +195,11 @@ STEPS: tuple[Step, ...] = (
     Step("research-spectral", "export", ("gallery/data/export_research_spectral.py",),
          "The spectral and calibration diagnostics (1617 band, MAC choice, applicability, network map, …)", "research/spectral/",
          note="recomputes spartan_ec 08 where $AETHMODULAR_DRIVE_ROOT holds University/Research/Grad/Data/Davis Data"),
+    Step("research-holdout-fabs", "export", ("gallery/data/export_holdout_fabs.py",),
+         "Fabs of ftir_36/39's 40 locked holdout filters, rebuilt from the raw HIPS and checked against ftir_36's fits, "
+         "so the Applicability page follows the MAC", "research/spectral/holdout_fabs.json",
+         (drive("DAVIS/SPARTAN HIPS pulls/spartan_hips_raw_all.csv"), drive("Spartan/SPARTAN_HIPS_Batch1-51.v2.csv"),
+          drive("DAVIS/ETAD FTIR/ETAD_metadata.csv"), drive("DAVIS/SPARTAN FTIR pulls/INDH/INDH_filters.csv")), ("research-spectral",)),
     Step("availability", "export", ("gallery/data/export_availability.py",),
          "Sites → Data availability, including the AERONET photometer view", "gallery/app/public/data/availability.json",
          (repo("gallery/app/public/data/aeronet/stations.json"),), ("aeronet", "aeronet-sites")),

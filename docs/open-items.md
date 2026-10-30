@@ -129,19 +129,19 @@ for regression, season, and root-discovery behavior. See the
 [import replacements and migration recipe](library-usage.md#scripts--what-to-import-instead-of-redefining)
 and [historical inventory](cleanup-history.md#current-automated-cleanup-inventory).
 
-### Write each holdout filter's Fabs into ftir_39's per-filter table
+### Export ftir_36's per-filter di-PLS predictions, for its bootstrap intervals at any MAC
 
-The gallery's MAC setting (Filters → units) now moves RMSE and mean residual against Fabs/MAC
-as well as slopes: each evaluation set's HIPS BC mean and variance are solved in the browser
-from the saved fits that share it (`gallery/app/src/lib/macMath.ts` `solveHipsMoments`,
-checked against the explorer's MAC 6 and 17 readouts in `lib/mac.test.mjs`). That covers the
-calibration grid, the spec curve, ftir_36's tables and Bishoftu's mean residual. ftir_39's
-per-filter panel and its in/out-of-domain RMSE split still read at MAC 10, because they split a
-holdout filter by filter and `locked_target_domain_per_filter.csv` carries only the residual.
-Have `ftir_39_pls_applicability_domain` write `hips_fabs_Mm1` (the reconstructed Fabs it scored
-against) beside `residual_ugm3`; the gallery can then move every per-filter residual
-(residual + Fabs/10 − Fabs/MAC). The paired-bootstrap intervals in ftir_36 likewise need a re-run
-at another MAC.
+The gallery's MAC setting (Filters → units) moves RMSE and mean residual against Fabs/MAC as well
+as slopes. Each evaluation set's HIPS BC mean and variance are solved in the browser from the
+saved fits (`gallery/app/src/lib/macMath.ts`, checked against the explorer's MAC 6 and 17 readouts
+in `lib/mac.test.mjs`). The blind-half splits use their RMSEs saved at three MACs. ftir_39's
+locked holdouts use each filter's Fabs, rebuilt from the raw HIPS on Drive by
+`gallery/data/export_holdout_fabs.py` with `reconstruct_hips_fabs.py`'s line schedule; the export
+refuses to write unless residual + Fabs/10 refits ftir_36's six ordinary-PLS lines. The one thing
+still at MAC 10 is ftir_36's paired-bootstrap interval on the di-PLS RMSE change: it resamples each
+filter's ordinary-PLS and di-PLS errors, and no export carries the di-PLS predictions per filter.
+Have `ftir_36_domain_invariant_pls` write them (`locked_target_predictions.csv`: config, target,
+variant, ExternalFilterId, prediction) and the gallery can bootstrap at any MAC.
 
 ## Explicitly declined—not open
 

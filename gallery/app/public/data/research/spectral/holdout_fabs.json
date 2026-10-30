@@ -1,0 +1,402 @@
+{
+ "schema_version": 1,
+ "generated": "2026-10-30T17:21:51+00:00",
+ "source": "Davis Data: DAVIS/SPARTAN HIPS pulls/spartan_hips_raw_all.csv, Spartan/SPARTAN_HIPS_Batch1-51.v2.csv, filter volumes from DAVIS/ETAD FTIR/ETAD_metadata.csv and DAVIS/SPARTAN FTIR pulls/*/*_filters.csv",
+ "method": "reconstruct_hips_fabs.py line schedule: tau = ln((Intercept + Slope·R1)/T1), Fabs = 100·tau·DepositArea/Volume (site-median deposit area); reconstructed, not official",
+ "rows": {
+  "4460": {
+   "filter": "ETAD-0313-1",
+   "site": "ETAD",
+   "date": "2026-01-14",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 63.0752
+  },
+  "4461": {
+   "filter": "ETAD-0314-2",
+   "site": "ETAD",
+   "date": "2026-01-17",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 38.9694
+  },
+  "4462": {
+   "filter": "ETAD-0315-3",
+   "site": "ETAD",
+   "date": "2026-01-20",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 38.6071
+  },
+  "4463": {
+   "filter": "ETAD-0316-4",
+   "site": "ETAD",
+   "date": "2026-01-23",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 48.0274
+  },
+  "4464": {
+   "filter": "ETAD-0317-5",
+   "site": "ETAD",
+   "date": "2026-01-26",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 44.8484
+  },
+  "4465": {
+   "filter": "ETAD-0318-6",
+   "site": "ETAD",
+   "date": "2026-01-29",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 35.5305
+  },
+  "4467": {
+   "filter": "ETAD-0320-8",
+   "site": "ETAD",
+   "date": "2026-02-01",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 39.2062
+  },
+  "4468": {
+   "filter": "ETAD-0321-1",
+   "site": "ETAD",
+   "date": "2026-02-11",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 47.0352
+  },
+  "4469": {
+   "filter": "ETAD-0322-2",
+   "site": "ETAD",
+   "date": "2026-02-14",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 47.568
+  },
+  "4470": {
+   "filter": "ETAD-0323-3",
+   "site": "ETAD",
+   "date": "2026-02-17",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 44.8498
+  },
+  "4471": {
+   "filter": "ETAD-0324-4",
+   "site": "ETAD",
+   "date": "2026-02-20",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 45.3875
+  },
+  "4472": {
+   "filter": "ETAD-0325-5",
+   "site": "ETAD",
+   "date": "2026-02-23",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 38.1284
+  },
+  "4473": {
+   "filter": "ETAD-0326-6",
+   "site": "ETAD",
+   "date": "2026-02-26",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 48.5365
+  },
+  "4475": {
+   "filter": "ETAD-0328-8",
+   "site": "ETAD",
+   "date": "2026-03-01",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 31.1764
+  },
+  "4803": {
+   "filter": "INDH-0291-3",
+   "site": "INDH",
+   "date": "2/22/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 81.6312
+  },
+  "4804": {
+   "filter": "INDH-0292-4",
+   "site": "INDH",
+   "date": "2/24/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 94.5236
+  },
+  "4805": {
+   "filter": "INDH-0293-5",
+   "site": "INDH",
+   "date": "2/26/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 77.7685
+  },
+  "4806": {
+   "filter": "INDH-0294-6",
+   "site": "INDH",
+   "date": "2/28/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 66.5516
+  },
+  "4808": {
+   "filter": "INDH-0296-8",
+   "site": "INDH",
+   "date": "3/2/2026 1",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 91.4716
+  },
+  "4809": {
+   "filter": "INDH-0297-1",
+   "site": "INDH",
+   "date": "3/31/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 29.3579
+  },
+  "4810": {
+   "filter": "INDH-0298-2",
+   "site": "INDH",
+   "date": "4/2/2026 1",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 85.3988
+  },
+  "4811": {
+   "filter": "INDH-0299-3",
+   "site": "INDH",
+   "date": "4/4/2026 1",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 54.4322
+  },
+  "4812": {
+   "filter": "INDH-0300-4",
+   "site": "INDH",
+   "date": "4/6/2026 1",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 41.2237
+  },
+  "4813": {
+   "filter": "INDH-0301-5",
+   "site": "INDH",
+   "date": "4/8/2026 1",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 52.5688
+  },
+  "4814": {
+   "filter": "INDH-0302-6",
+   "site": "INDH",
+   "date": "4/10/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 39.9693
+  },
+  "4816": {
+   "filter": "INDH-0304-8",
+   "site": "INDH",
+   "date": "4/12/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 60.992
+  },
+  "4817": {
+   "filter": "INDH-0305-1",
+   "site": "INDH",
+   "date": "3/11/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 88.444
+  },
+  "4818": {
+   "filter": "INDH-0306-2",
+   "site": "INDH",
+   "date": "3/13/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 59.0437
+  },
+  "4819": {
+   "filter": "INDH-0307-3",
+   "site": "INDH",
+   "date": "3/15/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 35.4541
+  },
+  "4820": {
+   "filter": "INDH-0308-4",
+   "site": "INDH",
+   "date": "3/17/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 98.6655
+  },
+  "4821": {
+   "filter": "INDH-0309-5",
+   "site": "INDH",
+   "date": "3/19/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 45.2867
+  },
+  "4822": {
+   "filter": "INDH-0310-6",
+   "site": "INDH",
+   "date": "3/21/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 57.5508
+  },
+  "4824": {
+   "filter": "INDH-0312-8",
+   "site": "INDH",
+   "date": "3/23/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 74.8565
+  },
+  "4825": {
+   "filter": "INDH-0313-1",
+   "site": "INDH",
+   "date": "4/14/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 91.7076
+  },
+  "4826": {
+   "filter": "INDH-0314-2",
+   "site": "INDH",
+   "date": "4/16/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 106.1392
+  },
+  "4827": {
+   "filter": "INDH-0315-3",
+   "site": "INDH",
+   "date": "4/18/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 97.243
+  },
+  "4828": {
+   "filter": "INDH-0316-4",
+   "site": "INDH",
+   "date": "4/20/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 69.6649
+  },
+  "4829": {
+   "filter": "INDH-0317-5",
+   "site": "INDH",
+   "date": "4/22/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 73.9837
+  },
+  "4830": {
+   "filter": "INDH-0318-6",
+   "site": "INDH",
+   "date": "4/24/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 143.2847
+  },
+  "4832": {
+   "filter": "INDH-0320-8",
+   "site": "INDH",
+   "date": "4/26/2026 ",
+   "lot": "253",
+   "line": "dated_schedule",
+   "fabs": 75.5677
+  }
+ },
+ "check": [
+  {
+   "config": "addis_winner",
+   "target": "addis_holdout",
+   "n": 14,
+   "slope": 0.4591,
+   "intercept": -0.417,
+   "R2": 0.769,
+   "saved_slope": 0.4592,
+   "saved_intercept": -0.4171,
+   "saved_R2": 0.7691,
+   "max_miss": 0.00013
+  },
+  {
+   "config": "addis_winner",
+   "target": "delhi_holdout",
+   "n": 26,
+   "slope": 1.0685,
+   "intercept": 0.8157,
+   "R2": 0.5901,
+   "saved_slope": 1.0685,
+   "saved_intercept": 0.8155,
+   "saved_R2": 0.5901,
+   "max_miss": 0.00025
+  },
+  {
+   "config": "common_candidate",
+   "target": "addis_holdout",
+   "n": 14,
+   "slope": 0.4221,
+   "intercept": -0.6298,
+   "R2": 0.7833,
+   "saved_slope": 0.4221,
+   "saved_intercept": -0.6299,
+   "saved_R2": 0.7833,
+   "max_miss": 0.0001
+  },
+  {
+   "config": "common_candidate",
+   "target": "delhi_holdout",
+   "n": 26,
+   "slope": 0.9199,
+   "intercept": -1.1529,
+   "R2": 0.7718,
+   "saved_slope": 0.9199,
+   "saved_intercept": -1.1531,
+   "saved_R2": 0.7718,
+   "max_miss": 0.00016
+  },
+  {
+   "config": "delhi_winner",
+   "target": "addis_holdout",
+   "n": 14,
+   "slope": 0.3771,
+   "intercept": -0.1846,
+   "R2": 0.782,
+   "saved_slope": 0.3771,
+   "saved_intercept": -0.1847,
+   "saved_R2": 0.7821,
+   "max_miss": 9e-05
+  },
+  {
+   "config": "delhi_winner",
+   "target": "delhi_holdout",
+   "n": 26,
+   "slope": 0.8085,
+   "intercept": 0.7578,
+   "R2": 0.5729,
+   "saved_slope": 0.8085,
+   "saved_intercept": 0.7577,
+   "saved_R2": 0.5729,
+   "max_miss": 0.00014
+  }
+ ]
+}
