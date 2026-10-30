@@ -11,6 +11,9 @@ import { JuneVariants } from './pages/JuneVariants'
 import { Residual } from './pages/Residual'
 import { Targets } from './pages/Targets'
 import { ModelForm } from './pages/ModelForm'
+import { Ksweep } from './pages/Ksweep'
+import { Decision } from './pages/Decision'
+import { Charcoal } from './pages/Charcoal'
 
 export const ML_PAGES: (SectionPage & { Page: ComponentType<SectionPageProps> })[] = [
   { key: 'overview', label: 'Overview', title: 'Every model-fitting result in the notebooks, and where the gallery shows it', Page: Overview },
@@ -20,4 +23,7 @@ export const ML_PAGES: (SectionPage & { Page: ComponentType<SectionPageProps> })
   { key: 'residual', label: 'Residual learners', title: 'ftir_43, ftir_45, ftir_46: residual learners against null controls, the paired increment and mass', Page: Residual },
   { key: 'targets', label: 'What counts as EC', title: 'ftir_41, ftir_42, ftir_44, ftir_48: target definitions and the Adama TOR filters', Page: Targets },
   { key: 'model-form', label: 'Model form and VIP', title: 'ftir_54, ftir_55, ftir_51, ftir_07, ftir_08: other model forms, every combination tried, feature importance', Page: ModelForm },
+  { key: 'ksweep', label: 'k sweep vs IMPROVE', title: 'ksweep_20261014: Addis drifts with k; do smoke-like IMPROVE filters, and does IMPROVE validation see it?', Page: Ksweep },
+  { key: 'decision', label: 'Decision workbook', title: 'decision_workbook_20261022 §3, §4, §6: where the reference model fails, specialist calibrations, the flag on SPARTAN', Page: Decision },
+  { key: 'charcoal', label: 'Charcoal archive', title: 'char_02, char_03, char_04, char_06, char_11: archive structure (PCA, KMeans, Ward), analog matching, feedstock classifiers', Page: Charcoal },
 ]
