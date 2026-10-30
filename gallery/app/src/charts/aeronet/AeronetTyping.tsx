@@ -14,6 +14,7 @@ import { AAE, AAE_440_675, EAE_INV, INV_AOD440, L2_AOD440, SAE_440_675 } from '@
 import { CAZORLA_CLASSES, CAZORLA_REGIONS, cazorlaClass, type CazorlaClass } from '@/lib/aeronetMath'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { colouring, num } from './shared'
+import { toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
 
 const PAIRS = ['Cazorla 440–675', 'Russell / Giles 440–870'] as const
 type Pair = (typeof PAIRS)[number]
@@ -103,7 +104,7 @@ export function AeronetTyping({ rows, meta }: { rows: FilterRow[]; meta: MetaFil
                       {/* SAE 1.0 bounds only the cells above AAE 1 (coated large particles span SAE < 1.5) */}
                       <line x1={x(v)} x2={x(v)} y1={0} y2={v === 1 ? y(1) : side} stroke={INK.muted} strokeDasharray="3 3" />
                     </g>)}
-                    <TypingPoints pts={pts} x={x} y={y} side={side} col={col} cazorla={cazorla} tip={tip} />
+                    <TypingPoints pts={pts} x={x} y={y} side={side} col={col} cazorla={cazorla} tip={tip} fields={[xField, yField]} sites={rows} />
                   </g>
                 </svg>
               )
@@ -142,8 +143,11 @@ type TypingPoint = { row: FilterRow; x: number; y: number; weak: boolean }
  * The plane's filters (components/ScatterLayer): drawn once per frame and range, so a hover only draws the focused
  * filter over them; a point outside the frame sits on its edge.
  */
-function TypingPoints({ pts, x, y, side, col, cazorla, tip }: {
-  pts: TypingPoint[]; x: d3.ScaleLinear<number, number>; y: d3.ScaleLinear<number, number>; side: number
+function TypingPoints({ pts, x, y, side, col, cazorla, tip, fields: [xf, yf], sites }: {
+  pts: TypingPoint[]
+  /** the plane's two fields, and the rows whose sites it draws: for the excluded filters' marks (Filters → excluded: Mark) */
+  fields: [string, string]; sites: FilterRow[]
+  x: d3.ScaleLinear<number, number>; y: d3.ScaleLinear<number, number>; side: number
   col: ReturnType<typeof colouring>; cazorla: boolean; tip: ReturnType<typeof useTooltip>
 }) {
   const hl = useHighlightActions()
@@ -158,7 +162,16 @@ function TypingPoints({ pts, x, y, side, col, cazorla, tip }: {
       stroke={p.weak || !st.stroke ? c : st.stroke} strokeWidth={st.strokeWidth ?? 1} data-dot={p.weak ? undefined : st.dot} {...fidProps(p.row.id)} />
   }), [pts, xy, col, hl.selected])
   const focusR = focusStyle('', '', { r: 3.4 }).r
-  return <ScatterLayer items={pts} xy={xy} idOf={(p) => p.row.id} dots={dots} width={side} height={side} tip={tip} focusR={focusR}
+  const markedAll = useMarkedRows()
+  const markReason = useMarkReason()
+  const marks = useMemo(() => {
+    const here = new Set(sites.map((r) => r.site)), [x0, x1] = x.domain(), [y0, y1] = y.domain()
+    return toMarks(markedAll.filter((r) => here.has(r.site)), (r) => {
+      const a = r[xf], b = r[yf]
+      return typeof a === 'number' && typeof b === 'number' && a >= x0 && a <= x1 && b >= y0 && b <= y1 ? [x(a), y(b)] : null
+    }, markReason, (r) => [`${xf} ${fmt(r[xf] as number, 2)} · ${yf} ${fmt(r[yf] as number, 2)}`])
+  }, [markedAll, sites, xf, yf, x.domain().join(), y.domain().join(), side, markReason]) // eslint-disable-line react-hooks/exhaustive-deps
+  return <ScatterLayer items={pts} xy={xy} idOf={(p) => p.row.id} dots={dots} width={side} height={side} tip={tip} focusR={focusR} marks={marks}
     focus={(p, [cx, cy]) => {
       const st = focusStyle(p.row.id, p.row.id, { r: 3.4 })
       const c = col.color(col.key(p.row))

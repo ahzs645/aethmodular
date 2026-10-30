@@ -29,6 +29,7 @@ import { MENU_ACTION } from '@/lib/filterEdits'
 import { XIcon } from '@/components/Icons'
 import { createPortal } from 'react-dom'
 import { chemText } from '@/lib/format'
+import { ExcludedNote } from '@/lib/markedRows'
 
 const ENCODINGS = ['Colour', 'Circle size', 'Scatter matrix'] as const
 const MIN_N = 20
@@ -231,6 +232,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
             <ColorLegend scale={color} scheme={colours.scheme} label="Pearson r" width={180} ticks={5} format={(v) => (v > 0 ? `+${v}` : String(v))} note="Repeated fields omitted: HIPS BC is Fabs ÷ MAC; ChemSpec EC/OC repeat the FTIR products" />
           )}
         </div>
+        <ExcludedNote />
         {tip.node}
       </div>
     </ChartFrame>

@@ -13,6 +13,7 @@ import { useAddisMet } from '../common/met'
 import { correlationP, influence, multiOls, ols, originFit, pearsonR, spearman, splitScan, type ScanRow } from '../common/stats'
 import { Bars, DataTable, Grid, HIGH, LOW, SitePick, fitText, line, num, ofSite, pText, point, seasonsOf, shortSeason, useSite } from '../common/ui'
 import { defaultRh } from './RhSweep'
+import { useMarkedRows } from '@/lib/markedRows'
 
 const RECURSIVE = 'notebooks/analysis/meteorology/hips_ftir_intercept_rh_recursive_diagnostics.ipynb'
 const INVESTIGATION = 'notebooks/analysis/meteorology/hips_intercept_investigation.ipynb'
@@ -41,6 +42,9 @@ export function OffsetDrivers({ rows: viewRows, meta: viewMeta }: SectionPagePro
   const colorOf = (r: FilterRow) => seasons.find((s) => s.name === r.season)?.color ?? INK.muted
 
   const pairs = useMemo(() => siteRows.flatMap((r) => { const x = num(r, xF), y = num(r, yF); return x !== null && y !== null ? [{ r, x, y }] : [] }), [siteRows, xF, yF])
+  // Filters → excluded: Mark (lib/markedRows): the site's excluded filters, drawn as × on the crossplots, in no fit
+  const markedRows = useAddisMet(useMarkedRows(), viewMeta).rows
+  const markedPairs = useMemo(() => ofSite(markedRows, site).flatMap((r) => { const x = num(r, xF), y = num(r, yF); return x !== null && y !== null ? [{ r, x, y }] : [] }), [markedRows, site, xF, yF])
   const base = useMemo(() => ols(pairs.map((p) => p.x), pairs.map((p) => p.y)), [pairs])
   const origin = useMemo(() => originFit(pairs.map((p) => p.x), pairs.map((p) => p.y)), [pairs])
   /** each pair's residual: from the OLS line, or (y − x) / x as the operating-envelope notebook defines it */
@@ -118,15 +122,22 @@ export function OffsetDrivers({ rows: viewRows, meta: viewMeta }: SectionPagePro
   </>
   if (pairs.length < 10) return <ChartFrame id="od-empty" title="What tracks the offset" provenance={RECURSIVE} controls={controls}><Empty>Fewer than 10 filters at {site} carry {xF} and {yF}.</Empty></ChartFrame>
   const ptsXY = pairs.map((p) => point(p.r, p.x, p.y, colorOf(p.r), xF, yF, 'Research · what tracks the offset'))
+  const markedXY = markedPairs.map((p) => point(p.r, p.x, p.y, colorOf(p.r), xF, yF, 'Research · what tracks the offset'))
+  const markedBA = markedPairs.map((p) => point(p.r, (p.x + p.y) / 2, p.y - p.x, colorOf(p.r), 'mean', 'difference', 'Research · Bland–Altman'))
+  // a marked filter's residual from the line fitted without it
+  const markedCov = markedPairs.flatMap((p) => {
+    const c = num(p.r, cov), e = resid === 'fit' ? (base ? p.y - base.intercept - base.slope * p.x : NaN) : p.x !== 0 ? (p.y - p.x) / p.x : NaN
+    return c !== null && Number.isFinite(e) ? [point(p.r, c, e, colorOf(p.r), cov, 'residual', 'Research · what tracks the offset')] : []
+  })
   return (
     <>
       <ChartFrame id="od-baseline" title={`Baseline fit and the residual — ${yF} against ${xF} at ${site}`}
         subtitle={`Left: OLS with a free intercept (black) and through the origin (dashed), points coloured by season. Right: the residual against ${cov}, with its OLS line. The through-origin R² is uncentred, as the notebook computes it.`}
         provenance={`${RECURSIVE} (Panels A and C)`} controls={controls}>
         <Grid>
-          <Crossplot points={ptsXY} title={`${yF} vs ${xF}`} xLabel={`${xF}${unitX ? ` (${unitX})` : ''}`} yLabel={`${yF}${unitY ? ` (${unitY})` : ''}`} fit={false}
+          <Crossplot points={ptsXY} marked={markedXY} title={`${yF} vs ${xF}`} xLabel={`${xF}${unitX ? ` (${unitX})` : ''}`} yLabel={`${yF}${unitY ? ` (${unitY})` : ''}`} fit={false}
             extraLines={[...line(base, INK.fit, 'OLS'), ...(origin ? line({ slope: origin.slope, intercept: 0 }, INK.fit, 'through origin', '6 4') : [])]} />
-          {covPts.length >= 10 ? <Crossplot points={covPts.map((p) => point(p.r, p.c, p.e, colorOf(p.r), cov, 'residual', 'Research · what tracks the offset'))} sameScale={false}
+          {covPts.length >= 10 ? <Crossplot points={covPts.map((p) => point(p.r, p.c, p.e, colorOf(p.r), cov, 'residual', 'Research · what tracks the offset'))} marked={markedCov} sameScale={false}
             title={`Residual vs ${cov}`} xLabel={cov} yLabel={residLabel} fit={false} extraLines={line(covFit, INK.fit, 'OLS')} />
             : <Empty>Fewer than 10 filters carry {cov}.</Empty>}
         </Grid>
@@ -175,7 +186,7 @@ export function OffsetDrivers({ rows: viewRows, meta: viewMeta }: SectionPagePro
       <ChartFrame id="od-ba" title={`Bland–Altman — is the bias fixed or proportional?`}
         subtitle={`${yF} − ${xF} against their mean. Solid: the mean difference; dashed: ± 1.96 SD. A trend in the difference with the mean is a proportional bias (a slope), a level shift is a fixed one (an intercept).`}
         provenance={`${INVESTIGATION} (§5 Bland–Altman)`}>
-        <Crossplot points={ba.map((p) => point(p.r, p.m, p.d, colorOf(p.r), 'mean', 'difference', 'Research · Bland–Altman'))} sameScale={false} title={`${yF} − ${xF}`} xLabel={`Mean of the two${unitX ? ` (${unitX})` : ''}`} yLabel="Difference" fit={false}
+        <Crossplot points={ba.map((p) => point(p.r, p.m, p.d, colorOf(p.r), 'mean', 'difference', 'Research · Bland–Altman'))} marked={markedBA} sameScale={false} title={`${yF} − ${xF}`} xLabel={`Mean of the two${unitX ? ` (${unitX})` : ''}`} yLabel="Difference" fit={false}
           extraLines={[...line({ slope: 0, intercept: bias }, INK.fit, 'bias'), ...line({ slope: 0, intercept: bias + 1.96 * sd }, INK.muted, '+1.96 SD', '5 4'), ...line({ slope: 0, intercept: bias - 1.96 * sd }, INK.muted, '−1.96 SD', '5 4'), ...line(prop, INK.deming, 'trend', '2 3')]} maxSide={420} />
         <Note>Mean difference {fmt(bias, 3)}, limits of agreement {fmt(bias - 1.96 * sd, 2)} to {fmt(bias + 1.96 * sd, 2)}. Trend of the difference with the mean (pink dotted): {fitText(prop)}.</Note>
       </ChartFrame>

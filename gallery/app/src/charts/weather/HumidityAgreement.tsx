@@ -11,6 +11,7 @@ import { FIT_STYLE, fitsFor, useRegressions, type Estimator } from '@/lib/regres
 import { INK, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { ScrubField } from '@/components/ScrubField'
+import { useMarkedPoints } from '@/lib/markedRows'
 
 const DRY = '#d08c2c', HUMID = '#2c7fb8'
 const SWEEP = d3.range(30, 85, 2.5)
@@ -44,12 +45,16 @@ export function HumidityAgreement({ rows, meta, xField, yField, rhField }: { row
   const fit = (ps: typeof pts) => regression(ps.map((p) => p.x), ps.map((p) => p.y), { errorsInVariables: true })
   const nDry = pts.filter((p) => p.rh < thr).length, nHumid = pts.length - nDry
   // each half a fit group of the shared crossplot; memoised, so a hover does not refit (or re-bootstrap) the halves
-  const points = useMemo<CrossPoint[]>(() => pts.map((p) => {
+  const pointOf = (p: (typeof pts)[number]): CrossPoint => {
     const isDry = p.rh < thr
     return { x: p.x, y: p.y, id: p.row.id, color: isDry ? DRY : HUMID, site: isDry ? `Dry (RH < ${thr} %)` : `Humid (RH ≥ ${thr} %)`,
       tip: [p.row.id, `${p.row.site} · ${p.row.date}`, `${xField} ${fmt(p.x)} · ${yField} ${fmt(p.y)}`, `RH ${fmt(p.rh, 0)} %`],
       open: () => hl.openSample(p.row.id) }
-  }), [pts, thr, xField, yField]) // eslint-disable-line react-hooks/exhaustive-deps
+  }
+  const points = useMemo<CrossPoint[]>(() => pts.map(pointOf), [pts, thr, xField, yField]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Filters → excluded: Mark (lib/markedRows): these sites' excluded filters as ×, in neither half's fit nor the sweep
+  const marked = useMarkedPoints((rs) => rs.filter((r) => rows.some((q) => q.site === r.site) && [xField, yField, rhField].every((f) => typeof r[f] === 'number' && Number.isFinite(r[f])))
+    .map((r) => pointOf({ row: r, x: r[xField] as number, y: r[yField] as number, rh: r[rhField] as number })), [rows, thr, xField, yField, rhField])
   const sweep = useMemo(() => SWEEP.map((t) => {
     const a = pts.filter((p) => p.rh < t), b = pts.filter((p) => p.rh >= t)
     const sa = a.length >= MIN_N ? fit(a) : null, sb = b.length >= MIN_N ? fit(b) : null
@@ -82,7 +87,7 @@ export function HumidityAgreement({ rows, meta, xField, yField, rhField }: { row
         {pts.length < MIN_N * 2 ? <Empty>Fewer than {MIN_N * 2} filters carry {xField}, {yField} and {rhField} in this subset.</Empty> : <Panels label="Humidity split and threshold sweep" panels={[
           { key: 'cross', title: `Split at ${thr} %`, note: `${nDry} dry · ${nHumid} humid`, label: 'Dry and humid crossplot', min: 300, basis: 480, max: 500, grow: 0,
             // the crossplot is square: in a tile its side also fits the height (less its fit readout and axes)
-            render: ({ width, height }) => <Crossplot points={points} title="" xLabel={withUnit(xField, meta.field_units)} yLabel={withUnit(yField, meta.field_units)}
+            render: ({ width, height }) => <Crossplot points={points} marked={marked} title="" xLabel={withUnit(xField, meta.field_units)} yLabel={withUnit(yField, meta.field_units)}
               maxSide={Math.min(width - 70, height === null ? Infinity : height - 150)} grouping="site" groupNoun="humidity group" pick /> },
           { key: 'sweep', title: 'Threshold sweep', note: best ? `widest gap ${best.t} %` : undefined, label: 'Threshold sweep of both slopes', min: 280, basis: 420,
             render: ({ width, height }) => <SweepPlot series={series} width={width} height={height ?? 300} xLabel="RH threshold (%)" yLabel={slopeName} xDomain={[SWEEP[0], SWEEP[SWEEP.length - 1]]}

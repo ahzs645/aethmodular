@@ -15,6 +15,7 @@ import { useChartGrouping } from '@/components/GroupingDialog'
 import { MeasurementControl } from '@/components/AxisFieldPopover'
 import { CategoryAxis, categoryAxisHeight } from '@/components/CategoryAxis'
 import { useTileSetting } from '@/lib/url'
+import { ExcludedNote, toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
 
 const MODES = ['Boxplot', 'Box + points', 'Violin', 'Beeswarm'] as const
 
@@ -56,10 +57,12 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
   const seasonColor = useMemo(() => new Map(meta.seasons.map((s) => [s.name, s.color])), [meta.seasons])
   const siteColor = useMemo(() => new Map(meta.sites.map((s) => [s.name, s.color])), [meta.sites])
 
+  const split = groupBy === 'Group' && comparison === 'Compare sites'
+  // the group a filter falls in ('' none)
+  const key = useMemo(() => (r: FilterRow) => groupBy === 'Site' ? r.site : groupBy === 'Group' ? (!grp || grp.labelOf(r) === null ? '' : split ? `${grp.labelOf(r)}|${r.site}` : grp.labelOf(r)!) : r.season,
+    [groupBy, grp, split])
   const groups = useMemo(() => {
     if (groupBy === 'Group' && !grp) return []
-    const split = groupBy === 'Group' && comparison === 'Compare sites'
-    const key = (r: FilterRow) => groupBy === 'Site' ? r.site : groupBy === 'Group' ? (grp!.labelOf(r) === null ? '' : split ? `${grp!.labelOf(r)}|${r.site}` : grp!.labelOf(r)!) : r.season
     const order = groupBy === 'Site' ? meta.sites.map(s => s.name) : groupBy === 'Group' ? split ? grp!.labels.flatMap(label => meta.sites.map(s => `${label}|${s.name}`)) : grp!.labels : meta.seasons.map(s => s.name)
     const m = new Map<string, { v: number; row: FilterRow }[]>()
     for (const r of measured) {
@@ -75,7 +78,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
       const color = (groupBy === 'Site' || split ? siteColor.get(site) : groupBy === 'Group' ? grp!.colorOf(name) : seasonColor.get(name)) ?? INK.muted
       return { name, key: name, label, parent, parentColor: groupBy === 'Season' ? siteColor.get(site) : undefined, site: groupBy === 'Site' || groupBy === 'Season' || split ? site : undefined, items, values: items.map(i => i.v), color, box: boxStats(items.map(i => i.v))! }
     })
-  }, [measured, field, groupBy, comparison, meta, siteColor, seasonColor, grp])
+  }, [measured, field, groupBy, split, key, meta, siteColor, seasonColor, grp])
 
   const plotWidth = Math.max(width, groups.length * 112 + MARGIN.left + MARGIN.right)
   const innerW = Math.max(160, plotWidth - MARGIN.left - MARGIN.right)
@@ -98,6 +101,19 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
     })
   }, [groups, mode, innerW, innerH]) // eslint-disable-line react-hooks/exhaustive-deps
   const xy = useMemo(() => pts.map((p) => p.at), [pts])
+  // Filters → excluded: Mark (lib/markedRows): where every filter is drawn (beeswarm, box + points), the excluded ones
+  // as × in their group's column; never in a box, a median or an n
+  const markedAll = useMarkedRows()
+  const markReason = useMarkReason()
+  const marks = useMemo(() => {
+    if (mode !== 'Beeswarm' && mode !== 'Box + points') return []
+    const bw = x.bandwidth(), [v0, v1] = y.domain()
+    return toMarks(markedAll, (r) => {
+      const v = r[field], k = key(r), at = k ? x(k) : undefined
+      if (typeof v !== 'number' || !Number.isFinite(v) || at === undefined || v < v0 || v > v1) return null
+      return [at + bw / 2 + jitter(r.id.length * 131 + Math.round(v * 977), bw * 0.7), y(v)]
+    }, markReason, (r) => [`${field} = ${fmt(r[field] as number)}`])
+  }, [markedAll, mode, key, field, markReason, groups, innerW, innerH]) // eslint-disable-line react-hooks/exhaustive-deps
   const dotStyle = (p: Pt, focused: boolean) => focusStyle(p.row.id, focused ? p.row.id : null, p.kind === 'swarm' ? { r: 3 } : { r: 2.4, level: 'dense' }, focused ? null : hl.selected)
   const dots = useMemo(() => pts.map((p) => {
     const tags = { 'data-export-site': p.g.site, 'data-export-series': p.g.name, 'data-export-color': p.g.color, 'data-fid': p.row.id }
@@ -188,7 +204,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                   summary, so the box can be read against the n it summarises): hover links it everywhere, a click opens its record */}
               {mode !== 'Violin' && (
                 <g onMouseMove={boxTip} onMouseLeave={() => { if (!onPoint.current) tip.hide() }}>
-                  <ScatterLayer items={pts} xy={xy} idOf={(p) => p.row.id} dots={dots} width={innerW} height={innerH}
+                  <ScatterLayer items={pts} xy={xy} idOf={(p) => p.row.id} dots={dots} width={innerW} height={innerH} marks={marks} markTip={tip}
                     focusR={(p) => (p.kind === 'outlier' ? 4 : dotStyle(p, true).r)}
                     focus={(p, [fx, fy]) => {
                       if (p.kind === 'outlier') return <circle cx={fx} cy={fy} r={4} fill={p.g.color} stroke={p.g.color} strokeWidth={1.2} />
@@ -208,6 +224,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
           </svg></div>
         )}
         {groupBy === 'Group' && missingNote('left out of the groups')}
+        <ExcludedNote fields={[field]} drawn={mode === 'Beeswarm' || mode === 'Box + points'} />
         {tip.node}
       </div>
     </ChartFrame>

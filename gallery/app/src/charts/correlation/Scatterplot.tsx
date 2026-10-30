@@ -29,6 +29,7 @@ import { useSearchParam, useTileSetting } from '@/lib/url'
 import { GroupingPicker, useGroupings } from '@/components/GroupingDialog'
 import { NO_BAND_COLOR, applyGrouping, noBandLabel } from '@/lib/groupings'
 import { ChartAside } from '@/lib/singleView'
+import { ExcludedNote, toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
 import { ScrubField } from '@/components/ScrubField'
 import { UndoIcon } from '@/components/Icons'
 
@@ -106,7 +107,8 @@ export function Scatterplot({ rows, meta, xField, yField, axes: axesIn, id = 'sc
   const hasPmf = !!meta.pmf_groups?.length && rows.some((r) => typeof r[PMF_SOURCE] === 'string')
   const colorField = [colorChoice, 'Iron', meta.fields[0]].find((f): f is string => !!f && (meta.fields.includes(f) || (f === PMF_COLOUR && hasPmf))) ?? ''
   const [sizeField, setSizeField] = useTileSetting<string>('scatter.size', NO_SIZE)
-  const nSites = useMemo(() => new Set(rows.map((r) => r.site)).size, [rows])
+  const nSiteSet = useMemo(() => new Set(rows.map((r) => r.site)), [rows])
+  const nSites = nSiteSet.size
   // the options and when each applies (lib/chartOptions). Fits are per panel, so the grouping
   // offered follows the layout: a fit per site inside a site's panel is the pooled fit, and a
   // per-season panel holds one site in one season, so every grouping is its one fit
@@ -212,14 +214,22 @@ export function Scatterplot({ rows, meta, xField, yField, axes: axesIn, id = 'sc
   const radiusOf = useCallback((p: Point) => (sScale ? (p.s === null ? 1.5 : sScale(p.s)) : 4), [sScale])
   const dimOf = useCallback((p: Point) => dim(groupOf(p.row)), [hidden, hover, colorBy, pmfColouring, grp]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Filters → excluded: Mark (lib/markedRows): the excluded filters with both values, in the same legend groups;
+  // each panel draws its own as ×, never in its points, fits or n
+  const markedAll = useMarkedRows()
+  // only the sites this chart was handed (a page that narrows to one site narrows its marks too)
+  const marked = useMemo(() => markedAll.filter((r) => nSiteSet.has(r.site) && !hidden.has(groupOf(r)) && num(r[xField]) !== null && num(r[yField]) !== null
+    && (!logAxes || ((r[xField] as number) > 0 && (r[yField] as number) > 0))),
+  [markedAll, nSiteSet, hidden, xField, yField, logAxes, colorBy, pmfColouring, grp]) // eslint-disable-line react-hooks/exhaustive-deps
   const panels = useMemo(() => {
-    const raw: { key: string; title: string | null; color: string; points: Point[]; group?: string; site?: string }[] = layout === 'Combined'
+    const raw: { key: string; title: string | null; color: string; points: Point[]; group?: string; site?: string; keep?: (r: FilterRow) => boolean }[] = layout === 'Combined'
       ? [{ key: 'all', title: null as string | null, color: INK.text, points }]
       : layout === 'Per group' && grp
         // each site's row: one panel per band of the grouping
         ? meta.sites.flatMap((s) => grp.labels.map((l, i) => ({
             key: `${s.code}|g${i}`, group: s.name, site: s.name, color: grp.colors[i], title: l,
             points: points.filter((p) => p.row.site === s.name && grp.labelOf(p.row) === l),
+            keep: (r: FilterRow) => r.site === s.name && grp.labelOf(r) === l,
           }))).filter((p) => p.points.length > 0)
       : layout === 'Per season'
         // each site's own seasons under the active calendar (local calendars carry the site in the name)
@@ -227,20 +237,22 @@ export function Scatterplot({ rows, meta, xField, yField, axes: axesIn, id = 'sc
             key: `${s.code}|${se.name}`, group: s.name, color: se.color, site: s.name,
             title: se.site && se.name.startsWith(`${se.site} · `) ? se.name.slice(se.site.length + 3) : se.name,
             points: points.filter((p) => p.row.site === s.name && p.row.season === se.name),
+            keep: (r: FilterRow) => r.site === s.name && r.season === se.name,
           }))).filter((p) => p.points.length > 0)
         : meta.sites
-          .map((s) => ({ key: s.code, title: s.name, color: s.color, site: s.name, points: points.filter((p) => p.row.site === s.name) }))
+          .map((s) => ({ key: s.code, title: s.name, color: s.color, site: s.name, points: points.filter((p) => p.row.site === s.name), keep: (r: FilterRow) => r.site === s.name }))
           .filter((p) => p.points.length > 0)
     // Deming lambda: when both axes are the same measured quantity we default to
     // 1.0 (orthogonal), exactly as calculate_regression_stats does.
-    return raw.map((p) => ({
+    return raw.map(({ keep, ...p }) => ({
       ...p,
+      marks: marked.length ? (keep ? marked.filter(keep) : marked) : NO_ROWS,
       stats: regression(p.points.map((q) => q.x), p.points.map((q) => q.y), fitUncertainty(p.points.map(q => q.row), xField, yField, meta)),
       fitGroups: groupedRegressions(p.points, grouping, { x: q => q.x, y: q => q.y, site: q => q.row.site, season: q => q.row.season, seasonColor: q => meta.seasons.find(se => se.name === q.row.season)?.color ?? INK.muted,
         color: q => meta.sites.find(s => s.name === q.row.site)?.color ?? INK.muted,
         options: members => fitUncertainty(members.map(q => q.row), xField, yField, meta) }),
     }))
-  }, [layout, points, meta, xField, yField, grouping, grp])
+  }, [layout, points, meta, xField, yField, grouping, grp, marked])
 
   // Shared domain across every panel by default — a per-site grid with different axes
   // per panel silently hides that one site's slope is twice another's. "Own" panel axes
@@ -352,6 +364,10 @@ export function Scatterplot({ rows, meta, xField, yField, axes: axesIn, id = 'sc
     click: (row: FilterRow) => hl.openSample(row.id),
     brush: (ids: Set<string> | null) => hl.setSelected(ids),
   }
+  // a mark's hover (why it is excluded) in this chart's tooltip; stable, so the memoised panels hold
+  const markTip = useMemo(() => ({ show: tip.show, hide: tip.hide }), [tip.show, tip.hide])
+  const markReason = useMarkReason()
+  const fieldPair = useMemo<[string, string]>(() => [xField, yField], [xField, yField])
   const stable = useMemo(() => ({
     onEnter: (e: React.MouseEvent, pt: Point) => live.current.enter(e, pt), onLeave: () => live.current.leave(),
     onClick: (row: FilterRow) => live.current.click(row), onBrush: (ids: Set<string> | null) => live.current.brush(ids),
@@ -375,6 +391,10 @@ export function Scatterplot({ rows, meta, xField, yField, axes: axesIn, id = 'sc
                 onToggle={toggleLegend}
                 onHover={setHover}
                 points={p.points}
+                marks={p.marks}
+                markTip={markTip}
+                markReason={markReason}
+                fields={fieldPair}
                 stats={p.stats}
                 fitGroups={p.fitGroups}
                 domain={panelDomains?.get(p.key) ?? domain}
@@ -436,6 +456,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes: axesIn, id = 'sc
         {colorBy === 'Value' && !pmfColouring && (
           <Legend items={legend} hidden={hidden} onToggle={(l) => setHidden((h) => toggleIn(h, l))} onHover={setHover} highlighted={hover} note="click a site to drop it; colour is the value above" />
         )}
+        <ExcludedNote fields={[xField, yField]} drawn />
         {layout === 'Per group' && grp && (() => {
           const n = drawable.filter((r) => grp.labelOf(r) === null).length
           return n > 0 ? <ChartAside><p className="chart-note">No data: {n.toLocaleString()} of {drawable.length.toLocaleString()} filters have no {groupingDef!.field}, so they are in no panel (colour by Group shows them in grey).</p></ChartAside> : null
@@ -446,13 +467,14 @@ export function Scatterplot({ rows, meta, xField, yField, axes: axesIn, id = 'sc
   )
 }
 
+const NO_ROWS: FilterRow[] = []
 /** One axes: used once for the combined layout, once per site for the grid. */
 const NO_KEYS: ReadonlySet<string> = new Set()
 /** space between a readout box above the plot and the panel's edges */
 const READOUT_INSET = 12
 
 const ScatterPanel = memo(function ScatterPanel({
-  title, titleColor, legend, hidden, hover, onToggle, onHover, points, stats, fitGroups, domain, innerW, innerH, axes, showFit, xLabel, yLabel, colorOf, radiusOf, dimOf, fitDim, selected, brushing, onBrush, onEnter, onLeave, onClick, grouping, siteColoring, seasonColoring,
+  title, titleColor, legend, hidden, hover, onToggle, onHover, points, marks, markTip, markReason, fields, stats, fitGroups, domain, innerW, innerH, axes, showFit, xLabel, yLabel, colorOf, radiusOf, dimOf, fitDim, selected, brushing, onBrush, onEnter, onLeave, onClick, grouping, siteColoring, seasonColoring,
 }: {
   /** the grouping the chart draws (lib/regressionPrefs effectiveGrouping), not the raw setting */
   grouping: FitGrouping
@@ -467,6 +489,12 @@ const ScatterPanel = memo(function ScatterPanel({
   onToggle: (label: string) => void
   onHover: (label: string | null) => void
   points: Point[]
+  /** excluded filters drawn as × under Filters → excluded: Mark (lib/markedRows); never in points, fits or n */
+  marks: FilterRow[]
+  markTip: { show: ReturnType<typeof useTooltip>['show']; hide: () => void }
+  markReason: (id: string) => string | null
+  /** x and y, for a mark's hover */
+  fields: [string, string]
   stats: RegressionStats | null
   fitGroups: RegressionGroup[]
   domain: PairDomain
@@ -526,6 +554,13 @@ const ScatterPanel = memo(function ScatterPanel({
   }), [drawn, xScale, yScale, selected, colorOf, radiusOf, dimOf, siteColoring, seasonColoring])
   // closest-point detection: one Delaunay over the drawn points, one hit rect (components/HitLayer)
   const xy = useMemo(() => drawn.map((p) => [xScale(p.x), yScale(p.y)] as const), [drawn, xScale, yScale])
+  // inside the drawn axes only: the axes follow the counted filters, and Mark never moves them
+  const markPts = useMemo(() => toMarks(marks, (r) => {
+    const vx = r[fields[0]] as number, vy = r[fields[1]] as number
+    const [x0, x1] = xScale.domain() as [number, number], [y0, y1] = yScale.domain() as [number, number]
+    return inDomain(domain, vx, vy) && vx >= x0 && vx <= x1 && vy >= y0 && vy <= y1 ? [xScale(vx), yScale(vy)] : null
+  },
+    markReason, (r) => [`${fields[0]}: ${fmt(r[fields[0]] as number)}`, `${fields[1]}: ${fmt(r[fields[1]] as number)}`]), [marks, domain, xScale, yScale, markReason, fields[0], fields[1]]) // eslint-disable-line react-hooks/exhaustive-deps
   // d3.brush owns its own DOM, so it is attached imperatively to an empty <g>
   const brushRef = useRef<SVGGElement>(null)
   const brushObj = useRef<d3.BrushBehavior<unknown> | null>(null)
@@ -628,6 +663,7 @@ const ScatterPanel = memo(function ScatterPanel({
               18 px of the pointer and the dot's radius; the brush replaces it while selecting. The nearest point gets the
               filter menu; on empty plot the page-level menu offers the brush and undo */}
           <ScatterLayer items={drawn} xy={xy} idOf={(p) => p.row.id} dots={dots} width={innerW} height={innerH} active={!brushing}
+            marks={markPts} markTip={markTip}
             reach={radiusOf} follow onHover={onEnter} onLeave={onLeave} onPick={(p) => onClick(p.row)}
             focusR={(p) => focusStyle(p.row.id, p.row.id, { r: radiusOf(p) }).r}
             focus={(p, [cx, cy]) => {

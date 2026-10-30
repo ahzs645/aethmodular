@@ -14,6 +14,7 @@ import { ImpliedMac } from '../filters/ImpliedMac'
 import { IronTest } from '../filters/IronTest'
 import { MacTimeline } from '../filters/MacTimeline'
 import { MethodAgreement } from '../filters/MethodAgreement'
+import { useMarkedRows } from '@/lib/markedRows'
 
 /**
  * Sub-page 'filters' of the Aethalometer tab: the MA350 against the filters it ran beside, HIPS Fabs
@@ -35,6 +36,10 @@ export function FilterComparison({ rows, meta, picked, onPick, field, axes, setF
   // the aethalometer's own counts per filter (overlap hours), for the header
   const fields = useAethFields(codes)
   const pairs = usePairs(rows, meta, extra, ch, smoothed)
+  // Filters → excluded: Mark (lib/markedRows): these sites' excluded filters, paired the same way, drawn as × only
+  const markedAll = useMarkedRows()
+  const markedRows = useMemo(() => markedAll.filter((r) => codes.includes(r.code)), [markedAll, codes])
+  const markedPairs = usePairs(markedRows, meta, extra, ch, smoothed)
   const sites = useMemo(() => pairSites(pairs, meta), [pairs, meta])
   const one = sites.length === 1 ? sites[0] : null
   const sigma = extra.index?.sigma[ch] ?? null
@@ -85,7 +90,7 @@ export function FilterComparison({ rows, meta, picked, onPick, field, axes, setF
         </div>
       </div>
       <ImpliedMac pairs={pairs} meta={meta} sites={sites} ch={ch} sigma={sigma} onSite={onPick && !one ? openSite : undefined} />
-      <MethodAgreement pairs={pairs} meta={meta} sites={sites} ch={ch} />
+      <MethodAgreement pairs={pairs} marked={markedPairs} meta={meta} sites={sites} ch={ch} />
       <ChannelAgreement rows={rows} sites={sites} extra={extra.values} wavelengths={wavelengths} ch={ch} onChannel={setCh} />
       <MacTimeline pairs={pairs} meta={meta} sites={sites} ch={ch} sigma={sigma} />
       <ConstraintCheck pairs={pairs} sites={sites} ch={ch} sigma={sigma} />

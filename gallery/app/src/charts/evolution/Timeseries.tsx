@@ -17,11 +17,12 @@ import { useChartOptions } from '@/lib/chartOptions'
 import { useChartGrouping } from '@/components/GroupingDialog'
 import { useSearchParam } from '@/lib/url'
 import { useChartLabel, useFitHeight } from '@/lib/chartFit'
+import { ExcludedNote, toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
 
 const LAYOUTS = ['Overlay', 'Per site'] as const
 const SERIES_BY = ['Site', 'Group'] as const
 type Pt = { row: FilterRow; date: Date; value: number }
-type Series = { name: string; color: string; pts: Pt[] }
+type Series = { name: string; color: string; pts: Pt[]; keep: (r: FilterRow) => boolean }
 
 /**
  * Timeseries / area — 179 evolution figures in the estate (timeseries, line,
@@ -52,6 +53,10 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
 
   // series by site, or by the bands of the reader's grouping (components/GroupingDialog), every site pooled
   const measured = useMemo(() => rows.filter((r) => typeof r[field] === 'number' && Number.isFinite(r[field] as number)), [rows, field])
+  // Filters → excluded: Mark (lib/markedRows): excluded filters with this measurement, drawn as × in their series' panel
+  const markedAll = useMarkedRows()
+  const marked = useMemo(() => markedAll.filter((r) => typeof r[field] === 'number' && Number.isFinite(r[field] as number)), [markedAll, field])
+  const markReason = useMarkReason()
   const { grp, picker, missingNote } = useChartGrouping('timeseries', measured, () => setSeriesBy('Group'))
   const [seriesChoice, setSeriesBy] = useSearchParam<'Site' | 'Group'>('timeseries.series', 'Site', SERIES_BY)
   // Group is offered only once a grouping is picked
@@ -67,7 +72,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
             .filter(s.keep)
             .map((r) => ({ row: r, date: new Date(r.date + 'T00:00:00'), value: r[field] as number }))
             .sort((a, b) => +a.date - +b.date)
-          return { name: s.name, color: s.color, pts }
+          return { name: s.name, color: s.color, pts, keep: s.keep }
         })
         .filter((s) => s.pts.length > 1),
     [measured, field, meta.sites, hidden, byGroup, grp]
@@ -178,7 +183,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
                     <SeasonBands bands={bandsFor(x, byGroup ? null : panel.title)} height={innerH} hover={seasonHover} />
                     <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} tickCount={layout === 'Overlay' ? 6 : 4} pick="field" />
                     <XAxis scale={x as any} y={innerH} format={(d: Date) => d3.timeFormat('%b %Y')(d)} tickCount={Math.max(2, Math.min(7, Math.floor(innerW / 80)))} />
-                    <SeriesPoints series={panel.series} x={x} y={y} width={innerW} height={innerH} level={smooth ? 'dimmed' : 'standard'}
+                    <SeriesPoints series={panel.series} marked={marked} markReason={markReason} x={x} y={y} width={innerW} height={innerH} level={smooth ? 'dimmed' : 'standard'}
                       selected={hl.selected} dim={dim} dimKey={siteHover ?? ''} tip={tip} field={field}>
                       {panel.series.map((s) => (
                         <g key={s.name} opacity={dim(s.name)} data-export-site={s.name} data-export-color={s.color} pointerEvents="none">
@@ -235,6 +240,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
           note="hover any panel: the dashed cursor is the same date on every panel"
         />
         {byGroup && missingNote('left out of the series')}
+        <ExcludedNote fields={[field]} drawn />
         {tip.node}
       </div>
     </ChartFrame>
@@ -246,8 +252,11 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
  * and a hover elsewhere do not redraw them; the nearest point within reach answers a hover or click. `children`
  * (the rolling medians and their labels) go over the points.
  */
-function SeriesPoints({ series, x, y, width, height, level, selected, dim, dimKey, tip, field, children }: {
-  series: Series[]; x: d3.ScaleTime<number, number>; y: d3.ScaleLinear<number, number>; width: number; height: number
+function SeriesPoints({ series, marked, markReason, x, y, width, height, level, selected, dim, dimKey, tip, field, children }: {
+  series: Series[]
+  /** excluded filters under Filters → excluded: Mark, drawn as × where one of these series would hold them; never in the medians */
+  marked: FilterRow[]; markReason: (id: string) => string | null
+  x: d3.ScaleTime<number, number>; y: d3.ScaleLinear<number, number>; width: number; height: number
   level: DotLevel; selected: Set<string> | null
   /** a legend-hovered site dims the others; `dimKey` changes when it does (dim is a new function every render) */
   dim: (name: string) => number; dimKey: string
@@ -263,9 +272,16 @@ function SeriesPoints({ series, x, y, width, height, level, selected, dim, dimKe
       })}
     </g>
   )), [series, x, y, level, selected, dimKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  const marks = useMemo(() => {
+    const [d0, d1] = x.domain(), [v0, v1] = y.domain()
+    return toMarks(marked.filter((r) => series.some((s) => s.keep(r))), (r) => {
+      const d = new Date(r.date + 'T00:00:00'), v = r[field] as number
+      return d >= d0 && d <= d1 && v >= v0 && v <= v1 ? [x(d), y(v)] : null
+    }, markReason, (r) => [`${field}: ${fmt(r[field] as number)}`])
+  }, [marked, series, x, y, field, markReason])
   const focused = (id: string) => focusStyle(id, id, { r: 2.6, level })
   return (
-    <ScatterLayer items={items} xy={xy} idOf={({ p }) => p.row.id} dots={dots} width={width} height={height} tip={tip}
+    <ScatterLayer items={items} xy={xy} idOf={({ p }) => p.row.id} dots={dots} width={width} height={height} tip={tip} marks={marks}
       tipOf={({ p }) => [p.row.id, `${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`, `${field}: ${fmt(p.value)}`, p.row.excluded ? `excluded: ${p.row.exclusion_reason}` : 'click for details']}
       focusR={({ p }) => focused(p.row.id).r}
       focus={({ p, s }, [cx, cy]) => {

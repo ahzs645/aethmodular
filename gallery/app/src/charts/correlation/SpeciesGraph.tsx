@@ -16,6 +16,7 @@ import { WEATHER_GROUP } from '@/lib/weather'
 import { PMF_GROUP } from '@/lib/pmfGroups'
 import { RATIO_GROUP } from '@/lib/viewFields'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { ExcludedNote } from '@/lib/markedRows'
 
 const VIEWS = ['Network', 'Tree'] as const
 const THRESHOLDS = ['0.5', '0.6', '0.7', '0.8', '0.9']
@@ -452,6 +453,7 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
           </div>
           {view === 'Network' && <Legend items={edgeKey} note="bigger dot = more partners" />}
         </>}
+        <ExcludedNote />
         {tip.node}
       </div>
     </ChartFrame>

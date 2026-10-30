@@ -18,6 +18,7 @@ import { ChartAside } from '@/lib/singleView'
 import { ScrubField } from '@/components/ScrubField'
 import { ecdfAt, ecdfSteps } from '@/lib/ecdf'
 import { parseCuts } from '@/lib/splitFit'
+import { ExcludedNote } from '@/lib/markedRows'
 
 const LAYOUTS = ['Overlay', 'Density', 'Small multiples', 'Mirror', 'ECDF'] as const
 type Layout = (typeof LAYOUTS)[number]
@@ -314,6 +315,7 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
           />
         )}
         {nOutside > 0 && <Note>{nOutside} of {all.length} values fall outside the displayed 1–99 % range and are not drawn.</Note>}
+        <ExcludedNote fields={[field]} />
         {tip.node}
       </div>
     </ChartFrame>

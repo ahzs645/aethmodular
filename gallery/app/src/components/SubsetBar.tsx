@@ -27,6 +27,7 @@ import { DynamicSeasonEditor } from '@/components/DynamicSeasonEditor'
 import { defaultRuleFor, type DynRule } from '@/lib/dynamicSeasons'
 import { DEFAULT_RAIN_RULE, type RainRule } from '@/lib/rainSeasons'
 import { XIcon } from '@/components/Icons'
+import { EXCL_MODES, type ExclMode } from '@/lib/exclusionMode'
 import { CalendarNoteRef, CiteRef } from '@/components/CiteRef'
 import { ScrubField } from '@/components/ScrubField'
 import { SiteFocusControl, useFocusedSite, useSiteFocusOffered } from '@/lib/siteFocus'
@@ -64,6 +65,8 @@ export interface SubsetState {
   activeSites: Set<string>
   siteCounts: Record<string, number>
   includeExcluded: boolean
+  /** what the charts do with excluded filters (lib/exclusionMode): hide, include (counted), or mark (drawn as ×, not counted) */
+  exclMode?: ExclMode
   nExcluded: number
   /** the export's exclusions currently put back in view (all of them under includeExcluded, else the ones picked) */
   includedIds?: string[]
@@ -162,6 +165,8 @@ export interface SubsetActions {
   onClearKeep?: () => void
   onNetwork: (n: Network) => void
   onIncludeExcluded: (v: boolean) => void
+  /** Hide / Include / Mark for every excluded filter (the export's and the reader's) */
+  onExclMode?: (m: ExclMode) => void
   /** put some of the export's exclusions back (on) or leave them out again */
   onIncludeIds?: (ids: string[], on: boolean) => void
   onDateRange: (r: DateRange | null) => void
@@ -237,7 +242,7 @@ export function SubsetBar({
   const allPmf = !pmfOn || !s.pmfGroups || (s.activePmf?.size ?? 0) === s.pmfGroups.length
   const handEdits = (s.dropped ?? 0) > 0 || s.kept != null
   const isDefault =
-    allSeasons && allSites && !pmfOn && seasonsOn && !s.includedIds?.length && !s.dateRange && s.convention === s.defaultConvention && !handEdits
+    allSeasons && allSites && !pmfOn && seasonsOn && !s.includedIds?.length && s.exclMode !== 'mark' && !s.dateRange && s.convention === s.defaultConvention && !handEdits
   const nActive = (caps.seasons && seasonsOn && !allSeasons ? 1 : 0) + (caps.sites && !allSites ? 1 : 0) + (pmfOn ? 1 : 0) + (s.dateRange ? 1 : 0) + (s.includedIds?.length && caps.excluded ? 1 : 0) + (handEdits ? 1 : 0)
 
   // seasons grouped by the site whose calendar they belong to (one group under the shared bins)
@@ -261,6 +266,7 @@ export function SubsetBar({
       {pmfOn && <span>PMF: {allPmf ? 'every source (PMF days only)' : [...(s.activePmf ?? [])].join(', ')}</span>}
       {s.dateRange && <span>{s.dateRange[0]} → {s.dateRange[1]}</span>}
       {!!s.includedIds?.length && caps.excluded && <span>+{s.includedIds.length} excluded put back</span>}
+      {s.exclMode === 'mark' && (caps.excluded || (s.dropped ?? 0) > 0) && <span>excluded drawn as ×, not counted</span>}
       {hl.selected && (
         <span className="brush-actions">
           <span className="pill" title="Filters picked by a brush; every chart dims the rest. A highlight until you keep or exclude them.">
@@ -831,7 +837,7 @@ function ExclusionLists({ s, a, caps, onReview, wide = false }: {
       <section>
         <div className="exclusions-head">
           <strong>Excluded{repo.length + hand.length ? ` (${nOut} of ${repo.length + hand.length})` : ''}</strong>
-          {repo.length > 0 && (repoOut > 0
+          {repo.length > 0 && !a.onExclMode && (repoOut > 0
             ? <button type="button" className="btn quiet dropped-review" onClick={() => a.onIncludeExcluded(true)}
               title="Put every sample the data export excludes back in every chart">Include the export's</button>
             : <button type="button" className="btn quiet dropped-review" onClick={() => a.onIncludeExcluded(false)}
@@ -846,6 +852,10 @@ function ExclusionLists({ s, a, caps, onReview, wide = false }: {
             ...hand.map((d) => ({ id: d.id, label: d.label, reason: d.reason ?? '', source: 'by hand' })),
           ]} />}
         </div>
+        {a.onExclMode && repo.length + hand.length > 0 && <div className="exclusions-mode" style={{ margin: '4px 0 2px' }}>
+          <Segmented label="Show as" value={s.exclMode ?? 'hide'} options={EXCL_MODES} onChange={a.onExclMode} optionLabel={(m) => EXCL_LABEL[m]}
+            title={EXCL_TITLE[s.exclMode ?? 'hide']} />
+        </div>}
         <div className="exclusions-sub">
           {repo.length + hand.length === 0
             ? 'None. Right-click a point (Exclude this filter), or brush points and choose Exclude these.'
@@ -880,6 +890,13 @@ function ExclusionLists({ s, a, caps, onReview, wide = false }: {
       </section>
     </div>
   )
+}
+
+const EXCL_LABEL: Record<ExclMode, string> = { hide: 'Hide', include: 'Include', mark: 'Mark ×' }
+const EXCL_TITLE: Record<ExclMode, string> = {
+  hide: 'Hide: excluded filters are not drawn and not counted (the default)',
+  include: "Include: the data export's exclusions are put back and count in every fit and summary (hand exclusions stay out)",
+  mark: 'Mark: every excluded filter (the export\'s and yours) is drawn as a muted × on the point charts, but left out of every fit, R², summary, count, ratio and median',
 }
 
 /** The exclusions in a dialog over the page (Esc or a click outside closes it). */

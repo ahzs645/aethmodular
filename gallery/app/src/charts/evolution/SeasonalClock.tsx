@@ -13,6 +13,7 @@ import { useChartOptions } from '@/lib/chartOptions'
 import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
 import { MeasurementControl } from '@/components/AxisFieldPopover'
 import { useFitHeight } from '@/lib/chartFit'
+import { ExcludedNote } from '@/lib/markedRows'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const STATS = ['Median', 'Mean'] as const
@@ -338,6 +339,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
           highlighted={siteHover ?? seasonHover}
           note={emphasizeFebruary ? `bars share one value scale · February changes bins across Ethiopian conventions` : `bars share one value scale · ${calendarLabel(meta)}`}
         />
+        <ExcludedNote fields={[field]} />
         {tip.node}
       </div>
     </ChartFrame>

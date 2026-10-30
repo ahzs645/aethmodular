@@ -18,6 +18,7 @@ import { Toggle } from '@/components/ChartFrame'
 import { styleBrush } from '@/lib/brush'
 import { useTileSetting } from '@/lib/url'
 import { ChartAside } from '@/lib/singleView'
+import { useExclMode, useMarkReason, type MarkPoint } from '@/lib/markedRows'
 
 /** One filter on a crossplot. `rec` opens the record drawer; `id` links hover and pin across charts. */
 export interface CrossPoint {
@@ -56,8 +57,14 @@ export function sharedCrossDomains(sets: CrossPoint[][], sameScale = true): { do
 
 const NO_KEYS: ReadonlySet<string> = new Set()
 
-export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain, fit = true, errorRatio, extraLines = [], grouping: groupingOverride, groupNoun, background, pick, sameScale = true, yDomain, brushable = false, brush }: {
+export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360, domain, fit = true, errorRatio, extraLines = [], grouping: groupingOverride, groupNoun, background, pick, sameScale = true, yDomain, brushable = false, brush }: {
   points: CrossPoint[]
+  /**
+   * Filters → excluded: Mark (lib/markedRows): the excluded filters the chart would draw, built from useMarkedRows() the
+   * way `points` is built from the rows. Drawn as muted ×, never fitted, counted or brushed. A point of `points` excluded
+   * by hand is marked the same way under Mark (else hidden).
+   */
+  marked?: CrossPoint[]
   /** Offer rectangular selection with the shared filter review and hand-edit actions. */
   brushable?: boolean
   /** the brush toggle held by the chart (useCrossplotBrush), whose <CrossplotBrushControls> sit in its options row; else the plot draws its own above it */
@@ -102,7 +109,12 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   const brushRef = useRef<SVGGElement>(null)
   const drawable = useMemo(() => points.filter(p => p.x != null && p.y != null && Number.isFinite(p.x) && Number.isFinite(p.y)), [points])
   const valid = useMemo(() => drawable.filter(p => !edits.isOut(p.id ?? p.rec?.id)), [drawable, edits])
-  const handNote = edits.note(drawable.length - valid.length, { refit: fit && groupingOverride !== 'none', saved: extraLines.length > 0 })
+  const markMode = useExclMode() === 'mark'
+  const reasonOf = useMarkReason()
+  const nHand = drawable.length - valid.length
+  const handNote = markMode && nHand > 0
+    ? `${nHand} filter${nHand === 1 ? '' : 's'} excluded by hand ${nHand === 1 ? 'is' : 'are'} drawn as ×${fit && groupingOverride !== 'none' ? ', left out of the refit' : ''}${extraLines.length > 0 ? '; the saved statistics were computed with every filter' : ''}.`
+    : edits.note(nHand, { refit: fit && groupingOverride !== 'none', saved: extraLines.length > 0 })
   const lambda = errorRatio ?? 1
   const prefs = useRegressions()
   const { methods } = prefs
@@ -134,6 +146,20 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   const keyOf = (p: CrossPoint) => (p.id ? baseFilterId(p.id) : null)
   // the dots, drawn once: a hover or pin is drawn over them (components/ScatterLayer)
   const xy = useMemo(() => valid.map((p) => [x(p.x), y(p.y)] as const), [valid, x, y])
+  // the marks: the page's excluded filters and, under Mark, this plot's own hand exclusions, inside the axes
+  const marks = useMemo<MarkPoint[]>(() => {
+    if (!markMode) return []
+    const own = drawable.filter((p) => edits.isOut(p.id ?? p.rec?.id))
+    const [xa, xb] = x.domain(), [ya, yb] = y.domain()
+    const seen = new Set<string>()
+    return [...(marked ?? []), ...own].flatMap((p) => {
+      const id = p.id ?? p.rec?.id
+      const key = `${id}|${p.x}|${p.y}`
+      if (!id || seen.has(key) || !Number.isFinite(p.x) || !Number.isFinite(p.y) || p.x < xa || p.x > xb || p.y < ya || p.y > yb) return []
+      seen.add(key)
+      return [{ id: baseFilterId(id), at: [x(p.x), y(p.y)] as const, tip: [...p.tip, `excluded: ${reasonOf(id) ?? 'excluded'}`, 'drawn only: not in any fit, R² or count'] }]
+    })
+  }, [markMode, marked, drawable, edits, x, y, reasonOf])
   const dots = useMemo(() => valid.map((p, i) => {
     const key = keyOf(p)
     const dim = !!hl.selected && !!key && !hl.selected.has(key)
@@ -184,7 +210,7 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
             {background?.(x, y)}
             {sameScale && <IdentityLine {...line(1, 0)} />}
             {/* hover, click and right-click find the nearest filter; a click on empty plot lets go of the pin (lib/highlight) */}
-            <ScatterLayer items={valid} xy={xy} idOf={keyOf} dots={dots} width={iw} height={ih} tip={tip}
+            <ScatterLayer items={valid} xy={xy} idOf={keyOf} dots={dots} width={iw} height={ih} tip={tip} marks={marks}
               focus={(p, [cx, cy]) => <circle cx={cx} cy={cy} r={6} fill={p.hollow ? 'none' : p.color} stroke={INK.text} strokeWidth={2} {...dotFill('standard', p.opacity ?? 1)} />}
               tipOf={(p) => (p.rec || p.open ? [...p.tip, 'click to pin it on every chart and open its record'] : p.tip)}
               onPick={(p) => { const key = keyOf(p); if (p.open) p.open(); else if (p.rec) hl.openRecord(p.rec); if (key) hl.setPinned(key) }}>

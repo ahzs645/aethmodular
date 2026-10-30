@@ -14,6 +14,7 @@ import { pearson, regression, spearman } from '@/lib/stats'
 import { INK, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
+import { ExcludedNote, useMarkedPoints } from '@/lib/markedRows'
 
 const [LOW, HIGH] = colorsFor(2)
 const CUT_MODES = ['value', 'median', 'site'] as const
@@ -66,6 +67,11 @@ export function SplitFit({ rows, meta, xField, yField }: { rows: FilterRow[]; me
     const x = r[xField], y = r[yField], t = splitValue(r, on, per)
     return typeof x === 'number' && Number.isFinite(x) && typeof y === 'number' && Number.isFinite(y) && t !== null ? [{ x, y, t, site: r.site, row: r }] : []
   }), [rows, xField, yField, on, per])
+  // Filters → excluded: Mark (lib/markedRows): the excluded filters as items too, drawn as × on the ≤ / > panels only
+  const markedItems = useMarkedPoints<Item>((rs) => rs.flatMap((r) => {
+    const x = r[xField], y = r[yField], t = splitValue(r, on, per)
+    return typeof x === 'number' && Number.isFinite(x) && typeof y === 'number' && Number.isFinite(y) && t !== null ? [{ x, y, t, site: r.site, row: r }] : []
+  }), [xField, yField, on, per])
   const sites = useMemo(() => meta.sites.map((s) => s.name).filter((s) => items.some((i) => i.site === s)), [meta.sites, items])
   const perSite = panelsParam === 'Per site' && sites.length > 1
 
@@ -115,8 +121,12 @@ export function SplitFit({ rows, meta, xField, yField }: { rows: FilterRow[]; me
     const rho = res ? spearman(g.items.map((i) => i.t), res) : null
     // the residual's trend is an OLS of residual on the variable (the notebooks' Pearson r), whatever the sidebar fits
     const trend = res ? regression(g.items.map((i) => i.t), res) : null
-    return { name: g.name, n: g.items.length, low: lowPts, high: highPts, res: resPts, r, rho, trend, mark: markOf(g) }
-  }), [groups, mode, at, siteCuts, resKind, xField, yField, tName, perSite, sites]) // eslint-disable-line react-hooks/exhaustive-deps
+    // the group's excluded filters, each side of the same cutoff (a cutoff never moves for them)
+    const own = markedItems.filter((it) => !perSite || it.site === g.name)
+    const markedLow = own.filter((it) => Number.isFinite(cut(it)) && it.t <= cut(it)).map((it) => pointOf(it, LOW, it.x, it.y, null))
+    const markedHigh = own.filter((it) => Number.isFinite(cut(it)) && it.t > cut(it)).map((it) => pointOf(it, HIGH, it.x, it.y, null))
+    return { name: g.name, n: g.items.length, low: lowPts, high: highPts, res: resPts, r, rho, trend, mark: markOf(g), markedLow, markedHigh }
+  }), [groups, mode, at, siteCuts, resKind, xField, yField, tName, perSite, sites, markedItems]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // one range for every ≤ / > panel, so the slopes compare by eye; the residual panels clip the variable's 1–99 %
   const shared = sharedCrossDomains(blocks.flatMap((b) => [b.low, b.high]), units)
@@ -130,9 +140,9 @@ export function SplitFit({ rows, meta, xField, yField }: { rows: FilterRow[]; me
   const cutWord = mode === 'value' ? fmt(at, 3) : mode === 'median' ? 'the median' : "each site's median"
 
   const panelsOf = (b: (typeof blocks)[number]) => [
-    { key: 'low', title: `${tName} ≤ ${cutText(b)}`, points: b.low },
-    { key: 'high', title: `${tName} > ${cutText(b)}`, points: b.high },
-    { key: 'res', title: `Residual · r = ${fmt(b.r, 3)}, ρ = ${fmt(b.rho, 3)} · n = ${b.res.length}`, points: b.res },
+    { key: 'low', title: `${tName} ≤ ${cutText(b)}`, points: b.low, marked: b.markedLow },
+    { key: 'high', title: `${tName} > ${cutText(b)}`, points: b.high, marked: b.markedHigh },
+    { key: 'res', title: `Residual · r = ${fmt(b.r, 3)}, ρ = ${fmt(b.rho, 3)} · n = ${b.res.length}`, points: b.res, marked: undefined },
   ]
 
   return (
@@ -177,11 +187,12 @@ export function SplitFit({ rows, meta, xField, yField }: { rows: FilterRow[]; me
                     {b.mark !== null && <Marker orient="v" at={x(b.mark)} from={0} to={y.range()[0]} label={`cutoff ${fmt(b.mark, 3)}`} color={INK.text} />}
                   </>} />)
               : (p.points.length === 0 ? <Empty>No filters on this side.</Empty>
-                : <Crossplot points={p.points} title={`${p.title} · n = ${p.points.length}`} xLabel={xl} yLabel={yl} sameScale={units} grouping="pooled" maxSide={w - 70}
+                : <Crossplot points={p.points} marked={p.marked} title={`${p.title} · n = ${p.points.length}`} xLabel={xl} yLabel={yl} sameScale={units} grouping="pooled" maxSide={w - 70}
                   domain={shared.domain} yDomain={shared.yDomain} />)} />
           </div>
         ))}
         <Key items={[{ label: `low: ${tName} ≤ cutoff`, color: LOW }, { label: `high: ${tName} > cutoff`, color: HIGH }]} />
+        <ExcludedNote fields={[xField, yField]} drawn />
         {outside > 0 && <p className="chart-note">{outside} of {items.length} filters have {tName} outside its 1–99 % range and fall outside the residual panels (they are in the fits and the table).</p>}
         <SplitTables tables={tables} tName={tName} nonOls={nonOls} />
       </>}

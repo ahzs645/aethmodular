@@ -9,6 +9,7 @@ import { useColourScheme } from '@/lib/colourSchemes'
 import { ColorLegend } from '@/components/ColorLegend'
 import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { useFitHeight } from '@/lib/chartFit'
+import { ExcludedNote } from '@/lib/markedRows'
 
 /**
  * Heatmap — sample coverage by site and month. The matplotlib equivalents are
@@ -116,6 +117,7 @@ export function AvailabilityHeatmap({ rows, meta, xField, yField }: { rows: Filt
         <div className="legend">
           <ColorLegend scale={color} scheme={colours.scheme} label="filters per month" width={160} format={(v) => String(Math.round(v))} note={`counting ${label}`} />
         </div>
+        <ExcludedNote fields={[xField, yField]} />
         {tip.node}
       </div>
     </ChartFrame>

@@ -8,6 +8,7 @@ import { SSA_BY_WAVELENGTH } from '@/lib/aeronet'
 import { nonAbsorbingFraction } from '@/lib/aeronetMath'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { colouring, num, recordOf } from './shared'
+import { useMarkedRows } from '@/lib/markedRows'
 
 /** the surface BC Eom's w can use, in the notebook's order of preference (it fell back from ChemSpec BC to FTIR EC to HIPS) */
 export const BC_CHOICES = ['EC (FTIR)', 'HIPS BC', 'BC (public HIPS)'] as const
@@ -22,16 +23,19 @@ export function AeronetNonAbsorbing({ rows, meta }: { rows: FilterRow[]; meta: M
   const [bcParam, setBc] = useSearchParam<string>('aeronet.w.bc', BC_CHOICES[0], BC_CHOICES)
   const bc = present.includes(bcParam as (typeof BC_CHOICES)[number]) ? bcParam : present[0] ?? BC_CHOICES[0]
   const col = useMemo(() => colouring(rows, meta), [rows, meta])
+  // Filters → excluded: Mark (lib/markedRows): these sites' excluded filters, built the same way and drawn as ×
+  const marked = useMarkedRows()
   const panels = useMemo(() => SSA_BY_WAVELENGTH.map(([w, f]) => {
-    const points: CrossPoint[] = rows.flatMap((r) => {
+    const build = (src: FilterRow[]): CrossPoint[] => src.flatMap((r) => {
       const wv = nonAbsorbingFraction(r, bc), ssa = r[f]
       if (wv === null || !num(ssa)) return []
       const tip = [r.id, `${r.site} · ${r.date}`, `w ${fmt(wv, 3)} (${bc})`, `SSA ${w} nm ${fmt(ssa, 3)}`]
       return [{ x: wv, y: ssa, color: col.color(col.key(r)), tip, id: r.id,
         rec: recordOf(r, 'AERONET · w vs SSA', [['w = (AS+AN)/(AS+AN+BC)', +wv.toFixed(3)], [bc, r[bc] as number], ['Sulfate', r['Sulfate'] as number], ['Nitrate', r['Nitrate'] as number], [`SSA ${w} nm`, ssa]]) }]
     })
-    return { w, points }
-  }), [rows, bc, col])
+    const sites = new Set(rows.map((r) => r.site))
+    return { w, points: build(rows), marked: build(marked.filter((r) => sites.has(r.site))) }
+  }), [rows, bc, col, marked])
   const all = panels.flatMap((p) => p.points)
   const yLo = Math.max(0.5, (d3.min(all, (p) => p.y) ?? 0.8) - 0.02)
   const n = panels[0].points.length
@@ -44,7 +48,7 @@ export function AeronetNonAbsorbing({ rows, meta }: { rows: FilterRow[]; meta: M
       {all.length === 0 ?<Empty>No filter in view has sulfate, nitrate, {bc} and an inversion SSA in its window.</Empty> : (
         <div className="aeronet-panels" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 8 }}>
           {panels.map((p) => (
-            <Crossplot key={p.w} title={`SSA ${p.w} nm (n = ${p.points.length})`} points={p.points} xLabel="w (non-absorbing fraction)" yLabel={`SSA ${p.w} nm`}
+            <Crossplot key={p.w} title={`SSA ${p.w} nm (n = ${p.points.length})`} points={p.points} marked={p.marked} xLabel="w (non-absorbing fraction)" yLabel={`SSA ${p.w} nm`}
               sameScale={false} domain={[0, 1]} yDomain={[yLo, 1]} maxSide={300} />
           ))}
         </div>

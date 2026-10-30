@@ -19,6 +19,8 @@ import type { MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
 import { CHANNELS, FILTER_METHODS, SCREEN_TEXT, channelColor, channelName, logTick, type Channel, type Exclusion, type Screen, type Series } from './data'
 import { movingMean, splitRuns } from './stats'
+import { useMarkReason, useMarkedRows } from '@/lib/markedRows'
+import { markTip } from '@/lib/exclusionMode'
 
 const M = { top: 10, right: 20, bottom: 30, left: 68 }
 const GAP = 16
@@ -78,6 +80,17 @@ export function DailyTimeline({ s, meta, screen, excluded = [] }: { s: Series; m
   const fPts = useMemo(() => filterPts.filter((p) => !leg.hidden.has(p.m.label) && p.t >= x.domain()[0] && p.t <= x.domain()[1]), [filterPts, leg.hidden, x])
   const yF = useMemo(() => d3.scaleLinear().domain([Math.min(0, d3.min(fPts, (p) => p.v!) ?? 0), (d3.max(fPts, (p) => p.v!) ?? 1) * 1.05]).range([H.filters, 0]).nice(), [fPts, H.filters])
   const fXy = useMemo(() => fPts.map((p) => [x(p.t), yF(p.v!)] as const), [fPts, x, yF])
+  // Filters → excluded: Mark (lib/markedRows): this instrument's site's excluded filters, each method as ×
+  const markedAll = useMarkedRows()
+  const markReason = useMarkReason()
+  const fMarks = useMemo(() => {
+    const sites = new Set(s.rows.map((r) => r.site)), [d0, d1] = x.domain(), [v0, v1] = yF.domain()
+    return markedAll.filter((r) => sites.has(r.site)).flatMap((r) => FILTER_METHODS.filter((m) => !leg.hidden.has(m.label)).flatMap((m) => {
+      const v = r[m.field], t = t0(r.date)
+      return typeof v === 'number' && t >= d0 && t <= d1 && v >= v0 && v <= v1
+        ? [{ id: r.id, at: [x(t), yF(v)] as const, tip: markTip(r, markReason(r.id) ?? 'excluded', [`${m.label}: ${fmt(v, 2)} µg/m³`]) }] : []
+    }))
+  }, [markedAll, s.rows, x, yF, leg.hidden, markReason])
   const fDots = useMemo(() => fPts.map((p, i) => {
     const st = focusStyle(p.row.id, null, { r: 2.8, level: 'sparse' }, hl.selected)
     const k = leg.dim(p.m.label)
@@ -144,7 +157,7 @@ export function DailyTimeline({ s, meta, screen, excluded = [] }: { s: Series; m
                   {k === 'filters' && <>
                     <YAxis scale={yF} x={0} gridWidth={innerW} tickCount={3} label="Filters (µg/m³)" labelX={-50} />
                     {/* a filter's methods share its id, so a focus draws all of its points over the dimmed rest */}
-                    <ScatterLayer items={fPts} xy={fXy} idOf={(p) => p.row.id} dots={fDots} width={innerW} height={H.filters} tip={tip}
+                    <ScatterLayer items={fPts} xy={fXy} idOf={(p) => p.row.id} dots={fDots} width={innerW} height={H.filters} tip={tip} marks={fMarks}
                       tipOf={(p) => [p.row.id, `${p.row.site} · ${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`,
                         ...FILTER_METHODS.map((m) => `${m.label}: ${fmt(p.row[m.field], 2)} µg/m³`), 'click for details · right-click to exclude']}
                       focusR={(p) => focusStyle(p.row.id, p.row.id, { r: 2.8, level: 'sparse' }).r}

@@ -14,6 +14,7 @@ import { Legend } from '@/components/Legend'
 import { useAxisFields } from '@/components/AxisFieldPopover'
 import { RAIN_CLASSES, rainClass, spearman } from '@/lib/weather'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { ExcludedNote, toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
 
 const MAX_SITES = 12
 // the site, ρ and n are the facet's title row, above the svg
@@ -62,6 +63,7 @@ export function RainWashout({ rows, meta, field, prcpField, id = 'weather-washou
         {tip.node}
       </div>
       <Legend items={RAIN_CLASSES.map((c) => ({ label: c.key, color: c.color, shape: 'square' as const }))} />
+      <ExcludedNote fields={[field, prcpField]} of={(r) => shown.some((p) => p.site === r.site)} drawn />
       {panels.length > MAX_SITES && <Note>Showing the {MAX_SITES} sites with the most filters of {panels.length}.</Note>}
     </ChartFrame>
   )
@@ -94,6 +96,14 @@ function WashoutPanel({ p, pw, h, meta, field, prcpField, selected, tip, axisPic
   const items = useMemo(() => p.classes.flatMap((c) => c.members.map((r, i) => ({ r, jx: ((i * 0.6180339) % 1 - 0.5) * bw * 0.8, key: c.key }))), [p, bw])
   const xy = useMemo(() => items.map(({ r, jx, key }) => [centre(key) + jx, y(Math.min(r[field] as number, y.domain()[1]))] as const), [items, y, field]) // eslint-disable-line react-hooks/exhaustive-deps
   const colorOf = (r: FilterRow) => meta.seasons.find((s) => s.name === r.season)?.color ?? INK.muted
+  // Filters → excluded: Mark (lib/markedRows): this site's excluded filters as × in their rain class, in no box or n
+  const markedAll = useMarkedRows()
+  const markReason = useMarkReason()
+  const marks = useMemo(() => toMarks(markedAll.filter((r) => r.site === p.site), (r) => {
+    const v = r[field], rain = r[prcpField]
+    if (typeof v !== 'number' || typeof rain !== 'number' || v < y.domain()[0] || v > y.domain()[1]) return null
+    return [centre(rainClass(rain)) + (((r.id.length * 0.6180339 + v) % 1) - 0.5) * bw * 0.8, y(v)]
+  }, markReason, (r) => [`${field}: ${fmt(r[field])}`, `rain ${fmt(r[prcpField], 2)} mm/day`]), [markedAll, p.site, field, prcpField, y, bw, markReason]) // eslint-disable-line react-hooks/exhaustive-deps
   const dots = useMemo(() => items.map(({ r }, i) => {
     const st = focusStyle(r.id, null, { r: 2.2 }, selected)
     return <circle key={r.id} cx={xy[i][0]} cy={xy[i][1]} r={st.r} fill={colorOf(r)}
@@ -138,7 +148,7 @@ function WashoutPanel({ p, pw, h, meta, field, prcpField, selected, tip, axisPic
           onMouseLeave={() => { if (!onDot.current) tip.hide() }}
           onClick={(e) => { const b = boxAt(e); if (b) { e.stopPropagation(); tip.hide(); edits.openGroup({ title: b.title, ids: b.ids, fields: [field, prcpField] }) } }}
           onContextMenu={(e) => { const b = boxAt(e); if (b) edits.openMenu(e, { ids: b.ids, title: b.title, group: { title: b.title, ids: b.ids, fields: [field, prcpField] } }) }}>
-          <ScatterLayer items={items} xy={xy} idOf={({ r }) => r.id} dots={dots} width={iw} height={ih} tip={tip}
+          <ScatterLayer items={items} xy={xy} idOf={({ r }) => r.id} dots={dots} width={iw} height={ih} tip={tip} marks={marks}
             onHover={(e, { r }) => { onDot.current = true; tip.show(e, [r.id, `${r.date} · ${seasonOnly(String(r.season ?? ''))}`, `${field}: ${fmt(r[field])}`, `rain ${fmt(r[prcpField], 2)} mm/day`]); setHover(r.id) }}
             onLeave={() => { onDot.current = false; tip.hide(); setHover(null) }}
             hit={8} focusR={({ r }) => focusStyle(r.id, r.id, { r: 2.2 }).r}

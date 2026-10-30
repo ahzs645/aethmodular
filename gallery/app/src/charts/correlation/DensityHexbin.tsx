@@ -20,6 +20,7 @@ import { useColourScheme } from '@/lib/colourSchemes'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { useFitHeight } from '@/lib/chartFit'
+import { ExcludedNote } from '@/lib/markedRows'
 
 type Pt = [number, number, string]
 
@@ -212,6 +213,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
         </div>
         {domain.dropped > 0 && <Note>{domain.dropped} points below zero are outside the axes and not binned; they are still in the fit.</Note>}
         {perBand && missingNote('in the hexes but left out of the per-band fits')}
+        <ExcludedNote fields={[xField, yField]} />
         {tip.node}
       </div>
     </ChartFrame>

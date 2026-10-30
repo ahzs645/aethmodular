@@ -14,6 +14,7 @@ import { loadDailyAeronet, L2_AOD440, type AeronetLevel, type DailyAeronet } fro
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
 import { useFitHeight } from '@/lib/chartFit'
+import { ExcludedNote, toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
 
 const M = { top: 8, right: 20, bottom: 30, left: 68 }
 const PANEL = 92, GAP = 14
@@ -78,6 +79,16 @@ export function AeronetTimeline({ rows, meta, field, site, station, level = '15'
   const yF = useMemo(() => d3.scaleLinear().domain([Math.min(0, d3.min(pts, (p) => p.v) ?? 0), (d3.max(pts, (p) => p.v) ?? 1) * 1.05]).range([panelH, 0]).nice(), [pts, panelH])
   const seasonColor = (p: (typeof pts)[number]) => meta.seasons.find((s) => s.name === p.row.season)?.color ?? INK.text
   const xy = useMemo(() => pts.map((p) => [x(p.t), yF(p.v)] as const), [pts, x, yF])
+  // Filters → excluded: Mark (lib/markedRows): this site's excluded filters as × on the measurement panel
+  const markedAll = useMarkedRows()
+  const markReason = useMarkReason()
+  const marks = useMemo(() => {
+    const [d0, d1] = x.domain(), [v0, v1] = yF.domain()
+    return toMarks(markedAll.filter((r) => r.site === site?.name), (r) => {
+      const v = r[field], t = new Date(r.date)
+      return typeof v === 'number' && t >= d0 && t <= d1 && v >= v0 && v <= v1 ? [x(t), yF(v)] : null
+    }, markReason, (r) => [`${field}: ${fmt(r[field] as number)}`])
+  }, [markedAll, site, field, x, yF, markReason])
   const dots = useMemo(() => pts.map((p, i) => {
     const st = focusStyle(p.row.id, null, { r: 3, level: 'sparse' }, hl.selected)
     return <circle key={p.row.id} cx={xy[i][0]} cy={xy[i][1]} r={st.r} fill={seasonColor(p)}
@@ -122,7 +133,7 @@ export function AeronetTimeline({ rows, meta, field, site, station, level = '15'
                     const c = k === 'aaod' ? '#8c2d04' : '#6a51a3'
                     return <circle key={i} cx={x(t)} cy={y[k](v)} r={2.2} fill={weak(i) ? 'none' : c} stroke={c} strokeWidth={0.8} opacity={0.8} />
                   })}
-                  {k === 'field' && <ScatterLayer items={pts} xy={xy} idOf={(p) => p.row.id} dots={dots} width={innerW} height={panelH} tip={tip}
+                  {k === 'field' && <ScatterLayer items={pts} xy={xy} idOf={(p) => p.row.id} dots={dots} width={innerW} height={panelH} tip={tip} marks={marks}
                     tipOf={(p) => [p.row.id, `${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`, `${field}: ${fmt(p.v)}`, 'click for details · right-click to exclude']}
                     focusR={(p) => focusStyle(p.row.id, p.row.id, { r: 3, level: 'sparse' }).r}
                     focus={(p, [cx, cy]) => {
@@ -149,6 +160,7 @@ export function AeronetTimeline({ rows, meta, field, site, station, level = '15'
           <span className="legend-item"><span className="swatch" style={{ background: '#8c2d04' }} />inversion, AOD 440 ≥ {L2_AOD440}</span>
           <span className="legend-item"><span className="swatch ring" style={{ color: '#8c2d04' }} />AOD 440 &lt; {L2_AOD440}</span>
         </div>
+        <ExcludedNote fields={[field]} of={(r) => r.site === site?.name} drawn />
         {tip.node}
       </div>
     </ChartFrame>

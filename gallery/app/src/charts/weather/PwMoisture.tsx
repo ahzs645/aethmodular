@@ -12,6 +12,8 @@ import { FONT, INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import { spearman } from '@/lib/weather'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { ExcludedNote, useMarkReason, useMarkedRows } from '@/lib/markedRows'
+import { markTip } from '@/lib/exclusionMode'
 
 const PW = 'Precipitable water (AERONET)'
 const MEASURES = ['Dew point', 'Relative humidity'] as const
@@ -80,6 +82,20 @@ export function PwMoisture({ rows, meta, onePick }: { rows: FilterRow[]; meta: M
     return out
   }, [rows, meta.sites, isDew, onePick])
 
+  // Filters → excluded: Mark (lib/markedRows): the excluded filters of these sites at their ERA5 (and station) moisture
+  const markedAll = useMarkedRows()
+  const markReason = useMarkReason()
+  const markedPts = useMemo<Point[]>(() => {
+    const here = new Set(rows.map((r) => r.site))
+    const num = (r: FilterRow, f: string) => (typeof r[f] === 'number' && Number.isFinite(r[f]) ? (r[f] as number) : null)
+    return markedAll.filter((r) => here.has(r.site) && num(r, PW) !== null).flatMap((r) => {
+      const era = num(r, isDew ? 'Dew point (ERA5)' : 'Relative humidity (ERA5)')
+      const t = num(r, 'Temperature (station)'), rh = num(r, 'Relative humidity (station)')
+      const st = isDew ? (t !== null && rh !== null ? dewPoint(t, rh) : null) : rh
+      return [era, st].flatMap((x) => (x === null ? [] : [{ row: r, x, y: num(r, PW)! }]))
+    })
+  }, [markedAll, rows, isDew])
+
   // at Addis: how far ERA5's window dew point sits from the station's
   const stationGap = useMemo(() => {
     const d = rows.flatMap((r) => {
@@ -121,7 +137,7 @@ export function PwMoisture({ rows, meta, onePick }: { rows: FilterRow[]; meta: M
                   <g transform={`translate(${M.left},${M.top})`}>
                     <YAxis scale={y} x={0} label="Precipitable water, AERONET (cm)" gridWidth={sq} labelX={-42} />
                     <XAxis scale={x} y={sq} label={xLabel} />
-                    <MoisturePoints series={series} x={x} y={y} side={sq} tip={tip} measure={measure} isDew={isDew}>
+                    <MoisturePoints series={series} marked={markedPts} markReason={markReason} x={x} y={y} side={sq} tip={tip} measure={measure} isDew={isDew}>
                       {series.map((s) => s.fit && <path key={`${s.key}-fit`} d={curve(s, x, y)} fill="none" stroke={s.color} strokeWidth={2} strokeDasharray={s.hollow ? '5 3' : undefined} />)}
                     </MoisturePoints>
                   </g>
@@ -143,6 +159,7 @@ export function PwMoisture({ rows, meta, onePick }: { rows: FilterRow[]; meta: M
             </> },
           ]} />
         </>}
+        <ExcludedNote fields={[PW]} of={(r) => rows.some((q) => q.site === r.site)} drawn />
         {tip.node}
       </div>
       {stationGap && <Note>At Addis Ababa, ERA5's window dew point minus the station's (from its temperature and humidity): median {fmt(stationGap.median, 1)} °C, interquartile range {fmt(stationGap.p25, 1)} to {fmt(stationGap.p75, 1)} °C, over {stationGap.n} filters with both (whether or not the photometer saw them).</Note>}
@@ -156,8 +173,11 @@ type SeriesPoint = { p: Point; s: Series }
  * Every series' filters (components/ScatterLayer), drawn once per range; a hover draws the focused filter over
  * them, at each of its points (ERA5 and the station). `children` (the fitted curves) sit over the points.
  */
-function MoisturePoints({ series, x, y, side, tip, measure, isDew, children }: {
-  series: Series[]; x: d3.ScaleLinear<number, number>; y: d3.ScaleLinear<number, number>; side: number
+function MoisturePoints({ series, marked, markReason, x, y, side, tip, measure, isDew, children }: {
+  series: Series[]
+  /** excluded filters under Filters → excluded: Mark, drawn as ×; in no series, ρ or curve */
+  marked: Point[]; markReason: (id: string) => string | null
+  x: d3.ScaleLinear<number, number>; y: d3.ScaleLinear<number, number>; side: number
   tip: ReturnType<typeof useTooltip>; measure: Measure; isDew: boolean; children: React.ReactNode
 }) {
   const hl = useHighlightActions()
@@ -170,7 +190,12 @@ function MoisturePoints({ series, x, y, side, tip, measure, isDew, children }: {
       stroke={s.hollow ? s.color : st.stroke} strokeWidth={s.hollow ? 1.2 : st.strokeWidth} strokeOpacity={s.hollow ? 0.8 : 1} data-dot={s.hollow ? undefined : st.dot} {...fidProps(p.row.id)} />
   }), [items, xy, hl.selected])
   const focusR = focusStyle('', '', { r: 3 }).r
-  return <ScatterLayer items={items} xy={xy} idOf={(t) => t.p.row.id} dots={dots} width={side} height={side} tip={tip} focusR={focusR}
+  const marks = useMemo(() => {
+    const [x0, x1] = x.domain(), [y0, y1] = y.domain()
+    return marked.flatMap((p) => p.x < x0 || p.x > x1 || p.y < y0 || p.y > y1 ? []
+      : [{ id: p.row.id, at: [x(p.x), y(p.y)] as const, tip: markTip(p.row, markReason(p.row.id) ?? 'excluded', [`PW ${fmt(p.y, 2)} cm`, `${measure} ${fmt(p.x, 1)} ${isDew ? '°C' : '%'}`]) }])
+  }, [marked, markReason, measure, isDew, x.domain().join(), y.domain().join(), side]) // eslint-disable-line react-hooks/exhaustive-deps
+  return <ScatterLayer items={items} xy={xy} idOf={(t) => t.p.row.id} dots={dots} width={side} height={side} tip={tip} focusR={focusR} marks={marks}
     focus={({ p, s }, [cx, cy]) => {
       const st = focusStyle(p.row.id, p.row.id, { r: 3 })
       return <circle cx={cx} cy={cy} r={st.r} fill={s.hollow ? 'none' : s.color} fillOpacity={st.opacity}

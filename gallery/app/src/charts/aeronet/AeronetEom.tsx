@@ -13,6 +13,7 @@ import { exclusionCurve, fineSoil } from '@/lib/aeronetMath'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { BC_CHOICES } from './AeronetNonAbsorbing'
 import { colouring, num, recordOf } from './shared'
+import { useMarkedPoints } from '@/lib/markedRows'
 
 const COLUMN = [
   { key: AOD500, label: 'AOD 500', color: '#2c7fb8' },
@@ -39,7 +40,7 @@ export function AeronetEom({ rows, meta }: { rows: FilterRow[]; meta: MetaFile }
   const bc = present.includes(bcParam as (typeof BC_CHOICES)[number]) ? bcParam : present[0] ?? BC_CHOICES[0]
   const col = useMemo(() => colouring(rows, meta), [rows, meta])
 
-  const diff = (yField: string, label: string): CrossPoint[] => rows.flatMap((r) => {
+  const diff = (yField: string, label: string, src: FilterRow[] = rows): CrossPoint[] => src.flatMap((r) => {
     const fs = fineSoil(r), b = r[bc], v = r[yField]
     if (fs === null || !num(b) || !num(v)) return []
     return [{ x: b - fs, y: v, color: col.color(col.key(r)), id: r.id,
@@ -48,6 +49,9 @@ export function AeronetEom({ rows, meta }: { rows: FilterRow[]; meta: MetaFile }
   })
   const dAod = useMemo(() => diff(DAOD, 'dAOD 440 − 870'), [rows, bc, col]) // eslint-disable-line react-hooks/exhaustive-deps
   const dSsa = useMemo(() => diff(DSSA, 'dSSA 440 − 870'), [rows, bc, col]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Filters → excluded: Mark (lib/markedRows): these sites' excluded filters as ×, in no fit
+  const markedAod = useMarkedPoints((rs) => diff(DAOD, 'dAOD 440 − 870', rs.filter((r) => rows.some((q) => q.site === r.site))), [rows, bc, col])
+  const markedSsa = useMarkedPoints((rs) => diff(DSSA, 'dSSA 440 − 870', rs.filter((r) => rows.some((q) => q.site === r.site))), [rows, bc, col])
 
   const steps = useMemo(() => exclusionCurve(rows.flatMap((r) => {
     const b = r[bc], aod = r[AOD500]
@@ -68,9 +72,9 @@ export function AeronetEom({ rows, meta }: { rows: FilterRow[]; meta: MetaFile }
       controls={<Select label="BC" value={bc} options={present.length ? [...present] : [...BC_CHOICES]} onChange={setBc} />}>
       <div ref={wrapRef} className="chart-wrap">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 8 }}>
-          {dAod.length ? <Crossplot title={`(a) dAOD vs ${bc} − fine soil (n = ${dAod.length})`} points={dAod} xLabel={`${bc} − fine soil (µg/m³)`} yLabel="dAOD 440 − 870" sameScale={false} maxSide={320} />
+          {dAod.length ? <Crossplot title={`(a) dAOD vs ${bc} − fine soil (n = ${dAod.length})`} points={dAod} marked={markedAod} xLabel={`${bc} − fine soil (µg/m³)`} yLabel="dAOD 440 − 870" sameScale={false} maxSide={320} />
             : <Empty>(a) No filter in view has fine soil, {bc} and a direct-sun AOD at 440 and 870 nm.</Empty>}
-          {dSsa.length ? <Crossplot title={`(b) dSSA vs ${bc} − fine soil (n = ${dSsa.length})`} points={dSsa} xLabel={`${bc} − fine soil (µg/m³)`} yLabel="dSSA 440 − 870" sameScale={false} maxSide={320} />
+          {dSsa.length ? <Crossplot title={`(b) dSSA vs ${bc} − fine soil (n = ${dSsa.length})`} points={dSsa} marked={markedSsa} xLabel={`${bc} − fine soil (µg/m³)`} yLabel="dSSA 440 − 870" sameScale={false} maxSide={320} />
             : <Empty>(b) No filter in view has fine soil, {bc} and an inversion SSA.</Empty>}
         </div>
         {steps.length === 0 ? <Empty>(c) Fewer than 5 filters in view have {bc} and AOD 500.</Empty> : (

@@ -18,6 +18,7 @@ import { useSearchParam } from '@/lib/url'
 import { Combobox } from '@/components/Combobox'
 import { useNarrowScreen } from '@/hooks/useMediaQuery'
 import { ChartAside } from '@/lib/singleView'
+import { ExcludedNote } from '@/lib/markedRows'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const STEPS = ['Month of year', 'Year'] as const
@@ -245,6 +246,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
           note="hollow marker = first step · arrow = last · choose a path for its step-by-step medians"
         />}
         {byGroup && missingNote('left out of the paths')}
+        <ExcludedNote fields={[xField, yField]} />
         {tip.node}
       </div>
     </ChartFrame>

@@ -9,6 +9,7 @@ import { INK, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
 import { useColourScheme } from '@/lib/colourSchemes'
+import { ExcludedNote } from '@/lib/markedRows'
 
 const ROWS = ['Season', 'Site', 'Year'] as const
 const OVERLAPS = ['None', 'Some', 'Ridge'] as const
@@ -150,6 +151,7 @@ export function Ridgeline({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
             {nOutside} of {allVals.length} values fall outside the displayed range and are not drawn{clip ? ' — untick “clip” to include them' : ''}.
           </Note>
         )}
+        <ExcludedNote fields={[field]} />
       </div>
     </ChartFrame>
   )

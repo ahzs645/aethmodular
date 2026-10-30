@@ -12,6 +12,7 @@ import type { FilterRow } from '@/lib/types'
 import type { SectionPageProps } from '../../types'
 import { ols, pearsonR, quadratic, quantile, slidingWindow, median, type Fit } from '../common/stats'
 import { BASIS_NOTE, DataTable, Grid, SitePick, fitText, line, num, ofSite, point, sitesOf, useConcRows, useSite } from '../common/ui'
+import { useMarkedRows } from '@/lib/markedRows'
 
 const ADDIS_NB = 'notebooks/analysis/meteorology/addis_hips_two_problem_decomposition.ipynb'
 const MULTI_NB = 'notebooks/analysis/meteorology/hips_two_problem_decomposition.ipynb'
@@ -55,6 +56,9 @@ export function TwoProblem({ rows: viewRows, meta }: SectionPageProps) {
   const siteRows = useMemo(() => ofSite(rows, site), [rows, site])
   const all = useMemo(() => sitesOf(rows).map((s) => ({ site: s, color: rows.find((r) => r.site === s)?.color ?? INK.text, d: decompose(pairsOf(ofSite(rows, s), mac), mac) })), [rows, mac])
   const pairs = useMemo(() => pairsOf(siteRows, mac), [siteRows, mac])
+  // Filters → excluded: Mark (lib/markedRows): the site's excluded filters on the original crossplots, as ×, in no fit
+  const markedConc = useConcRows(useMarkedRows(), meta)
+  const markedPts = useMemo(() => pairsOf(ofSite(markedConc, site), mac).map((p) => point(p.r, p.ec, p.bc, INK.muted, 'FTIR EC', 'HIPS BC', 'Research · two problems')), [markedConc, site, mac])
   const d = useMemo(() => decompose(pairs, mac), [pairs, mac])
   const [winParam, setWin] = useSearchParam<string>('tp.win', 'auto', ['auto', '20', '40', '60'])
   const size = winParam === 'auto' ? Math.max(20, Math.floor(pairs.length / 6)) : Number(winParam)
@@ -140,7 +144,7 @@ export function TwoProblem({ rows: viewRows, meta }: SectionPageProps) {
         provenance={`${ADDIS_NB} (§1, §5) · ${MULTI_NB} (§2, §4)`} controls={<SitePick value={site} options={sites} onChange={setSite} />}>
         {!d ? <Empty>Fewer than 3 filters at {site} carry positive HIPS Fabs and FTIR EC.</Empty> : <>
           <Grid>
-            <Crossplot points={pairs.map((p) => point(p.r, p.ec, p.bc, color, 'FTIR EC', 'HIPS BC', 'Research · two problems'))} title="Original" xLabel={ecLabel} yLabel={bcLabel} fit={false}
+            <Crossplot points={pairs.map((p) => point(p.r, p.ec, p.bc, color, 'FTIR EC', 'HIPS BC', 'Research · two problems'))} marked={markedPts} title="Original" xLabel={ecLabel} yLabel={bcLabel} fit={false}
               extraLines={[...line(d.bcFit, INK.fit, 'OLS'), ...line({ slope: 0, intercept: d.bcFit.intercept }, INK.accent, 'baseline', '2 3')]} />
             <Crossplot points={d.corrected.map((p) => point(p.r, p.ec, p.corr, p.corr < 0 ? NEG : color, 'FTIR EC', 'corrected', 'Research · two problems', [`Fabs ${fmt(p.fabs, 1)} Mm⁻¹`], p.corr < 0))}
               title={`EC = (Fabs − ${fmt(d.baseline, 1)}) / ${fmt(d.macEff, 2)}`} xLabel={ecLabel} yLabel="Corrected HIPS EC (µg/m³)" fit={false} extraLines={line(ols(pairs.map((p) => p.ec), d.corrected.map((p) => p.corr)), INK.good, 'OLS')} />
@@ -167,7 +171,7 @@ export function TwoProblem({ rows: viewRows, meta }: SectionPageProps) {
             xLabel="Window mean FTIR EC (µg/m³)" yLabel="Local OLS slope" reference={1} yMarkers={[{ at: d.bcFit.slope, label: `overall ${fmt(d.bcFit.slope, 2)}`, color: INK.muted }]}
             background={({ y, iw }) => <rect x={0} width={iw} y={y(1.1)} height={Math.max(0, y(0.9) - y(1.1))} fill={INK.good} fillOpacity={0.08} />} />
             : <Empty>Too few filters for windows of {size}.</Empty>}
-          <Crossplot points={pairs.map((p) => point(p.r, p.ec, p.bc, color, 'FTIR EC', 'HIPS BC', 'Research · two problems'))} title="Linear vs quadratic" xLabel={ecLabel} yLabel={bcLabel} fit={false}
+          <Crossplot points={pairs.map((p) => point(p.r, p.ec, p.bc, color, 'FTIR EC', 'HIPS BC', 'Research · two problems'))} marked={markedPts} title="Linear vs quadratic" xLabel={ecLabel} yLabel={bcLabel} fit={false}
             extraLines={line(d.bcFit, INK.fit, 'linear')}
             background={quad ? (x, y) => { const [x0, x1] = x.domain(); const xs = d3.range(0, 101).map((i) => x0 + ((x1 - x0) * i) / 100)
               return <path d={d3.line<number>().x((v) => x(v)).y((v) => y(quad.coef[0] + quad.coef[1] * v + quad.coef[2] * v * v))(xs) ?? ''} fill="none" stroke={INK.deming} strokeWidth={1.8} strokeDasharray="5 3" /> } : undefined} />

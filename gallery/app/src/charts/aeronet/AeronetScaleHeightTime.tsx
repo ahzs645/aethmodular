@@ -16,6 +16,7 @@ import { useSearchParam } from '@/lib/url'
 import { seasonOnly } from '@/lib/seasons'
 import { AAOD675, HIPS_LOT_PERIODS, lotPeriodOf, scaleHeight, surfaceFabs } from '@/lib/aeronet'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
 
 const BY = ['Lot period', 'Year', 'Season'] as const
 type By = (typeof BY)[number]
@@ -79,6 +80,16 @@ export function AeronetScaleHeightTime({ rows, meta }: { rows: FilterRow[]; meta
     y: d3.scaleLog().domain([Math.max(10, (d3.min(pts, (p) => p.h) ?? 100) * 0.8), (d3.max(pts, (p) => p.h) ?? 1000) * 1.25]).range([ih, 0]),
   }), [pts, iw])
   const xy = useMemo(() => pts.map((p) => [x(p.t), y(p.h)] as const), [pts, x, y])
+  // Filters → excluded: Mark (lib/markedRows): the excluded filters of these sites as ×, never in a median step
+  const markedAll = useMarkedRows()
+  const markReason = useMarkReason()
+  const marks = useMemo(() => {
+    const sites = new Set(rows.map((r) => r.site)), [d0, d1] = x.domain(), [h0, h1] = y.domain()
+    return toMarks(markedAll.filter((r) => sites.has(r.site)), (r) => {
+      const h = scaleHeight(r, mac), t = new Date(r.date)
+      return h !== null && h >= h0 && h <= h1 && t >= d0 && t <= d1 ? [x(t), y(h)] : null
+    }, markReason, (r) => [`H ${fmt(scaleHeight(r, mac), 0)} m`])
+  }, [markedAll, rows, mac, x, y, markReason])
   // the dots, drawn once per data, colouring or brush: a hover is drawn over them (components/ScatterLayer)
   const dots = useMemo(() => pts.map((p, i) => {
     const st = focusStyle(p.row.id, null, { r: 3 }, hl.selected)
@@ -101,7 +112,7 @@ export function AeronetScaleHeightTime({ rows, meta }: { rows: FilterRow[]; meta
               </g>)}
               <text transform={`translate(-48,${ih / 2}) rotate(-90)`} textAnchor="middle" fontSize={12} fill={INK.text}>Scale height H (m, log)</text>
               <XAxis scale={x} y={ih} tickCount={8} format={d3.utcFormat('%b %Y')} />
-              <ScatterLayer items={pts} xy={xy} idOf={(p) => p.row.id} dots={dots} width={iw} height={ih} tip={tip}
+              <ScatterLayer items={pts} xy={xy} idOf={(p) => p.row.id} dots={dots} width={iw} height={ih} tip={tip} marks={marks}
                 tipOf={(p) => [p.row.id, `${p.row.site} · ${p.row.date}`, `H ${fmt(p.h, 0)} m`,
                   `AAOD 675 ${fmt(p.row[AAOD675] as number, 4)} · Fabs ${fmt(surfaceFabs(p.row, mac), 1)} Mm⁻¹`, label(groupOf(p.row)), 'click for details']}
                 focusR={(p) => focusStyle(p.row.id, p.row.id, { r: 3 }).r}
@@ -113,6 +124,7 @@ export function AeronetScaleHeightTime({ rows, meta }: { rows: FilterRow[]; meta
           </svg>
         )}
         <Legend items={groups.map((g) => ({ label: label(g), color: colorOf(g) }))} />
+        {marks.length > 0 && <p className="chart-note">{marks.length} excluded filter{marks.length === 1 ? '' : 's'} drawn as × (Filters → excluded: Mark); not in any median.</p>}
         {tip.node}
       </div>
     </ChartFrame>

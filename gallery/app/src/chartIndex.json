@@ -376,6 +376,13 @@
    "file": "charts/ranking/CorrelationRanking.tsx"
   },
   {
+   "title": "Network rank — where each site's median … sits among the IMPROVE sites",
+   "id": "netrank",
+   "component": "NetworkRankPlacement",
+   "tab": "ranking",
+   "file": "charts/ranking/NetworkRankPlacement.tsx"
+  },
+  {
    "title": "Parallel coordinates — every species of a family, every filter",
    "id": "parallel",
    "component": "ParallelCoordinates",

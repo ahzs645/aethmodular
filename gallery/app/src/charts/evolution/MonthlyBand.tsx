@@ -12,6 +12,7 @@ import { INK, MARGIN, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
 import { useFitHeight } from '@/lib/chartFit'
+import { ExcludedNote } from '@/lib/markedRows'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -138,6 +139,7 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
           highlighted={siteHover ?? seasonHover}
           note={emphasizeFebruary ? 'hollow marker = February (convention-dependent)' : calendarLabel(meta)}
         />
+        <ExcludedNote fields={[field]} />
         {tip.node}
       </div>
     </ChartFrame>

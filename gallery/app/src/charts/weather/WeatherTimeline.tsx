@@ -24,6 +24,7 @@ import { useFitHeight } from '@/lib/chartFit'
 import { wrapCategory } from '@/components/CategoryAxis'
 import { useSearchParam } from '@/lib/url'
 import { isPmfField, pickerName } from '@/lib/pmfGroups'
+import { toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
 
 // each panel's title stands up beside its y axis, as on any plot: the unit on a line of its own
 // ("Precip." over "(mm/day)"), and a name too long for the panel's height wrapped onto more lines.
@@ -200,7 +201,7 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
                   {k === 'rh' && <path d={line(daily.rh, yR)} fill="none" stroke="#2c7fb8" strokeWidth={1.1} />}
                   {k === 'blh' && <path d={line(daily.blh, yB)} fill="none" stroke="#7b6fb0" strokeWidth={1.1} />}
                   {k === 'ws' && <path d={line(daily.ws, yW)} fill="none" stroke="#4d9078" strokeWidth={1.1} />}
-                  {isField(k) && <FieldPoints pts={ptsOf.get(fieldOf(k)) ?? EMPTY} x={x} width={innerW} height={panelH} seasons={meta.seasons} selected={hl.selected} tip={tip}
+                  {isField(k) && <FieldPoints pts={ptsOf.get(fieldOf(k)) ?? EMPTY} field={fieldOf(k)} site={site?.name} x={x} width={innerW} height={panelH} seasons={meta.seasons} selected={hl.selected} tip={tip}
                     tipOf={(p) => { const di = daily.date.indexOf(String(p.row.date).slice(0, 10))
                       return [p.row.id, `${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`, `${fieldOf(k)}: ${fmt(p.v)}`,
                         ...(di >= 0 ? [`BLH ${fmt(daily.blh[di], 0)} m`] : []), ...sourcesAt(p.t, p.row.id), 'click for details · right-click to exclude'] }} />}
@@ -238,8 +239,11 @@ const fieldScale = (pts: FieldPt[], h: number) =>
  * A measurement panel's filters, coloured by season (components/ScatterLayer): drawn once per data, size or brush, so
  * the date cursor does not redraw them; the nearest filter answers a hover, a click opens its record.
  */
-function FieldPoints({ pts, x, width, height, seasons, selected, tip, tipOf }: {
-  pts: FieldPt[]; x: d3.ScaleTime<number, number>; width: number; height: number; seasons: MetaFile['seasons']
+function FieldPoints({ pts, field, site, x, width, height, seasons, selected, tip, tipOf }: {
+  pts: FieldPt[]
+  /** the panel's measurement and site, for the excluded filters' marks (Filters → excluded: Mark) */
+  field: string; site: string | undefined
+  x: d3.ScaleTime<number, number>; width: number; height: number; seasons: MetaFile['seasons']
   selected: Set<string> | null; tip: ReturnType<typeof useTooltip>; tipOf: (p: FieldPt) => TipBody
 }) {
   const y = useMemo(() => fieldScale(pts, height), [pts, height])
@@ -251,8 +255,17 @@ function FieldPoints({ pts, x, width, height, seasons, selected, tip, tipOf }: {
       fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={st.dot} {...fidProps(p.row.id)} />
   }), [pts, xy, selected, seasons]) // eslint-disable-line react-hooks/exhaustive-deps
   const focused = (p: FieldPt) => focusStyle(p.row.id, p.row.id, { r: 3, level: 'sparse' })
+  const markedAll = useMarkedRows()
+  const markReason = useMarkReason()
+  const marks = useMemo(() => {
+    const [d0, d1] = x.domain(), [v0, v1] = y.domain()
+    return toMarks(markedAll.filter((r) => r.site === site), (r) => {
+      const v = r[field], t = new Date(r.date)
+      return typeof v === 'number' && t >= d0 && t <= d1 && v >= v0 && v <= v1 ? [x(t), y(v)] : null
+    }, markReason, (r) => [`${field}: ${fmt(r[field] as number)}`])
+  }, [markedAll, site, field, x, y, markReason])
   return (
-    <ScatterLayer items={pts} xy={xy} idOf={(p) => p.row.id} dots={dots} width={width} height={height} tip={tip} tipOf={tipOf}
+    <ScatterLayer items={pts} xy={xy} idOf={(p) => p.row.id} dots={dots} width={width} height={height} tip={tip} tipOf={tipOf} marks={marks}
       focusR={(p) => focused(p).r}
       focus={(p, [cx, cy]) => { const st = focused(p); return <circle cx={cx} cy={cy} r={st.r} fill={colorOf(p)} fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} /> }} />
   )

@@ -18,6 +18,7 @@ import { linePalette } from './hips/lines'
 import { ResidualCrossplots, ResidualSsa } from './hips/ResidualViews'
 import { RowLines } from './hips/RowLines'
 import { TauByLine, TauPm } from './hips/TauViews'
+import { useMarkedRows } from '@/lib/markedRows'
 
 const ENVELOPE_NB = 'research/ftir_hips_chem/addis_06_hips_ptfe_operating_envelope.ipynb'
 const RT_NB = 'research/improve_hips_offset/improve_fed_rt_proxy_figure2.ipynb (SPARTAN R1/T1 analog)'
@@ -83,6 +84,8 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
   const pairs = useMemo(() => rows.flatMap((r) => { const o = byId.get(r.id); return o ? [{ r, o }] : [] }), [rows, byId])
   const palette = useMemo(() => linePalette(optics ?? []), [optics])
   const seasons = useMemo(() => seasonsOf(ofSite(rows, site), meta), [rows, site, meta])
+  // Filters → excluded: Mark (lib/markedRows): the excluded filters, drawn as × on the crossplots below, in no fit or median
+  const markedRows = useConcRows(useMarkedRows(), meta)
 
   if (error || !optics) return (
     <ChartFrame id="he-missing" title="HIPS operating envelope" provenance={ENVELOPE_NB}>
@@ -93,6 +96,8 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
   // 1. optical regime
   const opt = rows.flatMap((r) => { const o = byId.get(r.id); return o && o.t !== null && o.r !== null ? [{ r, o }] : [] })
   const blankPts = blanks.filter((b) => b.t !== null && b.r !== null)
+  const markedOpt = markedRows.flatMap((r) => { const o = byId.get(r.id); return o && o.t !== null && o.r !== null && codes.has(r.code) ? [point(r, o.t, o.r, r.color, 't', 'r', 'Research · HIPS optics', [`tau ${fmt(o.tau, 3)}`])] : [] })
+  const markedEnv = markedRows.flatMap((r) => { const o = r.site === site ? byId.get(r.id) : undefined; const e = o ? envelopeOf(r, o, mac) : null; return e ? [e] : [] })
   const tauRows = siteNames.flatMap((s) => {
     const code = rows.find((r) => r.site === s)?.code
     return [qrow(`${s}-s`, `${s} · samples`, opt.filter((p) => p.r.site === s).map((p) => p.o.tau), colorOfSite(s), false, true),
@@ -162,7 +167,7 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
         <Grid>
           <Crossplot points={[...opt.map((p) => point(p.r, p.o.t!, p.o.r!, p.r.color, 't', 'r', 'Research · HIPS optics', [`tau ${fmt(p.o.tau, 3)}`])),
             ...blankPts.map((b) => ({ x: b.t!, y: b.r!, color: colorOfSite(nameOfCode(b.code)), hollow: true, tip: [`${b.filter_id} (field blank)`, `lot ${b.lot}`, `t ${fmt(b.t, 3)} · r ${fmt(b.r, 3)} · tau ${fmt(b.tau, 3)}`] }))]}
-            sameScale={false} title="HIPS r vs t" xLabel="HIPS transmittance proxy, t" yLabel="HIPS reflectance proxy, r" fit={false} />
+            marked={markedOpt} sameScale={false} title="HIPS r vs t" xLabel="HIPS transmittance proxy, t" yLabel="HIPS reflectance proxy, r" fit={false} />
           <IntervalStrip blocks={[{ key: 'tau', rows: tauRows }]} panels={[{ label: 'HIPS tau (median, p05–p95)' }]} labelWidth={150} noteWidth={50} minPanelWidth={200} />
         </Grid>
         <Key items={[...siteNames.map((s) => ({ label: s, color: colorOfSite(s) })), { label: 'field blank', color: INK.muted, kind: 'hollow' }]} />
@@ -201,6 +206,7 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
             return { x: quantile(b.map((e) => e.ecLoad!), 0.5), y: quantile(v, 0.5), lo: quantile(v, 0.25), hi: quantile(v, 0.75), tip: [`EC loading ${fmt(Math.min(...b.map((e) => e.ecLoad!)), 2)}–${fmt(Math.max(...b.map((e) => e.ecLoad!)), 2)} µg/cm²`, `median residual ${fmt(quantile(v, 0.5), 3)}`, `median tau ${fmt(quantile(b.map((e) => e.o.tau ?? NaN), 0.5), 3)}`, `n ${b.length}`] }
           }) }]} xLabel="Median EC loading (µg/cm²)" yLabel={resid === 'relative' ? 'Relative residual' : 'Residual (µg/m³)'} reference={0} include={[0]} />
           <Crossplot points={siteEnv.map((e) => point(e.row, e.ec, e.hipsBc, seasons.find((s) => s.name === e.row.season)?.color ?? INK.muted, 'FTIR EC', 'HIPS BC', 'Research · HIPS envelope', [`EC loading ${fmt(e.ecLoad, 2)} µg/cm²`]))}
+            marked={markedEnv.map((e) => point(e.row, e.ec, e.hipsBc, seasons.find((s) => s.name === e.row.season)?.color ?? INK.muted, 'FTIR EC', 'HIPS BC', 'Research · HIPS envelope', [`EC loading ${fmt(e.ecLoad, 2)} µg/cm²`]))}
             title="HIPS BC vs FTIR EC, binned medians" xLabel="FTIR EC (µg/m³)" yLabel="HIPS BC (µg/m³)" fit={false}
             background={(x, y) => <path d={bins.map((b, i) => `${i ? 'L' : 'M'}${x(quantile(b.map((e) => e.ec), 0.5))},${y(quantile(b.map((e) => e.hipsBc), 0.5))}`).join('')} fill="none" stroke={INK.fit} strokeWidth={2} />} />
         </Grid>}

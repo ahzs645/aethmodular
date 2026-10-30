@@ -17,6 +17,7 @@ import { useFitHeight } from '@/lib/chartFit'
 
 import { MeasurementControl } from '@/components/AxisFieldPopover'
 import { useTileSetting } from '@/lib/url'
+import { ExcludedNote } from '@/lib/markedRows'
 
 const STATS = ['Median', 'Mean', 'Count'] as const
 type Stat = (typeof STATS)[number]
@@ -257,6 +258,7 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
             {nEmpty} of {cells.length} site-months have no filters with {field} and are drawn blank.
           </Note>
         )}
+        <ExcludedNote fields={[field]} />
         {tip.node}
       </div>
     </ChartFrame>
