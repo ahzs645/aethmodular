@@ -1,5 +1,60 @@
 # gallery/ — the notebook figure estate, as an interactive gallery
 
+## Optional free-form chart builder
+
+Open **Display and data settings → Interface → Free-form chart builder → On**,
+then **Open chart builder** or **Charts → Chart builder**. It is off by default
+and remembered per browser. A direct `#tab=builder` link offers the same opt-in.
+Restricted share builds offer it only when `builder` is in `VITE_SHARE_TABS`.
+
+This workspace embeds [Graphic Walker](https://github.com/Kanaries/graphic-walker)
+for combinations the curated charts do not offer: multiple measures, arbitrary
+Rows/Columns encodings, and nested site/season facets. Use it to discover a figure,
+then review and implement recurring figures with the gallery's shared chart pieces.
+It is an exploration page, not a Dashboard tile or an automatic promotion path.
+Gallery regression, linked point selection, and publication export remain features
+of the curated charts. Graphic Walker supplies its own chart controls and exports.
+
+The builder receives the existing filtered `rows` and declared `meta.fields`:
+network/site, date, season, PMF and hand exclusions have already been applied;
+units, MAC and ratios come from the existing view transformation. Hidden duplicate
+ChemSpec carbon fields stay hidden. Missing/nonfinite measurements remain null,
+zero is retained, and site/season labels and colours come from gallery metadata. Field identifiers
+encode both the original name and unit to avoid Vega path interpretation and
+unit collisions. Aggregation starts **off**; choose an appropriate mean/median
+when aggregating concentrations. No server computation or AI endpoint is configured.
+
+**Download draft** saves versioned chart definitions, field metadata, the gallery
+URL hash, filter IDs, export timestamp, source-generation timestamp, units basis,
+MAC and season convention. It does not save measurement rows. **Import draft**
+requires matching fields/units and applies the definitions to the current selection;
+it does not restore data or filters. A gallery share link carries gallery filters,
+not builder definitions. Download the draft before reloading the page. The current
+session retains up to eight field/unit schemas across tab switches; changing schema
+starts a separate draft, and returning to a retained schema restores its charts.
+
+The editor is a React component in the same page, with an open shadow root for
+style isolation. It uses the gallery's colours and typography, compact framing,
+and a responsive field list. `app/src/components/chartBuilder/GraphicWalkerAdapter.tsx`
+contains the vendor component and public chart import/export API. The adjacent
+theme module contains the small amount of CSS tied to upstream markup.
+`GraphicWalkerWorkspace.tsx` handles gallery draft actions and session retention;
+`app/src/lib/chartBuilder.ts` handles data/field conversion and draft validation.
+The opt-in wrapper in `app/src/pages/ChartBuilderPage.tsx` imports the editor only
+when enabled and opened and provides an error boundary.
+
+Version **0.4.82** is pinned with its styled-components 5 peer because
+0.4.83 and newer require React 19; the gallery uses React 18. The build checks
+that the installed dependency matches the reviewed adapter version. A browser
+script constructs a faceted chart through the actual shadow-root controls and
+reopens frozen saved charts to detect upgrade regressions. See the
+[integration and upgrade guide](app/docs/graphic-walker-integration.md) for the
+contract, commands and compatibility fixtures. The package includes a remote
+Leaflet stylesheet request even for non-map charts; data computations stay in the
+browser. Its sizable editor bundle is excluded from the ordinary page load.
+Upstream branding is retained; the pinned source's Apache and branding licenses
+ship in `app/public/licenses/graphic-walker.txt` and are linked from the builder.
+
 Two things live here, in three subfolders:
 
 1. **A census** of every figure the repo's notebooks draw, classified against

@@ -1,0 +1,164 @@
+{
+  "graphicWalkerVersion": "0.4.82",
+  "chart": {
+    "config": {
+      "defaultAggregated": false,
+      "geoms": [
+        "point"
+      ],
+      "coordSystem": "generic",
+      "limit": -1
+    },
+    "encodings": {
+      "dimensions": [
+        {
+          "fid": "site",
+          "name": "Site",
+          "basename": "Site",
+          "semanticType": "nominal",
+          "analyticType": "dimension"
+        },
+        {
+          "fid": "season",
+          "name": "Season (selected calendar)",
+          "basename": "Season (selected calendar)",
+          "semanticType": "nominal",
+          "analyticType": "dimension"
+        },
+        {
+          "fid": "gw_mea_key_fid",
+          "name": "Measure names",
+          "analyticType": "dimension",
+          "semanticType": "nominal"
+        }
+      ],
+      "measures": [
+        {
+          "fid": "m_45_43_20_28_46_54_49_52_29_0_75_67_2f_6d_33",
+          "name": "EC (FTIR) (µg/m³)",
+          "basename": "EC (FTIR) (µg/m³)",
+          "analyticType": "measure",
+          "semanticType": "quantitative",
+          "aggName": "sum"
+        },
+        {
+          "fid": "m_48_49_50_53_20_42_43_0_75_67_2f_6d_33",
+          "name": "HIPS BC (µg/m³)",
+          "basename": "HIPS BC (µg/m³)",
+          "analyticType": "measure",
+          "semanticType": "quantitative",
+          "aggName": "sum"
+        },
+        {
+          "fid": "m_49_72_6f_6e_0_75_67_2f_6d_33",
+          "name": "Iron (µg/m³)",
+          "basename": "Iron (µg/m³)",
+          "analyticType": "measure",
+          "semanticType": "quantitative",
+          "aggName": "sum"
+        },
+        {
+          "fid": "gw_count_fid",
+          "name": "Row count",
+          "analyticType": "measure",
+          "semanticType": "quantitative",
+          "aggName": "sum",
+          "computed": true,
+          "expression": {
+            "op": "one",
+            "params": [],
+            "as": "gw_count_fid"
+          }
+        },
+        {
+          "fid": "gw_mea_val_fid",
+          "name": "Measure values",
+          "analyticType": "measure",
+          "semanticType": "quantitative",
+          "aggName": "sum"
+        }
+      ],
+      "rows": [
+        {
+          "fid": "m_45_43_20_28_46_54_49_52_29_0_75_67_2f_6d_33",
+          "name": "EC (FTIR) (µg/m³)",
+          "basename": "EC (FTIR) (µg/m³)",
+          "analyticType": "measure",
+          "semanticType": "quantitative",
+          "aggName": "sum"
+        },
+        {
+          "fid": "m_49_72_6f_6e_0_75_67_2f_6d_33",
+          "name": "Iron (µg/m³)",
+          "basename": "Iron (µg/m³)",
+          "analyticType": "measure",
+          "semanticType": "quantitative",
+          "aggName": "sum"
+        }
+      ],
+      "columns": [
+        {
+          "fid": "site",
+          "name": "Site",
+          "basename": "Site",
+          "semanticType": "nominal",
+          "analyticType": "dimension"
+        },
+        {
+          "fid": "m_48_49_50_53_20_42_43_0_75_67_2f_6d_33",
+          "name": "HIPS BC (µg/m³)",
+          "basename": "HIPS BC (µg/m³)",
+          "analyticType": "measure",
+          "semanticType": "quantitative",
+          "aggName": "sum"
+        }
+      ],
+      "color": [
+        {
+          "fid": "season",
+          "name": "Season (selected calendar)",
+          "basename": "Season (selected calendar)",
+          "semanticType": "nominal",
+          "analyticType": "dimension"
+        }
+      ],
+      "opacity": [],
+      "size": [],
+      "shape": [],
+      "radius": [],
+      "theta": [],
+      "longitude": [],
+      "latitude": [],
+      "geoId": [],
+      "details": [],
+      "filters": [],
+      "text": []
+    },
+    "layout": {
+      "showActions": false,
+      "showTableSummary": false,
+      "stack": "stack",
+      "interactiveScale": false,
+      "zeroScale": true,
+      "size": {
+        "mode": "auto",
+        "width": 640,
+        "height": 420
+      },
+      "format": {},
+      "geoKey": "name",
+      "resolve": {
+        "x": false,
+        "y": false,
+        "color": false,
+        "opacity": false,
+        "shape": false,
+        "size": false
+      },
+      "renderer": "vega-lite",
+      "useSvg": true
+    },
+    "visId": "gw_m3rL",
+    "name": "Compatibility: site facets and two measures"
+  }
+}

@@ -6,17 +6,21 @@
   "description": "React + D3 gallery over the aethmodular notebook figure estate",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/build-chart-index.mjs",
+    "prebuild": "node scripts/check-graphic-walker.mjs && node scripts/build-chart-index.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "node --test 'src/lib/*.test.mjs' 'src/sections/**/*.test.mjs'",
+    "check:walker": "node scripts/check-graphic-walker.mjs",
+    "test:walker": "node --test src/lib/chartBuilder.test.mjs",
+    "test:walker:browser": "node scripts/check-chart-builder.mjs",
     "index:charts": "node scripts/build-chart-index.mjs",
     "postinstall": "node scripts/ensure-toolkit.mjs",
     "toolkit": "node scripts/ensure-toolkit.mjs --force"
   },
   "dependencies": {
     "@firstform/json-url": "^4.2.0",
+    "@kanaries/graphic-walker": "0.4.82",
     "@pgmaps/geo-toolkit": "file:../packages/geo-toolkit",
     "@react-querybuilder/core": "8.24.3",
     "buffer": "^6.0.3",
@@ -29,6 +33,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-querybuilder": "8.24.3",
+    "styled-components": "5.3.11",
     "svg2pdf.js": "^2.8.1"
   },
   "devDependencies": {
@@ -39,6 +44,7 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "playwright": "1.64.1",
     "typescript": "^5.6.3",
     "vite": "^5.4.11"
   },

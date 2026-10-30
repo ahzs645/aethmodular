@@ -95,6 +95,22 @@ code { font-family: var(--mono); font-size: 0.92em; }
 
 .container { max-width: 1180px; margin: 0 auto; padding: 0 22px 60px; }
 .container.wide { max-width: 1420px; }
+.chart-builder-intro { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 20px; line-height: 1.5; }
+.chart-builder-intro > p { margin: 0; font-size: calc(13px * var(--text-scale)); }
+.chart-builder-help { font-size: calc(12px * var(--text-scale)); color: var(--ink-muted); }
+.chart-builder-help[open] { flex: 1 1 100%; max-width: 960px; }
+.chart-builder-help summary { cursor: pointer; color: var(--accent); }
+.chart-builder-credit { margin: 10px 0 0; color: var(--ink-muted); font-size: calc(11px * var(--text-scale)); }
+.chart-builder-note { color: var(--ink-muted); font-size: calc(12px * var(--text-scale)); }
+.chart-builder-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.chart-builder-actions .chart-builder-note { flex: 1 1 280px; }
+.chart-builder-message { line-height: 1.5; font-size: calc(12px * var(--text-scale)); margin: 6px 0; }
+.chart-builder-scroll { width: 100%; overflow: auto; height: max(520px, calc(100dvh - var(--header-h, 60px) - 210px)); }
+.chart-builder-engine { height: 100%; min-width: 0; }
+@media (max-width: 639px) {
+  .chart-builder-scroll { height: auto; min-height: 0; }
+  .chart-builder-engine { height: auto; }
+}
 
 /* ---------- header / nav ---------- */
 
