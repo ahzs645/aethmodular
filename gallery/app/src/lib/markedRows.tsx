@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { ChartAside } from '@/lib/singleView'
 import { usePresentation } from '@/lib/presentation'
+import { useHandEdits } from '@/lib/filterEdits'
 import { exclStatus, markTip, splitById, type ExclMode, type ExclStatus } from '@/lib/exclusionMode'
 import type { FilterRow } from '@/lib/types'
 import type { SweepMark } from '@/components/SweepPlot'
@@ -22,12 +23,14 @@ interface Marked {
 const Ctx = createContext<Marked>({ mode: 'hide', rows: [], reasonOf: () => null })
 /**
  * The context as a chart sees it: a meeting page shown As presented (lib/presentation) is untouched by the
- * gallery's exclusion choices, so there every chart reads Hide: no marks, no notes, whatever Filters → excluded says.
+ * gallery's exclusion choices, so there every filter counts as exported (no hand exclusion, no Include or Mark):
+ * no marks, no notes, whatever Filters → excluded says. Its data already carry the export's own exclusions.
  */
+const COUNTS = () => null
 function useMarked(): Marked {
   const ctx = useContext(Ctx)
   const presented = usePresentation() === 'presented'
-  return useMemo(() => (presented && ctx.mode !== 'hide' ? { ...ctx, mode: 'hide' as const, rows: [] } : ctx), [ctx, presented])
+  return useMemo(() => (presented ? { ...ctx, mode: 'hide' as const, rows: [], reasonOf: COUNTS } : ctx), [ctx, presented])
 }
 
 export function MarkedRowsProvider({ mode, rows, reasonOf, known, children }: Marked & { children: ReactNode }) {
@@ -49,6 +52,18 @@ export const useKnownFilter = (): ((id: string) => boolean) => useMarked().known
 export function useExclStatus(): (id: string | null | undefined) => ExclStatus {
   const { mode, reasonOf } = useMarked()
   return useMemo(() => (id) => (id ? exclStatus(reasonOf(id), mode) : 'counted'), [mode, reasonOf])
+}
+
+/**
+ * Does a filter count in a fit, median or total under Filters → excluded: the one rule every chart applies, whether
+ * it draws gallery rows or its own per-filter items. Out: a hand exclusion or a filter outside keep= (lib/filterEdits),
+ * or one of the export's exclusions unless Include puts it back. As presented everything counts. Ids the gallery
+ * does not know (IMPROVE samples, sites) count.
+ */
+export function useCountedFilter(): (id: string | null | undefined) => boolean {
+  const edits = useHandEdits()
+  const status = useExclStatus()
+  return useMemo(() => (id) => !edits.isOut(id) && status(id) === 'counted', [edits, status])
 }
 
 /**

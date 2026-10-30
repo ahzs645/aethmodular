@@ -15,11 +15,10 @@ import { INK, baselineColor } from '@/lib/theme'
 import { fixed as fmt } from '@/lib/format'
 import { regression } from '@/lib/stats'
 import { dotFill, dotRim, type FilterRecord, useHighlightActions } from '@/lib/highlight'
-import { useHandEdits } from '@/lib/filterEdits'
 import { useSearchParam } from '@/lib/url'
 import { useRegressions } from '@/lib/regressionPrefs'
 import { Combobox } from '@/components/Combobox'
-import { ExcludedNote, FixedSetNote, useExclMode, useMarkReason } from '@/lib/markedRows'
+import { ExcludedNote, FixedSetNote, useCountedFilter, useExclMode, useMarkReason } from '@/lib/markedRows'
 import { crossPath, markTip } from '@/lib/exclusionMode'
 
 type Method = 'AIRSpec' | 'VIBES'
@@ -231,16 +230,17 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
     return xv != null && yv != null && Number.isFinite(xv) && Number.isFinite(yv)
       ? [{ ...r, xv, yv }] : []
   })
-  // filters excluded by hand on any page are left out of the points and the live fits
-  const edits = useHandEdits()
+  // Filters → excluded (lib/markedRows useCountedFilter): the export's exclusions and every hand exclusion leave the
+  // points and the live fits, as on every other chart; Include puts the export's back
+  const isCounted = useCountedFilter()
   const inSite = allPoints.filter(r => site === 'Both sites' || r.site === site)
-  const points = inSite.filter(r => !edits.isOut(String(r.id)))
+  const points = inSite.filter(r => isCounted(String(r.id)))
   // Filters → excluded: Mark draws them as × (never in a fit or count); otherwise a note says they are hidden
   const markMode = useExclMode() === 'mark'
   const reasonOf = useMarkReason()
-  const out = markMode ? inSite.filter(r => edits.isOut(String(r.id))) : []
-  const handNote = markMode ? null : edits.note(inSite.length - points.length, { refit: true })
-  const frozen = <FixedSetNote what="the frozen pilot cohort, 253 Addis and 26 Bishoftu spectra" hand />
+  const out = markMode ? inSite.filter(r => !isCounted(String(r.id))) : []
+  const nHidden = markMode ? 0 : inSite.length - points.length
+  const handNote = nHidden > 0 ? `${nHidden} excluded filter${nHidden === 1 ? ' is' : 's are'} (Filters → excluded) hidden here and left out of the live fits.` : null
   const counts = Object.fromEntries(['Addis', 'Bishoftu'].map(s => [s, points.filter(r => r.site === s).length]))
   const title = optical ? 'Every filter with HIPS and frozen FTIR EC' : 'Every corrected spectrum: two local bands'
   // Keep axis scales fixed while the site selector changes, so a filtered
@@ -293,7 +293,6 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
       <Key items={[{ label: `Addis (n ${counts.Addis})`, color: siteColor('Addis') }, { label: `Bishoftu (n ${counts.Bishoftu})`, color: siteColor('Bishoftu') }]} />
     </div>
     <ExcludedNote count={out.length} drawn />
-    {frozen}
   </ChartFrame>
   const legendX = plot.r + 30
   const legendY = plot.t + 4
@@ -322,6 +321,5 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
     </svg></div>
     {handNote && <Note>{handNote}</Note>}
     <ExcludedNote count={out.length} drawn />
-    {frozen}
   </ChartFrame>
 }

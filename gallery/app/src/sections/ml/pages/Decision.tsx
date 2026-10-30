@@ -9,7 +9,7 @@ import type { SectionPageProps } from '../../types'
 import { deming } from '../../research/common/stats'
 import { MlWaiting, PageIntro, provenance, rows, useMl } from '../common'
 import { FlagOnSpartan } from './decision/FlagOnSpartan'
-import { FixedSetNote } from '@/lib/markedRows'
+import { FixedSetNote, useCountedFilter } from '@/lib/markedRows'
 
 const NOTEBOOKS = 'research/ftir_hips_chem/decision_workbook_20261022 §2, §3, §4, §6, §7, §8 (results run on the Drive, or the executed notebook)'
 const PREP_COLORS = { spline: '#4e79a7', raw: '#f28e2b', vibes: '#59a14f', 'SPARTAN published': '#555555' }
@@ -61,7 +61,9 @@ export function Decision(_props: SectionPageProps) {
   const spec = rows(data, 'specialists')
   const localRaw = (group: string) => spec.find((r) => r.preprocessing === 'raw' && r.rule === 'local' && r.group === group)
 
-  // §7: the Addis readout over k against HIPS BC at the reader's MAC, beside SPARTAN's published EC
+  // §7: the Addis readout over k against HIPS BC at the reader's MAC, beside SPARTAN's published EC, refitted on the
+  // filters that count under Filters → excluded (lib/markedRows useCountedFilter); the notebook's k curves are saved
+  const isCounted = useCountedFilter()
   const addisK = useMemo(() => {
     const out: Row[] = []
     const add = (series: string, k: number, slope: number | null, intercept: number | null) => {
@@ -69,12 +71,13 @@ export function Decision(_props: SectionPageProps) {
       out.push({ measure: 'Deming intercept (µg/m³)', series, k, value: intercept })
     }
     for (const r of rows(data, 'addis_by_k')) add(String(r.preprocessing), num(r.k) ?? 0, m.slope(num(r['Addis slope'])), num(r['Addis intercept']))
-    const af = rows(data, 'addis_filters').filter((r) => num(r.fabs) != null && num(r.ec_published) != null)
+    const all = rows(data, 'addis_filters').filter((r) => num(r.fabs) != null && num(r.ec_published) != null)
+    const af = all.filter((r) => isCounted(String(r.filter_id)))
     const pub = af.length ? deming(af.map((r) => num(r.fabs)! / m.mac), af.map((r) => num(r.ec_published)!), demingLambda(m.mac, lambda10)) : null
     const kMax = Math.max(0, ...out.map((r) => num(r.k) ?? 0))
     if (pub) for (let k = 1; k <= kMax; k++) add('SPARTAN published', k, pub.slope, pub.intercept)
-    return { rows: out, pub, n: af.length }
-  }, [data, m, lambda10])
+    return { rows: out, pub, n: af.length, nOut: all.length - af.length }
+  }, [data, m, lambda10, isCounted])
 
   if (!data) return <MlWaiting error={error} what="the decision workbook export" />
   const run = settings.run ? `results run ${settings.run}` : 'the executed notebook'
@@ -134,7 +137,8 @@ export function Decision(_props: SectionPageProps) {
         xLabel="PLS components k" yLabel="" height={240}
         title="IMPROVE cannot choose k for Addis: the Addis intercept keeps moving with k while IMPROVE's error barely does (§7)"
         subtitle={`Option A's Addis readout: each model fitted on all of IMPROVE, applied to the ${addisK.n || 233} Addis filters and fitted against HIPS BC (Deming, the workbook's Addis error ratio, λ = ${f2(demingLambda(m.mac, lambda10))} at ${m.label}). Ringed: the CV choice of k. Grey: SPARTAN's published EC, refitted here at ${m.label}${addisK.pub ? ` (${f2(addisK.pub.slope)}·x ${addisK.pub.intercept < 0 ? '−' : '+'} ${f2(Math.abs(addisK.pub.intercept))})` : ''}. Slopes are the notebook's × ${m.mac}/10, exact with λ ∝ MAC²; intercepts do not move. ${optionA ? `The board's test: the best (preprocessing, k) on the hard groups that is no worse than +5 % on the rest is ${optionA.b.preprocessing} k = ${optionA.b.k} (hard ${f2(optionA.b['RMSE hard groups'])} vs ${f2(optionA.c['RMSE hard groups'])} µg for spline k = ${optionA.c.k}), and it moves the Addis intercept from ${f2(rows(data, 'addis_by_k').find((r) => r.preprocessing === 'spline' && r.k === optionA.c.k)?.['Addis intercept'])} to ${f2(rows(data, 'addis_by_k').find((r) => r.preprocessing === optionA.b.preprocessing && r.k === optionA.b.k)?.['Addis intercept'])} µg/m³.` : ''}`}
-        provenance={provenance(data, ['addis_by_k', 'addis_filters'])} />
+        provenance={provenance(data, ['addis_by_k', 'addis_filters'])}
+        aside={addisK.nOut > 0 && <p className="chart-note">SPARTAN's published line leaves out {addisK.nOut} excluded filter{addisK.nOut === 1 ? '' : 's'} (Filters → excluded); the notebook's k curves are its saved fits on all {addisK.n + addisK.nOut}.</p>} />
       : <ChartFrame id="ml-decision-addis-k" title="Option A at Addis: slope and intercept against HIPS over k (§7)" exportable={false}>
         <Note>Needs the results run (section7_addis_by_k.csv); see the list at the top of the page.</Note>
       </ChartFrame>}

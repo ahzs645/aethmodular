@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, type ReactNode } from 'react'
 import { IdentityLine } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { RegressionLines, RegressionBand, RegressionGroupLines, useRegressionSummary } from '@/components/RegressionOverlay'
@@ -6,7 +6,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { groupedRegressions, type FitGrouping } from '@/lib/siteRegression'
-import { fidProps, useFilterEdits, useHandEdits } from '@/lib/filterEdits'
+import { fidProps, useFilterEdits } from '@/lib/filterEdits'
 import { monthBlocks } from '@/lib/regressionCI'
 import { regression, type RegressionStats } from '@/lib/stats'
 import { useRegressions, FitGroupingControl } from '@/lib/regressionPrefs'
@@ -18,7 +18,7 @@ import { Toggle } from '@/components/ChartFrame'
 import { styleBrush } from '@/lib/brush'
 import { useTileSetting } from '@/lib/url'
 import { ChartAside } from '@/lib/singleView'
-import { useExclMode, useMarkReason, type MarkPoint } from '@/lib/markedRows'
+import { useCountedFilter, useExclMode, useMarkReason, type MarkPoint } from '@/lib/markedRows'
 
 /** One filter on a crossplot. `rec` opens the record drawer; `id` links hover and pin across charts. */
 export interface CrossPoint {
@@ -102,19 +102,22 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
   const side = Math.max(160, Math.min(width - m.left - m.right, maxSide))
   const iw = side, ih = side, w = side + m.left + m.right
   const clipId = useId()
-  // a filter excluded by hand on any page is left out here too, points and refit alike
-  const edits = useHandEdits()
+  // Filters → excluded acts on every crossplot, points and refit alike: a filter excluded by hand on any page (or
+  // outside keep=), and one of the export's exclusions unless Include puts it back; Mark draws them as ×. As presented
+  // (a meeting page) nothing is taken out. Pages hand their own per-filter items in by id, so this is the one place.
+  const counts = useCountedFilter()
   const [ownBrush, setOwnBrush] = useCrossplotBrush()
   const brushing = brushable && (brush ?? ownBrush)
   const brushRef = useRef<SVGGElement>(null)
   const drawable = useMemo(() => points.filter(p => p.x != null && p.y != null && Number.isFinite(p.x) && Number.isFinite(p.y)), [points])
-  const valid = useMemo(() => drawable.filter(p => !edits.isOut(p.id ?? p.rec?.id)), [drawable, edits])
+  const isOut = useCallback((p: CrossPoint) => !counts(p.id ?? p.rec?.id), [counts])
+  const valid = useMemo(() => drawable.filter(p => !isOut(p)), [drawable, isOut])
   const markMode = useExclMode() === 'mark'
   const reasonOf = useMarkReason()
-  const nHand = drawable.length - valid.length
-  const handNote = markMode && nHand > 0
-    ? `${nHand} filter${nHand === 1 ? '' : 's'} excluded by hand ${nHand === 1 ? 'is' : 'are'} drawn as ×${fit && groupingOverride !== 'none' ? ', left out of the refit' : ''}${extraLines.length > 0 ? '; the saved statistics were computed with every filter' : ''}.`
-    : edits.note(nHand, { refit: fit && groupingOverride !== 'none', saved: extraLines.length > 0 })
+  const nOut = drawable.length - valid.length
+  const refit = fit && groupingOverride !== 'none', saved = extraLines.length > 0
+  const handNote = nOut <= 0 ? null
+    : `${nOut} excluded filter${nOut === 1 ? '' : 's'} (Filters → excluded) ${nOut === 1 ? 'is' : 'are'} ${markMode ? 'drawn as ×' : 'hidden here'}${refit ? ', left out of the refit' : ''}${saved ? '; the saved statistics were computed on the notebook\'s own filters' : ''}.`
   const lambda = errorRatio ?? 1
   const prefs = useRegressions()
   const { methods } = prefs
@@ -149,7 +152,7 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
   // the marks: the page's excluded filters and, under Mark, this plot's own hand exclusions, inside the axes
   const marks = useMemo<MarkPoint[]>(() => {
     if (!markMode) return []
-    const own = drawable.filter((p) => edits.isOut(p.id ?? p.rec?.id))
+    const own = drawable.filter(isOut)
     const [xa, xb] = x.domain(), [ya, yb] = y.domain()
     const seen = new Set<string>()
     return [...(marked ?? []), ...own].flatMap((p) => {
@@ -159,7 +162,7 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
       seen.add(key)
       return [{ id: baseFilterId(id), at: [x(p.x), y(p.y)] as const, tip: [...p.tip, `excluded: ${reasonOf(id) ?? 'excluded'}`, 'drawn only: not in any fit, R² or count'] }]
     })
-  }, [markMode, marked, drawable, edits, x, y, reasonOf])
+  }, [markMode, marked, drawable, isOut, x, y, reasonOf])
   const dots = useMemo(() => valid.map((p, i) => {
     const key = keyOf(p)
     const dim = !!hl.selected && !!key && !hl.selected.has(key)

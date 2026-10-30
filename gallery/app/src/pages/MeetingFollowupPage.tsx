@@ -40,7 +40,8 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
 import { withUnit } from '@/lib/theme'
 import { useColourScheme } from '@/lib/colourSchemes'
-import { ExcludedNote, FixedSetNote } from '@/lib/markedRows'
+import { ExcludedNote, useCountedFilter } from '@/lib/markedRows'
+import { usePresentation } from '@/lib/presentation'
 
 /**
  * Click-through for the 2026-09-17 Ann/Satoshi meeting follow-up. Every number
@@ -94,7 +95,6 @@ const MAC_LABEL = ecAxis('hips')
 const FABS10_MAC = 10
 
 const IS_ADDIS = (r: FilterRow) => r.site === 'Addis Ababa'
-const FROZEN_ADDIS = "the meeting's frozen Addis test set"
 
 
 export function MeetingFollowupPage({ galleryRows = [], galleryMeta, viewRows = [], viewMeta }: {
@@ -294,7 +294,11 @@ function Levers({ data }: { data: MeetingData }) {
 }
 
 function CohortCoverage({ data, galleryRows }: { data: MeetingData; galleryRows: FilterRow[] }) {
-  const gallery = galleryRows.filter(r => r.site === 'Addis Ababa' && !r.excluded)
+  // As presented: the export as it is (its own exclusions only); Exploring: the filters that count under Filters →
+  // excluded (hand exclusions out, the export's back in under Include), as every chart does (lib/markedRows)
+  const presented = usePresentation() === 'presented'
+  const isCounted = useCountedFilter()
+  const gallery = galleryRows.filter(r => r.site === 'Addis Ababa' && (presented ? !r.excluded : isCounted(r.id)))
   const a = data.addis
   const indices = a.fit_id.map((_, i) => i)
   const ids = (ii: number[]) => new Set(ii.map(i => baseFilterId(String(a.ExternalFilterId[i]))))
@@ -801,7 +805,6 @@ function ThreePlots({ data }: { data: MeetingData }) {
       </ExplainOnly>
       {colorBy !== 'grey' && <ExplainOnly><Note>{colorBy === 'OP fraction' ? `OP fraction = OPTR / (EC + OPTR), ${opColours.name}${opColours.reverse ? ' reversed' : ''} 0.1 → 0.8.` : `TOR OC/EC, log ${ocColours.name}${ocColours.reverse ? ' reversed' : ''} 1.5 → 12.`} Grey: missing.</Note></ExplainOnly>}
       {q('tor_vs_fabs') && <ExplainOnly><Note>TOR EC vs Fabs/10 slope {coef(q('tor_vs_fabs')?.deming_slope)} implies MAC ≈ {f2(q('tor_vs_fabs')?.implied_mac_deming)} m²/g (Deming); median Fabs/EC ratio {f2(q('tor_vs_fabs')?.mac_ratio_median)}, at the {f2(q('tor_vs_fabs')?.mac_percentile_median)}th percentile of the IMPROVE pool.</Note></ExplainOnly>}
-      <FixedSetNote what="the meeting's held-out IMPROVE filters and frozen Addis test set" hand />
     </ChartFrame>
   )
 }
@@ -860,6 +863,8 @@ function OpStep({ data }: { data: MeetingData }) {
 /** One Addis test set crossplot coloured by season, with a Deming line per season and for all Addis. */
 function SeasonCrossplot({ data, fitId, title }: { data: MeetingData; fitId: string; title: string }) {
   const { methods } = useRegressions()
+  // the per-season lines are fitted on the filters the crossplot counts (Filters → excluded; As presented, all)
+  const isCounted = useCountedFilter()
   const addisPts = useAddisPoints(data)
   // the page's season axes (useSeasonAxes); the saved fits describe only the default axes at the export's
   // MAC (the points carry Fabs / 10, so that is MAC 10)
@@ -889,7 +894,7 @@ function SeasonCrossplot({ data, fitId, title }: { data: MeetingData; fitId: str
   }
   const seasonFits = data.seasons.map((g) => {
     const s = statRow(data.stats, { fit_id: fitId, population: 'addis', eval_group: g })
-    const points = pts(g)
+    const points = pts(g).filter((p) => isCounted(p.id ?? p.rec?.id))
     const st = regression(points.map(p => p.x), points.map(p => p.y), { errorsInVariables: true, lambda: lambdaOf(s), bootstrapGroups: monthBlocks(points.map(p => p.rec ?? {})) })
     return { g, saved: s, st }
   })
@@ -946,7 +951,6 @@ function StartingPoint({ data }: { data: MeetingData }) {
         <ExplainOnly><SeasonTable data={data} rows={[{ label: 'Current SPARTAN calibration', fitId }]} /></ExplainOnly>
       </Grid>
       <ExplainOnly><Note>Deming with λ* {f2(data.summary.lambda)}. {showCI && 'Ranges are 95% month-block bootstrap intervals where available.'} Only the Addis filters with a deployed SPARTAN value are drawn, so n is smaller than elsewhere on this page.</Note></ExplainOnly>
-      <FixedSetNote what={FROZEN_ADDIS} hand />
     </ChartFrame>
   )
 }
@@ -969,7 +973,6 @@ function Seasonality({ data }: { data: MeetingData }) {
         <ExplainOnly><SeasonTable data={data} rows={[{ label: 'All-IMPROVE model', fitId }, { label: 'Own-season calibration', fitId: `stitched|${method}|season calibrations` }]} /></ExplainOnly>
       </Grid>
       <ExplainOnly><Note>{fitName} line: all Addis; season-coloured lines: {fitName} fit within each season (λ* {f2(data.summary.lambda)}). {showCI && 'Bands are pointwise 95% month-block bootstrap intervals where available.'}</Note></ExplainOnly>
-      <FixedSetNote what={FROZEN_ADDIS} hand />
     </ChartFrame>
   )
 }
@@ -1005,7 +1008,6 @@ function Stitched({ data }: { data: MeetingData }) {
         </div>
       </Grid>
       <ExplainOnly><SeasonTable data={data} rows={[{ label: 'Own-season calibrations', fitId }, { label: 'All-IMPROVE model, lot 251', fitId: `allimprove|${method}|all-IMPROVE lot 251` }, { label: 'Current SPARTAN', fitId: 'deployed|SPARTAN|current SPARTAN calibration' }]} /></ExplainOnly>
-      <FixedSetNote what={FROZEN_ADDIS} hand />
     </ChartFrame>
   )
 }
