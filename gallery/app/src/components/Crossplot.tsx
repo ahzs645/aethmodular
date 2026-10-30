@@ -118,7 +118,11 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
   const valid = useMemo(() => drawable.filter(p => !isOut(p)), [drawable, isOut])
   const markMode = useExclMode() === 'mark'
   const reasonOf = useMarkReason()
-  const nOut = drawable.length - valid.length
+  // filters, not points: one filter can be drawn more than once (several configurations in one panel)
+  const nOut = useMemo(() => {
+    const out = drawable.filter(isOut), ids = new Set(out.map((p) => p.id ?? p.rec?.id).filter(Boolean))
+    return ids.size + out.filter((p) => !(p.id ?? p.rec?.id)).length
+  }, [drawable, isOut])
   const refit = fit && groupingOverride !== 'none', saved = extraLines.some((l) => l.saved)
   const handNote = nOut <= 0 ? null
     : `${nOut} excluded filter${nOut === 1 ? '' : 's'} (Filters → excluded) ${nOut === 1 ? 'is' : 'are'} ${markMode ? 'drawn as ×' : 'hidden here'}${refit ? ', left out of the refit' : ''}${saved ? '; the saved statistics were computed on the notebook\'s own filters' : ''}.`

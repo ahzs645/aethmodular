@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, type ComponentType, type ReactNode 
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
+import { mediaKey, useEtadByMedia } from '@/lib/etadMedia'
 import { Crossplot, sharedCrossDomains, type CrossPoint } from '@/components/Crossplot'
 import { PanelAxesControl, usePanelAxes } from '@/lib/panelAxes'
 import { collapsePanelAxes, type PanelDim } from '@/lib/axes'
@@ -183,12 +184,16 @@ const facetsOf = (rows: Row[], facet?: string) => (facet ? uniq(rows, facet).map
 function CrossplotFigure({ spec, rows, marked = [] }: { spec: Extract<FigureSpec, { kind: 'crossplot' }>; rows: Row[]; marked?: Row[] }) {
   const color = useColors(spec)
   const groups = spec.color ? uniq(rows, spec.color) : []
+  // a MediaId column joins the gallery's Addis filters through etad_ids.json, so the points follow Filters → excluded
+  const byMedia = useEtadByMedia(spec.idColumn === 'MediaId')
   const toPoints = (rs: Row[]): CrossPoint[] => rs.flatMap((r) => {
     const x = num(r[spec.x]), y = num(r[spec.y])
     if (x == null || y == null) return []
-    const idv = spec.idColumn ? String(r[spec.idColumn]) : undefined
+    const raw = spec.idColumn ? String(r[spec.idColumn]) : undefined
+    const etad = byMedia && raw !== undefined ? byMedia.get(mediaKey(raw)) : undefined
+    const idv = etad ?? raw
     return [{ x, y, color: spec.color ? color(r[spec.color]) : INK.text, id: idv,
-      tip: [...(idv ? [idv] : []), ...(spec.tipColumns ?? (spec.color ? [spec.color] : [])).map((c) => `${c}: ${r[c] ?? '—'}`), `${spec.xLabel}: ${f2(x)}`, `${spec.yLabel}: ${f2(y)}`] }]
+      tip: [...(etad ? [`${etad} · MediaId ${mediaKey(raw)}`] : idv ? [idv] : []), ...(spec.tipColumns ?? (spec.color ? [spec.color] : [])).map((c) => `${c}: ${r[c] ?? '—'}`), `${spec.xLabel}: ${f2(x)}`, `${spec.yLabel}: ${f2(y)}`] }]
   })
   const facets = facetsOf(rows, spec.facet)
   const sameScale = spec.sameScale ?? true
