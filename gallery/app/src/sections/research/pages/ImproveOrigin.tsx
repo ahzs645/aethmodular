@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
@@ -7,7 +8,10 @@ import { fmt } from '@/lib/format'
 import { INK } from '@/lib/theme'
 import type { SectionPageProps } from '../../types'
 import { quantile } from '../common/stats'
-import { DataTable, Grid, SERIES, pText } from '../common/ui'
+import { DataTable, Grid, SERIES, num, pText, useConcRows } from '../common/ui'
+import { ols } from '../common/stats'
+import type { QuantileReference } from '@/lib/referencePopulation'
+import type { FilterRow } from '@/lib/types'
 
 const FTIR26 = 'research/ftir_ec_phase3/ftir_26_improve_hips_origin.ipynb'
 const FTIR37 = 'research/ftir_ec_phase3/ftir_37_hips_loading_and_curvature.ipynb'
@@ -32,8 +36,9 @@ const MODEL_COLOR: Record<string, string> = { linear: INK.fit, quadratic: SERIES
  * gallery/data/export_research_improve_origin.py, which runs the notebooks' own join and analysis code on the
  * Davis data folder.
  */
-export function ImproveOrigin(_props: SectionPageProps) {
+export function ImproveOrigin({ rows: viewRows, meta }: SectionPageProps) {
   const { data, error } = useExport<Origin>('research/improve_origin/origin.json')
+  const rows = useConcRows(viewRows, meta)
   if (error || !data) return (
     <ChartFrame id="io-missing" title="IMPROVE HIPS at EC = 0, and its curvature" provenance={FTIR26}>
       <Empty>{error ? <>Not exported here ({error}). It needs the Davis data folder (FTIR/local_db tables, the SPARTAN HIPS batch); where it is available run <code>{COMMAND}</code>.</> : 'Loading…'}</Empty>
@@ -61,6 +66,8 @@ export function ImproveOrigin(_props: SectionPageProps) {
           { key: 'c', label: '% of Addis C', num: true, value: (r) => fmt(100 * (r.share_of_addis_c ?? NaN), 1) }]} />
         <Note>No fit at all: on the {data.zero_ec.n.toLocaleString()} filters whose TOR EC is ≤ 0, median HIPS Fabs is {fmt(data.zero_ec.median, 2)} Mm⁻¹ (IQR {fmt(data.zero_ec.p25, 2)}–{fmt(data.zero_ec.p75, 2)}) and {fmt(100 * data.zero_ec.negative_share, 1)} % read negative. Only {data.scale.n_at_or_above_c.toLocaleString()} of {data.scale.n.toLocaleString()} IMPROVE filters carry a total Fabs of {c} Mm⁻¹ or more (median {fmt(data.scale.median_fabs, 2)}){data.scale.addis_ols_intercept != null ? `, and ${data.scale.n_at_or_above_addis_ols?.toLocaleString()} reach the gallery's own Addis OLS intercept of ${fmt(data.scale.addis_ols_intercept, 1)} Mm⁻¹` : ''}: an offset that size could not hide in IMPROVE. The per-site median here uses sites with at least 100 filters, so it differs from the notebook's.</Note>
       </ChartFrame>
+
+      <FabsSurvival origin={data} rows={rows} />
 
       <ChartFrame id="io-lambda" title="Whatever the error ratio, OLS is the upper bound — the pooled Deming intercept against λ"
         subtitle="Deming regression of Fabs on TOR EC (EC > 0) with λ = Var(Fabs error) / Var(EC error) from 0.1 to 10⁶. The intercept rises monotonically toward the OLS value, so the OLS column above bounds every errors-in-variables weighting."
@@ -97,5 +104,73 @@ export function ImproveOrigin(_props: SectionPageProps) {
         <Key items={[{ label: 'below the blank R1 range', color: INK.negative, kind: 'line' }, { label: 'outside it, either side', color: INK.muted, kind: 'dash' }]} />
       </ChartFrame>
     </>
+  )
+}
+
+const ADDIS_COLOR = '#F39C12'
+
+/** the share (%) of a quantile table's values at or above v, read between the two quantiles around it; null above the top step */
+function shareAtOrAbove(q: number[], v: number): number | null {
+  const steps = q.length - 1
+  if (v <= q[0]) return 100
+  if (v > q[steps - 1]) return null
+  const i = q.findIndex((x) => x >= v) - 1
+  const frac = q[i + 1] > q[i] ? (v - q[i]) / (q[i + 1] - q[i]) : 0
+  return 100 * (1 - (i + frac) / steps)
+}
+/** the x axis starts here: below it sits the IMPROVE noise floor (Fabs near zero), not the tail this chart is about */
+const X_MIN = 0.05
+/** label the decades only on the log axes */
+const decade = (v: number) => (Math.abs(Math.log10(v) - Math.round(Math.log10(v))) < 1e-6 ? String(+v.toPrecision(1)) : '')
+const shareText = (v: number | null) => (v === null ? '< 0.1 %' : `${fmt(v, v < 1 ? 2 : 1)} %`)
+
+/**
+ * ftir_26 [29B]: how rare a total Fabs of the Addis intercept's size is in IMPROVE. The notebook's curve is the
+ * survival of Fabs over its 160,023 HIPS × TOR bridge filters; the gallery ships the whole IMPROVE network's Fabs as
+ * 1,001 quantiles (improve_reference.json, 388,159 filters), so the curve here is that population down to its 0.1 %
+ * step, with the bridge's own counts (origin.json) as points. The Addis curve, its median and its OLS intercept are
+ * computed from the gallery rows in view.
+ */
+function FabsSurvival({ origin, rows }: { origin: Origin; rows: FilterRow[] }) {
+  const { data: ref, error } = useExport<QuantileReference>('improve_reference.json')
+  const addis = useMemo(() => rows.filter((r) => r.code === 'ETAD' && num(r, 'HIPS Fabs') !== null), [rows])
+  const fabs = useMemo(() => addis.map((r) => num(r, 'HIPS Fabs')!).sort((a, b) => a - b), [addis])
+  const fit = useMemo(() => {
+    const pairs = addis.flatMap((r) => { const ec = num(r, 'EC (FTIR)'), f = num(r, 'HIPS Fabs'); return ec !== null && f !== null ? [[ec, f] as const] : [] })
+    return ols(pairs.map((p) => p[0]), pairs.map((p) => p[1]))
+  }, [addis])
+  const q = ref?.quantiles['HIPS Fabs']?.q
+  if (!q) return (
+    <ChartFrame id="io-survival" title="How rare is the Addis intercept's Fabs in IMPROVE?" provenance={`${FTIR26} (Figure 2B)`}>
+      <Empty>{error ? <>The IMPROVE quantiles (improve_reference.json) are not here: {error}.</> : 'Loading the IMPROVE quantiles…'}</Empty>
+    </ChartFrame>
+  )
+  const c = origin.scale.addis_c, sc = origin.scale
+  const steps = q.length - 1
+  // at or above each quantile; the top entry (the maximum) has nothing above it on a log axis
+  const network = q.slice(0, steps).flatMap((x, i) => (x >= X_MIN ? [{ x, y: 100 * (1 - i / steps), tip: [`Fabs ${fmt(x, 2)} Mm⁻¹`, `${fmt(100 * (1 - i / steps), 1)} % of IMPROVE filters at or above`] }] : []))
+  const site = fabs.flatMap((x, i) => (x > 0 ? [{ x, y: (100 * (fabs.length - i)) / fabs.length, tip: [`Addis Fabs ${fmt(x, 1)} Mm⁻¹`, `${fmt((100 * (fabs.length - i)) / fabs.length, 1)} % of the Addis filters in view at or above`] }] : []))
+  const median = fabs.length ? fabs[Math.floor((fabs.length - 1) / 2)] / 2 + fabs[Math.ceil((fabs.length - 1) / 2)] / 2 : null
+  const bridge = [
+    { x: sc.median_fabs, y: 50, tip: ['ftir_26 bridge median', `Fabs ${fmt(sc.median_fabs, 2)} Mm⁻¹`] },
+    { x: c, y: (100 * sc.n_at_or_above_c) / sc.n, tip: [`ftir_26 bridge: ${sc.n_at_or_above_c} of ${sc.n.toLocaleString()} at or above ${c}`] },
+    ...(sc.addis_ols_intercept != null && sc.n_at_or_above_addis_ols != null ? [{ x: sc.addis_ols_intercept, y: (100 * sc.n_at_or_above_addis_ols) / sc.n,
+      tip: [`ftir_26 bridge: ${sc.n_at_or_above_addis_ols} at or above ${fmt(sc.addis_ols_intercept, 1)}`] }] : []),
+  ]
+  const markers = [{ at: c, label: `Addis C ${c}`, color: ADDIS_COLOR },
+    ...(median !== null ? [{ at: median, label: `Addis median ${fmt(median, 1)}`, color: ADDIS_COLOR }] : []),
+    ...(fit && fit.intercept > 0 ? [{ at: fit.intercept, label: `Addis OLS intercept ${fmt(fit.intercept, 1)}`, color: INK.negative }] : [])]
+  return (
+    <ChartFrame id="io-survival" title={`${c} Mm⁻¹ of total absorption is rare in IMPROVE — the Fabs survival curve against Addis`}
+      subtitle={`Share of filters whose total HIPS Fabs is at or above each value, log–log (x from ${X_MIN} Mm⁻¹; ${fmt(100 * (1 - (q.findIndex((x) => x >= X_MIN)) / steps), 0)} % of IMPROVE filters read more). Grey: every IMPROVE filter in the gallery (${ref!.quantiles['HIPS Fabs'].n.toLocaleString()} at ${ref!.n_sites} sites, ${steps + 1} quantiles, so the curve stops at its 0.1 % step; the maximum is ${fmt(q[steps], 1)} Mm⁻¹). The notebook drew the ${sc.n.toLocaleString()} filters of its HIPS × TOR bridge instead: its counts are the black points (median ${fmt(sc.median_fabs, 2)}; ${sc.n_at_or_above_c} at or above C = ${c}, ${fmt((100 * sc.n_at_or_above_c) / sc.n, 3)} %, 1 in ${Math.round(sc.n / sc.n_at_or_above_c).toLocaleString()}). On the whole network ${shareText(shareAtOrAbove(q, c))} reach C (median ${fmt(q[Math.round(steps / 2)], 2)}): the bridge filters are a little cleaner, the tail the same order. Orange: the ${fabs.length} Addis filters in view, median ${fmt(median, 1)} Mm⁻¹ (ftir_26: 47.11 on every ETAD HIPS row)${fit ? `; their OLS of Fabs on FTIR EC has intercept ${fmt(fit.intercept, 1)} Mm⁻¹ (n = ${fit.n}), which ${shareText(shareAtOrAbove(q, fit.intercept))} of IMPROVE filters reach in total` : ''}. Fabs carries no MAC.`}
+      provenance={<>{FTIR26} (Figure 2B, cell 29). IMPROVE quantiles: <code>improve_reference.json</code>; bridge counts: <code>research/improve_origin/origin.json</code> scale; Addis: the gallery rows in view.</>}>
+      <SweepPlot series={[
+        { id: 'improve', label: 'IMPROVE (all filters, quantiles)', color: INK.muted, points: network, marks: false, width: 2 },
+        { id: 'addis', label: 'Addis filters in view', color: ADDIS_COLOR, points: site, marks: false, curve: 'step' },
+        { id: 'bridge', label: 'ftir_26 bridge counts', color: INK.text, points: bridge, marks: true, width: 0 },
+      ]} xScale="log" yScale="log" xDomain={[X_MIN, Math.max(q[steps - 1], fabs[fabs.length - 1] ?? 0) * 1.15]} yDomain={[0.01, 100]} yFormat={decade}
+        xLabel="Total HIPS Fabs on the filter (Mm⁻¹, log)" yLabel="% of filters at or above (log)" height={320} xMarkers={markers} />
+      <Key items={[{ label: 'IMPROVE, every filter (quantiles)', color: INK.muted, kind: 'line' }, { label: 'Addis filters in view', color: ADDIS_COLOR, kind: 'line' }, { label: 'ftir_26 bridge (160,023 filters): counts', color: INK.text, kind: 'dot' }]} />
+    </ChartFrame>
   )
 }

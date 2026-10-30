@@ -1,5 +1,12 @@
+import { useMemo } from 'react'
+import { useChartOptions } from '@/lib/chartOptions'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Figure } from '@/components/Figure'
-import { type Row } from '@/lib/table'
+import { SweepPlot, histogramSeries } from '@/components/SweepPlot'
+import { fmt } from '@/lib/format'
+import { num, type Row, type Table } from '@/lib/table'
+import { INK } from '@/lib/theme'
+import type { MetaFile } from '@/lib/types'
 import type { SectionPageProps } from '../../types'
 import { SiteSimilarityMatrix } from './SiteSimilarityMatrix'
 import { PageIntro, provenance, rows, useSpectral, Waiting } from './spectralCommon'
@@ -12,7 +19,7 @@ const tag = (list: string, rs: Row[]) => rs.map((r): Row => ({ list, ...r }))
  * each Ethiopian season draws. All tables are the executed notebook's; the site × site matrix is
  * clustered here (lib/cluster) for the dendrogram.
  */
-export function NetworkMap(_props: SectionPageProps) {
+export function NetworkMap({ meta }: SectionPageProps) {
   const { data, error } = useSpectral('network_map')
   if (!data) return <Waiting error={error} />
   const k = rows(data, 'silhouette').reduce((best, r) => (Number(r.silhouette) > Number(best.silhouette) ? r : best), { k: null, silhouette: -1 } as Row)
@@ -56,6 +63,8 @@ export function NetworkMap(_props: SectionPageProps) {
       provenance={provenance(data, ['nearest_sites'])} />
 
     <SiteSimilarityMatrix table={data.tables.site_correlation} provenance={provenance(data, ['site_correlation'], 'Ordering and tree: average linkage on 1 − r, lib/cluster.ts.')} />
+
+    <PairHistogram table={data.tables.site_correlation} meta={meta} provenance={provenance(data, ['site_correlation'], 'Histogram and percentiles computed here from the matrix.')} />
 
     <Figure kind="table" id="network-threshold" data={rows(data, 'threshold_precision')}
       columns={[{ key: 'criterion', label: 'A leave-one-out nearest neighbour…' }, { key: 'base rate', label: 'at any r', format: 'pct' }, { key: 'strictest cutoff', label: 'at the strictest r cutoff', format: 'pct' }]}
@@ -101,4 +110,57 @@ export function NetworkMap(_props: SectionPageProps) {
       title="Part of the seasonal difference is loading — the analogs' EC follows the season's deposit"
       provenance={provenance(data, ['season_loading'])} />
   </>
+}
+
+/** the SPARTAN targets in ftir_52's matrix (leading '*'), by gallery site code for their colours */
+const TARGET_CODE: Record<string, string> = { '*Addis': 'ETAD', '*Bishoftu': 'ETBI', '*Delhi': 'INDH', '*Beijing': 'CHTS', '*JPL': 'USPA', '*Pasadena': 'USPA' }
+/** ftir_52's percentiles of each target's best IMPROVE match among IMPROVE–IMPROVE pairs (cell 19, printed) */
+const NB_PERCENTILE: Record<string, number> = { ETAD: 86, ETBI: 97, INDH: 95, CHTS: 99, USPA: 90 }
+const BINS = 80
+/** the zoomed view's floor: most pairs, and every target's best match, sit above it */
+const ZOOM = 0.95
+
+/**
+ * ftir_52 [19]: how similar IMPROVE sites are to each other (r between site median spectra, every IMPROVE pair once),
+ * with each SPARTAN target's best IMPROVE match marked and placed as a percentile of that distribution. Built here
+ * from the site × site matrix the page already ships.
+ */
+function PairHistogram({ table, meta, provenance: prov }: { table: Table | undefined; meta: MetaFile; provenance: React.ReactNode }) {
+  const o = useChartOptions('network-pairs-hist', [
+    { key: 'range', label: 'Range', default: 'all', choices: [{ value: 'all', label: 'All pairs (as ftir_52)' }, { value: 'top', label: `r ≥ ${ZOOM}` }] },
+  ])
+  const zoom = o.values.range === 'top'
+  const view = useMemo(() => {
+    const cols = table && !Array.isArray(table) ? table as Record<string, unknown[]> : null
+    const names = (cols?.['Unnamed: 0'] ?? []).map(String)
+    // columns by position (SiteSimilarityMatrix: a column may still say Pasadena where its row says JPL)
+    const keys = Object.keys(cols ?? {}).filter((k) => k !== 'Unnamed: 0')
+    if (!cols || names.length < 3 || keys.length !== names.length) return null
+    const r = (i: number, j: number) => num((cols[keys[j]] as unknown[])[i] as number)
+    const imp = names.map((n, i) => [n, i] as const).filter(([n]) => !n.startsWith('*')).map(([, i]) => i)
+    const pairs: number[] = []
+    imp.forEach((a, x) => imp.slice(x + 1).forEach((b) => { const v = r(a, b); if (v != null) pairs.push(v) }))
+    const targets = names.map((n, i) => [n, i] as const).filter(([n]) => n.startsWith('*')).map(([n, i]) => {
+      let best = -Infinity, at = ''
+      for (const j of imp) { const v = r(i, j); if (v != null && v > best) { best = v; at = names[j] } }
+      const code = TARGET_CODE[n] ?? ''
+      return { name: n.slice(1), code, best, at, pct: (100 * pairs.filter((p) => p < best).length) / pairs.length,
+        color: meta.sites.find((s) => s.code === code)?.color ?? (code === 'ETBI' ? '#8e44ad' : INK.text) }
+    })
+    const lo = zoom ? ZOOM : Math.min(...pairs), hi = Math.max(...pairs)
+    const edges = Array.from({ length: BINS + 1 }, (_, i) => lo + ((hi - lo) * i) / BINS)
+    const counts = edges.slice(0, -1).map((e, i) => pairs.filter((p) => p >= e && (i === BINS - 1 ? p <= hi : p < edges[i + 1])).length)
+    return { nSites: imp.length, pairs, edges, counts, targets, below: pairs.filter((p) => p < lo).length }
+  }, [table, meta.sites, zoom])
+  if (!view) return <ChartFrame id="network-pairs-hist" title="How similar IMPROVE sites are to each other" provenance={prov}><Empty>The site × site matrix is not in this export.</Empty></ChartFrame>
+  return (
+    <ChartFrame id="network-pairs-hist" title="How similar IMPROVE sites are to each other — each SPARTAN site's best IMPROVE match placed in that spread"
+      subtitle={`Pearson r between the median spline-baseline spectra of every pair of the ${view.nSites} IMPROVE sites (${view.pairs.length.toLocaleString()} pairs, ${BINS} bins, median ${fmt(view.pairs.slice().sort((a, b) => a - b)[view.pairs.length >> 1], 3)}). Each line is a SPARTAN site's best match among IMPROVE sites: ${view.targets.map((t) => `${t.name} ${fmt(t.best, 4)} (${t.at}), at the ${Math.round(t.pct)}th percentile of IMPROVE–IMPROVE pairs${NB_PERCENTILE[t.code] != null ? ` (ftir_52: ${NB_PERCENTILE[t.code]}th)` : ''}`).join('; ')}. The exported matrix is rounded to four digits, so a percentile can sit one below the notebook's. Even Addis's best match is more similar than most IMPROVE sites are to each other, so being near-identical in this space says little.${zoom ? ` Zoomed to r ≥ ${ZOOM} (${view.below.toLocaleString()} pairs below it are left out of the bins, not of the percentiles).` : ''}`}
+      provenance={prov} controls={o.controls()}>
+      <SweepPlot series={[histogramSeries({ id: 'pairs', label: 'IMPROVE site pairs', color: INK.muted, edges: view.edges, counts: view.counts,
+        tip: (i, c) => [`r ${fmt(view.edges[i], 4)}–${fmt(view.edges[i + 1], 4)}`, `${c} site pairs`] })]}
+        xLabel="Pearson r between two site median spectra" yLabel="IMPROVE site pairs" include={[0]} height={300}
+        xMarkers={view.targets.map((t) => ({ at: t.best, label: `${t.name} ${fmt(t.best, 3)}`, color: t.color }))} />
+    </ChartFrame>
+  )
 }

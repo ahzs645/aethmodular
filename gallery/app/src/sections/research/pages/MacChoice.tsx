@@ -6,7 +6,7 @@ import { FacetGrid } from '@/components/FacetGrid'
 import { Figure } from '@/components/Figure'
 import { Key } from '@/components/Key'
 import { Legend, useLegend } from '@/components/Legend'
-import { SweepPlot } from '@/components/SweepPlot'
+import { SweepPlot, histogramSeries } from '@/components/SweepPlot'
 import { useChartOptions } from '@/lib/chartOptions'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { f2, fmt, signed } from '@/lib/format'
@@ -18,9 +18,11 @@ import type { Estimator } from '@/lib/regressionMethods'
 import { regression } from '@/lib/stats'
 import { num, type Row } from '@/lib/table'
 import { INK } from '@/lib/theme'
-import type { CalibRun, CalibRunsFile } from '@/lib/types'
+import type { CalibRun, CalibRunsFile, FilterRow } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
+import { quantile } from '../common/stats'
+import { BASIS_NOTE, num as rowNum, useConcRows } from '../common/ui'
 import { PageIntro, presetName, provenance, rows, useCalibRuns, useSpectral, Waiting } from './spectralCommon'
 
 const MAC10 = '#2b6cb0', MAC6 = '#c05621'
@@ -43,7 +45,8 @@ interface MacView { targets: string[]; fallback: boolean; set: EvalSet; fits: Es
  * page draws any MAC: the one set under Filters by default. ftir_19's six setups are refitted here from
  * its per-filter table; ftir_16's IMPROVE bridge says which MAC the network supports.
  */
-export function MacChoice({ picked }: SectionPageProps) {
+export function MacChoice({ picked, rows: viewRows, meta }: SectionPageProps) {
+  const concRows = useConcRows(viewRows, meta)
   const { data, error } = useSpectral('mac_choice')
   const { runs, error: runsError } = useCalibRuns()
   const [set, setSet] = useSearchParam<EvalSet>('mac.set', 'fixed', ['fixed', 'all'])
@@ -85,6 +88,8 @@ export function MacChoice({ picked }: SectionPageProps) {
       title="If Addis had Adama's OC/EC — the reconciling MAC would be unphysical"
       subtitle="Per Addis filter, MAC = Fabs × r / OC_ftir for Adama's TOR OC/EC r (5 quartz filters, Jul–Aug 2024). Values near 47 m²/g are far outside any EC MAC (~4–13), so at least one holds: Addis OC/EC is much lower than Adama's, much of Addis Fabs is not EC, or FTIR OC is low at Addis."
       provenance={provenance(data, ['adama_scenarios'])} />
+
+    <ImpliedMac rows={concRows} scenarios={rows(data, 'adama_scenarios')} provenance={provenance(data, ['adama_scenarios'], 'Per-filter MACs computed here from the gallery rows (OC (FTIR), HIPS Fabs) as ftir_16 §3 does.')} />
 
     <Figure kind="table" id="mac-chemspec" data={rows(data, 'chemspec')}
       columns={[{ key: 'n base filters', format: 'int' }, { key: 'r (ChemSpec EC vs Fabs/10)', format: 'f3' }, { key: 'median ChemSpec EC / Fabs', format: 'f3' }, { key: 'implied MAC', label: 'Implied MAC (m²/g)', format: 'f2' }]}
@@ -295,6 +300,56 @@ function SetupsAtMac({ rows: filters, saved, provenance: prov }: { rows: Row[]; 
             include={[0]} reference={o.values.view === 'slope' ? 1 : undefined} height={300}
             xMarkers={[{ at: 6, label: 'MAC 6', color: MAC6 }, { at: 10, label: 'MAC 10', color: MAC10 }, ...(mac !== 6 && mac !== 10 ? [{ at: mac, label: `Filters: ${mac}`, color: INK.text }] : [])]} />}
       {o.values.view !== 'table' && <Key items={setups.map((s) => ({ label: s.name, color: s.color, kind: 'line' as const }))} />}
+    </ChartFrame>
+  )
+}
+
+/** ftir_16's population: the Addis filters its ChemSpec cross-check joined (ChemSpec EC, HIPS Fabs), with FTIR OC */
+type ImpliedSet = 'ftir16' | 'all'
+const plural = (n: number) => `${n} filter${n === 1 ? '' : 's'}`
+
+/**
+ * ftir_16 §3 (cell 7) per filter: if Addis had Adama's TOR OC/EC r, TOR-consistent EC = OC_ftir / r and the MAC that
+ * reconciles HIPS with it is Fabs × r / OC_ftir. Computed here from the gallery's Addis rows (so it follows the
+ * filters, seasons and exclusions in view), for each of the notebook's three Adama ratios, against the reader's MAC.
+ */
+function ImpliedMac({ rows: all, scenarios, provenance: prov }: { rows: FilterRow[]; scenarios: Row[]; provenance: React.ReactNode }) {
+  const { mac } = useMac()
+  const o = useChartOptions('mac-implied', [
+    { key: 'scenario', label: 'Adama OC/EC', default: 'Adama median', choices: scenarios.map((r) => ({ value: String(r.scenario), label: `${String(r.scenario).replace(/ \(.*\)$/, '')} (${f2(r.adama_OC_EC)})` })) },
+    { key: 'set', label: 'Filters', default: 'ftir16', choices: [{ value: 'ftir16', label: 'As ftir_16 (with ChemSpec EC)' }, { value: 'all', label: 'All with OC and Fabs' }] },
+  ])
+  const set = o.values.set as ImpliedSet
+  // ftir_16 joined on its ChemSpec cross-check, so its 175 filters are those with ChemSpec EC too
+  const addis = useMemo(() => all.filter((r) => r.code === 'ETAD' && (rowNum(r, 'OC (FTIR)') ?? 0) > 0 && rowNum(r, 'HIPS Fabs') !== null
+    && (set === 'all' || rowNum(r, 'EC (ChemSpec FTIR)') !== null)), [all, set])
+  const summary = scenarios.map((s) => {
+    const ratio = num(s.adama_OC_EC) ?? NaN
+    const v = addis.map((r) => (rowNum(r, 'HIPS Fabs')! * ratio) / rowNum(r, 'OC (FTIR)')!)
+    return { s, ratio, v, p25: quantile(v, 0.25), median: quantile(v, 0.5), p75: quantile(v, 0.75) }
+  })
+  const chosen = summary.find((x) => String(x.s.scenario) === o.values.scenario) ?? summary[1] ?? summary[0]
+  if (!chosen || addis.length < 5) return (
+    <ChartFrame id="mac-implied" title="Implied MAC per Addis filter" provenance={prov} controls={o.controls()}>
+      <Empty>Fewer than 5 Addis filters in view carry FTIR OC and HIPS Fabs{set === 'ftir16' ? ' (and ChemSpec EC)' : ''}.</Empty>
+    </ChartFrame>
+  )
+  // the notebook's histogram: 40 bins with the values clipped at 80 m²/g
+  const clipped = chosen.v.map((x) => Math.min(x, 80))
+  const lo = Math.min(0, d3.min(clipped)!), edges = d3.range(41).map((i) => lo + ((80 - lo) * i) / 40)
+  const counts = edges.slice(0, -1).map((e, i) => clipped.filter((x) => x >= e && (i === 39 ? x <= edges[40] : x < edges[i + 1])).length)
+  const over = chosen.v.filter((x) => x > 80).length
+  const reader = mac !== 6 && mac !== 10 ? [{ at: mac, label: `Filters: MAC ${mac}`, color: INK.text }] : []
+  const agree = summary.map((x) => `${String(x.s.scenario).replace(/ \(.*\)$/, '')} ${f2(x.median)} (IQR ${f2(x.p25)}–${f2(x.p75)}; ftir_16 ${f2(x.s.implied_MAC_median)}, ${f2(x.s.implied_MAC_p25)}–${f2(x.s.implied_MAC_p75)})`).join('; ')
+  return (
+    <ChartFrame id="mac-implied" title="Implied MAC per Addis filter — under Adama's OC/EC, every filter needs a MAC far above 10"
+      subtitle={`Per Addis filter, MAC = HIPS Fabs × r / FTIR OC for Adama's TOR OC/EC r = ${f2(chosen.ratio)} (ftir_16 §3), ${addis.length} filters in view (${set === 'ftir16' ? 'those ftir_16 joined: with ChemSpec EC, FTIR OC and Fabs' : 'every Addis filter with FTIR OC and Fabs'}); values above 80 m²/g pile into the last bin, as in the notebook. Median (IQR) here, against ftir_16's table on its 175: ${agree}. ${set === 'ftir16' && addis.length === 175 ? 'Same filters, so the same numbers to rounding.' : 'A different set of filters, so the numbers differ.'} The MAC set under Filters (${mac}) is drawn with MAC 6 and 10; the implied MAC does not depend on it.`}
+      provenance={prov} controls={o.controls()}>
+      <SweepPlot series={[histogramSeries({ id: 'implied', label: 'Addis filters', color: MAC10, edges, counts,
+        tip: (i, c) => [`MAC ${fmt(edges[i], 1)}–${fmt(edges[i + 1], 1)}${i === 39 ? ' (and above)' : ''}`, `${c} filters`] })]}
+        xLabel={`Implied MAC (m²/g) under Adama OC/EC ${f2(chosen.ratio)}`} yLabel="Addis filters" include={[0]} height={280}
+        xMarkers={[{ at: 6, label: 'MAC 6', color: MAC6 }, { at: 10, label: 'MAC 10', color: MAC10 }, ...reader]} />
+      <Note>{BASIS_NOTE} {plural(over)} above 80 m²/g {over === 1 ? 'sits' : 'sit'} in the last bin.</Note>
     </ChartFrame>
   )
 }
