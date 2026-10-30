@@ -38,6 +38,7 @@ import { COHORT, CV_PROTOCOL, METRIC, label } from '@/lib/labels'
  */
 import { TEMPLATES, decodeGuardrail, describeGuardrail, encodeGuardrail, evaluateGuardrail, guardFields, guardRows, type Guardrail, type GuardrailSource } from '@/lib/guardrails'
 import { ChartAside } from '@/lib/singleView'
+import { FixedSetNote } from '@/lib/markedRows'
 const GuardrailEditor = lazy(() => import('@/components/GuardrailEditor').then(m => ({ default: m.GuardrailEditor })))
 
 type Kind = 'slope' | 'intercept' | 'other'
@@ -254,6 +255,7 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
         )}
         {tip.node}
       </div>
+      <FixedSetNote what="the explorer's saved readouts on its own test sets" />
     </ChartFrame>
   )
 }

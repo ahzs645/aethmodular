@@ -8,6 +8,7 @@ import { useSearchParam } from '@/lib/url'
 import { INK } from '@/lib/theme'
 import type { CalibFile } from '@/lib/types'
 import { cohortName, foldedPlane, scoreOf, spectraName, W } from './search'
+import { FixedSetNote } from '@/lib/markedRows'
 
 const XMAX = 2, YMAX = 8
 const CONTOURS = [1, 2, 3, 4]
@@ -61,6 +62,7 @@ export function FoldedPlane({ calib, provenance }: { calib: CalibFile; provenanc
         { label: `below the floor (n = ${(pts.length - above).toLocaleString()})`, color: INK.neutral },
         ...stars.map((s) => ({ label: `${s.label} (rule k = ${s.p.r.k})`, color: s.color(), kind: 'hollow' as const })),
         { label: 'objective contours', color: INK.text, kind: 'dash' as const }]} />
+      <FixedSetNote what="the explorer's saved fits of every configuration on its own Addis test set" />
     </ChartFrame>
   )
 }

@@ -13,6 +13,7 @@ import { useFitHeight } from '@/lib/chartFit'
 import { useSearchParam, useTileSetting } from '@/lib/url'
 import { GroupingPicker, useGroupings } from '@/components/GroupingDialog'
 import { applyGrouping } from '@/lib/groupings'
+import { ExcludedNote } from '@/lib/markedRows'
 
 const STATS = ['Median', 'Mean'] as const
 /** what splits a site's bars: its seasons, nothing (one bar per site) or a grouping's bands */
@@ -147,6 +148,7 @@ export function Barplot({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFi
           note={tilt ? 'n per bar is in its tooltip' : 'small numbers under the site names are n per bar'} />}
         {tip.node}
       </div>
+      <ExcludedNote fields={[field]} />
     </ChartFrame>
   )
 }

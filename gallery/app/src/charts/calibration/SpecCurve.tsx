@@ -21,6 +21,7 @@ const GuardrailEditor = lazy(() => import('@/components/GuardrailEditor').then((
 import { useSearchParam } from '@/lib/url'
 import { SpecCurvePlots, type SpecLayout } from './SpecCurvePlots'
 import { ChartAside } from '@/lib/singleView'
+import { FixedSetNote } from '@/lib/markedRows'
 
 /** spec_curve.json, written by gallery/data/export_spec_curve.py */
 export interface SpecCurveFile {
@@ -400,6 +401,7 @@ export function SpecCurve({
           }} /></Suspense>}
         {tip.node}
       </div>
+      <FixedSetNote what="the explorer's saved readouts of every configuration on its own Addis test set" />
     </ChartFrame>
   )
 }

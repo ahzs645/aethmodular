@@ -12,6 +12,7 @@ import { PAPER_ORDER } from '@/lib/pmfPaper'
 import { FONT, INK } from '@/lib/theme'
 import type { PmfFile, PmfRow } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
+import { FixedSetNote } from '@/lib/markedRows'
 
 /** the notebooks' DOMINANCE_THRESHOLDS, in % */
 const THRESHOLDS = [30, 40, 50, 60, 70]
@@ -49,6 +50,7 @@ export function DominanceHistogram({ pmf, rows }: { pmf: PmfFile; rows: PmfRow[]
           render={(p, w) => <DominancePanel days={p.days} counts={p.counts} width={w} axis={p.axis} stacked={colour === 'By dominant source'} sources={labels} />} />
         <Key items={colour === 'By dominant source' ? labels.map((s) => ({ label: s.label, color: s.color, kind: 'square' as const })) : [{ label: 'PMF days', color: INK.accent, kind: 'square' }, { label: 'dominance thresholds', color: INK.negative, kind: 'dash' }]} />
       </>}
+      <FixedSetNote what="the PMF solution's days (the model ran on them)" />
     </ChartFrame>
   )
 }

@@ -8,6 +8,7 @@ import { num } from '@/lib/table'
 import { rows } from '../../common'
 import { Grid } from '../../../research/common/ui'
 import { at, baselinesOf, protocolK, type Data } from './common'
+import { FixedSetNote } from '@/lib/markedRows'
 
 /**
  * Notebook [5]: what the standard IMPROVE validation sees over the same k range. Left, held-out IMPROVE R²
@@ -61,6 +62,7 @@ export function ImproveBlind({ data, provenance }: { data: Data; provenance: Rea
       </Grid>
       <Legend {...lg.props} items={baselines.map((b) => ({ label: b.label, color: b.color, shape: 'line' as const }))}
         note={im.some((r) => num(r.R2_q25) != null) ? 'median and IQR over 100 splits' : 'median over 100 splits, the seven k the notebook displayed'} />
+      <FixedSetNote what="the notebook's saved split medians on IMPROVE and its own Addis filters" />
     </ChartFrame>
   )
 }

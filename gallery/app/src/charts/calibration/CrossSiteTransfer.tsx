@@ -25,6 +25,7 @@ import { fidProps } from '@/lib/filterEdits'
 import { PanelAxesControl, usePanelAxes } from '@/lib/panelAxes'
 import { collapsePanelAxes } from '@/lib/axes'
 import { ChartAside } from '@/lib/singleView'
+import { FixedSetNote } from '@/lib/markedRows'
 
 /** Ethiopian sites first (the calibration's own target, then its neighbour), then the other SPARTAN sites. */
 const SITE_ORDER = ['addis', 'etbi', 'indh', 'chts', 'uspa']
@@ -316,6 +317,7 @@ function SiteMultiples({ runs, siteRuns, mac, at, controls, presetLabel, gallery
         )}
         {tip.node}
       </div>
+      <FixedSetNote what="every filter of the explorer's test set at each site, with its saved fit" />
     </ChartFrame>
   )
 }
@@ -401,6 +403,7 @@ function TransferTable({ runs, siteRuns, mac, at, presetLabel }: { runs: CalibRu
         </table>
       </div>
       <ChartAside><p className="chart-note">Intercept and RMSE are in the reference's units: µg/filter for the IMPROVE row, µg/m³ at the SPARTAN sites. Bold intercepts are below −1 µg/m³; an amber score OOD is above {EXTRAP_FLAG} %.</p></ChartAside>
+      <FixedSetNote what="the explorer's saved fits on its own test sets" />
     </ChartFrame>
   )
 }
@@ -495,6 +498,7 @@ function OrderingAcrossCalibrations({ runs, sites, presetKey, mac, at, onPick }:
         </AxisChoices>
         {tip.node}
       </div>
+      <FixedSetNote what="the explorer's saved fits on its own test sets" />
     </ChartFrame>
   )
 }

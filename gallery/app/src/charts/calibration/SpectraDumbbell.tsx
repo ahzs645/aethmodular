@@ -13,6 +13,7 @@ import { METRICS, SPECTRA_COLOR, cohortColor, fmtFit, isInterceptMetric, isSlope
 import { COHORT, COHORT_SHORT, CV_PROTOCOL, METRIC, PREPROCESSING, SELECTION_SPACE, label as nameOf } from '@/lib/labels'
 import { AxisChoices } from '@/components/AxisChoices'
 import { ChartAside } from '@/lib/singleView'
+import { FixedSetNote } from '@/lib/markedRows'
 
 const ROWSETS = ['Locked cutoffs', 'One cohort, every cutoff'] as const
 const spectraColor = (sp: string) => SPECTRA_COLOR[sp] ?? BASELINE_COLOR[sp] ?? INK.muted
@@ -177,6 +178,7 @@ export function SpectraDumbbell({ calib, selected, onSelect }: { calib: CalibFil
         {nClamped > 0 && <ChartAside><p className="chart-note">{nClamped} extreme readouts (tiny cohorts) are drawn hollow at the edge of the axis.</p></ChartAside>}
         {tip.node}
       </div>
+      <FixedSetNote what="the explorer's saved readouts on its own test sets" />
     </ChartFrame>
   )
 }

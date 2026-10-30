@@ -13,6 +13,7 @@ import { INK } from '@/lib/theme'
 import type { MetaFile, PmfFile, PmfRow } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import instruments from '@/sections/instruments'
+import { ExcludedNote, useExclusionSplit } from '@/lib/markedRows'
 
 const AETH = 'IR BCc (aethalometer)'
 /** the method pairs, minuend first: the notebook's residual is FTIR EC − aethalometer BC */
@@ -33,7 +34,8 @@ interface Day { p: PmfRow; bm: number; res: number; season: string }
  * BC/EC measurements (FTIR EC − aethalometer IR BCc in the notebook) against the biomass share of its PMF solution
  * (Wood Burning + Charcoal, % of the explained sources), with a fit per season (c38's "by Ethiopian season") or a
  * panel per season. The seasons are the Seasons choice in the sidebar (the notebook used the Belg-owns-February
- * calendar); HIPS BC is Fabs ÷ the reader's MAC.
+ * calendar); HIPS BC is Fabs ÷ the reader's MAC. Filters → excluded acts on the days by filter id (lib/markedRows
+ * useExclusionSplit): an excluded filter is out of the points, the fits and the table, and drawn as × under Mark.
  */
 export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: PmfRow[]; meta: MetaFile }) {
   const { data } = useGalleryData()
@@ -48,7 +50,7 @@ export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: Pmf
   const { a, b } = PAIRS[pair]
   const pct = form === 'Percent'
 
-  const days = useMemo<Day[]>(() => {
+  const candidates = useMemo<Day[]>(() => {
     const byId = new Map((data?.filters.rows ?? []).filter((r) => r.code === pmf.site).map((r) => [r.id, r]))
     const aIdx = aeth ? aeth.fields.indexOf(AETH) : -1
     const value = (id: string, f: string): number | null => {
@@ -67,6 +69,8 @@ export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: Pmf
       return [{ p, bm, res: pct ? (100 * d) / va : d, season: p.season }]
     })
   }, [data, aeth, rows, pmf, a, b, pct, mac])
+  const split = useExclusionSplit(candidates, (d) => d.p.id)
+  const days = split.counted
 
   const seasonColor = (s: string, i: number) => meta.seasons.find((x) => x.name === s)?.color ?? d3.schemeTableau10[i % 10]
   const seasons = useMemo(() => [...new Set(days.map((d) => d.season))].sort((x, y) => {
@@ -81,7 +85,8 @@ export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: Pmf
     rec: { id: d.p.id, source: 'PMF sources · residual against biomass', site: pmf.site_name, date: d.p.date, fields: [['biomass (% of sources)', +d.bm.toFixed(2)], [yLabel, +d.res.toFixed(3)], ['season', d.season]] },
   })
   const all = days.map(point)
-  const panels = seasons.map((s) => ({ season: s, points: days.filter((d) => d.season === s).map(point) }))
+  const markedAll = split.marked.map(point)
+  const panels = seasons.map((s) => ({ season: s, points: days.filter((d) => d.season === s).map(point), marked: markedAll.filter((p) => p.season === s) }))
   const shared = sharedCrossDomains(panels.map((p) => p.points), false)
   // per season, the notebook's table: n, R², OLS slope, mean biomass %
   const table = [...panels.map((p) => ({ name: p.season, ds: days.filter((d) => d.season === p.season) })), { name: 'All seasons', ds: days }].map(({ name, ds }) => {
@@ -99,7 +104,7 @@ export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: Pmf
   return (
     <ChartFrame id="pmf-residual-biomass"
       title={`Method difference against the biomass share, by season — ${pair}${pct ? ` as % of ${a}` : ''}, per ${pmf.site_name} PMF day`}
-      subtitle={`Biomass is ${BIOMASS_SOURCES.join(' + ')} as a % of the explained sources (the normalised fractions); each point is one PMF day in view with both measurements (${days.length} of ${rows.length}). ${layout === 'One plot' ? 'One plot with a fit per season, as the notebook drew it' : 'One panel per season, on shared axes'}; lines and table are OLS of the difference on the share, as the notebook fitted them (a trend against a share, so the sidebar's errors-in-variables fits do not apply). Seasons follow the sidebar's Seasons choice (the notebook used the Belg-owns-February calendar). ${hasAeth ? 'IR BCc is the aethalometer averaged over each filter\'s sampling window.' : 'The aethalometer pairs need the Instruments section\'s per-filter export, which this build does not have.'} HIPS BC = HIPS Fabs ÷ MAC ${mac.mac}.`}
+      subtitle={`Biomass is ${BIOMASS_SOURCES.join(' + ')} as a % of the explained sources (the normalised fractions); each point is one PMF day in view with both measurements (${days.length} of ${rows.length}${split.nOut ? `; ${split.nOut} excluded under Filters → excluded` : ''}). ${layout === 'One plot' ? 'One plot with a fit per season, as the notebook drew it' : 'One panel per season, on shared axes'}; lines and table are OLS of the difference on the share, as the notebook fitted them (a trend against a share, so the sidebar's errors-in-variables fits do not apply). Seasons follow the sidebar's Seasons choice (the notebook used the Belg-owns-February calendar). ${hasAeth ? 'IR BCc is the aethalometer averaged over each filter\'s sampling window.' : 'The aethalometer pairs need the Instruments section\'s per-filter export, which this build does not have.'} HIPS BC = HIPS Fabs ÷ MAC ${mac.mac}.`}
       provenance={`research/ftir_hips_chem/ETAD_Factor_Analysis.ipynb c37 (absolute and % residual vs biomass %), c38 (by Ethiopian season) · from pmf.json + filters.json${hasAeth ? ' + aethalometer/filters' : ''}`}
       controls={<>
         <Segmented label="Pair" value={pair} options={pairs} onChange={setPair} title="The two measurements whose difference is plotted (first minus second)" />
@@ -108,10 +113,10 @@ export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: Pmf
       </>}>
       {days.length < 3 ? <Empty>{data ? `Too few PMF days in view with ${a} and ${b} (${days.length}).` : 'Loading the filters…'}</Empty> : <>
         {layout === 'One plot' || seasons.length < 2
-          ? <Crossplot points={all} title={`${pair} against biomass %`} xLabel="Biomass (% of explained sources)" yLabel={yLabel} sameScale={false}
+          ? <Crossplot points={all} marked={markedAll} title={`${pair} against biomass %`} xLabel="Biomass (% of explained sources)" yLabel={yLabel} sameScale={false}
               grouping="none" maxSide={520} background={zero} extraLines={seasons.length > 1 ? seasons.flatMap(olsLine) : olsLine('All seasons')} />
           : <FacetGrid items={panels} minCell={260} maxCols={4} maxCell={380} render={(p, w) => (
-              <Crossplot points={p.points} title={`${p.season} · n = ${p.points.length}`} xLabel="Biomass (% of explained sources)" yLabel={yLabel} sameScale={false}
+              <Crossplot points={p.points} marked={p.marked} title={`${p.season} · n = ${p.points.length}`} xLabel="Biomass (% of explained sources)" yLabel={yLabel} sameScale={false}
                 grouping="none" maxSide={w - 70} domain={shared.domain} yDomain={shared.yDomain} background={zero} extraLines={olsLine(p.season)} />)} />}
         <div style={{ overflowX: 'auto', marginTop: 8 }}>
           <table className="census-table">
@@ -123,6 +128,7 @@ export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: Pmf
           </table>
           <p className="chart-note">OLS of the difference on the biomass share (scipy.stats.linregress, as ETAD_Factor_Analysis printed it); a season with fewer than three days has no fit.</p>
         </div>
+        <ExcludedNote count={split.nOut} drawn />
       </>}
     </ChartFrame>
   )

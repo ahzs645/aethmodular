@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react'
 import { CompositionTreemap } from '@/charts/partOfWhole/CompositionTreemap'
 import { PAPER_CALENDAR, PAPER_ORDER } from '@/lib/pmfPaper'
 import type { FilterRow, MetaFile, PmfFile, PmfRow } from '@/lib/types'
+import { FixedSetNote } from '@/lib/markedRows'
 
 const PAPER = 'Paper (four seasons)'
 
@@ -48,7 +49,8 @@ export function SourceStack({ pmf, rows, meta, id = 'sourcestack', initialGroupi
     return r?.dominant_source ? { label: labelOfKey(r.dominant_source), share: r.dominant_fraction ?? 0 } : null
   }, [byId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return <CompositionTreemap rows={asRows} meta={meta} id={id} species={labels} palette="PMF paper"
+  // the PMF solution is a fixed set of days: Filters → excluded does not act on it (the note sits under the chart)
+  return <><CompositionTreemap rows={asRows} meta={meta} id={id} species={labels} palette="PMF paper"
     initialGrouping={initialGrouping} dominantOf={dominantOf} initialUnits="composition (%)" share={share} massField={null}
     calendars={[{ value: PAPER, seasons: PAPER_CALENDAR, title: "the PMF paper's four seasons (its 2023 dates)" }]} initialCalendar={PAPER}
     itemNoun="sources" totalNoun="apportioned" recordSource="the PMF source stack"
@@ -57,4 +59,5 @@ export function SourceStack({ pmf, rows, meta, id = 'sourcestack', initialGroupi
     title={title}
     subtitle={`${pmf.n} ETAD filters with a PMF solution. Share stacks each filter's normalised source mix to 100 % (the paper's fractions); concentration stacks the K_Fn contributions in µg/m³, so a stack's height is the apportioned mass. Per site and by season draw the mean or median over the filters instead (seasons from the Seasons choice) and count the filters one source dominates above a chosen share. Click a source in the legend to drop it from the stack; shares are then of the sources shown.`}
     provenance="the estate has exactly 1 stacked-area figure in 827 · react-graph-gallery.com/stacked-area-plot · /streamchart · same chart as Part of whole › Stacked bars" />
+    <FixedSetNote what="the PMF solution's days (the model ran on them)" /></>
 }

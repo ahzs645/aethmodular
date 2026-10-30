@@ -9,6 +9,7 @@ import { num, type Row } from '@/lib/table'
 import type { SectionPageProps } from '../../types'
 import { useCalibRuns } from '../../research/pages/spectralCommon'
 import { MlWaiting, PageIntro, provenance, rows, useMl } from '../common'
+import { ExcludedNote, FixedSetNote, useExclusionSplit } from '@/lib/markedRows'
 
 const NOTEBOOKS = 'research/ftir_ec_phase3/ftir_43_residual_learner_null_control, ftir_45_residual_increment_attribution, ftir_46_paired_increment_and_mass (ftir_53 §5 re-draws its mass term)'
 
@@ -39,6 +40,7 @@ const NULL_STAT: Record<string, [string, string]> = {
   folds_d_beats_c: ['Folds won (of 8)', '(d) beats (c)'],
 }
 
+const NO_ROWS: Row[] = []
 const SITE_NAME: Record<string, string> = { addis: 'Addis Ababa', etbi: 'Bishoftu', chts: 'Beijing', indh: 'Delhi', uspa: 'JPL' }
 const CONFIG_COLORS = { 'locked 800 + AIRSpec (rule k)': '#2C6E9E', 'winner 440 + AIRSpec k=8': '#e15759' }
 const SERIES_COLORS = { blocked: '#2C6E9E', forward: '#f28e2b', observed: '#e15759', 'null (median, 5–95 %)': '#7f7f7f', 'null (median to q95)': '#7f7f7f' }
@@ -56,7 +58,8 @@ function ols(x: number[], y: number[]) {
  * ftir_43, ftir_45, ftir_46: does a learner on the calibration residual find anything a no-chemistry null or the
  * metadata do not? Static: the residual learners were fitted on f(X) − Fabs/10, so their R² and RMSE stay at MAC 10.
  * What is exact at the reader's MAC moves: the residual-vs-f(X) panel (rebuilt from calibration_runs.json) and every
- * slope of the residual on mass at fixed f(X) (× 10/MAC).
+ * slope of the residual on mass at fixed f(X) (× 10/MAC). Filters → excluded acts on that panel only (by filter id):
+ * the notebooks' tables are on their own fixed Addis set (FixedSetNote).
  */
 export function Residual(_props: SectionPageProps) {
   const { data, error } = useMl('residual')
@@ -65,8 +68,9 @@ export function Residual(_props: SectionPageProps) {
   const at10 = m.changed ? ' (MAC 10)' : ''
 
   // ftir_43 [8a]: the locked 800 + AIRSpec prediction f(X) against its residual at Addis, from the explorer's readouts
-  // (the same 239 filters and f(X): it reproduces the notebook's b = 0.802·f(X) + 2.851 at MAC 10)
-  const live = useMemo(() => {
+  // (the same 239 filters and f(X): with every filter counted it reproduces the notebook's b = 0.802·f(X) + 2.851 at
+  // MAC 10). Filters → excluded splits them by id: the fit is on the counted ones, the rest are × under Mark.
+  const all = useMemo(() => {
     const run = runs?.runs.find((r) => r.preset === 'ocec800_airspec' && r.target === 'addis')
     if (!run) return null
     const pts: Row[] = []
@@ -75,9 +79,15 @@ export function Residual(_props: SectionPageProps) {
       if (b == null || !Number.isFinite(f)) return
       pts.push({ id: run.eval.id[i], season: run.eval.group[i], date: run.eval.date?.[i] ?? null, f, r: f - b, b })
     })
-    const fit = ols(pts.map((p) => p.f as number), pts.map((p) => p.b as number))
-    return { pts, fit }
+    return pts
   }, [runs, m])
+  const split = useExclusionSplit(all ?? NO_ROWS, (p) => (p.id == null ? null : String(p.id)))
+  const live = useMemo(() => {
+    if (!all) return null
+    const pts = split.counted
+    const fit = ols(pts.map((p) => p.f as number), pts.map((p) => p.b as number))
+    return { pts, fit, marked: split.marked, nOut: split.nOut, nAll: all.length }
+  }, [all, split])
 
   if (!data) return <MlWaiting error={error} what="the residual-learner export" />
 
@@ -130,10 +140,11 @@ export function Residual(_props: SectionPageProps) {
 
   return <>
     <PageIntro id="ml-residual-intro" title="Residual learners and null controls — the spectra beat a no-chemistry null, not the metadata; the lead is mass" data={data} notebooks={NOTEBOOKS}>
+      <FixedSetNote what="the notebooks' tables, on their own fixed Addis filters (the f(X) panel, rebuilt live, follows the switch)" />
       <p>A recurring proposal reads a model that predicts the FTIR − HIPS residual from the spectra as evidence of a missing absorber. The residual is r = f(X) − Fabs/MAC, and f(X) is itself a function of the spectra, so a learner can predict part of r by rebuilding f(X), with no chemistry at all. These notebooks run the controls on identical time-blocked folds (eight contiguous date blocks, so seasonal structure cannot leak). Nothing here is refitted: the learners were fitted on residuals at MAC 10 and their R² and RMSE are drawn as the notebooks printed them{m.changed ? <>, labelled MAC 10 while the reader's MAC is {m.mac}</> : ''}. Mass slopes of the residual at fixed f(X) follow the MAC exactly (× 10/MAC).</p>
     </PageIntro>
 
-    {live && <ResidualVsFx pts={live.pts} slope={live.fit.slope} intercept={live.fit.intercept} mac={m.mac} changed={m.changed} relation={relation}
+    {live && <ResidualVsFx pts={live.pts} marked={live.marked} nOut={live.nOut} nAll={live.nAll} slope={live.fit.slope} intercept={live.fit.intercept} mac={m.mac} changed={m.changed} relation={relation}
       provenance={<>Rebuilt live from <code>calibration_runs.json</code> (preset ocec800_airspec at Addis: the notebook's f(X), max |Δ| 5e-6 µg/m³ per ftir_46); follows the MAC. The notebook's relation: {provenance(data, ['null_relation'])}</>} />}
 
     <Figure kind="intervals" id="ml-residual-models" data={models} row="model"
@@ -224,19 +235,21 @@ const NULL_LINE = '#b03a8c'
  * r = (1 − a)·f(X) − c from the OLS of HIPS/MAC on f(X). Drawn with that saved line rather than the reader's refit
  * estimators (a Deming refit of r on f(X) would answer another question).
  */
-function ResidualVsFx({ pts, slope, intercept, mac, changed, relation, provenance }: {
-  pts: Row[]; slope: number; intercept: number; mac: number; changed: boolean; relation?: Row; provenance: React.ReactNode
+function ResidualVsFx({ pts, marked, nOut, nAll, slope, intercept, mac, changed, relation, provenance }: {
+  pts: Row[]; marked: Row[]; nOut: number; nAll: number; slope: number; intercept: number; mac: number; changed: boolean; relation?: Row; provenance: React.ReactNode
 }) {
-  const points: CrossPoint[] = pts.map((p) => ({ x: p.f as number, y: p.r as number, id: String(p.id), color: SEASON_COLORS[String(p.season)] ?? '#7f7f7f', season: String(p.season),
-    tip: [String(p.id), `${p.season} · ${p.date ?? ''}`, `f(X): ${f2(p.f)} µg/m³`, `residual: ${f2(p.r)} µg/m³`] }))
+  const toPoint = (p: Row): CrossPoint => ({ x: p.f as number, y: p.r as number, id: String(p.id), color: SEASON_COLORS[String(p.season)] ?? '#7f7f7f', season: String(p.season),
+    tip: [String(p.id), `${p.season} · ${p.date ?? ''}`, `f(X): ${f2(p.f)} µg/m³`, `residual: ${f2(p.r)} µg/m³`] })
+  const points = pts.map(toPoint)
   const a1 = 1 - slope
   return (
     <ChartFrame id="ml-residual-fx" title={`The residual tracks f(X) by construction: its ${a1.toFixed(2)}·f(X) slope needs no chemistry (ftir_43)`}
-      subtitle={`The 239 Addis filters. HIPS/${mac} = ${slope.toFixed(3)}·f(X) + ${intercept.toFixed(3)} (OLS)${changed && relation ? `; the notebook's, at MAC 10: ${f2(relation.a)}·f(X) + ${f2(relation.c)}` : ''}. So even if the two methods disagree only proportionally, r = ${a1.toFixed(3)}·f(X) − ${intercept.toFixed(3)} − ε: the dashed line. A residual learner that reaches it has learned f(X), not a new absorber.`}
+      subtitle={`The ${pts.length} Addis filters${nOut ? ` (${nOut} of the notebook's ${nAll} excluded under Filters → excluded)` : ''}. HIPS/${mac} = ${slope.toFixed(3)}·f(X) + ${intercept.toFixed(3)} (OLS)${(changed || nOut > 0) && relation ? `; the notebook's, on all ${nAll} at MAC 10: ${f2(relation.a)}·f(X) + ${f2(relation.c)}` : ''}. So even if the two methods disagree only proportionally, r = ${a1.toFixed(3)}·f(X) − ${intercept.toFixed(3)} − ε: the dashed line. A residual learner that reaches it has learned f(X), not a new absorber.`}
       provenance={provenance}>
-      <Crossplot title="" points={points} fit={false} sameScale={false} maxSide={460} grouping="none"
+      <Crossplot title="" points={points} marked={marked.map(toPoint)} fit={false} sameScale={false} maxSide={460} grouping="none"
         xLabel="f(X), locked 800 + AIRSpec prediction (µg/m³)" yLabel={`Residual f(X) − Fabs/${mac} (µg/m³)`}
         extraLines={[{ slope: a1, intercept: -intercept, color: NULL_LINE, label: 'proportional-disagreement null', dash: '6 4', method: 'ols', stats: null }]} />
+      <ExcludedNote count={nOut} drawn />
       <Key items={[...Object.entries(SEASON_COLORS).map(([label, color]) => ({ label, color })), { label: `null line r = ${a1.toFixed(3)}·f(X) − ${intercept.toFixed(3)}`, color: NULL_LINE, kind: 'dash' as const }]} />
     </ChartFrame>
   )

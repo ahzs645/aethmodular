@@ -11,6 +11,7 @@ import { num, type Row } from '@/lib/table'
 import { rows } from '../../common'
 import { Grid } from '../../../research/common/ui'
 import { GROUPS, SEASON_COLOR, SUBSET_COLOR, SUBSET_SHORT, baselinesOf, sharedDomain, type Data } from './common'
+import { FixedSetNote } from '@/lib/markedRows'
 
 const ADDIS = 'Addis (vs Fabs/MAC)'
 
@@ -118,6 +119,7 @@ export function SmokeCheck({ data, provenance }: { data: Data; provenance: React
         ...GROUPS.filter((g) => g !== 'All Addis' && addisRel.some((r) => r.set === g)).map((g) => ({ label: shortSeason(g), color: SEASON_COLOR[g], shape: 'line' as const })),
         ...subsetNames.map((s) => ({ label: label(s), color: SUBSET_COLOR[s] ?? INK.axis, shape: 'line' as const })),
       ]} note="dashed: the subset's TOR-vs-HIPS line" />
+      <FixedSetNote what="the notebook's saved curves on IMPROVE subsets and its own Addis filters" />
     </ChartFrame>
   )
 }

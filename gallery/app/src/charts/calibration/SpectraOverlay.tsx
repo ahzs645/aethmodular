@@ -4,6 +4,7 @@ import { Legend, useLegend } from '@/components/Legend'
 import { SpectrumPlot } from '@/components/SpectrumPlot'
 import { INK } from '@/lib/theme'
 import { PREPROCESSING, label } from '@/lib/labels'
+import { FixedSetNote } from '@/lib/markedRows'
 
 const MARKS = [{ wn: 1600, label: '~1600 aromatic / carboxylate' }, { wn: 2920, label: 'C–H stretch' }, { wn: 1720, label: 'C=O' }]
 
@@ -26,7 +27,7 @@ export interface SpectrumSeries {
  * the two disagree about what the ~1600 cm⁻¹ Addis band even looks like.
  */
 export function SpectraOverlay({
-  id, title, subtitle, provenance, bySpace, defaultSpace = 'raw',
+  id, title, subtitle, provenance, bySpace, defaultSpace = 'raw', fixedSet,
 }: {
   id: string
   title: string
@@ -35,6 +36,8 @@ export function SpectraOverlay({
   /** series per spectra space; an empty record renders an empty state */
   bySpace: Record<string, SpectrumSeries[]>
   defaultSpace?: string
+  /** the saved filter set the medians describe, for the FixedSetNote (Filters → excluded does not act on it) */
+  fixedSet?: string
 }) {
   const spaces = Object.keys(bySpace)
   const [space, setSpace] = useState(spaces.includes(defaultSpace) ? defaultSpace : spaces[0] ?? '')
@@ -65,6 +68,7 @@ export function SpectraOverlay({
             markers={MARKS.map((m) => ({ at: m.wn, label: m.label, color: INK.muted }))} />
         )}
         <Legend items={(bySpace[space] ?? []).map((s) => ({ label: s.label, color: s.color, shape: s.dash ? ('dashed' as const) : ('line' as const) }))} {...legendProps} />
+        {fixedSet && <FixedSetNote what={fixedSet} />}
       </div>
     </ChartFrame>
   )

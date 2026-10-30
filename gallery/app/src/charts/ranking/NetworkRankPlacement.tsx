@@ -14,6 +14,7 @@ import { useMac } from '@/lib/mac'
 import { groupQuantiles, placeAmong, rankedReference, referenceQuantity, type Population, type RankedSite, type ReferenceFile } from '@/lib/referenceRank'
 import { FONT, IMPROVE_GREY, INK, MARGIN, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { ExcludedNote } from '@/lib/markedRows'
 
 const FILE = 'improve_site_quantiles.json'
 const REF = 'IMPROVE sites'
@@ -171,6 +172,7 @@ export function NetworkRankPlacement({ rows, meta, field }: { rows: FilterRow[];
         )}
         {tip.node}
       </div>
+      <ExcludedNote fields={[field]} />
     </ChartFrame>
   )
 }

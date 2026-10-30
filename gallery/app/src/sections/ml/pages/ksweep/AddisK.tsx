@@ -10,6 +10,7 @@ import { shortSeason } from '@/lib/seasons'
 import { num } from '@/lib/table'
 import { rows } from '../../common'
 import { GROUPS, baselinesOf, protocolK, sharedDomain, type Data } from './common'
+import { FixedSetNote } from '@/lib/markedRows'
 
 /**
  * The Addis line against the number of PLS components k, one panel per Addis group and one line per
@@ -60,6 +61,7 @@ export function AddisK({ data, cohort, id, title, subtitle, provenance }: {
           xLabel="PLS components k" yLabel={yLabel} reference={show === 'slope' ? 1 : 0} yDomain={yDomain} dim={lg.dim} />} />
       <Legend {...lg.props} items={baselines.map((b) => ({ label: b.label, color: b.color, shape: 'line' as const }))}
         note={all.some((r) => num(r.intercept_q25) != null) ? 'median and IQR over 100 splits; ringed: the protocol k' : 'median over 100 splits (the notebook displayed seven k); ringed: the protocol k'} />
+      <FixedSetNote what="the notebook's saved split medians on its own Addis filters" />
     </ChartFrame>
   )
 }

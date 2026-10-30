@@ -11,6 +11,7 @@ import { fmt } from '@/lib/stats'
 import { INK, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
+import { ExcludedNote } from '@/lib/markedRows'
 
 const COLOR_BY = ['Site', 'Season'] as const
 /** an axis needs this many numeric values before it earns a column */
@@ -359,6 +360,7 @@ export function ParallelCoordinates({ rows, meta }: { rows: FilterRow[]; meta: M
           {nClamped} value{nClamped === 1 ? '' : 's'} {normalise ? 'beyond the 98th percentile (or below zero)' : 'outside the 2–98 % axis range'} {nClamped === 1 ? 'is' : 'are'} drawn at the axis end rather than dropped.
         </Note>
       )}
+      <ExcludedNote />
     </ChartFrame>
   )
 }

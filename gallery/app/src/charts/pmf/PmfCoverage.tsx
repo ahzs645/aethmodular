@@ -11,6 +11,7 @@ import { FONT, INK } from '@/lib/theme'
 import type { FilterRow, MetaFile, PmfFile, PmfRow } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import { HIDDEN_DUPLICATES } from '@/fieldLineage'
+import { FixedSetNote } from '@/lib/markedRows'
 
 type Status = 'shown' | 'hidden' | 'none'
 const NO_PMF_COLOR = '#bbbbbb'
@@ -100,6 +101,7 @@ export function PmfCoverage({ pmf, rows, meta }: { pmf: PmfFile; rows: PmfRow[];
         </>}
         {tip.node}
       </div>
+      <FixedSetNote what="every filter of the PMF site and the PMF solution's days" />
     </ChartFrame>
   )
 }

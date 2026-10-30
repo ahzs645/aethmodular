@@ -8,6 +8,7 @@ import { fmt } from '@/lib/stats'
 import { INK, FONT } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
+import { ExcludedNote } from '@/lib/markedRows'
 
 const NORMS = ['÷ max site median', '÷ pooled median'] as const
 
@@ -167,6 +168,7 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
         {tip.node}
       </div>
       <Legend items={sites.map((s) => ({ label: s.name, color: s.color }))} {...legendProps} />
+      <ExcludedNote />
     </ChartFrame>
   )
 }

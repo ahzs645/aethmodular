@@ -15,6 +15,7 @@ import { regression, spearman, fmt, type RegressionStats } from '@/lib/stats'
 import { INK, MARGIN, FONT } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
+import { ExcludedNote } from '@/lib/markedRows'
 
 const SAME = 'same product (unit conversion or public FTIR report)'
 const kindOf = (d: { r: number; trivial: boolean }) => (d.trivial ? SAME : d.r >= 0 ? 'positive r' : 'negative r')
@@ -315,6 +316,7 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
         />
         {tip.node}
       </div>
+      <ExcludedNote fields={[target]} />
     </ChartFrame>
   )
 }

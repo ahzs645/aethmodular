@@ -9,6 +9,7 @@ import { useFitHeight } from '@/lib/chartFit'
 import { fmt } from '@/lib/format'
 import { INK, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { ExcludedNote } from '@/lib/markedRows'
 
 const MIN_N = 3
 
@@ -79,6 +80,7 @@ export function SiteRank({ rows, meta, field, onOpenSite }: { rows: FilterRow[];
         )}
         {tip.node}
       </div>
+      <ExcludedNote fields={[field]} />
     </ChartFrame>
   )
 }

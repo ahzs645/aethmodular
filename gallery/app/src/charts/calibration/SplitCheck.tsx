@@ -14,6 +14,7 @@ import type { CalibRun, CalibRunsFile } from '@/lib/types'
 import { metricRowAt } from './common'
 import { useMac } from '@/lib/mac'
 import { ChartAside } from '@/lib/singleView'
+import { FixedSetNote } from '@/lib/markedRows'
 
 const SPLIT_LABEL: Record<string, string> = { all: 'all filters', early: 'early half', late: 'late half', odd: 'odd half', even: 'even half' }
 const SPLIT_COLOR: Record<string, string> = { get all() { return INK.text }, early: '#E67E22', late: '#3498DB', odd: '#27AE60', even: '#8e44ad' }
@@ -98,6 +99,7 @@ export function SplitCheck({ run, runs }: { run: CalibRun; runs: CalibRunsFile }
         </p></ChartAside>
         {tip.node}
       </div>
+      <FixedSetNote what="the explorer's saved fits on the halves of its own test set" />
     </ChartFrame>
   )
 }

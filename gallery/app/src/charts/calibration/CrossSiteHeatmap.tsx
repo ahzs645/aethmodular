@@ -9,6 +9,7 @@ import type { CalibFile, CalibRow } from '@/lib/types'
 import { configKey, fmtFit, passes, sameConfig, score, shortConfig, type Config } from './common'
 import { METRIC } from '@/lib/labels'
 import { useColourScheme } from '@/lib/colourSchemes'
+import { FixedSetNote } from '@/lib/markedRows'
 
 const CELLS = ['Deming intercept', 'Deming slope', 'R²'] as const
 type Cell = (typeof CELLS)[number]
@@ -149,6 +150,7 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
         </div>
         {tip.node}
       </div>
+      <FixedSetNote what="the explorer's saved readouts at every site, on its own test sets" />
     </ChartFrame>
   )
 }

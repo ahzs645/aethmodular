@@ -5,6 +5,7 @@ import { num, type Row } from '@/lib/table'
 import { useCalibRuns } from '../../research/pages/spectralCommon'
 import type { SectionPageProps } from '../../types'
 import { MlWaiting, PageIntro, provenance, rows, useMl } from '../common'
+import { ExcludedNote, FixedSetNote, useExclusionSplit } from '@/lib/markedRows'
 import { addisMoments, PROTOCOL_COLOR, protocolOf, ruleRows, seasonFabs, useCalib } from './components/calib'
 
 const SHORT: Record<string, string> = { site_heldout: 'site-held-out', app: 'Calibration app' }
@@ -22,6 +23,8 @@ const kOf = (label: unknown) => Number(/k=(\d+)/.exec(String(label))?.[1] ?? NaN
  * against HIPS follow the MAC set under Filters → units (slope × MAC/10); RMSE follows it through the evaluation
  * set's HIPS BC mean and variance, which calibration_runs.json's per-filter Fabs give exactly (lib/mac rmseAtMac);
  * intercepts do not move. A residual correlation or spread needs the per-filter residuals and stays at MAC 10.
+ * Filters → excluded acts on the AIRSpec crossplot only (its per-filter predictions, by filter id); the tables are
+ * the notebooks' on their fixed Addis sets (FixedSetNote in the intro).
  */
 export function Protocols(_props: SectionPageProps) {
   const { data, error } = useMl('protocols')
@@ -43,6 +46,9 @@ export function Protocols(_props: SectionPageProps) {
 
   // explorer: every cohort × spectra under the three protocols, at the rule k (calibration.json grid)
   const strip = useMemo(() => (calib ? ruleRows(calib) : []), [calib])
+  // ftir_13 [17]'s per-filter predictions, split by Filters → excluded (ExternalFilterId "ETAD-0017-1" → "ETAD-0017")
+  const airspecRows = useMemo(() => (data ? rows(data, 'airspec_filters') : []), [data])
+  const airspecSplit = useExclusionSplit(airspecRows, (r) => String(r.ExternalFilterId).replace(/-\d+$/, ''))
   const stripAt = strip.map((r): Row => ({ ...r, slope: m.slope(num(r.slope10), 10), rmseAt: rmseAt(r.slope10, r.intercept, r.rmse) }))
 
   if (!data) return <MlWaiting error={error} what="the protocol tables" />
@@ -110,7 +116,7 @@ export function Protocols(_props: SectionPageProps) {
   const COLS: [string, string, string][] = [['lowest-OCEC 800, AIRSpec df1=6', 'Lowest-OC/EC (800)', 'df1 = 6'], ['Smoke 906, AIRSpec df1=6', 'Biomass-smoke (906)', 'df1 = 6'],
     ['lowest-OCEC 800, AIRSpec df1=8', 'Lowest-OC/EC (800)', 'df1 = 8'], ['Smoke 906, AIRSpec df1=8', 'Biomass-smoke (906)', 'df1 = 8']]
   const sets = fixedIds ? ['fixed 190 (as drawn)', 'all 239'] : ['all 239']
-  const airspec = rows(data, 'airspec_filters').flatMap((r) => {
+  const airspec = airspecSplit.counted.flatMap((r) => {
     const fabs = num(r.Fabs), id = String(r.ExternalFilterId), base = id.replace(/-\d+$/, '')
     if (fabs == null) return []
     return COLS.flatMap(([col, calibration, baseline]) => sets.filter((s) => s === 'all 239' || fixedIds?.has(base))
@@ -127,6 +133,7 @@ export function Protocols(_props: SectionPageProps) {
         Drawn elsewhere: the cohort-size sweep at every N under each protocol (<a href="#tab=calibration">Calibration tab</a>), the MAC pivot
         (ftir_22 [18]; <a href="#tab=research&amp;aep=mac-choice">MAC 6 vs 10</a>), ftir_51's protocol swing (<a href="#tab=research&amp;aep=generalise">Does it generalise</a>)
         and the provisional offset's bootstrap (<a href="#tab=research&amp;aep=provisional-ec">Provisional Addis EC</a>).</p>
+      <FixedSetNote what="the notebooks' tables, on their own fixed Addis filters (the AIRSpec crossplot, drawn per filter, follows the switch)" />
     </PageIntro>
 
     {stripAt.length > 0 && <Figure kind="intervals" id="ml-protocols-strip" data={stripAt} row="cohort" series="protocol" colors={PROTOCOL_COLOR}
@@ -218,6 +225,7 @@ export function Protocols(_props: SectionPageProps) {
       title="AIRSpec crossplots (ftir_13 [17]) — on AIRSpec spectra both calibrations flatten at Addis; the Smoke-906 model reads nearly flat"
       subtitle={`Each Addis filter's prediction from the AIRSpec-corrected Lowest-OC/EC (800) and Biomass-smoke (906) calibrations against HIPS Fabs/${m.mac}; the fit line is the gallery's estimator. The OC/EC panel is the Calibration tab's ocec800_airspec preset; the Smoke-906 panel is in no other export. df1 = 8 changes nothing visible. The fixed 190 are the filters the notebook drew (they need calibration_runs.json; all 239 otherwise).`}
       provenance={provenance(data, ['airspec_filters'])} />}
+    {airspec.length > 0 && <ExcludedNote count={airspecSplit.nOut} />}
 
     <Figure kind="table" id="ml-protocols-index" data={rows(data, 'figure_index')}
       columns={[{ key: 'notebook', label: 'Notebook' }, { key: 'original figure', label: 'Original figure' }, { key: 'sensitivity', label: 'Depends on k?' }, { key: 'updated version', label: 'Protocol-checked version' }]}

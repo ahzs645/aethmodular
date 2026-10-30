@@ -6,12 +6,19 @@ import { seasonalComposition, type CompositionCalendar } from '@/lib/seasonalCom
 import { fmt } from '@/lib/stats'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { ChartAside } from '@/lib/singleView'
+import { ExcludedNote } from '@/lib/markedRows'
+import { usePresentation } from '@/lib/presentation'
+
+const IS_ADDIS = (r: FilterRow) => r.site === 'Addis Ababa'
 
 const CALENDARS = ['Addis local (Belg Feb–May)', 'Meeting bins (Dry Oct–Feb)'] as const
 
 export function SeasonalComposition({ rows, meta }: { rows: FilterRow[]; meta?: MetaFile }) {
   const [calendar, setCalendar] = useState<CompositionCalendar>('local')
   const composition = useMemo(() => meta ? seasonalComposition(rows, meta, calendar) : null, [rows, meta, calendar])
+  // Filters → excluded: Mark says how many excluded Addis filters the stacks leave out, while the meeting page explores
+  // (as presented it is exactly as exported: lib/presentation)
+  const exploring = usePresentation() === 'exploring'
   if (!composition) return <ChartFrame title="Addis seasonal chemistry" id="meeting-seasonal-composition" exportable={false}>
     <Empty>Gallery chemistry metadata is unavailable.</Empty>
   </ChartFrame>
@@ -25,6 +32,7 @@ export function SeasonalComposition({ rows, meta }: { rows: FilterRow[]; meta?: 
       stackedOnly initialGrouping="by season" id="meeting-seasonal-composition" title="Addis seasonal chemistry — concentrations and percentages"
       notes={<>
         <ChartAside><p className="chart-note"><strong>{calendar === 'local' ? 'Addis local calendar (belg_feb): Bega Oct–Jan, Belg Feb–May, Kiremt Jun–Sep.' : 'Meeting month bins (dry_feb): Dry Oct–Feb, Belg Mar–May, Kiremt Jun–Sep.'}</strong> The frozen calibration charts elsewhere on this page retain dry_feb. February changes groups when you change this control; these month bins do not measure weather conditions.</p></ChartAside>
+        {exploring && <ExcludedNote of={IS_ADDIS} />}
         <ChartAside><p className="chart-note">These are existing SPARTAN filter chemistry records after exclusions, not the new-prediction test set. Carbon uses EC and OC from the existing FTIR product once. Duplicate ChemSpec carbon, optical HIPS BC, organic matter and functional groups are not extra slices.</p></ChartAside>
         <ChartAside><p className="chart-note">Start with concentration to compare absolute seasonal amounts, then switch to composition (%) to compare relative shares. Percentages sum the positive visible species means (or medians), not measured PM2.5; hiding a legend item recalculates that total. Available species can use different filters, so these stacks are descriptive rather than matched-filter mass closure. Missing species are absent, not zero. Signed observations remain in the statistics; non-positive aggregate values have no positive slice.</p></ChartAside>
         <table className="census-table">

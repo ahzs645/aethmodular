@@ -19,6 +19,8 @@ import { useSearchParam } from '@/lib/url'
 import type { CalibRun, CalibRunsFile, FilterRow, MetaFile } from '@/lib/types'
 import { deployedEC, groupColorFn, presetName, useNetworkRows } from './common'
 import { useFitHeight } from '@/lib/chartFit'
+import { ExcludedNote, useExclusionSplit, useMarkReason, type MarkPoint } from '@/lib/markedRows'
+import { markTip } from '@/lib/exclusionMode'
 
 const XMODES = ['reference', 'deployed EC'] as const
 const SETS = ['fixed', 'all'] as const
@@ -41,6 +43,10 @@ const REF = 'Crossplot x (reference)', PRED = 'Predicted FTIR EC', RESID = 'Resi
  * (click its title) can be the predicted EC, the residual, or any gallery measurement, ratio or
  * weather field of the same filter (residual against iron, against EC / PM2.5 …), from
  * `galleryRows` under the gallery's view.
+ *
+ * Filters → excluded acts on the explorer's filters by id (lib/markedRows useExclusionSplit): a filter the gallery
+ * excludes (the export's list or by hand) is left out of both panels and the refit, and drawn as × under Mark. The
+ * explorer's saved metrics are not drawn here, so nothing on this chart keeps the explorer's full set.
  */
 export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, galleryRows = [], sourceRows, galleryMeta }: {
   run: CalibRun; runs: CalibRunsFile; meta: MetaFile; knownIds: Set<string>; lambda10?: number
@@ -80,7 +86,7 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
       when: (c) => !!c.isFabs && c.x !== 'deployed EC', title: 'Filters: the MAC set under Filters → units; or one the explorer saved fits at' },
     // only groups that are not seasons take the set's colours: no picker when every group is a season
     { key: 'colours', node: () => groupColours.others.length > 0 ? colours.picker : null },
-    { key: 'n', node: () => <span className="control">n = {pts.length}{run.extrap_pct !== null ? ` · score OOD ${run.extrap_pct}%` : ''}{run.q_residual_pct !== null ? ` · Q OOD ${run.q_residual_pct}%` : ''}</span> },
+    { key: 'n', node: () => <span className="control">n = {pts.length}{split.nOut ? ` (${split.nOut} excluded)` : ''}{run.extrap_pct !== null ? ` · score OOD ${run.extrap_pct}%` : ''}{run.q_residual_pct !== null ? ` · Q OOD ${run.q_residual_pct}%` : ''}</span> },
   ], { hasDeployed, hasFixed, isFabs })
   const xmode = o.values.x as (typeof XMODES)[number]
   const evalSet = o.values.set as (typeof SETS)[number]
@@ -90,7 +96,8 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
   const groupColours = useMemo(() => groupColorFn(meta, run.eval.group, colours.name, colours.reverse), [meta, run.eval.group, colours.name, colours.reverse])
   const color = groupColours.color
 
-  const pts = useMemo(() => {
+  // every filter the options keep; Filters → excluded then splits them into the counted and, under Mark, the ×
+  const candidates = useMemo(() => {
     const e = run.eval
     const out: { i: number; x: number; y: number; g: string; id: string | null; fixed: boolean }[] = []
     for (let i = 0; i < e.pred.length; i++) {
@@ -102,6 +109,9 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
     }
     return out
   }, [run.eval, evalSet, hasFixed, hidden, useDeployed, isFabs, mac, sourceById, network]) // eslint-disable-line react-hooks/exhaustive-deps
+  const split = useExclusionSplit(candidates, (p) => p.id)
+  const pts = split.counted
+  const reasonOf = useMarkReason()
 
 
   // the two square panels (crossplot, residuals) side by side or stacked; in a fitted tile, whichever
@@ -182,6 +192,18 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
   // neither panel redraws its dots on a hover or a tooltip
   const crossPoints = useMemo(() => pts.map((p) => ({ x: p.x, y: p.y, color: color(p.g), opacity: dim(p.g), id: p.id ?? undefined, tip: tipLines(p), rec: record(p) })),
     [pts, color, legendHover, xLabel, target, runs.presets, run.preset]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Mark: the excluded filters as × on both panels, never in the refit, the ranges or n
+  const crossMarked = useMemo(() => split.marked.map((p) => ({ x: p.x, y: p.y, color: color(p.g), id: p.id ?? undefined, tip: tipLines(p) })),
+    [split.marked, color, xLabel, target]) // eslint-disable-line react-hooks/exhaustive-deps
+  const exMarks = useMemo<MarkPoint[]>(() => {
+    const [x0, x1] = ex.domain(), [y0, y1] = ey.domain()
+    return split.marked.flatMap((p) => {
+      const vx = valueOf(rx, p), vy = valueOf(rY, p)
+      if (!p.id || !Number.isFinite(vx) || !Number.isFinite(vy) || vx < x0 || vx > x1 || vy < y0 || vy > y1) return []
+      return [{ id: baseFilterId(p.id), at: [ex(vx), ey(vy)] as const,
+        tip: markTip({ id: p.id, site: target?.site ?? run.target, date: run.eval.date?.[p.i] ?? undefined }, reasonOf(p.id) ?? 'excluded', tipLines(p).slice(2)) }]
+    })
+  }, [split.marked, rx, rY, ex.domain().join(), ey.domain().join(), S, byId, reasonOf]) // eslint-disable-line react-hooks/exhaustive-deps
   const exy = useMemo(() => explore.map((p) => [ex(p.ex), ey(p.ey)] as const), [explore, ex.domain().join(), ey.domain().join(), S]) // eslint-disable-line react-hooks/exhaustive-deps
   const exDots = useMemo(() => explore.map((p, i) => {
     const key = keyOf(p)
@@ -207,7 +229,7 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
               <AxisChoices {...o.axisChoices({ x: 'x' })}>
               <Crossplot title={`predicted vs ${useDeployed ? 'deployed' : 'reference'}`} maxSide={fitSide ?? 460} domain={x.domain() as [number, number]} pick={hasDeployed ? 'x' : undefined}
                 errorRatio={demingLambda(isFabs && !useDeployed ? mac : null, lambda10)} xLabel={xLabel} yLabel="predicted FTIR EC (µg/m³)"
-                points={crossPoints} />
+                points={crossPoints} marked={crossMarked} />
               </AxisChoices>
             </div>
             <div>
@@ -219,7 +241,7 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
                   <YAxis scale={ey} x={0} label={axisLabel(rY)} gridWidth={S} tickCount={5} pick="y" />
                   <XAxis scale={ex} y={S} label={axisLabel(rx)} pick="x" />
                   {rY === RESID && <line x1={0} x2={S} y1={ey(0)} y2={ey(0)} stroke={INK.text} strokeWidth={1.4} />}
-                  <ScatterLayer items={explore} xy={exy} idOf={keyOf} dots={exDots} width={S} height={S} tip={tip} focusR={focusStyle('', '', { r: 3.2 }).r}
+                  <ScatterLayer items={explore} xy={exy} idOf={keyOf} dots={exDots} width={S} height={S} tip={tip} marks={exMarks} focusR={focusStyle('', '', { r: 3.2 }).r}
                     focus={(p, [cx, cy]) => {
                       const st = focusStyle('', '', { r: 3.2 })
                       return <circle cx={cx} cy={cy} r={st.r} fill={color(p.g)} fillOpacity={st.opacity * dim(p.g)} stroke={st.stroke} strokeWidth={st.strokeWidth} />
@@ -233,6 +255,7 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
           </div>
         )}
         <Legend items={groups.map((g) => ({ label: g, color: color(g), detail: `n=${run.eval.group.filter((x) => x === g).length}` }))} {...legendProps} note="dashed grey = 1:1 · regression fits selected in the sidebar" />
+        <ExcludedNote count={split.nOut} drawn />
         {tip.node}
       </div>
     </ChartFrame>

@@ -11,6 +11,7 @@ import { useMac } from '@/lib/mac'
 import { fmt } from '@/lib/stats'
 import { INK, MARGIN } from '@/lib/theme'
 import type { CalibRunsFile, YorkFit } from '@/lib/types'
+import { FixedSetNote } from '@/lib/markedRows'
 
 const VARIANTS = ['deployed', 'lot_lin', 'lot_quad'] as const
 const VARIANT_LABEL: Record<string, string> = { deployed: 'deployed blank line', lot_lin: 'lot blank, linear', lot_quad: 'lot blank, quadratic' }
@@ -101,6 +102,7 @@ export function HipsYork({ runs }: { runs: CalibRunsFile }) {
         )}
         {tip.node}
       </div>
+      <FixedSetNote what="the explorer's saved York fits on every filter at each site" />
     </ChartFrame>
   )
 }

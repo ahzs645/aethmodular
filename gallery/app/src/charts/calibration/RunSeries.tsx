@@ -16,7 +16,8 @@ import { useColourScheme } from '@/lib/colourSchemes'
 import { INK, MARGIN } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile, MetaFile } from '@/lib/types'
 import { groupColorFn, presetName } from './common'
-import { ChartAside } from '@/lib/singleView'
+import { ExcludedNote, useExclusionSplit, useMarkReason, type MarkPoint } from '@/lib/markedRows'
+import { markTip } from '@/lib/exclusionMode'
 
 const DEPLOYED_LABEL = 'deployed SPARTAN EC (hollow)'
 
@@ -27,6 +28,10 @@ const DEPLOYED_LABEL = 'deployed SPARTAN EC (hollow)'
  * SPARTAN EC on the same filters where it exists, and the plausibility card
  * (negative days, days above 8 µg/m³, group medians) that decides whether a
  * calibration produces a believable record, not just a good crossplot.
+ *
+ * Filters → excluded acts on the run's filters by id (lib/markedRows useExclusionSplit): an excluded filter (the
+ * export's list or by hand) leaves the series, the rolling line and the summary, and is drawn as × under Mark. The
+ * run's saved metrics are not drawn here.
  */
 export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: CalibRunsFile; meta: MetaFile; knownIds: Set<string> }) {
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -59,10 +64,12 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
       .filter((p): p is typeof p & { d: Date } => p.d !== null && Number.isFinite(p.v))
       .sort((a, b) => +a.d - +b.d)
   }, [run.eval])
-  // filters excluded by hand on any page drop out of the series and its summary; the run's saved metrics do not change
+  // filters the gallery excludes (export or by hand) drop out of the series and its summary; the hand-edit filter
+  // after the split only applies a keep list (keep=), which the exclusion split does not know
+  const split = useExclusionSplit(dated, (p) => p.id)
   const edits = useHandEdits()
-  const kept = useMemo(() => dated.filter((p) => !edits.isOut(p.id)), [dated, edits])
-  const handNote = edits.note(dated.length - kept.length, { saved: true })
+  const kept = useMemo(() => split.counted.filter((p) => !edits.isOut(p.id)), [split.counted, edits])
+  const reasonOf = useMarkReason()
   const shown = useMemo(() => kept.filter((p) => !hidden.has(p.g)), [kept, hidden])
   const hasDeployed = dated.some((p) => p.dep !== null)
 
@@ -88,6 +95,13 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
     return <circle key={p.i} cx={xy[i][0]} cy={xy[i][1]} r={st.r} fill={color(p.g)} fillOpacity={st.opacity * dim(p.g)} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={dim(p.g) === 1 ? st.dot : undefined}
       {...(p.id ? fidProps(baseFilterId(p.id)) : {})} />
   }), [shown, xy, level, color, hot]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Mark: the excluded filters of the seasons shown, as × inside the axes; never in the rolling line or the summary
+  const marks = useMemo<MarkPoint[]>(() => {
+    const [d0, d1] = x.domain(), [y0, y1] = y.domain()
+    return split.marked.flatMap((p) => !p.id || hidden.has(p.g) || p.d < d0 || p.d > d1 || p.v < y0 || p.v > y1 ? []
+      : [{ id: baseFilterId(p.id), at: [x(p.d), y(p.v)] as const,
+        tip: markTip({ id: p.id, site: target?.site ?? run.target, date: run.eval.date?.[p.i] ?? undefined }, reasonOf(p.id) ?? 'excluded', [p.g, `predicted EC ${fmt(p.v, 3)} µg/m³`]) }])
+  }, [split.marked, hidden, x, y, reasonOf, target, run]) // eslint-disable-line react-hooks/exhaustive-deps
   const line = d3.line<{ d: Date; v: number }>().x((p) => x(p.d)).y((p) => y(p.v)).curve(d3.curveMonotoneX)
 
   const preds = shown.map((p) => p.v).sort(d3.ascending)
@@ -106,7 +120,7 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
         <>
           {rolling.controls}
           {groupColours.others.length > 0 && colours.picker}
-          <span className="control">{shown.length} dated filters</span>
+          <span className="control">{shown.length} dated filters{split.nOut ? ` (${split.nOut} excluded)` : ''}</span>
         </>
       }
     >
@@ -123,7 +137,7 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
               {showDeployed && shown.filter((p) => p.dep !== null).map((p) => (
                 <circle key={`d${p.i}`} cx={x(p.d)} cy={y(p.dep as number)} r={3} fill="none" stroke={INK.axis} strokeWidth={1} strokeOpacity={dim(DEPLOYED_LABEL)} />
               ))}
-              <ScatterLayer items={shown} xy={xy} idOf={idOf} dots={dots} width={innerW} height={innerH} tip={tip}
+              <ScatterLayer items={shown} xy={xy} idOf={idOf} dots={dots} width={innerW} height={innerH} tip={tip} marks={marks}
                 tipOf={(p) => [p.id ?? `filter #${p.i + 1}`, `${run.eval.date?.[p.i]} · ${p.g}`, `predicted EC ${fmt(p.v, 3)} µg/m³`, ...(p.dep !== null ? [`deployed EC ${fmt(p.dep, 3)}`] : []), p.id && knownIds.has(baseFilterId(p.id)) ? 'click for the full filter record' : 'click for this filter\'s values']}
                 focusR={(p) => focusStyle(p.id ?? `#${p.i}`, p.id ?? `#${p.i}`, { r: 3.2, level }).r}
                 focus={(p, [cx, cy]) => {
@@ -173,7 +187,7 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
             </tbody>
           </table>
         )}
-        {handNote && <ChartAside><p className="chart-note">{handNote}</p></ChartAside>}
+        <ExcludedNote count={split.nOut} drawn />
         {tip.node}
       </div>
     </ChartFrame>

@@ -15,6 +15,7 @@ import type { AnalogLab as AnalogLabData } from '@/lib/types'
 import { cohortColor } from './common'
 import { AxisChoices } from '@/components/AxisChoices'
 import { ChartAside } from '@/lib/singleView'
+import { FixedSetNote } from '@/lib/markedRows'
 
 /**
  * The analog lab: does the committed spectral-analog ranking agree with
@@ -160,6 +161,7 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
         )}
         {tip.node}
       </div>
+      <FixedSetNote what="the explorer's saved pool sample and every Addis filter it scored" />
     </ChartFrame>
   )
 }

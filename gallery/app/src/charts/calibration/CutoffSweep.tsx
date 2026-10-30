@@ -15,6 +15,7 @@ import { COHORT, COHORT_SHORT, CV_PROTOCOL, CV_PROTOCOL_SHORT, METRIC, PREPROCES
 import { calibrationReadout, cutoffPosition, fittingCounts, cutoffConfig, type CalibrationReadout, type CutoffAxis } from '@/lib/cutoffSweep'
 import { AxisChoices } from '@/components/AxisChoices'
 import { ChartAside } from '@/lib/singleView'
+import { FixedSetNote } from '@/lib/markedRows'
 
 /**
  * Cutoff sweep — the "try somewhat more and somewhat less" experiment from
@@ -206,6 +207,7 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
         </div>}
         {tip.node}
       </div>
+      <FixedSetNote what="the explorer's saved readouts on its own test sets" />
     </ChartFrame>
   )
 }
