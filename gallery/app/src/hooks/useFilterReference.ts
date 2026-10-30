@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParam } from '@/lib/url'
 import { seasonOnly } from '@/lib/seasons'
 import { loadSpartanIndex, loadSpartanFilters, loadSpartanReference, type SpartanIndex } from '@/lib/spartan'
 import { cleanReference, mergeReferenceRows, sampleRows, type QuantileReference, type ReferenceRow } from '@/lib/referencePopulation'
 import { loadJson } from '@/lib/data'
+import { useCountedFilter, useExclMode, useKnownFilter } from '@/lib/markedRows'
 import { MAX_IMPROVE_SITES, loadImprove, networkColor } from '@/lib/networks'
 import type { FilterRow, MetaFile } from '@/lib/types'
 
@@ -79,9 +80,14 @@ export function useFilterReference(row: FilterRow, meta: MetaFile, allRows: Filt
     return () => { live = false }
   }, [remote, index, key, improveCodes]) // codes and mode are represented by the request key
   const known = useMemo(() => [...studyRows, ...allRows], [studyRows, allRows])
+  // Filters → excluded: a gallery filter counts as it does in the charts (hand exclusions, keep= and filters put back
+  // one by one too); a filter only a site file has keeps that file's exclusion unless Include
+  const isCounted = useCountedFilter(), exclMode = useExclMode(), isKnown = useKnownFilter()
+  const counts = useCallback((r: ReferenceRow) => isCounted(r.id) && (isKnown(r.id) || !r.excluded || exclMode === 'include'),
+    [isCounted, isKnown, exclMode])
   const pooled = useMemo(() => {
-    const out = remote ? cleanReference(mergeReferenceRows(data?.key === key ? data.rows : [], known))
-      : cleanReference(mode === 'study' ? studyRows : allRows, mode === 'same' ? row.site : mode === 'study' ? undefined : mode)
+    const out = remote ? cleanReference(mergeReferenceRows(data?.key === key ? data.rows : [], known), undefined, counts)
+      : cleanReference(mode === 'study' ? studyRows : allRows, mode === 'same' ? row.site : mode === 'study' ? undefined : mode, counts)
     // every reference filter takes the gallery's season, as the charts' filters do: rows that come from the site
     // files or the evaluation set carry none of their own (they were 'Unknown season' in the crossplot)
     if (!seasonOf) return out
@@ -91,7 +97,7 @@ export function useFilterReference(row: FilterRow, meta: MetaFile, allRows: Filt
       const season = seasonOf(String(r.site), date ? Number(date.slice(5, 7)) : null, own, date)
       return season === r.season ? r : { ...r, season }
     })
-  }, [remote, data, key, known, mode, studyRows, allRows, row.site, seasonOf])
+  }, [remote, data, key, known, mode, studyRows, allRows, row.site, seasonOf, counts])
   // the IMPROVE network is quantiles over all seasons: it has no season choice
   const ownSeason = typeof row.season === 'string' && row.season ? row.season : null
   const seasonChoice = mode === 'improve' ? 'all' : seasonPick

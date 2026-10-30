@@ -2,7 +2,7 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { ChartAside } from '@/lib/singleView'
 import { usePresentation } from '@/lib/presentation'
 import { useHandEdits } from '@/lib/filterEdits'
-import { exclStatus, markTip, splitById, type ExclMode, type ExclStatus } from '@/lib/exclusionMode'
+import { exclStatus, markTip, type ExclMode, type ExclStatus } from '@/lib/exclusionMode'
 import type { FilterRow } from '@/lib/types'
 import type { SweepMark } from '@/components/SweepPlot'
 
@@ -68,15 +68,18 @@ export function useCountedFilter(): (id: string | null | undefined) => boolean {
 
 /**
  * The one way a page with its own per-filter items (not the gallery rows: explorer predictions, holdout filters,
- * spectra, scores) follows Filters → excluded: `counted` feed every fit, median and count; `marked` are drawn as ×
+ * spectra, scores) follows Filters → excluded, by the useCountedFilter rule (hand exclusions and keep= included):
+ * `counted` feed every fit, median and count; `marked` are drawn as ×
  * (components/Crossplot `marked`, ScatterLayer `marks`) under Mark; the hidden ones are left out. Memoised on `items`.
  */
 export function useExclusionSplit<T>(items: readonly T[], idOf: (t: T) => string | null | undefined): { counted: T[]; marked: T[]; nOut: number } {
-  const { mode, reasonOf } = useMarked()
+  const { mode } = useMarked()
+  const counts = useCountedFilter()
   return useMemo(() => {
-    const s = splitById(items, idOf, reasonOf, mode)
-    return { counted: s.counted, marked: s.marked, nOut: s.marked.length + s.hidden.length }
-  }, [items, mode, reasonOf]) // eslint-disable-line react-hooks/exhaustive-deps
+    const counted: T[] = [], out: T[] = []
+    for (const t of items) (counts(idOf(t)) ? counted : out).push(t)
+    return { counted, marked: mode === 'mark' ? out : [], nOut: out.length }
+  }, [items, mode, counts]) // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 /** one excluded filter drawn as a × at plot pixels `at` (components/ScatterLayer); `tip` is its hover */

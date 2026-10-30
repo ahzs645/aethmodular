@@ -9,7 +9,9 @@ export interface SpartanReference {
   rows: ReferenceRow[]
 }
 export const isFiniteNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
-export const cleanReference = (rows: ReferenceRow[], site?: string) => rows.filter(r => !r.excluded && (!site || r.site === site))
+/** the reference filters at `site` that count; `counts` is the gallery's Filters → excluded rule (default: the export's exclusions out) */
+export const cleanReference = (rows: ReferenceRow[], site?: string, counts: (r: ReferenceRow) => boolean = r => !r.excluded) =>
+  rows.filter(r => counts(r) && (!site || r.site === site))
 export interface Placement { v: number; pct: number; min: number; q1: number; med: number; q3: number; max: number; n: number }
 const quantile = (sorted: number[], p: number) => {
   const i = (sorted.length - 1) * p, lo = Math.floor(i), hi = Math.ceil(i)

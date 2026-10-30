@@ -31,8 +31,12 @@ export interface CrossPoint {
   open?: () => void
 }
 
-/** A fixed line drawn over the points (a saved fit, a season's line) with its confidence band. */
-export interface CrossLine { slope: number; intercept: number; color: string; label: string; dash?: string; method: Estimator; stats: RegressionStats | null }
+/**
+ * A fixed line drawn over the points (a saved fit, a season's line) with its confidence band. `saved` marks a line
+ * read from an export, which the excluded-filters note then says was fitted on the notebook's own filters; a line the
+ * page fits from the counted points leaves it unset.
+ */
+export interface CrossLine { slope: number; intercept: number; color: string; label: string; dash?: string; method: Estimator; stats: RegressionStats | null; saved?: boolean }
 
 /**
  * The research pages' 1:1 crossplot: a square plot area with identical x and y
@@ -115,7 +119,7 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
   const markMode = useExclMode() === 'mark'
   const reasonOf = useMarkReason()
   const nOut = drawable.length - valid.length
-  const refit = fit && groupingOverride !== 'none', saved = extraLines.length > 0
+  const refit = fit && groupingOverride !== 'none', saved = extraLines.some((l) => l.saved)
   const handNote = nOut <= 0 ? null
     : `${nOut} excluded filter${nOut === 1 ? '' : 's'} (Filters → excluded) ${nOut === 1 ? 'is' : 'are'} ${markMode ? 'drawn as ×' : 'hidden here'}${refit ? ', left out of the refit' : ''}${saved ? '; the saved statistics were computed on the notebook\'s own filters' : ''}.`
   const lambda = errorRatio ?? 1
