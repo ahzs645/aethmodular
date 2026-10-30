@@ -2,13 +2,15 @@
  * What every Filter-only chart shares: the export (gallery/data/export_research_filter_only.py), the page's
  * settings in the link (population, minimum training n, HIPS units), site colours, and the refits per site.
  */
-import { useMemo, type ReactNode } from 'react'
+import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import * as d3 from 'd3'
 import { Segmented, Select } from '@/components/ChartFrame'
 import { useExport } from '@/lib/data'
-import { useHandEdits } from '@/lib/filterEdits'
+import { useFilterEdits, useHandEdits } from '@/lib/filterEdits'
 import { fmt } from '@/lib/format'
+import { baseFilterId } from '@/lib/highlight'
 import { useMac } from '@/lib/mac'
+import { ExcludedNote, useExclMode, useExclusionSplit } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
@@ -29,24 +31,53 @@ export interface ReleaseFile { generated: string; blocks: Columns; id11: Columns
 export const rowsOf = (t: Columns): Record<string, any>[] => (t[Object.keys(t)[0]] ?? []).map((_, i) => Object.fromEntries(Object.keys(t).map((k) => [k, t[k][i]])))
 
 export interface FoData {
-  /** the diagnostic filters, less any the reader excluded by hand */
+  /** the diagnostic filters, less any the reader excluded by hand (or left out with "keep only") */
   points: FPoint[]
+  /** under Filters → excluded: Mark, the ones excluded by hand: drawn as × on the held-out scatter, in no refit */
+  marked: FPoint[]
   all: FPoint[]
   dropped: number
   omitDefault: string
   note: string | null
 }
 
+const NO_POINTS: FPoint[] = []
+
+/**
+ * The release's 545 diagnostic filters under the gallery's exclusions. They are a frozen set: the data export's own
+ * exclusions do not act on them (ETAD-0248, the PM10 filter the export excludes, stays, as the release ran), so only
+ * the reader's hand exclusions go through the gallery's split (lib/markedRows useExclusionSplit): out of every refit,
+ * drawn as × under Mark. "Keep only" narrows the SPARTAN filters as it narrows every page's, before the split.
+ */
 export function useFilterOnly(): { data: FoData | null; error: string } {
   const { data, error } = useExport<PointsFile>('research/filter_only/points.json', (d) => (Array.isArray(d.points) ? null : 'no points'))
   const hand = useHandEdits()
+  const { dropped } = useFilterEdits()
+  const mode = useExclMode()
+  const byHand = useMemo(() => (id: string) => hand.active && (dropped.has(id) || dropped.has(baseFilterId(id))), [hand, dropped])
+  const inView = useMemo(() => (data ? data.points.filter((p) => !hand.isOut(p.id) || byHand(p.id)) : NO_POINTS), [data, hand, byHand])
+  const split = useExclusionSplit(inView, (p) => (byHand(p.id) ? p.id : null))
   const out = useMemo(() => {
     if (!data) return null
-    const points = data.points.filter((p) => !hand.isOut(p.id))
-    const dropped = data.points.length - points.length
-    return { points, all: data.points, dropped, omitDefault: data.omitted_default, note: hand.note(dropped, { refit: true }) }
-  }, [data, hand])
+    const n = data.points.length - split.counted.length
+    // under Mark the charts say it themselves (FoExcludedNote), with the × drawn
+    return { points: split.counted, marked: split.marked, all: data.points, dropped: n, omitDefault: data.omitted_default, note: mode === 'mark' ? null : hand.note(n, { refit: true }) }
+  }, [data, split, hand, mode])
   return { data: out, error }
+}
+
+/** the hand-excluded release filters under Mark (FoData.marked), for every chart's note without threading them through */
+const MarkedCtx = createContext<FPoint[]>(NO_POINTS)
+export const FoMarkedProvider = MarkedCtx.Provider
+export const useFoMarked = () => useContext(MarkedCtx)
+
+/**
+ * A chart's note under Mark (lib/markedRows ExcludedNote): how many hand-excluded filters of its population (every
+ * population with `any`) and site it leaves out; `drawn` where it draws them as ×.
+ */
+export function FoExcludedNote({ s, site, any = false, drawn = false }: { s: Settings; site?: string; any?: boolean; drawn?: boolean }) {
+  const marked = useFoMarked()
+  return <ExcludedNote count={marked.filter((p) => (any || inPopulation(p, s.population)) && (!site || p.site === site)).length} drawn={drawn} />
 }
 
 export const useRelease = () => useExport<ReleaseFile>('research/filter_only/release.json', (d) => (d.blocks ? null : 'no blocks'))

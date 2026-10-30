@@ -11,7 +11,7 @@ import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import { columnsIn, defaultSeason, lotsOf, profile, seasonAt, VIEW_KEYS, type LotExport, type Member, type ViewKey } from '../../common/lotSpectra'
 import { Grid, shortSeason } from '../../common/ui'
-import { EXPORTER, FOLDER, lotColor, NB, useView, type Lots } from './data'
+import { EXPORTER, FOLDER, LotNote, lotColor, NB, useView, type Lots } from './data'
 
 type Region = 'ch' | 'co' | 'full'
 type BandKey = '5-95' | '10-90' | '25-75' | 'none'
@@ -144,6 +144,7 @@ export function LotPanels({ exp, lots, id, prefix, defaults, figure, setPick }: 
       <Key items={[...lotOrder.map((l, i) => ({ label: `lot ${l}`, color: lotColor(l, i), kind: 'line' as const })),
         ...(q ? [{ label: `${BAND_LABEL[band]} of filters`, color: INK.muted, kind: 'faded' as const }] : []),
         ...(ref ? [{ label: `IMPROVE mean and 5–95 % (n=${exp.improve.n})`, color: INK.muted, kind: 'dash' as const }] : [])]} />
+      <LotNote lots={lots} of={(m) => m.lot !== null && onInstrument(m, inst)} />
       {(noLot > 0 || lots.unmatched > 0) && <Note>
         {noLot > 0 && <>{noLot} filter{noLot === 1 ? '' : 's'} shown {noLot === 1 ? 'has' : 'have'} no lot in the source (Addis spectra the lot map does not cover) and {noLot === 1 ? 'is' : 'are'} left out. </>}
         {lots.set === 'view' && lots.unmatched > 0 && <>{lots.unmatched} exported spectra of these sites have no gallery row; “In view + no gallery row” adds them.</>}

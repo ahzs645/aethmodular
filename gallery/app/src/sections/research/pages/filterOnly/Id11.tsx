@@ -15,7 +15,7 @@ import type { MetaFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import { id11Sensitivity, type Id11Row } from '../../common/filterOnly'
 import { Grid, SitePick } from '../../common/ui'
-import { NB_PROP, SITES, SOURCE, barLayer, popLabel, shortQ, siteColor, type Settings, type SiteRun } from './data'
+import { FoExcludedNote, NB_PROP, SITES, SOURCE, barLayer, popLabel, shortQ, siteColor, type Settings, type SiteRun } from './data'
 
 const GREY = '#8a8a8a'
 
@@ -52,6 +52,7 @@ export function Id11Errors({ runs, s, meta }: { runs: SiteRun[]; s: Settings; me
         </Grid>
         <Note>{nCommon} common filters in {common.length} quarters: MAE {fmt(pool('all', 'mae') * s.k, 3)} → {fmt(pool('id11', 'mae') * s.k, 3)} {s.u}, mean error {signed(pool('all', 'mse') * s.k, 3)} → {signed(pool('id11', 'mse') * s.k, 3)}.</Note>
       </> : <Empty>No later quarter at {site} has ID-11 test filters with both training choices fitted.</Empty>}
+      <FoExcludedNote s={s} site={site} />
     </ChartFrame>
   )
 }
@@ -80,6 +81,7 @@ export function Id11Support({ runs, s, meta }: { runs: SiteRun[]; s: Settings; m
           children={({ x, ih }) => <g>{rows.filter((r) => r.testN && !r.common).map((r) => <text key={r.block} x={(x as ScalePoint<string>)(r.block) ?? 0} y={ih - 4} textAnchor="middle" fontSize={9} fill={INK.muted}>NA</text>)}</g>} />
       </Grid>
       <Note>{first ? `Common support begins in ${first.block} and covers ${rows.filter((r) => r.common).length} quarters.` : 'No quarter is supported under both choices.'}</Note>
+      <FoExcludedNote s={s} site={site} />
     </ChartFrame>
   )
 }

@@ -6,6 +6,7 @@
 import { useMemo } from 'react'
 import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { fmt } from '@/lib/format'
+import { FixedSetNote } from '@/lib/markedRows'
 import { MIN_TRAIN, POPULATIONS, denominatorSensitivity, evaluate, fitTraining, id11Sensitivity, inPopulation, pairedInfluence, summarize, type Block, type FPoint, type Population, type Scheme } from '../../common/filterOnly'
 import { DataTable } from '../../common/ui'
 import { NB_DIAG, NB_PROP, NB_STAB, SITES, SOURCE, rowsOf, useRelease } from './data'
@@ -109,6 +110,7 @@ export function Agreement({ all }: { all: FPoint[] }) {
             { key: 'w', label: 'Largest |Δ|', num: true, value: (c) => (c.worst === 0 ? '0' : c.worst < 1e-3 ? c.worst.toExponential(1) : fmt(c.worst, 4)) },
             { key: 'q', label: 'Compared', value: (c) => c.what },
           ]} />
+        <FixedSetNote what="the release's own settings: all 545 diagnostic filters, no hand exclusions" />
         <Note>The release tables are stored to 7 significant digits, so differences of about 10⁻⁶ of a value are rounding. Every chart on this page is the same code run on the reader's population, minimum training n and hand exclusions; at the defaults they reproduce the notebooks' figures. Sites: {SITES.join(', ')}.</Note>
       </>}
     </ChartFrame>

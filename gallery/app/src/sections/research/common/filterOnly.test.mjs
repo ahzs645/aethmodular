@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
-import { POPULATIONS, denominatorSensitivity, evaluate, fitTraining, id11Sensitivity, inPopulation, pairedInfluence, summarize } from './filterOnly.ts'
+import { POPULATIONS, denominatorSensitivity, evaluate, fitTraining, heldOutPrediction, id11Sensitivity, inPopulation, pairedInfluence, summarize } from './filterOnly.ts'
 
 const data = (f) => JSON.parse(fs.readFileSync(new URL(`../../../../public/data/research/filter_only/${f}`, import.meta.url), 'utf8'))
 const rowsOf = (t) => t[Object.keys(t)[0]].map((_, i) => Object.fromEntries(Object.keys(t).map((k) => [k, t[k][i]])))
@@ -97,4 +97,21 @@ test('filter_only_diagnostics 05: counts and ratio medians at each MDL multiple'
     near(d.median, r.ratio_median, `${r.site} median`); near(d.q25, r.ratio_q25, `${r.site} q25`); near(d.q75, r.ratio_q75, `${r.site} q75`)
   }
   for (const r of frozen.cohorts) assert.equal(cohortOf(r.site, r.population, r.variant).length, r.n, `${r.site} ${r.population} ${r.variant} n`)
+})
+
+test('Mark: a hand-excluded filter is drawn at the prediction it would get in the cohort, and moves no fit', () => {
+  const diag = siteDiag('Addis Ababa')
+  let checked = 0
+  for (const out of diag.filter((_, i) => i % 23 === 0)) {
+    const without = diag.filter((p) => p !== out)
+    // leave-quarter-out never trains on the filter's own quarter, so leaving it out does not change its prediction
+    const withIt = evaluate(without, diag, 'leave_quarter_out').flatMap((b) => b.preds).find((q) => q.p === out)
+    const blocks = evaluate(without, without, 'leave_quarter_out')
+    const pred = heldOutPrediction(blocks, out)
+    if (withIt && Number.isFinite(withIt.pred.ols)) { near(pred, withIt.pred.ols, `${out.id} prediction`, 1e-12); checked++ }
+    // and the metrics are those of the cohort without it
+    assert.ok(blocks.every((b) => b.preds.every((q) => q.p !== out)), `${out.id} in no block`)
+  }
+  assert.ok(checked > 3, `checked ${checked}`)
+  assert.equal(heldOutPrediction([], { date: '2023-01-01', ec: 1 }), null)
 })

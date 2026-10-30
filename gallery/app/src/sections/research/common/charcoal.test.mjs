@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
-import { byGroup, dryOf, galleryId, headline, joinScores, mannWhitney, monthlyRate } from './charcoal.ts'
+import { byGroup, dryOf, galleryId, headline, joinScores, mannWhitney, markedScores, monthlyRate } from './charcoal.ts'
 
 const path = new URL('../../../../public/data/research/charcoal/scores.json', import.meta.url)
 const data = fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, 'utf8')) : null
@@ -96,4 +96,20 @@ test('char_06: monthly rate, mixture counts, lot controls and the loading check'
     const r = mannWhitney(model.filter((s) => s.low).map((s) => s[key]), model.filter((s) => !s.low).map((s) => s[key]))
     near(r.p, t['Mann–Whitney p'], 6e-4, `${t.measure} p`)
   }
+})
+
+test('Mark: the excluded rows in view are scored as the view set scores them, never twice', () => {
+  const score = (id, date) => ({ FilterId: `${id}-1`, date, season: 'Dry Season', lot: 251, r_char: 0.5, r_raw: 0.6, delta: 0.1, component: 'normal', Fabs: 10, EC: 1 })
+  const scores = [score('ETAD-0001', '2023-01-02'), score('ETAD-0002', '2023-01-05'), score('ETAD-0900', '2025-01-05')]
+  const row = (id) => ({ id, date: '2023-01-03', month: 1, season: 'Dry (Oct-Feb)', 'HIPS Fabs': 12, 'EC (FTIR)': 2 })
+  // view: ETAD-0001 counted, ETAD-0002 excluded (marked); the newer ETAD-0900 has no row
+  const view = joinScores(scores, [row('ETAD-0001')], 'view', () => null).scored
+  const marked = markedScores(scores, [row('ETAD-0002')], view)
+  assert.deepEqual(marked.map((s) => s.id), ['ETAD-0002'])
+  assert.equal(marked[0].row.id, 'ETAD-0002')
+  assert.equal(marked[0].fabs, 12, "the gallery row's Fabs, as the view set reads it")
+  // plus counts every score it finds no row in view for: a marked filter it already counts is not drawn again
+  const plus = joinScores(scores, [row('ETAD-0001')], 'plus', () => 'Dry').scored
+  assert.deepEqual(markedScores(scores, [row('ETAD-0002')], plus), [])
+  assert.deepEqual(markedScores(scores, [], view), [])
 })

@@ -12,13 +12,14 @@ import type { MetaFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import { quantile } from '../../common/stats'
 import { Grid } from '../../common/ui'
-import { quarterIndex, type Scheme } from '../../common/filterOnly'
-import { NB_STAB, SCHEMES, SOURCE, blocksOf, popLabel, schemeLabel, siteColor, type Settings, type SiteRun } from './data'
+import { heldOutPrediction, inPopulation, quarterIndex, type Scheme } from '../../common/filterOnly'
+import { FoExcludedNote, useFoMarked, NB_STAB, SCHEMES, SOURCE, blocksOf, popLabel, schemeLabel, siteColor, type Settings, type SiteRun } from './data'
 
 /** stability 05: each filter's prediction with its own quarter withheld, against its reported HIPS */
 export function HeldOutScatter({ runs, s, meta }: { runs: SiteRun[]; s: Settings; meta: MetaFile }) {
   const [scheme, setScheme] = useSearchParam<Scheme>('fo.scat.split', 'leave_quarter_out', SCHEMES)
   const label = s.unit === 'bc' ? `HIPS BC at MAC ${fmt(s.mac, 1)} (µg/m³)` : 'HIPS Fabs (Mm⁻¹)'
+  const marked = useFoMarked()
   return (
     <ChartFrame id="fo-scatter" title="Held-out predictions — block-specific errors remain"
       subtitle={`${popLabel(s.population)} population · ${schemeLabel(scheme).toLowerCase()} · OLS prediction with the filter's quarter withheld · 1:1 reference, no fitted line`}
@@ -33,9 +34,16 @@ export function HeldOutScatter({ runs, s, meta }: { runs: SiteRun[]; s: Settings
           const pts: CrossPoint[] = preds.map((q) => ({ x: q.p.fabs * s.k, y: q.pred.ols * s.k, color, id: q.p.id, site: r.site,
             tip: [q.p.id, `${r.site} · ${q.p.date} · ${q.block}`, `reported ${fmt(q.p.fabs * s.k, 2)} · predicted ${fmt(q.pred.ols * s.k, 2)} ${s.u}`, `FTIR EC ${fmt(q.p.ec, 2)} µg/m³${q.outside ? ' (outside training range)' : ''}`],
             rec: { id: q.p.id, source: 'Research · filter-only held-out prediction', site: r.site, date: q.p.date, fields: [[`Reported ${label}`, q.p.fabs * s.k], [`Held-out prediction (${s.u})`, q.pred.ols * s.k], ['FTIR EC (µg/m³)', q.p.ec]] } }))
-          return <Crossplot key={r.site} points={pts} title={`${r.site} · n ${preds.length} · MAE ${fmt(mae * s.k, 2)}`} xLabel={`Reported ${label}`} yLabel={`Held-out prediction (${s.u})`} fit={false} grouping="none" maxSide={340} />
+          // the site's hand-excluded filters of this population (Mark): × at the prediction their quarter's fit gives them
+          const out: CrossPoint[] = marked.filter((p) => p.site === r.site && inPopulation(p, s.population)).flatMap((p) => {
+            const pred = heldOutPrediction(blocksOf(r, scheme), p)
+            return pred === null ? [] : [{ x: p.fabs * s.k, y: pred * s.k, color, id: p.id, site: r.site,
+              tip: [p.id, `${r.site} · ${p.date}`, `reported ${fmt(p.fabs * s.k, 2)} · predicted ${fmt(pred * s.k, 2)} ${s.u}`, `FTIR EC ${fmt(p.ec, 2)} µg/m³`] }]
+          })
+          return <Crossplot key={r.site} points={pts} marked={out} title={`${r.site} · n ${preds.length} · MAE ${fmt(mae * s.k, 2)}`} xLabel={`Reported ${label}`} yLabel={`Held-out prediction (${s.u})`} fit={false} grouping="none" maxSide={340} />
         })}
       </Grid>
+      <FoExcludedNote s={s} drawn />
     </ChartFrame>
   )
 }
@@ -64,6 +72,7 @@ export function ConcentrationRanges({ runs, meta, s }: { runs: SiteRun[]; meta: 
       controls={<Segmented label="Split" value={scheme} options={SCHEMES} onChange={setScheme} optionLabel={schemeLabel} />}>
       <Key items={[{ label: 'Training EC range', color: '#9a9a9a', kind: 'line' }, { label: 'Test EC range', color: INK.text, kind: 'line' }]} />
       <IntervalStrip blocks={blocks} labelWidth={84} noteWidth={92} rowHeight={22} panels={[{ label: 'FTIR-predicted EC (µg/m³)' }]} />
+      <FoExcludedNote s={s} />
     </ChartFrame>
   )
 }
@@ -94,6 +103,7 @@ export function MetadataErrors({ runs, meta, s }: { runs: SiteRun[]; meta: MetaF
       controls={<Segmented label="Split" value={scheme} options={SCHEMES} onChange={setScheme} optionLabel={schemeLabel} />}>
       <IntervalStrip blocks={blocks} labelWidth={84} noteWidth={56} rowHeight={24} panels={[{ label: `Prediction − HIPS (${s.u})`, reference: 0 }]} />
       <Note>The notebook draws these as box plots; here the box is the bar and the whiskers the thin line, with the same 1.5 × IQR rule.</Note>
+      <FoExcludedNote s={s} />
     </ChartFrame>
   )
 }

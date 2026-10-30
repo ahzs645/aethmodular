@@ -8,10 +8,12 @@ import { ChartFrame } from '@/components/ChartFrame'
 import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { fmt } from '@/lib/format'
+import { FixedSetNote } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
 import { num, type Row } from '@/lib/table'
 import { spread } from '../../common/charcoal'
 import { DataTable } from '../../common/ui'
+import { SetNote } from './Scores'
 import { provenance, rows, type SpectralExport } from '../spectralCommon'
 import { NB, type Charcoal } from './data'
 
@@ -35,6 +37,7 @@ export function Feedstocks({ c, data }: { c: Charcoal; data: SpectralExport }) {
       provenance={<>{NB.c05} [14] right; {NB.c07} [9]. {provenance(data, ['feedstock_ranking', 'feedstock_match'])}</>}>
       <IntervalStrip panels={[{ label: 'median mean r against the feedstock' }]} labelWidth={170} noteWidth={60} blocks={[{ key: 'f', rows: strip }]} />
       <Key items={[{ label: 'all filters', color: INK.text }, { label: 'dry season excluded', color: wet }, { label: 'dry season only', color: dry, kind: 'hollow' }]} />
+      <FixedSetNote what="each raw feedstock's mean r on the notebooks' 239 filters and seasons (no script saves a filter's r per feedstock)" />
       {match.length > 0 && <DataTable rows={match} rowKey={(r) => s(r.reference)} columns={Object.keys(match[0]).map((key) => ({ key, label: key === 'reference' ? 'char_05 reference (all filters)' : key, num: key !== 'reference', value: (r: Row) => (key === 'reference' ? s(r[key]) : fmt(num(r[key]), key.startsWith('n ') ? 0 : 3)) }))} />}
     </ChartFrame>
   )
@@ -69,6 +72,9 @@ export function Classes({ c, data }: { c: Charcoal; data: SpectralExport }) {
       provenance={<>{NB.c08} [6] left, [16]; {NB.c09} [8] left, [10]. {provenance(data, ['class_by_subset', 'relative_loss', 'per_filter'])}</>}>
       <IntervalStrip panels={[{ label: 'median best r against the class' }, { label: 'relative loss in the dry season (%)', reference: 0 }]} labelWidth={260} noteWidth={50}
         blocks={[{ key: 'live', rows: lib.length ? [liveRow] : [] }, { key: 'classes', title: 'Notebook classes (static)', rows: classRows }]} />
+      {/* the live row follows the set and the exclusions; the class rows are the notebooks' */}
+      <SetNote c={c} of={(x) => x.libraryR !== null} />
+      {c.set !== 'notebook' && <FixedSetNote what="the class rows on the notebooks' 239 filters and seasons (no script saves a filter's r per class)" />}
       <Key items={[{ label: 'all filters', color: INK.text }, { label: 'non-dry', color: wet }, { label: 'dry season', color: dryC, kind: 'hollow' }, { label: 'live: char_02 library match on the filters shown', color: INK.text, kind: 'diamond' }]} />
       {fvf.length > 0 && <>
         <p className="subtitle" style={{ margin: '10px 0 4px' }}>Furnace (Minatre woody) against real-fire char (Minatre combustion facility), paired over the same filters (char_09):</p>

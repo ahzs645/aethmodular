@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Figure } from '@/components/Figure'
 import { f2 } from '@/lib/format'
 import { useMac } from '@/lib/mac'
+import { FixedSetNote } from '@/lib/markedRows'
 import { num, type Row } from '@/lib/table'
 import type { SectionPageProps } from '../../types'
 import { PageIntro, provenance, rows, useSpectral, Waiting } from './spectralCommon'
@@ -51,6 +52,7 @@ export function EthiopiaCalibrations({ rows: galleryRows }: SectionPageProps) {
     <PageIntro id="ethiopia-intro" title="Ethiopia (ETAD) EC under the June 2026 calibrations — which samples, how many components, which lots" data={data}
       notebooks="research/ftir_ec_calibration_2026_06_25/01_adama_spectra, 02_adama_tor_vs_ftir, 03_adama_char_soot, 04_ethiopia_etad_spectra, 06_calibration_variants_components [12], [21], 07_ethiopia_variant_ec, 08_adama_hips_crossplots, 09_ethiopia_component_ec, 10_ethiopia_ec_both_lots, 12_dedicated_ethiopia_calibration, 13_chase_origin_and_biomass [9], 15_downstream_recommended_calibration; research/spartan_ec_2026_06_16/02_biomass_calibration_comparison, 03_adama_han_char_soot, 05_calibration_optimization, 07_calibration_optimization_story, 08_outlier_removal_explainer; research/July07/regular_before_cal0_vs_smoke_hips, regular_vs_smoke_ec_vs_hips">
       <p>All of these apply PLS calibrations trained on IMPROVE to the 319 ETAD spectra (19 filters scanned twice, so one point per spectrum, as the notebooks do). None has an Ethiopian thermal EC reference: they are judged by agreement with HIPS Fabs/MAC (the notebooks: MAC 10; here the MAC set under Filters → units, now {m.mac}) and by physical sense. Notebook 07 left the HIPS comparison as a to-do; the crossplots here add it from the HIPS Fabs carried in notebook 15's table.</p>
+      <FixedSetNote what="the notebooks' 319 ETAD spectra and saved tables (so does every chart on this page but the July07 smoke comparison, which follows the gallery's Addis rows; the per-spectrum crossplots still leave out, or under Mark cross, a filter excluded by hand)" />
       <p>A naming hazard runs through the July07 and spartan_ec notebooks: their "regular CAL-0" is the 906-filter IMPROVE set (the set the gallery's "Biomass-smoke (906)" calibration preset trains on), while their "smoke" or "biomass tool" calibration is a different model, the coefficients SPARTAN's calibration tool exported for filter lot 251. The page names them that way. The only thermal EC in Ethiopia is the five Adama quartz filters, read against every calibration below.</p>
     </PageIntro>
 

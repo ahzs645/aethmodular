@@ -12,7 +12,7 @@ import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import { boxStats, defaultSeason, lotContrast, lotsOf, seasonAt, type LotExport, type Member } from '../../common/lotSpectra'
 import { DataTable, pText, shortSeason } from '../../common/ui'
-import { EXPORTER, FOLDER, lotColor, NB, type Lots } from './data'
+import { EXPORTER, FOLDER, LotNote, lotColor, NB, type Lots } from './data'
 
 type Split = 'held' | 'each'
 
@@ -94,6 +94,7 @@ export function EscapeByLot({ exp, lots, setPick }: { exp: LotExport; lots: Lots
           { key: 'p', label: 'Mann–Whitney p', num: true, value: (r) => pText(r.test?.p ?? NaN) },
         ]} />
         {saved.length > 0 && <Note>char_12 (its 239 Addis filters, Dry Oct–Feb): {saved.map((r) => `${r.subset} — lot 248 ${fmt(r.median248, 3)} (n ${r.n248}) vs 251 ${fmt(r.median251, 3)} (n ${r.n251}), p ${pText(r.p ?? NaN)}`).join('; ')}. “{"char_12's 239 (Addis)"}” under Filters reproduces these.</Note>}
+        <LotNote lots={lots} of={(m) => m.lot !== null} />
         <p className="subtitle" style={{ margin: '10px 0 4px' }}>Filters per lot and season, and the spectrometers they were scanned on (Addis's export names none):</p>
         <DataTable rows={cross} rowKey={(r) => r.key} columns={[
           ...(groups.length > 1 || layout === 'site' ? [{ key: 's', label: 'Site', value: (r: (typeof cross)[number]) => r.site }] : []),

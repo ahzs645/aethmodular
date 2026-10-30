@@ -4,12 +4,13 @@
  * (common/charcoal.ts), with the season names and colours the charts use.
  */
 import { useMemo } from 'react'
+import { useMarkedRows } from '@/lib/markedRows'
 import { seasonOfDate } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { rowsOf } from '@/lib/table'
 import { INK } from '@/lib/theme'
-import { dryOf, joinScores, SCORE_SETS, type CharcoalScore, type ScoreSet, type Scored } from '../../common/charcoal'
+import { dryOf, joinScores, markedScores, SCORE_SETS, type CharcoalScore, type ScoreSet, type Scored } from '../../common/charcoal'
 import { ADDIS, SERIES, shortSeason, useConcRows } from '../../common/ui'
 import { useSpectral } from '../spectralCommon'
 
@@ -38,6 +39,11 @@ export const SET_TITLE = 'Which scored filters the charts use: the gallery\'s Ad
 export interface Season { name: string; color: string }
 export interface Charcoal {
   scored: Scored<FilterRow>[]
+  /**
+   * Filters → excluded: Mark (lib/markedRows): the excluded Addis rows in view that the notebooks scored, for the
+   * crossplots to draw as × and the notes to count; in no median, share, test or count. None for the notebooks' set.
+   */
+  marked: Scored<FilterRow>[]
   /** scored filters with no gallery Addis row in view */
   outside: number
   total: number
@@ -60,11 +66,14 @@ export function useCharcoalExport() {
 export function useCharcoal(viewRows: FilterRow[], meta: MetaFile, scoresTable: Parameters<typeof rowsOf>[0], set: ScoreSet): Charcoal {
   // EC against loading is a µg/m³ reproduction: rows in concentration whatever the basis
   const concRows = useConcRows(viewRows, meta)
+  const markedRows = useConcRows(useMarkedRows(), meta)
   return useMemo(() => {
     const scores = rowsOf(scoresTable) as unknown as CharcoalScore[]
     const addis = concRows.filter((r) => r.site === ADDIS)
     const calendar = meta.seasons.filter((s) => !s.site || s.site === ADDIS)
     const { scored, outside } = joinScores(scores, addis, set, (date, month) => seasonOfDate(date, month, calendar)?.name ?? null)
+    // the exclusions act on the gallery's rows only: the notebooks' own set is fixed (the charts say so, FixedSetNote)
+    const marked = set === 'notebook' ? [] : markedScores(scores, markedRows.filter((r) => r.site === ADDIS), scored)
     // seasons in calendar order from October, as the Addis calendars run
     const first = new Map<string, number>()
     for (const s of scored) first.set(s.season, Math.min(first.get(s.season) ?? 99, (s.month + 2) % 12))
@@ -83,6 +92,6 @@ export function useCharcoal(viewRows: FilterRow[], meta: MetaFile, scoresTable: 
     const drySeasons = set === 'notebook'
       ? [{ name: 'Dry Season', months: [10, 11, 12, 1, 2], color: colorOf('Dry Season') }]
       : calendar.filter((s) => isDry({ season: s.name, month: s.months[0] ?? 0 })).map((s) => ({ name: s.name, months: s.months, color: s.color }))
-    return { scored, outside, total: scores.length, set, seasons: names.map((name) => ({ name, color: colorOf(name) })), colorOf, isDry, dryName: shortSeason(dryName).replace(/\s+(Rainy\s+)?Season$/, ''), drySeasons }
-  }, [scoresTable, concRows, meta, set])
+    return { scored, marked, outside, total: scores.length, set, seasons: names.map((name) => ({ name, color: colorOf(name) })), colorOf, isDry, dryName: shortSeason(dryName).replace(/\s+(Rainy\s+)?Season$/, ''), drySeasons }
+  }, [scoresTable, concRows, markedRows, meta, set])
 }

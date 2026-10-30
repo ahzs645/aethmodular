@@ -13,7 +13,7 @@ import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import { summarize, type Block, type Model, type Scheme } from '../../common/filterOnly'
-import { MODEL_LABEL, NB_PROP, NB_STAB, SCHEMES, SOURCE, barLayer, blocksOf, popLabel, schemeLabel, shortQ, siteColor, statusText, type Settings, type SiteRun } from './data'
+import { FoExcludedNote, MODEL_LABEL, NB_PROP, NB_STAB, SCHEMES, SOURCE, barLayer, blocksOf, popLabel, schemeLabel, shortQ, siteColor, statusText, type Settings, type SiteRun } from './data'
 
 const GREY = '#8a8a8a'
 const MODEL_STYLE: Record<Model, { color?: string; dash?: string }> = { median: { color: '#b8b8b8', dash: '2 3' }, proportional: { color: GREY, dash: '6 3' }, ols: {} }
@@ -56,6 +56,7 @@ export function QuarterMae({ runs, s, meta }: { runs: SiteRun[]; s: Settings; me
           return <SweepPlot series={series} xScale="point" width={w} height={230} xFormat={shortQ} yLabel={`Held-out MAE (${s.u})`} include={[0]} children={naMarks(blocks)} />
         }} />
       <Note>Every model in a fold uses the same training filters and is scored on the same withheld filters. NA marks a quarter with filters but fewer than {s.minTrain} training filters; – a quarter with none.</Note>
+      <FoExcludedNote s={s} />
     </ChartFrame>
   )
 }
@@ -84,6 +85,7 @@ export function QuarterBias({ runs, s, meta }: { runs: SiteRun[]; s: Settings; m
           return <SweepPlot series={series} xScale="point" width={w} height={230} xFormat={shortQ} yLabel={`Mean signed error (${s.u})`} reference={0}
             background={barLayer(blocks.map((b) => ({ x: b.block, y: v(b, 'ols'), color })))} children={naMarks(blocks)} />
         }} />
+      <FoExcludedNote s={s} />
     </ChartFrame>
   )
 }
@@ -107,6 +109,7 @@ export function PairedProportional({ runs, s, meta }: { runs: SiteRun[]; s: Sett
           return <SweepPlot series={series} xScale="point" width={w} height={230} xFormat={shortQ} yLabel={`MAE prop. − MAE OLS (${s.u})`} reference={0}
             background={barLayer(blocks.map((b) => ({ x: b.block, y: v(b), color })))} children={naMarks(blocks)} />
         }} />
+      <FoExcludedNote s={s} />
     </ChartFrame>
   )
 }
@@ -128,6 +131,7 @@ export function TestWeights({ runs, s, meta }: { runs: SiteRun[]; s: Settings; m
             background={barLayer(g.map((b) => ({ x: b.block, y: share(b), color })))}
             children={({ x, y }) => <g>{g.map((b) => <text key={b.block} x={(x as ScalePoint<string>)(b.block) ?? 0} y={y(share(b)) - 4} textAnchor="middle" fontSize={9.5} fill={INK.muted}>{fmt(share(b), 0)}%</text>)}</g>} />
         }} />
+      <FoExcludedNote s={s} />
     </ChartFrame>
   )
 }

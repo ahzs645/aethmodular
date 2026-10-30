@@ -75,6 +75,18 @@ export function joinScores<R extends JoinRow>(scores: readonly CharcoalScore[], 
 }
 
 /**
+ * Filters → excluded: Mark: the scores of the gallery's excluded rows in view (`rows`), joined as `view` joins the
+ * rows it counts, less any filter the set already counts (`counted`: `plus` takes a filter it finds no row in view
+ * for as a newer one). These are drawn as × and counted in notes only, never in a median, share or test.
+ */
+export function markedScores<R extends JoinRow>(scores: readonly CharcoalScore[], rows: readonly R[], counted: readonly Pick<Scored, 'id'>[],
+  fields?: { fabs: string; ec: string }): Scored<R>[] {
+  if (!rows.length) return []
+  const have = new Set(counted.map((s) => s.id))
+  return joinScores(scores, rows, 'view', () => null, fields).scored.filter((s) => !have.has(s.id))
+}
+
+/**
  * Is a season the dry one? The notebooks' calendar rule is Oct–Feb ("Dry Season"); the gallery's calendars call it
  * "Dry (Oct-Feb)" or "Bega (Oct-Jan, dry)". A calendar with no dry season (quarters) falls back to the months.
  */

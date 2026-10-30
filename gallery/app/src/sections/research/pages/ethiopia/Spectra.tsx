@@ -6,6 +6,7 @@ import { SpectrumPlot, type SpectrumAnnotation, type SpectrumBand, type Spectrum
 import { useChartOptions } from '@/lib/chartOptions'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { f2 } from '@/lib/format'
+import { FixedSetNote } from '@/lib/markedRows'
 import { categoricalScale } from '@/lib/palettes'
 import { num, type Row } from '@/lib/table'
 import { INK } from '@/lib/theme'
@@ -142,6 +143,7 @@ export function EtadSpectra({ data }: { data: SpectralExport }) {
     controls={o.controls()} provenance={provenance(data, ['etad_spectra_distribution', 'etad_month_moments', 'etad_spectra_meta'], 'research/ftir_ec_calibration_2026_06_25/04_ethiopia_etad_spectra.ipynb figs 04 (all, by season).')}>
     <SpectrumPlot series={series} bands={bands} window={windowOf(o.values.win)} annotations={[BANDS01[0]]} hover="readout" dim={lg.dim} height={330} />
     <Legend {...lg.props} items={items} note={split.key === 'all' ? undefined : 'line: group mean · band: ±1 SD over its spectra'} />
+    <FixedSetNote what="the notebook's 319 ETAD spectra, summarised by the exporter" />
   </ChartFrame>
 }
 
@@ -197,5 +199,6 @@ export function DerivativeSpectra({ data }: { data: SpectralExport }) {
         zeroLine yLabel="2nd derivative (per channel²)" yClip={[0.005, 0.995]} yFormat={(v) => (v === 0 ? '0' : v.toExponential(0))} readoutFormat={(v) => v.toExponential(2)} />
     </Grid>
     <Legend {...lg.props} items={sets.map((s) => ({ label: s.label, color: s.color, shape: 'line' as const }))} />
+    <FixedSetNote what="the mean spectra of the notebook's 906 training filters and 319 ETAD spectra" />
   </ChartFrame>
 }

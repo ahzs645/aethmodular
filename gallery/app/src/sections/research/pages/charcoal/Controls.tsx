@@ -18,7 +18,7 @@ import { spearman } from '../../common/stats'
 import { BASIS_NOTE, DataTable, Grid, line, pText, shortSeason } from '../../common/ui'
 import { provenance, rows, type SpectralExport } from '../spectralCommon'
 import { NB, type Charcoal } from './data'
-import { DELTA, R_CHAR, R_RAW, scorePoint } from './Scores'
+import { DELTA, R_CHAR, R_RAW, scorePoint, SetNote } from './Scores'
 
 type Scored = ScoredOf<FilterRow>
 const med = (v: number[]) => spread(v).mid
@@ -63,6 +63,7 @@ export function LotControl({ c, data, setPick }: { c: Charcoal; data: SpectralEx
           <Note>Lot {lots[0]} vs {lots[1]} within the {c.dryName} season: U = {fmt(u2?.u, 0)}, p {pText(u2?.p ?? NaN)}. char_06: U = 634, p = 0.886. char_12 finds the same for its envelope escape (Research → Applicability domain).</Note>
         </div>
       </Grid>}
+      <SetNote c={c} of={(s) => s.lot !== null} />
     </ChartFrame>
   )
 }
@@ -73,6 +74,7 @@ export function LoadingCheck({ c, data, setPick }: { c: Charcoal; data: Spectral
   const absLabel = axis === 'fabs' ? 'HIPS Fabs (Mm⁻¹)' : `HIPS BC = Fabs / ${m.mac} (µg/m³)`
   const absOf = (s: Scored) => (axis === 'fabs' ? s.fabs : m.fromFabs(s.fabs))
   const ecPts = c.scored.filter((s) => s.ec !== null), abPts = c.scored.filter((s) => absOf(s) !== null)
+  const ecMarked = c.marked.filter((s) => s.ec !== null), abMarked = c.marked.filter((s) => absOf(s) !== null)
   const rho = (pts: Scored[], x: (s: Scored) => number | null) => spearman(pts.map((s) => x(s)!), pts.map((s) => s.rChar))
   const dryRho = (pts: Scored[], x: (s: Scored) => number | null) => { const d = pts.filter(c.isDry); return d.length > 5 ? rho(d, x) : null }
   // within the dry season, do the two mixture groups differ in loading? (filters with both, as char_06's model frame)
@@ -89,11 +91,14 @@ export function LoadingCheck({ c, data, setPick }: { c: Charcoal; data: Spectral
       subtitle={`Thin deposits give noisier spectra, and noise lowers correlation with any reference, so low loading could fake the anomaly. Left: r_char against the gallery's FTIR EC; right: against HIPS ${axis === 'fabs' ? 'Fabs' : `BC at the MAC set under Filters → units (${m.mac})`}. A gallery row's own EC and Fabs are used; newer filters take the notebook's Fabs and have no EC. Spearman ρ does not depend on the MAC.`}
       provenance={<>{NB.c06} [20], §5. {provenance(data, ['per_filter', 'loading_within_dry', 'competing'])}</>}>
       {!c.scored.length ? <Empty>No scored Addis filters in view.</Empty> : <Grid>
-        {ecPts.length >= 3 ? <Crossplot points={ecPts.map((s) => scorePoint(s, s.ec!, s.rChar, c.colorOf(s.season), 'EC', 'r_char', !s.low))} title="r_char vs EC" xLabel="FTIR EC (µg/m³)" yLabel={R_CHAR} fit={false} sameScale={false} maxSide={380} />
+        {ecPts.length >= 3 ? <Crossplot points={ecPts.map((s) => scorePoint(s, s.ec!, s.rChar, c.colorOf(s.season), 'EC', 'r_char', !s.low))}
+          marked={ecMarked.map((s) => scorePoint(s, s.ec!, s.rChar, c.colorOf(s.season), 'EC', 'r_char', !s.low))} title="r_char vs EC" xLabel="FTIR EC (µg/m³)" yLabel={R_CHAR} fit={false} sameScale={false} maxSide={380} />
           : <Empty>No filter in view carries FTIR EC.</Empty>}
-        <Crossplot points={abPts.map((s) => scorePoint(s, absOf(s)!, s.rChar, c.colorOf(s.season), axis === 'fabs' ? 'Fabs' : 'HIPS BC', 'r_char', !s.low))} title={`r_char vs ${axis === 'fabs' ? 'Fabs' : 'Fabs / MAC'}`} xLabel={absLabel} yLabel={R_CHAR} fit={false} sameScale={false} maxSide={380} />
+        <Crossplot points={abPts.map((s) => scorePoint(s, absOf(s)!, s.rChar, c.colorOf(s.season), axis === 'fabs' ? 'Fabs' : 'HIPS BC', 'r_char', !s.low))}
+          marked={abMarked.map((s) => scorePoint(s, absOf(s)!, s.rChar, c.colorOf(s.season), axis === 'fabs' ? 'Fabs' : 'HIPS BC', 'r_char', !s.low))} title={`r_char vs ${axis === 'fabs' ? 'Fabs' : 'Fabs / MAC'}`} xLabel={absLabel} yLabel={R_CHAR} fit={false} sameScale={false} maxSide={380} />
       </Grid>}
       <Key items={[...c.seasons.map((s) => ({ label: shortSeason(s.name), color: s.color })), { label: 'low-similarity component', color: INK.text, kind: 'dot' }, { label: 'normal', color: INK.text, kind: 'hollow' }]} />
+      <SetNote c={c} drawn />
       <Note>Spearman ρ of r_char with EC: {fmt(rho(ecPts, (s) => s.ec), 2)} (n {ecPts.length}; {c.dryName} only {fmt(dryRho(ecPts, (s) => s.ec), 2)}); with {axis === 'fabs' ? 'Fabs' : 'HIPS BC'}: {fmt(rho(abPts, absOf), 2)} (n {abPts.length}; {c.dryName} only {fmt(dryRho(abPts, absOf), 2)}). {BASIS_NOTE}</Note>
       <DataTable rows={tests} rowKey={(r) => r.k} columns={[
         { key: 'm', label: `Within the ${c.dryName} season`, value: (r) => r.label },
@@ -119,6 +124,8 @@ export function Exclusion({ c, data, setPick }: { c: Charcoal; data: SpectralExp
   const kept = c.scored.filter((s) => !out(s)), dropped = c.scored.filter(out)
   const all = headline(c.scored), k = headline(kept), x = headline(dropped)
   const pts = [...dropped.map((s) => scorePoint(s, s.rChar, s.rRaw, INK.neutral, 'r_char', 'r_raw', true)), ...kept.map((s) => scorePoint(s, s.rChar, s.rRaw, c.colorOf(s.season), 'r_char', 'r_raw'))]
+  // the gallery's exclusions (Filters → excluded: Mark), not char_07's rule: × only, in no subset below
+  const marked = c.marked.map((s) => scorePoint(s, s.rChar, s.rRaw, c.colorOf(s.season), 'r_char', 'r_raw'))
   const strip = (key: string, label: string, set: Scored[], color: string): IntervalRow => {
     const d = spread(set.map((s) => s.delta))
     return { key, label, note: `n=${d.n}`, marks: [[{ mid: d.mid, lo: d.lo, hi: d.hi, color }]], tip: [label, `median delta ${fmt(d.mid, 3)} (IQR ${fmt(d.lo, 3)} to ${fmt(d.hi, 3)})`, `share raw > char ${pct(headline(set).rawWins)}`] }
@@ -135,7 +142,7 @@ export function Exclusion({ c, data, setPick }: { c: Charcoal; data: SpectralExp
       subtitle={`char_07 repeats char_05 with the dry season excluded by the calendar (its primary rule), by char_06's low-similarity component, or both. Left: the char_05 scatter with the excluded filters grey. Right: delta = r_raw − r_char, median and interquartile range, for every filter shown, the kept and the excluded.`}
       provenance={<>{NB.c07} [7], §1 and §5. {provenance(data, ['per_filter', 'headline_07', 'rules_07'])}</>}>
       {c.scored.length < 3 ? <Empty>No scored Addis filters in view.</Empty> : <Grid>
-        <Crossplot points={pts} title="r_raw vs r_char" xLabel={R_CHAR} yLabel={R_RAW} fit={false} extraLines={line({ slope: 1, intercept: 0 }, INK.identity, '1:1', '5 4')} maxSide={380} />
+        <Crossplot points={pts} marked={marked} title="r_raw vs r_char" xLabel={R_CHAR} yLabel={R_RAW} fit={false} extraLines={line({ slope: 1, intercept: 0 }, INK.identity, '1:1', '5 4')} maxSide={380} />
         <div>
           <IntervalStrip panels={[{ label: DELTA, reference: 0 }]} labelWidth={150} noteWidth={50}
             blocks={[{ key: 'd', rows: [strip('all', 'All shown', c.scored, INK.text), strip('kept', 'Kept', kept, INK.accent), strip('out', 'Excluded', dropped, INK.muted)] }]} />
@@ -149,7 +156,8 @@ export function Exclusion({ c, data, setPick }: { c: Charcoal; data: SpectralExp
           ]} />
         </div>
       </Grid>}
-      <Key items={[...c.seasons.map((s) => ({ label: shortSeason(s.name), color: s.color })), { label: 'excluded', color: INK.neutral, kind: 'hollow' }, { label: '1:1', color: INK.identity, kind: 'dash' }]} />
+      <Key items={[...c.seasons.map((s) => ({ label: shortSeason(s.name), color: s.color })), { label: `excluded by the ${RULE_LABEL[rule].toLowerCase()} rule`, color: INK.neutral, kind: 'hollow' }, { label: '1:1', color: INK.identity, kind: 'dash' }]} />
+      <SetNote c={c} drawn />
       {saved.length > 0 && <>
         <p className="subtitle" style={{ margin: '10px 0 4px' }}>char_07's own table (all 239 filters, its seasons). The mean-r columns need each filter's r against every reference, which no script saves:</p>
         <DataTable rows={saved} rowKey={(r, i) => `${r.subset}-${i}`} columns={Object.keys(saved[0]).map((key) => ({ key, label: key, num: key !== 'subset', value: (r: (typeof saved)[number]) => (key === 'subset' ? String(r[key]) : fmt(num(r[key]), key === 'filters' ? 0 : 3)) }))} />

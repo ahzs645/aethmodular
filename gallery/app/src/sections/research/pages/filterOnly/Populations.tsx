@@ -20,7 +20,7 @@ import { FONT, INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { Grid } from '../../common/ui'
 import { MODELS, POPULATIONS, denominatorSensitivity, evaluate, inPopulation, summarize, type FPoint, type Model, type Population, type Summary } from '../../common/filterOnly'
-import { MODEL_LABEL, NB_DIAG, NB_PROP, NB_STAB, SITES, SOURCE, popLabel, siteColor, type Settings, type SiteRun } from './data'
+import { FoExcludedNote, MODEL_LABEL, NB_DIAG, NB_PROP, NB_STAB, SITES, SOURCE, popLabel, siteColor, type Settings, type SiteRun } from './data'
 
 /** every site × population, leave-quarter-out: the summary and the population size */
 function usePopulationGrid(points: FPoint[], s: Settings) {
@@ -65,6 +65,7 @@ export function PopulationHeat({ points, s }: { points: FPoint[]; s: Settings })
         {tip.node}
       </div>
       <Note>An empty cell means no quarter had {s.minTrain} training filters: the population exists but cannot be evaluated.</Note>
+      <FoExcludedNote s={s} any />
     </ChartFrame>
   )
 }
@@ -89,6 +90,7 @@ export function PopulationModels({ points, s, meta }: { points: FPoint[]; s: Set
           xFormat={(v) => { const c = g.cells.find((x) => POPULATIONS.find((p) => p.key === x.population)!.short === v); return c ? `${v} ${c.n}` : String(v) }} />
       }} />
       <Note>Axis labels give each population and its size. A missing point is a population with no evaluated quarter.</Note>
+      <FoExcludedNote s={s} any />
     </ChartFrame>
   )
 }
@@ -116,6 +118,7 @@ export function Weighting({ runs, s, meta }: { runs: SiteRun[]; s: Settings; met
         panels={[{ label: `Mean signed error (${s.u})`, heading: 'Withheld quarters', reference: 0, format: (v) => fmt(v, 1) },
           { label: `Mean signed error (${s.u})`, heading: 'Later-period prediction', reference: 0, format: (v) => fmt(v, 1) }]} />
       <Note>{sums.map((x) => `${x.site} ${signed(x.lqo.filters.mse.ols * s.k, 2)} / ${signed(x.lqo.quarters.mse.ols * s.k, 2)}`).join(' · ')} (leave quarter out, filters / quarters, {s.u}).</Note>
+      <FoExcludedNote s={s} />
     </ChartFrame>
   )
 }
@@ -138,6 +141,7 @@ export function DenominatorSensitivity({ points, s, meta }: { points: FPoint[]; 
           yMarkers={[{ at: s.mac, label: `your MAC ${fmt(s.mac, 1)}`, color: INK.muted }]} />
       </Grid>
       <Note>Bands are the interquartile range of the ratio. The dashed marker is the reader's MAC (Filters → units): ratios above it mean HIPS BC exceeds FTIR EC at that MAC.</Note>
+      <FoExcludedNote s={s} any />
     </ChartFrame>
   )
 }

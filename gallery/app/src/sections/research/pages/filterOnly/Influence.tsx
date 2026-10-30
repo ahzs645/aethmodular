@@ -12,7 +12,7 @@ import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import { evaluate, fitTraining, inPopulation, pairedInfluence, type FPoint, type Scheme } from '../../common/filterOnly'
-import { NB_STAB, SCHEMES, SOURCE, barLayer, popLabel, schemeLabel, shortQ, siteColor, type Settings } from './data'
+import { FoExcludedNote, NB_STAB, SCHEMES, SOURCE, barLayer, popLabel, schemeLabel, shortQ, siteColor, type Settings } from './data'
 
 /** the filter left out, in the link as fo.omit (the release's ETAD-0037 by default) */
 export function useOmitted(points: FPoint[], fallback: string): [FPoint | null, (id: string) => void, string[]] {
@@ -51,7 +51,7 @@ export function CoefficientInfluence({ points, s, meta, omitDefault }: { points:
       subtitle={`${inf?.site ?? ''} · ${popLabel(s.population)} population · change from the full-cohort fit: leaving out ${omitted?.id ?? 'a filter'}, or each withheld quarter's training fit`}
       provenance={<>{NB_STAB} figure 04 (ETAD-0037)</>} source={`${SOURCE}/Influence.tsx › CoefficientInfluence`}
       tip={<>The full-cohort OLS coefficients are descriptive references, not validation scores. At the release's settings, leaving out ETAD-0037 changes the Addis slope by +0.033 and the intercept by −0.206 Mm⁻¹; whole-quarter omissions move them further. The filter stays in the baseline and in the exclusion registry.</>}
-      controls={controls}>{body}</ChartFrame>
+      controls={controls}>{body}<FoExcludedNote s={s} site={inf?.site} /></ChartFrame>
   )
   if (!inf || !omitted) return frame(<Empty>No filter to leave out.</Empty>)
   if (!inf.inCohort) return frame(<Empty>{omitted.id} is not in the {popLabel(s.population)} population at {inf.site}; pick another filter or population.</Empty>)
@@ -101,6 +101,7 @@ export function CommonFilterInfluence({ points, s, meta, omitDefault }: { points
             children={({ x, ih }) => <g>{rows.map((r) => <text key={r.block} x={(x as ScalePoint<string>)(r.block) ?? 0} y={ih - 4} textAnchor="middle" fontSize={9} fill={INK.muted}>n={r.n}</text>)}</g>} />
         : <Empty>No filters are predicted under both trainings here.</Empty>}
       {all && <Note>All {all.n} common filters: MAE {fmt(all.baseMae * s.k, 3)} → {fmt(all.withoutMae * s.k, 3)} {s.u} ({signed(all.change * s.k, 4)}). The first bar pools every quarter; the paler bars are the quarters.</Note>}
+      <FoExcludedNote s={s} site={omitted?.site} />
     </ChartFrame>
   )
 }

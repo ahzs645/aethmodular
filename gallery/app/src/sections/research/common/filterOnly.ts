@@ -132,6 +132,17 @@ export function evaluate(siteDiagnostic: readonly FPoint[], cohort: readonly FPo
   return out
 }
 
+/**
+ * The held-out OLS prediction for a filter left out of the cohort (a hand exclusion, drawn as × under Filters →
+ * excluded: Mark): the fit of the block its quarter falls in, which never sees that quarter under leave-quarter-out
+ * (so it is the prediction the filter would get in the cohort) and sees only earlier filters under later-period.
+ * Null where the quarter is off the calendar or its fit was not evaluated. In no metric.
+ */
+export function heldOutPrediction(blocks: readonly Block[], p: Pick<FPoint, 'date' | 'ec'>): number | null {
+  const b = blocks.find((x) => x.q === quarterIndex(p.date))
+  return b && b.fit.status === 'evaluated' ? b.fit.intercept + b.fit.slope * p.ec : null
+}
+
 export interface Summary {
   /** every evaluated filter weighted equally (the release's primary estimand) */
   filters: Metrics
