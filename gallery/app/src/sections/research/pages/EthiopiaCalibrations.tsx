@@ -5,6 +5,9 @@ import { useMac } from '@/lib/mac'
 import { num, type Row } from '@/lib/table'
 import type { SectionPageProps } from '../../types'
 import { PageIntro, provenance, rows, useSpectral, Waiting } from './spectralCommon'
+import { AdamaFigures } from './ethiopia/Adama'
+import { CleaningResiduals } from './ethiopia/Residuals'
+import { SmokeFigures } from './ethiopia/Smoke'
 
 /**
  * The June 2026 Ethiopia calibration notebooks (research/ftir_ec_calibration_2026_06_25 07, 09, 10, 12,
@@ -12,8 +15,11 @@ import { PageIntro, provenance, rows, useSpectral, Waiting } from './spectralCom
  * ETAD EC tables are tracked, so every calibration's Addis EC is drawn per filter and against HIPS.
  * The notebooks used HIPS Fabs/10; the HIPS axis and the saved slopes follow the MAC set under
  * Filters → units (lib/mac: x rescales, slopes scale by MAC/10, intercepts and R² stay).
+ * Also: SPARTAN's lot-251 biomass tool calibration at Addis (July07, spartan_ec 02; ethiopia/Smoke, joined to
+ * the gallery's Addis rows), the Adama TOR set (June 02/03/08/15, spartan_ec 03/05/07; ethiopia/Adama) and
+ * 08's residual diagnostics (ethiopia/Residuals).
  */
-export function EthiopiaCalibrations(_props: SectionPageProps) {
+export function EthiopiaCalibrations({ rows: galleryRows }: SectionPageProps) {
   const { data, error } = useSpectral('ethiopia_calibrations')
   const m = useMac()
 
@@ -35,8 +41,9 @@ export function EthiopiaCalibrations(_props: SectionPageProps) {
 
   return <>
     <PageIntro id="ethiopia-intro" title="Ethiopia (ETAD) EC under the June 2026 calibrations — which samples, how many components, which lots" data={data}
-      notebooks="research/ftir_ec_calibration_2026_06_25/07_ethiopia_variant_ec, 09_ethiopia_component_ec, 10_ethiopia_ec_both_lots, 12_dedicated_ethiopia_calibration, 15_downstream_recommended_calibration; research/spartan_ec_2026_06_16/08_outlier_removal_explainer">
+      notebooks="research/ftir_ec_calibration_2026_06_25/02_adama_tor_vs_ftir, 03_adama_char_soot, 07_ethiopia_variant_ec, 08_adama_hips_crossplots, 09_ethiopia_component_ec, 10_ethiopia_ec_both_lots, 12_dedicated_ethiopia_calibration, 15_downstream_recommended_calibration; research/spartan_ec_2026_06_16/02_biomass_calibration_comparison, 03_adama_han_char_soot, 05_calibration_optimization, 07_calibration_optimization_story, 08_outlier_removal_explainer; research/July07/regular_before_cal0_vs_smoke_hips, regular_vs_smoke_ec_vs_hips">
       <p>All of these apply PLS calibrations trained on IMPROVE to the 319 ETAD spectra (19 filters scanned twice, so one point per spectrum, as the notebooks do). None has an Ethiopian thermal EC reference: they are judged by agreement with HIPS Fabs/MAC (the notebooks: MAC 10; here the MAC set under Filters → units, now {m.mac}) and by physical sense. Notebook 07 left the HIPS comparison as a to-do; the crossplots here add it from the HIPS Fabs carried in notebook 15's table.</p>
+      <p>A naming hazard runs through the July07 and spartan_ec notebooks: their "regular CAL-0" is the 906-filter IMPROVE set (the set the gallery's "Biomass-smoke (906)" calibration preset trains on), while their "smoke" or "biomass tool" calibration is a different model, the coefficients SPARTAN's calibration tool exported for filter lot 251. The page names them that way. The only thermal EC in Ethiopia is the five Adama quartz filters, read against every calibration below.</p>
     </PageIntro>
 
     <Figure kind="intervals" id="ethiopia-dist" data={points} row="calibration" block="family"
@@ -70,11 +77,15 @@ export function EthiopiaCalibrations(_props: SectionPageProps) {
       subtitle="From the 906-filter set to the full 13,012-filter lot-248+251 mirror the intercept goes from −5.25 to about −2.3 and the slope from 2.27 to about 1.2 (at MAC 10; the slopes drawn follow the MAC set under Filters → units); a PCA Addis neighbourhood adds little; Weakley's second derivative with band selection pulls the intercept to about −1 but flattens the slope, so the remaining offset is method or MAC, not spectral."
       provenance={provenance(data, ['dedicated_progression'])} />
 
+    <SmokeFigures data={data} rows={galleryRows} />
+
     <Figure kind="table" id="ethiopia-adama" data={rows(data, 'adama')}
       columns={[{ key: 'barcode', label: 'Adama filter' }, { key: 'date', label: 'Date' }, { key: 'TOR EC', label: 'TOR EC (µg/m³)', format: 'f2' }, { key: 'OLD rds_EC 906', label: 'Old calibration', format: 'f2' }, { key: 'NEW lot-248+251', label: 'Lot-248+251 calibration', format: 'f2' }]}
       title="Notebook 15 at Adama — five quartz TOR filters, read against the 1:1"
       subtitle="Adama PTFE spectra interpolated to the training grid; the barcode-to-filter map is notebook 01's assumed sorted-to-sorted pairing. Five points: read them, do not fit them."
       provenance={provenance(data, ['adama'])} />
+
+    <AdamaFigures data={data} />
 
     <Figure kind="table" id="ethiopia-cleaning" data={rows(data, 'cleaning_rounds')}
       title="spartan_ec 08 — how the 3σ cleaning runs: nine rounds remove 61 of 906 calibration filters"
@@ -93,6 +104,8 @@ export function EthiopiaCalibrations(_props: SectionPageProps) {
           title="The removed filters — mostly heavily loaded, far off the line"
           subtitle="The 61 IMPROVE filters the cleaning drops, at their full-fit predictions. The 845 kept filters need the Drive (see the intro)."
           provenance={provenance(data, ['removed'])} />}
+
+    <CleaningResiduals data={data} />
 
     <Figure kind="table" id="ethiopia-removed-list" data={rows(data, 'removed')}
       columns={[{ key: 'FilterId', label: 'Filter' }, { key: 'Site', label: 'Site' }, { key: 'date', label: 'Date' }, { key: 'measured', label: 'Measured (µg)', format: 'f2' },

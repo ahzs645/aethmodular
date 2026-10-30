@@ -37,7 +37,7 @@ export const RESEARCH_PAGES: (SectionPage & { Page: ComponentType<SectionPagePro
   { key: 'provisional-ec', label: 'Provisional Addis EC', title: 'ftir_29, ftir_30: the corrected calibration’s Addis EC series as a product, and where its validation stops', Page: ProvisionalSeries },
   { key: 'applicability', label: 'Applicability domain', title: 'ftir_36, ftir_39, ftir_50, char_12: in-domain at Addis, and why that is not validity', Page: Applicability },
   { key: 'network-map', label: 'Network spectral map', title: 'ftir_52: Ward classes over the IMPROVE network, site similarity, a validated match threshold, seasonal analogs', Page: NetworkMap },
-  { key: 'ethiopia-june', label: 'Ethiopia calibrations (Jun 2026)', title: 'ftir_ec_calibration_2026_06_25 07/09/10/12/15, spartan_ec 08: ETAD EC by sample choice, components and lots', Page: EthiopiaCalibrations },
+  { key: 'ethiopia-june', label: 'Ethiopia calibrations (Jun 2026)', title: 'ftir_ec_calibration_2026_06_25 02/03/07/08/09/10/12/15, spartan_ec 02/03/05/07/08, July07: ETAD EC by sample choice, components and lots; the lot-251 smoke tool; the Adama TOR set', Page: EthiopiaCalibrations },
   { key: 'generalise', label: 'Does it generalise', title: 'ftir_53: five-site intercepts and slopes, Bishoftu replication, the deck lessons restated', Page: Generalise },
   // research-hips-met
   { key: 'rh-sweep', label: 'RH threshold sweep', title: 'Method agreement split at every humidity threshold, by season', Page: RhSweep },

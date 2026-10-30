@@ -479,6 +479,9 @@ def ethiopia_calibrations() -> Page:
                           "needs": "<Davis Data>/FTIR/apps/apps_data.npz and FTIR/notebook/extracted/EC_*.csv",
                           "run": "AETHMODULAR_DRIVE_ROOT=<your My Drive> uv run --locked --no-sync python gallery/data/export_research_spectral.py"})
 
+    smoke_tables(p)
+    adama_tables(p)
+
     old, new = (rec.EC_ugm3_old.median(), rec.EC_ugm3_new.median())
     p.text["finding"] = (
         f"Moving from the 906-filter lot-251 set to the full lot-248+251 mirror lowers the median ETAD EC from {old:.2f} to {new:.2f} µg/m³ "
@@ -533,6 +536,97 @@ def cleaning_all(removed: pd.DataFrame, rounds: pd.DataFrame) -> pd.DataFrame | 
     if len(check) != len(removed) or len(gone) != len(removed):
         raise ValueError("the recomputed removals do not match spartan_ec 08's tracked ec_removed_filters.csv")
     return out
+
+
+def _polyfit(x: pd.Series, y: pd.Series) -> tuple[int, float, float, float]:
+    """The July07 notebooks' reg_stats: np.polyfit of y on x over finite pairs, R² = 1 − SS_res / SS_tot."""
+    ok = np.isfinite(x.to_numpy(float)) & np.isfinite(y.to_numpy(float))
+    xs, ys = x.to_numpy(float)[ok], y.to_numpy(float)[ok]
+    slope, intercept = np.polyfit(xs, ys, 1)
+    r2 = 1 - np.sum((ys - (slope * xs + intercept)) ** 2) / np.sum((ys - ys.mean()) ** 2)
+    return int(ok.sum()), float(slope), float(intercept), float(r2)
+
+
+def smoke_tables(p: Page) -> None:
+    """SPARTAN's lot-251 biomass ("smoke") tool calibration on the Addis spectra, against HIPS (July07, spartan_ec 02).
+
+    Naming: July07's "regular CAL-0" is the 906-filter IMPROVE set refitted at k = 20 (the gallery's
+    "Biomass-smoke (906)" preset trains on the same set); its "smoke" / "biomass" is a different model, the
+    coefficients SPARTAN's calibration tool exported for lot 251 (tool_EC_coeffs_lot251_biomass.csv). Both
+    tables are per-filter and are joined to the gallery's Addis rows in the browser (by date, and by
+    ExternalFilterId without its scan suffix), so the HIPS side follows the reader's MAC and exclusions.
+    """
+    july = ROOT / "research/July07"
+    addis = pd.read_csv(july / "tables/addis_regular_before_cal0_vs_smoke.csv")
+    etad = pd.read_csv(july / "tables/etad_regular_vs_smoke_ec.csv")
+    verdict_addis = pd.read_csv(july / "tables/regular_before_cal0_vs_smoke_verdict.csv")
+    verdict_etad = pd.read_csv(july / "tables/regular_vs_smoke_verdict.csv")
+    # each saved verdict must come back from its per-filter table (before-CAL-0 regresses HIPS on EC; the other EC on HIPS)
+    both = addis.dropna(subset=["ec_regular", "ec_smoke", "hips_fabs"])
+    for label, col in (("Regular reported EC (pre-CAL-0)", "ec_regular"), ("Smoke-only (biomass)", "ec_smoke"), ("CAL-0 refit (reference)", "ec_cal0")):
+        n, slope, intercept, r2 = _polyfit(both[col], both["hips_fabs"])
+        saved = verdict_addis.set_index("calibration").loc[label]
+        if (n, round(slope, 2), round(intercept, 2), round(r2, 3)) != (saved.n, saved.slope, saved.intercept, saved.R2):
+            raise ValueError(f"addis_regular_before_cal0_vs_smoke.csv does not reproduce July07's verdict for {label}")
+    for label, col in (("Regular (all-data CAL-0)", "EC_regular"), ("Smoke-only (biomass)", "EC_smoke"), ("Deployed general (reported)", "EC_reported")):
+        n, slope, intercept, r2 = _polyfit(etad["EC_hips"], etad[col])
+        saved = verdict_etad.set_index("calibration").loc[label]
+        if (n, round(slope, 2), round(intercept, 2), round(r2, 3)) != (saved.n, saved.slope, saved.intercept, saved.R2):
+            raise ValueError(f"etad_regular_vs_smoke_ec.csv does not reproduce July07's verdict for {label}")
+    p.add("smoke_addis", addis, notebook="July07/regular_before_cal0_vs_smoke_hips", read="tracked csv",
+          path=rel(july / "tables/addis_regular_before_cal0_vs_smoke.csv"))
+    p.add("smoke_etad", etad, notebook="July07/regular_vs_smoke_ec_vs_hips", read="tracked csv",
+          path=rel(july / "tables/etad_regular_vs_smoke_ec.csv"))
+    p.add("smoke_verdict_addis", verdict_addis, notebook="July07/regular_before_cal0_vs_smoke_hips", read="tracked csv",
+          path=rel(july / "tables/regular_before_cal0_vs_smoke_verdict.csv"))
+    p.add("smoke_verdict_etad", verdict_etad, notebook="July07/regular_vs_smoke_ec_vs_hips", read="tracked csv",
+          path=rel(july / "tables/regular_vs_smoke_verdict.csv"))
+
+    # spartan_ec 02 ran with PLACEHOLDER = True: its EC_biomass is the general EC × 1.18 on the higher-OC half
+    # (is_biomass), not a calibration. Only the real columns go out: which Addis filters are lot 251, with their
+    # general EC and HIPS; the page puts July07's lot-251 tool EC where the placeholder stood.
+    lot = pd.read_csv(JUNE16 / "tables/biomass_vs_general_ec.csv")
+    placeholder = np.where(lot.is_biomass, lot.EC_general * 1.18, lot.EC_general)
+    if not np.allclose(lot.EC_biomass, placeholder):
+        raise ValueError("biomass_vs_general_ec.csv no longer holds 02's placeholder: export its EC_biomass")
+    p.add("lot251_set", lot[["FilterId", "LotId", "SampleDate", "EC_general", "OC_ftir", "HIPS_Fabs"]].assign(LotId=lot.LotId.astype(int)),
+          notebook="02_biomass_calibration_comparison", read="tracked csv (placeholder biomass columns left out)",
+          path=rel(JUNE16 / "tables/biomass_vs_general_ec.csv"))
+
+
+def adama_tables(p: Page) -> None:
+    """The five Adama PTFE filters against the co-located quartz TOR, under every calibration tried on them.
+
+    The quartz and PTFE filters pair by sample date (June 02's table). The June 2026 notebooks (02, 08) work
+    in µg/m³; the spartan_ec tables (03's TOR fractions, and the tool / local / faithful / optimized /
+    stabilized biomass EC) are µg on each filter, and the page converts with the PTFE volume June 08 saved.
+    """
+    t = JUNE25 / "tables"
+    tor = pd.read_csv(t / "adama_tor_vs_ftir.csv")
+    variants = pd.read_csv(t / "adama_new_ec_by_variant.csv")
+    han = pd.read_csv(JUNE16 / "tables/adama_char_soot_classification.csv")
+    spartan = {name: pd.read_csv(JUNE16 / f"tables/adama_ec_{name}_comparison.csv") for name in ("calibration", "faithful", "optimized", "stabilized")}
+    # the pairings and units the page relies on: µg ÷ PTFE volume is June's µg/m³, and every table's TOR is the date-paired quartz
+    volume = variants.set_index("FilterId")["volume_m3"]
+    quartz = tor.set_index("ptfe_FilterId")["quartz_FilterId"]
+    for name, frame in spartan.items():
+        f = frame.set_index("FilterId")
+        if not np.allclose(f.EC_general / volume.reindex(f.index), variants.set_index("FilterId").FTIR_EC_general_orig.reindex(f.index), atol=1e-3):
+            raise ValueError(f"adama_ec_{name}_comparison.csv's EC_general is not June 08's general EC × the PTFE volume")
+        if not np.allclose(f.ECTR, han.set_index("sample").EC_TOR.reindex(quartz.reindex(f.index)).to_numpy(), atol=1e-3):
+            raise ValueError(f"adama_ec_{name}_comparison.csv's ECTR is not the date-paired quartz filter's TOR EC")
+    p.add("adama_tor", tor.drop(columns=[c for c in tor.columns if tor[c].isna().all()]), notebook="02_adama_tor_vs_ftir",
+          read="tracked csv", path=rel(t / "adama_tor_vs_ftir.csv"))
+    p.add("adama_char_soot", pd.read_csv(t / "adama_char_soot_opr_opt.csv"), notebook="03_adama_char_soot",
+          read="tracked csv", path=rel(t / "adama_char_soot_opr_opt.csv"))
+    p.add("adama_variants", variants.assign(barcode=variants.barcode.astype(str)), notebook="08_adama_hips_crossplots",
+          read="tracked csv", path=rel(t / "adama_new_ec_by_variant.csv"))
+    p.add("adama_han", han, notebook="03_adama_han_char_soot", read="tracked csv",
+          path=rel(JUNE16 / "tables/adama_char_soot_classification.csv"))
+    writers = {"calibration": "_build_adama_comparison.py", "faithful": "_build_faithful_replica_adama.py",
+               "optimized": "05_calibration_optimization", "stabilized": "07_calibration_optimization_story"}
+    for name, frame in spartan.items():
+        p.add(f"adama_{name}", frame, notebook=writers[name], read="tracked csv", path=rel(JUNE16 / f"tables/adama_ec_{name}_comparison.csv"))
 
 
 # ---------------------------------------------------------------- committee backup figures (ftir_53)
