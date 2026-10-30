@@ -14,6 +14,7 @@ import { useHighlightActions } from '@/lib/highlight'
 import { useLegend } from '@/components/Legend'
 import { BaselineFollowup } from '@/pages/BaselineFollowup'
 import type { ApplicabilityData, ApplicabilityRow, BaselineCohort, BaselineContribution, BaselineData, BaselineMethod, BaselinePair } from '@/lib/baselineComparison'
+import { FixedSetNote } from '@/lib/markedRows'
 
 const METHODS: BaselineMethod[] = ['AIRSpec','VIBES']
 const BANDS = ['1425_1799','1800_2499','2500_2999','3000_4000'] as const
@@ -72,6 +73,7 @@ function ApplicabilityViews({data}:{data:ApplicabilityData}) {
         return <g key={method} opacity={lg.dim(method)}><path d={d3.line<(typeof m)[number]>().x(b=>cx(b.low)).y(b=>y(b.mae))(m)??''} stroke={COLOR[method]} strokeWidth={2} fill="none"/>{m.map(b=><circle key={b.low} cx={cx(b.low)} cy={y(b.mae)} r={4.5} fill={COLOR[method]} onMouseEnter={e=>tip.show(e,[method,`Training percentile ${b.low}–${b.low+20}`,`${b.n} filters; mean |error| ${f(b.mae,3)} µg/filter`])} onMouseLeave={tip.hide}></circle>)}</g>
       })}<XAxis scale={x} y={ih} label="Training spectral percentile"/></g><Legend width={w} y={300} items={METHODS.map(m=>({label:m,color:COLOR[m]}))} lg={lg}/></svg>{tip.node}</div>
       <Note>This is an exploratory binning of already inspected test outcomes. Mean errors can rise with EC loading or site composition. No cutoff has been selected or validated.</Note>
+      <FixedSetNote what="the frozen held-out IMPROVE test filters" />
     </ChartFrame>
     <ChartFrame title="How often are spectra beyond the training 95th percentile?" tip={<><p>Full-pool models, {data.counts.test.toLocaleString()} test and {data.counts.addis} Addis physical filters. Addis has no thermal EC reference here; its bars describe spectral placement only.</p><p>Different baseline corrections produce different spectral spaces. A low percentile does not prove accuracy; a high percentile is a prompt to inspect, not grounds for excluding a filter.</p></>} subtitle="Proportion of each population with a spectral diagnostic above its own method's training 95th percentile.">
       <div className="chart-wrap"><svg width={w} height={255} role="img" aria-label="Percent of held-out IMPROVE and Addis spectra above training 95th percentile"><g transform="translate(70,20)">{['test','addis'].flatMap((kind,i)=>METHODS.map((method,j)=>{
@@ -79,6 +81,7 @@ function ApplicabilityViews({data}:{data:ApplicabilityData}) {
         const yy=15+i*96+j*31
         return <g key={kind+method} fontFamily={FONT.family} fontSize={11}><text x={-10} y={yy+13} textAnchor="end" fill={INK.text}>{kind==='test'?'IMPROVE':'Addis'}</text><rect x={0} y={yy} width={iw} height={16} fill={INK.grid}/><rect x={0} y={yy} width={iw*v/100} height={16} fill={COLOR[method]}/><text x={Math.min(iw-32,iw*v/100+5)} y={yy+13} fill={INK.text}>{f(v,1)}% · {method}</text></g>
       }))}</g></svg></div>
+      <FixedSetNote what="the frozen held-out IMPROVE test filters and the 253 frozen Addis spectra" />
     </ChartFrame>
   </>
 }
@@ -124,6 +127,7 @@ export function SiteBandPattern({rows,cohort}:{rows:BaselinePair[];cohort:Baseli
     <ExplainOnly><Note>{cohort==='full_pool'?'Full pool':'Restricted lowest-OC/EC'}, current display subset ({rows.length} paired physical filters). Colors show ΔMAE in µg/filter: the negative end of the palette favors VIBES, the positive end favors the spline baseline (AIRSpec. Cells with fewer than five filters are gray; blank cells have none.</Note></ExplainOnly>
     <div ref={ref} className="chart-wrap"><svg width={w} height={ih+118} role="img" aria-label="Site by training loading quartile heatmap of paired absolute error difference"><g transform="translate(77,25)" fontFamily={FONT.family}>{cells.map(c=>c.n?<rect key={c.site+c.band} x={x(c.band)} y={y(c.site)} width={x.bandwidth()} height={y.bandwidth()} fill={c.n<5?INK.grid:color(c.delta!)} stroke={INK.panel} onMouseEnter={e=>tip.show(e,[`${c.site} / ${c.band}`,`${c.n} physical filters`,`ΔMAE ${f(c.delta,3)} µg/filter`,c.n<5?'Shown gray: fewer than five filters':''])} onMouseLeave={tip.hide}></rect>:null)}{sites.map(s=><text key={s} x={-8} y={y(s)!+y.bandwidth()/2+4} textAnchor="end" fontSize={10} fill={INK.text}>{s}</text>)}<XAxis scale={x} y={ih} label="Training-defined EC loading quartile"/></g><ColorKey x={77} y={ih+92} bound={bound} color={color}/></svg>{tip.node}</div>
     <ExplainOnly><Note>Color saturates beyond ±{f(bound,2)} µg/filter, the 90th percentile of displayed cell magnitudes; hover gives exact values and counts. The quartiles use measured TOR EC, so they cannot route an Addis prediction without independent EC. The separate CLI notebook evaluates an exploratory spectrum-only router; this heatmap is not that model.</Note></ExplainOnly>
+    <FixedSetNote what="the frozen paired IMPROVE test filters of this benchmark" />
   </ChartFrame>
 }
 

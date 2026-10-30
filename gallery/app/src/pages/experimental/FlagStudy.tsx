@@ -18,6 +18,7 @@ import { dotFill, dotRim } from '@/lib/highlight'
 import { useTheme } from '@/lib/colorTheme'
 import { f2, f3, pct, signed } from '@/lib/format'
 import { Forest, placeLabels } from './shared'
+import { FixedSetNote } from '@/lib/markedRows'
 
 /**
  * Experimental · tests 1–2: what the decision workbook's "impacted" flag actually sees
@@ -257,6 +258,7 @@ function BlindSpotMap({ d }: { d: FlagData }) {
         <Legend {...lg.props} items={[...cats.filter((c) => visibleCats.includes(c)).map((c) => ({ label: c, color: CAT_COLOR[c], detail: (col<number>(mi, 'category').filter((v) => cats[v] === c).length).toLocaleString() })),
           ...(overlay === 'None' || overlay === 'SPARTAN sites' ? [] : [{ label: overlay === 'Addis filters' ? 'Addis filters' : `${site} filters`, color: overlay === 'Addis filters' ? ADDIS_ALL : '#7c3aed' }])]} />
       </div>
+      <FixedSetNote what="the workbook's held-out IMPROVE filters and every SPARTAN PM2.5 filter it scored" />
     </ChartFrame>
   )
 }
@@ -283,6 +285,7 @@ function Ladder({ d }: { d: FlagData }) {
       <Forest rows={rows} labelWidth={200} noteWidth={56}
         panels={[{ key: 'auc', label: 'AUC, held-out sites', ref: d.ladder[0]?.AUC, fmt: f2 }, { key: 'gain', label: 'AUC gain over loading alone', ref: 0, fmt: (v) => signed(v) }]} />
       <Note>★ = the best rung usable at SPARTAN, used for the blind-spot map and the missed-failure tables.</Note>
+      <FixedSetNote what="the workbook's held-out IMPROVE filters and every SPARTAN PM2.5 filter it scored" />
     </ChartFrame>
   )
 }
@@ -313,6 +316,7 @@ function WithinLoading({ d }: { d: FlagData }) {
           <tr><td>Impacted share</td>{deciles.map((w) => <td key={w['loading decile']}>{pct(w['impacted share'])}</td>)}</tr>
         </tbody>
       </table>
+      <FixedSetNote what="the workbook's held-out IMPROVE filters and every SPARTAN PM2.5 filter it scored" />
     </ChartFrame>
   )
 }
@@ -347,6 +351,7 @@ function Coverage({ d }: { d: FlagData }) {
       <SweepPlot series={series} xDomain={[1, 0.3]} yLabel={METRIC_LABEL[metric]} xLabel="Share of filters kept" height={340} dim={lg.dim} yFormat={fmt} xFormat={(v) => pct(+v)}
         xMarkers={[{ at: 1 - d.settings.FLAG_RATE, label: `flag ${pct(d.settings.FLAG_RATE)}` }]} reference={metric === 'bias kept' ? 0 : undefined} />
       <Legend {...lg.props} items={scores.map((s) => ({ label: s, color: colorOf(s), shape: s === 'oracle (true error)' || s === 'random' ? 'dashed' as const : 'line' as const }))} note="click to show or hide" />
+      <FixedSetNote what="the workbook's held-out IMPROVE filters and every SPARTAN PM2.5 filter it scored" />
     </ChartFrame>
   )
 }
@@ -394,6 +399,7 @@ function WhoGetsThrough({ d }: { d: FlagData }) {
         <tbody>{top.map((r) => <tr key={String(r.filter_id)}><td>{r.site}{r.urban ? ' (urban)' : ''}</td><td>{r.filter_id}</td><td>{r.date}</td><td>{f2(r['TOR EC µg'])}</td><td>{f2(r['FTIR EC µg'])}</td>
           <td style={{ color: (r['error µg'] as number) < 0 ? INK.positive : INK.negative }}>{signed(r['error µg'] as number)}</td><td>{Math.round(r['loading percentile'] as number)}</td><td>{Math.round(r['distance percentile'] as number)}</td><td>{f2(r.risk)}</td></tr>)}</tbody>
       </table></div>}
+      <FixedSetNote what="the workbook's held-out IMPROVE filters and every SPARTAN PM2.5 filter it scored" />
     </ChartFrame>
   )
 }
@@ -435,6 +441,7 @@ function SiteKeepChart({ d }: { d: FlagData }) {
         {tip.node}
       </div>
       <Legend items={[{ label: 'all filters', color: IMPROVE_GREY }, { label: 'filters the flag keeps', color: INK.good }, { label: 'urban site (name in red)', color: INK.negative, shape: 'square' }]} />
+      <FixedSetNote what="the workbook's held-out IMPROVE filters and every SPARTAN PM2.5 filter it scored" />
     </ChartFrame>
   )
 }
@@ -491,6 +498,7 @@ function SpartanSites({ d }: { d: FlagData }) {
         {tip.node}
       </div>
       <Note>A dash under loading means the site has no weighed PM2.5 for most filters: the flag still scores those filters, it just cannot use their mass.</Note>
+      <FixedSetNote what="the workbook's held-out IMPROVE filters and every SPARTAN PM2.5 filter it scored" />
     </ChartFrame>
   )
 }

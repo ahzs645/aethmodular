@@ -6,6 +6,7 @@ import { Crossplot } from '@/components/Crossplot'
 import { INK, themed } from '@/lib/theme'
 import { f2, pct } from '@/lib/format'
 import { Forest, runLine, sourceOf, useXp, type Cols, type XpBase } from './shared'
+import { FixedSetNote } from '@/lib/markedRows'
 
 /** Test 5: pick the model with the smallest predicted error, or abstain (experiments_20261022.ipynb §5). */
 
@@ -64,6 +65,7 @@ function Strategies({ d }: { d: SelectorData }) {
       title="Strategies — typical error and the worst errors, side by side"
       subtitle="Each candidate alone, their average, the old idea (a classifier that predicts which model wins), the error-predicting selector, the selector that abstains on its riskiest tenth, and the oracle that knows TOR (hollow: not achievable). A good selector lowers the worst errors, not only the RMSE.">
       <Forest rows={rows} labelWidth={230} panels={[{ key: 'RMSE', label: 'RMSE against TOR (µg)', fmt: f2 }, { key: 'p99', label: '99th percentile |error| (µg)', fmt: f2 }, { key: 'max', label: 'largest |error| (µg)', fmt: f2 }]} />
+      <FixedSetNote what="the run's 1,500 IMPROVE filters, nested by site fold" />
     </ChartFrame>
   )
 }
@@ -83,6 +85,7 @@ function Picks({ d }: { d: SelectorData }) {
       <IntervalStrip blocks={[{ key: 'rules', rows }]} labelWidth={160} rowHeight={30}
         panels={[{ label: 'share of filters', domain: [0, 1], format: (v) => pct(v) }]} />
       <Legend items={d.picks.map((p) => ({ label: p.model, color: COLOR[p.model] }))} />
+      <FixedSetNote what="the run's 1,500 IMPROVE filters, nested by site fold" />
     </ChartFrame>
   )
 }
@@ -98,6 +101,7 @@ function CoverageCurve({ d }: { d: SelectorData }) {
       subtitle="Filters ranked by the selector's own predicted error; keep the safest share and read the RMSE of the chosen predictions among them. The dashed line keeps by the true error (the best any ranking could do).">
       <SweepPlot series={series} xDomain={[1, 0.3]} xLabel="share of filters kept" yLabel="RMSE among kept (µg)" height={300} xFormat={(v) => pct(+v)} yFormat={f2} xMarkers={[{ at: 0.9, label: 'abstain 10 %' }]} />
       <Legend items={series.map((s) => ({ label: s.label, color: s.color, shape: s.dash ? 'dashed' as const : 'line' as const }))} />
+      <FixedSetNote what="the run's 1,500 IMPROVE filters, nested by site fold" />
     </ChartFrame>
   )
 }
@@ -110,6 +114,7 @@ function RiskCalibration({ d }: { d: SelectorData }) {
       title="Is the predicted error honest? — predicted against actual, by decile"
       subtitle="Filters grouped into tenths by the selector's predicted error for the model it chose; mean predicted against mean actual |error|. On the dashed 1:1 line the prediction is honest; above it the selector is overconfident.">
       <Crossplot points={pts} title="" xLabel="mean predicted |error| (µg)" yLabel="mean actual |error| (µg)" fit={false} maxSide={400} />
+      <FixedSetNote what="the run's 1,500 IMPROVE filters, nested by site fold" />
     </ChartFrame>
   )
 }

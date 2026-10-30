@@ -245,6 +245,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
             subtitle="Median spectrum with the interquartile band for each selection cohort at its locked cutoff, and the Addis test set (dashed). Ann's multi-cohort ask: which selection actually looks like Addis, and does that survive baseline correction?"
             provenance="calibration_explorer /api/spectra compare · Selection tab"
             bySpace={cohortSpectra}
+            fixedSet="the explorer's saved median spectra of each cohort and of the Addis test set"
           />
           <SpectraOverlay
             id="site-spectra"
@@ -252,6 +253,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
             subtitle="Median spectrum with the interquartile band per site. The ~1600 cm⁻¹ band that distinguishes Addis is visible here against Beijing's and JPL's; it is what the offset argument rests on."
             provenance="calibration_explorer /api/site_spectra · Sites tab"
             bySpace={siteSpectra}
+            fixedSet="the explorer's saved median spectra of every filter at each site"
           />
           {Object.keys(runs.analog).length > 0 && <AnalogLab bySpace={runs.analog} cutoff={calib?.default_cutoff.analogs ?? 500} />}
           {runs.hips.york && methods.includes('york') && <HipsYork runs={runs} />}

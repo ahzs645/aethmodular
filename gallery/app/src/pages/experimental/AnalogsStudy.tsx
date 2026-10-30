@@ -11,6 +11,7 @@ import { demingLambda, useMac } from '@/lib/mac'
 import { AxisChoices } from '@/components/AxisChoices'
 import { Crossplot, CrossplotBrushControls, sharedCrossDomains, useCrossplotBrush, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
+import { ExcludedNote, FixedSetNote, useExclusionSplit } from '@/lib/markedRows'
 import { Forest, num, rowsOf, runLine, sourceOf, useXp, type Cols, type XpBase } from './shared'
 
 /** Test 3: calibration neighbours chosen by deposited mass as well as spectral shape (experiments_20261022.ipynb §3). */
@@ -78,6 +79,7 @@ function AddisForest({ d }: { d: AnalogsData }) {
       title="Addis against HIPS — does matching on loading close the gap?"
       subtitle={`Deming fit (λ ${f2(demingLambda(m.mac, lambdaOf(d)))}) of each model's Addis FTIR EC against HIPS BC (${m.label}, set under Samples) on the same filters; the export fitted at MAC 10, and another MAC scales the slope and ratio by MAC/10 and leaves the intercept. The local models are refitted per filter on 500 IMPROVE neighbours chosen by shape, by shape and weighed PM2.5, by PM2.5 alone, or by shape and HIPS absorption loading. A model on the HIPS line has intercept 0 and slope 1. The published n (189) is smaller: SPARTAN's EC covers fewer of the filters.`}>
       <Forest rows={rows} panels={[{ key: 'intercept', label: 'Deming intercept (µg/m³)', ref: 0, fmt: coefSigned }, { key: 'slope', label: 'Deming slope', ref: 1, fmt: coef }, { key: 'ratio', label: 'median FTIR ÷ HIPS', ref: 1, fmt: f2 }]} />
+      <FixedSetNote what="the run's saved Deming fits on its own Addis filters" />
     </ChartFrame>
   )
 }
@@ -102,6 +104,7 @@ function MatchCheck({ d }: { d: AnalogsData }) {
       <SweepPlot series={series} xDomain={[-1.2, 1.5]} yLabel="share of Addis filters" xLabel={`log10 (${what === 'PM2.5' ? 'weighed PM2.5' : 'HIPS BC'} ÷ neighbours' median)`} height={280} dim={lg.dim}
         xMarkers={[{ at: 0, label: 'as heavy as neighbours' }]} yFormat={(v) => `${Math.round(v * 100)} %`} xFormat={(v) => `${f2(10 ** +v)}×`} />
       <Legend {...lg.props} items={RULES.map((r) => ({ label: r, color: RULE_COLOR[r], shape: 'line' as const }))} />
+      <FixedSetNote what="every Addis filter of the run, with the neighbours the run chose for it" />
     </ChartFrame>
   )
 }
@@ -129,6 +132,7 @@ function ImproveHolds({ d }: { d: AnalogsData }) {
       <IntervalStrip blocks={[{ key: 'models', rows }]} labelWidth={200} rowHeight={26}
         panels={[{ label: { rmse: 'RMSE against TOR (µg/filter)', bias: 'mean error (µg/filter)', rel_bias: 'mean error ÷ mean TOR' }[metric], reference: metric === 'rmse' ? undefined : 0, format: fmt }]} />
       <Legend {...lg.props} items={groups.map((g) => ({ label: g, color: color[g] }))} />
+      <FixedSetNote what="the run's saved errors on its 600 held-out IMPROVE filters" />
     </ChartFrame>
   )
 }
@@ -147,7 +151,9 @@ function AddisScatter({ d }: { d: AnalogsData }) {
   const lg = useLegend()
   // HIPS BC at the reader's MAC (the export's is Fabs / 10)
   const mac = useMac()
-  const f = useMemo(() => rowsOf(d.addis_filters).map((r): Record<string, any> => ({ ...r, hips_bc: mac.bc(num(r.hips_bc)) })), [d, mac])
+  const all = useMemo(() => rowsOf(d.addis_filters).map((r): Record<string, any> => ({ ...r, hips_bc: mac.bc(num(r.hips_bc)) })), [d, mac])
+  // the gallery's exclusions by filter id (lib/markedRows): `f` feeds every point and fit, `out` is drawn as × under Mark
+  const { counted: f, marked: out, nOut } = useExclusionSplit(all, (r) => String(r.filter_id))
   const fit = d.addis.find((r) => r.model === exportName(model))
   const choices = ['hips_bc', ...models]
   const [xField, setX] = useSearchParam<string>('xa-scatter.x', 'hips_bc', choices)
@@ -158,35 +164,37 @@ function AddisScatter({ d }: { d: AnalogsData }) {
   const record = (r: Record<string, any>) => ({
     id: String(r.filter_id), source: 'Loading-matched analogs', site: 'Addis Ababa', date: r.date == null ? undefined : String(r.date), season: String(r.season ?? ''), fields: choices.map(k => [labelOf(k), Number.isFinite(num(r[k])) ? String(r[k]) : null] as [string, string | null]),
   })
-  const pointsOf = (xKey: string, yKey: string, color = ADDIS_ALL, extra: Partial<CrossPoint> = {}): CrossPoint[] => f.map(r => ({ x: num(r[xKey]), y: num(r[yKey]), color, id: String(r.filter_id),
+  const pointsOf = (xKey: string, yKey: string, color = ADDIS_ALL, extra: Partial<CrossPoint> = {}, rows = f): CrossPoint[] => rows.map(r => ({ x: num(r[xKey]), y: num(r[yKey]), color, id: String(r.filter_id),
     tip: [String(r.filter_id), String(r.season), `${labelOf(xKey)}: ${f2(r[xKey])}`, `${labelOf(yKey)}: ${f2(r[yKey])}`], rec: record(r), ...extra }))
   const colorOf = (key: string) => MODEL_COLOR[exportName(key)] ?? ADDIS_ALL
   const lambda = demingLambda(mac.mac, lambdaOf(d))
   // every model on one range, so the panels compare directly
-  const panels = useMemo(() => view === 'panels' ? models.map((m) => ({ key: m, points: pointsOf('hips_bc', m) })) : [], [view, f, models.join()]) // eslint-disable-line react-hooks/exhaustive-deps
+  const panels = useMemo(() => view === 'panels' ? models.map((m) => ({ key: m, points: pointsOf('hips_bc', m), marked: pointsOf('hips_bc', m, ADDIS_ALL, {}, out) })) : [], [view, f, out, models.join()]) // eslint-disable-line react-hooks/exhaustive-deps
   const shared = sharedCrossDomains(panels.map((p) => p.points))
-  const overlay = view === 'overlay' ? models.filter((m) => lg.show(m)).flatMap((m) => pointsOf('hips_bc', m, colorOf(m), { site: m, opacity: 0.3 * lg.dim(m) })) : []
+  const overlayOf = (rows: Record<string, any>[]) => models.filter((m) => lg.show(m)).flatMap((m) => pointsOf('hips_bc', m, colorOf(m), { site: m, opacity: 0.3 * lg.dim(m) }, rows))
+  const overlay = view === 'overlay' ? overlayOf(f) : []
   const brushControls = <CrossplotBrushControls brush={[brush, setBrush]} />
   return <ChartFrame id="xa-scatter" source={source('AddisScatter')} provenance={runLine(d)}
     title={view === 'one' ? 'Addis filters — FTIR EC against HIPS BC, one model at a time' : 'Addis filters — FTIR EC against HIPS BC, every model'}
-    subtitle={view === 'one' ? 'Pick a model to plot its Addis predictions against HIPS BC, or show every model side by side or overlaid. Click either axis title to plot other measurements. Points follow the gallery\'s selection, hand exclusions, filter records and the estimators chosen in the side panel.'
-      : view === 'panels' ? 'One graph per model, every graph on the same range: each model\'s Addis predictions against HIPS BC with its own Deming fit. Points follow the gallery\'s selection, hand exclusions, filter records and the estimators chosen in the side panel.'
-      : 'Every model\'s Addis predictions against HIPS BC on one graph, each with its own Deming fit in the model\'s colour. Click a legend entry to hide a model; hover one to bring it forward. Points follow the gallery\'s selection, hand exclusions, filter records and the estimators chosen in the side panel.'}
+    subtitle={view === 'one' ? 'Pick a model to plot its Addis predictions against HIPS BC, or show every model side by side or overlaid. Click either axis title to plot other measurements. Points follow the gallery\'s selection, exclusions (Filters → excluded), filter records and the estimators chosen in the side panel.'
+      : view === 'panels' ? 'One graph per model, every graph on the same range: each model\'s Addis predictions against HIPS BC with its own Deming fit. Points follow the gallery\'s selection, exclusions (Filters → excluded), filter records and the estimators chosen in the side panel.'
+      : 'Every model\'s Addis predictions against HIPS BC on one graph, each with its own Deming fit in the model\'s colour. Click a legend entry to hide a model; hover one to bring it forward. Points follow the gallery\'s selection, exclusions (Filters → excluded), filter records and the estimators chosen in the side panel.'}
     controls={<>
       <Segmented label="View" value={view} options={SCATTER_VIEWS} onChange={setView} optionLabel={(o) => ({ one: 'One model', panels: 'Graph per model', overlay: 'Lines overlaid' }[o])} />
       {view === 'one' && <Select label="Model" value={standard ? model : 'Custom'} options={[...models, ...(!standard ? ['Custom'] : [])]} onChange={v => { if (v !== 'Custom') pickModel(v) }} />}
       {brushControls}
     </>}>
     {view === 'one' && <AxisChoices noun="measurements" x={[xField, setX]} y={[yField, setY]} options={choices.map(key => ({ key, label: key === 'hips_bc' ? `HIPS BC, ${mac.label}` : `FTIR EC, ${key}`, group: key === 'hips_bc' ? 'Optical measurement' : 'Model predictions', unit: 'µg/m³' }))}>
-      <Crossplot points={pointsOf(xField, yField)} title={standard ? model : 'Custom axes'} xLabel={labelOf(xField)} yLabel={labelOf(yField)} pick brushable brush={brush} maxSide={480} errorRatio={lambda} />
+      <Crossplot points={pointsOf(xField, yField)} marked={pointsOf(xField, yField, ADDIS_ALL, {}, out)} title={standard ? model : 'Custom axes'} xLabel={labelOf(xField)} yLabel={labelOf(yField)} pick brushable brush={brush} maxSide={480} errorRatio={lambda} />
     </AxisChoices>}
     {view === 'panels' && <FacetGrid items={panels} minCell={300} maxCols={3} render={(p, w) =>
-      <Crossplot points={p.points} title={p.key} xLabel={labelOf('hips_bc')} yLabel="FTIR EC (µg/m³)" brushable brush={brush} maxSide={w - 70} errorRatio={lambda} domain={shared.domain} />} />}
+      <Crossplot points={p.points} marked={p.marked} title={p.key} xLabel={labelOf('hips_bc')} yLabel="FTIR EC (µg/m³)" brushable brush={brush} maxSide={w - 70} errorRatio={lambda} domain={shared.domain} />} />}
     {view === 'overlay' && <>
-      <Crossplot points={overlay} title="Every model" xLabel={labelOf('hips_bc')} yLabel="FTIR EC (µg/m³)" brushable brush={brush} maxSide={520} errorRatio={lambda} grouping="site" groupNoun="model" />
+      <Crossplot points={overlay} marked={view === 'overlay' && out.length ? overlayOf(out) : undefined} title="Every model" xLabel={labelOf('hips_bc')} yLabel="FTIR EC (µg/m³)" brushable brush={brush} maxSide={520} errorRatio={lambda} grouping="site" groupNoun="model" />
       <Legend {...lg.props} items={models.map((m) => ({ label: m, color: colorOf(m) }))} />
     </>}
     {view === 'one' && standard && fit && <Note>With every filter shown, the Deming line here is the one in "Addis against HIPS" above (slope {coef(mac.slope(fit.slope))}, intercept {coefSigned(fit.intercept)} µg/m³, n {fit.n}, λ {f2(lambda)}). Excluding filters or choosing another estimator changes it here only.</Note>}
     {view !== 'one' && <Note>With every filter shown, each model's Deming line is the one in "Addis against HIPS" above (λ {f2(lambda)}). Excluding filters or choosing another estimator changes them here only.</Note>}
+    <ExcludedNote count={nOut} drawn />
   </ChartFrame>
 }

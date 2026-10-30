@@ -21,6 +21,7 @@ import { Crossplot } from '@/components/Crossplot'
 import { RangeRows, type RangeRow, type RangeSeries } from '@/components/RangeRows'
 import { AxisChoices } from '@/components/AxisChoices'
 import { Forest, Scatter, num, placeLabels, rowsOf, runLine, sourceOf, useXp, type Cols, type XpBase } from './shared'
+import { FixedSetNote } from '@/lib/markedRows'
 
 /**
  * Adama TOR study (experiments_20261022.ipynb §8): the five Adama quartz/PTFE pilot pairs against IMPROVE
@@ -138,6 +139,7 @@ function PilotPosition({ d }: { d: TorData }) {
           const t = d.target.find((x) => x.axis === r.key)!
           return [`Adama pair ${j + 1}`, `${r.label}: ${f2(v)} ${r.unit ?? ''}`, `Addis 25–75 %: ${f2(t['Addis p25'])}–${f2(t['Addis p75'])}`]
         }} />
+      <FixedSetNote what="the run's IMPROVE, SPARTAN and Adama filters" />
     </ChartFrame>
   )
 }
@@ -254,6 +256,7 @@ function LoadingPlane({ d }: { d: TorData }) {
           <td>{f2(v["volume at Adama's median EC (m³)"] / v['Adama volume now (m³)'])}×</td><td>{Math.round(v['hours at the Adama flow rate'])} h</td><td>{f2(v['volume at SPARTAN Addis median EC (m³)'])} m³</td></tr>)}</tbody>
       </table>
       <ExplainOnly><Note>At SPARTAN Addis's own median EC concentration (if the Addis city site resembles it), the volumes in the last column apply. Longer sampling at the same flow reaches the same loading; a 24 h sample at the Adama flow is about {f2(adama.volume)} m³.</Note></ExplainOnly>
+      <FixedSetNote what="the run's IMPROVE, SPARTAN and Adama filters (only a filter excluded by hand leaves the points)" />
     </ChartFrame>
   )
 }
@@ -273,6 +276,7 @@ function SeasonPanel({ d }: { d: TorData }) {
       title="Season — when the Addis disagreement happens, and when the pilot was sampled"
       subtitle={`SPARTAN Addis by season (site calendar, February in Belg): published FTIR EC ÷ HIPS BC at ${mac.label} (set under Filters; median with 25–75 %), and the Deming fit against HIPS. The run used MAC 10; another MAC scales the ratio and slope by MAC/10 and leaves the intercept. The seasons differ, and the Adama pilot was sampled entirely in one of them (green). Pairs meant to test the calibration at Addis need to cover every season, or at least the one the question is about.`}>
       <Forest rows={rows} labelWidth={230} panels={[{ key: 'ratio', label: 'published FTIR ÷ HIPS BC', ref: 1, fmt: f2 }, { key: 'slope', label: 'Deming slope vs HIPS', ref: 1, fmt: coef }, { key: 'intercept', label: 'Deming intercept (µg/m³)', ref: 0, fmt: coefSigned }]} />
+      <FixedSetNote what="the run's IMPROVE, SPARTAN and Adama filters" />
     </ChartFrame>
   )
 }
@@ -391,6 +395,7 @@ function NetworkMap({ d }: { d: TorData }) {
         <Legend items={[{ label: 'SPARTAN Addis', color: ADDIS_ALL }, { label: 'Adama pilot (TOR)', color: ADAMA }, { label: 'IMPROVE site never chosen', color: IMPROVE_GREY, shape: 'ring' }]} />
       </div>
       <Note>Adama is placed at the pilot sampler's recorded position. Neighbours use the spline spectra and the 600–3600 cm⁻¹ similarity region without CO₂ and PTFE bands. Drag to pan, scroll to zoom; Globe shows the arcs as the routes they are.</Note>
+      <FixedSetNote what="the run's IMPROVE, SPARTAN and Adama filters" />
     </ChartFrame>
   )
 }
@@ -458,6 +463,7 @@ function WhereItSits({ d }: { d: TorData }) {
       </div>
       <Legend items={[{ label: 'IMPROVE filters (band) and site medians (ticks)', color: themed('#cbd2d9', '#46505c'), shape: 'square' }, { label: 'other SPARTAN sites (band)', color: SPARTAN, shape: 'square' }, { label: 'SPARTAN Addis filters', color: ADDIS_ALL }, { label: 'Adama pilot pairs', color: ADAMA }]} />
       <Note>Adama has no weighed PM2.5 in the pair records. EC per filter = concentration × the filter's own sampled volume; SPARTAN Addis EC is the published FTIR value (no TOR exists there).</Note>
+      <FixedSetNote what="the run's IMPROVE, SPARTAN and Adama filters" />
     </ChartFrame>
   )
 }
@@ -507,6 +513,7 @@ function NetworkScatter({ d }: { d: TorData }) {
         }} />
       </AxisChoices>
       <Legend {...lg.props} items={order.map((p) => ({ label: POP_LABEL[p], color: POP_COLOR[p] }))} note="click to show or hide" />
+      <FixedSetNote what="the run's IMPROVE, SPARTAN and Adama filters" />
     </ChartFrame>
   )
 }
@@ -537,6 +544,7 @@ function NearestSites({ d }: { d: TorData }) {
         {tip.node}
       </div>
       <Legend items={[{ label: 'Addis', color: ADDIS_ALL, shape: 'square' }, { label: 'Adama pilot', color: ADAMA, shape: 'square' }, { label: "site's share of calibration filters", color: INK.text, shape: 'line' }]} />
+      <FixedSetNote what="the run's IMPROVE, SPARTAN and Adama filters" />
     </ChartFrame>
   )
 }
@@ -553,6 +561,7 @@ function Precision({ d }: { d: TorData }) {
         yMarkers={[{ at: 0.2, label: '±20 % rule' }]} xMarkers={[{ at: 5, label: 'Adama 5' }, { at: 10, label: 'Addis city ~10' }, { at: 36, label: 'freeze 36' }]} xFormat={(v) => String(Math.round(+v))} />
       <Legend items={pops.map((p) => ({ label: p, color: color[p], shape: 'line' as const }))} />
       <Note>This is sampling precision only: it assumes the new pairs behave like IMPROVE's Addis-like filters. Sampler, flow and site differences add to it.</Note>
+      <FixedSetNote what="the run's IMPROVE, SPARTAN and Adama filters" />
     </ChartFrame>
   )
 }
@@ -580,6 +589,7 @@ function PilotPairs({ d }: { d: TorData }) {
         <tbody>{d.pilot.filter((p) => p.reference === refk).map((p) => <tr key={`${p.model}${p.pairs}`}><td>{p.model}</td><td>{p.reference}</td><td>{p.pairs} ({p.n})</td>
           <td>{signed(p['mean relative bias'] * 100, 0)} %</td><td style={{ color: p['passes |bias| ≤ 20 %'] ? INK.good : INK.negative }}>{p['passes |bias| ≤ 20 %'] ? 'yes' : 'no'}</td><td>{pct(p['share of pairs within tolerance'])}</td></tr>)}</tbody>
       </table>
+      <FixedSetNote what="the run's five Adama quartz/PTFE pilot pairs" />
     </ChartFrame>
   )
 }

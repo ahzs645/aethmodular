@@ -6,6 +6,7 @@ import { INK } from '@/lib/theme'
 import { coef, coefSigned } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { runLine, sourceOf, useXp, type XpBase } from './shared'
+import { FixedSetNote } from '@/lib/markedRows'
 
 /** Quick fixes: the ETAD-0241/0248 exclusion and the February season calendar (experiments_20261022.ipynb §7). */
 
@@ -68,6 +69,7 @@ function SeasonSlopes({ d }: { d: FixesData }) {
         panels={[{ label: what === 'slope' ? 'Deming slope vs HIPS BC' : 'Deming intercept (µg/m³)', reference: what === 'slope' ? 1 : 0 }]} />
       <Legend items={cals.map((c) => ({ label: c, color: CAL_COLOR[c] }))} />
       <Note>These are the 233-filter evaluation set's counts ({d.february.length} February filters with HIPS move between seasons); the poster's 189-filter counts (73/51/65 → 55/69/65) are a subset. The seasonal analog cohorts of the 28 Oct meeting are not refitted here.</Note>
+      <FixedSetNote what="the run's 233-filter Addis evaluation set" />
     </ChartFrame>
   )
 }

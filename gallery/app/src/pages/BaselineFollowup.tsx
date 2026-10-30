@@ -10,6 +10,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { FONT, INK, baselineColor } from '@/lib/theme'
 import { fmt as f } from '@/lib/format'
 import type { BaselineMethod } from '@/lib/baselineComparison'
+import { FixedSetNote } from '@/lib/markedRows'
 
 const BASE = dataUrl('')
 /** Baseline colours follow the run's rank; the per-filter router is its own series. */
@@ -103,6 +104,7 @@ function SelectionChart({data}:{data:FollowupData}) {
         <g transform={`translate(${view==='Both'?240:230},0)`}><line x1={0} x2={24} y1={5.5} y2={5.5} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="4 3"/><text x={30} y={10}>{`Full-pool AIRSpec reference, RMSE ${f(baseline?.RMSE ?? NaN)}`}</text></g>
       </g>
     </g></svg>{tip.node}</div>
+    <FixedSetNote what="the notebook's common test filters and 500-filter analog memberships" />
   </ChartFrame>
 }
 
@@ -111,6 +113,7 @@ function RestrictedCheck({data}:{data:FollowupData}) {
   return <ChartFrame title="Lowest-OC/EC transfer check" exportable={false} subtitle="The historical low-OC/EC calibration is scored both inside and outside its membership on the same outer sites.">
     <div style={{overflowX:'auto'}}><table className="census-table"><thead><tr><th>Method</th><th>Test membership</th><th>Filters</th><th>RMSE</th><th>MAE</th><th>Bias</th></tr></thead><tbody>{rows.map(r=><tr key={r.method+String(r.in_historical_membership)}><td>{r.method}</td><td>{r.in_historical_membership?'Inside':'Outside'}</td><td>{r.n.toLocaleString()}</td><td>{f(r.RMSE)}</td><td>{f(r.MAE)}</td><td>{f(r.bias)}</td></tr>)}</tbody></table></div>
     <Note>The prior restricted-cohort score covered only the 137 members. The 2,190 other test filters expose the cost of applying that fit broadly; this does not identify the physical cause.</Note>
+    <FixedSetNote what="the notebook's outer test sites" />
   </ChartFrame>
 }
 
@@ -133,5 +136,6 @@ function RoutingChart({data}:{data:FollowupData}) {
       {methods.map((method,i)=><g key={method} transform={`translate(${i*125},${ih+67})`}><rect width={11} height={11} fill={methodColor(method, data.background_rank)}/><text x={17} y={10} fontSize={10} fill={INK.text}>{method==='routed'?'Routed':method}</text></g>)}
     </g></svg>{tip.node}</div>
     {routed&&<Note>Routing versus AIRSpec on the previously inspected test: ΔRMSE {f(routed.delta_RMSE_vs_AIRSpec)} µg/filter; paired 95% site interval {f(routed.delta_RMSE_CI_low)} to {f(routed.delta_RMSE_CI_high)}. {routed.delta_RMSE_CI_low <= 0 && routed.delta_RMSE_CI_high >= 0 ? 'The interval includes zero.' : 'The interval excludes zero; this remains an exploratory comparison.'} The large training-fold VIBES RMSE includes {extreme.sample_id} at {extreme.Site} (VIBES {f(extreme.VIBES)} vs TOR {f(extreme.y)}); that filter was not excluded.</Note>}
+    <FixedSetNote what="the notebook's common test filters" />
   </ChartFrame>
 }

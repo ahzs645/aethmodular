@@ -11,6 +11,7 @@ import { useSearchParam } from '@/lib/url'
 import { baseFilterId } from '@/lib/highlight'
 import { f2 } from '@/lib/format'
 import { rowsOf, Scatter, sourceOf, type Cols, type XpBase } from './shared'
+import { FixedSetNote } from '@/lib/markedRows'
 
 /**
  * The 26 Oct lot-aware VIBES blank test (research/ftir_hips_chem/workflows/vibes_lot241_20261026.py,
@@ -212,6 +213,7 @@ function Pm25({ d }: { d: LotData }) {
       <Scatter points={points} xLabel="current corrected spectrum, RMS" yLabel="change in the correction, RMS" xLog yLog maxSide={380} xDomain={dom} yDomain={dom}
         under={({ x, y }) => <IdentityLine x1={x(dom[0])} y1={y(dom[0])} x2={x(dom[1])} y2={y(dom[1])} />} />
       <Legend items={Object.entries(lotColor).map(([l, c]) => ({ label: `lot ${l}`, color: c }))} />
+      <FixedSetNote what="the run's lot 241/241a PM2.5 analyses (only a filter excluded by hand leaves the points)" />
     </ChartFrame>
   )
 }

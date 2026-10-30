@@ -14,6 +14,7 @@ import { FONT, INK, inkOn, themed } from '@/lib/theme'
 import { coef, coefSigned, f2, signed } from '@/lib/format'
 import { useMac, type MacView } from '@/lib/mac'
 import { Scatter, runLine, sourceOf, useXp, type XpBase } from './shared'
+import { FixedSetNote } from '@/lib/markedRows'
 
 /** Test 4: preprocessing × window × pool × k on the same filters (experiments_20261022.ipynb §4). */
 
@@ -111,6 +112,7 @@ function GridHeat({ d }: { d: AttributionData }) {
       </div>
       <div className="legend"><ColorLegend scale={colour} label={out} format={(v) => out.includes('RMSE') ? f2(v) : out === 'Addis slope' ? coef(v) : signed(v)} scheme={diverging ? div.scheme : seq.scheme} /></div>
       <Note>IMPROVE: every filter predicted by a model trained without its site fold (the common test set); Addis: models fitted on all of IMPROVE, against HIPS BC; slopes at {label} (set under Filters; the run used MAC 10, and the MAC moves only the slopes).</Note>
+      <FixedSetNote what="the run's grid, each cell scored on the run's own IMPROVE and Addis filters" />
     </ChartFrame>
   )
 }
@@ -151,6 +153,7 @@ function Effects({ d }: { d: AttributionData }) {
         {tip.node}
       </div>
       <Legend items={[{ label: 'raises the outcome', color: INK.negative, shape: 'square' }, { label: 'lowers it', color: INK.positive, shape: 'square' }]} />
+      <FixedSetNote what="the run's grid, each cell scored on the run's own IMPROVE and Addis filters" />
     </ChartFrame>
   )
 }
@@ -165,6 +168,7 @@ function TradeOff({ d }: { d: AttributionData }) {
       <Scatter points={pts} xLabel="IMPROVE out-of-site RMSE against TOR (µg/filter)" yLabel="Addis Deming intercept vs HIPS (µg/m³)" maxSide={400}
         under={({ y, iw }) => <><RefLine orient="h" at={y(0)} from={0} to={iw} /><RefLine orient="h" at={y(d.published.intercept)} from={0} to={iw} /><text x={iw - 4} y={y(d.published.intercept) - 4} textAnchor="end" fontSize={10} fill={INK.muted}>SPARTAN published</text></>} />
       <Legend items={[...Object.entries(PREP_COLOR).map(([k, c]) => ({ label: k, color: c })), { label: 'large = all IMPROVE, small = 500 lowest OC/EC', color: INK.muted }, { label: 'hollow = one-SE k', color: INK.muted, shape: 'ring' as const }]} />
+      <FixedSetNote what="the run's grid, each cell scored on the run's own IMPROVE and Addis filters" />
     </ChartFrame>
   )
 }

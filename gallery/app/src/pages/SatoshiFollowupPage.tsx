@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useId } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useId, type ReactNode } from 'react'
 import { robustDomain } from '@/lib/axes'
 import { AxisChoices } from '@/components/AxisChoices'
 import { Marker } from '@/components/RefLines'
@@ -30,6 +30,8 @@ import { Key } from '@/components/Key'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { BandCell, FitCell } from '@/components/TableCells'
 import { ANALOG_SELECTION_EXCLUDED, OCT1_ALSO_EXCLUDED } from '@/components/SpectralRegions'
+import { FixedSetNote } from '@/lib/markedRows'
+import { usePresentation } from '@/lib/presentation'
 
 /**
  * Satoshi's questions after the 1 Oct 2026 meeting (his email of 2 Oct). Every
@@ -89,6 +91,14 @@ const standardColor = () => themed('#6b7280', '#a3adb8')
 const logTick = (v: number) => { const d = +(v / 10 ** Math.floor(Math.log10(v))).toFixed(6); return [1, 2, 5].includes(d) ? String(+(+v).toPrecision(2)) : '' }
 const minus = (t: string) => t.replace(/^-/, '−')
 const range = (a: any[]) => `${minus(f2(a?.[0]))} to ${minus(f2(a?.[1]))}`
+
+/**
+ * Filters → excluded on this page (lib/markedRows): as presented, the page is exactly as exported, so no mark and no
+ * note; while Exploring, the charts of the run's filter sets say that the switch does not act on them.
+ */
+function ExploringOnly({ children }: { children: ReactNode }) {
+  return usePresentation() === 'exploring' ? <>{children}</> : null
+}
 
 export function SatoshiFollowupPage() {
   const { data, error } = useExport<SatoshiData>(SATOSHI_PATH, schemaV1)
@@ -252,6 +262,7 @@ function Overlap({ data, mask }: { data: SatoshiData; mask: Mask }) {
       </table>
       <OverlapScatter data={data} mask={mask} group={group} />
       <ExplainOnly><Note>The agreed 1 Oct region changes the VIBES analogs themselves: it keeps {changed.map((c, i) => <span key={c.group}>{i ? ', ' : ''}{c.shared} ({shortSeason(c.group)})</span>)} of the 500 VIBES analogs selected as presented. Ranks of the shared filters barely agree between baselines (Spearman ρ {f2(d3.min(rows, (r) => r.shared_rank_spearman))} to {f2(d3.max(rows, (r) => r.shared_rank_spearman))}).</Note></ExplainOnly>
+      <ExploringOnly><FixedSetNote what="the run's 500-filter analog sets, as each baseline selected them" /></ExploringOnly>
     </ChartFrame>
   )
 }
@@ -447,6 +458,7 @@ function Ladder({ data, mask }: { data: SatoshiData; mask: Mask }) {
         <tbody>{[{ label: `${shortSeason(group)} analog model`, r: ex }, { label: 'Standard model', r: exStd }].map(({ label, r }) => r && <tr key={label}><td>{label}</td><td>{f2(r.addis_loading_median_ug)}</td><td>{f2(r.train_loading_median_ug)} / {f2(r.train_loading_p95_ug)}</td><td>{pct(r.loading_beyond_train_p95)}</td><td>{pct(r.t2_beyond_p95)}</td><td>{pct(r.q_beyond_p95)}</td><td>{pct(r.improve_test_t2_beyond_p95)} / {pct(r.improve_test_q_beyond_p95)}</td></tr>)}</tbody>
       </table>
       <ExplainOnly><Note>HIPS-implied loading is Fabs / MAC 10 × sampled volume: the EC mass on the filter if MAC were 10. PLS predicts mass on the filter, so this is the range the model must extrapolate over. T² and Q thresholds are the calibration set's own 95th percentiles; the IMPROVE test-site column shows how often genuinely new IMPROVE filters exceed them, as a benchmark.</Note></ExplainOnly>
+      <ExploringOnly><FixedSetNote what="the run's analog and calibration sets (only a filter excluded by hand leaves the crossplots)" /></ExploringOnly>
     </ChartFrame>
   )
 }
@@ -618,6 +630,7 @@ function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
         <thead><tr><th>Sampling year</th>{yearList.map((yv) => <th key={yv}>{yv}</th>)}</tr></thead>
         <tbody>{yearSets.map((set) => { const rows = yearsOf(set); const tot = d3.sum(rows, (r) => r.n) || 1; return <tr key={set}><td>{set === 'IMPROVE pool' ? 'IMPROVE pool' : `Analogs of ${set.split('|')[2]}`}</td>{yearList.map((yv) => <td key={yv}>{pct((rows.find((r) => r.year === yv)?.n ?? 0) / tot)}</td>)}</tr> })}</tbody>
       </table>
+      <ExploringOnly><FixedSetNote what="the run's held-out IMPROVE filters and analog sets (only a filter excluded by hand leaves the crossplot)" /></ExploringOnly>
     </ChartFrame>
   )
 }

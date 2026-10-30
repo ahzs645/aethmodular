@@ -11,6 +11,7 @@ import { FONT, INK } from '@/lib/theme'
 import { fidProps, useHandEdits } from '@/lib/filterEdits'
 import { baseFilterId, dotFill, dotRim, useHighlightActions, type FilterRecord } from '@/lib/highlight'
 import { ScatterLayer } from '@/components/ScatterLayer'
+import { useExclMode, useMarkReason, type MarkPoint } from '@/lib/markedRows'
 
 /** Helpers shared by the Experimental subpages (gallery/data/export_experiments.py exports). */
 
@@ -65,7 +66,8 @@ export interface ScatterPoint { x: number; y: number; color: string; r?: number;
  * area is square and centred, sized like the shared Crossplot (`maxSide` caps the side); a 1:1 comparison of
  * two measurements of the same thing uses components/Crossplot instead, for its fits. Points with an `id` behave
  * like the Crossplot's filters (hover, pin, record, right-click exclusion); `pick` makes the axis titles open the
- * nearest axis picker (components/AxisChoices).
+ * nearest axis picker (components/AxisChoices). As in the Crossplot, a filter excluded by hand leaves the points and
+ * the axis ranges; under Filters → excluded: Mark it is drawn as × where it falls inside the axes.
  */
 export function Scatter({ points, xLabel, yLabel, maxSide = 420, xLog = false, yLog = false, identity = false, xDomain, yDomain, under, over, pick = false }: {
   points: ScatterPoint[]; xLabel: string; yLabel: string; maxSide?: number; xLog?: boolean; yLog?: boolean; identity?: boolean; pick?: boolean
@@ -85,7 +87,10 @@ export function Scatter({ points, xLabel, yLabel, maxSide = 420, xLog = false, y
   const w = iw + m.left + m.right, h = ih + m.top + m.bottom
   const drawable = useMemo(() => points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && (!xLog || p.x > 0) && (!yLog || p.y > 0)), [points, xLog, yLog])
   const ok = useMemo(() => drawable.filter((p) => !edits.isOut(p.id)), [drawable, edits])
-  const handNote = edits.note(drawable.length - ok.length)
+  const markMode = useExclMode() === 'mark'
+  const reasonOf = useMarkReason()
+  const nHand = drawable.length - ok.length
+  const handNote = markMode && nHand > 0 ? `${nHand} filter${nHand === 1 ? '' : 's'} excluded by hand ${nHand === 1 ? 'is' : 'are'} drawn as ×.` : edits.note(nHand)
   const xd = xDomain ?? (d3.extent(ok, (p) => p.x) as [number, number])
   const yd = yDomain ?? (d3.extent(ok, (p) => p.y) as [number, number])
   const lo = Math.min(xd[0], yd[0]), hi = Math.max(xd[1], yd[1])
@@ -96,6 +101,13 @@ export function Scatter({ points, xLabel, yLabel, maxSide = 420, xLog = false, y
   const y = useMemo(() => (yLog ? d3.scaleLog() : d3.scaleLinear()).domain(yDom).range([ih, 0]).nice(), [yDom.join(), ih, yLog]) // eslint-disable-line react-hooks/exhaustive-deps
   const keyOf = (p: ScatterPoint) => (p.id ? baseFilterId(p.id) : null)
   const xy = useMemo(() => ok.map((p) => [x(p.x), y(p.y)] as const), [ok, x, y])
+  // under Mark, the points excluded by hand as × inside the axes (components/ScatterLayer `marks`), never in `ok`
+  const marks = useMemo<MarkPoint[]>(() => {
+    if (!markMode || !nHand) return []
+    const [xa, xb] = x.domain(), [ya, yb] = y.domain()
+    return drawable.flatMap((p) => !p.id || !edits.isOut(p.id) || p.x < xa || p.x > xb || p.y < ya || p.y > yb ? []
+      : [{ id: baseFilterId(p.id), at: [x(p.x), y(p.y)] as const, tip: [...(p.tip ?? [p.id]), `excluded: ${reasonOf(p.id) ?? 'by hand'}`, 'drawn only: not in any fit, R² or count'] }])
+  }, [markMode, nHand, drawable, edits, x, y, reasonOf])
   const dots = useMemo(() => ok.map((p, i) => {
     const key = keyOf(p)
     return <circle key={p.key ?? i} cx={xy[i][0]} cy={xy[i][1]} r={p.r ?? 3.5} fill={p.hollow ? 'none' : p.color} opacity={p.dim}
@@ -118,7 +130,7 @@ export function Scatter({ points, xLabel, yLabel, maxSide = 420, xLog = false, y
           {under?.({ x, y, iw, ih })}
           {/* hover, click and right-click find the nearest point; a click on empty plot lets go of the pin (lib/highlight).
               Points without an id show their tooltip only; the layers `over` the points sit under the pointer layer */}
-          <ScatterLayer items={ok} xy={xy} idOf={keyOf} dots={dots} width={iw} height={ih} tip={tip} reach={(p) => p.r ?? 3.5}
+          <ScatterLayer items={ok} xy={xy} idOf={keyOf} dots={dots} width={iw} height={ih} tip={tip} reach={(p) => p.r ?? 3.5} marks={marks}
             focusR={(p) => Math.max(p.r ?? 3.5, 6)}
             focus={(p, [cx, cy]) => <circle cx={cx} cy={cy} r={Math.max(p.r ?? 3.5, 6)} fill={p.hollow ? 'none' : p.color} opacity={p.dim}
               {...dotFill('sparse')} stroke={INK.text} strokeWidth={2} />}

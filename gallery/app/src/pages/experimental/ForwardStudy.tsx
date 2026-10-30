@@ -5,6 +5,7 @@ import { SweepPlot } from '@/components/SweepPlot'
 import { useSearchParam } from '@/lib/url'
 import { f2, signed } from '@/lib/format'
 import { Forest, runLine, sourceOf, useXp, type XpBase } from './shared'
+import { FixedSetNote } from '@/lib/markedRows'
 
 /** Test 6: train on earlier years, test on later ones (experiments_20261022.ipynb §6). */
 
@@ -54,6 +55,7 @@ function SummaryForest({ d }: { d: ForwardData }) {
       subtitle={`At the one-SE k for ${prep}. Whiskers: ± 1 SD over five repeats (new-site and random splits); the later-year split is a single fixed split. If the later year is as hard as new sites, time transfer is no worse than site transfer.`}
       controls={<Segmented label="Preprocessing" value={prep} options={['spline', 'raw'] as const} onChange={setPrep} />}>
       <Forest rows={rows} labelWidth={260} panels={[{ key: 'RMSE', label: 'RMSE against TOR (µg/filter)', fmt: f2 }, { key: 'bias', label: 'mean error (µg/filter)', ref: 0, fmt: (v) => signed(v) }, { key: 'R2', label: 'predictive R²', fmt: f2 }]} />
+      <FixedSetNote what="the run's IMPROVE calibration filters and its fixed splits" />
     </ChartFrame>
   )
 }
@@ -78,6 +80,7 @@ function Curves({ d }: { d: ForwardData }) {
       <SweepPlot series={series} xLabel="PLS components k" yLabel={metric === 'RMSE' ? 'RMSE (µg/filter)' : metric === 'bias' ? 'mean error (µg/filter)' : 'predictive R²'} height={300} dim={lg.dim}
         xMarkers={kSel ? [{ at: kSel, label: `one-SE k = ${kSel}` }] : []} reference={metric === 'bias' ? 0 : undefined} yFormat={f2} />
       <Legend {...lg.props} items={splits.map((s) => ({ label: s, color: SPLIT_COLOR[s], shape: 'line' as const }))} />
+      <FixedSetNote what="the run's IMPROVE calibration filters and its fixed splits" />
     </ChartFrame>
   )
 }
@@ -90,6 +93,7 @@ function Years({ d }: { d: ForwardData }) {
         <tbody>{d.years.map((y) => <tr key={y.year}><td>{y.year}</td><td>{y.filters.toLocaleString()}</td><td>{y.sites}</td><td>{f2(y.median_tor_ug)}</td></tr>)}</tbody>
       </table>
       <Note>Most of the calibration set is 2022, so a "train on earlier, test on later" split can only hold out 2023. A later year also changes which sites and lots are present; this split mixes all of that.</Note>
+      <FixedSetNote what="the run's IMPROVE calibration filters and its fixed splits" />
     </ChartFrame>
   )
 }

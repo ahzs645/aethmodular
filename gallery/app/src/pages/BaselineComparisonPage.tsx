@@ -27,6 +27,7 @@ import { BaselineExternalPilot } from '@/pages/BaselineExternalPilot'
 import { useSearchParam as useComparisonParam } from '@/lib/url'
 import { useFilterSpectrum, traceVersionLabel } from '@/lib/filterSpectrum'
 import type { BaselineCohort, BaselineData, BaselineGroup, BaselineMethod, BaselinePair, BaselineSpectrum, HistoricalMask } from '@/lib/baselineComparison'
+import { FixedSetNote } from '@/lib/markedRows'
 
 const METHODS: BaselineMethod[] = ['AIRSpec', 'VIBES']
 const BASE = dataUrl('')
@@ -99,6 +100,7 @@ export function BaselineComparisonPage({ mac, demingLambda }: { mac: number; dem
         return <tr key={method}><td style={{ color: COLOR[method], fontWeight: 600 }}>{baselineName(method, { short: true })}</td><td>{data.scores.find(s => s.method === method && s.cohort === cohort)?.k}</td><td>{f(m?.rmse)}</td><td>{f(m?.mae)}</td><td>{f(m?.bias)}</td><td>{f(m?.r2)}</td></tr>
       })}</tbody></table></div>
       <Note>Errors and bias: µg/filter. Bias = prediction − TOR reference. Predictive R² = 1 − SSE/SST. Training-only 5-fold site-grouped CV, first major minimum. Test sites do not overlap training sites.</Note>
+      <FixedSetNote what="the frozen paired IMPROVE test filters of this benchmark" />
     </ChartFrame>
     <ResidualPlot rows={rows} onInspect={setSample} available={new Set(data.spectra.map(r => r.sample_id))} cohort={cohort} />
     <ErrorDifferencePlot rows={rows} cohort={cohort} />
@@ -111,6 +113,7 @@ export function BaselineComparisonPage({ mac, demingLambda }: { mac: number; dem
       <ExplainOnly><Note>Historical AIRSpec analog-selection experiment, 10 September. All Addis target group, 500 selected unique filters. This is a separate experiment from the paired AIRSpec/VIBES benchmark above.</Note></ExplainOnly>
       <div style={{ overflowX: 'auto' }}><table className="census-table"><thead><tr><th>Selection mask</th><th>Matching channels</th><th>Replaced vs no mask / 500</th><th>PLS channels</th></tr></thead><tbody>{masks.map(m => <tr key={m.mask}><td>{maskName(m.mask)}</td><td>{m.n_channels}</td><td>{m.changed_vs_full}</td><td>2002</td></tr>)}</tbody></table></div>
       <ExplainOnly><Note>The primary mask excluded 1800–2500 inclusive. Upper-cut variants retained values ≤3600 or ≤3500. The 1850-start sensitivity variants are retained in the downloadable data. This historical table has no paired masked EC outcome; the executed notebook panel above reports new site-restricted analog selections on a common test population.</Note></ExplainOnly>
+      <FixedSetNote what="the 10 September analog-selection experiment's 500 filters" />
     </ChartFrame>
     <ExplainOnly><ChartFrame title="Sample eligibility and provenance" exportable={false}>
       <p style={{ fontSize: 13 }}>IMPROVE: {data.exclusions.pool_eligible.toLocaleString()} eligible physical calibration filters out of {data.exclusions.pool_total.toLocaleString()}. Each contributing scan must be finite, with verified sample purpose, a site and positive finite TOR EC. Raw repeat scans are averaged by physical filter before correction.</p>
@@ -175,6 +178,7 @@ function ResidualPlot({ rows, available, onInspect, cohort }: { rows: BaselinePa
         {rows.map(r => <circle key={r.sample_id} cx={x(r.y)} cy={y(r[method]-r.y)} r={available.has(r.sample_id)?4:2.5} fill={COLOR[method]} {...dotFill('dense')} stroke={available.has(r.sample_id)?INK.text:dotRim().stroke} strokeWidth={available.has(r.sample_id)?1:dotRim().strokeWidth} style={{cursor:'pointer'}} onClick={()=>{ hl.openRecord(pairRecord(r, 'the AIRSpec / VIBES error plot')); if (available.has(r.sample_id)) onInspect(r.sample_id) }} onMouseEnter={e=>tip.show(e,[`${r.Site} / ${r.sample_id}`,`${r.date} · ${r.loading_band}`,`TOR ${f(r.y)}, AIRSpec ${f(r.AIRSpec)}, VIBES ${f(r.VIBES)} µg/filter`,`${method} error ${f(r[method]-r.y)}`,available.has(r.sample_id)?'Click for details and the stored spectrum':'Click for details (spectrum not in the 12-case inspection)'])} onMouseLeave={tip.hide}/>)}
       </g>
     })}</svg>}{tip.node}</div>
+    <FixedSetNote what="the frozen paired IMPROVE test filters of this benchmark" />
   </ChartFrame>
 }
 function ErrorDifferencePlot({ rows, cohort }: { rows: BaselinePair[]; cohort: BaselineCohort }) {
@@ -202,6 +206,7 @@ function ErrorDifferencePlot({ rows, cohort }: { rows: BaselinePair[]; cohort: B
       <XAxis scale={x} y={ih} label="Δ absolute error (µg/filter)"/>
     </g><MethodLegend width={w} y={348} items={[{label:'VIBES closer (<0)',color:COLOR.VIBES},{label:'Spline closer (>0)',color:COLOR.AIRSpec}]} lg={lg}/></svg>}{tip.node}</div>
     <Note>{rows.length.toLocaleString()} paired filters: VIBES closer {better.toLocaleString()}, spline closer {worse.toLocaleString()}, exact ties {values.length-better-worse}. Mean difference (ΔMAE): {f(d3.mean(values))}; median: {f(d3.median(values))} µg/filter. All tails are shown. Exact ties fall in the bin starting at zero.</Note>
+    <FixedSetNote what="the frozen paired IMPROVE test filters of this benchmark" />
   </ChartFrame>
 }
 function LoadingPlot({ groups }: { groups: BaselineGroup[] }) {
@@ -211,6 +216,7 @@ function LoadingPlot({ groups }: { groups: BaselineGroup[] }) {
       blocks={[{ key: 'bands', rows: groups.map(g => ({ key: g.group, label: `${g.group} (n=${g.n})`,
         tip: [g.group, `ΔRMSE ${f(g.delta_RMSE)} µg/filter`, `interval ${f(g.delta_RMSE_ci_low)} to ${f(g.delta_RMSE_ci_high)}`],
         marks: [[{ lo: g.delta_RMSE_ci_low ?? g.delta_RMSE, hi: g.delta_RMSE_ci_high ?? g.delta_RMSE, mid: g.delta_RMSE, color: COLOR.VIBES, r: 5 }]] })) }]} /></div>
+    <FixedSetNote what="the frozen paired IMPROVE test filters of this benchmark" />
   </ChartFrame>
 }
 function SpectraPlot({ spectrum:s, data, onSample, masks, archivedBenchmark=true }: { spectrum: BaselineSpectrum; data: BaselineData; onSample:(x:string)=>void; masks:HistoricalMask[]; archivedBenchmark?:boolean }) {
@@ -301,6 +307,7 @@ function CompletedPairedViews() {
       })}</tbody></table>
       <Note>Complete-cohort ΔRMSE: {f(interval.delta_RMSE)} µg/filter; paired site interval {f(interval.delta_RMSE_ci_low)} to {f(interval.delta_RMSE_ci_high)}. This interval conditions on the saved fits and does not describe a selected display subset. The previously inspected test set makes these diagnostics exploratory.</Note>
       <p><a href={BASE+'baseline_paired_r70_predictions.csv'} download>Rank-70 paired predictions</a> · <a href={BASE+'baseline_paired_r70.json'} download>Current diagnostics and source hashes</a></p>
+      <FixedSetNote what="the frozen paired IMPROVE test filters of this benchmark" />
     </ChartFrame>
     <ResidualPlot rows={rows} onInspect={setSample} available={new Set(data.spectra.map(r=>r.sample_id))} cohort={cohort} />
     <ErrorDifferencePlot rows={rows} cohort={cohort} />

@@ -22,6 +22,7 @@ import { FacetGrid } from '@/components/FacetGrid'
 import { BANK_COLOR, FONT, INK, SPECTRAL_REGION } from '@/lib/theme'
 import { dotFill, dotRim } from '@/lib/highlight'
 import { f2, pct, sci } from '@/lib/format'
+import { FixedSetNote } from '@/lib/markedRows'
 
 /**
  * Blanks analysis: the PTFE field blanks that train the VIBES background.
@@ -512,6 +513,7 @@ function Capture({ d }: { d: BlanksData }) {
         xMarkers={[{ at: B.rank, label: `chosen rank ${B.rank}`, color: BANK_COLOR[bank] }]}
         chosen={pops.map((p) => ({ series: p, x: B.rank }))} />
       <Legend items={POPS.map((p) => ({ label: p, color: POP_COLOR[p], shape: 'line' as const, detail: `n=${B.capture[p]?.n ?? 0}` }))} />
+      <FixedSetNote what="the export's IMPROVE and Addis sample spectra, summarised by the exporter (the blanks have no exclusions)" />
     </ChartFrame>
   )
 }
