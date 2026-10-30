@@ -14,6 +14,10 @@ import type { SectionPageProps } from '../../types'
 import { envelopeOf, useOptics, windowOf, OPTICS_COMMAND, type Envelope, type Optics } from '../common/optics'
 import { ols, originFit, quantile, spearman, theilSen } from '../common/stats'
 import { BASIS_NOTE, Bars, DataTable, Grid, SitePick, line, ofSite, point, seasonsOf, shortSeason, sitesOf, useConcRows, useSite } from '../common/ui'
+import { linePalette } from './hips/lines'
+import { ResidualCrossplots, ResidualSsa } from './hips/ResidualViews'
+import { RowLines } from './hips/RowLines'
+import { TauByLine, TauPm } from './hips/TauViews'
 
 const ENVELOPE_NB = 'research/ftir_hips_chem/addis_06_hips_ptfe_operating_envelope.ipynb'
 const RT_NB = 'research/improve_hips_offset/improve_fed_rt_proxy_figure2.ipynb (SPARTAN R1/T1 analog)'
@@ -55,10 +59,11 @@ function blankDomain(samples: Optics[], blanks: Optics[]) {
 }
 
 /**
- * Is Addis pushing HIPS on PTFE outside its operating envelope? Raw optical coordinates, mass per area, three fit
- * modes, the residual by loading bin, the residual screen against loading and composition, the lot screen, the
- * SPARTAN R1/T1 "Figure 2" analog with its blank line, where loaded samples sit against the blank R1 domain,
- * and the Addis windows the IMPROVE comparisons screen with.
+ * Is Addis pushing HIPS on PTFE outside its operating envelope? Raw optical coordinates, mass per area, tau against
+ * PM2.5, three fit modes, the residual by loading bin, the residual screen against loading and composition with its
+ * crossplots and the AERONET SSA panel, the lot screen and tau by calibration line, the SPARTAN R1/T1 "Figure 2"
+ * analog with its blank line, each filter against its own line, where loaded samples sit against the blank R1
+ * domain, and the Addis windows the IMPROVE comparisons screen with.
  */
 export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
   // envelopeOf works out loadings from concentrations itself, so it takes µg/m³ rows whatever the basis
@@ -75,6 +80,8 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
   const colorOfSite = (s: string) => rows.find((r) => r.site === s)?.color ?? INK.text
   const nameOfCode = (c: string) => rows.find((r) => r.code === c)?.site ?? c
   const siteEnv = env.filter((e) => e.row.site === site)
+  const pairs = useMemo(() => rows.flatMap((r) => { const o = byId.get(r.id); return o ? [{ r, o }] : [] }), [rows, byId])
+  const palette = useMemo(() => linePalette(optics ?? []), [optics])
   const seasons = useMemo(() => seasonsOf(ofSite(rows, site), meta), [rows, site, meta])
 
   if (error || !optics) return (
@@ -134,6 +141,8 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
     ['EC mass on the filter (µg)', addis.map((e) => e.o.ec_ug)], ['EC loading (µg/cm²)', addis.map((e) => e.ecLoad)], ['OC loading (µg/cm²)', addis.map((e) => e.ocLoad)],
     ['OM loading (µg/cm²)', addis.map((e) => e.omLoad)], ['PM2.5 loading (µg/cm²)', addis.map((e) => e.pmLoad)]] as const).map(([q, v]) => ({ q, ...windowOf([...v]) }))
 
+  const residControls = <><SitePick value={site} options={sites} onChange={setSite} /><Segmented label="Residual" value={resid} options={['relative', 'absolute'] as const} onChange={setResid} /></>
+
   const lotCols = [
     { key: 'k', label: 'Group', value: (r: ReturnType<typeof groupBy>[number]) => r.k },
     { key: 'n', label: 'n', num: true, value: (r: ReturnType<typeof groupBy>[number]) => r.n },
@@ -164,6 +173,8 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
         provenance={`${ENVELOPE_NB} (§2 mass-per-area envelope)`}>
         <IntervalStrip blocks={[{ key: 'load', rows: loadRows }]} panels={loadPanels.map((p) => ({ label: p.label }))} labelWidth={110} noteWidth={50} minPanelWidth={180} />
       </ChartFrame>
+
+      <TauPm pairs={pairs} blanks={blanks} sites={siteNames} colorOfSite={colorOfSite} />
 
       <ChartFrame id="he-fits" title="Slope and intercept separated — OLS, through the origin and Theil–Sen by site"
         subtitle={`HIPS BC (Fabs / ${mac}) on FTIR EC. A different effective MAC mostly changes the slope; a positive intercept that survives the robust fit points to a floor (blank or lot mismatch, optical nonlinearity, a loaded-filter response). Filters with both values positive.`}
@@ -203,6 +214,10 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
           bars={screen.map((s) => ({ key: s.label, label: s.label, value: s.rho! ** 2, signed: s.rho, note: `ρ ${fmt(s.rho, 2)}`, tip: [s.label, `Spearman ρ ${fmt(s.rho, 3)}`, `n ${s.n}`] }))} />}
       </ChartFrame>
 
+      <ResidualCrossplots env={siteEnv} site={site} relative={resid === 'relative'} mac={mac} seasons={seasons} controls={residControls} />
+
+      <ResidualSsa env={siteEnv} site={site} relative={resid === 'relative'} mac={mac} seasons={seasons} controls={residControls} />
+
       <ChartFrame id="he-lots" title={`Lot and calibration screen — ${site}`}
         subtitle="The relative residual and tau by filter lot, by the HIPS calibration line a filter was read against, and by HIPS analysis month. A lot or calibration mechanism would show as a jump between groups. A quick screen, not the blank audit of hips_offset_narrative.ipynb."
         provenance={`${ENVELOPE_NB} (§5 lot and calibration screen)`} exportable={false}>
@@ -211,6 +226,8 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
           <DataTable rows={l.rows.slice(0, 12)} rowKey={(r) => r.k} columns={lotCols} />
         </div>)}
       </ChartFrame>
+
+      <TauByLine pairs={pairs} site={site} palette={palette} controls={<SitePick value={site} options={sites} onChange={setSite} />} />
 
       <ChartFrame id="he-rt" title="SPARTAN R1 / T1 — the Warren Figure 2 analog, samples against field blanks"
         subtitle="Raw HIPS reflectance R1 against transmittance T1 per site: samples hollow grey, field blanks in the site colour, with the blanks' OLS line where there are at least three. Closer in spirit to Warren et al. Figure 2 than the IMPROVE FED ratios, but still not its registered detector record."
@@ -226,6 +243,8 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
               ...bl.map((o) => ({ x: o.R1!, y: o.T1!, color: colorOfSite(s), tip: [`${o.filter_id} (field blank)`, `lot ${o.lot}`, `R1 ${fmt(o.R1, 0)} · T1 ${fmt(o.T1, 0)}`] }))]} /></div>
         }} />
       </ChartFrame>
+
+      <RowLines pairs={pairs} blanks={blanks} sites={siteNames} palette={palette} colorOfSite={colorOfSite} />
 
       <ChartFrame id="he-domain" title="Loaded filters outside the blank domain — share of samples below the blanks' R1 range, by Fabs quintile"
         subtitle={`For each sample, the field blanks read on the same lot and calibration line (${domain.keys} such groups among the sites in view) give an R1 range; a sample below it sits where the calibration has no blank. ftir_37 found this share rising from under 1 % to about 32 % in the highest-loading fifth across the shipped SPARTAN batch; here, the four focus sites.`}
