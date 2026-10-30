@@ -25,6 +25,9 @@ import { ImproveEnvelope } from './pages/ImproveEnvelope'
 import { ImproveOrigin } from './pages/ImproveOrigin'
 import { SpartanImprove } from './pages/SpartanImprove'
 import { SourceWeather } from './pages/SourceWeather'
+import { BlankLines } from './pages/BlankLines'
+import { MassLead } from './pages/MassLead'
+import { FilterOnly } from './pages/FilterOnly'
 
 export const RESEARCH_PAGES: (SectionPage & { Page: ComponentType<SectionPageProps> })[] = [
   { key: 'index', label: 'Index', title: 'What each page here reproduces', Page: Index, hidden: true },
@@ -47,4 +50,7 @@ export const RESEARCH_PAGES: (SectionPage & { Page: ComponentType<SectionPagePro
   { key: 'improve-origin', label: 'IMPROVE HIPS at EC = 0', title: 'Does IMPROVE HIPS read a nonzero Fabs at zero EC, and is its response curved? (ftir_26, ftir_37)', Page: ImproveOrigin },
   { key: 'spartan-improve', label: 'SPARTAN vs IMPROVE', title: 'The shared parameters as one set: distributions, ratios, fits and Addis-like IMPROVE sites', Page: SpartanImprove },
   { key: 'pmf-weather', label: 'PMF sources and weather', title: 'Factor × meteorology, rain washout, temperature range, and method agreement by dominant source (Addis)', Page: SourceWeather },
+  { key: 'blank-lines', label: 'Blank lines per deployed line', title: 'ftir_47, ftir_53 01: field-blank R1–T1 lines per deployed HIPS calibration line, and the Fabs each implies', Page: BlankLines },
+  { key: 'mass-lead', label: 'The mass lead', title: 'ftir_46: does PM2.5 mass explain the calibration residual at fixed prediction? Live, at every site', Page: MassLead },
+  { key: 'filter-only', label: 'Filter-only transfer limits', title: 'filter_only_diagnostics, filter_proportionality, filter_relationship_stability: how far the filter relationships carry over time', Page: FilterOnly },
 ]
