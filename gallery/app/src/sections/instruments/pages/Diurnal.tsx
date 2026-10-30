@@ -4,10 +4,11 @@ import { ExportState } from '@/components/ExportState'
 import { useSearchParam } from '@/lib/url'
 import { seasonsForSite } from '@/siteSeasons'
 import type { SectionPageProps } from '../../types'
-import { BrcTest, ChannelHealth, EcAgainstBc880 } from '../diurnal/BrcTest'
+import { BrcTest, ChannelHealth, ChannelHealthScatter, EcAgainstBc880 } from '../diurnal/BrcTest'
 import { ColumnCycle, DaylightWindow } from '../diurnal/ColumnCharts'
 import { DIURNAL_DIR, EXPORT_COMMAND, hourRuns, useBrc, useColumnIndex, useSiteFile, useSurfaceIndex, utcLabel, type ColumnFile, type SurfaceFile } from '../diurnal/data'
 import { AaeCycle, ChannelCycle, ColumnCoupling, CoverageCheck, IntradayCv, MorningShare, SurfaceVsColumnAae } from '../diurnal/SurfaceCharts'
+import { CrossSiteOverlay, DeltaCAndCv, NormalisedHeatmap, RepresentativeDays, spectralOf, SpectralSummary, useSurfaceFiles, type Spectral } from '../diurnal/SpectralCharts'
 
 type Split = 'seasons' | 'together'
 
@@ -44,6 +45,11 @@ export function Diurnal({ rows, meta }: SectionPageProps) {
   const shade = colFile?.inv_hours ?? column.data?.sites[code]?.inv_hours ?? surfFile?.coverage?.hours ?? []
   const addisRows = useMemo(() => rows.filter((r) => r.code === 'ETAD'), [rows])
   const showBrc = inView.some((s) => s.code === 'ETAD')
+  // the spectral diagnostics across sites: every site in view with an hourly MA350 export, all year
+  const surfaceInView = useMemo(() => inView.filter((s) => surface.data?.sites[s.code]), [inView, surface.data])
+  const surfaceFiles = useSurfaceFiles(surfaceInView.map((s) => s.code))
+  const spectra = useMemo(() => Object.fromEntries(Object.entries(surfaceFiles).map(([c, f]) => [c, spectralOf(f, [])])) as Record<string, Spectral>, [surfaceFiles])
+  const focusSpectral = useMemo(() => (surfFile ? spectralOf(surfFile, seasons) : null), [surfFile, seasons])
 
   if (column.error && surface.error && brc.error) {
     return <ExportState title="Diurnal" what="the diurnal export" error={column.error} command={EXPORT_COMMAND} />
@@ -82,6 +88,10 @@ export function Diurnal({ rows, meta }: SectionPageProps) {
             <ColumnCoupling file={surfFile} site={site} seasons={seasons} split={splitOn} shade={shade} />
             <SurfaceVsColumnAae file={surfFile} site={site} seasons={seasons} shade={shade} />
             <IntradayCv file={surfFile} site={site} seasons={seasons} />
+            {focusSpectral && <>
+              <DeltaCAndCv spectral={focusSpectral} site={site} seasons={seasons} split={splitOn} shade={shade} />
+              <RepresentativeDays spectral={focusSpectral} site={site} shade={shade} />
+            </>}
             {surfFile.resolution === 'hourly' && <div className="panel"><p className="subtitle" style={{ margin: 0 }}>
               {site.name}'s MA350 is exported from hourly means ({surfFile.file}), so the charts that pair single AERONET retrievals with the ±15 min around them
               (surface against column by hour, surface AAE against the Ångström exponent, within-day variability) need its minute record and are left out.
@@ -89,9 +99,16 @@ export function Diurnal({ rows, meta }: SectionPageProps) {
           </>
         : !surface.loading && <SurfaceMissing site={site.name} code={code} exported={surfaceSites} searched={surface.data?.searched ?? {}} />)}
 
+      {surfaceInView.length > 0 && <>
+        <NormalisedHeatmap focus={focusSpectral} focusName={site?.name ?? code} spectra={spectra} sites={surfaceInView} seasons={seasons} />
+        <CrossSiteOverlay spectra={spectra} sites={surfaceInView} />
+        <SpectralSummary focus={focusSpectral} site={surfFile ? site : null} spectra={spectra} sites={surfaceInView} seasons={seasons} />
+      </>}
+
       {showBrc && brc.data && <>
         <BrcTest brc={brc.data} />
         <ChannelHealth brc={brc.data} />
+        <ChannelHealthScatter brc={brc.data} />
         <EcAgainstBc880 rows={addisRows} />
       </>}
     </>

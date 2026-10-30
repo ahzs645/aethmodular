@@ -1,14 +1,15 @@
 import { useMemo } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
-import { Crossplot, type CrossPoint } from '@/components/Crossplot'
+import { Crossplot, type CrossLine, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { histogramSeries, SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { fmt, signed } from '@/lib/format'
 import { FONT, INK } from '@/lib/theme'
 import { useHighlightActions } from '@/lib/highlight'
 import type { FilterRow } from '@/lib/types'
-import type { BrcFile } from './data'
+import { Key } from '@/components/Key'
+import { CHANNEL_COLOUR, type BrcFile, type Channel } from './data'
 
 
 const NB = 'research/ftir_ec_phase3/ftir_28_ma350_brc_falsification.ipynb'
@@ -80,6 +81,57 @@ export function ChannelHealth({ brc }: { brc: BrcFile }) {
           ))}</tbody>
         </table>
       </div>
+    </ChartFrame>
+  )
+}
+
+/**
+ * ftir_28 Figure 2: each suspect channel's absorption against IR's, day by day, with the locus an
+ * AAE = 1 aerosol would follow (b(λ) = b(880) · 880/λ) and equality with IR. Green below its locus is a
+ * negative AAE; Red on IR carries nothing IR does not; UV needs its own axis to fit at all.
+ */
+export function ChannelHealthScatter({ brc }: { brc: BrcFile }) {
+  const s = brc.summary, nm = brc.wavelengths_nm, b = brc.b
+  const panels = useMemo(() => {
+    const hi = (d3.max(b.IR, (v) => v ?? undefined) ?? 1) * 1.04
+    // Blue, Green and Red share a y range (to Blue's AAE = 1 locus at the largest IR, as the notebook drew); UV its own, which is the diagnosis
+    const shared: [number, number] = [0, hi * (nm.IR / nm.Blue) * 1.11]
+    const uvRange: [number, number] = [-3000, 3000]
+    const notes: Record<'UV' | 'Green' | 'Red' | 'Blue', string> = {
+      UV: `${fmt(s.uv.out_of_range_pct, 0)} % of days out of range: BCc ≤ 0 on ${s.uv.nonpositive}, b(375) < b(880) on ${s.uv.below_ir} more; r with IR ${fmt(s.uv.r_ir, 3)}`,
+      Green: `AAE(528, 880) median ${fmt(s.green.aae_median, 3)}, negative on ${fmt(s.green.negative_pct, 0)} % of days; ${fmt(s.green.deficit_pct, 0)} % below its own Blue–Red power law`,
+      Red: `b(625)/b(880) IQR ±${fmt(s.red.iqr_halfwidth_pct, 1)} %; r with IR ${fmt(s.red.r_ir, 4)}; AAE(625, 880) ${fmt(s.aae_red_ir.mean, 3)} ± ${fmt(s.aae_red_ir.sd, 3)}`,
+      Blue: `AAE(470, 880) mean ${fmt(s.blue.aae_mean, 3)}; r with IR ${fmt(s.blue.r_ir, 4)}`,
+    }
+    const titles = { UV: 'UV (375 nm) — out of range', Green: 'Green (528 nm) — unphysical negative AAE', Red: 'Red (625 nm) — indistinguishable from IR', Blue: 'Blue (470 nm) — for contrast, behaves' }
+    return (['UV', 'Green', 'Red', 'Blue'] as const).map((c: Channel & keyof typeof notes) => {
+      const yDomain = c === 'UV' ? uvRange : shared
+      const points: CrossPoint[] = brc.date.flatMap((d, i) => {
+        const x = b.IR[i], y = b[c][i]
+        return x == null || y == null ? [] : [{ x, y, color: CHANNEL_COLOUR[c], tip: [d, `b(880) ${fmt(x, 1)} Mm⁻¹`, `b(${nm[c]}) ${fmt(y, 1)} Mm⁻¹`, `ratio ${fmt(y / x, 3)}`] }]
+      })
+      const off = points.filter((p) => p.y < yDomain[0] || p.y > yDomain[1] || p.x > hi).length
+      const lines: CrossLine[] = [
+        { slope: nm.IR / nm[c], intercept: 0, color: INK.text, label: 'AAE = 1', method: 'ols', stats: null },
+        { slope: 1, intercept: 0, color: INK.muted, label: '1:1', dash: '2 3', method: 'ols', stats: null },
+      ]
+      return { c, title: titles[c], note: notes[c], points, off, lines, yDomain, x: [0, hi] as [number, number] }
+    })
+  }, [brc, b, nm, s])
+  return (
+    <ChartFrame id="diurnal-channel-health-scatter" title="Addis · the suspect channels against IR, day by day — only IR is trustworthy"
+      subtitle={`Each point is one of the ${s.days} ETAD filter-days in the daily MA350 record: a channel's absorption b_ATN = BCc × σ_ATN against IR's. Solid: where an AAE = 1 aerosol would sit, b(λ) = b(880) × 880/λ; dotted: equal to IR. Green sits far below its locus (a negative AAE, which no aerosol produces); Red sits just below its own and on IR, the same statement as "no red excess"; Blue is the one short channel that behaves. The UV panel has its own y-axis, running ${fmt(3000 / (panels[1]?.yDomain[1] ?? 1), 0)}× taller and well below zero, and still loses points off its edges. An instrument diagnosis, not a measurement of brown carbon at Addis.`}
+      provenance={`${NB} (Figure 2, channel_health_panel.png)`}>
+      <FacetGrid items={panels} minCell={260} maxCols={4} maxCell={360}
+        title={(p) => p.title} note={(p) => (p.off ? `${p.off} off scale` : '')}
+        render={(p) => (
+          <div>
+            <Crossplot points={p.points} title="" xLabel="b_ATN(880 nm), Mm⁻¹" yLabel={`b_ATN(${nm[p.c]} nm), Mm⁻¹`} fit={false} grouping="none" sameScale={false}
+              domain={p.x} yDomain={p.yDomain} extraLines={p.lines} maxSide={300} />
+            <p className="chart-note" style={{ margin: '4px 8px 0' }}>{p.note}</p>
+          </div>
+        )} />
+      <Key items={[{ label: 'what an AAE = 1 aerosol would give', color: INK.text, kind: 'line' }, { label: '1:1 (equal to IR)', color: INK.muted, kind: 'dash' }]} />
     </ChartFrame>
   )
 }
