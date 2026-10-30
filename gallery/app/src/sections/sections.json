@@ -22,6 +22,17 @@
         "research"
       ],
       "about": "Notebook analyses the gallery had the data for but not the method: HIPS and meteorology diagnostics, spectral and calibration diagnostics."
+    },
+    "ml": {
+      "label": "Machine learning",
+      "public": false,
+      "tabs": [
+        "ml"
+      ],
+      "data": [
+        "ml"
+      ],
+      "about": "The notebooks' model-fitting results (PLS component selection, cross-validation schemes, protocols and transfer, the June 2026 calibration variants, residual learners, target definitions, model forms, feature importance), precomputed and static."
     }
   }
 }

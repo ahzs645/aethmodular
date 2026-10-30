@@ -4,6 +4,7 @@ import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { SweepPlot } from '@/components/SweepPlot'
 import { useExport } from '@/lib/data'
+import { useMac } from '@/lib/mac'
 import { fmt } from '@/lib/format'
 import { IMPROVE_GREY, INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
@@ -54,7 +55,9 @@ const qMark = (q: Q, color: string, wide = false) => ({ mid: q.p50, lo: wide ? q
  * side in mass on the filter. Summaries from gallery/data/export_research_improve_envelope.py; the IMPROVE
  * exports are not in the repo.
  */
-export function ImproveEnvelope({ rows, meta }: SectionPageProps) {
+export function ImproveEnvelope({ rows }: SectionPageProps) {
+  // the fAbs / EC panel's reference is the MAC the reader set under Filters → units (lib/mac), not the export's
+  const { mac } = useMac()
   const { data, error } = useExport<Envelope>('research/improve_envelope/envelope.json')
   const { rows: optics } = useOptics()
   const [space, setSpace] = useSearchParam<'mass' | 'surface'>('ie.space', 'mass', ['mass', 'surface'])
@@ -115,7 +118,7 @@ export function ImproveEnvelope({ rows, meta }: SectionPageProps) {
       <ChartFrame id="ie-matched" title="Matched on EC, do IMPROVE filters absorb like Addis? — EC-mass and EC-concentration matches"
         subtitle="IMPROVE filters inside the Addis p05–p95 of EC mass on the filter, or of EC concentration, against Addis itself: median and interquartile range of fAbs, fAbs / EC, EC concentration and EC mass. The same EC can carry much less absorption."
         provenance={NB.matched}>
-        <IntervalStrip blocks={[{ key: 'm', rows: matchedRows }]} panels={[{ label: 'fAbs (Mm⁻¹)' }, { label: 'fAbs / EC (m²/g)', reference: meta.mac_value }, { label: 'EC (µg/m³)' }, { label: 'EC mass (µg)' }]}
+        <IntervalStrip blocks={[{ key: 'm', rows: matchedRows }]} panels={[{ label: 'fAbs (Mm⁻¹)' }, { label: 'fAbs / EC (m²/g)', reference: mac }, { label: 'EC (µg/m³)' }, { label: 'EC mass (µg)' }]}
           labelWidth={150} noteWidth={56} minPanelWidth={140} />
         <DataTable rows={data.matched} rowKey={(r) => r.group} columns={[
           { key: 'g', label: 'Group', value: (r) => r.group }, { key: 'n', label: 'n', num: true, value: (r) => r.fit.n.toLocaleString() },

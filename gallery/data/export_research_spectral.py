@@ -101,8 +101,9 @@ def _relabel(text: str) -> str:
 class Page:
     """One page's tables, findings text, sources and missing per-filter inputs."""
 
-    def __init__(self, key: str, title: str) -> None:
-        self.key, self.title = key, title
+    def __init__(self, key: str, title: str, out: Path = OUT, exporter: Path | None = None) -> None:
+        self.key, self.title, self.out = key, title, out
+        self.exporter = exporter or Path(__file__)
         self.tables: dict[str, pd.DataFrame] = {}
         self.text: dict[str, str] = {}
         self.sources: list[dict] = []
@@ -157,19 +158,20 @@ class Page:
         return None
 
     def write(self) -> Path:
-        OUT.mkdir(parents=True, exist_ok=True)
+        self.out.mkdir(parents=True, exist_ok=True)
         bundle = {
             "schema_version": 1,
             "id": self.key,
             "title": self.title,
             "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "generated_from": rel(Path(__file__)),
+            "generated_from": rel(self.exporter),
+            "file": f"{self.out.relative_to(ROOT / 'gallery/app/public/data').as_posix()}/{self.key}.json",
             "text": self.text,
             "sources": self.sources,
             "missing": self.missing,
             "tables": {name: columns(frame) for name, frame in self.tables.items()},
         }
-        path = OUT / f"{self.key}.json"
+        path = self.out / f"{self.key}.json"
         path.write_text(json.dumps(bundle, ensure_ascii=False, separators=(",", ":")))
         print(f"wrote {rel(path)} ({path.stat().st_size / 1024:.0f} KB): "
               + ", ".join(f"{k} {len(v)}" for k, v in self.tables.items())
@@ -433,7 +435,7 @@ def ethiopia_calibrations() -> Page:
           read="tracked csv", path=rel(t / "etad_ec_both_lots_median_by_trainset.csv"))
     p.add("component_summary", pd.read_csv(t / "etad_ec_component_summary.csv").rename(columns={"Unnamed: 0": "calibration"}),
           notebook="09_ethiopia_component_ec", read="tracked csv", path=rel(t / "etad_ec_component_summary.csv"))
-    p.add("variant_hips_fits", pd.read_csv(t / "etad_newec_vs_hips_fits.csv"), notebook="11_hips_intercept_calibrations",
+    p.add("variant_hips_fits", pd.read_csv(t / "etad_newec_vs_hips_fits.csv"), notebook="08_adama_hips_crossplots",
           read="tracked csv", path=rel(t / "etad_newec_vs_hips_fits.csv"))
 
     nb12 = ExecutedNotebook(JUNE25 / "12_dedicated_ethiopia_calibration.ipynb")

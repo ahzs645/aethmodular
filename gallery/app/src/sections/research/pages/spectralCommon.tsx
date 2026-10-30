@@ -20,6 +20,8 @@ export interface SpectralExport {
   title: string
   generated: string
   generated_from: string
+  /** where the export sits under public/data (older exports: research/spectral/<id>.json) */
+  file?: string
   text: Record<string, string>
   sources: SpectralSource[]
   missing: SpectralMissing[]
@@ -28,8 +30,8 @@ export interface SpectralExport {
 
 export const EXPORTER = 'gallery/data/export_research_spectral.py'
 
-export function useSpectral(key: string) {
-  return useExport<SpectralExport>(`research/spectral/${key}.json`, (d) => (d.schema_version === 1 ? null : 'unsupported data version'))
+export function useSpectral(key: string, folder = 'research/spectral') {
+  return useExport<SpectralExport>(`${folder}/${key}.json`, (d) => (d.schema_version === 1 ? null : 'unsupported data version'))
 }
 
 /** A table of the export as rows (empty when the export lacks it). */
@@ -56,13 +58,13 @@ export function provenance(data: SpectralExport | null, tables: string[], extra?
   return <>
     {reads.length > 0 && <>Read from {reads.join('; ')}. </>}
     {extra && <>{extra} </>}
-    {data && <>Export: <code>{EXPORTER}</code> → <code>research/spectral/{data.id}.json</code>.</>}
+    {data && <>Export: <code>{data.generated_from || EXPORTER}</code> → <code>{data.file ?? `research/spectral/${data.id}.json`}</code>.</>}
   </>
 }
 
 /** Loading and error states for a page that needs its export (and optionally the explorer readouts). */
-export function Waiting({ error, what = 'the page data' }: { error?: string; what?: string }) {
-  return <section className="panel"><Empty>{error ? <>Could not load {what}: {error}. Run <code>uv run --locked --no-sync python {EXPORTER}</code>.</> : `Loading ${what}…`}</Empty></section>
+export function Waiting({ error, what = 'the page data', exporter = EXPORTER }: { error?: string; what?: string; exporter?: string }) {
+  return <section className="panel"><Empty>{error ? <>Could not load {what}: {error}. Run <code>uv run --locked --no-sync python {exporter}</code>.</> : `Loading ${what}…`}</Empty></section>
 }
 
 /**
@@ -76,14 +78,14 @@ export function PageIntro({ id, title, notebooks, data, children }: {
   const reads = [...new Set(data.sources.map((s) => s.read))]
   return (
     <ChartFrame id={id} title={title} exportable={false}
-      provenance={<>Notebooks: {notebooks}. Tables read as: {reads.join(', ')}. Exported {data.generated.slice(0, 10)} by <code>{EXPORTER}</code>.</>}>
+      provenance={<>Notebooks: {notebooks}. Tables read as: {reads.join(', ')}. Exported {data.generated.slice(0, 10)} by <code>{data.generated_from || EXPORTER}</code>.</>}>
       <div className="subtitle">
         {Object.values(data.text).map((t, i) => <Markdown key={i} text={t} />)}
         {children}
         {data.missing.length > 0 && <>
           <p style={{ marginBottom: 4 }}><strong>Not on this page yet</strong> — these need the notebooks' gitignored outputs (spectra on the Drive). Run, then re-export:</p>
           <ul style={{ marginTop: 0 }}>
-            {data.missing.map((m) => <li key={m.table}>{m.what}: <code>{m.run}</code> (writes <code>{m.needs}</code>), then <code>uv run --locked --no-sync python {EXPORTER}</code>.{m.after && <> First it needs {m.after}.</>}</li>)}
+            {data.missing.map((m) => <li key={m.table}>{m.what}: <code>{m.run}</code> (writes <code>{m.needs}</code>), then <code>uv run --locked --no-sync python {data.generated_from || EXPORTER}</code>.{m.after && <> First it needs {m.after}.</>}</li>)}
           </ul>
         </>}
       </div>

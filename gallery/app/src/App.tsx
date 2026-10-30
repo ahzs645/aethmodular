@@ -98,6 +98,7 @@ import { AERONET_GROUP, useAeronet } from '@/lib/aeronet'
 import SECTIONS_MANIFEST from '@/sections/sections.json'
 import instruments from '@/sections/instruments'
 import research from '@/sections/research'
+import ml from '@/sections/ml'
 import { defaultPage } from '@/sections/types'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 import { EQUIVALENTS } from '@/lib/fieldEquivalents'
@@ -121,6 +122,7 @@ const TABS = [
   { key: 'weather', label: 'Weather', title: 'Weather over each filter’s sampling window: ERA5 at every SPARTAN site, the airport station at Addis' },
   { key: 'aethalometer', label: 'Aethalometer', title: 'MA350 aethalometers at the focus sites (Instruments section; unlisted in public builds)' },
   { key: 'research', label: 'Research diagnostics', title: 'Notebook analyses brought into the gallery (Research section; private in public builds)' },
+  { key: 'ml', label: 'Machine learning', title: 'The notebooks’ model-fitting results, as they ran: static (Machine learning section; private in public builds)' },
   { key: 'aeronet', label: 'AERONET', title: 'The sun photometer column over each filter’s sampling window: AOD, absorption AOD and SSA at every SPARTAN site with a station' },
   { key: 'flow', label: 'Flow' },
   { key: 'pmf', label: 'PMF sources' },
@@ -136,7 +138,7 @@ type TabKey = (typeof TABS)[number]['key']
 /** A share build (VITE_SHARE_TABS=meeting,map; gallery/share/build_share.py) offers only these tabs, the first as landing tab. */
 const SHARE_TABS: string[] = (import.meta.env.VITE_SHARE_TABS ?? '').split(',').map((t: string) => t.trim()).filter(Boolean)
 /** the flagged sections compiled into this build, their tabs, and every tab a section owns (compiled or not) */
-const SECTIONS = [instruments, research].filter((s) => s.tabs.length)
+const SECTIONS = [instruments, research, ml].filter((s) => s.tabs.length)
 const SECTION_TABS = new Map(SECTIONS.flatMap((s) => s.tabs.map((t) => [t.key, t] as const)))
 const SECTION_OWNED = new Set<string>(Object.values(SECTIONS_MANIFEST.sections).flatMap((s) => s.tabs))
 const shared = (key: string) => (!SECTION_OWNED.has(key) || SECTION_TABS.has(key)) && (SHARE_TABS.length === 0 || SHARE_TABS.includes(key))
@@ -169,7 +171,7 @@ const tabItem = (key: string): NavItem[] => TABS.filter((t) => t.key === key && 
  * The Investigations tab's areas, in card and menu order: tabs with pages of their own (each drawn under
  * components/AreaHeader). Every compiled section's tab is one, so a new section joins without a change here.
  */
-const AREA_TABS = [...new Set(['meeting', 'experimental', 'research', 'aethalometer', ...SECTION_TABS.keys(), 'availability', 'census'])].filter(shared)
+const AREA_TABS = [...new Set(['meeting', 'experimental', 'research', 'ml', 'aethalometer', ...SECTION_TABS.keys(), 'availability', 'census'])].filter(shared)
 const areaPages = (t: string): readonly AreaPage[] =>
   t === 'meeting' ? MEETINGS : t === 'experimental' ? LISTED_EXPERIMENTS : t === 'availability' ? AVAILABILITY_VIEWS : t === 'census' ? CENSUS_PAGES
     : (SECTION_TABS.get(t)?.pages ?? []).filter((p) => !p.hidden)
@@ -281,7 +283,7 @@ const parseSpartanSel = (v: string | null): string[] | 'all' | null =>
 /** tabs whose charts can draw a whole network (Filters sidebar → network) */
 const NETWORK_TABS = ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'map', 'weather', 'aeronet', 'aethalometer', 'research'] as const
 const FILTERS: SubsetCaps = { seasons: true, sites: true, excluded: true, dates: true, fields: 'single', datasetLabel: 'SPARTAN filters' }
-const CAPS: Record<Exclude<TabKey, 'investigations' | 'availability' | 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks' | 'experimental'>, SubsetCaps> = {
+const CAPS: Record<Exclude<TabKey, 'investigations' | 'availability' | 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks' | 'experimental' | 'ml'>, SubsetCaps> = {
   correlation: { ...FILTERS, fields: 'pair', networks: true, fits: true },
   // each tile picks its own fields
   dashboard: { ...FILTERS, fields: 'none', networks: true, fits: true },
@@ -1079,7 +1081,7 @@ export default function App() {
   // the Dashboard's header draws the common filters from the same state and actions (components/dashboard/DashHeader)
   let dashFilters: DashFilters | null = null
   const subset = (() => {
-    if (tab === HUB_TAB || tab === 'availability' || tab === 'census' || tab === 'baseline' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental') return null
+    if (tab === HUB_TAB || tab === 'availability' || tab === 'census' || tab === 'baseline' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental' || tab === 'ml') return null
     const baseCaps = net === 'focus' ? CAPS[tab] : { ...CAPS[tab], datasetLabel: net === 'improve' ? 'IMPROVE samples' : net === 'both' ? 'SPARTAN filters + IMPROVE samples' : 'SPARTAN filters', excluded: sourceRows.some((r) => r.excluded) }
     // the chart tabs offer the PMF section while a site with PMF is picked
     const chartTab = (NETWORK_TABS as readonly string[]).includes(tab)

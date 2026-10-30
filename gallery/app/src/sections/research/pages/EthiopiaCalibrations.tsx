@@ -48,13 +48,13 @@ export function EthiopiaCalibrations(_props: SectionPageProps) {
     <Figure kind="crossplot" id="ethiopia-hips" data={points} x="HIPS" y="EC" idColumn="id" choose={[{ column: 'which', label: 'Calibration', default: '15 · recommended — NEW lot-248+251, flag-filtered, k10' }]}
       xLabel={`HIPS Fabs / ${m.mac} (µg/m³)`} yLabel="Predicted FTIR EC (µg/m³)" maxSide={460} errorRatio={m.lambda}
       title="Each calibration against HIPS — the old set is steep and offset, the lot-248+251 mirror moves toward 1:1"
-      subtitle={`ETAD spectra with a HIPS Fabs, against Fabs ÷ ${m.mac} (the MAC set under Filters → units; the notebooks used 10). The notebooks fitted OLS (11's table below; 15: 2.27x − 5.25 old, about 1.2x − 2.2 new, at MAC 10); the line here is the gallery's estimator on the same points, Deming with the explorer's λ at this MAC (${f2(m.lambda)}).`}
+      subtitle={`ETAD spectra with a HIPS Fabs, against Fabs ÷ ${m.mac} (the MAC set under Filters → units; the notebooks used 10). The notebooks fitted OLS (08's table below; 15: 2.27x − 5.25 old, about 1.2x − 2.2 new, at MAC 10); the line here is the gallery's estimator on the same points, Deming with the explorer's λ at this MAC (${f2(m.lambda)}).`}
       provenance={provenance(data, ['per_filter'])} />
 
     <Figure kind="table" id="ethiopia-variant-fits" data={atMac(rows(data, 'variant_hips_fits'))}
       columns={[{ key: 'variant', label: 'Variant (07)' }, { key: 'n', label: 'n', format: 'int' }, { key: 'slope', label: `OLS slope (MAC ${m.mac})`, format: 'f2' }, { key: 'intercept', label: 'OLS intercept', format: 'f2' }, { key: 'r2', label: 'R²', format: 'f3' }]}
-      title="The variants' HIPS fits as notebook 11 saved them"
-      subtitle={m.changed ? `Notebook 11 fitted against Fabs/10; the slopes are re-expressed at MAC ${m.mac} (× ${m.mac}/10). Intercepts and R² do not depend on the MAC.` : undefined}
+      title="The variants' HIPS fits as notebook 08 saved them"
+      subtitle={m.changed ? `Notebook 08 fitted against Fabs/10; the slopes are re-expressed at MAC ${m.mac} (× ${m.mac}/10). Intercepts and R² do not depend on the MAC.` : undefined}
       provenance={provenance(data, ['variant_hips_fits'])} />
 
     <Figure kind="sweep" id="ethiopia-trainset" data={rows(data, 'trainset_medians')} x="ncomp" y="median EC" series="training set" xLabel="PLS components (k)" yLabel="Median ETAD EC (µg/m³)" height={260}

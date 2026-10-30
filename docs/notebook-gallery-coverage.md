@@ -1,5 +1,10 @@
 # Notebooks vs the gallery: what has been ported and what has not
 
+> **Superseded in part (30 Oct 2026):** [notebook-gallery-audit-2026-10-30.md](notebook-gallery-audit-2026-10-30.md)
+> re-checks every figure of the 164 active notebooks under `research/` against the gallery, classes each as live, live with a small
+> export, or static (model fitting), and lists where this snapshot is out of date. Model-fitting results now have
+> their own section, Machine learning (`#tab=ml`).
+
 Snapshot of 27 Oct 2026. It compares the 192 active notebooks (223 in the repo,
 less `archive/`, `scratch/` and `attic/`) with what `gallery/app` draws today:
 the chart tabs, Sites (Map, Data availability, Weather, PMF), Calibration,
