@@ -244,6 +244,13 @@
    "file": "charts/correlation/SpeciesGraph.tsx"
   },
   {
+   "title": "Split at a cutoff — … against …, fitted either side of … = …",
+   "id": "split-fit",
+   "component": "SplitFit",
+   "tab": "correlation",
+   "file": "charts/correlation/SplitFit.tsx"
+  },
+  {
    "title": "Boxplot · Violin · Beeswarm — one distribution, four encodings",
    "id": "distribution",
    "component": "DistributionPanel",
@@ -325,6 +332,27 @@
    "component": "FunctionalGroups",
    "tab": "partOfWhole",
    "file": "charts/partOfWhole/FunctionalGroups.tsx"
+  },
+  {
+   "title": "How dominant is the dominant source — the dominant PMF factor's share of each day, by the GF and K_F rules",
+   "id": "pmf-dominance",
+   "component": "DominanceHistogram",
+   "tab": "pmf",
+   "file": "charts/pmf/DominanceHistogram.tsx"
+  },
+  {
+   "title": "PMF coverage — the … filters the PMF solution analysed, among all of them",
+   "id": "pmf-coverage",
+   "component": "PmfCoverage",
+   "tab": "pmf",
+   "file": "charts/pmf/PmfCoverage.tsx"
+  },
+  {
+   "title": "Method difference against the biomass share, by season — ……, per … PMF day",
+   "id": "pmf-residual-biomass",
+   "component": "ResidualVsBiomass",
+   "tab": "pmf",
+   "file": "charts/pmf/ResidualVsBiomass.tsx"
   },
   {
    "title": "Stacked area · Streamgraph — PMF source contributions over time",

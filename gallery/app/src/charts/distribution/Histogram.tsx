@@ -16,8 +16,10 @@ import { MeasurementControl } from '@/components/AxisFieldPopover'
 import { useTileSetting } from '@/lib/url'
 import { ChartAside } from '@/lib/singleView'
 import { ScrubField } from '@/components/ScrubField'
+import { ecdfAt, ecdfSteps } from '@/lib/ecdf'
+import { parseCuts } from '@/lib/splitFit'
 
-const LAYOUTS = ['Overlay', 'Density', 'Small multiples', 'Mirror'] as const
+const LAYOUTS = ['Overlay', 'Density', 'Small multiples', 'Mirror', 'ECDF'] as const
 type Layout = (typeof LAYOUTS)[number]
 
 /** `ids[i]` is the filter behind `values[i]`, so a bar can name its filters */
@@ -38,6 +40,11 @@ interface Series { name: string; color: string; values: number[]; ids: string[] 
  *  Mirror           two groups back to back (any site or season against any
  *                   other), the honest way to compare two distributions of
  *                   different n: dry vs wet at one site, Addis vs Beijing.
+ *  ECDF             each site's cumulative share of filters at or below a
+ *                   value (primary_tasks_notebook c11's Fe/EC CDF, the
+ *                   vs_improve and mass-closure CDFs): no bins to choose, and
+ *                   "what fraction lies under the cutoff" reads straight off
+ *                   the curve. Typed marks draw the cutoffs being weighed.
  *
  * The bin count is a slider, because the bin size changes what a histogram
  * appears to say and the reader should be able to see that happen.
@@ -56,6 +63,13 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   const mirror = useLegend()
   const [mirrorA, setMirrorA] = useState<string>('')
   const [mirrorB, setMirrorB] = useState<string>('')
+  // values marked on the axis (the cutoffs a notebook weighed: Fe/EC 50, 100, 200), as typed
+  const [marksParam, setMarksParam] = useTileSetting<string>('histogram.marks', '')
+  // the marks being typed (null: show the ones in use)
+  const [marksDraft, setMarksDraft] = useState<string | null>(null)
+  const marks = useMemo(() => parseCuts(marksParam), [marksParam])
+  // the ECDF's pointer readout: the value under the pointer (null: none)
+  const [probe, setProbe] = useState<number | null>(null)
 
   const seasonColor = useMemo(() => new Map(meta.seasons.map((s) => [s.name, s.color])), [meta.seasons])
   const valuesOf = (pred: (r: FilterRow) => boolean) => {
@@ -85,17 +99,24 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
       { value: 'Overlay' }, { value: 'Density' },
       { value: 'Small multiples', when: (c) => (c.nSeries as number) > 1 },
       { value: 'Mirror', when: (c) => (c.nGroups as number) >= 2 },
-    ] },
+      { value: 'ECDF' },
+    ], title: 'ECDF: the cumulative share of each site\'s filters at or below a value, with no bins' },
     { key: 'mirror', when: (c) => c.layout === 'Mirror', node: () => <>
       <Select label="Top" value={aName} options={groupNames} onChange={setMirrorA} />
       <Select label="Bottom" value={bName} options={groupNames.filter((n) => n !== aName)} onChange={setMirrorB} />
     </> },
-    { key: 'bins', when: (c) => c.layout !== 'Density', node: () => <span className="control" title="Number of bins across the displayed range">
+    { key: 'bins', when: (c) => c.layout !== 'Density' && c.layout !== 'ECDF', node: () => <span className="control" title="Number of bins across the displayed range">
       Bins
       <ScrubField label="Number of bins" value={bins} onChange={setBins} min={8} max={80} step={1} width={90} />
     </span> },
-    { key: 'normalise', label: 'Normalise to fraction', toggle: true, default: true },
-    { key: 'density', label: 'Density curve', toggle: true, default: true, hidden: true, when: (c) => c.layout !== 'Density' },
+    { key: 'normalise', label: 'Normalise to fraction', toggle: true, default: true, hidden: true, when: (c) => c.layout !== 'ECDF' },
+    { key: 'density', label: 'Density curve', toggle: true, default: true, hidden: true, when: (c) => c.layout !== 'Density' && c.layout !== 'ECDF' },
+    { key: 'marks', when: (c) => c.layout !== 'Mirror', node: () => <label className="control" title="Values to mark on the axis, e.g. the cutoffs a notebook tried (Fe/EC 0.05, 0.1, 0.2): commas or spaces between them">
+      Mark at
+      <input className="select" style={{ width: 120 }} value={marksDraft ?? marksParam} placeholder="none" aria-label="Values to mark"
+        onChange={(e) => setMarksDraft(e.target.value)} onBlur={() => { if (marksDraft !== null) setMarksParam(parseCuts(marksDraft).join(', ')); setMarksDraft(null) }}
+        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} />
+    </label> },
   ], { nSeries: allSeries.length, nGroups: groupNames.length })
   const layout = o.values.layout as Layout
   const normalise = o.values.normalise as boolean
@@ -121,6 +142,8 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   const x = d3.scaleLinear().domain([lo, hi]).range([0, innerW]).nice()
   const [dLo, dHi] = x.domain() as [number, number]
   const nOutside = all.filter((v) => v < dLo || v > dHi).length
+  const ecdfMode = layout === 'ECDF'
+  const shownMarks = layout === 'Mirror' ? [] : marks.filter((m) => m >= dLo && m <= dHi)
 
   const densityOnly = layout === 'Density'
   const showBars = !densityOnly
@@ -193,23 +216,58 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   // the gallery's "stop chasing the p-value" playground: the mirror is the
   // picture, the statistics underneath are the caveat
   const mirrorStats = layout === 'Mirror' && series.length === 2 ? twoSample(series[0].values, series[1].values) : null
-  const yLabel = normalise ? 'fraction of samples' : 'filters'
+  const yLabel = ecdfMode ? 'cumulative % of filters' : normalise ? 'fraction of samples' : 'filters'
   const xLabel = withUnit(field, meta.field_units)
   const panels: { key: string; title: string | null; color: string; items: (typeof binned)[number][]; }[] =
     layout === 'Small multiples' ? binned.map((s) => ({ key: s.name, title: s.name, color: s.color, items: [s] })) : [{ key: 'all', title: null, color: INK.text, items: binned }]
+
+  // ECDF: each series sorted once; a step path over the drawn range, in % of the series' filters
+  const sortedAll = useMemo(() => new Map(allSeries.map((s) => [s.name, [...s.values].sort(d3.ascending)])), [allSeries])
+  const sortedSeries = ecdfMode ? series.map((s) => ({ ...s, sorted: sortedAll.get(s.name) ?? [] })) : []
+  const yPct = d3.scaleLinear().domain([0, 100]).range([innerH, 0])
+  const marksLayer = (yTop: number) => shownMarks.map((m) => (
+    <g key={m} pointerEvents="none">
+      <line x1={x(m)} x2={x(m)} y1={yTop} y2={innerH} stroke={INK.text} strokeWidth={1.2} strokeDasharray="3 3" opacity={0.7} />
+      <text x={x(m) + 3} y={yTop + 10} fontSize={10} fontFamily="var(--mono)" fill={INK.text}>{fmt(m, 3)}</text>
+    </g>
+  ))
+  const ecdfPlot = (
+    <svg width={width} height={panelH} className="animated">
+      <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
+        <YAxis scale={yPct} x={0} label={yLabel} gridWidth={innerW} tickCount={6} />
+        <XAxis scale={x} y={innerH} label={xLabel} />
+        {sortedSeries.map((s) => {
+          const path = d3.line<[number, number]>().x((d) => x(d[0])).y((d) => yPct(100 * d[1]))(ecdfSteps(s.sorted, dLo, dHi)) ?? ''
+          return <path key={s.name} d={path} fill="none" stroke={s.color} strokeWidth={2.2} opacity={dim(s.name)}
+            data-export-site={s.name} data-export-series={s.name} data-export-color={s.color} />
+        })}
+        {marksLayer(0)}
+        {probe !== null && <line x1={x(probe)} x2={x(probe)} y1={0} y2={innerH} stroke={INK.muted} strokeWidth={1} pointerEvents="none" />}
+        {probe !== null && sortedSeries.map((s) => <circle key={s.name} cx={x(probe)} cy={yPct(100 * ecdfAt(s.sorted, probe))} r={3.5} fill={s.color} stroke={INK.panel} pointerEvents="none" />)}
+        {/* one pointer layer: the value under the pointer and each site's share at or below it */}
+        <rect width={innerW} height={innerH} fill="transparent"
+          onMouseMove={(e) => {
+            const v = x.invert(d3.pointer(e.nativeEvent, e.currentTarget)[0])
+            setProbe(v)
+            tip.show(e, [`${field} ≤ ${fmt(v, 3)}`, ...sortedSeries.map((s) => { const f = ecdfAt(s.sorted, v); return `${s.name}: ${(100 * f).toFixed(1)} % (${Math.round(f * s.sorted.length)} of ${s.sorted.length})` })])
+          }}
+          onMouseLeave={() => { setProbe(null); tip.hide() }} />
+      </g>
+    </svg>
+  )
 
   return (
     <ChartFrame
       id="histogram"
       title="Histogram + density — overlaid, panelled, or mirrored"
-      subtitle="Counts per bin with an optional kernel density curve. Normalising to a fraction lets Delhi (n≈97) and Beijing (n≈375) be compared directly instead of the larger site simply looking taller. Mirror puts any two groups (a site or a season) back to back. Drag the bin slider to see how much the shape depends on it."
-      provenance="stands in for 36 histogram figures · react-graph-gallery.com/histogram · /histogram-mirror · /histogram-small-multiple"
+      subtitle="Counts per bin with an optional kernel density curve. Normalising to a fraction lets Delhi (n≈97) and Beijing (n≈375) be compared directly instead of the larger site simply looking taller. Mirror puts any two groups (a site or a season) back to back. Drag the bin slider to see how much the shape depends on it. ECDF draws each site's cumulative share of filters at or below a value, with no bins at all; Mark at draws the cutoffs being weighed."
+      provenance="stands in for 36 histogram figures · react-graph-gallery.com/histogram · /histogram-mirror · /histogram-small-multiple · ECDF: research/ftir_hips_chem/primary_tasks_notebook.ipynb c11 (Fe/EC CDF), vs_improve fig02, mass M2"
       controls={<><MeasurementControl />{o.controls()}</>}
     >
       <div ref={wrapRef} className="chart-wrap">
         {(layout === 'Mirror' ? mirrorPair.length < 2 : series.length === 0) ? (
           <Empty>{layout === 'Mirror' ? `Fewer than two groups have 5 or more filters with ${field} in this subset.` : `No site has 5 or more filters with ${field} in this subset.`}</Empty>
-        ) : (
+        ) : ecdfMode ? ecdfPlot : (
           panels.map((panel) => (
             <div key={panel.key}>
               {panel.title && chartLabel(panel.title) && (
@@ -224,6 +282,7 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
                   <XAxis scale={x} y={innerH} label={xLabel} />
                   {layout === 'Mirror' && <line x1={0} x2={innerW} y1={y0} y2={y0} stroke={INK.axis} strokeWidth={1} />}
                   {panel.items.map((s) => drawSeries(s, binned.indexOf(s), layout === 'Mirror' && s.name === bName ? -1 : 1))}
+                  {marksLayer(0)}
                   {layout === 'Mirror' && (
                     <g fontFamily={FONT.family} fontSize={11.5} fontWeight={600} pointerEvents="none">
                       {mirror.show(aName) && <text x={innerW - 6} y={14} textAnchor="end" fill={mirrorPair.find((g) => g.name === aName)?.color} opacity={mirror.dim(aName)}>{aName} ▲</text>}

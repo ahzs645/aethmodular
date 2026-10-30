@@ -19,6 +19,7 @@ import { Correlogram } from '@/charts/correlation/Correlogram'
 import { AvailabilityHeatmap } from '@/charts/correlation/AvailabilityHeatmap'
 import { DensityHexbin } from '@/charts/correlation/DensityHexbin'
 import { ConnectedScatter } from '@/charts/correlation/ConnectedScatter'
+import { SplitFit } from '@/charts/correlation/SplitFit'
 import { SpeciesGraph } from '@/charts/correlation/SpeciesGraph'
 import { DistributionPanel } from '@/charts/distribution/DistributionPanel'
 import { Histogram } from '@/charts/distribution/Histogram'
@@ -39,6 +40,7 @@ import { FunctionalGroups } from '@/charts/partOfWhole/FunctionalGroups'
 import { SiteBubbleMap, SpartanCompositionMap } from '@/charts/map/lazy'
 import { MethodSankey } from '@/charts/flow/MethodSankey'
 import { SourceStack } from '@/charts/pmf/SourceStack'
+import { PmfDiagnostics } from '@/charts/pmf/PmfDiagnostics'
 import { CensusPage } from '@/pages/CensusPage'
 import { CalibrationPage } from '@/pages/CalibrationPage'
 import { BaselineComparisonPage } from '@/pages/BaselineComparisonPage'
@@ -1422,6 +1424,7 @@ export default function App() {
             <Scatterplot rows={rows} meta={meta} xField={xEff} yField={yEff} axes={axes} />
             <DensityHexbin rows={rows} meta={meta} xField={xEff} yField={yEff} axes={axes} />
             <ConnectedScatter rows={rows} meta={meta} xField={xEff} yField={yEff} axes={axes} />
+            <SplitFit rows={rows} meta={meta} xField={xEff} yField={yEff} />
             <Correlogram rows={rows} meta={meta} />
             <SpeciesGraph rows={rows} meta={meta} />
             <AvailabilityHeatmap rows={rows} meta={meta} xField={xEff} yField={yEff} />
@@ -1467,8 +1470,8 @@ export default function App() {
         {tab === 'flow' && <MethodSankey rows={rows} meta={meta} />}
         {tab === 'pmf' &&
           (pmf ? (
-            // one chart: its View 'by season' is the former Source apportionment by season
-            <SourceStack pmf={pmf} rows={pmfRows} meta={meta} />
+            // the stack (its View 'by season' is the former Source apportionment by season), then coverage and dominance
+            <><SourceStack pmf={pmf} rows={pmfRows} meta={meta} /><PmfDiagnostics pmf={pmf} rows={pmfRows} meta={meta} /></>
           ) : (
             <p style={{ fontSize: 13, color: 'var(--ink-muted)' }}>
               No PMF solution exported. Run <code>python gallery/data/export_data.py</code> with the ETAD factor CSVs present.

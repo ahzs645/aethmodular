@@ -31,6 +31,27 @@ Rows are figures, or figure groups where a slice grouped near-duplicate notebook
 So about 40 % of the figures can be computed live today and another 13 % with a small export; about 23 % need
 model fitting and stay static; the rest are static for size or source reasons.
 
+## Built since the audit (30 Oct, later)
+
+- **Machine learning section** (`#tab=ml`): Overview, Components and CV, Protocols and transfer, June 2026
+  variants, Residual learners, What counts as EC, Model form and VIP.
+- **Aethalometer → Diurnal**: addis_05 / multisite's Delta-C and wavelength CV, representative days, the normalised
+  hour × wavelength heatmap, the cross-site overlay and summary table; ftir_28 [15]'s channel health.
+- **Research → HIPS operating envelope**: addis_06 c14 / c22 residual views, hips_offset_narrative [10] / [23],
+  warren [30]. **Blank lines per deployed line** (ftir_47 [8], [11]; the York ladder [14] still needs exports).
+- **Research → The mass lead** (ftir_46 [13], [19a], [19b], live); ftir_16 [7] on MAC 6 vs 10; ftir_52 [19] on the
+  network map; ftir_26 [29B] on IMPROVE HIPS at EC = 0.
+- **Research → Filter-only transfer limits**: all 18 figures of filter_proportionality, filter_relationship_stability
+  and filter_only_diagnostics 05, refitted live (export_research_filter_only.py, tracked release data).
+- **Research → Ethiopia calibrations**: the lot-251 smoke tool at Addis (July07, spartan_ec 02), the Adama TOR set
+  (June 02/03/08/15, spartan_ec 03/05/07), spartan_ec 08's residual diagnostics.
+- **Chart tabs**: Correlation → split at a cutoff with the residual against a variable (the iron/EC analyses);
+  Distribution → ECDF; groupings → iron split at each site's own median; PMF → coverage, dominance and residual vs
+  biomass by season.
+
+Still waiting on data that is not in the repo or the shared Davis Data folder: the decision workbook's §3/§4/§6,
+the ksweep tables, ftir_08's HIPS-target PLS, the charcoal archive, and the per-filter outputs each ML page lists.
+
 ## Fixed while auditing
 
 - Research → Addis vs IMPROVE loading: the fAbs / EC panel's reference line now follows the MAC set under

@@ -6,9 +6,11 @@
  *
  * Bands are half-open, [lower, upper), like pd.cut(right=False): a value equal to a cutoff goes to the band above,
  * unless the grouping says `equal: 'below'` ((lower, upper], like pd.cut(right=True)).
- * Quantile cutoffs are computed from the values in view (every site pooled), so they follow the subset.
+ * Quantile cutoffs are computed from the values in view (every site pooled), so they follow the subset; 'site-median'
+ * splits each site at its own median instead (FTIR_Group_Talk_Apr2026_Draft's iron split), so every site has a low
+ * and a high half however far apart the sites' levels are.
  */
-export type SplitKind = 'cutoffs' | 'median' | 'tertiles' | 'quartiles' | 'quintiles' | 'deciles'
+export type SplitKind = 'cutoffs' | 'median' | 'site-median' | 'tertiles' | 'quartiles' | 'quintiles' | 'deciles'
 
 export interface GroupingDef {
   /** stable key, also the chart option's value */
@@ -29,11 +31,15 @@ export interface GroupingDef {
 export const SPLITS: { kind: SplitKind; label: string; bands?: number }[] = [
   { kind: 'cutoffs', label: 'Cutoffs' },
   { kind: 'median', label: 'Median split', bands: 2 },
+  { kind: 'site-median', label: "Median split, each site's own", bands: 2 },
   { kind: 'tertiles', label: 'Tertiles', bands: 3 },
   { kind: 'quartiles', label: 'Quartiles', bands: 4 },
   { kind: 'quintiles', label: 'Quintiles', bands: 5 },
   { kind: 'deciles', label: 'Deciles', bands: 10 },
 ]
+
+/** the two halves of a per-site median split, when the reader has not named them */
+const SITE_MEDIAN_NAMES = ['Below its site median', 'Above its site median']
 
 const QUANTILE_NAMES: Record<number, string[]> = {
   2: ['Low', 'High'], 3: ['Low', 'Mid', 'High'], 4: ['Q1 (lowest)', 'Q2', 'Q3', 'Q4 (highest)'], 5: ['Q1 (lowest)', 'Q2', 'Q3', 'Q4', 'Q5 (highest)'],
@@ -48,9 +54,13 @@ function quantileSorted(sorted: number[], p: number): number {
   return sorted[lo] + (sorted[Math.min(lo + 1, sorted.length - 1)] - sorted[lo]) * (h - lo)
 }
 
-/** The cutoffs a grouping uses on these values: its own, or the quantiles of the values. */
+/**
+ * The cutoffs a grouping uses on these values: its own, or the quantiles of the values. A per-site median split has
+ * no one cutoff (none here; applyGrouping gives each site its own, `siteCuts`).
+ */
 export function cutsFor(def: GroupingDef, values: number[]): number[] {
   if (def.kind === 'cutoffs') return [...def.cuts].filter(Number.isFinite).sort((a, b) => a - b)
+  if (def.kind === 'site-median') return []
   const bands = SPLITS.find((s) => s.kind === def.kind)?.bands ?? 2
   const sorted = values.filter(Number.isFinite).sort((a, b) => a - b)
   return Array.from({ length: bands - 1 }, (_, i) => quantileSorted(sorted, (i + 1) / bands))
@@ -89,8 +99,8 @@ export const rangeOptions = (def: GroupingDef) => ({ equal: def.equal ?? 'above'
 
 /** each band's label: the reader's, else Low / Mid / High for quantiles, else its range */
 export function labelsFor(def: GroupingDef, cuts: number[]): string[] {
-  const n = cuts.length + 1
-  const auto = def.kind === 'cutoffs' ? null : QUANTILE_NAMES[n]
+  const n = def.kind === 'site-median' ? 2 : cuts.length + 1
+  const auto = def.kind === 'cutoffs' ? null : def.kind === 'site-median' ? SITE_MEDIAN_NAMES : QUANTILE_NAMES[n]
   return Array.from({ length: n }, (_, i) => def.labels[i]?.trim() || auto?.[i] || rangeText(cuts, i, rangeOptions(def)))
 }
 
@@ -114,15 +124,46 @@ export const NO_BAND_COLOR = '#9aa5b1'
 /** the legend name of those filters (shown only when there are any) */
 export const noBandLabel = (_d: GroupingDef) => 'No data'
 
-/** A grouping applied to rows: cutoffs, labels, colours, and each row's band label (null: no value). */
+const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
+/** a row's site, for a per-site split: its `site` (name), else its `code` */
+const siteOfRow = (r: Record<string, unknown>) => String(r.site ?? r.code ?? '')
+
+/**
+ * Each site's median of `field` over these rows (numpy's median: the mean of the middle two of an even count), for
+ * the per-site median split. Sites without a value are left out.
+ */
+export function siteMedians<R extends Record<string, unknown>>(rows: R[], field: string): Map<string, number> {
+  const bySite = new Map<string, number[]>()
+  for (const r of rows) {
+    const v = r[field]
+    if (!isNum(v)) continue
+    const s = siteOfRow(r)
+    const list = bySite.get(s)
+    if (list) list.push(v)
+    else bySite.set(s, [v])
+  }
+  return new Map([...bySite].map(([s, v]) => [s, quantileSorted(v.sort((a, b) => a - b), 0.5)]))
+}
+
+/**
+ * A grouping applied to rows: cutoffs, labels, colours, and each row's band label (null: no value). A per-site median
+ * split has no pooled `cuts`; `siteCuts` holds each site's own (one median per site), and a row of a site with no
+ * value of the field is in no band.
+ */
 export function applyGrouping<R extends Record<string, unknown>>(def: GroupingDef, rows: R[]) {
-  const values = rows.map((r) => r[def.field]).filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
+  const values = rows.map((r) => r[def.field]).filter(isNum)
   const cuts = cutsFor(def, values)
+  const siteCuts = def.kind === 'site-median' ? new Map([...siteMedians(rows, def.field)].map(([s, m]) => [s, [m]])) : null
   const labels = labelsFor(def, cuts)
   // the reader's colour for a band, else the ordered palette's
   const colors = colorsFor(labels.length).map((c, i) => def.colors?.[i] || c)
-  const labelOf = (r: R) => { const b = bandOf(cuts, r[def.field], def.equal); return b === null ? null : labels[b] }
-  return { cuts, labels, colors, labelOf, colorOf: (label: string) => colors[labels.indexOf(label)] ?? NO_BAND_COLOR }
+  const cutsOf = (r: R) => (siteCuts ? siteCuts.get(siteOfRow(r)) ?? null : cuts)
+  const labelOf = (r: R) => {
+    const own = cutsOf(r)
+    const b = own ? bandOf(own, r[def.field], def.equal) : null
+    return b === null ? null : labels[b]
+  }
+  return { cuts, siteCuts, labels, colors, labelOf, colorOf: (label: string) => colors[labels.indexOf(label)] ?? NO_BAND_COLOR }
 }
 
 // ---------------------------------------------------------------- the URL (`grp`)
@@ -223,7 +264,11 @@ export const BUILT_IN_GROUPINGS: BuiltInGrouping[] = [
     'research/improve_hips_offset/improve_smoke_event_qc.ipynb (OC_EC_SMOKE_MIN)', 'set on IMPROVE TOR OC/EC'),
   nb('ocec-deciles', 'OC/EC deciles', 'OC (FTIR) / EC (FTIR)', 'deciles', [], [], 'research/ftir_ec_phase3/scripts/run_ftir_16.py, run_ftir_31.py (implied MAC per OC/EC decile)'),
   nb('iron-median', 'Iron high vs low', 'Iron', 'median', [], ['Low Fe', 'High Fe'],
-    'research/ftir_hips_chem/FTIR_Group_Talk_Apr2026_Draft.ipynb (Iron median split, HIPS vs FTIR EC)', 'the notebook split at each site\'s own median; here every site pooled'),
+    'research/ftir_hips_chem/FTIR_Group_Talk_Apr2026_Draft.ipynb (Iron median split, HIPS vs FTIR EC)', 'the notebook split at each site\'s own median; here every site pooled (the per-site version is "Iron high vs low, each site\'s median")'),
+  { ...nb('iron-site-median', "Iron high vs low, each site's median", 'Iron', 'site-median', [], ['Low Fe', 'High Fe'],
+    'research/ftir_hips_chem/FTIR_Group_Talk_Apr2026_Draft.ipynb [17] [19] (Iron median split, all four sites: iron <= the site\'s median is Low Fe)',
+    'each site split at its own median of the filters the chart draws (in the notebook, those with FTIR EC, HIPS and iron); a filter at its site\'s median is Low, as there'),
+  equal: 'below' },
   // loading
   nb('ec-bands', 'EC (FTIR) bands', 'EC (FTIR)', 'cutoffs', [2, 4, 6, 8, 10, 15], [],
     'research/ftir_hips_chem/hips_offset_narrative.ipynb (Addis vs Delhi HIPS at matched EC)'),

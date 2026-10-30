@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { BUILT_IN_GROUPINGS, SPLITS, applyGrouping, bandOf, colorsFor, cutsFor, groupingsParam, labelsFor, mergeGroupings, parseGroupings, rangeText } from './groupings.ts'
+import { BUILT_IN_GROUPINGS, SPLITS, applyGrouping, bandOf, colorsFor, cutsFor, groupingsParam, labelsFor, mergeGroupings, parseGroupings, rangeText, siteMedians } from './groupings.ts'
 
 const def = (o) => ({ id: 'g1', name: 'Iron', field: 'Iron', kind: 'cutoffs', cuts: [], labels: [], ...o })
 
@@ -93,4 +93,31 @@ test('band colours and the equal side round-trip through the URL; older links re
   const [plain] = parseGroupings(groupingsParam([def({ cuts: [2] })]))
   assert.equal(plain.equal, undefined)
   assert.equal(plain.colors, undefined)
+})
+
+test("a per-site median split cuts each site at its own median (FTIR_Group_Talk [17]: iron <= the site's median is Low)", () => {
+  const rows = [
+    { site: 'Beijing', Iron: 0.1 }, { site: 'Beijing', Iron: 0.2 }, { site: 'Beijing', Iron: 0.3 }, { site: 'Beijing', Iron: 0.4 },
+    { site: 'Delhi', Iron: 1 }, { site: 'Delhi', Iron: 2 }, { site: 'Delhi', Iron: 3 },
+    { site: 'JPL', Iron: null },
+  ]
+  const m = siteMedians(rows, 'Iron')
+  assert.ok(Math.abs(m.get('Beijing') - 0.25) < 1e-12)
+  assert.equal(m.get('Delhi'), 2)
+  assert.equal(m.has('JPL'), false)
+  const nbDef = BUILT_IN_GROUPINGS.find((d) => d.id === 'nb-iron-site-median')
+  assert.ok(nbDef && nbDef.kind === 'site-median' && nbDef.equal === 'below')
+  const g = applyGrouping(nbDef, rows)
+  assert.deepEqual(g.labels, ['Low Fe', 'High Fe'])
+  assert.deepEqual(g.cuts, [])
+  assert.deepEqual(g.siteCuts.get('Delhi'), [2])
+  // every Delhi value is above every Beijing one, yet each site has a low and a high half; the median itself is Low
+  assert.deepEqual(rows.map(g.labelOf), ['Low Fe', 'Low Fe', 'High Fe', 'High Fe', 'Low Fe', 'Low Fe', 'High Fe', null])
+  // the pooled median split would put all of Delhi in the high band
+  const pooled = applyGrouping(def({ kind: 'median', equal: 'below' }), rows)
+  assert.deepEqual(rows.slice(4, 7).map(pooled.labelOf), ['High', 'High', 'High'])
+  // unnamed: the halves say what they are; the kind survives the URL
+  assert.deepEqual(labelsFor(def({ kind: 'site-median' }), []), ['Below its site median', 'Above its site median'])
+  assert.equal(parseGroupings(groupingsParam([def({ kind: 'site-median' })]))[0].kind, 'site-median')
+  assert.ok(SPLITS.some((x) => x.kind === 'site-median' && x.bands === 2))
 })
