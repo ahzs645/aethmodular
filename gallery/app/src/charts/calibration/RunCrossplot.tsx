@@ -8,7 +8,9 @@ import { Legend, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { baseFilterId, focusLast, focusStyle, useHighlight, type FilterRecord } from '@/lib/highlight'
+import { baseFilterId, focusStyle, useHighlightActions, type FilterRecord } from '@/lib/highlight'
+import { ScatterLayer } from '@/components/ScatterLayer'
+import { fidProps } from '@/lib/filterEdits'
 import { Crossplot } from '@/components/Crossplot'
 import { fmt } from '@/lib/stats'
 import { INK, MARGIN, withUnit } from '@/lib/theme'
@@ -50,9 +52,10 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const hl = useHighlight()
+  // pins and handlers only: a hover is drawn by each panel's point layer, never by this chart
+  const hl = useHighlightActions()
 
-  const { hidden, dim, props: legendProps } = useLegend()
+  const { hidden, dim, hover: legendHover, props: legendProps } = useLegend()
 
   // the MAC: the one set under Filters (lib/mac) by default, or one the explorer saved fits at
   const gallery = useMac()
@@ -114,7 +117,7 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
   const lo = Math.min(0, d3.min(pts, (p) => p.y) ?? 0) * 1.05
   // one domain for both axes (the shared crossplot is square); the residual panel reuses its x
   const x = d3.scaleLinear().domain([Math.min(0, lo), hi]).range([0, S]).nice()
-  const res = pts.map((p) => ({ ...p, r: p.y - p.x }))
+  const res = useMemo(() => pts.map((p) => ({ ...p, r: p.y - p.x })), [pts])
   const rExt = d3.extent(res, (p) => p.r) as [number, number]
   const rPad = Math.max(0.2, ((rExt[1] ?? 1) - (rExt[0] ?? 0)) * 0.08)
   // the residual panel matches the crossplot's size so the pair reads side by side on one x scale
@@ -143,7 +146,8 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
     const v = p.id ? byId.get(baseFilterId(p.id))?.[k] : undefined
     return typeof v === 'number' ? v : NaN
   }
-  const explore = res.flatMap((p) => { const ex = valueOf(rx, p), ey = valueOf(rY, p); return Number.isFinite(ex) && Number.isFinite(ey) ? [{ ...p, ex, ey }] : [] })
+  const explore = useMemo(() => res.flatMap((p) => { const ex = valueOf(rx, p), ey = valueOf(rY, p); return Number.isFinite(ex) && Number.isFinite(ey) ? [{ ...p, ex, ey }] : [] }),
+    [res, rx, rY, byId]) // eslint-disable-line react-hooks/exhaustive-deps
   const span = (v: number[]) => { const e = d3.extent(v) as [number, number]; const pad = Math.max(1e-9, ((e[1] ?? 1) - (e[0] ?? 0)) * 0.06); return [Math.min(0, (e[0] ?? 0) - pad), (e[1] ?? 1) + pad] as [number, number] }
   // the default pair keeps the crossplot's x scale and the residual scale, so the two panels read side by side
   const ex = rx === REF ? x : d3.scaleLinear().domain(span(explore.map((p) => p.ex))).range([0, S]).nice()
@@ -157,11 +161,6 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
     `predicted EC: ${fmt(p.y, 3)} µg/m³ · residual ${fmt(p.y - p.x, 3)}`,
     p.fixed ? 'fixed test set' : 'outside the fixed test set',
   ]
-  const enter = (e: React.MouseEvent, p: (typeof pts)[number]) => {
-    if (p.id) hl.setHover(p.id)
-    tip.show(e, [...tipLines(p), p.id && knownIds.has(baseFilterId(p.id)) ? 'click for the full filter record' : 'click for this filter\'s values'])
-  }
-  const leave = () => { hl.setHover(null); tip.hide() }
   const record = (p: (typeof pts)[number]): FilterRecord => ({
     id: p.id ?? `${run.target} filter #${p.i + 1}`,
     source: 'the calibration crossplot',
@@ -178,6 +177,18 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
     ],
   })
   const click = (p: (typeof pts)[number]) => hl.openRecord(record(p))
+  const keyOf = (p: (typeof pts)[number]) => (p.id ? baseFilterId(p.id) : null)
+  // the crossplot's points and the residual panel's dots: the same until the data, colours or legend change, so
+  // neither panel redraws its dots on a hover or a tooltip
+  const crossPoints = useMemo(() => pts.map((p) => ({ x: p.x, y: p.y, color: color(p.g), opacity: dim(p.g), id: p.id ?? undefined, tip: tipLines(p), rec: record(p) })),
+    [pts, color, legendHover, xLabel, target, runs.presets, run.preset]) // eslint-disable-line react-hooks/exhaustive-deps
+  const exy = useMemo(() => explore.map((p) => [ex(p.ex), ey(p.ey)] as const), [explore, ex.domain().join(), ey.domain().join(), S]) // eslint-disable-line react-hooks/exhaustive-deps
+  const exDots = useMemo(() => explore.map((p, i) => {
+    const key = keyOf(p)
+    const st = focusStyle(key ?? `#${p.i}`, null, { r: 3.2 })
+    return <circle key={p.i} cx={exy[i][0]} cy={exy[i][1]} r={st.r} fill={color(p.g)} fillOpacity={st.opacity * dim(p.g)} stroke={st.stroke} strokeWidth={st.strokeWidth}
+      data-dot={dim(p.g) === 1 ? st.dot : undefined} {...(key ? fidProps(key) : {})} />
+  }), [explore, exy, color, legendHover]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <ChartFrame
@@ -196,7 +207,7 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
               <AxisChoices {...o.axisChoices({ x: 'x' })}>
               <Crossplot title={`predicted vs ${useDeployed ? 'deployed' : 'reference'}`} maxSide={fitSide ?? 460} domain={x.domain() as [number, number]} pick={hasDeployed ? 'x' : undefined}
                 errorRatio={demingLambda(isFabs && !useDeployed ? mac : null, lambda10)} xLabel={xLabel} yLabel="predicted FTIR EC (µg/m³)"
-                points={pts.map((p) => ({ x: p.x, y: p.y, color: color(p.g), opacity: dim(p.g), id: p.id ?? undefined, tip: tipLines(p), rec: record(p) }))} />
+                points={crossPoints} />
               </AxisChoices>
             </div>
             <div>
@@ -208,10 +219,13 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
                   <YAxis scale={ey} x={0} label={axisLabel(rY)} gridWidth={S} tickCount={5} pick="y" />
                   <XAxis scale={ex} y={S} label={axisLabel(rx)} pick="x" />
                   {rY === RESID && <line x1={0} x2={S} y1={ey(0)} y2={ey(0)} stroke={INK.text} strokeWidth={1.4} />}
-                  {focusLast(explore, (p) => p.id ?? `#${p.i}`, hl.focusId).map(([p]) => {
-                    const st = focusStyle(p.id ?? `#${p.i}`, hl.focusId, { r: 3.2 })
-                    return <circle key={p.i} cx={ex(p.ex)} cy={ey(p.ey)} r={st.r} fill={color(p.g)} fillOpacity={st.opacity * dim(p.g)} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={dim(p.g) === 1 ? st.dot : undefined} onMouseEnter={(e) => enter(e, p)} onMouseLeave={leave} onClick={() => click(p)} style={{ cursor: 'pointer' }} />
-                  })}
+                  <ScatterLayer items={explore} xy={exy} idOf={keyOf} dots={exDots} width={S} height={S} tip={tip} focusR={focusStyle('', '', { r: 3.2 }).r}
+                    focus={(p, [cx, cy]) => {
+                      const st = focusStyle('', '', { r: 3.2 })
+                      return <circle cx={cx} cy={cy} r={st.r} fill={color(p.g)} fillOpacity={st.opacity * dim(p.g)} stroke={st.stroke} strokeWidth={st.strokeWidth} />
+                    }}
+                    tipOf={(p) => [...tipLines(p), p.id && knownIds.has(baseFilterId(p.id)) ? 'click for the full filter record' : 'click for this filter\'s values']}
+                    onPick={click} />
                 </g>
               </svg>
               </AxisChoices>

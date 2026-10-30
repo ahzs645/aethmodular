@@ -633,10 +633,13 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 .animated rect, .animated circle, .animated line, .animated path { transition: all 0.35s cubic-bezier(0.2, 0.7, 0.3, 1); }
 /* Summary text and its box reflow together when the chart width changes. */
 .animated .regression-summary rect { transition: none; }
-/* Scatterplot: a focused filter dims the others with one class, at once. Animating the opacity of
-   every dot on each hover was most of the hover's cost on a dense chart. */
+/* Points (components/ScatterLayer): a focused filter dims the others at once, by the opacity of their group: one
+   element restyled, whatever the marks are and however they nest. Not a rule per dot: Chrome restyles every
+   circle under any element with the class for that, and animating each dot's opacity was most of a hover's cost.
+   The focused mark is drawn again on top and jumps to the next filter rather than sliding there. */
 .animated .scatter-dots circle { transition-property: cx, cy, r, fill, fill-opacity; }
-.scatter-dots.has-focus > circle { opacity: 0.35; }
+.scatter-dots.has-focus { opacity: 0.35; }
+.animated .scatter-focus * { transition: none; }
 /* Scatter matrix: up to 132 panels of a thousand dots each. None of them animate (every dot's transition ending was
    most of a hover's cost), and a focus dims each panel's dots under a veil in the overlay <svg> (charts/correlation/
    Correlogram ScatterMatrix), so the <svg> with the dots is never restyled or repainted by a hover. */
@@ -1044,8 +1047,20 @@ html.ctx-open .tooltip { visibility: hidden; }
 .cset-preview { display: flex; flex-direction: column; gap: 4px; }
 .cset-preview-bar { display: flex; height: 26px; border-radius: 6px; overflow: hidden; background: var(--ink-zebra); }
 .cset-preview-bar > span { min-width: 1px; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; font-size: calc(10.5px * var(--text-scale)); border-right: 1px solid var(--ink-panel, #fff); }
-.cset-list { display: flex; flex-direction: column; gap: 4px; max-height: 340px; overflow: auto; padding-right: 4px; }
-.cset-row { display: grid; grid-template-columns: 16px 14px minmax(120px, 1fr) minmax(70px, auto) 150px 52px; align-items: center; gap: 8px; }
+.cset-list { display: flex; flex-direction: column; gap: 2px; max-height: 380px; overflow: auto; padding-right: 4px; }
+.cset-row { display: grid; grid-template-columns: 16px 14px minmax(140px, 1fr) minmax(70px, auto) 150px 52px; align-items: center; gap: 2px 8px; padding: 3px 0; border-bottom: 1px solid var(--ink-grid, rgba(0,0,0,0.06)); }
+.cset-row > .cset-source { grid-column: 3 / -1; color: var(--ink-muted); font-size: calc(10.5px * var(--text-scale)); line-height: 1.35; }
+.cset-row > .cset-source b { font-weight: 600; }
+.cset-label { max-width: none; width: 100%; padding-top: 2px; padding-bottom: 2px; }
+.cset-label.invalid { border-color: #c0392b; }
+.cset-clash { color: #c0392b; }
+.cset-hint { margin-left: 10px; font-weight: 400; color: var(--ink-muted); font-size: calc(10.5px * var(--text-scale)); text-transform: none; letter-spacing: 0; }
+.cset-legend { display: flex; flex-direction: column; gap: 6px; }
+.cset-legend-preview { margin: 0; padding: 6px 8px; background: var(--ink-zebra); border-radius: 6px; }
+.cset-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 2px 0 6px; font-size: calc(11.5px * var(--text-scale)); }
+.cset-bar-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.cset-bar-label { color: var(--ink-muted); margin-right: 2px; }
+.cset-add { display: inline-flex; align-items: center; gap: 4px; }
 .cset-row.off .cset-name { color: var(--ink-muted); }
 .cset-name small { color: var(--ink-muted); }
 .cset-move { display: inline-flex; gap: 2px; }
@@ -1752,6 +1767,8 @@ html[data-single='1'] [data-single-active] .frame-chart .legend:not(.facet-legen
 /* the scatterplot's panel size (charts/correlation/Scatterplot): ↺ back to Auto, then the size to drag or type */
 .panel-size-row { display: inline-flex; align-items: center; gap: 4px; }
 .panel-size-reset:disabled { opacity: 0.35; cursor: default; }
+/* the composition timeline's panels wider than the chart (charts/partOfWhole/CompositionTimeline Panel size): they scroll sideways as one */
+.timeline-scroll { overflow-x: auto; overflow-y: hidden; padding-bottom: 4px; }
 .side-fit-title { margin: 0 0 3px; font-size: calc(12px * var(--text-scale)); font-weight: 600; color: var(--ink-text); display: flex; gap: 6px; align-items: center; }
 .fit-pointed { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 6px; }
 .single-stats > .chart-note, .single-stats .chart-note { margin: 0; display: block; }

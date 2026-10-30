@@ -67,7 +67,6 @@ export function ParallelCoordinates({ rows, meta }: { rows: FilterRow[]; meta: M
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const hl = useHighlight()
 
   const groupNames = meta.field_groups.map((g) => g.label)
   const [group, setGroup] = useState(groupNames.includes('Ions') ? 'Ions' : groupNames[0] ?? '')
@@ -151,6 +150,9 @@ export function ParallelCoordinates({ rows, meta }: { rows: FilterRow[]; meta: M
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, axes, innerW])
   const lines = useMemo(() => allLines.filter((l) => !hidden.has(groupOf(l.row))), [allLines, hidden, colorBy]) // eslint-disable-line react-hooks/exhaustive-deps
+  // the hover read for this chart's filters only: a hover on a filter it does not draw leaves it alone
+  const keys = useMemo(() => new Set(allLines.map((l) => l.row.id)), [allLines])
+  const hl = useHighlight(keys)
 
   // ---- brushing: a filter survives only if it is inside every active range
   const active = Object.entries(brushes).filter(([f]) => axes.some((a) => a.field === f))

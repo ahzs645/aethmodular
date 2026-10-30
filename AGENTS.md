@@ -404,6 +404,63 @@ MapLibre basemap) and `components/ScrubField.tsx` (number fields; use it, not
 first (its AGENTS.md lists the checks), then the submodule pointer moves here.
 `npm install` in `gallery/app` builds it (`scripts/ensure-toolkit.mjs`).
 
+## Gallery charts: extend the shared pieces, never redefine them
+
+The gallery kept growing one-off copies of the same machinery (hover, focus,
+hit testing, scales, legends), and each copy drifted: slower, or with a bug the
+shared one had already fixed. Before drawing anything in `gallery/app`, find
+the shared piece in [docs/gallery-chart-standards.md](docs/gallery-chart-standards.md)
+§1 and `gallery/README.md` "Define it once", and use it. If it cannot do what
+you need, **extend the shared piece** (and keep its other callers working);
+do not work around it in your chart, copy it, or write a second version
+beside it. If two charts need the same new thing, it belongs in
+`components/` or `lib/`, not in either chart.
+
+**Points that stand for filters** (crossplots, timelines, strips, outliers)
+go through `components/ScatterLayer.tsx`. Give it the marks (memoised with
+`useMemo`, not depending on the hover), their positions (`xy`, memoised), the
+filter id (`idOf`), how the focused one looks (`focus`) and the tooltip
+(`tipOf`). It provides the hover shared across the gallery, the dashed ring
+on a pin, click to open the record, the right-click filter menu, and one
+pointer layer that picks the nearest point. Fits, labels and lines that sit
+over the dots go in its `children`. Do not:
+
+- put `onMouseEnter`/`onClick` on each mark, or a per-mark invisible hit
+  circle (`components/HitLayer` finds the nearest point);
+- restyle or reorder every mark on hover (`FocusLayer` draws the focused
+  filter again on top and dims the group with one class);
+- call `useHighlight()` with no keys in a chart: it re-renders on every hover
+  anywhere. Use `useHighlightActions()` to pin, open or brush, and
+  `useHighlight(keys)` to read the hover of your own filters;
+- clear a stuck hover by hand: `lib/highlight` clears a hover whose mark has
+  gone or that the pointer has left.
+
+The scatter matrix (`charts/correlation/Correlogram.tsx`) arranges the same
+pieces on an overlay because it draws up to ~140,000 dots; follow it only for
+that kind of density. Marks that are not single filters (hex bins, medians,
+table rows, whole spectra) keep their own hover.
+
+**Performance rules for dense SVG**, all learned from traces:
+
+- memoise every array, object or scale you pass down (`useMemo`, keyed on
+  e.g. `domain.join()`): a tooltip re-renders the chart, and a fresh array
+  redraws every memoised child (the matrix redrew 30 panels per mouse move);
+- no CSS transitions on thousands of marks (the `.animated` class animates
+  every circle; dense layers opt out), and no `:has()` on `html`/`body`
+  (it restyled the whole page on every node insert);
+- a state class over many marks changes one property of their group
+  (`.scatter-dots.has-focus` is group opacity), never a rule per mark:
+  Chrome restyles every descendant matching such a rule. Past tens of
+  thousands of marks, change nothing inside their `<svg>` at all: any change
+  there repaints every dot, so the matrix keeps its dots alone in one `<svg>`
+  and draws the dimming veil, focus and pointer layer in an overlay `<svg>`.
+
+`gallery/app/src/lib/pointLayers.test.mjs` fails on the first four patterns
+above and on a root `:has()`; a genuine exception goes in its `ALLOWED` list
+with the reason. To measure a change, profile the built app (`vite preview`)
+with Playwright and Chrome's performance metrics and compare it with the live
+site, phase by phase (script, style, paint), not by counting events.
+
 ## Gallery data (rebuild, don't hand-edit)
 
 `gallery/app/public/data/` is generated. `gallery/data/rebuild.py` lists every

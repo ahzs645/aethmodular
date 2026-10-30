@@ -4,7 +4,8 @@ import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
+import { focusStyle, useHighlightActions } from '@/lib/highlight'
+import { ScatterLayer } from '@/components/ScatterLayer'
 import { boxStats, kde, fmt } from '@/lib/stats'
 import { INK, MARGIN, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -16,6 +17,15 @@ import { CategoryAxis, categoryAxisHeight } from '@/components/CategoryAxis'
 import { useTileSetting } from '@/lib/url'
 
 const MODES = ['Boxplot', 'Box + points', 'Violin', 'Beeswarm'] as const
+
+/** one filter drawn as a point: a beeswarm or boxplot-with-jitter dot, or a plain boxplot's outlier */
+type Pt = { v: number; row: FilterRow; g: { name: string; site?: string; color: string }; kind: 'swarm' | 'jitter' | 'outlier'; at: readonly [number, number] }
+
+/** deterministic jitter so the points don't dance on every re-render */
+const jitter = (i: number, w: number) => {
+  const t = Math.sin(i * 12.9898) * 43758.5453
+  return (t - Math.floor(t) - 0.5) * w
+}
 const GROUPS = ['Site', 'Season', 'Group'] as const
 
 /**
@@ -30,7 +40,8 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const hl = useHighlight()
+  // the brush selection only: the hovered filter is drawn by the points' ScatterLayer, so a hover does not re-render the chart
+  const hl = useHighlightActions()
   const height = useFitHeight() ?? 440
 
   const [groupChoice, setGroupBy] = useTileSetting<(typeof GROUPS)[number]>('distribution.by', 'Site')
@@ -74,10 +85,35 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
   const allVals = groups.flatMap(g => g.values)
   const y = d3.scaleLinear().domain([Math.min(0, d3.min(allVals) ?? 0), (d3.max(allVals) ?? 1) * 1.05]).range([innerH, 0]).nice()
 
-  // deterministic jitter so the beeswarm doesn't dance on every re-render
-  const jitter = (i: number, w: number) => {
-    const t = Math.sin(i * 12.9898) * 43758.5453
-    return (t - Math.floor(t) - 0.5) * w
+  // the filters drawn as points: every one in the beeswarm and the boxplot-with-jitter, the outliers alone in the plain
+  // boxplot. One layer for every group (components/ScatterLayer), drawn once; a hover is drawn over it
+  const pts = useMemo<Pt[]>(() => {
+    if (mode === 'Violin') return []
+    const bw = x.bandwidth()
+    return groups.flatMap((g, gi): Pt[] => {
+      const cx = (x(g.name) ?? 0) + bw / 2
+      if (mode === 'Boxplot') return g.items.filter((it) => g.box.outliers.includes(it.v)).map((it) => ({ ...it, g, kind: 'outlier' as const, at: [cx, y(it.v)] as const }))
+      const kind = mode === 'Beeswarm' ? 'swarm' as const : 'jitter' as const
+      return g.items.map((it, i) => ({ ...it, g, kind, at: [cx + jitter(gi * 997 + i, bw * (kind === 'swarm' ? 0.82 : 0.7)), y(it.v)] as const }))
+    })
+  }, [groups, mode, innerW, innerH]) // eslint-disable-line react-hooks/exhaustive-deps
+  const xy = useMemo(() => pts.map((p) => p.at), [pts])
+  const dotStyle = (p: Pt, focused: boolean) => focusStyle(p.row.id, focused ? p.row.id : null, p.kind === 'swarm' ? { r: 3 } : { r: 2.4, level: 'dense' }, focused ? null : hl.selected)
+  const dots = useMemo(() => pts.map((p) => {
+    const tags = { 'data-export-site': p.g.site, 'data-export-series': p.g.name, 'data-export-color': p.g.color, 'data-fid': p.row.id }
+    if (p.kind === 'outlier') return <circle key={p.row.id} cx={p.at[0]} cy={p.at[1]} r={2.6} fill={INK.panel} stroke={p.g.color} strokeWidth={1.2} {...tags} />
+    const st = dotStyle(p, false)
+    return <circle key={p.row.id} cx={p.at[0]} cy={p.at[1]} r={st.r} fill={p.g.color} fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={st.dot} {...tags} />
+  }), [pts, hl.selected]) // eslint-disable-line react-hooks/exhaustive-deps
+  // the boxes' tooltip: the points' layer takes the pointer over the whole plot, so off a point it reads the box under it
+  const onPoint = useRef(false)
+  const boxTip = (e: React.MouseEvent<SVGGElement>) => {
+    if (onPoint.current || mode === 'Beeswarm') return
+    const [mx, my] = d3.pointer(e, e.currentTarget)
+    const g = groups.find((g) => { const x0 = x(g.name) ?? 0; return mx >= x0 && mx <= x0 + x.bandwidth() && my >= y(g.box.max) - 3 && my <= y(g.box.min) + 3 })
+    if (!g) { tip.hide(); return }
+    const b = g.box
+    tip.show(e, [g.name, `n = ${b.n}`, `median = ${fmt(b.median)}`, `IQR = ${fmt(b.q1)} – ${fmt(b.q3)}`, `${b.outliers.length} outside 1.5·IQR`])
   }
 
   return (
@@ -106,7 +142,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
               <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} pick="field" />
               <CategoryAxis items={groups} scale={x} y={innerH} />
 
-              {groups.map((g, gi) => {
+              {groups.map((g) => {
                 const cx = (x(g.name) ?? 0) + x.bandwidth() / 2
                 const bw = x.bandwidth()
 
@@ -130,26 +166,6 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                 if (mode === 'Beeswarm') {
                   return (
                     <g key={g.name} data-export-site={g.site} data-export-series={g.name} data-export-color={g.color}>
-                      {focusLast(g.items, (it) => it.row.id, hl.focusId).map(([it, i]) => {
-                        const st = focusStyle(it.row.id, hl.focusId, { r: 3 }, hl.selected)
-                        return (
-                          <circle
-                            key={it.row.id}
-                            cx={cx + jitter(gi * 997 + i, bw * 0.82)}
-                            cy={y(it.v)}
-                            r={st.r}
-                            fill={g.color}
-                            fillOpacity={st.opacity}
-                            stroke={st.stroke}
-                            strokeWidth={st.strokeWidth}
-                            data-dot={st.dot}
-                            style={{ cursor: 'pointer' }}
-                            onMouseEnter={(e) => { hl.setHover(it.row.id); tip.show(e, [it.row.id, `${it.row.site} · ${it.row.date}`, `${field} = ${fmt(it.v)}`, 'click for details']) }}
-                            onMouseLeave={() => { hl.setHover(null); tip.hide() }}
-                            data-fid={it.row.id} onClick={() => hl.openSample(it.row.id)}
-                          />
-                        )
-                      })}
                       <line x1={cx - bw / 2} x2={cx + bw / 2} y1={y(g.box.median)} y2={y(g.box.median)} stroke={INK.text} strokeWidth={2} pointerEvents="none" />
                     </g>
                   )
@@ -159,49 +175,35 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                 const withPoints = mode === 'Box + points'
                 return (
                   <g key={g.name} data-export-site={g.site} data-export-series={g.name} data-export-color={g.color}>
-                    <g onMouseEnter={(e) => tip.show(e, [g.name, `n = ${b.n}`, `median = ${fmt(b.median)}`, `IQR = ${fmt(b.q1)} – ${fmt(b.q3)}`, `${b.outliers.length} outside 1.5·IQR`])} onMouseLeave={tip.hide}>
-                      <line x1={cx} x2={cx} y1={y(b.max)} y2={y(b.q3)} stroke={INK.text} strokeWidth={1.2} />
-                      <line x1={cx} x2={cx} y1={y(b.q1)} y2={y(b.min)} stroke={INK.text} strokeWidth={1.2} />
-                      <line x1={cx - bw / 4} x2={cx + bw / 4} y1={y(b.max)} y2={y(b.max)} stroke={INK.text} strokeWidth={1.2} />
-                      <line x1={cx - bw / 4} x2={cx + bw / 4} y1={y(b.min)} y2={y(b.min)} stroke={INK.text} strokeWidth={1.2} />
-                      <rect x={cx - bw / 2} y={y(b.q3)} width={bw} height={Math.max(1, y(b.q1) - y(b.q3))} fill={g.color} fillOpacity={withPoints ? 0.22 : 0.55} stroke={g.color} strokeWidth={1.4} rx={2} />
-                      <line x1={cx - bw / 2} x2={cx + bw / 2} y1={y(b.median)} y2={y(b.median)} stroke={INK.text} strokeWidth={2.2} />
-                      {/* each outlier is one filter, so it opens that filter's record */}
-                      {!withPoints && g.items.filter((it) => b.outliers.includes(it.v)).map((it) => (
-                        <circle
-                          key={it.row.id} cx={cx} cy={y(it.v)} r={hl.focusId === it.row.id ? 4 : 2.6}
-                          fill={hl.focusId === it.row.id ? g.color : INK.panel} stroke={g.color} strokeWidth={1.2}
-                          style={{ cursor: 'pointer' }}
-                          onMouseEnter={(e) => { e.stopPropagation(); hl.setHover(it.row.id); tip.show(e, [it.row.id, `${it.row.date} · ${it.row.site}`, `${fmt(it.v)} (outside 1.5·IQR)`, 'click for the filter record']) }}
-                          onMouseLeave={() => { hl.setHover(null); tip.hide() }}
-                          data-fid={it.row.id} onClick={() => hl.openSample(it.row.id)}
-                        />
-                      ))}
-                    </g>
-                    {/* boxplot-with-jitter: every filter over its own summary, so the box can be read against the n it summarises */}
-                    {withPoints && focusLast(g.items, (it) => it.row.id, hl.focusId).map(([it, i]) => {
-                      const st = focusStyle(it.row.id, hl.focusId, { r: 2.4, level: 'dense' }, hl.selected)
-                      return (
-                        <circle
-                          key={it.row.id}
-                          cx={cx + jitter(gi * 997 + i, bw * 0.7)}
-                          cy={y(it.v)}
-                          r={st.r}
-                          fill={g.color}
-                          fillOpacity={st.opacity}
-                          stroke={st.stroke}
-                          strokeWidth={st.strokeWidth}
-                          data-dot={st.dot}
-                          style={{ cursor: 'pointer' }}
-                          onMouseEnter={(e) => { hl.setHover(it.row.id); tip.show(e, [it.row.id, `${it.row.site} · ${it.row.date}`, `${field} = ${fmt(it.v)}`, 'click for details']) }}
-                          onMouseLeave={() => { hl.setHover(null); tip.hide() }}
-                          data-fid={it.row.id} onClick={() => hl.openSample(it.row.id)}
-                        />
-                      )
-                    })}
+                    <line x1={cx} x2={cx} y1={y(b.max)} y2={y(b.q3)} stroke={INK.text} strokeWidth={1.2} />
+                    <line x1={cx} x2={cx} y1={y(b.q1)} y2={y(b.min)} stroke={INK.text} strokeWidth={1.2} />
+                    <line x1={cx - bw / 4} x2={cx + bw / 4} y1={y(b.max)} y2={y(b.max)} stroke={INK.text} strokeWidth={1.2} />
+                    <line x1={cx - bw / 4} x2={cx + bw / 4} y1={y(b.min)} y2={y(b.min)} stroke={INK.text} strokeWidth={1.2} />
+                    <rect x={cx - bw / 2} y={y(b.q3)} width={bw} height={Math.max(1, y(b.q1) - y(b.q3))} fill={g.color} fillOpacity={withPoints ? 0.22 : 0.55} stroke={g.color} strokeWidth={1.4} rx={2} />
+                    <line x1={cx - bw / 2} x2={cx + bw / 2} y1={y(b.median)} y2={y(b.median)} stroke={INK.text} strokeWidth={2.2} />
                   </g>
                 )
               })}
+              {/* the filters as points (each outlier is one filter too; boxplot-with-jitter puts every filter over its own
+                  summary, so the box can be read against the n it summarises): hover links it everywhere, a click opens its record */}
+              {mode !== 'Violin' && (
+                <g onMouseMove={boxTip} onMouseLeave={() => { if (!onPoint.current) tip.hide() }}>
+                  <ScatterLayer items={pts} xy={xy} idOf={(p) => p.row.id} dots={dots} width={innerW} height={innerH}
+                    focusR={(p) => (p.kind === 'outlier' ? 4 : dotStyle(p, true).r)}
+                    focus={(p, [fx, fy]) => {
+                      if (p.kind === 'outlier') return <circle cx={fx} cy={fy} r={4} fill={p.g.color} stroke={p.g.color} strokeWidth={1.2} />
+                      const st = dotStyle(p, true)
+                      return <circle cx={fx} cy={fy} r={st.r} fill={p.g.color} fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} />
+                    }}
+                    onHover={(e, p) => {
+                      onPoint.current = true
+                      hl.setHover(p.row.id)
+                      tip.show(e, p.kind === 'outlier' ? [p.row.id, `${p.row.date} · ${p.row.site}`, `${fmt(p.v)} (outside 1.5·IQR)`, 'click for the filter record']
+                        : [p.row.id, `${p.row.site} · ${p.row.date}`, `${field} = ${fmt(p.v)}`, 'click for details'])
+                    }}
+                    onLeave={() => { onPoint.current = false; hl.setHover(null); tip.hide() }} />
+                </g>
+              )}
             </g>
           </svg></div>
         )}

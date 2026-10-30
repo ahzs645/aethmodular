@@ -7,7 +7,8 @@ import { Legend, toggleIn } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { baseFilterId, focusLast, focusStyle, useHighlight } from '@/lib/highlight'
+import { baseFilterId, focusStyle, useHighlightActions } from '@/lib/highlight'
+import { ScatterLayer } from '@/components/ScatterLayer'
 import { fidProps, useHandEdits } from '@/lib/filterEdits'
 import { fmt, splitAtGaps } from '@/lib/stats'
 import { rollingByTime } from '@/lib/rolling'
@@ -31,7 +32,8 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const hl = useHighlight()
+  // opens records only: the dots read the hover themselves (components/ScatterLayer)
+  const hl = useHighlightActions()
   const height = 400
 
   // the rolling line and the deployed EC are switched from the legend, like the seasons
@@ -59,9 +61,9 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
   }, [run.eval])
   // filters excluded by hand on any page drop out of the series and its summary; the run's saved metrics do not change
   const edits = useHandEdits()
-  const kept = dated.filter((p) => !edits.isOut(p.id))
+  const kept = useMemo(() => dated.filter((p) => !edits.isOut(p.id)), [dated, edits])
   const handNote = edits.note(dated.length - kept.length, { saved: true })
-  const shown = kept.filter((p) => !hidden.has(p.g))
+  const shown = useMemo(() => kept.filter((p) => !hidden.has(p.g)), [kept, hidden])
   const hasDeployed = dated.some((p) => p.dep !== null)
 
   const roll = useMemo(() => rollingByTime(shown, (p) => p.d, (p) => p.v, rolling.spec).filter((r): r is { d: Date; v: number } => r.v !== null),
@@ -69,9 +71,23 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
 
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const innerH = height - MARGIN.top - MARGIN.bottom
-  const x = d3.scaleTime().domain(d3.extent(shown, (p) => p.d) as [Date, Date]).range([0, innerW])
-  const allV = shown.flatMap((p) => [p.v, ...(showDeployed && p.dep !== null ? [p.dep] : [])])
-  const y = d3.scaleLinear().domain([Math.min(0, d3.min(allV) ?? 0), (d3.max(allV) ?? 1) * 1.08]).range([innerH, 0]).nice()
+  // the same scales until the data, the overlays or the size change, so the dots survive a legend or tooltip re-render
+  const { x, y } = useMemo(() => {
+    const allV = shown.flatMap((p) => [p.v, ...(showDeployed && p.dep !== null ? [p.dep] : [])])
+    return {
+      x: d3.scaleTime().domain(d3.extent(shown, (p) => p.d) as [Date, Date]).range([0, innerW]),
+      y: d3.scaleLinear().domain([Math.min(0, d3.min(allV) ?? 0), (d3.max(allV) ?? 1) * 1.08]).range([innerH, 0]).nice(),
+    }
+  }, [shown, showDeployed, innerW, innerH])
+  // a filter links to the gallery's other charts by its physical id (a replicate suffix dropped)
+  const idOf = (p: (typeof shown)[number]) => (p.id ? baseFilterId(p.id) : null)
+  const level = showRoll ? 'dense' : 'sparse'
+  const xy = useMemo(() => shown.map((p) => [x(p.d), y(p.v)] as const), [shown, x, y])
+  const dots = useMemo(() => shown.map((p, i) => {
+    const st = focusStyle(p.id ?? `#${p.i}`, null, { r: 3.2, level })
+    return <circle key={p.i} cx={xy[i][0]} cy={xy[i][1]} r={st.r} fill={color(p.g)} fillOpacity={st.opacity * dim(p.g)} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={dim(p.g) === 1 ? st.dot : undefined}
+      {...(p.id ? fidProps(baseFilterId(p.id)) : {})} />
+  }), [shown, xy, level, color, hot]) // eslint-disable-line react-hooks/exhaustive-deps
   const line = d3.line<{ d: Date; v: number }>().x((p) => x(p.d)).y((p) => y(p.v)).curve(d3.curveMonotoneX)
 
   const preds = shown.map((p) => p.v).sort(d3.ascending)
@@ -107,29 +123,27 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
               {showDeployed && shown.filter((p) => p.dep !== null).map((p) => (
                 <circle key={`d${p.i}`} cx={x(p.d)} cy={y(p.dep as number)} r={3} fill="none" stroke={INK.axis} strokeWidth={1} strokeOpacity={dim(DEPLOYED_LABEL)} />
               ))}
-              {focusLast(shown, (p) => p.id ?? `#${p.i}`, hl.focusId).map(([p]) => {
-                const st = focusStyle(p.id ?? `#${p.i}`, hl.focusId, { r: 3.2, level: showRoll ? 'dense' : 'sparse' })
-                return (
-                  <circle key={p.i} cx={x(p.d)} cy={y(p.v)} r={st.r} fill={color(p.g)} fillOpacity={st.opacity * dim(p.g)} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={dim(p.g) === 1 ? st.dot : undefined}
-                    style={{ cursor: 'pointer' }}
-                    onMouseEnter={(e) => { if (p.id) hl.setHover(p.id); tip.show(e, [p.id ?? `filter #${p.i + 1}`, `${run.eval.date?.[p.i]} · ${p.g}`, `predicted EC ${fmt(p.v, 3)} µg/m³`, ...(p.dep !== null ? [`deployed EC ${fmt(p.dep, 3)}`] : []), p.id && knownIds.has(baseFilterId(p.id)) ? 'click for the full filter record' : 'click for this filter\'s values']) }}
-                    onMouseLeave={() => { hl.setHover(null); tip.hide() }}
-                    {...(p.id ? fidProps(baseFilterId(p.id)) : {})}
-                    onClick={() => hl.openRecord({
-                      id: p.id ?? `${run.target} filter #${p.i + 1}`,
-                      source: 'the dated series',
-                      site: target?.site ?? run.target,
-                      date: run.eval.date?.[p.i] ?? undefined,
-                      fields: [
-                        ['configuration', (() => { const q = runs.presets.find((p) => p.key === run.preset); return q ? presetName(q) : run.preset })()],
-                        ['season / group', p.g],
-                        ['predicted FTIR EC (µg/m³)', p.v],
-                        ['deployed SPARTAN EC (µg/m³)', p.dep],
-                      ],
-                    })} />
-                )
-              })}
-              {showRoll && <path d={splitAtGaps(roll, (p) => p.d, rolling.spec.days).map((seg) => line(seg) ?? '').join('')} fill="none" stroke={INK.text} strokeWidth={2} strokeOpacity={dim(ROLL_LABEL)} pointerEvents="none" />}
+              <ScatterLayer items={shown} xy={xy} idOf={idOf} dots={dots} width={innerW} height={innerH} tip={tip}
+                tipOf={(p) => [p.id ?? `filter #${p.i + 1}`, `${run.eval.date?.[p.i]} · ${p.g}`, `predicted EC ${fmt(p.v, 3)} µg/m³`, ...(p.dep !== null ? [`deployed EC ${fmt(p.dep, 3)}`] : []), p.id && knownIds.has(baseFilterId(p.id)) ? 'click for the full filter record' : 'click for this filter\'s values']}
+                focusR={(p) => focusStyle(p.id ?? `#${p.i}`, p.id ?? `#${p.i}`, { r: 3.2, level }).r}
+                focus={(p, [cx, cy]) => {
+                  const st = focusStyle(p.id ?? `#${p.i}`, p.id ?? `#${p.i}`, { r: 3.2, level })
+                  return <circle cx={cx} cy={cy} r={st.r} fill={color(p.g)} fillOpacity={st.opacity * dim(p.g)} stroke={st.stroke} strokeWidth={st.strokeWidth} />
+                }}
+                onPick={(p) => hl.openRecord({
+                  id: p.id ?? `${run.target} filter #${p.i + 1}`,
+                  source: 'the dated series',
+                  site: target?.site ?? run.target,
+                  date: run.eval.date?.[p.i] ?? undefined,
+                  fields: [
+                    ['configuration', (() => { const q = runs.presets.find((p) => p.key === run.preset); return q ? presetName(q) : run.preset })()],
+                    ['season / group', p.g],
+                    ['predicted FTIR EC (µg/m³)', p.v],
+                    ['deployed SPARTAN EC (µg/m³)', p.dep],
+                  ],
+                })}>
+                {showRoll && <path d={splitAtGaps(roll, (p) => p.d, rolling.spec.days).map((seg) => line(seg) ?? '').join('')} fill="none" stroke={INK.text} strokeWidth={2} strokeOpacity={dim(ROLL_LABEL)} pointerEvents="none" />}
+              </ScatterLayer>
             </g>
           </svg>
         )}

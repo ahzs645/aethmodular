@@ -4,7 +4,8 @@ import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
 import { Panels } from '@/components/Panels'
 import { useTooltip } from '@/hooks/useTooltip'
-import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
+import { focusStyle, useHighlightActions } from '@/lib/highlight'
+import { ScatterLayer } from '@/components/ScatterLayer'
 import { fidProps } from '@/lib/filterEdits'
 import { fmt } from '@/lib/stats'
 import { FONT, INK } from '@/lib/theme'
@@ -33,7 +34,6 @@ const REGION_FILL: Record<CazorlaClass, string> = {
 export function AeronetTyping({ rows, meta }: { rows: FilterRow[]; meta: MetaFile }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const tip = useTooltip(wrapRef)
-  const hl = useHighlight()
   const [pair, setPair] = useSearchParam<Pair>('aeronet.typing', PAIRS[0], PAIRS)
   const cazorla = pair === PAIRS[0]
   const xField = cazorla ? SAE_440_675 : EAE_INV, yField = cazorla ? AAE_440_675 : AAE
@@ -103,15 +103,7 @@ export function AeronetTyping({ rows, meta }: { rows: FilterRow[]; meta: MetaFil
                       {/* SAE 1.0 bounds only the cells above AAE 1 (coated large particles span SAE < 1.5) */}
                       <line x1={x(v)} x2={x(v)} y1={0} y2={v === 1 ? y(1) : side} stroke={INK.muted} strokeDasharray="3 3" />
                     </g>)}
-                    {focusLast(pts, (p) => p.row.id, hl.focusId).map(([p]) => {
-                      const st = focusStyle(p.row.id, hl.focusId, { r: 3.4 }, hl.selected)
-                      const c = col.color(col.key(p.row))
-                      return <circle key={p.row.id} cx={clampX(p.x)} cy={clampY(p.y)} r={st.r} fill={p.weak ? 'none' : c} fillOpacity={st.opacity}
-                        stroke={p.weak || !st.stroke ? c : st.stroke} strokeWidth={st.strokeWidth ?? 1} data-dot={p.weak ? undefined : st.dot} style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
-                        onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.site} · ${p.row.date}`, `${cazorla ? 'SAE 440–675' : 'EAE 440–870'} ${fmt(p.x, 2)} · ${cazorla ? 'AAE 440–675' : 'AAE 440–870'} ${fmt(p.y, 2)}`,
-                          ...(cazorla ? [`Ångström matrix: ${cazorlaClass(p.x, p.y)}`] : []), `inversion AOD 440 ${fmt(p.row[INV_AOD440] as number | null, 2)}`, 'click for details']) }}
-                        onMouseLeave={() => { hl.setHover(null); tip.hide() }} onClick={() => hl.openSample(p.row.id)} />
-                    })}
+                    <TypingPoints pts={pts} x={x} y={y} side={side} col={col} cazorla={cazorla} tip={tip} />
                   </g>
                 </svg>
               )
@@ -142,4 +134,36 @@ export function AeronetTyping({ rows, meta }: { rows: FilterRow[]; meta: MetaFil
       </div>
     </ChartFrame>
   )
+}
+
+type TypingPoint = { row: FilterRow; x: number; y: number; weak: boolean }
+
+/**
+ * The plane's filters (components/ScatterLayer): drawn once per frame and range, so a hover only draws the focused
+ * filter over them; a point outside the frame sits on its edge.
+ */
+function TypingPoints({ pts, x, y, side, col, cazorla, tip }: {
+  pts: TypingPoint[]; x: d3.ScaleLinear<number, number>; y: d3.ScaleLinear<number, number>; side: number
+  col: ReturnType<typeof colouring>; cazorla: boolean; tip: ReturnType<typeof useTooltip>
+}) {
+  const hl = useHighlightActions()
+  const xy = useMemo(() => {
+    const [x0, x1] = x.domain(), [y0, y1] = y.domain()
+    return pts.map((p) => [x(Math.max(x0, Math.min(x1, p.x))), y(Math.max(y0, Math.min(y1, p.y)))] as const)
+  }, [pts, x.domain().join(), y.domain().join(), side]) // eslint-disable-line react-hooks/exhaustive-deps
+  const dots = useMemo(() => pts.map((p, i) => {
+    const st = focusStyle(p.row.id, null, { r: 3.4 }, hl.selected)
+    const c = col.color(col.key(p.row))
+    return <circle key={p.row.id} cx={xy[i][0]} cy={xy[i][1]} r={st.r} fill={p.weak ? 'none' : c} fillOpacity={st.opacity}
+      stroke={p.weak || !st.stroke ? c : st.stroke} strokeWidth={st.strokeWidth ?? 1} data-dot={p.weak ? undefined : st.dot} {...fidProps(p.row.id)} />
+  }), [pts, xy, col, hl.selected])
+  const focusR = focusStyle('', '', { r: 3.4 }).r
+  return <ScatterLayer items={pts} xy={xy} idOf={(p) => p.row.id} dots={dots} width={side} height={side} tip={tip} focusR={focusR}
+    focus={(p, [cx, cy]) => {
+      const st = focusStyle(p.row.id, p.row.id, { r: 3.4 })
+      const c = col.color(col.key(p.row))
+      return <circle cx={cx} cy={cy} r={st.r} fill={p.weak ? 'none' : c} fillOpacity={st.opacity} stroke={p.weak ? c : st.stroke} strokeWidth={st.strokeWidth} />
+    }}
+    tipOf={(p) => [p.row.id, `${p.row.site} · ${p.row.date}`, `${cazorla ? 'SAE 440–675' : 'EAE 440–870'} ${fmt(p.x, 2)} · ${cazorla ? 'AAE 440–675' : 'AAE 440–870'} ${fmt(p.y, 2)}`,
+      ...(cazorla ? [`Ångström matrix: ${cazorlaClass(p.x, p.y)}`] : []), `inversion AOD 440 ${fmt(p.row[INV_AOD440] as number | null, 2)}`, 'click for details']} />
 }

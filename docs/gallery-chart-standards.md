@@ -14,6 +14,10 @@ rows) that exist in 6–8 copies each.
 
 Paths below are relative to `gallery/app/src`.
 
+For new work the rule is in AGENTS.md ("Gallery charts: extend the shared
+pieces, never redefine them"): use the piece listed here, and when it falls
+short, extend it rather than writing a local version.
+
 ---
 
 ## 1. Standards, one per feature
@@ -35,9 +39,10 @@ many places currently deviate. **New** marks a primitive that does not exist yet
 | Intervals | Whisker bars share one style | **new** `IntervalBar` (beside `RegressionBand`) | HipsYork, CrossSiteTransfer, Meeting ×2, BC LoadingPlot: 3 whisker styles |
 | Guardrails | Slope box and held-out floor drawn one way | **new** `GuardrailBands` in `charts/calibration/common` | 4 slope boxes, 3 floor styles |
 | Tooltip | `useTooltip` only; no native `<title>` alongside it | `hooks/useTooltip` | 5 charts show both tooltips; ~10 show only native `<title>` |
-| Tooltip content | `id`, `site · date`, `name: value unit`, trailing "click for details" | **new** `filterMarkHandlers(row, lines)` next to `useHighlight` | 7 copies of hover + tip + open; 4 wordings (`x: v`, `x = v`, `≈`, `median =`) |
+| Tooltip content | `id`, `site · date`, `name: value unit`, trailing "click for details" | `components/ScatterLayer` `tipOf` (the hover, tooltip and open handlers are its defaults) | The copies of hover + tip + open are gone (29 Oct); the 4 wordings (`x: v`, `x = v`, `≈`, `median =`) remain |
 | Legend | `Legend` / `useLegend` as the HTML row inside `.chart-wrap`; `ColorLegend` for every ramp | `components/Legend`, `ColorLegend`; extend `useLegend` with background keys (seasons) and an in-SVG mode for export | 3 legends bypass `useLegend`; ~10 in-SVG one-offs; Meeting `Key`; FilterSpectrum div legend; 3 legends outside `.chart-wrap` |
-| Highlight, pin, dim | `focusStyle` for filter marks; **new** `selectedStyle` for a selected configuration | `lib/highlight` | Meeting Scatter, ParallelCoordinates, DistributionPanel outliers; 6 selected-config styles |
+| Highlight, pin, dim | `focusStyle` for a filter mark's look; `FocusLayer` draws the focused filter over its chart, `PinRing` marks a pin; **new** `selectedStyle` for a selected configuration | `lib/highlight` | 6 selected-config styles |
+| Points (filters as marks) | One `ScatterLayer` per plot area: memoised marks, `xy`, `idOf`, `focus`, `tipOf`; one pointer layer picks the nearest point. No per-mark handlers, no reordering on hover, no `useHighlight()` without keys | `components/ScatterLayer`, `components/HitLayer`, `lib/highlight` | 0 (29 Oct); `lib/pointLayers.test.mjs` fails on a new copy |
 | Brush | One accent brush style | **new** `useD3Brush` | Scatterplot uses d3 grey; ParallelCoordinates .18; DateBrush .14 |
 | Season shading | One component for bands / strips / arcs | **new** `SeasonBands` | 5 implementations |
 | Colours | Sites and seasons from `meta`; INK tokens; **new** `METHOD_COLOR` for baselines keyed like `PREPROCESSING`; **new** region-shade token | `lib/theme`, `lib/labels` | AIRSpec/VIBES defined 7×, 3 different colours for full-range VIBES; INK values typed as hex in ≥15 places |
@@ -138,6 +143,7 @@ Done, and each defined once in `gallery/app/src`:
 | Data loading | `lib/data.ts` (`loadJson`, `loadBinary`, `useExport`), `components/ExportState` | One cache: every file downloads once per session. Spectra: `lib/similarity.loadTraces` checks the grid against the filter table for every page and the drawer. |
 | Pickers | `components/Pickers.tsx` (`BaselinePicker`, `SeasonPicker`, `BankPicker`) | Page option lists come from data or context, not module `let`. Raw `<select>`/checkbox controls replaced. |
 | URL keys | `lib/url.ts` | Development warning when two controls use one key with different options; the `sregion` collision is fixed. |
+| Points: hover, pin, click, right-click (29 Oct 2026) | `components/ScatterLayer.tsx` over `components/HitLayer.tsx` and `lib/highlight` (`FocusLayer`, `PinRing`) | Crossplot, Scatterplot, DistributionPanel, Timeseries, AERONET timeline / typing / scale height, Weather timeline, DailyTimeline, RainWashout, RunSeries, RunCrossplot residuals, CrossSiteTransfer, PwMoisture, the Experimental `Scatter`, Satoshi overlap. The scatter matrix uses the same pieces on an overlay (up to ~140,000 dots). Not points, so not on it: ConnectedScatter (medians), DensityHexbin (bins), AnalogLab (anonymous pool), SpectrumPlot, ParallelCoordinates, GroupDrawer. Guarded by `lib/pointLayers.test.mjs`. |
 | Crossplot | `components/Crossplot.tsx` | Meeting, Satoshi (`Cross`, `Envelope` with a density `background`), `RunCrossplot` (residual panel kept beside it on the same x), Ext `AllFilterScatter` optical panel (its own `grouping`). The Ext band-height panel is not a 1:1 comparison and keeps its own axes. |
 | Static key | `components/Key.tsx` | Meeting and Satoshi; in-SVG legends kept where export needs them. |
 | Spectrum shading | `components/SpectralRegions.tsx` | Meeting, Satoshi VIP, Blanks. The Baselines amber band marks the earlier selection masks (a different meaning) and stays. |

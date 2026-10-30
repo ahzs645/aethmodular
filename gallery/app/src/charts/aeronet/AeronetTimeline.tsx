@@ -4,7 +4,8 @@ import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
+import { focusStyle, useHighlightActions } from '@/lib/highlight'
+import { ScatterLayer } from '@/components/ScatterLayer'
 import { fidProps } from '@/lib/filterEdits'
 import { fmt } from '@/lib/stats'
 import { INK, withUnit } from '@/lib/theme'
@@ -31,7 +32,8 @@ export function AeronetTimeline({ rows, meta, field, site, station, level = '15'
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const hl = useHighlight()
+  // the brush only: the filter points read the hover themselves (components/ScatterLayer)
+  const hl = useHighlightActions()
   const [daily, setDaily] = useState<DailyAeronet | null>(null)
   const [error, setError] = useState('')
   const [cursor, setCursor] = useState<number | null>(null)
@@ -61,7 +63,8 @@ export function AeronetTimeline({ rows, meta, field, site, station, level = '15'
   const fit = useFitHeight()
   const panelH = fit === null ? PANEL : Math.max(40, (fit - M.top - M.bottom - (panels.length - 1) * GAP) / panels.length)
   const height = M.top + M.bottom + panels.length * panelH + (panels.length - 1) * GAP
-  const x = d3.scaleTime().domain(domain ?? [new Date(), new Date()]).range([0, innerW])
+  // the same scales until the data or the size change, so the filter points survive the cursor's re-renders
+  const x = useMemo(() => d3.scaleTime().domain(domain ?? [new Date(), new Date()]).range([0, innerW]), [domain, innerW])
   const top = (k: Panel) => M.top + panels.indexOf(k) * (panelH + GAP)
   const val = (arr: (number | null)[] | undefined, i: number) => arr?.[i] ?? null
   const ext = (arr: (number | null)[] | undefined, lo?: number, hi?: number) => {
@@ -72,7 +75,14 @@ export function AeronetTimeline({ rows, meta, field, site, station, level = '15'
   const y: Record<Exclude<Panel, 'field'>, d3.ScaleLinear<number, number>> = {
     aod: ext(daily?.aod500, 0), fmf: d3.scaleLinear().domain([0, 1]).range([panelH, 0]), aaod: ext(daily?.aaod675, 0), ssa: ext(daily?.ssa440, undefined, 1),
   }
-  const yF = d3.scaleLinear().domain([Math.min(0, d3.min(pts, (p) => p.v) ?? 0), (d3.max(pts, (p) => p.v) ?? 1) * 1.05]).range([panelH, 0]).nice()
+  const yF = useMemo(() => d3.scaleLinear().domain([Math.min(0, d3.min(pts, (p) => p.v) ?? 0), (d3.max(pts, (p) => p.v) ?? 1) * 1.05]).range([panelH, 0]).nice(), [pts, panelH])
+  const seasonColor = (p: (typeof pts)[number]) => meta.seasons.find((s) => s.name === p.row.season)?.color ?? INK.text
+  const xy = useMemo(() => pts.map((p) => [x(p.t), yF(p.v)] as const), [pts, x, yF])
+  const dots = useMemo(() => pts.map((p, i) => {
+    const st = focusStyle(p.row.id, null, { r: 3, level: 'sparse' }, hl.selected)
+    return <circle key={p.row.id} cx={xy[i][0]} cy={xy[i][1]} r={st.r} fill={seasonColor(p)}
+      fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={st.dot} {...fidProps(p.row.id)} />
+  }), [pts, xy, hl.selected, meta.seasons]) // eslint-disable-line react-hooks/exhaustive-deps
   const line = (arr: (number | null)[] | undefined, s: d3.ScaleLinear<number, number>) =>
     d3.line<{ t: Date; i: number }>().defined(({ i }) => val(arr, i) !== null).x(({ t }) => x(t)).y(({ i }) => s(val(arr, i)!))(days) ?? ''
   // the inversion's own AOD 440 is not in the daily series; the daily AOD 440 stands in for the threshold
@@ -112,13 +122,13 @@ export function AeronetTimeline({ rows, meta, field, site, station, level = '15'
                     const c = k === 'aaod' ? '#8c2d04' : '#6a51a3'
                     return <circle key={i} cx={x(t)} cy={y[k](v)} r={2.2} fill={weak(i) ? 'none' : c} stroke={c} strokeWidth={0.8} opacity={0.8} />
                   })}
-                  {k === 'field' && focusLast(pts, (p) => p.row.id, hl.focusId).map(([p]) => {
-                    const st = focusStyle(p.row.id, hl.focusId, { r: 3, level: 'sparse' }, hl.selected)
-                    return <circle key={p.row.id} cx={x(p.t)} cy={yF(p.v)} r={st.r} fill={meta.seasons.find((s) => s.name === p.row.season)?.color ?? INK.text}
-                      fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={st.dot} style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
-                      onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`, `${field}: ${fmt(p.v)}`, 'click for details · right-click to exclude']) }}
-                      onMouseLeave={() => { hl.setHover(null); tip.hide() }} onClick={() => hl.openSample(p.row.id)} />
-                  })}
+                  {k === 'field' && <ScatterLayer items={pts} xy={xy} idOf={(p) => p.row.id} dots={dots} width={innerW} height={panelH} tip={tip}
+                    tipOf={(p) => [p.row.id, `${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`, `${field}: ${fmt(p.v)}`, 'click for details · right-click to exclude']}
+                    focusR={(p) => focusStyle(p.row.id, p.row.id, { r: 3, level: 'sparse' }).r}
+                    focus={(p, [cx, cy]) => {
+                      const st = focusStyle(p.row.id, p.row.id, { r: 3, level: 'sparse' })
+                      return <circle cx={cx} cy={cy} r={st.r} fill={seasonColor(p)} fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} />
+                    }} />}
                   {k !== 'field' && <rect width={innerW} height={panelH} fill="transparent"
                     onMouseMove={(e) => {
                       const mx = d3.pointer(e)[0]

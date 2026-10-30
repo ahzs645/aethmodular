@@ -22,7 +22,15 @@ export interface ComponentSetDef {
   fields: string[]
   /** a colour per component; a missing one takes the chart's palette */
   colors?: Record<string, string>
+  /** the reader's name for a component (legend, labels, tooltips); a missing one keeps the component's own */
+  labels?: Record<string, string>
+  /** the legend's order: as stacked, foot first (the default), or top of the stack first, as the bars read */
+  legend?: LegendOrder
 }
+export type LegendOrder = 'foot' | 'top'
+export const LEGEND_ORDER_LABEL: Record<LegendOrder, string> = { foot: 'Foot of the stack first', top: 'Top of the stack first' }
+/** a component's name in a set: the reader's, else its own */
+export const labelIn = (set: ComponentSetDef | BuiltInSet, field: string) => ('labels' in set && set.labels?.[field]?.trim()) || field
 
 /** a ready-made set: its components follow what the view has */
 export interface BuiltInSet { id: string; name: string; basis: Basis; note: string; fields: (available: string[]) => string[] }
@@ -48,8 +56,8 @@ export function resolveSet(set: ComponentSetDef | BuiltInSet, available: string[
 
 export function describeSet(set: ComponentSetDef | BuiltInSet, available?: string[]): string {
   const n = available ? resolveSet(set, available).length : Array.isArray(set.fields) ? set.fields.length : null
-  return [BASIS_LABEL[set.basis], n === null ? null : `${n} component${n === 1 ? '' : 's'}`, 'colors' in set && set.colors && Object.keys(set.colors).length ? 'own colours' : null]
-    .filter(Boolean).join(' · ')
+  const own = 'colors' in set ? [set.colors && Object.keys(set.colors).length ? 'own colours' : null, set.labels && Object.keys(set.labels).length ? 'renamed' : null] : []
+  return [BASIS_LABEL[set.basis], n === null ? null : `${n} component${n === 1 ? '' : 's'}`, ...own].filter(Boolean).join(' · ')
 }
 
 export const newSetId = () => `c${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`
@@ -61,7 +69,12 @@ const HEX = /^#[\da-f]{6}$/i
 
 export function setsParam(defs: ComponentSetDef[]): string {
   if (!defs.length) return ''
-  return toB64(JSON.stringify(defs.map((d) => [d.id, d.name, d.basis, d.fields, ...(d.colors && Object.keys(d.colors).length ? [d.colors] : [])])))
+  // [id, name, basis, fields, colours, names, legend order]: the trailing ones only when set, so short sets stay short
+  return toB64(JSON.stringify(defs.map((d) => {
+    const row: unknown[] = [d.id, d.name, d.basis, d.fields, d.colors ?? {}, d.labels ?? {}, d.legend ?? 'foot']
+    while (row.length > 4 && (row[row.length - 1] === 'foot' || (typeof row[row.length - 1] === 'object' && !Object.keys(row[row.length - 1] as object).length))) row.pop()
+    return row
+  })))
 }
 
 export function parseSets(param: string | null): ComponentSetDef[] {
@@ -70,12 +83,16 @@ export function parseSets(param: string | null): ComponentSetDef[] {
     const raw = JSON.parse(fromB64(param)) as unknown[]
     return raw.flatMap((x) => {
       if (!Array.isArray(x) || x.length < 4) return []
-      const [id, name, basis, fields, colors] = x as [unknown, unknown, unknown, unknown, unknown]
+      const [id, name, basis, fields, colors, labels, legend] = x as unknown[]
       if (typeof id !== 'string' || (basis !== 'recon' && basis !== 'measured') || !Array.isArray(fields)) return []
       const own = colors && typeof colors === 'object'
         ? Object.fromEntries(Object.entries(colors as Record<string, unknown>).filter(([, c]) => typeof c === 'string' && HEX.test(c))) as Record<string, string>
         : undefined
-      return [{ id, name: String(name ?? ''), basis, fields: fields.map(String), ...(own && Object.keys(own).length ? { colors: own } : {}) }]
+      const names = labels && typeof labels === 'object'
+        ? Object.fromEntries(Object.entries(labels as Record<string, unknown>).filter(([, l]) => typeof l === 'string' && l.trim()).map(([f, l]) => [f, (l as string).trim()]))
+        : {}
+      return [{ id, name: String(name ?? ''), basis, fields: fields.map(String), ...(own && Object.keys(own).length ? { colors: own } : {}),
+        ...(Object.keys(names).length ? { labels: names } : {}), ...(legend === 'top' ? { legend: 'top' as const } : {}) }]
     })
   } catch {
     return []

@@ -8,7 +8,8 @@ import { Key } from '@/components/Key'
 import { SeasonBands, timeSeasonBands } from '@/components/SeasonBands'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
+import { focusStyle, useHighlightActions } from '@/lib/highlight'
+import { ScatterLayer } from '@/components/ScatterLayer'
 import { fidProps } from '@/lib/filterEdits'
 import { fmt } from '@/lib/format'
 import { INK } from '@/lib/theme'
@@ -35,7 +36,8 @@ export function DailyTimeline({ s, meta, screen, excluded = [] }: { s: Series; m
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const hl = useHighlight()
+  // the brush only: the filter points read the hover themselves (components/ScatterLayer)
+  const hl = useHighlightActions()
   const [avg, setAvg] = useSearchParam<Avg>('aeot', 'both', ['daily', 'both', '30d'])
   const [log, setLog] = useState(false)
   const [full, setFull] = useState(false)
@@ -61,7 +63,8 @@ export function DailyTimeline({ s, meta, screen, excluded = [] }: { s: Series; m
     if (!days.length) return null
     return [days[0].t, new Date(days[days.length - 1].t.getTime() + 864e5)]
   }, [days])
-  const x = d3.scaleUtc().domain(domain ?? [new Date(0), new Date(1)]).range([0, innerW])
+  // the same scales until the data, the legend or the size change, so the filter points survive the cursor's re-renders
+  const x = useMemo(() => d3.scaleUtc().domain(domain ?? [new Date(0), new Date(1)]).range([0, innerW]), [domain, innerW])
 
   const yVals = shown.flatMap((c) => [...(avg !== '30d' ? days.map((d) => d.bc[c]) : []), ...(avg !== 'daily' ? smooth[c] : [])])
     .filter((v): v is number => v !== null && (!log || v > 0))
@@ -71,8 +74,16 @@ export function DailyTimeline({ s, meta, screen, excluded = [] }: { s: Series; m
     ? d3.scaleLog().domain([Math.max(1e-3, rd.domain[0] * 0.9), rd.domain[1] * 1.1]).range([H.bc, 0]).nice()
     : d3.scaleLinear().domain([rd.domain[0], rd.domain[1] * 1.04]).range([H.bc, 0]).nice()
   const offTop = yVals.filter((v) => v > yBc.domain()[1]).length
-  const fVals = filterPts.filter((p) => leg.show(p.m.label) && p.t >= x.domain()[0] && p.t <= x.domain()[1]).map((p) => p.v!)
-  const yF = d3.scaleLinear().domain([Math.min(0, d3.min(fVals) ?? 0), (d3.max(fVals) ?? 1) * 1.05]).range([H.filters, 0]).nice()
+  // the filters in view, each measured up to three ways (one point per method)
+  const fPts = useMemo(() => filterPts.filter((p) => !leg.hidden.has(p.m.label) && p.t >= x.domain()[0] && p.t <= x.domain()[1]), [filterPts, leg.hidden, x])
+  const yF = useMemo(() => d3.scaleLinear().domain([Math.min(0, d3.min(fPts, (p) => p.v!) ?? 0), (d3.max(fPts, (p) => p.v!) ?? 1) * 1.05]).range([H.filters, 0]).nice(), [fPts, H.filters])
+  const fXy = useMemo(() => fPts.map((p) => [x(p.t), yF(p.v!)] as const), [fPts, x, yF])
+  const fDots = useMemo(() => fPts.map((p, i) => {
+    const st = focusStyle(p.row.id, null, { r: 2.8, level: 'sparse' }, hl.selected)
+    const k = leg.dim(p.m.label)
+    return <circle key={`${p.row.id}|${p.m.key}`} cx={fXy[i][0]} cy={fXy[i][1]} r={st.r} fill={p.m.color} fillOpacity={st.opacity * k} data-dot={k === 1 ? st.dot : undefined}
+      stroke={st.stroke} strokeWidth={st.strokeWidth} {...fidProps(p.row.id)} />
+  }), [fPts, fXy, hl.selected, leg.hover]) // eslint-disable-line react-hooks/exhaustive-deps
   const yC = d3.scaleLinear().domain([0, 100]).range([H.cov, 0])
 
   const runs = useMemo(() => splitRuns(days), [days])
@@ -132,14 +143,15 @@ export function DailyTimeline({ s, meta, screen, excluded = [] }: { s: Series; m
                   </>}
                   {k === 'filters' && <>
                     <YAxis scale={yF} x={0} gridWidth={innerW} tickCount={3} label="Filters (µg/m³)" labelX={-50} />
-                    {focusLast(filterPts.filter((p) => leg.show(p.m.label) && inX(p.t)), (p) => p.row.id, hl.focusId).map(([p]) => {
-                      const st = focusStyle(p.row.id, hl.focusId, { r: 2.8, level: 'sparse' }, hl.selected)
-                      return <circle key={`${p.row.id}|${p.m.key}`} cx={x(p.t)} cy={yF(p.v!)} r={st.r} fill={p.m.color} fillOpacity={st.opacity * leg.dim(p.m.label)} data-dot={leg.dim(p.m.label) === 1 ? st.dot : undefined}
-                        stroke={st.stroke} strokeWidth={st.strokeWidth} style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
-                        onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.site} · ${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`,
-                          ...FILTER_METHODS.map((m) => `${m.label}: ${fmt(p.row[m.field], 2)} µg/m³`), 'click for details · right-click to exclude']) }}
-                        onMouseLeave={() => { hl.setHover(null); tip.hide() }} onClick={() => hl.openSample(p.row.id)} />
-                    })}
+                    {/* a filter's methods share its id, so a focus draws all of its points over the dimmed rest */}
+                    <ScatterLayer items={fPts} xy={fXy} idOf={(p) => p.row.id} dots={fDots} width={innerW} height={H.filters} tip={tip}
+                      tipOf={(p) => [p.row.id, `${p.row.site} · ${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`,
+                        ...FILTER_METHODS.map((m) => `${m.label}: ${fmt(p.row[m.field], 2)} µg/m³`), 'click for details · right-click to exclude']}
+                      focusR={(p) => focusStyle(p.row.id, p.row.id, { r: 2.8, level: 'sparse' }).r}
+                      focus={(q, [cx, cy]) => {
+                        const st = focusStyle(q.row.id, q.row.id, { r: 2.8, level: 'sparse' })
+                        return <circle cx={cx} cy={cy} r={st.r} fill={q.m.color} fillOpacity={st.opacity * leg.dim(q.m.label)} stroke={st.stroke} strokeWidth={st.strokeWidth} />
+                      }} />
                   </>}
                   {k === 'cov' && <>
                     <YAxis scale={yC} x={0} gridWidth={innerW} tickCount={2} label="Coverage %" labelX={-50} />

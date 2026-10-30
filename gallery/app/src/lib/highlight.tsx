@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { Fragment, createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { INK, dotOpacity, type DotLevel } from '@/lib/theme'
 
 /**
@@ -204,21 +204,6 @@ export function useHighlight(keys?: ReadonlySet<string> | null): HighlightState 
  * bigger + opaque when it is the one, dimmed when another is or when a brush
  * selection exists that it is not part of.
  */
-/**
- * Marks in draw order with the focused one (hovered or pinned) last, so it paints over its
- * neighbours; SVG has no z-index. Each comes with its original index, for charts that place a
- * mark by its index (deterministic jitter). Unfocused, the order is unchanged.
- */
-export function focusLast<T>(items: readonly T[], idOf: (t: T) => string | undefined, focusId: string | null): [T, number][] {
-  const out = items.map((t, i): [T, number] => [t, i])
-  if (!focusId) return out
-  const k = items.findIndex((t) => idOf(t) === focusId)
-  if (k < 0 || k === items.length - 1) return out
-  const [f] = out.splice(k, 1)
-  out.push(f)
-  return out
-}
-
 type DotStyle = { r: number; opacity: number; stroke: string; strokeWidth: number; dot?: DotLevel }
 export function focusStyle(id: string, focusId: string | null, { r, level = 'standard' }: { r: number; level?: DotLevel } = { r: 4 }, selected: Set<string> | null = null): DotStyle {
   const opacity = dotOpacity(level)
@@ -251,7 +236,7 @@ export const dotFill = (level: DotLevel, scale = 1) => ({ fillOpacity: dotOpacit
 export { baseFilterId } from './filterId'
 
 /**
- * The focused mark (hovered here or on another chart, or pinned) drawn over a chart's dots, which it dims with
+ * The focused filter's marks (hovered here or on another chart, or pinned) drawn over a chart's dots, which it dims with
  * one class on their group (styles.css .has-focus). The only part of the chart that follows the hover: a hover
  * then re-renders this one mark, not every dot, the axes or the fits. `keys` are the ids the chart draws.
  */
@@ -263,9 +248,11 @@ export function FocusLayer<T>({ keys, items, idOf, groupRef, render, focusClass 
   groupRef: React.RefObject<SVGGElement | null>; render: (t: T, pinned: boolean) => ReactNode
 }) {
   const { focusId, pinnedId } = useHighlight(keys)
-  const focused = focusId ? items.find((t) => idOf(t) === focusId) ?? null : null
-  useLayoutEffect(() => { groupRef.current?.classList.toggle(focusClass, focused !== null) }, [focused, groupRef, focusClass])
-  return focused === null ? null : <>{render(focused, focusId === pinnedId)}</>
+  // every mark of the focused filter: a chart may draw one filter more than once (a point per method or per source)
+  const focused = useMemo(() => (focusId ? items.filter((t) => idOf(t) === focusId) : []), [focusId, items]) // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => { groupRef.current?.classList.toggle(focusClass, focused.length > 0) }, [focused, groupRef, focusClass])
+  const pinned = focusId === pinnedId
+  return focused.length === 0 ? null : <>{focused.map((t, i) => <Fragment key={i}>{render(t, pinned)}</Fragment>)}</>
 }
 
 /**

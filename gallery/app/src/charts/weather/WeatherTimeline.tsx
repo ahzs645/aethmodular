@@ -9,8 +9,9 @@ import { FieldSelect } from '@/components/FieldSelect'
 import { Legend } from '@/components/Legend'
 import { XIcon } from '@/components/Icons'
 import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
-import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
+import { useTooltip, type TipBody } from '@/hooks/useTooltip'
+import { focusStyle, useHighlightActions } from '@/lib/highlight'
+import { ScatterLayer } from '@/components/ScatterLayer'
 import { fidProps } from '@/lib/filterEdits'
 import { fmt } from '@/lib/stats'
 import { chemText } from '@/lib/format'
@@ -54,7 +55,8 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const hl = useHighlight()
+  // the brush only: the filter points read the hover themselves (components/ScatterLayer)
+  const hl = useHighlightActions()
   const [daily, setDaily] = useState<DailyWeather | null>(null)
   const [error, setError] = useState('')
   const [panelParam, setPanelParam] = useSearchParam<string>('wt.panels', DEFAULT_PANELS)
@@ -131,7 +133,8 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
   const left = TICK_ROOM + 8 + TITLE_LINE * Math.max(1, ...[...titleLines.values()].map((l) => l.length))
   const innerW = Math.max(240, width - left - M.right)
   const height = M.top + M.bottom + panels.length * panelH + (panels.length - 1) * GAP
-  const x = d3.scaleTime().domain(domain ?? [new Date(), new Date()]).range([0, innerW])
+  // the same scale until the data or the size change, so the filter points survive the cursor's re-renders
+  const x = useMemo(() => d3.scaleTime().domain(domain ?? [new Date(), new Date()]).range([0, innerW]), [domain, innerW])
   const top = (k: string) => M.top + panels.indexOf(k as never) * (panelH + GAP)
   const val = (arr: (number | null)[] | undefined, i: number) => (arr?.[i] ?? null)
   const ext = (arrs: ((number | null)[] | undefined)[], zero = false) => {
@@ -141,8 +144,7 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
   }
   const yT = ext([daily?.tmin, daily?.tmax]), yP = ext([daily?.p], true), yR = d3.scaleLinear().domain([0, 100]).range([panelH, 0])
   const yB = ext([daily?.blh], true), yW = ext([daily?.ws], true)
-  const yF = (f: string) => { const pts = ptsOf.get(f) ?? []
-    return d3.scaleLinear().domain([Math.min(0, d3.min(pts, (p) => p.v) ?? 0), (d3.max(pts, (p) => p.v) ?? 1) * 1.05]).range([panelH, 0]).nice() }
+  const yF = (f: string) => fieldScale(ptsOf.get(f) ?? [], panelH)
   const yOf = (k: string) => (k === 'temp' ? yT : k === 'prcp' ? yP : k === 'rh' ? yR : k === 'blh' ? yB : k === 'ws' ? yW : yF(fieldOf(k)))
   const line = (arr: (number | null)[] | undefined, y: d3.ScaleLinear<number, number>) =>
     d3.line<{ t: Date; i: number }>().defined(({ i }) => val(arr, i) !== null).x(({ t }) => x(t)).y(({ i }) => y(val(arr, i)!))(days) ?? ''
@@ -198,15 +200,10 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
                   {k === 'rh' && <path d={line(daily.rh, yR)} fill="none" stroke="#2c7fb8" strokeWidth={1.1} />}
                   {k === 'blh' && <path d={line(daily.blh, yB)} fill="none" stroke="#7b6fb0" strokeWidth={1.1} />}
                   {k === 'ws' && <path d={line(daily.ws, yW)} fill="none" stroke="#4d9078" strokeWidth={1.1} />}
-                  {isField(k) && focusLast(ptsOf.get(fieldOf(k)) ?? [], (p) => p.row.id, hl.focusId).map(([p]) => {
-                    const st = focusStyle(p.row.id, hl.focusId, { r: 3, level: 'sparse' }, hl.selected)
-                    return <circle key={p.row.id} cx={x(p.t)} cy={yOf(k)(p.v)} r={st.r} fill={meta.seasons.find((s) => s.name === p.row.season)?.color ?? INK.text}
-                      fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={st.dot} style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
-                      onMouseEnter={(e) => { hl.setHover(p.row.id); const di = daily.date.indexOf(String(p.row.date).slice(0, 10))
-                        tip.show(e, [p.row.id, `${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`, `${fieldOf(k)}: ${fmt(p.v)}`,
-                          ...(di >= 0 ? [`BLH ${fmt(daily.blh[di], 0)} m`] : []), ...sourcesAt(p.t, p.row.id), 'click for details · right-click to exclude']) }}
-                      onMouseLeave={() => { hl.setHover(null); tip.hide() }} onClick={() => hl.openSample(p.row.id)} />
-                  })}
+                  {isField(k) && <FieldPoints pts={ptsOf.get(fieldOf(k)) ?? EMPTY} x={x} width={innerW} height={panelH} seasons={meta.seasons} selected={hl.selected} tip={tip}
+                    tipOf={(p) => { const di = daily.date.indexOf(String(p.row.date).slice(0, 10))
+                      return [p.row.id, `${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`, `${fieldOf(k)}: ${fmt(p.v)}`,
+                        ...(di >= 0 ? [`BLH ${fmt(daily.blh[di], 0)} m`] : []), ...sourcesAt(p.t, p.row.id), 'click for details · right-click to exclude'] }} />}
                   {!isField(k) && <rect width={innerW} height={panelH} fill="transparent"
                     onMouseMove={(e) => {
                       const mx = d3.pointer(e)[0]
@@ -231,6 +228,36 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
 }
 
 /** a title split for standing up beside a panel `room` px tall: the name wrapped to fit, then the unit "(…)" on its own line */
+type FieldPt = { row: FilterRow; t: Date; v: number }
+const EMPTY: FieldPt[] = []
+/** a measurement panel's y: from 0 (or below) to just over its largest value */
+const fieldScale = (pts: FieldPt[], h: number) =>
+  d3.scaleLinear().domain([Math.min(0, d3.min(pts, (p) => p.v) ?? 0), (d3.max(pts, (p) => p.v) ?? 1) * 1.05]).range([h, 0]).nice()
+
+/**
+ * A measurement panel's filters, coloured by season (components/ScatterLayer): drawn once per data, size or brush, so
+ * the date cursor does not redraw them; the nearest filter answers a hover, a click opens its record.
+ */
+function FieldPoints({ pts, x, width, height, seasons, selected, tip, tipOf }: {
+  pts: FieldPt[]; x: d3.ScaleTime<number, number>; width: number; height: number; seasons: MetaFile['seasons']
+  selected: Set<string> | null; tip: ReturnType<typeof useTooltip>; tipOf: (p: FieldPt) => TipBody
+}) {
+  const y = useMemo(() => fieldScale(pts, height), [pts, height])
+  const colorOf = (p: FieldPt) => seasons.find((s) => s.name === p.row.season)?.color ?? INK.text
+  const xy = useMemo(() => pts.map((p) => [x(p.t), y(p.v)] as const), [pts, x, y])
+  const dots = useMemo(() => pts.map((p, i) => {
+    const st = focusStyle(p.row.id, null, { r: 3, level: 'sparse' }, selected)
+    return <circle key={p.row.id} cx={xy[i][0]} cy={xy[i][1]} r={st.r} fill={colorOf(p)}
+      fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={st.dot} {...fidProps(p.row.id)} />
+  }), [pts, xy, selected, seasons]) // eslint-disable-line react-hooks/exhaustive-deps
+  const focused = (p: FieldPt) => focusStyle(p.row.id, p.row.id, { r: 3, level: 'sparse' })
+  return (
+    <ScatterLayer items={pts} xy={xy} idOf={(p) => p.row.id} dots={dots} width={width} height={height} tip={tip} tipOf={tipOf}
+      focusR={(p) => focused(p).r}
+      focus={(p, [cx, cy]) => { const st = focused(p); return <circle cx={cx} cy={cy} r={st.r} fill={colorOf(p)} fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} /> }} />
+  )
+}
+
 function axisLines(text: string, room: number): string[] {
   const unit = text.endsWith(')') ? text.lastIndexOf(' (') : -1
   // wrapCategory counts 6 px a character at 11 px; the title is a little larger

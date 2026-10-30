@@ -11,8 +11,8 @@ import { monthBlocks } from '@/lib/regressionCI'
 import { regression, type RegressionStats } from '@/lib/stats'
 import { useRegressions, FitGroupingControl } from '@/lib/regressionPrefs'
 import type { Estimator } from '@/lib/regressionMethods'
-import { baseFilterId, dotFill, dotRim, FocusLayer, PinRing, useHighlight, type FilterRecord } from '@/lib/highlight'
-import { HitLayer } from '@/components/HitLayer'
+import { baseFilterId, dotFill, dotRim, useHighlight, type FilterRecord } from '@/lib/highlight'
+import { ScatterLayer } from '@/components/ScatterLayer'
 import { FONT, INK } from '@/lib/theme'
 import { Toggle } from '@/components/ChartFrame'
 import { styleBrush } from '@/lib/brush'
@@ -97,7 +97,6 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   const clipId = useId()
   // a filter excluded by hand on any page is left out here too, points and refit alike
   const edits = useHandEdits()
-  const menu = useFilterEdits()
   const [ownBrush, setOwnBrush] = useCrossplotBrush()
   const brushing = brushable && (brush ?? ownBrush)
   const brushRef = useRef<SVGGElement>(null)
@@ -132,10 +131,8 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
   const line = (s: number, b: number) => ({ x1: x(x0), y1: y(s * x0 + b), x2: x(x1), y2: y(s * x1 + b) })
   // a filter hovered or pinned on another chart dims this one only when this one draws it too (FocusLayer below:
   // the hover is read there, so it re-renders the one focused dot, not the plot and its fits)
-  const keys = useMemo(() => new Set(valid.map((p) => (p.id ? baseFilterId(p.id) : ''))), [valid])
-  const dotsRef = useRef<SVGGElement>(null)
   const keyOf = (p: CrossPoint) => (p.id ? baseFilterId(p.id) : null)
-  // the dots take no pointer events (HitLayer finds the one under the pointer), and do not follow the hover
+  // the dots, drawn once: a hover or pin is drawn over them (components/ScatterLayer)
   const xy = useMemo(() => valid.map((p) => [x(p.x), y(p.y)] as const), [valid, x, y])
   const dots = useMemo(() => valid.map((p, i) => {
     const key = keyOf(p)
@@ -186,22 +183,15 @@ export function Crossplot({ points, title, xLabel, yLabel, maxSide = 360, domain
           <g clipPath={`url(#${clipId})`}>
             {background?.(x, y)}
             {sameScale && <IdentityLine {...line(1, 0)} />}
-            <g ref={dotsRef} className="scatter-dots" pointerEvents="none">{dots}</g>
-            <FocusLayer keys={keys} items={valid} idOf={(p) => (p.id ? baseFilterId(p.id) : undefined)} groupRef={dotsRef}
-              render={(p, pinned) => <>
-                <circle cx={x(p.x)} cy={y(p.y)} r={6} fill={p.hollow ? 'none' : p.color} stroke={INK.text} strokeWidth={2}
-                  {...dotFill('standard', p.opacity ?? 1)} pointerEvents="none" />
-                {pinned && <PinRing cx={x(p.x)} cy={y(p.y)} r={6} />}
-              </>} />
-            {fitting && (siteFits ? <RegressionGroupLines groups={fitGroups} x={x} y={y} width={iw} height={ih} />
-              : <RegressionLines stats={st} x={x} y={y} domain={dom} width={iw} height={ih} />)}
-            {extraLines.map((l) => <g key={l.label}><RegressionBand stats={l.stats} method={l.method} color={l.color} x={x} y={y} domain={dom} /><line {...line(l.slope, l.intercept)} stroke={l.color} strokeWidth={1.8} strokeDasharray={l.dash} /></g>)}
             {/* hover, click and right-click find the nearest filter; a click on empty plot lets go of the pin (lib/highlight) */}
-            <HitLayer items={valid} xy={xy} width={iw} height={ih}
-              onHover={(e, p) => { tip.show(e, p.rec || p.open ? [...p.tip, 'click to pin it on every chart and open its record'] : p.tip); hl.setHover(keyOf(p)) }}
-              onLeave={() => { tip.hide(); hl.setHover(null) }}
-              onPick={(p) => { const key = keyOf(p); if (p.open) p.open(); else if (p.rec) hl.openRecord(p.rec); if (key) hl.setPinned(key) }}
-              onMenu={(e, p) => { const key = keyOf(p); if (key) menu.openMenu(e, { ids: [key], title: key }) }} />
+            <ScatterLayer items={valid} xy={xy} idOf={keyOf} dots={dots} width={iw} height={ih} tip={tip}
+              focus={(p, [cx, cy]) => <circle cx={cx} cy={cy} r={6} fill={p.hollow ? 'none' : p.color} stroke={INK.text} strokeWidth={2} {...dotFill('standard', p.opacity ?? 1)} />}
+              tipOf={(p) => (p.rec || p.open ? [...p.tip, 'click to pin it on every chart and open its record'] : p.tip)}
+              onPick={(p) => { const key = keyOf(p); if (p.open) p.open(); else if (p.rec) hl.openRecord(p.rec); if (key) hl.setPinned(key) }}>
+              {fitting && (siteFits ? <RegressionGroupLines groups={fitGroups} x={x} y={y} width={iw} height={ih} />
+                : <RegressionLines stats={st} x={x} y={y} domain={dom} width={iw} height={ih} />)}
+              {extraLines.map((l) => <g key={l.label}><RegressionBand stats={l.stats} method={l.method} color={l.color} x={x} y={y} domain={dom} /><line {...line(l.slope, l.intercept)} stroke={l.color} strokeWidth={1.8} strokeDasharray={l.dash} /></g>)}
+            </ScatterLayer>
           </g>
           <g ref={brushRef} className="brush-layer" />
         </g>

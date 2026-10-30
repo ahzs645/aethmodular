@@ -5,6 +5,7 @@ import { Legend, useLegend, type LegendItem } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useFitHeight } from '@/lib/chartFit'
+import { textWidth } from '@/lib/fitLabel'
 import { f2 } from '@/lib/format'
 import { FONT, INK } from '@/lib/theme'
 
@@ -51,15 +52,6 @@ const VERDICT_GAP = 14
 const compact = d3.format('~s')
 const tickText = (v: number) => (Math.abs(v) >= 1000 ? compact(v) : d3.format('~g')(+v.toPrecision(3)))
 const fin = (v: number | null | undefined): v is number => v != null && Number.isFinite(v)
-
-let measurer: CanvasRenderingContext2D | null = null
-/** the drawn width of a label, so the gutters follow the text instead of a guessed character width */
-function textWidth(text: string, size: number, weight = 400) {
-  measurer ??= document.createElement('canvas').getContext('2d')
-  if (!measurer) return text.length * size * 0.6
-  measurer.font = `${weight} ${size}px ${FONT.family}`
-  return measurer.measureText(text).width
-}
 
 export function RangeRows({ rows, series, bandNames = ['5–95 %', '25–75 %'], pointTip }: {
   rows: RangeRow[]

@@ -9,7 +9,8 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { FONT, INK } from '@/lib/theme'
 import { fidProps, useHandEdits } from '@/lib/filterEdits'
-import { baseFilterId, dotFill, dotRim, useHighlight, type FilterRecord } from '@/lib/highlight'
+import { baseFilterId, dotFill, dotRim, useHighlightActions, type FilterRecord } from '@/lib/highlight'
+import { ScatterLayer } from '@/components/ScatterLayer'
 
 /** Helpers shared by the Experimental subpages (gallery/data/export_experiments.py exports). */
 
@@ -58,7 +59,6 @@ export function Forest({ rows, panels, labelWidth = 200, rowHeight = 24, noteWid
 export interface ScatterPoint { x: number; y: number; color: string; r?: number; hollow?: boolean; tip?: string[]; key?: string; id?: string; rec?: FilterRecord
   /** opacity factor, e.g. a legend's `dim(label)` while another series is pointed at */
   dim?: number }
-const NO_KEYS: ReadonlySet<string> = new Set()
 
 /**
  * A plain scatter for two different quantities (log axes, extra layers under and over the points). The plot
@@ -76,23 +76,32 @@ export function Scatter({ points, xLabel, yLabel, maxSide = 420, xLog = false, y
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
-  const hl = useHighlight(NO_KEYS)
+  // pins and handlers only: a hover is drawn by the point layer (components/ScatterLayer), never by this chart
+  const hl = useHighlightActions()
   const edits = useHandEdits()
   const m = { top: 14, right: 18, bottom: 46, left: 62 }
   const side = Math.max(200, Math.min((width || maxSide + m.left + m.right) - m.left - m.right, maxSide))
   const iw = side, ih = side
   const w = iw + m.left + m.right, h = ih + m.top + m.bottom
-  const drawable = points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && (!xLog || p.x > 0) && (!yLog || p.y > 0))
-  const ok = drawable.filter((p) => !edits.isOut(p.id))
-  const keys = useMemo(() => new Set(ok.flatMap((p) => (p.id ? [baseFilterId(p.id)] : []))), [ok])
-  const { hoverId } = useHighlight(keys)
-  const active = [hl.pinnedId, hoverId].some((k) => !!k && keys.has(k))
+  const drawable = useMemo(() => points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && (!xLog || p.x > 0) && (!yLog || p.y > 0)), [points, xLog, yLog])
+  const ok = useMemo(() => drawable.filter((p) => !edits.isOut(p.id)), [drawable, edits])
   const handNote = edits.note(drawable.length - ok.length)
   const xd = xDomain ?? (d3.extent(ok, (p) => p.x) as [number, number])
   const yd = yDomain ?? (d3.extent(ok, (p) => p.y) as [number, number])
   const lo = Math.min(xd[0], yd[0]), hi = Math.max(xd[1], yd[1])
-  const x = (xLog ? d3.scaleLog() : d3.scaleLinear()).domain(identity ? [xLog ? Math.max(lo, 1e-3) : Math.min(0, lo), hi] : xd).range([0, iw]).nice()
-  const y = (yLog ? d3.scaleLog() : d3.scaleLinear()).domain(identity ? [yLog ? Math.max(lo, 1e-3) : Math.min(0, lo), hi] : yd).range([ih, 0]).nice()
+  const xDom = identity ? [xLog ? Math.max(lo, 1e-3) : Math.min(0, lo), hi] : xd
+  const yDom = identity ? [yLog ? Math.max(lo, 1e-3) : Math.min(0, lo), hi] : yd
+  // the same scales until the ranges change, so the dots and the pointer index survive a re-render (a tooltip)
+  const x = useMemo(() => (xLog ? d3.scaleLog() : d3.scaleLinear()).domain(xDom).range([0, iw]).nice(), [xDom.join(), iw, xLog]) // eslint-disable-line react-hooks/exhaustive-deps
+  const y = useMemo(() => (yLog ? d3.scaleLog() : d3.scaleLinear()).domain(yDom).range([ih, 0]).nice(), [yDom.join(), ih, yLog]) // eslint-disable-line react-hooks/exhaustive-deps
+  const keyOf = (p: ScatterPoint) => (p.id ? baseFilterId(p.id) : null)
+  const xy = useMemo(() => ok.map((p) => [x(p.x), y(p.y)] as const), [ok, x, y])
+  const dots = useMemo(() => ok.map((p, i) => {
+    const key = keyOf(p)
+    return <circle key={p.key ?? i} cx={xy[i][0]} cy={xy[i][1]} r={p.r ?? 3.5} fill={p.hollow ? 'none' : p.color} opacity={p.dim}
+      {...dotFill('sparse')} stroke={p.hollow ? p.color : dotRim().stroke} strokeWidth={p.hollow ? 1.5 : dotRim().strokeWidth}
+      {...(key ? fidProps(key) : {})} />
+  }), [ok, xy])
   // log axes label only the 1-2-5 ticks of each decade, so minor ticks stay as marks without crowding text
   const fmt = (log: boolean) => (v: any) => {
     if (!log) return String(+(+v).toPrecision(3))
@@ -105,21 +114,18 @@ export function Scatter({ points, xLabel, yLabel, maxSide = 420, xLog = false, y
         <g transform={`translate(${m.left},${m.top})`}>
           <YAxis scale={y} x={0} label={yLabel} tickCount={5} gridWidth={iw} labelX={-48} format={fmt(yLog)} pick={pick ? 'y' : undefined} />
           <XAxis scale={x} y={ih} label={xLabel} tickCount={Math.max(3, Math.floor(iw / 80))} labelDy={38} format={fmt(xLog)} pick={pick ? 'x' : undefined} />
-          {keys.size > 0 && <rect width={iw} height={ih} fill="transparent" onClick={() => hl.setPinned(null)} />}
           {identity && (() => { const [a, b] = x.domain(); return <IdentityLine x1={x(a)} y1={y(a)} x2={x(b)} y2={y(b)} /> })()}
           {under?.({ x, y, iw, ih })}
-          {ok.map((p, i) => {
-            const key = p.id ? baseFilterId(p.id) : null
-            const focus = !!key && (key === hl.pinnedId || key === hoverId)
-            const r = p.r ?? 3.5
-            return <circle key={p.key ?? i} cx={x(p.x)} cy={y(p.y)} r={focus ? Math.max(r, 6) : r} fill={p.hollow ? 'none' : p.color} opacity={p.dim}
-              {...dotFill(active && !focus ? 'dimmed' : 'sparse')} stroke={focus ? INK.text : p.hollow ? p.color : dotRim().stroke} strokeWidth={focus ? 2 : p.hollow ? 1.5 : dotRim().strokeWidth} style={{ cursor: p.rec ? 'pointer' : 'default' }}
-              onMouseEnter={(e) => { if (p.tip) tip.show(e, p.rec ? [...p.tip, 'click to pin it on every chart and open its record'] : p.tip); if (key) hl.setHover(key) }}
-              onMouseLeave={() => { tip.hide(); if (key) hl.setHover(null) }}
-              {...(key ? fidProps(key) : {})}
-              onClick={key ? () => { if (p.rec) hl.openRecord(p.rec); hl.setPinned(key) } : undefined} />
-          })}
-          {over?.({ x, y, iw, ih })}
+          {/* hover, click and right-click find the nearest point; a click on empty plot lets go of the pin (lib/highlight).
+              Points without an id show their tooltip only; the layers `over` the points sit under the pointer layer */}
+          <ScatterLayer items={ok} xy={xy} idOf={keyOf} dots={dots} width={iw} height={ih} tip={tip} reach={(p) => p.r ?? 3.5}
+            focusR={(p) => Math.max(p.r ?? 3.5, 6)}
+            focus={(p, [cx, cy]) => <circle cx={cx} cy={cy} r={Math.max(p.r ?? 3.5, 6)} fill={p.hollow ? 'none' : p.color} opacity={p.dim}
+              {...dotFill('sparse')} stroke={INK.text} strokeWidth={2} />}
+            tipOf={(p) => (p.tip ? (p.rec ? [...p.tip, 'click to pin it on every chart and open its record'] : p.tip) : null)}
+            onPick={(p) => { const key = keyOf(p); if (!key) return; if (p.rec) hl.openRecord(p.rec); hl.setPinned(key) }}>
+            {over?.({ x, y, iw, ih })}
+          </ScatterLayer>
         </g>
       </svg>
       {tip.node}

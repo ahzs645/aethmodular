@@ -16,9 +16,8 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { PanelAxesControl } from '@/lib/panelAxes'
 import { useTooltip } from '@/hooks/useTooltip'
-import { FocusLayer, PinRing, focusStyle, useHighlight } from '@/lib/highlight'
-import { HitLayer } from '@/components/HitLayer'
-import { useFilterEdits } from '@/lib/filterEdits'
+import { focusStyle, useHighlight } from '@/lib/highlight'
+import { ScatterLayer } from '@/components/ScatterLayer'
 import { axesForUnits, inDomain, pairDomain, panelAxesKey, type AxesOpts, type PairDomain, robustDomain } from '@/lib/axes'
 import { regression, fmt, type RegressionStats } from '@/lib/stats'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
@@ -236,7 +235,6 @@ export function Scatterplot({ rows, meta, xField, yField, axes: axesIn, id = 'sc
     // 1.0 (orthogonal), exactly as calculate_regression_stats does.
     return raw.map((p) => ({
       ...p,
-      ids: new Set(p.points.map((q) => q.row.id)),
       stats: regression(p.points.map((q) => q.x), p.points.map((q) => q.y), fitUncertainty(p.points.map(q => q.row), xField, yField, meta)),
       fitGroups: groupedRegressions(p.points, grouping, { x: q => q.x, y: q => q.y, site: q => q.row.site, season: q => q.row.season, seasonColor: q => meta.seasons.find(se => se.name === q.row.season)?.color ?? INK.muted,
         color: q => meta.sites.find(s => s.name === q.row.site)?.color ?? INK.muted,
@@ -390,7 +388,6 @@ export function Scatterplot({ rows, meta, xField, yField, axes: axesIn, id = 'sc
                 radiusOf={radiusOf}
                 dimOf={dimOf}
                 fitDim={p.title && colorBy !== 'Season' ? dim(p.title) : 1}
-                keys={p.ids}
                 selected={hl.selected}
                 brushing={brushing}
                 onBrush={stable.onBrush}
@@ -455,7 +452,7 @@ const NO_KEYS: ReadonlySet<string> = new Set()
 const READOUT_INSET = 12
 
 const ScatterPanel = memo(function ScatterPanel({
-  title, titleColor, legend, hidden, hover, onToggle, onHover, points, stats, fitGroups, domain, innerW, innerH, axes, showFit, xLabel, yLabel, colorOf, radiusOf, dimOf, fitDim, keys, selected, brushing, onBrush, onEnter, onLeave, onClick, grouping, siteColoring, seasonColoring,
+  title, titleColor, legend, hidden, hover, onToggle, onHover, points, stats, fitGroups, domain, innerW, innerH, axes, showFit, xLabel, yLabel, colorOf, radiusOf, dimOf, fitDim, selected, brushing, onBrush, onEnter, onLeave, onClick, grouping, siteColoring, seasonColoring,
 }: {
   /** the grouping the chart draws (lib/regressionPrefs effectiveGrouping), not the raw setting */
   grouping: FitGrouping
@@ -483,8 +480,6 @@ const ScatterPanel = memo(function ScatterPanel({
   radiusOf: (p: Point) => number
   dimOf: (p: Point) => number
   fitDim: number
-  /** the panel's filter ids: its FocusLayer listens to a hover or pin of these only */
-  keys: ReadonlySet<string>
   selected: Set<string> | null
   brushing: boolean
   onBrush: (ids: Set<string> | null) => void
@@ -493,7 +488,6 @@ const ScatterPanel = memo(function ScatterPanel({
   onClick: (row: FilterRow) => void
 }) {
   const clipId = useId()
-  const edits = useFilterEdits()
   const mk = (dom: [number, number], range: [number, number]): Scale => {
     if (axes.log) return d3.scaleLog().domain([Math.max(1e-4, dom[0]), dom[1]]).range(range).nice()
     const scale = d3.scaleLinear().domain(dom).range(range)
@@ -532,7 +526,6 @@ const ScatterPanel = memo(function ScatterPanel({
   }), [drawn, xScale, yScale, selected, colorOf, radiusOf, dimOf, siteColoring, seasonColoring])
   // closest-point detection: one Delaunay over the drawn points, one hit rect (components/HitLayer)
   const xy = useMemo(() => drawn.map((p) => [xScale(p.x), yScale(p.y)] as const), [drawn, xScale, yScale])
-  const dotsRef = useRef<SVGGElement>(null)
   // d3.brush owns its own DOM, so it is attached imperatively to an empty <g>
   const brushRef = useRef<SVGGElement>(null)
   const brushObj = useRef<d3.BrushBehavior<unknown> | null>(null)
@@ -631,23 +624,16 @@ const ScatterPanel = memo(function ScatterPanel({
 
           {/* the dots do not depend on the hover: a focus dims them all with one class (styles.css .scatter-dots)
               and draws the focused filter again on top, so a hover re-renders two circles, not every dot */}
-          <g ref={dotsRef} className="scatter-dots">{dots}</g>
-          <FocusLayer keys={keys} items={drawn} idOf={(p) => p.row.id} groupRef={dotsRef} render={(p, pinned) => {
-            const st = focusStyle(p.row.id, p.row.id, { r: radiusOf(p) })
-            return <>
-              <circle cx={xScale(p.x)} cy={yScale(p.y)} r={st.r} fill={colorOf(p)} fillOpacity={st.opacity * dimOf(p)}
-                stroke={st.stroke} strokeWidth={st.strokeWidth} pointerEvents="none" />
-              {pinned && <PinRing cx={xScale(p.x)} cy={yScale(p.y)} r={st.r} />}
-            </>
-          }} />
-
-          {/* the hit layer: closest point wins, within 18 px of the pointer (and the dot's radius); the brush replaces it
-              while selecting. The nearest point gets the filter menu; on empty plot the page-level menu offers the brush and undo */}
-          {!brushing && (
-            <HitLayer items={drawn} xy={xy} width={innerW} height={innerH} reach={radiusOf} follow
-              onHover={onEnter} onLeave={onLeave} onPick={(p) => onClick(p.row)}
-              onMenu={(e, p) => edits.openMenu(e, { ids: [p.row.id], title: p.row.id })} />
-          )}
+          {/* the dots, the focused filter over them (dashed ring when pinned) and the pointer layer: closest point wins, within
+              18 px of the pointer and the dot's radius; the brush replaces it while selecting. The nearest point gets the
+              filter menu; on empty plot the page-level menu offers the brush and undo */}
+          <ScatterLayer items={drawn} xy={xy} idOf={(p) => p.row.id} dots={dots} width={innerW} height={innerH} active={!brushing}
+            reach={radiusOf} follow onHover={onEnter} onLeave={onLeave} onPick={(p) => onClick(p.row)}
+            focusR={(p) => focusStyle(p.row.id, p.row.id, { r: radiusOf(p) }).r}
+            focus={(p, [cx, cy]) => {
+              const st = focusStyle(p.row.id, p.row.id, { r: radiusOf(p) })
+              return <circle cx={cx} cy={cy} r={st.r} fill={colorOf(p)} fillOpacity={st.opacity * dimOf(p)} stroke={st.stroke} strokeWidth={st.strokeWidth} />
+            }} />
           <g ref={brushRef} className="brush-layer" />
 
           {markIntercepts && (

@@ -11,17 +11,20 @@ import { INK, FONT, inkOnFill } from '@/lib/theme'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { categoricalScale, hasNamedColours } from '@/lib/palettes'
 import type { FilterRow, MetaFile, SeasonMeta } from '@/lib/types'
-import { calendarLabel, seasonsForSite } from '@/siteSeasons'
+import { seasonsForSite } from '@/siteSeasons'
 import { useChartLabel, useFitHeight } from '@/lib/chartFit'
+import { fitInCircle, fitInRect } from '@/lib/fitLabel'
 import { useHighlightActions } from '@/lib/highlight'
 import { PanelAxesControl, usePanelAxes } from '@/lib/panelAxes'
 import { collapsePanelAxes } from '@/lib/axes'
 import { calendarShortName, seasonOfDate, seasonOnly } from '@/lib/seasons'
-import { CompositionTimeline, stripSeasons, TIME_SHAPES, type TimePoint, type TimeShape } from '@/charts/partOfWhole/CompositionTimeline'
-import { ComponentSetPicker, useComponentSets, type BasisInfo } from '@/components/ComponentSetPicker'
+import { CompositionTimeline, stripSeasons, TIME_AXES, TIMELINE_H, TIME_SHAPES, TIMELINE_W, TimelineSizeControl, timelineAutoHeight, type TimeAxis, type TimePoint, type TimeShape, type TimelineSize } from '@/charts/partOfWhole/CompositionTimeline'
+import { useSingleView } from '@/lib/singleView'
+import { ComponentSetBar, ComponentSetPicker, insertInOrder, useComponentSets, useSetEditor, type BasisInfo, type Underlying } from '@/components/ComponentSetPicker'
+import { describeField, fieldOrigin } from '@/lib/glossary'
 import { useSearchParam } from '@/lib/url'
-import { BUILT_IN_SETS, resolveSet, type Basis } from '@/lib/componentSets'
-import { RECON_FIELDS, reconMeta, useReconstructedRows } from '@/lib/spartanReconstruction'
+import { BUILT_IN_SETS, resolveSet, type Basis, type ComponentSetDef } from '@/lib/componentSets'
+import { RECON_FIELDS, RECON_SOURCE, reconMeta, useReconstructedRows } from '@/lib/spartanReconstruction'
 
 // Stacked bars are the recommended view (PI decision, 23 Sep 2026); the
 // hierarchy encodings stay selectable for the within-site reading.
@@ -104,18 +107,26 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
   const offersRecon = !speciesOverride
   const sets = useComponentSets()
   const [setId, setSetId] = useSearchParam<string>(`${id}.parts`, BUILT_IN_SETS[0].id)
+  // over time, the reader's panel size: `<width>x<height>` in px, either 0 for Auto, '' for both Auto
+  const [sizeParam, setSizeParam] = useSearchParam<string>(`${id}.size`, '')
+  const timeSize = useMemo((): TimelineSize => {
+    const [w, h] = sizeParam.split('x').map((v) => Math.round(Number(v)) || 0)
+    const clamp = (v: number | undefined, [lo, hi]: [number, number]) => (v ? Math.min(hi, Math.max(lo, v)) : 0)
+    return { w: clamp(w, TIMELINE_W), h: clamp(h, TIMELINE_H) }
+  }, [sizeParam])
+  const single = useSingleView().on
   const recon = useReconstructedRows(allRows, offersRecon)
   const reconAvailable = offersRecon && (recon === null || recon.rows.length > 0)
   const measuredDefault = BUILT_IN_SETS.find((x) => x.basis === 'measured')!
   const pickedSet = BUILT_IN_SETS.find((x) => x.id === setId) ?? sets.list.find((x) => x.id === setId) ?? BUILT_IN_SETS[0]
   const chosenSet = pickedSet.basis === 'recon' && !reconAvailable ? measuredDefault : pickedSet
   const reconOn = reconAvailable && chosenSet.basis === 'recon'
-  const rows = reconOn ? recon?.rows ?? [] : allRows
+  const ownSet = 'colors' in chosenSet || Array.isArray(chosenSet.fields) ? (chosenSet as ComponentSetDef) : null
   // Species in the exporter's family order. PM2.5 mass is a separate
   // comparison measurement; the visible species total is the percentage denominator.
   const measuredFields = useMemo(() => {
     // a caller's own list may name fields the meta does not (the PMF sources): kept where a row has them
-    if (speciesOverride) return speciesOverride.filter((f) => meta.fields.includes(f) || rows.some((r) => typeof r[f] === 'number'))
+    if (speciesOverride) return speciesOverride.filter((f) => meta.fields.includes(f) || allRows.some((r) => typeof r[f] === 'number'))
     const wanted = new Set(['Ions', 'Crustal elements', 'Trace metals'])
     const fromGroups = meta.field_groups.filter((g) => wanted.has(g.label)).flatMap((g) => g.fields)
     // the FTIR carbon, not its ChemSpec restatement (fieldLineage RESTATES): the same product, and it covers as many
@@ -123,11 +134,30 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
     return [...CARBON, ...fromGroups].filter((f) => meta.fields.includes(f))
   }, [meta, speciesOverride, allRows]) // eslint-disable-line react-hooks/exhaustive-deps
   // the set's components that the view has, in the set's order (a ready-made reconstruction set: the figure's legend
-  // order, black carbon at the foot)
-  const speciesFields = useMemo(() => (offersRecon ? resolveSet(chosenSet, reconOn ? RECON_FIELDS : measuredFields) : measuredFields),
-    [offersRecon, chosenSet, reconOn, measuredFields])
-  const familyOf = (f: string) => (reconOn ? RECON_FAMILY : f.startsWith('OC') || f.startsWith('EC') ? 'Carbon' : meta.field_groups.find((g) => g.fields.includes(f))?.label ?? 'Other')
-  const families = useMemo(() => [...new Set(speciesFields.map(familyOf))], [speciesFields, reconOn]) // eslint-disable-line react-hooks/exhaustive-deps
+  // order, black carbon at the foot), under the reader's names for them: the rows carry each renamed component under
+  // its new name too, so the stack, legend, labels, tooltips and filter record all read the reader's name
+  const basisFields = reconOn ? RECON_FIELDS : measuredFields
+  const setFields = useMemo(() => (offersRecon ? resolveSet(chosenSet, basisFields) : measuredFields), [offersRecon, chosenSet, basisFields, measuredFields])
+  const names = ownSet?.labels
+  const nameOf = useCallback((f: string) => names?.[f]?.trim() || f, [names])
+  const fieldOf = useMemo(() => new Map(basisFields.map((f) => [nameOf(f), f])), [basisFields, nameOf])
+  const origOf = (label: string) => fieldOf.get(label) ?? label
+  const speciesFields = useMemo(() => setFields.map(nameOf), [setFields, nameOf])
+  const baseRows = reconOn ? recon?.rows ?? [] : allRows
+  const rows = useMemo(() => {
+    const renamed = setFields.filter((f) => nameOf(f) !== f)
+    if (!renamed.length) return baseRows
+    return baseRows.map((r) => {
+      const c: FilterRow = { ...r }
+      for (const f of renamed) c[nameOf(f)] = r[f]
+      return c
+    })
+  }, [baseRows, setFields, nameOf])
+  const familyOf = (label: string) => {
+    const f = origOf(label)
+    return reconOn ? RECON_FAMILY : f.startsWith('OC') || f.startsWith('EC') ? 'Carbon' : meta.field_groups.find((g) => g.fields.includes(f))?.label ?? 'Other'
+  }
+  const families = useMemo(() => [...new Set(speciesFields.map(familyOf))], [speciesFields, reconOn, fieldOf]) // eslint-disable-line react-hooks/exhaustive-deps
   // the legend keys only species with a value in view: a site that never measured FTIR carbon (Buenos Aires,
   // before SPARTAN's stretched-Teflon filters) does not list it. Colours still follow speciesFields, so they stay put
   const shownSpecies = useMemo(() => speciesFields.filter((f) => rows.some((r) => typeof r[f] === 'number' && Number.isFinite(r[f] as number))), [rows, speciesFields])
@@ -144,13 +174,15 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
   // summary views, shape and season strip to the time view; units to both (stacked bars or over time). Bars by
   // season need more than one season in view; a streamgraph of shares would only wobble a flat band
   const o = useChartOptions(id, [
-    { key: 'parts', node: () => <ComponentSetPicker value={chosenSet.id} onChange={setSetId} sets={sets} bases={bases} standardColor={(f, b) => paletteFor(b)(f)} />, when: () => offersRecon },
+    { key: 'parts', node: () => <ComponentSetPicker value={chosenSet.id} onChange={useSet} sets={sets} bases={bases} editor={editor} showing={showing} hiddenNote={hiddenNote} />, when: () => offersRecon },
     { key: 'bars', label: 'View', choices: views.map((v) => ({ value: v, label: VIEW_LABEL[v] ?? v, when: v === 'by season' ? (c) => (c.nSeasons as number) > 1 : undefined })),
       default: initialGrouping, title: 'One bar (or panel) per site, one per season within each site, or every filter on a date axis' },
     { key: 'mode', label: 'Encoding', choices: MODES, default: 'Stacked bars', hidden: 'Stacked bars', when: (c) => !stackedOnly && c.bars !== 'over time' },
     { key: 'units', label: 'Units', choices: UNIT_MODES, default: initialUnits, hidden: 'concentration (µg/m³)', when: (c) => c.mode === 'Stacked bars' },
     { key: 'shape', label: 'Shape', choices: TIME_SHAPES.map((v) => ({ value: v, when: v === 'Streamgraph' ? (c) => c.units !== 'composition (%)' : undefined })), default: initialShape,
       when: (c) => c.bars === 'over time', title: "Daily bars: one bar per sampling day on the date axis (the PMF paper's Figure 7). Streamgraph (concentration only): wiggle offset, inside-out order, no baseline, better shape" },
+    { key: 'axis', label: 'Time axis', choices: TIME_AXES, default: 'Calendar dates', hidden: 'Calendar dates', when: (c) => c.bars === 'over time',
+      title: 'Calendar dates: one continuous date axis. Seasons side by side: one block per season and year (Belg 2023, Belg 2024 …), grouped by season, the months between left out; filter one season in the sidebar to compare it year over year' },
     { key: 'stat', label: 'Statistic', choices: STATS, default: 'Mean', when: (c) => c.bars !== 'over time' },
     { key: 'twoLevel', label: 'Group by family', toggle: true, default: true, hidden: true, when: (c) => c.mode !== 'Stacked bars' && c.bars !== 'over time' && (c.nFamilies as number) > 1, title: 'Two levels of hierarchy: family → species' },
     { key: 'missing', label: `Missing ${itemNoun}`, choices: MISSING, default: 'Leave missing out', when: (c) => c.bars === 'over time' && (c.incomplete as number) > 0,
@@ -164,6 +196,8 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
       when: (c) => !!dominantOf && c.bars !== 'over time' && c.mode === 'Stacked bars',
       title: `The share one ${itemNoun.replace(/s$/, '')} needs before a filter counts as dominated by it: counted under each bar and in the note below` },
     { key: 'pax', node: () => <PanelAxesControl dims={['site']} />, when: (c) => c.bars === 'over time' && (c.nSites as number) > 1 },
+    { key: 'size', node: () => <TimelineSizeControl size={timeSize} auto={{ w: width, h: timelineAutoHeight(fit, composition.sites.length, single) }}
+      onChange={(s) => setSizeParam(s.w || s.h ? `${s.w}x${s.h}` : '')} />, when: (c) => c.bars === 'over time' },
   ], { reconAvailable, nSeasons: new Set(rows.map((r) => r.season)).size, nFamilies: families.length, incomplete, nSites: new Set(rows.map((r) => r.site)).size })
   const mode = o.values.mode as (typeof MODES)[number]
   const stat = o.values.stat as (typeof STATS)[number]
@@ -242,18 +276,40 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
   }, [rows, meta, speciesFields, ownShare, share, massField, strip]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // colours keyed on every component the basis offers, so a component keeps its colour when others are left out of
-  // the set; the reader's own colours (a component set's) over the palette's
-  const ownColors = 'colors' in chosenSet ? chosenSet.colors : undefined
+  // the set (and its palette colour when renamed); the reader's own colours (a component set's) over the palette's
+  const ownColors = ownSet?.colors
   const paletteFor = useCallback((b: Basis) => categoricalScale(colours.name, b === 'recon' ? RECON_FIELDS : measuredFields, colours.reverse), [colours.name, colours.reverse, measuredFields])
   const color = useMemo(() => {
     const base = paletteFor(reconOn ? 'recon' : 'measured')
     const domain = base.domain()
-    return ownColors ? d3.scaleOrdinal<string, string>().domain(domain).range(domain.map((f) => ownColors[f] || base(f))) : base
-  }, [paletteFor, reconOn, ownColors])
+    return d3.scaleOrdinal<string, string>().domain(domain.map(nameOf)).range(domain.map((f) => ownColors?.[f] || base(f)))
+  }, [paletteFor, reconOn, ownColors, nameOf])
+  // the measured species under a reconstructed component, from each filter's own row (the reconstruction's rows carry
+  // its sodium, nitrate … under the ions' names)
+  const origById = useMemo(() => new Map(allRows.map((r) => [r.id, r])), [allRows])
+  const underOf = useCallback((f: string, rs: FilterRow[]): Underlying[] => (RECON_SOURCE[f]?.measured ?? []).filter((m) => meta.fields.includes(m)).map((m) => {
+    const v = rs.map((r) => origById.get(r.id)?.[m]).filter((x): x is number => typeof x === 'number' && Number.isFinite(x))
+    return { field: m, mean: v.length ? d3.mean(v)! : NaN, n: v.length }
+  }), [meta.fields, origById])
+  const sourceOf = (f: string, b: Basis) => (b === 'recon' ? RECON_SOURCE[f]?.from ?? '' : fieldOrigin(f) || describeField(f))
   const bases: Partial<Record<Basis, BasisInfo>> = {
-    ...(reconAvailable ? { recon: { available: RECON_FIELDS, rows: recon?.rows ?? [], meta: reconMeta(meta) } } : {}),
-    measured: { available: measuredFields, rows: allRows, meta },
+    ...(reconAvailable ? { recon: { available: RECON_FIELDS, rows: recon?.rows ?? [], meta: reconMeta(meta), source: (f: string) => sourceOf(f, 'recon'), under: underOf } } : {}),
+    measured: { available: measuredFields, rows: allRows, meta, source: (f: string) => sourceOf(f, 'measured') },
   }
+  // what is showing: the set less anything hidden in the legend, the editor's starting point; clicking a set clears
+  // the legend's hidden list, since it names the old set's components
+  const hiddenFields = setFields.filter((f) => !lg.show(nameOf(f)))
+  const showing: ComponentSetDef = { id: chosenSet.id, name: chosenSet.name, basis: chosenSet.basis, fields: setFields.filter((f) => !hiddenFields.includes(f)),
+    ...(ownSet?.colors ? { colors: ownSet.colors } : {}), ...(ownSet?.labels ? { labels: ownSet.labels } : {}), ...(ownSet?.legend ? { legend: ownSet.legend } : {}) }
+  const hiddenNote = hiddenFields.length ? `${hiddenFields.map(nameOf).join(', ')} ${hiddenFields.length === 1 ? 'is' : 'are'} hidden in the legend, so ${hiddenFields.length === 1 ? 'it starts' : 'they start'} unticked here: tick to keep.` : undefined
+  const useSet = (setKey: string) => { setSetId(setKey); lg.setHidden(new Set()) }
+  const editor = useSetEditor({ sets, bases, standardColor: (f, b) => paletteFor(b)(f), onUse: useSet })
+  const isOwnSet = sets.list.some((x) => x.id === chosenSet.id)
+  const editShowing = (fields = showing.fields) => (isOwnSet
+    ? editor.open({ ...(chosenSet as ComponentSetDef), fields }, 'own', hiddenNote)
+    : editor.open({ ...showing, fields, id: `c${Date.now().toString(36)}`, name: `${chosenSet.name} (edited)` }, 'copy', hiddenNote))
+  const notShown = basisFields.filter((f) => !setFields.includes(f) && baseRows.some((r) => typeof r[f] === 'number'))
+  const legendTop = offersRecon ? ownSet?.legend === 'top' : legendTopDown
   const familyColor = useMemo(() => categoricalScale(colours.name, families, colours.reverse, 'family'), [families, colours.name, colours.reverse])
   const val = (c: { value: number; median: number }) => (stat === 'Mean' ? c.value : c.median)
   // the family legend is live wherever families are drawn; hiding a family or a species drops it from every total
@@ -298,8 +354,24 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
         return [f, c === null && sh == null ? '—' : [sh != null ? `${(sh * 100).toFixed(1)} %` : null, c !== null ? `${fmt(c, 2)} ${UNITS}` : null].filter(Boolean).join(' · ')]
       }),
       ...(extraFields?.(p.row) ?? []),
+      // the measured species under the reconstructed components shown, from the filter's own row
+      ...(reconOn ? [...new Set(timeSpecies.flatMap((l) => RECON_SOURCE[origOf(l)]?.measured ?? []))].filter((m) => meta.fields.includes(m)).map((m): [string, string] => {
+        const v = origById.get(p.row.id)?.[m]
+        return [`${m} (measured)`, typeof v === 'number' ? `${fmt(v, 3)} ${UNITS}` : '—']
+      }) : []),
     ],
   })
+  // the slice tooltips: what a component is made from, and the measured species under it in that bar's filters
+  const kidSource = offersRecon ? (b: Bar, label: string) => {
+    const f = origOf(label)
+    const src = sourceOf(f, reconOn ? 'recon' : 'measured')
+    const under = reconOn ? underOf(f, b.rows).filter((u) => u.n > 0) : []
+    return [
+      ...(label !== f ? [`(${f})`] : []),
+      ...(src ? [src.length > 140 ? `${src.slice(0, 137)}…` : src] : []),
+      ...(under.length ? [`measured here: ${under.map((u) => `${u.field} ${fmt(u.mean, 2)}`).join(' · ')} µg/m³`] : []),
+    ]
+  } : undefined
 
   // the dominance counts: under each bar, in each slice's tooltip, and in the note below the chart
   const thr = Number(o.values.above) / 100
@@ -328,17 +400,12 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
         {overTime ? (
           <div style={{ width: '100%' }}>
             <CompositionTimeline rows={rows} sites={composition.sites} species={timeSpecies} color={color} dim={(f) => dimK({ name: f, family: familyOf(f) })}
-              pct={pct} share={share} shape={shape} completeOnly={o.values.missing === 'Complete filters only'} sharedAxes={collapsePanelAxes(panelAxes, 'site') === 'Shared'}
-              seasonsFor={seasonsFor} strip={showStrip} tip={tip} units={UNITS} itemNoun={itemNoun} onRecord={recordOf} extraTip={extraTip} />
+              pct={pct} share={share} shape={shape} timeAxis={o.values.axis as TimeAxis} completeOnly={o.values.missing === 'Complete filters only'} sharedAxes={collapsePanelAxes(panelAxes, 'site') === 'Shared'}
+              seasonsFor={seasonsFor} strip={showStrip} size={timeSize} tip={tip} units={UNITS} itemNoun={itemNoun} onRecord={recordOf} extraTip={extraTip} />
           </div>
         ) : mode === 'Stacked bars' ? (
           <div style={{ width: '100%' }}>
-            {bySeason && bars.length > 0 && (
-              <p style={{ margin: '0 0 6px', fontSize: 11.5, color: INK.muted }}>
-                One bar per season within each site, seasons from {strip ? strip.title ?? strip.value : calendarLabel(meta)}. Each bar is the {stat.toLowerCase()} over that season's filters, so n differs by bar; hover a bar for it.
-              </p>
-            )}
-            <StackedBars bars={bars} grouped={bySeason} pct={pct} families={families} famMarks={famOn} solid={hasNamedColours(colours.name)} val={val} dim={dimK} famDim={fam.dim} color={color} familyColor={familyColor} width={width} tip={tip} units={UNITS_SHOWN} statistic={stat.toLowerCase()} itemNoun={itemNoun} totalNoun={totalNoun} mass={!!massField} dominance={dominance} />
+            <StackedBars bars={bars} grouped={bySeason} pct={pct} families={families} famMarks={famOn} solid={hasNamedColours(colours.name) || !!ownColors} val={val} dim={dimK} famDim={fam.dim} color={color} familyColor={familyColor} width={width} tip={tip} units={UNITS_SHOWN} statistic={stat.toLowerCase()} itemNoun={itemNoun} totalNoun={totalNoun} mass={!!massField} dominance={dominance} kidSource={kidSource} />
           </div>
         ) : (
           (bySeason ? composition.seasonBars.map(b => ({ code: b.key, name: `${b.site} · ${b.label}`, color: b.siteColor, pm25_mean: b.pm25_mean, children: b.children.filter(vis) })) : shownSites).map((site) => {
@@ -348,7 +415,6 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
             return (
               <div key={site.code} style={{ width: panelW }}>
                 <p className="facet-title">
-                  <span className="swatch" style={{ background: site.color }} />
                   {chartLabel(site.name)}
                   <span style={{ fontWeight: 400, color: 'var(--ink-muted)', fontSize: 11.5 }}>
                     {massField && `PM2.5 ${fmt(site.pm25_mean, 1)} µg/m³ · `}{totalNoun} {fmt(total, 1)}
@@ -370,14 +436,23 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
                           const h = leaf.y1 - leaf.y0
                           if (w <= 0 || h <= 0) return null
                           const pct = ((leaf.value ?? 0) / total) * 100
+                          // the name shrinks, then wraps, to stay inside its tile; the share line
+                          // goes under it when there is room, otherwise the name takes the tile alone
+                          const PCT_H = 12
+                          const roomW = w - 10, roomH = h - 8
+                          const withName = roomW > 14 ? fitInRect(leaf.data.name, roomW, roomH - PCT_H) : null
+                          const label = withName ?? (roomW > 14 ? fitInRect(leaf.data.name, roomW, roomH) : null)
+                          const withPct = !!withName
                           return (
                             <g key={i} opacity={dimK(leaf.data)} onMouseEnter={(e) => tip.show(e, leafTip(leaf, total))} onMouseLeave={tip.hide}>
                               <rect x={leaf.x0} y={leaf.y0} width={w} height={h} fill={color(leaf.data.name)} fillOpacity={0.85} stroke={INK.panel} rx={2} />
-                              {w > 54 && h > 20 && (
-                                <text x={leaf.x0 + 5} y={leaf.y0 + 14} fontSize={10.5} fill={inkOnFill(color(leaf.data.name))} fontFamily={FONT.family} pointerEvents="none">{leaf.data.name}</text>
+                              {label && (
+                                <text x={leaf.x0 + 5} y={leaf.y0 + 4 + label.size} fontSize={label.size} fill={inkOnFill(color(leaf.data.name))} fontFamily={FONT.family} pointerEvents="none">
+                                  {label.lines.map((line, j) => <tspan key={j} x={leaf.x0 + 5} dy={j ? label.lineHeight : 0}>{line}</tspan>)}
+                                </text>
                               )}
-                              {w > 54 && h > 33 && (
-                                <text x={leaf.x0 + 5} y={leaf.y0 + 27} fontSize={9.5} fill={inkOnFill(color(leaf.data.name))} fillOpacity={0.85} fontFamily={FONT.mono} pointerEvents="none">{pct.toFixed(1)}%</text>
+                              {label && withPct && (
+                                <text x={leaf.x0 + 5} y={leaf.y0 + 4 + label.size + label.lines.length * label.lineHeight + 1} fontSize={Math.min(9.5, label.size)} fill={inkOnFill(color(leaf.data.name))} fillOpacity={0.85} fontFamily={FONT.mono} pointerEvents="none">{pct.toFixed(1)}%</text>
                               )}
                             </g>
                           )
@@ -395,12 +470,20 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
                             {fam.r > 28 && <text x={fam.x} y={fam.y - fam.r + 11} textAnchor="middle" fontSize={9.5} fontWeight={600} fill={familyColor(fam.data.name)} fontFamily={FONT.family}>{fam.data.name}</text>}
                           </g>
                         ))}
-                        {root.leaves().map((leaf: any, i) => (
-                          <g key={i} opacity={dimK(leaf.data)} onMouseEnter={(e) => tip.show(e, leafTip(leaf, total))} onMouseLeave={tip.hide}>
-                            <circle cx={leaf.x} cy={leaf.y} r={leaf.r} fill={color(leaf.data.name)} fillOpacity={0.85} stroke={INK.panel} />
-                            {leaf.r > 18 && <text x={leaf.x} y={leaf.y} dy="0.35em" textAnchor="middle" fontSize={Math.min(10.5, leaf.r / 2.4)} fill={inkOnFill(color(leaf.data.name))} fontFamily={FONT.family} pointerEvents="none">{leaf.data.name}</text>}
-                          </g>
-                        ))}
+                        {root.leaves().map((leaf: any, i) => {
+                          // shrink, then wrap, so the name stays inside its circle
+                          const label = leaf.r > 12 ? fitInCircle(leaf.data.name, leaf.r) : null
+                          return (
+                            <g key={i} opacity={dimK(leaf.data)} onMouseEnter={(e) => tip.show(e, leafTip(leaf, total))} onMouseLeave={tip.hide}>
+                              <circle cx={leaf.x} cy={leaf.y} r={leaf.r} fill={color(leaf.data.name)} fillOpacity={0.85} stroke={INK.panel} />
+                              {label && (
+                                <text x={leaf.x} y={leaf.y - ((label.lines.length - 1) * label.lineHeight) / 2} textAnchor="middle" fontSize={label.size} fill={inkOnFill(color(leaf.data.name))} fontFamily={FONT.family} pointerEvents="none">
+                                  {label.lines.map((line, j) => <tspan key={j} x={leaf.x} dy={j ? label.lineHeight : '0.35em'}>{line}</tspan>)}
+                                </text>
+                              )}
+                            </g>
+                          )
+                        })}
                       </g>
                     )
                   })()}
@@ -436,8 +519,13 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
       </div>
       <Legend items={[
         ...(famOn ? shownFamilies.map(f => ({ label: f, color: familyColor(f), shape: 'band' as const })) : []),
-        ...(legendTopDown ? shownSpecies.slice().reverse() : shownSpecies).map(f => ({ label: f, parent: famOn ? familyOf(f) : undefined, color: color(f), shape: 'square' as const })),
+        ...(legendTop ? shownSpecies.slice().reverse() : shownSpecies).map(f => ({ label: f, parent: famOn ? familyOf(f) : undefined, color: color(f), shape: 'square' as const })),
       ]} hidden={new Set([...fam.hidden, ...lg.hidden])} onToggle={label => families.includes(label) ? fam.toggle(label) : lg.toggle(label)} onHover={label => { fam.setHover(label && families.includes(label) ? label : null); lg.setHover(label && !families.includes(label) ? label : null) }} highlighted={fam.hover ?? lg.hover} />
+      {offersRecon && <ComponentSetBar notShown={notShown} hidden={hiddenFields} nameOf={nameOf} colorOf={(f) => ownColors?.[f] || paletteFor(reconOn ? 'recon' : 'measured')(f)} builtIn={!isOwnSet}
+        onAdd={(f) => (isOwnSet ? sets.save({ ...(chosenSet as ComponentSetDef), fields: insertInOrder(setFields, f, basisFields) }) : editShowing(insertInOrder(showing.fields, f, basisFields)))}
+        onDrop={() => { if (isOwnSet) { sets.save({ ...(chosenSet as ComponentSetDef), fields: showing.fields }); lg.setHidden(new Set()) } else editShowing() }}
+        onEdit={() => editShowing()} />}
+      {editor.node}
       {reconOn && recon && recon.missing > 0 && rows.length > 0 && <p className="chart-note">{recon.missing.toLocaleString()} of {allRows.length.toLocaleString()} filters in view have no SPARTAN mass balance (no reconstruction published for them) and are left out, so the PM2.5 read against a stack is over the same filters.</p>}
       {showDominance && <p className="chart-note">{dominated(rows)} of {rows.length} filters have one {itemNoun.replace(/s$/, '')} above {o.values.above} % of the filter's {totalNoun} total (the count under each bar is that bar's).</p>}
       {overTime && stripKey.length > 0 && <div className="legend">{stripKey.map((s) => <span key={s.name} className="legend-item"><span className="swatch square" style={{ background: s.color }} />{seasonOnly(s.name)}</span>)}
@@ -453,7 +541,7 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
  * stack is the mean species concentration in µg/m³ on one shared axis.
  * `grouped` lays season bars out in per-site clusters with the site underneath.
  */
-function StackedBars({ bars, grouped, pct, families, famMarks, solid, val, dim, famDim, color, familyColor, width, tip, units, statistic, itemNoun, totalNoun, mass, dominance }: {
+function StackedBars({ bars, grouped, pct, families, famMarks, solid, val, dim, famDim, color, familyColor, width, tip, units, statistic, itemNoun, totalNoun, mass, dominance, kidSource }: {
   bars: Bar[]
   grouped: boolean
   pct: boolean
@@ -477,6 +565,8 @@ function StackedBars({ bars, grouped, pct, families, famMarks, solid, val, dim, 
   mass: boolean
   /** the filters one thing dominates: a count under each bar, and lines in each slice's tooltip */
   dominance?: { footer: (b: Bar) => string; kidTip: (b: Bar, name: string) => string[] }
+  /** a slice's tooltip lines on what it is made from (the component set's measurement, the species under it) */
+  kidSource?: (b: Bar, name: string) => string[]
 }) {
   const chartLabel = useChartLabel()
   const margin = { top: 16, right: 20, bottom: grouped ? 100 : 64, left: 60 }
@@ -536,7 +626,7 @@ function StackedBars({ bars, grouped, pct, families, famMarks, solid, val, dim, 
                 const h = y(y0) - y(y1)
                 const share = total ? (val(k) / total) * 100 : 0
                 return (
-                  <g key={k.name} opacity={dim(k)} onMouseEnter={(e) => tip.show(e, [k.name, `${where} · ${k.family}`, `${fmt(val(k), 3)} ${units}`, `${share.toFixed(1)} % of the ${totalNoun} ${fmt(total, 1)} ${units}`, `${mass ? `PM2.5 ${fmt(bar.pm25_mean, 1)} µg/m³ · ` : ''}n = ${k.n} of ${bar.nRows} filters`, ...(dominance?.kidTip(bar, k.name) ?? [])])} onMouseLeave={tip.hide}>
+                  <g key={k.name} opacity={dim(k)} onMouseEnter={(e) => tip.show(e, [k.name, `${where} · ${k.family}`, `${fmt(val(k), 3)} ${units}`, `${share.toFixed(1)} % of the ${totalNoun} ${fmt(total, 1)} ${units}`, `${mass ? `PM2.5 ${fmt(bar.pm25_mean, 1)} µg/m³ · ` : ''}n = ${k.n} of ${bar.nRows} filters`, ...(dominance?.kidTip(bar, k.name) ?? []), ...(kidSource?.(bar, k.name) ?? [])])} onMouseLeave={tip.hide}>
                     <rect x={bx} y={y(y1)} width={bw} height={Math.max(0, h)} fill={color(k.name)} fillOpacity={solid ? 1 : 0.88} stroke={INK.panel} strokeWidth={0.6} />
                     {h > 13 && bw > 70 && <text x={bx + bw / 2} y={y(y1) + h / 2} dy="0.35em" textAnchor="middle" fontSize={9.5} fill={inkOnFill(color(k.name))} fontFamily={FONT.family} pointerEvents="none">{k.name} {pct ? `${share.toFixed(0)}%` : fmt(val(k), 1)}</text>}
                   </g>

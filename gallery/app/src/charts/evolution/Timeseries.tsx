@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { seasonOnly } from '@/lib/seasons'
 import { SeasonBands, timeSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
@@ -7,9 +7,10 @@ import { Legend, toggleIn } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
+import { focusStyle, useHighlightActions } from '@/lib/highlight'
+import { ScatterLayer } from '@/components/ScatterLayer'
 import { fmt, splitAtGaps } from '@/lib/stats'
-import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
+import { INK, MARGIN, FONT, withUnit, type DotLevel } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
 import { useChartOptions } from '@/lib/chartOptions'
@@ -20,6 +21,7 @@ import { useChartLabel, useFitHeight } from '@/lib/chartFit'
 const LAYOUTS = ['Overlay', 'Per site'] as const
 const SERIES_BY = ['Site', 'Group'] as const
 type Pt = { row: FilterRow; date: Date; value: number }
+type Series = { name: string; color: string; pts: Pt[] }
 
 /**
  * Timeseries / area — 179 evolution figures in the estate (timeseries, line,
@@ -41,7 +43,8 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const hl = useHighlight()
+  // the brush only: the points read the hover themselves (components/ScatterLayer)
+  const hl = useHighlightActions()
 
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [hover, setHover] = useState<string | null>(null)
@@ -98,11 +101,15 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
   const panelH = fit === null ? (layout === 'Overlay' ? 430 : 250) : Math.max(140, fit / panelCount)
   const innerH = panelH - MARGIN.top - MARGIN.bottom
 
-  const panels = layout === 'Overlay' ? [{ key: 'all', title: null as string | null, color: INK.text, series }] : series.map((s) => ({ key: s.name, title: s.name, color: s.color, series: [s] }))
-
-  // shared y so panels compare; per-panel x so each site fills its own width
-  const allPts = series.flatMap((s) => s.pts)
-  const y = d3.scaleLinear().domain([Math.min(0, d3.min(allPts, (p) => p.value) ?? 0), (d3.max(allPts, (p) => p.value) ?? 1) * 1.08]).range([innerH, 0]).nice()
+  // shared y so panels compare; per-panel x so each site fills its own width. The same scales until the data or the
+  // size change, so the dots survive the cursor (which re-renders the chart on every move)
+  const panels = useMemo(() => (layout === 'Overlay' ? [{ key: 'all', title: null as string | null, color: INK.text, series }] : series.map((s) => ({ key: s.name, title: s.name, color: s.color, series: [s] })))
+    .map((panel) => ({ ...panel, x: d3.scaleTime().domain(d3.extent(panel.series.flatMap((s) => s.pts), (p) => p.date) as [Date, Date]).range([0, innerW]) })),
+  [layout, series, innerW])
+  const y = useMemo(() => {
+    const allPts = series.flatMap((s) => s.pts)
+    return d3.scaleLinear().domain([Math.min(0, d3.min(allPts, (p) => p.value) ?? 0), (d3.max(allPts, (p) => p.value) ?? 1) * 1.08]).range([innerH, 0]).nice()
+  }, [series, innerH])
 
   /** Centred rolling median — robust to the spikes these series carry. */
   const rolling = (pts: Pt[], w = 7) =>
@@ -145,7 +152,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
         ) : (
           panels.map((panel) => {
             const pts = panel.series.flatMap((s) => s.pts)
-            const x = d3.scaleTime().domain(d3.extent(pts, (p) => p.date) as [Date, Date]).range([0, innerW])
+            const x = panel.x
             const line = d3.line<{ date: Date; value: number }>().x((p) => x(p.date)).y((p) => y(p.value)).curve(d3.curveMonotoneX)
             const [x0d, x1d] = x.domain() as [Date, Date]
             const cursorIn = cursor && cursor >= x0d && cursor <= x1d
@@ -166,47 +173,30 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
                     }}
                     onMouseLeave={() => setCursor(null)}
                   >
-                    {/* catches pointer moves in the empty parts of the panel */}
+                    {/* catches pointer moves in the empty parts of the panel (over the plot, the points' pointer layer does) */}
                     <rect x={0} y={0} width={innerW} height={innerH} fill="transparent" />
                     <SeasonBands bands={bandsFor(x, byGroup ? null : panel.title)} height={innerH} hover={seasonHover} />
                     <YAxis scale={y} x={0} label={withUnit(field, meta.field_units)} gridWidth={innerW} tickCount={layout === 'Overlay' ? 6 : 4} pick="field" />
                     <XAxis scale={x as any} y={innerH} format={(d: Date) => d3.timeFormat('%b %Y')(d)} tickCount={Math.max(2, Math.min(7, Math.floor(innerW / 80)))} />
-                    {panel.series.map((s) => (
-                      <g key={s.name} opacity={dim(s.name)} data-export-site={s.name} data-export-color={s.color}>
-                        {focusLast(s.pts, (p) => p.row.id, hl.focusId).map(([p]) => {
-                          const st = focusStyle(p.row.id, hl.focusId, { r: 2.6, level: smooth ? 'dimmed' : 'standard' }, hl.selected)
-                          return (
-                            <circle
-                              key={p.row.id} cx={x(p.date)} cy={y(p.value)} r={st.r}
-                              fill={s.color} fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={st.dot}
-                              pointerEvents="none"
-                            />
-                          )
-                        })}
-                        {smooth && <path d={rollingPath(s.pts, line)} fill="none" stroke={s.color} strokeWidth={2.2} pointerEvents="none" />}
-                        {/* direct label at the end of each line in the overlay (the gallery's line-chart "design improvement": no legend lookup) */}
-                        {layout === 'Overlay' && smooth && (() => {
-                          const roll = rolling(s.pts)
-                          const last = roll[roll.length - 1]
-                          if (!last) return null
-                          return (
-                            <text x={x(last.date) - 4} y={y(last.value) - 8} textAnchor="end" fontSize={11} fontWeight={600} fill={s.color} stroke={INK.panel} strokeWidth={3} paintOrder="stroke" fontFamily={FONT.family} pointerEvents="none">
-                              {s.name}
-                            </text>
-                          )
-                        })()}
-                        {/* invisible hit targets on top: a 2.6 px dot is too small to hover or click */}
-                        {s.pts.map((p) => (
-                          <circle
-                            key={`hit-${p.row.id}`} cx={x(p.date)} cy={y(p.value)} r={7} fill="transparent"
-                            style={{ cursor: 'pointer' }}
-                            onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`, `${field}: ${fmt(p.value)}`, p.row.excluded ? `excluded: ${p.row.exclusion_reason}` : 'click for details']) }}
-                            onMouseLeave={() => { hl.setHover(null); tip.hide() }}
-                            data-fid={p.row.id} onClick={() => hl.openSample(p.row.id)}
-                          />
-                        ))}
-                      </g>
-                    ))}
+                    <SeriesPoints series={panel.series} x={x} y={y} width={innerW} height={innerH} level={smooth ? 'dimmed' : 'standard'}
+                      selected={hl.selected} dim={dim} dimKey={siteHover ?? ''} tip={tip} field={field}>
+                      {panel.series.map((s) => (
+                        <g key={s.name} opacity={dim(s.name)} data-export-site={s.name} data-export-color={s.color} pointerEvents="none">
+                          {smooth && <path d={rollingPath(s.pts, line)} fill="none" stroke={s.color} strokeWidth={2.2} />}
+                          {/* direct label at the end of each line in the overlay (the gallery's line-chart "design improvement": no legend lookup) */}
+                          {layout === 'Overlay' && smooth && (() => {
+                            const roll = rolling(s.pts)
+                            const last = roll[roll.length - 1]
+                            if (!last) return null
+                            return (
+                              <text x={x(last.date) - 4} y={y(last.value) - 8} textAnchor="end" fontSize={11} fontWeight={600} fill={s.color} stroke={INK.panel} strokeWidth={3} paintOrder="stroke" fontFamily={FONT.family}>
+                                {s.name}
+                              </text>
+                            )
+                          })()}
+                        </g>
+                      ))}
+                    </SeriesPoints>
                     {cursorIn && cursor && (
                       <g pointerEvents="none" fontFamily={FONT.mono} fontSize={10.5}>
                         <line x1={x(cursor)} x2={x(cursor)} y1={0} y2={innerH} stroke={INK.text} strokeOpacity={0.5} strokeDasharray="3 3" />
@@ -248,5 +238,41 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
         {tip.node}
       </div>
     </ChartFrame>
+  )
+}
+
+/**
+ * One panel's filters as points (components/ScatterLayer): drawn once per data, size or brush, so the date cursor
+ * and a hover elsewhere do not redraw them; the nearest point within reach answers a hover or click. `children`
+ * (the rolling medians and their labels) go over the points.
+ */
+function SeriesPoints({ series, x, y, width, height, level, selected, dim, dimKey, tip, field, children }: {
+  series: Series[]; x: d3.ScaleTime<number, number>; y: d3.ScaleLinear<number, number>; width: number; height: number
+  level: DotLevel; selected: Set<string> | null
+  /** a legend-hovered site dims the others; `dimKey` changes when it does (dim is a new function every render) */
+  dim: (name: string) => number; dimKey: string
+  tip: ReturnType<typeof useTooltip>; field: string; children?: ReactNode
+}) {
+  const items = useMemo(() => series.flatMap((s) => s.pts.map((p) => ({ p, s }))), [series])
+  const xy = useMemo(() => items.map(({ p }) => [x(p.date), y(p.value)] as const), [items, x, y])
+  const dots = useMemo(() => series.map((s) => (
+    <g key={s.name} opacity={dim(s.name)} data-export-site={s.name} data-export-color={s.color}>
+      {s.pts.map((p) => {
+        const st = focusStyle(p.row.id, null, { r: 2.6, level }, selected)
+        return <circle key={p.row.id} cx={x(p.date)} cy={y(p.value)} r={st.r} fill={s.color} fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={st.dot} data-fid={p.row.id} />
+      })}
+    </g>
+  )), [series, x, y, level, selected, dimKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  const focused = (id: string) => focusStyle(id, id, { r: 2.6, level })
+  return (
+    <ScatterLayer items={items} xy={xy} idOf={({ p }) => p.row.id} dots={dots} width={width} height={height} tip={tip}
+      tipOf={({ p }) => [p.row.id, `${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`, `${field}: ${fmt(p.value)}`, p.row.excluded ? `excluded: ${p.row.exclusion_reason}` : 'click for details']}
+      focusR={({ p }) => focused(p.row.id).r}
+      focus={({ p, s }, [cx, cy]) => {
+        const st = focused(p.row.id)
+        return <circle cx={cx} cy={cy} r={st.r} fill={s.color} fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} opacity={dim(s.name)} />
+      }}>
+      {children}
+    </ScatterLayer>
   )
 }

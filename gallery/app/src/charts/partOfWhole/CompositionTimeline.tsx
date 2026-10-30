@@ -1,11 +1,16 @@
 import { useId, useMemo } from 'react'
 import * as d3 from 'd3'
 import { FacetGrid } from '@/components/FacetGrid'
+import { PANEL_TITLE_H } from '@/components/Panels'
+import { ScrubField } from '@/components/ScrubField'
+import { UndoIcon } from '@/components/Icons'
 import { XAxis, YAxis } from '@/components/Axes'
 import { timeSeasonBands, type SeasonBand } from '@/components/SeasonBands'
 import { seasonOfDate, seasonOnly } from '@/lib/seasons'
 import { fmt } from '@/lib/stats'
 import { FONT, INK, MARGIN } from '@/lib/theme'
+import { useFitHeight } from '@/lib/chartFit'
+import { useSingleView } from '@/lib/singleView'
 import type { FilterRow, SeasonMeta } from '@/lib/types'
 import type { useTooltip } from '@/hooks/useTooltip'
 
@@ -18,6 +23,48 @@ const DAY = 86_400_000
 const SEASON_BREAK = 150 * DAY
 /** px between two season blocks */
 const SEG_GAP = 10
+/** FacetGrid's default gap between two panels */
+const FACET_GAP = 16
+/** the reader's panel size (Panel size): each panel's width and height in px, 0 for Auto */
+export interface TimelineSize { w: number; h: number }
+export const TIMELINE_W: [number, number] = [400, 12000]
+export const TIMELINE_H: [number, number] = [140, 1600]
+
+/**
+ * A panel's height on Auto: its own height on the page (240 each when there are several, 440 alone), a share of
+ * a Dashboard tile's fitted height, and in the one-chart view a share of the window but never below a readable
+ * 320 (360 alone): four sites squeezed into one window left each plot about 60 px tall, so they scroll down instead.
+ */
+export function timelineAutoHeight(fit: number | null, n: number, single: boolean) {
+  const several = n > 1
+  if (fit === null) return several ? 240 : 440
+  const share = Math.max(120, (fit - FACET_GAP * (Math.max(1, n) - 1)) / Math.max(1, n) - PANEL_TITLE_H)
+  return single ? Math.max(several ? 320 : 360, share) : share
+}
+
+/**
+ * Panel size: each panel's width and height, dragged or typed, Auto by default (the field shows the fitted size,
+ * so a drag starts from what is drawn); ↺ goes back to Auto for both. Wider than the chart, the panels scroll
+ * sideways together; taller than the window, the page scrolls down.
+ */
+export function TimelineSizeControl({ size, auto, onChange }: { size: TimelineSize; auto: TimelineSize; onChange: (s: TimelineSize) => void }) {
+  const sized = !!(size.w || size.h)
+  return (
+    <span className="control panel-size"
+      title="Each panel's width and height in px: drag sideways or click to type. Wider than the chart, the panels scroll sideways together; taller than the window, the page scrolls down. ↺ goes back to Auto, the panels fitted to the chart">
+      Panel size
+      <span className="panel-size-row">
+        <button type="button" className="btn quiet icon-btn panel-size-reset" aria-label="Panel size: back to Auto" title={sized ? 'Back to Auto: the panels fit the chart' : 'Auto: the panels fit the chart'}
+          disabled={!sized} onClick={() => onChange({ w: 0, h: 0 })}><UndoIcon /></button>
+        <ScrubField label="Panel width" value={size.w || Math.round(auto.w)} min={TIMELINE_W[0]} max={TIMELINE_W[1]} step={20} unit={size.w ? 'px' : 'auto'} width={96}
+          onChange={(v) => onChange({ ...size, w: Math.round(v) })} />
+        <span aria-hidden>×</span>
+        <ScrubField label="Panel height" value={size.h || Math.round(auto.h)} min={TIMELINE_H[0]} max={TIMELINE_H[1]} step={10} unit={size.h ? 'px' : 'auto'} width={88}
+          onChange={(v) => onChange({ ...size, h: Math.round(v) })} />
+      </span>
+    </span>
+  )
+}
 
 /** one filter on the time axis: its stacked values, and what it lacks of the species shown */
 export interface TimePoint { row: FilterRow; d: Date; v: Record<string, number>; missing: string[]; seg?: number }
@@ -76,7 +123,7 @@ function seasonSegments(points: TimePoint[], seasons: readonly SeasonMeta[]): { 
  * rects, each with handlers and the `.animated` transition), and one transparent rect over the plot answers the
  * pointer with the nearest sampling day, as the areas always did.
  */
-export function CompositionTimeline({ rows, sites, species, color, dim, pct, share, shape, timeAxis = 'Calendar dates', completeOnly, sharedAxes, seasonsFor, strip = false, tip, units, itemNoun, onRecord, extraTip }: {
+export function CompositionTimeline({ rows, sites, species, color, dim, pct, share, shape, timeAxis = 'Calendar dates', completeOnly, sharedAxes, seasonsFor, strip = false, size = { w: 0, h: 0 }, tip, units, itemNoun, onRecord, extraTip }: {
   rows: FilterRow[]
   sites: { name: string; color: string }[]
   /** bottom of the stack first */
@@ -92,6 +139,8 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
   seasonsFor: (site: string) => readonly SeasonMeta[]
   /** draw the season strip along the top of each panel (the tooltip and record name the season either way) */
   strip?: boolean
+  /** the reader's panel size (0 for Auto): wider than the chart, the panels scroll sideways together */
+  size?: TimelineSize
   tip: ReturnType<typeof useTooltip>
   units: string
   itemNoun: string
@@ -102,6 +151,8 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
   const stream = shape === 'Streamgraph'
   const bars = shape === 'Daily bars'
   const bySeason = timeAxis === 'Seasons side by side'
+  const fit = useFitHeight()
+  const single = useSingleView().on
 
   const panels = useMemo(() => {
     const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
@@ -137,16 +188,19 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
   const xAll = d3.extent(panels.flatMap((p) => p.points), (p) => p.d) as [Date, Date]
   const yAll: [number, number] = [d3.min(panels, (p) => yExtent(p)[0]) ?? 0, d3.max(panels, (p) => yExtent(p)[1]) ?? 1]
   const several = panels.length > 1
+  const autoH = timelineAutoHeight(fit, panels.length, single)
 
   if (!panels.length) return <p className="chart-note">No filter in this subset has {completeOnly ? `every ${itemNoun.replace(/s$/, '')} shown` : `any ${itemNoun.replace(/s$/, '')} shown`}.</p>
 
-  return (
+  // the site's name alone above its panel: the marks are coloured by species, so the site's colour would name nothing here
+  const grid = (
     <FacetGrid items={panels} maxCols={1} minCell={240}
-      title={several ? (p) => <><span className="swatch" style={{ background: p.color }} />{p.site}</> : undefined}
+      title={several ? (p) => p.site : undefined}
       label={(p) => p.site}
       note={(p) => p.points.length < p.nRows ? `${p.points.length} of ${p.nRows} filters` : `${p.points.length} filters`}
-      render={(p, width, i, cell) => {
-        const height = cell.height ?? (several ? 240 : 440)
+      render={(p, cellW, i) => {
+        const width = size.w || cellW
+        const height = size.h || autoH
         const innerW = Math.max(200, width - MARGIN.left - MARGIN.right)
         const innerH = Math.max(60, height - MARGIN.top - MARGIN.bottom)
         const x = d3.scaleTime().domain(sharedAxes ? xAll : (d3.extent(p.points, (q) => q.d) as [Date, Date])).range([0, innerW])
@@ -157,8 +211,8 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
           ? Math.max(0, innerW - SEG_GAP * (segs.length - 1)) / (d3.sum(segs, (g) => g.d1 - g.d0 + DAY) / DAY)
           : x(new Date(+p.points[0].d + DAY)) - x(p.points[0].d)
         const segX: number[] = []
-        segs.forEach((g, k) => segX.push(k ? segX[k - 1] + ((segs[k - 1].d1 - segs[k - 1].d0 + DAY) / DAY) * pxPerDay + SEG_GAP : 0))
         const segW = (k: number) => ((segs[k].d1 - segs[k].d0 + DAY) / DAY) * pxPerDay
+        segs.forEach((_, k) => segX.push(k ? segX[k - 1] + segW(k - 1) + SEG_GAP : 0))
         const px = (q: TimePoint) => (bySeason ? segX[q.seg!] + ((+q.d - segs[q.seg!].d0) / DAY + 0.5) * pxPerDay : x(q.d))
         const [lo, hi] = sharedAxes ? yAll : yExtent(p)
         const y = d3.scaleLinear().domain([lo, hi * (stream || pct ? 1 : 1.02)]).range([innerH, 0]).nice()
@@ -208,7 +262,7 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
                   return text && <text key={j} x={b.x + b.w / 2} y={-5.5} textAnchor="middle" fontSize={9} fill={INK.text}>{text}</text>
                 })}
               </g>
-              <YAxis scale={y} x={0} gridWidth={innerW}
+              <YAxis scale={y} x={0} gridWidth={innerW} wrapLabel
                 label={stream ? `${units} (baseline free)` : pct ? `share of shown ${itemNoun}` : units}
                 format={(v: number) => (pct ? `${Math.round(v * 100)}%` : String(v))} />
               {bySeason
@@ -242,12 +296,15 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
         )
       }} />
   )
+  // panels wider than the chart scroll sideways as one, so the sites stay on the same dates
+  return size.w ? <div className="timeline-scroll">{grid}</div> : grid
 }
 
 /**
  * The seasons-side-by-side axis: a baseline under each block, its season and year below (the year
- * alone where the name does not fit, as the strip and the block's order name the season), and a
- * month tick at each block's first and last day where there is room.
+ * alone where the name does not fit, as the strip and the block's order name the season), its first
+ * and last day where there is room, and a faint dashed line up the plot between two blocks, so the cut
+ * reads as a cut and not as a sampling gap.
  */
 function SeasonBlockAxis({ segs, segX, segW, y }: { segs: Segment[]; segX: number[]; segW: (k: number) => number; y: number }) {
   const fits = (text: string, w: number) => text.length * 6.2 + 6 <= w
@@ -259,6 +316,7 @@ function SeasonBlockAxis({ segs, segX, segW, y }: { segs: Segment[]; segX: numbe
         const ends = `${d3.timeFormat('%b %-d')(new Date(g.d0))} – ${d3.timeFormat('%b %-d')(new Date(g.d1))}`
         return (
           <g key={k}>
+            {k > 0 && <line x1={x0 - SEG_GAP / 2} x2={x0 - SEG_GAP / 2} y1={-y} y2={0} stroke={INK.axis} strokeOpacity={0.45} strokeDasharray="2 3" />}
             <line x1={x0} x2={x0 + w} stroke={INK.axis} />
             <line x1={x0} x2={x0} y2={5} stroke={INK.axis} />
             <line x1={x0 + w} x2={x0 + w} y2={5} stroke={INK.axis} />

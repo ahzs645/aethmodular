@@ -240,6 +240,14 @@ Addis calendars in `lib/seasons.ts`; every data file through `lib/data.ts`
 and `ExportState` for the recurring UI. URL keys must be unique across pages
 (development builds warn when two controls share one).
 
+Any chart that draws filters as points (a crossplot, a timeline, a strip of
+dots) draws them through `components/ScatterLayer`: it gives the linked hover,
+the pin ring, click to open, the right-click menu and nearest-point picking,
+and keeps a hover from redrawing the dots. When a shared piece lacks
+something, extend it for every caller instead of writing a local copy
+(AGENTS.md, "Gallery charts: extend the shared pieces"); `src/lib/pointLayers.test.mjs`
+fails on the patterns that used to be copied chart by chart.
+
 Four chart types cover most research figures; draw with them instead of
 hand-rolling d3 and axes: `Crossplot` (1:1), `SpectrumPlot` (reversed
 wavenumber axis, faint traces, emphasised lines, median/IQR bands, regions,
@@ -595,12 +603,15 @@ keep the browser's own undo. A note at the bottom says what came back.
 
 ## Linked views: hover, click, and the sample drawer
 
-Hovering a filter in any point-based chart (scatterplot, beeswarm, timeseries)
-enlarges the same filter in every other chart on the tab and dims the rest.
-The scatterplot and the analog lab's PCA use closest-point detection
-(`d3.Delaunay` over the drawn points, one hit rectangle) rather than a mouse
-handler per circle, so a 2 px mark in a dense cloud answers the pointer from
-18 px away. The timeseries carries a **synchronized cursor**: moving across
+Hovering a filter in any point-based chart (scatterplot, crossplots, scatter
+matrix, beeswarm, timelines) enlarges the same filter in every other chart on
+the tab and dims the rest; a pinned filter keeps a dashed ring. Every one of
+them draws its points through `components/ScatterLayer`, which finds the point
+nearest the pointer (`components/HitLayer`: one `d3.Delaunay` over the drawn
+points, one hit rectangle) rather than a mouse handler per circle, so a 2 px
+mark in a dense cloud answers from 18 px away. A hover left behind by a mark
+that was redrawn under the pointer clears on the next move (`lib/highlight`),
+and Esc lets go of a pin. The timeseries carries a **synchronized cursor**: moving across
 any panel drops the same *date* on every other panel with each series'
 nearest value labelled, which is how "was Delhi high the same month" gets
 read off per-site panels whose time axes differ.

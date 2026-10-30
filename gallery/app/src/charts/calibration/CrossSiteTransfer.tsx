@@ -19,7 +19,8 @@ import { cohortColor, deployedECFrom, fmtFit, metricRowAt, presetName, useNetwor
 import { COHORT, PREPROCESSING, label } from '@/lib/labels'
 import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
 import { useSearchParam } from '@/lib/url'
-import { baseFilterId, dotFill, dotRim, useHighlight, type FilterRecord } from '@/lib/highlight'
+import { baseFilterId, dotFill, dotRim, useHighlightActions, type FilterRecord } from '@/lib/highlight'
+import { ScatterLayer } from '@/components/ScatterLayer'
 import { fidProps } from '@/lib/filterEdits'
 import { PanelAxesControl, usePanelAxes } from '@/lib/panelAxes'
 import { collapsePanelAxes } from '@/lib/axes'
@@ -149,8 +150,6 @@ function SiteMultiples({ runs, siteRuns, mac, at, controls, presetLabel, gallery
   const tip = useTooltip(wrapRef)
   // Panel axes is the gallery's one setting (lib/panelAxes: the sidebar's, and every multi-panel chart's)
   const [axes] = usePanelAxes()
-  // a dot is a filter: hover and click work as on every other crossplot (highlight on every chart, pin, open its record)
-  const hl = useHighlight()
 
   // x and y picked from the axis titles (the gallery's axis popover, as on the correlation crossplots):
   // this calibration's readouts, then any gallery measurement these filters carry
@@ -190,14 +189,15 @@ function SiteMultiples({ runs, siteRuns, mac, at, controls, presetLabel, gallery
     const v = e.id[i] ? byId.get(baseFilterId(e.id[i]!))?.[k] : undefined
     return typeof v === 'number' ? v : NaN
   }
-  const pts = siteRuns.map((run) => {
-    const out: { x: number; y: number; i: number }[] = []
+  // the same arrays until the readouts change, so a tooltip's re-render leaves every panel's dots alone
+  const pts = useMemo(() => siteRuns.map((run) => {
+    const out: TransferPoint[] = []
     for (let i = 0; i < run.eval.pred.length; i++) {
       const x = valueOf(run, i, xk), y = valueOf(run, i, yk)
       if (Number.isFinite(x) && Number.isFinite(y)) out.push({ x, y, i })
     }
     return out
-  })
+  }), [siteRuns, xk, yk, mac, byId, sourceById, network]) // eslint-disable-line react-hooks/exhaustive-deps
   const pad = (e: [number, number]): [number, number] => { const d = Math.max(1e-9, (e[1] - e[0]) * 0.06); return [Math.min(0, e[0] - d), e[1] + d] }
   const square = (p: { x: number; y: number }[]): [number, number] => [
     Math.min(0, d3.min(p, (d) => Math.min(d.x, d.y)) ?? 0),
@@ -279,35 +279,24 @@ function SiteMultiples({ runs, siteRuns, mac, at, controls, presetLabel, gallery
                     {ecPair && <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />}
                     {yk === RESID && y.domain()[0] < 0 && y.domain()[1] > 0 && <line x1={0} x2={S} y1={y(0)} y2={y(0)} stroke={INK.text} strokeWidth={1.2} />}
                     {pts[k].length === 0 && <text x={S / 2} y={S / 2} textAnchor="middle" fontSize={11} fill={INK.muted}>no filters carry both</text>}
-                    {pts[k].map((p) => {
-                      const id = run.eval.id[p.i] ?? null
-                      const key = id ? baseFilterId(id) : null
-                      const focus = !!key && (key === hl.pinnedId || key === hl.hoverId)
-                      const site = t?.site ?? run.target
-                      const record = (): FilterRecord => ({
-                        id: id ?? `${run.target} filter #${p.i + 1}`, source: `Every site under one calibration (${presetLabel})`, site,
+                    {/* a dot is a filter: hover and click work as on every other crossplot (highlight on every chart, pin, open its record) */}
+                    <TransferPoints pts={pts[k]} x={x} y={y} side={S} color={color} tip={tip}
+                      idOf={(p) => (run.eval.id[p.i] ? baseFilterId(run.eval.id[p.i]!) : null)}
+                      tipOf={(p) => [
+                        run.eval.id[p.i] ?? `filter #${p.i + 1}`,
+                        `${t?.site ?? run.target} · ${run.eval.date?.[p.i] ?? 'no date'} · ${run.eval.group[p.i]}`,
+                        `${titleOf(xk)}: ${fmt(p.x, 3)}${xk === DEP && deployedOf(run, p.i)?.from === 'public release' ? ' (public SPARTAN release)' : ''}`,
+                        `${titleOf(yk)}: ${fmt(p.y, 3)}${yk === DEP && deployedOf(run, p.i)?.from === 'public release' ? ' (public SPARTAN release)' : ''}`,
+                        'click to pin it on every chart and open its record',
+                      ]}
+                      recordOf={(p): FilterRecord => ({
+                        id: run.eval.id[p.i] ?? `${run.target} filter #${p.i + 1}`, source: `Every site under one calibration (${presetLabel})`, site: t?.site ?? run.target,
                         date: run.eval.date?.[p.i] ?? undefined,
                         fields: [['season / group', run.eval.group[p.i]], [titleOf(xk), p.x], [titleOf(yk), p.y]],
-                      })
-                      return (
-                        <circle
-                          key={p.i} cx={x(p.x)} cy={y(p.y)} r={focus ? 5 : 2.6} fill={color} {...(focus ? { fillOpacity: 0.9 } : dotFill('dense'))}
-                          stroke={focus ? INK.text : dotRim().stroke} strokeWidth={focus ? 1.5 : dotRim().strokeWidth} style={{ cursor: 'pointer' }}
-                          onMouseEnter={(e) => { tip.show(e, [
-                            id ?? `filter #${p.i + 1}`,
-                            `${site} · ${run.eval.date?.[p.i] ?? 'no date'} · ${run.eval.group[p.i]}`,
-                            `${titleOf(xk)}: ${fmt(p.x, 3)}${xk === DEP && deployedOf(run, p.i)?.from === 'public release' ? ' (public SPARTAN release)' : ''}`,
-                            `${titleOf(yk)}: ${fmt(p.y, 3)}${yk === DEP && deployedOf(run, p.i)?.from === 'public release' ? ' (public SPARTAN release)' : ''}`,
-                            'click to pin it on every chart and open its record',
-                          ]); if (key) hl.setHover(key) }}
-                          onMouseLeave={() => { tip.hide(); hl.setHover(null) }}
-                          {...(key ? fidProps(key) : {})}
-                          onClick={() => { hl.openRecord(record()); if (key) hl.setPinned(key) }}
-                        />
-                      )
-                    })}
-                    {seg && <svg width={S} height={S} overflow="hidden" pointerEvents="none"><RegressionBand stats={st} method={estimator} color={fitStyle.color} x={x} y={y} domain={x.domain()} /></svg>}
-                    {seg && <line {...seg} pointerEvents="none" stroke={fitStyle.color} strokeWidth={1.8} strokeDasharray={fitStyle.dash} />}
+                      })}>
+                      {seg && <svg width={S} height={S} overflow="hidden" pointerEvents="none"><RegressionBand stats={st} method={estimator} color={fitStyle.color} x={x} y={y} domain={x.domain()} /></svg>}
+                      {seg && <line {...seg} pointerEvents="none" stroke={fitStyle.color} strokeWidth={1.8} strokeDasharray={fitStyle.dash} />}
+                    </TransferPoints>
                     {savedPair && <text x={S / 2} y={S + 36} textAnchor="middle" fontSize={11} fontFamily={FONT.mono} fill={fitStyle.color}>
                       {`${fitName} ${fmtFit(fit?.slope ?? null, fit?.intercept ?? null)} · R² ${fmt(fit?.m.R2 ?? null, 2)}`}
                       <title>{showCI ? ci ? `${ci.description}; slope [${fmt(ci.slope[0], 3)}, ${fmt(ci.slope[1], 3)}]; intercept [${fmt(ci.intercept[0], 3)}, ${fmt(ci.intercept[1], 3)}]` : '95% CI unavailable: insufficient data or saved fit differs from live pairs' : ''}</title>
@@ -329,6 +318,30 @@ function SiteMultiples({ runs, siteRuns, mac, at, controls, presetLabel, gallery
       </div>
     </ChartFrame>
   )
+}
+
+type TransferPoint = { x: number; y: number; i: number }
+
+/**
+ * One site panel's filters (components/ScatterLayer): drawn once per readout and range; a hover draws the focused
+ * filter over them. `children` (the saved fit and its band) sit over the dots.
+ */
+function TransferPoints({ pts, x, y, side, color, tip, idOf, tipOf, recordOf, children }: {
+  pts: TransferPoint[]; x: d3.ScaleLinear<number, number>; y: d3.ScaleLinear<number, number>; side: number; color: string
+  tip: ReturnType<typeof useTooltip>; idOf: (p: TransferPoint) => string | null; tipOf: (p: TransferPoint) => string[]
+  recordOf: (p: TransferPoint) => FilterRecord; children: React.ReactNode
+}) {
+  const hl = useHighlightActions()
+  const xy = useMemo(() => pts.map((p) => [x(p.x), y(p.y)] as const), [pts, x.domain().join(), y.domain().join(), side]) // eslint-disable-line react-hooks/exhaustive-deps
+  const dots = useMemo(() => pts.map((p, i) => {
+    const key = idOf(p)
+    return <circle key={p.i} cx={xy[i][0]} cy={xy[i][1]} r={2.6} fill={color} {...dotFill('dense')} stroke={dotRim().stroke} strokeWidth={dotRim().strokeWidth} {...(key ? fidProps(key) : {})} />
+  }), [pts, xy, color]) // eslint-disable-line react-hooks/exhaustive-deps
+  return <ScatterLayer items={pts} xy={xy} idOf={idOf} dots={dots} width={side} height={side} tip={tip} tipOf={tipOf} focusR={5}
+    focus={(_p, [cx, cy]) => <circle cx={cx} cy={cy} r={5} fill={color} fillOpacity={0.9} stroke={INK.text} strokeWidth={1.5} />}
+    onPick={(p) => { hl.openRecord(recordOf(p)); const key = idOf(p); if (key) hl.setPinned(key) }}>
+    {children}
+  </ScatterLayer>
 }
 
 function TransferTable({ runs, siteRuns, mac, at, presetLabel }: { runs: CalibRunsFile; siteRuns: CalibRun[]; mac: number; at: MacAt; presetLabel: string }) {

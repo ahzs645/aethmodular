@@ -27,6 +27,25 @@ export const RECON_PARTS: readonly { key: string; label: string }[] = [
 ]
 export const RECON_FIELDS = RECON_PARTS.map((p) => p.label)
 
+/**
+ * What each component is made from (gallery/data/export_spartan_composition.py, SPARTAN's ReconstrPM25 parameters),
+ * and the measured species in the gallery that sit underneath it, shown beside it on the same filters
+ */
+export const RECON_SOURCE: Record<string, { from: string; measured: string[] }> = {
+  'Black Carbon': { from: "SPARTAN's BC PM2.5: HIPS absorption, or estimated from the HIPS-SSR curve (methods 219-221)", measured: ['BC (public HIPS)', 'HIPS BC', 'EC (FTIR)'] },
+  TEO: { from: "SPARTAN's Trace Element Oxides: the trace elements (ICP-MS) as their oxides", measured: ['Zinc', 'Copper', 'Lead', 'Manganese', 'Chromium', 'Vanadium', 'Nickel', 'Arsenic', 'Cadmium', 'Antimony', 'Barium', 'Strontium', 'Tin'] },
+  Dust: { from: "SPARTAN's Fine Soil: Al, Si, Ca, Fe and Ti (XRF/ICP-MS) with the regional mineral-to-aluminium ratio and correction factor", measured: ['Aluminum', 'Silicon', 'Calcium (element)', 'Iron', 'Titanium'] },
+  Sodium: { from: "SPARTAN's Sea Salt ÷ 2.54: the sea-salt sodium (Sea Salt = 2.54 [Na+]ss), not the sodium ion", measured: ['Sodium', 'Sodium (element)'] },
+  Chloride: { from: "SPARTAN's Sea Salt × 1.54 / 2.54: the rest of the sea salt (Malm et al. 1994)", measured: ['Chlorine'] },
+  Potassium: { from: 'Potassium Ion PM2.5 (ion chromatography, ChemSpecPM25)', measured: ['Potassium', 'Potassium (element)'] },
+  Nitrate: { from: 'Nitrate Ion PM2.5 (ion chromatography)', measured: ['Nitrate'] },
+  Ammonium: { from: 'Ammonium Ion PM2.5 (ion chromatography; newer filters: Teflon NH4 plus 0.29 × nylon NO3, method 621)', measured: ['Ammonium'] },
+  Sulfate: { from: 'Sulfate Ion PM2.5 (ion chromatography)', measured: ['Sulfate'] },
+  Water: { from: "particle-bound water at the weighing RH (35%): by difference, what is left of SPARTAN's 'Residual Matter with OC' balance once the other components and OC are taken out", measured: [] },
+  'Org. Carbon': { from: 'OC PM2.5 (FTIR)', measured: ['OC (FTIR)'] },
+  Residual: { from: "SPARTAN's Residual Matter with OC: by difference, mainly the non-carbon mass of the organics (compare FTIR OM less OC)", measured: ['OM (FTIR)'] },
+}
+
 /** the component families (the set editor names them): what each component is, not the stacking order */
 const RECON_GROUPS = [
   { label: 'Carbon', fields: ['Black Carbon', 'Org. Carbon'] },

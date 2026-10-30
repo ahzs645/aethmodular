@@ -7,7 +7,8 @@ import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { XAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
+import { focusStyle, useHighlightActions } from '@/lib/highlight'
+import { ScatterLayer } from '@/components/ScatterLayer'
 import { fidProps } from '@/lib/filterEdits'
 import { fmt } from '@/lib/stats'
 import { FONT, INK } from '@/lib/theme'
@@ -31,7 +32,8 @@ export function AeronetScaleHeightTime({ rows, meta }: { rows: FilterRow[]; meta
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const hl = useHighlight()
+  // the brush only: the dots read the hover themselves (components/ScatterLayer)
+  const hl = useHighlightActions()
   // the rows' public BC is at the reader's MAC: surfaceFabs needs it to get back to Fabs
   const { mac } = useMac()
   const pts = useMemo(() => rows.flatMap((r) => {
@@ -72,8 +74,16 @@ export function AeronetScaleHeightTime({ rows, meta }: { rows: FilterRow[]; meta
   }, [pts, by]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const iw = Math.max(260, width - M.left - M.right), ih = 260
-  const x = d3.scaleTime().domain(d3.extent(pts, (p) => p.t) as [Date, Date]).range([0, iw]).nice()
-  const y = d3.scaleLog().domain([Math.max(10, (d3.min(pts, (p) => p.h) ?? 100) * 0.8), (d3.max(pts, (p) => p.h) ?? 1000) * 1.25]).range([ih, 0])
+  const { x, y } = useMemo(() => ({
+    x: d3.scaleTime().domain(d3.extent(pts, (p) => p.t) as [Date, Date]).range([0, iw]).nice(),
+    y: d3.scaleLog().domain([Math.max(10, (d3.min(pts, (p) => p.h) ?? 100) * 0.8), (d3.max(pts, (p) => p.h) ?? 1000) * 1.25]).range([ih, 0]),
+  }), [pts, iw])
+  const xy = useMemo(() => pts.map((p) => [x(p.t), y(p.h)] as const), [pts, x, y])
+  // the dots, drawn once per data, colouring or brush: a hover is drawn over them (components/ScatterLayer)
+  const dots = useMemo(() => pts.map((p, i) => {
+    const st = focusStyle(p.row.id, null, { r: 3 }, hl.selected)
+    return <circle key={p.row.id} cx={xy[i][0]} cy={xy[i][1]} r={st.r} fill={colorOf(groupOf(p.row))} fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={st.dot} {...fidProps(p.row.id)} />
+  }), [pts, xy, hl.selected, by, groups, yearColours.stops.join()]) // eslint-disable-line react-hooks/exhaustive-deps
   const yTicks = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000].filter((v) => v >= y.domain()[0] && v <= y.domain()[1])
 
   return (
@@ -91,15 +101,12 @@ export function AeronetScaleHeightTime({ rows, meta }: { rows: FilterRow[]; meta
               </g>)}
               <text transform={`translate(-48,${ih / 2}) rotate(-90)`} textAnchor="middle" fontSize={12} fill={INK.text}>Scale height H (m, log)</text>
               <XAxis scale={x} y={ih} tickCount={8} format={d3.utcFormat('%b %Y')} />
-              {focusLast(pts, (p) => p.row.id, hl.focusId).map(([p]) => {
-                const st = focusStyle(p.row.id, hl.focusId, { r: 3 }, hl.selected)
-                const c = colorOf(groupOf(p.row))
-                return <circle key={p.row.id} cx={x(p.t)} cy={y(p.h)} r={st.r} fill={c} fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={st.dot}
-                  style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
-                  onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.site} · ${p.row.date}`, `H ${fmt(p.h, 0)} m`,
-                    `AAOD 675 ${fmt(p.row[AAOD675] as number, 4)} · Fabs ${fmt(surfaceFabs(p.row, mac), 1)} Mm⁻¹`, label(groupOf(p.row)), 'click for details']) }}
-                  onMouseLeave={() => { hl.setHover(null); tip.hide() }} onClick={() => hl.openSample(p.row.id)} />
-              })}
+              <ScatterLayer items={pts} xy={xy} idOf={(p) => p.row.id} dots={dots} width={iw} height={ih} tip={tip}
+                tipOf={(p) => [p.row.id, `${p.row.site} · ${p.row.date}`, `H ${fmt(p.h, 0)} m`,
+                  `AAOD 675 ${fmt(p.row[AAOD675] as number, 4)} · Fabs ${fmt(surfaceFabs(p.row, mac), 1)} Mm⁻¹`, label(groupOf(p.row)), 'click for details']}
+                focusR={(p) => focusStyle(p.row.id, p.row.id, { r: 3 }).r}
+                focus={(p, [cx, cy]) => { const st = focusStyle(p.row.id, p.row.id, { r: 3 }); return <circle cx={cx} cy={cy} r={st.r} fill={colorOf(groupOf(p.row))} fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} /> }} />
+              {/* the medians over the dots' pointer layer, so each keeps its own tooltip */}
               {steps.map((s, i) => <line key={i} x1={x(s.a)} x2={Math.max(x(s.b), x(s.a) + 4)} y1={y(s.med)} y2={y(s.med)} stroke={colorOf(s.g)} strokeWidth={3} strokeLinecap="round"
                 onMouseEnter={(e) => tip.show(e, [label(s.g), `median H ${fmt(s.med, 0)} m`, `${s.n} filters, ${d3.utcFormat('%b %Y')(s.a)} – ${d3.utcFormat('%b %Y')(s.b)}`])} onMouseLeave={tip.hide} />)}
             </g>

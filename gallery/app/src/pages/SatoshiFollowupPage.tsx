@@ -15,7 +15,8 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
 import { PageChoiceControls, PageChoices, usePageChoice } from '@/lib/pageChoices'
 import { SidebarControls } from '@/lib/pageSidebar'
-import { dotFill, dotRim, useHighlight, type FilterRecord } from '@/lib/highlight'
+import { dotFill, dotRim, useHighlightActions, type FilterRecord } from '@/lib/highlight'
+import { ScatterLayer } from '@/components/ScatterLayer'
 import { BANK_COLOR, BASELINE_COLOR, FONT, INK, OCT1_HATCH, SPECTRAL_REGION, themed } from '@/lib/theme'
 import { f2, f3, pct, signed, coef, coefSigned } from '@/lib/format'
 import { ALL_ADDIS, ANALYSIS_CALENDAR_NOTE, shortSeason } from '@/lib/seasons'
@@ -103,7 +104,8 @@ function SatoshiView({ data }: { data: SatoshiData }) {
   const sx = useSearchParam<string>('satx', 'TOR EC', [...SAT_AXES])
   const sy = useSearchParam<string>('saty', 'FTIR EC', [...SAT_AXES])
   const oct1 = useOct1()
-  const hl = useHighlight()
+  // the pin only: a hover anywhere does not re-render the page
+  const hl = useHighlightActions()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') hl.setPinned(null) }
     window.addEventListener('keydown', onKey)
@@ -259,7 +261,7 @@ function OverlapScatter({ data, mask, group }: { data: SatoshiData; mask: Mask; 
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
-  const hl = useHighlight()
+  const hl = useHighlightActions()
   const clip = useId()
   const mb = data.members
   const idx = useMemo(() => mb.mask.map((_, i) => i).filter((i) => mb.mask[i] === mask && mb.group[i] === group && (mb.tor_ec_ugm3[i] as number) > 0 && (mb.tor_oc_ec[i] as number) > 0), [mb, mask, group])
@@ -269,7 +271,12 @@ function OverlapScatter({ data, mask, group }: { data: SatoshiData; mask: Mask; 
   const x = d3.scaleLog().domain([0.01, 5]).range([0, iw]).clamp(true)
   const y = d3.scaleLog().domain([0.3, 40]).range([ih, 0]).clamp(true)
   const order = (p: string) => (p === 'shared' ? 2 : 1)
-  const sorted = [...idx].sort((a, b) => order(String(mb.part[a])) - order(String(mb.part[b])))
+  const sorted = useMemo(() => [...idx].sort((a, b) => order(String(mb.part[a])) - order(String(mb.part[b]))), [idx, mb])
+  const idOf = (i: number) => `improve:${mb.filter_id[i]}`
+  // the dots, drawn once per set and size: a hover or pin is drawn over them (components/ScatterLayer)
+  const xy = useMemo(() => sorted.map((i) => [x(mb.tor_ec_ugm3[i] as number), y(mb.tor_oc_ec[i] as number)] as const), [sorted, mb, iw]) // eslint-disable-line react-hooks/exhaustive-deps
+  const dots = useMemo(() => sorted.map((i, k) => <circle key={i} cx={xy[k][0]} cy={xy[k][1]} r={3} fill={PART_COLOR[String(mb.part[i])]} {...dotFill('standard')}
+    stroke={dotRim().stroke} strokeWidth={dotRim().strokeWidth} />), [sorted, mb, xy])
   return (
     <div ref={ref} style={{ position: 'relative', marginTop: 12 }}>
       <svg width={iw + m.left + m.right} height={ih + m.top + m.bottom} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
@@ -278,19 +285,13 @@ function OverlapScatter({ data, mask, group }: { data: SatoshiData; mask: Mask; 
           <YAxis scale={y as any} x={0} label="TOR OC/EC" tickCount={5} gridWidth={iw} labelX={-44} format={logTick} />
           <XAxis scale={x as any} y={ih} label="TOR EC (µg/m³, log)" tickCount={5} format={logTick} labelDy={38} />
           <g clipPath={`url(#${clip})`}>
-            <rect width={iw} height={ih} fill="transparent" onClick={() => hl.setPinned(null)} />
-            {sorted.map((i) => {
-              const part = String(mb.part[i]), id = `improve:${mb.filter_id[i]}`
-              const focus = id === hl.pinnedId || id === hl.hoverId
-              return <circle key={i} cx={x(mb.tor_ec_ugm3[i] as number)} cy={y(mb.tor_oc_ec[i] as number)} r={focus ? 6 : 3} fill={PART_COLOR[part]} {...dotFill('standard')}
-                stroke={focus ? INK.text : dotRim().stroke} strokeWidth={focus ? 2 : dotRim().strokeWidth} style={{ cursor: 'pointer' }}
-                onMouseEnter={(e) => { tip.show(e, [`IMPROVE ${mb.Site[i]} · filter ${mb.filter_id[i]}`, part, `TOR EC ${f2(mb.tor_ec_ugm3[i])} µg/m³ · OC/EC ${f2(mb.tor_oc_ec[i])}`, `rank spline ${mb.rank_spline[i] ?? '—'} · rank VIBES ${mb.rank_vibes[i] ?? '—'}`, 'click to pin and open its record']); hl.setHover(id) }}
-                onMouseLeave={() => { tip.hide(); hl.setHover(null) }}
-                onClick={() => { hl.setPinned(id); hl.openRecord(improveRecord(mb.filter_id[i] as number, String(mb.Site[i]), `Satoshi 2 Oct · analogs of ${group} · ${part}`, [
-                  ['in analog set', part], ['rank, spline selection', mb.rank_spline[i]], ['rank, VIBES selection', mb.rank_vibes[i]],
-                  ['Pearson r, spline', mb.r_spline[i]], ['Pearson r, VIBES', mb.r_vibes[i]], ['TOR EC (µg/m³)', mb.tor_ec_ugm3[i]],
-                  ['TOR OC/EC', mb.tor_oc_ec[i]], ['Fabs / TOR EC (m²/g)', mb.mac_ratio[i]], ['TOR EC loading (µg/filter)', mb.loading_ug[i]], ['IMPROVE lot', mb.lot[i]]])) }} />
-            })}
+            <ScatterLayer items={sorted} xy={xy} idOf={idOf} dots={dots} width={iw} height={ih} tip={tip}
+              focus={(i, [cx, cy]) => <circle cx={cx} cy={cy} r={6} fill={PART_COLOR[String(mb.part[i])]} {...dotFill('standard')} stroke={INK.text} strokeWidth={2} />}
+              tipOf={(i) => [`IMPROVE ${mb.Site[i]} · filter ${mb.filter_id[i]}`, String(mb.part[i]), `TOR EC ${f2(mb.tor_ec_ugm3[i])} µg/m³ · OC/EC ${f2(mb.tor_oc_ec[i])}`, `rank spline ${mb.rank_spline[i] ?? '—'} · rank VIBES ${mb.rank_vibes[i] ?? '—'}`, 'click to pin and open its record']}
+              onPick={(i) => { const part = String(mb.part[i]); hl.setPinned(idOf(i)); hl.openRecord(improveRecord(mb.filter_id[i] as number, String(mb.Site[i]), `Satoshi 2 Oct · analogs of ${group} · ${part}`, [
+                ['in analog set', part], ['rank, spline selection', mb.rank_spline[i]], ['rank, VIBES selection', mb.rank_vibes[i]],
+                ['Pearson r, spline', mb.r_spline[i]], ['Pearson r, VIBES', mb.r_vibes[i]], ['TOR EC (µg/m³)', mb.tor_ec_ugm3[i]],
+                ['TOR OC/EC', mb.tor_oc_ec[i]], ['Fabs / TOR EC (m²/g)', mb.mac_ratio[i]], ['TOR EC loading (µg/filter)', mb.loading_ug[i]], ['IMPROVE lot', mb.lot[i]]])) }} />
           </g>
         </g>
       </svg>

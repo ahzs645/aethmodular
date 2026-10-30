@@ -5,7 +5,7 @@ import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { Legend } from '@/components/Legend'
 import { Panels } from '@/components/Panels'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
-import { useHighlight } from '@/lib/highlight'
+import { useHighlightActions } from '@/lib/highlight'
 import { fmt, regression } from '@/lib/stats'
 import { FIT_STYLE, fitsFor, useRegressions, type Estimator } from '@/lib/regressionPrefs'
 import { INK, withUnit } from '@/lib/theme'
@@ -30,7 +30,7 @@ const BEST_N = 15
  * threshold on the sweep to split there.
  */
 export function HumidityAgreement({ rows, meta, xField, yField, rhField }: { rows: FilterRow[]; meta: MetaFile; xField: string; yField: string; rhField: string }) {
-  const hl = useHighlight()
+  const hl = useHighlightActions()
   const [thr, setThr] = useState(50)
   // the sweep's slopes come from the estimators ticked in the sidebar, as the crossplot's fits do; with every
   // fit switched off it still needs one, so it falls back to Deming (the gallery's default)

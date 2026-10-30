@@ -14,7 +14,7 @@ import { ColorLegend } from '@/components/ColorLegend'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { FocusLayer, PinRing, focusStyle, useHighlightActions } from '@/lib/highlight'
+import { FocusLayer, PinRing, dotRim, focusStyle, useHighlightActions } from '@/lib/highlight'
 import { HitLayer } from '@/components/HitLayer'
 import { useFilterEdits } from '@/lib/filterEdits'
 import { RESTATES, isBookkeeping, sameProduct } from '@/fieldLineage'
@@ -423,18 +423,22 @@ const SplomCell = memo(function SplomCell({ rows, fx, fy, sx, sy, cellS, ox, oy,
   // each dot's place in the panel, clamped to it (the axes run 1–99 %, so a spike sits on the edge)
   const xy = useMemo(() => pts.map((p) => [Math.max(0, Math.min(cellS, sx(p.x))), Math.max(0, Math.min(cellS, cellS - sy(p.y)))] as const), [pts, sx, sy, cellS])
   const keys = useMemo(() => new Set(pts.map((p) => p.row.id)), [pts])
+  // the rim most dots share is the group's (inherited), so only a dot that differs (a brushed one) carries its own:
+  // the theme's paint rules (lib/themeCss) then match one group, not every circle, which halves the dots' style pass
+  const rim = dotRim()
   const dots = useMemo(() => pts.map((p, i) => {
     const f = focusStyle(p.row.id, null, { r: 2, level: 'dense' }, selected)
     const k = dim(p.row.site)
+    const own = f.stroke !== rim.stroke || f.strokeWidth !== rim.strokeWidth
     return <circle key={p.row.id} cx={xy[i][0]} cy={xy[i][1]} r={f.r} fill={p.row.color as string} fillOpacity={f.opacity * k}
-      stroke={f.stroke} strokeWidth={f.strokeWidth} data-dot={k === 1 ? f.dot : undefined} data-fid={p.row.id} />
-  }), [pts, xy, selected, dimKey]) // eslint-disable-line react-hooks/exhaustive-deps
+      stroke={own ? f.stroke : undefined} strokeWidth={own ? f.strokeWidth : undefined} data-dot={k === 1 ? f.dot : undefined} data-fid={p.row.id} />
+  }), [pts, xy, selected, dimKey, rim.stroke]) // eslint-disable-line react-hooks/exhaustive-deps
   // the overlay: a veil that dims the dots while a filter is focused, the fits and r over it, then the focused dot
   // and the pointer layer. The veil is the panel at 65 %, the same as the dots at 35 %, without touching the dots
   const veilRef = useRef<SVGGElement>(null)
   return <g className="splom-cell">
     <rect width={cellS} height={cellS} fill={INK.panel} stroke={INK.grid} />
-    <g className="splom-dots" pointerEvents="none">{dots}</g>
+    <g className="splom-dots" pointerEvents="none" stroke={rim.stroke} strokeWidth={rim.strokeWidth}>{dots}</g>
     {overlay && createPortal(<g transform={`translate(${ox},${oy})`} data-menu-action={`Open ${chemText(fy)} vs ${chemText(fx)} as a crossplot`} data-menu-detail={`${fx}|${fy}`}>
     <g ref={veilRef} className="splom-veil" data-export="skip" pointerEvents="none"><rect width={cellS} height={cellS} fill={INK.panel} fillOpacity={0.65} /></g>
     {grouping !== 'pooled' ? <RegressionGroupLines groups={fitGroups} x={sx} y={v => cellS - sy(v)} width={cellS} height={cellS} />
