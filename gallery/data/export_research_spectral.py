@@ -382,6 +382,7 @@ def network_map() -> Page:
           cell="season_analogs.to_csv / season_analogs_loading_matched.csv")
     p.optional("site_correlation", PHASE3, nb, out + "site_median_correlation.csv",
                "the full site × site correlation of median corrected spectra (157 IMPROVE sites + 5 SPARTAN), for a dendrogram")
+    raw_site_tables(p, nb)
 
     smoke = classes.loc[classes.pct_smoke_lineage.idxmax()]
     enrichment = number(r"Most smoke-lineage-enriched class: \d+ \(([\d.]+)x the library rate", mags)
@@ -391,6 +392,116 @@ def network_map() -> Page:
         f"Class {int(smoke.cluster)} holds {enrichment:.1f}× the library share of the deployed model's smoke lineage "
         f"(top sites {smoke.top_sites}); Addis has {int(smoke.addis_n)} of 239 filters in it, Delhi {int(smoke.indh_n)} of 152.")
     return p
+
+
+# ftir_52's five SPARTAN targets: (site code, row label in site_median_correlation.csv)
+FTIR52_TARGETS = (("ETAD", "*Addis"), ("ETBI", "*Bishoftu"), ("INDH", "*Delhi"), ("CHTS", "*Beijing"), ("USPA", "*Pasadena"))
+# §7 compares raw spectra on the corrected grid's window only, so the two spaces see the same channels
+RAW_WINDOW = (1425.0, 3999.0)
+# make_mask's two AIRSpec segments (airspec_baseline.SEG1/SEG2, open intervals): a pool row is in the
+# library when it is finite on both, exactly as apply_airspec_baseline.process_improve keeps it
+AIRSPEC_SEGMENTS = ((1820.0, 4000.0), (1425.0, 2000.0))
+
+
+def raw_site_tables(p: Page, nb: str) -> None:
+    """ftir_52 §7 [21–22]: the site × site similarity in RAW space, which the notebook computes and plots
+    (raw_vs_baselined_sites.png) but never writes. Recomputed from the Davis Data raw spectra where they
+    resolve; the baselined side is site_correlation. Published only if it reproduces §7's printed counts."""
+    medians = raw_site_medians()
+    if medians is None:
+        p.missing.append({"table": "raw_sites / raw_pairs", "what": "the raw-space site × site similarity behind raw_vs_baselined_sites.png (ftir_52 §7)",
+                          "needs": "<Davis Data>/FTIR/local_db/spectra_248_251.csv, DAVIS/ETAD FTIR, DAVIS/SPARTAN FTIR pulls/<site>, Spartan/SPARTAN_HIPS_Batch1-51.v2.csv",
+                          "run": "AETHMODULAR_DRIVE_ROOT=<your My Drive> uv run --locked --no-sync python gallery/data/export_research_spectral.py"})
+        return
+    names, n, M = medians
+    printed = p.stream(PHASE3, nb, "moved.to_csv")
+    improve, expected = sum(not s.startswith("*") for s in names), number(r"(\d+) sites in both spaces", printed, int)
+    if improve != expected:
+        raise ValueError(f"raw site medians cover {improve} IMPROVE sites, not the {expected} ftir_52 printed")
+    Z = M - M.mean(axis=1, keepdims=True)
+    Z /= np.linalg.norm(Z, axis=1, keepdims=True)
+    R = Z @ Z.T
+    a, b = np.triu_indices(len(names), 1)
+    imp = np.array([not s.startswith("*") for s in names])
+    pair_median = float(np.median(R[a, b][imp[a] & imp[b]]))
+    if round(pair_median, 4) != number(r"raw pair similarity: median ([\d.]+)", printed):
+        raise ValueError(f"raw median site-pair r {pair_median:.4f} does not reproduce ftir_52's printed value")
+    source = {"notebook": nb, "read": "recomputed from the Davis Data raw spectra (ftir_52 §7's method), checked against its printed site count and median pair r",
+              "path": "FTIR/local_db/spectra_248_251.csv, DAVIS/ETAD FTIR, DAVIS/SPARTAN FTIR pulls; window 1425–3999 cm⁻¹"}
+    p.add("raw_sites", pd.DataFrame({"site": names, "spartan": ~imp, "n_spectra": n}), **source)
+    # one row per pair of raw_sites in upper-triangle order (0–1, 0–2, …, 1–2, …; np.triu_indices(n, 1)), 1 − r in
+    # parts per million to four significant figures: raw pairs sit at r ≈ 0.999, so the bundle's four-decimal
+    # rounding of r, or of 1 − r, would erase them
+    p.add("raw_pairs", pd.DataFrame({"d_raw_ppm": [float(f"{v:.4g}") for v in 1e6 * (1 - R[a, b])]}), **source)
+
+
+def raw_site_medians() -> tuple[list[str], list[int], np.ndarray] | None:
+    """Median RAW absorbance (1425–3999 cm⁻¹) per IMPROVE site (≥ 20 library spectra) and per SPARTAN
+    target, as ftir_52 builds them; None when the Davis Data files are not reachable.
+
+    IMPROVE: the lot-248/251 pool rows that are finite on the AIRSpec segments (the library), sites with
+    ≥ 20 of them. Addis: load_addis_evaluation's 239 filters (replicate scans averaged; HIPS Fabs and a
+    positive volume). The other four: build_spartan_target's decoding of the SPARTAN FTIR pulls,
+    restricted to the filters it writes (HIPS Fabs and a positive volume)."""
+    sys.path.insert(0, str(ROOT / "research/ftir_hips_chem/scripts"))
+    from pls_transfer import FTIRTransferPaths
+
+    paths = FTIRTransferPaths.defaults()
+    pool = paths.ftir_dir / "local_db/spectra_248_251.csv"
+    pulls = paths.etad_dir.parent / "SPARTAN FTIR pulls"
+    needed = [pool, paths.etad_dir / "ETAD_FTIR_spectra.csv", paths.etad_dir / "ETAD_metadata.csv", paths.spartan_hips_primary]
+    needed += [pulls / code / f"{code}_{kind}.csv" for code, _ in FTIR52_TARGETS[1:] for kind in ("filters", "ftir_analysis", "scans_base64")]
+    if not all(path.exists() for path in needed):
+        return None
+
+    header = pd.read_csv(pool, nrows=0).columns
+    grid = pd.to_numeric(header, errors="coerce").to_numpy(float)
+    wcols = header[np.isfinite(grid)].tolist()
+    wn = grid[np.isfinite(grid)]
+    window = (wn >= RAW_WINDOW[0]) & (wn <= RAW_WINDOW[1])
+    analysed = np.zeros(len(wn), bool)
+    for lo, hi in AIRSPEC_SEGMENTS:
+        analysed |= (wn > lo) & (wn < hi)
+    sites, spectra = [], []
+    for chunk in pd.read_csv(pool, usecols=["Site"] + wcols, chunksize=2048, dtype={"Site": "string"}):
+        values = chunk[wcols].to_numpy(float)
+        keep = np.isfinite(values[:, analysed]).all(axis=1)
+        sites.append(chunk["Site"].to_numpy(str)[keep])
+        spectra.append(values[keep][:, window])
+    site, raw = np.concatenate(sites), np.vstack(spectra)
+    ok = np.isfinite(raw).all(axis=1)
+    counts = pd.Series(site).value_counts()
+    names, n, rows = [], [], []
+    for s in counts[counts >= 20].index:
+        m = (site == s) & ok
+        if m.sum() >= 20:
+            names.append(s); n.append(int(m.sum())); rows.append(np.median(raw[m], axis=0))
+
+    hips = pd.read_csv(paths.spartan_hips_primary, encoding="cp1252", usecols=["Site", "FilterId", "Fabs"])
+    hips = hips.drop_duplicates(["Site", "FilterId"]).rename(columns={"FilterId": "ExternalFilterId"})
+    # Addis, as load_addis_evaluation: replicate scans averaged per filter
+    etad = pd.read_csv(paths.etad_dir / "ETAD_FTIR_spectra.csv")
+    etad = etad.groupby("MediaId", as_index=False)[wcols].mean()
+    meta = pd.read_csv(paths.etad_dir / "ETAD_metadata.csv")
+    etad = etad.merge(meta, on="MediaId", how="left").merge(hips[hips.Site.eq("ETAD")].drop(columns="Site"), on="ExternalFilterId", how="left")
+    etad = etad[etad[wcols].notna().all(axis=1) & etad["Fabs"].notna() & etad["SampleVolume_m3"].gt(0)]
+    targets = {"ETAD": etad[wcols].to_numpy(float)[:, window]}
+    # the other four, as build_spartan_target
+    sys.path.insert(0, str(PHASE3 / "scripts"))
+    from build_spartan_target import decode_scans
+
+    for code, _ in FTIR52_TARGETS[1:]:
+        def read(kind: str) -> pd.DataFrame:
+            frame = pd.read_csv(pulls / code / f"{code}_{kind}.csv", encoding="utf-8-sig")
+            frame.columns = [c.strip('﻿"') for c in frame.columns]
+            return frame
+        spec = decode_scans(read("scans_base64"), read("ftir_analysis"), wcols, wn)
+        ref = read("filters").merge(hips[hips.Site.eq(code)].drop(columns="Site"), on="ExternalFilterId", how="left")
+        ref = ref[ref["MediaId"].isin(spec.index) & ref["Fabs"].notna() & ref["SampleVolume_m3"].gt(0)]
+        targets[code] = spec.loc[ref["MediaId"].astype(int)].to_numpy(float)[:, window]
+    for code, label in FTIR52_TARGETS:
+        names.append(label); n.append(len(targets[code])); rows.append(np.median(targets[code], axis=0))
+    return names, n, np.vstack(rows)
 
 
 # ---------------------------------------------------------------- June 2026 Ethiopia calibrations (07, 09, 10, 12, 15; spartan_ec 08)
@@ -481,6 +592,7 @@ def ethiopia_calibrations() -> Page:
 
     smoke_tables(p)
     adama_tables(p)
+    june_spectra(p, rec)
 
     old, new = (rec.EC_ugm3_old.median(), rec.EC_ugm3_new.median())
     p.text["finding"] = (
@@ -627,6 +739,144 @@ def adama_tables(p: Page) -> None:
                "optimized": "05_calibration_optimization", "stabilized": "07_calibration_optimization_story"}
     for name, frame in spartan.items():
         p.add(f"adama_{name}", frame, notebook=writers[name], read="tracked csv", path=rel(JUNE16 / f"tables/adama_ec_{name}_comparison.csv"))
+
+
+# June notebooks 01, 04, 06 [21] and 13 [9] draw spectra, not models. Absorbance goes out in mAbs (× 1000) and
+# pre-rounded, so the JSON's 4-decimal rounding does not decide the precision and the file stays small.
+ADAMA_SPECTRA = "adama_ptfe_spectra_batch54.csv"
+ADAMA_DRIVE = "DAVIS/CSU_AMOD/csu_amod_Batch_54_ShipDate_2026-05-29_spectra.csv"  # the same file under its Drive name
+ETAD_STRIDE = 4  # every 4th channel (≈ 5 cm⁻¹) for the ETAD distribution figures; the means stay at full resolution
+BANDS13 = {"CH": (2800, 3000), "C=O": (1650, 1780), "OH": (3050, 3500), "aromatic": (1580, 1620)}
+
+
+def _trapz(y: np.ndarray, x: np.ndarray, axis: int = -1) -> np.ndarray:
+    return np.trapezoid(y, x, axis=axis)
+
+
+def adama_band_areas(spec: pd.DataFrame) -> pd.DataFrame:
+    """June 01 [9]: a straight baseline through each spectrum's two end points, then the CH and C=O band areas."""
+    wn = spec["wavenumber"].to_numpy(float)
+    out = {}
+    for sid in [c for c in spec.columns if c != "wavenumber"]:
+        y = spec[sid].to_numpy(float)
+        flat = y - (y[0] + (y[-1] - y[0]) * (wn - wn[0]) / (wn[-1] - wn[0]))
+        areas = []
+        for lo, hi in ((2800, 3000), (1650, 1750)):
+            m = (wn >= lo) & (wn <= hi)
+            areas.append(_trapz(flat[m][::-1], wn[m][::-1]))
+        out[sid] = areas
+    return pd.DataFrame(out, index=["CH_area_2800_3000", "CO_area_1650_1750"]).T
+
+
+def band_profile(X: np.ndarray, wn: np.ndarray) -> np.ndarray:
+    """June 13 [9]: offset each spectrum by its 3900–4000 cm⁻¹ mean, then each band's area above its own minimum,
+    as a fraction of the four organic bands' total ([CH, C=O, OH, aromatic] per spectrum)."""
+    Xb = X - X[:, wn >= 3900].mean(1, keepdims=True)
+    areas = []
+    for lo, hi in BANDS13.values():
+        idx = np.where((wn >= lo) & (wn <= hi))[0]
+        sub = Xb[:, idx]
+        areas.append(-_trapz(sub - sub.min(1, keepdims=True), wn[idx], axis=1))
+    a = np.c_[tuple(areas)]
+    return a / (a.sum(1, keepdims=True) + 1e-9)
+
+
+def june_spectra(p: Page, rec: pd.DataFrame) -> None:
+    """The spectra behind June 01 (Adama), 04 (ETAD by month), 06 [21] (mean raw vs 2nd derivative) and 13 [9]
+    (organic-band profile), where the Drive resolves. Every figure is a deterministic transform, so the page draws
+    them from these tables in the browser (the Savitzky–Golay derivative too); each table is gated on reproducing
+    what the notebook printed or saved."""
+    t = JUNE25 / "tables"
+    # 01 [9]'s saved areas and ranks travel without the Drive: the browser recomputes the areas from the spectra
+    saved = pd.read_csv(t / "adama_spectra_peak_vs_ec.csv").rename(columns={"Unnamed: 0": "spectrum"}).astype({"spectrum": str})
+    p.add("adama_peak_vs_ec", saved, notebook="01_adama_spectra", read="tracked csv",
+          path=rel(t / "adama_spectra_peak_vs_ec.csv"))
+    nb13 = p.notebook(JUNE25, "13_chase_origin_and_biomass").stream("eth_prof, imp_prof = np.median(Fe, 0)")
+    printed = {who: [float(v) for v in re.search(rf"{who}\s*profile\s*\[CH,CO,OH,arom\]:\s*\[([^\]]+)\]", nb13).group(1).split()]
+               for who in ("ETAD", "IMPROVE")}
+    p.add("band_profile_printed", pd.DataFrame([{"set": s, **dict(zip(BANDS13, v))} for s, v in
+                                                (("ETAD / Addis (319 spectra)", printed["ETAD"]), ("IMPROVE lot 248+251 (13,012 filters)", printed["IMPROVE"]))]),
+          notebook="13_chase_origin_and_biomass", read="executed notebook output (printed)", path=rel(JUNE25 / "13_chase_origin_and_biomass.ipynb"))
+    p.missing += [
+        {"table": "dedicated_predictions", "what": "notebook 12's per-spectrum ETAD EC for the PCA Addis neighbourhood and Weakley's 2nd-derivative calibrations (the middle and right panels of its progression crossplot; the slopes and intercepts are drawn above)",
+         "needs": f"{rel(t)}/etad_dedicated_predictions.csv",
+         "run": f"cd {rel(JUNE25)} && uv run python _build_12_dedicated_ethiopia_calibration.py && uv run jupyter nbconvert --to notebook --execute --inplace 12_dedicated_ethiopia_calibration.ipynb",
+         "after": "a line in _build_12_dedicated_ethiopia_calibration.py that saves those predictions, and the Drive's ETAD spectra, Spartan/SPARTAN_HIPS_Batch1-51.v2.csv and the FTIR/local_db lot-248+251 mirror"},
+        {"table": "improve_band_profile", "what": "notebook 13's organic-band fractions for each of the 13,012 lot-248+251 training filters (only their median, printed, is drawn; the ETAD side is per spectrum)",
+         "needs": f"{rel(t)}/improve_band_profile.csv",
+         "run": f"cd {rel(JUNE25)} && uv run python _build_13_chase_origin_and_biomass.py && uv run jupyter nbconvert --to notebook --execute --inplace 13_chase_origin_and_biomass.ipynb",
+         "after": "a line in _build_13_chase_origin_and_biomass.py that writes the Fi array, and the FTIR/local_db lot-248+251 mirror (spectra_248_251.csv)"},
+    ]
+
+    sys.path.insert(0, str(ROOT / "research/ftir_hips_chem/scripts"))
+    from pls_transfer import FTIRTransferPaths, load_current_pls_model
+
+    paths = FTIRTransferPaths.defaults()
+    data = paths.etad_dir.parent.parent
+    adama = next((f for f in (JUNE16 / "data/adama" / ADAMA_SPECTRA, data / ADAMA_DRIVE) if f.exists()), None)
+    etad = paths.etad_dir / "ETAD_FTIR_spectra.csv"
+    if adama is None or not etad.exists() or not (paths.ftir_dir / "apps/apps_data.npz").exists():
+        p.missing.append({"table": "spectra", "what": "the Adama, ETAD and 906-filter training spectra behind June 01, 04, 06 [21] and 13 [9]",
+                          "needs": f"<Davis Data>/{ADAMA_DRIVE}, <Davis Data>/DAVIS/ETAD FTIR/ETAD_FTIR_spectra.csv and FTIR/apps/apps_data.npz",
+                          "run": "AETHMODULAR_DRIVE_ROOT=<your My Drive> uv run --locked --no-sync python gallery/data/export_research_spectral.py"})
+        return
+    drive = "the Drive (pls_transfer.FTIRTransferPaths)"
+
+    # 01: the five Adama PTFE spectra (rows are the file's sample row ids, 4744–4748; the map to filters is 01's assumed one)
+    raw = pd.read_csv(adama)
+    spec = pd.DataFrame(raw.iloc[:, 1:].to_numpy(float).T, columns=raw.iloc[:, 0].astype(str))
+    spec.insert(0, "wavenumber", raw.columns[1:].astype(float))
+    areas = adama_band_areas(spec)
+    check = saved.set_index("spectrum")[["CH_area_2800_3000", "CO_area_1650_1750"]]
+    if not np.allclose(areas.loc[check.index].to_numpy(), check.to_numpy(), atol=6e-5):
+        raise ValueError("the Adama spectra do not reproduce 01's tracked CH and C=O band areas")
+    milli = spec.drop(columns="wavenumber").mul(1000).round(3)
+    p.add("adama_spectra", pd.concat([spec[["wavenumber"]].round(4), milli], axis=1), notebook="01_adama_spectra", read="drive",
+          path=f"{drive}: {ADAMA_DRIVE} (= spartan_ec_2026_06_16/data/adama/{ADAMA_SPECTRA}); absorbance in mAbs",
+          note="checked: reproduces tables/adama_spectra_peak_vs_ec.csv")
+
+    # 04: the 319 ETAD spectra, as a distribution (all) and as per-month moments (the page pools any month split exactly)
+    es = pd.read_csv(etad)
+    if not es["MediaId"].equals(rec["MediaId"]):
+        raise ValueError("ETAD_FTIR_spectra.csv is not in the June tables' spectrum order")
+    wcols = sorted([c for c in es.columns if c not in ("SampleAnalysisId", "MediaId")], key=lambda c: -float(c))
+    wn = np.array([float(c) for c in wcols])
+    X = es[wcols].to_numpy(float)
+    months = pd.read_csv(t / "etad_sample_month_summary.csv")
+    if not months["MediaId"].equals(es["MediaId"]) or months.month.notna().sum() != 274:
+        raise ValueError("etad_sample_month_summary.csv no longer matches 04's month join (274 of 319 dated)")
+    keep = np.arange(0, len(wn), ETAD_STRIDE)
+    q = np.percentile(X[:, keep], [5, 25, 50, 75, 95], axis=0)
+    dist = pd.DataFrame({"wavenumber": wn[keep].round(4), **{f"q{k}": v for k, v in zip((5, 25, 50, 75, 95), q * 1000)},
+                         "mean": X[:, keep].mean(0) * 1000})
+    p.add("etad_spectra_distribution", dist.round({c: 1 for c in dist.columns if c != "wavenumber"}), notebook="04_ethiopia_etad_spectra", read="drive",
+          path=f"{drive}: DAVIS/ETAD FTIR/ETAD_FTIR_spectra.csv; every {ETAD_STRIDE}th channel; mAbs")
+    group = months.month.map(lambda m: "none" if pd.isna(m) else str(int(m)))
+    moments = {"wavenumber": wn[keep].round(4)}
+    for g in [str(m) for m in range(1, 13)] + ["none"]:
+        sub = X[group.to_numpy() == g][:, keep]
+        moments[f"mean {g}"], moments[f"sd {g}"] = sub.mean(0) * 1000, sub.std(0) * 1000  # numpy std (ddof 0), so groups pool exactly
+    moments = pd.DataFrame(moments)
+    p.add("etad_month_moments", moments.round({c: 1 for c in moments.columns if c != "wavenumber"}), notebook="04_ethiopia_etad_spectra", read="drive",
+          path=f"{drive}: DAVIS/ETAD FTIR/ETAD_FTIR_spectra.csv + tables/etad_sample_month_summary.csv; every {ETAD_STRIDE}th channel; mAbs; sd with ddof 0")
+
+    # 13 [9]: each spectrum's organic-band profile, gated on 13's printed ETAD median
+    F = band_profile(X, wn)
+    if not np.allclose(np.round(np.median(F, 0), 3), printed["ETAD"]):
+        raise ValueError("the ETAD spectra do not reproduce notebook 13's printed organic-band profile")
+    meta = pd.DataFrame({"MediaId": es["MediaId"], "ExternalFilterId": rec["ExternalFilterId"], "date": months.SamplingStartDate,
+                         "month": months.month, **{b: F[:, i].round(4) for i, b in enumerate(BANDS13)}})
+    p.add("etad_spectra_meta", meta, notebook="04_ethiopia_etad_spectra, 13_chase_origin_and_biomass", read="drive",
+          path=f"{drive}: DAVIS/ETAD FTIR/ETAD_FTIR_spectra.csv (band fractions as 13 computes them) + tables/etad_sample_month_summary.csv",
+          note="checked: the median fractions equal 13's printed ETAD profile")
+
+    # 06 [21]: the mean raw spectrum of the 906-filter set at full resolution (the page takes its 2nd derivative; Savitzky–Golay is linear)
+    model = load_current_pls_model(paths.ftir_dir, "EC")
+    if model.X.shape != (906, len(wn)) or not np.allclose(model.wavenumbers, wn, atol=1e-3):
+        raise ValueError("the 906-filter EC set is not on the ETAD grid notebook 06 used")
+    means = pd.DataFrame({"wavenumber": wn.round(4), "training 906": (model.X.mean(0) * 1000).round(3), "ETAD 319": (X.mean(0) * 1000).round(3)})
+    p.add("spectra_means", means, notebook="06_calibration_variants_components", read="drive",
+          path=f"{drive}: pls_transfer.load_current_pls_model(ftir_dir, 'EC') (906 × 2722, the rds_EC set) and DAVIS/ETAD FTIR/ETAD_FTIR_spectra.csv; mAbs")
 
 
 # ---------------------------------------------------------------- committee backup figures (ftir_53)

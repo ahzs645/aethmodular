@@ -9,6 +9,7 @@ import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import type { SectionPageProps } from '../../types'
 import { SiteSimilarityMatrix } from './SiteSimilarityMatrix'
+import { RawVsBaselined } from './network/RawVsBaselined'
 import { PageIntro, provenance, rows, useSpectral, Waiting } from './spectralCommon'
 
 const tag = (list: string, rs: Row[]) => rs.map((r): Row => ({ list, ...r }))
@@ -17,7 +18,8 @@ const tag = (list: string, rs: Row[]) => rs.map((r): Row => ({ list, ...r }))
  * ftir_52: the IMPROVE network as a spectral map. Ward classes over the 13,634-spectrum library with
  * the five SPARTAN targets, site similarity, a validated match threshold, and which IMPROVE spectra
  * each Ethiopian season draws. All tables are the executed notebook's; the site × site matrix is
- * clustered here (lib/cluster) for the dendrogram.
+ * clustered here (lib/cluster) for the dendrogram. The raw-space site matrix (§7), which the notebook
+ * plots but never writes, is recomputed by the exporter from the Davis Data spectra (network/RawVsBaselined).
  */
 export function NetworkMap({ meta }: SectionPageProps) {
   const { data, error } = useSpectral('network_map')
@@ -92,6 +94,8 @@ export function NetworkMap({ meta }: SectionPageProps) {
       title="Baselining is what makes the network comparable at all"
       subtitle="Raw spectra restricted to the corrected window: every site pair sits at r ≈ 0.999 (one spectrum plus background); after the spline baseline the pairs spread and most sites change which site is their nearest. Raw-space similarity rankings are background rankings."
       provenance={provenance(data, ['raw_vs_baselined'])} />
+
+    <RawVsBaselined data={data} meta={meta} />
 
     <Figure kind="table" id="network-seasons" data={[...tag('all library filters', rows(data, 'season_analogs')), ...tag('EC 3–12 µg band (loading-matched)', rows(data, 'season_analogs_matched'))]}
       choose={[{ column: 'list', label: 'Search' }]}

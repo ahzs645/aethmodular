@@ -93,7 +93,7 @@ export function JuneVariants(_props: SectionPageProps) {
 
   return <>
     <PageIntro id="june-intro" title="June 2026 calibration variants and chasing the origin" data={data}
-      notebooks="research/ftir_ec_calibration_2026_06_25 05_calibration_variants, 06_calibration_variants_components, 09_component_selection_fixed, 10_calibration_variants_effect, 11_hips_intercept_calibrations, 13_chase_origin_and_biomass, 14_choosing_calibration_data; research/spartan_ec_2026_06_16 05_calibration_optimization, 07_calibration_optimization_story, 08_outlier_removal_explainer">
+      notebooks="research/ftir_ec_calibration_2026_06_25 05_calibration_variants, 06_calibration_variants_components, 09_component_selection_fixed, 09_ethiopia_component_ec (panel A), 10_calibration_variants_effect, 11_hips_intercept_calibrations, 13_chase_origin_and_biomass, 14_choosing_calibration_data; research/spartan_ec_2026_06_16 05_calibration_optimization, 07_calibration_optimization_story, 08_outlier_removal_explainer">
       <p>The June notebooks were committed without their figures: their tables are tracked and their printed results are in the executed notebooks, and that is all this page draws. Nothing is refitted. The 906 IMPROVE filters (lot 251, TOR EC per filter) and the Adama filters are thermal-EC comparisons and do not depend on the MAC. The ETAD-vs-HIPS fits (notebooks 11, 13, 14) do: their slopes follow the MAC set under Filters → units (now {m.mac}).</p>
       <p>What these calibrations predict for the 319 ETAD spectra (by sample set, component count and filter lot, and against HIPS) is on <a href="#tab=research&aep=ethiopia-june">Research → Ethiopia calibrations (Jun 2026)</a>, with spartan_ec 08's removed filters. It is not repeated here.</p>
     </PageIntro>
@@ -102,8 +102,10 @@ export function JuneVariants(_props: SectionPageProps) {
     <Figure kind="sweep" id="june-rmsecv" data={rows(data, 'rmsecv_curve')} x="k" y="RMSECV" xLabel="PLS components (k)" yLabel="RMSECV (µg per filter)" height={260}
       xMarkers={[...new Set(raw5.map((r) => num(r.k)!))].map((k) => ({ at: k, label: `k = ${k}: ${raw5.filter((r) => r.k === k).map((r) => (s(r.rule).includes('5 %') ? '5 % rule' : s(r.rule).includes('2 %') ? '2 % rule' : 'minimum')).join(', ')}` }))}
       title={`CAL-0's cross-validation curve rises before it falls and is jagged, so the tolerance alone picks k = ${kAt('within 5 %') ?? '?'} or k = ${kAt('2 % tolerance') ?? '?'}`}
-      subtitle="Notebook 05: RMSECV of PLS on all 906 IMPROVE filters (5-fold shuffled CV, the predecessor's _rmsep_by_ncomp), k = 1–30. The first deep dip at k = 13 is within 5 % of the k = 21 minimum, so a 2 % and a 5 % first-minimum rule disagree; the notebooks therefore fixed one rule for every variant. TOR EC; no MAC."
-      provenance={provenance(data, ['rmsecv_curve', 'rule_picks'])} />
+      subtitle="Notebook 05: RMSECV of PLS on all 906 IMPROVE filters (5-fold shuffled CV, the predecessor's _rmsep_by_ncomp), k = 1–30. The first deep dip at k = 13 is within 5 % of the k = 21 minimum, so a 2 % and a 5 % first-minimum rule disagree; the notebooks therefore fixed one rule for every variant. Notebook 09_ethiopia_component_ec recomputed this same curve (same folds and seed; its panel A) to pick k = 21 and build its ladder: 'Mark' shows those counts, whose ETAD EC is on Research → Ethiopia calibrations (k = 40 lies past this curve's range). TOR EC; no MAC."
+      variants={[{ key: 'mark', label: 'Mark', choices: [{ value: 'rules', label: "05/06's rule picks" },
+        { value: 'ladder', label: "09's component ladder", patch: { xMarkers: [3, 10, 18, 21, 25].map((k) => ({ at: k, label: k === 21 ? 'k = 21 (09)' : `k = ${k}` })) } }] }]}
+      provenance={provenance(data, ['rmsecv_curve', 'rule_picks'], 'research/ftir_ec_calibration_2026_06_25/05_calibration_variants.ipynb fig05; 09_ethiopia_component_ec.ipynb fig09 panel A.')} />
 
     <Figure kind="intervals" id="june-rules" data={picks.map((r): Row => ({ ...r, row: `${r.rule} · ${r.spectra}` }))} row="row" block="cv"
       panels={[{ value: 'k', label: 'Components picked (CAL-0)' }, { value: 'RMSECV', label: 'Minimum of that RMSECV curve (µg per filter)' }]} aggregate={{ stat: 'median', interval: 'none' }} labelWidth={360}
