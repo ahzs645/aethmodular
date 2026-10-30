@@ -9,8 +9,8 @@ import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { Key } from '@/components/Key'
 import { timeSeasonBands } from '@/components/SeasonBands'
-import { SweepPlot, histogramSeries, type SweepSeries } from '@/components/SweepPlot'
-import { crossPath, markTip } from '@/lib/exclusionMode'
+import { SweepPlot, histogramSeries, type SweepMark, type SweepSeries } from '@/components/SweepPlot'
+import { markTip } from '@/lib/exclusionMode'
 import { fmt, pct } from '@/lib/format'
 import { ExcludedNote, FixedSetNote, useMarkReason } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
@@ -48,25 +48,12 @@ export function SetNote({ c, drawn = false, of }: { c: Charcoal; drawn?: boolean
   return <ExcludedNote count={(of ? c.marked.filter(of) : c.marked).length} drawn={drawn} />
 }
 
-/**
- * Filters → excluded: Mark on a SweepPlot, which draws no × of its own: a series that only carries the marked
- * filters' hover (no dot, no line) and the × over the plot, for the marks inside the counted points' range, so the
- * axes stay the counted ones. `children` goes to the SweepPlot.
- */
-function useSweepMarks(marked: Scored<FilterRow>[], counted: { x: Date; y: number }[], y: (s: Scored<FilterRow>) => number, yLabel: string) {
+/** Filters → excluded: Mark on the recurrence SweepPlot (`marks`): each excluded filter's ×, with why it is out */
+function useSweepMarks(marked: Scored<FilterRow>[], y: (s: Scored<FilterRow>) => number, yLabel: string): SweepMark[] {
   const reasonOf = useMarkReason()
-  return useMemo(() => {
-    if (!marked.length || !counted.length) return { series: [] as SweepSeries[], children: undefined }
-    const xs = counted.map((p) => +p.x), ys = counted.map((p) => p.y)
-    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]
-    const inside = marked.filter((s) => +new Date(s.date) >= x0 && +new Date(s.date) <= x1 && y(s) >= y0 && y(s) <= y1)
-    if (!inside.length) return { series: [] as SweepSeries[], children: undefined }
-    const series: SweepSeries[] = [{ id: 'excluded', label: 'excluded', color: INK.muted, width: 0, r: 0, marks: true,
-      points: inside.map((s) => ({ x: new Date(s.date), y: y(s), tip: markTip({ id: s.filterId, site: s.row?.site, date: `${s.date} · ${shortSeason(s.season)}` }, reasonOf(s.id) ?? 'excluded', [`${yLabel} ${fmt(y(s), 3)}`]) })) }]
-    const children = ({ x, y: sy }: { x: unknown; y: (v: number) => number }) => <path className="scatter-marks" fill="none" stroke={INK.muted} strokeWidth={1.3} strokeOpacity={0.85} strokeLinecap="round" pointerEvents="none"
-      d={inside.map((s) => crossPath((x as ScaleTime<number, number>)(new Date(s.date)), sy(y(s)))).join('')} />
-    return { series, children }
-  }, [marked, counted, y, yLabel, reasonOf])
+  return useMemo(() => marked.map((s) => ({ x: new Date(s.date), y: y(s),
+    tip: markTip({ id: s.filterId, site: s.row?.site, date: `${s.date} · ${shortSeason(s.season)}` }, reasonOf(s.id) ?? 'excluded', [`${yLabel} ${fmt(y(s), 3)}`]) })),
+  [marked, y, yLabel, reasonOf])
 }
 
 /** the notebook's value beside the page's, when the page shows the notebooks' set */
@@ -103,8 +90,7 @@ export function RawVsChar({ c, data, setPick }: { c: Charcoal; data: SpectralExp
 }
 
 export function Recurrence({ c, data, setPick }: { c: Charcoal; data: SpectralExport; setPick: React.ReactNode }) {
-  const counted = useMemo(() => c.scored.map((s) => ({ x: new Date(s.date), y: s.rChar })), [c.scored])
-  const marks = useSweepMarks(c.marked, counted, rChar, 'r_char')
+  const marks = useSweepMarks(c.marked, rChar, 'r_char')
   const series: SweepSeries[] = c.seasons.map((se) => ({ id: se.name, label: shortSeason(se.name), color: se.color, marks: true, width: 0, r: 3,
     points: c.scored.filter((s) => s.season === se.name).sort((a, b) => a.date.localeCompare(b.date))
       .map((s) => ({ x: new Date(s.date), y: s.rChar, id: s.row ? s.id : undefined, tip: [s.filterId, `${s.date} · ${shortSeason(s.season)}`, `r_char ${fmt(s.rChar, 3)} · delta ${fmt(s.delta, 3)}`] })) }))
@@ -119,7 +105,7 @@ export function Recurrence({ c, data, setPick }: { c: Charcoal; data: SpectralEx
       subtitle={`Top: each filter's best r against McCall char over time, the ${c.dryName} season shaded. Bottom: the share of filters per calendar month (all years pooled) with delta = r_raw − r_char above 0.05, char_06's anomaly rule. An instrument or filter-lot artefact would not switch on and off with the calendar for four years.`}
       provenance={<>{NB.c06} [8]. {provenance(data, ['per_filter', 'monthly_06'])}</>}>
       {!c.scored.length ? <Empty>No scored Addis filters in view.</Empty> : <>
-        <SweepPlot series={[...series, ...marks.series]} xScale="time" yLabel="r_char" height={260} children={marks.children}
+        <SweepPlot series={series} marks={marks} xScale="time" yLabel="r_char" height={260}
           background={({ x, iw, ih }) => timeSeasonBands(x as ScaleTime<number, number>, c.drySeasons, iw).map((b, i) => <rect key={i} x={b.x} y={0} width={b.w} height={ih} fill={b.color} opacity={0.1} />)} />
         <Key items={c.seasons.map((s) => ({ label: shortSeason(s.name), color: s.color }))} />
         <Bars label={`share of filters with delta > 0.05${c.set === 'notebook' ? ' (nb = char_06\'s saved rate)' : ''}`} max={1} format={(v) => pct(v)}

@@ -256,7 +256,7 @@ function LoadingPlane({ d }: { d: TorData }) {
           <td>{f2(v["volume at Adama's median EC (m³)"] / v['Adama volume now (m³)'])}×</td><td>{Math.round(v['hours at the Adama flow rate'])} h</td><td>{f2(v['volume at SPARTAN Addis median EC (m³)'])} m³</td></tr>)}</tbody>
       </table>
       <ExplainOnly><Note>At SPARTAN Addis's own median EC concentration (if the Addis city site resembles it), the volumes in the last column apply. Longer sampling at the same flow reaches the same loading; a 24 h sample at the Adama flow is about {f2(adama.volume)} m³.</Note></ExplainOnly>
-      <FixedSetNote what="the run's IMPROVE, SPARTAN and Adama filters (only a filter excluded by hand leaves the points)" />
+      <FixedSetNote what="the run's IMPROVE, SPARTAN and Adama filters" hand />
     </ChartFrame>
   )
 }

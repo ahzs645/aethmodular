@@ -2,16 +2,16 @@ import { useMemo } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { Key } from '@/components/Key'
-import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
+import { SweepPlot, type SweepMark, type SweepSeries } from '@/components/SweepPlot'
 import { fmt } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { useHighlightActions } from '@/lib/highlight'
-import { ExcludedNote } from '@/lib/markedRows'
+import { ExcludedNote, useMarkReason } from '@/lib/markedRows'
+import { markTip } from '@/lib/exclusionMode'
 import { networkColor } from '@/lib/networks'
 import { splitAtGaps } from '@/lib/stats'
 import { useSearchParam } from '@/lib/url'
 import { dateDomain, dateTicks, type Channel, type Pair, type PairSite } from './data'
-import { SweepMarks, type SweepMark } from '../sweepMarks'
 
 const SCALES = ['absolute', 'median'] as const
 const MEASURES = (ch: Channel, mac: number) => [
@@ -34,6 +34,7 @@ export function AgreementTimeline({ pairs, marked = [], sites, ch }: {
   const hl = useHighlightActions()
   const { mac } = useMac()
   const measures = MEASURES(ch, mac)
+  const reasonOf = useMarkReason()
   const per = useMemo(() => sites.map((s) => {
     const own = pairs.filter((p) => p.site === s.name).sort((a, b) => a.date.localeCompare(b.date))
     const all = own.filter((p) => measures.every((m) => m.value(p) !== null))
@@ -44,7 +45,7 @@ export function AgreementTimeline({ pairs, marked = [], sites, ch }: {
       const med = d3.median(pts, m.value) ?? 1
       const div = scale === 'median' && med > 0 ? med : 1
       // the excluded filters on the counted filters' scale (their median), each method its own ×
-      for (const p of markedOwn) { const v = m.value(p); if (v !== null) marks.push({ x: new Date(p.date), y: v / div }) }
+      for (const p of markedOwn) { const v = m.value(p); if (v !== null) marks.push({ x: new Date(p.date), y: v / div, tip: markTip(p, reasonOf(p.id) ?? 'excluded', [`${m.label}: ${fmt(v, 2)} µg/m³`]) }) }
       return splitAtGaps(pts, (p) => new Date(p.date)).map((run, j) => ({
         id: `${m.key}${j}`, label: m.label, group: m.key, color: networkColor(i), marks: true, r: 2.4, width: 1.4,
         points: run.map((p) => ({ x: new Date(p.date), y: m.value(p)! / div, id: p.id,
@@ -53,7 +54,7 @@ export function AgreementTimeline({ pairs, marked = [], sites, ch }: {
     })
     const means = measures.map((m) => d3.mean(all, m.value))
     return { s, series, marks, nMarked: markedOwn.filter((p) => measures.some((m) => m.value(p) !== null)).length, n: own.length, nAll: all.length, means, ticks: dateTicks(own.map((p) => p.date)), xDomain: dateDomain(own.map((p) => p.date)) }
-  }).filter((x) => x.n > 0), [pairs, marked, sites, scale, ch]) // eslint-disable-line react-hooks/exhaustive-deps
+  }).filter((x) => x.n > 0), [pairs, marked, sites, scale, ch, reasonOf]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <ChartFrame id="aeth-filters-timeline" title="Through time — the aethalometer, HIPS and FTIR EC on each filter"
@@ -64,7 +65,7 @@ export function AgreementTimeline({ pairs, marked = [], sites, ch }: {
         <div key={s.code}>
           <SweepPlot series={series} xScale="time" xDomain={xDomain} xFormat={ticks} yLabel={scale === 'median' ? '÷ own median' : 'µg/m³'} height={240} include={[0]}
             title={sites.length > 1 ? s.name : undefined} reference={scale === 'median' ? 1 : undefined}
-            onPoint={(_, pt) => pt.id && hl.openSample(pt.id)} children={({ x, y }) => <SweepMarks marks={marks} x={x} y={y} />} />
+            onPoint={(_, pt) => pt.id && hl.openSample(pt.id)} marks={marks} />
           <p className="chart-note">{nAll === 0 ? `${s.name}: no filter has all three.` : <>{s.name}, {nAll} filters with all three: mean {measures.map((m, i) => `${m.label} ${fmt(means[i], 2)}`).join(' · ')} µg/m³
             {means[0] && means[1] && means[2] ? ` · aethalometer ÷ mean of HIPS and EC ${fmt(means[0] / ((means[1] + means[2]) / 2), 2)} (ETAD_Aug13's "overestimation factor")` : ''}</>}</p>
         </div>

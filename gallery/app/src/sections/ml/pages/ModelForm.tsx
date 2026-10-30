@@ -99,7 +99,7 @@ export function ModelForm(_props: SectionPageProps) {
   return <>
     <PageIntro id="ml-model-form-intro" title="Model form, every combination tried, and feature importance" data={data}
       notebooks="research/ftir_ec_phase3/ftir_54_model_form_robustness, ftir_55_every_combination_tried, ftir_51_priority_figure_export §5–6; research/ftir_hips_chem/ftir_07_current_pls_vip_diagnostics, ftir_08_hips_transfer_and_vip">
-      <FixedSetNote what="the notebooks' tables on their own fixed Addis filters (ftir_08's transfer crossplot, drawn per filter, follows the switch)" />
+      <FixedSetNote subject="this page" what="the notebooks' tables on their own fixed Addis filters (ftir_08's transfer crossplot, drawn per filter, follows the switch)" />
       <p>Three questions about the calibration's form rather than its cohort: would another learner do better on the
         same spectra (ftir_54), what did the search over every cohort, cutoff, spectra, protocol, lot and k actually
         find (ftir_55, ftir_51), which wavenumbers do the models lean on (ftir_07, ftir_08), and does a PLS model

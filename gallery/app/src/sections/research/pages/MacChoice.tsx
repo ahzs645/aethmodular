@@ -66,7 +66,7 @@ export function MacChoice({ picked, rows: viewRows, meta }: SectionPageProps) {
     <PageIntro id="mac-intro" title="MAC 6 or 10 — the choice moves every slope and no intercept" data={data}
       notebooks="research/ftir_ec_phase3/ftir_16_mac_decision_prep, ftir_19_mac_effect_on_calibrations; ftir_31 §1.11 (the pivot with Deming)">
       <p>The 28 Oct meeting page §4 has the MAC by season. This page applies MAC 6 and 10 to every calibration the explorer exported, and sets them against the IMPROVE evidence.</p>
-      <FixedSetNote what="ftir_16's saved tables (the Adama scenarios, ChemSpec and power figures on this page)" />
+      <FixedSetNote subject="this page" what="ftir_16's saved tables (the Adama scenarios, ChemSpec and power figures on this page)" />
     </PageIntro>
 
     <MacOneToOne runs={runs} view={view} />

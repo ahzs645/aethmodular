@@ -82,7 +82,7 @@ export function Decision(_props: SectionPageProps) {
 
   return <>
     <PageIntro id="ml-decision-intro" title="Decision workbook — inside IMPROVE the reference model fails where Addis is; a local calibration helps there, but not at Addis" data={data} notebooks={NOTEBOOKS}>
-      <FixedSetNote what="the notebook's tables on its own filter sets (the §6 network charts, rebuilt per filter, follow the switch)" />
+      <FixedSetNote subject="this page" what="the notebook's tables on its own filter sets (the §6 network charts, rebuilt per filter, follow the switch)" />
       <p>The workbook tests four answers to "what do we do where the IMPROVE calibration does not transfer?": A, one better model; B, specialist calibrations and a rule to pick one; C, a flag on filters the calibration cannot be trusted on; D, new reference filters. Only IMPROVE has an independent EC truth (TOR), so A, B and C are judged inside IMPROVE with whole sites held out; at SPARTAN, HIPS BC = Fabs ÷ MAC is only a cross-check. This page reads {run}. Everything scored against TOR is the notebook's and does not involve the MAC; whatever is against HIPS is refitted or re-expressed at {m.label}{m.changed ? ' (the board\'s own numbers stay at MAC 10)' : ''}.</p>
       <p>Not repeated here: §5 and §6b, what the flag sees (its ablation ladder, coverage curves, missed failures and the loading × distance map) are on <a href="#tab=experimental&xp=flag">Experimental → What the flag sees</a>; §7b, the local calibration applied to Addis and the network, is on <a href="#tab=experimental&xp=analogs">Experimental → Loading-matched analogs</a>. §1 (where each SPARTAN site's loading and OC/BC sit in IMPROVE) saved no table.</p>
     </PageIntro>

@@ -93,7 +93,7 @@ export function Applicability(_props: SectionPageProps) {
     <PageIntro id="applicability-intro" title="Applicability domain — in-domain is a warning system, not a validation" data={data}
       notebooks="research/ftir_ec_phase3/ftir_36_domain_invariant_pls, ftir_39_pls_applicability_domain, ftir_50_spectral_comparison_methods §2–3, §5–6; research/ftir_etad_char/char_12_weakley_transferability">
       <p>The Baselines tab's research diagnostics show the spectral distance of each correction's spectra from its training set. This page asks the calibration question: does being inside the domain make a calibration right at Addis?</p>
-      <FixedSetNote what="the explorer's per-run flags and the notebooks' locked holdouts and saved tables (every figure on this page)" />
+      <FixedSetNote subject="this page" what="the explorer's per-run flags and the notebooks' locked holdouts and saved tables (every figure on this page)" />
     </PageIntro>
 
     {flags.length > 0 && <Figure kind="heatmap" id="applicability-flags" data={flags} row="site" column="calibration" value="pct" ramp="sequential" domain={[0, 100]} format="f2"

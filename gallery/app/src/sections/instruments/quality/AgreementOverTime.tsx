@@ -1,16 +1,15 @@
 import { useMemo } from 'react'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Key, type KeyItem } from '@/components/Key'
-import { SweepPlot, type SweepMarker, type SweepSeries } from '@/components/SweepPlot'
+import { SweepPlot, type SweepMark, type SweepMarker, type SweepSeries } from '@/components/SweepPlot'
 import { fmt } from '@/lib/format'
 import { pearson, splitAtGaps } from '@/lib/stats'
 import { INK } from '@/lib/theme'
 import { useHighlightActions } from '@/lib/highlight'
-import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
+import { ExcludedNote, toSweepMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { finite, instrumentName, localDate, PERIOD_COLOR, PERIOD_LABEL, periodOf, ratio, type Period, type QualityIndex } from './data'
 import { AETH_IR } from './FlowFixCompare'
-import { SweepMarks, type SweepMark } from '../sweepMarks'
 
 
 const HIPS = 'HIPS BC', FTIR = 'EC (FTIR)'
@@ -44,8 +43,9 @@ export function AgreementOverTime({ code, rows, meta, index }: { code: string; r
   // Filters → excluded: Mark (lib/markedRows): this instrument's excluded filters, × on the ratio panels, in no rolling line
   const markedAll = useMarkedRows()
   const markedSite = useMemo(() => markedAll.filter((r) => r.code === code), [markedAll, code])
+  const reasonOf = useMarkReason()
   const ratioOk = (r: FilterRow, num: string, den: string) => { const v = ratio(r[num] as number, r[den] as number); return finite(v) && (r[den] as number) > 0.01 ? v : null }
-  const ratioMarks = (num: string, den: string): SweepMark[] => markedSite.flatMap((r) => { const v = ratioOk(r, num, den); return v === null ? [] : [{ x: localDate(r.date), y: v }] })
+  const ratioMarks = (num: string, den: string): SweepMark[] => toSweepMarks(markedSite, (r) => { const v = ratioOk(r, num, den); return v === null ? null : [localDate(r.date), v] }, reasonOf)
   const markers: SweepMarker[] = [
     ...(periods?.before_end ? [{ at: localDate(periods.before_end), label: 'before ends', color: PERIOD_COLOR.before, labelSide: 'left' as const }] : []),
     ...(periods?.after_start ? [{ at: localDate(periods.after_start), label: 'after starts', color: PERIOD_COLOR.after }] : []),
@@ -81,8 +81,7 @@ export function AgreementOverTime({ code, rows, meta, index }: { code: string; r
       provenance="flow_fix_explorer (plot_stacked_timeseries, plot_rolling_correlation, plot_ratio_timeseries) · FTIR EC is a spectral prediction">
       {!site.length ? <Empty>No filters from {instrumentName(code, meta)} in the current subset.</Empty> : <>
         {shown.map((p) => <SweepPlot key={p.key} series={p.series} onPoint={(_, pt) => pt.id && hl.openSample(pt.id)} xScale="time" xDomain={xDomain} yLabel={p.y} reference={p.reference} yDomain={p.yDomain}
-          yClip={p.yDomain ? undefined : [0.02, 0.98]} xMarkers={markers} yMarkers={p.markers} height={170}
-          children={p.marks?.length ? ({ x, y }) => <SweepMarks marks={p.marks!} x={x} y={y} /> : undefined} />)}
+          yClip={p.yDomain ? undefined : [0.02, 0.98]} xMarkers={markers} yMarkers={p.markers} height={170} marks={p.marks} />)}
         <ExcludedNote count={markedSite.filter((r) => [[AETH_IR, HIPS], [AETH_IR, FTIR], [HIPS, FTIR]].some(([a, b]) => ratioOk(r, a, b) !== null)).length} drawn />
         <Key items={[...new Set(site.map((r) => periodOf(r.date, periods)))].map((k): KeyItem => ({ label: PERIOD_LABEL[k], color: PERIOD_COLOR[k] }))
           .concat([{ label: '30-day rolling mean', color: INK.text, kind: 'line' as const }, { label: '60-day rolling r', color: '#2ca02c', kind: 'line' as const }])} />

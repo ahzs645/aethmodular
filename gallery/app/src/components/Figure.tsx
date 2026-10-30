@@ -59,6 +59,11 @@ interface Base {
   colors?: Record<string, string>
   /** a note under the chart, Markdown */
   note?: string
+  /**
+   * Filters → excluded: Mark (lib/markedRows useExclusionSplit): rows of the same shape the gallery's exclusions take
+   * out of `data`; a crossplot draws them as muted ×, never fitted or counted (the same `where`, `choose` and facets apply)
+   */
+  markedData?: Table
 }
 export type FigureSpec =
   | (Base & { kind: 'crossplot'; x: string; y: string; color?: string; idColumn?: string; tipColumns?: string[]; xLabel: string; yLabel: string; fit?: boolean; errorRatio?: number; facet?: string; maxSide?: number; sameScale?: boolean })
@@ -120,7 +125,7 @@ function useColors(spec: Base) {
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
 
 // research-spectra: `provenance` (which notebook a figure stands in for) passes through to its ChartFrame
-export function Figure(props: FigureSpec & { about?: ReactNode; provenance?: ReactNode }) {
+export function Figure(props: FigureSpec & { about?: ReactNode; provenance?: ReactNode; aside?: ReactNode }) {
   let spec: FigureSpec = props
   const bundle = useContext(BundleContext)
   const id = spec.id ?? slug(spec.title)
@@ -136,8 +141,11 @@ export function Figure(props: FigureSpec & { about?: ReactNode; provenance?: Rea
     ...variants.map((v): OptionDef => ({ key: v.key, label: v.label ?? v.key, persist: true, default: v.default ?? v.choices[0]?.value ?? '', title: v.title,
       when: v.when, choices: v.choices.map((c) => ({ value: c.value, label: c.label, when: c.when })) })),
   ])
-  const rows = useMemo(() => all.filter((r) => (spec.choose ?? []).every((c) => String(r[c.column]) === o.values[c.column])),
+  const chosen = (r: Row) => (spec.choose ?? []).every((c) => String(r[c.column]) === o.values[c.column])
+  const rows = useMemo(() => all.filter(chosen),
     [all, (spec.choose ?? []).map((c) => o.values[c.column]).join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
+  const marked = useMemo(() => (spec.markedData ? where(rowsOf(spec.markedData), spec.where).filter(chosen) : []),
+    [spec.markedData, spec.where, (spec.choose ?? []).map((c) => o.values[c.column]).join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
   // the chosen variants' patches, applied over the spec in the order the variants are declared
   spec = variants.reduce((acc, v) => ({ ...acc, ...(v.choices.find((c) => c.value === o.values[v.key])?.patch ?? {}) }), spec) as FigureSpec
   // a faceted crossplot offers the gallery's Panel axes (lib/panelAxes) while it draws more than one panel
@@ -149,7 +157,7 @@ export function Figure(props: FigureSpec & { about?: ReactNode; provenance?: Rea
   const body = spec.kind === 'custom'
     ? (Custom ? <Custom bundle={bundle} props={spec.props} /> : <Empty>No figure registered as “{spec.component}”.</Empty>)
     : !rows.length ? <Empty>{spec.table && bundle && !bundle.tables[spec.table] ? `No table “${spec.table}” in this meeting’s data.` : 'No rows to draw.'}</Empty>
-    : spec.kind === 'crossplot' ? <CrossplotFigure spec={spec} rows={rows} />
+    : spec.kind === 'crossplot' ? <CrossplotFigure spec={spec} rows={rows} marked={marked} />
     : spec.kind === 'spectrum' ? <SpectrumFigure spec={spec} rows={rows} />
     : spec.kind === 'sweep' ? <SweepFigure spec={spec} rows={rows} />
     : spec.kind === 'intervals' ? <IntervalsFigure spec={spec} rows={rows} />
@@ -161,6 +169,7 @@ export function Figure(props: FigureSpec & { about?: ReactNode; provenance?: Rea
       exportable={spec.kind !== 'table'} source={bundle ? `gallery/app/src/meetings/${bundle.id}.meeting.ts › ${id}${spec.table ? `; data: table "${spec.table}" in gallery/app/public/data/meetings/${bundle.id}.json, from ${bundle.generated_from}` : ''}` : undefined}>
       {body}
       {spec.note && <div className="legend-note" style={{ marginTop: 6 }}><Markdown text={spec.note} /></div>}
+      {props.aside}
     </ChartFrame>
   )
 }
@@ -171,7 +180,7 @@ const facetDimOf = (facet?: string): PanelDim | null => (facet === 'season' ? 's
 const facetsOf = (rows: Row[], facet?: string) => (facet ? uniq(rows, facet).map((f) => ({ key: String(f), rows: rows.filter((r) => r[facet] === f) })) : [{ key: '', rows }])
 
 // ------------------------------------------------------------------ crossplot
-function CrossplotFigure({ spec, rows }: { spec: Extract<FigureSpec, { kind: 'crossplot' }>; rows: Row[] }) {
+function CrossplotFigure({ spec, rows, marked = [] }: { spec: Extract<FigureSpec, { kind: 'crossplot' }>; rows: Row[]; marked?: Row[] }) {
   const color = useColors(spec)
   const groups = spec.color ? uniq(rows, spec.color) : []
   const toPoints = (rs: Row[]): CrossPoint[] => rs.flatMap((r) => {
@@ -186,7 +195,8 @@ function CrossplotFigure({ spec, rows }: { spec: Extract<FigureSpec, { kind: 'cr
   // Panel axes Shared: every facet on the range of all of them; Own: each from its own points
   const [panelAxes] = usePanelAxes()
   const shared = facets.length > 1 && collapsePanelAxes(panelAxes, facetDimOf(spec.facet)) === 'Shared' ? sharedCrossDomains(facets.map((f) => toPoints(f.rows)), sameScale) : null
-  const plot = (f: { key: string; rows: Row[] }, side?: number) => <Crossplot title={f.key || ''} points={toPoints(f.rows)} xLabel={spec.xLabel} yLabel={spec.yLabel}
+  const markedOf = (key: string) => toPoints(spec.facet && key ? marked.filter((r) => String(r[spec.facet!]) === key) : marked)
+  const plot = (f: { key: string; rows: Row[] }, side?: number) => <Crossplot title={f.key || ''} points={toPoints(f.rows)} marked={marked.length ? markedOf(f.key) : undefined} xLabel={spec.xLabel} yLabel={spec.yLabel}
     fit={spec.fit ?? true} errorRatio={spec.errorRatio} maxSide={side ?? spec.maxSide ?? 480} sameScale={sameScale} domain={shared?.domain} yDomain={shared?.yDomain} />
   return <>
     {facets.length > 1 ? <FacetGrid items={facets} minCell={300} maxCols={3} render={(f, w) => plot(f, w - 70)} /> : plot(facets[0])}

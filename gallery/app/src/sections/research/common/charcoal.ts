@@ -53,7 +53,8 @@ const finite = (v: unknown): number | null => (typeof v === 'number' && Number.i
  * (used for `plus` filters, which have no gallery row); `fabs`/`ec` are the gallery fields to read.
  */
 export function joinScores<R extends JoinRow>(scores: readonly CharcoalScore[], rows: readonly R[], set: ScoreSet,
-  seasonOf: (date: string, month: number) => string | null, fields = { fabs: 'HIPS Fabs', ec: 'EC (FTIR)' }): { scored: Scored<R>[]; outside: number } {
+  seasonOf: (date: string, month: number) => string | null, fields = { fabs: 'HIPS Fabs', ec: 'EC (FTIR)' },
+  known: (id: string) => boolean = () => false): { scored: Scored<R>[]; outside: number } {
   const byId = new Map(rows.map((r) => [r.id, r]))
   // every score's gallery id: ids the gallery has at all are "in the gallery", whether or not they are in view
   const scored: Scored<R>[] = []
@@ -66,7 +67,9 @@ export function joinScores<R extends JoinRow>(scores: readonly CharcoalScore[], 
     const r = byId.get(id)
     if (r) { scored.push({ ...base, date: r.date || s.date, season: r.season, fabs: finite(r[fields.fabs]), ec: finite(r[fields.ec]), row: r }); continue }
     outside++
-    if (set === 'plus') {
+    // `plus` adds the filters the gallery has no row for at all (sampled after its Addis series ends); one it has but
+    // leaves out of view (excluded, or cut by date, season or site) stays out, as on every other chart
+    if (set === 'plus' && !known(id)) {
       const season = seasonOf(s.date, month)
       if (season) scored.push({ ...base, season, fabs: finite(s.Fabs), ec: finite(s.EC), row: null })
     }

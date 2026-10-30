@@ -78,7 +78,7 @@ export function ProvisionalSeries(props: SectionPageProps) {
         {' '}No MAC enters the series (predicted µg per filter ÷ sampled volume). Season medians: {Object.entries(seasons).map(([g, v]) => `${seasonOf(g)} ${f2(v)}`).join(', ')}.</p>
       <p>Held out at IMPROVE sites the model never saw, at Addis-like composition, it reproduces TOR EC at slope {f2(view.prov.heldout?.slope)}, R² {f2(view.prov.heldout?.R2)}; {fmt(view.prov.extrap_pct, 2)} % of Addis filters sit beyond its training score envelope, against {fmt(view.raw.extrap_pct, 2)} % for the raw-spectra model (ftir_30).
         {' '}What it cannot claim: no Addis filter has thermal EC, so the validation is the right composition on the wrong continent. Say “provisional” with every number.</p>
-      <FixedSetNote what="the explorer's dated Addis evaluation filters and the notebooks' saved tables (every figure below the series, which does follow it)" />
+      <FixedSetNote subject="this page" what="the explorer's dated Addis evaluation filters and the notebooks' saved tables (every figure below the series, which does follow it)" />
     </PageIntro>
 
     <RunSeries run={view.prov} runs={runs} meta={props.meta} knownIds={knownIds} />

@@ -95,7 +95,7 @@ export function JuneVariants(_props: SectionPageProps) {
   return <>
     <PageIntro id="june-intro" title="June 2026 calibration variants and chasing the origin" data={data}
       notebooks="research/ftir_ec_calibration_2026_06_25 05_calibration_variants, 06_calibration_variants_components, 09_component_selection_fixed, 09_ethiopia_component_ec (panel A), 10_calibration_variants_effect, 11_hips_intercept_calibrations, 13_chase_origin_and_biomass, 14_choosing_calibration_data; research/spartan_ec_2026_06_16 05_calibration_optimization, 07_calibration_optimization_story, 08_outlier_removal_explainer">
-      <FixedSetNote what="the June notebooks' tables on their own filter sets (IMPROVE lot 251, ETAD, Adama)" />
+      <FixedSetNote subject="this page" what="the June notebooks' tables on their own filter sets (IMPROVE lot 251, ETAD, Adama)" />
       <p>The June notebooks were committed without their figures: their tables are tracked and their printed results are in the executed notebooks, and that is all this page draws. Nothing is refitted. The 906 IMPROVE filters (lot 251, TOR EC per filter) and the Adama filters are thermal-EC comparisons and do not depend on the MAC. The ETAD-vs-HIPS fits (notebooks 11, 13, 14) do: their slopes follow the MAC set under Filters → units (now {m.mac}).</p>
       <p>What these calibrations predict for the 319 ETAD spectra (by sample set, component count and filter lot, and against HIPS) is on <a href="#tab=research&aep=ethiopia-june">Research → Ethiopia calibrations (Jun 2026)</a>, with spartan_ec 08's removed filters. It is not repeated here.</p>
     </PageIntro>

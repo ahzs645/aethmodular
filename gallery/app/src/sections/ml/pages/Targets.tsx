@@ -110,7 +110,7 @@ export function Targets(_props: SectionPageProps) {
 
   return <>
     <PageIntro id="ml-targets-intro" title="What counts as EC — total carbon is easy, the OC/EC split is not, and Adama reads nothing like Addis" data={data} notebooks={NOTEBOOKS}>
-      <FixedSetNote what="the notebooks' tables on their own filter sets (IMPROVE, the Addis test set, the Adama pairs)" />
+      <FixedSetNote subject="this page" what="the notebooks' tables on their own filter sets (IMPROVE, the Addis test set, the Adama pairs)" />
       <p>The project calibrates FTIR against IMPROVE TOR EC. These notebooks keep the spectra, cohort, locked protocol and held-out-site folds fixed and change only the target: EC under the transmittance convention (TOT), OC, total carbon, and the pyrolysis correction Δ = OP_TOT − OP_TOR that separates the two EC conventions. Held-out scores are against IMPROVE and do not depend on the MAC; the Addis lines are against HIPS Fabs/MAC and follow the MAC set under Filters → units (now {m.mac}). Then the five Adama quartz/PTFE pairs, the only same-corridor place where thermal OC/EC under both conventions, FTIR carbon and HIPS sit on one table.</p>
       <p>The Adama TOR data also feed <a href="#tab=experimental&xp=tor">Experimental → Adama TOR study</a> and <a href="#tab=baseline">Baselines → external pilot</a> (AIRSpec/VIBES EC against ECTR/ECTT); their data folders are git-ignored, so those pages may be empty in this checkout. Everything below is read from the executed notebooks.</p>
     </PageIntro>

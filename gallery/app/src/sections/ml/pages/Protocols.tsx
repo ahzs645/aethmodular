@@ -116,12 +116,15 @@ export function Protocols(_props: SectionPageProps) {
   const COLS: [string, string, string][] = [['lowest-OCEC 800, AIRSpec df1=6', 'Lowest-OC/EC (800)', 'df1 = 6'], ['Smoke 906, AIRSpec df1=6', 'Biomass-smoke (906)', 'df1 = 6'],
     ['lowest-OCEC 800, AIRSpec df1=8', 'Lowest-OC/EC (800)', 'df1 = 8'], ['Smoke 906, AIRSpec df1=8', 'Biomass-smoke (906)', 'df1 = 8']]
   const sets = fixedIds ? ['fixed 190 (as drawn)', 'all 239'] : ['all 239']
-  const airspec = airspecSplit.counted.flatMap((r) => {
+  const airspecOf = (src: Row[]) => src.flatMap((r) => {
     const fabs = num(r.Fabs), id = String(r.ExternalFilterId), base = id.replace(/-\d+$/, '')
     if (fabs == null) return []
     return COLS.flatMap(([col, calibration, baseline]) => sets.filter((s) => s === 'all 239' || fixedIds?.has(base))
       .map((set): Row => ({ id, calibration, baseline, set, x: fabs / m.mac, y: num(r[col]) })))
   })
+  const airspec = airspecOf(airspecSplit.counted)
+  // the excluded filters, built the same way, drawn as × by the Figure's crossplot (never fitted)
+  const airspecMarked = airspecOf(airspecSplit.marked)
 
   return <>
     <PageIntro id="ml-protocols-intro" title="Protocols end to end — the protocol moves the Addis answer on raw spectra; the bootstrap and every training set tried bound it" data={data}
@@ -133,7 +136,7 @@ export function Protocols(_props: SectionPageProps) {
         Drawn elsewhere: the cohort-size sweep at every N under each protocol (<a href="#tab=calibration">Calibration tab</a>), the MAC pivot
         (ftir_22 [18]; <a href="#tab=research&amp;aep=mac-choice">MAC 6 vs 10</a>), ftir_51's protocol swing (<a href="#tab=research&amp;aep=generalise">Does it generalise</a>)
         and the provisional offset's bootstrap (<a href="#tab=research&amp;aep=provisional-ec">Provisional Addis EC</a>).</p>
-      <FixedSetNote what="the notebooks' tables, on their own fixed Addis filters (the AIRSpec crossplot, drawn per filter, follows the switch)" />
+      <FixedSetNote subject="this page" what="the notebooks' tables, on their own fixed Addis filters (the AIRSpec crossplot, drawn per filter, follows the switch)" />
     </PageIntro>
 
     {stripAt.length > 0 && <Figure kind="intervals" id="ml-protocols-strip" data={stripAt} row="cohort" series="protocol" colors={PROTOCOL_COLOR}
@@ -219,13 +222,12 @@ export function Protocols(_props: SectionPageProps) {
       subtitle="Trained on IMPROVE filters' HIPS absorption and applied to Addis: baseline correction does not rescue the transfer. In Fabs units, so it does not depend on the MAC."
       provenance={provenance(data, ['hips_transfer'])} />
 
-    {airspec.length > 0 && <Figure kind="crossplot" id="ml-protocols-airspec" data={airspec} x="x" y="y" facet="calibration" idColumn="id"
+    {airspec.length > 0 && <Figure kind="crossplot" id="ml-protocols-airspec" data={airspec} markedData={airspecMarked} x="x" y="y" facet="calibration" idColumn="id"
       choose={[{ column: 'baseline', label: 'AIRSpec baseline' }, { column: 'set', label: 'Filters' }]}
       xLabel={`HIPS Fabs / ${m.mac} (µg/m³)`} yLabel="Predicted EC (µg/m³)" sameScale
       title="AIRSpec crossplots (ftir_13 [17]) — on AIRSpec spectra both calibrations flatten at Addis; the Smoke-906 model reads nearly flat"
       subtitle={`Each Addis filter's prediction from the AIRSpec-corrected Lowest-OC/EC (800) and Biomass-smoke (906) calibrations against HIPS Fabs/${m.mac}; the fit line is the gallery's estimator. The OC/EC panel is the Calibration tab's ocec800_airspec preset; the Smoke-906 panel is in no other export. df1 = 8 changes nothing visible. The fixed 190 are the filters the notebook drew (they need calibration_runs.json; all 239 otherwise).`}
-      provenance={provenance(data, ['airspec_filters'])} />}
-    {airspec.length > 0 && <ExcludedNote count={airspecSplit.nOut} />}
+      provenance={provenance(data, ['airspec_filters'])} aside={<ExcludedNote count={airspecSplit.marked.length} drawn />} />}
 
     <Figure kind="table" id="ml-protocols-index" data={rows(data, 'figure_index')}
       columns={[{ key: 'notebook', label: 'Notebook' }, { key: 'original figure', label: 'Original figure' }, { key: 'sensitivity', label: 'Depends on k?' }, { key: 'updated version', label: 'Protocol-checked version' }]}

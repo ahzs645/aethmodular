@@ -240,7 +240,7 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
   const reasonOf = useMarkReason()
   const out = markMode ? inSite.filter(r => edits.isOut(String(r.id))) : []
   const handNote = markMode ? null : edits.note(inSite.length - points.length, { refit: true })
-  const frozen = <FixedSetNote what="the frozen pilot cohort, 253 Addis and 26 Bishoftu spectra (only a filter excluded by hand leaves the points and the live fits)" />
+  const frozen = <FixedSetNote what="the frozen pilot cohort, 253 Addis and 26 Bishoftu spectra" hand />
   const counts = Object.fromEntries(['Addis', 'Bishoftu'].map(s => [s, points.filter(r => r.site === s).length]))
   const title = optical ? 'Every filter with HIPS and frozen FTIR EC' : 'Every corrected spectrum: two local bands'
   // Keep axis scales fixed while the site selector changes, so a filtered

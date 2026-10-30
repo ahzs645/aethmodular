@@ -968,6 +968,7 @@ export default function App() {
       .filter(inChartPmf)
       .filter((r) => !keepIds || keepIds.has(r.id))
   }, [exclMode, data, plainSourceRows, exclIn, dropIds, seasonForFilter, paint, inRange, seasonSel, netView, activeSites, inChartPmf, keepIds])
+  const knownFilter = useCallback((id: string) => sourceById.has(id) || sourceById.has(baseFilterId(id)), [sourceById])
   const markReason = useCallback((id: string) => {
     const r = sourceById.get(id) ?? sourceById.get(baseFilterId(id))
     return exclusionReason(r ?? { id }, exclState) ?? (r ? null : exclusionReason({ id: baseFilterId(id) }, exclState))
@@ -1397,7 +1398,7 @@ export default function App() {
     <FilterEditsProvider enabled dropped={dropIds} kept={keepIds}
       onDrop={dropFilters} onKeep={keepFilters} onRestore={restoreFilters} group={group} onGroup={setGroup}>
     {/* Filters → excluded: Mark — the excluded filters in view, drawn as × by the point charts, counted by none */}
-    <MarkedRowsProvider mode={exclMode} rows={markedRows} reasonOf={markReason}>
+    <MarkedRowsProvider mode={exclMode} rows={markedRows} reasonOf={markReason} known={knownFilter}>
       {openRow && (
         <SampleDrawer
           row={openRow}

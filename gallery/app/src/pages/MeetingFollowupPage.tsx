@@ -40,7 +40,6 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
 import { withUnit } from '@/lib/theme'
 import { useColourScheme } from '@/lib/colourSchemes'
-import { usePresentation } from '@/lib/presentation'
 import { ExcludedNote, FixedSetNote } from '@/lib/markedRows'
 
 /**
@@ -94,16 +93,8 @@ const MAC_LABEL = ecAxis('hips')
 /** the Addis points carry Fabs / 10 (`fabs10`): the MAC the meeting exports used */
 const FABS10_MAC = 10
 
-/**
- * Filters → excluded on this page (lib/markedRows): as presented, the page is exactly as exported, so no mark and no
- * note; while Exploring, the gallery's own rows (coverage, seasonal chemistry) say how many excluded Addis filters
- * they leave out, and the meeting's frozen sets say that the switch does not act on them.
- */
-function ExploringOnly({ children }: { children: ReactNode }) {
-  return usePresentation() === 'exploring' ? <>{children}</> : null
-}
 const IS_ADDIS = (r: FilterRow) => r.site === 'Addis Ababa'
-const FROZEN_ADDIS = "the meeting's frozen Addis test set (only a filter excluded by hand leaves the points and the all-Addis refit)"
+const FROZEN_ADDIS = "the meeting's frozen Addis test set"
 
 
 export function MeetingFollowupPage({ galleryRows = [], galleryMeta, viewRows = [], viewMeta }: {
@@ -332,7 +323,7 @@ function CohortCoverage({ data, galleryRows }: { data: MeetingData; galleryRows:
     <p className="chart-note">{data.summary.addis_source_n != null && <>The frozen meeting run contains {evaluation.size} of {data.summary.addis_source_n} source evaluation filters. </>}The gallery and evaluation share {shared.length} physical filters after matching base filter IDs. The evaluation includes {evaluation.size - shared.length} additional filters; {galleryOnly.length} gallery filter{galleryOnly.length === 1 ? '' : 's'} {galleryOnly.length === 1 ? 'is' : 'are'} absent from the frozen spectral run{galleryOnly.length ? ` (${galleryOnly.map(r => r.id).join(', ')})` : ''}.</p>
     <p className="chart-note">The starting-point plot uses {deployed.size} complete pairs and omits {evaluation.size - deployed.size} evaluation filters missing the existing FTIR product. New-prediction plots use {predicted.size} pairs. Missing values are omitted from each comparison, never plotted as zero. Addis HIPS is an optical comparison, not an independent thermal EC reference.</p>
     <p className="chart-note">{ANALYSIS_CALENDAR_NOTE}</p>
-    <ExploringOnly><ExcludedNote of={IS_ADDIS} /></ExploringOnly>
+    <ExcludedNote of={IS_ADDIS} />
   </ChartFrame>
 }
 
@@ -810,7 +801,7 @@ function ThreePlots({ data }: { data: MeetingData }) {
       </ExplainOnly>
       {colorBy !== 'grey' && <ExplainOnly><Note>{colorBy === 'OP fraction' ? `OP fraction = OPTR / (EC + OPTR), ${opColours.name}${opColours.reverse ? ' reversed' : ''} 0.1 → 0.8.` : `TOR OC/EC, log ${ocColours.name}${ocColours.reverse ? ' reversed' : ''} 1.5 → 12.`} Grey: missing.</Note></ExplainOnly>}
       {q('tor_vs_fabs') && <ExplainOnly><Note>TOR EC vs Fabs/10 slope {coef(q('tor_vs_fabs')?.deming_slope)} implies MAC ≈ {f2(q('tor_vs_fabs')?.implied_mac_deming)} m²/g (Deming); median Fabs/EC ratio {f2(q('tor_vs_fabs')?.mac_ratio_median)}, at the {f2(q('tor_vs_fabs')?.mac_percentile_median)}th percentile of the IMPROVE pool.</Note></ExplainOnly>}
-      <ExploringOnly><FixedSetNote what="the meeting's held-out IMPROVE filters and frozen Addis test set (only a filter excluded by hand leaves the points and the refits)" /></ExploringOnly>
+      <FixedSetNote what="the meeting's held-out IMPROVE filters and frozen Addis test set" hand />
     </ChartFrame>
   )
 }
@@ -955,7 +946,7 @@ function StartingPoint({ data }: { data: MeetingData }) {
         <ExplainOnly><SeasonTable data={data} rows={[{ label: 'Current SPARTAN calibration', fitId }]} /></ExplainOnly>
       </Grid>
       <ExplainOnly><Note>Deming with λ* {f2(data.summary.lambda)}. {showCI && 'Ranges are 95% month-block bootstrap intervals where available.'} Only the Addis filters with a deployed SPARTAN value are drawn, so n is smaller than elsewhere on this page.</Note></ExplainOnly>
-      <ExploringOnly><FixedSetNote what={FROZEN_ADDIS} /></ExploringOnly>
+      <FixedSetNote what={FROZEN_ADDIS} hand />
     </ChartFrame>
   )
 }
@@ -978,7 +969,7 @@ function Seasonality({ data }: { data: MeetingData }) {
         <ExplainOnly><SeasonTable data={data} rows={[{ label: 'All-IMPROVE model', fitId }, { label: 'Own-season calibration', fitId: `stitched|${method}|season calibrations` }]} /></ExplainOnly>
       </Grid>
       <ExplainOnly><Note>{fitName} line: all Addis; season-coloured lines: {fitName} fit within each season (λ* {f2(data.summary.lambda)}). {showCI && 'Bands are pointwise 95% month-block bootstrap intervals where available.'}</Note></ExplainOnly>
-      <ExploringOnly><FixedSetNote what={FROZEN_ADDIS} /></ExploringOnly>
+      <FixedSetNote what={FROZEN_ADDIS} hand />
     </ChartFrame>
   )
 }
@@ -1014,7 +1005,7 @@ function Stitched({ data }: { data: MeetingData }) {
         </div>
       </Grid>
       <ExplainOnly><SeasonTable data={data} rows={[{ label: 'Own-season calibrations', fitId }, { label: 'All-IMPROVE model, lot 251', fitId: `allimprove|${method}|all-IMPROVE lot 251` }, { label: 'Current SPARTAN', fitId: 'deployed|SPARTAN|current SPARTAN calibration' }]} /></ExplainOnly>
-      <ExploringOnly><FixedSetNote what={FROZEN_ADDIS} /></ExploringOnly>
+      <FixedSetNote what={FROZEN_ADDIS} hand />
     </ChartFrame>
   )
 }

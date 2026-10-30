@@ -1,4 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react'
+import { crossPath } from '@/lib/exclusionMode'
 import * as d3 from 'd3'
 import { XAxis, YAxis } from '@/components/Axes'
 import { Marker, RefLine } from '@/components/RefLines'
@@ -72,13 +73,18 @@ export function histogramSeries({ id, label, color, edges, counts, total, fill =
   const points: SweepPoint[] = n ? [{ x: edges[0], ...at(0) }, ...counts.map((_, i) => ({ x: (edges[i] + edges[i + 1]) / 2, ...at(i) })), { x: edges[n], ...at(n - 1) }] : []
   return { id, label, color, points, curve: 'mid-step', marks: false, width: 1.4, fill, interval: fill ? 'band' : 'none', ...rest }
 }
+/**
+ * One excluded filter under Filters → excluded: Mark (lib/markedRows toSweepMarks): drawn as the muted × of
+ * components/ScatterLayer where it falls inside the axes, never part of a series, the y range or a fit.
+ */
+export interface SweepMark { x: SweepX; y: number; tip?: string[] }
 export interface SweepMarker { at: number | Date; label?: string; color?: string; labelSide?: 'left' | 'right' }
 type XScale = d3.ScaleLinear<number, number> | d3.ScaleLogarithmic<number, number> | d3.ScaleTime<number, number> | d3.ScalePoint<string>
 
 export function SweepPlot({
   series, xScale: kind, xDomain, xLabel, yLabel, yScale = 'linear', yDomain, yClip, include = [], reference,
   xMarkers = [], yMarkers = [], chosen = [], dividers = [], onPoint, height = 240, width: fixedWidth, title,
-  dim, xFormat, yFormat, background, children, minWidth, pick,
+  dim, xFormat, yFormat, background, children, minWidth, pick, marks = [],
 }: {
   series: SweepSeries[]
   xScale?: 'linear' | 'log' | 'time' | 'point'
@@ -114,6 +120,8 @@ export function SweepPlot({
   children?: (s: { x: XScale; y: d3.ScaleContinuousNumeric<number, number>; iw: number; ih: number }) => ReactNode
   /** default 260, or none when `width` is fixed (a facet) */
   minWidth?: number
+  /** excluded filters drawn as × (Filters → excluded: Mark); their hover says why */
+  marks?: readonly SweepMark[]
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const { width: measured } = useDimensions(ref)
@@ -151,6 +159,11 @@ export function SweepPlot({
   const fmtY = yFormat ?? ((v: number) => String(+v.toPrecision(3)))
   const op = (g?: string) => (g && dim ? dim(g) : 1)
   const isChosen = (s: SweepSeries, p: SweepPoint) => chosen.some((c) => c.series === s.id && String(c.x) === String(p.x))
+  // the marks inside the axes, in plot pixels (they never widen the range, so one outside it is not drawn)
+  const [xa, xb] = k === 'point' ? [-Infinity, Infinity] : (x as d3.ScaleLinear<number, number>).domain().map(Number)
+  const shownMarks = marks.filter((mk) => ok(mk.y) && !clamped(mk.y) && (k === 'point' ? (x as d3.ScalePoint<string>)(String(mk.x)) != null : +(mk.x as number) >= Math.min(xa, xb) && +(mk.x as number) <= Math.max(xa, xb)))
+    .map((mk) => ({ mk, at: [px(mk.x), y(mk.y)] as const }))
+  const markPath = shownMarks.map(({ at }) => crossPath(at[0], at[1])).join('')
 
   const onMove = (e: React.MouseEvent<SVGRectElement>) => {
     const [mx, my] = d3.pointer(e)
@@ -160,7 +173,16 @@ export function SweepPlot({
       const d = Math.hypot(px(p.x) - mx, py(p.y) - my)
       if (d < bestD) { bestD = d; best = { s: si, i } }
     }))
-    if (!best) { setHover(null); tip.hide(); return }
+    if (!best) {
+      setHover(null)
+      const near = shownMarks.reduce<{ d: number; tip?: string[] } | null>((b, { mk, at }) => {
+        const d = Math.hypot(at[0] - mx, at[1] - my)
+        return d < 10 && (!b || d < b.d) ? { d, tip: mk.tip } : b
+      }, null)
+      if (near) tip.show(e, near.tip ?? ['excluded filter: not in any fit, R² or count'])
+      else tip.hide()
+      return
+    }
     const { s: si, i } = best as { s: number; i: number }
     const s = series[si], p = s.points[i]
     setHover({ s: s.id, i })
@@ -189,6 +211,7 @@ export function SweepPlot({
           {background?.({ x, y, iw, ih })}
           {yMarkers.map((mk, i) => !clamped(mk.at) && <Marker key={`y${i}`} orient="h" at={y(mk.at)} from={0} to={iw} label={mk.label} color={mk.color} />)}
           <g pointerEvents="none">
+            {markPath && <path className="scatter-marks" d={markPath} fill="none" stroke={INK.muted} strokeWidth={1.3} strokeOpacity={0.85} strokeLinecap="round" />}
             {series.map((s) => {
               // lines run in x order whatever order the points came in (categories keep theirs)
               // with gaps, a missing or clamped y breaks the line where it falls; else the line joins the drawable points

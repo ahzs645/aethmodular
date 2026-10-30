@@ -39,6 +39,11 @@ test('the join: view keeps gallery rows only, plus adds the rest with the reader
   assert.equal(plus.scored.length, scores.length)
   assert.equal(plus.scored.filter((s) => s.season === 'X').length, scores.length - 1)
   assert.equal(nb().length, scores.length)
+  // plus adds only the filters the gallery has no row for at all: one it knows but leaves out of view stays out
+  const knownIds = new Set(scores.slice(0, 3).map((s) => galleryId(s.FilterId)))
+  const plusKnown = joinScores(scores, rows, 'plus', () => 'X', undefined, (id) => knownIds.has(id))
+  assert.equal(plusKnown.scored.length, scores.length - 2)
+  assert.ok(!plusKnown.scored.some((s) => s.id === galleryId(scores[1].FilterId)))
 })
 
 test('char_05 by season and char_07 headline are reproduced from the per-filter scores', { skip }, () => {

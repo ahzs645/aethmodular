@@ -1,18 +1,18 @@
 import { useMemo } from 'react'
 import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { Key } from '@/components/Key'
-import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
+import { SweepPlot, type SweepMark, type SweepSeries } from '@/components/SweepPlot'
 import { fmt } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { useHighlightActions } from '@/lib/highlight'
-import { ExcludedNote } from '@/lib/markedRows'
+import { ExcludedNote, useMarkReason } from '@/lib/markedRows'
+import { markTip } from '@/lib/exclusionMode'
 import { seasonOnly } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
 import { FONT, INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { MAC_DEFS, macMarker, dateDomain, dateTicks, macOf, seasonColor, seasonsIn, type Channel, type MacKey, type Pair, type PairSite } from './data'
 import { iqrFences, seasonRuns } from './mac'
-import { SweepMarks } from '../sweepMarks'
 
 const GAP_DAYS = 60, MIN_RUN = 5
 
@@ -30,6 +30,7 @@ export function MacTimeline({ pairs, marked = [], meta, sites, ch, sigma }: {
   const [key, setKey] = useSearchParam<MacKey>('af.mac', 'hipsOverEc', MAC_DEFS.map((d) => d.key))
   const def = MAC_DEFS.find((d) => d.key === key)!
   const hl = useHighlightActions()
+  const reasonOf = useMarkReason()
   const per = useMemo(() => sites.map((s) => {
     const pts = pairs.filter((p) => p.site === s.name).flatMap((p) => { const v = macOf(def, p); return v === null ? [] : [{ p, v }] })
     const fences = iqrFences(pts.map((q) => q.v))
@@ -42,9 +43,9 @@ export function MacTimeline({ pairs, marked = [], meta, sites, ch, sigma }: {
         tip: [`${q.p.id} · ${q.p.date}`, `${def.label}: ${fmt(q.v, 2)} m²/g`, seasonOnly(se), 'click to open the filter'] })),
     }))
     const outliers = pts.filter((q) => isOut(q.v))
-    const marks = marked.filter((p) => p.site === s.name).flatMap((p) => { const v = macOf(def, p); return v === null ? [] : [{ x: new Date(p.date), y: v }] })
+    const marks: SweepMark[] = marked.filter((p) => p.site === s.name).flatMap((p) => { const v = macOf(def, p); return v === null ? [] : [{ x: new Date(p.date), y: v, tip: markTip(p, reasonOf(p.id) ?? 'excluded', [`${def.label}: ${fmt(v, 2)} m²/g`]) }] })
     return { s, n: pts.length, series, runs, outliers, marks, fences, ticks: dateTicks(pts.map((q) => q.p.date)), xDomain: dateDomain(pts.map((q) => q.p.date)) }
-  }).filter((x) => x.n > 0), [pairs, marked, meta, sites, def])
+  }).filter((x) => x.n > 0), [pairs, marked, meta, sites, def, reasonOf])
 
   const reference = def.reference(sigma ?? NaN)
   const { mac } = useMac()
@@ -60,9 +61,8 @@ export function MacTimeline({ pairs, marked = [], meta, sites, ch, sigma }: {
           <SweepPlot series={series} xScale="time" xDomain={xDomain} xFormat={ticks} yLabel={`${def.short} (m²/g)`} height={260} reference={Number.isFinite(reference) ? reference : undefined}
             yMarkers={readerMac ? [{ at: readerMac.value, label: readerMac.label, color: INK.accent }] : undefined}
             title={sites.length > 1 ? s.name : undefined}
-            onPoint={(_, pt) => pt.id && hl.openSample(pt.id)}
+            onPoint={(_, pt) => pt.id && hl.openSample(pt.id)} marks={marks}
             children={({ x, y }) => <g>
-              <SweepMarks marks={marks} x={x} y={y} />
               {/* outliers do not stretch the axis: one beyond it sits on the edge */}
               {outliers.map((q) => {
                 const [a, b] = y.domain(), v = Math.min(Math.max(q.v, Math.min(a, b)), Math.max(a, b))

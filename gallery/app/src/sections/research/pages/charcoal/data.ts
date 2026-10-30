@@ -4,7 +4,7 @@
  * (common/charcoal.ts), with the season names and colours the charts use.
  */
 import { useMemo } from 'react'
-import { useMarkedRows } from '@/lib/markedRows'
+import { useKnownFilter, useMarkedRows } from '@/lib/markedRows'
 import { seasonOfDate } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -67,11 +67,12 @@ export function useCharcoal(viewRows: FilterRow[], meta: MetaFile, scoresTable: 
   // EC against loading is a µg/m³ reproduction: rows in concentration whatever the basis
   const concRows = useConcRows(viewRows, meta)
   const markedRows = useConcRows(useMarkedRows(), meta)
+  const known = useKnownFilter()
   return useMemo(() => {
     const scores = rowsOf(scoresTable) as unknown as CharcoalScore[]
     const addis = concRows.filter((r) => r.site === ADDIS)
     const calendar = meta.seasons.filter((s) => !s.site || s.site === ADDIS)
-    const { scored, outside } = joinScores(scores, addis, set, (date, month) => seasonOfDate(date, month, calendar)?.name ?? null)
+    const { scored, outside } = joinScores(scores, addis, set, (date, month) => seasonOfDate(date, month, calendar)?.name ?? null, undefined, known)
     // the exclusions act on the gallery's rows only: the notebooks' own set is fixed (the charts say so, FixedSetNote)
     const marked = set === 'notebook' ? [] : markedScores(scores, markedRows.filter((r) => r.site === ADDIS), scored)
     // seasons in calendar order from October, as the Addis calendars run
@@ -93,5 +94,5 @@ export function useCharcoal(viewRows: FilterRow[], meta: MetaFile, scoresTable: 
       ? [{ name: 'Dry Season', months: [10, 11, 12, 1, 2], color: colorOf('Dry Season') }]
       : calendar.filter((s) => isDry({ season: s.name, month: s.months[0] ?? 0 })).map((s) => ({ name: s.name, months: s.months, color: s.color }))
     return { scored, marked, outside, total: scores.length, set, seasons: names.map((name) => ({ name, color: colorOf(name) })), colorOf, isDry, dryName: shortSeason(dryName).replace(/\s+(Rainy\s+)?Season$/, ''), drySeasons }
-  }, [scoresTable, concRows, markedRows, meta, set])
+  }, [scoresTable, concRows, markedRows, meta, set, known])
 }

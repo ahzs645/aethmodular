@@ -68,7 +68,7 @@ export function Components(_props: SectionPageProps) {
   return <>
     <PageIntro id="ml-components-intro" title="Component selection and cross-validation — the number of PLS factors is a claim about a curve, and the curves differ" data={data}
       notebooks="research/ftir_ec_phase3/ftir_11_ocec_ratio_cohort §8, ftir_20_component_selection_across_setups, ftir_23_component_selection_by_protocol, ftir_32_cv_scheme_ablation; ftir_31 §1.5 redraws ftir_23">
-      <FixedSetNote what="the notebooks' tables on their own filter sets (IMPROVE cohorts, the fixed Addis test set)" />
+      <FixedSetNote subject="this page" what="the notebooks' tables on their own filter sets (IMPROVE cohorts, the fixed Addis test set)" />
       <p>Two choices decide k together: the cross-validation scheme (site-grouped 5-fold, whole IMPROVE sites held out, or the Calibration app's
         interleaved 10-fold, every 10th filter) and the stopping rule (the first major minimum within one standard error, or the first k within
         5 % of the minimum). The notebooks' tables are drawn as they ran, at MAC 10; the Addis slopes follow the MAC set under Filters → units

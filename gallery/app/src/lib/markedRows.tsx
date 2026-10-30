@@ -1,7 +1,9 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { ChartAside } from '@/lib/singleView'
+import { usePresentation } from '@/lib/presentation'
 import { exclStatus, markTip, splitById, type ExclMode, type ExclStatus } from '@/lib/exclusionMode'
 import type { FilterRow } from '@/lib/types'
+import type { SweepMark } from '@/components/SweepPlot'
 
 /**
  * Filters → excluded: Mark (lib/exclusionMode). The charts keep receiving the counted rows for every statistic; the
@@ -14,23 +16,38 @@ interface Marked {
   rows: FilterRow[]
   /** why a filter is out, for its hover; null when it counts */
   reasonOf: (id: string) => string | null
+  /** does the gallery have a row for this filter at all (in view or not); pages joining their own items ask it */
+  known?: (id: string) => boolean
 }
 const Ctx = createContext<Marked>({ mode: 'hide', rows: [], reasonOf: () => null })
+/**
+ * The context as a chart sees it: a meeting page shown As presented (lib/presentation) is untouched by the
+ * gallery's exclusion choices, so there every chart reads Hide: no marks, no notes, whatever Filters → excluded says.
+ */
+function useMarked(): Marked {
+  const ctx = useContext(Ctx)
+  const presented = usePresentation() === 'presented'
+  return useMemo(() => (presented && ctx.mode !== 'hide' ? { ...ctx, mode: 'hide' as const, rows: [] } : ctx), [ctx, presented])
+}
 
-export function MarkedRowsProvider({ mode, rows, reasonOf, children }: Marked & { children: ReactNode }) {
-  const value = useMemo(() => ({ mode, rows: mode === 'mark' ? rows : [], reasonOf }), [mode, rows, reasonOf])
+export function MarkedRowsProvider({ mode, rows, reasonOf, known, children }: Marked & { children: ReactNode }) {
+  const value = useMemo(() => ({ mode, rows: mode === 'mark' ? rows : [], reasonOf, known }), [mode, rows, reasonOf, known])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
-export const useExclMode = () => useContext(Ctx).mode
+export const useExclMode = () => useMarked().mode
 /** the excluded filters a point chart draws as × (none unless Filters → excluded is Mark); never feed these to a fit */
-export const useMarkedRows = () => useContext(Ctx).rows
+export const useMarkedRows = () => useMarked().rows
 /** why a filter is excluded (null: it counts); a crossplot fed outside the rows uses it for hand exclusions */
-export const useMarkReason = () => useContext(Ctx).reasonOf
+export const useMarkReason = () => useMarked().reasonOf
+
+const UNKNOWN = () => false
+/** does the gallery have a row for a filter id at all (in view or not): a page tells its newer filters from cut ones */
+export const useKnownFilter = (): ((id: string) => boolean) => useMarked().known ?? UNKNOWN
 
 /** where any filter id stands under the current mode (lib/exclusionMode exclStatus), for pages with their own rows */
 export function useExclStatus(): (id: string | null | undefined) => ExclStatus {
-  const { mode, reasonOf } = useContext(Ctx)
+  const { mode, reasonOf } = useMarked()
   return useMemo(() => (id) => (id ? exclStatus(reasonOf(id), mode) : 'counted'), [mode, reasonOf])
 }
 
@@ -40,7 +57,7 @@ export function useExclStatus(): (id: string | null | undefined) => ExclStatus {
  * (components/Crossplot `marked`, ScatterLayer `marks`) under Mark; the hidden ones are left out. Memoised on `items`.
  */
 export function useExclusionSplit<T>(items: readonly T[], idOf: (t: T) => string | null | undefined): { counted: T[]; marked: T[]; nOut: number } {
-  const { mode, reasonOf } = useContext(Ctx)
+  const { mode, reasonOf } = useMarked()
   return useMemo(() => {
     const s = splitById(items, idOf, reasonOf, mode)
     return { counted: s.counted, marked: s.marked, nOut: s.marked.length + s.hidden.length }
@@ -61,6 +78,18 @@ export function toMarks(rows: readonly FilterRow[], at: (r: FilterRow) => readon
     const p = at(r)
     if (!p || !Number.isFinite(p[0]) || !Number.isFinite(p[1])) continue
     out.push({ id: r.id, at: p, tip: markTip(r, reasonOf(r.id) ?? 'excluded', extra?.(r)) })
+  }
+  return out
+}
+
+/** the same for a components/SweepPlot (`marks`): `at` gives a row's x (a date, number or category) and y */
+export function toSweepMarks(rows: readonly FilterRow[], at: (r: FilterRow) => readonly [SweepMark['x'], number] | null,
+  reasonOf: (id: string) => string | null, extra?: (r: FilterRow) => string[]): SweepMark[] {
+  const out: SweepMark[] = []
+  for (const r of rows) {
+    const p = at(r)
+    if (!p || !Number.isFinite(p[1])) continue
+    out.push({ x: p[0], y: p[1], tip: markTip(r, reasonOf(r.id) ?? 'excluded', extra?.(r)) })
   }
   return out
 }
@@ -100,8 +129,17 @@ export function ExcludedNote({ fields = [], drawn = false, of, count }: {
  * saved table) on which Filters → excluded does not act: shown under Include or Mark, so the reader knows the
  * switch is not ignored by accident. `what` names the set.
  */
-export function FixedSetNote({ what }: { what: string }) {
+export function FixedSetNote({ what, hand = false, subject = 'this chart' }: {
+  what: string
+  /** a filter excluded by hand still leaves this chart's points (and any live fit): only the export's exclusions do not act */
+  hand?: boolean
+  /** what the note is about: 'this chart' (default) or e.g. 'this page' in a page intro */
+  subject?: string
+}) {
   const mode = useExclMode()
   if (mode === 'hide') return null
-  return <ChartAside><p className="chart-note excluded-note">Filters → excluded ({mode === 'mark' ? 'Mark' : 'Include'}) does not act here: this chart draws {what}, as the notebook fixed it.</p></ChartAside>
+  const name = mode === 'mark' ? 'Mark' : 'Include'
+  return <ChartAside><p className="chart-note excluded-note">{hand
+    ? <>Filters → excluded ({name}) acts here only through filters you exclude by hand: {subject} draws {what}, as the notebook fixed it.</>
+    : <>Filters → excluded ({name}) does not act here: {subject} draws {what}, as the notebook fixed it.</>}</p></ChartAside>
 }
