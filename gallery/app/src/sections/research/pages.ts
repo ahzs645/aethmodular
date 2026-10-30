@@ -29,6 +29,7 @@ import { BlankLines } from './pages/BlankLines'
 import { MassLead } from './pages/MassLead'
 import { FilterOnly } from './pages/FilterOnly'
 import { CharcoalScores } from './pages/CharcoalScores'
+import { LotSpectra } from './pages/LotSpectra'
 
 export const RESEARCH_PAGES: (SectionPage & { Page: ComponentType<SectionPageProps> })[] = [
   { key: 'index', label: 'Index', title: 'What each page here reproduces', Page: Index, hidden: true },
@@ -55,4 +56,5 @@ export const RESEARCH_PAGES: (SectionPage & { Page: ComponentType<SectionPagePro
   { key: 'mass-lead', label: 'The mass lead', title: 'ftir_46: does PM2.5 mass explain the calibration residual at fixed prediction? Live, at every site', Page: MassLead },
   { key: 'filter-only', label: 'Filter-only transfer limits', title: 'filter_only_diagnostics, filter_proportionality, filter_relationship_stability: how far the filter relationships carry over time', Page: FilterOnly },
   { key: 'charcoal', label: 'Charcoal similarity', title: 'char_05–char_09: how closely each Addis spectrum matches the charcoal reference classes, by season, lot and loading', Page: CharcoalScores },
+  { key: 'lot-spectra', label: 'PTFE lot comparison', title: 'char_12 §4 for any site or sites: spectra by filter lot, all filters and season-controlled, raw, 2nd derivative and AIRSpec', Page: LotSpectra },
 ]
