@@ -30,6 +30,7 @@ import { GroupingPicker, useGroupings } from '@/components/GroupingDialog'
 import { NO_BAND_COLOR, applyGrouping, noBandLabel } from '@/lib/groupings'
 import { ChartAside } from '@/lib/singleView'
 import { ScrubField } from '@/components/ScrubField'
+import { useDashboardDetails } from '@/lib/dashboardDetails'
 import { UndoIcon } from '@/components/Icons'
 
 type Point = { row: FilterRow; x: number; y: number; c: number | null; s: number | null }
@@ -89,6 +90,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes: axesIn, id = 'sc
 }) {
   // a 1:1 line and one shared span only where x and y share a unit; otherwise each axis floats to its own range
   const axes = useMemo(() => axesForUnits(axesIn, meta.field_units?.[xField], meta.field_units?.[yField]), [axesIn, meta.field_units, xField, yField])
+  const details = useDashboardDetails()
   const chartLabel = useChartLabel()
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
@@ -403,7 +405,7 @@ export function Scatterplot({ rows, meta, xField, yField, axes: axesIn, id = 'sc
       title={title}
       subtitle="Any measured quantity against any other, coloured by site, by the selected season calendar, or by a third measurement (the 123 'colour-coded' crossplots in the estate); a fourth can size the marks. The stats box reports R² and the regression fits selected in the sidebar. Hover anywhere near a point to find it in every other chart; click it for the full record."
       provenance="stands in for 281 scatter + 123 colour-by-third-variable figures across 116 notebooks · plotting/crossplots.py · react-graph-gallery.com/scatter-plot · /bubble-plot"
-      controls={o.controls()}
+      controls={<>{o.controls()}{details && <button type="button" className="btn" onClick={() => details({ title: `${yField} vs ${xField}: fit observations`, rows: [...new Map(panels.flatMap(p => p.points).map(p => [p.row.id, p.row])).values()], fields: [xField, yField], note: 'Observations used by the current panels after legend and log-axis filtering. Below-zero points outside visible axes still contribute to fits, as described on the chart.' })}>Show fit observations</button>}</>}
       tip={domain.dropped > 0 ? `${domain.dropped} point${domain.dropped === 1 ? ' is' : 's are'} below zero and outside the displayed axes. These points are still included in the fit. Choose “Data” in the axes settings to see them.` : undefined}
     >
       <div ref={wrapRef} className={`chart-wrap centered${fit === null ? '' : ' fit-square'}`} style={fit === null ? undefined : { minHeight: fit }}>

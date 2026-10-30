@@ -1,22 +1,24 @@
+import { lazyView } from '@/components/LazyView'
 import { useContext, useMemo, type ReactNode } from 'react'
 import * as d3 from 'd3'
 import { Combobox } from '@/components/Combobox'
 import { Empty, FrameExtrasContext, Segmented } from '@/components/ChartFrame'
-import { WeatherTimeline } from '@/charts/weather/WeatherTimeline'
-import { MonthlyClimate } from '@/charts/weather/MonthlyClimate'
-import { RainWashout } from '@/charts/weather/RainWashout'
-import { WindRoses } from '@/charts/weather/WindRoses'
-import { PollutionRose } from '@/charts/weather/PollutionRose'
-import { PolarPlot } from '@/charts/weather/PolarPlot'
-import { WindSpeedConcentration } from '@/charts/weather/WindSpeedConcentration'
-import { WeatherCorrelations } from '@/charts/weather/WeatherCorrelations'
-import { SiteWeatherSummary } from '@/charts/weather/SiteWeatherSummary'
-import { RunCrossplot } from '@/charts/calibration/RunCrossplot'
-import { CVCurve } from '@/charts/calibration/CVCurve'
 import { useExport } from '@/lib/data'
 import { useTileSetting } from '@/lib/url'
 import { weatherField, type RoseFile, type WeatherSource } from '@/lib/weather'
 import type { CalibRunsFile, FilterRow, MetaFile } from '@/lib/types'
+
+const WeatherTimeline = lazyView(() => import('@/charts/weather/WeatherTimeline').then(m => m.WeatherTimeline))
+const MonthlyClimate = lazyView(() => import('@/charts/weather/MonthlyClimate').then(m => m.MonthlyClimate))
+const RainWashout = lazyView(() => import('@/charts/weather/RainWashout').then(m => m.RainWashout))
+const WindRoses = lazyView(() => import('@/charts/weather/WindRoses').then(m => m.WindRoses))
+const PollutionRose = lazyView(() => import('@/charts/weather/PollutionRose').then(m => m.PollutionRose))
+const PolarPlot = lazyView(() => import('@/charts/weather/PolarPlot').then(m => m.PolarPlot))
+const WindSpeedConcentration = lazyView(() => import('@/charts/weather/WindSpeedConcentration').then(m => m.WindSpeedConcentration))
+const WeatherCorrelations = lazyView(() => import('@/charts/weather/WeatherCorrelations').then(m => m.WeatherCorrelations))
+const SiteWeatherSummary = lazyView(() => import('@/charts/weather/SiteWeatherSummary').then(m => m.SiteWeatherSummary))
+const RunCrossplot = lazyView(() => import('@/charts/calibration/RunCrossplot').then(m => m.RunCrossplot))
+const CVCurve = lazyView(() => import('@/charts/calibration/CVCurve').then(m => m.CVCurve))
 
 /**
  * Dashboard tiles for the Weather and Calibration tabs' charts. Those pages work out their

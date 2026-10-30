@@ -1,39 +1,50 @@
+import { lazyView } from '@/components/LazyView'
 import type { ReactNode } from 'react'
 import type { AxesOpts } from '@/lib/axes'
 import type { FilterRow, MetaFile, PmfFile, PmfRow } from '@/lib/types'
+import { NoteTile } from './NoteTile'
 import type { Scope } from '@/lib/dashboard'
-import { StatTile } from '@/charts/summary/StatTile'
-import { SiteCards } from '@/charts/summary/SiteCards'
-import { SiteSummary } from '@/charts/summary/SiteSummary'
-import { SiteRank } from '@/charts/ranking/SiteRank'
 import { CVCurveTile, MonthlyClimateTile, PolarPlotTile, PollutionRoseTile, RainWashoutTile, RunCrossplotTile, WeatherCorrelationsTile, WeatherSummaryTile, WeatherTimelineTile, WindRosesTile, WindSpeedTile, type CalibrationData } from '@/components/dashboard/extraTiles'
-import { Scatterplot } from '@/charts/correlation/Scatterplot'
-import { Correlogram } from '@/charts/correlation/Correlogram'
-import { AvailabilityHeatmap } from '@/charts/correlation/AvailabilityHeatmap'
-import { DensityHexbin } from '@/charts/correlation/DensityHexbin'
-import { ConnectedScatter } from '@/charts/correlation/ConnectedScatter'
-import { SpeciesGraph } from '@/charts/correlation/SpeciesGraph'
-import { DistributionPanel } from '@/charts/distribution/DistributionPanel'
-import { Histogram } from '@/charts/distribution/Histogram'
-import { Ridgeline } from '@/charts/distribution/Ridgeline'
-import { Timeseries } from '@/charts/evolution/Timeseries'
-import { MonthlyBand } from '@/charts/evolution/MonthlyBand'
-import { SeasonalClock } from '@/charts/evolution/SeasonalClock'
-import { MonthlyHeatmap } from '@/charts/evolution/MonthlyHeatmap'
-import { Barplot } from '@/charts/ranking/Barplot'
-import { CorrelationRanking } from '@/charts/ranking/CorrelationRanking'
-import { SiteRadar } from '@/charts/ranking/SiteRadar'
-import { ParallelCoordinates } from '@/charts/ranking/ParallelCoordinates'
-import { CompositionTreemap } from '@/charts/partOfWhole/CompositionTreemap'
-import { FunctionalGroups } from '@/charts/partOfWhole/FunctionalGroups'
 import { SiteBubbleMap, SpartanCompositionMap } from '@/charts/map/lazy'
-import { MethodSankey } from '@/charts/flow/MethodSankey'
-import { SourceStack } from '@/charts/pmf/SourceStack'
 import { resolveField } from '@/lib/fieldEquivalents'
+
+const StatTile = lazyView(() => import('@/charts/summary/StatTile').then(m => m.StatTile))
+const SiteCards = lazyView(() => import('@/charts/summary/SiteCards').then(m => m.SiteCards))
+const SiteSummary = lazyView(() => import('@/charts/summary/SiteSummary').then(m => m.SiteSummary))
+const SiteRank = lazyView(() => import('@/charts/ranking/SiteRank').then(m => m.SiteRank))
+const Scatterplot = lazyView(() => import('@/charts/correlation/Scatterplot').then(m => m.Scatterplot))
+const Correlogram = lazyView(() => import('@/charts/correlation/Correlogram').then(m => m.Correlogram))
+const AvailabilityHeatmap = lazyView(() => import('@/charts/correlation/AvailabilityHeatmap').then(m => m.AvailabilityHeatmap))
+const DensityHexbin = lazyView(() => import('@/charts/correlation/DensityHexbin').then(m => m.DensityHexbin))
+const ConnectedScatter = lazyView(() => import('@/charts/correlation/ConnectedScatter').then(m => m.ConnectedScatter))
+const SpeciesGraph = lazyView(() => import('@/charts/correlation/SpeciesGraph').then(m => m.SpeciesGraph))
+const DistributionPanel = lazyView(() => import('@/charts/distribution/DistributionPanel').then(m => m.DistributionPanel))
+const Histogram = lazyView(() => import('@/charts/distribution/Histogram').then(m => m.Histogram))
+const Ridgeline = lazyView(() => import('@/charts/distribution/Ridgeline').then(m => m.Ridgeline))
+const Timeseries = lazyView(() => import('@/charts/evolution/Timeseries').then(m => m.Timeseries))
+const MonthlyBand = lazyView(() => import('@/charts/evolution/MonthlyBand').then(m => m.MonthlyBand))
+const SeasonalClock = lazyView(() => import('@/charts/evolution/SeasonalClock').then(m => m.SeasonalClock))
+const MonthlyHeatmap = lazyView(() => import('@/charts/evolution/MonthlyHeatmap').then(m => m.MonthlyHeatmap))
+const Barplot = lazyView(() => import('@/charts/ranking/Barplot').then(m => m.Barplot))
+const CorrelationRanking = lazyView(() => import('@/charts/ranking/CorrelationRanking').then(m => m.CorrelationRanking))
+const SiteRadar = lazyView(() => import('@/charts/ranking/SiteRadar').then(m => m.SiteRadar))
+const ParallelCoordinates = lazyView(() => import('@/charts/ranking/ParallelCoordinates').then(m => m.ParallelCoordinates))
+const CompositionTreemap = lazyView(() => import('@/charts/partOfWhole/CompositionTreemap').then(m => m.CompositionTreemap))
+const FunctionalGroups = lazyView(() => import('@/charts/partOfWhole/FunctionalGroups').then(m => m.FunctionalGroups))
+const MethodSankey = lazyView(() => import('@/charts/flow/MethodSankey').then(m => m.MethodSankey))
+const SourceStack = lazyView(() => import('@/charts/pmf/SourceStack').then(m => m.SourceStack))
 
 /** What App hands every tile: the Filters panel's rows and meta, and what a few charts need besides. */
 export interface DashboardData {
   rows: FilterRow[]
+  snapshot?: boolean
+  snapshotFiles?: Record<string, unknown>
+  referenceRows?: FilterRow[]
+  provenance?: Record<string, unknown>
+  calibrationLoading?: boolean
+  calibrationError?: string
+  retryCalibration?: () => void
+  requireCalibration?: () => void
   /** every filter of the sites in view before the date, season and exclusion filters (what each site measured at all) */
   measured?: FilterRow[]
   meta: MetaFile
@@ -68,10 +79,17 @@ export interface DashboardChart {
   size: [number, number]
   /** offered only when this holds (PMF charts need the PMF solution) */
   available?: (d: DashboardData) => boolean
+  dependencies?: readonly string[]
+  resources?: (data: DashboardData) => string[]
+  tags?: readonly string[]
+  details?: boolean
   render: (d: DashboardData, fields: string[]) => ReactNode
 }
 
+const dailyFiles = (data: DashboardData) => [...new Set(data.rows.filter(r => typeof r['Temperature (ERA5)'] === 'number').map(r => r.code))].map(code => `weather/daily/${code}.json`)
+
 const CHARTS: DashboardChart[] = [
+  { kind: 'note', label: 'Research note', group: 'Summary', blurb: 'a hypothesis, cohort explanation, source citation or caveat', fields: 'none', size: [4, 4], details: false, render: () => <NoteTile /> },
   { kind: 'sitecards', label: 'Site cards', group: 'Summary', blurb: 'one card per site: three numbers, bars and sparklines; click to open the site', fields: 'trio', size: [12, 6],
     render: (d, f) => <SiteCards rows={d.rows} meta={d.meta} fields={f} onOpenSite={d.openSite} /> },
   { kind: 'sitesummary', label: 'Site summary', group: 'Summary', blurb: 'where, when, and which measurements exist (and on how many filters)', fields: 'none', size: [3, 2],
@@ -122,24 +140,24 @@ const CHARTS: DashboardChart[] = [
     render: (d) => <CompositionTreemap rows={d.rows} meta={d.meta} /> },
   { kind: 'fgroups', label: 'Functional groups', group: 'Composition', blurb: 'FTIR organic functional groups, stacked', fields: 'none', size: [4, 5],
     render: (d) => <FunctionalGroups rows={d.rows} meta={d.meta} /> },
-  { kind: 'map', label: 'Site map', group: 'Map', blurb: 'one field per site on the map', fields: 'single', size: [6, 5],
+  { kind: 'map', resources: () => ['world.geojson', 'spartan_map.json', 'improve_map.json', 'aeronet/sites_summary.json'], label: 'Site map', group: 'Map', blurb: 'one field per site on the map', fields: 'single', size: [6, 5],
     render: (d, [f]) => <SiteBubbleMap rows={d.rows} meta={d.meta} field={f} onSite={d.openSite} /> },
-  { kind: 'spartancomposition', label: 'SPARTAN composition map', group: 'Map', blurb: "a donut of SPARTAN's PM2.5 reconstruction per site", fields: 'none', size: [10, 7],
+  { kind: 'spartancomposition', resources: () => ['spartan_composition.json', 'world.geojson'], details: false, label: 'SPARTAN composition map', group: 'Map', blurb: "a donut of SPARTAN's PM2.5 reconstruction per site", fields: 'none', size: [10, 7],
     render: () => <SpartanCompositionMap /> },
   { kind: 'sankey', label: 'Method flow', group: 'Flow', blurb: 'site → EC method → HIPS / season', fields: 'none', size: [6, 5],
     render: (d) => <MethodSankey rows={d.rows} meta={d.meta} /> },
 
-  { kind: 'wxtimeline', label: 'Weather timeline', group: 'Weather', blurb: 'daily weather under the filters (one site)', fields: 'single', size: [8, 6],
+  { kind: 'wxtimeline', resources: dailyFiles, label: 'Weather timeline', group: 'Weather', blurb: 'daily weather under the filters (one site)', fields: 'single', size: [8, 6],
     render: (d, [f]) => <WeatherTimelineTile rows={d.rows} meta={d.meta} field={f} /> },
-  { kind: 'wxclimate', label: 'Monthly climate', group: 'Weather', blurb: 'temperature and rain by month against the season calendar', fields: 'none', size: [4, 6],
+  { kind: 'wxclimate', resources: dailyFiles, label: 'Monthly climate', group: 'Weather', blurb: 'temperature and rain by month against the season calendar', fields: 'none', size: [4, 6],
     render: (d) => <MonthlyClimateTile rows={d.rows} meta={d.meta} /> },
   { kind: 'wxwashout', label: 'Rain washout', group: 'Weather', blurb: "the measurement by how wet each filter's window was", fields: 'single', size: [4, 6],
     render: (d, [f]) => <RainWashoutTile rows={d.rows} meta={d.meta} field={f} /> },
-  { kind: 'wxroses', label: 'Wind roses', group: 'Weather', blurb: 'where the air came from while the filters sampled', fields: 'none', size: [4, 6],
+  { kind: 'wxroses', resources: () => ['weather/wind.json', 'weather/roses.json'], label: 'Wind roses', group: 'Weather', blurb: 'where the air came from while the filters sampled', fields: 'none', size: [4, 6],
     render: (d) => <WindRosesTile rows={d.rows} meta={d.meta} pmfLabelOfDate={d.pmfLabelOfDate} /> },
-  { kind: 'wxpollrose', label: 'Pollution rose', group: 'Weather', blurb: 'the measurement by the direction the air came from', fields: 'single', size: [4, 6],
+  { kind: 'wxpollrose', resources: () => ['weather/wind.json', 'weather/roses.json'], label: 'Pollution rose', group: 'Weather', blurb: 'the measurement by the direction the air came from', fields: 'single', size: [4, 6],
     render: (d, [f]) => <PollutionRoseTile rows={d.rows} meta={d.meta} field={f} /> },
-  { kind: 'wxpolar', label: 'Polar plot', group: 'Weather', blurb: 'the measurement by wind direction and speed', fields: 'single', size: [4, 6],
+  { kind: 'wxpolar', resources: () => ['weather/wind.json', 'weather/roses.json'], label: 'Polar plot', group: 'Weather', blurb: 'the measurement by wind direction and speed', fields: 'single', size: [4, 6],
     render: (d, [f]) => <PolarPlotTile rows={d.rows} meta={d.meta} field={f} /> },
   { kind: 'wxspeed', label: 'By wind speed', group: 'Weather', blurb: 'median and IQR of the measurement by wind speed, per site', fields: 'single', size: [4, 5],
     render: (d, [f]) => <WindSpeedTile rows={d.rows} meta={d.meta} field={f} /> },
@@ -149,13 +167,13 @@ const CHARTS: DashboardChart[] = [
     render: (d, [f]) => <WeatherSummaryTile rows={d.rows} meta={d.meta} field={f} onOpenSite={d.openSite} /> },
 
   { kind: 'calcross', label: 'Calibration crossplot', group: 'Calibration', blurb: 'one run: predicted FTIR EC against the reference, per filter', fields: 'none', size: [6, 7],
-    available: (d) => !!d.calibration, render: (d) => d.calibration && <RunCrossplotTile cal={d.calibration} /> },
+    dependencies: ['calibration_runs.json'], details: false, render: (d) => d.calibration && <RunCrossplotTile cal={d.calibration} /> },
   { kind: 'calcv', label: 'Cross-validation curve', group: 'Calibration', blurb: 'one run: error against the number of PLS components', fields: 'none', size: [6, 5],
-    available: (d) => !!d.calibration, render: (d) => d.calibration && <CVCurveTile cal={d.calibration} /> },
+    dependencies: ['calibration_runs.json'], details: false, render: (d) => d.calibration && <CVCurveTile cal={d.calibration} /> },
 
-  { kind: 'sourcestack', label: 'PMF sources over time', group: 'PMF sources', blurb: 'factor contributions, Addis 2023', fields: 'none', size: [8, 5],
+  { kind: 'sourcestack', details: false, label: 'PMF sources over time', group: 'PMF sources', blurb: 'factor contributions, Addis 2023', fields: 'none', size: [8, 5],
     available: (d) => !!d.pmf, render: (d) => d.pmf && <SourceStack pmf={d.pmf} rows={d.pmfRows} meta={d.meta} /> },
-  { kind: 'sourceseason', label: 'PMF sources by season', group: 'PMF sources', blurb: 'factor shares per season', fields: 'none', size: [4, 5],
+  { kind: 'sourceseason', details: false, label: 'PMF sources by season', group: 'PMF sources', blurb: 'factor shares per season', fields: 'none', size: [4, 5],
     available: (d) => !!d.pmf, render: (d) => d.pmf && <SourceStack pmf={d.pmf} rows={d.pmfRows} meta={d.meta} id="sourceseason" initialGrouping="by season" title="Source apportionment by season" /> },
 ]
 

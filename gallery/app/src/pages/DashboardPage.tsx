@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { FrameExtrasContext, Segmented, type FrameExtras } from '@/components/ChartFrame'
 import { FieldSelect } from '@/components/FieldSelect'
@@ -11,6 +11,11 @@ import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { ChartSite, ChartFit, LEGEND_MODES, TileLegend, type LegendMode } from '@/lib/chartFit'
 import { addTile, arrange, COLS, nextId, nextTileId, placeTile, removeTile, stepTile, ROWS, rowsUsed, tileKeyPrefix, updateTile, type DashState, type Scope, type Sheet, type Tile } from '@/lib/dashboard'
 import { clearScopedParams, copyScopedParams, ParamScope, useSearchParam } from '@/lib/url'
+import { CohortControls, DashboardDialog, DetailsDialog, TileData, TileErrorBoundary, TileInformation, useTileCohort } from '@/components/dashboard/DashboardTools'
+import { DashboardDetails, type DetailRequest } from '@/lib/dashboardDetails'
+import type { DashboardSnapshot } from '@/lib/dashboardSnapshot'
+import { SnapshotFiles } from '@/lib/data'
+import { SheetTools } from '@/components/dashboard/SheetTools'
 import { XIcon } from '@/components/Icons'
 
 const GAP = 10
@@ -45,8 +50,10 @@ export function DashboardPage({ data, dash, setDash, filters, onScope, onPickSit
   onPickSite: (code: string) => void
   display?: ReactNode
 }) {
+  const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null)
   const { scope, layout } = dash
-  const sheets = dash.sheets[scope] ?? starterSheets(scope, data)
+  const starters = useMemo(() => starterSheets(scope, data), [scope, data])
+  const sheets = dash.sheets[scope] ?? starters
   const active = Math.min(dash.sheet, sheets.length - 1)
   const sheet = sheets[active]
   const tiles = sheet.tiles
@@ -147,11 +154,23 @@ export function DashboardPage({ data, dash, setDash, filters, onScope, onPickSit
       return drag.mode === 'move' ? placeTile(tiles, drag.id, t.x + dx, Math.max(0, t.y + dy))
         : updateTile(tiles, drag.id, { w: Math.max(1, t.w + dx), h: Math.max(1, t.h + dy) })
     }
-    const move = (e: PointerEvent) => setPreview(step(e))
+    let frame = 0
+    let latest: PointerEvent | null = null
+    let last = ''
+    const move = (e: PointerEvent) => {
+      latest = e
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        if (!latest) return
+        const key = `${Math.round((latest.clientX - drag.px) / (colPx + GAP))}:${Math.round((latest.clientY - drag.py) / (rowPx + GAP))}`
+        if (key !== last) { last = key; setPreview(step(latest)) }
+      })
+    }
     const up = (e: PointerEvent) => { setTiles(step(e)); setPreview(null); setDrag(null) }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up, { once: true })
-    return () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
+    return () => { cancelAnimationFrame(frame); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
   }, [drag]) // eslint-disable-line react-hooks/exhaustive-deps
   const shown = preview ?? tiles
   // the keyboard: arrows move the focused tile a cell, Shift + arrows resize it, Delete removes it;
@@ -214,7 +233,11 @@ export function DashboardPage({ data, dash, setDash, filters, onScope, onPickSit
       <p className="frame-empty">A chart this gallery no longer has (“{t.kind}”).</p>
       <button type="button" className="btn" onClick={() => remove(t.id)}>Remove</button>
     </div>
-    return <TileView key={`${scope}-${sheet.id}-${t.id}`} scopePrefix={prefix(t.id)} tile={t} chart={chart} data={data} width={w} height={h} style={style}
+    const saved = snapshot && snapshot.dash.scope === scope && snapshot.sheet.id === sheet.id ? snapshot.tiles.find(s => s.id === t.id) : null
+    if (saved && snapshot?.externalTiles.includes(t.id)) return <div key={t.id} className="dash-tile panel" style={style}><h3>{chart.label}</h3><p>Snapshot contains this tile’s filter rows and settings. Its auxiliary source files are required to replay the visualization.</p></div>
+    const tileData = saved ? { ...data, rows: saved.rows, measured: saved.rows, referenceRows: saved.rows, meta: saved.meta, eff: (f: string) => f, pmf: saved.pmf, pmfRows: saved.pmfRows,
+      snapshot: true, snapshotFiles: snapshot?.files ?? {}, calibration: snapshot?.calibration ? { ...snapshot.calibration, knownIds: new Set(snapshot.calibration.knownIds) } : null, provenance: { ...snapshot?.provenance, sourceMode: 'snapshot', generated: snapshot?.created } } : data
+    return <TileView key={`${scope}-${sheet.id}-${t.id}-${saved ? snapshot?.created : "current"}`} scopePrefix={prefix(t.id)} tile={saved ? { ...t, fields: saved.fields } : t} chart={chart} data={tileData} width={w} height={h} style={style}
       edit={edit && role === 'grid'} role={role} dragging={drag?.id === t.id}
       onMoveStart={(e) => startDrag(t.id, 'move', e)} onResizeStart={(e) => startDrag(t.id, 'resize', e)}
       onKey={(e) => keyMove(t, e)} keepFocus={kbFocus === t.id}
@@ -252,9 +275,11 @@ export function DashboardPage({ data, dash, setDash, filters, onScope, onPickSit
     <>
       {slot && createPortal(<DashHeader meta={data.meta} filters={filters} scope={scope} onScope={onScope}
         onPickSite={onPickSite} layout={layout} onLayout={(l) => setDash({ ...dash, layout: l })} edit={edit && !phone} onEdit={setEdit}
-        onAdd={() => setAdding(true)} rowsUsed={reach} sheets={sheetActions} display={display} onPresent={phone ? undefined : startPresent} />, slot)}
+        onAdd={() => setAdding(true)} rowsUsed={reach} sheets={sheetActions} display={<>{display}<SheetTools dash={{ ...dash, sheets: { ...dash.sheets, [scope]: sheets } }} sheet={sheet} data={data} onSnapshot={setSnapshot} replaying={!!snapshot} /></>} onPresent={phone ? undefined : startPresent} />, slot)}
+      {snapshot && <div className="snapshot-banner" role="status">Snapshot from {snapshot.created}: saved filter rows. Source revision {snapshot.revision.slice(0, 12)}. View links do not include this file.
+        <button className="btn" type="button" onClick={() => setSnapshot(null)}>Return to current data</button></div>}
       <div ref={mainRef} className={`dash-main${edit ? ' editing' : ''}${phone ? ' phone' : ''}`}
-        style={phone ? undefined : { height: present ? 'calc(100vh - 20px)' : `calc(100vh - ${top}px - 12px)` }}>
+        style={phone ? undefined : { height: present ? 'calc(100vh - 20px)' : `calc(100vh - ${top}px - ${snapshot ? 72 : 12}px)` }}>
         {tiles.length === 0 && <div className="dash-empty">
           <p>“{sheet.name}” has no charts yet.</p>
           <span><button type="button" className="btn" onClick={() => setAdding(true)}>+ Add chart</button></span>
@@ -301,11 +326,12 @@ const usePhone = () => useMediaQuery(`(max-width: ${PHONE}px)`)
 
 /** the Add chart menu: every registered kind, under the tab it comes from */
 function ChartCatalog({ data, onPick, onClose }: { data: DashboardData; onPick: (c: DashboardChart) => void; onClose: () => void }) {
+  const [search, setSearch] = useState('')
   const groups = useMemo(() => {
     const out = new Map<string, DashboardChart[]>()
-    for (const c of dashboardCharts()) if (!c.available || c.available(data)) out.set(c.group, [...(out.get(c.group) ?? []), c])
+    for (const c of dashboardCharts()) if (`${c.label} ${c.group} ${c.blurb} ${(c.tags ?? []).join(' ')}`.toLowerCase().includes(search.toLowerCase())) out.set(c.group, [...(out.get(c.group) ?? []), c])
     return [...out]
-  }, [data])
+  }, [data, search])
   useEffect(() => {
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', esc)
@@ -313,20 +339,24 @@ function ChartCatalog({ data, onPick, onClose }: { data: DashboardData; onPick: 
   }, [onClose])
   const fieldsNote = (c: DashboardChart) => (c.fields === 'pair' ? 'x and y' : c.fields === 'single' ? 'one field' : c.fields === 'trio' ? 'three fields' : '')
   return (
-    <div className="map-dialog-backdrop" onPointerDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="panel dash-catalog" role="dialog" aria-label="Add a chart">
+    <DashboardDialog title="Add a chart" onClose={onClose}>
+      <div className="dash-catalog">
         <header className="frame-head">
           <div><h2>Add a chart</h2><p className="subtitle">It goes in the first free space, smaller if that is all there is, or takes half of the largest tile when the sheet is full. Drag it anywhere in Edit; change its fields from its ⋯ menu.</p></div>
           <div className="frame-actions"><button type="button" className="btn quiet x-btn" onClick={onClose} aria-label="Close"><XIcon /></button></div>
         </header>
+        <label className="dash-catalog-search">Find a chart <input className="select" type="search" placeholder="Try seasons, weather, calibration…" value={search} onChange={e => setSearch(e.target.value)} /></label>
+        {!groups.length && <p>No charts match “{search}”.</p>}
         <div className="dash-catalog-groups">
           {groups.map(([group, charts]) => (
             <section key={group}>
               <h3>{group}</h3>
               {charts.map((c) => (
                 <button key={c.kind} type="button" className="dash-card" onClick={() => onPick(c)}>
-                  <strong>{c.label}</strong>
+                  <span className={`chart-preview preview-${c.group.toLowerCase().replace(/ /g, "-")}`} aria-hidden="true">{c.group === 'Evolution' ? '▁▃▂▅▆▄▇' : c.group === 'Correlation' ? '· ∙ • · ∙' : c.group === 'Weather' ? '☀ ☁ ☂' : '▂ ▅ ▃ ▆'}</span><strong>{c.label}</strong>
                   <span>{c.blurb}</span>
+                  {c.available && !c.available(data) && <em>Needs the optional PMF source export.</em>}
+                  {!!c.dependencies?.length && <em>Loads data when added</em>}
                   {fieldsNote(c) && <em>{fieldsNote(c)}</em>}
                 </button>
               ))}
@@ -334,8 +364,14 @@ function ChartCatalog({ data, onPick, onClose }: { data: DashboardData; onPick: 
           ))}
         </div>
       </div>
-    </div>
+    </DashboardDialog>
   )
+}
+
+const DashboardDrawing = memo(function DashboardDrawing({ chart, data, fields }: { chart: DashboardChart; data: DashboardData; fields: string[] }) { return <>{chart.render(data, fields)}</> })
+
+function TileView(props: React.ComponentProps<typeof ScopedTileView>) {
+  return <ParamScope prefix={props.scopePrefix}><ScopedTileView {...props} /></ParamScope>
 }
 
 /**
@@ -344,7 +380,7 @@ function ChartCatalog({ data, onPick, onClose }: { data: DashboardData; onPick: 
  * each draw by what is left over, so legends and readouts of any height fill the tile; a
  * chart that cannot shrink enough scrolls inside its tile, never the page.
  */
-function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, role, dragging, onMoveStart, onResizeStart, onKey, keepFocus, onChange, onDuplicate, onRemove, onMaximize, onFocus }: {
+function ScopedTileView({ tile, chart, data, width, height, style, scopePrefix, edit, role, dragging, onMoveStart, onResizeStart, onKey, keepFocus, onChange, onDuplicate, onRemove, onMaximize, onFocus }: {
   tile: Tile
   chart: DashboardChart
   data: DashboardData
@@ -368,8 +404,13 @@ function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, 
 }) {
   const siteName = useMemo(() => scopePrefix.startsWith('site.') && new Set(data.rows.map(r => r.site)).size === 1 ? data.rows[0].site : null, [scopePrefix, data.rows])
   const n = chart.fields === 'pair' ? 2 : chart.fields === 'single' ? 1 : chart.fields === 'trio' ? 3 : 0
-  const start = startFields(chart, data)
-  const fields = Array.from({ length: n }, (_, i) => tile.fields[i] ?? start[i])
+  const fields = useMemo(() => { const start = startFields(chart, data); return Array.from({ length: n }, (_, i) => tile.fields[i] ?? start[i]) }, [tile.fields, chart, data, n])
+  const { filter, setFilter, rows: cohortRows } = useTileCohort(data)
+  const tileData = useMemo(() => ({ ...data, rows: cohortRows }), [data, cohortRows])
+  const effectiveFields = useMemo(() => fields.map(data.eff), [fields, data.eff])
+  const [details, setDetails] = useState<DetailRequest | null>(null)
+  const [filterOpen, setFilterOpen] = useState(false)
+  const showDetails = useCallback((d: DetailRequest) => setDetails(d), [])
   // x and y never show the same field: picking the other one's field swaps the two (as in App)
   const setField = (i: number, f: string) => {
     const next = [...fields]
@@ -383,13 +424,13 @@ function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, 
   const axisSet = (role: AxisRole, f: string) => setField(role === 'y' ? 1 : 0, f)
 
   // where the chart's legends go (⋯ menu), kept with the tile's other URL keys
-  const [legend, setLegend] = useSearchParam<LegendMode>(`${scopePrefix}legend`, 'auto', LEGEND_MODES)
+  const [legend, setLegend] = useSearchParam<LegendMode>(`legend`, 'auto', LEGEND_MODES)
   const legendReserve = Math.round(Math.min(220, Math.max(130, width * 0.28)))
 
   // ---- fit: a first guess, then corrected by the frame's leftover (or overflow) after each draw
   const minFit = chart.kind === 'stat' || chart.kind === 'sitesummary' ? 16 : 120
   const ref = useRef<HTMLDivElement>(null)
-  const [fit, setFit] = useState(() => Math.max(minFit, height - 70))
+  const [fit, setFit] = useState(() => Math.max(minFit, height - (chart.kind === 'note' ? 70 : 100)))
   const tries = useRef(0)
   const key = `${width}|${height}|${tile.kind}|${fields.join('|')}|${legend}`
   const lastKey = useRef(key)
@@ -402,7 +443,7 @@ function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, 
   // this tile rendering again: when its contents change the tile measures again, and the correction
   // starts over if it had run out (at most 12 times in any 5 s, so a chart that redraws on every
   // correction cannot loop)
-  const [, redraw] = useState(0)
+  const [fitRevision, redraw] = useState(0)
   useEffect(() => {
     // the tile, not its panel: a chart whose data is still coming draws no frame at first
     const root = ref.current
@@ -433,18 +474,21 @@ function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, 
     // overflowing: the panel's own overflow, which counts margins that spill past the last child;
     // otherwise the room left under the last child
     const over = panel.scrollHeight - panel.clientHeight
-    const slack = over > 0 ? -over : panel.clientHeight - (bottom - top + pad + panel.scrollTop)
+    const stripHeight = ref.current?.querySelector('.tile-data-strip')?.getBoundingClientRect().height ?? 0
+    const available = height - stripHeight
+    const slack = over > 0 ? -over : Math.min(panel.clientHeight, available) - (bottom - top + pad + panel.scrollTop)
     if (Math.abs(slack) <= 2) return
     // never taller than the tile: past that a chart only scrolls
     const next = Math.min(Math.max(minFit, height), Math.max(minFit, Math.round(fit + slack)))
     if (next === fit) return
     tries.current += 1
     setFit(next)
-  })
+  }, [key, data.rows, data.meta, fit, fitRevision, height, minFit])
 
   // a short name for the bar and the menu
   const subtitle = chart.fields === 'pair' ? `${fields[1]} vs ${fields[0]}` : chart.fields === 'single' && chart.kind !== 'stat' ? fields[0] : undefined
   const menu = (close: () => void) => <>
+    <button type="button" className="btn quiet" onClick={() => { close(); setFilterOpen(true) }}>Filters for this tile</button>
     {onFocus && <button type="button" className="btn quiet" onClick={() => { close(); onFocus() }}>◱ Show large</button>}
     <button type="button" className="btn quiet" onClick={() => { close(); onMaximize() }}>{role === 'max' ? '⤡ Back' : '⤢ Full window'}</button>
     <button type="button" className="btn quiet" onClick={() => { close(); onDuplicate() }}>⧉ Duplicate</button>
@@ -473,17 +517,19 @@ function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, 
 
   // fields none of the rows in view has (a site that never measured them): the tile says why rather than
   // drawing an empty chart; and a field standing in for one the sites lack says so in a chip
-  const present = fieldsPresent(data.rows)
+  const present = fieldsPresent(cohortRows)
   const measured = fieldsPresent(data.measured?.length ? data.measured : data.rows)
-  const unmeasured = data.rows.length ? fields.filter((f) => !present.has(data.eff(f))) : []
+  const unmeasured = cohortRows.length ? fields.filter((f) => !present.has(data.eff(f))) : []
   const standIn = fields.flatMap((f) => {
     const hit = Object.entries(EQUIVALENTS).find(([of, alts]) => !measured.has(data.eff(of)) && alts.some((a) => a.field === f))
     const alt = hit?.[1].find((a) => a.field === f)
     return hit && alt ? [{ ...alt, for: hit[0] }] : []
   })
 
-  // on a phone (one long column) a tile draws once it comes near the screen, and then stays
-  const near = useNear(ref, role === 'phone')
+  // Defer offscreen grid, rail and phone charts once; keep them mounted after first approach.
+  const near = useNear(ref, !edit && role !== 'max' && role !== 'hero')
+  const needsCalibration = !!chart.dependencies?.includes('calibration_runs.json')
+  useEffect(() => { if (near && needsCalibration && !data.calibration) data.requireCalibration?.() }, [near, needsCalibration, data.calibration, data.requireCalibration])
 
   // did the chart draw its own frame? if not, the tile draws one with its menu
   const [framed, setFramed] = useState(true)
@@ -492,17 +538,23 @@ function TileView({ tile, chart, data, width, height, style, scopePrefix, edit, 
   return (
     <div ref={ref} className={`dash-tile legend-${legend}${dragging ? ' dragging' : ''}${edit ? ' editing' : ''}${chart.kind === 'stat' ? ' stat' : ''}`}
       style={{ ...style, ['--legend-w' as string]: `${legendReserve}px` }}>
-      <ParamScope prefix={scopePrefix}>
+      <SnapshotFiles.Provider value={data.snapshotFiles ?? null}><TileData.Provider value={tileData}><DashboardDetails.Provider value={showDetails}>
         <FrameExtrasContext.Provider value={extras}>
           <AxisFieldsProvider meta={data.meta} value={axisValue} set={axisSet}>
             <ChartSite name={siteName}><TileLegend mode={legend} reserve={legendReserve}><ChartFit height={fit}>
               {!near ? <section className="panel compact"><p className="frame-empty">{chart.label}</p></section>
-                : unmeasured.length ? <NotMeasured chart={chart} fields={unmeasured} data={data} pickers={pickers} onUse={(from, to) => setField(fields.indexOf(from), to)} />
-                : chart.render(data, fields.map(data.eff))}
+                : unmeasured.length ? <NotMeasured chart={chart} fields={unmeasured} data={tileData} pickers={pickers} onUse={(from, to) => setField(fields.indexOf(from), to)} />
+                : needsCalibration && !data.calibration ? <section className="panel compact"><h3>{chart.label}</h3>
+                  {data.calibrationError ? <div role="alert"><p>{data.calibrationError}</p><button className="btn" type="button" onClick={data.retryCalibration}>Retry data</button></div>
+                    : <p role="status">Loading calibration runs…</p>}</section>
+                : <TileErrorBoundary name={chart.label} resetKey={`${tile.kind}|${effectiveFields.join('|')}`}><DashboardDrawing chart={chart} data={tileData} fields={effectiveFields} /></TileErrorBoundary>}
             </ChartFit></TileLegend></ChartSite>
           </AxisFieldsProvider>
         </FrameExtrasContext.Provider>
-      </ParamScope>
+      </DashboardDetails.Provider></TileData.Provider></SnapshotFiles.Provider>
+      {chart.kind !== 'note' && <TileInformation data={tileData} chart={chart} fields={effectiveFields} filter={filter} onDetails={showDetails} onFilters={() => setFilterOpen(true)} />}
+      {filterOpen && <DashboardDialog title={`${chart.label} · filters for this tile`} onClose={() => setFilterOpen(false)}><CohortControls data={data} filter={filter} setFilter={setFilter} rows={cohortRows} /></DashboardDialog>}
+      {details && <TileData.Provider value={tileData}><DetailsDialog request={details} onClose={() => setDetails(null)} /></TileData.Provider>}
       {!framed && <section className="panel compact dash-fallback">
         <div className="tile-head">{editBar}</div>
         <p className="frame-empty"><strong>{chart.label}</strong>: nothing to draw for this subset.</p>

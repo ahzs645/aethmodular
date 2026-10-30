@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { loadDerived, loadJson } from '@/lib/data'
+import { normalizeSiteIdentity } from '@/lib/metricDefinition'
 import type { CalibFile, CalibRunsFile, CensusFile, FiltersFile, MetaFile, PmfFile } from '@/lib/types'
 import { useTileLegend } from '@/lib/chartFit'
 
@@ -19,28 +20,24 @@ export interface GalleryData {
  * Loads every exported dataset once and shares it across the app.
  * Regenerate the files with `python gallery/data/export_data.py`.
  */
-export function useGalleryData(includeCalibration = false) {
+export function useGalleryData(includeCalibration: boolean | 'runs' = false) {
   const [data, setData] = useState<GalleryData | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [calibrationLoaded, setCalibrationLoaded] = useState(false)
+  const [loaded, setLoaded] = useState({ grid: false, runs: false })
+  const [calibrationError, setCalibrationError] = useState('')
+  const [attempt, setAttempt] = useState(0)
+  const retryCalibration = useCallback(() => setAttempt(n => n + 1), [])
 
   useEffect(() => {
     let cancelled = false
     // cached in lib/data, so a remount (or React's development double effect) does not download twice
-    const get = (name: string) => loadDerived(`gallery:${name}`, async () => {
-      const value = await loadJson<unknown>(`${name}.json`)
-      if (!name.startsWith('calibration')) return value
-      // The calibration explorer names USPA "Pasadena"; the filter data (config.SITES)
-      // call it JPL. Relabel on load so one site has one name on every tab.
-      return JSON.parse(JSON.stringify(value).replace(/\bPasadena\b/g, 'JPL'))
-    })
     // pmf.json is ETAD-only and optional — a checkout without the factor CSVs
     // should still render everything else.
     Promise.all([
-      get('filters'),
-      get('meta'),
-      get('census'),
-      get('pmf').catch(() => null),
+      loadJson<FiltersFile>('filters.json'),
+      loadJson<MetaFile>('meta.json'),
+      loadJson<CensusFile>('census.json'),
+      loadJson<PmfFile>('pmf.json').catch(() => null),
     ])
       .then(([filters, meta, census, pmf]) => {
         if (!cancelled) setData({ filters, meta, census, pmf, calibration: null, calibrationRuns: null })
@@ -51,25 +48,31 @@ export function useGalleryData(includeCalibration = false) {
     }
   }, [])
 
-  // Large calibration exports are needed only by their pages/dashboard tiles.
-  // They never delay the first render of the filter charts.
+  // A dashboard asks only for the runs used by its calibration tiles. Full explorer pages
+  // also need the grid. The two files share the existing request/derived caches.
   const ready = !!data
   useEffect(() => {
     if (!includeCalibration || !ready) return
     let live = true
+    setCalibrationError('')
     const get = <T,>(name: string) => loadDerived<T>(`gallery:${name}`, async () =>
-      JSON.parse(JSON.stringify(await loadJson(`${name}.json`)).replace(/\bPasadena\b/g, 'JPL')))
-    Promise.all([get<CalibFile>('calibration').catch(() => null), get<CalibRunsFile>('calibration_runs').catch(() => null)])
-      .then(([calibration, calibrationRuns]) => {
-        if (live) {
-          setData(d => d ? { ...d, calibration, calibrationRuns } : d)
-          setCalibrationLoaded(true)
-        }
+      normalizeSiteIdentity(await loadJson<T>(`${name}.json`)))
+    const grid = includeCalibration === true
+    Promise.allSettled([grid ? get<CalibFile>('calibration') : Promise.resolve(null), get<CalibRunsFile>('calibration_runs')])
+      .then(([calibration, runs]) => {
+        if (!live) return
+        setData(d => d ? { ...d,
+          calibration: calibration.status === 'fulfilled' ? calibration.value ?? d.calibration : d.calibration,
+          calibrationRuns: runs.status === 'fulfilled' ? runs.value : d.calibrationRuns } : d)
+        setLoaded(old => ({ grid: old.grid || (grid && calibration.status === 'fulfilled'), runs: old.runs || runs.status === 'fulfilled' }))
+        const failures = [calibration, runs].flatMap(r => r.status === 'rejected' ? [String(r.reason)] : [])
+        setCalibrationError(failures.join('; '))
       })
     return () => { live = false }
-  }, [includeCalibration, ready])
+  }, [includeCalibration, ready, attempt])
 
-  return { data, error, calibrationLoading: includeCalibration && !calibrationLoaded }
+  return { data, error, calibrationError, retryCalibration,
+    calibrationLoading: !!includeCalibration && !calibrationError && (!loaded.runs || (includeCalibration === true && !loaded.grid)) }
 }
 
 /** Observes an element and reports its pixel size, so charts stay responsive. */

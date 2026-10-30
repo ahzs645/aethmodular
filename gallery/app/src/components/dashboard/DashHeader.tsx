@@ -120,7 +120,7 @@ export function DashHeader({ meta, filters, scope, onScope, onPickSite, layout, 
       {scopeMenu}{sheetMenu}
       <span className="dash-head-right">
         <HeaderPopover label="⋯" title="Sites, seasons, dates, filters and layout" align="right">
-          <div className="dash-more">{sitePicker}{seasons}{dates}{allFilters}{layoutSeg}{display}</div>
+          <div className="dash-more">{sitePicker}{seasons}{dates}{allFilters}{layoutSeg}<button type="button" className="btn" onClick={onAdd}>+ Add chart</button>{display}</div>
         </HeaderPopover>
       </span>
     </div>

@@ -77,7 +77,7 @@ export interface StationCompare {
 }
 
 export const WEATHER_GROUP = 'Weather (sampling window)'
-export const loadDaily = (code: string) => loadJson<DailyWeather>(`weather/daily/${code}.json`)
+export const loadDaily = (code: string, loader = loadJson) => loader<DailyWeather>(`weather/daily/${code}.json`)
 
 export type WeatherSource = 'ERA5' | 'station'
 /** The quantities the tab's charts offer, and the field each source keeps them under. */

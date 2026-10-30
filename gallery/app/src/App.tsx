@@ -1,3 +1,4 @@
+import { lazyView } from '@/components/LazyView'
 import { RegressionProvider, RegressionControls, parseEstimators, estimatorParam, type Estimator } from '@/lib/regressionPrefs'
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useGalleryData } from '@/hooks/useGalleryData'
@@ -14,41 +15,11 @@ import { PAPER_CALENDAR } from '@/lib/pmfPaper'
 import { NO_WEATHER, isDatedCalendar, seasonOfDate } from '@/lib/seasons'
 import { DEFAULT_RAIN_RULE, RAIN_SEASONS, parseRainRule, rainRuleParam, type RainRule } from '@/lib/rainSeasons'
 import { useRainCalendars } from '@/hooks/useRainCalendars'
-import { Scatterplot } from '@/charts/correlation/Scatterplot'
-import { Correlogram } from '@/charts/correlation/Correlogram'
-import { AvailabilityHeatmap } from '@/charts/correlation/AvailabilityHeatmap'
-import { DensityHexbin } from '@/charts/correlation/DensityHexbin'
-import { ConnectedScatter } from '@/charts/correlation/ConnectedScatter'
-import { SpeciesGraph } from '@/charts/correlation/SpeciesGraph'
-import { DistributionPanel } from '@/charts/distribution/DistributionPanel'
-import { Histogram } from '@/charts/distribution/Histogram'
-import { Ridgeline } from '@/charts/distribution/Ridgeline'
-import { Timeseries } from '@/charts/evolution/Timeseries'
-import { MonthlyBand } from '@/charts/evolution/MonthlyBand'
-import { SeasonalClock } from '@/charts/evolution/SeasonalClock'
 import { AVAILABILITY_VIEWS, AVAILABILITY_VIEW_PARAM, DataAvailabilityPage } from '@/pages/DataAvailabilityPage'
 import { InvestigationsPage, type InvestigationArea } from '@/pages/InvestigationsPage'
 import { AreaHeader, HUB_TAB, type AreaPage } from '@/components/AreaHeader'
-import { MonthlyHeatmap } from '@/charts/evolution/MonthlyHeatmap'
-import { Barplot } from '@/charts/ranking/Barplot'
-import { CorrelationRanking } from '@/charts/ranking/CorrelationRanking'
-import { SiteRadar } from '@/charts/ranking/SiteRadar'
-import { ParallelCoordinates } from '@/charts/ranking/ParallelCoordinates'
-import { CompositionTreemap } from '@/charts/partOfWhole/CompositionTreemap'
-import { FunctionalGroups } from '@/charts/partOfWhole/FunctionalGroups'
 import { SiteBubbleMap, SpartanCompositionMap } from '@/charts/map/lazy'
-import { MethodSankey } from '@/charts/flow/MethodSankey'
-import { SourceStack } from '@/charts/pmf/SourceStack'
-import { CensusPage } from '@/pages/CensusPage'
-import { CalibrationPage } from '@/pages/CalibrationPage'
-import { BaselineComparisonPage } from '@/pages/BaselineComparisonPage'
-import { SimilarityPage } from '@/pages/SimilarityPage'
-import { MeetingFollowupPage } from '@/pages/MeetingFollowupPage'
-import { SatoshiFollowupPage } from '@/pages/SatoshiFollowupPage'
-import { MeetingSpecPage } from '@/pages/MeetingSpecPage'
 import { SPEC_MEETINGS, meetingLabel } from '@/meetings'
-import { BlanksPage } from '@/pages/BlanksPage'
-import { ExperimentalPage } from '@/pages/ExperimentalPage'
 import { DEFAULT_EXPERIMENT, EXPERIMENTS, LISTED_EXPERIMENTS } from '@/experiments'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { dashParams, parseDash, type DashState, type Scope } from '@/lib/dashboard'
@@ -73,8 +44,6 @@ import { MAX_IMPROVE_SITES, MONTH_QUARTERS, NETWORK_DEFAULTS, hasImprove, hasSpa
 import type { SiteItem } from '@/components/SitePicker'
 import { FilterEditsProvider, HandEditsBadge, type FilterGroup } from '@/lib/filterEdits'
 import { GroupDrawer } from '@/components/GroupDrawer'
-import { WeatherPage } from '@/pages/WeatherPage'
-import { AeronetPage } from '@/pages/AeronetPage'
 import { HIDDEN_DUPLICATES } from '@/fieldLineage'
 import { PageSidebarProvider, PageSidebarSlot, SidebarControls, usePageSidebarNote } from '@/lib/pageSidebar'
 import { RATIO_GROUP, RATIO_PRESETS, VOLUME, parseRatios, ratioKey, ratiosParam, viewRows, viewUnits, type Basis, type RatioDef } from '@/lib/viewFields'
@@ -101,6 +70,40 @@ import research from '@/sections/research'
 import { defaultPage } from '@/sections/types'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 import { EQUIVALENTS } from '@/lib/fieldEquivalents'
+
+const CensusPage = lazyView(() => import('@/pages/CensusPage').then(m => m.CensusPage))
+const CalibrationPage = lazyView(() => import('@/pages/CalibrationPage').then(m => m.CalibrationPage))
+const BaselineComparisonPage = lazyView(() => import('@/pages/BaselineComparisonPage').then(m => m.BaselineComparisonPage))
+const SimilarityPage = lazyView(() => import('@/pages/SimilarityPage').then(m => m.SimilarityPage))
+const MeetingFollowupPage = lazyView<NonNullable<Parameters<typeof import('@/pages/MeetingFollowupPage')['MeetingFollowupPage']>[0]>>(() => import('@/pages/MeetingFollowupPage').then(m => m.MeetingFollowupPage))
+const SatoshiFollowupPage = lazyView(() => import('@/pages/SatoshiFollowupPage').then(m => m.SatoshiFollowupPage))
+const MeetingSpecPage = lazyView(() => import('@/pages/MeetingSpecPage').then(m => m.MeetingSpecPage))
+const BlanksPage = lazyView(() => import('@/pages/BlanksPage').then(m => m.BlanksPage))
+const ExperimentalPage = lazyView(() => import('@/pages/ExperimentalPage').then(m => m.ExperimentalPage))
+const WeatherPage = lazyView(() => import('@/pages/WeatherPage').then(m => m.WeatherPage))
+const AeronetPage = lazyView(() => import('@/pages/AeronetPage').then(m => m.AeronetPage))
+
+const Scatterplot = lazyView(() => import('@/charts/correlation/Scatterplot').then(m => m.Scatterplot))
+const Correlogram = lazyView(() => import('@/charts/correlation/Correlogram').then(m => m.Correlogram))
+const AvailabilityHeatmap = lazyView(() => import('@/charts/correlation/AvailabilityHeatmap').then(m => m.AvailabilityHeatmap))
+const DensityHexbin = lazyView(() => import('@/charts/correlation/DensityHexbin').then(m => m.DensityHexbin))
+const ConnectedScatter = lazyView(() => import('@/charts/correlation/ConnectedScatter').then(m => m.ConnectedScatter))
+const SpeciesGraph = lazyView(() => import('@/charts/correlation/SpeciesGraph').then(m => m.SpeciesGraph))
+const DistributionPanel = lazyView(() => import('@/charts/distribution/DistributionPanel').then(m => m.DistributionPanel))
+const Histogram = lazyView(() => import('@/charts/distribution/Histogram').then(m => m.Histogram))
+const Ridgeline = lazyView(() => import('@/charts/distribution/Ridgeline').then(m => m.Ridgeline))
+const Timeseries = lazyView(() => import('@/charts/evolution/Timeseries').then(m => m.Timeseries))
+const MonthlyBand = lazyView(() => import('@/charts/evolution/MonthlyBand').then(m => m.MonthlyBand))
+const SeasonalClock = lazyView(() => import('@/charts/evolution/SeasonalClock').then(m => m.SeasonalClock))
+const MonthlyHeatmap = lazyView(() => import('@/charts/evolution/MonthlyHeatmap').then(m => m.MonthlyHeatmap))
+const Barplot = lazyView(() => import('@/charts/ranking/Barplot').then(m => m.Barplot))
+const CorrelationRanking = lazyView(() => import('@/charts/ranking/CorrelationRanking').then(m => m.CorrelationRanking))
+const SiteRadar = lazyView(() => import('@/charts/ranking/SiteRadar').then(m => m.SiteRadar))
+const ParallelCoordinates = lazyView(() => import('@/charts/ranking/ParallelCoordinates').then(m => m.ParallelCoordinates))
+const CompositionTreemap = lazyView(() => import('@/charts/partOfWhole/CompositionTreemap').then(m => m.CompositionTreemap))
+const FunctionalGroups = lazyView(() => import('@/charts/partOfWhole/FunctionalGroups').then(m => m.FunctionalGroups))
+const MethodSankey = lazyView(() => import('@/charts/flow/MethodSankey').then(m => m.MethodSankey))
+const SourceStack = lazyView(() => import('@/charts/pmf/SourceStack').then(m => m.SourceStack))
 
 /**
  * Tabs mirror the react-graph-gallery categories, plus the census. `hidden` tabs
@@ -347,7 +350,9 @@ const withNoWeather = (cal: SeasonMeta[]) => [...cal, NO_WEATHER_SEASON]
 export default function App() {
   const init = useMemo(() => readParams(), [])
   const [tab, setTab] = useState<TabKey>(() => tabFromParams(init))
-  const { data, error, calibrationLoading } = useGalleryData(['calibration', 'baseline', 'dashboard'].includes(tab))
+  const [dashboardCalibration, setDashboardCalibration] = useState(false)
+  const { data, error, calibrationLoading, calibrationError, retryCalibration } = useGalleryData(
+    ['calibration', 'baseline'].includes(tab) ? true : tab === 'dashboard' && dashboardCalibration ? 'runs' : false)
   // spline / VIBES FTIR EC (gallery/data/export_baseline_ftir_ec.py): the Addis test set from the
   // frozen runs, every other SPARTAN PM2.5 filter with a spectrum from the network baselines; optional
   const baselines = useExport<{ rows: Record<string, { spline?: number; vibes?: number }> }>('baseline_ftir_ec.json').data
@@ -857,6 +862,7 @@ export default function App() {
     setIncludeExcluded(allIn)
     setInclIds(allIn ? new Set() : cur)
   }, [netView, sourceRows, rawSourceRows, includeExcluded, inclIds])
+  const dashboardReferenceRows = useMemo(() => plainSourceRows.map(r => ({ ...r, season: seasonForFilter(r) })), [plainSourceRows, seasonForFilter])
   const paintedSourceRows = useMemo(() => (tab === 'meeting' || tab === 'calibration' || tab === 'dashboard' ? paintRows(sourceRows, paint) : sourceRows), [tab, sourceRows, paint])
   // a meeting page as presented: the reader's ratios, but MAC as exported and µg/m³
   const presentOpts = useMemo(() => ({ ...viewOpts, mac: exportMac, basis: 'conc' as const }), [viewOpts, exportMac])
@@ -1394,6 +1400,8 @@ export default function App() {
         {/* tabs without the Filters panel: a sidebar for the page's own controls, with the fits where the page fits */}
         {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting' || tab === 'experimental' || tab === 'similarity')
           && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'} label={tab === 'similarity' ? 'Target' : 'Samples'} />)}
+        {netData.error && (NETWORK_TABS as readonly string[]).includes(tab) && <div className="network-data-error" role="alert"><strong>The selected network data could not be loaded.</strong> {netData.error}
+          <button className="btn" type="button" onClick={() => setNetwork('focus')}>Open bundled focus sites</button></div>}
         {tab === HUB_TAB && <InvestigationsPage areas={HUB_AREAS} onOpen={(t, p) => openTab(t, undefined, p ?? AREAS.find((a) => a.tab === t)?.pages[0]?.key)} />}
         {tab === 'availability' && <DataAvailabilityPage />}
         {tab === 'census' && <><AreaHeader area="Census" pages={CENSUS_PAGES} value="census" onPage={() => {}} /><CensusPage census={census} /></>}
@@ -1412,7 +1420,9 @@ export default function App() {
         {tab === 'baseline' && (calibrationLoading ? <p>Loading calibration data…</p> : <BaselineComparisonPage mac={viewOpts.mac} demingLambda={demingLambda(viewOpts.mac, data.calibration?.deming_lambda_mac10 ?? LAMBDA_10)} />)}
         {tab === 'calibration' && (calibrationLoading ? <p>Loading calibration data…</p> : <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={drawerMeta} galleryRows={paintedSourceRows} sourceRows={rawSourceRows} galleryMeta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />)}
         {tab === 'dashboard' && <DashboardPage dash={dash} setDash={setDash} filters={dashFilters} onScope={setDashScope} onPickSite={pickDashSite} display={<DisplayToggles />}
-          data={{ rows, measured: measuredRows, meta, axes, pmf: pmf ?? null, pmfRows, eff, defaults: { x: xField, y: yField, field }, openSite: openDashSite, pmfLabelOfDate,
+          data={{ rows, measured: measuredRows, referenceRows: dashboardReferenceRows, meta, axes,
+            provenance: { generated: data.filters.generated, source: data.filters.source, mac: viewOpts.mac, basis, baseline: ftirBaseline, calendar: convention, estimators, sourceMode: spartanSource.source, network: net, publicSources: netData.data?.publicStatus ?? [] },
+            calibrationLoading, calibrationError, retryCalibration, requireCalibration: () => setDashboardCalibration(true), pmf: pmf ?? null, pmfRows, eff, defaults: { x: xField, y: yField, field }, openSite: openDashSite, pmfLabelOfDate,
             calibration: data.calibrationRuns ? { runs: data.calibrationRuns, lambda10: data.calibration?.deming_lambda_mac10 ?? LAMBDA_10, knownIds, galleryRows: paintedSourceRows, sourceRows: rawSourceRows, galleryMeta: meta, meta: drawerMeta } : null }} />}
         <AxisFieldsProvider meta={meta} value={axisValues} set={setAxisField}>
         {tab === 'correlation' && (

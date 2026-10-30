@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 
 /**
  * Every exported file the gallery reads goes through here: one base path, one
@@ -58,6 +58,14 @@ export const loadBinary = (path: string): Promise<ArrayBuffer> => cached(`bin:${
 /** Any derived value built from loaded files (an index, a decoded table), cached under its own key. */
 export const loadDerived = <T,>(key: string, build: () => Promise<T>): Promise<T> => cached(`derived:${key}`, build)
 
+/** Snapshot data is scoped to a tile; it never poisons the current-source cache. */
+export const SnapshotFiles = createContext<Record<string, unknown> | null>(null)
+export function useJsonLoader() {
+  const files = useContext(SnapshotFiles)
+  return useMemo(() => files ? <T,>(path: string): Promise<T> => Object.prototype.hasOwnProperty.call(files, path)
+    ? Promise.resolve(files[path] as T) : Promise.reject(new Error(`${path}: not included in this snapshot`)) : loadJson, [files])
+}
+
 /**
  * One export for a component. `data` is the file at `path` once it has loaded and
  * passed `check` (which returns an error message, or nothing when the file is
@@ -65,11 +73,12 @@ export const loadDerived = <T,>(key: string, build: () => Promise<T>): Promise<T
  * path loads nothing.
  */
 export function useExport<T>(path: string | null, check?: (data: T) => string | null | undefined | void): { data: T | null; error: string; loading: boolean } {
+  const loader = useJsonLoader()
   const [state, setState] = useState<{ path: string; data: T | null; error: string } | null>(null)
   useEffect(() => {
     if (!path) return
     let live = true
-    loadJson<T>(path)
+    loader<T>(path)
       .then((d) => {
         const problem = check?.(d)
         if (live) setState({ path, data: problem ? null : d, error: problem ? `${path}: ${problem}` : '' })
@@ -78,7 +87,7 @@ export function useExport<T>(path: string | null, check?: (data: T) => string | 
     return () => { live = false }
     // check is a pure validator of the same file
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path])
+  }, [path, loader])
   const current = state && state.path === path ? state : null
   return { data: current?.data ?? null, error: current?.error ?? '', loading: !!path && !current }
 }
