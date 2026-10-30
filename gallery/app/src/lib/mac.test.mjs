@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
-import { demingLambda, slopeAt, bcAt, macView, solveHipsMoments, rmseAtMac, meanResidualAtMac, meanBcFromResidual } from './macMath.ts'
+import { demingLambda, slopeAt, bcAt, macView, solveHipsMoments, rmseAtMac, meanResidualAtMac, meanBcFromResidual, rmseFromReadouts } from './macMath.ts'
 import { regression } from './stats.ts'
 
 test('λ scales with MAC², 1 off an Fabs axis', () => {
@@ -136,4 +136,28 @@ test('ftir_36 and ftir_53: the holdout means solved from RMSE agree with those t
   const grid = data('calibration.json').grid.filter((r) => r.tg === 'etbi' && r.el === 'all')
   const etbi = solveHipsMoments(grid.map((r) => ({ slope: r.om, intercept: r.ob, r2: r.r2, rmse: r.rmse })))
   assert.ok(Math.abs(meanBcFromResidual(b.ols_slope[accepted], b.ols_intercept[accepted], b.mean_residual[accepted]) - etbi.mean) < 0.01)
+})
+
+test('RMSE saved at MAC 6, 10 and 17 fixes it at every MAC (the blind-half splits): checked on the runs\' own filters', () => {
+  const runs = data('calibration_runs.json')
+  let checks = 0, worst = 0
+  for (const run of runs.runs) {
+    const { ref, pred, fixed } = run.eval
+    for (const set of ['fixed', 'all']) {
+      const saved = run.metrics.filter((m) => m.evaluation_set === set).map((m) => ({ mac: m.MAC, rmse: m.RMSE }))
+      if (saved.length < 3) continue
+      for (const mac of [4.5, 8, 12.5, 25]) {
+        let sum = 0, n = 0
+        ref.forEach((f, i) => { if ((set === 'all' || fixed[i]) && Number.isFinite(f) && Number.isFinite(pred[i])) { sum += (pred[i] - f / mac) ** 2; n++ } })
+        if (!n) continue
+        const err = Math.abs(rmseFromReadouts(saved, mac) - Math.sqrt(sum / n))
+        worst = Math.max(worst, err); checks++
+      }
+    }
+  }
+  assert.ok(checks >= 200, `only ${checks} checks`)
+  assert.ok(worst < 2e-3, `worst ${worst}`)
+  console.log(`three-MAC rebuild: ${checks} checks, worst ${worst.toExponential(1)} µg/m³`)
+  assert.equal(rmseFromReadouts([{ mac: 10, rmse: 1 }, { mac: 6, rmse: 2 }], 8), null)
+  assert.equal(rmseFromReadouts([{ mac: 10, rmse: 1.25 }, { mac: 6, rmse: 2 }, { mac: 17, rmse: 3 }], 10), 1.25)
 })

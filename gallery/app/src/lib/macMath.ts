@@ -167,3 +167,24 @@ export function meanBcFromResidual(slope: number | null | undefined, intercept: 
   if (!ok(slope) || !ok(intercept) || !ok(residual) || Math.abs(slope - 1) < 0.05) return null
   return (residual - intercept) / (slope - 1)
 }
+
+/**
+ * RMSE against Fabs/`mac` from RMSEs saved at three or more MACs on the same filters (the explorer saves 6, 10 and
+ * 17). RMSE² = mean((y − F/MAC)²) is exactly quadratic in 1/MAC, so three readouts fix it at every MAC; more are
+ * fitted by least squares. Null with fewer than three distinct MACs.
+ */
+export function rmseFromReadouts(readouts: readonly { mac: number | null; rmse: number | null | undefined }[], mac: number): number | null {
+  const pts = new Map<number, number>()
+  for (const r of readouts) if (ok(r.mac) && r.mac > 0 && ok(r.rmse)) pts.set(r.mac, r.rmse)
+  if (pts.size < 3) return null
+  if (pts.has(mac)) return pts.get(mac)!
+  const A = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], y = [0, 0, 0]
+  for (const [m, r] of pts) {
+    const c = EXPORT_MAC / m, row = [1, c, c * c]
+    for (let i = 0; i < 3; i++) { y[i] += row[i] * r * r; for (let j = 0; j < 3; j++) A[i][j] += row[i] * row[j] }
+  }
+  const q = solveLinear(A, y)
+  if (!q) return null
+  const c = EXPORT_MAC / mac
+  return Math.sqrt(Math.max(q[0] + q[1] * c + q[2] * c * c, 0))
+}

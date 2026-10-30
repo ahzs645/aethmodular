@@ -3,7 +3,7 @@ import { baseFilterId } from '@/lib/highlight'
 import { useEffect, useState } from 'react'
 import { loadSpartanFilters } from '@/lib/spartan'
 import { COHORT_SHORT, METRIC, PREPROCESSING, PREPROCESSING_SHORT, SELECTION_SPACE, label } from '@/lib/labels'
-import { rmseAtMac, slopeAt, solveHipsMoments, type HipsMoments } from '@/lib/macMath'
+import { rmseAtMac, rmseFromReadouts, slopeAt, solveHipsMoments, type HipsMoments } from '@/lib/macMath'
 import { categoricalScale } from '@/lib/palettes'
 import { BASELINE_COLOR, INK } from '@/lib/theme'
 
@@ -138,7 +138,8 @@ export function metricRow(rows: MetricRow[] | undefined, set: 'fixed' | 'all', m
  * The metrics row at any MAC (lib/mac): the row saved at that MAC if there is one, else the export's
  * row with its slopes re-expressed (slope × MAC / the row's MAC; intercepts, n and R² do not move).
  * RMSE against Fabs/MAC does move: given the run's per-filter readouts it is recomputed (the explorer's
- * definition, which reproduces every saved row), otherwise left out.
+ * definition, which reproduces every saved row), otherwise rebuilt from the set's RMSEs saved at three MACs
+ * (RMSE² is quadratic in 1/MAC: lib/macMath rmseFromReadouts), as for the blind-half splits.
  */
 export function metricRowAt(rows: MetricRow[] | undefined, set: 'fixed' | 'all', mac: number | null, exportMac = 10, ev?: RunEval): MetricRow | null {
   if (mac === null) return metricRow(rows, set, null)
@@ -147,7 +148,8 @@ export function metricRowAt(rows: MetricRow[] | undefined, set: 'fixed' | 'all',
   const base = metricRow(rows, set, exportMac)
   if (!base || base.MAC == null) return base
   return { ...base, MAC: mac, ols_slope: slopeAt(base.ols_slope, mac, base.MAC), deming_slope: slopeAt(base.deming_slope, mac, base.MAC),
-    RMSE: ev ? rmseAt(ev, base.evaluation_set === 'fixed', mac) : null }
+    RMSE: ev ? rmseAt(ev, base.evaluation_set === 'fixed', mac)
+      : rmseFromReadouts((rows ?? []).filter((r) => r.evaluation_set === base.evaluation_set).map((r) => ({ mac: r.MAC, rmse: r.RMSE })), mac) }
 }
 
 /** RMSE of the predictions against Fabs/MAC (the 1:1 line), over the fixed set or every pair: the explorer's RMSE. */

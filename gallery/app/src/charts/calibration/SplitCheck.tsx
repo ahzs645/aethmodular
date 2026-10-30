@@ -41,8 +41,10 @@ export function SplitCheck({ run, runs }: { run: CalibRun; runs: CalibRunsFile }
     .filter((s) => s.m && s.m.deming_slope !== null)
   const slopeOf = (r: (typeof rows)[number]) => r.m!.deming_slope as number
   const icOf = (r: (typeof rows)[number]) => r.m!.deming_intercept as number
-  // either axis (click its title, components/AxisChoices): slope, intercept or R² of each half
-  const SPLIT_AXES: Record<string, (r: (typeof rows)[number]) => number> = { 'Deming slope': slopeOf, 'Deming intercept': icOf, 'R²': (r) => (r.m!.R2 ?? NaN) as number }
+  // either axis (click its title, components/AxisChoices): slope, intercept, R² or RMSE against the 1:1 line of each
+  // half (at another MAC than the saved ones, rebuilt from the half's RMSEs at 6, 10 and 17: common metricRowAt)
+  const SPLIT_AXES: Record<string, (r: (typeof rows)[number]) => number> = { 'Deming slope': slopeOf, 'Deming intercept': icOf, 'R²': (r) => (r.m!.R2 ?? NaN) as number,
+    RMSE: (r) => (r.m!.RMSE ?? NaN) as number }
   const sx = useSearchParam<string>('splitx', 'Deming slope', Object.keys(SPLIT_AXES))
   const sy = useSearchParam<string>('splity', 'Deming intercept', Object.keys(SPLIT_AXES))
   const fx = SPLIT_AXES[sx[0]], fy = SPLIT_AXES[sy[0]]
@@ -71,11 +73,11 @@ export function SplitCheck({ run, runs }: { run: CalibRun; runs: CalibRunsFile }
         {rows.length < 2 ? (
           <Empty>Too few test-set filters to split into equal halves.</Empty>
         ) : (
-          <AxisChoices noun="metrics" x={sx} y={sy} options={Object.keys(SPLIT_AXES).map((k) => ({ key: k, group: 'Each half', unit: k === 'Deming intercept' ? 'µg/m³' : undefined }))}>
+          <AxisChoices noun="metrics" x={sx} y={sy} options={Object.keys(SPLIT_AXES).map((k) => ({ key: k, group: 'Each half', unit: k === 'Deming intercept' || k === 'RMSE' ? 'µg/m³' : undefined }))}>
           <svg width={width} height={height}>
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-              <YAxis scale={y} x={0} label={`Test set ${sy[0]}${sy[0] === 'Deming intercept' ? ' (µg/m³)' : ''}`} gridWidth={innerW} tickCount={5} pick="y" />
-              <XAxis scale={x} y={innerH} label={`Test set ${sx[0]}${sx[0] === 'Deming intercept' ? ' (µg/m³)' : ''}`} tickCount={6} pick="x" />
+              <YAxis scale={y} x={0} label={`Test set ${sy[0]}${sy[0] === 'Deming intercept' || sy[0] === 'RMSE' ? ' (µg/m³)' : ''}`} gridWidth={innerW} tickCount={5} pick="y" />
+              <XAxis scale={x} y={innerH} label={`Test set ${sx[0]}${sx[0] === 'Deming intercept' || sx[0] === 'RMSE' ? ' (µg/m³)' : ''}`} tickCount={6} pick="x" />
               {sx[0] === 'Deming slope' && x.domain()[0] <= 1 && 1 <= x.domain()[1] && <RefLine orient="v" at={x(1)} from={0} to={innerH} />}
               {sy[0] === 'Deming intercept' && y.domain()[0] <= 0 && 0 <= y.domain()[1] && <RefLine orient="h" at={y(0)} from={0} to={innerW} />}
               {rows.map((r, i) => (
