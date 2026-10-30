@@ -1,6 +1,7 @@
 import { demingLambda, useMac } from '@/lib/mac'
 import { useMemo, useRef } from 'react'
 import { useChartOptions } from '@/lib/chartOptions'
+import { useColourScheme } from '@/lib/colourSchemes'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
@@ -74,13 +75,17 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
       title: 'fixed = the filters with a deployed EC (Addis fixed-190); all = every filter with a reference' },
     { key: 'mac', label: 'MAC', choices: [{ value: 'gallery', label: `Filters (${gallery.mac})` }, ...macs.map((m) => ({ value: String(m), label: String(m) }))], default: 'gallery', hidden: 'gallery',
       when: (c) => !!c.isFabs && c.x !== 'deployed EC', title: 'Filters: the MAC set under Filters → units; or one the explorer saved fits at' },
+    // only groups that are not seasons take the set's colours: no picker when every group is a season
+    { key: 'colours', node: () => groupColours.others.length > 0 ? colours.picker : null },
     { key: 'n', node: () => <span className="control">n = {pts.length}{run.extrap_pct !== null ? ` · score OOD ${run.extrap_pct}%` : ''}{run.q_residual_pct !== null ? ` · Q OOD ${run.q_residual_pct}%` : ''}</span> },
   ], { hasDeployed, hasFixed, isFabs })
   const xmode = o.values.x as (typeof XMODES)[number]
   const evalSet = o.values.set as (typeof SETS)[number]
   const mac = o.values.mac === 'gallery' ? gallery.mac : Number(o.values.mac)
   const useDeployed = xmode === 'deployed EC' && hasDeployed
-  const color = useMemo(() => groupColorFn(meta, run.eval.group), [meta, run.eval.group])
+  const colours = useColourScheme('run-crossplot', 'categorical', 'Tableau 10')
+  const groupColours = useMemo(() => groupColorFn(meta, run.eval.group, colours.name, colours.reverse), [meta, run.eval.group, colours.name, colours.reverse])
+  const color = groupColours.color
 
   const pts = useMemo(() => {
     const e = run.eval

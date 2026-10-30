@@ -66,7 +66,7 @@ export function ProvisionalSeries(props: SectionPageProps) {
     c_lo: num(r['c_lo95_Mm-1']) != null ? num(r['c_lo95_Mm-1'])! / mac : null, c_hi: num(r['c_hi95_Mm-1']) != null ? num(r['c_hi95_Mm-1'])! / mac : null }))
   const offset = offsets.find((r) => String(r.model).startsWith('AIRSpec'))
   // the Ethiopian season colours from config (meta), keyed by the short season name these figures use
-  const seasonColor = groupColorFn(props.meta, view.prov.eval.group)
+  const seasonColor = groupColorFn(props.meta, view.prov.eval.group).color
   const colors = Object.fromEntries([...new Set(view.prov.eval.group)].map((g) => [seasonOf(g), seasonColor(g)]))
 
   return <>

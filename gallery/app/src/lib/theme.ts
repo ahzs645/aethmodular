@@ -287,24 +287,7 @@ export function inkOnFill(fill: string): string {
   return (1.05 / (L + 0.05)) > ((L + 0.05) / (ink + 0.05)) ? '#fff' : CELL_INK
 }
 
-/** Sequential + diverging ramps used by the heatmap and correlogram. */
-export const RAMP_DIVERGING = ['#2166ac', '#67a9cf', '#d1e5f0', '#f7f7f7', '#fddbc7', '#ef8a62', '#b2182b']
-
-/**
- * Seven-stop diverging palettes (negative → neutral → positive), for charts that let the reader
- * choose (a correlogram's r; picked with lib/colourSchemes, which adds the sequential ones). 'Gallery' is RAMP_DIVERGING; the ColorBrewer ones are from
- * d3-scale-chromatic, sampled at the same stops; Purple–orange and Brown–teal stay apart for most
- * colour-vision deficiencies; Greys prints.
- */
-export const DIVERGING_SCHEMES: Record<string, readonly string[]> = {
-  Gallery: RAMP_DIVERGING,
-  'Red–yellow–blue': ['#4575b4', '#91bfdb', '#e0f3f8', '#ffffbf', '#fee090', '#fc8d59', '#d73027'],
-  'Purple–orange': ['#542788', '#998ec3', '#d8daeb', '#f7f7f7', '#fee0b6', '#f1a340', '#b35806'],
-  'Brown–teal': ['#01665e', '#5ab4ac', '#c7eae5', '#f5f5f5', '#f6e8c3', '#d8b365', '#8c510a'],
-  'Purple–green': ['#762a83', '#af8dc3', '#e7d4e8', '#f7f7f7', '#d9f0d3', '#7fbf7b', '#1b7837'],
-  Greys: ['#252525', '#636363', '#bdbdbd', '#f7f7f7', '#bdbdbd', '#636363', '#252525'],
-}
-export const RAMP_SEQUENTIAL = ['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#084594']
+/** Chart colour palettes (sequential, diverging and categorical) live in lib/palettes. */
 
 export const FONT = {
   family: 'ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif',

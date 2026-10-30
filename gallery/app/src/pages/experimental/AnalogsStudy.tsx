@@ -57,7 +57,7 @@ function Findings({ d }: { d: AnalogsData }) {
           {A['local: shape + HIPS loading'] && <li><strong>Matching on absorption instead</strong> (shape + HIPS loading): Addis is still {f2(A['local: shape + HIPS loading']['HIPS ÷ neighbours (median)'])}× more absorbing than its neighbours (IMPROVE has no heavier absorbers of that shape), and the intercept is {coefSigned(A['local: shape + HIPS loading'].intercept)} µg/m³.</li>}
           <li><strong>IMPROVE's heaviest tenth against TOR:</strong> RMSE {f2(full?.rmse)} µg (full), {f2(sh?.rmse)} (shape), {f2(sl?.rmse)} (shape + loading){I('local: shape + HIPS loading', 'heaviest tenth') ? `, ${f2(I('local: shape + HIPS loading', 'heaviest tenth')?.rmse)} (shape + HIPS loading)` : ''}.</li>
         </ol>
-        <Note>{runLine(d)}. Addis is read against HIPS BC ({label}, set under Filters), a cross-check, not the truth. The intercepts do not depend on the MAC.</Note>
+        <Note>{runLine(d)}. Addis is read against HIPS BC ({label}, set under Samples), a cross-check, not the truth. The intercepts do not depend on the MAC.</Note>
       </ChartFrame>
     </ExplainOnly>
   )
@@ -76,7 +76,7 @@ function AddisForest({ d }: { d: AnalogsData }) {
   return (
     <ChartFrame id="xa-addis" source={source('AddisForest')} provenance={runLine(d)}
       title="Addis against HIPS — does matching on loading close the gap?"
-      subtitle={`Deming fit (λ ${f2(demingLambda(m.mac, lambdaOf(d)))}) of each model's Addis FTIR EC against HIPS BC (${m.label}, set under Filters) on the same filters; the export fitted at MAC 10, and another MAC scales the slope and ratio by MAC/10 and leaves the intercept. The local models are refitted per filter on 500 IMPROVE neighbours chosen by shape, by shape and weighed PM2.5, by PM2.5 alone, or by shape and HIPS absorption loading. A model on the HIPS line has intercept 0 and slope 1. The published n (189) is smaller: SPARTAN's EC covers fewer of the filters.`}>
+      subtitle={`Deming fit (λ ${f2(demingLambda(m.mac, lambdaOf(d)))}) of each model's Addis FTIR EC against HIPS BC (${m.label}, set under Samples) on the same filters; the export fitted at MAC 10, and another MAC scales the slope and ratio by MAC/10 and leaves the intercept. The local models are refitted per filter on 500 IMPROVE neighbours chosen by shape, by shape and weighed PM2.5, by PM2.5 alone, or by shape and HIPS absorption loading. A model on the HIPS line has intercept 0 and slope 1. The published n (189) is smaller: SPARTAN's EC covers fewer of the filters.`}>
       <Forest rows={rows} panels={[{ key: 'intercept', label: 'Deming intercept (µg/m³)', ref: 0, fmt: coefSigned }, { key: 'slope', label: 'Deming slope', ref: 1, fmt: coef }, { key: 'ratio', label: 'median FTIR ÷ HIPS', ref: 1, fmt: f2 }]} />
     </ChartFrame>
   )

@@ -635,7 +635,7 @@ function SpectraPanel({ data, method, group }: { data: MeetingData; method: stri
         { label: `pinned filter${pinnedSid ? ` (${hl.pinnedId})` : ': none, click a point or trace'}`, color: INK.text, kind: 'line' },
         { label: 'hovered filter', color: INK.text, kind: 'dash' },
         { label: 'excluded from analog selection only (CO₂, >3600 cm⁻¹)', color: SPECTRAL_REGION.co2.fill, kind: 'bar' },
-        ...(lo < 1050 ? [{ label: 'also excluded by the region agreed 1 Oct (<600, 1050–1250 PTFE); see the Satoshi 2 Oct view in Meeting', color: OCT1_HATCH.stroke, kind: 'bar' as const }] : []),
+        ...(lo < 1050 ? [{ label: 'also excluded by the region agreed 1 Oct (<600, 1050–1250 PTFE); see the Oct 2, 2026 meeting page', color: OCT1_HATCH.stroke, kind: 'bar' as const }] : []),
       ]} />
     </div>
   )
@@ -1016,10 +1016,12 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
+  const gridColours = useColourScheme('slope-intercept-grid', 'categorical', 'Tableau 10')
   type P = { x: number; y: number; color: string; r: number; shape: 'dot' | 'tri' | 'star' | 'sq' | 'x'; op: number; tip: string[]; ci?: [number, number, number, number] }
   const pts: P[] = []
   const g = data.grid
-  const catColor = d3.scaleOrdinal<string>(d3.schemeTableau10)
+  // grid configurations take the set's colours in the order they are drawn
+  const catColor = d3.scaleOrdinal<string>(gridColours.stops)
   if (g && gridSet !== 'none') {
     for (let i = 0; i < g.method.length; i++) {
       if (g.method[i] !== method) continue
@@ -1079,6 +1081,7 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
       subtitle="Test set (Addis) Deming slope and intercept at MAC 10. Grid points, the all-IMPROVE model, SPARTAN and the stitched seasons are read out on all Addis; each season calibration is also shown read out on its own season."
       controls={<>
         <Segmented label="Grid configurations" value={gridSet as any} options={['passing', 'all', 'none'] as const} onChange={setGridSet as any} />
+        {gridSet !== 'none' && gridColours.picker}
       </>}>
       <div ref={ref}>
         <svg width={side + m.left + m.right} height={side + m.top + m.bottom} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>

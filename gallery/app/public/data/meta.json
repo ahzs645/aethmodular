@@ -185,12 +185,17 @@
    ]
   },
   {
-   "label": "Metals & crustal",
+   "label": "Crustal elements",
    "fields": [
     "Silicon",
     "Aluminum",
     "Iron",
-    "Titanium",
+    "Titanium"
+   ]
+  },
+  {
+   "label": "Trace metals",
+   "fields": [
     "Zinc",
     "Copper",
     "Lead"

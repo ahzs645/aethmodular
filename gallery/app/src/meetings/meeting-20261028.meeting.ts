@@ -7,7 +7,7 @@ const LOG_AXIS: FigureVariant = { key: 'axis', label: 'x axis', default: 'log', 
 
 export default {
   id: 'meeting-20261028',
-  label: '28 Oct',
+  label: 'Oct 28, 2026',
   date: '2026-10-28',
   title: 'Why Dry and Belg fail, and why the look-alikes err differently: the AAAR to-do list',
   command: 'cd research/ftir_hips_chem && ~/anaconda3/bin/python workflows/run_meeting_20261028.py && ../../.venv/bin/python ../../gallery/data/export_meeting_20261028.py',

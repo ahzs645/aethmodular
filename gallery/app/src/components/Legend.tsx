@@ -1,7 +1,14 @@
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
-import { useState } from 'react'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { usePrefs } from '@/lib/prefs'
 import { useChartLabel, useFitHeight, useTileLegend } from '@/lib/chartFit'
+
+/**
+ * The event that holds a legend's hovered view (detail: an item's label, or null to let go), dispatched on the chart's
+ * panel (section.panel). The export dialog's Focus sends it so the file is drawn with one series picked out, as a hover
+ * shows it; shift-click on an item does the same on the page.
+ */
+export const LEGEND_FOCUS = 'legend-focus'
 
 /** in a Dashboard tile, a legend longer than this shows its first items and "+N more" */
 const TILE_LIMIT = 8
@@ -47,6 +54,26 @@ export function Legend({
   const inTile = useFitHeight() !== null
   const tile = useTileLegend()
   const [all, setAll] = useState(false)
+  // a held hover (LEGEND_FOCUS, or shift-click): leaving an item goes back to it rather than to none
+  const [pinned, setPinned] = useState<string | null>(null)
+  const [root, setRoot] = useState<HTMLDivElement | null>(null)
+  const live$ = useRef({ onHover, items, pinned })
+  live$.current = { onHover, items, pinned }
+  const pin = (l: string | null) => { setPinned(l); live$.current.onHover?.(l) }
+  useEffect(() => {
+    const panel = root?.closest('section.panel')
+    if (!panel) return
+    const on = (e: Event) => {
+      const { onHover: hover, items: its } = live$.current
+      if (!hover) return
+      const l = (e as CustomEvent<string | null>).detail
+      const mine = l && its.some((it) => it.label === l) ? l : null
+      setPinned(mine); hover(mine)
+    }
+    panel.addEventListener(LEGEND_FOCUS, on)
+    return () => panel.removeEventListener(LEGEND_FOCUS, on)
+  }, [root])
+  const leave = onHover ? () => onHover(live$.current.pinned) : undefined
   // a tile's legend setting: off draws nothing; bottom and right draw every item
   const long = inTile && (tile?.mode ?? 'auto') === 'auto' && displayItems.length > TILE_LIMIT + 1
   const shown = long && !all ? displayItems.slice(0, TILE_LIMIT) : displayItems
@@ -64,19 +91,25 @@ export function Legend({
   const item = ({ it, group, text }: (typeof parts)[number]) => {
     const off = !!(hidden?.has(it.label) || (group && hidden?.has(group)))
     const dim = !!highlighted && highlighted !== it.label && !off
-    const cls = ['legend-item', onToggle ? 'clickable' : '', onHover ? 'hoverable' : '', off ? 'off' : '', dim ? 'dim' : ''].filter(Boolean).join(' ')
+    const held = pinned === it.label
+    const cls = ['legend-item', onToggle ? 'clickable' : '', onHover ? 'hoverable' : '', off ? 'off' : '', dim ? 'dim' : '', held ? 'pinned' : ''].filter(Boolean).join(' ')
+    // shift-click holds this item's hovered view (again lets go); a plain click toggles it as before
+    const click = onToggle || onHover ? (e: MouseEvent) => {
+      if (e.shiftKey && onHover) { e.preventDefault(); pin(held ? null : it.label) } else onToggle?.(it.label)
+    } : undefined
     return (
       <span
         key={it.label}
         data-export-series={it.label} data-export-color={it.color}
         className={cls}
-        onClick={onToggle ? () => onToggle(it.label) : undefined}
+        onClick={click}
         onKeyDown={onToggle ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(it.label) } } : undefined}
         onMouseEnter={onHover ? () => onHover(it.label) : undefined}
-        onMouseLeave={onHover ? () => onHover(null) : undefined}
+        onMouseLeave={leave}
         onFocus={onHover ? () => onHover(it.label) : undefined}
-        onBlur={onHover ? () => onHover(null) : undefined}
-        title={[group ? `${group} · ${text}` : '', onToggle ? (off ? 'click to show' : 'click to hide') : ''].filter(Boolean).join(' — ') || undefined}
+        onBlur={leave}
+        title={[group ? `${group} · ${text}` : '', onToggle ? (off ? 'click to show' : 'click to hide') : '',
+          onHover ? (held ? 'shift-click to let go' : 'shift-click to hold this view') : ''].filter(Boolean).join(' — ') || undefined}
         role={onToggle ? 'button' : undefined}
         aria-pressed={onToggle ? !off : undefined}
         aria-label={group ? `${group} · ${text}` : undefined}
@@ -106,7 +139,7 @@ export function Legend({
     )
   }
   return (
-    <div className={`legend${grouped ? ' grouped' : ''}`}>
+    <div ref={setRoot} className={`legend${grouped ? ' grouped' : ''}`}>
       {parts.filter((p) => !grouped || (!p.group && !groups.includes(p.it.label))).map(item)}
       {grouped && groups.map((g) => <div key={g} className="legend-group">
         <span className="legend-group-name">{parts.some(p => p.it.label === g) ? item(parts.find(p => p.it.label === g)!) : groupName(g)}</span>

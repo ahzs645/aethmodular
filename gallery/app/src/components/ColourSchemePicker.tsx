@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { SCHEMES, SCHEME_NOTES, schemeStops, type SchemeKind } from '@/lib/colourSchemes'
+import { schemeStops, type SchemeKind } from '@/lib/colourSchemes'
 import { useFloatingMenu } from '@/hooks/useFloatingMenu'
 import { useTheme } from '@/lib/colorTheme'
-import { hasNamedColours } from '@/lib/categoricalColours'
+import { getPalette, hasNamedColours, paletteNote } from '@/lib/palettes'
 
 /** a palette as a small gradient bar */
 const Swatch = ({ stops, wide = false, discrete = false }: { stops: string[]; wide?: boolean; discrete?: boolean }) => (
@@ -13,7 +13,12 @@ const Swatch = ({ stops, wide = false, discrete = false }: { stops: string[]; wi
 )
 
 /** what a colour control needs: the scheme's kind, the current palette and direction, and how to change them */
-export interface SchemeChoice { kind: SchemeKind; value: string; reverse: boolean; onChange: (name: string, reverse: boolean) => void }
+export interface SchemeChoice {
+  kind: SchemeKind
+  /** the palettes listed, in order (lib/colourSchemes paletteChoices) */
+  names: readonly string[]
+  value: string; reverse: boolean; onChange: (name: string, reverse: boolean) => void
+}
 
 /**
  * A colour control for a chart with no colour ramp to click (lib/colourSchemes useColourScheme):
@@ -21,9 +26,7 @@ export interface SchemeChoice { kind: SchemeKind; value: string; reverse: boolea
  * current direction) and a Reverse switch. A chart with a ramp (components/ColorLegend) is given
  * the scheme instead, and the ramp itself opens the same list.
  */
-export function ColourSchemePicker({ kind, value, reverse, onChange }: {
-  kind: SchemeKind; value: string; reverse: boolean; onChange: (name: string, reverse: boolean) => void
-}) {
+export function ColourSchemePicker({ kind, names, value, reverse, onChange }: SchemeChoice) {
   useTheme() // the swatch shows the ramp of the current theme
   const [open, setOpen] = useState(false)
   const btn = useRef<HTMLButtonElement>(null)
@@ -36,15 +39,13 @@ export function ColourSchemePicker({ kind, value, reverse, onChange }: {
         <Swatch stops={schemeStops(kind, value, reverse)} discrete={kind === 'categorical'} />
         <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
-      {open && btn.current && <SchemePopover anchor={btn.current} kind={kind} value={value} reverse={reverse} onChange={onChange} onClose={() => setOpen(false)} />}
+      {open && btn.current && <SchemePopover anchor={btn.current} kind={kind} names={names} value={value} reverse={reverse} onChange={onChange} onClose={() => setOpen(false)} />}
     </span>
   )
 }
 
 /** the list of palettes and the Reverse switch, opened under `anchor` (the picker's button, or a legend's ramp) */
-export function SchemePopover({ anchor, kind, value, reverse, onChange, onClose }: {
-  anchor: HTMLElement; kind: SchemeKind; value: string; reverse: boolean; onChange: (name: string, reverse: boolean) => void; onClose: () => void
-}) {
+export function SchemePopover({ anchor, kind, names, value, reverse, onChange, onClose }: SchemeChoice & { anchor: HTMLElement; onClose: () => void }) {
   useTheme()
   const box = useRef<HTMLDivElement>(null)
   const trigger = useMemo(() => ({ current: anchor }), [anchor])
@@ -61,13 +62,16 @@ export function SchemePopover({ anchor, kind, value, reverse, onChange, onClose 
       // React events bubble through the portal: a pick should not reach the chart the ramp sits in
       onClick={(e) => e.stopPropagation()}>
       <div className="scheme-list" role="listbox">
-        {Object.keys(SCHEMES[kind]).map((n) => (
-          <button key={n} type="button" role="option" aria-selected={n === value} className={`scheme-item${n === value ? ' on' : ''}`} onClick={() => onChange(n, reverse)}>
-            <Swatch stops={schemeStops(kind, n, reverse)} discrete={kind === 'categorical'} wide />
-            <span className="scheme-name">{n}</span>
-            {SCHEME_NOTES[n] && <span className="scheme-note">{SCHEME_NOTES[n]}</span>}
-          </button>
-        ))}
+        {names.map((n) => {
+          const note = paletteNote(kind, n), { source } = getPalette(kind, n)
+          return (
+            <button key={n} type="button" role="option" aria-selected={n === value} className={`scheme-item${n === value ? ' on' : ''}`} title={source} onClick={() => onChange(n, reverse)}>
+              <Swatch stops={schemeStops(kind, n, reverse)} discrete={kind === 'categorical'} wide />
+              <span className="scheme-name">{n}</span>
+              {note && <span className="scheme-note">{note}</span>}
+            </button>
+          )
+        })}
       </div>
       {!(kind === 'categorical' && hasNamedColours(value)) && <label className="scheme-reverse" title={kind === 'categorical' ? 'Reverse the order of the category colours' : kind === 'diverging' ? 'Swap the colours of negative and positive values' : 'Swap the colours of the low and high ends'}>
         <input type="checkbox" checked={reverse} onChange={(e) => onChange(value, e.target.checked)} />

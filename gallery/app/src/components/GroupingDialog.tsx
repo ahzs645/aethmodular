@@ -167,7 +167,7 @@ function GroupingDialog({ meta, rows, start, copy = false, field: startField, on
  * A band's colour: its swatch is a button that opens the gallery's colour chooser (the export's, ColorChoice),
  * with the palette's colour for the band as its standard.
  */
-function BandColor({ label, color, standard, onChange, onStandard }: { label: string; color: string; standard: string; onChange: (c: string) => void; onStandard: () => void }) {
+export function BandColor({ label, color, standard, onChange, onStandard }: { label: string; color: string; standard: string; onChange: (c: string) => void; onStandard: () => void }) {
   const [open, setOpen] = useState(false)
   const anchor = useRef<HTMLButtonElement>(null)
   return <>

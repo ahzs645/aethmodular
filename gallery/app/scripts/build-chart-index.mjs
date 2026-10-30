@@ -114,6 +114,19 @@ function chartsIn(r) {
     const comp = [...before.matchAll(/function\s+([A-Z]\w*)\s*[(<]/g)].pop()?.[1]
     out.push({ title, ...(id ? { id } : {}), ...(comp ? { component: comp } : {}) })
   }
+  // a chart drawn through a shared one that takes its title as a prop (<CompositionTreemap id="…" title="…">,
+  // SourceStack and FunctionalGroups): the call is the chart
+  if (r.startsWith('charts/')) for (const name of ENGINES) for (const m of src.matchAll(new RegExp(`<${name}\\b`, 'g'))) {
+    const tail = src.slice(m.index, m.index + 3000)
+    const end = tail.search(/\/?>\s*\n/)
+    const head = end > 0 ? tail.slice(0, end + 2) : tail
+    const tm = head.match(/\btitle=/)
+    const title = tm ? titleOf(head.slice(tm.index + 6), src.slice(0, m.index)) : null
+    if (!title) continue
+    const id = head.match(/\bid="([^"]+)"/)?.[1] ?? src.slice(0, m.index).match(/\bid\s*=\s*'([^']+)'[^\n]*$/m)?.[1]
+    const comp = [...src.slice(0, m.index).matchAll(/function\s+([A-Z]\w*)\s*[(<]/g)].pop()?.[1]
+    out.push({ title, ...(id ? { id } : {}), ...(comp ? { component: comp } : {}) })
+  }
   // declared meeting pages: figures' `title: '…'` (src/meetings/*.meeting.ts)
   if (r.endsWith('.meeting.ts')) {
     for (const m of src.matchAll(/\bkind:\s*'(\w+)'[^\n]*?\bid:\s*'([^']+)'[\s\S]{0,600}?\btitle:\s*('(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)/g)) {
@@ -123,8 +136,15 @@ function chartsIn(r) {
   return out
 }
 
+/** components whose ChartFrame takes its title from a prop: a call to one with its own title is a chart */
+let ENGINES = []
+
 export function buildIndex() {
   const files = walk(SRC).map(rel)
+  ENGINES = files.filter((f) => f.startsWith('charts/')).flatMap((f) => {
+    const src = read(f)
+    return /<ChartFrame\b[^>]*?\btitle=\{title\}/.test(src) ? [...src.matchAll(/export function\s+([A-Z]\w*)/g)].map((m) => m[1]).slice(0, 1) : []
+  })
   const importers = new Map()
   for (const f of files) {
     // static imports and lazy ones (import('@/…')), so a chart split out of the main bundle keeps its tab

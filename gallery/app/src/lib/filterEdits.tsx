@@ -201,7 +201,10 @@ function FilterMenu({ x, y, target, scope, action, onClose }: { x: number; y: nu
     document.addEventListener('scroll', close, true)
     window.addEventListener('blur', onClose)
     window.addEventListener('keydown', onKey)
+    // the tooltips hide while the menu is open (styles.css html.ctx-open)
+    document.documentElement.classList.add('ctx-open')
     return () => {
+      document.documentElement.classList.remove('ctx-open')
       document.removeEventListener('mousedown', close, true)
       document.removeEventListener('scroll', close, true)
       window.removeEventListener('blur', onClose)

@@ -28,7 +28,7 @@ export function FieldMultiSelect({ label = 'Fields', meta, available, value, pre
   preset: string | null
   presets: FieldPreset[]
   onChange: (fields: string[], preset: string | null) => void
-  /** a soft cap, said in the popover (a scatter matrix reads at six) */
+  /** a soft cap, said on the button and in the popover (the fields past it are not drawn) */
   max?: number
 }) {
   const [open, setOpen] = useState(false)
@@ -48,7 +48,7 @@ export function FieldMultiSelect({ label = 'Fields', meta, available, value, pre
         onKeyDown={e => { if (e.key === 'ArrowDown') { e.preventDefault(); autoFocusSearch.current = true; setOpen(true) } }}
         onClick={e => { if (e.detail === 0) autoFocusSearch.current = true; setOpen(!open) }}
         title="Choose the fields: a preset, or tick them one by one">
-        <span className="combobox-value">{name ?? 'Custom'} · {value.length}</span>
+        <span className="combobox-value">{name ?? 'Custom'} · {max && value.length > max ? `${max} of ${value.length} drawn` : value.length}</span>
         <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
       {open && <Popover id={id} label={label} anchor={btn} autoFocusSearch={autoFocusSearch.current} meta={meta} available={available} value={value} preset={preset} presets={presets} onChange={onChange} max={max} onClose={close} />}

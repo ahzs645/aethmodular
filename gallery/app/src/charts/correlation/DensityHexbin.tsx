@@ -13,7 +13,7 @@ import { ColorLegend } from '@/components/ColorLegend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { inDomain, pairDomain, type AxesOpts } from '@/lib/axes'
+import { axesForUnits, inDomain, pairDomain, type AxesOpts } from '@/lib/axes'
 import { regression, fmt } from '@/lib/stats'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import { useColourScheme } from '@/lib/colourSchemes'
@@ -40,7 +40,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   const { methods, grouping: chosenGrouping, setGrouping } = useRegressions()
   const MAX_SQUARE = 520
 
-  const opts: AxesOpts = { ...axes, log: false }
+  const opts: AxesOpts = { ...axesForUnits(axes, meta.field_units?.[xField], meta.field_units?.[yField]), log: false }
   const pairedRows = useMemo(() => rows.filter(r => typeof r[xField] === 'number' && typeof r[yField] === 'number' && Number.isFinite(r[xField]) && Number.isFinite(r[yField])), [rows, xField, yField])
   // one site in view: a fit per site is the pooled fit, so it is not offered
   const oneSite = useMemo(() => new Set(pairedRows.map((r) => r.site)).size <= 1, [pairedRows])
@@ -102,7 +102,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
       domain,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [points, rows, xField, yField, meta, methods, fitGroups, innerW, innerH, opts.identity, opts.mode])
+  }, [points, rows, xField, yField, meta, methods, fitGroups, innerW, innerH, opts.identity, opts.mode, opts.float])
 
   const summary = useRegressionSummary({ stats, groups: siteFits ? fitGroups : undefined, width: svgWidth - 24 })
   const top = MARGIN.top + summary.height

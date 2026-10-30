@@ -90,7 +90,8 @@ FIELD_GROUPS = [
     ("FTIR functional groups", ["Alkane CH", "Alcohol COH", "Carboxylic COOH", "Non-acid CO"]),
     ("Mass", ["PM2.5 mass"]),
     ("Ions", ["Sulfate", "Nitrate", "Ammonium", "Potassium", "Sodium", "Calcium", "Magnesium"]),
-    ("Metals & crustal", ["Silicon", "Aluminum", "Iron", "Titanium", "Zinc", "Copper", "Lead"]),
+    ("Crustal elements", ["Silicon", "Aluminum", "Iron", "Titanium"]),
+    ("Trace metals", ["Zinc", "Copper", "Lead"]),
 ]
 
 # PMF source factors (ETAD only), in GF1-GF5 order so the stack matches the

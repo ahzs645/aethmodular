@@ -4,6 +4,7 @@ import { XAxis } from '@/components/Axes'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Legend, type LegendItem } from '@/components/Legend'
 import { useChartOptions } from '@/lib/chartOptions'
+import { useColourScheme } from '@/lib/colourSchemes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { RESTATES, isBookkeeping, sameProduct } from '@/fieldLineage'
@@ -67,6 +68,7 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
   const tip = useTooltip(wrapRef)
   const [hover, setHover] = useState<number | null>(null)
   const [hoverGroup, setHoverGroup] = useState<number | null>(null)
+  const colours = useColourScheme('species-graph', 'categorical', 'Tableau 10')
   // a phone gets the chart at its own width: shorter forces, names cut short (full on hover),
   // and the network keeps a readable width, scrolling sideways inside the card (.chart-wrap)
   const w = Math.max(280, width)
@@ -154,8 +156,8 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
     return { root, groupOf, groups }
   }, [block, threshold])
 
-  // indexed directly rather than via scaleOrdinal, so group 1 is always the first colour; wraps past 10
-  const groupColor = (g: number) => (g < 0 ? ALONE : d3.schemeTableau10[g % d3.schemeTableau10.length])
+  // indexed directly rather than via scaleOrdinal, so group 1 is always the set's first colour; wraps past its last
+  const groupColor = (g: number) => (g < 0 ? ALONE : colours.stops[g % colours.stops.length])
   const groupOf = (i: number) => tree?.groupOf[i] ?? -1
 
   // ---- edges above the threshold, degrees, and each species' strongest partner
@@ -318,7 +320,7 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
       title="Species network — which measurements move together"
       subtitle="Each dot is a measurement. A line joins two that rise and fall together from filter to filter (|r| at or above the threshold; thicker is stronger). Dots of one colour form a group: species whose correlations with each other average at least the threshold, listed under the plot. Grey dots have a partner or two but belong to no group. 'Tree' shows the same grouping as a dendrogram. Hover a dot or a group to pick it out."
       provenance="react-graph-gallery.com/network-chart · /dendrogram · groups: average-linkage clustering on 1 − |r|"
-      controls={<>{o.controls()}<span className="control hint">{nSpecies} species · {groups.length} group{groups.length === 1 ? '' : 's'}</span></>}
+      controls={<>{o.controls()}{colours.picker}<span className="control hint">{nSpecies} species · {groups.length} group{groups.length === 1 ? '' : 's'}</span></>}
     >
       <div ref={wrapRef} className="chart-wrap">
         {nSpecies < 3 || !tree ? (

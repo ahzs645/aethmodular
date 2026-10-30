@@ -42,10 +42,12 @@ gallery/
         │   ├── ranking/        CorrelationRanking (lollipop), Barplot, SiteRadar,
         │   │                   ParallelCoordinates (brushable axes)
         │   ├── partOfWhole/    CompositionTreemap (treemap / circle pack / donut / stacked
-        │   │                   bars, family → species hierarchy)
+        │   │                   bars, family → species hierarchy; over time via
+        │   │                   CompositionTimeline), FunctionalGroups (the
+        │   │                   Composition tab's FTIR functional groups, stacked)
         │   ├── map/            SiteBubbleMap
         │   ├── flow/           MethodSankey (site → EC method → HIPS / season)
-        │   ├── pmf/            SourceStack (stacked / streamgraph), SourceSeasonality
+        │   ├── pmf/            SourceStack (the composition chart on the PMF sources; by season replaces SourceSeasonality)
         │   └── calibration/    the grid: SpecCurve, CutoffSweep, KSweep, SlopeInterceptTrap,
         │                                 SpectraDumbbell, CrossSiteHeatmap
         │                       one run: CVCurve, RunCrossplot, RunSeries, SplitCheck
@@ -113,10 +115,11 @@ This reuses saved network tables and recomputes study coverage through the
 shared loaders; it does not download or refresh remote observations.
 See [the source and counting notes](../docs/gallery-data-availability.md).
 
-The bubble map offers **Four focus sites** (Beijing, Delhi, JPL and Addis Ababa),
-**Single focus site** (with a picker limited to those four), **All SPARTAN sites**,
-and **All IMPROVE sites**. Focus-site maps retain the season, date and exclusion
-choices while selecting sites independently of the sidebar. IMPROVE uses its
+The bubble map offers **Selected sites**, **All SPARTAN sites** and **All
+IMPROVE sites**. Selected sites draws the sites picked in the Filters panel (the
+same pick as the chart tabs, starting on the four focus sites) with its season,
+date and exclusion choices; old `mapscope=Four focus sites` links open on it.
+The site list beside the map only hides and shows sites already drawn. IMPROVE uses its
 own measurement picker (TOR EC/OC, absorption, mass, iron and soil) and the
 locally available canonical cleaned IMPROVE population. Sample-count bubbles
 count all samples in that population, independently of measurement coverage.
@@ -298,8 +301,8 @@ say why with the source where there is none. Rules and sources:
 [docs/spartan-field-availability.md](../docs/spartan-field-availability.md)
 (`app/src/lib/fieldEquivalents.ts`).
 
-The chart tabs (Correlation, Distribution, Evolution, Ranking, Part of a whole) draw a
-network chosen at the top of the Filters sidebar. **SPARTAN** is the default and starts on
+The chart tabs (Correlation, Distribution, Evolution, Ranking, Composition) draw a
+network chosen at the top of the Samples sidebar. **SPARTAN** is the default and starts on
 the four focus sites, which keep their `filters.json` rows (HIPS, FTIR groups, exclusions,
 local calendars), so the default view is unchanged; any other SPARTAN site can be added and
 brings its public ChemSpec rows from `spartan_reference.json`. **IMPROVE** offers TOR EC/OC,
@@ -643,15 +646,37 @@ bars** (and its treemap, circle-pack and donut views) and **SPARTAN PM2.5
 composition** default to **SPARTAN composition**: matching components keep the
 map's fixed colours across legends, charts and themes. Extra species use Gallery
 colours; selecting a set changes colour only, not the measurements or mass
-reconstruction. **Gallery** retains the original Stacked bars colours; **Tableau
-10**, **Dark 2** and **Set 3** are also available. Generic sets can reverse;
+reconstruction. **Gallery** retains the original Stacked bars colours; the
+colour-vision-safe **Okabe–Ito**, **Tol bright**, **Tol vibrant** and **Tol muted**
+sets, **Tableau 10**, **Observable 10**, **Dark 2** and the pale **Set 3** (for
+filled areas) are also available. Generic sets can reverse;
 the SPARTAN set keeps colours attached to named components. Choices travel in
 the chart's `.palette` / `.reverse` URL parameters and dashboard tile settings.
+
+Every palette, sequential, diverging and categorical, is one entry in
+`lib/palettes` with its colours, its `source`, and flags (`safe` for
+colour-vision safe, `greyscale` for prints in black and white) that build the
+note under its name in the picker. Adding an entry there lists it in every
+picker of that kind; `lib/colourSchemes` derives its dark-theme steps and
+export colours. Sequential ramps add Batlow (Crameri), Inferno,
+Yellow–green–blue and Yellow–orange–red to the earlier set. A categorical colour
+that would vanish on the dark page gets a `dark` twin (Okabe–Ito's black shows
+grey there); charts still draw the original, so exports print it.
+A fixed set (one with named colours: SPARTAN composition, FTIR functional
+groups, PMF paper) is listed only on a chart that opens on it
+(`paletteChoices` in `lib/colourSchemes`); on other categories it would only
+repeat Gallery.
+
+Charts that colour groups from a set offer the categorical picker, defaulting to
+Tableau 10: the species network, the census, the Applicability configurations,
+both MAC-choice charts, the meeting slope-vs-intercept grid, and the run series
+and crossplot (whose seasons keep their config colours; the picker appears only
+when a group is not a season, via `groupColorFn(meta, groups, palette, reverse)`).
 
 Other categorical charts can reuse `useColourScheme(id, 'categorical', defaultSet)`
 from `lib/colourSchemes`, put its `picker` in their controls, and build their
 category scale with `categoricalScale(name, fields, reverse)` from
-`lib/categoricalColours`. The map and Stacked bars share this registry. A chart
+`lib/palettes`. The map and Stacked bars share this registry. A chart
 that keeps colours fixed across themes declares the scale's colours on its
 wrapper with `data-export-fixed-colours={scale.range().join(' ')}`, preserving
 those colours in exports as well.

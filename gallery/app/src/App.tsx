@@ -35,10 +35,10 @@ import { CorrelationRanking } from '@/charts/ranking/CorrelationRanking'
 import { SiteRadar } from '@/charts/ranking/SiteRadar'
 import { ParallelCoordinates } from '@/charts/ranking/ParallelCoordinates'
 import { CompositionTreemap } from '@/charts/partOfWhole/CompositionTreemap'
+import { FunctionalGroups } from '@/charts/partOfWhole/FunctionalGroups'
 import { SiteBubbleMap, SpartanCompositionMap } from '@/charts/map/lazy'
 import { MethodSankey } from '@/charts/flow/MethodSankey'
 import { SourceStack } from '@/charts/pmf/SourceStack'
-import { SourceSeasonality } from '@/charts/pmf/SourceSeasonality'
 import { CensusPage } from '@/pages/CensusPage'
 import { CalibrationPage } from '@/pages/CalibrationPage'
 import { BaselineComparisonPage } from '@/pages/BaselineComparisonPage'
@@ -46,7 +46,7 @@ import { SimilarityPage } from '@/pages/SimilarityPage'
 import { MeetingFollowupPage } from '@/pages/MeetingFollowupPage'
 import { SatoshiFollowupPage } from '@/pages/SatoshiFollowupPage'
 import { MeetingSpecPage } from '@/pages/MeetingSpecPage'
-import { SPEC_MEETINGS } from '@/meetings'
+import { SPEC_MEETINGS, meetingLabel } from '@/meetings'
 import { BlanksPage } from '@/pages/BlanksPage'
 import { ExperimentalPage } from '@/pages/ExperimentalPage'
 import { DEFAULT_EXPERIMENT, EXPERIMENTS, LISTED_EXPERIMENTS } from '@/experiments'
@@ -114,7 +114,7 @@ const TABS = [
   { key: 'distribution', label: 'Distribution' },
   { key: 'evolution', label: 'Evolution' },
   { key: 'ranking', label: 'Ranking' },
-  { key: 'partOfWhole', label: 'Part of a whole' },
+  { key: 'partOfWhole', label: 'Composition', title: 'What the PM2.5 is made of, and the FTIR organic functional groups, per site and season' },
   { key: 'map', label: 'Map' },
   { key: 'investigations', label: 'Investigations', title: 'Cards for the work beyond the chart tabs: Meetings, Experimental, Research diagnostics, Aethalometer and Data availability' },
   { key: 'availability', label: 'Data availability', title: 'Notebook coverage analyses, product inventory, sample-day overlap and filter history' },
@@ -155,12 +155,12 @@ const UNLISTED_TABS = new Set<string>([...UNLISTED, ...PUBLIC_UNLISTED, ...(SHOW
 const isTab = (v: string | null): v is TabKey => !!v && shared(v) && TABS.some((t) => t.key === v)
 const LANDING_TAB = (SHARE_TABS.find((t) => TABS.some((x) => x.key === t)) ?? 'correlation') as TabKey
 
-// hand-built meeting pages, then every declared one (src/meetings/*.meeting.ts), newest first
+// the hand-built meeting pages and every declared one (src/meetings/*.meeting.ts), newest first, each named by its date
 const MEETINGS: { key: string; label: string; title?: string }[] = [
-  { key: 'followup', label: 'Follow up meeting', title: 'The 17 Sep meeting’s follow-ups: the analog bias check and the figures behind it' },
-  { key: 'satoshi', label: 'Satoshi 2 Oct', title: 'Satoshi’s 2 Oct questions: analog overlap, the swap test, VIP, the fit ladder and the envelope' },
-  ...SPEC_MEETINGS.map((m) => ({ key: m.id, label: m.label, title: m.title })),
-]
+  { key: 'followup', date: '2026-09-17', title: 'The 17 Sep meeting’s follow-ups: the analog bias check and the figures behind it' },
+  { key: 'satoshi', date: '2026-10-02', title: 'Satoshi’s 2 Oct questions: analog overlap, the swap test, VIP, the fit ladder and the envelope' },
+  ...SPEC_MEETINGS.map((m) => ({ key: m.id, date: m.date, title: m.title })),
+].sort((a, b) => b.date.localeCompare(a.date)).map(({ date, ...m }) => ({ ...m, label: meetingLabel(date) }))
 type MeetingKey = string
 /** the header's page menu (components/NavMenu): tabs in groups, the meeting pages under Meetings */
 const tabItem = (key: string): NavItem[] => TABS.filter((t) => t.key === key && shared(t.key))
@@ -191,8 +191,8 @@ const areaItem = (a: InvestigationArea, p: AreaPage, heading?: string): NavItem 
   ...(a.tab === 'meeting' ? { meeting: p.key } : a.pages.length > 1 ? { sub: p.key } : {}),
 })
 const NAV_GROUPS: NavGroup[] = [
-  { label: 'Charts', items: ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'flow'].flatMap(tabItem) },
-  { label: 'Sites', items: ['map', 'weather', 'aeronet', 'pmf'].flatMap(tabItem) },
+  { label: 'Charts', items: ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'pmf', 'flow'].flatMap(tabItem) },
+  { label: 'Sites', items: ['map', 'weather', 'aeronet'].flatMap(tabItem) },
   { label: 'Calibration', items: ['calibration', 'baseline', 'similarity', 'blanks'].flatMap(tabItem) },
 ].filter((g) => g.items.length)
 /** the Investigations cards: the areas this build lists */
@@ -279,7 +279,7 @@ const parseSpartanSel = (v: string | null): string[] | 'all' | null =>
   v == null || v === '' ? null : v === '*' ? 'all' : v === '-' ? [] : v.split(',').filter(Boolean)
 
 /** tabs whose charts can draw a whole network (Filters sidebar → network) */
-const NETWORK_TABS = ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'weather', 'aeronet', 'aethalometer', 'research'] as const
+const NETWORK_TABS = ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'map', 'weather', 'aeronet', 'aethalometer', 'research'] as const
 const FILTERS: SubsetCaps = { seasons: true, sites: true, excluded: true, dates: true, fields: 'single', datasetLabel: 'SPARTAN filters' }
 const CAPS: Record<Exclude<TabKey, 'investigations' | 'availability' | 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks' | 'experimental'>, SubsetCaps> = {
   correlation: { ...FILTERS, fields: 'pair', networks: true, fits: true },
@@ -945,13 +945,6 @@ export default function App() {
   // the Weather tab's site table can narrow the Filters panel's pick to one site (and put it back)
   const setSpartanPick = useCallback((codes: string[]) => setSpartanSel(codes), [])
 
-  // The map has its own site scope; keep date, season and exclusion choices, hand edits included.
-  const mapRows = useMemo(
-    () => baseRows.filter(inRange).filter((r) => !seasonSel || seasonSel.has(r.season))
-      .filter((r) => !dropIds.has(r.id) && (!keepIds || keepIds.has(r.id))),
-    [baseRows, inRange, seasonSel, dropIds, keepIds]
-  )
-
   // PMF rows get the same calendar + season treatment as the filter rows, so
   // one season selection means the same thing on every tab.
   const pmfByDate = useMemo(() => pmfKeyByDate(data?.pmf ?? null), [data])
@@ -1400,7 +1393,7 @@ export default function App() {
       <Shell nav={nav} dash={tab === 'dashboard'} wide={tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental'} editsBadge={!subset}>
         {/* tabs without the Filters panel: a sidebar for the page's own controls, with the fits where the page fits */}
         {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting' || tab === 'experimental' || tab === 'similarity')
-          && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'} label={tab === 'similarity' ? 'Target' : 'Filters'} />)}
+          && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'} label={tab === 'similarity' ? 'Target' : 'Samples'} />)}
         {tab === HUB_TAB && <InvestigationsPage areas={HUB_AREAS} onOpen={(t, p) => openTab(t, undefined, p ?? AREAS.find((a) => a.tab === t)?.pages[0]?.key)} />}
         {tab === 'availability' && <DataAvailabilityPage />}
         {tab === 'census' && <><AreaHeader area="Census" pages={CENSUS_PAGES} value="census" onPage={() => {}} /><CensusPage census={census} /></>}
@@ -1455,8 +1448,8 @@ export default function App() {
             <ParallelCoordinates rows={rows} meta={meta} />
           </>
         )}
-        {tab === 'partOfWhole' && <CompositionTreemap rows={rows} meta={meta} />}
-        {tab === 'weather' && <WeatherPage rows={rows} picked={netView?.chosenCodes ?? new Set()} onPick={hasSpartan(net) ? setSpartanPick : undefined}
+        {tab === 'partOfWhole' && <><CompositionTreemap rows={rows} meta={meta} /><FunctionalGroups rows={rows} meta={meta} /></>}
+        {tab === 'weather' && <WeatherPage rows={rows}
           meta={meta} field={fieldEff} xField={xEff} yField={yEff} axes={axes} setField={setField} pmfLabelOfDate={pmfLabelOfDate} />}
         {SECTION_TABS.has(tab) && (() => {
           const T = SECTION_TABS.get(tab)!
@@ -1467,15 +1460,13 @@ export default function App() {
         {tab === 'aeronet' && <AeronetPage rows={rows} picked={netView?.chosenCodes ?? new Set()} onPick={hasSpartan(net) ? setSpartanPick : undefined}
           meta={meta} field={fieldEff} axes={axes} setField={setField} />}
         </AxisFieldsProvider>
-        {tab === 'map' && <SiteBubbleMap rows={mapRows} meta={meta} field={fieldEff} focusSite={activeSites?.size === 1 ? [...activeSites][0] : undefined} />}
+        {tab === 'map' && <SiteBubbleMap rows={rows} meta={meta} field={fieldEff} />}
         {tab === 'map' && <SpartanCompositionMap />}
         {tab === 'flow' && <MethodSankey rows={rows} meta={meta} />}
         {tab === 'pmf' &&
           (pmf ? (
-            <>
-              <SourceStack pmf={pmf} rows={pmfRows} meta={meta} />
-              <SourceSeasonality pmf={pmf} rows={pmfRows} meta={meta} />
-            </>
+            // one chart: its View 'by season' is the former Source apportionment by season
+            <SourceStack pmf={pmf} rows={pmfRows} meta={meta} />
           ) : (
             <p style={{ fontSize: 13, color: 'var(--ink-muted)' }}>
               No PMF solution exported. Run <code>python gallery/data/export_data.py</code> with the ETAD factor CSVs present.
@@ -1565,7 +1556,7 @@ function TocToggle() {
  * `label` names it for what it holds (the Similarity tab's is its Target); the page's tab note (SidebarControls `tabNote`)
  * sits under the name on the edge tab.
  */
-function PageSidebar({ fits, label = 'Filters' }: { fits: boolean; label?: string }) {
+function PageSidebar({ fits, label = 'Samples' }: { fits: boolean; label?: string }) {
   const [open, setOpen] = useSidePanelOpen()
   const top = useHeaderHeight()
   const note = usePageSidebarNote()

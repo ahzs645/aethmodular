@@ -36,14 +36,25 @@ export interface FilterRecord {
  * re-renders only the charts that ask for it, and a chart that passes its own ids to useHighlight(keys) only
  * when the hovered filter is one of them (a Beijing point does not redraw the Addis panels).
  */
-interface HoverStore { get: () => string | null; set: (id: string | null) => void; subscribe: (f: () => void) => () => void }
+interface HoverStore {
+  get: () => string | null; set: (id: string | null) => void; subscribe: (f: () => void) => () => void
+  /** the element now under the pointer (HighlightProvider's listeners) */
+  track: (el: Element | null) => void
+  /** a hover whose element is gone, or no longer under the pointer at `el` */
+  stale: (el: Element | null) => boolean
+}
 function createHoverStore(): HoverStore {
   let value: string | null = null
+  // the element that set the hover: the one under the pointer when it was set
+  let under: Element | null = null
+  let owner: Element | null = null
   const subs = new Set<() => void>()
   return {
     get: () => value,
-    set: (id) => { if (id === value) return; value = id; subs.forEach((f) => f()) },
+    set: (id) => { owner = id === null ? null : under; if (id === value) return; value = id; subs.forEach((f) => f()) },
     subscribe: (f) => { subs.add(f); return () => { subs.delete(f) } },
+    track: (el) => { under = el },
+    stale: (el) => value !== null && owner !== null && (!owner.isConnected || el === null || !owner.contains(el)),
   }
 }
 
@@ -101,6 +112,48 @@ export function HighlightProvider({ children, pinnedId, setPinned, openSample, o
   }, [dismissSample, setPinned])
   // Closing from the drawer or subset bar also removes the hover highlight.
   useEffect(() => { if (pinnedId === null) setHover(null) }, [pinnedId])
+  // A chart sets the hover when the pointer enters a mark and clears it when it leaves. A mark removed, redrawn or
+  // moved under the pointer never hears that leave, and the hover stayed on every chart drawing the filter. So the
+  // store remembers the element that set it, and the next move or press anywhere else clears it; so does the
+  // pointer leaving the window and the tab going to the background.
+  useEffect(() => {
+    const at = (e: Event) => (e.target instanceof Element ? e.target : null)
+    const track = (e: PointerEvent) => store.track(at(e))
+    // capture, so it runs before the charts' own handlers: a chart that moves to a new mark sets it again after
+    const check = (e: PointerEvent) => { store.track(at(e)); if (store.stale(at(e))) store.set(null) }
+    const clear = () => store.set(null)
+    const out = (e: MouseEvent) => { if (!e.relatedTarget) clear() }
+    const hidden = () => { if (document.hidden) clear() }
+    document.addEventListener('pointerover', track, true)
+    document.addEventListener('pointermove', check, { capture: true, passive: true })
+    document.addEventListener('pointerdown', check, true)
+    document.addEventListener('mouseout', out)
+    document.addEventListener('visibilitychange', hidden)
+    window.addEventListener('blur', clear)
+    return () => {
+      document.removeEventListener('pointerover', track, true)
+      document.removeEventListener('pointermove', check, { capture: true })
+      document.removeEventListener('pointerdown', check, true)
+      document.removeEventListener('mouseout', out)
+      document.removeEventListener('visibilitychange', hidden)
+      window.removeEventListener('blur', clear)
+    }
+  }, [store])
+  // Esc lets go of a pin, also one with no drawer open (a record-only filter, or a pin from a shared link).
+  // Capture, so a chart's focus view (ChartFrame) leaves on the next Esc rather than the same one.
+  useEffect(() => {
+    if (pinnedId === null) return
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return
+      // an open drawer, dialog, menu or list takes Esc for itself, and so does a field being typed in
+      if (document.querySelector('.drawer, [role="dialog"], [role="menu"], [role="listbox"], [aria-expanded="true"]')) return
+      if (e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable="true"]')) return
+      e.preventDefault()
+      dismissSample()
+    }
+    window.addEventListener('keydown', esc, true)
+    return () => window.removeEventListener('keydown', esc, true)
+  }, [pinnedId, dismissSample])
   useEffect(() => {
     const onBackgroundClick = (e: MouseEvent) => {
       const target = e.target
@@ -202,12 +255,23 @@ export { baseFilterId } from './filterId'
  * one class on their group (styles.css .has-focus). The only part of the chart that follows the hover: a hover
  * then re-renders this one mark, not every dot, the axes or the fits. `keys` are the ids the chart draws.
  */
-export function FocusLayer<T>({ keys, items, idOf, groupRef, render }: {
+export function FocusLayer<T>({ keys, items, idOf, groupRef, render, focusClass = 'has-focus' }: {
   keys: ReadonlySet<string>; items: readonly T[]; idOf: (t: T) => string | undefined
-  groupRef: React.RefObject<SVGGElement | null>; render: (t: T) => ReactNode
+  /** the class set on the dots' group while a filter is focused (styles.css: has-focus dims each dot) */
+  focusClass?: string
+  /** `pinned`: the focused filter is the pinned one (draw a PinRing with it), not only a passing hover */
+  groupRef: React.RefObject<SVGGElement | null>; render: (t: T, pinned: boolean) => ReactNode
 }) {
-  const { focusId } = useHighlight(keys)
+  const { focusId, pinnedId } = useHighlight(keys)
   const focused = focusId ? items.find((t) => idOf(t) === focusId) ?? null : null
-  useLayoutEffect(() => { groupRef.current?.classList.toggle('has-focus', focused !== null) }, [focused, groupRef])
-  return focused === null ? null : <>{render(focused)}</>
+  useLayoutEffect(() => { groupRef.current?.classList.toggle(focusClass, focused !== null) }, [focused, groupRef, focusClass])
+  return focused === null ? null : <>{render(focused, focusId === pinnedId)}</>
+}
+
+/**
+ * The dashed outer ring a pinned filter's dot wears. A pin stays until it is dismissed (Esc, a click on empty plot,
+ * closing its record) and survives a reload in the link, so it must not look like a hover that failed to clear.
+ */
+export function PinRing({ cx, cy, r }: { cx: number; cy: number; r: number }) {
+  return <circle className="pin-ring" cx={cx} cy={cy} r={r + 3.5} fill="none" stroke={INK.fit} strokeWidth={1.4} strokeDasharray="3 2" pointerEvents="none" />
 }

@@ -10,7 +10,7 @@ const SEASON_ROWS = ['All Addis', 'Dry (Oct-Feb)', 'Belg (Mar-May)', 'Kiremt (Ju
 
 export default {
   id: 'ann-20261009',
-  label: 'Ann 9 Oct',
+  label: 'Oct 9, 2026',
   date: '2026-10-09',
   title: 'Questions from the 9 Oct meeting with Ann',
   command: 'cd research/ftir_hips_chem && ../../.venv/bin/python ../../gallery/data/export_meeting_20261009.py',

@@ -1,10 +1,10 @@
-import * as d3 from 'd3'
 import type { CalibFile, CalibRow, CalibRun, FilterRow, MetaFile, MetricRow, RunEval, SweepRow } from '@/lib/types'
 import { baseFilterId } from '@/lib/highlight'
 import { useEffect, useState } from 'react'
 import { loadSpartanFilters } from '@/lib/spartan'
 import { COHORT_SHORT, METRIC, PREPROCESSING, PREPROCESSING_SHORT, SELECTION_SPACE, label } from '@/lib/labels'
 import { slopeAt } from '@/lib/macMath'
+import { categoricalScale } from '@/lib/palettes'
 import { BASELINE_COLOR, INK } from '@/lib/theme'
 
 /** A configuration is what the explorer fits: cohort × cutoff × selection space × calibration spectra. */
@@ -106,8 +106,12 @@ export const passes = (r: CalibRow, calib: CalibFile) => {
 export const fmtFit = (m: number | null, b: number | null) =>
   m === null || b === null ? '—' : `${m.toFixed(3)}x ${b < 0 ? '−' : '+'} ${Math.abs(b).toFixed(3)}`
 
-/** Colour for an evaluation group: the Ethiopian season colours from config when the label matches, else a fixed ordinal. */
-export function groupColorFn(meta: MetaFile, groups: string[]): (g: string) => string {
+/**
+ * Colour for an evaluation group: the season colours from config when the label matches, else the
+ * categorical set `palette` (lib/palettes) in name order. `others` are the groups the set colours,
+ * so a chart offers its colour picker only when there are some.
+ */
+export function groupColorFn(meta: MetaFile, groups: string[], palette = 'Tableau 10', reverse = false): { color: (g: string) => string; others: string[] } {
   const bySeason = new Map<string, string>()
   for (const conv of Object.values(meta.season_conventions)) for (const s of conv) bySeason.set(s.name, s.color)
   for (const s of meta.seasons) {
@@ -116,8 +120,8 @@ export function groupColorFn(meta: MetaFile, groups: string[]): (g: string) => s
     if (s.site) bySeason.set(s.name.slice(s.site.length + 3), s.color)
   }
   const others = [...new Set(groups.filter((g) => !bySeason.has(g)))].sort()
-  const ord = d3.scaleOrdinal<string>().domain(others).range(d3.schemeTableau10)
-  return (g) => bySeason.get(g) ?? ord(g)
+  const ord = categoricalScale(palette, others, reverse)
+  return { color: (g) => bySeason.get(g) ?? ord(g), others }
 }
 
 /** The metrics row for one evaluation set and MAC (the explorer's crossplot convention). */

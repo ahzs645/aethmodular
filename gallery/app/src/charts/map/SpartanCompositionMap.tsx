@@ -14,7 +14,7 @@ import { useFitHeight } from '@/lib/chartFit'
 import { fmt } from '@/lib/stats'
 import { FONT, INK } from '@/lib/theme'
 import { useColourScheme } from '@/lib/colourSchemes'
-import { categoricalScale } from '@/lib/categoricalColours'
+import { categoricalScale } from '@/lib/palettes'
 import { groupOverlapping, type MapGroup } from '@/lib/mapClusters'
 
 /** gallery/data/export_spartan_composition.py */

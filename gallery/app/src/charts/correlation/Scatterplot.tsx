@@ -16,9 +16,10 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { PanelAxesControl } from '@/lib/panelAxes'
 import { useTooltip } from '@/hooks/useTooltip'
-import { FocusLayer, focusStyle, useHighlight } from '@/lib/highlight'
+import { FocusLayer, PinRing, focusStyle, useHighlight } from '@/lib/highlight'
+import { HitLayer } from '@/components/HitLayer'
 import { useFilterEdits } from '@/lib/filterEdits'
-import { inDomain, pairDomain, panelAxesKey, type AxesOpts, type PairDomain, robustDomain } from '@/lib/axes'
+import { axesForUnits, inDomain, pairDomain, panelAxesKey, type AxesOpts, type PairDomain, robustDomain } from '@/lib/axes'
 import { regression, fmt, type RegressionStats } from '@/lib/stats'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import { useColourScheme } from '@/lib/colourSchemes'
@@ -82,11 +83,13 @@ function valueScale(values: number[], stops: string[]) {
  * The 1:1 toggle and the axes mode live in the subset bar so the hexbin and
  * the connected scatter below draw the same frame.
  */
-export function Scatterplot({ rows, meta, xField, yField, axes, id = 'scatter', title = 'Scatterplot — the crossplot family' }: {
+export function Scatterplot({ rows, meta, xField, yField, axes: axesIn, id = 'scatter', title = 'Scatterplot — the crossplot family' }: {
   rows: FilterRow[]; meta: MetaFile; xField: string; yField: string; axes: AxesOpts
   /** another tab reusing the crossplot (Weather) names it for what it shows */
   id?: string; title?: string
 }) {
+  // a 1:1 line and one shared span only where x and y share a unit; otherwise each axis floats to its own range
+  const axes = useMemo(() => axesForUnits(axesIn, meta.field_units?.[xField], meta.field_units?.[yField]), [axesIn, meta.field_units, xField, yField])
   const chartLabel = useChartLabel()
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
@@ -527,11 +530,9 @@ const ScatterPanel = memo(function ScatterPanel({
       />
     )
   }), [drawn, xScale, yScale, selected, colorOf, radiusOf, dimOf, siteColoring, seasonColoring])
-  // closest-point detection: one Delaunay over the drawn points, one hit rect
-  const delaunay = useMemo(() => d3.Delaunay.from(drawn, (p) => xScale(p.x), (p) => yScale(p.y)), [drawn, xScale, yScale])
-  const hoverRef = useRef<Point | null>(null)
+  // closest-point detection: one Delaunay over the drawn points, one hit rect (components/HitLayer)
+  const xy = useMemo(() => drawn.map((p) => [xScale(p.x), yScale(p.y)] as const), [drawn, xScale, yScale])
   const dotsRef = useRef<SVGGElement>(null)
-  const HIT = 18
   // d3.brush owns its own DOM, so it is attached imperatively to an empty <g>
   const brushRef = useRef<SVGGElement>(null)
   const brushObj = useRef<d3.BrushBehavior<unknown> | null>(null)
@@ -567,24 +568,6 @@ const ScatterPanel = memo(function ScatterPanel({
   useEffect(() => {
     if (!selected && brushRef.current && brushObj.current && d3.brushSelection(brushRef.current)) d3.select(brushRef.current).call(brushObj.current.move, null)
   }, [selected])
-  const nearest = (e: React.MouseEvent<SVGRectElement>): Point | null => {
-    if (drawn.length === 0) return null
-    const [mx, my] = d3.pointer(e)
-    const i = delaunay.find(mx, my)
-    const p = drawn[i]
-    if (!p) return null
-    const dx = xScale(p.x) - mx
-    const dy = yScale(p.y) - my
-    return Math.hypot(dx, dy) <= HIT + radiusOf(p) ? p : null
-  }
-  const onMove = (e: React.MouseEvent<SVGRectElement>) => {
-    const p = nearest(e)
-    if (p !== hoverRef.current) {
-      hoverRef.current = p
-      if (p) onEnter(e, p)
-      else onLeave()
-    } else if (p) onEnter(e, p)
-  }
   const markIntercepts = axes.mode === 'Show intercept' && showFit && !axes.log && stats
   const originAxes = axes.mode === 'Show intercept' && !axes.log && xScale.domain()[0] < 0 && yScale.domain()[0] < 0
   const { methods } = useRegressions()
@@ -649,30 +632,21 @@ const ScatterPanel = memo(function ScatterPanel({
           {/* the dots do not depend on the hover: a focus dims them all with one class (styles.css .scatter-dots)
               and draws the focused filter again on top, so a hover re-renders two circles, not every dot */}
           <g ref={dotsRef} className="scatter-dots">{dots}</g>
-          <FocusLayer keys={keys} items={drawn} idOf={(p) => p.row.id} groupRef={dotsRef} render={(p) => {
+          <FocusLayer keys={keys} items={drawn} idOf={(p) => p.row.id} groupRef={dotsRef} render={(p, pinned) => {
             const st = focusStyle(p.row.id, p.row.id, { r: radiusOf(p) })
-            return <circle cx={xScale(p.x)} cy={yScale(p.y)} r={st.r} fill={colorOf(p)} fillOpacity={st.opacity * dimOf(p)}
-              stroke={st.stroke} strokeWidth={st.strokeWidth} pointerEvents="none" />
+            return <>
+              <circle cx={xScale(p.x)} cy={yScale(p.y)} r={st.r} fill={colorOf(p)} fillOpacity={st.opacity * dimOf(p)}
+                stroke={st.stroke} strokeWidth={st.strokeWidth} pointerEvents="none" />
+              {pinned && <PinRing cx={xScale(p.x)} cy={yScale(p.y)} r={st.r} />}
+            </>
           }} />
 
-          {/* the hit layer: closest point wins, within HIT px of the pointer; the brush replaces it while selecting */}
+          {/* the hit layer: closest point wins, within 18 px of the pointer (and the dot's radius); the brush replaces it
+              while selecting. The nearest point gets the filter menu; on empty plot the page-level menu offers the brush and undo */}
           {!brushing && (
-            <rect
-              x={0} y={0} width={innerW} height={innerH} fill="transparent"
-              style={{ cursor: hoverRef.current ? 'pointer' : 'default' }}
-              onMouseMove={onMove}
-              onMouseLeave={() => { hoverRef.current = null; onLeave() }}
-              onClick={(e) => {
-                const p = nearest(e)
-                if (p) { e.stopPropagation(); onClick(p.row) }
-                else { hoverRef.current = null; onLeave() }
-              }}
-              onContextMenu={(e) => {
-                // the nearest point gets the filter menu; on empty plot the page-level menu offers the brush and undo
-                const p = nearest(e)
-                if (p) edits.openMenu(e, { ids: [p.row.id], title: p.row.id })
-              }}
-            />
+            <HitLayer items={drawn} xy={xy} width={innerW} height={innerH} reach={radiusOf} follow
+              onHover={onEnter} onLeave={onLeave} onPick={(p) => onClick(p.row)}
+              onMenu={(e, p) => edits.openMenu(e, { ids: [p.row.id], title: p.row.id })} />
           )}
           <g ref={brushRef} className="brush-layer" />
 

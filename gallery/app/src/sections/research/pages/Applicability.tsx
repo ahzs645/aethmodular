@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import * as d3 from 'd3'
 import { ChartFrame } from '@/components/ChartFrame'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
@@ -7,8 +6,10 @@ import { Figure } from '@/components/Figure'
 import { Key } from '@/components/Key'
 import { Marker } from '@/components/RefLines'
 import { useChartOptions } from '@/lib/chartOptions'
+import { useColourScheme } from '@/lib/colourSchemes'
 import { f2 } from '@/lib/format'
 import { num, type Row } from '@/lib/table'
+import { categoricalScale } from '@/lib/palettes'
 import { INK } from '@/lib/theme'
 import type { SectionPageProps } from '../../types'
 import { PageIntro, presetName, provenance, rows, useCalibRuns, useSpectral, Waiting } from './spectralCommon'
@@ -135,7 +136,8 @@ export function Applicability(_props: SectionPageProps) {
 const DISTANCE = [
   { value: 'max', label: 'T² or Q (larger)' }, { value: 'T2', label: 'T²' }, { value: 'Q', label: 'Q' },
 ] as const
-const CONFIG_COLOUR: Record<string, string> = { addis_winner: d3.schemeTableau10[0], common_candidate: d3.schemeTableau10[1], delhi_winner: d3.schemeTableau10[2] }
+/** the locked configurations, in colour order: each keeps its colour whichever are present */
+const CONFIG_ORDER = ['addis_winner', 'common_candidate', 'delhi_winner']
 
 /**
  * ftir_39 per filter: each locked holdout filter's source-domain percentile against its error, one panel per
@@ -152,12 +154,14 @@ function DomainFilters({ data, summary, provenance }: { data: Row[]; summary: Ro
     return o.values.distance === 'T2' ? t : o.values.distance === 'Q' ? q : t == null || q == null ? null : Math.max(t, q)
   }
   const configs = [...new Set(data.map((r) => String(r.config)))]
+  const colours = useColourScheme('applicability-domain-filters', 'categorical', 'Tableau 10')
+  const configColour = useMemo(() => categoricalScale(colours.name, [...CONFIG_ORDER, ...configs], colours.reverse), [colours.name, colours.reverse, configs.join()])
   const panels = [...new Set(data.map((r) => String(r.target)))].map((t) => {
     const points: CrossPoint[] = data.filter((r) => r.target === t).flatMap((r) => {
       const x = xOf(r), y = num(signed ? r.residual_ugm3 : r.abs_error_ugm3)
       if (x == null || y == null) return []
       const cfg = at(CONFIG, r.config)
-      return [{ x, y, color: CONFIG_COLOUR[String(r.config)] ?? d3.schemeTableau10[3], hollow: r.outside_source_95 === true,
+      return [{ x, y, color: configColour(String(r.config)), hollow: r.outside_source_95 === true,
         tip: [`filter ${r.ExternalFilterId}`, cfg, `T² percentile ${f2(r.T2_source_percentile)}, Q percentile ${f2(r.Q_source_percentile)}`, `PLS − HIPS/10 ${f2(r.residual_ugm3)} µg/m³`,
           r.outside_source_95 === true ? 'outside the source 95 %' : 'inside the source 95 %'] }]
     })
@@ -169,7 +173,7 @@ function DomainFilters({ data, summary, provenance }: { data: Row[]; summary: Ro
   return (
     <ChartFrame id="applicability-domain-filters" title="ftir_39 per filter — being in the domain does not make a holdout filter right"
       subtitle={`Each locked holdout filter (${panels.map((p) => `${at(TARGET, p.t)}`).join(', ')}) under each locked configuration: its source-domain percentile against its error at MAC 10. Hollow points fall outside the source 95 % (dotted line) on T² or Q. Distance picks T², Q or the larger of the two (the notebook's plot); Error switches between the size of the miss and its sign. Spearman ρ of percentile against |error| is in each panel's title: weak or absent for the Addis winner, so an in-domain flag is no promise of accuracy.`}
-      provenance={provenance} controls={o.controls()}>
+      provenance={provenance} controls={<>{o.controls()}{colours.picker}</>}>
       <FacetGrid items={panels} minCell={320} maxCols={2} render={(p, w) => <div>
         <p className="facet-title">{at(TARGET, p.t)}</p>
         <Crossplot title="" points={p.points} xLabel={`Source-domain percentile (${DISTANCE.find((d) => d.value === o.values.distance)?.label})`}
@@ -181,7 +185,7 @@ function DomainFilters({ data, summary, provenance }: { data: Row[]; summary: Ro
           </>} />
         <p className="legend-note">{p.rho.join(' · ')}</p>
       </div>} />
-      <Key items={[...configs.map((c) => ({ label: at(CONFIG, c), color: CONFIG_COLOUR[c] ?? d3.schemeTableau10[3] })),
+      <Key items={[...configs.map((c) => ({ label: at(CONFIG, c), color: configColour(c) })),
         { label: 'outside the source 95 %', color: INK.muted, kind: 'hollow' as const }]} />
     </ChartFrame>
   )

@@ -88,9 +88,12 @@ const SPARTAN_GROUPS = [
   { label: 'Carbon', fields: ['EC (FTIR)', 'OC (FTIR)', 'OM (FTIR)', 'EC (ChemSpec FTIR)', 'OC (ChemSpec FTIR)'] },
   { label: 'FTIR functional groups', fields: ['Alkane CH', 'Alcohol COH', 'Carboxylic COOH', 'Non-acid CO'] },
   { label: 'Mass', fields: ['PM2.5 mass'] },
-  // 'Ions' and 'Metals & crustal' are the composition charts' species; the groups below are not summed there
+  // 'Ions', 'Crustal elements' and 'Trace metals' are the composition charts' species; the groups below are not
+  // summed there. Crustal and trace are split as SPARTAN's figure splits dust from trace element oxides, but both
+  // stay element masses: no oxide factors, so the crustal band is not SPARTAN's (larger) dust estimate
   { label: 'Ions', fields: ['Sulfate', 'Nitrate', 'Ammonium', 'Potassium', 'Sodium', 'Calcium', 'Magnesium', 'Nitrite', 'Phosphate', 'Bromide'] },
-  { label: 'Metals & crustal', fields: ['Silicon', 'Aluminum', 'Iron', 'Titanium', 'Zinc', 'Copper', 'Lead'] },
+  { label: 'Crustal elements', fields: ['Silicon', 'Aluminum', 'Iron', 'Titanium'] },
+  { label: 'Trace metals', fields: ['Zinc', 'Copper', 'Lead'] },
   { label: 'Trace elements', fields: ['Manganese', 'Chromium', 'Vanadium', 'Nickel', 'Cobalt', 'Arsenic', 'Selenium', 'Cadmium', 'Antimony', 'Tin', 'Barium', 'Cerium', 'Strontium', 'Rubidium', 'Lithium', 'Phosphorus'] },
   // XRF elements that restate an ion or sulfate (S vs SO4, Cl, Ca/K/Na/Mg as elements)
   { label: 'Elements (XRF)', fields: ['Sulfur', 'Chlorine', 'Calcium (element)', 'Potassium (element)', 'Sodium (element)', 'Magnesium (element)'] },

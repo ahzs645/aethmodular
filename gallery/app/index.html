@@ -3,6 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // iOS Safari zooms into any text field under 16px when it is tapped. maximum-scale=1 stops that zoom, and iOS
+      // ignores it for pinch zoom, so the reader can still zoom by hand. Android does honour it (no pinch zoom at
+      // all), so it is set on iPhone and iPad only (an iPad reports itself as a Mac with a touch screen).
+      if (/iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1))
+        document.querySelector('meta[name="viewport"]').content = 'width=device-width, initial-scale=1.0, maximum-scale=1'
+    </script>
     <title>Air Gallery</title>
   </head>
   <body>

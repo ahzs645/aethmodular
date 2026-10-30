@@ -48,7 +48,7 @@ const EXCLUSION_TITLE = {
   'export-out': 'The data export excludes this filter: put it back in every chart (kept in the link)',
   'export-in': 'Put back from the data export\'s exclusions: leave it out of the charts again',
   hand: 'Excluded by hand: put it back in every chart',
-  in: 'Leave this filter out of every chart (excluded by hand, kept in the link; the reason can be added in Filters › excluded)',
+  in: 'Leave this filter out of every chart (excluded by hand, kept in the link; the reason can be added in Samples › excluded)',
 } as const
 
 /**

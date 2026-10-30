@@ -24,6 +24,22 @@ export interface AxesOpts {
   log: boolean
   /** several panels: which share one range (lib/panelAxes); with the 1:1 line on, every panel stays square either way */
   panels?: PanelAxes
+  /** x and y in different units (axesForUnits): no 1:1, and each axis floats to its own data's range instead of starting at 0 */
+  float?: boolean
+}
+
+/** a unit as written in the exports or on screen, so 'ug/m3' and 'µg/m³' compare equal */
+const unitKey = (u: string) => u.replace(/\s+/g, '').replace(/^ug/i, 'µg').replace(/m3$/, 'm³').replace(/Mm-1$/, 'Mm⁻¹').toLowerCase()
+/** a pair measured in the same unit (both unitless counts as the same); one with a unit and one without differ */
+export const sameUnits = (a?: string | null, b?: string | null) => (!a && !b) || (!!a && !!b && unitKey(a) === unitKey(b))
+
+/**
+ * The axes policy for one pair of fields: a 1:1 line and one shared span only mean something when x and y are in the
+ * same unit. Otherwise (Fabs in Mm⁻¹ against EC in µg/m³, a temperature against a mass) the identity line goes and
+ * each axis floats to its own range; Show intercept still keeps 0 on the canvas.
+ */
+export function axesForUnits(axes: AxesOpts, xUnit?: string | null, yUnit?: string | null): AxesOpts {
+  return sameUnits(xUnit, yUnit) ? axes : { ...axes, identity: false, float: true }
 }
 
 /**
@@ -73,6 +89,7 @@ export function pairDomain(
   const extras = opts.mode === 'Show intercept' ? intercepts.filter(Number.isFinite) : []
   const lo = (v: number) => {
     if (opts.log) return Math.max(1e-4, v)
+    if (opts.float) return v
     if (opts.mode === 'From 0,0') return 0
     return Math.min(0, v)
   }

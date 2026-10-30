@@ -1,46 +1,38 @@
 import * as d3 from 'd3'
-import { DIVERGING_SCHEMES, RAMP_SEQUENTIAL, isDark, registerPrintColours, registerPrintResolver } from '@/lib/theme'
+import { isDark, paintPair, registerPrintColours, registerPrintResolver } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import { useTheme } from '@/lib/colorTheme'
 import { ColourSchemePicker, type SchemeChoice } from '@/components/ColourSchemePicker'
-import { CATEGORICAL_COLOUR_SETS, categoricalStops, hasNamedColours } from './categoricalColours'
+import { PALETTES, hasNamedColours, paletteColours, type PaletteKind } from './palettes'
 
 /**
- * The colour schemes a chart can offer, and one picker for them (components/ColourSchemePicker):
- * diverging schemes for signed values (a correlogram's r), sequential ones for counts and
- * densities (a hexbin). A chart asks for its stops and hands the scheme to its colour ramp, which
- * opens the list of palettes when clicked (components/ColorLegend):
+ * One picker for a chart's colours (components/ColourSchemePicker), offering the palettes of one
+ * kind from lib/palettes: diverging for signed values (a correlogram's r), sequential for counts
+ * and densities (a hexbin), categorical for named groups. A chart asks for its stops and hands the
+ * scheme to its colour ramp, which opens the list of palettes when clicked (components/ColorLegend):
  *
  *   const colours = useColourScheme('hexbin', 'sequential')
  *   const color = d3.scaleQuantize<string>().domain([0, max]).range(colours.stops)
  *   <ColorLegend scale={color} scheme={colours.scheme} …>
  *
- * A chart without a ramp puts `colours.picker` (a button with the same list) in its controls.
- * The choice is kept in the URL as `<chart>.palette` / `<chart>.reverse`.
+ * A chart without a ramp puts `colours.picker` (a button with the same list) in its controls; a
+ * categorical chart builds its scale with categoricalScale(colours.name, fields, colours.reverse).
+ * The choice is kept in the URL as `<chart>.palette` / `<chart>.reverse`. New palettes go in
+ * lib/palettes, never here.
  */
-export type SchemeKind = 'diverging' | 'sequential' | 'categorical'
-const STOPS = 8
-const sample = (f: (t: number) => string) => d3.quantize(f, STOPS)
-export const SEQUENTIAL_SCHEMES: Record<string, readonly string[]> = {
-  Gallery: RAMP_SEQUENTIAL,
-  Viridis: sample(d3.interpolateViridis),
-  Cividis: sample(d3.interpolateCividis),
-  Plasma: sample(d3.interpolatePlasma),
-  Magma: sample((t) => d3.interpolateMagma(1 - t * 0.9)).reverse(),
-  Reds: sample((t) => d3.interpolateReds(0.12 + 0.88 * t)),
-  Greens: sample((t) => d3.interpolateGreens(0.08 + 0.92 * t)),
-  Oranges: sample((t) => d3.interpolateOranges(0.08 + 0.92 * t)),
-  Purples: sample((t) => d3.interpolatePurples(0.08 + 0.92 * t)),
-  Greys: sample((t) => d3.interpolateGreys(0.05 + 0.9 * t)),
-}
-const CATEGORICAL_SCHEMES = Object.fromEntries(Object.entries(CATEGORICAL_COLOUR_SETS).map(([name, set]) => [name, set.colours]))
-export const SCHEMES: Record<SchemeKind, Record<string, readonly string[]>> = { diverging: DIVERGING_SCHEMES, sequential: SEQUENTIAL_SCHEMES, categorical: CATEGORICAL_SCHEMES }
-/** a line under the picker: which schemes hold up for colour-vision deficiencies or in print */
-export const SCHEME_NOTES: Record<string, string> = {
-  'Purple–orange': 'colour-vision safe', 'Brown–teal': 'colour-vision safe', Cividis: 'colour-vision safe', Viridis: 'colour-vision safe',
-  Greys: 'prints in black and white',
-  'SPARTAN composition': 'fixed component colours; additional species use Gallery colours',
-}
+export type SchemeKind = PaletteKind
+const RAMPS = ['diverging', 'sequential'] as const
+/**
+ * The palettes a chart's picker lists: every general one, and a fixed set (one with named colours:
+ * SPARTAN composition, FTIR functional groups, PMF paper) only on a chart that opens on it. On any
+ * other chart's categories a fixed set matches no label and would only repeat Gallery.
+ */
+export const paletteChoices = (kind: SchemeKind, chartDefault: string) =>
+  PALETTES[kind].filter((p) => !p.named || p.name === chartDefault).map((p) => p.name)
+// a categorical colour with a dark twin (Okabe–Ito's black) shows the twin on the dark page, as
+// every themed mark does; charts keep drawing the light colour, so exports print it
+for (const p of PALETTES.categorical) for (const [l, d] of Object.entries(p.dark ?? {})) paintPair(l, d)
+const lightStops = (kind: SchemeKind) => Object.fromEntries(PALETTES[kind].map((p) => [p.name, p.colours]))
 
 /**
  * The dark theme's step of each scheme, not the light one flipped wholesale. A sequential ramp
@@ -64,15 +56,13 @@ function darkStops(kind: SchemeKind, stops: readonly string[]): string[] {
   const lo = lift(stops[0]), hi = lift(stops[n - 1])
   return stops.map((_, i) => i === mid ? DARK_MID : d3.interpolateLab(DARK_MID, i < mid ? lo : hi)(Math.abs(i - mid) / mid))
 }
-const DARK_SCHEMES: Record<SchemeKind, Record<string, string[]>> = {
-  diverging: Object.fromEntries(Object.entries(DIVERGING_SCHEMES).map(([k, v]) => [k, darkStops('diverging', v)])),
-  sequential: Object.fromEntries(Object.entries(SEQUENTIAL_SCHEMES).map(([k, v]) => [k, darkStops('sequential', v)])),
-  categorical: Object.fromEntries(Object.entries(CATEGORICAL_SCHEMES).map(([k, v]) => [k, [...v]])),
-}
+// categorical sets keep their colours in both themes
+const DARK_RAMPS = Object.fromEntries(RAMPS.map((kind) =>
+  [kind, Object.fromEntries(PALETTES[kind].map((p) => [p.name, darkStops(kind, p.colours)]))])) as Record<typeof RAMPS[number], Record<string, string[]>>
 // an exported heat map is drawn light (lib/export): each dark stop maps back to its light one, and a
 // colour a chart interpolated between stops (d3 scaleLinear, interpolateRgbBasis) to the light colour
 // at the same place on the light ramp
-for (const kind of ['diverging', 'sequential'] as const) for (const [k, v] of Object.entries(DARK_SCHEMES[kind])) registerPrintColours(v, SCHEMES[kind][k])
+for (const kind of RAMPS) for (const [k, v] of Object.entries(DARK_RAMPS[kind])) registerPrintColours(v, lightStops(kind)[k])
 const RAMP_SAMPLES = (() => {
   const out: { rgb: [number, number, number]; light: string }[] = []
   const add = (dark: string, light: string) => {
@@ -80,11 +70,11 @@ const RAMP_SAMPLES = (() => {
     const c = d3.rgb(dark)
     out.push({ rgb: [c.r, c.g, c.b], light: d3.rgb(light).formatHex() })
   }
-  for (const kind of ['diverging', 'sequential'] as const) for (const [k, dark] of Object.entries(DARK_SCHEMES[kind])) {
-    const light = SCHEMES[kind][k]
-    const basisD = d3.interpolateRgbBasis(dark), basisL = d3.interpolateRgbBasis([...light])
+  for (const kind of RAMPS) for (const [k, dark] of Object.entries(DARK_RAMPS[kind])) {
+    const lit = lightStops(kind)[k]
+    const basisD = d3.interpolateRgbBasis(dark), basisL = d3.interpolateRgbBasis([...lit])
     for (let i = 0; i <= 400; i++) add(basisD(i / 400), basisL(i / 400))
-    for (let s = 0; s < dark.length - 1; s++) for (let i = 0; i <= 60; i++) add(d3.interpolateRgb(dark[s], dark[s + 1])(i / 60), d3.interpolateRgb(light[s], light[s + 1])(i / 60))
+    for (let s = 0; s < dark.length - 1; s++) for (let i = 0; i <= 60; i++) add(d3.interpolateRgb(dark[s], dark[s + 1])(i / 60), d3.interpolateRgb(lit[s], lit[s + 1])(i / 60))
   }
   return out
 })()
@@ -101,22 +91,22 @@ registerPrintResolver((hex) => {
   return best
 })
 
+/** a palette's colours in the current theme, in the chosen direction */
 export function schemeStops(kind: SchemeKind, name: string, reverse = false): string[] {
-  if (kind === 'categorical') return categoricalStops(name, reverse)
-  const set = isDark() ? DARK_SCHEMES[kind] : SCHEMES[kind]
-  const stops = [...(set[name] ?? Object.values(set)[0])]
+  if (kind === 'categorical' || !isDark()) return paletteColours(kind, name, reverse)
+  const stops = [...(DARK_RAMPS[kind][name] ?? DARK_RAMPS[kind].Gallery)]
   return reverse ? stops.reverse() : stops
 }
 
 export function useColourScheme(chartId: string, kind: SchemeKind, fallback = 'Gallery') {
   // ramps have their own dark steps, which CSS cannot map (a cell's colour is interpolated): redraw on a switch
   useTheme()
-  const names = Object.keys(SCHEMES[kind])
+  const names = paletteChoices(kind, fallback)
   const [name, setName] = useSearchParam<string>(`${chartId}.palette`, fallback, names)
   const [rev, setRev] = useSearchParam<string>(`${chartId}.reverse`, '0', ['0', '1'])
   const reverse = rev === '1' && !(kind === 'categorical' && hasNamedColours(name))
   const stops = schemeStops(kind, name, reverse)
-  const scheme: SchemeChoice = { kind, value: name, reverse, onChange: (n, r) => { setName(n); setRev(kind === 'categorical' && hasNamedColours(n) ? '0' : r ? '1' : '0') } }
+  const scheme: SchemeChoice = { kind, names, value: name, reverse, onChange: (n, r) => { setName(n); setRev(kind === 'categorical' && hasNamedColours(n) ? '0' : r ? '1' : '0') } }
   const picker = <ColourSchemePicker {...scheme} />
   return { name, reverse, stops, scheme, picker }
 }

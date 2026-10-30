@@ -14,7 +14,7 @@ import type { FigureSpec } from '@/components/Figure'
 export interface MeetingSpec {
   /** also the bundle's file name: data/meetings/<id>.json */
   id: string
-  /** picker label, e.g. "Ann 9 Oct" */
+  /** picker label, the date as "Oct 9, 2026" (meetings/index meetingLabel sets it from `date`) */
   label: string
   /** ISO date of the meeting; the picker lists newest first */
   date: string

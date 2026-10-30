@@ -9,7 +9,7 @@ import { useHeaderHeight, useSidePanelOpen, useSidePanelView, type SidePanelView
 import { DateBrush, type DateRange } from '@/components/DateBrush'
 import { FieldSelect, prettyUnit } from '@/components/FieldSelect'
 import { Segmented, SwapButton, Toggle } from '@/components/ChartFrame'
-import { AXES_MODES, PANEL_AXES, type AxesOpts } from '@/lib/axes'
+import { AXES_MODES, PANEL_AXES, sameUnits, type AxesOpts } from '@/lib/axes'
 import { fmt } from '@/lib/stats'
 import { usePrefs } from '@/lib/prefs'
 import { useHighlightActions } from '@/lib/highlight'
@@ -29,6 +29,7 @@ import { DEFAULT_RAIN_RULE, type RainRule } from '@/lib/rainSeasons'
 import { XIcon } from '@/components/Icons'
 import { CalendarNoteRef, CiteRef } from '@/components/CiteRef'
 import { ScrubField } from '@/components/ScrubField'
+import { SiteFocusControl, useFocusedSite, useSiteFocusOffered } from '@/lib/siteFocus'
 
 export interface SubsetCaps {
   /** the tab's charts respond to the season filter */
@@ -211,8 +212,11 @@ export function SubsetBar({
   // sit just below the sticky app header, whatever height its tab row wraps to
   const top = useHeaderHeight()
   const { explain } = usePrefs()
-  // the Plot tab only where the open tab draws fits or picks fields
-  const hasPlot = !!caps.fits || caps.fields !== 'none'
+  // a page with a one-site mode offers it here while several sites are picked (lib/siteFocus)
+  const focusOffered = useSiteFocusOffered()
+  const focused = useFocusedSite()
+  // the Plot tab only where the open tab draws fits, picks fields or offers the one-site analysis
+  const hasPlot = !!caps.fits || caps.fields !== 'none' || focusOffered
   const view: SidePanelView = hasPlot ? chosenView : 'filters'
   // a tab opens the panel on its half; the showing half's tab closes it
   const toggle = (v: SidePanelView) => { if (open && view === v) setOpen(false); else { setView(v); setOpen(true) } }
@@ -282,8 +286,17 @@ export function SubsetBar({
   )
 
   // the Plot tab: how the filters in view are drawn
+  // x and y in different units: the crossplots drop the 1:1 line and float each axis (lib/axes axesForUnits)
+  const unitsDiffer = caps.fields === 'pair' && !sameUnits(meta.field_units?.[s.xField], meta.field_units?.[s.yField])
   const plotOptions = (
     <>
+      {/* first: it decides which analyses the page draws, the rest only how */}
+      {focusOffered && (
+        <Row label="analysis">
+          <SiteFocusControl />
+          {explain && <span className="row-note">{focused ? `${focused.name}'s single-site analysis; the Samples pick stays as it is` : 'every picked site side by side, or one of them on its own'}</span>}
+        </Row>
+      )}
       {/* only where fits are drawn; each chart offers the fit grouping that fits its layout */}
       {caps.fits && <RegressionControls grouping={false} />}
 
@@ -300,8 +313,9 @@ export function SubsetBar({
               label="1:1 line"
               checked={s.axes.identity}
               onChange={(v) => a.onAxes({ ...s.axes, identity: v })}
-              title="Squares the panels and keeps equal units per pixel on both axes"
+              title={unitsDiffer ? `x is in ${prettyUnit(meta.field_units?.[s.xField]) || 'no unit'} and y in ${prettyUnit(meta.field_units?.[s.yField]) || 'no unit'}: the crossplots draw no 1:1 line and fit each axis to its own range` : 'Squares the panels and keeps equal units per pixel on both axes'}
             />
+            {unitsDiffer && s.axes.identity && <span className="row-note">units differ: each axis fits its own range</span>}
             <Segmented
               value={s.axes.mode}
               options={AXES_MODES}
@@ -375,9 +389,9 @@ export function SubsetBar({
           onClick={() => toggle('filters')}
           aria-selected={view === 'filters'}
           aria-expanded={open && view === 'filters'}
-          title={open && view === 'filters' ? 'Hide the filters' : 'Show the filters: network, sites, seasons, dates, exclusions'}
+          title={open && view === 'filters' ? 'Hide the samples' : 'Show the samples: network, sites, seasons, dates, exclusions'}
         >
-          <span className="subset-tab-label">Filters</span>
+          <span className="subset-tab-label">Samples</span>
           <span className="subset-tab-count">{s.shown}/{s.total}</span>
           {nActive > 0 && <span className="subset-tab-badge" title={`${nActive} filter${nActive === 1 ? '' : 's'} active`}>{nActive}</span>}
         </button>
@@ -389,20 +403,21 @@ export function SubsetBar({
             onClick={() => toggle('plot')}
             aria-selected={view === 'plot'}
             aria-expanded={open && view === 'plot'}
-            title={open && view === 'plot' ? 'Hide the plot options' : 'Show the plot options: fits, axes, units, ratios, FTIR baseline'}
+            title={open && view === 'plot' ? 'Hide the plot options' : (focusOffered ? 'Show the plot options: the analysis (compare sites or one site), fits, axes, units, ratios, FTIR baseline' : 'Show the plot options: fits, axes, units, ratios, FTIR baseline')}
           >
             <span className="subset-tab-label">Plot</span>
+            {focused && <span className="subset-tab-count" title={`Single-site analysis: ${focused.name}`}>{focused.code}</span>}
           </button>
         )}
       </div>
     }>
-        <aside className="panel subset subset-panel" aria-label={view === 'plot' ? 'Plot options' : 'Filters'}>
+        <aside className="panel subset subset-panel" aria-label={view === 'plot' ? 'Plot options' : 'Samples'}>
           <header className="subset-head">
-            <strong>{view === 'plot' ? 'Plot options' : 'Filters'}</strong>
+            <strong>{view === 'plot' ? 'Plot options' : 'Samples'}</strong>
             {view === 'filters' && <span className="pill" title={`${s.shown} of ${s.total} ${caps.datasetLabel} in view`}>{s.shown} of {s.total}</span>}
             <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 4 }}>
               {view === 'filters' && !isDefault && <button type="button" className="btn quiet" onClick={a.onReset} title="Clear every filter">Reset</button>}
-              <button type="button" className="btn quiet x-btn" onClick={() => setOpen(false)} aria-label={view === 'plot' ? 'Close plot options' : 'Close filters'} title="Close"><XIcon /></button>
+              <button type="button" className="btn quiet x-btn" onClick={() => setOpen(false)} aria-label={view === 'plot' ? 'Close plot options' : 'Close samples'} title="Close"><XIcon /></button>
             </span>
           </header>
           {view === 'plot' && plotOptions}
@@ -424,7 +439,7 @@ export function SubsetBar({
                   })}
                 </span>
               ) : (
-                <span className="method-note">{s.chosenNetwork === 'focus' ? net.label : `This tab shows the focus sites; ${NETWORKS.find((x) => x.key === s.chosenNetwork)?.label} applies on Correlation, Distribution, Evolution, Ranking, Part of a whole and Weather.`}</span>
+                <span className="method-note">{s.chosenNetwork === 'focus' ? net.label : `This tab shows the focus sites; ${NETWORKS.find((x) => x.key === s.chosenNetwork)?.label} applies on Correlation, Distribution, Evolution, Ranking, Composition and Weather.`}</span>
               )}
               {caps.networks && (s.networkLoading || s.networkError) && <span className="method-note" style={{ display: 'block' }}>{s.networkLoading ? 'loading…' : `could not load: ${s.networkError}`}</span>}
             </Row>

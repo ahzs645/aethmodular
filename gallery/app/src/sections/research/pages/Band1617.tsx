@@ -78,7 +78,7 @@ export function Band1617(_props: SectionPageProps) {
   return <>
     <PageIntro id="band-1617-intro" title="The 1600/1617 cm⁻¹ band — what it is, and what it is not" data={data}
       notebooks="research/ftir_ec_phase3/ftir_12_band_1600_identity, ftir_38_1617_and_dust_attribution; ftir_50 §4 (band-resolved similarity)">
-      <p>Read with the meeting pages: 28 Oct §3 (dust) and Ann 9 Oct §4 (the Si–O band) show the neighbouring evidence. The sub-1500 cm⁻¹ partner tests sit outside the baselined region and stay indicative only.</p>
+      <p>Read with the meeting pages: Oct 28, 2026 §3 (dust) and Oct 9, 2026 §4 (the Si–O band) show the neighbouring evidence. The sub-1500 cm⁻¹ partner tests sit outside the baselined region and stay indicative only.</p>
     </PageIntro>
 
     {spectra.length > 0 && <Figure kind="spectrum" id="band-1617-spectra" data={spectra} wn="wn" y="median" lo="q25" hi="q75" series="series"

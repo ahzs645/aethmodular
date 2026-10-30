@@ -22,6 +22,7 @@ import { seasonsForSite } from '@/siteSeasons'
 import { useFitHeight } from '@/lib/chartFit'
 import { wrapCategory } from '@/components/CategoryAxis'
 import { useSearchParam } from '@/lib/url'
+import { isPmfField, pickerName } from '@/lib/pmfGroups'
 
 // each panel's title stands up beside its y axis, as on any plot: the unit on a line of its own
 // ("Precip." over "(mm/day)"), and a name too long for the panel's height wrapped onto more lines.
@@ -100,6 +101,22 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
     if (!ds.length) return null
     return [new Date(Math.min(...ds) - 14 * 864e5), new Date(Math.max(...ds) + 14 * 864e5)]
   }, [rows, site])
+  // the PMF source shares of this site's filters (only where the PMF solution covers the site: lib/pmfGroups withPmf),
+  // so hovering the boundary-layer height (or any weather panel) says which sources the filters of those days carry
+  const pmfDays = useMemo(() => rows.filter((r) => r.site === site?.name).flatMap((r) => {
+    const shares = Object.entries(r).filter((e): e is [string, number] => isPmfField(e[0]) && typeof e[1] === 'number').sort((a, b) => b[1] - a[1])
+    return shares.length ? [{ t: new Date(r.date).getTime(), id: r.id, shares }] : []
+  }).sort((a, b) => a.t - b.t), [rows, site])
+  /** the sources of the filter on a day, or the nearest within 3 days, as tooltip lines (none where there is no PMF) */
+  const sourcesAt = (t: Date, own?: string): string[] => {
+    if (!pmfDays.length) return []
+    const p = own ? pmfDays.find((q) => q.id === own) : pmfDays[d3.bisector((q: { t: number }) => q.t).center(pmfDays, t.getTime())]
+    if (!p) return []
+    const off = Math.round((p.t - t.getTime()) / 864e5)
+    if (Math.abs(off) > 3) return []
+    const when = own || !off ? '' : ` (${Math.abs(off)} d ${off < 0 ? 'before' : 'after'})`
+    return [`PMF sources${own ? '' : ` · ${p.id}`}${when}:`, ...p.shares.filter(([, v]) => v >= 0.05).slice(0, 4).map(([k, v]) => `· ${pickerName(k)} ${Math.round(v * 100)} %`)]
+  }
   const days = useMemo(() => {
     if (!daily || !domain) return []
     return daily.date.map((d, i) => ({ t: new Date(d), i })).filter((x) => x.t >= domain[0] && x.t <= domain[1])
@@ -185,7 +202,9 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
                     const st = focusStyle(p.row.id, hl.focusId, { r: 3, level: 'sparse' }, hl.selected)
                     return <circle key={p.row.id} cx={x(p.t)} cy={yOf(k)(p.v)} r={st.r} fill={meta.seasons.find((s) => s.name === p.row.season)?.color ?? INK.text}
                       fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={st.dot} style={{ cursor: 'pointer' }} {...fidProps(p.row.id)}
-                      onMouseEnter={(e) => { hl.setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`, `${fieldOf(k)}: ${fmt(p.v)}`, 'click for details · right-click to exclude']) }}
+                      onMouseEnter={(e) => { hl.setHover(p.row.id); const di = daily.date.indexOf(String(p.row.date).slice(0, 10))
+                        tip.show(e, [p.row.id, `${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`, `${fieldOf(k)}: ${fmt(p.v)}`,
+                          ...(di >= 0 ? [`BLH ${fmt(daily.blh[di], 0)} m`] : []), ...sourcesAt(p.t, p.row.id), 'click for details · right-click to exclude']) }}
                       onMouseLeave={() => { hl.setHover(null); tip.hide() }} onClick={() => hl.openSample(p.row.id)} />
                   })}
                   {!isField(k) && <rect width={innerW} height={panelH} fill="transparent"
@@ -194,7 +213,7 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
                       setCursor(mx)
                       const d = days[d3.bisector((q: { t: Date }) => q.t).center(days, x.invert(mx))]
                       if (d) tip.show(e, [d3.utcFormat('%d %b %Y')(d.t), `T ${fmt(daily.t[d.i], 1)} °C (${fmt(daily.tmin[d.i], 1)} – ${fmt(daily.tmax[d.i], 1)})`,
-                        `precip ${fmt(daily.p[d.i], 1)} mm`, `RH ${fmt(daily.rh[d.i], 0)} %`, `wind ${fmt(daily.ws[d.i], 1)} m/s`, `BLH ${fmt(daily.blh[d.i], 0)} m`])
+                        `precip ${fmt(daily.p[d.i], 1)} mm`, `RH ${fmt(daily.rh[d.i], 0)} %`, `wind ${fmt(daily.ws[d.i], 1)} m/s`, `BLH ${fmt(daily.blh[d.i], 0)} m`, ...sourcesAt(d.t)])
                     }} />}
                 </g>
               ))}

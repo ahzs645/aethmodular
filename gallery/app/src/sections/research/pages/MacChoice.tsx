@@ -8,9 +8,11 @@ import { Key } from '@/components/Key'
 import { Legend, useLegend } from '@/components/Legend'
 import { SweepPlot } from '@/components/SweepPlot'
 import { useChartOptions } from '@/lib/chartOptions'
+import { useColourScheme } from '@/lib/colourSchemes'
 import { f2, fmt, signed } from '@/lib/format'
 import { slopeAt, useMac } from '@/lib/mac'
 import { SidebarControls } from '@/lib/pageSidebar'
+import { categoricalScale } from '@/lib/palettes'
 import { FIT_STYLE, useRegressions } from '@/lib/regressionPrefs'
 import type { Estimator } from '@/lib/regressionMethods'
 import { regression } from '@/lib/stats'
@@ -103,7 +105,7 @@ export function MacChoice({ picked }: SectionPageProps) {
 /** what the Filters panel's choices leave out, said once under each chart */
 function viewNote(view: MacView, extra = '') {
   const parts = [
-    view.fallback ? 'None of the sites picked in the Filters panel has explorer calibrations (Addis, Beijing, Bishoftu, Delhi, Pasadena), so Addis is shown.' : '',
+    view.fallback ? 'None of the sites picked in the Samples panel has explorer calibrations (Addis, Beijing, Bishoftu, Delhi, Pasadena), so Addis is shown.' : '',
     view.unsaved.length ? `${view.unsaved.map((m) => FIT_STYLE[m].label).join(', ')}: the explorer saved Deming and OLS fits only.` : '',
     !view.fits.length ? 'No saved fit is selected under Regression fits (Deming or OLS), so no lines are drawn.' : '',
     extra,
@@ -130,8 +132,10 @@ function MacOneToOne({ runs, view }: { runs: CalibRunsFile; view: MacView }) {
   const [macText, setMac] = useSearchParam<(typeof MACS)[number]>('mac-sweep.mac', 'gallery', MACS)
   const mac = macText === 'gallery' ? gallery.mac : Number(macText)
   const lg = useLegend()
+  const colours = useColourScheme('mac-sweep', 'categorical', 'Tableau 10')
   const presets = runs.presets.filter((p) => runs.runs.some((r) => r.preset === p.key && view.targets.includes(r.target)))
-  const colour = new Map(presets.map((p, i) => [p.key, d3.schemeTableau10[i % 10]]))
+  const presetColour = categoricalScale(colours.name, presets.map((p) => p.key), colours.reverse)
+  const colour = new Map(presets.map((p) => [p.key, presetColour(p.key)]))
   const fade = (c: string, label: string) => { const k = lg.dim(label); return k === 1 ? c : d3.color(c)?.copy({ opacity: k }).formatRgb() ?? c }
   const panels = view.targets.map((t) => {
     const lines: CrossLine[] = [], points: CrossPoint[] = [], extent: number[] = [0]
@@ -165,7 +169,7 @@ function MacOneToOne({ runs, view }: { runs: CalibRunsFile; view: MacView }) {
     <ChartFrame id="mac-sweep" title={`Every calibration at MAC ${mac} — on the 1:1 plane`}
       subtitle={`FTIR EC against HIPS Fabs ÷ ${mac}, with each calibration's saved fit on ${setLabel(setFor(first, view.set), first)}, for the sites picked in the Filters panel. A calibration self-consistent at this MAC follows the dashed 1:1 line. Switch the MAC (Filters follows the MAC set under Filters → units, now ${gallery.mac}): x rescales, so every line rotates about its own intercept, which never moves. The MAC decides which calibration is self-consistent (slope 1), never the offset. Fits follow Regression fits in the Filters panel (Deming dashed long, OLS solid); point at a calibration in the legend to see its filters.`}
       provenance={<>Stands in for ftir_19 (MAC fix across every setup) on the gallery's explorer presets and sites. Fits: <code>calibration_runs.json</code> runs[].metrics at MAC 10, <code>gallery/data/export_calibration_runs.py</code>, slopes re-expressed at the chosen MAC (lib/mac); nothing refitted.</>}
-      controls={<Segmented label="MAC (m²/g)" value={macText} options={MACS} onChange={setMac} optionLabel={(o) => (o === 'gallery' ? `Filters (${gallery.mac})` : o)} />}>
+      controls={<><Segmented label="MAC (m²/g)" value={macText} options={MACS} onChange={setMac} optionLabel={(o) => (o === 'gallery' ? `Filters (${gallery.mac})` : o)} />{colours.picker}</>}>
       <FacetGrid items={panels} minCell={300} maxCols={3} render={(pn) => <div>
         {(panels.length > 1 || pn.set !== view.set) && <p className="facet-title">{siteName(runs, pn.t)}{pn.set !== view.set ? ' · all pairs' : ''}</p>}
         <Crossplot title="" points={pn.points} xLabel={`HIPS Fabs / ${mac} (µg/m³)`} yLabel="FTIR EC (µg/m³)" fit={false} grouping="none" extraLines={pn.lines} domain={pn.domain} maxSide={460} />
@@ -241,9 +245,12 @@ function SetupsAtMac({ rows: filters, saved, provenance: prov }: { rows: Row[]; 
     { key: 'cohort', label: 'Filters', default: 'fixed', choices: [{ value: 'fixed', label: 'Fixed 190-filter cohort' }, { value: 'all', label: 'All with Fabs' }] },
     { key: 'view', label: 'Show', default: 'table', choices: [{ value: 'table', label: 'Table' }, { value: 'rmse', label: 'RMSE by MAC' }, { value: 'slope', label: 'Slope by MAC' }] },
   ])
+  const colours = useColourScheme('mac-ftir19', 'categorical', 'Tableau 10')
+  // each setup keeps its colour whichever columns the table has
+  const setupColour = useMemo(() => categoricalScale(colours.name, SETUP_COLUMNS.map(([, name]) => name), colours.reverse), [colours.name, colours.reverse])
   const setups = useMemo(() => {
     const use = filters.filter((r) => (o.values.cohort === 'all' || r.in_fixed_phase2_cohort === true) && num(r.Fabs) != null)
-    return SETUP_COLUMNS.filter(([col]) => use.some((r) => num(r[col]) != null)).map(([col, name], i) => {
+    return SETUP_COLUMNS.filter(([col]) => use.some((r) => num(r[col]) != null)).map(([col, name]) => {
       const pairs = use.flatMap((r) => { const y = num(r[col]); return y == null ? [] : [[num(r.Fabs)!, y] as const] })
       const at = (m: number) => {
         const xs = pairs.map(([f]) => f / m), ys = pairs.map(([, y]) => y)
@@ -252,11 +259,11 @@ function SetupsAtMac({ rows: filters, saved, provenance: prov }: { rows: Row[]; 
           rmse: xs.length ? Math.sqrt(d3.mean(xs, (x, k) => (ys[k] - x) ** 2)!) : null }
       }
       const s10 = at(10)
-      return { name, color: d3.schemeTableau10[i % 10], n: pairs.length, s10, here: at(mac), at,
+      return { name, color: setupColour(name), n: pairs.length, s10, here: at(mac), at,
         // the MAC at which this setup's slope against Fabs/MAC is 1 (slope scales with MAC)
         unity: s10.slope ? 10 / s10.slope : null }
     })
-  }, [filters, o.values.cohort, mac])
+  }, [filters, o.values.cohort, mac, setupColour])
   const savedBy = new Map(saved.map((r) => [String(r.setup), r]))
   const table: Row[] = setups.map((s) => ({ setup: s.name, n: s.n, intercept: s.s10.intercept, slope10: s.s10.slope, slopeHere: s.here.slope, r2: s.s10.r2,
     rmse10: s.s10.rmse, rmseHere: s.here.rmse, unity: s.unity, notebook: num(savedBy.get(s.name)?.['slope @ MAC 10']) }))
@@ -275,7 +282,7 @@ function SetupsAtMac({ rows: filters, saved, provenance: prov }: { rows: Row[]; 
   return (
     <ChartFrame id="mac-ftir19" title={`ftir_19's six setups at MAC ${mac} — refitted from its per-filter predictions`}
       subtitle={`OLS of each setup's Addis EC on HIPS Fabs ÷ MAC (ftir_19's fit), on ${o.values.cohort === 'fixed' ? 'the fixed 190-filter cohort' : 'every filter with Fabs'}. The MAC is the one set under Filters → units; at MAC 10 and 6 this reproduces the notebook's table. Intercept and R² do not depend on the MAC; the slope scales with it, so each setup has one MAC at which it is self-consistent (slope 1, last column). RMSE against Fabs/MAC moves only as a re-expression of that slope, so R² cannot arbitrate the MAC. Includes the deployed SPARTAN calibration, which the explorer presets do not.`}
-      provenance={prov} controls={o.controls()}>
+      provenance={prov} controls={<>{o.controls()}{o.values.view !== 'table' && colours.picker}</>}>
       {o.values.view === 'table'
         ? <div style={{ overflowX: 'auto' }}><table className="census-table">
             <thead><tr>{columns.map(([h]) => <th key={h} style={{ textTransform: 'none', letterSpacing: 0 }}>{h}</th>)}</tr></thead>

@@ -11,6 +11,7 @@ import { baseFilterId, focusLast, focusStyle, useHighlight } from '@/lib/highlig
 import { fidProps, useHandEdits } from '@/lib/filterEdits'
 import { fmt, splitAtGaps } from '@/lib/stats'
 import { rollingByTime } from '@/lib/rolling'
+import { useColourScheme } from '@/lib/colourSchemes'
 import { INK, MARGIN } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile, MetaFile } from '@/lib/types'
 import { groupColorFn, presetName } from './common'
@@ -43,7 +44,9 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
   const legendHidden = new Set([...hidden, ...(showRoll ? [] : [ROLL_LABEL]), ...(showDeployed ? [] : [DEPLOYED_LABEL])])
   const hot = hover && !legendHidden.has(hover) ? hover : null
   const dim = (l: string) => (!hot || hot === l ? 1 : 0.15)
-  const color = useMemo(() => groupColorFn(meta, run.eval.group), [meta, run.eval.group])
+  const colours = useColourScheme('run-series', 'categorical', 'Tableau 10')
+  const groupColours = useMemo(() => groupColorFn(meta, run.eval.group, colours.name, colours.reverse), [meta, run.eval.group, colours.name, colours.reverse])
+  const color = groupColours.color
   const target = runs.targets[run.target]
 
   const dated = useMemo(() => {
@@ -86,6 +89,7 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
       controls={
         <>
           {rolling.controls}
+          {groupColours.others.length > 0 && colours.picker}
           <span className="control">{shown.length} dated filters</span>
         </>
       }

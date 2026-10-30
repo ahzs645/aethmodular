@@ -1,6 +1,7 @@
 import type { ScaleTime } from 'd3'
 import type { SeasonBand } from '@/components/SeasonBands'
 import type { SeasonMeta } from '@/lib/types'
+import { PMF_PAPER_COLOURS } from './palettes.ts'
 
 /**
  * The PMF paper's own conventions (Anwar et al., Addis Ababa, Atmos. Env. draft), shared by the
@@ -27,9 +28,8 @@ export const PAPER_SEASONS = [
 /** the same seasons as a gallery calendar (Filters → season calendar 'PMF paper'), dated boundaries included */
 export const PAPER_CALENDAR: SeasonMeta[] = PAPER_SEASONS.map(({ name, from, months, color }) => ({ name, from, months: [...months], color }))
 export const PAPER_ORDER = ['Fossil Fuel Combustion', 'Polluted Marine', 'Sea Salt Mixed', 'Wood Burning', 'Charcoal']
-export const PAPER_COLORS: Record<string, string> = {
-  'Fossil Fuel Combustion': '#f4b6c2', 'Polluted Marine': '#e0191c', 'Sea Salt Mixed': '#0a14d0', 'Wood Burning': '#92e192', Charcoal: '#2e8b2e',
-}
+/** the paper's source colours, also the 'PMF paper' palette (lib/palettes) */
+export const PAPER_COLORS: Record<string, string> = { ...PMF_PAPER_COLOURS }
 
 /** the paper season a filter's date (YYYY-MM-DD) falls in */
 export const paperSeasonOf = (date: string) => {

@@ -25,10 +25,10 @@ import { CorrelationRanking } from '@/charts/ranking/CorrelationRanking'
 import { SiteRadar } from '@/charts/ranking/SiteRadar'
 import { ParallelCoordinates } from '@/charts/ranking/ParallelCoordinates'
 import { CompositionTreemap } from '@/charts/partOfWhole/CompositionTreemap'
+import { FunctionalGroups } from '@/charts/partOfWhole/FunctionalGroups'
 import { SiteBubbleMap, SpartanCompositionMap } from '@/charts/map/lazy'
 import { MethodSankey } from '@/charts/flow/MethodSankey'
 import { SourceStack } from '@/charts/pmf/SourceStack'
-import { SourceSeasonality } from '@/charts/pmf/SourceSeasonality'
 import { resolveField } from '@/lib/fieldEquivalents'
 
 /** What App hands every tile: the Filters panel's rows and meta, and what a few charts need besides. */
@@ -118,8 +118,10 @@ const CHARTS: DashboardChart[] = [
   { kind: 'parallel', label: 'Parallel coordinates', group: 'Ranking', blurb: 'every filter across many fields', fields: 'none', size: [8, 5],
     render: (d) => <ParallelCoordinates rows={d.rows} meta={d.meta} /> },
 
-  { kind: 'composition', label: 'Composition', group: 'Part of a whole', blurb: 'what the PM2.5 is made of', fields: 'none', size: [4, 5],
+  { kind: 'composition', label: 'Composition', group: 'Composition', blurb: 'what the PM2.5 is made of', fields: 'none', size: [4, 5],
     render: (d) => <CompositionTreemap rows={d.rows} meta={d.meta} /> },
+  { kind: 'fgroups', label: 'Functional groups', group: 'Composition', blurb: 'FTIR organic functional groups, stacked', fields: 'none', size: [4, 5],
+    render: (d) => <FunctionalGroups rows={d.rows} meta={d.meta} /> },
   { kind: 'map', label: 'Site map', group: 'Map', blurb: 'one field per site on the map', fields: 'single', size: [6, 5],
     render: (d, [f]) => <SiteBubbleMap rows={d.rows} meta={d.meta} field={f} onSite={d.openSite} /> },
   { kind: 'spartancomposition', label: 'SPARTAN composition map', group: 'Map', blurb: "a donut of SPARTAN's PM2.5 reconstruction per site", fields: 'none', size: [10, 7],
@@ -154,7 +156,7 @@ const CHARTS: DashboardChart[] = [
   { kind: 'sourcestack', label: 'PMF sources over time', group: 'PMF sources', blurb: 'factor contributions, Addis 2023', fields: 'none', size: [8, 5],
     available: (d) => !!d.pmf, render: (d) => d.pmf && <SourceStack pmf={d.pmf} rows={d.pmfRows} meta={d.meta} /> },
   { kind: 'sourceseason', label: 'PMF sources by season', group: 'PMF sources', blurb: 'factor shares per season', fields: 'none', size: [4, 5],
-    available: (d) => !!d.pmf, render: (d) => d.pmf && <SourceSeasonality pmf={d.pmf} rows={d.pmfRows} meta={d.meta} /> },
+    available: (d) => !!d.pmf, render: (d) => d.pmf && <SourceStack pmf={d.pmf} rows={d.pmfRows} meta={d.meta} id="sourceseason" initialGrouping="by season" title="Source apportionment by season" /> },
 ]
 
 /**

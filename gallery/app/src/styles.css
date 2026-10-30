@@ -544,6 +544,8 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .legend-item.off { opacity: 0.4; text-decoration: line-through; }
 .legend-item.hoverable:hover, .legend-item.hoverable:focus-visible { color: var(--ink-text); }
 .legend-item.dim { opacity: 0.55; }
+/* a held hover (shift-click, or the export dialog's Focus): marked on the page only, the file draws no underline */
+.legend-item.pinned { color: var(--ink-text); box-shadow: inset 0 -2px 0 var(--accent); }
 .legend-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
 .swatch { width: 10px; height: 10px; border-radius: 5px; display: inline-block; flex-shrink: 0; }
 .swatch.square { border-radius: 2px; }
@@ -635,6 +637,14 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
    every dot on each hover was most of the hover's cost on a dense chart. */
 .animated .scatter-dots circle { transition-property: cx, cy, r, fill, fill-opacity; }
 .scatter-dots.has-focus > circle { opacity: 0.35; }
+/* Scatter matrix: up to 132 panels of a thousand dots each. None of them animate (every dot's transition ending was
+   most of a hover's cost), and a focus dims each panel's dots under a veil in the overlay <svg> (charts/correlation/
+   Correlogram ScatterMatrix), so the <svg> with the dots is never restyled or repainted by a hover. */
+.animated .splom-cell circle { transition: none; }
+.splom-veil { display: none; }
+.splom-veil.on { display: inline; }
+/* the pinned filter's ring (lib/highlight PinRing) appears with it, never sliding in from the last pin */
+.animated .pin-ring { transition: none; }
 
 /* ---------- census table ---------- */
 
@@ -708,16 +718,6 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 .drawer-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .drawer-scroll > .placement { min-width: 440px; }
 .drawer-section h3 { margin: 0 0 4px; font-size: calc(13px * var(--text-scale)); }
-
-/* iOS zooms focused text controls below 16px, so on a touch screen they are 16px (browser pinch zoom stays on).
-   The dropdowns beside them (buttons, which do not zoom) take the same size, so a text field and a picker in one
-   row are the same height; a narrow desktop window keeps the compact sizes everywhere. */
-@media (pointer: coarse) {
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select, textarea {
-    font-size: max(16px, 1em) !important;
-  }
-  .combobox-trigger { font-size: max(16px, 1em); }
-}
 
 .spectrum-modal {
   width: min(1100px, calc(100vw - 32px)); max-height: calc(100dvh - 32px);
@@ -907,8 +907,9 @@ html[data-embed="1"] .app-header, html[data-embed="1"] .side-dock { display: non
 
 /* ---------- right-click filter menu (lib/filterEdits) ---------- */
 /* the right-click menu opens where the pointer is, which is where the hovered point's tooltip is: hide the
-   tooltips while it is open (lib/filterEdits FilterMenu) */
-html:has(.ctx-menu) .tooltip { visibility: hidden; }
+   tooltips while it is open (lib/filterEdits FilterMenu sets the class). Not html:has(.ctx-menu): a :has() on the
+   root made Chrome restyle the whole page each time a node went in anywhere (a focus dot, the tooltip). */
+html.ctx-open .tooltip { visibility: hidden; }
 .ctx-menu {
   position: fixed; z-index: 90; min-width: 210px; max-width: 320px; padding: 4px;
   background: var(--ink-panel); border: 1px solid var(--ink-border); border-radius: 8px;
@@ -1038,6 +1039,16 @@ html:has(.ctx-menu) .tooltip { visibility: hidden; }
   .grouping-band > .grouping-range { grid-column: 2; }
   .grouping-band > .grouping-count { grid-column: 3; }
 }
+/* the Stacked bars' component-set editor (components/ComponentSetPicker) */
+.cset-dialog { width: min(720px, 100%); max-height: calc(100vh - 32px); overflow: auto; }
+.cset-preview { display: flex; flex-direction: column; gap: 4px; }
+.cset-preview-bar { display: flex; height: 26px; border-radius: 6px; overflow: hidden; background: var(--ink-zebra); }
+.cset-preview-bar > span { min-width: 1px; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; font-size: calc(10.5px * var(--text-scale)); border-right: 1px solid var(--ink-panel, #fff); }
+.cset-list { display: flex; flex-direction: column; gap: 4px; max-height: 340px; overflow: auto; padding-right: 4px; }
+.cset-row { display: grid; grid-template-columns: 16px 14px minmax(120px, 1fr) minmax(70px, auto) 150px 52px; align-items: center; gap: 8px; }
+.cset-row.off .cset-name { color: var(--ink-muted); }
+.cset-name small { color: var(--ink-muted); }
+.cset-move { display: inline-flex; gap: 2px; }
 .grouping-range { color: var(--ink-muted); font-size: calc(11.5px * var(--text-scale)); font-family: var(--mono); }
 .grouping-count { color: var(--ink-muted); font-size: calc(11.5px * var(--text-scale)); text-align: right; }
 .ratio-fraction { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

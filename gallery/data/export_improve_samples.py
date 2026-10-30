@@ -68,7 +68,7 @@ VOLUME_COLS = ["FlowRate_C_Val", "SampDur_C_Val"]
 GROUPS = [{"label": "Carbon (TOR)", "fields": ["EC (TOR)", "OC (TOR)"]},
           {"label": "Optical (HIPS)", "fields": ["HIPS Fabs", "HIPS BC"]},
           {"label": "Mass", "fields": ["PM2.5 mass"]},
-          {"label": "Metals & crustal", "fields": ["Silicon", "Iron", "Soil"]},
+          {"label": "Crustal elements", "fields": ["Silicon", "Iron", "Soil"]},
           {"label": "TOR thermal fractions", "fields": ["OP", "EC1", "EC2", "EC3", "OC1", "OC2", "OC3", "OC4"]},
           {"label": "Sampling", "fields": ["Sampled volume"]}]
 

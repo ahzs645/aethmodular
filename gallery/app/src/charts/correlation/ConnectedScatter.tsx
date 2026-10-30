@@ -8,7 +8,7 @@ import { Legend, toggleIn, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { pairDomain, type AxesOpts } from '@/lib/axes'
+import { axesForUnits, pairDomain, type AxesOpts } from '@/lib/axes'
 import { fmt } from '@/lib/stats'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -49,7 +49,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
   const narrow = useNarrowScreen()
   const { hidden, setHidden, dim, hover, setHover } = useLegend()
   const minN = 4
-  const opts: AxesOpts = { ...axes, log: false, mode: axes.mode === 'Show intercept' ? 'Data' : axes.mode }
+  const opts: AxesOpts = { ...axesForUnits(axes, meta.field_units?.[xField], meta.field_units?.[yField]), log: false, mode: axes.mode === 'Show intercept' ? 'Data' : axes.mode }
 
   // one path per site, or per band of the reader's grouping (components/GroupingDialog), every site pooled
   const paired = useMemo(() => rows.filter((r) => typeof r[xField] === 'number' && typeof r[yField] === 'number'), [rows, xField, yField])

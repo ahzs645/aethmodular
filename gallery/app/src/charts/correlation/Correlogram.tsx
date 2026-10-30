@@ -14,7 +14,9 @@ import { ColorLegend } from '@/components/ColorLegend'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { focusLast, focusStyle, useHighlight } from '@/lib/highlight'
+import { FocusLayer, PinRing, focusStyle, useHighlightActions } from '@/lib/highlight'
+import { HitLayer } from '@/components/HitLayer'
+import { useFilterEdits } from '@/lib/filterEdits'
 import { RESTATES, isBookkeeping, sameProduct } from '@/fieldLineage'
 import { corrMatrix, fmt, regression } from '@/lib/stats'
 import { INK, FONT, inkOn } from '@/lib/theme'
@@ -30,7 +32,8 @@ import { chemText } from '@/lib/format'
 
 const ENCODINGS = ['Colour', 'Circle size', 'Scatter matrix'] as const
 const MIN_N = 20
-const SPLOM_MAX = 6
+// the scatter matrix draws up to twelve fields (the 'Top 12' preset in full); past that the button says how many are drawn
+const SPLOM_MAX = 12
 
 /** the named field sets (FieldMultiSelect presets): only the fields this view has count */
 const listed = (names: string[]) => (av: string[]) => names.filter((f) => av.includes(f))
@@ -68,7 +71,8 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const hl = useHighlight()
+  // pins, the brush and the handlers only: a hover anywhere in the gallery does not re-render the chart
+  const hl = useHighlightActions()
   const lg = useLegend()
   const colours = useColourScheme('correlogram', 'diverging')
 
@@ -82,7 +86,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
   const o = useChartOptions('correlogram', [
     { key: 'site', label: 'Site', style: 'select', default: 'ETAD', choices: siteCodes.map((c) => ({ value: c, label: c === 'All' ? 'All sites' : meta.sites.find((s) => s.code === c)?.name ?? c })) },
     { key: 'encoding', label: 'Encoding', choices: ENCODINGS, default: 'Colour' },
-    // which fields: a preset or the reader's own (components/FieldMultiSelect); the scatter matrix draws the first six
+    // which fields: a preset or the reader's own (components/FieldMultiSelect); the scatter matrix draws the first SPLOM_MAX
     { key: 'fields', node: () => <FieldMultiSelect meta={meta} available={avail} value={chosen} preset={presetKey === 'custom' ? null : presetKey} presets={presets}
       max={encoding === 'Scatter matrix' ? SPLOM_MAX : undefined} onChange={(fs, p) => { setCustom(fs.join('|')); setPreset(p ?? 'custom') }} /> },
     fitGroupingOption({ bind: [chosenGrouping, setGrouping as (v: never) => void],
@@ -122,8 +126,9 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
     return { code: effectiveSite, name, fields, matrix, n }
   }, [sub, effectiveSite, chosen, meta.sites])
 
-  // the scatter matrix reads at a handful: the first six of the chosen fields
-  const splomFields = chosen.slice(0, SPLOM_MAX)
+  // the scatter matrix draws the first SPLOM_MAX of the chosen fields. The same array until the choice
+  // changes: the matrix's scales key on it, and new scales redraw every panel's dots (a tooltip re-renders this chart)
+  const splomFields = useMemo(() => chosen.slice(0, SPLOM_MAX), [chosen])
   // stable inputs for the matrix's memoised panels: the rows only change with the data or the legend
   const hiddenKey = meta.sites.filter((x) => !lg.show(x.name)).map((x) => x.name).join('|')
   const splomRows = useMemo(() => sub.filter((r) => lg.show(r.site)), [sub, hiddenKey]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -165,7 +170,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
           splomFields.length < 2 ? (
             <Empty>Choose at least two fields (Fields ▾).</Empty>
           ) : (
-            <ScatterMatrix grouping={matrixGrouping} meta={meta} rows={splomRows} fields={splomFields} width={fit === null ? Math.min(width, 760) : width} tip={tip} hl={hl} units={meta.field_units} dim={lg.dim} dimKey={dimKey} />
+            <ScatterMatrix grouping={matrixGrouping} meta={meta} rows={splomRows} fields={splomFields} width={fit === null ? Math.min(width, Math.max(760, 160 + 100 * splomFields.length)) : width} tip={tip} hl={hl} units={meta.field_units} dim={lg.dim} dimKey={dimKey} />
           )
         ) : (
           <svg width={size + labelPad + 30} height={size + labelPad + 20} className="animated">
@@ -253,7 +258,7 @@ const LINE = 13
 function PairFocus({ pair: [fx, fy], rows, meta, site, onClose }: {
   pair: [string, string]; rows: FilterRow[]; meta: MetaFile; site: string; onClose: () => void
 }) {
-  const hl = useHighlight()
+  const hl = useHighlightActions()
   const points = useMemo<CrossPoint[]>(() => rows
     .filter((r) => typeof r[fx] === 'number' && typeof r[fy] === 'number' && Number.isFinite(r[fx] as number) && Number.isFinite(r[fy] as number))
     .map((r) => ({ x: r[fx] as number, y: r[fy] as number, color: r.color as string, id: r.id,
@@ -290,7 +295,7 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, dimKey, meta,
   fields: string[]
   width: number
   tip: ReturnType<typeof useTooltip>
-  hl: ReturnType<typeof useHighlight>
+  hl: ReturnType<typeof useHighlightActions>
   units: Record<string, string>
   dim: (site: string) => number
   /** changes when the legend's dimming does (dim itself is a new function every render) */
@@ -325,8 +330,14 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, dimKey, meta,
   const W = labelW + n * cellS + (n - 1) * pad + 10
   const H = n * cellS + (n - 1) * pad + bottomH
   const unitOf = (f: string) => (units[f] ? units[f].replace('ug/m3', 'µg/m³').replace('Mm-1', 'Mm⁻¹') : '')
+  // the dots are drawn in one <svg>, and everything a hover changes (the dimming, each panel's focused dot, the
+  // pointer layers) in a second <svg> over it, on its own compositing layer (will-change), with the fits and r.
+  // In one <svg> a hover re-rasterised every dot in the matrix (138k at all sites, ~60–90 ms a move at 12 fields).
+  // The export composes both <svg>s; the hover's marks are data-export="skip".
+  const [overlay, setOverlay] = useState<SVGGElement | null>(null)
 
   return (
+    <div style={{ position: 'relative', width: W, height: H, marginLeft: 'auto', marginRight: 'auto' }}>
     <svg width={W} height={H} className="animated">
       <g transform={`translate(${labelW},0)`}>
         {fields.map((fy, i) =>
@@ -356,8 +367,8 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, dimKey, meta,
               )
             }
             return <g key={`${i}-${j}`} transform={`translate(${ox},${oy})`}>
-              <SplomCell rows={rows} fx={fx} fy={fy} sx={sx} sy={sy} cellS={cellS} grouping={grouping} meta={meta}
-                pinnedId={hl.pinnedId} selected={hl.selected} dimKey={dimKey} dim={dim} tip={tip} open={hl.openSample} />
+              <SplomCell rows={rows} fx={fx} fy={fy} sx={sx} sy={sy} cellS={cellS} ox={ox} oy={oy} overlay={overlay} grouping={grouping} meta={meta}
+                selected={hl.selected} dimKey={dimKey} dim={dim} tip={tip} setHover={hl.setHover} open={hl.openSample} />
             </g>
           })
         )}
@@ -374,23 +385,31 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, dimKey, meta,
         ))}
       </g>
     </svg>
+    <svg width={W} height={H} style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none', willChange: 'transform' }}>
+      <g ref={setOverlay} transform={`translate(${labelW},0)`} pointerEvents="visiblePainted" />
+    </svg>
+    </div>
   )
 }
 
 /**
- * One off-diagonal panel of the scatter matrix. Hovering highlights the filter here only (a
- * gallery-wide hover would redraw every panel, and every chart, on each mouse move); clicking
- * pins it, which highlights it everywhere and opens its record. The fits are cached per panel,
- * and the panel redraws only when its data, the pinned filter, the brush or the legend change.
+ * One off-diagonal panel of the scatter matrix. Thirty of these hold a thousand dots each, so the dots are drawn
+ * once and do not follow the hover: a hover anywhere (this panel, another, another chart) dims them under a veil
+ * and draws the focused filter again on top (lib/highlight FocusLayer), and one hit layer finds the dot under the
+ * pointer (components/HitLayer). Those, a veil that does the dimming and the fits are portalled into the matrix's
+ * overlay <svg>, so a hover never touches the <svg> that holds the dots. Hovering a dot lights the same filter up in every panel and chart; clicking pins it
+ * and opens its record. The fits are cached per panel, and the dots redraw only with the data, the brush or the legend.
  */
-const SplomCell = memo(function SplomCell({ rows, fx, fy, sx, sy, cellS, grouping, meta, pinnedId, selected, dim, tip, open }: {
+const SplomCell = memo(function SplomCell({ rows, fx, fy, sx, sy, cellS, ox, oy, overlay, grouping, meta, selected, dimKey, dim, tip, setHover, open }: {
   rows: FilterRow[]; fx: string; fy: string
   sx: d3.ScaleLinear<number, number>; sy: d3.ScaleLinear<number, number>; cellS: number
+  /** the panel's place in the matrix, and the overlay <svg>'s group its hover marks and pointer layer go into */
+  ox: number; oy: number; overlay: SVGGElement | null
   grouping: FitGrouping; meta: MetaFile
-  pinnedId: string | null; selected: Set<string> | null; dimKey: string; dim: (site: string) => number
-  tip: ReturnType<typeof useTooltip>; open: (id: string) => void
+  selected: Set<string> | null; dimKey: string; dim: (site: string) => number
+  tip: ReturnType<typeof useTooltip>; setHover: (id: string | null) => void; open: (id: string) => void
 }) {
-  const [hover, setHover] = useState<string | null>(null)
+  const edits = useFilterEdits()
   const pts = useMemo(() => rows
     .map((r) => ({ row: r, x: r[fx], y: r[fy] }))
     .filter((p): p is { row: FilterRow; x: number; y: number } => typeof p.x === 'number' && typeof p.y === 'number' && Number.isFinite(p.x) && Number.isFinite(p.y)), [rows, fx, fy])
@@ -401,30 +420,43 @@ const SplomCell = memo(function SplomCell({ rows, fx, fy, sx, sy, cellS, groupin
       color: p => meta.sites.find(s => s.name === p.row.site)?.color ?? INK.muted,
       options: members => fitUncertainty(members.map(p => p.row), fx, fy, meta) }),
   }), [pts, grouping, fx, fy, meta])
-  const focusId = hover ?? pinnedId
-  // the hovered dot is drawn last (on top), which moves it in the DOM, so a fast pointer can leave it without a
-  // mouseleave: the cell clears the hover itself whenever the pointer is over it but off a dot, or leaves it
-  const clear = () => { if (hover !== null) { setHover(null); tip.hide() } }
-  return <g onMouseMove={(e) => { if (!(e.target instanceof SVGCircleElement)) clear() }} onMouseLeave={clear}
-    data-menu-action={`Open ${chemText(fy)} vs ${chemText(fx)} as a crossplot`} data-menu-detail={`${fx}|${fy}`}>
+  // each dot's place in the panel, clamped to it (the axes run 1–99 %, so a spike sits on the edge)
+  const xy = useMemo(() => pts.map((p) => [Math.max(0, Math.min(cellS, sx(p.x))), Math.max(0, Math.min(cellS, cellS - sy(p.y)))] as const), [pts, sx, sy, cellS])
+  const keys = useMemo(() => new Set(pts.map((p) => p.row.id)), [pts])
+  const dots = useMemo(() => pts.map((p, i) => {
+    const f = focusStyle(p.row.id, null, { r: 2, level: 'dense' }, selected)
+    const k = dim(p.row.site)
+    return <circle key={p.row.id} cx={xy[i][0]} cy={xy[i][1]} r={f.r} fill={p.row.color as string} fillOpacity={f.opacity * k}
+      stroke={f.stroke} strokeWidth={f.strokeWidth} data-dot={k === 1 ? f.dot : undefined} data-fid={p.row.id} />
+  }), [pts, xy, selected, dimKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  // the overlay: a veil that dims the dots while a filter is focused, the fits and r over it, then the focused dot
+  // and the pointer layer. The veil is the panel at 65 %, the same as the dots at 35 %, without touching the dots
+  const veilRef = useRef<SVGGElement>(null)
+  return <g className="splom-cell">
     <rect width={cellS} height={cellS} fill={INK.panel} stroke={INK.grid} />
-    {focusLast(pts, (p) => p.row.id, focusId).map(([p]) => {
-      const f = focusStyle(p.row.id, focusId, { r: 2, level: 'dense' }, selected)
-      const cx = Math.max(0, Math.min(cellS, sx(p.x)))
-      const cy = Math.max(0, Math.min(cellS, cellS - sy(p.y)))
-      return (
-        <circle
-          key={p.row.id} cx={cx} cy={cy} r={f.r} fill={p.row.color as string} fillOpacity={f.opacity * dim(p.row.site)} stroke={f.stroke} strokeWidth={f.strokeWidth} data-dot={dim(p.row.site) === 1 ? f.dot : undefined}
-          style={{ cursor: 'pointer' }}
-          onMouseEnter={(e) => { setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.site} · ${p.row.date}`, `${chemText(fx)}: ${fmt(p.x)}`, `${chemText(fy)}: ${fmt(p.y)}`, 'click to pin it on every chart']) }}
-          onMouseLeave={() => { setHover(null); tip.hide() }}
-          data-fid={p.row.id} onClick={() => open(p.row.id)}
-        />
-      )
-    })}
+    <g className="splom-dots" pointerEvents="none">{dots}</g>
+    {overlay && createPortal(<g transform={`translate(${ox},${oy})`} data-menu-action={`Open ${chemText(fy)} vs ${chemText(fx)} as a crossplot`} data-menu-detail={`${fx}|${fy}`}>
+    <g ref={veilRef} className="splom-veil" data-export="skip" pointerEvents="none"><rect width={cellS} height={cellS} fill={INK.panel} fillOpacity={0.65} /></g>
     {grouping !== 'pooled' ? <RegressionGroupLines groups={fitGroups} x={sx} y={v => cellS - sy(v)} width={cellS} height={cellS} />
       : <RegressionLines stats={st} x={sx} y={v => cellS - sy(v)} domain={sx.domain() as number[]} width={cellS} height={cellS} />}
     {st && <text x={cellS - 4} y={11} textAnchor="end" fontSize={9.5} fill={INK.text} fontFamily={FONT.mono} pointerEvents="none">r={st.r.toFixed(2)}</text>}
+    <g data-export="skip">
+    <FocusLayer keys={keys} items={pts} idOf={(p) => p.row.id} groupRef={veilRef} focusClass="on" render={(p, pinned) => {
+      const f = focusStyle(p.row.id, p.row.id, { r: 2, level: 'dense' })
+      const cx = Math.max(0, Math.min(cellS, sx(p.x))), cy = Math.max(0, Math.min(cellS, cellS - sy(p.y)))
+      return <>
+        <circle cx={cx} cy={cy} r={f.r} fill={p.row.color as string} fillOpacity={f.opacity * dim(p.row.site)} stroke={f.stroke} strokeWidth={f.strokeWidth} pointerEvents="none" />
+        {pinned && <PinRing cx={cx} cy={cy} r={f.r} />}
+      </>
+    }} />
+    <HitLayer items={pts} xy={xy} width={cellS} height={cellS} hit={10}
+      onHover={(e, p) => { setHover(p.row.id); tip.show(e, [p.row.id, `${p.row.site} · ${p.row.date}`, `${chemText(fx)}: ${fmt(p.x)}`, `${chemText(fy)}: ${fmt(p.y)}`, 'click to pin it on every chart']) }}
+      onLeave={() => { setHover(null); tip.hide() }}
+      onPick={(p) => open(p.row.id)}
+      onMenu={(e, p) => edits.openMenu(e, { ids: [p.row.id], title: p.row.id })} />
+    </g>
+    </g>, overlay)}
   </g>
 }, (a, b) => a.rows === b.rows && a.fx === b.fx && a.fy === b.fy && a.sx === b.sx && a.sy === b.sy && a.cellS === b.cellS
-  && a.grouping === b.grouping && a.meta === b.meta && a.pinnedId === b.pinnedId && a.selected === b.selected && a.dimKey === b.dimKey)
+  && a.ox === b.ox && a.oy === b.oy && a.overlay === b.overlay
+  && a.grouping === b.grouping && a.meta === b.meta && a.selected === b.selected && a.dimKey === b.dimKey)

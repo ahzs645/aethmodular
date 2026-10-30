@@ -137,7 +137,7 @@ def main():
                      cl=v['ss'] * (SEA_SALT_NA - 1) / SEA_SALT_NA, k=float(v['k']), no3=v['no3'], nh4=v['nh4'],
                      so4=v['so4'], oc=v['oc'], rm=v['rm'])
             s['water'] = v['pm'] - sum(s.values())
-            filters.append([code, dates[fid].date().isoformat(), round(v['pm'], 3), *(round(s[key], 4) for key, _ in SLICES)])
+            filters.append([code, dates[fid].date().isoformat(), round(v['pm'], 3), *(round(s[key], 4) for key, _ in SLICES), fid])
             site['n'] += 1
         sites.append(site)
     newest = max(s['last'] for s in sites if s['last'])
@@ -151,7 +151,8 @@ def main():
               f'the residual), as in its balance. Filters left out: {dropped["no balance"]} without the balance, '
               f'{dropped["future date"]} dated after the export. Newest sample: {newest}.'),
         slices=[dict(key=key, label=label) for key, label in SLICES],
-        columns=['site', 'date', 'pm', *(key for key, _ in SLICES)],
+        # the filter ID last, so the Stacked bars join each filter exactly (some sites ran two filters a day)
+        columns=['site', 'date', 'pm', *(key for key, _ in SLICES), 'id'],
         sites=sites, filters=filters,
     ), separators=(',', ':')))
     print(f'wrote {display_path(OUT)}: {len(filters)} filters at {sum(1 for s in sites if s["n"])} sites ({dropped})')

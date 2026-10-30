@@ -19,9 +19,10 @@ const STATS = ['Median', 'Mean', 'Sample count'] as const
 const PROJECTIONS = ['Flat', 'Globe'] as const
 /** the contiguous US, where IMPROVE opens (Fit sites takes in Alaska, Hawaii and overseas sites) */
 const US_MAINLAND: LngLatPoint[] = [[-125, 24], [-66, 50]]
-const SCOPES = ['Four focus sites', 'All SPARTAN sites', 'All IMPROVE sites'] as const
-// old links: a single focus site is now a pick in the site list beside the map
-const LEGACY_SCOPES = [...SCOPES, 'All study sites', 'Focus site', 'Single focus site'] as const
+// Selected sites: the sites picked in the Filters panel (the same pick as the chart tabs)
+const SCOPES = ['Selected sites', 'All SPARTAN sites', 'All IMPROVE sites'] as const
+// old links: the four focus sites (and a single one) are now the Filters panel's pick, which starts on them
+const LEGACY_SCOPES = [...SCOPES, 'Four focus sites', 'All study sites', 'Focus site', 'Single focus site'] as const
 interface Summary { n: number; median: number | null; mean: number | null }
 interface NetworkMap {
   note: string
@@ -49,9 +50,12 @@ function withAeronet(map: NetworkMap, aeronet: AeronetSitesFile | null): Network
   }
 }
 
-/** Offline bubble map with independent study-site and IMPROVE scopes. */
+/**
+ * Offline bubble map. Selected sites: the Filters panel's pick (`meta.sites`, summarised from `rows`, so
+ * its dates, seasons and exclusions apply); All SPARTAN / All IMPROVE: every network site's exported summary.
+ */
 export function SiteBubbleMap({ rows, meta, field, onSite }: {
-  rows: FilterRow[]; meta: MetaFile; field: string; focusSite?: string
+  rows: FilterRow[]; meta: MetaFile; field: string
   /** a click on a site's bubble (the Dashboard opens that site's own page) */
   onSite?: (code: string) => void
 }) {
@@ -62,8 +66,8 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
   const geo = useRef<GeoMapHandle>(null)
   const [projection, setProjection] = useSearchParam<(typeof PROJECTIONS)[number]>('mapproj', 'Flat', PROJECTIONS)
   const [stat, setStat] = useSearchParam<(typeof STATS)[number]>('mapstat', 'Median', STATS)
-  const [savedScope, setScope] = useSearchParam<(typeof LEGACY_SCOPES)[number]>('mapscope', 'Four focus sites', LEGACY_SCOPES)
-  const scope: (typeof SCOPES)[number] = (SCOPES as readonly string[]).includes(savedScope) ? savedScope as (typeof SCOPES)[number] : 'Four focus sites'
+  const [savedScope, setScope] = useSearchParam<(typeof LEGACY_SCOPES)[number]>('mapscope', 'Selected sites', LEGACY_SCOPES)
+  const scope: (typeof SCOPES)[number] = (SCOPES as readonly string[]).includes(savedScope) ? savedScope as (typeof SCOPES)[number] : 'Selected sites'
   const [improveField, setImproveField] = useSearchParam<string>('mapfield', 'EC (TOR)')
   const [improve, setImprove] = useState<NetworkMap | null>(null)
   const [spartanBase, setSpartan] = useState<NetworkMap | null>(null)
@@ -96,12 +100,13 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
   }, [isImprove, isNetwork, network])
 
   const sites = useMemo(() => {
+    const bySite = d3.group(rows, r => r.site)
     const source = isNetwork
       ? (network?.sites ?? []).map(s => ({ ...s, label: s.code,
           color: isSpartan ? meta.sites.find(f => f.code === s.code)?.color ?? INK.accent : INK.accent,
           summary: s.stats[metric] ?? { n: 0, mean: null, median: null } }))
       : meta.sites.map(s => {
-          const subset = rows.filter(r => r.site === s.name)
+          const subset = bySite.get(s.name) ?? []
           const vals = subset.map(r => r[metric]).filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
           return { ...s, n_filters: subset.length, label: s.name,
             date_min: d3.min(subset, r => r.date) ?? '—', date_max: d3.max(subset, r => r.date) ?? '—',
@@ -124,13 +129,13 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
   const homeOptions = useMemo(() => ({ pad: 0.1, minSpan: isImprove ? 4 : fitted !== null ? 40 : 60, maxZoom: 6 }), [isImprove, fitted])
   // sized to the largest value in view, however small (AAOD tops out near 0.05), not to at least 1
   const vmax = d3.max(sites, s => s.value) ?? 0
-  const rScale = d3.scaleSqrt().domain([0, vmax > 0 ? vmax : 1]).range([0, isNetwork ? 16 : 26])
+  const rScale = d3.scaleSqrt().domain([0, vmax > 0 ? vmax : 1]).range([0, isNetwork || sites.length > 8 ? 16 : 26])
   const fitSites = () => geo.current?.fit(drawnSites.map((s) => [s.lon, s.lat]), { pad: 0.15, minSpan: 6, maxZoom: 6 })
 
   return (
     <ChartFrame id="map" source="gallery/app/src/charts/map/SiteBubbleMap.tsx"
       title={`Bubble map — ${drawnSites.length === 1 ? drawnSites[0].name : scope.toLowerCase()}`}
-      subtitle={`${stat === 'Sample count' ? 'Sample counts' : `${stat} ${withUnit(metric, units)}`} at ${isNetwork ? `the available ${isImprove ? 'IMPROVE' : 'SPARTAN'} sites` : 'the four focus sites: Beijing, Delhi, JPL and Addis Ababa'}; pick or search sites in the list beside the map. Drag to pan; scroll or use +/− to zoom (Globe: drag with the right button to turn). Bubble sizes stay fixed while zooming. The four-focus-site views retain sidebar season, date and exclusion choices.`}
+      subtitle={`${stat === 'Sample count' ? 'Sample counts' : `${stat} ${withUnit(metric, units)}`} at ${isNetwork ? `the available ${isImprove ? 'IMPROVE' : 'SPARTAN'} sites` : `the ${meta.sites.length === 1 ? 'site' : `${meta.sites.length} sites`} picked in the Filters panel`}; pick or search sites in the list beside the map. Drag to pan; scroll or use +/− to zoom (Globe: drag with the right button to turn). Bubble sizes stay fixed while zooming. Selected sites follows the Filters panel's sites, seasons, dates and exclusions; the All SPARTAN and All IMPROVE views summarise every filter.`}
       provenance={isNetwork && network ? `${network.sites.length} sites in the inventory.${unlocated.length ? ` Missing coordinates: ${unlocated.map(s => s.code).join(', ')}.` : ''} ${aeronetQ && aeronet ? `${aeronet.source}, Level ${aeronet.level}: ${aeronet.note} (aeronet/sites_summary.json, export_aeronet_sites.py)` : network.note}${isSpartan ? ' MAIA target areas: research/maia/inventory/spartan_sites.csv.' : ''}` : `Local site inventory${aeronet ? '. MAIA target areas: research/maia/inventory/spartan_sites.csv' : ''}`}
       controls={<>
         <Segmented label="Sites" value={scope} options={SCOPES} onChange={setScope} />
@@ -156,7 +161,7 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
             const col = aeronetQ ? aeronet?.sites[s.code] : undefined
             const box = Math.ceil(r + 5)
             // every name while few sites are drawn; with many, the hovered one (the rest crowd into each other)
-            const labelled = (!isNetwork && sites.length <= 8) || lg.hover === s.label || (isSpartan && meta.sites.some(f => f.code === s.code))
+            const labelled = (!isNetwork && sites.length <= 8) || lg.hover === s.label || (isSpartan && meta.sites.length <= 8 && meta.sites.some(f => f.code === s.code))
             return <MapMarker key={s.code} longitude={s.lon} latitude={s.lat} onClick={onSite ? () => onSite(s.code) : undefined}>
               <MarkerContent className="bubble-marker" style={{ cursor: onSite ? 'pointer' : 'default', opacity: lg.dim(s.label, 0.2) }}>
                 <svg width={2 * box} height={2 * box} viewBox={`${-box} ${-box} ${2 * box} ${2 * box}`} data-export-site={s.name} data-export-color={s.color}

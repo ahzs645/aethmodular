@@ -12,6 +12,7 @@ import {
 } from '@/lib/export'
 import { XIcon } from '@/components/Icons'
 import { ScrubField } from '@/components/ScrubField'
+import { LEGEND_FOCUS } from '@/components/Legend'
 
 /**
  * One export control per chart: the button names the format it will save (PNG by
@@ -157,7 +158,11 @@ function ExportDialog({ panel, title, onClose }: { panel: HTMLElement; title: st
   // The first copy is always as on screen, which gives the chart's text size for the column widths.
   const [fig, setFig] = useState<Figure | null | undefined>(undefined)
   const base = useRef<number | null>(null)
-  const drawing = pub ? `${s.column}|${s.stats}|${s.textPt}` : 'screen'
+  // a legend series held as hovered (components/Legend LEGEND_FOCUS): the file is drawn with it picked out, and the
+  // page keeps it held after the dialog closes (shift-click the legend item to let go). Starts from the page's own hold
+  const [focus, setFocus] = useState(() => panel.querySelector<HTMLElement>('.legend-item.pinned')?.dataset.exportSeries ?? '')
+  const chooseFocus = (v: string) => { setFocus(v); panel.dispatchEvent(new CustomEvent(LEGEND_FOCUS, { detail: v || null })) }
+  const drawing = `${pub ? `${s.column}|${s.stats}|${s.textPt}` : 'screen'}|${focus}`
   useEffect(() => {
     let live = true
     ;(async () => {
@@ -179,6 +184,9 @@ function ExportDialog({ panel, title, onClose }: { panel: HTMLElement; title: st
   }, [drawing]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasLegend = !!fig && fig.legends.length > 0
+  // the legend items a hover picks out (charts whose legend reports its hover), hidden ones aside
+  const focusable = useMemo(() => [...new Set([...panel.querySelectorAll<HTMLElement>('.legend .legend-item.hoverable[data-export-series]')]
+    .filter((el) => !el.classList.contains('off')).map((el) => el.dataset.exportSeries!))], [panel, fig])
   // inside needs a single plot to sit in; the screen style keeps the legend where the page has it
   const legends = LEGENDS.filter((l) => l !== 'inside' || (pub && fig?.plots.length === 1))
   const legend = !hasLegend ? 'none' : legends.includes(s.legend) ? s.legend : pub && legends.includes('inside') ? 'inside' : 'shown'
@@ -350,6 +358,11 @@ function ExportDialog({ panel, title, onClose }: { panel: HTMLElement; title: st
                       onChange={(v) => set({ legendSize: v })} />
                     {s.legendSize !== 100 && legend !== 'shown' && <button type="button" className="btn quiet" onClick={() => set({ legendSize: 100 })}>Reset</button>}
                   </div>
+                </div>}
+                {focusable.length > 0 && <div className="export-row">
+                  <Combobox label="Focus" value={focusable.includes(focus) ? focus : ''} onChange={chooseFocus}
+                    title="Draw the file as hovering a legend item shows it: that series in full, the others faded. Held on the page too; shift-click a legend item there to hold or let go"
+                    options={[{ key: '', label: 'None (every series)' }, ...focusable.map((l) => ({ key: l, label: l }))]} />
                 </div>}
                 <div className="export-row">
                   <Segmented label="Background" value={s.format === 'jpeg' ? 'white' : s.background} options={['white', 'transparent'] as ExportBackground[]}

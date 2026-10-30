@@ -14,7 +14,7 @@ export function seasonalComposition(rows: FilterRow[], meta: MetaFile, calendar:
   // Public ChemSpec EC/OC duplicate these FTIR products; HIPS BC and OM must
   // not be added to EC/OC as extra carbon slices.
   const species = ['OC (FTIR)', 'EC (FTIR)', ...meta.field_groups
-    .filter(g => g.label === 'Ions' || g.label === 'Metals & crustal').flatMap(g => g.fields)]
+    .filter(g => g.label === 'Ions' || g.label === 'Crustal elements' || g.label === 'Trace metals').flatMap(g => g.fields)]
     .filter(f => meta.fields.includes(f))
   const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
   const stats = seasons.map(season => {

@@ -17,6 +17,7 @@ import { SiteWeatherSummary } from '@/charts/weather/SiteWeatherSummary'
 import { PwMoisture } from '@/charts/weather/PwMoisture'
 import { useExport } from '@/lib/data'
 import { useSearchParam } from '@/lib/url'
+import { useSiteFocus } from '@/lib/siteFocus'
 import { WEATHER_VARS, weatherField, type RoseFile, type StationCompare, type WeatherSource } from '@/lib/weather'
 import type { AxesOpts } from '@/lib/axes'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -24,7 +25,7 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 const ADDIS = 'ETAD'
 
 /**
- * Weather and the filters, driven by the Filters panel's site pick (no picker of its own).
+ * Weather and the filters, driven by the Samples panel's site pick (no picker of its own).
  *
  * One site picked: the analyses the Addis notebooks ran on the airport station
  * (addis_03_meteorology, notebooks/analysis/meteorology/*) for that site: the daily timeline
@@ -34,17 +35,15 @@ const ADDIS = 'ETAD'
  * correlations, and at Addis the check against the station.
  *
  * Several sites picked: the comparison: which weather goes with the measurement at each site,
- * then climate, washout, wind roses and the measurement by wind side by side. A site in the comparison table narrows
- * the pick to that site, and the one-site view offers the way back.
+ * then climate, washout, wind roses and the measurement by wind side by side. The Plot options'
+ * Analysis choice (lib/siteFocus, `sfocus`) or a site in the comparison table opens one of them in the
+ * one-site view without changing the pick, and the one-site view offers the way back.
  *
  * Every filter carries the weather averaged over its own sampling window
  * (gallery/data/export_weather.py); dates, seasons and hand edits apply as on every tab.
  */
-export function WeatherPage({ rows, picked, onPick, meta, field, xField, yField, axes, setField, pmfLabelOfDate }: {
+export function WeatherPage({ rows, meta, field, xField, yField, axes, setField, pmfLabelOfDate }: {
   rows: FilterRow[]
-  /** the Filters panel's SPARTAN pick, and a way to set it (absent outside a SPARTAN network) */
-  picked: Set<string>
-  onPick?: (codes: string[]) => void
   meta: MetaFile; field: string; xField: string; yField: string; axes: AxesOpts
   setField: (f: string) => void
   pmfLabelOfDate: (d: string | null | undefined) => string | null
@@ -52,26 +51,25 @@ export function WeatherPage({ rows, picked, onPick, meta, field, xField, yField,
   const roses = useExport<RoseFile>('weather/roses.json').data
   const station = useExport<StationCompare>('weather/station_ETAD.json').data
 
-  // the picked sites that have weather, in the Filters panel's order
+  // the picked sites that have weather, in the Samples panel's order
   const wxRows = useMemo(() => rows.filter((r) => typeof r['Temperature (ERA5)'] === 'number'), [rows])
   const sites = useMemo(() => {
     const n = d3.rollup(wxRows, (v) => v.length, (r) => r.site)
     return meta.sites.filter((s) => n.has(s.name)).map((s) => ({ name: s.name, code: s.code, n: n.get(s.name)! }))
   }, [wxRows, meta.sites])
-  const one = sites.length === 1 ? sites[0] : null
+  // several sites picked: the comparison, or one of them on its own (the Plot options' Analysis choice)
+  const focus = useSiteFocus(sites)
+  const one = focus.site ?? (sites.length === 1 ? sites[0] : null)
+  const oneRows = useMemo(() => (focus.site ? wxRows.filter((r) => r.site === focus.site!.name) : wxRows), [wxRows, focus.site])
   const isAddis = one?.code === ADDIS
 
   const [sourceParam, setSource] = useSearchParam<string>('wsrc', 'ERA5', ['ERA5', 'station'])
   const source: WeatherSource = sourceParam === 'station' && isAddis ? 'station' : 'ERA5'
   const wx = (k: Parameters<typeof weatherField>[0]) => weatherField(k, source) ?? weatherField(k, 'ERA5')!
 
-  // narrowing the pick from the comparison table remembers the pick to go back to
-  const [previous, setPrevious] = useState<string[] | null>(null)
-  useEffect(() => { if (sites.length > 1) setPrevious(null) }, [sites.length])
+  // a site in the comparison table opens its one-site view; the pick stays, so going back is one click
   const openSite = (code: string) => {
-    if (!onPick) return
-    setPrevious([...picked])
-    onPick([code])
+    focus.set(code)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -85,7 +83,7 @@ export function WeatherPage({ rows, picked, onPick, meta, field, xField, yField,
   const axisValue = useMemo(() => ({ x: wxX, y: field, field }), [wxX, field])
   const setAxis = useCallback((role: AxisRole, f: string) => (role === 'x' ? setWxX(f) : setField(f)), [setField])
   // stable between renders: a new rows array or axes object would refit the scatter and bootstrap its bands again
-  const scatterRows = useMemo(() => wxRows.filter((r) => typeof r[wxX] === 'number'), [wxRows, wxX])
+  const scatterRows = useMemo(() => oneRows.filter((r) => typeof r[wxX] === 'number'), [oneRows, wxX])
   const scatterAxes = useMemo<AxesOpts>(() => ({ ...axes, identity: false, mode: 'Data' }), [axes])
   const scatter = (title: string, id: string) => (
     <AxisFieldsProvider meta={meta} value={axisValue} set={setAxis}>
@@ -94,11 +92,11 @@ export function WeatherPage({ rows, picked, onPick, meta, field, xField, yField,
   )
 
   if (sites.length === 0) {
-    return <div className="panel"><p className="frame-empty">No picked site has weather. Weather is pulled for SPARTAN sites (ERA5 over every filter's sampling window): pick one or more SPARTAN sites in the Filters panel.</p></div>
+    return <div className="panel"><p className="frame-empty">No picked site has weather. Weather is pulled for SPARTAN sites (ERA5 over every filter's sampling window): pick one or more SPARTAN sites in the Samples panel.</p></div>
   }
 
   if (one) {
-    const span = `${d3.min(wxRows, (r) => r.date)} to ${d3.max(wxRows, (r) => r.date)}`
+    const span = `${d3.min(oneRows, (r) => r.date)} to ${d3.max(oneRows, (r) => r.date)}`
     return (
       <>
         <div className="panel weather-head">
@@ -106,32 +104,32 @@ export function WeatherPage({ rows, picked, onPick, meta, field, xField, yField,
             <h2 style={{ margin: 0 }}>{one.name} · weather and the filters</h2>
             <p className="subtitle" style={{ margin: '4px 0 0' }}>
               {one.n} filters, {span}, each with the weather averaged over its own sampling window{isAddis ? ' (ERA5, or the Bole airport station the Addis notebooks used)' : ' (ERA5)'}.
-              Pick more sites in the Filters panel to compare them.
+              {' '}{focus.site ? `One of the ${sites.length} picked sites: switch site or go back to the comparison under Plot options › Analysis.` : 'Pick more sites in the Samples panel to compare them.'}
             </p>
           </div>
           <div className="weather-head-controls">
             {isAddis && <Segmented label="Weather" value={source} options={['ERA5', 'station'] as WeatherSource[]} onChange={setSource}
               optionLabel={(o) => (o === 'station' ? 'Airport station' : 'ERA5')}
               title="ERA5 reanalysis, or the Bole airport station (Dec 2022 – Sep 2024)" />}
-            {previous && previous.length > 1 && onPick && <button type="button" className="btn" onClick={() => { onPick(previous); setPrevious(null) }}
-              title="Put the Filters panel's pick back to the sites you were comparing">← Back to comparing {previous.length} sites</button>}
+            {focus.site && <button type="button" className="btn" onClick={() => focus.set(null)}
+              title="Back to the picked sites side by side (Plot options › Analysis)">← Back to comparing {sites.length} sites</button>}
           </div>
         </div>
-        <WeatherTimeline rows={wxRows} meta={meta} field={field} site={one} />
+        <WeatherTimeline rows={oneRows} meta={meta} field={field} site={one} />
         <MonthlyClimate meta={meta} sites={[one]} large id="weather-site-climate" title={`${one.name} · monthly climate against its season calendar`} />
-        <RainWashout rows={wxRows} meta={meta} field={field} prcpField={wx('prcp')} id="weather-site-washout" title={`${one.name} · rain washout`} />
+        <RainWashout rows={oneRows} meta={meta} field={field} prcpField={wx('prcp')} id="weather-site-washout" title={`${one.name} · rain washout`} />
         {scatter(`${one.name} · ${field} against the weather`, 'weather-site-scatter')}
-        <HumidityAgreement rows={wxRows} meta={meta} xField={xField} yField={yField} rhField={wx('rh')} />
-        <PwMoisture rows={wxRows} meta={meta} onePick />
-        <WindRoses rows={wxRows} meta={meta} roses={roses} source={source} site={one} pmfLabelOfDate={pmfLabelOfDate}
+        <HumidityAgreement rows={oneRows} meta={meta} xField={xField} yField={yField} rhField={wx('rh')} />
+        <PwMoisture rows={oneRows} meta={meta} onePick />
+        <WindRoses rows={oneRows} meta={meta} roses={roses} source={source} site={one} pmfLabelOfDate={pmfLabelOfDate}
           splits={isAddis ? ['Season', 'PMF source'] : ['Season']} id="weather-site-roses" title={`${one.name} · wind roses`} />
-        <PollutionRose rows={wxRows} meta={meta} field={field} source={source} site={one} splits={['Season']}
+        <PollutionRose rows={oneRows} meta={meta} field={field} source={source} site={one} splits={['Season']}
           id="weather-site-pollution-rose" title={`${one.name} · pollution rose`} />
-        <PolarPlot rows={wxRows} meta={meta} field={field} source={source} site={one} splits={['Season']}
+        <PolarPlot rows={oneRows} meta={meta} field={field} source={source} site={one} splits={['Season']}
           id="weather-site-polar" title={`${one.name} · polar plot by wind direction and speed`} />
-        <WindSpeedConcentration rows={wxRows} meta={meta} field={field} wspdField={wx('wspd')}
+        <WindSpeedConcentration rows={oneRows} meta={meta} field={field} wspdField={wx('wspd')}
           id="weather-site-wind-speed" title={`${one.name} · the measurement by wind speed`} />
-        <WeatherCorrelations rows={wxRows} meta={meta} source={source} site={one} />
+        <WeatherCorrelations rows={oneRows} meta={meta} source={source} site={one} />
         {isAddis && <StationCheck data={station} />}
       </>
     )
@@ -143,8 +141,8 @@ export function WeatherPage({ rows, picked, onPick, meta, field, xField, yField,
         <div>
           <h2 style={{ margin: 0 }}>Weather and the filters · {sites.length} sites compared</h2>
           <p className="subtitle" style={{ margin: '4px 0 0' }}>
-            The sites picked in the Filters panel, on ERA5 averaged over each filter's sampling window. Click a site in the table
-            {onPick ? ' (or pick just one in the Filters panel)' : ''} for its timeline, seasonal wind roses and correlations, and the Addis station check.
+            The sites picked in the Samples panel, on ERA5 averaged over each filter's sampling window. Click a site in the table
+            (or choose One site under Plot options › Analysis) for its timeline, seasonal wind roses and correlations, and the Addis station check.
           </p>
         </div>
       </div>

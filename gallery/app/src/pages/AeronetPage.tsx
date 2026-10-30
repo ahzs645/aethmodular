@@ -20,7 +20,7 @@ import type { AxesOpts } from '@/lib/axes'
 import type { FilterRow, MetaFile } from '@/lib/types'
 
 /**
- * The sun photometer over the filters, driven by the Filters panel's site pick (no picker of its
+ * The sun photometer over the filters, driven by the Samples panel's site pick (no picker of its
  * own), laid out like the Weather tab.
  *
  * One site picked: the daily column (AOD, fine fraction, absorption AOD, SSA) above the chosen
@@ -41,7 +41,7 @@ import type { FilterRow, MetaFile } from '@/lib/types'
  */
 export function AeronetPage({ rows: rows15, picked, onPick, meta, field, axes, setField }: {
   rows: FilterRow[]
-  /** the Filters panel's SPARTAN pick, and a way to set it (absent outside a SPARTAN network) */
+  /** the Samples panel's SPARTAN pick, and a way to set it (absent outside a SPARTAN network) */
   picked: Set<string>
   onPick?: (codes: string[]) => void
   meta: MetaFile; field: string; axes: AxesOpts
@@ -105,7 +105,7 @@ export function AeronetPage({ rows: rows15, picked, onPick, meta, field, axes, s
   }
   if (sites.length === 0) {
     return <div className="panel">
-      <div className="weather-head"><p className="frame-empty">No picked site has {levelLabel(level)} AERONET retrievals inside its filters' sampling windows. AERONET is pulled for SPARTAN sites with a station within 50 km: pick one or more SPARTAN sites in the Filters panel.</p>
+      <div className="weather-head"><p className="frame-empty">No picked site has {levelLabel(level)} AERONET retrievals inside its filters' sampling windows. AERONET is pulled for SPARTAN sites with a station within 50 km: pick one or more SPARTAN sites in the Samples panel.</p>
         <div className="weather-head-controls">{levelControl}</div></div>
     </div>
   }
@@ -120,13 +120,13 @@ export function AeronetPage({ rows: rows15, picked, onPick, meta, field, axes, s
             <p className="subtitle" style={{ margin: '4px 0 0' }}>
               {one.n} filters, {span}, each with the mean of the AERONET retrievals inside its own sampling window
               {station ? ` at ${station.station.replace(/_/g, ' ')}, ${station.km.toFixed(1)} km away (of all ${station.filters} filters from this site, ${station.with_aod} have AOD and ${station.with_inversion} an inversion)` : ''}.
-              {' '}{levelLabel(level)}: daylight, cloud-free retrievals only. Pick more sites in the Filters panel to compare them.
+              {' '}{levelLabel(level)}: daylight, cloud-free retrievals only. Pick more sites in the Samples panel to compare them.
             </p>
           </> : <>
             <h2 style={{ margin: 0 }}>AERONET and the filters · {sites.length} sites compared</h2>
             <p className="subtitle" style={{ margin: '4px 0 0' }}>
-              The sites picked in the Filters panel, each filter with the mean of the {levelLabel(level)} retrievals inside its sampling window at the
-              site's AERONET station. Click a site in the table{onPick ? ' (or pick just one in the Filters panel)' : ''} for its daily timeline.
+              The sites picked in the Samples panel, each filter with the mean of the {levelLabel(level)} retrievals inside its sampling window at the
+              site's AERONET station. Click a site in the table{onPick ? ' (or pick just one in the Samples panel)' : ''} for its daily timeline.
             </p>
           </>}
           {levelNote}
@@ -134,7 +134,7 @@ export function AeronetPage({ rows: rows15, picked, onPick, meta, field, axes, s
         <div className="weather-head-controls">
           {levelControl}
           {one && previous && previous.length > 1 && onPick && <button type="button" className="btn" onClick={() => { onPick(previous); setPrevious(null) }}
-            title="Put the Filters panel's pick back to the sites you were comparing">← Back to comparing {previous.length} sites</button>}
+            title="Put the Samples panel's pick back to the sites you were comparing">← Back to comparing {previous.length} sites</button>}
         </div>
       </div>
       {one ? <>
