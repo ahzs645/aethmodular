@@ -8,6 +8,7 @@ import { Key } from '@/components/Key'
 import { SweepPlot } from '@/components/SweepPlot'
 import { fitLine, fmt } from '@/lib/format'
 import { useMac } from '@/lib/mac'
+import { ExcludedNote } from '@/lib/markedRows'
 import { spearman } from '@/lib/weather'
 import { seasonOnly, shortSeason } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
@@ -27,7 +28,11 @@ type Row = { p: Pair; ec: number; y: number; fe: number }
  * residuals of the two-predictor fit against iron and EC. For HIPS Fabs (the notebook) or the
  * aethalometer's b_ATN at the page's channel.
  */
-export function IronTest({ pairs, meta, sites, ch, sigma }: { pairs: Pair[]; meta: MetaFile; sites: PairSite[]; ch: Channel; sigma: number | null }) {
+export function IronTest({ pairs, marked = [], meta, sites, ch, sigma }: {
+  pairs: Pair[]; meta: MetaFile; sites: PairSite[]; ch: Channel; sigma: number | null
+  /** Filters → excluded: Mark, the excluded filters paired the same way (lib/markedRows): × on the crossplots, in no fit, sweep or strip */
+  marked?: Pair[]
+}) {
   const [abs, setAbs] = useSearchParam<(typeof ABS)[number]>('af.fe.abs', 'HIPS', ABS)
   const yOf = (p: Pair) => (abs === 'HIPS' ? p.fabs : p.batn)
   const yName = abs === 'HIPS' ? 'HIPS Fabs' : `b_ATN ${ch}`
@@ -74,8 +79,11 @@ export function IronTest({ pairs, meta, sites, ch, sigma }: { pairs: Pair[]; met
     // least-squares residuals are uncorrelated with the predictors by construction (Pearson r = 0), so the
     // notebook's r says nothing; a rank correlation still shows a curved or one-sided pattern
     const rFe = spearman(multi.keep.map((i) => fe[i]), multi.residuals), rEc = spearman(multi.keep.map((i) => ec[i]), multi.residuals)
-    return { rows, ec, y, fe, base, multi, soil, sweep, best, closest, atEdge, corr, fixed, bestFit, resid, seasons, rFe, rEc }
-  }, [pairs, meta, site, abs, ch, target]) // eslint-disable-line react-hooks/exhaustive-deps
+    // the site's excluded filters with all three, drawn as × on the fitted panels (their residual from the same fit)
+    const markedRows: Row[] = marked.filter((p) => p.site === site.name && p.iron !== null && p.ec !== null && yOf(p) !== null)
+      .map((p) => ({ p, ec: p.ec!, y: yOf(p)!, fe: p.iron! }))
+    return { rows, ec, y, fe, base, multi, soil, sweep, best, closest, atEdge, corr, fixed, bestFit, resid, seasons, rFe, rEc, markedRows }
+  }, [pairs, marked, meta, site, abs, ch, target]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const controls = <>
     <Segmented label="Absorption" value={abs} options={ABS} onChange={setAbs} optionLabel={(k) => (k === 'HIPS' ? 'HIPS Fabs' : `b_ATN ${ch}`)} />
@@ -90,7 +98,7 @@ export function IronTest({ pairs, meta, sites, ch, sigma }: { pairs: Pair[]; met
   if (!site) return frame(<Empty>No site in view has {MIN_N} filters with iron, FTIR EC and {yName}.</Empty>)
   if (!t) return frame(<Empty>{site.name}: the two-predictor fit is undefined (too few filters, or iron and EC collinear).</Empty>)
 
-  const { rows, base, multi, soil, sweep, best, closest, atEdge, fixed, bestFit, seasons } = t
+  const { rows, base, multi, soil, sweep, best, closest, atEdge, fixed, bestFit, seasons, markedRows } = t
   const pt = (r: Row, y: number, label: string): CrossPoint => ({
     x: r.ec, y, color: seasonColor(meta, r.p.season, INK.muted), id: r.p.id,
     tip: [`${r.p.id} · ${r.p.date}`, `FTIR EC ${fmt(r.ec, 2)} µg/m³ · Iron ${fmt(r.fe, 3)} µg/m³`, `${label}: ${fmt(y, 1)} Mm⁻¹`, seasonOnly(r.p.season)],
@@ -102,9 +110,9 @@ export function IronTest({ pairs, meta, sites, ch, sigma }: { pairs: Pair[]; met
     ...(Number.isFinite(target) ? [{ slope: target, intercept: 0, color: INK.muted, label: 'target', dash: '2 3', method: 'ols' as const, stats: null }] : []),
   ]
   const panelsBA = [
-    { key: 'raw', title: `Uncorrected: ${fitLine(base.slope, base.intercept)}, R² ${fmt(base.r2, 2)}`, ys: t.y, fit: base, which: 'raw' as const, label: yName },
-    { key: 'fixed', title: `− ${fmt(multi.b, 1)} × Iron: ${fitLine(fixed?.slope, fixed?.intercept)}, R² ${fmt(fixed?.r2, 2)}`, ys: t.corr(multi.b), fit: fixed, which: 'fixed' as const, label: `${yName} − ${fmt(multi.b, 1)} × Iron` },
-    ...(best && bestFit ? [{ key: 'best', title: `− ${fmt(best.k, 1)} × Iron (slope ${fmt(target, 1)}): ${fitLine(bestFit.slope, bestFit.intercept)}`, ys: t.corr(best.k), fit: bestFit, which: 'best' as const, label: `${yName} − ${fmt(best.k, 1)} × Iron` }] : []),
+    { key: 'raw', title: `Uncorrected: ${fitLine(base.slope, base.intercept)}, R² ${fmt(base.r2, 2)}`, ys: t.y, k: 0, fit: base, which: 'raw' as const, label: yName },
+    { key: 'fixed', title: `− ${fmt(multi.b, 1)} × Iron: ${fitLine(fixed?.slope, fixed?.intercept)}, R² ${fmt(fixed?.r2, 2)}`, ys: t.corr(multi.b), k: multi.b, fit: fixed, which: 'fixed' as const, label: `${yName} − ${fmt(multi.b, 1)} × Iron` },
+    ...(best && bestFit ? [{ key: 'best', title: `− ${fmt(best.k, 1)} × Iron (slope ${fmt(target, 1)}): ${fitLine(bestFit.slope, bestFit.intercept)}`, ys: t.corr(best.k), k: best.k, fit: bestFit, which: 'best' as const, label: `${yName} − ${fmt(best.k, 1)} × Iron` }] : []),
   ]
   const allY = panelsBA.flatMap((p) => p.ys), allX = t.ec
   const xDom = d3.scaleLinear().domain([Math.min(0, d3.min(allX)!), d3.max(allX)! * 1.05]).nice().domain() as [number, number]
@@ -126,8 +134,10 @@ export function IronTest({ pairs, meta, sites, ch, sigma }: { pairs: Pair[]; met
     })),
   ] }]
   const spread = (k: 'raw' | 'fixed') => { const v = seasons.map((s) => s[k]?.slope).filter((x): x is number => x != null); return v.length > 1 ? d3.max(v)! - d3.min(v)! : null }
-  const residPts = (x: (r: Row) => number, xl: string): CrossPoint[] => rows.flatMap((r) => {
-    const e = t.resid.get(r.p.id)
+  // the counted filters' residuals from the fit; an excluded filter's (drawn as × only) from the same coefficients
+  const markedResid = (r: Row) => r.y - (multi.c + multi.a * r.ec + multi.b * r.fe)
+  const residPts = (x: (r: Row) => number, xl: string, src: Row[] = rows, resid: (r: Row) => number | undefined = (r) => t.resid.get(r.p.id)): CrossPoint[] => src.flatMap((r) => {
+    const e = resid(r)
     return e === undefined ? [] : [{ x: x(r), y: e, color: seasonColor(meta, r.p.season, INK.muted), id: r.p.id,
       tip: [`${r.p.id} · ${r.p.date}`, `${xl} ${fmt(x(r), 3)}`, `residual ${fmt(e, 1)} Mm⁻¹`, seasonOnly(r.p.season)] }]
   })
@@ -160,7 +170,7 @@ export function IronTest({ pairs, meta, sites, ch, sigma }: { pairs: Pair[]; met
       <SweepPlot series={sweepSeries(it.f)} xLabel="k (Mm⁻¹ per µg/m³ iron)" yLabel={it.y} width={w} height={220} reference={it.ref} xMarkers={kMarks} />
     )} />
     <FacetGrid items={panelsBA} minCell={260} maxCols={3} render={(p, w) => (
-      <Crossplot points={rows.map((r, i) => pt(r, p.ys[i], p.label))} title={p.title} xLabel="FTIR EC (µg/m³)" yLabel={`${p.label} (Mm⁻¹)`}
+      <Crossplot points={rows.map((r, i) => pt(r, p.ys[i], p.label))} marked={markedRows.map((r) => pt(r, r.y - p.k * r.fe, p.label))} title={p.title} xLabel="FTIR EC (µg/m³)" yLabel={`${p.label} (Mm⁻¹)`}
         maxSide={Math.max(170, w - 80)} fit={false} sameScale={false} domain={xDom} yDomain={yDom} extraLines={fitLines(p.fit, p.which)} />
     )} />
     <IntervalStrip blocks={seasonBlock} labelWidth={110} noteWidth={44} minPanelWidth={170} panels={[
@@ -172,12 +182,13 @@ export function IronTest({ pairs, meta, sites, ch, sigma }: { pairs: Pair[]; met
       { key: 'fe', x: (r: Row) => r.fe, xl: 'Iron (µg/m³)', r: t.rFe },
       { key: 'ec', x: (r: Row) => r.ec, xl: 'FTIR EC (µg/m³)', r: t.rEc },
     ]} minCell={260} maxCols={2} render={(it, w) => (
-      <Crossplot points={residPts(it.x, it.xl)} title={`Residual against ${it.xl.split(' (')[0]} · Spearman ρ = ${fmt(it.r, 2)}`} xLabel={it.xl} yLabel="Two-predictor residual (Mm⁻¹)"
+      <Crossplot points={residPts(it.x, it.xl)} marked={residPts(it.x, it.xl, markedRows, markedResid)} title={`Residual against ${it.xl.split(' (')[0]} · Spearman ρ = ${fmt(it.r, 2)}`} xLabel={it.xl} yLabel="Two-predictor residual (Mm⁻¹)"
         maxSide={Math.max(170, Math.min(360, w - 80))} fit={false} sameScale={false} extraLines={zero} />
     )} />
     <Key items={[...seasons.map((s) => ({ label: seasonOnly(s.season), color: s.color })), { label: 'fit to all filters', color: INK.fit, kind: 'dash' as const },
       { label: Number.isFinite(target) ? `slope ${fmt(target, 1)} through the origin` : 'target', color: INK.muted, kind: 'dash' as const },
       { label: 'uncorrected (strip)', color: INK.muted, kind: 'hollow' as const }, { label: 'after − MAC_Fe × Iron (strip)', color: INK.muted, kind: 'dot' as const }]} />
+    <ExcludedNote count={markedRows.length} drawn />
     <Note>The two-predictor residual should be flat against iron (iron fully modelled) and against EC (a single MAC fits), and centred on zero in every season.
       The notebook quoted Pearson r for the first two, but a least-squares fit leaves residuals uncorrelated with its own predictors, so that r is
       zero by construction; the panels give Spearman's rank correlation, which a curved or one-sided pattern still moves. The notebook's

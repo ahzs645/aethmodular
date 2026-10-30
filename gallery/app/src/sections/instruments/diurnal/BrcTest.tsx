@@ -7,6 +7,7 @@ import { histogramSeries, SweepPlot, type SweepSeries } from '@/components/Sweep
 import { fmt, signed } from '@/lib/format'
 import { FONT, INK } from '@/lib/theme'
 import { useHighlightActions } from '@/lib/highlight'
+import { ExcludedNote, useMarkedPoints } from '@/lib/markedRows'
 import type { FilterRow } from '@/lib/types'
 import { Key } from '@/components/Key'
 import { CHANNEL_COLOUR, type BrcFile, type Channel } from './data'
@@ -143,15 +144,19 @@ export function ChannelHealthScatter({ brc }: { brc: BrcFile }) {
 export function EcAgainstBc880({ rows }: { rows: FilterRow[] }) {
   const { openSample } = useHighlightActions()
   // gallery filters: a click opens the filter's own record, as on the gallery's charts
-  const points = useMemo<CrossPoint[]>(() => rows.flatMap((r) => {
+  const pointsOf = (rs: FilterRow[]): CrossPoint[] => rs.flatMap((r) => {
     const x = r[BC880], y = r[EC_FTIR]
     return typeof x === 'number' && typeof y === 'number' ? [{ x, y, color: r.color, id: r.id, open: () => openSample(r.id), tip: [r.id, r.date, `${BC880}: ${fmt(x, 2)}`, `${EC_FTIR}: ${fmt(y, 2)}`] }] : []
-  }), [rows, openSample])
+  })
+  const points = useMemo(() => pointsOf(rows), [rows, openSample]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Filters → excluded: Mark (lib/markedRows): the Addis filters excluded in view, × only, in no refit
+  const marked = useMarkedPoints((rs) => pointsOf(rs.filter((r) => r.code === 'ETAD')), [openSample])
   return (
     <ChartFrame id="diurnal-ec-bc880" title="Addis · FTIR EC against MA350 BC at 880 nm — the FTIR axis is not where the offset lives"
       subtitle={`Each Addis filter in view with both: FTIR EC, and the MA350 IR BCc averaged over the filter's sampling window. ftir_28 found intercept +0.32 µg/m³ (95 % CI +0.01 to +0.63), R² 0.868, n = 173 on exact 9 am days, about 13× smaller than the −4.17 against HIPS and of the opposite sign. The fit here is the gallery's live refit of the points drawn, so dates, seasons and hand edits apply.`}
       provenance={`${NB} (the related positive result)`}>
-      {points.length >= 3 ? <Crossplot points={points} title="" xLabel="MA350 IR BCc, 880 nm (µg/m³)" yLabel="FTIR EC (µg/m³)" />
+      {points.length >= 3 ? <><Crossplot points={points} marked={marked} title="" xLabel="MA350 IR BCc, 880 nm (µg/m³)" yLabel="FTIR EC (µg/m³)" />
+        <ExcludedNote count={marked.length} drawn /></>
         : <Empty>Fewer than three Addis filters in view have both {EC_FTIR} and {BC880}.</Empty>}
     </ChartFrame>
   )

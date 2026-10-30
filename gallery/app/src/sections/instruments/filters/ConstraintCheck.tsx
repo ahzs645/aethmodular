@@ -6,6 +6,7 @@ import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { fmt } from '@/lib/format'
 import { useMac } from '@/lib/mac'
+import { ExcludedNote } from '@/lib/markedRows'
 import { networkColor } from '@/lib/networks'
 import { useSearchParam } from '@/lib/url'
 import { INK } from '@/lib/theme'
@@ -27,7 +28,11 @@ const ABS = ['HIPS', 'aeth'] as const
  * not, and its slope is far from the others wherever the intercept is large (Addis: ~28 Mm⁻¹). The
  * notebook drew EC against Fabs; here absorption is on y, so each MAC is a slope.
  */
-export function ConstraintCheck({ pairs, sites, ch, sigma }: { pairs: Pair[]; sites: PairSite[]; ch: Channel; sigma: number | null }) {
+export function ConstraintCheck({ pairs, marked = [], sites, ch, sigma }: {
+  pairs: Pair[]; sites: PairSite[]; ch: Channel; sigma: number | null
+  /** Filters → excluded: Mark, the excluded filters paired the same way (lib/markedRows): × on the crossplots, in no method */
+  marked?: Pair[]
+}) {
   const [abs, setAbs] = useSearchParam<(typeof ABS)[number]>('af.abs', 'HIPS', ABS)
   const yOf = (p: Pair) => (abs === 'HIPS' ? p.fabs : p.batn)
   const yLabel = abs === 'HIPS' ? 'HIPS Fabs (Mm⁻¹)' : `b_ATN ${ch} (Mm⁻¹)`
@@ -38,8 +43,8 @@ export function ConstraintCheck({ pairs, sites, ch, sigma }: { pairs: Pair[]; si
   const per = useMemo(() => sites.map((s) => {
     const own = pairs.filter((p) => p.site === s.name && p.ec !== null && yOf(p) !== null)
     const m = macMethods(own.map((p) => p.ec!), own.map((p) => yOf(p)!))
-    return { s, own, m }
-  }).filter((x): x is typeof x & { m: MacMethods } => x.m !== null), [pairs, sites, abs, ch]) // eslint-disable-line react-hooks/exhaustive-deps
+    return { s, own, m, markedOwn: marked.filter((p) => p.site === s.name && p.ec !== null && yOf(p) !== null) }
+  }).filter((x): x is typeof x & { m: MacMethods } => x.m !== null), [pairs, marked, sites, abs, ch]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const lines = (m: MacMethods): CrossLine[] => [
     ...METHODS.map((d, i) => ({ slope: d.slope(m), intercept: d.intercept(m), color: colourOf(i), label: d.label, dash: d.dash, method: 'ols' as const, stats: null })),
@@ -65,13 +70,14 @@ export function ConstraintCheck({ pairs, sites, ch, sigma }: { pairs: Pair[]; si
       controls={<Segmented label="Absorption" value={abs} options={ABS} onChange={setAbs} optionLabel={(k) => (k === 'HIPS' ? 'HIPS Fabs' : `b_ATN ${ch}`)} />}>
       {per.length === 0 ? <Empty>No site in view has three filters with FTIR EC and {yLabel}.</Empty> : <>
         <IntervalStrip blocks={blocks} panels={[{ label: 'MAC (m²/g)', reference: reference ?? undefined, marker: readerMac ? { value: readerMac, label: `MAC ${readerMac}` } : undefined, format: (v) => fmt(v, 1) }]} labelWidth={110} noteWidth={44} minPanelWidth={170} />
-        <FacetGrid items={per} minCell={280} maxCols={per.length > 1 ? 2 : 1} render={({ s, own, m }, w) => (
-          <Crossplot points={points(own, INK.muted)} title={`${s.name} · M3 intercept ${fmt(m.ols.intercept, 1)} Mm⁻¹`} xLabel="FTIR EC (µg/m³)" yLabel={yLabel}
+        <FacetGrid items={per} minCell={280} maxCols={per.length > 1 ? 2 : 1} render={({ s, own, m, markedOwn }, w) => (
+          <Crossplot points={points(own, INK.muted)} marked={points(markedOwn, INK.muted)} title={`${s.name} · M3 intercept ${fmt(m.ols.intercept, 1)} Mm⁻¹`} xLabel="FTIR EC (µg/m³)" yLabel={yLabel}
             maxSide={Math.min(420, Math.max(180, w - 80))} fit={false} sameScale={false} extraLines={lines(m)} />
         )} />
         <Key items={[...METHODS.map((d, i) => ({ label: d.label, color: colourOf(i), kind: d.dash ? 'dash' as const : 'line' as const })),
           ...(reference ? [{ label: abs === 'HIPS' ? 'MAC 10 m²/g' : `σ_ATN ${ch} = ${fmt(reference, 2)} m²/g`, color: INK.muted, kind: 'dash' as const }] : []),
           ...(readerMac ? [{ label: `MAC ${readerMac} m²/g (Filters → units)`, color: INK.accent, kind: 'dash' as const }] : [])]} />
+        <ExcludedNote count={per.reduce((a, x) => a + x.markedOwn.length, 0)} drawn />
         <Note>The notebook's verdict is about the intercept, not the fit: a positive M3 intercept is absorption that does not scale with EC
           (dust, brown carbon, a filter or loading artefact). M1 is pulled up by low-EC filters, whose ratios are the noisiest.</Note>
       </>}

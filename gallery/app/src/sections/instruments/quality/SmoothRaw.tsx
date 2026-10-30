@@ -10,6 +10,7 @@ import { useEstimator } from '@/lib/regressionPrefs'
 import { regression } from '@/lib/stats'
 import { INK, withUnit } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
+import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { DailyPanels, qLine, type PanelSpec } from './DailyPanels'
 import { CHANNELS, INSTRUMENTS, finite, instrumentColor, instrumentName, quantile, type Day, type QualityIndex } from './data'
@@ -78,6 +79,13 @@ export function SmoothRaw({ rows, meta, index }: { rows: FilterRow[]; meta: Meta
   const kept = pairs.filter((r) => level === 'all' || rowPct(r)! <= +level)
   const removed = pairs.filter((r) => !kept.includes(r))
   const points = kept.map((r) => crossPoint(r, AETH_IR, ref, instrumentColor(site, meta), 'Aethalometer smoothing threshold', meta))
+  // Filters → excluded: Mark (lib/markedRows): the excluded filters with both values, counted in no histogram or fit;
+  // on the crossplot, those the threshold would keep, as × (the threshold's own set-aside crosses are its own)
+  const markedPct = useMarkedRows().filter((r) => finite(rowPct(r)))
+  const markedSites = markedPct.filter((r) => sites.includes(r.code))
+  const markedPaired = markedSites.filter((r) => finite(r[ref] as number))
+  const markedPoints = markedPaired.filter((r) => r.code === site && (level === 'all' || rowPct(r)! <= +level))
+    .map((r) => crossPoint(r, AETH_IR, ref, instrumentColor(site, meta), 'Aethalometer smoothing threshold', meta))
   const xLabel = withUnit(AETH_IR, meta.field_units), yLabel = withUnit(ref, meta.field_units)
 
   return (<>
@@ -90,6 +98,7 @@ export function SmoothRaw({ rows, meta, index }: { rows: FilterRow[]; meta: Meta
           return <PctHistogram values={v} color={instrumentColor(code, meta)} width={cell} thresholds={thresholds}
             title={`${instrumentName(code, meta)} · ${v.length} filters, median ${fmt(quantile(v, 0.5), 2)} %`} />
         }} /> : <Empty>No filter in the current subset has both raw and smoothed IR BCc.</Empty>}
+      {sites.length > 0 && <ExcludedNote count={markedSites.length} />}
     </ChartFrame>
 
     <ChartFrame id="aq-smooth-sweep" title={`The fit as filters are set aside by their smoothing — r² and slope against ${REF_LABEL[ref]}`}
@@ -101,6 +110,7 @@ export function SmoothRaw({ rows, meta, index }: { rows: FilterRow[]; meta: Meta
           render={(k, cell) => <SweepPlot series={k === 'r2' ? sweep.r2 : sweep.slope} xScale="point" xLabel="Filters kept" yLabel={k === 'r2' ? 'r²' : 'Deming slope'}
             yDomain={k === 'r2' ? [0, 1] : undefined} reference={k === 'slope' ? 1 : undefined} include={k === 'slope' ? [0] : []} width={cell} height={230} onPoint={(s) => setSite(s.id)} />} />
         <Key items={sweep.r2.map((s) => ({ label: s.label, color: s.color, kind: 'line' as const }))} />
+        <ExcludedNote count={markedPaired.length} />
       </> : <Empty>No paired filters.</Empty>}
     </ChartFrame>
 
@@ -111,11 +121,12 @@ export function SmoothRaw({ rows, meta, index }: { rows: FilterRow[]; meta: Meta
         <Segmented label="Site" value={site} options={sites} onChange={setSite} optionLabel={(c) => instrumentName(c, meta)} />
         <Segmented label="Keep" value={level} options={levels} onChange={setLevel} optionLabel={(l) => (l === 'all' ? 'All' : `≤${l} %`)} />
       </>}>
-      {pairs.length ? <Crossplot points={points} title={`${kept.length} kept, ${removed.length} set aside`} xLabel={xLabel} yLabel={yLabel}
+      {pairs.length ? <Crossplot points={points} marked={markedPoints} title={`${kept.length} kept, ${removed.length} set aside`} xLabel={xLabel} yLabel={yLabel}
         domain={undefined} background={(x, y) => removed.map((r) => {
           const cx = x(r[AETH_IR] as number), cy = y(r[ref] as number)
           return <path key={r.id} d={`M${cx - 4} ${cy - 4}L${cx + 4} ${cy + 4}M${cx - 4} ${cy + 4}L${cx + 4} ${cy - 4}`} stroke={INK.muted} strokeWidth={1.6} strokeOpacity={0.7} />
         })} /> : <Empty>No paired filters at {instrumentName(site, meta)}.</Empty>}
+      {pairs.length > 0 && <ExcludedNote count={markedPoints.length} drawn />}
     </ChartFrame>
   </>)
 }

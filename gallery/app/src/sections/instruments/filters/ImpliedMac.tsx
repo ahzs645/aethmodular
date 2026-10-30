@@ -5,6 +5,7 @@ import { IntervalStrip, type IntervalBlock, type IntervalPanel } from '@/compone
 import { Key } from '@/components/Key'
 import { fmt } from '@/lib/format'
 import { useMac } from '@/lib/mac'
+import { ExcludedNote } from '@/lib/markedRows'
 import { seasonOnly, shortSeason } from '@/lib/seasons'
 import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
@@ -29,10 +30,13 @@ function summary(pairs: Pair[], d: (typeof MAC_DEFS)[number]) {
  * b_ATN over FTIR EC (ETAD_comprehensive §11–12's "IR Babs / FTIR EC"). Median and quartiles of the
  * per-filter ratios, with the ratio of the means beside it.
  */
-export function ImpliedMac({ pairs, meta, sites, ch, sigma, onSite }: {
+export function ImpliedMac({ pairs, marked = [], meta, sites, ch, sigma, onSite }: {
   pairs: Pair[]; meta: MetaFile; sites: PairSite[]; ch: Channel; sigma: number | null; onSite?: (code: string) => void
+  /** Filters → excluded: Mark, the excluded filters paired the same way (lib/markedRows): counted in the note only */
+  marked?: Pair[]
 }) {
   const one = sites.length === 1
+  const nMarked = marked.filter((p) => sites.some((s) => s.name === p.site) && MAC_DEFS.some((d) => macOf(d, p) !== null)).length
   const blocks = useMemo<IntervalBlock[]>(() => sites.map((s) => {
     const own = pairs.filter((p) => p.site === s.name)
     const groups: { key: string; label: string; full: string; color: string; ps: Pair[] }[] = [
@@ -69,7 +73,8 @@ export function ImpliedMac({ pairs, meta, sites, ch, sigma, onSite }: {
       {any ? <>
         <IntervalStrip blocks={blocks} panels={panels} labelWidth={110} noteWidth={44} minPanelWidth={170} />
         <Key items={[{ label: 'median, interquartile range', color: INK.muted, kind: 'dot' }, { label: 'ratio of the means', color: INK.muted, kind: 'diamond' }]} />
-      </> : <Empty>No site in view has at least {MIN_N} filters with both members of any pairing.</Empty>}
+        <ExcludedNote count={nMarked} />
+      </> :<Empty>No site in view has at least {MIN_N} filters with both members of any pairing.</Empty>}
     </ChartFrame>
   )
 }

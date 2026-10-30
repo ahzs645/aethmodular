@@ -9,6 +9,7 @@ import { coef, f2 } from '@/lib/format'
 import { FIT_STYLE, useRegressions } from '@/lib/regressionPrefs'
 import { INK, withUnit } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
+import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
 import type { FilterRow, MetaFile, PmfFile } from '@/lib/types'
 import { thresholdSweep, type AaePair, type AaeRegions } from './aae'
 import { NOTEBOOK, provenance } from './common'
@@ -36,17 +37,20 @@ export function ThresholdSweep({ rows, pmf, pair, regions }: { rows: FilterRow[]
   const { methods } = useRegressions()
   const { x: xf, y: yf } = METHOD_PAIRS[mp]
 
+  // Filters → excluded: Mark (lib/markedRows): the excluded filters the sweep would take, counted in no side's fit
+  const markedRows = useMarkedRows()
   const data = useMemo(() => {
     const scale = isPmf ? 100 : 1
-    const pairs = rows.flatMap((r) => {
+    const pairsOf = (rs: FilterRow[]) => rs.flatMap((r) => {
       const x = r[xf], y = r[yf], t = within.share(r)
       if (typeof x !== 'number' || typeof y !== 'number' || t == null) return []
       if (isPmf && only !== ALL && within.of(r) !== only) return []
       return [{ x, y, t: t * scale, r }]
     })
+    const pairs = pairsOf(rows), nMarked = pairsOf(markedRows).length
     const thresholds = isPmf ? Array.from({ length: 25 }, (_, k) => 26 + 2 * k) : Array.from({ length: 33 }, (_, k) => +(0.6 + 0.05 * k).toFixed(2))
-    return { pairs, steps: thresholdSweep(pairs, thresholds) }
-  }, [rows, xf, yf, within, isPmf, only])
+    return { pairs, nMarked, steps: thresholdSweep(pairs, thresholds) }
+  }, [rows, markedRows, xf, yf, within, isPmf, only])
 
   const tLabel = isPmf ? `Dominant share threshold (%, ${on.includes('GF') ? 'GF' : 'K_F'})` : `AAE ${pair} threshold`
   const side = (k: 'low' | 'high') => (k === 'low' ? `≤ threshold` : `> threshold`)
@@ -82,6 +86,7 @@ export function ThresholdSweep({ rows, pmf, pair, regions }: { rows: FilterRow[]
             include={p.key === 'r2' ? [0, 1] : p.key === 'n' ? [0] : []} chosen={p.key === 'slope' ? [] : chosen} xMarkers={markers} />
         )} />
         <Key items={[{ label: `≤ threshold`, color: LOW, kind: 'line' }, { label: `> threshold`, color: HIGH, kind: 'line' }, ...(isPmf ? [{ label: "the notebooks' thresholds", color: INK.text, kind: 'hollow' as const }] : [])]} />
+        <ExcludedNote count={data.nMarked} />
       </>}
     </ChartFrame>
   )
@@ -98,14 +103,18 @@ export function ResidualVsDominance({ rows, meta, pmf, pair, regions }: { rows: 
   const isPmf = on !== 'AAE class'
   const s = useSplit(pmf, on, pair, regions)
   const { x: xf, y: yf } = METHOD_PAIRS[mp]
-  const pts: CrossPoint[] = useMemo(() => rows.flatMap((r) => {
+  // Filters → excluded: Mark (lib/markedRows): the excluded filters in view, × only, in no fit
+  const markedRows = useMarkedRows()
+  const pointsOf = (rs: FilterRow[]): CrossPoint[] => rs.flatMap((r) => {
     const x = r[xf], y = r[yf], t = s.share(r), g = s.of(r)
     if (typeof x !== 'number' || typeof y !== 'number' || t == null) return []
     const tx = isPmf ? 100 * t : t
     return [{ x: tx, y: y - x, color: s.groups.find((q) => q.name === g)?.color ?? INK.neutral, id: r.id,
       tip: [r.id, `${r.site} · ${r.date}`, `${isPmf ? 'dominant share' : `AAE ${pair}`}: ${f2(tx)}`, `${yf} − ${xf}: ${f2(y - x)}`, `${g ?? '—'}`],
       rec: { id: r.id, source: `Aethalometer sources · residual vs ${on}`, site: r.site, date: r.date, fields: [[`${yf} − ${xf}`, +(y - x).toFixed(3)], [isPmf ? 'dominant share (%)' : `AAE ${pair}`, +tx.toFixed(2)], [on, g]] } }]
-  }), [rows, xf, yf, s, isPmf, pair, on])
+  })
+  const pts = useMemo(() => pointsOf(rows), [rows, xf, yf, s, isPmf, pair, on]) // eslint-disable-line react-hooks/exhaustive-deps
+  const marked = useMemo(() => pointsOf(markedRows), [markedRows, xf, yf, s, isPmf, pair, on]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <ChartFrame id="aeth-sources-residual"
       title={`Method difference against dominance — ${yf} − ${xf} per filter, against ${isPmf ? 'the dominant PMF share' : `AAE ${pair}`}`}
@@ -116,7 +125,8 @@ export function ResidualVsDominance({ rows, meta, pmf, pair, regions }: { rows: 
         <Select label="Against" value={on} options={[...SPLITS]} onChange={(v) => setOn(v as Split)} optionLabel={(o) => (o === 'AAE class' ? `AAE ${pair}` : o.replace('PMF dominant', 'PMF dominant share'))} />
       </>}>
       {pts.length < 3 ? <Empty>Too few filters in view with {xf}, {yf} and {isPmf ? 'a PMF day' : 'an AAE'}.</Empty>
-        : <Crossplot points={pts} title={`${yf} − ${xf}`} xLabel={isPmf ? 'Dominant share (%)' : `AAE ${pair}`} yLabel={`${mp.replace(' vs ', ' − ')} (${withUnit(yf, meta.field_units).slice(yf.length).replace(/[()]/g, '').trim() || 'units'})`} sameScale={false} grouping="pooled" maxSide={360} />}
+        : <><Crossplot points={pts} marked={marked} title={`${yf} − ${xf}`} xLabel={isPmf ? 'Dominant share (%)' : `AAE ${pair}`} yLabel={`${mp.replace(' vs ', ' − ')} (${withUnit(yf, meta.field_units).slice(yf.length).replace(/[()]/g, '').trim() || 'units'})`} sameScale={false} grouping="pooled" maxSide={360} />
+          <ExcludedNote count={marked.length} drawn /></>}
     </ChartFrame>
   )
 }

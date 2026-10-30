@@ -9,9 +9,10 @@ import { f2, pct } from '@/lib/format'
 import { seasonOfDate } from '@/lib/seasons'
 import { FONT, INK, inkOn } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
+import { ExcludedNote } from '@/lib/markedRows'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
-import { CLASSES, CLASS_COLOR, classShares, type AaePair, type AaeRegions, type ClassShares as Shares } from './aae'
+import { AAE_PAIRS, CLASSES, CLASS_COLOR, classShares, type AaePair, type AaeRegions, type ClassShares as Shares } from './aae'
 import { dailyAae, rowAae, type AaeFrom, type Basis } from './AaeValues'
 import { NOTEBOOK, provenance } from './common'
 import { siteOf, type DailySite } from './data'
@@ -91,6 +92,8 @@ export function ClassShares({ rows, meta, daily, pair, basis, regions }: {
             </g>
           </svg>
           <Key items={CLASSES.map((c) => ({ label: c, color: CLASS_COLOR[c], kind: 'square' as const }))} />
+          {/* Filters → excluded: Mark (lib/markedRows): on the filter windows, the excluded filters with an AAE are in no share; the daily bins are not filters */}
+          {basis === 'Filter windows' && <ExcludedNote fields={[AAE_PAIRS[pair].field]} />}
         </>}
         {tip.node}
       </div>

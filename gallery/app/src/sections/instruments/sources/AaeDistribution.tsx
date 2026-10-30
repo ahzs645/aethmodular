@@ -5,6 +5,7 @@ import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { f2, pct } from '@/lib/format'
 import { densities } from '@/lib/table'
 import { useSearchParam } from '@/lib/url'
+import { ExcludedNote } from '@/lib/markedRows'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { AAE_PAIRS, CLASSES, MA350_NM, bccOffset, classShares, ma350Ratio, type AaePair, type AaeRegions } from './aae'
 import { dailyAae, rowAae, type AaeFrom, type Basis } from './AaeValues'
@@ -71,6 +72,8 @@ export function AaeDistribution({ rows, meta, daily, pair, basis, regions }: {
           {odd.map((o) => `${o.s.name}: ${pct(o.low / o.s.values.length)} of ${unit} below 0 and ${pct(o.high / o.s.values.length)} above 3`).join('; ')}
           {odd.length > 0 && '. An AAE outside 0 to 3 is not ambient absorption (black carbon sits near 1, brown carbon up to about 3); such bins are more likely noise in a channel than aerosol, and they swell the fossil and biomass shares at both ends. Read those sites’ classes as a spread, not a census.'}
         </p>}
+        {/* Filters → excluded: Mark (lib/markedRows): on the filter windows, the excluded filters with an AAE are in no curve or share; the daily bins are not filters */}
+        {basis === 'Filter windows' && <ExcludedNote fields={[AAE_PAIRS[pair].field]} />}
       </>}
     </ChartFrame>
   )

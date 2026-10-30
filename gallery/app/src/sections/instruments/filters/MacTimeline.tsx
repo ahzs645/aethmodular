@@ -5,12 +5,14 @@ import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { fmt } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { useHighlightActions } from '@/lib/highlight'
+import { ExcludedNote } from '@/lib/markedRows'
 import { seasonOnly } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
 import { FONT, INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { MAC_DEFS, macMarker, dateDomain, dateTicks, macOf, seasonColor, seasonsIn, type Channel, type MacKey, type Pair, type PairSite } from './data'
 import { iqrFences, seasonRuns } from './mac'
+import { SweepMarks } from '../sweepMarks'
 
 const GAP_DAYS = 60, MIN_RUN = 5
 
@@ -20,7 +22,11 @@ const GAP_DAYS = 60, MIN_RUN = 5
  * apart, runs of at least 5 averaged and labelled. The notebooks dropped IQR outliers first; here they
  * stay on the chart, hollow, and are left out of the averages.
  */
-export function MacTimeline({ pairs, meta, sites, ch, sigma }: { pairs: Pair[]; meta: MetaFile; sites: PairSite[]; ch: Channel; sigma: number | null }) {
+export function MacTimeline({ pairs, marked = [], meta, sites, ch, sigma }: {
+  pairs: Pair[]; meta: MetaFile; sites: PairSite[]; ch: Channel; sigma: number | null
+  /** Filters → excluded: Mark, the excluded filters paired the same way (lib/markedRows): ×, in no fence or run mean */
+  marked?: Pair[]
+}) {
   const [key, setKey] = useSearchParam<MacKey>('af.mac', 'hipsOverEc', MAC_DEFS.map((d) => d.key))
   const def = MAC_DEFS.find((d) => d.key === key)!
   const hl = useHighlightActions()
@@ -36,8 +42,9 @@ export function MacTimeline({ pairs, meta, sites, ch, sigma }: { pairs: Pair[]; 
         tip: [`${q.p.id} · ${q.p.date}`, `${def.label}: ${fmt(q.v, 2)} m²/g`, seasonOnly(se), 'click to open the filter'] })),
     }))
     const outliers = pts.filter((q) => isOut(q.v))
-    return { s, n: pts.length, series, runs, outliers, fences, ticks: dateTicks(pts.map((q) => q.p.date)), xDomain: dateDomain(pts.map((q) => q.p.date)) }
-  }).filter((x) => x.n > 0), [pairs, meta, sites, def])
+    const marks = marked.filter((p) => p.site === s.name).flatMap((p) => { const v = macOf(def, p); return v === null ? [] : [{ x: new Date(p.date), y: v }] })
+    return { s, n: pts.length, series, runs, outliers, marks, fences, ticks: dateTicks(pts.map((q) => q.p.date)), xDomain: dateDomain(pts.map((q) => q.p.date)) }
+  }).filter((x) => x.n > 0), [pairs, marked, meta, sites, def])
 
   const reference = def.reference(sigma ?? NaN)
   const { mac } = useMac()
@@ -48,13 +55,14 @@ export function MacTimeline({ pairs, meta, sites, ch, sigma }: { pairs: Pair[]; 
       provenance="AAARpos.ipynb (MAC time series by season, instance averages) · ETAD_Aug13.ipynb §9.6 · ETAD_comprehensive_absorption_analysis.ipynb §10.5–11 (aethalometer MAC with seasonal instance averages)"
       controls={<Segmented label="MAC" value={key} options={MAC_DEFS.map((d) => d.key)} onChange={setKey}
         optionLabel={(k) => { const d = MAC_DEFS.find((x) => x.key === k)!; return k === 'hipsOverEc' ? d.short : k === 'hipsOverBc' ? `HIPS ÷ ${ch} BC` : `b_ATN ${ch} ÷ EC` }} />}>
-      {per.length === 0 ? <Empty>No filter in view has both members of {def.label}.</Empty> : per.map(({ s, series, runs, outliers, ticks, xDomain }) => (
+      {per.length === 0 ? <Empty>No filter in view has both members of {def.label}.</Empty> : per.map(({ s, series, runs, outliers, marks, ticks, xDomain }) => (
         <div key={s.code}>
           <SweepPlot series={series} xScale="time" xDomain={xDomain} xFormat={ticks} yLabel={`${def.short} (m²/g)`} height={260} reference={Number.isFinite(reference) ? reference : undefined}
             yMarkers={readerMac ? [{ at: readerMac.value, label: readerMac.label, color: INK.accent }] : undefined}
             title={sites.length > 1 ? s.name : undefined}
             onPoint={(_, pt) => pt.id && hl.openSample(pt.id)}
             children={({ x, y }) => <g>
+              <SweepMarks marks={marks} x={x} y={y} />
               {/* outliers do not stretch the axis: one beyond it sits on the edge */}
               {outliers.map((q) => {
                 const [a, b] = y.domain(), v = Math.min(Math.max(q.v, Math.min(a, b)), Math.max(a, b))
@@ -72,6 +80,7 @@ export function MacTimeline({ pairs, meta, sites, ch, sigma }: { pairs: Pair[]; 
           {outliers.length > 0 && <Note>{s.name}: {outliers.length} filter{outliers.length > 1 ? 's' : ''} outside 1.5 × IQR ({outliers.map((q) => `${q.p.date} ${fmt(q.v, 1)}`).join(', ')}), drawn hollow (on the axis edge when beyond it) and left out of the averages.</Note>}
         </div>
       ))}
+      <ExcludedNote count={per.reduce((a, x) => a + x.marks.length, 0)} drawn />
       <Key items={[...meta.seasons.filter((se) => pairs.some((p) => p.season === se.name)).map((se) => ({ label: seasonOnly(se.name), color: se.color })),
         { label: 'season run mean', color: INK.muted, kind: 'diamond' }, { label: 'outside 1.5 × IQR', color: INK.muted, kind: 'hollow' }]} />
     </ChartFrame>

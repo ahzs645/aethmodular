@@ -6,9 +6,11 @@ import { fmt } from '@/lib/format'
 import { pearson, splitAtGaps } from '@/lib/stats'
 import { INK } from '@/lib/theme'
 import { useHighlightActions } from '@/lib/highlight'
+import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { finite, instrumentName, localDate, PERIOD_COLOR, PERIOD_LABEL, periodOf, ratio, type Period, type QualityIndex } from './data'
 import { AETH_IR } from './FlowFixCompare'
+import { SweepMarks, type SweepMark } from '../sweepMarks'
 
 
 const HIPS = 'HIPS BC', FTIR = 'EC (FTIR)'
@@ -39,17 +41,19 @@ export function AgreementOverTime({ code, rows, meta, index }: { code: string; r
   const hl = useHighlightActions()
   const periods = index.flow_periods[code]
   const site = useMemo(() => rows.filter((r) => r.code === code).sort((a, b) => a.date.localeCompare(b.date)), [rows, code])
+  // Filters → excluded: Mark (lib/markedRows): this instrument's excluded filters, × on the ratio panels, in no rolling line
+  const markedAll = useMarkedRows()
+  const markedSite = useMemo(() => markedAll.filter((r) => r.code === code), [markedAll, code])
+  const ratioOk = (r: FilterRow, num: string, den: string) => { const v = ratio(r[num] as number, r[den] as number); return finite(v) && (r[den] as number) > 0.01 ? v : null }
+  const ratioMarks = (num: string, den: string): SweepMark[] => markedSite.flatMap((r) => { const v = ratioOk(r, num, den); return v === null ? [] : [{ x: localDate(r.date), y: v }] })
   const markers: SweepMarker[] = [
     ...(periods?.before_end ? [{ at: localDate(periods.before_end), label: 'before ends', color: PERIOD_COLOR.before, labelSide: 'left' as const }] : []),
     ...(periods?.after_start ? [{ at: localDate(periods.after_start), label: 'after starts', color: PERIOD_COLOR.after }] : []),
   ]
   const xDomain = site.length ? [localDate(site[0].date), localDate(site[site.length - 1].date)] as [Date, Date] : undefined
   const ratioSeries = (num: string, den: string): SweepSeries[] => {
-    const pts = site.flatMap((r) => {
-      const v = ratio(r[num] as number, r[den] as number)
-      // the explorer drops denominators under 0.01 µg/m³
-      return finite(v) && (r[den] as number) > 0.01 ? [{ r, t: localDate(r.date), v }] : []
-    })
+    // the explorer drops denominators under 0.01 µg/m³
+    const pts = site.flatMap((r) => { const v = ratioOk(r, num, den); return v === null ? [] : [{ r, t: localDate(r.date), v }] })
     const byPeriod = new Map<Period, typeof pts>()
     for (const p of pts) { const k = periodOf(p.r.date, periods); byPeriod.set(k, [...(byPeriod.get(k) ?? []), p]) }
     const roll = trailing(pts.map((p) => ({ t: p.t, v: p.v })), 30, 3, mean)
@@ -63,10 +67,10 @@ export function AgreementOverTime({ code, rows, meta, index }: { code: string; r
     const pts = site.filter((r) => finite(r[AETH_IR] as number) && finite(r[HIPS] as number)).map((r) => ({ t: localDate(r.date), v: [r[AETH_IR] as number, r[HIPS] as number] as [number, number] }))
     return trailing(pts, 60, 5, (vs) => pearson(vs.map((p) => p[0]), vs.map((p) => p[1])))
   }, [site])
-  const panels: { key: string; y: string; series: SweepSeries[]; reference?: number; yDomain?: [number, number]; markers?: { at: number; label: string }[] }[] = [
-    { key: 'aeth-hips', y: 'IR BCc / HIPS BC', series: ratioSeries(AETH_IR, HIPS), reference: 1 },
-    { key: 'aeth-ftir', y: 'IR BCc / FTIR EC', series: ratioSeries(AETH_IR, FTIR), reference: 1 },
-    { key: 'hips-ftir', y: 'HIPS BC / FTIR EC', series: ratioSeries(HIPS, FTIR), reference: 1 },
+  const panels: { key: string; y: string; series: SweepSeries[]; marks?: SweepMark[]; reference?: number; yDomain?: [number, number]; markers?: { at: number; label: string }[] }[] = [
+    { key: 'aeth-hips', y: 'IR BCc / HIPS BC', series: ratioSeries(AETH_IR, HIPS), marks: ratioMarks(AETH_IR, HIPS), reference: 1 },
+    { key: 'aeth-ftir', y: 'IR BCc / FTIR EC', series: ratioSeries(AETH_IR, FTIR), marks: ratioMarks(AETH_IR, FTIR), reference: 1 },
+    { key: 'hips-ftir', y: 'HIPS BC / FTIR EC', series: ratioSeries(HIPS, FTIR), marks: ratioMarks(HIPS, FTIR), reference: 1 },
     { key: 'r', y: '60-day r with HIPS', yDomain: [-0.2, 1.05], markers: [{ at: 0.8, label: 'r = 0.8' }, { at: 0.5, label: 'r = 0.5' }],
       series: lines('r', '60-day rolling r', '#2ca02c', corr) },
   ]
@@ -77,7 +81,9 @@ export function AgreementOverTime({ code, rows, meta, index }: { code: string; r
       provenance="flow_fix_explorer (plot_stacked_timeseries, plot_rolling_correlation, plot_ratio_timeseries) · FTIR EC is a spectral prediction">
       {!site.length ? <Empty>No filters from {instrumentName(code, meta)} in the current subset.</Empty> : <>
         {shown.map((p) => <SweepPlot key={p.key} series={p.series} onPoint={(_, pt) => pt.id && hl.openSample(pt.id)} xScale="time" xDomain={xDomain} yLabel={p.y} reference={p.reference} yDomain={p.yDomain}
-          yClip={p.yDomain ? undefined : [0.02, 0.98]} xMarkers={markers} yMarkers={p.markers} height={170} />)}
+          yClip={p.yDomain ? undefined : [0.02, 0.98]} xMarkers={markers} yMarkers={p.markers} height={170}
+          children={p.marks?.length ? ({ x, y }) => <SweepMarks marks={p.marks!} x={x} y={y} /> : undefined} />)}
+        <ExcludedNote count={markedSite.filter((r) => [[AETH_IR, HIPS], [AETH_IR, FTIR], [HIPS, FTIR]].some(([a, b]) => ratioOk(r, a, b) !== null)).length} drawn />
         <Key items={[...new Set(site.map((r) => periodOf(r.date, periods)))].map((k): KeyItem => ({ label: PERIOD_LABEL[k], color: PERIOD_COLOR[k] }))
           .concat([{ label: '30-day rolling mean', color: INK.text, kind: 'line' as const }, { label: '60-day rolling r', color: '#2ca02c', kind: 'line' as const }])} />
       </>}

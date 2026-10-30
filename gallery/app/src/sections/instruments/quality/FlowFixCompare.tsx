@@ -8,6 +8,7 @@ import { regression } from '@/lib/stats'
 import { useEstimator, type Estimator } from '@/lib/regressionPrefs'
 import { withUnit } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
+import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { finite, instrumentColor, instrumentName, PERIOD_COLOR, PERIOD_LABEL, periodOf, type Period, type QualityIndex } from './data'
 
@@ -49,6 +50,11 @@ export function FlowFixCompare({ rows, meta, index }: { rows: FilterRow[]; meta:
     return ORDER.filter((k) => out.has(k)).map((k) => ({ k, rows: out.get(k)! }))
   }, [paired, site, index])
   const sets = byPeriod.map(({ k, rows: rs }) => rs.map((r) => crossPoint(r, AETH_IR, ref, PERIOD_COLOR[k], 'Aethalometer flow fix', meta)))
+  // Filters → excluded: Mark (lib/markedRows): the excluded filters with both values, × in their period's panel, in no fit or strip
+  const markedPaired = useMarkedRows().filter((r) => finite(r[AETH_IR] as number) && finite(r[ref] as number))
+  const markedSets = byPeriod.map(({ k }) => markedPaired.filter((r) => r.code === site && periodOf(r.date, index.flow_periods[site]) === k)
+    .map((r) => crossPoint(r, AETH_IR, ref, PERIOD_COLOR[k], 'Aethalometer flow fix', meta)))
+  const atStrip = new Set(Object.keys(index.sites).filter((c) => c in index.flow_periods))
   const dom = sharedCrossDomains(sets)
 
   const blocks = useMemo<IntervalBlock[]>(() => Object.keys(index.sites).filter((c) => c in index.flow_periods).map((code) => {
@@ -83,9 +89,10 @@ export function FlowFixCompare({ rows, meta, index }: { rows: FilterRow[]; meta:
         <Segmented label="Against" value={ref} options={[...REFERENCES]} onChange={setRef} optionLabel={(c) => REF_LABEL[c]} />
       </>}>
       {byPeriod.length ? <FacetGrid items={byPeriod} minCell={300} maxCols={3}
-        render={({ k }, cell, i) => <Crossplot points={sets[i]} title={`${PERIOD_LABEL[k]} · ${sets[i].length} filters`} xLabel={xLabel} yLabel={yLabel}
+        render={({ k }, cell, i) => <Crossplot points={sets[i]} marked={markedSets[i]} title={`${PERIOD_LABEL[k]} · ${sets[i].length} filters`} xLabel={xLabel} yLabel={yLabel}
           maxSide={Math.min(360, cell - 80)} domain={dom.domain} />} />
         : <Empty>No filter at {instrumentName(site, meta)} has both IR BCc and {REF_LABEL[ref]} in the current subset.</Empty>}
+      {byPeriod.length > 0 && <ExcludedNote count={markedSets.reduce((a, m) => a + m.length, 0)} drawn />}
     </ChartFrame>
     <ChartFrame id="aq-flowfix-summary" title={`Slope and r² by flow period — every site, the aethalometer against ${REF_LABEL[ref]}`}
       subtitle={`The fit of ${REF_LABEL[ref]} on IR BCc per site and flow period (Deming slope with error ratio 1, r² of the pairs), the notebook's R² and slope bars on one strip. Click a row to draw that site above. A slope nearer 1 is not by itself agreement: the intercept, the MAC and the sampling overlap matter too.`}
@@ -93,6 +100,7 @@ export function FlowFixCompare({ rows, meta, index }: { rows: FilterRow[]; meta:
       {blocks.length ? <IntervalStrip blocks={blocks} labelWidth={150} noteWidth={48} minPanelWidth={220}
         panels={[{ label: 'Deming slope', reference: 1, format: (v) => v.toFixed(2) }, { label: 'r²', domain: [0, 1], format: (v) => v.toFixed(1) }]} />
         : <Empty>No paired filters in the current subset.</Empty>}
+      {blocks.length > 0 && <ExcludedNote count={markedPaired.filter((r) => atStrip.has(r.code)).length} />}
     </ChartFrame>
   </>)
 }

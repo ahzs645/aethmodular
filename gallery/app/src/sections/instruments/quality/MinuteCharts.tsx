@@ -14,6 +14,7 @@ import { useColourScheme } from '@/lib/colourSchemes'
 import { fmt, pct } from '@/lib/format'
 import { FONT, INK, themed } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
+import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { finite, localDate, quantile } from './data'
 import { CHANNEL_COLOR } from './DualSpot'
@@ -332,6 +333,9 @@ export function MinuteWindows({ sites, names, meta, rows }: { sites: Record<stri
   const [alt, setAlt] = useSearchParam<string>('aq.minwin', 'tolerant', [...WINDOW_ALTS])
   const [ch, setCh] = useSearchParam<string>('aq.minwinch', 'IR', ['IR', 'Red'])
   const inView = useMemo(() => new Set(rows.map((r) => r.id)), [rows])
+  // Filters → excluded: Mark (lib/markedRows): the excluded filters in view, × on the crossplot, in no strip statistic
+  const markedAll = useMarkedRows()
+  const markedIds = useMemo(() => new Set(markedAll.map((r) => r.id)), [markedAll])
   const blocks: IntervalBlock[] = Object.entries(sites).map(([code, s]) => {
     const w = s.windows
     return {
@@ -348,13 +352,14 @@ export function MinuteWindows({ sites, names, meta, rows }: { sites: Record<stri
       }),
     }
   })
-  const points: CrossPoint[] = Object.entries(sites).flatMap(([code, s]) => s.windows.id.flatMap((id, i) => {
+  const pointsOf = (ids: Set<string>): CrossPoint[] => Object.entries(sites).flatMap(([code, s]) => s.windows.id.flatMap((id, i) => {
     const x = s.windows[`${ch}_9am`][i], y = s.windows[`${ch}_${alt}`][i]
-    if (!inView.has(id) || !finite(x) || !finite(y)) return []
+    if (!ids.has(id) || !finite(x) || !finite(y)) return []
     const color = code === 'USPA' ? meta.sites.find((m) => m.code === 'USPA')?.color ?? INK.accent : meta.sites.find((m) => m.code === 'ETAD')?.color ?? INK.warn
     return [{ x, y, color, id, tip: [id, s.windows.date[i], `${ch} BCc, 9am day ${fmt(x, 2)} · ${ALT_LABEL[alt]} ${fmt(y, 2)} µg/m³`, `window ${fmt(s.windows.hours[i], 1)} h`],
       rec: { id, source: 'Aethalometer matching window', date: s.windows.date[i], fields: [[`${ch} BCc, 9am day (µg/m³)`, x], [`${ch} BCc, ${ALT_LABEL[alt]} (µg/m³)`, y]] } }]
   }))
+  const points = pointsOf(inView), marked = markedIds.size ? pointsOf(markedIds) : []
   return (
     <ChartFrame id="aq-min-windows" title="Which day is the filter's day? — the 9am day against the calendar day, the ±1-day mean and the sampling window"
       subtitle={`On every filter of the current subset that falls inside a minute record (Addis filters on the Addis record, JPL filters on Pasadena): ${ch} BCc over the 9am day starting on the filter's start date, the calendar day, the mean of the 9am days either side (data_matching's legacy ±1-day match), and the filter's own sampling window (gallery weather export; at least half its minutes). Day means need 720 minutes. Where a filter's window runs 09:00 to 09:00 (most Addis filters) it is the 9am day itself. The strip is each alternative against the 9am day in percent (thick IQR, thin 2.5–97.5 %); the crossplot draws one alternative against it.`}
@@ -364,8 +369,9 @@ export function MinuteWindows({ sites, names, meta, rows }: { sites: Record<stri
         <Segmented label="Against the 9am day" value={alt} options={[...WINDOW_ALTS]} onChange={setAlt} optionLabel={(a) => ALT_LABEL[a]} />
       </>}>
       <IntervalStrip blocks={blocks} labelWidth={190} noteWidth={56} minPanelWidth={260} panels={[{ label: 'alternative − 9am day (% of the 9am day)', reference: 0, format: (v) => v.toFixed(0) }]} />
-      {points.length ? <Crossplot points={points} title={`${points.length} filters`} xLabel={`${ch} BCc, 9am day (µg/m³)`} yLabel={`${ch} BCc, ${ALT_LABEL[alt]} (µg/m³)`} maxSide={340} fit={false} />
+      {points.length ? <Crossplot points={points} marked={marked} title={`${points.length} filters`} xLabel={`${ch} BCc, 9am day (µg/m³)`} yLabel={`${ch} BCc, ${ALT_LABEL[alt]} (µg/m³)`} maxSide={340} fit={false} />
         : <Empty>No filter in the current subset falls inside a minute record (pick Addis Ababa or JPL in the Filters panel).</Empty>}
+      <ExcludedNote count={marked.length} drawn={points.length > 0} />
     </ChartFrame>
   )
 }

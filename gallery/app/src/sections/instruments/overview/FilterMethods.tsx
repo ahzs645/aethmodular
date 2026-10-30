@@ -6,6 +6,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { fmt, signed } from '@/lib/format'
 import { INK } from '@/lib/theme'
 import { seasonOnly } from '@/lib/seasons'
+import { ExcludedNote } from '@/lib/markedRows'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
@@ -74,6 +75,8 @@ export function FilterMethods({ s, meta }: { s: Series; meta: MetaFile }) {
           : <IntervalStrip blocks={weekBlocks} panels={[{ label: 'µg/m³', heading: 'Filters' }, { label: 'Weekend − weekdays (% of weekday mean)', reference: 0, heading: 'Weekend effect', format: (v) => `${v > 0 ? '+' : ''}${Math.round(v)}` }]}
             labelWidth={150} rowHeight={17} noteWidth={74} minPanelWidth={220} />}
         <Key items={FILTER_METHODS.map((m) => ({ label: m.label, color: m.color, kind: view === 'month' ? 'line' as const : 'dot' as const }))} />
+        {/* Filters → excluded: Mark (lib/markedRows): the site's excluded filters with any of the three, counted here only */}
+        <ExcludedNote of={(r) => r.site === s.inst.site && FILTER_METHODS.some((m) => val(r, m.field) !== null)} />
       </div>
     </ChartFrame>
   )

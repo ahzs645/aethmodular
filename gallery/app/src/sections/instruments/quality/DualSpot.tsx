@@ -4,6 +4,7 @@ import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { fmt } from '@/lib/format'
 import { INK, themed } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
+import { ExcludedNote } from '@/lib/markedRows'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { DailyPanels, qLine, type PanelSpec } from './DailyPanels'
 import { BROWN, CHANNELS, finite, instrumentColor, instrumentName, PURPLE, quantile, ratio, type Channel, type Day, type QualityIndex } from './data'
@@ -127,6 +128,8 @@ export function WindowEffect({ all, rows, meta }: { all: Record<string, Day[]>; 
       {blocks[0].rows.length ? <IntervalStrip blocks={blocks} labelWidth={130} noteWidth={56} minPanelWidth={260}
         panels={[{ label: '±1-day mean − single bin (% of the single bin)', reference: 0, format: (v) => v.toFixed(0) }]} />
         : <Empty>No filter dates in the current subset fall on a bin with IR BCc.</Empty>}
+      {/* Filters → excluded: Mark (lib/markedRows): the excluded filters' dates are not among those counted */}
+      {blocks[0].rows.length > 0 && <ExcludedNote of={(r) => r.code in all} />}
     </ChartFrame>
   )
 }

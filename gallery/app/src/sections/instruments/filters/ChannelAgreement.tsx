@@ -5,6 +5,7 @@ import { IntervalStrip, type IntervalBlock, type IntervalPanel } from '@/compone
 import { Key } from '@/components/Key'
 import { fmt } from '@/lib/format'
 import { useMac } from '@/lib/mac'
+import { ExcludedNote } from '@/lib/markedRows'
 import { pearson } from '@/lib/stats'
 import { INK } from '@/lib/theme'
 import type { FilterRow } from '@/lib/types'
@@ -33,6 +34,9 @@ export function ChannelAgreement({ rows, sites, extra, wavelengths, ch, onChanne
 }) {
   const { mac } = useMac()
   const one = sites.length === 1
+  // Filters → excluded: Mark (lib/markedRows): these sites' excluded filters with a channel and HIPS or FTIR EC, counted in the note only
+  const markedOf = (r: FilterRow) => sites.some((s) => s.name === r.site) && CHANNELS.some((c) => num(r[bccField(c)]) !== null)
+    && (num(r[HIPS_FABS]) !== null || num(r[FTIR_EC]) !== null)
   const hasAtn = extra.size > 0
   const blocks = useMemo<IntervalBlock[]>(() => sites.map((s) => {
     const own = rows.filter((r) => r.site === s.name)
@@ -77,6 +81,7 @@ export function ChannelAgreement({ rows, sites, extra, wavelengths, ch, onChanne
       {any ? <>
         <IntervalStrip blocks={blocks} panels={panels} labelWidth={130} noteWidth={44} minPanelWidth={160} />
         <Key items={[{ label: 'BCc', color: INK.muted, kind: 'dot' }, ...(hasAtn ? [{ label: 'ATN1 (spot attenuation)', color: INK.muted, kind: 'hollow' as const }] : [])]} />
+        <ExcludedNote of={markedOf} />
         <Note>
           The notebook put HIPS at 405 nm and expected UV or Blue to match best; HIPS is a He–Ne reading at 633 nm
           (docs/filter-optics-reference.md). ATN is the loading of the current tape spot: it climbs as the spot darkens

@@ -36,7 +36,8 @@ export function FilterComparison({ rows, meta, picked, onPick, field, axes, setF
   // the aethalometer's own counts per filter (overlap hours), for the header
   const fields = useAethFields(codes)
   const pairs = usePairs(rows, meta, extra, ch, smoothed)
-  // Filters → excluded: Mark (lib/markedRows): these sites' excluded filters, paired the same way, drawn as × only
+  // Filters → excluded: Mark (lib/markedRows): these sites' excluded filters, paired the same way: × on the point
+  // charts, a count under the summaries, never in a fit, median or count
   const markedAll = useMarkedRows()
   const markedRows = useMemo(() => markedAll.filter((r) => codes.includes(r.code)), [markedAll, codes])
   const markedPairs = usePairs(markedRows, meta, extra, ch, smoothed)
@@ -89,13 +90,13 @@ export function FilterComparison({ rows, meta, picked, onPick, field, axes, setF
             title="Put the Filters panel's pick back to the sites you were comparing">← Back to comparing {previous.length} sites</button>}
         </div>
       </div>
-      <ImpliedMac pairs={pairs} meta={meta} sites={sites} ch={ch} sigma={sigma} onSite={onPick && !one ? openSite : undefined} />
+      <ImpliedMac pairs={pairs} marked={markedPairs} meta={meta} sites={sites} ch={ch} sigma={sigma} onSite={onPick && !one ? openSite : undefined} />
       <MethodAgreement pairs={pairs} marked={markedPairs} meta={meta} sites={sites} ch={ch} />
       <ChannelAgreement rows={rows} sites={sites} extra={extra.values} wavelengths={wavelengths} ch={ch} onChannel={setCh} />
-      <MacTimeline pairs={pairs} meta={meta} sites={sites} ch={ch} sigma={sigma} />
-      <ConstraintCheck pairs={pairs} sites={sites} ch={ch} sigma={sigma} />
-      <IronTest pairs={pairs} meta={meta} sites={sites} ch={ch} sigma={sigma} />
-      <AgreementTimeline pairs={pairs} sites={sites} ch={ch} />
+      <MacTimeline pairs={pairs} marked={markedPairs} meta={meta} sites={sites} ch={ch} sigma={sigma} />
+      <ConstraintCheck pairs={pairs} marked={markedPairs} sites={sites} ch={ch} sigma={sigma} />
+      <IronTest pairs={pairs} marked={markedPairs} meta={meta} sites={sites} ch={ch} sigma={sigma} />
+      <AgreementTimeline pairs={pairs} marked={markedPairs} sites={sites} ch={ch} />
       <AxisFieldsProvider meta={meta} value={axisValue} set={setAxis}>
         <Scatterplot rows={scatterRows} meta={meta} xField={xField} yField={field} axes={{ ...axes, identity: false, mode: 'Data' }}
           id="aeth-filters-scatter" title={`${field} against ${xField} — any pair, per site (click an axis title to change it)`} />

@@ -3,6 +3,7 @@ import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/format'
+import { ExcludedNote } from '@/lib/markedRows'
 import { FONT, INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { SCREEN_TEXT, filterField, instColor, type Screen, type Series } from './data'
@@ -56,6 +57,8 @@ export function SiteTable({ series, meta, screen, onSite }: { series: Series[]; 
             ))}
           </svg>
         )}
+        {/* Filters → excluded: Mark (lib/markedRows): the filter columns count the filters in view; the excluded ones at these sites are not in them */}
+        <ExcludedNote of={(r) => series.some((s) => s.inst.site === r.site)} />
         {tip.node}
       </div>
     </ChartFrame>
