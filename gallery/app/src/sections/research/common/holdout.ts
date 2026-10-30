@@ -23,6 +23,12 @@ export const holdoutFabs = (r: Row, fabs: HoldoutFabs | null | undefined): numbe
   return id == null ? null : fabs?.rows[String(Math.round(id))]?.fabs ?? null
 }
 
+/** a per-filter row's SPARTAN filter id (ETAD-0313-1), by which Filters → excluded joins it; null when unknown */
+export const holdoutFilterId = (r: Row, fabs: HoldoutFabs | null | undefined): string | null => {
+  const id = num(r.ExternalFilterId)
+  return id == null ? null : fabs?.rows[String(Math.round(id))]?.filter ?? null
+}
+
 /**
  * ftir_39's per-filter rows with `residual_ugm3` and `abs_error_ugm3` against Fabs/`mac` (the notebook's are against
  * Fabs/`from`). Null when any filter has no Fabs: a panel mixing MACs would be worse than one left at the notebook's.
@@ -48,9 +54,10 @@ export const domainPercentile = (r: Row): number | null => {
 const rmse = (v: number[]) => (v.length ? Math.sqrt(v.reduce((s, x) => s + x * x, 0) / v.length) : null)
 
 /**
- * ftir_39's domain summary rebuilt from per-filter rows, over each saved summary row (its other columns kept):
- * RMSE of the residuals inside and outside the source 95 %, and Spearman ρ (with its t-test p) of the domain
- * percentile against |error|. At the notebook's MAC this reproduces the saved table.
+ * ftir_39's domain summary rebuilt from per-filter rows, over each saved summary row (its other columns kept): n, the
+ * percent outside the source 95 %, RMSE of the residuals inside and outside it, and Spearman ρ (with its t-test p)
+ * of the domain percentile against |error|. At the notebook's MAC, on its filters, this reproduces the saved table;
+ * on fewer (Filters → excluded) it is the same summary of those that count.
  */
 export function domainSummaryFrom(perFilter: readonly Row[], summary: readonly Row[]): Row[] {
   return summary.map((s) => {
@@ -59,7 +66,8 @@ export function domainSummaryFrom(perFilter: readonly Row[], summary: readonly R
     const outside = g.filter((r) => r.outside_source_95 === true).map((r) => num(r.residual_ugm3)!)
     const pairs = g.map((r) => [domainPercentile(r), num(r.abs_error_ugm3)] as const).filter((p): p is readonly [number, number] => p[0] != null && p[1] != null)
     const rho = spearman(pairs.map((p) => p[0]), pairs.map((p) => p[1]))
-    return { ...s, RMSE_inside: rmse(inside), RMSE_outside: rmse(outside), rho_domain_percentile_vs_abs_error: rho,
+    return { ...s, n: g.length, outside_source_95_pct: g.length ? (100 * outside.length) / g.length : null,
+      RMSE_inside: rmse(inside), RMSE_outside: rmse(outside), rho_domain_percentile_vs_abs_error: rho,
       rho_p: rho == null ? null : correlationP(rho, pairs.length) }
   })
 }

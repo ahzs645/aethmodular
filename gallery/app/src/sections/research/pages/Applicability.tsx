@@ -13,8 +13,8 @@ import { categoricalScale } from '@/lib/palettes'
 import { INK } from '@/lib/theme'
 import { useMac, rmseAtMac, solveHipsMoments, type HipsMoments } from '@/lib/mac'
 import { useExport } from '@/lib/data'
-import { FixedSetNote } from '@/lib/markedRows'
-import { domainSummaryFrom, holdoutMoments, perFilterAtMac, type HoldoutFabs } from '../common/holdout'
+import { ExcludedNote, FixedSetNote, useExclusionSplit } from '@/lib/markedRows'
+import { domainSummaryFrom, holdoutFilterId, holdoutMoments, perFilterAtMac, type HoldoutFabs } from '../common/holdout'
 import type { SectionPageProps } from '../../types'
 import { PageIntro, presetName, provenance, rows, useCalibRuns, useSpectral, Waiting } from './spectralCommon'
 
@@ -43,6 +43,11 @@ export function Applicability(_props: SectionPageProps) {
   // each holdout filter's Fabs, reconstructed from the raw HIPS (gallery/data/export_holdout_fabs.py): with it the
   // per-filter residuals, and everything ftir_39 builds from them, follow the MAC exactly
   const holdout = useExport<HoldoutFabs>('research/spectral/holdout_fabs.json', (d) => (d.schema_version === 1 ? null : 'unsupported data version')).data
+  // Filters → excluded acts on ftir_39's holdout filters, joined by their SPARTAN id (holdout_fabs.json): the domain
+  // summary is rebuilt from those that count, and the per-filter chart crosses the rest under Mark
+  const perFilterAll = useMemo(() => rows(data, 'domain_filters'), [data])
+  const holdoutId = useMemo(() => (r: Row) => holdoutFilterId(r, holdout), [holdout])
+  const split = useExclusionSplit(perFilterAll, holdoutId)
 
   const flags = useMemo(() => {
     if (!runs) return []
@@ -62,8 +67,8 @@ export function Applicability(_props: SectionPageProps) {
   // them; without the Fabs only an all-in-domain holdout's RMSE (the whole holdout's) can move. The paired-bootstrap
   // intervals need each filter's di-PLS prediction, which no export carries, so they are left out off MAC 10.
   const summary = rows(data, 'target_summary')
-  const perFilter = rows(data, 'domain_filters')
-  const exact = holdoutMoments(perFilter, holdout, mac.exportMac)
+  // the saved fits' own filters: every holdout filter (the moments re-express those fits at the reader's MAC)
+  const exact = holdoutMoments(perFilterAll, holdout, mac.exportMac)
   const moments = new Map<string, Pick<HipsMoments, 'mean' | 'variance'> | null>([...new Set(summary.map((r) => String(r.target)))].map((t) => [t,
     exact.get(t) ?? solveHipsMoments(summary.filter((r) => r.target === t).map((r) => ({ slope: num(r.slope), intercept: num(r.intercept), r2: num(r.R2), rmse: num(r.RMSE_1to1) })))]))
   const rmseOf = (r: Row) => !mac.changed ? num(r.RMSE_1to1)
@@ -72,9 +77,11 @@ export function Applicability(_props: SectionPageProps) {
     const r = summary.find((s) => s.config === config && s.target === target && s.variant === variant)
     return r ? rmseOf(r) : null
   }
-  const filtersAt = mac.changed ? perFilterAtMac(perFilter, holdout, mac.mac, mac.exportMac) : perFilter
+  // every holdout filter at the reader's MAC (the per-filter chart), and those that count (the summary)
+  const allAt = mac.changed ? perFilterAtMac(perFilterAll, holdout, mac.mac, mac.exportMac) : perFilterAll
+  const filtersAt = mac.changed ? perFilterAtMac(split.counted, holdout, mac.mac, mac.exportMac) : split.counted
   const savedDomain = rows(data, 'domain_summary')
-  const domainAt = !mac.changed ? savedDomain : filtersAt ? domainSummaryFrom(filtersAt, savedDomain) : null
+  const domainAt = !mac.changed && !split.nOut ? savedDomain : filtersAt ? domainSummaryFrom(filtersAt, savedDomain) : null
   const domain = (domainAt ?? savedDomain).map((r): Row => domainAt ? { ...r, pair: pair(r) } : {
     ...r, pair: pair(r), RMSE_outside: null,
     RMSE_inside: num(r.outside_source_95_pct) === 0 ? summaryRmse(r.config, r.target, 'ordinary_pls') : null })
@@ -93,7 +100,7 @@ export function Applicability(_props: SectionPageProps) {
     <PageIntro id="applicability-intro" title="Applicability domain — in-domain is a warning system, not a validation" data={data}
       notebooks="research/ftir_ec_phase3/ftir_36_domain_invariant_pls, ftir_39_pls_applicability_domain, ftir_50_spectral_comparison_methods §2–3, §5–6; research/ftir_etad_char/char_12_weakley_transferability">
       <p>The Baselines tab's research diagnostics show the spectral distance of each correction's spectra from its training set. This page asks the calibration question: does being inside the domain make a calibration right at Addis?</p>
-      <FixedSetNote subject="this page" what="the explorer's per-run flags and the notebooks' locked holdouts and saved tables (every figure on this page)" />
+      <FixedSetNote subject="every figure here but ftir_39's domain summary and its per-filter chart (which follow it)" what="the explorer's per-run flags and the notebooks' saved tables, which carry no per-filter predictions to refit" />
     </PageIntro>
 
     {flags.length > 0 && <Figure kind="heatmap" id="applicability-flags" data={flags} row="site" column="calibration" value="pct" ramp="sequential" domain={[0, 100]} format="f2"
@@ -109,9 +116,10 @@ export function Applicability(_props: SectionPageProps) {
       aggregate={{ stat: 'median', interval: 'none' }} labelWidth={360}
       title="ftir_39 — the Addis winner is fully in-domain and still misses Addis"
       subtitle={`Leakage-safe audit: a scaler and PCA fitted on source training spectra only, T² and Q thresholds from untouched IMPROVE sites, target labels joined afterwards. Reference: |PLS − HIPS/10|${!mac.changed ? '' : domainAt ? `; here |PLS − HIPS/${mac.mac}|, each filter's residual moved with its Fabs (reconstructed from the raw HIPS as the notebook did)` : `; at ${mac.label} only a holdout with every filter in-domain keeps its RMSE (the whole holdout's, recomputed); splitting a holdout in and out needs each filter's Fabs (holdout_fabs.json), so the out-of-domain panel is left out`}. Derivative-space candidates put 38–64 % of their targets outside and need an explicit flag; the winner puts none outside and keeps a large response bias — conditional shift, not covariate shift.`}
-      provenance={provenance(data, ['domain_summary'])} />
+      provenance={provenance(data, ['domain_summary'], split.nOut ? 'Rebuilt here from ftir_39\'s per-filter table on the holdout filters that count under Filters → excluded (common/holdout domainSummaryFrom).' : undefined)}
+      aside={<ExcludedNote count={new Set(split.marked.map(holdoutId)).size} />} />
 
-    <DomainFilters data={filtersAt ?? perFilter} summary={domainAt ?? savedDomain} moved={mac.changed && !!filtersAt} macLabel={filtersAt ? mac.label : 'MAC 10'} provenance={provenance(data, ['domain_filters', 'domain_summary'])} />
+    <DomainFilters data={allAt ?? perFilterAll} idOf={holdoutId} summary={domainAt ?? savedDomain} moved={mac.changed && !!allAt} macLabel={allAt ? mac.label : 'MAC 10'} provenance={provenance(data, ['domain_filters', 'domain_summary'])} />
 
     <Figure kind="intervals" id="applicability-dipls" data={change} row="pair" choose={[{ column: 'centering', label: 'Centering', default: 'source-centred' }]}
       panels={[{ value: 'RMSE_change_pct', lo: 'RMSE_change_ci_low', hi: 'RMSE_change_ci_high', label: mac.changed ? `RMSE change vs ordinary PLS on the locked holdout (%, ${mac.label})` : 'RMSE change vs ordinary PLS on the locked holdout (%; paired-bootstrap 95 %)', reference: 0 }]} labelWidth={360}
@@ -180,7 +188,7 @@ const CONFIG_ORDER = ['addis_winner', 'common_candidate', 'delhi_winner']
  * ftir_39 per filter: each locked holdout filter's source-domain percentile against its error, one panel per
  * target, a colour per configuration. In-domain filters (left of 0.95) still carry large errors at Addis.
  */
-function DomainFilters({ data, summary, moved, macLabel, provenance }: { data: Row[]; summary: Row[]; moved: boolean; macLabel: string; provenance: React.ReactNode }) {
+function DomainFilters({ data, idOf, summary, moved, macLabel, provenance }: { data: Row[]; idOf: (r: Row) => string | null; summary: Row[]; moved: boolean; macLabel: string; provenance: React.ReactNode }) {
   const hipsDiv = macLabel.replace('MAC ', '')
   const o = useChartOptions('applicability-domain-filters', [
     { key: 'distance', label: 'Distance', default: 'max', choices: [...DISTANCE] },
@@ -199,8 +207,10 @@ function DomainFilters({ data, summary, moved, macLabel, provenance }: { data: R
       const x = xOf(r), y = num(signed ? r.residual_ugm3 : r.abs_error_ugm3)
       if (x == null || y == null) return []
       const cfg = at(CONFIG, r.config)
-      return [{ x, y, color: configColour(String(r.config)), hollow: r.outside_source_95 === true,
-        tip: [`filter ${r.ExternalFilterId}`, cfg, `T² percentile ${f2(r.T2_source_percentile)}, Q percentile ${f2(r.Q_source_percentile)}`, `PLS − HIPS/${hipsDiv} ${f2(r.residual_ugm3)} µg/m³`,
+      // every holdout filter with its id: Crossplot leaves out (or under Mark crosses) the ones Filters → excluded takes out
+      const id = idOf(r) ?? undefined
+      return [{ x, y, color: configColour(String(r.config)), hollow: r.outside_source_95 === true, id,
+        tip: [id ? `${id} (MediaId ${r.ExternalFilterId})` : `filter ${r.ExternalFilterId}`, cfg, `T² percentile ${f2(r.T2_source_percentile)}, Q percentile ${f2(r.Q_source_percentile)}`, `PLS − HIPS/${hipsDiv} ${f2(r.residual_ugm3)} µg/m³`,
           r.outside_source_95 === true ? 'outside the source 95 %' : 'inside the source 95 %'] }]
     })
     const rho = summary.filter((r) => r.target === t).map((r) => `${at(CONFIG, r.config).split(' (')[0]} ρ ${f2(r.rho_domain_percentile_vs_abs_error)} (p ${f2(r.rho_p)})`)
@@ -225,7 +235,6 @@ function DomainFilters({ data, summary, moved, macLabel, provenance }: { data: R
       </div>} />
       <Key items={[...configs.map((c) => ({ label: at(CONFIG, c), color: configColour(c) })),
         { label: 'outside the source 95 %', color: INK.muted, kind: 'hollow' as const }]} />
-      <FixedSetNote what="ftir_36/39's locked Addis and Delhi holdouts" />
     </ChartFrame>
   )
 }

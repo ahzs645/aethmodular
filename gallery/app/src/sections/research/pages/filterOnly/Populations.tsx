@@ -49,7 +49,7 @@ export function PopulationHeat({ points, s }: { points: FPoint[]; s: Settings })
     <ChartFrame id="fo-heat" title="Selection sensitivity — held-out improvement over the median in every frozen population"
       subtitle="Leave quarter out · filter-weighted · 100 × (median MAE − OLS MAE) / median MAE; positive = lower OLS error · n is the whole population"
       provenance={<>{NB_STAB} figure 03</>} source={`${SOURCE}/Populations.tsx › PopulationHeat`}
-      tip={<>The memberships are the release's saved ones (EC ≥ k × its reported MDL among the 480 ratio filters); no threshold is chosen from these errors. At the release's settings JPL keeps 84 ratio filters and 28 at 1.5 × MDL, where the improvement shrinks to 9.6 % and 0.5 %; its seven-filter 2 × population cannot supply ten training filters. Addis's 1.5 ×, 2 × and 3 × populations are the same 189 filters.</>}>
+      tip={<>The memberships are the release's saved ones (EC ≥ k × its reported MDL among the 480 ratio filters); no threshold is chosen from these errors. At the release's settings (with Filters → excluded: Include) JPL keeps 84 ratio filters and 28 at 1.5 × MDL, where the improvement shrinks to 9.6 % and 0.5 %; its seven-filter 2 × population cannot supply ten training filters. Addis's 1.5 ×, 2 × and 3 × populations are the same 189 filters.</>}>
       <div ref={ref} style={{ position: 'relative', overflowX: 'auto' }}>
         <svg width={labelW + POPULATIONS.length * cw + 4} height={top + SITES.length * ch + 4} fontFamily={FONT.family}>
           {POPULATIONS.map((p, j) => <text key={p.key} x={labelW + j * cw + cw / 2} y={top - 10} textAnchor="middle" fontSize={11.5} fill={INK.text}>{p.label}</text>)}
@@ -112,7 +112,7 @@ export function Weighting({ runs, s, meta }: { runs: SiteRun[]; s: Settings; met
     <ChartFrame id="fo-weighting" title="Equal filters or equal quarters — averaging filters and averaging quarters answer different questions"
       subtitle={`${popLabel(s.population)} population · OLS with intercept · mean signed error over identical supported filters and folds within each scheme`}
       provenance={<>{NB_PROP} figure 05</>} source={`${SOURCE}/Populations.tsx › Weighting`}
-      tip={<>At the release's settings Delhi's leave-quarter-out intercept bias is −1.779 Mm⁻¹ over filters and +2.151 Mm⁻¹ over quarters; both are kept. Later-period bias stays negative under either weighting. The two marks are two estimands, not an uncertainty range.</>}>
+      tip={<>At the release's settings (with Filters → excluded: Include) Delhi's leave-quarter-out intercept bias is −1.779 Mm⁻¹ over filters and +2.151 Mm⁻¹ over quarters; both are kept. Later-period bias stays negative under either weighting. The two marks are two estimands, not an uncertainty range.</>}>
       <Key items={[{ label: 'Each filter weighted equally', color: INK.text, kind: 'dot' }, { label: 'Each evaluated quarter weighted equally', color: INK.text, kind: 'square' }]} />
       <IntervalStrip labelWidth={110} rowHeight={30} blocks={[{ key: 'sites', rows }]}
         panels={[{ label: `Mean signed error (${s.u})`, heading: 'Withheld quarters', reference: 0, format: (v) => fmt(v, 1) },

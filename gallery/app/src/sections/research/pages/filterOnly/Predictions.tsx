@@ -34,7 +34,7 @@ export function HeldOutScatter({ runs, s, meta }: { runs: SiteRun[]; s: Settings
           const pts: CrossPoint[] = preds.map((q) => ({ x: q.p.fabs * s.k, y: q.pred.ols * s.k, color, id: q.p.id, site: r.site,
             tip: [q.p.id, `${r.site} · ${q.p.date} · ${q.block}`, `reported ${fmt(q.p.fabs * s.k, 2)} · predicted ${fmt(q.pred.ols * s.k, 2)} ${s.u}`, `FTIR EC ${fmt(q.p.ec, 2)} µg/m³${q.outside ? ' (outside training range)' : ''}`],
             rec: { id: q.p.id, source: 'Research · filter-only held-out prediction', site: r.site, date: q.p.date, fields: [[`Reported ${label}`, q.p.fabs * s.k], [`Held-out prediction (${s.u})`, q.pred.ols * s.k], ['FTIR EC (µg/m³)', q.p.ec]] } }))
-          // the site's hand-excluded filters of this population (Mark): × at the prediction their quarter's fit gives them
+          // the site's excluded filters of this population (Mark): × at the prediction their quarter's fit gives them
           const out: CrossPoint[] = marked.filter((p) => p.site === r.site && inPopulation(p, s.population)).flatMap((p) => {
             const pred = heldOutPrediction(blocksOf(r, scheme), p)
             return pred === null ? [] : [{ x: p.fabs * s.k, y: pred * s.k, color, id: p.id, site: r.site,

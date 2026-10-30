@@ -6,12 +6,13 @@ import { SpectrumPlot, type SpectrumAnnotation, type SpectrumBand, type Spectrum
 import { useChartOptions } from '@/lib/chartOptions'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { f2 } from '@/lib/format'
-import { FixedSetNote } from '@/lib/markedRows'
+import { ExcludedNote, FixedSetNote, useExclusionSplit } from '@/lib/markedRows'
 import { categoricalScale } from '@/lib/palettes'
 import { num, type Row } from '@/lib/table'
 import { INK } from '@/lib/theme'
 import { Grid } from '../../common/ui'
 import { provenance, rows as tableRows, type SpectralExport } from '../spectralCommon'
+import { galleryId } from './data'
 import { ALL, BAND_LABEL, BANDS, bandArea, flatten, groupOf, MONTH_SPLITS, OTHER, pool, profileStats, rankDesc, savgol, UNDATED } from './spectra'
 
 /**
@@ -150,7 +151,10 @@ export function EtadSpectra({ data }: { data: SpectralExport }) {
 // ---------------------------------------------------------------- 13 [9]: the organic-band profile
 
 export function BandProfile({ data }: { data: SpectralExport }) {
-  const meta = tableRows(data, 'etad_spectra_meta'), printed = tableRows(data, 'band_profile_printed')
+  // Filters → excluded acts on the spectra by filter id: the medians and IQRs are over those that count
+  const allMeta = useMemo(() => tableRows(data, 'etad_spectra_meta'), [data]), printed = tableRows(data, 'band_profile_printed')
+  const split = useExclusionSplit(allMeta, (r) => String(r.ExternalFilterId ?? '') || null)
+  const meta = split.counted
   const improve = printed.find((r) => String(r.set).startsWith('IMPROVE'))
   const IMPROVE = "IMPROVE lot 248+251 (13's printed median)"
   const long = useMemo(() => {
@@ -170,8 +174,9 @@ export function BandProfile({ data }: { data: SpectralExport }) {
     variants={[{ key: 'split', label: 'ETAD grouped by', choices: MONTH_SPLITS.map((s) => ({ value: s.key, label: s.label.replace(/ \((04 )?fig \d\)$/, ''), patch: { series: `group ${s.key}` } })) }]}
     colors={{ [IMPROVE]: INK.text, [ALL]: '#d62728' }}
     title={`Addis's organic bands are OH-dominated (median ${pct1(at('OH')?.median)}) with almost no aromatic signal (${pct1(at('aromatic')?.median)}), and the lot-248+251 training set looks the same`}
-    subtitle={`June 13's peak-ratio "biomass classifier": offset each spectrum by its 3900–4000 cm⁻¹ mean, integrate CH, C=O, OH and the aromatic C=C band above each band's own minimum, and take each as a share of the four. Per ETAD spectrum here (recomputed from the Drive's spectra; the medians equal 13's printed profile), grouped by any month split; IMPROVE is 13's printed median over the 13,012 training filters (median ${improve ? BANDS.map((b) => `${b} ${pct1(num(improve[b]))}`).join(', ') : '—'}), as its per-filter fractions were not saved. 13 read it as oxygenated smouldering-wood smoke rather than aromatic char, and since the training set already matches, selecting "biomass-like" IMPROVE filters by this profile did not move the HIPS fit (the ML page's frontier). Band areas, no model: no MAC.`}
-    provenance={provenance(data, ['etad_spectra_meta', 'band_profile_printed'], 'research/ftir_ec_calibration_2026_06_25/13_chase_origin_and_biomass.ipynb fig13_organic_band_profile.')} />
+    subtitle={`June 13's peak-ratio "biomass classifier": offset each spectrum by its 3900–4000 cm⁻¹ mean, integrate CH, C=O, OH and the aromatic C=C band above each band's own minimum, and take each as a share of the four. Per ETAD spectrum that counts under Filters → excluded (recomputed from the Drive's spectra; on all 319, with Include, the medians equal 13's printed profile), grouped by any month split; IMPROVE is 13's printed median over the 13,012 training filters (median ${improve ? BANDS.map((b) => `${b} ${pct1(num(improve[b]))}`).join(', ') : '—'}), as its per-filter fractions were not saved. 13 read it as oxygenated smouldering-wood smoke rather than aromatic char, and since the training set already matches, selecting "biomass-like" IMPROVE filters by this profile did not move the HIPS fit (the ML page's frontier). Band areas, no model: no MAC.`}
+    provenance={provenance(data, ['etad_spectra_meta', 'band_profile_printed'], 'research/ftir_ec_calibration_2026_06_25/13_chase_origin_and_biomass.ipynb fig13_organic_band_profile.')}
+    aside={<ExcludedNote count={new Set(split.marked.map((r) => galleryId(String(r.ExternalFilterId)))).size} />} />
 }
 
 // ---------------------------------------------------------------- 06 [21]: mean raw vs mean 2nd derivative

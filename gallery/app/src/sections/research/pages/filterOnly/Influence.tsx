@@ -50,7 +50,7 @@ export function CoefficientInfluence({ points, s, meta, omitDefault }: { points:
     <ChartFrame id="fo-coef" title="One filter against whole quarters — how far one omission moves the OLS coefficients"
       subtitle={`${inf?.site ?? ''} · ${popLabel(s.population)} population · change from the full-cohort fit: leaving out ${omitted?.id ?? 'a filter'}, or each withheld quarter's training fit`}
       provenance={<>{NB_STAB} figure 04 (ETAD-0037)</>} source={`${SOURCE}/Influence.tsx › CoefficientInfluence`}
-      tip={<>The full-cohort OLS coefficients are descriptive references, not validation scores. At the release's settings, leaving out ETAD-0037 changes the Addis slope by +0.033 and the intercept by −0.206 Mm⁻¹; whole-quarter omissions move them further. The filter stays in the baseline and in the exclusion registry.</>}
+      tip={<>The full-cohort OLS coefficients are descriptive references, not validation scores. At the release's settings (with Filters → excluded: Include), leaving out ETAD-0037 changes the Addis slope by +0.033 and the intercept by −0.206 Mm⁻¹; whole-quarter omissions move them further. The filter stays in the baseline and in the exclusion registry.</>}
       controls={controls}>{body}<FoExcludedNote s={s} site={inf?.site} /></ChartFrame>
   )
   if (!inf || !omitted) return frame(<Empty>No filter to leave out.</Empty>)
@@ -93,7 +93,7 @@ export function CommonFilterInfluence({ points, s, meta, omitDefault }: { points
     <ChartFrame id="fo-common" title="Errors on common filters — what leaving one filter out of training does to the others' predictions"
       subtitle={`${omitted?.site ?? ''} · ${popLabel(s.population)} population · ${schemeLabel(scheme).toLowerCase()} · MAE after omitting ${omitted?.id ?? 'the filter'} minus MAE with it, on filters predicted both ways; negative = lower error after omission`}
       provenance={<>{NB_STAB} figure 09 (ETAD-0037)</>} source={`${SOURCE}/Influence.tsx › CommonFilterInfluence`}
-      tip={<>At the release's settings the ETAD-0037 comparison covers the same 189 other filters; leave-quarter-out MAE changes by only −0.0049 Mm⁻¹. Predictions in its own withheld quarter do not change, because it was already absent from that training. Later-period common-filter MAE worsens by +0.172 Mm⁻¹ after omission, mostly in the first evaluated later quarter.</>}
+      tip={<>At the release's settings (with Filters → excluded: Include) the ETAD-0037 comparison covers the same 189 other filters; leave-quarter-out MAE changes by only −0.0049 Mm⁻¹. Predictions in its own withheld quarter do not change, because it was already absent from that training. Later-period common-filter MAE worsens by +0.172 Mm⁻¹ after omission, mostly in the first evaluated later quarter.</>}
       controls={<><OmitPick value={omitted?.id ?? ''} ids={ids} points={points} onChange={setOmit} /><Segmented label="Split" value={scheme} options={SCHEMES} onChange={setScheme} optionLabel={schemeLabel} /></>}>
       {rows.length
         ? <SweepPlot series={series} xScale="point" height={250} xFormat={(v) => (v === 'All common filters' ? 'All' : shortQ(v))} yLabel={`MAE change after omission (${s.u})`} reference={0}

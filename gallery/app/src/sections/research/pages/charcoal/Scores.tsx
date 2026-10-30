@@ -12,7 +12,7 @@ import { timeSeasonBands } from '@/components/SeasonBands'
 import { SweepPlot, histogramSeries, type SweepMark, type SweepSeries } from '@/components/SweepPlot'
 import { markTip } from '@/lib/exclusionMode'
 import { fmt, pct } from '@/lib/format'
-import { ExcludedNote, FixedSetNote, useMarkReason } from '@/lib/markedRows'
+import { ExcludedNote, useMarkReason } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
 import type { FilterRow } from '@/lib/types'
 import { num } from '@/lib/table'
@@ -39,12 +39,10 @@ export function scorePoint(s: Scored<FilterRow>, x: number, y: number, color: st
 }
 
 /**
- * The one exclusion note a chart of the scores carries (lib/markedRows): under Mark, how many excluded Addis rows in
- * view it leaves out (`drawn`: its crossplots draw them as ×; `of` narrows them to what the chart reads); for the
- * notebooks' own set, which the exclusions do not touch, FixedSetNote under Include or Mark.
+ * The one exclusion note a chart of the scores carries (lib/markedRows): under Mark, how many excluded scored filters
+ * it leaves out (`drawn`: its crossplots draw them as ×; `of` narrows them to what the chart reads), in every set.
  */
 export function SetNote({ c, drawn = false, of }: { c: Charcoal; drawn?: boolean; of?: (s: Scored<FilterRow>) => boolean }) {
-  if (c.set === 'notebook') return <FixedSetNote what={`every filter the notebooks scored (${SET_LABEL.notebook}), with their seasons, Fabs and EC`} />
   return <ExcludedNote count={(of ? c.marked.filter(of) : c.marked).length} drawn={drawn} />
 }
 

@@ -6,9 +6,7 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import * as d3 from 'd3'
 import { Segmented, Select } from '@/components/ChartFrame'
 import { useExport } from '@/lib/data'
-import { useFilterEdits, useHandEdits } from '@/lib/filterEdits'
 import { fmt } from '@/lib/format'
-import { baseFilterId } from '@/lib/highlight'
 import { useMac } from '@/lib/mac'
 import { ExcludedNote, useExclMode, useExclusionSplit } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
@@ -31,9 +29,9 @@ export interface ReleaseFile { generated: string; blocks: Columns; id11: Columns
 export const rowsOf = (t: Columns): Record<string, any>[] => (t[Object.keys(t)[0]] ?? []).map((_, i) => Object.fromEntries(Object.keys(t).map((k) => [k, t[k][i]])))
 
 export interface FoData {
-  /** the diagnostic filters, less any the reader excluded by hand (or left out with "keep only") */
+  /** the diagnostic filters that count under Filters → excluded (lib/markedRows useCountedFilter) */
   points: FPoint[]
-  /** under Filters → excluded: Mark, the ones excluded by hand: drawn as × on the held-out scatter, in no refit */
+  /** under Filters → excluded: Mark, the ones that do not count: drawn as × on the held-out scatter, in no refit */
   marked: FPoint[]
   all: FPoint[]
   dropped: number
@@ -44,35 +42,33 @@ export interface FoData {
 const NO_POINTS: FPoint[] = []
 
 /**
- * The release's 545 diagnostic filters under the gallery's exclusions. They are a frozen set: the data export's own
- * exclusions do not act on them (ETAD-0248, the PM10 filter the export excludes, stays, as the release ran), so only
- * the reader's hand exclusions go through the gallery's split (lib/markedRows useExclusionSplit): out of every refit,
- * drawn as × under Mark. "Keep only" narrows the SPARTAN filters as it narrows every page's, before the split.
+ * The release's 545 diagnostic filters under Filters → excluded, as every chart's filters: the data export's own
+ * exclusions (ETAD-0248, the PM10 filter the export excludes, is one of the 545) and the reader's hand exclusions
+ * leave every refit, Include puts the export's back (as the release ran), and Mark draws them as × (joined by
+ * filter id, lib/markedRows useExclusionSplit, which also applies "keep only"). Only the check against the release's
+ * own tables (Agreement) keeps all 545.
  */
 export function useFilterOnly(): { data: FoData | null; error: string } {
   const { data, error } = useExport<PointsFile>('research/filter_only/points.json', (d) => (Array.isArray(d.points) ? null : 'no points'))
-  const hand = useHandEdits()
-  const { dropped } = useFilterEdits()
   const mode = useExclMode()
-  const byHand = useMemo(() => (id: string) => hand.active && (dropped.has(id) || dropped.has(baseFilterId(id))), [hand, dropped])
-  const inView = useMemo(() => (data ? data.points.filter((p) => !hand.isOut(p.id) || byHand(p.id)) : NO_POINTS), [data, hand, byHand])
-  const split = useExclusionSplit(inView, (p) => (byHand(p.id) ? p.id : null))
+  const split = useExclusionSplit(data?.points ?? NO_POINTS, (p) => p.id)
   const out = useMemo(() => {
     if (!data) return null
-    const n = data.points.length - split.counted.length
+    const points = split.counted, n = split.nOut
     // under Mark the charts say it themselves (FoExcludedNote), with the × drawn
-    return { points: split.counted, marked: split.marked, all: data.points, dropped: n, omitDefault: data.omitted_default, note: mode === 'mark' ? null : hand.note(n, { refit: true }) }
-  }, [data, split, hand, mode])
+    const note = mode === 'mark' || n <= 0 ? null : `${n} of the ${data.points.length} ${n === 1 ? 'is' : 'are'} excluded (Filters → excluded) and left out of every refit.`
+    return { points, marked: split.marked, all: data.points, dropped: n, omitDefault: data.omitted_default, note }
+  }, [data, split, mode])
   return { data: out, error }
 }
 
-/** the hand-excluded release filters under Mark (FoData.marked), for every chart's note without threading them through */
+/** the excluded release filters under Mark (FoData.marked), for every chart's note without threading them through */
 const MarkedCtx = createContext<FPoint[]>(NO_POINTS)
 export const FoMarkedProvider = MarkedCtx.Provider
 export const useFoMarked = () => useContext(MarkedCtx)
 
 /**
- * A chart's note under Mark (lib/markedRows ExcludedNote): how many hand-excluded filters of its population (every
+ * A chart's note under Mark (lib/markedRows ExcludedNote): how many excluded filters of its population (every
  * population with `any`) and site it leaves out; `drawn` where it draws them as ×.
  */
 export function FoExcludedNote({ s, site, any = false, drawn = false }: { s: Settings; site?: string; any?: boolean; drawn?: boolean }) {

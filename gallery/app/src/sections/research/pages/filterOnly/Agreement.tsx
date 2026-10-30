@@ -99,7 +99,7 @@ export function Agreement({ all }: { all: FPoint[] }) {
   const checks = useMemo(() => (release ? compare(all, release) : []), [all, release])
   return (
     <ChartFrame id="fo-agreement" title="Against the release — the browser's refit compared with the release's own result tables" exportable={false}
-      subtitle="At the release's settings: all 545 diagnostic filters, minimum training n 10, no hand exclusions · largest absolute difference in each table's own units"
+      subtitle="At the release's settings: all 545 diagnostic filters, minimum training n 10, nothing excluded · largest absolute difference in each table's own units"
       provenance={<>{NB_STAB}, {NB_PROP}, {NB_DIAG}; deliverables/filter_only_scientific_release_2026-09-11/data</>} source={`${SOURCE}/Agreement.tsx`}>
       {error ? <Empty>Could not load the release tables: {error}</Empty> : !release ? <Empty>Loading the release tables…</Empty> : <>
         <DataTable rows={checks} rowKey={(c) => c.table} highlight={(c) => c.mismatched > 0}
@@ -110,8 +110,8 @@ export function Agreement({ all }: { all: FPoint[] }) {
             { key: 'w', label: 'Largest |Δ|', num: true, value: (c) => (c.worst === 0 ? '0' : c.worst < 1e-3 ? c.worst.toExponential(1) : fmt(c.worst, 4)) },
             { key: 'q', label: 'Compared', value: (c) => c.what },
           ]} />
-        <FixedSetNote what="the release's own settings: all 545 diagnostic filters, no hand exclusions" />
-        <Note>The release tables are stored to 7 significant digits, so differences of about 10⁻⁶ of a value are rounding. Every chart on this page is the same code run on the reader's population, minimum training n and hand exclusions; at the defaults they reproduce the notebooks' figures. Sites: {SITES.join(', ')}.</Note>
+        <FixedSetNote what="the release's own settings: all 545 diagnostic filters, none excluded" />
+        <Note>The release tables are stored to 7 significant digits, so differences of about 10⁻⁶ of a value are rounding. Every chart on this page is the same code run on the reader's population, minimum training n and Filters → excluded; at the defaults, with Include (which puts back ETAD-0248, one of the 545), they reproduce the notebooks' figures. Sites: {SITES.join(', ')}.</Note>
       </>}
     </ChartFrame>
   )

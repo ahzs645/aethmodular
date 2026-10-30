@@ -11,7 +11,7 @@ import { useChartOptions } from '@/lib/chartOptions'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { f2, fmt, signed } from '@/lib/format'
 import { slopeAt, useMac } from '@/lib/mac'
-import { ExcludedNote, FixedSetNote } from '@/lib/markedRows'
+import { ExcludedNote, FixedSetNote, useCountedFilter, useExclusionSplit } from '@/lib/markedRows'
 import { SidebarControls } from '@/lib/pageSidebar'
 import { categoricalScale } from '@/lib/palettes'
 import { FIT_STYLE, useRegressions } from '@/lib/regressionPrefs'
@@ -22,6 +22,7 @@ import { INK } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile, FilterRow } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
+import { explorerFit, lineOf, type ExplorerFit } from '../common/explorerFit'
 import { quantile } from '../common/stats'
 import { BASIS_NOTE, num as rowNum, useConcRows } from '../common/ui'
 import { PageIntro, presetName, provenance, rows, useCalibRuns, useSpectral, Waiting } from './spectralCommon'
@@ -66,7 +67,7 @@ export function MacChoice({ picked, rows: viewRows, meta }: SectionPageProps) {
     <PageIntro id="mac-intro" title="MAC 6 or 10 — the choice moves every slope and no intercept" data={data}
       notebooks="research/ftir_ec_phase3/ftir_16_mac_decision_prep, ftir_19_mac_effect_on_calibrations; ftir_31 §1.11 (the pivot with Deming)">
       <p>The 28 Oct meeting page §4 has the MAC by season. This page applies MAC 6 and 10 to every calibration the explorer exported, and sets them against the IMPROVE evidence.</p>
-      <FixedSetNote subject="this page" what="ftir_16's saved tables (the Adama scenarios, ChemSpec and power figures on this page)" />
+      <FixedSetNote subject="each of the IMPROVE bridge, Adama-scenario, ChemSpec and power figures" what="ftir_16's saved tables (every other chart on this page follows it)" />
     </PageIntro>
 
     <MacOneToOne runs={runs} view={view} />
@@ -123,10 +124,34 @@ function viewNote(view: MacView, extra = '') {
 const setFor = (run: CalibRun | undefined, set: EvalSet): EvalSet => (run?.metrics.some((m) => m.evaluation_set === set) ? set : 'all')
 /** a run's saved fit for exactly this set and MAC (metricRow falls back to another row, which would mislabel it) */
 const fitAt = (run: CalibRun | undefined, set: EvalSet, mac: number) => run?.metrics.find((m) => m.evaluation_set === set && m.MAC === mac) ?? null
-const setLabel = (set: EvalSet, run: CalibRun | undefined) => {
+const setLabel = (set: EvalSet, run: CalibRun | undefined, counted?: number) => {
   const n = fitAt(run, set, 10)?.n
-  return set === 'fixed' ? `the fixed ${n ?? ''}-filter cohort`.replace('  ', ' ') : `all pairs${n ? ` (n = ${n})` : ''}`
+  const left = counted !== undefined && n !== undefined && counted < n ? `, ${counted} counted` : ''
+  return set === 'fixed' ? `the fixed ${n ?? ''}-filter cohort${left}`.replace('  ', ' ') : `all pairs${n ? ` (n = ${n}${left})` : ''}`
 }
+
+/** a run's filters in the set, as the explorer scored them: Fabs, prediction and id */
+function evalSet(run: CalibRun, set: EvalSet) {
+  const out: { id: string | undefined; fabs: number; y: number }[] = []
+  run.eval.ref.forEach((fabs, i) => {
+    const y = run.eval.pred[i]
+    if ((set === 'fixed' && !run.eval.fixed[i]) || !Number.isFinite(fabs) || !Number.isFinite(y)) return
+    out.push({ id: run.eval.id[i] ?? undefined, fabs, y })
+  })
+  return out
+}
+/**
+ * The saved MAC 10 fit refitted on the filters that count under Filters → excluded (common/explorerFit: on the
+ * explorer's own set it is the saved row), so the lines follow the setting as the points do.
+ */
+function countedFit(filters: ReturnType<typeof evalSet>, counts: (id: string | undefined) => boolean, lambda10: number): ExplorerFit | null {
+  const use = filters.filter((f) => counts(f.id))
+  return explorerFit(use.map((f) => f.fabs), use.map((f) => f.y), lambda10)
+}
+/** the note under a chart whose lines are refitted: how many of the explorer's filters do not count */
+const refitNote = (nOut: number) => (nOut > 0
+  ? `${nOut} of the explorer's evaluation filters ${nOut === 1 ? 'is' : 'are'} excluded (Filters → excluded) and left out of the refitted lines; with Include (and nothing excluded by hand) they are the explorer's saved fits.`
+  : '')
 
 /**
  * Every calibration on the 1:1 plane at one MAC: FTIR EC against HIPS Fabs/MAC, one saved fit line per calibration and
@@ -139,6 +164,7 @@ function MacOneToOne({ runs, view }: { runs: CalibRunsFile; view: MacView }) {
   const [macText, setMac] = useSearchParam<(typeof MACS)[number]>('mac-sweep.mac', 'gallery', MACS)
   const mac = macText === 'gallery' ? gallery.mac : Number(macText)
   const lg = useLegend()
+  const counts = useCountedFilter()
   const colours = useColourScheme('mac-sweep', 'categorical', 'Tableau 10')
   const presets = runs.presets.filter((p) => runs.runs.some((r) => r.preset === p.key && view.targets.includes(r.target)))
   const presetColour = categoricalScale(colours.name, presets.map((p) => p.key), colours.reverse)
@@ -147,43 +173,46 @@ function MacOneToOne({ runs, view }: { runs: CalibRunsFile; view: MacView }) {
   const panels = view.targets.map((t) => {
     const lines: CrossLine[] = [], points: CrossPoint[] = [], extent: number[] = [0]
     const set = setFor(runs.runs.find((r) => r.target === t), view.set)
+    let nOut = 0, nCounted: number | undefined
     for (const p of presets) {
       const run = runs.runs.find((r) => r.preset === p.key && r.target === t)
-      // the saved MAC 10 fit, re-expressed at this MAC: slope × MAC/10, intercept unchanged (the explorer's 6 and 17 rows agree)
-      const m = fitAt(run, set, 10)
-      if (!run || !m) continue
+      if (!run || !fitAt(run, set, 10)) continue
+      // the saved MAC 10 fit, refitted on the filters that count and re-expressed at this MAC: slope × MAC/10,
+      // intercept unchanged (the explorer's 6 and 17 rows agree)
+      const filters = evalSet(run, set)
+      const m = countedFit(filters, counts, gallery.lambda10)
+      nOut = Math.max(nOut, filters.length - (m?.n ?? 0)); nCounted ??= m?.n
       const name = presetName(p)
-      run.eval.ref.forEach((fabs, i) => {
-        const y = run.eval.pred[i]
-        if ((set === 'fixed' && !run.eval.fixed[i]) || !Number.isFinite(fabs) || !Number.isFinite(y)) return
-        extent.push(fabs / mac, y)
-        if (lg.hover === name) points.push({ x: fabs / mac, y, color: colour.get(p.key)!, id: run.eval.id[i] ?? undefined, tip: [run.eval.id[i] ?? '', name, `Fabs/${mac} ${f2(fabs / mac)}`, `FTIR EC ${f2(y)}`] })
-      })
-      if (!lg.show(name)) continue
+      for (const f of filters) {
+        // the axes take every filter in the set, so a filter Mark draws as × is inside them
+        extent.push(f.fabs / mac, f.y)
+        if (lg.hover === name) points.push({ x: f.fabs / mac, y: f.y, color: colour.get(p.key)!, id: f.id, tip: [f.id ?? '', name, `Fabs/${mac} ${f2(f.fabs / mac)}`, `FTIR EC ${f2(f.y)}`] })
+      }
+      if (!lg.show(name) || !m) continue
       for (const est of view.fits) {
-        const slope = gallery.slope(num(m[`${est}_slope`] as number), 10), intercept = num(m[`${est}_intercept`] as number)
+        const fit = lineOf(m, est), slope = gallery.slope(fit?.slope, 10), intercept = fit?.intercept ?? null
         if (slope == null || intercept == null) continue
         extent.push(intercept)
         lines.push({ slope, intercept, color: fade(colour.get(p.key)!, name), dash: FIT_STYLE[est].dash, method: est, stats: null, label: `${name} · ${FIT_STYLE[est].label}` })
       }
     }
     const hi = Math.max(...extent) * 1.05, lo = Math.min(0, ...extent) - (Math.min(0, ...extent) < 0 ? 0.5 : 0)
-    return { t, set, lines, points, domain: [lo, hi] as [number, number] }
+    return { t, set, lines, points, nOut, nCounted, domain: [lo, hi] as [number, number] }
   })
   const first = runs.runs.find((r) => r.target === view.targets[0])
+  const nOut = Math.max(0, ...panels.map((pn) => pn.nOut))
   const allOnly = panels.filter((pn) => pn.set !== view.set).map((pn) => siteName(runs, pn.t))
   return (
     <ChartFrame id="mac-sweep" title={`Every calibration at MAC ${mac} — on the 1:1 plane`}
-      subtitle={`FTIR EC against HIPS Fabs ÷ ${mac}, with each calibration's saved fit on ${setLabel(setFor(first, view.set), first)}, for the sites picked in the Filters panel. A calibration self-consistent at this MAC follows the dashed 1:1 line. Switch the MAC (Filters follows the MAC set under Filters → units, now ${gallery.mac}): x rescales, so every line rotates about its own intercept, which never moves. The MAC decides which calibration is self-consistent (slope 1), never the offset. Fits follow Regression fits in the Filters panel (Deming dashed long, OLS solid); point at a calibration in the legend to see its filters.`}
-      provenance={<>Stands in for ftir_19 (MAC fix across every setup) on the gallery's explorer presets and sites. Fits: <code>calibration_runs.json</code> runs[].metrics at MAC 10, <code>gallery/data/export_calibration_runs.py</code>, slopes re-expressed at the chosen MAC (lib/mac); nothing refitted.</>}
+      subtitle={`FTIR EC against HIPS Fabs ÷ ${mac}, with each calibration's fit on ${setLabel(setFor(first, view.set), first, panels[0]?.nCounted)}, for the sites picked in the Filters panel. A calibration self-consistent at this MAC follows the dashed 1:1 line. Switch the MAC (Filters follows the MAC set under Filters → units, now ${gallery.mac}): x rescales, so every line rotates about its own intercept, which never moves. The MAC decides which calibration is self-consistent (slope 1), never the offset. Fits follow Regression fits in the Filters panel (Deming dashed long, OLS solid); point at a calibration in the legend to see its filters.`}
+      provenance={<>Stands in for ftir_19 (MAC fix across every setup) on the gallery's explorer presets and sites. Fits: <code>calibration_runs.json</code> runs[].metrics at MAC 10 (<code>gallery/data/export_calibration_runs.py</code>), refitted here from runs[].eval on the filters that count (common/explorerFit: on the explorer's own set, its saved rows), slopes re-expressed at the chosen MAC (lib/mac).</>}
       controls={<><Segmented label="MAC (m²/g)" value={macText} options={MACS} onChange={setMac} optionLabel={(o) => (o === 'gallery' ? `Filters (${gallery.mac})` : o)} />{colours.picker}</>}>
       <FacetGrid items={panels} minCell={300} maxCols={3} render={(pn) => <div>
         {(panels.length > 1 || pn.set !== view.set) && <p className="facet-title">{siteName(runs, pn.t)}{pn.set !== view.set ? ' · all pairs' : ''}</p>}
         <Crossplot title="" points={pn.points} xLabel={`HIPS Fabs / ${mac} (µg/m³)`} yLabel="FTIR EC (µg/m³)" fit={false} grouping="none" extraLines={pn.lines} domain={pn.domain} maxSide={460} />
       </div>} />
       <Legend {...lg.props} items={presets.map((p) => ({ label: presetName(p), color: colour.get(p.key)!, shape: 'line' }))} />
-      <FixedSetNote what="the explorer's evaluation filters and its saved fits (calibration_runs.json)" />
-      {viewNote(view, allOnly.length ? `The explorer has a fixed cohort for Addis only: ${allOnly.join(', ')} ${allOnly.length > 1 ? 'are' : 'is'} drawn on all pairs.` : '')}
+      {viewNote(view, [allOnly.length ? `The explorer has a fixed cohort for Addis only: ${allOnly.join(', ')} ${allOnly.length > 1 ? 'are' : 'is'} drawn on all pairs.` : '', refitNote(nOut)].filter(Boolean).join(' '))}
     </ChartFrame>
   )
 }
@@ -200,18 +229,19 @@ function MacPivot({ runs, view }: { runs: CalibRunsFile; view: MacView }) {
   // MAC 10 against the reader's MAC, or against 6 while the reader is at 10
   const gallery = useMac()
   const alt = gallery.mac !== 10 ? gallery.mac : 6
-  const m10 = fitAt(run, set, 10)
+  const counts = useCountedFilter()
+  // the saved MAC 10 fit refitted on the filters that count (the points follow the same rule in Crossplot)
+  const filters = run && fitAt(run, set, 10) ? evalSet(run, set) : []
+  const m10 = countedFit(filters, counts, gallery.lambda10)
+  const nOut = filters.length - (m10?.n ?? filters.length)
   const points: CrossPoint[] = []
-  if (run) run.eval.pred.forEach((y, i) => {
-    const fabs = run.eval.ref[i]
-    if ((set === 'fixed' && !run.eval.fixed[i]) || !Number.isFinite(y) || !Number.isFinite(fabs)) return
-    const id = run.eval.id[i] ?? undefined
+  for (const { id, fabs, y } of filters) {
     points.push({ x: fabs / 10, y, color: MAC10, id, tip: [id ?? '', `Fabs/10 ${f2(fabs / 10)}`, `FTIR EC ${f2(y)}`] })
     points.push({ x: fabs / alt, y, color: MAC6, hollow: true, id, tip: [id ?? '', `Fabs/${alt} ${f2(fabs / alt)}`, `FTIR EC ${f2(y)}`] })
-  })
-  const line = (m: typeof m10, mac: number, color: string, est: Estimator): CrossLine[] => {
+  }
+  const line = (m: ExplorerFit | null, mac: number, color: string, est: Estimator): CrossLine[] => {
     // the saved MAC 10 fit at `mac`: slope × mac/10, intercept unchanged
-    const slope = slopeAt(num(m?.[`${est}_slope`] as number), mac, 10), intercept = num(m?.[`${est}_intercept`] as number)
+    const fit = lineOf(m, est), slope = slopeAt(fit?.slope, mac, 10), intercept = fit?.intercept ?? null
     return slope == null || intercept == null ? [] : [{ slope, intercept, color, dash: FIT_STYLE[est].dash, method: est, stats: null, label: `MAC ${mac} ${FIT_STYLE[est].label}: ${f2(slope)}x ${signed(intercept)}` }]
   }
   const lines = view.fits.flatMap((est) => [...line(m10, 10, MAC10, est), ...line(m10, alt, MAC6, est)])
@@ -220,17 +250,16 @@ function MacPivot({ runs, view }: { runs: CalibRunsFile; view: MacView }) {
   const lo = Math.min(0, ...ints) - 0.5
   return (
     <ChartFrame id="mac-pivot" title="One calibration, two MACs — the line pivots on its intercept"
-      subtitle={`${siteName(runs, target)}, ${setLabel(set, run)}. Filled points: x = Fabs/10; hollow: the same filters at Fabs/${alt} (${gallery.mac !== 10 ? 'the MAC set under Filters' : 'MAC 6, until another MAC is set under Filters'}; the cloud stretches by 10/${alt}). Both fits are drawn back to x = 0, where they meet: the axes run below zero so the shared intercept is visible. Dashed grey is 1:1, where a self-consistent calibration and MAC pairing would lie. Site, filters and fits follow the Filters panel.`}
-      provenance={<>Stands in for ftir_19 §2 and ftir_31 §1.11 (the pivot redone with Deming). Points and fits: <code>calibration_runs.json</code> (explorer eval and saved metrics at MAC 6 and 10).</>}
+      subtitle={`${siteName(runs, target)}, ${setLabel(set, run, m10?.n)}. Filled points: x = Fabs/10; hollow: the same filters at Fabs/${alt} (${gallery.mac !== 10 ? 'the MAC set under Filters' : 'MAC 6, until another MAC is set under Filters'}; the cloud stretches by 10/${alt}). Both fits are drawn back to x = 0, where they meet: the axes run below zero so the shared intercept is visible. Dashed grey is 1:1, where a self-consistent calibration and MAC pairing would lie. Site, filters and fits follow the Filters panel.`}
+      provenance={<>Stands in for ftir_19 §2 and ftir_31 §1.11 (the pivot redone with Deming). Points: <code>calibration_runs.json</code> (explorer eval); fits: its saved MAC 10 metrics, refitted here on the filters that count (common/explorerFit; on the explorer's own set, the saved rows, whose MAC 6 rows the pivot reproduces).</>}
       controls={o.controls()}>
       {run ? <>
         <Crossplot title="" points={points} xLabel="HIPS Fabs / MAC (µg/m³)" yLabel="Predicted FTIR EC (µg/m³)" fit={false} grouping="none" extraLines={lines} domain={[lo, hi]} maxSide={520} />
         <Key items={[{ label: 'Fabs/10 (filled), fit at MAC 10', color: MAC10 }, { label: `Fabs/${alt} (hollow), fit at MAC ${alt}`, color: MAC6, kind: 'hollow' }, { label: '1:1', color: INK.identity, kind: 'dash' }]} />
         {lines.length > 0 && <p className="legend-note">{lines.map((l) => l.label).join(' · ')}; R² {f2(m10?.R2)} at both.</p>}
       </> : <Empty>No {siteName(runs, target)} run for this calibration.</Empty>}
-      <FixedSetNote what="the explorer's evaluation filters and its saved fits (calibration_runs.json)" />
       {viewNote(view, [view.targets.length > 1 ? `With several sites picked, this shows the first: ${siteName(runs, target)}.` : '',
-        set !== view.set ? `${siteName(runs, target)} has no fixed cohort in the explorer, so it is drawn on all pairs.` : ''].filter(Boolean).join(' '))}
+        set !== view.set ? `${siteName(runs, target)} has no fixed cohort in the explorer, so it is drawn on all pairs.` : '', refitNote(nOut)].filter(Boolean).join(' '))}
     </ChartFrame>
   )
 }
@@ -257,8 +286,11 @@ function SetupsAtMac({ rows: filters, saved, provenance: prov }: { rows: Row[]; 
   const colours = useColourScheme('mac-ftir19', 'categorical', 'Tableau 10')
   // each setup keeps its colour whichever columns the table has
   const setupColour = useMemo(() => categoricalScale(colours.name, SETUP_COLUMNS.map(([, name]) => name), colours.reverse), [colours.name, colours.reverse])
+  // ftir_19's filters in the chosen cohort, of which the fits use those that count under Filters → excluded
+  const inCohort = useMemo(() => filters.filter((r) => (o.values.cohort === 'all' || r.in_fixed_phase2_cohort === true) && num(r.Fabs) != null), [filters, o.values.cohort])
+  const split = useExclusionSplit(inCohort, (r) => String(r.ExternalFilterId ?? '') || null)
   const setups = useMemo(() => {
-    const use = filters.filter((r) => (o.values.cohort === 'all' || r.in_fixed_phase2_cohort === true) && num(r.Fabs) != null)
+    const use = split.counted
     return SETUP_COLUMNS.filter(([col]) => use.some((r) => num(r[col]) != null)).map(([col, name]) => {
       const pairs = use.flatMap((r) => { const y = num(r[col]); return y == null ? [] : [[num(r.Fabs)!, y] as const] })
       const at = (m: number) => {
@@ -272,7 +304,7 @@ function SetupsAtMac({ rows: filters, saved, provenance: prov }: { rows: Row[]; 
         // the MAC at which this setup's slope against Fabs/MAC is 1 (slope scales with MAC)
         unity: s10.slope ? 10 / s10.slope : null }
     })
-  }, [filters, o.values.cohort, mac, setupColour])
+  }, [split, mac, setupColour])
   const savedBy = new Map(saved.map((r) => [String(r.setup), r]))
   const table: Row[] = setups.map((s) => ({ setup: s.name, n: s.n, intercept: s.s10.intercept, slope10: s.s10.slope, slopeHere: s.here.slope, r2: s.s10.r2,
     rmse10: s.s10.rmse, rmseHere: s.here.rmse, unity: s.unity, notebook: num(savedBy.get(s.name)?.['slope @ MAC 10']) }))
@@ -290,7 +322,7 @@ function SetupsAtMac({ rows: filters, saved, provenance: prov }: { rows: Row[]; 
       return { x: m, y: v, tip: [s.name, `MAC ${fmt(m, 2)}`, `${key === 'rmse' ? 'RMSE' : 'slope'} ${f2(v)}`] } }) }))
   return (
     <ChartFrame id="mac-ftir19" title={`ftir_19's six setups at MAC ${mac} — refitted from its per-filter predictions`}
-      subtitle={`OLS of each setup's Addis EC on HIPS Fabs ÷ MAC (ftir_19's fit), on ${o.values.cohort === 'fixed' ? 'the fixed 190-filter cohort' : 'every filter with Fabs'}. The MAC is the one set under Filters → units; at MAC 10 and 6 this reproduces the notebook's table. Intercept and R² do not depend on the MAC; the slope scales with it, so each setup has one MAC at which it is self-consistent (slope 1, last column). RMSE against Fabs/MAC moves only as a re-expression of that slope, so R² cannot arbitrate the MAC. Includes the deployed SPARTAN calibration, which the explorer presets do not.`}
+      subtitle={`OLS of each setup's Addis EC on HIPS Fabs ÷ MAC (ftir_19's fit), on ${o.values.cohort === 'fixed' ? 'the fixed 190-filter cohort' : 'every filter with Fabs'}${split.nOut ? ` less the ${split.nOut} excluded (Filters → excluded)` : ''}. The MAC is the one set under Filters → units; at MAC 10 and 6, on the notebook's filters (Filters → excluded: Include, nothing excluded by hand), this reproduces its table. Intercept and R² do not depend on the MAC; the slope scales with it, so each setup has one MAC at which it is self-consistent (slope 1, last column). RMSE against Fabs/MAC moves only as a re-expression of that slope, so R² cannot arbitrate the MAC. Includes the deployed SPARTAN calibration, which the explorer presets do not.`}
       provenance={prov} controls={<>{o.controls()}{o.values.view !== 'table' && colours.picker}</>}>
       {o.values.view === 'table'
         ? <div style={{ overflowX: 'auto' }}><table className="census-table">
@@ -304,7 +336,7 @@ function SetupsAtMac({ rows: filters, saved, provenance: prov }: { rows: Row[]; 
             include={[0]} reference={o.values.view === 'slope' ? 1 : undefined} height={300}
             xMarkers={[{ at: 6, label: 'MAC 6', color: MAC6 }, { at: 10, label: 'MAC 10', color: MAC10 }, ...(mac !== 6 && mac !== 10 ? [{ at: mac, label: `Filters: ${mac}`, color: INK.text }] : [])]} />}
       {o.values.view !== 'table' && <Key items={setups.map((s) => ({ label: s.name, color: s.color, kind: 'line' as const }))} />}
-      <FixedSetNote what="ftir_19's per-filter table (its fixed 190-filter cohort, or every filter in it with Fabs)" />
+      <ExcludedNote count={split.marked.length} />
     </ChartFrame>
   )
 }

@@ -36,7 +36,7 @@ export function LotSpectra({ rows, meta }: SectionPageProps) {
           the lots over all filters and within the dry season only. This page draws the same comparison for whatever is in view: {f.id.length} filter spectra ({perSite}) with their lot
           (Addis: the ETAD lot map; the SPARTAN sites: the filter list's lot), each in three views — raw absorbance, char_12's second derivative and the AIRSpec-baselined,
           area-normalised view — so every centre, band, box and test below follows your sites, seasons, dates and exclusions. <strong>Filters</strong> on each chart picks the set;
-          “{SET_LABEL.notebook}” reproduces char_12's tables.</p>
+          “{SET_LABEL.notebook}” with Filters → excluded: Include reproduces char_12's tables (it scored ETAD-0248, which the export excludes; Filters → excluded acts on every set).</p>
         <p>Reproduced: on char_12's 239 Addis filters the exported escape scores give its lot × season numbers {agree ? 'exactly' : 'approximately'} (lot 248 vs 251: n {check.lot_effect.map((r) => `${r.n248}/${r.n251}`).join(' and ')},
           medians {check.lot_effect.map((r) => `${fmt(r.median248, 3)} vs ${fmt(r.median251, 3)}`).join(' and ')}, p {check.lot_effect.map((r) => fmt(r.p, 3)).join(' and ')} over all filters and within the dry season),
           and its 04 box groups ({check.lot_season.map((g) => `${g.group} ${g.n}`).join(', ')}).

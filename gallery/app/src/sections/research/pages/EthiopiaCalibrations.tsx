@@ -2,12 +2,12 @@ import { useMemo } from 'react'
 import { Figure } from '@/components/Figure'
 import { f2 } from '@/lib/format'
 import { useMac } from '@/lib/mac'
-import { FixedSetNote } from '@/lib/markedRows'
+import { ExcludedNote, FixedSetNote } from '@/lib/markedRows'
 import { num, type Row } from '@/lib/table'
 import type { SectionPageProps } from '../../types'
 import { PageIntro, provenance, rows, useSpectral, Waiting } from './spectralCommon'
 import { AdamaFigures } from './ethiopia/Adama'
-import { ComponentSweep, LotsPaired, VariantsVsCal0 } from './ethiopia/Paired'
+import { ComponentSweep, LotsPaired, VariantsVsCal0, useEtadSpectra } from './ethiopia/Paired'
 import { CleaningResiduals } from './ethiopia/Residuals'
 import { SmokeFigures } from './ethiopia/Smoke'
 import { AdamaSpectra, BandProfile, DerivativeSpectra, EtadSpectra, SpectraMissing } from './ethiopia/Spectra'
@@ -27,19 +27,23 @@ import { AdamaSpectra, BandProfile, DerivativeSpectra, EtadSpectra, SpectraMissi
 export function EthiopiaCalibrations({ rows: galleryRows }: SectionPageProps) {
   const { data, error } = useSpectral('ethiopia_calibrations')
   const m = useMac()
+  // Filters → excluded acts on the ETAD spectra by filter id: the distributions and counts use the spectra that count;
+  // the crossplots get every spectrum and Crossplot leaves out (or under Mark crosses) the rest
+  const etad = useEtadSpectra(data)
 
   // the export keeps one row per spectrum and one column per calibration; the figures want one row per point
-  const points = useMemo(() => {
-    if (!data) return []
+  const pointsOf = useMemo(() => (perFilter: Row[]) => {
     const index = rows(data, 'calibrations')
-    return rows(data, 'per_filter').flatMap((f) => index.map((c): Row => ({
+    return perFilter.flatMap((f) => index.map((c): Row => ({
       family: c.family, calibration: c.calibration, which: `${c.family} — ${c.calibration}`,
       EC: num(f[String(c.column)]), HIPS: m.bc(num(f['HIPS Fabs/10']), 10), id: f.ExternalFilterId,
     })))
   }, [data, m])
+  const points = useMemo(() => pointsOf(etad.all), [pointsOf, etad.all])
+  const counted = useMemo(() => pointsOf(etad.counted), [pointsOf, etad.counted])
 
   if (!data) return <Waiting error={error} />
-  const known = points.filter((p) => p.EC != null)
+  const known = counted.filter((p) => p.EC != null)
   // the notebooks' OLS slopes against Fabs/10, re-expressed at the reader's MAC
   const atMac = (rs: Row[]) => rs.map((r): Row => ({ ...r, slope: m.slope(num(r.slope), 10) }))
   const spectra = rows(data, 'spectra_means').length > 0
@@ -52,15 +56,15 @@ export function EthiopiaCalibrations({ rows: galleryRows }: SectionPageProps) {
     <PageIntro id="ethiopia-intro" title="Ethiopia (ETAD) EC under the June 2026 calibrations — which samples, how many components, which lots" data={data}
       notebooks="research/ftir_ec_calibration_2026_06_25/01_adama_spectra, 02_adama_tor_vs_ftir, 03_adama_char_soot, 04_ethiopia_etad_spectra, 06_calibration_variants_components [12], [21], 07_ethiopia_variant_ec, 08_adama_hips_crossplots, 09_ethiopia_component_ec, 10_ethiopia_ec_both_lots, 12_dedicated_ethiopia_calibration, 13_chase_origin_and_biomass [9], 15_downstream_recommended_calibration; research/spartan_ec_2026_06_16/02_biomass_calibration_comparison, 03_adama_han_char_soot, 05_calibration_optimization, 07_calibration_optimization_story, 08_outlier_removal_explainer; research/July07/regular_before_cal0_vs_smoke_hips, regular_vs_smoke_ec_vs_hips">
       <p>All of these apply PLS calibrations trained on IMPROVE to the 319 ETAD spectra (19 filters scanned twice, so one point per spectrum, as the notebooks do). None has an Ethiopian thermal EC reference: they are judged by agreement with HIPS Fabs/MAC (the notebooks: MAC 10; here the MAC set under Filters → units, now {m.mac}) and by physical sense. Notebook 07 left the HIPS comparison as a to-do; the crossplots here add it from the HIPS Fabs carried in notebook 15's table.</p>
-      <FixedSetNote subject="this page" what="the notebooks' 319 ETAD spectra and saved tables (so does every chart on this page but the July07 smoke comparison, which follows the gallery's Addis rows; the per-spectrum crossplots still leave out, or under Mark cross, a filter excluded by hand)" />
+      <FixedSetNote subject="each saved-table chart (the variants' HIPS fits, training-set medians, progression, mean spectra, Adama and cleaning figures)" what="the notebooks' saved statistics (the charts of the 319 ETAD spectra and of the gallery's Addis rows follow it)" />
       <p>A naming hazard runs through the July07 and spartan_ec notebooks: their "regular CAL-0" is the 906-filter IMPROVE set (the set the gallery's "Biomass-smoke (906)" calibration preset trains on), while their "smoke" or "biomass tool" calibration is a different model, the coefficients SPARTAN's calibration tool exported for filter lot 251. The page names them that way. The only thermal EC in Ethiopia is the five Adama quartz filters, read against every calibration below.</p>
     </PageIntro>
 
-    <Figure kind="intervals" id="ethiopia-dist" data={points} row="calibration" block="family"
+    <Figure kind="intervals" id="ethiopia-dist" data={counted} row="calibration" block="family"
       panels={[{ value: 'EC', label: 'Predicted ETAD EC (µg/m³; median and IQR over spectra)', reference: 0 }]} labelWidth={300}
       title="How far the calibration choice moves the Ethiopia EC — about 2× by sample choice, up to 5× by component count"
       subtitle={`07: the 906-filter IMPROVE set at k = 20, kept whole (CAL-0), 3σ-cleaned (CAL-1), or cut to sub-populations; CAL-2 and CAL-4 are tiny-sample fits that predict negative EC (${negative('07')} negative spectra in 07) and are diagnostics, not candidates. 09: the whole set at six component counts. 10: the 935-filter export spanning both ETAD filter lots. 15: the old calibration against the validated lot-248+251 mirror.`}
-      provenance={provenance(data, ['per_filter', 'calibrations'])} />
+      provenance={provenance(data, ['per_filter', 'calibrations'])} aside={<ExcludedNote count={etad.marked} />} />
 
     <VariantsVsCal0 data={data} />
     <ComponentSweep data={data} />

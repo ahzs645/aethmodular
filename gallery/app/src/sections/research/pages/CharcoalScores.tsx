@@ -27,7 +27,7 @@ export function CharcoalScores({ rows, meta }: SectionPageProps) {
           the filters sampled after the gallery's Addis series ends (ETAD-0249 on) have no gallery row. <strong>Filters</strong> on each chart picks the set:
           “{SET_LABEL.view}” uses the Addis rows in view ({set === 'view' ? c.scored.length : '…'} now), so your seasons, dates and exclusions apply and EC and Fabs are the gallery's;
           “{SET_LABEL.plus}” adds the newer filters, seasoned by your calendar; “{SET_LABEL.notebook}” is every scored filter with the notebooks' own seasons, which reproduces their tables
-          (shown beside the page's numbers as “nb”). Recomputed here: medians, shares, the monthly rate, the lot and loading Mann–Whitney tests, char_07's exclusions.
+          (shown beside the page's numbers as “nb”) under Filters → excluded: Include. Filters → excluded acts on every set, the notebooks' too: under Hide it leaves out the scored filters the export excludes (ETAD-0248) and any you exclude by hand. Recomputed here: medians, shares, the monthly rate, the lot and loading Mann–Whitney tests, char_07's exclusions.
           From the notebooks as they ran: the mixture component (a fit), the logistic regressions and every per-feedstock and per-class number. The model-fitting side of these
           notebooks (archive PCA and clustering, the analogue matcher, the burned/unburned classifier) is on <a href="#tab=ml&aep=charcoal">Machine learning → Charcoal archive</a>;
           char_12's envelope escape is on <a href="#tab=research&aep=applicability">Applicability domain</a>.</p>

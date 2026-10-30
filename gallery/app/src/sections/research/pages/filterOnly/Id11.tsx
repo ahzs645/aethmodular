@@ -42,7 +42,7 @@ export function Id11Errors({ runs, s, meta }: { runs: SiteRun[]; s: Settings; me
     <ChartFrame id="fo-id11" title="Training on earlier ID-11 filters — the same later ID-11 filters under two training choices"
       subtitle={`${site} · ${popLabel(s.population)} population · later period · OLS with intercept · identifier and date stay confounded`}
       provenance={<>{NB_PROP} figure 06 (Addis)</>} source={`${SOURCE}/Id11.tsx › Id11Errors`}
-      tip={<>At the release's settings the same 127 later Addis ID-11 filters are compared under both choices: OLS MAE falls from 4.009 to 3.884 Mm⁻¹ and mean error from +1.621 to +0.619 Mm⁻¹. It is a bounded predictive sensitivity; because ID 11 begins on a date, the change cannot be attributed to a model change. No residual means are subtracted.</>}
+      tip={<>At the release's settings (with Filters → excluded: Include) the same 127 later Addis ID-11 filters are compared under both choices: OLS MAE falls from 4.009 to 3.884 Mm⁻¹ and mean error from +1.621 to +0.619 Mm⁻¹. It is a bounded predictive sensitivity; because ID 11 begins on a date, the change cannot be attributed to a model change. No residual means are subtracted.</>}
       controls={<SitePick value={site} options={SITES} onChange={setSite} />}>
       {common.length ? <>
         <Key items={[{ label: 'All earlier training', color: GREY, kind: 'dash' }, { label: 'Earlier ID 11 only', color, kind: 'line' }]} />
@@ -71,7 +71,7 @@ export function Id11Support({ runs, s, meta }: { runs: SiteRun[]; s: Settings; m
     <ChartFrame id="fo-id11-support" title="Which ID-11 folds are supported — restricted training changes which early folds can be compared"
       subtitle={`${site} · ${popLabel(s.population)} population · later period · a quarter is compared only when both training choices meet the same minimum (${s.minTrain})`}
       provenance={<>{NB_PROP} figure 07 (Addis)</>} source={`${SOURCE}/Id11.tsx › Id11Support`}
-      tip={<>At the release's settings the first two Addis ID-11 test quarters cannot be compared; common support begins in 2023Q3 and covers five quarters. Compare those same filters, not the earlier 155-filter later-period aggregate.</>}
+      tip={<>At the release's settings (with Filters → excluded: Include) the first two Addis ID-11 test quarters cannot be compared; common support begins in 2023Q3 and covers five quarters. Compare those same filters, not the earlier 155-filter later-period aggregate.</>}
       controls={<SitePick value={site} options={SITES} onChange={setSite} />}>
       <Key items={[{ label: 'All earlier', color: GREY, kind: 'dash' }, { label: 'Earlier ID 11', color, kind: 'line' }, { label: 'Test quarter compared', color, kind: 'bar' }, { label: 'Not compared', color, kind: 'faded' }]} />
       <Grid min={320}>

@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
-import { domainSummaryFrom, holdoutMoments, perFilterAtMac } from './holdout.ts'
+import { domainSummaryFrom, holdoutFilterId, holdoutMoments, perFilterAtMac } from './holdout.ts'
 import { rmseAtMac, solveHipsMoments } from '../../../lib/macMath.ts'
 
 const data = (f) => JSON.parse(fs.readFileSync(new URL(`../../../../public/data/research/spectral/${f}`, import.meta.url), 'utf8'))
@@ -35,7 +35,18 @@ test('at MAC 10 the rebuilt summary is ftir_39\'s: RMSE inside and outside the s
     else near(r.RMSE_outside, s.RMSE_outside, 1e-3, `${s.config} ${s.target} RMSE outside`)
     near(r.rho_domain_percentile_vs_abs_error, s.rho_domain_percentile_vs_abs_error, 1e-3, `${s.config} ${s.target} ρ`)
     near(r.rho_p, s.rho_p, 2e-3, `${s.config} ${s.target} p`)
+    assert.equal(r.n, s.n, `${s.config} ${s.target} n`)
+    near(r.outside_source_95_pct, s.outside_source_95_pct, 1e-3, `${s.config} ${s.target} outside %`)
   })
+})
+
+test('Filters → excluded: every holdout row joins a SPARTAN filter id, and a filter left out leaves every configuration\'s summary', () => {
+  const ids = perFilter.map((r) => holdoutFilterId(r, fabs))
+  assert.ok(ids.every((id) => /^(ETAD|INDH)-\d{4}-\d$/.test(id)), 'an id without a filter')
+  assert.equal(holdoutFilterId(perFilter[0], null), null)
+  const out = ids[0], less = perFilter.filter((r) => holdoutFilterId(r, fabs) !== out)
+  const rebuilt = domainSummaryFrom(less, saved)
+  for (const [i, s] of saved.entries()) assert.equal(rebuilt[i].n, s.target === perFilter[0].target ? s.n - 1 : s.n)
 })
 
 test('the exact holdout moments agree with those solved from ftir_36\'s fits, and both routes give one RMSE at MAC 6', () => {

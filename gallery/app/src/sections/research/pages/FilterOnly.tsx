@@ -13,9 +13,9 @@ import { PairedProportional, QuarterBias, QuarterMae, TestWeights } from './filt
  * Filter-only transfer limits: how well HIPS Fabs carries from FTIR-predicted EC across reported-date quarters at
  * Addis, Beijing, Delhi and JPL, from the filter-only release's frozen 545 diagnostic filters
  * (gallery/data/export_research_filter_only.py). Every model is refitted here (common/filterOnly.ts), so the
- * charts follow the population, the minimum training n, the reader's hand exclusions and, for HIPS in BC units,
- * the MAC; the last panel checks the refit against the release's own tables. The 545 are a frozen set: the data
- * export's own exclusions do not act on them, the hand exclusions do (filterOnly/data useFilterOnly).
+ * charts follow the population, the minimum training n, Filters → excluded (the export's exclusions and the
+ * reader's hand exclusions, filterOnly/data useFilterOnly) and, for HIPS in BC units, the MAC; the last panel checks
+ * the refit against the release's own tables, on all 545 as the release ran.
  */
 export function FilterOnly({ meta }: SectionPageProps) {
   const { data, error } = useFilterOnly()
@@ -30,7 +30,7 @@ export function FilterOnly({ meta }: SectionPageProps) {
       controls={<SettingsControls />}>
       <Note>
         Reported dates are not verified sampling intervals, and the FTIR predictor is not an independent EC reference. The population, minimum training n and units apply to every chart below;
-        filters excluded by hand on any page are left out of every fit (Filters → excluded: Mark draws them as × on the held-out scatter). The release's filters are fixed: the data export's own exclusions do not act on them (ETAD-0248, which the export excludes as a PM10 filter, is one of the 545).{data.note ? ` ${data.note}` : ''} Fabs is in Mm⁻¹ and needs no MAC; “BC at MAC” divides every HIPS value, prediction and error by the reader's MAC, which leaves percentages unchanged.
+        Filters → excluded acts on every chart but the last: an excluded filter (the data export's own exclusions and any excluded by hand) is left out of every fit, Include puts the export's back, and Mark draws them as × on the held-out scatter. The release ran on all 545, ETAD-0248 among them, which the export excludes as a PM10 filter: the release's numbers quoted in the tips are the charts under Include.{data.note ? ` ${data.note}` : ''} Fabs is in Mm⁻¹ and needs no MAC; “BC at MAC” divides every HIPS value, prediction and error by the reader's MAC, which leaves percentages unchanged.
       </Note>
     </ChartFrame>
     <QuarterMae {...props} />

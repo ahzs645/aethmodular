@@ -94,7 +94,7 @@ export function SmokeFigures({ data, rows }: { data: SpectralExport; rows: Filte
         { key: 'slope', label: 'Slope (MAC 10)', format: 'f2' }, { key: 'intercept', label: 'Intercept (MAC 10)', format: 'f2' }, { key: 'R2', label: 'R²', format: 'f3' },
         { key: 'implied', label: 'Implied MAC', format: 'f2' }, { key: 'gap', label: 'Median HIPS − EC (MAC 10)', format: 'f2' }]}
       title="The verdicts as July07 saved them, at MAC 10"
-      subtitle="The exporter refuses the per-filter tables unless they reproduce these. The live scorecard matches the regular-vs-smoke rows on that notebook's 259 spectra (src/sections/research/pages/ethiopia/data.test.mjs) and the before-CAL-0 rows to two decimals on the gallery's 189 filters (that notebook's 2024-08-07 point averages ETAD-0241 with the PM10 filter ETAD-0248, which the gallery excludes). Its reported-EC row has n = 209: the reported EC it could match."
+      subtitle="The exporter refuses the per-filter tables unless they reproduce these. The live scorecard matches the regular-vs-smoke rows on that notebook's 259 spectra (src/sections/research/pages/ethiopia/data.test.mjs) and the before-CAL-0 rows to two decimals on the gallery's 189 filters under Filters → excluded: Hide (that notebook's 2024-08-07 point averages ETAD-0241 with the PM10 filter ETAD-0248, which the export excludes; Include puts it back as a filter of its own). Its reported-EC row has n = 209: the reported EC it could match."
       provenance={provenance(data, ['smoke_verdict_addis', 'smoke_verdict_etad'])} />
 
     <ChartFrame id="ethiopia-smoke-lot251"

@@ -74,7 +74,7 @@ export function Classes({ c, data }: { c: Charcoal; data: SpectralExport }) {
         blocks={[{ key: 'live', rows: lib.length ? [liveRow] : [] }, { key: 'classes', title: 'Notebook classes (static)', rows: classRows }]} />
       {/* the live row follows the set and the exclusions; the class rows are the notebooks' */}
       <SetNote c={c} of={(x) => x.libraryR !== null} />
-      {c.set !== 'notebook' && <FixedSetNote what="the class rows on the notebooks' 239 filters and seasons (no script saves a filter's r per class)" />}
+      <FixedSetNote subject="the class rows" what="the notebooks' 239 filters and seasons (no script saves a filter's r per class)" />
       <Key items={[{ label: 'all filters', color: INK.text }, { label: 'non-dry', color: wet }, { label: 'dry season', color: dryC, kind: 'hollow' }, { label: 'live: char_02 library match on the filters shown', color: INK.text, kind: 'diamond' }]} />
       {fvf.length > 0 && <>
         <p className="subtitle" style={{ margin: '10px 0 4px' }}>Furnace (Minatre woody) against real-fire char (Minatre combustion facility), paired over the same filters (char_09):</p>

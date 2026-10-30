@@ -99,7 +99,7 @@ test('filter_only_diagnostics 05: counts and ratio medians at each MDL multiple'
   for (const r of frozen.cohorts) assert.equal(cohortOf(r.site, r.population, r.variant).length, r.n, `${r.site} ${r.population} ${r.variant} n`)
 })
 
-test('Mark: a hand-excluded filter is drawn at the prediction it would get in the cohort, and moves no fit', () => {
+test('Mark: an excluded filter is drawn at the prediction it would get in the cohort, and moves no fit', () => {
   const diag = siteDiag('Addis Ababa')
   let checked = 0
   for (const out of diag.filter((_, i) => i % 23 === 0)) {

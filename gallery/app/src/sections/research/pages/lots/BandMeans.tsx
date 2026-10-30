@@ -48,7 +48,7 @@ export function BandMeans({ exp, lots, setPick }: { exp: LotExport; lots: Lots; 
           { key: 'nb', label: 'char_12 (248 / 251, p)', num: true, value: (r) => (r.nb ? `${fmt(r.nb.median248, 2)} / ${fmt(r.nb.median251, 2)}, ${pText(r.nb.p)}` : '—') },
         ]} />
         <LotNote lots={lots} of={(m) => m.lot !== null && m.season === season && (site === 'all' || m.code === site)} />
-        <Note>The last column is char_12's table (its Addis dry-season filters: 27 of lot 248, 46 of lot 251); “{"char_12's 239 (Addis)"}” under Filters, with the dry season, reproduces it.</Note>
+        <Note>The last column is char_12's table (its Addis dry-season filters: 27 of lot 248, 46 of lot 251); “{"char_12's 239 (Addis)"}” under Filters, with the dry season and Filters → excluded: Include, reproduces it.</Note>
       </>}
     </ChartFrame>
   )

@@ -4,7 +4,7 @@
  * (common/charcoal.ts), with the season names and colours the charts use.
  */
 import { useMemo } from 'react'
-import { useKnownFilter, useMarkedRows } from '@/lib/markedRows'
+import { useCountedFilter, useExclStatus, useKnownFilter, useMarkedRows } from '@/lib/markedRows'
 import { seasonOfDate } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -34,14 +34,15 @@ const NOTEBOOK_SEASONS = [
 ]
 
 export const SET_LABEL: Record<ScoreSet, string> = { view: 'Gallery rows in view', plus: 'In view + newer', notebook: "Notebook's 239" }
-export const SET_TITLE = 'Which scored filters the charts use: the gallery\'s Addis rows in view (your seasons, dates and exclusions); those plus the scored filters sampled after the gallery\'s Addis series ends (seasoned by your calendar); or every scored filter with the notebooks\' own seasons, Fabs and EC, which reproduces their tables.'
+export const SET_TITLE = 'Which scored filters the charts use: the gallery\'s Addis rows in view (your seasons, dates and exclusions); those plus the scored filters sampled after the gallery\'s Addis series ends (seasoned by your calendar); or every scored filter with the notebooks\' own seasons, Fabs and EC, which reproduces their tables under Filters → excluded: Include. Filters → excluded acts on every set.'
 
 export interface Season { name: string; color: string }
 export interface Charcoal {
   scored: Scored<FilterRow>[]
   /**
-   * Filters → excluded: Mark (lib/markedRows): the excluded Addis rows in view that the notebooks scored, for the
-   * crossplots to draw as × and the notes to count; in no median, share, test or count. None for the notebooks' set.
+   * Filters → excluded: Mark (lib/markedRows): the excluded scored filters (the Addis rows in view, or, in the
+   * notebooks' set and the newer filters, any score whose filter is excluded), for the crossplots to draw as × and the
+   * notes to count; in no median, share, test or count.
    */
   marked: Scored<FilterRow>[]
   /** scored filters with no gallery Addis row in view */
@@ -68,13 +69,19 @@ export function useCharcoal(viewRows: FilterRow[], meta: MetaFile, scoresTable: 
   const concRows = useConcRows(viewRows, meta)
   const markedRows = useConcRows(useMarkedRows(), meta)
   const known = useKnownFilter()
+  const counts = useCountedFilter()
+  const status = useExclStatus()
   return useMemo(() => {
     const scores = rowsOf(scoresTable) as unknown as CharcoalScore[]
     const addis = concRows.filter((r) => r.site === ADDIS)
     const calendar = meta.seasons.filter((s) => !s.site || s.site === ADDIS)
-    const { scored, outside } = joinScores(scores, addis, set, (date, month) => seasonOfDate(date, month, calendar)?.name ?? null, undefined, known)
-    // the exclusions act on the gallery's rows only: the notebooks' own set is fixed (the charts say so, FixedSetNote)
-    const marked = set === 'notebook' ? [] : markedScores(scores, markedRows.filter((r) => r.site === ADDIS), scored)
+    const joined = joinScores(scores, addis, set, (date, month) => seasonOfDate(date, month, calendar)?.name ?? null, undefined, known)
+    const { outside } = joined
+    // Filters → excluded acts on every set: a score joined to a gallery row in view already counts (the rows are the
+    // counted ones); one without (the notebooks' set, plus's newer filters) counts by its filter id, as on every chart
+    const scored = joined.scored.filter((s) => s.row || counts(s.id))
+    const ownMarked = joined.scored.filter((s) => !s.row && !counts(s.id) && status(s.id) === 'marked')
+    const marked = set === 'notebook' ? ownMarked : [...markedScores(scores, markedRows.filter((r) => r.site === ADDIS), scored), ...ownMarked]
     // seasons in calendar order from October, as the Addis calendars run
     const first = new Map<string, number>()
     for (const s of scored) first.set(s.season, Math.min(first.get(s.season) ?? 99, (s.month + 2) % 12))
@@ -94,5 +101,5 @@ export function useCharcoal(viewRows: FilterRow[], meta: MetaFile, scoresTable: 
       ? [{ name: 'Dry Season', months: [10, 11, 12, 1, 2], color: colorOf('Dry Season') }]
       : calendar.filter((s) => isDry({ season: s.name, month: s.months[0] ?? 0 })).map((s) => ({ name: s.name, months: s.months, color: s.color }))
     return { scored, marked, outside, total: scores.length, set, seasons: names.map((name) => ({ name, color: colorOf(name) })), colorOf, isDry, dryName: shortSeason(dryName).replace(/\s+(Rainy\s+)?Season$/, ''), drySeasons }
-  }, [scoresTable, concRows, markedRows, meta, set, known])
+  }, [scoresTable, concRows, markedRows, meta, set, known, counts, status])
 }
