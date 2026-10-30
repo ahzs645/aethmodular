@@ -219,6 +219,11 @@ STEPS: tuple[Step, ...] = (
           drive("DAVIS/SPARTAN FTIR pulls/CHTS/CHTS_filters.csv"), drive("Spartan/SPARTAN_HIPS_Batch1-51.v2.csv"),
           drive("FTIR/runs/2026-06-24/ftir-spectra-2026-06-24.csv")),
          note="AETHMODULAR_FTIR_SPECTRA_DIR must point at Davis Data/FTIR"),
+    Step("research-python-pmf", "export", ("gallery/data/export_python_pmf.py",),
+         "Python PMF (Oct 2026): the independent Python PMF package's saved five-factor fits, rank screen, bootstrap profile bands, "
+         "held-out total-OM predictions and QC inventory (its CSV/JSON/NPZ read as data; its code is never run)",
+         "research/python_pmf/", (env_root("AETHMODULAR_PYTHON_PMF_DIR", "results/five_factor"),),
+         note="AETHMODULAR_PYTHON_PMF_DIR must point at the extracted python_pmf folder (the Drive's Addis_PMF_01/02/03 zips)"),
     Step("ml", "export", ("gallery/data/export_ml.py",),
          "The Machine learning section: the notebooks' model-fitting results, as they ran (static)", "ml/",
          after=("research-spectral",)),
