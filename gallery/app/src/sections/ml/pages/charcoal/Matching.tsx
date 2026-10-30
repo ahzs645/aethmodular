@@ -1,7 +1,8 @@
 /**
  * Charcoal archive C: analogue matching and classifiers (char_02 nearest-analogue matching and its implied
  * temperature, char_03's leave-one-feedstock-out burned/unburned classifier, char_06's Gaussian mixture, char_11's
- * conclusion by transform). Static: the notebooks' 239 filters with their own seasons.
+ * conclusion by transform). Static: the notebooks' 239 filters with their own seasons, except char_03's per-filter
+ * P(burned) at Addis, which carries filter ids and follows Filters → excluded (lib/markedRows useCountedFilter).
  */
 import { useMemo } from 'react'
 import { Figure } from '@/components/Figure'
@@ -10,6 +11,8 @@ import { num, type Row } from '@/lib/table'
 import type { MetaFile } from '@/lib/types'
 import type { SpectralExport } from '../../../research/pages/spectralCommon'
 import { provenance, rows } from '../../common'
+import { baseFilterId } from '@/lib/filterId'
+import { ExcludedNote, useCountedFilter, useExclMode, useExclusionSplit } from '@/lib/markedRows'
 
 const NB = {
   c02: 'research/ftir_etad_char/char_02_addis_vs_charcoal.ipynb',
@@ -39,11 +42,24 @@ export function Matching({ data, meta }: { data: SpectralExport; meta: MetaFile 
     }
     return out
   }, [analogue])
-  const loo = rows(data, 'loo'), burned = rows(data, 'addis_burned')
+  const loo = rows(data, 'loo'), burnedAll = rows(data, 'addis_burned')
+  // char_03's Addis filters carry their ids ("ETAD-0017-1"), so they follow Filters → excluded (the one rule,
+  // lib/markedRows useCountedFilter); the LOO references are charcoal spectra, not filters
+  const burnedId = (r: Row) => baseFilterId(String(r.FilterId ?? ''))
+  const burnedSplit = useExclusionSplit(burnedAll, burnedId)
+  const isCounted = useCountedFilter()
+  const burned = useMemo(() => burnedAll.filter((r) => isCounted(burnedId(r))), [burnedAll, isCounted]) // eslint-disable-line react-hooks/exhaustive-deps
   const probs = useMemo(() => [
     ...loo.map((r): Row => ({ group: r.true_burned ? 'burned references (LOO)' : 'unburned references (LOO)', p: r.p_burned })),
     ...burned.map((r): Row => ({ group: 'Addis filters (final model)', p: r.p_burned })),
   ], [loo, burned])
+  // the Addis share classed burned (P > 0.5, the classifier's call) and median P on the counted filters: on all 239
+  // they are char_03's printed 1 % and 0.04
+  const pBurned = burned.map((r) => num(r.p_burned)).filter((v): v is number => v != null).sort((a, b) => a - b)
+  const burnedPct = pBurned.length ? (100 * pBurned.filter((v) => v > 0.5).length) / pBurned.length : null
+  const burnedMedian = pBurned.length ? (pBurned[(pBurned.length - 1) >> 1] + pBurned[pBurned.length >> 1]) / 2 : null
+  // under Mark the ExcludedNote says it; otherwise this note does
+  const nBurnedOut = useExclMode() === 'mark' ? 0 : burnedAll.length - burned.length
   const overall = rows(data, 'loo_overall'), pc = (m: string) => num(overall.find((r) => String(r.measure).startsWith(m))?.['%'] ?? null)
   const archive = rows(data, 'archive_scores'), addisP = archive.find((r) => String(r.collection).startsWith('Addis'))
   const mixture = rows(data, 'mixture'), fit = rows(data, 'mixture_fit')
@@ -65,9 +81,11 @@ export function Matching({ data, meta }: { data: SpectralExport; meta: MetaFile 
       provenance={<>{NB.c02} [15] right. {provenance(data, ['analogue'])}</>} />}
 
     {probs.length > 0 && <Figure kind="histogram" id="mlc-burned" data={probs} value="p" series="group" bins={20} xLabel="P(burned)" colors={colors}
-      title={`The burned/unburned classifier calls ${addisP?.['% classed burned'] ?? '?'} % of Addis burned (median P ${f2(addisP?.['median P(burned)'])}), but recovers unburned material only ${pc('unburned') ?? '?'} % of the time`}
+      title={`The burned/unburned classifier calls ${burnedPct != null ? burnedPct.toFixed(0) : addisP?.['% classed burned'] ?? '?'} % of Addis burned (median P ${f2(burnedMedian ?? addisP?.['median P(burned)'])}), but recovers unburned material only ${pc('unburned') ?? '?'} % of the time`}
       subtitle={`char_03: PCA (8 components) + balanced logistic regression on McCall's 24 raw and 216 charred spectra, cross-validated by leaving out one feedstock at a time (overall accuracy ${pc('overall')} %, burned recall ${pc('burned')} %), then refitted on all of them and applied to Addis. Addis sits off every burned→unburned band axis and beyond the training cloud's 99th percentile for most filters (Mahalanobis above), so its confident "unburned" is extrapolation.`}
-      provenance={<>{NB.c03} [16]. {provenance(data, ['loo', 'addis_burned', 'loo_overall'])}</>} />}
+      provenance={<>{NB.c03} [16]. {provenance(data, ['loo', 'addis_burned', 'loo_overall'])}</>}
+      aside={<>{nBurnedOut > 0 && <p className="chart-note">{nBurnedOut} of the {burnedAll.length} Addis filters {nBurnedOut === 1 ? 'is' : 'are'} out under Filters → excluded: not in the Addis histogram, its share or its median.</p>}
+        <ExcludedNote count={burnedSplit.marked.length} /></>} />}
 
     <Figure kind="table" id="mlc-burned-tables" data={[...rows(data, 'loo_accuracy').map((r): Row => ({ what: `LOO accuracy · ${r.feedstock}`, value: r.accuracy })),
       ...archive.map((r): Row => ({ what: `median P(burned) · ${r.collection} (${r['% classed burned']} % classed burned)`, value: r['median P(burned)'] }))]}

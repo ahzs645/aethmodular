@@ -11,7 +11,7 @@ import { FONT, INK } from '@/lib/theme'
 import type { FilterRow, MetaFile, PmfFile, PmfRow } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import { HIDDEN_DUPLICATES } from '@/fieldLineage'
-import { FixedSetNote } from '@/lib/markedRows'
+import { ExcludedNote, useCountedFilter, useExclStatus } from '@/lib/markedRows'
 
 type Status = 'shown' | 'hidden' | 'none'
 const NO_PMF_COLOR = '#bbbbbb'
@@ -24,7 +24,9 @@ const COUNT_W = 76
  * the gallery has at the site, then one lane per measurement it carries, each filter a tick coloured by whether it
  * has a PMF day (in this view's seasons and sources, outside them, or none), over the PMF's date range shaded.
  * The counts at the right are "with PMF / all". Computed here from filters.json and pmf.json (lib/pmfCoverage), so
- * a new export moves it.
+ * a new export moves it. The site's filters are the ones that count under Filters → excluded (lib/markedRows
+ * useCountedFilter: the export's exclusions unless Include, hand exclusions, keep=); PMF days are matched against
+ * every filter first, so an excluded filter's day is not reported as unmatched.
  */
 export function PmfCoverage({ pmf, rows, meta }: { pmf: PmfFile; rows: PmfRow[]; meta: MetaFile }) {
   const { data } = useGalleryData()
@@ -33,18 +35,23 @@ export function PmfCoverage({ pmf, rows, meta }: { pmf: PmfFile; rows: PmfRow[];
   const tip = useTooltip(wrapRef)
   const [lanes, setLanes] = useSearchParam<'0' | '1'>('pmfcov.fields', '1', ['0', '1'])
   const color = meta.sites.find((s) => s.code === pmf.site)?.color ?? INK.accent
+  const isCounted = useCountedFilter()
+  const exclStatus = useExclStatus()
 
   const view = useMemo(() => {
-    const filters = (data?.filters.rows ?? []).filter((r) => r.code === pmf.site).sort((a, b) => a.date.localeCompare(b.date))
-    const { of, unmatched } = matchPmf(filters, pmf.rows)
+    const every = (data?.filters.rows ?? []).filter((r) => r.code === pmf.site).sort((a, b) => a.date.localeCompare(b.date))
+    const { of: ofAll, unmatched } = matchPmf(every, pmf.rows)
+    const filters = every.filter((f) => isCounted(f.id))
+    const of = new Map(filters.flatMap((f) => { const p = ofAll.get(f.id); return p ? [[f.id, p] as const] : [] }))
     const shownIds = new Set(rows.map((r) => r.id))
     const status = (f: FilterRow): Status => { const p = of.get(f.id); return !p ? 'none' : shownIds.has(p.id) ? 'shown' : 'hidden' }
     const fields = (data?.meta.fields ?? meta.fields).filter((f) => !HIDDEN_DUPLICATES.includes(f))
     const cov = fieldCoverage(filters, fields, (f) => of.has(f.id)).filter((c) => c.all > 0)
     const dates = pmf.rows.map((r) => r.date).sort()
     return { filters, status, cov, unmatched, range: dates.length ? [dates[0], dates[dates.length - 1]] as const : null,
-      n: { all: filters.length, pmf: of.size, shown: filters.filter((f) => status(f) === 'shown').length, excluded: filters.filter((f) => f.excluded).length } }
-  }, [data, pmf, rows, meta.fields])
+      n: { all: filters.length, pmf: of.size, shown: filters.filter((f) => status(f) === 'shown').length, out: every.length - filters.length,
+        marked: every.filter((f) => exclStatus(f.id) === 'marked').length } }
+  }, [data, pmf, rows, meta.fields, isCounted, exclStatus])
 
   const site = pmf.site_name
   const laneList = [{ field: null as string | null, label: `All ${site} filters`, all: view.n.all, pmf: view.n.pmf }, ...(lanes === '1' ? view.cov.map((c) => ({ ...c, label: pickerName(c.field) })) : [])]
@@ -62,7 +69,7 @@ export function PmfCoverage({ pmf, rows, meta }: { pmf: PmfFile; rows: PmfRow[];
   return (
     <ChartFrame id="pmf-coverage"
       title={`PMF coverage — the ${site} filters the PMF solution analysed, among all of them`}
-      subtitle={`${view.n.all} ${site} filters in the gallery${view.n.excluded ? ` (${view.n.excluded} excluded by the notebooks' list, kept here)` : ''}; ${view.n.pmf} have a PMF day (${view.n.all ? ((100 * view.n.pmf) / view.n.all).toFixed(1) : '0'} %), ${view.n.shown} of them in this view's seasons and sources; ${view.n.all - view.n.pmf} have none.${view.range ? ` The PMF days run ${view.range[0]} to ${view.range[1]} (shaded).` : ''}${view.unmatched.length ? ` ${view.unmatched.length} PMF days match no filter.` : ' Every PMF day matches a filter.'} A filter has a PMF day when the PMF row carries its id or, failing that, is dated within a day of it (the notebook's rule). The lanes below repeat it per measurement, so the parameters the PMF subset can and cannot speak to show at a glance.`}
+      subtitle={`${view.n.all} ${site} filters in the gallery${view.n.out ? ` (${view.n.out} more left out under Filters → excluded)` : ''}; ${view.n.pmf} have a PMF day (${view.n.all ? ((100 * view.n.pmf) / view.n.all).toFixed(1) : '0'} %), ${view.n.shown} of them in this view's seasons and sources; ${view.n.all - view.n.pmf} have none.${view.range ? ` The PMF days run ${view.range[0]} to ${view.range[1]} (shaded).` : ''}${view.unmatched.length ? ` ${view.unmatched.length} PMF days match no filter.` : ' Every PMF day matches a filter.'} A filter has a PMF day when the PMF row carries its id or, failing that, is dated within a day of it (the notebook's rule). The lanes below repeat it per measurement, so the parameters the PMF subset can and cannot speak to show at a glance.`}
       provenance="research/ftir_hips_chem/ETAD_Factor_Analysis.ipynb c11 (PMF coverage), c12 (timeline, all vs PMF-analysed), c13 (parameter coverage timeline) · from filters.json + pmf.json"
       controls={<Toggle label="A lane per measurement" checked={lanes === '1'} onChange={(v) => setLanes(v ? '1' : '0')} title="One lane per measurement the site's filters carry (c13), or only the all-filters lane (c12)" />}>
       <div ref={wrapRef} className="chart-wrap">
@@ -101,7 +108,7 @@ export function PmfCoverage({ pmf, rows, meta }: { pmf: PmfFile; rows: PmfRow[];
         </>}
         {tip.node}
       </div>
-      <FixedSetNote what="every filter of the PMF site and the PMF solution's days" />
+      <ExcludedNote count={view.n.marked} />
     </ChartFrame>
   )
 }

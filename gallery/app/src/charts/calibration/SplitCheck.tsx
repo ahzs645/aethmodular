@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { AxisChoices } from '@/components/AxisChoices'
 import { useSearchParam } from '@/lib/url'
 import { RefLine } from '@/components/RefLines'
@@ -11,10 +11,11 @@ import { fmt } from '@/lib/stats'
 import { INK, MARGIN, FONT } from '@/lib/theme'
 import { dotRim } from '@/lib/highlight'
 import type { CalibRun, CalibRunsFile } from '@/lib/types'
-import { metricRowAt } from './common'
+import { splitCheckLive } from './runFit'
 import { useMac } from '@/lib/mac'
 import { ChartAside } from '@/lib/singleView'
-import { FixedSetNote } from '@/lib/markedRows'
+import { ExcludedNote, useCountedFilter, useExclMode, useExclusionSplit } from '@/lib/markedRows'
+import { useEstimator } from '@/lib/regressionPrefs'
 
 const SPLIT_LABEL: Record<string, string> = { all: 'all filters', early: 'early half', late: 'late half', odd: 'odd half', even: 'even half' }
 const SPLIT_COLOR: Record<string, string> = { get all() { return INK.text }, early: '#E67E22', late: '#3498DB', odd: '#27AE60', even: '#8e44ad' }
@@ -26,6 +27,11 @@ const SPLIT_COLOR: Record<string, string> = { get all() { return INK.text }, ear
  * a gap both show is sampling scatter. The axes follow the halves, so the
  * distance between points is the whole story. Deming only (agreed with Ann,
  * 23 Sep 2026): both axes of the crossplot carry measurement error.
+ *
+ * Rebuilt from the run's per-filter readouts (runFit splitCheckLive: the explorer's stratified equal-n halves and
+ * crossplot_metrics, which reproduce the saved split_check), at the reader's MAC and on the filters that count
+ * under Filters → excluded (lib/markedRows useCountedFilter): an excluded filter leaves the halves before they are
+ * drawn, as if the explorer had never had it.
  */
 export function SplitCheck({ run, runs }: { run: CalibRun; runs: CalibRunsFile }) {
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -35,11 +41,18 @@ export function SplitCheck({ run, runs }: { run: CalibRun; runs: CalibRunsFile }
 
   const gallery = useMac()
   const isFabs = run.ref_kind === 'fabs'
-  const hasFixed = run.eval.fixed.some(Boolean)
-  const rows = run.split_check
-    // each half's saved fit at the MAC set under Filters (lib/mac): slopes re-expressed, intercepts unchanged
-    .map((s) => ({ ...s, m: metricRowAt(s.metrics, hasFixed ? 'fixed' : 'all', isFabs ? gallery.mac : null, runs.mac_value) }))
-    .filter((s) => s.m && s.m.deming_slope !== null)
+  const estimator = useEstimator()
+  // Filters → excluded: the one rule, by filter id; the halves are drawn again from the filters that count
+  const isCounted = useCountedFilter()
+  const ev = run.eval
+  const counted = useMemo(() => ev.id.map((id) => isCounted(id)), [ev, isCounted])
+  const nOut = counted.filter((c) => !c).length
+  const nMarked = useExclusionSplit(ev.id, (id) => id).marked.length
+  const markMode = useExclMode() === 'mark'
+  const rows = useMemo(() => splitCheckLive(ev, isFabs ? gallery.mac : null, gallery.lambda10, (i) => counted[i])
+    // the sidebar's OLS view reads the OLS line (as projectRun does for the saved rows)
+    .map((s) => ({ ...s, m: estimator === 'ols' ? { ...s.m, deming_slope: s.m.ols_slope, deming_intercept: s.m.ols_intercept } : s.m }))
+    .filter((s) => s.m.deming_slope !== null), [ev, isFabs, gallery.mac, gallery.lambda10, counted, estimator])
   const slopeOf = (r: (typeof rows)[number]) => r.m!.deming_slope as number
   const icOf = (r: (typeof rows)[number]) => r.m!.deming_intercept as number
   // either axis (click its title, components/AxisChoices): slope, intercept, R² or RMSE against the 1:1 line of each
@@ -67,8 +80,8 @@ export function SplitCheck({ run, runs }: { run: CalibRun; runs: CalibRunsFile }
     <ChartFrame
       id="split-check"
       title={`Blind-half check — does the readout move between halves at ${target?.site ?? run.target}?`}
-      subtitle={`One fitted model, scored on the early and late halves of the test set and on the odd and even (interleaved) halves, all with the same n. The axes follow the points: the distance between them is the finding. Dotted lines mark slope 1 and intercept 0 when they are in range.${isFabs ? ` Against HIPS Fabs ÷ ${gallery.label} (Filters → units).` : ''}`}
-      provenance="calibration_explorer /api/run split_check · Target readout tab"
+      subtitle={`One fitted model, scored on the early and late halves of the test set and on the odd and even (interleaved) halves, all with the same n (each half takes half of the fixed test set and half of the rest, in date order). The axes follow the points: the distance between them is the finding. Dotted lines mark slope 1 and intercept 0 when they are in range.${isFabs ? ` Against HIPS Fabs ÷ ${gallery.label} (Filters → units).` : ''} Rebuilt here from each filter's prediction, so the halves follow Filters → excluded; with every filter counted they are the explorer's saved split check.`}
+      provenance="calibration_explorer /api/run eval (per-filter predictions) · split_check rebuilt in the browser (charts/calibration/runFit) · Target readout tab"
     >
       <div ref={wrapRef} className="chart-wrap">
         {rows.length < 2 ? (
@@ -96,10 +109,11 @@ export function SplitCheck({ run, runs }: { run: CalibRun; runs: CalibRunsFile }
         <ChartAside><p className="chart-note">
           {[gap('early', 'late'), gap('odd', 'even')].filter(Boolean).map((t, i) => <span key={i} style={{ display: 'block' }}>{t}</span>)}
           <span style={{ display: 'block' }}>A gap early/late shows but odd/even does not is a time trend; one both show is sampling scatter.</span>
+          {nOut > 0 && !markMode && <span style={{ display: 'block' }}>{nOut} excluded filter{nOut === 1 ? '' : 's'} (Filters → excluded) {nOut === 1 ? 'is' : 'are'} left out before the halves are drawn.</span>}
         </p></ChartAside>
+        <ExcludedNote count={nMarked} />
         {tip.node}
       </div>
-      <FixedSetNote what="the explorer's saved fits on the halves of its own test set" />
     </ChartFrame>
   )
 }

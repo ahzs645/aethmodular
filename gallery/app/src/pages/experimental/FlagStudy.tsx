@@ -17,13 +17,17 @@ import { ADDIS_ALL, FONT, IMPROVE_GREY, INK, inkOn, themed } from '@/lib/theme'
 import { dotFill, dotRim } from '@/lib/highlight'
 import { useTheme } from '@/lib/colorTheme'
 import { f2, f3, pct, signed } from '@/lib/format'
-import { Forest, placeLabels } from './shared'
-import { FixedSetNote } from '@/lib/markedRows'
+import { Forest, placeLabels, useCounted } from './shared'
+import { ExcludedNote, FixedSetNote, useMarkReason } from '@/lib/markedRows'
+import { crossPath, markTip } from '@/lib/exclusionMode'
 
 /**
  * Experimental · tests 1–2: what the decision workbook's "impacted" flag actually sees
  * (research/ftir_hips_chem/decision_workbook_20261022.ipynb, Section 6b), exported
- * by gallery/data/export_experimental.py; nothing is refitted in the browser.
+ * by gallery/data/export_experimental.py; no model is refitted in the browser. The IMPROVE parts (the ladder, the
+ * coverage curves, the missed failures, the held-out sites) are the workbook's saved results; the SPARTAN filters it
+ * scored follow Filters → excluded (useSpartan): every site share, median and Addis count is taken over the ones
+ * that count.
  */
 
 const FLAG_PATH = 'experimental/flag_detection.json'
@@ -92,7 +96,7 @@ const source = (fn: string) => `gallery/app/src/pages/experimental/FlagStudy.tsx
 const runNote = (d: FlagData) => `Workbook run ${d.source.split('/').pop()} · impacted = |FTIR − TOR| > ${d.settings.ABS_TOL} µg and > ${Math.round(d.settings.REL_TOL * 100)} % of TOR · ${d.settings.MAIN} PLS, k ${d.settings.k_selected?.[d.settings.MAIN]} · ${d.counts.improve.toLocaleString()} IMPROVE filters, held-out sites (${d.settings.N_FOLDS} folds)`
 
 /** Addis and SPARTAN rows of the map, as objects. */
-function spartanRows(d: FlagData) {
+function spartanRows(d: FlagData): SpartanRow[] {
   const c = d.map_spartan, n = (c.filter_id ?? []).length
   return d3.range(n).map((i) => ({
     population: c.population[i] as string, id: String(c.filter_id[i]), code: c.code[i] as string, site: c.site[i] as string,
@@ -101,6 +105,18 @@ function spartanRows(d: FlagData) {
     flagged: !!c.flagged[i], beyond: !!c['beyond IMPROVE loading'][i],
   }))
 }
+interface SpartanRow { population: string; id: string; code: string; site: string; date: string; season: string; load: number | null; dist: number | null; pm: number | null; risk: number; flagged: boolean; beyond: boolean }
+/**
+ * The SPARTAN filters the workbook scored, under Filters → excluded (shared useCounted): `counted` feed every share,
+ * median and count on this page, `marked` are drawn as × under Mark, `nOut` (and `nOutAddis`) how many are left out.
+ */
+function useSpartan(d: FlagData) {
+  const all = useMemo(() => spartanRows(d), [d])
+  const split = useCounted(all, (r) => r.id)
+  return { all, ...split, nOutAddis: all.filter((r) => r.population === 'Addis').length - split.counted.filter((r) => r.population === 'Addis').length }
+}
+/** a map cell (0–4) of a percentile, 20 wide; the strip beyond IMPROVE's heaviest filter is the top loading cell */
+const cellOf = (v: number) => Math.max(0, Math.min(4, Math.floor(v / 20)))
 
 // ------------------------------------------------------------------ 0. findings
 function Findings({ d }: { d: FlagData }) {
@@ -110,7 +126,7 @@ function Findings({ d }: { d: FlagData }) {
   const withinDist = d.within.filter((w) => w.score === DISTANCE).map((w) => w.AUC)
   const S = Object.fromEntries(d.missed_summary.map((r) => [r.category as string, r]))
   const miss = S['missed failure'], caught = S['caught failure']
-  const rowsS = spartanRows(d)
+  const { counted: rowsS, nOut } = useSpartan(d)
   const addis = rowsS.filter((r) => r.population === 'Addis')
   const siteFlag = d3.groups(rowsS, (r) => r.population === 'Addis' ? 'Addis' : r.code).filter(([, rs]) => rs.length >= 10)
     .map(([k, rs]) => ({ k, f: d3.mean(rs, (r) => +r.flagged)! })).sort((a, b) => b.f - a.f)
@@ -127,7 +143,7 @@ function Findings({ d }: { d: FlagData }) {
           <li><strong>Flagging {pct(d.settings.FLAG_RATE)}</strong> of IMPROVE catches {pct(caughtShare)} of impacted filters and lets {d.counts.missed.toLocaleString()} through. The missed ones sit at median loading percentile {pct100(miss?.['loading percentile (median)'])} and distance percentile {pct100(miss?.['distance percentile (median)'])} (caught: {pct100(caught?.['loading percentile (median)'])} and {pct100(caught?.['distance percentile (median)'])}); {pct(miss?.['under-predicted share'])} of them are under-predicted.</li>
           <li><strong>Addis on the same map:</strong> median loading percentile {pct100(median(addis.map((r) => r.load)))}, distance percentile {pct100(median(addis.map((r) => r.dist)))}; {pct(d3.mean(addis, (r) => +r.beyond))} are heavier than any IMPROVE filter and {pct(d3.mean(addis, (r) => +r.flagged))} would be flagged, rank {addisRank} of {siteFlag.length} SPARTAN sites (most flagged: {siteFlag.slice(0, 3).map((s) => `${s.k} ${pct(s.f)}`).join(', ')}). Whatever goes wrong at Addis, spectrum, loading and XRF do not make it look like IMPROVE's failures.</li>
         </ol>
-        <Note>{runNote(d)}. These are statements about held-out IMPROVE sites against TOR; at SPARTAN there is no TOR, so the Addis rows say where Addis sits, not how wrong it is.</Note>
+        <Note>{runNote(d)}. These are statements about held-out IMPROVE sites against TOR; at SPARTAN there is no TOR, so the Addis rows say where Addis sits, not how wrong it is.{nOut > 0 ? ` The SPARTAN numbers leave out the ${nOut} filter${nOut === 1 ? '' : 's'} Filters → excluded takes out.` : ''}</Note>
       </ChartFrame>
     </ExplainOnly>
   )
@@ -142,8 +158,10 @@ function BlindSpotMap({ d }: { d: FlagData }) {
   const [cellMetric, setCellMetric] = useSearchParam<'Failure rate' | 'Catch rate'>('xflag-map.cell', 'Failure rate', ['Failure rate', 'Catch rate'])
   const [show, setShow] = useSearchParam<'Failures' | 'Failures + alarms' | 'All' | 'None'>('xflag-map.show', 'Failures', ['Failures', 'Failures + alarms', 'All', 'None'])
   const [overlay, setOverlay] = useSearchParam<Overlay>('xflag-map.overlay', 'Addis filters', ['Addis filters', 'SPARTAN sites', 'One SPARTAN site', 'None'])
-  const spartan = useMemo(() => spartanRows(d), [d])
-  const codes = useMemo(() => [...new Set(spartan.filter((r) => r.population === 'network').map((r) => r.code))].sort(), [spartan])
+  // the SPARTAN filters that count (Filters → excluded); under Mark the others are drawn as × where the overlay shows them
+  const { all: spartanAll, counted: spartan, marked, nOut, nOutAddis } = useSpartan(d)
+  const reasonOf = useMarkReason()
+  const codes = useMemo(() => [...new Set(spartanAll.filter((r) => r.population === 'network').map((r) => r.code))].sort(), [spartanAll])
   const [site, setSite] = useSearchParam<string>('xflag-map.site', codes[0] ?? '', codes)
   const [countsParam, setCounts] = useSearchParam<'on' | 'off'>('xflag-map.counts', 'on', ['on', 'off'])
   const counts = countsParam === 'on'
@@ -174,9 +192,23 @@ function BlindSpotMap({ d }: { d: FlagData }) {
   }).sort((a, b) => (mi.category[a] as number) - (mi.category[b] as number))
 
   const lx = (r: { load: number | null; beyond: boolean }) => r.beyond ? size + beyondW / 2 : x(r.load ?? 0)
-  let over: typeof spartan = []
-  if (overlay === 'Addis filters') over = spartan.filter((r) => r.population === 'Addis')
-  if (overlay === 'One SPARTAN site') over = spartan.filter((r) => r.population === 'network' && r.code === site)
+  const overOf = (rows: SpartanRow[]) => overlay === 'Addis filters' ? rows.filter((r) => r.population === 'Addis')
+    : overlay === 'One SPARTAN site' ? rows.filter((r) => r.population === 'network' && r.code === site) : []
+  const over = overOf(spartan).filter((r) => r.dist != null && (r.load != null || r.beyond))
+  const overMarked = overOf(marked).filter((r) => r.dist != null && (r.load != null || r.beyond))
+  // the workbook's Addis count per cell, less the Addis filters Filters → excluded leaves out (binned as the map draws them)
+  const addisOut = useMemo(() => {
+    const out = new Map<string, number>()
+    if (!nOutAddis) return out
+    const kept = new Set(spartan.map((r) => r.id))
+    for (const r of spartanAll) {
+      if (r.population !== 'Addis' || kept.has(r.id) || r.dist == null || (r.load == null && !r.beyond)) continue
+      const k = `${r.beyond ? 4 : cellOf(r.load!)}-${cellOf(r.dist)}`
+      out.set(k, (out.get(k) ?? 0) + 1)
+    }
+    return out
+  }, [nOutAddis, spartan, spartanAll])
+  const addisIn = (g: GridCell) => Math.max(0, g['Addis filters'] - (addisOut.get(`${g['loading bin']}-${g['distance bin']}`) ?? 0))
   const siteMedians = overlay !== 'SPARTAN sites' ? [] : d3.groups(spartan.filter((r) => r.load != null && r.dist != null), (r) => r.code)
     .map(([code, rs]) => ({ code, site: rs[0].site, n: rs.length, load: d3.median(rs, (r) => r.load!)!, dist: d3.median(rs, (r) => r.dist!)!,
       flagged: d3.mean(rs, (r) => +r.flagged)!, beyond: d3.mean(rs, (r) => +r.beyond)! }))
@@ -209,14 +241,14 @@ function BlindSpotMap({ d }: { d: FlagData }) {
               return <HeatCell key={`${g['loading bin']}-${g['distance bin']}`} x={g['loading bin'] * step} y={(4 - g['distance bin']) * step} width={step} height={step}
                 fill={v == null ? null : colour(v)} label={null}
                 onEnter={(e) => tip.show(e, [`loading ${g['loading range']} · distance ${g['distance range']} percentile`, `${g['IMPROVE filters'].toLocaleString()} IMPROVE filters`,
-                  `impacted ${pct(g['impacted share'])}`, `flag catches ${pct(g['caught share'])} of them`, `${g['Addis filters']} Addis filters here`])} onLeave={tip.hide} />
+                  `impacted ${pct(g['impacted share'])}`, `flag catches ${pct(g['caught share'])} of them`, `${addisIn(g)} Addis filters here`])} onLeave={tip.hide} />
             })}
             {d.grid.map((g) => {
               const v = g['IMPROVE filters'] >= MIN_CELL ? g[metricKey] : null, cx = g['loading bin'] * step + step / 2, cy = (4 - g['distance bin']) * step
               return <g key={`t${g['loading bin']}-${g['distance bin']}`} pointerEvents="none">
                 <text x={cx} y={cy + 13} textAnchor="middle" fontSize={9} fill={v == null ? INK.muted : inkOn(colour(v))} fillOpacity={v == null ? 1 : 0.75}>{v == null ? (g['IMPROVE filters'] ? `${g['IMPROVE filters']} filters` : '') : pct(v)}</text>
-                {counts && overlay === 'Addis filters' && g['Addis filters'] > 0 &&
-                  <text x={cx} y={cy + step - 6} textAnchor="middle" fontSize={10} fontWeight={600} fill={ADDIS_ALL} stroke={INK.panel} strokeWidth={2.5} paintOrder="stroke">{g['Addis filters']} Addis</text>}
+                {counts && overlay === 'Addis filters' && addisIn(g) > 0 &&
+                  <text x={cx} y={cy + step - 6} textAnchor="middle" fontSize={10} fontWeight={600} fill={ADDIS_ALL} stroke={INK.panel} strokeWidth={2.5} paintOrder="stroke">{addisIn(g)} Addis</text>}
               </g>
             })}
             <rect x={size} y={0} width={beyondW} height={size} fill={INK.empty} />
@@ -231,7 +263,12 @@ function BlindSpotMap({ d }: { d: FlagData }) {
                   onMouseEnter={(e) => tip.show(e, [`IMPROVE ${mi.site[i]} · ${mi.filter_id[i]}`, cat, `FTIR − TOR ${signed(mi['error µg'][i] as number)} µg`, `flag risk ${f2(mi.risk[i] as number)}`])} onMouseLeave={tip.hide} />
               })}
             </g>
-            {over.filter((r) => r.dist != null && (r.load != null || r.beyond)).map((r) => (
+            {/* Filters → excluded: Mark — the overlay's excluded filters as muted ×, drawn only */}
+            {overMarked.length > 0 && <g fill="none" stroke={INK.muted} strokeWidth={1.3} strokeOpacity={0.85} strokeLinecap="round">
+              {overMarked.map((r) => <path key={r.id} d={crossPath(lx(r), y(r.dist!))}>
+                <title>{markTip({ id: r.id, site: r.site, date: r.date }, reasonOf(r.id) ?? 'excluded', [`loading pct ${f2(r.load)}, distance pct ${f2(r.dist)}`]).join('\n')}</title></path>)}
+            </g>}
+            {over.map((r) => (
               <circle key={r.id} cx={lx(r)} cy={y(r.dist!)} r={4} fill={r.population === 'Addis' ? ADDIS_ALL : '#7c3aed'} {...dotFill('dense')}
                 {...dotRim()}
                 onMouseEnter={(e) => tip.show(e, [`${r.site} · ${r.id}`, `${r.date}${r.season ? ` · ${r.season}` : ''}`, `PM2.5 ${f2(r.pm)} µg per filter${r.beyond ? ' (beyond IMPROVE)' : ''}`,
@@ -258,7 +295,8 @@ function BlindSpotMap({ d }: { d: FlagData }) {
         <Legend {...lg.props} items={[...cats.filter((c) => visibleCats.includes(c)).map((c) => ({ label: c, color: CAT_COLOR[c], detail: (col<number>(mi, 'category').filter((v) => cats[v] === c).length).toLocaleString() })),
           ...(overlay === 'None' || overlay === 'SPARTAN sites' ? [] : [{ label: overlay === 'Addis filters' ? 'Addis filters' : `${site} filters`, color: overlay === 'Addis filters' ? ADDIS_ALL : '#7c3aed' }])]} />
       </div>
-      <FixedSetNote what="the workbook's held-out IMPROVE filters and every SPARTAN PM2.5 filter it scored" />
+      {overlay === 'SPARTAN sites' ? <ExcludedNote count={nOut} /> : overlay !== 'None' && <ExcludedNote count={overMarked.length} drawn />}
+      <FixedSetNote subject="the IMPROVE layer (dots and cells; the SPARTAN filters on it follow the setting)" what="the workbook's held-out IMPROVE filters" />
     </ChartFrame>
   )
 }
@@ -285,7 +323,7 @@ function Ladder({ d }: { d: FlagData }) {
       <Forest rows={rows} labelWidth={200} noteWidth={56}
         panels={[{ key: 'auc', label: 'AUC, held-out sites', ref: d.ladder[0]?.AUC, fmt: f2 }, { key: 'gain', label: 'AUC gain over loading alone', ref: 0, fmt: (v) => signed(v) }]} />
       <Note>★ = the best rung usable at SPARTAN, used for the blind-spot map and the missed-failure tables.</Note>
-      <FixedSetNote what="the workbook's held-out IMPROVE filters and every SPARTAN PM2.5 filter it scored" />
+      <FixedSetNote what="the workbook's saved results on its held-out IMPROVE filters" />
     </ChartFrame>
   )
 }
@@ -316,7 +354,7 @@ function WithinLoading({ d }: { d: FlagData }) {
           <tr><td>Impacted share</td>{deciles.map((w) => <td key={w['loading decile']}>{pct(w['impacted share'])}</td>)}</tr>
         </tbody>
       </table>
-      <FixedSetNote what="the workbook's held-out IMPROVE filters and every SPARTAN PM2.5 filter it scored" />
+      <FixedSetNote what="the workbook's saved results on its held-out IMPROVE filters" />
     </ChartFrame>
   )
 }
@@ -351,7 +389,7 @@ function Coverage({ d }: { d: FlagData }) {
       <SweepPlot series={series} xDomain={[1, 0.3]} yLabel={METRIC_LABEL[metric]} xLabel="Share of filters kept" height={340} dim={lg.dim} yFormat={fmt} xFormat={(v) => pct(+v)}
         xMarkers={[{ at: 1 - d.settings.FLAG_RATE, label: `flag ${pct(d.settings.FLAG_RATE)}` }]} reference={metric === 'bias kept' ? 0 : undefined} />
       <Legend {...lg.props} items={scores.map((s) => ({ label: s, color: colorOf(s), shape: s === 'oracle (true error)' || s === 'random' ? 'dashed' as const : 'line' as const }))} note="click to show or hide" />
-      <FixedSetNote what="the workbook's held-out IMPROVE filters and every SPARTAN PM2.5 filter it scored" />
+      <FixedSetNote what="the workbook's saved results on its held-out IMPROVE filters" />
     </ChartFrame>
   )
 }
@@ -399,7 +437,7 @@ function WhoGetsThrough({ d }: { d: FlagData }) {
         <tbody>{top.map((r) => <tr key={String(r.filter_id)}><td>{r.site}{r.urban ? ' (urban)' : ''}</td><td>{r.filter_id}</td><td>{r.date}</td><td>{f2(r['TOR EC µg'])}</td><td>{f2(r['FTIR EC µg'])}</td>
           <td style={{ color: (r['error µg'] as number) < 0 ? INK.positive : INK.negative }}>{signed(r['error µg'] as number)}</td><td>{Math.round(r['loading percentile'] as number)}</td><td>{Math.round(r['distance percentile'] as number)}</td><td>{f2(r.risk)}</td></tr>)}</tbody>
       </table></div>}
-      <FixedSetNote what="the workbook's held-out IMPROVE filters and every SPARTAN PM2.5 filter it scored" />
+      <FixedSetNote what="the workbook's saved results on its held-out IMPROVE filters" />
     </ChartFrame>
   )
 }
@@ -441,7 +479,7 @@ function SiteKeepChart({ d }: { d: FlagData }) {
         {tip.node}
       </div>
       <Legend items={[{ label: 'all filters', color: IMPROVE_GREY }, { label: 'filters the flag keeps', color: INK.good }, { label: 'urban site (name in red)', color: INK.negative, shape: 'square' }]} />
-      <FixedSetNote what="the workbook's held-out IMPROVE filters and every SPARTAN PM2.5 filter it scored" />
+      <FixedSetNote what="the workbook's saved results on its held-out IMPROVE filters" />
     </ChartFrame>
   )
 }
@@ -452,11 +490,13 @@ function SpartanSites({ d }: { d: FlagData }) {
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
   const [sortBy, setSortBy] = useSearchParam<'Flagged' | 'Loading' | 'Distance'>('xflag-spartan.sort', 'Flagged', ['Flagged', 'Loading', 'Distance'])
-  const sites = useMemo(() => d3.groups(spartanRows(d), (r) => r.code).map(([code, rs]) => ({
+  // the SPARTAN filters that count (Filters → excluded)
+  const { counted, nOut } = useSpartan(d)
+  const sites = useMemo(() => d3.groups(counted, (r) => r.code).map(([code, rs]) => ({
     code, site: rs[0].site, n: rs.length, flagged: d3.mean(rs, (r) => +r.flagged)!, beyond: d3.mean(rs, (r) => +r.beyond)!,
     load: d3.median(rs.filter((r) => r.load != null), (r) => r.load!) ?? null, dist: d3.median(rs.filter((r) => r.dist != null), (r) => r.dist!) ?? null,
     risk: d3.median(rs, (r) => r.risk)!,
-  })).filter((s) => s.n >= 10), [d])
+  })).filter((s) => s.n >= 10), [counted])
   const key = sortBy === 'Flagged' ? 'flagged' : sortBy === 'Loading' ? 'load' : 'dist'
   const rows = [...sites].sort((a, b) => ((b[key] as number) ?? -1) - ((a[key] as number) ?? -1))
   const rowH = 17, m = { top: 26, right: 16, bottom: 10, left: 170 }
@@ -498,7 +538,7 @@ function SpartanSites({ d }: { d: FlagData }) {
         {tip.node}
       </div>
       <Note>A dash under loading means the site has no weighed PM2.5 for most filters: the flag still scores those filters, it just cannot use their mass.</Note>
-      <FixedSetNote what="the workbook's held-out IMPROVE filters and every SPARTAN PM2.5 filter it scored" />
+      <ExcludedNote count={nOut} />
     </ChartFrame>
   )
 }

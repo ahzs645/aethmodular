@@ -12,7 +12,7 @@ import { PAPER_ORDER } from '@/lib/pmfPaper'
 import { FONT, INK } from '@/lib/theme'
 import type { PmfFile, PmfRow } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
-import { FixedSetNote } from '@/lib/markedRows'
+import { ExcludedNote, useCountedFilter, useExclusionSplit } from '@/lib/markedRows'
 
 /** the notebooks' DOMINANCE_THRESHOLDS, in % */
 const THRESHOLDS = [30, 40, 50, 60, 70]
@@ -29,7 +29,11 @@ const COLOURS = ['One colour', 'By dominant source'] as const
  * analyses (Aethalometer › Sources, ThresholdSweep) cut at 30–70 %; this is how many days each cut leaves on either
  * side. Bars can be split by which source dominates, so a cut that removes "dominated" days says whose days those are.
  */
-export function DominanceHistogram({ pmf, rows }: { pmf: PmfFile; rows: PmfRow[] }) {
+export function DominanceHistogram({ pmf, rows: inView }: { pmf: PmfFile; rows: PmfRow[] }) {
+  // each PMF day is a filter: Filters → excluded (lib/markedRows useCountedFilter) takes it out of the bins and counts
+  const isCounted = useCountedFilter()
+  const rows = useMemo(() => inView.filter((r) => isCounted(r.id)), [inView, isCounted])
+  const nMarked = useExclusionSplit(inView, (r) => r.id).marked.length
   const [colour, setColour] = useSearchParam<(typeof COLOURS)[number]>('pmfdom.colour', 'One colour', COLOURS)
   const labels = useMemo(() => [...pmf.sources].sort((a, b) => PAPER_ORDER.indexOf(a.label) - PAPER_ORDER.indexOf(b.label)), [pmf.sources])
   const panels = useMemo(() => RULES.map((rule) => {
@@ -50,7 +54,7 @@ export function DominanceHistogram({ pmf, rows }: { pmf: PmfFile; rows: PmfRow[]
           render={(p, w) => <DominancePanel days={p.days} counts={p.counts} width={w} axis={p.axis} stacked={colour === 'By dominant source'} sources={labels} />} />
         <Key items={colour === 'By dominant source' ? labels.map((s) => ({ label: s.label, color: s.color, kind: 'square' as const })) : [{ label: 'PMF days', color: INK.accent, kind: 'square' }, { label: 'dominance thresholds', color: INK.negative, kind: 'dash' }]} />
       </>}
-      <FixedSetNote what="the PMF solution's days (the model ran on them)" />
+      <ExcludedNote count={nMarked} />
     </ChartFrame>
   )
 }

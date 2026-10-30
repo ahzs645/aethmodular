@@ -15,7 +15,8 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { INK, FONT } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile, FilterRow, MetaFile } from '@/lib/types'
-import { cohortColor, deployedECFrom, fmtFit, metricRowAt, presetName, useNetworkRows } from './common'
+import { cohortColor, deployedECFrom, fmtFit, presetName, useNetworkRows } from './common'
+import { metricRowLive, type KeepIndex } from './runFit'
 import { COHORT, PREPROCESSING, label } from '@/lib/labels'
 import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
 import { useSearchParam } from '@/lib/url'
@@ -25,7 +26,8 @@ import { fidProps } from '@/lib/filterEdits'
 import { PanelAxesControl, usePanelAxes } from '@/lib/panelAxes'
 import { collapsePanelAxes } from '@/lib/axes'
 import { ChartAside } from '@/lib/singleView'
-import { FixedSetNote } from '@/lib/markedRows'
+import { ExcludedNote, useCountedFilter, useExclMode, useExclStatus, useMarkReason, type MarkPoint } from '@/lib/markedRows'
+import { markTip } from '@/lib/exclusionMode'
 
 /** Ethiopian sites first (the calibration's own target, then its neighbour), then the other SPARTAN sites. */
 const SITE_ORDER = ['addis', 'etbi', 'indh', 'chts', 'uspa']
@@ -54,6 +56,11 @@ const noteOf = (p: Preset) => p.label.match(/×[^(]*\(([^)]*)\)\s*$/)?.[1]
  * picker: the per-site crossplots, a summary table against the IMPROVE
  * cross-validation score (calibration set), and whether the site ordering holds across all the
  * exported calibrations.
+ *
+ * Every fit is rebuilt from the runs' per-filter readouts (runFit metricRowLive: with every filter counted, the
+ * explorer's saved row) on the filters that count under Filters → excluded (lib/markedRows useCountedFilter, by
+ * filter id): an excluded filter leaves the panels' points, their fits, the table and the ordering; under Mark the
+ * panels draw it as ×. The IMPROVE cross-validation row is the explorer's (training filters, not the gallery's).
  */
 export function CrossSiteTransfer({ runs, galleryRows, sourceRows, galleryMeta }: {
   runs: CalibRunsFile
@@ -111,27 +118,42 @@ export function CrossSiteTransfer({ runs, galleryRows, sourceRows, galleryMeta }
 /** where the fits are read: the chart's MAC, the export's, and λ at MAC 10 */
 interface MacAt { mac: number; exportMac: number; lambda10: number }
 
-/** The Deming fit (agreed with Ann, 23 Sep 2026: no y-on-x least squares in reader-facing views), at the chart's MAC. */
-function lineOf(run: CalibRun, at: MacAt) {
-  const m = metricRowAt(run.metrics, 'all', run.ref_kind === 'fabs' ? at.mac : null, at.exportMac, run.eval)
+/**
+ * The Deming fit (agreed with Ann, 23 Sep 2026: no y-on-x least squares in reader-facing views; the sidebar's OLS view
+ * reads the OLS line, as projectRun does for saved rows), at the chart's MAC, on every pair `keep` counts.
+ */
+function lineOf(run: CalibRun, at: MacAt, method: Estimator, keep: KeepIndex) {
+  const m = metricRowLive(run.eval, 'all', run.ref_kind === 'fabs' ? at.mac : null, at.lambda10, keep)
   if (!m) return null
-  return { m, slope: m.deming_slope, intercept: m.deming_intercept }
+  const ols = method === 'ols'
+  return { m, slope: ols ? m.ols_slope : m.deming_slope, intercept: ols ? m.ols_intercept : m.deming_intercept }
 }
 
-/** Intervals must describe the same fit and pairs as the saved point estimate. */
-function statsFor(run: CalibRun, at: MacAt, method: Estimator) {
+/** The same fit with month-block bootstrap groups, for its intervals: the same pairs as lineOf, so they agree. */
+function statsFor(run: CalibRun, at: MacAt, method: Estimator, keep: KeepIndex) {
   const mac = at.mac
   const pairs = run.eval.pred.flatMap((y, i) => {
     const x = run.ref_kind === 'fabs' ? run.eval.ref[i] / mac : run.eval.ref[i]
-    return Number.isFinite(x) && Number.isFinite(y) ? [{ x, y, i }] : []
+    return keep(i) && Number.isFinite(x) && Number.isFinite(y) ? [{ x, y, i }] : []
   })
   const st = regression(pairs.map(p => p.x), pairs.map(p => p.y), { errorsInVariables: true,
     lambda: demingLambda(run.ref_kind === 'fabs' ? mac : null, at.lambda10),
     bootstrapGroups: monthBlocks(pairs.map(p => ({ site: run.target, date: run.eval.date?.[p.i] }))),
   })
-  const live = fitsFor(st, [method])[0], saved = lineOf(run, at)
-  return live && saved && saved.slope != null && saved.intercept != null &&
-    Math.abs(live.slope - saved.slope) < 1e-4 && Math.abs(live.intercept - saved.intercept) < 1e-4 ? st : null
+  return fitsFor(st, [method]).length ? st : null
+}
+
+/** Filters → excluded's one rule (lib/markedRows useCountedFilter) as each run's KeepIndex, by filter id */
+function useRunKeep(): (run: CalibRun) => KeepIndex {
+  const isCounted = useCountedFilter()
+  return useMemo(() => {
+    const cache = new WeakMap<CalibRun, KeepIndex>()
+    return (run) => {
+      let k = cache.get(run)
+      if (!k) { const ok = run.eval.id.map((id) => isCounted(id)); k = (i) => ok[i]; cache.set(run, k) }
+      return k
+    }
+  }, [isCounted])
 }
 
 // the readouts this calibration gives every panel; gallery measurements join by filter id
@@ -151,6 +173,11 @@ function SiteMultiples({ runs, siteRuns, mac, at, controls, presetLabel, gallery
   const tip = useTooltip(wrapRef)
   // Panel axes is the gallery's one setting (lib/panelAxes: the sidebar's, and every multi-panel chart's)
   const [axes] = usePanelAxes()
+  // Filters → excluded: the counted filters feed the points and fits; under Mark the excluded are ×
+  const keepOf = useRunKeep()
+  const status = useExclStatus()
+  const reasonOf = useMarkReason()
+  const markMode = useExclMode() === 'mark'
 
   // x and y picked from the axis titles (the gallery's axis popover, as on the correlation crossplots):
   // this calibration's readouts, then any gallery measurement these filters carry
@@ -191,14 +218,22 @@ function SiteMultiples({ runs, siteRuns, mac, at, controls, presetLabel, gallery
     return typeof v === 'number' ? v : NaN
   }
   // the same arrays until the readouts change, so a tooltip's re-render leaves every panel's dots alone
-  const pts = useMemo(() => siteRuns.map((run) => {
-    const out: TransferPoint[] = []
-    for (let i = 0; i < run.eval.pred.length; i++) {
-      const x = valueOf(run, i, xk), y = valueOf(run, i, yk)
-      if (Number.isFinite(x) && Number.isFinite(y)) out.push({ x, y, i })
+  const { pts, out } = useMemo(() => {
+    const pts: TransferPoint[][] = [], out: TransferPoint[][] = []
+    for (const run of siteRuns) {
+      const keep = keepOf(run), mine: TransferPoint[] = [], marked: TransferPoint[] = []
+      for (let i = 0; i < run.eval.pred.length; i++) {
+        const x = valueOf(run, i, xk), y = valueOf(run, i, yk)
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue
+        if (keep(i)) mine.push({ x, y, i })
+        else if (status(run.eval.id[i]) === 'marked') marked.push({ x, y, i })
+      }
+      pts.push(mine); out.push(marked)
     }
-    return out
-  }), [siteRuns, xk, yk, mac, byId, sourceById, network]) // eslint-disable-line react-hooks/exhaustive-deps
+    return { pts, out }
+  }, [siteRuns, xk, yk, mac, byId, sourceById, network, keepOf, status]) // eslint-disable-line react-hooks/exhaustive-deps
+  const nMarked = out.reduce((a, o) => a + o.length, 0)
+  const nOut = siteRuns.reduce((a, run) => a + run.eval.pred.filter((_, i) => !keepOf(run)(i)).length, 0)
   const pad = (e: [number, number]): [number, number] => { const d = Math.max(1e-9, (e[1] - e[0]) * 0.06); return [Math.min(0, e[0] - d), e[1] + d] }
   const square = (p: { x: number; y: number }[]): [number, number] => [
     Math.min(0, d3.min(p, (d) => Math.min(d.x, d.y)) ?? 0),
@@ -229,8 +264,8 @@ function SiteMultiples({ runs, siteRuns, mac, at, controls, presetLabel, gallery
     <ChartFrame
       id="cross-site-multiples"
       title={`Every site under one calibration — ${presetLabel}`}
-      subtitle="One panel per SPARTAN site: by default the calibration's predicted FTIR EC against HIPS Fabs ÷ MAC, with the 1:1 line (dashed) and the Deming fit from the explorer's metrics for every filter at that site (each site is a test set the model never saw). MAC Filters follows the MAC set under Filters → units; at a MAC the explorer did not save, the line is its MAC 10 fit with the slope re-expressed (slope × MAC/10, an exact rescaling since λ scales with MAC²). Click an axis title for another readout or any gallery measurement these filters carry."
-      provenance="calibration_explorer /api/run for each target · test set 'all'"
+      subtitle="One panel per SPARTAN site: by default the calibration's predicted FTIR EC against HIPS Fabs ÷ MAC, with the 1:1 line (dashed) and the Deming fit on that site's filters (each site is a test set the model never saw), refitted here from each filter's prediction at the MAC set under Filters → units (λ scales with MAC²), on the filters that count under Filters → excluded. With every filter counted it is the explorer's saved fit. Click an axis title for another readout or any gallery measurement these filters carry."
+      provenance="calibration_explorer /api/run eval for each target (per-filter predictions) · test set 'all' · fits rebuilt in the browser (charts/calibration/runFit)"
       tip={TRANSFER_TIP}
       controls={<>{controls}{siteRuns.length > 1 && <PanelAxesControl dims={['site']} />}</>}
     >
@@ -253,8 +288,8 @@ function SiteMultiples({ runs, siteRuns, mac, at, controls, presetLabel, gallery
               const y = ecPair ? d3.scaleLinear().domain(x.domain()).range([S, 0])
                 : d3.scaleLinear().domain(sharedTicks ? sharedY : ext(pts[k].map((p) => p.y))).range([S, 0]).nice()
               const [d0, d1] = x.domain()
-              const fit = savedPair ? lineOf(run, at) : null
-              const st = savedPair && showCI ? statsFor(run, at, estimator) : null
+              const fit = savedPair ? lineOf(run, at, estimator, keepOf(run)) : null
+              const st = savedPair && showCI ? statsFor(run, at, estimator, keepOf(run)) : null
               const ci = savedPair && showCI ? confidence(st, estimator) : null
               // clip the fitted line to the square
               const seg = fit && fit.slope !== null && fit.intercept !== null ? (() => {
@@ -282,6 +317,12 @@ function SiteMultiples({ runs, siteRuns, mac, at, controls, presetLabel, gallery
                     {pts[k].length === 0 && <text x={S / 2} y={S / 2} textAnchor="middle" fontSize={11} fill={INK.muted}>no filters carry both</text>}
                     {/* a dot is a filter: hover and click work as on every other crossplot (highlight on every chart, pin, open its record) */}
                     <TransferPoints pts={pts[k]} x={x} y={y} side={S} color={color} tip={tip}
+                      marks={out[k].flatMap((p): MarkPoint[] => {
+                        const id = run.eval.id[p.i], [x0, x1] = x.domain(), [y0, y1] = y.domain()
+                        if (!id || p.x < x0 || p.x > x1 || p.y < y0 || p.y > y1) return []
+                        return [{ id: baseFilterId(id), at: [x(p.x), y(p.y)], tip: markTip({ id, site: t?.site ?? run.target, date: run.eval.date?.[p.i] ?? undefined }, reasonOf(id) ?? 'excluded',
+                          [`${titleOf(xk)}: ${fmt(p.x, 3)}`, `${titleOf(yk)}: ${fmt(p.y, 3)}`]) }]
+                      })}
                       idOf={(p) => (run.eval.id[p.i] ? baseFilterId(run.eval.id[p.i]!) : null)}
                       tipOf={(p) => [
                         run.eval.id[p.i] ?? `filter #${p.i + 1}`,
@@ -300,7 +341,7 @@ function SiteMultiples({ runs, siteRuns, mac, at, controls, presetLabel, gallery
                     </TransferPoints>
                     {savedPair && <text x={S / 2} y={S + 36} textAnchor="middle" fontSize={11} fontFamily={FONT.mono} fill={fitStyle.color}>
                       {`${fitName} ${fmtFit(fit?.slope ?? null, fit?.intercept ?? null)} · R² ${fmt(fit?.m.R2 ?? null, 2)}`}
-                      <title>{showCI ? ci ? `${ci.description}; slope [${fmt(ci.slope[0], 3)}, ${fmt(ci.slope[1], 3)}]; intercept [${fmt(ci.intercept[0], 3)}, ${fmt(ci.intercept[1], 3)}]` : '95% CI unavailable: insufficient data or saved fit differs from live pairs' : ''}</title>
+                      <title>{showCI ? ci ? `${ci.description}; slope [${fmt(ci.slope[0], 3)}, ${fmt(ci.slope[1], 3)}]; intercept [${fmt(ci.intercept[0], 3)}, ${fmt(ci.intercept[1], 3)}]` : '95% CI unavailable: too few filters' : ''}</title>
                     </text>}
                   </g>
                 </svg>
@@ -315,9 +356,10 @@ function SiteMultiples({ runs, siteRuns, mac, at, controls, presetLabel, gallery
           </svg>
           </AxisChoices>
         )}
+        {nOut > 0 && !markMode && <ChartAside><p className="chart-note">{nOut} excluded filter{nOut === 1 ? '' : 's'} (Filters → excluded) {nOut === 1 ? 'is' : 'are'} hidden here and left out of every site's fit.</p></ChartAside>}
+        <ExcludedNote count={nMarked} drawn />
         {tip.node}
       </div>
-      <FixedSetNote what="every filter of the explorer's test set at each site, with its saved fit" />
     </ChartFrame>
   )
 }
@@ -328,8 +370,10 @@ type TransferPoint = { x: number; y: number; i: number }
  * One site panel's filters (components/ScatterLayer): drawn once per readout and range; a hover draws the focused
  * filter over them. `children` (the saved fit and its band) sit over the dots.
  */
-function TransferPoints({ pts, x, y, side, color, tip, idOf, tipOf, recordOf, children }: {
+function TransferPoints({ pts, x, y, side, color, tip, idOf, tipOf, recordOf, marks, children }: {
   pts: TransferPoint[]; x: d3.ScaleLinear<number, number>; y: d3.ScaleLinear<number, number>; side: number; color: string
+  /** the excluded filters under Filters → excluded: Mark, as × (never in the fit) */
+  marks?: MarkPoint[]
   tip: ReturnType<typeof useTooltip>; idOf: (p: TransferPoint) => string | null; tipOf: (p: TransferPoint) => string[]
   recordOf: (p: TransferPoint) => FilterRecord; children: React.ReactNode
 }) {
@@ -339,7 +383,7 @@ function TransferPoints({ pts, x, y, side, color, tip, idOf, tipOf, recordOf, ch
     const key = idOf(p)
     return <circle key={p.i} cx={xy[i][0]} cy={xy[i][1]} r={2.6} fill={color} {...dotFill('dense')} stroke={dotRim().stroke} strokeWidth={dotRim().strokeWidth} {...(key ? fidProps(key) : {})} />
   }), [pts, xy, color]) // eslint-disable-line react-hooks/exhaustive-deps
-  return <ScatterLayer items={pts} xy={xy} idOf={idOf} dots={dots} width={side} height={side} tip={tip} tipOf={tipOf} focusR={5}
+  return <ScatterLayer items={pts} xy={xy} idOf={idOf} dots={dots} width={side} height={side} tip={tip} tipOf={tipOf} focusR={5} marks={marks}
     focus={(_p, [cx, cy]) => <circle cx={cx} cy={cy} r={5} fill={color} fillOpacity={0.9} stroke={INK.text} strokeWidth={1.5} />}
     onPick={(p) => { hl.openRecord(recordOf(p)); const key = idOf(p); if (key) hl.setPinned(key) }}>
     {children}
@@ -349,6 +393,9 @@ function TransferPoints({ pts, x, y, side, color, tip, idOf, tipOf, recordOf, ch
 function TransferTable({ runs, siteRuns, mac, at, presetLabel }: { runs: CalibRunsFile; siteRuns: CalibRun[]; mac: number; at: MacAt; presetLabel: string }) {
   const { showCI } = useRegressions()
   const estimator = useEstimator()
+  const keepOf = useRunKeep()
+  const nOut = siteRuns.reduce((a, run) => a + run.eval.pred.filter((_, i) => !keepOf(run)(i)).length, 0)
+  const nMarked = useExclusionCount(siteRuns)
   const held = siteRuns.find((r) => r.heldout)?.heldout ?? null
   const train = siteRuns[0]
   return (
@@ -380,8 +427,8 @@ function TransferTable({ runs, siteRuns, mac, at, presetLabel }: { runs: CalibRu
             )}
             {siteRuns.map((run) => {
               const t = runs.targets[run.target]
-              const fit = lineOf(run, at)
-              const ci = showCI ? confidence(statsFor(run, at, estimator), estimator) : null
+              const fit = lineOf(run, at, estimator, keepOf(run))
+              const ci = showCI ? confidence(statsFor(run, at, estimator, keepOf(run)), estimator) : null
               const flagged = (run.extrap_pct ?? 0) > EXTRAP_FLAG
               return (
                 <tr key={run.target}>
@@ -402,8 +449,9 @@ function TransferTable({ runs, siteRuns, mac, at, presetLabel }: { runs: CalibRu
           </tbody>
         </table>
       </div>
-      <ChartAside><p className="chart-note">Intercept and RMSE are in the reference's units: µg/filter for the IMPROVE row, µg/m³ at the SPARTAN sites. Bold intercepts are below −1 µg/m³; an amber score OOD is above {EXTRAP_FLAG} %.</p></ChartAside>
-      <FixedSetNote what="the explorer's saved fits on its own test sets" />
+      <ChartAside><p className="chart-note">Intercept and RMSE are in the reference's units: µg/filter for the IMPROVE row, µg/m³ at the SPARTAN sites. Bold intercepts are below −1 µg/m³; an amber score OOD is above {EXTRAP_FLAG} %.
+        The site rows are refitted here on the filters that count under Filters → excluded{nOut > 0 ? ` (${nOut} left out)` : ''}; score OOD, Q OOD, the median prediction and the negative share are the explorer's, on every filter.</p></ChartAside>
+      <ExcludedNote count={nMarked} />
     </ChartFrame>
   )
 }
@@ -417,12 +465,15 @@ function OrderingAcrossCalibrations({ runs, sites, presetKey, mac, at, onPick }:
   const { showCI } = useRegressions()
   const estimator = useEstimator()
   const [metric, setMetric] = useState<(typeof DOT_METRICS)[number]>('intercept')
+  const keepOf = useRunKeep()
+  const siteRuns = runs.runs.filter((r) => sites.includes(r.target) && r.preset === presetKey)
+  const nMarked = useExclusionCount(siteRuns)
 
   const rows = runs.presets.flatMap((p) => sites.map((s) => {
     const run = runs.runs.find((r) => r.preset === p.key && r.target === s)
-    const fit = run ? lineOf(run, at) : null
+    const fit = run ? lineOf(run, at, estimator, keepOf(run)) : null
     const v = !fit ? null : metric === 'intercept' ? fit.intercept : metric === 'slope' ? fit.slope : fit.m.R2
-    const ci = showCI && run && metric !== 'R²' ? confidence(statsFor(run, at, estimator), estimator) : null
+    const ci = showCI && run && metric !== 'R²' ? confidence(statsFor(run, at, estimator, keepOf(run)), estimator) : null
     return { preset: p, site: s, v, interval: ci && metric !== 'R²' ? ci[metric] : null }
   })).filter((r): r is typeof r & { v: number } => r.v !== null && Number.isFinite(r.v))
 
@@ -498,7 +549,13 @@ function OrderingAcrossCalibrations({ runs, sites, presetKey, mac, at, onPick }:
         </AxisChoices>
         {tip.node}
       </div>
-      <FixedSetNote what="the explorer's saved fits on its own test sets" />
+      <ExcludedNote count={nMarked} />
     </ChartFrame>
   )
+}
+
+/** how many of these runs' filters Filters → excluded: Mark leaves out (for a summary chart's ExcludedNote) */
+function useExclusionCount(siteRuns: readonly CalibRun[]): number {
+  const status = useExclStatus()
+  return useMemo(() => siteRuns.reduce((a, run) => a + run.eval.id.filter((id) => status(id) === 'marked').length, 0), [siteRuns, status])
 }

@@ -4,7 +4,7 @@ import { robustDomain } from '@/lib/axes'
 import { RefLine } from '@/components/RefLines'
 import { regression } from '@/lib/stats'
 import { EstimatorViews, FIT_STYLE, useEstimator, useRegressions, fitsFor } from '@/lib/regressionPrefs'
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, ExplainOnly, Note, Select, Segmented, Toggle } from '@/components/ChartFrame'
 import { BaselineOptionsProvider, BaselinePicker, CountPicker, SeasonPicker, clampCount, useBaselineOptions } from '@/components/Pickers'
@@ -40,7 +40,7 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
 import { withUnit } from '@/lib/theme'
 import { useColourScheme } from '@/lib/colourSchemes'
-import { ExcludedNote, useCountedFilter } from '@/lib/markedRows'
+import { ExcludedNote, FixedSetNote, useCountedFilter } from '@/lib/markedRows'
 import { usePresentation } from '@/lib/presentation'
 
 /**
@@ -130,6 +130,37 @@ function useIndex(cols: Cols, keys: string[]) {
 
 function statRow(stats: Row[], q: Row): Row | undefined {
   return stats.find((s) => Object.entries(q).every(([k, v]) => s[k] === v))
+}
+
+/** an Addis test-set row's filter id, as the points and the gallery know it */
+const addisId = (a: Cols, i: number) => String(a.ExternalFilterId?.[i] ?? `ETAD media ${a.MediaId[i]}`)
+
+/**
+ * statRow for the page's saved statistics, under Filters → excluded: a saved Addis test-set fit (`population: 'addis'`)
+ * stands while every filter of its readout counts (As presented, always); once the setting leaves any of them out
+ * (Exploring), the same fit is refitted on the ones that count (lib/markedRows useCountedFilter), with the saved error
+ * ratio and the page's estimator (OLS where the page shows OLS, else Deming). A refit has no saved bootstrap interval
+ * and says `refit: true`. Other populations (IMPROVE cross-validation) are the run's and pass through.
+ */
+function useStat(data: MeetingData): (q: Row) => Row | undefined {
+  const isCounted = useCountedFilter()
+  const estimator = useEstimator()
+  const idx = useIndex(data.addis, ['fit_id'])
+  return useCallback((q: Row) => {
+    const saved = statRow(data.stats, q)
+    if (q.population !== 'addis' || !q.fit_id || !q.eval_group) return saved
+    const a = data.addis
+    const ii = (idx.get(String(q.fit_id)) ?? []).filter((i) => typeof a.fabs10[i] === 'number' && Number.isFinite(a.fabs10[i] as number)
+      && typeof a.ftir_ec_ugm3[i] === 'number' && Number.isFinite(a.ftir_ec_ugm3[i] as number) && inSeasonGroup(String(a.season[i]), String(q.eval_group)))
+    const kept = ii.filter((i) => isCounted(addisId(a, i)))
+    if (!ii.length || kept.length === ii.length) return saved
+    const st = regression(kept.map((i) => a.fabs10[i] as number), kept.map((i) => a.ftir_ec_ugm3[i] as number),
+      { errorsInVariables: true, lambda: saved?.deming_lambda ?? data.summary.lambda })
+    const ols = estimator === 'ols'
+    return { ...(saved ?? q), n: kept.length, R2: st?.r2 ?? NaN, refit: true,
+      deming_slope: (ols ? st?.slope : st?.demingSlope) ?? NaN, deming_intercept: (ols ? st?.intercept : st?.demingIntercept) ?? NaN,
+      slope_ci_low: null, slope_ci_high: null, intercept_ci_low: null, intercept_ci_high: null }
+  }, [data, idx, isCounted, estimator])
 }
 
 type Pt = CrossPoint
@@ -259,6 +290,7 @@ function Answers({ data }: { data: MeetingData }) {
         <li><strong>The seasonal calibrations are fragile.</strong> Swapping ~12 of 500 analogs moves Kiremt from k = 18 to k = 5; the 10–90 % bands in the table are the honest spread.</li>
         {methods.includes('VIBES') && <li><strong>In the archived truncated VIBES fit, the analogs stop mirroring Addis.</strong> Addis slopes ({data.seasons.map((g, j) => <span key={g}>{j ? ', ' : ''}{shortSeason(g)} {coef(h('VIBES', g).addis_slope[0])}</span>)}) no longer track its cross-validation analogs ({data.seasons.map((g, j) => <span key={g}>{j ? ', ' : ''}{coef(h('VIBES', g).analog_ftir_fabs[0])}</span>)}): the wet seasons overshoot 1 while Dry stays low.</li>}
       </ol>
+      <FixedSetNote subject="this table" what="the run's medians over 100 saved splits" />
       <Note>Deming error ratios come from measurement uncertainties: Addis λ* {f2(data.summary.lambda)} (HIPS_Uncertainty vs IMPROVE cross-validation RMSE); IMPROVE FTIR panels use each calibration's cross-validation RMSE against a {(100 * (data.summary.ref_rel_uncertainty ?? 0)).toFixed(1)} % reference uncertainty (ETAD HIPS, the only one on file), so λ is 50–100: almost all the error is assigned to FTIR. Analog concentrations are low (median TOR EC 0.1–0.4 µg/m³) against Addis Fabs/10 of 4–6 µg/m³. Fabs/10 is an optical proxy, not thermal EC.</Note>
     </ChartFrame>
   )
@@ -267,6 +299,7 @@ function Answers({ data }: { data: MeetingData }) {
 // ------------------------------------------------------------------ 2. levers
 function Levers({ data }: { data: MeetingData }) {
   const s = data.summary
+  // the meeting's reproduction is of the run as it was: its saved fit, whatever Filters → excluded says
   const base = statRow(data.stats, { fit_id: 'allimprove|AIRSpec|all-IMPROVE both lots (frozen Colab)', population: 'addis', eval_group: ALL_ADDIS })
   return (
     <>
@@ -417,9 +450,9 @@ function useAddisPoints(data: MeetingData) {
       fabs10: a.fabs10[i] as number, pred: a.ftir_ec_ugm3[i] as number, vol: (a.vol?.[i] as number | null) ?? NaN,
       color: color ? color(String(a.season[i])) : data.season_colors[String(a.season[i])] ?? INK.axis,
       tip: [`${a.ExternalFilterId?.[i] ?? 'Addis'} · ${String(a.date[i]).slice(0, 10)}`, String(a.season[i]), `Fabs/10 ${f2(a.fabs10[i])} · FTIR ${f2(a.ftir_ec_ugm3[i])}`],
-      id: String(a.ExternalFilterId?.[i] ?? `ETAD media ${a.MediaId[i]}`),
+      id: addisId(a, i),
       rec: {
-        id: String(a.ExternalFilterId?.[i] ?? `ETAD media ${a.MediaId[i]}`), source: `meeting follow-up · ${fitId.split('|').slice(1).join(' · ')}`,
+        id: addisId(a, i), source: `meeting follow-up · ${fitId.split('|').slice(1).join(' · ')}`,
         site: 'Addis Ababa', date: String(a.date[i]).slice(0, 10),
         fields: [
           ['season', a.season[i]],
@@ -435,13 +468,15 @@ function useAddisPoints(data: MeetingData) {
 }
 
 function AcrossSeasons({ data, fitPrefix, seasonal }: { data: MeetingData; fitPrefix: string; seasonal: boolean }) {
+  // the Addis column follows Filters → excluded (useStat); the IMPROVE cross-validation columns are the run's
+  const stat = useStat(data)
   return (
     <table className="census-table" style={{ marginTop: 10 }}>
       <thead><tr><th>Analogs of</th><th>IMPROVE cross-validation: FTIR vs Fabs/10</th><th>IMPROVE cross-validation: TOR vs Fabs/10</th><th>IMPROVE cross-validation: FTIR vs TOR</th><th>Test set (Addis): FTIR vs Fabs/10</th></tr></thead>
       <tbody>{data.groups.map((g) => {
         const q = (population: string, panel: string, extra: Row = {}) => seasonal
-          ? statRow(data.stats, population === 'addis' ? { fit_id: `${fitPrefix}|${g}`, population, eval_group: g } : { fit_id: `${fitPrefix}|${g}`, population, panel })
-          : statRow(data.stats, { fit_id: fitPrefix, group: g, population, panel, ...extra })
+          ? stat(population === 'addis' ? { fit_id: `${fitPrefix}|${g}`, population, eval_group: g } : { fit_id: `${fitPrefix}|${g}`, population, panel })
+          : stat({ fit_id: fitPrefix, group: g, population, panel, ...extra })
         const cell = (s?: Row) => s ? <FitCell separator="/" slope={s.deming_slope} intercept={s.deming_intercept} r2={s.R2} n={s.n} /> : '—'
         return <tr key={g}><td style={{ color: data.season_colors[g], fontWeight: 600 }}>{g}</td><td>{cell(q('analog_test', 'ftir_vs_fabs'))}</td><td>{cell(q('analog_test', 'tor_vs_fabs'))}</td><td>{cell(q('analog_test', 'ftir_vs_tor'))}</td><td>{cell(q('addis', 'ftir_vs_fabs', { eval_group: g }))}</td></tr>
       })}</tbody>
@@ -568,6 +603,8 @@ const TOP_N = ['50', '100', '250', '500'] as const
  */
 function SpectraPanel({ data, method, group }: { data: MeetingData; method: string; group: string }) {
   const hl = useHighlight()
+  // the Addis spectra follow Filters → excluded (lib/markedRows; As presented, every one counts)
+  const isCounted = useCountedFilter()
   const [mode, setMode] = useSearchParam<string>('mspec', 'individual filters', SPEC_MODES)
   // any count up to the 500 stored analogs; the presets are the usual ones
   const [topRaw, setTopN] = useSearchParam<string>('mspecn', '100')
@@ -577,7 +614,7 @@ function SpectraPanel({ data, method, group }: { data: MeetingData; method: stri
   const col = isAllAddis(group) ? ADDIS_ALL : data.season_colors[group]
 
   // the season's analogs in selection order (rank 1 first), and its Addis filters
-  const { improveIds, addisRows, etadOf } = useMemo(() => {
+  const { improveIds, addisRows, etadOf, addisOut } = useMemo(() => {
     const a = data.analogs, d = data.addis
     const improveIds: string[] = []
     for (let i = 0; i < a.model.length; i++)
@@ -585,15 +622,18 @@ function SpectraPanel({ data, method, group }: { data: MeetingData; method: stri
     const fid = `seasonal|${method}|locked|${group}`
     const addisRows: { sid: string; key: string; label: string; season: string }[] = []
     const etadOf = new Map<string, string>()
+    let addisOut = 0
     for (let i = 0; i < d.fit_id.length; i++) {
       const ext = String(d.ExternalFilterId?.[i] ?? '')
       const sid = `etad:${d.MediaId[i]}`
       if (ext) etadOf.set(baseFilterId(ext), sid)
-      if (d.fit_id[i] === fid && inSeasonGroup(String(d.season[i]), group))
+      if (d.fit_id[i] === fid && inSeasonGroup(String(d.season[i]), group)) {
+        if (!isCounted(addisId(d, i))) { addisOut++; continue }
         addisRows.push({ sid, key: ext ? baseFilterId(ext) : sid, label: `${ext || sid} · ${String(d.date[i]).slice(0, 10)}`, season: String(d.season[i]) })
+      }
     }
-    return { improveIds, addisRows, etadOf }
-  }, [data, method, group])
+    return { improveIds, addisRows, etadOf, addisOut }
+  }, [data, method, group, isCounted])
 
   const toSid = (key: string | null) => (key == null ? null : key.startsWith('improve:') ? key : etadOf.get(key) ?? null)
 
@@ -611,8 +651,11 @@ function SpectraPanel({ data, method, group }: { data: MeetingData; method: stri
   const qImp = topN === '500' || impT.length === 0 ? data.spectra[`${method}|${group}|improve`] as number[][] | undefined
     : channelQuantiles(impT.map((t) => t.v), [0.1, 0.25, 0.5, 0.75, 0.9])
   const qImpWn: number[] = topN === '500' || impT.length === 0 ? (data.spectra[`wn|${method}`] ?? data.spectra.wn) : Array.from(wn)
-  const qAdd = data.spectra[`${method}|${group}|addis`] as number[][] | undefined
-  const qwn: number[] = data.spectra[`wn|${method}`] ?? data.spectra.wn
+  // the export's Addis quantiles cover every Addis filter of the season; with any left out (Filters → excluded) they
+  // are taken from the traces of the ones that count, as the analogs' are for fewer than 500
+  const qAdd = addisOut && addT.length ? channelQuantiles(addT.map((t) => t.v), [0.1, 0.25, 0.5, 0.75, 0.9])
+    : data.spectra[`${method}|${group}|addis`] as number[][] | undefined
+  const qwn: number[] = addisOut && addT.length ? Array.from(wn) : data.spectra[`wn|${method}`] ?? data.spectra.wn
   const individual = mode === 'individual filters'
   const series: SpectrumSeries[] = individual
     ? [...impT.map((t) => ({ id: t.sid, wn, y: t.v, color: IMPROVE_GREY, role: 'trace' as const, tip: [t.sid, 'IMPROVE analog'] })),
@@ -646,6 +689,7 @@ function SpectraPanel({ data, method, group }: { data: MeetingData; method: stri
         { label: 'excluded from analog selection only (CO₂, >3600 cm⁻¹)', color: SPECTRAL_REGION.co2.fill, kind: 'bar' },
         ...(lo < 1050 ? [{ label: 'also excluded by the region agreed 1 Oct (<600, 1050–1250 PTFE); see the Oct 2, 2026 meeting page', color: OCT1_HATCH.stroke, kind: 'bar' as const }] : []),
       ]} />
+      <ExcludedNote count={addisOut} />
     </div>
   )
 }
@@ -695,6 +739,7 @@ function RepeatStrip({ data }: { data: MeetingData }) {
           { label: isSlope ? 'slope 1 (agreement)' : 'intercept 0 (agreement)', color: INK.axis, kind: 'line' as const },
         ]} />
       </div>
+      <FixedSetNote what="the run's 100 saved splits per season, each read out on all its Addis filters" />
     </ChartFrame>
   )
 }
@@ -885,6 +930,7 @@ function SeasonCrossplot({ data, fitId, title }: { data: MeetingData; fitId: str
     return Number.isFinite(x) && Number.isFinite(y) ? [{ ...p, x, y }] : []
   })
   const all = statRow(data.stats, { fit_id: fitId, population: 'addis', eval_group: ALL_ADDIS })
+  const stat = useStat(data)
   // the saved error ratio belongs to FTIR EC vs Fabs / MAC 10. The same axes at another MAC keep it, scaled by
   // MAC² (lib/macMath demingLambda; per filter multiplies both axes by the volume, so λ holds); other axes use λ = 1
   const hipsOnEc = !!ax && ax.x === HIPS && ax.y === PRED
@@ -894,9 +940,11 @@ function SeasonCrossplot({ data, fitId, title }: { data: MeetingData; fitId: str
   }
   const seasonFits = data.seasons.map((g) => {
     const s = statRow(data.stats, { fit_id: fitId, population: 'addis', eval_group: g })
+    // the key quotes the saved fit while every filter of the season counts, else the same fit on the ones that do
+    const shown = stat({ fit_id: fitId, population: 'addis', eval_group: g })
     const points = pts(g).filter((p) => isCounted(p.id ?? p.rec?.id))
     const st = regression(points.map(p => p.x), points.map(p => p.y), { errorsInVariables: true, lambda: lambdaOf(s), bootstrapGroups: monthBlocks(points.map(p => p.rec ?? {})) })
-    return { g, saved: s, st }
+    return { g, saved: shown, st }
   })
   const unit = ax?.mass ? 'µg/filter' : 'µg/m³'
   const sameScale = !ax || (EC_LIKE.has(ax.x) && EC_LIKE.has(ax.y))
@@ -927,13 +975,15 @@ function SeasonCrossplot({ data, fitId, title }: { data: MeetingData; fitId: str
 
 function SeasonTable({ data, rows }: { data: MeetingData; rows: { label: string; fitId: string }[] }) {
   const { showCI } = useRegressions()
-  const cell = (s?: Row) => s ? <FitCell separator="/" stacked slope={s.deming_slope} intercept={s.deming_intercept} r2={s.R2} n={s.n} slopeCI={showCI ? [s.slope_ci_low, s.slope_ci_high] : null} /> : '—'
+  // the saved fits, refitted on the filters that count while Filters → excluded leaves any out (useStat)
+  const stat = useStat(data)
+  const cell = (s?: Row) => s ? <FitCell separator="/" stacked slope={s.deming_slope} intercept={s.deming_intercept} r2={s.R2} n={s.n} slopeCI={showCI && !s.refit ? [s.slope_ci_low, s.slope_ci_high] : null} /> : '—'
   return (
     <table className="census-table">
       <thead><tr><th>Addis test set</th>{rows.map((r) => <th key={r.label}>{r.label}</th>)}</tr></thead>
       <tbody>{data.groups.map((g) => (
         <tr key={g}><td style={{ color: data.season_colors[g], fontWeight: 600 }}>{g}</td>
-          {rows.map((r) => <td key={r.label}>{cell(statRow(data.stats, { fit_id: r.fitId, population: 'addis', eval_group: g }))}</td>)}</tr>
+          {rows.map((r) => <td key={r.label}>{cell(stat({ fit_id: r.fitId, population: 'addis', eval_group: g }))}</td>)}</tr>
       ))}</tbody>
     </table>
   )
@@ -992,8 +1042,10 @@ function Stitched({ data }: { data: MeetingData }) {
   const { value: method } = usePageChoice('baseline', methods)
   const fitId = `stitched|${method}|season calibrations`
   const sp = stitchedSpread(data, method)
-  const all = statRow(data.stats, { fit_id: fitId, population: 'addis', eval_group: ALL_ADDIS })
-  const ref = statRow(data.stats, { fit_id: `allimprove|${method}|all-IMPROVE lot 251`, population: 'addis', eval_group: ALL_ADDIS })
+  // the single fits follow Filters → excluded (useStat); the 100 splits are the run's
+  const stat = useStat(data)
+  const all = stat({ fit_id: fitId, population: 'addis', eval_group: ALL_ADDIS })
+  const ref = stat({ fit_id: `allimprove|${method}|all-IMPROVE lot 251`, population: 'addis', eval_group: ALL_ADDIS })
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › Stitched"
       title="Seasons stitched — each season's Addis filters predicted by its own season calibration, all on one test set crossplot"
@@ -1003,7 +1055,7 @@ function Stitched({ data }: { data: MeetingData }) {
         <SeasonCrossplot data={data} fitId={fitId} title={`Addis, own-season calibrations (${methodName(method)})`} />
         <div style={{ fontSize: 13, lineHeight: 1.6, alignSelf: 'center' }}>
           <p style={{ margin: '0 0 8px' }}><strong>Stitched, all Addis:</strong> {fitName} {coef(all?.deming_slope)}x {coefSigned(all?.deming_intercept)} (R² {coef(all?.R2)})</p>
-          <p style={{ margin: '0 0 8px' }}><strong>Over 100 cross-validation splits:</strong> slope {coef(sp.slope[0])} [{coef(sp.slope[1])}–{coef(sp.slope[2])}], intercept {coefSigned(sp.intercept[0])} [{coef(sp.intercept[1])} to {coef(sp.intercept[2])}]</p>
+          <p style={{ margin: '0 0 8px' }}><strong>Over 100 cross-validation splits</strong> (the run's, on all its Addis filters): slope {coef(sp.slope[0])} [{coef(sp.slope[1])}–{coef(sp.slope[2])}], intercept {coefSigned(sp.intercept[0])} [{coef(sp.intercept[1])} to {coef(sp.intercept[2])}]</p>
           <p style={{ margin: 0, color: INK.muted }}>For comparison, one all-IMPROVE model (lot 251): {coef(ref?.deming_slope)}x {coefSigned(ref?.deming_intercept)}. Each season's own slope is low, but the three season calibrations sit at different levels, so putting them back together steepens the combined line and pushes its intercept further from zero.</p>
         </div>
       </Grid>
@@ -1023,6 +1075,7 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
   const { showCI } = useRegressions()
   // the page's one baseline (PageChoices at the top of the page)
   const { value: method } = usePageChoice('baseline', methods)
+  const stat = useStat(data)
   const [gridSet, setGridSet] = useSearchParam<string>('migrid', 'passing', ['passing', 'all', 'none'])
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
@@ -1060,7 +1113,7 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
   const sp = stitchedSpread(data, method)
   pts.push({ x: sp.slope[0], y: sp.intercept[0], color: '#6d28d9', r: 10, shape: 'star', op: 1, tip: ['Seasons stitched: median of 100 splits', 'all Addis', `${coef(sp.slope[0])}x ${coefSigned(sp.intercept[0])}`] })
   const one = (fit: string, color: string, shape: P['shape'], name: string) => {
-    const s = statRow(data.stats, { fit_id: fit, population: 'addis', eval_group: ALL_ADDIS })
+    const s = stat({ fit_id: fit, population: 'addis', eval_group: ALL_ADDIS })
     if (s) pts.push({ x: s.deming_slope, y: s.deming_intercept, color, r: 8, shape, op: 1,
       ci: [s.slope_ci_low, s.slope_ci_high, s.intercept_ci_low, s.intercept_ci_high].every(v => typeof v === 'number' && Number.isFinite(v)) ? [s.slope_ci_low, s.slope_ci_high, s.intercept_ci_low, s.intercept_ci_high] : undefined,
       tip: [name, 'all Addis', `${coef(s.deming_slope)}x ${coefSigned(s.deming_intercept)}`] })
@@ -1123,6 +1176,7 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
         {tip.node}
       </div>
       <ExplainOnly><Note>Points beyond the axes are pinned to the edge. A season calibration read out on its own season spans a narrow Fabs range, so its slope and intercept are not comparable one-to-one with the all-Addis readouts; the stitched star is the like-for-like comparison.</Note></ExplainOnly>
+      <FixedSetNote subject="the cloud of grid and split points (not the ■ and ✕, which follow the setting)" what="the run's saved readouts on all its Addis filters" />
     </ChartFrame>
   )
 }
@@ -1133,6 +1187,8 @@ function Combined({ data }: { data: MeetingData }) {
   const { showCI } = useRegressions()
   // the page's one baseline (PageChoices at the top of the page)
   const { value: method } = usePageChoice('baseline', methods)
+  // each fit follows Filters → excluded (useStat: the saved fit, or refitted on the filters that count)
+  const stat = useStat(data)
   const cals = [
     { label: 'All-IMPROVE model, lot 251', fit: `allimprove|${method}|all-IMPROVE lot 251`, byGroup: true },
     { label: 'All-IMPROVE both lots (frozen)', fit: `allimprove|${method}|all-IMPROVE both lots (frozen Colab)`, byGroup: true },
@@ -1144,7 +1200,7 @@ function Combined({ data }: { data: MeetingData }) {
   const rows: { g: string; cal: string; s: Row }[] = []
   for (const g of data.groups) for (const c of cals) {
     const fit = c.fit === 'season' ? `seasonal|${method}|locked|${g}` : c.fit
-    const s = c.byGroup ? statRow(data.stats, { fit_id: fit, group: g, population: 'addis', eval_group: g }) : statRow(data.stats, { fit_id: fit, population: 'addis', eval_group: g })
+    const s = c.byGroup ? stat({ fit_id: fit, group: g, population: 'addis', eval_group: g }) : stat({ fit_id: fit, population: 'addis', eval_group: g })
     if (s) rows.push({ g, cal: c.label, s })
   }
   const slopeDomain: [number, number] = [0, Math.max(1.5, d3.max(rows, (r) => (showCI ? r.s.slope_ci_high : null) ?? r.s.deming_slope) ?? 1.5)]

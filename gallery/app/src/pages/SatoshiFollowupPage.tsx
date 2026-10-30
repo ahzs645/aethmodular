@@ -30,7 +30,8 @@ import { Key } from '@/components/Key'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { BandCell, FitCell } from '@/components/TableCells'
 import { ANALOG_SELECTION_EXCLUDED, OCT1_ALSO_EXCLUDED } from '@/components/SpectralRegions'
-import { FixedSetNote } from '@/lib/markedRows'
+import { ExcludedNote, FixedSetNote, useCountedFilter, useExclMode, useExclusionSplit, useMarkReason, type MarkPoint } from '@/lib/markedRows'
+import { crossPath, markTip } from '@/lib/exclusionMode'
 
 /**
  * Satoshi's questions after the 1 Oct 2026 meeting (his email of 2 Oct). Every
@@ -254,7 +255,7 @@ function Overlap({ data, mask }: { data: SatoshiData; mask: Mask }) {
       </table>
       <OverlapScatter data={data} mask={mask} group={group} />
       <ExplainOnly><Note>The agreed 1 Oct region changes the VIBES analogs themselves: it keeps {changed.map((c, i) => <span key={c.group}>{i ? ', ' : ''}{c.shared} ({shortSeason(c.group)})</span>)} of the 500 VIBES analogs selected as presented. Ranks of the shared filters barely agree between baselines (Spearman ρ {f2(d3.min(rows, (r) => r.shared_rank_spearman))} to {f2(d3.max(rows, (r) => r.shared_rank_spearman))}).</Note></ExplainOnly>
-      <FixedSetNote what="the run's 500-filter analog sets, as each baseline selected them" />
+      <FixedSetNote subject="the bar chart (not the scatter, which follows the setting)" what="the run's 500-filter analog sets, as each baseline selected them" />
     </ChartFrame>
   )
 }
@@ -267,7 +268,13 @@ function OverlapScatter({ data, mask, group }: { data: SatoshiData; mask: Mask; 
   const hl = useHighlightActions()
   const clip = useId()
   const mb = data.members
-  const idx = useMemo(() => mb.mask.map((_, i) => i).filter((i) => mb.mask[i] === mask && mb.group[i] === group && (mb.tor_ec_ugm3[i] as number) > 0 && (mb.tor_oc_ec[i] as number) > 0), [mb, mask, group])
+  const all = useMemo(() => mb.mask.map((_, i) => i).filter((i) => mb.mask[i] === mask && mb.group[i] === group && (mb.tor_ec_ugm3[i] as number) > 0 && (mb.tor_oc_ec[i] as number) > 0), [mb, mask, group])
+  // Filters → excluded (lib/markedRows): an analog excluded by hand leaves the dots; under Mark it is drawn as ×
+  const isCounted = useCountedFilter()
+  const idx = useMemo(() => all.filter((i) => isCounted(`improve:${mb.filter_id[i]}`)), [all, isCounted, mb])
+  const outIdx = useExclusionSplit(all, (i) => `improve:${mb.filter_id[i]}`).marked
+  const markMode = useExclMode() === 'mark'
+  const reasonOf = useMarkReason()
   const m = { top: 12, right: 16, bottom: 46, left: 60 }
   // a square plot (1:1 aspect), centred
   const iw = Math.max(240, Math.min(width - m.left - m.right, 440)), ih = iw
@@ -280,6 +287,8 @@ function OverlapScatter({ data, mask, group }: { data: SatoshiData; mask: Mask; 
   const xy = useMemo(() => sorted.map((i) => [x(mb.tor_ec_ugm3[i] as number), y(mb.tor_oc_ec[i] as number)] as const), [sorted, mb, iw]) // eslint-disable-line react-hooks/exhaustive-deps
   const dots = useMemo(() => sorted.map((i, k) => <circle key={i} cx={xy[k][0]} cy={xy[k][1]} r={3} fill={PART_COLOR[String(mb.part[i])]} {...dotFill('standard')}
     stroke={dotRim().stroke} strokeWidth={dotRim().strokeWidth} />), [sorted, mb, xy])
+  const marks = useMemo<MarkPoint[]>(() => (markMode ? outIdx : []).map((i) => ({ id: idOf(i), at: [x(mb.tor_ec_ugm3[i] as number), y(mb.tor_oc_ec[i] as number)] as const,
+    tip: markTip({ id: `IMPROVE ${mb.Site[i]} · filter ${mb.filter_id[i]}` }, reasonOf(idOf(i)) ?? 'by hand', [String(mb.part[i])]) })), [markMode, outIdx, mb, iw, reasonOf]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div ref={ref} style={{ position: 'relative', marginTop: 12 }}>
       <svg width={iw + m.left + m.right} height={ih + m.top + m.bottom} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
@@ -288,7 +297,7 @@ function OverlapScatter({ data, mask, group }: { data: SatoshiData; mask: Mask; 
           <YAxis scale={y as any} x={0} label="TOR OC/EC" tickCount={5} gridWidth={iw} labelX={-44} format={logTick} />
           <XAxis scale={x as any} y={ih} label="TOR EC (µg/m³, log)" tickCount={5} format={logTick} labelDy={38} />
           <g clipPath={`url(#${clip})`}>
-            <ScatterLayer items={sorted} xy={xy} idOf={idOf} dots={dots} width={iw} height={ih} tip={tip}
+            <ScatterLayer items={sorted} xy={xy} idOf={idOf} dots={dots} width={iw} height={ih} tip={tip} marks={marks}
               focus={(i, [cx, cy]) => <circle cx={cx} cy={cy} r={6} fill={PART_COLOR[String(mb.part[i])]} {...dotFill('standard')} stroke={INK.text} strokeWidth={2} />}
               tipOf={(i) => [`IMPROVE ${mb.Site[i]} · filter ${mb.filter_id[i]}`, String(mb.part[i]), `TOR EC ${f2(mb.tor_ec_ugm3[i])} µg/m³ · OC/EC ${f2(mb.tor_oc_ec[i])}`, `rank spline ${mb.rank_spline[i] ?? '—'} · rank VIBES ${mb.rank_vibes[i] ?? '—'}`, 'click to pin and open its record']}
               onPick={(i) => { const part = String(mb.part[i]); hl.setPinned(idOf(i)); hl.openRecord(improveRecord(mb.filter_id[i] as number, String(mb.Site[i]), `Satoshi 2 Oct · analogs of ${group} · ${part}`, [
@@ -299,6 +308,7 @@ function OverlapScatter({ data, mask, group }: { data: SatoshiData; mask: Mask; 
         </g>
       </svg>
       {tip.node}
+      <ExcludedNote count={all.length - idx.length} drawn={markMode} />
     </div>
   )
 }
@@ -450,7 +460,7 @@ function Ladder({ data, mask }: { data: SatoshiData; mask: Mask }) {
         <tbody>{[{ label: `${shortSeason(group)} analog model`, r: ex }, { label: 'Standard model', r: exStd }].map(({ label, r }) => r && <tr key={label}><td>{label}</td><td>{f2(r.addis_loading_median_ug)}</td><td>{f2(r.train_loading_median_ug)} / {f2(r.train_loading_p95_ug)}</td><td>{pct(r.loading_beyond_train_p95)}</td><td>{pct(r.t2_beyond_p95)}</td><td>{pct(r.q_beyond_p95)}</td><td>{pct(r.improve_test_t2_beyond_p95)} / {pct(r.improve_test_q_beyond_p95)}</td></tr>)}</tbody>
       </table>
       <ExplainOnly><Note>HIPS-implied loading is Fabs / MAC 10 × sampled volume: the EC mass on the filter if MAC were 10. PLS predicts mass on the filter, so this is the range the model must extrapolate over. T² and Q thresholds are the calibration set's own 95th percentiles; the IMPROVE test-site column shows how often genuinely new IMPROVE filters exceed them, as a benchmark.</Note></ExplainOnly>
-      <FixedSetNote what="the run's analog and calibration sets" hand />
+      <FixedSetNote subject="the ladder with its tables (not the crossplots, which follow the setting)" what="the run's saved fits of its analog and calibration sets" />
     </ChartFrame>
   )
 }
@@ -552,7 +562,9 @@ function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
     const keep = baseline === SPLINE ? ['spline only', 'shared'] : ['VIBES only', 'shared']
     return new Set(mb.mask.map((_, i) => i).filter((i) => mb.mask[i] === mm && mb.group[i] === group && keep.includes(String(mb.part[i]))).map((i) => mb.filter_id[i]))
   }, [mb, mm, group, baseline])
-  const pool = useMemo(() => ep.baseline.map((_, i) => i).filter((i) => ep.baseline[i] === baseline), [ep, baseline])
+  // Filters → excluded (lib/markedRows): a filter excluded by hand leaves the density, the analogs and their histogram
+  const isCounted = useCountedFilter()
+  const pool = useMemo(() => ep.baseline.map((_, i) => i).filter((i) => ep.baseline[i] === baseline && isCounted(`improve:${ep.filter_id[i]}`)), [ep, baseline, isCounted])
   const analogs = pool.filter((i) => analogIds.has(ep.filter_id[i]))
   const xsAll = pool.map((i) => ep.tor_ec_ugm3[i] as number)
   const hi = robustDomain(xsAll, 0, 0.995).domain[1] * 1.1
@@ -622,7 +634,7 @@ function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
         <thead><tr><th>Sampling year</th>{yearList.map((yv) => <th key={yv}>{yv}</th>)}</tr></thead>
         <tbody>{yearSets.map((set) => { const rows = yearsOf(set); const tot = d3.sum(rows, (r) => r.n) || 1; return <tr key={set}><td>{set === 'IMPROVE pool' ? 'IMPROVE pool' : `Analogs of ${set.split('|')[2]}`}</td>{yearList.map((yv) => <td key={yv}>{pct((rows.find((r) => r.year === yv)?.n ?? 0) / tot)}</td>)}</tr> })}</tbody>
       </table>
-      <FixedSetNote what="the run's held-out IMPROVE filters and analog sets" hand />
+      <FixedSetNote subject="each table" what="the run's saved envelope and sampling-year summaries" />
     </ChartFrame>
   )
 }
@@ -843,9 +855,15 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
   const mem = d.group_members
-  const pts: { id: string; pc1: number; ec: number; c: number; res: number }[] = []
+  const ptsAll: { id: string; pc1: number; ec: number; c: number; res: number }[] = []
   for (let i = 0; i < mem.baseline.length; i++) if (mem.baseline[i] === baseline && mem.region[i] === region && mem.group[i] === season)
-    pts.push({ id: String(mem.filter_id[i]), pc1: mem.pc1[i] as number, ec: mem.ec_fabs10[i] as number, c: mem.cluster[i] as number, res: mem.residual[i] as number })
+    ptsAll.push({ id: String(mem.filter_id[i]), pc1: mem.pc1[i] as number, ec: mem.ec_fabs10[i] as number, c: mem.cluster[i] as number, res: mem.residual[i] as number })
+  // Filters → excluded (lib/markedRows): the clusters are the run's, fitted on every Addis filter; the dots follow the
+  // setting (out of the dots and the axis ranges; × under Mark)
+  const isCounted = useCountedFilter()
+  const pts = ptsAll.filter((p) => isCounted(p.id))
+  const outPts = useExclusionSplit(ptsAll, (p) => p.id).marked
+  const reasonOf = useMarkReason()
   const t = d.group_tests.find((x) => x.baseline === baseline && x.region === region && x.group === season)
   const summ = d.group_summary.filter((x) => x.baseline === baseline && x.region === region && x.group === season)
   const half = Math.max(260, Math.floor((width - 24) / 2))
@@ -880,6 +898,10 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
           <g transform={`translate(${m.left},${m.top})`}>
             <YAxis scale={y} x={0} label="Fabs / 10 (µg/m³)" tickCount={5} gridWidth={iw} labelX={-42} />
             <XAxis scale={x} y={ih} label="PC1 score of the shape deviation" tickCount={5} labelDy={36} format={(v) => String(+(+v).toFixed(3))} />
+            {outPts.length > 0 && <g fill="none" stroke={INK.muted} strokeWidth={1.3} strokeOpacity={0.85} strokeLinecap="round">
+              {outPts.filter((p) => p.pc1 >= x.domain()[0] && p.pc1 <= x.domain()[1] && p.ec >= y.domain()[0] && p.ec <= y.domain()[1]).map((p) => <path key={p.id} d={crossPath(x(p.pc1), y(p.ec))}>
+                <title>{markTip({ id: p.id }, reasonOf(p.id) ?? 'excluded', [`cluster ${p.c}`, `Fabs/10 ${f2(p.ec)} µg/m³`]).join('\n')}</title></path>)}
+            </g>}
             {pts.map((p) => <circle key={p.id} cx={x(p.pc1)} cy={y(p.ec)} r={4} fill={CLUSTER_COLORS[(p.c - 1) % 4]} {...dotFill('sparse')} {...dotRim()}
               onMouseEnter={(e) => tip.show(e, [p.id, `cluster ${p.c}`, `Fabs/10 ${f2(p.ec)} µg/m³`, `standard spline model error ${signed(p.res)} µg/m³`])} onMouseLeave={tip.hide} />)}
           </g>
@@ -900,6 +922,8 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
         <tbody>{allTests.map((x) => <tr key={x.group}><td style={{ color: d.season_colors[x.group], fontWeight: 600 }}>{x.group}</td><td>{x.k}</td><td>{f2(x.silhouette)} / {f2(x.silhouette_null_p95)}</td><td>{x.structure_beyond_null ? 'yes' : x.min_cluster < 5 ? `no (only ${x.min_cluster} outlier${x.min_cluster > 1 ? 's' : ''} split off)` : 'no'}</td><td>{pfmt(x.kruskal_p_ec)}</td><td>{pfmt(x.kruskal_p_residual)}</td><td>{pfmt(x.kruskal_p_Al)}</td><td>{pfmt(x.kruskal_p_K_ion)}</td><td>{pfmt(x.kruskal_p_nitrate)}</td><td>{f2(x.pc1_spearman_ec)}</td></tr>)}</tbody>
       </table>
       <Note>SPARTAN chemistry in µg/m³ except Al (ng/m³); Kruskal–Wallis across clusters. Standard model error = all-IMPROVE spline model (lot 251) minus Fabs/10. Dry has no SPARTAN chemistry for most filters.</Note>
+      <ExcludedNote count={ptsAll.length - pts.length} drawn={outPts.length > 0} />
+      <FixedSetNote subject="the cluster view (not the dots, which follow the setting)" what="the run's clustering of every Addis filter of the season" />
     </ChartFrame>
   )
 }

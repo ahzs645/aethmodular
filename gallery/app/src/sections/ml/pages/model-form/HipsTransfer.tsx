@@ -4,7 +4,7 @@ import { Crossplot, sharedCrossDomains, type CrossPoint, type CrossLine } from '
 import { FacetGrid } from '@/components/FacetGrid'
 import { Key } from '@/components/Key'
 import { baseFilterId } from '@/lib/filterId'
-import { ExcludedNote, useExclusionSplit } from '@/lib/markedRows'
+import { ExcludedNote, useCountedFilter, useExclusionSplit } from '@/lib/markedRows'
 import { f2, f3 } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { num, type Row } from '@/lib/table'
@@ -54,8 +54,11 @@ export function HipsTransfer({ filters, shown, runs, provenance }: { filters: Ro
   const unit = units === 'Fabs' ? 'Mm⁻¹' : 'µg/m³'
 
   const inSet = filters.filter((r) => set === 'all 239' || meta.get(baseFilterId(String(r.id)))?.fixed)
+  // the counted filters by the one rule (lib/markedRows useCountedFilter: the export's exclusions unless Include, hand
+  // exclusions, keep=); the split gives the × under Mark
   const split = useExclusionSplit(inSet, (r) => baseFilterId(String(r.id)))
-  const kept = split.counted
+  const isCounted = useCountedFilter()
+  const kept = inSet.filter((r) => isCounted(baseFilterId(String(r.id))))
   const models = MODELS.filter((m) => panels === 'with naive' || m.col !== 'naive')
 
   const panelsOut = models.map((m) => {
@@ -83,7 +86,7 @@ export function HipsTransfer({ filters, shown, runs, provenance }: { filters: Ro
   const medObs = median(kept.map((r) => (num(r.Fabs) ?? NaN) * scale).filter(Number.isFinite))
   const medImp = median(kept.map((r) => (num(r.improve) ?? NaN) * scale).filter(Number.isFinite))
   const axis = (what: string) => units === 'Fabs' ? `${what} HIPS Fabs (Mm⁻¹)` : `${what} HIPS BC = Fabs / MAC (µg/m³, ${mac.label})`
-  const excluded = split.nOut
+  const excluded = inSet.length - kept.length
 
   return (
     <ChartFrame id="ml-model-form-hips-crossplot"
@@ -111,7 +114,7 @@ export function HipsTransfer({ filters, shown, runs, provenance }: { filters: Ro
         {excluded > 0 && <>{excluded} filter{excluded === 1 ? '' : 's'} excluded under Filters → excluded {excluded === 1 ? 'is' : 'are'} left out of these metrics. </>}
         {Number.isFinite(worst) && <>On the notebook's set (all 239, nothing excluded, Fabs) the browser's metrics reproduce ftir_08's table for all three models {worst < 1e-3 ? `to its stored digits (largest relative difference ${worst.toExponential(0)})` : `within ${(100 * worst).toFixed(2)} %`}.</>}
       </div>
-      <ExcludedNote count={excluded} drawn />
+      <ExcludedNote count={split.marked.length} drawn />
     </ChartFrame>
   )
 }

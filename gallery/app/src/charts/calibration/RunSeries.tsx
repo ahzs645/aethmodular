@@ -9,14 +9,14 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { baseFilterId, focusStyle, useHighlightActions } from '@/lib/highlight'
 import { ScatterLayer } from '@/components/ScatterLayer'
-import { fidProps, useHandEdits } from '@/lib/filterEdits'
+import { fidProps } from '@/lib/filterEdits'
 import { fmt, splitAtGaps } from '@/lib/stats'
 import { rollingByTime } from '@/lib/rolling'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { INK, MARGIN } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile, MetaFile } from '@/lib/types'
 import { groupColorFn, presetName } from './common'
-import { ExcludedNote, useExclusionSplit, useMarkReason, type MarkPoint } from '@/lib/markedRows'
+import { ExcludedNote, useCountedFilter, useExclusionSplit, useMarkReason, type MarkPoint } from '@/lib/markedRows'
 import { markTip } from '@/lib/exclusionMode'
 
 const DEPLOYED_LABEL = 'deployed SPARTAN EC (hollow)'
@@ -64,11 +64,12 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
       .filter((p): p is typeof p & { d: Date } => p.d !== null && Number.isFinite(p.v))
       .sort((a, b) => +a.d - +b.d)
   }, [run.eval])
-  // filters the gallery excludes (export or by hand) drop out of the series and its summary; the hand-edit filter
-  // after the split only applies a keep list (keep=), which the exclusion split does not know
+  // filters the gallery excludes (export or by hand) drop out of the series and its summary: the one rule
+  // (lib/markedRows useCountedFilter), which also knows a keep list (keep=); the split gives the × under Mark
   const split = useExclusionSplit(dated, (p) => p.id)
-  const edits = useHandEdits()
-  const kept = useMemo(() => split.counted.filter((p) => !edits.isOut(p.id)), [split.counted, edits])
+  const isCounted = useCountedFilter()
+  const kept = useMemo(() => dated.filter((p) => isCounted(p.id)), [dated, isCounted])
+  const nOut = dated.length - kept.length
   const reasonOf = useMarkReason()
   const shown = useMemo(() => kept.filter((p) => !hidden.has(p.g)), [kept, hidden])
   const hasDeployed = dated.some((p) => p.dep !== null)
@@ -120,7 +121,7 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
         <>
           {rolling.controls}
           {groupColours.others.length > 0 && colours.picker}
-          <span className="control">{shown.length} dated filters{split.nOut ? ` (${split.nOut} excluded)` : ''}</span>
+          <span className="control">{shown.length} dated filters{nOut ? ` (${nOut} excluded)` : ''}</span>
         </>
       }
     >
@@ -187,7 +188,7 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
             </tbody>
           </table>
         )}
-        <ExcludedNote count={split.nOut} drawn />
+        <ExcludedNote count={split.marked.length} drawn />
         {tip.node}
       </div>
     </ChartFrame>

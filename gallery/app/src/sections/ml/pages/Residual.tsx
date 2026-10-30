@@ -9,7 +9,7 @@ import { num, type Row } from '@/lib/table'
 import type { SectionPageProps } from '../../types'
 import { useCalibRuns } from '../../research/pages/spectralCommon'
 import { MlWaiting, PageIntro, provenance, rows, useMl } from '../common'
-import { ExcludedNote, FixedSetNote, useExclusionSplit } from '@/lib/markedRows'
+import { ExcludedNote, FixedSetNote, useCountedFilter, useExclusionSplit } from '@/lib/markedRows'
 
 const NOTEBOOKS = 'research/ftir_ec_phase3/ftir_43_residual_learner_null_control, ftir_45_residual_increment_attribution, ftir_46_paired_increment_and_mass (ftir_53 §5 re-draws its mass term)'
 
@@ -81,13 +81,16 @@ export function Residual(_props: SectionPageProps) {
     })
     return pts
   }, [runs, m])
-  const split = useExclusionSplit(all ?? NO_ROWS, (p) => (p.id == null ? null : String(p.id)))
+  const idOf = (p: Row) => (p.id == null ? null : String(p.id))
+  const split = useExclusionSplit(all ?? NO_ROWS, idOf)
+  // the fit's filters by the one rule (lib/markedRows useCountedFilter, which also knows keep=)
+  const isCounted = useCountedFilter()
   const live = useMemo(() => {
     if (!all) return null
-    const pts = split.counted
+    const pts = all.filter((p) => isCounted(idOf(p)))
     const fit = ols(pts.map((p) => p.f as number), pts.map((p) => p.b as number))
-    return { pts, fit, marked: split.marked, nOut: split.nOut, nAll: all.length }
-  }, [all, split])
+    return { pts, fit, marked: split.marked, nOut: all.length - pts.length, nAll: all.length }
+  }, [all, split, isCounted]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!data) return <MlWaiting error={error} what="the residual-learner export" />
 
@@ -249,7 +252,7 @@ function ResidualVsFx({ pts, marked, nOut, nAll, slope, intercept, mac, changed,
       <Crossplot title="" points={points} marked={marked.map(toPoint)} fit={false} sameScale={false} maxSide={460} grouping="none"
         xLabel="f(X), locked 800 + AIRSpec prediction (µg/m³)" yLabel={`Residual f(X) − Fabs/${mac} (µg/m³)`}
         extraLines={[{ slope: a1, intercept: -intercept, color: NULL_LINE, label: 'proportional-disagreement null', dash: '6 4', method: 'ols', stats: null }]} />
-      <ExcludedNote count={nOut} drawn />
+      <ExcludedNote count={marked.length} drawn />
       <Key items={[...Object.entries(SEASON_COLORS).map(([label, color]) => ({ label, color })), { label: `null line r = ${a1.toFixed(3)}·f(X) − ${intercept.toFixed(3)}`, color: NULL_LINE, kind: 'dash' as const }]} />
     </ChartFrame>
   )

@@ -23,6 +23,7 @@ import { CrossSiteTransfer } from '@/charts/calibration/CrossSiteTransfer'
 import { calibAtMac, cohortColor, configLabel, presetName, type Config } from '@/charts/calibration/common'
 import { runCalendar, seasonalRun } from '@/charts/calibration/seasonView'
 import { useMac } from '@/lib/mac'
+import { useCountedFilter } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
 import { usePrefs } from '@/lib/prefs'
 import { useSearchParam } from '@/lib/url'
@@ -124,6 +125,10 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
     [run, runSeasons, runKeep, calib, pmfSel, pmfLabelOfDate, runSite, gallery.lambda10]
   )
 
+  // the filters the crossplot and dated series count: the season and PMF subset, then Filters → excluded's one rule
+  const isCounted = useCountedFilter()
+  const nRunCounted = useMemo(() => (runView ? runView.eval.id.filter((id) => isCounted(id)).length : 0), [runView, isCounted])
+
   // Clicking a point in the grid charts also moves the per-filter section to
   // the nearest exported preset, when one exists for that configuration.
   const selectConfig = (c: Config) => {
@@ -203,7 +208,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
             <span style={{ color: 'var(--ink-muted)' }}>{preset ? presetName(preset) : null}</span>
             <span className="season-row" style={{ color: 'var(--ink-muted)' }}>
               {runKeep || runPmf
-                ? <>{runKeep && <>seasons: <strong style={{ color: 'var(--ink-text)' }}>{[...runKeep].join(', ')}</strong> · </>}{runPmf && <>PMF: <strong style={{ color: 'var(--ink-text)' }}>{runPmf.keep.size === 5 || (runPmf.keep.size === 2 && runPmf.keep.has('Marine') && runPmf.keep.has('Combustion')) ? 'PMF days only (every source)' : [...runPmf.keep].join(', ')}</strong> · </>}crossplot and dated series refitted on these {runView?.eval.pred.length ?? 0} filters (change in Filters)</>
+                ? <>{runKeep && <>seasons: <strong style={{ color: 'var(--ink-text)' }}>{[...runKeep].join(', ')}</strong> · </>}{runPmf && <>PMF: <strong style={{ color: 'var(--ink-text)' }}>{runPmf.keep.size === 5 || (runPmf.keep.size === 2 && runPmf.keep.has('Marine') && runPmf.keep.has('Combustion')) ? 'PMF days only (every source)' : [...runPmf.keep].join(', ')}</strong> · </>}crossplot and dated series refitted on these {nRunCounted} filters (change in Filters)</>
                 : (seasonSel && !ethiopian && isLocal) || (pmfSel && runSite !== 'Addis Ababa')
                   ? <>the Filters panel's Addis seasons and PMF sources do not apply to {runSite}; showing every filter</>
                   : <>every season · pick seasons in the Filters panel to refit the crossplot and dated series</>}

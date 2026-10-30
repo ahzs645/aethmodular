@@ -14,7 +14,7 @@ import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { Figure } from '@/components/Figure'
 import { Key } from '@/components/Key'
 import { useChartOptions } from '@/lib/chartOptions'
-import { ExcludedNote, FixedSetNote, useExclusionSplit } from '@/lib/markedRows'
+import { ExcludedNote, FixedSetNote, useCountedFilter, useExclusionSplit } from '@/lib/markedRows'
 import { f2 } from '@/lib/format'
 import { demingLambda } from '@/lib/macMath'
 import { useMac } from '@/lib/mac'
@@ -61,9 +61,12 @@ export function FlagOnSpartan({ data }: { data: SpectralExport }) {
   const lambda10 = num(rows(data, 'settings')[0]?.lambda_addis) ?? 3.34
   const names = useMemo(() => new Map(rows(data, 'sites').map((r) => [String(r.code), String(r.site ?? r.code).split(',')[0]])), [data])
   const nameOf = (code: string) => names.get(code) ?? code
+  // the counted filters by the one rule (lib/markedRows useCountedFilter: the export's exclusions unless Include, hand
+  // exclusions, keep=); the split gives the × under Mark
   const split = useExclusionSplit(all ?? NO_FILTERS, (f) => f.id)
-  const filters = all ? split.counted : null
-  const dropped = all ? split.nOut : 0
+  const isCounted = useCountedFilter()
+  const filters = useMemo(() => (all ? all.filter((f) => isCounted(f.id)) : null), [all, isCounted])
+  const dropped = all && filters ? all.length - filters.length : 0
 
   const { sites, siteSeasons } = useMemo(() => filters
     ? { sites: flagTable(filters, 'site', m.mac, lambda10), siteSeasons: flagTable(filters, 'site-season', m.mac, lambda10) }
@@ -73,7 +76,7 @@ export function FlagOnSpartan({ data }: { data: SpectralExport }) {
 
   const live = filters != null
   const how = live
-    ? `Rebuilt live from the workbook's per-filter table (${filters.length.toLocaleString()} SPARTAN filters at ${sites.length} sites${dropped ? `; ${dropped} excluded under Filters → excluded` : ''}): at MAC 10 it reproduces the notebook's site tables (largest relative difference 4e-4, from the 4-decimal export).`
+    ? `Rebuilt live from the workbook's per-filter table (${filters.length.toLocaleString()} SPARTAN filters at ${sites.length} sites${dropped ? `; ${dropped} excluded under Filters → excluded` : ''}): with every filter counted, at MAC 10 it reproduces the notebook's site tables (largest relative difference 4e-4, from the 4-decimal export).`
     : `The notebook's saved tables (${siteSeasons.length < 30 ? 'only the top 20 site-seasons were displayed; ' : ''}the per-filter table needs the Drive), re-expressed at ${m.label}.`
   const short = (g: FlagGroup) => `${nameOf(g.code)} (${g.n})`
   const label = (g: FlagGroup) => g.season ? `${nameOf(g.code)} · ${g.season} (n = ${g.n})` : `${nameOf(g.code)} (n = ${g.n})`
@@ -113,7 +116,7 @@ export function FlagOnSpartan({ data }: { data: SpectralExport }) {
       subtitle={`The notebook's cross-check, not a verdict (HIPS BC = Fabs ÷ MAC assumes the MAC). Deming of published FTIR EC on HIPS BC with the workbook's Addis error ratio (λ = ${f2(demingLambda(m.mac, lambda10))} at ${m.label}, ∝ MAC²), fitted where a site has at least 15 filters with both; the notebook does not fit its own model's EC. Same site order as above.`}
       provenance={<>{how} {provenance(data, live ? ['network_filters'] : ['sites'])}</>} />
 
-    <CrossCheck groups={siteSeasons} cc={cc} label={label} live={live} data={data} how={how} nOut={dropped} />
+    <CrossCheck groups={siteSeasons} cc={cc} label={label} live={live} data={data} how={how} nOut={split.marked.length} />
     {filters ? <SiteFilters filters={filters} marked={split.marked} names={names} lambda10={lambda10} data={data} dropped={dropped} />
       : <ChartFrame id="ml-decision-flag-filters" title="One site's filters on the FTIR–HIPS plane (§6)" exportable={false}>
         <Note>Needs the workbook's per-filter table (section6_network_filters.csv on the Drive); see the list at the top of the page.</Note>

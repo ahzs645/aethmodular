@@ -11,8 +11,9 @@ import { demingLambda, useMac } from '@/lib/mac'
 import { AxisChoices } from '@/components/AxisChoices'
 import { Crossplot, CrossplotBrushControls, sharedCrossDomains, useCrossplotBrush, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
-import { ExcludedNote, FixedSetNote, useExclusionSplit } from '@/lib/markedRows'
-import { Forest, num, rowsOf, runLine, sourceOf, useXp, type Cols, type XpBase } from './shared'
+import { ExcludedNote, FixedSetNote } from '@/lib/markedRows'
+import { regression } from '@/lib/stats'
+import { Forest, num, rowsOf, runLine, sourceOf, useCounted, useXp, type Cols, type XpBase } from './shared'
 
 /** Test 3: calibration neighbours chosen by deposited mass as well as spectral shape (experiments_20261022.ipynb §3). */
 
@@ -30,6 +31,36 @@ const MODEL_COLOR: Record<string, string> = { get 'SPARTAN published'() { return
 const source = sourceOf('AnalogsStudy')
 /** the notebook's Deming error ratio for Addis against HIPS at MAC 10 (σ from the HIPS uncertainty); older exports lack it */
 const lambdaOf = (d: AnalogsData) => Number.isFinite(num(d.settings?.LAMBDA_ADDIS)) ? num(d.settings.LAMBDA_ADDIS) : 2.96
+/** the per-filter column of an export model name ('SPARTAN published' → 'published', 'local: shape' → 'local shape') */
+const columnOf = (model: string) => model === 'SPARTAN published' ? 'published' : model === 'full calibration (raw)' ? 'full raw' : model.replace('local: ', 'local ')
+
+/**
+ * The Addis filters of the run under Filters → excluded (shared useCounted), and each model's Addis fit against HIPS BC
+ * at MAC 10, as the export saved it (`d.addis`). While any of the run's filters is left out, every fit, median FTIR ÷
+ * HIPS and median loading ratio is refitted in the browser on the filters that count (the same Deming, λ at MAC 10),
+ * so the forest, the findings and the scatter's lines describe the same filters; with none out the saved rows stand
+ * (a refit reproduces them to the export's rounding).
+ */
+function useAddisFits(d: AnalogsData) {
+  const all = useMemo(() => rowsOf(d.addis_filters), [d])
+  const split = useCounted(all, (r) => String(r.filter_id))
+  const fits = useMemo((): Record<string, any>[] => {
+    if (!split.nOut) return d.addis
+    const f = split.counted, lambda = lambdaOf(d)
+    const med = (k: string) => d3.median(f, (r) => num(r[k])) ?? null
+    return d.addis.map((r): Record<string, any> => {
+      const col = columnOf(r.model)
+      const pts = f.filter((x) => Number.isFinite(num(x.hips_bc)) && Number.isFinite(num(x[col])))
+      const st = regression(pts.map((x) => num(x.hips_bc)), pts.map((x) => num(x[col])), { errorsInVariables: true, lambda })
+      const rule = r.model.startsWith('local: ') ? r.model.slice(7) : null
+      return { ...r, n: pts.length, slope: st?.demingSlope ?? NaN, intercept: st?.demingIntercept ?? NaN,
+        'ratio (median)': d3.median(pts.filter((x) => num(x.hips_bc) > 0), (x) => num(x[col]) / num(x.hips_bc)) ?? NaN,
+        'PM ÷ neighbours (median)': rule ? med(`PM ratio ${rule}`) : r['PM ÷ neighbours (median)'],
+        'HIPS ÷ neighbours (median)': rule ? med(`HIPS ratio ${rule}`) : r['HIPS ÷ neighbours (median)'] }
+    })
+  }, [d, split])
+  return { all, ...split, fits, live: split.nOut > 0 }
+}
 
 export function AnalogsStudy() {
   const { data, state } = useXp<AnalogsData>('analogs', 'Loading-matched analogs')
@@ -45,7 +76,8 @@ export function AnalogsStudy() {
 
 function Findings({ d }: { d: AnalogsData }) {
   const { label } = useMac()
-  const A = Object.fromEntries(d.addis.map((r) => [r.model, r]))
+  const { fits, nOut } = useAddisFits(d)
+  const A = Object.fromEntries(fits.map((r) => [r.model, r]))
   const I = (model: string, g: string) => d.improve.find((r) => r.model === model && r.group === g)
   const full = I('full calibration (raw)', 'heaviest tenth'), sl = I('local: shape + loading', 'heaviest tenth'), sh = I('local: shape', 'heaviest tenth')
   const closer = Math.abs(A['local: shape + loading'].intercept) < Math.abs(A['local: shape'].intercept)
@@ -58,7 +90,7 @@ function Findings({ d }: { d: AnalogsData }) {
           {A['local: shape + HIPS loading'] && <li><strong>Matching on absorption instead</strong> (shape + HIPS loading): Addis is still {f2(A['local: shape + HIPS loading']['HIPS ÷ neighbours (median)'])}× more absorbing than its neighbours (IMPROVE has no heavier absorbers of that shape), and the intercept is {coefSigned(A['local: shape + HIPS loading'].intercept)} µg/m³.</li>}
           <li><strong>IMPROVE's heaviest tenth against TOR:</strong> RMSE {f2(full?.rmse)} µg (full), {f2(sh?.rmse)} (shape), {f2(sl?.rmse)} (shape + loading){I('local: shape + HIPS loading', 'heaviest tenth') ? `, ${f2(I('local: shape + HIPS loading', 'heaviest tenth')?.rmse)} (shape + HIPS loading)` : ''}.</li>
         </ol>
-        <Note>{runLine(d)}. Addis is read against HIPS BC ({label}, set under Samples), a cross-check, not the truth. The intercepts do not depend on the MAC.</Note>
+        <Note>{runLine(d)}. Addis is read against HIPS BC ({label}, set under Samples), a cross-check, not the truth. The intercepts do not depend on the MAC.{nOut > 0 ? ` The Addis numbers are refitted without the ${nOut} filter${nOut === 1 ? '' : 's'} Filters → excluded leaves out; the IMPROVE errors are the run's.` : ''}</Note>
       </ChartFrame>
     </ExplainOnly>
   )
@@ -68,7 +100,8 @@ function AddisForest({ d }: { d: AnalogsData }) {
   // the export's fits are against HIPS BC at MAC 10 (λ at MAC 10): at the reader's MAC the slope and the
   // FTIR ÷ HIPS ratio scale by MAC/10 and the intercept stays (lib/mac)
   const m = useMac()
-  const rows = d.addis.map((r) => ({
+  const { fits, nOut, live } = useAddisFits(d)
+  const rows = fits.map((r) => ({
     key: r.model, label: r.model.replace('local: ', 'local · '), color: MODEL_COLOR[r.model], bold: r.model === 'local: shape + loading',
     values: { intercept: { v: r.intercept }, slope: { v: m.slope(r.slope) as number }, ratio: { v: m.slope(r['ratio (median)']) as number } },
     tip: [r.model, `Deming slope ${coef(m.slope(r.slope))}, intercept ${coefSigned(r.intercept)} µg/m³`, `median FTIR ÷ HIPS ${f2(m.slope(r['ratio (median)']))}`, `n ${r.n}`,
@@ -79,7 +112,8 @@ function AddisForest({ d }: { d: AnalogsData }) {
       title="Addis against HIPS — does matching on loading close the gap?"
       subtitle={`Deming fit (λ ${f2(demingLambda(m.mac, lambdaOf(d)))}) of each model's Addis FTIR EC against HIPS BC (${m.label}, set under Samples) on the same filters; the export fitted at MAC 10, and another MAC scales the slope and ratio by MAC/10 and leaves the intercept. The local models are refitted per filter on 500 IMPROVE neighbours chosen by shape, by shape and weighed PM2.5, by PM2.5 alone, or by shape and HIPS absorption loading. A model on the HIPS line has intercept 0 and slope 1. The published n (189) is smaller: SPARTAN's EC covers fewer of the filters.`}>
       <Forest rows={rows} panels={[{ key: 'intercept', label: 'Deming intercept (µg/m³)', ref: 0, fmt: coefSigned }, { key: 'slope', label: 'Deming slope', ref: 1, fmt: coef }, { key: 'ratio', label: 'median FTIR ÷ HIPS', ref: 1, fmt: f2 }]} />
-      <FixedSetNote what="the run's saved Deming fits on its own Addis filters" />
+      {live && <Note>Refitted in the browser on the run's Addis filters that count under Filters → excluded; with every filter counted these are the run's saved fits.</Note>}
+      <ExcludedNote count={nOut} />
     </ChartFrame>
   )
 }
@@ -88,7 +122,8 @@ function MatchCheck({ d }: { d: AnalogsData }) {
   const RULES = rulesOf(d)
   const [what, setWhat] = useSearchParam<'PM2.5' | 'HIPS'>('xa-match.what', 'PM2.5', ['PM2.5', 'HIPS'])
   const lg = useLegend()
-  const f = useMemo(() => rowsOf(d.addis_filters), [d])
+  // the run's Addis filters that count under Filters → excluded; each one's neighbours are the run's
+  const { counted: f, nOut } = useAddisFits(d)
   const bins = d3.range(-1.2, 1.51, 0.1)
   const series = RULES.filter((r) => lg.show(r)).map((r) => {
     const v = f.map((x) => Math.log10(num(x[`${what === 'PM2.5' ? 'PM' : 'HIPS'} ratio ${r}`]))).filter(Number.isFinite)
@@ -104,7 +139,7 @@ function MatchCheck({ d }: { d: AnalogsData }) {
       <SweepPlot series={series} xDomain={[-1.2, 1.5]} yLabel="share of Addis filters" xLabel={`log10 (${what === 'PM2.5' ? 'weighed PM2.5' : 'HIPS BC'} ÷ neighbours' median)`} height={280} dim={lg.dim}
         xMarkers={[{ at: 0, label: 'as heavy as neighbours' }]} yFormat={(v) => `${Math.round(v * 100)} %`} xFormat={(v) => `${f2(10 ** +v)}×`} />
       <Legend {...lg.props} items={RULES.map((r) => ({ label: r, color: RULE_COLOR[r], shape: 'line' as const }))} />
-      <FixedSetNote what="every Addis filter of the run, with the neighbours the run chose for it" />
+      <ExcludedNote count={nOut} />
     </ChartFrame>
   )
 }
@@ -152,9 +187,10 @@ function AddisScatter({ d }: { d: AnalogsData }) {
   // HIPS BC at the reader's MAC (the export's is Fabs / 10)
   const mac = useMac()
   const all = useMemo(() => rowsOf(d.addis_filters).map((r): Record<string, any> => ({ ...r, hips_bc: mac.bc(num(r.hips_bc)) })), [d, mac])
-  // the gallery's exclusions by filter id (lib/markedRows): `f` feeds every point and fit, `out` is drawn as × under Mark
-  const { counted: f, marked: out, nOut } = useExclusionSplit(all, (r) => String(r.filter_id))
-  const fit = d.addis.find((r) => r.model === exportName(model))
+  // Filters → excluded by filter id (shared useCounted): `f` feeds every point and fit, `out` is drawn as × under Mark
+  const { counted: f, marked: out, nOut } = useCounted(all, (r) => String(r.filter_id))
+  // the forest's fit for the same filters (the run's, or refitted while any filter is out)
+  const fit = useAddisFits(d).fits.find((r) => r.model === exportName(model))
   const choices = ['hips_bc', ...models]
   const [xField, setX] = useSearchParam<string>('xa-scatter.x', 'hips_bc', choices)
   const [yField, setY] = useSearchParam<string>('xa-scatter.y', model, choices)
@@ -193,8 +229,8 @@ function AddisScatter({ d }: { d: AnalogsData }) {
       <Crossplot points={overlay} marked={view === 'overlay' && out.length ? overlayOf(out) : undefined} title="Every model" xLabel={labelOf('hips_bc')} yLabel="FTIR EC (µg/m³)" brushable brush={brush} maxSide={520} errorRatio={lambda} grouping="site" groupNoun="model" />
       <Legend {...lg.props} items={models.map((m) => ({ label: m, color: colorOf(m) }))} />
     </>}
-    {view === 'one' && standard && fit && <Note>With every filter shown, the Deming line here is the one in "Addis against HIPS" above (slope {coef(mac.slope(fit.slope))}, intercept {coefSigned(fit.intercept)} µg/m³, n {fit.n}, λ {f2(lambda)}). Excluding filters or choosing another estimator changes it here only.</Note>}
-    {view !== 'one' && <Note>With every filter shown, each model's Deming line is the one in "Addis against HIPS" above (λ {f2(lambda)}). Excluding filters or choosing another estimator changes them here only.</Note>}
+    {view === 'one' && standard && fit && <Note>The Deming line here is the one in "Addis against HIPS" above, on the same filters (slope {coef(mac.slope(fit.slope))}, intercept {coefSigned(fit.intercept)} µg/m³, n {fit.n}, λ {f2(lambda)}). Choosing another estimator changes it here only.</Note>}
+    {view !== 'one' && <Note>Each model's Deming line is the one in "Addis against HIPS" above, on the same filters (λ {f2(lambda)}). Choosing another estimator changes them here only.</Note>}
     <ExcludedNote count={nOut} drawn />
   </ChartFrame>
 }

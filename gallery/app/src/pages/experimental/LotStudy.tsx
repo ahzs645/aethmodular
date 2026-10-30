@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, ExplainOnly, Note, Segmented } from '@/components/ChartFrame'
 import { ExportState } from '@/components/ExportState'
@@ -10,8 +11,7 @@ import { useExport } from '@/lib/data'
 import { useSearchParam } from '@/lib/url'
 import { baseFilterId } from '@/lib/highlight'
 import { f2 } from '@/lib/format'
-import { rowsOf, Scatter, sourceOf, type Cols, type XpBase } from './shared'
-import { FixedSetNote } from '@/lib/markedRows'
+import { rowsOf, Scatter, sourceOf, useCounted, type Cols, type XpBase } from './shared'
 
 /**
  * The 26 Oct lot-aware VIBES blank test (research/ftir_hips_chem/workflows/vibes_lot241_20261026.py,
@@ -195,25 +195,27 @@ function Ranks({ d }: { d: LotData }) {
 }
 
 function Pm25({ d }: { d: LotData }) {
-  const rows = rowsOf<{ filter_id: string; code: string; lot: string; date: string; analysis_id: string; change_all: number; change_ptfe: number; signal_all: number; change_rel_all: number }>(d.pm25)
+  const rows = useMemo(() => rowsOf<{ filter_id: string; code: string; lot: string; date: string; analysis_id: string; change_all: number; change_ptfe: number; signal_all: number; change_rel_all: number }>(d.pm25), [d])
+  // the analyses whose filter counts under Filters → excluded give the median and the count; the Scatter hides or
+  // marks the others itself
+  const { counted, nOut } = useCounted(rows, (r) => r.filter_id)
   const lotColor: Record<string, string> = { '241': '#d94801', '241a': '#6a51a3' }
   const points = rows.map((r) => ({
     x: r.signal_all, y: r.change_all, color: lotColor[r.lot] ?? '#8a8f98', id: r.filter_id, key: r.analysis_id,
     tip: [`${r.filter_id} (lot ${r.lot}, ${r.date})`, `corrected-signal RMS (current) ${res(r.signal_all)}`, `change ${res(r.change_all)} (PTFE ${res(r.change_ptfe)}), ${Math.round(100 * r.change_rel_all)} % of the signal`],
     rec: { id: baseFilterId(r.filter_id), source: 'Lot-aware VIBES · lot 241/241a PM2.5', site: r.code, date: r.date, fields: [['lot', r.lot], ['analysis', r.analysis_id], ['VIBES change (RMS)', res(r.change_all)], ['change in PTFE band', res(r.change_ptfe)]] as [string, string][] },
   }))
-  const med = d3.median(rows, (r) => r.change_rel_all) ?? NaN
+  const med = d3.median(counted, (r) => r.change_rel_all) ?? NaN
   // one square log domain for both axes (the shared Scatter's identity mode clamps log axes at 1e-3)
   const all = rows.flatMap((r) => [r.signal_all, r.change_all]).filter((v) => v > 0)
   const dom: [number, number] = [d3.min(all)! / 1.5, d3.max(all)! * 1.5]
   return (
     <ChartFrame id="xl-pm25" source={source('Pm25')} provenance={runLine(d)}
       title="Lot 241/241a PM2.5 filters — how far the new background moves each spectrum"
-      subtitle={`RMS difference between the corrections (new minus current) against the size of the current corrected spectrum, ${rows.length} PM2.5 analyses (log axes). Median change ${Math.round(100 * med)} % of the signal, mostly the PTFE band. The diagonal marks a change as large as the signal. Click a filter to open its record; its drawer now shows the new VIBES trace.`}>
+      subtitle={`RMS difference between the corrections (new minus current) against the size of the current corrected spectrum, ${counted.length} PM2.5 analyses${nOut ? ` (${nOut} left out by Filters → excluded)` : ''} (log axes). Median change ${Math.round(100 * med)} % of the signal, mostly the PTFE band. The diagonal marks a change as large as the signal. Click a filter to open its record; its drawer now shows the new VIBES trace.`}>
       <Scatter points={points} xLabel="current corrected spectrum, RMS" yLabel="change in the correction, RMS" xLog yLog maxSide={380} xDomain={dom} yDomain={dom}
         under={({ x, y }) => <IdentityLine x1={x(dom[0])} y1={y(dom[0])} x2={x(dom[1])} y2={y(dom[1])} />} />
       <Legend items={Object.entries(lotColor).map(([l, c]) => ({ label: `lot ${l}`, color: c }))} />
-      <FixedSetNote what="the run's lot 241/241a PM2.5 analyses" hand />
     </ChartFrame>
   )
 }

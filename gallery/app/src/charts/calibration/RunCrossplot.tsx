@@ -19,7 +19,7 @@ import { useSearchParam } from '@/lib/url'
 import type { CalibRun, CalibRunsFile, FilterRow, MetaFile } from '@/lib/types'
 import { deployedEC, groupColorFn, presetName, useNetworkRows } from './common'
 import { useFitHeight } from '@/lib/chartFit'
-import { ExcludedNote, useExclusionSplit, useMarkReason, type MarkPoint } from '@/lib/markedRows'
+import { ExcludedNote, useCountedFilter, useExclusionSplit, useMarkReason, type MarkPoint } from '@/lib/markedRows'
 import { markTip } from '@/lib/exclusionMode'
 
 const XMODES = ['reference', 'deployed EC'] as const
@@ -86,7 +86,7 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
       when: (c) => !!c.isFabs && c.x !== 'deployed EC', title: 'Filters: the MAC set under Filters → units; or one the explorer saved fits at' },
     // only groups that are not seasons take the set's colours: no picker when every group is a season
     { key: 'colours', node: () => groupColours.others.length > 0 ? colours.picker : null },
-    { key: 'n', node: () => <span className="control">n = {pts.length}{split.nOut ? ` (${split.nOut} excluded)` : ''}{run.extrap_pct !== null ? ` · score OOD ${run.extrap_pct}%` : ''}{run.q_residual_pct !== null ? ` · Q OOD ${run.q_residual_pct}%` : ''}</span> },
+    { key: 'n', node: () => <span className="control">n = {pts.length}{nOut ? ` (${nOut} excluded)` : ''}{run.extrap_pct !== null ? ` · score OOD ${run.extrap_pct}%` : ''}{run.q_residual_pct !== null ? ` · Q OOD ${run.q_residual_pct}%` : ''}</span> },
   ], { hasDeployed, hasFixed, isFabs })
   const xmode = o.values.x as (typeof XMODES)[number]
   const evalSet = o.values.set as (typeof SETS)[number]
@@ -109,8 +109,11 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
     }
     return out
   }, [run.eval, evalSet, hasFixed, hidden, useDeployed, isFabs, mac, sourceById, network]) // eslint-disable-line react-hooks/exhaustive-deps
+  // the counted ones by the one rule (lib/markedRows useCountedFilter, which also knows keep=); the split gives the ×
   const split = useExclusionSplit(candidates, (p) => p.id)
-  const pts = split.counted
+  const isCounted = useCountedFilter()
+  const pts = useMemo(() => candidates.filter((p) => isCounted(p.id)), [candidates, isCounted])
+  const nOut = candidates.length - pts.length
   const reasonOf = useMarkReason()
 
 
@@ -255,7 +258,7 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
           </div>
         )}
         <Legend items={groups.map((g) => ({ label: g, color: color(g), detail: `n=${run.eval.group.filter((x) => x === g).length}` }))} {...legendProps} note="dashed grey = 1:1 · regression fits selected in the sidebar" />
-        <ExcludedNote count={split.nOut} drawn />
+        <ExcludedNote count={split.marked.length} drawn />
         {tip.node}
       </div>
     </ChartFrame>

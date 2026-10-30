@@ -20,8 +20,9 @@ import { coef, coefSigned, f2, pct, signed } from '@/lib/format'
 import { Crossplot } from '@/components/Crossplot'
 import { RangeRows, type RangeRow, type RangeSeries } from '@/components/RangeRows'
 import { AxisChoices } from '@/components/AxisChoices'
-import { Forest, Scatter, num, placeLabels, rowsOf, runLine, sourceOf, useXp, type Cols, type XpBase } from './shared'
-import { FixedSetNote } from '@/lib/markedRows'
+import { Forest, Scatter, num, placeLabels, rowsOf, runLine, sourceOf, useCounted, useXp, type Cols, type XpBase } from './shared'
+import { ExcludedNote, FixedSetNote, useCountedFilter, useMarkReason } from '@/lib/markedRows'
+import { crossPath, markTip } from '@/lib/exclusionMode'
 
 /**
  * Adama TOR study (experiments_20261022.ipynb §8): the five Adama quartz/PTFE pilot pairs against IMPROVE
@@ -63,6 +64,40 @@ const AXIS_INFO: Record<string, { label: string; short: string; unit: string; lo
   'volume m³': { label: 'Sampled volume', short: 'Volume', unit: 'm³', log: true },
 }
 
+/** a point's filter id as the gallery knows it (IMPROVE ids carry the `improve:` prefix the record drawer uses) */
+const pointId = (p: Record<string, any>) => (p.population === 'IMPROVE (TOR)' ? `improve:${p.id}` : String(p.id))
+
+/**
+ * The run's filters under Filters → excluded (shared useCounted): `counted` feed every median, percentile and band,
+ * `marked` are drawn as × under Mark. Only the SPARTAN filters (and any filter excluded by hand) can be out.
+ */
+function usePoints(d: TorData) {
+  const all = useMemo(() => rowsOf(d.points), [d])
+  return { all, ...useCounted(all, pointId) }
+}
+
+/**
+ * The run's site medians (`network`), with every site that loses a filter to Filters → excluded recomputed from its
+ * filters that count (the median of each axis over them); the other sites keep the run's own rows.
+ */
+function useNetwork(d: TorData): { network: NetRow[]; nOut: number } {
+  const { all, counted, nOut } = usePoints(d)
+  return useMemo(() => {
+    if (!nOut) return { network: d.network, nOut }
+    const key = (p: Record<string, any>) => `${p.population}|${p.site}`
+    const n0 = d3.rollup(all, (v) => v.length, key)
+    const kept = d3.group(counted, key)
+    const network = d.network.map((r) => {
+      const k = `${r.population}|${r.site}`, rows = kept.get(k) ?? []
+      if (rows.length === (n0.get(k) ?? 0)) return r
+      const med = (c: string) => d3.median(rows, (p) => num(p[c])) ?? NaN
+      return { ...r, filters: rows.length, ec_ug: med('EC µg/filter'), ec_ugm3: med('EC µg/m³'), pm_ug: Number.isFinite(med('PM2.5 µg/filter')) ? med('PM2.5 µg/filter') : null,
+        ocec: Number.isFinite(med('OC/EC')) ? med('OC/EC') : null, distance: med('distance percentile'), volume: med('volume m³') }
+    })
+    return { network, nOut }
+  }, [d, all, counted, nOut])
+}
+
 export function TorStudy() {
   const { data, state } = useXp<TorData>('tor', 'Adama TOR study')
   if (!data) return <>{state}</>
@@ -91,6 +126,7 @@ function Findings({ d }: { d: TorData }) {
   const worst = [...d.seasons].sort((a, b) => b['published ÷ HIPS (median)'] - a['published ÷ HIPS (median)'])
   const adamaSeason = d.seasons.find((s) => s['Adama pairs'] > 0)?.season
   const mac = useMac()
+  const { nOut } = usePoints(d)
   return (
     <ExplainOnly>
       <ChartFrame id="xd-findings" title="Adama TOR study — short answers" exportable={false}>
@@ -102,15 +138,29 @@ function Findings({ d }: { d: TorData }) {
           <li><strong>Where it would need to be:</strong> at Adama's EC concentration, reaching SPARTAN Addis's median EC per filter takes about {Math.round(med?.["volume at Adama's median EC (m³)"] ?? NaN)} m³, {f2((med?.["volume at Adama's median EC (m³)"] ?? NaN) / (med?.['Adama volume now (m³)'] ?? NaN))}× today's volume; plus Dry or Belg sampling and lower OC/EC.</li>
           <li><strong>Precision:</strong> with 10 pairs a mean bias on Addis-like filters is known to about ±{pct(hw(10))} (±{pct(hw(36))} with 36). Addis's nearest TOR sites: {topA.map((s) => `${s.name} (${pct(s.Addis)})`).join(', ')}.</li>
         </ol>
-        <Note>{runLine(d)}. The Adama pairs are date candidates with unconfirmed IDs; EC for Adama is TOR (ECTR) on the quartz filter's own volume, for SPARTAN it is the published FTIR product (no TOR exists there).</Note>
+        <Note>{runLine(d)}. The Adama pairs are date candidates with unconfirmed IDs; EC for Adama is TOR (ECTR) on the quartz filter's own volume, for SPARTAN it is the published FTIR product (no TOR exists there).{nOut > 0 ? ` These answers are the run's, on all its filters; the charts below leave out the ${nOut} filter${nOut === 1 ? '' : 's'} Filters → excluded takes out.` : ''}</Note>
       </ChartFrame>
     </ExplainOnly>
   )
 }
 
 function PilotPosition({ d }: { d: TorData }) {
-  const pts = useMemo(() => rowsOf(d.points), [d])
+  // the SPARTAN Addis band follows Filters → excluded: with any Addis filter out it is taken from the ones that count
+  const { counted: pts, all, nOut } = usePoints(d)
   const ada = pts.filter((p) => p.population === 'Adama pilot (TOR)')
+  const addisOut = all.filter((p) => p.population === 'SPARTAN Addis').length - pts.filter((p) => p.population === 'SPARTAN Addis').length
+  const liveTarget = (t: TorData['target'][number]): TorData['target'][number] => {
+    if (!addisOut) return t
+    const v = pts.filter((p) => p.population === 'SPARTAN Addis').map((p) => num(p[t.axis])).filter(Number.isFinite).sort(d3.ascending)
+    const q = (f: number) => d3.quantileSorted(v, f) ?? NaN
+    const a = ada.map((p) => num(p[t.axis])).filter(Number.isFinite)
+    const inside = (lo: number, hi: number) => (a.length ? a.filter((x) => x >= lo && x <= hi).length / a.length : NaN)
+    const am = d3.median(a) ?? NaN
+    return { ...t, 'Addis p5': q(0.05), 'Addis p25': q(0.25), 'Addis median': q(0.5), 'Addis p75': q(0.75), 'Addis p95': q(0.95),
+      'Adama inside Addis 25-75': inside(q(0.25), q(0.75)), 'Adama inside Addis 5-95': inside(q(0.05), q(0.95)),
+      'Adama percentile in Addis': v.length ? (100 * v.filter((x) => x < am).length) / v.length : NaN }
+  }
+  const targets = d.target.map(liveTarget)
   const verdict = (t: TorData['target'][number]) => t['Adama inside Addis 25-75'] >= 0.6 ? { text: 'inside Addis\'s middle half', color: INK.good }
     : t['Adama inside Addis 5-95'] >= 0.6 ? { text: 'inside Addis\'s range, off-centre', color: INK.warn } : { text: 'outside Addis\'s range', color: INK.negative }
   const series: RangeSeries[] = [
@@ -119,7 +169,7 @@ function PilotPosition({ d }: { d: TorData }) {
     { key: 'improve', label: 'IMPROVE median', color: IMPROVE_GREY, kind: 'tick' },
     { key: 'network', label: 'SPARTAN-network median', color: SPARTAN, kind: 'tick' },
   ]
-  const rows: RangeRow[] = d.target.map((t) => {
+  const rows: RangeRow[] = targets.map((t) => {
     const info = AXIS_INFO[t.axis]
     return {
       key: t.axis, label: info.label, unit: info.unit, log: info.log,
@@ -136,10 +186,11 @@ function PilotPosition({ d }: { d: TorData }) {
       tip={<>Season is the one axis this chart cannot show: see "Season" below. Adama EC is TOR and SPARTAN EC is the published FTIR product, so the EC and OC/EC rows compare two methods; spectral distance compares like with like.</>}>
       <RangeRows rows={rows} series={series}
         pointTip={(r, _s, v, j) => {
-          const t = d.target.find((x) => x.axis === r.key)!
+          const t = targets.find((x) => x.axis === r.key)!
           return [`Adama pair ${j + 1}`, `${r.label}: ${f2(v)} ${r.unit ?? ''}`, `Addis 25–75 %: ${f2(t['Addis p25'])}–${f2(t['Addis p75'])}`]
         }} />
-      <FixedSetNote what="the run's IMPROVE, SPARTAN and Adama filters" />
+      {addisOut > 0 && <Note>The SPARTAN Addis bands and verdicts are taken from the run's Addis filters that count under Filters → excluded; the IMPROVE and SPARTAN-network ticks are the run's.</Note>}
+      <ExcludedNote count={nOut} />
     </ChartFrame>
   )
 }
@@ -159,7 +210,11 @@ const PLANE_MEASURE: Record<PlaneMeasure, { label: string; short: string; conc: 
 }
 
 function LoadingPlane({ d }: { d: TorData }) {
-  const raw = useMemo(() => rowsOf(d.points), [d])
+  // every filter goes to the Scatter, which follows Filters → excluded itself; the medians and the band below take
+  // the filters that count (usePoints), and the EC site medians are the run's unless a site lost a filter (useNetwork)
+  const { all: raw, nOut } = usePoints(d)
+  const { network } = useNetwork(d)
+  const isCounted = useCountedFilter()
   const lg = useLegend()
   const mac = useMac()
   const [arrowParam, setArrow] = useSearchParam<'on' | 'off'>('xd-plane.arrow', 'off', ['on', 'off'])
@@ -191,8 +246,9 @@ function LoadingPlane({ d }: { d: TorData }) {
   // where each population has the measure at all (Adama has no HIPS or weighed PM2.5)
   const missing = pops.filter((pop) => !pts.some((p) => p.population === pop && has(p)))
   const netOf = new Map(d.network.map((r) => [`${r.population}${r.site}`, r]))
+  const counted = useMemo(() => pts.filter((p) => isCounted(pointId(p))), [pts, isCounted])
   // one point per site: its median concentration and median volume (EC: the same medians as "Sites compared"; else from its filters here)
-  const siteRows = ec ? d.network : d3.groups(pts.filter(has), (p) => p.population as string, (p) => p.site as string).flatMap(([population, sites]) => sites.map(([site, rows]) => {
+  const siteRows = ec ? network : d3.groups(counted.filter(has), (p) => p.population as string, (p) => p.site as string).flatMap(([population, sites]) => sites.map(([site, rows]) => {
     const r = netOf.get(`${population}${site}`)
     return { population, site, name: r?.name ?? site, urban: r?.urban ?? false, filters: rows.length, ec_ugm3: d3.median(rows, M.conc)!, volume: d3.median(rows, (p) => num(p['volume m³']))!, ec_ug: d3.median(rows, M.ug)! }
   }))
@@ -201,7 +257,7 @@ function LoadingPlane({ d }: { d: TorData }) {
     r: r.population === 'SPARTAN Addis' || r.population === 'Adama pilot (TOR)' ? 8 : r.population === 'IMPROVE (TOR)' ? 2.5 + Math.sqrt(r.filters) / 4 : 4.5,
     tip: [`${r.name} (${r.site})`, POP_LABEL[r.population], `${r.filters} filters, medians:`, `${M.short} ${f2(r.ec_ugm3)} µg/m³ · volume ${f2(r.volume)} m³ · ${f2(r.ec_ug)} µg per filter`] }))
   const filterPlot = shown.flatMap((pop) => sample(pts.filter((p) => p.population === pop && (ec || has(p))), pop === 'Adama pilot (TOR)' ? 10 : 1500).map((p, i) => {
-    const id = pop === 'IMPROVE (TOR)' ? `improve:${p.id}` : String(p.id)
+    const id = pointId(p)
     return { x: M.conc(p), y: num(p['volume m³']), color: POP_COLOR[pop], dim: dim(pop), r: pop === 'Adama pilot (TOR)' ? 7 : pop === 'SPARTAN Addis' ? 3 : 2, key: `${pop}${i}`, id,
       tip: [`${POP_LABEL[pop]} · ${p.site} ${p.id}`, `${M.short} ${f2(M.conc(p))} µg/m³ × ${f2(p['volume m³'])} m³ = ${f2(M.ug(p))} µg per filter`],
       rec: { id, source: 'Adama TOR study · loading plane', site: String(p.site), fields: [['population', POP_LABEL[pop]] as [string, string], ...[...PLANE_FIELDS, ...(hipsPops.size ? [HIPS_COL] : [])].map((k) => [k, p[k]] as [string, number | null])] } }
@@ -209,8 +265,8 @@ function LoadingPlane({ d }: { d: TorData }) {
   const plot = level === 'site' ? sitePlot : filterPlot
   // the target band: SPARTAN Addis's middle half per filter (EC: the notebook's own percentiles)
   const T = d.target.find((t) => t.axis === 'EC µg/filter')!
-  const addisUg = pts.filter((p) => p.population === 'SPARTAN Addis').map(M.ug).filter(Number.isFinite).sort(d3.ascending)
-  const band: [number, number] = ec ? [T['Addis p25'], T['Addis p75']] : [d3.quantileSorted(addisUg, 0.25) ?? NaN, d3.quantileSorted(addisUg, 0.75) ?? NaN]
+  const addisUg = counted.filter((p) => p.population === 'SPARTAN Addis').map(M.ug).filter(Number.isFinite).sort(d3.ascending)
+  const band: [number, number] = ec && !nOut ? [T['Addis p25'], T['Addis p75']] : [d3.quantileSorted(addisUg, 0.25) ?? NaN, d3.quantileSorted(addisUg, 0.75) ?? NaN]
   const med = d.volume.find((v) => v.target === 'Addis median')!
   const adama = d.network.find((r) => r.population === 'Adama pilot (TOR)')!
   const xD = M.xD, yD: [number, number] = [0.5, 60]
@@ -256,7 +312,7 @@ function LoadingPlane({ d }: { d: TorData }) {
           <td>{f2(v["volume at Adama's median EC (m³)"] / v['Adama volume now (m³)'])}×</td><td>{Math.round(v['hours at the Adama flow rate'])} h</td><td>{f2(v['volume at SPARTAN Addis median EC (m³)'])} m³</td></tr>)}</tbody>
       </table>
       <ExplainOnly><Note>At SPARTAN Addis's own median EC concentration (if the Addis city site resembles it), the volumes in the last column apply. Longer sampling at the same flow reaches the same loading; a 24 h sample at the Adama flow is about {f2(adama.volume)} m³.</Note></ExplainOnly>
-      <FixedSetNote what="the run's IMPROVE, SPARTAN and Adama filters" hand />
+      {nOut > 0 && <Note>{ec ? 'The band and any site that lost a filter are' : 'The band and the site medians are'} taken from the filters that count under Filters → excluded{ec ? '; the other sites, the arrow and the table are the run\'s' : ''}.</Note>}
     </ChartFrame>
   )
 }
@@ -276,7 +332,7 @@ function SeasonPanel({ d }: { d: TorData }) {
       title="Season — when the Addis disagreement happens, and when the pilot was sampled"
       subtitle={`SPARTAN Addis by season (site calendar, February in Belg): published FTIR EC ÷ HIPS BC at ${mac.label} (set under Filters; median with 25–75 %), and the Deming fit against HIPS. The run used MAC 10; another MAC scales the ratio and slope by MAC/10 and leaves the intercept. The seasons differ, and the Adama pilot was sampled entirely in one of them (green). Pairs meant to test the calibration at Addis need to cover every season, or at least the one the question is about.`}>
       <Forest rows={rows} labelWidth={230} panels={[{ key: 'ratio', label: 'published FTIR ÷ HIPS BC', ref: 1, fmt: f2 }, { key: 'slope', label: 'Deming slope vs HIPS', ref: 1, fmt: coef }, { key: 'intercept', label: 'Deming intercept (µg/m³)', ref: 0, fmt: coefSigned }]} />
-      <FixedSetNote what="the run's IMPROVE, SPARTAN and Adama filters" />
+      <FixedSetNote what="the run's saved season medians and Deming fits on its SPARTAN Addis filters" />
     </ChartFrame>
   )
 }
@@ -395,7 +451,7 @@ function NetworkMap({ d }: { d: TorData }) {
         <Legend items={[{ label: 'SPARTAN Addis', color: ADDIS_ALL }, { label: 'Adama pilot (TOR)', color: ADAMA }, { label: 'IMPROVE site never chosen', color: IMPROVE_GREY, shape: 'ring' }]} />
       </div>
       <Note>Adama is placed at the pilot sampler's recorded position. Neighbours use the spline spectra and the 600–3600 cm⁻¹ similarity region without CO₂ and PTFE bands. Drag to pan, scroll to zoom; Globe shows the arcs as the routes they are.</Note>
-      <FixedSetNote what="the run's IMPROVE, SPARTAN and Adama filters" />
+      <FixedSetNote what="the run's saved nearest-neighbour shares and calibration-site counts" />
     </ChartFrame>
   )
 }
@@ -413,10 +469,13 @@ function WhereItSits({ d }: { d: TorData }) {
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
-  const pts = useMemo(() => rowsOf(d.points), [d])
+  // the filters that count under Filters → excluded (usePoints); under Mark the Addis ones left out are drawn as ×
+  const { counted: pts, marked, nOut } = usePoints(d)
+  const reasonOf = useMarkReason()
   const imp = pts.filter((p) => p.population === 'IMPROVE (TOR)'), add = pts.filter((p) => p.population === 'SPARTAN Addis'), ada = pts.filter((p) => p.population === 'Adama pilot (TOR)')
+  const addMarked = marked.filter((p) => p.population === 'SPARTAN Addis')
   const net = pts.filter((p) => p.population === 'SPARTAN network')
-  const sites = d.network.filter((r) => r.population === 'IMPROVE (TOR)')
+  const sites = useNetwork(d).network.filter((r) => r.population === 'IMPROVE (TOR)')
   const siteVal: Record<string, keyof NetRow> = { 'EC µg/filter': 'ec_ug', 'EC µg/m³': 'ec_ugm3', 'OC/EC': 'ocec', 'PM2.5 µg/filter': 'pm_ug', 'distance percentile': 'distance', 'volume m³': 'volume' }
   const labelW = 210, rowH = 74, pw = Math.max(300, width - labelW - 30)
   const jitter = (i: number) => ((Math.sin(i * 12.9898) * 43758.5453) % 1 + 1) % 1
@@ -450,6 +509,10 @@ function WhereItSits({ d }: { d: TorData }) {
                   <line x1={x(q(nv, 0.5))} x2={x(q(nv, 0.5))} y1={midN - 5} y2={midN + 5} stroke={SPARTAN} strokeWidth={2} />
                 </>}
                 {sites.map((s) => { const val = s[siteVal[v.key]] as number; return Number.isFinite(val) && (!v.log || val > 0) ? <line key={s.site} x1={x(val)} x2={x(val)} y1={mid + 11} y2={mid + 16} stroke={IMPROVE_GREY} strokeWidth={0.8} /> : null })}
+                {addMarked.length > 0 && <g fill="none" stroke={INK.muted} strokeWidth={1.3} strokeOpacity={0.85} strokeLinecap="round">
+                  {addMarked.map((p, i) => { const val = num(p[v.key]); return Number.isFinite(val) && (!v.log || val > 0) && val >= x.domain()[0] && val <= x.domain()[1]
+                    ? <path key={i} d={crossPath(x(val), mid - 6 + jitter(add.length + i) * 12, 2.6)}><title>{markTip({ id: String(p.id), site: String(p.site) }, reasonOf(String(p.id)) ?? 'excluded', [`${v.label}: ${v.fmt(val)}`]).join('\n')}</title></path> : null })}
+                </g>}
                 {add.map((p, i) => { const val = num(p[v.key]); return Number.isFinite(val) && (!v.log || val > 0) ? <circle key={i} cx={x(val)} cy={mid - 6 + jitter(i) * 12} r={2} fill={ADDIS_ALL} {...dotFill('dense')} /> : null })}
                 {ada.map((p, i) => { const val = num(p[v.key]); return Number.isFinite(val) && (!v.log || val > 0)
                   ? <path key={i} d={d3.symbol(d3.symbolDiamond, 70)() ?? ''} transform={`translate(${x(val)},${mid})`} fill={ADAMA} stroke={INK.panel} strokeWidth={1}
@@ -463,7 +526,7 @@ function WhereItSits({ d }: { d: TorData }) {
       </div>
       <Legend items={[{ label: 'IMPROVE filters (band) and site medians (ticks)', color: themed('#cbd2d9', '#46505c'), shape: 'square' }, { label: 'other SPARTAN sites (band)', color: SPARTAN, shape: 'square' }, { label: 'SPARTAN Addis filters', color: ADDIS_ALL }, { label: 'Adama pilot pairs', color: ADAMA }]} />
       <Note>Adama has no weighed PM2.5 in the pair records. EC per filter = concentration × the filter's own sampled volume; SPARTAN Addis EC is the published FTIR value (no TOR exists there).</Note>
-      <FixedSetNote what="the run's IMPROVE, SPARTAN and Adama filters" />
+      <ExcludedNote count={nOut} drawn={addMarked.length > 0} />
     </ChartFrame>
   )
 }
@@ -480,7 +543,9 @@ function NetworkScatter({ d }: { d: TorData }) {
   const lg = useLegend()
   const order = ['IMPROVE (TOR)', 'SPARTAN network', 'SPARTAN Addis', 'Adama pilot (TOR)']
   const X = AXIS_INFO[xk], Y = AXIS_INFO[yk]
-  const rows = [...d.network].sort((a, b) => order.indexOf(a.population) - order.indexOf(b.population)).filter((r) => lg.show(r.population))
+  // the run's site medians; a site that loses filters to Filters → excluded is recomputed from the ones that count
+  const { network, nOut } = useNetwork(d)
+  const rows = [...network].sort((a, b) => order.indexOf(a.population) - order.indexOf(b.population)).filter((r) => lg.show(r.population))
   const pts = rows.map((r) => {
     const big = r.population === 'SPARTAN Addis' || r.population === 'Adama pilot (TOR)'
     return { x: r[SITE_KEY[xk]] as number, y: r[SITE_KEY[yk]] as number, key: `${r.population}${r.site}`, color: POP_COLOR[r.population] ?? INK.accent,
@@ -513,7 +578,7 @@ function NetworkScatter({ d }: { d: TorData }) {
         }} />
       </AxisChoices>
       <Legend {...lg.props} items={order.map((p) => ({ label: POP_LABEL[p], color: POP_COLOR[p] }))} note="click to show or hide" />
-      <FixedSetNote what="the run's IMPROVE, SPARTAN and Adama filters" />
+      <ExcludedNote count={nOut} />
     </ChartFrame>
   )
 }
@@ -544,7 +609,7 @@ function NearestSites({ d }: { d: TorData }) {
         {tip.node}
       </div>
       <Legend items={[{ label: 'Addis', color: ADDIS_ALL, shape: 'square' }, { label: 'Adama pilot', color: ADAMA, shape: 'square' }, { label: "site's share of calibration filters", color: INK.text, shape: 'line' }]} />
-      <FixedSetNote what="the run's IMPROVE, SPARTAN and Adama filters" />
+      <FixedSetNote what="the run's saved nearest-neighbour shares" />
     </ChartFrame>
   )
 }
@@ -561,7 +626,7 @@ function Precision({ d }: { d: TorData }) {
         yMarkers={[{ at: 0.2, label: '±20 % rule' }]} xMarkers={[{ at: 5, label: 'Adama 5' }, { at: 10, label: 'Addis city ~10' }, { at: 36, label: 'freeze 36' }]} xFormat={(v) => String(Math.round(+v))} />
       <Legend items={pops.map((p) => ({ label: p, color: color[p], shape: 'line' as const }))} />
       <Note>This is sampling precision only: it assumes the new pairs behave like IMPROVE's Addis-like filters. Sampler, flow and site differences add to it.</Note>
-      <FixedSetNote what="the run's IMPROVE, SPARTAN and Adama filters" />
+      <FixedSetNote what="the run's resampling of IMPROVE's own out-of-site errors" />
     </ChartFrame>
   )
 }

@@ -17,7 +17,7 @@ export function Charcoal({ meta }: SectionPageProps) {
   return <>
     <PageIntro id="mlc-intro" title="Charcoal archive: structure, analogue matching and classifiers" data={data}
       notebooks="research/ftir_etad_char char_02_addis_vs_charcoal, char_03_burned_vs_unburned, char_04_spectral_typology, char_06_dry_season_anomaly, char_11_normalization_alternatives">
-      <FixedSetNote subject="this page" what="the notebooks' results on their own 239 Addis filters" />
+      <FixedSetNote subject="this page" what="the notebooks' results on their own 239 Addis filters (the Addis P(burned) histogram, drawn per filter, follows the switch)" />
       <p>Six published charcoal and biochar collections (5,889 spectra; research/ftir_hips_chem/charcoal_ftir_sources) against the 239 Addis filter spectra, AIRSpec-baselined, cropped to 1430–3500 cm⁻¹, detrended and SNV-scaled on both sides. Everything here is a fitted model (PCA, KMeans, Gaussian mixture, logistic regression) or a nearest-neighbour search, so it is the notebooks' numbers with their seasons; nothing is refitted and nothing depends on the MAC. The per-filter scores and their season, lot and loading checks are live on <a href="#tab=research&aep=charcoal">Research → Charcoal similarity</a>.</p>
     </PageIntro>
     <Structure data={data} />

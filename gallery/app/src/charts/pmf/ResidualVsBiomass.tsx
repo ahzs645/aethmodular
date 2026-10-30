@@ -13,7 +13,7 @@ import { INK } from '@/lib/theme'
 import type { MetaFile, PmfFile, PmfRow } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import instruments from '@/sections/instruments'
-import { ExcludedNote, useExclusionSplit } from '@/lib/markedRows'
+import { ExcludedNote, useCountedFilter, useExclusionSplit } from '@/lib/markedRows'
 
 const AETH = 'IR BCc (aethalometer)'
 /** the method pairs, minuend first: the notebook's residual is FTIR EC − aethalometer BC */
@@ -69,8 +69,11 @@ export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: Pmf
       return [{ p, bm, res: pct ? (100 * d) / va : d, season: p.season }]
     })
   }, [data, aeth, rows, pmf, a, b, pct, mac])
+  // the counted days by the one rule (lib/markedRows useCountedFilter, which also knows keep=); the split gives the ×
   const split = useExclusionSplit(candidates, (d) => d.p.id)
-  const days = split.counted
+  const isCounted = useCountedFilter()
+  const days = useMemo(() => candidates.filter((d) => isCounted(d.p.id)), [candidates, isCounted])
+  const nOut = candidates.length - days.length
 
   const seasonColor = (s: string, i: number) => meta.seasons.find((x) => x.name === s)?.color ?? d3.schemeTableau10[i % 10]
   const seasons = useMemo(() => [...new Set(days.map((d) => d.season))].sort((x, y) => {
@@ -104,7 +107,7 @@ export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: Pmf
   return (
     <ChartFrame id="pmf-residual-biomass"
       title={`Method difference against the biomass share, by season — ${pair}${pct ? ` as % of ${a}` : ''}, per ${pmf.site_name} PMF day`}
-      subtitle={`Biomass is ${BIOMASS_SOURCES.join(' + ')} as a % of the explained sources (the normalised fractions); each point is one PMF day in view with both measurements (${days.length} of ${rows.length}${split.nOut ? `; ${split.nOut} excluded under Filters → excluded` : ''}). ${layout === 'One plot' ? 'One plot with a fit per season, as the notebook drew it' : 'One panel per season, on shared axes'}; lines and table are OLS of the difference on the share, as the notebook fitted them (a trend against a share, so the sidebar's errors-in-variables fits do not apply). Seasons follow the sidebar's Seasons choice (the notebook used the Belg-owns-February calendar). ${hasAeth ? 'IR BCc is the aethalometer averaged over each filter\'s sampling window.' : 'The aethalometer pairs need the Instruments section\'s per-filter export, which this build does not have.'} HIPS BC = HIPS Fabs ÷ MAC ${mac.mac}.`}
+      subtitle={`Biomass is ${BIOMASS_SOURCES.join(' + ')} as a % of the explained sources (the normalised fractions); each point is one PMF day in view with both measurements (${days.length} of ${rows.length}${nOut ? `; ${nOut} excluded under Filters → excluded` : ''}). ${layout === 'One plot' ? 'One plot with a fit per season, as the notebook drew it' : 'One panel per season, on shared axes'}; lines and table are OLS of the difference on the share, as the notebook fitted them (a trend against a share, so the sidebar's errors-in-variables fits do not apply). Seasons follow the sidebar's Seasons choice (the notebook used the Belg-owns-February calendar). ${hasAeth ? 'IR BCc is the aethalometer averaged over each filter\'s sampling window.' : 'The aethalometer pairs need the Instruments section\'s per-filter export, which this build does not have.'} HIPS BC = HIPS Fabs ÷ MAC ${mac.mac}.`}
       provenance={`research/ftir_hips_chem/ETAD_Factor_Analysis.ipynb c37 (absolute and % residual vs biomass %), c38 (by Ethiopian season) · from pmf.json + filters.json${hasAeth ? ' + aethalometer/filters' : ''}`}
       controls={<>
         <Segmented label="Pair" value={pair} options={pairs} onChange={setPair} title="The two measurements whose difference is plotted (first minus second)" />
@@ -128,7 +131,7 @@ export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: Pmf
           </table>
           <p className="chart-note">OLS of the difference on the biomass share (scipy.stats.linregress, as ETAD_Factor_Analysis printed it); a season with fewer than three days has no fit.</p>
         </div>
-        <ExcludedNote count={split.nOut} drawn />
+        <ExcludedNote count={split.marked.length} drawn />
       </>}
     </ChartFrame>
   )
