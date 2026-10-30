@@ -143,6 +143,18 @@ filter's ordinary-PLS and di-PLS errors, and no export carries the di-PLS predic
 Have `ftir_36_domain_invariant_pls` write them (`locked_target_predictions.csv`: config, target,
 variant, ExternalFilterId, prediction) and the gallery can bootstrap at any MAC.
 
+### Join the last per-filter exports to Filters → excluded
+
+Every gallery chart with per-filter data follows the one exclusion setting (docs/gallery-chart-standards.md,
+"Excluded filters"). Three exports cannot yet be joined, so their charts keep a fixed-set note:
+- The baseline research pages draw IMPROVE `sample_id`s, which no gallery filter row carries; the IMPROVE
+  network has no exclusion list in the gallery to follow.
+- `BaselineResearchDiagnostics` lists the 253 frozen Addis spectra as saved summaries only.
+- `export_improve_envelope`'s exclusion list keeps the PM10 filter ETAD-0248 (which `filters.json` excludes)
+  and drops INDH-0172, so its saved Addis windows match neither Hide nor Include
+  (`sections/research/common/envelope.test.mjs` documents it). Re-export with `filters.json`'s exclusions,
+  or have the export write the list it used.
+
 ## Explicitly declined—not open
 
 ### Do not merge `src/analysis/quality` and `src/data/qc`
