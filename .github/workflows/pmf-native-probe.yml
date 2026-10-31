@@ -11,7 +11,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 10
     steps:
-      - name: Inspect official EPA installer
+      - name: Inspect and invoke official EPA distribution
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -19,21 +19,26 @@ jobs:
           New-Item -ItemType Directory -Force $root | Out-Null
           $exe = Join-Path $root 'epa_pmf_5.0_setup.exe'
           Invoke-WebRequest -Uri 'https://www.epa.gov/sites/default/files/2015-03/epa_pmf_5.0_setup.exe' -OutFile $exe -TimeoutSec 90
-          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash
-          if ($hash -ne '49E020D69E5B4656E4CD540508872C7FAE2BFA69A48D2EEF0B7ABDE7CBE8DEBE') { throw 'EPA installer checksum changed; review before execution' }
+          if ((Get-FileHash $exe -Algorithm SHA256).Hash -ne '49E020D69E5B4656E4CD540508872C7FAE2BFA69A48D2EEF0B7ABDE7CBE8DEBE') { throw 'Installer checksum changed' }
           $target = Join-Path $root 'admin'
-          $log = Join-Path $root 'install.log'
-          $args = '/s /a /v"/qn TARGETDIR=' + $target + ' /L*v ' + $log + '"'
-          $p = Start-Process $exe -ArgumentList $args -PassThru
-          if (-not $p.WaitForExit(120000)) { $p.Kill(); Write-Output 'Administrative installation timed out' }
-          Write-Output ('Installer exit: ' + $p.ExitCode)
-          Get-ChildItem $root -Recurse -File | Select-Object FullName,Length | Format-Table -AutoSize
-          if (Test-Path $log) { Get-Content $log -Tail 60 }
-          $files = @(Get-ChildItem $root -Recurse -File | Where-Object { $_.Name -match 'me2|iniparams|moreparams|sealed|\.key$|\.ini$' })
-          foreach ($f in $files) {
-            Write-Output ('ENGINE FILE: ' + $f.FullName)
-            Get-FileHash $f.FullName -Algorithm SHA256 | Format-List
-            if ($f.Extension -eq '.ini' -and $f.Length -lt 100000) { Get-Content $f.FullName -TotalCount 120 }
-          }
-          Write-Output 'PROBE ONLY: no PMF numerical fit claimed.'
+          $p = Start-Process $exe -ArgumentList ('/s /a /v"/qn TARGETDIR=' + $target + '"') -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Installer timed out' }
+          $app = Join-Path $target 'program files\EPA PMF\EPA PMF 5.0'
+          Write-Output '===== ORIGINAL DEFAULT PARAMETERS ====='
+          Get-Content (Join-Path $app 'iniParamsDefault.txt')
+          Write-Output '===== ORIGINAL GUI CONFIG ====='
+          Get-Content (Join-Path $app 'EPAPMF.cfg')
+          Write-Output '===== SEALED SCRIPT HEADER (READ ONLY) ====='
+          Get-Content (Join-Path $app 'PMF_bs_6f8xx_sealed_GUI.ini') -TotalCount 100
+          Write-Output '===== SCRIPT INPUT CONTRACT MATCHES ====='
+          Select-String -Path (Join-Path $app 'PMF_bs_6f8xx_sealed_GUI.ini') -Pattern 'iniparams|moreparams|matrix.dat|std_dev|infile|.csv|.txt' | Select-Object -First 60
+          Copy-Item (Join-Path $app 'iniParamsDefault.txt') (Join-Path $app 'iniparams.txt')
+          $engine = Join-Path $app 'me2gfP4_1345c4.exe'
+          $p = Start-Process $engine -WorkingDirectory $app -ArgumentList 'PMF_bs_6f8xx_sealed_GUI.ini' -RedirectStandardOutput (Join-Path $root 'engine.stdout') -RedirectStandardError (Join-Path $root 'engine.stderr') -PassThru
+          if (-not $p.WaitForExit(30000)) { $p.Kill(); Write-Output 'Engine probe timed out waiting for a complete configured job' }
+          Write-Output ('Engine exit: ' + $p.ExitCode)
+          Get-Content (Join-Path $root 'engine.stdout') -Tail 100
+          Get-Content (Join-Path $root 'engine.stderr') -Tail 50
+          Get-ChildItem $app -File | Where-Object { $_.LastWriteTimeUtc -gt [DateTime]::UtcNow.AddMinutes(-3) } | Select-Object Name,Length
+          Write-Output 'PROBE ONLY: no valid numerical fit is claimed by this workflow.'
           $global:LASTEXITCODE = 0
