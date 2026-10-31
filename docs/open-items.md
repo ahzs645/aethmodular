@@ -99,6 +99,29 @@ organic-signal correlation. Pooled calibrations are unaffected. Decide which cal
 AAAR poster and paper quote for season-specific results, and say so in Methods. See
 [site-seasonality.md](site-seasonality.md#addis-february-sensitivity-28-oct-2026).
 
+### Exclude ETAD-0158 (documented large hole) from the gallery
+
+The Python PMF package (30 Oct 2026, the Research page "Python PMF (Oct 2026)") holds ETAD-0158-6 out of every
+fit because a laboratory memo documents a large hole in the filter. The gallery's `filters.json` still counts it,
+so it enters every Addis chart, fit and count. Adding it to the export's exclusions would shift Addis numbers
+slightly everywhere (with Filters → excluded: Include they come back), so it waits for a decision. The page's QC
+chart lists every filter where the package and the gallery disagree.
+
+### Send ETAD-0037 for laboratory review
+
+ETAD-0037-5's sample and background scans are distinct but nearly identical, so its absorbance is almost flat and
+negative in the modelled bands, yet the lab reports 2.87 µg/m³ OM. In the Python PMF's held-out OM test it is
+predicted at 0.0006 µg/m³ and alone is about 20 % of the pooled squared error. The package keeps it in every score
+and so does the gallery (it counts in every FTIR chart). Its native-beam and reference audit is in the package
+(`data_review/prepared/etad0037_investigation/audit.json`). Keep it until the lab says whether the spectrum or the
+reference is wrong; then exclude it with that reason.
+
+### Include restores only the export's exclusions (decided, 30 Oct 2026)
+
+Filters → excluded: Include brings back the filters the data export excludes, not filters excluded by hand: a hand
+exclusion is a deliberate choice carried in the link, and Mark shows it without counting it. Revisit only if
+readers expect Include to mean "everything".
+
 ## Unfinished migrations
 
 ### Migrate stored-output notebooks to the canonical site palette
@@ -154,6 +177,46 @@ Every gallery chart with per-filter data follows the one exclusion setting (docs
   and drops INDH-0172, so its saved Addis windows match neither Hide nor Include
   (`sections/research/common/envelope.test.mjs` documents it). Re-export with `filters.json`'s exclusions,
   or have the export write the list it used.
+
+### Bring the later Addis and the Bishoftu filters into the gallery's filter rows
+
+The Python PMF models 246 ETAD and 53 ETBI PM2.5 filters. 58 of the ETAD filters (into 2026) and every ETBI filter
+have no row in the gallery's `filters.json` (190 ETAD rows), so the PMF page draws them but cannot join them to
+HIPS, FTIR EC/OC or PM2.5, and they follow Filters → excluded only by hand exclusion. Bishoftu also has no gallery
+season calendar; its filters take Addis's on that page. Re-export the filter table with the newer SPARTAN release
+(and a Bishoftu calendar in `site-seasonality`) to close this.
+
+### Reconcile the gallery's PM2.5 with the PMF package's on eight 2023 filters
+
+On ETAD-0094 to ETAD-0104 (July–August 2023) the gallery's PM2.5 mass differs from the value the Python PMF package
+used, so the page's factor-vs-PM2.5 correlations differ from the package's saved ones by up to ~0.005 (HIPS Fabs
+matches exactly). Find which release each side read and keep one.
+
+### Fix the Python PMF's negative inputs before naming sources
+
+About 16 % of the PMF's input cells are negative (baseline-corrected absorbance per m³). A nonnegative model
+cannot fit them, which by itself fixes a scaled-RMSE floor of 3.97 for ETAD 246 (observed 6.35) whatever the factor
+count. The report's own conclusion: a defensible uncertainty budget and a review of the signed baseline residuals
+come before more factors, and before any named-source fraction or mass. The gallery labels the factors
+"Factor 1…5" with the closest archived KF factor only as descriptive context.
+
+### Smaller gallery gaps from the exclusion audit (30 Oct 2026)
+
+- Filter-only page: ETAD-0248's Fabs (85.9) lies above the axis range, so under Mark the note counts it but no ×
+  is drawn. Clamp out-of-range marks to the edge, or say so in the note.
+- The Python PMF page joins gallery measurements only when the Addis filters are in view (`&net=focus` or Addis
+  selected); otherwise its measurement chart is empty and its QC chart lists every filter as without a gallery row.
+- Research and Machine learning are private sections (`sections/sections.json`): the public site builds neither
+  their pages nor their data, so the Python PMF page and the notebook reproductions are local-only until a section
+  is set to `"unlisted"` or `true`.
+
+### Publish a new data release from a machine that can upload release assets
+
+`gallery/share/publish_pages.py` attaches the data snapshot to a release of `ahzs645/aethmodular-gallery`, which
+needs a GitHub token that can upload assets. A deploy without one reuses the latest data release; the deploy
+workflow now unpacks that release over the data committed at the built commit, so committed exports (for example
+`improve_site_quantiles.json`, the Aethalometer flow detail) still reach the site. Exports that are git-ignored
+reach it only through a new release: run the script from the Mac after the next export.
 
 ## Explicitly declined—not open
 

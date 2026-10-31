@@ -354,7 +354,8 @@ menu, the ⌘K search and the Investigations cards of a local build. A public bu
    data is already there, it skips the upload.
 3. It starts that repo's deploy workflow (`gallery/share/pages-deploy.yml`, installed there as
    `.github/workflows/deploy.yml`). GitHub then checks out `gallery/app` at the pushed commit,
-   unpacks the data, builds, re-checks and deploys. This takes about a minute.
+   unpacks the data over the exports committed there (the release wins where both have a file; the
+   private sections' data is removed), builds, re-checks and deploys. This takes about a minute.
 
 Linked export folders are included in the snapshot; broken links and directory cycles stop
 publication. After deployment succeeds, the gallery repo's README records the exact source

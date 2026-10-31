@@ -83,10 +83,17 @@ jobs:
       - name: Data snapshot
         env:
           GH_TOKEN: ${{ github.token }}
+        # the release is unpacked over the exports committed at source_sha: where both have a file the release wins
+        # (it is the fuller, later snapshot), and a committed export newer than the release still reaches the site.
+        # The private sections' data folders (sections.json "public": false) are then removed, as the archive omits them.
         run: |
           gh release download "${{ steps.req.outputs.data_tag }}" --repo "${{ github.repository }}" --pattern gallery-data.tar.gz --dir "$RUNNER_TEMP"
-          rm -rf gallery/app/public/data && mkdir -p gallery/app/public/data
+          mkdir -p gallery/app/public/data
           tar -xzf "$RUNNER_TEMP/gallery-data.tar.gz" -C gallery/app/public/data
+          for d in $(jq -r '.sections[] | select(.public == false) | .data[]?' gallery/app/src/sections/sections.json); do
+            [[ "$d" =~ ^[A-Za-z0-9_-]+$ ]] || { echo "::error::odd data folder name $d"; exit 1; }
+            rm -rf "gallery/app/public/data/$d"
+          done
           du -sh gallery/app/public/data
       - name: Build
         working-directory: gallery/app
