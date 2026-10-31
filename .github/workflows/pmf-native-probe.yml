@@ -1,0 +1,41 @@
+name: EPA PMF5 native runtime probe
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/pmf-native-probe.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Inspect official EPA installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'epa-pmf-probe'
+          New-Item -ItemType Directory -Force $root | Out-Null
+          $exe = Join-Path $root 'epa_pmf_5.0_setup.exe'
+          $url = 'https://www.epa.gov/sites/default/files/2015-03/epa_pmf_5.0_setup.exe'
+          try {
+            Invoke-WebRequest -Uri $url -OutFile $exe -TimeoutSec 90
+            Get-FileHash $exe -Algorithm SHA256 | Format-List
+            $text = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($exe))
+            Write-Output ('Inno installer: ' + ($text -match 'Inno Setup'))
+            & 7z l $exe
+            & 7z x $exe ('-o' + (Join-Path $root 'extracted')) -y
+            if ($text -match 'Inno Setup') {
+              $install = Join-Path $root 'installed'
+              $p = Start-Process $exe -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-',('/DIR=' + $install)) -PassThru
+              if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Installer exceeded 120 seconds' }
+              Write-Output ('Installer exit code: ' + $p.ExitCode)
+            }
+            Get-ChildItem $root -Recurse -File | Select-Object FullName,Length | Format-Table -AutoSize
+            Write-Output 'PROBE ONLY: no PMF fit or native-engine validation claimed.'
+          } catch {
+            Write-Output ('EPA runtime probe blocked: ' + $_.Exception.Message)
+            Write-Output 'No native EPA PMF5 model was run.'
+            exit 1
+          }
