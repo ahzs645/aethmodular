@@ -1,8 +1,7 @@
 name: EPA PMF5 native runtime probe
 on:
   pull_request:
-    paths:
-      - '.github/workflows/pmf-native-probe.yml'
+    paths: ['.github/workflows/pmf-native-probe.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -11,34 +10,24 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 10
     steps:
-      - name: Inspect and invoke official EPA distribution
+      - name: Inspect native matrix contract
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $root = Join-Path $env:RUNNER_TEMP 'epa-pmf-probe'
           New-Item -ItemType Directory -Force $root | Out-Null
-          $exe = Join-Path $root 'epa_pmf_5.0_setup.exe'
+          $exe = Join-Path $root 'setup.exe'
           Invoke-WebRequest -Uri 'https://www.epa.gov/sites/default/files/2015-03/epa_pmf_5.0_setup.exe' -OutFile $exe -TimeoutSec 90
           if ((Get-FileHash $exe -Algorithm SHA256).Hash -ne '49E020D69E5B4656E4CD540508872C7FAE2BFA69A48D2EEF0B7ABDE7CBE8DEBE') { throw 'Installer checksum changed' }
           $target = Join-Path $root 'admin'
           $p = Start-Process $exe -ArgumentList ('/s /a /v"/qn TARGETDIR=' + $target + '"') -PassThru
           if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Installer timed out' }
           $app = Join-Path $target 'program files\EPA PMF\EPA PMF 5.0'
-          Write-Output '===== ORIGINAL DEFAULT PARAMETERS ====='
-          Get-Content (Join-Path $app 'iniParamsDefault.txt')
-          Write-Output '===== ORIGINAL GUI CONFIG ====='
-          Get-Content (Join-Path $app 'EPAPMF.cfg')
-          Write-Output '===== SEALED SCRIPT HEADER (READ ONLY) ====='
-          Get-Content (Join-Path $app 'PMF_bs_6f8xx_sealed_GUI.ini') -TotalCount 100
-          Write-Output '===== SCRIPT INPUT CONTRACT MATCHES ====='
-          Select-String -Path (Join-Path $app 'PMF_bs_6f8xx_sealed_GUI.ini') -Pattern 'iniparams|moreparams|matrix.dat|std_dev|infile|.csv|.txt' | Select-Object -First 60
-          Copy-Item (Join-Path $app 'iniParamsDefault.txt') (Join-Path $app 'iniparams.txt')
-          $engine = Join-Path $app 'me2gfP4_1345c4.exe'
-          $p = Start-Process $engine -WorkingDirectory $app -ArgumentList 'PMF_bs_6f8xx_sealed_GUI.ini' -RedirectStandardOutput (Join-Path $root 'engine.stdout') -RedirectStandardError (Join-Path $root 'engine.stderr') -PassThru
-          if (-not $p.WaitForExit(30000)) { $p.Kill(); Write-Output 'Engine probe timed out waiting for a complete configured job' }
-          Write-Output ('Engine exit: ' + $p.ExitCode)
-          Get-Content (Join-Path $root 'engine.stdout') -Tail 100
-          Get-Content (Join-Path $root 'engine.stderr') -Tail 50
-          Get-ChildItem $app -File | Where-Object { $_.LastWriteTimeUtc -gt [DateTime]::UtcNow.AddMinutes(-3) } | Select-Object Name,Length
-          Write-Output 'PROBE ONLY: no valid numerical fit is claimed by this workflow.'
+          $lines = Get-Content (Join-Path $app 'PMF_bs_6f8xx_sealed_GUI.ini')
+          foreach ($range in @(@(620,650),@(1240,1276),@(2100,2168),@(2425,2580),@(2581,2700))) {
+            Write-Output ('===== SCRIPT RANGE '+$range[0]+'-'+$range[1]+' =====')
+            for ($i=$range[0]-1;$i -lt $range[1];$i++) { Write-Output (($i+1).ToString()+': '+$lines[$i]) }
+          }
+          Write-Output '===== DATA READING STATEMENTS ====='
+          Select-String -Path (Join-Path $app 'PMF_bs_6f8xx_sealed_GUI.ini') -Pattern 'read.*XX|read.*SS|read.*XD|read.*SD|read.*rown|read.*coln|read.*varnames|write.*AA|write.*BB' -Context 3,5 | Select-Object -First 25 | ForEach-Object { $_.ToString() }
           $global:LASTEXITCODE = 0
