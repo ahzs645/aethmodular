@@ -10,7 +10,12 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 10
     steps:
-      - name: Inspect native matrix contract
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install numeric test dependency
+        run: python -m pip install numpy
+      - name: Extract unchanged official EPA distribution
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -22,12 +27,57 @@ jobs:
           $target = Join-Path $root 'admin'
           $p = Start-Process $exe -ArgumentList ('/s /a /v"/qn TARGETDIR=' + $target + '"') -PassThru
           if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Installer timed out' }
-          $app = Join-Path $target 'program files\EPA PMF\EPA PMF 5.0'
-          $lines = Get-Content (Join-Path $app 'PMF_bs_6f8xx_sealed_GUI.ini')
-          foreach ($range in @(@(620,650),@(1240,1276),@(2100,2168),@(2425,2580),@(2581,2700))) {
-            Write-Output ('===== SCRIPT RANGE '+$range[0]+'-'+$range[1]+' =====')
-            for ($i=$range[0]-1;$i -lt $range[1];$i++) { Write-Output (($i+1).ToString()+': '+$lines[$i]) }
-          }
-          Write-Output '===== DATA READING STATEMENTS ====='
-          Select-String -Path (Join-Path $app 'PMF_bs_6f8xx_sealed_GUI.ini') -Pattern 'read.*XX|read.*SS|read.*XD|read.*SD|read.*rown|read.*coln|read.*varnames|write.*AA|write.*BB' -Context 3,5 | Select-Object -First 25 | ForEach-Object { $_.ToString() }
-          $global:LASTEXITCODE = 0
+          if ($p.ExitCode -ne 0) { throw 'Installer failed' }
+          ('EPA_APP=' + (Join-Path $target 'program files\EPA PMF\EPA PMF 5.0')) | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Run signed synthetic mixture through native ME-2
+        shell: python
+        run: |
+          import os, pathlib, subprocess, time, hashlib, numpy as np
+          app = pathlib.Path(os.environ['EPA_APP'])
+          engine = app / 'me2gfP4_1345c4.exe'
+          script = app / 'PMF_bs_6f8xx_sealed_GUI.ini'
+          assert hashlib.sha256(engine.read_bytes()).hexdigest() == 'bcf14aa6db0e8f8d33999006289c6cf01a97631ea497f9aa084f0b2d4f1fdf0a'
+          assert hashlib.sha256(script.read_bytes()).hexdigest() == '0f22afa4a25ff96506077f258a1743206f1370da0abeb510af97fb43bcca2129'
+          rng = np.random.default_rng(25)
+          x = rng.uniform(.1, 2, (30, 3)) @ rng.uniform(.1, 1, (3, 9))
+          x += rng.normal(0, .05, x.shape)
+          x[0, 0] = -.01
+          u = np.full_like(x, .1)
+          # ME-2 list-directed reads: X followed by absolute uncertainty, row-major.
+          with (app / 'pmfdata.txt').open('w', encoding='ascii') as f:
+              np.savetxt(f, x, fmt='%.17g')
+              np.savetxt(f, u, fmt='%.17g')
+          params = '''161110
+          0
+          0 4 4 20 1 0
+          1 11 0
+          0 0 1 1.5 0 1
+          0 0
+          1 1 1 1 1
+          30 9 3 0 0 -14
+          0 0 20 1.2 .35 1.1 .50
+          'pmfdata.txt' 'unused.dat' 'native_test'
+          0 1 0 -1 0
+          161110
+          '''
+          (app / 'iniparams.txt').write_text(params, encoding='ascii')
+          with (app / 'engine.stdout').open('w') as stdout, (app / 'engine.stderr').open('w') as stderr:
+              p = subprocess.Popen([str(engine), script.name], cwd=app, stdout=stdout, stderr=stderr)
+              try:
+                  p.wait(timeout=45)
+              except subprocess.TimeoutExpired:
+                  print('Engine still active; issuing its documented stop-file control.')
+                  (app / 'pmfkill.txt').write_text('1\n', encoding='ascii')
+                  try: p.wait(timeout=10)
+                  except subprocess.TimeoutExpired: p.kill(); p.wait()
+          print('Process return code (not proof of fit):', p.returncode)
+          for name in ['engine.stdout','engine.stderr','pmfstatus.txt','PMFreport.txt','pmfreport.txt','native_test.dat','native_test.out','native_test.txt']:
+              path = app / name
+              if path.exists():
+                  lines = path.read_text(errors='replace').splitlines()
+                  print('\n===== OUTPUT', name, 'bytes', path.stat().st_size, 'lines', len(lines), '=====')
+                  print('\n'.join(lines[:18]))
+                  if len(lines) > 18: print('...TAIL...\n' + '\n'.join(lines[-25:]))
+          path = app / 'native_test.dat'
+          assert path.exists() and path.stat().st_size > 0, 'No native numerical factor file produced'
+          print('Native factor output exists; independent reconstruction verification follows in the adapter tests.')
