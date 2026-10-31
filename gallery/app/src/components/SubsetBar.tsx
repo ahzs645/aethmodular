@@ -255,7 +255,8 @@ export function SubsetBar({
   const nSitesOn = s.siteItems.filter((it) => it.selected).length
   const active = [
     caps.seasons && seasonsOn && !allSeasons && `${s.activeSeasons.size} of ${s.seasons.length} seasons`,
-    caps.sites && !allSites && `${nSitesOn} of ${s.siteItems.length} sites`,
+    // counted whenever the pick is not the network's default (SPARTAN: the focus sites), even all of them
+    caps.sites && !allSites && `sites picked (${nSitesOn} of ${s.siteItems.length}), not the default pick`,
     pmfOn && 'PMF days only',
     s.dateRange && `dates ${s.dateRange[0]} → ${s.dateRange[1]}`,
     !!s.includedIds?.length && caps.excluded && `${s.includedIds.length} excluded put back`,
