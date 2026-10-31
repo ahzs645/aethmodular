@@ -18,15 +18,22 @@ jobs:
           $root = Join-Path $env:RUNNER_TEMP 'epa-pmf-probe'
           New-Item -ItemType Directory -Force $root | Out-Null
           $exe = Join-Path $root 'epa_pmf_5.0_setup.exe'
-          $url = 'https://www.epa.gov/sites/default/files/2015-03/epa_pmf_5.0_setup.exe'
-          Invoke-WebRequest -Uri $url -OutFile $exe -TimeoutSec 90
-          Get-FileHash $exe -Algorithm SHA256 | Format-List
-          (Get-Item $exe).VersionInfo | Format-List *
-          $bytes = [IO.File]::ReadAllBytes($exe)
-          Write-Output ('Header: ' + [BitConverter]::ToString($bytes[0..63]))
-          $text = [Text.Encoding]::ASCII.GetString($bytes)
-          [regex]::Matches($text, '[ -~]{10,160}') | ForEach-Object { $_.Value } | Where-Object { $_ -match 'Setup|Install|\.msi|\.cab|SFX|Wise|NSIS|7-zip' } | Select-Object -First 70
-          if ($bytes[0] -ne 77 -or $bytes[1] -ne 90) { throw 'Download is not a PE executable' }
-          & 7z l $exe
+          Invoke-WebRequest -Uri 'https://www.epa.gov/sites/default/files/2015-03/epa_pmf_5.0_setup.exe' -OutFile $exe -TimeoutSec 90
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash
+          if ($hash -ne '49E020D69E5B4656E4CD540508872C7FAE2BFA69A48D2EEF0B7ABDE7CBE8DEBE') { throw 'EPA installer checksum changed; review before execution' }
+          $target = Join-Path $root 'admin'
+          $log = Join-Path $root 'install.log'
+          $args = '/s /a /v"/qn TARGETDIR=' + $target + ' /L*v ' + $log + '"'
+          $p = Start-Process $exe -ArgumentList $args -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); Write-Output 'Administrative installation timed out' }
+          Write-Output ('Installer exit: ' + $p.ExitCode)
+          Get-ChildItem $root -Recurse -File | Select-Object FullName,Length | Format-Table -AutoSize
+          if (Test-Path $log) { Get-Content $log -Tail 60 }
+          $files = @(Get-ChildItem $root -Recurse -File | Where-Object { $_.Name -match 'me2|iniparams|moreparams|sealed|\.key$|\.ini$' })
+          foreach ($f in $files) {
+            Write-Output ('ENGINE FILE: ' + $f.FullName)
+            Get-FileHash $f.FullName -Algorithm SHA256 | Format-List
+            if ($f.Extension -eq '.ini' -and $f.Length -lt 100000) { Get-Content $f.FullName -TotalCount 120 }
+          }
+          Write-Output 'PROBE ONLY: no PMF numerical fit claimed.'
           $global:LASTEXITCODE = 0
-          Write-Output 'PROBE ONLY: installer identified; no PMF fit or native-engine validation claimed.'
