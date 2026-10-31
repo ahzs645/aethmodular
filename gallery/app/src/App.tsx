@@ -41,7 +41,8 @@ import { calendarNote, calendarVariants, hasLocalCalendar, localSeasonsFor, qual
 import { dynamicPlaceholder, parseSiteRules, siteRulesParam, type SiteRules } from '@/lib/dynamicSeasons'
 import { useDynamicCalendars } from '@/hooks/useDynamicCalendars'
 import { MAX_IMPROVE_SITES, MONTH_QUARTERS, NETWORK_DEFAULTS, hasImprove, hasSpartan, isNetwork, mergeGroups, networkColor, useNetworkData, type Network } from '@/lib/networks'
-import type { SiteItem } from '@/components/SitePicker'
+import { siteAka, siteCountry, type SiteItem } from '@/components/SitePicker'
+import { keepUnderSsr, parseSsrHide, ssrCounts, type SsrHide } from '@/lib/ssrFilters'
 import { FilterEditsProvider, HandEditsBadge, type FilterGroup } from '@/lib/filterEdits'
 import { exclModeParam, exclusionReason, exportIn, parseExclMode, type ExclMode } from '@/lib/exclusionMode'
 import { MarkedRowsProvider } from '@/lib/markedRows'
@@ -360,6 +361,23 @@ const NO_ROWS: FilterRow[] = []
 const NO_WEATHER_SEASON: SeasonMeta = { name: NO_WEATHER, color: '#9aa5b1', months: [], spans: [] }
 const withNoWeather = (cal: SeasonMeta[]) => [...cal, NO_WEATHER_SEASON]
 
+
+/**
+ * How many rows measure `field`, counted once per rows array and field: App rebuilds the charts' meta on every
+ * render (a pin, a hover that opens a record), and recounting every field over every row each time cost ~65 ms.
+ */
+const measuredCounts = new WeakMap<readonly FilterRow[], Map<string, number>>()
+function measuredCount(rows: readonly FilterRow[], field: string): number {
+  let counts = measuredCounts.get(rows)
+  if (!counts) measuredCounts.set(rows, counts = new Map())
+  let n = counts.get(field)
+  if (n === undefined) {
+    n = 0
+    for (const r of rows) { const v = r[field]; if (typeof v === 'number' && Number.isFinite(v)) n++ }
+    counts.set(field, n)
+  }
+  return n
+}
 export default function App() {
   const builderEnabled = useChartBuilderEnabled()
   const navTabs = useMemo(() => NAV_TABS.filter(t => t.key !== 'builder' || builderEnabled), [builderEnabled])
@@ -450,6 +468,8 @@ export default function App() {
   const [pmfOn, setPmfOn] = useState(init.get('pmfon') === '1')
   // with the PMF filter on: also hide the sites (and days) without PMF, so only PMF filters remain
   const [pmfOnly, setPmfOnly] = useState(init.get('pmfonly') === '1')
+  // hide filters whose black carbon is the reflectometer's (lib/ssrFilters): '' keeps them
+  const [ssrHide, setSsrHide] = useState<SsrHide>(() => parseSsrHide(init.get('ssr')))
   const [dateRange, setDateRange] = useState<DateRange | null>(
     init.get('from') && init.get('to') ? [init.get('from')!, init.get('to')!] : null
   )
@@ -555,6 +575,7 @@ export default function App() {
       seas: seasonsOn ? null : '0',
       pmfon: pmfOn ? '1' : null,
       pmfonly: pmfOnly ? '1' : null,
+      ssr: ssrHide || null,
       from: dateRange?.[0],
       to: dateRange?.[1],
       excl: exclModeParam(exclMode),
@@ -577,7 +598,7 @@ export default function App() {
       log: axes.log ? '1' : null,
       pax: PAX_PARAM[axes.panels ?? 'Shared'],
     })
-  }, [tab, meeting, experiment, sectionPage, estimators, showCI, convention, calVariants, siteSeasons, siteRules, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, dropWhyParam, keepIds, ftirBaseline, customSeasons, rainRule, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, dateRange, exclMode, inclIds, xField, yField, field, dash, ratios, groupings, mac, basis, pinnedId, axes])
+  }, [tab, meeting, experiment, sectionPage, estimators, showCI, convention, calVariants, siteSeasons, siteRules, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, dropWhyParam, keepIds, ftirBaseline, customSeasons, rainRule, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, ssrHide, dateRange, exclMode, inclIds, xField, yField, field, dash, ratios, groupings, mac, basis, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -608,6 +629,7 @@ export default function App() {
       setSeasonsOn(p.get('seas') !== '0')
       setPmfOn(p.get('pmfon') === '1')
       setPmfOnly(p.get('pmfonly') === '1')
+      setSsrHide(parseSsrHide(p.get('ssr')))
       setDateRange(p.get('from') && p.get('to') ? [p.get('from')!, p.get('to')!] : null)
       setExclMode(parseExclMode(p.get('excl')))
       setInclIds(idSet(p.get('incl')) ?? new Set())
@@ -940,9 +962,14 @@ export default function App() {
   const chartPmf = (NETWORK_TABS as readonly string[]).includes(tab) && !!pmfKeep
   const inChartPmf = useCallback((r: FilterRow) => !chartPmf || (r.code !== pmfSite ? !pmfOnly : pmfKeep!.has(String(r[PMF_SOURCE] ?? NO_PMF))),
     [chartPmf, pmfSite, pmfKeep, pmfOnly])
+  const inSsr = useMemo(() => keepUnderSsr(ssrHide), [ssrHide])
   // a site with PMF is among the picked ones: the chart tabs then offer the PMF section
   const pmfSiteInView = useMemo(() => !!pmfSite && baseRows.some((r) => r.code === pmfSite && (netView ? netView.chosenNames.has(r.site) : !activeSites || activeSites.has(r.site))),
     [pmfSite, baseRows, netView, activeSites])
+
+  // the picked sites' SSR filters: the Samples panel offers to hide them only while there are any
+  const ssrInView = useMemo(() => ssrCounts(baseRows.filter((r) => (netView ? netView.chosenNames.has(r.site) : !activeSites || activeSites.has(r.site)))),
+    [baseRows, netView, activeSites])
 
   // what the date brush draws: every filter except the date cut, so its range follows the picked sites
   const brushRows = useMemo(
@@ -950,8 +977,9 @@ export default function App() {
       .filter((r) => !seasonSel || seasonSel.has(r.season))
       .filter((r) => (netView ? netView.chosenNames.has(r.site) : !activeSites || activeSites.has(r.site)))
       .filter(inChartPmf)
+      .filter(inSsr)
       .filter((r) => !dropIds.has(r.id) && (!keepIds || keepIds.has(r.id))),
-    [baseRows, seasonSel, activeSites, netView, dropIds, keepIds, inChartPmf]
+    [baseRows, seasonSel, activeSites, netView, dropIds, keepIds, inChartPmf, inSsr]
   )
   const rows = useMemo(
     () =>
@@ -960,8 +988,9 @@ export default function App() {
         .filter((r) => !seasonSel || seasonSel.has(r.season))
         .filter((r) => (netView ? netView.chosenNames.has(r.site) : !activeSites || activeSites.has(r.site)))
         .filter(inChartPmf)
+        .filter(inSsr)
         .filter((r) => !dropIds.has(r.id) && (!keepIds || keepIds.has(r.id))),
-    [baseRows, inRange, seasonSel, activeSites, netView, dropIds, keepIds, inChartPmf]
+    [baseRows, inRange, seasonSel, activeSites, netView, dropIds, keepIds, inChartPmf, inSsr]
   )
 
   // Filters → excluded: Mark (lib/exclusionMode, lib/markedRows): the excluded filters the view would otherwise show
@@ -978,8 +1007,9 @@ export default function App() {
       .filter((r) => !seasonSel || seasonSel.has(r.season))
       .filter((r) => (netView ? netView.chosenNames.has(r.site) : !activeSites || activeSites.has(r.site)))
       .filter(inChartPmf)
+      .filter(inSsr)
       .filter((r) => !keepIds || keepIds.has(r.id))
-  }, [exclMode, data, plainSourceRows, exclIn, dropIds, seasonForFilter, paint, inRange, seasonSel, netView, activeSites, inChartPmf, keepIds])
+  }, [exclMode, data, plainSourceRows, exclIn, dropIds, seasonForFilter, paint, inRange, seasonSel, netView, activeSites, inChartPmf, inSsr, keepIds])
   const knownFilter = useCallback((id: string) => sourceById.has(id) || sourceById.has(baseFilterId(id)), [sourceById])
   const markReason = useCallback((id: string) => {
     const r = sourceById.get(id) ?? sourceById.get(baseFilterId(id))
@@ -1108,7 +1138,7 @@ export default function App() {
   meta.fields = [...meta.fields, ...ratioFields.filter((f) => !meta.fields.includes(f))]
   meta.field_groups = [...meta.field_groups.filter((g) => g.label !== RATIO_GROUP), ...(ratioFields.length ? [{ label: RATIO_GROUP, fields: ratioFields }] : [])]
   meta.field_units = viewUnits({ ...viewOpts, units: meta.field_units })
-  meta.coverage = { ...meta.coverage, ...ratioCoverage, ...Object.fromEntries(meta.fields.map(f => [f, rows.filter(r => typeof r[f] === 'number' && Number.isFinite(r[f])).length])) }
+  meta.coverage = { ...meta.coverage, ...ratioCoverage, ...Object.fromEntries(meta.fields.map(f => [f, measuredCount(rows, f)])) }
   meta.mac_value = viewOpts.mac
   meta.basis = basis
   meta = stable('meta', meta)
@@ -1165,13 +1195,13 @@ export default function App() {
     for (const r of sitePool) if (r.site in siteCounts) siteCounts[r.site] += 1
     // the map and list picker: focus and SPARTAN sites are keyed by name, IMPROVE (loaded per site) by code
     const siteItems: SiteItem[] = net === 'focus'
-      ? rawMeta.sites.map((x) => ({ key: x.name, label: x.name, sub: x.location, lat: x.lat, lon: x.lon, color: x.color, n: siteCounts[x.name] ?? 0, selected: !activeSites || activeSites.has(x.name) }))
+      ? rawMeta.sites.map((x) => ({ key: x.name, label: x.name, aka: siteAka(x.name), sub: x.location, lat: x.lat, lon: x.lon, color: x.color, n: siteCounts[x.name] ?? 0, selected: !activeSites || activeSites.has(x.name) }))
       : (netView?.all ?? []).map((x) => {
         const on = netView!.chosenCodes.has(x.code)
         // a site in SPARTAN's index with no filters in the public release (Dhaka's CODC, Baltimore's USBA): listed,
         // greyed and last, rather than offered as if picking it would draw something
         const none = x.n_filters === 0 && !netView!.improveCodes.has(x.code)
-        return { key: x.code, label: x.name, group: netView!.improveCodes.has(x.code) ? 'IMPROVE' : 'SPARTAN', sub: none ? `${x.code} · no public filters` : net === 'improve' ? x.location : x.code, lat: x.lat, lon: x.lon,
+        return { key: x.code, label: x.name, aka: siteAka(x.code, x.name), country: netView!.improveCodes.has(x.code) ? undefined : siteCountry(x.name, x.location), group: netView!.improveCodes.has(x.code) ? 'IMPROVE' : 'SPARTAN', sub: none ? `${x.code} · no public filters` : net === 'improve' ? x.location : x.code, lat: x.lat, lon: x.lon,
           color: on ? x.color : '#9aa5b1', n: net === 'improve' && !on ? x.n_filters : siteCounts[x.name] ?? 0, selected: on, disabled: none && !on }
       })
 
@@ -1209,6 +1239,7 @@ export default function App() {
       seasonsOn,
       pmfOn,
       pmfCounts,
+      ssr: ssrInView.any > 0 ? { mode: ssrHide, ...ssrInView } : undefined,
       network: net,
       chosenNetwork: network,
       dropped: dropIds.size,
@@ -1257,6 +1288,7 @@ export default function App() {
     const actions: SubsetActions = {
       onBasis: setBasis,
       onPmfOnly: setPmfOnly,
+      onSsr: setSsrHide,
       onMac: setMac,
       onConvention: (v) => {
         setConvention(v)
@@ -1378,6 +1410,7 @@ export default function App() {
         setActivePmf(null)
         setSeasonsOn(true)
         setPmfOn(false)
+        setSsrHide('')
         setDateRange(null)
         setExclMode('hide')
         setInclIds(new Set())

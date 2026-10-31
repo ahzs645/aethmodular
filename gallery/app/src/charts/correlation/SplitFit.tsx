@@ -5,6 +5,7 @@ import { FacetGrid } from '@/components/FacetGrid'
 import { FieldSelect } from '@/components/FieldSelect'
 import { Key } from '@/components/Key'
 import { Marker, RefLine } from '@/components/RefLines'
+import { ScrubField } from '@/components/ScrubField'
 import { robustDomain, sameUnits } from '@/lib/axes'
 import { coef, f2, fmt } from '@/lib/format'
 import { colorsFor } from '@/lib/groupings'
@@ -79,8 +80,6 @@ export function SplitFit({ rows, meta, xField, yField }: { rows: FilterRow[]; me
   const autoAt = feEc ? FE_EC_CUT : roundCut(medianOf(items.map((i) => i.t)))
   const typed = atParam.trim() === '' ? NaN : Number(atParam)
   const at = Number.isFinite(typed) ? typed : autoAt
-  // a cutoff being typed (null: show the one in use)
-  const [atDraft, setAtDraft] = useState<string | null>(null)
   const siteCuts = useMemo(() => siteMedianCuts(items), [items])
   const groups = useMemo(() => (perSite ? sites.map((s) => ({ name: s, items: items.filter((i) => i.site === s) })) : [{ name: 'All sites in view', items }]), [perSite, sites, items])
   const cutFor = (g: { items: Item[] }) => (it: Item) => mode === 'site' ? siteCuts.get(it.site) ?? NaN : mode === 'median' ? medianOf(g.items.map((i) => i.t)) : at
@@ -131,6 +130,9 @@ export function SplitFit({ rows, meta, xField, yField }: { rows: FilterRow[]; me
   // one range for every ≤ / > panel, so the slopes compare by eye; the residual panels clip the variable's 1–99 %
   const shared = sharedCrossDomains(blocks.flatMap((b) => [b.low, b.high]), units)
   const tDom = robustDomain(items.map((i) => i.t), 0.01, 0.99).domain
+  // the Cutoff field's range: the variable's 1–99 % (the residual panels' x axis; a ratio's extremes would make a drag
+  // useless), widened to the cutoff in use, in steps of about a 500th of it (a power of ten, so typed cutoffs keep)
+  const cutRange = cutoffRange(tDom, [at, autoAt])
   const resDom = robustDomain(blocks.flatMap((b) => b.res.map((p) => p.y)), 0.01, 0.99, { include: [0] }).domain
   const pad = (d: [number, number]): [number, number] => { const w = (d[1] - d[0]) || 1; return [d[0] - 0.04 * w, d[1] + 0.04 * w] }
   const outside = items.filter((i) => i.t < tDom[0] || i.t > tDom[1]).length
@@ -156,12 +158,11 @@ export function SplitFit({ rows, meta, xField, yField }: { rows: FilterRow[]; me
           title="Divide the variable by another field (iron ÷ FTIR EC is the notebooks' Fe/EC); none: the field itself" />
         <Segmented label="Cut at" value={mode} options={CUT_MODES} optionLabel={(m) => CUT_LABEL[m]} onChange={setMode}
           title="A typed value; the median of the filters in each row of panels; or each site at its own median (follow_up_analysis)" />
-        {mode === 'value' && <label className="control" title="The cutoff on the variable; a filter at the cutoff is on the low side">
+        {mode === 'value' && <span className="control" title={`The cutoff on the variable: drag sideways across its range (${fmt(cutRange.min, 3)} to ${fmt(cutRange.max, 3)}, the middle 98 % of the filters) or click to type. A filter at the cutoff is on the low side`}>
           Cutoff
-          <input className="select" type="number" step="any" style={{ width: 90 }} value={atDraft ?? String(at)} aria-label="Cutoff"
-            onChange={(e) => setAtDraft(e.target.value)} onBlur={() => { if (atDraft !== null) setAt(atDraft.trim()); setAtDraft(null) }}
-            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} />
-        </label>}
+          <ScrubField label="Cutoff" value={at} min={cutRange.min} max={cutRange.max} step={cutRange.step} width={96}
+            format={(v) => fmt(v, 3)} onChange={(v) => setAt(String(+v.toFixed(cutRange.decimals)))} />
+        </span>}
         <Segmented label="Residual" value={resParam} options={RESIDUALS} onChange={setRes}
           optionLabel={(o) => (o === 'auto' ? 'Auto' : o === 'difference' ? 'y − x' : 'From the pooled fit')}
           title="y − x (the notebooks'), or the distance from the OLS line through every filter; Auto picks y − x when x and y share a unit" />
@@ -225,4 +226,15 @@ function SplitTables({ tables, tName, nonOls }: { tables: { name: string; rows: 
     ))}
     <p className="chart-note">R² and slope are OLS (scipy.stats.linregress, as the notebooks printed){extra ? `; the ${extra} column follows the sidebar's estimator` : ''}. A side with fewer than three filters has no fit.</p>
   </div>
+}
+
+/** the Cutoff field's bounds and step: the variable's 1–99 % range (`dom`), widened to hold `keep`, stepped by a power of ten */
+export function cutoffRange(dom: readonly [number, number] | number[], keep: readonly number[]) {
+  const finite = [dom[0], dom[1], ...keep].filter(Number.isFinite)
+  let min = finite.length ? Math.min(...finite) : 0, max = finite.length ? Math.max(...finite) : 1
+  if (max - min <= 0) { const w = Math.abs(min) || 1; min -= w / 2; max += w / 2 }
+  const exp = Math.floor(Math.log10((max - min) / 500))
+  const step = 10 ** exp, decimals = Math.max(0, -exp)
+  // the bounds on the step grid, outward, so neither end is snapped inside the data
+  return { min: +(Math.floor(min / step) * step).toFixed(decimals), max: +(Math.ceil(max / step) * step).toFixed(decimals), step, decimals }
 }

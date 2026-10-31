@@ -11,6 +11,10 @@ export interface SiteItem {
   label: string
   /** state, country or site code under the name */
   sub?: string
+  /** another name the site goes by (JPL is Pasadena): shown beside the name and found by the search */
+  aka?: string
+  /** the country, for a site whose name lacks it (the focus sites keep their short names: "Addis Ababa", then ", Ethiopia") */
+  country?: string
   /** the network, when two are shown together */
   group?: string
   lat: number | null
@@ -22,6 +26,17 @@ export interface SiteItem {
   /** nothing to draw (no filters in the network's public release): greyed, listed last, not pickable */
   disabled?: boolean
 }
+
+/**
+ * Other names the readers use for a site, by its code or name: the sheets and the notebooks call SPARTAN's JPL
+ * site (USPA) Pasadena. Shown beside the name in the pickers and matched by their search.
+ */
+export const SITE_AKA: Readonly<Record<string, string>> = { USPA: 'Pasadena', JPL: 'Pasadena' }
+export const siteAka = (codeOrName: string, name?: string) => SITE_AKA[codeOrName] ?? (name ? SITE_AKA[name] : undefined)
+/** the country a SPARTAN site's name leaves out, from its location ("Beijing" at "Beijing, China"); none when the name has one */
+export const siteCountry = (name: string, location?: string | null) => (name.includes(',') || !location?.includes(',') ? undefined : location.split(',').pop()!.trim() || undefined)
+/** a site's whole name on one line: "JPL (Pasadena), United States" */
+export const siteFullName = (it: Pick<SiteItem, 'label' | 'aka' | 'country'>) => `${it.label}${it.aka ? ` (${it.aka})` : ''}${it.country ? `, ${it.country}` : ''}`
 
 /**
  * Run `fn` once the browser has painted the current frame (the ticked box), so the charts' work
@@ -90,7 +105,7 @@ export function SitePicker({ items: itemsIn, onToggle: toggleIn, onAll, onClear,
   const q = query.trim().toLowerCase()
   const order = useMemo(() => new Map((orderSession === undefined ? itemsIn : [...itemsIn.filter(it => it.selected), ...itemsIn.filter(it => !it.selected)]).map((it, i) => [it.key, i])), [orderSession, itemsIn.map(it => it.key).join('|')])
   const shown = useMemo(() => {
-    const hit = q ? items.filter((it) => `${it.label} ${it.sub ?? ''} ${it.key}`.toLowerCase().includes(q)) : items
+    const hit = q ? items.filter((it) => `${it.label} ${it.aka ?? ''} ${it.country ?? ''} ${it.sub ?? ''} ${it.key}`.toLowerCase().includes(q)) : items
     // Keep a checkbox at its original position while the reader edits the current selection.
     return [...hit].sort((a, b) => Number(!!a.disabled) - Number(!!b.disabled) || (order.get(a.key) ?? Infinity) - (order.get(b.key) ?? Infinity))
   }, [items, q, order])
@@ -126,7 +141,7 @@ export function SitePicker({ items: itemsIn, onToggle: toggleIn, onAll, onClear,
                 <label className={`site-row ${it.selected ? 'on' : ''}${it.disabled ? ' disabled' : ''}`} title={it.disabled ? `${it.label}: no filters in the public release yet` : undefined}>
                   <input type="checkbox" checked={it.selected} disabled={it.disabled} onChange={() => onToggle(it.key)} />
                   <span className="site-check" style={{ ['--chip' as string]: it.color }} aria-hidden="true" />
-                  <span className="site-name">{it.label}{it.sub && <span className="site-sub"> · {it.sub}</span>}</span>
+                  <span className="site-name">{it.label}{it.aka && <span className="site-aka"> ({it.aka})</span>}{it.country && `, ${it.country}`}{it.sub && <span className="site-sub"> · {it.sub}</span>}</span>
                   {it.group && mixed && <span className={`site-net ${it.group.toLowerCase()}`}>{it.group}</span>}
                   <span className="site-n">{it.n.toLocaleString()}</span>
                 </label>

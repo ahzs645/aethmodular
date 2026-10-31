@@ -133,6 +133,9 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
   // stable inputs for the matrix's memoised panels: the rows only change with the data or the legend
   const hiddenKey = meta.sites.filter((x) => !lg.show(x.name)).map((x) => x.name).join('|')
   const splomRows = useMemo(() => sub.filter((r) => lg.show(r.site)), [sub, hiddenKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  // the legends' entries, worked out once per set of rows (a sites × rows scan on every render was the matrix's slowest part)
+  const siteItems = useMemo(() => { const there = new Set(sub.map((r) => r.site)); return meta.sites.filter((s) => there.has(s.name)).map((s) => ({ label: s.name, color: s.color })) }, [sub, meta.sites])
+  const seasonItems = useMemo(() => { const there = new Set(splomRows.map((r) => r.season)); return meta.seasons.filter((se) => there.has(se.name)).map((se) => ({ label: se.name, color: se.color, shape: 'line' as const, parent: 'Fit per season' })) }, [splomRows, meta.seasons])
   const dimKey = `${hiddenKey}#${lg.hover ?? ''}`
   // a matrix cell opened as a crossplot (right-click a cell: lib/filterEdits MENU_ACTION, detail "x|y")
   const [pair, setPair] = useState<[string, string] | null>(null)
@@ -223,10 +226,9 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
         <div className="legend">
           {encoding === 'Scatter matrix' ? (
             <>
-              <Legend items={meta.sites.filter((s) => sub.some((r) => r.site === s.name)).map((s) => ({ label: s.name, color: s.color }))} {...lg.props} note="diagonal: histogram of the species · off-diagonal: the pair, selected regression fits, r" />
+              <Legend items={siteItems} {...lg.props} note="diagonal: histogram of the species · off-diagonal: the pair, selected regression fits, r" />
               {/* a fit per season: the lines' colours, one entry per season drawn */}
-              {matrixGrouping === 'season' && methods.length > 0 && <Legend items={meta.seasons.filter((se) => splomRows.some((r) => r.season === se.name))
-                .map((se) => ({ label: se.name, color: se.color, shape: 'line' as const, parent: 'Fit per season' }))} />}
+              {matrixGrouping === 'season' && methods.length > 0 && <Legend items={seasonItems} />}
             </>
           ) : (
             <ColorLegend scale={color} scheme={colours.scheme} label="Pearson r" width={180} ticks={5} format={(v) => (v > 0 ? `+${v}` : String(v))} note="Repeated fields omitted: HIPS BC is Fabs ÷ MAC; ChemSpec EC/OC repeat the FTIR products" />
@@ -329,6 +331,12 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, dimKey, meta,
       }),
     [rows, fields, cellS]
   )
+  // each diagonal panel's values and histogram, once per data and scale (not on every re-render: a pin, a brush)
+  const diag = useMemo(() => fields.map((f, i) => {
+    const vals = rows.map((r) => r[f]).filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
+    const bins = d3.bin().domain(scales[i].domain() as [number, number]).thresholds(18)(vals)
+    return { n: vals.length, bins, ymax: d3.max(bins, (b) => b.length) ?? 1 }
+  }), [rows, fields, scales])
   const W = labelW + n * cellS + (n - 1) * pad + 10
   const H = n * cellS + (n - 1) * pad + bottomH
   const unitOf = (f: string) => (units[f] ? units[f].replace('ug/m3', 'µg/m³').replace('Mm-1', 'Mm⁻¹') : '')
@@ -349,9 +357,7 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, dimKey, meta,
             const sx = scales[j]
             const sy = scales[i]
             if (i === j) {
-              const vals = rows.map((r) => r[fx]).filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
-              const bins = d3.bin().domain(sx.domain() as [number, number]).thresholds(18)(vals)
-              const ymax = d3.max(bins, (b) => b.length) ?? 1
+              const { bins, ymax, n: count } = diag[i]
               // the title (up to two lines) and its unit line sit over the bars
               const title = wrapName(chemText(fx), cellS - 8, 2)
               const top = title.length * 11 + 16
@@ -364,7 +370,7 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, dimKey, meta,
                   <text textAnchor="middle" fontSize={10.5} fontWeight={600} fill={INK.text} fontFamily={FONT.family}>
                     {title.map((l, k) => <tspan key={k} x={cellS / 2} y={11 + k * 11}>{l}</tspan>)}<title>{fx}</title>
                   </text>
-                  <text x={cellS / 2} y={title.length * 11 + 11} textAnchor="middle" fontSize={9} fill={INK.muted} fontFamily={FONT.family}>{unitOf(fx)} · n={vals.length}</text>
+                  <text x={cellS / 2} y={title.length * 11 + 11} textAnchor="middle" fontSize={9} fill={INK.muted} fontFamily={FONT.family}>{unitOf(fx)} · n={count}</text>
                 </g>
               )
             }

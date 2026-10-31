@@ -9,6 +9,7 @@ import { useHeaderHeight, useSidePanelOpen, useSidePanelView, type SidePanelView
 import { DateBrush, type DateRange } from '@/components/DateBrush'
 import { FieldSelect, prettyUnit } from '@/components/FieldSelect'
 import { Segmented, SwapButton, Toggle } from '@/components/ChartFrame'
+import type { SsrHide } from '@/lib/ssrFilters'
 import { AXES_MODES, PANEL_AXES, sameUnits, type AxesOpts } from '@/lib/axes'
 import { fmt } from '@/lib/stats'
 import { usePrefs } from '@/lib/prefs'
@@ -128,6 +129,8 @@ export interface SubsetState {
   pmfNote?: string
   /** hide the sites without PMF too, so only PMF filters remain */
   pmfOnly?: boolean
+  /** the picked sites' filters with SSR black carbon (lib/ssrFilters) and which of them are hidden; absent when there are none */
+  ssr?: { mode: SsrHide; any: number; only: number }
   /** filters in view with a sampled volume, of all in view (mass per filter needs one) */
   withVolume?: [number, number]
 }
@@ -179,6 +182,7 @@ export interface SubsetActions {
   onReset: () => void
   onBasis?: (b: Basis) => void
   onPmfOnly?: (v: boolean) => void
+  onSsr?: (v: SsrHide) => void
   onMac?: (mac: number | null) => void
 }
 
@@ -250,7 +254,7 @@ export function SubsetBar({
   const allPmf = !pmfOn || !s.pmfGroups || (s.activePmf?.size ?? 0) === s.pmfGroups.length
   const handEdits = (s.dropped ?? 0) > 0 || s.kept != null
   const isDefault =
-    allSeasons && allSites && !pmfOn && seasonsOn && !s.includedIds?.length && s.exclMode !== 'mark' && !s.dateRange && s.convention === s.defaultConvention && !handEdits
+    allSeasons && allSites && !pmfOn && seasonsOn && !s.includedIds?.length && s.exclMode !== 'mark' && !s.dateRange && s.convention === s.defaultConvention && !handEdits && !s.ssr?.mode
   // the kinds of filtering in force (the Samples tab's badge counts them; its tooltip names them)
   const nSitesOn = s.siteItems.filter((it) => it.selected).length
   const active = [
@@ -261,8 +265,16 @@ export function SubsetBar({
     s.dateRange && `dates ${s.dateRange[0]} → ${s.dateRange[1]}`,
     !!s.includedIds?.length && caps.excluded && `${s.includedIds.length} excluded put back`,
     handEdits && 'filters excluded or kept by hand',
+    s.ssr?.mode && `${s.ssr.mode === 'only' ? s.ssr.only : s.ssr.any} SSR filters hidden`,
   ].filter((x): x is string => !!x)
   const nActive = active.length
+  // the badge: how many sites are picked when the pick is not the default (all 40, or 3), else how many kinds of
+  // filtering are on; past 99 it reads 99+ and the tooltip gives the number
+  const siteBadge = caps.sites && !allSites
+  const badgeN = siteBadge ? nSitesOn : nActive
+  const badgeTip = siteBadge
+    ? `${nSitesOn.toLocaleString()} of ${s.siteItems.length.toLocaleString()} sites picked (not the default pick)${nActive > 1 ? `. Also on: ${active.filter((x) => !x.startsWith('sites picked')).join(' · ')}` : ''}`
+    : `${nActive} kind${nActive === 1 ? '' : 's'} of filtering on: ${active.join(' · ')}`
 
   // seasons grouped by the site whose calendar they belong to (one group under the shared bins)
   const seasonGroups: { site: string | null; seasons: SeasonMeta[] }[] = []
@@ -420,7 +432,7 @@ export function SubsetBar({
         >
           <span className="subset-tab-label">Samples</span>
           <span className="subset-tab-count">{s.shown}/{s.total}</span>
-          {nActive > 0 && <span className="subset-tab-badge" title={`${nActive} kind${nActive === 1 ? '' : 's'} of filtering on: ${active.join(' · ')}`}>{nActive}</span>}
+          {nActive > 0 && <span className="subset-tab-badge" title={badgeTip} aria-label={badgeTip}>{badgeN > 99 ? '99+' : badgeN}</span>}
         </button>
         {hasPlot && (
           <button
@@ -649,6 +661,15 @@ export function SubsetBar({
                     'all dates · drag to cut a range'
                   )}
                 </span>
+              </Row>
+            )}
+
+            {s.ssr && a.onSsr && (
+              <Row label="SSR black carbon">
+                <Segmented value={s.ssr.mode} options={['', 'only', 'any'] as SsrHide[]}
+                  optionLabel={(m) => (m === '' ? 'Keep' : m === 'only' ? `Hide SSR-only · ${s.ssr!.only}` : `Hide all with SSR · ${s.ssr!.any}`)}
+                  onChange={a.onSsr}
+                  title={`Filters whose black carbon is the smoke-stain reflectometer's (Equivalent BC (SSR), or the public BC estimated from it), not HIPS. SSR-only: the ${s.ssr.only} with no HIPS reading. All with SSR: every one of the ${s.ssr.any} that carries an SSR value, including ${s.ssr.any - s.ssr.only} that also have HIPS. Shown only while the picked sites have any`} />
               </Row>
             )}
 

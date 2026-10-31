@@ -240,6 +240,7 @@ export { baseFilterId } from './filterId'
  * one class on their group (styles.css .has-focus). The only part of the chart that follows the hover: a hover
  * then re-renders this one mark, not every dot, the axes or the fits. `keys` are the ids the chart draws.
  */
+const NO_ITEMS: readonly never[] = []
 export function FocusLayer<T>({ keys, items, idOf, groupRef, render, focusClass = 'has-focus' }: {
   keys: ReadonlySet<string>; items: readonly T[]; idOf: (t: T) => string | undefined
   /** the class set on the dots' group while a filter is focused (styles.css: has-focus dims each dot) */
@@ -248,8 +249,15 @@ export function FocusLayer<T>({ keys, items, idOf, groupRef, render, focusClass 
   groupRef: React.RefObject<SVGGElement | null>; render: (t: T, pinned: boolean) => ReactNode
 }) {
   const { focusId, pinnedId } = useHighlight(keys)
-  // every mark of the focused filter: a chart may draw one filter more than once (a point per method or per source)
-  const focused = useMemo(() => (focusId ? items.filter((t) => idOf(t) === focusId) : []), [focusId, items]) // eslint-disable-line react-hooks/exhaustive-deps
+  // every mark of each filter, indexed once per set of items: a hover then looks its filter up rather than scanning
+  // every mark (a scatter matrix's thirty panels held 138k of them, filtered again on every hover). A chart may
+  // draw one filter more than once (a point per method or per source)
+  const byId = useMemo(() => {
+    const m = new Map<string, T[]>()
+    for (const t of items) { const k = idOf(t); if (k == null) continue; const list = m.get(k); if (list) list.push(t); else m.set(k, [t]) }
+    return m
+  }, [items]) // eslint-disable-line react-hooks/exhaustive-deps
+  const focused: readonly T[] = useMemo(() => (focusId ? byId.get(focusId) ?? NO_ITEMS : NO_ITEMS), [focusId, byId])
   useLayoutEffect(() => { groupRef.current?.classList.toggle(focusClass, focused.length > 0) }, [focused, groupRef, focusClass])
   const pinned = focusId === pinnedId
   return focused.length === 0 ? null : <>{focused.map((t, i) => <Fragment key={i}>{render(t, pinned)}</Fragment>)}</>

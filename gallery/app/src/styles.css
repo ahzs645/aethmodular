@@ -408,6 +408,7 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .site-row.on .site-check { background: var(--chip, #8a94a3); }
 .site-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .site-sub { color: var(--ink-muted); }
+.site-aka { color: var(--ink-text); font-weight: 400; }
 .site-n { font-family: var(--mono); font-size: calc(11px * var(--text-scale)); color: var(--ink-muted); }
 .site-net { font-size: calc(9.5px * var(--text-scale)); font-weight: 600; letter-spacing: 0.3px; padding: 0 5px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); }
 .site-net.improve { background: var(--warm-soft); color: var(--warm-ink); }

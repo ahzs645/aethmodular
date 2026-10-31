@@ -1,5 +1,5 @@
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 
 export type TipBody = ReactNode | string[]
@@ -14,12 +14,18 @@ export type TipBody = ReactNode | string[]
  *
  * A string[] body renders one line each with the first line bold, which is
  * the convention the charts already follow.
+ *
+ * Where the card is and what it says live in a small store that only the card
+ * (TooltipCard) reads, so a hover moving from point to point re-renders the
+ * card alone, never the chart that owns it: a scatter matrix re-rendered its
+ * legend and every histogram on each mouse move before. `active` re-renders
+ * the owner only when the card opens or closes.
  */
 export function useTooltip(wrapRef: RefObject<Element>, { large = false, id }: { large?: boolean; id?: string } = {}) {
   // Viewport coordinates: the tooltip is portalled to <body> with position:fixed,
   // so a chart inside a scrolling box (overflow-x: auto) can no longer clip it.
   const method = useEstimator()
-  const [tip, setTip] = useState<{ x: number; y: number; body: TipBody } | null>(null)
+  const [store] = useState(createTipStore)
 
   const show = useCallback(
     (e: React.MouseEvent | React.FocusEvent, body: TipBody) => {
@@ -35,15 +41,37 @@ export function useTooltip(wrapRef: RefObject<Element>, { large = false, id }: {
         const rect = e.currentTarget.getBoundingClientRect()
         return { x: rect.left + rect.width / 2, y: rect.bottom }
       })()
-      setTip({ ...point, body: Array.isArray(body) ? body.map(l => estimatorText(l, method)) : body })
+      store.set({ ...point, body: Array.isArray(body) ? body.map(l => estimatorText(l, method)) : body })
     },
-    [wrapRef, method]
+    [wrapRef, method, store]
   )
-  const hide = useCallback(() => setTip(null), [])
+  const hide = useCallback(() => store.set(null), [store])
+  const active = useSyncExternalStore(store.subscribe, () => store.get() !== null, () => false)
+  // one element for the life of the chart: the owner's re-renders pass it through untouched
+  const node = useMemo(() => <TooltipCard store={store} hide={hide} large={large} id={id} />, [store, hide, large, id])
+  return useMemo(() => ({ show, hide, node, active }), [show, hide, node, active])
+}
+
+type Tip = { x: number; y: number; body: TipBody } | null
+type TipStore = ReturnType<typeof createTipStore>
+function createTipStore() {
+  let tip: Tip = null
+  const listeners = new Set<() => void>()
+  return {
+    get: () => tip,
+    set: (next: Tip) => { if (next === tip) return; tip = next; for (const l of listeners) l() },
+    subscribe: (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } },
+  }
+}
+
+/** the card itself: the one part that follows the pointer */
+function TooltipCard({ store, hide, large, id }: { store: TipStore; hide: () => void; large: boolean; id?: string }) {
+  const tip = useSyncExternalStore(store.subscribe, store.get, store.get)
+  const open = tip !== null
 
   // a fixed tooltip would otherwise float in place while the page scrolls under it
   useEffect(() => {
-    if (!tip) return
+    if (!open) return
     window.addEventListener('scroll', hide, { passive: true, capture: true })
     window.addEventListener('blur', hide)
     window.addEventListener('gallery:dismiss-tooltips', hide)
@@ -56,7 +84,7 @@ export function useTooltip(wrapRef: RefObject<Element>, { large = false, id }: {
       document.removeEventListener('pointerdown', hide, true)
       document.removeEventListener('click', hide, true)
     }
-  }, [tip, hide])
+  }, [open, hide])
 
   // open towards whichever side has room, so a point near the right or bottom edge keeps its label on screen.
   // Large readouts are wider than either side of a narrow window, so they open towards the roomier side
@@ -83,7 +111,7 @@ export function useTooltip(wrapRef: RefObject<Element>, { large = false, id }: {
     top = Math.max(MARGIN, Math.min(top, H - MARGIN - r.height))
     Object.assign(el.style, { left: `${left}px`, top: `${top}px`, right: 'auto', bottom: 'auto' })
   }, [tip])
-  const node = tip
+  return tip
     ? createPortal(
         <div
           ref={boxRef}
@@ -104,6 +132,4 @@ export function useTooltip(wrapRef: RefObject<Element>, { large = false, id }: {
         document.body
       )
     : null
-
-  return { show, hide, node, active: tip !== null }
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Combobox } from '@/components/Combobox'
 import { DateBrush } from '@/components/DateBrush'
-import { SitePicker } from '@/components/SitePicker'
+import { SitePicker, siteFullName } from '@/components/SitePicker'
 import { StepButton } from '@/components/StepButton'
 import type { SubsetActions, SubsetState } from '@/components/SubsetBar'
 import { useSidePanelOpen, useSidePanelView } from '@/hooks/useSidePanel'
@@ -74,7 +74,7 @@ export function DashHeader({ meta, filters, scope, onScope, onPickSite, layout, 
     ? <span className="dash-site-step">
       <StepButton dir="prev" label="Previous site" title={`Previous site: ${siteStep(-1)?.label ?? ''}`} disabled={siteOrder.length < 2} onClick={() => stepSite(-1)} />
       <Combobox label="" value={picked.length === 1 ? picked[0].key : ''} title="The site every tile shows"
-        options={siteOrder.map((x) => ({ key: x.key, label: x.label, hint: String(x.n) }))}
+        options={siteOrder.map((x) => ({ key: x.key, label: siteFullName(x), hint: String(x.n) }))}
         onChange={onPickSite} />
       <StepButton dir="next" label="Next site" title={`Next site: ${siteStep(1)?.label ?? ''}`} disabled={siteOrder.length < 2} onClick={() => stepSite(1)} />
     </span>
