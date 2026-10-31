@@ -1,0 +1,21 @@
+name: PMF workflow checks
+on:
+  pull_request:
+    paths:
+      - 'aethmodular_cli/pmf*.py'
+      - 'tests/test_pmf*.py'
+      - 'docs/pmf*'
+      - '.github/workflows/pmf-checks.yml'
+  workflow_dispatch:
+
+jobs:
+  pmf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install numpy scipy pytest
+      - run: python -m pytest tests/test_pmf_runner.py tests/test_pmf_intake.py -q
+      - run: python -m compileall -q aethmodular_cli/pmf.py aethmodular_cli/pmf_intake.py
