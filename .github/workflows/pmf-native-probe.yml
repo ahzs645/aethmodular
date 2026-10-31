@@ -1,83 +1,45 @@
-name: EPA PMF5 native runtime probe
+name: EPA PMF5 native engine tests
 on:
   pull_request:
-    paths: ['.github/workflows/pmf-native-probe.yml']
+    paths:
+      - '.github/workflows/pmf-native-probe.yml'
+      - 'research/ftir_hips_chem/scripts/python_pmf/me2.py'
+      - 'scripts/diagnostics/pmf_native_smoke.py'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  inspect:
+  native:
     runs-on: windows-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install numeric test dependency
+      - name: Install numerical test dependency
         run: python -m pip install numpy
       - name: Extract unchanged official EPA distribution
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $root = Join-Path $env:RUNNER_TEMP 'epa-pmf-probe'
+          $root = Join-Path $env:RUNNER_TEMP 'epa-pmf-runtime'
           New-Item -ItemType Directory -Force $root | Out-Null
           $exe = Join-Path $root 'setup.exe'
           Invoke-WebRequest -Uri 'https://www.epa.gov/sites/default/files/2015-03/epa_pmf_5.0_setup.exe' -OutFile $exe -TimeoutSec 90
-          if ((Get-FileHash $exe -Algorithm SHA256).Hash -ne '49E020D69E5B4656E4CD540508872C7FAE2BFA69A48D2EEF0B7ABDE7CBE8DEBE') { throw 'Installer checksum changed' }
+          if ((Get-FileHash $exe -Algorithm SHA256).Hash -ne '49E020D69E5B4656E4CD540508872C7FAE2BFA69A48D2EEF0B7ABDE7CBE8DEBE') { throw 'Installer checksum changed; review before execution' }
           $target = Join-Path $root 'admin'
           $p = Start-Process $exe -ArgumentList ('/s /a /v"/qn TARGETDIR=' + $target + '"') -PassThru
           if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Installer timed out' }
           if ($p.ExitCode -ne 0) { throw 'Installer failed' }
-          ('EPA_APP=' + (Join-Path $target 'program files\EPA PMF\EPA PMF 5.0')) | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-      - name: Run signed synthetic mixture through native ME-2
-        shell: python
-        run: |
-          import os, pathlib, subprocess, time, hashlib, numpy as np
-          app = pathlib.Path(os.environ['EPA_APP'])
-          engine = app / 'me2gfP4_1345c4.exe'
-          script = app / 'PMF_bs_6f8xx_sealed_GUI.ini'
-          assert hashlib.sha256(engine.read_bytes()).hexdigest() == 'bcf14aa6db0e8f8d33999006289c6cf01a97631ea497f9aa084f0b2d4f1fdf0a'
-          assert hashlib.sha256(script.read_bytes()).hexdigest() == '0f22afa4a25ff96506077f258a1743206f1370da0abeb510af97fb43bcca2129'
-          rng = np.random.default_rng(25)
-          x = rng.uniform(.1, 2, (30, 3)) @ rng.uniform(.1, 1, (3, 9))
-          x += rng.normal(0, .05, x.shape)
-          x[0, 0] = -.01
-          u = np.full_like(x, .1)
-          # ME-2 list-directed reads: X followed by absolute uncertainty, row-major.
-          with (app / 'pmfdata.txt').open('w', encoding='ascii') as f:
-              np.savetxt(f, x, fmt='%.17g')
-              np.savetxt(f, u, fmt='%.17g')
-          params = '''161110
-          0
-          0 4 4 20 1 0
-          1 11 0
-          0 0 1 1.5 0 1
-          0 0
-          1 1 1 1 1
-          30 9 3 0 0 -14
-          0 0 20 1.2 .35 1.1 .50
-          'pmfdata.txt' 'unused.dat' 'native_test'
-          0 1 0 -1 0
-          161110
-          '''
-          (app / 'iniparams.txt').write_text(params, encoding='ascii')
-          with (app / 'engine.stdout').open('w') as stdout, (app / 'engine.stderr').open('w') as stderr:
-              p = subprocess.Popen([str(engine), script.name], cwd=app, stdout=stdout, stderr=stderr)
-              try:
-                  p.wait(timeout=45)
-              except subprocess.TimeoutExpired:
-                  print('Engine still active; issuing its documented stop-file control.')
-                  (app / 'pmfkill.txt').write_text('1\n', encoding='ascii')
-                  try: p.wait(timeout=10)
-                  except subprocess.TimeoutExpired: p.kill(); p.wait()
-          print('Process return code (not proof of fit):', p.returncode)
-          for name in ['engine.stdout','engine.stderr','pmfstatus.txt','PMFreport.txt','pmfreport.txt','native_test.dat','native_test.out','native_test.txt']:
-              path = app / name
-              if path.exists():
-                  lines = path.read_text(errors='replace').splitlines()
-                  print('\n===== OUTPUT', name, 'bytes', path.stat().st_size, 'lines', len(lines), '=====')
-                  print('\n'.join(lines[:18]))
-                  if len(lines) > 18: print('...TAIL...\n' + '\n'.join(lines[-25:]))
-          path = app / 'native_test.dat'
-          assert path.exists() and path.stat().st_size > 0, 'No native numerical factor file produced'
-          print('Native factor output exists; independent reconstruction verification follows in the adapter tests.')
+          ('EPA_PMF_RUNTIME=' + (Join-Path $target 'program files\EPA PMF\EPA PMF 5.0')) | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          ('EPA_PMF_EXAMPLE_DATA=' + (Join-Path $target 'Personal\EPA PMF\Data')) | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Fit and independently verify public and synthetic cases
+        run: python scripts/diagnostics/pmf_native_smoke.py
+      - name: Preserve public test evidence, never proprietary runtime files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-pmf-public-validation
+          path: native-public-test/
+          retention-days: 14
