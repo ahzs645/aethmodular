@@ -1,0 +1,45 @@
+name: EPA PMF5 native engine tests
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/pmf-native-probe.yml'
+      - 'research/ftir_hips_chem/scripts/python_pmf/me2.py'
+      - 'scripts/diagnostics/pmf_native_smoke.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install numerical test dependency
+        run: python -m pip install numpy
+      - name: Extract unchanged official EPA distribution
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'epa-pmf-runtime'
+          New-Item -ItemType Directory -Force $root | Out-Null
+          $exe = Join-Path $root 'setup.exe'
+          Invoke-WebRequest -Uri 'https://www.epa.gov/sites/default/files/2015-03/epa_pmf_5.0_setup.exe' -OutFile $exe -TimeoutSec 90
+          if ((Get-FileHash $exe -Algorithm SHA256).Hash -ne '49E020D69E5B4656E4CD540508872C7FAE2BFA69A48D2EEF0B7ABDE7CBE8DEBE') { throw 'Installer checksum changed; review before execution' }
+          $target = Join-Path $root 'admin'
+          $p = Start-Process $exe -ArgumentList ('/s /a /v"/qn TARGETDIR=' + $target + '"') -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Installer timed out' }
+          if ($p.ExitCode -ne 0) { throw 'Installer failed' }
+          ('EPA_PMF_RUNTIME=' + (Join-Path $target 'program files\EPA PMF\EPA PMF 5.0')) | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          ('EPA_PMF_EXAMPLE_DATA=' + (Join-Path $target 'Personal\EPA PMF\Data')) | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Fit and independently verify public and synthetic cases
+        run: python scripts/diagnostics/pmf_native_smoke.py
+      - name: Preserve public test evidence, never proprietary runtime files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-pmf-public-validation
+          path: native-public-test/
+          retention-days: 14
