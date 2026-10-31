@@ -107,6 +107,8 @@ import ml from '@/sections/ml'
 import { defaultPage } from '@/sections/types'
 import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
 import { EQUIVALENTS } from '@/lib/fieldEquivalents'
+import { ChartBuilderPage } from '@/pages/ChartBuilderPage'
+import { useChartBuilderEnabled } from '@/lib/chartBuilderPrefs'
 
 /**
  * Tabs mirror the react-graph-gallery categories, plus the census. `hidden` tabs
@@ -116,6 +118,7 @@ import { EQUIVALENTS } from '@/lib/fieldEquivalents'
 const TABS = [
   { key: 'census', label: 'Census', title: 'What the notebooks already draw, mapped onto the gallery’s chart types' },
   { key: 'dashboard', label: 'Dashboard', title: 'Your own page of gallery charts: add, arrange and size tiles' },
+  { key: 'builder', label: 'Chart builder', title: 'Free-form measures and facets with Graphic Walker' },
   { key: 'correlation', label: 'Correlation' },
   { key: 'distribution', label: 'Distribution' },
   { key: 'evolution', label: 'Evolution' },
@@ -198,7 +201,7 @@ const areaItem = (a: InvestigationArea, p: AreaPage, heading?: string): NavItem 
   ...(a.tab === 'meeting' ? { meeting: p.key } : a.pages.length > 1 ? { sub: p.key } : {}),
 })
 const NAV_GROUPS: NavGroup[] = [
-  { label: 'Charts', items: ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'pmf', 'flow'].flatMap(tabItem) },
+  { label: 'Charts', items: ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'pmf', 'flow', 'builder'].flatMap(tabItem) },
   { label: 'Sites', items: ['map', 'weather', 'aeronet'].flatMap(tabItem) },
   { label: 'Calibration', items: ['calibration', 'baseline', 'similarity', 'blanks'].flatMap(tabItem) },
 ].filter((g) => g.items.length)
@@ -216,8 +219,8 @@ const investigationsGroup = (tab: string): NavGroup => {
     : [...HUB_ITEM, ...HUB_AREAS.map((a) => areaItem(a, a.pages[0]))] }
 }
 /** the menu for the open tab: unlisted tabs (UNLISTED_TABS) only while one of them is open */
-const navGroups = (tab: string) => [...NAV_GROUPS, investigationsGroup(tab)]
-  .map((g) => ({ ...g, items: g.items.filter((i) => i.tab === tab || !UNLISTED_TABS.has(i.tab)) }))
+const navGroups = (tab: string, builderEnabled: boolean) => [...NAV_GROUPS, investigationsGroup(tab)]
+  .map((g) => ({ ...g, items: g.items.filter((i) => i.tab === tab || !UNLISTED_TABS.has(i.tab) && (i.tab !== 'builder' || builderEnabled)) }))
   .filter((g) => g.items.length)
 const AVAILABILITY_KEYS = AVAILABILITY_VIEWS.map((v) => v.key)
 
@@ -286,12 +289,13 @@ const parseSpartanSel = (v: string | null): string[] | 'all' | null =>
   v == null || v === '' ? null : v === '*' ? 'all' : v === '-' ? [] : v.split(',').filter(Boolean)
 
 /** tabs whose charts can draw a whole network (Filters sidebar → network) */
-const NETWORK_TABS = ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'map', 'weather', 'aeronet', 'aethalometer', 'research'] as const
+const NETWORK_TABS = ['dashboard', 'builder', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'map', 'weather', 'aeronet', 'aethalometer', 'research'] as const
 const FILTERS: SubsetCaps = { seasons: true, sites: true, excluded: true, dates: true, fields: 'single', datasetLabel: 'SPARTAN filters' }
 const CAPS: Record<Exclude<TabKey, 'investigations' | 'availability' | 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks' | 'experimental' | 'ml'>, SubsetCaps> = {
   correlation: { ...FILTERS, fields: 'pair', networks: true, fits: true },
   // each tile picks its own fields
   dashboard: { ...FILTERS, fields: 'none', networks: true, fits: true },
+  builder: { ...FILTERS, fields: 'none', networks: true },
   distribution: { ...FILTERS, networks: true },
   evolution: { ...FILTERS, networks: true },
   ranking: { ...FILTERS, networks: true },
@@ -354,6 +358,8 @@ const NO_WEATHER_SEASON: SeasonMeta = { name: NO_WEATHER, color: '#9aa5b1', mont
 const withNoWeather = (cal: SeasonMeta[]) => [...cal, NO_WEATHER_SEASON]
 
 export default function App() {
+  const builderEnabled = useChartBuilderEnabled()
+  const navTabs = useMemo(() => NAV_TABS.filter(t => t.key !== 'builder' || builderEnabled), [builderEnabled])
   const init = useMemo(() => readParams(), [])
   const [tab, setTab] = useState<TabKey>(() => tabFromParams(init))
   const { data, error, calibrationLoading } = useGalleryData(['calibration', 'baseline', 'dashboard'].includes(tab))
@@ -1108,7 +1114,7 @@ export default function App() {
 
   const nav = (
     <nav className="nav" aria-label="Pages">
-      <NavMenu groups={navGroups(tab)} tab={tab} meeting={meeting} onPick={(i) => openTab(i.tab, i.meeting, i.sub)}
+      <NavMenu groups={navGroups(tab, builderEnabled)} tab={tab} meeting={meeting} onPick={(i) => openTab(i.tab, i.meeting, i.sub)}
         sub={SECTION_TABS.has(tab) ? sectionPage || defaultPage(SECTION_TABS.get(tab)!.pages) : tab === 'availability' ? availView : experiment} />
     </nav>
   )
@@ -1379,10 +1385,10 @@ export default function App() {
   return (
     <SpartanDataProvider value={{ active: hasSpartan(net), codes: netView?.chosen.filter(s => !netView.improveCodes.has(s.code)).map(s => s.code) ?? [],
       loading: netData.loading, error: netData.error, sites: netData.data?.publicStatus ?? [] }}>
-    <HeaderNavProvider tabs={NAV_TABS} meetings={MEETINGS} open={openTab}>
+    <HeaderNavProvider tabs={navTabs} meetings={MEETINGS} open={openTab}>
     <RegressionProvider methods={estimators} setMethods={setEstimators} showCI={showCI} setShowCI={setShowCI}>
     <PrefsProvider>
-    <SingleViewProvider on={singleOn} setOn={setSingleOn} available={tab !== 'dashboard'} page={`${tab}/${meeting}/${experiment}`}>
+    <SingleViewProvider on={singleOn} setOn={setSingleOn} available={tab !== 'dashboard' && tab !== 'builder'} page={`${tab}/${meeting}/${experiment}`}>
     {/* Panel axes for every multi-panel crossplot (lib/panelAxes): the sidebar's setting, offered on each chart too */}
     <PanelAxesProvider value={axes.panels ?? 'Shared'} onChange={(panels) => setAxes((a) => ({ ...a, panels }))}>
     <ExportSitesProvider seasons={meta.seasons} sites={[...new Map([...rawMeta.sites, ...meta.sites].map(s => [s.code, s])).values()]}>
@@ -1431,12 +1437,13 @@ export default function App() {
         fields={tab === 'correlation' ? [xField, yField] : [field]} onClose={() => setGroup(null)} />}
       {isEmbed() && <a className="embed-open" href="#" onClick={async (e) => { e.preventDefault(); window.open((await viewUrl(currentView())), '_blank', 'noopener') }}>Open in the gallery ↗</a>}
       {(NETWORK_TABS as readonly string[]).includes(tab) && <BrushBar onKeep={keepFilters} onDrop={dropFilters} />}
-      <Shell nav={nav} dash={tab === 'dashboard'} wide={tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental'} editsBadge={!subset}>
+      <Shell nav={nav} dash={tab === 'dashboard'} wide={tab === 'builder' || tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental'} editsBadge={!subset}>
         {/* tabs without the Filters panel: a sidebar for the page's own controls, with the fits where the page fits */}
         {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting' || tab === 'experimental' || tab === 'similarity')
           && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'} label={tab === 'similarity' ? 'Target' : 'Samples'} />)}
         {tab === HUB_TAB && <InvestigationsPage areas={HUB_AREAS} onOpen={(t, p) => openTab(t, undefined, p ?? AREAS.find((a) => a.tab === t)?.pages[0]?.key)} />}
         {tab === 'availability' && <DataAvailabilityPage />}
+        {tab === 'builder' && <ChartBuilderPage rows={rows} meta={meta} enabled={builderEnabled} />}
         {tab === 'census' && <><AreaHeader area="Census" pages={CENSUS_PAGES} value="census" onPage={() => {}} /><CensusPage census={census} /></>}
         {tab === 'similarity' && <SimilarityPage />}
         {tab === 'meeting' && <PresentationProvider mode={presentation} set={setPresentation}>

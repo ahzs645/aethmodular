@@ -8,6 +8,8 @@ import { DISPLAY_SIDES, mostVisibleChart, type ChartDisplay, type StatsPlace, ty
 import { resetChartDisplay, setSharedChartDisplay, setSingleChartDisplay, useChartDisplayPrefs } from '@/lib/chartDisplayPrefs'
 import { useSingleView } from '@/lib/singleView'
 import { SpartanDataSettings, useSpartanSourceLabel } from '@/components/SpartanDataSettings'
+import { CHART_BUILDER_AVAILABLE, setChartBuilderEnabled, useChartBuilderEnabled } from '@/lib/chartBuilderPrefs'
+import { useHeaderNav } from '@/lib/headerNav'
 
 const SIDE_LABEL = { top: 'Above', right: 'Right', left: 'Left' }
 const THEME_NEXT = { light: 'dark', dark: 'auto', auto: 'light' } as const
@@ -35,9 +37,11 @@ export function DisplayControls() {
   const prefs = useChartDisplayPrefs()
   const single = useSingleView()
   const sourceLabel = useSpartanSourceLabel()
+  const builderEnabled = useChartBuilderEnabled()
+  const nav = useHeaderNav()
   const placement = single.on ? single.side : prefs.controlsSide
   const [open, setOpen] = useState(false)
-  const [panel, setPanel] = useState<'display' | 'data'>('display')
+  const [panel, setPanel] = useState<'display' | 'data' | 'interface'>('display')
   const [target, setTarget] = useState<VisibleChart | null>(null)
   const [scope, setScope] = useState<'all' | 'chart'>('all')
   const root = useRef<HTMLSpanElement>(null)
@@ -100,7 +104,7 @@ export function DisplayControls() {
     </button>
     <button type="button" ref={trigger} className={`btn quiet icon-btn display-menu-trigger${open ? ' on' : ''}`} aria-label="Display and data settings"
       aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? menuId : undefined}
-      title="Display and data settings: text size, theme and SPARTAN live data" onClick={event => open ? close() : showMenu(event.currentTarget)}>
+      title="Display and data settings: text size, theme, interface and SPARTAN live data" onClick={event => open ? close() : showMenu(event.currentTarget)}>
       <TextSizeIcon />{sourceLabel && <span className="spartan-source-label">{sourceLabel}</span>}
     </button>
     {EXPLAIN_AVAILABLE && <button type="button" className={`btn quiet icon-btn${explain ? ' on' : ''}`} aria-pressed={explain} aria-label="Explain"
@@ -115,8 +119,15 @@ export function DisplayControls() {
       <div className="seg" role="group" aria-label="Settings section">
         <button type="button" className={panel === 'display' ? 'active' : ''} aria-pressed={panel === 'display'} onClick={() => setPanel('display')}>Display</button>
         <button type="button" className={panel === 'data' ? 'active' : ''} aria-pressed={panel === 'data'} onClick={() => setPanel('data')}>SPARTAN data</button>
+        {CHART_BUILDER_AVAILABLE && <button type="button" className={panel === 'interface' ? 'active' : ''} aria-pressed={panel === 'interface'} onClick={() => setPanel('interface')}>Interface</button>}
       </div>
-      {panel === 'data' ? <SpartanDataSettings /> : <>
+      {panel === 'interface' ? <>
+        <DisplayChoice label="Free-form chart builder" value={builderEnabled ? 'on' : 'off'} choices={[{ value: 'off', label: 'Off' }, { value: 'on', label: 'On' }]}
+          onChange={value => setChartBuilderEnabled(value === 'on')} />
+        <p>Explore combinations of measures and site or season facets with Graphic Walker. Adds Chart builder to the Charts menu.</p>
+        {builderEnabled && <button type="button" className="btn" onClick={() => { close(); nav?.goTo({ tab: 'builder' }) }}>Open chart builder</button>}
+        <p className="display-footnote">Optional and remembered in this browser. The builder loads when opened. Download a draft to keep or share its chart definitions.</p>
+      </> : panel === 'data' ? <SpartanDataSettings /> : <>
       <fieldset className="display-scope"><legend>Apply changes to</legend>
         <div className="seg"><button type="button" className={scope === 'all' ? 'active' : ''} aria-pressed={scope === 'all'} onClick={() => setScope('all')}>All charts</button>
           <button type="button" className={scope === 'chart' ? 'active' : ''} aria-pressed={scope === 'chart'} disabled={!target} onClick={() => setScope('chart')}>This chart only</button></div>
