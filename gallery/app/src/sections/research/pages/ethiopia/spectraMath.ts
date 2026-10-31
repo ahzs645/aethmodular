@@ -1,6 +1,6 @@
 /**
  * The spectra behind the Ethiopia calibrations page's June 01, 04, 06 [21] and 13 [9] figures, as pure functions
- * (node-tested in spectra.test.mjs against the notebooks' saved and printed numbers):
+ * (node-tested in spectraMath.test.mjs against the notebooks' saved and printed numbers):
  *
  *  - Savitzky–Golay smoothing / differentiation exactly as scipy.signal.savgol_filter (mode 'interp', delta 1);
  *  - June 01's straight-line flatten and CH / C=O band areas of the five Adama PTFE spectra;

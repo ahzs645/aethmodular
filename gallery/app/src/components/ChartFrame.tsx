@@ -500,10 +500,13 @@ export function Toggle({
   )
 }
 
-/** A data caveat under a chart (values not drawn, rows pinned to an edge). Always shown: it is about the data, not the reader. */
-/** a note on the chart: under it, or beside its options when it is the chart in single-chart view (ChartAside) */
-export function Note({ children }: { children: ReactNode }) {
-  return <ChartAside><p className="chart-note">{children}</p></ChartAside>
+/**
+ * A note on the chart: under it, or beside its options when it is the chart in single-chart view (ChartAside).
+ * A data caveat (values not drawn, rows pinned to an edge) is always shown; `explain` marks a note for the reader
+ * (method, provenance, how to read it), shown only with Explain on (the header toggle or the chart's own).
+ */
+export function Note({ explain, children }: { explain?: boolean; children: ReactNode }) {
+  return <ChartAside><p className={explain ? 'chart-note legend-note' : 'chart-note'}>{children}</p></ChartAside>
 }
 
 /** A hint for the reader; shown only when explanations are on. */

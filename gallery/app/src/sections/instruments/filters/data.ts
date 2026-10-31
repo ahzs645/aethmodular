@@ -52,12 +52,30 @@ export function useAethExtra(codes: readonly string[]): { index: ExtraIndex | nu
 }
 const NO_EXTRA = new Map<string, Record<string, number | null>>()
 
+export type BcKind = 'raw' | 'smoothed' | 'fallback'
+
+/**
+ * What the BCc in some pairs is, for a label: '' (raw, as asked), ' smoothed', ' (smoothed where available)' when
+ * some filters fell back to the raw series, or ' (raw: no smoothed series)' when all did. `${ch} BCc${bcTag(pairs)}`.
+ */
+export function bcTag(pairs: readonly Pair[]): string {
+  const kinds = new Set(pairs.filter((p) => p.bc !== null).map((p) => p.bcKind))
+  if (kinds.has('smoothed')) return kinds.has('fallback') ? ' (smoothed where available)' : ' smoothed'
+  return kinds.has('fallback') ? ' (raw: no smoothed series)' : ''
+}
+
+/** the sites in some pairs whose filters fell back to the raw BCc (no smoothed series for the channel), in order */
+export const fallbackSites = (pairs: readonly Pair[]) => [...new Set(pairs.filter((p) => p.bcKind === 'fallback').map((p) => p.site))]
+
 /** One filter with the aethalometer at the chosen channel and the filter measurements it is compared with. */
 export interface Pair {
   row: FilterRow
   id: string; site: string; code: string; date: string; season: string; siteColor: string
   /** aethalometer BCc at the channel (µg/m³) */
   bc: number | null
+  /** which BCc `bc` is: the channel's raw window mean, its smoothed one, or the raw one because the smoothed
+   * BCc was asked for and this filter's instrument file has no smoothed series for the channel */
+  bcKind: BcKind
   /** attenuation coefficient b_ATN = BCc × σ_ATN (Mm⁻¹): still carries the filter's multiple-scattering enhancement */
   batn: number | null
   /** spot attenuation over the window (tape loading, not a concentration) */
@@ -78,14 +96,17 @@ export function buildPairs(rows: FilterRow[], meta: MetaFile, extra: Map<string,
     // volume, but HIPS Fabs (Mm⁻¹) and the extra smoothed channels do not, so the ratios and MACs would mix units
     const vol = num(r['Sampled volume'])
     const conc = (f: string) => { const v = num(r[f]); return v === null || meta.field_units[f] !== 'µg/filter' ? v : vol && vol > 0 ? v / vol : null }
-    const bc = smoothed ? (ch === 'IR' ? conc(bccField('IR', true)) : num(x?.[bccField(ch, true)])) : conc(bccField(ch))
+    // smoothed asked for: the smoothed series where the instrument file has one, else the raw (labelled so, bcTag)
+    const sm = smoothed ? (ch === 'IR' ? conc(bccField('IR', true)) : num(x?.[bccField(ch, true)])) : null
+    const bc = sm ?? conc(bccField(ch))
+    const bcKind: BcKind = !smoothed ? 'raw' : sm !== null ? 'smoothed' : 'fallback'
     if (bc === null && num(r[bccField('IR')]) === null) return []   // no aethalometer over this filter
     const fabs = num(r[HIPS_FABS])
     const soil = SOIL.map(([f, w]) => (conc(f) === null ? null : (conc(f) as number) * w))
     return [{
       row: r, id: r.id, site: r.site, code: r.code, date: r.date, season: r.season,
       siteColor: meta.sites.find((s) => s.name === r.site)?.color ?? (r.color as string),
-      bc, batn: bc !== null && sigma ? bc * sigma[ch] : null, atn: num(x?.[atnField(ch)]),
+      bc, bcKind, batn: bc !== null && sigma ? bc * sigma[ch] : null, atn: num(x?.[atnField(ch)]),
       fabs, hipsBc: conc(HIPS_BC) ?? (fabs === null ? null : fabs / mac), ec: conc(FTIR_EC), iron: conc(IRON),
       fineSoil: soil.every((v) => v !== null) ? soil.reduce((a, b) => a! + b!, 0) : null,
     }]

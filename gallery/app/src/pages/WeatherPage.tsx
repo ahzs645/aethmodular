@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import * as d3 from 'd3'
+import { SidebarControls } from '@/lib/pageSidebar'
 import { Segmented } from '@/components/ChartFrame'
 import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
 import { Scatterplot } from '@/charts/correlation/Scatterplot'
@@ -35,7 +36,7 @@ const ADDIS = 'ETAD'
  * correlations, and at Addis the check against the station.
  *
  * Several sites picked: the comparison: which weather goes with the measurement at each site,
- * then climate, washout, wind roses and the measurement by wind side by side. The Plot options'
+ * then climate, washout, wind roses and the measurement by wind side by side. The page tab's
  * Analysis choice (lib/siteFocus, `sfocus`) or a site in the comparison table opens one of them in the
  * one-site view without changing the pick, and the one-site view offers the way back.
  *
@@ -57,7 +58,7 @@ export function WeatherPage({ rows, meta, field, xField, yField, axes, setField,
     const n = d3.rollup(wxRows, (v) => v.length, (r) => r.site)
     return meta.sites.filter((s) => n.has(s.name)).map((s) => ({ name: s.name, code: s.code, n: n.get(s.name)! }))
   }, [wxRows, meta.sites])
-  // several sites picked: the comparison, or one of them on its own (the Plot options' Analysis choice)
+  // several sites picked: the comparison, or one of them on its own (the page tab's analysis choice)
   const focus = useSiteFocus(sites)
   const one = focus.site ?? (sites.length === 1 ? sites[0] : null)
   const oneRows = useMemo(() => (focus.site ? wxRows.filter((r) => r.site === focus.site!.name) : wxRows), [wxRows, focus.site])
@@ -99,20 +100,22 @@ export function WeatherPage({ rows, meta, field, xField, yField, axes, setField,
     const span = `${d3.min(oneRows, (r) => r.date)} to ${d3.max(oneRows, (r) => r.date)}`
     return (
       <>
+        {isAddis && <SidebarControls title="Weather">
+            <Segmented label="Weather" value={source} options={['ERA5', 'station'] as WeatherSource[]} onChange={setSource}
+              optionLabel={(o) => (o === 'station' ? 'Airport station' : 'ERA5')}
+              title="ERA5 reanalysis, or the Bole airport station (Dec 2022 – Sep 2024)" />
+        </SidebarControls>}
         <div className="panel weather-head">
           <div>
             <h2 style={{ margin: 0 }}>{one.name} · weather and the filters</h2>
             <p className="subtitle" style={{ margin: '4px 0 0' }}>
               {one.n} filters, {span}, each with the weather averaged over its own sampling window{isAddis ? ' (ERA5, or the Bole airport station the Addis notebooks used)' : ' (ERA5)'}.
-              {' '}{focus.site ? `One of the ${sites.length} picked sites: switch site or go back to the comparison under Plot options › Analysis.` : 'Pick more sites in the Samples panel to compare them.'}
+              {' '}{focus.site ? `One of the ${sites.length} picked sites: switch site or go back to the comparison under Page › analysis.` : 'Pick more sites in the Samples panel to compare them.'}
             </p>
           </div>
           <div className="weather-head-controls">
-            {isAddis && <Segmented label="Weather" value={source} options={['ERA5', 'station'] as WeatherSource[]} onChange={setSource}
-              optionLabel={(o) => (o === 'station' ? 'Airport station' : 'ERA5')}
-              title="ERA5 reanalysis, or the Bole airport station (Dec 2022 – Sep 2024)" />}
             {focus.site && <button type="button" className="btn" onClick={() => focus.set(null)}
-              title="Back to the picked sites side by side (Plot options › Analysis)">← Back to comparing {sites.length} sites</button>}
+              title="Back to the picked sites side by side (Page › analysis)">← Back to comparing {sites.length} sites</button>}
           </div>
         </div>
         <WeatherTimeline rows={oneRows} meta={meta} field={field} site={one} />
@@ -142,7 +145,7 @@ export function WeatherPage({ rows, meta, field, xField, yField, axes, setField,
           <h2 style={{ margin: 0 }}>Weather and the filters · {sites.length} sites compared</h2>
           <p className="subtitle" style={{ margin: '4px 0 0' }}>
             The sites picked in the Samples panel, on ERA5 averaged over each filter's sampling window. Click a site in the table
-            (or choose One site under Plot options › Analysis) for its timeline, seasonal wind roses and correlations, and the Addis station check.
+            (or choose One site under Page › analysis) for its timeline, seasonal wind roses and correlations, and the Addis station check.
           </p>
         </div>
       </div>

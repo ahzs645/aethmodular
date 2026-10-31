@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { usePrefs } from '@/lib/prefs'
 import { Figure } from '@/components/Figure'
 import { rmseAtMac, useMac } from '@/lib/mac'
 import { num, type Row } from '@/lib/table'
@@ -31,6 +32,8 @@ export function Protocols(_props: SectionPageProps) {
   const { calib } = useCalib()
   const { runs } = useCalibRuns()
   const m = useMac()
+  // the figure index (which notebook figure lives where) is reading guidance: only with Explain on
+  const { explain } = usePrefs()
   const moments = useMemo(() => addisMoments(runs, m.exportMac), [runs, m.exportMac])
   const seasons = useMemo(() => seasonFabs(runs), [runs])
   // ExternalFilterId "ETAD-0017-1" → calibration_runs id "ETAD-0017", which carries the fixed-cohort flag
@@ -229,10 +232,10 @@ export function Protocols(_props: SectionPageProps) {
       subtitle={`Each Addis filter's prediction from the AIRSpec-corrected Lowest-OC/EC (800) and Biomass-smoke (906) calibrations against HIPS Fabs/${m.mac}; the fit line is the gallery's estimator. The OC/EC panel is the Calibration tab's ocec800_airspec preset; the Smoke-906 panel is in no other export. df1 = 8 changes nothing visible. The fixed 190 are the filters the notebook drew (they need calibration_runs.json; all 239 otherwise).`}
       provenance={provenance(data, ['airspec_filters'])} aside={<ExcludedNote count={airspecSplit.marked.length} drawn />} />}
 
-    <Figure kind="table" id="ml-protocols-index" data={rows(data, 'figure_index')}
+    {explain && <Figure kind="table" id="ml-protocols-index" data={rows(data, 'figure_index')}
       columns={[{ key: 'notebook', label: 'Notebook' }, { key: 'original figure', label: 'Original figure' }, { key: 'sensitivity', label: 'Depends on k?' }, { key: 'updated version', label: 'Protocol-checked version' }]}
       title="Figure index (ftir_22) — which ftir_11–19 figures depend on the component choice, and where each protocol-checked version lives"
       subtitle="The notebooks' own map. Figures with no model in them (band identity, implied MAC, spectra) are k-free; every k-dependent one has a both-protocol version, drawn on this page or the Calibration tab where the gallery has its numbers."
-      provenance={provenance(data, ['figure_index'])} />
+      provenance={provenance(data, ['figure_index'])} />}
   </>
 }

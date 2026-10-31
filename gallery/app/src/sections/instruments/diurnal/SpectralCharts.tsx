@@ -15,7 +15,7 @@ import { FONT, INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { SeasonMeta, SiteMeta } from '@/lib/types'
 import { bcc, CHANNEL_COLOUR, CHANNELS, dates, DIURNAL_DIR, HOURS, hourLabel, MIN_DAYS, MIN_MINUTES, seasonsOf, utcLabel, type Channel, type SurfaceFile } from './data'
-import { ALL_YEAR, allYear, cycleSeries, dayGroups, HourPlot, inGroup, type DayGroup } from './HourCycle'
+import { ALL_YEAR, allYear, cycleSeries, daySplit, dayGroups, HourPlot, inGroup, splitLabels, type DayGroup, type DaySplit } from './HourCycle'
 import { blockSummary, dailyCv, derive, hourMedians, median, normalisedProfile, representativeDays, WAVELENGTH_NM, type BlockRow, type Derived } from './spectral'
 
 const A05 = 'research/ftir_hips_chem/addis_05_diurnal_wavelength_analysis.ipynb'
@@ -67,17 +67,19 @@ export function useSurfaceFiles(codes: readonly string[]): Record<string, Surfac
   return files
 }
 
-interface SiteProps { spectral: Spectral; site: SiteMeta; seasons: readonly SeasonMeta[]; split: boolean; shade: readonly number[] }
+interface SiteProps { spectral: Spectral; site: SiteMeta; split: DaySplit | null; shade: readonly number[] }
 
 /** addis_05 §4–5 and multisite §5–6: Delta-C (UV − IR) and the spread of the five channels, by local hour. */
-export function DeltaCAndCv({ spectral: s, site, seasons, split, shade }: SiteProps) {
-  const groups = dayGroups(split, seasons, s.season)
+export function DeltaCAndCv({ spectral: s, site, split, shade }: SiteProps) {
+  // each day-hour's group under the page's split (s.season stays the calendar's, for the seasonal charts)
+  const labels = useMemo(() => splitLabels(s.days, split), [s.days, split])
+  const groups = dayGroups(split, labels)
   const one = groups.length === 1
   const panels = [
     { key: 'dc', title: 'Delta-C, UV − IR', axis: `UV BCc − IR BCc (${UG})`, values: s.d.deltaC, digits: 2, ref: 0, color: '#8B4513' },
     { key: 'cv', title: 'CV across the five channels', axis: 'SD / mean of the five BCc', values: s.d.cv, digits: 3, ref: null, color: INK.accent },
   ]
-  const drawn = panels.map((p) => ({ ...p, series: cycleSeries({ id: p.key, label: p.title, hours: s.hours, values: p.values, seasons: s.season, groups, keep: s.keep, digits: p.digits, color: one ? p.color : undefined }) }))
+  const drawn = panels.map((p) => ({ ...p, series: cycleSeries({ id: p.key, label: p.title, hours: s.hours, values: p.values, seasons: labels, groups, keep: s.keep, digits: p.digits, color: one ? p.color : undefined }) }))
   const all = (v: (number | null)[]) => median(v.filter((_, i) => s.keep(i)))
   return (
     <ChartFrame id="diurnal-deltac-cv" title={`${site.name} · how far apart the wavelengths sit through the day — Delta-C and the channels' CV by local hour`}
@@ -147,7 +149,7 @@ export function NormalisedHeatmap({ focus, focusName, spectra, sites, seasons }:
   const panels = useMemo<Profile[]>(() => {
     if (across === 'sites') return sites.flatMap((s) => (spectra[s.code] ? [profileOf(spectra[s.code], s.code, s.name, () => true, s.color)] : []))
     if (!focus) return []
-    const groups = dayGroups(true, seasons, focus.season)
+    const groups = dayGroups(daySplit('seasons', seasons), focus.season)
     return [...groups.map((g) => profileOf(focus, g.name, seasonOnly(g.name), (i) => inGroup(g, focus.season[i]), g.color)), profileOf(focus, ALL_YEAR, ALL_YEAR, () => true)]
   }, [across, sites, spectra, focus, seasons])
   return (
@@ -276,7 +278,7 @@ export function SpectralSummary({ focus, site, spectra, sites, seasons }: {
     const of = (s: Spectral, g: DayGroup) => blockSummary(s.hours, s.ch.IR, s.d, (i) => s.keep(i) && inGroup(g, s.season[i]), s.minutes)
     if (rows === 'sites') return sites.flatMap((x) => (spectra[x.code] ? [{ key: x.code, title: x.name, color: x.color, minuteFile: spectra[x.code].file.resolution === 'minute', rows: of(spectra[x.code], allYear()) }] : []))
     if (!focus) return []
-    const groups = [...dayGroups(true, seasons, focus.season), allYear()]
+    const groups = [...dayGroups(daySplit('seasons', seasons), focus.season), allYear()]
     return groups.map((g) => ({ key: g.name, title: g.name === ALL_YEAR ? 'All' : seasonOnly(g.name), color: g.name === ALL_YEAR ? undefined : g.color, minuteFile: focus.file.resolution === 'minute', rows: of(focus, g) }))
   }, [rows, sites, spectra, focus, seasons])
   const num = { fontFamily: FONT.mono, textAlign: 'right' as const }

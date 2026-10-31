@@ -1,16 +1,18 @@
 import { useMemo } from 'react'
 import { ChartFrame, Segmented, Select } from '@/components/ChartFrame'
+import { SidebarControls } from '@/lib/pageSidebar'
 import { ExportState } from '@/components/ExportState'
+import { usePrefs } from '@/lib/prefs'
 import { useSearchParam } from '@/lib/url'
 import { seasonsForSite } from '@/siteSeasons'
 import type { SectionPageProps } from '../../types'
 import { BrcTest, ChannelHealth, ChannelHealthScatter, EcAgainstBc880 } from '../diurnal/BrcTest'
 import { ColumnCycle, DaylightWindow } from '../diurnal/ColumnCharts'
 import { DIURNAL_DIR, EXPORT_COMMAND, hourRuns, useBrc, useColumnIndex, useSiteFile, useSurfaceIndex, utcLabel, type ColumnFile, type SurfaceFile } from '../diurnal/data'
+import { daySplit, SPLIT_LABEL, SPLITS, type SplitBy } from '../diurnal/HourCycle'
 import { AaeCycle, ChannelCycle, ColumnCoupling, CoverageCheck, IntradayCv, MorningShare, SurfaceVsColumnAae } from '../diurnal/SurfaceCharts'
 import { CrossSiteOverlay, DeltaCAndCv, NormalisedHeatmap, RepresentativeDays, spectralOf, SpectralSummary, useSurfaceFiles, type Spectral } from '../diurnal/SpectralCharts'
 
-type Split = 'seasons' | 'together'
 
 /**
  * Sub-page 'diurnal' of the Aethalometer tab: the day inside a 24 h filter.
@@ -36,7 +38,9 @@ export function Diurnal({ rows, meta }: SectionPageProps) {
   // the options arrive with the index, so the key takes any value and an unknown one falls back here
   const [focus, setFocus] = useSearchParam<string>('dn.site', '')
   const code = codes.includes(focus) ? focus : fallback
-  const [split, setSplit] = useSearchParam<Split>('dn.split', 'seasons', ['seasons', 'together'])
+  // how the hour-of-day charts split the days: every day together, the site's seasons, the weekday, weekdays vs weekends
+  const [split, setSplit] = useSearchParam<SplitBy>('dn.split', 'seasons', SPLITS)
+  const { explain } = usePrefs()
   const site = meta.sites.find((s) => s.code === code) ?? null
   const seasons = useMemo(() => (site ? seasonsForSite(meta, site.name) : []), [meta, site])
 
@@ -54,13 +58,18 @@ export function Diurnal({ rows, meta }: SectionPageProps) {
   if (column.error && surface.error && brc.error) {
     return <ExportState title="Diurnal" what="the diurnal export" error={column.error} command={EXPORT_COMMAND} />
   }
-  const splitOn = split === 'seasons' && seasons.length > 1
+  const splitOn = daySplit(split, seasons)
   const offset = colFile?.offset ?? surfFile?.offset ?? column.data?.sites[code]?.offset
   const surfaceSites = Object.keys(surface.data?.sites ?? {})
 
   return (
     <>
-      <div className="panel weather-head">
+      <SidebarControls title="Diurnal cycles">
+        {codes.length > 1 && <Select label="Site" value={code} options={codes} onChange={setFocus} optionLabel={(c) => meta.sites.find((s) => s.code === c)?.name ?? c} />}
+        <Segmented label="Split by" value={split} options={SPLITS.filter((k) => k !== 'seasons' || seasons.length > 1)} onChange={setSplit}
+          optionLabel={(k) => SPLIT_LABEL[k]} title="The hour-of-day charts: every day together, the site's seasons (its calendar under Samples), each day of the week, or weekdays (Mon–Fri) against weekends (Sat–Sun), in local time" />
+      </SidebarControls>
+      {explain && <div className="panel weather-head">
         <div>
           <p className="subtitle" style={{ margin: 0 }}>
             A filter integrates 24 hours; the sun photometer sees only clear daylight, and the surface can swing several-fold between night and day.
@@ -68,15 +77,10 @@ export function Diurnal({ rows, meta }: SectionPageProps) {
             {' '}Seasons follow {site ? `${site.name}'s` : "each site's"} calendar as set in the Filters panel.
           </p>
         </div>
-        <div className="weather-head-controls">
-          {codes.length > 1 && <Select label="Site" value={code} options={codes} onChange={setFocus} optionLabel={(c) => meta.sites.find((s) => s.code === c)?.name ?? c} />}
-          {seasons.length > 1 && <Segmented label="Seasons" value={split} options={['seasons', 'together'] as Split[]} onChange={setSplit}
-            optionLabel={(k) => (k === 'seasons' ? 'Split' : 'Together')} />}
-        </div>
-      </div>
+      </div>}
 
       {column.data && <DaylightWindow index={column.data} sites={inView} focus={code} onFocus={setFocus} />}
-      {colFile && site && <ColumnCycle file={colFile} site={site} seasons={seasons} split={splitOn} />}
+      {colFile && site && <ColumnCycle file={colFile} site={site} split={splitOn} />}
       {column.error && <ExportState title="Diurnal · the column" what="the AERONET hour-of-day export" error={column.error} command={`${EXPORT_COMMAND} --skip-aeth`} />}
 
       {site && (surfFile
@@ -86,10 +90,10 @@ export function Diurnal({ rows, meta }: SectionPageProps) {
             <CoverageCheck file={surfFile} site={site} seasons={seasons} split={splitOn} />
             <MorningShare file={surfFile} site={site} seasons={seasons} split={splitOn} />
             <ColumnCoupling file={surfFile} site={site} seasons={seasons} split={splitOn} shade={shade} />
-            <SurfaceVsColumnAae file={surfFile} site={site} seasons={seasons} shade={shade} />
+            <SurfaceVsColumnAae file={surfFile} site={site} shade={shade} />
             <IntradayCv file={surfFile} site={site} seasons={seasons} />
             {focusSpectral && <>
-              <DeltaCAndCv spectral={focusSpectral} site={site} seasons={seasons} split={splitOn} shade={shade} />
+              <DeltaCAndCv spectral={focusSpectral} site={site} split={splitOn} shade={shade} />
               <RepresentativeDays spectral={focusSpectral} site={site} shade={shade} />
             </>}
             {surfFile.resolution === 'hourly' && <div className="panel"><p className="subtitle" style={{ margin: 0 }}>

@@ -61,7 +61,7 @@ export function sharedCrossDomains(sets: CrossPoint[][], sameScale = true): { do
 
 const NO_KEYS: ReadonlySet<string> = new Set()
 
-export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360, domain, fit = true, errorRatio, extraLines = [], grouping: groupingOverride, groupNoun, background, pick, sameScale = true, yDomain, brushable = false, brush }: {
+export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360, domain, fit = true, errorRatio, extraLines = [], grouping: groupingOverride, background, pick, sameScale = true, yDomain, brushable = false, brush }: {
   points: CrossPoint[]
   /**
    * Filters → excluded: Mark (lib/markedRows): the excluded filters the chart would draw, built from useMarkedRows() the
@@ -86,8 +86,6 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
   extraLines?: CrossLine[]
   /** the chart's own fit grouping (with its own control), instead of the gallery-wide setting; 'none' draws no fits */
   grouping?: FitGrouping | 'none'
-  /** what one fitted population is called in the note under a per-group fit (default its site or season) */
-  groupNoun?: string
   /** drawn under the points on the same scales, e.g. a density of the wider population */
   background?: (x: d3.ScaleLinear<number, number>, y: d3.ScaleLinear<number, number>) => ReactNode
   /** axis titles open the nearest axis picker (components/AxisFieldPopover: the page's or the gallery's); 'x' or 'y' for one */
@@ -135,7 +133,6 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
   const multiSite = fitting && new Set(valid.map(siteOf)).size > 1
   // a fit per season only where the points say their season
   const seasons = fitting && valid.some((p) => p.season)
-  const noun = groupNoun ?? (grouping === 'season' ? 'season' : 'site')
   const siteFits = methods.length > 0 && ((grouping === 'site' && multiSite) || (grouping === 'season' && seasons))
   const fitGroups = useMemo(() => fitting ? groupedRegressions(valid, grouping, {
     x: (p) => p.x, y: (p) => p.y, site: siteOf, color: (p) => p.color,
@@ -233,7 +230,6 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
           <g ref={brushRef} className="brush-layer" />
         </g>
       </svg>
-      {siteFits && <ChartAside><p className="chart-note">Fits use each {noun}'s paired filters and observed x range. {noun[0].toUpperCase() + noun.slice(1)}s with fewer than three pairs or constant values have no fitted line. Point colours retain the selected grouping.</p></ChartAside>}
       {handNote && <ChartAside><p className="chart-note">{handNote}</p></ChartAside>}
       {tip.node}
     </div>

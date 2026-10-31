@@ -14,7 +14,7 @@ import { seasonOnly, shortSeason } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
 import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
-import { seasonColor, seasonsIn, type Channel, type Pair, type PairSite } from './data'
+import { bcTag, seasonColor, seasonsIn, type Channel, type Pair, type PairSite } from './data'
 import { closestTo, ironSweep, linspace, ols, ols2 } from './mac'
 
 const ABS = ['HIPS', 'aeth'] as const
@@ -35,7 +35,7 @@ export function IronTest({ pairs, marked = [], meta, sites, ch, sigma }: {
 }) {
   const [abs, setAbs] = useSearchParam<(typeof ABS)[number]>('af.fe.abs', 'HIPS', ABS)
   const yOf = (p: Pair) => (abs === 'HIPS' ? p.fabs : p.batn)
-  const yName = abs === 'HIPS' ? 'HIPS Fabs' : `b_ATN ${ch}`
+  const yName = abs === 'HIPS' ? 'HIPS Fabs' : `b_ATN ${ch} (BCc${bcTag(pairs)} × σ_ATN)`
   // the slope the iron-corrected fit should reach: the MAC set under Filters → units (the notebook's 10), or σ_ATN
   const { mac } = useMac()
   const target = abs === 'HIPS' ? mac : sigma ?? NaN
@@ -189,7 +189,7 @@ export function IronTest({ pairs, marked = [], meta, sites, ch, sigma }: {
       { label: Number.isFinite(target) ? `slope ${fmt(target, 1)} through the origin` : 'target', color: INK.muted, kind: 'dash' as const },
       { label: 'uncorrected (strip)', color: INK.muted, kind: 'hollow' as const }, { label: 'after − MAC_Fe × Iron (strip)', color: INK.muted, kind: 'dot' as const }]} />
     <ExcludedNote count={markedRows.length} drawn />
-    <Note>The two-predictor residual should be flat against iron (iron fully modelled) and against EC (a single MAC fits), and centred on zero in every season.
+    <Note explain>The two-predictor residual should be flat against iron (iron fully modelled) and against EC (a single MAC fits), and centred on zero in every season.
       The notebook quoted Pearson r for the first two, but a least-squares fit leaves residuals uncorrelated with its own predictors, so that r is
       zero by construction; the panels give Spearman's rank correlation, which a curved or one-sided pattern still moves. The notebook's
       Kruskal–Wallis test across seasons is left out; the strip shows each season's median and spread instead.</Note>

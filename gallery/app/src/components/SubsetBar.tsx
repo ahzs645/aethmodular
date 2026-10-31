@@ -1,4 +1,4 @@
-import { PageSidebarSlot } from '@/lib/pageSidebar'
+import { PageTabSlot, usePageSidebarNote, usePageTab } from '@/lib/pageSidebar'
 import { RegressionControls } from '@/lib/regressionPrefs'
 import { chemText } from '@/lib/format'
 import { CONVENTION_LABEL, seasonOnly } from '@/lib/seasons'
@@ -190,7 +190,10 @@ const CALENDAR_LABEL = CONVENTION_LABEL
  * open it over the page without pushing the charts, so they update live beside
  * it: Filters (which filters are in view: network, sites, seasons, PMF, dates,
  * exclusions; it shows how many are in view and whether anything is filtered)
- * and Plot (how they are drawn: fits, axes, units, ratios, FTIR baseline).
+ * Plot (how they are drawn: fits, axes, units, ratios, FTIR baseline) and,
+ * when the open page has any, the page's own controls: the one-site analysis
+ * and whatever the page puts in `<SidebarControls>` (lib/pageSidebar), on a
+ * tab the page names ("Page" unless it says otherwise).
  * Only the controls the active tab can use are shown: on the PMF tab the site
  * chips, the excluded toggle and the axis pickers are absent and a note says
  * why, and where nothing is plotted against a field there is no Plot tab.
@@ -220,9 +223,14 @@ export function SubsetBar({
   // a page with a one-site mode offers it here while several sites are picked (lib/siteFocus)
   const focusOffered = useSiteFocusOffered()
   const focused = useFocusedSite()
-  // the Plot tab only where the open tab draws fits, picks fields or offers the one-site analysis
-  const hasPlot = !!caps.fits || caps.fields !== 'none' || focusOffered
-  const view: SidePanelView = hasPlot ? chosenView : 'filters'
+  // the Plot tab only where the open tab draws fits or picks fields
+  const hasPlot = !!caps.fits || caps.fields !== 'none'
+  // the page tab where the open page has controls of its own (lib/pageSidebar SidebarControls) or the one-site analysis
+  const pageTab = usePageTab()
+  const pageNote = usePageSidebarNote()
+  const hasPage = !!pageTab || focusOffered
+  const pageLabel = pageTab ?? 'Page'
+  const view: SidePanelView = chosenView === 'plot' && hasPlot || chosenView === 'page' && hasPage ? chosenView : 'filters'
   // a tab opens the panel on its half; the showing half's tab closes it
   const toggle = (v: SidePanelView) => { if (open && view === v) setOpen(false); else { setView(v); setOpen(true) } }
   const hl = useHighlightActions()
@@ -296,13 +304,6 @@ export function SubsetBar({
   const unitsDiffer = caps.fields === 'pair' && !sameUnits(meta.field_units?.[s.xField], meta.field_units?.[s.yField])
   const plotOptions = (
     <>
-      {/* first: it decides which analyses the page draws, the rest only how */}
-      {focusOffered && (
-        <Row label="analysis">
-          <SiteFocusControl />
-          {explain && <span className="row-note">{focused ? `${focused.name}'s single-site analysis; the Samples pick stays as it is` : 'every picked site side by side, or one of them on its own'}</span>}
-        </Row>
-      )}
       {/* only where fits are drawn; each chart offers the fit grouping that fits its layout */}
       {caps.fits && <RegressionControls grouping={false} />}
 
@@ -382,6 +383,15 @@ export function SubsetBar({
     </>
   )
 
+  // the page tab: the one-site analysis first (it decides which analyses the page draws), then the page's own controls
+  const pageOptions = focusOffered && (
+    <Row label="analysis">
+      <SiteFocusControl />
+      {explain && <span className="row-note">{focused ? `${focused.name}'s single-site analysis; the Samples pick stays as it is` : 'every picked site side by side, or one of them on its own'}</span>}
+    </Row>
+  )
+
+  const viewTitle = view === 'plot' ? 'Plot options' : view === 'page' ? `${pageLabel} options` : 'Samples'
   const net = NETWORKS.find((x) => x.key === s.network)!
   const sitesNote = s.network === 'improve' ? 'IMPROVE EC/OC: TOR (thermal-optical reflectance) · absorption from HIPS'
     : 'SPARTAN EC/OC: FTIR-derived · no TOR reference on these filters'
@@ -409,24 +419,41 @@ export function SubsetBar({
             onClick={() => toggle('plot')}
             aria-selected={view === 'plot'}
             aria-expanded={open && view === 'plot'}
-            title={open && view === 'plot' ? 'Hide the plot options' : (focusOffered ? 'Show the plot options: the analysis (compare sites or one site), fits, axes, units, ratios, FTIR baseline' : 'Show the plot options: fits, axes, units, ratios, FTIR baseline')}
+            title={open && view === 'plot' ? 'Hide the plot options' : 'Show the plot options: fits, axes, units, ratios, FTIR baseline'}
           >
             <span className="subset-tab-label">Plot</span>
-            {focused && <span className="subset-tab-count" title={`Single-site analysis: ${focused.name}`}>{focused.code}</span>}
+          </button>
+        )}
+        {hasPage && (
+          <button
+            type="button"
+            role="tab"
+            className={`subset-tab${open && view === 'page' ? ' active' : ''}`}
+            onClick={() => toggle('page')}
+            aria-selected={view === 'page'}
+            aria-expanded={open && view === 'page'}
+            title={open && view === 'page' ? `Hide the ${pageLabel.toLowerCase()} options` : `Show this page's own options${focusOffered ? ': the analysis (compare sites or one site) and the rest' : ''}`}
+          >
+            <span className="subset-tab-label">{pageLabel}</span>
+            {focused ? <span className="subset-tab-count" title={`Single-site analysis: ${focused.name}`}>{focused.code}</span>
+              : pageNote && <span className="subset-tab-count">{pageNote}</span>}
           </button>
         )}
       </div>
     }>
-        <aside className="panel subset subset-panel" aria-label={view === 'plot' ? 'Plot options' : 'Samples'}>
+        <aside className="panel subset subset-panel" aria-label={viewTitle}>
           <header className="subset-head">
-            <strong>{view === 'plot' ? 'Plot options' : 'Samples'}</strong>
+            <strong>{viewTitle}</strong>
             {view === 'filters' && <span className="pill" title={`${s.shown} of ${s.total} ${caps.datasetLabel} in view`}>{s.shown} of {s.total}</span>}
             <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 4 }}>
               {view === 'filters' && !isDefault && <button type="button" className="btn quiet" onClick={a.onReset} title="Clear every filter">Reset</button>}
-              <button type="button" className="btn quiet x-btn" onClick={() => setOpen(false)} aria-label={view === 'plot' ? 'Close plot options' : 'Close samples'} title="Close"><XIcon /></button>
+              <button type="button" className="btn quiet x-btn" onClick={() => setOpen(false)} aria-label={`Close ${viewTitle.toLowerCase()}`} title="Close"><XIcon /></button>
             </span>
           </header>
           {view === 'plot' && plotOptions}
+          {view === 'page' && pageOptions}
+          {/* the page's own controls (lib/pageSidebar SidebarControls): mounted on every tab, shown on its own */}
+          <PageTabSlot hidden={view !== 'page'} />
           {view === 'filters' && <>
             {summary}
             <Row label="network">
@@ -631,8 +658,6 @@ export function SubsetBar({
               {caps.sites && <span className="method-note">{sitesNote}</span>}
             </Row>
 
-            {/* a page's own filters (lib/pageSidebar SidebarControls), as on the tabs without this panel */}
-            <PageSidebarSlot />
 
             {s.pinned && (
               <PinnedCard row={s.pinned} meta={meta} fields={[s.xField, s.yField, s.field]} inSubset={s.pinnedInSubset} onUnpin={a.onUnpin} onOpen={a.onOpenPinned} />

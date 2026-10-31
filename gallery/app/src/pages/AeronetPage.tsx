@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import * as d3 from 'd3'
+import { SidebarControls } from '@/lib/pageSidebar'
 import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
 import { Segmented } from '@/components/ChartFrame'
 import { Scatterplot } from '@/charts/correlation/Scatterplot'
@@ -13,6 +14,7 @@ import { AeronetEom } from '@/charts/aeronet/AeronetEom'
 import { AeronetClimatology } from '@/charts/aeronet/AeronetClimatology'
 import { EtaBySite } from '@/charts/aeronet/EtaBySite'
 import { useExport } from '@/lib/data'
+import { usePrefs } from '@/lib/prefs'
 import { useSearchParam } from '@/lib/url'
 import { RATIO_GROUP } from '@/lib/viewFields'
 import { AAOD675, hasAod, LEVEL_PARAM, LEVELS, levelLabel, stationsPath, useAeronet, withLevel, type AeronetLevel, type AeronetStations } from '@/lib/aeronet'
@@ -48,6 +50,7 @@ export function AeronetPage({ rows: rows15, picked, onPick, meta, field, axes, s
   setField: (f: string) => void
 }) {
   const [level, setLevel] = useSearchParam<AeronetLevel>(LEVEL_PARAM, '15', LEVELS)
+  const { explain } = usePrefs()
   const stations = useExport<AeronetStations>(stationsPath(level)).data
   // Level 2.0: the same rows with this tab's AERONET fields (and the reader's ratios on them) from aeronet/lev20/
   const codes = useMemo(() => [...new Set(rows15.map((r) => r.code))], [rows15])
@@ -101,19 +104,21 @@ export function AeronetPage({ rows: rows15, picked, onPick, meta, field, axes, s
   )
 
   if (level === '20' && !lev20) {
-    return <div className="panel"><div className="weather-head"><p className="frame-empty">Loading the Level 2.0 AERONET…</p><div className="weather-head-controls">{levelControl}</div></div></div>
+    return <div className="panel"><div className="weather-head"><p className="frame-empty">Loading the Level 2.0 AERONET…</p><SidebarControls title="AERONET">{levelControl}</SidebarControls></div></div>
   }
   if (sites.length === 0) {
     return <div className="panel">
       <div className="weather-head"><p className="frame-empty">No picked site has {levelLabel(level)} AERONET retrievals inside its filters' sampling windows. AERONET is pulled for SPARTAN sites with a station within 50 km: pick one or more SPARTAN sites in the Samples panel.</p>
-        <div className="weather-head-controls">{levelControl}</div></div>
+        <SidebarControls title="AERONET">{levelControl}</SidebarControls></div>
     </div>
   }
 
   const span = one ? `${d3.min(axRows, (r) => r.date)} to ${d3.max(axRows, (r) => r.date)}` : ''
   return (
     <>
-      <div className="panel weather-head">
+      <SidebarControls title="AERONET">{levelControl}</SidebarControls>
+      {/* the comparison's heading is reading guidance (only with Explain on); one site's heading and the Level 2.0 caveat always show */}
+      {(one || explain || levelNote) && <div className="panel weather-head">
         <div>
           {one ? <>
             <h2 style={{ margin: 0 }}>{one.name} · the column over the filters</h2>
@@ -122,7 +127,7 @@ export function AeronetPage({ rows: rows15, picked, onPick, meta, field, axes, s
               {station ? ` at ${station.station.replace(/_/g, ' ')}, ${station.km.toFixed(1)} km away (of all ${station.filters} filters from this site, ${station.with_aod} have AOD and ${station.with_inversion} an inversion)` : ''}.
               {' '}{levelLabel(level)}: daylight, cloud-free retrievals only. Pick more sites in the Samples panel to compare them.
             </p>
-          </> : <>
+          </> : explain && <>
             <h2 style={{ margin: 0 }}>AERONET and the filters · {sites.length} sites compared</h2>
             <p className="subtitle" style={{ margin: '4px 0 0' }}>
               The sites picked in the Samples panel, each filter with the mean of the {levelLabel(level)} retrievals inside its sampling window at the
@@ -131,12 +136,11 @@ export function AeronetPage({ rows: rows15, picked, onPick, meta, field, axes, s
           </>}
           {levelNote}
         </div>
-        <div className="weather-head-controls">
-          {levelControl}
-          {one && previous && previous.length > 1 && onPick && <button type="button" className="btn" onClick={() => { onPick(previous); setPrevious(null) }}
+        {one && <div className="weather-head-controls">
+          {previous && previous.length > 1 && onPick && <button type="button" className="btn" onClick={() => { onPick(previous); setPrevious(null) }}
             title="Put the Samples panel's pick back to the sites you were comparing">← Back to comparing {previous.length} sites</button>}
-        </div>
-      </div>
+        </div>}
+      </div>}
       {one ? <>
         <AeronetTimeline rows={axRows} meta={meta} field={field} site={one} station={station?.station.replace(/_/g, ' ')} level={level} />
         {scatter(`${one.name} · ${field} against the column`, 'aeronet-site-scatter')}

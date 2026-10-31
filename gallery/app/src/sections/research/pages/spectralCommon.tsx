@@ -9,6 +9,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { loadDerived, loadJson, useExport } from '@/lib/data'
 import { Markdown } from '@/lib/markdown'
+import { usePrefs } from '@/lib/prefs'
 import { rowsOf, type Row, type Table } from '@/lib/table'
 import type { CalibRunsFile } from '@/lib/types'
 
@@ -70,12 +71,15 @@ export function Waiting({ error, what = 'the page data', exporter = EXPORTER }: 
 /**
  * The first panel of each page: what it brings in, from which notebooks, the headline read off
  * the same tables the charts draw, and the per-filter tables that only a re-run on the machine
- * with the Drive (or the notebooks' output folders) can add.
+ * with the Drive (or the notebooks' output folders) can add. Shown only with Explain on (lib/prefs).
  */
 export function PageIntro({ id, title, notebooks, data, children }: {
   id: string; title: string; notebooks: string; data: SpectralExport; children?: ReactNode
 }) {
+  // a page's intro (headline numbers, method, what is not exported yet) is reading guidance: only with Explain on
+  const { explain } = usePrefs()
   const reads = [...new Set(data.sources.map((s) => s.read))]
+  if (!explain) return null
   return (
     <ChartFrame id={id} title={title} exportable={false}
       provenance={<>Notebooks: {notebooks}. Tables read as: {reads.join(', ')}. Exported {data.generated.slice(0, 10)} by <code>{data.generated_from || EXPORTER}</code>.</>}>

@@ -13,7 +13,7 @@ import { INK } from '@/lib/theme'
 import { Grid } from '../../common/ui'
 import { provenance, rows as tableRows, type SpectralExport } from '../spectralCommon'
 import { galleryId } from './data'
-import { ALL, BAND_LABEL, BANDS, bandArea, flatten, groupOf, MONTH_SPLITS, OTHER, pool, profileStats, rankDesc, savgol, UNDATED } from './spectra'
+import { ALL, BAND_LABEL, BANDS, bandArea, flatten, groupOf, MONTH_SPLITS, OTHER, pool, profileStats, rankDesc, savgol, UNDATED } from './spectraMath'
 
 /**
  * June 2026 notebooks 01 (the Adama PTFE spectra), 04 (the ETAD spectra by month), 06 [21] (mean raw vs

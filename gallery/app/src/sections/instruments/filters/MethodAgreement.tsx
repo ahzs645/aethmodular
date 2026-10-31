@@ -12,7 +12,7 @@ import { useMac } from '@/lib/mac'
 import { useSearchParam } from '@/lib/url'
 import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
-import { seasonColor, type Channel, type Pair, type PairSite } from './data'
+import { bcTag, seasonColor, type Channel, type Pair, type PairSite } from './data'
 
 const COLOURS = ['Site', 'Season', 'Iron', 'Fe/EC', 'Fe/BC'] as const
 type Colour = (typeof COLOURS)[number]
@@ -33,10 +33,13 @@ export function MethodAgreement({ pairs, marked = [], meta, sites, ch }: { pairs
   const hipsLabel = `HIPS BC = Fabs ÷ ${mac} (µg/m³)`
   const [colour, setColour] = useSearchParam<Colour>('af.col', 'Site', COLOURS)
   const ramp = useColourScheme('af-agree', 'sequential')
+  // raw or smoothed BCc, and which sites had no smoothed series (data.ts bcTag)
+  const tag = bcTag(pairs)
+  const bcName = `${ch} BCc${tag}`
   const pairings: Pairing[] = [
-    { key: 'ec', title: `${ch} BCc against FTIR EC`, x: (p) => p.bc, y: (p) => p.ec, xLabel: `Aethalometer ${ch} BCc (µg/m³)`, yLabel: 'FTIR EC (µg/m³)' },
-    { key: 'hips', title: `${ch} BCc against HIPS BC`, x: (p) => p.bc, y: (p) => p.hipsBc, xLabel: `Aethalometer ${ch} BCc (µg/m³)`, yLabel: hipsLabel },
-    { key: 'abs', title: `b_ATN ${ch} against HIPS Fabs`, x: (p) => p.batn, y: (p) => p.fabs, xLabel: `b_ATN ${ch} = BCc × σ_ATN (Mm⁻¹)`, yLabel: 'HIPS Fabs (Mm⁻¹)' },
+    { key: 'ec', title: `${bcName} against FTIR EC`, x: (p) => p.bc, y: (p) => p.ec, xLabel: `Aethalometer ${bcName} (µg/m³)`, yLabel: 'FTIR EC (µg/m³)' },
+    { key: 'hips', title: `${bcName} against HIPS BC`, x: (p) => p.bc, y: (p) => p.hipsBc, xLabel: `Aethalometer ${bcName} (µg/m³)`, yLabel: hipsLabel },
+    { key: 'abs', title: `b_ATN ${ch} against HIPS Fabs`, x: (p) => p.batn, y: (p) => p.fabs, xLabel: `b_ATN ${ch} = BCc${tag} × σ_ATN (Mm⁻¹)`, yLabel: 'HIPS Fabs (Mm⁻¹)' },
     { key: 'filters', title: 'HIPS BC against FTIR EC', x: (p) => p.hipsBc, y: (p) => p.ec, xLabel: hipsLabel, yLabel: 'FTIR EC (µg/m³)' },
   ]
   const third = (p: Pair): number | null => colour === 'Iron' ? p.iron
@@ -61,7 +64,7 @@ export function MethodAgreement({ pairs, marked = [], meta, sites, ch }: { pairs
       x, y, color: colourOf(p), id: p.id,
       tip: [`${p.id} · ${p.site} · ${p.date}`, `${g.xLabel}: ${fmt(x, 2)}`, `${g.yLabel}: ${fmt(y, 2)}`, ...(continuous ? [`${colour}: ${fmt(t, 3)}`] : []), p.season],
       rec: { id: p.id, source: 'Aethalometer · against the filters', site: p.site, date: p.date,
-        fields: [[`${ch} BCc (aethalometer)`, p.bc], ['HIPS Fabs', p.fabs], ['EC (FTIR)', p.ec], ['Iron', p.iron]] },
+        fields: [[`${ch} BCc${p.bcKind === 'smoothed' ? ' smoothed' : p.bcKind === 'fallback' ? ' (raw: no smoothed series)' : ''} (aethalometer)`, p.bc], ['HIPS Fabs', p.fabs], ['EC (FTIR)', p.ec], ['Iron', p.iron]] },
     }]
   })
   // ETAD_Aug13 cell 45: Fe/BC where either method reads above 10 µg/m³, against the rest

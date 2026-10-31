@@ -17,6 +17,33 @@ const DOMINANCES = ['GF', 'K_F'] as const
 const BURNING = new Set(['wood', 'charcoal'])
 const expected = (key: string): AaeClass | null => (BURNING.has(key) ? 'Biomass' : key === 'fossil_fuel' ? 'Fossil fuel' : null)
 
+/**
+ * The factors as the meteorology notebooks grouped them (meteorology_source_interaction, meteorology_revisions,
+ * friday_summary_consolidated: GROUPED_SOURCE_CATEGORIES): biomass burning = charcoal + wood, fossil fuel combustion =
+ * fossil fuel + polluted marine, sea salt alone. A day's group is the largest summed share (or µg/m³).
+ */
+const SOURCE_SETS = ['Factors', 'Grouped'] as const
+type SourceSet = (typeof SOURCE_SETS)[number]
+interface SourceGroup { label: string; color: string; keys: string[]; aae: AaeClass | null }
+const NOTEBOOK_GROUPS: SourceGroup[] = [
+  { label: 'Biomass burning (wood + charcoal)', color: '#556B2F', keys: ['wood', 'charcoal'], aae: 'Biomass' },
+  { label: 'Fossil fuel comb. (+ polluted marine)', color: '#8B0000', keys: ['fossil_fuel', 'polluted_marine'], aae: 'Fossil fuel' },
+  { label: 'Sea Salt Mixed', color: '#1ABC9C', keys: ['sea_salt'], aae: null },
+]
+const groupsOf = (pmf: PmfFile, set: SourceSet): SourceGroup[] => set === 'Grouped' ? NOTEBOOK_GROUPS
+  : pmf.sources.map((s) => ({ label: s.label, color: s.color, keys: [s.key], aae: expected(s.key) }))
+
+/** a PMF day's dominant group: the largest sum of its factors' GF fractions or K_F µg/m³ (a factor alone when ungrouped) */
+function dominantGroup(p: PmfRow, pmf: PmfFile, rule: Dominance, groups: SourceGroup[]) {
+  const values = rule === 'GF' ? p.fraction : p.ugm3
+  const labelOf = new Map(pmf.sources.map((s) => [s.key, s.label]))
+  const sums = Object.fromEntries(groups.map((g) => {
+    const vs = g.keys.map((k) => values[labelOf.get(k) ?? '']).filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
+    return [g.label, vs.length ? vs.reduce((a, b) => a + b, 0) : null]
+  }))
+  return dominantOf(sums, groups.map((g) => g.label))
+}
+
 /** a PMF day's dominant source under either rule, with its share */
 export function pmfDominant(p: PmfRow, pmf: PmfFile, rule: Dominance) {
   const labels = pmf.sources.map((s) => s.label)
@@ -39,17 +66,20 @@ function useJoined(rows: FilterRow[], pmf: PmfFile, pair: AaePair) {
  */
 export function PmfVsAae({ rows, meta, pmf, pair, regions }: { rows: FilterRow[]; meta: MetaFile; pmf: PmfFile; pair: AaePair; regions: AaeRegions }) {
   const [rule, setRule] = useSearchParam<Dominance>('aes.pmfRule', 'GF', DOMINANCES)
+  const [set, setSet] = useSearchParam<SourceSet>('aes.pmfSet', 'Factors', SOURCE_SETS)
+  const groups = groupsOf(pmf, set)
   const joined = useJoined(rows, pmf, pair)
   const withAae = joined.filter((j) => j.aae !== null)
   // Filters → excluded: Mark (lib/markedRows): the excluded filters with a PMF day and an AAE, in no cell or strip
   const nMarked = useJoined(useMarkedRows(), pmf, pair).filter((j) => j.aae !== null).length
-  const pairs = withAae.map((j) => ({ j, d: pmfDominant(j.p, pmf, rule), cls: classify(j.aae, regions) }))
+  const pairs = withAae.map((j) => ({ j, d: dominantGroup(j.p, pmf, rule, groups), cls: classify(j.aae, regions) }))
   const tab = crosstab(pairs.map((x) => ({ a: x.d?.source ?? null, b: x.cls })))
-  const labels = pmf.sources.map((s) => s.label)
-  const color = new Map(pmf.sources.map((s) => [s.label, s.color]))
-  const keyOf = new Map(pmf.sources.map((s) => [s.label, s.key]))
-  const matched = pairs.filter((x) => x.d && expected(x.d.key))
-  const agree = matched.filter((x) => expected(x.d!.key) === x.cls).length
+  const labels = groups.map((g) => g.label)
+  const color = new Map(groups.map((g) => [g.label, g.color]))
+  const aaeOf = new Map(groups.map((g) => [g.label, g.aae]))
+  const matched = pairs.filter((x) => x.d && aaeOf.get(x.d.source))
+  const agree = matched.filter((x) => aaeOf.get(x.d!.source) === x.cls).length
+  const grouped = set === 'Grouped'
   const strip: IntervalRow[] = labels.map((l) => {
     const v = pairs.filter((x) => x.d?.source === l).map((x) => x.j.aae as number).sort(d3.ascending)
     return { key: l, label: l, labelColor: color.get(l), note: `n=${v.length}`,
@@ -59,15 +89,21 @@ export function PmfVsAae({ rows, meta, pmf, pair, regions }: { rows: FilterRow[]
   const site = meta.sites.find((s) => s.code === pmf.site)?.name ?? pmf.site_name
   return (
     <ChartFrame id="aeth-sources-pmf-vs-aae"
-      title={`AAE class against the PMF dominant source — ${site} filters with a PMF day and an aethalometer AAE`}
-      subtitle={`Rows: the PMF factor with the largest ${DOMINANCE_LABEL[rule]} on the filter's day; columns: the filter's AAE ${pair} class from absorption (fossil ≤ ${regions.fossil_max}, biomass ≥ ${regions.biomass_min}). Outlined: where the two name the same fuel (wood or charcoal → biomass, fossil fuel → fossil). Marine and sea-salt days have no AAE counterpart. Each cell: filters and their share of the row.`}
+      title={`AAE class against the PMF dominant ${grouped ? 'source group' : 'source'} — ${site} filters with a PMF day and an aethalometer AAE`}
+      subtitle={grouped
+        ? `Rows: the notebooks' three source groups (meteorology_source_interaction: biomass burning = wood + charcoal, fossil fuel combustion = fossil fuel + polluted marine, sea salt alone), the group with the largest summed ${DOMINANCE_LABEL[rule]} on the filter's day; columns: the filter's AAE ${pair} class from absorption (fossil ≤ ${regions.fossil_max}, biomass ≥ ${regions.biomass_min}). Outlined: where the two name the same fuel. Each cell: filters and their share of the row.`
+        : `Rows: the PMF factor with the largest ${DOMINANCE_LABEL[rule]} on the filter's day; columns: the filter's AAE ${pair} class from absorption (fossil ≤ ${regions.fossil_max}, biomass ≥ ${regions.biomass_min}). Outlined: where the two name the same fuel (wood or charcoal → biomass, fossil fuel → fossil). Marine and sea-salt days have no AAE counterpart. Each cell: filters and their share of the row.`}
       provenance={provenance([NOTEBOOK.addis01, NOTEBOOK.dominantComparison, NOTEBOOK.regression], `PMF from pmf.json (normalised GF fractions and K_F µg/m³), joined by filter id, else sampling date (lib/pmfGroups); AAE from "${AAE_PAIRS[pair].field}".`)}
-      controls={<Segmented label="Dominant by" value={rule} options={DOMINANCES} onChange={setRule} optionLabel={(o) => (o === 'GF' ? 'GF fraction' : 'K_F µg/m³')} />}>
+      controls={<>
+        <Segmented label="Sources" value={set} options={SOURCE_SETS} onChange={setSet} optionLabel={(o) => (o === 'Factors' ? 'Five factors' : 'Grouped (notebooks)')}
+          title="The five PMF factors, or the three groups the meteorology notebooks used: biomass burning (wood + charcoal), fossil fuel combustion (fossil fuel + polluted marine) and sea salt" />
+        <Segmented label="Dominant by" value={rule} options={DOMINANCES} onChange={setRule} optionLabel={(o) => (o === 'GF' ? 'GF fraction' : 'K_F µg/m³')} />
+      </>}>
       {!withAae.length ? <Empty>No {site} filter in view has both a PMF day and an aethalometer AAE (the PMF covers {pmf.n} days in {pmf.rows[0]?.year}).</Empty> : <>
-        <CountMatrix id="aeth-sources-pmf-vs-aae" rows={labels} cols={[...CLASSES]} count={(r, c) => cell(tab, r, c)} rowLabel="PMF dominant source" colLabel={`AAE ${pair} class`}
-          rowColor={(r) => color.get(r) ?? ''} colColor={(c) => d3.color(CLASS_COLOR[c as AaeClass])!.darker(0.7).formatHex()} outline={(r, c) => expected(keyOf.get(r) ?? '') === c} />
-        <p className="chart-note">{withAae.length} of {joined.length} PMF filters in view have an AAE. Of the {matched.length} whose dominant factor is a fuel (wood, charcoal or fossil), {agree} ({pct(matched.length ? agree / matched.length : null)}) fall in the matching AAE class.</p>
-        <IntervalStrip blocks={[{ key: 'pmf', rows: strip }]} labelWidth={150} noteWidth={44} minPanelWidth={150}
+        <CountMatrix id="aeth-sources-pmf-vs-aae" rows={labels} cols={[...CLASSES]} count={(r, c) => cell(tab, r, c)} rowLabel={grouped ? 'PMF dominant group' : 'PMF dominant source'} colLabel={`AAE ${pair} class`}
+          rowColor={(r) => color.get(r) ?? ''} colColor={(c) => d3.color(CLASS_COLOR[c as AaeClass])!.darker(0.7).formatHex()} outline={(r, c) => aaeOf.get(r) === c} />
+        <p className="chart-note">{withAae.length} of {joined.length} PMF filters in view have an AAE. Of the {matched.length} whose dominant {grouped ? 'group is biomass burning or fossil fuel combustion' : 'factor is a fuel (wood, charcoal or fossil)'}, {agree} ({pct(matched.length ? agree / matched.length : null)}) fall in the matching AAE class.</p>
+        <IntervalStrip blocks={[{ key: 'pmf', rows: strip }]} labelWidth={grouped ? 230 : 150} noteWidth={44} minPanelWidth={150}
           panels={[{ label: `AAE ${pair} (median and interquartile range)`, marker: { value: regions.biomass_min, label: `biomass ≥ ${regions.biomass_min}` } }]} />
         <ExcludedNote count={nMarked} />
       </>}

@@ -1,6 +1,6 @@
 /**
  * Paired and per-k summaries of the June 2026 per-spectrum ETAD EC (the export's `per_filter`, one column per
- * calibration, indexed by `calibrations`), as pure functions node-tested in spectra.test.mjs:
+ * calibration, indexed by `calibrations`), as pure functions node-tested in spectraMath.test.mjs:
  *
  *  - 07 [11]: each variant against CAL-0, spectrum by spectrum, and its median ratio (np.nanmedian(v / CAL-0));
  *  - 09 [12] panel C: median, mean and share negative against the component count;

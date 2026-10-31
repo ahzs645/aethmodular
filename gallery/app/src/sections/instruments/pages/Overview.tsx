@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Empty, Note, Segmented, Select } from '@/components/ChartFrame'
+import { SidebarControls } from '@/lib/pageSidebar'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
 import { CHANNELS, SCREEN_LABEL, useInstruments, useSeries, type Channel, type Screen, type Span } from '../overview/data'
@@ -82,18 +83,20 @@ export function Overview({ rows, meta, picked, onPick }: SectionPageProps) {
 
   const s = series[0]
   const dropped = series.flatMap((x) => CHANNELS.map((c) => x.dropped[c].neg + x.dropped[c].high)).reduce((a, b) => a + b, 0)
-  const controls = (
-    <div className="weather-head-controls">
+  const controls = <>
+    <SidebarControls title="Daily record">
       {one && atSite.length > 1 && <Select label="Instrument" value={inst?.code ?? ''} options={atSite.map((i) => i.code)} onChange={setInstPick}
         optionLabel={(c) => atSite.find((i) => i.code === c)?.label ?? c} title="Addis has two daily files of the same MA350-0238: the filter-era file, or the longer Jacros record" />}
       <Segmented label="Days" value={span} options={SPANS} onChange={setSpan} optionLabel={(o) => (o === 'filters' ? "Filters' span" : 'Whole record')}
         title="The days inside the span of the site's filters in view (±1 day; the date brush narrows it), or the instrument's whole daily file" />
       <Segmented label="Screen" value={screen} options={SCREENS} onChange={setScreen} optionLabel={(o) => SCREEN_LABEL[o]}
         title="Keep every daily value, drop negative BCc, or also drop values above the channel's mean + 3 SD as addis_02 did" />
+    </SidebarControls>
+    <div className="weather-head-controls">
       {previous && previous.length > 1 && onPick && <button type="button" className="btn" onClick={() => { onPick(previous); setPrevious(null) }}
         title="Put the Filters panel's pick back to the sites you were comparing">← Back to comparing {previous.length} sites</button>}
     </div>
-  )
+  </>
   const status = <>
     {loading && <Note>Loading the daily files…</Note>}
     {failed.length > 0 && <Note>No daily file could be read for {failed.join(', ')}.</Note>}
@@ -105,7 +108,7 @@ export function Overview({ rows, meta, picked, onPick }: SectionPageProps) {
     <div className="panel weather-head">
       <div>
         <h2 style={{ margin: 0 }}>Inside the day · the hourly record</h2>
-        <p className="subtitle" style={{ margin: '4px 0 0' }}>
+        <p className={hourly.error || hourly.loading || !n ? 'subtitle' : 'subtitle legend-note'} style={{ margin: '4px 0 0' }}>
           {hourly.error ? `The hourly export is not available (${hourly.error}); run gallery/data/export_aeth_overview.py where the Drive is mounted.`
             : hourly.loading ? 'Loading the hourly records…'
               : n ? <>IR BCc per local standard hour: {hourly.series.map((h) => `${h.site} from ${h.info.resolution === 'minute' ? `the minute file ${h.info.minute_file?.split('/').pop()}` : `the hourly means file ${h.info.hourly_file.split('/').pop()}`}`).join('; ')}. {hourly.index?.note} The Diurnal page draws the hour-of-day cycles; these charts are the rest of addis_02_temporal_patterns.</>

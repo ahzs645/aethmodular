@@ -82,7 +82,7 @@ export function ChannelAgreement({ rows, sites, extra, wavelengths, ch, onChanne
         <IntervalStrip blocks={blocks} panels={panels} labelWidth={130} noteWidth={44} minPanelWidth={160} />
         <Key items={[{ label: 'BCc', color: INK.muted, kind: 'dot' }, ...(hasAtn ? [{ label: 'ATN1 (spot attenuation)', color: INK.muted, kind: 'hollow' as const }] : [])]} />
         <ExcludedNote of={markedOf} />
-        <Note>
+        <Note explain>
           The notebook put HIPS at 405 nm and expected UV or Blue to match best; HIPS is a He–Ne reading at 633 nm
           (docs/filter-optics-reference.md). ATN is the loading of the current tape spot: it climbs as the spot darkens
           and drops at every advance, so its window mean is not a concentration and its r² is near zero by construction.

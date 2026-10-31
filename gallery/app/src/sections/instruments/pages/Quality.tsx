@@ -1,5 +1,7 @@
 import { Empty, Segmented } from '@/components/ChartFrame'
 import { PageToc } from '@/components/PageToc'
+import { SidebarControls } from '@/lib/pageSidebar'
+import { usePrefs } from '@/lib/prefs'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
 import { CoverageStrip } from '../quality/CoverageStrip'
@@ -50,18 +52,20 @@ export function Quality({ rows, meta, picked }: SectionPageProps) {
   const mFlow = useMinuteFlow(topic === 'flow' ? mc : null, minuteIndex ?? null).data
   const uspaFlow = useMinuteFlow(topic === 'flow' ? 'USPA' : null, minuteIndex ?? null).data
   const flowRecords = useFlowRecords(all ?? NO_DAYS, meta, uspaFlow)
+  const { explain } = usePrefs()
 
-  const head = (
-    <div className="panel weather-head">
+  // the topic and instrument on the page tab; what the topic is and which records it reads only with Explain on
+  const head = <>
+    <SidebarControls title="Data quality">
+      <Segmented label="Topic" value={topic} options={TOPICS} onChange={setTopic} optionLabel={(t) => TOPIC_LABEL[t]} />
+      {topic !== 'coverage' && <Segmented label="Instrument" value={code} options={available} onChange={setCode} optionLabel={(c) => instrumentName(c, meta)} />}
+    </SidebarControls>
+    {explain && <div className="panel weather-head">
       <div>
         <p className="subtitle" style={{ margin: 0 }}>{TOPIC_NOTE[topic]} The daily charts use the legacy daily aggregates (24 h bins labelled at their start, coverage recorded but not verified; docs/matched-sample-audit-2026-09-10.md); the minute-level charts use the raw MA350 records at Addis and Pasadena (JPL), the only two in the Drive mirror. Addis is one instrument (MA350-0238): its Jacros file is the full record and holds every day of the Addis file, so the page reads Addis from it.</p>
       </div>
-      <div className="weather-head-controls">
-        <Segmented label="Topic" value={topic} options={TOPICS} onChange={setTopic} optionLabel={(t) => TOPIC_LABEL[t]} />
-        {topic !== 'coverage' && <Segmented label="Instrument" value={code} options={available} onChange={setCode} optionLabel={(c) => instrumentName(c, meta)} />}
-      </div>
-    </div>
-  )
+    </div>}
+  </>
   if (index.error) return <>{head}<div className="panel"><Empty>The quality export is missing ({index.error}). Run uv run python gallery/data/export_aeth_quality.py.</Empty></div></>
   if (!index.data || !all) return <>{head}<div className="panel"><Empty>Loading the daily bins and their QC columns…</Empty></div></>
   const q = index.data

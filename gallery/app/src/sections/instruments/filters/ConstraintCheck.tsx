@@ -10,7 +10,7 @@ import { ExcludedNote } from '@/lib/markedRows'
 import { networkColor } from '@/lib/networks'
 import { useSearchParam } from '@/lib/url'
 import { INK } from '@/lib/theme'
-import { type Channel, type Pair, type PairSite } from './data'
+import { bcTag, type Channel, type Pair, type PairSite } from './data'
 import { macMethods, type MacMethods } from './mac'
 
 const METHODS: { key: string; label: string; slope: (m: MacMethods) => number; intercept: (m: MacMethods) => number; dash?: string }[] = [
@@ -35,7 +35,7 @@ export function ConstraintCheck({ pairs, marked = [], sites, ch, sigma }: {
 }) {
   const [abs, setAbs] = useSearchParam<(typeof ABS)[number]>('af.abs', 'HIPS', ABS)
   const yOf = (p: Pair) => (abs === 'HIPS' ? p.fabs : p.batn)
-  const yLabel = abs === 'HIPS' ? 'HIPS Fabs (Mm⁻¹)' : `b_ATN ${ch} (Mm⁻¹)`
+  const yLabel = abs === 'HIPS' ? 'HIPS Fabs (Mm⁻¹)' : `b_ATN ${ch} = BCc${bcTag(pairs)} × σ_ATN (Mm⁻¹)`
   const reference = abs === 'HIPS' ? 10 : sigma
   // the MAC set under Filters → units, beside SPARTAN's 10 when it differs
   const { mac } = useMac()
@@ -78,7 +78,7 @@ export function ConstraintCheck({ pairs, marked = [], sites, ch, sigma }: {
           ...(reference ? [{ label: abs === 'HIPS' ? 'MAC 10 m²/g' : `σ_ATN ${ch} = ${fmt(reference, 2)} m²/g`, color: INK.muted, kind: 'dash' as const }] : []),
           ...(readerMac ? [{ label: `MAC ${readerMac} m²/g (Filters → units)`, color: INK.accent, kind: 'dash' as const }] : [])]} />
         <ExcludedNote count={per.reduce((a, x) => a + x.markedOwn.length, 0)} drawn />
-        <Note>The notebook's verdict is about the intercept, not the fit: a positive M3 intercept is absorption that does not scale with EC
+        <Note explain>The notebook's verdict is about the intercept, not the fit: a positive M3 intercept is absorption that does not scale with EC
           (dust, brown carbon, a filter or loading artefact). M1 is pulled up by low-EC filters, whose ratios are the noisiest.</Note>
       </>}
     </ChartFrame>

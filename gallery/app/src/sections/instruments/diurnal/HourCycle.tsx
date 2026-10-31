@@ -3,19 +3,45 @@ import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { fmt } from '@/lib/format'
 import { INK } from '@/lib/theme'
 import type { SeasonMeta } from '@/lib/types'
-import { byHour, hourLabel, hourSpans, utcLabel } from './data'
+import { byHour, hourLabel, hourSpans, seasonsOf, utcLabel } from './data'
 
-/** a set of days drawn as one line: a season of the site's calendar, or the whole year */
+/** a set of days drawn as one line: a season of the site's calendar, a day of the week, weekdays or weekends, or every day */
 export interface DayGroup { name: string; color: string }
 export const ALL_YEAR = 'All year'
 /** the whole year as one group (its ink read when drawn, so it follows the theme) */
 export const allYear = (): DayGroup => ({ name: ALL_YEAR, color: INK.text })
 
-/** the groups a chart draws: the site's seasons when split (those with any day), else the whole year */
-export function dayGroups(split: boolean, seasons: readonly SeasonMeta[], present: readonly string[]): DayGroup[] {
+/** how the page splits the days: not at all, by the site's seasons, by day of the week, or weekdays against weekends */
+export const SPLITS = ['together', 'seasons', 'dow', 'weekend'] as const
+export type SplitBy = (typeof SPLITS)[number]
+export const SPLIT_LABEL: Record<SplitBy, string> = { together: 'All days', seasons: 'Season', dow: 'Day of week', weekend: 'Weekday vs weekend' }
+/** a split: its groups in order, and each local date's group (dates are the tables' local days, so the weekday is local) */
+export interface DaySplit { by: SplitBy; groups: DayGroup[]; labels: (days: string[]) => string[] }
+
+const DOW: DayGroup[] = [
+  { name: 'Monday', color: '#1f6fae' }, { name: 'Tuesday', color: '#2a9d8f' }, { name: 'Wednesday', color: '#7a9a2e' },
+  { name: 'Thursday', color: '#c28a14' }, { name: 'Friday', color: '#c2562e' }, { name: 'Saturday', color: '#a43f8a' }, { name: 'Sunday', color: '#6a4fb3' },
+]
+const WEEK: DayGroup[] = [{ name: 'Weekday (Mon–Fri)', color: '#1f6fae' }, { name: 'Weekend (Sat–Sun)', color: '#c2562e' }]
+/** 0 Monday … 6 Sunday */
+const dowOf = (day: string) => (new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7
+
+/** the split the page asked for (null: every day together; seasons need a calendar with two or more) */
+export function daySplit(by: SplitBy, seasons: readonly SeasonMeta[]): DaySplit | null {
+  if (by === 'seasons') return seasons.length > 1
+    ? { by, groups: seasons.map((s) => ({ name: s.name, color: s.color })), labels: (days) => seasonsOf(days, seasons) } : null
+  if (by === 'dow') return { by, groups: DOW, labels: (days) => days.map((d) => DOW[dowOf(d)].name) }
+  if (by === 'weekend') return { by, groups: WEEK, labels: (days) => days.map((d) => WEEK[dowOf(d) >= 5 ? 1 : 0].name) }
+  return null
+}
+/** each day's group under a split ('' for every day when there is none) */
+export const splitLabels = (days: string[], split: DaySplit | null): string[] => (split ? split.labels(days) : days.map(() => ''))
+
+/** the groups a chart draws: the split's groups that have any day, else the whole year */
+export function dayGroups(split: DaySplit | null, present: readonly string[]): DayGroup[] {
   if (!split) return [allYear()]
   const have = new Set(present)
-  return seasons.filter((s) => have.has(s.name)).map((s) => ({ name: s.name, color: s.color }))
+  return split.groups.filter((g) => have.has(g.name))
 }
 export const inGroup = (g: DayGroup, season: string) => g.name === ALL_YEAR || season === g.name
 

@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
-import { ALL, bandArea, flatten, groupOf, MONTH_SPLITS, OTHER, pool, profileStats, rankDesc, savgol, UNDATED } from './spectra.ts'
+import { ALL, bandArea, flatten, groupOf, MONTH_SPLITS, OTHER, pool, profileStats, rankDesc, savgol, UNDATED } from './spectraMath.ts'
 import { ecByCalibration, kSummary, medianRatio, ratioOfMedians } from './variants.ts'
 
 const page = JSON.parse(fs.readFileSync(new URL('../../../../../public/data/research/spectral/ethiopia_calibrations.json', import.meta.url), 'utf8'))

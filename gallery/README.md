@@ -298,6 +298,19 @@ A meeting page needs no TSX:
 `gallery/data/export_meeting_20261009.py` and
 `app/src/meetings/ann-20261009.meeting.ts`.
 
+### A page's own controls: the sidebar's page tab
+
+The side dock has a tab for each kind of setting: **Samples** (which filters are in view), **Plot** (how they are
+drawn) and, when the open page has any, the page's own controls. A page puts a switch there with
+`<SidebarControls title="…" tab="…">` (`app/src/lib/pageSidebar.tsx`), never in a panel at the top of the page;
+`tab` names the dock tab (default "Page"). The one-site **analysis** choice (Compare sites / One site,
+`lib/siteFocus`) sits first on that tab. On tabs without the Samples panel (Baselines, Meeting, Blanks) the same
+controls go in App's sidebar, and with no dock at all (an embed) they render where they are written.
+
+Notes under a chart are either data caveats (always shown) or reading guidance, provenance and method remarks,
+which use `<Note explain>` (or the `legend-note` class) and show only with **Explain** on. Longer explanations,
+such as how per-site fits are drawn, live in this README rather than under every chart.
+
 ### Networks in the Filters sidebar
 
 **A site that never measured a field.** Older SPARTAN sites have no FTIR
@@ -1269,7 +1282,8 @@ meeting analog crossplots, and the Addis/Bishoftu Baselines plots. The same
 styled control is available beside those charts. Per-site fits use only finite
 paired values from that site, including aligned uncertainty vectors and month
 blocks, and cover that site's observed x range. Sites need at least three pairs
-and nonconstant axes. Statistics appear below the plot; meeting analog plots
+and nonconstant axes; the others draw no line. Point colours keep the selected
+grouping, not the fit grouping. Statistics appear below the plot; meeting analog plots
 keep their longer per-site readouts in an expandable section. Site colours come
 from gallery metadata where available; meeting point colours retain their
 role/season meaning. Matrix correlation summaries remain pooled for the selected

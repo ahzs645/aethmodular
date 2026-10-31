@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import { Segmented, Toggle } from '@/components/ChartFrame'
+import { SidebarControls } from '@/lib/pageSidebar'
 import { f2 } from '@/lib/format'
+import { usePrefs } from '@/lib/prefs'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
 import { useAethSites } from '../lib'
@@ -47,17 +49,18 @@ export function Sources({ rows, meta }: SectionPageProps) {
   const p = AAE_PAIRS[pair]
   const offset = bccOffset(ma350Ratio(p.short, p.long), MA350_NM[p.short], MA350_NM[p.long])
   const pmfInView = !!pmf && rows.some((r) => r.code === pmf.site)
+  const { explain } = usePrefs()
 
   return (
     <>
-      <div className="panel">
-        <div className="weather-head-controls" style={{ flexWrap: 'wrap', gap: 12 }}>
-          <Segmented label="AAE pair" value={pair} options={AAE_PAIR_KEYS} onChange={setPair} title="Which two channels the AAE is taken between" />
-          <Segmented label="Basis" value={basis} options={BASES} onChange={setBasis} title="Every daily bin of the instrument record, or each filter's sampling window (follows the Filters panel)" />
-          {(codes.includes('ETAD') || codes.includes(JACROS)) && aethSites?.sites[JACROS] && <Toggle label="Addis: whole record (Jacros file)" checked={jacros === '1'} onChange={(v) => setJacros(v ? '1' : '0')}
-            title={`Daily charts: Addis's MA350-0238 from ${aethSites.sites[JACROS].first.slice(0, 7)} to ${aethSites.sites[JACROS].last.slice(0, 7)} (the Jacros file) instead of the filter-site file's ${aethSites.sites.ETAD?.first.slice(0, 7)} to ${aethSites.sites.ETAD?.last.slice(0, 7)}. Same instrument: identical where both have a bin.`} />}
-        </div>
-        <p className="subtitle" style={{ margin: '10px 0 4px' }}>
+      <SidebarControls title="Sources">
+        <Segmented label="AAE pair" value={pair} options={AAE_PAIR_KEYS} onChange={setPair} title="Which two channels the AAE is taken between" />
+        <Segmented label="Basis" value={basis} options={BASES} onChange={setBasis} title="Every daily bin of the instrument record, or each filter's sampling window (follows the Filters panel)" />
+        {(codes.includes('ETAD') || codes.includes(JACROS)) && aethSites?.sites[JACROS] && <Toggle label="Addis: whole record (Jacros file)" checked={jacros === '1'} onChange={(v) => setJacros(v ? '1' : '0')}
+          title={`Daily charts: Addis's MA350-0238 from ${aethSites.sites[JACROS].first.slice(0, 7)} to ${aethSites.sites[JACROS].last.slice(0, 7)} (the Jacros file) instead of the filter-site file's ${aethSites.sites.ETAD?.first.slice(0, 7)} to ${aethSites.sites.ETAD?.last.slice(0, 7)}. Same instrument: identical where both have a bin.`} />}
+      </SidebarControls>
+      {explain && <div className="panel">
+        <p className="subtitle" style={{ margin: '0 0 4px' }}>
           AAE {pair} = −ln(b<sub>{p.short}</sub> / b<sub>{p.long}</sub>) / ln({MA350_NM[p.short]} / {MA350_NM[p.long]}) from <b>absorption</b>, b = BCc × the MA350 cross-section
           (research/ftir_hips_chem/scripts/optics.py). Classes follow config.AAE_REGIONS: fossil fuel ≤ {regions.fossil_max}, mixed, biomass ≥ {regions.biomass_min}.
           An AAE taken from BCc, as every source notebook did, is the same number {f2(offset)}: the instrument has already divided each channel by a cross-section that falls with wavelength.
@@ -72,7 +75,7 @@ export function Sources({ rows, meta }: SectionPageProps) {
             <li><b>Not repeated here.</b> The daily PMF contribution bars and seasonal source shares (source_apportionment_regression Task 5, addis_ababa_source_analysis Task 4) are the PMF sources tab.</li>
           </ul>
         </details>
-      </div>
+      </div>}
       {daily === null ? <div className="panel"><p className="frame-empty">Loading the aethalometer daily bins…</p></div> : <>
         <AaeDistribution rows={rows} meta={meta} daily={daily} pair={pair} basis={basis} regions={regions} />
         <ClassShares rows={rows} meta={meta} daily={daily} pair={pair} basis={basis} regions={regions} />

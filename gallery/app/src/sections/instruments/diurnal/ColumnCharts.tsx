@@ -10,9 +10,9 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/format'
 import { FONT, INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
-import type { SeasonMeta, SiteMeta } from '@/lib/types'
-import { dates, HOURS, hourLabel, hourRuns, seasonsOf, unscale, utcLabel, type ColumnFile, type ColumnIndex } from './data'
-import { cycleSeries, dayGroups, HourPlot, inGroup } from './HourCycle'
+import type { SiteMeta } from '@/lib/types'
+import { dates, HOURS, hourLabel, hourRuns, unscale, utcLabel, type ColumnFile, type ColumnIndex } from './data'
+import { cycleSeries, dayGroups, HourPlot, inGroup, splitLabels, type DaySplit } from './HourCycle'
 
 const PROVENANCE = 'notebooks/analysis/meteorology/aeronet_addis_diagnostics.ipynb and aeronet_addis_deep_dive.ipynb (Addis only), research/ftir_ec_phase3/AERONET_SPARTAN_2026-08-22.md (retrieval hours by city); here every SPARTAN site with a station'
 
@@ -90,12 +90,12 @@ const QUANTITY: Record<ColumnQuantity, { label: string; axis: string; digits: nu
 }
 
 /** The column's own hour-of-day cycle at one site: AOD, Ångström exponent, fine fraction or retrieval share. */
-export function ColumnCycle({ file, site, seasons, split }: { file: ColumnFile; site: SiteMeta; seasons: readonly SeasonMeta[]; split: boolean }) {
+export function ColumnCycle({ file, site, split }: { file: ColumnFile; site: SiteMeta; split: DaySplit | null }) {
   const [q, setQ] = useSearchParam<ColumnQuantity>('dn.col', 'aod', Object.keys(QUANTITY))
   const t = file.aod
   const days = useMemo(() => dates(file.first, t), [file, t])
-  const season = useMemo(() => seasonsOf(days, seasons), [days, seasons])
-  const groups = dayGroups(split, seasons, season)
+  const season = useMemo(() => splitLabels(days, split), [days, split])
+  const groups = dayGroups(split, season)
   const spec = QUANTITY[q]
   const series = useMemo(() => {
     if (q === 'share') return groups.map((g) => {

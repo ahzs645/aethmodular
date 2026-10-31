@@ -11,29 +11,30 @@ import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { SeasonMeta, SiteMeta } from '@/lib/types'
 import { bcc, CHANNEL_COLOUR, CHANNELS, dates, HOURS, hourRuns, MIN_MINUTES, seasonsOf, type Channel, type SurfaceFile } from './data'
-import { allYear, cycleSeries, dayGroups, hourDomain, HourPlot, inGroup, type DayGroup } from './HourCycle'
+import { allYear, cycleSeries, dayGroups, hourDomain, HourPlot, inGroup, splitLabels, type DayGroup, type DaySplit } from './HourCycle'
 
 const WAVELENGTH_NB = 'research/ftir_hips_chem/addis_05_diurnal_wavelength_analysis.ipynb, multisite_diurnal_wavelength_analysis.ipynb, notebooks/analysis/diurnal_pub_figures.ipynb'
 const AERONET_NB = 'notebooks/analysis/meteorology/aeronet_addis_diagnostics.ipynb and aeronet_addis_deep_dive.ipynb'
 const UG = 'µg/m³'
 
-interface Props { file: SurfaceFile; site: SiteMeta; seasons: readonly SeasonMeta[]; split: boolean; shade: readonly number[] }
+interface Props { file: SurfaceFile; site: SiteMeta; seasons: readonly SeasonMeta[]; split: DaySplit | null; shade: readonly number[] }
 
 /**
  * The hourly table's dates and seasons; which day-hours count (minute records: at least MIN_MINUTES
  * valid IR minutes; hourly-means files: every hour); the minutes each stands for; and a channel in µg/m³.
  */
-function useHourly(file: SurfaceFile, seasons: readonly SeasonMeta[]) {
+function useHourly(file: SurfaceFile, split: DaySplit | null) {
   return useMemo(() => {
     const days = dates(file.first, file.hourly)
     const n = file.hourly.n
     return {
-      days, season: seasonsOf(days, seasons),
+      // each day-hour's group under the page's split (its season, weekday, …)
+      days, season: splitLabels(days, split),
       full: (i: number) => (n ? (n[i] ?? 0) >= MIN_MINUTES : true),
       minutes: (i: number) => (n ? n[i] ?? 0 : 60),
       ug: (c: Channel) => bcc(file, c),
     }
-  }, [file, seasons])
+  }, [file, split])
 }
 
 /** how the hourly table was made, for subtitles */
@@ -50,10 +51,10 @@ function facetBy<T>(groups: DayGroup[], render: (g: DayGroup, w?: number) => T) 
 
 type ChannelMode = 'bcc' | 'ratio'
 /** BCc at the five wavelengths by local hour (median, IQR), or each over IR: the spectral shape through the day. */
-export function ChannelCycle({ file, site, seasons, split, shade }: Props) {
+export function ChannelCycle({ file, site, split, shade }: Props) {
   const [mode, setMode] = useSearchParam<ChannelMode>('dn.ch', 'bcc', ['bcc', 'ratio'])
-  const { season, full, ug } = useHourly(file, seasons)
-  const groups = dayGroups(split, seasons, season)
+  const { season, full, ug } = useHourly(file, split)
+  const groups = dayGroups(split, season)
   const t = file.hourly
   const ir = ug('IR')
   const series = (g: DayGroup): SweepSeries[] => CHANNELS.filter((c) => t[c] && (mode === 'bcc' || c !== 'IR')).flatMap((c) => {
@@ -74,9 +75,9 @@ export function ChannelCycle({ file, site, seasons, split, shade }: Props) {
 }
 
 /** AAE by hour from absorption (BCc × the MA350 cross-section), UV/IR and Blue/IR. */
-export function AaeCycle({ file, site, seasons, split, shade }: Props) {
-  const { season, full } = useHourly(file, seasons)
-  const groups = dayGroups(split, seasons, season)
+export function AaeCycle({ file, site, split, shade }: Props) {
+  const { season, full } = useHourly(file, split)
+  const groups = dayGroups(split, season)
   const t = file.hourly
   const pairs = [['aae_uv_ir', 'AAE UV/IR', CHANNEL_COLOUR.UV], ['aae_blue_ir', 'AAE Blue/IR', CHANNEL_COLOUR.Blue]] as const
   const series = (g: DayGroup) => pairs.filter(([k]) => t[k]).flatMap(([k, label, color]) =>
@@ -101,8 +102,8 @@ const WINDOWS: { key: string; label: string; hours: number[] }[] = [
 ]
 
 /** How much of a 24 h filter's black-carbon mass each part of the day puts there (pw_mac_calibration §3). */
-export function MorningShare({ file, site, seasons, split }: Omit<Props, 'shade'>) {
-  const { days, season, minutes, ug } = useHourly(file, seasons)
+export function MorningShare({ file, site, split }: Omit<Props, 'shade'>) {
+  const { days, season, minutes, ug } = useHourly(file, split)
   const perDay = useMemo(() => {
     const t = file.hourly, ir = ug('IR')
     const acc = new Map<string, { season: string; minutes: number; mass: number[] }>()
@@ -117,7 +118,7 @@ export function MorningShare({ file, site, seasons, split }: Omit<Props, 'shade'
     return [...acc.values()].filter((d) => d.minutes >= 18 * 60 && d3.sum(d.mass) > 0)
       .map((d) => { const total = d3.sum(d.mass); return { season: d.season, share: WINDOWS.map((w) => d3.sum(w.hours, (h) => d.mass[h]) / total) } })
   }, [file, days, season, minutes, ug])
-  const groups = split ? dayGroups(true, seasons, perDay.map((d) => d.season)) : [allYear()]
+  const groups = dayGroups(split, perDay.map((d) => d.season))
   const blocks: IntervalBlock[] = groups.map((g) => {
     const ds = perDay.filter((d) => inGroup(g, d.season))
     return { key: g.name, title: groups.length > 1 ? `${g.name} (${ds.length} days)` : `${ds.length} days`, color: g.color,
@@ -149,17 +150,17 @@ export function MorningShare({ file, site, seasons, split }: Omit<Props, 'shade'
  * (625 nm, next to the HIPS 633 nm) by hour with the AERONET hours shaded, and per day the ratio of
  * the 24 h mean to the mean over those hours.
  */
-export function CoverageCheck({ file, site, seasons, split }: Omit<Props, 'shade'>) {
+export function CoverageCheck({ file, site, split }: Omit<Props, 'shade'>) {
   const cov = file.coverage
-  const { season: hourlySeason, full, ug } = useHourly(file, seasons)
+  const { season: hourlySeason, full, ug } = useHourly(file, split)
   const red = file.hourly.Red ? ug('Red') : null
   const covDays = useMemo(() => (cov ? dates(file.first, cov) : []), [file, cov])
-  const covSeason = useMemo(() => seasonsOf(covDays, seasons), [covDays, seasons])
+  const covSeason = useMemo(() => splitLabels(covDays, split), [covDays, split])
   if (!cov || !red) return null
   const hours = cov.hours
   const cycle = cycleSeries({ id: 'red', label: 'Red BCc', hours: file.hourly.h, values: red, seasons: hourlySeason, groups: [allYear()], keep: full, color: CHANNEL_COLOUR.Red })
   const dayMean = d3.mean(red.filter((v, i) => v != null && full(i)) as number[])
-  const groups = split ? dayGroups(true, seasons, covSeason) : [allYear()]
+  const groups = dayGroups(split, covSeason)
   const blocks: IntervalBlock[] = groups.map((g) => ({ key: g.name, title: groups.length > 1 ? g.name : undefined, color: g.color, rows: (['ratio_mean', 'ratio_median'] as const).map((k) => {
     const v = cov[k].filter((x, i) => x != null && inGroup(g, covSeason[i])).map(Number).sort(d3.ascending)
     const q = (p: number) => (v.length ? d3.quantileSorted(v, p)! : null)
@@ -180,20 +181,20 @@ export function CoverageCheck({ file, site, seasons, split }: Omit<Props, 'shade
   )
 }
 
-/** the matched table's dates and seasons */
-function useMatched(file: SurfaceFile, seasons: readonly SeasonMeta[]) {
+/** the matched table's dates and their groups under the page's split */
+function useMatched(file: SurfaceFile, split: DaySplit | null) {
   return useMemo(() => {
     const days = file.matched ? dates(file.first, file.matched) : []
-    return { days, season: seasonsOf(days, seasons) }
-  }, [file, seasons])
+    return { days, season: splitLabels(days, split) }
+  }, [file, split])
 }
 
 /** Surface BC and column AOD at the same moments, by hour: the decoupling the deep-dive notebook found at Addis. */
-export function ColumnCoupling({ file, site, seasons, split, shade }: Props) {
+export function ColumnCoupling({ file, site, split, shade }: Props) {
   const m = file.matched
-  const { season } = useMatched(file, seasons)
+  const { season } = useMatched(file, split)
   if (!m) return null
-  const groups = dayGroups(split, seasons, season)
+  const groups = dayGroups(split, season)
   const panels = [
     { key: 'bc_ir', title: 'Surface IR BCc', axis: `IR BCc (${UG})`, values: m.bc_ir, digits: 2 },
     { key: 'aod500', title: 'Column AOD 500', axis: 'AOD 500 nm', values: m.aod500, digits: 3 },
@@ -214,9 +215,9 @@ export function ColumnCoupling({ file, site, seasons, split, shade }: Props) {
 }
 
 /** Surface absorption AAE against the column's extinction Ångström exponent, hour by hour. */
-export function SurfaceVsColumnAae({ file, site, seasons, shade }: Omit<Props, 'split'>) {
+export function SurfaceVsColumnAae({ file, site, shade }: Omit<Props, 'split' | 'seasons'>) {
   const m = file.matched
-  const { season } = useMatched(file, seasons)
+  const { season } = useMatched(file, null)
   if (!m) return null
   const series = [
     ...cycleSeries({ id: 'aae', label: 'Surface AAE UV/IR (absorption)', hours: m.h, values: m.aae, seasons: season, groups: [allYear()], color: CHANNEL_COLOUR.UV }),

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import * as d3 from 'd3'
+import { SidebarControls } from '@/lib/pageSidebar'
 import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
 import { Segmented, Toggle } from '@/components/ChartFrame'
 import { Scatterplot } from '@/charts/correlation/Scatterplot'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
 import { useAethFields } from '../lib'
-import { CHANNELS, NEAREST_TO_HIPS, bccField, pairSites, useAethExtra, usePairs, type Channel } from '../filters/data'
+import { CHANNELS, NEAREST_TO_HIPS, bccField, fallbackSites, pairSites, useAethExtra, usePairs, type Channel } from '../filters/data'
 import { AgreementTimeline } from '../filters/AgreementTimeline'
 import { ChannelAgreement } from '../filters/ChannelAgreement'
 import { ConstraintCheck } from '../filters/ConstraintCheck'
@@ -67,7 +68,8 @@ export function FilterComparison({ rows, meta, picked, onPick, field, axes, setF
   }
   const span = `${d3.min(pairs, (p) => p.date)} to ${d3.max(pairs, (p) => p.date)}`
   const overlap = fields ? d3.median(pairs, (p) => fields.counts[p.id]?.[0]) : undefined
-  const nSmoothed = pairs.filter((p) => p.bc !== null).length
+  const nSmoothed = pairs.filter((p) => p.bcKind === 'smoothed').length
+  const rawSites = fallbackSites(pairs)
   return (
     <>
       <div className="panel weather-head">
@@ -78,17 +80,19 @@ export function FilterComparison({ rows, meta, picked, onPick, field, axes, setF
             {overlap ? ` (median ${Math.round(overlap)} h of daily bins inside it; at least 12 h kept)` : ''}.
             The pickles are legacy daily aggregates whose collection windows were never verified (processed_sites/README.md).
             {' '}{one ? 'Pick more sites in the Filters panel to compare them.' : `Click a site in the MAC strip${onPick ? ' (or pick just one in the Filters panel)' : ''} for its detail.`}
-            {smoothed && nSmoothed < pairs.length ? ` Smoothed ${ch} exists for ${nSmoothed} of them.` : ''}
+            {smoothed && rawSites.length ? ` Smoothed ${ch} BCc for ${nSmoothed} of them; no smoothed ${ch} series at ${rawSites.join(', ')}${nSmoothed ? ' (for some or all filters)' : ''}, where the raw BCc is used and the axis labels say so.` : ''}
           </p>
         </div>
         <div className="weather-head-controls">
-          <Segmented label="Channel" value={ch} options={CHANNELS} onChange={setCh}
-            optionLabel={(c) => `${c}${c === NEAREST_TO_HIPS ? ' ≈ HIPS' : ''}`} title={`MA350 channels: ${CHANNELS.map((c) => `${c} ${wavelengths[c]} nm`).join(', ')}. HIPS reads at 633 nm.`} />
-          <Toggle label="Smoothed BCc" checked={smoothed} onChange={(v) => setSm(v ? '1' : '0')}
-            title="The instrument's smoothed BCc (ETAD_Aug13 used Red and IR smoothed). Beijing, Delhi and JPL carry only some smoothed channels" />
           {previous && previous.length > 1 && onPick && <button type="button" className="btn" onClick={() => { onPick(previous); setPrevious(null) }}
             title="Put the Filters panel's pick back to the sites you were comparing">← Back to comparing {previous.length} sites</button>}
         </div>
+        <SidebarControls title="Aethalometer channel">
+          <Segmented label="Channel" value={ch} options={CHANNELS} onChange={setCh}
+            optionLabel={(c) => `${c}${c === NEAREST_TO_HIPS ? ' ≈ HIPS' : ''}`} title={`MA350 channels: ${CHANNELS.map((c) => `${c} ${wavelengths[c]} nm`).join(', ')}. HIPS reads at 633 nm.`} />
+          <Toggle label="Smoothed BCc" checked={smoothed} onChange={(v) => setSm(v ? '1' : '0')}
+            title="The instrument's smoothed BCc (ETAD_Aug13 used Red and IR smoothed). Beijing, Delhi and JPL carry only some smoothed channels: where a filter has none, the raw BCc is used and the axis labels say so" />
+        </SidebarControls>
       </div>
       <ImpliedMac pairs={pairs} marked={markedPairs} meta={meta} sites={sites} ch={ch} sigma={sigma} onSite={onPick && !one ? openSite : undefined} />
       <MethodAgreement pairs={pairs} marked={markedPairs} meta={meta} sites={sites} ch={ch} />

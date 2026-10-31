@@ -88,7 +88,7 @@ export function HumidityAgreement({ rows, meta, xField, yField, rhField }: { row
           { key: 'cross', title: `Split at ${thr} %`, note: `${nDry} dry · ${nHumid} humid`, label: 'Dry and humid crossplot', min: 300, basis: 480, max: 500, grow: 0,
             // the crossplot is square: in a tile its side also fits the height (less its fit readout and axes)
             render: ({ width, height }) => <Crossplot points={points} marked={marked} title="" xLabel={withUnit(xField, meta.field_units)} yLabel={withUnit(yField, meta.field_units)}
-              maxSide={Math.min(width - 70, height === null ? Infinity : height - 150)} grouping="site" groupNoun="humidity group" pick /> },
+              maxSide={Math.min(width - 70, height === null ? Infinity : height - 150)} grouping="site" pick /> },
           { key: 'sweep', title: 'Threshold sweep', note: best ? `widest gap ${best.t} %` : undefined, label: 'Threshold sweep of both slopes', min: 280, basis: 420,
             render: ({ width, height }) => <SweepPlot series={series} width={width} height={height ?? 300} xLabel="RH threshold (%)" yLabel={slopeName} xDomain={[SWEEP[0], SWEEP[SWEEP.length - 1]]}
               include={[0]} chosen={[{ series: `dry-${primary}`, x: thr }, { series: `humid-${primary}`, x: thr }]} onPoint={(_, p) => setThr(p.x as number)}

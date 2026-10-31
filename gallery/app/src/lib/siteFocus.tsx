@@ -17,13 +17,13 @@ import { useSearchParam } from '@/lib/url'
  *
  *   const focus = useSiteFocus(sites)        // a page: offers the choice, reads it
  *   if (focus.site) …one-site analysis of focus.site…
- *   <SiteFocusControl />                      // wherever the choice is drawn (SubsetBar's Plot tab)
+ *   <SiteFocusControl />                      // wherever the choice is drawn (SubsetBar's page tab)
  */
 export interface FocusSite { code: string; name: string; n?: number }
 
 const URL_KEY = 'sfocus'
 
-// the open page's sites (null: the page has no one-site mode), shared with the Plot tab
+// the open page's sites (null: the page has no one-site mode), shared with the dock's page tab
 let offered: readonly FocusSite[] | null = null
 const listeners = new Set<() => void>()
 const publish = (next: readonly FocusSite[] | null) => { offered = next; for (const l of listeners) l() }

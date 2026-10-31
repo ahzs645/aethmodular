@@ -11,11 +11,11 @@ import { markTip } from '@/lib/exclusionMode'
 import { networkColor } from '@/lib/networks'
 import { splitAtGaps } from '@/lib/stats'
 import { useSearchParam } from '@/lib/url'
-import { dateDomain, dateTicks, type Channel, type Pair, type PairSite } from './data'
+import { bcTag, dateDomain, dateTicks, type Channel, type Pair, type PairSite } from './data'
 
 const SCALES = ['absolute', 'median'] as const
-const MEASURES = (ch: Channel, mac: number) => [
-  { key: 'aeth', label: `Aethalometer ${ch} BCc`, value: (p: Pair) => p.bc },
+const MEASURES = (ch: Channel, mac: number, tag = '') => [
+  { key: 'aeth', label: `Aethalometer ${ch} BCc${tag}`, value: (p: Pair) => p.bc },
   { key: 'hips', label: `HIPS BC (Fabs ÷ ${mac})`, value: (p: Pair) => p.hipsBc },
   { key: 'ec', label: 'FTIR EC', value: (p: Pair) => p.ec },
 ]
@@ -33,7 +33,7 @@ export function AgreementTimeline({ pairs, marked = [], sites, ch }: {
   const [scale, setScale] = useSearchParam<(typeof SCALES)[number]>('af.norm', 'absolute', SCALES)
   const hl = useHighlightActions()
   const { mac } = useMac()
-  const measures = MEASURES(ch, mac)
+  const measures = MEASURES(ch, mac, bcTag(pairs))
   const reasonOf = useMarkReason()
   const per = useMemo(() => sites.map((s) => {
     const own = pairs.filter((p) => p.site === s.name).sort((a, b) => a.date.localeCompare(b.date))
@@ -58,7 +58,7 @@ export function AgreementTimeline({ pairs, marked = [], sites, ch }: {
 
   return (
     <ChartFrame id="aeth-filters-timeline" title="Through time — the aethalometer, HIPS and FTIR EC on each filter"
-      subtitle={`Each filter's aethalometer ${ch} BCc (window mean), HIPS BC (Fabs ÷ ${mac}, the MAC set under Filters → units; the AAARpos notebook used 10) and FTIR EC, in µg/m³ or each divided by its own median at the site. Lines break where filters are more than 45 days apart. The means over the filters with all three are under each site.`}
+      subtitle={`Each filter's aethalometer ${ch} BCc${bcTag(pairs)} (window mean), HIPS BC (Fabs ÷ ${mac}, the MAC set under Filters → units; the AAARpos notebook used 10) and FTIR EC, in µg/m³ or each divided by its own median at the site. Lines break where filters are more than 45 days apart. The means over the filters with all three are under each site.`}
       provenance="AAARpos.ipynb (method agreement time series) · ETAD_Aug13.ipynb §9, §11 · ETAD_comprehensive_absorption_analysis.ipynb §9 (normalised FTIR EC vs BCc)"
       controls={<Segmented label="Scale" value={scale} options={SCALES} onChange={setScale} optionLabel={(k) => (k === 'absolute' ? 'µg/m³' : '÷ own median')} />}>
       {per.length === 0 ? <Empty>No filter in view has the aethalometer at {ch}.</Empty> : per.map(({ s, series, marks, nAll, means, ticks, xDomain }) => (

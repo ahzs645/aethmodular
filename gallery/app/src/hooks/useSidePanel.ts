@@ -40,16 +40,16 @@ export function useSidePanelOpen(): [boolean, (v: boolean) => void] {
   return [open, (v: boolean) => { writeOpen(v); window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: v })) }]
 }
 
-/** The two halves of the Filters dock: what is in view, and how it is drawn. */
-export type SidePanelView = 'filters' | 'plot'
+/** The tabs of the Filters dock: what is in view, how it is drawn, and the open page's own controls (lib/pageSidebar). */
+export type SidePanelView = 'filters' | 'plot' | 'page'
 
 const VIEW_KEY = 'gallery.sidepanel.view'
 const VIEW_EVENT = 'gallery-side-panel-view'
-const readView = (): SidePanelView => { try { return localStorage.getItem(VIEW_KEY) === 'plot' ? 'plot' : 'filters' } catch { return 'filters' } }
+const readView = (): SidePanelView => { try { const v = localStorage.getItem(VIEW_KEY); return v === 'plot' || v === 'page' ? v : 'filters' } catch { return 'filters' } }
 
 /**
  * Which tab of the side panel is showing: Filters (network, sites, seasons, dates, exclusions)
- * or Plot (fits, axes, units, ratios, baseline). Shared like the open state, so the Dashboard's
+ * Plot (fits, axes, units, ratios, baseline) or the page's own controls. Shared like the open state, so the Dashboard's
  * "Filters" button can bring the panel up on its Filters tab.
  */
 export function useSidePanelView(): [SidePanelView, (v: SidePanelView) => void] {

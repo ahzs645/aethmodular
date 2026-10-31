@@ -9,7 +9,7 @@ import { ExcludedNote } from '@/lib/markedRows'
 import { seasonOnly, shortSeason } from '@/lib/seasons'
 import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
-import { MAC_DEFS, macMarker, macOf, seasonColor, seasonsIn, type Channel, type Pair, type PairSite } from './data'
+import { MAC_DEFS, bcTag, macMarker, macOf, seasonColor, seasonsIn, type Channel, type Pair, type PairSite } from './data'
 
 const MIN_N = 3
 
@@ -61,14 +61,14 @@ export function ImpliedMac({ pairs, marked = [], meta, sites, ch, sigma, onSite 
 
   const { mac } = useMac()
   const panels: IntervalPanel[] = MAC_DEFS.map((d) => ({
-    heading: d.key === 'aethOverEc' ? `b_ATN ${ch} ÷ FTIR EC` : d.key === 'hipsOverBc' ? `HIPS Fabs ÷ ${ch} BCc` : d.label,
+    heading: d.key === 'aethOverEc' ? `b_ATN ${ch} ÷ FTIR EC` : d.key === 'hipsOverBc' ? `HIPS Fabs ÷ ${ch} BCc${bcTag(pairs)}` : d.label,
     label: 'm²/g', reference: d.reference(sigma ?? NaN), marker: macMarker(d, mac), format: (v: number) => fmt(v, 1),
   })).map((p) => (Number.isFinite(p.reference) ? p : { ...p, reference: undefined }))
 
   const any = blocks.some((b) => b.rows.some((r) => r.marks.some((m) => m.length)))
   return (
     <ChartFrame id="aeth-filters-mac" title={`Implied MAC by ${one ? 'season' : 'site and season'} — what each pairing says the mass absorption cross-section is`}
-      subtitle={`Per filter, a ratio of absorption to mass: HIPS Fabs (633 nm) ÷ FTIR EC; HIPS Fabs ÷ the aethalometer's ${ch} BCc; and the aethalometer's attenuation coefficient b_ATN = ${ch} BCc × σ_ATN${sigma ? ` (${fmt(sigma, 3)} m²/g)` : ''} ÷ FTIR EC. Dot and bar: median and interquartile range of the per-filter ratios; diamond: ratio of the means (AAARpos Method 2). The line is 10 m²/g, SPARTAN's MAC at 633 nm, for the HIPS ratios (dashed beside it: the MAC set under Filters → units, when it is not 10), and σ_ATN for the last (where the aethalometer's BC equals EC). b_ATN keeps the filter-tape multiple-scattering enhancement, so it is not on HIPS's scale. Seasons follow the gallery's calendar; at least ${MIN_N} filters per row.`}
+      subtitle={`Per filter, a ratio of absorption to mass: HIPS Fabs (633 nm) ÷ FTIR EC; HIPS Fabs ÷ the aethalometer's ${ch} BCc${bcTag(pairs)}; and the aethalometer's attenuation coefficient b_ATN = ${ch} BCc × σ_ATN${sigma ? ` (${fmt(sigma, 3)} m²/g)` : ''} ÷ FTIR EC. Dot and bar: median and interquartile range of the per-filter ratios; diamond: ratio of the means (AAARpos Method 2). The line is 10 m²/g, SPARTAN's MAC at 633 nm, for the HIPS ratios (dashed beside it: the MAC set under Filters → units, when it is not 10), and σ_ATN for the last (where the aethalometer's BC equals EC). b_ATN keeps the filter-tape multiple-scattering enhancement, so it is not on HIPS's scale. Seasons follow the gallery's calendar; at least ${MIN_N} filters per row.`}
       provenance="AAARpos.ipynb (MAC methods, seasonal MAC) · ETAD_Aug13.ipynb §9.6 · ETAD_comprehensive_absorption_analysis.ipynb §11–12 (aethalometer MAC = IR Babs / FTIR EC)">
       {any ? <>
         <IntervalStrip blocks={blocks} panels={panels} labelWidth={110} noteWidth={44} minPanelWidth={170} />

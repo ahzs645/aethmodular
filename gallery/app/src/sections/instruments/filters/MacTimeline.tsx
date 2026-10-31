@@ -11,7 +11,7 @@ import { seasonOnly } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
 import { FONT, INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
-import { MAC_DEFS, macMarker, dateDomain, dateTicks, macOf, seasonColor, seasonsIn, type Channel, type MacKey, type Pair, type PairSite } from './data'
+import { MAC_DEFS, bcTag, macMarker, dateDomain, dateTicks, macOf, seasonColor, seasonsIn, type Channel, type MacKey, type Pair, type PairSite } from './data'
 import { iqrFences, seasonRuns } from './mac'
 
 const GAP_DAYS = 60, MIN_RUN = 5
@@ -58,7 +58,7 @@ export function MacTimeline({ pairs, marked = [], meta, sites, ch, sigma }: {
         optionLabel={(k) => { const d = MAC_DEFS.find((x) => x.key === k)!; return k === 'hipsOverEc' ? d.short : k === 'hipsOverBc' ? `HIPS ÷ ${ch} BC` : `b_ATN ${ch} ÷ EC` }} />}>
       {per.length === 0 ? <Empty>No filter in view has both members of {def.label}.</Empty> : per.map(({ s, series, runs, outliers, marks, ticks, xDomain }) => (
         <div key={s.code}>
-          <SweepPlot series={series} xScale="time" xDomain={xDomain} xFormat={ticks} yLabel={`${def.short} (m²/g)`} height={260} reference={Number.isFinite(reference) ? reference : undefined}
+          <SweepPlot series={series} xScale="time" xDomain={xDomain} xFormat={ticks} yLabel={`${def.short}${def.key === 'hipsOverEc' ? '' : bcTag(pairs.filter((p) => p.site === s.name))} (m²/g)`} height={260} reference={Number.isFinite(reference) ? reference : undefined}
             yMarkers={readerMac ? [{ at: readerMac.value, label: readerMac.label, color: INK.accent }] : undefined}
             title={sites.length > 1 ? s.name : undefined}
             onPoint={(_, pt) => pt.id && hl.openSample(pt.id)} marks={marks}
@@ -77,7 +77,7 @@ export function MacTimeline({ pairs, marked = [], meta, sites, ch, sigma }: {
                 </g>
               })}
             </g>} />
-          {outliers.length > 0 && <Note>{s.name}: {outliers.length} filter{outliers.length > 1 ? 's' : ''} outside 1.5 × IQR ({outliers.map((q) => `${q.p.date} ${fmt(q.v, 1)}`).join(', ')}), drawn hollow (on the axis edge when beyond it) and left out of the averages.</Note>}
+          {outliers.length > 0 && <Note explain>{s.name}: {outliers.length} filter{outliers.length > 1 ? 's' : ''} outside 1.5 × IQR ({outliers.map((q) => `${q.p.date} ${fmt(q.v, 1)}`).join(', ')}), drawn hollow (on the axis edge when beyond it) and left out of the averages.</Note>}
         </div>
       ))}
       <ExcludedNote count={per.reduce((a, x) => a + x.marks.length, 0)} drawn />

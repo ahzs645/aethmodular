@@ -226,7 +226,7 @@ function AddisScatter({ d }: { d: AnalogsData }) {
     {view === 'panels' && <FacetGrid items={panels} minCell={300} maxCols={3} render={(p, w) =>
       <Crossplot points={p.points} marked={p.marked} title={p.key} xLabel={labelOf('hips_bc')} yLabel="FTIR EC (µg/m³)" brushable brush={brush} maxSide={w - 70} errorRatio={lambda} domain={shared.domain} />} />}
     {view === 'overlay' && <>
-      <Crossplot points={overlay} marked={view === 'overlay' && out.length ? overlayOf(out) : undefined} title="Every model" xLabel={labelOf('hips_bc')} yLabel="FTIR EC (µg/m³)" brushable brush={brush} maxSide={520} errorRatio={lambda} grouping="site" groupNoun="model" />
+      <Crossplot points={overlay} marked={view === 'overlay' && out.length ? overlayOf(out) : undefined} title="Every model" xLabel={labelOf('hips_bc')} yLabel="FTIR EC (µg/m³)" brushable brush={brush} maxSide={520} errorRatio={lambda} grouping="site" />
       <Legend {...lg.props} items={models.map((m) => ({ label: m, color: colorOf(m) }))} />
     </>}
     {view === 'one' && standard && fit && <Note>The Deming line here is the one in "Addis against HIPS" above, on the same filters (slope {coef(mac.slope(fit.slope))}, intercept {coefSigned(fit.intercept)} µg/m³, n {fit.n}, λ {f2(lambda)}). Choosing another estimator changes it here only.</Note>}
