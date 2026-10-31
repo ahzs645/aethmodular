@@ -54,13 +54,13 @@ export function TimelineSizeControl({ size, auto, onChange }: { size: TimelineSi
       title="Each panel's width and height in px: drag sideways or click to type. Wider than the chart, the panels scroll sideways together; taller than the window, the page scrolls down. ↺ goes back to Auto, the panels fitted to the chart">
       Panel size
       <span className="panel-size-row">
-        <button type="button" className="btn quiet icon-btn panel-size-reset" aria-label="Panel size: back to Auto" title={sized ? 'Back to Auto: the panels fit the chart' : 'Auto: the panels fit the chart'}
-          disabled={!sized} onClick={() => onChange({ w: 0, h: 0 })}><UndoIcon /></button>
-        <ScrubField label="Panel width" value={size.w || Math.round(auto.w)} min={TIMELINE_W[0]} max={TIMELINE_W[1]} step={20} unit={size.w ? 'px' : 'auto'} width={96}
+        <ScrubField label="Panel width" value={size.w || Math.round(auto.w)} min={TIMELINE_W[0]} max={TIMELINE_W[1]} step={20} unit={size.w ? 'px' : undefined} width={96}
           onChange={(v) => onChange({ ...size, w: Math.round(v) })} />
         <span aria-hidden>×</span>
-        <ScrubField label="Panel height" value={size.h || Math.round(auto.h)} min={TIMELINE_H[0]} max={TIMELINE_H[1]} step={10} unit={size.h ? 'px' : 'auto'} width={88}
+        <ScrubField label="Panel height" value={size.h || Math.round(auto.h)} min={TIMELINE_H[0]} max={TIMELINE_H[1]} step={10} unit={size.h ? 'px' : undefined} width={88}
           onChange={(v) => onChange({ ...size, h: Math.round(v) })} />
+        {sized && <button type="button" className="btn quiet icon-btn panel-size-reset" aria-label="Panel size: back to Auto" title="Back to Auto: the panels fit the chart"
+          onClick={() => onChange({ w: 0, h: 0 })}><UndoIcon /></button>}
       </span>
     </span>
   )

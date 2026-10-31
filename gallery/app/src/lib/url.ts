@@ -109,10 +109,10 @@ export function useSearchParam<T extends string>(key: string, fallback: T, allow
   registerKey(name, allowed)
   // an empty list means the options are still loading: keep a link's value until they arrive
   const known = (v: string) => !allowed || allowed.length === 0 || allowed.includes(v)
-  const read = () => {
-    const value = new URL(window.location.href).searchParams.get(name)
-    return value && known(value) ? (value as T) : fallback
-  }
+  // the raw value: checked against the options at render (below), not here. The sync listener outlives
+  // the render that made it, so a list that grew since (a palette the reader just saved) would turn
+  // their new pick back into the fallback
+  const read = () => (new URL(window.location.href).searchParams.get(name) || fallback) as T
   const [value, setValue] = useState<T>(read)
   useEffect(() => {
     const sync = () => setValue(read())

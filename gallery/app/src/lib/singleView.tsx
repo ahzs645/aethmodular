@@ -430,7 +430,8 @@ function ChartPicker() {
   if (!charts.length) return null
   if (charts.length === 1) return <>{charts[0].title}</>
   const options = charts.map((c, i) => ({ key: String(i), label: c.title, group: c.group, hint: String(i + 1) }))
-  return <Combobox label="" title="Jump to a chart on this page" value={String(index)} options={options} search onChange={(k) => jump(Number(k))} />
+  // the title is cut to fit its line: the hover names it in full
+  return <Combobox label="" title={`${charts[index]?.title ?? ''}\n\nClick to jump to another chart on this page`} value={String(index)} options={options} search onChange={(k) => jump(Number(k))} />
 }
 
 /**

@@ -3,7 +3,8 @@ import { isDark, paintPair, registerPrintColours, registerPrintResolver } from '
 import { useSearchParam } from '@/lib/url'
 import { useTheme } from '@/lib/colorTheme'
 import { ColourSchemePicker, type SchemeChoice } from '@/components/ColourSchemePicker'
-import { PALETTES, hasNamedColours, paletteColours, type PaletteKind } from './palettes'
+import { PALETTES, allPalettes, getPalette, hasNamedColours, paletteColours, type PaletteKind } from './palettes'
+import { useCustomPalettes } from './customPalettes'
 
 /**
  * One picker for a chart's colours (components/ColourSchemePicker), offering the palettes of one
@@ -18,17 +19,18 @@ import { PALETTES, hasNamedColours, paletteColours, type PaletteKind } from './p
  * A chart without a ramp puts `colours.picker` (a button with the same list) in its controls; a
  * categorical chart builds its scale with categoricalScale(colours.name, fields, colours.reverse).
  * The choice is kept in the URL as `<chart>.palette` / `<chart>.reverse`. New palettes go in
- * lib/palettes, never here.
+ * lib/palettes, never here; the reader's own (lib/customPalettes) are listed after them.
  */
 export type SchemeKind = PaletteKind
 const RAMPS = ['diverging', 'sequential'] as const
 /**
  * The palettes a chart's picker lists: every general one, and a fixed set (one with named colours:
  * SPARTAN composition, FTIR functional groups, PMF paper) only on a chart that opens on it. On any
- * other chart's categories a fixed set matches no label and would only repeat Gallery.
+ * other chart's categories a fixed set matches no label and would only repeat Gallery. The
+ * reader's own palettes come last.
  */
 export const paletteChoices = (kind: SchemeKind, chartDefault: string) =>
-  PALETTES[kind].filter((p) => !p.named || p.name === chartDefault).map((p) => p.name)
+  allPalettes(kind).filter((p) => !p.named || p.name === chartDefault).map((p) => p.name)
 // a categorical colour with a dark twin (Okabe–Ito's black) shows the twin on the dark page, as
 // every themed mark does; charts keep drawing the light colour, so exports print it
 for (const p of PALETTES.categorical) for (const [l, d] of Object.entries(p.dark ?? {})) paintPair(l, d)
@@ -63,21 +65,18 @@ const DARK_RAMPS = Object.fromEntries(RAMPS.map((kind) =>
 // colour a chart interpolated between stops (d3 scaleLinear, interpolateRgbBasis) to the light colour
 // at the same place on the light ramp
 for (const kind of RAMPS) for (const [k, v] of Object.entries(DARK_RAMPS[kind])) registerPrintColours(v, lightStops(kind)[k])
-const RAMP_SAMPLES = (() => {
-  const out: { rgb: [number, number, number]; light: string }[] = []
-  const add = (dark: string, light: string) => {
-    if (dark === light) return
-    const c = d3.rgb(dark)
-    out.push({ rgb: [c.r, c.g, c.b], light: d3.rgb(light).formatHex() })
+const RAMP_SAMPLES: { rgb: [number, number, number]; light: string }[] = []
+function addRampSamples(dark: readonly string[], lit: readonly string[]) {
+  const add = (d: string, light: string) => {
+    if (d === light) return
+    const c = d3.rgb(d)
+    RAMP_SAMPLES.push({ rgb: [c.r, c.g, c.b], light: d3.rgb(light).formatHex() })
   }
-  for (const kind of RAMPS) for (const [k, dark] of Object.entries(DARK_RAMPS[kind])) {
-    const lit = lightStops(kind)[k]
-    const basisD = d3.interpolateRgbBasis(dark), basisL = d3.interpolateRgbBasis([...lit])
-    for (let i = 0; i <= 400; i++) add(basisD(i / 400), basisL(i / 400))
-    for (let s = 0; s < dark.length - 1; s++) for (let i = 0; i <= 60; i++) add(d3.interpolateRgb(dark[s], dark[s + 1])(i / 60), d3.interpolateRgb(lit[s], lit[s + 1])(i / 60))
-  }
-  return out
-})()
+  const basisD = d3.interpolateRgbBasis([...dark]), basisL = d3.interpolateRgbBasis([...lit])
+  for (let i = 0; i <= 400; i++) add(basisD(i / 400), basisL(i / 400))
+  for (let s = 0; s < dark.length - 1; s++) for (let i = 0; i <= 60; i++) add(d3.interpolateRgb(dark[s], dark[s + 1])(i / 60), d3.interpolateRgb(lit[s], lit[s + 1])(i / 60))
+}
+for (const kind of RAMPS) for (const [k, dark] of Object.entries(DARK_RAMPS[kind])) addRampSamples(dark, lightStops(kind)[k])
 const resolved = new Map<string, string | null>()
 registerPrintResolver((hex) => {
   if (resolved.has(hex)) return resolved.get(hex)!
@@ -91,16 +90,40 @@ registerPrintResolver((hex) => {
   return best
 })
 
+/**
+ * A reader's palette (lib/customPalettes) gets its dark steps the first time the dark page draws it,
+ * by the same rule as the built-in ones, and its export colours with them. Keyed by its colours, so
+ * an edited palette is worked out again.
+ */
+const customDark = new Map<string, string[]>()
+function darkRamp(kind: typeof RAMPS[number], name: string): readonly string[] {
+  const built = DARK_RAMPS[kind][name]
+  if (built) return built
+  const lit = getPalette(kind, name).colours
+  const key = `${kind}|${lit.join(',')}`
+  let dark = customDark.get(key)
+  if (!dark) {
+    dark = darkStops(kind, lit)
+    customDark.set(key, dark)
+    registerPrintColours(dark, [...lit])
+    addRampSamples(dark, lit)
+    resolved.clear()
+  }
+  return dark
+}
+
 /** a palette's colours in the current theme, in the chosen direction */
 export function schemeStops(kind: SchemeKind, name: string, reverse = false): string[] {
   if (kind === 'categorical' || !isDark()) return paletteColours(kind, name, reverse)
-  const stops = [...(DARK_RAMPS[kind][name] ?? DARK_RAMPS[kind].Gallery)]
+  const stops = [...darkRamp(kind, name)]
   return reverse ? stops.reverse() : stops
 }
 
 export function useColourScheme(chartId: string, kind: SchemeKind, fallback = 'Gallery') {
   // ramps have their own dark steps, which CSS cannot map (a cell's colour is interpolated): redraw on a switch
   useTheme()
+  // and on the reader saving, editing or deleting a palette of their own
+  useCustomPalettes()
   const names = paletteChoices(kind, fallback)
   const [name, setName] = useSearchParam<string>(`${chartId}.palette`, fallback, names)
   const [rev, setRev] = useSearchParam<string>(`${chartId}.reverse`, '0', ['0', '1'])

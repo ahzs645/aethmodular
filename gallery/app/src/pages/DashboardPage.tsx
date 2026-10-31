@@ -11,7 +11,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { ChartSite, ChartFit, LEGEND_MODES, TileLegend, type LegendMode } from '@/lib/chartFit'
 import { addTile, arrange, COLS, nextId, nextTileId, placeTile, removeTile, stepTile, ROWS, rowsUsed, tileKeyPrefix, updateTile, type DashState, type Scope, type Sheet, type Tile } from '@/lib/dashboard'
 import { clearScopedParams, copyScopedParams, ParamScope, useSearchParam } from '@/lib/url'
-import { CohortControls, DashboardDialog, DetailsDialog, TileData, TileErrorBoundary, TileInformation, useTileCohort } from '@/components/dashboard/DashboardTools'
+import { CohortControls, DashboardDialog, DetailsDialog, TileData, TileErrorBoundary, TileInformation, tileDataRequest, useTileCohort } from '@/components/dashboard/DashboardTools'
 import { DashboardDetails, type DetailRequest } from '@/lib/dashboardDetails'
 import type { DashboardSnapshot } from '@/lib/dashboardSnapshot'
 import { SnapshotFiles } from '@/lib/data'
@@ -410,6 +410,7 @@ function ScopedTileView({ tile, chart, data, width, height, style, scopePrefix, 
   const effectiveFields = useMemo(() => fields.map(data.eff), [fields, data.eff])
   const [details, setDetails] = useState<DetailRequest | null>(null)
   const [filterOpen, setFilterOpen] = useState(false)
+  const [infoOpen, setInfoOpen] = useState(false)
   const showDetails = useCallback((d: DetailRequest) => setDetails(d), [])
   // x and y never show the same field: picking the other one's field swaps the two (as in App)
   const setField = (i: number, f: string) => {
@@ -474,9 +475,7 @@ function ScopedTileView({ tile, chart, data, width, height, style, scopePrefix, 
     // overflowing: the panel's own overflow, which counts margins that spill past the last child;
     // otherwise the room left under the last child
     const over = panel.scrollHeight - panel.clientHeight
-    const stripHeight = ref.current?.querySelector('.tile-data-strip')?.getBoundingClientRect().height ?? 0
-    const available = height - stripHeight
-    const slack = over > 0 ? -over : Math.min(panel.clientHeight, available) - (bottom - top + pad + panel.scrollTop)
+    const slack = over > 0 ? -over : Math.min(panel.clientHeight, height) - (bottom - top + pad + panel.scrollTop)
     if (Math.abs(slack) <= 2) return
     // never taller than the tile: past that a chart only scrolls
     const next = Math.min(Math.max(minFit, height), Math.max(minFit, Math.round(fit + slack)))
@@ -489,6 +488,9 @@ function ScopedTileView({ tile, chart, data, width, height, style, scopePrefix, 
   const subtitle = chart.fields === 'pair' ? `${fields[1]} vs ${fields[0]}` : chart.fields === 'single' && chart.kind !== 'stat' ? fields[0] : undefined
   const menu = (close: () => void) => <>
     <button type="button" className="btn quiet" onClick={() => { close(); setFilterOpen(true) }}>Filters for this tile</button>
+    {chart.kind !== 'note' && <button type="button" className="btn quiet" onClick={() => { close(); setInfoOpen(true) }}
+      title="Effective filters, measurement methods and source">Data and filters ⓘ <span className="dash-count">{new Set(tileData.rows.map((r) => r.id)).size}</span></button>}
+    {chart.kind !== 'note' && chart.details !== false && <button type="button" className="btn quiet" onClick={() => { close(); setDetails(tileDataRequest(tileData.rows, chart, effectiveFields)) }}>View data</button>}
     {onFocus && <button type="button" className="btn quiet" onClick={() => { close(); onFocus() }}>◱ Show large</button>}
     <button type="button" className="btn quiet" onClick={() => { close(); onMaximize() }}>{role === 'max' ? '⤡ Back' : '⤢ Full window'}</button>
     <button type="button" className="btn quiet" onClick={() => { close(); onDuplicate() }}>⧉ Duplicate</button>
@@ -552,7 +554,7 @@ function ScopedTileView({ tile, chart, data, width, height, style, scopePrefix, 
           </AxisFieldsProvider>
         </FrameExtrasContext.Provider>
       </DashboardDetails.Provider></TileData.Provider></SnapshotFiles.Provider>
-      {chart.kind !== 'note' && <TileInformation data={tileData} chart={chart} fields={effectiveFields} filter={filter} onDetails={showDetails} onFilters={() => setFilterOpen(true)} />}
+      {infoOpen && <TileInformation data={tileData} chart={chart} fields={effectiveFields} filter={filter} onClose={() => setInfoOpen(false)} onFilters={() => setFilterOpen(true)} />}
       {filterOpen && <DashboardDialog title={`${chart.label} · filters for this tile`} onClose={() => setFilterOpen(false)}><CohortControls data={data} filter={filter} setFilter={setFilter} rows={cohortRows} /></DashboardDialog>}
       {details && <TileData.Provider value={tileData}><DetailsDialog request={details} onClose={() => setDetails(null)} /></TileData.Provider>}
       {!framed && <section className="panel compact dash-fallback">

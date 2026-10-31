@@ -134,10 +134,10 @@ export function Scatterplot({ rows, meta, xField, yField, axes: axesIn, id = 'sc
       title="Every plot's side in px: drag sideways or click to type. Panels that do not fit scroll sideways inside the chart and down the page. ↺ goes back to Auto, the panels fitted to the chart (in the one-chart view, the window)">
       Panel size
       <span className="panel-size-row">
-        <button type="button" className="btn quiet icon-btn panel-size-reset" aria-label="Panel size: back to Auto" title={sized ? 'Back to Auto: the panels fit the chart' : 'Auto: the panels fit the chart'}
-          disabled={!sized} onClick={() => setPanelParam('')}><UndoIcon /></button>
-        <ScrubField label="Panel size" value={sized || Math.round(innerW)} min={PANEL_MIN} max={PANEL_MAX} step={10} unit={sized ? 'px' : 'auto'} width={110}
+        <ScrubField label="Panel size" value={sized || Math.round(innerW)} min={PANEL_MIN} max={PANEL_MAX} step={10} unit={sized ? 'px' : undefined} width={110}
           onChange={(v) => setPanelParam(String(Math.round(v)))} />
+        {!!sized && <button type="button" className="btn quiet icon-btn panel-size-reset" aria-label="Panel size: back to Auto" title="Back to Auto: the panels fit the chart"
+          onClick={() => setPanelParam('')}><UndoIcon /></button>}
       </span>
     </span> },
     { key: 'colorBy', label: 'Colour', choices: COLOR_BY.map((v) => ({ value: v, when: v === 'Site' ? (c: OptionContext) => !(c.layout === 'Per season' && (c.sites as number) <= 1) : v === 'Group' ? (c: OptionContext) => !!c.hasGroup : undefined })), default: 'Site', title: 'Value: a third measurement on a sequential ramp (2–98 % of its range), or, where a site in view has PMF, its day\'s dominant source', onChange: () => setHidden(new Set()) },

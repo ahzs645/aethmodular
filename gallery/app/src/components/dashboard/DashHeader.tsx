@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Combobox } from '@/components/Combobox'
 import { DateBrush } from '@/components/DateBrush'
 import { SitePicker } from '@/components/SitePicker'
+import { StepButton } from '@/components/StepButton'
 import type { SubsetActions, SubsetState } from '@/components/SubsetBar'
 import { useSidePanelOpen, useSidePanelView } from '@/hooks/useSidePanel'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
@@ -64,10 +65,19 @@ export function DashHeader({ meta, filters, scope, onScope, onPickSite, layout, 
     {SCOPES.map((k) => <button key={k} type="button" role="radio" aria-checked={scope === k} className={scope === k ? 'active' : ''}
       onClick={() => onScope(k)} title={SCOPE_TITLE[k]}>{SCOPE_LABEL[k]}</button>)}
   </span>
+  // ‹ › step through the sites in the list's order (wrapping); the picker keeps one width, so the arrows stay put
+  const siteOrder = [...spartan].sort((x, y) => x.label.localeCompare(y.label))
+  const siteAt = picked.length === 1 ? siteOrder.findIndex((x) => x.key === picked[0].key) : -1
+  const siteStep = (d: number) => siteOrder[siteAt < 0 ? (d > 0 ? 0 : siteOrder.length - 1) : (siteAt + d + siteOrder.length) % siteOrder.length]
+  const stepSite = (d: number) => { const to = siteStep(d); if (to) onPickSite(to.key) }
   const sitePicker = scope === 'site'
-    ? <Combobox label="" value={picked.length === 1 ? picked[0].key : ''} minWidth={130} title="The site every tile shows"
-      options={[...spartan].sort((x, y) => x.label.localeCompare(y.label)).map((x) => ({ key: x.key, label: x.label, hint: String(x.n) }))}
-      onChange={onPickSite} />
+    ? <span className="dash-site-step">
+      <StepButton dir="prev" label="Previous site" title={`Previous site: ${siteStep(-1)?.label ?? ''}`} disabled={siteOrder.length < 2} onClick={() => stepSite(-1)} />
+      <Combobox label="" value={picked.length === 1 ? picked[0].key : ''} title="The site every tile shows"
+        options={siteOrder.map((x) => ({ key: x.key, label: x.label, hint: String(x.n) }))}
+        onChange={onPickSite} />
+      <StepButton dir="next" label="Next site" title={`Next site: ${siteStep(1)?.label ?? ''}`} disabled={siteOrder.length < 2} onClick={() => stepSite(1)} />
+    </span>
     : scope === 'sites'
       ? <HeaderPopover label={picked.length <= 2 ? picked.map((x) => x.label).join(', ') || 'No sites' : `${picked.length} sites`} title="Which sites the tiles compare" wide>
         <SitePicker items={s.siteItems} onToggle={a.onToggleSite} onAll={s.network === 'improve' ? undefined : a.onAllSites}

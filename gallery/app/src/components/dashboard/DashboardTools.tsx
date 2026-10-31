@@ -78,18 +78,20 @@ export function CohortControls({ data, filter, setFilter, rows }: { data: Dashbo
   </fieldset>
 }
 
-export function TileInformation({ data, chart, fields, filter, onDetails, onFilters }: { data: DashboardData; chart: DashboardChart; fields: string[]; filter: CohortFilter; onDetails: (d: DetailRequest) => void; onFilters: () => void }) {
-  const [open, setOpen] = useState(false)
+/** the tile's measured rows, for its ⋯ menu's "View data" */
+export function tileDataRequest(rows: DashboardData['rows'], chart: DashboardChart, fields: string[]): DetailRequest {
+  return { title: `${chart.label}: measured filters in this tile`, rows: measuredRows(rows, fields, chart.group === 'Evolution' || chart.kind === 'stat'), fields,
+    note: chart.kind === 'scatter' || chart.kind === 'hexbin' ? 'Finite paired measurements before chart-specific axis clipping, legend hiding or grouping. Use a chart-specific contributing-row action where offered for an individual aggregate.' : 'Measured rows in this tile. Individual aggregate actions use their own exact contributing rows.' }
+}
+
+/** a tile's effective filters, measurement methods and source, opened from its ⋯ menu ("Data and filters") */
+export function TileInformation({ data, chart, fields, filter, onClose, onFilters }: { data: DashboardData; chart: DashboardChart; fields: string[]; filter: CohortFilter; onClose: () => void; onFilters: () => void }) {
   const finite = measuredRows(data.rows, fields, chart.group === 'Evolution' || chart.kind === 'stat')
   const dates = data.rows.map(r => r.date).filter(Boolean).sort()
   const n = new Set(data.rows.map(r => r.id)).size
   const label = filter.ids ? 'Reference cohort' : filter.site || filter.season || filter.from || filter.to ? 'Tile + page filters' : 'Page filters'
   return <>
-    <div className="tile-data-strip"><button type="button" className="btn quiet" onClick={() => setOpen(true)} title="Effective filters, measurement methods and source">{label} · {n} filters ⓘ</button>
-      {chart.details !== false && <button type="button" className="btn quiet" onClick={() => onDetails({ title: `${chart.label}: measured filters in this tile`, rows: finite, fields,
-        note: chart.kind === 'scatter' || chart.kind === 'hexbin' ? 'Finite paired measurements before chart-specific axis clipping, legend hiding or grouping. Use a chart-specific contributing-row action where offered for an individual aggregate.' : 'Measured rows in this tile. Individual aggregate actions use their own exact contributing rows.' })}>View data</button>}
-    </div>
-    {open && <DashboardDialog title={`${chart.label} · data and filters`} onClose={() => setOpen(false)}>
+    <DashboardDialog title={`${chart.label} · data and filters`} onClose={onClose}>
       <p><strong>{label}</strong> · {n} physical filters · {fields.length ? `${finite.length} with finite selected measurements` : 'Chart-specific population'}</p>
       <p>{[...new Set(data.rows.map(r => r.site))].join(', ') || 'No sites'} · {dates[0] ?? 'No dates'} to {dates[dates.length - 1] ?? '—'}</p>
       <p>Seasons: {[...new Set(data.rows.map(r => r.season))].join('; ') || 'None'}. Calendar: {data.meta.season_convention}.</p>
@@ -98,8 +100,8 @@ export function TileInformation({ data, chart, fields, filter, onDetails, onFilt
       <p>Source export: {data.provenance?.generated as string ?? data.meta.generated}. {data.provenance?.source as string ?? ''}</p>
       <p>Source mode: {String(data.provenance?.sourceMode ?? 'bundled')}; baseline: {String(data.provenance?.baseline ?? 'exported')}; MAC: {String(data.provenance?.mac ?? data.meta.mac_value)}; basis: {data.meta.basis ?? 'concentration'}.</p>
       {Array.isArray(data.provenance?.publicSources) && (data.provenance.publicSources as PublicSiteStatus[]).filter(s => data.rows.some(r => r.code === s.code)).map(s => <p key={s.code}>{s.code}: {s.state}; source updated {s.updated ?? 'not supplied'}; retrieved {s.checked}. {s.message ?? ''}</p>)}
-      <button type="button" className="btn" onClick={() => { setOpen(false); onFilters() }}>Edit this tile’s filters</button>
-    </DashboardDialog>}
+      <button type="button" className="btn" onClick={() => { onClose(); onFilters() }}>Edit this tile’s filters</button>
+    </DashboardDialog>
   </>
 }
 

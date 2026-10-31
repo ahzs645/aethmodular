@@ -152,14 +152,26 @@ export const PALETTES: Readonly<Record<PaletteKind, readonly Palette[]>> = {
   ],
 }
 
-export const paletteNames = (kind: PaletteKind) => PALETTES[kind].map((p) => p.name)
+/**
+ * The reader's own palettes (components/ColourSchemePicker "+ New palette", kept in this browser by
+ * lib/customPalettes), listed after the built-in ones. Held here so every lookup below finds them;
+ * this module never touches storage, so node tests see only the built-in lists.
+ */
+const CUSTOM: Record<PaletteKind, readonly Palette[]> = { sequential: [], diverging: [], categorical: [] }
+export function setCustomPalettes(kind: PaletteKind, list: readonly Palette[]) { CUSTOM[kind] = list }
+/** every palette of a kind: the built-in ones, then the reader's own */
+export const allPalettes = (kind: PaletteKind): readonly Palette[] => CUSTOM[kind].length ? [...PALETTES[kind], ...CUSTOM[kind]] : PALETTES[kind]
+export const isCustomPalette = (kind: PaletteKind, name: string) => CUSTOM[kind].some((p) => p.name === name)
+export const isBuiltInPalette = (kind: PaletteKind, name: string) => PALETTES[kind].some((p) => p.name === name)
+
+export const paletteNames = (kind: PaletteKind) => allPalettes(kind).map((p) => p.name)
 /** the named palette of a kind, or its Gallery palette for a name it does not have */
 export const getPalette = (kind: PaletteKind, name: string): Palette =>
-  PALETTES[kind].find((p) => p.name === name) ?? PALETTES[kind].find((p) => p.name === 'Gallery')!
+  allPalettes(kind).find((p) => p.name === name) ?? PALETTES[kind].find((p) => p.name === 'Gallery')!
 
 /** the line under a palette's name in the picker */
 export function paletteNote(kind: PaletteKind, name: string): string | undefined {
-  const p = PALETTES[kind].find((q) => q.name === name)
+  const p = allPalettes(kind).find((q) => q.name === name)
   if (!p) return undefined
   const parts = [
     p.safe && 'colour-vision safe',
@@ -177,7 +189,7 @@ export function paletteColours(kind: PaletteKind, name: string, reverse = false)
   return reverse && !p.named ? [...p.colours].reverse() : [...p.colours]
 }
 
-export const hasNamedColours = (name: string) => !!PALETTES.categorical.find((p) => p.name === name)?.named
+export const hasNamedColours = (name: string) => !!allPalettes('categorical').find((p) => p.name === name)?.named
 
 /**
  * An ordinal scale over any category domain. In a set with named colours, a matching label keeps
