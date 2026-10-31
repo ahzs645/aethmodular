@@ -251,7 +251,17 @@ export function SubsetBar({
   const handEdits = (s.dropped ?? 0) > 0 || s.kept != null
   const isDefault =
     allSeasons && allSites && !pmfOn && seasonsOn && !s.includedIds?.length && s.exclMode !== 'mark' && !s.dateRange && s.convention === s.defaultConvention && !handEdits
-  const nActive = (caps.seasons && seasonsOn && !allSeasons ? 1 : 0) + (caps.sites && !allSites ? 1 : 0) + (pmfOn ? 1 : 0) + (s.dateRange ? 1 : 0) + (s.includedIds?.length && caps.excluded ? 1 : 0) + (handEdits ? 1 : 0)
+  // the kinds of filtering in force (the Samples tab's badge counts them; its tooltip names them)
+  const nSitesOn = s.siteItems.filter((it) => it.selected).length
+  const active = [
+    caps.seasons && seasonsOn && !allSeasons && `${s.activeSeasons.size} of ${s.seasons.length} seasons`,
+    caps.sites && !allSites && `${nSitesOn} of ${s.siteItems.length} sites`,
+    pmfOn && 'PMF days only',
+    s.dateRange && `dates ${s.dateRange[0]} → ${s.dateRange[1]}`,
+    !!s.includedIds?.length && caps.excluded && `${s.includedIds.length} excluded put back`,
+    handEdits && 'filters excluded or kept by hand',
+  ].filter((x): x is string => !!x)
+  const nActive = active.length
 
   // seasons grouped by the site whose calendar they belong to (one group under the shared bins)
   const seasonGroups: { site: string | null; seasons: SeasonMeta[] }[] = []
@@ -409,7 +419,7 @@ export function SubsetBar({
         >
           <span className="subset-tab-label">Samples</span>
           <span className="subset-tab-count">{s.shown}/{s.total}</span>
-          {nActive > 0 && <span className="subset-tab-badge" title={`${nActive} filter${nActive === 1 ? '' : 's'} active`}>{nActive}</span>}
+          {nActive > 0 && <span className="subset-tab-badge" title={`${nActive} kind${nActive === 1 ? '' : 's'} of filtering on: ${active.join(' · ')}`}>{nActive}</span>}
         </button>
         {hasPlot && (
           <button
