@@ -1,7 +1,15 @@
-import { readFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
+import { readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+
+const fingerprint = () => {
+  const hash = createHash('sha256')
+  const visit = (dir: string) => { for (const f of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) { const path = `${dir}/${f.name}`; if (f.isDirectory()) visit(path); else { hash.update(path); hash.update(readFileSync(path)) } } }
+  visit('src'); hash.update(readFileSync('package-lock.json')); return hash.digest('hex')
+}
 
 const src = (p: string) => fileURLToPath(new URL(`./src/${p}`, import.meta.url))
 
@@ -22,6 +30,7 @@ export default defineConfig(({ mode }) => {
   if (omitted.length) console.log(`public build: leaving out section(s) ${omitted.join(', ')}`)
   return {
     plugins: [react()],
+    define: { 'import.meta.env.VITE_SOURCE_REVISION': JSON.stringify(execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()), 'import.meta.env.VITE_SOURCE_FINGERPRINT': JSON.stringify(fingerprint()) },
     resolve: {
       alias: [
         ...omitted.map((key) => ({ find: new RegExp(`^@/sections/${key}$`), replacement: src('sections/omitted.ts') })),

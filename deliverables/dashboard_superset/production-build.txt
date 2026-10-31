@@ -1,0 +1,137 @@
+
+> aeth-graph-gallery@0.1.0 prebuild
+> node scripts/build-chart-index.mjs
+
+wrote src/chartIndex.json (197 charts)
+
+> aeth-graph-gallery@0.1.0 build
+> tsc -b && vite build
+
+vite v5.4.21 building for production...
+transforming...
+[plugin:vite:resolve] [plugin vite:resolve] Module "node:zlib" has been externalized for browser compatibility, imported by "/workspace/aethmodular/gallery/app/node_modules/@firstform/json-url/dist/stream-codec-BeqY1IAh.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[plugin:vite:resolve] [plugin vite:resolve] Module "path" has been externalized for browser compatibility, imported by "/workspace/aethmodular/gallery/app/node_modules/lzma/index.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[plugin:vite:resolve] [plugin vite:resolve] Module "assert" has been externalized for browser compatibility, imported by "/workspace/aethmodular/gallery/app/node_modules/msgpack5/index.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[plugin:vite:resolve] [plugin vite:resolve] Module "util" has been externalized for browser compatibility, imported by "/workspace/aethmodular/gallery/app/node_modules/msgpack5/lib/helpers.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[plugin:vite:resolve] [plugin vite:resolve] Module "events" has been externalized for browser compatibility, imported by "/workspace/aethmodular/gallery/app/node_modules/readable-stream/lib/_stream_readable.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[plugin:vite:resolve] [plugin vite:resolve] Module "events" has been externalized for browser compatibility, imported by "/workspace/aethmodular/gallery/app/node_modules/readable-stream/lib/internal/streams/stream-browser.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+✓ 4685 modules transformed.
+rendering chunks...
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /workspace/aethmodular/gallery/app/src/charts/correlation/Scatterplot.tsx is dynamically imported by /workspace/aethmodular/gallery/app/src/App.tsx, /workspace/aethmodular/gallery/app/src/components/dashboard/registry.tsx but also statically imported by /workspace/aethmodular/gallery/app/src/pages/AeronetPage.tsx, /workspace/aethmodular/gallery/app/src/pages/WeatherPage.tsx, /workspace/aethmodular/gallery/app/src/sections/instruments/pages/FilterComparison.tsx, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/index.html                                                      1.02 kB │ gzip:   0.56 kB
+dist/assets/map-loader.worker-BssDmagH.js                            2.34 kB
+dist/assets/Inter_400Regular-C_F0_eS_.ttf                          342.41 kB
+dist/assets/Inter_600SemiBold-CoRPLEbp.ttf                         343.63 kB
+dist/assets/GuardrailEditor-CySmaqFa.css                            19.46 kB │ gzip:   1.85 kB
+dist/assets/GeoMap-Twyd4PtP.css                                     69.96 kB │ gzip:  10.06 kB
+dist/assets/index-dpgKTbt_.css                                     197.39 kB │ gzip:  33.62 kB
+dist/assets/Inter_400Regular-DOz2TlEF.js                             0.07 kB │ gzip:   0.09 kB
+dist/assets/Inter_600SemiBold-C05xnh6N.js                            0.07 kB │ gzip:   0.09 kB
+dist/assets/pack-C31lGF1L-CjIoguy5.js                                0.11 kB │ gzip:   0.10 kB
+dist/assets/___vite-browser-external_commonjs-proxy-BeaJlchk.js      0.13 kB │ gzip:   0.13 kB
+dist/assets/__vite-browser-external-D7Ct-6yo.js                      0.13 kB │ gzip:   0.14 kB
+dist/assets/hgz-BRIx1neT-D1_qaNE-.js                                 0.14 kB │ gzip:   0.15 kB
+dist/assets/hbr-9cUqy8kz-DV3Lximh.js                                 0.14 kB │ gzip:   0.15 kB
+dist/assets/diamond-Bx06Rtd9.js                                      0.18 kB │ gzip:   0.16 kB
+dist/assets/deviation-B1bm-AAZ.js                                    0.19 kB │ gzip:   0.16 kB
+dist/assets/gz-CIYu5Qry-C2pyJDGv.js                                  0.24 kB │ gzip:   0.19 kB
+dist/assets/br-DLS_MJlp-_13jsDd8.js                                  0.24 kB │ gzip:   0.19 kB
+dist/assets/zl-CXw4H0FK-ClI9mIyO.js                                  0.25 kB │ gzip:   0.19 kB
+dist/assets/df-cKyyhzZz-C4iF1fGY.js                                  0.25 kB │ gzip:   0.20 kB
+dist/assets/raw-CZXo-f_F-DdblNhI0.js                                 0.30 kB │ gzip:   0.19 kB
+dist/assets/math-Bflk5M4o.js                                         0.30 kB │ gzip:   0.21 kB
+dist/assets/star-Do0JvWB3.js                                         0.32 kB │ gzip:   0.25 kB
+dist/assets/lzstring-DRKeXPMg-DNJEPALo.js                            0.36 kB │ gzip:   0.26 kB
+dist/assets/load-lzstring-7KRv9dos-Cr6hL5za.js                       0.36 kB │ gzip:   0.25 kB
+dist/assets/lz-aNhkklJK-DVry3Vp2.js                                  0.37 kB │ gzip:   0.26 kB
+dist/assets/aeronetSites-CZRMF4hs.js                                 0.39 kB │ gzip:   0.30 kB
+dist/assets/lzw-CAiGIEmT-CI75xh-c.js                                 0.58 kB │ gzip:   0.35 kB
+dist/assets/symbol-B5Zt1u8n.js                                       0.66 kB │ gzip:   0.36 kB
+dist/assets/index-BbmfY4R_.js                                        0.80 kB │ gzip:   0.51 kB
+dist/assets/lzma-DxUq9qaD-BT6Be7Q5.js                                0.85 kB │ gzip:   0.44 kB
+dist/assets/TableCells-wPpvyO2J.js                                   0.92 kB │ gzip:   0.50 kB
+dist/assets/basis-Ci28rwaX.js                                        0.96 kB │ gzip:   0.40 kB
+dist/assets/index-DEMF5cxe.js                                        0.96 kB │ gzip:   0.63 kB
+dist/assets/lzw-CoxnzVb7.js                                          1.00 kB │ gzip:   0.57 kB
+dist/assets/AxisChoices-D3fkXRvQ.js                                  1.01 kB │ gzip:   0.55 kB
+dist/assets/fitLabel-H6jHZw5o.js                                     1.11 kB │ gzip:   0.68 kB
+dist/assets/FunctionalGroups--d3gRDWq.js                             1.19 kB │ gzip:   0.69 kB
+dist/assets/pageChoices-DfTFPJ6S.js                                  1.31 kB │ gzip:   0.76 kB
+dist/assets/MeetingSpecPage-C2BcMbnD.js                              1.37 kB │ gzip:   0.74 kB
+dist/assets/hexbin-SDCSITs7.js                                       1.40 kB │ gzip:   0.73 kB
+dist/assets/FullRangeVibesStatus-rdMR4iYV.js                         1.79 kB │ gzip:   0.93 kB
+dist/assets/SiteMapPicker-88LpB_v_.js                                2.02 kB │ gzip:   1.04 kB
+dist/assets/roseParts-Qc1g4t1X.js                                    2.13 kB │ gzip:   1.06 kB
+dist/assets/index-DocUNPKL.js                                        2.37 kB │ gzip:   1.00 kB
+dist/assets/StatTile-DsvqYAJY.js                                     2.43 kB │ gzip:   1.32 kB
+dist/assets/SourceStack-BDBl7ZHg.js                                  2.46 kB │ gzip:   1.29 kB
+dist/assets/CVCurve-BLtb1sRr.js                                      2.70 kB │ gzip:   1.42 kB
+dist/assets/SiteRank-CAGoua9y.js                                     2.82 kB │ gzip:   1.54 kB
+dist/assets/AvailabilityHeatmap-BbltO2N-.js                          2.95 kB │ gzip:   1.69 kB
+dist/assets/homogeneous-json-codec-CKljd7rb-CimeC4kH.js              3.04 kB │ gzip:   1.24 kB
+dist/assets/WindSpeedConcentration-Df-gWWde.js                       3.38 kB │ gzip:   1.86 kB
+dist/assets/arc-DwlDBdYh.js                                          3.45 kB │ gzip:   1.48 kB
+dist/assets/windRose-C75_e0Bh.js                                     3.46 kB │ gzip:   1.57 kB
+dist/assets/SiteCards-BkdzgqvP.js                                    3.57 kB │ gzip:   1.66 kB
+dist/assets/SiteWeatherSummary-_bveVVMg.js                           3.77 kB │ gzip:   1.87 kB
+dist/assets/WindRoses-CoZx7NJZ.js                                    3.84 kB │ gzip:   2.12 kB
+dist/assets/MonthlyClimate-DUA1Hs5F.js                               4.01 kB │ gzip:   2.10 kB
+dist/assets/Ridgeline-DSuj_3DZ.js                                    4.16 kB │ gzip:   2.19 kB
+dist/assets/MonthlyBand-DCOcxpjY.js                                  4.31 kB │ gzip:   2.21 kB
+dist/assets/WeatherCorrelations-Unaa6Hor.js                          4.47 kB │ gzip:   2.27 kB
+dist/assets/Barplot-Dsln7r7y.js                                      4.73 kB │ gzip:   2.36 kB
+dist/assets/SiteRadar-DRZnGmVG.js                                    5.04 kB │ gzip:   2.40 kB
+dist/assets/lz-string-oHJgdJtI.js                                    5.20 kB │ gzip:   1.64 kB
+dist/assets/SiteSummary-BtN1q-O-.js                                  5.41 kB │ gzip:   1.98 kB
+dist/assets/PolarPlot-HUfVuDAI.js                                    5.46 kB │ gzip:   2.83 kB
+dist/assets/RainWashout-DQRouJfs.js                                  5.58 kB │ gzip:   2.74 kB
+dist/assets/CensusPage-D_TB0dJr.js                                   5.87 kB │ gzip:   2.42 kB
+dist/assets/DensityHexbin-DkeLuNkw.js                                6.11 kB │ gzip:   2.93 kB
+dist/assets/SimilaritySpectra-BFkvf3eu.js                            6.24 kB │ gzip:   3.06 kB
+dist/assets/PollutionRose-oZ0kGIA0.js                                6.36 kB │ gzip:   3.10 kB
+dist/assets/MonthlyHeatmap-DDFjE4YH.js                               6.63 kB │ gzip:   3.19 kB
+dist/assets/Timeseries-BTBGIK6B.js                                   7.71 kB │ gzip:   3.58 kB
+dist/assets/Histogram-RZrOcZTU.js                                    7.89 kB │ gzip:   3.60 kB
+dist/assets/ParallelCoordinates-BjwPjyxT.js                          8.05 kB │ gzip:   3.78 kB
+dist/assets/spartanPublic-CP4x51_0.js                                8.15 kB │ gzip:   3.76 kB
+dist/assets/ConnectedScatter-B00Ux9OC.js                             8.19 kB │ gzip:   3.77 kB
+dist/assets/RunCrossplot-MlMh1brS.js                                 8.40 kB │ gzip:   3.86 kB
+dist/assets/SeasonalClock-DD_2qTmI.js                                8.55 kB │ gzip:   3.88 kB
+dist/assets/SiteBubbleMap-B_GBoFSi.js                                9.59 kB │ gzip:   4.34 kB
+dist/assets/CorrelationRanking-BjffOUwb.js                           9.70 kB │ gzip:   4.32 kB
+dist/assets/WeatherTimeline-DYb9153-.js                              9.80 kB │ gzip:   4.57 kB
+dist/assets/DistributionPanel-DWpt5307.js                           10.97 kB │ gzip:   4.27 kB
+dist/assets/MethodSankey-CfDJW82J.js                                13.46 kB │ gzip:   5.26 kB
+dist/assets/Correlogram-aRdNSTM4.js                                 19.84 kB │ gzip:   7.92 kB
+dist/assets/WeatherPage-DiXp7aW6.js                                 21.07 kB │ gzip:   8.62 kB
+dist/assets/SimilarityPage-CQATp1dk.js                              21.24 kB │ gzip:   8.30 kB
+dist/assets/SpeciesGraph-CSMkIehy.js                                24.07 kB │ gzip:   9.89 kB
+dist/assets/BlanksPage-BLTUZboc.js                                  27.10 kB │ gzip:   9.89 kB
+dist/assets/purify.es-CAi2OJFm.js                                   30.47 kB │ gzip:  11.73 kB
+dist/assets/TorStudy-DkOPkvHP.js                                    46.98 kB │ gzip:  16.86 kB
+dist/assets/AeronetPage-CSfzAbi_.js                                 48.20 kB │ gzip:  18.10 kB
+dist/assets/index-eVKFOJtF.js                                       59.20 kB │ gzip:  18.68 kB
+dist/assets/CompositionTreemap-vCTZFKwn.js                          62.95 kB │ gzip:  23.81 kB
+dist/assets/SatoshiFollowupPage-CGJZZDy7.js                         69.20 kB │ gzip:  23.32 kB
+dist/assets/MeetingFollowupPage-D2jdTI1L.js                         72.42 kB │ gzip:  24.41 kB
+dist/assets/SpartanCompositionMap-BFF0-RPJ.js                       79.78 kB │ gzip:  29.63 kB
+dist/assets/BaselineComparisonPage-SXcFazK-.js                      82.96 kB │ gzip:  26.64 kB
+dist/assets/svg2pdf.es.min-BLaVyVbq.js                              86.95 kB │ gzip:  25.59 kB
+dist/assets/ExperimentalPage-CEDKyAsz.js                            87.39 kB │ gzip:  29.80 kB
+dist/assets/GuardrailEditor-CvrBaLIU.js                             89.95 kB │ gzip:  26.38 kB
+dist/assets/CalibrationPage-CeQeH0xv.js                             99.72 kB │ gzip:  34.07 kB
+dist/assets/index.es-Cv2gJwuv.js                                   150.87 kB │ gzip:  51.62 kB
+dist/assets/SpecCurve-BC_v632C.js                                  190.17 kB │ gzip:  59.47 kB
+dist/assets/html2canvas.esm-CBrSDip1.js                            201.42 kB │ gzip:  48.03 kB
+dist/assets/jspdf.es.min-CPFgtr_7.js                               390.49 kB │ gzip: 128.80 kB
+dist/assets/GeoMap-D1F1PEjg.js                                   1,082.56 kB │ gzip: 295.12 kB
+dist/assets/index-Dt7z2AAK.js                                    1,616.86 kB │ gzip: 536.81 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 16.11s

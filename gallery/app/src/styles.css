@@ -1892,3 +1892,44 @@ html[data-single='1'] [data-single-active] .frame-chart .legend:not(.facet-legen
   background: var(--ink-panel); color: var(--ink-text); border: 1px solid var(--ink-border); border-radius: 10px;
   box-shadow: 0 6px 24px rgba(15, 23, 42, 0.18); font-size: calc(13px * var(--text-scale));
 }
+
+/* Dashboard provenance, contributing-row inspection and reproducible view controls. */
+.dashboard-dialog { width: min(1050px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); overflow: auto; margin: 0; padding: 18px; }
+.dashboard-dialog > .frame-head { position: sticky; top: -18px; z-index: 2; background: var(--ink-panel); padding: 12px 0; }
+.dashboard-dialog h2 { font-size: 17px; margin: 0; }
+.dashboard-dialog p { line-height: 1.5; color: var(--ink-muted); }
+.dashboard-data-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 12px 0; }
+.dashboard-data-actions label, .tile-cohort-controls label, .dashboard-sheet-tools label { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dashboard-data-table { max-height: 52vh; overflow: auto; }
+.dashboard-data-table th { position: sticky; top: 0; background: var(--ink-panel); }
+.dashboard-data-table th, .dashboard-data-table td { white-space: nowrap; padding: 7px 10px; }
+.metric-definition { padding: 10px 0; border-top: 1px solid var(--ink-border); }
+.metric-definition p { margin: 5px 0; }
+.tile-data-strip { height: 28px; display: flex; justify-content: space-between; align-items: center; gap: 4px; background: var(--ink-panel); border-top: 1px solid var(--ink-border); border-radius: 0 0 var(--radius) var(--radius); overflow: hidden; }
+.tile-data-strip .btn { font-size: 10px; padding: 3px 6px; white-space: nowrap; min-width: 0; text-overflow: ellipsis; overflow: hidden; }
+.dash-tile:has(> .tile-data-strip) > .panel { height: calc(100% - 28px); border-radius: var(--radius) var(--radius) 0 0; }
+.tile-cohort-controls { border: 0; display: flex; flex-direction: column; gap: 12px; padding: 0; }
+.tile-cohort-controls legend { font-weight: 600; }
+.dashboard-sheet-tools { border-top: 1px solid var(--ink-border); margin-top: 14px; padding-top: 8px; max-width: 430px; }
+.dashboard-sheet-tools p { font-size: 12px; line-height: 1.5; white-space: normal; }
+.dashboard-sheet-tools .dashboard-data-actions { margin: 8px 0; }
+.dashboard-note { width: 100%; min-height: 70px; resize: none; border: none; background: transparent; color: var(--ink-text); font: inherit; line-height: 1.6; padding: 10px; }
+.dash-catalog-search { display: flex; gap: 12px; align-items: center; margin-bottom: 18px; }
+.dash-catalog-search input { flex: 1; min-width: 0; }
+.dashboard-dialog .dash-catalog { width: 100%; max-height: none; overflow: visible; }
+.dashboard-dialog .dash-catalog > .frame-head { display: none; }
+.chart-preview { display: block; font-size: 26px; color: var(--accent); height: 40px; line-height: 40px; letter-spacing: 6px; background: var(--ink-panel); border-radius: 4px; margin-bottom: 6px; }
+.snapshot-banner, .network-data-error { padding: 8px 14px; background: var(--ink-panel); border: 1px solid var(--ink-border); font-size: 12px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.dash-present .tile-data-strip { display: none; }
+.dash-present .dash-tile > .panel { height: 100%; }
+@media (max-width: 820px) {
+  .dashboard-dialog { padding: 12px; }
+  .dashboard-dialog > .frame-head { top: -12px; }
+  .dashboard-data-actions .select { max-width: 100%; }
+  .dash-catalog-search { flex-direction: column; align-items: stretch; }
+  .tile-data-strip .btn { font-size: 11px; }
+}
+.stat-detail-value { border: none; padding: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.stat-detail-value:hover { text-decoration: underline; text-underline-offset: 4px; }
+.aggregate-details { font-size: 11px; margin: 8px 0; }
+.aggregate-details button { margin: 4px; }

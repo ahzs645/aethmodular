@@ -1,7 +1,7 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from 'react'
+import { forwardRef, useContext, useMemo, useEffect, useImperativeHandle, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from 'react'
 import { Map as ToolkitMap, MapControls, fitMapToPoints, geojsonBasemapStyle, useMap, type FitMapToPointsOptions, type LngLatPoint, type MapRef } from '@pgmaps/geo-toolkit/map'
 import '@pgmaps/geo-toolkit/styles.css'
-import { dataUrl } from '@/lib/data'
+import { SnapshotFiles, dataUrl } from '@/lib/data'
 import { INK_DARK, INK_LIGHT, type Ink } from '@/lib/theme'
 import { useTheme } from '@/lib/colorTheme'
 
@@ -43,6 +43,13 @@ export const GeoMap = forwardRef<GeoMapHandle, {
   globe?: boolean
   className?: string
 }>(function GeoMap({ children, height, frame, frameOptions, frameKey, label, globe = false, className }, ref) {
+  const snapshot = useContext(SnapshotFiles)
+  const styles = useMemo(() => {
+    if (!snapshot) return globe ? STYLES.globe : STYLES.flat
+    const land = snapshot['world.geojson'] as GeoJSON.FeatureCollection | null
+    const style = (ink: Ink) => geojsonBasemapStyle({ land: land ?? { type: 'FeatureCollection', features: [] }, water: ink.sea, landColor: ink.land, borderColor: ink.panel, borderWidth: 0.6 })
+    return { light: style(INK_LIGHT), dark: style(INK_DARK) }
+  }, [snapshot, globe])
   const theme = useTheme()
   const mapRef = useRef<MapRef | null>(null)
   const bandRef = useRef<HTMLDivElement>(null)
@@ -53,7 +60,7 @@ export const GeoMap = forwardRef<GeoMapHandle, {
   }), [])
   return (
     <div ref={bandRef} className={`geo-map ${className ?? ''}`} style={{ height }} role="region" aria-label={label} data-zoom="far">
-      <ToolkitMap ref={mapRef} theme={theme} styles={globe ? STYLES.globe : STYLES.flat} loader="spinner"
+      <ToolkitMap ref={mapRef} theme={theme} styles={styles} loader="spinner"
         controls={<MapControls position="top-right" showZoom showCompass={globe} />}
         center={[15, 15]} zoom={0.4} minZoom={0} maxZoom={11}
         dragRotate={globe} pitchWithRotate={false} touchPitch={false} attributionControl={false}

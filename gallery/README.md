@@ -1517,3 +1517,50 @@ from the network export. Frozen calibration predictions are not rerun.
 The Pages workflow uses one concurrency group with cancellation enabled: a new
 deployment supersedes older ones. Run names include the source commit and data
 snapshot so the current version can be identified in Actions.
+
+## Dashboard cohorts, contributing data and snapshots
+
+Dashboard tiles have an information strip showing the physical-filter count and whether they follow
+page filters, additional tile filters, or a retained reference cohort. Open the strip for the effective
+sites, seasons, dates, measurement methods, finite-value coverage and source provenance. **View data**
+opens the finite measurement inputs; the dialog explicitly distinguishes these inputs from any later
+chart-specific clipping or grouping. Its table supports search, pagination, CSV download and opening
+an individual sample record.
+
+A headline number opens its exact contributors when clicked. Monthly-band aggregate markers support
+click or Enter/Space to open that site's calendar-month contributors. Distribution charts offer each
+existing group's contributors below the plot. Scatterplot controls offer **Show fit observations**;
+these are the current panels' observations after legend/log filtering, including below-zero values
+that the fit uses even when the displayed axes clip them.
+
+Use a tile's **⋯ → Filters for this tile** to narrow it by site, season and date. **Retain reference
+cohort** stores its physical IDs in the view, so page date/season/site/exclusion changes do not silently
+change its membership. It retains membership rather than historical values: data refresh, unit/MAC,
+baseline and estimator choices remain shared. If a different source selection no longer supplies some
+retained IDs, the information dialog reports the missing count. **Use page filters** reconnects it.
+
+**Edit → + Add** searches chart names, groups and descriptions and shows schematic previews. Calibration
+charts remain discoverable before their data loads; adding one requests only the run export. A data
+failure offers **Retry data**, and a render failure stays inside its own tile. Research-note tiles
+store plain text in the view, including citations and hypotheses; text is never evaluated as markup.
+On a phone, **+ Add chart** is in the dashboard header's overflow menu.
+
+**Aa → Save this sheet** offers named browser checkpoints and a versioned JSON snapshot. Checkpoints
+reuse saved views and reopen against available data. Snapshots include the resolved active sheet,
+per-tile row populations, metadata, view choices, source provenance, available auxiliary files and a
+SHA-256 checksum. Calibration snapshots retain their run inputs. Weather/map snapshots retain their
+available auxiliary exports; unavailable optional files remain unavailable in replay. Snapshots above
+25 MiB must be split into smaller sheets. The checksum detects accidental changes, not authorship.
+
+**Open snapshot** validates the file and replays its saved populations separately from the live-source
+cache. A banner identifies replay mode. The application/build assets are still needed; a snapshot is
+not an executable offline copy of the site. View links do not carry the imported file, and reloading
+requires opening it again. **Return to current data** ends replay. Private data is not published by
+these controls; the existing public-build exclusion checks still apply.
+
+For browser verification, build the production app, then run `npm run test:dashboard`. The Playwright
+configuration uses `/usr/bin/chromium` when available, accepts `CHROMIUM_PATH`, and otherwise uses the
+Playwright browser installed with `npx playwright install chromium`. The suite covers the new workflows
+and all registered chart kinds. Screenshots and machine-readable results are written to
+`deliverables/dashboard_superset/` at the repository root. The implementation review and measurement
+notes are in that directory's README.

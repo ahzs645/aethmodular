@@ -1,3 +1,4 @@
+import { useJsonLoader } from '@/lib/data'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { seasonOnly } from '@/lib/seasons'
 import * as d3 from 'd3'
@@ -53,6 +54,7 @@ const weatherOption = (k: string) => `Weather · ${WEATHER[k].label}`
  * notebooks built from the airport station (addis_03_meteorology), for any SPARTAN site.
  */
 export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]; meta: MetaFile; field: string; site: { name: string; code: string } | null }) {
+  const jsonLoader = useJsonLoader()
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
@@ -67,9 +69,9 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
     if (!site) return
     let live = true
     setDaily(null); setError('')
-    loadDaily(site.code).then((d) => { if (live) setDaily(d) }).catch(() => { if (live) setError(`No daily weather exported for ${site.name}.`) })
+    loadDaily(site.code, jsonLoader).then((d) => { if (live) setDaily(d) }).catch(() => { if (live) setError(`No daily weather exported for ${site.name}.`) })
     return () => { live = false }
-  }, [site])
+  }, [site, jsonLoader])
 
   // the panels in the URL, in order, keeping only those this page can draw
   const panels = useMemo(() => [...new Set(panelParam.split('|'))].filter((k) => k in WEATHER || k === 'field' || (k.startsWith('f:') && meta.fields.includes(k.slice(2)))), [panelParam, meta])

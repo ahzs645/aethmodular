@@ -16,7 +16,8 @@
     "test:walker:browser": "node scripts/check-chart-builder.mjs",
     "index:charts": "node scripts/build-chart-index.mjs",
     "postinstall": "node scripts/ensure-toolkit.mjs",
-    "toolkit": "node scripts/ensure-toolkit.mjs --force"
+    "toolkit": "node scripts/ensure-toolkit.mjs --force",
+    "test:dashboard": "playwright test"
   },
   "dependencies": {
     "@firstform/json-url": "^4.2.0",
@@ -38,6 +39,7 @@
   },
   "devDependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
+    "@playwright/test": "^1.64.1",
     "@types/d3": "^7.4.3",
     "@types/d3-hexbin": "^0.2.5",
     "@types/d3-sankey": "^0.12.5",

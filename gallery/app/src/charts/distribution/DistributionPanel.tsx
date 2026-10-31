@@ -14,6 +14,7 @@ import { useChartGrouping } from '@/components/GroupingDialog'
 
 import { MeasurementControl } from '@/components/AxisFieldPopover'
 import { CategoryAxis, categoryAxisHeight } from '@/components/CategoryAxis'
+import { useDashboardDetails } from '@/lib/dashboardDetails'
 import { useTileSetting } from '@/lib/url'
 import { ExcludedNote, toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
 
@@ -38,6 +39,7 @@ const GROUPS = ['Site', 'Season', 'Group'] as const
  * scatterplot's, so hovering links across.
  */
 export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFile; field: string }) {
+  const details = useDashboardDetails()
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
@@ -223,6 +225,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
             </g>
           </svg></div>
         )}
+        {details && groups.length > 0 && <details className="aggregate-details"><summary>Show a group’s contributing filters</summary>{groups.map(g => <button type="button" className="btn quiet" key={g.name} onClick={() => details({ title: `${g.name} · ${field}`, rows: g.items.map(i => i.row), fields: [field] })}>{g.name} ({g.items.length})</button>)}</details>}
         {groupBy === 'Group' && missingNote('left out of the groups')}
         <ExcludedNote fields={[field]} drawn={mode === 'Beeswarm' || mode === 'Box + points'} />
         {tip.node}

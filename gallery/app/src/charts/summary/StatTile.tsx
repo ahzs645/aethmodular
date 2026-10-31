@@ -6,6 +6,8 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useFitHeight } from '@/lib/chartFit'
 import { chemText, fmt } from '@/lib/format'
+import { useDashboardDetails } from '@/lib/dashboardDetails'
+import { measuredRows } from '@/lib/metricDefinition'
 import type { FilterRow, MetaFile } from '@/lib/types'
 
 /** sites drawn as their own line; more than this and the sparkline is the network's median */
@@ -17,6 +19,7 @@ const MAX_LINES = 8
  * in the site's colour, while few sites are in view).
  */
 export function StatTile({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFile; field: string }) {
+  const details = useDashboardDetails()
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
@@ -51,7 +54,7 @@ export function StatTile({ rows, meta, field }: { rows: FilterRow[]; meta: MetaF
       <div ref={wrapRef} className="stat-tile">
         {values.length === 0 ? <Empty>No {field} in this subset.</Empty> : <>
           <div className="stat-label" title={field}>{chemText(field)}</div>
-          <div className="stat-value"><strong>{fmt(med, 3)}</strong>{unit && <span className="stat-unit">{unit}</span>}</div>
+          <div className="stat-value">{details ? <button className="stat-detail-value" type="button" aria-label={`Show contributing filters for ${field}`} onClick={() => details({ title: `${field}: headline median`, rows: measuredRows(rows, [field], true), fields: [field] })}><strong>{fmt(med, 3)}</strong></button> : <strong>{fmt(med, 3)}</strong>}{unit && <span className="stat-unit">{unit}</span>}</div>
           <div className="stat-sub">IQR {fmt(q1, 2)}–{fmt(q3, 2)} · n = {values.length}{sites.length > 1 ? ` · ${sites.length} sites` : ''} · {months} months</div>
           {all.length > 1 && <svg width={width} height={sparkH} className="stat-spark" role="img" aria-label={`Monthly medians of ${field}`}>
             {lines.map((l) => <path key={l.name} d={path(l.pts) ?? ''} fill="none" stroke={l.color} strokeWidth={1.5} strokeOpacity={0.9}

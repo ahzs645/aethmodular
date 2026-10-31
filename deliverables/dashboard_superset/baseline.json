@@ -1,0 +1,35 @@
+{
+  "errors": [],
+  "resources": [
+    {
+      "name": "http://127.0.0.1:4180/data/calibration.json",
+      "bytes": 8596517
+    },
+    {
+      "name": "http://127.0.0.1:4180/data/calibration_runs.json",
+      "bytes": 2645648
+    }
+  ],
+  "metrics": [
+    {
+      "name": "Nodes",
+      "value": 4846
+    },
+    {
+      "name": "LayoutDuration",
+      "value": 0.175025
+    },
+    {
+      "name": "RecalcStyleDuration",
+      "value": 0.786533
+    },
+    {
+      "name": "ScriptDuration",
+      "value": 2.129192
+    },
+    {
+      "name": "JSHeapUsedSize",
+      "value": 79330676
+    }
+  ]
+}

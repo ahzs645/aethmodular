@@ -1,0 +1,148 @@
+node:fs:484
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/workspace/scratch/dashboard-before/public/data/baseline_comparison.json'
+    at Object.readFileSync (node:fs:484:20)
+    at file:///workspace/scratch/dashboard-before/src/lib/baselineComparison.test.mjs:5:28
+    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+    at async node:internal/modules/esm/loader:643:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/scratch/dashboard-before/public/data/baseline_comparison.json'
+}
+
+Node.js v24.19.0
+✖ src/lib/baselineComparison.test.mjs (426.676554ms)
+node:fs:484
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/workspace/scratch/dashboard-before/public/data/vibes_fullrange_results.json'
+    at Object.readFileSync (node:fs:484:20)
+    at read (file:///workspace/scratch/dashboard-before/src/lib/fullRangeVibes.test.mjs:6:36)
+    at file:///workspace/scratch/dashboard-before/src/lib/fullRangeVibes.test.mjs:7:14
+    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+    at async node:internal/modules/esm/loader:643:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/scratch/dashboard-before/public/data/vibes_fullrange_results.json'
+}
+
+Node.js v24.19.0
+✖ src/lib/fullRangeVibes.test.mjs (307.811469ms)
+✖ current seasonal and specification exports cover every completed fit and both windows (0.978757ms)
+✖ current paired plots reproduce benchmark scores and every closed decomposition (0.499529ms)
+✖ selection, routing and PCA use the completed source and unchanged paired populations (0.263355ms)
+✖ similarity binaries have independent full and shared channel grids (0.174797ms)
+✖ all 31 external corrections converged at rank 70 and the five physical-filter matches remain (0.510192ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 0
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 436.540146
+
+✖ failing tests:
+
+test at src/lib/baselineComparison.test.mjs:1:1
+✖ src/lib/baselineComparison.test.mjs (426.676554ms)
+  'test failed'
+
+test at src/lib/fullRangeVibes.test.mjs:1:1
+✖ src/lib/fullRangeVibes.test.mjs (307.811469ms)
+  'test failed'
+
+test at src/lib/vibesMigration.test.mjs:12:1
+✖ current seasonal and specification exports cover every completed fit and both windows (0.978757ms)
+  Error: ENOENT: no such file or directory, open '/workspace/scratch/dashboard-before/public/data/meeting-r70/followup_20260917.json'
+      at Object.readFileSync (node:fs:484:20)
+      at read (file:///workspace/scratch/dashboard-before/src/lib/vibesMigration.test.mjs:7:36)
+      at TestContext.<anonymous> (file:///workspace/scratch/dashboard-before/src/lib/vibesMigration.test.mjs:13:11)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/workspace/scratch/dashboard-before/public/data/meeting-r70/followup_20260917.json'
+  }
+
+test at src/lib/vibesMigration.test.mjs:28:1
+✖ current paired plots reproduce benchmark scores and every closed decomposition (0.499529ms)
+  Error: ENOENT: no such file or directory, open '/workspace/scratch/dashboard-before/public/data/baseline_paired_r70.json'
+      at Object.readFileSync (node:fs:484:20)
+      at read (file:///workspace/scratch/dashboard-before/src/lib/vibesMigration.test.mjs:7:36)
+      at TestContext.<anonymous> (file:///workspace/scratch/dashboard-before/src/lib/vibesMigration.test.mjs:29:11)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/workspace/scratch/dashboard-before/public/data/baseline_paired_r70.json'
+  }
+
+test at src/lib/vibesMigration.test.mjs:52:1
+✖ selection, routing and PCA use the completed source and unchanged paired populations (0.263355ms)
+  Error: ENOENT: no such file or directory, open '/workspace/scratch/dashboard-before/public/data/baseline_followup_r70.json'
+      at Object.readFileSync (node:fs:484:20)
+      at read (file:///workspace/scratch/dashboard-before/src/lib/vibesMigration.test.mjs:7:36)
+      at TestContext.<anonymous> (file:///workspace/scratch/dashboard-before/src/lib/vibesMigration.test.mjs:53:11)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/workspace/scratch/dashboard-before/public/data/baseline_followup_r70.json'
+  }
+
+test at src/lib/vibesMigration.test.mjs:70:1
+✖ similarity binaries have independent full and shared channel grids (0.174797ms)
+  Error: ENOENT: no such file or directory, open '/workspace/scratch/dashboard-before/public/data/similarity/similarity.json'
+      at Object.readFileSync (node:fs:484:20)
+      at read (file:///workspace/scratch/dashboard-before/src/lib/vibesMigration.test.mjs:7:36)
+      at TestContext.<anonymous> (file:///workspace/scratch/dashboard-before/src/lib/vibesMigration.test.mjs:71:11)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/workspace/scratch/dashboard-before/public/data/similarity/similarity.json'
+  }
+
+test at src/lib/vibesMigration.test.mjs:80:1
+✖ all 31 external corrections converged at rank 70 and the five physical-filter matches remain (0.510192ms)
+  Error: ENOENT: no such file or directory, open '/workspace/scratch/dashboard-before/public/data/rank70/baseline_external_pilot.json'
+      at Object.readFileSync (node:fs:484:20)
+      at read (file:///workspace/scratch/dashboard-before/src/lib/vibesMigration.test.mjs:7:36)
+      at TestContext.<anonymous> (file:///workspace/scratch/dashboard-before/src/lib/vibesMigration.test.mjs:81:11)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/workspace/scratch/dashboard-before/public/data/rank70/baseline_external_pilot.json'
+  }

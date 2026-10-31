@@ -1,0 +1,41 @@
+✔ tiles and sheets round-trip through the URL, names and fields with separators included (3.616934ms)
+✔ a mangled or duplicate tile is dropped; sizes and places are clamped (0.736293ms)
+✔ the dashboard state leaves its defaults out of the URL and reads back (0.757733ms)
+✔ arrange: overlaps are pushed down, then everything floats up (0.952086ms)
+✔ firstFit fills the first gap; add, remove and ids (3.431041ms)
+✔ placeTile: onto a tile of the same size the two swap; otherwise the others make room (0.588182ms)
+✔ stepTile: an arrow trades places with the neighbour on that side, else moves a cell (0.747824ms)
+✔ placeNew: a free gap, else shrunk into the largest gap, else half of the largest tile; never below the window (1.956936ms)
+✔ tile filters narrow the page; retained IDs use source membership, including explicit empty membership (2.251721ms)
+✔ cohort URL input rejects malformed structures and keeps deduplicated reference IDs (0.652874ms)
+✔ contributing rows require finite pairs, preserve zero, and count physical IDs once (0.344128ms)
+✔ CSV keeps absent values blank, escapes delimiters and neutralizes spreadsheet formulas (0.741413ms)
+✔ normalization preserves unchanged branches and does not mutate the source (0.759368ms)
+✔ metric identity distinguishes FTIR, optical and TOR methods (0.462736ms)
+✔ snapshot versions and checksums are validated before any view can be restored (21.720579ms)
+✔ a measured field stays itself (14.232612ms)
+✔ HIPS BC moves to the same instrument first, then the reflectometer (0.551323ms)
+✔ FTIR carbon moves to the public FTIR product, another baseline, then IMPROVE TOR (0.197431ms)
+✔ no documented stand-in keeps the field, so the tile can say why it is empty (0.230838ms)
+✔ the reason cites the method that explains the gap, and claims dates only from the record (0.780782ms)
+✔ popovers float instead of sitting in place under their trigger (7.52374ms)
+✔ the chart notes (ⓘ) are never positioned inside a panel (0.662167ms)
+✔ nearest-point hit testing lives in components/HitLayer only (67.789883ms)
+✔ no chart reorders its marks to put the focused one on top (32.776594ms)
+✔ marks do not set the gallery hover from their own mouse handlers (57.519088ms)
+✔ charts read the gallery hover only for their own filters (33.470262ms)
+✔ no :has() on the page root (4.385876ms)
+✔ a burst of writes is one step, undone and redone as a whole (5.035714ms)
+✔ a burst that ends where it began records nothing (0.264681ms)
+✔ a new change after an undo drops the redo stack (0.554809ms)
+✔ undo during an open burst settles it first, so the change in flight is what is undone (0.285088ms)
+✔ the stack keeps the most recent steps (0.717412ms)
+✔ changedKeys names the settings that differ, in the query and the hash (0.855678ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 570.579118

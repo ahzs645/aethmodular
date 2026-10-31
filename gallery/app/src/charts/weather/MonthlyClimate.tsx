@@ -1,3 +1,4 @@
+import { useJsonLoader } from '@/lib/data'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
@@ -26,6 +27,7 @@ export function MonthlyClimate({ meta, sites, id = 'weather-climate', title = 'M
   /** one big panel (the one-site view) instead of small multiples */
   large?: boolean
 }) {
+  const jsonLoader = useJsonLoader()
   const wrapRef = useRef<HTMLDivElement>(null)
   const W = large ? 620 : 250, H = large ? 240 : 150
   const tip = useTooltip(wrapRef)
@@ -35,11 +37,11 @@ export function MonthlyClimate({ meta, sites, id = 'weather-climate', title = 'M
 
   useEffect(() => {
     let live = true
-    Promise.all(shown.map((s) => loadDaily(s.code).then((d) => [s.code, d] as const).catch(() => [s.code, null] as const)))
+    Promise.all(shown.map((s) => loadDaily(s.code, jsonLoader).then((d) => [s.code, d] as const).catch(() => [s.code, null] as const)))
       .then((pairs) => { if (live) setData(Object.fromEntries(pairs)) })
     return () => { live = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key])
+  }, [key, jsonLoader])
 
   const climate = useMemo(() => shown.map((s) => {
     const d = data[s.code]

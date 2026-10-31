@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { MapMarker, MarkerContent, type LngLatPoint } from '@pgmaps/geo-toolkit/map'
 import { GeoMap, type GeoMapHandle } from '@/components/GeoMap'
 import { SitePicker } from '@/components/SitePicker'
-import { loadJson } from '@/lib/data'
+import { useJsonLoader } from '@/lib/data'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Segmented, Select } from '@/components/ChartFrame'
 import { SizeLegend } from '@/components/ColorLegend'
@@ -59,6 +59,7 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
   /** a click on a site's bubble (the Dashboard opens that site's own page) */
   onSite?: (code: string) => void
 }) {
+  const loadJson = useJsonLoader()
   const wrapRef = useRef<HTMLDivElement>(null)
   const tip = useTooltip(wrapRef)
   const fitted = useFitHeight()
@@ -97,7 +98,7 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
       .then((d) => { if (live) (isImprove ? setImprove : setSpartan)(d) })
       .catch(e => { if (live) setError(String(e)) })
     return () => { live = false }
-  }, [isImprove, isNetwork, network])
+  }, [isImprove, isNetwork, network, loadJson])
 
   const sites = useMemo(() => {
     const bySite = d3.group(rows, r => r.site)

@@ -9,7 +9,7 @@ import { useSearchParam } from '@/lib/url'
 import { Legend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { loadJson } from '@/lib/data'
+import { useJsonLoader } from '@/lib/data'
 import { useFitHeight } from '@/lib/chartFit'
 import { fmt } from '@/lib/stats'
 import { FONT, INK } from '@/lib/theme'
@@ -61,6 +61,7 @@ function ZoomWatch({ onZoom }: { onZoom: (zoom: number) => void }) {
  * (the public ReconstrPM25 product), averaged over every filter with its mass balance.
  */
 export function SpartanCompositionMap() {
+  const loadJson = useJsonLoader()
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const fitted = useFitHeight()
