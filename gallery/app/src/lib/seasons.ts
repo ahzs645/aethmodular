@@ -33,6 +33,16 @@ export const ANALYSIS_CALENDAR: SeasonConvention = 'dry_feb'
 export const ANALYSIS_CALENDAR_NOTE =
   'Seasons follow the calibration analyses: Dry Oct–Feb, Belg Mar–May, Kiremt Jun–Sep (dry_feb). ' +
   "The gallery's Addis local calendar moves February into Belg."
+/**
+ * The analysis calendar's season colours: config.ETHIOPIA_SEASONS as meta.json carries them in
+ * season_conventions.dry_feb (lib/siteColours.test checks they still agree). For pages drawn from an
+ * export that names these groups but has no meta at hand (the ML k-sweep and residual pages).
+ */
+export const ANALYSIS_SEASON_COLOR: Readonly<Record<string, string>> = {
+  'Dry (Oct-Feb)': '#E67E22',
+  'Belg (Mar-May)': '#27AE60',
+  'Kiremt (Jun-Sep)': '#3498DB',
+}
 
 /** Every Addis filter, pooled over the seasons (a group in the meeting and Satoshi exports). */
 export const ALL_ADDIS = 'All Addis'

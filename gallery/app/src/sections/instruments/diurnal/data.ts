@@ -10,15 +10,15 @@ import { useEffect, useState } from 'react'
 import { loadJson, useExport } from '@/lib/data'
 import { seasonOfDate } from '@/lib/seasons'
 import type { SeasonMeta } from '@/lib/types'
-import { themed } from '@/lib/theme'
+import { AETH_CHANNEL_COLOR } from '@/lib/theme'
 
 export const DIURNAL_DIR = 'aethalometer/diurnal'
 export const EXPORT_COMMAND = 'uv run --with timezonefinder python gallery/data/export_aeth_diurnal.py'
 export const HOURS = d3.range(24)
 export const CHANNELS = ['UV', 'Blue', 'Green', 'Red', 'IR'] as const
 export type Channel = (typeof CHANNELS)[number]
-/** the MA350 channels drawn as in ftir_28 (violet to near-infrared ink); Red and IR get a lighter step on the dark page */
-export const CHANNEL_COLOUR: Record<Channel, string> = { UV: '#7A4FA3', Blue: '#2C6E9E', Green: '#3C7A52', get Red() { return themed('#B23327', '#e0695c') }, get IR() { return themed('#55595f', '#b4bac2') } }
+/** the MA350 channels in the gallery's channel colours (lib/theme AETH_CHANNEL_COLOR) */
+export const CHANNEL_COLOUR: Record<Channel, string> = AETH_CHANNEL_COLOR
 /** an hour is drawn when it has at least this many day-hours behind it */
 export const MIN_DAYS = 5
 /** a day-hour of MA350 minutes counts toward the cycles with at least this many valid IR minutes */

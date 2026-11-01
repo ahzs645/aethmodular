@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { fmt } from '@/lib/format'
-import { INK } from '@/lib/theme'
+import { INK, AETH_SPOT_COLOR } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { DailyPanels, qLine, type PanelSpec } from './DailyPanels'
 import { BROWN, finite, instrumentColor, instrumentName, PERIOD_COLOR, PERIOD_LABEL, PURPLE, quantile, ratio, type Day, type Period, type QualityIndex } from './data'
@@ -24,7 +24,7 @@ export function FlowTimeline({ code, days, meta, index }: { code: string; days: 
   const panels: PanelSpec[] = [
     { key: 'ir', title: 'IR BCc (µg/m³)', byPeriod: !!periods?.before_end, lines: [{ key: 'ir', label: 'IR BCc', color: instrumentColor(code, meta), value: (d) => d.bc.IR, digits: 2 }] },
     { key: 'ratio', title: 'Flow1 / Flow2', refs: FLOW_RATIO_LINES, lines: [{ key: 'ratio', label: 'Flow1 / Flow2', color: INK.text, value: flowRatio }] },
-    { key: 'spots', title: 'Spot flow (mL/min)', lines: [qLine('flow1', 'Flow1', '#2c7fb8', { digits: 1 }), qLine('flow2', 'Flow2', '#d95f0e', { digits: 1 })] },
+    { key: 'spots', title: 'Spot flow (mL/min)', lines: [qLine('flow1', 'Flow1', AETH_SPOT_COLOR.one, { digits: 1 }), qLine('flow2', 'Flow2', AETH_SPOT_COLOR.two, { digits: 1 })] },
     { key: 'total', title: 'Total / setpoint', refs: [{ at: 1 - band, label: `−${Math.round(band * 100)} %` }, { at: 1 + band, label: `+${Math.round(band * 100)} %` }],
       lines: [{ key: 'total', label: 'Total flow / setpoint', color: '#41ab5d', value: setpointRatio, digits: 4 }] },
     { key: 'rh', title: 'Sample RH (%)', lines: [qLine('rhSample', 'Sample RH', PURPLE(), { digits: 1 })] },

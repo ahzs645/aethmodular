@@ -12,6 +12,7 @@ import { useSearchParam } from '@/lib/url'
 import { baseFilterId } from '@/lib/highlight'
 import { f2 } from '@/lib/format'
 import { rowsOf, Scatter, sourceOf, useCounted, type Cols, type XpBase } from './shared'
+import { LOT_COLOR } from '@/lib/theme'
 
 /**
  * The 26 Oct lot-aware VIBES blank test (research/ftir_hips_chem/workflows/vibes_lot241_20261026.py,
@@ -199,7 +200,7 @@ function Pm25({ d }: { d: LotData }) {
   // the analyses whose filter counts under Filters → excluded give the median and the count; the Scatter hides or
   // marks the others itself
   const { counted, nOut } = useCounted(rows, (r) => r.filter_id)
-  const lotColor: Record<string, string> = { '241': '#d94801', '241a': '#6a51a3' }
+  const lotColor: Record<string, string> = { '241': LOT_COLOR['241'], '241a': LOT_COLOR['241a'] }
   const points = rows.map((r) => ({
     x: r.signal_all, y: r.change_all, color: lotColor[r.lot] ?? '#8a8f98', id: r.filter_id, key: r.analysis_id,
     tip: [`${r.filter_id} (lot ${r.lot}, ${r.date})`, `corrected-signal RMS (current) ${res(r.signal_all)}`, `change ${res(r.change_all)} (PTFE ${res(r.change_ptfe)}), ${Math.round(100 * r.change_rel_all)} % of the signal`],

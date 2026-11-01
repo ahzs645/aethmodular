@@ -3,7 +3,7 @@ import { Legend } from '@/components/Legend'
 import { SweepPlot } from '@/components/SweepPlot'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { Crossplot } from '@/components/Crossplot'
-import { INK, themed } from '@/lib/theme'
+import { INK, PREPROCESSING_COLOR } from '@/lib/theme'
 import { f2, pct } from '@/lib/format'
 import { Forest, runLine, sourceOf, useXp, type Cols, type XpBase } from './shared'
 import { FixedSetNote } from '@/lib/markedRows'
@@ -20,7 +20,7 @@ interface SelectorData extends XpBase {
 }
 const source = sourceOf('SelectorStudy')
 const COLOR: Record<string, string> = {
-  'full spline': '#2171b5', get 'full raw'() { return themed('#525252', '#9aa3ad') }, 'local raw': '#d94801', 'average of three': '#8a8f98', 'winner classifier': '#6a51a3',
+  'full spline': PREPROCESSING_COLOR.spline, 'full raw': PREPROCESSING_COLOR.raw, 'local raw': '#d94801', 'average of three': '#8a8f98', 'winner classifier': '#6a51a3',
   get 'error-predicting selector'() { return INK.good }, get 'selector, abstain on riskiest tenth'() { return INK.good }, get 'oracle (best per filter)'() { return INK.fit },
 }
 

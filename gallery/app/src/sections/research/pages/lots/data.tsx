@@ -11,13 +11,13 @@ import type { FilterRow, FiltersFile, MetaFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import { decodeView, MEMBER_SETS, membersOf, NOTEBOOK_SEASONS, type LotExport, type Member, type MemberSet, type ViewKey } from '../../common/lotSpectra'
 import { SERIES } from '../../common/ui'
+import { LOT_COLOR } from '@/lib/theme'
 
 export const EXPORTER = 'gallery/data/export_research_lot_spectra.py'
 export const FOLDER = 'research/lot_spectra'
 export const NB = 'research/ftir_etad_char/char_12_weakley_transferability.ipynb (scripts/run_char_12.py)'
 
-/** char_12's lot colours (LOT_COLORS: 248 SERIES[3], 251 SERIES[2]); other lots from the page ramp */
-const LOT_COLOR: Record<number, string> = { 248: '#eda100', 251: '#1baf7a', 253: '#2a78d6' }
+/** the gallery's lot colours (lib/theme LOT_COLOR: 248 and 251 as char_12 draws them); other lots from the page ramp */
 export const lotColor = (lot: number, i = 0) => LOT_COLOR[lot] ?? SERIES[(i + 3) % SERIES.length]
 
 export const SET_LABEL: Record<MemberSet, string> = { view: 'Gallery rows in view', plus: 'In view + no gallery row', notebook: "char_12's 239 (Addis)" }

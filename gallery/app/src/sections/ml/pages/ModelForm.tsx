@@ -3,7 +3,7 @@ import { Figure } from '@/components/Figure'
 import { f2 } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { num, type Row } from '@/lib/table'
-import { themed } from '@/lib/theme'
+import { themed, PREPROCESSING_COLOR } from '@/lib/theme'
 import { useCalibRuns } from '../../research/pages/spectralCommon'
 import type { SectionPageProps } from '../../types'
 import { MlWaiting, PageIntro, provenance, rows, useMl } from '../common'
@@ -19,7 +19,7 @@ const FORM_NAME: Record<string, string> = {
   PLS: 'PLS', HGB: 'HGB (histogram gradient boosting)', RF: 'RF (random forest)', MLP: 'MLP (neural network, 64 units)', 'PLS→HGB': 'PLS scores → HGB',
 }
 const FAMILY_COLOR: Record<string, string> = {
-  'lowest-OC/EC 800 · corrected': '#2b6cb0', 'lowest-OC/EC 800 · deriv2': '#c026d3', 'full pool · corrected': '#7b8794',
+  'lowest-OC/EC 800 · corrected': '#2b6cb0', 'lowest-OC/EC 800 · deriv2': PREPROCESSING_COLOR.deriv2, 'full pool · corrected': '#7b8794',
 }
 const VIP_COLOR: Record<string, string> = { EC: '#2b6cb0', OC: '#e67e22', 'IMPROVE HIPS': themed('#34495e', '#9fb3c8'), 'Addis HIPS': '#c0392b' }
 /** ftir_08's two component curves (RMSE of HIPS optical depth τ by k) */

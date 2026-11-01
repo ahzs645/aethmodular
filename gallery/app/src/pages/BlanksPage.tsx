@@ -19,7 +19,7 @@ import { BankPicker } from '@/components/Pickers'
 import { SpectrumPlot } from '@/components/SpectrumPlot'
 import { SweepPlot } from '@/components/SweepPlot'
 import { FacetGrid } from '@/components/FacetGrid'
-import { BANK_COLOR, FONT, INK, SPECTRAL_REGION } from '@/lib/theme'
+import { BANK_COLOR, FONT, INK, SPECTRAL_REGION, LOT_COLOR, LOT_UNKNOWN } from '@/lib/theme'
 import { dotFill, dotRim } from '@/lib/highlight'
 import { f2, pct, sci } from '@/lib/format'
 import { FixedSetNote } from '@/lib/markedRows'
@@ -59,7 +59,9 @@ const ALL_BANKS = ['VIBES-full-r70', 'VIBES-lot251', 'VIBES-allblanks', 'VIBES-l
 /** Banks present in the export (the minus-LABE1 reruns appear once they are on Drive). */
 const banksOf = (d: BlanksData): string[] => ALL_BANKS.filter((b) => d.banks[b])
 type BankKey = string
-const GROUP_COLOR: Record<string, string> = { 'IMPROVE lot 251': '#2C6E9E', 'IMPROVE lot 248': '#7fb3d5', 'ETAD lot 251': '#c0392b', 'ETAD lot 248': '#f1948a', 'ETAD lot ?': '#999999' }
+// one colour per lot (lib/theme LOT_COLOR); Addis (ETAD) blanks take a darker step of their lot's colour
+const etadStep = (lot: string) => d3.color(LOT_COLOR[lot])!.darker(1.2).formatHex()
+const GROUP_COLOR: Record<string, string> = { 'IMPROVE lot 251': LOT_COLOR['251'], 'IMPROVE lot 248': LOT_COLOR['248'], 'ETAD lot 251': etadStep('251'), 'ETAD lot 248': etadStep('248'), 'ETAD lot ?': LOT_UNKNOWN }
 const ROLE_COLOR: Record<string, string> = { get 'trains this background'() { return INK.text }, get 'held out, evaluated'() { return INK.good }, get 'not used'() { return INK.neutral } }
 /** Regions shaded on every spectrum: CO₂ (never used for similarity) and the PTFE C–F band. */
 const SHADES = [SPECTRAL_REGION.ptfe, SPECTRAL_REGION.co2]

@@ -8,14 +8,14 @@ import { f2 } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
 import { uniq, type Row, type Value } from '@/lib/table'
-import { FONT, INK } from '@/lib/theme'
+import { FONT, INK, LOT_COLOR } from '@/lib/theme'
 import type { FilterRow } from '@/lib/types'
 import { median } from '../../common/stats'
 import { provenance, rows as tableRows, type SpectralExport } from '../spectralCommon'
 import { SMOKE_CALS, SMOKE_SETS, smokePoints, smokeScores, type SmokePoint } from './data'
 
 const TOOL = SMOKE_CALS[2].label
-const LOT_COLORS: Record<string, string> = { "Lot 251 (spartan_ec 02's set)": '#d62728', 'Lot 248': '#9a9a9a' }
+const LOT_COLORS: Record<string, string> = { "Lot 251 (spartan_ec 02's set)": LOT_COLOR['251'], 'Lot 248': LOT_COLOR['248'] }
 
 /** one row per point and calibration, for the crossplot's two pickers */
 const crossRows = (points: SmokePoint[]) => points.filter((p) => p.set !== 'lot251').flatMap((p) => SMOKE_CALS.map((c): Row => ({

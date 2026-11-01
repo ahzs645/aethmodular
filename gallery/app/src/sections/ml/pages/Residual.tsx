@@ -10,6 +10,7 @@ import type { SectionPageProps } from '../../types'
 import { useCalibRuns } from '../../research/pages/spectralCommon'
 import { MlWaiting, PageIntro, provenance, rows, useMl } from '../common'
 import { ExcludedNote, FixedSetNote, useCountedFilter, useExclusionSplit } from '@/lib/markedRows'
+import { ANALYSIS_SEASON_COLOR } from '@/lib/seasons'
 
 const NOTEBOOKS = 'research/ftir_ec_phase3/ftir_43_residual_learner_null_control, ftir_45_residual_increment_attribution, ftir_46_paired_increment_and_mass (ftir_53 §5 re-draws its mass term)'
 
@@ -230,7 +231,7 @@ export function Residual(_props: SectionPageProps) {
   </>
 }
 
-const SEASON_COLORS: Record<string, string> = { 'Dry (Oct-Feb)': '#4e79a7', 'Belg (Mar-May)': '#f28e2b', 'Kiremt (Jun-Sep)': '#59a14f' }
+const SEASON_COLORS = ANALYSIS_SEASON_COLOR
 const NULL_LINE = '#b03a8c'
 
 /**

@@ -5,7 +5,7 @@ import { loadSpartanFilters } from '@/lib/spartan'
 import { COHORT_SHORT, METRIC, PREPROCESSING, PREPROCESSING_SHORT, SELECTION_SPACE, label } from '@/lib/labels'
 import { rmseAtMac, rmseFromReadouts, slopeAt, solveHipsMoments, type HipsMoments } from '@/lib/macMath'
 import { categoricalScale } from '@/lib/palettes'
-import { BASELINE_COLOR, INK } from '@/lib/theme'
+import { BASELINE_COLOR, INK, PREPROCESSING_COLOR } from '@/lib/theme'
 
 /** A configuration is what the explorer fits: cohort × cutoff × selection space × calibration spectra. */
 export interface Config {
@@ -43,9 +43,9 @@ export const COHORT_COLOR: Record<string, string> = {
 export const cohortColor = (co: string) => COHORT_COLOR[co] ?? INK.axis
 
 /** Colour per calibration spectra space, shared by every chart that puts the preprocessings side by side. */
-// the calibration grid's four spectra spaces (their order is the legend order); the spline baseline takes
-// its tab-wide colour (lib/theme BASELINE_COLOR) since #2171b5 is reserved for the accent and OLS
-export const SPECTRA_COLOR: Record<string, string> = { get raw() { return INK.text }, get airspec() { return BASELINE_COLOR.airspec }, deriv2: '#c026d3', get neutral() { return INK.good } }
+// the calibration grid's four spectra spaces (their order is the legend order), in the gallery's
+// preprocessing colours (lib/theme PREPROCESSING_COLOR: the spline baseline is AIRSpec blue on every tab)
+export const SPECTRA_COLOR: Record<string, string> = { raw: PREPROCESSING_COLOR.raw, airspec: PREPROCESSING_COLOR.airspec, deriv2: PREPROCESSING_COLOR.deriv2, neutral: PREPROCESSING_COLOR.neutral }
 export const spectraColor = (sp: string) => SPECTRA_COLOR[sp] ?? BASELINE_COLOR[sp] ?? INK.axis
 
 

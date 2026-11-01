@@ -4,7 +4,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import * as d3 from 'd3'
-import { themed, MONTHS, MONTH_LETTERS } from '@/lib/theme'
+import { MONTHS, MONTH_LETTERS, AETH_CHANNEL_COLOR } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
 import { loadJson, useExport } from '@/lib/data'
@@ -15,12 +15,8 @@ import { siteColor } from '@/lib/siteColours'
 
 export { CHANNELS, type Channel, type Day, type Screen }
 
-/**
- * Channel colours of research/ftir_hips_chem/scripts/plotting/timeseries.py (the notebooks'
- * wavelength_colors); IR's slate is lifted on the dark page. Read at render time (themed).
- */
-const CHANNEL_LIGHT: Record<Channel, string> = { UV: '#9B59B6', Blue: '#3498DB', Green: '#2ECC71', Red: '#E74C3C', IR: '#34495E' }
-export const channelColor = (c: Channel) => (c === 'IR' ? themed(CHANNEL_LIGHT.IR, '#a9bdd2') : CHANNEL_LIGHT[c])
+/** Channel colours: the notebooks' wavelength_colors, defined once in lib/theme (AETH_CHANNEL_COLOR). */
+export const channelColor = (c: Channel) => AETH_CHANNEL_COLOR[c]
 /** "IR (880 nm)" */
 export const channelName = (c: Channel, meta: MetaFile) => `${c} (${meta.wavelengths_nm[c] ?? '?'} nm)`
 /** the per-filter field export_aethalometer.py merges onto the rows for a channel */

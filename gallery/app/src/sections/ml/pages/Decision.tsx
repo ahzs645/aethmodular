@@ -10,9 +10,11 @@ import { deming } from '../../research/common/stats'
 import { MlWaiting, PageIntro, provenance, rows, useMl } from '../common'
 import { FlagOnSpartan } from './decision/FlagOnSpartan'
 import { FixedSetNote, useCountedFilter } from '@/lib/markedRows'
+import { INK, PREPROCESSING_COLOR } from '@/lib/theme'
 
 const NOTEBOOKS = 'research/ftir_hips_chem/decision_workbook_20261022 §2, §3, §4, §6, §7, §8 (results run on the Drive, or the executed notebook)'
-const PREP_COLORS = { spline: '#4e79a7', raw: '#f28e2b', vibes: '#59a14f', 'SPARTAN published': '#555555' }
+// preprocessings in the gallery's colours (lib/theme PREPROCESSING_COLOR); the deployed product as the black reference
+const PREP_COLORS: Record<string, string> = { spline: PREPROCESSING_COLOR.spline, raw: PREPROCESSING_COLOR.raw, vibes: PREPROCESSING_COLOR.vibes, 'SPARTAN published': INK.text }
 const RULE_COLORS = { 'same kind': '#76b7b2', 'target analogs': '#b07aa1', local: '#e15759' }
 /** a percentage to the nearest whole number, signed when asked */
 const pct0 = (v: number | null) => (v == null || !Number.isFinite(v) ? '—' : Math.round(v).toString())

@@ -61,3 +61,12 @@ test('shared constants: months, units, lots and preprocessing colours', () => {
   assert.equal(preprocessingColor('VIBES-full'), BASELINE_COLOR['VIBES-full'])
   assert.equal(preprocessingColor('nope'), INK.axis)
 })
+
+test('the analysis-calendar fallback colours match meta.json (config.ETHIOPIA_SEASONS)', async () => {
+  const fs = await import('node:fs')
+  const { ANALYSIS_SEASON_COLOR } = await import('./seasons.ts')
+  const url = new URL('../../public/data/meta.json', import.meta.url)
+  if (!fs.existsSync(url)) return
+  const dry = JSON.parse(fs.readFileSync(url, 'utf8')).season_conventions?.dry_feb ?? []
+  for (const s of dry) assert.equal(ANALYSIS_SEASON_COLOR[s.name]?.toLowerCase(), s.color.toLowerCase(), s.name)
+})

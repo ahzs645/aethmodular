@@ -6,12 +6,13 @@ import { BANK_COLOR, BASELINE_COLOR, INK } from '@/lib/theme'
 import { num, type Row } from '@/lib/table'
 import type { SpectralExport } from '../../../research/pages/spectralCommon'
 import { rows } from '../../common'
+import { ANALYSIS_SEASON_COLOR } from '@/lib/seasons'
 
 export type Data = SpectralExport
 
 /** the Addis groups every readout is split by (dry_feb calendar, as the workflow binned them) */
 export const GROUPS = ['All Addis', 'Dry (Oct-Feb)', 'Belg (Mar-May)', 'Kiremt (Jun-Sep)'] as const
-export const SEASON_COLOR: Record<string, string> = { 'Dry (Oct-Feb)': '#c9a227', 'Belg (Mar-May)': '#59a14f', 'Kiremt (Jun-Sep)': '#4e79a7' }
+export const SEASON_COLOR: Readonly<Record<string, string>> = ANALYSIS_SEASON_COLOR
 
 /** the IMPROVE-only subsets (fixed before any Addis readout), in the workflow's order */
 export const SUBSET_COLOR: Record<string, string> = {
