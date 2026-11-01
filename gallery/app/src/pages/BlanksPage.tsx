@@ -19,6 +19,7 @@ import { BankPicker } from '@/components/Pickers'
 import { SpectrumPlot } from '@/components/SpectrumPlot'
 import { SweepPlot } from '@/components/SweepPlot'
 import { FacetGrid } from '@/components/FacetGrid'
+import { Panels } from '@/components/Panels'
 import { BANK_COLOR, FONT, INK, SPECTRAL_REGION } from '@/lib/theme'
 import { dotFill, dotRim } from '@/lib/highlight'
 import { f2, pct, sci } from '@/lib/format'
@@ -280,7 +281,8 @@ function PcaMap({ d }: { d: BlanksData }) {
       {/* the components behind the axis titles, the gallery's shared axis picker (components/AxisChoices) */}
       <AxisChoices noun="components" x={[px, setPx]} y={[py, setPy]}
         options={pcs.map((pc, i) => ({ key: pc, group: 'Principal components', hint: pct(d.shared_pca.var[i]) }))}>
-      <div ref={ref} style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+      <div ref={ref} style={{ position: 'relative' }}>
+        <Panels letters={false} gap={16} label="Blank map and spectrum" panels={[{ key: 'map', min: side + m.left + m.right, max: side + m.left + m.right, grow: 0, render: () =>
         <svg width={side + m.left + m.right} height={side + m.top + m.bottom} fontFamily={FONT.family}>
           <g transform={`translate(${m.left},${m.top})`}>
             <YAxis scale={y} x={0} label={`${py} score`} tickCount={6} gridWidth={side} labelX={-46} pick="y" />
@@ -293,16 +295,15 @@ function PcaMap({ d }: { d: BlanksData }) {
                 onMouseEnter={(e) => tip.show(e, [id, `${inv(d, 'site')[i]} · ${inv(d, 'date')[i] ?? 'undated'}`, inv(d, 'group')[i], `${px} ${f2(sx[i])} · ${py} ${f2(sy[i])}`, 'click to compare with the average blank'])} onMouseLeave={tip.hide} />
             })}
           </g>
-        </svg>
-        <div style={{ flex: '1 1 300px', minWidth: 280 }}>
+        </svg> }, { key: 'spectrum', min: 300, render: ({ width: pw }) => <div>
           {pin == null ? <Note>Click a blank in the map to see its spectrum minus the average blank. The loadings of {px} and {py} are below for reference.</Note> : null}
-          <SpectrumPlot width={Math.max(300, width - side - m.left - m.right - 24)} height={220} window={[4000, 500]} regions={SHADES} hover="none" zeroLine={pin != null}
+          <SpectrumPlot width={pw} height={220} window={[4000, 500]} regions={SHADES} hover="none" zeroLine={pin != null}
             series={pin == null
               ? [{ id: px, wn: d.bin_wn, y: d.shared_pca.loadings[ix], color: INK.text, width: 1.5 }, { id: py, wn: d.bin_wn, y: d.shared_pca.loadings[iy], color: INK.text, width: 1.3, dash: '4 3' }]
               : [{ id: 'dev', wn: d.bin_wn, y: devOf(pin), color: color(pin), width: 1.6 }]}
             yDomain={pin == null ? (d3.extent([...d.shared_pca.loadings[ix], ...d.shared_pca.loadings[iy]]) as [number, number]) : (d3.extent(devOf(pin)) as [number, number])}
             yLabel={pin == null ? 'Loading' : 'Blank − average'} title={pin == null ? `${px} (solid) and ${py} (dashed) loadings` : `${inv(d, 'sample_id')[pin]} minus the average blank`} />
-        </div>
+        </div> }]} />
         {tip.node}
       </div>
       </AxisChoices>
@@ -423,17 +424,14 @@ function PerBlankError({ d }: { d: BlanksData }) {
         </svg>
         {tip.node}
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 8 }}>
-        <table className="census-table" style={{ flex: '1 1 320px' }}>
+      <div style={{ marginTop: 8 }}><Panels letters={false} gap={16} label="Worst blanks" panels={[{ key: 'table', min: 320, render: () =>
+        <table className="census-table" style={{ width: '100%' }}>
           <thead><tr><th>Worst blanks (rank {rk})</th><th>Site · date</th><th>× median</th></tr></thead>
           <tbody>{top.map((r) => <tr key={r.id}><td>{r.id}</td><td>{inv(d, 'site')[r.i]} · {inv(d, 'date')[r.i] ?? 'undated'}</td><td>{Math.round(r.e / med).toLocaleString()}</td></tr>)}</tbody>
-        </table>
-        <div style={{ flex: '1 1 340px' }}>
-          <SpectrumPlot width={Math.max(320, width / 2)} height={230} window={[4000, 500]} regions={SHADES} hover="none" zeroLine
+        </table> }, { key: 'worst', min: 340, render: ({ width: pw }) =>
+          <SpectrumPlot width={pw} height={230} window={[4000, 500]} regions={SHADES} hover="none" zeroLine
             series={[{ id: B.worst.id, wn: d.bin_wn, y: B.worst.minus_bank_median, color: INK.negative, width: 1.6 }]}
-            yDomain={d3.extent(B.worst.minus_bank_median) as [number, number]} yLabel="Blank − bank median" title={`${B.worst.id} minus the median blank of this bank`} />
-        </div>
-      </div>
+            yDomain={d3.extent(B.worst.minus_bank_median) as [number, number]} yLabel="Blank − bank median" title={`${B.worst.id} minus the median blank of this bank`} /> }]} /></div>
     </ChartFrame>
   )
 }

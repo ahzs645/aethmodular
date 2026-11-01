@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
-import { FacetGrid } from '@/components/FacetGrid'
+import { Panels } from '@/components/Panels'
 import { Key } from '@/components/Key'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { colorsFor } from '@/lib/groupings'
@@ -81,10 +81,10 @@ export function ThresholdSweep({ rows, pmf, pair, regions }: { rows: FilterRow[]
         {isPmf && <Select label="Within" value={only} options={groups} onChange={(v) => setOnly(v)} optionLabel={(o) => (o === ALL ? 'All dominant sources' : `${o}-dominated days`)} />}
       </>}>
       {data.pairs.length < 6 ? <Empty>Too few filters with {xf}, {yf} and {isPmf ? 'a PMF day' : 'an AAE'} in view ({data.pairs.length}).</Empty> : <>
-        <FacetGrid items={[...panels]} minCell={260} maxCols={3} render={(p, w) => (
-          <SweepPlot key={p.key} width={w} height={230} series={series(p.key)} xLabel={tLabel} yLabel={p.yLabel} reference={p.reference}
+        <Panels wrap letters={false} gap={16} panels={panels.map((p) => ({ key: p.key, min: 260, basis: 260, render: ({ width: w }) => (
+          <SweepPlot width={w} height={230} series={series(p.key)} xLabel={tLabel} yLabel={p.yLabel} reference={p.reference}
             include={p.key === 'r2' ? [0, 1] : p.key === 'n' ? [0] : []} chosen={p.key === 'slope' ? [] : chosen} xMarkers={markers} />
-        )} />
+        ) }))} />
         <Key items={[{ label: `≤ threshold`, color: LOW, kind: 'line' }, { label: `> threshold`, color: HIGH, kind: 'line' }, ...(isPmf ? [{ label: "the notebooks' thresholds", color: INK.text, kind: 'hollow' as const }] : [])]} />
         <ExcludedNote count={data.nMarked} />
       </>}

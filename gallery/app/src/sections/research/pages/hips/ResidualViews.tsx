@@ -56,7 +56,7 @@ export function ResidualCrossplots({ env, site, relative, mac, seasons, controls
     <ChartFrame id="he-resid-cross" title={`The residual against loading, composition and optical depth — ${site}`}
       subtitle={`Each filter's ${relative ? 'relative' : 'absolute'} residual, HIPS BC (Fabs / ${mac}) − FTIR EC, against six candidate drivers, coloured by season, with the OLS line (scipy linregress) and its r. Optical loading should structure the residual through tau, t or EC loading; a composition artefact (Pandey, Lack, Cappa) through OC / EC or OC loading. The ρ² screen above ranks the same pairs.`}
       provenance={`${ENVELOPE_NB} (c14, Addis residual cross-plots)`} controls={controls}>
-      {env.length < 5 ? <Empty>Too few filters at {site} with both HIPS and FTIR EC.</Empty> : <FacetGrid items={panels} minCell={260} render={(p, w) => (
+      {env.length < 5 ? <Empty>Too few filters at {site} with both HIPS and FTIR EC.</Empty> : <FacetGrid items={panels} minCell={260} share="y" itemKey={(p) => p.key} render={(p, w) => (
         <div style={{ width: w }}>
           <Crossplot sameScale={false} fit={false} maxSide={w - 72} xLabel={p.label} yLabel={relative ? 'Relative residual' : 'Residual (µg/m³)'}
             title={p.fit ? `n ${p.fit.n} · r ${fmt(p.fit.r, 2)}` : `n ${p.pts.length}`}

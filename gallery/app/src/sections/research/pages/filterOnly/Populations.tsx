@@ -81,7 +81,7 @@ export function PopulationModels({ points, s, meta }: { points: FPoint[]; s: Set
       provenance={<>{NB_PROP} figure 04</>} source={`${SOURCE}/Populations.tsx › PopulationModels`}
       tip={<>Every population is a saved membership. Changing the population changes the EC distribution and the baseline error together, so falling MAE at stricter denominators is not evidence that a method deteriorates at higher EC. No threshold was tuned.</>}>
       <Key items={MODELS.map((m) => ({ label: MODEL_LABEL[m], color: m === 'ols' ? INK.text : STYLE[m].color!, kind: m === 'ols' ? 'line' : 'dash' }))} />
-      <FacetGrid items={grid} minCell={290} maxCols={2} title={(g) => g.site} render={(g, w) => {
+      <FacetGrid items={grid} minCell={290} maxCols={2} title={(g) => g.site} share="y" itemKey={(g) => g.site} site={(g) => g.site} render={(g, w) => {
         const color = siteColor(meta, g.site)
         const series: SweepSeries[] = MODELS.map((m) => ({ id: m, label: MODEL_LABEL[m], color: STYLE[m].color ?? color, dash: STYLE[m].dash, width: m === 'ols' ? 2 : 1.5,
           points: g.cells.map((c) => ({ x: POPULATIONS.find((p) => p.key === c.population)!.short, y: Number.isFinite(c.sum.filters.mae[m]) ? c.sum.filters.mae[m] * s.k : null,

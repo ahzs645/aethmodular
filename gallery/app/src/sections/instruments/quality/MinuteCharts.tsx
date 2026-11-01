@@ -5,6 +5,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { ColorLegend } from '@/components/ColorLegend'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
+import { Panels } from '@/components/Panels'
 import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { Key, type KeyItem } from '@/components/Key'
 import { IdentityLine } from '@/components/RefLines'
@@ -132,11 +133,12 @@ export function MinuteFlowQC({ site, name }: { site: MinuteSite | null; name: st
             { id: 'rp', label: 'R pass, 7-day mean', color: '#41ab5d', width: 1.6, marks: false, points: rolling7(days, f.daily.R_pass) },
             { id: 'qc', label: 'QC pass (R, S and T), 7-day mean', color: '#2c7fb8', width: 1.4, marks: false, dash: '4 2', points: rolling7(days, f.daily.QC_pass) }]} />
         <Key items={[{ label: 'daily median R, 10–90 % band', color: INK.text, kind: 'line' }, { label: 'R pass, daily', color: '#41ab5d', kind: 'dot' }, { label: 'R pass, 7-day mean', color: '#41ab5d', kind: 'line' }, { label: 'QC pass (R, S and T), 7-day mean', color: '#2c7fb8', kind: 'dash' }]} />
-        <FacetGrid items={['hist', 'flows'] as const} minCell={330} maxCols={2} render={(k, cell) => k === 'hist'
-          ? <BinHist title="Distribution of R (every minute)" width={cell} height={260} xLabel="R = Flow1 / Flow2" series={[{ label: 'minutes', color: '#2c7fb8', hist: f.R_hist }]}
-            bands={[{ lo: f.R_target * 0.95, hi: f.R_target * 1.05, color: INK.good }]} markers={[{ at: f.R_target, label: `median ${fmt(f.R_target, 3)}`, color: INK.negative }, { at: f.stats.R.p5, label: '5 %' , color: INK.muted }, { at: f.stats.R.p95, label: '95 %', color: INK.muted }]} />
-          : <Heat2d title="Flow1 against Flow2" h={f.flows_2d} width={cell} xLabel="Flow2 (mL/min)" yLabel="Flow1 (mL/min)"
-            lines={[{ slope: f.R_target, color: INK.accent }, { slope: f.R_target * 0.95, color: INK.good, dash: '5 3' }, { slope: f.R_target * 1.05, color: INK.good, dash: '5 3' }, { slope: f.R_target * 0.9, color: INK.warn, dash: '2 3' }, { slope: f.R_target * 1.1, color: INK.warn, dash: '2 3' }]} />} />
+        <Panels letters={false} gap={16} panels={[
+          { key: 'hist', min: 330, basis: 330, render: ({ width: cell }) => <BinHist title="Distribution of R (every minute)" width={cell} height={260} xLabel="R = Flow1 / Flow2" series={[{ label: 'minutes', color: '#2c7fb8', hist: f.R_hist }]}
+            bands={[{ lo: f.R_target * 0.95, hi: f.R_target * 1.05, color: INK.good }]} markers={[{ at: f.R_target, label: `median ${fmt(f.R_target, 3)}`, color: INK.negative }, { at: f.stats.R.p5, label: '5 %' , color: INK.muted }, { at: f.stats.R.p95, label: '95 %', color: INK.muted }]} /> },
+          { key: 'flows', min: 330, basis: 330, render: ({ width: cell }) => <Heat2d title="Flow1 against Flow2" h={f.flows_2d} width={cell} xLabel="Flow2 (mL/min)" yLabel="Flow1 (mL/min)"
+            lines={[{ slope: f.R_target, color: INK.accent }, { slope: f.R_target * 0.95, color: INK.good, dash: '5 3' }, { slope: f.R_target * 1.05, color: INK.good, dash: '5 3' }, { slope: f.R_target * 0.9, color: INK.warn, dash: '2 3' }, { slope: f.R_target * 1.1, color: INK.warn, dash: '2 3' }]} /> },
+        ]} />
       </>}
     </ChartFrame>
   )
@@ -205,11 +207,12 @@ export function MinuteTape({ site, name }: { site: MinuteSite | null; name: stri
         <Table head={['Channel', 'Advances', 'Median step (µg/m³)', 'Step MAD', 'Control MAD', 'Median step (%)', 'IQR (%)', '|step| > 25 %', 'control > 25 %', 'Positive', 'control positive']}
           rows={t.table.map((r) => [r.channel, r.n, fmt(r.step_median, 3), fmt(r.step_mad, 3), fmt(r.control_mad, 3), fmt(r.rel_median, 1), `${fmt(r.rel_q25, 1)} to ${fmt(r.rel_q75, 1)}`,
             `${fmt(r.rel_over25, 1)} %`, `${fmt(r.control_rel_over25, 1)} %`, pct(r.positive), pct(r.control_positive)])} />
-        <FacetGrid items={['hist', 'scatter'] as const} minCell={340} maxCols={2} render={(k, cell) => k === 'hist'
-          ? <BinHist title="Step across the advance, per channel" width={cell} height={250} share xLabel="(after − before) / before (%)" markers={[{ at: 0 }]}
-            series={[{ label: 'control (IR, random times)', color: INK.neutral, hist: t.hist.control }, ...t.table.map((r) => ({ label: r.channel, color: CHANNEL_COLOR[r.channel as keyof typeof CHANNEL_COLOR], hist: t.hist[r.channel] }))]} />
-          : pts ? <SweepPlot width={cell} height={250} xScale="linear" title="IR step against the level before it" xLabel="IR BCc before the advance (µg/m³)" yLabel="IR step (µg/m³)" reference={0} yClip={[0.01, 0.99]}
-            series={[{ id: 'p', label: 'advance', color: CHANNEL_COLOR.IR, width: 0, marks: true, r: 2.4, points: pts.pre.map((p, i) => ({ x: p ?? NaN, y: pts.step[i] })).filter((p) => finite(p.x)) }]} /> : null} />
+        <Panels letters={false} gap={16} panels={[
+          { key: 'hist', min: 340, basis: 340, render: ({ width: cell }) => <BinHist title="Step across the advance, per channel" width={cell} height={250} share xLabel="(after − before) / before (%)" markers={[{ at: 0 }]}
+            series={[{ label: 'control (IR, random times)', color: INK.neutral, hist: t.hist.control }, ...t.table.map((r) => ({ label: r.channel, color: CHANNEL_COLOR[r.channel as keyof typeof CHANNEL_COLOR], hist: t.hist[r.channel] }))]} /> },
+          { key: 'scatter', min: 340, basis: 340, render: ({ width: cell }) => pts ? <SweepPlot width={cell} height={250} xScale="linear" title="IR step against the level before it" xLabel="IR BCc before the advance (µg/m³)" yLabel="IR step (µg/m³)" reference={0} yClip={[0.01, 0.99]}
+            series={[{ id: 'p', label: 'advance', color: CHANNEL_COLOR.IR, width: 0, marks: true, r: 2.4, points: pts.pre.map((p, i) => ({ x: p ?? NaN, y: pts.step[i] })).filter((p) => finite(p.x)) }]} /> : null },
+        ]} />
         <Key items={[{ label: 'control (IR, random times)', color: INK.neutral, kind: 'bar' }, ...t.table.map((r) => ({ label: r.channel, color: CHANNEL_COLOR[r.channel as keyof typeof CHANNEL_COLOR], kind: 'line' as const }))]} />
       </>}
     </ChartFrame>
@@ -230,7 +233,7 @@ export function MinuteKstar({ site, name }: { site: MinuteSite | null; name: str
     <ChartFrame id="aq-min-kstar" title={`${name} · the instrument K against the closure K*, minute by minute`}
       subtitle={`On minutes with ATN1 ≥ 5 and both spot BCs positive: the instrument's K (dashed) and K* = (BC1 − BC2)/(BC1·ATN2 − BC2·ATN1), the K that makes the two spots agree that minute (solid, IQR whiskers), by spot-1 attenuation and by the spot's age. Spot 2 compensated with the instrument's K over the reported BCc has a median of ${fmt(quantile(s2, 0), 4)}–${fmt(quantile(s2, 1), 4)} across the bins: at minute resolution the reported K closes the two spots exactly, so the daily-mean K* on the chart above (and ftir_49's daily fallback) measures the averaging, not a mis-set K.`}
       provenance={`research/ftir_ec_phase3/ftir_49_ma350_raw_chain_diagnostics A1 (kstar_vs_K_by_atn_and_age) · ${SOURCE}`}>
-      {!rows.length ? <NoMinute name={name} /> : <FacetGrid items={['ATN1', 'spot age']} minCell={360} maxCols={2}
+      {!rows.length ? <NoMinute name={name} /> : <FacetGrid items={['ATN1', 'spot age']} minCell={360} maxCols={2} share="y"
         render={(by, cell) => <SweepPlot width={cell} height={260} xScale="point" title={`by ${by === 'ATN1' ? 'spot-1 attenuation' : 'spot age'}`} xLabel={by === 'ATN1' ? 'ATN1 bin' : 'Time on the spot'} yLabel="K"
           series={[...series(by, 'Kstar'), ...series(by, 'K')]} />} />}
       {rows.length > 0 && <Key items={[...(['UV', 'Blue', 'Green', 'Red', 'IR'] as const).map((c) => ({ label: c, color: CHANNEL_COLOR[c], kind: 'dot' as const })), { label: 'K* (closure), IQR whiskers', color: INK.text, kind: 'line' }, { label: 'K (instrument)', color: INK.text, kind: 'dash' }]} />}
@@ -253,19 +256,21 @@ export function MinuteClean({ site, name }: { site: MinuteSite | null; name: str
       provenance={`research/ftir_ec_phase3/ftir_49_ma350_raw_chain_diagnostics A3 (optics_by_environment_bins, clean_mask_daily_aae) · ${SOURCE}`}
       controls={c ? <Segmented label="Binned by" value={pick} options={keys} onChange={setEnv} /> : undefined}>
       {!c ? <NoMinute name={name} /> : <>
-        <FacetGrid items={['parts', 'env'] as const} minCell={360} maxCols={2} render={(k, cell) => k === 'parts'
-          ? <div style={{ width: cell }}><IntervalStrip blocks={blocks} labelWidth={170} noteWidth={44} minPanelWidth={140} panels={[{ label: 'Minutes passing (%)', domain: [0, 100], stems: true, format: (v) => v.toFixed(0) }]} /></div>
-          : <SweepPlot width={cell} height={250} xScale="point" xLabel={pick} yLabel="AAE (ratio of bin sums)" reference={1}
+        <Panels letters={false} gap={16} panels={[
+          { key: 'parts', min: 360, basis: 360, render: ({ width: cell }) => <div style={{ width: cell }}><IntervalStrip blocks={blocks} labelWidth={170} noteWidth={44} minPanelWidth={140} panels={[{ label: 'Minutes passing (%)', domain: [0, 100], stems: true, format: (v) => v.toFixed(0) }]} /></div> },
+          { key: 'env', min: 360, basis: 360, render: ({ width: cell }) => <SweepPlot width={cell} height={250} xScale="point" xLabel={pick} yLabel="AAE (ratio of bin sums)" reference={1}
             series={[{ id: 'red', label: 'AAE(625, 880)', color: CHANNEL_COLOR.Red }, { id: 'blue', label: 'AAE(470, 880)', color: CHANNEL_COLOR.Blue }].map((sr) => ({ ...sr, marks: true,
-              points: c.env[pick].map((b) => ({ x: b.bin, y: sr.id === 'red' ? b.aae_red : b.aae_blue, tip: [`${pick} ${b.bin}`, `${b.n.toLocaleString()} minutes`, `AAE(625,880) ${fmt(b.aae_red, 3)} · AAE(470,880) ${fmt(b.aae_blue, 3)}`, `Red/IR BCc ${fmt(b.red_ir, 3)} · mean IR ${fmt(b.ir_mean, 2)} µg/m³`] })) }))} />} />
+              points: c.env[pick].map((b) => ({ x: b.bin, y: sr.id === 'red' ? b.aae_red : b.aae_blue, tip: [`${pick} ${b.bin}`, `${b.n.toLocaleString()} minutes`, `AAE(625,880) ${fmt(b.aae_red, 3)} · AAE(470,880) ${fmt(b.aae_blue, 3)}`, `Red/IR BCc ${fmt(b.red_ir, 3)} · mean IR ${fmt(b.ir_mean, 2)} µg/m³`] })) }))} /> },
+        ]} />
         <Key items={[{ label: 'AAE(625, 880)', color: CHANNEL_COLOR.Red, kind: 'line' }, { label: 'AAE(470, 880)', color: CHANNEL_COLOR.Blue, kind: 'line' }]} />
-        <FacetGrid items={['hist', 'table'] as const} minCell={360} maxCols={2} render={(k, cell) => k === 'hist'
-          ? <BinHist title={`Daily AAE(625, 880), ${sum[0]?.n_days ?? 0} days`} width={cell} height={230} xLabel="AAE(625, 880)" markers={[{ at: 1, label: 'AAE 1' }]}
-            series={[{ label: 'all minutes', color: INK.neutral, hist: c.hist_red_all }, { label: 'clean mask', color: CHANNEL_COLOR.Red, hist: c.hist_red_clean }]} />
-          : <Table head={['Minutes', 'Days', 'AAE(625,880)', 'AAE(528,880)', 'AAE(470,880)', 'Days with AAE(625,880) > 1']}
+        <Panels letters={false} gap={16} panels={[
+          { key: 'hist', min: 360, basis: 360, render: ({ width: cell }) => <BinHist title={`Daily AAE(625, 880), ${sum[0]?.n_days ?? 0} days`} width={cell} height={230} xLabel="AAE(625, 880)" markers={[{ at: 1, label: 'AAE 1' }]}
+            series={[{ label: 'all minutes', color: INK.neutral, hist: c.hist_red_all }, { label: 'clean mask', color: CHANNEL_COLOR.Red, hist: c.hist_red_clean }]} /> },
+          { key: 'table', min: 360, basis: 360, render: () => <Table head={['Minutes', 'Days', 'AAE(625,880)', 'AAE(528,880)', 'AAE(470,880)', 'Days with AAE(625,880) > 1']}
             rows={[...sum.map((s) => [s.minutes, s.n_days, `${fmt(s.red_mean, 3)} ± ${fmt(s.red_sd, 3)}`, `${fmt(s.green_mean, 3)} ± ${fmt(s.green_sd, 3)}`, `${fmt(s.blue_mean, 3)} ± ${fmt(s.blue_sd, 3)}`, `${fmt(s.red_over1, 1)} %`]),
               ['paired difference (clean − all)', sum[0]?.n_days ?? '—', `${fmt(c.paired_red_mean, 3)} ± ${fmt(c.paired_red_sd, 3)}`, '', '', '']]}
-            caption={`Clean minutes: ${pct(c.fraction)} of ${c.n.toLocaleString()}`} />} />
+            caption={`Clean minutes: ${pct(c.fraction)} of ${c.n.toLocaleString()}`} /> },
+        ]} />
         <Key items={[{ label: 'all minutes', color: INK.neutral, kind: 'bar' }, { label: 'clean mask', color: CHANNEL_COLOR.Red, kind: 'line' }]} />
       </>}
     </ChartFrame>
@@ -282,11 +287,12 @@ export function MinuteAaeOrder({ site, name }: { site: MinuteSite | null; name: 
       subtitle="On near-complete 9am days (≥ 95 % of 1,440 minutes): each day's mean of the per-minute AAE (undefined where either absorption is ≤ 0) minus the AAE of the day's mean absorption. A spread around zero wider than ±0.1 is as large as the source signal AAE is used for."
       provenance={`research/ftir_ec_phase3/ftir_49_ma350_raw_chain_diagnostics B5 (aae_aggregation_order) · ${SOURCE}`}>
       {!a ? <NoMinute name={name} /> : <>
-        <FacetGrid items={['hist', 'table'] as const} minCell={360} maxCols={2} render={(k, cell) => k === 'hist'
-          ? <BinHist width={cell} height={230} share xLabel="mean of minute AAEs − AAE of the mean" markers={[{ at: 0 }, { at: -0.1, color: INK.muted }, { at: 0.1, color: INK.muted }]}
-            series={pairs.map((p) => ({ label: p, color: color(p), hist: a[p].hist }))} />
-          : <Table head={['Pair', 'Days', 'Undefined minutes', 'AAE of the mean', 'Median difference', 'IQR', '|diff| > 0.1']}
-            rows={pairs.map((p) => [p, a[p].n_days, `${fmt(a[p].undefined_pct, 1)} %`, `${fmt(a[p].agg_mean, 3)} ± ${fmt(a[p].agg_sd, 3)}`, fmt(a[p].diff_median, 3), `${fmt(a[p].diff_q25, 3)} to ${fmt(a[p].diff_q75, 3)}`, `${fmt(a[p].over01, 1)} % of days`])} />} />
+        <Panels letters={false} gap={16} panels={[
+          { key: 'hist', min: 360, basis: 360, render: ({ width: cell }) => <BinHist width={cell} height={230} share xLabel="mean of minute AAEs − AAE of the mean" markers={[{ at: 0 }, { at: -0.1, color: INK.muted }, { at: 0.1, color: INK.muted }]}
+            series={pairs.map((p) => ({ label: p, color: color(p), hist: a[p].hist }))} /> },
+          { key: 'table', min: 360, basis: 360, render: () => <Table head={['Pair', 'Days', 'Undefined minutes', 'AAE of the mean', 'Median difference', 'IQR', '|diff| > 0.1']}
+            rows={pairs.map((p) => [p, a[p].n_days, `${fmt(a[p].undefined_pct, 1)} %`, `${fmt(a[p].agg_mean, 3)} ± ${fmt(a[p].agg_sd, 3)}`, fmt(a[p].diff_median, 3), `${fmt(a[p].diff_q25, 3)} to ${fmt(a[p].diff_q75, 3)}`, `${fmt(a[p].over01, 1)} % of days`])} /> },
+        ]} />
         <Key items={pairs.map((p, i) => ({ label: p, color: color(p), kind: i === 0 ? 'bar' as const : 'line' as const }))} />
       </>}
     </ChartFrame>

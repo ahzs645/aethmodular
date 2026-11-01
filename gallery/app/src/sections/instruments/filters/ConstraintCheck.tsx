@@ -70,7 +70,7 @@ export function ConstraintCheck({ pairs, marked = [], sites, ch, sigma }: {
       controls={<Segmented label="Absorption" value={abs} options={ABS} onChange={setAbs} optionLabel={(k) => (k === 'HIPS' ? 'HIPS Fabs' : `b_ATN ${ch}`)} />}>
       {per.length === 0 ? <Empty>No site in view has three filters with FTIR EC and {yLabel}.</Empty> : <>
         <IntervalStrip blocks={blocks} panels={[{ label: 'MAC (m²/g)', reference: reference ?? undefined, marker: readerMac ? { value: readerMac, label: `MAC ${readerMac}` } : undefined, format: (v) => fmt(v, 1) }]} labelWidth={110} noteWidth={44} minPanelWidth={170} />
-        <FacetGrid items={per} minCell={280} maxCols={per.length > 1 ? 2 : 1} render={({ s, own, m, markedOwn }, w) => (
+        <FacetGrid items={per} minCell={280} maxCols={per.length > 1 ? 2 : 1} share itemKey={({ s }) => s.name} site={({ s }) => s.name} render={({ s, own, m, markedOwn }, w) => (
           <Crossplot points={points(own, INK.muted)} marked={points(markedOwn, INK.muted)} title={`${s.name} · M3 intercept ${fmt(m.ols.intercept, 1)} Mm⁻¹`} xLabel="FTIR EC (µg/m³)" yLabel={yLabel}
             maxSide={Math.min(420, Math.max(180, w - 80))} fit={false} sameScale={false} extraLines={lines(m)} />
         )} />

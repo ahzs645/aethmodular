@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
-import { FacetGrid } from '@/components/FacetGrid'
+import { Panels } from '@/components/Panels'
 import { histogramSeries, SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt, signed } from '@/lib/format'
@@ -100,14 +100,15 @@ export function Episodes({ s, meta, screen, channel, setChannel }: {
       controls={<Segmented label="Wavelength" value={channel} options={CHANNELS} onChange={setChannel} />}>
       <div className="chart-wrap">
         {!panels ? <Empty>Too few days with {channel} BCc in this span.</Empty> : (
-          <FacetGrid items={[
+          // four different charts (counts, means, a histogram): a composite, two columns at most
+          <Panels wrap maxCols={2} letters={false} gap={16} label="High days and day-to-day change" panels={[
             { title: 'High days by season', bars: panels.bySeason, y: 'Days' },
             { title: 'High days by weekday', bars: panels.byDow, y: 'Days' },
             { title: 'Mean day-to-day change by month', bars: panels.byMonth, y: 'µg/m³ per day' },
             { title: 'Day-to-day change', hist: panels.hist, y: 'Day pairs' },
-          ]} minCell={250} maxCols={2} render={(p, w) => p.hist
+          ].map((p) => ({ key: p.title, label: p.title, min: 250, basis: 250, render: ({ width: w }: { width: number }) => p.hist
             ? <SweepPlot series={p.hist} xScale="linear" xDomain={xRange(p.hist)} title={p.title} width={w} height={200} xLabel="Change (µg/m³ per day)" yLabel={p.y} include={[0]} yFormat={(v) => (Number.isInteger(v) ? fmt(v, 0) : '')} xFormat={(v) => fmt(+v, 1)} />
-            : <BarPanel bars={p.bars!} width={w} title={p.title} yLabel={p.y} />} />
+            : <BarPanel bars={p.bars!} width={w} title={p.title} yLabel={p.y} /> }))} />
         )}
       </div>
     </ChartFrame>

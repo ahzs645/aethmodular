@@ -56,7 +56,7 @@ export function RainWashout({ rows, meta, field, prcpField, id = 'weather-washou
       subtitle={`Each filter sorted by its window's mean precipitation (${prcpField}); boxes are the median and IQR, dots are filters coloured by season. ρ is Spearman's rank correlation between rain rate and ${field} at that site.`}
       provenance="addis_03_meteorology Tasks 2 and 5, meteorology_source_interaction §1">
       <div ref={wrapRef} className="chart-wrap">
-        {shown.length === 0 ? <Empty>No filters carry both {field} and {prcpField} in this subset.</Empty> : <FacetGrid items={shown} minCell={288} maxCols={4} gap={12} expandable
+        {shown.length === 0 ? <Empty>No filters carry both {field} and {prcpField} in this subset.</Empty> : <FacetGrid items={shown} minCell={288} maxCols={4} gap={12}
           title={(p) => p.site} note={(p) => `ρ = ${fmt(p.rho, 2)} · n = ${p.n}`} label={(p) => `${p.site}: ${field} by rain`}
           render={(p, pw, _, cell) => <WashoutPanel p={p} pw={pw} h={cell.expanded ? 380 : cell.height ?? H} meta={meta} field={field} prcpField={prcpField}
             selected={hl.selected} tip={tip} axisPicker={axisPicker} />} />}

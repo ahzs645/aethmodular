@@ -3,6 +3,7 @@ import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { Crossplot } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
+import { Panels } from '@/components/Panels'
 import { Key } from '@/components/Key'
 import { histogramSeries, SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { coef, fmt } from '@/lib/format'
@@ -106,9 +107,9 @@ export function SmoothRaw({ rows, meta, index }: { rows: FilterRow[]; meta: Meta
       provenance="HIPS_Aeth_SmoothRaw_Analysis §6–9 (threshold analysis, R² and slope against threshold, the FTIR EC comparison) · plotting/comparisons.threshold_analysis"
       controls={<Segmented label="Against" value={ref} options={[...REFERENCES]} onChange={setRef} optionLabel={(c) => REF_LABEL[c]} />}>
       {sweep.r2.length ? <>
-        <FacetGrid items={['r2', 'slope'] as const} minCell={320} maxCols={2}
-          render={(k, cell) => <SweepPlot series={k === 'r2' ? sweep.r2 : sweep.slope} xScale="point" xLabel="Filters kept" yLabel={k === 'r2' ? 'r²' : 'Deming slope'}
-            yDomain={k === 'r2' ? [0, 1] : undefined} reference={k === 'slope' ? 1 : undefined} include={k === 'slope' ? [0] : []} width={cell} height={230} onPoint={(s) => setSite(s.id)} />} />
+        <Panels letters={false} gap={16} panels={(['r2', 'slope'] as const).map((k) => ({ key: k, min: 320, basis: 320,
+          render: ({ width: cell }) => <SweepPlot series={k === 'r2' ? sweep.r2 : sweep.slope} xScale="point" xLabel="Filters kept" yLabel={k === 'r2' ? 'r²' : 'Deming slope'}
+            yDomain={k === 'r2' ? [0, 1] : undefined} reference={k === 'slope' ? 1 : undefined} include={k === 'slope' ? [0] : []} width={cell} height={230} onPoint={(s) => setSite(s.id)} /> }))} />
         <Key items={sweep.r2.map((s) => ({ label: s.label, color: s.color, kind: 'line' as const }))} />
         <ExcludedNote count={markedPaired.length} />
       </> : <Empty>No paired filters.</Empty>}

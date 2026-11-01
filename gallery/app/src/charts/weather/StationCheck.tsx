@@ -47,7 +47,7 @@ export function StationCheck({ data }: { data: StationCompare | null }) {
       statsPlace="plot">
       <div ref={wrapRef} className="chart-wrap">
         {!data ? <Empty>Loading the station comparison…</Empty>
-          : <FacetGrid items={[...VARS]} minCell={300} maxCols={3} maxCell={360} gap={12} center expandable
+          : <FacetGrid items={[...VARS]} minCell={300} maxCols={3} maxCell={360} gap={12} center
               title={(v) => v.label} note={(v) => notes[v.k]} label={(v) => `${v.label} (${v.unit})`}
               // square: the cell's width, or in a tile its row's share of the height (less the readout and axes)
               render={(v, w, _, cell) => <StationPanel v={v} data={data} tip={tip}

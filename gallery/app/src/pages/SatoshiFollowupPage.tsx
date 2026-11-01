@@ -22,6 +22,7 @@ import { f2, f3, pct, signed, coef, coefSigned } from '@/lib/format'
 import { ALL_ADDIS, ANALYSIS_CALENDAR_NOTE, shortSeason } from '@/lib/seasons'
 import { baselineName, ecAxis } from '@/lib/labels'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
+import { PanelGrid, Panels } from '@/components/Panels'
 import { PanelAxesControl, usePanelAxes } from '@/lib/panelAxes'
 import { collapsePanelAxes } from '@/lib/axes'
 import { SpectrumPlot } from '@/components/SpectrumPlot'
@@ -518,10 +519,10 @@ function LadderCrossplots({ data, analogId, baseline, mask, group }: { data: Sat
   const da = both ?? ownDomains(va), ds = both ?? ownDomains(vs)
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 14, marginTop: 12 }}>
-        <Cross title={`${shortSeason(group)} analog model (${SHORT[baseline]})`} pts={va} color={data.season_colors[group]} dom={da.xdom} ydom={da.ydom} source={`Satoshi 2 Oct · ${analogId}`} />
-        <Cross title={`Standard model, same analogs (${SHORT[baseline]})`} pts={vs} color={standardColor()} dom={ds.xdom} ydom={ds.ydom} source={`Satoshi 2 Oct · standard|${baseline} · analogs of ${group}`} />
-      </div>
+      <div style={{ marginTop: 12 }}><PanelGrid min={300} gap={14} label="Analog and standard model crossplots">
+        <Cross key="analog" title={`${shortSeason(group)} analog model (${SHORT[baseline]})`} pts={va} color={data.season_colors[group]} dom={da.xdom} ydom={da.ydom} source={`Satoshi 2 Oct · ${analogId}`} />
+        <Cross key="standard" title={`Standard model, same analogs (${SHORT[baseline]})`} pts={vs} color={standardColor()} dom={ds.xdom} ydom={ds.ydom} source={`Satoshi 2 Oct · standard|${baseline} · analogs of ${group}`} />
+      </PanelGrid></div>
       <ExplainOnly><Note>Filled points are out-of-fold cross-validation predictions; open points are IMPROVE test sites. {ownPanels ? 'Each panel has its own axes' : 'Both panels share axes'}; the top 0.5 % of values is outside the frame. {missing > 0 ? `${missing} analogs are lot 248 and so outside the lot-251 standard model; they are not in the right panel. ` : ''}Similarity region: {MASK_SHORT[mask]}.</Note></ExplainOnly>
     </>
   )
@@ -601,8 +602,8 @@ function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
       title="Lower envelope? — where the analogs sit among the standard model's out-of-sample predictions"
       subtitle="Grey: every lot-251 IMPROVE filter, predicted out of sample by the standard model (site-grouped cross-validation for its calibration sites, direct prediction for its test sites). Coloured: the analogs of one Addis group. Right: each analog's residual (FTIR − TOR) as a percentile among all pool filters in the same TOR EC decile; analogs on the lower envelope would pile up on the left, typical filters spread flat at 10 % per bar."
       >
-      <div ref={ref} style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 24, justifyContent: 'center' }}>
-        <div style={{ width: side + m.left + m.right }}>
+      <div ref={ref} style={{ position: 'relative' }}>
+        <Panels letters={false} center label="Envelope" panels={[{ key: 'pool', min: side + m.left + m.right, max: side + m.left + m.right, grow: 0, render: () => <div style={{ width: side + m.left + m.right }}>
           <Crossplot title={`Standard model (${SHORT[baseline]}), out of sample`} fit={false} domain={dom} yDomain={ydom} sameScale={square} maxSide={side} pick
             xLabel={satLabel(ax.x, 'FTIR EC, standard model (µg/m³)')} yLabel={satLabel(ax.y, 'FTIR EC, standard model (µg/m³)')}
             background={(x, y) => [...bins.entries()].map(([k, n]) => { const [bx, by] = k.split('|').map(Number)
@@ -610,8 +611,8 @@ function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
               return <rect key={k} x={x(x0)} y={y(y0 + ystep)} width={x(x0 + step) - x(x0)} height={y(y0) - y(y0 + ystep)} fill={INK.axis} fillOpacity={0.08 + 0.6 * Math.sqrt(n / maxBin)} /> })}
             points={analogs.filter((i) => Number.isFinite(vx(i)) && Number.isFinite(vy(i))).map((i) => ({ x: vx(i), y: vy(i), color, id: `improve:${ep.filter_id[i]}`,
               tip: [`IMPROVE ${ep.Site[i]} · filter ${ep.filter_id[i]}`, `TOR EC ${f3(ep.tor_ec_ugm3[i])} · FTIR ${f3(ep.ftir_oos_ugm3[i])} µg/m³`, `residual percentile ${f2(ep.residual_pct[i])}`] }))} />
-        </div>
-        <svg width={side + m.left + m.right} height={side + m.top + m.bottom} fontFamily={FONT.family}>
+        </div> }, { key: 'percentile', min: side + m.left + m.right, max: side + m.left + m.right, grow: 0, render: () =>
+        <svg width={side + m.left + m.right} height={side + m.top + m.bottom} fontFamily={FONT.family} style={{ display: 'block' }}>
           <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>Analogs' residual percentile at matched TOR EC</text>
           <g transform={`translate(${m.left},${m.top})`}>
             <YAxis scale={hy} x={0} label="Share of analogs" tickCount={5} gridWidth={side} labelX={-42} format={(v) => `${Math.round(100 * v)} %`} />
@@ -621,7 +622,7 @@ function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
             <Marker orient="h" at={hy(0.1)} from={0} to={side} />
             <text x={side - 4} y={hy(0.1) - 5} textAnchor="end" fontSize={10} fontFamily={FONT.mono} fill={INK.text}>typical: 10 % per bar</text>
           </g>
-        </svg>
+        </svg> }]} />
         {tip.node}
       </div>
       <Key items={[{ label: 'All lot-251 IMPROVE filters (density)', color: INK.axis, kind: 'bar' }, { label: `Analogs of ${group}`, color, kind: 'dot' }]} />
@@ -892,7 +893,8 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
         <Segmented label="Region" value={region} options={regions} optionLabel={(r) => r === 'fingerprint' ? 'PTFE dropped' : 'PTFE kept'} onChange={setRegion} />
       </>}>
       {seasonNote && <Note>{seasonNote}</Note>}
-      <div ref={ref} style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 24 }}>
+      <div ref={ref} style={{ position: 'relative' }}>
+        <Panels letters={false} label="Fingerprint groupings" panels={[{ key: 'pc1', min: 260, render: () =>
         <svg width={iw + m.left + m.right} height={h} fontFamily={FONT.family}>
           <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>Main shape deviation (PC1) vs HIPS EC</text>
           <g transform={`translate(${m.left},${m.top})`}>
@@ -905,10 +907,10 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
             {pts.map((p) => <circle key={p.id} cx={x(p.pc1)} cy={y(p.ec)} r={4} fill={CLUSTER_COLORS[(p.c - 1) % 4]} {...dotFill('sparse')} {...dotRim()}
               onMouseEnter={(e) => tip.show(e, [p.id, `cluster ${p.c}`, `Fabs/10 ${f2(p.ec)} µg/m³`, `standard spline model error ${signed(p.res)} µg/m³`])} onMouseLeave={tip.hide} />)}
           </g>
-        </svg>
-        <SpectrumPlot width={half} minWidth={260} height={262} title="Median spectrum of each cluster, 1800–500 cm⁻¹" window={[hi, lo]} yDomain={sDomain}
+        </svg> }, { key: 'spectra', min: 260, render: ({ width: pw }) =>
+        <SpectrumPlot width={pw} minWidth={260} height={262} title="Median spectrum of each cluster, 1800–500 cm⁻¹" window={[hi, lo]} yDomain={sDomain}
           regions={sRegions} hover="readout" yFormat={(v) => String(+v.toFixed(3))}
-          series={specs.map((s) => ({ id: `c${s.c}`, label: `cluster ${s.c}`, wn, y: s.v, color: CLUSTER_COLORS[(s.c - 1) % 4], width: 1.8 }))} />
+          series={specs.map((s) => ({ id: `c${s.c}`, label: `cluster ${s.c}`, wn, y: s.v, color: CLUSTER_COLORS[(s.c - 1) % 4], width: 1.8 }))} /> }]} />
         {tip.node}
       </div>
       <Key items={[...summ.map((s) => ({ label: `cluster ${s.cluster} (n ${s.n}, median Fabs/10 ${f2(s.ec_fabs10_median)})`, color: CLUSTER_COLORS[(s.cluster - 1) % 4] })), { label: 'outside the clustering region', color: INK.shade, kind: 'bar' as const }]} />
