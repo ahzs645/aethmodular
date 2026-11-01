@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react'
-import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { useChartOptions } from '@/lib/chartOptions'
 import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { Legend, useLegend } from '@/components/Legend'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
@@ -7,7 +8,6 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { fmt, pct } from '@/lib/format'
 import { INK } from '@/lib/theme'
 import { seasonOnly } from '@/lib/seasons'
-import { useSearchParam } from '@/lib/url'
 import type { MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
 import { siteColor } from './data'
@@ -41,8 +41,13 @@ const hour = (h: number) => String(h).padStart(2, '0')
 export function PeakTiming({ series, meta, by }: { series: HourlySeries[]; meta: MetaFile; by: 'site' | 'one' }) {
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
-  const [what, setWhat] = useSearchParam<What>('aeopk', 'peak', ['peak', 'above'])
-  const [split, setSplit] = useSearchParam<Split>('aeopks', 'season', ['season', 'week'])
+  // one site splits by season or by weekday; several sites are the groups themselves (old links' aeopk / aeopks still read)
+  const o = useChartOptions('aeth-overview-peaks', [
+    { key: 'what', label: 'Left', default: 'peak', legacy: ['aeopk'], choices: [{ value: 'peak', label: "Day's peak hour" }, { value: 'above', label: 'Hours above P95' }] },
+    { key: 'split', label: 'Split', default: 'season', legacy: ['aeopks'], when: () => by === 'one', choices: [{ value: 'season', label: 'Seasons' }, { value: 'week', label: 'Weekday / weekend' }] },
+  ])
+  const what = o.values.what as What
+  const split = o.values.split as Split
   const leg = useLegend()
   const groups = useMemo<Group[]>(() => {
     if (by === 'site') return series.map((hs) => ({ key: hs.site, label: hs.site, color: siteColor(meta, hs.site), days: hs.days, hours: hs.hours, threshold: hs.threshold }))
@@ -69,10 +74,7 @@ export function PeakTiming({ series, meta, by }: { series: HourlySeries[]; meta:
     <ChartFrame id={`aeth-overview-peaks-${by}`} title={by === 'site' ? 'When the day peaks — each site\'s hourly IR BCc' : `${series[0]?.site ?? ''} · when the day peaks — and how far above its mean`}
       subtitle={`From the hourly IR BCc record (local standard time), days with at least 18 valid hours. Left: ${what === 'peak' ? "the share of days whose highest hour falls at each local hour (addis_02's peak hour, day by day)" : `the share of the hours above the record's 95th-percentile hour (${thr} µg/m³) at each local hour (addis_02's extreme events by hour)`}. Right: each day's highest hour divided by the day's mean — how much a 24 h filter average flattens the day (median and IQR, mean open, 10–90 % faint).`}
       provenance="addis_02_temporal_patterns.ipynb Tasks 3 (peak hour by season) and 4 (extreme events by hour and season), for every site with an hourly record · gallery/data/export_aeth_overview.py"
-      controls={<>
-        <Segmented label="Left" value={what} options={['peak', 'above'] as What[]} onChange={setWhat} optionLabel={(o) => (o === 'peak' ? "Day's peak hour" : 'Hours above P95')} />
-        {by === 'one' && <Segmented label="Split" value={split} options={['season', 'week'] as Split[]} onChange={setSplit} optionLabel={(o) => (o === 'season' ? 'Seasons' : 'Weekday / weekend')} />}
-      </>}>
+      controls={o.controls()}>
       <div ref={ref} className="chart-wrap">
         {!groups.length ? <Empty>No hourly data in this span.</Empty> : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
