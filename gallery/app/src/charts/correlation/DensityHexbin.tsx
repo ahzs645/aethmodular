@@ -10,7 +10,7 @@ import * as d3 from 'd3'
 import { hexbin as d3Hexbin } from 'd3-hexbin'
 import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
-import { XAxis, YAxis } from '@/components/Axes'
+import { AxisSwap, XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { axesForUnits, inDomain, pairDomain, type AxesOpts } from '@/lib/axes'
@@ -159,6 +159,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
                 </>
               )}
 
+              <AxisSwap x={-42} y={innerH + 29} />
               {/* hexes centred near an edge would spill over the axes and their tick labels */}
               <g clipPath={`url(#${clipId})`}>
               {bins.map((b, i) => {

@@ -156,11 +156,11 @@ function ResidualPlot({ rows, available, onInspect, cohort }: { rows: BaselinePa
   })])) as Record<BaselineMethod, ScatterPoint[]>, [rows, available, COLOR, hl, onInspect])
   return <ChartFrame title="Test errors by EC loading" subtitle="One panel per method on shared axes. Hover for each physical filter and both predictions. Ringed points have stored spectra in the 12-case investigation. Click one to select its spectrum below." provenance="Frozen paired test predictions. No regression or new fit.">
     <Note>{cohortName(cohort)}, current display subset. All negative predictions remain in the errors.</Note>
-    <div className="chart-wrap" role="img" aria-label="Prediction errors by TOR EC mass, one panel each for AIRSpec and VIBES">{!rows.length ? <Empty>No test filters match both selections.</Empty> :
+    <div className="chart-wrap" role="group" aria-label="Prediction errors by TOR EC mass, one panel each for AIRSpec and VIBES">{!rows.length ? <Empty>No test filters match both selections.</Empty> :
       <FacetGrid items={METHODS} minCell={340} maxCols={2} maxCell={540} gap={36}
         title={(method) => <span style={{ color: COLOR[method] }}>{baselineName(method, { short: true })}</span>}
         note={(method) => `MAE ${f(d3.mean(rows, r => Math.abs(r[method]-r.y)))} µg/filter`}
-        render={(method) => <ScatterPlot points={points[method]} xDomain={xDomain} yDomain={yDomain} refY={[0]} density="dense" maxSide={460} note={false}
+        render={(method) => <ScatterPlot points={points[method]} xDomain={xDomain} yDomain={yDomain} refY={[0]} density="dense" maxSide={460} note={false} swap="baseline.residual"
           xLabel="Measured TOR EC (µg/filter)" yLabel="Prediction − TOR (µg/filter)" />} />}</div>
     <FixedSetNote what="the frozen paired IMPROVE test filters of this benchmark" />
   </ChartFrame>

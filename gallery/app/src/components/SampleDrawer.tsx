@@ -17,7 +17,7 @@ import { FieldSelect, prettyUnit } from '@/components/FieldSelect'
 import { Select, Toggle } from '@/components/ChartFrame'
 import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
 import { RATIO_GROUP } from '@/lib/viewFields'
-import { XAxis, YAxis } from '@/components/Axes'
+import { AxisSwap, XAxis, YAxis } from '@/components/Axes'
 import { regression, fmt } from '@/lib/stats'
 import { INK, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -104,7 +104,6 @@ export function SampleDrawer({
     if (role === 'y') { if (field === cx) setCx(cy); setCy(field) }
     else { if (field === cy) setCy(cx); setCx(field) }
   }
-  const swapCrossFields = () => { setCx(cy); setCy(cx) }
   const ref = useFilterReference(row, meta, allRows, studyRows, seasonOf)
   const { mode: reference, rows: referenceRows, label: referenceLabel } = ref
   const [copied, setCopied] = useState(false)
@@ -339,11 +338,6 @@ export function SampleDrawer({
         <section className="drawer-section drawer-crossplot">
           <div className="drawer-crossplot-head">
             <h3 title={`Reference: ${referenceLabel} · ${ref.loading ? '…' : cross.pool.length.toLocaleString()} paired filters${network ? ` (an even sample of ${network.sample_per_site} per site from ${network.n.toLocaleString()})` : ''}; the highlighted filter is ${row.id} from ${row.site}.`}>This filter on any crossplot</h3>
-            <button type="button" className="btn quiet drawer-swap" onClick={swapCrossFields} title="Swap x and y" aria-label="Swap x and y">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M21 3v6h-6" /><path d="M21 9l-2.7-2.7A9 9 0 1 0 21 12" />
-              </svg>
-            </button>
           </div>
           <div className="frame-controls" style={{ marginBottom: 6 }}>
             {!perBand && <FitGroupingControl />}
@@ -365,6 +359,7 @@ export function SampleDrawer({
               <g className="regression-plot" transform={`translate(${m.left},${top})`}>
                 <YAxis scale={ys} x={0} label={withUnit(cy, meta.field_units)} gridWidth={iw} tickCount={5} labelX={-48} pick="y" />
                 <XAxis scale={xs} y={ih} label={withUnit(cx, meta.field_units)} tickCount={5} pick="x" />
+                <AxisSwap x={-38} y={ih + 29} />
                 {cross.pool.map((p) => (
                   <circle key={p.r.id} cx={xs(p.x)} cy={ys(p.y)} r={2.4} fill={pointColor(p.r)} fillOpacity={0.35} style={{ cursor: knownIds.has(p.r.id) ? 'pointer' : 'default' }} onClick={() => { if (knownIds.has(p.r.id)) onOpen(p.r.id) }}>
                     <title>{p.r.id} · {p.r.site} · {p.r.date} · {cx}: {fmt(p.x, 3)} · {cy}: {fmt(p.y, 3)}</title>

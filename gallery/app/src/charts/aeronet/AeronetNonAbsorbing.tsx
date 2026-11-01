@@ -43,6 +43,7 @@ export function AeronetNonAbsorbing({ rows, meta }: { rows: FilterRow[]; meta: M
   }), [rows, bc, col, marked])
   const all = panels.flatMap((p) => p.points)
   const n = panels[0].points.length
+  // one fit-grouping box for all four panels: the FacetGrid's panel group draws it (each Crossplot hoists its own)
 
   return (
     <ChartFrame id="aeronet-w-ssa" title="Non-absorbing fraction against SSA — by wavelength"

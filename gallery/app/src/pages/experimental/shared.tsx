@@ -68,12 +68,13 @@ export type { ScatterPoint } from '@/components/ScatterPlot'
 /**
  * A plain scatter for two different quantities: components/ScatterPlot with this page's names (`xLog`/`yLog`,
  * `under`/`over`). Square and centred like the Crossplot (`maxSide` caps the side); points with an `id` hover, pin,
- * open their record and follow Filters → excluded; `pick` makes the axis titles open the nearest axis picker.
+ * open their record and follow Filters → excluded; `pick` makes the axis titles open the nearest axis picker; the corner
+ * button swaps the axes (`swap`, on by default here).
  */
-export function Scatter({ xLog = false, yLog = false, over, ...rest }: Omit<ComponentProps<typeof ScatterPlot>, 'xScale' | 'yScale' | 'children'> & {
+export function Scatter({ xLog = false, yLog = false, over, swap = true, ...rest }: Omit<ComponentProps<typeof ScatterPlot>, 'xScale' | 'yScale' | 'children'> & {
   xLog?: boolean; yLog?: boolean; over?: ComponentProps<typeof ScatterPlot>['children']
 }) {
-  return <ScatterPlot {...rest} xScale={xLog ? 'log' : 'linear'} yScale={yLog ? 'log' : 'linear'} outside="draw">{over}</ScatterPlot>
+  return <ScatterPlot {...rest} swap={swap} xScale={xLog ? 'log' : 'linear'} yScale={yLog ? 'log' : 'linear'} outside="draw">{over}</ScatterPlot>
 }
 
 export interface PlacedLabel { key: string; text: string; bold: boolean; tx: number; ty: number; anchor: 'start' | 'middle' | 'end'; leader: boolean; ax: number; ay: number; lx: number; ly: number }

@@ -22,7 +22,7 @@ import { facetGrid, panelLetter, pickedPanels } from '@/lib/facets'
  */
 export interface FacetCell { height: number | null; expanded: boolean }
 
-export function FacetGrid<T>({ items, render, minCell, maxCols, maxCell, gap, title, note, label, letters = false, expandable = true, center, minHeight = 120,
+export function FacetGrid<T>({ items, render, minCell, maxCols, maxCell, gap, title, note, label, letters = false, expandable = true, center = true, minHeight = 120,
   itemKey, site, share, grouping, legend, controls, axesControl = true, dims, show, order, pick, mode }: {
   items: T[]
   render: (item: T, cellWidth: number, index: number, cell: FacetCell) => ReactNode
@@ -39,7 +39,7 @@ export function FacetGrid<T>({ items, render, minCell, maxCols, maxCell, gap, ti
   letters?: boolean
   /** ⤢ on every facet (default true) */
   expandable?: boolean
-  /** centre the columns when the cells do not fill the width */
+  /** centre the columns when the cells do not fill the width (default true) */
   center?: boolean
   minHeight?: number
   /** a facet's key, for `show`/`order` and Own ranges (default: the item when it is a string, else its index) */
@@ -68,7 +68,7 @@ export function FacetGrid<T>({ items, render, minCell, maxCols, maxCell, gap, ti
   return (
     <PanelGroupProvider value={group}>
       {!joined && <PanelGroupControls value={group} axesControl={sharing && axesControl} dims={dims ?? (site ? ['site'] : [])} extra={controls} />}
-      <div ref={ref} style={{ display: 'grid', gridTemplateColumns: `repeat(${g.cols}, ${g.cell}px)`, gap: g.gap, alignItems: 'start', justifyContent: center ? 'center' : undefined }}>
+      <div ref={ref} style={{ display: 'grid', gridTemplateColumns: `repeat(${g.cols}, ${g.cell}px)`, gap: g.gap, alignItems: 'start', justifyContent: center ? 'safe center' : undefined }}>
         {drawn.map(({ it, i, key }, pos) => (
           <PanelCell key={key} title={title?.(it, i)} note={note?.(it, i)} letter={letters ? panelLetter(pos) : undefined} label={name(it, i)}
             onExpand={expandable ? () => setOpen(key) : undefined}>

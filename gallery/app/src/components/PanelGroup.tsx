@@ -23,9 +23,14 @@ import type { FitGrouping } from '@/lib/siteRegression'
 
 /** an axis range made from the union of the panels' own ranges */
 export type AxisShape = (union: Extent) => Extent
-/** which axes the panels share: both, one, or per axis `true` (the chart pads and rounds the union) or a shape */
-export type ShareAxes = boolean | 'x' | 'y' | { x?: boolean | AxisShape; y?: boolean | AxisShape }
-type Axis = 'x' | 'y'
+/**
+ * which axes the panels share: both, one, or per axis `true` (the chart pads and rounds the union) or a shape. `y2` is a
+ * second value axis on the right (the monthly climate's temperature beside its precipitation); only the object form
+ * shares it.
+ */
+export type ShareAxes = boolean | 'x' | 'y' | { x?: boolean | AxisShape; y?: boolean | AxisShape; y2?: boolean | AxisShape }
+type Axis = 'x' | 'y' | 'y2'
+const AXES: readonly Axis[] = ['x', 'y', 'y2']
 type Shapes = Partial<Record<Axis, true | AxisShape>>
 
 const normalise = (s: ShareAxes | undefined): Shapes | null => {
@@ -33,7 +38,7 @@ const normalise = (s: ShareAxes | undefined): Shapes | null => {
   if (s === true) return { x: true, y: true }
   if (s === 'x' || s === 'y') return { [s]: true }
   const o: Shapes = {}
-  for (const a of ['x', 'y'] as const) if (s[a]) o[a] = s[a] === true ? true : (s[a] as AxisShape)
+  for (const a of AXES) if (s[a]) o[a] = s[a] === true ? true : (s[a] as AxisShape)
   return Object.keys(o).length ? o : null
 }
 
@@ -102,7 +107,7 @@ export function usePanelGroupValue({ share, grouping, mode: fixed }: { share?: S
   const [gallery] = usePanelAxes()
   const mode = fixed ?? gallery
   // a shape passed inline is a new function every render; the group keeps the first per axis kind
-  const shapeKey = typeof share === 'object' && share ? `x:${typeof share.x}|y:${typeof share.y}` : String(share)
+  const shapeKey = typeof share === 'object' && share ? AXES.map((a) => `${a}:${typeof share[a]}`).join('|') : String(share)
   const shapes$ = useRef(share)
   shapes$.current = share
   const shapes = useMemo(() => {
@@ -113,7 +118,7 @@ export function usePanelGroupValue({ share, grouping, mode: fixed }: { share?: S
       const cur = normalise(shapes$.current)?.[a]
       return typeof cur === 'function' ? cur(u) : u
     } : undefined
-    return { x: live('x'), y: live('y') }
+    return { x: live('x'), y: live('y'), y2: live('y2') }
   }, [shapeKey]) // eslint-disable-line react-hooks/exhaustive-deps
   const own = useMemo(() => ({ store: store.current!, shapes, mode, grouping }), [shapes, mode, grouping])
   const joined = !!parent && share === undefined && grouping === undefined && fixed === undefined

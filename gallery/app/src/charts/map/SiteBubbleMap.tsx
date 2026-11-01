@@ -191,8 +191,6 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
           <Legend items={sites.map(s => ({ label: s.label, color: s.color, detail: stat === 'Sample count' ? String(s.n_filters) : fmt(s.value, aeronetQ?.digits ?? 2) }))} {...lg.props} />
         </div>}
         {!sites.length && <Empty>No samples with coordinates{stat === 'Sample count' ? '' : ` and ${metric}`} in this selection.</Empty>}
-        <Note>Drag to pan · scroll or use +/− to zoom · Fit sites frames the ticked sites · Globe shows the network without Mercator's stretched poles.{isImprove && ' IMPROVE opens on the US mainland; Fit sites also takes in Alaska, Hawaii and overseas sites.'}</Note>
-        {!isImprove && aeronet && sites.some((s) => aeronet.maia[s.code]) && <Note>Dashed ring: a SPARTAN site inside a MAIA target area ({sites.filter((s) => aeronet.maia[s.code]).length} here; hover for the area). MAIA turns its AOD into surface PM2.5 there, so the AERONET η = PM2.5 / AOD 500 is the quantity it has to get right.</Note>}
         {aeronetQ && <Note>{aeronetQ.label}: {aeronetQ.about}. Median over each site's non-excluded filters of the AERONET means inside the filter's sampling window (all dates; the sidebar's dates and seasons do not apply here; hover a site for its seasons). Hollow: no station within 50 km with retrievals in the windows.{aeronetQ.key === 'ssa440' ? ' SSA varies over a narrow range, so bubble sizes differ little: read the values in the list or the tooltip.' : ''}</Note>}
 
       </>}

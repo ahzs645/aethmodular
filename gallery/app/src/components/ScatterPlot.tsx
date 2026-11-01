@@ -1,6 +1,6 @@
 import { useId, useMemo, useRef, type ReactNode } from 'react'
 import * as d3 from 'd3'
-import { XAxis, YAxis } from '@/components/Axes'
+import { AxisSwap, OrientedPlotLayer, useAxisSwap, XAxis, YAxis } from '@/components/Axes'
 import { IdentityLine, RefLine } from '@/components/RefLines'
 import { RegressionGroupLines, RegressionLines, useRegressionSummary } from '@/components/RegressionOverlay'
 import { ScatterLayer } from '@/components/ScatterLayer'
@@ -12,6 +12,7 @@ import { fidProps } from '@/lib/filterEdits'
 import { baseFilterId, dotFill, dotRim, useHighlightActions, type FilterRecord } from '@/lib/highlight'
 import { useExclMode, useExclusionSplit, ExcludedNote, useMarkReason, type MarkPoint } from '@/lib/markedRows'
 import { monthBlocks } from '@/lib/regressionCI'
+import { orientErrorRatio, orientPoints, sourceScales } from '@/lib/plotOrientation'
 import { groupedRegressions, type FitGrouping } from '@/lib/siteRegression'
 import { regression } from '@/lib/stats'
 import { FONT, INK, type DotLevel } from '@/lib/theme'
@@ -90,13 +91,17 @@ function Mark({ shape = 'dot', cx, cy, r, ...paint }: { shape?: ScatterShape; cx
  *  - `refX` / `refY` agreement lines and `identity` (components/RefLines); `fit` refits the counted points through the
  *    gallery's regression pieces (pooled, per site or per season), summary above the axes
  *  - `pick`: the axis titles open the nearest axis picker (components/AxisChoices)
+ *  - `swap`: a curved two-way button in the lower-left margin swaps the axes (components/Axes AxisSwap, lib/plotOrientation;
+ *    left out of exports). With `pick` and two editable fields it swaps the fields themselves; otherwise the plot keeps
+ *    its own orientation in the URL. Points, ranges, reference lines and the refit (λ inverted) follow the swap; layers
+ *    drawn by `under` / `children` are handed the original axes' scales and transposed with the points
  *  - `under` / `children`: render props for the odd extra mark under or over the points (a band, labels, a line)
  */
 export function ScatterPlot({
   points, title, xLabel, yLabel, xScale = 'linear', yScale = 'linear', xDomain, yDomain, xClip, yClip, xInclude = [], yInclude = [],
   nice = true, identity = false, outside = 'pin', maxSide = 420, minSide = 200, height, margin, labelX, xTicks, yTicks, xFormat, yFormat,
   xBands, yBands, bandStripes = false, bandLabelSize = 11, refX = [], refY = [], fit, errorRatio, density = 'sparse', pick,
-  note = 'hand', onPick, focusR = 6, under, children,
+  note = 'hand', onPick, focusR = 6, swap = false, under, children,
 }: {
   points: ScatterPoint[]
   /** a title over the plot (12.5/600, in exports), as the Crossplot draws one */
@@ -155,9 +160,31 @@ export function ScatterPlot({
   onPick?: (p: ScatterPoint) => void
   /** the focused mark's smallest radius */
   focusR?: number
+  /** offer the axis swap: true keys the orientation by the axis titles; a string names it (panels that swap together share one) */
+  swap?: boolean | string
   under?: (s: ScatterScales) => ReactNode
   children?: (s: ScatterScales) => ReactNode
 }) {
+  // the axis swap: everything below draws the swapped plot, and hands its render props the original axes' scales
+  const canSwap = !!swap && !xBands && !yBands && xScale !== 'time'
+  const orientation = useAxisSwap(typeof swap === 'string' ? swap : `scatter.${xLabel ?? ''}.${yLabel ?? ''}`, pick === true)
+  const swapped = canSwap && orientation.swapped
+  const oriented = useMemo(() => orientPoints(points, swapped), [points, swapped])
+  // a click hands `onPick` the caller's own point, not its swapped copy
+  const inputPoints = points
+  const original = useMemo(() => (swapped ? new Map(oriented.map((p, i) => [p, inputPoints[i]])) : null), [oriented, swapped]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (swapped) {
+    points = oriented
+    ;[xLabel, yLabel] = [yLabel, xLabel]
+    ;[xScale, yScale] = [yScale, xScale as Exclude<AxisKind, 'time'>]
+    ;[xDomain, yDomain] = [yDomain, xDomain]
+    ;[xClip, yClip] = [yClip, xClip]
+    ;[xInclude, yInclude] = [yInclude, xInclude]
+    ;[xTicks, yTicks] = [yTicks, xTicks]
+    ;[xFormat, yFormat] = [yFormat, xFormat]
+    ;[refX, refY] = [refY, refX]
+    if (pick === 'x' || pick === 'y') pick = pick === 'x' ? 'y' : 'x'
+  }
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
@@ -205,7 +232,7 @@ export function ScatterPlot({
   const fitting = !!fit && fit !== 'none' && !xLog && !yLog && xScale !== 'time'
 
   // the fit, on the counted points; one per site where they come from several sites, per season where they say theirs
-  const lambda = errorRatio ?? 1
+  const lambda = orientErrorRatio(errorRatio, swapped)
   const siteOf = (p: ScatterPoint) => p.site ?? p.rec?.site ?? 'Unknown site'
   const fitGroups = useMemo(() => (fitting && fit !== 'pooled' ? groupedRegressions(ok, fit as FitGrouping, {
     x: (p) => p.x, y: (p) => p.y, site: siteOf, color: (p) => p.color,
@@ -252,6 +279,10 @@ export function ScatterPlot({
   }), [ok, xy, density])
 
   const scales: ScatterScales = { x, y, iw, ih }
+  // swapped: the render props draw in the original axes, and OrientedPlotLayer transposes what they draw
+  const source = useMemo(() => (swapped ? sourceScales(x, y, true) : null), [x, y, swapped])
+  const layered = (render: ((s: ScatterScales) => ReactNode) | undefined) => !render ? null
+    : source ? <OrientedPlotLayer swapped width={iw} height={ih}>{render({ ...source, iw, ih })}</OrientedPlotLayer> : render(scales)
   const fmt = (kind: AxisKind) => (kind === 'log' ? logTickFormat : kind === 'time' ? timeFormat : linearFormat)
   // a band axis shows its labels at the band centres (a band scale over the same pixels)
   const xBandScale = useMemo(() => (xBands ? d3.scaleBand().domain(xBands.map((b) => b.key)).range([0, iw]) : null), [xBands, iw])
@@ -267,14 +298,14 @@ export function ScatterPlot({
         {...dotFill('sparse')} stroke={INK.text} strokeWidth={2} />}
       tipOf={(p) => (p.tip ? (p.rec || p.open ? [...p.tip, p.id ? 'click to pin it on every chart and open its record' : 'click to open its record'] : p.tip) : null)}
       onPick={(p) => {
-        if (onPick) { onPick(p); return }
+        if (onPick) { onPick(original?.get(p) ?? p); return }
         const key = keyOf(p)
         if (p.open) p.open(); else if (p.rec) hl.openRecord(p.rec)
         if (key) hl.setPinned(key)
       }}>
       {fitting && (fit === 'pooled' ? <RegressionLines stats={pooled} x={x} y={y} domain={x.domain()} width={iw} height={ih} />
         : <RegressionGroupLines groups={fitGroups} x={x} y={y} width={iw} height={ih} />)}
-      {children?.(scales)}
+      {layered(children)}
     </ScatterLayer>
   )
   return (
@@ -293,7 +324,8 @@ export function ScatterPlot({
           {refX.map((v) => <RefLine key={`rx${v}`} orient="v" at={x(v)} from={0} to={ih} />)}
           {refY.map((v) => <RefLine key={`ry${v}`} orient="h" at={y(v)} from={0} to={iw} />)}
           {identity && (() => { const [a, b] = x.domain(); return <IdentityLine x1={x(a)} y1={y(a)} x2={x(b)} y2={y(b)} /> })()}
-          {under?.(scales)}
+          {canSwap && <AxisSwap x={-m.left + 24} y={ih + 26} onSwap={orientation.swap} />}
+          {layered(under)}
           {outside === 'clip' ? <>
             <defs><clipPath id={clipId}><rect width={iw} height={ih} /></clipPath></defs>
             <g clipPath={`url(#${clipId})`}>{layer}</g>

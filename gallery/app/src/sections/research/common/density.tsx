@@ -6,7 +6,8 @@
 import { useRef, type ReactNode } from 'react'
 import { useColourScheme } from '@/lib/colourSchemes'
 import * as d3 from 'd3'
-import { XAxis, YAxis } from '@/components/Axes'
+import { AxisSwap, OrientedPlotLayer, useAxisSwap, XAxis, YAxis } from '@/components/Axes'
+import { sourceScales } from '@/lib/plotOrientation'
 import { ColorLegend } from '@/components/ColorLegend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -37,10 +38,12 @@ export function DensityPlot({ id, cells, bins, x: [x0, x1], y: [y0, y1], xLabel,
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
+  const { swapped, swap } = useAxisSwap(`density.${id}`)
   const m = { top: 12, right: 14, bottom: 46, left: 60 }
   const side = Math.max(200, Math.min(maxSide, width - m.left - m.right))
   const xs = d3.scaleLinear().domain([x0, x1]).range([0, side])
   const ys = d3.scaleLinear().domain([y0, y1]).range([side, 0])
+  const display = sourceScales(xs, ys, swapped)
   const cw = side / bins
   const colours = useColourScheme(id, 'sequential')
   // the Gallery ramp's palest step is the page itself: start one step in, as before
@@ -55,8 +58,10 @@ export function DensityPlot({ id, cells, bins, x: [x0, x1], y: [y0, y1], xLabel,
     <div ref={ref} style={{ position: 'relative' }}>
       <svg width={side + m.left + m.right} height={side + m.top + m.bottom} fontFamily={FONT.family}>
         <g transform={`translate(${m.left},${m.top})`}>
-          <YAxis scale={ys} x={0} label={yLabel} gridWidth={side} tickCount={5} labelX={-46} />
-          <XAxis scale={xs} y={side} label={xLabel} tickCount={5} />
+          <YAxis scale={display.y} x={0} label={swapped ? xLabel : yLabel} gridWidth={side} tickCount={5} labelX={-46} />
+          <XAxis scale={display.x} y={side} label={swapped ? yLabel : xLabel} tickCount={5} />
+          <AxisSwap x={-38} y={side + 26} onSwap={swap} />
+          <OrientedPlotLayer swapped={swapped} width={side} height={side}>
           {cells.map((c) => {
             const v = mode === 'count' ? Math.log10(c[2]) : c[3]
             return <rect key={`${c[0]}-${c[1]}`} x={c[0] * cw} y={side - (c[1] + 1) * cw} width={cw + 0.5} height={cw + 0.5} fill={Number.isFinite(v) ? ramp(v) : INK.empty}
@@ -70,6 +75,7 @@ export function DensityPlot({ id, cells, bins, x: [x0, x1], y: [y0, y1], xLabel,
           {children?.({ x: xs, y: ys })}
           {points.filter((p) => p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1).map((p, i) => <circle key={i} cx={xs(p.x)} cy={ys(p.y)} r={3.2} fill={p.hollow ? 'none' : p.color} fillOpacity={0.85}
             stroke={p.hollow ? p.color : INK.panel} strokeWidth={p.hollow ? 1.3 : 0.6} onMouseMove={(e) => tip.show(e, p.tip)} onMouseLeave={tip.hide} />)}
+          </OrientedPlotLayer>
         </g>
       </svg>
       <ColorLegend scale={legendScale} scheme={colours.scheme}

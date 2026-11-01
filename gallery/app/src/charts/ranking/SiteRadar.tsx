@@ -11,6 +11,7 @@ import { INK, FONT } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
 import { ExcludedNote } from '@/lib/markedRows'
+import { textWidth } from '@/lib/fitLabel'
 
 const NORMS = ['÷ max site median', '÷ pooled median'] as const
 
@@ -72,10 +73,10 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
 
   const shown = sites.filter((s) => !hidden.has(s.name))
   const fit = useFitHeight()
-  const size = fit === null ? Math.min(520, Math.max(320, width - 40)) : Math.max(160, Math.min(width - 40, fit))
-  // gutter sized from the longest species label so nothing runs off the canvas:
-  // labels sit 12 px outside the rim and need ~6.6 px per character beyond that
-  const labelPad = Math.min(160, 26 + 8 * Math.max(6, ...species.map((f) => f.length)))
+  // Measure the actual labels, and keep at least a 60 px radius even in a short tile.
+  // The shared chart-wrap scrolls if a very narrow host cannot hold the labels.
+  const labelPad = useMemo(() => 16 + Math.ceil(Math.max(0, ...species.map((f) => textWidth(f, 11)))), [species])
+  const size = Math.max(2 * (labelPad + 60), Math.min(width, fit ?? 520))
   const R = size / 2 - labelPad
   const cx = size / 2
   const cy = size / 2
@@ -103,14 +104,16 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
       provenance="not in the estate · react-graph-gallery.com/radar-chart"
       controls={o.controls()}
     >
-      <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', justifyContent: 'center' }}>
+      {/* SingleFit can move this legend beside the SVG. Keep both inside the measured wrapper,
+          so an auto-sized legend grid cannot feed the SVG's width back into its own measurement. */}
+      <div ref={wrapRef} className="chart-wrap centered">
         {species.length < 3 || sites.length === 0 ? (
           <Empty>Need at least 3 species with ≥5 filters per site.</Empty>
         ) : sites.length === 1 ? (
           // both normalisations divide a lone site by itself: every axis would read 1
           <Empty>The radar compares site profiles, so it needs two or more sites; with only {sites[0].name} every axis is 1. Pick more sites in the Filters panel.</Empty>
         ) : (
-          <svg width={size} height={size} className="animated">
+          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="animated">
             {rings.map((v) => (
               <circle key={v} cx={cx} cy={cy} r={radial(v)} fill="none" stroke={v === 1 && norm === '÷ pooled median' ? INK.axis : INK.grid} strokeWidth={v === 1 && norm === '÷ pooled median' ? 1.4 : 1} strokeDasharray={v === 1 && norm === '÷ pooled median' ? '4 3' : undefined} />
             ))}
@@ -118,7 +121,7 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
             {rings.map((v) => {
               const half = Math.PI / Math.max(3, species.length) - Math.PI / 2
               return (
-                <text key={`t${v}`} x={cx + radial(v) * Math.cos(half) + 3} y={cy + radial(v) * Math.sin(half)} dy="0.35em" fontSize={9.5} fill={INK.muted} fontFamily={FONT.mono} stroke={INK.panel} strokeWidth={3} paintOrder="stroke">
+                <text key={`t${v}`} x={cx + radial(v) * Math.cos(half)} y={cy + radial(v) * Math.sin(half)} dy="0.35em" textAnchor="middle" fontSize={9.5} fill={INK.muted} fontFamily={FONT.mono} stroke={INK.panel} strokeWidth={3} paintOrder="stroke">
                   {norm === '÷ pooled median' ? `${v}×` : `${Math.round(v * 100)}%`}
                 </text>
               )
@@ -163,9 +166,9 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
             )}
           </svg>
         )}
+        <Legend items={sites.map((s) => ({ label: s.name, color: s.color }))} {...legendProps} />
         {tip.node}
       </div>
-      <Legend items={sites.map((s) => ({ label: s.name, color: s.color }))} {...legendProps} />
       <ExcludedNote />
     </ChartFrame>
   )

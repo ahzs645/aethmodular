@@ -4,7 +4,7 @@ import { useSearchParam } from '@/lib/url'
 import { RefLine } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
-import { XAxis, YAxis } from '@/components/Axes'
+import { AxisSwap, XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
@@ -94,6 +94,7 @@ export function SplitCheck({ run, runs }: { run: CalibRun; runs: CalibRunsFile }
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
               <YAxis scale={y} x={0} label={`Test set ${sy[0]}${sy[0] === 'Deming intercept' || sy[0] === 'RMSE' ? ' (µg/m³)' : ''}`} gridWidth={innerW} tickCount={5} pick="y" />
               <XAxis scale={x} y={innerH} label={`Test set ${sx[0]}${sx[0] === 'Deming intercept' || sx[0] === 'RMSE' ? ' (µg/m³)' : ''}`} tickCount={6} pick="x" />
+              <AxisSwap x={-42} y={innerH + 29} />
               {sx[0] === 'Deming slope' && x.domain()[0] <= 1 && 1 <= x.domain()[1] && <RefLine orient="v" at={x(1)} from={0} to={innerH} />}
               {sy[0] === 'Deming intercept' && y.domain()[0] <= 0 && 0 <= y.domain()[1] && <RefLine orient="h" at={y(0)} from={0} to={innerW} />}
               {rows.map((r, i) => (

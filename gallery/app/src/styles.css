@@ -164,6 +164,8 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .panel .frame-about { margin: 8px 0 2px; font-size: calc(14px * var(--text-scale)); font-weight: normal; }
 .meeting-section-title { margin: 26px 4px 10px; font-size: calc(20px * var(--text-scale)); }
 .panel .provenance { margin: 7px 0 0; font-size: calc(11.5px * var(--text-scale)); color: var(--ink-muted); font-family: var(--mono); }
+/* Controls follow the chart's room, including when the Samples dock takes part of the window. */
+.panel[data-chart-key] { container: chart-frame / inline-size; }
 .frame-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
 .frame-head > div:first-child { flex: 1 1 auto; min-width: 0; }
 .frame-actions { display: flex; gap: 4px; flex-shrink: 0; }
@@ -172,9 +174,9 @@ code { font-family: var(--mono); font-size: 0.92em; }
   margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--ink-grid);
 }
 /* the options in a column beside the chart (ChartFrame's layout button): stacked one per line, the
-   chart keeps the rest of the width and re-measures itself. Under 821px they stay in the row above */
+   chart keeps the rest of the width and re-measures itself. Narrow cards keep the row above. */
 .frame-chart { min-width: 0; }
-@media (min-width: 821px) {
+@container chart-frame (min-width: 760px) {
   .frame-body.controls-right, .frame-body.controls-left { display: grid; column-gap: 16px; align-items: start; }
   .frame-body.controls-right { grid-template-columns: minmax(0, 1fr) minmax(180px, 240px); }
   .frame-body.controls-left { grid-template-columns: minmax(180px, 240px) minmax(0, 1fr); }
@@ -197,8 +199,11 @@ code { font-family: var(--mono); font-size: 0.92em; }
   .frame-body:not(.controls-top) > .frame-controls .combobox,
   .frame-body:not(.controls-top) > .frame-controls .combobox-trigger { width: 100%; max-width: 100%; }
   .frame-body:not(.controls-top) > .frame-controls .combobox-control { width: 100%; min-width: 0; }
-  .frame-body:not(.controls-top) > .frame-controls .grouping-picker { display: flex; flex-direction: column; align-items: stretch; width: 100%; }
-  .frame-body:not(.controls-top) > .frame-controls .grouping-picker .combobox-control { flex-direction: column; align-items: flex-start; gap: 4px; }
+  /* the grouping dropdown and its + / Edit buttons share a line; the label sits above */
+  .frame-body:not(.controls-top) > .frame-controls .grouping-picker { display: flex; flex-wrap: nowrap; align-items: flex-end; width: 100%; }
+  .frame-body:not(.controls-top) > .frame-controls .grouping-picker .combobox-control,
+  .frame-body:not(.controls-top) > .frame-controls .grouping-picker > .control { flex: 1 1 auto; min-width: 0; flex-direction: column; align-items: flex-start; gap: 4px; }
+  .frame-body:not(.controls-top) > .frame-controls .grouping-picker .grouping-actions { flex: 0 0 auto; flex-wrap: nowrap; }
   .frame-body:not(.controls-top) > .frame-controls .seg { flex-wrap: wrap; }
   .frame-body:not(.controls-top) > .frame-controls > .option-node > .control { display: flex; }   /* not inline: lets a stacked list fill the column */
   /* long options (Segmented marks them) read one per line in the narrow column, as a list */
@@ -226,9 +231,7 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .panel.focused > .frame-head { max-width: 1500px; margin-left: auto; margin-right: auto; }
 .panel.focused > .frame-body { max-width: 1500px; margin: 0 auto; }
 .panel.focused > .frame-body.controls-top > .frame-controls { justify-content: center; }
-.panel.focused .frame-chart .chart-wrap > svg, .panel.focused .frame-chart > svg { margin-left: auto; margin-right: auto; }
 .panel.focused .frame-chart .facet-grid { justify-items: center; }
-.panel.focused .frame-chart .legend { justify-content: center; }
 @media (max-width: 640px) { .panel.focused { inset: 0; border-radius: 0; } }
 .frame-empty { font-size: calc(13px * var(--text-scale)); color: var(--ink-muted); padding: 24px 0; text-align: center; }
 
@@ -508,8 +511,10 @@ code { font-family: var(--mono); font-size: 0.92em; }
 
 /* ---------- legend ---------- */
 
-.legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 4px 0 8px; font-size: calc(12px * var(--text-scale)); color: var(--ink-muted); align-items: center; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; padding: 4px 0 8px; font-size: calc(12px * var(--text-scale)); color: var(--ink-muted); align-items: center; }
 .legend.grouped { row-gap: 4px; }
+/* Keep the site/season rows aligned with one another, with the whole key centred in the view. */
+.legend-groups { display: flex; flex-direction: column; gap: 4px; width: max-content; max-width: 100%; }
 .rain-rule-fields { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: end; }
 .rain-rule-field { display: flex; flex-direction: column; gap: 2px; font-size: calc(11px * var(--text-scale)); color: var(--ink-muted); }
 .rain-rule-field input { width: 84px; }
@@ -584,7 +589,8 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .species-alone { color: var(--ink-muted); padding: 4px 6px 0; }
 /* a colour ramp that is the chart's colour control (components/ColorLegend `scheme`): click for the palettes */
 .legend-ramp { display: inline-flex; align-items: flex-start; cursor: pointer; border-radius: 5px; padding: 3px 4px 0 0; margin: -3px -4px 0 0; transition: background 0.12s; }
-.legend-ramp::after { content: '▾'; color: var(--ink-muted); font-size: 11px; line-height: 10px; margin-left: -12px; }
+/* Keep the palette arrow outside the SVG, including a vertical ramp's tick labels. */
+.legend-ramp::after { content: '▾'; flex-shrink: 0; color: var(--ink-muted); font-size: 11px; line-height: 10px; margin-left: 4px; }
 .legend-ramp:hover, .legend-ramp.open { background: var(--accent-soft); }
 .legend-ramp:hover::after, .legend-ramp.open::after { color: var(--accent); }
 .legend-ramp:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -612,16 +618,15 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 
 /* a chart wider than its card (a correlogram, a heat map, the species network on a phone) scrolls
    inside the card, never the page; tooltips are portalled (hooks/useTooltip) so nothing is clipped */
-.chart-wrap { position: relative; width: 100%; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; }
+.chart-wrap { position: relative; width: 100%; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; justify-content: safe center; }
 .chart-wrap svg { display: block; }
-/* charts whose shape is fixed (square 1:1 panels, matrices, the clock) sit in the middle of the panel, legend and notes with them */
-.chart-wrap.centered > svg { margin-left: auto; margin-right: auto; }
+/* Capped plots sit in the middle of their view; auto margins leave oversized plots scrollable from the start. */
+.chart-wrap > svg, .chart-scroll > svg, .panel-cell > svg, .facet-grid > * > svg, .frame-chart > svg { margin-left: auto; margin-right: auto; }
 .chart-wrap.centered .facet-grid { justify-items: center; }
-.chart-wrap.centered > .legend { justify-content: center; }
 /* Bottom keys use the chart's visible width and stay put as the plot pans. */
 .chart-wrap > .legend { position: sticky; left: 0; width: 100%; max-width: 100%; box-sizing: border-box; }
 .chart-wrap > .legend .legend-item { min-width: 0; max-width: 100%; }
-.chart-wrap > .legend .legend-item:has(.legend-ramp) { flex-wrap: wrap; }
+.legend-item:has(.legend-ramp) { flex-wrap: wrap; justify-content: center; min-width: 0; max-width: 100%; }
 .legend-ramp { min-width: 0; max-width: 100%; }
 .chart-wrap.centered > .chart-note { text-align: center; }
 .chart-note { margin: 0 0 8px; font-size: calc(11.5px * var(--text-scale)); color: var(--ink-muted); }
@@ -637,7 +642,7 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 .connected-hit { cursor: pointer; }
 #connected [role=button]:focus-visible { outline: none; }
 #connected [role=button]:focus-visible .connected-hit { stroke: var(--accent); stroke-width: 2; }
-.facet-grid { display: grid; gap: 12px; }
+.facet-grid { display: grid; gap: 12px; justify-content: safe center; }
 .facet-title { font-size: calc(12.5px * var(--text-scale)); font-weight: 600; margin: 0 0 2px; display: flex; gap: 6px; align-items: center; }
 .panel-head { min-height: 20px; flex-wrap: wrap; row-gap: 0; }
 .panel-letter { font-weight: 700; color: var(--ink-text); }
@@ -878,6 +883,9 @@ html:not([data-explain="1"]) .reference-guide { display: none; }
 .axis-pick text { text-decoration: underline dotted; text-decoration-color: var(--ink-muted); text-underline-offset: 3px; }
 .axis-pick:hover text, .axis-pick:focus-visible text { fill: var(--accent); text-decoration-color: var(--accent); }
 .axis-pick-caret { fill: var(--accent); font-size: calc(10px * var(--text-scale)); }
+.axis-swap { cursor: pointer; color: var(--ink-muted); outline: none; }
+.axis-swap:hover, .axis-swap:focus-visible { color: var(--accent); }
+.axis-swap:focus-visible > path { stroke-width: 3; }
 .axis-popover { position: fixed; z-index: 1000; width: 300px; max-width: calc(100vw - 16px); overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 6px; padding: 8px; background: var(--ink-panel);
   border: 1px solid var(--ink-border); border-radius: 10px; box-shadow: 0 12px 32px rgba(31, 41, 51, 0.18); font-size: calc(12px * var(--text-scale)); }
 .axis-popover-head { display: flex; align-items: center; gap: 8px; font-size: calc(12.5px * var(--text-scale)); }
@@ -1260,7 +1268,8 @@ svg [font-size="16"] { font-size: calc(16px * var(--chart-text-scale)); }
 .field-multi-n { margin-left: auto; font-size: calc(11px * var(--text-scale)); color: var(--ink-muted); font-family: var(--mono); font-weight: 400; text-transform: none; letter-spacing: 0; }
 
 /* ---------- colour schemes (components/ColourSchemePicker) ---------- */
-.scheme-swatch { display: inline-block; width: 46px; height: 10px; border-radius: 3px; border: 1px solid rgba(0, 0, 0, 0.08); }
+/* the hairline is an inset shadow, not a border: a gradient background tiles under a border, so its far end showed as a sliver at the near edge */
+.scheme-swatch { display: inline-block; width: 46px; height: 10px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); }
 .scheme-swatch.wide { width: 90px; height: 12px; }
 .scheme-pop { position: fixed; z-index: 1000; width: 250px; background: var(--ink-panel); border: 1px solid var(--ink-border); border-radius: 10px;
   max-width: calc(100vw - 16px); overflow-y: auto; overscroll-behavior: contain; box-shadow: 0 10px 30px rgba(31, 41, 51, 0.18); padding: 6px; display: flex; flex-direction: column; gap: 4px; }
@@ -1268,15 +1277,15 @@ svg [font-size="16"] { font-size: calc(16px * var(--chart-text-scale)); }
 .scheme-item { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 2px 8px; border: 0; background: none; padding: 5px 6px; border-radius: 6px; cursor: pointer; text-align: left; font: calc(12.5px * var(--text-scale)) var(--font); color: var(--ink-text); }
 .scheme-item:hover { background: var(--accent-soft); }
 .scheme-item.on { background: var(--accent-soft); font-weight: 600; }
-.scheme-note { grid-column: 2; font-size: calc(10.5px * var(--text-scale)); color: var(--ink-muted); font-weight: 400; }
-.scheme-reverse { display: flex; align-items: center; gap: 6px; padding: 6px; border-top: 1px solid var(--ink-grid); font-size: calc(12px * var(--text-scale)); color: var(--ink-text); cursor: pointer; }
+.scheme-reverse { display: flex; align-items: center; gap: 6px; padding: 6px; font-size: calc(12px * var(--text-scale)); color: var(--ink-text); cursor: pointer; }
 .scheme-item { width: 100%; box-sizing: border-box; }
 /* a palette of the reader's own (lib/customPalettes): ✎ at the row's right, shown on hover or focus */
 .scheme-own { position: relative; display: flex; }
 .scheme-own .scheme-item { padding-right: 30px; }
 .scheme-edit { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); opacity: 0; }
 .scheme-own:hover .scheme-edit, .scheme-edit:focus-visible, .scheme-own .scheme-item.on + .scheme-edit { opacity: 1; }
-.scheme-new { border: 0; background: none; padding: 6px; border-radius: 6px; text-align: left; cursor: pointer; font: calc(12px * var(--text-scale)) var(--font); color: var(--accent); border-top: 1px solid var(--ink-grid); }
+.scheme-new { border: 0; background: none; padding: 6px; border-radius: 6px; text-align: left; cursor: pointer; font: calc(12px * var(--text-scale)) var(--font); color: var(--accent); }
+.scheme-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid var(--ink-grid); }
 .scheme-new:hover { background: var(--accent-soft); }
 /* the palette editor, in place of the list */
 .scheme-editor { display: flex; flex-direction: column; gap: 8px; padding: 2px 4px 4px; font-size: calc(12px * var(--text-scale)); color: var(--ink-text); }
@@ -1299,6 +1308,10 @@ svg [font-size="16"] { font-size: calc(16px * var(--chart-text-scale)); }
 .scheme-stop-x:hover { color: var(--danger); border-color: var(--danger); }
 .scheme-stop-add { width: 28px; height: 28px; border: 1px dashed var(--ink-border); border-radius: 6px; background: none; color: var(--ink-muted); cursor: pointer; font-size: 15px; }
 .scheme-stop-add:hover { border-color: var(--accent); color: var(--accent); }
+.scheme-field-label { color: var(--ink-muted); font-size: calc(11px * var(--text-scale)); margin-bottom: -4px; }
+/* Colorshot's gradient editor (components/ColourSchemePicker GradientStops), in the gallery's colours */
+.scheme-editor .scheme-colorshot { --cs-width: 100%; --cs-padding: 0; --cs-shadow: none; --cs-bg: transparent; --cs-fg: var(--ink-text);
+  --cs-muted: var(--ink-muted); --cs-border: var(--ink-border); --cs-accent: var(--accent); --cs-area-height-gradient: 130px; --cs-area-height: 130px; border: 0; }
 .scheme-editor-actions { display: flex; gap: 6px; align-items: center; border-top: 1px solid var(--ink-grid); padding-top: 8px; }
 .scheme-editor-gap { flex: 1; }
 
@@ -1426,7 +1439,11 @@ html.dash-mode .app-title-row .nav-btn { padding: 3px 10px; font-size: calc(12px
 .dash-tile.legend-right .chart-wrap:has(> .legend) { display: grid; grid-template-columns: minmax(0, 1fr) var(--legend-w); column-gap: 8px; align-items: start; }
 .dash-tile.legend-right .chart-wrap:has(> .legend) > :not(.legend) { grid-column: 1; }
 .dash-tile.legend-right .chart-wrap > .legend { grid-column: 2; grid-row: 1 / span 40; flex-direction: column; flex-wrap: nowrap; align-items: flex-start;
-  position: static; width: auto; gap: 3px; max-height: 100%; overflow-y: auto; padding-top: 4px; }
+  position: static; width: auto; gap: 3px; max-height: 100%; overflow-y: auto; padding-top: 4px; justify-content: flex-start; }
+.dash-tile.legend-right .legend-groups { width: auto; }
+.dash-tile.legend-right .legend-group { flex-direction: column; width: auto; }
+.dash-tile.legend-right .legend-group-name { flex: none; text-align: left; }
+.dash-tile.legend-right .legend-item:has(.legend-ramp) { justify-content: flex-start; }
 .dash-tile.legend-right .chart-wrap.centered:has(> .legend) { justify-items: center; }
 .tile-legend-mode { flex-basis: 100%; padding-top: 4px; }
 .legend-more { border: 1px solid var(--ink-border); background: var(--ink-panel); border-radius: 10px; padding: 0 7px; font: inherit; font-size: 0.92em;
@@ -1551,7 +1568,6 @@ html.dash-present .container.dash { padding-top: 10px; }
 
 .drawer-crossplot-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .drawer-crossplot-head h3 { margin: 0; }
-.drawer-swap { display: inline-flex; align-items: center; justify-content: center; flex: none; padding: 5px; }
 
 
 .export-colors { border: 0; border-top: 1px solid var(--ink-border); padding: 10px 0 0; margin: 0; min-width: 0; }
@@ -1732,6 +1748,9 @@ html.dash-present .container.dash { padding-top: 10px; }
 .gt-scrub-field.scrub-field:hover .gt-scrub-fill, .gt-scrub-field.scrub-field[data-scrubbing] .gt-scrub-fill { opacity: 0.22; }
 .gt-scrub-field.scrub-field .gt-scrub-value, .gt-scrub-field.scrub-field .gt-scrub-input { font-weight: 650; }
 .gt-scrub-field.scrub-field .gt-scrub-unit { color: var(--ink-muted); }
+.gt-scrub-field.scrub-field:has(.scrub-unit-frac) .gt-scrub-value, .gt-scrub-field.scrub-field:has(.scrub-unit-frac) .gt-scrub-input { padding-right: 1.45rem; }
+.scrub-unit-frac { display: inline-flex; flex-direction: column; align-items: center; font-size: 8.5px; line-height: 1; }
+.scrub-unit-frac > span + span { border-top: 1px solid currentColor; padding-top: 1px; margin-top: 1px; min-width: 100%; text-align: center; }
 .frame-actions button[aria-label="Focus on this chart"] { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; padding: 6px; }
 .combobox-option:disabled { opacity: .45; cursor: default; }
 .legend-group { align-items: flex-start; }
@@ -1746,7 +1765,8 @@ html.dash-present .container.dash { padding-top: 10px; }
   .frame-controls .control, .frame-controls .grouping-picker { flex-wrap: wrap; }
   .frame-controls .seg { flex-wrap: wrap; max-width: 100%; }
   .frame-controls .combobox-control { min-width: 0; max-width: 100%; flex-wrap: wrap; }
-  .legend-group-name { flex-basis: 100%; }
+  .legend-group { justify-content: center; }
+  .legend-group-name { flex-basis: 100%; text-align: center; }
   .configuration-section { padding: 4px; }
 }
 
@@ -1797,9 +1817,6 @@ html[data-single='1'] [data-single-active] [data-single-hide] { display: none !i
 html[data-single='1'] [data-single-path] { display: block !important; max-width: none !important; width: auto !important; margin-left: 0; margin-right: 0; }
 html[data-single='1'] [data-single-root] { max-width: none; padding-top: 12px; padding-bottom: 0; }
 html[data-single='1'] [data-single-active] { margin: 0; }
-html[data-single='1'] [data-single-active] .frame-chart .chart-wrap > svg,
-html[data-single='1'] [data-single-active] .frame-chart > svg { margin-left: auto; margin-right: auto; }
-html[data-single='1'] [data-single-active] .frame-chart .legend:not(.facet-legend .legend) { justify-content: center; }
 /* beside an open dock on a wide screen, not under it */
 @media (min-width: 901px) {
   html[data-single='1'][data-dock='open'] [data-single-root] { padding-left: calc(min(380px, 100vw - 36px) + 22px); }
@@ -1847,8 +1864,9 @@ html[data-single='1'] [data-single-active] .frame-chart .legend:not(.facet-legen
 [data-legend-beside] > .legend { grid-column: 2; grid-row: 1 / span var(--legend-rows, 1); align-self: center; }
 [data-legend-beside] > .legend, [data-legend-beside] > .legend .legend { flex-direction: column; flex-wrap: nowrap; align-items: flex-start; gap: 8px; padding: 0; }
 [data-legend-beside] > .legend .legend-group { flex-direction: column; align-items: flex-start; width: auto; }
+[data-legend-beside] > .legend .legend-groups { width: auto; }
 /* the group's name heads its column: no fixed basis (that is the name's width in a row, and its height here) */
-[data-legend-beside] > .legend .legend-group-name { flex: none; }
+[data-legend-beside] > .legend .legend-group-name { flex: none; text-align: left; }
 /* a colour ramp beside the plot: its label over the bar */
 [data-legend-beside] .legend-item:has(> .legend-ramp) { flex-direction: column; align-items: flex-start; gap: 4px !important; }
 /* the colour ramp stands up beside the plot (components/ColorLegend); lying under it everywhere else */
@@ -1859,14 +1877,14 @@ html[data-single='1'] [data-single-active] .frame-chart .legend:not(.facet-legen
 .frame-controls > .single-stats { margin: 0; max-width: none; flex: none; }
 /* the title bar at the head of the options column (single-chart view): the arrows and picker, then the chart's actions */
 .frame-controls > .frame-head { flex: 1 1 100%; margin: 0; }
-@media (min-width: 821px) {
+@container chart-frame (min-width: 760px) {
   .frame-body:not(.controls-top) > .frame-controls > .frame-head { flex-direction: column; align-items: stretch; gap: 8px; }
   .frame-body:not(.controls-top) > .frame-controls > .frame-head .frame-actions { flex-wrap: wrap; }
   /* the picker fills its line but leaves room for the notes ⓘ beside it (the arrows take the line above) */
   .frame-body:not(.controls-top) > .frame-controls > .frame-head .single-title { flex: 1 1 calc(100% - 32px); max-width: calc(100% - 32px); }
 }
 /* the chart in view: an options column longer than the window scrolls on its own, beside a plot fitted to the window */
-@media (min-width: 821px) {
+@container chart-frame (min-width: 760px) {
   html[data-single='1'] [data-single-active] > .frame-body:not(.controls-top) > .frame-controls {
     max-height: min(var(--single-room, 100vh), calc(100vh - var(--header-h, 0px) - 24px)); }
 }

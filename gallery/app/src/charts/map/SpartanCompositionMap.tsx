@@ -3,7 +3,7 @@ import * as d3 from 'd3'
 import type { Feature, FeatureCollection } from 'geojson'
 import { MapDonutMarker, useMap } from '@pgmaps/geo-toolkit/map'
 import { DonutRingMap, type DonutRingItem } from '@pgmaps/geo-toolkit/visualizations/react'
-import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { LoadState } from '@/components/ExportState'
 import { useChartOptions } from '@/lib/chartOptions'
 import { GeoMap, asReactMouse, type GeoMapHandle } from '@/components/GeoMap'
@@ -139,8 +139,6 @@ export function SpartanCompositionMap() {
     ...[...g.members].sort((a, b) => b.pm - a.pm).map((s) => `  ${city(s.name)} (${s.code}): ${fmt(s.pm, 1)} µg/m³`),
   ]
 
-  const total = d3.sum(sites, (s) => s.n)
-
   return (
     <ChartFrame id="spartan-composition-map" source="gallery/app/src/charts/map/SpartanCompositionMap.tsx"
       title="SPARTAN PM2.5 composition — every site's mean reconstructed mass, as in SPARTAN's network figure"
@@ -185,7 +183,6 @@ export function SpartanCompositionMap() {
             { label: 'Public sample in the last 2 years', color: ACTIVE, shape: 'dot' as const },
             { label: 'No public sample in 2 years', color: RETIRED, shape: 'dot' as const },
           ]} onHover={setHover} highlighted={hover} />
-          <Note>{sites.length} sites, {total.toLocaleString()} filters. Donut area grows with mean PM2.5 (a fixed size in the Figure view); zoom in for the site names. {nearby === 'Grouped' ? <>A donut with a count badge is that many sites whose donuts would overlap at this zoom, drawn as their mean (each site counted once); click it or zoom in to split it.</> : null} A site whose mean slice is negative (Abu Dhabi&rsquo;s residual) draws it as zero; the tooltip keeps the value.</Note>
         </> : !land ? <LoadState what="SPARTAN composition" /> : <>
           {/* SPARTAN's own figure: geo-toolkit's DonutRingMap, drawn with d3 as one SVG */}
           <DonutRingMap width={width || 900} height={fitted ?? undefined} land={land} items={ringItems}
@@ -200,7 +197,6 @@ export function SpartanCompositionMap() {
             { label: 'Public sample in the last 2 years', color: ACTIVE, shape: 'dot' as const },
             { label: 'No public sample in 2 years', color: RETIRED, shape: 'dot' as const },
           ]} onHover={setHover} highlighted={hover} />
-          <Note>{sites.length} sites, {total.toLocaleString()} filters. A site whose mean slice is negative (Abu Dhabi&rsquo;s residual) draws it as zero; the tooltip keeps the value.</Note>
         </>}
         {tip.node}
       </div>

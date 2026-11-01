@@ -7,9 +7,8 @@ import { groupedRegressions, type FitGrouping } from '@/lib/siteRegression'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
-import { FieldMultiSelect, type FieldPreset } from '@/components/FieldMultiSelect'
-import { isPmfField } from '@/lib/pmfGroups'
-import { useSearchParam } from '@/lib/url'
+import { FieldMultiSelect, useFieldChoice, type FieldPreset } from '@/components/FieldMultiSelect'
+import { FIELD_PRESETS } from '@/lib/fieldPresets'
 import { ColorLegend } from '@/components/ColorLegend'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -40,22 +39,6 @@ const MIN_N = 20
 // the scatter matrix draws up to twelve fields (the 'Top 12' preset in full); past that the button says how many are drawn
 const SPLOM_MAX = 12
 
-/** the named field sets (FieldMultiSelect presets): only the fields this view has count */
-const listed = (names: string[]) => (av: string[]) => names.filter((f) => av.includes(f))
-const isWeather = (f: string) => /\((ERA5|station)\)$/.test(f)
-const isAeronet = (f: string) => /\(AERONET\)$/.test(f)
-const BASE_PRESETS: FieldPreset[] = [
-  { key: 'carbon', label: 'Carbon & optical', fields: listed(['EC (FTIR)', 'OC (FTIR)', 'OM (FTIR)', 'EC (TOR)', 'OC (TOR)', 'HIPS BC', 'HIPS Fabs', 'BC (public HIPS)', 'Equivalent BC (SSR)', 'PM2.5 mass']) },
-  { key: 'ions', label: 'Ions & mass', fields: listed(['PM2.5 mass', 'Sulfate', 'Nitrate', 'Ammonium', 'Potassium', 'Sodium', 'Calcium', 'Magnesium', 'Nitrite', 'Phosphate', 'Bromide']) },
-  { key: 'dust', label: 'Dust & metals', fields: listed(['Silicon', 'Aluminum', 'Iron', 'Titanium', 'Calcium (element)', 'Potassium (element)', 'Manganese', 'Soil', 'Zinc', 'Copper', 'Lead']) },
-  { key: 'combustion', label: 'Combustion tracers', note: 'EC, OC and BC with potassium, zinc, lead and the combustion PMF factors',
-    fields: listed(['EC (FTIR)', 'OC (FTIR)', 'HIPS BC', 'EC (TOR)', 'Potassium', 'Zinc', 'Lead', 'Wood Burning share (PMF)', 'Charcoal share (PMF)', 'Fossil Fuel Combustion share (PMF)']) },
-  { key: 'groups', label: 'FTIR functional groups', fields: listed(['Alkane CH', 'Alcohol COH', 'Carboxylic COOH', 'Non-acid CO', 'OM (FTIR)', 'OC (FTIR)', 'EC (FTIR)']) },
-  { key: 'pmf', label: 'PMF sources', note: 'the PMF factor shares with EC and BC', fields: (av) => [...listed(['EC (FTIR)', 'HIPS BC'])(av), ...av.filter(isPmfField)] },
-  { key: 'weather', label: 'Weather', note: 'EC, BC and mass with the weather over each filter', fields: (av) => [...listed(['EC (FTIR)', 'HIPS BC', 'PM2.5 mass'])(av), ...av.filter(isWeather)].slice(0, 14) },
-  { key: 'aeronet', label: 'AERONET column', note: 'BC, EC and mass with the sun photometer over each filter', fields: (av) => [...listed(['HIPS Fabs', 'HIPS BC', 'BC (public HIPS)', 'EC (FTIR)', 'PM2.5 mass'])(av), ...av.filter(isAeronet)].slice(0, 16) },
-  { key: 'all', label: 'Everything', note: 'every field with enough values', fields: (av) => av },
-]
 
 /**
  * Correlogram — the chemistry correlation matrix, 14 figures in the estate.
@@ -92,8 +75,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
     { key: 'site', label: 'Site', style: 'select', default: 'ETAD', choices: siteCodes.map((c) => ({ value: c, label: c === 'All' ? 'All sites' : meta.sites.find((s) => s.code === c)?.name ?? c })) },
     { key: 'encoding', label: 'Encoding', choices: ENCODINGS, default: 'Colour' },
     // which fields: a preset or the reader's own (components/FieldMultiSelect); the scatter matrix draws the first SPLOM_MAX
-    { key: 'fields', node: () => <FieldMultiSelect meta={meta} available={avail} value={chosen} preset={presetKey === 'custom' ? null : presetKey} presets={presets}
-      max={encoding === 'Scatter matrix' ? SPLOM_MAX : undefined} onChange={(fs, p) => { setCustom(fs.join('|')); setPreset(p ?? 'custom') }} /> },
+    { key: 'fields', node: () => <FieldMultiSelect meta={meta} {...fieldChoice.props} max={encoding === 'Scatter matrix' ? SPLOM_MAX : undefined} /> },
     fitGroupingOption({ bind: [chosenGrouping, setGrouping as (v: never) => void],
       when: (c) => c.encoding === 'Scatter matrix' && (c.estimators as number) > 0,
       offerSite: (c) => c.site === 'All' && (c.nSites as number) > 1 }),
@@ -111,14 +93,11 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
   }, [sub, meta.fields])
   const presets = useMemo<FieldPreset[]>(() => [
     { key: 'top', label: 'Top 12 by coverage', note: 'the twelve fields with the most filters here', fields: (av) => [...av].sort((a, b) => (nOf[b] ?? 0) - (nOf[a] ?? 0)).slice(0, 12) },
-    ...BASE_PRESETS,
+    ...FIELD_PRESETS,
   ], [nOf])
-  const [presetKey, setPreset] = useSearchParam<string>('corrp', 'top', [...presets.map((p) => p.key), 'custom'])
-  const [customParam, setCustom] = useSearchParam<string>('corrf', '')
-  const chosen = useMemo(() => {
-    if (presetKey !== 'custom') return (presets.find((p) => p.key === presetKey) ?? presets[0]).fields(avail)
-    return customParam.split('|').filter((f) => avail.includes(f))
-  }, [presetKey, customParam, presets, avail])
+  // which fields: a preset or the reader's own, kept in the URL as corrp / corrf
+  const fieldChoice = useFieldChoice('corr', avail, presets, 'top')
+  const chosen = fieldChoice.chosen
 
   // Computed from the live subset rather than a precomputed file, so the
   // season/site/date filters above actually move these numbers.

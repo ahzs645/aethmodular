@@ -113,15 +113,17 @@ export function ComponentSetPicker({ value, onChange, sets, bases, editor, showi
 
 /**
  * Under the legend: the components the set leaves out, each one click from the stack, and those hidden in the legend,
- * one click from leaving the set. On a ready-made set these open the editor (saving makes a set of yours).
+ * one click from leaving the set. On a ready-made set these open the editor (saving makes a set of yours). The editor
+ * itself opens from Edit… beside the chart's Colours picker.
  */
-export function ComponentSetBar({ notShown, hidden, nameOf, colorOf, onAdd, onDrop, onEdit, builtIn }: {
+export function ComponentSetBar({ notShown, hidden, nameOf, colorOf, onAdd, onDrop, builtIn }: {
   notShown: string[]; hidden: string[]
   nameOf: (field: string) => string; colorOf: (field: string) => string
-  onAdd: (field: string) => void; onDrop: () => void; onEdit: () => void
+  onAdd: (field: string) => void; onDrop: () => void
   /** a ready-made set: the buttons say they make a set of yours */
   builtIn: boolean
 }) {
+  if (!notShown.length && !hidden.length) return null
   return (
     <div className="cset-bar">
       {notShown.length > 0 && <span className="cset-bar-group"><span className="cset-bar-label">Not in this set</span>
@@ -131,7 +133,6 @@ export function ComponentSetBar({ notShown, hidden, nameOf, colorOf, onAdd, onDr
       {hidden.length > 0 && <span className="cset-bar-group"><span className="cset-bar-label">Hidden in the legend: {hidden.map(nameOf).join(', ')}</span>
         <button type="button" className="btn quiet" onClick={onDrop} title={builtIn ? 'Opens the editor without them; saving makes a set of yours' : 'Take them out of this set'}>
           {builtIn ? 'Save what is showing…' : 'Remove from the set'}</button></span>}
-      <button type="button" className="btn quiet" onClick={onEdit} title="Components, names, stacking order, colours and the legend">Edit components…</button>
     </div>
   )
 }

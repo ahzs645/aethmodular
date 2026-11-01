@@ -2,13 +2,14 @@ import { useMemo } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { useChartOptions } from '@/lib/chartOptions'
-import { Crossplot, type CrossLine, type CrossPoint } from '@/components/Crossplot'
+import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { RefLine } from '@/components/RefLines'
 import { useGalleryData } from '@/hooks/useGalleryData'
 import { coef, f2, fmt, percent } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { biomassPct, BIOMASS_SOURCES } from '@/lib/pmfCoverage'
+import { fitsFor, FIT_STYLE, useRegressions } from '@/lib/regressionPrefs'
 import { regression } from '@/lib/stats'
 import { INK } from '@/lib/theme'
 import type { MetaFile, PmfFile, PmfRow } from '@/lib/types'
@@ -44,6 +45,7 @@ interface Day { p: PmfRow; bm: number; res: number; season: string }
 export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: PmfRow[]; meta: MetaFile }) {
   const { data } = useGalleryData()
   const mac = useMac()
+  const { methods } = useRegressions()
   const aeth = instruments.useFields([pmf.site])
   const hasAeth = !!aeth?.fields.includes(AETH)
   // the options (lib/chartOptions; URL keys pmfbm.pair / .form / .layout as before): the aethalometer pairs only
@@ -84,59 +86,59 @@ export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: Pmf
   const days = useMemo(() => candidates.filter((d) => isCounted(d.p.id)), [candidates, isCounted])
   const nOut = candidates.length - days.length
 
-  const seasonColor = (s: string, i: number) => namedColor(meta.seasons, s, TABLEAU_10[i % TABLEAU_10.length])
   const seasons = useMemo(() => [...new Set(days.map((d) => d.season))].sort((x, y) => {
     const ix = meta.seasons.findIndex((s) => s.name === x), iy = meta.seasons.findIndex((s) => s.name === y)
     return (ix < 0 ? 99 : ix) - (iy < 0 ? 99 : iy) || x.localeCompare(y)
   }), [days, meta.seasons])
-  const colorOf = new Map(seasons.map((s, i) => [s, seasonColor(s, i)]))
+  const colorOf = useMemo(() => new Map(seasons.map((s, i) => [s, namedColor(meta.seasons, s, TABLEAU_10[i % TABLEAU_10.length])])), [seasons, meta.seasons])
   const lay = useChartOptions('pmfbm', [{ key: 'layout', label: 'Layout', choices: LAYOUTS, default: 'One plot', hidden: 'One plot', when: (c) => (c.seasons as number) > 1,
     title: 'One plot with a fit per season, or a panel per season' }], { seasons: seasons.length })
   const layout = lay.values.layout as (typeof LAYOUTS)[number]
   const yLabel = pct ? `(${a} − ${b}) / ${a} (%)` : `${a} − ${b} (µg/m³)`
-  const point = (d: Day): CrossPoint => ({
-    x: d.bm, y: d.res, color: colorOf.get(d.season) ?? INK.neutral, id: d.p.id, site: pmf.site_name, season: d.season, seasonColor: colorOf.get(d.season),
-    tip: [d.p.id, `${pmf.site_name} · ${d.p.date}`, `biomass: ${percent(d.bm, 1)} of the sources`, `${pct ? 'difference' : `${a} − ${b}`}: ${f2(d.res)}${pct ? ' %' : ' µg/m³'}`, d.season],
-    rec: { id: d.p.id, source: 'PMF sources · residual against biomass', site: pmf.site_name, date: d.p.date, fields: [['biomass (% of sources)', +d.bm.toFixed(2)], [yLabel, +d.res.toFixed(3)], ['season', d.season]] },
-  })
-  const all = days.map(point)
-  const markedAll = split.marked.map(point)
-  const panels = seasons.map((s) => ({ season: s, points: days.filter((d) => d.season === s).map(point), marked: markedAll.filter((p) => p.season === s) }))
-  // per season, the notebook's table: n, R², OLS slope, mean biomass %
-  const table = [...panels.map((p) => ({ name: p.season, ds: days.filter((d) => d.season === p.season) })), { name: 'All seasons', ds: days }].map(({ name, ds }) => {
-    const st = regression(ds.map((d) => d.bm), ds.map((d) => d.res))
-    return { name, n: ds.length, st, bm: d3.mean(ds, (d) => d.bm) ?? NaN }
-  })
-  // the fits are OLS of the difference on the biomass share, as the notebook's linregress: a trend against a
-  // share, not a method comparison, so the sidebar's errors-in-variables fits do not apply
-  const olsLine = (name: string): CrossLine[] => {
-    const t = table.find((x) => x.name === name)
-    return t?.st ? [{ slope: t.st.slope, intercept: t.st.intercept, color: colorOf.get(name) ?? INK.text, label: `${name} OLS`, method: 'ols', stats: t.st }] : []
-  }
+  const { all, markedAll } = useMemo(() => {
+    const point = (d: Day): CrossPoint => ({
+      x: d.bm, y: d.res, color: colorOf.get(d.season) ?? INK.neutral, id: d.p.id, site: pmf.site_name, season: d.season, seasonColor: colorOf.get(d.season),
+      tip: [d.p.id, `${pmf.site_name} · ${d.p.date}`, `biomass: ${percent(d.bm, 1)} of the sources`, `${pct ? 'difference' : `${a} − ${b}`}: ${f2(d.res)}${pct ? ' %' : ' µg/m³'}`, d.season],
+      rec: { id: d.p.id, source: 'PMF sources · residual against biomass', site: pmf.site_name, date: d.p.date, fields: [['biomass (% of sources)', +d.bm.toFixed(2)], [yLabel, +d.res.toFixed(3)], ['season', d.season]] },
+    })
+    return { all: days.map(point), markedAll: split.marked.map(point) }
+  }, [days, split.marked, colorOf, pmf.site_name, pct, a, b, yLabel])
+  const panels = useMemo(() => seasons.map((s) => ({ season: s, points: all.filter((p) => p.season === s), marked: markedAll.filter((p) => p.season === s) })), [seasons, all, markedAll])
+  // Fits and the table use the same counted days and constant-error assumptions as Crossplot (Plot → Regression fits).
+  const table = useMemo(() => [...panels.map((p) => ({ name: p.season, points: p.points })), { name: 'All seasons', points: all }].map(({ name, points }) => ({
+    name, n: points.length,
+    st: regression(points.map((p) => p.x), points.map((p) => p.y), { errorsInVariables: true }),
+    bm: d3.mean(points, (p) => p.x) ?? NaN,
+  })), [panels, all])
   const zero = (x: d3.ScaleLinear<number, number>, y: d3.ScaleLinear<number, number>) => <RefLine orient="h" at={y(0)} from={0} to={x.range()[1]} />
 
   return (
     <ChartFrame id="pmf-residual-biomass"
       title={`Method difference against the biomass share, by season — ${pair}${pct ? ` as % of ${a}` : ''}, per ${pmf.site_name} PMF day`}
-      subtitle={`Biomass is ${BIOMASS_SOURCES.join(' + ')} as a % of the explained sources (the normalised fractions); each point is one PMF day in view with both measurements (${days.length} of ${rows.length}${nOut ? `; ${nOut} excluded under Filters → excluded` : ''}). ${layout === 'One plot' ? 'One plot with a fit per season, as the notebook drew it' : 'One panel per season, on shared axes'}; lines and table are OLS of the difference on the share, as the notebook fitted them (a trend against a share, so the sidebar's errors-in-variables fits do not apply). Seasons follow the sidebar's Seasons choice (the notebook used the Belg-owns-February calendar). ${hasAeth ? 'IR BCc is the aethalometer averaged over each filter\'s sampling window.' : 'The aethalometer pairs need the Instruments section\'s per-filter export, which this build does not have.'} HIPS BC = HIPS Fabs ÷ MAC ${mac.mac}.`}
+      subtitle={`Biomass is ${BIOMASS_SOURCES.join(' + ')} as a % of the explained sources (the normalised fractions); each point is one PMF day in view with both measurements (${days.length} of ${rows.length}${nOut ? `; ${nOut} excluded under Filters → excluded` : ''}). ${layout === 'One plot' ? 'One plot with a fit per season' : 'One panel per season, on shared axes'}; lines and table follow Plot → Regression fits.${methods.some((m) => m !== 'ols') ? ' Biomass-share uncertainties are not supplied; Deming and York use constant errors with λ = 1.' : ''} Seasons follow the sidebar's Seasons choice (the notebook used the Belg-owns-February calendar). ${hasAeth ? 'IR BCc is the aethalometer averaged over each filter\'s sampling window.' : 'The aethalometer pairs need the Instruments section\'s per-filter export, which this build does not have.'} HIPS BC = HIPS Fabs ÷ MAC ${mac.mac}.`}
       provenance={`research/ftir_hips_chem/ETAD_Factor_Analysis.ipynb c37 (absolute and % residual vs biomass %), c38 (by Ethiopian season) · from pmf.json + filters.json${hasAeth ? ' + aethalometer/filters' : ''}`}
       controls={<>{o.controls()}{lay.controls()}</>}>
       {days.length < 3 ? <Empty>{data ? `Too few PMF days in view with ${a} and ${b} (${days.length}).` : 'Loading the filters…'}</Empty> : <>
         {layout === 'One plot' || seasons.length < 2
           ? <Crossplot points={all} marked={markedAll} title={`${pair} against biomass %`} xLabel="Biomass (% of explained sources)" yLabel={yLabel} sameScale={false}
-              grouping="none" maxSide={520} background={zero} extraLines={seasons.length > 1 ? seasons.flatMap(olsLine) : olsLine('All seasons')} />
+              grouping={seasons.length > 1 ? 'season' : 'pooled'} maxSide={520} background={zero} />
           : <FacetGrid items={panels} minCell={260} maxCols={4} maxCell={380} itemKey={(p) => p.season} share render={(p, w) => (
               <Crossplot points={p.points} marked={p.marked} title={`${p.season} · n = ${p.points.length}`} xLabel="Biomass (% of explained sources)" yLabel={yLabel} sameScale={false}
-                grouping="none" maxSide={w - 70} background={zero} extraLines={olsLine(p.season)} />)} />}
+                grouping="pooled" maxSide={w - 70} background={zero} />)} />}
         <div style={{ overflowX: 'auto', marginTop: 8 }}>
           <table className="census-table">
-            <thead><tr><th>Season</th><th>n</th><th>R²</th><th>slope (per % biomass)</th><th>intercept</th><th>mean biomass %</th></tr></thead>
-            <tbody>{table.map((t) => (
-              <tr key={t.name}><td><span className="swatch" style={{ background: colorOf.get(t.name) ?? 'transparent' }} /> {t.name}</td><td>{t.n}</td>
-                <td>{t.st ? coef(t.st.r2) : '—'}</td><td>{t.st ? fmt(t.st.slope, 4) : '—'}</td><td>{t.st ? coef(t.st.intercept) : '—'}</td><td>{fmt(t.bm, 1)}</td></tr>
-            ))}</tbody>
+            <thead><tr><th>Season</th><th>n</th><th>R²</th>{methods.flatMap((m) => [<th key={`${m}-slope`}>{FIT_STYLE[m].label} slope (per % biomass)</th>, <th key={`${m}-intercept`}>{FIT_STYLE[m].label} intercept</th>])}<th>mean biomass %</th></tr></thead>
+            <tbody>{table.map((t) => {
+              const fits = fitsFor(t.st, methods)
+              return (
+                <tr key={t.name}><td><span className="swatch" style={{ background: colorOf.get(t.name) ?? 'transparent' }} /> {t.name}</td><td>{t.n}</td>
+                  <td>{t.st ? coef(t.st.r2) : '—'}</td>{methods.flatMap((m) => {
+                    const fit = fits.find((f) => f.method === m)
+                    return [<td key={`${m}-slope`}>{fit ? fmt(fit.slope, 4) : '—'}</td>, <td key={`${m}-intercept`}>{fit ? coef(fit.intercept) : '—'}</td>]
+                  })}<td>{fmt(t.bm, 1)}</td></tr>
+              )
+            })}</tbody>
           </table>
-          <p className="chart-note">OLS of the difference on the biomass share (scipy.stats.linregress, as ETAD_Factor_Analysis printed it); a season with fewer than three days has no fit.</p>
         </div>
         <ExcludedNote count={split.marked.length} drawn />
       </>}

@@ -5,7 +5,7 @@ import { useColourScheme } from '@/lib/colourSchemes'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
-import { XAxis, YAxis } from '@/components/Axes'
+import { AxisSwap, XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { baseFilterId, focusStyle, useHighlightActions, type FilterRecord } from '@/lib/highlight'
@@ -243,6 +243,7 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
                 <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
                   <YAxis scale={ey} x={0} label={axisLabel(rY)} gridWidth={S} tickCount={5} pick="y" />
                   <XAxis scale={ex} y={S} label={axisLabel(rx)} pick="x" />
+                  <AxisSwap x={-42} y={S + 29} />
                   {rY === RESID && <line x1={0} x2={S} y1={ey(0)} y2={ey(0)} stroke={INK.text} strokeWidth={1.4} />}
                   <ScatterLayer items={explore} xy={exy} idOf={keyOf} dots={exDots} width={S} height={S} tip={tip} marks={exMarks} focusR={focusStyle('', '', { r: 3.2 }).r}
                     focus={(p, [cx, cy]) => {

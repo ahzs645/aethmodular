@@ -2,7 +2,8 @@ import { useCallback, useEffect, useId, useMemo, useRef, type ReactNode } from '
 import { IdentityLine } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { RegressionLines, RegressionBand, RegressionGroupLines, useRegressionSummary } from '@/components/RegressionOverlay'
-import { XAxis, YAxis } from '@/components/Axes'
+import { AxisSwap, OrientedPlotLayer, useAxisSwap, XAxis, YAxis } from '@/components/Axes'
+import { orientErrorRatio, orientPoints, sourceScales } from '@/lib/plotOrientation'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { groupedRegressions, type FitGrouping } from '@/lib/siteRegression'
@@ -58,7 +59,7 @@ const span = crossSpan
 
 const NO_KEYS: ReadonlySet<string> = new Set()
 
-export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360, domain, fit = true, errorRatio, extraLines = [], grouping: groupingProp, background, pick, sameScale = true, yDomain, brushable = false, brush }: {
+export function Crossplot({ points: inputPoints, marked: inputMarked, title, xLabel: inputXLabel, yLabel: inputYLabel, maxSide = 360, domain: inputDomain, fit = true, errorRatio, extraLines = [], grouping: groupingProp, background, pick, sameScale = true, yDomain: inputYDomain, brushable = false, brush }: {
   points: CrossPoint[]
   /**
    * Filters → excluded: Mark (lib/markedRows): the excluded filters the chart would draw, built from useMarkedRows() the
@@ -92,6 +93,14 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
   /** with sameScale false, a fixed y range (e.g. shared with a neighbouring panel); `domain` is then x's */
   yDomain?: [number, number]
 }) {
+  const { swapped, swap } = useAxisSwap(`crossplot.${title}.${inputXLabel}.${inputYLabel}`, pick === true)
+  const points = useMemo(() => orientPoints(inputPoints, swapped), [inputPoints, swapped])
+  const marked = useMemo(() => inputMarked && orientPoints(inputMarked, swapped), [inputMarked, swapped])
+  const xLabel = swapped ? inputYLabel : inputXLabel, yLabel = swapped ? inputXLabel : inputYLabel
+  const domain = swapped && !sameScale ? inputYDomain : inputDomain
+  const yDomain = swapped && !sameScale ? inputDomain : inputYDomain
+  const xPick = swapped ? (pick === true || pick === 'y' ? 'y' : undefined) : (pick === true || pick === 'x' ? 'x' : undefined)
+  const yPick = swapped ? (pick === true || pick === 'x' ? 'x' : undefined) : (pick === true || pick === 'y' ? 'y' : undefined)
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
@@ -124,7 +133,7 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
   const refit = fit && groupingOverride !== 'none', saved = extraLines.some((l) => l.saved)
   const handNote = nOut <= 0 ? null
     : `${nOut} excluded filter${nOut === 1 ? '' : 's'} (Filters → excluded) ${nOut === 1 ? 'is' : 'are'} ${markMode ? 'drawn as ×' : 'hidden here'}${refit ? ', left out of the refit' : ''}${saved ? '; the saved statistics were computed on the notebook\'s own filters' : ''}.`
-  const lambda = errorRatio ?? 1
+  const lambda = orientErrorRatio(errorRatio, swapped)
   const prefs = useRegressions()
   const { methods } = prefs
   const fitting = fit && groupingOverride !== 'none'
@@ -153,6 +162,9 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
   const y = useMemo(() => d3.scaleLinear().domain(yDom).range([ih, 0]), [yDom.join(), ih]) // eslint-disable-line react-hooks/exhaustive-deps
   const [x0, x1] = dom
   const line = (s: number, b: number) => ({ x1: x(x0), y1: y(s * x0 + b), x2: x(x1), y2: y(s * x1 + b) })
+  const source = useMemo(() => sourceScales(x, y, swapped), [x, y, swapped])
+  const sourceDomain = source.x.domain()
+  const savedLine = (s: number, b: number) => ({ x1: source.x(sourceDomain[0]), y1: source.y(s * sourceDomain[0] + b), x2: source.x(sourceDomain[1]), y2: source.y(s * sourceDomain[1] + b) })
   // a filter hovered or pinned on another chart dims this one only when this one draws it too (FocusLayer below:
   // the hover is read there, so it re-renders the one focused dot, not the plot and its fits)
   const keyOf = (p: CrossPoint) => (p.id ? baseFilterId(p.id) : null)
@@ -220,10 +232,11 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
         <g transform="translate(12,22)">{summary.node}</g>
         <g className="regression-plot" transform={`translate(${m.left},${top})`}>
           <defs><clipPath id={clipId}><rect width={iw} height={ih} /></clipPath></defs>
-          <YAxis scale={y} x={0} label={yLabel} wrapLabel={brushable} tickCount={5} gridWidth={iw} labelX={-42} format={(v) => trim(v, 2)} pick={pick === true || pick === 'y' ? 'y' : undefined} />
-          <XAxis scale={x} y={ih} label={xLabel} wrapLabel={brushable} tickCount={5} format={(v) => trim(v, 2)} labelDy={38} pick={pick === true || pick === 'x' ? 'x' : undefined} />
+          <YAxis scale={y} x={0} label={yLabel} wrapLabel={brushable} tickCount={5} gridWidth={iw} labelX={-42} format={(v) => trim(v, 2)} pick={yPick} />
+          <XAxis scale={x} y={ih} label={xLabel} wrapLabel={brushable} tickCount={5} format={(v) => trim(v, 2)} labelDy={38} pick={xPick} />
+          <AxisSwap x={-36} y={ih + 26} onSwap={swap} />
           <g clipPath={`url(#${clipId})`}>
-            {background?.(x, y)}
+            <OrientedPlotLayer swapped={swapped} width={iw} height={ih}>{background?.(source.x, source.y)}</OrientedPlotLayer>
             {sameScale && <IdentityLine {...line(1, 0)} />}
             {/* hover, click and right-click find the nearest filter; a click on empty plot lets go of the pin (lib/highlight) */}
             <ScatterLayer items={valid} xy={xy} idOf={keyOf} dots={dots} width={iw} height={ih} tip={tip} marks={marks}
@@ -232,7 +245,9 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
               onPick={(p) => { const key = keyOf(p); if (p.open) p.open(); else if (p.rec) hl.openRecord(p.rec); if (key) hl.setPinned(key) }}>
               {fitting && (siteFits ? <RegressionGroupLines groups={fitGroups} x={x} y={y} width={iw} height={ih} />
                 : <RegressionLines stats={st} x={x} y={y} domain={dom} width={iw} height={ih} />)}
-              {extraLines.map((l) => <g key={l.label}><RegressionBand stats={l.stats} method={l.method} color={l.color} x={x} y={y} domain={dom} /><line {...line(l.slope, l.intercept)} stroke={l.color} strokeWidth={1.8} strokeDasharray={l.dash} /></g>)}
+              <OrientedPlotLayer swapped={swapped} width={iw} height={ih}>
+                {extraLines.map((l) => <g key={l.label}><RegressionBand stats={l.stats} method={l.method} color={l.color} x={source.x} y={source.y} domain={sourceDomain} /><line {...savedLine(l.slope, l.intercept)} stroke={l.color} strokeWidth={1.8} strokeDasharray={l.dash} /></g>)}
+              </OrientedPlotLayer>
             </ScatterLayer>
           </g>
           <g ref={brushRef} className="brush-layer" />

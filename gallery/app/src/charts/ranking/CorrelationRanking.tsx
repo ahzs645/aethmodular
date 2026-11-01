@@ -7,7 +7,10 @@ import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { useChartOptions } from '@/lib/chartOptions'
 import { useParamScope } from '@/lib/url'
 import { Legend, useLegend } from '@/components/Legend'
-import { XAxis } from '@/components/Axes'
+import { AxisTitle, XAxis } from '@/components/Axes'
+import { useAxisFields } from '@/components/AxisFieldPopover'
+import { FieldMultiSelect, useFieldChoice, type FieldPreset } from '@/components/FieldMultiSelect'
+import { FIELD_PRESETS } from '@/lib/fieldPresets'
 import { RefLine } from '@/components/RefLines'
 import { clipText, labelGutter, textWidth } from '@/lib/fitLabel'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -15,6 +18,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { RESTATES, isBookkeeping, sameProduct } from '@/fieldLineage'
 import { regression, spearman, fmt, type RegressionStats } from '@/lib/stats'
 import { INK, MARGIN, FONT } from '@/lib/theme'
+import { chemText } from '@/lib/format'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
 import { ExcludedNote } from '@/lib/markedRows'
@@ -36,13 +40,21 @@ const clip = (f: string, w: number, weight = 400) => clipText(f, w - 14, { size:
 
 type Ranked = { field: string; r2: number; r: number; rho: number; n: number; trivial: boolean; stats: RegressionStats }
 
-/** every other field against the target over these rows: R², r and the fit, for the pairs with ≥ minN filters */
-function rankAgainst(src: FilterRow[], meta: MetaFile, target: string, minN: number): Ranked[] {
+/** a field that can be ranked against the target: not the target, not bookkeeping, and not a
+ * restatement of another candidate (HIPS BC = HIPS Fabs / MAC) unless it restates the target itself */
+const isCandidate = (f: string, target: string) => f !== target && !isBookkeeping(f) && (!(f in RESTATES) || sameProduct(f, target))
+const pairCount = (src: FilterRow[], f: string, target: string) => {
+  let n = 0
+  for (const r of src) { const a = r[f], b = r[target]; if (typeof a === 'number' && typeof b === 'number' && Number.isFinite(a) && Number.isFinite(b)) n++ }
+  return n
+}
+/** the most common pairing first: the "Top 15 by coverage" preset */
+const TOP_COVERAGE = 15
+
+/** each candidate field against the target over these rows: R², r and the fit, for the pairs with ≥ minN filters */
+function rankAgainst(src: FilterRow[], meta: MetaFile, target: string, minN: number, fields: readonly string[]): Ranked[] {
   const out: Ranked[] = []
-  for (const f of meta.fields) {
-    if (f === target || isBookkeeping(f)) continue
-    // a restatement of another candidate (HIPS BC = HIPS Fabs / MAC) only earns a row when it restates the target itself
-    if (f in RESTATES && !sameProduct(f, target)) continue
+  for (const f of fields) {
     const xs: number[] = []
     const ys: number[] = []
     const paired: FilterRow[] = []
@@ -92,6 +104,7 @@ function rankAgainst(src: FilterRow[], meta: MetaFile, target: string, minN: num
  */
 export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; meta: MetaFile; target: string }) {
   const { methods, showCI } = useRegressions()
+  const axisPicker = !!useAxisFields()
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
@@ -134,14 +147,31 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
   const measureText = MEASURE_TEXT[measure]
   const top = o.values.top === 'all' ? Infinity : Number(o.values.top)
 
+  // which fields are ranked: the candidates that pair with the target on ≥ minN filters in view,
+  // narrowed by a preset or the reader's own list (components/FieldMultiSelect, kept in the URL as rankp / rankf)
+  const { candidates, nOf } = useMemo(() => {
+    const nOf: Record<string, number> = {}
+    for (const f of meta.fields) if (isCandidate(f, target)) nOf[f] = pairCount(rows, f, target)
+    return { candidates: Object.keys(nOf).filter((f) => nOf[f] >= minN), nOf }
+  }, [rows, meta.fields, target, minN])
+  const presets = useMemo<FieldPreset[]>(() => [
+    { key: 'all', label: 'Everything', note: `every field that pairs with ${target}`, fields: (av) => av },
+    { key: 'top', label: `Top ${TOP_COVERAGE} by coverage`, note: `the ${TOP_COVERAGE} fields with the most filters paired with ${target}`,
+      fields: (av) => [...av].sort((a, b) => (nOf[b] ?? 0) - (nOf[a] ?? 0)).slice(0, TOP_COVERAGE) },
+    ...FIELD_PRESETS.filter((p) => p.key !== 'all'),
+  ], [nOf, target])
+  const fieldChoice = useFieldChoice('rank', candidates, presets, 'all')
+  const chosen = fieldChoice.chosen
+  const narrowed = chosen.length < candidates.length
+
   const ranked = useMemo(
-    () => (view === 'One site' ? rankAgainst(site === POOLED ? rows : rows.filter((r) => r.site === site), meta, target, minN).sort((a, b) => strength(b) - strength(a)) : []),
-    [view, rows, target, site, minN, meta, measure] // eslint-disable-line react-hooks/exhaustive-deps
+    () => (view === 'One site' ? rankAgainst(site === POOLED ? rows : rows.filter((r) => r.site === site), meta, target, minN, chosen).sort((a, b) => strength(b) - strength(a)) : []),
+    [view, rows, target, site, minN, meta, measure, chosen] // eslint-disable-line react-hooks/exhaustive-deps
   )
   // side by side: one ranking per site, then the fields any site has, in one order
   const grid = useMemo(() => {
     if (view !== 'Side by side') return null
-    const per = sites.map((s) => new Map(rankAgainst(rows.filter((r) => r.site === s.name), meta, target, minN).map((d) => [d.field, d])))
+    const per = sites.map((s) => new Map(rankAgainst(rows.filter((r) => r.site === s.name), meta, target, minN, chosen).map((d) => [d.field, d])))
     const fields = [...new Set(per.flatMap((m) => [...m.keys()]))]
     const str = (d: Ranked | undefined) => (d ? strength(d) : 0)
     const score = (f: string) => {
@@ -152,7 +182,7 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
     const s = new Map(fields.map((f) => [f, score(f)]))
     fields.sort((a, b) => s.get(b)! - s.get(a)!)
     return { per, fields }
-  }, [view, sites, rows, meta, target, minN, order, measure]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [view, sites, rows, meta, target, minN, order, measure, chosen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fit = useFitHeight()
   const narrow = width < 520
@@ -195,11 +225,12 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
     const innerH = shown.length * rowH
     const x = d3.scaleLinear().domain(domain).range([0, innerW])
     plot = ranked.length === 0 ? (
-      <Empty>No pair reaches n ≥ {minN} at {site}. Lower the minimum or widen the subset.</Empty>
+      chosen.length === 0 ? <Empty>No fields chosen to rank. Pick a preset or tick some fields under Fields.</Empty>
+        : <Empty>No pair reaches n ≥ {minN} at {site}{narrowed ? ' among the fields chosen' : ''}. Lower the minimum{narrowed ? ', choose more fields' : ''} or widen the subset.</Empty>
     ) : (
       <svg width={width} height={innerH + MARGIN.top + MARGIN.bottom} className="animated">
         <g transform={`translate(${labelW},${MARGIN.top})`}>
-          <XAxis scale={x} y={innerH} label={`${measureText} against ${target}`} gridHeight={innerH} />
+          <XAxis scale={x} y={innerH} label={`${measureText} against ${target}`} gridHeight={innerH} pick={axisPicker ? 'field' : undefined} />
           {signed && <RefLine orient="v" at={x(0)} from={0} to={innerH} />}
           {shown.map((d, i) => {
             const cy = i * rowH + rowH / 2
@@ -235,7 +266,8 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
     const innerH = shown.length * rowH
     const withValues = colW >= 88
     plot = fields.length === 0 ? (
-      <Empty>No pair reaches n ≥ {minN} at any site in view. Lower the minimum or widen the subset.</Empty>
+      chosen.length === 0 ? <Empty>No fields chosen to rank. Pick a preset or tick some fields under Fields.</Empty>
+        : <Empty>No pair reaches n ≥ {minN} at any site in view{narrowed ? ' among the fields chosen' : ''}. Lower the minimum{narrowed ? ', choose more fields' : ''} or widen the subset.</Empty>
     ) : (
       <svg width={labelW + plotW + MARGIN.right} height={innerH + MARGIN.top + HEAD + MARGIN.bottom} className="animated">
         <g transform={`translate(${labelW},${MARGIN.top + HEAD})`}>
@@ -295,9 +327,12 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
               </g>
             )
           })}
-          <text x={plotW / 2} y={innerH + 36} textAnchor="middle" fontSize={12} fill={INK.axis} fontFamily={FONT.family}>
-            {measureText} against {target}, each site on its own
-          </text>
+          <AxisTitle pick="field">
+            <text x={plotW / 2} y={innerH + 36} textAnchor="middle" fontSize={12} fill={INK.axis} fontFamily={FONT.family}>
+              {measureText} against {chemText(target)}, each site on its own
+              {axisPicker && <tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>}
+            </text>
+          </AxisTitle>
         </g>
       </svg>
     )
@@ -309,7 +344,7 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
       title={`Lollipop — everything that predicts ${target}, ranked`}
       subtitle={`${measureText} of every other measured quantity against the measurement chosen in the bar, within one site, ranked by strength; side by side, one column per site in a shared order. ${signed ? `Length is ${measureText}, signed (the axis runs −1 to 1)` : 'Length is R² (never signed)'}; colour carries the sign of r. This is the view that tells you where to point a crossplot, instead of drawing 281 of them one pair at a time.`}
       provenance="stands in for 70 barplot + 11 lollipop figures · react-graph-gallery.com/lollipop"
-      controls={<>{o.controls()}<span className="control">{view === 'One site' ? `${count} pairs` : `${Math.min(count, top)} of ${count} fields`}</span></>}
+      controls={<>{o.controls()}<FieldMultiSelect meta={meta} {...fieldChoice.props} /><span className="control">{view === 'One site' ? `${count} pairs` : `${Math.min(count, top)} of ${count} fields`}</span></>}
     >
       <div ref={wrapRef} className="chart-wrap">
         {plot}

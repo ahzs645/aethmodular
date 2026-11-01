@@ -83,7 +83,7 @@ export interface PanelGroupProps {
 /** the title row's height, taken off a fitted height */
 export const PANEL_TITLE_H = 22
 
-export function Panels({ panels, gap = 24, letters = true, minHeight = 140, align = 'start', label, wrap = false, maxCols, center = false, expandable = true,
+export function Panels({ panels, gap = 24, letters = true, minHeight = 140, align = 'start', label, wrap = false, maxCols, center = true, expandable = true,
   share, grouping, legend, controls, axesControl = true, dims, show, order, pick, mode }: {
   panels: PanelDef[]
   gap?: number
@@ -99,7 +99,7 @@ export function Panels({ panels, gap = 24, letters = true, minHeight = 140, alig
   wrap?: boolean
   /** with `wrap`, at most this many columns */
   maxCols?: number
-  /** centre the panels when they do not fill the width */
+  /** centre the panels when they do not fill the width (default true) */
   center?: boolean
   /** ⤢ on every panel (default true; a panel's own `expandable` wins) */
   expandable?: boolean
@@ -128,8 +128,8 @@ export function Panels({ panels, gap = 24, letters = true, minHeight = 140, alig
       {!joined && <PanelGroupControls value={group} axesControl={sharing && axesControl} dims={dims ?? (drawn.some((p) => p.site) ? ['site'] : [])} extra={controls} />}
       <div ref={ref} className="panels" role="group" aria-label={label}
         style={grid
-          ? { display: 'grid', gridTemplateColumns: `repeat(${lay.cols}, minmax(0, ${Math.max(...lay.widths)}px))`, gap, alignItems: align === 'center' ? 'center' : 'start', justifyContent: center ? 'center' : undefined }
-          : { display: 'flex', flexDirection: lay.stacked ? 'column' : 'row', gap, alignItems: lay.stacked ? (center ? 'center' : 'stretch') : align === 'center' ? 'center' : 'flex-start', justifyContent: center && !lay.stacked ? 'center' : undefined }}>
+          ? { display: 'grid', gridTemplateColumns: `repeat(${lay.cols}, minmax(0, ${Math.max(...lay.widths)}px))`, gap, alignItems: align === 'center' ? 'center' : 'start', justifyContent: center ? 'safe center' : undefined }
+          : { display: 'flex', flexDirection: lay.stacked ? 'column' : 'row', gap, alignItems: lay.stacked ? (center ? 'safe center' : 'stretch') : align === 'center' ? 'center' : 'flex-start', justifyContent: center && !lay.stacked ? 'safe center' : undefined }}>
         {width > 0 && drawn.map((p, i) => (
           <PanelCell key={p.key} width={lay.widths[i]} title={p.title} note={p.note} letter={letters ? panelLetter(i) : undefined}
             label={panelLabel(p)} onExpand={(p.expandable ?? expandable) ? () => setOpen(p.key) : undefined}>

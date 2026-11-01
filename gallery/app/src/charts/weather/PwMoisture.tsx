@@ -2,7 +2,8 @@ import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { Panels } from '@/components/Panels'
 import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
-import { XAxis, YAxis } from '@/components/Axes'
+import { AxisSwap, OrientedPlotLayer, useAxisSwap, XAxis, YAxis } from '@/components/Axes'
+import { sourceScales } from '@/lib/plotOrientation'
 import { useTooltip } from '@/hooks/useTooltip'
 import { focusStyle, useHighlightActions } from '@/lib/highlight'
 import { ScatterLayer } from '@/components/ScatterLayer'
@@ -60,6 +61,7 @@ function logFit(pts: Point[]): { a: number; b: number } | null {
 export function PwMoisture({ rows, meta, onePick }: { rows: FilterRow[]; meta: MetaFile; onePick: boolean }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const tip = useTooltip(wrapRef)
+  const { swapped, swap } = useAxisSwap('pwmoist')
   const [measure, setMeasure] = useSearchParam<Measure>('pwmoist', 'Dew point', MEASURES)
   const isDew = measure === 'Dew point'
 
@@ -133,14 +135,18 @@ export function PwMoisture({ rows, meta, onePick }: { rows: FilterRow[]; meta: M
               const sq = Math.max(200, Math.min(440, width - M.left - M.right, height === null ? Infinity : height - M.top - M.bottom))
               const x = d3.scaleLinear().domain(xDom).nice().range([0, sq])
               const y = d3.scaleLinear().domain([0, yMax]).nice().range([sq, 0])
+              const display = sourceScales(x, y, swapped)
               return (
-                <svg width={sq + M.left + M.right} height={sq + M.top + M.bottom} fontFamily={FONT.family} role="img" aria-label={`Precipitable water against ${measure.toLowerCase()}`}>
+                <svg width={sq + M.left + M.right} height={sq + M.top + M.bottom} fontFamily={FONT.family} role="group" aria-label={`Precipitable water against ${measure.toLowerCase()}`}>
                   <g transform={`translate(${M.left},${M.top})`}>
-                    <YAxis scale={y} x={0} label="Precipitable water, AERONET (cm)" gridWidth={sq} labelX={-42} />
-                    <XAxis scale={x} y={sq} label={xLabel} />
+                    <YAxis scale={display.y} x={0} label={swapped ? xLabel : 'Precipitable water, AERONET (cm)'} gridWidth={sq} labelX={-42} />
+                    <XAxis scale={display.x} y={sq} label={swapped ? 'Precipitable water, AERONET (cm)' : xLabel} />
+                    <AxisSwap x={-36} y={sq + 26} onSwap={swap} />
+                    <OrientedPlotLayer swapped={swapped} width={sq} height={sq}>
                     <MoisturePoints series={series} marked={markedPts} markReason={markReason} x={x} y={y} side={sq} tip={tip} measure={measure} isDew={isDew}>
                       {series.map((s) => s.fit && <path key={`${s.key}-fit`} d={curve(s, x, y)} fill="none" stroke={s.color} strokeWidth={2} strokeDasharray={s.hollow ? '5 3' : undefined} />)}
                     </MoisturePoints>
+                    </OrientedPlotLayer>
                   </g>
                 </svg>
               )

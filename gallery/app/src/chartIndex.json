@@ -376,7 +376,7 @@
    "file": "charts/ranking/CorrelationRanking.tsx"
   },
   {
-   "title": "Network rank — where each site's median … sits among the IMPROVE sites",
+   "title": "Network rank — site medians of …",
    "id": "netrank",
    "component": "NetworkRankPlacement",
    "tab": "ranking",

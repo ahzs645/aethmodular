@@ -1,7 +1,8 @@
 import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
-import { XAxis, YAxis } from '@/components/Axes'
+import { AxisSwap, OrientedPlotLayer, useAxisSwap, XAxis, YAxis } from '@/components/Axes'
+import { sourceScales } from '@/lib/plotOrientation'
 import { Panels } from '@/components/Panels'
 import { useTooltip } from '@/hooks/useTooltip'
 import { focusStyle, useHighlightActions } from '@/lib/highlight'
@@ -36,6 +37,7 @@ const REGION_FILL: Record<CazorlaClass, string> = {
 export function AeronetTyping({ rows, meta }: { rows: FilterRow[]; meta: MetaFile }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const tip = useTooltip(wrapRef)
+  const { swapped, swap } = useAxisSwap('aeronet.typing')
   const [pair, setPair] = useSearchParam<Pair>('aeronet.typing', PAIRS[0], PAIRS)
   const cazorla = pair === PAIRS[0]
   const xField = cazorla ? SAE_440_675 : EAE_INV, yField = cazorla ? AAE_440_675 : AAE
@@ -72,6 +74,9 @@ export function AeronetTyping({ rows, meta }: { rows: FilterRow[]; meta: MetaFil
               const side = Math.max(240, Math.min(expanded ? 760 : 520, width - M.left - M.right, height === null ? Infinity : height - M.top - M.bottom))
               const x = d3.scaleLinear().domain(xDom).range([0, side]).nice()
               const y = d3.scaleLinear().domain(yDom).range([side, 0]).nice()
+              const display = sourceScales(x, y, swapped)
+              const xLabel = cazorla ? 'Scattering Ångström exponent 440–675' : 'Extinction Ångström exponent 440–870 (inversion)'
+              const yLabel = cazorla ? 'AAE 440–675' : 'AAE 440–870'
               const clampX = (v: number) => x(Math.max(x.domain()[0], Math.min(x.domain()[1], v)))
               const clampY = (v: number) => y(Math.max(y.domain()[0], Math.min(y.domain()[1], v)))
               const clip = `aeronet-typing-clip-${expanded ? 'big' : 'page'}`
@@ -79,6 +84,7 @@ export function AeronetTyping({ rows, meta }: { rows: FilterRow[]; meta: MetaFil
                 <svg width={side + M.left + M.right} height={side + M.top + M.bottom} fontFamily={FONT.family}>
                   <defs><clipPath id={clip}><rect width={side} height={side} /></clipPath></defs>
                   <g transform={`translate(${M.left},${M.top})`}>
+                    <OrientedPlotLayer swapped={swapped} width={side} height={side}>
                     <g clipPath={`url(#${clip})`}>
                       {cazorla && CAZORLA_CLASSES.map((c) => {
                         const [x0, x1, y0, y1] = CAZORLA_REGIONS[c]
@@ -98,14 +104,18 @@ export function AeronetTyping({ rows, meta }: { rows: FilterRow[]; meta: MetaFil
                         <text x={x(0.8) + 4} y={side - 6} fontSize={10.5} fill={INK.muted}>EAE 0.8: large | small</text>
                       </>}
                     </g>
-                    <YAxis scale={y} x={0} gridWidth={side} tickCount={6} label={cazorla ? 'AAE 440–675' : 'AAE 440–870'} labelX={-40} />
-                    <XAxis scale={x} y={side} tickCount={6} label={cazorla ? 'Scattering Ångström exponent 440–675' : 'Extinction Ångström exponent 440–870 (inversion)'} labelDy={38} />
+                    </OrientedPlotLayer>
+                    <YAxis scale={display.y} x={0} gridWidth={side} tickCount={6} label={swapped ? xLabel : yLabel} labelX={-40} />
+                    <XAxis scale={display.x} y={side} tickCount={6} label={swapped ? yLabel : xLabel} labelDy={38} />
+                    <AxisSwap x={-36} y={side + 26} onSwap={swap} />
+                    <OrientedPlotLayer swapped={swapped} width={side} height={side}>
                     {cazorla && [1, 1.5].map((v) => <g key={v}>
                       <line x1={0} x2={side} y1={y(v)} y2={y(v)} stroke={INK.muted} strokeDasharray="3 3" />
                       {/* SAE 1.0 bounds only the cells above AAE 1 (coated large particles span SAE < 1.5) */}
                       <line x1={x(v)} x2={x(v)} y1={0} y2={v === 1 ? y(1) : side} stroke={INK.muted} strokeDasharray="3 3" />
                     </g>)}
                     <TypingPoints pts={pts} x={x} y={y} side={side} col={col} cazorla={cazorla} tip={tip} fields={[xField, yField]} sites={rows} />
+                    </OrientedPlotLayer>
                   </g>
                 </svg>
               )

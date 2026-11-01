@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 
 /** How far (px) a sheet has to be pulled down before letting go closes it. */
 const DISMISS = 90
@@ -8,19 +9,40 @@ const DISMISS = 90
  * it is the right-hand panel; on a phone the CSS turns it into a bottom sheet over a scrim, with
  * a grip that can be pulled down to close it. The scrim and grip are hidden on wide windows.
  */
-export function DrawerShell({ label, onClose, children }: { label: string; onClose: () => void; children: React.ReactNode }) {
+export function DrawerShell({ label, onClose, children, portal = false }: {
+  label: string; onClose: () => void; children: React.ReactNode
+  /** A drawer opened inside a chart floats outside its clipping and single-chart layout. */
+  portal?: boolean
+}) {
   const ref = useRef<HTMLElement>(null)
+  const close = useRef(onClose)
+  close.current = onClose
   const start = useRef<number | null>(null)
   useEffect(() => {
     window.dispatchEvent(new Event('gallery:dismiss-tooltips'))
+    const other = (e: Event) => { if ((e as CustomEvent).detail !== ref.current) close.current() }
+    window.addEventListener('gallery:drawer-open', other)
+    window.dispatchEvent(new CustomEvent('gallery:drawer-open', { detail: ref.current }))
+    return () => window.removeEventListener('gallery:drawer-open', other)
   }, [label])
+  useEffect(() => {
+    if (!portal) return
+    const previous = document.activeElement
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented) close.current() }
+    window.addEventListener('keydown', key)
+    ref.current?.querySelector<HTMLElement>('button')?.focus({ preventScroll: true })
+    return () => {
+      window.removeEventListener('keydown', key)
+      if (previous instanceof HTMLElement && previous.isConnected) previous.focus({ preventScroll: true })
+    }
+  }, [portal])
   const pull = (dy: number) => {
     const el = ref.current
     if (!el) return
     el.style.transition = dy ? 'none' : ''
     el.style.transform = dy ? `translateY(${dy}px)` : ''
   }
-  return <>
+  const body = <>
     <div className="sheet-scrim" onClick={onClose} aria-hidden />
     <aside ref={ref} className="drawer" role="dialog" aria-label={label}>
       <div className="sheet-grip" aria-hidden
@@ -31,6 +53,7 @@ export function DrawerShell({ label, onClose, children }: { label: string; onClo
       {children}
     </aside>
   </>
+  return portal ? createPortal(body, document.body) : body
 }
 
 /** A wide table or plot scrolls independently of the drawer and its header. */

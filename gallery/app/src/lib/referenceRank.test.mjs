@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
-import { referenceQuantity, rankedReference, groupQuantiles, placeAmong, filterValue, partsOf } from './referenceRank.ts'
+import { referenceQuantity, rankedReference, groupQuantiles, placeAmong, filterValue, partsOf, rankNetworks, rankWithActiveSites, spartanQuantity, improveQuantity, NETWORK_RANK_PRESETS } from './referenceRank.ts'
 import { quantileSorted } from './stats.ts'
 
 const data = (p) => new URL(`../../public/data/${p}`, import.meta.url)
@@ -70,4 +70,64 @@ test('per-filter ratios, not a ratio of quantiles; type-7 quantiles; searchsorte
   assert.equal(placeAmong(ranked, 0.5), 0)
   assert.equal(placeAmong(ranked, 2), 1)
   assert.equal(placeAmong(ranked, 9), 4)
+})
+
+const site = (code, p50, name = code) => ({ code, name, n: 100, p25: p50 / 2, p50, p75: p50 * 2 })
+
+test('network modes rank their own unique sites, including when an IMPROVE site is also selected', () => {
+  const im = [site('A', 2), site('B', 4), site('A', 2)]
+  const sp = [site('ETAD', 1, 'Same label'), site('INDH', 3, 'Same label'), site('ETAD', 1)]
+  const both = rankNetworks(im, sp, 'both')
+  assert.deepEqual(both.map(s => [s.network, s.code, s.rank]), [['SPARTAN', 'ETAD', 1], ['IMPROVE', 'A', 2], ['SPARTAN', 'INDH', 3], ['IMPROVE', 'B', 4]])
+  assert.deepEqual(rankNetworks(im, sp, 'spartan', 'reference').map(s => [s.code, s.rank]), [['ETAD', 1], ['INDH', 2]])
+  assert.deepEqual(rankNetworks(im, sp, 'improve').map(s => [s.code, s.rank]), [['A', 1], ['B', 2]])
+})
+
+test('the original notebook placement remains available, with ties and both ends handled', () => {
+  const ranked = rankNetworks([site('A', 2), site('B', 4)], [site('ETAD', 1), site('INDH', 2), site('CHTS', 8)], 'both', 'reference')
+  assert.deepEqual(ranked.filter(s => s.network === 'SPARTAN').map(s => [s.code, s.rank]), [['ETAD', 1], ['INDH', 1], ['CHTS', 3]])
+  assert.deepEqual(rankNetworks([site('A', 2)], [site('ETAD', 2), site('INDH', 3)], 'both').map(s => s.rank), [1, 1, 3])
+})
+
+test('every notebook ratio uses the corrected carbon mapping and has exported IMPROVE quantiles', () => {
+  assert.equal(NETWORK_RANK_PRESETS.length, 6)
+  for (const preset of NETWORK_RANK_PRESETS) {
+    const q = referenceQuantity(preset.field, 10)
+    assert.ok(!('reason' in q), preset.field)
+    assert.ok(rankedReference(ref, 'paired', q, 50).length > 0, preset.field)
+  }
+  assert.deepEqual(spartanQuantity({ parts: ['OC (TOR)', 'EC (TOR)'] }), { parts: ['OC (FTIR)', 'EC (FTIR)'] })
+  assert.deepEqual(spartanQuantity({ parts: ['Iron', 'HIPS Fabs'] }), { parts: ['Iron', 'HIPS Fabs'] })
+  assert.deepEqual(improveQuantity({ parts: ['EC (FTIR)', 'PM2.5 mass'] }), { parts: ['EC (TOR)', 'PM2.5 mass'] })
+  assert.deepEqual(improveQuantity({ parts: ['HIPS BC', 'EC (FTIR)'] }), { parts: ['HIPS BC', 'EC (TOR)'] })
+})
+
+test('active Samples sites keep their colours and one mark in every comparison background', () => {
+  const im = [site('A', 2), site('B', 4)]
+  const sp = [site('ETAD', 1), site('INDH', 3)]
+  const active = [{ ...site('ETAD', 5), network: 'SPARTAN', color: '#abc123' }, { ...site('A', 1), network: 'IMPROVE', color: '#123abc' }]
+  for (const mode of ['both', 'improve', 'spartan']) {
+    const { sites, nReference } = rankWithActiveSites(im, sp, mode, 'together', active)
+    assert.equal(nReference, mode === 'both' ? 4 : 2)
+    for (const s of active) {
+      const drawn = sites.filter(p => p.code === s.code && p.network === s.network)
+      assert.equal(drawn.length, 1)
+      assert.equal(drawn[0].active, true)
+      assert.equal(drawn[0].color, s.color)
+      assert.equal(drawn[0].p50, s.p50, 'the active filtered value replaces the exported site median')
+    }
+  }
+  const onlyIm = rankWithActiveSites(im, sp, 'improve', 'together', active)
+  assert.equal(onlyIm.sites.find(s => s.code === 'ETAD').rank, 3, 'active SPARTAN is placed beyond both IMPROVE medians')
+  assert.equal(onlyIm.sites.find(s => s.code === 'A').rank, 1, 'a site is compared against the background other than itself')
+})
+
+test('active sites outside minimum-count thresholds do not enlarge the reference, including an empty background', () => {
+  const active = [{ ...site('ETAD', 5), n: 1, network: 'SPARTAN', color: '#abc123' }]
+  const noBackground = rankWithActiveSites([], [], 'improve', 'together', active)
+  assert.equal(noBackground.nReference, 0)
+  assert.equal(noBackground.sites.length, 1)
+  const notebook = rankWithActiveSites([site('A', 2)], [site('INDH', 3)], 'both', 'reference', active)
+  assert.equal(notebook.nReference, 1)
+  assert.equal(notebook.sites.find(s => s.active).rank, 2)
 })

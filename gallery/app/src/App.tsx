@@ -311,6 +311,7 @@ const CAPS: Record<Exclude<TabKey, 'investigations' | 'availability' | 'census' 
   map: FILTERS,
   flow: { ...FILTERS, fields: 'none' },
   pmf: {
+    fits: true,
     seasons: true,
     sites: false,
     excluded: false,
@@ -1535,7 +1536,7 @@ export default function App() {
         {tab === 'ranking' && (
           <>
             <CorrelationRanking rows={rows} meta={meta} target={fieldEff} />
-            <NetworkRankPlacement rows={rows} meta={meta} field={fieldEff} />
+            <NetworkRankPlacement rows={rows} meta={meta} field={fieldEff} improveCodes={netView?.improveCodes} />
             <Barplot rows={rows} meta={meta} field={fieldEff} />
             <SiteRadar rows={rows} meta={meta} />
             <ParallelCoordinates rows={rows} meta={meta} />

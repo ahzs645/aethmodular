@@ -6,7 +6,7 @@ import { seasonsForSite } from '@/siteSeasons'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { useChartOptions } from '@/lib/chartOptions'
 import { Legend, toggleIn, useLegend } from '@/components/Legend'
-import { XAxis, YAxis } from '@/components/Axes'
+import { AxisSwap, XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { axesForUnits, pairDomain, type AxesOpts } from '@/lib/axes'
@@ -162,6 +162,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
               <YAxis scale={y} x={0} label={withUnit(yField, meta.field_units)} gridWidth={innerW} pick="y" />
               <XAxis scale={x} y={innerH} label={withUnit(xField, meta.field_units)} pick="x" />
+              <AxisSwap x={-42} y={innerH + 29} />
               <g clipPath={`url(#${clipId})`}>
               {opts.identity && (
                 <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />

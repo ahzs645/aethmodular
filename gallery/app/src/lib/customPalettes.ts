@@ -16,7 +16,9 @@ const KINDS: readonly PaletteKind[] = ['sequential', 'diverging', 'categorical']
 export const MAX_STOPS = 12
 export const MIN_STOPS = 2
 
-interface Saved { name: string; stops: string[] }
+/** `at`: where each stop sits along a ramp, 0 to 1 and rising (the gradient editor's draggable stops);
+ * none, or a categorical set, spaces them evenly */
+interface Saved { name: string; stops: string[]; at?: number[] }
 type Store = Record<PaletteKind, Saved[]>
 
 const HEX = /^#[0-9a-f]{6}$/i
@@ -29,10 +31,35 @@ export function toHex(c: string): string | null {
   return parsed ? parsed.formatHex() : null
 }
 
+/** stop offsets a ramp can use: one per stop, each 0 to 1, never falling; otherwise undefined (even spacing) */
+export function cleanOffsets(at: unknown, n: number): number[] | undefined {
+  if (!Array.isArray(at) || at.length !== n) return undefined
+  const out = at.map(Number)
+  if (out.some((t, i) => !Number.isFinite(t) || t < 0 || t > 1 || (i > 0 && t < out[i - 1]))) return undefined
+  // evenly spaced offsets are the same as none
+  return out.every((t, i) => Math.abs(t - i / (n - 1)) < 1e-4) ? undefined : out
+}
+
+/** a ramp through the stops placed at `at` (Lab blending, flat before the first and after the last) */
+function placedRamp(stops: readonly string[], at: readonly number[]) {
+  return (t: number) => {
+    if (t <= at[0]) return stops[0]
+    for (let i = 1; i < at.length; i++) {
+      if (t <= at[i]) {
+        const span = at[i] - at[i - 1]
+        return span > 0 ? interpolateLab(stops[i - 1], stops[i])((t - at[i - 1]) / span) : stops[i]
+      }
+    }
+    return stops[stops.length - 1]
+  }
+}
+
 /** the stops as the chart's colours: a ramp resampled to the built-in length, a categorical set as given */
-export function paletteFromStops(kind: PaletteKind, stops: readonly string[]): string[] {
+export function paletteFromStops(kind: PaletteKind, stops: readonly string[], at?: readonly number[]): string[] {
   if (kind === 'categorical' || stops.length < 2) return [...stops]
-  return quantize(piecewise(interpolateLab, [...stops]), kind === 'sequential' ? 8 : 7).map((c) => color(c)!.formatHex())
+  const placed = cleanOffsets(at, stops.length)
+  const ramp = placed ? placedRamp(stops, placed) : piecewise(interpolateLab, [...stops])
+  return quantize(ramp, kind === 'sequential' ? 8 : 7).map((c) => color(c)!.formatHex())
 }
 
 const empty = (): Store => ({ sequential: [], diverging: [], categorical: [] })
@@ -43,7 +70,8 @@ function read(): Store {
     const parsed = raw ? JSON.parse(raw) as Partial<Store> : {}
     for (const kind of KINDS) for (const p of parsed[kind] ?? []) {
       const stops = Array.isArray(p?.stops) ? p.stops.map((c) => toHex(String(c))).filter((c): c is string => !!c) : []
-      if (typeof p?.name === 'string' && p.name.trim() && stops.length >= MIN_STOPS && !isBuiltInPalette(kind, p.name)) out[kind].push({ name: p.name.trim(), stops })
+      const at = kind === 'categorical' || stops.length !== p.stops.length ? undefined : cleanOffsets(p.at, stops.length)
+      if (typeof p?.name === 'string' && p.name.trim() && stops.length >= MIN_STOPS && !isBuiltInPalette(kind, p.name)) out[kind].push({ name: p.name.trim(), stops, ...(at ? { at } : {}) })
     }
   } catch { /* a corrupt entry: start empty rather than break every chart */ }
   return out
@@ -55,7 +83,7 @@ const listeners = new Set<() => void>()
 function apply(next: Store, persist: boolean) {
   store = next
   for (const kind of KINDS) setCustomPalettes(kind, store[kind].map((p): Palette => ({
-    name: p.name, colours: paletteFromStops(kind, p.stops), source: 'Your palette, saved in this browser', note: 'yours, saved in this browser',
+    name: p.name, colours: paletteFromStops(kind, p.stops, p.at), source: 'Your palette, saved in this browser', note: 'yours, saved in this browser',
   })))
   if (persist) try { localStorage.setItem(KEY, JSON.stringify(store)) } catch { /* private mode or full: kept for this visit */ }
   version += 1
@@ -70,6 +98,8 @@ export const useCustomPalettes = () => useSyncExternalStore((l) => { listeners.a
 
 /** the stops the reader picked for one of their palettes, for editing it */
 export const customStops = (kind: PaletteKind, name: string) => store[kind].find((p) => p.name === name)?.stops
+/** where those stops sit (0 to 1), or undefined when evenly spaced */
+export const customOffsets = (kind: PaletteKind, name: string) => store[kind].find((p) => p.name === name)?.at
 
 /** why a name cannot be used for a palette of this kind, or null when it can (`editing`: the palette being renamed) */
 export function nameProblem(kind: PaletteKind, name: string, editing?: string): string | null {
@@ -86,11 +116,12 @@ export function freeName(kind: PaletteKind, base = 'My palette') {
 }
 
 /** add a palette, or replace `editing` (renamed if the name changed) in its place */
-export function saveCustomPalette(kind: PaletteKind, name: string, stops: readonly string[], editing?: string) {
-  const entry = { name: name.trim(), stops: [...stops] }
+export function saveCustomPalette(kind: PaletteKind, name: string, stops: readonly string[], editing?: string, at?: readonly number[]) {
+  const placed = kind === 'categorical' ? undefined : cleanOffsets(at, stops.length)
+  const entry: Saved = { name: name.trim(), stops: [...stops], ...(placed ? { at: placed } : {}) }
   const list = [...store[kind]]
-  const at = editing ? list.findIndex((p) => p.name === editing) : -1
-  if (at >= 0) list[at] = entry
+  const slot = editing ? list.findIndex((p) => p.name === editing) : -1
+  if (slot >= 0) list[slot] = entry
   else list.push(entry)
   apply({ ...store, [kind]: list }, true)
 }

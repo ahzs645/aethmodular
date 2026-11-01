@@ -20,6 +20,7 @@ import { ExcludedNote, toMarks, useMarkReason, useMarkedRows } from '@/lib/marke
 
 const LAYOUTS = ['Overlay', 'Per site'] as const
 const SERIES_BY = ['Site', 'Group'] as const
+const ROLLING_WINDOW_SAMPLES = 7
 type Pt = { row: FilterRow; date: Date; value: number }
 type Series = { name: string; color: string; pts: Pt[]; keep: (r: FilterRow) => boolean }
 
@@ -87,7 +88,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
   // panels are the same chart; an overlay of sites on their own calendars has nothing to shade
   const o = useChartOptions('timeseries', [
     { key: 'layout', label: 'Layout', choices: LAYOUTS.map((v) => ({ value: v, label: v === 'Per site' && byGroup ? 'Per group' : v })), default: 'Per site', when: (c) => (c.nSeries as number) > 1, hidden: 'Per site' },
-    { key: 'smooth', label: 'Rolling median', toggle: true, default: true },
+    { key: 'smooth', label: 'Rolling median', toggle: true, default: true, title: `Median over ${ROLLING_WINDOW_SAMPLES} consecutive filter measurements per series. The time span depends on sampling frequency. The line breaks at sampling gaps over 45 days.` },
     { key: 'shading', label: 'Season shading', toggle: true, default: true, hidden: false, when: (c) => !(c.mixed && c.layout === 'Overlay') },
     { key: 'cursor', when: () => !!cursor, node: () => <span className="control" style={{ fontFamily: 'var(--mono)' }}>{cursor && d3.timeFormat('%Y-%m-%d')(cursor)}</span> },
   ], { nSeries: series.length, mixed: mixedCalendars(meta) })
@@ -117,7 +118,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
   }, [series, innerH])
 
   /** Centred rolling median — robust to the spikes these series carry. */
-  const rolling = (pts: Pt[], w = 7) =>
+  const rolling = (pts: Pt[], w = ROLLING_WINDOW_SAMPLES) =>
     pts.map((p, i) => {
       const lo = Math.max(0, i - Math.floor(w / 2))
       const win = pts.slice(lo, lo + w).map((q) => q.value).sort(d3.ascending)
@@ -147,7 +148,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
     <ChartFrame
       id="timeseries"
       title="Timeseries — filter measurements over time"
-      subtitle={`Every filter as a point, with an optional 7-sample rolling median that breaks at sampling gaps over 45 days. Season bands use the ${calendarLabel(meta)} selected in the filters${mixedCalendars(meta) ? ', one per site panel (the overlay has no single calendar, so it is left unshaded)' : ''}. Move the pointer across any panel and a date cursor follows on every other panel. Drag on the timeline in the subset bar to zoom every tab to a date range.`}
+      subtitle={`Every filter as a point, with an optional ${ROLLING_WINDOW_SAMPLES}-sample rolling median that breaks at sampling gaps over 45 days. Season bands use the ${calendarLabel(meta)} selected in the filters${mixedCalendars(meta) ? ', one per site panel (the overlay has no single calendar, so it is left unshaded)' : ''}. Move the pointer across any panel and a date cursor follows on every other panel. Drag on the timeline in the subset bar to zoom every tab to a date range.`}
       provenance="stands in for 73 timeseries + 59 area + 46 line figures · plotting/timeseries.py · react-graph-gallery.com/timeseries · /line-chart-synchronized-cursors"
       controls={<>{by.controls()}{o.controls()}</>}
     >

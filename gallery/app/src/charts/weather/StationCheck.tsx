@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
-import { XAxis, YAxis } from '@/components/Axes'
+import { AxisSwap, useAxisSwap, XAxis, YAxis } from '@/components/Axes'
 import { IdentityLine } from '@/components/RefLines'
 import { RegressionLines, useRegressionSummary } from '@/components/RegressionOverlay'
 import { FacetGrid } from '@/components/FacetGrid'
@@ -64,6 +64,7 @@ const pairsOf = (data: StationCompare, k: Var['k']) => data.date.map((d, i) => (
 function StationPanel({ v, data, side, tip }: {
   v: Var; data: StationCompare; side: number; tip: ReturnType<typeof useTooltip>
 }) {
+  const { swapped, swap } = useAxisSwap(`station.${v.k}`)
   // memoised: the fit's confidence band is cached per stats object (lib/regressionCI), so a fresh fit on
   // every hover would bootstrap it again in all six panels
   const pairs = useMemo(() => pairsOf(data, v.k), [data, v.k])
@@ -71,7 +72,7 @@ function StationPanel({ v, data, side, tip }: {
   // station and ERA5 share one scale, so the panel is square and the 1:1 line is the diagonal
   const x = d3.scaleLinear().domain([lo, hi]).range([0, side]).nice()
   const y = d3.scaleLinear().domain(x.domain()).range([side, 0])
-  const stats = useMemo(() => regression(pairs.map((p) => p.s), pairs.map((p) => p.e), { errorsInVariables: true }), [pairs])
+  const stats = useMemo(() => regression(pairs.map((p) => swapped ? p.e : p.s), pairs.map((p) => swapped ? p.s : p.e), { errorsInVariables: true }), [pairs, swapped])
   const [d0, d1] = x.domain()
   const r = side > 300 ? 3.2 : 2.6
   const summary = useRegressionSummary({ stats, width: side + M.left + M.right - 24, panel: { title: v.label } })
@@ -80,11 +81,12 @@ function StationPanel({ v, data, side, tip }: {
     <svg width={side + M.left + M.right} height={side + top + M.bottom} fontFamily={FONT.family}>
       <g transform="translate(12,6)">{summary.node}</g>
       <g className="regression-plot" transform={`translate(${M.left},${top})`}>
-        <YAxis scale={y} x={0} label={`ERA5 (${v.unit})`} gridWidth={side} tickCount={4} labelX={-40} />
-        <XAxis scale={x} y={side} label={`station (${v.unit})`} tickCount={4} labelDy={36} />
+        <YAxis scale={y} x={0} label={`${swapped ? 'station' : 'ERA5'} (${v.unit})`} gridWidth={side} tickCount={4} labelX={-40} />
+        <XAxis scale={x} y={side} label={`${swapped ? 'ERA5' : 'station'} (${v.unit})`} tickCount={4} labelDy={36} />
+        <AxisSwap x={-30} y={side + 25} onSwap={swap} />
         <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />
         <RegressionLines stats={stats} x={x} y={y} domain={x.domain()} width={side} height={side} />
-        {pairs.map((p) => <circle key={p.d} cx={x(p.s)} cy={y(p.e)} r={r} fill={DOT} {...dotFill('dense')} {...dotRim()}
+        {pairs.map((p) => <circle key={p.d} cx={x(swapped ? p.e : p.s)} cy={y(swapped ? p.s : p.e)} r={r} fill={DOT} {...dotFill('dense')} {...dotRim()}
           {...tip.bind(() => [p.d, `station ${fmt(p.s, 1)} · ERA5 ${fmt(p.e, 1)} ${v.unit}`])} />)}
       </g>
     </svg>

@@ -5,7 +5,10 @@ import { schemeStops, type SchemeKind } from '@/lib/colourSchemes'
 import { useFloatingMenu } from '@/hooks/useFloatingMenu'
 import { useTheme } from '@/lib/colorTheme'
 import { getPalette, hasNamedColours, isCustomPalette, paletteColours, paletteNote } from '@/lib/palettes'
-import { MAX_STOPS, MIN_STOPS, customStops, deleteCustomPalette, freeName, nameProblem, paletteFromStops, saveCustomPalette, toHex, useCustomPalettes } from '@/lib/customPalettes'
+import { MAX_STOPS, MIN_STOPS, customOffsets, customStops, deleteCustomPalette, freeName, nameProblem, paletteFromStops, saveCustomPalette, toHex, useCustomPalettes } from '@/lib/customPalettes'
+import { getStops, parseGradient, stopOffsets } from '@orshot/colorshot'
+import { Picker } from '@orshot/colorshot/react'
+import '@orshot/colorshot/styles.css'
 import { PencilIcon } from '@/components/Icons'
 
 /** a palette as a small gradient bar */
@@ -58,7 +61,7 @@ export function SchemePopover({ anchor, kind, names, value, reverse, onChange, o
   const [editing, setEditing] = useState<string | null>(null)
   const editingRef = useRef(editing)
   editingRef.current = editing
-  const pos = useFloatingMenu(true, trigger, box, 450)
+  const pos = useFloatingMenu(true, trigger, box, 560)
   useEffect(() => {
     const onDown = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node) && !anchor.contains(e.target as Node)) onClose() }
     const onKey = (e: KeyboardEvent) => {
@@ -84,10 +87,9 @@ export function SchemePopover({ anchor, kind, names, value, reverse, onChange, o
             {names.map((n) => {
               const note = paletteNote(kind, n), { source } = getPalette(kind, n), own = isCustomPalette(kind, n)
               const item = (
-                <button key={n} type="button" role="option" aria-selected={n === value} className={`scheme-item${n === value ? ' on' : ''}`} title={source} onClick={() => onChange(n, reverse)}>
+                <button key={n} type="button" role="option" aria-selected={n === value} className={`scheme-item${n === value ? ' on' : ''}`} title={note ? `${source} · ${note}` : source} onClick={() => onChange(n, reverse)}>
                   <Swatch stops={schemeStops(kind, n, reverse)} discrete={kind === 'categorical'} wide />
                   <span className="scheme-name">{n}</span>
-                  {note && <span className="scheme-note">{note}</span>}
                 </button>
               )
               return own
@@ -97,6 +99,8 @@ export function SchemePopover({ anchor, kind, names, value, reverse, onChange, o
                 : item
             })}
           </div>
+          {/* one footer line: + New on the left, Reverse on the right */}
+          <div className="scheme-foot">
           <button type="button" className="scheme-new" onClick={() => setEditing('')}
             title={kind === 'categorical' ? 'Pick your own set of colours, kept in this browser' : 'Make your own gradient from colours you pick, kept in this browser'}>
             + New {kind === 'categorical' ? 'colour set' : 'gradient'}
@@ -105,6 +109,7 @@ export function SchemePopover({ anchor, kind, names, value, reverse, onChange, o
             <input type="checkbox" checked={reverse} onChange={(e) => onChange(value, e.target.checked)} />
             Reverse
           </label>}
+          </div>
         </>}
     </div>,
     document.body,
@@ -140,11 +145,14 @@ function PaletteEditor({ kind, editing, startFrom, onDone }: {
 }) {
   const [name, setName] = useState(() => editing ?? freeName(kind, kind === 'categorical' ? 'My colours' : 'My gradient'))
   const [stops, setStops] = useState<string[]>(() => (editing && customStops(kind, editing)) || startingStops(kind, startFrom))
+  // where each stop sits on a ramp (0 to 1), set by dragging in the gradient editor; undefined: evenly spaced
+  const [at, setAt] = useState<number[] | undefined>(() => (editing ? customOffsets(kind, editing) : undefined))
+  const ramp = kind !== 'categorical'
   const [text, setText] = useState(() => stops.join(' '))
   const [confirmDelete, setConfirmDelete] = useState(false)
   useEffect(() => { setText(stops.join(' ')) }, [stops])
   const problem = nameProblem(kind, name, editing)
-  const preview = paletteFromStops(kind, stops)
+  const preview = paletteFromStops(kind, stops, at)
   const setStop = (i: number, c: string) => setStops((s) => s.map((x, j) => (j === i ? c : x)))
   const removeStop = (i: number) => setStops((s) => (s.length > MIN_STOPS ? s.filter((_, j) => j !== i) : s))
   const addStop = () => setStops((s) => {
@@ -159,12 +167,12 @@ function PaletteEditor({ kind, editing, startFrom, onDone }: {
   })
   const takeText = () => {
     const parsed = text.split(/[\s,;]+/).map((t) => t && toHex(t)).filter((c): c is string => !!c).slice(0, MAX_STOPS)
-    if (parsed.length >= MIN_STOPS) setStops(parsed)
+    if (parsed.length >= MIN_STOPS) { setStops(parsed); if (parsed.join(' ') !== stops.join(' ')) setAt(undefined) }
     else setText(stops.join(' '))
   }
   const save = () => {
     if (problem) return
-    saveCustomPalette(kind, name, stops, editing)
+    saveCustomPalette(kind, name, stops, editing, at)
     onDone(name.trim())
   }
   return (
@@ -180,6 +188,9 @@ function PaletteEditor({ kind, editing, startFrom, onDone }: {
         <input className="select" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} aria-invalid={!!problem} autoFocus />
       </label>
       {problem && <span className="scheme-problem" role="alert">{problem}</span>}
+      {ramp
+        ? <GradientStops stops={stops} at={at} onChange={(s, a) => { setStops(s); setAt(a) }} />
+        : <>
       <Swatch stops={preview} discrete={kind === 'categorical'} wide />
       <div className="scheme-stops" role="group" aria-label="Colours">
         {stops.map((c, i) => (
@@ -190,6 +201,11 @@ function PaletteEditor({ kind, editing, startFrom, onDone }: {
         ))}
         {stops.length < MAX_STOPS && <button type="button" className="scheme-stop-add" aria-label="Add a colour" title="Add a colour" onClick={addStop}>+</button>}
       </div>
+      </>}
+      {ramp && <>
+        <span className="scheme-field-label">As the chart uses it</span>
+        <Swatch stops={preview} wide />
+      </>}
       <span className="scheme-hint">{STOP_HINT[kind]}</span>
       <label className="scheme-field">
         <span>Hex</span>
@@ -206,5 +222,56 @@ function PaletteEditor({ kind, editing, startFrom, onDone }: {
         <button type="submit" className="btn primary" disabled={!!problem}>Save</button>
       </div>
     </form>
+  )
+}
+
+/** a ramp's stops as a left-to-right CSS gradient, for the gradient editor */
+function rampCss(stops: readonly string[], at?: readonly number[]) {
+  return `linear-gradient(90deg, ${stops.map((c, i) => `${c} ${+(100 * (at ? at[i] : i / (stops.length - 1))).toFixed(2)}%`).join(', ')})`
+}
+
+/** the editor's CSS back as stops (hex) and offsets (0 to 1, rising), or null when it cannot be a palette */
+function readRamp(css: string): { stops: string[]; at: number[] } | null {
+  const g = parseGradient(css)
+  if (!g) return null
+  const offsets = stopOffsets(g)
+  const pairs = getStops(g).map((s, i) => ({ c: toHex(s.color), t: Math.min(1, Math.max(0, offsets[i] ?? 0)) }))
+  if (pairs.some((p) => !p.c) || pairs.length < MIN_STOPS || pairs.length > MAX_STOPS) return null
+  pairs.sort((a, b) => a.t - b.t)
+  return { stops: pairs.map((p) => p.c!), at: pairs.map((p) => p.t) }
+}
+
+/**
+ * A ramp's colours in Colorshot's gradient editor (@orshot/colorshot): click the bar to add a stop,
+ * drag a stop to move it (Alt-drag copies it), drag it off the bar or press Delete to remove it, and
+ * pick its colour in the area and hue slider below. Only the stops and where they sit are kept; the
+ * angle means nothing for a chart's ramp, so the editor offers left to right only.
+ */
+function GradientStops({ stops, at, onChange }: { stops: string[]; at?: number[]; onChange: (stops: string[], at: number[]) => void }) {
+  const theme = useTheme()
+  // the editor's own text is handed back as is, so a selected stop stays selected while dragging;
+  // it is rebuilt only when the stops change from outside (the hex field)
+  const [css, setCss] = useState(() => rampCss(stops, at))
+  const last = useRef<{ stops: string[]; at?: number[] }>({ stops, at })
+  if (last.current.stops !== stops || last.current.at !== at) {
+    last.current = { stops, at }
+    const mine = readRamp(css)
+    if (!mine || mine.stops.join() !== stops.join() || (at && mine.at.join() !== at.join())) setCss(rampCss(stops, at))
+  }
+  const take = (next: string) => {
+    const r = readRamp(next)
+    if (!r) return // too many stops, or one we cannot read: keep the last good ramp
+    setCss(next)
+    last.current = { stops: r.stops, at: r.at }
+    onChange(r.stops, r.at)
+  }
+  return (
+    <Picker.Root className="scheme-colorshot" value={css} onChange={take} modes={['linear']} size="sm" theme={theme}
+      outputFormat="hex" storageKey={null} shortcuts={false} aria-label="Gradient colours">
+      <Picker.GradientBar />
+      <Picker.Area />
+      <Picker.Hue />
+      <Picker.Inputs formats={['hex', 'rgb', 'hsl', 'oklch']} alpha={false} />
+    </Picker.Root>
   )
 }

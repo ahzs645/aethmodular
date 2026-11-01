@@ -4,7 +4,7 @@ import { IdentityLine } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
-import { XAxis, YAxis } from '@/components/Axes'
+import { AxisSwap, useAxisSwap, XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
@@ -31,6 +31,8 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const lg = useLegend()
+  const pcaSwap = useAxisSwap('analog.pca')
+  const rankSwap = useAxisSwap('analog.rank')
   const TOP = `committed top ${cutoff}`, REST = 'rest of pool', ADDIS = 'Addis filters (★)'
   const cls = (rank: number) => (rank < cutoff ? TOP : REST)
 
@@ -66,18 +68,19 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
     // squash the whole pool into one pixel row; the axes follow the 0.5–99.5 %
     // bulk and the extremes are pinned hollow at the edge, counted below
     const q = (i: 0 | 1, p: number) => d3.quantile(all.map((d) => d[i]).sort(d3.ascending), p) ?? 0
-    const x = d3.scaleLinear().domain([q(0, 0.005), q(0, 0.995)]).range([0, S]).nice()
-    const y = d3.scaleLinear().domain([q(1, 0.005), q(1, 0.995)]).range([S, 0]).nice()
+    const xi = pcaSwap.swapped ? 1 : 0, yi = pcaSwap.swapped ? 0 : 1
+    const x = d3.scaleLinear().domain([q(xi, 0.005), q(xi, 0.995)]).range([0, S]).nice()
+    const y = d3.scaleLinear().domain([q(yi, 0.005), q(yi, 0.995)]).range([S, 0]).nice()
     // closest-point detection over the 2,500-point subsample: one Delaunay
     // and one hit rect instead of 2,500 mouse handlers (react-graph-gallery's
     // scatterplot-with-voronoi pattern)
-    const cx = (p: [number, number]) => Math.max(0, Math.min(S, x(p[0])))
-    const cy = (p: [number, number]) => Math.max(0, Math.min(S, y(p[1])))
-    const outside = (p: [number, number]) => x(p[0]) < 0 || x(p[0]) > S || y(p[1]) < 0 || y(p[1]) > S
+    const cx = (p: [number, number]) => Math.max(0, Math.min(S, x(p[xi])))
+    const cy = (p: [number, number]) => Math.max(0, Math.min(S, y(p[yi])))
+    const outside = (p: [number, number]) => x(p[xi]) < 0 || x(p[xi]) > S || y(p[yi]) < 0 || y(p[yi]) > S
     const nOutside = all.filter(outside).length
     const delaunay = d3.Delaunay.from(lab.pool_xy, cx, cy)
     return { x, y, cx, cy, outside, nOutside, delaunay }
-  }, [lab, S])
+  }, [lab, S, pcaSwap.swapped])
   const [hoverI, setHoverI] = useState<number | null>(null)
   const onPcaMove = (e: React.MouseEvent<SVGRectElement>) => {
     if (!lab || !pca) return
@@ -116,8 +119,9 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
               <p className="facet-title">PCA of normalised spectra (PC1 {Math.round(lab.explained[0] * 100)} %, PC2 {Math.round(lab.explained[1] * 100)} %)</p>
               <svg width={S + MARGIN.left + MARGIN.right} height={S + MARGIN.top + MARGIN.bottom}>
                 <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-                  <YAxis scale={pca.y} x={0} label="PC2" gridWidth={S} tickCount={5} />
-                  <XAxis scale={pca.x} y={S} label="PC1" tickCount={5} />
+                  <YAxis scale={pca.y} x={0} label={pcaSwap.swapped ? 'PC1' : 'PC2'} gridWidth={S} tickCount={5} />
+                  <XAxis scale={pca.x} y={S} label={pcaSwap.swapped ? 'PC2' : 'PC1'} tickCount={5} />
+                  <AxisSwap x={-42} y={S + 29} onSwap={pcaSwap.swap} />
                   {lab.pool_xy.map((p, i) => {
                     const rank = lab.sample_idx[i]
                     const inCohort = rank < cutoff
@@ -138,12 +142,13 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
               <AxisChoices {...o.axisChoices()}>
               <svg width={S + MARGIN.left + MARGIN.right} height={S + MARGIN.top + MARGIN.bottom}>
                 <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-                  <YAxis scale={ry} x={0} label={`rank by ${o.axisLabel('metric') || 'the alternative metric'}`} gridWidth={S} tickCount={5} pick="y" />
-                  <XAxis scale={rx} y={S} label="committed rank" tickCount={5} />
+                  <YAxis scale={ry} x={0} label={rankSwap.swapped ? 'committed rank' : `rank by ${o.axisLabel('metric') || 'the alternative metric'}`} gridWidth={S} tickCount={5} pick={rankSwap.swapped ? undefined : 'y'} />
+                  <XAxis scale={rx} y={S} label={rankSwap.swapped ? `rank by ${o.axisLabel('metric') || 'the alternative metric'}` : 'committed rank'} tickCount={5} pick={rankSwap.swapped ? 'y' : undefined} />
+                  <AxisSwap x={-42} y={S + 29} onSwap={rankSwap.swap} />
                   <IdentityLine x1={rx(0)} y1={ry(0)} x2={rx(lab.n)} y2={ry(lab.n)} />
                   <rect x={0} y={ry(cutoff)} width={rx(cutoff)} height={S - ry(cutoff)} fill={cohortColor('analogs')} fillOpacity={0.08} />
                   {rankPts.map((p, i) => lg.show(cls(p.c)) && (
-                    <circle key={i} cx={rx(p.c)} cy={ry(p.a)} r={1.6} fill={p.c < cutoff ? cohortColor('analogs') : INK.muted} {...dotFill(p.c < cutoff ? 'sparse' : 'dimmed', lg.dim(cls(p.c)))} pointerEvents="none" />
+                    <circle key={i} cx={rx(rankSwap.swapped ? p.a : p.c)} cy={ry(rankSwap.swapped ? p.c : p.a)} r={1.6} fill={p.c < cutoff ? cohortColor('analogs') : INK.muted} {...dotFill(p.c < cutoff ? 'sparse' : 'dimmed', lg.dim(cls(p.c)))} pointerEvents="none" />
                   ))}
                 </g>
               </svg>

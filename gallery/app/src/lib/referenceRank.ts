@@ -111,6 +111,59 @@ export function referenceQuantity(field: string, mac: number): Quantity | { reas
 
 export interface RankedSite { code: string; name: string; n: number; p25: number; p50: number; p75: number }
 
+/** Ratio views used by the site-rank notebooks, with the corrected SPARTAN carbon provenance. */
+export const NETWORK_RANK_PRESETS = [
+  { value: 'fabs_ec', label: 'fAbs / EC', field: 'HIPS Fabs / EC (FTIR)' },
+  { value: 'oc_ec', label: 'OC / EC', field: 'OC (FTIR) / EC (FTIR)' },
+  { value: 'oc_fabs', label: 'OC / fAbs', field: 'OC (FTIR) / HIPS Fabs' },
+  { value: 'fe_fabs', label: 'Iron / fAbs', field: 'Iron / HIPS Fabs' },
+  { value: 'fe_ec', label: 'Iron / EC', field: 'Iron / EC (FTIR)' },
+  { value: 'fe_pm', label: 'Iron / PM2.5 mass', field: 'Iron / PM2.5 mass' },
+] as const
+
+export type RankNetworks = 'both' | 'improve' | 'spartan'
+export interface ActiveRankSite extends RankedSite { network: 'IMPROVE' | 'SPARTAN'; color: string }
+export interface NetworkRankSite extends RankedSite { network: 'IMPROVE' | 'SPARTAN'; rank: number; active?: boolean; color?: string }
+
+/** One mark per network + site code, even when that site is also selected in the gallery.
+ * Together: rank all medians. Reference: keep the notebook's IMPROVE ordering and insert SPARTAN into it.
+ * A single network always ranks against itself. Names are labels, never site identities. */
+export function rankNetworks(improve: readonly RankedSite[], spartan: readonly RankedSite[], networks: RankNetworks,
+  order: 'together' | 'reference' = 'together'): NetworkRankSite[] {
+  const unique = (sites: readonly RankedSite[]) => [...new Map(sites.map(s => [s.code, s])).values()]
+  const im = networks === 'spartan' ? [] : unique(improve).sort((a, b) => a.p50 - b.p50 || a.code.localeCompare(b.code))
+  const sp = networks === 'improve' ? [] : unique(spartan)
+  const all = [...im.map(s => ({ ...s, network: 'IMPROVE' as const })), ...sp.map(s => ({ ...s, network: 'SPARTAN' as const }))]
+    .sort((a, b) => a.p50 - b.p50 || a.network.localeCompare(b.network) || a.code.localeCompare(b.code))
+  const reference = networks === 'both' && order === 'reference'
+  return all.map(s => ({ ...s, rank: 1 + placeAmong(reference ? im : all, s.p50) }))
+}
+
+/** Active Samples sites remain visible against any background, without a second mark for the same site.
+ * Background medians and ranks stay fixed; a star uses its current filtered median and is placed among the
+ * comparison sites other than itself. An active site never adds a site to the reference population. */
+export function rankWithActiveSites(improve: readonly RankedSite[], spartan: readonly RankedSite[], networks: RankNetworks,
+  order: 'together' | 'reference', active: readonly ActiveRankSite[]): { sites: NetworkRankSite[]; nReference: number } {
+  const background = rankNetworks(improve, spartan, networks, order)
+  const reference = networks === 'both' && order === 'reference' ? background.filter(s => s.network === 'IMPROVE') : background
+  const key = (s: Pick<NetworkRankSite, 'network' | 'code'>) => `${s.network}:${s.code}`
+  const selected = new Map(active.map(s => [key(s), s]))
+  const stars = [...selected.values()].map(s => ({ ...s, active: true,
+    rank: 1 + placeAmong(reference.filter(r => key(r) !== key(s)), s.p50) }))
+  return { sites: [...background.filter(s => !selected.has(key(s))), ...stars], nReference: reference.length }
+}
+
+/** Resolve the chosen carbon quantity to SPARTAN's FTIR product, including when the picker names TOR.
+ * This is a method comparison, not an independent SPARTAN thermal measurement. */
+export function spartanQuantity(q: Pick<Quantity, 'parts'>): Pick<Quantity, 'parts'> {
+  return { parts: q.parts.map(p => p === 'EC (TOR)' ? 'EC (FTIR)' : p === 'OC (TOR)' ? 'OC (FTIR)' : p) }
+}
+
+/** The matching quantity in IMPROVE's already transformed gallery rows (HIPS BC is already at the reader's MAC). */
+export function improveQuantity(q: Pick<Quantity, 'parts'>): Pick<Quantity, 'parts'> {
+  return { parts: q.parts.map(p => /^(EC|OC) \(TOR\)$/.test(REFERENCE_OF[p]?.ref ?? '') ? REFERENCE_OF[p].ref : p) }
+}
+
 /** The reference sites with at least `minN` filters, ranked by median (lowest first), at the reader's scale. */
 export function rankedReference(file: ReferenceFile, pop: Population, q: Quantity, minN: number): RankedSite[] {
   const t = file.quantities[pop]?.[q.key]

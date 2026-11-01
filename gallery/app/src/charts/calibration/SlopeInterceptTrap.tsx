@@ -10,7 +10,7 @@ import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
 import { testSetOption, useChartOptions } from '@/lib/chartOptions'
 import { fitInner, useFitHeight } from '@/lib/chartFit'
 import { Legend, useLegend } from '@/components/Legend'
-import { XAxis, YAxis } from '@/components/Axes'
+import { AxisSwap, XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { INK, MARGIN, FONT } from '@/lib/theme'
@@ -180,6 +180,7 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
               {my.kind === 'slope' && <RefBand orient="h" at={[y(calib.slope_box[0]), y(calib.slope_box[1])]} size={innerH} length={innerW} />}
               <YAxis scale={y} x={0} label={`${my.kind !== 'other' ? 'Test set ' : ''}${ay[0]}${my.kind !== 'other' ? ` (${calib.targets[target]?.site ?? target}${my.unit ? `, ${my.unit}` : ''})` : ''}`} gridWidth={innerW} pick="y" />
               <XAxis scale={x} y={innerH} label={`${mx.kind !== 'other' ? 'Test set ' : ''}${ax[0]}${mx.kind !== 'other' ? ` (${calib.targets[target]?.site ?? target}${mx.unit ? `, ${mx.unit}` : ''})` : ''}`} pick="x" />
+              <AxisSwap x={-42} y={innerH + 29} />
               {my.kind === 'intercept' && <line x1={0} x2={innerW} y1={y(0)} y2={y(0)} stroke={INK.axis} />}
               {mx.kind === 'intercept' && <line x1={x(0)} x2={x(0)} y1={0} y2={innerH} stroke={INK.axis} />}
               {mx.kind === 'slope' && <RefLine orient="v" at={x(1)} from={0} to={innerH} />}

@@ -22,6 +22,7 @@
   "dependencies": {
     "@firstform/json-url": "^4.2.0",
     "@kanaries/graphic-walker": "0.4.82",
+    "@orshot/colorshot": "^0.2.0",
     "@pgmaps/geo-toolkit": "file:../packages/geo-toolkit",
     "@react-querybuilder/core": "8.24.3",
     "buffer": "^6.0.3",

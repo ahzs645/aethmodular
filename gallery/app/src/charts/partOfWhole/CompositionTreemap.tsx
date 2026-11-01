@@ -393,7 +393,11 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
       title={title}
       subtitle={subtitle ?? (reconOn ? RECON_SUBTITLE : "Available species grouped by measurement family (carbon, ions, crustal elements, trace metals). Crustal elements and trace metals are element masses, without SPARTAN's oxide factors. Concentration stacks the selected mean or median in µg/m³. Composition (%) divides each positive, visible species statistic by the sum of those statistics; it is not a percentage of measured PM2.5 or an average of individual-filter percentages. Coverage can differ by species. Missing values are omitted, never filled with zero. Negative or zero aggregate species values have no positive slice. Hiding a species or family changes the percentage denominator. PM2.5 mass is a separate measurement: the difference is not a measured residual or full mass closure.")}
       provenance={provenance ?? (reconOn ? "SPARTAN public FilterBased ReconstrPM25 and ChemSpecPM25 (potassium), joined by filter ID (spartan_composition.json, gallery/data/export_spartan_composition.py) · SPARTAN's October 2026 network composition figure" : "1 stackplot + 2 pie calls in the estate · react-graph-gallery.com/barplot (stacked) · /treemap · /circular-packing · /donut")}
-      controls={<>{o.controls()}{colours.picker}</>}
+      controls={<>{o.controls()}{offersRecon
+        ? <span className="grouping-picker">{colours.picker}
+          <span className="grouping-actions"><button type="button" className="btn" onClick={() => editShowing()} aria-label="Edit components: colours, names, stacking order, legend"
+            title={isOwnSet ? 'Each component\'s colour, name and place in the stack, and the legend' : `Each component's colour, name and place in the stack, and the legend; saving makes a set of yours (${chosenSet.name} stays as it is)`}>Edit…</button></span></span>
+        : colours.picker}</>}
     >
       <div ref={wrapRef} className="chart-wrap" data-export-fixed-colours={[...color.range(), ...familyColor.range()].join(' ')} style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
         {reconOn && recon === null ? <Empty>Loading SPARTAN's mass reconstruction…</Empty>
@@ -524,8 +528,7 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
       ]} hidden={new Set([...fam.hidden, ...lg.hidden])} onToggle={label => families.includes(label) ? fam.toggle(label) : lg.toggle(label)} onHover={label => { fam.setHover(label && families.includes(label) ? label : null); lg.setHover(label && !families.includes(label) ? label : null) }} highlighted={fam.hover ?? lg.hover} />
       {offersRecon && <ComponentSetBar notShown={notShown} hidden={hiddenFields} nameOf={nameOf} colorOf={(f) => ownColors?.[f] || paletteFor(reconOn ? 'recon' : 'measured')(f)} builtIn={!isOwnSet}
         onAdd={(f) => (isOwnSet ? sets.save({ ...(chosenSet as ComponentSetDef), fields: insertInOrder(setFields, f, basisFields) }) : editShowing(insertInOrder(showing.fields, f, basisFields)))}
-        onDrop={() => { if (isOwnSet) { sets.save({ ...(chosenSet as ComponentSetDef), fields: showing.fields }); lg.setHidden(new Set()) } else editShowing() }}
-        onEdit={() => editShowing()} />}
+        onDrop={() => { if (isOwnSet) { sets.save({ ...(chosenSet as ComponentSetDef), fields: showing.fields }); lg.setHidden(new Set()) } else editShowing() }} />}
       {editor.node}
       {reconOn && recon && recon.missing > 0 && rows.length > 0 && <p className="chart-note">{recon.missing.toLocaleString()} of {allRows.length.toLocaleString()} filters in view have no SPARTAN mass balance (no reconstruction published for them) and are left out, so the PM2.5 read against a stack is over the same filters.</p>}
       {showDominance && <p className="chart-note">{dominated(rows)} of {rows.length} filters have one {itemNoun.replace(/s$/, '')} above {o.values.above} % of the filter's {totalNoun} total (the count under each bar is that bar's).</p>}

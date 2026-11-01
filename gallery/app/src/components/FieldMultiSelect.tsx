@@ -6,6 +6,7 @@ import { chemText } from '@/lib/format'
 import { prettyUnit } from '@/components/FieldSelect'
 import type { MetaFile } from '@/lib/types'
 import { useFloatingMenu } from '@/hooks/useFloatingMenu'
+import { useSearchParam } from '@/lib/url'
 
 /**
  * Several fields at once (a correlogram's species, a matrix's rows): a button that says how many
@@ -15,8 +16,33 @@ import { useFloatingMenu } from '@/hooks/useFloatingMenu'
  *
  *   <FieldMultiSelect meta={meta} available={fields} value={chosen} preset={preset}
  *     presets={PRESETS} onChange={(fields, preset) => …} />
+ *
+ * or, with the state kept in the URL for you (useFieldChoice, below):
+ *
+ *   const choice = useFieldChoice('corr', avail, presets, 'top')
+ *   <FieldMultiSelect meta={meta} {...choice.props} />   // and draw choice.chosen
+ *
+ * The shared named sets are lib/fieldPresets (FIELD_PRESETS).
  */
 export interface FieldPreset { key: string; label: string; fields: (available: string[]) => string[]; note?: string }
+
+/**
+ * A preset-or-own field choice kept in the URL (so a link or a Dashboard tile reopens it):
+ * `<key>p` is the preset ('custom' once a field is ticked by hand), `<key>f` the reader's own list
+ * ('|'-joined). Only the fields in `available` are ever chosen, so a list that names a field the
+ * view lacks (another site, another target) just skips it.
+ */
+export function useFieldChoice(key: string, available: string[], presets: FieldPreset[], fallback: string) {
+  const [presetKey, setPreset] = useSearchParam<string>(`${key}p`, fallback, [...presets.map((p) => p.key), 'custom'])
+  const [customParam, setCustom] = useSearchParam<string>(`${key}f`, '')
+  const chosen = useMemo(() => {
+    if (presetKey !== 'custom') return (presets.find((p) => p.key === presetKey) ?? presets[0]).fields(available)
+    return customParam.split('|').filter((f) => available.includes(f))
+  }, [presetKey, customParam, presets, available])
+  const preset = presetKey === 'custom' ? null : presetKey
+  const onChange = (fs: string[], p: string | null) => { setCustom(p ? '' : fs.join('|')); setPreset(p ?? 'custom') }
+  return { chosen, preset, props: { available, value: chosen, preset, presets, onChange } }
+}
 
 export function FieldMultiSelect({ label = 'Fields', meta, available, value, preset, presets, onChange, max }: {
   label?: string

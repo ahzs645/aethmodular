@@ -8,7 +8,7 @@ import { useChartOptions } from '@/lib/chartOptions'
 import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
-import { AxisTitle, XAxis, YAxis } from '@/components/Axes'
+import { AxisSwap, AxisTitle, XAxis, YAxis } from '@/components/Axes'
 import { prettyUnit } from '@/components/FieldSelect'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -313,6 +313,7 @@ function SiteMultiples({ runs, siteRuns, mac, at, controls, presetLabel, gallery
                     {/* shared axes: tick numbers only on the left column and the bottom panel of each column */}
                     <YAxis scale={y} x={0} gridWidth={S} tickCount={4} format={sharedTicks && k % cols !== 0 ? () => '' : undefined} />
                     <XAxis scale={x} y={S} tickCount={4} format={sharedTicks && k + cols < siteRuns.length ? () => '' : undefined} />
+                    <AxisSwap x={-28} y={S + 26} />
                     {ecPair && <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />}
                     {yk === RESID && y.domain()[0] < 0 && y.domain()[1] > 0 && <line x1={0} x2={S} y1={y(0)} y2={y(0)} stroke={INK.text} strokeWidth={1.2} />}
                     {pts[k].length === 0 && <text x={S / 2} y={S / 2} textAnchor="middle" fontSize={11} fill={INK.muted}>no filters carry both</text>}

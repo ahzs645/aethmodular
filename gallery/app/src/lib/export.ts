@@ -84,7 +84,7 @@ export function composeFigure(panel: HTMLElement, sites: readonly ExportSite[] =
   // a legend inside a legend would otherwise be walked, and its text drawn, twice
   const texts = found.filter((t) => !found.some((o) => o !== t && o.contains(t)))
 
-  // a legend's items: .legend-item where there is one, else the legend's child that holds the part
+  // Keep group headings as individual pieces too: grouped keys share a centred wrapper on screen.
   const legendEls = [...new Set(texts.map((t) => t.closest<HTMLElement>('.legend')).filter((l): l is HTMLElement => !!l))]
   const items = new Map<HTMLElement, Map<Element, Piece[]>>(legendEls.map((l) => [l, new Map()]))
   const chart: Piece[] = []
@@ -94,7 +94,7 @@ export function composeFigure(panel: HTMLElement, sites: readonly ExportSite[] =
     for (let l = source.closest<HTMLElement>('.legend'); l; l = l.parentElement?.closest<HTMLElement>('.legend') ?? null) if (items.has(l)) legend = l
     const slot = legend && items.get(legend)
     if (!legend || !slot) { chart.push(piece); return }
-    let item: Element | null = source.closest('.legend-item')
+    let item: Element | null = source.closest('.legend-item, .legend-group-name')
     if (!item || !legend.contains(item)) {
       item = source
       while (item.parentElement && item.parentElement !== legend) item = item.parentElement

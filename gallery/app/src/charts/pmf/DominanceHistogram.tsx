@@ -7,6 +7,8 @@ import { Key } from '@/components/Key'
 import { Marker } from '@/components/RefLines'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
+import { useColourScheme } from '@/lib/colourSchemes'
+import { categoricalScale, hasNamedColours } from '@/lib/palettes'
 import { belowAbove, dominantShare } from '@/lib/pmfCoverage'
 import { PAPER_ORDER } from '@/lib/pmfPaper'
 import { FONT, INK } from '@/lib/theme'
@@ -29,6 +31,7 @@ const COLOURS = ['One colour', 'By dominant source'] as const
  * dominant_source_threshold_analysis c12: how dominant the dominant PMF factor is, by either rule. The threshold
  * analyses (Aethalometer › Sources, ThresholdSweep) cut at 30–70 %; this is how many days each cut leaves on either
  * side. Bars can be split by which source dominates, so a cut that removes "dominated" days says whose days those are.
+ * The split opens on the PMF paper's source colours, as the source stack (SourceStack) does, and has the same picker.
  */
 export function DominanceHistogram({ pmf, rows: inView }: { pmf: PmfFile; rows: PmfRow[] }) {
   // each PMF day is a filter: Filters → excluded (lib/markedRows useCountedFilter) takes it out of the bins and counts
@@ -37,6 +40,12 @@ export function DominanceHistogram({ pmf, rows: inView }: { pmf: PmfFile; rows: 
   const nMarked = useExclusionSplit(inView, (r) => r.id).marked.length
   const [colour, setColour] = useSearchParam<(typeof COLOURS)[number]>('pmfdom.colour', 'One colour', COLOURS)
   const labels = useMemo(() => [...pmf.sources].sort((a, b) => PAPER_ORDER.indexOf(a.label) - PAPER_ORDER.indexOf(b.label)), [pmf.sources])
+  // the source colours: the PMF paper's by default, as the source stack; the reader can switch (pmfdom.palette)
+  const colours = useColourScheme('pmfdom', 'categorical', 'PMF paper')
+  const sourceColour = useMemo(() => categoricalScale(colours.name, labels.map((s) => s.label), colours.reverse), [colours.name, colours.reverse, labels])
+  // a palette of fixed, published colours is drawn opaque, so the bars show those colours exactly
+  const solid = hasNamedColours(colours.name)
+  const stacked = colour === 'By dominant source'
   const panels = useMemo(() => RULES.map((rule) => {
     const days = rows.flatMap((r) => { const d = dominantShare(rule.of(r), labels.map((s) => s.label)); return d ? [{ r, pct: 100 * d.share, source: d.source }] : [] })
     const v = days.map((d) => d.pct)
@@ -48,21 +57,22 @@ export function DominanceHistogram({ pmf, rows: inView }: { pmf: PmfFile; rows: 
       title="How dominant is the dominant source — the dominant PMF factor's share of each day, by the GF and K_F rules"
       subtitle={`Each ${pmf.site_name} PMF day in view (${rows.length} of ${pmf.n}), binned as the notebook did (20 equal bins). GF takes the largest of the normalised source fractions; K_F the largest contribution over the day's K_F total in µg/m³. Dashed lines are the notebooks' dominance thresholds (30–70 %); the box lists the days at or below / above each, the split ThresholdSweep fits on.`}
       provenance="research/ftir_hips_chem/dominant_source_threshold_analysis.ipynb c12 (dominance distribution overview) · from pmf.json"
-      controls={<Segmented label="Bars" value={colour} options={COLOURS} onChange={setColour} title="One colour, as the notebook; or each bar split by the source that dominates its days" />}>
-      {rows.length < 3 ? <Empty>Too few PMF days in view ({rows.length}).</Empty> : <>
+      controls={<><Segmented label="Bars" value={colour} options={COLOURS} onChange={setColour} title="One colour, as the notebook; or each bar split by the source that dominates its days" />{stacked && colours.picker}</>}>
+      {rows.length < 3 ? <Empty>Too few PMF days in view ({rows.length}).</Empty> : <div data-export-fixed-colours={stacked ? sourceColour.range().join(' ') : undefined}>
         <FacetGrid items={panels} minCell={300} maxCols={2} title={(p) => p.title}
           note={(p) => `n=${p.n} · mean ${percent(p.mean, 1)} · median ${percent(p.median, 1)}`}
-          render={(p, w, _i, cell) => <DominancePanel days={p.days} counts={p.counts} width={w} height={cell.height} axis={p.axis} stacked={colour === 'By dominant source'} sources={labels} />} />
-        <Key items={colour === 'By dominant source' ? labels.map((s) => ({ label: s.label, color: s.color, kind: 'square' as const })) : [{ label: 'PMF days', color: INK.accent, kind: 'square' }, { label: 'dominance thresholds', color: INK.negative, kind: 'dash' }]} />
-      </>}
+          render={(p, w, _i, cell) => <DominancePanel days={p.days} counts={p.counts} width={w} height={cell.height} axis={p.axis} stacked={stacked} sources={labels.map((s) => s.label)} colourOf={sourceColour} solid={solid} />} />
+        <Key items={stacked ? labels.map((s) => ({ label: s.label, color: sourceColour(s.label), kind: 'square' as const })) : [{ label: 'PMF days', color: INK.accent, kind: 'square' }, { label: 'dominance thresholds', color: INK.negative, kind: 'dash' }]} />
+      </div>}
       <ExcludedNote count={nMarked} />
     </ChartFrame>
   )
 }
 
-function DominancePanel({ days, counts, width, height = null, axis, stacked, sources }: {
+function DominancePanel({ days, counts, width, height = null, axis, stacked, sources, colourOf, solid }: {
   days: { r: PmfRow; pct: number; source: string }[]; counts: { threshold: number; below: number; above: number }[]
-  width: number; axis: string; stacked: boolean; sources: { label: string; color: string }[]
+  width: number; axis: string; stacked: boolean; sources: string[]
+  colourOf: (source: string) => string; solid: boolean
   /** the cell's share of a fitted height (FacetGrid), null elsewhere */
   height?: number | null
 }) {
@@ -80,7 +90,7 @@ function DominancePanel({ days, counts, width, height = null, axis, stacked, sou
   const binOf = (p: number) => Math.min(BINS - 1, Math.max(0, Math.floor(((p - vmin) / (vmax - vmin || 1)) * BINS)))
   const bins = edges.slice(0, -1).map((x0, i) => ({ x0, x1: edges[i + 1], days: days.filter((d) => binOf(d.pct) === i) }))
   const y = d3.scaleLinear().domain([0, (d3.max(bins, (b) => b.days.length) ?? 1) * 1.1]).nice().range([ih, 0])
-  const order = sources.map((s) => s.label)
+  const order = sources
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <svg width={width} height={ih + m.top + m.bottom} fontFamily={FONT.family}>
@@ -96,7 +106,7 @@ function DominancePanel({ days, counts, width, height = null, axis, stacked, sou
               {parts.map((p) => {
                 const y0 = y(acc), y1 = y(acc + p.n)
                 acc += p.n
-                return <rect key={p.s} x={bx} width={bw} y={y1} height={Math.max(0, y0 - y1)} fill={stacked ? sources.find((s) => s.label === p.s)?.color : INK.accent} fillOpacity={0.75} stroke={INK.panel} strokeWidth={0.5} />
+                return <rect key={p.s} x={bx} width={bw} y={y1} height={Math.max(0, y0 - y1)} fill={stacked ? colourOf(p.s) : INK.accent} fillOpacity={stacked && solid ? 1 : 0.75} stroke={INK.panel} strokeWidth={0.5} />
               })}
             </g>
           })}

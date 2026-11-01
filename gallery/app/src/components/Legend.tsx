@@ -166,10 +166,10 @@ export function Legend({
   return (
     <div ref={setRoot} className={`legend${grouped ? ' grouped' : ''}`}>
       {parts.filter((p) => !grouped || (!p.group && !groups.includes(p.it.label))).map(item)}
-      {grouped && groups.map((g) => <div key={g} className="legend-group">
+      {grouped && <div className="legend-groups">{groups.map((g) => <div key={g} className="legend-group">
         <span className="legend-group-name">{parts.some(p => p.it.label === g) ? item(parts.find(p => p.it.label === g)!) : groupName(g)}</span>
         {parts.filter((p) => p.group === g).map(item)}
-      </div>)}
+      </div>)}</div>}
       {long && <button type="button" className="legend-more" onClick={() => setAll(!all)} aria-expanded={all}
         title={all ? 'Show the first few only' : 'Show every item (the chart shrinks to make room, or the tile scrolls)'}>
         {all ? 'fewer' : `+${displayItems.length - TILE_LIMIT} more`}</button>}

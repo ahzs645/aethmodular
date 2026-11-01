@@ -273,7 +273,7 @@ function PcaMap({ d }: { d: BlanksData }) {
         options={pcs.map((pc, i) => ({ key: pc, group: 'Principal components', hint: pct(d.shared_pca.var[i]) }))}>
       <div ref={ref} style={{ position: 'relative' }}>
         <Panels letters={false} gap={16} label="Blank map and spectrum" panels={[{ key: 'map', min: side + m.left + m.right, max: side + m.left + m.right, grow: 0, render: () =>
-          <ScatterPlot points={points} maxSide={side} minSide={side} margin={m} labelX={-46} xTicks={6} yTicks={6} pick note={false}
+          <ScatterPlot points={points} maxSide={side} minSide={side} margin={m} labelX={-46} xTicks={6} yTicks={6} pick swap note={false}
             xLabel={`${px} score`} yLabel={`${py} score`} onPick={(p) => { const i = points.indexOf(p); setPin(pin === i ? null : i) }} /> },
           { key: 'spectrum', min: 300, render: ({ width: pw }) => <div>
           {pin == null ? <Note>Click a blank in the map to see its spectrum minus the average blank. The loadings of {px} and {py} are below for reference.</Note> : null}

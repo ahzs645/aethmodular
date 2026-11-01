@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
-import { Crossplot, type CrossPoint } from '@/components/Crossplot'
+import { Crossplot, CrossplotBrushControls, useCrossplotBrush, type CrossPoint } from '@/components/Crossplot'
 import { PanelGroup } from '@/components/PanelGroup'
 import { FacetGrid } from '@/components/FacetGrid'
 import { FieldSelect } from '@/components/FieldSelect'
@@ -52,6 +52,7 @@ export function SplitFit({ rows, meta, xField, yField }: { rows: FilterRow[]; me
   const [resParam, setRes] = useSearchParam<(typeof RESIDUALS)[number]>('splitfit.resid', 'auto', RESIDUALS)
   const [panelsParam, setPanels] = useSearchParam<(typeof PANELS)[number]>('splitfit.panels', 'Pooled', PANELS)
   const [tableParam, setTable] = useSearchParam<string>('splitfit.table', '')
+  const brush = useCrossplotBrush()
   const { methods } = useRegressions()
 
   // the variable: the reader's, else iron (over FTIR EC) as the notebooks had it, else the first field in view
@@ -128,14 +129,13 @@ export function SplitFit({ rows, meta, xField, yField }: { rows: FilterRow[]; me
     return { name: g.name, n: g.items.length, low: lowPts, high: highPts, res: resPts, r, rho, trend, mark: markOf(g), markedLow, markedHigh }
   }), [groups, mode, at, siteCuts, resKind, xField, yField, tName, perSite, sites, markedItems]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // one range for every ≤ / > panel (the PanelGroup below, Panel axes), so the slopes compare by eye; the residual panels clip the variable's 1–99 %
-  const tDom = robustDomain(items.map((i) => i.t), 0.01, 0.99).domain
-  // the Cutoff field's range: the variable's 1–99 % (the residual panels' x axis; a ratio's extremes would make a drag
+  // one range for every ≤ / > panel (the PanelGroup below, Panel axes), so the slopes compare by eye; the residual panels show every fitted filter
+  const tDom = robustDomain(items.map((i) => i.t), 0, 1).domain
+  // the Cutoff field's drag range uses the variable's 1–99 % (a ratio's extremes would make a drag
   // useless), widened to the cutoff in use, in steps of about a 500th of it (a power of ten, so typed cutoffs keep)
-  const cutRange = cutoffRange(tDom, [at, autoAt])
-  const resDom = robustDomain(blocks.flatMap((b) => b.res.map((p) => p.y)), 0.01, 0.99, { include: [0] }).domain
+  const cutRange = cutoffRange(robustDomain(items.map((i) => i.t), 0.01, 0.99).domain, [at, autoAt])
+  const resDom = robustDomain(blocks.flatMap((b) => b.res.map((p) => p.y)), 0, 1, { include: [0] }).domain
   const pad = (d: [number, number]): [number, number] => { const w = (d[1] - d[0]) || 1; return [d[0] - 0.04 * w, d[1] + 0.04 * w] }
-  const outside = items.filter((i) => i.t < tDom[0] || i.t > tDom[1]).length
   const xl = withUnit(xField, meta.field_units), yl = withUnit(yField, meta.field_units)
   const resLabel = resKind === 'difference' ? `${yField} − ${xField}` : `${yField} − pooled OLS fit`
   const cutText = (b: { mark: number | null }) => (b.mark === null ? "each site's median" : fmt(b.mark, 3))
@@ -153,6 +153,7 @@ export function SplitFit({ rows, meta, xField, yField }: { rows: FilterRow[]; me
       subtitle={`x and y are the tab's fields; the filters are split on ${tName} (any field, or one field over another), low ≤ the cutoff, high above it, and each side is fitted with the sidebar's estimators (a side needs three filters). The third panel is every filter's ${resKind === 'difference' ? 'difference y − x, as the notebooks plotted it' : 'distance from the pooled OLS line (y − x means little when x and y differ in units)'} against the variable, coloured by side, with its OLS trend, Pearson r (the notebooks') and Spearman ρ (which one extreme ratio cannot swamp): a trend says the two measurements part ways as the variable grows. The table is the notebooks' summary at several cutoffs (OLS R² and slope; ΔR² = R²(low) − R²(high)).${feEc ? ' Iron is exported in µg/m³, so Fe/EC here is the notebooks\' ng/µg ÷ 1000: their thresholds 50, 100, 150, 200, 300 are 0.05 … 0.3.' : ''} HIPS BC follows the MAC; the notebooks used MAC 10.`}
       provenance={'research/ftir_hips_chem/primary_tasks_notebook.ipynb c14–21 (analyze_iron_threshold) · Task_Analysis_Notebook.ipynb c32–39 (by concentration group: pick Delhi + Addis Ababa, or Beijing + JPL, in the Filters panel) · follow_up_analysis.ipynb c24 (split at each site\'s median, Per site) · dominant_source_threshold_analysis follows the same recipe on the PMF share (Aethalometer › Sources)'}
       controls={<>
+        <CrossplotBrushControls brush={brush} />
         <FieldSelect label="Split on" value={on} meta={meta} onChange={setOn} title="The variable the filters are split on" />
         <FieldSelect label="÷" value={per ?? NONE} meta={meta} onChange={setPer} extraOptions={[NONE]} ratios={false}
           title="Divide the variable by another field (iron ÷ FTIR EC is the notebooks' Fe/EC); none: the field itself" />
@@ -182,6 +183,7 @@ export function SplitFit({ rows, meta, xField, yField }: { rows: FilterRow[]; me
             <FacetGrid items={panelsOf(b)} minCell={250} maxCols={3} maxCell={380} itemKey={(p) => `${b.name}|${p.key}`} site={() => b.name} render={(p, w) => p.key === 'res'
               ? (p.points.length < 3 ? <Empty>Too few filters for the residual.</Empty>
                 : <Crossplot points={p.points} title={p.title} xLabel={tLabel} yLabel={resLabel} sameScale={false} grouping="none" maxSide={w - 70}
+                  brushable brush={brush[0]}
                   domain={pad(tDom)} yDomain={pad(resDom)}
                   extraLines={b.trend ? [{ slope: b.trend.slope, intercept: b.trend.intercept, color: INK.text, label: `OLS trend, R² ${coef(b.trend.r2)}`, method: 'ols', stats: b.trend }] : []}
                   background={(x, y) => <>
@@ -190,13 +192,12 @@ export function SplitFit({ rows, meta, xField, yField }: { rows: FilterRow[]; me
                   </>} />)
               : (p.points.length === 0 ? <Empty>No filters on this side.</Empty>
                 : <Crossplot points={p.points} marked={p.marked} title={`${p.title} · n = ${p.points.length}`} xLabel={xl} yLabel={yl} sameScale={units} grouping="pooled" maxSide={w - 70}
-                  />)} />
+                  brushable brush={brush[0]} />)} />
           </div>
         ))}
         </PanelGroup>
         <Key items={[{ label: `low: ${tName} ≤ cutoff`, color: LOW }, { label: `high: ${tName} > cutoff`, color: HIGH }]} />
         <ExcludedNote fields={[xField, yField]} drawn />
-        {outside > 0 && <p className="chart-note">{outside} of {items.length} filters have {tName} outside its 1–99 % range and fall outside the residual panels (they are in the fits and the table).</p>}
         <SplitTables tables={tables} tName={tName} nonOls={nonOls} />
       </>}
     </ChartFrame>
@@ -226,7 +227,6 @@ function SplitTables({ tables, tName, nonOls }: { tables: { name: string; rows: 
         </tbody>
       </table>
     ))}
-    <p className="chart-note">R² and slope are OLS (scipy.stats.linregress, as the notebooks printed){extra ? `; the ${extra} column follows the sidebar's estimator` : ''}. A side with fewer than three filters has no fit.</p>
   </div>
 }
 

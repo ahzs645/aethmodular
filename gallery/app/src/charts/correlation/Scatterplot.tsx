@@ -12,7 +12,7 @@ import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { ColorLegend, SizeLegend } from '@/components/ColorLegend'
 import { FieldSelect } from '@/components/FieldSelect'
 import { Legend, toggleIn, useLegend, type LegendItem } from '@/components/Legend'
-import { XAxis, YAxis } from '@/components/Axes'
+import { AxisSwap, XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { PanelAxesControl } from '@/lib/panelAxes'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -151,10 +151,9 @@ export function Scatterplot({ rows, meta, xField, yField, axes: axesIn, id = 'sc
     { key: 'size', node: () => <FieldSelect label="Size" value={sizeField} meta={meta} onChange={setSizeField} extraOptions={[NO_SIZE]} title="Bubble plot: mark area proportional to a fourth measurement" /> },
     // several panels: the gallery's Panel axes (lib/panelAxes), here as well as in the sidebar
     { key: 'panelAxes', when: (c) => c.layout !== 'Combined', node: (c) => <PanelAxesControl dims={ROWED(c.layout) ? ((c.sites as number) > 1 ? ['site', 'season'] : ['season']) : ['site']} /> },
-    { key: 'fitLines', label: 'Fit lines', toggle: true, default: true },
     fitGroupingOption({ bind: [chosenGrouping, setGrouping as (v: never) => void],
-      when: (c) => !!c.fitLines && (c.estimators as number) > 0 && !ROWED(c.layout),
-      hiddenNote: (c) => (c.fitLines && (c.estimators as number) > 0 && ROWED(c.layout) ? 'one fit per panel' : null),
+      when: (c) => (c.estimators as number) > 0 && !ROWED(c.layout),
+      hiddenNote: (c) => ((c.estimators as number) > 0 && ROWED(c.layout) ? 'one fit per panel' : null),
       offerSite: (c) => c.layout === 'Combined',
       pooledLabel: (c) => (c.layout === 'Per site' ? 'One fit per site' : 'One pooled fit') }),
     { key: 'brushing', label: 'Brush to select', toggle: true, default: false, title: 'Drag a rectangle: the enclosed filters are highlighted on every chart of this tab', onChange: ((v: boolean) => { if (!v) hl.setSelected(null) }) as (v: never) => void },
@@ -163,7 +162,8 @@ export function Scatterplot({ rows, meta, xField, yField, axes: axesIn, id = 'sc
   ], { estimators: methods.length, sites: nSites, hasGroup: !!groupingDef })
   const layout = o.values.layout as (typeof LAYOUTS)[number]
   const colorBy = o.values.colorBy as (typeof COLOR_BY)[number]
-  const showFit = o.values.fitLines as boolean
+  // the sidebar's Regression fits is the one switch: no estimator ticked, no fit lines
+  const showFit = methods.length > 0
   const brushing = o.values.brushing as boolean
   const grouping = o.values.grouping as FitGrouping
   const { log: logAxes } = axes
@@ -647,6 +647,8 @@ const ScatterPanel = memo(function ScatterPanel({
               <XAxis scale={xScale} y={innerH} label={xLabel} pick="x" />
             </>
           )}
+
+          <AxisSwap x={-42} y={innerH + 29} />
 
           <g clipPath={`url(#${clipId})`}>
             {axes.identity && (
