@@ -110,7 +110,7 @@ export function XAxis({
             fontWeight={600}
             fill={INK.text}
           >
-            {wrapLabel ? wrapCategory(chemText(estimatorText(label, method)), Math.max(100, x1 - x0 - 8)).map((line, i) => <tspan key={i} x={(x0 + x1) / 2} dy={i ? 14 : 0}>{line}</tspan>) : chemText(estimatorText(label, method))}{pick && <tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>}
+            {wrapLabel ? wrapCategory(chemText(estimatorText(label, method)), Math.max(100, x1 - x0 - 8), 12, 600).map((line, i) => <tspan key={i} x={(x0 + x1) / 2} dy={i ? 14 : 0}>{line}</tspan>) : chemText(estimatorText(label, method))}{pick && <tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>}
           </text>
         </AxisTitle>
       )}
@@ -149,7 +149,7 @@ export function YAxis({
   const range = scale.range() as [number, number]
   const y0 = Math.min(...range)
   const y1 = Math.max(...range)
-  const titleLines = wrapLabel && label ? wrapCategory(chemText(estimatorText(label, method)), Math.max(100, y1 - y0 - 8)) : []
+  const titleLines = wrapLabel && label ? wrapCategory(chemText(estimatorText(label, method)), Math.max(100, y1 - y0 - 8), 12, 600) : []
   // the title sits the same distance from the tick labels as the x axis's title does from its own (about 13 px):
   // measured as drawn, so short labels ("0–30") do not leave it stranded and the readable text size is counted
   const tickBox = useRef<SVGGElement>(null)
