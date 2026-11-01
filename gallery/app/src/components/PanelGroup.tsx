@@ -144,9 +144,6 @@ export function PanelSlot({ panelKey, site, children }: { panelKey: string; site
   return <SlotCtx.Provider value={v}>{children}</SlotCtx.Provider>
 }
 
-/** inside a panel group (Panels or FacetGrid)? */
-export const useInPanelGroup = () => useContext(GroupCtx) !== null
-
 const noSubscribe = () => () => {}
 
 /**

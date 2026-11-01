@@ -573,12 +573,6 @@ function corner(plot: Plot, w: number, h: number, order: ('tl' | 'tr' | 'bl' | '
   return bestScore <= Math.max(2, plot.points.length * 0.01) ? best : null
 }
 
-/** The figure exactly as it sits on screen (the old single-button export). */
-export function composePanel(panel: HTMLElement): SVGSVGElement | null {
-  const fig = composeFigure(panel)
-  return fig ? layoutFigure(fig, 'shown') : null
-}
-
 /** A figure composed on the dark page, redrawn in the light theme's colours (lib/theme printColour); site and season colours stay. */
 const PAINTS = ['fill', 'stroke', 'stop-color', 'flood-color', 'color']
 const SHAPES = new Set(['rect', 'path', 'circle', 'polygon', 'ellipse'])

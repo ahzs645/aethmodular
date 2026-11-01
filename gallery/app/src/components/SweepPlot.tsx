@@ -93,7 +93,7 @@ export function histogramSeries({ id, label, color, edges, counts, total, fill =
   return { id, label, color, points, curve: 'mid-step', marks: false, width: 1.4, fill, interval: fill ? 'band' : 'none', ...rest }
 }
 /**
- * One excluded filter under Filters → excluded: Mark (lib/markedRows toSweepMarks): drawn as the muted × of
+ * One excluded filter under Filters → excluded: Mark (lib/markedRows): drawn as the muted × of
  * components/ScatterLayer where it falls inside the axes, never part of a series, the y range or a fit.
  */
 export interface SweepMark { x: SweepX; y: number; tip?: string[] }

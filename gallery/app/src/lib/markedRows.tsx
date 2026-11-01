@@ -4,7 +4,6 @@ import { usePresentation } from '@/lib/presentation'
 import { useHandEdits } from '@/lib/filterEdits'
 import { exclStatus, markTip, type ExclMode, type ExclStatus } from '@/lib/exclusionMode'
 import type { FilterRow } from '@/lib/types'
-import type { SweepMark } from '@/components/SweepPlot'
 
 /**
  * Filters → excluded: Mark (lib/exclusionMode). The charts keep receiving the counted rows for every statistic; the
@@ -96,18 +95,6 @@ export function toMarks(rows: readonly FilterRow[], at: (r: FilterRow) => readon
     const p = at(r)
     if (!p || !Number.isFinite(p[0]) || !Number.isFinite(p[1])) continue
     out.push({ id: r.id, at: p, tip: markTip(r, reasonOf(r.id) ?? 'excluded', extra?.(r)) })
-  }
-  return out
-}
-
-/** the same for a components/SweepPlot (`marks`): `at` gives a row's x (a date, number or category) and y */
-export function toSweepMarks(rows: readonly FilterRow[], at: (r: FilterRow) => readonly [SweepMark['x'], number] | null,
-  reasonOf: (id: string) => string | null, extra?: (r: FilterRow) => string[]): SweepMark[] {
-  const out: SweepMark[] = []
-  for (const r of rows) {
-    const p = at(r)
-    if (!p || !Number.isFinite(p[1])) continue
-    out.push({ x: p[0], y: p[1], tip: markTip(r, reasonOf(r.id) ?? 'excluded', extra?.(r)) })
   }
   return out
 }

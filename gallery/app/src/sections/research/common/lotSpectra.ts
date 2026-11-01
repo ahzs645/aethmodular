@@ -188,13 +188,6 @@ export function lotsOf(members: readonly Pick<Member, 'lot'>[]): number[] {
   return [...n.keys()].sort((x, y) => n.get(y)! - n.get(x)! || x - y)
 }
 
-/** charcoal_spectra.band_area: the mean of a spectrum's values inside a window (×1e4 in char_12's table) */
-export function bandMean(values: Float32Array, points: number, i: number, wn: readonly number[], window: [number, number]): number {
-  let s = 0, n = 0
-  for (let j = 0; j < points; j++) if (wn[j] >= window[0] && wn[j] <= window[1]) { s += values[i * points + j]; n++ }
-  return n ? s / n : NaN
-}
-
 /** char_12 §3: the share of the pertinent wavenumbers where a 2nd-derivative spectrum leaves the IMPROVE 5–95 % envelope */
 export function escapeOf(values: Float32Array, points: number, i: number, p05: readonly number[], p95: readonly number[]): number {
   let out = 0

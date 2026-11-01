@@ -1,5 +1,3 @@
-import type { ScaleTime } from 'd3'
-import type { SeasonBand } from '@/components/SeasonBands'
 import type { SeasonMeta } from '@/lib/types'
 import { PMF_PAPER_COLOURS } from './palettes.ts'
 
@@ -37,17 +35,3 @@ export const paperSeasonOf = (date: string) => {
   return [...PAPER_SEASONS].reverse().find((s) => md >= s.from) ?? PAPER_SEASONS[0]
 }
 
-/** the paper's seasons as bands along a time axis (each year in view), clipped to [0, width] */
-export function paperSeasonBands(x: ScaleTime<number, number>, width: number): SeasonBand[] {
-  const [d0, d1] = x.domain() as [Date, Date]
-  const bands: SeasonBand[] = []
-  for (let year = d0.getFullYear(); year <= d1.getFullYear(); year++) {
-    PAPER_SEASONS.forEach((s, i) => {
-      const start = new Date(`${year}-${s.from}T00:00:00`)
-      const end = i + 1 < PAPER_SEASONS.length ? new Date(`${year}-${PAPER_SEASONS[i + 1].from}T00:00:00`) : new Date(`${year + 1}-01-01T00:00:00`)
-      const a = Math.max(0, x(start)), b = Math.min(width, x(end))
-      if (b > a) bands.push({ x: a, w: b - a, color: s.color, name: s.name })
-    })
-  }
-  return bands
-}

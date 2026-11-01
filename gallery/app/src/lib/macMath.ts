@@ -21,9 +21,6 @@ export const slopeAt = (slope: number | null | undefined, mac: number, from: num
 export const bcAt = (bc: number | null | undefined, mac: number, from: number = EXPORT_MAC): number | null =>
   bc == null || !Number.isFinite(bc) ? null : bc * (from / mac)
 
-/** A ratio with HIPS BC in the denominator (EC ÷ HIPS BC) re-expressed at `mac`: it scales like a slope. */
-export const perBcAt = slopeAt
-
 export interface MacView {
   /** the reader's MAC (m²/g) */
   mac: number

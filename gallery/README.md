@@ -1173,7 +1173,7 @@ reintroducing:
   annotations both overran fixed margins. Both now measure the text.
 
 - **Drop by-construction pairs.** `HIPS BC` is `HIPS Fabs ÷ MAC`, so their
-  correlation is 1.000 by arithmetic. `lib/derived.ts` lists such pairs; the
+  correlation is 1.000 by arithmetic. `src/fieldLineage.ts` (`sameProduct`) knows such pairs; the
   correlogram omits them and the lollipop draws them hollow and grey rather
   than letting a unit conversion top the ranking.
 

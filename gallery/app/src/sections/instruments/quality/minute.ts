@@ -62,10 +62,6 @@ export function useMinuteSites(index: MinuteIndex | null): Record<string, Minute
   const uspa = useExport<MinuteSite>(index?.sites.USPA ? 'aethalometer/quality/minute/USPA.json' : null).data
   return Object.fromEntries([[JACROS, jacros], ['USPA', uspa]].filter(([, d]) => d)) as Record<string, MinuteSite>
 }
-export function useMinute(code: string, index: MinuteIndex | null) {
-  const c = minuteCode(code)
-  return { code: c, ...useExport<MinuteSite>(index?.sites[c] ? `aethalometer/quality/minute/${c}.json` : null) }
-}
 
 /** the rest of flow_qc_analysis's figures (export_aeth_quality_minute.flow_detail → minute/<CODE>.flow.json) */
 type DiffStats = Record<'p0_5' | 'p50' | 'p99_5' | 'min' | 'max' | 'over2', (number | null)[]>

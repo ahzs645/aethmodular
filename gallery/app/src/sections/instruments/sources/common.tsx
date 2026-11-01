@@ -9,7 +9,6 @@ import { HeatMatrix } from '@/components/HeatMatrix'
 import { FONT, INK } from '@/lib/theme'
 import { fitsWidth } from '@/lib/fitLabel'
 import { pct } from '@/lib/format'
-import type { FilterRow, MetaFile } from '@/lib/types'
 import { CLASS_COLOR, type AaeRegions } from './aae'
 
 const NB = 'research/ftir_hips_chem/'
@@ -25,12 +24,6 @@ export const NOTEBOOK = {
 }
 /** a provenance line: the notebooks, then what the chart reads */
 export const provenance = (notebooks: string[], reads: string) => <>{notebooks.map((n, i) => <span key={n}>{i ? ', ' : ''}<code>{n}</code></span>)}. {reads}</>
-
-/** the site codes in view that have this field on some row, in the gallery's site order */
-export function codesWith(rows: readonly FilterRow[], meta: MetaFile, field: string): string[] {
-  const have = new Set(rows.filter((r) => typeof r[field] === 'number').map((r) => r.code))
-  return meta.sites.map((s) => s.code).filter((c) => have.has(c))
-}
 
 /**
  * Fossil / mixed / biomass bands behind an AAE axis, each named. `scale` maps an AAE to pixels; with

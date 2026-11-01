@@ -26,7 +26,6 @@ export const SMOKE_CALS = [
   { key: 'cal0', label: 'Regular CAL-0 (906-filter IMPROVE set, k = 20)' },
   { key: 'smoke', label: 'Lot-251 biomass tool (07-07 "smoke")' },
 ] as const
-export type SmokeCal = (typeof SMOKE_CALS)[number]['key']
 
 /** the three ways the notebooks pick the Addis filters */
 export const SMOKE_SETS = {

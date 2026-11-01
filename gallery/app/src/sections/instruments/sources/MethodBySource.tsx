@@ -26,7 +26,6 @@ export const METHOD_PAIR_KEYS = Object.keys(METHOD_PAIRS) as MethodPair[]
 export const SPLITS = ['PMF dominant (GF)', 'PMF dominant (K_F)', 'AAE class'] as const
 export type Split = (typeof SPLITS)[number]
 
-export interface SplitGroup { name: string; color: string }
 /** each row's group under a split (null: not in any), and the groups in order */
 export function useSplit(pmf: PmfFile | null | undefined, split: Split, pair: AaePair, regions: AaeRegions) {
   const pmfOf = usePmfByRow(pmf)

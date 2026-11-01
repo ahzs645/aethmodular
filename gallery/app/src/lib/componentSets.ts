@@ -29,8 +29,6 @@ export interface ComponentSetDef {
 }
 export type LegendOrder = 'foot' | 'top'
 export const LEGEND_ORDER_LABEL: Record<LegendOrder, string> = { foot: 'Foot of the stack first', top: 'Top of the stack first' }
-/** a component's name in a set: the reader's, else its own */
-export const labelIn = (set: ComponentSetDef | BuiltInSet, field: string) => ('labels' in set && set.labels?.[field]?.trim()) || field
 
 /** a ready-made set: its components follow what the view has */
 export interface BuiltInSet { id: string; name: string; basis: Basis; note: string; fields: (available: string[]) => string[] }

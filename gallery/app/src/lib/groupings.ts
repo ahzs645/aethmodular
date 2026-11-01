@@ -326,7 +326,6 @@ export const BUILT_IN_GROUPINGS: BuiltInGrouping[] = [
   nb('fabs-addis-window', 'Addis fAbs window (p05–p95)', 'HIPS Fabs', 'cutoffs', [34.68, 68.04], ['Below the Addis p05', 'Addis p05–p95', 'Above the Addis p95'],
     'research/improve_hips_offset/improve_first_order_loading_range_analysis.ipynb (ETAD p05–p95 screen)', 'set on the Addis filters (gallery/data/export_research_improve_envelope.py); for screening IMPROVE'),
 ]
-export const isBuiltIn = (id: string) => BUILT_IN_GROUPINGS.some((d) => d.id === id)
 
 /**
  * What a grouping consists of, for the picker's second line: the measurement, the split, and the band names when
