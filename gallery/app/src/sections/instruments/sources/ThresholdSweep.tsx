@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { namedColor } from '@/lib/siteColours'
 import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { Panels } from '@/components/Panels'
@@ -109,7 +110,7 @@ export function ResidualVsDominance({ rows, meta, pmf, pair, regions }: { rows: 
     const x = r[xf], y = r[yf], t = s.share(r), g = s.of(r)
     if (typeof x !== 'number' || typeof y !== 'number' || t == null) return []
     const tx = isPmf ? 100 * t : t
-    return [{ x: tx, y: y - x, color: s.groups.find((q) => q.name === g)?.color ?? INK.neutral, id: r.id,
+    return [{ x: tx, y: y - x, color: namedColor(s.groups, g, INK.neutral), id: r.id,
       tip: [r.id, `${r.site} · ${r.date}`, `${isPmf ? 'dominant share' : `AAE ${pair}`}: ${f2(tx)}`, `${yf} − ${xf}: ${f2(y - x)}`, `${g ?? '—'}`],
       rec: { id: r.id, source: `Aethalometer sources · residual vs ${on}`, site: r.site, date: r.date, fields: [[`${yf} − ${xf}`, +(y - x).toFixed(3)], [isPmf ? 'dominant share (%)' : `AAE ${pair}`, +tx.toFixed(2)], [on, g]] } }]
   })

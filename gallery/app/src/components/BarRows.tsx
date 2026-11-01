@@ -124,7 +124,13 @@ export function BarRows(p: BarRowsProps) {
   const axisH = p.axis === false ? 4 : p.axis?.label ? 38 : 22
   const h = headH + rowsH + axisH + 4
   const zero = x(0)
-  const show = (body?: TipBody) => (e: MouseEvent) => { if (body) tip.show(e, body) }
+  // a row's tooltip, and a segment's over it (hooks/useTooltip tip.bind); a segment keeps its move from reaching the row
+  const rowTip = (body?: TipBody) => (body ? tip.bind(body) : { onMouseLeave: tip.hide })
+  const segTip = (body?: TipBody) => {
+    if (!body) return {}
+    const h = tip.bind(body)
+    return { ...h, onMouseMove: (e: MouseEvent) => { e.stopPropagation(); h.onMouseMove(e) } }
+  }
 
   return (
     <div ref={ref} className="chart-wrap">
@@ -138,7 +144,7 @@ export function BarRows(p: BarRowsProps) {
             const on = p.selected === r.key
             const tailText = tail(r)
             const end = r.segments ? x(Math.max(0, t)) : x(t)
-            return <g key={r.key} transform={`translate(0,${y})`} onMouseMove={show(r.tip ?? (labels[i].cut ? [r.title ?? r.label] : undefined))} onMouseLeave={tip.hide}
+            return <g key={r.key} transform={`translate(0,${y})`} {...rowTip(r.tip ?? (labels[i].cut ? [r.title ?? r.label] : undefined))}
               onClick={p.onRow ? () => p.onRow!(r) : undefined} style={p.onRow ? { cursor: 'pointer' } : undefined}>
               {(p.zebra && i % 2 === 0) || on ? <rect x={0} y={0} width={labelW + pw} height={rowH} fill={on ? INK.tint : INK.zebra} /> : null}
               <text x={labelW - 8} y={rowH / 2} dy="0.35em" textAnchor="end" fontSize={size} fontWeight={on ? 650 : r.labelWeight} fontStyle={r.italic ? 'italic' : undefined} fill={r.labelColor ?? INK.text}>{labels[i].text}</text>
@@ -149,7 +155,7 @@ export function BarRows(p: BarRowsProps) {
                     const x0 = x(acc), x1 = x(acc + s.value)
                     acc += s.value
                     const w = Math.max(0, x1 - x0)
-                    return <g key={s.key} onMouseMove={s.tip ? (e) => { e.stopPropagation(); tip.show(e, s.tip!) } : undefined}>
+                    return <g key={s.key} {...segTip(s.tip)}>
                       <rect x={x0} y={(rowH - barH) / 2} width={w} height={barH} fill={s.color} fillOpacity={s.opacity ?? 0.9} />
                       {s.label && w > textWidth(s.label, 10) + 8 && <text x={x0 + w / 2} y={rowH / 2} dy="0.35em" textAnchor="middle" fontSize={10} fill={inkOn(s.color)} pointerEvents="none">{s.label}</text>}
                     </g>

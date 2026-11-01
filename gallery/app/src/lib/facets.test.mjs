@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { extentOf, facetGrid, groupExtents, panelRow, panelWrap, pickPanels, unionExtent } from './facets.ts'
+import { extentOf, facetGrid, groupExtents, panelRow, panelWrap, pickedPanels, pickPanels, unionExtent } from './facets.ts'
 import { panelAxesKey } from './axes.ts'
 
 test('facetGrid fits as many equal columns as the minimum cell allows', () => {
@@ -33,6 +33,13 @@ test('pickPanels filters by show and orders by order, the rest after in their ow
   assert.deepEqual(pickPanels(keys, ['c', 'a', 'zz']), [0, 2])
   assert.deepEqual(pickPanels(keys, [], ['d', 'b']), [3, 1, 0, 2])
   assert.deepEqual(pickPanels(keys, ['a', 'b', 'd'], ['d']), [3, 0, 1])
+})
+
+test('pickedPanels: a lib/panelPick choice is both show and order, and an empty choice draws none', () => {
+  const keys = ['a', 'b', 'c', 'd']
+  assert.deepEqual(pickedPanels(keys, ['a'], null, null), [0])
+  assert.deepEqual(pickedPanels(keys, null, null, { ids: ['d', 'b', 'zz'] }), [3, 1])
+  assert.deepEqual(pickedPanels(keys, ['a'], ['a'], { ids: [] }), [])
 })
 
 test('unionExtent and extentOf ignore missing and non-finite values', () => {

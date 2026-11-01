@@ -92,6 +92,17 @@ export function pickPanels(keys: readonly string[], show?: readonly string[] | n
   return idx.map((i, pos) => ({ i, pos })).sort((a, b) => at(a.i) - at(b.i) || a.pos - b.pos).map((e) => e.i)
 }
 
+/**
+ * pickPanels for a group handed a lib/panelPick choice (`pick={usePanelPick(...)}`): its ids are both the panels
+ * shown and their order, and an empty choice draws no panel (where an empty `show` means all). Without `pick`,
+ * `show`/`order` as given.
+ */
+export function pickedPanels(keys: readonly string[], show?: readonly string[] | null, order?: readonly string[] | null,
+  pick?: { readonly ids: readonly string[] } | null): number[] {
+  if (!pick) return pickPanels(keys, show, order)
+  return pick.ids.length ? pickPanels(keys, pick.ids, pick.ids) : []
+}
+
 /** a numeric range [lo, hi] */
 export type Extent = [number, number]
 

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { namedColor } from '@/lib/siteColours'
 import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
@@ -61,7 +62,7 @@ export function MethodBySource({ rows, meta, pmf, pair, regions }: { rows: Filte
     // with a PMF split, only filters with a PMF day, as the notebooks merged them (inner join)
     const usableOf = (rs: FilterRow[]) => rs.filter((r) => typeof r[xf] === 'number' && typeof r[yf] === 'number' && s.of(r) !== null && (!isPmf || r.code === pmf?.site))
     const usable = usableOf(rows), markedUsable = usableOf(markedRows)
-    const allOf = (rs: FilterRow[]) => rs.map((r) => { const g = s.of(r); return point(r, s.groups.find((x) => x.name === g)?.color ?? INK.neutral, g) })
+    const allOf = (rs: FilterRow[]) => rs.map((r) => { const g = s.of(r); return point(r, namedColor(s.groups, g, INK.neutral), g) })
     const by = s.groups.map((g) => ({ name: g.name, color: g.color, points: usable.filter((r) => s.of(r) === g.name).map((r) => point(r, g.color, g.name)),
       marked: markedUsable.filter((r) => s.of(r) === g.name).map((r) => point(r, g.color, g.name)) }))
     return [{ name: isPmf ? `All ${pmf?.site_name ?? ''} filters with a PMF day` : 'All filters with an AAE', color: INK.text, points: allOf(usable), marked: allOf(markedUsable) }, ...by]

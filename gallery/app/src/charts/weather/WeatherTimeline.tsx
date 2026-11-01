@@ -1,4 +1,5 @@
 import { useJsonLoader } from '@/lib/data'
+import { LoadState } from '@/components/ExportState'
 import { useCallback, useMemo } from 'react'
 import { seasonOnly } from '@/lib/seasons'
 import * as d3 from 'd3'
@@ -143,7 +144,7 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
         adder={<FieldSelect label="Add" value={ADD} meta={meta} ratios={false} onChange={addPanel}
           extraOptions={Object.keys(WEATHER).filter((k) => !shownWeather.has(k)).map(weatherOption)} title="Add a weather or measurement panel to the timeline" />} />}>
       <div className="chart-wrap">
-        {error ? <Empty>{error}</Empty> : !site || !domain ? <Empty>No filters at this site in the current subset.</Empty> : !daily ? <Empty>Loading the daily weather…</Empty> : !panels.length ? <Empty>No panels: add one from the options.</Empty> : (
+        {error ? <Empty>{error}</Empty> : !site || !domain ? <Empty>No filters at this site in the current subset.</Empty> : !daily ? <LoadState what="the daily weather" /> : !panels.length ? <Empty>No panels: add one from the options.</Empty> : (
           <DailyLanes domain={domain} lanes={lanes} seasons={seasons} readout={readout} left={left} top={10} gap={16} />
         )}
         <Legend items={[...seasons.map((s) => ({ label: s.name.replace(`${site?.name} · `, ''), color: s.color, shape: 'band' as const })),

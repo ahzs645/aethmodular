@@ -18,7 +18,7 @@ import { useSearchParam } from './url.ts'
  * still loading) a link's ids are kept as they are. `legacy` reads an older key or value format, so links made
  * before a chart moved onto this still open as they were; the next change writes the new key and clears the old.
  *
- * Panels/FacetGrid take the result as `show={pick.ids}` / `order={pick.ids}`.
+ * Panels, PanelGrid and FacetGrid take the result as `pick={pick}` (both `show` and `order`; an empty choice draws none).
  */
 
 /** the stored value of an empty choice (an absent key means the defaults) */

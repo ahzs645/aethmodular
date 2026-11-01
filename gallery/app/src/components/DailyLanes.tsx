@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import * as d3 from 'd3'
 import { ScatterLayer } from '@/components/ScatterLayer'
 import { StackedPanels, type StackMarker, type StackPanel } from '@/components/StackedPanels'
@@ -8,6 +8,8 @@ import { focusStyle } from '@/lib/highlight'
 import { toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
 import { nearestIndex } from '@/lib/stacked'
 import { fmt } from '@/lib/stats'
+import { useLoaded } from '@/lib/data'
+import { namedColor } from '@/lib/siteColours'
 import { INK } from '@/lib/theme'
 import type { FilterRow, MetaFile, SeasonMeta } from '@/lib/types'
 
@@ -30,15 +32,10 @@ type Daily = { date: string[] }
  */
 export function useSiteDaily<D extends Daily>(rows: readonly FilterRow[], site: { name: string; code: string } | null,
   load: (code: string) => Promise<D>, missing: (site: string) => string) {
-  const [daily, setDaily] = useState<D | null>(null)
-  const [error, setError] = useState('')
-  useEffect(() => {
-    if (!site) return
-    let live = true
-    setDaily(null); setError('')
-    load(site.code).then((d) => { if (live) setDaily(d) }).catch(() => { if (live) setError(missing(site.name)) })
-    return () => { live = false }
-  }, [site, load]) // eslint-disable-line react-hooks/exhaustive-deps
+  // lib/data useLoaded: one load per site code (and per `load`), a late answer for another site dropped
+  const loaded = useLoaded(site ? site.code : null, () => load(site!.code), { deps: [load] })
+  const daily = loaded.data
+  const error = loaded.error && site ? missing(site.name) : ''
   const domain = useMemo<[Date, Date] | null>(() => {
     const ds = rows.filter((r) => r.site === site?.name).map((r) => new Date(r.date).getTime())
     if (!ds.length) return null
@@ -93,7 +90,7 @@ export function FieldLane({ pts, field, site, x, y, width, height, seasons, sele
   x: d3.ScaleTime<number, number>; y: d3.ScaleLinear<number, number>; width: number; height: number; seasons: MetaFile['seasons']
   selected: Set<string> | null; tip: ReturnType<typeof useTooltip>; tipOf: (p: FieldPt) => TipBody
 }) {
-  const colorOf = (p: FieldPt) => seasons.find((s) => s.name === p.row.season)?.color ?? INK.text
+  const colorOf = (p: FieldPt) => namedColor(seasons, p.row.season, INK.text)
   const xy = useMemo(() => pts.map((p) => [x(p.t), y(p.v)] as const), [pts, x, y])
   const dots = useMemo(() => pts.map((p, i) => {
     const st = focusStyle(p.row.id, null, { r: 3, level: 'sparse' }, selected)

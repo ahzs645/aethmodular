@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react'
+import { LoadState } from '@/components/ExportState'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { useHighlightActions } from '@/lib/highlight'
@@ -55,7 +56,7 @@ export function AeronetTimeline({ rows, meta, field, site, station, level = '15'
       subtitle={`AERONET's ${level === '20' ? 'Level 2.0' : 'Level 1.5'} daily means${station ? ` at ${station}` : ''}: AOD at 500 nm and its fine-mode fraction (direct sun and SDA), absorption AOD at 675 nm and single-scattering albedo at 440 nm (almucantar inversions; open circles on days with AOD 440 under ${L2_AOD440}, where absorption is uncertain), above the chosen measurement for each filter. Seasons are the site's local calendar.`}
       provenance="addis_04_aeronet and aeronet_addis_diagnostics generalised to every SPARTAN site · NASA AERONET Version 3">
       <div className="chart-wrap">
-        {error ? <Empty>{error}</Empty> : !site || !domain ? <Empty>No filters at this site in the current subset.</Empty> : !daily ? <Empty>Loading the daily AERONET…</Empty> : (
+        {error ? <Empty>{error}</Empty> : !site || !domain ? <Empty>No filters at this site in the current subset.</Empty> : !daily ? <LoadState what="the daily AERONET" /> : (
           <DailyLanes domain={domain} lanes={lanes} seasons={seasons} readout={readout} />
         )}
         <div className="legend">

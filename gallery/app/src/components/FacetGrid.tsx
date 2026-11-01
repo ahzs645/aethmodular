@@ -3,7 +3,7 @@ import { ExpandedPanel, PANEL_TITLE_H, PanelCell, type PanelGroupProps } from '@
 import { PanelGroupControls, PanelGroupProvider, PanelSlot, usePanelGroupValue } from '@/components/PanelGroup'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useFitHeight } from '@/lib/chartFit'
-import { facetGrid, panelLetter, pickPanels } from '@/lib/facets'
+import { facetGrid, panelLetter, pickedPanels } from '@/lib/facets'
 
 /**
  * Lays out small multiples: as many columns as fit (lib/facets), each cell
@@ -23,7 +23,7 @@ import { facetGrid, panelLetter, pickPanels } from '@/lib/facets'
 export interface FacetCell { height: number | null; expanded: boolean }
 
 export function FacetGrid<T>({ items, render, minCell, maxCols, maxCell, gap, title, note, label, letters = false, expandable = true, center, minHeight = 120,
-  itemKey, site, share, grouping, legend, controls, axesControl = true, dims, show, order, mode }: {
+  itemKey, site, share, grouping, legend, controls, axesControl = true, dims, show, order, pick, mode }: {
   items: T[]
   render: (item: T, cellWidth: number, index: number, cell: FacetCell) => ReactNode
   minCell?: number
@@ -55,7 +55,7 @@ export function FacetGrid<T>({ items, render, minCell, maxCols, maxCell, gap, ti
   const keyOf = (it: T, i: number) => itemKey?.(it, i) ?? (typeof it === 'string' ? it : String(i))
   const keys = items.map(keyOf)
   // the facets drawn, in order, each with its index in `items` (what `render` and `title` are handed)
-  const drawn = pickPanels(keys, show, order).map((i) => ({ it: items[i], i, key: keys[i] }))
+  const drawn = pickedPanels(keys, show, order, pick).map((i) => ({ it: items[i], i, key: keys[i] }))
   const g = facetGrid(width, drawn.length, { minCell, maxCols, gap, maxCell })
   const head = !!(title || note || letters)
   const rows = Math.max(1, Math.ceil(drawn.length / g.cols))

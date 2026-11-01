@@ -4,7 +4,7 @@ import { SpectrumModal } from '@/components/FilterSpectrumPlot'
 import { PanelGroupControls, PanelGroupProvider, PanelSlot, usePanelGroupValue, type ShareAxes } from '@/components/PanelGroup'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { ChartFit, useFitHeight } from '@/lib/chartFit'
-import { panelLetter, panelRow, panelWrap, pickPanels, type PanelSize } from '@/lib/facets'
+import { panelLetter, panelRow, panelWrap, pickedPanels, type PanelSize } from '@/lib/facets'
 import type { PanelAxes, PanelDim } from '@/lib/axes'
 import type { FitGrouping } from '@/lib/siteRegression'
 
@@ -74,6 +74,8 @@ export interface PanelGroupProps {
   show?: readonly string[]
   /** keys to draw first, in this order; the rest follow in their own */
   order?: readonly string[]
+  /** the reader's choice from lib/panelPick usePanelPick: its ids are both `show` and `order` (none chosen: no panel) */
+  pick?: { readonly ids: readonly string[] }
   /** fix Panel axes for this figure (a meeting figure as presented) instead of following the gallery's setting */
   mode?: PanelAxes
 }
@@ -82,7 +84,7 @@ export interface PanelGroupProps {
 export const PANEL_TITLE_H = 22
 
 export function Panels({ panels, gap = 24, letters = true, minHeight = 140, align = 'start', label, wrap = false, maxCols, center = false, expandable = true,
-  share, grouping, legend, controls, axesControl = true, dims, show, order, mode }: {
+  share, grouping, legend, controls, axesControl = true, dims, show, order, pick, mode }: {
   panels: PanelDef[]
   gap?: number
   /** a, b, … before each title (default on, with two panels or more: a composite is usually captioned panel by panel) */
@@ -107,7 +109,7 @@ export function Panels({ panels, gap = 24, letters = true, minHeight = 140, alig
   const fit = useFitHeight()
   const [open, setOpen] = useState<string | null>(null)
   const { value: group, joined } = usePanelGroupValue({ share, grouping, mode })
-  const drawn = pickPanels(panels.map((p) => p.key), show, order).map((i) => panels[i])
+  const drawn = pickedPanels(panels.map((p) => p.key), show, order, pick).map((i) => panels[i])
   const n = drawn.length
   const lay = wrap ? panelWrap(width, drawn, gap, maxCols) : (() => { const r = panelRow(width, drawn, gap); return { ...r, cols: r.stacked ? 1 : n, rows: r.stacked ? n : 1 } })()
   // one panel needs no letter
@@ -210,7 +212,7 @@ export function panelChildren(children: ReactNode): ReactElement[] {
  * off) leaves no empty column. Letters are off (the children carry their own titles). Children size themselves.
  */
 export function PanelGrid({ children, min = 340, gap = 18, letters = false, label, expandable = true,
-  share, grouping, legend, controls, axesControl = true, dims, show, order, mode }: {
+  share, grouping, legend, controls, axesControl = true, dims, show, order, pick, mode }: {
   children: ReactNode
   min?: number
   gap?: number
@@ -222,7 +224,7 @@ export function PanelGrid({ children, min = 340, gap = 18, letters = false, labe
   const keys = kids.map((k, i) => (k.key != null ? String(k.key) : String(i)))
   const { value: group, joined } = usePanelGroupValue({ share, grouping, mode })
   const [open, setOpen] = useState<string | null>(null)
-  const drawn = pickPanels(keys, show, order)
+  const drawn = pickedPanels(keys, show, order, pick)
   const at = open === null ? -1 : drawn.findIndex((i) => keys[i] === open)
   const big = typeof window === 'undefined' ? 900 : Math.max(320, Math.min(1100, window.innerWidth - 160))
   return (

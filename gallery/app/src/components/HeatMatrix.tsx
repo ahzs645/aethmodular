@@ -357,7 +357,8 @@ export function HeatMatrix(p: HeatMatrixProps) {
       return [{ ...g, x }]
     })
   }, [colGroups, cellsX, cw, colSize])
-  const showTip = (body?: TipBody) => body ? { onMouseMove: (e: MouseEvent) => tip.show(e, body), onMouseLeave: tip.hide } : {}
+  // a label's tooltip (hooks/useTooltip tip.bind: pointer and keyboard focus)
+  const showTip = (body?: TipBody) => (body ? tip.bind(body) : {})
 
   const colLabel = (c: MatrixItem, j: number) => {
     const text = labelOf(c)
