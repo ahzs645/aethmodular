@@ -5,6 +5,7 @@ import { loadSpartanFilters } from '@/lib/spartan'
 import { COHORT_SHORT, METRIC, PREPROCESSING, PREPROCESSING_SHORT, SELECTION_SPACE, label } from '@/lib/labels'
 import { rmseAtMac, rmseFromReadouts, slopeAt, solveHipsMoments, type HipsMoments } from '@/lib/macMath'
 import { categoricalScale } from '@/lib/palettes'
+import { coef, fitLine } from '@/lib/format'
 import { BASELINE_COLOR, INK } from '@/lib/theme'
 
 /** A configuration is what the explorer fits: cohort × cutoff × selection space × calibration spectra. */
@@ -103,8 +104,31 @@ export const passes = (r: CalibRow, calib: CalibFile) => {
 }
 
 /** A saved fit as "0.820x − 1.060", at the agreed coefficient precision (lib/format coef, 3 dp). */
-export const fmtFit = (m: number | null, b: number | null) =>
-  m === null || b === null ? '—' : `${m.toFixed(3)}x ${b < 0 ? '−' : '+'} ${Math.abs(b).toFixed(3)}`
+export const fmtFit = (m: number | null | undefined, b: number | null | undefined) => fitLine(m, b, 3)
+
+type TipRow = { dm: number | null; db: number | null; r2: number | null; ho: number | null; adm?: number | null; adb?: number | null; ar2?: number | null }
+
+/**
+ * The two readout lines every calibration tooltip carries for one configuration:
+ *   "Test set (Addis): Deming 0.950x − 1.230 · R² 0.912"
+ *   "IMPROVE cross-validation R² (calibration set): 0.874"
+ * `site` names the test set; `set: 'all'` reads the all-pairs fit; `both` shows the fixed and
+ * all-pairs lines side by side; `lead` goes before the first line ("Number of PLS factors: 12 ·
+ * test set …"); `cvExtra` is appended to the second (" · score 0.42").
+ */
+export function configTipLines(r: TipRow, { site, set = 'fixed', both = false, lead, cvExtra = '' }: {
+  site?: string; set?: 'fixed' | 'all'; both?: boolean; lead?: string; cvExtra?: string
+} = {}): [string, string] {
+  const all = set === 'all'
+  const fit = both
+    ? `${fmtFit(r.dm, r.db)} (fixed) · ${fmtFit(r.adm, r.adb)} (all pairs)`
+    : all ? fmtFit(r.adm, r.adb) : fmtFit(r.dm, r.db)
+  const testSet = `${lead ? `${lead} · test set` : 'Test set'}${site ? ` (${site}):` : ''}`
+  return [
+    `${testSet} Deming ${fit} · R² ${coef(all ? r.ar2 : r.r2)}`,
+    `${METRIC.cvR2}: ${coef(r.ho)}${cvExtra}`,
+  ]
+}
 
 /**
  * Colour for an evaluation group: the season colours from config when the label matches, else the

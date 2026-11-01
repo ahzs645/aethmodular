@@ -9,6 +9,45 @@ export function textWidth(text: string, size: number, weight = 400, family = FON
   return measurer.measureText(text).width
 }
 
+export interface GutterOptions {
+  /** font size in px; 11, the tick-label size */
+  size?: number
+  weight?: number
+  family?: string
+  /** added to the widest label (tick length, gap to the plot) */
+  pad?: number
+  min?: number
+  max?: number
+}
+
+/**
+ * The room a column of labels needs, measured as drawn rather than guessed from a character count:
+ * the widest label at `size` plus `pad`, kept within [min, max]. Use it for left gutters of
+ * category rows, label columns and "does this label fit" tests (docs/gallery-chart-standards.md §1).
+ *
+ *   const left = labelGutter(sites.map((s) => s.site), { size: 11, pad: 12, min: 60, max: 180 })
+ */
+export function labelGutter(labels: Iterable<string>, { size = 11, weight = 400, family = FONT.family, pad = 0, min = 0, max = Infinity }: GutterOptions = {}): number {
+  let w = 0
+  for (const l of labels) w = Math.max(w, textWidth(l, size, weight, family))
+  return Math.min(max, Math.max(min, Math.ceil(w + pad)))
+}
+
+/** Whether a label fits in `room` px at `size` (a measured `text.length * 6 <= room`). */
+export const fitsWidth = (text: string, room: number, size = 11, weight = 400, family = FONT.family) => textWidth(text, size, weight, family) <= room
+
+/**
+ * A label cut to `room` px with an ellipsis ("Organic carbon (T…"), or unchanged when it fits.
+ * Keeps at least `minChars` characters so a row never shows a bare "…". Pair it with a native
+ * `<title>` holding the full text where nothing else shows it.
+ */
+export function clipText(text: string, room: number, { size = 11, weight = 400, family = FONT.family, minChars = 1 }: { size?: number; weight?: number; family?: string; minChars?: number } = {}): string {
+  if (textWidth(text, size, weight, family) <= room) return text
+  let s = text
+  while (s.length > minChars && textWidth(`${s.trimEnd()}…`, size, weight, family) > room) s = s.slice(0, -1)
+  return `${s.trimEnd()}…`
+}
+
 /** Greedy word wrap at a font size; null when a single word is wider than the room. */
 function wrap(text: string, size: number, room: number, weight: number): string[] | null {
   const lines: string[] = []

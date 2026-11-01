@@ -9,8 +9,15 @@ export type TipBody = ReactNode | string[]
  * the same getBoundingClientRect arithmetic; this keeps that in one place.
  *
  *   const tip = useTooltip(wrapRef)
- *   <circle onMouseEnter={(e) => tip.show(e, ['ETAD-0035', 'n = 3'])} onMouseLeave={tip.hide} />
+ *   <rect {...tip.bind(['Addis · Dry', 'n = 31'])} />
  *   {tip.node}
+ *
+ * `tip.bind(body)` is how a mark that is not a filter point (a bar, a heat-map cell, a band, a
+ * line) gets the tooltip: it returns the mouse enter/move/leave and focus/blur handlers, so the
+ * card follows the pointer, opens on keyboard focus and closes on leave or blur. Pass a function
+ * for a body that is costly to build; it runs only when the card opens. Points that stand for
+ * filters do not use it: they go through components/ScatterLayer (one pointer layer for all).
+ * A mark with a gallery tooltip has no native `<title>` as well (lib/tooltips.test.mjs).
  *
  * A string[] body renders one line each with the first line bold, which is
  * the convention the charts already follow.
@@ -46,10 +53,25 @@ export function useTooltip(wrapRef: RefObject<Element>, { large = false, id }: {
     [wrapRef, method, store]
   )
   const hide = useCallback(() => store.set(null), [store])
+  const bind = useCallback((body: TipBody | (() => TipBody)): TipHandlers => {
+    const open = (e: React.MouseEvent | React.FocusEvent) => show(e, typeof body === 'function' ? body() : body)
+    // keyboard focus only: a click focuses a focusable mark too, and its card would reopen under the pointer
+    const focus = (e: React.FocusEvent) => { if ((e.currentTarget as Element).matches?.(':focus-visible')) open(e) }
+    return { onMouseEnter: open, onMouseMove: open, onMouseLeave: hide, onFocus: focus, onBlur: hide }
+  }, [show, hide])
   const active = useSyncExternalStore(store.subscribe, () => store.get() !== null, () => false)
   // one element for the life of the chart: the owner's re-renders pass it through untouched
   const node = useMemo(() => <TooltipCard store={store} hide={hide} large={large} id={id} />, [store, hide, large, id])
-  return useMemo(() => ({ show, hide, node, active }), [show, hide, node, active])
+  return useMemo(() => ({ show, hide, bind, node, active }), [show, hide, bind, node, active])
+}
+
+/** The handlers `tip.bind(body)` returns: spread them on the mark. */
+export interface TipHandlers {
+  onMouseEnter: (e: React.MouseEvent) => void
+  onMouseMove: (e: React.MouseEvent) => void
+  onMouseLeave: () => void
+  onFocus: (e: React.FocusEvent) => void
+  onBlur: () => void
 }
 
 type Tip = { x: number; y: number; body: TipBody } | null

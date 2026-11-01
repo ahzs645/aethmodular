@@ -8,6 +8,7 @@ import { FONT, INK } from '@/lib/theme'
  *   <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />    1:1 on a crossplot
  *   <RefLine orient="v" at={x(1)} from={0} to={ih} />               agreement: slope 1, intercept 0, zero
  *   <Marker orient="h" at={y(0.85)} from={0} to={iw} label="0.85" />  a data value to compare against
+ *   <RefBand orient="v" at={[x(0.8), x(1.2)]} size={iw} length={ih} />  a range the data should fall in (slope box)
  */
 const identity = { get stroke() { return INK.identity }, strokeWidth: 1.5, strokeDasharray: '5 4' }
 const agreement = { get stroke() { return INK.axis }, strokeOpacity: 0.7, strokeWidth: 1 }
@@ -43,4 +44,26 @@ export function Marker({ label, color = INK.text, opacity = 0.75, labelSide = 'r
       ? <text x={labelSide === 'left' ? e.x1 - 4 : e.x1 + 4} y={Math.min(e.y1, e.y2) + 10 + labelDy} textAnchor={labelSide === 'left' ? 'end' : 'start'} fontSize={10} fontFamily={FONT.mono} fill={color}>{label}</text>
       : <text x={Math.max(e.x1, e.x2) - 4} y={e.y1 - 4} textAnchor="end" fontSize={10} fontFamily={FONT.mono} fill={color}>{label}</text>)}
   </g>
+}
+
+/**
+ * A range the data should fall in: the guardrail slope box (calib.slope_box), one style on every
+ * calibration chart (docs/gallery-chart-standards.md §1 GuardrailBands). `orient="v"` shades the
+ * x range between the two positions `at` over the plot height `length`; `orient="h"` a y range
+ * across the plot width. Positions are pixels in either order and are clamped to [0, size], so a
+ * box running past the axis stops at the plot edge. The accent is read at render, so it follows
+ * the dark theme.
+ */
+export function RefBand({ orient, at, size, length, opacity = 0.06 }: {
+  orient: 'v' | 'h'; at: [number, number]
+  /** the plot's extent along the band's axis (iw for "v", ih for "h") */
+  size: number
+  /** the band's extent across (ih for "v", iw for "h") */
+  length: number
+  opacity?: number
+}) {
+  const lo = Math.max(0, Math.min(size, Math.min(at[0], at[1]))), hi = Math.max(0, Math.min(size, Math.max(at[0], at[1])))
+  if (!(hi > lo)) return null
+  const box = orient === 'v' ? { x: lo, y: 0, width: hi - lo, height: length } : { x: 0, y: lo, width: length, height: hi - lo }
+  return <rect {...box} fill={INK.accent} fillOpacity={opacity} pointerEvents="none" data-guardrail="" />
 }

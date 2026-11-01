@@ -1,6 +1,7 @@
 import { paletteSeason, type ExportSeason, type PaletteSeason } from './exportSeasons'
 import { collectExportPalette, fixedColours, paintColor, printPaint, replacePaint, type ExportPalette, type ExportSite } from './exportColors'
 import { CELL_INK, INK_LIGHT, inkOnFill, isDark } from './theme'
+import { textWidth } from './fitLabel'
 /**
  * Download a chart as PNG, JPEG, SVG or PDF. The decks in this repo are built
  * from figures, so a chart that can only be screenshotted is a chart that will
@@ -424,7 +425,7 @@ export function layoutFigure(fig: Figure, legend: LegendPlacement = 'shown', con
     t.setAttribute('x', String(chartBox.left)); t.setAttribute('y', String(top + size / 2))
     t.setAttribute('dominant-baseline', 'central'); t.setAttribute('font-size', String(size)); t.setAttribute('font-weight', 'bold'); t.setAttribute('fill', '#000')
     t.textContent = pub.label.trim()
-    placed.push({ piece: { els: [t], box: { left: chartBox.left, top, right: chartBox.left + textWidth(t.textContent, size, pub.font, 'bold'), bottom: top + size } }, dx: 0, dy: 0 })
+    placed.push({ piece: { els: [t], box: { left: chartBox.left, top, right: chartBox.left + textWidth(t.textContent ?? '', size, 700, pub.font), bottom: top + size } }, dx: 0, dy: 0 })
   }
 
   if (legend === 'shown') {
@@ -488,12 +489,6 @@ export function layoutFigure(fig: Figure, legend: LegendPlacement = 'shown', con
   return out
 }
 
-const measure = document.createElement('canvas').getContext('2d')
-const textWidth = (text: string, size: number, font: string, weight = 'normal') => {
-  if (!measure) return text.length * size * 0.55
-  measure.font = `${weight} ${size}px ${font}`
-  return measure.measureText(text).width
-}
 
 function insetBackground(b: Box) {
   const r = document.createElementNS(NS, 'rect')
@@ -530,7 +525,7 @@ function statsInset(plot: Plot, size: number, font: string, show: PubShow) {
   // a site's name alone says nothing
   if (!lines.some((l) => !l.name)) return null
   const padX = 5, padY = 4
-  const w = Math.ceil(Math.max(...lines.map((l) => textWidth(l.text, fs, font, l.name ? 'bold' : 'normal')))) + 2 * padX
+  const w = Math.ceil(Math.max(...lines.map((l) => textWidth(l.text, fs, l.name ? 700 : 400, font)))) + 2 * padX
   const h = lines.length * step + 2 * padY - (step - fs)
   const draw = (x: number, y: number) => {
     const els: Element[] = [insetBackground({ left: x, top: y, right: x + w, bottom: y + h })]
