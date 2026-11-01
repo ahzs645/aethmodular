@@ -6,7 +6,7 @@ import { useSearchParam } from '@/lib/url'
 import { f2, signed } from '@/lib/format'
 import { Forest, runLine, sourceOf, useXp, type XpBase } from './shared'
 import { FixedSetNote } from '@/lib/markedRows'
-import { Findings as FindingsPanel } from '@/components/Findings'
+import { FindingsList } from '@/components/Findings'
 
 /** Test 6: train on earlier years, test on later ones (experiments_20261022.ipynb §6). */
 
@@ -33,9 +33,11 @@ function Findings({ d }: { d: ForwardData }) {
   const s = (prep: string, start: string) => d.summary.find((x) => x.preprocessing === prep && x.split.startsWith(start))
   return (
     <ExplainOnly>
-      <FindingsPanel id="xf-findings" title="Earlier → later years — short answers" note={<>{runLine(d)}. Only 2023 can be a "later year" here (2022 holds most filters), so the later-year test is one split, not five.</>}>
-        {['spline', 'raw'].map((p) => <li key={p}><strong>{p}:</strong> RMSE {f2(s(p, 'later')?.RMSE)} µg in the later year, {f2(s(p, 'new sites (')?.RMSE)} at new sites, {f2(s(p, 'random')?.RMSE)} on random filters, {f2(s(p, 'new sites in')?.RMSE)} at new sites in the later year (bias {signed(s(p, 'later')?.bias)} in the later year).</li>)}
-      </FindingsPanel>
+      <ChartFrame id="xf-findings" title="Earlier → later years — short answers" exportable={false}>
+        <FindingsList note={<>{runLine(d)}. Only 2023 can be a "later year" here (2022 holds most filters), so the later-year test is one split, not five.</>}>
+          {['spline', 'raw'].map((p) => <li key={p}><strong>{p}:</strong> RMSE {f2(s(p, 'later')?.RMSE)} µg in the later year, {f2(s(p, 'new sites (')?.RMSE)} at new sites, {f2(s(p, 'random')?.RMSE)} on random filters, {f2(s(p, 'new sites in')?.RMSE)} at new sites in the later year (bias {signed(s(p, 'later')?.bias)} in the later year).</li>)}
+        </FindingsList>
+      </ChartFrame>
     </ExplainOnly>
   )
 }

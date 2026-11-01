@@ -12,7 +12,7 @@ import { useSearchParam } from '@/lib/url'
 import { baseFilterId } from '@/lib/highlight'
 import { f2 } from '@/lib/format'
 import { rowsOf, Scatter, sourceOf, useCounted, type Cols, type XpBase } from './shared'
-import { Findings as FindingsPanel } from '@/components/Findings'
+import { FindingsList } from '@/components/Findings'
 
 /**
  * The 26 Oct lot-aware VIBES blank test (research/ftir_hips_chem/workflows/vibes_lot241_20261026.py,
@@ -65,13 +65,15 @@ function Findings({ d, byLot }: { d: LotData; byLot: { series: string; lot: stri
   const others = LOTS.slice(2)
   return (
     <ExplainOnly>
-      <FindingsPanel id="xl-findings" title="Lot-aware VIBES blanks — short answers" note={<>{runLine(d)}. Reproduces the 19 Oct network run with the current background (median difference {d.settings.reproduces_network_run ? res(d.settings.reproduces_network_run.median_rms_diff) : '—'}).</>}>
-        <li>Every SPARTAN filter has a manufacturing lot on record (241, 241a, 248, 250, 251, 253). The gallery's VIBES background was learned from 87 blanks of lots {d.settings.applied.lots87.join(', ')}.</li>
-        <li>Held-out field blanks of lots {others.join(', ')} already correct cleanly with it (median PTFE-band residue {others.map((l) => res(v('b87', l))).join(' / ')}), including lot 250, which it never saw. Lots 241/241a do not ({res(v('b87', '241'))} / {res(v('b87', '241a'))}).</li>
-        <li>With the other lot-241/241a blanks in the bank, each held-out lot-241/241a blank drops to {res(v('lot241_spartan_r70', '241'))} / {res(v('lot241_spartan_r70', '241a'))}, as clean as the other lots. Nine lot-251 blanks instead (the control) do not help ({res(v('ctrl251_r70', '241'))} / {res(v('ctrl251_r70', '241a'))}): the gain is the lot, not the count.</li>
-        <li>The rank must stay at 70. One lot-241 blank (AUMN-0007-7) has a shape no other blank shares; it drops the one-SE rank to ~32, which halves the gain and doubles the residue on the other lots.</li>
-        <li>Small added peaks come back as well on lots 241/241a as on the rest once their blanks are in the bank. The {d.settings.applied.by_type['PM2.5']} lot-241/241a PM2.5 spectra change a lot (typically ~70 % of their corrected signal, mostly the PTFE band), so their VIBES traces now use this background; nothing else changed.</li>
-      </FindingsPanel>
+      <ChartFrame id="xl-findings" title="Lot-aware VIBES blanks — short answers" exportable={false}>
+        <FindingsList note={<>{runLine(d)}. Reproduces the 19 Oct network run with the current background (median difference {d.settings.reproduces_network_run ? res(d.settings.reproduces_network_run.median_rms_diff) : '—'}).</>}>
+          <li>Every SPARTAN filter has a manufacturing lot on record (241, 241a, 248, 250, 251, 253). The gallery's VIBES background was learned from 87 blanks of lots {d.settings.applied.lots87.join(', ')}.</li>
+          <li>Held-out field blanks of lots {others.join(', ')} already correct cleanly with it (median PTFE-band residue {others.map((l) => res(v('b87', l))).join(' / ')}), including lot 250, which it never saw. Lots 241/241a do not ({res(v('b87', '241'))} / {res(v('b87', '241a'))}).</li>
+          <li>With the other lot-241/241a blanks in the bank, each held-out lot-241/241a blank drops to {res(v('lot241_spartan_r70', '241'))} / {res(v('lot241_spartan_r70', '241a'))}, as clean as the other lots. Nine lot-251 blanks instead (the control) do not help ({res(v('ctrl251_r70', '241'))} / {res(v('ctrl251_r70', '241a'))}): the gain is the lot, not the count.</li>
+          <li>The rank must stay at 70. One lot-241 blank (AUMN-0007-7) has a shape no other blank shares; it drops the one-SE rank to ~32, which halves the gain and doubles the residue on the other lots.</li>
+          <li>Small added peaks come back as well on lots 241/241a as on the rest once their blanks are in the bank. The {d.settings.applied.by_type['PM2.5']} lot-241/241a PM2.5 spectra change a lot (typically ~70 % of their corrected signal, mostly the PTFE band), so their VIBES traces now use this background; nothing else changed.</li>
+        </FindingsList>
+      </ChartFrame>
     </ExplainOnly>
   )
 }

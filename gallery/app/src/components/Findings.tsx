@@ -1,28 +1,24 @@
 import type { ReactNode } from 'react'
-import { ChartFrame, Note } from '@/components/ChartFrame'
+import { Note } from '@/components/ChartFrame'
 
 /**
- * A study's "short answers": a numbered list of findings in an unexported frame, with an optional note under it (the
- * run it comes from, what the numbers do not say). One look for every research page's findings panel.
+ * A study's "short answers": the numbered findings and an optional note under them (the run they come from, what the
+ * numbers do not say), inside the panel's own unexported ChartFrame. One look for every research page's findings.
  *
- *   <Findings id="xa-findings" title="… — short answers" note={<>{runLine(d)}. …</>}>
+ *   <FindingsList note={<>{runLine(d)}. …</>}>
  *     <li><strong>…</strong> …</li>
- *   </Findings>
+ *   </FindingsList>
+ *
+ * The frame stays in the page (an unexported ChartFrame with the panel's id and title), so the ⌘K index finds it.
  */
-export function Findings({ id, title, source, note, children }: {
-  id?: string
-  title: string
-  /** the source line, as on any ChartFrame */
-  source?: string
+export function FindingsList({ note, children }: {
   /** a note under the list (a Note) */
   note?: ReactNode
   /** the findings, as <li> elements */
   children: ReactNode
 }) {
-  return (
-    <ChartFrame id={id} source={source} title={title} exportable={false}>
-      <ol style={{ margin: '4px 0 0 18px', lineHeight: 1.55 }}>{children}</ol>
-      {note != null && <Note>{note}</Note>}
-    </ChartFrame>
-  )
+  return <>
+    <ol style={{ margin: '4px 0 0 18px', lineHeight: 1.55 }}>{children}</ol>
+    {note != null && <Note>{note}</Note>}
+  </>
 }

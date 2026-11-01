@@ -23,7 +23,7 @@ import { AxisChoices } from '@/components/AxisChoices'
 import { Forest, Scatter, num, placeLabels, rowsOf, runLine, sourceOf, useCounted, useXp, type Cols, type XpBase } from './shared'
 import { ExcludedNote, FixedSetNote, useCountedFilter, useMarkReason } from '@/lib/markedRows'
 import { crossPath, markTip } from '@/lib/exclusionMode'
-import { Findings as FindingsPanel } from '@/components/Findings'
+import { FindingsList } from '@/components/Findings'
 
 /**
  * Adama TOR study (experiments_20261022.ipynb §8): the five Adama quartz/PTFE pilot pairs against IMPROVE
@@ -130,14 +130,16 @@ function Findings({ d }: { d: TorData }) {
   const { nOut } = usePoints(d)
   return (
     <ExplainOnly>
-      <FindingsPanel id="xd-findings" title="Adama TOR study — short answers" note={<>{runLine(d)}. The Adama pairs are date candidates with unconfirmed IDs; EC for Adama is TOR (ECTR) on the quartz filter's own volume, for SPARTAN it is the published FTIR product (no TOR exists there).{nOut > 0 ? ` These answers are the run's, on all its filters; the charts below leave out the ${nOut} filter${nOut === 1 ? '' : 's'} Filters → excluded takes out.` : ''}</>}>
-        <li><strong>Lighter than SPARTAN Addis.</strong> Median EC per filter {f2(adama?.ec_ug)} µg for Adama (TOR) against {f2(addis?.ec_ug)} µg at SPARTAN Addis (FTIR): Adama sits at Addis's {nth(T['EC µg/filter']?.['Adama percentile in Addis'])} percentile and IMPROVE's {nth(T['EC µg/filter']?.['Adama percentile in IMPROVE'])}. Most of that is volume: {f2(adama?.volume)} m³ per filter against {f2(addis?.volume)}.</li>
-        <li><strong>A different aerosol.</strong> Adama's TOR OC/EC is {f2(T['OC/EC']?.['Adama median'])} against {f2(T['OC/EC']?.['Addis median'])} at SPARTAN Addis (FTIR) and {f2(T['OC/EC']?.['IMPROVE median'])} in IMPROVE (TOR): above every SPARTAN Addis filter ({nth(T['OC/EC']?.['Adama percentile in Addis'])} percentile).</li>
-        <li><strong>Similar spectral distance.</strong> Median distance percentile {Math.round(adama?.distance ?? NaN)} for Adama and {Math.round(addis?.distance ?? NaN)} for SPARTAN Addis, so similar novelty does not mean similar conditions.</li>
-        <li><strong>One season only.</strong> All five pairs are from {adamaSeason}. At SPARTAN Addis the seasons behave differently (published FTIR ÷ HIPS at {mac.label} {d.seasons.map((s) => `${s.season} ${f2(mac.slope(s['published ÷ HIPS (median)']))}`).join(', ')}; highest in {worst[0].season}), so a one-season pilot cannot speak for the others.</li>
-        <li><strong>Where it would need to be:</strong> at Adama's EC concentration, reaching SPARTAN Addis's median EC per filter takes about {Math.round(med?.["volume at Adama's median EC (m³)"] ?? NaN)} m³, {f2((med?.["volume at Adama's median EC (m³)"] ?? NaN) / (med?.['Adama volume now (m³)'] ?? NaN))}× today's volume; plus Dry or Belg sampling and lower OC/EC.</li>
-        <li><strong>Precision:</strong> with 10 pairs a mean bias on Addis-like filters is known to about ±{pct(hw(10))} (±{pct(hw(36))} with 36). Addis's nearest TOR sites: {topA.map((s) => `${s.name} (${pct(s.Addis)})`).join(', ')}.</li>
-      </FindingsPanel>
+      <ChartFrame id="xd-findings" title="Adama TOR study — short answers" exportable={false}>
+        <FindingsList note={<>{runLine(d)}. The Adama pairs are date candidates with unconfirmed IDs; EC for Adama is TOR (ECTR) on the quartz filter's own volume, for SPARTAN it is the published FTIR product (no TOR exists there).{nOut > 0 ? ` These answers are the run's, on all its filters; the charts below leave out the ${nOut} filter${nOut === 1 ? '' : 's'} Filters → excluded takes out.` : ''}</>}>
+          <li><strong>Lighter than SPARTAN Addis.</strong> Median EC per filter {f2(adama?.ec_ug)} µg for Adama (TOR) against {f2(addis?.ec_ug)} µg at SPARTAN Addis (FTIR): Adama sits at Addis's {nth(T['EC µg/filter']?.['Adama percentile in Addis'])} percentile and IMPROVE's {nth(T['EC µg/filter']?.['Adama percentile in IMPROVE'])}. Most of that is volume: {f2(adama?.volume)} m³ per filter against {f2(addis?.volume)}.</li>
+          <li><strong>A different aerosol.</strong> Adama's TOR OC/EC is {f2(T['OC/EC']?.['Adama median'])} against {f2(T['OC/EC']?.['Addis median'])} at SPARTAN Addis (FTIR) and {f2(T['OC/EC']?.['IMPROVE median'])} in IMPROVE (TOR): above every SPARTAN Addis filter ({nth(T['OC/EC']?.['Adama percentile in Addis'])} percentile).</li>
+          <li><strong>Similar spectral distance.</strong> Median distance percentile {Math.round(adama?.distance ?? NaN)} for Adama and {Math.round(addis?.distance ?? NaN)} for SPARTAN Addis, so similar novelty does not mean similar conditions.</li>
+          <li><strong>One season only.</strong> All five pairs are from {adamaSeason}. At SPARTAN Addis the seasons behave differently (published FTIR ÷ HIPS at {mac.label} {d.seasons.map((s) => `${s.season} ${f2(mac.slope(s['published ÷ HIPS (median)']))}`).join(', ')}; highest in {worst[0].season}), so a one-season pilot cannot speak for the others.</li>
+          <li><strong>Where it would need to be:</strong> at Adama's EC concentration, reaching SPARTAN Addis's median EC per filter takes about {Math.round(med?.["volume at Adama's median EC (m³)"] ?? NaN)} m³, {f2((med?.["volume at Adama's median EC (m³)"] ?? NaN) / (med?.['Adama volume now (m³)'] ?? NaN))}× today's volume; plus Dry or Belg sampling and lower OC/EC.</li>
+          <li><strong>Precision:</strong> with 10 pairs a mean bias on Addis-like filters is known to about ±{pct(hw(10))} (±{pct(hw(36))} with 36). Addis's nearest TOR sites: {topA.map((s) => `${s.name} (${pct(s.Addis)})`).join(', ')}.</li>
+        </FindingsList>
+      </ChartFrame>
     </ExplainOnly>
   )
 }

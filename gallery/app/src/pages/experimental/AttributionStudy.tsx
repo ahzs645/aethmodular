@@ -15,7 +15,7 @@ import { coef, coefSigned, f2, signed } from '@/lib/format'
 import { useMac, type MacView } from '@/lib/mac'
 import { Scatter, runLine, sourceOf, useXp, type XpBase } from './shared'
 import { FixedSetNote } from '@/lib/markedRows'
-import { Findings as FindingsPanel } from '@/components/Findings'
+import { FindingsList } from '@/components/Findings'
 
 /** Test 4: preprocessing × window × pool × k on the same filters (experiments_20261022.ipynb §4). */
 
@@ -60,10 +60,12 @@ function Findings({ d }: { d: AttributionData }) {
   const closest = [...d.grid].sort((a, b) => Math.abs(a['Addis intercept']) - Math.abs(b['Addis intercept']))[0]
   return (
     <ExplainOnly>
-      <FindingsPanel id="xt-findings" title="Attribution grid — short answers" note={<>{runLine(d)}. Effects are differences between factor levels averaged over the other two factors of a complete 2 × 2 × 2 sub-grid; an interaction is half the change of one factor's effect across the other's levels.</>}>
-        {e.slice(0, 3).map((x) => <li key={x.grid + x.term}><strong>{x.term}</strong> ({x.grid}; {x.contrast}): Addis intercept {coefSigned(x['Addis intercept'])} µg/m³, IMPROVE RMSE {signed(x['IMPROVE RMSE'])} µg.</li>)}
-        <li><strong>Lowest IMPROVE error:</strong> {rowKey(best)}, {colKey(best)} (RMSE {f2(best['IMPROVE RMSE'])} µg; Addis intercept {coefSigned(best['Addis intercept'])}). <strong>Addis closest to HIPS:</strong> {rowKey(closest)}, {colKey(closest)} (intercept {coefSigned(closest['Addis intercept'])}; IMPROVE RMSE {f2(closest['IMPROVE RMSE'])}).</li>
-      </FindingsPanel>
+      <ChartFrame id="xt-findings" title="Attribution grid — short answers" exportable={false}>
+        <FindingsList note={<>{runLine(d)}. Effects are differences between factor levels averaged over the other two factors of a complete 2 × 2 × 2 sub-grid; an interaction is half the change of one factor's effect across the other's levels.</>}>
+          {e.slice(0, 3).map((x) => <li key={x.grid + x.term}><strong>{x.term}</strong> ({x.grid}; {x.contrast}): Addis intercept {coefSigned(x['Addis intercept'])} µg/m³, IMPROVE RMSE {signed(x['IMPROVE RMSE'])} µg.</li>)}
+          <li><strong>Lowest IMPROVE error:</strong> {rowKey(best)}, {colKey(best)} (RMSE {f2(best['IMPROVE RMSE'])} µg; Addis intercept {coefSigned(best['Addis intercept'])}). <strong>Addis closest to HIPS:</strong> {rowKey(closest)}, {colKey(closest)} (intercept {coefSigned(closest['Addis intercept'])}; IMPROVE RMSE {f2(closest['IMPROVE RMSE'])}).</li>
+        </FindingsList>
+      </ChartFrame>
     </ExplainOnly>
   )
 }
