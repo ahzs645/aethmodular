@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Segmented, Toggle } from '@/components/ChartFrame'
+import { ExportState } from '@/components/ExportState'
 import { SidebarControls } from '@/lib/pageSidebar'
 import { f2 } from '@/lib/format'
 import { usePrefs } from '@/lib/prefs'
@@ -76,7 +77,7 @@ export function Sources({ rows, meta }: SectionPageProps) {
           </ul>
         </details>
       </div>}
-      {daily === null ? <div className="panel"><p className="frame-empty">Loading the aethalometer daily bins…</p></div> : <>
+      {daily === null ? <ExportState what="the aethalometer daily bins" /> : <>
         <AaeDistribution rows={rows} meta={meta} daily={daily} pair={pair} basis={basis} regions={regions} />
         <ClassShares rows={rows} meta={meta} daily={daily} pair={pair} basis={basis} regions={regions} />
         <AaeTimeline daily={daily} pair={pair} regions={regions} />

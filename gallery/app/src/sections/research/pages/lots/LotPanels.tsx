@@ -5,6 +5,7 @@
  */
 import { useMemo } from 'react'
 import { ChartFrame, Empty, Note, Segmented, Select } from '@/components/ChartFrame'
+import { LoadState } from '@/components/ExportState'
 import { Key } from '@/components/Key'
 import { SpectrumPlot, type SpectrumBand, type SpectrumSeries } from '@/components/SpectrumPlot'
 import { INK } from '@/lib/theme'
@@ -126,8 +127,7 @@ export function LotPanels({ exp, lots, id, prefix, defaults, figure, setPick }: 
       subtitle={`${v.label} (${v.unit}), ${centre} of each PTFE lot (line) and ${q ? `the ${BAND_LABEL[band]} of its filters (shaded)` : 'no band'}, per wavenumber, over the filters shown. Left: all of them, where lot and season are confounded (at Addis lot 248 is mostly dry-season); right: ${shortSeason(season)} only, the controlled contrast. If the substrate mattered, the curves on the right would separate. char_12 draws the mean, with 5–95 % (04) or 10–90 % (04b).`}
       tip={<>The headline gap is the median, over the wavenumbers shown, of |centre A − centre B| divided by the lots' mean band width (10–90 % when the band is off). {v.binning}. Lots with one filter draw a line and no band. Per site, a site whose calendar has no season of that name holds its own dry-named season (or its largest) instead; pooled, the season applies as named, so under per-site calendars it may cover one site only. Instruments: SPARTAN lot 248 was scanned on instruments 823 and 2837 only, never on 151, so a pooled lot contrast at Beijing or JPL is partly an instrument contrast; pick one instrument to remove that.</>}
       provenance={<>{NB} §4, {figure}. Spectra: <code>{EXPORTER}</code> → <code>{FOLDER}/{v.file}</code>; centres and bands recomputed here (common/lotSpectra.ts).</>}>
-      {error ? <Empty>Could not load the {v.label.toLowerCase()} spectra: {error}</Empty>
-        : !values ? <Empty>Loading the spectra…</Empty>
+      {error || !values ? <LoadState what="the spectra" error={error} failed={<>Could not load the {v.label.toLowerCase()} spectra: {error}</>} />
         : !shown.length ? <Empty>No exported spectrum with a known lot among the filters shown{lots.set === 'view' && lots.unmatched ? ` (${lots.unmatched} spectra of these sites have no gallery row: pick “In view + no gallery row”)` : ''}.</Empty>
         : panels.map((g) => <div key={g.key}>
           {layout === 'site' && <p className="subtitle" style={{ margin: '8px 0 2px', fontWeight: 600 }}>{g.label}</p>}

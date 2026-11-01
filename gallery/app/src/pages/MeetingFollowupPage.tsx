@@ -627,8 +627,7 @@ function SpectraPanel({ data, method, group }: { data: MeetingData; method: stri
 
   const toSid = (key: string | null) => (key == null ? null : key.startsWith('improve:') ? key : etadOf.get(key) ?? null)
 
-  if (tr.error) return <Empty>Could not load the per-filter spectra: {tr.error}</Empty>
-  if (!tr.value) return <div><LoadState what="per-filter spectra" error={tr.error} /></div>
+  if (!tr.value) return <div><LoadState what="per-filter spectra" error={tr.error} failed={<>Could not load the per-filter spectra: {tr.error}</>} /></div>
   const { meta, traces, index } = tr.value
   const wn = meta.bin_wn
   const wnFloor = method.includes('full-cut') ? 1425 : 0
